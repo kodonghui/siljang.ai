@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "project": "service-ax",
+  "stages": {
+    "01-domain": {
+      "state": "in_progress",
+      "checkpoints": [],
+      "next": "1차 확인 지점: 타임라인과 질문 3개에 동희님 답 받기",
+      "updated": "2026-11-11T04:48:57+00:00"
+    }
+  }
+}
