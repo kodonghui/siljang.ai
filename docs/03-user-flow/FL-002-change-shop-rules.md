@@ -1,5 +1,6 @@
 ---
 status: 초안
+notion: https://app.notion.com/p/415bf16cc3ec8199b42ae617459e2192
 ---
 
 # FL-002 가게 규칙 바꾸기

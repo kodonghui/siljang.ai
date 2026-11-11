@@ -1,5 +1,6 @@
 ---
 status: 초안
+notion: https://app.notion.com/p/415bf16cc3ec812dade8e7408106e0fb
 ---
 
 # FL-013 장부에 저절로 적기

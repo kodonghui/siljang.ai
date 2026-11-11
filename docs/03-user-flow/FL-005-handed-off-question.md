@@ -1,5 +1,6 @@
 ---
 status: 초안
+notion: https://app.notion.com/p/415bf16cc3ec81e6abb3fa6edd348415
 ---
 
 # FL-005 넘긴 질문의 답 받기

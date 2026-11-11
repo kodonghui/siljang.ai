@@ -1,5 +1,6 @@
 ---
 status: 초안
+notion: https://app.notion.com/p/415bf16cc3ec81099656e689c38f8419
 ---
 
 # FL-003 상담하고 견적 받기

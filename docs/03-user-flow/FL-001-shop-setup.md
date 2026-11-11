@@ -1,5 +1,6 @@
 ---
 status: 초안
+notion: https://app.notion.com/p/415bf16cc3ec812fa576e42ad37b7f69
 ---
 
 # FL-001 가게 등록하고 예약 링크 받기

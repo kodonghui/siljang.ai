@@ -1,5 +1,6 @@
 ---
 status: 초안
+notion: https://app.notion.com/p/415bf16cc3ec8122a9a3ff6c4c5b934b
 ---
 
 # FL-004 손님 메시지 하나에 답하기

@@ -24,9 +24,10 @@
     },
     "03-user-flow": {
       "human": "notion",
+      "link": "https://app.notion.com/p/67cd294c32764e5399406187fa021b2e",
       "source": "docs/03-user-flow/",
       "truth": "source",
-      "note": "사람 보기는 03단계 기본값인 Notion DB(한 줄에 흐름 하나, 줄마다 원본과 같은 Mermaid 그림)입니다. 2026-11-11 23:18에 기본값으로 시작했고 다른 도구를 고르시면 바꿉니다. 원본은 이 저장소의 흐름 파일이고, Notion은 보고 댓글을 다는 곳입니다."
+      "note": "사람 보기는 03단계 기본값인 Notion DB(한 줄에 흐름 하나, 줄마다 원본과 같은 Mermaid 그림)입니다. 2026-11-11 23:18에 기본값으로 시작했고 다른 도구를 고르시면 바꿉니다. 원본은 이 저장소의 흐름 파일이고, Notion은 보고 댓글을 다는 곳입니다. 흐름 표와 새 요구사항 후보 표(https://app.notion.com/p/df79c1494a954b5c9d8b7bbd9df27bc3), 읽은 방식 표(https://app.notion.com/p/0b281fc982aa445b88f02ce184dd5ba2)는 최근 업데이트 DB의 03단계 기록 행(https://app.notion.com/p/415bf16cc3ec8170b22bf7ce04dc315c) 안에 있습니다."
     }
   }
 }

@@ -1,5 +1,6 @@
 ---
 status: 초안
+notion: https://app.notion.com/p/415bf16cc3ec819292ece5773f7e5d5f
 ---
 
 # FL-008 주문 바꾸기

@@ -1,5 +1,6 @@
 ---
 status: 초안
+notion: https://app.notion.com/p/415bf16cc3ec81acba5bf18e12cbe7b6
 ---
 
 # FL-007 결제하고 주문 확정받기

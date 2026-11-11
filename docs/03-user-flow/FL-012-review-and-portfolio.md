@@ -1,5 +1,6 @@
 ---
 status: 초안
+notion: https://app.notion.com/p/415bf16cc3ec8124b9ddd253c70f1747
 ---
 
 # FL-012 후기 남기고 사진 게시 정하기
