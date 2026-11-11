@@ -14,6 +14,13 @@
       "source": "docs/01-domain/",
       "truth": "source",
       "note": "첫 업종 수제케이크(주문제작), 2026-11-11 시작. 일하는 방식은 그리고 고치기(1-b·7·9단계 뒤 멈춤). Miro 보드는 2026-11-11 13:33 동희님이 결정 카드에서 'Miro 보드 새로 만들기'를 골라 만들었습니다(프레임: 0단계 준비, 범례, 1-a, 1-b, 2~9단계). 제품 저장소는 이 저장소(kodonghui/siljang.ai)입니다: 동희님 2026-11-11 17:44 프로젝트 대화 \"siljang에서 해야지\". 01단계는 kakao-hack 초안 PR #10에서 시작해(마지막 커밋 3cbd39a) 같은 날 커밋 이력째 옮겼습니다."
+    },
+    "02-prd": {
+      "human": "notion",
+      "link": "https://app.notion.com/p/339f50c5553842f8bcaad2f4be9acb32",
+      "source": "docs/02-prd/requirements.md",
+      "truth": "source",
+      "note": "사람 보기는 02단계 기본값인 Notion DB입니다. 요구사항 표(REQ 한 행씩)와 핫스팟 답 표(https://app.notion.com/p/b7f47760cbcd46518122e0b96ef150f8)는 최근 업데이트 DB의 02단계 기록 행(https://app.notion.com/p/415bf16cc3ec81d28b8dd61931abbce1) 안에 있습니다. 원본은 이 저장소 문서이고, Notion은 보고 댓글을 다는 곳입니다."
     }
   }
 }
