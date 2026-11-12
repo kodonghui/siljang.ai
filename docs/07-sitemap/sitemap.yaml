@@ -1,0 +1,562 @@
+# Siljang 사이트맵 (CORTHEX 07단계) 원본
+# 화면을 바꿀 때는 이 파일을 고치고(사람이든 AI든, PR로), 흐름 상자의 화면은 흐름 파일 끝 '화면 (07단계)' 표의 화면 칸을 고친 뒤
+#   python3 -B research/cake-sitemap-2026-11/build_sitemap.py . --write   # 흐름 표·README 표·보기 페이지를 다시 그림
+#   python3 -B research/cake-sitemap-2026-11/check_sitemap.py .           # 검사
+# SCR ID는 다시 쓰거나 번호를 바꾸지 않음. 없애는 화면은 status: removed
+# 뿌리 셋: 손님 SCR-001 · 사장님 SCR-014 · 운영자 SCR-046
+# 경로: 웹은 /…, 카카오톡 안의 화면은 주소가 없어 kakao:shop/…(가게 채널)·kakao:service/…(우리 서비스 채널)
+# access: 누구나 · 손님 · 주문한 손님 · 가게 없는 사장님 · 사장님 · 운영자 (docs/07-sitemap/README.md 3절)
+# flows: 흐름 파일의 '화면 (07단계)' 표에서 그 화면을 적은 흐름(검사가 양쪽을 맞춰 봄). 없으면 no_flow에 까닭
+# 값은 CORTHEX 허브가 읽는 모양만 씀: 글은 큰따옴표, 목록은 [a, b], 탭과 블록 글(| >)은 쓰지 않음
+#
+# without a screen: TERM-057, TERM-058, TERM-070
+#   TERM-057 지금까지 채운 주문서 초안: AI 상담이 초안을 저장하기 전에 봄
+#   TERM-058 가게 규칙 판정: AI 상담이 견적 때 봄. 손님은 그 결과를 상담(SCR-003)에서 봄
+#   TERM-070 내일 픽업 주문: 서버가 전날 안내를 보낼 때 씀. 안내는 SCR-011
+
+# ── 손님 ──
+- id: SCR-001
+  name: 예약 링크 페이지
+  path: /s/:slug
+  access: 누구나
+  status: active
+  audience: 손님
+  flows: [FL-001, FL-002, FL-003, FL-006, FL-007, FL-012]
+  terms: [CTX-001, TERM-056, TERM-042, TERM-052, TERM-047, TERM-048]
+  specs: [SPEC-011, SPEC-014, SPEC-063]
+  apis: [API-038]
+  note: "포트폴리오·지금 판 가격표·앞으로 빈 날짜·가게 신원 정보를 보고, 문의를 누르면 가게 채널 상담이 열림"
+  children:
+    - id: SCR-002
+      name: 가게 개인정보 처리방침
+      path: /s/:slug/privacy
+      access: 누구나
+      status: active
+      flows: [FL-001, FL-003]
+      terms: [CTX-007, TERM-053]
+      specs: [SPEC-010, SPEC-011, SPEC-018]
+      apis: [API-039]
+      note: "예약 링크 페이지에서 여는 그 가게의 처리방침(국외 이전 다섯 항목 포함)"
+    - id: SCR-003
+      name: 가게 채널 상담
+      path: kakao:shop/chat
+      access: 손님
+      status: active
+      flows: [FL-003, FL-004, FL-005, FL-006, FL-007, FL-008, FL-009, FL-010, FL-011, FL-012]
+      terms: [CTX-001, TERM-046, TERM-045, TERM-041, TERM-013, TERM-019, TERM-003]
+      specs: [SPEC-013, SPEC-014, SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-049, SPEC-056, SPEC-057]
+      apis: [API-070]
+      note: "가게 카카오톡 채널에서 손님이 AI 상담과 말하는 곳. 견적·다른 날 권하기·넘긴 질문의 답이 여기로 옴"
+      children:
+        - id: SCR-004
+          name: 주문 요청 카드
+          path: kakao:shop/card/order_request
+          access: 손님
+          status: active
+          flows: [FL-006]
+          terms: [CTX-003, TERM-061, TERM-040, TERM-010, TERM-009]
+          specs: [SPEC-028, SPEC-029, SPEC-030, SPEC-069]
+          apis: [API-071]
+          note: "주문 내용 요약과 그 판의 취소·환불 규정을 따로 보고 동의한 뒤 주문 요청 버튼을 누름"
+        - id: SCR-005
+          name: 결제 안내
+          path: kakao:shop/payment-request
+          access: 주문한 손님
+          status: active
+          flows: [FL-004, FL-007, FL-008]
+          terms: [CTX-004, TERM-049, TERM-030, TERM-014]
+          specs: [SPEC-032, SPEC-066]
+          apis: []
+          note: "금액·가게 명의 계좌(있으면 카드 결제 링크)·결제 기한. 첫 결제·다시 낸 결제·차액 결제"
+        - id: SCR-006
+          name: 입금했다고 알리는 카드
+          path: kakao:shop/card/payment_claim
+          access: 주문한 손님
+          status: active
+          flows: [FL-007]
+          terms: [CTX-004, TERM-049]
+          specs: [SPEC-033, SPEC-069]
+          apis: [API-071]
+          note: "손님이 입금했다고 말하면 AI 상담이 보이는 버튼. 누르면 사장님께 결제 확인을 요청함"
+        - id: SCR-007
+          name: 내 주문 보기
+          path: kakao:shop/my-order
+          access: 주문한 손님
+          status: active
+          flows: [FL-008, FL-011]
+          terms: [CTX-003, TERM-065, TERM-072]
+          specs: [SPEC-040]
+          apis: [API-070]
+          note: "상태·픽업 일시·변경 마감 시각·지금 취소하면 받는 환불. 다른 카카오 사용자면 보이지 않고 사장님께 넘김"
+          children:
+            - id: SCR-008
+              name: 변경 요청 카드
+              path: kakao:shop/card/change_request
+              access: 주문한 손님
+              status: active
+              flows: [FL-008]
+              terms: [CTX-003, TERM-066, TERM-005]
+              specs: [SPEC-041, SPEC-069]
+              apis: [API-071]
+              note: "바꿀 디자인·문구·날짜를 확인하고 변경 요청 버튼을 누름"
+            - id: SCR-009
+              name: 취소 카드
+              path: kakao:shop/card/cancel
+              access: 주문한 손님
+              status: active
+              flows: [FL-009]
+              terms: [CTX-003, TERM-065, TERM-016]
+              specs: [SPEC-046, SPEC-016, SPEC-069]
+              apis: [API-071]
+              note: "지금 취소하면 받는 환불(가게 규칙 계산값)을 보고 취소 버튼을 누름"
+            - id: SCR-010
+              name: 문제 신고 카드
+              path: kakao:shop/card/issue_report
+              access: 주문한 손님
+              status: active
+              flows: [FL-011]
+              terms: [CTX-003, TERM-031, TERM-032, TERM-072]
+              specs: [SPEC-057, SPEC-058, SPEC-069]
+              apis: [API-071]
+              note: "AI 상담이 모은 신고 내용(사진·설명)을 확인하고 문제 신고 버튼을 누름"
+        - id: SCR-011
+          name: 손님에게 가는 알림
+          path: kakao:shop/notice
+          access: 손님
+          status: active
+          flows: [FL-004, FL-005, FL-006, FL-007, FL-008, FL-009, FL-010, FL-011, FL-012]
+          terms: [CTX-008, TERM-054, TERM-036]
+          specs: [SPEC-066, SPEC-023, SPEC-024, SPEC-036, SPEC-039, SPEC-044, SPEC-045, SPEC-047, SPEC-052, SPEC-053, SPEC-059, SPEC-061]
+          apis: []
+          opens: [SCR-012]
+          note: "서비스가 먼저 보내는 안내: 주문 확정 안내, 전날 안내, 완성 사진, 늦어짐 안내, 넘긴 질문의 답, 환불·보상 결과, 후기 부탁. 친구가 아니면 다음 대화 때 먼저 전함"
+        - id: SCR-012
+          name: 후기 남기기
+          path: kakao:shop/block/review
+          access: 주문한 손님
+          status: active
+          flows: [FL-012]
+          terms: [CTX-006, TERM-051]
+          specs: [SPEC-062, SPEC-061, SPEC-019]
+          apis: [API-072]
+          note: "후기 부탁 안내의 버튼이나 채널의 '후기' 블록에서 글·사진을 남기고 사진 게시 동의(기본 동의 안 함)를 고름"
+        - id: SCR-013
+          name: 사진 게시 동의 거두기 카드
+          path: kakao:shop/card/consent_withdrawal
+          access: 주문한 손님
+          status: active
+          flows: [FL-012]
+          terms: [CTX-006, TERM-052, TERM-051]
+          specs: [SPEC-063, SPEC-069]
+          apis: [API-071]
+          note: "손님이 사진 게시 동의를 거두겠다고 하면 보이는 확인 카드. 누르면 포트폴리오에서 내려감"
+
+# ── 사장님 ──
+- id: SCR-014
+  name: 사장님 로그인
+  path: /owner/login
+  also_paths: [/owner/login/callback]
+  access: 누구나
+  status: active
+  audience: 사장님
+  flows: [FL-001]
+  terms: [CTX-007, TERM-044]
+  specs: [SPEC-001]
+  apis: [API-001]
+  note: "카카오 로그인. 가게가 없으면 가게 등록으로, 있으면 할 일 목록으로 감"
+  children:
+    - id: SCR-015
+      name: 가게 등록
+      path: /owner/shop/new
+      access: 가게 없는 사장님
+      status: active
+      flows: [FL-001]
+      terms: [CTX-007, TERM-053]
+      specs: [SPEC-002, SPEC-068]
+      apis: [API-007, API-008]
+      note: "가게 이름·연락처·사업자 정보·영업 신고증 사진·처리 위탁 동의를 넣고 등록"
+    - id: SCR-016
+      name: 할 일 목록
+      path: /owner
+      access: 사장님
+      status: active
+      flows: [FL-001, FL-002, FL-005, FL-006, FL-007, FL-008, FL-009, FL-011, FL-013]
+      terms: [CTX-001, TERM-059, TERM-035, TERM-008]
+      specs: [SPEC-067, SPEC-024, SPEC-037]
+      apis: [API-040, API-002]
+      opens: [SCR-022, SCR-023, SCR-024, SCR-025, SCR-027, SCR-029, SCR-032, SCR-035, SCR-042, SCR-043]
+      opens_by_task:
+        handoff: SCR-017
+        custom_order: SCR-022
+        change_request: SCR-024
+        issue_report: SCR-027
+        payment_claim: SCR-029
+        payment_mismatch: SCR-029
+        payment_overdue: SCR-023
+        refund_decision: SCR-025
+        paid_after_cancel: SCR-025
+        stale_change: SCR-024
+        ledger_relink: SCR-042
+        license_on_hold: SCR-035
+        calendar_conflict: SCR-032
+      opens_by_banner:
+        add_alert_channel: SCR-019
+        license_pending: SCR-035
+        license_on_hold: SCR-035
+        booking_link_not_ready: SCR-043
+        ledger_relink: SCR-042
+      note: "사장님이 정할 일을 모은 첫 화면. 할 일을 누르면 그 일의 화면이 열리고, 맨 위에 빠진 설정 안내가 보임"
+      children:
+        - id: SCR-017
+          name: 넘긴 질문
+          path: /owner/handoffs/:handoffId
+          access: 사장님
+          status: active
+          flows: [FL-005]
+          terms: [CTX-001, TERM-008, TERM-018]
+          specs: [SPEC-022, SPEC-023, SPEC-056]
+          apis: [API-041, API-042]
+          note: "AI 상담이 넘긴 질문과 그 까닭을 보고 답을 쓰면 손님에게 전해짐"
+          children:
+            - id: SCR-018
+              name: 상담 대화
+              path: /owner/consultations/:consultationId
+              access: 사장님
+              status: active
+              flows: [FL-004]
+              terms: [CTX-001, TERM-046, TERM-019]
+              specs: [SPEC-021, SPEC-019, SPEC-065, SPEC-068]
+              apis: [API-043]
+              note: "넘긴 질문의 앞뒤 대화와 참고 사진. 가린 전화번호·계좌번호는 이 화면에서만 원래 값으로 보임"
+        - id: SCR-019
+          name: 사장님 알림
+          path: kakao:service/chat
+          access: 사장님
+          status: active
+          flows: [FL-001, FL-005, FL-006, FL-007, FL-008, FL-009, FL-011]
+          terms: [CTX-008, TERM-035, TERM-054]
+          specs: [SPEC-067, SPEC-003, SPEC-024]
+          apis: []
+          opens: [SCR-016]
+          note: "우리 서비스 카카오톡 채널로 오는 알림. 할 일 종류와 할 일 목록 주소만 담음"
+    - id: SCR-020
+      name: 주문 목록
+      path: /owner/orders
+      access: 사장님
+      status: active
+      flows: []
+      no_flow: "주문 상세로 가는 목록. 흐름 상자는 그다음 화면(주문 상세와 그 아래)에 있음"
+      terms: [CTX-003, TERM-001, TERM-064]
+      specs: [SPEC-031, SPEC-037, SPEC-068]
+      apis: [API-044]
+      note: "상태·종류·픽업 날짜로 거름. 결제 기한 지난 주문과 답할 맞춤 주문도 이 목록의 거름으로 봄"
+      children:
+        - id: SCR-021
+          name: 주문 상세
+          path: /owner/orders/:orderId
+          access: 사장님
+          status: active
+          flows: [FL-007, FL-009]
+          terms: [CTX-003, TERM-001, TERM-004, TERM-005]
+          specs: [SPEC-045, SPEC-048, SPEC-068]
+          apis: [API-045, API-048]
+          note: "주문 내용(판 번호)·결제·제작 상태. 가게 사정 취소도 여기서"
+          children:
+            - id: SCR-022
+              name: 맞춤 주문 답하기
+              path: /owner/orders/:orderId/custom-decision
+              access: 사장님
+              status: active
+              flows: [FL-006]
+              terms: [CTX-003, TERM-062, TERM-038, TERM-011]
+              specs: [SPEC-031]
+              apis: [API-045, API-046]
+              note: "참고 사진·가게 규칙 계산값·그날 남은 자리를 보고 수락·금액 바꿔 수락·거절을 고름"
+            - id: SCR-023
+              name: 결제 기한 지난 주문
+              path: /owner/orders/:orderId/overdue-decision
+              access: 사장님
+              status: active
+              flows: [FL-007]
+              terms: [CTX-003, TERM-064, TERM-037]
+              specs: [SPEC-037, SPEC-038, SPEC-039]
+              apis: [API-045, API-047]
+              note: "자리가 풀린 주문과 그날 남은 자리를 보고 더 기다리기나 취소를 고름"
+            - id: SCR-024
+              name: 변경 요청
+              path: /owner/change-requests/:changeRequestId
+              access: 사장님
+              status: active
+              flows: [FL-008]
+              terms: [CTX-003, TERM-066]
+              specs: [SPEC-042, SPEC-043, SPEC-044, SPEC-045]
+              apis: [API-062, API-063]
+              note: "손님이 바꾸려는 내용과 그 판의 변경 마감을 보고 받아들이거나 거절. 차액이 있으면 차액 결제 안내로 감"
+            - id: SCR-025
+              name: 환불 정하기
+              path: /owner/orders/:orderId/refund-decision
+              access: 사장님
+              status: active
+              flows: [FL-008, FL-009]
+              terms: [CTX-004, TERM-067, TERM-016]
+              specs: [SPEC-047, SPEC-016]
+              apis: [API-049, API-050]
+              note: "가게 규칙이 계산한 환불 금액과 그 근거를 보고 환불을 정함"
+            - id: SCR-026
+              name: 환불 보내기
+              path: /owner/refunds/:refundId
+              access: 사장님
+              status: active
+              flows: [FL-009, FL-011]
+              terms: [CTX-004, TERM-049]
+              specs: [SPEC-047, SPEC-049]
+              apis: [API-060, API-061]
+              note: "손님 환불 계좌를 보고 은행 앱으로 보낸 뒤 '보냄'을 누름"
+            - id: SCR-027
+              name: 문제 신고
+              path: /owner/issue-reports/:issueReportId
+              access: 사장님
+              status: active
+              flows: [FL-011]
+              terms: [CTX-003, TERM-073, TERM-031, TERM-033, TERM-034]
+              specs: [SPEC-058, SPEC-059, SPEC-060]
+              apis: [API-064, API-065]
+              note: "신고 사진·설명과 주문 내용 판·결제 금액을 보고 다시 만들기·일부 환불·전액 환불·없음을 고름"
+    - id: SCR-028
+      name: 입금 대조 목록
+      path: /owner/payment-requests
+      access: 사장님
+      status: active
+      flows: [FL-007]
+      terms: [CTX-004, TERM-063]
+      specs: [SPEC-034, SPEC-033, SPEC-035, SPEC-037]
+      apis: [API-057]
+      note: "확인 요청된 결제 안내와 기한이 다가오는 결제 안내를 모아 봄"
+      children:
+        - id: SCR-029
+          name: 입금 대조
+          path: /owner/payment-requests/:paymentRequestId
+          access: 사장님
+          status: active
+          flows: [FL-007]
+          terms: [CTX-004, TERM-063, TERM-049]
+          specs: [SPEC-034, SPEC-035, SPEC-036]
+          apis: [API-058, API-059]
+          note: "안내 금액·입금자 이름·결제 기한을 은행 앱과 맞춰 보고 들어옴·안 들어옴·다르게 들어옴을 고름"
+    - id: SCR-030
+      name: 제작 목록
+      path: /owner/production
+      access: 사장님
+      status: active
+      flows: [FL-008, FL-010]
+      terms: [CTX-005, TERM-068, TERM-050, TERM-022]
+      specs: [SPEC-050, SPEC-051, SPEC-053, SPEC-060]
+      apis: [API-051, API-052, API-053, API-007]
+      note: "날짜별 확정 주문과 맞춤 재료. 재료 주문·제작 시작·완성 표시(완성 사진)를 누름"
+    - id: SCR-031
+      name: 픽업 목록
+      path: /owner/pickups
+      access: 사장님
+      status: active
+      flows: [FL-010]
+      terms: [CTX-005, TERM-069, TERM-024, TERM-025]
+      specs: [SPEC-054, SPEC-055]
+      apis: [API-051, API-054, API-055, API-056]
+      note: "오늘 받으러 올 주문·시각·퀵 여부. 넘기기·미수령·폐기를 누름"
+    - id: SCR-032
+      name: 영업 달력
+      path: /owner/calendar
+      access: 사장님
+      status: active
+      flows: [FL-001, FL-002, FL-006, FL-007]
+      terms: [CTX-002, TERM-060, TERM-048, TERM-026, TERM-027]
+      specs: [SPEC-007, SPEC-012, SPEC-015]
+      apis: [API-028, API-029]
+      note: "날짜별 하루 최대 개수·잡힌 자리·마감 여부. 그날 휴무·최대 개수·주문 마감을 바꿈"
+      children:
+        - id: SCR-033
+          name: 영업 달력 기준
+          path: /owner/calendar/settings
+          access: 사장님
+          status: active
+          flows: [FL-001, FL-002]
+          terms: [CTX-002, TERM-048]
+          specs: [SPEC-007]
+          apis: [API-026, API-027]
+          note: "쉬는 요일·하루 최대 개수·답하는 시간·안내 보낼 시각의 기준. 바꾸면 겹치는 날을 보여 줌"
+    - id: SCR-034
+      name: 가게 설정
+      path: /owner/shop
+      access: 사장님
+      status: active
+      flows: [FL-001, FL-002]
+      terms: [CTX-007, TERM-053]
+      specs: [SPEC-009, SPEC-017, SPEC-024, SPEC-025, SPEC-052]
+      apis: [API-009, API-010, API-003]
+      note: "가게 정보, 완성 사진 보내기, 문의 끊김 시간, 사장님 답 기다리는 시간, 하루 AI 비용 한도. 로그아웃도 여기서"
+      children:
+        - id: SCR-035
+          name: 영업 신고
+          path: /owner/shop/license
+          access: 사장님
+          status: active
+          flows: [FL-001]
+          terms: [CTX-007, TERM-053, TERM-074]
+          specs: [SPEC-003]
+          apis: [API-009, API-011, API-007]
+          note: "운영자 확인 상태(확인 중·확인됨·보류)와 보류 까닭. 보류면 신고증을 다시 올림"
+        - id: SCR-036
+          name: 가격표와 도안
+          path: /owner/price-list
+          access: 사장님
+          status: active
+          flows: [FL-001, FL-002]
+          terms: [CTX-002, TERM-047, TERM-020, TERM-005]
+          specs: [SPEC-004]
+          apis: [API-016, API-017, API-007]
+          note: "크기·맛·디자인 옵션 값과 옵션 규칙, 도안을 고쳐 새 판으로 저장"
+          children:
+            - id: SCR-037
+              name: 가격표 판 기록
+              path: /owner/price-list/versions
+              also_paths: [/owner/price-list/versions/:version]
+              access: 사장님
+              status: active
+              flows: [FL-002]
+              terms: [CTX-002, TERM-047, TERM-005]
+              specs: [SPEC-004, SPEC-013]
+              apis: [API-018, API-019]
+              note: "지난 판 목록과 판 하나. 옛 판으로 낸 견적을 볼 때 씀"
+        - id: SCR-038
+          name: 운영규정
+          path: /owner/operating-rules
+          access: 사장님
+          status: active
+          flows: [FL-001, FL-002]
+          terms: [CTX-002, TERM-017]
+          specs: [SPEC-005]
+          apis: [API-020, API-021]
+          note: "틀의 조항(취소·환불·변경 마감·결제 기한 들)을 채우고 확정하면 새 판이 됨"
+          children:
+            - id: SCR-039
+              name: 운영규정 판 기록
+              path: /owner/operating-rules/versions
+              also_paths: [/owner/operating-rules/versions/:version]
+              access: 사장님
+              status: active
+              flows: [FL-002]
+              terms: [CTX-002, TERM-017, TERM-005]
+              specs: [SPEC-005, SPEC-016]
+              apis: [API-022, API-023]
+              note: "지난 판 목록과 판 하나. 주문마다 받은 판으로 환불을 계산하므로 옛 판도 남음"
+        - id: SCR-040
+          name: 결제 받을 곳
+          path: /owner/payment-destination
+          access: 사장님
+          status: active
+          flows: [FL-001]
+          terms: [CTX-004, TERM-049]
+          specs: [SPEC-006]
+          apis: [API-024, API-025]
+          note: "가게 명의 계좌(있으면 카드 결제 링크)를 등록하거나 바꿈. 없으면 예약 링크가 나오지 않음(REQ-164)"
+        - id: SCR-041
+          name: 카카오톡 채널 연결
+          path: /owner/kakao-channel
+          access: 사장님
+          status: active
+          flows: [FL-001]
+          terms: [CTX-007, TERM-053]
+          specs: [SPEC-008]
+          apis: [API-030, API-031, API-032]
+          note: "연결할 채널(오픈빌더 봇)을 정하고 스킬 설정 값을 옮긴 뒤 연결 확인(10분). 봇 ID를 찾는 곳의 길잡이도 여기(OPEN-8)"
+        - id: SCR-042
+          name: 장부 연결
+          path: /owner/ledger
+          also_paths: [/owner/ledger/callback]
+          access: 사장님
+          status: active
+          flows: [FL-001, FL-013]
+          terms: [CTX-009, TERM-028, TERM-055]
+          specs: [SPEC-009, SPEC-064]
+          apis: [API-033, API-034, API-035, API-036]
+          note: "구글 허락을 받아 구글 시트 장부를 잇거나 다시 잇거나 끊음. 적지 못한 줄이 있으면 다시 이으라는 할 일이 여기로 옴"
+        - id: SCR-043
+          name: 예약 링크
+          path: /owner/booking-link
+          access: 사장님
+          status: active
+          flows: [FL-001]
+          terms: [CTX-007, TERM-042]
+          specs: [SPEC-010]
+          apis: [API-037]
+          opens: [SCR-035, SCR-036, SCR-038, SCR-040, SCR-041]
+          note: "예약 링크와 아직 빠진 조건(영업 신고·가격표·운영규정·결제 받을 곳·채널 연결). 링크를 복사해 채널과 인스타그램 소개에 검"
+        - id: SCR-044
+          name: 포트폴리오
+          path: /owner/portfolio
+          access: 사장님
+          status: active
+          flows: [FL-012]
+          terms: [CTX-006, TERM-052, TERM-071]
+          specs: [SPEC-063]
+          apis: [API-067, API-068, API-069]
+          note: "게시 동의한 후기 사진을 골라 올리거나 내림"
+        - id: SCR-045
+          name: 후기
+          path: /owner/reviews
+          access: 사장님
+          status: active
+          flows: []
+          no_flow: "06단계 API-066에서 온 화면. FL-012는 후기 사진을 포트폴리오 화면에서 고름"
+          terms: [CTX-006, TERM-051, TERM-071]
+          specs: [SPEC-062]
+          apis: [API-066]
+          note: "받은 후기와 사진마다의 게시 동의"
+
+# ── 운영자 ──
+- id: SCR-046
+  name: 운영자 로그인
+  path: /operator/login
+  access: 누구나
+  status: active
+  audience: 운영자
+  flows: []
+  no_flow: "운영자 화면으로 들어가는 길. FL-001의 운영자 상자는 영업 신고 확인에 있음"
+  terms: [CTX-007, TERM-074]
+  specs: [SPEC-001]
+  apis: [API-004]
+  note: "이메일·비밀번호·2단계 인증. 인증 서비스는 개발 전에 고름(OPEN-6)"
+  children:
+    - id: SCR-047
+      name: 영업 신고 확인 목록
+      path: /operator/shops
+      access: 운영자
+      status: active
+      flows: []
+      no_flow: "영업 신고 확인으로 가는 목록"
+      terms: [CTX-007, TERM-053, TERM-074]
+      specs: [SPEC-003, SPEC-002]
+      apis: [API-012, API-005, API-006]
+      note: "확인할 가게 목록. 운영자의 첫 화면이고 로그아웃도 여기서"
+      children:
+        - id: SCR-048
+          name: 영업 신고 확인
+          path: /operator/shops/:shopId
+          access: 운영자
+          status: active
+          flows: [FL-001]
+          terms: [CTX-007, TERM-053, TERM-074]
+          specs: [SPEC-003]
+          apis: [API-013, API-014]
+          note: "신고증 사진을 눈으로 보고 확인됨이나 보류(까닭)를 남김"
+    - id: SCR-049
+      name: 운영자 알림
+      path: /operator/alerts
+      access: 운영자
+      status: active
+      flows: []
+      no_flow: "06단계 API-015에서 온 화면(채널 겹침·처리방침 빔·잦은 AI 실패). 03단계 흐름에 운영자 알림 상자가 없음"
+      terms: [CTX-008, TERM-054, TERM-074]
+      specs: [SPEC-008, SPEC-010, SPEC-017]
+      apis: [API-015]
+      note: "다른 가게에 이미 묶인 채널, 처리방침의 국외 이전 항목 빔, 한 가게의 잦은 AI 실패. 내용 없이 건수만"
