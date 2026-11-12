@@ -1,6 +1,6 @@
 ---
 board: https://miro.com/app/board/uXjVEPLnid4=/
-synced_at: 2026-11-11T20:41+09:00
+synced_at: 2026-11-12T10:05+09:00
 ---
 
 # 수제케이크 주문제작: 도메인 설계

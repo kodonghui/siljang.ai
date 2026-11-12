@@ -1,6 +1,6 @@
 ---
 notion: https://app.notion.com/p/67cd294c32764e5399406187fa021b2e
-synced_at: 2026-11-11T23:42+09:00
+synced_at: 2026-11-12T09:55+09:00
 ---
 
 # 수제케이크 주문제작: 사용자 흐름

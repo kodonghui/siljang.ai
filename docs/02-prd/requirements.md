@@ -1,6 +1,6 @@
 ---
 notion: https://app.notion.com/p/339f50c5553842f8bcaad2f4be9acb32
-synced_at: 2026-11-11T21:04+09:00
+synced_at: 2026-11-12T09:55+09:00
 ---
 
 # 수제케이크 주문제작: 요구사항 (PRD)
