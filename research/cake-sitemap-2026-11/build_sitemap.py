@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""07단계 사이트맵의 보기를 원본에서 다시 그린다.
+"""07단계 사이트맵의 뷰를 원본에서 다시 생성한다.
 
 원본(사람이든 AI든 여기만 고침)
-- docs/07-sitemap/sitemap.yaml                 화면 나무
-- docs/03-user-flow/FL-0xx-*.md 끝의 표         '화면'·'화면이 없는 까닭' 칸(흐름 상자마다 화면)
+- docs/07-sitemap/sitemap.yaml                 화면 트리
+- docs/03-user-flow/FL-0xx-*.md 끝의 표         '화면'·'화면 없음 사유' 열(플로우 노드마다 화면)
 
-그리는 것(손으로 고치지 않음)
-- 흐름 표의 '내용' 칸(그림의 상자 글)과 화면 이름, 그림에 새로 생긴 상자의 빈 줄
-- docs/07-sitemap/README.md 표시 사이의 표
-- docs/07-sitemap/sitemap.html 보드·목록·슬라이드(견줄 때는 그린 시각을 뺌)
+생성하는 것(손으로 고치지 않음)
+- 플로우 표의 '내용' 열(다이어그램의 노드 글)과 화면 이름, 다이어그램에 새로 생긴 노드의 빈 행
+- docs/07-sitemap/README.md 마커 사이의 표
+- docs/07-sitemap/sitemap.html 구조도·화면 목록·슬라이드(비교할 때는 생성 시각을 뺌)
 
-    python3 -B research/cake-sitemap-2026-11/build_sitemap.py .           # 어긋남만 봄
-    python3 -B research/cake-sitemap-2026-11/build_sitemap.py . --write   # 다시 그림
+    python3 -B research/cake-sitemap-2026-11/build_sitemap.py .           # 불일치만 확인
+    python3 -B research/cake-sitemap-2026-11/build_sitemap.py . --write   # 다시 생성
 """
 import datetime
 import html
@@ -29,7 +29,7 @@ KST = datetime.timezone(datetime.timedelta(hours=9))
 NODE = re.compile(r'^\s*([A-Za-z][A-Za-z0-9]*)(\(\[|\[\[|\[|\{)"(.*)"(\]\)|\]\]|\]|\})\s*$')
 SHAPES = {"([": "stadium", "[[": "flow", "[": "step", "{": "decision"}
 FLOW_BLOCK = re.compile(r"<!-- 07-sitemap:start.*?<!-- 07-sitemap:end -->", re.S)
-FLOW_START = "<!-- 07-sitemap:start · '화면'·'화면이 없는 까닭' 칸이 원본, 나머지는 build_sitemap.py가 그림 -->"
+FLOW_START = "<!-- 07-sitemap:start · '화면'·'화면 없음 사유' 열이 원본, 나머지 열은 build_sitemap.py가 생성 -->"
 FLOW_END = "<!-- 07-sitemap:end -->"
 ROW = re.compile(r"^\| (\w+) \| (.*?) \| (.*?) \| (.*?) \|$")
 DRAWN_RE = re.compile(r'<p class="drawn" data-drawn="[^"]*">.*?</p>')
@@ -42,7 +42,7 @@ class Stop(SystemExit):
 
 # ── 원본 읽기 ────────────────────────────────────────────────────────────────
 def read_tree(root):
-    """sitemap.yaml → (roots, screens). screens[id] = node + parent·depth·root·kids."""
+    """sitemap.yaml → (roots, screens). screens[id] = 노드 + parent·depth·root·kids."""
     tree = yaml.safe_load((root / "docs/07-sitemap/sitemap.yaml").read_text(encoding="utf-8"))
     screens, order = {}, []
 
@@ -71,7 +71,7 @@ def read_flows(root):
         block = FLOW_BLOCK.search(text)
         for line in (block.group(0).splitlines() if block else []):
             m = ROW.match(line)
-            if m and m.group(1) != "상자":
+            if m and m.group(1) != "노드":
                 rows[m.group(1)] = (re.findall(r"SCR-\d{3}", m.group(3)), m.group(4).strip())
         out[fl] = {"path": p, "title": title.strip(), "text": text, "nodes": nodes, "rows": rows}
     return out
@@ -86,7 +86,7 @@ def table_flows(fls):
     return got
 
 
-# ── 흐름 파일의 '화면 (07단계)' 표 ───────────────────────────────────────────
+# ── 플로우 문서의 '화면 (07단계)' 표 ─────────────────────────────────────────
 def clean_label(label):
     t = label.replace("<br/>", " ").replace("<br>", " ").replace("#quot;", '"')
     t = re.sub(r"\(Claude 판단[^)]*\)", "", t)
@@ -99,17 +99,17 @@ def flow_section(fl, f, screens):
     need = [n for n, shape, _ in f["nodes"] if shape != "flow"]
     stray = [n for n in f["rows"] if n not in need]
     if stray:
-        raise Stop("%s: 그림에 없는 상자의 줄 %s. 줄을 지우거나 그림을 확인한 뒤 다시 돌리세요" % (fl, ", ".join(stray)))
+        raise Stop("%s: 다이어그램에 없는 노드의 행 %s. 행을 지우거나 다이어그램을 확인한 뒤 다시 실행하세요" % (fl, ", ".join(stray)))
     labels = {n: lab for n, _, lab in f["nodes"]}
     lines = [
         FLOW_START,
         "## 화면 (07단계)",
         "",
-        "상자마다 그 순간 사람이 보는 화면을 적었습니다. 화면이 없으면 까닭을 적었습니다"
-        "(가름·안에서·밖에서·흐름 끝, 뜻은 `docs/07-sitemap/README.md` 3절). "
-        "다른 흐름으로 잇는 상자는 그 흐름의 표에 있습니다. 화면 목록은 `docs/07-sitemap/sitemap.yaml`.",
+        "노드마다 그 시점에 사람이 보는 화면을 적었습니다. 화면이 없으면 사유를 적었습니다"
+        "(분기·서버 처리·외부·종료, 정의는 `docs/07-sitemap/README.md` 3절). "
+        "다른 플로우로 연결되는 노드는 해당 플로우의 표에 있습니다. 화면 목록은 `docs/07-sitemap/sitemap.yaml`.",
         "",
-        "| 상자 | 내용 | 화면 | 화면이 없는 까닭 |",
+        "| 노드 | 내용 | 화면 | 화면 없음 사유 |",
         "| --- | --- | --- | --- |",
     ]
     for n in need:
@@ -126,7 +126,7 @@ def with_flow_section(text, section):
     return text.rstrip("\n") + "\n\n" + section + "\n"
 
 
-# ── README의 그린 표 ─────────────────────────────────────────────────────────
+# ── README의 생성 표 ─────────────────────────────────────────────────────────
 def md_table(head, rows):
     out = ["| " + " | ".join(head) + " |", "|" + "|".join(" --- " for _ in head) + "|"]
     return "\n".join(out + ["| " + " | ".join(str(c) for c in r) + " |" for r in rows])
@@ -136,13 +136,13 @@ def readme_blocks(roots, screens, order, fls):
     blocks = {}
     per_root = {r: sum(1 for i in order if screens[i]["root"] == r) for r in roots}
     used_flows = {f for i in order for f in screens[i].get("flows") or []}
-    blocks["counts"] = "화면 %d개: %s. 화면이 나오는 흐름 %d/%d개, 화면에 이어진 API %d개, SPEC %d개." % (
+    blocks["counts"] = "화면 %d개: %s. 화면에 연결된 플로우 %d/%d개, 화면에 매핑된 API %d개, SPEC %d개." % (
         len(order), ", ".join("%s %d" % (screens[r]["audience"], per_root[r]) for r in roots),
         len(used_flows), len(fls),
         len({a for i in order for a in screens[i].get("apis") or []}),
         len({x for i in order for x in screens[i].get("specs") or []}))
 
-    blocks["access"] = md_table(["볼 수 있는 사람", "뜻", "화면 수"],
+    blocks["access"] = md_table(["접근 권한", "정의", "화면 수"],
                                 [[a, d, sum(1 for i in order if screens[i]["access"] == a)] for a, d in ACCESS.items()])
 
     count = {k: 0 for k in REASONS}
@@ -155,8 +155,8 @@ def readme_blocks(roots, screens, order, fls):
             elif reason in count:
                 count[reason] += 1
     links = sum(1 for f in fls.values() for _, shape, _ in f["nodes"] if shape == "flow")
-    blocks["reasons"] = md_table(["까닭", "뜻", "상자 수"], [[k, v, count[k]] for k, v in REASONS.items()]) + \
-        "\n\n흐름 상자 %d개 가운데 화면이 있는 상자 %d개, 까닭을 적은 상자 %d개입니다(흐름 잇기 상자 %d개는 뺌)." % (
+    blocks["reasons"] = md_table(["사유", "정의", "노드 수"], [[k, v, count[k]] for k, v in REASONS.items()]) + \
+        "\n\n플로우 노드 %d개 가운데 화면이 있는 노드 %d개, 사유를 적은 노드 %d개입니다(다른 플로우 연결 노드 %d개는 제외)." % (
             total, with_screen, total - with_screen, links)
 
     rows = []
@@ -165,9 +165,9 @@ def readme_blocks(roots, screens, order, fls):
         name = ("　" * s["depth"]) + ("└ " if s["depth"] else "") + s["name"]
         path = "`%s`" % s["path"] + "".join("<br>`%s`" % a for a in s.get("also_paths") or [])
         rows.append([i, name, path, s["access"], ", ".join(s.get("flows") or []) or "없음(5절)"])
-    blocks["screens"] = md_table(["ID", "화면", "경로", "볼 수 있는 사람", "흐름"], rows)
+    blocks["screens"] = md_table(["ID", "화면", "경로", "접근 권한", "플로우"], rows)
 
-    blocks["noflow"] = md_table(["ID", "화면", "왜 흐름 상자가 없나"],
+    blocks["noflow"] = md_table(["ID", "화면", "플로우 노드가 없는 사유"],
                                 [[i, screens[i]["name"], screens[i]["no_flow"]] for i in order if screens[i].get("no_flow")])
 
     rows = []
@@ -176,12 +176,12 @@ def readme_blocks(roots, screens, order, fls):
         terms = s.get("terms")
         rows.append([i, ", ".join(s.get("specs") or []), ", ".join(s.get("apis") or []) or "없음(먼저 보내는 안내)",
                      ", ".join(terms) if isinstance(terms, list) else "none", ", ".join(s.get("opens") or [])])
-    blocks["details"] = md_table(["ID", "SPEC", "API", "용어", "여는 화면(자식 밖)"], rows)
+    blocks["details"] = md_table(["ID", "SPEC", "API", "용어", "이동 화면(하위 화면 외)"], rows)
 
     home = next(screens[i] for i in order if screens[i].get("opens_by_task"))
-    blocks["tasks"] = md_table(["할 일 종류(kind)", "여는 화면"],
+    blocks["tasks"] = md_table(["할 일 유형(kind)", "이동 화면"],
                                [["`%s`" % k, "%s %s" % (v, screens[v]["name"])] for k, v in home["opens_by_task"].items()]) + \
-        "\n\n" + md_table(["맨 위 안내(banners)", "여는 화면"],
+        "\n\n" + md_table(["상단 배너(banners)", "이동 화면"],
                           [["`%s`" % k, "%s %s" % (v, screens[v]["name"])] for k, v in home["opens_by_banner"].items()])
     return blocks
 
@@ -195,7 +195,7 @@ def with_readme_blocks(text, blocks):
     return text
 
 
-# ── sitemap.html (보드·목록·슬라이드) ─────────────────────────────────────────
+# ── sitemap.html (구조도·화면 목록·슬라이드) ──────────────────────────────────
 def e(s):
     return html.escape(str(s), quote=True)
 
@@ -223,11 +223,11 @@ def mermaid_for(r, screens):
 
 
 def slides_of(roots, screens):
-    """(root, title, members, branches): 뿌리마다 첫 장은 뿌리 화면, 그다음 뿌리 아래 가지마다 한 장."""
+    """(root, title, members, branches): 루트마다 첫 장은 루트 화면, 그다음 1뎁스 화면마다 한 장."""
     out = []
     for r in roots:
         s = screens[r]
-        out.append((r, "%s 뿌리: %s" % (s["audience"], s["name"]), [r], [screens[k]["name"] for k in s["kids"]]))
+        out.append((r, "%s 루트: %s" % (s["audience"], s["name"]), [r], [screens[k]["name"] for k in s["kids"]]))
         for k in s["kids"]:
             out.append((r, screens[k]["name"], subtree(k, screens), []))
     return out
@@ -270,22 +270,22 @@ def build_html(roots, screens, order, fls, drawn):
                         '<span class="meta"><code>%s</code> · %s</span></li>'
                         % (m, screens[m]["depth"] - base, m, e(screens[m]["name"]), e(screens[m]["path"]), e(screens[m]["access"]))
                         for m in members)
-        more = '<p class="branches">가지 %d개: %s</p>' % (len(branches), e(" · ".join(branches))) if branches else ""
+        more = '<p class="branches">1뎁스 화면 %d개: %s</p>' % (len(branches), e(" · ".join(branches))) if branches else ""
         fl = sorted({f for m in members for f in screens[m].get("flows") or []})
         fl_html = "".join('<li><span class="fl">%s</span> %s</li>' % (f[3:], e(fls[f]["title"])) for f in fl) \
-            or '<li class="none">흐름 상자 없음</li>'
+            or '<li class="none">연결된 플로우 노드 없음</li>'
         slides.append(
             '<article class="slide %s" aria-label="슬라이드 %d">\n'
             '<header><span class="aud %s">%s</span><span class="num">%d / %d</span></header>\n'
             '<h3>%s</h3>\n<div class="slide-body"><ul class="screens">%s</ul>%s\n'
-            '<div class="slide-flows"><h4>이 화면들이 나오는 흐름</h4><ul>%s</ul></div></div>\n</article>'
+            '<div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul>%s</ul></div></div>\n</article>'
             % (cls, n, cls, e(screens[r]["audience"]), n, len(deck), e(title), items, more, fl_html))
 
     stats = "".join('<div><dt>%s</dt><dd>%d</dd></div>' % (e(screens[r]["audience"]), per_root[r]) for r in roots)
     used = len({f for i in order for f in screens[i].get("flows") or []})
     template = (HERE / "sitemap_page.html").read_text(encoding="utf-8")
     return (template
-            .replace("{{DRAWN}}", '<p class="drawn" data-drawn="%s">그린 시각 %s · 원본 <code>docs/07-sitemap/sitemap.yaml</code></p>' % (drawn, drawn))
+            .replace("{{DRAWN}}", '<p class="drawn" data-drawn="%s">생성 시각 %s · 원본 <code>docs/07-sitemap/sitemap.yaml</code></p>' % (drawn, drawn))
             .replace("{{TOTAL}}", str(len(order)))
             .replace("{{STATS}}", stats)
             .replace("{{FLOWS}}", "%d/%d" % (used, len(fls)))
@@ -320,12 +320,12 @@ def main():
             if write:
                 path.write_text(text, encoding="utf-8")
     if write:
-        print("다시 그린 파일 %d개" % len(diff) + "".join("\n  %s" % d for d in diff))
+        print("다시 생성한 파일 %d개" % len(diff) + "".join("\n  %s" % d for d in diff))
     elif diff:
-        print("원본과 어긋난 그림 %d개 (--write로 다시 그림)" % len(diff) + "".join("\n  %s" % d for d in diff))
+        print("원본과 다른 생성 파일 %d개 (--write로 다시 생성)" % len(diff) + "".join("\n  %s" % d for d in diff))
         sys.exit(1)
     else:
-        print("그린 파일이 원본과 같음 (%d개)" % len(outputs))
+        print("생성 파일이 원본과 같음 (%d개)" % len(outputs))
 
 
 if __name__ == "__main__":

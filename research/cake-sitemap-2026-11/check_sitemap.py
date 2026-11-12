@@ -3,9 +3,9 @@
 
     python3 -B research/cake-sitemap-2026-11/check_sitemap.py . [--hub PATH/sitemap.py]
 
-원본(sitemap.yaml, 흐름 파일의 '화면 (07단계)' 표)과 거기서 그린 것(README 표, sitemap.html)을
-읽어 본다. --hub에 CORTHEX 허브의 sitemap.py를 주면 허브가 읽는 모양으로도 읽어 PyYAML과 같은지
-본다(없으면 '못 봄').
+원본(sitemap.yaml, 플로우 문서의 '화면 (07단계)' 표)과 거기서 생성한 파일(README 표, sitemap.html)을
+검사한다. --hub에 CORTHEX 허브의 sitemap.py를 주면 허브 파서로도 읽어 PyYAML 결과와 같은지
+확인한다(없으면 '미확인').
 """
 import html
 import importlib.util
@@ -24,7 +24,7 @@ KEYS = ["id", "name", "path", "access", "status", "flows", "terms", "specs", "ap
 OPTIONAL = ["also_paths", "audience", "no_flow", "opens", "opens_by_task", "opens_by_banner", "children"]
 NODE = re.compile(r'^\s*([A-Za-z][A-Za-z0-9]*)(\(\[|\[\[|\[|\{)"(.*)"(\]\)|\]\]|\]|\})\s*$')
 
-# 01단계 용어집의 피할 말(check_flows.py와 같은 방식)과 손으로 확인한 허용 쓰임.
+# 01단계 용어집의 금지어(용어집 '피할 말' 열, check_flows.py와 같은 방식)와 직접 확인한 허용 예외.
 EXTRA_AVOID = ("입금 확인", "예약 확정", "결제 완료", "노쇼", "클레임", "위약금", "에스크로", "홀드",
                "챗봇", "고객", "관리자", "승인", "리뷰", "배송", "배달", "판매자", "작업")
 ALLOW = {
@@ -45,7 +45,7 @@ class Report:
         self.rows = []
 
     def add(self, cid, title, problems, detail="", unseen=None):
-        state = "못 봄" if unseen else ("실패" if problems else "통과")
+        state = "미확인" if unseen else ("실패" if problems else "통과")
         self.rows.append((cid, title, state, problems, unseen or detail))
 
     def show(self):
@@ -55,8 +55,8 @@ class Report:
                 print("    - " + p)
             if len(problems) > 30:
                 print("    - … %d개 더" % (len(problems) - 30))
-        n = {s: sum(1 for r in self.rows if r[2] == s) for s in ("통과", "실패", "못 봄")}
-        print("검사 %d개: 통과 %d, 실패 %d, 못 봄 %d" % (len(self.rows), n["통과"], n["실패"], n["못 봄"]))
+        n = {s: sum(1 for r in self.rows if r[2] == s) for s in ("통과", "실패", "미확인")}
+        print("검사 %d개: 통과 %d, 실패 %d, 미확인 %d" % (len(self.rows), n["통과"], n["실패"], n["미확인"]))
         return n["실패"]
 
 
@@ -112,11 +112,11 @@ def main():
     try:
         tree = yaml.safe_load(ytext)
         if not isinstance(tree, list) or not all(isinstance(n, dict) for n in tree):
-            problems.append("맨 위가 화면 목록이 아님")
+            problems.append("최상위가 화면 목록이 아님")
     except yaml.YAMLError as err:
-        tree, problems = [], ["읽지 못함: %s" % err]
+        tree, problems = [], ["파싱 실패: %s" % err]
     flat = walk(tree) if not problems else []
-    rep.add("S1", "원본을 PyYAML로 읽음", problems, "뿌리 %d개, 화면 %d개" % (len(tree or []), len(flat)))
+    rep.add("S1", "원본을 PyYAML로 읽음", problems, "루트 %d개, 화면 %d개" % (len(tree or []), len(flat)))
 
     # S2 허브 파서
     if hub and hub.exists():
@@ -127,11 +127,11 @@ def main():
         try:
             hub_tree = strip_line_keys(mod.read_yaml(ytext))
             if hub_tree != tree:
-                problems.append("허브가 읽은 나무가 PyYAML과 다름")
+                problems.append("허브 파서 결과가 PyYAML과 다름")
         except mod.Invalid as err:
-            problems.append("허브가 읽지 못함: %s줄 %s" % (err.line, err))
+            problems.append("허브 파서 오류: %s행 %s" % (err.line, err))
         marks = re.findall(r"^\s*#\s*without a screen\s*:\s*(.*)$", ytext, re.M | re.I)
-        rep.add("S2", "허브 파서로 읽음", problems, "PyYAML과 같은 나무, '# without a screen' 줄 %d개" % len(marks))
+        rep.add("S2", "허브 파서로 읽음", problems, "PyYAML과 같은 트리, '# without a screen' 행 %d개" % len(marks))
     else:
         rep.add("S2", "허브 파서로 읽음", [], unseen="--hub로 허브의 sitemap.py를 주지 않음")
 
@@ -143,34 +143,34 @@ def main():
         by[n.get("id")] = (n, parent, depth, r)
 
     # S3 ID
-    problems = ["같은 ID가 둘: %s" % d for d in dup]
+    problems = ["중복 ID: %s" % d for d in dup]
     ids = [n.get("id") for n, _, _, _ in flat]
     bad = [i for i in ids if not re.fullmatch(r"SCR-\d{3}", str(i))]
-    problems += ["ID 모양이 아님: %s" % b for b in bad]
+    problems += ["ID 형식 오류: %s" % b for b in bad]
     if not bad:
         want = ["SCR-%03d" % k for k in range(1, len(ids) + 1)]
         if sorted(ids) != want:
-            problems.append("SCR-001부터 빈 번호 없이 이어지지 않음")
+            problems.append("SCR-001부터 빠진 번호 없이 이어지지 않음")
         if ids != want:
-            problems.append("나무 순서와 번호 순서가 다름(새 화면은 끝 번호로 더해도 됨, 처음 판은 같아야 함)")
-    rep.add("S3", "SCR ID가 하나씩, 빈 번호 없이", problems, "SCR-001~SCR-%03d" % len(ids))
+            problems.append("트리 순서와 번호 순서가 다름(새 화면은 끝 번호로 추가해도 됨, 최초 작성본은 같아야 함)")
+    rep.add("S3", "SCR ID 중복·누락 없음", problems, "SCR-001~SCR-%03d" % len(ids))
 
-    # S4 칸
+    # S4 필드
     problems = []
     for n, _, _, _ in flat:
         miss = [k for k in KEYS if k not in n]
         extra = [k for k in n if k not in KEYS + OPTIONAL]
         if miss:
-            problems.append("%s: 빠진 칸 %s" % (n.get("id"), ", ".join(miss)))
+            problems.append("%s: 누락 필드 %s" % (n.get("id"), ", ".join(miss)))
         if extra:
-            problems.append("%s: 모르는 칸 %s" % (n.get("id"), ", ".join(extra)))
+            problems.append("%s: 알 수 없는 필드 %s" % (n.get("id"), ", ".join(extra)))
         if n.get("access") not in ACCESS:
-            problems.append("%s: access '%s'가 정한 여섯 가운데 하나가 아님" % (n.get("id"), n.get("access")))
+            problems.append("%s: access '%s'가 허용 값 %d개 중 하나가 아님" % (n.get("id"), n.get("access"), len(ACCESS)))
         if n.get("status") not in ("active", "removed"):
             problems.append("%s: status '%s'" % (n.get("id"), n.get("status")))
         if not str(n.get("name") or "").strip() or not str(n.get("note") or "").strip():
-            problems.append("%s: 이름이나 설명이 빔" % n.get("id"))
-    rep.add("S4", "화면마다 칸과 볼 수 있는 사람", problems, "access %d가지: " % len(ACCESS) + " · ".join(ACCESS))
+            problems.append("%s: 이름이나 설명이 비어 있음" % n.get("id"))
+    rep.add("S4", "화면별 필수 필드와 접근 권한", problems, "access %d가지: " % len(ACCESS) + " · ".join(ACCESS))
 
     # S5 경로
     problems, seen = [], {}
@@ -178,27 +178,27 @@ def main():
         for p in [n.get("path")] + list(n.get("also_paths") or []):
             p = str(p)
             if p in seen:
-                problems.append("경로가 겹침: %s (%s, %s)" % (p, seen[p], n.get("id")))
+                problems.append("경로 중복: %s (%s, %s)" % (p, seen[p], n.get("id")))
             seen[p] = n.get("id")
             if not (re.fullmatch(r"/(?:[a-z0-9-]+|:[a-zA-Z]+)(?:/(?:[a-z0-9-]+|:[a-zA-Z]+))*|/", p)
                     or re.fullmatch(r"kakao:(shop|service)/[a-z_/-]+", p)):
-                problems.append("%s: 경로 모양 '%s'" % (n.get("id"), p))
+                problems.append("%s: 경로 형식 오류 '%s'" % (n.get("id"), p))
     web = sum(1 for p in seen if p.startswith("/"))
-    rep.add("S5", "경로가 겹치지 않음", problems, "경로 %d개(웹 %d, 카카오톡 %d)" % (len(seen), web, len(seen) - web))
+    rep.add("S5", "경로 중복 없음", problems, "경로 %d개(웹 %d, 카카오톡 %d)" % (len(seen), web, len(seen) - web))
 
-    # S6 뿌리에서 닿음
+    # S6 루트에서 도달
     roots = [n for n in tree or []]
     problems = []
     if len(roots) != 3:
-        problems.append("뿌리가 %d개(셋이어야 함)" % len(roots))
+        problems.append("루트가 %d개(3개여야 함)" % len(roots))
     reach = len(flat)
     if reach != len(set(ids)):
-        problems.append("뿌리에서 닿는 화면 수와 ID 수가 다름")
+        problems.append("루트에서 도달하는 화면 수와 ID 수가 다름")
     auds = [n.get("audience") for n in roots]
     if sorted(a for a in auds if a) != sorted(AUDIENCES) or len(auds) != len(set(auds)):
-        problems.append("뿌리의 audience가 %s 하나씩이 아님: %s" % ("·".join(AUDIENCES), auds))
-    problems += ["%s: 뿌리가 아닌데 audience가 있음" % n.get("id") for n, parent, _, _ in flat if parent and "audience" in n]
-    rep.add("S6", "모든 화면이 뿌리에서 닿음", problems,
+        problems.append("루트의 audience가 %s 각 1개가 아님: %s" % ("·".join(AUDIENCES), auds))
+    problems += ["%s: 루트가 아닌데 audience가 있음" % n.get("id") for n, parent, _, _ in flat if parent and "audience" in n]
+    rep.add("S6", "모든 화면이 루트에서 도달 가능", problems,
             ", ".join("%s %s %s(%d)" % (n.get("audience"), n.get("id"), n.get("name"), sum(1 for x in flat if x[3] == n.get("id"))) for n in roots))
 
     # 참고 목록
@@ -221,7 +221,7 @@ def main():
         i = n.get("id")
         for f in n.get("flows") or []:
             if f not in flow_files:
-                problems.append("%s: 없는 흐름 %s" % (i, f))
+                problems.append("%s: 없는 플로우 %s" % (i, f))
         t = n.get("terms")
         if t != "none":
             if not isinstance(t, list) or not t:
@@ -235,11 +235,11 @@ def main():
         kids = {c.get("id") for c in n.get("children") or []}
         for o in n.get("opens") or []:
             if o not in by or o == i or o in kids:
-                problems.append("%s: opens의 %s가 없거나 자기·자식임" % (i, o))
-    rep.add("S7", "흐름·용어·SPEC·API·여는 화면 참조가 있음", problems,
-            "흐름 %d, 용어 %d, SPEC %d, API %d개를 앎" % (len(flow_files), len(terms), len(specs), len(apis)))
+                problems.append("%s: opens의 %s가 없거나 자기 자신·하위 화면임" % (i, o))
+    rep.add("S7", "플로우·용어·SPEC·API·이동 화면 참조 유효", problems,
+            "플로우 %d, 용어 %d, SPEC %d, API %d개 확인" % (len(flow_files), len(terms), len(specs), len(apis)))
 
-    # S8 흐름 표
+    # S8 플로우 표
     problems, table_flows, total, with_screen = [], {}, 0, 0
     reason_count = {r: 0 for r in REASONS}
     for fl, (p, t) in flow_files.items():
@@ -253,25 +253,25 @@ def main():
         rows = {}
         for line in blocks[0].splitlines():
             m = re.match(r"^\| (\w+) \| (.*?) \| (.*?) \| (.*?) \|$", line)
-            if not m or m.group(1) == "상자":
+            if not m or m.group(1) == "노드":
                 continue
             node, _, scr, reason = m.groups()
             if node in rows:
-                problems.append("%s %s: 줄이 둘" % (fl, node))
+                problems.append("%s %s: 행 중복" % (fl, node))
             rows[node] = (scr.strip(), reason.strip())
         for n in need:
             if n not in rows:
-                problems.append("%s %s: 표에 줄이 없음" % (fl, n))
+                problems.append("%s %s: 표에 행이 없음" % (fl, n))
         for n in rows:
             if n not in need:
-                problems.append("%s %s: 그림에 없는 상자(또는 흐름 잇기 상자)" % (fl, n))
+                problems.append("%s %s: 다이어그램에 없는 노드(또는 다른 플로우 연결 노드)" % (fl, n))
         for n, (scr, reason) in rows.items():
             total += 1
             got = re.findall(r"SCR-\d{3}", scr)
             if got and reason:
-                problems.append("%s %s: 화면과 까닭을 함께 적음" % (fl, n))
+                problems.append("%s %s: 화면과 사유를 함께 적음" % (fl, n))
             elif not got and reason not in REASONS:
-                problems.append("%s %s: 화면도 정한 까닭도 없음('%s')" % (fl, n, reason))
+                problems.append("%s %s: 화면도 허용된 사유도 없음('%s')" % (fl, n, reason))
             if got:
                 with_screen += 1
             elif reason in REASONS:
@@ -281,38 +281,38 @@ def main():
                     problems.append("%s %s: 없는 화면 %s" % (fl, n, s))
                     continue
                 if by[s][0].get("status") != "active":
-                    problems.append("%s %s: 없앤 화면 %s" % (fl, n, s))
+                    problems.append("%s %s: 삭제된 화면 %s" % (fl, n, s))
                 if not re.search(re.escape(s) + r" " + re.escape(str(by[s][0].get("name"))), scr):
                     problems.append("%s %s: %s 옆 이름이 원본과 다름" % (fl, n, s))
                 table_flows.setdefault(s, set()).add(fl)
-    rep.add("S8", "흐름 상자마다 화면이나 까닭", problems,
-            "상자 %d개: 화면 %d, %s" % (total, with_screen, ", ".join("%s %d" % kv for kv in reason_count.items())))
+    rep.add("S8", "플로우 노드마다 화면이나 사유", problems,
+            "노드 %d개: 화면 %d, %s" % (total, with_screen, ", ".join("%s %d" % kv for kv in reason_count.items())))
 
-    # S9 양쪽 맞음
+    # S9 양쪽 일치
     problems = []
     for n, _, _, _ in flat:
         i = n.get("id")
         a, b = set(n.get("flows") or []), table_flows.get(i, set())
         if a != b:
-            problems.append("%s: 원본 flows %s, 흐름 표 %s" % (i, sorted(a), sorted(b)))
+            problems.append("%s: 원본 flows %s, 플로우 표 %s" % (i, sorted(a), sorted(b)))
         if not a and not str(n.get("no_flow") or "").strip():
-            problems.append("%s: 흐름 상자가 없는데 no_flow 까닭이 없음" % i)
+            problems.append("%s: 플로우 노드가 없는데 no_flow 사유가 없음" % i)
         if a and "no_flow" in n:
-            problems.append("%s: 흐름 상자가 있는데 no_flow가 있음" % i)
-    rep.add("S9", "화면의 flows와 흐름 표가 양쪽으로 맞음", problems,
-            "흐름 상자가 없는 화면 %d개(모두 no_flow 까닭 있음)" % sum(1 for n, _, _, _ in flat if not n.get("flows")))
+            problems.append("%s: 플로우 노드가 있는데 no_flow가 있음" % i)
+    rep.add("S9", "화면의 flows와 플로우 표 일치", problems,
+            "플로우 노드가 없는 화면 %d개(모두 no_flow 사유 있음)" % sum(1 for n, _, _, _ in flat if not n.get("flows")))
 
     # S10 API
     used = {a for n, _, _, _ in flat for a in n.get("apis") or []}
     missing = [a for a in apis if a not in used]
-    rep.add("S10", "06단계 API가 모두 화면에 이어짐", ["화면이 없는 API: %s" % a for a in missing],
+    rep.add("S10", "06단계 API가 모두 화면에 매핑됨", ["화면이 없는 API: %s" % a for a in missing],
             "%d/%d" % (len(apis) - len(missing), len(apis)))
 
     # S11 SPEC
     used = {s for n, _, _, _ in flat for s in n.get("specs") or []}
     all_specs = sorted({s for s in specs if re.fullmatch(r"SPEC-0[0-6]\d", s)})
     missing = [s for s in all_specs if s not in used]
-    rep.add("S11", "04단계 SPEC이 모두 화면에 이어짐", ["화면이 없는 SPEC: %s" % s for s in missing],
+    rep.add("S11", "04단계 SPEC이 모두 화면에 매핑됨", ["화면이 없는 SPEC: %s" % s for s in missing],
             "%d/%d" % (len(all_specs) - len(missing), len(all_specs)))
 
     # S12 읽기 모델
@@ -323,10 +323,10 @@ def main():
     without = set(re.findall(r"TERM-\d{3}", " ".join(marks)))
     problems = ["%s: 화면에도 '# without a screen'에도 없음" % m for m in models if m not in on_screen and m not in without]
     problems += ["%s: 화면에 있는데 '# without a screen'에도 적음" % m for m in without if m in on_screen]
-    rep.add("S12", "읽기 모델 용어가 화면에 있거나 화면 없음으로 적힘", problems,
+    rep.add("S12", "읽기 모델 용어가 화면에 있거나 화면 없음으로 표시됨", problems,
             "읽기 모델 %d개: 화면 %d, 화면 없음 %s" % (len(models), sum(1 for m in models if m in on_screen), ", ".join(sorted(without))))
 
-    # S13 할 일·안내가 여는 화면
+    # S13 할 일·배너의 이동 화면
     readme = (root / "docs/07-sitemap/README.md").read_text(encoding="utf-8")
     kinds = api["components"]["schemas"]["OwnerTask"]["properties"]["kind"]["enum"]
     banners = api["components"]["schemas"]["Me"]["properties"]["banners"]["items"]["enum"]
@@ -341,11 +341,11 @@ def main():
             if v not in by:
                 problems.append("%s '%s': 없는 화면 %s" % (key, k, v))
             elif v not in reach_home:
-                problems.append("%s '%s': %s가 %s의 자식이나 opens에 없음" % (key, k, v, home.get("id")))
-    rep.add("S13", "할 일 종류·맨 위 안내마다 여는 화면", problems,
-            "%s에서 할 일 종류 %d, 안내 %d" % (home.get("id") if home else "-", len(kinds), len(banners)))
+                problems.append("%s '%s': %s가 %s의 하위 화면이나 opens에 없음" % (key, k, v, home.get("id")))
+    rep.add("S13", "할 일 유형·상단 배너마다 이동 화면", problems,
+            "%s에서 할 일 유형 %d, 배너 %d" % (home.get("id") if home else "-", len(kinds), len(banners)))
 
-    # S14 피할 말
+    # S14 금지어
     page = (root / "docs/07-sitemap/sitemap.html").read_text(encoding="utf-8")
     page_text = html.unescape(re.sub(r"<style>.*?</style>|<[^>]+>", " ", page, flags=re.S))
     problems, notes = [], 0
@@ -356,48 +356,48 @@ def main():
                 if allowed(w, body, m.start(), m.end()):
                     notes += 1
                 else:
-                    problems.append("%s: '%s'(%s의 피할 말) …%s…" % (name, w, tid, body[max(0, m.start() - 12): m.end() + 12].replace("\n", " ")))
-    rep.add("S14", "피할 말을 쓰지 않음", problems, "허용한 쓰임 %d곳" % notes)
+                    problems.append("%s: '%s'(%s의 금지어) …%s…" % (name, w, tid, body[max(0, m.start() - 12): m.end() + 12].replace("\n", " ")))
+    rep.add("S14", "용어집 금지어 없음", problems, "허용 예외 %d곳" % notes)
 
-    # S15 보기 셋
+    # S15 뷰 3종
     problems = []
     drawn = re.search(r'<p class="drawn" data-drawn="([^"]+)">', page)
     if not drawn:
-        problems.append("그린 시각이 없음")
+        problems.append("생성 시각이 없음")
     board = re.search(r'<section id="board".*?</section>\s*(?=<section id="list")', page, re.S)
     board_ids = re.findall(r"SCR-\d{3}", "".join(re.findall(r'<pre class="mermaid">(.*?)</pre>', board.group(0), re.S))) if board else []
     list_ids = re.findall(r'<tr data-scr="(SCR-\d{3})"', page)
     slide_ids = re.findall(r'<li data-scr="(SCR-\d{3})"', page)
-    for view, got in (("보드", board_ids), ("목록", list_ids), ("슬라이드", slide_ids)):
+    for view, got in (("구조도", board_ids), ("화면 목록", list_ids), ("슬라이드", slide_ids)):
         if sorted(got) != sorted(ids):
             extra = sorted({x for x in got if got.count(x) > 1})
             miss = sorted(set(ids) - set(got))
-            problems.append("%s: 화면 %d번 나옴(두 번 %s, 빠짐 %s)" % (view, len(got), extra or "없음", miss or "없음"))
+            problems.append("%s: 화면 %d번 나옴(중복 %s, 누락 %s)" % (view, len(got), extra or "없음", miss or "없음"))
     edges = len(re.findall(r"S\d{3} --&gt; S\d{3}", board.group(0))) if board else 0
     if edges != len(ids) - len(roots):
-        problems.append("보드의 화살표 %d개(부모→자식 %d개여야 함)" % (edges, len(ids) - len(roots)))
+        problems.append("구조도의 연결선 %d개(상위→하위 %d개여야 함)" % (edges, len(ids) - len(roots)))
     slides = len(re.findall(r'<article class="slide ', page))
     want_slides = len(roots) + sum(len(n.get("children") or []) for n in roots)
     if slides != want_slides:
-        problems.append("슬라이드 %d장(뿌리 %d + 뿌리 아래 가지 %d = %d장이어야 함)" % (slides, len(roots), want_slides - len(roots), want_slides))
-    rep.add("S15", "보드·목록·슬라이드에 화면마다 한 번", problems,
-            "그린 시각 %s, 보드 상자 %d·화살표 %d, 목록 %d줄, 슬라이드 %d장 %d항목" % (
+        problems.append("슬라이드 %d장(루트 %d + 1뎁스 화면 %d = %d장이어야 함)" % (slides, len(roots), want_slides - len(roots), want_slides))
+    rep.add("S15", "구조도·화면 목록·슬라이드에 화면마다 한 번", problems,
+            "생성 시각 %s, 구조도 노드 %d·연결선 %d, 화면 목록 %d행, 슬라이드 %d장 %d항목" % (
                 drawn.group(1) if drawn else "-", len(board_ids), edges, len(list_ids), slides, len(slide_ids)))
 
-    # S16 만든 파일이 원래 값과 같음
+    # S16 생성 파일이 원본에서 다시 생성한 것과 같음
     r = subprocess.run([sys.executable, "-B", str(HERE / "build_sitemap.py"), str(root)], capture_output=True, text=True)
-    rep.add("S16", "그린 것이 원본과 같음(그린 시각 빼고)", [] if r.returncode == 0 else [r.stdout.strip()],
+    rep.add("S16", "생성 파일이 원본과 일치(생성 시각 제외)", [] if r.returncode == 0 else [r.stdout.strip()],
             r.stdout.strip().splitlines()[0] if r.returncode == 0 and r.stdout.strip() else "")
 
-    # S17 03단계 흐름 검사
+    # S17 03단계 플로우 검사
     r = subprocess.run([sys.executable, "-B", str(root / "research/cake-flow-2026-11/check_flows.py"),
                         str(root / "docs/03-user-flow"), str(root / "docs/02-prd/requirements.md"),
                         str(root / "docs/01-domain/domain.md")], capture_output=True, text=True)
     pr = re.search(r"^PROBLEMS \((\d+)\)", r.stdout, re.M)
     av = re.search(r"^AVOIDED WORDS \((\d+)\)", r.stdout, re.M)
     ok = pr and av and pr.group(1) == "0" and av.group(1) == "0"
-    rep.add("S17", "화면 표를 더한 흐름 파일이 03단계 검사를 통과", [] if ok else ["check_flows.py: " + r.stdout[-400:]],
-            "check_flows.py 문제 %s, 피할 말 %s" % (pr.group(1) if pr else "?", av.group(1) if av else "?"))
+    rep.add("S17", "화면 표를 추가한 플로우 문서가 03단계 검사를 통과", [] if ok else ["check_flows.py: " + r.stdout[-400:]],
+            "check_flows.py 문제 %s, 금지어 %s" % (pr.group(1) if pr else "?", av.group(1) if av else "?"))
 
     sys.exit(1 if rep.show() else 0)
 

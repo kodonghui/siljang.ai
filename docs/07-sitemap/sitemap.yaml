@@ -1,13 +1,13 @@
 # Siljang 사이트맵 (CORTHEX 07단계) 원본
-# 화면을 바꿀 때는 이 파일을 고치고(사람이든 AI든, PR로), 흐름 상자의 화면은 흐름 파일 끝 '화면 (07단계)' 표의 화면 칸을 고친 뒤
-#   python3 -B research/cake-sitemap-2026-11/build_sitemap.py . --write   # 흐름 표·README 표·보기 페이지를 다시 그림
+# 화면을 바꿀 때는 이 파일을 고치고(사람이든 AI든, PR로), 플로우 노드의 화면은 플로우 문서 끝 '화면 (07단계)' 표의 화면 열을 고친 뒤
+#   python3 -B research/cake-sitemap-2026-11/build_sitemap.py . --write   # 플로우 표·README 표·사이트맵 페이지를 다시 생성
 #   python3 -B research/cake-sitemap-2026-11/check_sitemap.py .           # 검사
-# SCR ID는 다시 쓰거나 번호를 바꾸지 않음. 없애는 화면은 status: removed
-# 뿌리 셋: 손님 SCR-001 · 사장님 SCR-014 · 운영자 SCR-046
+# SCR ID는 재사용하거나 번호를 바꾸지 않음. 삭제하는 화면은 status: removed
+# 루트 3개: 손님 SCR-001 · 사장님 SCR-014 · 운영자 SCR-046
 # 경로: 웹은 /…, 카카오톡 안의 화면은 주소가 없어 kakao:shop/…(가게 채널)·kakao:service/…(우리 서비스 채널)
-# access: 누구나 · 손님 · 주문한 손님 · 가게 없는 사장님 · 사장님 · 운영자 (docs/07-sitemap/README.md 3절)
-# flows: 흐름 파일의 '화면 (07단계)' 표에서 그 화면을 적은 흐름(검사가 양쪽을 맞춰 봄). 없으면 no_flow에 까닭
-# 값은 CORTHEX 허브가 읽는 모양만 씀: 글은 큰따옴표, 목록은 [a, b], 탭과 블록 글(| >)은 쓰지 않음
+# access(접근 권한): 비로그인 · 손님 · 주문한 손님 · 가게 미등록 사장님 · 사장님 · 운영자 (docs/07-sitemap/README.md 3절)
+# flows: 플로우 문서의 '화면 (07단계)' 표에서 그 화면을 적은 플로우(검사가 양쪽을 대조). 없으면 no_flow에 사유
+# 값은 CORTHEX 허브 파서가 읽는 형식만 씀: 문자열은 큰따옴표, 목록은 [a, b], 탭과 블록 문자열(| >)은 쓰지 않음
 #
 # without a screen: TERM-057, TERM-058, TERM-070
 #   TERM-057 지금까지 채운 주문서 초안: AI 상담이 초안을 저장하기 전에 봄
@@ -18,7 +18,7 @@
 - id: SCR-001
   name: 예약 링크 페이지
   path: /s/:slug
-  access: 누구나
+  access: 비로그인
   status: active
   audience: 손님
   flows: [FL-001, FL-002, FL-003, FL-006, FL-007, FL-012]
@@ -30,7 +30,7 @@
     - id: SCR-002
       name: 가게 개인정보 처리방침
       path: /s/:slug/privacy
-      access: 누구나
+      access: 비로그인
       status: active
       flows: [FL-001, FL-003]
       terms: [CTX-007, TERM-053]
@@ -120,7 +120,7 @@
               apis: [API-071]
               note: "AI 상담이 모은 신고 내용(사진·설명)을 확인하고 문제 신고 버튼을 누름"
         - id: SCR-011
-          name: 손님에게 가는 알림
+          name: 손님 알림
           path: kakao:shop/notice
           access: 손님
           status: active
@@ -156,7 +156,7 @@
   name: 사장님 로그인
   path: /owner/login
   also_paths: [/owner/login/callback]
-  access: 누구나
+  access: 비로그인
   status: active
   audience: 사장님
   flows: [FL-001]
@@ -168,7 +168,7 @@
     - id: SCR-015
       name: 가게 등록
       path: /owner/shop/new
-      access: 가게 없는 사장님
+      access: 가게 미등록 사장님
       status: active
       flows: [FL-001]
       terms: [CTX-007, TERM-053]
@@ -205,7 +205,7 @@
         license_on_hold: SCR-035
         booking_link_not_ready: SCR-043
         ledger_relink: SCR-042
-      note: "사장님이 정할 일을 모은 첫 화면. 할 일을 누르면 그 일의 화면이 열리고, 맨 위에 빠진 설정 안내가 보임"
+      note: "사장님이 처리할 일을 모은 홈 화면. 할 일을 누르면 해당 화면이 열리고, 상단 배너에 빠진 설정이 보임"
       children:
         - id: SCR-017
           name: 넘긴 질문
@@ -216,7 +216,7 @@
           terms: [CTX-001, TERM-008, TERM-018]
           specs: [SPEC-022, SPEC-023, SPEC-056]
           apis: [API-041, API-042]
-          note: "AI 상담이 넘긴 질문과 그 까닭을 보고 답을 쓰면 손님에게 전해짐"
+          note: "AI 상담이 넘긴 질문과 넘긴 사유를 보고 답을 쓰면 손님에게 전달됨"
           children:
             - id: SCR-018
               name: 상담 대화
@@ -227,7 +227,7 @@
               terms: [CTX-001, TERM-046, TERM-019]
               specs: [SPEC-021, SPEC-019, SPEC-065, SPEC-068]
               apis: [API-043]
-              note: "넘긴 질문의 앞뒤 대화와 참고 사진. 가린 전화번호·계좌번호는 이 화면에서만 원래 값으로 보임"
+              note: "넘긴 질문의 앞뒤 대화와 참고 사진. 마스킹한 전화번호·계좌번호는 이 화면에서만 원래 값으로 보임"
         - id: SCR-019
           name: 사장님 알림
           path: kakao:service/chat
@@ -245,11 +245,11 @@
       access: 사장님
       status: active
       flows: []
-      no_flow: "주문 상세로 가는 목록. 흐름 상자는 그다음 화면(주문 상세와 그 아래)에 있음"
+      no_flow: "주문 상세로 이동하는 목록. 플로우 노드는 다음 화면(주문 상세와 그 하위 화면)에 있음"
       terms: [CTX-003, TERM-001, TERM-064]
       specs: [SPEC-031, SPEC-037, SPEC-068]
       apis: [API-044]
-      note: "상태·종류·픽업 날짜로 거름. 결제 기한 지난 주문과 답할 맞춤 주문도 이 목록의 거름으로 봄"
+      note: "상태·종류·픽업 날짜 필터. 결제 기한 지난 주문과 답할 맞춤 주문도 이 목록의 필터로 봄"
       children:
         - id: SCR-021
           name: 주문 상세
@@ -404,7 +404,7 @@
           terms: [CTX-007, TERM-053, TERM-074]
           specs: [SPEC-003]
           apis: [API-009, API-011, API-007]
-          note: "운영자 확인 상태(확인 중·확인됨·보류)와 보류 까닭. 보류면 신고증을 다시 올림"
+          note: "운영자 확인 상태(확인 중·확인됨·보류)와 보류 사유. 보류면 신고증을 다시 올림"
         - id: SCR-036
           name: 가격표와 도안
           path: /owner/price-list
@@ -468,7 +468,7 @@
           terms: [CTX-007, TERM-053]
           specs: [SPEC-008]
           apis: [API-030, API-031, API-032]
-          note: "연결할 채널(오픈빌더 봇)을 정하고 스킬 설정 값을 옮긴 뒤 연결 확인(10분). 봇 ID를 찾는 곳의 길잡이도 여기(OPEN-8)"
+          note: "연결할 채널(오픈빌더 봇)을 정하고 스킬 설정 값을 옮긴 뒤 연결 확인(10분). 봇 ID를 찾는 방법 안내도 여기(OPEN-8)"
         - id: SCR-042
           name: 장부 연결
           path: /owner/ledger
@@ -479,7 +479,7 @@
           terms: [CTX-009, TERM-028, TERM-055]
           specs: [SPEC-009, SPEC-064]
           apis: [API-033, API-034, API-035, API-036]
-          note: "구글 허락을 받아 구글 시트 장부를 잇거나 다시 잇거나 끊음. 적지 못한 줄이 있으면 다시 이으라는 할 일이 여기로 옴"
+          note: "구글 계정 권한 동의를 받아 구글 시트 장부를 연결·재연결·해제. 기록하지 못한 장부 줄이 있으면 재연결 할 일이 여기로 옴"
         - id: SCR-043
           name: 예약 링크
           path: /owner/booking-link
@@ -490,7 +490,7 @@
           specs: [SPEC-010]
           apis: [API-037]
           opens: [SCR-035, SCR-036, SCR-038, SCR-040, SCR-041]
-          note: "예약 링크와 아직 빠진 조건(영업 신고·가격표·운영규정·결제 받을 곳·채널 연결). 링크를 복사해 채널과 인스타그램 소개에 검"
+          note: "예약 링크와 아직 빠진 조건(영업 신고·가격표·운영규정·결제 받을 곳·채널 연결). 링크를 복사해 카카오톡 채널과 인스타그램 프로필에 등록"
         - id: SCR-044
           name: 포트폴리오
           path: /owner/portfolio
@@ -507,7 +507,7 @@
           access: 사장님
           status: active
           flows: []
-          no_flow: "06단계 API-066에서 온 화면. FL-012는 후기 사진을 포트폴리오 화면에서 고름"
+          no_flow: "06단계 API-066에서 나온 화면. FL-012는 후기 사진을 포트폴리오 화면에서 고름"
           terms: [CTX-006, TERM-051, TERM-071]
           specs: [SPEC-062]
           apis: [API-066]
@@ -517,11 +517,11 @@
 - id: SCR-046
   name: 운영자 로그인
   path: /operator/login
-  access: 누구나
+  access: 비로그인
   status: active
   audience: 운영자
   flows: []
-  no_flow: "운영자 화면으로 들어가는 길. FL-001의 운영자 상자는 영업 신고 확인에 있음"
+  no_flow: "운영자 화면의 진입점. FL-001의 운영자 노드는 영업 신고 확인 화면에 있음"
   terms: [CTX-007, TERM-074]
   specs: [SPEC-001]
   apis: [API-004]
@@ -533,7 +533,7 @@
       access: 운영자
       status: active
       flows: []
-      no_flow: "영업 신고 확인으로 가는 목록"
+      no_flow: "영업 신고 확인으로 이동하는 목록"
       terms: [CTX-007, TERM-053, TERM-074]
       specs: [SPEC-003, SPEC-002]
       apis: [API-012, API-005, API-006]
@@ -548,15 +548,15 @@
           terms: [CTX-007, TERM-053, TERM-074]
           specs: [SPEC-003]
           apis: [API-013, API-014]
-          note: "신고증 사진을 눈으로 보고 확인됨이나 보류(까닭)를 남김"
+          note: "신고증 사진을 직접 보고 확인됨이나 보류(사유)를 기록"
     - id: SCR-049
       name: 운영자 알림
       path: /operator/alerts
       access: 운영자
       status: active
       flows: []
-      no_flow: "06단계 API-015에서 온 화면(채널 겹침·처리방침 빔·잦은 AI 실패). 03단계 흐름에 운영자 알림 상자가 없음"
+      no_flow: "06단계 API-015에서 나온 화면(채널 중복 연결·처리방침 항목 누락·AI 실패 반복). 03단계 플로우에 운영자 알림 노드가 없음"
       terms: [CTX-008, TERM-054, TERM-074]
       specs: [SPEC-008, SPEC-010, SPEC-017]
       apis: [API-015]
-      note: "다른 가게에 이미 묶인 채널, 처리방침의 국외 이전 항목 빔, 한 가게의 잦은 AI 실패. 내용 없이 건수만"
+      note: "다른 가게에 이미 연결된 채널, 처리방침의 국외 이전 항목 누락, 한 가게의 AI 실패 반복. 내용 없이 건수만"
