@@ -40,7 +40,7 @@
 - 값은 CORTHEX 허브 파서가 읽는 형식만 씁니다: 문자열은 큰따옴표, 목록은 `[a, b]`, 탭과 블록 문자열(`|`, `>`)은 쓰지 않습니다(검사 S2).
 - `opens`는 하위 화면이 아니지만 그 화면에서 바로 이동하는 화면입니다(할 일 목록에서 여는 결정 화면 등, 6절).
 - 화면이 없는 읽기 모델(용어)은 원본 맨 위 `# without a screen:` 행에 적었습니다: TERM-057(AI 상담이 보는 주문서 초안), TERM-058(AI 상담이 보는 가게 규칙 판정), TERM-070(전날 안내를 보낼 때 서버가 쓰는 내일 픽업 주문).
-- 사이트맵 페이지는 원본에서 생성합니다. Artifact로 게시한 페이지는 https://claude.ai/artifact/GribGncGMQWGkherDMGNj4 입니다(동희님 계정의 비공개 페이지, `.corthex/project.json`의 `07-sitemap.link`). 원본을 바꾸면 다시 생성해 같은 주소에 게시합니다.
+- 사이트맵 페이지는 원본에서 생성합니다. Artifact로 게시한 페이지는 https://claude.ai/artifact/CeVbTfWtRHgL5undj5WNEd 입니다(동희님 계정의 비공개 페이지, `.corthex/project.json`의 `07-sitemap.link`). 원본을 바꾸면 다시 생성해 같은 주소에 게시합니다. 2026-11-12 밤 작업 계정을 옮기며 새 주소로 다시 게시했고, 옛 주소의 페이지는 더 고치지 않습니다.
 
 접근 권한(`access`)은 다음 6개 중 하나입니다.
 

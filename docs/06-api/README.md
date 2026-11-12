@@ -1,6 +1,6 @@
 # 06단계 API 계약: 수제케이크 주문제작 API
 
-상태: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘', 14절). 원본은 [`api/openapi.yaml`](../../api/openapi.yaml)(OpenAPI 3.1)이고, 사람이 보는 곳은 Swagger UI 페이지 [Siljang API 계약](https://claude.ai/artifact/1ozSo2QeFJ59Z5hP633bWj)입니다(`truth: source`, 3절). 계약 파일과 이 문서의 표는 [`research/cake-api-2026-11/`](../../research/cake-api-2026-11/)의 목록에서 `build_api.py`가 함께 만들어서, 둘이 어긋나지 않습니다. 계약 파일은 손으로 고치지 않습니다.
+상태: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘', 14절). 원본은 [`api/openapi.yaml`](../../api/openapi.yaml)(OpenAPI 3.1)이고, 사람이 보는 곳은 Swagger UI 페이지 [Siljang API 계약](https://claude.ai/artifact/VNFQ5dXepMshMwtvUVdBbH)입니다(`truth: source`, 3절). 계약 파일과 이 문서의 표는 [`research/cake-api-2026-11/`](../../research/cake-api-2026-11/)의 목록에서 `build_api.py`가 함께 만들어서, 둘이 어긋나지 않습니다. 계약 파일은 손으로 고치지 않습니다.
 
 ## 1. 한눈에
 
@@ -45,7 +45,7 @@ python -m venv .venv-api && .venv-api/bin/pip install -r research/cake-api-2026-
 
 ## 3. 보는 법
 
-- **Swagger UI 페이지(바로 보기)**: [Siljang API 계약](https://claude.ai/artifact/1ozSo2QeFJ59Z5hP633bWj)에서 설치 없이 봅니다. 동희님 계정의 비공개 페이지라 다른 사람은 공유해야 열립니다. 원본을 그대로 보여 주고, API 이름 앞의 API ID와 설명 끝의 '반환하지 않는 응답'만 `x-corthex`에서 옮겨 붙였습니다. 계약이 바뀌면 `build_viewer.py`로 다시 만들어(아래) 같은 주소에 올립니다.
+- **Swagger UI 페이지(바로 보기)**: [Siljang API 계약](https://claude.ai/artifact/VNFQ5dXepMshMwtvUVdBbH)에서 설치 없이 봅니다. 동희님 계정의 비공개 페이지라 다른 사람은 공유해야 열립니다. 원본을 그대로 보여 주고, API 이름 앞의 API ID와 설명 끝의 '반환하지 않는 응답'만 `x-corthex`에서 옮겨 붙였습니다. 계약이 바뀌면 `build_viewer.py`로 다시 만들어(아래) 같은 주소에 올립니다. 2026-11-12 밤 작업 계정을 옮기며 새 주소로 다시 올렸고, 옛 주소의 페이지는 더 고치지 않습니다.
 - **Swagger UI(내 컴퓨터)**: `docker run --rm -p 8080:8080 -e SWAGGER_JSON=/api/openapi.yaml -v "$PWD/api:/api" swaggerapi/swagger-ui`를 돌리고 http://localhost:8080 을 엽니다. 도커가 없으면 https://editor.swagger.io 에 `api/openapi.yaml`을 끌어 놓아도 됩니다. API는 태그(로그인·가게·주문 …)로 묶여 있고, 응답마다 예시를 골라 볼 수 있습니다.
 - **목 서버**(화면 개발과 QA가 서버 없이 쓰는 곳): `npx @stoplight/prism-cli@5.14.2 mock api/openapi.yaml`을 돌리면 http://127.0.0.1:4010 에서 계약대로 답합니다. 맞는 요청은 성공 응답의 첫 예시, 로그인 없는 요청은 401의 첫 예시, 틀린 입력은 422의 첫 예시(`validation_failed`)를 받습니다. 다른 응답은 헤더로 고릅니다.
 

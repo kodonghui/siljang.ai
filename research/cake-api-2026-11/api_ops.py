@@ -167,7 +167,7 @@ op(id="API-008", method="post", path="/owner/shop", op="registerShop", tag="가�
    summary="가게 등록", spec=["SPEC-002", "SPEC-068"], auth="owner", idem=True,
    desc="가게 이름·연락처·사업자 정보·영업 신고와 신고증 사진(uploadId), 개인정보 처리 위탁·재위탁 조건의 버전과 동의를 받아 가게를 '영업 신고 확인 기다림'으로 남긴다. "
         "동의하지 않으면 422 consent_required이고 넣은 값도 남기지 않는다(REQ-107). 카카오 계정 하나에 가게 하나라 두 번째는 409 already_registered(R2). "
-        "같은 사업자등록번호의 다른 가게도 받고 운영자 화면에 중복 표시을 표시한다(API-012). 신고증 사진을 옮기지 못하면 503이고 아무것도 남기지 않는다.",
+        "같은 사업자등록번호의 다른 가게도 받고 운영자 화면에 중복을 표시한다(API-012). 신고증 사진을 옮기지 못하면 503이고 아무것도 남기지 않는다.",
    body="ShopRegistration", body_examples={"register": E.SHOP_REGISTRATION},
    ok=[(201, "Shop", {"registered": E.SHOP_PENDING})],
    errors={422: ["consent_required"], 409: ["already_registered"], 503: ["storage_unavailable"]},
@@ -443,7 +443,7 @@ op(id="API-029", method="patch", path="/owner/calendar/days/{day}", op="updateCa
 op(id="API-030", method="get", path="/owner/kakao-channel", op="getKakaoChannel", tag="카카오톡 채널",
    summary="채널 연결 상태와 스킬 설정 값", spec=["SPEC-008"], auth="owner",
    desc="연결 확인 중이면 화면이 몇 초마다 다시 읽는다. 10분 안에 테스트 메시지가 오지 않으면 failed와 사유 후보(failureHints). "
-        "skill.headerValue는 오픈빌더 스킬 설정의 헤더 값(DEC-08)이라 이 응답에만 포함하는다.",
+        "skill.headerValue는 오픈빌더 스킬 설정의 헤더 값(DEC-08)이라 이 응답에만 포함한다.",
    ok=[(200, "KakaoChannel", {"pending": E.CHANNEL_CHECKING, "linked": E.CHANNEL_LINKED, "failed": E.CHANNEL_FAILED})],
    errors={404: ["shop_not_registered", "not_set"]},
    omit={"403": O403, "409": O409_READ, "422": O422_NOINPUT},
@@ -553,7 +553,7 @@ op(id="API-038", method="get", path="/public/shops/{slug}", op="getBookingPage",
 
 op(id="API-039", method="get", path="/public/shops/{slug}/privacy-policy", op="getPrivacyPolicy", tag="예약 링크",
    summary="가게 개인정보 처리방침", spec=["SPEC-010", "SPEC-011", "SPEC-018"], auth="public",
-   desc="가장 최근 버전. 국외 이전 다섯 항목(REQ-141)을 받는 자마다 포함하는다. AI 상담 고지가 이 주소를 건다(SPEC-018).",
+   desc="가장 최근 버전. 국외 이전 다섯 항목(REQ-141)을 받는 자마다 포함한다. AI 상담 고지가 이 주소를 건다(SPEC-018).",
    params=[PSLUG],
    ok=[(200, "PrivacyPolicy", {"policy": E.PRIVACY}, ["Cache-Control"])],
    errors={404: ["not_found"], 429: ["rate_limited"]},
@@ -1045,7 +1045,7 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
         "처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). "
         "답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). "
         "콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). "
-        "첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 친구가 아닌 손님에게 못 보낸 안내가 있으면 답보다 먼저 포함하는다(SPEC-066). "
+        "첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 친구가 아닌 손님에게 못 보낸 안내가 있으면 답보다 먼저 포함한다(SPEC-066). "
         "연결 확인 중인 채널의 테스트 메시지면 채널을 가게에 묶는다(channel_linked, SPEC-008). "
         "Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). "
         "Open: 콜백 유효 시간이 문서 안에서 5분과 1분으로 어긋남. 개발 전 테스트로 정함(OPEN-2). "
