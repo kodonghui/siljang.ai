@@ -7977,7 +7977,7 @@ paths:
       operationId: answerHandoff
       summary: 에스컬레이션 건 답변
       description: |-
-        사장님 답을 AI가 고치지 않고 그대로 손님에게 전한다(친구면 바로, 아니면 다음 대화 때 먼저, SPEC-066). 기다림 타이머를 멈춘다(SPEC-024). 마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락하게 표시한다. 이미 답한 질문은 409 already_decided. 사장님이 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict.
+        사장님 답을 AI가 고치지 않고 그대로 손님에게 전한다(친구면 바로, 아니면 다음 대화 때 먼저, SPEC-066). 기다림 타이머를 멈춘다(SPEC-024). 마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락한 날로 표시한다. 이미 답한 질문은 409 already_decided. 사장님이 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict.
 
         SPEC: SPEC-023, SPEC-024, SPEC-066
       tags:
@@ -25776,7 +25776,7 @@ components:
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-13
       title: 픽업 장소는 예약 링크를 막지 않음
-      choice: 픽업 장소(E14)가 비어도 예약 링크를 냄. `GET /owner/booking-link`의 `recommended`에 `pickup_address`로 보이고, 비었으면 전날 안내에서 위치 행을 빼고 가게 연락처만 포함함
+      choice: 픽업 장소(E14)가 비어도 예약 링크를 냄. `GET /owner/booking-link`의 `recommended`에 `pickup_address`로 보이고, 비었으면 전날 안내에서 위치 문구를 빼고 가게 연락처만 포함함
       why: 05단계 E14가 06단계로 전달한 질문. 조건을 늘리지 않고 사장님께 알림
       alt: '픽업 장소도 조건으로: 전날 안내가 늘 위치를 실지만 SPEC-010이 바뀜'
       needs_user: true

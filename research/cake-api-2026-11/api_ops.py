@@ -589,7 +589,7 @@ op(id="API-041", method="get", path="/owner/handoffs/{handoffId}", op="getHandof
 op(id="API-042", method="post", path="/owner/handoffs/{handoffId}/answer", op="answerHandoff", tag="에스컬레이션 건·상담",
    summary="에스컬레이션 건 답변", spec=["SPEC-023", "SPEC-024", "SPEC-066"], auth="owner", idem=True,
    desc="사장님 답을 AI가 고치지 않고 그대로 손님에게 전한다(친구면 바로, 아니면 다음 대화 때 먼저, SPEC-066). 기다림 타이머를 멈춘다(SPEC-024). "
-        "마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락하게 표시한다. "
+        "마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락한 날로 표시한다. "
         "이미 답한 질문은 409 already_decided. 사장님이 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict.",
    params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF["handoffId"])],
    body="HandoffAnswerInput",
