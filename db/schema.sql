@@ -609,7 +609,7 @@ CREATE TABLE order_details (
 );
 COMMENT ON TABLE order_details IS 'TBL-026 주문 내용(TERM-004): 주문에 붙은 항목과 금액을 버전마다 한 행씩';
 
--- 주문 행의 버전·가격표 버전·금액·픽업 일시는 그 버전의 주문 내용 행과 늘 같음. 주문과 첫 버전을 한 트랜잭션에서 쓰므로 확인은 거래 끝에 함
+-- 주문 행의 버전·가격표 버전·금액·픽업 일시는 그 버전의 주문 내용 행과 늘 같음. 주문과 첫 버전을 한 트랜잭션에서 쓰므로 확인은 트랜잭션 끝에 함
 ALTER TABLE orders ADD CONSTRAINT orders_current_details_fk FOREIGN KEY (id, version, price_list_id, amount, pickup_at)
   REFERENCES order_details (order_id, version, price_list_id, amount, pickup_at) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;
 
