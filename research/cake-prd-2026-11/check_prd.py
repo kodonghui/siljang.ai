@@ -43,10 +43,10 @@ if dup:
 if sorted(ids) != expected:
     problems.append("IDs do not run REQ-001..REQ-%03d without gaps" % len(ids))
 
-SHAPES = {"항상", "사건", "상태", "예외", "선택 기능"}
+SHAPES = {"항상", "이벤트", "상태", "예외", "선택 기능"}
 TYPES = {"기능", "비기능"}
 PRIOS = {"필수", "권장", "선택"}
-STATUS = re.compile(r"(초안|확정|제외)(\(.+\))?")  # e.g. 확정(2판), 제외(2판, REQ-153로 바꿈)
+STATUS = re.compile(r"(초안|확정|제외)(\(.+\))?")  # e.g. 확정(버전 2), 제외(버전 2, REQ-153로 바꿈)
 counts = Counter()
 for n, c in rows:
     rid = c[0]
@@ -75,7 +75,7 @@ for n, c in rows:
     # shape patterns
     ok = {
         "항상": req.startswith("시스템은 ") or req.startswith("시스템의 "),
-        "사건": ("면, 시스템은 " in req) and not req.startswith("만약"),
+        "이벤트": ("면, 시스템은 " in req) and not req.startswith("만약"),
         "상태": "동안, 시스템은 " in req and not req.startswith("만약"),
         "예외": req.startswith("만약 ") and ", 시스템은 " in req,
         "선택 기능": "가게에서는, 시스템은 " in req,
@@ -88,7 +88,7 @@ for n, c in rows:
     counts[shape] += 1
     # non-functional: measurable
     if typ == "비기능":
-        if not any(k in req for k in ("잼", "시험", "확인", "검사", "점검", "평가 세트", "기록으로")):
+        if not any(k in req for k in ("잼", "테스트", "확인", "검사", "점검", "평가 세트", "기록으로")):
             problems.append("%s: non-functional without how it is measured" % rid)
         if re.search(r"P9\d", req):
             for k, label in (("동시", "load"), ("서버", "place")):
@@ -122,16 +122,12 @@ for line in dom.splitlines():
                 avoid.append((w, c[0], term))
 # allowed uses (checked by hand, explained in the report)
 ALLOW = {
-    "예약": [r"예약 링크"],          # TERM-042 / TERM-056 contain 예약
-    "시스템": [r"^시스템[은의] ", r", 시스템[은의] "],  # EARS subject, see 0-4
+    "예약": [r"예약 링크", r"가예약"],  # TERM-042 / TERM-056 / TERM-007 contain 예약
     "확정": [r"주문[이을]? ?확정", r"확정[된되]", r"확정하면", r"확정 안내", r"확정·부터·범위", r"확정해야", r"확정하지", r"확정되었다", r"확정되어"],
     "시트": [r"구글 시트"],
-    "입금": [r"입금했다고", r"입금 대조", r"들어온 입금"],
-    "메시지": [r"(손님|카카오|마지막|새) ?메시지", r"메시지 속", r"메시지를 받은"],
-    "거래": [r"한 거래 후보"],
+    "입금": [r"입금했다고", r"입금 대조", r"들어온 입금", r"입금됨", r"미입금"],
     "주문서": [r"주문서 초안"],
     "정책": [],
-    "자동": [],
 }
 hits = []
 for n, c in rows:
@@ -143,9 +139,9 @@ for n, c in rows:
             ctxt = req[max(0, m.start() - 8): m.end() + 8]
             allowed = any(re.search(a, req[max(0, m.start() - 12): m.end() + 12]) for a in ALLOW.get(w, []))
             if allowed:
-                notes.append("%s: '%s' (피할 말 of %s %s) allowed use: …%s…" % (c[0], w, tid, term, ctxt))
+                notes.append("%s: '%s' (금지어 of %s %s) allowed use: …%s…" % (c[0], w, tid, term, ctxt))
             else:
-                hits.append("%s: '%s' (피할 말 of %s %s): …%s…" % (c[0], w, tid, term, ctxt))
+                hits.append("%s: '%s' (금지어 of %s %s): …%s…" % (c[0], w, tid, term, ctxt))
 # words outside the glossary that 01 merged away
 for w in ("입금 확인", "예약 확정", "결제 완료", "노쇼", "클레임", "위약금", "에스크로", "홀드", "챗봇", "고객", "관리자", "승인", "리뷰", "배송", "배달", "판매자"):
     for n, c in rows:

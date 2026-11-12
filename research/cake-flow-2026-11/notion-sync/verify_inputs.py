@@ -23,7 +23,7 @@ for p in sorted(glob.glob('/root/.claude/projects/-home-user/*.jsonl')):
                     if (inp.get('parent') or {}).get('data_source_id') != DS:
                         continue
                     for pg in inp.get('pages', []):
-                        t = pg['properties']['흐름']
+                        t = pg['properties']['플로우']
                         seen[t.split()[0]] = pg
 ok = True
 for fid in sorted(fl):
@@ -34,11 +34,11 @@ for fid in sorted(fl):
     pg = seen[fid]
     pr = pg['properties']
     exp = {
-        '흐름': f['title'],
-        '행위자': [x.strip() for x in f['meta']['행위자'].split(',')],
+        '플로우': f['title'],
+        '액터': [x.strip() for x in f['meta']['액터'].split(',')],
         '컨텍스트': [x.strip() for x in f['meta']['컨텍스트'].split(',')],
         '시작': f['meta']['시작'], '끝': f['meta']['끝'],
-        '이어지는 흐름': f['meta']['이어지는 흐름'],
+        '연결 플로우': f['meta']['연결 플로우'],
         '요구사항 수': f['nreq'], '요구사항': f['reqs'] if isinstance(f['reqs'], str) else ', '.join(f['reqs']),
         '후보': ', '.join(f['cands']) if f['cands'] else '없음',
         '상태': '초안', '원본 파일': '`docs/03-user-flow/%s`' % f['file'],

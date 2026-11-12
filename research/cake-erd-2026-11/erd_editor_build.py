@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""05단계 ERD: ERD Editor 그림(db/schema.erd.json)을 db/schema.sql에서 만들고, 그림의 DDL을 원본과 견준다.
+"""05단계 ERD: ERD Editor 다이어그램(db/schema.erd.json)을 db/schema.sql에서 만들고, 다이어그램의 DDL을 원본과 견준다.
 
 사람이 보는 곳은 ERD Editor(VS Code 확장 4.0.0 이상 등)로 여는 db/schema.erd.json, 원본은 db/schema.sql(truth: source).
-그림은 ERD Editor MCP 서버(@dineug/erd-editor-mcp)의 도구로만 바꾸고 JSON을 손으로 쓰지 않는다.
+다이어그램은 ERD Editor MCP 서버(@dineug/erd-editor-mcp)의 도구로만 바꾸고 JSON을 손으로 쓰지 않는다.
 
-만들기(--build): 스키마를 굳히기 전, 첫 그림을 만들 때만. 들여오기는 그림과 배치를 통째로 바꾼다.
+만들기(--build): 스키마를 확정하기 전, 첫 다이어그램을 만들 때만. 들여오기는 다이어그램과 배치를 통째로 바꾼다.
   1. 문서를 만들고 PostgreSQL로 맞춤 → 2. erd_import_sql로 db/schema.sql을 들여옴
-  3. 그림이 담지 못하는 것을 스크립트로: before = CREATE EXTENSION, after = 부분·식 인덱스, EXCLUDE, 지연 외래 키
-     (부분 인덱스는 들여오기에서 조건 없는 인덱스로 들어와 고유 규칙을 실제보다 세게 보이므로 그림의 인덱스에서 뺌)
-  4. 컨텍스트마다 표 묶음(색)과 자동 배치, 묶음을 CTX 차례로 위에서 아래로 쌓고 맨 위에 메모 한 장
-  굳힌 뒤에는 db/schema.sql과 마이그레이션을 먼저 고치고, 같은 변경을 erd_ 편집 도구로 그림에 더한다.
+  3. 다이어그램이 담지 못하는 것을 스크립트로: before = CREATE EXTENSION, after = 부분·식 인덱스, EXCLUDE, 지연 외래 키
+     (부분 인덱스는 들여오기에서 조건 없는 인덱스로 들어와 고유 규칙을 실제보다 세게 보이므로 다이어그램의 인덱스에서 뺌)
+  4. 컨텍스트마다 테이블 그룹(색)과 자동 배치, 그룹을 CTX 차례로 위에서 아래로 쌓고 맨 위에 메모 한 장
+  확정한 뒤에는 db/schema.sql과 마이그레이션을 먼저 고치고, 같은 변경을 erd_ 편집 도구로 다이어그램에 더한다.
 
-견주기(--compare): 그림을 표마다 erd_read(sql)로 읽어 빈 DB에 만들고, db/schema.sql로 만든 DB와 카탈로그를 견준다.
-  이름이 아닌 뜻으로 견줌(외래 키·고유 규칙은 칸과 대상으로). CHECK는 그림에 없으므로 개수만 보임.
+견주기(--compare): 다이어그램을 테이블마다 erd_read(sql)로 읽어 빈 DB에 만들고, db/schema.sql로 만든 DB와 카탈로그를 견준다.
+  이름이 아닌 뜻으로 견줌(외래 키·고유 규칙은 컬럼과 대상으로). CHECK는 다이어그램에 없으므로 개수만 보임.
 
 쓰는 법(저장소 맨 위에서, Node.js 22.12 이상과 npx 필요)
   python3 -B research/cake-erd-2026-11/erd_editor_build.py . --build
@@ -39,9 +39,9 @@ GROUP_COLORS = {
     "CTX-006": "#db2777", "CTX-007": "#0891b2", "CTX-008": "#65a30d", "CTX-009": "#475569", "공통": "#78716c",
 }
 
-MEMO = """이 그림은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).
-그림에 없는 것: CHECK 제약 275개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 그림 대신 DDL의 after 스크립트에 그대로 있습니다.
-설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 그림에 더합니다."""
+MEMO = """이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).
+다이어그램에 없는 것: CHECK 제약 275개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.
+설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다."""
 
 
 def load(name: str, path: Path):
@@ -110,13 +110,13 @@ class Mcp:
             self.p.kill()
 
 
-# ── 원본에서 그림이 담지 못하는 것 찾기 ─────────────────────────────────────────
+# ── 원본에서 다이어그램이 담지 못하는 것 찾기 ─────────────────────────────────────────
 
 INDEX_RE = re.compile(r"^CREATE (UNIQUE )?INDEX (\w+) ON (\w+) \((.*?)\)( WHERE .*?)?;", re.M)
 
 
 def special_indexes(schema_text: str) -> list[tuple[str, str]]:
-    """(이름, 문장): WHERE가 있는 부분 인덱스와 칸이 아닌 식을 쓰는 인덱스."""
+    """(이름, 문장): WHERE가 있는 부분 인덱스와 컬럼이 아닌 식을 쓰는 인덱스."""
     out = []
     for m in INDEX_RE.finditer(schema_text):
         unique, name, table, cols, where = m.groups()
@@ -145,7 +145,7 @@ def deferred_fks(schema_text: str) -> list[tuple[str, list[str]]]:
 
 
 def ids(root: Path) -> tuple[dict[str, str], dict[str, str]]:
-    """그림 파일에서 표 이름 → ID, 인덱스 이름 → ID(읽기만 함)."""
+    """다이어그램 파일에서 테이블 이름 → ID, 인덱스 이름 → ID(읽기만 함)."""
     d = json.loads((root / ERD).read_text(encoding="utf-8"))
     c = d["collections"]
     return ({t["name"]: t["id"] for t in c["tableEntities"].values()},
@@ -177,15 +177,15 @@ def build(root: Path) -> None:
             want = ", ".join(cols)
             m = re.search(r"ALTER TABLE " + table + r"\s+ADD CONSTRAINT (\w+)\s+FOREIGN KEY \(" + re.escape(want) + r"\)", ddl)
             if not m:
-                raise SystemExit(f"그림에서 {table} ({want}) 외래 키를 찾지 못함")
+                raise SystemExit(f"다이어그램에서 {table} ({want}) 외래 키를 찾지 못함")
             alters.append(f"ALTER TABLE {table} ALTER CONSTRAINT {m.group(1)} DEFERRABLE INITIALLY DEFERRED;")
         after = "\n".join([
-            "-- 그림이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py가 씀). CHECK 제약은 db/schema.sql에만 있음.",
+            "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py가 씀). CHECK 제약은 db/schema.sql에만 있음.",
             "-- 부분·식 인덱스",
             *[sql for _, sql in specials],
-            "-- 겹침 막기(EXCLUDE)",
+            "-- 중복됨 막기(EXCLUDE)",
             *exclusions(schema_text),
-            "-- 주문 줄이 지금 판의 주문 내용을 가리키는 외래 키는 거래 끝에 확인",
+            "-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 거래 끝에 확인",
             *alters,
         ])
         if len(after) > 10000:
@@ -203,7 +203,7 @@ def build(root: Path) -> None:
                             "args": {"name": label, "color": GROUP_COLORS[ctx], "tableIds": mine}})
         mcp.call("erd_batch", path=ERD, operations=ops)
         mcp.call("erd_sort_tables", path=ERD)
-        # 자동 배치 뒤 묶음을 CTX-001부터 위에서 아래로 쌓고, 맨 위에 메모를 둠
+        # 자동 배치 뒤 그룹을 CTX-001부터 위에서 아래로 쌓고, 맨 위에 메모를 둠
         d = json.loads((root / ERD).read_text(encoding="utf-8"))
         rects = {g["name"]: (gid, g["ui"]) for gid, g in d["collections"]["tableGroupEntities"].items()}
         moves, y = [], 300
@@ -221,7 +221,7 @@ def build(root: Path) -> None:
         mcp.call("erd_move_memo", path=ERD, memoId=memo, x=50, y=50)
         mcp.call("erd_save", path=ERD)
         summary = json.loads(mcp.call("erd_list", path=ERD, namesOnly=True))
-        print(f"만듦: 표 {summary['tableCount']}개, 묶음 {len(ops)}개, 그림에서 뺀 부분·식 인덱스 {len(drop)}개, "
+        print(f"만듦: 테이블 {summary['tableCount']}개, 그룹 {len(ops)}개, 다이어그램에서 뺀 부분·식 인덱스 {len(drop)}개, "
               f"after 스크립트 {len(after)}자")
     finally:
         mcp.close()
@@ -230,7 +230,7 @@ def build(root: Path) -> None:
 # ── 견주기 ─────────────────────────────────────────────────────────────────
 
 def editor_ddl(root: Path) -> tuple[str, str]:
-    """그림의 DDL을 표마다 읽어 모음: before → 표·설명 → 인덱스 → 외래 키 → after."""
+    """다이어그램의 DDL을 테이블마다 읽어 모음: before → 테이블·설명 → 인덱스 → 외래 키 → after."""
     mcp = Mcp(root)
     try:
         names = json.loads(mcp.call("erd_list", path=ERD, namesOnly=True))["tableNames"]
@@ -314,10 +314,10 @@ def compare(root: Path, base: str) -> int:
     for line in a:
         k = line.split(" ")[0] if not line.startswith(("foreign key", "primary key")) else " ".join(line.split(" ")[:2])
         kinds[k] = kinds.get(k, 0) + 1
-    print(f"ERD Editor MCP {version}: 그림의 DDL {len(ddl):,}자를 빈 DB에 만들어 db/schema.sql과 뜻으로 견줌")
+    print(f"ERD Editor MCP {version}: 다이어그램의 DDL {len(ddl):,}자를 빈 DB에 만들어 db/schema.sql과 뜻으로 견줌")
     print("견준 것: " + ", ".join(f"{k} {v}" for k, v in sorted(kinds.items())))
-    print(f"CHECK: db/schema.sql {checks}개, 그림 {editor_checks}개(그림은 CHECK를 담지 못함)")
-    print(f"db/schema.sql에만 {len(only_schema)}줄, 그림에만 {len(only_editor)}줄")
+    print(f"CHECK: db/schema.sql {checks}개, 다이어그램 {editor_checks}개(다이어그램은 CHECK를 담지 못함)")
+    print(f"db/schema.sql에만 {len(only_schema)}줄, 다이어그램에만 {len(only_editor)}줄")
     for line in only_schema:
         print("  - " + line)
     for line in only_editor:

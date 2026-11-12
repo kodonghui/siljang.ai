@@ -2,10 +2,10 @@
 """05단계 ERD 도구: db/schema.sql 하나에서 나머지를 만든다.
 
 만드는 것
-- db/schema.sql 각 표 머리줄의 SPEC 목록. 원본은 같은 폴더의 erd_map.py(SPEC → 표.칸 대응).
-- db/schema.sql 끝의 칸 설명(COMMENT ON COLUMN). 각 칸 줄 끝의 '-- 설명'이 원본.
-- docs/05-erd/README.md의 표 목록과 컨텍스트별 그림(표시 사이만 바꿈).
-- --migration을 주면 db/migrations/0001_init.sql(스키마를 굳히기 전까지만 씀).
+- db/schema.sql 각 테이블 헤더 주석의 SPEC 목록. 원본은 같은 폴더의 erd_map.py(SPEC → 테이블.컬럼 대응).
+- db/schema.sql 끝의 컬럼 설명(COMMENT ON COLUMN). 각 컬럼 줄 끝의 '-- 설명'이 원본.
+- docs/05-erd/README.md의 테이블 목록과 컨텍스트별 다이어그램(표시 사이만 바꿈).
+- --migration을 주면 db/migrations/0001_init.sql(스키마를 확정하기 전까지만 씀).
 
 쓰는 법(저장소 맨 위에서, __pycache__를 만들지 않게 -B)
   python3 -B research/cake-erd-2026-11/build_erd.py .               # 바뀔 파일만 보임
@@ -24,8 +24,8 @@ SCHEMA = "db/schema.sql"
 MIGRATION = "db/migrations/0001_init.sql"
 README = "docs/05-erd/README.md"
 
-COMMENT_BEGIN = "-- ▼ 칸 설명: build_erd.py가 각 칸 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음."
-COMMENT_END = "-- ▲ 칸 설명 끝"
+COMMENT_BEGIN = "-- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음."
+COMMENT_END = "-- ▲ 컬럼 설명 끝"
 
 CTX_NAMES = {
     "CTX-001": "상담",
@@ -121,7 +121,7 @@ def parse(schema_text: str) -> list[Table]:
         m = CREATE_RE.match(line)
         if m:
             if pending is None or pending.name != m.group(1):
-                raise SystemExit(f"TBL 머리줄이 없는 표: {m.group(1)}")
+                raise SystemExit(f"TBL 헤더 주석이 없는 테이블: {m.group(1)}")
             current, pending = pending, None
             tables.append(current)
             continue
@@ -191,9 +191,9 @@ def with_comments(schema_text: str, tables: list[Table]) -> str:
 
 def migration_text(schema_text: str) -> str:
     header = (
-        "-- 0001_init: 첫 스키마(CORTHEX 05단계 ERD, 스키마를 굳힐 때의 db/schema.sql 사본)\n"
+        "-- 0001_init: 첫 스키마(CORTHEX 05단계 ERD, 스키마를 확정할 때의 db/schema.sql 사본)\n"
         "-- 한 번 어디에든 적용한 뒤에는 이 파일을 고치지 않고 0002부터 새 파일을 더함.\n"
-        "-- 빈 데이터베이스에 한 거래로 적용: psql -1 -v ON_ERROR_STOP=1 -f db/migrations/0001_init.sql\n\n"
+        "-- 빈 데이터베이스에 한 트랜잭션으로 적용: psql -1 -v ON_ERROR_STOP=1 -f db/migrations/0001_init.sql\n\n"
     )
     return header + schema_text
 
@@ -216,7 +216,7 @@ def specs_by_table(spec_map: dict[str, list[tuple[str, str]]]) -> dict[str, list
 
 
 def with_headers(schema_text: str, by_table: dict[str, list[str]]) -> str:
-    """표 머리줄의 SPEC 목록을 erd_map.py의 대응으로 다시 쓴다. 대응이 없는 표는 'none'."""
+    """테이블 헤더 주석의 SPEC 목록을 erd_map.py의 대응으로 다시 쓴다. 대응이 없는 테이블은 'none'."""
     out = []
     for line in schema_text.split("\n"):
         m = HEADER_RE.match(line)
@@ -235,7 +235,7 @@ def main_col(fk: ForeignKey) -> list[str]:
 
 
 def table_list(tables: list[Table]) -> str:
-    out = ["| TBL | 표 | 이름 | 컨텍스트 | 읽고 쓰는 SPEC | 용어 |", "| --- | --- | --- | --- | --- | --- |"]
+    out = ["| TBL | 테이블 | 이름 | 컨텍스트 | 읽고 쓰는 SPEC | 용어 |", "| --- | --- | --- | --- | --- | --- |"]
     for t in tables:
         specs = ", ".join(s.replace("SPEC-", "") for s in t.specs)
         out.append(f"| {t.tbl} | `{t.name}` | {t.korean} | {t.ctx} | {specs} | {', '.join(t.terms) or '없음'} |")
@@ -246,8 +246,15 @@ SHOW_ALWAYS = {"status", "kind", "version", "order_no", "amount"}
 
 
 def short(text: str, n: int = 16) -> str:
+    """다이어그램 컬럼 설명: 첫 구절을 n글자까지. 넘치면 단어 중간에서 자르지 않고 마지막 띄어쓰기나 가운뎃점에서 끊고 …를 붙임."""
     text = re.split(r"[.(:,]", text)[0].strip().replace('"', "")
-    return text[:n]
+    if len(text) <= n:
+        return text
+    cut = text[:n]
+    if text[n] in " ·":
+        return cut.rstrip() + "…"
+    k = max(cut.rfind(" "), cut.rfind("·"))
+    return (cut[:k] if k > 0 else cut).rstrip() + "…"
 
 
 def mermaid_type(t: str) -> str:
@@ -308,7 +315,7 @@ def context_overview(tables: list[Table], by_name: dict[str, Table]) -> str:
     for c, name in CTX_NAMES.items():
         n = sum(1 for t in tables if t.ctx == c)
         label = name if c == "공통" else f"{c} {name}"
-        lines.append(f'  {ids[c]}["{label}<br/>표 {n}개"]')
+        lines.append(f'  {ids[c]}["{label}<br/>테이블 {n}개"]')
     for (a, b), n in sorted(edges.items()):
         lines.append(f"  {ids[a]} -->|{n}| {ids[b]}")
     return "\n".join(lines)
@@ -317,7 +324,7 @@ def context_overview(tables: list[Table], by_name: dict[str, Table]) -> str:
 def diagrams(tables: list[Table]) -> str:
     by_name = {t.name: t for t in tables}
     out = [
-        "### 컨텍스트 사이 (화살표: 가리키는 쪽 → 가리킴을 받는 쪽, 숫자는 외래 키 수)",
+        "### 컨텍스트 사이 (화살표: 참조하는 쪽 → 참조를 받는 쪽, 숫자는 외래 키 수)",
         "",
         "```mermaid",
         context_overview(tables, by_name),
@@ -332,7 +339,7 @@ def diagrams(tables: list[Table]) -> str:
             "",
             f"### {ctx} {name}" if ctx != "공통" else "### 공통",
             "",
-            f"표: {tbls}. 칸은 기본 키(PK)·외래 키(FK)와 상태·종류·판 번호·금액만 보입니다. 다른 컨텍스트의 표는 이름만 나옵니다.",
+            f"테이블: {tbls}. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.",
             "",
             "```mermaid",
             er_diagram(ctx, tables, by_name),
@@ -351,7 +358,7 @@ def replace_block(text: str, name: str, content: str) -> str:
 
 
 def build(root: Path, migration: bool = False) -> tuple[list[Table], dict[Path, str]]:
-    """만들 파일과 그 내용을 돌려준다. 파일은 쓰지 않는다(check_erd.py도 씀)."""
+    """만들 파일과 그 내용을 반환한다. 파일은 쓰지 않는다(check_erd.py도 씀)."""
     schema_path = root / SCHEMA
     schema_text = with_headers(schema_path.read_text(encoding="utf-8"), specs_by_table(load_map()))
     tables = parse(schema_text)
@@ -383,7 +390,7 @@ def main(argv: list[str]) -> int:
             if write:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(new, encoding="utf-8")
-    print(f"표 {len(tables)}개, 칸 {sum(len(t.columns) for t in tables)}개, 외래 키 {sum(len(t.fks) for t in tables)}개. "
+    print(f"테이블 {len(tables)}개, 컬럼 {sum(len(t.columns) for t in tables)}개, 외래 키 {sum(len(t.fks) for t in tables)}개. "
           f"바뀐 파일 {changed}개{'' if write else ' (--write 없이 보기만)'}")
     return 0
 

@@ -1,6 +1,6 @@
-"""06단계 API 계약의 예시 값. build_api.py가 응답·요청 예시로 싣는다.
+"""06단계 API 계약의 예시 값. build_api.py가 응답·요청 예시로 포함하는다.
 
-모두 지어낸 가게(달빛케이크)의 값이다. 실제 사람·가게·계좌·연락처가 아니며 비밀값도 없다.
+모두 지어낸 가게(달빛케이크)의 값이다. 실제 사람·가게·계좌·연락처가 아니며 시크릿도 없다.
 ID는 이름에서 만든 고정 uuid라 다시 만들어도 같다. check_api.py가 모든 예시를 스키마로 확인한다.
 """
 import hashlib
@@ -201,7 +201,7 @@ RULES_INPUT = {
 }
 RULES_INPUT_LOWERED = dict(RULES_INPUT, preProductionRefundPct=50, confirm=["lowered_refund"])
 
-# ── 결제 받을 곳 ────────────────────────────────────────────────────────────
+# ── 결제 수단 ────────────────────────────────────────────────────────────
 PAYMENT_DESTINATION = {
     "bankName": "달빛은행", "accountNumber": "123456-01-234567", "holderName": "김달빛", "holderMismatchConfirmed": None,
     "cardPaymentUrl": None, "createdAt": t("11-12", "11:30"), "revision": rev("account:1"),
@@ -209,7 +209,7 @@ PAYMENT_DESTINATION = {
 PAYMENT_DESTINATION_INPUT = {"baseRevision": None, "bankName": "달빛은행", "accountNumber": "123456-01-234567",
                              "holderName": "김달빛", "cardPaymentUrl": None}
 
-# ── 영업 달력 ───────────────────────────────────────────────────────────────
+# ── 영업 캘린더 ───────────────────────────────────────────────────────────────
 CALENDAR = {
     "closedWeekdays": [1], "dailyCapacity": 5, "orderCutoffDays": 2, "orderCutoffTime": "18:00", "replyStart": "09:00",
     "replyEnd": "21:00", "dayBeforeNoticeTime": "18:00", "reviewRequestTime": "11:00", "updatedAt": t("11-12", "11:40"),
@@ -449,7 +449,7 @@ ISSUE_PARTIAL = dict(ISSUE, status="closed", compensation="partial_refund", deci
                      closedAt=t("11-21", "12:00"), revision=rev("issue:1:partial"))
 ISSUE_SUMMARY = {"issueReportId": ISSUE["issueReportId"], "status": "reported", "late": False, "reportedAt": t("11-20", "18:30")}
 
-# ── 넘긴 질문과 상담 ────────────────────────────────────────────────────────
+# ── 에스컬레이션 건과 상담 ────────────────────────────────────────────────────────
 HANDOFF = {
     "handoffId": uid("handoff:1"), "consultationId": CONSULT_ID, "reason": "edibility", "status": "open", "requestedDay": None,
     "order": None, "customerLines": [{"at": t("11-12", "12:40"), "text": "땅콩 알레르기가 있는데 먹어도 되나요?", "photos": []}],
@@ -565,7 +565,7 @@ PRIVACY = {
     "shopName": "달빛케이크", "version": 1,
     "body": "달빛케이크(이하 '가게')는 케이크 주문 상담과 예약을 위해 다음과 같이 개인정보를 처리합니다. 1. 처리하는 개인정보: 카카오 사용자 키, 상담 대화, 주문자 이름·연락처, 알레르기 답 …",
     "overseasTransfers": [{
-        "recipient": "AI 모델 회사(개발 전에 정함, OPEN-7)", "country": "정한 회사의 처리 지역", "personalData": "가린 상담 대화(전화·계좌·카드 번호는 자리표)",
+        "recipient": "AI 모델 회사(개발 전에 정함, OPEN-7)", "country": "정한 회사의 처리 지역", "personalData": "마스킹한 상담 대화(전화·계좌·카드 번호는 플레이스홀더)",
         "whenAndHow": "손님 메시지마다 암호화된 연결로 보냄", "purposeAndRetention": "상담 답 만들기. 회사 약관의 가장 짧은 보관",
         "howToRefuse": "AI 상담을 원하지 않으면 가게 연락처로 주문할 수 있어요. 거부하면 AI 상담을 쓸 수 없어요",
     }],
@@ -679,7 +679,7 @@ SKILL_OUTCOME_EXAMPLES = {
     "change_requested": text("변경을 요청했어요. 사장님이 보고 알려 드려요"),
     "order_cancelled": text("주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요"),
     "issue_reported": text("신고를 받았어요. 사장님이 보시고 정하실 거예요"),
-    "consent_withdrawn": text("사진 게시 동의를 거뒀어요. 곧 사진이 내려가요"),
+    "consent_withdrawn": text("사진 게시 동의를 철회했어요. 곧 사진이 내려가요"),
     "declined": text("알겠어요. 더 궁금한 것이 있으면 말씀해 주세요"),
     "card_stale": card("주문 요청 확인", "내용이 바뀌었어요. 새 카드를 확인해 주세요 · 11월 20일 14:00 픽업 · 38,000원",
                        [card_button("규정에 동의하고 주문 요청", "ck_" + h("card:order:2", 30), "confirm"),

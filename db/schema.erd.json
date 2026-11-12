@@ -27,7 +27,7 @@
     "lockSettings": 63,
     "ddlScripts": {
       "before": "CREATE EXTENSION IF NOT EXISTS btree_gist; -- refund_tiers의 EXCLUDE에 씀",
-      "after": "-- 그림이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status <> 'deleted';\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE status IN ('held', 'fixed');\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_order_uq ON photo_consents (order_id) WHERE scope = 'order';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\n-- 겹침 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 줄이 지금 판의 주문 내용을 가리키는 외래 키는 거래 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
+      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status <> 'deleted';\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE status IN ('held', 'fixed');\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_order_uq ON photo_consents (order_id) WHERE scope = 'order';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\n-- 중복됨 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 거래 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
     }
   },
   "doc": {
@@ -381,7 +381,7 @@
       "03h7y0178l0hvzg6df21wv102": {
         "id": "03h7y0178l0hvzg6df21wv102",
         "name": "privacy_policies",
-        "comment": "TBL-005 가게 개인정보 처리방침: 국외 이전 다섯 항목 포함, 판으로 남김",
+        "comment": "TBL-005 가게 개인정보 처리방침: 국외 이전 다섯 항목 포함, 버전으로 남김",
         "columnIds": [
           "03h7y0178l0hvzg6df42g49v0",
           "03h7y0178l0hvzg6df7iz048w",
@@ -399,7 +399,7 @@
       "03h7y0178l0hvzg6dfh9gsylh": {
         "id": "03h7y0178l0hvzg6dfh9gsylh",
         "name": "price_lists",
-        "comment": "TBL-006 가격표(TERM-047) 판: 옵션·옵션 규칙·도안을 판 번호로 묶음",
+        "comment": "TBL-006 가격표(TERM-047) 버전: 옵션·옵션 규칙·도안을 버전으로 묶음",
         "columnIds": [
           "03h7y0178l0hvzg6dfi4llaaz",
           "03h7y0178l0hvzg6dfk7qfjw2",
@@ -457,7 +457,7 @@
       "03h7y0178qg91ufrdyyvtbjn6": {
         "id": "03h7y0178qg91ufrdyyvtbjn6",
         "name": "designs",
-        "comment": "TBL-009 도안(TERM-020): 가게가 그릴 수 있게 정해 둔 그림, 가격표 판에 담음",
+        "comment": "TBL-009 도안(TERM-020): 가게가 그릴 수 있게 정해 둔 그림, 가격표 버전에 담음",
         "columnIds": [
           "03h7y0178qg91ufrdz0rhu20j",
           "03h7y0178qg91ufrdz2v2hvjq",
@@ -477,7 +477,7 @@
       "03h7y0178qg91ufrdzgb4zqc0": {
         "id": "03h7y0178qg91ufrdzgb4zqc0",
         "name": "operating_rules",
-        "comment": "TBL-010 운영규정(TERM-017) 판: 계산에 쓰는 기한·수수료·비율",
+        "comment": "TBL-010 운영규정(TERM-017) 버전: 계산에 쓰는 기한·수수료·비율",
         "columnIds": [
           "03h7y0178qg91ufrdzh0htaln",
           "03h7y0178qg91ufrdziutqnrx",
@@ -540,7 +540,7 @@
       "03h7y0178qg91ufre121gf2iv": {
         "id": "03h7y0178qg91ufre121gf2iv",
         "name": "business_calendars",
-        "comment": "TBL-013 영업 달력(TERM-048) 기준: 요일 휴무·하루 최대 개수·주문 마감·답하는 시간",
+        "comment": "TBL-013 영업 캘린더(TERM-048) 설정: 요일 휴무·하루 최대 개수·주문 마감·답하는 시간",
         "columnIds": [
           "03h7y0178qg91ufre15q4udh3",
           "03h7y0178qg91ufre177tbgy1",
@@ -562,7 +562,7 @@
       "03h7y0178qg91ufre1p9jspck": {
         "id": "03h7y0178qg91ufre1p9jspck",
         "name": "calendar_days",
-        "comment": "TBL-014 영업 달력 날짜 줄: 날짜별 휴무·마감과 자리 잡기의 잠금 줄",
+        "comment": "TBL-014 영업 캘린더 날짜 행: 날짜별 휴무·마감과 가예약의 잠금 행",
         "columnIds": [
           "03h7y0178qg91ufre1qrt6b5y",
           "03h7y0178qg91ufre1skoc15a",
@@ -580,7 +580,7 @@
       "03h7y0178vyo98xl8lhk8qlco": {
         "id": "03h7y0178vyo98xl8lhk8qlco",
         "name": "payment_accounts",
-        "comment": "TBL-015 결제 받을 곳: 가게 명의 계좌와 카드 결제 링크. 우리 회사 계좌는 어디에도 없음(REQ-079)",
+        "comment": "TBL-015 결제 수단: 가게 명의 계좌와 카드 결제 링크. 우리 회사 계좌는 어디에도 없음(REQ-079)",
         "columnIds": [
           "03h7y0178vyo98xl8li8sb412",
           "03h7y0178vyo98xl8llhzx6ou",
@@ -643,7 +643,7 @@
       "03h7y0178vyo98xl8n4u42owk": {
         "id": "03h7y0178vyo98xl8n4u42owk",
         "name": "messages",
-        "comment": "TBL-018 상담 대화: 들어온 손님 말과 나간 답, 가린 글만 둠",
+        "comment": "TBL-018 상담 대화: 들어온 손님 말과 나간 답, 마스킹한 글만 둠",
         "columnIds": [
           "03h7y0178vyo98xl8n6qmhu08",
           "03h7y0178vyo98xl8n7ehd43p",
@@ -667,7 +667,7 @@
       "03h7y0178vyo98xl8nuyo5kdq": {
         "id": "03h7y0178vyo98xl8nuyo5kdq",
         "name": "masked_values",
-        "comment": "TBL-019 가린 원래 값: 자리표와 원래 값의 짝, 그 가게 사장님 화면에만",
+        "comment": "TBL-019 마스킹 원본 값: 플레이스홀더와 원래 값의 쌍, 그 가게 사장님 화면에만",
         "columnIds": [
           "03h7y0178vyo98xl8nwfuxsnj",
           "03h7y0178vyo98xl8nxm6hcnh",
@@ -742,7 +742,7 @@
       "03h7y01791hwo1dbajsplumlp": {
         "id": "03h7y01791hwo1dbajsplumlp",
         "name": "quotes",
-        "comment": "TBL-022 견적(TERM-013): 가게 규칙이 계산한 금액과 근거, 판 번호와 유효 기한",
+        "comment": "TBL-022 견적(TERM-013): 가게 규칙이 계산한 금액과 근거, 버전과 유효 기한",
         "columnIds": [
           "03h7y01791hwo1dbajtm3izk1",
           "03h7y01791hwo1dbajw5ndjge",
@@ -767,7 +767,7 @@
       "03h7y01791hwo1dbakj3f6d7s": {
         "id": "03h7y01791hwo1dbakj3f6d7s",
         "name": "orders",
-        "comment": "TBL-023 주문(TERM-001): 주문 요청부터 확정·변경·취소·받음까지의 상태와 판 번호",
+        "comment": "TBL-023 주문(TERM-001): 주문 요청부터 확정·변경·취소·받음까지의 상태와 버전",
         "columnIds": [
           "03h7y01791hwo1dbakki2jxir",
           "03h7y01791hwo1dbaknsm2x1p",
@@ -807,7 +807,7 @@
       "03h7y01796y3abgmnnczgybr2": {
         "id": "03h7y01796y3abgmnnczgybr2",
         "name": "confirm_cards",
-        "comment": "TBL-024 손님 확인 카드: 상담·사용자·판 번호·30분 기한에 묶인 명령 버튼(G9)",
+        "comment": "TBL-024 손님 확인 카드: 상담·사용자·버전·30분 기한에 묶인 명령 버튼(G9)",
         "columnIds": [
           "03h7y01796y3abgmnnep8htyb",
           "03h7y01796y3abgmnnfv81rcc",
@@ -862,7 +862,7 @@
       "03h7y01796y3abgmnp67p8m07": {
         "id": "03h7y01796y3abgmnp67p8m07",
         "name": "order_details",
-        "comment": "TBL-026 주문 내용(TERM-004): 주문에 붙은 항목과 금액을 판마다 한 줄씩",
+        "comment": "TBL-026 주문 내용(TERM-004): 주문에 붙은 항목과 금액을 버전마다 한 행씩",
         "columnIds": [
           "03h7y01796y3abgmnp7355wqn",
           "03h7y01796y3abgmnpa2y48kp",
@@ -899,7 +899,7 @@
       "03h7y01796y3abgmnqlpn52la": {
         "id": "03h7y01796y3abgmnqlpn52la",
         "name": "handoffs",
-        "comment": "TBL-027 넘긴 질문(TERM-008): AI가 답하지 않고 사장님께 넘긴 손님 질문",
+        "comment": "TBL-027 에스컬레이션 건(TERM-008): AI가 답하지 않고 사장님께 에스컬레이션한 손님 질문",
         "columnIds": [
           "03h7y01796y3abgmnqn82qw4d",
           "03h7y01796y3abgmnqpvpngmb",
@@ -1102,7 +1102,7 @@
       "03h7y0179huqyalz2aetluqnw": {
         "id": "03h7y0179huqyalz2aetluqnw",
         "name": "productions",
-        "comment": "TBL-035 제작(TERM-050): 확정된 주문 하나를 만들어 넘기기까지의 시각",
+        "comment": "TBL-035 제작(TERM-050): 확정된 주문 하나를 제작·인도까지의 시각",
         "columnIds": [
           "03h7y0179huqyalz2agywyire",
           "03h7y0179huqyalz2ajsuthow",
@@ -1204,7 +1204,7 @@
       "03h7y0179huqyalz2d0oesury": {
         "id": "03h7y0179huqyalz2d0oesury",
         "name": "photo_consents",
-        "comment": "TBL-040 사진 게시 동의: 주문 요청 때와 후기 사진마다 받은 동의와 거둠",
+        "comment": "TBL-040 사진 게시 동의: 주문 요청 때와 후기 사진마다 받은 동의와 철회함",
         "columnIds": [
           "03h7y0179huqyalz2d2z3qfa9",
           "03h7y0179huqyalz2d3u2avih",
@@ -1345,7 +1345,7 @@
       "03h7y0179n9e4e4gq69098pnw": {
         "id": "03h7y0179n9e4e4gq69098pnw",
         "name": "ledger_rows",
-        "comment": "TBL-046 장부 줄(TERM-055): 장부에 옮겨 적는 주문 한 줄의 우리 쪽 기록",
+        "comment": "TBL-046 장부 행(TERM-055): 장부에 옮겨 적는 주문 한 행의 우리 쪽 기록",
         "columnIds": [
           "03h7y0179n9e4e4gq6bltm8u5",
           "03h7y0179n9e4e4gq6d8q0oeo",
@@ -1362,7 +1362,7 @@
       "03h7y0179n9e4e4gq6kwkcb3f": {
         "id": "03h7y0179n9e4e4gq6kwkcb3f",
         "name": "ledger_writes",
-        "comment": "TBL-047 장부 쓰기: 사건마다 한 번 남기고 실패하면 다시 적음(1-8)",
+        "comment": "TBL-047 장부 쓰기: 이벤트마다 한 번 남기고 실패하면 다시 적음(1-8)",
         "columnIds": [
           "03h7y0179n9e4e4gq6n72rqhb",
           "03h7y0179n9e4e4gq6ohltrj0",
@@ -1386,7 +1386,7 @@
       "03h7y0179n9e4e4gq7aukd260": {
         "id": "03h7y0179n9e4e4gq7aukd260",
         "name": "ai_calls",
-        "comment": "TBL-048 AI 호출 기록: 부름마다 모델·지시문 판·토큰·시간·비용·결과. 대화 글·개인정보·비밀값 없음",
+        "comment": "TBL-048 AI 호출 기록: 호출마다 모델·프롬프트 버전·토큰·시간·비용·결과. 대화 글·개인정보·시크릿 없음",
         "columnIds": [
           "03h7y0179n9e4e4gq7cgnw2ol",
           "03h7y0179n9e4e4gq7exom3c1",
@@ -1422,7 +1422,7 @@
       "03h7y0179sukl6c8nic8nn7g1": {
         "id": "03h7y0179sukl6c8nic8nn7g1",
         "name": "ai_tool_calls",
-        "comment": "TBL-049 AI 도구 호출 기록: 이름·결과·대화 ID·대상 ID·가린 인자",
+        "comment": "TBL-049 AI 도구 호출 기록: 이름·결과·대화 ID·대상 ID·마스킹한 인자",
         "columnIds": [
           "03h7y0179sukl6c8nifl93c4n",
           "03h7y0179sukl6c8nigjnbwq5",
@@ -1463,7 +1463,7 @@
       "03h7y0179sukl6c8njfcxe8qh": {
         "id": "03h7y0179sukl6c8njfcxe8qh",
         "name": "ops_events",
-        "comment": "TBL-051 운영 기록: 내용 없이 건수만 남기는 운영 사건과 운영자 화면의 알림",
+        "comment": "TBL-051 운영 기록: 내용 없이 건수만 남기는 운영 이벤트와 운영자 화면의 알림",
         "columnIds": [
           "03h7y0179sukl6c8njga30tgv",
           "03h7y0179sukl6c8nji713aft",
@@ -1544,7 +1544,7 @@
         "id": "03h7y0178fic3fnl5v6rnd82c",
         "tableId": "03h7y0178fic3fnl5v3q4esoj",
         "name": "email",
-        "comment": "운영자 계정 이메일. 비밀번호·2단계 인증 키는 인증 서비스나 비밀값 저장소에(REQ-135)",
+        "comment": "운영자 계정 이메일. 비밀번호·2단계 인증 키는 인증 서비스나 시크릿 저장소에(REQ-135)",
         "dataType": "text",
         "options": 8
       },
@@ -1618,7 +1618,7 @@
         "id": "03h7y0178l0hvzg6dd87vmlou",
         "tableId": "03h7y0178fic3fnl5vhrhwxmb",
         "name": "pickup_address",
-        "comment": "픽업 장소(가게 위치). 전날 안내에 실음(SPEC-052). 등록 칸(SPEC-002)에 없어 가게 설정에서 받음",
+        "comment": "픽업 장소(가게 위치). 전날 안내에 포함함(SPEC-052). 등록 필드(SPEC-002)에 없어 가게 설정에서 받음",
         "dataType": "text",
         "options": 0
       },
@@ -1642,7 +1642,7 @@
         "id": "03h7y0178l0hvzg6dddr46c9d",
         "tableId": "03h7y0178fic3fnl5vhrhwxmb",
         "name": "business_reg_no",
-        "comment": "사업자등록번호(검증 숫자는 앱이 봄). 겹쳐도 받고 운영자 화면에 겹침 표시(SPEC-002)",
+        "comment": "사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시 표시(SPEC-002)",
         "dataType": "text",
         "options": 8
       },
@@ -1674,7 +1674,7 @@
         "id": "03h7y0178l0hvzg6ddkzlpyrj",
         "tableId": "03h7y0178fic3fnl5vhrhwxmb",
         "name": "food_business_type",
-        "comment": "영업 종류: 즉석판매제조·가공업, 제과점영업. 그 밖은 첫 판에서 받지 않음",
+        "comment": "영업 종류: 즉석판매제조·가공업, 제과점영업. 그 밖은 첫 버전에서 받지 않음",
         "dataType": "text",
         "options": 8
       },
@@ -1723,7 +1723,7 @@
         "id": "03h7y0178l0hvzg6ddy2zy4ml",
         "tableId": "03h7y0178fic3fnl5vhrhwxmb",
         "name": "entrustment_terms_version",
-        "comment": "동의한 개인정보 처리 위탁·재위탁 조건의 판(REQ-107). 동의 없이는 가게가 생기지 않음",
+        "comment": "동의한 개인정보 처리 위탁·재위탁 조건의 버전(REQ-107). 동의 없이는 가게가 생기지 않음",
         "dataType": "text",
         "options": 8
       },
@@ -1835,7 +1835,7 @@
         "id": "03h7y0178l0hvzg6dep9xkbd1",
         "tableId": "03h7y0178l0hvzg6deiwnudw3",
         "name": "bot_id",
-        "comment": "오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 열쇠(SPEC-017)",
+        "comment": "오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 키(SPEC-017)",
         "dataType": "text",
         "options": 8
       },
@@ -1860,7 +1860,7 @@
         "id": "03h7y0178l0hvzg6dev43es0x",
         "tableId": "03h7y0178l0hvzg6deiwnudw3",
         "name": "check_started_at",
-        "comment": "'연결 확인'을 누른 시각(10분 안에 시험 메시지가 와야 함)",
+        "comment": "'연결 확인'을 누른 시각(10분 안에 테스트 메시지가 와야 함)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -1893,7 +1893,7 @@
         "id": "03h7y0178l0hvzg6df42g49v0",
         "tableId": "03h7y0178l0hvzg6df21wv102",
         "name": "id",
-        "comment": "처리방침 판 ID",
+        "comment": "처리방침 버전 ID",
         "dataType": "uuid",
         "default": "gen_random_uuid()",
         "options": 2
@@ -1910,7 +1910,7 @@
         "id": "03h7y0178l0hvzg6df8x17p4j",
         "tableId": "03h7y0178l0hvzg6df21wv102",
         "name": "version",
-        "comment": "판 번호. 바뀌면 새 판",
+        "comment": "버전. 바뀌면 새 버전",
         "dataType": "integer",
         "options": 8
       },
@@ -1934,7 +1934,7 @@
         "id": "03h7y0178l0hvzg6dfeuply38",
         "tableId": "03h7y0178l0hvzg6df21wv102",
         "name": "published_at",
-        "comment": "낸 시각. 가장 늦은 판을 예약 링크 페이지와 AI 상담 고지에 검(REQ-140)",
+        "comment": "낸 시각. 가장 최근 버전을 예약 링크 페이지와 AI 상담 고지에 검(REQ-140)",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -1943,7 +1943,7 @@
         "id": "03h7y0178l0hvzg6dfi4llaaz",
         "tableId": "03h7y0178l0hvzg6dfh9gsylh",
         "name": "id",
-        "comment": "가격표 판 ID",
+        "comment": "가격표 버전 ID",
         "dataType": "uuid",
         "default": "gen_random_uuid()",
         "options": 2
@@ -1960,7 +1960,7 @@
         "id": "03h7y0178l0hvzg6dfmburokt",
         "tableId": "03h7y0178l0hvzg6dfh9gsylh",
         "name": "version",
-        "comment": "판 번호(TERM-005). 저장할 때마다 하나 오르고, 바꾼 것이 없으면 새 판 없음(SPEC-004)",
+        "comment": "버전(TERM-005). 저장할 때마다 하나 오르고, 바꾼 것이 없으면 새 버전 없음(SPEC-004)",
         "dataType": "integer",
         "options": 8
       },
@@ -1968,7 +1968,7 @@
         "id": "03h7y0178l0hvzg6dfp81d7t7",
         "tableId": "03h7y0178l0hvzg6dfh9gsylh",
         "name": "created_at",
-        "comment": "이 판을 저장한 시각",
+        "comment": "이 버전을 저장한 시각",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -1977,7 +1977,7 @@
         "id": "03h7y0178l0hvzg6dfpzwg4eu",
         "tableId": "03h7y0178l0hvzg6dfh9gsylh",
         "name": "superseded_at",
-        "comment": "새 판이 생겨 '지난 판'이 된 시각. 빈 값이 지금 판. 지난 판은 읽기만(REQ-027)",
+        "comment": "새 버전이 생겨 '이전 버전'이 된 시각. 빈 값이 현재 버전. 이전 버전은 읽기만(REQ-027)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -2002,7 +2002,7 @@
         "id": "03h7y0178l0hvzg6dfz05czob",
         "tableId": "03h7y0178l0hvzg6dfsvvxkb0",
         "name": "price_list_id",
-        "comment": "가격표 판",
+        "comment": "가격표 버전",
         "dataType": "uuid",
         "options": 8
       },
@@ -2086,7 +2086,7 @@
         "id": "03h7y0178qg91ufrdyo5jyoeg",
         "tableId": "03h7y0178qg91ufrdyhutymmg",
         "name": "price_list_id",
-        "comment": "가격표 판",
+        "comment": "가격표 버전",
         "dataType": "uuid",
         "options": 8
       },
@@ -2102,7 +2102,7 @@
         "id": "03h7y0178qg91ufrdysw4q26l",
         "tableId": "03h7y0178qg91ufrdyhutymmg",
         "name": "option_a_id",
-        "comment": "옵션 하나(같은 판)",
+        "comment": "옵션 하나(같은 버전)",
         "dataType": "uuid",
         "options": 8
       },
@@ -2110,7 +2110,7 @@
         "id": "03h7y0178qg91ufrdytam7j3k",
         "tableId": "03h7y0178qg91ufrdyhutymmg",
         "name": "option_b_id",
-        "comment": "다른 옵션(같은 판)",
+        "comment": "다른 옵션(같은 버전)",
         "dataType": "uuid",
         "options": 8
       },
@@ -2143,7 +2143,7 @@
         "id": "03h7y0178qg91ufrdz3ghrpez",
         "tableId": "03h7y0178qg91ufrdyyvtbjn6",
         "name": "price_list_id",
-        "comment": "이 도안을 담은 가격표 판(REQ-026)",
+        "comment": "이 도안을 담은 가격표 버전(REQ-026)",
         "dataType": "uuid",
         "options": 8
       },
@@ -2151,7 +2151,7 @@
         "id": "03h7y0178qg91ufrdz5qq5sia",
         "tableId": "03h7y0178qg91ufrdyyvtbjn6",
         "name": "price_option_id",
-        "comment": "이 도안의 값을 정하는 디자인 옵션(같은 판)",
+        "comment": "이 도안의 값을 정하는 디자인 옵션(같은 버전)",
         "dataType": "uuid",
         "options": 0
       },
@@ -2167,7 +2167,7 @@
         "id": "03h7y0178qg91ufrdz8zjnhr5",
         "tableId": "03h7y0178qg91ufrdyyvtbjn6",
         "name": "image_key",
-        "comment": "도안 그림 저장 위치(한 장 10MB, 판마다 50장까지는 앱이 봄)",
+        "comment": "도안 그림 저장 위치(한 장 10MB, 버전마다 50장까지는 앱이 봄)",
         "dataType": "text",
         "options": 8
       },
@@ -2193,7 +2193,7 @@
         "id": "03h7y0178qg91ufrdzh0htaln",
         "tableId": "03h7y0178qg91ufrdzgb4zqc0",
         "name": "id",
-        "comment": "운영규정 판 ID",
+        "comment": "운영규정 버전 ID",
         "dataType": "uuid",
         "default": "gen_random_uuid()",
         "options": 2
@@ -2210,7 +2210,7 @@
         "id": "03h7y0178qg91ufrdzmholktl",
         "tableId": "03h7y0178qg91ufrdzgb4zqc0",
         "name": "version",
-        "comment": "판 번호(TERM-005). 받은 주문은 그때 판을 따름(REQ-030)",
+        "comment": "버전(TERM-005). 받은 주문은 그때 버전을 따름(REQ-030)",
         "dataType": "integer",
         "options": 8
       },
@@ -2288,7 +2288,7 @@
         "id": "03h7y0178qg91ufre03j3rdr8",
         "tableId": "03h7y0178qg91ufrdzgb4zqc0",
         "name": "created_at",
-        "comment": "이 판을 확정한 시각",
+        "comment": "이 버전을 확정한 시각",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -2297,7 +2297,7 @@
         "id": "03h7y0178qg91ufre05ze466v",
         "tableId": "03h7y0178qg91ufrdzgb4zqc0",
         "name": "superseded_at",
-        "comment": "새 판이 생긴 시각. 빈 값이 지금 판",
+        "comment": "새 버전이 생긴 시각. 빈 값이 현재 버전",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -2322,7 +2322,7 @@
         "id": "03h7y0178qg91ufre0d4ku13f",
         "tableId": "03h7y0178qg91ufre06oh33jx",
         "name": "operating_rules_id",
-        "comment": "운영규정 판",
+        "comment": "운영규정 버전",
         "dataType": "uuid",
         "options": 8
       },
@@ -2330,7 +2330,7 @@
         "id": "03h7y0178qg91ufre0ediif3t",
         "tableId": "03h7y0178qg91ufre06oh33jx",
         "name": "clause_key",
-        "comment": "틀의 조문 칸(REQ-031, REQ-033)이나 가게가 더한 조문",
+        "comment": "템플릿의 조문 필드(REQ-031, REQ-033)나 가게가 더한 조문",
         "dataType": "text",
         "options": 8
       },
@@ -2387,7 +2387,7 @@
         "id": "03h7y0178qg91ufre0vuk3c7u",
         "tableId": "03h7y0178qg91ufre0offtu90",
         "name": "operating_rules_id",
-        "comment": "운영규정 판",
+        "comment": "운영규정 버전",
         "dataType": "uuid",
         "options": 8
       },
@@ -2487,7 +2487,7 @@
         "id": "03h7y0178qg91ufre1jqce43a",
         "tableId": "03h7y0178qg91ufre121gf2iv",
         "name": "review_request_time",
-        "comment": "후기 부탁 시각(SPEC-061, 넘긴 다음 날)",
+        "comment": "후기 부탁 시각(SPEC-061, 인도한 다음 날)",
         "dataType": "time",
         "default": "'11:00'",
         "options": 8
@@ -2555,7 +2555,7 @@
         "id": "03h7y0178vyo98xl8li8sb412",
         "tableId": "03h7y0178vyo98xl8lhk8qlco",
         "name": "id",
-        "comment": "결제 받을 곳 ID",
+        "comment": "결제 수단 ID",
         "dataType": "uuid",
         "default": "gen_random_uuid()",
         "options": 2
@@ -2580,7 +2580,7 @@
         "id": "03h7y0178vyo98xl8lp9mz6ho",
         "tableId": "03h7y0178vyo98xl8lhk8qlco",
         "name": "account_number",
-        "comment": "가게 명의 계좌번호. 사장님 화면과 그 가게 손님의 결제 안내에만, AI로는 가림(SPEC-006)",
+        "comment": "가게 명의 계좌번호. 사장님 화면과 그 가게 손님의 결제 안내에만, AI로는 마스킹함(SPEC-006)",
         "dataType": "text",
         "options": 8
       },
@@ -2621,7 +2621,7 @@
         "id": "03h7y0178vyo98xl8lz3db9y4",
         "tableId": "03h7y0178vyo98xl8lhk8qlco",
         "name": "retired_at",
-        "comment": "바꿔서 그만 쓰게 된 시각. 이미 나간 결제 안내는 옛 줄을 그대로 가리킴",
+        "comment": "바꿔서 그만 쓰게 된 시각. 이미 나간 결제 안내는 옛 행을 그대로 참조함",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -2654,7 +2654,7 @@
         "id": "03h7y0178vyo98xl8m8rx7cg4",
         "tableId": "03h7y0178vyo98xl8m05p4fdr",
         "name": "kakao_user_key",
-        "comment": "그 채널의 카카오 사용자 키. 손님 명령은 이 키로 가림(G1)",
+        "comment": "그 채널의 카카오 사용자 키. 손님 명령은 이 키로 구분함(G1)",
         "dataType": "text",
         "options": 8
       },
@@ -2713,7 +2713,7 @@
         "id": "03h7y0178vyo98xl8mnudl56o",
         "tableId": "03h7y0178vyo98xl8mfwdxckm",
         "name": "status",
-        "comment": "열림·사장님 답 기다림·문의 끊김·주문으로 이어짐·지워짐(1-1)",
+        "comment": "열림·사장님 답 기다림·문의 끊김·주문으로 전환됨·지워짐(1-1)",
         "dataType": "text",
         "default": "'open'",
         "options": 8
@@ -2771,7 +2771,7 @@
         "id": "03h7y0178vyo98xl8n1h4dy2o",
         "tableId": "03h7y0178vyo98xl8mfwdxckm",
         "name": "deleted_at",
-        "comment": "대화·사진·초안을 지운 시각(SPEC-065). 이 줄은 내용 없이 남김",
+        "comment": "대화·사진·초안을 지운 시각(SPEC-065). 이 행은 내용 없이 남김",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -2804,7 +2804,7 @@
         "id": "03h7y0178vyo98xl8ncxxvcud",
         "tableId": "03h7y0178vyo98xl8n4u42owk",
         "name": "direction",
-        "comment": "들어옴·나감",
+        "comment": "수신·발신",
         "dataType": "text",
         "options": 8
       },
@@ -2837,7 +2837,7 @@
         "id": "03h7y0178vyo98xl8njr03m97",
         "tableId": "03h7y0178vyo98xl8n4u42owk",
         "name": "body_masked",
-        "comment": "가린 글: 전화·계좌·카드 번호는 자리표(SPEC-021). AI·로그는 이것만. 원래 값은 masked_values",
+        "comment": "마스킹한 글: 전화·계좌·카드 번호는 플레이스홀더(SPEC-021). AI·로그는 이것만. 원래 값은 masked_values",
         "dataType": "text",
         "options": 0
       },
@@ -2845,7 +2845,7 @@
         "id": "03h7y0178vyo98xl8nlnci7i7",
         "tableId": "03h7y0178vyo98xl8n4u42owk",
         "name": "trace_id",
-        "comment": "이 메시지를 다룬 차례의 추적 ID(ai_calls와 이음, REQ-131을 잼)",
+        "comment": "이 메시지를 다룬 차례의 추적 ID(ai_calls와 연결, REQ-131을 잼)",
         "dataType": "text",
         "options": 0
       },
@@ -2878,7 +2878,7 @@
         "id": "03h7y0178vyo98xl8nwfuxsnj",
         "tableId": "03h7y0178vyo98xl8nuyo5kdq",
         "name": "id",
-        "comment": "가린 값 ID",
+        "comment": "마스킹한 값 ID",
         "dataType": "uuid",
         "default": "gen_random_uuid()",
         "options": 2
@@ -2895,7 +2895,7 @@
         "id": "03h7y0178vyo98xl8o0vxol3x",
         "tableId": "03h7y0178vyo98xl8nuyo5kdq",
         "name": "consultation_id",
-        "comment": "상담. 자리표 번호는 상담 안에서 바뀌지 않음",
+        "comment": "상담. 플레이스홀더 번호는 상담 안에서 바뀌지 않음",
         "dataType": "uuid",
         "options": 8
       },
@@ -2911,7 +2911,7 @@
         "id": "03h7y01791hwo1dbahpzcrsot",
         "tableId": "03h7y0178vyo98xl8nuyo5kdq",
         "name": "placeholder",
-        "comment": "자리표, 예: [전화번호1]",
+        "comment": "플레이스홀더, 예: [전화번호1]",
         "dataType": "text",
         "options": 8
       },
@@ -2927,7 +2927,7 @@
         "id": "03h7y01791hwo1dbahvhacy6x",
         "tableId": "03h7y0178vyo98xl8nuyo5kdq",
         "name": "created_at",
-        "comment": "처음 가린 시각",
+        "comment": "처음 마스킹한 시각",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -2970,7 +2970,7 @@
         "id": "03h7y01791hwo1dbai668gz60",
         "tableId": "03h7y01791hwo1dbahxpd3ebr",
         "name": "revision",
-        "comment": "고칠 때마다 오르는 번호(판 번호가 아님, TERM-003). 주문 요청 카드가 이 값에 묶임(SPEC-028)",
+        "comment": "고칠 때마다 오르는 번호(버전이 아님, TERM-003). 주문 요청 카드가 이 값에 묶임(SPEC-028)",
         "dataType": "integer",
         "default": "1",
         "options": 8
@@ -2979,7 +2979,7 @@
         "id": "03h7y01791hwo1dbai7we0e2n",
         "tableId": "03h7y01791hwo1dbahxpd3ebr",
         "name": "price_list_id",
-        "comment": "옵션을 고른 가격표 판",
+        "comment": "옵션을 고른 가격표 버전",
         "dataType": "uuid",
         "options": 0
       },
@@ -3036,7 +3036,7 @@
         "id": "03h7y01791hwo1dbailsjnfq9",
         "tableId": "03h7y01791hwo1dbahxpd3ebr",
         "name": "extra_option_ids",
-        "comment": "더하는 옵션들(같은 판)",
+        "comment": "더하는 옵션들(같은 버전)",
         "dataType": "uuid[]",
         "default": "'{}'",
         "options": 8
@@ -3144,7 +3144,7 @@
         "id": "03h7y01791hwo1dbajdhswbn6",
         "tableId": "03h7y01791hwo1dbaj8w95wbf",
         "name": "draft_id",
-        "comment": "붙인 주문서 초안(REQ-003). 주문이 되면 주문이 이 초안을 가리킴",
+        "comment": "붙인 주문서 초안(REQ-003). 주문이 되면 주문이 이 초안을 참조함",
         "dataType": "uuid",
         "options": 8
       },
@@ -3235,7 +3235,7 @@
         "id": "03h7y01791hwo1dbak0tmm5r2",
         "tableId": "03h7y01791hwo1dbajsplumlp",
         "name": "price_list_id",
-        "comment": "계산한 가격표 판(REQ-007)",
+        "comment": "계산한 가격표 버전(REQ-007)",
         "dataType": "uuid",
         "options": 8
       },
@@ -3243,7 +3243,7 @@
         "id": "03h7y01791hwo1dbak38o0tqw",
         "tableId": "03h7y01791hwo1dbajsplumlp",
         "name": "operating_rules_id",
-        "comment": "유효 기한을 정한 운영규정 판",
+        "comment": "유효 기한을 정한 운영규정 버전",
         "dataType": "uuid",
         "options": 8
       },
@@ -3283,7 +3283,7 @@
         "id": "03h7y01791hwo1dbakebv5cw8",
         "tableId": "03h7y01791hwo1dbajsplumlp",
         "name": "basis",
-        "comment": "근거: 쓴 옵션 줄과 규칙. 사장님 화면에 전부, 손님에게는 금액·표시 방식·유효 기한만(SPEC-013)",
+        "comment": "근거: 쓴 옵션 행과 규칙. 사장님 화면에 전부, 손님에게는 금액·표시 방식·유효 기한만(SPEC-013)",
         "dataType": "jsonb",
         "options": 8
       },
@@ -3291,7 +3291,7 @@
         "id": "03h7y01791hwo1dbakekcjwik",
         "tableId": "03h7y01791hwo1dbajsplumlp",
         "name": "valid_until",
-        "comment": "유효 기한(기본 안내 뒤 72시간). 그 전에 가격표 판이 바뀌면 끝남(TERM-013)",
+        "comment": "유효 기한(기본 안내 뒤 72시간). 그 전에 가격표 버전이 바뀌면 만료됨(TERM-013)",
         "dataType": "timestamptz",
         "options": 8
       },
@@ -3349,7 +3349,7 @@
         "id": "03h7y01791hwo1dbakvm8hhqo",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "draft_id",
-        "comment": "요청한 주문서 초안. 참고 사진은 이 초안에 붙어 있음. 다시 만들기 주문은 빈 값",
+        "comment": "요청한 주문서 초안. 참고 사진은 이 초안에 붙어 있음. 재제작 주문은 빈 값",
         "dataType": "uuid",
         "options": 4
       },
@@ -3373,7 +3373,7 @@
         "id": "03h7y01791hwo1dbal0y5e7sl",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "version",
-        "comment": "주문 내용의 지금 판 번호(TERM-005). 카드·변경 요청이 이 값에 묶임(G3, G9)",
+        "comment": "주문 내용의 지금 버전(TERM-005). 카드·변경 요청이 이 값에 묶임(G3, G9)",
         "dataType": "integer",
         "default": "1",
         "options": 8
@@ -3382,7 +3382,7 @@
         "id": "03h7y01791hwo1dbal2inrhju",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "price_list_id",
-        "comment": "금액을 계산한 가격표 판(REQ-030)",
+        "comment": "금액을 계산한 가격표 버전(REQ-030)",
         "dataType": "uuid",
         "options": 8
       },
@@ -3390,7 +3390,7 @@
         "id": "03h7y01791hwo1dbal4qohzhr",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "operating_rules_id",
-        "comment": "동의한 운영규정 판. 환불·변경 마감은 이 판으로(REQ-030, REQ-055)",
+        "comment": "동의한 운영규정 버전. 환불·변경 마감은 이 버전으로(REQ-030, REQ-055)",
         "dataType": "uuid",
         "options": 8
       },
@@ -3406,7 +3406,7 @@
         "id": "03h7y01791hwo1dbal9df24u0",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "terms_consented_at",
-        "comment": "취소·환불 규정 동의(TERM-040)한 시각. 주문 요청과 같은 줄에 함께 남겨 하나만 남을 수 없음(REQ-054)",
+        "comment": "취소·환불 규정 동의(TERM-040)한 시각. 주문 요청과 같은 행에 함께 남겨 하나만 남을 수 없음(REQ-054)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -3414,7 +3414,7 @@
         "id": "03h7y01796y3abgmnmievo3t8",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "pickup_at",
-        "comment": "픽업 일시(TERM-023). 지금 판의 주문 내용과 같음(orders_current_details_fk)",
+        "comment": "픽업 일시(TERM-023). 현재 버전의 주문 내용과 같음(orders_current_details_fk)",
         "dataType": "timestamptz",
         "options": 8
       },
@@ -3430,7 +3430,7 @@
         "id": "03h7y01796y3abgmnmlzqxwmh",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "amount",
-        "comment": "지금 판의 금액(원). 지금 판의 주문 내용과 같음(orders_current_details_fk)",
+        "comment": "현재 버전의 금액(원). 현재 버전의 주문 내용과 같음(orders_current_details_fk)",
         "dataType": "integer",
         "options": 8
       },
@@ -3455,7 +3455,7 @@
         "id": "03h7y01796y3abgmnmt7507j5",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "accepted_version",
-        "comment": "수락한 판. 결제 안내 금액의 기준(REQ-076)",
+        "comment": "수락한 버전. 결제 안내 금액의 기준(REQ-076)",
         "dataType": "integer",
         "options": 0
       },
@@ -3479,7 +3479,7 @@
         "id": "03h7y01796y3abgmnmyxy78y3",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "reject_reason",
-        "comment": "거절 까닭",
+        "comment": "거절 사유",
         "dataType": "text",
         "options": 0
       },
@@ -3503,7 +3503,7 @@
         "id": "03h7y01796y3abgmnn5i9rwk0",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "cancel_reason",
-        "comment": "가게 사정 취소의 까닭(SPEC-048)",
+        "comment": "가게 사정 취소의 사유(SPEC-048)",
         "dataType": "text",
         "options": 0
       },
@@ -3511,7 +3511,7 @@
         "id": "03h7y01796y3abgmnn7f9vyau",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "remake_of_order_id",
-        "comment": "다시 만들기(TERM-034) 주문이면 원래 주문(R21)",
+        "comment": "재제작(TERM-034) 주문이면 원래 주문(R21)",
         "dataType": "uuid",
         "options": 0
       },
@@ -3569,7 +3569,7 @@
         "id": "03h7y01796y3abgmnnm2csyfn",
         "tableId": "03h7y01796y3abgmnnczgybr2",
         "name": "card_key",
-        "comment": "버튼에 실은 카드 키(G2)",
+        "comment": "버튼에 포함한 카드 키(G2)",
         "dataType": "text",
         "options": 8
       },
@@ -3577,7 +3577,7 @@
         "id": "03h7y01796y3abgmnnomyt6fc",
         "tableId": "03h7y01796y3abgmnnczgybr2",
         "name": "kind",
-        "comment": "주문 요청·입금 알리기·변경 요청·취소·신고·동의 거두기(SPEC-069)",
+        "comment": "주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)",
         "dataType": "text",
         "options": 8
       },
@@ -3609,7 +3609,7 @@
         "id": "03h7y01796y3abgmnnwhoeaes",
         "tableId": "03h7y01796y3abgmnnczgybr2",
         "name": "order_version",
-        "comment": "묶인 주문 판 번호(G9)",
+        "comment": "묶인 주문 버전(G9)",
         "dataType": "integer",
         "options": 0
       },
@@ -3617,7 +3617,7 @@
         "id": "03h7y01796y3abgmnnza72xku",
         "tableId": "03h7y01796y3abgmnnczgybr2",
         "name": "payload",
-        "comment": "서버가 저장된 값으로 만든 카드 내용(요약·금액·규정 판·환불 계산값). AI가 쓰지 않음",
+        "comment": "서버가 저장된 값으로 만든 카드 내용(요약·금액·규정 버전·환불 계산값). AI가 쓰지 않음",
         "dataType": "jsonb",
         "options": 8
       },
@@ -3641,7 +3641,7 @@
         "id": "03h7y01796y3abgmno407iwig",
         "tableId": "03h7y01796y3abgmnnczgybr2",
         "name": "outcome",
-        "comment": "명령함·판이 바뀌어 거절(새 카드)·기한 지나 거절(새 카드)",
+        "comment": "명령함·버전이 바뀌어 거절(새 카드)·기한 지나 거절(새 카드)",
         "dataType": "text",
         "options": 0
       },
@@ -3691,7 +3691,7 @@
         "id": "03h7y01796y3abgmnoi7d5q9r",
         "tableId": "03h7y01796y3abgmno7gmyh7i",
         "name": "base_version",
-        "comment": "카드에 묶인 주문 판 번호. 지금 판과 다르면 받지 않음(REQ-133)",
+        "comment": "카드에 묶인 주문 버전. 현재 버전과 다르면 받지 않음(REQ-133)",
         "dataType": "integer",
         "options": 8
       },
@@ -3724,7 +3724,7 @@
         "id": "03h7y01796y3abgmnoq6xm5yz",
         "tableId": "03h7y01796y3abgmno7gmyh7i",
         "name": "status",
-        "comment": "요청됨·차액 결제 기다림·반영됨·거절됨·차액 없어 닫힘·늦은 판이라 받지 않음·주문 취소로 닫힘(1-5)",
+        "comment": "요청됨·차액 결제 기다림·반영됨·거절됨·차액 없어 닫힘·오래된 버전이라 받지 않음·주문 취소로 닫힘(1-5)",
         "dataType": "text",
         "default": "'requested'",
         "options": 8
@@ -3733,7 +3733,7 @@
         "id": "03h7y01796y3abgmnorf5sct4",
         "tableId": "03h7y01796y3abgmno7gmyh7i",
         "name": "amount_delta",
-        "comment": "받아들일 때 금액 차이: 더하면 추가 금액, 빼면 줄어든 금액, 0이면 그대로(SPEC-042)",
+        "comment": "수락할 때 금액 차이: 더하면 추가 금액, 빼면 줄어든 금액, 0이면 그대로(SPEC-042)",
         "dataType": "integer",
         "options": 0
       },
@@ -3741,7 +3741,7 @@
         "id": "03h7y01796y3abgmnot6otnbe",
         "tableId": "03h7y01796y3abgmno7gmyh7i",
         "name": "reject_reason",
-        "comment": "거절 까닭",
+        "comment": "거절 사유",
         "dataType": "text",
         "options": 0
       },
@@ -3757,7 +3757,7 @@
         "id": "03h7y01796y3abgmnoxkpcfz9",
         "tableId": "03h7y01796y3abgmno7gmyh7i",
         "name": "applied_version",
-        "comment": "반영으로 생긴 주문 판",
+        "comment": "반영으로 생긴 주문 버전",
         "dataType": "integer",
         "options": 0
       },
@@ -3773,7 +3773,7 @@
         "id": "03h7y01796y3abgmnp2e0ba6m",
         "tableId": "03h7y01796y3abgmno7gmyh7i",
         "name": "closed_at",
-        "comment": "반영 밖으로 끝난 시각",
+        "comment": "반영되지 않고 종료된 시각",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -3790,7 +3790,7 @@
         "id": "03h7y01796y3abgmnp7355wqn",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "id",
-        "comment": "주문 내용 판 ID",
+        "comment": "주문 내용 버전 ID",
         "dataType": "uuid",
         "default": "gen_random_uuid()",
         "options": 2
@@ -3815,7 +3815,7 @@
         "id": "03h7y01796y3abgmnpcs4ofzi",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "version",
-        "comment": "판 번호(TERM-005): 요청 1, 금액 바꿔 수락·변경 반영마다 하나 오름",
+        "comment": "버전(TERM-005): 요청 1, 금액 변경 수락·변경 반영마다 하나 오름",
         "dataType": "integer",
         "options": 8
       },
@@ -3823,7 +3823,7 @@
         "id": "03h7y01796y3abgmnpgb1bg36",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "source",
-        "comment": "이 판이 생긴 까닭: 주문 요청·금액 바꿔 수락·변경 반영·다시 만들기",
+        "comment": "이 버전이 생긴 이유: 주문 요청·금액 변경 수락·변경 반영·재제작",
         "dataType": "text",
         "options": 8
       },
@@ -3831,7 +3831,7 @@
         "id": "03h7y01796y3abgmnpigyh95r",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "change_request_id",
-        "comment": "변경 반영으로 생긴 판의 변경 요청",
+        "comment": "변경 반영으로 생긴 버전의 변경 요청",
         "dataType": "uuid",
         "options": 4
       },
@@ -3847,7 +3847,7 @@
         "id": "03h7y01796y3abgmnpldvnpxa",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "price_list_id",
-        "comment": "옵션의 가격표 판",
+        "comment": "옵션의 가격표 버전",
         "dataType": "uuid",
         "options": 8
       },
@@ -3904,7 +3904,7 @@
         "id": "03h7y01796y3abgmnpzg3j9w3",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "extra_option_ids",
-        "comment": "더하는 옵션들(같은 판)",
+        "comment": "더하는 옵션들(같은 버전)",
         "dataType": "uuid[]",
         "default": "'{}'",
         "options": 8
@@ -3969,7 +3969,7 @@
         "id": "03h7y01796y3abgmnqfpxgazt",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "amount",
-        "comment": "이 판의 금액(원)",
+        "comment": "이 버전의 금액(원)",
         "dataType": "integer",
         "options": 8
       },
@@ -3977,7 +3977,7 @@
         "id": "03h7y01796y3abgmnqhffie18",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "amount_change_reason",
-        "comment": "금액 바꿔 수락의 까닭(SPEC-031)",
+        "comment": "금액 변경 수락의 사유(SPEC-031)",
         "dataType": "text",
         "options": 0
       },
@@ -3985,7 +3985,7 @@
         "id": "03h7y01796y3abgmnqjz6tayx",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "created_at",
-        "comment": "이 판이 생긴 시각",
+        "comment": "이 버전이 생긴 시각",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -3994,7 +3994,7 @@
         "id": "03h7y01796y3abgmnqn82qw4d",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "id",
-        "comment": "넘긴 질문 ID",
+        "comment": "에스컬레이션 건 ID",
         "dataType": "uuid",
         "default": "gen_random_uuid()",
         "options": 2
@@ -4019,7 +4019,7 @@
         "id": "03h7y01796y3abgmnqsdf3zgl",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "source_message_id",
-        "comment": "넘긴 손님 말. 같은 메시지는 한 번만 넘김(SPEC-022). 열린 동안 온 새 질문은 이 상담의 뒤 메시지로 덧붙음",
+        "comment": "에스컬레이션한 손님 말. 같은 메시지는 한 번만 에스컬레이션함(SPEC-022). 열린 동안 온 새 질문은 이 상담의 뒤 메시지로 덧붙음",
         "dataType": "uuid",
         "options": 12
       },
@@ -4035,7 +4035,7 @@
         "id": "03h7y01796y3abgmnqwp20kul",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "reason",
-        "comment": "넘긴 까닭: 먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·AI 실패·AI 비용 한도·콜백 시간 넘김·가리기 실패·빈 답·조문 없음",
+        "comment": "에스컬레이션한 사유: 먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·AI 실패·AI 비용 한도·콜백 시간 초과·마스킹 실패·빈 답·조문 없음",
         "dataType": "text",
         "options": 8
       },
@@ -4043,7 +4043,7 @@
         "id": "03h7y01796y3abgmnqzej3x7t",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "requested_day",
-        "comment": "마감된 날을 받아 줄지 묻는 질문의 날짜(SPEC-014)",
+        "comment": "마감된 날에 추가로 받을지 묻는 질문의 날짜(SPEC-014)",
         "dataType": "date",
         "options": 0
       },
@@ -4068,7 +4068,7 @@
         "id": "03h7y01796y3abgmnr5qj22ja",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "day_decision",
-        "comment": "마감된 날: 받아 줌·받지 않음",
+        "comment": "마감된 날: 추가 수락·받지 않음",
         "dataType": "text",
         "options": 0
       },
@@ -4076,7 +4076,7 @@
         "id": "03h7y01796y3abgmnr6khhce6",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "day_accept_expires_at",
-        "comment": "받아 준 날을 주문 요청 때 넘겨 잡을 수 있는 끝(24시간, SPEC-023)",
+        "comment": "추가 수락한 날을 주문 요청 때 추가 수락할 수 있는 끝(24시간, SPEC-023)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -4100,7 +4100,7 @@
         "id": "03h7y0179cdtx0zvnsvz2f7gz",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "created_at",
-        "comment": "넘긴 시각",
+        "comment": "에스컬레이션한 시각",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -4301,7 +4301,7 @@
         "id": "03h7y0179cdtx0zvnudx3ivrt",
         "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
         "name": "follows_report_id",
-        "comment": "같은 주문의 두 번째 신고면 첫 신고(이어 붙임, SPEC-058)",
+        "comment": "같은 주문의 두 번째 신고면 첫 신고(연결, SPEC-058)",
         "dataType": "uuid",
         "options": 0
       },
@@ -4326,7 +4326,7 @@
         "id": "03h7y0179cdtx0zvnujqq7pbt",
         "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
         "name": "compensation",
-        "comment": "보상(TERM-033): 다시 만들기·일부 환불·전액 환불·보상 없음. 사장님만 정함(REQ-073)",
+        "comment": "보상(TERM-033): 재제작·일부 환불·전액 환불·보상 없음. 사장님만 정함(REQ-073)",
         "dataType": "text",
         "options": 0
       },
@@ -4342,7 +4342,7 @@
         "id": "03h7y0179cdtx0zvnumioqwqu",
         "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
         "name": "remake_order_id",
-        "comment": "다시 만들기 주문(TERM-034). 보상 하나에 하나(SPEC-060)",
+        "comment": "재제작 주문(TERM-034). 보상 하나에 하나(SPEC-060)",
         "dataType": "uuid",
         "options": 4
       },
@@ -4392,7 +4392,7 @@
         "id": "03h7y0179cdtx0zvnv1dxph3r",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "kind",
-        "comment": "첫 결제·다시 낸 결제(더 기다리기, TERM-037)·차액 결제(R13). 날짜 변경·다시 만들기에는 없음",
+        "comment": "첫 결제·다시 낸 결제(결제 기한 연장, TERM-037)·차액 결제(R13). 날짜 변경·재제작에는 없음",
         "dataType": "text",
         "options": 8
       },
@@ -4408,7 +4408,7 @@
         "id": "03h7y0179cdtx0zvnv4p22k4s",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "event_key",
-        "comment": "같은 사건의 결제 안내는 한 번(REQ-154)",
+        "comment": "같은 이벤트의 결제 안내는 한 번(REQ-154)",
         "dataType": "text",
         "options": 8
       },
@@ -4434,7 +4434,7 @@
         "id": "03h7y0179cdtx0zvnv9wgm7u8",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "amount",
-        "comment": "안내 금액: 수락한 판(기본 디자인은 요청한 판)의 금액(REQ-076). 차액은 사장님이 정한 추가 금액",
+        "comment": "안내 금액: 수락한 버전(기본 디자인은 요청한 버전)의 금액(REQ-076). 차액은 사장님이 정한 추가 금액",
         "dataType": "integer",
         "options": 8
       },
@@ -4442,7 +4442,7 @@
         "id": "03h7y0179cdtx0zvnvdlz1wos",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "requested_amount",
-        "comment": "금액 바꿔 수락이면 손님이 요청한 금액(함께 보임, REQ-155)",
+        "comment": "금액 변경 수락이면 손님이 요청한 금액(함께 보임, REQ-155)",
         "dataType": "integer",
         "options": 0
       },
@@ -4450,7 +4450,7 @@
         "id": "03h7y0179cdtx0zvnvdvn3e4o",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "payment_account_id",
-        "comment": "이 안내에 실은 가게 계좌. 계좌를 바꿔도 나간 안내는 그대로",
+        "comment": "이 안내에 포함한 가게 계좌. 계좌를 바꿔도 나간 안내는 그대로",
         "dataType": "uuid",
         "options": 8
       },
@@ -4458,7 +4458,7 @@
         "id": "03h7y0179cdtx0zvnvhm3tlc4",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "card_payment_url",
-        "comment": "이 안내에 실은 카드 결제 링크(있으면)",
+        "comment": "이 안내에 포함한 카드 결제 링크(있으면)",
         "dataType": "text",
         "options": 0
       },
@@ -4499,7 +4499,7 @@
         "id": "03h7y0179cdtx0zvnvpqmna42",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "claim_rejected_at",
-        "comment": "사장님이 '안 들어옴'을 고른 시각. 확인 요청은 결제 안내마다 한 번이라 다시 받지 않음(SPEC-033)",
+        "comment": "사장님이 '미입금'을 고른 시각. 확인 요청은 결제 안내마다 한 번이라 다시 받지 않음(SPEC-033)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -4523,7 +4523,7 @@
         "id": "03h7y0179cdtx0zvnvwf4rx91",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "mismatch_at",
-        "comment": "'다르게 들어옴'을 남긴 시각. 맞추는 중에는 결제 기한을 멈춤(REQ-161)",
+        "comment": "'금액 불일치'를 남긴 시각. 맞추는 중에는 결제 기한을 멈춤(REQ-161)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -4604,7 +4604,7 @@
         "id": "03h7y0179cdtx0zvnwhlrafq2",
         "tableId": "03h7y0179cdtx0zvnw6vcy251",
         "name": "resolution",
-        "comment": "들어옴·맞춰짐(모자란 금액이 들어옴)·맞춰짐(더 들어온 금액을 돌려보냄)(R15)",
+        "comment": "입금됨·대조 완료(모자란 금액이 입금됨)·대조 완료(더 들어온 금액을 반환함)(R15)",
         "dataType": "text",
         "default": "'exact'",
         "options": 8
@@ -4687,7 +4687,7 @@
         "id": "03h7y0179cdtx0zvnx430f6df",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "amount",
-        "comment": "정한 환불 금액. 주문의 환불 합은 받은 금액을 넘지 않음(REQ-086, 앱이 주문 줄을 잠그고 셈)",
+        "comment": "정한 환불 금액. 주문의 환불 합은 받은 금액을 넘지 않음(REQ-086, 앱이 주문 행을 잠그고 셈)",
         "dataType": "integer",
         "options": 8
       },
@@ -4703,7 +4703,7 @@
         "id": "03h7y0179cdtx0zvnx81hgvr0",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "calc_basis",
-        "comment": "근거: 운영규정 판·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액(REQ-084)",
+        "comment": "근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액(REQ-084)",
         "dataType": "jsonb",
         "options": 8
       },
@@ -4711,7 +4711,7 @@
         "id": "03h7y0179cdtx0zvnx9ar14cm",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "override_reason",
-        "comment": "계산값과 다른 금액을 고른 까닭(SPEC-047)",
+        "comment": "계산값과 다른 금액을 고른 이유(SPEC-047)",
         "dataType": "text",
         "options": 0
       },
@@ -4719,7 +4719,7 @@
         "id": "03h7y0179cdtx0zvnxawo88c6",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "method",
-        "comment": "가게 계좌에서 돌려보냄·카드 결제 취소",
+        "comment": "가게 계좌에서 반환·카드 결제 취소",
         "dataType": "text",
         "options": 0
       },
@@ -4809,7 +4809,7 @@
         "id": "03h7y0179huqyalz2a00p60oi",
         "tableId": "03h7y0179cdtx0zvnxn50yn3m",
         "name": "hold_key",
-        "comment": "같은 주문의 같은 자리 잡기는 한 번(주문 ID와 결제 안내 ID 등, SPEC-015)",
+        "comment": "같은 주문의 같은 가예약은 한 번(주문 ID와 결제 안내 ID 등, SPEC-015)",
         "dataType": "text",
         "options": 8
       },
@@ -4817,7 +4817,7 @@
         "id": "03h7y0179huqyalz2a23dci6v",
         "tableId": "03h7y0179cdtx0zvnxn50yn3m",
         "name": "status",
-        "comment": "잡힘·확정 자리·풀림·끝남(1-4)",
+        "comment": "가예약됨·확정됨·해제됨·종료됨(1-4)",
         "dataType": "text",
         "options": 8
       },
@@ -4825,7 +4825,7 @@
         "id": "03h7y0179huqyalz2a2o1dfd9",
         "tableId": "03h7y0179cdtx0zvnxn50yn3m",
         "name": "overbooked",
-        "comment": "넘겨 잡음: 다 찬 날에 사장님이 받아 준 자리(R10). 그날은 다른 손님에게 계속 마감(REQ-045)",
+        "comment": "마감 후 추가 수락: 다 찬 날에 사장님이 추가 수락한 자리(R10). 그날은 다른 손님에게 계속 마감(REQ-045)",
         "dataType": "boolean",
         "default": "false",
         "options": 8
@@ -4834,7 +4834,7 @@
         "id": "03h7y0179huqyalz2a5ujcefe",
         "tableId": "03h7y0179cdtx0zvnxn50yn3m",
         "name": "fixed_at",
-        "comment": "확정 자리가 된 시각(결제 확인됨, 날짜 변경의 새 날, 다시 만들기)",
+        "comment": "확정 자리가 된 시각(결제 확인됨, 날짜 변경의 새 날, 재제작)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -4858,7 +4858,7 @@
         "id": "03h7y0179huqyalz2aayx1pi9",
         "tableId": "03h7y0179cdtx0zvnxn50yn3m",
         "name": "done_at",
-        "comment": "픽업 일시가 지나 끝난 시각",
+        "comment": "픽업 일시가 지나 종료된 시각",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -4892,7 +4892,7 @@
         "id": "03h7y0179huqyalz2am0wjb8m",
         "tableId": "03h7y0179huqyalz2aetluqnw",
         "name": "order_id",
-        "comment": "확정된 주문(다시 만들기 주문 포함)",
+        "comment": "확정된 주문(재제작 주문 포함)",
         "dataType": "uuid",
         "options": 12
       },
@@ -4942,7 +4942,7 @@
         "id": "03h7y0179huqyalz2awe6ell4",
         "tableId": "03h7y0179huqyalz2aetluqnw",
         "name": "handed_over_at",
-        "comment": "넘긴 시각(REQ-091)",
+        "comment": "인도 시각(REQ-091)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -5099,7 +5099,7 @@
         "id": "03h7y0179huqyalz2c4bvu3gx",
         "tableId": "03h7y0179huqyalz2c1stktuq",
         "name": "id",
-        "comment": "후기 판 ID",
+        "comment": "후기 버전 ID",
         "dataType": "uuid",
         "default": "gen_random_uuid()",
         "options": 2
@@ -5124,7 +5124,7 @@
         "id": "03h7y0179huqyalz2ca1ewbui",
         "tableId": "03h7y0179huqyalz2c1stktuq",
         "name": "version",
-        "comment": "고치면 새 판(SPEC-062)",
+        "comment": "고치면 새 버전(SPEC-062)",
         "dataType": "integer",
         "options": 8
       },
@@ -5149,7 +5149,7 @@
         "id": "03h7y0179huqyalz2ch51gnkz",
         "tableId": "03h7y0179huqyalz2c1stktuq",
         "name": "superseded_at",
-        "comment": "새 판이 생긴 시각",
+        "comment": "새 버전이 생긴 시각",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -5174,7 +5174,7 @@
         "id": "03h7y0179huqyalz2cp8z4dvh",
         "tableId": "03h7y0179huqyalz2cibw1k8y",
         "name": "review_id",
-        "comment": "후기 판",
+        "comment": "후기 버전",
         "dataType": "uuid",
         "options": 8
       },
@@ -5282,7 +5282,7 @@
         "id": "03h7y0179huqyalz2dg0vlq0z",
         "tableId": "03h7y0179huqyalz2d0oesury",
         "name": "withdrawn_at",
-        "comment": "손님이 동의를 거둔 시각. 그 사진을 바로 내림(REQ-098)",
+        "comment": "손님이 동의를 철회한 시각. 그 사진을 바로 내림(REQ-098)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -5348,7 +5348,7 @@
         "id": "03h7y0179huqyalz2dx34742h",
         "tableId": "03h7y0179huqyalz2dh10dnsu",
         "name": "unpublish_reason",
-        "comment": "동의 거둠·사장님이 내림",
+        "comment": "동의 철회·사장님이 내림",
         "dataType": "text",
         "options": 0
       },
@@ -5373,7 +5373,7 @@
         "id": "03h7y0179huqyalz2e5zx9fbp",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "kind",
-        "comment": "넘긴 질문·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 정하기·취소 뒤 입금·옛 판 변경·장부 다시 연결·영업 신고 보류·달력 기준을 넘는 날",
+        "comment": "에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날",
         "dataType": "text",
         "options": 8
       },
@@ -5381,7 +5381,7 @@
         "id": "03h7y0179huqyalz2e8a8ll2g",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "event_key",
-        "comment": "할 일을 만든 사건 키. 할 일마다 한 번(G2)",
+        "comment": "할 일을 만든 이벤트 키. 할 일마다 한 번(G2)",
         "dataType": "text",
         "options": 8
       },
@@ -5397,7 +5397,7 @@
         "id": "03h7y0179huqyalz2ebnrpupe",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "handoff_id",
-        "comment": "넘긴 질문",
+        "comment": "에스컬레이션 건",
         "dataType": "uuid",
         "options": 0
       },
@@ -5429,7 +5429,7 @@
         "id": "03h7y0179huqyalz2ejkvanen",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "wait_status",
-        "comment": "사장님 답 기다림(1-7): 기다림·늦어짐·할 일에 남음·답함. 넘긴 질문·맞춤 주문·변경 요청·문제 신고만",
+        "comment": "사장님 답 기다림(1-7): 기다림·지연·할 일에 남음·답함. 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고만",
         "dataType": "text",
         "options": 0
       },
@@ -5445,7 +5445,7 @@
         "id": "03h7y0179huqyalz2eno8f751",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "late_notice_at",
-        "comment": "손님에게 늦어짐 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156)",
+        "comment": "손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -5453,7 +5453,7 @@
         "id": "03h7y0179n9e4e4gq3txvnukw",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "realerted_at",
-        "comment": "늦어짐 뒤 사장님께 다시 알린 시각(한 번, REQ-117)",
+        "comment": "지연 뒤 사장님께 다시 알린 시각(한 번, REQ-117)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -5461,7 +5461,7 @@
         "id": "03h7y0179n9e4e4gq3vp4cwyp",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "detail",
-        "comment": "보일 글감(보류 이유, 넘긴 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음",
+        "comment": "보일 글감(보류 이유, 에스컬레이션한 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음",
         "dataType": "jsonb",
         "options": 0
       },
@@ -5511,7 +5511,7 @@
         "id": "03h7y0179n9e4e4gq4axwcsvm",
         "tableId": "03h7y0179n9e4e4gq430lqp8h",
         "name": "kind",
-        "comment": "새 할 일·늦어짐 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)",
+        "comment": "새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)",
         "dataType": "text",
         "options": 8
       },
@@ -5619,7 +5619,7 @@
         "id": "03h7y0179n9e4e4gq529o983a",
         "tableId": "03h7y0179n9e4e4gq4qs0he2r",
         "name": "kind",
-        "comment": "사장님 답·늦어짐 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·다르게 들어옴·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁",
+        "comment": "사장님 답·지연 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·금액 불일치·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁",
         "dataType": "text",
         "options": 8
       },
@@ -5627,7 +5627,7 @@
         "id": "03h7y0179n9e4e4gq53k29xme",
         "tableId": "03h7y0179n9e4e4gq4qs0he2r",
         "name": "event_key",
-        "comment": "같은 주문의 같은 사건은 한 번(REQ-154)",
+        "comment": "같은 주문의 같은 이벤트는 한 번(REQ-154)",
         "dataType": "text",
         "options": 8
       },
@@ -5635,7 +5635,7 @@
         "id": "03h7y0179n9e4e4gq56upt588",
         "tableId": "03h7y0179n9e4e4gq4qs0he2r",
         "name": "template_key",
-        "comment": "서버의 정해진 틀. AI가 쓰지 않고 광고를 넣지 않음(REQ-111)",
+        "comment": "서버의 정해진 템플릿. AI가 쓰지 않고 광고를 넣지 않음(REQ-111)",
         "dataType": "text",
         "options": 8
       },
@@ -5719,7 +5719,7 @@
         "id": "03h7y0179n9e4e4gq5s2pp9yx",
         "tableId": "03h7y0179n9e4e4gq5mot8xs9",
         "name": "provider",
-        "comment": "장부 종류(첫 판은 구글 시트)",
+        "comment": "장부 종류(첫 버전은 구글 시트)",
         "dataType": "text",
         "default": "'google_sheets'",
         "options": 8
@@ -5744,7 +5744,7 @@
         "id": "03h7y0179n9e4e4gq5yjk0tvb",
         "tableId": "03h7y0179n9e4e4gq5mot8xs9",
         "name": "our_columns",
-        "comment": "우리가 쓰는 칸의 머리글과 자리. 같은 이름의 사장님 칸이 있으면 오른쪽 빈 칸(SPEC-009)",
+        "comment": "우리가 쓰는 열의 헤더와 자리. 같은 이름의 사장님 열이 있으면 오른쪽 빈 열(SPEC-009)",
         "dataType": "jsonb",
         "options": 8
       },
@@ -5752,7 +5752,7 @@
         "id": "03h7y0179n9e4e4gq606deloa",
         "tableId": "03h7y0179n9e4e4gq5mot8xs9",
         "name": "credential_ref",
-        "comment": "구글 허락 토큰이 있는 비밀값 저장소의 이름. 토큰 자체는 두지 않음(REQ-135)",
+        "comment": "구글 OAuth 토큰이 있는 시크릿 저장소의 이름. 토큰 자체는 두지 않음(REQ-135)",
         "dataType": "text",
         "options": 8
       },
@@ -5760,7 +5760,7 @@
         "id": "03h7y0179n9e4e4gq62fqwr53",
         "tableId": "03h7y0179n9e4e4gq5mot8xs9",
         "name": "status",
-        "comment": "연결됨·허락 끊김·사장님이 끊음",
+        "comment": "연결됨·권한 해제됨·사장님이 끊음",
         "dataType": "text",
         "default": "'linked'",
         "options": 8
@@ -5769,7 +5769,7 @@
         "id": "03h7y0179n9e4e4gq62t3dmij",
         "tableId": "03h7y0179n9e4e4gq5mot8xs9",
         "name": "failure_alerted_at",
-        "comment": "24시간 실패·허락 끊김을 사장님께 알린 시각(한 번, REQ-159)",
+        "comment": "24시간 실패·권한 해제됨을 사장님께 알린 시각(한 번, REQ-159)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -5794,7 +5794,7 @@
         "id": "03h7y0179n9e4e4gq6bltm8u5",
         "tableId": "03h7y0179n9e4e4gq69098pnw",
         "name": "id",
-        "comment": "장부 줄 ID",
+        "comment": "장부 행 ID",
         "dataType": "uuid",
         "default": "gen_random_uuid()",
         "options": 2
@@ -5811,7 +5811,7 @@
         "id": "03h7y0179n9e4e4gq6esyn8q5",
         "tableId": "03h7y0179n9e4e4gq69098pnw",
         "name": "order_id",
-        "comment": "주문. 다시 만들기 주문은 원래 주문 줄에 적음(R21)",
+        "comment": "주문. 재제작 주문은 원래 주문 행에 적음(R21)",
         "dataType": "uuid",
         "options": 12
       },
@@ -5852,7 +5852,7 @@
         "id": "03h7y0179n9e4e4gq6qh3lra9",
         "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
         "name": "ledger_row_id",
-        "comment": "장부 줄",
+        "comment": "장부 행",
         "dataType": "uuid",
         "options": 8
       },
@@ -5860,7 +5860,7 @@
         "id": "03h7y0179n9e4e4gq6tkhnv04",
         "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
         "name": "event_key",
-        "comment": "사건마다 한 번(REQ-132)",
+        "comment": "이벤트마다 한 번(REQ-132)",
         "dataType": "text",
         "options": 8
       },
@@ -5868,7 +5868,7 @@
         "id": "03h7y0179n9e4e4gq6u94zmkw",
         "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
         "name": "event_kind",
-        "comment": "확정·변경·취소·환불·넘김·미수령·다시 만들기",
+        "comment": "확정·변경·취소·환불·인도·미수령·재제작",
         "dataType": "text",
         "options": 8
       },
@@ -5910,7 +5910,7 @@
         "id": "03h7y0179n9e4e4gq758xp1yx",
         "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
         "name": "last_error_kind",
-        "comment": "마지막 실패 종류(내용·비밀값 없음)",
+        "comment": "마지막 실패 종류(내용·시크릿 없음)",
         "dataType": "text",
         "options": 0
       },
@@ -5968,7 +5968,7 @@
         "id": "03h7y0179sukl6c8nh9772b6d",
         "tableId": "03h7y0179n9e4e4gq7aukd260",
         "name": "attempt",
-        "comment": "그 차례 안 몇 번째 부름(시간 초과·429·5xx 다시 하기, 다시 만들기)",
+        "comment": "그 차례 안 몇 번째 호출(시간 초과·429·5xx 재시도, 재생성)",
         "dataType": "smallint",
         "default": "1",
         "options": 8
@@ -5993,7 +5993,7 @@
         "id": "03h7y0179sukl6c8nhg0plt0j",
         "tableId": "03h7y0179n9e4e4gq7aukd260",
         "name": "prompt_version",
-        "comment": "지시문 판",
+        "comment": "프롬프트 버전",
         "dataType": "text",
         "options": 8
       },
@@ -6065,7 +6065,7 @@
         "id": "03h7y0179sukl6c8nhxv1rage",
         "tableId": "03h7y0179n9e4e4gq7aukd260",
         "name": "cost_usd",
-        "comment": "비용(달러, 모델 회사 값표)",
+        "comment": "비용(달러, 모델 회사 요금표)",
         "dataType": "numeric(12,6)",
         "options": 0
       },
@@ -6081,7 +6081,7 @@
         "id": "03h7y0179sukl6c8ni0gdvkzp",
         "tableId": "03h7y0179n9e4e4gq7aukd260",
         "name": "cost_basis",
-        "comment": "값표 판과 환율 기준",
+        "comment": "요금표 버전과 환율 기준",
         "dataType": "text",
         "options": 0
       },
@@ -6089,7 +6089,7 @@
         "id": "03h7y0179sukl6c8ni40tscfv",
         "tableId": "03h7y0179n9e4e4gq7aukd260",
         "name": "result",
-        "comment": "결과: 성공·실패·시간 넘김·한도(가게 하루 한도나 모델 사용 한도)",
+        "comment": "결과: 성공·실패·시간 초과·한도(가게 하루 한도나 모델 사용 한도)",
         "dataType": "text",
         "options": 8
       },
@@ -6097,7 +6097,7 @@
         "id": "03h7y0179sukl6c8ni4bpx3rj",
         "tableId": "03h7y0179n9e4e4gq7aukd260",
         "name": "stop_reason",
-        "comment": "모델 회사가 준 멈춘 까닭",
+        "comment": "모델 회사가 준 멈춘 사유",
         "dataType": "text",
         "options": 0
       },
@@ -6113,7 +6113,7 @@
         "id": "03h7y0179sukl6c8ni949f7f1",
         "tableId": "03h7y0179n9e4e4gq7aukd260",
         "name": "fallback_reason",
-        "comment": "정해진 문장이나 넘김을 쓴 까닭(AI-1의 서버 확인·실패)",
+        "comment": "정해진 문장이나 에스컬레이션을 쓴 이유(AI-1의 서버 확인·실패)",
         "dataType": "text",
         "options": 0
       },
@@ -6147,7 +6147,7 @@
         "id": "03h7y0179sukl6c8nii8t1rvo",
         "tableId": "03h7y0179sukl6c8nic8nn7g1",
         "name": "ai_call_id",
-        "comment": "도구를 부른 AI 호출",
+        "comment": "도구를 호출한 AI 호출",
         "dataType": "uuid",
         "options": 8
       },
@@ -6179,7 +6179,7 @@
         "id": "03h7y0179sukl6c8nirkab23x",
         "tableId": "03h7y0179sukl6c8nic8nn7g1",
         "name": "args_masked",
-        "comment": "개인정보를 가린 인자",
+        "comment": "개인정보를 마스킹한 인자",
         "dataType": "jsonb",
         "options": 8
       },
@@ -6203,7 +6203,7 @@
         "id": "03h7y0179sukl6c8nixns0ubf",
         "tableId": "03h7y0179sukl6c8nic8nn7g1",
         "name": "called_at",
-        "comment": "부른 시각",
+        "comment": "호출한 시각",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -6252,7 +6252,7 @@
         "id": "03h7y0179sukl6c8nja2cnr3q",
         "tableId": "03h7y0179sukl6c8niz928w4a",
         "name": "response_body",
-        "comment": "처음 결과. 같은 키가 다시 오면 그대로 돌려줌. ID와 상태만(개인정보·비밀값 없음)",
+        "comment": "처음 결과. 같은 키가 다시 오면 그대로 반환함. ID와 상태만(개인정보·시크릿 없음)",
         "dataType": "jsonb",
         "options": 0
       },
@@ -6303,7 +6303,7 @@
         "id": "03h7y0179sukl6c8njp3h0tsn",
         "tableId": "03h7y0179sukl6c8njfcxe8qh",
         "name": "detail",
-        "comment": "종류별 건수 같은 숫자만(내용·개인정보·비밀값 없음)",
+        "comment": "종류별 건수 같은 숫자만(내용·개인정보·시크릿 없음)",
         "dataType": "jsonb",
         "options": 0
       },
@@ -9973,7 +9973,7 @@
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 그림은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n그림에 없는 것: CHECK 제약 275개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 그림 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 그림에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 275개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,

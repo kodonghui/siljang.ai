@@ -1,8 +1,8 @@
 """06단계 API 계약의 스키마(components.schemas). build_api.py가 읽는다.
 
-- 요청 칸에는 `x-corthex-column: 표.칸`을 달아 05단계 db/schema.sql의 그 칸 한도와 견준다(check_api.py C7).
-- 요청·응답 객체는 모두 additionalProperties: false: 계약 밖 칸은 요청이면 422, 응답이면 계약 시험이 실패한다(G6 노출).
-- 카카오 스킬 요청(SkillPayload)만 카카오가 칸을 더할 수 있어 additionalProperties를 막지 않는다.
+- 요청 필드에는 `x-corthex-column: 테이블.컬럼`을 달아 05단계 db/schema.sql의 그 컬럼 한도와 견준다(check_api.py C7).
+- 요청·응답 객체는 모두 additionalProperties: false: 계약 밖 필드는 요청이면 422, 응답이면 계약 테스트가 실패한다(G6 노출).
+- 카카오 스킬 요청(SkillPayload)만 카카오가 필드를 더할 수 있어 additionalProperties를 막지 않는다.
 """
 
 R = "#/components/schemas/"
@@ -89,17 +89,17 @@ def obj(props, required=(), desc=None, additional=False, **extra):
 
 
 def all_required(props, optional=(), desc=None, **extra):
-    """응답 객체: 칸은 모두 늘 실림(값이 없으면 null). optional만 빠질 수 있음."""
+    """응답 객체: 필드는 모두 늘 실림(값이 없으면 null). optional만 빠질 수 있음."""
     return obj(props, [k for k in props if k not in optional], desc=desc, **extra)
 
 
-# ── 자주 쓰는 모양 ───────────────────────────────────────────────────────────
+# ── 자주 쓰는 형식 ───────────────────────────────────────────────────────────
 UUID = {"type": "string", "format": "uuid"}
 DT = {"type": "string", "format": "date-time"}
 DATE = {"type": "string", "format": "date"}
 URL = {"type": "string", "format": "uri", "maxLength": 2048}
-SIGNED_URL = {"type": "string", "format": "uri", "maxLength": 2048, "description": "15분 사는 서명 주소. 저장 위치는 싣지 않음(DEC-09)"}
-REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="서버가 만든 판 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)")
+SIGNED_URL = {"type": "string", "format": "uri", "maxLength": 2048, "description": "15분 사는 서명 주소. 저장 위치는 포함하지 않음(DEC-09)"}
+REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)")
 BASE_REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="화면이 본 기록의 revision. 지금과 다르면 409 version_conflict(DEC-05, G3)")
 UPLOAD_ID = string(24, 204, r"^upl_[A-Za-z0-9_-]{20,200}$", desc="POST /owner/uploads가 준 ID. 1시간 안에 써야 함(DEC-09)")
 ORDER_NO = string(6, 12, r"^[0-9A-Z]{6,12}$", desc="주문번호. 손님에게 보이는 유일한 번호(G6)")
@@ -133,21 +133,21 @@ S["Problem"] = obj({
     "type": string(1, 200, fmt="uri-reference", desc="문제 종류 주소: /problems/{code}"),
     "title": string(1, 200, desc="짧은 말. components.x-corthex.errors의 message"),
     "status": integer(400, 599, desc="이 응답의 HTTP 상태와 늘 같음"),
-    "detail": string(1, 1000, desc="이번 일의 설명. 넣은 값·내부 오류 내용·비밀값·다른 가게의 존재를 싣지 않음(G6)"),
+    "detail": string(1, 1000, desc="이번 일의 설명. 넣은 값·내부 오류 내용·시크릿·다른 가게의 존재를 포함하지 않음(G6)"),
     "instance": string(1, 2048, fmt="uri-reference", desc="요청 경로"),
     "code": {"type": "string", "description": "오류 코드. components.x-corthex.errors에 있는 것만"},  # enum은 build_api.py가 채움
     "traceId": string(32, 32, r"^[0-9a-f]{32}$", desc="서버 로그의 추적 ID(W3C trace-id)"),
-    "errors": arr(ref("FieldError"), 1, 50, desc="validation_failed일 때 칸마다 까닭"),
+    "errors": arr(ref("FieldError"), 1, 50, desc="validation_failed일 때 필드마다 사유"),
     "confirm": arr(ref("ConfirmationNeeded"), 1, 10, desc="confirmation_required일 때 확인할 것"),
-    "retryAfterSeconds": integer(1, 3600, desc="429일 때 다시 부를 수 있을 때까지 초(Retry-After와 같음)"),
+    "retryAfterSeconds": integer(1, 3600, desc="429일 때 다시 호출할 수 있을 때까지 초(Retry-After와 같음)"),
 }, ["type", "title", "status", "code", "traceId"],
-    desc="RFC 9457 Problem Details에 code와 traceId를 더한 오류 모양. 모든 오류 응답이 이 모양(application/problem+json)")
+    desc="RFC 9457 Problem Details에 code와 traceId를 더한 오류 형식. 모든 오류 응답이 이 형식(application/problem+json)")
 
 S["FieldError"] = obj({
     "field": string(1, 200, r"^((/[A-Za-z0-9_]+)+|(header|query|path):[A-Za-z0-9_-]+|file|/)$",
-                    desc="요청에서 틀린 칸의 위치(JSON Pointer, 또는 header:이름·query:이름·path:이름·file). 계약에 있는 칸 이름만"),
-    "code": {"type": "string", "description": "까닭 코드. components.x-corthex.fieldErrors에 있는 것만"},  # enum은 build_api.py가 채움
-}, ["field", "code"], desc="칸 오류 하나. 넣은 값은 싣지 않음")
+                    desc="요청에서 틀린 필드의 위치(JSON Pointer, 또는 header:이름·query:이름·path:이름·file). 계약에 있는 필드 이름만"),
+    "code": {"type": "string", "description": "사유 코드. components.x-corthex.fieldErrors에 있는 것만"},  # enum은 build_api.py가 채움
+}, ["field", "code"], desc="필드 오류 하나. 넣은 값은 포함하지 않음")
 
 S["ConfirmationNeeded"] = obj({
     "kind": {"type": "string", "description": "확인할 것. components.x-corthex.confirmations에 있는 것만"},  # enum은 build_api.py가 채움
@@ -218,16 +218,16 @@ _shop_fields = {
     "contactPhone": string(8, 14, PHONE_RE, col="shops.contact_phone"),
     "businessName": string(1, 60, col="shops.business_name"),
     "representativeName": string(1, 30, col="shops.representative_name"),
-    "businessRegNo": string(10, 10, r"^[0-9]{10}$", col="shops.business_reg_no", desc="사업자등록번호 10자리. 검증 숫자가 틀리면 칸 오류 checksum_failed"),
+    "businessRegNo": string(10, 10, r"^[0-9]{10}$", col="shops.business_reg_no", desc="사업자등록번호 10자리. 검증 숫자가 틀리면 필드 오류 checksum_failed"),
     "mailOrderRegNo": nullable(string(1, 40, col="shops.mail_order_reg_no")),
     "mailOrderExemption": nullable(string(1, 200, col="shops.mail_order_exemption", desc="통신판매업 신고번호 대신 면제 사유. 둘 가운데 하나는 꼭(REQ-106)")),
     "foodLicenseNo": string(1, 30, col="shops.food_license_no"),
     "foodBusinessType": enum(["instant_sale_manufacturing", "bakery"], col="shops.food_business_type",
-                             desc="즉석판매제조·가공업, 제과점영업. 그 밖은 첫 판에서 받지 않음(칸 오류 not_allowed)"),
+                             desc="즉석판매제조·가공업, 제과점영업. 그 밖은 첫 버전에서 받지 않음(필드 오류 not_allowed)"),
     "licensePhotoUploadId": dict(UPLOAD_ID, description="용도 license_photo로 올린 신고증 사진"),
 }
 S["ShopRegistration"] = obj(dict(_shop_fields, **{
-    "entrustmentTermsVersion": string(1, 20, r"^[0-9A-Za-z.-]+$", col="shops.entrustment_terms_version", desc="화면이 보여 준 개인정보 처리 위탁·재위탁 조건의 판"),
+    "entrustmentTermsVersion": string(1, 20, r"^[0-9A-Za-z.-]+$", col="shops.entrustment_terms_version", desc="화면이 보여 준 개인정보 처리 위탁·재위탁 조건의 버전"),
     "entrustmentConsent": boolean("그 조건에 동의함. false면 422 consent_required, 넣은 값도 남기지 않음(REQ-107)"),
 }), ["name", "contactPhone", "businessName", "representativeName", "businessRegNo", "foodLicenseNo", "foodBusinessType",
      "licensePhotoUploadId", "entrustmentTermsVersion", "entrustmentConsent"])
@@ -236,12 +236,12 @@ S["ShopUpdate"] = obj({
     "baseRevision": BASE_REVISION,
     "name": string(1, 40, col="shops.name"),
     "contactPhone": string(8, 14, PHONE_RE, col="shops.contact_phone"),
-    "pickupAddress": nullable(string(1, 200, col="shops.pickup_address", desc="픽업 장소. 전날 안내에 실음(E14, DEC-13)")),
+    "pickupAddress": nullable(string(1, 200, col="shops.pickup_address", desc="픽업 장소. 전날 안내에 포함함(E14, DEC-13)")),
     "completionPhotoEnabled": boolean("완성 사진 보내기(SPEC-009)", col="shops.completion_photo_enabled"),
     "idleCloseHours": integer(1, 720, col="shops.idle_close_hours", desc="문의 끊김까지 시간(SPEC-025)"),
     "ownerWaitMinutes": integer(10, 1440, col="shops.owner_wait_minutes", desc="사장님 답 기다리는 시간(SPEC-024)"),
     "dailyAiCostLimitKrw": integer(0, 1000000, col="shops.daily_ai_cost_limit_krw", desc="하루 AI 비용 한도(REQ-163)"),
-}, ["baseRevision"], desc="바꿀 칸만 보냄(baseRevision 밖 한 칸 이상)", minProperties=2)
+}, ["baseRevision"], desc="바꿀 필드만 보냄(baseRevision 밖 한 필드 이상)", minProperties=2)
 
 S["LicenseResubmission"] = obj({
     "baseRevision": BASE_REVISION,
@@ -321,7 +321,7 @@ S["ReviewShopDetail"] = all_required({
 
 S["LicenseReviewInput"] = obj({
     "baseRevision": BASE_REVISION,
-    "decision": enum(["verified", "on_hold"], desc="확인됨·보류(SPEC-003). 확인됨을 보류로 바꾸기는 첫 판에서 하지 않음(M7)"),
+    "decision": enum(["verified", "on_hold"], desc="확인됨·보류(SPEC-003). 확인됨을 보류로 바꾸기는 첫 버전에서 하지 않음(M7)"),
     "holdReason": string(1, 200, col="shops.license_hold_reason", desc="보류 이유. decision이 on_hold면 꼭"),
 }, ["baseRevision", "decision"])
 
@@ -339,7 +339,7 @@ S["OperatorAlert"] = all_required({
 S["OperatorAlertList"] = all_required({"items": arr(ref("OperatorAlert"), 0, 100), "nextCursor": nullable(CURSOR)})
 
 # ── 가격표 ──────────────────────────────────────────────────────────────────
-OPTION_KEY = string(1, 40, r"^[A-Za-z0-9_-]+$", desc="이 요청 안에서 옵션을 가리키는 이름(규칙·도안이 씀). 저장되지 않음")
+OPTION_KEY = string(1, 40, r"^[A-Za-z0-9_-]+$", desc="이 요청 안에서 옵션을 참조하는 이름(규칙·도안이 씀). 저장되지 않음")
 S["PriceOptionInput"] = obj({
     "key": OPTION_KEY,
     "group": enum(["size", "flavor", "design", "extra"], col="price_options.option_group", desc="크기·맛·디자인·더하는 옵션"),
@@ -361,7 +361,7 @@ S["PriceOptionRuleInput"] = obj({
 S["DesignInput"] = obj({
     "name": string(1, 30, col="designs.name"),
     "uploadId": dict(UPLOAD_ID, description="새로 올린 도안 그림(용도 design_image)"),
-    "sourceDesignId": dict(UUID, description="지난 판의 도안 그림을 그대로 쓸 때 그 도안 ID(같은 가게)"),
+    "sourceDesignId": dict(UUID, description="이전 버전의 도안 그림을 그대로 쓸 때 그 도안 ID(같은 가게)"),
     "optionKey": nullable(OPTION_KEY),
     "inStandard": boolean(col="designs.in_standard"),
     "position": integer(0, 32767, col="designs.position"),
@@ -373,7 +373,7 @@ S["PriceListInput"] = obj({
     "options": arr(ref("PriceOptionInput"), 1, 100, desc="옵션 100개까지(SPEC-004)"),
     "rules": arr(ref("PriceOptionRuleInput"), 0, 500),
     "designs": arr(ref("DesignInput"), 0, 50, desc="도안 50장까지(SPEC-004)"),
-}, ["baseRevision", "options", "rules", "designs"], desc="새 판의 전체 내용. 바꾼 것이 없으면 새 판을 만들지 않음")
+}, ["baseRevision", "options", "rules", "designs"], desc="새 버전의 전체 내용. 바꾼 것이 없으면 새 버전을 만들지 않음")
 
 S["PriceOption"] = all_required({
     "optionId": UUID,
@@ -400,8 +400,8 @@ S["Design"] = all_required({
     "position": integer(0, 32767),
 })
 S["PriceList"] = all_required({
-    "version": integer(1, 2147483647, desc="판 번호(TERM-005)"),
-    "current": boolean("지금 판인지. 지난 판은 읽기만(REQ-027)"),
+    "version": integer(1, 2147483647, desc="버전(TERM-005)"),
+    "current": boolean("현재 버전인지. 이전 버전은 읽기만(REQ-027)"),
     "createdAt": DT,
     "supersededAt": nullable(DT),
     "options": arr(ref("PriceOption"), 0, 100),
@@ -409,13 +409,13 @@ S["PriceList"] = all_required({
     "designs": arr(ref("Design"), 0, 50),
     "revision": REVISION,
 })
-S["PriceListResult"] = all_required({"outcome": outcome(("created", "unchanged"), "created: 새 판을 만듦, unchanged: 바꾼 것이 없어 판 그대로(SPEC-004)"), "priceList": ref("PriceList")})
+S["PriceListResult"] = all_required({"outcome": outcome(("created", "unchanged"), "created: 새 버전을 만듦, unchanged: 바꾼 것이 없어 버전 그대로(SPEC-004)"), "priceList": ref("PriceList")})
 S["VersionSummary"] = all_required({"version": integer(1, 2147483647), "createdAt": DT, "supersededAt": nullable(DT)})
 S["VersionList"] = all_required({"items": arr(ref("VersionSummary"), 0, 1000)})
 
 # ── 운영규정 ────────────────────────────────────────────────────────────────
 S["ClauseInput"] = obj({
-    "key": enum(CLAUSE_KEYS, col="rule_clauses.clause_key", desc="틀의 조문 칸(custom 밖은 판마다 하나)이나 가게가 더한 조문(custom)"),
+    "key": enum(CLAUSE_KEYS, col="rule_clauses.clause_key", desc="템플릿의 조문 필드(custom 밖은 버전마다 하나)나 가게가 더한 조문(custom)"),
     "position": integer(1, 32767, col="rule_clauses.position"),
     "title": string(1, 60, col="rule_clauses.title"),
     "conditionText": string(1, 1000, col="rule_clauses.condition_text"),
@@ -446,16 +446,16 @@ S["Clause"] = all_required({
 })
 S["RefundTier"] = all_required({"hoursBeforeMin": integer(0, 8760), "hoursBeforeMax": nullable(integer(1, 8760)), "refundPct": integer(0, 100)})
 S["OperatingRules"] = all_required({
-    "version": nullable(integer(1, 2147483647, desc="판 번호. 틀(아직 확정 전)이면 null")),
-    "isTemplate": boolean("아직 확정한 판이 없어 틀의 기본값을 보임(SPEC-005)"),
+    "version": nullable(integer(1, 2147483647, desc="버전. 템플릿(아직 확정 전)이면 null")),
+    "isTemplate": boolean("아직 확정한 버전이 없어 템플릿의 기본값을 보임(SPEC-005)"),
     "current": boolean(),
     "quoteValidHours": integer(1, 720),
     "paymentDueHours": integer(1, 720),
     "issueReportHours": integer(1, 720),
-    "changeDeadlineHours": nullable(integer(1, 720, desc="틀에서는 null(가게가 넣음)")),
+    "changeDeadlineHours": nullable(integer(1, 720, desc="템플릿에서는 null(가게가 넣음)")),
     "cancellationFeeKrw": integer(0, 10000000),
     "preProductionRefundPct": integer(0, 100),
-    "preProductionLoweredAck": boolean("전액보다 낮춘 판에서 '그래도 저장'을 누름(REQ-032)"),
+    "preProductionLoweredAck": boolean("전액보다 낮춘 버전에서 '그래도 저장'을 누름(REQ-032)"),
     "dateChangeRefundBasis": nullable(enum(["original_pickup", "new_pickup"])),
     "clauses": arr(ref("Clause"), 0, 50),
     "refundTiers": arr(ref("RefundTier"), 0, 20),
@@ -463,9 +463,9 @@ S["OperatingRules"] = all_required({
     "supersededAt": nullable(DT),
     "revision": nullable(REVISION),
 })
-S["OperatingRulesResult"] = all_required({"outcome": outcome(("created", "unchanged"), "created: 새 판, unchanged: 바꾼 것이 없음"), "operatingRules": ref("OperatingRules")})
+S["OperatingRulesResult"] = all_required({"outcome": outcome(("created", "unchanged"), "created: 새 버전, unchanged: 바꾼 것이 없음"), "operatingRules": ref("OperatingRules")})
 
-# ── 결제 받을 곳 ────────────────────────────────────────────────────────────
+# ── 결제 수단 ────────────────────────────────────────────────────────────
 S["PaymentDestinationInput"] = obj({
     "baseRevision": nullable(BASE_REVISION),
     "bankName": string(1, 30, col="payment_accounts.bank_name"),
@@ -483,9 +483,9 @@ S["PaymentDestination"] = all_required({
     "createdAt": DT,
     "revision": REVISION,
 })
-S["PaymentDestinationResult"] = all_required({"outcome": outcome(("created", "unchanged"), "created: 새 줄(옛 줄은 그만 씀, 나간 결제 안내는 그대로), unchanged: 같은 값"), "paymentDestination": ref("PaymentDestination")})
+S["PaymentDestinationResult"] = all_required({"outcome": outcome(("created", "unchanged"), "created: 새 행(옛 행은 그만 씀, 나간 결제 안내는 그대로), unchanged: 같은 값"), "paymentDestination": ref("PaymentDestination")})
 
-# ── 영업 달력 ───────────────────────────────────────────────────────────────
+# ── 영업 캘린더 ───────────────────────────────────────────────────────────────
 S["CalendarSettingsInput"] = obj({
     "baseRevision": nullable(BASE_REVISION),
     "closedWeekdays": arr(integer(1, 7, desc="1=월 … 7=일"), 0, 7, unique=True),
@@ -493,7 +493,7 @@ S["CalendarSettingsInput"] = obj({
     "orderCutoffDays": integer(0, 30, col="business_calendars.order_cutoff_days"),
     "orderCutoffTime": string(5, 5, HHMM_RE, col="business_calendars.order_cutoff_time"),
     "replyStart": string(5, 5, HHMM_RE, col="business_calendars.reply_start"),
-    "replyEnd": string(5, 5, HHMM_RE, col="business_calendars.reply_end", desc="replyStart보다 뒤(칸 오류 not_after_start)"),
+    "replyEnd": string(5, 5, HHMM_RE, col="business_calendars.reply_end", desc="replyStart보다 뒤(필드 오류 not_after_start)"),
     "dayBeforeNoticeTime": string(5, 5, NOTICE_RE, col="business_calendars.day_before_notice_time", desc="08:00~20:50(SPEC-052)"),
     "reviewRequestTime": string(5, 5, NOTICE_RE, col="business_calendars.review_request_time", desc="08:00~20:50(SPEC-061)"),
     "confirm": confirm_list(["closed_day_with_orders"]),
@@ -530,9 +530,9 @@ S["CalendarDay"] = all_required({
     "capacity": integer(0, 100, desc="그날의 하루 최대 개수(가게 기준이나 그날 값)"),
     "held": integer(0, 10000, desc="잡힌 자리(잡힘 + 확정 자리)"),
     "remaining": integer(0, 100, desc="남은 자리. 사장님 화면에만(손님에게는 보이지 않음, G6)"),
-    "full": boolean("하루 최대 개수에 닿아 저절로 마감됨"),
+    "full": boolean("하루 최대 개수에 닿아 자동으로 마감됨"),
     "manuallyClosed": boolean("사장님이 누른 그날 주문 마감(SPEC-012)"),
-    "overbooked": boolean("넘겨 잡은 자리가 있음(R10)"),
+    "overbooked": boolean("마감 후 추가 수락한 자리가 있음(R10)"),
     "revision": REVISION,
 })
 S["CalendarDayList"] = all_required({"items": arr(ref("CalendarDay"), 0, 62)})
@@ -542,7 +542,7 @@ S["CalendarDayInput"] = obj({
     "capacityOverride": nullable(integer(0, 100, col="calendar_days.capacity")),
     "manuallyClosed": boolean("그날 주문 마감(SPEC-012). 풀면 다시 잡음"),
     "confirm": confirm_list(["closed_day_with_orders"]),
-}, ["baseRevision"], desc="바꿀 칸만 보냄", minProperties=2)
+}, ["baseRevision"], desc="바꿀 필드만 보냄", minProperties=2)
 S["CalendarDayResult"] = all_required({"outcome": outcome(), "day": ref("CalendarDay")})
 
 # ── 카카오톡 채널 ───────────────────────────────────────────────────────────
@@ -567,7 +567,7 @@ S["KakaoChannel"] = all_required({
     "checkExpiresAt": nullable(DT),
     "linkedAt": nullable(DT),
     "failureHints": arr(enum(["skill_url", "skill_key_header", "open_builder_deploy", "test_message_missing"]), 0, 4, unique=True,
-                        desc="연결 안 됨의 까닭 후보(SPEC-008)"),
+                        desc="연결 안 됨의 사유 후보(SPEC-008)"),
     "skill": ref("SkillSetup"),
     "revision": REVISION,
 })
@@ -575,7 +575,7 @@ S["KakaoChannelResult"] = all_required({"outcome": outcome(("created", "done", "
 
 # ── 장부 ────────────────────────────────────────────────────────────────────
 S["LedgerAuthorizationInput"] = obj({
-    "redirectUri": string(9, 2048, r"^https://", fmt="uri", desc="구글 허락 뒤 돌아올 화면 주소(서버 설정의 목록에 있는 것만)"),
+    "redirectUri": string(9, 2048, r"^https://", fmt="uri", desc="구글 권한 요청 뒤 돌아올 화면 주소(서버 설정의 목록에 있는 것만)"),
 }, ["redirectUri"])
 S["LedgerAuthorization"] = all_required({
     "authorizationUrl": URL,
@@ -590,11 +590,11 @@ S["LedgerLinkInput"] = obj({
     "sheetName": string(1, 100, col="ledger_links.sheet_name", desc="시트 탭 이름"),
 }, ["baseRevision", "code", "state", "spreadsheetId", "sheetName"])
 S["LedgerLink"] = all_required({
-    "status": enum(["linked", "auth_lost", "unlinked"], desc="연결됨·허락 끊김·끊음"),
+    "status": enum(["linked", "auth_lost", "unlinked"], desc="연결됨·권한 해제됨·끊음"),
     "spreadsheetId": string(20, 100, r"^[A-Za-z0-9_-]+$"),
     "sheetName": string(1, 100),
-    "columns": arr(all_required({"header": string(1, 40), "column": string(1, 3, r"^[A-Z]{1,3}$")}), 1, 30, desc="우리가 쓰는 칸의 머리글과 자리"),
-    "movedRight": boolean("같은 이름의 사장님 칸이 있어 우리 칸을 오른쪽 빈 칸에 만듦(REQ-127)"),
+    "columns": arr(all_required({"header": string(1, 40), "column": string(1, 3, r"^[A-Z]{1,3}$")}), 1, 30, desc="우리가 쓰는 열의 헤더와 자리"),
+    "movedRight": boolean("같은 이름의 사장님 열이 있어 우리 열을 오른쪽 빈 열에 만듦(REQ-127)"),
     "failingSince": nullable(DT),
     "unwrittenCount": integer(0, 100000, desc="아직 장부에 못 적은 쓰기 수"),
     "linkedAt": DT,
@@ -610,7 +610,7 @@ S["BookingLink"] = all_required({
     "url": nullable(URL),
     "issuedAt": nullable(DT),
     "missing": arr(enum(["price_list", "operating_rules", "calendar", "license_verified", "kakao_channel", "payment_destination", "privacy_policy"]), 0, 7, unique=True,
-                   desc="빠진 조건(SPEC-010, DEC-12, REQ-164). privacy_policy는 운영자가 채움"),
+                   desc="미충족 조건(SPEC-010, DEC-12, REQ-164). privacy_policy는 운영자가 채움"),
     "recommended": arr(enum(["pickup_address"]), 0, 1, unique=True, desc="막지 않지만 넣으면 좋은 것(DEC-13)"),
 })
 S["PublicPriceOption"] = all_required({
@@ -666,7 +666,7 @@ S["OwnerTaskList"] = all_required({
     "alertChannelFriend": boolean("false면 화면 맨 위에 '알림을 받으려면 채널을 추가하세요'(SPEC-067)"),
 })
 
-# ── 넘긴 질문과 상담 ────────────────────────────────────────────────────────
+# ── 에스컬레이션 건과 상담 ────────────────────────────────────────────────────────
 S["CustomerLine"] = all_required({
     "at": DT,
     "text": nullable(string(0, 4000, desc="원래 값으로 되돌린 글(그 가게 사장님 화면에만, SPEC-021)")),
@@ -679,7 +679,7 @@ S["Handoff"] = all_required({
     "status": enum(["open", "answered"]),
     "requestedDay": nullable(DATE),
     "order": nullable(ref("OrderRef")),
-    "customerLines": arr(ref("CustomerLine"), 1, 50, desc="넘긴 손님 말과 그 뒤 덧붙은 말"),
+    "customerLines": arr(ref("CustomerLine"), 1, 50, desc="에스컬레이션한 손님 말과 그 뒤 덧붙은 말"),
     "customerChannelFriend": boolean(),
     "answerText": nullable(string(1, 1000)),
     "dayDecision": nullable(enum(["accepted", "declined"])),
@@ -691,7 +691,7 @@ S["Handoff"] = all_required({
 S["HandoffAnswerInput"] = obj({
     "baseRevision": BASE_REVISION,
     "text": string(1, 1000, col="handoffs.answer_text", desc="손님에게 그대로 전할 답(AI가 고치지 않음)"),
-    "dayDecision": enum(["accepted", "declined"], col="handoffs.day_decision", desc="마감된 날을 받아 줄지(까닭이 closed_day일 때만)"),
+    "dayDecision": enum(["accepted", "declined"], col="handoffs.day_decision", desc="마감된 날에 추가로 받을지(사유가 closed_day일 때만)"),
 }, ["baseRevision"], anyOf=[{"required": ["text"]}, {"required": ["dayDecision"]}])
 S["HandoffAnswerResult"] = all_required({
     "outcome": outcome(),
@@ -790,7 +790,7 @@ S["ChangeSet"] = obj({
     "extras": arr(string(1, 30), 0, 20),
     "designNotes": string(0, 500), "lettering": string(0, 50), "colors": string(0, 100),
     "pickupAt": DT, "courierPickup": boolean(),
-}, desc="바꾸려는 내용(옵션은 이름). 서버가 그 주문의 가격표 판에서 찾음", minProperties=1)
+}, desc="바꾸려는 내용(옵션은 이름). 서버가 그 주문의 가격표 버전에서 찾음", minProperties=1)
 CHANGE_STATUS = ["requested", "awaiting_difference", "applied", "rejected", "closed_no_difference", "stale", "closed_by_cancel"]
 S["ChangeRequestSummary"] = all_required({
     "changeRequestId": UUID, "status": enum(CHANGE_STATUS), "baseVersion": integer(1, 2147483647), "createdAt": DT,
@@ -818,7 +818,7 @@ S["Order"] = all_required({
     "orderNo": ORDER_NO,
     "kind": enum(["standard", "custom"]),
     "status": enum(ORDER_STATUS),
-    "version": integer(1, 2147483647, desc="주문 내용의 지금 판 번호"),
+    "version": integer(1, 2147483647, desc="주문 내용의 지금 버전"),
     "pickupAt": DT,
     "pickupDay": DATE,
     "amount": MONEY(),
@@ -832,7 +832,7 @@ S["Order"] = all_required({
     "cancelReason": nullable(string(1, 200)),
     "remakeOf": nullable(ref("OrderRef")),
     "consultationId": UUID,
-    "details": arr(ref("OrderDetailsVersion"), 1, 100, desc="주문 내용 판, 새 판이 앞"),
+    "details": arr(ref("OrderDetailsVersion"), 1, 100, desc="주문 내용 버전, 새 버전이 앞"),
     "referencePhotos": arr(all_required({"url": SIGNED_URL}), 0, 10),
     "quote": nullable(ref("QuoteView")),
     "day": all_required({"capacity": integer(0, 100), "held": integer(0, 10000), "remaining": integer(0, 100), "full": boolean()},
@@ -855,9 +855,9 @@ S["OrderSummary"] = all_required({
 S["OrderList"] = all_required({"items": arr(ref("OrderSummary"), 0, 100), "nextCursor": nullable(CURSOR)})
 S["CustomDecisionInput"] = obj({
     "baseRevision": BASE_REVISION,
-    "decision": enum(["accept", "accept_with_amount", "reject"], desc="수락·금액 바꿔 수락·거절(SPEC-031)"),
+    "decision": enum(["accept", "accept_with_amount", "reject"], desc="수락·금액 변경 수락·거절(SPEC-031)"),
     "amount": integer(1, 10000000, col="order_details.amount", desc="바꾼 금액. accept_with_amount만. 지금 금액과 같으면 수락으로 봄"),
-    "amountChangeReason": string(1, 200, col="order_details.amount_change_reason", desc="금액을 바꾼 까닭. accept_with_amount면 꼭"),
+    "amountChangeReason": string(1, 200, col="order_details.amount_change_reason", desc="금액을 바꾼 이유. accept_with_amount면 꼭"),
     "rejectReason": string(0, 200, col="orders.reject_reason"),
     "confirm": confirm_list(["overbooking"]),
 }, ["baseRevision", "decision"])
@@ -868,7 +868,7 @@ S["OrderCommandResult"] = all_required({
 }, desc="주문 명령의 결과. 결제 안내가 새로 나갔으면 paymentRequest")
 S["OverdueDecisionInput"] = obj({
     "baseRevision": BASE_REVISION,
-    "decision": enum(["wait", "cancel"], desc="더 기다리기(SPEC-038)·결제 없어 취소(SPEC-039)"),
+    "decision": enum(["wait", "cancel"], desc="결제 기한 연장(SPEC-038)·결제 없어 취소(SPEC-039)"),
     "confirm": confirm_list(["overbooking"]),
 }, ["baseRevision", "decision"])
 S["ShopCancelInput"] = obj({
@@ -888,7 +888,7 @@ S["ShopCancelResult"] = all_required({
     "outcome": outcome(),
     "order": ref("Order"),
     "refundPreview": nullable(ref("RefundPreview")),
-}, desc="받은 금액이 있으면 refundPreview를 보이고 환불 정하기(API-050)로 감")
+}, desc="받은 금액이 있으면 refundPreview를 보이고 환불 결정(API-050)으로 감")
 S["ProductionMarkInput"] = obj({
     "baseRevision": BASE_REVISION,
     "mark": enum(["custom_material_ordered", "production_started", "completed"]),
@@ -922,16 +922,16 @@ S["ProductionDay"] = all_required({
             "lettering": nullable(string(0, 50)), "colors": nullable(string(0, 100)), "designNotes": nullable(string(0, 500)),
         }),
         "production": ref("Production"),
-    }), 0, 100, desc="확정된 주문과 다시 만들기 주문만, 픽업 일시 순(SPEC-050). 비면 화면이 '이날 만들 주문이 없어요'"),
+    }), 0, 100, desc="확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 비면 화면이 '이날 만들 주문이 없어요'"),
 })
 
 # ── 결제 안내와 환불 ────────────────────────────────────────────────────────
 S["PaymentRequestList"] = all_required({"items": arr(ref("PaymentRequest"), 0, 100), "nextCursor": nullable(CURSOR)})
 S["ReconciliationInput"] = obj({
     "baseRevision": BASE_REVISION,
-    "result": enum(["received", "not_received", "mismatch", "resolved"], desc="들어옴(SPEC-034)·안 들어옴·다르게 들어옴(SPEC-035)·맞춰짐"),
+    "result": enum(["received", "not_received", "mismatch", "resolved"], desc="입금됨(SPEC-034)·미입금·금액 불일치(SPEC-035)·대조 완료"),
     "mismatchAmount": integer(1, 100000000, col="payment_requests.mismatch_amount", desc="들어온 금액. mismatch만, 안내 금액의 10배까지"),
-    "resolution": enum(["shortfall_paid", "excess_returned"], col="payments.resolution", desc="맞춰짐의 까닭. resolved만"),
+    "resolution": enum(["shortfall_paid", "excess_returned"], col="payments.resolution", desc="대조 완료의 사유. resolved만"),
 }, ["baseRevision", "result"])
 S["ReconciliationResult"] = all_required({
     "outcome": outcome(("done", "unchanged", "paid_after_cancel"), "paid_after_cancel: 그 사이 주문이 취소돼 확정하지 않고 환불 정할 일을 남김(SPEC-036)"),
@@ -946,9 +946,9 @@ S["RefundInput"] = obj({
                   desc="손님 취소·가게 사정 취소·금액이 내려간 변경·취소 뒤 들어온 입금. 보상 환불은 API-065"),
     "changeRequestId": dict(UUID, description="금액이 내려간 변경(cause가 change_reduced일 때 꼭)"),
     "decision": enum(["full", "partial", "none"], col="refunds.decision", desc="전액 환불·일부 환불·환불 없이 취소"),
-    "amount": integer(0, 10000000, col="refunds.amount", desc="none이면 0. 받은 금액 - 이미 정한 환불을 넘으면 칸 오류 exceeds_received"),
+    "amount": integer(0, 10000000, col="refunds.amount", desc="none이면 0. 받은 금액 - 이미 정한 환불을 넘으면 필드 오류 exceeds_received"),
     "overrideReason": string(1, 200, col="refunds.override_reason", desc="계산값과 다른 금액이면 꼭"),
-}, ["baseRevision", "cause", "decision", "amount"], desc="주문의 baseRevision으로 정함. 같은 까닭의 환불은 한 번(G2). 우리는 돈을 옮기지 않음(REQ-079)")
+}, ["baseRevision", "cause", "decision", "amount"], desc="주문의 baseRevision으로 정함. 같은 사유의 환불은 한 번(G2). 우리는 돈을 옮기지 않음(REQ-079)")
 REFUND_ACCOUNT_IN = obj({
     "bankName": string(1, 30, col="refunds.refund_bank_name"),
     "accountNumber": string(1, 40, r"^[0-9-]+$", col="refunds.refund_account_number"),
@@ -980,14 +980,14 @@ S["RefundSentInput"] = obj({
     "baseRevision": BASE_REVISION,
     "method": enum(["bank_transfer", "card_cancel"], col="refunds.method"),
     "refundAccount": nullable(REFUND_ACCOUNT_IN),
-}, ["baseRevision", "method"], desc="사장님이 돌려보낸 뒤 '보냄'을 표시. 우리는 돈을 옮기지 않음(REQ-079)")
+}, ["baseRevision", "method"], desc="사장님이 반환한 뒤 '보냄'을 표시. 우리는 돈을 옮기지 않음(REQ-079)")
 
 # ── 변경 요청 ───────────────────────────────────────────────────────────────
 S["ChangeRequest"] = all_required({
     "changeRequestId": UUID,
     "order": ref("OrderRef"),
-    "baseVersion": integer(1, 2147483647, desc="손님 카드에 묶였던 주문 판"),
-    "orderVersion": integer(1, 2147483647, desc="지금 주문 판. 다르면 반영하지 않음(REQ-133)"),
+    "baseVersion": integer(1, 2147483647, desc="손님 카드에 묶였던 주문 버전"),
+    "orderVersion": integer(1, 2147483647, desc="지금 주문 버전. 다르면 반영하지 않음(REQ-133)"),
     "changes": ref("ChangeSet"),
     "newPickupAt": nullable(DT),
     "needsOwnerDay": boolean("새 날이 휴무·마감이라 받을지 사장님이 정함"),
@@ -1006,7 +1006,7 @@ S["ChangeRequest"] = all_required({
 S["ChangeDecisionInput"] = obj({
     "baseRevision": BASE_REVISION,
     "decision": enum(["accept", "reject"]),
-    "amountDelta": integer(-10000000, 10000000, col="change_requests.amount_delta", desc="받아들일 때 금액 차이: 오르면 추가 금액(1원~1,000만 원), 내려가면 음수, 그대로면 0"),
+    "amountDelta": integer(-10000000, 10000000, col="change_requests.amount_delta", desc="수락할 때 금액 차이: 오르면 추가 금액(1원~1,000만 원), 내려가면 음수, 그대로면 0"),
     "rejectReason": string(0, 200, col="change_requests.reject_reason"),
     "confirm": confirm_list(["overbooking"]),
 }, ["baseRevision", "decision"])
@@ -1028,7 +1028,7 @@ S["IssueReport"] = all_required({
     "description": nullable(string(1, 1000)),
     "healthConcern": boolean("먹고 아프다는 말(SPEC-057)"),
     "photos": arr(all_required({"url": SIGNED_URL}), 0, 5),
-    "followUps": arr(all_required({"issueReportId": UUID, "reportedAt": DT}), 0, 20, desc="같은 주문의 뒤 신고(이어 붙임)"),
+    "followUps": arr(all_required({"issueReportId": UUID, "reportedAt": DT}), 0, 20, desc="같은 주문의 뒤 신고(연결)"),
     "compensation": nullable(enum(["remake", "partial_refund", "full_refund", "none"])),
     "decidedAt": nullable(DT),
     "remakeOrder": nullable(ref("OrderRef")),
@@ -1040,7 +1040,7 @@ S["IssueReport"] = all_required({
 S["CompensationInput"] = obj({
     "baseRevision": BASE_REVISION,
     "compensation": enum(["remake", "partial_refund", "full_refund", "none"], col="issue_reports.compensation"),
-    "remakePickupAt": dict(DT, description="다시 만들기의 새 픽업 일시(지금 뒤 60일 안). remake만"),
+    "remakePickupAt": dict(DT, description="재제작의 새 픽업 일시(지금 뒤 60일 안). remake만"),
     "refundAmount": integer(1, 10000000, col="refunds.amount", desc="일부 환불 금액. partial_refund만(SPEC-047과 같은 한도)"),
     "refundOverrideReason": string(1, 200, col="refunds.override_reason"),
     "confirm": confirm_list(["closed_day"]),
@@ -1092,20 +1092,20 @@ S["SkillPayload"] = obj({
     "userRequest": obj({
         "timezone": string(1, 64),
         "lang": nullable(string(0, 16)),
-        "utterance": string(0, 100000, desc="손님 말. 1,000자를 넘으면 앞 1,000자만 AI에(SPEC-017). 칸 한도 없음(messages.body_masked)"),
+        "utterance": string(0, 100000, desc="손님 말. 1,000자를 넘으면 앞 1,000자만 AI에(SPEC-017). 필드 한도 없음(messages.body_masked)"),
         "callbackUrl": string(9, 2048, r"^https://", fmt="uri", desc="콜백 주소(블록에서 콜백을 켰을 때). 한 번만, 유효 시간 안(OPEN-2)"),
         "block": obj({"id": string(1, 200), "name": string(0, 200)}, additional=True),
         "params": obj({}, desc="카카오가 붙이는 값(예: surface). 사진이 어떻게 오는지는 OPEN-3", additional=True),
         "user": obj({
-            "id": string(1, 70, col="customers.kakao_user_key", desc="botUserKey(최대 70자). 손님 구분 열쇠(G1)"),
+            "id": string(1, 70, col="customers.kakao_user_key", desc="botUserKey(최대 70자). 손님 구분 키(G1)"),
             "type": string(1, 32),
             "properties": obj({
                 "botUserKey": string(1, 70), "plusfriendUserKey": string(1, 200), "appUserId": string(1, 200),
-                "isFriend": boolean("채널 친구인지(REQ-120). 있으면 손님 줄에 남김"),
+                "isFriend": boolean("채널 친구인지(REQ-120). 있으면 손님 행에 남김"),
             }, additional=True),
         }, ["id", "type"], additional=True),
     }, ["utterance", "user"], additional=True),
-    "bot": obj({"id": string(1, 64, col="kakao_channels.bot_id", desc="봇 ID. 가게를 찾는 열쇠(SPEC-017)"), "name": string(0, 200)}, ["id"], additional=True),
+    "bot": obj({"id": string(1, 64, col="kakao_channels.bot_id", desc="봇 ID. 가게를 찾는 키(SPEC-017)"), "name": string(0, 200)}, ["id"], additional=True),
     "action": obj({
         "id": string(1, 200), "name": string(0, 200),
         "params": obj({
@@ -1123,7 +1123,7 @@ S["SkillPayload"] = obj({
     "contexts": arr({"type": "object"}, 0, 50),
     "flow": obj({}, additional=True),
 }, ["userRequest", "bot", "action"], additional=True,
-    desc="카카오 오픈빌더가 보내는 스킬 요청(2026-11-12 공식 문서 확인). 카카오가 칸을 더할 수 있어 모르는 칸은 받음")
+    desc="카카오 오픈빌더가 보내는 스킬 요청(2026-11-12 공식 문서 확인). 카카오가 필드를 더할 수 있어 모르는 필드는 받음")
 
 BUTTON = obj({
     "label": string(1, 14),
@@ -1159,7 +1159,7 @@ S["SkillTemplateResponse"] = obj({
         "outputs": arr(OUTPUT, 1, 3),
         "quickReplies": arr(QUICK_REPLY, 0, 10),
     }, ["outputs"]),
-}, ["version", "template"], desc="스킬 응답(카카오 응답 모양: outputs 1~3개, quickReplies 10개까지, simpleText 1,000자, textCard 제목 50자·설명 400자·버튼 3개, 버튼 이름 14자). 오류 내용·내부 ID·다른 손님 정보 없음(G6)")
+}, ["version", "template"], desc="스킬 응답(카카오 응답 형식: outputs 1~3개, quickReplies 10개까지, simpleText 1,000자, textCard 제목 50자·설명 400자·버튼 3개, 버튼 이름 14자). 오류 내용·내부 ID·다른 손님 정보 없음(G6)")
 S["SkillCallbackAck"] = obj({
     "version": enum(["2.0"]),
     "useCallback": {"type": "boolean", "const": True},
@@ -1169,7 +1169,7 @@ S["SkillResponse"] = {"oneOf": [ref("SkillTemplateResponse"), ref("SkillCallback
 S["KakaoCallbackResult"] = obj({
     "taskId": string(1, 200), "status": enum(["SUCCESS", "FAIL", "ERROR"]),
     "message": string(0, 1000), "timestamp": {"type": "integer", "minimum": 0, "maximum": 99999999999999},
-}, ["status"], additional=True, desc="카카오가 콜백 요청에 돌려주는 결과(카카오 문서)")
+}, ["status"], additional=True, desc="카카오가 콜백 요청에 반환하는 결과(카카오 문서)")
 
 # ── AI-1 출력 (HTTP로 오가지 않음. 서버 안 LangGraph 노드의 구조화 출력, DEC-17) ─────────────
 PLACEHOLDER_PHONE = r"^\[전화번호[0-9]{1,3}\]$"
@@ -1187,8 +1187,8 @@ S["AiTurnOutput"] = obj({
         "allergy_answer": string(1, 200, col="order_drafts.allergy_answer"),
         "excluded_ingredients": string(0, 200, col="order_drafts.excluded_ingredients"),
         "customer_name": string(1, 30, col="order_drafts.customer_name"),
-        "customer_phone": string(1, 20, PLACEHOLDER_PHONE, desc="AI는 자리표만 봄. 서버가 원래 값으로 바꿔 저장"),
-    }, desc="주문서 초안에 넣을 칸(옵션은 이름). 서버가 형식을 확인한 뒤 저장(SPEC-020)", minProperties=1),
+        "customer_phone": string(1, 20, PLACEHOLDER_PHONE, desc="AI는 플레이스홀더만 봄. 서버가 원래 값으로 바꿔 저장"),
+    }, desc="주문서 초안에 넣을 필드(옵션은 이름). 서버가 형식을 확인한 뒤 저장(SPEC-020)", minProperties=1),
     "quote_request": obj({
         "size": string(1, 30), "flavor": string(1, 30), "design_option": string(1, 30), "design": string(1, 30),
         "extras": arr(string(1, 30), 0, 20, unique=True), "pickup_day": DATE,
@@ -1196,7 +1196,7 @@ S["AiTurnOutput"] = obj({
     "handoff": obj({
         "reason": enum(["edibility", "cannot_answer", "closed_day", "legal_medical", "customer_request", "pre_receipt_issue"]),
         "requested_day": DATE,
-    }, ["reason"], desc="넘길 까닭(SPEC-022)"),
+    }, ["reason"], desc="에스컬레이션할 이유(SPEC-022)"),
     "issue_patch": obj({
         "order_no": ORDER_NO,
         "photo_positions": arr(integer(1, 5), 0, 5, unique=True),
@@ -1205,13 +1205,13 @@ S["AiTurnOutput"] = obj({
     }, desc="신고 내용 모으기(SPEC-057)", minProperties=1),
     "refund_account_patch": obj({
         "bank_name": string(1, 30, col="refunds.refund_bank_name"),
-        "account_number": string(1, 20, PLACEHOLDER_ACCOUNT, desc="AI는 자리표만 봄. 서버가 원래 값으로 바꿔 그 환불에만 저장(SPEC-049, DEC-17)"),
+        "account_number": string(1, 20, PLACEHOLDER_ACCOUNT, desc="AI는 플레이스홀더만 봄. 서버가 원래 값으로 바꿔 그 환불에만 저장(SPEC-049, DEC-17)"),
         "holder_name": string(1, 30, col="refunds.refund_holder_name"),
     }, ["account_number"], desc="환불받을 손님 계좌(SPEC-049)"),
     "card": obj({
         "kind": enum(["order_request", "payment_claim", "change_request", "cancel", "issue_report", "consent_withdrawal"], col="confirm_cards.kind"),
         "order_no": ORDER_NO,
         "changes": ref("ChangeSet"),
-    }, ["kind"], desc="보일 확인 카드. 서버가 허락된 종류인지·대상 주문이 이 사용자·이 가게 것인지 보고 저장된 값으로 만듦(SPEC-069)"),
+    }, ["kind"], desc="보일 확인 카드. 서버가 허용된 종류인지·대상 주문이 이 사용자·이 가게 것인지 보고 저장된 값으로 만듦(SPEC-069)"),
 }, ["reply"], desc="AI-1 상담 답 만들기의 출력 하나(손님 메시지 한 차례). HTTP로 오가지 않는 서버 안 구조화 출력(DEC-17). 서버가 확인하고 어긋나는 부분은 버림. "
           "Open: AI 모델 회사·모델은 개발 전(10단계 전)에 고르고, 고르는 날 그 회사의 약관·데이터 방침을 확인해 처리방침의 국외 이전 항목을 채움(OPEN-7)")

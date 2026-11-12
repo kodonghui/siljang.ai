@@ -4,34 +4,34 @@
 검사 (실패가 하나라도 있으면 끝 상태 1)
   A0  build_api.py로 다시 만들어도 api/openapi.yaml과 README 표가 그대로
   A1  OpenAPI 3.1 문서로 맞음(openapi-spec-validator)
-  A2  작업마다 API ID(API-001부터 차례대로, 겹치지 않음)·operationId(겹치지 않음)·SPEC ID 하나 이상. SPEC ID는 04단계에 있는 것
-  A3  04단계 SPEC마다 작업이나 서버 안의 일(components.x-corthex.jobs)이 있음
-  A4  작업마다 응답 표(2xx·422·401·403·404·409·default)를 싣거나 x-corthex.omit에 까닭을 적음. 400은 쓰지 않음(DEC-01).
+  A2  API마다 API ID(API-001부터 차례대로, 중복되지 않음)·operationId(중복되지 않음)·SPEC ID 하나 이상. SPEC ID는 04단계에 있는 것
+  A3  04단계 SPEC마다 API나 서버 안의 일(components.x-corthex.jobs)이 있음
+  A4  API마다 응답 목록(2xx·422·401·403·404·409·default)을 포함하거나 x-corthex.omit에 사유를 적음. 400은 쓰지 않음(DEC-01).
       경로에 기록 ID가 있으면 404, 입력이 있으면 422
   A5  내용이 있는 응답마다 이름 붙은 예시가 하나 이상. 모든 예시(요청·응답·콜백·매개변수·헤더)가 스키마(형식 포함)에 맞음.
       시각 예시는 가게 시간대 오프셋(+09:00, DEC-15). 스킬 200의 예시 이름 = 결과 목록 = Siljang-Outcome 헤더 값
-  A6  오류 응답은 모두 Problem 모양(application/problem+json). 예시의 status가 응답과 같고, code가 목록에 같은 상태로 있고,
-      type·title이 목록과 같음. 칸 오류의 칸이 그 요청에 있고, 확인할 것이 그 요청의 confirm 값에 있음.
-      422의 첫 예시는 validation_failed, 로그인 작업의 401 첫 예시는 unauthenticated(스킬은 skill_key_invalid). 429는 Retry-After
-  A7  요청 칸마다 한도(글자 maxLength, 수 minimum·maximum, 목록 maxItems). 열린 객체는 카카오 스킬 요청 안에만.
-      x-corthex-column이 가리키는 표.칸이 db/schema.sql에 있음
-  A8  작업마다 security가 있고, 로그인이 꼭 필요한 작업은 401을 가짐. 쓴 보안 방식이 모두 정의됨
-  A9  경우의 종류: 작업이 적은 근거가 모두 계약에 있고, 근거가 있으면 그 종류를 적음(보안→접근, 422→입력, 404→대상,
-      요청 키→반복, baseRevision→동시, 429→한도, 503→바깥), 목록 작업은 빈 목록 예시, AI를 부르는 작업(x-corthex.ai)은 실패 넷
+  A6  오류 응답은 모두 Problem 형식(application/problem+json). 예시의 status가 응답과 같고, code가 목록에 같은 상태로 있고,
+      type·title이 목록과 같음. 필드 오류의 필드가 그 요청에 있고, 확인할 것이 그 요청의 confirm 값에 있음.
+      422의 첫 예시는 validation_failed, 로그인 API의 401 첫 예시는 unauthenticated(스킬은 skill_key_invalid). 429는 Retry-After
+  A7  요청 필드마다 한도(글자 maxLength, 수 minimum·maximum, 목록 maxItems). 열린 객체는 카카오 스킬 요청 안에만.
+      x-corthex-column이 참조하는 테이블.컬럼이 db/schema.sql에 있음
+  A8  API마다 security가 있고, 로그인이 꼭 필요한 API는 401을 가짐. 쓴 보안 방식이 모두 정의됨
+  A9  케이스 유형: API가 적은 근거가 모두 계약에 있고, 근거가 있으면 그 종류를 적음(보안→접근, 422→입력, 404→대상,
+      요청 키→반복, baseRevision→동시, 429→한도, 503→외부), 목록 API는 빈 목록 예시, AI를 호출하는 API(x-corthex.ai)는 실패 넷
       (모델 실패·느림·키 없음·사용 한도)과 쓰기 전 확인 실패가 저마다 결과 코드를 가짐. 말로만 적은 근거(note:)는 세어 보고함
   A10 열린 질문(OPEN)마다 그 자리 설명에 'Open:'과 그 ID가 있고, 'Open:'마다 OPEN ID가 있음
-  A11 계약에 나온 DEC ID가 모두 목록에 있고, 목록의 DEC가 모두 계약 어딘가(정한 것 목록 밖)에 쓰임
-  A12 계약에 나온 API ID가 모두 있는 작업
+  A11 계약에 나온 DEC ID가 모두 목록에 있고, 목록의 DEC가 모두 계약 어딘가(결정 사항 목록 밖)에 쓰임
+  A12 계약에 나온 API ID가 모두 있는 API
   A13 깨지는 변화: 앞 계약(--base 파일, 없으면 main의 api/openapi.yaml)과 견줘 깨지는 변화가 모두 x-corthex.breakingChanges에 있음
-  A14 노출: 성공 응답 스키마의 객체가 모두 닫혀 있고, 손님·공개 응답(/public/·카카오 스킬)에 uuid가 없고, 비밀값 같은 이름의 칸이 없음
-  D1  (--db) db/schema.sql을 빈 DB에 적용하고, x-corthex-column 칸마다 계약이 허락하는 값을 만들어(hypothesis-jsonschema로
-      고르게, 그리고 가장 긴·가장 짧은 글자, 가장 작은·큰 수, 고를 값 모두) 그 칸의 타입과 한 칸 CHECK에 넣어 봄. varchar(n)은 maxLength ≤ n
-  M1  (--mock) 목 서버: 작업마다 맞는 요청은 계약의 2xx와 그 예시, 로그인 없으면 401 첫 예시, 틀린 입력은 422 첫 예시,
+  A14 노출: 성공 응답 스키마의 객체가 모두 닫혀 있고, 손님·공개 응답(/public/·카카오 스킬)에 uuid가 없고, 시크릿 같은 이름의 필드가 없음
+  D1  (--db) db/schema.sql을 빈 DB에 적용하고, x-corthex-column 필드마다 계약이 허용하는 값을 만들어(hypothesis-jsonschema로
+      고르게, 그리고 가장 긴·가장 짧은 글자, 가장 작은·큰 수, 고를 값 모두) 그 컬럼의 타입과 한 컬럼 CHECK에 넣어 봄. varchar(n)은 maxLength ≤ n
+  M1  (--mock) 목 서버: API마다 맞는 요청은 계약의 2xx와 그 예시, 로그인 없으면 401 첫 예시, 틀린 입력은 422 첫 예시,
       응답·예시마다 'Prefer: code=…, example=…'로 그 예시가 그대로 옴
 
 쓰는 법(저장소 맨 위에서, research/cake-api-2026-11/requirements.txt를 깐 파이썬으로)
   python -B research/cake-api-2026-11/check_api.py . [--db DSN] [--mock URL] [--base 파일] [--keep]
-  --db를 빼면 D1을, --mock을 빼면 M1을 '못 봄'으로 보고함. 검사용 DB api_check_schema를 만들고 끝나면 지움(--keep이면 남김).
+  --db를 빼면 D1을, --mock을 빼면 M1을 '미확인'으로 보고함. 검사용 DB api_check_schema를 만들고 끝나면 지움(--keep이면 남김).
   같은 이름의 DB가 있으면 지우고 다시 만드니 검사용 서버에서만 돌림.
 """
 from __future__ import annotations
@@ -76,7 +76,7 @@ class Report:
         self.rows: list[tuple[str, str, str]] = []
 
     def add(self, key: str, ok: bool | None, text: str, details: list[str] | None = None) -> None:
-        word = {True: "통과", False: "실패", None: "못 봄"}[ok]
+        word = {True: "통과", False: "실패", None: "미확인"}[ok]
         self.rows.append((key, word, text))
         print(f"{word} {key} {text}")
         for d in (details or [])[:40]:
@@ -85,8 +85,8 @@ class Report:
             print(f"      … 그 밖에 {len(details) - 40}개")
 
     def summary(self) -> int:
-        n = {w: sum(1 for _, x, _ in self.rows if x == w) for w in ("통과", "실패", "못 봄")}
-        print(f"\n검사 {len(self.rows)}개: 통과 {n['통과']}, 실패 {n['실패']}, 못 봄 {n['못 봄']}")
+        n = {w: sum(1 for _, x, _ in self.rows if x == w) for w in ("통과", "실패", "미확인")}
+        print(f"\n검사 {len(self.rows)}개: 통과 {n['통과']}, 실패 {n['실패']}, 미확인 {n['미확인']}")
         return 1 if n["실패"] else 0
 
 
@@ -193,13 +193,13 @@ def make_validator_factory(doc: Doc):
             return True
         p = urllib.parse.urlsplit(value)
         if not p.scheme or not p.netloc or re.search(r"[\s<>\"{}|\\^`]", value):
-            raise ValueError("주소 모양이 아님")
+            raise ValueError("주소 형식이 아님")
         return True
 
     @fc.checks("uri-reference", raises=ValueError)
     def _uri_ref(value):
         if isinstance(value, str) and re.search(r"[\s<>\"{}|\\^`]", value):
-            raise ValueError("주소 참조 모양이 아님")
+            raise ValueError("주소 참조 형식이 아님")
         return True
 
     cache = {}
@@ -273,7 +273,7 @@ def a2_ids(rep: Report, doc: Doc, spec_ids: set) -> None:
     names = [op.get("operationId") for _, _, op in doc.ops]
     dup = sorted({n for n in names if names.count(n) > 1})
     if dup or None in names:
-        bad.append(f"operationId가 없거나 겹침: {dup}")
+        bad.append(f"operationId가 없거나 중복됨: {dup}")
     for path, m, op in doc.ops:
         spec = op["x-corthex"].get("spec") or []
         if not spec:
@@ -281,7 +281,7 @@ def a2_ids(rep: Report, doc: Doc, spec_ids: set) -> None:
         for s in spec:
             if s not in spec_ids:
                 bad.append(f"{xid(op)} 04단계에 없는 {s}")
-    rep.add("A2", not bad, f"작업 {len(ids)}개에 API ID·operationId·SPEC ID가 있음", bad)
+    rep.add("A2", not bad, f"API {len(ids)}개에 API ID·operationId·SPEC ID가 있음", bad)
 
 
 def a3_coverage(rep: Report, doc: Doc, spec_ids: set) -> None:
@@ -289,7 +289,7 @@ def a3_coverage(rep: Report, doc: Doc, spec_ids: set) -> None:
     jobs = {j["spec"] for j in doc.data["components"]["x-corthex"]["jobs"]}
     missing = sorted(spec_ids - by_ops - jobs)
     only_jobs = sorted((spec_ids & jobs) - by_ops)
-    rep.add("A3", not missing, f"SPEC {len(spec_ids)}개 모두 작업이나 서버 안의 일이 있음(작업 {len(spec_ids & by_ops)}개, "
+    rep.add("A3", not missing, f"SPEC {len(spec_ids)}개 모두 API나 서버 안의 일이 있음(API {len(spec_ids & by_ops)}개, "
                                f"서버 안의 일만 {len(only_jobs)}개: {', '.join(only_jobs) or '없음'})", [f"{s} 없음" for s in missing])
 
 
@@ -313,21 +313,21 @@ def a4_table(rep: Report, doc: Doc) -> None:
             bad.append(f"{i} default 없음")
         for k in TABLE_KEYS:
             if (k in res) == (k in omit):
-                bad.append(f"{i} {k}: " + ("싣기도 하고 뺀 까닭도 적음" if k in res else "싣지도 않고 뺀 까닭도 없음"))
+                bad.append(f"{i} {k}: " + ("포함하기도 하고 뺀 이유도 적음" if k in res else "포함하지도 않고 뺀 이유도 없음"))
         for k, why in omit.items():
             if not isinstance(why, str) or len(why.strip()) < 4:
-                bad.append(f"{i} omit {k}의 까닭이 비었음")
+                bad.append(f"{i} omit {k}의 사유가 비었음")
             if k in res:
                 bad.append(f"{i} omit {k}인데 응답에 있음")
         if has_id_param(doc, op) and "404" not in res:
             bad.append(f"{i} 경로에 기록 ID가 있는데 404 없음")
         if has_input(doc, op) and "422" not in res:
             bad.append(f"{i} 입력이 있는데 422 없음")
-    rep.add("A4", not bad, f"작업 {len(doc.ops)}개가 응답 표를 모두 싣거나 뺀 까닭을 적음", bad)
+    rep.add("A4", not bad, f"API {len(doc.ops)}개가 응답 목록을 모두 포함하거나 뺀 이유를 적음", bad)
 
 
 def iter_examples(doc: Doc):
-    """(위치 설명, 스키마 포인터, 값, 응답 상태 또는 None, 작업)을 모두 냄."""
+    """(위치 설명, 스키마 포인터, 값, 응답 상태 또는 None, API)을 모두 냄."""
     for path, m, op in doc.ops:
         base = ("paths", path, m)
         for pi, p in enumerate(op.get("parameters", [])):
@@ -454,7 +454,7 @@ def a6_errors(rep: Report, doc: Doc) -> None:
                 bad.append(f"{i}#{status} Problem 스키마가 아님")
             examples = list(media.get("examples", {}).items())
             if status == "422" and examples and examples[0][1]["value"].get("code") != "validation_failed":
-                bad.append(f"{i}#422 첫 예시가 validation_failed가 아님(목 서버가 틀린 입력에 첫 예시를 돌려줌)")
+                bad.append(f"{i}#422 첫 예시가 validation_failed가 아님(목 서버가 틀린 입력에 첫 예시를 반환함)")
             if status == "401" and is_signed_in(op) and examples:
                 first = examples[0][1]["value"].get("code")
                 need = "skill_key_invalid" if any("kakaoSkillKey" in r for r in op["security"]) else "unauthenticated"
@@ -477,13 +477,13 @@ def a6_errors(rep: Report, doc: Doc) -> None:
                 if v.get("type") != f"/problems/{code}" or v.get("title") != errors[code]["message"]:
                     bad.append(f"{where} type·title이 목록과 다름")
                 if not re.fullmatch(r"[0-9a-f]{32}", str(v.get("traceId", ""))):
-                    bad.append(f"{where} traceId 모양")
+                    bad.append(f"{where} traceId 형식")
                 if code == "validation_failed":
                     if not v.get("errors"):
-                        bad.append(f"{where} 칸 오류 없음")
+                        bad.append(f"{where} 필드 오류 없음")
                     for fe in v.get("errors", []):
                         if not pointer_exists(doc, op, fe["field"]):
-                            bad.append(f"{where} 요청에 없는 칸 {fe['field']}")
+                            bad.append(f"{where} 요청에 없는 필드 {fe['field']}")
                 if code == "confirmation_required":
                     allowed = confirm_values(doc, op)
                     for c in v.get("confirm", []):
@@ -491,7 +491,7 @@ def a6_errors(rep: Report, doc: Doc) -> None:
                             bad.append(f"{where} 요청의 confirm에 없는 {c['kind']}")
                 if status == "429" and "retryAfterSeconds" not in v:
                     bad.append(f"{where} retryAfterSeconds 없음")
-    rep.add("A6", not bad, f"오류 응답 예시 {n}개가 Problem 모양이고 코드·상태·칸이 맞음", bad)
+    rep.add("A6", not bad, f"오류 응답 예시 {n}개가 Problem 형식이고 코드·상태·필드가 맞음", bad)
 
 
 def schema_columns(sql: str) -> dict:
@@ -543,7 +543,7 @@ def a7_limits(rep: Report, doc: Doc, root: Path) -> list:
         if c not in cols.get(t, set()):
             bad.append(f"{where}: {col}이 {SCHEMA_SQL}에 없음")
     uniq = sorted({c for _, c, _ in fields})
-    rep.add("A7", not bad, f"요청 칸마다 한도가 있고, 표.칸 {len(uniq)}개({len(fields)}자리)가 스키마에 있음. 열린 객체는 카카오 스킬 요청 안 {len(set(open_ok))}곳만", bad)
+    rep.add("A7", not bad, f"요청 필드마다 한도가 있고, 테이블.컬럼 {len(uniq)}개({len(fields)}자리)가 스키마에 있음. 열린 객체는 카카오 스킬 요청 안 {len(set(open_ok))}곳만", bad)
     return fields
 
 
@@ -563,7 +563,7 @@ def a8_security(rep: Report, doc: Doc) -> None:
             bad.append(f"{i} 로그인이 필요한데 401 없음")
     pub = [xid(op) for _, _, op in doc.ops if op.get("security") == []]
     opt = [xid(op) for _, _, op in doc.ops if op.get("security") and not is_signed_in(op)]
-    rep.add("A8", not bad, f"작업마다 security가 있고 로그인이 필요한 작업은 401을 가짐(누구나 {len(pub)}개: {', '.join(pub)}; "
+    rep.add("A8", not bad, f"API마다 security가 있고 로그인이 필요한 API는 401을 가짐(누구나 {len(pub)}개: {', '.join(pub)}; "
                            f"없어도 되는 {len(opt)}개: {', '.join(opt)})", bad)
 
 
@@ -656,7 +656,7 @@ def a9_kinds(rep: Report, doc: Doc) -> None:
         if "429" in res:
             need.append("한도")
         if "503" in res:
-            need.append("바깥")
+            need.append("외부")
         need.append("화면")
         for k in need:
             if k not in kinds:
@@ -676,13 +676,13 @@ def a9_kinds(rep: Report, doc: Doc) -> None:
                     bad.append(f"{i} 빈·끊김에 빈 목록 예시({', '.join(empties)})를 적지 않음")
         if op["x-corthex"].get("ai"):
             if "AI" not in kinds:
-                bad.append(f"{i} AI를 부르는데 종류 AI를 적지 않음")
+                bad.append(f"{i} AI를 호출하는데 종류 AI를 적지 않음")
             if not ai_codes <= outs:
                 bad.append(f"{i} AI 실패 결과가 모자람: {sorted(ai_codes - outs)}")
             if "ai_output_rejected" not in outs:
                 bad.append(f"{i} 쓰기 전 확인 실패(ai_output_rejected) 결과가 없음")
             ai_ops.append(i)
-    rep.add("A9", not bad, f"경우의 종류 근거가 모두 계약에 있음(말로만 적은 근거 {notes}개). AI를 부르는 작업 {', '.join(ai_ops) or '없음'}은 "
+    rep.add("A9", not bad, f"케이스 유형 근거가 모두 계약에 있음(말로만 적은 근거 {notes}개). AI를 호출하는 API {', '.join(ai_ops) or '없음'}은 "
                            f"모델 실패·느림·키 없음·사용 한도와 쓰기 전 확인 실패가 저마다 결과 코드를 가짐", bad)
 
 
@@ -721,7 +721,7 @@ def a11_decisions(rep: Report, doc: Doc) -> None:
     used = set(re.findall(r"DEC-\d{2}", t))
     unknown = sorted(used - set(decs))
     unused = [d for d in decs if d not in used]
-    rep.add("A11", not unknown and not unused, f"정한 것 {len(decs)}개가 모두 계약에 쓰이고, 계약의 DEC ID가 모두 목록에 있음",
+    rep.add("A11", not unknown and not unused, f"결정 사항 {len(decs)}개가 모두 계약에 쓰이고, 계약의 DEC ID가 모두 목록에 있음",
             [f"목록에 없는 {u}" for u in unknown] + [f"계약에 쓰이지 않은 {u}" for u in unused])
 
 
@@ -730,7 +730,7 @@ def a12_api_refs(rep: Report, doc: Doc) -> None:
     t = text_of(doc.data)
     refs = set(re.findall(r"API-\d{3}", t))
     unknown = sorted(refs - ids)
-    rep.add("A12", not unknown, f"계약에 나온 API ID {len(refs)}개가 모두 있는 작업", [f"없는 {u}" for u in unknown])
+    rep.add("A12", not unknown, f"계약에 나온 API ID {len(refs)}개가 모두 있는 API", [f"없는 {u}" for u in unknown])
 
 
 def breaking_changes(old: dict, new: dict) -> list[str]:
@@ -739,7 +739,7 @@ def breaking_changes(old: dict, new: dict) -> list[str]:
     n_ops = {(p, m): op for p, item in new.get("paths", {}).items() for m, op in item.items() if m in METHODS}
     for k, op in o_ops.items():
         if k not in n_ops:
-            out.append(f"작업 없앰: {k[1].upper()} {k[0]}")
+            out.append(f"API 없앰: {k[1].upper()} {k[0]}")
             continue
         for st in op.get("responses", {}):
             if st not in n_ops[k].get("responses", {}):
@@ -762,13 +762,13 @@ def breaking_changes(old: dict, new: dict) -> list[str]:
         n = ns[name]
         for prop, ps in s.get("properties", {}).items():
             if prop not in n.get("properties", {}):
-                out.append(f"칸 없앰: {name}.{prop}")
+                out.append(f"필드 없앰: {name}.{prop}")
             elif ps.get("type") != n["properties"][prop].get("type"):
-                out.append(f"칸 타입 바꿈: {name}.{prop}")
+                out.append(f"필드 타입 바꿈: {name}.{prop}")
             elif "enum" in ps and set(ps["enum"]) - set(n["properties"][prop].get("enum", ps["enum"])):
                 out.append(f"고를 값 없앰: {name}.{prop}")
         for req in set(n.get("required", [])) - set(s.get("required", [])):
-            out.append(f"꼭 넣을 칸 더함: {name}.{req}")
+            out.append(f"꼭 넣을 필드 더함: {name}.{req}")
     return out
 
 
@@ -785,7 +785,7 @@ def a13_breaking(rep: Report, doc: Doc, root: Path, base: str | None) -> None:
         if r.returncode == 0:
             old_text, src = r.stdout, f"main:{OPENAPI}"
     if old_text is None:
-        rep.add("A13", listed == [], f"앞 계약이 없음(main에 {OPENAPI} 없음, 첫 판). 깨지는 변화 목록이 비어 있음")
+        rep.add("A13", listed == [], f"앞 계약이 없음(main에 {OPENAPI} 없음, 첫 버전). 깨지는 변화 목록이 비어 있음")
         return
     found = breaking_changes(yaml.safe_load(old_text), doc.data)
     whats = {b.get("what") for b in listed if isinstance(b, dict)}
@@ -808,12 +808,12 @@ def a14_exposure(rep: Report, doc: Doc) -> None:
                     bad.append(f"{i}#{st} 손님·공개 응답에 uuid {path}")
                 for name in s.get("properties", {}):
                     if SECRET_NAME.search(name) and name not in allowed_secretish:
-                        bad.append(f"{i}#{st} 비밀값 같은 이름 {path}/{name}")
+                        bad.append(f"{i}#{st} 시크릿 같은 이름 {path}/{name}")
             walk_schema(doc, schema, "", visit)
-    rep.add("A14", not bad, "성공 응답 스키마가 모두 닫혀 있고, 손님·공개 응답에 uuid가 없고, 비밀값 같은 이름의 칸이 없음", bad)
+    rep.add("A14", not bad, "성공 응답 스키마가 모두 닫혀 있고, 손님·공개 응답에 uuid가 없고, 시크릿 같은 이름의 필드가 없음", bad)
 
 
-# ── D1: 계약이 허락하는 값을 DB 칸에 넣어 봄 ─────────────────────────────────────
+# ── D1: 계약이 허용하는 값을 DB 컬럼에 넣어 봄 ─────────────────────────────────────
 class Pg:
     def __init__(self, base: str) -> None:
         self.base = base.strip()
@@ -851,14 +851,14 @@ def clean_schema(doc: Doc, s):
 
 def d1_db(root: Path, rep: Report, doc: Doc, fields: list, base: str | None, keep: bool, examples: int = 60) -> None:
     if base is None:
-        rep.add("D1", None, "DB 견주기: --db를 주지 않아 못 봄")
+        rep.add("D1", None, "DB 견주기: --db를 주지 않아 미확인")
         return
     try:
         import psycopg2
         from hypothesis import HealthCheck, given, settings
         from hypothesis_jsonschema import from_schema
     except ImportError as e:
-        rep.add("D1", None, f"DB 견주기: 도구가 없어 못 봄({e})")
+        rep.add("D1", None, f"DB 견주기: 도구가 없어 미확인({e})")
         return
     pg = Pg(base)
     try:
@@ -952,7 +952,7 @@ def d1_db(root: Path, rep: Report, doc: Doc, fields: list, base: str | None, kee
             for v in direct:
                 why = check_value(v)
                 if why:
-                    bad.append(f"{where}: 계약이 허락하는 끝값 {v!r}이 {col}의 {why}")
+                    bad.append(f"{where}: 계약이 허용하는 끝값 {v!r}이 {col}의 {why}")
             for label, strategy, n_ex in strategies:
                 @settings(max_examples=n_ex, deadline=None, database=None, derandomize=True,
                           suppress_health_check=list(HealthCheck))
@@ -967,18 +967,18 @@ def d1_db(root: Path, rep: Report, doc: Doc, fields: list, base: str | None, kee
                     probe()
                 except AssertionError:
                     v, why = failing[-1]
-                    bad.append(f"{where}: 계약이 허락하는 값({label}) {v!r}이 {col}의 {why}")
+                    bad.append(f"{where}: 계약이 허용하는 값({label}) {v!r}이 {col}의 {why}")
                 except Exception as e:  # noqa: BLE001
                     if not (label == "가장 긴" and col in length_checked):
                         notes.append(f"{col}: {label} 값을 만들지 못함({type(e).__name__}). 글자 수 CHECK가 없어 고르게 만든 값으로만 견줌")
             values += counter[0]
         conn.close()
         cols = sorted({c for _, c, _ in fields})
-        rep.add("D1", not bad, f"표.칸 {len(cols)}개({len(tried)}가지 칸 스키마)에 계약이 허락하는 값 {values}개를 넣어 봄: 타입·CHECK·varchar 길이에 막힌 값 없음"
-                               f"(NUL 글자와 줄바꿈으로 끝나는 값은 뺌). 글자 수 CHECK가 있는 칸 {len(length_checked)}개는 끝값을 바로 견줌",
+        rep.add("D1", not bad, f"테이블.컬럼 {len(cols)}개({len(tried)}가지 필드 스키마)에 계약이 허용하는 값 {values}개를 넣어 봄: 타입·CHECK·varchar 길이에 막힌 값 없음"
+                               f"(NUL 글자와 줄바꿈으로 끝나는 값은 뺌). 글자 수 CHECK가 있는 컬럼 {len(length_checked)}개는 끝값을 바로 견줌",
                 bad + [f"참고: {n}" for n in notes])
     except Exception as e:  # noqa: BLE001
-        rep.add("D1", None, f"DB 견주기: 못 봄({e})")
+        rep.add("D1", None, f"DB 견주기: 미확인({e})")
     finally:
         if not keep:
             pg.drop(DB_NAME)
@@ -987,7 +987,7 @@ def d1_db(root: Path, rep: Report, doc: Doc, fields: list, base: str | None, kee
 # ── M1: 목 서버 ──────────────────────────────────────────────────────────────
 def m1_mock(rep: Report, doc: Doc, url: str | None, skill_key: str) -> None:
     if not url:
-        rep.add("M1", None, "목 서버: --mock을 주지 않아 못 봄")
+        rep.add("M1", None, "목 서버: --mock을 주지 않아 미확인")
         return
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     bad, sent = [], 0

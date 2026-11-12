@@ -30,7 +30,7 @@ for uid, pid in uses.items():
         txt = json.loads(t)['text']
     except Exception:
         txt = t
-    m = re.search(r'"흐름":"(FL-\d{3})', txt)
+    m = re.search(r'"플로우":"(FL-\d{3})', txt)
     c = re.search(r'<content>\n(.*)\n</content>', txt, re.S)
     if m and c:
         latest[m.group(1)] = c.group(1)
