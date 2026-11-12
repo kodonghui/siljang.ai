@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """06단계 API 계약 만들기.
 
-research/cake-api-2026-11의 목록(api_catalog.py)·스키마(api_schemas.py)·예시(api_examples.py)·작업(api_ops.py)으로
+research/cake-api-2026-11의 목록(api_catalog.py)·스키마(api_schemas.py)·예시(api_examples.py)·API(api_ops.py)로
 api/openapi.yaml을 만들고, docs/06-api/README.md의 표시(<!-- BEGIN generated:이름 --> … <!-- END generated:이름 -->) 사이를 채운다.
 
   python3 -B research/cake-api-2026-11/build_api.py . --write   # 파일을 씀
@@ -47,23 +47,23 @@ TAGS = [
     ("파일", "신고증·도안·완성 사진을 먼저 올리고 uploadId로 씀(DEC-09)"),
     ("가게", "가게 등록과 설정, 영업 신고 다시 올리기"),
     ("운영자", "영업 신고 확인과 운영자 알림. 손님·주문 기록은 없음(SPEC-003)"),
-    ("가격표", "판으로 남는 가격표(REQ-027)"),
-    ("운영규정", "판으로 남는 운영규정과 단계별 환불(SPEC-005)"),
-    ("결제 받을 곳", "가게 명의 계좌와 카드 결제 링크(SPEC-006)"),
-    ("영업 달력", "요일 휴무·하루 최대 개수·주문 마감과 날짜별 바꾸기(SPEC-007, SPEC-012)"),
+    ("가격표", "버전으로 남는 가격표(REQ-027)"),
+    ("운영규정", "버전으로 남는 운영규정과 단계별 환불(SPEC-005)"),
+    ("결제 수단", "가게 명의 계좌와 카드 결제 링크(SPEC-006)"),
+    ("영업 캘린더", "요일 휴무·하루 최대 개수·주문 마감과 날짜별 바꾸기(SPEC-007, SPEC-012)"),
     ("카카오톡 채널", "오픈빌더 봇 연결과 스킬 설정 값(SPEC-008, DEC-08)"),
     ("장부", "구글 시트 장부 연결(SPEC-009, SPEC-064)"),
     ("예약 링크", "예약 링크 조건과 누구나 여는 예약 링크 페이지·처리방침(SPEC-010, SPEC-011)"),
     ("할 일", "사장님이 정할 일 목록(SPEC-067)"),
-    ("넘긴 질문·상담", "AI가 넘긴 질문과 상담 대화(SPEC-021~024)"),
+    ("에스컬레이션 건·상담", "AI가 에스컬레이션 건과 상담 대화(SPEC-021~024)"),
     ("주문", "주문 보기와 맞춤 주문·결제 기한·가게 사정 취소(SPEC-031, SPEC-037~039, SPEC-048)"),
     ("환불", "환불 계산과 정하기, '보냄' 표시. 우리는 돈을 옮기지 않음(REQ-079)"),
-    ("제작", "제작 목록과 표시, 넘기기·미수령·폐기(SPEC-050~055)"),
+    ("제작", "제작 목록과 표시, 인도·미수령·폐기(SPEC-050~055)"),
     ("결제 안내", "입금 대조(SPEC-034~036)"),
     ("변경 요청", "손님 변경 요청에 답하기(SPEC-042~045)"),
     ("문제 신고", "문제 신고와 보상(SPEC-058~060)"),
     ("후기·포트폴리오", "후기와 사진 게시 동의, 포트폴리오(SPEC-062, SPEC-063)"),
-    ("카카오 스킬", "카카오 오픈빌더가 부르는 스킬. 늘 200과 스킬 응답(DEC-07)"),
+    ("카카오 스킬", "카카오 오픈빌더가 호출하는 스킬. 늘 200과 스킬 응답(DEC-07)"),
 ]
 
 EXAMPLE_SUMMARY = {
@@ -76,11 +76,11 @@ EXAMPLE_SUMMARY = {
 STATUS_TEXT = {
     401: "로그인이나 스킬 키가 없거나 맞지 않음",
     404: "찾을 수 없음(DEC-02)",
-    409: "지금 상태와 부딪혀 아무것도 바꾸지 않음",
+    409: "지금 상태와 충돌해 아무것도 바꾸지 않음",
     413: "파일이 그 용도의 한도를 넘음",
     422: "입력이 계약에 맞지 않아 아무것도 바꾸지 않음(DEC-01)",
-    429: "너무 자주 부름(DEC-16)",
-    503: "바깥 서비스가 답하지 않아 아무것도 바꾸지 않음",
+    429: "너무 자주 호출함(DEC-16)",
+    503: "외부 서비스가 답하지 않아 아무것도 바꾸지 않음",
     "default": "예상하지 못한 서버 오류(500). 내용은 로그에만",
 }
 
@@ -92,15 +92,15 @@ CONFIRM_FACTS = {
 }
 
 
-# ── 작업 하나 ─────────────────────────────────────────────────────────────────
+# ── API 하나 ─────────────────────────────────────────────────────────────────
 def error_codes(o):
-    """작업이 돌려주는 오류 코드(상태 → 코드 목록). 규칙으로 더하는 것: 401 unauthenticated, 422 validation_failed,
-    요청 키 작업의 422 idempotency_key_reused와 409 request_in_progress."""
+    """API가 반환하는 오류 코드(상태 → 코드 목록). 규칙으로 더하는 것: 401 unauthenticated, 422 validation_failed,
+    요청 키 API의 422 idempotency_key_reused와 409 request_in_progress."""
     errs = {int(k): list(v) for k, v in o["errors"].items()}
     if o["auth"] in ("owner", "operator"):
         errs[401] = ["unauthenticated"] + [c for c in errs.get(401, []) if c != "unauthenticated"]
     if o["idem"]:
-        assert "422" not in o["omit"] and "409" not in o["omit"], o["id"] + ": 요청 키 작업은 422·409를 뺄 수 없음"
+        assert "422" not in o["omit"] and "409" not in o["omit"], o["id"] + ": 요청 키 API는 422·409를 뺄 수 없음"
     if "422" not in o["omit"]:
         rest = [c for c in errs.get(422, []) if c != "validation_failed"]
         errs[422] = ["validation_failed"] + rest + (["idempotency_key_reused"] if o["idem"] else [])
@@ -124,7 +124,7 @@ def field_errors(o):
     fields = list(o["fields"])
     if not fields and o["idem"]:
         fields = [("header:Idempotency-Key", "required")]
-    assert fields, o["id"] + ": validation_failed 예시의 칸 오류가 없음"
+    assert fields, o["id"] + ": validation_failed 예시의 필드 오류가 없음"
     return [{"field": f, "code": c} for f, c in fields]
 
 
@@ -215,7 +215,7 @@ def callbacks():
     return {"kakaoCallback": {"{$request.body#/userRequest/callbackUrl}": {"post": {
         "summary": "콜백으로 답 보내기(우리 서버 → 카카오)",
         "description": "callback_pending으로 응답한 메시지의 답을 userRequest.callbackUrl로 한 번 보낸다(OPEN-2의 유효 시간 안). "
-                       "본문은 스킬 응답과 같은 모양이고 결과 이름은 로그에 남긴다. 카카오가 실패를 돌려주면 다시 보내지 않고 운영 기록에 남긴다.",
+                       "본문은 스킬 응답과 같은 형식이고 결과 이름은 로그에 남긴다. 카카오가 실패를 반환하면 다시 보내지 않고 운영 기록에 남긴다.",
         "requestBody": {"required": True, "content": {"application/json": {
             "schema": {"$ref": SCHEMA_REF + "SkillTemplateResponse"},
             "examples": {n: {"summary": C.SKILL_OUTCOMES[n]["meaning"], "value": copy.deepcopy(E.SKILL_OUTCOME_EXAMPLES[n])} for n in names}}}},
@@ -294,24 +294,24 @@ def schemas():
     return S
 
 
-INFO_DESCRIPTION = """수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 표(db/schema.sql)와 04단계 기능 명세(SPEC-001~069)에서 만들었다.
+INFO_DESCRIPTION = """수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~069)에서 만들었다.
 이 파일은 research/cake-api-2026-11/build_api.py가 만든다. 손으로 고치지 않는다.
 
-**작업과 응답의 ID.** 작업마다 `x-corthex.id`(API-001~072)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
-`x-corthex.omit`은 응답 표(2xx·422·401·403·404·409·default) 가운데 그 작업이 돌려주지 않는 것과 까닭, `x-corthex.kinds`는 경우의 종류마다 그 경우를 보여 주는 응답·예시다.
+**API와 응답의 ID.** API마다 `x-corthex.id`(API-001~072)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
+`x-corthex.omit`은 응답 목록(2xx·422·401·403·404·409·default) 가운데 그 API가 반환하지 않는 것과 사유, `x-corthex.kinds`는 케이스 유형마다 그 경우를 보여 주는 응답·예시다.
 
-**오류 모양.** 모든 오류는 RFC 9457 Problem Details(`application/problem+json`)에 `code`와 `traceId`를 더한 모양. 코드는 `components.x-corthex.errors`에만 있다.
-입력 오류는 모두 422 `validation_failed`와 칸마다 `errors[{field, code}]`(DEC-01). 없는 ID·다른 가게 ID·모양이 틀린 ID는 같은 404(DEC-02). 403은 쓰지 않는다.
+**오류 형식.** 모든 오류는 RFC 9457 Problem Details(`application/problem+json`)에 `code`와 `traceId`를 더한 형식. 코드는 `components.x-corthex.errors`에만 있다.
+입력 오류는 모두 422 `validation_failed`와 필드마다 `errors[{field, code}]`(DEC-01). 없는 ID·다른 가게 ID·형식이 틀린 ID는 같은 404(DEC-02). 403은 쓰지 않는다.
 
 **명령.** 같은 상태로 가는 명령은 200과 `outcome: unchanged`(DEC-03). 사장님·운영자의 쓰기 명령은 `Idempotency-Key` 헤더(DEC-04)와 본문의 `baseRevision`(DEC-05)을 보낸다.
 확인이 필요한 저장은 409 `confirmation_required`와 `confirm` 목록을 받고, 확인하면 같은 요청에 `confirm`을 담아 새 요청 키로 다시 보낸다(DEC-06).
 
 **카카오 스킬.** 늘 200과 스킬 응답, 결과는 `Siljang-Outcome` 헤더와 같은 이름의 예시(DEC-07). 인증은 오픈빌더 헤더 값 `Siljang-Skill-Key`(DEC-08).
 
-**모양.** 돈은 원 단위 정수, 시각은 가게 시간대 오프셋을 붙인 RFC 3339, 날짜는 가게 시간대의 YYYY-MM-DD(DEC-15). 목록은 `cursor`·`limit`(DEC-14).
+**형식.** 돈은 원 단위 정수, 시각은 가게 시간대 오프셋을 붙인 RFC 3339, 날짜는 가게 시간대의 YYYY-MM-DD(DEC-15). 목록은 `cursor`·`limit`(DEC-14).
 
-**목 서버.** `npx @stoplight/prism-cli mock api/openapi.yaml`. 머리글 `Prefer: code=409, example=version_conflict`로 다른 응답과 예시를 고른다.
-로그인 없이 부르면 401의 첫 예시, 입력이 틀리면 422의 첫 예시(`validation_failed`)가 온다. 예시의 가게 '달빛케이크'와 모든 값은 지어낸 것이다."""
+**목 서버.** `npx @stoplight/prism-cli mock api/openapi.yaml`. 헤더 `Prefer: code=409, example=version_conflict`로 다른 응답과 예시를 고른다.
+로그인 없이 호출하면 401의 첫 예시, 입력이 틀리면 422의 첫 예시(`validation_failed`)가 온다. 예시의 가게 '달빛케이크'와 모든 값은 지어낸 것이다."""
 
 
 def build_document():
@@ -335,7 +335,7 @@ def build_document():
     }
     doc = {
         "openapi": "3.1.0",
-        "info": {"title": TITLE, "version": VERSION, "summary": "수제케이크 주문제작 AI 상담·예약 API(06단계 계약, 첫 판)",
+        "info": {"title": TITLE, "version": VERSION, "summary": "수제케이크 주문제작 AI 상담·예약 API(06단계 계약, 첫 버전)",
                  "description": INFO_DESCRIPTION,
                  "x-corthex": {"stage": "06-api", "source": "research/cake-api-2026-11/build_api.py",
                                "inputs": ["docs/04-functional-spec/spec.md", "db/schema.sql", "docs/01-domain/domain.md"]}},
@@ -345,20 +345,20 @@ def build_document():
         "components": {
             "schemas": schemas(),
             "parameters": {
-                "Cursor": {"name": "cursor", "in": "query", "required": False, "description": "앞 응답의 nextCursor(DEC-14). 모양이 틀리면 422",
+                "Cursor": {"name": "cursor", "in": "query", "required": False, "description": "앞 응답의 nextCursor(DEC-14). 형식이 틀리면 422",
                            "schema": copy.deepcopy(SC.CURSOR)},
-                "Limit": {"name": "limit", "in": "query", "required": False, "description": "한 번에 받을 줄 수(DEC-14)",
+                "Limit": {"name": "limit", "in": "query", "required": False, "description": "한 번에 받을 행 수(DEC-14)",
                           "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20}},
                 "IdempotencyKey": {"name": "Idempotency-Key", "in": "header", "required": True,
-                                   "description": "화면이 버튼마다 만든 요청 키(DEC-04, G2). 같은 키가 다시 오면 처음 결과를 그대로 돌려줌",
+                                   "description": "화면이 버튼마다 만든 요청 키(DEC-04, G2). 같은 키가 다시 오면 처음 결과를 그대로 반환함",
                                    "schema": {"type": "string", "minLength": 16, "maxLength": 64, "pattern": "^[A-Za-z0-9_-]{16,64}$",
                                               "x-corthex-column": "request_keys.request_key"},
                                    "example": "ui-" + E.h("idempotency", 29)},
             },
             "headers": {
-                "IdempotencyReplayed": {"description": "같은 요청 키로 다시 온 요청에 처음 결과를 돌려줄 때만 true(DEC-04)",
+                "IdempotencyReplayed": {"description": "같은 요청 키로 다시 온 요청에 처음 결과를 반환할 때만 true(DEC-04)",
                                         "schema": {"type": "string", "enum": ["true"]}},
-                "RetryAfter": {"description": "다시 부를 수 있을 때까지 초(DEC-16)", "required": True,
+                "RetryAfter": {"description": "다시 호출할 수 있을 때까지 초(DEC-16)", "required": True,
                                "schema": {"type": "integer", "minimum": 1, "maximum": 3600}, "example": 30},
             },
             "securitySchemes": {
@@ -413,7 +413,7 @@ def cell(text):
 
 
 def ops_table():
-    rows = ["| ID | 작업 | 방법·경로 | operationId | 부르는 쪽 | SPEC | 응답 |", "| --- | --- | --- | --- | --- | --- | --- |"]
+    rows = ["| ID | API | 방법·경로 | operationId | 호출하는 쪽 | SPEC | 응답 |", "| --- | --- | --- | --- | --- | --- | --- |"]
     for o in sorted(O.OPS, key=lambda o: o["id"]):
         statuses = [str(e[0]) for e in o["ok"]] + [str(s) for s in error_codes(o)] + ["default"]
         rows.append(f"| {o['id']} | {cell(o['summary'])} | `{o['method'].upper()} {o['path']}` | `{o['op']}` | {AUTH_WORDS[o['auth']]} | "
@@ -423,7 +423,7 @@ def ops_table():
 
 def errors_table():
     errs, _, _ = usage()
-    rows = ["| 코드 | 상태 | 뜻 | 화면에 보이는 말 | 화면이 할 일 | 근거 | 쓰는 작업 |", "| --- | --- | --- | --- | --- | --- | --- |"]
+    rows = ["| 코드 | 상태 | 뜻 | 화면에 보이는 말 | 화면이 할 일 | 근거 | 쓰는 API |", "| --- | --- | --- | --- | --- | --- | --- |"]
     for c, e in C.ERRORS.items():
         used = errs.get(c, [])
         where = (", ".join(used) if len(used) <= 6 else f"{len(used)}개") if used else e.get("scope", "")
@@ -433,7 +433,7 @@ def errors_table():
 
 def outcomes_table():
     _, outs, _ = usage()
-    rows = ["| 결과 | 작업 | 뜻 | 손님에게 가는 말 | 넘긴 질문 | 근거 |", "| --- | --- | --- | --- | --- | --- |"]
+    rows = ["| 결과 | API | 뜻 | 손님에게 가는 말 | 에스컬레이션 건 | 근거 |", "| --- | --- | --- | --- | --- | --- |"]
     for c, e in C.SKILL_OUTCOMES.items():
         rows.append(f"| `{c}` | {', '.join(outs.get(c, []))} | {cell(e['meaning'])} | {cell(e['message'])} | "
                     f"{cell(e.get('handoff', ''))} | {e['spec']} |")
@@ -442,20 +442,20 @@ def outcomes_table():
 
 def confirm_table():
     _, _, confs = usage()
-    rows = ["| 확인할 것 | 작업 | 뜻 | 화면에 보이는 말 | 근거 |", "| --- | --- | --- | --- | --- |"]
+    rows = ["| 확인할 것 | API | 뜻 | 화면에 보이는 말 | 근거 |", "| --- | --- | --- | --- | --- |"]
     for k, v in C.CONFIRMATIONS.items():
         rows.append(f"| `{k}` | {', '.join(confs.get(k, []))} | {cell(v['meaning'])} | {cell(v['message'])} | {v['spec']} |")
     return "\n".join(rows)
 
 
 def fields_table():
-    rows = ["| 까닭 코드 | 뜻 |", "| --- | --- |"]
+    rows = ["| 사유 코드 | 뜻 |", "| --- | --- |"]
     rows += [f"| `{k}` | {cell(v)} |" for k, v in C.FIELD_CODES.items()]
     return "\n".join(rows)
 
 
 def decisions_table():
-    rows = ["| ID | 정한 것 | 고른 것 | 까닭 | 다른 길 | 상태 |", "| --- | --- | --- | --- | --- | --- |"]
+    rows = ["| ID | 결정 사항 | 선택안 | 사유 | 대안 | 상태 |", "| --- | --- | --- | --- | --- | --- |"]
     for d in C.DECISIONS:
         state = d.get("decided") or ("동희님 판단 필요" if d.get("needs_user") else "추천")
         rows.append(f"| {d['id']} | {cell(d['title'])} | {cell(d['choice'])} | {cell(d['why'])} | {cell(d['alt'])} | "
@@ -477,8 +477,8 @@ def jobs_table():
 
 def counts():
     n_resp = sum(len(o["ok"]) + len(error_codes(o)) + 1 for o in O.OPS)
-    return (f"작업 {len(O.OPS)}개 · 응답 {n_resp}개 · 오류 코드 {len(C.ERRORS)}개 · 칸 오류 까닭 {len(C.FIELD_CODES)}개 · "
-            f"확인할 것 {len(C.CONFIRMATIONS)}개 · 스킬 결과 {len(C.SKILL_OUTCOMES)}개 · 정한 것 {len(C.DECISIONS)}개 · "
+    return (f"API {len(O.OPS)}개 · 응답 {n_resp}개 · 오류 코드 {len(C.ERRORS)}개 · 필드 오류 사유 {len(C.FIELD_CODES)}개 · "
+            f"확인할 것 {len(C.CONFIRMATIONS)}개 · 스킬 결과 {len(C.SKILL_OUTCOMES)}개 · 결정 사항 {len(C.DECISIONS)}개 · "
             f"열린 질문 {len(C.OPEN_QUESTIONS)}개 · 서버 안의 일 {len(C.JOBS)}개 · 스키마 {len(SC.S)}개")
 
 

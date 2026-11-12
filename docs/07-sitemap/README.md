@@ -80,41 +80,41 @@
 | SCR-003 | 　└ 가게 채널 상담 | `kakao:shop/chat` | 손님 | FL-003, FL-004, FL-005, FL-006, FL-007, FL-008, FL-009, FL-010, FL-011, FL-012 |
 | SCR-004 | 　　└ 주문 요청 카드 | `kakao:shop/card/order_request` | 손님 | FL-006 |
 | SCR-005 | 　　└ 결제 안내 | `kakao:shop/payment-request` | 주문한 손님 | FL-004, FL-007, FL-008 |
-| SCR-006 | 　　└ 입금했다고 알리는 카드 | `kakao:shop/card/payment_claim` | 주문한 손님 | FL-007 |
+| SCR-006 | 　　└ 결제 확인 요청 카드 | `kakao:shop/card/payment_claim` | 주문한 손님 | FL-007 |
 | SCR-007 | 　　└ 내 주문 보기 | `kakao:shop/my-order` | 주문한 손님 | FL-008, FL-011 |
 | SCR-008 | 　　　└ 변경 요청 카드 | `kakao:shop/card/change_request` | 주문한 손님 | FL-008 |
 | SCR-009 | 　　　└ 취소 카드 | `kakao:shop/card/cancel` | 주문한 손님 | FL-009 |
 | SCR-010 | 　　　└ 문제 신고 카드 | `kakao:shop/card/issue_report` | 주문한 손님 | FL-011 |
 | SCR-011 | 　　└ 손님 알림 | `kakao:shop/notice` | 손님 | FL-004, FL-005, FL-006, FL-007, FL-008, FL-009, FL-010, FL-011, FL-012 |
 | SCR-012 | 　　└ 후기 남기기 | `kakao:shop/block/review` | 주문한 손님 | FL-012 |
-| SCR-013 | 　　└ 사진 게시 동의 거두기 카드 | `kakao:shop/card/consent_withdrawal` | 주문한 손님 | FL-012 |
+| SCR-013 | 　　└ 사진 게시 동의 철회 카드 | `kakao:shop/card/consent_withdrawal` | 주문한 손님 | FL-012 |
 | SCR-014 | 사장님 로그인 | `/owner/login`<br>`/owner/login/callback` | 비로그인 | FL-001 |
 | SCR-015 | 　└ 가게 등록 | `/owner/shop/new` | 가게 미등록 사장님 | FL-001 |
 | SCR-016 | 　└ 할 일 목록 | `/owner` | 사장님 | FL-001, FL-002, FL-005, FL-006, FL-007, FL-008, FL-009, FL-011, FL-013 |
-| SCR-017 | 　　└ 넘긴 질문 | `/owner/handoffs/:handoffId` | 사장님 | FL-005 |
+| SCR-017 | 　　└ 에스컬레이션 건 | `/owner/handoffs/:handoffId` | 사장님 | FL-005 |
 | SCR-018 | 　　　└ 상담 대화 | `/owner/consultations/:consultationId` | 사장님 | FL-004 |
 | SCR-019 | 　　└ 사장님 알림 | `kakao:service/chat` | 사장님 | FL-001, FL-005, FL-006, FL-007, FL-008, FL-009, FL-011 |
 | SCR-020 | 　└ 주문 목록 | `/owner/orders` | 사장님 | 없음(5절) |
 | SCR-021 | 　　└ 주문 상세 | `/owner/orders/:orderId` | 사장님 | FL-007, FL-009 |
-| SCR-022 | 　　　└ 맞춤 주문 답하기 | `/owner/orders/:orderId/custom-decision` | 사장님 | FL-006 |
+| SCR-022 | 　　　└ 맞춤 주문 검토 | `/owner/orders/:orderId/custom-decision` | 사장님 | FL-006 |
 | SCR-023 | 　　　└ 결제 기한 지난 주문 | `/owner/orders/:orderId/overdue-decision` | 사장님 | FL-007 |
 | SCR-024 | 　　　└ 변경 요청 | `/owner/change-requests/:changeRequestId` | 사장님 | FL-008 |
-| SCR-025 | 　　　└ 환불 정하기 | `/owner/orders/:orderId/refund-decision` | 사장님 | FL-008, FL-009 |
-| SCR-026 | 　　　└ 환불 보내기 | `/owner/refunds/:refundId` | 사장님 | FL-009, FL-011 |
+| SCR-025 | 　　　└ 환불 결정 | `/owner/orders/:orderId/refund-decision` | 사장님 | FL-008, FL-009 |
+| SCR-026 | 　　　└ 환불 송금 | `/owner/refunds/:refundId` | 사장님 | FL-009, FL-011 |
 | SCR-027 | 　　　└ 문제 신고 | `/owner/issue-reports/:issueReportId` | 사장님 | FL-011 |
 | SCR-028 | 　└ 입금 대조 목록 | `/owner/payment-requests` | 사장님 | FL-007 |
 | SCR-029 | 　　└ 입금 대조 | `/owner/payment-requests/:paymentRequestId` | 사장님 | FL-007 |
 | SCR-030 | 　└ 제작 목록 | `/owner/production` | 사장님 | FL-008, FL-010 |
 | SCR-031 | 　└ 픽업 목록 | `/owner/pickups` | 사장님 | FL-010 |
-| SCR-032 | 　└ 영업 달력 | `/owner/calendar` | 사장님 | FL-001, FL-002, FL-006, FL-007 |
-| SCR-033 | 　　└ 영업 달력 기준 | `/owner/calendar/settings` | 사장님 | FL-001, FL-002 |
+| SCR-032 | 　└ 영업 캘린더 | `/owner/calendar` | 사장님 | FL-001, FL-002, FL-006, FL-007 |
+| SCR-033 | 　　└ 영업 캘린더 설정 | `/owner/calendar/settings` | 사장님 | FL-001, FL-002 |
 | SCR-034 | 　└ 가게 설정 | `/owner/shop` | 사장님 | FL-001, FL-002 |
 | SCR-035 | 　　└ 영업 신고 | `/owner/shop/license` | 사장님 | FL-001 |
 | SCR-036 | 　　└ 가격표와 도안 | `/owner/price-list` | 사장님 | FL-001, FL-002 |
-| SCR-037 | 　　　└ 가격표 판 기록 | `/owner/price-list/versions`<br>`/owner/price-list/versions/:version` | 사장님 | FL-002 |
+| SCR-037 | 　　　└ 가격표 버전 이력 | `/owner/price-list/versions`<br>`/owner/price-list/versions/:version` | 사장님 | FL-002 |
 | SCR-038 | 　　└ 운영규정 | `/owner/operating-rules` | 사장님 | FL-001, FL-002 |
-| SCR-039 | 　　　└ 운영규정 판 기록 | `/owner/operating-rules/versions`<br>`/owner/operating-rules/versions/:version` | 사장님 | FL-002 |
-| SCR-040 | 　　└ 결제 받을 곳 | `/owner/payment-destination` | 사장님 | FL-001 |
+| SCR-039 | 　　　└ 운영규정 버전 이력 | `/owner/operating-rules/versions`<br>`/owner/operating-rules/versions/:version` | 사장님 | FL-002 |
+| SCR-040 | 　　└ 결제 수단 | `/owner/payment-destination` | 사장님 | FL-001 |
 | SCR-041 | 　　└ 카카오톡 채널 연결 | `/owner/kakao-channel` | 사장님 | FL-001 |
 | SCR-042 | 　　└ 장부 연결 | `/owner/ledger`<br>`/owner/ledger/callback` | 사장님 | FL-001, FL-013 |
 | SCR-043 | 　　└ 예약 링크 | `/owner/booking-link` | 사장님 | FL-001 |
@@ -199,19 +199,19 @@
 <!-- 07-sitemap:tasks:start -->
 | 할 일 유형(kind) | 이동 화면 |
 | --- | --- |
-| `handoff` | SCR-017 넘긴 질문 |
-| `custom_order` | SCR-022 맞춤 주문 답하기 |
+| `handoff` | SCR-017 에스컬레이션 건 |
+| `custom_order` | SCR-022 맞춤 주문 검토 |
 | `change_request` | SCR-024 변경 요청 |
 | `issue_report` | SCR-027 문제 신고 |
 | `payment_claim` | SCR-029 입금 대조 |
 | `payment_mismatch` | SCR-029 입금 대조 |
 | `payment_overdue` | SCR-023 결제 기한 지난 주문 |
-| `refund_decision` | SCR-025 환불 정하기 |
-| `paid_after_cancel` | SCR-025 환불 정하기 |
+| `refund_decision` | SCR-025 환불 결정 |
+| `paid_after_cancel` | SCR-025 환불 결정 |
 | `stale_change` | SCR-024 변경 요청 |
 | `ledger_relink` | SCR-042 장부 연결 |
 | `license_on_hold` | SCR-035 영업 신고 |
-| `calendar_conflict` | SCR-032 영업 달력 |
+| `calendar_conflict` | SCR-032 영업 캘린더 |
 
 | 상단 배너(banners) | 이동 화면 |
 | --- | --- |
@@ -229,9 +229,9 @@
 | 번호 | 결정 | 이유 | 대안과 그 결과 |
 | --- | --- | --- | --- |
 | S1 | 루트 3개: 손님 SCR-001 예약 링크 페이지, 사장님 SCR-014 사장님 로그인, 운영자 SCR-046 운영자 로그인 | 세 사용자는 진입점과 볼 수 있는 화면이 모두 다름. 요구사항에 서비스 소개 페이지가 없음 | 서비스 첫 화면 하나를 루트로: 요구사항에 없는 화면을 새로 만들어야 함 |
-| S2 | 카카오톡 안의 화면은 `kakao:shop/…`(가게 채널)·`kakao:service/…`(우리 서비스 채널) 경로로 표기 | URL은 없지만 손님 플로우 대부분이 여기서 일어남. 경로가 겹치지 않아 검사할 수 있음 | 사이트맵에서 제외: 손님 플로우 노드 대부분이 화면 없이 남음 |
-| S3 | 화면 하나 = 사람이 보고 판단하거나 처리하는 단위로, 읽기 모델이나 API의 GET 하나에 대응. 확인 모달·간단한 입력은 화면의 일부, 같은 화면의 다른 상태는 08단계 | 07단계 계약(같은 화면의 다른 상태는 합침). 08단계에서 화면별 상태를 정의하기 쉬움 | 버튼·모달마다 화면: 화면 수가 크게 늘고 08단계 상태와 겹침 |
-| S4 | 손님 확인 카드 6종(주문 요청·입금했다고 알리기·변경 요청·취소·문제 신고·사진 게시 동의 거두기)은 각각 별도 화면 | 카드마다 보여 주는 내용과 버튼이 다르고(SPEC-069), 30분 만료·이전 판 카드 같은 상태도 카드마다 다름 | 상담 화면(SCR-003)의 상태로 둠: 카드 6종의 문구와 상태가 한 화면에 몰림 |
+| S2 | 카카오톡 안의 화면은 `kakao:shop/…`(가게 채널)·`kakao:service/…`(우리 서비스 채널) 경로로 표기 | URL은 없지만 손님 플로우 대부분이 여기서 일어남. 경로가 중복되지 않아 검사할 수 있음 | 사이트맵에서 제외: 손님 플로우 노드 대부분이 화면 없이 남음 |
+| S3 | 화면 하나 = 사람이 보고 판단하거나 처리하는 단위로, 읽기 모델이나 API의 GET 하나에 대응. 확인 모달·간단한 입력은 화면의 일부, 같은 화면의 다른 상태는 08단계 | 07단계 계약(같은 화면의 다른 상태는 합침). 08단계에서 화면별 상태를 정의하기 쉬움 | 버튼·모달마다 화면: 화면 수가 크게 늘고 08단계 상태와 중복됨 |
+| S4 | 손님 확인 카드 6종(주문 요청·입금했다고 알리기·변경 요청·취소·문제 신고·사진 게시 동의 철회)은 각각 별도 화면 | 카드마다 보여 주는 내용과 버튼이 다르고(SPEC-069), 30분 만료·이전 버전 카드 같은 상태도 카드마다 다름 | 상담 화면(SCR-003)의 상태로 둠: 카드 6종의 문구와 상태가 한 화면에 몰림 |
 | S5 | 손님에게 먼저 보내는 안내는 화면 하나(SCR-011 손님 알림)로, 결제 안내(SCR-005)만 별도 | 안내는 형식이 같고 종류만 다름(SPEC-066). 결제 안내는 손님이 금액·계좌·기한을 보고 송금하는 화면 | 안내마다 화면: 화면이 8개 늘지만 형식이 같음 |
 | S6 | 결제 기한 지난 주문 목록과 답할 맞춤 주문 목록은 주문 목록(SCR-020)의 필터로 봄 | API-044 하나가 `status`·`kind`로 필터링. 할 일 목록에서도 바로 열림 | 목록 화면을 따로: 같은 API로 화면만 늘어남 |
 | S7 | 사장님 알림(SCR-019, 카카오톡)은 할 일 목록의 하위에 둠 | 알림에는 할 일 유형과 할 일 목록 주소만 담음(SPEC-067) | 사장님 루트 바로 아래: 웹 메뉴와 섞여 보임 |
@@ -269,14 +269,14 @@
 | S17 03단계 플로우 검사 | `check_flows.py` 문제 0, 금지어 0. 필수 요구사항 113개 가운데 108개가 플로우 다이어그램에 있는 것은 03단계 결과 그대로 |
 
 - 처음 작성할 때 일부러 넣은 오류 29가지를 검사가 모두 잡았습니다: 경로 중복, 허용되지 않은 access, `flows` 불일치, 금지어, 없는 API·용어, 화면 없음 표시 누락, 따옴표 없는 콜론, ID 중복, 탭 들여쓰기, 허브가 읽지 못하는 블록 문자열, 삭제된 화면을 쓰는 플로우 표, 카카오 경로 형식, `no_flow` 누락, 할 일 유형 오류, 할 일 목록에서 도달하지 않는 이동 화면, 루트 `audience` 중복, 플로우 표의 행 누락·없는 화면·화면과 사유 동시 기재·허용되지 않은 사유·화면 이름 오류·새 노드의 빈 행·플로우 표만 수정, 사이트맵 페이지의 슬라이드·목록·생성 시각·구조도 연결선 누락, README 표 수기 수정.
-- 용어를 바꾼 뒤(12절) 바뀐 검사 경로를 다시 시험했습니다. 이전 사유 값(가름), 이전 접근 권한 값(누구나), 플로우 표 머리 행의 이전 이름, README 생성 표 수기 수정, 원본 설명의 금지어를 하나씩 넣으면 각각 S8, S4, S8, S16, S14가 실패합니다(5개 중 5개).
+- 용어를 바꾼 뒤(12절) 바뀐 검사 경로를 다시 테스트했습니다. 이전 사유 값(가름), 이전 접근 권한 값(누구나), 플로우 표 머리 행의 이전 이름, README 생성 표 수기 수정, 원본 설명의 금지어를 하나씩 넣으면 각각 S8, S4, S8, S16, S14가 실패합니다(5개 중 5개).
 - 생성 스크립트는 플로우 다이어그램에 없는 노드의 행을 만나면 멈추고, 다이어그램에 새로 생긴 노드에는 빈 행을 추가합니다(검사 S8이 채우라고 알림).
 - 구조도의 Mermaid 다이어그램 3개를 Mermaid 10.9.1로 렌더링해 오류 없이 노드 49개·연결선 46개가 나오는 것을 확인했습니다. 용어를 바꾼 최종본을 1280px(라이트 모드)과 390px(다크 모드)에서 렌더링해 가로 넘침이 없음을 확인했습니다. 좁은 화면에서도 한국어 단어는 중간에서 끊기지 않고, 긴 경로만 열 끝에서 줄바꿈됩니다. 게시한 페이지에서는 Artifact가 Mermaid를 렌더링하는데, 그 화면은 직접 확인하지 못했습니다.
-- 확인하지 못한 것: 카카오톡 화면은 아직 실제로 없어서 카드와 알림의 모양은 08·09단계에서 확인합니다.
+- 확인하지 못한 것: 카카오톡 화면은 아직 실제로 없어서 카드와 알림의 디자인은 08·09단계에서 확인합니다.
 
-## 10. 다음 단계로 넘기는 것
+## 10. 다음 단계로 전달하는 것
 
-- 08단계(화면 상태): 화면 49개마다 기본·로딩·빈 상태·오류·권한 없음·오래된 데이터 상태를 정의합니다. 카드 화면은 30분 만료와 이전 판 카드, 카카오톡 화면은 채널 친구가 아닐 때(다음 대화 때 먼저 전달)를 상태로 다룹니다.
+- 08단계(화면 상태): 화면 49개마다 기본·로딩·빈 상태·오류·권한 없음·오래된 데이터 상태를 정의합니다. 카드 화면은 30분 만료와 이전 버전 카드, 카카오톡 화면은 채널 친구가 아닐 때(다음 대화 때 먼저 전달)를 상태로 다룹니다.
 - 08단계에서 OPEN-8(SCR-041의 봇 ID 찾기 안내)을 정합니다.
 - 09단계(목업)는 08단계 화면 정의를 따라 화면마다 시안 2개로 시작합니다.
 
@@ -306,4 +306,4 @@
 | 그린다, 그린 시각 | 생성한다, 생성 시각 |
 | 피할 말, 못 봄 | 금지어, 미확인 |
 
-01단계 용어집에서 정한 도메인 용어(넘긴 질문, 판, 사진 게시 동의 거두기 등)는 화면 이름과 API·SPEC 이름에도 쓰이고 있어 이번에는 바꾸지 않았습니다.
+01단계 용어집에서 정한 도메인 용어는 화면 이름과 API·SPEC 이름에도 쓰이고 있어 이때는 바꾸지 않았습니다. 같은 날 동희님이 '용어집부터 전부 바꿈'(16:23)과 용어 대조표 82개 '추천대로 확정'(17:30)을 고르셔서 01~07단계 전체를 업계 용어로 바꿨습니다(에스컬레이션 건, 버전, 사진 게시 동의 철회 등). 바꾼 내용은 [01단계 문서 3-7](../01-domain/domain.md)과 Notion [용어 대조표](https://app.notion.com/p/416bf16cc3ec8149a1cacc395e33055c)에 있습니다.

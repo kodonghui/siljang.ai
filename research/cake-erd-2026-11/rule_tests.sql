@@ -1,14 +1,14 @@
--- 05단계 규칙 시험: db/schema.sql의 표가 정상 흐름을 받아들이고, 표로 지키기로 한 규칙을 어기는 쓰기는 막는지 봄.
+-- 05단계 규칙 테스트: db/schema.sql의 테이블이 정상 플로우를 수락하고, 테이블로 지키기로 한 규칙을 어기는 쓰기는 막는지 봄.
 -- check_erd.py가 마이그레이션으로 만든 빈 DB에서 돌림. 모든 쓰기는 마지막에 되돌림(ROLLBACK).
--- 1부: 정상 흐름(기본 디자인 주문 → 입금 알리기 → 확정 → 넘김 → 신고 → 다시 만들기 → 후기·포트폴리오,
---      맞춤 주문 → 금액 바꿔 수락 → 확정 → 차액 결제 변경 반영, 확정 뒤 손님 취소 → 환불).
--- 2부: 규칙마다 어기는 쓰기 하나. 기대한 제약으로 막히면 ok, 들어가거나 다른 제약에 걸리면 시험 실패.
+-- 1부: 정상 플로우(기본 디자인 주문 → 입금 알리기 → 확정 → 인도 → 신고 → 재제작 → 후기·포트폴리오,
+--      맞춤 주문 → 금액 변경 수락 → 확정 → 차액 결제 변경 반영, 확정 뒤 손님 취소 → 환불).
+-- 2부: 규칙마다 어기는 쓰기 하나. 기대한 제약으로 막히면 ok, 들어가거나 다른 제약에 걸리면 테스트 실패.
 \set ON_ERROR_STOP 1
 BEGIN;
 
 CREATE TEMP TABLE rule_results (name text PRIMARY KEY, ok boolean NOT NULL, detail text);
 
--- 문장들을 차례로 돌려 기대한 규칙(expected: 제약 이름이나 칸 이름)으로 막히는지 봄. 막히면 그 문장들은 되돌아감.
+-- 문장들을 차례로 돌려 기대한 규칙(expected: 제약 이름이나 컬럼 이름)으로 막히는지 봄. 막히면 그 문장들은 되돌아감.
 CREATE FUNCTION pg_temp.expect_fail(test_name text, expected text, stmts text[]) RETURNS void
 LANGUAGE plpgsql AS $fn$
 DECLARE
@@ -31,7 +31,7 @@ BEGIN
 END
 $fn$;
 
--- ───────────── 1부: 정상 흐름 ─────────────
+-- ───────────── 1부: 정상 플로우 ─────────────
 
 -- 가게 등록·연결 (CTX-007)
 INSERT INTO owners (id, kakao_account_id, alert_user_key, alert_channel_friend) VALUES
@@ -136,7 +136,7 @@ INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, 
   ('c7000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
    'card-order-request-0003', 'order_request', 'c4000000-0000-0000-0000-000000000003', 1, '{"amount":35000}', now() + interval '30 minutes', now(), 'done');
 
--- 주문 1: 기본 디자인 주문 요청(한 거래: 주문·첫 판·사진 게시 동의·결제 안내·자리)
+-- 주문 1: 기본 디자인 주문 요청(한 트랜잭션: 주문·첫 버전·사진 게시 동의·결제 안내·자리)
 INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_id, kind, status, version, price_list_id, operating_rules_id,
                     details_confirmed_at, terms_consented_at, pickup_at, pickup_day, amount) VALUES
   ('d0000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'K7Q2M9', 'c0000000-0000-0000-0000-000000000001',
@@ -157,10 +157,10 @@ INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, am
 INSERT INTO slot_holds (id, shop_id, day, order_id, payment_request_id, hold_key, status) VALUES
   ('e3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', '2026-12-24', 'd0000000-0000-0000-0000-000000000001',
    'e0000000-0000-0000-0000-000000000001', 'hold:d0..01:e0..01', 'held');
-SET CONSTRAINTS ALL IMMEDIATE;  -- 주문 줄과 첫 판 줄이 맞는지 여기서 봄
+SET CONSTRAINTS ALL IMMEDIATE;  -- 주문 행과 첫 버전 행이 맞는지 여기서 봄
 SET CONSTRAINTS ALL DEFERRED;
 
--- 입금 알리기 → 들어옴 → 확정 → 넘김
+-- 입금 알리기 → 입금됨 → 확정 → 인도
 INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, order_id, order_version, payload, expires_at, used_at, outcome) VALUES
   ('c7000000-0000-0000-0000-000000000011', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
    'card-payment-claim-0001', 'payment_claim', 'd0000000-0000-0000-0000-000000000001', 1, '{}', now() + interval '30 minutes', now(), 'done');
@@ -197,7 +197,7 @@ UPDATE productions SET production_started_at = now(), completed_at = now(), hand
 UPDATE orders SET status = 'received' WHERE id = 'd0000000-0000-0000-0000-000000000001';
 UPDATE slot_holds SET status = 'done', done_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000001';
 
--- 신고 → 다시 만들기 주문(결제 없음, 확정으로 시작, 확정 자리)
+-- 신고 → 재제작 주문(결제 없음, 확정으로 시작, 확정 자리)
 INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status) VALUES
   ('f1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
    'd0000000-0000-0000-0000-000000000001', '케이크 옆면이 무너졌어요', 'reported');
@@ -244,7 +244,7 @@ INSERT INTO photo_consents (id, shop_id, order_id, scope, review_photo_id, conse
 INSERT INTO portfolio_items (id, shop_id, photo_consent_id, review_photo_id) VALUES
   ('f5000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000002', 'f4000000-0000-0000-0000-000000000001');
 
--- 넘긴 질문(먹어도 되는지) → 사장님 답 기다림
+-- 에스컬레이션 건(먹어도 되는지) → 사장님 답 기다림
 INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, reason) VALUES
   ('f6000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
    'c2000000-0000-0000-0000-000000000001', 'edibility');
@@ -265,7 +265,7 @@ INSERT INTO request_keys (actor_kind, actor_id, request_key, command, response_s
 INSERT INTO ops_events (shop_id, kind, count, detail) VALUES
   (NULL, 'purge_run', 0, '{"consultations":0,"orders":0}');
 
--- 주문 3: 맞춤 주문 → 금액 바꿔 수락(2판) → 결제 → 확정 → 차액 결제 변경(3판)
+-- 주문 3: 맞춤 주문 → 금액 변경 수락(버전 2) → 결제 → 확정 → 차액 결제 변경(버전 3)
 INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_id, kind, status, version, price_list_id, operating_rules_id,
                     details_confirmed_at, terms_consented_at, pickup_at, pickup_day, amount) VALUES
   ('d0000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'P2N6X3', 'c0000000-0000-0000-0000-000000000002',
@@ -330,7 +330,7 @@ UPDATE productions SET changed_after_start = true WHERE id = 'f0000000-0000-0000
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 
--- 주문 4: 기본 디자인 주문 → 확정 → 손님 취소 → 자리 풀기 → 일부 환불
+-- 주문 4: 기본 디자인 주문 → 확정 → 손님 취소 → 가예약 해제 → 일부 환불
 INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_id, kind, status, version, price_list_id, operating_rules_id,
                     details_confirmed_at, terms_consented_at, pickup_at, pickup_day, amount) VALUES
   ('d0000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'H5J9L4', 'c0000000-0000-0000-0000-000000000001',
@@ -366,7 +366,7 @@ SET CONSTRAINTS ALL DEFERRED;
 -- ───────────── 2부: 규칙을 어기는 쓰기 ─────────────
 
 -- 가게 나누기(G1, SPEC-068)
-SELECT pg_temp.expect_fail('G1 다른 가게의 주문을 가리키는 결제 안내', 'payment_requests_order_fk', ARRAY[$$
+SELECT pg_temp.expect_fail('G1 다른 가게의 주문을 참조하는 결제 안내', 'payment_requests_order_fk', ARRAY[$$
   INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
   VALUES ('a2000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000001', 'first', 'x-1', 40000,
           'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour')$$]);
@@ -409,7 +409,7 @@ SELECT pg_temp.expect_fail('SPEC-004 같은 조합의 옵션 규칙 둘(허용�
           'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004')$$]);
 SELECT pg_temp.expect_fail('SPEC-004 값이 1,000만 원을 넘음', 'price_options_amount_check', ARRAY[$$
   UPDATE price_options SET amount = 10000001 WHERE id = 'b1000000-0000-0000-0000-000000000001'$$]);
-SELECT pg_temp.expect_fail('SPEC-013 다른 판의 옵션으로 초안 채우기', 'order_drafts_size_fk', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-013 다른 버전의 옵션으로 초안 채우기', 'order_drafts_size_fk', ARRAY[$$
   UPDATE price_lists SET superseded_at = now() WHERE id = 'b0000000-0000-0000-0000-000000000001'$$, $$
   INSERT INTO price_lists (id, shop_id, version) VALUES ('b0000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 2)$$, $$
   INSERT INTO price_options (id, shop_id, price_list_id, option_group, name, amount)
@@ -420,7 +420,7 @@ SELECT pg_temp.expect_fail('SPEC-013 다른 판의 옵션으로 초안 채우기
 SELECT pg_temp.expect_fail('REQ-032 제작 전 취소 환불을 낮추고 확인 없음', 'operating_rules_lowered_chk', ARRAY[$$
   INSERT INTO operating_rules (shop_id, version, change_deadline_hours, date_change_refund_basis, pre_production_refund_pct, superseded_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 2, 48, 'new_pickup', 80, now())$$]);
-SELECT pg_temp.expect_fail('SPEC-005 단계별 환불 기간 겹침', 'refund_tiers_no_overlap', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-005 단계별 환불 기간 중복됨', 'refund_tiers_no_overlap', ARRAY[$$
   INSERT INTO refund_tiers (shop_id, operating_rules_id, hours_before_min, hours_before_max, refund_pct)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', 48, 96, 70)$$]);
 SELECT pg_temp.expect_fail('SPEC-005 기한이 720시간을 넘음', 'operating_rules_payment_due_hours_check', ARRAY[$$
@@ -431,16 +431,16 @@ SELECT pg_temp.expect_fail('SPEC-052 전날 안내가 20:50 뒤', 'business_cale
   UPDATE business_calendars SET day_before_notice_time = '21:00' WHERE shop_id = 'a2000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-007 하루 최대 개수 100 넘음', 'business_calendars_daily_capacity_check', ARRAY[$$
   UPDATE business_calendars SET daily_capacity = 101 WHERE shop_id = 'a2000000-0000-0000-0000-000000000001'$$]);
-SELECT pg_temp.expect_fail('G3 날짜 줄 없는 날의 자리', 'slot_holds_day_fk', ARRAY[$$
+SELECT pg_temp.expect_fail('G3 날짜 행 없는 날의 자리', 'slot_holds_day_fk', ARRAY[$$
   INSERT INTO slot_holds (shop_id, day, order_id, hold_key, status, fixed_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', '2027-01-05', 'd0000000-0000-0000-0000-000000000004', 'hold:x', 'fixed', now())$$]);
-SELECT pg_temp.expect_fail('1-4 주문 하나에 살아 있는 자리 둘', 'slot_holds_one_live_per_order', ARRAY[$$
+SELECT pg_temp.expect_fail('1-4 주문 하나에 유효한 자리 둘', 'slot_holds_one_live_per_order', ARRAY[$$
   INSERT INTO slot_holds (shop_id, day, order_id, hold_key, status, fixed_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', '2026-12-28', 'd0000000-0000-0000-0000-000000000003', 'hold:y', 'fixed', now())$$]);
 SELECT pg_temp.expect_fail('R13 결제 안내 없이 잡힘', 'slot_holds_held_chk', ARRAY[$$
   INSERT INTO slot_holds (shop_id, day, order_id, hold_key, status)
   VALUES ('a2000000-0000-0000-0000-000000000001', '2026-12-24', 'd0000000-0000-0000-0000-000000000004', 'hold:z', 'held')$$]);
-SELECT pg_temp.expect_fail('1-4 까닭 없이 풀림', 'slot_holds_released_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('1-4 사유 없이 풀림', 'slot_holds_released_chk', ARRAY[$$
   UPDATE slot_holds SET status = 'released', released_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000003'$$]);
 
 -- 상담 (CTX-001)
@@ -452,7 +452,7 @@ SELECT pg_temp.expect_fail('SPEC-017 손님 하나에 상담 둘', 'consultation
 SELECT pg_temp.expect_fail('SPEC-021 카드번호 전체를 남김', 'masked_values_card_last4_chk', ARRAY[$$
   INSERT INTO masked_values (shop_id, consultation_id, kind, placeholder, original_value)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'card', '[카드번호1]', '1234567812345678')$$]);
-SELECT pg_temp.expect_fail('SPEC-021 자리표 모양이 아님', 'masked_values_placeholder_check', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-021 플레이스홀더 형식이 아님', 'masked_values_placeholder_check', ARRAY[$$
   INSERT INTO masked_values (shop_id, consultation_id, kind, placeholder, original_value)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'phone', '전화번호', '010-1111-2222')$$]);
 SELECT pg_temp.expect_fail('상담마다 채우는 초안 둘', 'order_drafts_one_active', ARRAY[$$
@@ -466,7 +466,7 @@ SELECT pg_temp.expect_fail('G9 30분 넘는 카드 기한', 'confirm_cards_expir
   INSERT INTO confirm_cards (shop_id, consultation_id, customer_id, card_key, kind, order_id, order_version, payload, expires_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
           'card-too-long-00001', 'cancel', 'd0000000-0000-0000-0000-000000000001', 1, '{}', now() + interval '31 minutes')$$]);
-SELECT pg_temp.expect_fail('G9 판 번호 없는 취소 카드', 'confirm_cards_order_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('G9 버전 없는 취소 카드', 'confirm_cards_order_chk', ARRAY[$$
   INSERT INTO confirm_cards (shop_id, consultation_id, customer_id, card_key, kind, order_id, payload, expires_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
           'card-no-version-0001', 'cancel', 'd0000000-0000-0000-0000-000000000001', '{}', now() + interval '10 minutes')$$]);
@@ -474,7 +474,7 @@ SELECT pg_temp.expect_fail('G2 같은 카드 키 두 번', 'confirm_cards_key_uq
   INSERT INTO confirm_cards (shop_id, consultation_id, customer_id, card_key, kind, order_id, order_version, payload, expires_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
           'card-cancel-000000001', 'cancel', 'd0000000-0000-0000-0000-000000000001', 1, '{}', now() + interval '10 minutes')$$]);
-SELECT pg_temp.expect_fail('SPEC-022 상담마다 열린 넘긴 질문 둘', 'handoffs_one_open_per_consultation', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-022 상담마다 열린 에스컬레이션 건 둘', 'handoffs_one_open_per_consultation', ARRAY[$$
   INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000004', 'cannot_answer')$$]);
 SELECT pg_temp.expect_fail('SPEC-023 답 없이 답함', 'handoffs_answer_chk', ARRAY[$$
@@ -509,18 +509,18 @@ SELECT pg_temp.expect_fail('REQ-060 확정 시각 없는 확정', 'orders_confir
   UPDATE orders SET confirmed_at = NULL WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
 SELECT pg_temp.expect_fail('1-2 없는 주문 상태', 'orders_status_check', ARRAY[$$
   UPDATE orders SET status = 'done' WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
-SELECT pg_temp.expect_fail('R21 결제 있는 다시 만들기 주문', 'orders_remake_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('R21 결제 있는 재제작 주문', 'orders_remake_chk', ARRAY[$$
   UPDATE orders SET amount = 1000 WHERE id = 'd0000000-0000-0000-0000-000000000002'$$]);
-SELECT pg_temp.expect_fail('E2 주문 줄 금액이 지금 판과 다름', 'orders_current_details_fk', ARRAY[$$
+SELECT pg_temp.expect_fail('E2 주문 행 금액이 현재 버전과 다름', 'orders_current_details_fk', ARRAY[$$
   UPDATE orders SET amount = 61000 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
-SELECT pg_temp.expect_fail('E2 없는 판을 지금 판으로', 'orders_current_details_fk', ARRAY[$$
+SELECT pg_temp.expect_fail('E2 없는 버전을 현재 버전으로', 'orders_current_details_fk', ARRAY[$$
   UPDATE orders SET version = 4 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
-SELECT pg_temp.expect_fail('SPEC-048 까닭 없는 가게 사정 취소', 'orders_shop_cancel_reason_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-048 사유 없는 가게 사정 취소', 'orders_shop_cancel_reason_chk', ARRAY[$$
   UPDATE orders SET cancel_kind = 'shop' WHERE id = 'd0000000-0000-0000-0000-000000000004'$$]);
-SELECT pg_temp.expect_fail('SPEC-045 같은 판 번호의 주문 내용 둘', 'order_details_version_uq', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-045 같은 버전의 주문 내용 둘', 'order_details_version_uq', ARRAY[$$
   INSERT INTO order_details (shop_id, order_id, version, source, price_list_id, pickup_at, amount, amount_change_reason)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 3, 'owner_amount_change',
-          'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 60000, '같은 판')$$]);
+          'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 60000, '같은 버전')$$]);
 SELECT pg_temp.expect_fail('SPEC-045 같은 변경을 두 번 반영', 'order_details_change_uq', ARRAY[$$
   INSERT INTO order_details (shop_id, order_id, version, source, change_request_id, price_list_id, pickup_at, amount)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 4, 'change_request',
@@ -541,9 +541,9 @@ SELECT pg_temp.expect_fail('1-5 한 주문에 열린 변경 요청 둘', 'change
 SELECT pg_temp.expect_fail('REQ-067 금액이 오르지 않는 차액 결제 기다림', 'change_requests_difference_chk', ARRAY[$$
   UPDATE change_requests SET status = 'awaiting_difference', amount_delta = NULL, applied_version = NULL, applied_at = NULL
    WHERE id = 'd2000000-0000-0000-0000-000000000001'$$]);
-SELECT pg_temp.expect_fail('SPEC-045 판을 건너뛴 반영', 'change_requests_applied_version_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-045 버전을 건너뛴 반영', 'change_requests_applied_version_chk', ARRAY[$$
   UPDATE change_requests SET applied_version = 4 WHERE id = 'd2000000-0000-0000-0000-000000000001'$$]);
-SELECT pg_temp.expect_fail('SPEC-060 다시 만들기가 아닌 보상에 다시 만들기 주문', 'issue_reports_remake_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-060 재제작이 아닌 보상에 재제작 주문', 'issue_reports_remake_chk', ARRAY[$$
   UPDATE issue_reports SET compensation = 'none' WHERE id = 'f2000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('G2 신고 카드 하나에 신고 둘', 'issue_reports_card_uq', ARRAY[$$
   INSERT INTO issue_details (id, shop_id, consultation_id, order_id, status)
@@ -584,7 +584,7 @@ SELECT pg_temp.expect_fail('R12 결제 기한이 낸 시각보다 앞', 'payment
   INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-7', 40000,
           'b7000000-0000-0000-0000-000000000001', now() - interval '1 hour')$$]);
-SELECT pg_temp.expect_fail('G2 같은 사건의 결제 안내 둘', 'payment_requests_event_uq', ARRAY[$$
+SELECT pg_temp.expect_fail('G2 같은 이벤트의 결제 안내 둘', 'payment_requests_event_uq', ARRAY[$$
   INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'pay:d0..01:first', 40000,
           'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour')$$]);
@@ -592,13 +592,13 @@ SELECT pg_temp.expect_fail('SPEC-035 다르게 들어온 금액이 10배를 넘�
   INSERT INTO payment_requests (shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, mismatch_amount, mismatch_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-8', 'mismatch', 40000,
           'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', 400001, now())$$]);
-SELECT pg_temp.expect_fail('SPEC-033 안 들어옴 뒤 다시 확인 요청됨', 'payment_requests_claimed_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-033 미입금 뒤 다시 확인 요청됨', 'payment_requests_claimed_chk', ARRAY[$$
   INSERT INTO payment_requests (shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, claimed_at, claim_rejected_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-9', 'claimed', 40000,
           'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now(), now())$$]);
 SELECT pg_temp.expect_fail('REQ-085 환불 없음인데 금액', 'refunds_decision_chk', ARRAY[$$
   UPDATE refunds SET decision = 'none' WHERE id = 'e2000000-0000-0000-0000-000000000001'$$]);
-SELECT pg_temp.expect_fail('SPEC-047 계산값과 다른 금액에 까닭 없음', 'refunds_override_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-047 계산값과 다른 금액에 사유 없음', 'refunds_override_chk', ARRAY[$$
   UPDATE refunds SET amount = 15000 WHERE id = 'e2000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('G2 같은 환불을 두 번 정함', 'refunds_event_uq', ARRAY[$$
   INSERT INTO refunds (shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis)
@@ -614,7 +614,7 @@ SELECT pg_temp.expect_fail('SPEC-006 가게마다 지금 계좌 둘', 'payment_a
   VALUES ('a2000000-0000-0000-0000-000000000001', '우리은행', '1002-123-456789', '김사장')$$]);
 
 -- 제작·전달, 후기·포트폴리오 (CTX-005, CTX-006)
-SELECT pg_temp.expect_fail('SPEC-055 폐기한 케이크를 넘김', 'productions_discard_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-055 폐기한 케이크를 인도함', 'productions_discard_chk', ARRAY[$$
   UPDATE productions SET no_pickup_at = now(), discarded_at = now() WHERE id = 'f0000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-051 5분 지나 되돌림', 'production_undos_window_chk', ARRAY[$$
   INSERT INTO production_undos (shop_id, production_id, mark, marked_at, undone_at)
@@ -623,11 +623,11 @@ SELECT pg_temp.expect_fail('SPEC-062 주문마다 지금 후기 둘', 'reviews_o
   INSERT INTO reviews (shop_id, order_id, version, body) VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 2, '또 씀')$$]);
 SELECT pg_temp.expect_fail('REQ-097 사진 없는 포트폴리오 항목', 'portfolio_items_one_photo_chk', ARRAY[$$
   INSERT INTO portfolio_items (shop_id, photo_consent_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000002')$$]);
-SELECT pg_temp.expect_fail('REQ-098 동의하지 않은 것을 거둠', 'photo_consents_withdraw_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('REQ-098 동의하지 않은 것을 철회함', 'photo_consents_withdraw_chk', ARRAY[$$
   UPDATE photo_consents SET withdrawn_at = now() WHERE id = 'd3000000-0000-0000-0000-000000000001'$$]);
 
 -- 알림·장부 (CTX-008, CTX-009)
-SELECT pg_temp.expect_fail('REQ-154 같은 사건의 안내 둘', 'notifications_event_uq', ARRAY[$$
+SELECT pg_temp.expect_fail('REQ-154 같은 이벤트의 안내 둘', 'notifications_event_uq', ARRAY[$$
   INSERT INTO notifications (shop_id, customer_id, consultation_id, kind, event_key, template_key, body)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
           'order_confirmed', 'notice:d0..01:confirmed', 't', '다시')$$]);
@@ -639,14 +639,14 @@ SELECT pg_temp.expect_fail('SPEC-067 대상 없는 신고 할 일', 'owner_tasks
 SELECT pg_temp.expect_fail('1-7 기다림이 없는 할 일에 기다림 상태', 'owner_tasks_wait_kind_chk', ARRAY[$$
   INSERT INTO owner_tasks (shop_id, kind, event_key, order_id, wait_status, wait_due_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'payment_overdue', 'task:overdue:x', 'd0000000-0000-0000-0000-000000000001', 'waiting', now())$$]);
-SELECT pg_temp.expect_fail('1-7 늦어짐 안내 없이 늦어짐', 'owner_tasks_late_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('1-7 지연 안내 없이 지연', 'owner_tasks_late_chk', ARRAY[$$
   UPDATE owner_tasks SET wait_status = 'late' WHERE id = 'f7000000-0000-0000-0000-000000000002'$$]);
-SELECT pg_temp.expect_fail('REQ-126 주문 하나에 장부 줄 둘', 'ledger_rows_order_uq', ARRAY[$$
+SELECT pg_temp.expect_fail('REQ-126 주문 하나에 장부 행 둘', 'ledger_rows_order_uq', ARRAY[$$
   INSERT INTO ledger_rows (shop_id, order_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001')$$]);
-SELECT pg_temp.expect_fail('REQ-132 같은 사건의 장부 쓰기 둘', 'ledger_writes_event_uq', ARRAY[$$
+SELECT pg_temp.expect_fail('REQ-132 같은 이벤트의 장부 쓰기 둘', 'ledger_writes_event_uq', ARRAY[$$
   INSERT INTO ledger_writes (shop_id, ledger_row_id, event_key, event_kind)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'fb000000-0000-0000-0000-000000000001', 'ledger:d0..01:confirmed', 'confirmed')$$]);
-SELECT pg_temp.expect_fail('SPEC-009 가게마다 살아 있는 장부 연결 둘', 'ledger_links_one_live_per_shop', ARRAY[$$
+SELECT pg_temp.expect_fail('SPEC-009 가게마다 유효한 장부 연결 둘', 'ledger_links_one_live_per_shop', ARRAY[$$
   INSERT INTO ledger_links (shop_id, spreadsheet_id, sheet_name, our_columns, credential_ref)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'sheet-2', '주문', '{}', 'secret-store/ledger/shop-a-2')$$]);
 SELECT pg_temp.expect_fail('G2 같은 화면 요청 키 두 번', 'request_keys_pkey', ARRAY[$$

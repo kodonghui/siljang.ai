@@ -93,23 +93,23 @@ code, .mono { font-family: var(--font-code); font-size: 0.9em; }
 </style>
 <div class="page">
   <header class="intro">
-    <p class="eyebrow"><span>06단계 API 계약</span><span class="mono">0.1.0</span><span>2026-11-12 판</span><span class="chip">확정</span></p>
+    <p class="eyebrow"><span>06단계 API 계약</span><span class="mono">0.1.0</span><span>2026-11-12 버전</span><span class="chip">확정</span></p>
     <h1>Siljang API 계약</h1>
-    <p class="lede">수제케이크 주문제작 AI 상담·예약 서비스의 화면과 카카오 챗봇이 서버와 주고받는 약속입니다. 작업마다 돌려줄 수 있는 응답을 모두 적고, 응답마다 예시를 붙였습니다.</p>
+    <p class="lede">수제케이크 주문제작 AI 상담·예약 서비스의 화면과 카카오 챗봇이 서버와 주고받는 약속입니다. API마다 반환할 수 있는 응답을 모두 적고, 응답마다 예시를 붙였습니다.</p>
     <dl class="facts">
-      <div><dt>작업</dt><dd>72</dd></div>
+      <div><dt>API</dt><dd>72</dd></div>
       <div><dt>응답</dt><dd>358</dd></div>
       <div><dt>오류 코드</dt><dd>32</dd></div>
-      <div><dt>정한 것</dt><dd>19</dd></div>
+      <div><dt>결정 사항</dt><dd>19</dd></div>
       <div><dt>열린 질문</dt><dd>8</dd></div>
     </dl>
     <ul class="howto">
-      <li>묶음(로그인·가게·주문 …)을 누르면 작업이 펼쳐집니다. 작업 이름 앞의 <code>API-001</code>이 계약 번호입니다.</li>
-      <li>작업을 열면 아래쪽 <b>Responses</b> 표에 상태 번호(200·401·404·409·422 …)마다 뜻과 예시가 있습니다. 예시가 여럿이면 <b>Examples</b> 상자에서 고릅니다.</li>
-      <li>설명 끝의 <b>돌려주지 않는 응답</b>은 응답 표 가운데 그 작업에 없는 상태와 그 까닭입니다.</li>
+      <li>그룹(로그인·가게·주문 …)을 누르면 API가 펼쳐집니다. API 이름 앞의 <code>API-001</code>이 계약 번호입니다.</li>
+      <li>API를 열면 아래쪽 <b>Responses</b> 표에 상태 번호(200·401·404·409·422 …)마다 뜻과 예시가 있습니다. 예시가 여럿이면 <b>Examples</b> 드롭다운에서 고릅니다.</li>
+      <li>설명 끝의 <b>반환하지 않는 응답</b>은 응답 목록 가운데 그 API에 없는 상태와 그 사유입니다.</li>
       <li>서버가 아직 없어 'Try it out'은 껐습니다. 예시의 가게 '달빛케이크'와 모든 값은 지어낸 것입니다.</li>
     </ul>
-    <p class="source">원본은 siljang.ai 저장소의 <code>api/openapi.yaml</code>입니다. 이 페이지는 원본을 그대로 보여 주고, 작업 이름 앞의 API ID와 설명 끝의 '돌려주지 않는 응답'만 원본의 <code>x-corthex</code>에서 옮겨 붙였습니다.</p>
+    <p class="source">원본은 siljang.ai 저장소의 <code>api/openapi.yaml</code>입니다. 이 페이지는 원본을 그대로 보여 주고, API 이름 앞의 API ID와 설명 끝의 '반환하지 않는 응답'만 원본의 <code>x-corthex</code>에서 옮겨 붙였습니다.</p>
   </header>
   <main id="swagger"><p class="notice" id="swagger-status">계약을 불러오는 중입니다…</p></main>
 </div>
@@ -134,7 +134,7 @@ code, .mono { font-family: var(--font-code); font-size: 0.9em; }
         var codes = Object.keys(omit);
         if (codes.length) {
           var lines = codes.map(function (code) { return '- **' + code + '**: ' + omit[code]; });
-          op.description = (op.description || '') + '\n\n**돌려주지 않는 응답**\n\n' + lines.join('\n');
+          op.description = (op.description || '') + '\n\n**반환하지 않는 응답**\n\n' + lines.join('\n');
         }
       });
     });

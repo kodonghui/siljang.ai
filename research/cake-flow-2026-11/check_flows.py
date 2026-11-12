@@ -33,7 +33,7 @@ for line in reqs_text.splitlines():
         REQ[c[0]] = {"text": c[1], "type": c[3], "prio": c[4], "ctx": c[5], "status": c[7]}
 
 def excluded(r):
-    # '제외' or '제외(2판, REQ-153로 바꿈)'
+    # '제외' or '제외(버전 2, REQ-153로 바꿈)'
     return REQ[r]["status"].startswith("제외")
 TERMS = set(re.findall(r"^\| (TERM-\d{3}) \|", dom, re.M))
 CTXS = {"CTX-%03d" % i for i in range(1, 10)}
@@ -47,26 +47,23 @@ for line in dom.splitlines():
             if w and w != "없음" and len(w) >= 2 and not re.fullmatch(r"`.*`", w):
                 avoid.append((w, c[0], c[1]))
 for w in ("입금 확인", "예약 확정", "결제 완료", "노쇼", "클레임", "위약금", "에스크로", "홀드",
-          "챗봇", "고객", "관리자", "승인", "리뷰", "배송", "배달", "판매자", "작업"):
+          "챗봇", "고객", "관리자", "승인", "리뷰", "배송", "배달", "판매자"):
     avoid.append((w, "-", "01단계에서 합친 말"))
 # allowed uses, checked by hand (window around the hit)
 ALLOW = {
-    "예약": [r"예약 링크"],
-    "시스템": [r", 시스템[은의] ", r"^- N\d .*시스템은 ", r"\| 시스템[은의] "],  # EARS subject in candidate sentences
+    "예약": [r"예약 링크", r"가예약"],                         # TERM-007 가예약 (2026-11-12 용어 정리)
     "정책": [r"5-1의 정책"],                                    # TERM-029 itself (domain 5-1)
     "확정": [r"주문[이을]? ?확정", r"확정[된되]", r"확정하", r"확정 안내", r"확정·부터·범위", r"확정 주문",
-             r"운영규정 확정", r"판으로 확정", r"판 확정", r"범위 확정", r"추천대로 확정", r"확정해야", r"확정이",
-             r"확정까지", r"'확정'", r"확정\)", r"확정으로", r"확정할", r"확정받",
-             r"주문 요청·확정", r"흐름만 확정",
+             r"운영규정 확정", r"버전으로 확정", r"버전 확정", r"범위 확정", r"추천대로 확정", r"확정해야", r"확정이",
+             r"확정까지", r"확정했", r"'확정'", r"확정\)", r"확정으로", r"확정할", r"확정받",
+             r"주문 요청·확정", r"플로우만 확정",
              # document status words after the stage 03 checkpoint (2026-11-12), not TERM-011 수락
              r"^status: 확정", r"\| 확정 \|", r"단계 확정", r"상태: 확정", r"\d 확정:", r"(\d|,) 확정 뒤"],
     "시트": [r"구글 시트"],
-    "입금": [r"입금했다고", r"입금 대조", r"들어온 입금", r"입금이 확인", r"입금자"],
-    "메시지": [r"(손님|카카오|마지막|새) ?메시지", r"메시지 속", r"메시지 하나", r"메시지를 받", r"메시지가"],
-    "거래": [r"한 거래 후보", r"전자상거래법"],
+    "입금": [r"입금했다고", r"입금 대조", r"들어온 입금", r"입금이 확인", r"입금자", r"입금됨", r"미입금"],
+    "거래": [r"전자상거래법"],
     "주문서": [r"주문서 초안"],
     "매장": [r"매장에서"],                                      # place, as in TERM-024
-    "작업": [r"'작업 상태'", r"작업 대화"],                      # shops' ledger column / chat name in records
 }
 
 def allowed(word, text, start, end):
@@ -237,9 +234,9 @@ for f in all_files:
         for m in re.finditer(re.escape(w), body):
             ctxt = body[max(0, m.start() - 10): m.end() + 10].replace("\n", " ")
             if allowed(w, body, m.start(), m.end()):
-                notes.append("%s: '%s' (피할 말 of %s %s) allowed: …%s…" % (f, w, tid, term, ctxt))
+                notes.append("%s: '%s' (금지어 of %s %s) allowed: …%s…" % (f, w, tid, term, ctxt))
             else:
-                hits.append("%s: '%s' (피할 말 of %s %s): …%s…" % (f, w, tid, term, ctxt))
+                hits.append("%s: '%s' (금지어 of %s %s): …%s…" % (f, w, tid, term, ctxt))
 
 # --- coverage -------------------------------------------------------------------
 by_req = defaultdict(list)
@@ -275,11 +272,11 @@ for x in sorted(set(notes)):
 
 if "--appendix" in flags:
     print()
-    print("| 요구사항 | 우선순위 | 흐름 |")
+    print("| 요구사항 | 우선순위 | 플로우 |")
     print("| --- | --- | --- |")
     for r in sorted(REQ):
         if excluded(r):
-            # '제외(2판, REQ-153로 바꿈)' -> '제외 (2판, REQ-153)'
+            # '제외(버전 2, REQ-153로 바꿈)' -> '제외 (버전 2, REQ-153)'
             m = re.match(r"제외\((.*?)(?:로 바꿈)?\)$", REQ[r]["status"])
             where = "제외 (%s)" % m.group(1) if m else "제외"
         else:

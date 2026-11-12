@@ -1,14 +1,14 @@
-"""06단계 사람 보기(Swagger UI 페이지)를 원본 계약에서 다시 만든다.
+"""06단계 검토 도구(Swagger UI 페이지)를 원본 계약에서 다시 만든다.
 
     python3 -B research/cake-api-2026-11/build_viewer.py . 나갈_폴더 --css swagger-ui.css
 
 - 원본은 `api/openapi.yaml`이다. 이 스크립트는 그것을 JSON(`openapi.json`)으로 옮기고,
-  `viewer.html` 틀에 Swagger UI 5.17.14의 스타일시트를 그대로 넣어 `siljang-api-contract.html`을 만든다.
+  `viewer.html` 템플릿에 Swagger UI 5.17.14의 스타일시트를 그대로 넣어 `siljang-api-contract.html`을 만든다.
 - 스타일시트는 npm 꾸러미 swagger-ui-dist@5.17.14의 `swagger-ui.css`다
-  (`npm pack swagger-ui-dist@5.17.14`로 받아 `package/swagger-ui.css`). 다른 판이 섞이지 않게 SHA-256을 확인한다.
-- 페이지가 원본에 더하는 것은 작업 이름 앞의 API ID와 설명 끝의 '돌려주지 않는 응답'뿐이며,
+  (`npm pack swagger-ui-dist@5.17.14`로 받아 `package/swagger-ui.css`). 다른 버전이 섞이지 않게 SHA-256을 확인한다.
+- 페이지가 원본에 더하는 것은 API 이름 앞의 API ID와 설명 끝의 '반환하지 않는 응답'뿐이며,
   둘 다 브라우저에서 원본의 `x-corthex`로 붙인다(`viewer.html`의 decorate).
-- 만든 두 파일을 같은 Artifact 주소에 다시 올리면 사람 보기가 원본과 같아진다(`.corthex/project.json`의 06-api).
+- 만든 두 파일을 같은 Artifact 주소에 다시 올리면 검토 도구가 원본과 같아진다(`.corthex/project.json`의 06-api).
 """
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def main(argv: list[str]) -> int:
     )
     (args.out / "siljang-api-contract.html").write_text(template.replace(SLOT, css), encoding="utf-8")
     ops = sum(1 for item in spec["paths"].values() for k in item if k in {"get", "put", "post", "delete", "patch"})
-    print(f"만듦: {args.out / 'siljang-api-contract.html'}, {args.out / 'openapi.json'} (작업 {ops}개, 계약 {spec['info']['version']})")
+    print(f"만듦: {args.out / 'siljang-api-contract.html'}, {args.out / 'openapi.json'} (API {ops}개, 계약 {spec['info']['version']})")
     return 0
 
 

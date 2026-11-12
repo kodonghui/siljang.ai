@@ -13,42 +13,42 @@
       "link": "https://miro.com/app/board/uXjVEPLnid4=/",
       "source": "docs/01-domain/",
       "truth": "source",
-      "note": "첫 업종 수제케이크(주문제작), 2026-11-11 시작. 일하는 방식은 그리고 고치기(1-b·7·9단계 뒤 멈춤). Miro 보드는 2026-11-11 13:33 동희님이 결정 카드에서 'Miro 보드 새로 만들기'를 골라 만들었습니다(프레임: 0단계 준비, 범례, 1-a, 1-b, 2~9단계). 제품 저장소는 이 저장소(kodonghui/siljang.ai)입니다: 동희님 2026-11-11 17:44 프로젝트 대화 \"siljang에서 해야지\". 01단계는 kakao-hack 초안 PR #10에서 시작해(마지막 커밋 3cbd39a) 같은 날 커밋 이력째 옮겼습니다."
+      "note": "첫 업종 수제케이크(주문제작), 2026-11-11 시작. 일하는 방식은 초안 작성과 수정(1-b·7·9단계 뒤 멈춤). Miro 보드는 2026-11-11 13:33 동희님이 결정 카드에서 'Miro 보드 새로 만들기'를 골라 만들었습니다(프레임: 0단계 준비, 범례, 1-a, 1-b, 2~9단계). 제품 저장소는 이 저장소(kodonghui/siljang.ai)입니다: 동희님 2026-11-11 17:44 프로젝트 대화 \"siljang에서 해야지\". 01단계는 kakao-hack 초안 PR #10에서 시작해(마지막 커밋 3cbd39a) 같은 날 커밋 이력째 옮겼습니다."
     },
     "02-prd": {
       "human": "notion",
       "link": "https://app.notion.com/p/339f50c5553842f8bcaad2f4be9acb32",
       "source": "docs/02-prd/requirements.md",
       "truth": "source",
-      "note": "사람 보기는 02단계 기본값인 Notion DB입니다. 요구사항 표(REQ 한 행씩)와 핫스팟 답 표(https://app.notion.com/p/b7f47760cbcd46518122e0b96ef150f8)는 최근 업데이트 DB의 02단계 기록 행(https://app.notion.com/p/415bf16cc3ec81d28b8dd61931abbce1) 안에 있습니다. 원본은 이 저장소 문서이고, Notion은 보고 댓글을 다는 곳입니다."
+      "note": "검토 도구는 02단계 기본값인 Notion DB입니다. 요구사항 표(REQ 한 행씩)와 핫스팟 답 표(https://app.notion.com/p/b7f47760cbcd46518122e0b96ef150f8)는 최근 업데이트 DB의 02단계 기록 행(https://app.notion.com/p/415bf16cc3ec81d28b8dd61931abbce1) 안에 있습니다. 원본은 이 저장소 문서이고, Notion은 보고 댓글을 다는 곳입니다."
     },
     "03-user-flow": {
       "human": "notion",
       "link": "https://app.notion.com/p/67cd294c32764e5399406187fa021b2e",
       "source": "docs/03-user-flow/",
       "truth": "source",
-      "note": "사람 보기는 03단계 기본값인 Notion DB(한 줄에 흐름 하나, 줄마다 원본과 같은 Mermaid 그림)입니다. 2026-11-11 23:18에 기본값으로 시작했고 다른 도구를 고르시면 바꿉니다. 원본은 이 저장소의 흐름 파일이고, Notion은 보고 댓글을 다는 곳입니다. 흐름 표와 새 요구사항 후보 표(https://app.notion.com/p/df79c1494a954b5c9d8b7bbd9df27bc3), 읽은 방식 표(https://app.notion.com/p/0b281fc982aa445b88f02ce184dd5ba2)는 최근 업데이트 DB의 03단계 기록 행(https://app.notion.com/p/415bf16cc3ec8170b22bf7ce04dc315c) 안에 있습니다."
+      "note": "검토 도구는 03단계 기본값인 Notion DB(한 행에 플로우 하나, 행마다 원본과 같은 Mermaid 다이어그램)입니다. 2026-11-11 23:18에 기본값으로 시작했고 다른 도구를 고르시면 바꿉니다. 원본은 이 저장소의 플로우 파일이고, Notion은 보고 댓글을 다는 곳입니다. 플로우 표와 새 요구사항 후보 표(https://app.notion.com/p/df79c1494a954b5c9d8b7bbd9df27bc3), 요구사항 해석 표(https://app.notion.com/p/0b281fc982aa445b88f02ce184dd5ba2)는 최근 업데이트 DB의 03단계 기록 행(https://app.notion.com/p/415bf16cc3ec8170b22bf7ce04dc315c) 안에 있습니다."
     },
     "04-functional-spec": {
       "human": "notion",
       "link": "https://app.notion.com/p/4b9c1f1e01ad4fe48d66c4e53c0bbb64",
       "source": "docs/04-functional-spec/spec.md",
       "truth": "source",
-      "note": "사람 보기는 04단계 기본값인 Notion DB(한 줄에 SPEC 하나)로 2026-11-12에 시작했고 다른 도구를 고르시면 바꿉니다. SPEC 표는 최근 업데이트 DB의 04단계 기록 행(https://app.notion.com/p/416bf16cc3ec81e2819bfa25353ae4d8) 안에 있고, 같은 페이지에 읽은 방식 8개와 3판 후보 M1~M6 표가 있습니다. 원본은 이 저장소 문서이고, Notion은 보고 댓글을 다는 곳입니다."
+      "note": "검토 도구는 04단계 기본값인 Notion DB(한 행에 SPEC 하나)로 2026-11-12에 시작했고 다른 도구를 고르시면 바꿉니다. SPEC 표는 최근 업데이트 DB의 04단계 기록 행(https://app.notion.com/p/416bf16cc3ec81e2819bfa25353ae4d8) 안에 있고, 같은 페이지에 요구사항 해석 8개와 버전 3 후보 M1~M6 표가 있습니다. 원본은 이 저장소 문서이고, Notion은 보고 댓글을 다는 곳입니다."
     },
     "05-erd": {
       "human": "erd-editor",
       "link": "db/schema.erd.json",
       "source": "db/schema.sql",
       "truth": "source",
-      "note": "사람 보기는 05단계 기본값인 ERD Editor(db/schema.erd.json)로 2026-11-12에 시작했고 다른 도구를 고르시면 바꿉니다. 계약은 새 프로젝트에 truth: human을 권하지만, 그림으로 들여오면 CHECK 275개를 잃어(docs/05-erd/README.md 9절) 원본 db/schema.sql이 이기는 truth: source로 둡니다. 그림은 research/cake-erd-2026-11/erd_editor_build.py가 ERD Editor MCP 서버(@dineug/erd-editor-mcp 1.2.0)로 만들고, check_erd.py의 E1과 erd_editor_build.py --compare로 원본과 맞는지 봅니다. 기록과 표 목록(TBL 한 줄씩), 정한 것 E1~E14 표는 최근 업데이트 DB의 05단계 기록 행(https://app.notion.com/p/416bf16cc3ec816ca5a0ff51e46a375d) 안에 있습니다."
+      "note": "검토 도구는 05단계 기본값인 ERD Editor(db/schema.erd.json)로 2026-11-12에 시작했고 다른 도구를 고르시면 바꿉니다. 계약은 새 프로젝트에 truth: human을 권하지만, 다이어그램으로 들여오면 CHECK 275개를 잃어(docs/05-erd/README.md 9절) 원본 db/schema.sql이 이기는 truth: source로 둡니다. 다이어그램은 research/cake-erd-2026-11/erd_editor_build.py가 ERD Editor MCP 서버(@dineug/erd-editor-mcp 1.2.0)로 만들고, check_erd.py의 E1과 erd_editor_build.py --compare로 원본과 맞는지 봅니다. 기록과 표 목록(TBL 한 행씩), 결정 사항 E1~E14 표는 최근 업데이트 DB의 05단계 기록 행(https://app.notion.com/p/416bf16cc3ec816ca5a0ff51e46a375d) 안에 있습니다."
     },
     "06-api": {
       "human": "swagger-ui",
       "link": "https://claude.ai/artifact/1ozSo2QeFJ59Z5hP633bWj",
       "source": "api/openapi.yaml",
       "truth": "source",
-      "note": "사람 보기는 06단계 기본값인 Swagger UI로 2026-11-12에 시작했고 다른 도구를 고르시면 바꿉니다. 설치 없이 보시도록 Swagger UI 페이지를 Artifact(link, 동희님 계정의 비공개 페이지)로 올렸고, research/cake-api-2026-11/build_viewer.py가 원본 api/openapi.yaml에서 같은 페이지를 다시 만듭니다. 계약이 바뀌면 다시 만들어 같은 주소에 올립니다. 원본 계약과 docs/06-api/README.md의 표는 build_api.py가 함께 만들고 check_api.py(검사 17개, 빈 DB와 목 서버 Prism 포함)가 봅니다. 기록과 작업·오류 코드·정한 것 표는 최근 업데이트 DB의 06단계 기록 행(https://app.notion.com/p/416bf16cc3ec81bc8e55c85d0f194ccf) 안에 있습니다."
+      "note": "검토 도구는 06단계 기본값인 Swagger UI로 2026-11-12에 시작했고 다른 도구를 고르시면 바꿉니다. 설치 없이 보시도록 Swagger UI 페이지를 Artifact(link, 동희님 계정의 비공개 페이지)로 올렸고, research/cake-api-2026-11/build_viewer.py가 원본 api/openapi.yaml에서 같은 페이지를 다시 만듭니다. 계약이 바뀌면 다시 만들어 같은 주소에 올립니다. 원본 계약과 docs/06-api/README.md의 표는 build_api.py가 함께 만들고 check_api.py(검사 17개, 빈 DB와 목 서버 Prism 포함)가 봅니다. 기록과 API·오류 코드·결정 사항 표는 최근 업데이트 DB의 06단계 기록 행(https://app.notion.com/p/416bf16cc3ec81bc8e55c85d0f194ccf) 안에 있습니다."
     },
     "07-sitemap": {
       "human": "board-list-slides",

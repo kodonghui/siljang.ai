@@ -12,7 +12,7 @@ for f in sorted(flow_dir.glob('FL-*.md')):
     rest = '\n'.join(lines[ti+1:]).strip('\n')
     meta = {}
     for l in rest.split('\n'):
-        mm = re.match(r'\| (행위자|컨텍스트|시작|끝|이어지는 흐름) \| (.*) \|$', l)
+        mm = re.match(r'\| (액터|컨텍스트|시작|끝|연결 플로우) \| (.*) \|$', l)
         if mm:
             meta[mm.group(1)] = mm.group(2)
     reqs = re.search(r'^채우는 요구사항: (.*)$', rest, re.M).group(1)
@@ -30,4 +30,4 @@ for f in sorted(flow_dir.glob('FL-*.md')):
                     notion_body='\n'.join(out_lines)))
 json.dump(out, open(sys.argv[2], 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 for o in out:
-    print(o['id'], '|', o['meta']['행위자'], '|', o['meta']['컨텍스트'], '|', o['nreq'], '|', ','.join(o['cands']) or '없음')
+    print(o['id'], '|', o['meta']['액터'], '|', o['meta']['컨텍스트'], '|', o['nreq'], '|', ','.join(o['cands']) or '없음')

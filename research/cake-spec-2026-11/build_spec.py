@@ -11,7 +11,7 @@ spec = importlib.util.spec_from_file_location("spec_rows", os.path.join(HERE, "s
 mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
 ROWS = mod.ROWS
 
-KINDS = ["접근", "입력", "대상", "상태", "반복", "동시", "한도", "바깥", "노출", "빈·끊김", "화면", "AI"]
+KINDS = ["접근", "입력", "대상", "상태", "반복", "동시", "한도", "외부", "노출", "빈·끊김", "화면", "AI"]
 repo = sys.argv[1]
 write = "--write" in sys.argv
 
@@ -35,7 +35,7 @@ spec_ids = [r["id"] for r in ROWS]
 for i, r in enumerate(ROWS, 1):
     sid = r["id"]
     if sid != f"SPEC-{i:03d}": errors.append(f"{sid}: 번호 순서가 {i:03d}이 아님")
-    if sid in seen: errors.append(f"{sid}: 겹침")
+    if sid in seen: errors.append(f"{sid}: 중복됨")
     seen.add(sid)
     rq = ids(r["req"], "REQ")
     if not rq: errors.append(f"{sid}: REQ 없음")
@@ -57,7 +57,7 @@ for i, r in enumerate(ROWS, 1):
     if not r["ac"]: errors.append(f"{sid}: 수락 기준 없음")
     for a in r["ac"]:
         if not (a.startswith("Given ") and ", When " in a and ", Then " in a):
-            errors.append(f"{sid}: Given/When/Then 모양 아님: {a[:40]}")
+            errors.append(f"{sid}: Given/When/Then 형식 아님: {a[:40]}")
     # 본문의 SPEC·G 참조
     body = " ".join([r["main"], r["pre"]] + r["exc"])
     for s in ids(body, "SPEC"):
@@ -77,7 +77,7 @@ if miss_must: errors.append("SPEC 없는 기능 필수 요구사항: " + ", ".jo
 print(f"SPEC 행 {len(ROWS)}개, AI 호출이 있는 행 {sum(1 for r in ROWS if r['ai'])}개")
 print(f"기능 요구사항 {len(func)}개 가운데 SPEC 있음 {len(func) - len(miss_func)}개; 없는 것 {miss_func}")
 print(f"기능 필수 {len(must_func)}개 가운데 SPEC 있음 {len(must_func) - len(miss_must)}개")
-print(f"SPEC이 이은 비기능 요구사항 {len(nonfunc_in)}개: {nonfunc_in}")
+print(f"SPEC이 연결한 비기능 요구사항 {len(nonfunc_in)}개: {nonfunc_in}")
 kind_count = {k: 0 for k in KINDS}
 for r in ROWS:
     for e in r["exc"]:
