@@ -25778,7 +25778,7 @@ components:
       title: 픽업 장소는 예약 링크를 막지 않음
       choice: 픽업 장소(E14)가 비어도 예약 링크를 냄. `GET /owner/booking-link`의 `recommended`에 `pickup_address`로 보이고, 비었으면 전날 안내에서 위치 문구를 빼고 가게 연락처만 포함함
       why: 05단계 E14가 06단계로 전달한 질문. 조건을 늘리지 않고 사장님께 알림
-      alt: '픽업 장소도 조건으로: 전날 안내가 늘 위치를 실지만 SPEC-010이 바뀜'
+      alt: '픽업 장소도 조건으로: 전날 안내가 늘 위치를 포함하지만 SPEC-010이 바뀜'
       needs_user: true
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-14
