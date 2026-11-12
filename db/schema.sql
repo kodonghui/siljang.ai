@@ -13,7 +13,7 @@
 -- - 이름: 영어 snake_case, 테이블은 복수형. 용어집 코드 이름(TERM)에서 땀. 상태 값도 영어, 한국어 이름은 컬럼 설명에.
 -- - 기본 키: 모두 uuid. 손님에게 보이는 번호는 주문번호(orders.order_no) 하나뿐(G6).
 -- - 가게 나누기(G1, SPEC-068): 가게에 딸린 테이블은 모두 shop_id를 갖고, 다른 테이블을 (shop_id, 대상_id)로 참조함.
---   그래서 한 가게의 행이 다른 가게의 행을 참조할 수 없음. 참조를 받는 테이블은 UNIQUE (shop_id, id)를 둠.
+--   그래서 한 가게의 행이 다른 가게의 행을 참조할 수 없음. 참조되는 테이블은 UNIQUE (shop_id, id)를 둠.
 -- - 시각: timestamptz(UTC로 저장, 계산은 가게 시간대, G8). 날짜만 쓰는 곳(자리·목록)은 가게 시간대의 date.
 -- - 돈: 원 단위 정수(integer). 우리는 손님 돈을 받거나 보관하지 않음(REQ-079): 결제·환불 테이블은 가게 계좌에서 일어난 일의 기록.
 -- - 외래 키를 지울 때: 모두 ON DELETE RESTRICT. 기록을 지우는 일은 보존 작업(SPEC-065)이 딸린 행부터 직접 함.
@@ -24,7 +24,7 @@
 -- - 앱이 지키는 규칙: 테이블 하나로 말할 수 없는 규칙(확정은 결제 확인으로만, 환불 합 ≤ 받은 금액,
 --   하루 최대 개수 넘기지 않기 등)은 docs/05-erd/README.md 4절에 모아 두고 12단계 테스트로 봄.
 
-CREATE EXTENSION IF NOT EXISTS btree_gist;  -- refund_tiers의 기간 중복됨 막기(EXCLUDE)에 씀
+CREATE EXTENSION IF NOT EXISTS btree_gist;  -- refund_tiers의 기간 중복 막기(EXCLUDE)에 씀
 
 -- TBL-001 owners (CTX-007) ← SPEC-001, SPEC-067 | terms: TERM-044
 CREATE TABLE owners (
@@ -89,7 +89,7 @@ CREATE TABLE shops (
   CONSTRAINT shops_booking_needs_license CHECK (booking_slug IS NULL OR license_status = 'verified'), -- 영업 신고 확인 전에는 예약 링크 없음(REQ-103)
   CONSTRAINT shops_booking_issued_chk CHECK ((booking_slug IS NULL) = (booking_issued_at IS NULL))
 );
-CREATE INDEX shops_business_reg_no_idx ON shops (business_reg_no); -- 같은 사업자등록번호 중복됨 표시(SPEC-002)
+CREATE INDEX shops_business_reg_no_idx ON shops (business_reg_no); -- 같은 사업자등록번호 중복 표시(SPEC-002)
 CREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending'; -- 운영자 확인 목록(SPEC-003)
 COMMENT ON TABLE shops IS 'TBL-003 가게(TERM-053): 영업 신고·처리 위탁 동의·예약 링크와 가게가 정하는 시간 값';
 
@@ -856,7 +856,7 @@ CREATE TABLE productions (
   CONSTRAINT productions_handover_chk CHECK ((handed_over_at IS NULL) = (handover_kind IS NULL)),
   CONSTRAINT productions_discard_chk CHECK (discarded_at IS NULL OR (no_pickup_at IS NOT NULL AND handed_over_at IS NULL)) -- 폐기는 미수령 뒤, 폐기한 케이크는 인도할 수 없음(SPEC-055)
 );
-COMMENT ON TABLE productions IS 'TBL-035 제작(TERM-050): 확정된 주문 하나를 제작·인도까지의 시각';
+COMMENT ON TABLE productions IS 'TBL-035 제작(TERM-050): 확정된 주문 하나의 제작부터 인도까지의 시각';
 
 -- TBL-036 production_undos (CTX-005) ← SPEC-051 | terms: TERM-050
 CREATE TABLE production_undos (
@@ -937,7 +937,7 @@ CREATE TABLE photo_consents (
 );
 CREATE UNIQUE INDEX photo_consents_order_uq ON photo_consents (order_id) WHERE scope = 'order'; -- 주문마다 주문 요청 때 동의 하나
 CREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo'; -- 사진마다 동의 하나(SPEC-062)
-COMMENT ON TABLE photo_consents IS 'TBL-040 사진 게시 동의: 주문 요청 때와 후기 사진마다 받은 동의와 철회함';
+COMMENT ON TABLE photo_consents IS 'TBL-040 사진 게시 동의: 주문 요청 때와 후기 사진마다 받은 동의와 철회';
 
 -- TBL-041 portfolio_items (CTX-006) ← SPEC-011, SPEC-063 | terms: TERM-052
 CREATE TABLE portfolio_items (
