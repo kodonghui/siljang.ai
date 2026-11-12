@@ -1,0 +1,416 @@
+# 06단계 API 계약: 수제케이크 주문제작 API
+
+상태: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘', 14절). 원본은 [`api/openapi.yaml`](../../api/openapi.yaml)(OpenAPI 3.1)이고, 사람이 보는 곳은 Swagger UI 페이지 [Siljang API 계약](https://claude.ai/artifact/1ozSo2QeFJ59Z5hP633bWj)입니다(`truth: source`, 3절). 계약 파일과 이 문서의 표는 [`research/cake-api-2026-11/`](../../research/cake-api-2026-11/)의 목록에서 `build_api.py`가 함께 만들어서, 둘이 어긋나지 않습니다. 계약 파일은 손으로 고치지 않습니다.
+
+## 1. 한눈에
+
+<!-- BEGIN generated:counts -->
+작업 72개 · 응답 358개 · 오류 코드 32개 · 칸 오류 까닭 20개 · 확인할 것 6개 · 스킬 결과 37개 · 정한 것 19개 · 열린 질문 8개 · 서버 안의 일 10개 · 스키마 127개
+<!-- END generated:counts -->
+
+- 사장님 화면이 부르는 작업이 60개(로그인·로그아웃 포함), 운영자 화면이 7개, 손님이 여는 예약 링크 페이지가 2개, 카카오 오픈빌더가 부르는 스킬이 3개입니다(4절). 기능 명세 SPEC-001~069가 모두 작업 하나 이상에 이어집니다.
+- 작업마다 응답 표(성공·422·401·403·404·409·default)를 싣거나, 싣지 않는 까닭을 `x-corthex.omit`에 적었습니다. 응답 하나는 `API-001#401`처럼 부르고, 모든 응답에 이름 붙은 예시가 있습니다. 예시는 지어낸 가게 '달빛케이크'의 값입니다.
+- 오류는 한 모양(RFC 9457 Problem Details에 `code`·`traceId`를 더함)이고 오류 코드는 목록 하나(6절)에만 있습니다. 화면이 보일 말과 할 일도 코드마다 적었습니다.
+- 카카오 스킬은 늘 200과 스킬 응답을 돌려주고, 결과는 `Siljang-Outcome` 헤더와 예시 이름으로 나눕니다(DEC-07, 7절). AI 모델 실패·느림·키 없음·사용 한도·가게 비용 한도는 저마다 결과 코드를 갖고, 손님에게는 모두 "사장님 확인 뒤 답드릴게요"로 넘깁니다(AI-1).
+- 요청 칸에는 05단계 표.칸의 한도를 달았습니다. 검사 도구가 계약이 허락하는 값을 만들어 실제 DB 칸의 타입과 CHECK에 넣어 보고, 막히는 값이 없음을 확인했습니다(12절).
+- 목 서버 Prism이 계약을 읽어 모든 응답 예시를 그대로 돌려주고, 계약 시험 도구 Schemathesis도 계약을 읽어 예시 단계를 통과했습니다(12절).
+- 확인 지점: 2026-11-12 14:01 동희님이 작업 72개와 정한 것 19개(8절)를 추천대로 굳히셨습니다(14절). DEC-12의 조건은 요구사항 4판 REQ-164가 되었습니다. 첫 판이라 깨지는 변화는 없습니다(11절).
+
+## 2. 읽은 것과 만든 것
+
+| 읽은 것 | 판 | 쓴 것 |
+| --- | --- | --- |
+| [`docs/04-functional-spec/spec.md`](../04-functional-spec/spec.md) | 04단계 확정(2026-11-12), 커밋 af62db2 | SPEC-001~069의 주 흐름·예외·수락 기준, 공통 규칙 G1~G9, 상태 기계 1-1~1-8, AI-1(상담 답 만들기) |
+| [`db/schema.sql`](../../db/schema.sql) | 05단계 확정(2026-11-12 11:56), 커밋 af62db2 | 요청 칸의 한도(TBL-001~051의 칸), 상태 값, 응답에 싣는 칸 |
+| [`docs/02-prd/requirements.md`](../02-prd/requirements.md) | 3판(REQ-001~163) | 설명에 단 REQ 번호 |
+| [`docs/01-domain/domain.md`](../01-domain/domain.md) | TERM-001~074 | 이름 |
+| 카카오 비즈니스 공식 문서: [스킬 만들기](https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/make_skill), [응답 형식](https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/answer_json_format), [콜백](https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/ai_chatbot_callback_guide), [플러그인 값](https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/apply_skill_to_plugin), [이벤트 API](https://kakaobusiness.gitbook.io/main/tool/chatbot/main_notions/event-api) | 2026-11-12에 읽음 | 스킬 요청·응답의 칸과 한도, 헤더 값 인증(DEC-08), 콜백, 보안 이미지 플러그인. 문서에 없는 것은 9절 열린 질문 |
+
+빠진 입력: 계약서는 화면이 있으면 사이트맵(SCR)도 읽으라 합니다. 사이트맵은 이 뒤의 07단계라 아직 없어서, 작업은 흐름(FL)과 SPEC에서 화면이 할 일을 읽어 만들었습니다. 07·08단계에서 화면이 더 필요한 작업이 나오면 계약에 더합니다(13절).
+
+| 만든 것 | 무엇 |
+| --- | --- |
+| [`api/openapi.yaml`](../../api/openapi.yaml) | 원본 계약. 작업마다 `operationId`와 `x-corthex`(API ID, SPEC ID, 뺀 응답과 까닭, 경우의 종류 근거), 응답마다 예시. `components.x-corthex`에 오류 코드·칸 오류 까닭·확인할 것·스킬 결과·정한 것·열린 질문·서버 안의 일·깨지는 변화 |
+| [`research/cake-api-2026-11/`](../../research/cake-api-2026-11/) | `api_catalog.py`(오류 코드·결과·정한 것·열린 질문), `api_schemas.py`(스키마), `api_examples.py`(예시), `api_ops.py`(작업 72개), `build_api.py`(계약 파일과 이 문서의 표를 만듦), `check_api.py`(검사), `requirements.txt`(검사 도구 판), `build_viewer.py`와 `viewer.html`(사람 보기 Swagger UI 페이지를 만듦, 3절) |
+
+다시 만들고 검사하는 법(저장소 맨 위에서):
+
+```sh
+python3 -B research/cake-api-2026-11/build_api.py . --write
+python -m venv .venv-api && .venv-api/bin/pip install -r research/cake-api-2026-11/requirements.txt
+.venv-api/bin/python -B research/cake-api-2026-11/check_api.py . --db "host=… port=… user=…" --mock http://127.0.0.1:4010
+```
+
+`--db`는 검사용 PostgreSQL 서버입니다. 검사용 DB `api_check_schema`를 만들고 끝나면 지우니 운영 서버에는 쓰지 않습니다. `--mock`은 아래 목 서버 주소입니다.
+
+## 3. 보는 법
+
+- **Swagger UI 페이지(바로 보기)**: [Siljang API 계약](https://claude.ai/artifact/1ozSo2QeFJ59Z5hP633bWj)에서 설치 없이 봅니다. 동희님 계정의 비공개 페이지라 다른 사람은 공유해야 열립니다. 원본을 그대로 보여 주고, 작업 이름 앞의 API ID와 설명 끝의 '돌려주지 않는 응답'만 `x-corthex`에서 옮겨 붙였습니다. 계약이 바뀌면 `build_viewer.py`로 다시 만들어(아래) 같은 주소에 올립니다.
+- **Swagger UI(내 컴퓨터)**: `docker run --rm -p 8080:8080 -e SWAGGER_JSON=/api/openapi.yaml -v "$PWD/api:/api" swaggerapi/swagger-ui`를 돌리고 http://localhost:8080 을 엽니다. 도커가 없으면 https://editor.swagger.io 에 `api/openapi.yaml`을 끌어 놓아도 됩니다. 작업은 태그(로그인·가게·주문 …)로 묶여 있고, 응답마다 예시를 골라 볼 수 있습니다.
+- **목 서버**(화면 개발과 QA가 서버 없이 쓰는 곳): `npx @stoplight/prism-cli@5.14.2 mock api/openapi.yaml`을 돌리면 http://127.0.0.1:4010 에서 계약대로 답합니다. 맞는 요청은 성공 응답의 첫 예시, 로그인 없는 요청은 401의 첫 예시, 틀린 입력은 422의 첫 예시(`validation_failed`)를 받습니다. 다른 응답은 머리글로 고릅니다.
+
+```sh
+curl -H 'Cookie: siljang_owner=example' http://127.0.0.1:4010/owner/orders/68598d4e-7858-598f-aa63-2b51daa7d590
+curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-0123456789abcdef' \
+     -H 'Prefer: code=409, example=version_conflict' -H 'Content-Type: application/json' \
+     -d '{"baseRevision":"x","decision":"accept"}' \
+     http://127.0.0.1:4010/owner/orders/68598d4e-7858-598f-aa63-2b51daa7d590/custom-decision
+```
+
+페이지 다시 만들기: `npm pack swagger-ui-dist@5.17.14`로 받은 꾸러미의 `package/swagger-ui.css`를 넣어 `python3 -B research/cake-api-2026-11/build_viewer.py . 나갈_폴더 --css package/swagger-ui.css`를 돌리면 `siljang-api-contract.html`과 `openapi.json`이 나옵니다. 스타일시트는 판이 섞이지 않게 SHA-256을 확인합니다.
+
+## 4. 작업 목록
+
+'부르는 쪽'의 사장님·운영자는 세션 쿠키(`siljang_owner`, `siljang_operator`), 스킬 키는 오픈빌더 헤더 값(`Siljang-Skill-Key`)입니다. '응답'은 그 작업이 돌려줄 수 있는 상태 전부입니다.
+
+<!-- BEGIN generated:operations -->
+| ID | 작업 | 방법·경로 | operationId | 부르는 쪽 | SPEC | 응답 |
+| --- | --- | --- | --- | --- | --- | --- |
+| API-001 | 사장님 로그인(카카오 인가 코드) | `POST /owner/session` | `createOwnerSession` | 누구나 | SPEC-001, SPEC-068 | 200 · 401 · 422 · 429 · 503 · default |
+| API-002 | 로그인한 사장님과 가게, 화면 맨 위 안내 | `GET /owner/me` | `getOwnerMe` | 사장님 | SPEC-001, SPEC-067 | 200 · 401 · default |
+| API-003 | 사장님 로그아웃 | `DELETE /owner/session` | `deleteOwnerSession` | 사장님(없어도 됨) | SPEC-001 | 204 · default |
+| API-004 | 운영자 로그인(이메일·비밀번호·2단계 인증) | `POST /operator/session` | `createOperatorSession` | 누구나 | SPEC-001 | 200 · 401 · 422 · 429 · default |
+| API-005 | 로그인한 운영자 | `GET /operator/me` | `getOperatorMe` | 운영자 | SPEC-001 | 200 · 401 · default |
+| API-006 | 운영자 로그아웃 | `DELETE /operator/session` | `deleteOperatorSession` | 운영자(없어도 됨) | SPEC-001 | 204 · default |
+| API-007 | 사진 올리기(신고증·도안·완성 사진) | `POST /owner/uploads` | `createUpload` | 사장님 | SPEC-002, SPEC-004, SPEC-053 | 201 · 401 · 413 · 422 · 503 · default |
+| API-008 | 가게 등록 | `POST /owner/shop` | `registerShop` | 사장님 | SPEC-002, SPEC-068 | 201 · 401 · 409 · 422 · 503 · default |
+| API-009 | 내 가게 보기 | `GET /owner/shop` | `getShop` | 사장님 | SPEC-002, SPEC-003, SPEC-009 | 200 · 401 · 404 · default |
+| API-010 | 가게 설정 바꾸기 | `PATCH /owner/shop` | `updateShop` | 사장님 | SPEC-009, SPEC-017, SPEC-024, SPEC-025, SPEC-052 | 200 · 401 · 404 · 409 · 422 · default |
+| API-011 | 보류된 영업 신고 다시 올리기 | `PUT /owner/shop/license` | `resubmitLicense` | 사장님 | SPEC-003 | 200 · 401 · 404 · 409 · 422 · default |
+| API-012 | 영업 신고 확인할 가게 목록 | `GET /operator/shops` | `listReviewShops` | 운영자 | SPEC-003, SPEC-002 | 200 · 401 · 422 · default |
+| API-013 | 영업 신고 확인할 가게 하나 | `GET /operator/shops/{shopId}` | `getReviewShop` | 운영자 | SPEC-003 | 200 · 401 · 404 · default |
+| API-014 | 영업 신고 확인·보류 | `POST /operator/shops/{shopId}/license-review` | `reviewLicense` | 운영자 | SPEC-003 | 200 · 401 · 404 · 409 · 422 · default |
+| API-015 | 운영자 알림 | `GET /operator/alerts` | `listOperatorAlerts` | 운영자 | SPEC-008, SPEC-010, SPEC-017 | 200 · 401 · 422 · default |
+| API-016 | 지금 가격표 판 | `GET /owner/price-list` | `getCurrentPriceList` | 사장님 | SPEC-004 | 200 · 401 · 404 · default |
+| API-017 | 가격표 새 판 저장 | `POST /owner/price-list/versions` | `createPriceListVersion` | 사장님 | SPEC-004 | 201 · 200 · 401 · 404 · 409 · 422 · default |
+| API-018 | 가격표 판 목록 | `GET /owner/price-list/versions` | `listPriceListVersions` | 사장님 | SPEC-004 | 200 · 401 · 404 · default |
+| API-019 | 가격표 판 하나 | `GET /owner/price-list/versions/{version}` | `getPriceListVersion` | 사장님 | SPEC-004, SPEC-013 | 200 · 401 · 404 · default |
+| API-020 | 지금 운영규정(없으면 틀) | `GET /owner/operating-rules` | `getCurrentOperatingRules` | 사장님 | SPEC-005 | 200 · 401 · 404 · default |
+| API-021 | 운영규정 확정(새 판) | `POST /owner/operating-rules/versions` | `createOperatingRulesVersion` | 사장님 | SPEC-005 | 201 · 200 · 401 · 404 · 409 · 422 · default |
+| API-022 | 운영규정 판 목록 | `GET /owner/operating-rules/versions` | `listOperatingRulesVersions` | 사장님 | SPEC-005 | 200 · 401 · 404 · default |
+| API-023 | 운영규정 판 하나 | `GET /owner/operating-rules/versions/{version}` | `getOperatingRulesVersion` | 사장님 | SPEC-005, SPEC-016 | 200 · 401 · 404 · default |
+| API-024 | 결제 받을 곳 보기 | `GET /owner/payment-destination` | `getPaymentDestination` | 사장님 | SPEC-006 | 200 · 401 · 404 · default |
+| API-025 | 결제 받을 곳 등록·바꾸기 | `PUT /owner/payment-destination` | `setPaymentDestination` | 사장님 | SPEC-006 | 200 · 401 · 404 · 409 · 422 · default |
+| API-026 | 영업 달력 기준 보기 | `GET /owner/calendar` | `getCalendarSettings` | 사장님 | SPEC-007 | 200 · 401 · 404 · default |
+| API-027 | 영업 달력 기준 정하기·바꾸기 | `PUT /owner/calendar` | `setCalendarSettings` | 사장님 | SPEC-007, SPEC-052, SPEC-061 | 200 · 401 · 404 · 409 · 422 · default |
+| API-028 | 날짜별 남은 자리와 마감 현황 | `GET /owner/calendar/days` | `listCalendarDays` | 사장님 | SPEC-007, SPEC-012, SPEC-015 | 200 · 401 · 404 · 422 · default |
+| API-029 | 그날 휴무·하루 최대 개수·주문 마감 바꾸기 | `PATCH /owner/calendar/days/{day}` | `updateCalendarDay` | 사장님 | SPEC-007, SPEC-012, SPEC-015 | 200 · 401 · 404 · 409 · 422 · default |
+| API-030 | 채널 연결 상태와 스킬 설정 값 | `GET /owner/kakao-channel` | `getKakaoChannel` | 사장님 | SPEC-008 | 200 · 401 · 404 · default |
+| API-031 | 연결할 채널(오픈빌더 봇) 정하기 | `PUT /owner/kakao-channel` | `setKakaoChannel` | 사장님 | SPEC-008 | 200 · 401 · 404 · 409 · 422 · default |
+| API-032 | 연결 확인 시작(10분) | `POST /owner/kakao-channel/check` | `startKakaoChannelCheck` | 사장님 | SPEC-008 | 200 · 401 · 404 · 409 · 422 · default |
+| API-033 | 장부 연결 상태 | `GET /owner/ledger` | `getLedger` | 사장님 | SPEC-009, SPEC-064 | 200 · 401 · 404 · default |
+| API-034 | 구글 허락 받기 시작 | `POST /owner/ledger/authorization` | `startLedgerAuthorization` | 사장님 | SPEC-009 | 200 · 401 · 404 · 422 · default |
+| API-035 | 장부 연결·다시 연결 | `PUT /owner/ledger` | `linkLedger` | 사장님 | SPEC-009, SPEC-064 | 200 · 401 · 404 · 409 · 422 · 503 · default |
+| API-036 | 장부 끊기 | `DELETE /owner/ledger` | `unlinkLedger` | 사장님 | SPEC-009 | 200 · 401 · 404 · 409 · 422 · default |
+| API-037 | 예약 링크와 빠진 조건 | `GET /owner/booking-link` | `getBookingLink` | 사장님 | SPEC-010 | 200 · 401 · 404 · default |
+| API-038 | 예약 링크 페이지 | `GET /public/shops/{slug}` | `getBookingPage` | 누구나 | SPEC-011, SPEC-014, SPEC-063 | 200 · 404 · 429 · default |
+| API-039 | 가게 개인정보 처리방침 | `GET /public/shops/{slug}/privacy-policy` | `getPrivacyPolicy` | 누구나 | SPEC-010, SPEC-011, SPEC-018 | 200 · 404 · 429 · default |
+| API-040 | 할 일 목록 | `GET /owner/tasks` | `listOwnerTasks` | 사장님 | SPEC-067, SPEC-022, SPEC-024, SPEC-037 | 200 · 401 · 404 · 422 · default |
+| API-041 | 넘긴 질문 하나 | `GET /owner/handoffs/{handoffId}` | `getHandoff` | 사장님 | SPEC-022, SPEC-023, SPEC-021 | 200 · 401 · 404 · default |
+| API-042 | 넘긴 질문에 답하기 | `POST /owner/handoffs/{handoffId}/answer` | `answerHandoff` | 사장님 | SPEC-023, SPEC-024, SPEC-066 | 200 · 401 · 404 · 409 · 422 · default |
+| API-043 | 상담 대화 보기 | `GET /owner/consultations/{consultationId}/messages` | `listConsultationMessages` | 사장님 | SPEC-021, SPEC-019, SPEC-068, SPEC-065 | 200 · 401 · 404 · 422 · default |
+| API-044 | 주문 목록 | `GET /owner/orders` | `listOrders` | 사장님 | SPEC-031, SPEC-037, SPEC-068 | 200 · 401 · 404 · 422 · default |
+| API-045 | 주문 하나 | `GET /owner/orders/{orderId}` | `getOrder` | 사장님 | SPEC-031, SPEC-013, SPEC-045, SPEC-068 | 200 · 401 · 404 · default |
+| API-046 | 맞춤 주문에 답하기(수락·금액 바꿔 수락·거절) | `POST /owner/orders/{orderId}/custom-decision` | `decideCustomOrder` | 사장님 | SPEC-031, SPEC-015, SPEC-032 | 200 · 401 · 404 · 409 · 422 · default |
+| API-047 | 결제 기한 지난 주문: 더 기다리기·취소 | `POST /owner/orders/{orderId}/overdue-decision` | `decideOverdueOrder` | 사장님 | SPEC-038, SPEC-039, SPEC-015, SPEC-032, SPEC-037 | 200 · 401 · 404 · 409 · 422 · default |
+| API-048 | 가게 사정 취소 | `POST /owner/orders/{orderId}/shop-cancel` | `cancelOrderByShop` | 사장님 | SPEC-048, SPEC-016, SPEC-015 | 200 · 401 · 404 · 409 · 422 · default |
+| API-049 | 환불 계산 미리 보기(가게 규칙) | `GET /owner/orders/{orderId}/refund-preview` | `getRefundPreview` | 사장님 | SPEC-016, SPEC-047 | 200 · 401 · 404 · 422 · default |
+| API-050 | 환불 정하기 | `POST /owner/orders/{orderId}/refunds` | `decideRefund` | 사장님 | SPEC-047, SPEC-016, SPEC-066, SPEC-064 | 201 · 401 · 404 · 409 · 422 · default |
+| API-051 | 날짜별 제작 목록과 그날 픽업 | `GET /owner/production-days/{day}` | `getProductionDay` | 사장님 | SPEC-050, SPEC-054, SPEC-045 | 200 · 401 · 404 · 422 · default |
+| API-052 | 맞춤 재료 주문·제작 시작·완성 표시 | `POST /owner/orders/{orderId}/production-marks` | `markProduction` | 사장님 | SPEC-051, SPEC-053, SPEC-066 | 200 · 401 · 404 · 409 · 422 · default |
+| API-053 | 잘못 누른 표시 되돌리기(5분 안) | `POST /owner/orders/{orderId}/production-marks/undo` | `undoProductionMark` | 사장님 | SPEC-051 | 200 · 401 · 404 · 409 · 422 · default |
+| API-054 | 넘기기(픽업 완료됨·퀵으로 보냄) | `POST /owner/orders/{orderId}/handover` | `handOverOrder` | 사장님 | SPEC-054, SPEC-055, SPEC-064, SPEC-061 | 200 · 401 · 404 · 409 · 422 · default |
+| API-055 | 미수령 표시 | `POST /owner/orders/{orderId}/no-pickup` | `markNoPickup` | 사장님 | SPEC-055, SPEC-064 | 200 · 401 · 404 · 409 · 422 · default |
+| API-056 | 미수령 케이크 폐기 | `POST /owner/orders/{orderId}/discard` | `discardOrder` | 사장님 | SPEC-055 | 200 · 401 · 404 · 409 · 422 · default |
+| API-057 | 입금 대조 목록 | `GET /owner/payment-requests` | `listPaymentRequests` | 사장님 | SPEC-034, SPEC-033, SPEC-035, SPEC-037 | 200 · 401 · 404 · 422 · default |
+| API-058 | 결제 안내 하나 | `GET /owner/payment-requests/{paymentRequestId}` | `getPaymentRequest` | 사장님 | SPEC-034, SPEC-035 | 200 · 401 · 404 · default |
+| API-059 | 입금 대조(들어옴·안 들어옴·다르게 들어옴·맞춰짐) | `POST /owner/payment-requests/{paymentRequestId}/reconciliation` | `reconcilePaymentRequest` | 사장님 | SPEC-034, SPEC-035, SPEC-036, SPEC-045, SPEC-015, SPEC-064 | 200 · 401 · 404 · 409 · 422 · default |
+| API-060 | 환불 하나(손님 환불 계좌 포함) | `GET /owner/refunds/{refundId}` | `getRefund` | 사장님 | SPEC-047, SPEC-049, SPEC-021 | 200 · 401 · 404 · default |
+| API-061 | 환불 '보냄' 표시 | `POST /owner/refunds/{refundId}/sent` | `markRefundSent` | 사장님 | SPEC-047, SPEC-049 | 200 · 401 · 404 · 409 · 422 · default |
+| API-062 | 변경 요청 하나 | `GET /owner/change-requests/{changeRequestId}` | `getChangeRequest` | 사장님 | SPEC-042, SPEC-041, SPEC-043, SPEC-044 | 200 · 401 · 404 · default |
+| API-063 | 변경 요청에 답하기(받아들임·거절) | `POST /owner/change-requests/{changeRequestId}/decision` | `decideChangeRequest` | 사장님 | SPEC-042, SPEC-043, SPEC-045, SPEC-015, SPEC-032 | 200 · 401 · 404 · 409 · 422 · default |
+| API-064 | 문제 신고 하나 | `GET /owner/issue-reports/{issueReportId}` | `getIssueReport` | 사장님 | SPEC-058, SPEC-059, SPEC-057 | 200 · 401 · 404 · default |
+| API-065 | 보상 정하기(다시 만들기·일부 환불·전액 환불·없음) | `POST /owner/issue-reports/{issueReportId}/compensation` | `decideCompensation` | 사장님 | SPEC-059, SPEC-060, SPEC-047, SPEC-015 | 200 · 401 · 404 · 409 · 422 · default |
+| API-066 | 후기와 사진 게시 동의 | `GET /owner/reviews` | `listReviews` | 사장님 | SPEC-062, SPEC-063 | 200 · 401 · 404 · 422 · default |
+| API-067 | 포트폴리오와 올릴 수 있는 사진 | `GET /owner/portfolio` | `getPortfolio` | 사장님 | SPEC-063 | 200 · 401 · 404 · default |
+| API-068 | 포트폴리오에 올리기 | `POST /owner/portfolio/items` | `addPortfolioItem` | 사장님 | SPEC-063 | 201 · 200 · 401 · 404 · 409 · 422 · default |
+| API-069 | 포트폴리오에서 내리기 | `DELETE /owner/portfolio/items/{portfolioItemId}` | `removePortfolioItem` | 사장님 | SPEC-063 | 200 · 401 · 404 · 409 · 422 · default |
+| API-070 | 손님 메시지 받기(카카오 오픈빌더 스킬) | `POST /kakao/skills/message` | `receiveCustomerMessage` | 스킬 키 | SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-028, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-049, SPEC-056, SPEC-057, SPEC-066, SPEC-068, SPEC-069, SPEC-013, SPEC-014, SPEC-016, SPEC-008 | 200 · 401 · 422 · default |
+| API-071 | 손님 확인 카드 버튼(카카오 오픈빌더 스킬) | `POST /kakao/skills/card` | `pressConfirmCard` | 스킬 키 | SPEC-069, SPEC-029, SPEC-030, SPEC-033, SPEC-041, SPEC-046, SPEC-058, SPEC-063, SPEC-015, SPEC-032, SPEC-040 | 200 · 401 · 422 · default |
+| API-072 | 후기 받기(카카오 오픈빌더 스킬) | `POST /kakao/skills/review` | `submitReview` | 스킬 키 | SPEC-062, SPEC-019, SPEC-061 | 200 · 401 · 422 · default |
+<!-- END generated:operations -->
+
+## 5. 공통 규칙
+
+- **오류 모양**(DEC-01·02): 모든 오류는 `application/problem+json`의 Problem(`type`·`title`·`status`·`detail`·`instance`·`code`·`traceId`)입니다. 입력 오류는 모두 422 `validation_failed`이고 칸마다 `errors[{field, code}]`로 위치와 까닭 코드만 싣습니다. 넣은 값과 서버 안 내용은 싣지 않습니다. 없는 ID·다른 가게 ID·모양이 틀린 ID는 같은 404이고, 403은 쓰지 않습니다.
+- **같은 상태로 가는 명령**(DEC-03): 이미 그 상태면 200과 `outcome: unchanged`, 다른 결정이 먼저 남았으면 409 `already_decided`입니다.
+- **요청 키**(DEC-04): 사장님·운영자의 쓰기 명령은 `Idempotency-Key` 헤더를 꼭 보냅니다. 같은 키로 다시 오면 처음 결과와 `Idempotency-Replayed: true`가 갑니다. 로그인·로그아웃·사진 올리기·구글 허락 시작은 받지 않습니다.
+- **동시 변경**(DEC-05): 고칠 수 있는 기록은 `revision`을 싣고, 명령은 화면이 본 `baseRevision`을 보냅니다. 다르면 409 `version_conflict`이고, 화면은 지금 상태를 다시 읽습니다(409에 지금 상태를 싣지 않음).
+- **확인이 필요한 저장**(DEC-06): 409 `confirmation_required`와 `confirm` 목록이 오면 화면이 말을 보이고, 사장님이 확인하면 같은 요청에 `confirm`을 담아 새 요청 키로 다시 보냅니다.
+- **카카오 스킬**(DEC-07·08): 처리한 모든 경우에 200과 스킬 응답입니다. HTTP 오류는 스킬 키가 틀림(401)과 스킬 요청 모양이 아님(422)뿐입니다. 키는 가게 연결마다 다르고 사장님 채널 연결 화면에만 보입니다.
+- **파일·로그인·목록·모양**(DEC-09·10·11·14·15): 사진은 먼저 올리고 `uploadId`로 씁니다. 사장님 로그인은 카카오 인가 코드를 서버가 바꾸고 토큰은 남기지 않습니다. 목록은 `cursor`·`limit`, 돈은 원 단위 정수, 시각은 가게 시간대 오프셋(+09:00)을 붙입니다.
+- **노출**(DEC-19, G6): 성공 응답 스키마는 모두 닫혀 있어(`additionalProperties: false`) 계약 밖 칸이 나가면 계약 시험이 실패합니다. 손님·공개 응답에는 주문번호 밖의 내부 ID가 없습니다.
+- **경우의 종류**: 작업마다 `x-corthex.kinds`에 04단계와 같은 12가지 종류(접근·입력·대상·상태·반복·동시·한도·바깥·노출·빈·끊김·화면·AI)별로 그 경우를 보여 주는 응답이나 예시를 적었습니다. 화면 상태는 08단계에서 응답마다 잇습니다.
+
+## 6. 오류 코드
+
+<!-- BEGIN generated:errors -->
+| 코드 | 상태 | 뜻 | 화면에 보이는 말 | 화면이 할 일 | 근거 | 쓰는 작업 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `validation_failed` | 422 | 입력 칸이 계약의 한도나 모양에 맞지 않음. 칸마다 errors에 위치와 까닭 코드 | 입력한 내용을 확인해 주세요 | errors의 칸 옆에 까닭을 보이고 넣은 값은 그대로 둠(G7 칸 오류) | G7 | 46개 |
+| `idempotency_key_reused` | 422 | 같은 요청 키로 다른 명령이나 다른 내용을 보냄 | 다시 시도해 주세요 | 새 요청 키를 만들어 다시 보냄(화면의 잘못이라 로그에 남김) | G2 | 29개 |
+| `consent_required` | 422 | 개인정보 처리 위탁·재위탁 조건에 동의하지 않음. 넣은 값도 남기지 않음 | 개인정보 처리 위탁 조건에 동의해야 가게를 등록할 수 있어요 | 동의 칸을 보이고 넣은 값은 화면에만 둠(G7 동의 필요) | SPEC-002 | API-008 |
+| `google_authorization_failed` | 422 | 구글 허락 코드가 틀렸거나 지났거나 시트 권한이 빠짐 | 구글 연결을 다시 해 주세요 | 구글 허락을 처음부터 다시 받게 함 | SPEC-009 | API-035 |
+| `sheet_not_accessible` | 422 | 고른 구글 시트나 탭을 받은 권한으로 열 수 없음 | 그 시트를 열 수 없어요. 주소와 탭 이름을 확인해 주세요 | 시트 주소 칸 옆에 까닭을 보임 | SPEC-009 | API-035 |
+| `unauthenticated` | 401 | 로그인(세션 쿠키)이 없거나 끝남 | 다시 로그인해 주세요 | 로그인으로 보내고 로그인 뒤 원래 화면으로 돌아옴(SPEC-001) | SPEC-001 | 63개 |
+| `kakao_login_failed` | 401 | 카카오 인가 코드가 틀렸거나 지났거나 사장님이 동의를 거부함. 우리 쪽 기록은 남기지 않음 | 카카오 로그인을 다시 해 주세요 | 카카오 로그인 버튼을 다시 보임 | SPEC-001 | API-001 |
+| `operator_login_failed` | 401 | 운영자 이메일·비밀번호·2단계 인증 번호 가운데 맞지 않는 것이 있음(어느 것인지 알리지 않음) | 로그인 정보가 맞지 않아요 | 입력 칸을 비우고 다시 받음 | SPEC-001 | API-004 |
+| `skill_key_invalid` | 401 | 카카오 스킬 요청의 스킬 키 헤더가 없거나 맞지 않음 | (손님에게 보이지 않음) | 오픈빌더 스킬 설정의 헤더 값을 확인(사장님 채널 연결 화면의 안내) | SPEC-008 | API-070, API-071, API-072 |
+| `not_found` | 404 | 경로의 기록이 없거나, 다른 가게 것이거나, ID 모양이 틀림. 셋을 구분하지 않음 | 찾을 수 없어요 | 목록으로 돌아가는 링크를 보임(G7 찾을 수 없음) | G1 | 30개 |
+| `shop_not_registered` | 404 | 로그인한 사장님에게 아직 가게가 없음 | 가게를 먼저 등록해 주세요 | 가게 등록 화면으로 보냄 | SPEC-001 | 29개 |
+| `not_set` | 404 | 아직 정하지 않은 설정(결제 받을 곳·영업 달력·카카오톡 채널·장부) | 아직 정하지 않았어요 | 빈 입력 화면을 보임 | SPEC-006 | 9개 |
+| `method_not_allowed` | 405 | 경로는 있지만 그 방법(GET·POST 등)은 계약에 없음. Allow 헤더에 되는 방법을 실음 | 지원하지 않는 요청이에요 | 화면 코드의 잘못이라 추적 ID와 함께 로그에 남김 | G7 | 계약에 없는 방법으로 부른 모든 경로(DEC-02) |
+| `version_conflict` | 409 | 화면이 본 뒤에 그 기록이 바뀜(baseRevision이 지금과 다름). 아무것도 바꾸지 않음 | 그 사이 바뀌었어요. 지금 상태를 확인해 주세요 | 지금 상태를 다시 읽어(GET) 보이고 다시 고르게 함(G7 이미 바뀜) | G3 | 24개 |
+| `invalid_state` | 409 | 지금 상태에서는 할 수 없는 명령(상태 기계 1-1~1-8이 허락하지 않음) | 지금 상태에서는 할 수 없어요 | detail을 보이고 지금 상태를 다시 읽음(G7 그 상태에서는 할 수 없음) | G7 | 13개 |
+| `already_decided` | 409 | 다른 결정이 이미 남음(이미 처리됨·이미 답함) | 이미 처리됐어요 | 먼저 남은 결정을 다시 읽어 보임(G7 이미 처리됨) | G3 | 10개 |
+| `order_cancelled` | 409 | 그 사이 손님이나 가게가 주문을 취소함 | 그 사이 주문이 취소됐어요 | 주문을 다시 읽어 취소된 상태를 보임 | SPEC-031 | API-046, API-063 |
+| `confirmation_required` | 409 | 확인을 받아야 저장하는 일. confirm에 확인할 것 목록. 아무것도 바꾸지 않음 | 저장하기 전에 확인해 주세요 | confirm의 말을 보이고, 사장님이 확인하면 같은 요청에 confirm 값을 담아 새 요청 키로 다시 보냄 | SPEC-005 | 9개 |
+| `already_registered` | 409 | 이 카카오 계정에 이미 가게가 있음(계정 하나에 가게 하나, R2) | 이미 등록한 가게가 있어요 | 내 가게 보기(API-009)를 엶 | SPEC-002 | API-008 |
+| `channel_linked_elsewhere` | 409 | 그 오픈빌더 봇이 이미 다른 가게에 연결됨. 묶지 않고 운영자에게 알림 | 이미 다른 가게에 연결된 채널이에요 | 다른 채널을 고르게 하고 우리 서비스 채널로 문의하게 함(G7 이미 다른 가게) | SPEC-008 | API-031 |
+| `slot_released` | 409 | 결제 기한이 지나 자리가 풀린 결제 안내라 '들어옴'을 받지 않음(R14) | 자리가 풀린 주문이에요. 먼저 '더 기다리기'로 자리를 다시 잡아 주세요 | 결제 기한 지난 주문의 더 기다리기 화면으로 보냄 | SPEC-034 | API-059 |
+| `stale_change` | 409 | 옛 판을 보고 만든 변경이라 반영하지 않음. 변경 요청은 '늦은 판이라 받지 않음'으로 닫힘 | 그 사이 주문이 바뀌어 이 변경은 반영할 수 없어요 | 변경 요청과 지금 주문 판을 다시 읽어 보임 | SPEC-045 | API-063 |
+| `undo_window_passed` | 409 | 표시한 지 5분이 지나 되돌릴 수 없음 | 5분이 지나 되돌릴 수 없어요 | 제작 기록을 다시 읽어 보임 | SPEC-051 | API-053 |
+| `photo_consent_missing` | 409 | 손님이 게시에 동의하지 않았거나 동의를 거둔 사진 | 손님이 게시에 동의한 사진만 올릴 수 있어요 | 그 사진의 동의 상태를 보임 | SPEC-063 | API-068 |
+| `request_in_progress` | 409 | 같은 요청 키의 첫 요청을 아직 처리하는 중 | 처리하고 있어요. 잠시 뒤 다시 확인해 주세요 | 1초 뒤 같은 요청 키로 다시 보냄 | G2 | 29개 |
+| `file_too_large` | 413 | 파일이 그 용도의 한도(신고증·도안 10MB, 완성 사진 20MB)를 넘음 | 사진이 너무 커요. 10MB(완성 사진은 20MB)까지 올릴 수 있어요 | 파일 칸 옆에 한도를 보임 | SPEC-002 | API-007 |
+| `rate_limited` | 429 | 같은 곳에서 너무 자주 부름(예약 링크 페이지 1분 60번, 사장님 로그인 1분 10번) | 잠시 뒤 다시 시도해 주세요 | Retry-After 초 뒤에 다시 부름 | SPEC-011 | API-001, API-038, API-039 |
+| `too_many_attempts` | 429 | 운영자 로그인 실패가 15분에 5번을 넘음 | 잠시 뒤 다시 로그인해 주세요 | Retry-After 초 동안 로그인 버튼을 막음 | SPEC-001 | API-004 |
+| `internal` | 500 | 예상하지 못한 서버 오류. 내용은 로그에만(가린 값과 추적 ID) | 문제가 생겼어요. 다시 시도해 주세요 | 다시 시도 버튼과 추적 ID를 보임(G7 서버 실패) | G7 | 72개 |
+| `kakao_unavailable` | 503 | 카카오 로그인 서버가 답하지 않음 | 카카오에 연결하지 못했어요. 잠시 뒤 다시 해 주세요 | 다시 시도 버튼 | SPEC-001 | API-001 |
+| `google_unavailable` | 503 | 구글 서버가 답하지 않음 | 구글에 연결하지 못했어요. 잠시 뒤 다시 해 주세요 | 다시 시도 버튼 | SPEC-009 | API-035 |
+| `storage_unavailable` | 503 | 사진 저장소에 쓰지 못함. 등록·저장 전체를 남기지 않음 | 사진을 저장하지 못했어요. 다시 올려 주세요 | 파일을 다시 고르게 함 | SPEC-002 | API-007, API-008 |
+<!-- END generated:errors -->
+
+칸 오류의 까닭 코드(`errors[].code`):
+
+<!-- BEGIN generated:field-codes -->
+| 까닭 코드 | 뜻 |
+| --- | --- |
+| `required` | 꼭 넣어야 함 |
+| `too_short` | 글자 수나 개수가 모자람 |
+| `too_long` | 글자 수가 넘침 |
+| `bad_format` | 모양이 맞지 않음(전화번호·날짜·주소 등) |
+| `not_allowed` | 고를 수 없는 값(예: 첫 판에서 받지 않는 영업 종류, 받지 않는 파일 종류) |
+| `out_of_range` | 숫자가 범위 밖 |
+| `too_many` | 개수가 넘침 |
+| `duplicate` | 같은 값이 겹침 |
+| `checksum_failed` | 검증 숫자가 맞지 않음(사업자등록번호) |
+| `upload_not_found` | 올린 파일이 없거나 1시간이 지남 |
+| `upload_wrong_purpose` | 다른 용도로 올린 파일 |
+| `conflict` | 다른 줄과 부딪힘(같은 옵션 조합이 허용이자 금지) |
+| `overlaps` | 단계별 환불 기간이 겹침 |
+| `gap` | 단계별 환불 기간 사이가 빔 |
+| `exceeds_received` | 환불 금액이 받은 금액에서 이미 정한 환불을 뺀 값을 넘음 |
+| `in_past` | 지난 날짜나 시각 |
+| `outside_window` | 허락된 시간 밖(08:00~20:50, 60일 안 등) |
+| `not_after_start` | 끝이 시작보다 앞섬 |
+| `unknown_field` | 계약에 없는 칸 |
+| `bad_json` | JSON으로 읽을 수 없음 |
+<!-- END generated:field-codes -->
+
+확인할 것(`confirm[].kind`, DEC-06):
+
+<!-- BEGIN generated:confirmations -->
+| 확인할 것 | 작업 | 뜻 | 화면에 보이는 말 | 근거 |
+| --- | --- | --- | --- | --- |
+| `lowered_refund` | API-021 | 제작 전 취소 환불을 전액보다 낮춤(REQ-032) | 제작 전 취소 환불을 전액보다 낮추면 분쟁 때 가게에 불리할 수 있어요(약관법 제8조, 한국소비자원 조정 사례). 그래도 저장할까요? | SPEC-005 |
+| `closed_day_with_orders` | API-027, API-029 | 확정 주문이 있는 날을 휴무로 바꿈. 주문과 자리는 그대로 남음(REQ-041) | 이날 확정 주문 {count}건은 그대로 남아요. 휴무로 바꿀까요? | SPEC-007 |
+| `overbooking` | API-046, API-047, API-063 | 하루 최대 개수에 닿은 날에 넘겨 잡음(R10). 그날은 다른 손님에게 계속 마감 | 그날 남은 자리가 없어요. 넘겨 받을까요? | SPEC-031 |
+| `not_pickup_day` | API-054 | 픽업 날짜 전에 넘김을 남김 | 오늘이 픽업 날이 아니에요. 그래도 넘김을 남길까요? | SPEC-054 |
+| `closed_day` | API-065 | 휴무일을 다시 만들기 픽업 날로 정함 | 휴무일이에요. 이날로 정할까요? | SPEC-060 |
+| `holder_mismatch` | API-025 | 예금주가 등록한 상호·대표자와 다름. 사장님 답을 남김 | 예금주가 상호·대표자와 달라요. 가게 명의 계좌가 맞나요? | SPEC-006 |
+<!-- END generated:confirmations -->
+
+## 7. 카카오 스킬 결과
+
+손님에게 가는 말은 뼈대이고 08단계에서 다듬습니다. '넘긴 질문'은 그 결과가 사장님께 넘긴 질문을 남길 때의 까닭입니다.
+
+<!-- BEGIN generated:skill-outcomes -->
+| 결과 | 작업 | 뜻 | 손님에게 가는 말 | 넘긴 질문 | 근거 |
+| --- | --- | --- | --- | --- | --- |
+| `answered` | API-070 | AI 답이 4초 안에 준비되어 스킬 응답으로 바로 답함 | (AI가 만든 답, 서버 확인을 지남) |  | SPEC-020 |
+| `callback_pending` | API-070 | 4초 안에 답이 준비되지 않아 콜백으로 답한다고 응답함. 답은 콜백으로 감 | 답을 준비하고 있어요 |  | SPEC-017 |
+| `handed_over` | API-070 | AI가 답하지 않고 사장님께 넘김(먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·조문 없음·빈 답 두 번) | 사장님 확인 뒤 답드릴게요 | AI 출력의 handoff 까닭이나 서버가 정한 까닭 | SPEC-022 |
+| `ai_unavailable` | API-070 | AI 모델이 오류를 냄(5xx·연결 실패). 한 번 다시 한 뒤에도 실패해 넘김(R7) | 사장님 확인 뒤 답드릴게요 | ai_failure | SPEC-017 |
+| `ai_timeout` | API-070 | 콜백 기한(콜백 유효 시간 - 5초)까지 AI 답이 없어 넘김. 콜백으로 감 | 사장님 확인 뒤 답드릴게요 | callback_timeout | SPEC-017 |
+| `ai_key_missing` | API-070 | 서버에 AI 모델 키가 없거나 거절됨. AI를 부르지 못해 넘김 | 사장님 확인 뒤 답드릴게요 | ai_failure | SPEC-017 |
+| `ai_limit_reached` | API-070 | 모델 회사의 사용 한도(429)에 닿아 넘김 | 사장님 확인 뒤 답드릴게요 | ai_failure | SPEC-017 |
+| `ai_cost_limit_reached` | API-070 | 가게의 하루 AI 비용 한도(REQ-163, 기본 5,000원)에 닿아 AI 없이 넘김 | 사장님 확인 뒤 답드릴게요 | ai_cost_limit | SPEC-017 |
+| `masking_failed` | API-070 | 번호 가리기가 실패해 AI를 부르지 않고 넘김 | 사장님 확인 뒤 답드릴게요 | masking_failed | SPEC-021 |
+| `ai_output_rejected` | API-070 | AI 답이나 제안이 서버 확인(금액·날짜 판정·확정이라 말함·조문·자리표·광고·카드 대상)을 지나지 못해 그 부분을 버리고 정해진 문장으로 답함. 버린 제안은 쓰지 않음 | (계산값으로 만든 정해진 문장) |  | SPEC-020 |
+| `card_shown` | API-070 | 서버가 저장된 값으로 확인 카드(주문 요청·입금 알리기·변경 요청·취소·신고·동의 거두기)를 보임 | (카드: 요약과 버튼) |  | SPEC-069 |
+| `photo_received` | API-070 | 참고·신고 사진을 받아 초안이나 신고 내용에 붙임. AI 모델로 보내지 않음 | 사진을 받았어요 |  | SPEC-019 |
+| `photo_rejected` | API-070 | 사진 한도(상담마다 10장, 장당 20MB)를 넘었거나 사진이 아닌 파일 | 사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요 |  | SPEC-019 |
+| `unsupported_message` | API-070 | 음성·파일·이모티콘만 온 메시지 | 글이나 사진으로 말씀해 주세요 |  | SPEC-017 |
+| `rate_limited` | API-070 | 한 손님이 1분에 20개를 넘게 보냄. 기록만 하고 AI를 부르지 않음. 그 1분 안 첫 번째에만 이 말 | 잠시 뒤 다시 말씀해 주세요 |  | SPEC-017 |
+| `duplicate` | API-070, API-072 | 같은 카카오 요청이 다시 옴. 처음 결과를 다시 보내고 기록·AI 호출·명령을 다시 하지 않음(REQ-132) | (처음 결과와 같은 말) |  | SPEC-017 |
+| `not_accepting` | API-070, API-071, API-072 | 연결되지 않은 채널이거나 예약 링크를 내기 전 가게. 상담을 열지 않음 | 아직 상담을 받지 않아요. 가게로 연락해 주세요: {가게 연락처} |  | SPEC-017 |
+| `channel_linked` | API-070 | 연결 확인 중인 채널의 시험 메시지를 받아 채널을 가게에 묶음 | 연결됐어요. 이제 이 채널로 온 손님 메시지를 받아요 |  | SPEC-008 |
+| `server_error` | API-070, API-071, API-072 | 스킬을 처리하다 서버 오류가 남. 손님에게 오류 내용을 보이지 않음(G6), 로그에는 추적 ID | 잠시 뒤 다시 말씀해 주세요 |  | SPEC-017 |
+| `order_requested` | API-071 | 주문 요청을 한 거래로 남김. 기본 디자인이면 자리와 결제 안내까지 | 주문을 요청했어요(주문번호 {orderNo}). 결제가 확인되면 확정돼요 |  | SPEC-029 |
+| `payment_claimed` | API-071 | 결제 안내를 '확인 요청됨'으로 두고 사장님께 결제 확인을 요청함 | 사장님께 알렸어요. 확인되면 알려 드릴게요 |  | SPEC-033 |
+| `change_requested` | API-071 | 변경 요청을 남기고 사장님께 알림 | 변경을 요청했어요. 사장님이 보고 알려 드려요 |  | SPEC-041 |
+| `order_cancelled` | API-071 | 주문을 '손님이 취소함'으로 두고 자리를 풂. 확인된 결제가 있으면 사장님께 환불 정할 일 | 주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요 |  | SPEC-046 |
+| `issue_reported` | API-071 | 문제 신고를 남기고 사장님께 알림(기한 뒤면 '기한 뒤'로) | 신고를 받았어요. 사장님이 보시고 정하실 거예요 |  | SPEC-058 |
+| `consent_withdrawn` | API-071 | 사진 게시 동의를 거두고 그 사진을 포트폴리오와 예약 링크 페이지에서 내림(5분 안) | 사진 게시 동의를 거뒀어요. 곧 사진이 내려가요 |  | SPEC-063 |
+| `declined` | API-071 | 손님이 카드의 '안 할래요'를 누름. 아무것도 남기지 않음 | 알겠어요. 더 궁금한 것이 있으면 말씀해 주세요 |  | SPEC-069 |
+| `card_stale` | API-071 | 카드에 묶인 판(초안 고친 번호·주문 판·환불 금액)이 지금과 달라 거절하고 새 카드를 보임(G9). 쓴 것 없음 | 내용이 바뀌었어요. 새 카드를 확인해 주세요 |  | SPEC-069 |
+| `card_expired` | API-071 | 카드의 30분 기한이 지나 거절하고 새 카드를 보임(G9). 쓴 것 없음 | 시간이 지나 새 카드를 보내 드려요 |  | SPEC-069 |
+| `card_not_yours` | API-071 | 카드를 받은 사용자가 아닌 사람이 누름(A7). 쓴 것 없음 | 이 버튼은 카드를 받은 분만 누를 수 있어요 |  | SPEC-069 |
+| `card_used` | API-071 | 이미 누른 카드를 다시 누름. 처음 결과를 다시 보냄(G2) | (처음 결과와 같은 말) |  | SPEC-069 |
+| `day_full` | API-071 | 기본 디자인 주문의 자리를 같은 거래에서 잡지 못해 주문 요청도 남기지 않음(R11). 가까운 날 최대 3개 | 그 사이 그날이 다 찼어요. 이날은 어떠세요? |  | SPEC-029 |
+| `retry_needed` | API-071 | 한 거래의 쓰기 가운데 하나가 실패해 하나도 남기지 않음(REQ-054) | 다시 눌러 주세요 |  | SPEC-029 |
+| `not_allowed_now` | API-071 | 지금 상태에서는 그 명령을 받지 않음(열린 결제 안내 없음, 받은 주문의 취소, 결제 전 주문의 변경 등). 지금 상태를 알림 | 지금은 할 수 없어요: {지금 상태} |  | SPEC-033 |
+| `review_saved` | API-072 | 받은 주문의 후기와 사진, 사진마다 게시 동의(기본 동의 안 함)를 남김 | 후기를 남겨 주셔서 고마워요 |  | SPEC-062 |
+| `review_not_allowed` | API-072 | 받은 주문이 아니거나 그 주문을 요청한 사용자가 아님. 남기지 않음 | 받으신 주문에만 후기를 남길 수 있어요 |  | SPEC-062 |
+| `review_invalid` | API-072 | 후기 글이 1~1,000자 밖이거나 사진이 5장을 넘음 | 후기는 1,000자, 사진은 5장까지 남길 수 있어요 |  | SPEC-062 |
+| `photo_download_failed` | API-072 | 카카오 사진 주소에서 한 번 다시 받아도 실패함 | 사진을 받지 못했어요. 다시 보내 주세요 |  | SPEC-019 |
+<!-- END generated:skill-outcomes -->
+
+## 8. 정한 것
+
+계약서가 정하라고 한 경계(입력 오류는 400인지 422인지, 같은 상태로 가는 명령은 성공인지 등)와 이 계약에서 고른 것입니다. 처음에는 계약서와 앞 단계 기록에 기대어 Claude가 골라 추천했고, 그 가운데 3개(DEC-12·13·18)는 제품 동작이 달라져 따로 여쭈었습니다. 2026-11-12 14:01 확인 지점에서 동희님이 19개 모두 추천대로 굳히셨습니다(14절). '상태' 칸이 그 기록입니다.
+
+<!-- BEGIN generated:decisions -->
+| ID | 정한 것 | 고른 것 | 까닭 | 다른 길 | 상태 |
+| --- | --- | --- | --- | --- | --- |
+| DEC-01 | 입력 오류는 모두 422 | 입력 칸이 맞지 않으면 모든 작업이 422 `validation_failed`를 돌려줌. 400은 쓰지 않음. 칸마다 `errors[{field, code}]`로 위치와 까닭 코드만 싣고 넣은 값은 되돌려 보내지 않음. JSON으로 읽을 수 없는 본문은 field `/`·code `bad_json`, 받지 않는 Content-Type은 field `header:Content-Type`·code `not_allowed`, 글자 칸의 NUL 문자는 `bad_format`으로 같은 422 | G7의 '칸 오류(칸마다 이유)'를 한 모양으로. 계약서가 400·422 가운데 하나를 고르라 함 | 400: JSON 모양 오류와 값 오류를 나눌 수 있지만 화면이 두 갈래를 다뤄야 함 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-02 | 없는 ID·다른 가게 ID·모양이 틀린 ID는 같은 404 | 경로의 ID가 없거나, 다른 가게 것이거나, 모양이 틀리면(100자를 넘는 것 포함) 모두 404 `not_found`, 같은 본문. 계약에 없는 경로도 같은 404. 경로는 있지만 방법이 없으면 405 `method_not_allowed`와 `Allow` 헤더. 403은 쓰지 않음(역할마다 세션 쿠키와 경로가 나뉨) | G1: 다른 가게 기록이 있는지조차 알리지 않음. SPEC-068 수락 기준 | 모양이 틀린 ID는 422: 화면 개발에는 친절하지만 G1의 '구분하지 않음'과 어긋남 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-03 | 같은 상태로 가는 명령은 성공, 다른 결정이 있으면 409 | 이미 그 상태인 명령(이미 마감된 날 마감, 확인된 가게 확인, 같은 '들어옴')은 200과 `outcome: unchanged`, 아무것도 바꾸지 않음. 다른 결정이 먼저 남았으면 409 `already_decided` | 상태 기계 1-2의 '같은 상태로 가는 명령은 지금 상태를 돌려줌'과 G3의 '먼저 온 쓰기가 이김' | 같은 상태도 409: 두 번 누른 사장님께 오류가 보임 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-04 | 사장님·운영자 명령은 요청 키를 꼭 가짐 | 사장님·운영자의 쓰기 명령은 `Idempotency-Key` 헤더(16~64자, 영문·숫자·`_`·`-`)가 꼭 있어야 하고, 빼면 422 `validation_failed`(header:Idempotency-Key, required). 같은 키가 다시 오면 처음 결과를 그대로 돌려주고 `Idempotency-Replayed: true`를 붙임. 같은 키에 다른 내용은 422 `idempotency_key_reused`, 첫 요청을 처리하는 중이면 409 `request_in_progress`. 로그인·로그아웃, 사진 올리기(다시 해도 새 uploadId가 하나 더 생길 뿐), 구글 허락 시작(기록을 바꾸지 않음)은 받지 않음. 카카오 스킬은 카카오 요청으로 만든 키(OPEN-1)와 카드 키를 씀 | G2(화면 버튼은 화면이 만든 키)와 TBL-050 request_keys | 키 없이 판 비교만: 네트워크가 끊겨 다시 보낸 요청이 두 번 남을 수 있음 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-05 | 동시 변경은 revision 비교 | 고칠 수 있는 기록은 응답에 `revision`(서버가 만든 값)을 싣고, 명령은 `baseRevision`을 보냄. 다르면 409 `version_conflict`이고 아무것도 바꾸지 않음. 409에는 지금 상태를 싣지 않고 화면이 다시 읽음(GET). 처음 저장(가격표·운영규정·결제 받을 곳·영업 달력·채널·장부)은 `baseRevision: null` | G3(먼저 온 쓰기가 이기고 뒤는 '이미 바뀜'). 오류 응답을 Problem 한 모양으로 두고, 지금 상태는 늘 같은 읽기 작업에서 옴. 판 번호가 없는 기록(상태만 있는 결제 기한 결정 등)도 같은 방법으로 | If-Match 헤더: HTTP 표준이지만 어긋남이 412라 계약서의 409와 다르고, 목록의 줄마다 값을 실을 곳이 없음 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-06 | 확인이 필요한 저장은 409 confirmation_required | 제작 전 취소 환불 낮춤·확정 주문이 있는 날 휴무·넘겨 잡음·픽업 날이 아닌 넘김·휴무일 다시 만들기·예금주 다름은 아무것도 바꾸지 않고 409 `confirmation_required`와 `confirm` 목록을 돌려줌. 화면이 말을 보이고, 사장님이 확인하면 같은 요청에 `confirm` 값을 담아 다시 보냄 | SPEC-005·007·031·038·054·060·006의 '먼저 보이고 확인받음'을 한 모양으로 | 화면이 미리 계산해 묻기: 그 사이 상태가 바뀌면 확인 없이 저장될 수 있음 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-07 | 카카오 스킬은 늘 200과 스킬 응답 | 카카오 스킬 작업은 서버가 처리한 모든 경우에 200과 스킬 응답을 돌려주고, 결과는 `Siljang-Outcome` 헤더와 이름 붙은 예시로 구분함. HTTP 오류는 스킬 키가 틀림(401)과 스킬 요청 모양이 아님(422)뿐. AI 실패·느림·키 없음·사용 한도·가게 비용 한도는 모두 넘김 답(R7) | G6(손님에게 오류 내용을 보이지 않음). 200이 아니면 카카오가 손님에게 자기 오류 말을 보임 | AI 실패를 503으로: HTTP 쪽은 깔끔하지만 손님은 카카오 오류 말만 봄 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-08 | 카카오 스킬 인증은 오픈빌더 헤더 값 | 오픈빌더 스킬 설정의 헤더 값(공식 문서 2026-11-12 확인: '헤더값 입력, 테스트 헤더값 입력')에 가게 연결마다 다른 스킬 키를 넣음. 헤더 이름 `Siljang-Skill-Key`. 키는 서버 비밀값과 연결 ID로 만들어 DB에 두지 않음(REQ-135) | 문서에 요청 서명·IP 목록이 없음. 봇 ID만으로는 남이 요청을 꾸밀 수 있음 | 주소에 비밀 경로: 로그와 오픈빌더 화면에 그대로 보임 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-09 | 파일은 먼저 올리고 ID로 씀 | 신고증·도안·완성 사진은 `POST /owner/uploads`로 먼저 올리고(용도별 한도), 명령에는 `uploadId`만 씀(1시간 안). 응답의 사진은 15분 사는 서명 주소로만 보이고 저장 위치는 보이지 않음 | 명령을 JSON 하나로 두고 사진 실패를 명령 전에 알림(SPEC-002 '사진 저장이 실패하면 등록 전체를 남기지 않음') | 명령마다 multipart: 칸 오류와 파일 오류가 섞임 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-10 | 사장님 로그인은 인가 코드를 서버가 바꿈 | 화면이 카카오 로그인으로 받은 인가 코드를 `POST /owner/session`으로 보내면 서버가 토큰으로 바꿔 카카오 회원번호만 남기고 토큰은 버림. 세션은 HttpOnly·Secure 쿠키. 운영자는 이메일·비밀번호·6자리 번호로 `POST /operator/session` | SPEC-001(카카오 토큰을 남기지 않음), R2. 쿠키라 화면 코드가 세션 값을 만지지 않음 | 토큰을 화면에 줌: 화면 저장소가 털리면 세션도 털림 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-11 | 운영자 아닌 사람에게 운영자 작업은 401 | 운영자 작업은 운영자 세션이 없으면 401. SPEC-001의 '운영자 화면은 운영자 계정이 아니면 찾을 수 없음'은 운영자 기록을 0건 보인다는 뜻으로 읽고, 그 화면 모양은 08단계에서 정함 | 사장님 세션과 운영자 세션은 다른 쿠키라 섞이지 않음. 계약서가 로그인이 필요한 작업에 401을 요구함 | 세션이 없으면 404: 운영자 주소를 숨기지만 운영자도 세션이 끝나면 '찾을 수 없음'을 봄 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-12 | 예약 링크 조건에 '결제 받을 곳'을 더함 | 가격표·운영규정·영업 달력·영업 신고 확인·채널 연결에 더해 결제 받을 곳(가게 계좌)이 있어야 예약 링크를 냄. `GET /owner/booking-link`의 `missing`에 `payment_destination`. 요구사항 4판 REQ-164로 더함 | 결제 안내는 가게 계좌를 꼭 가리킴(TBL-031 payment_account_id NOT NULL, E6). 계좌 없이 링크가 나가면 기본 디자인 주문 요청이 한 거래를 마칠 수 없음. 03단계 FL-001 주 경로도 링크 전에 계좌를 등록함 | REQ-105 글자대로(조건 다섯): 계좌가 없는 가게의 주문 요청이 실패함 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-13 | 픽업 장소는 예약 링크를 막지 않음 | 픽업 장소(E14)가 비어도 예약 링크를 냄. `GET /owner/booking-link`의 `recommended`에 `pickup_address`로 보이고, 비었으면 전날 안내에서 위치 줄을 빼고 가게 연락처만 실음 | 05단계 E14가 06단계로 넘긴 질문. 조건을 늘리지 않고 사장님께 알림 | 픽업 장소도 조건으로: 전날 안내가 늘 위치를 실지만 SPEC-010이 바뀜 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-14 | 목록은 커서 방식 | 목록은 `cursor`와 `limit`(1~100, 기본 20)로 나눠 받고 `nextCursor`가 없으면 끝 | 할 일·주문이 쌓여도 같은 속도. 줄이 끼어도 겹치거나 빠지지 않음 | 쪽 번호: 화면은 쉽지만 새 줄이 생기면 겹침 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-15 | 돈·시각·날짜의 모양 | 돈은 원 단위 정수. 시각은 가게 시간대 오프셋을 붙인 RFC 3339(예: 2026-11-20T14:00:00+09:00), 날짜는 가게 시간대의 YYYY-MM-DD(G8) | DB와 같음(돈 integer, 시각 timestamptz, 자리 날짜 date) | UTC로만: 화면이 늘 바꿔야 함 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-16 | 요청 빈도 한도 | 예약 링크 페이지는 같은 주소에서 1분 60번(SPEC-011), 사장님 로그인은 1분 10번, 운영자 로그인 실패는 15분 5번을 넘으면 429와 `Retry-After`. 손님 메시지의 1분 20번(SPEC-017)은 스킬 응답 `rate_limited` | SPEC-011의 긁어 가기 막기와 로그인 무차별 대입 막기 | 한도 없음: 첫 판 가게 1~3곳이라 버틸 수 있지만 운영자 계정이 위험 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-17 | AI-1 출력 스키마를 이 계약에 굳힘 | AI-1이 '06단계에서 굳힘'으로 넘긴 출력 스키마를 `components.schemas.AiTurnOutput`으로 둠(HTTP로 오가지 않는 서버 안 구조화 출력). SPEC-049의 환불 계좌를 받는 칸 `refund_account_patch`를 더함 | AI-1 출력 목록에 환불 계좌 칸이 없어 SPEC-049를 할 수 없었음 | 환불 계좌는 사장님이 상담을 보고 손으로 넣음: AI 칸은 줄지만 사장님 일이 늘어남 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-18 | 후기는 카카오 '후기' 블록의 스킬로 받음 | 후기는 후기 부탁 안내의 버튼이 여는 오픈빌더 블록이 `POST /kakao/skills/review`로 보냄(글, 보안 이미지 플러그인 사진 5장까지, 게시 동의). 게시 동의는 후기 하나에 한 번 묻고 그 답을 사진마다 남김(기본 동의 안 함) | AI-1이 후기를 다루지 않음(SPEC-062는 AI 없음). 카카오 대화에서 사진마다 따로 묻기는 번거로움 | 사진마다 묻기: SPEC-062 글자 그대로지만 손님 단계가 사진 수만큼 늘어남 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+| DEC-19 | 응답에 싣는 것 | 손님·공개 응답에는 주문번호 밖의 ID(uuid)를 싣지 않음. 사장님·운영자 응답은 uuid ID를 씀. 가린 원래 값은 넘긴 질문·상담 대화·환불 화면에만, 계좌는 결제 받을 곳과 환불 화면에만 | G6, REQ-137, R19 | 모든 응답에 같은 모양: 손님 응답에 내부 ID가 섞일 수 있음 | 확정(2026-11-12 14:01 동희님 '추천대로 굳힘') |
+<!-- END generated:decisions -->
+
+따로 여쭌 3개(모두 추천대로 정하심):
+
+- **DEC-12 예약 링크 조건에 '결제 받을 곳'을 더함.** REQ-105는 조건을 다섯(가격표·운영규정·영업 달력·영업 신고 확인·채널 연결)으로 적었지만, 결제 안내는 가게 계좌를 꼭 가리켜서(05단계 TBL-031) 계좌 없이 링크가 나가면 기본 디자인 주문 요청이 마지막에 실패합니다. 다른 길은 REQ-105 글자대로 두고 계좌가 없을 때 주문 요청을 막는 것이었습니다. 이 조건은 요구사항 4판 REQ-164(결제 받을 곳이 없는 동안 예약 링크를 내지 않음)로 더했고, 기능 명세 SPEC-010에도 이었습니다.
+- **DEC-13 픽업 장소는 예약 링크를 막지 않음.** 05단계 E14가 넘긴 질문입니다. 비어 있으면 '넣으면 좋은 것'으로만 알리고 전날 안내에서 위치 줄을 뺍니다. 다른 길은 픽업 장소도 링크 조건으로 넣는 것이었습니다.
+- **DEC-18 후기는 카카오 '후기' 블록의 스킬로 받고, 사진 게시 동의는 후기 하나에 한 번 물음.** SPEC-062는 사진마다 묻는다고 읽힐 수 있습니다. 카카오 대화에서 사진마다 따로 묻는 길도 있지만 손님 단계가 사진 수만큼 늘어납니다.
+
+## 9. 열린 질문
+
+계약 안에서는 그 작업이나 스키마 설명의 `Open:` 문장으로 적었습니다. 모두 개발 전에 실제 요청이나 시험으로 닫습니다.
+
+<!-- BEGIN generated:open -->
+| ID | 자리 | 내용 |
+| --- | --- | --- |
+| OPEN-1 | API-070 | 카카오 메시지 ID: 스킬 요청 문서(2026-11-12 확인)에 요청·메시지 ID가 없음. 같은 요청 거르기 키는 실제 요청에 쓸 ID가 있으면 그것, 없으면 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각을 2초로 내린 값)의 해시로 둠. 카카오가 같은 요청을 다시 보내는지와 함께 개발 전 실제 요청으로 확인 |
+| OPEN-2 | API-070 | 콜백 유효 시간: 콜백 문서 본문은 5분, 같은 문서의 오류 표는 '1분 이내'라 어긋남. AI-1 전체 기한(유효 시간 - 5초)은 개발 전 시험으로 정함 |
+| OPEN-3 | API-070 | 사진 메시지가 스킬 요청에 어떻게 오는지(발화에 주소인지, params인지) 문서에 없음. 개발 전 실제 요청으로 확인. 보안 이미지 플러그인(문서 확인)은 후기·신고 사진에 쓸 수 있음 |
+| OPEN-4 | API-070 | 빈 응답(답을 보내지 않기)이 되는지 문서에 없음. 될 때까지 같은 메시지 반복과 한도 넘은 메시지에는 정해진 짧은 말을 다시 보냄 |
+| OPEN-5 | API-001, API-004 | 세션 길이: 사장님 30일(쓰면 늘어남), 운영자 12시간을 첫 값으로 제안. 개발 전에 정함 |
+| OPEN-6 | API-004 | 운영자 인증 서비스(비밀번호·2단계 인증 키를 맡길 곳)는 개발 전에 고름. 고른 서비스가 자기 로그인 화면을 쓰면 이 작업을 그 흐름으로 바꿈(운영자 화면만 씀) |
+| OPEN-7 | components.schemas.AiTurnOutput | AI 모델 회사·모델은 개발 전(10단계 전)에 고름. 고르는 날 그 회사의 지금 약관·데이터 방침을 확인하고 처리방침의 국외 이전 항목을 채움(AI-1) |
+| OPEN-8 | API-031 | 사장님이 오픈빌더 봇 ID를 찾는 곳(봇 설정 화면이나 주소)을 07·08단계 연결 안내에서 정함. 봇 ID 모양은 첫 시험 메시지에서 확인 |
+<!-- END generated:open -->
+
+## 10. 서버 안의 일
+
+부르는 작업 없이 정해진 시각이나 사건으로 서버가 하는 일입니다. 그 결과가 계약의 어느 응답에 보이는지 적었습니다.
+
+<!-- BEGIN generated:jobs -->
+| SPEC | 서버가 하는 일 | 계약에서 보이는 곳 |
+| --- | --- | --- |
+| SPEC-024 | 사장님 답 기다림 타이머: 기다리는 시간이 지나면 늦어짐 안내 한 번과 다시 알림 한 번(답하는 시간 안에서만 셈) | API-040(할 일의 waitStatus), API-042(답하면 멈춤), API-010(기다리는 시간 설정) |
+| SPEC-025 | 문의 끊김: 마지막 손님 메시지 뒤 가게가 정한 시간이 지나면 상담을 닫음 | API-070(이어가기), API-010(끊김 시간 설정) |
+| SPEC-037 | 결제 기한 처리: 기한이 지난 결제 안내의 자리를 풀고 사장님께 고를 일을 남김 | API-040(할 일), API-044(status=payment_overdue), API-047(고르기) |
+| SPEC-044 | 차액 결제 기한 처리: 변경 요청을 '차액 없어 닫힘'으로 | API-062 |
+| SPEC-052 | 전날 안내: 다음 날 픽업할 손님에게 가게가 정한 시각(08:00~20:50)에 한 번 | API-027(시각 설정) |
+| SPEC-061 | 후기 부탁: 넘긴 다음 날 가게가 정한 시각에 한 번(신고가 있으면 보내지 않음) | API-027(시각 설정), API-072(버튼이 여는 후기 블록) |
+| SPEC-064 | 장부 쓰기와 다시 적기(1분·5분·30분·2시간·6시간, 그 뒤 하루 한 번), 24시간 실패 알림 | API-033(못 적은 쓰기 수), API-035(다시 연결하면 다시 적음) |
+| SPEC-065 | 지난 기록 지우기: 하루 한 번 03:00(05단계 README 6절 순서) | API-043(지운 상담은 status deleted) |
+| SPEC-066 | 손님에게 먼저 보내는 안내: 친구면 카카오 이벤트 API로 바로, 아니면 다음 대화 때 먼저(1분·5분·30분 다시 보내기) | API-070(먼저 전함), API-042 |
+| SPEC-067 | 사장님 알림: 우리 서비스 채널로 할 일 종류와 목록 주소(1분 안 같은 종류는 묶음) | API-040(할 일), API-002(채널 친구가 아니면 안내) |
+<!-- END generated:jobs -->
+
+## 11. 깨지는 변화
+
+첫 판이라 앞 계약이 없고, 깨지는 변화도 없습니다(`components.x-corthex.breakingChanges: []`). 다음 판부터 `check_api.py`의 A13이 main의 `api/openapi.yaml`과 견줘 작업·응답·오류 코드·칸·고를 값을 없애거나, 타입을 바꾸거나, 꼭 넣을 칸을 더한 것을 찾고, 그것이 목록에 있고 동희님이 정했는지 봅니다.
+
+## 12. 검사
+
+검사는 2026-11-12에 이 판으로 돌렸습니다. 숫자는 각 명령의 출력에서 옮겼습니다. 확인 지점 뒤(14:10 무렵) 정한 것의 상태 칸과 REQ-164 연결을 더한 판으로 `check_api.py`를 다시 돌려도 17개 모두 통과했고 아래 숫자가 같았습니다. 도구 판: Python 3.13.18, openapi-spec-validator 0.9.0, jsonschema 4.26.0, hypothesis 6.170.15, hypothesis-jsonschema 0.23.2, PostgreSQL 16.15, Prism 5.14.2(Node 22.23.4), Schemathesis 4.33.2.
+
+### 12-1. `check_api.py`: 검사 17개 모두 통과
+
+| 검사 | 무엇을 봄 | 결과 |
+| --- | --- | --- |
+| A0 | `build_api.py`로 다시 만들어도 계약 파일과 이 문서의 표가 그대로 | 통과 |
+| A1 | OpenAPI 3.1 문서로 맞음(openapi-spec-validator) | 통과 |
+| A2 | 작업마다 API ID(API-001~072 차례대로)·operationId·SPEC ID, SPEC ID는 04단계에 있는 것 | 통과 |
+| A3 | SPEC-001~069가 모두 작업에 이어짐 | 통과(69개 모두 작업이 있고, 서버 안의 일 10개는 10절에 따로) |
+| A4 | 응답 표(성공·422·401·403·404·409·default)를 싣거나 뺀 까닭을 적음, 경로에 ID가 있으면 404, 입력이 있으면 422, 400은 안 씀 | 통과(작업 72개) |
+| A5 | 모든 예시가 스키마(날짜·시각·uuid·주소 형식 포함)에 맞음, 내용이 있는 응답마다 예시, 성공 응답의 시각은 +09:00, 스킬 200의 예시 이름 = 결과 목록 = `Siljang-Outcome` 값 | 통과(예시 701개, 시각 536개) |
+| A6 | 오류 예시는 Problem 모양, status·code·type·title이 목록과 같음, 칸 오류의 칸이 그 요청에 있음, 422 첫 예시는 `validation_failed`, 401 첫 예시는 `unauthenticated`(스킬은 `skill_key_invalid`), 429는 `Retry-After` | 통과(오류 예시 414개) |
+| A7 | 요청 칸마다 한도, 열린 객체는 카카오 스킬 요청 안에만, `x-corthex-column`의 표.칸이 스키마에 있음 | 통과(표.칸 85개, 126자리) |
+| A8 | 작업마다 security, 로그인이 꼭 필요한 작업은 401 | 통과(누구나 여는 작업 4개, 로그인 없어도 되는 로그아웃 2개) |
+| A9 | 경우의 종류 근거가 모두 계약에 있음, 근거가 있으면 종류를 적음, 목록 작업은 빈 목록 예시, AI를 부르는 API-070은 모델 실패·느림·키 없음·사용 한도·쓰기 전 확인 실패가 저마다 결과 코드 | 통과(말로만 적은 근거 41개는 응답으로 보일 수 없는 서버 동작이라 따로 셈) |
+| A10 | 열린 질문 8개가 그 자리 설명에 `Open:`으로 있음 | 통과 |
+| A11 | 정한 것 19개가 계약에 쓰이고, 계약의 DEC ID가 모두 목록에 있음 | 통과 |
+| A12 | 계약에 나온 API ID가 모두 있는 작업 | 통과 |
+| A13 | 앞 계약과 견준 깨지는 변화가 목록에 있음 | 통과(main에 앞 계약이 없는 첫 판) |
+| A14 | 성공 응답 스키마가 모두 닫힘, 손님·공개 응답에 uuid 없음, 비밀값 같은 이름의 칸 없음 | 통과 |
+| D1 | 빈 DB에 `db/schema.sql`을 적용하고, 계약이 허락하는 값을 만들어 그 칸의 타입·CHECK에 넣어 봄(고르게 만든 값과 가장 긴·짧은 글자, 가장 작은·큰 수, 고를 값 모두) | 통과(표.칸 85개에 값 4,709개, 막힌 값 0. 글자 수 CHECK가 있는 칸 26개는 끝값을 바로 견줌) |
+| M1 | 목 서버에 작업마다 맞는 요청·로그인 없는 요청·틀린 입력, 응답·예시마다 `Prefer` 요청 | 통과(요청 783개 모두 계약대로) |
+
+검사 도구가 실제로 잡는지 보려고 일부러 오류를 넣어 봤습니다(고칠 수 없는 고를 값·계약 밖 칸, 시각 모양, 다른 상태의 오류 코드, 빠진 뺀 까닭, 요청에 없는 칸 오류, 닫히지 않은 스키마, 한도 없는 칸, DB보다 긴 글자 한도와 DB가 막는 글자). 모두 실패로 잡혔습니다.
+
+D1의 참고: `operators.email`·`kakao_channels.bot_id`·`ledger_links.spreadsheet_id`·`refunds.refund_account_number`는 모양(정규식)이 있는 칸이라 '가장 긴' 값을 만들지 못했습니다. 이 칸들은 DB에 글자 수 CHECK가 없어 길이로 막히는 일이 없고, 모양은 고르게 만든 값으로 견줬습니다. NUL 문자와 줄바꿈으로 끝나는 값은 DB에 넣을 수 없거나 파이썬 정규식만의 차이라 뺐고, 서버가 422로 막습니다(13절).
+
+### 12-2. 계약 시험 도구 Schemathesis를 목 서버에 돌림
+
+`schemathesis run api/openapi.yaml --url http://127.0.0.1:4010 --checks all --phases examples,coverage,fuzzing -n 25 --seed 20261112 --generation-codec ascii`로 작업 72개에 요청 1,323개를 만들었습니다.
+
+- **예시 단계 통과**: 계약의 요청 예시로 부른 응답이 모두 계약의 상태·형식·스키마에 맞았습니다.
+- **실패 128개는 모두 목 서버의 한계**입니다. 계약 쪽 실패는 없었습니다.
+
+| 실패 | 수 | 까닭 | 실제 서버(11단계)에서 |
+| --- | --- | --- | --- |
+| ST401 틀린 인증을 받아들임 | 59 | Prism은 쿠키·헤더가 있는지만 보고 값은 확인하지 못함 | 세션과 스킬 키 값을 확인해 401 |
+| ST204 계약에 없는 방법에 `Allow` 없음 | 61 | Prism의 405에 `Allow` 헤더가 없음 | 405 `method_not_allowed`와 `Allow`(DEC-02) |
+| ST105 계약에 없는 형식 | 8 | JSON으로 읽을 수 없는 본문에 Prism이 자기 400(`application/json`)으로 답함 | 422 `validation_failed`(`/`, `bad_json`, DEC-01) |
+
+- 경고: 작업 9개는 Schemathesis가 만든 쿠키·헤더 값이 모두 401을 받아 성공 응답을 보지 못했습니다. 이 작업들도 M1에서 맞는 요청이 성공하는 것은 봤습니다.
+- 처음에는 ASCII 밖 글자로 돌렸는데, 요청 칸 이름에 그런 글자가 들어가면 Prism이 오류 헤더를 쓰다 멈췄습니다(Prism 5.14.2의 문제). 그래서 `--generation-codec ascii`로 돌렸습니다. 실제 서버 시험은 이 옵션 없이 돌립니다.
+- 목 서버는 계약의 예시를 돌려주므로 대부분의 검사를 일부러 통과합니다. 계약을 서버가 지키는지는 11단계에서 개발·스테이징 서버에 같은 명령을 돌려야 압니다.
+
+## 13. 다음 단계에 넘기는 것
+
+- **07·08단계(사이트맵·화면 상태)**: 화면 상태는 응답에서 시작합니다. 오류 코드마다 '화면에 보이는 말'과 '화면이 할 일', 카카오 스킬 결과마다 '손님에게 가는 말'이 08단계가 다듬을 뼈대입니다. 사장님이 오픈빌더 봇 ID를 찾는 안내는 OPEN-8입니다. 화면이 더 필요한 작업이 나오면 이 계약에 먼저 더하고 깨지는 변화인지 봅니다.
+- **10·11단계(개발)**: 서버는 이 계약을 따릅니다. 목 서버로는 볼 수 없어 실제 서버에서 지켜야 하는 것이 있습니다: 세션 쿠키와 스킬 키의 값을 실제로 확인하기, JSON으로 읽을 수 없는 본문도 422 `validation_failed`(`/`, `bad_json`)로 답하기, 계약에 없는 방법은 405 `method_not_allowed`와 `Allow` 헤더, 글자 칸의 NUL 문자는 `bad_format`. 계약 시험은 개발·스테이징 서버에 `schemathesis run api/openapi.yaml --url <서버>`로 돌리고 운영 서버에는 돌리지 않습니다.
+- **12단계(QA)**: 응답 하나(`API-001#401` 꼴)마다 시험 사례를 하나씩 만듭니다. 4절 표의 '응답' 칸이 그 목록입니다.
+- **개발 전에 정할 것**: 9절 열린 질문 8개. 세션 길이(OPEN-5)와 운영자 인증 서비스(OPEN-6), AI 모델 회사(OPEN-7)는 고르는 날 계약과 처리방침을 함께 고칩니다.
+
+## 14. 확인 지점
+
+계약서의 확인 지점은 "구현 전에 응답 하나씩 계약을 보고, 깨지는 변화마다 정함"입니다. 첫 판이라 깨지는 변화는 없었습니다.
+
+- 질문(2026-11-12 13:50, 이 작업 대화의 결정 카드): "API 계약(작업 72개)과 정한 것 19개를 추천대로 굳힐까요?" 고를 것은 추천대로 굳힘, DEC-12·13·18 다르게, 고칠 것 말씀이었습니다.
+- 결정: 2026-11-12 14:01 동희님이 '추천대로 굳힘'을 고르셨습니다. 4절의 작업 72개와 응답, 8절의 DEC-01~19(따로 여쭌 DEC-12·13·18 포함)를 이대로 굳힙니다. 여쭌 뒤 PR #7에 댓글과 리뷰는 없었습니다.
+- 굳힌 뒤: DEC-12의 조건을 요구사항 4판 REQ-164(결제 받을 곳이 없는 동안 예약 링크를 내지 않음)로 더하고, 기능 명세 SPEC-010의 조건과 수락 기준에 이었습니다. 다음은 07단계(사이트맵)입니다. 계약을 바꿀 때는 목록을 고친 뒤 `build_api.py . --write`로 다시 만들고, 화면이 이미 보이는 데이터나 보내는 요청을 깨는 바꿈은 다시 여쭙니다.
+
+기록은 Notion 최근 업데이트 DB의 06단계 기록 행(https://app.notion.com/p/416bf16cc3ec81bc8e55c85d0f194ccf)에 있고, 작업·오류 코드·정한 것 표를 이 문서에서 옮겨 두었습니다. 둘이 다르면 이 문서와 원본 계약이 맞습니다.

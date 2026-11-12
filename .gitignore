@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+
+# 06단계 검사 도구가 만드는 것
+.venv-api/
+.hypothesis/
+.schemathesis/
