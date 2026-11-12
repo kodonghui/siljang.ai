@@ -238,7 +238,7 @@
           specs: [SPEC-067, SPEC-003, SPEC-024]
           apis: []
           opens: [SCR-016]
-          note: "우리 서비스 카카오톡 채널로 오는 알림. 할 일 종류와 할 일 목록 주소만 담음"
+          note: "우리 서비스 카카오톡 채널로 오는 알림. 할 일 유형과 할 일 목록 주소만 담음"
     - id: SCR-020
       name: 주문 목록
       path: /owner/orders
