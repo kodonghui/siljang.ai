@@ -1,0 +1,471 @@
+"""08단계 화면 정의의 공통 값: 상태 이름, 응답→상태 기본값, 손님 문구, 성공 문구, 와이어프레임 블록.
+
+화면마다의 값은 screens_guest.py(손님 SCR-001~013), screens_owner_a.py(SCR-014~031),
+screens_owner_b.py(SCR-032~045), screens_operator.py(SCR-046~049)에 있고 build_screens.py가 모두 읽는다.
+"""
+
+SCREENS = {}
+
+
+def scr(sid, **kw):
+    """화면 하나를 등록한다. 키는 build_screens.py 머리말 참고."""
+    if sid in SCREENS:
+        raise ValueError("화면 중복: " + sid)
+    SCREENS[sid] = kw
+
+
+# ── 상태 ─────────────────────────────────────────────────────────────────────
+STD_STATES = ["normal", "loading", "empty", "error", "permission", "stale"]
+STATE_INFO = {
+    "normal": "데이터가 있고 할 수 있는 일이 보임",
+    "loading": "데이터가 오는 중",
+    "empty": "보일 것이 아직 없음",
+    "error": "불러오기나 액션이 실패함",
+    "permission": "이 사용자가 볼 수 없거나 할 수 없음",
+    "stale": "보이는 데이터가 지금과 다를 수 있음",
+    # 화면 고유 상태(08단계 결정 W3)
+    "submitting": "누른 액션의 결과를 기다리는 중. 버튼이 막힘",
+    "confirm": "저장하기 전에 확인을 받는 창(서버가 요구하는 DEC-06 확인, 또는 되돌리기 어려운 액션 앞에서 화면이 여는 확인)",
+    "rate-limited": "요청 빈도 한도에 닿아 잠시 막힘",
+    "done": "명령을 남긴 뒤의 결과, 또는 이미 처리한 건을 읽기 전용으로 봄",
+    "expired": "기한이 지남(카드 30분, 결제 기한)",
+    "day-full": "그 사이 그날이 다 참",
+    "handed-over": "AI가 답하지 않고 사장님께 에스컬레이션함",
+    "fixed-answer": "AI 답이 서버 확인을 지나지 못해 정해진 문장으로 답함",
+    "link-test": "채널 연결 확인용 테스트 메시지에 답함",
+    "deferred": "손님이 채널 친구가 아니어서 다음 대화 때 먼저 전함",
+    "not-sent": "사장님이 우리 서비스 채널 친구가 아니어서 알림이 가지 않음",
+    "checking": "채널 연결 확인 중(최대 10분)",
+    "reconnect": "구글 권한이 끊겨 장부를 다시 연결해야 함",
+    "on-hold": "영업 신고가 보류됨",
+    "mismatch": "들어온 금액이 안내와 달라 맞추는 중",
+    "awaiting-payment": "차액 결제를 기다림",
+}
+
+# 로그인 화면은 401이 권한 없음이 아니라 폼 옆 오류(계약 기본값)
+LOGIN_SCREENS = {"SCR-014": "API-001", "SCR-046": "API-004"}
+SKILL_APIS = ("API-070", "API-071", "API-072")
+
+
+def default_state(sid, api, status, code):
+    """응답 하나의 기본 상태(08단계 계약의 기본값과 W2의 차이). 카카오 스킬 200은 화면이 정한다."""
+    if status.startswith("2"):
+        if api in SKILL_APIS:
+            return None
+        return "empty" if code == "empty" else "normal"
+    if status == "401":
+        return "error" if LOGIN_SCREENS.get(sid) == api else ("error" if api in SKILL_APIS else "permission")
+    if status == "403":
+        return "permission"
+    if status == "404":
+        return {"shop_not_registered": "permission", "not_set": "empty"}.get(code, "error")
+    if status == "409":
+        return {"confirmation_required": "confirm", "request_in_progress": "submitting",
+                "channel_linked_elsewhere": "error"}.get(code, "stale")
+    if status == "429":
+        return "rate-limited"
+    return "error"  # 413, 422, 503, default
+
+
+# ── 손님 문구(카카오 스킬 결과): 06단계 7절의 뼈대를 08단계에서 다듬음(W5) ──────────────
+ADD_FRIEND = "채널을 추가하시면 답을 바로 받아 보실 수 있어요"
+OUTCOME_TEXT = {
+    "answered": "(AI가 만든 답. 금액·날짜·가능 여부는 가게 규칙의 계산값만 쓰고 서버 확인을 지남)",
+    "callback_pending": "답을 준비하고 있어요",
+    "handed_over": "사장님 확인 뒤 답드릴게요 + (채널 친구가 아니면) " + ADD_FRIEND,
+    "ai_unavailable": "사장님 확인 뒤 답드릴게요",
+    "ai_timeout": "사장님 확인 뒤 답드릴게요",
+    "ai_key_missing": "사장님 확인 뒤 답드릴게요",
+    "ai_limit_reached": "사장님 확인 뒤 답드릴게요",
+    "ai_cost_limit_reached": "사장님 확인 뒤 답드릴게요",
+    "masking_failed": "사장님 확인 뒤 답드릴게요",
+    "ai_output_rejected": "(가게 규칙의 계산값으로 만든 정해진 문장)",
+    "card_shown": "(확인 카드: 요약과 버튼)",
+    "photo_received": "사진을 받았어요",
+    "photo_rejected": "사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요",
+    "unsupported_message": "글이나 사진으로 말씀해 주세요",
+    "rate_limited": "잠시 뒤 다시 말씀해 주세요",
+    "duplicate": "(처음 결과와 같은 말)",
+    "not_accepting": "아직 상담을 받지 않아요. 가게로 연락해 주세요: {가게 연락처}",
+    "channel_linked": "연결됐어요. 이제 이 채널로 온 손님 메시지를 받아요",
+    "server_error": "잠시 뒤 다시 말씀해 주세요",
+    "order_requested": "기본 디자인: 주문을 요청했어요(주문번호 {orderNo}). 결제가 확인되면 확정돼요 + 결제 안내 / "
+                       "맞춤 주문: 주문을 요청했어요(주문번호 {orderNo}). 사장님이 보고 알려 드릴게요 + (채널 친구가 아니면) " + ADD_FRIEND,
+    "payment_claimed": "사장님께 알렸어요. 확인되면 알려 드릴게요",
+    "change_requested": "변경을 요청했어요. 사장님이 보고 알려 드려요",
+    "order_cancelled": "결제한 주문: 주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요 / 결제 전 주문: 주문을 취소했어요",
+    "issue_reported": "신고를 받았어요. 사장님이 보시고 정하실 거예요",
+    "consent_withdrawn": "사진 게시 동의를 철회했어요. 5분 안에 사진이 내려가요",
+    "declined": "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요",
+    "card_stale": "내용이 바뀌었어요. 새 카드를 확인해 주세요 + 새 카드",
+    "card_expired": "시간이 지나 새 카드를 보내 드려요 + 새 카드",
+    "card_not_yours": "이 버튼은 카드를 받은 분만 누를 수 있어요",
+    "card_used": "(처음 결과와 같은 말)",
+    "day_full": "그 사이 그날이 다 찼어요. 이날은 어떠세요? + 가까운 날 최대 3개 바로가기 / "
+                "가까운 날이 없으면: 가까운 날에 자리가 없어요. 사장님께 확인을 요청할 수 있어요",
+    "retry_needed": "다시 눌러 주세요",
+    "not_allowed_now": "지금은 할 수 없어요: {지금 상태}",
+    "review_saved": "후기를 남겨 주셔서 고마워요",
+    "review_not_allowed": "받으신 주문에만 후기를 남길 수 있어요",
+    "review_invalid": "후기는 1,000자, 사진은 5장까지 남길 수 있어요",
+    "photo_download_failed": "사진을 받지 못했어요. 다시 보내 주세요",
+}
+# 06단계 뼈대와 달라진 결과(README의 손님 문구 표에 '08단계에서 바꿈'으로 표시)
+OUTCOME_CHANGED = {
+    "handed_over": "채널 친구가 아닐 때 덧붙이는 말을 문구에 넣음(SPEC-022)",
+    "order_requested": "맞춤 주문의 문구와 채널 추가 권유를 나눔(SPEC-029)",
+    "order_cancelled": "결제 전 주문은 환불 문장을 뺌(SPEC-046)",
+    "consent_withdrawn": "'곧'을 '5분 안에'로(SPEC-063 캐시 5분)",
+    "day_full": "가까운 날이 없을 때의 문구를 더함(SPEC-014 빈 경우)",
+}
+# 카카오 스킬 401·422·default: 우리 문구가 가지 않고 카카오톡이 자기 오류 말을 보임(DEC-07)
+SKILL_HTTP_TEXT = "(우리 문구 없음. 카카오톡이 자기 오류 말을 보임)"
+
+# ── 성공 응답(2xx)에서 화면에 보이는 것. 없으면 GET은 '받은 데이터를 보임' ─────────────────
+OK_TEXT = {
+    ("API-001", "new_owner"): "가게 등록(SCR-015)으로 이동",
+    ("API-001", "returning_owner"): "할 일 목록(SCR-016), 로그인 전에 열던 주소가 있으면 그 화면으로 이동",
+    ("API-001", "license_on_hold"): "영업 신고(SCR-035)로 이동해 보류 사유와 '신고증 다시 올리기'를 보임",
+    ("API-002", "friend"): "가게 이름과 할 일. 상단 배너 없음",
+    ("API-002", "not_friend"): "상단 배너 '알림을 받으려면 우리 서비스 채널을 추가하세요'",
+    ("API-002", "no_shop"): "가게 등록(SCR-015)으로 보냄",
+    ("API-003", "204"): "로그인 화면(SCR-014)으로 이동",
+    ("API-004", "signed_in"): "영업 신고 확인 목록(SCR-047)으로 이동",
+    ("API-005", "operator"): "운영자 이름과 로그아웃 버튼",
+    ("API-006", "204"): "운영자 로그인(SCR-046)으로 이동",
+    ("API-007", "license_photo"): "사진 미리보기와 '올렸어요'. 1시간 안에 저장해야 씀",
+    ("API-007", "completion_photo"): "사진 미리보기와 '올렸어요'. 1시간 안에 완성을 눌러야 씀",
+    ("API-008", "registered"): "'가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요' 뒤 할 일 목록(SCR-016)으로 이동",
+    ("API-009", "verified"): "영업 신고 '확인됨'",
+    ("API-009", "pending"): "영업 신고 '확인 중'",
+    ("API-009", "on_hold"): "영업 신고 '보류'와 보류 사유",
+    ("API-010", "updated"): "'저장했어요'",
+    ("API-010", "unchanged"): "'바뀐 것이 없어요'",
+    ("API-011", "resubmitted"): "'신고증을 다시 올렸어요. 운영자가 다시 확인해요'와 '확인 중'",
+    ("API-012", "pending"): "확인할 가게 목록(오래된 순)",
+    ("API-012", "empty"): "'확인할 가게가 없어요'",
+    ("API-013", "pending"): "가게 등록 정보와 신고증 사진, 확인됨·보류 버튼",
+    ("API-013", "on_hold"): "보류 사유가 보이는 가게(다시 올리기 전)",
+    ("API-014", "verified"): "'확인됨으로 남겼어요' 뒤 목록에서 빠짐",
+    ("API-014", "on_hold"): "'보류로 남겼어요. 사장님께 사유를 알렸어요'",
+    ("API-014", "unchanged"): "'이미 확인된 가게예요'",
+    ("API-015", "alerts"): "알림 목록(종류·가게·건수·시각, 내용 없음)",
+    ("API-015", "empty"): "'운영자 알림이 없어요'",
+    ("API-016", "current"): "현재 버전의 옵션·옵션 규칙·도안",
+    ("API-017", "created"): "'저장했어요. 가격표 버전 {n}'",
+    ("API-017", "unchanged"): "'바뀐 것이 없어 새 버전을 만들지 않았어요'",
+    ("API-018", "versions"): "버전 목록(최신 순)",
+    ("API-018", "empty"): "'아직 저장한 가격표가 없어요'",
+    ("API-019", "old_version"): "그 버전의 옵션·도안(읽기 전용)",
+    ("API-020", "current"): "현재 버전의 조문",
+    ("API-020", "template"): "기본값이 채워진 템플릿(아직 확정 전)",
+    ("API-021", "created"): "'확정했어요. 운영규정 버전 {n}'",
+    ("API-021", "unchanged"): "'바뀐 것이 없어 새 버전을 만들지 않았어요'",
+    ("API-022", "versions"): "버전 목록(최신 순)",
+    ("API-022", "empty"): "'아직 확정한 운영규정이 없어요'",
+    ("API-023", "old_version"): "그 버전의 조문(읽기 전용)",
+    ("API-024", "account"): "등록한 계좌와 카드 결제 링크",
+    ("API-025", "created"): "'저장했어요. 이제부터 나가는 결제 안내에 이 계좌를 써요'",
+    ("API-025", "unchanged"): "'바뀐 것이 없어요'",
+    ("API-026", "settings"): "쉬는 요일·하루 최대 개수·주문 마감·답하는 시간·안내 시각",
+    ("API-027", "created"): "'저장했어요'",
+    ("API-027", "updated_with_conflicts"): "'저장했어요. 새 기준을 넘는 날이 있어요'와 그 날·주문 목록(주문은 그대로)",
+    ("API-027", "unchanged"): "'바뀐 것이 없어요'",
+    ("API-028", "days"): "날짜마다 하루 최대 개수·잡힌 자리·남은 자리·마감·휴무",
+    ("API-029", "closed_orders"): "'그날 주문을 마감했어요'(풀면 '다시 받아요')",
+    ("API-029", "unchanged"): "'이미 그렇게 되어 있어요'",
+    ("API-030", "pending"): "'연결 확인 중'과 남은 시간(10분), 몇 초마다 다시 읽음",
+    ("API-030", "linked"): "'연결됨'과 연결된 시각",
+    ("API-030", "failed"): "'연결 안 됨'과 사유 후보(스킬 주소, 오픈빌더 배포)",
+    ("API-031", "created"): "'저장했어요. 아래 스킬 설정 값을 오픈빌더에 넣어 주세요'",
+    ("API-031", "unchanged"): "'바뀐 것이 없어요'",
+    ("API-032", "started"): "'연결 확인 중'으로 바뀜",
+    ("API-032", "unchanged"): "'이미 확인 중이거나 연결됐어요'",
+    ("API-033", "linked"): "'연결됨'과 구글 시트 이름·우리 열",
+    ("API-033", "auth_lost"): "'장부에 못 적은 주문 {n}건이 있어요. 다시 연결해 주세요'",
+    ("API-033", "unlinked"): "'연결 해제됨'과 다시 연결 버튼",
+    ("API-034", "authorization"): "구글 권한 요청 화면으로 이동",
+    ("API-035", "created"): "'장부를 연결했어요'",
+    ("API-035", "moved_right"): "'같은 이름의 열이 있어 우리 열을 오른쪽 빈 열에 만들었어요'",
+    ("API-035", "relinked"): "'다시 연결했어요. 못 적은 주문 {n}건을 다시 적어요'",
+    ("API-036", "unlinked"): "'연결을 해제했어요. 기다리던 쓰기 {n}건은 다시 연결하면 적어요'",
+    ("API-036", "unchanged"): "'이미 해제됐어요'",
+    ("API-037", "issued"): "예약 링크 주소와 복사 버튼",
+    ("API-037", "not_ready"): "미충족 조건 목록과 각 설정 화면 링크",
+    ("API-038", "page"): "포트폴리오·가격표·빈 날짜·가게 신원 정보",
+    ("API-038", "no_photos"): "포트폴리오 자리에 '아직 사진이 없어요'",
+    ("API-039", "policy"): "처리방침 본문과 국외 이전 항목",
+    ("API-040", "open_tasks"): "할 일 목록(오래된 순, 지연 표시)",
+    ("API-040", "not_friend"): "할 일 목록과 상단 배너 '알림을 받으려면 우리 서비스 채널을 추가하세요'",
+    ("API-040", "empty"): "'지금 처리할 일이 없어요'",
+    ("API-041", "edibility"): "손님 말과 사유, 답 입력 필드",
+    ("API-041", "closed_day"): "손님 말과 원한 날짜, '추가 수락'·'받지 않음'과 답 입력 필드",
+    ("API-042", "sent"): "'손님에게 보냈어요'",
+    ("API-042", "deferred"): "'손님이 채널 친구가 아니어서 다음 대화 때 먼저 전해요'",
+    ("API-043", "messages"): "대화(마스킹 원본 값 포함)와 참고 사진",
+    ("API-043", "deleted"): "'보관 기간 30일이 지나 대화를 지웠어요'",
+    ("API-044", "orders"): "주문 목록",
+    ("API-044", "overdue"): "결제 기한 지난 주문만 걸러 본 목록",
+    ("API-044", "empty"): "'조건에 맞는 주문이 없어요'",
+    ("API-045", "custom_requested"): "맞춤 주문 요청: 참고 사진·견적 계산값·그날 남은 자리",
+    ("API-045", "confirmed"): "확정 주문: 내용(버전)·결제·제작",
+    ("API-045", "changed"): "변경이 반영된 주문: 새 버전과 이전 버전",
+    ("API-045", "remake"): "재제작 주문: 원래 주문 링크, 금액 0원",
+    ("API-046", "accepted"): "'수락했어요. 손님에게 결제 안내를 보냈어요'",
+    ("API-046", "rejected"): "'거절했어요. 손님에게 알렸어요'",
+    ("API-047", "waited"): "'결제 기한을 연장했어요. 새 결제 안내를 보냈어요'",
+    ("API-047", "cancelled"): "'취소했어요. 손님에게 알렸어요'",
+    ("API-048", "cancelled_paid"): "'취소했어요. 받은 금액의 환불을 정해 주세요' 뒤 환불 결정(SCR-025)으로 이동",
+    ("API-048", "cancelled_unpaid"): "'취소했어요. 손님에게 알렸어요'",
+    ("API-048", "unchanged"): "'이미 가게 사정으로 취소된 주문이에요'",
+    ("API-049", "customer_cancel"): "손님 취소의 환불 계산값과 근거(버전·조문·시각)",
+    ("API-049", "shop_cancel"): "가게 사정 취소의 환불 계산값(받은 금액 전액)",
+    ("API-050", "decided"): "'환불을 정했어요. 가게 계좌에서 보낸 뒤 보냄을 눌러 주세요' 뒤 환불 송금(SCR-026)으로 이동",
+    ("API-050", "deferred_notice"): "위와 같고 '손님이 채널 친구가 아니어서 안내는 다음 대화 때 전해요'",
+    ("API-051", "day"): "그날 만들 주문(픽업 시각 순)",
+    ("API-051", "empty"): "'이날 만들 주문이 없어요'",
+    ("API-052", "started"): "'제작 시작을 남겼어요' 와 5분 동안 '실행 취소'",
+    ("API-052", "completed_sent"): "'완성을 남기고 사진을 손님에게 보냈어요'",
+    ("API-052", "unchanged"): "'이미 남긴 표시예요'",
+    ("API-053", "undone"): "'실행 취소했어요'와 표시 전 버튼",
+    ("API-054", "received"): "'인도를 남겼어요'",
+    ("API-054", "unchanged"): "'이미 인도한 주문이에요'",
+    ("API-055", "no_pickup"): "'미수령을 남겼어요'",
+    ("API-055", "unchanged"): "'이미 미수령으로 남긴 주문이에요'",
+    ("API-056", "discarded"): "'폐기를 남겼어요'",
+    ("API-057", "claimed"): "결제 확인 요청된 안내와 기한이 다가오는 안내",
+    ("API-057", "empty"): "'대조할 결제 안내가 없어요'",
+    ("API-058", "claimed"): "안내 금액·입금자 이름·결제 기한, 입금됨·미입금·금액 불일치",
+    ("API-058", "mismatch"): "'맞추는 중'과 들어온 금액, 대조 완료",
+    ("API-058", "expired"): "'결제 기한이 지나 자리가 풀린 안내예요'와 결제 기한 지난 주문 링크",
+    ("API-059", "confirmed"): "'입금됨을 남겼어요. 주문이 확정됐어요'",
+    ("API-059", "mismatch"): "'금액 불일치를 남겼어요. 결제 기한을 멈추고 자리를 지켜요'",
+    ("API-059", "difference_applied"): "'차액을 확인해 변경을 반영했어요'",
+    ("API-059", "paid_after_cancel"): "'취소된 주문에 들어온 입금이에요. 환불을 정해 주세요'와 환불 결정 링크",
+    ("API-059", "unchanged"): "'이미 입금됨으로 남긴 안내예요'",
+    ("API-060", "decided"): "환불 금액·받는 방법. 손님 계좌를 아직 받지 못했으면 '상담에서 계좌를 받는 중'",
+    ("API-060", "with_account"): "손님 환불 계좌(원래 값)와 '보냄' 버튼",
+    ("API-060", "sent"): "'보냄' 시각(읽기 전용)",
+    ("API-061", "sent"): "'보냄을 남겼어요. 손님에게 환불 안내를 보냈어요'",
+    ("API-061", "unchanged"): "'이미 보냄으로 남긴 환불이에요'",
+    ("API-062", "requested"): "바꾸려는 내용·지금 버전·변경 마감, 수락·거절",
+    ("API-062", "awaiting_difference"): "'차액 결제를 기다리고 있어요'와 차액 결제 기한",
+    ("API-062", "closed_no_difference"): "'차액이 기한까지 오지 않아 닫혔어요'(읽기 전용)",
+    ("API-063", "applied"): "'수락해 반영했어요(버전 {n})'",
+    ("API-063", "awaiting_difference"): "'수락했어요. 손님에게 차액 결제 안내를 보냈어요'",
+    ("API-063", "rejected"): "'거절했어요. 손님에게 알렸어요'",
+    ("API-064", "reported"): "신고 사진·설명·주문 버전·결제 금액, 보상 고르기",
+    ("API-064", "remake_decided"): "정한 보상과 재제작 주문 링크(읽기 전용)",
+    ("API-065", "remake"): "'재제작 주문을 만들었어요'와 그 주문 링크",
+    ("API-065", "partial_refund"): "'일부 환불을 정했어요' 뒤 환불 송금(SCR-026)으로 이동",
+    ("API-066", "reviews"): "후기와 사진마다 게시 동의",
+    ("API-066", "empty"): "'아직 받은 후기가 없어요'",
+    ("API-067", "portfolio"): "올린 사진과 올릴 수 있는 사진(게시 동의한 것만)",
+    ("API-067", "empty"): "'포트폴리오에 올린 사진이 없어요'",
+    ("API-068", "added"): "'포트폴리오에 올렸어요'",
+    ("API-068", "unchanged"): "'이미 올린 사진이에요'",
+    ("API-069", "removed"): "'내렸어요. 예약 링크 페이지에서 5분 안에 사라져요'",
+    ("API-069", "unchanged"): "'이미 내린 사진이에요'",
+}
+
+# ── 자주 쓰는 문장 ────────────────────────────────────────────────────────────
+P_LOGIN = "로그인 화면으로 이동하고, 로그인하면 이 화면으로 돌아옴('다시 로그인해 주세요')"
+P_NOSHOP = "가게가 없으면 가게 등록(SCR-015)으로 보냄('가게를 먼저 등록해 주세요')"
+E_RETRY = "'문제가 생겼어요. 다시 시도해 주세요'와 다시 시도 버튼, 추적 ID"
+S_CONFLICT = "'그 사이 바뀌었어요. 지금 상태를 확인해 주세요'와 다시 읽은 지금 상태"
+SUBMIT = ("누른 버튼이 '처리하고 있어요'로 바뀌고 이 화면의 다른 액션과 함께 막힘. 첫 요청을 아직 처리하는 중이면(409 request_in_progress) "
+          "1초 뒤 같은 요청 키로 다시 보내고, 결과는 한 번만 보임")
+SKEL = "레이아웃은 그대로 두고 데이터 자리에 회색 막대를 보임. 액션 버튼은 누를 수 없음"
+KAKAO_ERR = "카카오톡이 자기 오류 말을 보임(우리 문구 없음, DEC-07). 서버 로그에 추적 ID"
+
+
+# ── 와이어프레임 블록 ──────────────────────────────────────────────────────────
+# 블록은 (종류, 값…) 튜플. build_screens.py의 render_block이 그린다.
+def bar(title, left="←", right=""):
+    return ("bar", title, left, right)
+
+
+def h(text):
+    return ("h", text)
+
+
+def kv(label, rows):
+    return ("kv", label, rows)
+
+
+def lst(label, cols, rows=3, main=True):
+    return ("list", label, cols, rows, main)
+
+
+def form(label, fields):
+    """fields: [(이름, 종류)] 종류는 text·area·select·check·file·date·time·number·toggle·radio."""
+    return ("form", label, fields)
+
+
+def btns(*labels, primary=0, danger=None):
+    return ("btns", list(labels), primary, danger)
+
+
+def banner(text):
+    return ("banner", text)
+
+
+def photos(label, n=3, cols=None):
+    """cols: (360 열 수, 1280 열 수). 없으면 한 장은 (1, 1), 여러 장은 (3, 최대 4)."""
+    return ("photos", label, n, cols)
+
+
+def cal(label):
+    return ("cal", label)
+
+
+def tabs(*labels, active=0):
+    return ("tabs", list(labels), active)
+
+
+def note(text):
+    return ("note", text)
+
+
+def msg(text, buttons=()):
+    return ("msg", text, list(buttons))
+
+
+def chat(*bubbles):
+    """bubbles: ('c', 글) 손님 · ('a', 글) 가게 채널(AI·서버) · ('card', 제목, [행], [버튼]) · ('q', [바로가기])."""
+    return ("chat", list(bubbles))
+
+
+def kbar(title):
+    return ("kbar", title)
+
+
+# 상태 프레임: None이면 normal은 레이아웃, loading은 회색 막대
+def f_replace(label, block):
+    return ("replace", label, block)
+
+
+def f_box(title, body, buttons=()):
+    return ("box", title, body, list(buttons))
+
+
+def f_banner(text, buttons=()):
+    return ("banner", text, list(buttons))
+
+
+def f_field(label, text):
+    return ("field", label, text)
+
+
+def f_dialog(title, body, buttons=("취소", "확인")):
+    return ("dialog", title, body, list(buttons))
+
+
+def f_busy(label):
+    return ("busy", label)
+
+
+def f_chat(*bubbles):
+    return ("chat+", list(bubbles))
+
+
+def f_blocks(*blocks):
+    return ("blocks", list(blocks))
+
+
+def f_multi(*specs):
+    return ("multi", list(specs))
+
+
+# ── 사장님·운영자 화면의 공통 상태(08단계) ─────────────────────────────────────────
+# 06단계 README 6절 '저장하기 전 확인' 표의 문구. check_screens.py가 README와 같은지 봄
+CONFIRM_MSG = {
+    "lowered_refund": "제작 전 취소 환불을 전액보다 낮추면 분쟁 때 가게에 불리할 수 있어요(약관법 제8조, 한국소비자원 조정 사례). 그래도 저장할까요?",
+    "closed_day_with_orders": "이날 확정 주문 {count}건은 그대로 남아요. 휴무로 바꿀까요?",
+    "overbooking": "그날 남은 자리가 없어요. 추가로 받을까요?",
+    "not_pickup_day": "오늘이 픽업 날이 아니에요. 그래도 인도를 기록할까요?",
+    "closed_day": "휴무일이에요. 이날로 정할까요?",
+    "holder_mismatch": "예금주가 상호·대표자와 달라요. 가게 명의 계좌가 맞나요?",
+}
+LOGIN_BOX = f_box("다시 로그인해 주세요", "로그인하면 이 화면으로 돌아와요", ["카카오 로그인"])
+STALE_BOX = f_banner("그 사이 바뀌었어요. 지금 상태를 확인해 주세요", ["다시 불러오기"])
+E_FIELD = "입력이 한도나 형식에 맞지 않음(422 validation_failed): 필드 옆에 '입력한 내용을 확인해 주세요'와 필드마다의 사유. 넣은 값은 그대로 둠"
+E_KEY = "같은 요청 키로 다른 내용을 보냄(422 idempotency_key_reused): '다시 시도해 주세요'. 새 요청 키로 다시 보냄"
+E_QUERY = "주소의 필터·페이지 값이 틀림(422 validation_failed): '입력한 내용을 확인해 주세요'와 '처음부터 보기'"
+
+
+def s_loading(extra=""):
+    return ("loading", SKEL + (". " + extra if extra else ""), None)
+
+
+def s_perm(shop=True, extra=""):
+    t = "로그인이 없거나 만료됨(401 unauthenticated): " + P_LOGIN
+    if shop:
+        t += ". 로그인한 사장님에게 가게가 아직 없음(404 shop_not_registered): " + P_NOSHOP
+    return ("permission", t + (". " + extra if extra else ""), LOGIN_BOX)
+
+
+def e_nf(thing, back, back_scr):
+    return ("없거나 다른 가게의 %s(404 not_found): '찾을 수 없어요'와 '%s' 링크(%s). 다른 가게 기록이 있는지는 말하지 않음(G1)"
+            % (thing, back, back_scr))
+
+
+def nf_box(back):
+    return f_box("찾을 수 없어요", "주소를 다시 확인해 주세요", [back])
+
+
+def s_stale_list(extra=""):
+    t = "목록은 연 시각 기준이라 그 뒤 바뀐 것이 안 보일 수 있음: 맨 위에 'HH:MM 기준'과 '새로 고침'. 다른 화면에서 처리하고 돌아오면 다시 불러옴"
+    return ("stale", t + (". " + extra if extra else ""), f_banner("14:05 기준이에요", ["새로 고침"]))
+
+
+def s_submit(button):
+    return ("submitting", SUBMIT, f_busy(button))
+
+
+def s_confirm(kind, yes, extra=""):
+    t = ("저장하기 전에 사장님 확인이 필요함(409 confirmation_required, %s): 확인 창에 '%s'. '%s'를 누르면 confirm에 %s를 넣고 "
+         "새 요청 키로 다시 보냄. '취소'면 아무것도 바뀌지 않음" % (kind, CONFIRM_MSG[kind], yes, kind))
+    return ("confirm", t + (". " + extra if extra else ""),
+            f_dialog("저장하기 전에 확인해 주세요", CONFIRM_MSG[kind].replace("{count}", "2"), ["취소", yes]))
+
+
+# ── 08단계 결정 사항(체크포인트에서 확인 요청) ─────────────────────────────────────
+DECISIONS = [
+    ("W1", "화면 정의의 원본과 생성 방식",
+     "research/cake-screens-2026-11/screens_*.py에 화면마다 목적·데이터·액션·상태·레이아웃을 적고, build_screens.py가 화면 정의 49개(docs/08-screens/SCR-0xx.md)·README 표·와이어프레임 페이지를 함께 생성함. 생성 파일은 손으로 고치지 않음",
+     "응답→상태 표는 06단계 계약(api/openapi.yaml)에서 직접 읽어 빠짐없이 만들고, 계약이 바뀌면 다시 생성해 맞춤. 06단계 계약(api_ops.py→openapi.yaml)과 같은 방식",
+     "화면 정의 Markdown을 원본으로 손으로 고침: 고치기는 쉽지만 응답이 늘면 빠진 행을 사람이 찾아야 함"),
+    ("W2", "응답→상태 기본값과 다르게 둔 곳",
+     "404 shop_not_registered는 permission(가게 등록으로 보냄), 404 not_set은 empty(빈 입력 화면), 409 confirmation_required는 confirm, 409 request_in_progress는 submitting, 409 channel_linked_elsewhere는 error, 429는 rate-limited, 로그인 화면의 401은 error. 나머지는 계약 기본값",
+     "06단계 오류 코드 표의 '화면이 할 일'이 이렇게 정함(가게 등록으로 보냄, 빈 입력 화면, 확인받고 다시 보냄, 1초 뒤 다시 보냄, 다른 채널을 고름)",
+     "모두 계약 기본값(404는 '찾을 수 없음', 409는 '그 사이 바뀜'): 가게가 없거나 설정 전인 사장님에게 '찾을 수 없어요'가 보임"),
+    ("W3", "화면 고유 상태",
+     "기본 6개 밖에 submitting·confirm·rate-limited·done·expired·day-full·handed-over·fixed-answer·link-test·deferred·not-sent·checking·reconnect·on-hold·mismatch·awaiting-payment를 씀. 뜻은 README 4절",
+     "버튼 막힘(반복), 확인 창(DEC-06), 카드 30분, 채널 친구가 아닌 손님처럼 화면 모습이 달라지는 경우를 와이어프레임으로 따로 보이려고",
+     "기본 6개에 모두 넣음: 상태 수는 줄지만 확인 창·카드 기한 같은 모습이 와이어프레임에 없음"),
+    ("W4", "사장님·운영자 화면 레이아웃",
+     "사장님 화면은 1280에서 왼쪽 메뉴(할 일·주문·입금 대조·제작·픽업·영업 캘린더·가게 설정), 360에서 위쪽 막대와 메뉴 버튼. 목록은 1280에서 표, 360에서 카드. 운영자 화면은 메뉴 둘(영업 신고 확인·운영자 알림)",
+     "07단계 화면 트리의 1뎁스 화면 7개를 그대로 메뉴로 씀. 360에서 표는 가로 넘침이 생김",
+     "360에서 아래쪽 탭 막대: 탭 5개 밖은 '더보기'에 숨어 입금 대조·영업 캘린더가 한 번 더 눌러야 보임"),
+    ("W5", "손님 문구(카카오 스킬 결과)",
+     "06단계 7절의 뼈대를 그대로 쓰고 5곳(handed_over·order_requested·order_cancelled·consent_withdrawn·day_full)만 다듬음. 전체는 README 5절",
+     "06단계가 '08단계에서 다듬음'으로 전달함. 결과마다 손님이 할 수 있는 다음 행동이 보이게",
+     "AI가 상황마다 문구를 만듦: 자연스럽지만 금액·상태를 잘못 말할 위험(SPEC-020, SPEC-066)"),
+    ("W6", "주문 요청 카드의 구성",
+     "말풍선 3개: ① 주문 내용 요약(문구 철자 그대로) ② 그 버전의 취소·환불 규정과 '주문제작이라 청약철회가 제한될 수 있어요' ③ 버튼 카드('규정에 동의하고 주문 요청'·'사진 게시도 동의하고 요청'·'안 할래요', 30분 기한 표시). 사진 게시 동의는 두 번째 버튼으로만 함(기본 동의 안 함)",
+     "카카오 카드에는 체크박스가 없고 버튼은 3개까지. 06단계 계약의 choice 값(confirm·confirm_with_photo_consent·decline)과 같음. 규정을 요약과 따로 보이라는 SPEC-028",
+     "카드 하나에 모두: 설명 글자 수 한도를 넘을 수 있고 규정이 요약과 섞임"),
+    ("W7", "OPEN-8 봇 ID 찾기 안내(SCR-041)",
+     "봇 ID 필드 아래 '봇 ID 찾는 법'을 펼쳐 보이고, 오픈빌더에서 봇을 열었을 때 주소의 /bot/ 다음 값이라고 안내함. 봇 ID가 틀리면 10분 안에 테스트 메시지가 오지 않아 '연결 안 됨'과 사유 후보 '테스트 메시지가 오지 않음'(API-030 test_message_missing)이 보이고, 그 도움말에 '봇 ID가 오픈빌더 주소의 값과 같은지 확인해 주세요'를 넣음. 주소 형식은 개발 전 실제 오픈빌더 화면으로 확인",
+     "06단계 OPEN-8이 08단계 안내로 전달함. 06단계 계약의 사유 후보 4개(스킬 주소·스킬 키 헤더·오픈빌더 배포·테스트 메시지 안 옴) 안에서 안내해 계약을 바꾸지 않음. 실제 오픈빌더 화면은 이번에 확인하지 못해(동희님 PC 확인 필요) 확인 전 문구로 둠",
+     "봇 ID 없이 스킬 키만으로 연결: 사장님이 찾을 것이 줄지만 06단계 API-031 계약이 바뀜"),
+    ("W8", "결제 안내에 '결제했어요' 바로가기",
+     "결제 안내(SCR-005) 말풍선 아래에 바로가기 '결제했어요'를 두고, 누르면 그 말이 상담으로 가서 결제 확인 요청 카드(SCR-006)가 나옴",
+     "SPEC-033은 손님이 말해야 카드가 나옴. 바로가기는 말을 대신 보낼 뿐 명령을 내리지 않아 R9(손님이 눌러야 명령)와 맞음",
+     "바로가기 없음: 손님이 직접 써야 함"),
+    ("W9", "운영자 화면의 로그인 끊김(SCR-047~049)",
+     "운영자 로그인이 없거나 만료됐거나 운영자 계정이 아니면(401) 운영자 로그인(SCR-046)으로 보내고, 로그인하면 원래 화면으로 돌아옴. 보내기 전에도 운영자 기록은 하나도 보이지 않음",
+     "06단계 DEC-11이 'SPEC-001의 운영자 화면은 운영자 계정이 아니면 찾을 수 없음'을 '운영자 기록을 0건 보인다'로 읽고 화면 디자인을 08단계로 전달함. 세션이 끊긴 운영자와 운영자가 아닌 사람을 서버가 구별하지 않으므로 같은 화면을 보임",
+     "'찾을 수 없어요' 화면: SPEC-001 문구 그대로지만, 세션이 끊긴 운영자도 주소를 직접 쳐서 로그인 화면으로 가야 함"),
+]
