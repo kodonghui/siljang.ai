@@ -1,5 +1,5 @@
 ---
-status: 초안
+status: 확정
 notion: https://app.notion.com/p/415bf16cc3ec8199b42ae617459e2192
 ---
 

@@ -1,11 +1,11 @@
 ---
-status: 초안
+status: 확정
 notion: https://app.notion.com/p/415bf16cc3ec812dade8e7408106e0fb
 ---
 
 # FL-013 장부에 저절로 적기
 
-채우는 요구사항: REQ-125, REQ-126, REQ-127, REQ-128, REQ-129, REQ-132
+채우는 요구사항: REQ-125, REQ-126, REQ-127, REQ-128, REQ-129, REQ-132, REQ-157
 
 | 항목 | 내용 |
 | --- | --- |
@@ -17,7 +17,7 @@ notion: https://app.notion.com/p/415bf16cc3ec812dade8e7408106e0fb
 
 ```mermaid
 flowchart TD
-  S(["시작: 주문이 확정·변경·취소되거나 환불이 정해짐<br/>(FL-007, FL-008, FL-009, FL-011)<br/>REQ-125"])
+  S(["시작: 주문이 확정·변경·취소되거나 환불이 정해짐,<br/>케이크를 넘기거나 미수령이 표시됨<br/>(FL-007, FL-008, FL-009, FL-010, FL-011)<br/>REQ-125, REQ-157"])
   D0{"구글 시트 장부를<br/>연결한 가게인가?"}
   E0(["끝: 적지 않음<br/>(Claude 판단 R3)"])
   L1["장부 쓰기를 한 번만 남김<br/>(같은 쓰기가 여러 번 와도)<br/>REQ-132"]
@@ -28,11 +28,9 @@ flowchart TD
   D2{"구글 시트에<br/>적혔나?"}
   L5["줄을 잃지 않고 다시 적음<br/>REQ-129 (Claude 판단 R3)"]
   L6["장부의 값을 우리 기록으로<br/>거꾸로 옮기지 않음<br/>REQ-128"]
-  G7["후보 N7: 넘긴 결과와 미수령도 적음<br/>(요구사항 없음, FL-010)"]
   E1(["끝: 장부에 그 주문 한 줄"])
 
   S --> D0
-  S -.- G7
   D0 -->|"아니오"| E0
   D0 -->|"예"| L1 --> D1
   D1 -->|"있음"| L2 --> L4
@@ -42,10 +40,8 @@ flowchart TD
   D2 -->|"적힘"| L6 --> E1
 
   classDef svc fill:#e8f5e9,stroke:#2e7d32,color:#0f3313
-  classDef gap fill:#fffde7,stroke:#f9a825,stroke-dasharray:5 5,color:#4a3b00
   classDef term fill:#fafafa,stroke:#757575,color:#212121
   class D0,L1,D1,L2,L3,L4,D2,L5,L6 svc
-  class G7 gap
   class S,E0,E1 term
 ```
 
@@ -65,6 +61,6 @@ flowchart TD
 
 - R3 장부 연결은 고를 수 있습니다(FL-001). 적기가 계속 실패할 때 사장님께 알릴지는 04단계에서 정합니다.
 
-## 빈 곳 (새 요구사항 후보)
+## 2판에 더한 요구사항 (03단계 확정, 2026-11-12)
 
-- N7 (권장, CTX-009) 넘긴 결과와 미수령도 장부에 적기를 권합니다(FL-010).
+- REQ-157 (권장, CTX-009, 후보 N7) 넘긴 결과와 미수령도 장부에 적습니다(FL-010).
