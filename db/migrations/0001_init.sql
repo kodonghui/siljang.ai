@@ -979,7 +979,7 @@ CREATE TABLE owner_tasks (
   wait_due_at         timestamptz,                       -- 기다림이 끝나는 시각. 답하는 시간 안에서만 셈(REQ-118)
   late_notice_at      timestamptz,                       -- 손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156)
   realerted_at        timestamptz,                       -- 지연 뒤 사장님께 다시 알린 시각(한 번, REQ-117)
-  detail              jsonb,                             -- 보일 글감(보류 이유, 에스컬레이션한 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음
+  detail              jsonb,                             -- 보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음
   opened_at           timestamptz NOT NULL DEFAULT now(), -- 생긴 시각
   closed_at           timestamptz,                       -- 사장님이 처리해 닫힌 시각(SPEC-067)
   CONSTRAINT owner_tasks_shop_scope UNIQUE (shop_id, id),
@@ -1699,7 +1699,7 @@ COMMENT ON COLUMN owner_tasks.wait_status IS '사장님 답 기다림(1-7): 기�
 COMMENT ON COLUMN owner_tasks.wait_due_at IS '기다림이 끝나는 시각. 답하는 시간 안에서만 셈(REQ-118)';
 COMMENT ON COLUMN owner_tasks.late_notice_at IS '손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156)';
 COMMENT ON COLUMN owner_tasks.realerted_at IS '지연 뒤 사장님께 다시 알린 시각(한 번, REQ-117)';
-COMMENT ON COLUMN owner_tasks.detail IS '보일 글감(보류 이유, 에스컬레이션한 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음';
+COMMENT ON COLUMN owner_tasks.detail IS '보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음';
 COMMENT ON COLUMN owner_tasks.opened_at IS '생긴 시각';
 COMMENT ON COLUMN owner_tasks.closed_at IS '사장님이 처리해 닫힌 시각(SPEC-067)';
 COMMENT ON COLUMN owner_alerts.id IS '사장님 알림 ID';

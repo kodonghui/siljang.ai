@@ -5461,7 +5461,7 @@
         "id": "03h7y0179n9e4e4gq3vp4cwyp",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "detail",
-        "comment": "보일 글감(보류 이유, 에스컬레이션한 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음",
+        "comment": "보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음",
         "dataType": "jsonb",
         "options": 0
       },
