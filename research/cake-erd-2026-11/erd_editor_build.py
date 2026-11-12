@@ -185,7 +185,7 @@ def build(root: Path) -> None:
             *[sql for _, sql in specials],
             "-- 중복됨 막기(EXCLUDE)",
             *exclusions(schema_text),
-            "-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 거래 끝에 확인",
+            "-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인",
             *alters,
         ])
         if len(after) > 10000:

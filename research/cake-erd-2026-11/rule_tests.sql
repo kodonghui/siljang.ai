@@ -18,7 +18,7 @@ BEGIN
     FOREACH stmt IN ARRAY stmts LOOP
       EXECUTE stmt;
     END LOOP;
-    SET CONSTRAINTS ALL IMMEDIATE;  -- 거래 끝에 보는 규칙도 지금 봄
+    SET CONSTRAINTS ALL IMMEDIATE;  -- 트랜잭션 끝에 보는 규칙도 지금 봄
     RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'not blocked';
   EXCEPTION
     WHEN integrity_constraint_violation THEN
