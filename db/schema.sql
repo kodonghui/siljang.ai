@@ -625,7 +625,7 @@ CREATE TABLE handoffs (
   status                 text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'answered')), -- 열림·답함
   answer_text            text CHECK (char_length(answer_text) BETWEEN 1 AND 1000), -- 사장님 답. AI가 고치지 않고 그대로 전함(SPEC-023)
   day_decision           text CHECK (day_decision IN ('accepted', 'declined')), -- 마감된 날: 추가 수락·받지 않음
-  day_accept_expires_at  timestamptz,                    -- 추가 수락한 날을 주문 요청 때 추가 수락할 수 있는 끝(24시간, SPEC-023)
+  day_accept_expires_at  timestamptz,                    -- 추가 수락한 날에 주문 요청으로 자리를 잡을 수 있는 기한(24시간, SPEC-023)
   appended_alerted_at    timestamptz,                    -- '새 질문 덧붙음' 알림을 마지막으로 보낸 시각(하루 한 번까지, SPEC-022)
   answered_at            timestamptz,                    -- 답한 시각
   created_at             timestamptz NOT NULL DEFAULT now(), -- 에스컬레이션한 시각
@@ -1527,7 +1527,7 @@ COMMENT ON COLUMN handoffs.requested_day IS '마감된 날에 추가로 받을�
 COMMENT ON COLUMN handoffs.status IS '열림·답함';
 COMMENT ON COLUMN handoffs.answer_text IS '사장님 답. AI가 고치지 않고 그대로 전함(SPEC-023)';
 COMMENT ON COLUMN handoffs.day_decision IS '마감된 날: 추가 수락·받지 않음';
-COMMENT ON COLUMN handoffs.day_accept_expires_at IS '추가 수락한 날을 주문 요청 때 추가 수락할 수 있는 끝(24시간, SPEC-023)';
+COMMENT ON COLUMN handoffs.day_accept_expires_at IS '추가 수락한 날에 주문 요청으로 자리를 잡을 수 있는 기한(24시간, SPEC-023)';
 COMMENT ON COLUMN handoffs.appended_alerted_at IS '''새 질문 덧붙음'' 알림을 마지막으로 보낸 시각(하루 한 번까지, SPEC-022)';
 COMMENT ON COLUMN handoffs.answered_at IS '답한 시각';
 COMMENT ON COLUMN handoffs.created_at IS '에스컬레이션한 시각';

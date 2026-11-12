@@ -4076,7 +4076,7 @@
         "id": "03h7y01796y3abgmnr6khhce6",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "day_accept_expires_at",
-        "comment": "추가 수락한 날을 주문 요청 때 추가 수락할 수 있는 끝(24시간, SPEC-023)",
+        "comment": "추가 수락한 날에 주문 요청으로 자리를 잡을 수 있는 기한(24시간, SPEC-023)",
         "dataType": "timestamptz",
         "options": 0
       },
