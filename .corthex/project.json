@@ -35,6 +35,13 @@
       "source": "docs/04-functional-spec/spec.md",
       "truth": "source",
       "note": "사람 보기는 04단계 기본값인 Notion DB(한 줄에 SPEC 하나)로 2026-11-12에 시작했고 다른 도구를 고르시면 바꿉니다. SPEC 표는 최근 업데이트 DB의 04단계 기록 행(https://app.notion.com/p/416bf16cc3ec81e2819bfa25353ae4d8) 안에 있고, 같은 페이지에 읽은 방식 8개와 3판 후보 M1~M6 표가 있습니다. 원본은 이 저장소 문서이고, Notion은 보고 댓글을 다는 곳입니다."
+    },
+    "05-erd": {
+      "human": "erd-editor",
+      "link": "db/schema.erd.json",
+      "source": "db/schema.sql",
+      "truth": "source",
+      "note": "사람 보기는 05단계 기본값인 ERD Editor(db/schema.erd.json)로 2026-11-12에 시작했고 다른 도구를 고르시면 바꿉니다. 계약은 새 프로젝트에 truth: human을 권하지만, 그림으로 들여오면 CHECK 275개를 잃어(docs/05-erd/README.md 9절) 원본 db/schema.sql이 이기는 truth: source로 둡니다. 그림은 research/cake-erd-2026-11/erd_editor_build.py가 ERD Editor MCP 서버(@dineug/erd-editor-mcp 1.2.0)로 만들고, check_erd.py의 E1과 erd_editor_build.py --compare로 원본과 맞는지 봅니다. 기록과 표 목록(TBL 한 줄씩), 정한 것 E1~E14 표는 최근 업데이트 DB의 05단계 기록 행(https://app.notion.com/p/416bf16cc3ec816ca5a0ff51e46a375d) 안에 있습니다."
     }
   }
 }
