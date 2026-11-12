@@ -174,7 +174,7 @@ op(id="API-008", method="post", path="/owner/shop", op="registerShop", tag="가�
    fields=[("/businessRegNo", "checksum_failed"), ("/foodBusinessType", "not_allowed"), ("/licensePhotoUploadId", "upload_not_found")],
    omit={"403": O403, "404": O404_NOPATH},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "상태": ["422:consent_required", "409:already_registered"],
-          "반복": ["idem", "409:already_registered"], "동시": ["201", "note:같은 사업자등록번호도 받고 운영자 화면에 중복 표시 표시(API-012)"],
+          "반복": ["idem", "409:already_registered"], "동시": ["201", "note:같은 사업자등록번호도 받고 운영자 화면에 중복 표시(API-012)"],
           "외부": ["503:storage_unavailable"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-009", method="get", path="/owner/shop", op="getShop", tag="가게",

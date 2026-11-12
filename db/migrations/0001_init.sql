@@ -64,7 +64,7 @@ CREATE TABLE shops (
   pickup_address            text CHECK (char_length(pickup_address) BETWEEN 1 AND 200), -- 픽업 장소(가게 위치). 전날 안내에 포함함(SPEC-052). 등록 필드(SPEC-002)에 없어 가게 설정에서 받음
   business_name             text NOT NULL CHECK (char_length(business_name) BETWEEN 1 AND 60), -- 상호
   representative_name       text NOT NULL CHECK (char_length(representative_name) BETWEEN 1 AND 30), -- 대표자
-  business_reg_no           text NOT NULL CHECK (business_reg_no ~ '^[0-9]{10}$'), -- 사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시 표시(SPEC-002)
+  business_reg_no           text NOT NULL CHECK (business_reg_no ~ '^[0-9]{10}$'), -- 사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시(SPEC-002)
   mail_order_reg_no         text CHECK (char_length(mail_order_reg_no) BETWEEN 1 AND 40), -- 통신판매업 신고번호
   mail_order_exemption      text CHECK (char_length(mail_order_exemption) BETWEEN 1 AND 200), -- 신고번호 대신 면제 사유
   food_license_no           text NOT NULL CHECK (char_length(food_license_no) BETWEEN 1 AND 30), -- 영업 신고 번호
@@ -1237,7 +1237,7 @@ COMMENT ON COLUMN shops.contact_phone IS '가게 연락처';
 COMMENT ON COLUMN shops.pickup_address IS '픽업 장소(가게 위치). 전날 안내에 포함함(SPEC-052). 등록 필드(SPEC-002)에 없어 가게 설정에서 받음';
 COMMENT ON COLUMN shops.business_name IS '상호';
 COMMENT ON COLUMN shops.representative_name IS '대표자';
-COMMENT ON COLUMN shops.business_reg_no IS '사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시 표시(SPEC-002)';
+COMMENT ON COLUMN shops.business_reg_no IS '사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시(SPEC-002)';
 COMMENT ON COLUMN shops.mail_order_reg_no IS '통신판매업 신고번호';
 COMMENT ON COLUMN shops.mail_order_exemption IS '신고번호 대신 면제 사유';
 COMMENT ON COLUMN shops.food_license_no IS '영업 신고 번호';

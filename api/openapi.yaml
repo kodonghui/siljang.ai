@@ -1111,7 +1111,7 @@ paths:
           - 409:already_registered
           동시:
           - "201"
-          - note:같은 사업자등록번호도 받고 운영자 화면에 중복 표시 표시(API-012)
+          - note:같은 사업자등록번호도 받고 운영자 화면에 중복 표시(API-012)
           외부:
           - 503:storage_unavailable
           노출:
