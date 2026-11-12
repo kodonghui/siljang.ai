@@ -123,7 +123,7 @@ CREATE TABLE privacy_policies (
   version             integer NOT NULL CHECK (version >= 1), -- 버전. 바뀌면 새 버전
   body                text NOT NULL CHECK (char_length(body) >= 1), -- 처리방침 글
   overseas_transfers  jsonb NOT NULL,                     -- 국외 이전 다섯 항목. 받는 자마다 옮기는 개인정보, 나라·시기·방법, 받는 자, 목적·보유 기간, 거부 방법·절차와 결과(REQ-141)
-  published_at        timestamptz NOT NULL DEFAULT now(), -- 낸 시각. 가장 최근 버전을 예약 링크 페이지와 AI 상담 고지에 검(REQ-140)
+  published_at        timestamptz NOT NULL DEFAULT now(), -- 낸 시각. 가장 최근 버전을 예약 링크 페이지와 AI 상담 고지에 게시함(REQ-140)
   CONSTRAINT privacy_policies_version_uq UNIQUE (shop_id, version),
   CONSTRAINT privacy_policies_transfers_chk CHECK (CASE WHEN jsonb_typeof(overseas_transfers) = 'array' THEN jsonb_array_length(overseas_transfers) >= 1 ELSE false END) -- 항목이 비면 예약 링크를 내지 않음(SPEC-010)
 );
@@ -1272,7 +1272,7 @@ COMMENT ON COLUMN privacy_policies.shop_id IS '처리방침의 가게';
 COMMENT ON COLUMN privacy_policies.version IS '버전. 바뀌면 새 버전';
 COMMENT ON COLUMN privacy_policies.body IS '처리방침 글';
 COMMENT ON COLUMN privacy_policies.overseas_transfers IS '국외 이전 다섯 항목. 받는 자마다 옮기는 개인정보, 나라·시기·방법, 받는 자, 목적·보유 기간, 거부 방법·절차와 결과(REQ-141)';
-COMMENT ON COLUMN privacy_policies.published_at IS '낸 시각. 가장 최근 버전을 예약 링크 페이지와 AI 상담 고지에 검(REQ-140)';
+COMMENT ON COLUMN privacy_policies.published_at IS '낸 시각. 가장 최근 버전을 예약 링크 페이지와 AI 상담 고지에 게시함(REQ-140)';
 COMMENT ON COLUMN price_lists.id IS '가격표 버전 ID';
 COMMENT ON COLUMN price_lists.shop_id IS '가격표의 가게';
 COMMENT ON COLUMN price_lists.version IS '버전(TERM-005). 저장할 때마다 하나 오르고, 바꾼 것이 없으면 새 버전 없음(SPEC-004)';

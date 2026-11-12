@@ -1934,7 +1934,7 @@
         "id": "03h7y0178l0hvzg6dfeuply38",
         "tableId": "03h7y0178l0hvzg6df21wv102",
         "name": "published_at",
-        "comment": "낸 시각. 가장 최근 버전을 예약 링크 페이지와 AI 상담 고지에 검(REQ-140)",
+        "comment": "낸 시각. 가장 최근 버전을 예약 링크 페이지와 AI 상담 고지에 게시함(REQ-140)",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
