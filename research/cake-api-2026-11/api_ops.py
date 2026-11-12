@@ -530,7 +530,7 @@ op(id="API-036", method="delete", path="/owner/ledger", op="unlinkLedger", tag="
 op(id="API-037", method="get", path="/owner/booking-link", op="getBookingLink", tag="예약 링크",
    summary="예약 링크와 빠진 조건", spec=["SPEC-010"], auth="owner",
    desc="조건(가격표·운영규정·영업 달력·영업 신고 확인·채널 연결·결제 받을 곳)이 모두 채워지면 서버가 처리방침을 만들고 링크를 한 번 낸다. 낸 링크는 같은 주소로 유지. "
-        "빠진 조건은 missing, 막지 않지만 넣으면 좋은 것은 recommended(픽업 장소, DEC-13). 결제 받을 곳을 조건에 더한 것은 DEC-12. "
+        "빠진 조건은 missing, 막지 않지만 넣으면 좋은 것은 recommended(픽업 장소, DEC-13). 결제 받을 곳을 조건에 더한 것은 DEC-12(REQ-164). "
         "privacy_policy는 국외 이전 항목이 비어 운영자가 채울 때까지 링크가 나가지 않음을 뜻한다.",
    ok=[(200, "BookingLink", {"issued": E.BOOKING_ISSUED, "not_ready": E.BOOKING_NOT_READY})],
    errors={404: ["shop_not_registered"]},

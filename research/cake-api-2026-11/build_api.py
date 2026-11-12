@@ -455,10 +455,11 @@ def fields_table():
 
 
 def decisions_table():
-    rows = ["| ID | 정한 것 | 고른 것 | 까닭 | 다른 길 | 여쭐 것 |", "| --- | --- | --- | --- | --- | --- |"]
+    rows = ["| ID | 정한 것 | 고른 것 | 까닭 | 다른 길 | 상태 |", "| --- | --- | --- | --- | --- | --- |"]
     for d in C.DECISIONS:
+        state = d.get("decided") or ("동희님 판단 필요" if d.get("needs_user") else "추천")
         rows.append(f"| {d['id']} | {cell(d['title'])} | {cell(d['choice'])} | {cell(d['why'])} | {cell(d['alt'])} | "
-                    f"{'동희님 판단 필요' if d.get('needs_user') else '추천'} |")
+                    f"{cell(state)} |")
     return "\n".join(rows)
 
 

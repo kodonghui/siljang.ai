@@ -610,7 +610,7 @@ S["BookingLink"] = all_required({
     "url": nullable(URL),
     "issuedAt": nullable(DT),
     "missing": arr(enum(["price_list", "operating_rules", "calendar", "license_verified", "kakao_channel", "payment_destination", "privacy_policy"]), 0, 7, unique=True,
-                   desc="빠진 조건(SPEC-010, DEC-12). privacy_policy는 운영자가 채움"),
+                   desc="빠진 조건(SPEC-010, DEC-12, REQ-164). privacy_policy는 운영자가 채움"),
     "recommended": arr(enum(["pickup_address"]), 0, 1, unique=True, desc="막지 않지만 넣으면 좋은 것(DEC-13)"),
 })
 S["PublicPriceOption"] = all_required({
