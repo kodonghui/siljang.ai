@@ -42,6 +42,13 @@
       "source": "db/schema.sql",
       "truth": "source",
       "note": "사람 보기는 05단계 기본값인 ERD Editor(db/schema.erd.json)로 2026-11-12에 시작했고 다른 도구를 고르시면 바꿉니다. 계약은 새 프로젝트에 truth: human을 권하지만, 그림으로 들여오면 CHECK 275개를 잃어(docs/05-erd/README.md 9절) 원본 db/schema.sql이 이기는 truth: source로 둡니다. 그림은 research/cake-erd-2026-11/erd_editor_build.py가 ERD Editor MCP 서버(@dineug/erd-editor-mcp 1.2.0)로 만들고, check_erd.py의 E1과 erd_editor_build.py --compare로 원본과 맞는지 봅니다. 기록과 표 목록(TBL 한 줄씩), 정한 것 E1~E14 표는 최근 업데이트 DB의 05단계 기록 행(https://app.notion.com/p/416bf16cc3ec816ca5a0ff51e46a375d) 안에 있습니다."
+    },
+    "06-api": {
+      "human": "swagger-ui",
+      "link": "https://claude.ai/artifact/1ozSo2QeFJ59Z5hP633bWj",
+      "source": "api/openapi.yaml",
+      "truth": "source",
+      "note": "사람 보기는 06단계 기본값인 Swagger UI로 2026-11-12에 시작했고 다른 도구를 고르시면 바꿉니다. 설치 없이 보시도록 Swagger UI 페이지를 Artifact(link, 동희님 계정의 비공개 페이지)로 올렸고, research/cake-api-2026-11/build_viewer.py가 원본 api/openapi.yaml에서 같은 페이지를 다시 만듭니다. 계약이 바뀌면 다시 만들어 같은 주소에 올립니다. 원본 계약과 docs/06-api/README.md의 표는 build_api.py가 함께 만들고 check_api.py(검사 17개, 빈 DB와 목 서버 Prism 포함)가 봅니다. 기록과 작업·오류 코드·정한 것 표는 최근 업데이트 DB의 06단계 기록 행 안에 둡니다."
     }
   }
 }
