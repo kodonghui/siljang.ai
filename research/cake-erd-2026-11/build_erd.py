@@ -324,7 +324,7 @@ def context_overview(tables: list[Table], by_name: dict[str, Table]) -> str:
 def diagrams(tables: list[Table]) -> str:
     by_name = {t.name: t for t in tables}
     out = [
-        "### 컨텍스트 사이 (화살표: 참조하는 쪽 → 참조를 받는 쪽, 숫자는 외래 키 수)",
+        "### 컨텍스트 사이 (화살표: 참조하는 쪽 → 참조되는 쪽, 숫자는 외래 키 수)",
         "",
         "```mermaid",
         context_overview(tables, by_name),

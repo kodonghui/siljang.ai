@@ -190,7 +190,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("다 참(잡힌 자리)", "slot_holds.status"),
         ("하루 최대 개수", "business_calendars.daily_capacity"),
         ("마감된 날 에스컬레이션함", "handoffs.reason"),
-        ("에스컬레이션한 날짜", "handoffs.requested_day"),
+        ("추가로 받을지 묻는 날짜", "handoffs.requested_day"),
         ("날짜 판정 도구 호출", "ai_tool_calls.tool_name"),
     ],
     "SPEC-015": [

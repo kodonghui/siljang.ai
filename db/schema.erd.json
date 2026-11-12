@@ -27,7 +27,7 @@
     "lockSettings": 63,
     "ddlScripts": {
       "before": "CREATE EXTENSION IF NOT EXISTS btree_gist; -- refund_tiers의 EXCLUDE에 씀",
-      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status <> 'deleted';\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE status IN ('held', 'fixed');\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_order_uq ON photo_consents (order_id) WHERE scope = 'order';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\n-- 중복됨 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
+      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status <> 'deleted';\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE status IN ('held', 'fixed');\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_order_uq ON photo_consents (order_id) WHERE scope = 'order';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
     }
   },
   "doc": {
@@ -1102,7 +1102,7 @@
       "03h7y0179huqyalz2aetluqnw": {
         "id": "03h7y0179huqyalz2aetluqnw",
         "name": "productions",
-        "comment": "TBL-035 제작(TERM-050): 확정된 주문 하나를 제작·인도까지의 시각",
+        "comment": "TBL-035 제작(TERM-050): 확정된 주문 하나의 제작부터 인도까지의 시각",
         "columnIds": [
           "03h7y0179huqyalz2agywyire",
           "03h7y0179huqyalz2ajsuthow",
@@ -1204,7 +1204,7 @@
       "03h7y0179huqyalz2d0oesury": {
         "id": "03h7y0179huqyalz2d0oesury",
         "name": "photo_consents",
-        "comment": "TBL-040 사진 게시 동의: 주문 요청 때와 후기 사진마다 받은 동의와 철회함",
+        "comment": "TBL-040 사진 게시 동의: 주문 요청 때와 후기 사진마다 받은 동의와 철회",
         "columnIds": [
           "03h7y0179huqyalz2d2z3qfa9",
           "03h7y0179huqyalz2d3u2avih",
@@ -1642,7 +1642,7 @@
         "id": "03h7y0178l0hvzg6dddr46c9d",
         "tableId": "03h7y0178fic3fnl5vhrhwxmb",
         "name": "business_reg_no",
-        "comment": "사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시 표시(SPEC-002)",
+        "comment": "사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시(SPEC-002)",
         "dataType": "text",
         "options": 8
       },
@@ -1934,7 +1934,7 @@
         "id": "03h7y0178l0hvzg6dfeuply38",
         "tableId": "03h7y0178l0hvzg6df21wv102",
         "name": "published_at",
-        "comment": "낸 시각. 가장 최근 버전을 예약 링크 페이지와 AI 상담 고지에 검(REQ-140)",
+        "comment": "낸 시각. 가장 최근 버전을 예약 링크 페이지와 AI 상담 고지에 게시함(REQ-140)",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -4076,7 +4076,7 @@
         "id": "03h7y01796y3abgmnr6khhce6",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "day_accept_expires_at",
-        "comment": "추가 수락한 날을 주문 요청 때 추가 수락할 수 있는 끝(24시간, SPEC-023)",
+        "comment": "추가 수락한 날에 주문 요청으로 자리를 잡을 수 있는 기한(24시간, SPEC-023)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -5461,7 +5461,7 @@
         "id": "03h7y0179n9e4e4gq3vp4cwyp",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "detail",
-        "comment": "보일 글감(보류 이유, 에스컬레이션한 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음",
+        "comment": "보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음",
         "dataType": "jsonb",
         "options": 0
       },

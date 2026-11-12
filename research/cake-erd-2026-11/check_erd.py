@@ -133,7 +133,7 @@ def static_checks(root: Path, rep: Report) -> list:
     got = [t.tbl for t in tables]
     dup_names = sorted({n for n in names if names.count(n) > 1})
     rep.add("S1", got == want and not dup_names,
-            f"TBL 번호 {len(tables)}개(TBL-001~TBL-{len(tables):03d}), 테이블 이름 중복됨 없음",
+            f"TBL 번호 {len(tables)}개(TBL-001~TBL-{len(tables):03d}), 테이블 이름 중복 없음",
             [f"번호 순서: {a} 자리에 {b}" for a, b in zip(want, got) if a != b] + [f"중복된 이름: {n}" for n in dup_names])
 
     bad_ctx = [f"{t.tbl} {t.name}: {t.ctx}" for t in tables if t.ctx not in build_erd.CTX_NAMES]

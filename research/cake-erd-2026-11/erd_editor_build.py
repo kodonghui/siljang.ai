@@ -183,7 +183,7 @@ def build(root: Path) -> None:
             "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py가 씀). CHECK 제약은 db/schema.sql에만 있음.",
             "-- 부분·식 인덱스",
             *[sql for _, sql in specials],
-            "-- 중복됨 막기(EXCLUDE)",
+            "-- 중복 막기(EXCLUDE)",
             *exclusions(schema_text),
             "-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인",
             *alters,

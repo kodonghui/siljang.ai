@@ -174,7 +174,7 @@ op(id="API-008", method="post", path="/owner/shop", op="registerShop", tag="가�
    fields=[("/businessRegNo", "checksum_failed"), ("/foodBusinessType", "not_allowed"), ("/licensePhotoUploadId", "upload_not_found")],
    omit={"403": O403, "404": O404_NOPATH},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "상태": ["422:consent_required", "409:already_registered"],
-          "반복": ["idem", "409:already_registered"], "동시": ["201", "note:같은 사업자등록번호도 받고 운영자 화면에 중복 표시 표시(API-012)"],
+          "반복": ["idem", "409:already_registered"], "동시": ["201", "note:같은 사업자등록번호도 받고 운영자 화면에 중복 표시(API-012)"],
           "외부": ["503:storage_unavailable"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-009", method="get", path="/owner/shop", op="getShop", tag="가게",
@@ -589,7 +589,7 @@ op(id="API-041", method="get", path="/owner/handoffs/{handoffId}", op="getHandof
 op(id="API-042", method="post", path="/owner/handoffs/{handoffId}/answer", op="answerHandoff", tag="에스컬레이션 건·상담",
    summary="에스컬레이션 건 답변", spec=["SPEC-023", "SPEC-024", "SPEC-066"], auth="owner", idem=True,
    desc="사장님 답을 AI가 고치지 않고 그대로 손님에게 전한다(친구면 바로, 아니면 다음 대화 때 먼저, SPEC-066). 기다림 타이머를 멈춘다(SPEC-024). "
-        "마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락하게 표시한다. "
+        "마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락한 날로 표시한다. "
         "이미 답한 질문은 409 already_decided. 사장님이 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict.",
    params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF["handoffId"])],
    body="HandoffAnswerInput",
