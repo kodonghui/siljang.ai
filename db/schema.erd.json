@@ -799,7 +799,8 @@
           "03h7y01796y3abgmnn5i9rwk0",
           "03h7y01796y3abgmnn7f9vyau",
           "03h7y01796y3abgmnn852yqxn",
-          "03h7y01796y3abgmnnadn4a06"
+          "03h7y01796y3abgmnnadn4a06",
+          "03h89odkbre5fbzrs4x1w3zkg"
         ],
         "groupId": "03h7y017wfhgli8koxk63sce2",
         "ui": {
@@ -854,7 +855,8 @@
           "03h7y01796y3abgmnoxkpcfz9",
           "03h7y01796y3abgmnozdcen4w",
           "03h7y01796y3abgmnp2e0ba6m",
-          "03h7y01796y3abgmnp31oku33"
+          "03h7y01796y3abgmnp31oku33",
+          "03h89odkc2do10gcri7bsx6by"
         ],
         "groupId": "03h7y017wfhgli8koxk63sce2",
         "ui": {
@@ -3094,7 +3096,7 @@
         "id": "03h7y01791hwo1dbaiyv7hycw",
         "tableId": "03h7y01791hwo1dbahxpd3ebr",
         "name": "customer_name",
-        "comment": "주문자 이름(SPEC-064·065가 말하는 주문의 이름)",
+        "comment": "주문자 이름(SPEC-064·065가 말하는 주문의 이름). 주문 요청 확인 카드 전에 AI를 거치지 않는 입력으로 받음(SPEC-072, REQ-175). AI로 보내지 않음(REQ-178)",
         "dataType": "text",
         "options": 0
       },
@@ -3102,7 +3104,7 @@
         "id": "03h7y01791hwo1dbaj11725bm",
         "tableId": "03h7y01791hwo1dbahxpd3ebr",
         "name": "customer_phone",
-        "comment": "주문자 연락처",
+        "comment": "주문자 연락처(픽업·급한 연락). 주문 요청 확인 카드 전에 AI를 거치지 않는 입력으로 받음(SPEC-072, REQ-175). AI로 보내지 않음(REQ-178)",
         "dataType": "text",
         "options": 0
       },
@@ -3382,7 +3384,7 @@
         "id": "03h7y01791hwo1dbal0y5e7sl",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "version",
-        "comment": "주문 내용의 지금 버전(TERM-005). 카드·변경 요청이 이 값에 묶임(G3, G9)",
+        "comment": "주문 내용의 지금 버전(TERM-005). 카드·변경 요청이 이 값에 묶임(G3, G9). 상태만 바꾸는 쓰기에는 오르지 않아 동시 쓰기는 잠금 번호(lock_version)로 견줌(A6)",
         "dataType": "integer",
         "default": "1",
         "options": 8
@@ -3541,6 +3543,15 @@
         "default": "now()",
         "options": 8
       },
+      "03h89odkbre5fbzrs4x1w3zkg": {
+        "id": "03h89odkbre5fbzrs4x1w3zkg",
+        "tableId": "03h7y01791hwo1dbakj3f6d7s",
+        "name": "lock_version",
+        "comment": "잠금 번호: 이 행을 쓸 때마다(상태·시각·금액·버전) 하나 오름. 읽은 값과 같을 때만 씀(A6, E15, 설계 재검토 H12). 06단계 주문의 revision(DEC-05)",
+        "dataType": "integer",
+        "default": "1",
+        "options": 8
+      },
       "03h7y01796y3abgmnnep8htyb": {
         "id": "03h7y01796y3abgmnnep8htyb",
         "tableId": "03h7y01796y3abgmnnczgybr2",
@@ -3586,7 +3597,7 @@
         "id": "03h7y01796y3abgmnnomyt6fc",
         "tableId": "03h7y01796y3abgmnnczgybr2",
         "name": "kind",
-        "comment": "주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)",
+        "comment": "주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)",
         "dataType": "text",
         "options": 8
       },
@@ -3594,7 +3605,7 @@
         "id": "03h7y01796y3abgmnnpthloeg",
         "tableId": "03h7y01796y3abgmnnczgybr2",
         "name": "draft_id",
-        "comment": "주문 요청 카드의 초안",
+        "comment": "주문 요청·주문자 정보 카드의 초안",
         "dataType": "uuid",
         "options": 0
       },
@@ -3793,6 +3804,15 @@
         "comment": "요청한 시각",
         "dataType": "timestamptz",
         "default": "now()",
+        "options": 8
+      },
+      "03h89odkc2do10gcri7bsx6by": {
+        "id": "03h89odkc2do10gcri7bsx6by",
+        "tableId": "03h7y01796y3abgmno7gmyh7i",
+        "name": "lock_version",
+        "comment": "잠금 번호: 이 행을 쓸 때마다(상태·답·반영·닫힘) 하나 오름. 읽은 값과 같을 때만 씀(A6, E15, 설계 재검토 H12). 06단계 변경 요청의 revision(DEC-05)",
+        "dataType": "integer",
+        "default": "1",
         "options": 8
       },
       "03h7y01796y3abgmnp7355wqn": {
@@ -4516,7 +4536,7 @@
         "id": "03h7y0179cdtx0zvnvs0fcfkv",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "depositor_name",
-        "comment": "입금자 이름(입금 대조, TERM-063). AI로 보내지 않음",
+        "comment": "입금자 이름(입금 대조, TERM-063). 손님이 결제 확인을 요청할 때 AI를 거치지 않는 입력으로 받고, 따로 넣지 않으면 주문자 이름(SPEC-033, REQ-176). AI로 보내지 않음(REQ-178)",
         "dataType": "text",
         "options": 0
       },
@@ -10092,7 +10112,7 @@
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 285개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 287개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,

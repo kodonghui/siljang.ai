@@ -4,6 +4,8 @@
 --      맞춤 주문 → 금액 변경 수락 → 확정 → 차액 결제(더 들어온 금액은 환불) 변경 반영, 확정 뒤 손님 취소 → 환불,
 --      잘못 누른 결제 확인 취소 → 입금했다고 알린 뒤 손님 취소 → 들어온 입금 남기기 → 환불 → 환불 보내기).
 -- 2부: 규칙마다 어기는 쓰기 하나. 기대한 제약으로 막히면 ok, 들어가거나 다른 제약에 걸리면 테스트 실패.
+--      같은 잠금 번호를 읽고 늦게 쓴 쓰기(expect_stale)는 0행이면 ok, 덮어쓰면 테스트 실패(설계 재검토 H12, README 4절 A6).
+--      1부의 주문·변경 요청 쓰기는 앱처럼 잠금 번호를 하나씩 올림.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -29,6 +31,34 @@ BEGIN
       INSERT INTO rule_results VALUES (test_name, false, '막히지 않음');
   END;
   SET CONSTRAINTS ALL DEFERRED;
+END
+$fn$;
+
+-- 먼저 쓴 쪽(first_stmts의 마지막 문장)이 잠금 번호를 올린 뒤, 같은 잠금 번호를 읽고 늦게 쓴 문장(stale_stmt)이 0행인지 봄.
+-- 먼저 쓴 쪽이 1행이 아니면(시험이 헛돎) 실패로 셈. 쓴 것은 모두 되돌아감.
+CREATE FUNCTION pg_temp.expect_stale(test_name text, first_stmts text[], stale_stmt text) RETURNS void
+LANGUAGE plpgsql AS $fn$
+DECLARE
+  stmt text;
+  first_rows bigint := -1;
+  stale_rows bigint := -1;
+  err text;
+BEGIN
+  BEGIN
+    FOREACH stmt IN ARRAY first_stmts LOOP
+      EXECUTE stmt;
+      GET DIAGNOSTICS first_rows = ROW_COUNT;
+    END LOOP;
+    EXECUTE stale_stmt;
+    GET DIAGNOSTICS stale_rows = ROW_COUNT;
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'rollback';  -- 쓴 것을 되돌림(변수 값은 남음)
+  EXCEPTION
+    WHEN raise_exception THEN NULL;
+    WHEN integrity_constraint_violation THEN err := SQLSTATE || ' ' || SQLERRM;
+  END;
+  INSERT INTO rule_results VALUES (test_name, err IS NULL AND first_rows = 1 AND stale_rows = 0,
+    coalesce(err, CASE WHEN first_rows <> 1 THEN '먼저 쓴 쪽이 ' || first_rows || '행'
+                       WHEN stale_rows <> 0 THEN '늦은 쓰기가 ' || stale_rows || '행을 덮어씀' ELSE '0행' END));
 END
 $fn$;
 
@@ -129,6 +159,10 @@ INSERT INTO quotes (id, shop_id, draft_id, draft_revision, price_list_id, operat
    'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', 'custom', 'range', 50000, 70000, '{"lines":["1호","2단"]}', now() + interval '72 hours'),
   ('c6000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000003', 1,
    'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', 'standard', 'fixed', 35000, NULL, '{"lines":["1호","생크림"]}', now() + interval '72 hours');
+-- 주문자 정보 카드(SPEC-072): 주문 요청 카드 앞에서 이름·연락처를 AI를 거치지 않는 입력으로 받음(REQ-175)
+INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, draft_id, draft_revision, payload, expires_at, used_at, outcome) VALUES
+  ('c7000000-0000-0000-0000-000000000010', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
+   'card-orderer-info-0001', 'orderer_info', 'c4000000-0000-0000-0000-000000000001', 2, '{"fields":["customer_name","customer_phone"]}', now() + interval '30 minutes', now(), 'done');
 INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, draft_id, draft_revision, payload, expires_at, used_at, outcome) VALUES
   ('c7000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
    'card-order-request-0001', 'order_request', 'c4000000-0000-0000-0000-000000000001', 2, '{"amount":40000}', now() + interval '30 minutes', now(), 'done'),
@@ -179,7 +213,7 @@ INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES
   ('e1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
    'e0000000-0000-0000-0000-000000000001', 40000);
 UPDATE owner_tasks SET closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000001';
-UPDATE orders SET status = 'confirmed', confirmed_at = now() WHERE id = 'd0000000-0000-0000-0000-000000000001';
+UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirmed_at = now() WHERE id = 'd0000000-0000-0000-0000-000000000001';
 UPDATE slot_holds SET status = 'fixed', fixed_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000001';
 INSERT INTO productions (id, shop_id, order_id) VALUES
   ('f0000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001');
@@ -196,7 +230,7 @@ INSERT INTO ledger_writes (id, shop_id, ledger_row_id, event_key, event_kind, st
    'ledger:d0..01:confirmed', 'confirmed', 'written', 1, now());
 UPDATE productions SET production_started_at = now(), completed_at = now(), handed_over_at = now(), handover_kind = 'pickup'
  WHERE id = 'f0000000-0000-0000-0000-000000000001';
-UPDATE orders SET status = 'received' WHERE id = 'd0000000-0000-0000-0000-000000000001';
+UPDATE orders SET lock_version = lock_version + 1, status = 'received' WHERE id = 'd0000000-0000-0000-0000-000000000001';
 UPDATE slot_holds SET status = 'done', done_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000001';
 
 -- 신고 → 재제작 주문(결제 없음, 확정으로 시작, 확정 자리)
@@ -288,7 +322,7 @@ INSERT INTO order_details (id, shop_id, order_id, version, source, price_list_id
   ('d1000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 2, 'owner_amount_change',
    'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
    '{b1000000-0000-0000-0000-000000000004}', '사랑해', '땅콩', '최손님', '010-7777-6666', 55000, '2단 받침 재료를 더함');
-UPDATE orders SET version = 2, amount = 55000, accepted_at = now(), accepted_version = 2, status = 'awaiting_payment'
+UPDATE orders SET lock_version = lock_version + 1, version = 2, amount = 55000, accepted_at = now(), accepted_version = 2, status = 'awaiting_payment'
  WHERE id = 'd0000000-0000-0000-0000-000000000003';
 UPDATE owner_tasks SET wait_status = 'answered', closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000003';
 INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, requested_amount, payment_account_id, due_at) VALUES
@@ -303,7 +337,7 @@ UPDATE payment_requests SET status = 'paid', paid_at = now(), arrived_amount = 5
 INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES
   ('e1000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003',
    'e0000000-0000-0000-0000-000000000003', 55000);
-UPDATE orders SET status = 'confirmed', confirmed_at = now() WHERE id = 'd0000000-0000-0000-0000-000000000003';
+UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirmed_at = now() WHERE id = 'd0000000-0000-0000-0000-000000000003';
 UPDATE slot_holds SET status = 'fixed', fixed_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000003';
 INSERT INTO productions (id, shop_id, order_id, needs_custom_material) VALUES
   ('f0000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', true);
@@ -313,7 +347,7 @@ INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, 
 INSERT INTO change_requests (id, shop_id, order_id, card_id, base_version, changes) VALUES
   ('d2000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003',
    'c7000000-0000-0000-0000-000000000013', 2, '{"lettering":"사랑해 엄마","topper":"추가"}');
-UPDATE change_requests SET status = 'awaiting_difference', amount_delta = 5000, decided_at = now() WHERE id = 'd2000000-0000-0000-0000-000000000001';
+UPDATE change_requests SET lock_version = lock_version + 1, status = 'awaiting_difference', amount_delta = 5000, decided_at = now() WHERE id = 'd2000000-0000-0000-0000-000000000001';
 INSERT INTO payment_requests (id, shop_id, order_id, kind, change_request_id, event_key, status, amount, payment_account_id, due_at) VALUES
   ('e0000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'difference',
    'd2000000-0000-0000-0000-000000000001', 'pay:d2..01:difference', 'open', 5000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours');
@@ -332,8 +366,8 @@ INSERT INTO order_details (id, shop_id, order_id, version, source, change_reques
   ('d1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 3, 'change_request',
    'd2000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 'b1000000-0000-0000-0000-000000000001',
    'b1000000-0000-0000-0000-000000000002', '{b1000000-0000-0000-0000-000000000004}', '사랑해 엄마', '땅콩', '최손님', '010-7777-6666', 60000);
-UPDATE orders SET version = 3, amount = 60000 WHERE id = 'd0000000-0000-0000-0000-000000000003';
-UPDATE change_requests SET status = 'applied', applied_version = 3, applied_at = now() WHERE id = 'd2000000-0000-0000-0000-000000000001';
+UPDATE orders SET lock_version = lock_version + 1, version = 3, amount = 60000 WHERE id = 'd0000000-0000-0000-0000-000000000003';
+UPDATE change_requests SET lock_version = lock_version + 1, status = 'applied', applied_version = 3, applied_at = now() WHERE id = 'd2000000-0000-0000-0000-000000000001';
 UPDATE productions SET changed_after_start = true WHERE id = 'f0000000-0000-0000-0000-000000000003';
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
@@ -361,7 +395,7 @@ INSERT INTO slot_holds (id, shop_id, day, order_id, payment_request_id, hold_key
 INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, order_id, order_version, payload, expires_at, used_at, outcome) VALUES
   ('c7000000-0000-0000-0000-000000000014', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
    'card-cancel-000000001', 'cancel', 'd0000000-0000-0000-0000-000000000004', 1, '{"refund":17500}', now() + interval '30 minutes', now(), 'done');
-UPDATE orders SET status = 'cancelled', confirmed_at = now(), cancelled_at = now(), cancel_kind = 'customer' WHERE id = 'd0000000-0000-0000-0000-000000000004';
+UPDATE orders SET lock_version = lock_version + 1, status = 'cancelled', confirmed_at = now(), cancelled_at = now(), cancel_kind = 'customer' WHERE id = 'd0000000-0000-0000-0000-000000000004';
 UPDATE slot_holds SET status = 'released', released_at = now(), release_reason = 'order_cancelled' WHERE id = 'e3000000-0000-0000-0000-000000000004';
 INSERT INTO refunds (id, shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis, method,
                      refund_bank_name, refund_account_number, refund_holder_name, sent_at) VALUES
@@ -401,7 +435,7 @@ UPDATE payment_requests SET status = 'paid', paid_at = now(), arrived_amount = 3
 INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES
   ('e1000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005',
    'e0000000-0000-0000-0000-000000000006', 35000);
-UPDATE orders SET status = 'confirmed', confirmed_at = now() WHERE id = 'd0000000-0000-0000-0000-000000000005';
+UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirmed_at = now() WHERE id = 'd0000000-0000-0000-0000-000000000005';
 UPDATE slot_holds SET status = 'fixed', fixed_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000005';
 INSERT INTO productions (id, shop_id, order_id) VALUES
   ('f0000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005');
@@ -414,7 +448,7 @@ INSERT INTO ledger_writes (id, shop_id, ledger_row_id, event_key, event_kind) VA
 UPDATE payments SET voided_at = now(), void_reason = '다른 손님이 보낸 돈을 이 주문의 결제로 잘못 봄' WHERE id = 'e1000000-0000-0000-0000-000000000006';
 UPDATE payment_requests SET status = 'open', paid_at = NULL, arrived_amount = NULL, arrived_at = NULL, version = version + 1
  WHERE id = 'e0000000-0000-0000-0000-000000000006';
-UPDATE orders SET status = 'awaiting_payment', confirmed_at = NULL WHERE id = 'd0000000-0000-0000-0000-000000000005';
+UPDATE orders SET lock_version = lock_version + 1, status = 'awaiting_payment', confirmed_at = NULL WHERE id = 'd0000000-0000-0000-0000-000000000005';
 UPDATE slot_holds SET status = 'held', fixed_at = NULL WHERE id = 'e3000000-0000-0000-0000-000000000005';
 DELETE FROM productions WHERE id = 'f0000000-0000-0000-0000-000000000005';
 INSERT INTO notifications (id, shop_id, customer_id, consultation_id, order_id, kind, event_key, template_key, body, status) VALUES
@@ -432,7 +466,7 @@ INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, 
    'card-cancel-000000002', 'cancel', 'd0000000-0000-0000-0000-000000000005', 1, '{"refund":35000,"when_arrived":true}', now() + interval '30 minutes', now(), 'done');
 UPDATE payment_requests SET status = 'claimed', claimed_at = now(), claim_card_id = 'c7000000-0000-0000-0000-000000000015', version = version + 1
  WHERE id = 'e0000000-0000-0000-0000-000000000006';
-UPDATE orders SET status = 'cancelled', cancelled_at = now(), cancel_kind = 'customer' WHERE id = 'd0000000-0000-0000-0000-000000000005';
+UPDATE orders SET lock_version = lock_version + 1, status = 'cancelled', cancelled_at = now(), cancel_kind = 'customer' WHERE id = 'd0000000-0000-0000-0000-000000000005';
 UPDATE payment_requests SET status = 'closed', closed_at = now(), close_reason = 'order_cancelled', version = version + 1
  WHERE id = 'e0000000-0000-0000-0000-000000000006';
 UPDATE slot_holds SET status = 'released', released_at = now(), release_reason = 'order_cancelled' WHERE id = 'e3000000-0000-0000-0000-000000000005';
@@ -806,6 +840,37 @@ SELECT pg_temp.expect_fail('SPEC-009 가게마다 유효한 장부 연결 둘', 
 SELECT pg_temp.expect_fail('G2 같은 화면 요청 키 두 번', 'request_keys_pkey', ARRAY[$$
   INSERT INTO request_keys (actor_kind, actor_id, request_key, command, response_status)
   VALUES ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000001', 'confirm_payment', 200)$$]);
+
+-- 설계 재검토 H11(주문자 정보 카드)·H12(잠금 번호)
+SELECT pg_temp.expect_fail('H12 잠금 번호 0인 주문', 'orders_lock_version_check', ARRAY[$$
+  UPDATE orders SET lock_version = 0 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('H12 잠금 번호 0인 변경 요청', 'change_requests_lock_version_check', ARRAY[$$
+  UPDATE change_requests SET lock_version = 0 WHERE id = 'd2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-175 초안 없는 주문자 정보 카드', 'confirm_cards_draft_chk', ARRAY[$$
+  INSERT INTO confirm_cards (shop_id, consultation_id, customer_id, card_key, kind, payload, expires_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
+          'card-orderer-info-x001', 'orderer_info', '{}', now() + interval '30 minutes')$$]);
+SELECT pg_temp.expect_stale('H12 같은 잠금 번호를 읽은 결제 확인 뒤 손님 취소', ARRAY[
+  $$UPDATE orders SET status = 'awaiting_payment', confirmed_at = NULL, cancelled_at = NULL, cancel_kind = NULL, lock_version = 5
+    WHERE id = 'd0000000-0000-0000-0000-000000000005'$$,
+  $$UPDATE orders SET status = 'confirmed', confirmed_at = now(), lock_version = lock_version + 1, updated_at = now()
+    WHERE id = 'd0000000-0000-0000-0000-000000000005' AND lock_version = 5$$], $$
+  UPDATE orders SET status = 'cancelled', cancelled_at = now(), cancel_kind = 'customer', lock_version = lock_version + 1, updated_at = now()
+  WHERE id = 'd0000000-0000-0000-0000-000000000005' AND lock_version = 5$$);
+SELECT pg_temp.expect_stale('H12 같은 잠금 번호를 읽은 손님 취소 뒤 결제 확인', ARRAY[
+  $$UPDATE orders SET status = 'awaiting_payment', confirmed_at = NULL, cancelled_at = NULL, cancel_kind = NULL, lock_version = 5
+    WHERE id = 'd0000000-0000-0000-0000-000000000005'$$,
+  $$UPDATE orders SET status = 'cancelled', cancelled_at = now(), cancel_kind = 'customer', lock_version = lock_version + 1, updated_at = now()
+    WHERE id = 'd0000000-0000-0000-0000-000000000005' AND lock_version = 5$$], $$
+  UPDATE orders SET status = 'confirmed', confirmed_at = now(), lock_version = lock_version + 1, updated_at = now()
+  WHERE id = 'd0000000-0000-0000-0000-000000000005' AND lock_version = 5$$);
+SELECT pg_temp.expect_stale('H12 같은 잠금 번호를 읽은 변경 수락 뒤 취소로 닫기', ARRAY[
+  $$UPDATE change_requests SET status = 'requested', amount_delta = NULL, decided_at = NULL, applied_version = NULL, applied_at = NULL, lock_version = 3
+    WHERE id = 'd2000000-0000-0000-0000-000000000001'$$,
+  $$UPDATE change_requests SET status = 'awaiting_difference', amount_delta = 5000, decided_at = now(), lock_version = lock_version + 1
+    WHERE id = 'd2000000-0000-0000-0000-000000000001' AND lock_version = 3$$], $$
+  UPDATE change_requests SET status = 'closed_by_cancel', closed_at = now(), lock_version = lock_version + 1
+  WHERE id = 'd2000000-0000-0000-0000-000000000001' AND lock_version = 3$$);
 
 -- 결과
 SELECT count(*) FILTER (WHERE ok) AS blocked, count(*) FILTER (WHERE NOT ok) AS not_blocked FROM rule_results \gset

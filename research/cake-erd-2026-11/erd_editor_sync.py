@@ -143,9 +143,35 @@ def group_name(ctx: str) -> str:
     return f"{ctx} {build_erd.CTX_NAMES[ctx]}" if ctx != "공통" else "공통"
 
 
+DEFAULT_RE = re.compile(r"\bDEFAULT\s+(.+?)(?=\s+(?:CHECK|NOT\s+NULL|NULL|PRIMARY\s+KEY|UNIQUE|REFERENCES)\b|,?\s*$)")
+
+
+def column_defaults(schema_text: str, tables: list) -> dict[tuple[str, str], str]:
+    """컬럼 줄의 DEFAULT 식(설명을 뺀 코드에서). 0003부터: 더한 컬럼의 기본값도 다이어그램에 옮김."""
+    names = {t.name: {c.name for c in t.columns} for t in tables}
+    out: dict[tuple[str, str], str] = {}
+    table = None
+    for line in code_only(schema_text).splitlines():
+        m = re.match(r"CREATE TABLE (\w+)", line)
+        if m:
+            table = m.group(1)
+            continue
+        m = re.match(r"\s+(\w+)\s", line)
+        if table and m and m.group(1) in names.get(table, ()):
+            dm = DEFAULT_RE.search(line)
+            if dm:
+                out[(table, m.group(1))] = dm.group(1).strip()
+    return out
+
+
+def default_op(table_ref: str, col_ref: str, value: str) -> dict:
+    return {"tool": "erd_change_column_default", "args": {"tableId": table_ref, "columnId": col_ref, "value": value}}
+
+
 def step_tables_columns(schema_text: str, tables: list, d: Diagram) -> list[dict]:
     """1단계: 테이블과 컬럼(관계·인덱스는 새 ID가 생긴 뒤 2단계에서)."""
     ops: list[dict] = []
+    defaults = column_defaults(schema_text, tables)
     want = {t.name for t in tables}
     for name in sorted(set(d.tables) - want):
         ops.append({"tool": "erd_remove_table", "args": {"tableId": d.table_id(name)}})
@@ -160,6 +186,8 @@ def step_tables_columns(schema_text: str, tables: list, d: Diagram) -> list[dict
             for c in t.columns:
                 n += 1
                 ops += new_column_ops(f"${tv}", f"c{n}", c, c.name in uniq)
+                if (t.name, c.name) in defaults:
+                    ops.append(default_op(f"${tv}", f"$c{n}", defaults[(t.name, c.name)]))
             gid = d.groups.get(group_name(t.ctx))
             if gid:
                 ops.append({"tool": "erd_set_table_group", "args": {"tableIds": [f"${tv}"], "groupId": gid}})
@@ -180,6 +208,8 @@ def step_tables_columns(schema_text: str, tables: list, d: Diagram) -> list[dict
                 n += 1
                 cv = f"c{n}"
                 ops += new_column_ops(tid, cv, c, c.name in uniq)
+                if (t.name, c.name) in defaults:
+                    ops.append(default_op(tid, f"${cv}", defaults[(t.name, c.name)]))
                 # 스키마의 차례: 다음 컬럼 가운데 다이어그램에 있는 첫 컬럼 자리로 옮김(없으면 맨 끝 그대로)
                 nxt = next((x.name for x in t.columns[i + 1:] if x.name in ids), None)
                 if nxt:
@@ -194,6 +224,8 @@ def step_tables_columns(schema_text: str, tables: list, d: Diagram) -> list[dict
                 ops.append({"tool": "erd_set_column_not_null", "args": {"tableId": tid, "columnId": cid, "value": c.not_null}})
             if (c.name in uniq) != e["unique"]:
                 ops.append({"tool": "erd_set_column_unique", "args": {"tableId": tid, "columnId": cid, "value": c.name in uniq}})
+            if defaults.get((t.name, c.name), "") != (d.cols[cid].get("default") or ""):
+                ops.append(default_op(tid, cid, defaults.get((t.name, c.name), "")))
             if c.comment != e["comment"]:
                 ops.append({"tool": "erd_change_column_comment", "args": {"tableId": tid, "columnId": cid, "value": c.comment}})
     return ops

@@ -343,6 +343,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("다시 계산한 금액", "quotes.amount"),
     ],
     "SPEC-028": [
+        ("요약의 주문자 이름", "order_drafts.customer_name"),
+        ("요약의 주문자 연락처", "order_drafts.customer_phone"),
         ("카드 종류", "confirm_cards.kind"),
         ("카드 내용(서버가 만듦)", "confirm_cards.payload"),
         ("묶인 초안 고친 번호", "confirm_cards.draft_revision"),
@@ -418,6 +420,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("손님 안내", "notifications.kind"),
     ],
     "SPEC-033": [
+        ("입금자 이름(따로 넣지 않으면 주문자 이름)", "payment_requests.depositor_name"),
+        ("주문자 이름", "order_details.customer_name"),
         ("입금 알리기 카드", "confirm_cards.kind"),
         ("확인 요청됨", "payment_requests.status"),
         ("확인 요청 시각", "payment_requests.claimed_at"),
@@ -426,6 +430,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("자리 지킴", "slot_holds.status"),
     ],
     "SPEC-034": [
+        ("잠금 번호(동시 쓰기)", "orders.lock_version"),
         ("안내 금액", "payment_requests.amount"),
         ("입금자 이름", "payment_requests.depositor_name"),
         ("결제 기한", "payment_requests.due_at"),
@@ -513,6 +518,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("사장님 할 일", "owner_tasks.change_request_id"),
     ],
     "SPEC-042": [
+        ("잠금 번호(동시 쓰기)", "change_requests.lock_version"),
         ("수락·거절", "change_requests.status"),
         ("금액 차이", "change_requests.amount_delta"),
         ("거절 사유", "change_requests.reject_reason"),
@@ -556,6 +562,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("내려간 금액의 환불", "refunds.change_request_id"),
     ],
     "SPEC-046": [
+        ("잠금 번호(동시 쓰기)", "orders.lock_version"),
         ("취소 카드", "confirm_cards.kind"),
         ("카드의 환불 계산값", "confirm_cards.payload"),
         ("손님이 취소함", "orders.cancel_kind"),
@@ -618,6 +625,10 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("상담 속 계좌는 마스킹함", "masked_values.kind"),
     ],
     "SPEC-050": [
+        ("디자인 옵션", "order_details.design_option_id"),
+        ("더하는 옵션", "order_details.extra_option_ids"),
+        ("알레르기 답", "order_details.allergy_answer"),
+        ("빼야 할 재료", "order_details.excluded_ingredients"),
         ("확정·재제작 주문", "orders.status"),
         ("픽업 날짜", "orders.pickup_day"),
         ("재제작 표시", "orders.remake_of_order_id"),
@@ -872,6 +883,14 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("환불 정할 일", "owner_tasks.kind"),
         ("들어온 입금 대조 할 일", "owner_tasks.payment_request_id"),
         ("두 번 눌러도 한 번", "request_keys.request_key"),
+    ],
+    "SPEC-072": [
+        ("주문자 정보 카드", "confirm_cards.kind"),
+        ("묶인 초안 고친 번호", "confirm_cards.draft_revision"),
+        ("30분 기한", "confirm_cards.expires_at"),
+        ("한 번만 누름", "confirm_cards.used_at"),
+        ("주문자 이름(1~30자)", "order_drafts.customer_name"),
+        ("주문자 연락처(숫자와 -, 8~14자)", "order_drafts.customer_phone"),
     ],
 }
 
