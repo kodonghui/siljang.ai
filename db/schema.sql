@@ -29,13 +29,12 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;  -- refund_tiers의 기간 중복 막
 -- TBL-001 owners (CTX-007) ← SPEC-001, SPEC-067 | terms: TERM-044
 CREATE TABLE owners (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 사장님 ID
-  kakao_account_id      bigint NOT NULL,                    -- 카카오 로그인 회원번호. 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)
-  alert_user_key        text,                               -- 우리 서비스 카카오톡 채널에서 이 사장님의 사용자 키(사장님 알림 받는 곳, REQ-115)
-  alert_channel_friend  boolean NOT NULL DEFAULT false,     -- 우리 채널 친구인지. 아니면 알림은 '못 보냄'으로 할 일 목록에만(SPEC-067)
+  kakao_account_id      bigint NOT NULL,                    -- 카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-183). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)
+  alert_channel_friend  boolean NOT NULL DEFAULT false,     -- 우리 서비스 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침. 아니면 알림은 '못 보냄'으로 할 일 목록에만(SPEC-067)
+  alert_friend_checked_at timestamptz,                      -- 우리 채널 친구인지 마지막으로 본 시각(채널 관계 조회나 발송 결과, SPEC-001)
   last_login_at         timestamptz,                        -- 마지막 로그인 시각
   created_at            timestamptz NOT NULL DEFAULT now(), -- 처음 들어온 시각
-  CONSTRAINT owners_kakao_account_uq UNIQUE (kakao_account_id), -- 카카오 계정 하나에 사장님 하나(R2)
-  CONSTRAINT owners_alert_user_key_uq UNIQUE (alert_user_key)
+  CONSTRAINT owners_kakao_account_uq UNIQUE (kakao_account_id) -- 카카오 계정 하나에 사장님 하나(R2)
 );
 COMMENT ON TABLE owners IS 'TBL-001 사장님(TERM-044): 카카오 로그인으로 들어오는 가게 주인';
 
@@ -93,20 +92,32 @@ CREATE INDEX shops_business_reg_no_idx ON shops (business_reg_no); -- 같은 사
 CREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending'; -- 운영자 확인 목록(SPEC-003)
 COMMENT ON TABLE shops IS 'TBL-003 가게(TERM-053): 영업 신고·처리 위탁 동의·예약 링크와 가게가 정하는 시간 값';
 
--- TBL-004 kakao_channels (CTX-007) ← SPEC-008, SPEC-010, SPEC-011, SPEC-017, SPEC-068 | terms: TERM-053
+-- TBL-004 kakao_channels (CTX-007) ← SPEC-008, SPEC-010, SPEC-011, SPEC-017, SPEC-066, SPEC-068 | terms: TERM-053
 CREATE TABLE kakao_channels (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 채널 연결 ID
   shop_id            uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 채널을 묶은 가게
   bot_id             text NOT NULL,                      -- 오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 키(SPEC-017)
   channel_public_id  text,                               -- 채널 공개 ID. 예약 링크 페이지의 문의 버튼이 여는 채팅 주소(SPEC-011)
   status             text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'linked', 'failed', 'retired')), -- 연결 확인 중·연결됨·연결 안 됨·바꿔서 그만 받음(SPEC-008)
-  check_started_at   timestamptz,                        -- '연결 확인'을 누른 시각(10분 안에 테스트 메시지가 와야 함)
+  check_started_at   timestamptz,                        -- '연결 확인'을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 넷이 와야 함)
   linked_at          timestamptz,                        -- 연결됨이 된 시각
   retired_at         timestamptz,                        -- 다른 채널로 바꿔 더 받지 않게 된 시각
+  card_block_id      text CHECK (char_length(card_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '확인 카드' 블록 ID. 확인 카드 버튼이 부름(SPEC-008, REQ-179)
+  orderer_block_id   text CHECK (char_length(orderer_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '주문자 정보' 블록 ID. 주문자 정보 카드 버튼이 부름(SPEC-072)
+  depositor_block_id text CHECK (char_length(depositor_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '입금자 이름' 블록 ID. 입금 알리기 카드 버튼이 부름(SPEC-033)
+  review_block_id    text CHECK (char_length(review_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '후기' 블록 ID. 후기 부탁 버튼이 부름(SPEC-061)
+  verified_blocks    text[] NOT NULL DEFAULT '{}' CHECK (verified_blocks <@ ARRAY['card', 'orderer_info', 'depositor_name', 'review']::text[]), -- 연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록(REQ-179)
+  test_user_key      text CHECK (char_length(test_user_key) BETWEEN 1 AND 100), -- 연결 확인 때 테스트 메시지를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008)
+  event_status       text NOT NULL DEFAULT 'unchecked' CHECK (event_status IN ('unchecked', 'checking', 'ready', 'unavailable')), -- 먼저 보내기(Event API): 아직 안 봄·시험 중·됨·안 됨. 안 되면 손님 안내는 다음 대화 때(REQ-180, REQ-181)
+  event_task_id      text CHECK (char_length(event_task_id) BETWEEN 1 AND 100), -- 시험 안내의 카카오 taskId. 발송 결과 조회에 씀(REQ-182)
+  event_checked_at   timestamptz,                        -- 시험 안내의 발송 결과를 받은 시각
+  event_fail_reason  text CHECK (event_fail_reason IN ('app_not_linked', 'wallet_missing', 'event_block', 'event_skill', 'owner_not_friend', 'not_delivered', 'kakao_error')), -- 먼저 보내기가 안 되는 사유: 채널이 우리 앱에 연결 안 됨·월렛 없음·이벤트 이름이나 배포·안내 스킬·사장님이 가게 채널 친구 아님·닿지 않음·카카오 오류
   created_at         timestamptz NOT NULL DEFAULT now(), -- 만든 시각
   CONSTRAINT kakao_channels_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT kakao_channels_linked_chk CHECK (status <> 'linked' OR linked_at IS NOT NULL),
-  CONSTRAINT kakao_channels_retired_chk CHECK ((status = 'retired') = (retired_at IS NOT NULL))
+  CONSTRAINT kakao_channels_retired_chk CHECK ((status = 'retired') = (retired_at IS NOT NULL)),
+  CONSTRAINT kakao_channels_blocks_chk CHECK (status <> 'linked' OR (card_block_id IS NOT NULL AND orderer_block_id IS NOT NULL AND depositor_block_id IS NOT NULL AND review_block_id IS NOT NULL AND verified_blocks @> ARRAY['card', 'orderer_info', 'depositor_name', 'review']::text[])), -- 연결됨이면 블록 ID 넷이 있고 시험 버튼으로 모두 닿음(REQ-179)
+  CONSTRAINT kakao_channels_event_chk CHECK ((event_status = 'unavailable') = (event_fail_reason IS NOT NULL) AND (event_status <> 'checking' OR event_task_id IS NOT NULL) AND (event_status NOT IN ('ready', 'unavailable') OR event_checked_at IS NOT NULL) AND (event_status = 'unchecked' OR status IN ('linked', 'retired'))) -- 시험 안내는 연결된 뒤. 안 됨에는 사유, 시험 중에는 taskId, 결과에는 받은 시각(REQ-180)
 );
 CREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked'); -- 채널 하나는 가게 하나에만('이미 다른 가게', SPEC-008)
 CREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked'; -- 가게마다 받는 채널 하나
@@ -1026,21 +1037,27 @@ CREATE TABLE owner_alerts (
   owner_task_id    uuid,                                 -- 알린 할 일
   kind             text NOT NULL CHECK (kind IN ('new_task', 'task_realert', 'handoff_appended', 'health_concern', 'ledger_failing', 'license_on_hold', 'order_cancelled', 'change_not_applied')), -- 새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)
   event_key        text NOT NULL,                        -- 알림마다 한 번(SPEC-067)
-  status           text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'not_friend', 'failed', 'batched')), -- 보낼 것·보냄·우리 채널 친구가 아님·실패(할 일 목록에만)·다른 알림에 묶임
+  status           text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirming', 'sent', 'not_friend', 'failed', 'batched')), -- 보낼 것·발송 결과 확인 중·보냄(닿음 확인)·우리 채널 친구가 아님·실패(할 일 목록에만)·다른 알림에 묶임
   batched_into_id  uuid,                                 -- 1분 안 같은 종류는 하나로 묶어 보냄(SPEC-067)
   attempts         smallint NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 4), -- 보낸 횟수(처음과 1분·5분·30분 뒤, G4)
   next_attempt_at  timestamptz,                          -- 다음에 보낼 시각
   sent_at          timestamptz,                          -- 보낸 시각
+  kakao_task_id    text CHECK (char_length(kakao_task_id) BETWEEN 1 AND 100), -- 카카오가 받은 Event API 요청의 taskId. 발송 결과 조회에 씀(SPEC-067, REQ-182)
+  requested_at     timestamptz,                          -- 카카오가 Event API 요청을 받은 시각
+  delivery_checked_at timestamptz,                       -- 발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)
+  fail_code        text CHECK (fail_code IN ('not_friend', 'cannot_send', 'skill_error', 'event_setup', 'wallet', 'limit', 'kakao_error', 'unknown')), -- 카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-067)
   created_at       timestamptz NOT NULL DEFAULT now(),   -- 만든 시각
   CONSTRAINT owner_alerts_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT owner_alerts_task_fk FOREIGN KEY (shop_id, owner_task_id) REFERENCES owner_tasks (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT owner_alerts_batch_fk FOREIGN KEY (shop_id, batched_into_id) REFERENCES owner_alerts (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT owner_alerts_event_uq UNIQUE (shop_id, event_key),
   CONSTRAINT owner_alerts_batched_chk CHECK ((status = 'batched') = (batched_into_id IS NOT NULL)),
-  CONSTRAINT owner_alerts_sent_chk CHECK ((status = 'sent') = (sent_at IS NOT NULL))
+  CONSTRAINT owner_alerts_sent_chk CHECK ((status = 'sent') = (sent_at IS NOT NULL)),
+  CONSTRAINT owner_alerts_kakao_task_chk CHECK (status NOT IN ('confirming', 'sent') OR (kakao_task_id IS NOT NULL AND requested_at IS NOT NULL)) -- 확인 중·보냄은 카카오가 받은 요청이 있음(REQ-182)
 );
 CREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending'; -- 보낼 알림
-COMMENT ON TABLE owner_alerts IS 'TBL-043 사장님 알림(TERM-035): 우리 서비스 채널로 보내는 할 일 종류와 목록 주소';
+CREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming'; -- 발송 결과를 조회할 알림(REQ-182)
+COMMENT ON TABLE owner_alerts IS 'TBL-043 사장님 알림(TERM-035): 우리 서비스 채널 봇이 사장님의 카카오 로그인 사용자 번호로 보내는 할 일 종류와 목록 주소';
 
 -- TBL-044 notifications (CTX-008) ← SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-032, SPEC-035, SPEC-036, SPEC-039, SPEC-042, SPEC-044, SPEC-045, SPEC-047, SPEC-048, SPEC-052, SPEC-053, SPEC-059, SPEC-061, SPEC-066, SPEC-070 | terms: TERM-054
 CREATE TABLE notifications (
@@ -1053,20 +1070,26 @@ CREATE TABLE notifications (
   event_key        text NOT NULL,                        -- 같은 주문의 같은 이벤트는 한 번(REQ-154)
   template_key     text NOT NULL,                        -- 서버의 정해진 템플릿. AI가 쓰지 않고 광고를 넣지 않음(REQ-111)
   body             text NOT NULL CHECK (char_length(body) BETWEEN 1 AND 2000), -- 보낼 글. 다른 손님 정보·내부 ID 없음(G6)
-  status           text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'retrying', 'sent', 'deferred', 'delivered_on_reply', 'dropped')), -- 보낼 것·다시 보낼 것·보냄·못 보냄(다음 대화 때 먼저)·다음 대화 때 전함·무의미해져 안 보냄
+  status           text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'retrying', 'confirming', 'sent', 'deferred', 'delivered_on_reply', 'dropped')), -- 보낼 것·다시 보낼 것·발송 결과 확인 중·보냄(닿음 확인)·못 보냄(다음 대화 때 먼저)·다음 대화 때 전함·무의미해져 안 보냄
   scheduled_for    timestamptz,                          -- 정해진 시각 안내(전날·후기)의 보낼 시각. 가게 시간 08:00~20:50 안(REQ-123)
   attempts         smallint NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 4), -- 보낸 횟수(처음과 1분·5분·30분 뒤, G4)
   next_attempt_at  timestamptz,                          -- 다음에 보낼 시각
   sent_at          timestamptz,                          -- 보낸(전한) 시각
+  kakao_task_id    text CHECK (char_length(kakao_task_id) BETWEEN 1 AND 100), -- 카카오가 받은 Event API 요청의 taskId. 발송 결과 조회에 씀(SPEC-066, REQ-182)
+  requested_at     timestamptz,                          -- 카카오가 Event API 요청을 받은 시각
+  delivery_checked_at timestamptz,                       -- 발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)
+  fail_code        text CHECK (fail_code IN ('not_friend', 'cannot_send', 'skill_error', 'event_setup', 'wallet', 'limit', 'kakao_error', 'unknown')), -- 카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-066)
   created_at       timestamptz NOT NULL DEFAULT now(),   -- 만든 시각
   CONSTRAINT notifications_customer_fk FOREIGN KEY (shop_id, customer_id) REFERENCES customers (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT notifications_consultation_fk FOREIGN KEY (shop_id, consultation_id) REFERENCES consultations (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT notifications_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT notifications_event_uq UNIQUE (shop_id, event_key),
-  CONSTRAINT notifications_sent_chk CHECK ((status IN ('sent', 'delivered_on_reply')) = (sent_at IS NOT NULL))
+  CONSTRAINT notifications_sent_chk CHECK ((status IN ('sent', 'delivered_on_reply')) = (sent_at IS NOT NULL)),
+  CONSTRAINT notifications_kakao_task_chk CHECK (status NOT IN ('confirming', 'sent') OR (kakao_task_id IS NOT NULL AND requested_at IS NOT NULL)) -- 확인 중·보냄은 카카오가 받은 요청이 있음(REQ-182)
 );
 CREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying'); -- 보낼 것
 CREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred'; -- 그 손님이 말을 걸면 먼저 전함(REQ-122)
+CREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming'; -- 발송 결과를 조회할 안내(REQ-182)
 COMMENT ON TABLE notifications IS 'TBL-044 알림(TERM-054): 손님에게 먼저 보내는 안내 하나';
 
 -- TBL-045 ledger_links (CTX-009) ← SPEC-009, SPEC-064 | terms: TERM-028
@@ -1235,9 +1258,9 @@ COMMENT ON TABLE ops_events IS 'TBL-051 운영 기록: 내용 없이 건수만 �
 
 -- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음.
 COMMENT ON COLUMN owners.id IS '사장님 ID';
-COMMENT ON COLUMN owners.kakao_account_id IS '카카오 로그인 회원번호. 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)';
-COMMENT ON COLUMN owners.alert_user_key IS '우리 서비스 카카오톡 채널에서 이 사장님의 사용자 키(사장님 알림 받는 곳, REQ-115)';
-COMMENT ON COLUMN owners.alert_channel_friend IS '우리 채널 친구인지. 아니면 알림은 ''못 보냄''으로 할 일 목록에만(SPEC-067)';
+COMMENT ON COLUMN owners.kakao_account_id IS '카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-183). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)';
+COMMENT ON COLUMN owners.alert_channel_friend IS '우리 서비스 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침. 아니면 알림은 ''못 보냄''으로 할 일 목록에만(SPEC-067)';
+COMMENT ON COLUMN owners.alert_friend_checked_at IS '우리 채널 친구인지 마지막으로 본 시각(채널 관계 조회나 발송 결과, SPEC-001)';
 COMMENT ON COLUMN owners.last_login_at IS '마지막 로그인 시각';
 COMMENT ON COLUMN owners.created_at IS '처음 들어온 시각';
 COMMENT ON COLUMN operators.id IS '운영자 ID';
@@ -1279,9 +1302,19 @@ COMMENT ON COLUMN kakao_channels.shop_id IS '채널을 묶은 가게';
 COMMENT ON COLUMN kakao_channels.bot_id IS '오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 키(SPEC-017)';
 COMMENT ON COLUMN kakao_channels.channel_public_id IS '채널 공개 ID. 예약 링크 페이지의 문의 버튼이 여는 채팅 주소(SPEC-011)';
 COMMENT ON COLUMN kakao_channels.status IS '연결 확인 중·연결됨·연결 안 됨·바꿔서 그만 받음(SPEC-008)';
-COMMENT ON COLUMN kakao_channels.check_started_at IS '''연결 확인''을 누른 시각(10분 안에 테스트 메시지가 와야 함)';
+COMMENT ON COLUMN kakao_channels.check_started_at IS '''연결 확인''을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 넷이 와야 함)';
 COMMENT ON COLUMN kakao_channels.linked_at IS '연결됨이 된 시각';
 COMMENT ON COLUMN kakao_channels.retired_at IS '다른 채널로 바꿔 더 받지 않게 된 시각';
+COMMENT ON COLUMN kakao_channels.card_block_id IS '가게 봇의 ''확인 카드'' 블록 ID. 확인 카드 버튼이 부름(SPEC-008, REQ-179)';
+COMMENT ON COLUMN kakao_channels.orderer_block_id IS '가게 봇의 ''주문자 정보'' 블록 ID. 주문자 정보 카드 버튼이 부름(SPEC-072)';
+COMMENT ON COLUMN kakao_channels.depositor_block_id IS '가게 봇의 ''입금자 이름'' 블록 ID. 입금 알리기 카드 버튼이 부름(SPEC-033)';
+COMMENT ON COLUMN kakao_channels.review_block_id IS '가게 봇의 ''후기'' 블록 ID. 후기 부탁 버튼이 부름(SPEC-061)';
+COMMENT ON COLUMN kakao_channels.verified_blocks IS '연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록(REQ-179)';
+COMMENT ON COLUMN kakao_channels.test_user_key IS '연결 확인 때 테스트 메시지를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008)';
+COMMENT ON COLUMN kakao_channels.event_status IS '먼저 보내기(Event API): 아직 안 봄·시험 중·됨·안 됨. 안 되면 손님 안내는 다음 대화 때(REQ-180, REQ-181)';
+COMMENT ON COLUMN kakao_channels.event_task_id IS '시험 안내의 카카오 taskId. 발송 결과 조회에 씀(REQ-182)';
+COMMENT ON COLUMN kakao_channels.event_checked_at IS '시험 안내의 발송 결과를 받은 시각';
+COMMENT ON COLUMN kakao_channels.event_fail_reason IS '먼저 보내기가 안 되는 사유: 채널이 우리 앱에 연결 안 됨·월렛 없음·이벤트 이름이나 배포·안내 스킬·사장님이 가게 채널 친구 아님·닿지 않음·카카오 오류';
 COMMENT ON COLUMN kakao_channels.created_at IS '만든 시각';
 COMMENT ON COLUMN privacy_policies.id IS '처리방침 버전 ID';
 COMMENT ON COLUMN privacy_policies.shop_id IS '처리방침의 가게';
@@ -1731,11 +1764,15 @@ COMMENT ON COLUMN owner_alerts.shop_id IS '가게';
 COMMENT ON COLUMN owner_alerts.owner_task_id IS '알린 할 일';
 COMMENT ON COLUMN owner_alerts.kind IS '새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)';
 COMMENT ON COLUMN owner_alerts.event_key IS '알림마다 한 번(SPEC-067)';
-COMMENT ON COLUMN owner_alerts.status IS '보낼 것·보냄·우리 채널 친구가 아님·실패(할 일 목록에만)·다른 알림에 묶임';
+COMMENT ON COLUMN owner_alerts.status IS '보낼 것·발송 결과 확인 중·보냄(닿음 확인)·우리 채널 친구가 아님·실패(할 일 목록에만)·다른 알림에 묶임';
 COMMENT ON COLUMN owner_alerts.batched_into_id IS '1분 안 같은 종류는 하나로 묶어 보냄(SPEC-067)';
 COMMENT ON COLUMN owner_alerts.attempts IS '보낸 횟수(처음과 1분·5분·30분 뒤, G4)';
 COMMENT ON COLUMN owner_alerts.next_attempt_at IS '다음에 보낼 시각';
 COMMENT ON COLUMN owner_alerts.sent_at IS '보낸 시각';
+COMMENT ON COLUMN owner_alerts.kakao_task_id IS '카카오가 받은 Event API 요청의 taskId. 발송 결과 조회에 씀(SPEC-067, REQ-182)';
+COMMENT ON COLUMN owner_alerts.requested_at IS '카카오가 Event API 요청을 받은 시각';
+COMMENT ON COLUMN owner_alerts.delivery_checked_at IS '발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)';
+COMMENT ON COLUMN owner_alerts.fail_code IS '카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-067)';
 COMMENT ON COLUMN owner_alerts.created_at IS '만든 시각';
 COMMENT ON COLUMN notifications.id IS '알림 ID';
 COMMENT ON COLUMN notifications.shop_id IS '가게';
@@ -1746,11 +1783,15 @@ COMMENT ON COLUMN notifications.kind IS '사장님 답·지연 안내(TERM-036)�
 COMMENT ON COLUMN notifications.event_key IS '같은 주문의 같은 이벤트는 한 번(REQ-154)';
 COMMENT ON COLUMN notifications.template_key IS '서버의 정해진 템플릿. AI가 쓰지 않고 광고를 넣지 않음(REQ-111)';
 COMMENT ON COLUMN notifications.body IS '보낼 글. 다른 손님 정보·내부 ID 없음(G6)';
-COMMENT ON COLUMN notifications.status IS '보낼 것·다시 보낼 것·보냄·못 보냄(다음 대화 때 먼저)·다음 대화 때 전함·무의미해져 안 보냄';
+COMMENT ON COLUMN notifications.status IS '보낼 것·다시 보낼 것·발송 결과 확인 중·보냄(닿음 확인)·못 보냄(다음 대화 때 먼저)·다음 대화 때 전함·무의미해져 안 보냄';
 COMMENT ON COLUMN notifications.scheduled_for IS '정해진 시각 안내(전날·후기)의 보낼 시각. 가게 시간 08:00~20:50 안(REQ-123)';
 COMMENT ON COLUMN notifications.attempts IS '보낸 횟수(처음과 1분·5분·30분 뒤, G4)';
 COMMENT ON COLUMN notifications.next_attempt_at IS '다음에 보낼 시각';
 COMMENT ON COLUMN notifications.sent_at IS '보낸(전한) 시각';
+COMMENT ON COLUMN notifications.kakao_task_id IS '카카오가 받은 Event API 요청의 taskId. 발송 결과 조회에 씀(SPEC-066, REQ-182)';
+COMMENT ON COLUMN notifications.requested_at IS '카카오가 Event API 요청을 받은 시각';
+COMMENT ON COLUMN notifications.delivery_checked_at IS '발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)';
+COMMENT ON COLUMN notifications.fail_code IS '카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-066)';
 COMMENT ON COLUMN notifications.created_at IS '만든 시각';
 COMMENT ON COLUMN ledger_links.id IS '장부 연결 ID';
 COMMENT ON COLUMN ledger_links.shop_id IS '가게';

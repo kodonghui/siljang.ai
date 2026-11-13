@@ -60,7 +60,7 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-001 | `owners` | 사장님 | CTX-007 | 001, 067 | TERM-044 |
 | TBL-002 | `operators` | 운영자 | CTX-007 | 001, 003 | TERM-074 |
 | TBL-003 | `shops` | 가게 | CTX-007 | 001, 002, 003, 009, 010, 011, 017, 024, 025, 052, 053, 068 | TERM-053 |
-| TBL-004 | `kakao_channels` | 카카오톡 채널 연결 | CTX-007 | 008, 010, 011, 017, 068 | TERM-053 |
+| TBL-004 | `kakao_channels` | 카카오톡 채널 연결 | CTX-007 | 008, 010, 011, 017, 066, 068 | TERM-053 |
 | TBL-005 | `privacy_policies` | 가게 개인정보 처리방침 | CTX-007 | 010, 011, 018 | 없음 |
 | TBL-006 | `price_lists` | 가격표 버전 | CTX-002 | 004, 010, 011, 013, 027 | TERM-047 |
 | TBL-007 | `price_options` | 가격표 옵션 | CTX-002 | 004, 011, 013 | TERM-047 |
@@ -563,7 +563,7 @@ erDiagram
     uuid id PK "사장님 알림 ID"
     uuid owner_task_id FK "알린 할 일"
     text kind "새 할 일·지연 뒤 다시 알림…"
-    text status "보낼 것·보냄·우리 채널…"
+    text status "보낼 것·발송 결과 확인 중…"
     uuid batched_into_id FK "1분 안 같은 종류는 하나로…"
   }
   notifications {
@@ -572,7 +572,7 @@ erDiagram
     uuid consultation_id FK "그 손님의 상담"
     uuid order_id FK "관련 주문"
     text kind "사장님 답·지연 안내"
-    text status "보낼 것·다시 보낼 것·보냄…"
+    text status "보낼 것·다시 보낼 것·발송…"
   }
   orders |o--o{ owner_tasks : "order_id"
   handoffs |o--o{ owner_tasks : "handoff_id"

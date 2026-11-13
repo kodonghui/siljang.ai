@@ -27,7 +27,7 @@
     "lockSettings": 63,
     "ddlScripts": {
       "before": "CREATE EXTENSION IF NOT EXISTS btree_gist; -- refund_tiers의 EXCLUDE에 씀",
-      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py·erd_editor_sync.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status <> 'deleted';\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL;\nCREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE status IN ('held', 'fixed');\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_order_uq ON photo_consents (order_id) WHERE scope = 'order';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
+      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py·erd_editor_sync.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status <> 'deleted';\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL;\nCREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE status IN ('held', 'fixed');\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_order_uq ON photo_consents (order_id) WHERE scope = 'order';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
     }
   },
   "doc": {
@@ -291,8 +291,8 @@
         "columnIds": [
           "03h7y0178fic3fnl5uspyueem",
           "03h7y0178fic3fnl5uunzf43j",
-          "03h7y0178fic3fnl5uvc44drz",
           "03h7y0178fic3fnl5uxlsettt",
+          "03h8ae91xozajprnz25l0cvj3",
           "03h7y0178fic3fnl5uzohrp1x",
           "03h7y0178fic3fnl5v166vbmv"
         ],
@@ -373,6 +373,16 @@
           "03h7y0178l0hvzg6dev43es0x",
           "03h7y0178l0hvzg6dexgf6y5z",
           "03h7y0178l0hvzg6dezoe1i1n",
+          "03h8ae91xuhq6fgui0boemd9n",
+          "03h8ae91xzy7af44gqjlalzge",
+          "03h8ae91y5h7owsg5tsfep4i7",
+          "03h8ae91ygcu55v8n4q3cqnxn",
+          "03h8ae91yr9pdnp6o3c9k06mx",
+          "03h8ae91ywupd6ow8n8ylli0d",
+          "03h8ae91ywupd6ow8ndzmidt8",
+          "03h8ae91z268hx14mqeg1khnm",
+          "03h8ae91z268hx14mqgzmtk75",
+          "03h8ae91z7opv4oy5shovw13h",
           "03h7y0178l0hvzg6df07hv645"
         ],
         "groupId": "03h7y017wkyrgfkkkeykxgwvj",
@@ -1283,7 +1293,7 @@
       "03h7y0179n9e4e4gq430lqp8h": {
         "id": "03h7y0179n9e4e4gq430lqp8h",
         "name": "owner_alerts",
-        "comment": "TBL-043 사장님 알림(TERM-035): 우리 서비스 채널로 보내는 할 일 종류와 목록 주소",
+        "comment": "TBL-043 사장님 알림(TERM-035): 우리 서비스 채널 봇이 사장님의 카카오 로그인 사용자 번호로 보내는 할 일 종류와 목록 주소",
         "columnIds": [
           "03h7y0179n9e4e4gq44r8u0pp",
           "03h7y0179n9e4e4gq45z4urki",
@@ -1295,6 +1305,10 @@
           "03h7y0179n9e4e4gq4ioh6kjr",
           "03h7y0179n9e4e4gq4jo65nrd",
           "03h7y0179n9e4e4gq4mszdb5d",
+          "03h8ae91zd4jmmh157usuj5b3",
+          "03h8ae91zd4jmmh157yjm384i",
+          "03h8ae91zip9ngkaddk6yhhkh",
+          "03h8ae926nobvp3b2vg6qrvfw",
           "03h7y0179n9e4e4gq4o2gcd0u"
         ],
         "groupId": "03h7y017wkyrgfkkkf2vp59sk",
@@ -1322,6 +1336,10 @@
           "03h7y0179n9e4e4gq5e36gizw",
           "03h7y0179n9e4e4gq5gnvwe03",
           "03h7y0179n9e4e4gq5h3o3xeb",
+          "03h8ae926t3iq0zv9c8le062s",
+          "03h8ae926yjgm65hqh75ccrhu",
+          "03h8ae9273zx2ldycd04qx5gv",
+          "03h8ae9273zx2ldycd4nqi3ay",
           "03h7y0179n9e4e4gq5klpml34"
         ],
         "groupId": "03h7y017wkyrgfkkkf2vp59sk",
@@ -1504,23 +1522,15 @@
         "id": "03h7y0178fic3fnl5uunzf43j",
         "tableId": "03h7y0178fic3fnl5upga2t57",
         "name": "kakao_account_id",
-        "comment": "카카오 로그인 회원번호. 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)",
+        "comment": "카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-183). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)",
         "dataType": "bigint",
         "options": 12
-      },
-      "03h7y0178fic3fnl5uvc44drz": {
-        "id": "03h7y0178fic3fnl5uvc44drz",
-        "tableId": "03h7y0178fic3fnl5upga2t57",
-        "name": "alert_user_key",
-        "comment": "우리 서비스 카카오톡 채널에서 이 사장님의 사용자 키(사장님 알림 받는 곳, REQ-115)",
-        "dataType": "text",
-        "options": 4
       },
       "03h7y0178fic3fnl5uxlsettt": {
         "id": "03h7y0178fic3fnl5uxlsettt",
         "tableId": "03h7y0178fic3fnl5upga2t57",
         "name": "alert_channel_friend",
-        "comment": "우리 채널 친구인지. 아니면 알림은 '못 보냄'으로 할 일 목록에만(SPEC-067)",
+        "comment": "우리 서비스 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침. 아니면 알림은 '못 보냄'으로 할 일 목록에만(SPEC-067)",
         "dataType": "boolean",
         "default": "false",
         "options": 8
@@ -1541,6 +1551,14 @@
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
+      },
+      "03h8ae91xozajprnz25l0cvj3": {
+        "id": "03h8ae91xozajprnz25l0cvj3",
+        "tableId": "03h7y0178fic3fnl5upga2t57",
+        "name": "alert_friend_checked_at",
+        "comment": "우리 채널 친구인지 마지막으로 본 시각(채널 관계 조회나 발송 결과, SPEC-001)",
+        "dataType": "timestamptz",
+        "options": 0
       },
       "03h7y0178fic3fnl5v5jeofju": {
         "id": "03h7y0178fic3fnl5v5jeofju",
@@ -1871,7 +1889,7 @@
         "id": "03h7y0178l0hvzg6dev43es0x",
         "tableId": "03h7y0178l0hvzg6deiwnudw3",
         "name": "check_started_at",
-        "comment": "'연결 확인'을 누른 시각(10분 안에 테스트 메시지가 와야 함)",
+        "comment": "'연결 확인'을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 넷이 와야 함)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -1899,6 +1917,88 @@
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
+      },
+      "03h8ae91xuhq6fgui0boemd9n": {
+        "id": "03h8ae91xuhq6fgui0boemd9n",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "card_block_id",
+        "comment": "가게 봇의 '확인 카드' 블록 ID. 확인 카드 버튼이 부름(SPEC-008, REQ-179)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8ae91xzy7af44gqjlalzge": {
+        "id": "03h8ae91xzy7af44gqjlalzge",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "orderer_block_id",
+        "comment": "가게 봇의 '주문자 정보' 블록 ID. 주문자 정보 카드 버튼이 부름(SPEC-072)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8ae91y5h7owsg5tsfep4i7": {
+        "id": "03h8ae91y5h7owsg5tsfep4i7",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "depositor_block_id",
+        "comment": "가게 봇의 '입금자 이름' 블록 ID. 입금 알리기 카드 버튼이 부름(SPEC-033)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8ae91ygcu55v8n4q3cqnxn": {
+        "id": "03h8ae91ygcu55v8n4q3cqnxn",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "review_block_id",
+        "comment": "가게 봇의 '후기' 블록 ID. 후기 부탁 버튼이 부름(SPEC-061)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8ae91yr9pdnp6o3c9k06mx": {
+        "id": "03h8ae91yr9pdnp6o3c9k06mx",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "verified_blocks",
+        "comment": "연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록(REQ-179)",
+        "dataType": "text[]",
+        "default": "'{}'",
+        "options": 8
+      },
+      "03h8ae91ywupd6ow8n8ylli0d": {
+        "id": "03h8ae91ywupd6ow8n8ylli0d",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "test_user_key",
+        "comment": "연결 확인 때 테스트 메시지를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8ae91ywupd6ow8ndzmidt8": {
+        "id": "03h8ae91ywupd6ow8ndzmidt8",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "event_status",
+        "comment": "먼저 보내기(Event API): 아직 안 봄·시험 중·됨·안 됨. 안 되면 손님 안내는 다음 대화 때(REQ-180, REQ-181)",
+        "dataType": "text",
+        "default": "'unchecked'",
+        "options": 8
+      },
+      "03h8ae91z268hx14mqeg1khnm": {
+        "id": "03h8ae91z268hx14mqeg1khnm",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "event_task_id",
+        "comment": "시험 안내의 카카오 taskId. 발송 결과 조회에 씀(REQ-182)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8ae91z268hx14mqgzmtk75": {
+        "id": "03h8ae91z268hx14mqgzmtk75",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "event_checked_at",
+        "comment": "시험 안내의 발송 결과를 받은 시각",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8ae91z7opv4oy5shovw13h": {
+        "id": "03h8ae91z7opv4oy5shovw13h",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "event_fail_reason",
+        "comment": "먼저 보내기가 안 되는 사유: 채널이 우리 앱에 연결 안 됨·월렛 없음·이벤트 이름이나 배포·안내 스킬·사장님이 가게 채널 친구 아님·닿지 않음·카카오 오류",
+        "dataType": "text",
+        "options": 0
       },
       "03h7y0178l0hvzg6df42g49v0": {
         "id": "03h7y0178l0hvzg6df42g49v0",
@@ -5604,7 +5704,7 @@
         "id": "03h7y0179n9e4e4gq4dyw787o",
         "tableId": "03h7y0179n9e4e4gq430lqp8h",
         "name": "status",
-        "comment": "보낼 것·보냄·우리 채널 친구가 아님·실패(할 일 목록에만)·다른 알림에 묶임",
+        "comment": "보낼 것·발송 결과 확인 중·보냄(닿음 확인)·우리 채널 친구가 아님·실패(할 일 목록에만)·다른 알림에 묶임",
         "dataType": "text",
         "default": "'pending'",
         "options": 8
@@ -5650,6 +5750,38 @@
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
+      },
+      "03h8ae91zd4jmmh157usuj5b3": {
+        "id": "03h8ae91zd4jmmh157usuj5b3",
+        "tableId": "03h7y0179n9e4e4gq430lqp8h",
+        "name": "kakao_task_id",
+        "comment": "카카오가 받은 Event API 요청의 taskId. 발송 결과 조회에 씀(SPEC-067, REQ-182)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8ae91zd4jmmh157yjm384i": {
+        "id": "03h8ae91zd4jmmh157yjm384i",
+        "tableId": "03h7y0179n9e4e4gq430lqp8h",
+        "name": "requested_at",
+        "comment": "카카오가 Event API 요청을 받은 시각",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8ae91zip9ngkaddk6yhhkh": {
+        "id": "03h8ae91zip9ngkaddk6yhhkh",
+        "tableId": "03h7y0179n9e4e4gq430lqp8h",
+        "name": "delivery_checked_at",
+        "comment": "발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8ae926nobvp3b2vg6qrvfw": {
+        "id": "03h8ae926nobvp3b2vg6qrvfw",
+        "tableId": "03h7y0179n9e4e4gq430lqp8h",
+        "name": "fail_code",
+        "comment": "카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-067)",
+        "dataType": "text",
+        "options": 0
       },
       "03h7y0179n9e4e4gq4se27kpn": {
         "id": "03h7y0179n9e4e4gq4se27kpn",
@@ -5728,7 +5860,7 @@
         "id": "03h7y0179n9e4e4gq59d8xlej",
         "tableId": "03h7y0179n9e4e4gq4qs0he2r",
         "name": "status",
-        "comment": "보낼 것·다시 보낼 것·보냄·못 보냄(다음 대화 때 먼저)·다음 대화 때 전함·무의미해져 안 보냄",
+        "comment": "보낼 것·다시 보낼 것·발송 결과 확인 중·보냄(닿음 확인)·못 보냄(다음 대화 때 먼저)·다음 대화 때 전함·무의미해져 안 보냄",
         "dataType": "text",
         "default": "'pending'",
         "options": 8
@@ -5774,6 +5906,38 @@
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
+      },
+      "03h8ae926t3iq0zv9c8le062s": {
+        "id": "03h8ae926t3iq0zv9c8le062s",
+        "tableId": "03h7y0179n9e4e4gq4qs0he2r",
+        "name": "kakao_task_id",
+        "comment": "카카오가 받은 Event API 요청의 taskId. 발송 결과 조회에 씀(SPEC-066, REQ-182)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8ae926yjgm65hqh75ccrhu": {
+        "id": "03h8ae926yjgm65hqh75ccrhu",
+        "tableId": "03h7y0179n9e4e4gq4qs0he2r",
+        "name": "requested_at",
+        "comment": "카카오가 Event API 요청을 받은 시각",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8ae9273zx2ldycd04qx5gv": {
+        "id": "03h8ae9273zx2ldycd04qx5gv",
+        "tableId": "03h7y0179n9e4e4gq4qs0he2r",
+        "name": "delivery_checked_at",
+        "comment": "발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8ae9273zx2ldycd4nqi3ay": {
+        "id": "03h8ae9273zx2ldycd4nqi3ay",
+        "tableId": "03h7y0179n9e4e4gq4qs0he2r",
+        "name": "fail_code",
+        "comment": "카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-066)",
+        "dataType": "text",
+        "options": 0
       },
       "03h7y0179n9e4e4gq5mx34w1z": {
         "id": "03h7y0179n9e4e4gq5mx34w1z",
@@ -10112,7 +10276,7 @@
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 287개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 304개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,
