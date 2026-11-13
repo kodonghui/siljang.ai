@@ -1,0 +1,247 @@
+# 08단계 화면 상태: 수제케이크 주문제작 화면
+
+상태: 확정(2026-11-13 09:13 동희님, 11절). 원본은 [`research/cake-screens-2026-11/screens_*.py`](../../research/cake-screens-2026-11/)의 화면 데이터와 07단계 사이트맵, 06단계 계약입니다. 화면 정의 49개(`SCR-0xx.md`), 이 문서의 표, 회색조 와이어프레임 [`wireframes.html`](wireframes.html)은 [`build_screens.py`](../../research/cake-screens-2026-11/build_screens.py)가 원본에서 생성합니다(`truth: source`, 3절). 생성 파일은 손으로 고치지 않습니다. 와이어프레임은 Artifact로 게시했습니다: https://claude.ai/artifact/YSLmrCtZj6FjYbzs1vsrLP (동희님 계정의 비공개 페이지).
+
+## 1. 요약
+
+- 화면 49개(손님 13, 사장님 32, 운영자 4)마다 목적·데이터·액션·상태·응답과 상태·케이스 유형·긴 글과 좁은 화면을 정의했습니다. 상태는 336개이고, 상태마다 360과 1280 너비의 와이어프레임 프레임이 하나씩 있습니다(672개).
+- 기본 상태 여섯(normal·loading·empty·error·permission·stale)은 화면마다 정의하거나 '해당 없음'과 이유를 적었습니다. 화면 모습이 달라지는 경우는 화면 고유 상태 16개로 따로 그렸습니다(W3, 4절). 예: 버튼이 막히는 submitting, 저장 전 확인 창 confirm, 카드 30분 기한 expired, 채널 친구가 아닌 손님에게 다음 대화 때 먼저 전하는 deferred.
+- 06단계 계약의 응답 740행을 화면 상태 하나씩에 연결했습니다. 2xx는 예시마다, 오류는 오류 코드마다 한 행이고, 화면에 보이는 문구는 06단계 오류 코드 표의 '화면에 보이는 말'을 그대로 씁니다. 계약 기본값과 다르게 둔 곳은 W2입니다.
+- 인계받은 항목: 카드 30분 만료와 이전 버전 카드(SCR-004·006·008·009·010·013의 expired·stale), 채널 친구가 아닐 때(손님은 SCR-005·SCR-011의 deferred와 SCR-003 에스컬레이션 답의 채널 추가 권유, 사장님은 SCR-016·SCR-019의 not-sent), OPEN-8 봇 ID 찾기 안내(SCR-041, W7), OPEN-6 운영자 인증(SCR-046, 8절).
+- 결정 사항 W1~W9는 7절입니다. 2026-11-13 09:13 체크포인트에서 동희님이 추천안대로 확정하셨습니다(11절).
+
+## 2. 입력과 산출물
+
+| 입력 | 기준 | 사용한 내용 |
+| --- | --- | --- |
+| [`docs/07-sitemap/sitemap.yaml`](../07-sitemap/sitemap.yaml) | 07단계 확정(2026-11-12 15:46), main 61b677e | 화면 49개의 경로·접근 권한·상위 화면·플로우·SPEC·API |
+| [`api/openapi.yaml`](../../api/openapi.yaml) | 06단계 확정(2026-11-12 14:01), main 61b677e | API마다 응답 행(2xx 예시 이름, 오류 코드)과 응답 필드 |
+| [`docs/06-api/README.md`](../06-api/README.md) | 06단계 확정 | 오류 코드 표의 '화면에 보이는 말', 저장 전 확인 문구 6개, 카카오 스킬 결과 37개의 손님 문구 뼈대 |
+| [`docs/04-functional-spec/spec.md`](../04-functional-spec/spec.md) | 04단계 확정 | 화면마다 SPEC의 예외와 수락 기준 |
+| [`docs/01-domain/domain.md`](../01-domain/domain.md) | CTX-001~009, TERM-001~074 | 화면 문구의 용어, 용어집 금지어 |
+
+| 산출물 | 내용 |
+| --- | --- |
+| `SCR-001.md` ~ `SCR-049.md` | 생성 파일. 화면 정의: 머리말(경로·접근 권한·상위 화면·화면 레이아웃·플로우·관련 SPEC·API·와이어프레임), 목적, 데이터, 액션, 상태, 응답과 상태, 케이스 유형, 긴 글과 좁은 화면 |
+| `README.md` | 이 문서. 마커 사이의 표(화면 목록·상태·손님 문구·확인 문구·결정 사항)는 생성 |
+| [`wireframes.html`](wireframes.html) | 생성 파일. 회색조 와이어프레임(시스템 글꼴, 예시 값). 화면을 고르면 상태마다 360·1280 프레임이 나옴. 라이트·다크 모드 |
+| [`research/cake-screens-2026-11/`](../../research/cake-screens-2026-11/) | 원본 `screens_common.py`(상태 이름, 응답→상태 기본값, 손님 문구, 확인 문구, 결정 사항, 와이어프레임 블록), `screens_guest.py`(SCR-001~013), `screens_owner_a.py`(SCR-014~031), `screens_owner_b.py`(SCR-032~045), `screens_operator.py`(SCR-046~049). `build_screens.py`(생성), `check_screens.py`(검사 15개) |
+
+## 3. 관리 방법
+
+- 화면을 바꿀 때는 `screens_*.py`의 그 화면 `scr(...)`만 고칩니다(사람이든 AI든, PR로). 그다음 `python3 -B research/cake-screens-2026-11/build_screens.py . --write`로 다시 생성하고 `python3 -B research/cake-screens-2026-11/check_screens.py . --hub <허브의 hub.py>`로 검사합니다. `--write` 없이 실행하면 불일치만 확인합니다.
+- 06단계 계약이나 07단계 사이트맵이 바뀌면 다시 생성합니다. 계약에 새 응답이 생기면 생성 스크립트가 기본값(4절)으로 상태를 정하고, 기본값이 없는 카카오 스킬 결과는 화면이 정하라고 멈춥니다. 계약에 없는 응답을 적으면 멈춥니다.
+- 계약의 예시에는 없지만 응답 값에 따라 화면이 달라지는 경우는 `API-045#200:status=payment_overdue`처럼 코드 부분에 `=`를 넣은 행으로 적습니다(※ 표시, 지금 3행). 그 API와 상태 코드는 계약에 있어야 합니다.
+- 화면 정의에 `SCR-xxx#상태`를 적으면 CORTHEX 허브가 그 화면의 상태로 읽습니다. 그래서 다른 화면을 가리킬 때도 그 화면에 있는 상태만 적고(검사 C8), '해당 없음' 상태는 `#` 없이 적습니다.
+- 1280 배치는 화면마다 `wide`로 정합니다(왼쪽·오른쪽 열, 위·아래 행, 1280에만 있는 블록). 없으면 1280도 한 열입니다. 지금은 6개 화면(SCR-001·022·032·037·039·048)이 두 열입니다.
+- 와이어프레임 페이지는 원본을 바꾸면 다시 생성해 같은 주소(https://claude.ai/artifact/YSLmrCtZj6FjYbzs1vsrLP)에 게시합니다. `.corthex/project.json`의 `08-screen-states.link`입니다.
+
+## 4. 상태
+
+화면마다 쓰는 상태 이름입니다. 응답→상태 기본값은 2xx는 normal(예시 이름이 `empty`면 empty), 401·403은 permission, 404는 error, 409는 stale, 429는 rate-limited, 그 밖은 error입니다. 기본값과 다르게 둔 곳은 W2입니다.
+
+<!-- 08-screens:states:start -->
+| 상태 이름 | 분류 | 뜻 | 쓰는 화면 수 |
+| --- | --- | --- | --- |
+| `normal` | 기본 | 데이터가 있고 할 수 있는 일이 보임 | 49 |
+| `loading` | 기본 | 데이터가 오는 중 | 37 |
+| `empty` | 기본 | 보일 것이 아직 없음 | 24 |
+| `error` | 기본 | 불러오기나 액션이 실패함 | 49 |
+| `permission` | 기본 | 이 사용자가 볼 수 없거나 할 수 없음 | 42 |
+| `stale` | 기본 | 보이는 데이터가 지금과 다를 수 있음 | 43 |
+| `submitting` | 화면 고유(W3) | 누른 액션의 결과를 기다리는 중. 버튼이 막힘 | 24 |
+| `confirm` | 화면 고유(W3) | 저장하기 전에 확인을 받는 창(서버가 요구하는 DEC-06 확인, 또는 되돌리기 어려운 액션 앞에서 화면이 여는 확인) | 11 |
+| `rate-limited` | 화면 고유(W3) | 요청 빈도 한도에 닿아 잠시 막힘 | 6 |
+| `done` | 화면 고유(W3) | 명령을 남긴 뒤의 결과, 또는 이미 처리한 건을 읽기 전용으로 봄 | 29 |
+| `expired` | 화면 고유(W3) | 기한이 지남(카드 30분, 결제 기한) | 7 |
+| `day-full` | 화면 고유(W3) | 그 사이 그날이 다 참 | 1 |
+| `handed-over` | 화면 고유(W3) | AI가 답하지 않고 사장님께 에스컬레이션함 | 2 |
+| `fixed-answer` | 화면 고유(W3) | AI 답이 서버 확인을 지나지 못해 정해진 문장으로 답함 | 1 |
+| `link-test` | 화면 고유(W3) | 채널 연결 확인용 테스트 메시지에 답함 | 1 |
+| `deferred` | 화면 고유(W3) | 손님이 채널 친구가 아니어서 다음 대화 때 먼저 전함 | 2 |
+| `not-sent` | 화면 고유(W3) | 사장님이 우리 서비스 채널 친구가 아니어서 알림이 가지 않음 | 2 |
+| `checking` | 화면 고유(W3) | 채널 연결 확인 중(최대 10분) | 1 |
+| `reconnect` | 화면 고유(W3) | 구글 권한이 끊겨 장부를 다시 연결해야 함 | 1 |
+| `on-hold` | 화면 고유(W3) | 영업 신고가 보류됨 | 2 |
+| `mismatch` | 화면 고유(W3) | 들어온 금액이 안내와 달라 맞추는 중 | 1 |
+| `awaiting-payment` | 화면 고유(W3) | 차액 결제를 기다림 | 1 |
+<!-- 08-screens:states:end -->
+
+## 5. 손님 문구와 확인 문구
+
+손님이 카카오톡에서 받는 말(06단계 7절 카카오 스킬 결과)입니다. 06단계 뼈대를 그대로 쓰고 다섯 곳만 08단계에서 다듬었습니다(W5). `{…}`는 서버가 채우는 값, `+`는 함께 가는 카드·안내입니다.
+
+<!-- 08-screens:outcomes:start -->
+| 결과 | 손님에게 가는 말 | 06단계와 비교 |
+| --- | --- | --- |
+| `answered` | (AI가 만든 답. 금액·날짜·가능 여부는 가게 규칙의 계산값만 쓰고 서버 확인을 지남) | 06단계 뼈대 그대로 |
+| `callback_pending` | 답을 준비하고 있어요 | 06단계 뼈대 그대로 |
+| `handed_over` | 사장님 확인 뒤 답드릴게요 + (채널 친구가 아니면) 채널을 추가하시면 답을 바로 받아 보실 수 있어요 | 08단계에서 바꿈: 채널 친구가 아닐 때 덧붙이는 말을 문구에 넣음(SPEC-022) |
+| `ai_unavailable` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
+| `ai_timeout` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
+| `ai_key_missing` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
+| `ai_limit_reached` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
+| `ai_cost_limit_reached` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
+| `masking_failed` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
+| `ai_output_rejected` | (가게 규칙의 계산값으로 만든 정해진 문장) | 06단계 뼈대 그대로 |
+| `card_shown` | (확인 카드: 요약과 버튼) | 06단계 뼈대 그대로 |
+| `photo_received` | 사진을 받았어요 | 06단계 뼈대 그대로 |
+| `photo_rejected` | 사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요 | 06단계 뼈대 그대로 |
+| `unsupported_message` | 글이나 사진으로 말씀해 주세요 | 06단계 뼈대 그대로 |
+| `rate_limited` | 잠시 뒤 다시 말씀해 주세요 | 06단계 뼈대 그대로 |
+| `duplicate` | (처음 결과와 같은 말) | 06단계 뼈대 그대로 |
+| `not_accepting` | 아직 상담을 받지 않아요. 가게로 연락해 주세요: {가게 연락처} | 06단계 뼈대 그대로 |
+| `channel_linked` | 연결됐어요. 이제 이 채널로 온 손님 메시지를 받아요 | 06단계 뼈대 그대로 |
+| `server_error` | 잠시 뒤 다시 말씀해 주세요 | 06단계 뼈대 그대로 |
+| `order_requested` | 기본 디자인: 주문을 요청했어요(주문번호 {orderNo}). 결제가 확인되면 확정돼요 + 결제 안내 / 맞춤 주문: 주문을 요청했어요(주문번호 {orderNo}). 사장님이 보고 알려 드릴게요 + (채널 친구가 아니면) 채널을 추가하시면 답을 바로 받아 보실 수 있어요 | 08단계에서 바꿈: 맞춤 주문의 문구와 채널 추가 권유를 나눔(SPEC-029) |
+| `payment_claimed` | 사장님께 알렸어요. 확인되면 알려 드릴게요 | 06단계 뼈대 그대로 |
+| `change_requested` | 변경을 요청했어요. 사장님이 보고 알려 드려요 | 06단계 뼈대 그대로 |
+| `order_cancelled` | 결제한 주문: 주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요 / 결제 전 주문: 주문을 취소했어요 | 08단계에서 바꿈: 결제 전 주문은 환불 문장을 뺌(SPEC-046) |
+| `issue_reported` | 신고를 받았어요. 사장님이 보시고 정하실 거예요 | 06단계 뼈대 그대로 |
+| `consent_withdrawn` | 사진 게시 동의를 철회했어요. 5분 안에 사진이 내려가요 | 08단계에서 바꿈: '곧'을 '5분 안에'로(SPEC-063 캐시 5분) |
+| `declined` | 알겠어요. 더 궁금한 것이 있으면 말씀해 주세요 | 06단계 뼈대 그대로 |
+| `card_stale` | 내용이 바뀌었어요. 새 카드를 확인해 주세요 + 새 카드 | 06단계 뼈대 그대로 |
+| `card_expired` | 시간이 지나 새 카드를 보내 드려요 + 새 카드 | 06단계 뼈대 그대로 |
+| `card_not_yours` | 이 버튼은 카드를 받은 분만 누를 수 있어요 | 06단계 뼈대 그대로 |
+| `card_used` | (처음 결과와 같은 말) | 06단계 뼈대 그대로 |
+| `day_full` | 그 사이 그날이 다 찼어요. 이날은 어떠세요? + 가까운 날 최대 3개 바로가기 / 가까운 날이 없으면: 가까운 날에 자리가 없어요. 사장님께 확인을 요청할 수 있어요 | 08단계에서 바꿈: 가까운 날이 없을 때의 문구를 더함(SPEC-014 빈 경우) |
+| `retry_needed` | 다시 눌러 주세요 | 06단계 뼈대 그대로 |
+| `not_allowed_now` | 지금은 할 수 없어요: {지금 상태} | 06단계 뼈대 그대로 |
+| `review_saved` | 후기를 남겨 주셔서 고마워요 | 06단계 뼈대 그대로 |
+| `review_not_allowed` | 받으신 주문에만 후기를 남길 수 있어요 | 06단계 뼈대 그대로 |
+| `review_invalid` | 후기는 1,000자, 사진은 5장까지 남길 수 있어요 | 06단계 뼈대 그대로 |
+| `photo_download_failed` | 사진을 받지 못했어요. 다시 보내 주세요 | 06단계 뼈대 그대로 |
+<!-- 08-screens:outcomes:end -->
+
+저장하기 전에 사장님 확인을 받는 창의 말입니다(06단계 DEC-06, 409 confirmation_required). 06단계 6절과 글자까지 같습니다(검사 C10).
+
+<!-- 08-screens:confirms:start -->
+| 확인할 것 | 확인 창의 말(06단계 6절과 같음) |
+| --- | --- |
+| `lowered_refund` | 제작 전 취소 환불을 전액보다 낮추면 분쟁 때 가게에 불리할 수 있어요(약관법 제8조, 한국소비자원 조정 사례). 그래도 저장할까요? |
+| `closed_day_with_orders` | 이날 확정 주문 {count}건은 그대로 남아요. 휴무로 바꿀까요? |
+| `overbooking` | 그날 남은 자리가 없어요. 추가로 받을까요? |
+| `not_pickup_day` | 오늘이 픽업 날이 아니에요. 그래도 인도를 기록할까요? |
+| `closed_day` | 휴무일이에요. 이날로 정할까요? |
+| `holder_mismatch` | 예금주가 상호·대표자와 달라요. 가게 명의 계좌가 맞나요? |
+<!-- 08-screens:confirms:end -->
+
+## 6. 화면 목록
+
+<!-- 08-screens:screens:start -->
+| 화면 | 이름 | 사용자 | 상태 | 해당 없는 기본 상태 | 응답 행 |
+| --- | --- | --- | --- | --- | --- |
+| [SCR-001](SCR-001.md) | 예약 링크 페이지 | 손님 | normal · loading · empty · error · rate-limited · stale | permission | 5 |
+| [SCR-002](SCR-002.md) | 가게 개인정보 처리방침 | 손님 | normal · loading · error · rate-limited | empty · permission · stale | 4 |
+| [SCR-003](SCR-003.md) | 가게 채널 상담 | 손님 | normal · loading · empty · error · permission · stale · handed-over · fixed-answer · rate-limited · link-test | - | 22 |
+| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · done · stale · expired · day-full · permission · error | loading · empty | 19 |
+| [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · deferred · stale · error | loading · empty · permission | 0 |
+| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 19 |
+| [SCR-007](SCR-007.md) | 내 주문 보기 | 손님 | normal · loading · empty · error · permission · stale · handed-over · rate-limited | - | 22 |
+| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 19 |
+| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 19 |
+| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 19 |
+| [SCR-011](SCR-011.md) | 손님 알림 | 손님 | normal · deferred · stale · error | loading · empty · permission | 0 |
+| [SCR-012](SCR-012.md) | 후기 남기기 | 손님 | normal · done · permission · error | loading · empty · stale | 10 |
+| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 19 |
+| [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 8 |
+| [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 16 |
+| [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
+| [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 15 |
+| [SCR-018](SCR-018.md) | 상담 대화 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
+| [SCR-019](SCR-019.md) | 사장님 알림 | 사장님 | normal · not-sent · error · stale | loading · empty · permission | 0 |
+| [SCR-020](SCR-020.md) | 주문 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 7 |
+| [SCR-021](SCR-021.md) | 주문 상세 | 사장님 | normal · loading · error · permission · stale · confirm · submitting · done | empty | 19 |
+| [SCR-022](SCR-022.md) | 맞춤 주문 검토 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 20 |
+| [SCR-023](SCR-023.md) | 결제 기한 지난 주문 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 20 |
+| [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 20 |
+| [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 17 |
+| [SCR-026](SCR-026.md) | 환불 송금 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 16 |
+| [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 16 |
+| [SCR-028](SCR-028.md) | 입금 대조 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
+| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · submitting · mismatch · expired · done | empty | 21 |
+| [SCR-030](SCR-030.md) | 제작 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 34 |
+| [SCR-031](SCR-031.md) | 픽업 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 37 |
+| [SCR-032](SCR-032.md) | 영업 캘린더 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 17 |
+| [SCR-033](SCR-033.md) | 영업 캘린더 설정 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 16 |
+| [SCR-034](SCR-034.md) | 가게 설정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 17 |
+| [SCR-035](SCR-035.md) | 영업 신고 | 사장님 | normal · loading · error · permission · stale · submitting · on-hold · done | empty | 22 |
+| [SCR-036](SCR-036.md) | 가격표와 도안 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 22 |
+| [SCR-037](SCR-037.md) | 가격표 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
+| [SCR-038](SCR-038.md) | 운영규정 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 15 |
+| [SCR-039](SCR-039.md) | 운영규정 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
+| [SCR-040](SCR-040.md) | 결제 수단 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 15 |
+| [SCR-041](SCR-041.md) | 카카오톡 채널 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · checking · done | - | 26 |
+| [SCR-042](SCR-042.md) | 장부 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · reconnect · done | - | 34 |
+| [SCR-043](SCR-043.md) | 예약 링크 | 사장님 | normal · loading · empty · error · permission · stale | - | 5 |
+| [SCR-044](SCR-044.md) | 포트폴리오 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 22 |
+| [SCR-045](SCR-045.md) | 후기 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
+| [SCR-046](SCR-046.md) | 운영자 로그인 | 운영자 | normal · error · rate-limited · submitting | loading · empty · permission · stale | 5 |
+| [SCR-047](SCR-047.md) | 영업 신고 확인 목록 | 운영자 | normal · loading · empty · error · permission · stale | - | 10 |
+| [SCR-048](SCR-048.md) | 영업 신고 확인 | 운영자 | normal · loading · on-hold · error · permission · stale · submitting · confirm · done | empty | 18 |
+| [SCR-049](SCR-049.md) | 운영자 알림 | 운영자 | normal · loading · empty · error · permission · stale | - | 5 |
+<!-- 08-screens:screens:end -->
+
+## 7. 결정 사항
+
+<!-- 08-screens:decisions:start -->
+| ID | 결정할 것 | 제안 | 이유 | 대안과 그 결과 |
+| --- | --- | --- | --- | --- |
+| W1 | 화면 정의의 원본과 생성 방식 | research/cake-screens-2026-11/screens_*.py에 화면마다 목적·데이터·액션·상태·레이아웃을 적고, build_screens.py가 화면 정의 49개(docs/08-screens/SCR-0xx.md)·README 표·와이어프레임 페이지를 함께 생성함. 생성 파일은 손으로 고치지 않음 | 응답→상태 표는 06단계 계약(api/openapi.yaml)에서 직접 읽어 빠짐없이 만들고, 계약이 바뀌면 다시 생성해 맞춤. 06단계 계약(api_ops.py→openapi.yaml)과 같은 방식 | 화면 정의 Markdown을 원본으로 손으로 고침: 고치기는 쉽지만 응답이 늘면 빠진 행을 사람이 찾아야 함 |
+| W2 | 응답→상태 기본값과 다르게 둔 곳 | 404 shop_not_registered는 permission(가게 등록으로 보냄), 404 not_set은 empty(빈 입력 화면), 409 confirmation_required는 confirm, 409 request_in_progress는 submitting, 409 channel_linked_elsewhere는 error, 429는 rate-limited, 로그인 화면의 401은 error. 나머지는 계약 기본값 | 06단계 오류 코드 표의 '화면이 할 일'이 이렇게 정함(가게 등록으로 보냄, 빈 입력 화면, 확인받고 다시 보냄, 1초 뒤 다시 보냄, 다른 채널을 고름) | 모두 계약 기본값(404는 '찾을 수 없음', 409는 '그 사이 바뀜'): 가게가 없거나 설정 전인 사장님에게 '찾을 수 없어요'가 보임 |
+| W3 | 화면 고유 상태 | 기본 6개 밖에 submitting·confirm·rate-limited·done·expired·day-full·handed-over·fixed-answer·link-test·deferred·not-sent·checking·reconnect·on-hold·mismatch·awaiting-payment를 씀. 뜻은 README 4절 | 버튼 막힘(반복), 확인 창(DEC-06), 카드 30분, 채널 친구가 아닌 손님처럼 화면 모습이 달라지는 경우를 와이어프레임으로 따로 보이려고 | 기본 6개에 모두 넣음: 상태 수는 줄지만 확인 창·카드 기한 같은 모습이 와이어프레임에 없음 |
+| W4 | 사장님·운영자 화면 레이아웃 | 사장님 화면은 1280에서 왼쪽 메뉴(할 일·주문·입금 대조·제작·픽업·영업 캘린더·가게 설정), 360에서 위쪽 막대와 메뉴 버튼. 목록은 1280에서 표, 360에서 카드. 운영자 화면은 메뉴 둘(영업 신고 확인·운영자 알림) | 07단계 화면 트리의 1뎁스 화면 7개를 그대로 메뉴로 씀. 360에서 표는 가로 넘침이 생김 | 360에서 아래쪽 탭 막대: 탭 5개 밖은 '더보기'에 숨어 입금 대조·영업 캘린더가 한 번 더 눌러야 보임 |
+| W5 | 손님 문구(카카오 스킬 결과) | 06단계 7절의 뼈대를 그대로 쓰고 5곳(handed_over·order_requested·order_cancelled·consent_withdrawn·day_full)만 다듬음. 전체는 README 5절 | 06단계가 '08단계에서 다듬음'으로 전달함. 결과마다 손님이 할 수 있는 다음 행동이 보이게 | AI가 상황마다 문구를 만듦: 자연스럽지만 금액·상태를 잘못 말할 위험(SPEC-020, SPEC-066) |
+| W6 | 주문 요청 카드의 구성 | 말풍선 3개: ① 주문 내용 요약(문구 철자 그대로) ② 그 버전의 취소·환불 규정과 '주문제작이라 청약철회가 제한될 수 있어요' ③ 버튼 카드('규정에 동의하고 주문 요청'·'사진 게시도 동의하고 요청'·'안 할래요', 30분 기한 표시). 사진 게시 동의는 두 번째 버튼으로만 함(기본 동의 안 함) | 카카오 카드에는 체크박스가 없고 버튼은 3개까지. 06단계 계약의 choice 값(confirm·confirm_with_photo_consent·decline)과 같음. 규정을 요약과 따로 보이라는 SPEC-028 | 카드 하나에 모두: 설명 글자 수 한도를 넘을 수 있고 규정이 요약과 섞임 |
+| W7 | OPEN-8 봇 ID 찾기 안내(SCR-041) | 봇 ID 필드 아래 '봇 ID 찾는 법'을 펼쳐 보이고, 오픈빌더에서 봇을 열었을 때 주소의 /bot/ 다음 값이라고 안내함. 봇 ID가 틀리면 10분 안에 테스트 메시지가 오지 않아 '연결 안 됨'과 사유 후보 '테스트 메시지가 오지 않음'(API-030 test_message_missing)이 보이고, 그 도움말에 '봇 ID가 오픈빌더 주소의 값과 같은지 확인해 주세요'를 넣음. 주소 형식은 개발 전 실제 오픈빌더 화면으로 확인 | 06단계 OPEN-8이 08단계 안내로 전달함. 06단계 계약의 사유 후보 4개(스킬 주소·스킬 키 헤더·오픈빌더 배포·테스트 메시지 안 옴) 안에서 안내해 계약을 바꾸지 않음. 실제 오픈빌더 화면은 이번에 확인하지 못해(동희님 PC 확인 필요) 확인 전 문구로 둠 | 봇 ID 없이 스킬 키만으로 연결: 사장님이 찾을 것이 줄지만 06단계 API-031 계약이 바뀜 |
+| W8 | 결제 안내에 '결제했어요' 바로가기 | 결제 안내(SCR-005) 말풍선 아래에 바로가기 '결제했어요'를 두고, 누르면 그 말이 상담으로 가서 결제 확인 요청 카드(SCR-006)가 나옴 | SPEC-033은 손님이 말해야 카드가 나옴. 바로가기는 말을 대신 보낼 뿐 명령을 내리지 않아 R9(손님이 눌러야 명령)와 맞음 | 바로가기 없음: 손님이 직접 써야 함 |
+| W9 | 운영자 화면의 로그인 끊김(SCR-047~049) | 운영자 로그인이 없거나 만료됐거나 운영자 계정이 아니면(401) 운영자 로그인(SCR-046)으로 보내고, 로그인하면 원래 화면으로 돌아옴. 보내기 전에도 운영자 기록은 하나도 보이지 않음 | 06단계 DEC-11이 'SPEC-001의 운영자 화면은 운영자 계정이 아니면 찾을 수 없음'을 '운영자 기록을 0건 보인다'로 읽고 화면 디자인을 08단계로 전달함. 세션이 끊긴 운영자와 운영자가 아닌 사람을 서버가 구별하지 않으므로 같은 화면을 보임 | '찾을 수 없어요' 화면: SPEC-001 문구 그대로지만, 세션이 끊긴 운영자도 주소를 직접 쳐서 로그인 화면으로 가야 함 |
+<!-- 08-screens:decisions:end -->
+
+## 8. 06·07단계와의 정합성
+
+- 06단계 계약과 07단계 사이트맵은 바꾸지 않았습니다. 화면 정의는 계약의 응답 740행을 빠짐없이 다루고(검사 C6), 머리말의 경로·접근 권한·SPEC·API는 사이트맵과 같습니다(검사 C2).
+- 계약 예시 밖에서 화면이 나눈 응답은 3행입니다: `API-045#200:status=payment_overdue`(결제 기한 지난 주문, SCR-023), `API-007#201:purpose=design_image`(도안 그림 올리기, SCR-036), `API-013#200:licenseStatus=verified`(이미 확인된 가게, SCR-048). 응답 형식은 계약 그대로이고 값으로만 나눕니다.
+- OPEN-6(운영자 인증 서비스)은 아직 열려 있어, SCR-046은 이메일·비밀번호·2단계 인증 번호를 받는 화면으로 두었습니다. 고른 서비스가 자기 로그인 화면을 쓰면 SCR-046은 그 화면으로 보내는 버튼 하나가 되고 그때 정의를 다시 씁니다(SCR-046 케이스 유형 '외부 서비스').
+- OPEN-8(봇 ID 찾기)은 W7로 정했습니다. 오픈빌더 주소에서 봇 ID를 찾는 위치는 이번에 실제 화면으로 확인하지 못해, 개발 전에 동희님 PC에서 실제 오픈빌더 화면으로 확인할 항목으로 남깁니다.
+- 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
+
+## 9. 검사
+
+`python3 -B research/cake-screens-2026-11/check_screens.py . --hub <허브의 hub.py>`를 2026-11-13 09:27 KST에 다시 생성한 파일(11절의 체크포인트 뒤 고친 것 포함)에 실행한 결과: 검사 15개 통과 15, 실패 0, 미확인 0. `--hub`를 주지 않으면 C14는 '미확인'입니다.
+
+| 검사 | 결과 |
+| --- | --- |
+| C1 파일 | 화면 정의 49개(사이트맵 화면 49개와 같음), README, 와이어프레임 |
+| C2 머리말 | 경로·접근 권한·상위 화면·SPEC·API·와이어프레임 링크가 사이트맵과 같음 |
+| C3 목적과 플로우 | 목적 끝의 플로우 ID가 사이트맵과 같음. 플로우 노드 없음 5개는 사유가 있음 |
+| C4 데이터·액션 | 데이터 172행 모두 출처(API나 화면 안 값), 액션 132행 모두 결과와 실패 |
+| C5 기본 상태 | 화면마다 기본 상태 여섯이 상태나 '해당 없음'(이유)에 한 번씩. 그린 상태 336개, 상태 이름 22개 |
+| C6 응답 전수 | `openapi.yaml`을 따로 읽어 대조. 응답 행 740개(※ 화면이 나눈 행 3, 카카오 스킬 168, 기본값과 다르게 정한 행 93) |
+| C7 케이스 유형·긴 글 | 화면마다 케이스 유형과 '화면 상태' 행, 긴 글과 좁은 화면 행 |
+| C8 상태 참조 | `SCR-xxx#상태` 참조 1515곳이 모두 그 화면에 있는 상태 |
+| C9 와이어프레임 | 프레임 672개(상태 336 × 360·1280), 바깥 자원 없음, 1.2MB |
+| C10 06단계 문구 | 확인 문구 6개가 06단계와 같음. 손님 문구 37개(같음 29, 08단계에서 바꿈 5, 설명 3) |
+| C11 용어집 금지어 | 0(허용 예외 661곳: 주문 확정·운영규정 확정·예약 링크 등 06·07단계에서 쓰는 말과 06단계 오류 문구) |
+| C12 예전 말 | 01~07 용어 정리 전의 말(규칙 33개) 0, 생성 파일과 원본 모두 |
+| C13 생성 파일 | 원본에서 다시 생성한 것과 같음(51개) |
+| C14 허브 | CORTHEX 허브 스냅숏이 08단계 파일 50개를 읽고 화면마다 화면 정의와 같은 상태(336개)를 읽음 |
+| C15 07단계 검사 | `check_sitemap.py` 검사 17개: 통과 16, 실패 0, 미확인 1(허브 파서 옵션 없이 실행) |
+
+- 저장소를 임시 폴더에 복사해 오류를 하나씩 넣었을 때 검사가 22가지를 모두 잡았습니다: 화면 정의 파일 삭제, 머리말 경로, 목적의 플로우 ID, 액션의 빈 실패 셀, 다른 화면 API를 쓴 데이터 출처, '해당 없음' 행 삭제, 정의되지 않은 상태 이름, 응답 행 삭제, 계약에 없는 응답, 상태 목록에 없는 상태로 이끄는 응답, 케이스 유형의 '화면 상태' 행 삭제, 긴 글 행의 빈 셀, 없는 상태를 가리키는 참조, 프레임 삭제, 바깥 스크립트, 확인 문구 한 글자, 이유 없이 바꾼 손님 문구, 금지어, 예전 말, 생성 표 수기 수정, 허브가 다른 상태를 읽는 표기, 07단계 사이트맵의 틀린 접근 권한 값.
+- 와이어프레임 페이지를 Playwright(Chromium)로 49개 화면 모두 1440×900·390×844, 라이트·다크 모드에서 열어 196번 확인했습니다: 가로 스크롤 0, 콘솔 오류 0. 1280 두 열 배치 6개 화면과 360 사진 격자는 프레임을 캡처해 눈으로 확인했습니다.
+- 체크포인트 뒤 고친 결과 상태 7곳(11절)은 프레임 14개에서 입력 필드 0개, 결과 배너 밖 버튼 0개를 확인했고, SCR-021·024·048의 결과 프레임을 캡처해 눈으로 확인했습니다. 콘솔 오류 0.
+- 확인하지 못한 것: 카카오톡 말풍선·카드는 실제 카카오톡이 아니라 비슷하게 그린 회색 상자입니다(실제 글자 수 한도와 줄바꿈은 09·11단계에서 확인). 오픈빌더 화면(W7)과 운영자 인증 서비스(OPEN-6)는 확인 전입니다. 06단계 `check_api.py`는 계약 파일이 바뀌지 않아 다시 돌리지 않았습니다.
+
+## 10. 다음 단계로 전달하는 것
+
+- 09단계(목업): 화면 정의와 와이어프레임을 따라 디자인 토큰을 정하고 화면마다 시안 2개로 시작합니다. 상태 336개 가운데 화면 모습이 크게 다른 것(빈 상태, 오류, 확인 창, 카드 기한, 채널 친구가 아닐 때)을 시안에 함께 넣습니다.
+- 와이어프레임의 블록(카드, 표, 폼, 배너, 확인 창, 카카오 카드·바로가기)은 09단계 컴포넌트 목록의 출발점입니다.
+- 개발 전 확인: W7의 오픈빌더 주소 형식(동희님 PC), OPEN-6 운영자 인증 서비스.
+
+## 11. 체크포인트
+
+- 질문(2026-11-13 03:10, 이 작업 대화의 결정 카드): "화면 정의 49개와 결정 사항 W1~W9를 추천대로 확정할까요?" 선택지는 '추천대로 확정'(추천), '고칠 것 말씀'.
+- 답(2026-11-13 09:13, 동희님): 결정 카드에서 '추천대로 확정'을 고르심. 화면 정의 49개(상태 336개, 06단계 응답 740행 연결)와 결정 사항 W1~W9를 추천안대로 확정하셨습니다. W7의 봇 ID 찾는 위치는 확인 전 문구 그대로 확정했고, 개발 전에 동희님 PC의 실제 오픈빌더 화면으로 확인합니다(10절). 확인을 요청한 뒤 PR #17에 달린 댓글과 코드 검토 의견은 없었습니다.
+- 체크포인트 뒤 고친 것(2026-11-13 09:19에 받은 PR #17 자동 코드 검토 의견 2건): SCR-025의 입력 규칙이 '환불 없음'까지 막던 문구를 06단계 계약(API-050, 환불 없음은 금액 0원)에 맞게 고쳤습니다. SCR-048의 결과 상태 와이어프레임에 보류 사유 필드와 '확인됨'·'보류' 버튼이 보이던 것을 화면 정의대로 고쳐 버튼 없이 확인한 운영자·시각을 보입니다(M7). 같은 종류로 화면 정의에 읽기 전용이라고 적은 결과 상태 6곳(SCR-017·021·024·026·027·029의 done)도 와이어프레임에서 입력 필드와 버튼을 빼고 남긴 값을 보이게 고쳤습니다. 화면 정의의 내용, 결정 사항 W1~W9, 상태 336개, 응답 740행, 프레임 672개는 그대로입니다.
+- 기록: 이 절, `.corthex/stages.json`의 08단계, Notion 08단계 기록 행(https://app.notion.com/p/416bf16cc3ec81f390afc8e14560e86c).
