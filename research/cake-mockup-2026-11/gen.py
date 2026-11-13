@@ -30,7 +30,7 @@ FONT = {
     "b": "https://fonts.googleapis.com/css2?family=Gothic+A1:wght@700;800&amp;family=Noto+Sans+KR:wght@400;500;700&amp;display=swap",
 }
 ROOT = ("color: var(--color-ink); font-family: var(--font-family-base); font-size: var(--font-size-body); "
-        "line-height: var(--font-line-height-body); word-break: keep-all; overflow-wrap: break-word; "
+        "line-height: var(--font-line-height-body); word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; "
         "font-variant-numeric: tabular-nums")
 
 # ── data from the stage 06 examples ──────────────────────────────────────────────
@@ -50,8 +50,8 @@ def day_status(d):
 PRICE = [
     ("크기", [("1호", "", "35,000원", False, ""), ("2호", "", "45,000원", False, "")]),
     ("맛", [("생크림", "", "+0원", False, ""), ("초코", "", "+3,000원", False, "")]),
-    ("디자인", [("기본 레터링", "도안 하트 레터링", "+0원", False, "도안 하트 레터링 사진"),
-               ("캐릭터 그림", "도안 곰돌이", "+20,000원부터", True, "도안 곰돌이 사진")]),
+    ("디자인", [("기본 레터링", "도안 하트 레터링", "+0원", False, "도안 하트 레터링 그림"),
+               ("캐릭터 그림", "도안 곰돌이", "+20,000원부터", True, "도안 곰돌이 그림")]),
     ("추가", [("초 추가", "", "+1,000원", False, ""), ("2단", "", "+40,000~60,000원", True, "")]),
 ]
 SHOP_INFO = [("상호", "달빛케이크"), ("대표자", "김달빛"), ("연락처", "010-1234-5678"),
@@ -60,7 +60,7 @@ SHOP_INFO = [("상호", "달빛케이크"), ("대표자", "김달빛"), ("연락
 TASKS = [  # API-040 items, oldest first
     {"kind": "에스컬레이션 건", "summary": "먹어도 되는지 묻는 질문", "order": "", "opened": "11월 12일 12:40",
      "wait": "waiting", "href": "#SCR-017"},
-    {"kind": "결제 확인 요청", "summary": "입금 확인 요청 36,000원", "order": "K7Q3M9", "opened": "11월 12일 13:40",
+    {"kind": "결제 확인 요청", "summary": "결제 확인 요청 36,000원", "order": "K7Q3M9", "opened": "11월 12일 13:40",
      "wait": "", "href": "#SCR-029"},
     {"kind": "맞춤 주문", "summary": "맞춤 주문 11/20 16:00, 그날 남은 자리 0", "order": "P4X8N2",
      "opened": "11월 12일 14:10", "wait": "late", "href": "#SCR-022"},
@@ -112,9 +112,19 @@ LINE = "var(--border-width-hairline) solid var(--color-line)"
 class A:
     key, padpx, pad, bg = "a", 32, "var(--space-xxl)", "var(--color-paper)"
 
+    # A figure takes two rows of the board grid (caption, frame) as a subgrid, so frames start on one line
+    # even when a caption wraps.
+    FIG = "margin: 0; grid-row: span 2; display: grid; grid-template-rows: subgrid; row-gap: var(--space-sm); align-items: start"
+
+    @staticmethod
+    def caption(text):
+        """A caption breaks only after a ' · ' separator, and the dot stays at the end of the line."""
+        return "&nbsp;· ".join(part.replace(" ", "&nbsp;") for part in text.split(" · "))
+
     def fig(self, caption, inner):
-        return ('<figure style="margin: 0; display: flex; flex-direction: column; gap: var(--space-sm)">\n'
-                '<figcaption style="font-size: var(--font-size-small); font-weight: var(--font-weight-semibold)">'
+        caption = self.caption(caption)
+        return ('<figure style="' + self.FIG + '">\n'
+                '<figcaption style="font-size: var(--font-size-small); font-weight: var(--font-weight-semibold); text-wrap: balance">'
                 + caption + '</figcaption>\n' + inner + '\n</figure>')
 
     def h2(self, text, ident=""):
@@ -289,19 +299,29 @@ class A:
                          + '</dt><dd style="margin: 0">' + v + '</dd></div>' for k, v in SHOP_INFO)
         card = "padding: var(--space-lg); border: " + LINE + "; border-radius: var(--radius-md); background: var(--color-surface)"
         return ('<aside style="display: flex; flex-direction: column; gap: var(--space-lg)">\n'
-                '<div style="display: flex; flex-direction: column; gap: var(--space-sm); ' + card + '">'
-                + self.btn("primary", "문의하기", h="var(--size-control-lg)", full=True, size="title")
-                + '<span style="font-size: var(--font-size-small); color: var(--color-ink-muted); text-align: center">가게 카카오톡 채널 상담이 열려요</span></div>\n'
+                + self.btn("primary", "문의하기", h="var(--size-control-lg)", full=True, size="title") + '\n'
                 '<section style="display: flex; flex-direction: column; gap: var(--space-sm); ' + card + '">' + self.h2("가게 정보")
                 + '<dl style="margin: 0; font-size: var(--font-size-small)">\n' + rows + '\n</dl></section>\n'
                 '<a href="#privacy" style="align-self: flex-start; min-height: var(--size-target); display: inline-flex; align-items: center; '
                 'font-size: var(--font-size-small); text-underline-offset: var(--space-xs)">개인정보 처리방침 보기</a>\n</aside>')
 
     # owner screens
-    def phone(self, header, body, footer="", overlay="", full=False):
-        size = "width: 360px" if full else "width: 360px; height: 800px; position: relative; overflow: hidden"
-        return ('<div style="' + size + '; display: flex; flex-direction: column; background: var(--color-paper)">\n' + header + '\n'
-                '<main style="flex: 1 1 auto; display: flex; flex-direction: column">\n' + body + '\n</main>\n' + footer + overlay + '\n</div>')
+    def phone(self, header, body, footer="", overlay="", full=False, at_end=False):
+        """A 360 screen. full=True grows to its content. Otherwise it is 360 × 800: <main> scrolls between the top bar and
+        the footer, so the footer stays at the bottom and covers nothing. at_end shows <main> scrolled to its end
+        (column-reverse puts the start of the scroll at the bottom)."""
+        if full:
+            frame, scroll = "width: 360px", ""
+        else:
+            frame = "width: 360px; height: 800px; position: relative; overflow: hidden"
+            scroll = "; min-height: 0; overflow-y: auto; scrollbar-width: none"
+        if at_end:
+            main = ('<main style="flex: 1 1 auto' + scroll + '; display: flex; flex-direction: column-reverse">\n'
+                    '<div style="display: flex; flex-direction: column">\n' + body + '\n</div>\n</main>')
+        else:
+            main = '<main style="flex: 1 1 auto' + scroll + '; display: flex; flex-direction: column">\n' + body + '\n</main>'
+        return ('<div style="' + frame + '; display: flex; flex-direction: column; background: ' + self.bg + '">\n' + header + '\n'
+                + main + '\n' + footer + overlay + '\n</div>')
 
     def topbar(self, title, lead):
         icon, aria = (svg("menu", 22), "메뉴 열기") if lead == "menu" else (svg("back", 22), "뒤로")
@@ -447,9 +467,8 @@ class A:
         photos = "\n".join(self.photo("참고 사진 %d 크게 보기" % i, "참고 사진 %d" % i, "aspect-ratio: 1") for i in (1, 2, 3))
         return '<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-sm)">\n' + photos + '\n</div>'
 
-    def actions(self, fixed):
-        pos = "position: absolute; left: 0; right: 0; bottom: 0; " if fixed else ""
-        return ('<div style="' + pos + 'display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); '
+    def actions(self):
+        return ('<div style="display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); '
                 'background: var(--color-surface); border-top: ' + LINE + '">'
                 + self.btn("primary", "수락", h="var(--size-control-lg)", full=True, size="title")
                 + '<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm)">'
@@ -462,7 +481,7 @@ class A:
                 + '<span style="flex: 1 1 0"></span>' + self.btn("danger", "거절", attrs=' aria-expanded="false"') + '</div>')
 
     def amount_panel(self):
-        return ('<div role="region" aria-labelledby="a-amt-h" style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; '
+        return ('<div role="region" aria-labelledby="a-amt-h" style="display: flex; '
                 'flex-direction: column; gap: var(--space-md); padding: var(--space-lg); background: var(--color-surface); '
                 'border-top: var(--border-width-strong) solid var(--color-ink)">\n'
                 + self.h2("금액 변경 수락", "a-amt-h") + '\n'
@@ -470,7 +489,7 @@ class A:
                 '바꾼 금액</label><div style="display: flex; align-items: center; gap: var(--space-xs); height: var(--size-control); '
                 'padding-inline: var(--space-md); border: var(--border-width-hairline) solid var(--color-accent); border-radius: var(--radius-sm); '
                 'background: var(--color-surface); outline: var(--border-width-strong) solid var(--color-accent); outline-offset: var(--space-xxs)">'
-                '<input id="a-amt" inputmode="numeric" value="75,000" aria-describedby="a-amt-d" style="flex: 1 1 0; min-width: 0; border: 0; '
+                '<input id="a-amt" inputmode="numeric" value="75,000" aria-describedby="a-amt-d" style="flex: 1 1 0; align-self: stretch; min-width: 0; padding: 0; border: 0; '
                 'background: transparent; font: inherit; color: var(--color-ink); text-align: right; outline: none">'
                 '<span style="color: var(--color-ink-muted)">원</span></div><span id="a-amt-d" style="font-size: var(--font-size-small); '
                 'color: var(--color-ink-muted)">요청 금액 70,000원 · 1원~1,000만 원</span></div>\n'
@@ -506,8 +525,9 @@ class B(A):
     key, padpx, pad, bg = "b", 48, "var(--space-xxxl)", "var(--color-bg)"
 
     def fig(self, caption, inner):
-        return ('<figure style="margin: 0; display: flex; flex-direction: column; gap: var(--space-sm)">\n'
-                '<figcaption style="font-size: var(--font-size-small); font-weight: var(--font-weight-bold)">'
+        caption = self.caption(caption)
+        return ('<figure style="' + self.FIG + '">\n'
+                '<figcaption style="font-size: var(--font-size-small); font-weight: var(--font-weight-bold); text-wrap: balance">'
                 + caption + '</figcaption>\n' + inner + '\n</figure>')
 
     def h2(self, text, ident=""):
@@ -667,20 +687,12 @@ class B(A):
                          'color: var(--color-ink-muted)">' + k + '</dt><dd style="margin: 0; font-weight: var(--font-weight-medium)">'
                          + v + '</dd></div>' for k, v in SHOP_INFO)
         return ('<aside style="display: flex; flex-direction: column; gap: var(--space-lg)">\n'
-                '<div style="display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-xl); border-radius: var(--radius-lg); '
-                'background: var(--color-surface); box-shadow: var(--shadow-raised)">'
-                + self.btn("primary", "문의하기", full=True, size="title")
-                + '<span style="font-size: var(--font-size-small); color: var(--color-ink-muted); text-align: center">가게 카카오톡 채널 상담이 열려요</span></div>\n'
+                + self.btn("primary", "문의하기", full=True, size="title") + '\n'
                 '<section style="display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-xl); border-radius: var(--radius-lg); '
                 'background: var(--color-surface); box-shadow: var(--shadow-card)">' + self.h2("가게 정보")
                 + '<dl style="margin: 0; display: flex; flex-direction: column; gap: var(--space-md)">\n' + rows + '\n</dl></section>\n'
                 '<a href="#privacy" style="align-self: flex-start; min-height: var(--size-target); display: inline-flex; align-items: center; '
                 'font-size: var(--font-size-small); text-underline-offset: var(--space-xs)">개인정보 처리방침 보기</a>\n</aside>')
-
-    def phone(self, header, body, footer="", overlay="", full=False):
-        size = "width: 360px" if full else "width: 360px; height: 800px; position: relative; overflow: hidden"
-        return ('<div style="' + size + '; display: flex; flex-direction: column; background: var(--color-bg)">\n' + header + '\n'
-                '<main style="flex: 1 1 auto; display: flex; flex-direction: column">\n' + body + '\n</main>\n' + footer + overlay + '\n</div>')
 
     def topbar(self, title, lead):
         icon, aria = (svg("menu", 24), "메뉴 열기") if lead == "menu" else (svg("back", 24), "뒤로")
@@ -807,9 +819,8 @@ class B(A):
         return ('<div style="display: flex; gap: var(--space-sm); overflow-x: auto; margin-inline: calc(-1 * var(--space-lg)); '
                 'padding-inline: var(--space-lg)">\n' + photos + '\n</div>')
 
-    def actions(self, fixed):
-        pos = "position: absolute; left: 0; right: 0; bottom: 0; " if fixed else ""
-        return ('<div style="' + pos + 'display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); '
+    def actions(self):
+        return ('<div style="display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); '
                 'background: var(--color-surface); box-shadow: var(--shadow-raised)">'
                 + self.btn("primary", "수락", full=True, size="title")
                 + '<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm)">'
@@ -823,7 +834,7 @@ class B(A):
                 + '<span style="flex: 1 1 0"></span>' + self.btn("danger", "거절", attrs=' aria-expanded="false"') + '</div>')
 
     def amount_panel(self):
-        return ('<div role="region" aria-labelledby="b-amt-h" style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; '
+        return ('<div role="region" aria-labelledby="b-amt-h" style="display: flex; '
                 'flex-direction: column; gap: var(--space-md); padding: var(--space-xl) var(--space-lg) var(--space-lg); background: var(--color-surface); '
                 'border-radius: var(--radius-lg) var(--radius-lg) 0 0; box-shadow: var(--shadow-raised)">\n'
                 + self.h2("금액 변경 수락", "b-amt-h") + '\n'
@@ -831,7 +842,7 @@ class B(A):
                 '바꾼 금액</label><div style="display: flex; align-items: center; gap: var(--space-xs); height: var(--size-control); '
                 'padding-inline: var(--space-lg); border: var(--border-width-hairline) solid var(--color-accent); border-radius: var(--radius-sm); '
                 'background: var(--color-surface); outline: var(--border-width-strong) solid var(--color-accent); outline-offset: var(--border-width-strong)">'
-                '<input id="b-amt" inputmode="numeric" value="75,000" aria-describedby="b-amt-d" style="flex: 1 1 0; min-width: 0; border: 0; '
+                '<input id="b-amt" inputmode="numeric" value="75,000" aria-describedby="b-amt-d" style="flex: 1 1 0; align-self: stretch; min-width: 0; padding: 0; border: 0; '
                 'background: transparent; font: inherit; color: var(--color-ink); text-align: right; outline: none">'
                 '<span style="color: var(--color-ink-muted)">원</span></div><span id="b-amt-d" style="font-size: var(--font-size-small); '
                 'color: var(--color-ink-muted)">요청 금액 70,000원 · 1원~1,000만 원</span></div>\n'
@@ -886,9 +897,11 @@ def scr022_phone(T):
                        T.band(T.head("요청 내용") + "\n" + T.kv(REQUEST)),
                        T.band(T.head("가게 규칙 계산") + "\n" + T.quote())])
     top = T.topbar("맞춤 주문 검토", "back")
-    return [T.fig("SCR-022#normal · 360 · 전체 길이 (버튼 셋은 화면 아래 고정)", T.phone(top, bands, footer=T.actions(False), full=True)),
-            T.fig("SCR-022#normal · 360 × 800 · 금액 변경 수락을 누른 뒤", T.phone(top, bands, footer=T.amount_panel())),
-            T.fig("SCR-022#confirm · 360 × 800 · 그날 남은 자리가 없을 때", T.phone(top, bands, footer=T.actions(True), overlay=T.confirm()))], 3
+    return [T.fig("SCR-022#normal · 360 · 전체 길이 (버튼 셋은 화면 아래 고정)", T.phone(top, bands, footer=T.actions(), full=True)),
+            T.fig("SCR-022#normal · 360 × 800 · 금액 변경 수락을 누른 뒤",
+                  T.phone(top, bands, footer=T.amount_panel(), at_end=True)),
+            T.fig("SCR-022#confirm · 360 × 800 · 그날 남은 자리가 없을 때",
+                  T.phone(top, bands, footer=T.actions(), overlay=T.confirm(), at_end=True))], 3
 
 
 def scr022_wide(T):
@@ -926,7 +939,8 @@ def page(T, title, width, height, figures):
             '<link rel="stylesheet" href="' + FONT[T.key] + '">\n<style>\nbody{margin:0}\n'
             'a{color:var(--color-accent)}a:hover{color:var(--color-accent-pressed)}\n</style>\n</helmet>\n')
     root = ('<div data-tokens="' + T.key + '" style="' + VARS[T.key] + ' width: ' + str(width) + 'px; box-sizing: border-box; padding: '
-            + T.pad + '; display: flex; gap: ' + T.pad + '; align-items: flex-start; background: var(--color-line); ' + ROOT + '">\n\n')
+            + T.pad + '; display: grid; grid-auto-flow: column; grid-auto-columns: min-content; grid-template-rows: auto auto; '
+            'column-gap: ' + T.pad + '; align-items: start; background: var(--color-line); ' + ROOT + '">\n\n')
     tail = ('\n\n</div>\n</x-dc>\n<script type="text/x-dc" data-dc-script data-props=\'{"$preview":{"width":' + str(width)
             + ',"height":' + str(height) + '}}\'>\nclass Component extends DCLogic {\nrenderVals() {\nreturn {};\n}\n}\n</script>\n</body>\n</html>\n')
     return head + root + "\n\n".join(figures) + tail
