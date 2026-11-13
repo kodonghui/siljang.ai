@@ -92,21 +92,22 @@ CREATE INDEX shops_business_reg_no_idx ON shops (business_reg_no); -- 같은 사
 CREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending'; -- 운영자 확인 목록(SPEC-003)
 COMMENT ON TABLE shops IS 'TBL-003 가게(TERM-053): 영업 신고·처리 위탁 동의·예약 링크와 가게가 정하는 시간 값';
 
--- TBL-004 kakao_channels (CTX-007) ← SPEC-008, SPEC-010, SPEC-011, SPEC-017, SPEC-066, SPEC-068 | terms: TERM-053
+-- TBL-004 kakao_channels (CTX-007) ← SPEC-008, SPEC-010, SPEC-011, SPEC-017, SPEC-066, SPEC-068, SPEC-075 | terms: TERM-053
 CREATE TABLE kakao_channels (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 채널 연결 ID
   shop_id            uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 채널을 묶은 가게
   bot_id             text NOT NULL,                      -- 오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 키(SPEC-017)
   channel_public_id  text,                               -- 채널 공개 ID. 예약 링크 페이지의 문의 버튼이 여는 채팅 주소(SPEC-011)
   status             text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'linked', 'failed', 'retired')), -- 연결 확인 중·연결됨·연결 안 됨·바꿔서 그만 받음(SPEC-008)
-  check_started_at   timestamptz,                        -- '연결 확인'을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 넷이 와야 함)
+  check_started_at   timestamptz,                        -- '연결 확인'을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 다섯이 와야 함)
   linked_at          timestamptz,                        -- 연결됨이 된 시각
   retired_at         timestamptz,                        -- 다른 채널로 바꿔 더 받지 않게 된 시각
-  card_block_id      text CHECK (char_length(card_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '확인 카드' 블록 ID. 확인 카드 버튼이 부름(SPEC-008, REQ-179)
+  card_block_id      text CHECK (char_length(card_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '확인 카드' 블록 ID. 확인 카드 버튼이 부름(SPEC-008, REQ-206)
   orderer_block_id   text CHECK (char_length(orderer_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '주문자 정보' 블록 ID. 주문자 정보 카드 버튼이 부름(SPEC-072)
+  allergy_block_id   text CHECK (char_length(allergy_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '알레르기 답' 블록 ID. 알레르기 정보 동의 카드의 버튼이 부르고 AI를 거치지 않고 답을 받음(SPEC-075, REQ-202, REQ-206)
   depositor_block_id text CHECK (char_length(depositor_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '입금자 이름' 블록 ID. 결제 확인 요청 카드 버튼이 부름(SPEC-033)
   review_block_id    text CHECK (char_length(review_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '후기' 블록 ID. 후기 부탁 버튼이 부름(SPEC-061)
-  verified_blocks    text[] NOT NULL DEFAULT '{}' CHECK (verified_blocks <@ ARRAY['card', 'orderer_info', 'depositor_name', 'review']::text[]), -- 연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록(REQ-179)
+  verified_blocks    text[] NOT NULL DEFAULT '{}' CHECK (verified_blocks <@ ARRAY['card', 'orderer_info', 'allergy_answer', 'depositor_name', 'review']::text[]), -- 연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록(REQ-206)
   test_user_key      text CHECK (char_length(test_user_key) BETWEEN 1 AND 100), -- 연결 확인 때 테스트 메시지를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008)
   event_status       text NOT NULL DEFAULT 'unchecked' CHECK (event_status IN ('unchecked', 'checking', 'ready', 'unavailable')), -- 먼저 보내기(Event API): 아직 안 봄·시험 중·됨·안 됨. 안 되면 손님 안내는 다음 대화 때(REQ-180, REQ-181)
   event_task_id      text CHECK (char_length(event_task_id) BETWEEN 1 AND 100), -- 시험 안내의 카카오 taskId. 발송 결과 조회에 씀(REQ-182)
@@ -116,7 +117,7 @@ CREATE TABLE kakao_channels (
   CONSTRAINT kakao_channels_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT kakao_channels_linked_chk CHECK (status <> 'linked' OR linked_at IS NOT NULL),
   CONSTRAINT kakao_channels_retired_chk CHECK ((status = 'retired') = (retired_at IS NOT NULL)),
-  CONSTRAINT kakao_channels_blocks_chk CHECK (status <> 'linked' OR (card_block_id IS NOT NULL AND orderer_block_id IS NOT NULL AND depositor_block_id IS NOT NULL AND review_block_id IS NOT NULL AND verified_blocks @> ARRAY['card', 'orderer_info', 'depositor_name', 'review']::text[])), -- 연결됨이면 블록 ID 넷이 있고 시험 버튼으로 모두 닿음(REQ-179)
+  CONSTRAINT kakao_channels_blocks_chk CHECK (status <> 'linked' OR (card_block_id IS NOT NULL AND orderer_block_id IS NOT NULL AND allergy_block_id IS NOT NULL AND depositor_block_id IS NOT NULL AND review_block_id IS NOT NULL AND verified_blocks @> ARRAY['card', 'orderer_info', 'allergy_answer', 'depositor_name', 'review']::text[])), -- 연결됨이면 블록 ID 다섯이 있고 시험 버튼으로 모두 닿음(REQ-206)
   CONSTRAINT kakao_channels_event_chk CHECK ((event_status = 'unavailable') = (event_fail_reason IS NOT NULL) AND (event_status <> 'checking' OR event_task_id IS NOT NULL) AND (event_status NOT IN ('ready', 'unavailable') OR event_checked_at IS NOT NULL) AND (event_status = 'unchecked' OR status IN ('linked', 'retired'))) -- 시험 안내는 연결된 뒤. 안 됨에는 사유, 시험 중에는 taskId, 결과에는 받은 시각(REQ-180)
 );
 CREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked'); -- 채널 하나는 가게 하나에만('이미 다른 가게', SPEC-008)
@@ -395,7 +396,7 @@ CREATE TABLE masked_values (
 );
 COMMENT ON TABLE masked_values IS 'TBL-019 마스킹 원본 값: 플레이스홀더와 암호화한 원래 값(전화번호·계좌번호)과 끝 4자리, 그 가게 사장님 화면과 사유를 적고 연 운영자에게만';
 
--- TBL-020 order_drafts (CTX-001) ← SPEC-013, SPEC-019, SPEC-020, SPEC-025, SPEC-027, SPEC-028, SPEC-029, SPEC-065, SPEC-072 | terms: TERM-003, TERM-057
+-- TBL-020 order_drafts (CTX-001) ← SPEC-013, SPEC-019, SPEC-020, SPEC-025, SPEC-027, SPEC-028, SPEC-029, SPEC-065, SPEC-072, SPEC-075 | terms: TERM-003, TERM-057
 CREATE TABLE order_drafts (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 초안 ID
   shop_id               uuid NOT NULL,                   -- 가게
@@ -413,7 +414,10 @@ CREATE TABLE order_drafts (
   design_notes          text CHECK (char_length(design_notes) <= 500), -- 손님이 말한 디자인 설명
   lettering             text CHECK (char_length(lettering) <= 50), -- 문구(TERM-021), 50자까지(AI-1)
   colors                text CHECK (char_length(colors) <= 100), -- 색
-  allergy_answer        text CHECK (char_length(allergy_answer) BETWEEN 1 AND 200), -- 알레르기 답('없음'도 답, REQ-013). 이 주문 밖에서 쓰지 않음(REQ-142)
+  allergy_answer        text CHECK (char_length(allergy_answer) BETWEEN 1 AND 200), -- 알레르기 답('없음'도 답, REQ-200). 알레르기 정보에 동의한 뒤 전용 블록으로 AI를 거치지 않고 받음(SPEC-075, REQ-202). AI로 보내지 않고(REQ-204) 이 주문 밖에서 쓰지 않음(REQ-142)
+  allergy_consent       text CHECK (allergy_consent IN ('agreed', 'declined', 'not_required')), -- 알레르기 정보 동의: 동의함·동의 안 함·동의 필요 없음(배포 설정으로 동의 단계를 끔, REQ-205). 비어 있으면 아직 묻지 않음(SPEC-075). 잠정, 5-2 질문 4
+  allergy_consent_version text CHECK (char_length(allergy_consent_version) BETWEEN 1 AND 20), -- 손님이 본 알레르기 정보 동의 글의 버전. 동의함·동의 안 함에만(REQ-201)
+  allergy_consent_at    timestamptz,                     -- 동의함·동의 안 함을 누른 시각, 동의 필요 없음이면 알레르기 답 블록을 연 시각(REQ-201, REQ-205)
   excluded_ingredients  text CHECK (char_length(excluded_ingredients) <= 200), -- 빼야 할 재료
   customer_name         text CHECK (char_length(customer_name) BETWEEN 1 AND 30), -- 주문자 이름(SPEC-064·065가 말하는 주문의 이름). 주문 요청 확인 카드 전에 AI를 거치지 않는 입력으로 받음(SPEC-072, REQ-175). AI로 보내지 않음(REQ-178)
   customer_phone        text CHECK (customer_phone ~ '^[0-9-]{8,14}$'), -- 주문자 연락처(픽업·급한 연락). 주문 요청 확인 카드 전에 AI를 거치지 않는 입력으로 받음(SPEC-072, REQ-175). AI로 보내지 않음(REQ-178)
@@ -427,7 +431,9 @@ CREATE TABLE order_drafts (
   CONSTRAINT order_drafts_flavor_fk FOREIGN KEY (price_list_id, flavor_option_id) REFERENCES price_options (price_list_id, id) ON DELETE RESTRICT,
   CONSTRAINT order_drafts_design_option_fk FOREIGN KEY (price_list_id, design_option_id) REFERENCES price_options (price_list_id, id) ON DELETE RESTRICT,
   CONSTRAINT order_drafts_design_fk FOREIGN KEY (price_list_id, design_id) REFERENCES designs (price_list_id, id) ON DELETE RESTRICT,
-  CONSTRAINT order_drafts_options_need_list_chk CHECK (price_list_id IS NOT NULL OR (size_option_id IS NULL AND flavor_option_id IS NULL AND design_option_id IS NULL AND design_id IS NULL AND extra_option_ids = '{}')) -- 옵션은 버전과 함께
+  CONSTRAINT order_drafts_options_need_list_chk CHECK (price_list_id IS NOT NULL OR (size_option_id IS NULL AND flavor_option_id IS NULL AND design_option_id IS NULL AND design_id IS NULL AND extra_option_ids = '{}')), -- 옵션은 버전과 함께
+  CONSTRAINT order_drafts_allergy_consent_chk CHECK ((allergy_consent IS NULL) = (allergy_consent_at IS NULL) AND coalesce(allergy_consent IN ('agreed', 'declined'), false) = (allergy_consent_version IS NOT NULL)), -- 동의의 답에는 시각이, 동의함·동의 안 함에는 동의 글 버전이(REQ-201)
+  CONSTRAINT order_drafts_allergy_answer_chk CHECK (allergy_answer IS NULL OR coalesce(allergy_consent IN ('agreed', 'not_required'), false)) -- 알레르기 답은 동의한 뒤나 동의 단계를 끈 배포에서만(REQ-200, REQ-203, REQ-205)
 );
 CREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active'; -- 상담마다 채우는 초안 하나
 COMMENT ON TABLE order_drafts IS 'TBL-020 주문서 초안(TERM-003): 상담에서 AI가 대화로 채우는 주문 항목';
@@ -535,15 +541,15 @@ CREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN 
 CREATE INDEX orders_purge_due_idx ON orders (finished_at) WHERE finished_at IS NOT NULL AND personal_data_purged_at IS NULL; -- 끝나고 30일 지난 주문 찾기(SPEC-065)
 COMMENT ON TABLE orders IS 'TBL-023 주문(TERM-001): 주문 요청부터 확정·변경·취소·받음까지의 상태와 버전';
 
--- TBL-024 confirm_cards (CTX-001) ← SPEC-028, SPEC-029, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-057, SPEC-058, SPEC-063, SPEC-065, SPEC-069, SPEC-072 | terms: none
+-- TBL-024 confirm_cards (CTX-001) ← SPEC-028, SPEC-029, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-053, SPEC-057, SPEC-058, SPEC-063, SPEC-065, SPEC-069, SPEC-072, SPEC-075 | terms: none
 CREATE TABLE confirm_cards (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 카드 ID
   shop_id          uuid NOT NULL,                        -- 가게
   consultation_id  uuid NOT NULL,                        -- 카드를 보낸 상담
   customer_id      uuid NOT NULL,                        -- 카드를 받은 사용자. 이 사용자만 누름(G9)
   card_key         text NOT NULL CHECK (char_length(card_key) BETWEEN 16 AND 64), -- 버튼에 포함한 카드 키(G2)
-  kind             text NOT NULL CHECK (kind IN ('order_request', 'payment_claim', 'change_request', 'cancel', 'issue_report', 'consent_withdrawal', 'orderer_info')), -- 주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)
-  draft_id         uuid,                                 -- 주문 요청·주문자 정보 카드의 초안
+  kind             text NOT NULL CHECK (kind IN ('order_request', 'payment_claim', 'change_request', 'cancel', 'issue_report', 'consent_withdrawal', 'orderer_info', 'allergy_info', 'photo_consent')), -- 주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)·알레르기 정보(SPEC-075, 주문자 정보 카드 앞에서 따로 동의를 받음)·사진 게시 동의(SPEC-053, 완성 사진 안내의 버튼)
+  draft_id         uuid,                                 -- 주문 요청·주문자 정보·알레르기 정보 카드의 초안
   draft_revision   integer,                              -- 묶인 초안 고친 번호(SPEC-028)
   order_id         uuid,                                 -- 대상 주문. 주문 요청 카드는 누른 뒤 생긴 주문
   order_version    integer,                              -- 묶인 주문 버전(G9)
@@ -558,8 +564,8 @@ CREATE TABLE confirm_cards (
   CONSTRAINT confirm_cards_customer_fk FOREIGN KEY (shop_id, customer_id) REFERENCES customers (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT confirm_cards_draft_fk FOREIGN KEY (shop_id, draft_id) REFERENCES order_drafts (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT confirm_cards_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
-  CONSTRAINT confirm_cards_draft_chk CHECK ((kind IN ('order_request', 'orderer_info')) = (draft_id IS NOT NULL AND draft_revision IS NOT NULL)),
-  CONSTRAINT confirm_cards_order_chk CHECK (kind IN ('order_request', 'orderer_info') OR (order_id IS NOT NULL AND order_version IS NOT NULL)),
+  CONSTRAINT confirm_cards_draft_chk CHECK ((kind IN ('order_request', 'orderer_info', 'allergy_info')) = (draft_id IS NOT NULL AND draft_revision IS NOT NULL)),
+  CONSTRAINT confirm_cards_order_chk CHECK (kind IN ('order_request', 'orderer_info', 'allergy_info') OR (order_id IS NOT NULL AND order_version IS NOT NULL)),
   CONSTRAINT confirm_cards_used_chk CHECK ((used_at IS NULL) = (outcome IS NULL)),
   CONSTRAINT confirm_cards_expiry_chk CHECK (expires_at > created_at AND expires_at <= created_at + interval '30 minutes') -- 30분 기한(G9)
 );
@@ -616,7 +622,10 @@ CREATE TABLE order_details (
   design_notes          text CHECK (char_length(design_notes) <= 500), -- 디자인 설명. 주문이 끝나고 30일 뒤 비움(SPEC-065)
   lettering             text CHECK (char_length(lettering) <= 50), -- 문구(TERM-021). 철자는 손님이 쓴 그대로(SPEC-028). 주문이 끝나고 30일 뒤 비움(SPEC-065)
   colors                text CHECK (char_length(colors) <= 100), -- 색
-  allergy_answer        text CHECK (char_length(allergy_answer) BETWEEN 1 AND 200), -- 알레르기 답. 이 주문 밖에서 쓰지 않고 장부에 적지 않음(REQ-142, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)
+  allergy_answer        text CHECK (char_length(allergy_answer) BETWEEN 1 AND 200), -- 알레르기 답. 알레르기 정보에 동의한 주문에만(REQ-200, REQ-203). 이 주문 밖에서 쓰지 않고 장부에 적지 않고 AI로 보내지 않음(REQ-142, REQ-204, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)
+  allergy_consent       text NOT NULL CHECK (allergy_consent IN ('agreed', 'declined', 'not_required')), -- 초안에서 옮긴 알레르기 정보 동의: 동의함·동의 안 함('알레르기 정보 동의 안 함'으로 보임, SPEC-050)·동의 필요 없음(REQ-201, REQ-205). 지우기는 이 동의 기록을 남김(SPEC-065)
+  allergy_consent_version text CHECK (char_length(allergy_consent_version) BETWEEN 1 AND 20), -- 손님이 본 알레르기 정보 동의 글의 버전. 동의함·동의 안 함에만(REQ-201)
+  allergy_consent_at    timestamptz NOT NULL,            -- 알레르기 정보 동의의 답을 남긴 시각(초안에서 옮김)
   excluded_ingredients  text CHECK (char_length(excluded_ingredients) <= 200), -- 빼야 할 재료. 주문이 끝나고 30일 뒤 비움(SPEC-065)
   customer_name         text CHECK (char_length(customer_name) BETWEEN 1 AND 30), -- 주문자 이름. 주문이 끝나고 30일 뒤 비우고 보관 기록으로 옮김(SPEC-065, REQ-185)
   customer_phone        text CHECK (customer_phone ~ '^[0-9-]{8,14}$'), -- 주문자 연락처. 주문이 끝나고 30일 뒤 지움(SPEC-065)
@@ -636,7 +645,9 @@ CREATE TABLE order_details (
   CONSTRAINT order_details_current_key UNIQUE (order_id, version, price_list_id, amount, pickup_at), -- orders가 현재 버전을 참조하는 키
   CONSTRAINT order_details_source_chk CHECK ((source = 'change_request') = (change_request_id IS NOT NULL)),
   CONSTRAINT order_details_first_chk CHECK ((version = 1) = (source IN ('request', 'remake'))), -- 첫 버전은 요청이나 재제작
-  CONSTRAINT order_details_amount_reason_chk CHECK ((source = 'owner_amount_change') = (amount_change_reason IS NOT NULL))
+  CONSTRAINT order_details_amount_reason_chk CHECK ((source = 'owner_amount_change') = (amount_change_reason IS NOT NULL)),
+  CONSTRAINT order_details_allergy_consent_chk CHECK ((allergy_consent IN ('agreed', 'declined')) = (allergy_consent_version IS NOT NULL)), -- 동의함·동의 안 함에는 동의 글 버전이(REQ-201)
+  CONSTRAINT order_details_allergy_answer_chk CHECK (allergy_answer IS NULL OR allergy_consent IN ('agreed', 'not_required')) -- 동의하지 않은 주문에는 알레르기 답이 없음(REQ-203)
 );
 COMMENT ON TABLE order_details IS 'TBL-026 주문 내용(TERM-004): 주문에 붙은 항목과 금액을 버전마다 한 행씩';
 
@@ -969,45 +980,57 @@ CREATE TABLE review_photos (
 );
 COMMENT ON TABLE review_photos IS 'TBL-039 후기 사진: 후기에 붙은 사진(5장까지)';
 
--- TBL-040 photo_consents (CTX-006) ← SPEC-028, SPEC-029, SPEC-062, SPEC-063 | terms: TERM-051
+-- TBL-040 photo_consents (CTX-006) ← SPEC-053, SPEC-062, SPEC-063 | terms: TERM-051
 CREATE TABLE photo_consents (
-  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 게시 동의 ID
-  shop_id          uuid NOT NULL,                        -- 가게
-  order_id         uuid NOT NULL,                        -- 주문
-  scope            text NOT NULL CHECK (scope IN ('order', 'review_photo')), -- 주문 요청 때 받은 동의(그 주문 케이크의 완성 사진)·후기 사진 한 장의 동의
-  review_photo_id  uuid,                                 -- 후기 사진의 동의면 그 사진
-  consented        boolean NOT NULL DEFAULT false,       -- 동의 여부. 기본 '동의 안 함'(REQ-096)
-  decided_at       timestamptz NOT NULL DEFAULT now(),   -- 답한 시각
-  withdrawn_at     timestamptz,                          -- 손님이 동의를 철회한 시각. 그 사진을 바로 내림(REQ-098)
+  id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 게시 동의 ID
+  shop_id              uuid NOT NULL,                    -- 가게
+  order_id             uuid NOT NULL,                    -- 주문
+  scope                text NOT NULL CHECK (scope IN ('completion_photo', 'review_photo')), -- 완성 사진 한 장의 동의(완성 사진 안내의 버튼, SPEC-053)·후기 사진 한 장의 동의(SPEC-062)
+  completion_photo_id  uuid,                             -- 완성 사진의 동의면 그 사진. 안내 하나의 답을 그 안내에 붙인 사진마다 남김(REQ-207)
+  review_photo_id      uuid,                             -- 후기 사진의 동의면 그 사진(REQ-208)
+  consented            boolean NOT NULL DEFAULT false,   -- 동의 여부. 기본 '동의 안 함'(REQ-207, REQ-208)
+  decided_at           timestamptz NOT NULL DEFAULT now(), -- 답한 시각
+  withdrawn_at         timestamptz,                      -- 손님이 동의를 철회한 시각. 그 사진을 포트폴리오에서 먼저 내린 뒤 씀(REQ-098, SPEC-063)
+  publishable          boolean NOT NULL DEFAULT false,   -- 포트폴리오에 올릴 수 있음: 동의했고 철회하지 않은 것과 늘 같음. 올라 있는 항목이 이 값을 참조해 올린 채로는 철회를 쓰지 못함(REQ-209, 4절 A26). 잠정, 5-2 질문 6
   CONSTRAINT photo_consents_shop_scope UNIQUE (shop_id, id),
+  CONSTRAINT photo_consents_live_key UNIQUE (shop_id, id, publishable), -- 포트폴리오 항목이 '게시 가능'인 동의를 참조하는 키
+  CONSTRAINT photo_consents_review_photo_key UNIQUE (shop_id, id, review_photo_id), -- 포트폴리오 항목의 후기 사진이 이 동의의 사진인지 보는 키
+  CONSTRAINT photo_consents_completion_photo_key UNIQUE (shop_id, id, completion_photo_id), -- 포트폴리오 항목의 완성 사진이 이 동의의 사진인지 보는 키
   CONSTRAINT photo_consents_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT photo_consents_photo_fk FOREIGN KEY (shop_id, review_photo_id) REFERENCES review_photos (shop_id, id) ON DELETE RESTRICT,
-  CONSTRAINT photo_consents_scope_chk CHECK ((scope = 'review_photo') = (review_photo_id IS NOT NULL)),
-  CONSTRAINT photo_consents_withdraw_chk CHECK (withdrawn_at IS NULL OR consented)
+  CONSTRAINT photo_consents_completion_photo_fk FOREIGN KEY (shop_id, completion_photo_id) REFERENCES completion_photos (shop_id, id) ON DELETE RESTRICT,
+  CONSTRAINT photo_consents_scope_chk CHECK ((scope = 'review_photo') = (review_photo_id IS NOT NULL) AND (scope = 'completion_photo') = (completion_photo_id IS NOT NULL)), -- 동의마다 사진 한 장
+  CONSTRAINT photo_consents_withdraw_chk CHECK (withdrawn_at IS NULL OR consented),
+  CONSTRAINT photo_consents_publishable_chk CHECK (publishable = (consented AND withdrawn_at IS NULL)) -- 게시 가능은 동의함·철회 안 함
 );
-CREATE UNIQUE INDEX photo_consents_order_uq ON photo_consents (order_id) WHERE scope = 'order'; -- 주문마다 주문 요청 때 동의 하나
+CREATE UNIQUE INDEX photo_consents_completion_photo_uq ON photo_consents (completion_photo_id) WHERE scope = 'completion_photo'; -- 완성 사진마다 동의 하나(REQ-207)
 CREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo'; -- 사진마다 동의 하나(SPEC-062)
-COMMENT ON TABLE photo_consents IS 'TBL-040 사진 게시 동의: 주문 요청 때와 후기 사진마다 받은 동의와 철회';
+COMMENT ON TABLE photo_consents IS 'TBL-040 사진 게시 동의: 완성 사진과 후기 사진 한 장마다 받은 동의와 철회';
 
 -- TBL-041 portfolio_items (CTX-006) ← SPEC-011, SPEC-063 | terms: TERM-052
 CREATE TABLE portfolio_items (
   id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 포트폴리오 항목 ID
   shop_id              uuid NOT NULL,                    -- 가게
-  photo_consent_id     uuid NOT NULL,                    -- 근거가 되는 게시 동의. 동의한 사진만 올림(REQ-097)
+  photo_consent_id     uuid NOT NULL,                    -- 근거가 되는 게시 동의. 그 사진의 동의이고 동의함·철회 안 함이어야 올림(REQ-209)
   review_photo_id      uuid,                             -- 올린 후기 사진
-  completion_photo_id  uuid,                             -- 올린 완성 사진(주문 요청 때 동의)
+  completion_photo_id  uuid,                             -- 올린 완성 사진(완성 사진 안내에서 받은 동의, REQ-207)
   published_at         timestamptz NOT NULL DEFAULT now(), -- 올린 시각
   unpublished_at       timestamptz,                      -- 내린 시각. 예약 링크 페이지에서 5분 안에 사라짐(SPEC-063)
   unpublish_reason     text CHECK (unpublish_reason IN ('consent_withdrawn', 'owner_removed')), -- 동의 철회·사장님이 내림
+  consent_live         boolean DEFAULT true CHECK (consent_live), -- 올라 있는 동안 참, 내리면 비움. 근거 동의의 게시 가능을 참조해 동의하고 철회하지 않은 사진만 올라 있게 함(REQ-209, 5절 E22)
   CONSTRAINT portfolio_items_consent_fk FOREIGN KEY (shop_id, photo_consent_id) REFERENCES photo_consents (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT portfolio_items_review_photo_fk FOREIGN KEY (shop_id, review_photo_id) REFERENCES review_photos (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT portfolio_items_completion_photo_fk FOREIGN KEY (shop_id, completion_photo_id) REFERENCES completion_photos (shop_id, id) ON DELETE RESTRICT,
+  CONSTRAINT portfolio_items_consent_live_fk FOREIGN KEY (shop_id, photo_consent_id, consent_live) REFERENCES photo_consents (shop_id, id, publishable) ON DELETE RESTRICT, -- 올라 있으면 동의가 게시 가능. 철회는 먼저 내린 뒤(4절 A26)
+  CONSTRAINT portfolio_items_consent_review_photo_fk FOREIGN KEY (shop_id, photo_consent_id, review_photo_id) REFERENCES photo_consents (shop_id, id, review_photo_id) ON DELETE RESTRICT, -- 후기 사진은 그 사진의 동의로만
+  CONSTRAINT portfolio_items_consent_completion_photo_fk FOREIGN KEY (shop_id, photo_consent_id, completion_photo_id) REFERENCES photo_consents (shop_id, id, completion_photo_id) ON DELETE RESTRICT, -- 완성 사진은 그 사진의 동의로만
   CONSTRAINT portfolio_items_one_photo_chk CHECK ((review_photo_id IS NULL) <> (completion_photo_id IS NULL)), -- 사진 하나
-  CONSTRAINT portfolio_items_unpublish_chk CHECK ((unpublished_at IS NULL) = (unpublish_reason IS NULL))
+  CONSTRAINT portfolio_items_unpublish_chk CHECK ((unpublished_at IS NULL) = (unpublish_reason IS NULL)),
+  CONSTRAINT portfolio_items_live_chk CHECK ((unpublished_at IS NULL) = (consent_live IS NOT NULL)) -- 올라 있는 항목만 동의가 살아 있음을 봄
 );
 CREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL; -- 같은 사진은 한 번만 올림
 CREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;
-CREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL; -- 동의를 철회하면 바로 내릴 행 찾기
+CREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL; -- 동의를 철회하면 먼저 내릴 행 찾기
 COMMENT ON TABLE portfolio_items IS 'TBL-041 포트폴리오(TERM-052): 손님이 게시에 동의한 사진만 올린 목록';
 
 -- TBL-042 owner_tasks (CTX-008) ← SPEC-003, SPEC-007, SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-041, SPEC-042, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-049, SPEC-058, SPEC-059, SPEC-064, SPEC-065, SPEC-067, SPEC-071 | terms: TERM-059
@@ -1384,14 +1407,15 @@ COMMENT ON COLUMN kakao_channels.shop_id IS '채널을 묶은 가게';
 COMMENT ON COLUMN kakao_channels.bot_id IS '오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 키(SPEC-017)';
 COMMENT ON COLUMN kakao_channels.channel_public_id IS '채널 공개 ID. 예약 링크 페이지의 문의 버튼이 여는 채팅 주소(SPEC-011)';
 COMMENT ON COLUMN kakao_channels.status IS '연결 확인 중·연결됨·연결 안 됨·바꿔서 그만 받음(SPEC-008)';
-COMMENT ON COLUMN kakao_channels.check_started_at IS '''연결 확인''을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 넷이 와야 함)';
+COMMENT ON COLUMN kakao_channels.check_started_at IS '''연결 확인''을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 다섯이 와야 함)';
 COMMENT ON COLUMN kakao_channels.linked_at IS '연결됨이 된 시각';
 COMMENT ON COLUMN kakao_channels.retired_at IS '다른 채널로 바꿔 더 받지 않게 된 시각';
-COMMENT ON COLUMN kakao_channels.card_block_id IS '가게 봇의 ''확인 카드'' 블록 ID. 확인 카드 버튼이 부름(SPEC-008, REQ-179)';
+COMMENT ON COLUMN kakao_channels.card_block_id IS '가게 봇의 ''확인 카드'' 블록 ID. 확인 카드 버튼이 부름(SPEC-008, REQ-206)';
 COMMENT ON COLUMN kakao_channels.orderer_block_id IS '가게 봇의 ''주문자 정보'' 블록 ID. 주문자 정보 카드 버튼이 부름(SPEC-072)';
+COMMENT ON COLUMN kakao_channels.allergy_block_id IS '가게 봇의 ''알레르기 답'' 블록 ID. 알레르기 정보 동의 카드의 버튼이 부르고 AI를 거치지 않고 답을 받음(SPEC-075, REQ-202, REQ-206)';
 COMMENT ON COLUMN kakao_channels.depositor_block_id IS '가게 봇의 ''입금자 이름'' 블록 ID. 결제 확인 요청 카드 버튼이 부름(SPEC-033)';
 COMMENT ON COLUMN kakao_channels.review_block_id IS '가게 봇의 ''후기'' 블록 ID. 후기 부탁 버튼이 부름(SPEC-061)';
-COMMENT ON COLUMN kakao_channels.verified_blocks IS '연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록(REQ-179)';
+COMMENT ON COLUMN kakao_channels.verified_blocks IS '연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록(REQ-206)';
 COMMENT ON COLUMN kakao_channels.test_user_key IS '연결 확인 때 테스트 메시지를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008)';
 COMMENT ON COLUMN kakao_channels.event_status IS '먼저 보내기(Event API): 아직 안 봄·시험 중·됨·안 됨. 안 되면 손님 안내는 다음 대화 때(REQ-180, REQ-181)';
 COMMENT ON COLUMN kakao_channels.event_task_id IS '시험 안내의 카카오 taskId. 발송 결과 조회에 씀(REQ-182)';
@@ -1546,7 +1570,10 @@ COMMENT ON COLUMN order_drafts.extra_option_ids IS '더하는 옵션들(같은 �
 COMMENT ON COLUMN order_drafts.design_notes IS '손님이 말한 디자인 설명';
 COMMENT ON COLUMN order_drafts.lettering IS '문구(TERM-021), 50자까지(AI-1)';
 COMMENT ON COLUMN order_drafts.colors IS '색';
-COMMENT ON COLUMN order_drafts.allergy_answer IS '알레르기 답(''없음''도 답, REQ-013). 이 주문 밖에서 쓰지 않음(REQ-142)';
+COMMENT ON COLUMN order_drafts.allergy_answer IS '알레르기 답(''없음''도 답, REQ-200). 알레르기 정보에 동의한 뒤 전용 블록으로 AI를 거치지 않고 받음(SPEC-075, REQ-202). AI로 보내지 않고(REQ-204) 이 주문 밖에서 쓰지 않음(REQ-142)';
+COMMENT ON COLUMN order_drafts.allergy_consent IS '알레르기 정보 동의: 동의함·동의 안 함·동의 필요 없음(배포 설정으로 동의 단계를 끔, REQ-205). 비어 있으면 아직 묻지 않음(SPEC-075). 잠정, 5-2 질문 4';
+COMMENT ON COLUMN order_drafts.allergy_consent_version IS '손님이 본 알레르기 정보 동의 글의 버전. 동의함·동의 안 함에만(REQ-201)';
+COMMENT ON COLUMN order_drafts.allergy_consent_at IS '동의함·동의 안 함을 누른 시각, 동의 필요 없음이면 알레르기 답 블록을 연 시각(REQ-201, REQ-205)';
 COMMENT ON COLUMN order_drafts.excluded_ingredients IS '빼야 할 재료';
 COMMENT ON COLUMN order_drafts.customer_name IS '주문자 이름(SPEC-064·065가 말하는 주문의 이름). 주문 요청 확인 카드 전에 AI를 거치지 않는 입력으로 받음(SPEC-072, REQ-175). AI로 보내지 않음(REQ-178)';
 COMMENT ON COLUMN order_drafts.customer_phone IS '주문자 연락처(픽업·급한 연락). 주문 요청 확인 카드 전에 AI를 거치지 않는 입력으로 받음(SPEC-072, REQ-175). AI로 보내지 않음(REQ-178)';
@@ -1610,8 +1637,8 @@ COMMENT ON COLUMN confirm_cards.shop_id IS '가게';
 COMMENT ON COLUMN confirm_cards.consultation_id IS '카드를 보낸 상담';
 COMMENT ON COLUMN confirm_cards.customer_id IS '카드를 받은 사용자. 이 사용자만 누름(G9)';
 COMMENT ON COLUMN confirm_cards.card_key IS '버튼에 포함한 카드 키(G2)';
-COMMENT ON COLUMN confirm_cards.kind IS '주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)';
-COMMENT ON COLUMN confirm_cards.draft_id IS '주문 요청·주문자 정보 카드의 초안';
+COMMENT ON COLUMN confirm_cards.kind IS '주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)·알레르기 정보(SPEC-075, 주문자 정보 카드 앞에서 따로 동의를 받음)·사진 게시 동의(SPEC-053, 완성 사진 안내의 버튼)';
+COMMENT ON COLUMN confirm_cards.draft_id IS '주문 요청·주문자 정보·알레르기 정보 카드의 초안';
 COMMENT ON COLUMN confirm_cards.draft_revision IS '묶인 초안 고친 번호(SPEC-028)';
 COMMENT ON COLUMN confirm_cards.order_id IS '대상 주문. 주문 요청 카드는 누른 뒤 생긴 주문';
 COMMENT ON COLUMN confirm_cards.order_version IS '묶인 주문 버전(G9)';
@@ -1655,7 +1682,10 @@ COMMENT ON COLUMN order_details.extra_option_ids IS '더하는 옵션들(같은 
 COMMENT ON COLUMN order_details.design_notes IS '디자인 설명. 주문이 끝나고 30일 뒤 비움(SPEC-065)';
 COMMENT ON COLUMN order_details.lettering IS '문구(TERM-021). 철자는 손님이 쓴 그대로(SPEC-028). 주문이 끝나고 30일 뒤 비움(SPEC-065)';
 COMMENT ON COLUMN order_details.colors IS '색';
-COMMENT ON COLUMN order_details.allergy_answer IS '알레르기 답. 이 주문 밖에서 쓰지 않고 장부에 적지 않음(REQ-142, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)';
+COMMENT ON COLUMN order_details.allergy_answer IS '알레르기 답. 알레르기 정보에 동의한 주문에만(REQ-200, REQ-203). 이 주문 밖에서 쓰지 않고 장부에 적지 않고 AI로 보내지 않음(REQ-142, REQ-204, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)';
+COMMENT ON COLUMN order_details.allergy_consent IS '초안에서 옮긴 알레르기 정보 동의: 동의함·동의 안 함(''알레르기 정보 동의 안 함''으로 보임, SPEC-050)·동의 필요 없음(REQ-201, REQ-205). 지우기는 이 동의 기록을 남김(SPEC-065)';
+COMMENT ON COLUMN order_details.allergy_consent_version IS '손님이 본 알레르기 정보 동의 글의 버전. 동의함·동의 안 함에만(REQ-201)';
+COMMENT ON COLUMN order_details.allergy_consent_at IS '알레르기 정보 동의의 답을 남긴 시각(초안에서 옮김)';
 COMMENT ON COLUMN order_details.excluded_ingredients IS '빼야 할 재료. 주문이 끝나고 30일 뒤 비움(SPEC-065)';
 COMMENT ON COLUMN order_details.customer_name IS '주문자 이름. 주문이 끝나고 30일 뒤 비우고 보관 기록으로 옮김(SPEC-065, REQ-185)';
 COMMENT ON COLUMN order_details.customer_phone IS '주문자 연락처. 주문이 끝나고 30일 뒤 지움(SPEC-065)';
@@ -1821,19 +1851,22 @@ COMMENT ON COLUMN review_photos.created_at IS '올린 시각';
 COMMENT ON COLUMN photo_consents.id IS '게시 동의 ID';
 COMMENT ON COLUMN photo_consents.shop_id IS '가게';
 COMMENT ON COLUMN photo_consents.order_id IS '주문';
-COMMENT ON COLUMN photo_consents.scope IS '주문 요청 때 받은 동의(그 주문 케이크의 완성 사진)·후기 사진 한 장의 동의';
-COMMENT ON COLUMN photo_consents.review_photo_id IS '후기 사진의 동의면 그 사진';
-COMMENT ON COLUMN photo_consents.consented IS '동의 여부. 기본 ''동의 안 함''(REQ-096)';
+COMMENT ON COLUMN photo_consents.scope IS '완성 사진 한 장의 동의(완성 사진 안내의 버튼, SPEC-053)·후기 사진 한 장의 동의(SPEC-062)';
+COMMENT ON COLUMN photo_consents.completion_photo_id IS '완성 사진의 동의면 그 사진. 안내 하나의 답을 그 안내에 붙인 사진마다 남김(REQ-207)';
+COMMENT ON COLUMN photo_consents.review_photo_id IS '후기 사진의 동의면 그 사진(REQ-208)';
+COMMENT ON COLUMN photo_consents.consented IS '동의 여부. 기본 ''동의 안 함''(REQ-207, REQ-208)';
 COMMENT ON COLUMN photo_consents.decided_at IS '답한 시각';
-COMMENT ON COLUMN photo_consents.withdrawn_at IS '손님이 동의를 철회한 시각. 그 사진을 바로 내림(REQ-098)';
+COMMENT ON COLUMN photo_consents.withdrawn_at IS '손님이 동의를 철회한 시각. 그 사진을 포트폴리오에서 먼저 내린 뒤 씀(REQ-098, SPEC-063)';
+COMMENT ON COLUMN photo_consents.publishable IS '포트폴리오에 올릴 수 있음: 동의했고 철회하지 않은 것과 늘 같음. 올라 있는 항목이 이 값을 참조해 올린 채로는 철회를 쓰지 못함(REQ-209, 4절 A26). 잠정, 5-2 질문 6';
 COMMENT ON COLUMN portfolio_items.id IS '포트폴리오 항목 ID';
 COMMENT ON COLUMN portfolio_items.shop_id IS '가게';
-COMMENT ON COLUMN portfolio_items.photo_consent_id IS '근거가 되는 게시 동의. 동의한 사진만 올림(REQ-097)';
+COMMENT ON COLUMN portfolio_items.photo_consent_id IS '근거가 되는 게시 동의. 그 사진의 동의이고 동의함·철회 안 함이어야 올림(REQ-209)';
 COMMENT ON COLUMN portfolio_items.review_photo_id IS '올린 후기 사진';
-COMMENT ON COLUMN portfolio_items.completion_photo_id IS '올린 완성 사진(주문 요청 때 동의)';
+COMMENT ON COLUMN portfolio_items.completion_photo_id IS '올린 완성 사진(완성 사진 안내에서 받은 동의, REQ-207)';
 COMMENT ON COLUMN portfolio_items.published_at IS '올린 시각';
 COMMENT ON COLUMN portfolio_items.unpublished_at IS '내린 시각. 예약 링크 페이지에서 5분 안에 사라짐(SPEC-063)';
 COMMENT ON COLUMN portfolio_items.unpublish_reason IS '동의 철회·사장님이 내림';
+COMMENT ON COLUMN portfolio_items.consent_live IS '올라 있는 동안 참, 내리면 비움. 근거 동의의 게시 가능을 참조해 동의하고 철회하지 않은 사진만 올라 있게 함(REQ-209, 5절 E22)';
 COMMENT ON COLUMN owner_tasks.id IS '할 일 ID';
 COMMENT ON COLUMN owner_tasks.shop_id IS '가게';
 COMMENT ON COLUMN owner_tasks.kind IS '에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 들어온 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)';

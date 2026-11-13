@@ -64,7 +64,7 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-001 | `owners` | 사장님 | CTX-007 | 001, 067 | TERM-044 |
 | TBL-002 | `operators` | 운영자 | CTX-007 | 001, 003 | TERM-074 |
 | TBL-003 | `shops` | 가게 | CTX-007 | 001, 002, 003, 006, 009, 010, 011, 017, 024, 025, 052, 053, 068, 073 | TERM-053 |
-| TBL-004 | `kakao_channels` | 카카오톡 채널 연결 | CTX-007 | 008, 010, 011, 017, 066, 068 | TERM-053 |
+| TBL-004 | `kakao_channels` | 카카오톡 채널 연결 | CTX-007 | 008, 010, 011, 017, 066, 068, 075 | TERM-053 |
 | TBL-005 | `privacy_policies` | 가게 개인정보 처리방침 | CTX-007 | 010, 011, 018 | 없음 |
 | TBL-006 | `price_lists` | 가격표 버전 | CTX-002 | 004, 010, 011, 013, 027 | TERM-047 |
 | TBL-007 | `price_options` | 가격표 옵션 | CTX-002 | 004, 011, 013 | TERM-047 |
@@ -80,11 +80,11 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-017 | `consultations` | 상담 | CTX-001 | 017, 018, 022, 023, 025, 029, 065, 068, 073 | TERM-046 |
 | TBL-018 | `messages` | 상담 대화 | CTX-001 | 017, 018, 019, 020, 021, 022, 065, 066, 073 | TERM-046 |
 | TBL-019 | `masked_values` | 마스킹 원본 값 | CTX-001 | 021, 022, 049, 065, 068, 073 | 없음 |
-| TBL-020 | `order_drafts` | 주문서 초안 | CTX-001 | 013, 019, 020, 025, 027, 028, 029, 065, 072 | TERM-003, TERM-057 |
+| TBL-020 | `order_drafts` | 주문서 초안 | CTX-001 | 013, 019, 020, 025, 027, 028, 029, 065, 072, 075 | TERM-003, TERM-057 |
 | TBL-021 | `reference_photos` | 참고 사진 | CTX-001 | 013, 019, 031, 065 | TERM-019 |
 | TBL-022 | `quotes` | 견적 | CTX-001 | 013, 020, 025, 027, 028, 031 | TERM-013, TERM-058 |
 | TBL-023 | `orders` | 주문 | CTX-003 | 013, 016, 025, 029, 030, 031, 034, 036, 037, 038, 039, 040, 041, 045, 046, 047, 048, 050, 052, 054, 055, 056, 060, 061, 062, 064, 065, 068, 070, 073 | TERM-001 |
-| TBL-024 | `confirm_cards` | 손님 확인 카드 | CTX-001 | 028, 029, 033, 040, 041, 046, 057, 058, 063, 065, 069, 072 | 없음 |
+| TBL-024 | `confirm_cards` | 손님 확인 카드 | CTX-001 | 028, 029, 033, 040, 041, 046, 053, 057, 058, 063, 065, 069, 072, 075 | 없음 |
 | TBL-025 | `change_requests` | 변경 요청 | CTX-003 | 041, 042, 043, 044, 045, 046, 048, 065, 070 | TERM-001 |
 | TBL-026 | `order_details` | 주문 내용 | CTX-003 | 029, 031, 033, 045, 050, 054, 059, 060, 064, 065, 073 | TERM-004 |
 | TBL-027 | `handoffs` | 에스컬레이션 건 | CTX-001 | 014, 015, 017, 020, 021, 022, 023, 025, 026, 029, 030, 040, 053, 056, 065 | TERM-008, TERM-018 |
@@ -100,7 +100,7 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-037 | `completion_photos` | 완성 사진 | CTX-005 | 011, 053, 063 | TERM-050 |
 | TBL-038 | `reviews` | 후기 | CTX-006 | 062 | TERM-051 |
 | TBL-039 | `review_photos` | 후기 사진 | CTX-006 | 011, 062, 063 | TERM-051 |
-| TBL-040 | `photo_consents` | 사진 게시 동의 | CTX-006 | 028, 029, 062, 063 | TERM-051 |
+| TBL-040 | `photo_consents` | 사진 게시 동의 | CTX-006 | 053, 062, 063 | TERM-051 |
 | TBL-041 | `portfolio_items` | 포트폴리오 | CTX-006 | 011, 063 | TERM-052 |
 | TBL-042 | `owner_tasks` | 사장님 할 일 | CTX-008 | 003, 007, 022, 023, 024, 029, 031, 033, 034, 035, 036, 037, 041, 042, 045, 046, 047, 048, 049, 058, 059, 064, 065, 067, 071 | TERM-059 |
 | TBL-043 | `owner_alerts` | 사장님 알림 | CTX-008 | 003, 006, 022, 024, 044, 046, 048, 050, 057, 058, 064, 065, 067 | TERM-035 |
@@ -148,7 +148,7 @@ flowchart LR
   C3 -->|2| C6
   C4 -->|1| C2
   C5 -->|2| C2
-  C5 -->|1| C4
+  C5 -->|2| C4
   C7 -->|3| C0
   C7 -->|4| C2
   C7 -->|2| C3
@@ -209,7 +209,7 @@ erDiagram
     uuid consultation_id FK "카드를 보낸 상담"
     uuid customer_id FK "카드를 받은 사용자"
     text kind "주문 요청·입금 알리기·변경…"
-    uuid draft_id FK "주문 요청·주문자 정보 카드의…"
+    uuid draft_id FK "주문 요청·주문자 정보…"
     uuid order_id FK "대상 주문"
   }
   handoffs {
@@ -506,6 +506,7 @@ erDiagram
   photo_consents {
     uuid id PK "게시 동의 ID"
     uuid order_id FK "주문"
+    uuid completion_photo_id FK "완성 사진의 동의면 그 사진"
     uuid review_photo_id FK "후기 사진의 동의면 그 사진"
   }
   portfolio_items {
@@ -513,11 +514,13 @@ erDiagram
     uuid photo_consent_id FK "근거가 되는 게시 동의"
     uuid review_photo_id FK "올린 후기 사진"
     uuid completion_photo_id FK "올린 완성 사진"
+    bool consent_live FK "올라 있는 동안 참"
   }
   orders ||--o{ reviews : "order_id"
   reviews ||--o{ review_photos : "review_id"
   orders ||--o{ photo_consents : "order_id"
   review_photos |o--o{ photo_consents : "review_photo_id"
+  completion_photos |o--o{ photo_consents : "completion_photo_id"
   photo_consents ||--o{ portfolio_items : "photo_consent_id"
   review_photos |o--o{ portfolio_items : "review_photo_id"
   completion_photos |o--o{ portfolio_items : "completion_photo_id"
