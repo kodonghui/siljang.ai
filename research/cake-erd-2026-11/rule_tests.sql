@@ -8,6 +8,7 @@
 --      1부의 주문·변경 요청 쓰기는 앱처럼 잠금 번호를 하나씩 올림.
 --      끝에서 지우기(README 6절)를 정한 차례대로 실제로 돌려(pg_temp.purge_run) 남은 행과 값이 기대한 값인지 봄(expect_left,
 --      설계 재검토 H3). 지운 것도 끝의 ROLLBACK으로 함께 되돌림.
+-- 계좌번호·원래 값의 암호문('v1:TEST…')과 해시(sha256('hmac-test-…'))는 모양만 맞춘 시험용 값이고 진짜 키로 만든 값이 아님(README 5절 E20).
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -143,8 +144,10 @@ INSERT INTO calendar_days (shop_id, day) VALUES
   ('a2000000-0000-0000-0000-000000000001', '2026-12-24'),
   ('a2000000-0000-0000-0000-000000000001', '2026-12-26'),
   ('a2000000-0000-0000-0000-000000000001', '2026-12-28');
-INSERT INTO payment_accounts (id, shop_id, bank_name, account_number, holder_name) VALUES
-  ('b7000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', '국민은행', '123-456-789012', '김사장');
+-- 가게 계좌는 암호문과 끝 4자리로만(REQ-191). 운영자가 영업 신고를 확인하며 예금주가 대표자와 같은지 봄(REQ-197)
+INSERT INTO payment_accounts (id, shop_id, bank_name, account_number_enc, account_last4, holder_name, holder_checked_by, holder_checked_at) VALUES
+  ('b7000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', '국민은행', 'v1:TESTnonce000000000000ciphertext0001tag16', '9012', '김사장',
+   'a1000000-0000-0000-0000-000000000001', now());
 
 -- 상담 (CTX-001)
 INSERT INTO customers (id, shop_id, kakao_channel_id, kakao_user_key, channel_friend, friend_checked_at) VALUES
@@ -158,8 +161,11 @@ INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kak
   ('c2000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'outbound', 'ai', 'text', NULL, '1호 생크림은 40,000원이에요', 'trace-1', 'skill_response', now()),
   ('c2000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'photo', 'km-2', NULL, 'trace-2', NULL, NULL),
   ('c2000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'photo', 'km-3', NULL, 'trace-3', NULL, NULL);
-INSERT INTO masked_values (id, shop_id, consultation_id, kind, placeholder, original_value) VALUES
-  ('c3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'phone', '[전화번호1]', '010-9999-8888');
+-- 전화번호는 암호문·해시·끝 4자리, 카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자(긴 숫자)는 아무것도 남기지 않음(REQ-191, REQ-192)
+INSERT INTO masked_values (id, shop_id, consultation_id, kind, placeholder, original_enc, value_hmac, last4) VALUES
+  ('c3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'phone', '[전화번호1]', 'v1:TESTnonce000000000000ciphertext0011tag16', encode(sha256('hmac-test-1'::bytea), 'hex'), '8888'),
+  ('c3000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'card', '[카드번호1]', NULL, NULL, '1111'),
+  ('c3000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'long_number', '[긴숫자1]', NULL, NULL, NULL);
 INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_at, size_option_id, flavor_option_id,
                           design_option_id, design_id, lettering, allergy_answer, customer_name, customer_phone, order_kind) VALUES
   ('c4000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'submitted', 2,
@@ -423,10 +429,10 @@ INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, 
 UPDATE orders SET lock_version = lock_version + 1, status = 'cancelled', confirmed_at = now(), cancelled_at = now(), cancel_kind = 'customer' WHERE id = 'd0000000-0000-0000-0000-000000000004';
 UPDATE slot_holds SET status = 'released', released_at = now(), release_reason = 'order_cancelled' WHERE id = 'e3000000-0000-0000-0000-000000000004';
 INSERT INTO refunds (id, shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis, method,
-                     refund_bank_name, refund_account_number, refund_holder_name, sent_at) VALUES
+                     refund_bank_name, refund_account_enc, refund_account_last4, refund_holder_name, sent_at) VALUES
   ('e2000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'customer_cancel',
    'refund:d0..04:cancel', 'partial', 17500, 17500, '{"rules":"b4..01","tier":"24~72시간 50%","received":35000}', 'bank_transfer',
-   '신한은행', '110-123-456789', '이손님', now());
+   '신한은행', 'v1:TESTnonce000000000000ciphertext0021tag16', '6789', '이손님', now());
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 
@@ -522,7 +528,7 @@ INSERT INTO owner_alerts (id, shop_id, owner_task_id, kind, event_key, status, a
    'alert:realert:f7..07', 'sent', 1, now(), 'task-alert-6', now());
 UPDATE owner_tasks SET realerted_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000007';
 -- 손님이 상담에서 알려 준 계좌로 보냄(SPEC-049) → 보냄 표시: 손님 안내·장부 쓰기·할 일 닫힘(REQ-172)
-UPDATE refunds SET method = 'bank_transfer', refund_bank_name = '우리은행', refund_account_number = '1002-987-654321', refund_holder_name = '최손님',
+UPDATE refunds SET method = 'bank_transfer', refund_bank_name = '우리은행', refund_account_enc = 'v1:TESTnonce000000000000ciphertext0022tag16', refund_account_last4 = '4321', refund_holder_name = '최손님',
                    sent_at = now()
  WHERE id = 'e2000000-0000-0000-0000-000000000002';
 UPDATE owner_tasks SET closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000007';
@@ -533,6 +539,26 @@ INSERT INTO notifications (id, shop_id, customer_id, consultation_id, order_id, 
 INSERT INTO ledger_writes (id, shop_id, ledger_row_id, event_key, event_kind) VALUES
   ('fc000000-0000-0000-0000-000000000008', 'a2000000-0000-0000-0000-000000000001', 'fb000000-0000-0000-0000-000000000005',
    'ledger:e2..02:refund_sent', 'refund_sent');
+-- 계좌 바꾸기(SPEC-006, REQ-198): 옛 계좌는 그만 쓴 행으로 남고 새 계좌가 지금 계좌. 사장님께 할 일 없이 알림(계좌번호 없음)
+INSERT INTO payment_accounts (id, shop_id, bank_name, account_number_enc, account_last4, holder_name, created_at, retired_at) VALUES
+  ('b7000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000002', '농협은행', 'v1:TESTnonce000000000000ciphertext0002tag16', '3456', '박사장', now() - interval '1 day', now());
+INSERT INTO payment_accounts (id, shop_id, bank_name, account_number_enc, account_last4, holder_name) VALUES
+  ('b7000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000002', '하나은행', 'v1:TESTnonce000000000000ciphertext0003tag16', '7890', '박사장');
+INSERT INTO owner_alerts (id, shop_id, kind, event_key, status) VALUES
+  ('f8000000-0000-0000-0000-000000000009', 'a2000000-0000-0000-0000-000000000002', 'payment_account_changed', 'alert:account:b7..03', 'pending');
+-- 접속기록(SPEC-074): 1년 전 사장님의 주문 상세 읽음, 지금 운영자가 사유를 적고 대화 속 전화번호를 엶(SPEC-073),
+-- 2년 1일 전 운영자의 보관 기록 열기(지우기가 지울 행). 접속지는 문서용 주소
+INSERT INTO access_logs (id, shop_id, actor_kind, owner_id, operator_id, action, api_id, request_path, subject_ids,
+                         target_kind, target_id, reason, client_ip, accessed_at) VALUES
+  ('ac000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'owner', 'a0000000-0000-0000-0000-000000000001', NULL, 'read', 'API-045',
+   '/owner/orders/d0000000-0000-0000-0000-000000000001', '["c0000000-0000-0000-0000-000000000001"]', NULL, NULL, NULL, '203.0.113.10',
+   now() - interval '1 year'),
+  ('ac000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'operator', NULL, 'a1000000-0000-0000-0000-000000000001', 'open_original', 'API-077',
+   '/operator/shops/a2000000-0000-0000-0000-000000000001/originals', '["c0000000-0000-0000-0000-000000000001"]', 'masked_value', 'c3000000-0000-0000-0000-000000000001',
+   '손님 문의: 픽업 연락이 안 됨', '2001:db8::1', now()),
+  ('ac000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'operator', NULL, 'a1000000-0000-0000-0000-000000000001', 'open_kept', 'API-077',
+   '/operator/shops/a2000000-0000-0000-0000-000000000001/originals', '["c0000000-0000-0000-0000-000000000002"]', 'kept_record', 'ad000000-0000-0000-0000-000000000001',
+   '사장님 요청: 분쟁 기록 확인', '198.51.100.7', now() - interval '2 years 1 day');
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 
@@ -633,12 +659,24 @@ SELECT pg_temp.expect_fail('REQ-132 같은 카카오 메시지 두 번', 'messag
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'km-1')$$]);
 SELECT pg_temp.expect_fail('SPEC-017 손님 하나에 상담 둘', 'consultations_one_live_per_customer', ARRAY[$$
   INSERT INTO consultations (shop_id, customer_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001')$$]);
-SELECT pg_temp.expect_fail('SPEC-021 카드번호 전체를 남김', 'masked_values_card_last4_chk', ARRAY[$$
-  INSERT INTO masked_values (shop_id, consultation_id, kind, placeholder, original_value)
-  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'card', '[카드번호1]', '1234567812345678')$$]);
+SELECT pg_temp.expect_fail('REQ-192 카드번호의 원래 값을 남김', 'masked_values_kept_chk', ARRAY[$$
+  INSERT INTO masked_values (shop_id, consultation_id, kind, placeholder, original_enc, value_hmac, last4)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'card', '[카드번호2]', 'v1:TESTnonce000000000000ciphertext0012tag16', encode(sha256('hmac-test-2'::bytea), 'hex'), '5678')$$]);
+SELECT pg_temp.expect_fail('REQ-192 주민등록번호처럼 보이는 숫자의 끝 4자리를 남김', 'masked_values_last4_chk', ARRAY[$$
+  INSERT INTO masked_values (shop_id, consultation_id, kind, placeholder, last4)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'long_number', '[긴숫자2]', '1234')$$]);
+SELECT pg_temp.expect_fail('REQ-191 대화 속 전화번호를 평문으로', 'masked_values_original_enc_check', ARRAY[$$
+  INSERT INTO masked_values (shop_id, consultation_id, kind, placeholder, original_enc, value_hmac, last4)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'phone', '[전화번호2]', '010-1111-2222', encode(sha256('hmac-test-3'::bytea), 'hex'), '2222')$$]);
+SELECT pg_temp.expect_fail('SPEC-021 원래 값 없이 해시만', 'masked_values_hmac_chk', ARRAY[$$
+  INSERT INTO masked_values (shop_id, consultation_id, kind, placeholder, value_hmac, last4)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'card', '[카드번호2]', encode(sha256('hmac-test-4'::bytea), 'hex'), '5678')$$]);
+SELECT pg_temp.expect_fail('SPEC-021 같은 번호를 다른 플레이스홀더로', 'masked_values_value_uq', ARRAY[$$
+  INSERT INTO masked_values (shop_id, consultation_id, kind, placeholder, original_enc, value_hmac, last4)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'phone', '[전화번호2]', 'v1:TESTnonce000000000000ciphertext0013tag16', encode(sha256('hmac-test-1'::bytea), 'hex'), '8888')$$]);
 SELECT pg_temp.expect_fail('SPEC-021 플레이스홀더 형식이 아님', 'masked_values_placeholder_check', ARRAY[$$
-  INSERT INTO masked_values (shop_id, consultation_id, kind, placeholder, original_value)
-  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'phone', '전화번호', '010-1111-2222')$$]);
+  INSERT INTO masked_values (shop_id, consultation_id, kind, placeholder, original_enc, value_hmac, last4)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'phone', '전화번호', 'v1:TESTnonce000000000000ciphertext0014tag16', encode(sha256('hmac-test-5'::bytea), 'hex'), '2222')$$]);
 SELECT pg_temp.expect_fail('상담마다 채우는 초안 둘', 'order_drafts_one_active', ARRAY[$$
   INSERT INTO order_drafts (shop_id, consultation_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001')$$, $$
   INSERT INTO order_drafts (shop_id, consultation_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001')$$]);
@@ -828,8 +866,16 @@ SELECT pg_temp.expect_fail('SPEC-059 신고 없는 보상 환불', 'refunds_issu
 SELECT pg_temp.expect_fail('SPEC-006 https가 아닌 카드 결제 링크', 'payment_accounts_card_payment_url_check', ARRAY[$$
   UPDATE payment_accounts SET card_payment_url = 'http://pay.example.com' WHERE id = 'b7000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-006 가게마다 지금 계좌 둘', 'payment_accounts_one_current', ARRAY[$$
-  INSERT INTO payment_accounts (shop_id, bank_name, account_number, holder_name)
-  VALUES ('a2000000-0000-0000-0000-000000000001', '우리은행', '1002-123-456789', '김사장')$$]);
+  INSERT INTO payment_accounts (shop_id, bank_name, account_number_enc, account_last4, holder_name)
+  VALUES ('a2000000-0000-0000-0000-000000000001', '우리은행', 'v1:TESTnonce000000000000ciphertext0004tag16', '6789', '김사장')$$]);
+SELECT pg_temp.expect_fail('REQ-191 가게 계좌번호를 평문으로', 'payment_accounts_account_number_enc_check', ARRAY[$$
+  UPDATE payment_accounts SET account_number_enc = '123-456-789012' WHERE id = 'b7000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-197 예금주를 확인한 운영자 없이 시각만', 'payment_accounts_holder_checked_chk', ARRAY[$$
+  UPDATE payment_accounts SET holder_checked_by = NULL WHERE id = 'b7000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-191 환불 계좌번호를 평문으로', 'refunds_refund_account_enc_check', ARRAY[$$
+  UPDATE refunds SET refund_account_enc = '110-123-456789' WHERE id = 'e2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('SPEC-049 환불 계좌의 끝 4자리 없이 암호문만', 'refunds_account_pair_chk', ARRAY[$$
+  UPDATE refunds SET refund_account_last4 = NULL WHERE id = 'e2000000-0000-0000-0000-000000000001'$$]);
 
 -- 제작·전달, 후기·포트폴리오 (CTX-005, CTX-006)
 SELECT pg_temp.expect_fail('SPEC-055 폐기한 케이크를 인도함', 'productions_discard_chk', ARRAY[$$
@@ -937,9 +983,36 @@ SELECT pg_temp.expect_fail('SPEC-065 주문 하나에 보관 기록 둘', 'kept_
   INSERT INTO kept_records (shop_id, order_id, finished_at, contract_keep_until)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', now(), now() + interval '5 years')$$]);
 
+-- 접속기록 (공통, SPEC-073·074)
+SELECT pg_temp.expect_fail('SPEC-074 사장님과 운영자를 함께 남김', 'access_logs_actor_chk', ARRAY[$$
+  INSERT INTO access_logs (shop_id, actor_kind, owner_id, operator_id, action, api_id, request_path, client_ip)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'owner', 'a0000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'read', 'API-045',
+          '/owner/orders/d0000000-0000-0000-0000-000000000001', '203.0.113.10')$$]);
+SELECT pg_temp.expect_fail('REQ-195 사유 없이 원래 값 열기', 'access_logs_open_chk', ARRAY[$$
+  INSERT INTO access_logs (shop_id, actor_kind, operator_id, action, api_id, request_path, target_kind, target_id, client_ip)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'operator', 'a1000000-0000-0000-0000-000000000001', 'open_original', 'API-077', '/operator/shops/a2000000-0000-0000-0000-000000000001/originals',
+          'masked_value', 'c3000000-0000-0000-0000-000000000001', '2001:db8::1')$$]);
+SELECT pg_temp.expect_fail('REQ-195 사장님이 원래 값 열기', 'access_logs_open_operator_chk', ARRAY[$$
+  INSERT INTO access_logs (shop_id, actor_kind, owner_id, action, api_id, request_path, target_kind, target_id, reason, client_ip)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'owner', 'a0000000-0000-0000-0000-000000000001', 'open_original', 'API-077', '/operator/shops/a2000000-0000-0000-0000-000000000001/originals',
+          'masked_value', 'c3000000-0000-0000-0000-000000000001', '손님 연락이 필요함', '203.0.113.10')$$]);
+SELECT pg_temp.expect_fail('SPEC-073 보관 기록을 원래 값 열기로', 'access_logs_target_chk', ARRAY[$$
+  INSERT INTO access_logs (shop_id, actor_kind, operator_id, action, api_id, request_path, target_kind, target_id, reason, client_ip)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'operator', 'a1000000-0000-0000-0000-000000000001', 'open_original', 'API-077', '/operator/shops/a2000000-0000-0000-0000-000000000001/originals',
+          'kept_record', 'ad000000-0000-0000-0000-000000000001', '사장님 요청: 분쟁 기록 확인', '2001:db8::1')$$]);
+SELECT pg_temp.expect_fail('SPEC-074 요청 주소의 쿼리 문자열을 남김', 'access_logs_request_path_check', ARRAY[$$
+  INSERT INTO access_logs (shop_id, actor_kind, owner_id, action, api_id, request_path, client_ip)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'owner', 'a0000000-0000-0000-0000-000000000001', 'read', 'API-044', '/owner/orders?phone=010-9999-8888', '203.0.113.10')$$]);
+SELECT pg_temp.expect_fail('REQ-196 1년 전 접속기록을 고침', 'access_logs_guard', ARRAY[$$
+  UPDATE access_logs SET client_ip = '192.0.2.1' WHERE id = 'ac000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-196 1년 전 접속기록을 지움', 'access_logs_guard', ARRAY[$$
+  DELETE FROM access_logs WHERE id = 'ac000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-196 접속기록을 비움', 'access_logs_guard', ARRAY[$$
+  TRUNCATE access_logs$$]);
+
 -- 지우기(README 6절)를 now_at 시각에 돌린 것처럼 차례대로 씀: 1 끝나고 30일 지난 주문 → 2 닫히고 30일 지난 상담 →
--- 3 3년 지난 문제 신고 기록 → 4 5년 지난 보관 기록 → 5 손님의 카카오 사용자 키 → 운영 기록에 건수만. 앱은 주문 하나·상담 하나를
--- 한 트랜잭션으로 하고 사진 파일은 트랜잭션이 끝난 뒤 지움(여기서는 한 번에 함). 30일·3년·5년은 잠정(5-2 질문 7)
+-- 3 3년 지난 문제 신고 기록 → 4 5년 지난 보관 기록 → 5 손님의 카카오 사용자 키 → 6 2년 지난 접속기록 → 운영 기록에 건수만.
+-- 앱은 주문 하나·상담 하나를 한 트랜잭션으로 하고 사진 파일은 트랜잭션이 끝난 뒤 지움(여기서는 한 번에 함). 30일·3년·5년은 잠정(5-2 질문 7)
 CREATE FUNCTION pg_temp.purge_run(now_at timestamptz) RETURNS text
 LANGUAGE plpgsql AS $fn$
 DECLARE
@@ -950,6 +1023,7 @@ DECLARE
   n_issues int;
   n_kept int;
   n_customers int;
+  n_logs int;
 BEGIN
   -- 1. 끝나고 30일 지난 주문: 보관 기록으로 나누고(주문자 이름은 마지막 버전에서 옮김) 개인정보를 지움
   SELECT coalesce(array_agg(id), '{}') INTO due FROM orders
@@ -969,8 +1043,8 @@ BEGIN
    WHERE id IN (SELECT draft_id FROM orders WHERE id = ANY (due));
   DELETE FROM reference_photos WHERE draft_id IN (SELECT draft_id FROM orders WHERE id = ANY (due));
   UPDATE payment_requests SET depositor_name = NULL, version = version + 1 WHERE order_id = ANY (due) AND depositor_name IS NOT NULL;
-  UPDATE refunds SET refund_bank_name = NULL, refund_account_number = NULL, refund_holder_name = NULL
-   WHERE order_id = ANY (due) AND num_nonnulls(refund_bank_name, refund_account_number, refund_holder_name) > 0;
+  UPDATE refunds SET refund_bank_name = NULL, refund_account_enc = NULL, refund_account_last4 = NULL, refund_holder_name = NULL
+   WHERE order_id = ANY (due) AND num_nonnulls(refund_bank_name, refund_account_enc, refund_account_last4, refund_holder_name) > 0;
   UPDATE confirm_cards SET payload = '{}'
    WHERE payload <> '{}' AND (order_id = ANY (due) OR draft_id IN (SELECT draft_id FROM orders WHERE id = ANY (due)));
   UPDATE change_requests SET changes = '{}', lock_version = lock_version + 1 WHERE order_id = ANY (due) AND changes <> '{}';
@@ -1035,11 +1109,18 @@ BEGIN
      AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = u.id AND o.personal_data_purged_at IS NULL);
   GET DIAGNOSTICS n_customers = ROW_COUNT;
 
+  -- 6. 2년 지난 접속기록(REQ-196). 접속기록을 지키는 트리거(access_logs_guard)는 지금 시각(now())으로 2년을 보므로
+  --    now_at이 지금보다 뒤여도 지금 시각으로 셈(앱의 지우기는 늘 지금 시각에 돎)
+  DELETE FROM access_logs WHERE accessed_at <= least(now_at, now()) - interval '2 years';
+  GET DIAGNOSTICS n_logs = ROW_COUNT;
+
   INSERT INTO ops_events (kind, count, detail, created_at)
-  VALUES ('purge_run', n_orders + n_cons + n_issues + n_kept + n_customers,
-          jsonb_build_object('orders', n_orders, 'consultations', n_cons, 'issues', n_issues, 'kept_ended', n_kept, 'customers', n_customers),
+  VALUES ('purge_run', n_orders + n_cons + n_issues + n_kept + n_customers + n_logs,
+          jsonb_build_object('orders', n_orders, 'consultations', n_cons, 'issues', n_issues, 'kept_ended', n_kept, 'customers', n_customers,
+                             'access_logs', n_logs),
           now_at);
-  RETURN format('orders %s, consultations %s, issues %s, kept_ended %s, customers %s', n_orders, n_cons, n_issues, n_kept, n_customers);
+  RETURN format('orders %s, consultations %s, issues %s, kept_ended %s, customers %s, access_logs %s',
+                n_orders, n_cons, n_issues, n_kept, n_customers, n_logs);
 END
 $fn$;
 
@@ -1056,7 +1137,7 @@ LANGUAGE sql AS $fn$
        + (SELECT count(*) FROM reference_photos WHERE draft_id IN (SELECT draft_id FROM o))
        + (SELECT count(*) FROM payment_requests WHERE order_id IN (SELECT id FROM o) AND depositor_name IS NOT NULL)
        + (SELECT count(*) FROM refunds WHERE order_id IN (SELECT id FROM o)
-            AND num_nonnulls(refund_bank_name, refund_account_number, refund_holder_name) > 0)
+            AND num_nonnulls(refund_bank_name, refund_account_enc, refund_account_last4, refund_holder_name) > 0)
        + (SELECT count(*) FROM confirm_cards WHERE (order_id IN (SELECT id FROM o) OR draft_id IN (SELECT draft_id FROM o)) AND payload <> '{}')
        + (SELECT count(*) FROM change_requests WHERE order_id IN (SELECT id FROM o) AND changes <> '{}')
        + (SELECT count(*) FROM notifications WHERE order_id IN (SELECT id FROM o))
@@ -1121,7 +1202,8 @@ LANGUAGE sql AS $fn$
     UNION ALL SELECT 'owner_alerts ' || t::text FROM owner_alerts t
     UNION ALL SELECT 'notifications ' || t::text FROM notifications t
     UNION ALL SELECT 'ai_tool_calls ' || t::text FROM ai_tool_calls t
-    UNION ALL SELECT 'kept_records ' || t::text FROM kept_records t) s
+    UNION ALL SELECT 'kept_records ' || t::text FROM kept_records t
+    UNION ALL SELECT 'access_logs ' || t::text FROM access_logs t) s
 $fn$;
 
 -- 지우기를 돌려 볼 데이터. 손님 1의 상담은 다룬 주문(주문 1·재제작 2·주문 4)이 모두 끝나 상담 끝남, 손님 2의 상담은 주문 3이
@@ -1152,8 +1234,8 @@ INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kak
   ('c2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'inbound', 'customer', 'photo', 'km-5', NULL, 'trace-5', NULL, NULL),
   ('c2000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'inbound', 'customer', 'photo', 'km-6', NULL, 'trace-6', NULL, NULL),
   ('c2000000-0000-0000-0000-000000000007', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'inbound', 'customer', 'text', 'km-7', '연락처는 [전화번호1]이에요', 'trace-7', NULL, NULL);
-INSERT INTO masked_values (id, shop_id, consultation_id, kind, placeholder, original_value) VALUES
-  ('c3000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'phone', '[전화번호1]', '010-5555-4444');
+INSERT INTO masked_values (id, shop_id, consultation_id, kind, placeholder, original_enc, value_hmac, last4) VALUES
+  ('c3000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'phone', '[전화번호1]', 'v1:TESTnonce000000000000ciphertext0015tag16', encode(sha256('hmac-test-6'::bytea), 'hex'), '4444');
 INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_at, size_option_id, flavor_option_id,
                           lettering, customer_name, customer_phone, order_kind) VALUES
   ('c4000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'active', 1,
@@ -1193,9 +1275,11 @@ SELECT pg_temp.expect_left('REQ-189 상담 끝남 뒤 같은 손님의 새 상�
   SELECT status FROM c$$, 'open');
 CREATE TEMP TABLE purge_before AS SELECT pg_temp.kept_counts() AS counts;
 SELECT pg_temp.expect_left('SPEC-065 지우기 전 끝난 주문의 개인정보', $$SELECT pg_temp.order_personal_left()::text$$, '19');
-SELECT pg_temp.expect_left('SPEC-065 지우기 전 지울 상담의 내용', $$SELECT pg_temp.consult_content_left()::text$$, '21');
+SELECT pg_temp.expect_left('SPEC-065 지우기 전 지울 상담의 내용', $$SELECT pg_temp.consult_content_left()::text$$, '23');
 SELECT pg_temp.expect_left('SPEC-065 첫 지우기(31일 뒤)', $$SELECT pg_temp.purge_run(now() + interval '31 days')$$,
-  'orders 4, consultations 2, issues 0, kept_ended 0, customers 1');
+  'orders 4, consultations 2, issues 0, kept_ended 0, customers 1, access_logs 1');
+SELECT pg_temp.expect_left('REQ-196 2년 지난 접속기록만 지움', $$
+  SELECT count(*) || '/' || string_agg(right(id::text, 1), ',' ORDER BY id) FROM access_logs$$, '2/1,2');
 SELECT pg_temp.expect_left('REQ-185 끝나고 30일 지난 주문의 개인정보 0건', $$SELECT pg_temp.order_personal_left()::text$$, '0');
 SELECT pg_temp.expect_left('REQ-185 주문자 이름은 보관 기록으로', $$
   SELECT count(*) || '/' || string_agg(customer_name, ',' ORDER BY customer_name) || '/' || count(issue_keep_until) FROM kept_records$$,
@@ -1223,11 +1307,11 @@ SELECT pg_temp.expect_left('REQ-190 상담이 모두 지워지고 주문이 없�
   SELECT string_agg(coalesce(kakao_user_key, '-'), ',' ORDER BY id) || '/' || count(purged_at) FROM customers$$, 'user-key-1,user-key-2,-/1');
 CREATE TEMP TABLE purge_after_first AS SELECT pg_temp.purge_fingerprint() AS fp;
 SELECT pg_temp.expect_left('SPEC-065 같은 날 두 번째 지우기', $$SELECT pg_temp.purge_run(now() + interval '31 days')$$,
-  'orders 0, consultations 0, issues 0, kept_ended 0, customers 0');
+  'orders 0, consultations 0, issues 0, kept_ended 0, customers 0, access_logs 0');
 SELECT pg_temp.expect_left('SPEC-065 두 번 돌아도 남은 행과 값이 같음', $$
   SELECT (pg_temp.purge_fingerprint() = (SELECT fp FROM purge_after_first))::text$$, 'true');
 SELECT pg_temp.expect_left('REQ-188 3년 지난 문제 신고 기록', $$SELECT pg_temp.purge_run(now() + interval '3 years 1 day')$$,
-  'orders 0, consultations 0, issues 1, kept_ended 0, customers 0');
+  'orders 0, consultations 0, issues 1, kept_ended 0, customers 0, access_logs 0');
 SELECT pg_temp.expect_left('REQ-188 신고 설명과 사진은 지우고 신고와 보상은 남음', $$
   SELECT coalesce((SELECT description FROM issue_details WHERE id = 'f1000000-0000-0000-0000-000000000001'), '-') || '/' ||
          (SELECT count(*) FROM issue_photos WHERE issue_details_id = 'f1000000-0000-0000-0000-000000000001') || '/' ||
@@ -1236,7 +1320,7 @@ SELECT pg_temp.expect_left('REQ-188 신고 설명과 사진은 지우고 신고�
           AND (SELECT issue_purged_at FROM kept_records WHERE order_id = 'd0000000-0000-0000-0000-000000000001') IS NOT NULL)::text$$,
   '-/0/remake/true');
 SELECT pg_temp.expect_left('REQ-188 5년 지난 보관 기록', $$SELECT pg_temp.purge_run(now() + interval '5 years 1 day')$$,
-  'orders 0, consultations 0, issues 0, kept_ended 4, customers 0');
+  'orders 0, consultations 0, issues 0, kept_ended 4, customers 0, access_logs 0');
 SELECT pg_temp.expect_left('REQ-188 이름은 지우고 주문·결제 행은 개인정보 없이 남음', $$
   SELECT (SELECT count(*) FROM kept_records) || '/' ||
          (SELECT count(*) FROM orders WHERE personal_data_purged_at IS NOT NULL) || '/' ||
