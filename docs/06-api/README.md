@@ -5,16 +5,16 @@
 ## 1. 한눈에
 
 <!-- BEGIN generated:counts -->
-API 72개 · 응답 358개 · 오류 코드 32개 · 필드 오류 사유 20개 · 확인할 것 6개 · 스킬 결과 37개 · 결정 사항 19개 · 열린 질문 8개 · 서버 안의 일 10개 · 스키마 127개
+API 72개 · 응답 358개 · 오류 코드 32개 · 필드 오류 사유 21개 · 확인할 것 6개 · 스킬 결과 37개 · 결정 사항 19개 · 열린 질문 8개 · 서버 안의 일 11개 · 스키마 127개
 <!-- END generated:counts -->
 
-- 사장님 화면이 호출하는 API가 60개(로그인·로그아웃 포함), 운영자 화면이 7개, 손님이 여는 예약 링크 페이지가 2개, 카카오 오픈빌더가 호출하는 스킬이 3개입니다(4절). 기능 명세 SPEC-001~069가 모두 API 하나 이상에 이어집니다.
+- 사장님 화면이 호출하는 API가 60개(로그인·로그아웃 포함), 운영자 화면이 7개, 손님이 여는 예약 링크 페이지가 2개, 카카오 오픈빌더가 호출하는 스킬이 3개입니다(4절). 기능 명세 SPEC-001~071이 모두 API 하나 이상에 이어집니다.
 - API마다 응답 목록(성공·422·401·403·404·409·default)을 포함하거나, 포함하지 않는 사유를 `x-corthex.omit`에 적었습니다. 응답 하나는 `API-001#401`처럼 부르고, 모든 응답에 이름 붙은 예시가 있습니다. 예시는 지어낸 가게 '달빛케이크'의 값입니다.
 - 오류는 한 형식(RFC 9457 Problem Details에 `code`·`traceId`를 더함)이고 오류 코드는 목록 하나(6절)에만 있습니다. 화면이 보일 말과 할 일도 코드마다 적었습니다.
 - 카카오 스킬은 늘 200과 스킬 응답을 반환하고, 결과는 `Siljang-Outcome` 헤더와 예시 이름으로 나눕니다(DEC-07, 7절). AI 모델 실패·느림·키 없음·사용 한도·가게 비용 한도는 저마다 결과 코드를 갖고, 손님에게는 모두 "사장님 확인 뒤 답드릴게요"로 에스컬레이션합니다(AI-1).
 - 요청 필드에는 05단계 테이블.컬럼의 한도를 달았습니다. 검사 도구가 계약이 허용하는 값을 만들어 실제 DB 컬럼의 타입과 CHECK에 넣어 보고, 막히는 값이 없음을 확인했습니다(12절).
 - 목 서버 Prism이 계약을 읽어 모든 응답 예시를 그대로 반환하고, 계약 테스트 도구 Schemathesis도 계약을 읽어 예시 단계를 통과했습니다(12절).
-- 체크포인트: 2026-11-12 14:01 동희님이 API 72개와 결정 사항 19개(8절)를 추천대로 확정하셨습니다(14절). DEC-12의 조건은 요구사항 버전 4 REQ-164가 되었습니다. 첫 버전이라 깨지는 변화는 없습니다(11절).
+- 체크포인트: 2026-11-12 14:01 동희님이 API 72개와 결정 사항 19개(8절)를 추천대로 확정하셨습니다(14절). DEC-12의 조건은 요구사항 버전 4 REQ-164가 되었습니다. 2026-11-13 설계 재검토(환불 길)로 응답에 필드 7개를 더한 깨지는 변화가 있습니다(11절, 15절).
 
 ## 2. 읽은 것과 만든 것
 
@@ -113,9 +113,9 @@ curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-01234567
 | API-045 | 주문 하나 | `GET /owner/orders/{orderId}` | `getOrder` | 사장님 | SPEC-031, SPEC-013, SPEC-045, SPEC-068 | 200 · 401 · 404 · default |
 | API-046 | 맞춤 주문 검토(수락·금액 변경 수락·거절) | `POST /owner/orders/{orderId}/custom-decision` | `decideCustomOrder` | 사장님 | SPEC-031, SPEC-015, SPEC-032 | 200 · 401 · 404 · 409 · 422 · default |
 | API-047 | 결제 기한 지난 주문: 결제 기한 연장·취소 | `POST /owner/orders/{orderId}/overdue-decision` | `decideOverdueOrder` | 사장님 | SPEC-038, SPEC-039, SPEC-015, SPEC-032, SPEC-037 | 200 · 401 · 404 · 409 · 422 · default |
-| API-048 | 가게 사정 취소 | `POST /owner/orders/{orderId}/shop-cancel` | `cancelOrderByShop` | 사장님 | SPEC-048, SPEC-016, SPEC-015 | 200 · 401 · 404 · 409 · 422 · default |
-| API-049 | 환불 계산 미리보기(가게 규칙) | `GET /owner/orders/{orderId}/refund-preview` | `getRefundPreview` | 사장님 | SPEC-016, SPEC-047 | 200 · 401 · 404 · 422 · default |
-| API-050 | 환불 결정 | `POST /owner/orders/{orderId}/refunds` | `decideRefund` | 사장님 | SPEC-047, SPEC-016, SPEC-066, SPEC-064 | 201 · 401 · 404 · 409 · 422 · default |
+| API-048 | 가게 사정 취소 | `POST /owner/orders/{orderId}/shop-cancel` | `cancelOrderByShop` | 사장님 | SPEC-048, SPEC-016, SPEC-015, SPEC-071 | 200 · 401 · 404 · 409 · 422 · default |
+| API-049 | 환불 계산 미리보기(가게 규칙) | `GET /owner/orders/{orderId}/refund-preview` | `getRefundPreview` | 사장님 | SPEC-016, SPEC-047, SPEC-071 | 200 · 401 · 404 · 422 · default |
+| API-050 | 환불 결정 | `POST /owner/orders/{orderId}/refunds` | `decideRefund` | 사장님 | SPEC-047, SPEC-016, SPEC-066, SPEC-064, SPEC-067, SPEC-049, SPEC-071 | 201 · 401 · 404 · 409 · 422 · default |
 | API-051 | 날짜별 제작 목록과 그날 픽업 | `GET /owner/production-days/{day}` | `getProductionDay` | 사장님 | SPEC-050, SPEC-054, SPEC-045 | 200 · 401 · 404 · 422 · default |
 | API-052 | 맞춤 재료 주문·제작 시작·완성 표시 | `POST /owner/orders/{orderId}/production-marks` | `markProduction` | 사장님 | SPEC-051, SPEC-053, SPEC-066 | 200 · 401 · 404 · 409 · 422 · default |
 | API-053 | 표시 실행 취소(5분 이내) | `POST /owner/orders/{orderId}/production-marks/undo` | `undoProductionMark` | 사장님 | SPEC-051 | 200 · 401 · 404 · 409 · 422 · default |
@@ -124,9 +124,9 @@ curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-01234567
 | API-056 | 미수령 케이크 폐기 | `POST /owner/orders/{orderId}/discard` | `discardOrder` | 사장님 | SPEC-055 | 200 · 401 · 404 · 409 · 422 · default |
 | API-057 | 입금 대조 목록 | `GET /owner/payment-requests` | `listPaymentRequests` | 사장님 | SPEC-034, SPEC-033, SPEC-035, SPEC-037 | 200 · 401 · 404 · 422 · default |
 | API-058 | 결제 안내 하나 | `GET /owner/payment-requests/{paymentRequestId}` | `getPaymentRequest` | 사장님 | SPEC-034, SPEC-035 | 200 · 401 · 404 · default |
-| API-059 | 입금 대조(입금됨·미입금·금액 불일치·대조 완료) | `POST /owner/payment-requests/{paymentRequestId}/reconciliation` | `reconcilePaymentRequest` | 사장님 | SPEC-034, SPEC-035, SPEC-036, SPEC-045, SPEC-015, SPEC-064 | 200 · 401 · 404 · 409 · 422 · default |
+| API-059 | 입금 대조(입금됨·미입금·금액 불일치·대조 완료·들어옴·결제 확인 취소) | `POST /owner/payment-requests/{paymentRequestId}/reconciliation` | `reconcilePaymentRequest` | 사장님 | SPEC-034, SPEC-035, SPEC-036, SPEC-045, SPEC-015, SPEC-064, SPEC-070, SPEC-071 | 200 · 401 · 404 · 409 · 422 · default |
 | API-060 | 환불 하나(손님 환불 계좌 포함) | `GET /owner/refunds/{refundId}` | `getRefund` | 사장님 | SPEC-047, SPEC-049, SPEC-021 | 200 · 401 · 404 · default |
-| API-061 | 환불 '보냄' 표시 | `POST /owner/refunds/{refundId}/sent` | `markRefundSent` | 사장님 | SPEC-047, SPEC-049 | 200 · 401 · 404 · 409 · 422 · default |
+| API-061 | 환불 '보냄' 표시 | `POST /owner/refunds/{refundId}/sent` | `markRefundSent` | 사장님 | SPEC-047, SPEC-049, SPEC-066, SPEC-064, SPEC-067 | 200 · 401 · 404 · 409 · 422 · default |
 | API-062 | 변경 요청 하나 | `GET /owner/change-requests/{changeRequestId}` | `getChangeRequest` | 사장님 | SPEC-042, SPEC-041, SPEC-043, SPEC-044 | 200 · 401 · 404 · default |
 | API-063 | 변경 요청 응답(수락·거절) | `POST /owner/change-requests/{changeRequestId}/decision` | `decideChangeRequest` | 사장님 | SPEC-042, SPEC-043, SPEC-045, SPEC-015, SPEC-032 | 200 · 401 · 404 · 409 · 422 · default |
 | API-064 | 문제 신고 하나 | `GET /owner/issue-reports/{issueReportId}` | `getIssueReport` | 사장님 | SPEC-058, SPEC-059, SPEC-057 | 200 · 401 · 404 · default |
@@ -211,6 +211,7 @@ curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-01234567
 | `overlaps` | 단계별 환불 기간이 중복됨 |
 | `gap` | 단계별 환불 기간 사이가 빔 |
 | `exceeds_received` | 환불 금액이 받은 금액에서 이미 정한 환불을 뺀 값을 넘음 |
+| `below_calculated` | 보상이 아닌 환불 금액이 환불 계산값보다 낮음(REQ-170) |
 | `in_past` | 지난 날짜나 시각 |
 | `outside_window` | 허용된 시간 밖(08:00~20:50, 60일 안 등) |
 | `not_after_start` | 끝이 시작보다 앞섬 |
@@ -345,13 +346,18 @@ curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-01234567
 | SPEC-065 | 지난 기록 지우기: 하루 한 번 03:00(05단계 README 6절 순서) | API-043(지운 상담은 status deleted) |
 | SPEC-066 | 손님에게 먼저 보내는 안내: 친구면 카카오 이벤트 API로 바로, 아니면 다음 대화 때 먼저(1분·5분·30분 다시 보내기) | API-070(먼저 전함), API-042 |
 | SPEC-067 | 사장님 알림: 우리 서비스 채널로 할 일 종류와 목록 주소(1분 안 같은 종류는 묶음) | API-040(할 일), API-002(채널 친구가 아니면 안내) |
+| SPEC-047 | 환불 보내기 다시 알림: 정한 뒤 24시간이 지나도 '보냄'이 없으면 사장님께 한 번 다시 알림(REQ-173) | API-040(할 일 refund_send), API-061(보냄이면 닫힘) |
 <!-- END generated:jobs -->
 
 ## 11. 깨지는 변화
 
-첫 버전이라 앞 계약이 없고, 깨지는 변화도 없습니다(`components.x-corthex.breakingChanges: []`). 다음 버전부터 `check_api.py`의 A13이 main의 `api/openapi.yaml`과 견줘 API·응답·오류 코드·필드·고를 값을 없애거나, 타입을 바꾸거나, 꼭 넣을 필드를 더한 것을 찾고, 그것이 목록에 있고 동희님이 정했는지 봅니다.
+2026-11-13 설계 재검토 H1·H2(15절)로 응답 스키마에 꼭 있는 필드 7개를 더했습니다: `PaymentRequest.arrivedAmount`·`arrivedAt`, `Payment.voidedAt`·`voidReason`, `RefundPreview.confirmedAmount`·`unconfirmedAmount`·`minAmount`. 응답에만 더한 필드라 보내는 요청은 그대로이고, A13이 '꼭 넣을 필드 더함'으로 찾으므로 `components.x-corthex.breakingChanges`에 7개를 사유·결정(동희님 2026-11-13 20:59 결정 카드 '추천안대로 (추천)')과 함께 적었습니다(원본은 `api_catalog.py`의 `BREAKING_CHANGES`, PR마다 더하고 지난 항목은 지우지 않음). 고를 값을 더한 것(할 일 종류 `refund_send`·`arrival_check`, 환불 원인 `over_received`, 입금 대조 결과 `arrived`·`void`)과 넣지 않아도 되는 요청 필드(`RefundInput.paymentRequestId`, `ReconciliationInput.arrivedAmount`·`voidReason`)는 깨지는 변화가 아닙니다.
+
+첫 버전(2026-11-12)에는 앞 계약이 없어 깨지는 변화가 없었습니다. 다음 버전부터 `check_api.py`의 A13이 main의 `api/openapi.yaml`과 견줘 API·응답·오류 코드·필드·고를 값을 없애거나, 타입을 바꾸거나, 꼭 넣을 필드를 더한 것을 찾고, 그것이 목록에 있고 동희님이 정했는지 봅니다.
 
 ## 12. 검사
+
+2026-11-13 22:42 KST, 설계 재검토 H1·H2를 고친 뒤(15절) `check_api.py . --db ... --mock ...`를 다시 돌린 결과: 검사 17개 통과 17, 실패 0, 미확인 0. 바뀐 숫자는 A3 SPEC 71개 모두 API가 있음, A5 예시 707개·성공 응답 시각 595개, A7 테이블.컬럼 87개(128자리), A13 main의 `api/openapi.yaml`과 견준 깨지는 변화 7개가 모두 목록에 있음(11절), D1 테이블.컬럼 87개에 값 4845개(글자 수 CHECK가 있는 컬럼 27개), M1 목 서버 요청 786개입니다. A6 오류 예시 414개와 A9 말로만 적은 근거 41개는 같습니다. 12-2의 Schemathesis는 이번에 다시 돌리지 않았습니다. 아래 12-1 표는 2026-11-12의 결과로 남깁니다.
 
 검사는 2026-11-12에 이 버전으로 돌렸습니다. 숫자는 각 명령의 출력에서 옮겼습니다. 체크포인트 뒤(14:10 무렵) 결정 사항의 상태 열과 REQ-164 연결을 더한 버전으로 `check_api.py`를 다시 돌려도 17개 모두 통과했고 아래 숫자가 같았습니다. 도구 버전: Python 3.13.18, openapi-spec-validator 0.9.0, jsonschema 4.26.0, hypothesis 6.170.15, hypothesis-jsonschema 0.23.2, PostgreSQL 16.15, Prism 5.14.2(Node 22.23.4), Schemathesis 4.33.2.
 
@@ -414,3 +420,22 @@ D1의 참고: `operators.email`·`kakao_channels.bot_id`·`ledger_links.spreadsh
 - 확정한 뒤: DEC-12의 조건을 요구사항 버전 4 REQ-164(결제 수단이 없는 동안 예약 링크를 내지 않음)로 더하고, 기능 명세 SPEC-010의 조건과 수락 기준에 이었습니다. 다음은 07단계(사이트맵)입니다. 계약을 바꿀 때는 목록을 고친 뒤 `build_api.py . --write`로 다시 만들고, 화면이 이미 보이는 데이터나 보내는 요청을 깨는 바꿈은 다시 확인 요청합니다.
 
 기록은 Notion 최근 업데이트 DB의 06단계 기록 행(<https://app.notion.com/p/416bf16cc3ec81bc8e55c85d0f194ccf>)에 있고, API·오류 코드·결정 사항 표를 이 문서에서 옮겨 두었습니다. 둘이 다르면 이 문서와 원본 계약이 맞습니다.
+
+## 15. 확정한 뒤 고친 것
+
+2026-11-13 설계 독립 재검토의 높음 묶음 H1(RB-01, RC-05, RD-02, RA-15)과 H2(RA-01, RE-02, RE-03, RE-04)를 동희님 2026-11-13 20:59 결정 카드 '추천안대로 (추천)'에 따라 고쳤습니다. 요구사항 버전 5(REQ-165~174), 04단계 SPEC-070·071, 05단계 마이그레이션 0002를 따릅니다. 원본 `api_schemas.py`·`api_ops.py`·`api_examples.py`·`api_catalog.py`를 고치고 `build_api.py . --write`로 다시 만들었습니다(`build_api.py`는 깨지는 변화 목록을 `api_catalog.py`에서 읽게만 바꿈).
+
+| API·스키마 | 고친 것 | 근거 |
+| --- | --- | --- |
+| `PaymentRequest`, API-057·058 | 들어온 금액·남긴 시각(`arrivedAmount`·`arrivedAt`) | REQ-165, SPEC-071 |
+| API-059 입금 대조 | 결과 `arrived`(닫힘·기한 지남 결제 안내에 들어온 입금, `arrivedAmount`)와 `void`(제작 전 결제 확인 취소, `voidReason`). 예시 `arrived`·`voided`. `paid_after_cancel`은 들어온 금액을 남김 | REQ-166, REQ-167, REQ-169, SPEC-070, SPEC-071 |
+| `Payment` | 결제 확인 취소 시각·사유(`voidedAt`·`voidReason`). 취소한 결제는 받은 금액에 들지 않음 | REQ-169 |
+| API-049 환불 미리보기 | 받은 금액 = 결제 안내의 들어온 금액 합, 나눠 보기(`confirmedAmount`·`unconfirmedAmount`), 가장 작은 금액 `minAmount` = 계산값. 원인 `over_received`와 `paymentRequestId` | REQ-165, REQ-170, SPEC-071 |
+| API-050 환불 결정 | 계산값보다 낮으면 422 `below_calculated`, 높으면 사유. 환불 없음은 계산값이 0원일 때만. 할 일 '환불 보내기'를 열고 24시간 뒤 다시 알림, 손님 계좌 묻기. 예시 `none`·`over_received` | REQ-170, REQ-171, REQ-173 |
+| API-061 환불 '보냄' | 할 일을 닫고 손님에게 보냄 안내를 한 번(`customerNotice` `sent`·`deferred`), 장부 쓰기. 08단계 SCR-026의 결과 문구와 계약이 맞음 | REQ-172(RE-03) |
+| API-040 할 일, `OwnerTask` | 종류 `refund_send`(subject `refund`)·`arrival_check`(subject `payment_request`), 예시 2개. 설명의 `paid_after_cancel` 이름은 '취소 뒤 들어온 입금' | REQ-167, REQ-173 |
+| API-048 가게 사정 취소 | 받은 금액(REQ-165), 결제 확인 요청 중이었으면 들어온 입금 대조 할 일 | SPEC-071 |
+| 서버 안의 일(10절) | 환불 보내기 다시 알림(정한 뒤 24시간) | REQ-173 |
+
+- 깨지는 변화 7개는 11절. 오류 코드는 그대로(32개)이고 필드 오류 사유 `below_calculated`를 더했습니다.
+- 검사: 12절의 2026-11-13 결과. Schemathesis(12-2)는 이번에 다시 돌리지 않았습니다.

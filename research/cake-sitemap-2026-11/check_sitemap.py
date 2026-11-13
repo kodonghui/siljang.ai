@@ -30,7 +30,8 @@ EXTRA_AVOID = ("입금 확인", "예약 확정", "결제 완료", "노쇼", "클
 ALLOW = {
     "예약": [r"예약 링크", r"가예약"],
     "확정": [r"주문[이을]? ?확정", r"확정[된되]", r"확정하", r"확정 안내", r"확정 주문", r"버전으로 확정",
-             r"추천대로 확정", r"단계 확정", r"\d+ 확정", r"확정 \|", r"상태: 확정", r"확정받"],
+             r"추천대로 확정", r"단계 확정", r"\d+ 확정", r"확정 \|", r"상태: 확정", r"확정받",
+             r"확정한 뒤 고친"],  # 단계 문서를 마친 뒤 고친 기록의 절 제목(03단계 check_flows.py와 같음)
     "시트": [r"구글 시트"],
     "입금": [r"입금했다고", r"입금 대조", r"들어온 입금", r"입금이 확인", r"입금자", r"입금됨", r"미입금"],
     "주문서": [r"주문서 초안"],
@@ -309,7 +310,7 @@ def main():
 
     # S11 SPEC
     used = {s for n, _, _, _ in flat for s in n.get("specs") or []}
-    all_specs = sorted({s for s in specs if re.fullmatch(r"SPEC-0[0-6]\d", s)})
+    all_specs = sorted(set(re.findall(r"^\| (SPEC-\d{3}) \|", spec_text, re.M)))  # 4절 SPEC 표의 행(SPEC-070부터도 셈)
     missing = [s for s in all_specs if s not in used]
     rep.add("S11", "04단계 SPEC이 모두 화면에 매핑됨", ["화면이 없는 SPEC: %s" % s for s in missing],
             "%d/%d" % (len(all_specs) - len(missing), len(all_specs)))

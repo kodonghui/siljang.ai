@@ -111,7 +111,7 @@ MONEY = lambda col=None, lo=0: integer(lo, 10000000, col=col, desc="원")
 CURSOR = string(1, 200, r"^[A-Za-z0-9_-]+$")
 
 ORDER_STATUS = ["requested", "awaiting_payment", "payment_overdue", "confirmed", "received", "no_pickup", "rejected", "cancelled"]
-TASK_KINDS = ["handoff", "custom_order", "change_request", "issue_report", "payment_claim", "payment_mismatch", "payment_overdue", "refund_decision", "paid_after_cancel", "stale_change", "ledger_relink", "license_on_hold", "calendar_conflict"]
+TASK_KINDS = ["handoff", "custom_order", "change_request", "issue_report", "payment_claim", "payment_mismatch", "payment_overdue", "refund_decision", "paid_after_cancel", "stale_change", "ledger_relink", "license_on_hold", "calendar_conflict", "refund_send", "arrival_check"]
 HANDOFF_REASONS = ["edibility", "cannot_answer", "closed_day", "legal_medical", "customer_request", "other_user", "pre_receipt_issue", "ai_failure", "ai_cost_limit", "callback_timeout", "masking_failed", "empty_answer", "clause_missing"]
 CLAUSE_KEYS = ["pre_production_cancel", "staged_refund", "cancellation_fee", "date_change_refund_basis", "shop_cancel_compensation", "other_shop_design", "issue_report_window", "quote_validity", "payment_due", "change_deadline", "custom"]
 IMAGE_TYPES = ["image/jpeg", "image/png", "image/heic", "image/webp"]
@@ -653,7 +653,7 @@ S["OwnerTask"] = all_required({
     "waitDueAt": nullable(DT),
     "order": nullable(ref("OrderRef")),
     "subject": nullable(all_required({
-        "type": enum(["handoff", "order", "change_request", "issue_report", "payment_request", "ledger", "shop", "calendar"]),
+        "type": enum(["handoff", "order", "change_request", "issue_report", "payment_request", "refund", "ledger", "shop", "calendar"]),
         "id": nullable(UUID),
     }, desc="열 화면")),
     "summary": string(0, 200, desc="보일 글감. 손님 연락처·계좌·알레르기 없음(SPEC-067)"),
@@ -760,6 +760,8 @@ S["PaymentRequest"] = all_required({
     "claimRejectedAt": nullable(DT),
     "depositorName": nullable(string(1, 30, desc="입금자 이름(입금 대조). AI로 보내지 않음")),
     "mismatchAmount": nullable(integer(1, 100000000)),
+    "arrivedAmount": nullable(integer(1, 100000000, desc="들어온 금액(받은 금액의 몫, REQ-165). 확인됨은 안내 금액 이상, 맞추는 중은 다르게 들어온 금액, 닫힘·기한 지남은 사장님이 들어왔다고 남긴 금액(SPEC-071). 나감·확인 요청됨은 null")),
+    "arrivedAt": nullable(DT),
     "paidAt": nullable(DT),
     "expiredAt": nullable(DT),
     "closedAt": nullable(DT),
@@ -769,7 +771,9 @@ S["PaymentRequest"] = all_required({
 S["Payment"] = all_required({
     "paymentId": UUID, "paymentRequestId": UUID, "amount": integer(1, 10000000),
     "resolution": enum(["exact", "shortfall_paid", "excess_returned"]), "confirmedAt": DT,
-})
+    "voidedAt": nullable(DT),
+    "voidReason": nullable(string(1, 200, desc="결제 확인을 취소한 사유(REQ-169). 사장님 화면에만")),
+}, desc="확인된 결제. voidedAt이 있으면 사장님이 결제 확인을 취소한 것이라 받은 금액에 들지 않음(SPEC-070)")
 S["RefundBasis"] = all_required({
     "operatingRulesVersion": integer(1, 2147483647),
     "clauseTitles": arr(string(1, 60), 0, 10),
@@ -780,7 +784,7 @@ S["RefundBasis"] = all_required({
     "cancellationFeeKrw": integer(0, 10000000),
     "receivedAmount": integer(0, 100000000),
 }, desc="환불 계산 근거(SPEC-016, REQ-084). 사장님께 전부")
-REFUND_CAUSES = ["customer_cancel", "shop_cancel", "change_reduced", "compensation", "paid_after_cancel"]
+REFUND_CAUSES = ["customer_cancel", "shop_cancel", "change_reduced", "compensation", "paid_after_cancel", "over_received"]
 S["RefundSummary"] = all_required({
     "refundId": UUID, "cause": enum(REFUND_CAUSES), "decision": enum(["full", "partial", "none"]),
     "amount": integer(0, 10000000), "decidedAt": DT, "sentAt": nullable(DT),
@@ -878,10 +882,13 @@ S["ShopCancelInput"] = obj({
 S["RefundPreview"] = all_required({
     "order": ref("OrderRef"),
     "cause": enum(REFUND_CAUSES),
-    "receivedAmount": integer(0, 100000000, desc="받은 금액(확인된 결제의 합)"),
+    "receivedAmount": integer(0, 100000000, desc="받은 금액: 그 주문 결제 안내의 들어온 금액 합(REQ-165) = confirmedAmount + unconfirmedAmount"),
+    "confirmedAmount": integer(0, 100000000, desc="확인된 결제의 합(결제 확인을 취소한 것은 빼고)"),
+    "unconfirmedAmount": integer(0, 100000000, desc="결제로 확인하지 않은 들어온 금액: 맞추는 중의 들어온 금액, 안내 금액을 넘어 들어온 금액, 사장님이 들어왔다고 남긴 금액(SPEC-071)"),
     "refundedAmount": integer(0, 100000000, desc="이미 정한 환불의 합"),
-    "calculatedAmount": integer(0, 10000000, desc="가게 규칙의 계산값"),
-    "maxAmount": integer(0, 10000000, desc="정할 수 있는 가장 큰 금액(받은 금액 - 이미 정한 환불, REQ-086)"),
+    "calculatedAmount": integer(0, 10000000, desc="가게 규칙의 계산값(maxAmount를 넘지 않음). 손님이 취소 카드에서 본 금액"),
+    "minAmount": integer(0, 10000000, desc="정할 수 있는 가장 작은 금액 = 계산값(REQ-170). 낮으면 422 below_calculated"),
+    "maxAmount": integer(0, 10000000, desc="정할 수 있는 가장 큰 금액(받은 금액 - 이미 정한 환불, REQ-165)"),
     "basis": ref("RefundBasis"),
 })
 S["ShopCancelResult"] = all_required({
@@ -929,8 +936,11 @@ S["ProductionDay"] = all_required({
 S["PaymentRequestList"] = all_required({"items": arr(ref("PaymentRequest"), 0, 100), "nextCursor": nullable(CURSOR)})
 S["ReconciliationInput"] = obj({
     "baseRevision": BASE_REVISION,
-    "result": enum(["received", "not_received", "mismatch", "resolved"], desc="입금됨(SPEC-034)·미입금·금액 불일치(SPEC-035)·대조 완료"),
+    "result": enum(["received", "not_received", "mismatch", "resolved", "arrived", "void"],
+                   desc="입금됨(SPEC-034)·미입금·금액 불일치(SPEC-035)·대조 완료·들어옴(닫힘·기한 지남 결제 안내에 들어온 입금, SPEC-071)·결제 확인 취소(SPEC-070)"),
     "mismatchAmount": integer(1, 100000000, col="payment_requests.mismatch_amount", desc="들어온 금액. mismatch만, 안내 금액의 10배까지"),
+    "arrivedAmount": integer(1, 100000000, col="payment_requests.arrived_amount", desc="들어온 금액. arrived만, 안내 금액의 10배까지(SPEC-071)"),
+    "voidReason": string(1, 200, col="payments.void_reason", desc="결제 확인을 취소한 사유. void만, 제작 시작 전(REQ-169)"),
     "resolution": enum(["shortfall_paid", "excess_returned"], col="payments.resolution", desc="대조 완료의 사유. resolved만"),
 }, ["baseRevision", "result"])
 S["ReconciliationResult"] = all_required({
@@ -942,12 +952,13 @@ S["ReconciliationResult"] = all_required({
 })
 S["RefundInput"] = obj({
     "baseRevision": BASE_REVISION,
-    "cause": enum(["customer_cancel", "shop_cancel", "change_reduced", "paid_after_cancel"], col="refunds.cause",
-                  desc="손님 취소·가게 사정 취소·금액이 내려간 변경·취소 뒤 들어온 입금. 보상 환불은 API-065"),
+    "cause": enum(["customer_cancel", "shop_cancel", "change_reduced", "paid_after_cancel", "over_received"], col="refunds.cause",
+                  desc="손님 취소·가게 사정 취소·금액이 내려간 변경·취소 뒤 들어온 입금·더 들어온 금액(SPEC-071). 보상 환불은 API-065"),
     "changeRequestId": dict(UUID, description="금액이 내려간 변경(cause가 change_reduced일 때 꼭)"),
-    "decision": enum(["full", "partial", "none"], col="refunds.decision", desc="전액 환불·일부 환불·환불 없이 취소"),
-    "amount": integer(0, 10000000, col="refunds.amount", desc="none이면 0. 받은 금액 - 이미 정한 환불을 넘으면 필드 오류 exceeds_received"),
-    "overrideReason": string(1, 200, col="refunds.override_reason", desc="계산값과 다른 금액이면 꼭"),
+    "paymentRequestId": dict(UUID, description="돌려줄 들어온 입금의 결제 안내(cause가 paid_after_cancel·over_received일 때 꼭, SPEC-071)"),
+    "decision": enum(["full", "partial", "none"], col="refunds.decision", desc="전액 환불·일부 환불·환불 없이 취소(계산값이 0원일 때만, REQ-170)"),
+    "amount": integer(0, 10000000, col="refunds.amount", desc="none이면 0. 계산값보다 낮으면 필드 오류 below_calculated(REQ-170), 받은 금액 - 이미 정한 환불을 넘으면 exceeds_received"),
+    "overrideReason": string(1, 200, col="refunds.override_reason", desc="계산값보다 높은 금액이면 꼭"),
 }, ["baseRevision", "cause", "decision", "amount"], desc="주문의 baseRevision으로 정함. 같은 사유의 환불은 한 번(G2). 우리는 돈을 옮기지 않음(REQ-079)")
 REFUND_ACCOUNT_IN = obj({
     "bankName": string(1, 30, col="refunds.refund_bank_name"),
@@ -974,7 +985,7 @@ S["Refund"] = all_required({
 S["RefundResult"] = all_required({
     "outcome": outcome(),
     "refund": ref("Refund"),
-    "customerNotice": enum(["sent", "deferred", "none"], desc="손님 안내: 보냄·다음 대화 때·없음(환불 없이 취소)"),
+    "customerNotice": enum(["sent", "deferred", "none"], desc="손님 안내: 보냄·다음 대화 때·없음(환불 없이 취소, 이미 표시한 보냄)"),
 })
 S["RefundSentInput"] = obj({
     "baseRevision": BASE_REVISION,

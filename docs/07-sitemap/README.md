@@ -5,7 +5,7 @@
 ## 1. 요약
 
 <!-- 07-sitemap:counts:start -->
-화면 49개: 손님 13, 사장님 32, 운영자 4. 화면에 연결된 플로우 13/14개, 화면에 매핑된 API 72개, SPEC 69개.
+화면 49개: 손님 13, 사장님 32, 운영자 4. 화면에 연결된 플로우 13/14개, 화면에 매핑된 API 72개, SPEC 71개.
 <!-- 07-sitemap:counts:end -->
 
 - 루트는 3개입니다. 손님은 예약 링크 페이지(SCR-001), 사장님은 사장님 로그인(SCR-014), 운영자는 운영자 로그인(SCR-046)으로 진입합니다. 요구사항에 서비스 소개 페이지가 없어 셋을 묶는 공통 첫 화면은 두지 않았습니다(S1).
@@ -60,12 +60,12 @@
 <!-- 07-sitemap:reasons:start -->
 | 사유 | 정의 | 노드 수 |
 | --- | --- | --- |
-| 분기 | 서비스나 AI 상담이 판단하는 분기 노드라 사람에게 보이는 화면이 없음 | 43 |
+| 분기 | 서비스나 AI 상담이 판단하는 분기 노드라 사람에게 보이는 화면이 없음 | 45 |
 | 서버 처리 | 서버에서만 처리되어 화면에 보이지 않음 | 34 |
-| 외부 | 우리 서비스 밖(은행 앱·인스타그램·구글 시트 장부·가게 현장)에서 보거나 일어남 | 10 |
-| 종료 | 결과만 적은 종료 노드 | 22 |
+| 외부 | 우리 서비스 밖(은행 앱·인스타그램·구글 시트 장부·가게 현장)에서 보거나 일어남 | 11 |
+| 종료 | 결과만 적은 종료 노드 | 23 |
 
-플로우 노드 291개 가운데 화면이 있는 노드 182개, 사유를 적은 노드 109개입니다(다른 플로우 연결 노드 12개는 제외).
+플로우 노드 301개 가운데 화면이 있는 노드 188개, 사유를 적은 노드 113개입니다(다른 플로우 연결 노드 12개는 제외).
 <!-- 07-sitemap:reasons:end -->
 
 ## 4. 화면 목록
@@ -103,7 +103,7 @@
 | SCR-026 | 　　　└ 환불 송금 | `/owner/refunds/:refundId` | 사장님 | FL-009, FL-011 |
 | SCR-027 | 　　　└ 문제 신고 | `/owner/issue-reports/:issueReportId` | 사장님 | FL-011 |
 | SCR-028 | 　└ 입금 대조 목록 | `/owner/payment-requests` | 사장님 | FL-007 |
-| SCR-029 | 　　└ 입금 대조 | `/owner/payment-requests/:paymentRequestId` | 사장님 | FL-007 |
+| SCR-029 | 　　└ 입금 대조 | `/owner/payment-requests/:paymentRequestId` | 사장님 | FL-007, FL-009 |
 | SCR-030 | 　└ 제작 목록 | `/owner/production` | 사장님 | FL-008, FL-010 |
 | SCR-031 | 　└ 픽업 목록 | `/owner/pickups` | 사장님 | FL-010 |
 | SCR-032 | 　└ 영업 캘린더 | `/owner/calendar` | 사장님 | FL-001, FL-002, FL-006, FL-007 |
@@ -158,7 +158,7 @@
 | SCR-013 | SPEC-063, SPEC-069 | API-071 | CTX-006, TERM-052, TERM-051 |  |
 | SCR-014 | SPEC-001 | API-001 | CTX-007, TERM-044 |  |
 | SCR-015 | SPEC-002, SPEC-068 | API-007, API-008 | CTX-007, TERM-053 |  |
-| SCR-016 | SPEC-067, SPEC-024, SPEC-037 | API-040, API-002 | CTX-001, TERM-059, TERM-035, TERM-008 | SCR-022, SCR-023, SCR-024, SCR-025, SCR-027, SCR-029, SCR-032, SCR-035, SCR-042, SCR-043 |
+| SCR-016 | SPEC-067, SPEC-024, SPEC-037 | API-040, API-002 | CTX-001, TERM-059, TERM-035, TERM-008 | SCR-022, SCR-023, SCR-024, SCR-025, SCR-026, SCR-027, SCR-029, SCR-032, SCR-035, SCR-042, SCR-043 |
 | SCR-017 | SPEC-022, SPEC-023, SPEC-056 | API-041, API-042 | CTX-001, TERM-008, TERM-018 |  |
 | SCR-018 | SPEC-021, SPEC-019, SPEC-065, SPEC-068 | API-043 | CTX-001, TERM-046, TERM-019 |  |
 | SCR-019 | SPEC-067, SPEC-003, SPEC-024 | 없음(먼저 보내는 안내) | CTX-008, TERM-035, TERM-054 | SCR-016 |
@@ -167,11 +167,11 @@
 | SCR-022 | SPEC-031 | API-045, API-046 | CTX-003, TERM-062, TERM-038, TERM-011 |  |
 | SCR-023 | SPEC-037, SPEC-038, SPEC-039 | API-045, API-047 | CTX-003, TERM-064, TERM-037 |  |
 | SCR-024 | SPEC-042, SPEC-043, SPEC-044, SPEC-045 | API-062, API-063 | CTX-003, TERM-066 |  |
-| SCR-025 | SPEC-047, SPEC-016 | API-049, API-050 | CTX-004, TERM-067, TERM-016 |  |
-| SCR-026 | SPEC-047, SPEC-049 | API-060, API-061 | CTX-004, TERM-049 |  |
+| SCR-025 | SPEC-047, SPEC-016, SPEC-071 | API-049, API-050 | CTX-004, TERM-067, TERM-016 |  |
+| SCR-026 | SPEC-047, SPEC-049, SPEC-066 | API-060, API-061 | CTX-004, TERM-049 |  |
 | SCR-027 | SPEC-058, SPEC-059, SPEC-060 | API-064, API-065 | CTX-003, TERM-073, TERM-031, TERM-033, TERM-034 |  |
 | SCR-028 | SPEC-034, SPEC-033, SPEC-035, SPEC-037 | API-057 | CTX-004, TERM-063 |  |
-| SCR-029 | SPEC-034, SPEC-035, SPEC-036 | API-058, API-059 | CTX-004, TERM-063, TERM-049 |  |
+| SCR-029 | SPEC-034, SPEC-035, SPEC-036, SPEC-070, SPEC-071 | API-058, API-059 | CTX-004, TERM-063, TERM-049 |  |
 | SCR-030 | SPEC-050, SPEC-051, SPEC-053, SPEC-060 | API-051, API-052, API-053, API-007 | CTX-005, TERM-068, TERM-050, TERM-022 |  |
 | SCR-031 | SPEC-054, SPEC-055 | API-051, API-054, API-055, API-056 | CTX-005, TERM-069, TERM-024, TERM-025 |  |
 | SCR-032 | SPEC-007, SPEC-012, SPEC-015 | API-028, API-029 | CTX-002, TERM-060, TERM-048, TERM-026, TERM-027 |  |
@@ -208,6 +208,8 @@
 | `payment_overdue` | SCR-023 결제 기한 지난 주문 |
 | `refund_decision` | SCR-025 환불 결정 |
 | `paid_after_cancel` | SCR-025 환불 결정 |
+| `refund_send` | SCR-026 환불 송금 |
+| `arrival_check` | SCR-029 입금 대조 |
 | `stale_change` | SCR-024 변경 요청 |
 | `ledger_relink` | SCR-042 장부 연결 |
 | `license_on_hold` | SCR-035 영업 신고 |
@@ -245,6 +247,8 @@
 - 열린 질문 OPEN-8(사장님이 오픈빌더 봇 ID를 찾는 위치)은 SCR-041 카카오톡 채널 연결 화면의 안내 문구로 08단계에서 정합니다. OPEN-6(운영자 인증 서비스)은 SCR-046에 걸려 있습니다.
 
 ## 9. 검사
+
+2026-11-13 22:42 KST, 설계 재검토 H1·H2를 고친 뒤(13절) 22:16에 다시 생성한 파일에 `--hub`와 함께 돌린 결과: 검사 17개 통과 17, 실패 0, 미확인 0. 바뀐 숫자는 S8 노드 301개(화면 188, 분기 45, 서버 처리 34, 외부 11, 종료 23), S11 71/71, S13 할 일 유형 15·배너 5, S14 허용 예외 73곳, S17 `check_flows.py` 문제 0·금지어 0입니다. 검사가 틀렸던 두 곳을 `check_sitemap.py`에서 고쳤습니다. S11은 SPEC 번호를 `SPEC-0[0-6]\d`로만 골라 SPEC-070부터를 세지 않아 04단계 SPEC 표의 행을 세게 했고, S14는 13절 제목의 앞부분을 금지어 예외에 더했습니다(그 제목의 낱말은 단계 문서를 마친 일을 말하고, 03단계 `check_flows.py`도 같은 예외를 둠). 아래 표는 2026-11-12의 결과로 남깁니다.
 
 `python3 -B research/cake-sitemap-2026-11/check_sitemap.py . --hub <허브의 sitemap.py>`를 2026-11-12 15:59 KST에 생성한 파일에 실행한 결과: 검사 17개 통과 17, 실패 0, 미확인 0. `--hub`를 주지 않으면 S2는 '미확인'입니다.
 
@@ -307,3 +311,12 @@
 | 피할 말, 못 봄 | 금지어, 미확인 |
 
 01단계 용어집에서 정한 도메인 용어는 화면 이름과 API·SPEC 이름에도 쓰이고 있어 이때는 바꾸지 않았습니다. 같은 날 동희님이 '용어집부터 전부 바꿈'(16:23)과 용어 대조표 82개 '추천대로 확정'(17:30)을 고르셔서 01~07단계 전체를 업계 용어로 바꿨습니다(에스컬레이션 건, 버전, 사진 게시 동의 철회 등). 바꾼 내용은 [01단계 문서 3-7](../01-domain/domain.md)과 Notion [용어 대조표](https://app.notion.com/p/416bf16cc3ec8149a1cacc395e33055c)에 있습니다.
+
+## 13. 확정한 뒤 고친 것
+
+2026-11-13 설계 독립 재검토의 높음 묶음 H1(RB-01, RC-05, RD-02, RA-15)과 H2(RA-01, RE-02, RE-03, RE-04)를 동희님 2026-11-13 20:59 결정 카드 '추천안대로 (추천)'에 따라 `sitemap.yaml`에서 고치고 `build_sitemap.py . --write`로 다시 만들었습니다.
+
+- SCR-016 할 일 목록: 할 일 유형 `refund_send`(환불 보내기) → SCR-026, `arrival_check`(들어온 입금 대조) → SCR-029. 이동 화면에 SCR-026을 더함(REQ-173, REQ-167).
+- SCR-025 환불 결정: SPEC-071, 계산값 이상으로 정함(REQ-170). SCR-026 환불 송금: SPEC-066(보냄 안내, REQ-172). SCR-029 입금 대조: 플로우 FL-009, SPEC-070·071(들어옴, 결제 확인 취소).
+- FL-009의 07단계 화면 표에 새 노드 10개의 행이 생김(S3·D3·G3·D4·X16·D5·E3·X13·X14·X15).
+- 검사 스크립트 S11의 SPEC 고르기와 S14의 금지어 예외를 고침(9절).

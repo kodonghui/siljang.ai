@@ -184,7 +184,7 @@
       terms: [CTX-001, TERM-059, TERM-035, TERM-008]
       specs: [SPEC-067, SPEC-024, SPEC-037]
       apis: [API-040, API-002]
-      opens: [SCR-022, SCR-023, SCR-024, SCR-025, SCR-027, SCR-029, SCR-032, SCR-035, SCR-042, SCR-043]
+      opens: [SCR-022, SCR-023, SCR-024, SCR-025, SCR-026, SCR-027, SCR-029, SCR-032, SCR-035, SCR-042, SCR-043]
       opens_by_task:
         handoff: SCR-017
         custom_order: SCR-022
@@ -195,6 +195,8 @@
         payment_overdue: SCR-023
         refund_decision: SCR-025
         paid_after_cancel: SCR-025
+        refund_send: SCR-026
+        arrival_check: SCR-029
         stale_change: SCR-024
         ledger_relink: SCR-042
         license_on_hold: SCR-035
@@ -299,9 +301,9 @@
               status: active
               flows: [FL-008, FL-009]
               terms: [CTX-004, TERM-067, TERM-016]
-              specs: [SPEC-047, SPEC-016]
+              specs: [SPEC-047, SPEC-016, SPEC-071]
               apis: [API-049, API-050]
-              note: "가게 규칙이 계산한 환불 금액과 그 근거를 보고 환불을 정함"
+              note: "가게 규칙이 계산한 환불 금액과 그 근거(받은 금액의 몫)를 보고 계산값 이상으로 환불을 정함"
             - id: SCR-026
               name: 환불 송금
               path: /owner/refunds/:refundId
@@ -309,9 +311,9 @@
               status: active
               flows: [FL-009, FL-011]
               terms: [CTX-004, TERM-049]
-              specs: [SPEC-047, SPEC-049]
+              specs: [SPEC-047, SPEC-049, SPEC-066]
               apis: [API-060, API-061]
-              note: "손님 환불 계좌를 보고 은행 앱으로 보낸 뒤 '보냄'을 누름"
+              note: "손님 환불 계좌를 보고 은행 앱으로 보낸 뒤 '보냄'을 누름. 할 일 '환불 보내기'가 엶"
             - id: SCR-027
               name: 문제 신고
               path: /owner/issue-reports/:issueReportId
@@ -338,11 +340,11 @@
           path: /owner/payment-requests/:paymentRequestId
           access: 사장님
           status: active
-          flows: [FL-007]
+          flows: [FL-007, FL-009]
           terms: [CTX-004, TERM-063, TERM-049]
-          specs: [SPEC-034, SPEC-035, SPEC-036]
+          specs: [SPEC-034, SPEC-035, SPEC-036, SPEC-070, SPEC-071]
           apis: [API-058, API-059]
-          note: "안내 금액·입금자 이름·결제 기한을 은행 앱과 맞춰 보고 입금됨·미입금·금액 불일치를 고름"
+          note: "안내 금액·입금자 이름·결제 기한을 은행 앱과 맞춰 보고 입금됨·미입금·금액 불일치를 고름. 닫힌 결제 안내에는 들어옴(금액), 제작 전 확인된 결제에는 결제 확인 취소"
     - id: SCR-030
       name: 제작 목록
       path: /owner/production

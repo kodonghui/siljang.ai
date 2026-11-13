@@ -59,6 +59,7 @@ FIELD_CODES = {
     "overlaps": "단계별 환불 기간이 중복됨",
     "gap": "단계별 환불 기간 사이가 빔",
     "exceeds_received": "환불 금액이 받은 금액에서 이미 정한 환불을 뺀 값을 넘음",
+    "below_calculated": "보상이 아닌 환불 금액이 환불 계산값보다 낮음(REQ-170)",
     "in_past": "지난 날짜나 시각",
     "outside_window": "허용된 시간 밖(08:00~20:50, 60일 안 등)",
     "not_after_start": "끝이 시작보다 앞섬",
@@ -172,6 +173,22 @@ JOBS = [
     dict(spec="SPEC-065", job="지난 기록 지우기: 하루 한 번 03:00(05단계 README 6절 순서)", seen_in="API-043(지운 상담은 status deleted)"),
     dict(spec="SPEC-066", job="손님에게 먼저 보내는 안내: 친구면 카카오 이벤트 API로 바로, 아니면 다음 대화 때 먼저(1분·5분·30분 다시 보내기)", seen_in="API-070(먼저 전함), API-042"),
     dict(spec="SPEC-067", job="사장님 알림: 우리 서비스 채널로 할 일 종류와 목록 주소(1분 안 같은 종류는 묶음)", seen_in="API-040(할 일), API-002(채널 친구가 아니면 안내)"),
+    dict(spec="SPEC-047", job="환불 보내기 다시 알림: 정한 뒤 24시간이 지나도 '보냄'이 없으면 사장님께 한 번 다시 알림(REQ-173)", seen_in="API-040(할 일 refund_send), API-061(보냄이면 닫힘)"),
+]
+
+# ── 깨지는 변화: main의 api/openapi.yaml과 견줘 check_api.py A13이 찾는 것. PR마다 더하고 지난 항목은 지우지 않음 ──────────
+BREAKING_CHANGES = [
+    dict(what=f"꼭 넣을 필드 더함: {w}", why=why, decided="2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 H1·H2)",
+         client="응답에만 더한 필드라 보내는 요청은 그대로. 화면(08단계)은 새 필드를 읽음")
+    for w, why in [
+        ("PaymentRequest.arrivedAmount", "받은 금액을 결제 안내의 들어온 금액 합으로 셈(REQ-165, SPEC-071)"),
+        ("PaymentRequest.arrivedAt", "들어온 금액을 남긴 시각(REQ-165, SPEC-071)"),
+        ("Payment.voidedAt", "잘못 누른 결제 확인 취소(REQ-169, SPEC-070)"),
+        ("Payment.voidReason", "결제 확인을 취소한 사유(REQ-169, SPEC-070)"),
+        ("RefundPreview.confirmedAmount", "받은 금액을 확인된 결제와 그 밖의 들어온 금액으로 나눠 보임(REQ-165)"),
+        ("RefundPreview.unconfirmedAmount", "받은 금액을 확인된 결제와 그 밖의 들어온 금액으로 나눠 보임(REQ-165)"),
+        ("RefundPreview.minAmount", "보상이 아닌 환불은 계산값보다 낮게 정하지 못함(REQ-170)"),
+    ]
 ]
 
 # ── 케이스 유형 (04단계와 같은 이름) ─────────────────────────────────────────────

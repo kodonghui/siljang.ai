@@ -331,7 +331,7 @@ def build_document():
         "open": [dict(d) for d in C.OPEN_QUESTIONS],
         "jobs": [dict(d) for d in C.JOBS],
         "kinds": list(C.KINDS),
-        "breakingChanges": [],
+        "breakingChanges": [dict(d) for d in C.BREAKING_CHANGES],
     }
     doc = {
         "openapi": "3.1.0",

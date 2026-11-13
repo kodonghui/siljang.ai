@@ -563,7 +563,7 @@ op(id="API-039", method="get", path="/public/shops/{slug}/privacy-policy", op="g
 # ═══ 할 일 ════════════════════════════════════════════════════════════════════
 op(id="API-040", method="get", path="/owner/tasks", op="listOwnerTasks", tag="할 일",
    summary="할 일 목록", spec=["SPEC-067", "SPEC-022", "SPEC-024", "SPEC-037"], auth="owner",
-   desc="사장님이 정할 일(에스컬레이션 건·맞춤 주문·결제 확인 요청·맞추는 중·결제 기한 지남·변경 요청·문제 신고·환불 결정·취소 뒤 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날). "
+   desc="사장님이 정할 일(에스컬레이션 건·맞춤 주문·결제 확인 요청·맞추는 중·결제 기한 지남·변경 요청·문제 신고·환불 결정·취소 뒤 들어온 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)). 환불 보내기는 '보냄'을 표시하면 닫히고, 정한 뒤 24시간이 지나면 한 번 다시 알린다. "
         "기다림 상태(waitStatus)는 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고에만(SPEC-024). subject가 열 화면. "
         "알림은 우리 서비스 채널로 가고, 사장님이 채널 친구가 아니면 alertChannelFriend false(SPEC-067).",
    params=[q("status", {"type": "string", "enum": ["open", "closed"]}, "열림·닫힘. 없으면 open", "open"), CURSOR, LIMIT],
@@ -684,8 +684,9 @@ op(id="API-047", method="post", path="/owner/orders/{orderId}/overdue-decision",
           "동시": ["revision", "409:version_conflict"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-048", method="post", path="/owner/orders/{orderId}/shop-cancel", op="cancelOrderByShop", tag="주문",
-   summary="가게 사정 취소", spec=["SPEC-048", "SPEC-016", "SPEC-015"], auth="owner", idem=True,
-   desc="주문을 '가게 사정으로 취소됨'으로 두고 자리를 풀고 손님에게 알리고 장부 쓰기를 남긴다. 받은 금액이 있으면 전액을 계산값으로 한 refundPreview를 반환하고 화면은 환불 결정(API-050)으로 간다. "
+   summary="가게 사정 취소", spec=["SPEC-048", "SPEC-016", "SPEC-015", "SPEC-071"], auth="owner", idem=True,
+   desc="주문을 '가게 사정으로 취소됨'으로 두고 자리를 풀고 손님에게 알리고 장부 쓰기를 남긴다. 받은 금액(결제 안내의 들어온 금액 합, REQ-165)이 있으면 전액을 계산값으로 한 refundPreview를 반환하고 화면은 환불 결정(API-050)으로 간다. "
+        "결제 확인 요청 중이었으면 들어온 입금 대조 할 일을 남긴다(SPEC-071). "
         "받은 주문은 409 invalid_state, 이미 가게 사정으로 취소했으면 unchanged, 다른 사유로 취소된 주문은 409 already_decided.",
    params=[pid("orderId", "주문", E.ORDER_ID)],
    body="ShopCancelInput",
@@ -702,12 +703,15 @@ op(id="API-048", method="post", path="/owner/orders/{orderId}/shop-cancel", op="
           "동시": ["revision", "409:version_conflict"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-049", method="get", path="/owner/orders/{orderId}/refund-preview", op="getRefundPreview", tag="환불",
-   summary="환불 계산 미리보기(가게 규칙)", spec=["SPEC-016", "SPEC-047"], auth="owner",
+   summary="환불 계산 미리보기(가게 규칙)", spec=["SPEC-016", "SPEC-047", "SPEC-071"], auth="owner",
    desc="그 주문이 받은 운영규정 버전, 취소 시각(아직이면 지금), 맞춤 재료 주문·제작 시작 시각, 받은 금액으로 계산값과 근거를 낸다. "
-        "정할 수 있는 가장 큰 금액은 받은 금액 - 이미 정한 환불(REQ-086). 받은 금액이 0원이면 0원(SPEC-016). 같은 입력이면 같은 값.",
+        "받은 금액은 결제 안내의 들어온 금액 합(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-165). "
+        "정할 수 있는 가장 작은 금액은 계산값(REQ-170), 가장 큰 금액은 받은 금액 - 이미 정한 환불. 받은 금액이 0원이면 0원(SPEC-016). 같은 입력이면 같은 값. "
+        "취소 뒤 들어온 입금·더 들어온 금액(SPEC-071)은 paymentRequestId로 그 결제 안내의 들어온 금액을 계산값으로 낸다.",
    params=[pid("orderId", "주문", E.ORDER_ID),
-           q("cause", {"type": "string", "enum": ["customer_cancel", "shop_cancel", "change_reduced", "paid_after_cancel"]}, "환불 사유", "customer_cancel", True),
-           q("changeRequestId", {"type": "string", "minLength": 1, "maxLength": 100}, "금액이 내려간 변경(cause가 change_reduced일 때 꼭). 없거나 다른 주문 것이면 404")],
+           q("cause", {"type": "string", "enum": ["customer_cancel", "shop_cancel", "change_reduced", "paid_after_cancel", "over_received"]}, "환불 사유", "customer_cancel", True),
+           q("changeRequestId", {"type": "string", "minLength": 1, "maxLength": 100}, "금액이 내려간 변경(cause가 change_reduced일 때 꼭). 없거나 다른 주문 것이면 404"),
+           q("paymentRequestId", {"type": "string", "minLength": 1, "maxLength": 100}, "돌려줄 들어온 입금의 결제 안내(cause가 paid_after_cancel·over_received일 때 꼭). 없거나 다른 주문 것이면 404")],
    ok=[(200, "RefundPreview", {"customer_cancel": E.REFUND_PREVIEW, "shop_cancel": E.REFUND_PREVIEW_SHOP})],
    errors={404: ["not_found"]},
    fields=[("query:cause", "required")],
@@ -716,19 +720,23 @@ op(id="API-049", method="get", path="/owner/orders/{orderId}/refund-preview", op
           "반복": ["note:같은 입력이면 같은 값(SPEC-016)"], "노출": ["closed", "note:근거는 사장님께 전부"], "화면": ["screen"]})
 
 op(id="API-050", method="post", path="/owner/orders/{orderId}/refunds", op="decideRefund", tag="환불",
-   summary="환불 결정", spec=["SPEC-047", "SPEC-016", "SPEC-066", "SPEC-064"], auth="owner", idem=True,
-   desc="전액 환불·일부 환불·환불 없이 취소 가운데 하나를 고른다. 금액은 받은 금액 - 이미 정한 환불을 넘을 수 없다(422 exceeds_received). "
-        "계산값과 다르면 사유가 꼭 있다. 손님에게 환불 금액과 받는 방법을 한 번 알리고 장부 쓰기를 남긴다. "
+   summary="환불 결정", spec=["SPEC-047", "SPEC-016", "SPEC-066", "SPEC-064", "SPEC-067", "SPEC-049", "SPEC-071"], auth="owner", idem=True,
+   desc="전액 환불·일부 환불·환불 없이 취소 가운데 하나를 고른다. 보상이 아닌 환불은 계산값보다 낮을 수 없고(422 below_calculated, REQ-170) 받은 금액 - 이미 정한 환불을 넘을 수 없다(422 exceeds_received). "
+        "계산값보다 높으면 사유가 꼭 있다. 환불 없이 취소는 계산값이 0원일 때만. 손님에게 환불 금액과 받는 방법을 한 번 알리고 장부 쓰기를 남긴다. "
+        "돌려줄 금액이 있으면 할 일 '환불 보내기'를 열고(정한 뒤 24시간이 지나면 한 번 다시 알림, REQ-173), 계좌로 돌려줄 환불에 손님 계좌가 없으면 상담에서 묻는다(REQ-171). "
+        "취소 뒤 들어온 입금·더 들어온 금액은 paymentRequestId가 꼭 있다(SPEC-071). "
         "우리는 돈을 옮기지 않는다: 사장님이 가게 계좌에서 반환한 뒤 API-061로 '보냄'을 표시한다(REQ-079). 보상 환불은 API-065. 같은 사유의 환불을 이미 정했으면 409 already_decided.",
    params=[pid("orderId", "주문", E.ORDER_ID)],
    body="RefundInput",
    body_examples={"partial": E.REFUND_INPUT,
                   "override": dict(E.REFUND_INPUT, amount=36000, decision="full", overrideReason="단골 손님이라 수수료를 받지 않아요"),
-                  "none": dict(E.REFUND_INPUT, decision="none", amount=0, overrideReason="제작 뒤 취소라 돌려드리지 않아요")},
+                  "none": dict(E.REFUND_INPUT, baseRevision=E.rev("order:K7Q3M9:cancelled-after-start"), decision="none", amount=0),
+                  "over_received": {"baseRevision": E.ORDER_CHANGED["revision"], "cause": "over_received",
+                                    "paymentRequestId": E.PR_DIFFERENCE["paymentRequestId"], "decision": "full", "amount": 1000}},
    ok=[(201, "RefundResult", {"decided": {"outcome": "done", "refund": E.REFUND, "customerNotice": "sent"},
                               "deferred_notice": {"outcome": "done", "refund": E.REFUND, "customerNotice": "deferred"}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "invalid_state"]},
-   fields=[("/amount", "exceeds_received"), ("/overrideReason", "required")],
+   fields=[("/amount", "exceeds_received"), ("/amount", "below_calculated"), ("/overrideReason", "required"), ("/paymentRequestId", "required")],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
           "상태": ["409:invalid_state", "409:already_decided"], "반복": ["idem"], "동시": ["revision", "409:version_conflict"],
@@ -856,18 +864,23 @@ op(id="API-058", method="get", path="/owner/payment-requests/{paymentRequestId}"
    kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-059", method="post", path="/owner/payment-requests/{paymentRequestId}/reconciliation", op="reconcilePaymentRequest", tag="결제 안내",
-   summary="입금 대조(입금됨·미입금·금액 불일치·대조 완료)", spec=["SPEC-034", "SPEC-035", "SPEC-036", "SPEC-045", "SPEC-015", "SPEC-064"],
+   summary="입금 대조(입금됨·미입금·금액 불일치·대조 완료·들어옴·결제 확인 취소)", spec=["SPEC-034", "SPEC-035", "SPEC-036", "SPEC-045", "SPEC-015", "SPEC-064", "SPEC-070", "SPEC-071"],
    auth="owner", idem=True,
    desc="'입금됨'이면 결제 확인됨(결제 안내 하나에 하나)을 남기고 첫 결제·다시 낸 결제는 주문을 확정하고(SPEC-036), 차액 결제는 변경을 반영한다(SPEC-045). "
         "금액 불일치이면 '맞추는 중'으로 두고 결제 기한을 멈추고 자리를 지킨다(SPEC-035). 대조 완료이면 확정. 미입금이면 확인 요청을 지운다. "
         "그 사이 주문이 취소됐으면 확정하지 않고 outcome paid_after_cancel과 환불 정할 일(SPEC-036). "
         "기한이 지나 자리가 풀린 결제 안내의 '입금됨'은 409 slot_released(먼저 결제 기한 연장, R14). 같은 결과를 다시 누르면 unchanged, 다른 결과가 이미 남았으면 409 already_decided. "
-        "확인과 기한 처리가 동시에 일어나면 확인이 이긴다.",
+        "확인과 기한 처리가 동시에 일어나면 확인이 이긴다. "
+        "들어옴(arrived)은 닫힘·기한 지남 결제 안내에 결제로 확인하지 않은 들어온 금액을 남겨 받은 금액에 넣고 환불 정할 일을 남긴다(SPEC-071, REQ-166). 들어온 입금 대조 할 일이 이 화면을 연다(REQ-167). "
+        "결제 확인 취소(void)는 제작을 시작하지 않은 확인된 결제에만: 사유와 시각을 남기고 결제 안내는 나감, 주문은 결제 기다림, 자리는 가예약으로 되돌리고 손님에게 정정 안내를 한 번 보낸다(SPEC-070, REQ-169). "
+        "제작을 시작했으면 409 invalid_state.",
    params=[pid("paymentRequestId", "결제 안내", E.PR_CLAIMED["paymentRequestId"])],
    body="ReconciliationInput",
    body_examples={"received": {"baseRevision": E.PR_CLAIMED["revision"], "result": "received"},
                   "mismatch": {"baseRevision": E.PR_CLAIMED["revision"], "result": "mismatch", "mismatchAmount": 31000},
-                  "resolved": {"baseRevision": E.PR_MISMATCH["revision"], "result": "resolved", "resolution": "shortfall_paid"}},
+                  "resolved": {"baseRevision": E.PR_MISMATCH["revision"], "result": "resolved", "resolution": "shortfall_paid"},
+                  "arrived": {"baseRevision": E.rev("pr:closed"), "result": "arrived", "arrivedAmount": 36000},
+                  "void": {"baseRevision": E.PR_FIRST_PAID["revision"], "result": "void", "voidReason": E.PAYMENT_VOIDED["voidReason"]}},
    ok=[(200, "ReconciliationResult", {
        "confirmed": {"outcome": "done", "paymentRequest": E.PR_FIRST_PAID, "payment": E.PAYMENT, "order": E.ORDER_CONFIRMED, "changeRequest": None},
        "mismatch": {"outcome": "done", "paymentRequest": E.PR_MISMATCH, "payment": None, "order": E.ORDER_AWAITING, "changeRequest": None},
@@ -879,11 +892,16 @@ op(id="API-059", method="post", path="/owner/payment-requests/{paymentRequestId}
                                                                                appliedAt=E.t("11-15", "12:00"), orderVersion=2,
                                                                                revision=E.rev("change:2:applied"))},
        "paid_after_cancel": {"outcome": "paid_after_cancel", "paymentRequest": dict(E.PR_CLAIMED, status="closed", closedAt=E.t("11-14", "09:00"),
-                                                                                    closeReason="order_cancelled", revision=E.rev("pr:closed")),
+                                                                                    closeReason="order_cancelled", arrivedAmount=36000,
+                                                                                    arrivedAt=E.t("11-14", "09:40"), revision=E.rev("pr:closed")),
                              "payment": None, "order": E.ORDER_CANCELLED_BY_CUSTOMER, "changeRequest": None},
+       "arrived": {"outcome": "done", "paymentRequest": E.PR_CLOSED_ARRIVED, "payment": None, "order": E.ORDER_CANCELLED_BY_CUSTOMER, "changeRequest": None},
+       "voided": {"outcome": "done", "paymentRequest": E.PR_VOIDED, "payment": E.PAYMENT_VOIDED,
+                  "order": dict(E.ORDER_AWAITING, paymentRequests=[E.PR_VOIDED], payments=[E.PAYMENT_VOIDED], production=None,
+                                revision=E.rev("order:K7Q3M9:voided")), "changeRequest": None},
        "unchanged": {"outcome": "unchanged", "paymentRequest": E.PR_FIRST_PAID, "payment": E.PAYMENT, "order": E.ORDER_CONFIRMED, "changeRequest": None}})],
    errors={404: ["not_found"], 409: ["version_conflict", "slot_released", "already_decided", "invalid_state"]},
-   fields=[("/mismatchAmount", "out_of_range")],
+   fields=[("/mismatchAmount", "out_of_range"), ("/arrivedAmount", "out_of_range"), ("/voidReason", "required")],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
           "상태": ["409:slot_released", "409:already_decided", "example:paid_after_cancel"], "반복": ["idem", "example:unchanged"],
@@ -901,15 +919,17 @@ op(id="API-060", method="get", path="/owner/refunds/{refundId}", op="getRefund",
           "노출": ["closed", "note:손님 계좌는 이 화면에만(R19)"], "화면": ["screen"]})
 
 op(id="API-061", method="post", path="/owner/refunds/{refundId}/sent", op="markRefundSent", tag="환불",
-   summary="환불 '보냄' 표시", spec=["SPEC-047", "SPEC-049"], auth="owner", idem=True,
+   summary="환불 '보냄' 표시", spec=["SPEC-047", "SPEC-049", "SPEC-066", "SPEC-064", "SPEC-067"], auth="owner", idem=True,
    desc="사장님이 가게 계좌에서 반환하거나 카드 결제를 취소한 뒤 표시한다. 계좌로 보냈으면 그 계좌(손님이 말한 값을 고쳤으면 고친 값)를 남긴다. "
-        "환불 없이 취소한 행은 409 invalid_state. 이미 표시했으면 unchanged.",
+        "할 일 '환불 보내기'를 닫고, 손님에게 보냈다는 안내를 한 번 보내고(친구면 바로, 아니면 다음 대화 때, REQ-172) 장부 쓰기를 남긴다. "
+        "환불 없이 취소한 행은 409 invalid_state. 이미 표시했으면 unchanged(안내를 다시 보내지 않음).",
    params=[pid("refundId", "환불", E.REFUND["refundId"])],
    body="RefundSentInput",
    body_examples={"bank_transfer": {"baseRevision": E.REFUND_WITH_ACCOUNT["revision"], "method": "bank_transfer",
                                     "refundAccount": {"bankName": "하늘은행", "accountNumber": "110-123-456789", "holderName": "이지우"}},
                   "card_cancel": {"baseRevision": E.REFUND["revision"], "method": "card_cancel", "refundAccount": None}},
-   ok=[(200, "RefundResult", {"sent": {"outcome": "done", "refund": E.REFUND_SENT, "customerNotice": "none"},
+   ok=[(200, "RefundResult", {"sent": {"outcome": "done", "refund": E.REFUND_SENT, "customerNotice": "sent"},
+                              "sent_deferred": {"outcome": "done", "refund": E.REFUND_SENT, "customerNotice": "deferred"},
                               "unchanged": {"outcome": "unchanged", "refund": E.REFUND_SENT, "customerNotice": "none"}})],
    errors={404: ["not_found"], 409: ["version_conflict", "invalid_state"]},
    fields=[("/refundAccount/accountNumber", "bad_format")],

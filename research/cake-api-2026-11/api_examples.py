@@ -282,28 +282,37 @@ QUOTE = {
 PR_FIRST_PAID = {
     "paymentRequestId": uid("pr:K7Q3M9:1"), "order": ORDER_REF, "kind": "first", "status": "paid", "amount": 36000,
     "requestedAmount": None, "issuedAt": t("11-12", "13:05"), "dueAt": t("11-13", "01:05"), "claimedAt": t("11-12", "13:40"),
-    "claimRejectedAt": None, "depositorName": "이지우", "mismatchAmount": None, "paidAt": t("11-12", "14:02"), "expiredAt": None,
+    "claimRejectedAt": None, "depositorName": "이지우", "mismatchAmount": None, "arrivedAmount": 36000, "arrivedAt": t("11-12", "14:02"),
+    "paidAt": t("11-12", "14:02"), "expiredAt": None,
     "closedAt": None, "closeReason": None, "revision": rev("pr:K7Q3M9:1:paid"),
 }
-PR_CLAIMED = dict(PR_FIRST_PAID, status="claimed", paidAt=None, revision=rev("pr:K7Q3M9:1:claimed"))
+PR_CLAIMED = dict(PR_FIRST_PAID, status="claimed", paidAt=None, arrivedAmount=None, arrivedAt=None, revision=rev("pr:K7Q3M9:1:claimed"))
 PR_CUSTOM_OPEN = {
     "paymentRequestId": uid("pr:P4X8N2:1"), "order": CUSTOM_REF, "kind": "first", "status": "open", "amount": 75000,
     "requestedAmount": 70000, "issuedAt": t("11-12", "15:00"), "dueAt": t("11-13", "03:00"), "claimedAt": None,
-    "claimRejectedAt": None, "depositorName": None, "mismatchAmount": None, "paidAt": None, "expiredAt": None,
-    "closedAt": None, "closeReason": None, "revision": rev("pr:P4X8N2:1:open"),
+    "claimRejectedAt": None, "depositorName": None, "mismatchAmount": None, "arrivedAmount": None, "arrivedAt": None,
+    "paidAt": None, "expiredAt": None, "closedAt": None, "closeReason": None, "revision": rev("pr:P4X8N2:1:open"),
 }
-PR_MISMATCH = dict(PR_CLAIMED, status="mismatch", mismatchAmount=31000, revision=rev("pr:K7Q3M9:1:mismatch"))
+PR_MISMATCH = dict(PR_CLAIMED, status="mismatch", mismatchAmount=31000, arrivedAmount=31000, arrivedAt=t("11-12", "14:02"),
+                   revision=rev("pr:K7Q3M9:1:mismatch"))
 PR_EXPIRED = dict(PR_CUSTOM_OPEN, status="expired", expiredAt=t("11-13", "03:00"), revision=rev("pr:P4X8N2:1:expired"))
 PR_REISSUE = dict(PR_CUSTOM_OPEN, paymentRequestId=uid("pr:P4X8N2:2"), kind="reissue", requestedAmount=None,
                   issuedAt=t("11-13", "09:10"), dueAt=t("11-13", "21:10"), revision=rev("pr:P4X8N2:2:open"))
 PR_DIFFERENCE = {
     "paymentRequestId": uid("pr:K7Q3M9:diff"), "order": ORDER_REF, "kind": "difference", "status": "open", "amount": 20000,
     "requestedAmount": None, "issuedAt": t("11-15", "10:20"), "dueAt": t("11-15", "22:20"), "claimedAt": None,
-    "claimRejectedAt": None, "depositorName": None, "mismatchAmount": None, "paidAt": None, "expiredAt": None,
-    "closedAt": None, "closeReason": None, "revision": rev("pr:K7Q3M9:diff:open"),
+    "claimRejectedAt": None, "depositorName": None, "mismatchAmount": None, "arrivedAmount": None, "arrivedAt": None,
+    "paidAt": None, "expiredAt": None, "closedAt": None, "closeReason": None, "revision": rev("pr:K7Q3M9:diff:open"),
 }
 PAYMENT = {"paymentId": uid("payment:K7Q3M9:1"), "paymentRequestId": PR_FIRST_PAID["paymentRequestId"], "amount": 36000,
-           "resolution": "exact", "confirmedAt": t("11-12", "14:02")}
+           "resolution": "exact", "confirmedAt": t("11-12", "14:02"), "voidedAt": None, "voidReason": None}
+# 잘못 누른 결제 확인을 제작 시작 전에 취소함(SPEC-070): 결제 안내는 나감, 주문은 결제 기다림, 제작 행 없음
+PAYMENT_VOIDED = dict(PAYMENT, voidedAt=t("11-12", "14:20"), voidReason="다른 손님이 보낸 돈을 이 주문의 결제로 잘못 확인했어요")
+PR_VOIDED = dict(PR_FIRST_PAID, status="open", claimedAt=None, depositorName=None, arrivedAmount=None, arrivedAt=None, paidAt=None,
+                 revision=rev("pr:K7Q3M9:1:voided"))
+# 손님이 취소한 뒤 닫힌 결제 안내에 들어온 입금을 남김(SPEC-071)
+PR_CLOSED_ARRIVED = dict(PR_CLAIMED, status="closed", closedAt=t("11-14", "09:00"), closeReason="order_cancelled",
+                         arrivedAmount=36000, arrivedAt=t("11-14", "09:40"), revision=rev("pr:K7Q3M9:1:closed:arrived"))
 PRODUCTION = {
     "productionId": uid("production:K7Q3M9"), "needsCustomMaterial": False, "customMaterialOrderedAt": None,
     "productionStartedAt": None, "completedAt": None, "completionPhotos": [], "changedAfterStart": False,
@@ -392,9 +401,10 @@ REFUND_BASIS = {
     "customMaterialOrderedAt": None, "productionStartedAt": None, "tierRefundPct": None, "cancellationFeeKrw": 5000,
     "receivedAmount": 36000,
 }
-REFUND_PREVIEW = {"order": ORDER_REF, "cause": "customer_cancel", "receivedAmount": 36000, "refundedAmount": 0,
-                  "calculatedAmount": 31000, "maxAmount": 36000, "basis": REFUND_BASIS}
-REFUND_PREVIEW_SHOP = dict(REFUND_PREVIEW, cause="shop_cancel", calculatedAmount=36000,
+REFUND_PREVIEW = {"order": ORDER_REF, "cause": "customer_cancel", "receivedAmount": 36000, "confirmedAmount": 36000,
+                  "unconfirmedAmount": 0, "refundedAmount": 0, "calculatedAmount": 31000, "minAmount": 31000, "maxAmount": 36000,
+                  "basis": REFUND_BASIS}
+REFUND_PREVIEW_SHOP = dict(REFUND_PREVIEW, cause="shop_cancel", calculatedAmount=36000, minAmount=36000,
                            basis=dict(REFUND_BASIS, clauseTitles=["가게 사정 취소"], cancellationFeeKrw=0))
 REFUND = {
     "refundId": uid("refund:K7Q3M9:1"), "order": ORDER_REF, "cause": "customer_cancel", "decision": "partial", "amount": 31000,
@@ -490,6 +500,12 @@ TASKS = {"items": [
     {"taskId": uid("task:3"), "kind": "payment_claim", "waitStatus": None, "waitDueAt": None, "order": ORDER_REF,
      "subject": {"type": "payment_request", "id": PR_CLAIMED["paymentRequestId"]}, "summary": "입금 확인 요청 36,000원",
      "openedAt": t("11-12", "13:40"), "closedAt": None},
+    {"taskId": uid("task:4"), "kind": "refund_send", "waitStatus": None, "waitDueAt": None, "order": ORDER_REF,
+     "subject": {"type": "refund", "id": REFUND["refundId"]}, "summary": "환불 보내기 31,000원(정한 지 24시간 지남)",
+     "openedAt": t("11-14", "10:00"), "closedAt": None},
+    {"taskId": uid("task:5"), "kind": "arrival_check", "waitStatus": None, "waitDueAt": None, "order": CUSTOM_REF,
+     "subject": {"type": "payment_request", "id": PR_CUSTOM_OPEN["paymentRequestId"]}, "summary": "입금했다고 알린 뒤 취소한 주문의 들어온 입금 대조 75,000원",
+     "openedAt": t("11-13", "09:12"), "closedAt": None},
 ], "nextCursor": None, "alertChannelFriend": True}
 TASKS_NOT_FRIEND = dict(TASKS, items=TASKS["items"][:1], alertChannelFriend=False)
 TASKS_EMPTY = {"items": [], "nextCursor": None, "alertChannelFriend": True}
