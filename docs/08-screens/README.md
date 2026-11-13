@@ -1,6 +1,6 @@
 # 08단계 화면 상태: 수제케이크 주문제작 화면
 
-상태: 체크포인트 대기(2026-11-13, 11절). 원본은 [`research/cake-screens-2026-11/screens_*.py`](../../research/cake-screens-2026-11/)의 화면 데이터와 07단계 사이트맵, 06단계 계약입니다. 화면 정의 49개(`SCR-0xx.md`), 이 문서의 표, 회색조 와이어프레임 [`wireframes.html`](wireframes.html)은 [`build_screens.py`](../../research/cake-screens-2026-11/build_screens.py)가 원본에서 생성합니다(`truth: source`, 3절). 생성 파일은 손으로 고치지 않습니다. 와이어프레임은 Artifact로 게시했습니다: https://claude.ai/artifact/YSLmrCtZj6FjYbzs1vsrLP (동희님 계정의 비공개 페이지).
+상태: 확정(2026-11-13 09:13 동희님, 11절). 원본은 [`research/cake-screens-2026-11/screens_*.py`](../../research/cake-screens-2026-11/)의 화면 데이터와 07단계 사이트맵, 06단계 계약입니다. 화면 정의 49개(`SCR-0xx.md`), 이 문서의 표, 회색조 와이어프레임 [`wireframes.html`](wireframes.html)은 [`build_screens.py`](../../research/cake-screens-2026-11/build_screens.py)가 원본에서 생성합니다(`truth: source`, 3절). 생성 파일은 손으로 고치지 않습니다. 와이어프레임은 Artifact로 게시했습니다: https://claude.ai/artifact/YSLmrCtZj6FjYbzs1vsrLP (동희님 계정의 비공개 페이지).
 
 ## 1. 요약
 
@@ -8,7 +8,7 @@
 - 기본 상태 여섯(normal·loading·empty·error·permission·stale)은 화면마다 정의하거나 '해당 없음'과 이유를 적었습니다. 화면 모습이 달라지는 경우는 화면 고유 상태 16개로 따로 그렸습니다(W3, 4절). 예: 버튼이 막히는 submitting, 저장 전 확인 창 confirm, 카드 30분 기한 expired, 채널 친구가 아닌 손님에게 다음 대화 때 먼저 전하는 deferred.
 - 06단계 계약의 응답 740행을 화면 상태 하나씩에 연결했습니다. 2xx는 예시마다, 오류는 오류 코드마다 한 행이고, 화면에 보이는 문구는 06단계 오류 코드 표의 '화면에 보이는 말'을 그대로 씁니다. 계약 기본값과 다르게 둔 곳은 W2입니다.
 - 인계받은 항목: 카드 30분 만료와 이전 버전 카드(SCR-004·006·008·009·010·013의 expired·stale), 채널 친구가 아닐 때(손님은 SCR-005·SCR-011의 deferred와 SCR-003 에스컬레이션 답의 채널 추가 권유, 사장님은 SCR-016·SCR-019의 not-sent), OPEN-8 봇 ID 찾기 안내(SCR-041, W7), OPEN-6 운영자 인증(SCR-046, 8절).
-- 결정 사항 W1~W9는 7절입니다. 체크포인트에서 확정을 요청합니다(11절).
+- 결정 사항 W1~W9는 7절입니다. 2026-11-13 09:13 체크포인트에서 동희님이 추천안대로 확정하셨습니다(11절).
 
 ## 2. 입력과 산출물
 
@@ -240,4 +240,6 @@
 
 ## 11. 체크포인트
 
-- 질문: 화면 정의 49개와 결정 사항 W1~W9를 추천대로 확정할지 결정 카드로 확인을 요청합니다. 답을 받으면 이 절과 `.corthex/stages.json`, Notion 08단계 기록 행에 원문·시각·장소를 적습니다.
+- 질문(2026-11-13 03:10, 이 작업 대화의 결정 카드): "화면 정의 49개와 결정 사항 W1~W9를 추천대로 확정할까요?" 선택지는 '추천대로 확정'(추천), '고칠 것 말씀'.
+- 답(2026-11-13 09:13, 동희님): 결정 카드에서 '추천대로 확정'을 고르심. 화면 정의 49개(상태 336개, 06단계 응답 740행 연결)와 결정 사항 W1~W9를 추천안대로 확정하셨습니다. W7의 봇 ID 찾는 위치는 확인 전 문구 그대로 확정했고, 개발 전에 동희님 PC의 실제 오픈빌더 화면으로 확인합니다(10절). 확인을 요청한 뒤 PR #17에 달린 댓글과 코드 검토 의견은 없었습니다.
+- 기록: 이 절, `.corthex/stages.json`의 08단계, Notion 08단계 기록 행(https://app.notion.com/p/416bf16cc3ec81f390afc8e14560e86c).
