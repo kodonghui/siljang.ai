@@ -62,7 +62,7 @@ python3 -B research/design-review-2026-11/tools/verify_quotes.py . research/desi
 
 | 날짜 | PR | 묶음 | 지적 | 고친 곳 |
 | --- | --- | --- | --- | --- |
-| 2026-11-13 | PR A(환불 길) | H1, H2 | RB-01, RC-05, RD-02, RA-15, RA-01, RE-02, RE-03, RE-04 | 02 요구사항 버전 5(REQ-165~174 더함, REQ-086·REQ-151 제외), 03 FL-008·FL-009·FL-011, 04 SPEC-070·071 더함과 이어진 SPEC, 05 마이그레이션 `0002_refund_path.sql`(받은 금액·결제 확인 취소·환불 하한·할 일 두 종류)과 다이어그램 동기화 `erd_editor_sync.py`, 06 API-040·048·049·050·059·061(깨지는 변화 7개), 07·08 SCR-016·025·026·029 |
+| 2026-11-13 | [PR A(환불 길) #27](https://github.com/kodonghui/siljang.ai/pull/27) | H1, H2 | RB-01, RC-05, RD-02, RA-15, RA-01, RE-02, RE-03, RE-04 | 02 요구사항 버전 5(REQ-165~174 더함, REQ-086·REQ-151 제외), 03 FL-008·FL-009·FL-011, 04 SPEC-070·071 더함과 이어진 SPEC, 05 마이그레이션 `0002_refund_path.sql`(받은 금액·결제 확인 취소·환불 하한·할 일 두 종류)과 다이어그램 동기화 `erd_editor_sync.py`, 06 API-040·048·049·050·059·061(깨지는 변화 7개), 07·08 SCR-016·025·026·029 |
 
 ## 다음
 
