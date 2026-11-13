@@ -295,7 +295,7 @@ S["ReviewShopSummary"] = all_required({
     "duplicateBusinessRegNo": boolean("같은 사업자등록번호의 다른 가게가 있음(SPEC-002, 막지 않고 표시)"),
     "createdAt": DT,
     "revision": REVISION,
-}, desc="운영자 확인 목록의 가게. 손님·주문 기록은 없음(SPEC-003)")
+}, desc="운영자 확인 목록의 가게. 손님·주문 기록은 가게 기록 보기(API-074~077)에서 가린 값으로만(SPEC-003, SPEC-073)")
 
 S["ReviewShopList"] = all_required({"items": arr(ref("ReviewShopSummary"), 0, 100), "nextCursor": nullable(CURSOR)})
 
@@ -317,9 +317,19 @@ S["ReviewShopDetail"] = all_required({
     "licenseReviewedBy": nullable(ref("Operator")),
     "duplicates": arr(all_required({"shopId": UUID, "name": string(1, 40), "licenseStatus": enum(["pending", "on_hold", "verified"])}), 0, 20,
                       desc="같은 사업자등록번호의 다른 가게"),
+    "paymentAccount": nullable(all_required({
+        "bankName": string(1, 30),
+        "holderName": string(1, 30),
+        "accountLast4": string(4, 4, r"^[0-9]{4}$", desc="계좌번호 끝 4자리. 계좌번호 전체는 운영자에게도 보이지 않음(SPEC-003)"),
+        "holderMatches": boolean("예금주가 신고증의 대표자나 상호와 같음(REQ-197)"),
+        "holderMismatchConfirmed": nullable(boolean("예금주가 다를 때 사장님이 '가게 명의가 맞다'고 답함(SPEC-006)")),
+        "holderCheckedAt": nullable(DT),
+        "holderCheckedBy": nullable(ref("Operator")),
+        "createdAt": DT,
+    }, desc="지금 쓰는 결제 계좌(은행·예금주·끝 4자리)와 예금주를 확인한 운영자·시각. 없으면 null이고 확인됨을 남길 수 없음(409 payment_account_missing, REQ-197)")),
     "createdAt": DT,
     "revision": REVISION,
-}, desc="운영자가 보는 가게 등록 정보(SPEC-003). 이 화면은 가게 등록 정보만")
+}, desc="운영자가 보는 가게 등록 정보와 결제 계좌의 은행·예금주·끝 4자리(SPEC-003). 손님·주문 기록은 없음")
 
 S["LicenseReviewInput"] = obj({
     "baseRevision": BASE_REVISION,
@@ -471,14 +481,14 @@ S["OperatingRulesResult"] = all_required({"outcome": outcome(("created", "unchan
 S["PaymentDestinationInput"] = obj({
     "baseRevision": nullable(BASE_REVISION),
     "bankName": string(1, 30, col="payment_accounts.bank_name"),
-    "accountNumber": string(10, 40, ACCOUNT_RE, col="payment_accounts.account_number", desc="숫자와 '-', 숫자만 10~16자리"),
+    "accountNumber": string(10, 40, ACCOUNT_RE, desc="숫자와 '-', 숫자만 10~16자리. 형식은 여기서만 확인하고 데이터베이스에는 앱이 암호화한 값과 끝 4자리만 둠(05단계 E20, payment_accounts.account_number_enc·account_last4)"),
     "holderName": string(1, 30, col="payment_accounts.holder_name"),
     "cardPaymentUrl": nullable(string(9, 2048, r"^https://", fmt="uri", col="payment_accounts.card_payment_url")),
     "confirm": confirm_list(["holder_mismatch"]),
 }, ["baseRevision", "bankName", "accountNumber", "holderName", "cardPaymentUrl"])
 S["PaymentDestination"] = all_required({
     "bankName": string(1, 30),
-    "accountNumber": string(10, 40, ACCOUNT_RE, desc="가게 명의 계좌번호. 이 화면과 그 가게 손님의 결제 안내에만(SPEC-006)"),
+    "accountNumber": string(10, 40, ACCOUNT_RE, desc="가게 명의 계좌번호. 앱이 암호화해 두고 이 화면과 그 가게 손님의 결제 안내를 보일 때만 복호화함(SPEC-006, REQ-191). 운영자에게는 끝 4자리만"),
     "holderName": string(1, 30),
     "holderMismatchConfirmed": nullable(boolean("예금주가 상호·대표자와 다를 때 사장님이 '가게 명의가 맞다'고 함")),
     "cardPaymentUrl": nullable(string(9, 2048, r"^https://", fmt="uri")),
@@ -692,7 +702,7 @@ S["OwnerTaskList"] = all_required({
 # ── 에스컬레이션 건과 상담 ────────────────────────────────────────────────────────
 S["CustomerLine"] = all_required({
     "at": DT,
-    "text": nullable(string(0, 4000, desc="원래 값으로 되돌린 글(그 가게 사장님 화면에만, SPEC-021)")),
+    "text": nullable(string(0, 4000, desc="전화번호·계좌번호는 원래 값으로 되돌린 글(그 가게 사장님 화면에만, SPEC-021). 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192)")),
     "photos": arr(all_required({"url": SIGNED_URL}), 0, 10),
 })
 S["Handoff"] = all_required({
@@ -727,7 +737,7 @@ S["ConsultationMessage"] = all_required({
     "direction": enum(["inbound", "outbound"]),
     "author": enum(["customer", "ai", "system"]),
     "kind": enum(["text", "photo", "card", "unsupported"]),
-    "text": nullable(string(0, 4000, desc="사장님 화면에는 원래 값으로 되돌린 글")),
+    "text": nullable(string(0, 4000, desc="사장님 화면에는 전화번호·계좌번호를 원래 값으로 되돌린 글. 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192)")),
     "photos": arr(all_required({"url": SIGNED_URL}), 0, 10),
     "delivery": nullable(enum(["skill_response", "callback", "deferred", "delivered_later", "failed"])),
 })
@@ -991,7 +1001,7 @@ S["RefundInput"] = obj({
 }, ["baseRevision", "cause", "decision", "amount"], desc="주문의 baseRevision으로 정함. 같은 사유의 환불은 한 번(G2). 우리는 돈을 옮기지 않음(REQ-079)")
 REFUND_ACCOUNT_IN = obj({
     "bankName": string(1, 30, col="refunds.refund_bank_name"),
-    "accountNumber": string(1, 40, r"^[0-9-]+$", col="refunds.refund_account_number"),
+    "accountNumber": string(10, 40, ACCOUNT_RE, desc="숫자와 '-', 숫자만 10~16자리. 데이터베이스에는 앱이 암호화한 값과 끝 4자리만 둠(REQ-191, refunds.refund_account_enc·refund_account_last4)"),
     "holderName": string(1, 30, col="refunds.refund_holder_name"),
 }, ["bankName", "accountNumber", "holderName"])
 S["Refund"] = all_required({
@@ -1006,7 +1016,7 @@ S["Refund"] = all_required({
     "method": nullable(enum(["bank_transfer", "card_cancel"])),
     "refundAccount": nullable(all_required({
         "bankName": nullable(string(1, 30)), "accountNumber": string(1, 40, r"^[0-9-]+$"), "holderName": nullable(string(1, 30)),
-    }, desc="환불받을 손님 계좌. 이 화면에만(R19)")),
+    }, desc="환불받을 손님 계좌. 사장님 화면에서는 이 화면에만(R19). 운영자는 끝 4자리만 보고 사유를 적어 엶(API-077)")),
     "decidedAt": DT,
     "sentAt": nullable(DT),
     "revision": REVISION,
@@ -1251,7 +1261,7 @@ S["AiTurnOutput"] = obj({
     }, desc="신고 내용 모으기(SPEC-057)", minProperties=1),
     "refund_account_patch": obj({
         "bank_name": string(1, 30, col="refunds.refund_bank_name"),
-        "account_number": string(1, 20, PLACEHOLDER_ACCOUNT, desc="AI는 플레이스홀더만 봄. 서버가 원래 값으로 바꿔 그 환불에만 저장(SPEC-049, DEC-17)"),
+        "account_number": string(1, 20, PLACEHOLDER_ACCOUNT, desc="AI는 플레이스홀더만 봄. 서버가 원래 값으로 바꿔 앱이 암호화해 그 환불에만 저장(끝 4자리는 따로, SPEC-049, REQ-191, DEC-17)"),
         "holder_name": string(1, 30, col="refunds.refund_holder_name"),
     }, ["account_number"], desc="환불받을 손님 계좌(SPEC-049)"),
     "card": obj({
@@ -1261,3 +1271,124 @@ S["AiTurnOutput"] = obj({
     }, ["kind"], desc="보일 확인 카드. 서버가 허용된 종류인지·대상 주문이 이 사용자·이 가게 것인지 보고 저장된 값으로 만듦(SPEC-069)"),
 }, ["reply"], desc="AI-1 상담 답 만들기의 출력 하나(손님 메시지 한 차례). HTTP로 오가지 않는 서버 안 구조화 출력(DEC-17). 서버가 확인하고 어긋나는 부분은 버림. "
           "Open: AI 모델 회사·모델은 개발 전(10단계 전)에 고르고, 고르는 날 그 회사의 약관·데이터 방침을 확인해 처리방침의 국외 이전 항목을 채움(OPEN-7)")
+
+# ── 운영자: 가게 기록 보기와 원래 값 열기 (설계 재검토 H4, SPEC-073·074) ─────────────────
+MASKED_NAME = string(1, 30, r"^[^*\s]\**$", desc="가린 이름: 첫 글자 밖은 *(SPEC-073)")
+MASKED_DIGITS = string(4, 40, r"^[*-]*[0-9]{4}$", desc="가린 번호: 끝 4자리 밖은 *(SPEC-073)")
+CONSULT_STATUS = ["open", "awaiting_owner", "dropped", "ordered", "ended", "deleted"]
+PR_KINDS = ["first", "reissue", "difference"]
+PR_STATUS = ["open", "claimed", "mismatch", "paid", "expired", "closed"]
+OPEN_TARGETS = ["masked_value", "order_contact", "refund_account", "kept_record"]
+
+S["OperatorOrderRow"] = all_required({
+    "orderId": UUID,
+    "orderNo": ORDER_NO,
+    "kept": boolean("끝나고 30일이 지나 보관 기록이 됨. true면 주문번호·끝난 날·보관 기간과 keptRecordId만 있고 나머지는 null(SPEC-073, 05단계 A22)"),
+    "keptRecordId": nullable(dict(UUID, description="보관 기록 ID. 내용은 사유를 적어 API-077(targetKind kept_record)로 엶")),
+    "status": nullable(enum(ORDER_STATUS)),
+    "pickupAt": nullable(DT),
+    "amount": nullable(MONEY()),
+    "customerNameMasked": nullable(MASKED_NAME),
+    "customerPhoneMasked": nullable(MASKED_DIGITS),
+    "finishedAt": nullable(DT),
+    "contractKeepUntil": nullable(dict(DT, description="계약·결제 기록을 둘 때까지(끝난 날부터 5년, 잠정)")),
+    "createdAt": DT,
+}, desc="운영자가 보는 주문 한 행(가린 값, SPEC-073)")
+S["OperatorConsultationRow"] = all_required({
+    "consultationId": UUID,
+    "status": enum(CONSULT_STATUS),
+    "startedAt": DT,
+    "lastMessageAt": nullable(DT),
+    "orderNos": arr(ORDER_NO, 0, 20, desc="이 상담에서 다룬 주문번호"),
+    "maskedValueCount": integer(0, 1000, desc="대화 속 마스킹한 번호 수"),
+}, desc="운영자가 보는 상담 한 행. 대화 내용은 없음(SPEC-073)")
+S["OperatorRecordList"] = all_required({
+    "kind": enum(["orders", "consultations"]),
+    "orders": arr(ref("OperatorOrderRow"), 0, 100, desc="kind가 orders일 때. 아니면 빈 목록"),
+    "consultations": arr(ref("OperatorConsultationRow"), 0, 100, desc="kind가 consultations일 때. 아니면 빈 목록"),
+    "nextCursor": nullable(CURSOR),
+})
+S["OperatorMaskedValue"] = all_required({
+    "maskedValueId": UUID,
+    "kind": enum(["phone", "account", "card", "long_number"]),
+    "placeholder": string(5, 12, r"^\[(전화번호|계좌번호|카드번호|긴숫자)[0-9]{1,3}\]$"),
+    "last4": nullable(string(4, 4, r"^[0-9]{4}$", desc="끝 4자리. 긴 숫자는 null(REQ-192)")),
+    "originalKept": boolean("원래 값이 있어 사유를 적고 열 수 있음(전화번호·계좌번호). 카드번호·긴 숫자는 false(REQ-192)"),
+})
+S["OperatorMessage"] = all_required({
+    "messageId": UUID,
+    "at": DT,
+    "direction": enum(["inbound", "outbound"]),
+    "author": enum(["customer", "ai", "system"]),
+    "kind": enum(["text", "photo", "card", "unsupported"]),
+    "textMasked": nullable(string(0, 4000, desc="마스킹한 글(플레이스홀더 그대로). 끝 4자리는 maskedValues에서(SPEC-073)")),
+    "photoCount": integer(0, 10, desc="사진 수만. 사진은 보이지 않음(REQ-194)"),
+})
+S["OperatorConsultation"] = all_required({
+    "consultationId": UUID,
+    "status": enum(CONSULT_STATUS),
+    "maskedValues": arr(ref("OperatorMaskedValue"), 0, 200, desc="대화 속 플레이스홀더마다 끝 4자리와 열 수 있는지"),
+    "items": arr(ref("OperatorMessage"), 0, 100),
+    "nextCursor": nullable(CURSOR),
+}, desc="운영자가 보는 상담 하나(가린 값, SPEC-073). 지운 상담은 status deleted와 빈 목록")
+S["OperatorOrder"] = all_required({
+    "orderId": UUID,
+    "orderNo": ORDER_NO,
+    "kind": enum(["standard", "custom"]),
+    "status": enum(ORDER_STATUS),
+    "pickupAt": DT,
+    "amount": MONEY(),
+    "customerNameMasked": nullable(MASKED_NAME),
+    "customerPhoneMasked": nullable(MASKED_DIGITS),
+    "allergyAnswered": boolean("알레르기 답이 있음. 답은 보이지 않음(REQ-194)"),
+    "excludedIngredientsAnswered": boolean("빼야 할 재료 답이 있음. 답은 보이지 않음(REQ-194)"),
+    "referencePhotoCount": integer(0, 10, desc="참고 사진 수. 사진은 보이지 않음(REQ-194)"),
+    "consultationId": nullable(UUID),
+    "paymentRequests": arr(all_required({
+        "paymentRequestId": UUID, "kind": enum(PR_KINDS), "status": enum(PR_STATUS),
+        "amount": integer(1, 10000000), "issuedAt": DT, "paidAt": nullable(DT),
+    }), 0, 20, desc="결제 안내 요약. 입금자 이름은 보이지 않음"),
+    "refunds": arr(all_required({
+        "refundId": UUID, "cause": enum(REFUND_CAUSES), "decision": enum(["full", "partial", "none"]),
+        "amount": integer(0, 10000000), "decidedAt": DT, "sentAt": nullable(DT),
+        "refundAccount": nullable(all_required({
+            "bankName": nullable(string(1, 30)), "accountMasked": MASKED_DIGITS, "holderNameMasked": nullable(MASKED_NAME),
+        }, desc="가린 환불 계좌. 원래 값은 사유를 적어 API-077(targetKind refund_account)로")),
+    }), 0, 20),
+    "createdAt": DT,
+}, desc="운영자가 보는 주문 하나(가린 값, SPEC-073)")
+S["OriginalOpenInput"] = obj({
+    "targetKind": enum(OPEN_TARGETS, col="access_logs.target_kind",
+                       desc="대화 속 전화번호·계좌번호(maskedValueId)·주문자 이름과 연락처(orderId)·환불 계좌(refundId)·보관 기록(keptRecordId)"),
+    "targetId": dict(UUID, description="연 대상의 ID(targetKind마다 위의 ID)"),
+    "reason": string(5, 200, col="access_logs.reason", desc="사유 5~200자(REQ-195). 접속기록에 남음"),
+}, ["targetKind", "targetId", "reason"], desc="원래 값이나 보관 기록 하나를 사유와 함께 엶(SPEC-073)")
+S["KeptRecord"] = all_required({
+    "keptRecordId": UUID,
+    "orderNo": ORDER_NO,
+    "customerName": nullable(string(1, 30, desc="주문자 이름(재제작 주문은 null)")),
+    "finishedAt": DT,
+    "contractKeepUntil": DT,
+    "issueKeepUntil": nullable(DT),
+    "issuePurgedAt": nullable(DT),
+    "details": arr(all_required({
+        "version": integer(1, 2147483647), "createdAt": DT, "pickupAt": DT, "amount": MONEY(), "summary": string(1, 300),
+    }), 1, 50, desc="주문 내용 버전(계약 기록). 연락처·알레르기 답·문구·디자인 설명은 지워져 없음"),
+    "payments": arr(all_required({
+        "kind": enum(PR_KINDS), "status": enum(PR_STATUS), "amount": integer(1, 10000000), "issuedAt": DT, "paidAt": nullable(DT),
+    }), 0, 20),
+    "refunds": arr(all_required({
+        "cause": enum(REFUND_CAUSES), "decision": enum(["full", "partial", "none"]), "amount": integer(0, 10000000),
+        "decidedAt": DT, "sentAt": nullable(DT),
+    }), 0, 20),
+}, desc="보관 기록(REQ-187, 05단계 A22): 주문자 이름·끝난 날·보관 기간과 계약·결제 기록. 운영자가 사유를 적어 열 때만(SPEC-073)")
+S["OriginalValue"] = all_required({
+    "targetKind": enum(OPEN_TARGETS),
+    "targetId": UUID,
+    "openedAt": DT,
+    "maskedValue": nullable(all_required({"placeholder": string(5, 12), "kind": enum(["phone", "account"]), "value": string(1, 40)})),
+    "orderContact": nullable(all_required({"customerName": nullable(string(1, 30)), "customerPhone": nullable(string(8, 14, PHONE_RE))})),
+    "refundAccount": nullable(all_required({"bankName": nullable(string(1, 30)), "accountNumber": string(10, 40, ACCOUNT_RE),
+                                            "holderName": nullable(string(1, 30))})),
+    "keptRecord": nullable(ref("KeptRecord")),
+}, desc="연 원래 값 하나(targetKind의 필드만 있고 나머지는 null). 이 응답과 그 화면에만 있고 로그·오류 보고에는 없음(G6)")

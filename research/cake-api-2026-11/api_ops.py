@@ -1,4 +1,4 @@
-"""06단계 API 계약의 API 73개(API-001~073). build_api.py가 OpenAPI paths로 바꾼다.
+"""06단계 API 계약의 API 77개(API-001~077). build_api.py가 OpenAPI paths로 바꾼다.
 
 API마다 적는 것
 - id·method·path·op(operationId)·tag·summary·desc·spec(SPEC ID)
@@ -219,7 +219,7 @@ op(id="API-011", method="put", path="/owner/shop/license", op="resubmitLicense",
 # ═══ 운영자 ═══════════════════════════════════════════════════════════════════
 op(id="API-012", method="get", path="/operator/shops", op="listReviewShops", tag="운영자",
    summary="영업 신고 확인할 가게 목록", spec=["SPEC-003", "SPEC-002"], auth="operator",
-   desc="운영자 화면에는 가게 등록 정보만 있고 손님·주문 기록은 없다(SPEC-003). 같은 사업자등록번호의 다른 가게가 있으면 duplicateBusinessRegNo(SPEC-002).",
+   desc="이 목록에는 가게 등록 정보만 있다. 손님·주문 기록은 가게 기록 보기(API-074~077)에서 가린 값으로만 본다(SPEC-003, SPEC-073). 같은 사업자등록번호의 다른 가게가 있으면 duplicateBusinessRegNo(SPEC-002).",
    params=[q("status", {"type": "string", "enum": ["pending", "on_hold", "verified"]}, "영업 신고 상태로 거름. 없으면 pending", "pending"), CURSOR, LIMIT],
    ok=[(200, "ReviewShopList", {"pending": {"items": [E.REVIEW_SUMMARY, dict(E.REVIEW_SUMMARY, shopId=E.OTHER_SHOP_ID, name="별빛베이커리",
                                                                              businessName="별빛베이커리", representativeName="최별빛",
@@ -234,16 +234,21 @@ op(id="API-012", method="get", path="/operator/shops", op="listReviewShops", tag
 
 op(id="API-013", method="get", path="/operator/shops/{shopId}", op="getReviewShop", tag="운영자",
    summary="영업 신고 확인할 가게 하나", spec=["SPEC-003"], auth="operator",
-   desc="신고증 사진(서명 주소)과 넣은 신고 번호·영업 종류·상호, 같은 사업자등록번호의 다른 가게를 보인다.",
+   desc="신고증 사진(서명 주소)과 넣은 신고 번호·영업 종류·상호, 같은 사업자등록번호의 다른 가게를 보인다. "
+        "결제 계좌는 은행·예금주·끝 4자리와 예금주가 대표자·상호와 같은지(holderMatches), 사장님이 가게 명의가 맞다고 답했는지, 예금주를 확인한 운영자·시각만 보이고 "
+        "계좌번호 전체는 보이지 않는다(REQ-197, SPEC-003). 계좌가 없으면 paymentAccount가 null이고 확인됨을 남길 수 없다.",
    params=[pid("shopId", "가게", E.SHOP_ID)],
-   ok=[(200, "ReviewShopDetail", {"pending": E.REVIEW_DETAIL, "on_hold": E.REVIEW_DETAIL_ON_HOLD})],
+   ok=[(200, "ReviewShopDetail", {"pending": E.REVIEW_DETAIL, "on_hold": E.REVIEW_DETAIL_ON_HOLD, "no_account": E.REVIEW_DETAIL_NO_ACCOUNT,
+                                  "holder_different": E.REVIEW_DETAIL_HOLDER_DIFFERENT})],
    errors={404: ["not_found"]},
    omit={"403": O403_OPERATOR, "409": O409_READ, "422": O422_PATHONLY},
    kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-014", method="post", path="/operator/shops/{shopId}/license-review", op="reviewLicense", tag="운영자",
    summary="영업 신고 확인·보류", spec=["SPEC-003"], auth="operator", idem=True,
-   desc="확인됨이면 확인한 운영자·시각을, 보류면 이유를 남기고 사장님께 우리 서비스 채널로 이유를 한 번 알린다(못 가면 할 일 목록, G4). "
+   desc="운영자는 신고증과 함께 결제 계좌의 예금주가 대표자·상호와 같은지 보고 정한다(REQ-197). 확인됨이면 확인한 운영자·시각과, 그 가게의 지금 결제 계좌에 예금주를 확인한 운영자·시각을 남긴다. "
+        "결제 계좌가 없으면 확인됨은 409 payment_account_missing('결제 계좌 등록 기다림')이고 보류는 남길 수 있다. "
+        "보류면 이유를 남기고 사장님께 우리 서비스 채널로 이유를 한 번 알린다(못 가면 할 일 목록, G4). "
         "확인됨을 다시 확인하면 unchanged. 확인됨을 보류로 바꾸기는 첫 버전에서 하지 않음(409 invalid_state, M7). "
         "다른 운영자가 먼저 정했으면 409 already_decided, 그 밖에 가게가 바뀌었으면 409 version_conflict(G3).",
    params=[pid("shopId", "가게", E.SHOP_ID)],
@@ -253,11 +258,11 @@ op(id="API-014", method="post", path="/operator/shops/{shopId}/license-review", 
    ok=[(200, "LicenseReviewResult", {"verified": {"outcome": "done", "shop": E.REVIEW_DETAIL_VERIFIED},
                                      "on_hold": {"outcome": "done", "shop": E.REVIEW_DETAIL_ON_HOLD},
                                      "unchanged": {"outcome": "unchanged", "shop": E.REVIEW_DETAIL_VERIFIED}})],
-   errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "invalid_state"]},
+   errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "invalid_state", "payment_account_missing"]},
    fields=[("/holdReason", "required")],
    omit={"403": O403_OPERATOR},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
-          "상태": ["409:invalid_state", "example:unchanged"], "반복": ["idem"], "동시": ["revision", "409:already_decided"],
+          "상태": ["409:invalid_state", "409:payment_account_missing", "example:unchanged"], "반복": ["idem"], "동시": ["revision", "409:already_decided"],
           "외부": ["200", "note:사장님 알림이 못 가도 할 일 목록에 보류 이유(G4)"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-015", method="get", path="/operator/alerts", op="listOperatorAlerts", tag="운영자",
@@ -269,6 +274,77 @@ op(id="API-015", method="get", path="/operator/alerts", op="listOperatorAlerts",
    omit={"403": O403_OPERATOR, "404": O404_NOPATH, "409": O409_READ},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "노출": ["closed"],
           "빈·끊김": ["example:empty"], "화면": ["screen"]})
+
+# ═══ 운영자: 가게 기록 보기 (설계 재검토 H4) ═══════════════════════════════════════════════
+LOG_NOTE = "note:접속기록을 남기지 못하면 500 internal로 아무것도 돌려주지 않음(SPEC-074)"
+op(id="API-074", method="get", path="/operator/shops/{shopId}/records", op="listShopRecords", tag="운영자",
+   summary="가게 기록 목록(가린 값)", spec=["SPEC-073", "SPEC-074"], auth="operator",
+   desc="손님 문제나 분쟁, 사장님의 보관 기록 요청으로 운영자가 가게의 주문(kind=orders)이나 상담(kind=consultations)을 찾는다. "
+        "손님 이름은 첫 글자 밖을, 연락처는 끝 4자리 밖을 *로 가린 값만 보인다(REQ-194). 끝나고 30일이 지나 보관 기록이 된 주문은 "
+        "주문번호·끝난 날·보관 기간과 keptRecordId만 있고, 내용은 사유를 적어 API-077로 연다(05단계 A22의 운영자 예외). "
+        "부를 때마다 응답과 같은 트랜잭션에서 접속기록에 읽음 한 행을 남기고, 남기지 못하면 500으로 아무것도 돌려주지 않는다(SPEC-074).",
+   params=[pid("shopId", "가게", E.SHOP_ID),
+           q("kind", {"type": "string", "enum": ["orders", "consultations"]}, "주문·상담. 없으면 orders", "orders"), CURSOR, LIMIT],
+   ok=[(200, "OperatorRecordList", {"orders": E.OP_RECORDS_ORDERS, "consultations": E.OP_RECORDS_CONSULTATIONS, "empty": E.OP_RECORDS_EMPTY})],
+   errors={404: ["not_found"]},
+   fields=[("query:kind", "not_allowed")],
+   omit={"403": O403_OPERATOR, "409": O409_READ},
+   kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
+          "상태": ["example:orders", "note:보관 기록이 된 주문은 주문번호·끝난 날·보관 기간과 keptRecordId만(05단계 A22)"],
+          "외부": [LOG_NOTE],
+          "노출": ["closed", "note:이름·연락처는 가린 값만, 사진 없음(REQ-194). 본 것도 접속기록에 읽음 한 행(REQ-196)"],
+          "빈·끊김": ["example:empty"], "화면": ["screen"]})
+
+op(id="API-075", method="get", path="/operator/shops/{shopId}/consultations/{consultationId}", op="getShopConsultation", tag="운영자",
+   summary="상담 하나(가린 값)", spec=["SPEC-073", "SPEC-074"], auth="operator",
+   desc="그 가게 상담의 대화를 마스킹한 글(플레이스홀더 그대로)로 보이고, 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. "
+        "카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 있고 열 수 없다(REQ-192). 사진은 수만 보이고 열지 않는다(REQ-194). "
+        "지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074).",
+   params=[pid("shopId", "가게", E.SHOP_ID), pid("consultationId", "상담", E.CONSULT_ID), CURSOR, LIMIT],
+   ok=[(200, "OperatorConsultation", {"consultation": E.OP_CONSULTATION, "deleted": E.OP_CONSULTATION_DELETED})],
+   errors={404: ["not_found"]},
+   fields=[("query:limit", "out_of_range")],
+   omit={"403": O403_OPERATOR, "409": O409_READ},
+   kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
+          "상태": ["example:deleted"], "외부": [LOG_NOTE],
+          "노출": ["closed", "note:대화는 플레이스홀더 그대로, 번호는 끝 4자리만, 사진은 수만(REQ-194)"],
+          "빈·끊김": ["example:deleted"], "화면": ["screen"]})
+
+op(id="API-076", method="get", path="/operator/shops/{shopId}/orders/{orderId}", op="getShopOrder", tag="운영자",
+   summary="주문 하나(가린 값)", spec=["SPEC-073", "SPEC-074"], auth="operator",
+   desc="주문의 상태·픽업 시각·금액, 결제 안내와 환불 요약을 보인다. 주문자 이름·연락처와 환불 계좌는 가린 값이고, 알레르기 답과 빼야 할 재료는 답이 있는지만, "
+        "참고 사진은 수만 보인다(REQ-194). 원래 값은 사유를 적어 API-077로 연다(주문자 이름·연락처는 targetKind order_contact와 orderId, 환불 계좌는 refund_account와 refundId). "
+        "보관 기록이 된 주문은 404(목록의 keptRecordId로 API-077). 부를 때마다 접속기록에 읽음 한 행(SPEC-074).",
+   params=[pid("shopId", "가게", E.SHOP_ID), pid("orderId", "주문", E.ORDER_ID)],
+   ok=[(200, "OperatorOrder", {"order": E.OP_ORDER, "with_refund": E.OP_ORDER_REFUND})],
+   errors={404: ["not_found"]},
+   omit={"403": O403_OPERATOR, "409": O409_READ, "422": O422_PATHONLY},
+   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found", "note:보관 기록이 된 주문도 404(목록의 keptRecordId로 API-077)"],
+          "외부": [LOG_NOTE], "노출": ["closed", "note:이름·연락처·환불 계좌는 가린 값, 알레르기 답은 있는지만, 사진은 수만(REQ-194)"],
+          "화면": ["screen"]})
+
+op(id="API-077", method="post", path="/operator/shops/{shopId}/originals", op="openOriginal", tag="운영자",
+   summary="원래 값·보관 기록 열기(사유)", spec=["SPEC-073", "SPEC-074"], auth="operator", idem=True,
+   desc="운영자가 대상 하나와 사유(5~200자)를 보내면 그 값 하나만 연다(REQ-195): 대화 속 전화번호·계좌번호(masked_value), 주문자 이름·연락처(order_contact), "
+        "환불 계좌(refund_account), 보관 기록(kept_record). 응답과 같은 트랜잭션에서 운영자·시각·접속지·대상·사유를 접속기록에 남기고(action open_original·open_kept), "
+        "남기지 못하면 500으로 값을 돌려주지 않는다(SPEC-074). 같은 요청 키로 다시 오면 다시 열어 같은 응답을 돌려주고 접속기록도 한 행 더 남긴다(요청 키 기록에는 원래 값을 두지 않음). "
+        "원래 값을 두지 않는 값(카드번호·긴 숫자, REQ-192)은 409 original_not_kept, 지우기 작업이 비운 값(SPEC-065)은 409 original_erased이고 둘 다 접속기록에 열기 행을 남기지 않는다. "
+        "연 값은 이 응답에만 있고 로그·오류 보고에는 없다(G6). 화면은 연 값을 저장하거나 내려받게 하지 않는다.",
+   params=[pid("shopId", "가게", E.SHOP_ID)],
+   body="OriginalOpenInput",
+   body_examples={"masked_value": E.OPEN_ORIGINAL_INPUT,
+                  "order_contact": {"targetKind": "order_contact", "targetId": E.ORDER_ID, "reason": "사장님 문의: 픽업 날 연락처 확인"},
+                  "refund_account": {"targetKind": "refund_account", "targetId": E.REFUND["refundId"], "reason": "손님 문의: 환불이 들어오지 않음"},
+                  "kept_record": {"targetKind": "kept_record", "targetId": E.KEPT_RECORD_ID, "reason": "사장님 요청: 9월 주문 분쟁 자료"}},
+   ok=[(200, "OriginalValue", {"masked_value": E.ORIGINAL_MASKED, "order_contact": E.ORIGINAL_CONTACT,
+                               "refund_account": E.ORIGINAL_REFUND, "kept_record": E.ORIGINAL_KEPT})],
+   errors={404: ["not_found"], 409: ["original_not_kept", "original_erased"]},
+   fields=[("/reason", "too_short")],
+   omit={"403": O403_OPERATOR},
+   kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"],
+          "대상": ["404:not_found", "409:original_not_kept"], "상태": ["409:original_erased"],
+          "반복": ["idem", "note:같은 값을 다시 열어도 그때마다 접속기록 한 행(SPEC-073)"], "외부": [LOG_NOTE],
+          "노출": ["closed", "note:원래 값은 이 응답에만, 로그·오류 보고에는 없음(G6)"], "화면": ["screen"]})
 
 # ═══ 가격표 ═══════════════════════════════════════════════════════════════════
 op(id="API-016", method="get", path="/owner/price-list", op="getCurrentPriceList", tag="가격표",
@@ -362,7 +438,8 @@ op(id="API-023", method="get", path="/owner/operating-rules/versions/{version}",
 # ═══ 결제 수단 ═════════════════════════════════════════════════════════════
 op(id="API-024", method="get", path="/owner/payment-destination", op="getPaymentDestination", tag="결제 수단",
    summary="결제 수단 조회", spec=["SPEC-006"], auth="owner",
-   desc="가게 명의 계좌와 카드 결제 링크. 계좌번호는 이 화면과 그 가게 손님의 결제 안내에만 보인다(DEC-19).",
+   desc="가게 명의 계좌와 카드 결제 링크. 계좌번호는 앱이 암호화해 두고 이 화면과 그 가게 손님의 결제 안내를 보일 때만 복호화한다(SPEC-006, REQ-191, DEC-19). "
+        "운영자에게는 끝 4자리만 보인다(API-013).",
    ok=[(200, "PaymentDestination", {"account": E.PAYMENT_DESTINATION})],
    errors={404: ["shop_not_registered", "not_set"]},
    omit={"403": O403, "409": O409_READ, "422": O422_NOINPUT},
@@ -371,19 +448,23 @@ op(id="API-024", method="get", path="/owner/payment-destination", op="getPayment
 
 op(id="API-025", method="put", path="/owner/payment-destination", op="setPaymentDestination", tag="결제 수단",
    summary="결제 수단 등록·수정", spec=["SPEC-006"], auth="owner", idem=True,
-   desc="바꾸면 새 행을 만들고 옛 행은 그만 쓴다. 이미 나간 결제 안내는 옛 계좌를 그대로 참조한다. "
-        "예금주가 상호·대표자와 다르면 409 confirmation_required(holder_mismatch)이고, 사장님이 '가게 명의가 맞다'고 하면 confirm에 담아 다시 보낸다(답을 남김).",
+   desc="바꾸면 새 행을 만들고 옛 행은 그만 쓴다. 이미 나간 결제 안내는 옛 계좌를 그대로 참조하고, 바꾼 뒤 만드는 결제 안내부터 새 계좌를 쓴다(REQ-198). "
+        "계좌번호는 숫자와 '-', 숫자만 10~16자리인지 여기서 확인하고 앱이 암호화해 끝 4자리와 함께 남긴다(데이터베이스는 형식을 보지 않음, 05단계 E20). "
+        "예금주가 상호·대표자와 다르면 409 confirmation_required(holder_mismatch)이고, 사장님이 '가게 명의가 맞다'고 하면 confirm에 담아 다시 보낸다(답을 남김). "
+        "영업 신고가 확인된 가게는 새 예금주가 확인된 대표자·상호나 운영자가 확인한 예금주와 같아야 바꾸고, 다르면 409 holder_not_verified로 저장하지 않는다(REQ-199). "
+        "보류된 가게에서 바꾸면 영업 신고가 다시 확인 기다림이 된다(SPEC-003). 처음 등록이 아닌 바꿈이면 사장님 카카오로 '결제 받을 계좌가 바뀌었어요' 알림을 한 번 보낸다(SPEC-067, 할 일은 만들지 않음).",
    body="PaymentDestinationInput",
    body_examples={"first": E.PAYMENT_DESTINATION_INPUT,
                   "holder_confirmed": dict(E.PAYMENT_DESTINATION_INPUT, holderName="박하늘", confirm=["holder_mismatch"])},
    ok=[(200, "PaymentDestinationResult", {"created": {"outcome": "created", "paymentDestination": E.PAYMENT_DESTINATION},
                                           "unchanged": {"outcome": "unchanged", "paymentDestination": E.PAYMENT_DESTINATION}})],
-   errors={404: ["shop_not_registered"], 409: ["version_conflict", "confirmation_required"]},
+   errors={404: ["shop_not_registered"], 409: ["version_conflict", "confirmation_required", "holder_not_verified"]},
    fields=[("/accountNumber", "bad_format"), ("/cardPaymentUrl", "bad_format")],
    confirm=["holder_mismatch"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:shop_not_registered"],
-          "상태": ["409:confirmation_required", "note:바꾼 계좌는 그 뒤 결제 안내부터"], "반복": ["idem", "example:unchanged"],
+          "상태": ["409:confirmation_required", "409:holder_not_verified", "note:바꾼 계좌는 그 뒤 결제 안내부터(REQ-198)"],
+          "외부": ["note:계좌를 바꾸면 사장님 카카오 알림 한 번, 못 가도 저장은 그대로(SPEC-067, G4)"], "반복": ["idem", "example:unchanged"],
           "동시": ["revision", "409:version_conflict"], "노출": ["closed"], "화면": ["screen"]})
 
 # ═══ 영업 캘린더 ════════════════════════════════════════════════════════════════
@@ -597,13 +678,13 @@ op(id="API-040", method="get", path="/owner/tasks", op="listOwnerTasks", tag="�
 # ═══ 에스컬레이션 건과 상담 ═════════════════════════════════════════════════════════
 op(id="API-041", method="get", path="/owner/handoffs/{handoffId}", op="getHandoff", tag="에스컬레이션 건·상담",
    summary="에스컬레이션 건 하나", spec=["SPEC-022", "SPEC-023", "SPEC-021"], auth="owner",
-   desc="에스컬레이션한 사유와 손님 말(원래 값으로 되돌린 글, SPEC-021), 그 뒤 덧붙은 말. 마감된 날 질문이면 requestedDay.",
+   desc="에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 덧붙은 말. 마감된 날 질문이면 requestedDay.",
    params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF["handoffId"])],
    ok=[(200, "Handoff", {"edibility": E.HANDOFF, "closed_day": E.HANDOFF_DAY})],
    errors={404: ["not_found"]},
    omit={"403": O403, "409": O409_READ, "422": O422_PATHONLY},
    kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"],
-          "노출": ["closed", "note:원래 값은 그 가게 사장님 화면에만(SPEC-021, DEC-19)"], "화면": ["screen"]})
+          "노출": ["closed", "note:원래 값은 그 가게 사장님 화면과 사유를 적고 연 운영자에게만(SPEC-021, DEC-19)"], "화면": ["screen"]})
 
 op(id="API-042", method="post", path="/owner/handoffs/{handoffId}/answer", op="answerHandoff", tag="에스컬레이션 건·상담",
    summary="에스컬레이션 건 답변", spec=["SPEC-023", "SPEC-024", "SPEC-066"], auth="owner", idem=True,
@@ -625,7 +706,7 @@ op(id="API-042", method="post", path="/owner/handoffs/{handoffId}/answer", op="a
 
 op(id="API-043", method="get", path="/owner/consultations/{consultationId}/messages", op="listConsultationMessages", tag="에스컬레이션 건·상담",
    summary="상담 대화 조회", spec=["SPEC-021", "SPEC-019", "SPEC-068", "SPEC-065"], auth="owner",
-   desc="그 가게 상담만. 사장님 화면에는 마스킹한 번호를 원래 값으로 되돌린 글과 참고 사진(서명 주소)이 보인다. 새 메시지가 뒤. "
+   desc="그 가게 상담만. 사장님 화면에는 마스킹한 전화번호·계좌번호를 원래 값으로 되돌린 글과 참고 사진(서명 주소)이 보인다. 카드번호는 플레이스홀더와 끝 4자리, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 보인다(원래 값을 두지 않음, REQ-192). 새 메시지가 뒤. "
         "다룬 주문이 모두 끝나 상담 끝남으로 닫힌 상담(SPEC-025)은 status ended로 대화가 지우기 전까지 그대로 보이고, 그 손님의 다음 말은 새 상담에 남는다. "
         "지워진 상담(SPEC-065)은 status deleted와 빈 items.",
    params=[pid("consultationId", "상담", E.CONSULT_ID), CURSOR, LIMIT],
@@ -932,7 +1013,7 @@ op(id="API-059", method="post", path="/owner/payment-requests/{paymentRequestId}
 # ═══ 환불 ═════════════════════════════════════════════════════════════════════
 op(id="API-060", method="get", path="/owner/refunds/{refundId}", op="getRefund", tag="환불",
    summary="환불 하나(손님 환불 계좌 포함)", spec=["SPEC-047", "SPEC-049", "SPEC-021"], auth="owner",
-   desc="정한 환불과 근거. 손님이 상담에서 알려 준 환불 계좌(SPEC-049)는 원래 값으로 이 화면에만 보인다(R19, DEC-19).",
+   desc="정한 환불과 근거. 손님이 상담에서 알려 준 환불 계좌(SPEC-049)는 앱이 암호화해 두고, 사장님 화면에서는 원래 값으로 이 화면에만 보인다(R19, DEC-19). 운영자는 끝 4자리만 본다(API-076).",
    params=[pid("refundId", "환불", E.REFUND["refundId"])],
    ok=[(200, "Refund", {"decided": E.REFUND, "with_account": E.REFUND_WITH_ACCOUNT, "sent": E.REFUND_SENT})],
    errors={404: ["not_found"]},
@@ -942,7 +1023,7 @@ op(id="API-060", method="get", path="/owner/refunds/{refundId}", op="getRefund",
 
 op(id="API-061", method="post", path="/owner/refunds/{refundId}/sent", op="markRefundSent", tag="환불",
    summary="환불 '보냄' 표시", spec=["SPEC-047", "SPEC-049", "SPEC-066", "SPEC-064", "SPEC-067"], auth="owner", idem=True,
-   desc="사장님이 가게 계좌에서 반환하거나 카드 결제를 취소한 뒤 표시한다. 계좌로 보냈으면 그 계좌(손님이 말한 값을 고쳤으면 고친 값)를 남긴다. "
+   desc="사장님이 가게 계좌에서 반환하거나 카드 결제를 취소한 뒤 표시한다. 계좌로 보냈으면 그 계좌(손님이 말한 값을 고쳤으면 고친 값, 숫자만 10~16자리)를 앱이 암호화해 끝 4자리와 함께 남긴다(REQ-191). "
         "할 일 '환불 보내기'를 닫고, 손님에게 보냈다는 안내를 한 번 보내고(친구면 바로, 아니면 다음 대화 때, REQ-172) 장부 쓰기를 남긴다. "
         "환불 없이 취소한 행은 409 invalid_state. 이미 표시했으면 unchanged(안내를 다시 보내지 않음).",
    params=[pid("refundId", "환불", E.REFUND["refundId"])],
@@ -1167,6 +1248,7 @@ op(id="API-073", method="post", path="/kakao/skills/event", op="showNotice", tag
         "안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). "
         "손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), "
         "그 안내는 다음 대화 때 먼저 전한다(DEC-20이 정한 DEC-07의 예외). "
+        "결제 안내의 글에는 계좌번호를 넣어 두지 않고 계좌 자리만 두며, 이 스킬이 보일 때 그 결제 안내의 계좌를 복호화해 채운다(SPEC-032, REQ-191). "
         "Open: 가게 채널을 우리 앱에 연결하고 우리 월렛을 가게 봇에 연결하는 절차, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양은 개발 전 시험으로 확인(OPEN-9).",
    body="SkillPayload", body_examples={"notice": E.SKILL_NOTICE, "event_test": E.SKILL_EVENT_TEST},
    ok=[(200, "SkillTemplateResponse", {k: E.SKILL_OUTCOME_EXAMPLES[k] for k in EVENT_OUTCOMES}, ["Siljang-Outcome"])],
