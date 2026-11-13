@@ -9,7 +9,7 @@ page-check.js를 주면 아트보드마다 Playwright Chromium으로 그 검사�
 고른 기록과 design/base.tokens.json, 화면 정의의 목업 링크도 본다. 09단계를 마친 뒤에는 토큰 고정 기록과, 고정한
 design/base.tokens.json의 SHA-256(앞 12자리)이 README에 적은 값과 같은지 본다.
 
-아트보드 이름: 후보 시안은 A|B-SCR-000-360|1280(토큰 루트 a|b), 고른 방향으로 그린 49개 화면은 SCR-000-360|1280
+아트보드 이름: 후보 시안은 A|B-SCR-000-360|1280(토큰 루트 a|b), 고른 방향으로 그린 50개 화면은 SCR-000-360|1280
 (토큰 루트 base, gen_screens.py가 만듦), 두 후보를 나란히 둔 Main.
 """
 import hashlib

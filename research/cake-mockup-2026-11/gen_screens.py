@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""09단계 A 방향 화면 49개를 그린다: 화면마다 normal(360·1280)과 모습이 크게 다른 상태(빈 상태·오류·확인 창·카드 기한·
+"""09단계 A 방향 화면 50개를 그린다: 화면마다 normal(360·1280)과 모습이 크게 다른 상태(빈 상태·오류·확인 창·카드 기한·
 채널 친구가 아닐 때)의 360.
 
 08단계 원본(research/cake-screens-2026-11/screens_*.py)의 레이아웃 블록과 상태 프레임을 그대로 읽고, 블록마다 후보 A의
 부품(gen.py의 class A)을 design/base.tokens.json의 변수로 그린다. 와이어프레임의 자리 값은 screen_samples.py의 06단계 예시
 값으로 바꾼다. 아이콘 크기는 base의 size.icon-sm·md·lg 토큰이다.
 
-    python3 -B research/cake-mockup-2026-11/gen_screens.py               # 98개 모두(높이는 heights.json)
+    python3 -B research/cake-mockup-2026-11/gen_screens.py               # 100개 모두(높이는 heights.json)
     python3 -B research/cake-mockup-2026-11/gen_screens.py SCR-001 ...   # 이 화면들만
 
 쓰는 파일: research/cake-mockup-2026-11/canvas/project/SCR-0xx-360.dc.html, SCR-0xx-1280.dc.html, 그리고 canvas.json의
@@ -861,7 +861,7 @@ def parent_menu(sid):
     """사장님·운영자 메뉴에서 이 화면이 속한 1뎁스."""
     n = int(sid[4:])
     owner = [(16, 19, "할 일"), (20, 27, "주문"), (28, 29, "입금 대조"), (30, 30, "제작"), (31, 31, "픽업"), (32, 33, "영업 캘린더"),
-             (34, 45, "가게 설정"), (47, 48, "영업 신고 확인"), (49, 49, "운영자 알림")]
+             (34, 45, "가게 설정"), (47, 48, "영업 신고 확인"), (49, 49, "운영자 알림"), (50, 50, "영업 신고 확인")]
     return next(lab for lo, hi, lab in owner if lo <= n <= hi)
 
 
@@ -1390,6 +1390,7 @@ STATE_NOTE = {"not-sent": "알림 채널 친구가 아닐 때", "deferred": "손
               ("SCR-038", "confirm"): "제작 전 취소 환불을 100%보다 낮출 때",
               ("SCR-040", "confirm"): "예금주가 상호·대표자와 다를 때",
               ("SCR-048", "confirm"): "'확인됨'을 누른 뒤",
+              ("SCR-050", "confirm"): "'원래 값 열기'를 누른 뒤",
               ("SCR-029", "expired"): "결제 기한이 지난 안내를 열 때",
               ("SCR-026", "empty"): "손님 환불 계좌를 아직 받지 못했을 때",
               ("SCR-032", "empty"): "영업 캘린더를 아직 정하지 않았을 때",
@@ -1400,7 +1401,9 @@ STATE_NOTE = {"not-sent": "알림 채널 친구가 아닐 때", "deferred": "손
               ("SCR-041", "empty"): "채널을 아직 정하지 않았을 때",
               ("SCR-042", "empty"): "장부를 아직 연결하지 않았을 때",
               ("SCR-043", "empty"): "예약 링크 조건을 다 마치지 않았을 때",
-              ("SCR-047", "empty"): "'확인 중' 탭에 가게가 없을 때"}
+              ("SCR-047", "empty"): "'확인 중' 탭에 가게가 없을 때",
+              ("SCR-048", "empty"): "결제 계좌를 아직 등록하지 않았을 때",
+              ("SCR-050", "empty"): "그 탭에 기록이 없을 때"}
 
 
 def page(title, width, height, figs):
@@ -1426,7 +1429,7 @@ def board_width(n_phones, w):
 PAGES = [("customer", "손님 화면", "손님"), ("owner", "사장님 화면", "사장님"), ("operator", "운영자 화면", "운영자"),
          ("candidates", "후보 A·B (방향 고르기)", None)]
 ROW_GAP, NOTE_ABOVE, COL_GAP = 420, 300, 80
-LEGEND = ("A '주문서' 방향에 손님 화면 사진을 크게 해서 그린 화면 49개. 화면마다 360 보드(normal 전체 길이, 이어서 모습이 크게 다른 "
+LEGEND = ("A '주문서' 방향에 손님 화면 사진을 크게 해서 그린 화면 50개. 화면마다 360 보드(normal 전체 길이, 이어서 모습이 크게 다른 "
           "상태를 360 × 800으로)와 1280 보드(normal). 색·글꼴과 회색 사진 자리는 임시이고 토큰 고정 전에 바꿈. "
           "고르기 전 후보는 '후보 A·B (방향 고르기)' 페이지.")
 

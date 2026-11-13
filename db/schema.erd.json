@@ -83,7 +83,8 @@
       "03h7y0179sukl6c8nic8nn7g1",
       "03h7y0179sukl6c8niz928w4a",
       "03h7y0179sukl6c8njfcxe8qh",
-      "03h8b7tnrfhbd2g1wkkguu20l"
+      "03h8b7tnrfhbd2g1wkkguu20l",
+      "03h8boz8wiz0oga3u2prq5sgi"
     ],
     "relationshipIds": [
       "03h7y0179y91t3fbncx4e1mp5",
@@ -193,7 +194,11 @@
       "03h7y017apioxvv0yn6f9zqm3",
       "03h89a0gml68t8w9rfe7rlq8h",
       "03h89a0gmw3f6g8nxnl1wwsio",
-      "03h8b7tsd5h0fbccotqvvwasz"
+      "03h8b7tsd5h0fbccotqvvwasz",
+      "03h8bozdhsi98l8mtnbdci5nm",
+      "03h8bozdhy0dq3dvikl0gkle0",
+      "03h8bozdhy0dq3dviko5xzxvs",
+      "03h8bozdhy0dq3dvikos42c5x"
     ],
     "indexIds": [
       "03h7y017apioxvv0yn8m6arb8",
@@ -219,7 +224,6 @@
       "03h7y017av0r9hpxwy2bg188c",
       "03h7y017av0r9hpxwy7gjwkp4",
       "03h7y017av0r9hpxwyhetywcd",
-      "03h7y017av0r9hpxwynwrgx51",
       "03h7y017b0l8bo6e64l17nizx",
       "03h7y017b0l8bo6e64vn7i7t5",
       "03h7y017b0l8bo6e650bkbmnp",
@@ -267,7 +271,10 @@
       "03h7y017b606uh594kml02wt2",
       "03h7y017b606uh594kqh53vyq",
       "03h89a0gn1i02nrgg1g3ijlnn",
-      "03h8b7tsdaz6udoggxs76nr9b"
+      "03h8b7tsdaz6udoggxs76nr9b",
+      "03h8bozdhy2hr7w3gd9w8pujw",
+      "03h8bozdi3hfi94fuiwxjb3dn",
+      "03h8bozdi3hfi94fuj7bk8vs2"
     ],
     "memoIds": [
       "03h7y0184s9oftzxoejnroyg3"
@@ -596,14 +603,17 @@
       "03h7y0178vyo98xl8lhk8qlco": {
         "id": "03h7y0178vyo98xl8lhk8qlco",
         "name": "payment_accounts",
-        "comment": "TBL-015 결제 수단: 가게 명의 계좌와 카드 결제 링크. 우리 회사 계좌는 어디에도 없음(REQ-079)",
+        "comment": "TBL-015 결제 수단: 가게 명의 계좌(암호화)와 카드 결제 링크. 우리 회사 계좌는 어디에도 없음(REQ-079)",
         "columnIds": [
           "03h7y0178vyo98xl8li8sb412",
           "03h7y0178vyo98xl8llhzx6ou",
           "03h7y0178vyo98xl8lnnmuewt",
-          "03h7y0178vyo98xl8lp9mz6ho",
+          "03h8boz8lw22yp02v8dwm1fso",
+          "03h8boz8m70ftzdryl98shhvh",
           "03h7y0178vyo98xl8lqr1hqpd",
           "03h7y0178vyo98xl8ltb7cm7t",
+          "03h8boz8m70ftzdrylc2eqjbv",
+          "03h8boz8mcl3a9qooiugxfhls",
           "03h7y0178vyo98xl8lvxgeko3",
           "03h7y0178vyo98xl8lx15bxyp",
           "03h7y0178vyo98xl8lz3db9y4"
@@ -685,14 +695,16 @@
       "03h7y0178vyo98xl8nuyo5kdq": {
         "id": "03h7y0178vyo98xl8nuyo5kdq",
         "name": "masked_values",
-        "comment": "TBL-019 마스킹 원본 값: 플레이스홀더와 원래 값의 쌍, 그 가게 사장님 화면에만",
+        "comment": "TBL-019 마스킹 원본 값: 플레이스홀더와 암호화한 원래 값(전화번호·계좌번호)과 끝 4자리, 그 가게 사장님 화면과 사유를 적고 연 운영자에게만",
         "columnIds": [
           "03h7y0178vyo98xl8nwfuxsnj",
           "03h7y0178vyo98xl8nxm6hcnh",
           "03h7y0178vyo98xl8o0vxol3x",
           "03h7y01791hwo1dbahplf4432",
           "03h7y01791hwo1dbahpzcrsot",
-          "03h7y01791hwo1dbahrxlh9g4",
+          "03h8boz8mhzvba9a1awrbwjgs",
+          "03h8boz8mnj31yybi87snb3k0",
+          "03h8boz8mt0lluxkjv7zk84iy",
           "03h7y01791hwo1dbahvhacy6x"
         ],
         "groupId": "03h7y017wa1qi7u3p6412i1g8",
@@ -1090,7 +1102,8 @@
           "03h7y0179cdtx0zvnx9ar14cm",
           "03h7y0179cdtx0zvnxawo88c6",
           "03h7y0179cdtx0zvnxejhsfxx",
-          "03h7y0179cdtx0zvnxff5b6ie",
+          "03h8boz8n9dqhnqy7uk3dqqf3",
+          "03h8boz8nevwtdwzh2io2c4ee",
           "03h7y0179cdtx0zvnxhqr0v0z",
           "03h7y0179cdtx0zvnxkaf78h1",
           "03h7y0179cdtx0zvnxmbz3tbl"
@@ -1534,6 +1547,32 @@
           "x": 2137,
           "y": 4144
         }
+      },
+      "03h8boz8wiz0oga3u2prq5sgi": {
+        "id": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "access_logs",
+        "comment": "TBL-053 접속기록: 사장님·운영자가 손님 개인정보를 읽거나 바꾸거나 연 요청마다 한 행. 고치지 않고 2년 보관(REQ-196, 「개인정보의 안전성 확보조치 기준」 제8조①③)",
+        "columnIds": [
+          "03h8boz8wiz0oga3u2ss2eubl",
+          "03h8boz8wod0gix0698i6jtp5",
+          "03h8boz8x4s8qdb6jl73m5j06",
+          "03h8boz8xa7bgfiha4rc58xnz",
+          "03h8boz8xa7bgfiha4wbt18gx",
+          "03h8boz8xa7bgfiha4znjant9",
+          "03h8boz8xfps2epj5bwctsfte",
+          "03h8boz8xl4of7t8tw815bb3t",
+          "03h8boz8xl4of7t8twbaboh21",
+          "03h8boz8xl4of7t8twg9srx14",
+          "03h8boz8xqp6og1nxl6ssp851",
+          "03h8boz8xqp6og1nxlb3gop80",
+          "03h8boz8xw5yyd2q45nsx3jex",
+          "03h8boz8y1mekhnbyb5lfk965"
+        ],
+        "groupId": "03h7y017wqizg5foqnrelun2p",
+        "ui": {
+          "x": 74,
+          "y": 9668
+        }
       }
     },
     "tableColumnEntities": {
@@ -1747,7 +1786,7 @@
         "id": "03h7y0178l0hvzg6ddpx9zk3l",
         "tableId": "03h7y0178fic3fnl5vhrhwxmb",
         "name": "license_status",
-        "comment": "영업 신고: 확인 기다림·보류·확인됨(SPEC-003)",
+        "comment": "영업 신고: 확인 기다림·보류·확인됨(SPEC-003). 확인됨은 결제 계좌가 있고 그 예금주가 대표자·상호와 같은지 운영자가 본 뒤(REQ-197, 4절 A25)",
         "dataType": "text",
         "default": "'pending'",
         "options": 8
@@ -2715,14 +2754,6 @@
         "dataType": "text",
         "options": 8
       },
-      "03h7y0178vyo98xl8lp9mz6ho": {
-        "id": "03h7y0178vyo98xl8lp9mz6ho",
-        "tableId": "03h7y0178vyo98xl8lhk8qlco",
-        "name": "account_number",
-        "comment": "가게 명의 계좌번호. 사장님 화면과 그 가게 손님의 결제 안내에만, AI로는 마스킹함(SPEC-006)",
-        "dataType": "text",
-        "options": 8
-      },
       "03h7y0178vyo98xl8lqr1hqpd": {
         "id": "03h7y0178vyo98xl8lqr1hqpd",
         "tableId": "03h7y0178vyo98xl8lhk8qlco",
@@ -2761,6 +2792,38 @@
         "tableId": "03h7y0178vyo98xl8lhk8qlco",
         "name": "retired_at",
         "comment": "바꿔서 그만 쓰게 된 시각. 이미 나간 결제 안내는 옛 행을 그대로 참조함",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8boz8lw22yp02v8dwm1fso": {
+        "id": "03h8boz8lw22yp02v8dwm1fso",
+        "tableId": "03h7y0178vyo98xl8lhk8qlco",
+        "name": "account_number_enc",
+        "comment": "가게 명의 계좌번호를 앱이 암호화한 값(키 버전:nonce·암호문·태그의 base64url, 5절 E20). 평문은 두지 않음(REQ-191). 숫자와 '-' 10~16자리 확인은 06단계 API가 함. 사장님 화면과 그 가게 손님의 결제 안내를 보일 때만 복호화하고, AI로는 마스킹함(SPEC-006)",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h8boz8m70ftzdryl98shhvh": {
+        "id": "03h8boz8m70ftzdryl98shhvh",
+        "tableId": "03h7y0178vyo98xl8lhk8qlco",
+        "name": "account_last4",
+        "comment": "계좌번호 끝 4자리. 운영자 화면은 이것만 보임(SPEC-003, SPEC-073)",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h8boz8m70ftzdrylc2eqjbv": {
+        "id": "03h8boz8m70ftzdrylc2eqjbv",
+        "tableId": "03h7y0178vyo98xl8lhk8qlco",
+        "name": "holder_checked_by",
+        "comment": "영업 신고를 확인하며 예금주가 대표자·상호와 같은지 본 운영자(REQ-197, SPEC-003)",
+        "dataType": "uuid",
+        "options": 0
+      },
+      "03h8boz8mcl3a9qooiugxfhls": {
+        "id": "03h8boz8mcl3a9qooiugxfhls",
+        "tableId": "03h7y0178vyo98xl8lhk8qlco",
+        "name": "holder_checked_at",
+        "comment": "예금주를 확인한 시각. 확인된 가게가 계좌를 바꾸면 새 예금주는 확인된 대표자·상호나 이 확인을 거친 예금주와 같아야 함(REQ-199, 4절 A25)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -3058,7 +3121,7 @@
         "id": "03h7y01791hwo1dbahplf4432",
         "tableId": "03h7y0178vyo98xl8nuyo5kdq",
         "name": "kind",
-        "comment": "전화번호·계좌번호·카드번호·8자리 넘는 긴 숫자",
+        "comment": "전화번호·계좌번호·카드번호·8자리 넘는 긴 숫자(주민등록번호처럼 보이는 숫자 포함). 나누는 규칙은 SPEC-021",
         "dataType": "text",
         "options": 8
       },
@@ -3070,14 +3133,6 @@
         "dataType": "text",
         "options": 8
       },
-      "03h7y01791hwo1dbahrxlh9g4": {
-        "id": "03h7y01791hwo1dbahrxlh9g4",
-        "tableId": "03h7y0178vyo98xl8nuyo5kdq",
-        "name": "original_value",
-        "comment": "원래 값. 그 가게 사장님 화면에만(REQ-137). 카드번호는 끝 4자리만 둠",
-        "dataType": "text",
-        "options": 8
-      },
       "03h7y01791hwo1dbahvhacy6x": {
         "id": "03h7y01791hwo1dbahvhacy6x",
         "tableId": "03h7y0178vyo98xl8nuyo5kdq",
@@ -3086,6 +3141,30 @@
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
+      },
+      "03h8boz8mhzvba9a1awrbwjgs": {
+        "id": "03h8boz8mhzvba9a1awrbwjgs",
+        "tableId": "03h7y0178vyo98xl8nuyo5kdq",
+        "name": "original_enc",
+        "comment": "원래 값을 앱이 암호화한 값(5절 E20). 전화번호·계좌번호만 둠(REQ-191). 그 가게 사장님 화면과 사유를 적고 연 운영자에게만(REQ-193, SPEC-073)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8boz8mnj31yybi87snb3k0": {
+        "id": "03h8boz8mnj31yybi87snb3k0",
+        "tableId": "03h7y0178vyo98xl8nuyo5kdq",
+        "name": "value_hmac",
+        "comment": "같은 값 찾기: 원래 값 대신 비밀 키로 만든 HMAC-SHA256(5절 E20). 전화번호·계좌번호만",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8boz8mt0lluxkjv7zk84iy": {
+        "id": "03h8boz8mt0lluxkjv7zk84iy",
+        "tableId": "03h7y0178vyo98xl8nuyo5kdq",
+        "name": "last4",
+        "comment": "끝 4자리(운영자 화면의 가린 값, SPEC-073). 카드번호는 이것만 둠. 긴 숫자는 두지 않음(REQ-192)",
+        "dataType": "text",
+        "options": 0
       },
       "03h7y01791hwo1dbahzf01j00": {
         "id": "03h7y01791hwo1dbahzf01j00",
@@ -4952,14 +5031,6 @@
         "dataType": "text",
         "options": 0
       },
-      "03h7y0179cdtx0zvnxff5b6ie": {
-        "id": "03h7y0179cdtx0zvnxff5b6ie",
-        "tableId": "03h7y0179cdtx0zvnwm6jizml",
-        "name": "refund_account_number",
-        "comment": "환불받을 손님 계좌번호. 그 가게 사장님 화면의 이 환불에만, AI·로그 0번(R19). 주문이 끝나고 30일 뒤 지움(SPEC-065)",
-        "dataType": "text",
-        "options": 0
-      },
       "03h7y0179cdtx0zvnxhqr0v0z": {
         "id": "03h7y0179cdtx0zvnxhqr0v0z",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
@@ -4991,6 +5062,22 @@
         "name": "payment_request_id",
         "comment": "돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)",
         "dataType": "uuid",
+        "options": 0
+      },
+      "03h8boz8n9dqhnqy7uk3dqqf3": {
+        "id": "03h8boz8n9dqhnqy7uk3dqqf3",
+        "tableId": "03h7y0179cdtx0zvnwm6jizml",
+        "name": "refund_account_enc",
+        "comment": "환불받을 손님 계좌번호를 앱이 암호화한 값(5절 E20, REQ-191). 숫자와 '-' 형식은 06단계 API가 봄. 그 가게 사장님 화면의 이 환불과 사유를 적고 연 운영자에게만, AI·로그 0번(R19, REQ-193). 주문이 끝나고 30일 뒤 지움(SPEC-065)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8boz8nevwtdwzh2io2c4ee": {
+        "id": "03h8boz8nevwtdwzh2io2c4ee",
+        "tableId": "03h7y0179cdtx0zvnwm6jizml",
+        "name": "refund_account_last4",
+        "comment": "환불받을 계좌번호 끝 4자리(운영자 화면의 가린 값, SPEC-073). 주문이 끝나고 30일 뒤 지움(SPEC-065)",
+        "dataType": "text",
         "options": 0
       },
       "03h7y0179cdtx0zvnxpphy6ai": {
@@ -5748,7 +5835,7 @@
         "id": "03h7y0179n9e4e4gq4axwcsvm",
         "tableId": "03h7y0179n9e4e4gq430lqp8h",
         "name": "kind",
-        "comment": "새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)",
+        "comment": "새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)·결제 받을 계좌 바뀜(할 일 없이 알림만, 계좌번호 없음, SPEC-067, REQ-198)",
         "dataType": "text",
         "options": 8
       },
@@ -5912,7 +5999,7 @@
         "id": "03h7y0179n9e4e4gq57px5ew3",
         "tableId": "03h7y0179n9e4e4gq4qs0he2r",
         "name": "body",
-        "comment": "보낼 글. 다른 손님 정보·내부 ID 없음(G6). 주문이 끝나고 30일 뒤나 상담을 지울 때 행째 지움(SPEC-065)",
+        "comment": "보낼 글. 다른 손님 정보·내부 ID 없음(G6). 결제 안내의 가게 계좌번호는 넣지 않고 자리만 두어 안내를 보일 때 채움(SPEC-032, REQ-191). 주문이 끝나고 30일 뒤나 상담을 지울 때 행째 지움(SPEC-065)",
         "dataType": "text",
         "options": 8
       },
@@ -6687,6 +6774,121 @@
         "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
         "name": "created_at",
         "comment": "보관 기록으로 나눈 시각(끝나고 30일 뒤)",
+        "dataType": "timestamptz",
+        "default": "now()",
+        "options": 8
+      },
+      "03h8boz8wiz0oga3u2ss2eubl": {
+        "id": "03h8boz8wiz0oga3u2ss2eubl",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "id",
+        "comment": "접속기록 ID",
+        "dataType": "uuid",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "03h8boz8wod0gix0698i6jtp5": {
+        "id": "03h8boz8wod0gix0698i6jtp5",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "shop_id",
+        "comment": "어느 가게의 손님 기록인지",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h8boz8x4s8qdb6jl73m5j06": {
+        "id": "03h8boz8x4s8qdb6jl73m5j06",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "actor_kind",
+        "comment": "접속한 사람: 사장님·운영자. 손님(정보주체)·카카오 스킬·서버 작업은 남기지 않음(SPEC-074)",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h8boz8xa7bgfiha4rc58xnz": {
+        "id": "03h8boz8xa7bgfiha4rc58xnz",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "owner_id",
+        "comment": "접속한 사장님",
+        "dataType": "uuid",
+        "options": 0
+      },
+      "03h8boz8xa7bgfiha4wbt18gx": {
+        "id": "03h8boz8xa7bgfiha4wbt18gx",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "operator_id",
+        "comment": "접속한 운영자",
+        "dataType": "uuid",
+        "options": 0
+      },
+      "03h8boz8xa7bgfiha4znjant9": {
+        "id": "03h8boz8xa7bgfiha4znjant9",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "action",
+        "comment": "수행업무: 읽음·바꿈·원래 값 열기·보관 기록 열기(SPEC-073, SPEC-074)",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h8boz8xfps2epj5bwctsfte": {
+        "id": "03h8boz8xfps2epj5bwctsfte",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "api_id",
+        "comment": "부른 06단계 API 번호",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h8boz8xl4of7t8tw815bb3t": {
+        "id": "03h8boz8xl4of7t8tw815bb3t",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "request_path",
+        "comment": "요청 경로. ID만 담기고 쿼리 문자열은 넣지 않음(SPEC-074)",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h8boz8xl4of7t8twbaboh21": {
+        "id": "03h8boz8xl4of7t8twbaboh21",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "subject_ids",
+        "comment": "처리한 정보주체: 손님 ID 목록(값 없이 ID만). 손님 행은 지우지 않아 2년 동안 가리킬 수 있음",
+        "dataType": "jsonb",
+        "default": "'[]'",
+        "options": 8
+      },
+      "03h8boz8xl4of7t8twg9srx14": {
+        "id": "03h8boz8xl4of7t8twg9srx14",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "target_kind",
+        "comment": "연 대상: 대화 속 원래 값·주문자 이름과 연락처·환불 계좌·보관 기록(SPEC-073)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8boz8xqp6og1nxl6ssp851": {
+        "id": "03h8boz8xqp6og1nxl6ssp851",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "target_id",
+        "comment": "연 대상의 ID. 대상 행이 지워져도 이 기록은 2년 남으므로 외래 키를 두지 않음",
+        "dataType": "uuid",
+        "options": 0
+      },
+      "03h8boz8xqp6og1nxlb3gop80": {
+        "id": "03h8boz8xqp6og1nxlb3gop80",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "reason",
+        "comment": "운영자가 적은 사유(원래 값·보관 기록 열기, REQ-195)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8boz8xw5yyd2q45nsx3jex": {
+        "id": "03h8boz8xw5yyd2q45nsx3jex",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "client_ip",
+        "comment": "접속지: 요청한 IP",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h8boz8y1mekhnbyb5lfk965": {
+        "id": "03h8boz8y1mekhnbyb5lfk965",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "name": "accessed_at",
+        "comment": "접속 일시. 2년이 지나면 지우기가 지움(SPEC-065, REQ-196)",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -8838,6 +9040,78 @@
             "03h8b7tnrvqxpwrqmpg5yxrvy"
           ]
         }
+      },
+      "03h8bozdhsi98l8mtnbdci5nm": {
+        "id": "03h8bozdhsi98l8mtnbdci5nm",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178fic3fnl5v3q4esoj",
+          "columnIds": [
+            "03h7y0178fic3fnl5v5jeofju"
+          ]
+        },
+        "end": {
+          "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+          "columnIds": [
+            "03h8boz8xa7bgfiha4wbt18gx"
+          ]
+        }
+      },
+      "03h8bozdhy0dq3dvikl0gkle0": {
+        "id": "03h8bozdhy0dq3dvikl0gkle0",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178fic3fnl5upga2t57",
+          "columnIds": [
+            "03h7y0178fic3fnl5uspyueem"
+          ]
+        },
+        "end": {
+          "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+          "columnIds": [
+            "03h8boz8xa7bgfiha4rc58xnz"
+          ]
+        }
+      },
+      "03h8bozdhy0dq3dviko5xzxvs": {
+        "id": "03h8bozdhy0dq3dviko5xzxvs",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178fic3fnl5vhrhwxmb",
+          "columnIds": [
+            "03h7y0178l0hvzg6dd0hij69u"
+          ]
+        },
+        "end": {
+          "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+          "columnIds": [
+            "03h8boz8wod0gix0698i6jtp5"
+          ]
+        }
+      },
+      "03h8bozdhy0dq3dvikos42c5x": {
+        "id": "03h8bozdhy0dq3dvikos42c5x",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178fic3fnl5v3q4esoj",
+          "columnIds": [
+            "03h7y0178fic3fnl5v5jeofju"
+          ]
+        },
+        "end": {
+          "tableId": "03h7y0178vyo98xl8lhk8qlco",
+          "columnIds": [
+            "03h8boz8m70ftzdrylc2eqjbv"
+          ]
+        }
       }
     },
     "indexEntities": {
@@ -9069,17 +9343,6 @@
         "indexColumnIds": [
           "03h7y017av0r9hpxwykfqy724",
           "03h7y017av0r9hpxwymg1mtpy"
-        ],
-        "unique": true
-      },
-      "03h7y017av0r9hpxwynwrgx51": {
-        "id": "03h7y017av0r9hpxwynwrgx51",
-        "name": "masked_values_value_uq",
-        "tableId": "03h7y0178vyo98xl8nuyo5kdq",
-        "indexColumnIds": [
-          "03h7y017av0r9hpxwypwsazsn",
-          "03h7y017av0r9hpxwys4dtuq4",
-          "03h7y017av0r9hpxwyu6jf7hb"
         ],
         "unique": true
       },
@@ -9562,6 +9825,36 @@
           "03h8b7tsdrd4i477wcpa11jgv"
         ],
         "unique": false
+      },
+      "03h8bozdhy2hr7w3gd9w8pujw": {
+        "id": "03h8bozdhy2hr7w3gd9w8pujw",
+        "name": "access_logs_accessed_idx",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "indexColumnIds": [
+          "03h8bozdhy2hr7w3gdeaeqcss"
+        ],
+        "unique": false
+      },
+      "03h8bozdi3hfi94fuiwxjb3dn": {
+        "id": "03h8bozdi3hfi94fuiwxjb3dn",
+        "name": "access_logs_shop_time_idx",
+        "tableId": "03h8boz8wiz0oga3u2prq5sgi",
+        "indexColumnIds": [
+          "03h8bozdi3hfi94fuj02xudv7",
+          "03h8bozdi3hfi94fuj4shu8j5"
+        ],
+        "unique": false
+      },
+      "03h8bozdi3hfi94fuj7bk8vs2": {
+        "id": "03h8bozdi3hfi94fuj7bk8vs2",
+        "name": "masked_values_value_uq",
+        "tableId": "03h7y0178vyo98xl8nuyo5kdq",
+        "indexColumnIds": [
+          "03h8bozdi3hfi94fujcr3rj9e",
+          "03h8bozdi8zn8tasrdutuq2kr",
+          "03h8bozdi8zn8tasrdye9w049"
+        ],
+        "unique": true
       }
     },
     "indexColumnEntities": {
@@ -9845,24 +10138,6 @@
         "id": "03h7y017av0r9hpxwymg1mtpy",
         "indexId": "03h7y017av0r9hpxwyhetywcd",
         "columnId": "03h7y01791hwo1dbahpzcrsot",
-        "orderType": 1
-      },
-      "03h7y017av0r9hpxwypwsazsn": {
-        "id": "03h7y017av0r9hpxwypwsazsn",
-        "indexId": "03h7y017av0r9hpxwynwrgx51",
-        "columnId": "03h7y0178vyo98xl8o0vxol3x",
-        "orderType": 1
-      },
-      "03h7y017av0r9hpxwys4dtuq4": {
-        "id": "03h7y017av0r9hpxwys4dtuq4",
-        "indexId": "03h7y017av0r9hpxwynwrgx51",
-        "columnId": "03h7y01791hwo1dbahplf4432",
-        "orderType": 1
-      },
-      "03h7y017av0r9hpxwyu6jf7hb": {
-        "id": "03h7y017av0r9hpxwyu6jf7hb",
-        "indexId": "03h7y017av0r9hpxwynwrgx51",
-        "columnId": "03h7y01791hwo1dbahrxlh9g4",
         "orderType": 1
       },
       "03h7y017b0l8bo6e64nv7q8in": {
@@ -10440,12 +10715,48 @@
         "indexId": "03h8b7tsdaz6udoggxs76nr9b",
         "columnId": "03h8b7tns6si36qewvtphbn6v",
         "orderType": 1
+      },
+      "03h8bozdhy2hr7w3gdeaeqcss": {
+        "id": "03h8bozdhy2hr7w3gdeaeqcss",
+        "indexId": "03h8bozdhy2hr7w3gd9w8pujw",
+        "columnId": "03h8boz8y1mekhnbyb5lfk965",
+        "orderType": 1
+      },
+      "03h8bozdi3hfi94fuj02xudv7": {
+        "id": "03h8bozdi3hfi94fuj02xudv7",
+        "indexId": "03h8bozdi3hfi94fuiwxjb3dn",
+        "columnId": "03h8boz8wod0gix0698i6jtp5",
+        "orderType": 1
+      },
+      "03h8bozdi3hfi94fuj4shu8j5": {
+        "id": "03h8bozdi3hfi94fuj4shu8j5",
+        "indexId": "03h8bozdi3hfi94fuiwxjb3dn",
+        "columnId": "03h8boz8y1mekhnbyb5lfk965",
+        "orderType": 1
+      },
+      "03h8bozdi3hfi94fujcr3rj9e": {
+        "id": "03h8bozdi3hfi94fujcr3rj9e",
+        "indexId": "03h8bozdi3hfi94fuj7bk8vs2",
+        "columnId": "03h7y0178vyo98xl8o0vxol3x",
+        "orderType": 1
+      },
+      "03h8bozdi8zn8tasrdutuq2kr": {
+        "id": "03h8bozdi8zn8tasrdutuq2kr",
+        "indexId": "03h8bozdi3hfi94fuj7bk8vs2",
+        "columnId": "03h7y01791hwo1dbahplf4432",
+        "orderType": 1
+      },
+      "03h8bozdi8zn8tasrdye9w049": {
+        "id": "03h8bozdi8zn8tasrdye9w049",
+        "indexId": "03h8bozdi3hfi94fuj7bk8vs2",
+        "columnId": "03h8boz8mnj31yybi87snb3k0",
+        "orderType": 1
       }
     },
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 312개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 333개와 접속기록을 고치지 못하게 막는 트리거(access_logs_guard)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,
@@ -10563,7 +10874,7 @@
           "x": 50,
           "y": 9358,
           "width": 2912,
-          "height": 274
+          "height": 700
         }
       }
     }

@@ -117,9 +117,9 @@ table.list { width: 100%; min-width: 46rem; border-collapse: collapse; font-size
 <header class="top">
   <p class="eyebrow">CORTHEX 07단계 · 사이트맵</p>
   <h1>Siljang 사이트맵</h1>
-  <p class="lead">수제케이크 주문 상담 서비스의 화면 49개입니다. 루트는 손님·사장님·운영자 3개이고, 카카오톡 안의 화면은 주소가 없어 <code>kakao:</code>로 시작하는 경로로 적었습니다.</p>
-  <dl class="stats"><div><dt>화면</dt><dd>49</dd></div><div><dt>손님</dt><dd>13</dd></div><div><dt>사장님</dt><dd>32</dd></div><div><dt>운영자</dt><dd>4</dd></div><div><dt>화면에 연결된 플로우</dt><dd>13/14</dd></div></dl>
-  <p class="drawn" data-drawn="2026-11-13 22:16 KST">생성 시각 2026-11-13 22:16 KST · 원본 <code>docs/07-sitemap/sitemap.yaml</code></p>
+  <p class="lead">수제케이크 주문 상담 서비스의 화면 50개입니다. 루트는 손님·사장님·운영자 3개이고, 카카오톡 안의 화면은 주소가 없어 <code>kakao:</code>로 시작하는 경로로 적었습니다.</p>
+  <dl class="stats"><div><dt>화면</dt><dd>50</dd></div><div><dt>손님</dt><dd>13</dd></div><div><dt>사장님</dt><dd>32</dd></div><div><dt>운영자</dt><dd>5</dd></div><div><dt>화면에 연결된 플로우</dt><dd>14/14</dd></div></dl>
+  <p class="drawn" data-drawn="2026-11-14 05:51 KST">생성 시각 2026-11-14 05:51 KST · 원본 <code>docs/07-sitemap/sitemap.yaml</code></p>
   <nav class="views" aria-label="뷰"><a href="#board">구조도</a><a href="#list">화면 목록</a><a href="#slides">슬라이드</a></nav>
 </header>
 
@@ -230,18 +230,20 @@ flowchart LR
 </pre></div>
 </section>
 <section class="board-part" aria-labelledby="b-operator">
-<h3 id="b-operator"><span class="dot operator" aria-hidden="true"></span>운영자 <span class="count">4개</span></h3>
+<h3 id="b-operator"><span class="dot operator" aria-hidden="true"></span>운영자 <span class="count">5개</span></h3>
 <div class="scroll"><pre class="mermaid">
 flowchart LR
   S046[&quot;SCR-046 · 비로그인&lt;br/&gt;운영자 로그인&lt;br/&gt;/operator/login&quot;]
   S047[&quot;SCR-047 · 운영자&lt;br/&gt;영업 신고 확인 목록&lt;br/&gt;/operator/shops&quot;]
   S048[&quot;SCR-048 · 운영자&lt;br/&gt;영업 신고 확인&lt;br/&gt;/operator/shops/:shopId&quot;]
   S049[&quot;SCR-049 · 운영자&lt;br/&gt;운영자 알림&lt;br/&gt;/operator/alerts&quot;]
+  S050[&quot;SCR-050 · 운영자&lt;br/&gt;가게 기록 보기&lt;br/&gt;/operator/shops/:shopId/records&quot;]
   S046 --&gt; S047
   S046 --&gt; S049
+  S046 --&gt; S050
   S047 --&gt; S048
   classDef operator stroke:#8268C8,stroke-width:2px
-  class S046,S047,S048,S049 operator
+  class S046,S047,S048,S049,S050 operator
 </pre></div>
 </section>
 </section>
@@ -271,7 +273,7 @@ flowchart LR
 <tr data-scr="SCR-016"><td class="id">SCR-016</td><td class="name" style="--depth:1">할 일 목록</td><td class="path"><code>/owner</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 등록하고 예약 링크 받기">001</span> <span class="fl" title="가게 규칙 바꾸기">002</span> <span class="fl" title="에스컬레이션 건의 답 받기">005</span> <span class="fl" title="주문 요청하기">006</span> <span class="fl" title="결제하고 주문 확정받기">007</span> <span class="fl" title="주문 바꾸기">008</span> <span class="fl" title="주문 취소하고 환불받기">009</span> <span class="fl" title="문제 신고하고 보상받기">011</span> <span class="fl" title="장부 자동 기록">013</span></td></tr>
 <tr data-scr="SCR-017"><td class="id">SCR-017</td><td class="name" style="--depth:2">에스컬레이션 건</td><td class="path"><code>/owner/handoffs/:handoffId</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="에스컬레이션 건의 답 받기">005</span></td></tr>
 <tr data-scr="SCR-018"><td class="id">SCR-018</td><td class="name" style="--depth:3">상담 대화</td><td class="path"><code>/owner/consultations/:consultationId</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="손님 메시지 하나에 답하기">004</span></td></tr>
-<tr data-scr="SCR-019"><td class="id">SCR-019</td><td class="name" style="--depth:2">사장님 알림</td><td class="path"><code>kakao:service/chat</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 등록하고 예약 링크 받기">001</span> <span class="fl" title="에스컬레이션 건의 답 받기">005</span> <span class="fl" title="주문 요청하기">006</span> <span class="fl" title="결제하고 주문 확정받기">007</span> <span class="fl" title="주문 바꾸기">008</span> <span class="fl" title="주문 취소하고 환불받기">009</span> <span class="fl" title="문제 신고하고 보상받기">011</span></td></tr>
+<tr data-scr="SCR-019"><td class="id">SCR-019</td><td class="name" style="--depth:2">사장님 알림</td><td class="path"><code>kakao:service/chat</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 등록하고 예약 링크 받기">001</span> <span class="fl" title="가게 규칙 바꾸기">002</span> <span class="fl" title="에스컬레이션 건의 답 받기">005</span> <span class="fl" title="주문 요청하기">006</span> <span class="fl" title="결제하고 주문 확정받기">007</span> <span class="fl" title="주문 바꾸기">008</span> <span class="fl" title="주문 취소하고 환불받기">009</span> <span class="fl" title="문제 신고하고 보상받기">011</span></td></tr>
 <tr data-scr="SCR-020"><td class="id">SCR-020</td><td class="name" style="--depth:1">주문 목록</td><td class="path"><code>/owner/orders</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="none">없음</span></td></tr>
 <tr data-scr="SCR-021"><td class="id">SCR-021</td><td class="name" style="--depth:2">주문 상세</td><td class="path"><code>/owner/orders/:orderId</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="결제하고 주문 확정받기">007</span> <span class="fl" title="주문 취소하고 환불받기">009</span></td></tr>
 <tr data-scr="SCR-022"><td class="id">SCR-022</td><td class="name" style="--depth:3">맞춤 주문 검토</td><td class="path"><code>/owner/orders/:orderId/custom-decision</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="주문 요청하기">006</span></td></tr>
@@ -292,112 +294,119 @@ flowchart LR
 <tr data-scr="SCR-037"><td class="id">SCR-037</td><td class="name" style="--depth:3">가격표 버전 이력</td><td class="path"><code>/owner/price-list/versions</code><br><code>/owner/price-list/versions/:version</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 규칙 바꾸기">002</span></td></tr>
 <tr data-scr="SCR-038"><td class="id">SCR-038</td><td class="name" style="--depth:2">운영규정</td><td class="path"><code>/owner/operating-rules</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 등록하고 예약 링크 받기">001</span> <span class="fl" title="가게 규칙 바꾸기">002</span></td></tr>
 <tr data-scr="SCR-039"><td class="id">SCR-039</td><td class="name" style="--depth:3">운영규정 버전 이력</td><td class="path"><code>/owner/operating-rules/versions</code><br><code>/owner/operating-rules/versions/:version</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 규칙 바꾸기">002</span></td></tr>
-<tr data-scr="SCR-040"><td class="id">SCR-040</td><td class="name" style="--depth:2">결제 수단</td><td class="path"><code>/owner/payment-destination</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 등록하고 예약 링크 받기">001</span></td></tr>
+<tr data-scr="SCR-040"><td class="id">SCR-040</td><td class="name" style="--depth:2">결제 수단</td><td class="path"><code>/owner/payment-destination</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 등록하고 예약 링크 받기">001</span> <span class="fl" title="가게 규칙 바꾸기">002</span></td></tr>
 <tr data-scr="SCR-041"><td class="id">SCR-041</td><td class="name" style="--depth:2">카카오톡 채널 연결</td><td class="path"><code>/owner/kakao-channel</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 등록하고 예약 링크 받기">001</span></td></tr>
 <tr data-scr="SCR-042"><td class="id">SCR-042</td><td class="name" style="--depth:2">장부 연결</td><td class="path"><code>/owner/ledger</code><br><code>/owner/ledger/callback</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 등록하고 예약 링크 받기">001</span> <span class="fl" title="장부 자동 기록">013</span></td></tr>
 <tr data-scr="SCR-043"><td class="id">SCR-043</td><td class="name" style="--depth:2">예약 링크</td><td class="path"><code>/owner/booking-link</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="가게 등록하고 예약 링크 받기">001</span></td></tr>
 <tr data-scr="SCR-044"><td class="id">SCR-044</td><td class="name" style="--depth:2">포트폴리오</td><td class="path"><code>/owner/portfolio</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="fl" title="후기 남기고 사진 게시 정하기">012</span></td></tr>
 <tr data-scr="SCR-045"><td class="id">SCR-045</td><td class="name" style="--depth:2">후기</td><td class="path"><code>/owner/reviews</code></td><td><span class="access">사장님</span></td><td class="flows"><span class="none">없음</span></td></tr>
-<tr class="group operator"><th colspan="5" scope="rowgroup"><span class="dot operator" aria-hidden="true"></span>운영자 · 4개</th></tr>
+<tr class="group operator"><th colspan="5" scope="rowgroup"><span class="dot operator" aria-hidden="true"></span>운영자 · 5개</th></tr>
 <tr data-scr="SCR-046"><td class="id">SCR-046</td><td class="name" style="--depth:0">운영자 로그인</td><td class="path"><code>/operator/login</code></td><td><span class="access">비로그인</span></td><td class="flows"><span class="none">없음</span></td></tr>
-<tr data-scr="SCR-047"><td class="id">SCR-047</td><td class="name" style="--depth:1">영업 신고 확인 목록</td><td class="path"><code>/operator/shops</code></td><td><span class="access">운영자</span></td><td class="flows"><span class="none">없음</span></td></tr>
+<tr data-scr="SCR-047"><td class="id">SCR-047</td><td class="name" style="--depth:1">영업 신고 확인 목록</td><td class="path"><code>/operator/shops</code></td><td><span class="access">운영자</span></td><td class="flows"><span class="fl" title="지난 기록 지우기">014</span></td></tr>
 <tr data-scr="SCR-048"><td class="id">SCR-048</td><td class="name" style="--depth:2">영업 신고 확인</td><td class="path"><code>/operator/shops/:shopId</code></td><td><span class="access">운영자</span></td><td class="flows"><span class="fl" title="가게 등록하고 예약 링크 받기">001</span></td></tr>
 <tr data-scr="SCR-049"><td class="id">SCR-049</td><td class="name" style="--depth:1">운영자 알림</td><td class="path"><code>/operator/alerts</code></td><td><span class="access">운영자</span></td><td class="flows"><span class="none">없음</span></td></tr>
+<tr data-scr="SCR-050"><td class="id">SCR-050</td><td class="name" style="--depth:1">가게 기록 보기</td><td class="path"><code>/operator/shops/:shopId/records</code><br><code>/operator/shops/:shopId/consultations/:consultationId</code><br><code>/operator/shops/:shopId/orders/:orderId</code></td><td><span class="access">운영자</span></td><td class="flows"><span class="fl" title="지난 기록 지우기">014</span></td></tr>
 </tbody></table></div>
 </section>
 
 <section id="slides" class="view" aria-labelledby="slides-h">
-  <div class="view-head"><h2 id="slides-h">슬라이드</h2><p>루트마다 첫 장에 루트 화면과 1뎁스 화면 목록을 두고, 그다음 1뎁스 화면마다 한 장씩, 모두 15장입니다. 회의에서 한 장씩 넘겨 보도록 나눴습니다.</p></div>
+  <div class="view-head"><h2 id="slides-h">슬라이드</h2><p>루트마다 첫 장에 루트 화면과 1뎁스 화면 목록을 두고, 그다음 1뎁스 화면마다 한 장씩, 모두 16장입니다. 회의에서 한 장씩 넘겨 보도록 나눴습니다.</p></div>
   <div class="deck">
 <article class="slide guest" aria-label="슬라이드 1">
-<header><span class="aud guest">손님</span><span class="num">1 / 15</span></header>
+<header><span class="aud guest">손님</span><span class="num">1 / 16</span></header>
 <h3>손님 루트: 예약 링크 페이지</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-001" style="--depth:0"><span class="id">SCR-001</span> <span class="sname">예약 링크 페이지</span><span class="meta"><code>/s/:slug</code> · 비로그인</span></li></ul><p class="branches">1뎁스 화면 2개: 가게 개인정보 처리방침 · 가게 채널 상담</p>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">001</span> 가게 등록하고 예약 링크 받기</li><li><span class="fl">002</span> 가게 규칙 바꾸기</li><li><span class="fl">003</span> 상담하고 견적 받기</li><li><span class="fl">006</span> 주문 요청하기</li><li><span class="fl">007</span> 결제하고 주문 확정받기</li><li><span class="fl">012</span> 후기 남기고 사진 게시 정하기</li></ul></div></div>
 </article>
 <article class="slide guest" aria-label="슬라이드 2">
-<header><span class="aud guest">손님</span><span class="num">2 / 15</span></header>
+<header><span class="aud guest">손님</span><span class="num">2 / 16</span></header>
 <h3>가게 개인정보 처리방침</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-002" style="--depth:0"><span class="id">SCR-002</span> <span class="sname">가게 개인정보 처리방침</span><span class="meta"><code>/s/:slug/privacy</code> · 비로그인</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">001</span> 가게 등록하고 예약 링크 받기</li><li><span class="fl">003</span> 상담하고 견적 받기</li></ul></div></div>
 </article>
 <article class="slide guest" aria-label="슬라이드 3">
-<header><span class="aud guest">손님</span><span class="num">3 / 15</span></header>
+<header><span class="aud guest">손님</span><span class="num">3 / 16</span></header>
 <h3>가게 채널 상담</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-003" style="--depth:0"><span class="id">SCR-003</span> <span class="sname">가게 채널 상담</span><span class="meta"><code>kakao:shop/chat</code> · 손님</span></li><li data-scr="SCR-004" style="--depth:1"><span class="id">SCR-004</span> <span class="sname">주문 요청 카드</span><span class="meta"><code>kakao:shop/card/order_request</code> · 손님</span></li><li data-scr="SCR-005" style="--depth:1"><span class="id">SCR-005</span> <span class="sname">결제 안내</span><span class="meta"><code>kakao:shop/payment-request</code> · 주문한 손님</span></li><li data-scr="SCR-006" style="--depth:1"><span class="id">SCR-006</span> <span class="sname">결제 확인 요청 카드</span><span class="meta"><code>kakao:shop/card/payment_claim</code> · 주문한 손님</span></li><li data-scr="SCR-007" style="--depth:1"><span class="id">SCR-007</span> <span class="sname">내 주문 보기</span><span class="meta"><code>kakao:shop/my-order</code> · 주문한 손님</span></li><li data-scr="SCR-008" style="--depth:2"><span class="id">SCR-008</span> <span class="sname">변경 요청 카드</span><span class="meta"><code>kakao:shop/card/change_request</code> · 주문한 손님</span></li><li data-scr="SCR-009" style="--depth:2"><span class="id">SCR-009</span> <span class="sname">취소 카드</span><span class="meta"><code>kakao:shop/card/cancel</code> · 주문한 손님</span></li><li data-scr="SCR-010" style="--depth:2"><span class="id">SCR-010</span> <span class="sname">문제 신고 카드</span><span class="meta"><code>kakao:shop/card/issue_report</code> · 주문한 손님</span></li><li data-scr="SCR-011" style="--depth:1"><span class="id">SCR-011</span> <span class="sname">손님 알림</span><span class="meta"><code>kakao:shop/notice</code> · 손님</span></li><li data-scr="SCR-012" style="--depth:1"><span class="id">SCR-012</span> <span class="sname">후기 남기기</span><span class="meta"><code>kakao:shop/block/review</code> · 주문한 손님</span></li><li data-scr="SCR-013" style="--depth:1"><span class="id">SCR-013</span> <span class="sname">사진 게시 동의 철회 카드</span><span class="meta"><code>kakao:shop/card/consent_withdrawal</code> · 주문한 손님</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">003</span> 상담하고 견적 받기</li><li><span class="fl">004</span> 손님 메시지 하나에 답하기</li><li><span class="fl">005</span> 에스컬레이션 건의 답 받기</li><li><span class="fl">006</span> 주문 요청하기</li><li><span class="fl">007</span> 결제하고 주문 확정받기</li><li><span class="fl">008</span> 주문 바꾸기</li><li><span class="fl">009</span> 주문 취소하고 환불받기</li><li><span class="fl">010</span> 케이크 제작·인도</li><li><span class="fl">011</span> 문제 신고하고 보상받기</li><li><span class="fl">012</span> 후기 남기고 사진 게시 정하기</li></ul></div></div>
 </article>
 <article class="slide owner" aria-label="슬라이드 4">
-<header><span class="aud owner">사장님</span><span class="num">4 / 15</span></header>
+<header><span class="aud owner">사장님</span><span class="num">4 / 16</span></header>
 <h3>사장님 루트: 사장님 로그인</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-014" style="--depth:0"><span class="id">SCR-014</span> <span class="sname">사장님 로그인</span><span class="meta"><code>/owner/login</code> · 비로그인</span></li></ul><p class="branches">1뎁스 화면 8개: 가게 등록 · 할 일 목록 · 주문 목록 · 입금 대조 목록 · 제작 목록 · 픽업 목록 · 영업 캘린더 · 가게 설정</p>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">001</span> 가게 등록하고 예약 링크 받기</li></ul></div></div>
 </article>
 <article class="slide owner" aria-label="슬라이드 5">
-<header><span class="aud owner">사장님</span><span class="num">5 / 15</span></header>
+<header><span class="aud owner">사장님</span><span class="num">5 / 16</span></header>
 <h3>가게 등록</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-015" style="--depth:0"><span class="id">SCR-015</span> <span class="sname">가게 등록</span><span class="meta"><code>/owner/shop/new</code> · 가게 미등록 사장님</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">001</span> 가게 등록하고 예약 링크 받기</li></ul></div></div>
 </article>
 <article class="slide owner" aria-label="슬라이드 6">
-<header><span class="aud owner">사장님</span><span class="num">6 / 15</span></header>
+<header><span class="aud owner">사장님</span><span class="num">6 / 16</span></header>
 <h3>할 일 목록</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-016" style="--depth:0"><span class="id">SCR-016</span> <span class="sname">할 일 목록</span><span class="meta"><code>/owner</code> · 사장님</span></li><li data-scr="SCR-017" style="--depth:1"><span class="id">SCR-017</span> <span class="sname">에스컬레이션 건</span><span class="meta"><code>/owner/handoffs/:handoffId</code> · 사장님</span></li><li data-scr="SCR-018" style="--depth:2"><span class="id">SCR-018</span> <span class="sname">상담 대화</span><span class="meta"><code>/owner/consultations/:consultationId</code> · 사장님</span></li><li data-scr="SCR-019" style="--depth:1"><span class="id">SCR-019</span> <span class="sname">사장님 알림</span><span class="meta"><code>kakao:service/chat</code> · 사장님</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">001</span> 가게 등록하고 예약 링크 받기</li><li><span class="fl">002</span> 가게 규칙 바꾸기</li><li><span class="fl">004</span> 손님 메시지 하나에 답하기</li><li><span class="fl">005</span> 에스컬레이션 건의 답 받기</li><li><span class="fl">006</span> 주문 요청하기</li><li><span class="fl">007</span> 결제하고 주문 확정받기</li><li><span class="fl">008</span> 주문 바꾸기</li><li><span class="fl">009</span> 주문 취소하고 환불받기</li><li><span class="fl">011</span> 문제 신고하고 보상받기</li><li><span class="fl">013</span> 장부 자동 기록</li></ul></div></div>
 </article>
 <article class="slide owner" aria-label="슬라이드 7">
-<header><span class="aud owner">사장님</span><span class="num">7 / 15</span></header>
+<header><span class="aud owner">사장님</span><span class="num">7 / 16</span></header>
 <h3>주문 목록</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-020" style="--depth:0"><span class="id">SCR-020</span> <span class="sname">주문 목록</span><span class="meta"><code>/owner/orders</code> · 사장님</span></li><li data-scr="SCR-021" style="--depth:1"><span class="id">SCR-021</span> <span class="sname">주문 상세</span><span class="meta"><code>/owner/orders/:orderId</code> · 사장님</span></li><li data-scr="SCR-022" style="--depth:2"><span class="id">SCR-022</span> <span class="sname">맞춤 주문 검토</span><span class="meta"><code>/owner/orders/:orderId/custom-decision</code> · 사장님</span></li><li data-scr="SCR-023" style="--depth:2"><span class="id">SCR-023</span> <span class="sname">결제 기한 지난 주문</span><span class="meta"><code>/owner/orders/:orderId/overdue-decision</code> · 사장님</span></li><li data-scr="SCR-024" style="--depth:2"><span class="id">SCR-024</span> <span class="sname">변경 요청</span><span class="meta"><code>/owner/change-requests/:changeRequestId</code> · 사장님</span></li><li data-scr="SCR-025" style="--depth:2"><span class="id">SCR-025</span> <span class="sname">환불 결정</span><span class="meta"><code>/owner/orders/:orderId/refund-decision</code> · 사장님</span></li><li data-scr="SCR-026" style="--depth:2"><span class="id">SCR-026</span> <span class="sname">환불 송금</span><span class="meta"><code>/owner/refunds/:refundId</code> · 사장님</span></li><li data-scr="SCR-027" style="--depth:2"><span class="id">SCR-027</span> <span class="sname">문제 신고</span><span class="meta"><code>/owner/issue-reports/:issueReportId</code> · 사장님</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">006</span> 주문 요청하기</li><li><span class="fl">007</span> 결제하고 주문 확정받기</li><li><span class="fl">008</span> 주문 바꾸기</li><li><span class="fl">009</span> 주문 취소하고 환불받기</li><li><span class="fl">011</span> 문제 신고하고 보상받기</li></ul></div></div>
 </article>
 <article class="slide owner" aria-label="슬라이드 8">
-<header><span class="aud owner">사장님</span><span class="num">8 / 15</span></header>
+<header><span class="aud owner">사장님</span><span class="num">8 / 16</span></header>
 <h3>입금 대조 목록</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-028" style="--depth:0"><span class="id">SCR-028</span> <span class="sname">입금 대조 목록</span><span class="meta"><code>/owner/payment-requests</code> · 사장님</span></li><li data-scr="SCR-029" style="--depth:1"><span class="id">SCR-029</span> <span class="sname">입금 대조</span><span class="meta"><code>/owner/payment-requests/:paymentRequestId</code> · 사장님</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">007</span> 결제하고 주문 확정받기</li><li><span class="fl">009</span> 주문 취소하고 환불받기</li></ul></div></div>
 </article>
 <article class="slide owner" aria-label="슬라이드 9">
-<header><span class="aud owner">사장님</span><span class="num">9 / 15</span></header>
+<header><span class="aud owner">사장님</span><span class="num">9 / 16</span></header>
 <h3>제작 목록</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-030" style="--depth:0"><span class="id">SCR-030</span> <span class="sname">제작 목록</span><span class="meta"><code>/owner/production</code> · 사장님</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">008</span> 주문 바꾸기</li><li><span class="fl">010</span> 케이크 제작·인도</li></ul></div></div>
 </article>
 <article class="slide owner" aria-label="슬라이드 10">
-<header><span class="aud owner">사장님</span><span class="num">10 / 15</span></header>
+<header><span class="aud owner">사장님</span><span class="num">10 / 16</span></header>
 <h3>픽업 목록</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-031" style="--depth:0"><span class="id">SCR-031</span> <span class="sname">픽업 목록</span><span class="meta"><code>/owner/pickups</code> · 사장님</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">010</span> 케이크 제작·인도</li></ul></div></div>
 </article>
 <article class="slide owner" aria-label="슬라이드 11">
-<header><span class="aud owner">사장님</span><span class="num">11 / 15</span></header>
+<header><span class="aud owner">사장님</span><span class="num">11 / 16</span></header>
 <h3>영업 캘린더</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-032" style="--depth:0"><span class="id">SCR-032</span> <span class="sname">영업 캘린더</span><span class="meta"><code>/owner/calendar</code> · 사장님</span></li><li data-scr="SCR-033" style="--depth:1"><span class="id">SCR-033</span> <span class="sname">영업 캘린더 설정</span><span class="meta"><code>/owner/calendar/settings</code> · 사장님</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">001</span> 가게 등록하고 예약 링크 받기</li><li><span class="fl">002</span> 가게 규칙 바꾸기</li><li><span class="fl">006</span> 주문 요청하기</li><li><span class="fl">007</span> 결제하고 주문 확정받기</li></ul></div></div>
 </article>
 <article class="slide owner" aria-label="슬라이드 12">
-<header><span class="aud owner">사장님</span><span class="num">12 / 15</span></header>
+<header><span class="aud owner">사장님</span><span class="num">12 / 16</span></header>
 <h3>가게 설정</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-034" style="--depth:0"><span class="id">SCR-034</span> <span class="sname">가게 설정</span><span class="meta"><code>/owner/shop</code> · 사장님</span></li><li data-scr="SCR-035" style="--depth:1"><span class="id">SCR-035</span> <span class="sname">영업 신고</span><span class="meta"><code>/owner/shop/license</code> · 사장님</span></li><li data-scr="SCR-036" style="--depth:1"><span class="id">SCR-036</span> <span class="sname">가격표와 도안</span><span class="meta"><code>/owner/price-list</code> · 사장님</span></li><li data-scr="SCR-037" style="--depth:2"><span class="id">SCR-037</span> <span class="sname">가격표 버전 이력</span><span class="meta"><code>/owner/price-list/versions</code> · 사장님</span></li><li data-scr="SCR-038" style="--depth:1"><span class="id">SCR-038</span> <span class="sname">운영규정</span><span class="meta"><code>/owner/operating-rules</code> · 사장님</span></li><li data-scr="SCR-039" style="--depth:2"><span class="id">SCR-039</span> <span class="sname">운영규정 버전 이력</span><span class="meta"><code>/owner/operating-rules/versions</code> · 사장님</span></li><li data-scr="SCR-040" style="--depth:1"><span class="id">SCR-040</span> <span class="sname">결제 수단</span><span class="meta"><code>/owner/payment-destination</code> · 사장님</span></li><li data-scr="SCR-041" style="--depth:1"><span class="id">SCR-041</span> <span class="sname">카카오톡 채널 연결</span><span class="meta"><code>/owner/kakao-channel</code> · 사장님</span></li><li data-scr="SCR-042" style="--depth:1"><span class="id">SCR-042</span> <span class="sname">장부 연결</span><span class="meta"><code>/owner/ledger</code> · 사장님</span></li><li data-scr="SCR-043" style="--depth:1"><span class="id">SCR-043</span> <span class="sname">예약 링크</span><span class="meta"><code>/owner/booking-link</code> · 사장님</span></li><li data-scr="SCR-044" style="--depth:1"><span class="id">SCR-044</span> <span class="sname">포트폴리오</span><span class="meta"><code>/owner/portfolio</code> · 사장님</span></li><li data-scr="SCR-045" style="--depth:1"><span class="id">SCR-045</span> <span class="sname">후기</span><span class="meta"><code>/owner/reviews</code> · 사장님</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">001</span> 가게 등록하고 예약 링크 받기</li><li><span class="fl">002</span> 가게 규칙 바꾸기</li><li><span class="fl">012</span> 후기 남기고 사진 게시 정하기</li><li><span class="fl">013</span> 장부 자동 기록</li></ul></div></div>
 </article>
 <article class="slide operator" aria-label="슬라이드 13">
-<header><span class="aud operator">운영자</span><span class="num">13 / 15</span></header>
+<header><span class="aud operator">운영자</span><span class="num">13 / 16</span></header>
 <h3>운영자 루트: 운영자 로그인</h3>
-<div class="slide-body"><ul class="screens"><li data-scr="SCR-046" style="--depth:0"><span class="id">SCR-046</span> <span class="sname">운영자 로그인</span><span class="meta"><code>/operator/login</code> · 비로그인</span></li></ul><p class="branches">1뎁스 화면 2개: 영업 신고 확인 목록 · 운영자 알림</p>
+<div class="slide-body"><ul class="screens"><li data-scr="SCR-046" style="--depth:0"><span class="id">SCR-046</span> <span class="sname">운영자 로그인</span><span class="meta"><code>/operator/login</code> · 비로그인</span></li></ul><p class="branches">1뎁스 화면 3개: 영업 신고 확인 목록 · 운영자 알림 · 가게 기록 보기</p>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li class="none">연결된 플로우 노드 없음</li></ul></div></div>
 </article>
 <article class="slide operator" aria-label="슬라이드 14">
-<header><span class="aud operator">운영자</span><span class="num">14 / 15</span></header>
+<header><span class="aud operator">운영자</span><span class="num">14 / 16</span></header>
 <h3>영업 신고 확인 목록</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-047" style="--depth:0"><span class="id">SCR-047</span> <span class="sname">영업 신고 확인 목록</span><span class="meta"><code>/operator/shops</code> · 운영자</span></li><li data-scr="SCR-048" style="--depth:1"><span class="id">SCR-048</span> <span class="sname">영업 신고 확인</span><span class="meta"><code>/operator/shops/:shopId</code> · 운영자</span></li></ul>
-<div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">001</span> 가게 등록하고 예약 링크 받기</li></ul></div></div>
+<div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">001</span> 가게 등록하고 예약 링크 받기</li><li><span class="fl">014</span> 지난 기록 지우기</li></ul></div></div>
 </article>
 <article class="slide operator" aria-label="슬라이드 15">
-<header><span class="aud operator">운영자</span><span class="num">15 / 15</span></header>
+<header><span class="aud operator">운영자</span><span class="num">15 / 16</span></header>
 <h3>운영자 알림</h3>
 <div class="slide-body"><ul class="screens"><li data-scr="SCR-049" style="--depth:0"><span class="id">SCR-049</span> <span class="sname">운영자 알림</span><span class="meta"><code>/operator/alerts</code> · 운영자</span></li></ul>
 <div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li class="none">연결된 플로우 노드 없음</li></ul></div></div>
+</article>
+<article class="slide operator" aria-label="슬라이드 16">
+<header><span class="aud operator">운영자</span><span class="num">16 / 16</span></header>
+<h3>가게 기록 보기</h3>
+<div class="slide-body"><ul class="screens"><li data-scr="SCR-050" style="--depth:0"><span class="id">SCR-050</span> <span class="sname">가게 기록 보기</span><span class="meta"><code>/operator/shops/:shopId/records</code> · 운영자</span></li></ul>
+<div class="slide-flows"><h4>이 화면이 쓰이는 플로우</h4><ul><li><span class="fl">014</span> 지난 기록 지우기</li></ul></div></div>
 </article>
   </div>
 </section>

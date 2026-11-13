@@ -46,7 +46,7 @@ TAGS = [
     ("로그인", "사장님(카카오 로그인)과 운영자(이메일·비밀번호·2단계 인증)의 세션(DEC-10, DEC-11)"),
     ("파일", "신고증·도안·완성 사진을 먼저 올리고 uploadId로 씀(DEC-09)"),
     ("가게", "가게 등록과 설정, 영업 신고 다시 올리기"),
-    ("운영자", "영업 신고 확인과 운영자 알림. 손님·주문 기록은 없음(SPEC-003)"),
+    ("운영자", "영업 신고 확인과 운영자 알림, 가게 기록 보기(가린 값과 사유를 적은 원래 값 열기, SPEC-073)"),
     ("가격표", "버전으로 남는 가격표(REQ-027)"),
     ("운영규정", "버전으로 남는 운영규정과 단계별 환불(SPEC-005)"),
     ("결제 수단", "가게 명의 계좌와 카드 결제 링크(SPEC-006)"),
@@ -294,10 +294,10 @@ def schemas():
     return S
 
 
-INFO_DESCRIPTION = """수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~069)에서 만들었다.
+INFO_DESCRIPTION = """수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~074)에서 만들었다.
 이 파일은 research/cake-api-2026-11/build_api.py가 만든다. 손으로 고치지 않는다.
 
-**API와 응답의 ID.** API마다 `x-corthex.id`(API-001~073)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
+**API와 응답의 ID.** API마다 `x-corthex.id`(API-001~077)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
 `x-corthex.omit`은 응답 목록(2xx·422·401·403·404·409·default) 가운데 그 API가 반환하지 않는 것과 사유, `x-corthex.kinds`는 케이스 유형마다 그 경우를 보여 주는 응답·예시다.
 
 **오류 형식.** 모든 오류는 RFC 9457 Problem Details(`application/problem+json`)에 `code`와 `traceId`를 더한 형식. 코드는 `components.x-corthex.errors`에만 있다.

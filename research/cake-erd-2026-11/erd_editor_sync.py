@@ -332,7 +332,8 @@ def memo_ops(schema_text: str, d: Diagram) -> list[dict]:
 
 def place_new_tables(mcp, names: list[str]) -> list[dict]:
     """새 테이블 자리: 그룹 상자 안에서 같은 그룹 테이블의 오른쪽이나 아래 자리 가운데, 위에서부터 처음으로 들어가고
-    어느 테이블과도 겹치지 않는 곳으로 옮김(너비는 erd_list의 어림값, 사이 60). 들어갈 곳이 없으면 그대로 두고 알림."""
+    어느 테이블과도 겹치지 않는 곳으로 옮김(너비는 erd_list의 어림값, 사이 60). 상자 안에 들어갈 곳이 없으면 상자를 아래로 늘려
+    그룹의 맨 아래 테이블 밑(왼쪽 맞춤)에 둠. 늘린 상자가 다른 그룹 상자나 그룹 밖 테이블과 겹치면 그대로 두고 알림."""
     tables: dict[str, dict] = {}
     groups: dict[str, dict] = {}
     offset = 0
@@ -362,11 +363,29 @@ def place_new_tables(mcp, names: list[str]) -> list[dict]:
         spots = sorted({(o["x"] + o["width"] + gap, o["y"]) for o in others} | {(o["x"], o["y"] + o["height"] + gap) for o in others},
                        key=lambda p: (p[1], p[0]))
         spot = next((p for p in spots if free(*p)), None)
+        grow = None
+        if spot is None and others:
+            x0 = min(o["x"] for o in others)
+            y0 = max(o["y"] + o["height"] for o in others) + gap
+            width = max(g["width"], x0 + t["width"] + pad - g["x"])
+            height = y0 + t["height"] + pad - g["y"]
+
+            def hits(o: dict) -> bool:
+                return not (g["x"] + width <= o["x"] or o["x"] + o["width"] <= g["x"]
+                            or g["y"] + height <= o["y"] or o["y"] + o["height"] <= g["y"])
+
+            clash = ([o["name"] for o in groups.values() if o["id"] != g["id"] and hits(o)]
+                     + [o["name"] for o in tables.values() if o["name"] != name and o.get("groupId") != g["id"] and hits(o)])
+            if not clash:
+                spot, grow = (x0, y0), (width, height)
         if spot is None:
             print(f"  {name}: 그룹 '{g['name']}' 상자 안에 빈 곳이 없어 자리를 그대로 둠")
             continue
         ops.append({"tool": "erd_move_table", "args": {"tableId": t["id"], "x": spot[0], "y": spot[1]}})
         tables[name] = {**t, "x": spot[0], "y": spot[1]}
+        if grow:  # 테이블을 옮긴 뒤에 늘림(상자는 그 그룹 테이블을 모두 담아야 함)
+            ops.append({"tool": "erd_resize_table_group", "args": {"groupId": g["id"], "width": grow[0], "height": grow[1]}})
+            groups[g["id"]] = {**g, "width": grow[0], "height": grow[1]}
     return ops
 
 
@@ -378,11 +397,13 @@ def show(title: str, ops: list[dict]) -> None:
 
 
 def run_batches(mcp, ops: list[dict]) -> None:
-    # erd_batch는 한 번에 100개까지. 'as' 이름은 한 묶음 안에서만 쓰이므로, 이름을 쓰는 편집은 같은 묶음에 둠
+    # erd_batch는 한 번에 100개까지. 'as' 이름은 한 묶음 안에서만 쓰이므로, 이름을 쓰는 편집은 같은 묶음에 둠.
+    # 새 테이블은 컬럼 편집이 모두 그 테이블 이름을 쓰므로 늘 새 묶음에서 시작함(설계 재검토 H4: 컬럼 14개인 테이블이 100개를 넘김)
     chunk: list[dict] = []
     for op in ops:
         starts_unit = op["tool"] in ("erd_add_table", "erd_add_column", "erd_add_index") or not op.get("as")
-        if len(chunk) >= 80 and starts_unit and not uses_pending_name(op, chunk):
+        cut = len(chunk) >= 80 or (op["tool"] == "erd_add_table" and len(chunk) > 0)
+        if cut and starts_unit and not uses_pending_name(op, chunk):
             mcp.call("erd_batch", path=ERD, operations=chunk)
             chunk = []
         chunk.append(op)

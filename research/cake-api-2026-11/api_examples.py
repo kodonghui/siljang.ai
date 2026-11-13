@@ -92,6 +92,8 @@ SHOP_REGISTRATION = {
 }
 
 # ── 운영자 ──────────────────────────────────────────────────────────────────
+PAYMENT_ACCOUNT_REVIEW = {"bankName": "달빛은행", "holderName": "김달빛", "accountLast4": "4567", "holderMatches": True,
+                          "holderMismatchConfirmed": None, "holderCheckedAt": None, "holderCheckedBy": None, "createdAt": t("11-12", "11:30")}
 REVIEW_SUMMARY = {
     "shopId": SHOP_ID, "name": "달빛케이크", "businessName": "달빛케이크", "representativeName": "김달빛", "businessRegNo": BRN,
     "foodLicenseNo": "2026-0123456", "foodBusinessType": "instant_sale_manufacturing", "licenseStatus": "pending",
@@ -102,10 +104,14 @@ REVIEW_DETAIL = {
     "representativeName": "김달빛", "businessRegNo": BRN, "mailOrderRegNo": "제2026-서울마포-0123호", "mailOrderExemption": None,
     "foodLicenseNo": "2026-0123456", "foodBusinessType": "instant_sale_manufacturing", "licensePhotoUrl": surl("license"),
     "licenseStatus": "pending", "licenseHoldReason": None, "licenseReviewedAt": None, "licenseReviewedBy": None,
-    "duplicates": [], "createdAt": t("11-12", "10:05"), "revision": rev("shop:1"),
+    "duplicates": [], "paymentAccount": PAYMENT_ACCOUNT_REVIEW, "createdAt": t("11-12", "10:05"), "revision": rev("shop:1"),
 }
 REVIEW_DETAIL_VERIFIED = dict(REVIEW_DETAIL, licenseStatus="verified", licenseReviewedAt=t("11-12", "11:30"),
-                              licenseReviewedBy=OPERATOR, revision=rev("shop:2v"))
+                              licenseReviewedBy=OPERATOR, revision=rev("shop:2v"),
+                              paymentAccount=dict(PAYMENT_ACCOUNT_REVIEW, holderCheckedAt=t("11-12", "11:30"), holderCheckedBy=OPERATOR))
+REVIEW_DETAIL_NO_ACCOUNT = dict(REVIEW_DETAIL, paymentAccount=None)
+REVIEW_DETAIL_HOLDER_DIFFERENT = dict(REVIEW_DETAIL, paymentAccount=dict(PAYMENT_ACCOUNT_REVIEW, holderName="박하늘", holderMatches=False,
+                                                                         holderMismatchConfirmed=True))
 REVIEW_DETAIL_ON_HOLD = dict(REVIEW_DETAIL, licenseStatus="on_hold", licenseHoldReason=SHOP_ON_HOLD["licenseHoldReason"],
                              licenseReviewedAt=t("11-12", "13:40"), licenseReviewedBy=OPERATOR, revision=rev("shop:2"))
 OPERATOR_ALERTS = {"items": [
@@ -778,3 +784,66 @@ SKILL_OUTCOME_EXAMPLES = {
 REVIEW_BLOCK_VERIFIED = card("연결 확인", "후기 블록이 닿았어요. 아직 닿지 않은 블록이 있어요. 이 시험 버튼을 눌러 주세요",
                              [check_button("시험: 입금자 이름", "depositor_name", "depositorName")])
 CALLBACK_RESULT = {"taskId": h("task", 16), "status": "SUCCESS", "message": "OK", "timestamp": 1763619300000}
+
+# ── 운영자: 가게 기록 보기와 원래 값 열기(설계 재검토 H4) ──────────────────────────────
+KEPT_ORDER_ID = uid("order:H2W6Y1")
+KEPT_RECORD_ID = uid("kept:H2W6Y1")
+OP_MASKED_PHONE_ID = uid("masked:1")
+OP_ORDER_ROW = {"orderId": ORDER_ID, "orderNo": ORDER_NO, "kept": False, "keptRecordId": None, "status": "confirmed",
+                "pickupAt": t("11-20", "14:00"), "amount": 36000, "customerNameMasked": "이**", "customerPhoneMasked": "***-****-5432",
+                "finishedAt": None, "contractKeepUntil": None, "createdAt": t("11-12", "13:05")}
+OP_KEPT_ROW = {"orderId": KEPT_ORDER_ID, "orderNo": "H2W6Y1", "kept": True, "keptRecordId": KEPT_RECORD_ID, "status": None,
+               "pickupAt": None, "amount": None, "customerNameMasked": None, "customerPhoneMasked": None,
+               "finishedAt": t("09-05", "15:10"), "contractKeepUntil": "2031-09-05T15:10:00+09:00", "createdAt": t("08-30", "10:00")}
+OP_RECORDS_ORDERS = {"kind": "orders", "orders": [OP_ORDER_ROW, OP_KEPT_ROW], "consultations": [], "nextCursor": None}
+OP_RECORDS_CONSULTATIONS = {"kind": "consultations", "orders": [], "nextCursor": None, "consultations": [
+    {"consultationId": CONSULT_ID, "status": "awaiting_owner", "startedAt": t("11-12", "12:39"), "lastMessageAt": t("11-12", "12:41"),
+     "orderNos": [], "maskedValueCount": 2}]}
+OP_RECORDS_EMPTY = {"kind": "orders", "orders": [], "consultations": [], "nextCursor": None}
+OP_CONSULTATION = {
+    "consultationId": CONSULT_ID, "status": "awaiting_owner",
+    "maskedValues": [
+        {"maskedValueId": OP_MASKED_PHONE_ID, "kind": "phone", "placeholder": "[전화번호1]", "last4": "5432", "originalKept": True},
+        {"maskedValueId": uid("masked:2"), "kind": "card", "placeholder": "[카드번호1]", "last4": "1111", "originalKept": False},
+    ],
+    "items": [
+        {"messageId": uid("msg:1"), "at": t("11-12", "12:39"), "direction": "outbound", "author": "system", "kind": "text",
+         "textMasked": "AI가 상담해요. 개인정보 처리방침: https://siljang.example/s/moonlight-cake/privacy", "photoCount": 0},
+        {"messageId": uid("msg:2"), "at": t("11-12", "12:39"), "direction": "inbound", "author": "customer", "kind": "text",
+         "textMasked": "1호 생크림 케이크 얼마예요? [전화번호1]로 연락 주세요", "photoCount": 0},
+        {"messageId": uid("msg:5"), "at": t("11-12", "12:41"), "direction": "inbound", "author": "customer", "kind": "photo",
+         "textMasked": None, "photoCount": 2},
+        {"messageId": uid("msg:6"), "at": t("11-12", "12:41", "30"), "direction": "inbound", "author": "customer", "kind": "text",
+         "textMasked": "결제는 카드 [카드번호1]로 할게요", "photoCount": 0},
+    ],
+    "nextCursor": None,
+}
+OP_CONSULTATION_DELETED = dict(OP_CONSULTATION, status="deleted", maskedValues=[], items=[], nextCursor=None)
+OP_ORDER = {
+    "orderId": ORDER_ID, "orderNo": ORDER_NO, "kind": "standard", "status": "confirmed", "pickupAt": t("11-20", "14:00"), "amount": 36000,
+    "customerNameMasked": "이**", "customerPhoneMasked": "***-****-5432", "allergyAnswered": True, "excludedIngredientsAnswered": False,
+    "referencePhotoCount": 0, "consultationId": CONSULT_ID,
+    "paymentRequests": [{"paymentRequestId": PR_FIRST_PAID["paymentRequestId"], "kind": "first", "status": "paid", "amount": 36000,
+                         "issuedAt": t("11-12", "13:05"), "paidAt": t("11-12", "14:02")}],
+    "refunds": [], "createdAt": t("11-12", "13:05"),
+}
+OP_ORDER_REFUND = dict(OP_ORDER, status="cancelled", refunds=[
+    {"refundId": REFUND["refundId"], "cause": "customer_cancel", "decision": "partial", "amount": 31000, "decidedAt": t("11-14", "10:00"),
+     "sentAt": None, "refundAccount": {"bankName": "하늘은행", "accountMasked": "***-***-**6789", "holderNameMasked": "이**"}}])
+OPEN_ORIGINAL_INPUT = {"targetKind": "masked_value", "targetId": OP_MASKED_PHONE_ID, "reason": "손님 문의: 픽업 연락이 안 됨"}
+ORIGINAL_BASE = {"targetKind": "masked_value", "targetId": OP_MASKED_PHONE_ID, "openedAt": t("11-14", "10:20"),
+                 "maskedValue": None, "orderContact": None, "refundAccount": None, "keptRecord": None}
+ORIGINAL_MASKED = dict(ORIGINAL_BASE, maskedValue={"placeholder": "[전화번호1]", "kind": "phone", "value": "010-9876-5432"})
+ORIGINAL_CONTACT = dict(ORIGINAL_BASE, targetKind="order_contact", targetId=ORDER_ID,
+                        orderContact={"customerName": "이지우", "customerPhone": "010-9876-5432"})
+ORIGINAL_REFUND = dict(ORIGINAL_BASE, targetKind="refund_account", targetId=REFUND["refundId"],
+                       refundAccount={"bankName": "하늘은행", "accountNumber": "110-123-456789", "holderName": "이지우"})
+KEPT_RECORD = {
+    "keptRecordId": KEPT_RECORD_ID, "orderNo": "H2W6Y1", "customerName": "정해밀", "finishedAt": t("09-05", "15:10"),
+    "contractKeepUntil": "2031-09-05T15:10:00+09:00", "issueKeepUntil": None, "issuePurgedAt": None,
+    "details": [{"version": 1, "createdAt": t("08-30", "10:00"), "pickupAt": t("09-05", "15:00"), "amount": 45000,
+                 "summary": "2호 · 생크림 · 기본 레터링"}],
+    "payments": [{"kind": "first", "status": "paid", "amount": 45000, "issuedAt": t("08-30", "10:00"), "paidAt": t("08-30", "11:20")}],
+    "refunds": [],
+}
+ORIGINAL_KEPT = dict(ORIGINAL_BASE, targetKind="kept_record", targetId=KEPT_RECORD_ID, keptRecord=KEPT_RECORD)

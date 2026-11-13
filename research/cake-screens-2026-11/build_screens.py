@@ -9,7 +9,7 @@
 - research/cake-mockup-2026-11/canvas/project/canvas.json  09단계 목업 보드(화면 정의의 '목업' 줄. 없으면 그 줄을 쓰지 않음)
 
 생성하는 것(손으로 고치지 않음)
-- docs/08-screens/SCR-0xx.md 49개             화면 정의(06단계 응답마다 상태 하나)
+- docs/08-screens/SCR-0xx.md 50개             화면 정의(06단계 응답마다 상태 하나)
 - docs/08-screens/README.md 마커 사이의 표      화면 목록·상태·손님 문구·결정 사항
 - docs/08-screens/wireframes.html             회색조 와이어프레임(상태마다 360·1280 프레임)
 
