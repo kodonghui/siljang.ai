@@ -591,8 +591,9 @@ PRIVACY = {
 # ── 제작 ────────────────────────────────────────────────────────────────────
 PRODUCTION_DAY = {"day": "2026-11-20", "items": [
     {"order": ORDER_REF, "status": "confirmed", "pickupAt": t("11-20", "14:00"), "courierPickup": False, "isRemake": False,
-     "summary": {"size": "1호", "flavor": "생크림", "design": "하트 레터링", "lettering": "생일 축하해 지우야", "colors": "연분홍",
-                 "designNotes": None},
+     "summary": {"size": "1호", "flavor": "생크림", "designOption": "기본 레터링", "design": "하트 레터링",
+                 "lettering": "생일 축하해 지우야", "colors": "연분홍", "designNotes": None, "extras": ["초 추가"],
+                 "allergyAnswer": "없음", "excludedIngredients": None, "referencePhotoCount": 0},
      "production": PRODUCTION_STARTED},
 ]}
 PRODUCTION_DAY_EMPTY = {"day": "2026-11-24", "items": []}
@@ -638,6 +639,12 @@ SKILL_MESSAGE = skill_request("1호 생크림 케이크 얼마예요?")
 SKILL_MESSAGE_ALLERGY = skill_request("땅콩 알레르기가 있는데 먹어도 되나요?")
 SKILL_CARD = skill_request("규정에 동의하고 주문 요청", action="card", block="확인 카드", callback=False,
                            client_extra={"cardKey": "ck_" + h("card:order", 30), "choice": "confirm"})
+SKILL_ORDERER = skill_request("이름·연락처 넣기", action="card", block="주문자 정보", callback=False,
+                              params={"customer_name": "이지우", "customer_phone": "010-9876-5432"},
+                              client_extra={"cardKey": "ck_" + h("card:orderer", 30), "choice": "confirm"})
+SKILL_DEPOSITOR = skill_request("입금자 이름 넣기", action="card", block="입금자 이름", callback=False,
+                                params={"depositor_name": "이민호"},
+                                client_extra={"cardKey": "ck_" + h("card:payclaim", 30), "choice": "confirm"})
 SKILL_REVIEW = skill_request("후기 남기기", action="review", block="후기", callback=False,
                              params={"review_text": "글씨가 정말 예쁘고 맛있었어요!",
                                      "review_photos": '{"privacyAgreement":"Y","imageQuantity":"2","secureUrls":"List(https://talk.kakao.example/p/1,https://talk.kakao.example/p/2)","expire":"2026-11-21T11:30:00"}',
@@ -676,7 +683,7 @@ SKILL_OUTCOME_EXAMPLES = {
     "ai_cost_limit_reached": text(HANDED_OVER),
     "masking_failed": text(HANDED_OVER),
     "ai_output_rejected": text("1호 생크림 케이크는 35,000원이에요. 결제가 확인되면 주문이 확정돼요."),
-    "card_shown": card("주문 요청 확인", "11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 36,000원",
+    "card_shown": card("주문 요청 확인", "11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 주문자 이지우 010-9876-5432 · 36,000원",
                        [card_button("규정에 동의하고 주문 요청", CK, "confirm"),
                         card_button("사진 게시도 동의하고 요청", CK, "confirm_with_photo_consent"),
                         card_button("안 할래요", CK, "decline")]),
@@ -689,6 +696,10 @@ SKILL_OUTCOME_EXAMPLES = {
     "channel_linked": text("연결됐어요. 이제 이 채널로 온 손님 메시지를 받아요"),
     "server_error": text("잠시 뒤 다시 말씀해 주세요"),
     # 확인 카드 버튼
+    "orderer_saved": card("주문 요청 확인", "11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 주문자 이지우 010-9876-5432 · 36,000원",
+                          [card_button("규정에 동의하고 주문 요청", CK, "confirm"),
+                           card_button("사진 게시도 동의하고 요청", CK, "confirm_with_photo_consent"),
+                           card_button("안 할래요", CK, "decline")]),
     "order_requested": text("주문을 요청했어요(주문번호 K7Q3M9). 결제가 확인되면 확정돼요.",
                             "입금하실 곳: 달빛은행 123456-01-234567 김달빛 · 36,000원 · 11월 13일 01:05까지"),
     "payment_claimed": text("사장님께 알렸어요. 확인되면 알려 드릴게요"),
@@ -697,6 +708,9 @@ SKILL_OUTCOME_EXAMPLES = {
     "issue_reported": text("신고를 받았어요. 사장님이 보시고 정하실 거예요"),
     "consent_withdrawn": text("사진 게시 동의를 철회했어요. 곧 사진이 내려가요"),
     "declined": text("알겠어요. 더 궁금한 것이 있으면 말씀해 주세요"),
+    "input_invalid": card("주문자 정보", "이름은 1~30자, 연락처는 숫자와 '-'로 8~14자로 넣어 주세요. 이 정보는 AI에 보내지 않아요",
+                          [{"label": "이름·연락처 넣기", "action": "block", "blockId": h("block:주문자 정보", 24),
+                            "extra": {"cardKey": "ck_" + h("card:orderer", 30), "choice": "confirm"}}]),
     "card_stale": card("주문 요청 확인", "내용이 바뀌었어요. 새 카드를 확인해 주세요 · 11월 20일 14:00 픽업 · 38,000원",
                        [card_button("규정에 동의하고 주문 요청", "ck_" + h("card:order:2", 30), "confirm"),
                         card_button("안 할래요", "ck_" + h("card:order:2", 30), "decline")]),

@@ -16,13 +16,15 @@
   D1 db/schema.sql을 빈 DB에 한 트랜잭션으로 적용
   D2 db/migrations/*.sql을 차례대로 다른 빈 DB에 적용하면 두 DB의 테이블·컬럼·제약·인덱스·설명·확장이 같음
   D3 실제 DB에서 테이블마다 기본 키가 있고, 테이블 설명이 헤더 주석의 TBL 번호로 시작하며, 대응한 컬럼이 모두 있음
-  D4 규칙 테스트(rule_tests.sql)의 테스트가 모두 기대한 제약에 막힘
+  D4 규칙 테스트(rule_tests.sql)의 테스트가 모두 기대한 제약에 막힘. 같은 잠금 번호를 읽고 늦게 쓴 쓰기(expect_stale)는 0행
+  D5 두 세션이 같은 주문에 결제 확인과 손님 취소를 같은 값을 읽고 동시에 쓰면, 잠금 번호(lock_version)를 견줄 때는
+     늦은 쪽이 먼저 쓴 쪽의 커밋을 기다린 뒤 0행이고, 내용 버전(version)을 견주는 옛 방식으로는 늦은 쪽이 덮어씀(설계 재검토 H12)
   E1 ERD Editor 파일(db/schema.erd.json)의 테이블·컬럼·타입·NOT NULL·기본 키가 스키마와 같음.
      다르면 테이블·컬럼별 차이와 파일 날짜를 보임(CHECK·EXCLUDE·부분 인덱스처럼 ERD Editor가 담지 못하는 것은 따로 셈)
 
 쓰는 법(저장소 맨 위에서)
   python3 -B research/cake-erd-2026-11/check_erd.py . --db "host=localhost port=5432 user=postgres"
-  --db를 빼면 D1~D4를 '미확인'으로 보고함. 검사용 DB erd_check_schema·erd_check_migrations를 만들고
+  --db를 빼면 D1~D5를 '미확인'으로 보고함. 검사용 DB erd_check_schema·erd_check_migrations를 만들고
   끝나면 지움(--keep이면 남김). 같은 이름의 DB가 있으면 지우고 다시 만드니 검사용 서버에서만 돌림.
 """
 from __future__ import annotations
@@ -33,6 +35,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -296,7 +299,7 @@ class Pg:
 
 
 def db_checks(root: Path, rep: Report, tables: list, base: str | None, keep: bool) -> None:
-    keys = ("D1", "D2", "D3", "D4")
+    keys = ("D1", "D2", "D3", "D4", "D5")
     if base is None:
         for k in keys:
             rep.add(k, None, "DB 연결(--db)이 없어 돌리지 않음")
@@ -359,7 +362,9 @@ def db_checks(root: Path, rep: Report, tables: list, base: str | None, keep: boo
                 f"(기본 키 {cons.get('p', 0)}, 외래 키 {cons.get('f', 0)}, CHECK {cons.get('c', 0)}, UNIQUE {cons.get('u', 0)}, EXCLUDE {cons.get('x', 0)})",
                 issues)
 
-        expected = len(re.findall(r"^SELECT pg_temp\.expect_fail\(", RULE_TESTS.read_text(encoding="utf-8"), re.M))
+        rule_text = RULE_TESTS.read_text(encoding="utf-8")
+        expected = len(re.findall(r"^SELECT pg_temp\.expect_(?:fail|stale)\(", rule_text, re.M))
+        stale = len(re.findall(r"^SELECT pg_temp\.expect_stale\(", rule_text, re.M))
         r = pg.run(DB_SCHEMA, "-f", str(RULE_TESTS))
         m = re.search(r"rule_tests: (\d+) blocked, (\d+) not blocked", r.stdout)
         if r.returncode or not m:
@@ -368,11 +373,76 @@ def db_checks(root: Path, rep: Report, tables: list, base: str | None, keep: boo
             blocked, not_blocked = int(m.group(1)), int(m.group(2))
             fails = [l.strip() for l in r.stdout.splitlines() if "|" in l and "rule_tests:" not in l][:20]
             rep.add("D4", not_blocked == 0 and blocked == expected,
-                    f"규칙 테스트 {expected}개 가운데 기대한 제약에 막힘 {blocked}개, 안 막힘 {not_blocked}개", fails if not_blocked else [])
+                    f"규칙 테스트 {expected}개 가운데 기대한 제약에 막힘(늦은 쓰기 {stale}개는 0행) {blocked}개, 안 막힘 {not_blocked}개", fails if not_blocked else [])
+        race_check(pg, rep)
     finally:
         if not keep:
             pg.drop(DB_SCHEMA)
             pg.drop(DB_MIGRATIONS)
+
+
+# ── D5 두 세션 동시 쓰기(설계 재검토 H12) ──────────────────────────────────────
+
+RACE_ORDER = "e5000000-0000-0000-0000-000000000001"
+# 외래 키 트리거를 건너뛰어 주문 한 행만 만듦(검사용 DB에서만, 슈퍼유저). CHECK는 그대로 봄
+RACE_SETUP = (
+    "SET session_replication_role = replica; "
+    f"DELETE FROM orders WHERE id = '{RACE_ORDER}'; "
+    "INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_id, kind, status, price_list_id, "
+    "operating_rules_id, details_confirmed_at, terms_consented_at, pickup_at, pickup_day, amount) "
+    f"VALUES ('{RACE_ORDER}', gen_random_uuid(), 'RACE01', gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), "
+    "'standard', 'awaiting_payment', gen_random_uuid(), gen_random_uuid(), now(), now(), now() + interval '3 days', "
+    "current_date + 3, 36000)"
+)
+RACE_WAYS = (  # (이름, 쓸 때 함께 바꾸는 것, 견주는 조건)
+    ("옛 방식(내용 버전 version 비교)", "updated_at = now()", "version = 1"),
+    ("잠금 번호(lock_version 비교)", "lock_version = lock_version + 1, updated_at = now()", "lock_version = 1"),
+)
+
+
+def race_once(pg: Pg, bump: str, pred: str) -> tuple[str, str, float, str]:
+    """사장님 결제 확인(먼저 쓰고 1.5초 뒤 커밋)과 손님 취소(같은 값을 읽은 채로 늦게 씀)를 두 세션에서 돌린다."""
+    r = pg.run(DB_SCHEMA, "-c", RACE_SETUP)
+    if r.returncode:
+        raise RuntimeError(r.stderr.strip())
+    where = f"WHERE id = '{RACE_ORDER}' AND {pred}"
+    confirm = (f"BEGIN;\nUPDATE orders SET status = 'confirmed', confirmed_at = now(), {bump} {where};\n"
+               "\\echo rows :ROW_COUNT\nSELECT pg_sleep(1.5);\nCOMMIT;\n")
+    cancel = (f"BEGIN;\nUPDATE orders SET status = 'cancelled', cancelled_at = now(), cancel_kind = 'customer', {bump} {where};\n"
+              "\\echo rows :ROW_COUNT\nCOMMIT;\n")
+    cmd = ["psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", pg.conn(DB_SCHEMA)]
+    s1 = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    s1.stdin.write(confirm)
+    s1.stdin.close()
+    for _ in range(50):  # 먼저 쓴 쪽이 행을 잡고 커밋을 미루는 중인지 봄
+        busy = pg.query(DB_SCHEMA, "SELECT count(*) FROM pg_stat_activity WHERE state = 'active' AND query LIKE 'SELECT pg_sleep(1.5)%'")
+        if busy and busy[0][0] == "1":
+            break
+        time.sleep(0.05)
+    t0 = time.monotonic()
+    s2 = subprocess.run(cmd, input=cancel, capture_output=True, text=True)
+    waited = time.monotonic() - t0
+    out1, err1 = s1.communicate()
+    if s1.returncode or s2.returncode:
+        raise RuntimeError((err1 + s2.stderr).strip())
+    rows = lambda out: (re.findall(r"^rows (\d+)", out, re.M) or ["?"])[0]
+    final = pg.query(DB_SCHEMA, f"SELECT status, lock_version FROM orders WHERE id = '{RACE_ORDER}'")[0]
+    return rows(out1), rows(s2.stdout), waited, f"{final[0]}, 잠금 번호 {final[1]}"
+
+
+def race_check(pg: Pg, rep: Report) -> None:
+    try:
+        runs = [(name, *race_once(pg, bump, pred)) for name, bump, pred in RACE_WAYS]
+    except (RuntimeError, IndexError) as e:
+        rep.add("D5", None, f"두 세션 동시 쓰기를 돌리지 못함: {e}")
+        return
+    (_, o1, o2, ow, of), (_, n1, n2, nw, nf) = runs
+    reproduced = o1 == "1" and o2 == "1" and of.startswith("cancelled") and ow >= 0.5
+    blocked = n1 == "1" and n2 == "0" and nf == "confirmed, 잠금 번호 2" and nw >= 0.5
+    rep.add("D5", reproduced and blocked,
+            "두 세션이 같은 주문에 결제 확인과 손님 취소를 같은 값을 읽고 동시에 씀: 옛 방식은 늦은 취소가 확인을 덮어쓰고(문제 재현), "
+            "잠금 번호는 늦은 취소가 먼저 쓴 쪽의 커밋을 기다린 뒤 0행이라 결제 확인이 남음",
+            [f"{name}: 결제 확인 {a}행, 손님 취소 {b}행(기다림 {w:.1f}초) → {f}" for name, a, b, w, f in runs])
 
 
 # ── ERD Editor 파일 비교 ─────────────────────────────────────────────────────

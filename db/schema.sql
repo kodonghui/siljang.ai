@@ -370,7 +370,7 @@ CREATE TABLE masked_values (
 );
 COMMENT ON TABLE masked_values IS 'TBL-019 마스킹 원본 값: 플레이스홀더와 원래 값의 쌍, 그 가게 사장님 화면에만';
 
--- TBL-020 order_drafts (CTX-001) ← SPEC-013, SPEC-019, SPEC-020, SPEC-025, SPEC-027, SPEC-028, SPEC-029, SPEC-065 | terms: TERM-003, TERM-057
+-- TBL-020 order_drafts (CTX-001) ← SPEC-013, SPEC-019, SPEC-020, SPEC-025, SPEC-027, SPEC-028, SPEC-029, SPEC-065, SPEC-072 | terms: TERM-003, TERM-057
 CREATE TABLE order_drafts (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 초안 ID
   shop_id               uuid NOT NULL,                   -- 가게
@@ -390,8 +390,8 @@ CREATE TABLE order_drafts (
   colors                text CHECK (char_length(colors) <= 100), -- 색
   allergy_answer        text CHECK (char_length(allergy_answer) BETWEEN 1 AND 200), -- 알레르기 답('없음'도 답, REQ-013). 이 주문 밖에서 쓰지 않음(REQ-142)
   excluded_ingredients  text CHECK (char_length(excluded_ingredients) <= 200), -- 빼야 할 재료
-  customer_name         text CHECK (char_length(customer_name) BETWEEN 1 AND 30), -- 주문자 이름(SPEC-064·065가 말하는 주문의 이름)
-  customer_phone        text CHECK (customer_phone ~ '^[0-9-]{8,14}$'), -- 주문자 연락처
+  customer_name         text CHECK (char_length(customer_name) BETWEEN 1 AND 30), -- 주문자 이름(SPEC-064·065가 말하는 주문의 이름). 주문 요청 확인 카드 전에 AI를 거치지 않는 입력으로 받음(SPEC-072, REQ-175). AI로 보내지 않음(REQ-178)
+  customer_phone        text CHECK (customer_phone ~ '^[0-9-]{8,14}$'), -- 주문자 연락처(픽업·급한 연락). 주문 요청 확인 카드 전에 AI를 거치지 않는 입력으로 받음(SPEC-072, REQ-175). AI로 보내지 않음(REQ-178)
   order_kind            text CHECK (order_kind IN ('standard', 'custom')), -- 가게 규칙이 가른 주문 종류. 참고 사진이 있으면 맞춤(SPEC-019)
   created_at            timestamptz NOT NULL DEFAULT now(), -- 만든 시각
   updated_at            timestamptz NOT NULL DEFAULT now(), -- 마지막으로 고친 시각
@@ -449,7 +449,7 @@ CREATE TABLE quotes (
 CREATE INDEX quotes_draft_idx ON quotes (draft_id, quoted_at); -- 초안의 마지막 견적
 COMMENT ON TABLE quotes IS 'TBL-022 견적(TERM-013): 가게 규칙이 계산한 금액과 근거, 버전과 유효 기한';
 
--- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-029, SPEC-030, SPEC-031, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070 | terms: TERM-001
+-- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-029, SPEC-030, SPEC-031, SPEC-034, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070 | terms: TERM-001
 CREATE TABLE orders (
   id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 주문 ID(손님에게 보이지 않음)
   shop_id                  uuid NOT NULL,                -- 가게
@@ -459,7 +459,7 @@ CREATE TABLE orders (
   draft_id                 uuid,                         -- 요청한 주문서 초안. 참고 사진은 이 초안에 붙어 있음. 재제작 주문은 빈 값
   kind                     text NOT NULL CHECK (kind IN ('standard', 'custom')), -- 기본 디자인 주문(TERM-039)·맞춤 주문(TERM-038). 가게 규칙이 가른 값
   status                   text NOT NULL CHECK (status IN ('requested', 'awaiting_payment', 'payment_overdue', 'confirmed', 'received', 'no_pickup', 'rejected', 'cancelled')), -- 주문 요청됨·결제 기다림·결제 기한 지남·확정·받음(픽업 완료됨·퀵으로 보냄)·미수령·거절됨·취소됨(1-2)
-  version                  integer NOT NULL DEFAULT 1 CHECK (version >= 1), -- 주문 내용의 지금 버전(TERM-005). 카드·변경 요청이 이 값에 묶임(G3, G9)
+  version                  integer NOT NULL DEFAULT 1 CHECK (version >= 1), -- 주문 내용의 지금 버전(TERM-005). 카드·변경 요청이 이 값에 묶임(G3, G9). 상태만 바꾸는 쓰기에는 오르지 않아 동시 쓰기는 잠금 번호(lock_version)로 견줌(A6)
   price_list_id            uuid NOT NULL,                -- 금액을 계산한 가격표 버전(REQ-030)
   operating_rules_id       uuid NOT NULL,                -- 동의한 운영규정 버전. 환불·변경 마감은 이 버전으로(REQ-030, REQ-055)
   details_confirmed_at     timestamptz,                  -- 주문 내용 확인(TERM-009)한 시각
@@ -479,6 +479,7 @@ CREATE TABLE orders (
   remake_of_order_id       uuid,                         -- 재제작(TERM-034) 주문이면 원래 주문(R21)
   personal_data_purged_at  timestamptz,                  -- 법정 보존 기간 뒤 개인정보를 지운 시각(SPEC-065)
   updated_at               timestamptz NOT NULL DEFAULT now(), -- 마지막으로 바뀐 시각
+  lock_version             integer NOT NULL DEFAULT 1 CHECK (lock_version >= 1), -- 잠금 번호: 이 행을 쓸 때마다(상태·시각·금액·버전) 하나 오름. 읽은 값과 같을 때만 씀(A6, E15, 설계 재검토 H12). 06단계 주문의 revision(DEC-05)
   CONSTRAINT orders_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT orders_no_uq UNIQUE (shop_id, order_no),
   CONSTRAINT orders_draft_uq UNIQUE (draft_id),         -- 초안 하나에 주문 하나
@@ -505,15 +506,15 @@ CREATE INDEX orders_day_idx ON orders (shop_id, pickup_day, status); -- 날짜�
 CREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue'); -- 사장님이 정할 주문(SPEC-031, SPEC-037)
 COMMENT ON TABLE orders IS 'TBL-023 주문(TERM-001): 주문 요청부터 확정·변경·취소·받음까지의 상태와 버전';
 
--- TBL-024 confirm_cards (CTX-001) ← SPEC-028, SPEC-029, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-057, SPEC-058, SPEC-063, SPEC-069 | terms: none
+-- TBL-024 confirm_cards (CTX-001) ← SPEC-028, SPEC-029, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-057, SPEC-058, SPEC-063, SPEC-069, SPEC-072 | terms: none
 CREATE TABLE confirm_cards (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 카드 ID
   shop_id          uuid NOT NULL,                        -- 가게
   consultation_id  uuid NOT NULL,                        -- 카드를 보낸 상담
   customer_id      uuid NOT NULL,                        -- 카드를 받은 사용자. 이 사용자만 누름(G9)
   card_key         text NOT NULL CHECK (char_length(card_key) BETWEEN 16 AND 64), -- 버튼에 포함한 카드 키(G2)
-  kind             text NOT NULL CHECK (kind IN ('order_request', 'payment_claim', 'change_request', 'cancel', 'issue_report', 'consent_withdrawal')), -- 주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)
-  draft_id         uuid,                                 -- 주문 요청 카드의 초안
+  kind             text NOT NULL CHECK (kind IN ('order_request', 'payment_claim', 'change_request', 'cancel', 'issue_report', 'consent_withdrawal', 'orderer_info')), -- 주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)
+  draft_id         uuid,                                 -- 주문 요청·주문자 정보 카드의 초안
   draft_revision   integer,                              -- 묶인 초안 고친 번호(SPEC-028)
   order_id         uuid,                                 -- 대상 주문. 주문 요청 카드는 누른 뒤 생긴 주문
   order_version    integer,                              -- 묶인 주문 버전(G9)
@@ -528,8 +529,8 @@ CREATE TABLE confirm_cards (
   CONSTRAINT confirm_cards_customer_fk FOREIGN KEY (shop_id, customer_id) REFERENCES customers (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT confirm_cards_draft_fk FOREIGN KEY (shop_id, draft_id) REFERENCES order_drafts (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT confirm_cards_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
-  CONSTRAINT confirm_cards_draft_chk CHECK ((kind = 'order_request') = (draft_id IS NOT NULL AND draft_revision IS NOT NULL)),
-  CONSTRAINT confirm_cards_order_chk CHECK (kind = 'order_request' OR (order_id IS NOT NULL AND order_version IS NOT NULL)),
+  CONSTRAINT confirm_cards_draft_chk CHECK ((kind IN ('order_request', 'orderer_info')) = (draft_id IS NOT NULL AND draft_revision IS NOT NULL)),
+  CONSTRAINT confirm_cards_order_chk CHECK (kind IN ('order_request', 'orderer_info') OR (order_id IS NOT NULL AND order_version IS NOT NULL)),
   CONSTRAINT confirm_cards_used_chk CHECK ((used_at IS NULL) = (outcome IS NULL)),
   CONSTRAINT confirm_cards_expiry_chk CHECK (expires_at > created_at AND expires_at <= created_at + interval '30 minutes') -- 30분 기한(G9)
 );
@@ -553,6 +554,7 @@ CREATE TABLE change_requests (
   applied_at       timestamptz,                          -- 반영한 시각
   closed_at        timestamptz,                          -- 반영되지 않고 종료된 시각
   created_at       timestamptz NOT NULL DEFAULT now(),   -- 요청한 시각
+  lock_version     integer NOT NULL DEFAULT 1 CHECK (lock_version >= 1), -- 잠금 번호: 이 행을 쓸 때마다(상태·답·반영·닫힘) 하나 오름. 읽은 값과 같을 때만 씀(A6, E15, 설계 재검토 H12). 06단계 변경 요청의 revision(DEC-05)
   CONSTRAINT change_requests_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT change_requests_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT change_requests_card_fk FOREIGN KEY (shop_id, card_id) REFERENCES confirm_cards (shop_id, id) ON DELETE RESTRICT,
@@ -565,7 +567,7 @@ CREATE TABLE change_requests (
 CREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference'); -- 한 주문에 열린 변경 요청 하나(1-5)
 COMMENT ON TABLE change_requests IS 'TBL-025 변경 요청: 확정된 주문을 바꾸자는 손님 요청과 사장님 답(1-5)';
 
--- TBL-026 order_details (CTX-003) ← SPEC-029, SPEC-031, SPEC-045, SPEC-050, SPEC-054, SPEC-059, SPEC-060, SPEC-064, SPEC-065 | terms: TERM-004
+-- TBL-026 order_details (CTX-003) ← SPEC-029, SPEC-031, SPEC-033, SPEC-045, SPEC-050, SPEC-054, SPEC-059, SPEC-060, SPEC-064, SPEC-065 | terms: TERM-004
 CREATE TABLE order_details (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 주문 내용 버전 ID
   shop_id               uuid NOT NULL,                   -- 가게
@@ -727,7 +729,7 @@ CREATE TABLE payment_requests (
   claimed_at          timestamptz,                       -- 손님 '입금 알리기' 시각. 기한 전이면 자리를 지킴(R14)
   claim_card_id       uuid,                              -- 손님이 누른 입금 알리기 카드
   claim_rejected_at   timestamptz,                       -- 사장님이 '미입금'을 고른 시각. 확인 요청은 결제 안내마다 한 번이라 다시 받지 않음(SPEC-033)
-  depositor_name      text CHECK (char_length(depositor_name) BETWEEN 1 AND 30), -- 입금자 이름(입금 대조, TERM-063). AI로 보내지 않음
+  depositor_name      text CHECK (char_length(depositor_name) BETWEEN 1 AND 30), -- 입금자 이름(입금 대조, TERM-063). 손님이 결제 확인을 요청할 때 AI를 거치지 않는 입력으로 받고, 따로 넣지 않으면 주문자 이름(SPEC-033, REQ-176). AI로 보내지 않음(REQ-178)
   mismatch_amount     integer CHECK (mismatch_amount BETWEEN 1 AND 100000000), -- 다르게 들어온 금액(R15). 안내 금액의 10배까지(SPEC-035)
   mismatch_at         timestamptz,                       -- '금액 불일치'를 남긴 시각. 맞추는 중에는 결제 기한을 멈춤(REQ-161)
   arrived_amount      integer CHECK (arrived_amount BETWEEN 1 AND 100000000), -- 들어온 금액(받은 금액의 몫, REQ-165). 입금됨은 안내 금액, 맞추는 중은 다르게 들어온 금액(모자란 금액이 마저 들어오면 안내 금액, 더 들어온 채 대조 완료면 그대로), 결제로 확인하지 않은 들어온 입금은 사장님이 남긴 금액(SPEC-071)
@@ -1424,8 +1426,8 @@ COMMENT ON COLUMN order_drafts.lettering IS '문구(TERM-021), 50자까지(AI-1)
 COMMENT ON COLUMN order_drafts.colors IS '색';
 COMMENT ON COLUMN order_drafts.allergy_answer IS '알레르기 답(''없음''도 답, REQ-013). 이 주문 밖에서 쓰지 않음(REQ-142)';
 COMMENT ON COLUMN order_drafts.excluded_ingredients IS '빼야 할 재료';
-COMMENT ON COLUMN order_drafts.customer_name IS '주문자 이름(SPEC-064·065가 말하는 주문의 이름)';
-COMMENT ON COLUMN order_drafts.customer_phone IS '주문자 연락처';
+COMMENT ON COLUMN order_drafts.customer_name IS '주문자 이름(SPEC-064·065가 말하는 주문의 이름). 주문 요청 확인 카드 전에 AI를 거치지 않는 입력으로 받음(SPEC-072, REQ-175). AI로 보내지 않음(REQ-178)';
+COMMENT ON COLUMN order_drafts.customer_phone IS '주문자 연락처(픽업·급한 연락). 주문 요청 확인 카드 전에 AI를 거치지 않는 입력으로 받음(SPEC-072, REQ-175). AI로 보내지 않음(REQ-178)';
 COMMENT ON COLUMN order_drafts.order_kind IS '가게 규칙이 가른 주문 종류. 참고 사진이 있으면 맞춤(SPEC-019)';
 COMMENT ON COLUMN order_drafts.created_at IS '만든 시각';
 COMMENT ON COLUMN order_drafts.updated_at IS '마지막으로 고친 시각';
@@ -1459,7 +1461,7 @@ COMMENT ON COLUMN orders.consultation_id IS '요청한 상담';
 COMMENT ON COLUMN orders.draft_id IS '요청한 주문서 초안. 참고 사진은 이 초안에 붙어 있음. 재제작 주문은 빈 값';
 COMMENT ON COLUMN orders.kind IS '기본 디자인 주문(TERM-039)·맞춤 주문(TERM-038). 가게 규칙이 가른 값';
 COMMENT ON COLUMN orders.status IS '주문 요청됨·결제 기다림·결제 기한 지남·확정·받음(픽업 완료됨·퀵으로 보냄)·미수령·거절됨·취소됨(1-2)';
-COMMENT ON COLUMN orders.version IS '주문 내용의 지금 버전(TERM-005). 카드·변경 요청이 이 값에 묶임(G3, G9)';
+COMMENT ON COLUMN orders.version IS '주문 내용의 지금 버전(TERM-005). 카드·변경 요청이 이 값에 묶임(G3, G9). 상태만 바꾸는 쓰기에는 오르지 않아 동시 쓰기는 잠금 번호(lock_version)로 견줌(A6)';
 COMMENT ON COLUMN orders.price_list_id IS '금액을 계산한 가격표 버전(REQ-030)';
 COMMENT ON COLUMN orders.operating_rules_id IS '동의한 운영규정 버전. 환불·변경 마감은 이 버전으로(REQ-030, REQ-055)';
 COMMENT ON COLUMN orders.details_confirmed_at IS '주문 내용 확인(TERM-009)한 시각';
@@ -1479,13 +1481,14 @@ COMMENT ON COLUMN orders.cancel_reason IS '가게 사정 취소의 사유(SPEC-0
 COMMENT ON COLUMN orders.remake_of_order_id IS '재제작(TERM-034) 주문이면 원래 주문(R21)';
 COMMENT ON COLUMN orders.personal_data_purged_at IS '법정 보존 기간 뒤 개인정보를 지운 시각(SPEC-065)';
 COMMENT ON COLUMN orders.updated_at IS '마지막으로 바뀐 시각';
+COMMENT ON COLUMN orders.lock_version IS '잠금 번호: 이 행을 쓸 때마다(상태·시각·금액·버전) 하나 오름. 읽은 값과 같을 때만 씀(A6, E15, 설계 재검토 H12). 06단계 주문의 revision(DEC-05)';
 COMMENT ON COLUMN confirm_cards.id IS '카드 ID';
 COMMENT ON COLUMN confirm_cards.shop_id IS '가게';
 COMMENT ON COLUMN confirm_cards.consultation_id IS '카드를 보낸 상담';
 COMMENT ON COLUMN confirm_cards.customer_id IS '카드를 받은 사용자. 이 사용자만 누름(G9)';
 COMMENT ON COLUMN confirm_cards.card_key IS '버튼에 포함한 카드 키(G2)';
-COMMENT ON COLUMN confirm_cards.kind IS '주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)';
-COMMENT ON COLUMN confirm_cards.draft_id IS '주문 요청 카드의 초안';
+COMMENT ON COLUMN confirm_cards.kind IS '주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)';
+COMMENT ON COLUMN confirm_cards.draft_id IS '주문 요청·주문자 정보 카드의 초안';
 COMMENT ON COLUMN confirm_cards.draft_revision IS '묶인 초안 고친 번호(SPEC-028)';
 COMMENT ON COLUMN confirm_cards.order_id IS '대상 주문. 주문 요청 카드는 누른 뒤 생긴 주문';
 COMMENT ON COLUMN confirm_cards.order_version IS '묶인 주문 버전(G9)';
@@ -1510,6 +1513,7 @@ COMMENT ON COLUMN change_requests.applied_version IS '반영으로 생긴 주문
 COMMENT ON COLUMN change_requests.applied_at IS '반영한 시각';
 COMMENT ON COLUMN change_requests.closed_at IS '반영되지 않고 종료된 시각';
 COMMENT ON COLUMN change_requests.created_at IS '요청한 시각';
+COMMENT ON COLUMN change_requests.lock_version IS '잠금 번호: 이 행을 쓸 때마다(상태·답·반영·닫힘) 하나 오름. 읽은 값과 같을 때만 씀(A6, E15, 설계 재검토 H12). 06단계 변경 요청의 revision(DEC-05)';
 COMMENT ON COLUMN order_details.id IS '주문 내용 버전 ID';
 COMMENT ON COLUMN order_details.shop_id IS '가게';
 COMMENT ON COLUMN order_details.order_id IS '주문';
@@ -1597,7 +1601,7 @@ COMMENT ON COLUMN payment_requests.due_at IS '결제 기한(TERM-030). 차액 �
 COMMENT ON COLUMN payment_requests.claimed_at IS '손님 ''입금 알리기'' 시각. 기한 전이면 자리를 지킴(R14)';
 COMMENT ON COLUMN payment_requests.claim_card_id IS '손님이 누른 입금 알리기 카드';
 COMMENT ON COLUMN payment_requests.claim_rejected_at IS '사장님이 ''미입금''을 고른 시각. 확인 요청은 결제 안내마다 한 번이라 다시 받지 않음(SPEC-033)';
-COMMENT ON COLUMN payment_requests.depositor_name IS '입금자 이름(입금 대조, TERM-063). AI로 보내지 않음';
+COMMENT ON COLUMN payment_requests.depositor_name IS '입금자 이름(입금 대조, TERM-063). 손님이 결제 확인을 요청할 때 AI를 거치지 않는 입력으로 받고, 따로 넣지 않으면 주문자 이름(SPEC-033, REQ-176). AI로 보내지 않음(REQ-178)';
 COMMENT ON COLUMN payment_requests.mismatch_amount IS '다르게 들어온 금액(R15). 안내 금액의 10배까지(SPEC-035)';
 COMMENT ON COLUMN payment_requests.mismatch_at IS '''금액 불일치''를 남긴 시각. 맞추는 중에는 결제 기한을 멈춤(REQ-161)';
 COMMENT ON COLUMN payment_requests.arrived_amount IS '들어온 금액(받은 금액의 몫, REQ-165). 입금됨은 안내 금액, 맞추는 중은 다르게 들어온 금액(모자란 금액이 마저 들어오면 안내 금액, 더 들어온 채 대조 완료면 그대로), 결제로 확인하지 않은 들어온 입금은 사장님이 남긴 금액(SPEC-071)';

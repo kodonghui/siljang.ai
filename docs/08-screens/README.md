@@ -65,6 +65,8 @@
 | `on-hold` | 화면 고유(W3) | 영업 신고가 보류됨 | 2 |
 | `mismatch` | 화면 고유(W3) | 들어온 금액이 안내와 달라 맞추는 중 | 1 |
 | `awaiting-payment` | 화면 고유(W3) | 차액 결제를 기다림 | 1 |
+| `orderer` | 화면 고유(W3) | 주문 요청 카드 앞에서 주문자 이름·연락처를 AI를 거치지 않는 블록으로 받음(SPEC-072) | 1 |
+| `depositor` | 화면 고유(W3) | 결제 확인 요청 때 입금자 이름을 AI를 거치지 않는 블록으로 받음(SPEC-033) | 1 |
 <!-- 08-screens:states:end -->
 
 ## 5. 손님 문구와 확인 문구
@@ -84,7 +86,7 @@
 | `ai_cost_limit_reached` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
 | `masking_failed` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
 | `ai_output_rejected` | (가게 규칙의 계산값으로 만든 정해진 문장) | 06단계 뼈대 그대로 |
-| `card_shown` | (확인 카드: 요약과 버튼) | 06단계 뼈대 그대로 |
+| `card_shown` | (확인 카드: 요약과 버튼. 주문서 초안이 다 찼는데 주문자 이름·연락처가 없으면 주문자 정보 카드) | 06단계 뼈대 그대로 |
 | `photo_received` | 사진을 받았어요 | 06단계 뼈대 그대로 |
 | `photo_rejected` | 사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요 | 06단계 뼈대 그대로 |
 | `unsupported_message` | 글이나 사진으로 말씀해 주세요 | 06단계 뼈대 그대로 |
@@ -94,12 +96,14 @@
 | `channel_linked` | 연결됐어요. 이제 이 채널로 온 손님 메시지를 받아요 | 06단계 뼈대 그대로 |
 | `server_error` | 잠시 뒤 다시 말씀해 주세요 | 06단계 뼈대 그대로 |
 | `order_requested` | 기본 디자인: 주문을 요청했어요(주문번호 {orderNo}). 결제가 확인되면 확정돼요 + 결제 안내 / 맞춤 주문: 주문을 요청했어요(주문번호 {orderNo}). 사장님이 보고 알려 드릴게요 + (채널 친구가 아니면) 채널을 추가하시면 답을 바로 받아 보실 수 있어요 | 08단계에서 바꿈: 맞춤 주문의 문구와 채널 추가 권유를 나눔(SPEC-029) |
+| `orderer_saved` | (주문 요청 확인 카드: 요약에 주문자 이름·연락처) | 06단계 뼈대 그대로 |
 | `payment_claimed` | 사장님께 알렸어요. 확인되면 알려 드릴게요 | 06단계 뼈대 그대로 |
 | `change_requested` | 변경을 요청했어요. 사장님이 보고 알려 드려요 | 06단계 뼈대 그대로 |
 | `order_cancelled` | 결제한 주문: 주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요 / 결제 전 주문: 주문을 취소했어요 | 08단계에서 바꿈: 결제 전 주문은 환불 문장을 뺌(SPEC-046) |
 | `issue_reported` | 신고를 받았어요. 사장님이 보시고 정하실 거예요 | 06단계 뼈대 그대로 |
 | `consent_withdrawn` | 사진 게시 동의를 철회했어요. 5분 안에 사진이 내려가요 | 08단계에서 바꿈: '곧'을 '5분 안에'로(SPEC-063 캐시 5분) |
 | `declined` | 알겠어요. 더 궁금한 것이 있으면 말씀해 주세요 | 06단계 뼈대 그대로 |
+| `input_invalid` | 주문자 정보: 이름은 1~30자, 연락처는 숫자와 '-'로 8~14자로 넣어 주세요 + '이름·연락처 넣기' / 입금자 이름: 입금자 이름은 1~30자로 넣어 주세요 + '입금자 이름 넣기' | 08단계에서 바꿈: 입금자 이름 블록의 문구를 나눠 더함(SPEC-033. 06단계 뼈대는 주문자 정보 문구만) |
 | `card_stale` | 내용이 바뀌었어요. 새 카드를 확인해 주세요 + 새 카드 | 06단계 뼈대 그대로 |
 | `card_expired` | 시간이 지나 새 카드를 보내 드려요 + 새 카드 | 06단계 뼈대 그대로 |
 | `card_not_yours` | 이 버튼은 카드를 받은 분만 누를 수 있어요 | 06단계 뼈대 그대로 |
@@ -134,16 +138,16 @@
 | [SCR-001](SCR-001.md) | 예약 링크 페이지 | 손님 | normal · loading · empty · error · rate-limited · stale | permission | 5 |
 | [SCR-002](SCR-002.md) | 가게 개인정보 처리방침 | 손님 | normal · loading · error · rate-limited | empty · permission · stale | 4 |
 | [SCR-003](SCR-003.md) | 가게 채널 상담 | 손님 | normal · loading · empty · error · permission · stale · handed-over · fixed-answer · rate-limited · link-test | - | 22 |
-| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · done · stale · expired · day-full · permission · error | loading · empty | 19 |
+| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · orderer · done · stale · expired · day-full · permission · error | loading · empty | 21 |
 | [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · deferred · stale · error | loading · empty · permission | 0 |
-| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 19 |
+| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · depositor · done · stale · expired · permission · error | loading · empty | 21 |
 | [SCR-007](SCR-007.md) | 내 주문 보기 | 손님 | normal · loading · empty · error · permission · stale · handed-over · rate-limited | - | 22 |
-| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 19 |
-| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 19 |
-| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 19 |
+| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 21 |
+| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 21 |
+| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 21 |
 | [SCR-011](SCR-011.md) | 손님 알림 | 손님 | normal · deferred · stale · error | loading · empty · permission | 0 |
 | [SCR-012](SCR-012.md) | 후기 남기기 | 손님 | normal · done · permission · error | loading · empty · stale | 10 |
-| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 19 |
+| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 21 |
 | [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 8 |
 | [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 16 |
 | [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
@@ -208,6 +212,8 @@
 
 ## 9. 검사
 
+2026-11-13 23:40 KST, 설계 재검토 H11·H6을 고친 뒤(12절) 다시 생성한 파일에 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 176행·액션 136행, C5 그린 상태 338개·상태 이름 24개, C6 응답 행 755개(※ 화면이 나눈 행 3, 카카오 스킬 180, 기본값과 다르게 정한 행 96), C8 참조 1547곳, C9 프레임 676개, C11 허용 예외 763곳입니다. C10은 확인 문구 6개, 손님 문구 39개(같음 30, 08단계에서 바꿈 6, 설명 3)입니다.
+
 2026-11-13 22:42 KST, 설계 재검토 H1·H2를 고친 뒤(12절) 다시 생성한 파일에 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 173행·액션 134행, C6 응답 행 743개(※ 화면이 나눈 행 3, 카카오 스킬 168, 기본값과 다르게 정한 행 96), C8 참조 1523곳, C11 허용 예외 678곳, C15 `check_sitemap.py` 통과 16·미확인 1(허브 옵션 없이)입니다. C11은 12절 제목의 앞부분을 `check_screens.py`의 금지어 예외에 더했습니다(그 제목의 낱말은 단계 문서를 마친 일을 말하고, 03단계 `check_flows.py`도 같은 예외를 둠). 그린 상태 336개와 프레임 672개는 그대로입니다. 아래 표는 2026-11-13 09:27의 결과로 남깁니다.
 
 `python3 -B research/cake-screens-2026-11/check_screens.py . --hub <허브의 hub.py>`를 2026-11-13 09:27 KST에 다시 생성한 파일(11절의 체크포인트 뒤 고친 것 포함)에 실행한 결과: 검사 15개 통과 15, 실패 0, 미확인 0. `--hub`를 주지 않으면 C14는 '미확인'입니다.
@@ -257,3 +263,12 @@
 - SCR-026 환불 송금: 할 일 '환불 보내기'가 엶. '보냄' 뒤 '보냄을 남겼어요. 손님에게 환불 안내를 보냈어요'는 이제 계약(API-061 `customerNotice`)과 맞음, 친구가 아니면 다음 대화 때(`sent_deferred`)(REQ-172, RE-03).
 - SCR-029 입금 대조: 닫힘·기한 지남 결제 안내에 '들어옴(금액)'(SPEC-071, RB-01·RD-02), 제작 전 확인된 결제에 '결제 확인 취소'(SPEC-070, RA-15). 응답 `API-059#200:arrived`·`voided`를 done 상태로.
 - 그린 상태의 와이어프레임(`layout`)은 바꾸지 않아 09단계 보드는 다시 그리지 않았습니다. 바뀐 것은 상태 설명과 결과 문구이고, 보드에 그린 글자는 모두 화면 정의에 그대로 있습니다(09단계 C8 통과).
+
+2026-11-13 설계 독립 재검토의 높음 묶음 H11(RB-02, RD-16)과 H6(RD-08)을 같은 결정 카드에 따라 `screens_guest.py`·`screens_owner_a.py`·`screens_common.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR B).
+
+- SCR-004 주문 요청 확인: 주문 요청 카드 앞에서 AI를 거치지 않는 '주문자 정보' 블록이 이름·연락처를 받음(SPEC-072, REQ-175). 새 상태 `orderer`(주문자 정보 카드, 동작 '이름·연락처 넣기'), 새 결과 `orderer_saved`(받은 뒤 주문 요청 카드를 보임)와 `input_invalid`(이름 1~30자, 연락처 숫자와 '-' 8~14자가 아니면 다시 물음). 주문 요청 카드 요약에 '주문자 이OO · 010-0000-0000' 줄.
+- SCR-006 결제 확인 요청: 카드에 '입금자 이OO(주문자 이름)' 줄과 버튼 '입금자 이름이 달라요'. 새 상태 `depositor`(AI를 거치지 않는 '입금자 이름' 블록이 입금자 이름을 받음, 넣지 않으면 주문자 이름, REQ-176·178).
+- SCR-028 결제 확인·SCR-029 입금 대조: 입금자 이름의 출처를 적음(손님이 넣은 이름, 넣지 않았으면 주문자 이름).
+- SCR-030 제작 목록: 주문마다 도안 옵션·추가 옵션·알레르기 답·빼야 할 재료·참고 사진 수를 보임(H6, RD-08, API-051 `ProductionDay`).
+- 상태 이름이 22개에서 24개로(`orderer`, `depositor`). 손님 결과 문구에 `orderer_saved`·`input_invalid`를 더하고, 입금자 이름 블록의 문구는 06단계 뼈대에 없어 C10의 바꾼 문구로 적음.
+- 09단계 보드 SCR-004·006·030을 다시 그림(09 README 12절).

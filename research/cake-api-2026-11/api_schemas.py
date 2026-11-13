@@ -101,6 +101,8 @@ URL = {"type": "string", "format": "uri", "maxLength": 2048}
 SIGNED_URL = {"type": "string", "format": "uri", "maxLength": 2048, "description": "15분 사는 서명 주소. 저장 위치는 포함하지 않음(DEC-09)"}
 REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)")
 BASE_REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="화면이 본 기록의 revision. 지금과 다르면 409 version_conflict(DEC-05, G3)")
+ORDER_REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="주문의 잠금 번호(orders.lock_version)로 만든 revision. 상태·시각·금액을 쓸 때마다 바뀜. 명령의 baseRevision에 그대로 보냄(DEC-05, 설계 재검토 H12)")
+CHANGE_REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="변경 요청의 잠금 번호(change_requests.lock_version)로 만든 revision. 쓸 때마다 바뀜(DEC-05, 설계 재검토 H12)")
 UPLOAD_ID = string(24, 204, r"^upl_[A-Za-z0-9_-]{20,200}$", desc="POST /owner/uploads가 준 ID. 1시간 안에 써야 함(DEC-09)")
 ORDER_NO = string(6, 12, r"^[0-9A-Z]{6,12}$", desc="주문번호. 손님에게 보이는 유일한 번호(G6)")
 PHONE_RE = r"^[0-9-]{8,14}$"
@@ -822,7 +824,7 @@ S["Order"] = all_required({
     "orderNo": ORDER_NO,
     "kind": enum(["standard", "custom"]),
     "status": enum(ORDER_STATUS),
-    "version": integer(1, 2147483647, desc="주문 내용의 지금 버전"),
+    "version": integer(1, 2147483647, desc="주문 내용의 지금 버전. 상태만 바뀌면 오르지 않음(동시 변경은 revision으로 견줌)"),
     "pickupAt": DT,
     "pickupDay": DATE,
     "amount": MONEY(),
@@ -848,13 +850,13 @@ S["Order"] = all_required({
     "production": nullable(ref("Production")),
     "issueReports": arr(ref("IssueReportSummary"), 0, 20),
     "photoConsent": nullable(all_required({"consented": boolean(), "withdrawnAt": nullable(DT)})),
-    "revision": REVISION,
+    "revision": ORDER_REVISION,
 }, desc="사장님이 보는 주문 하나(그 가게 것만)")
 S["OrderSummary"] = all_required({
     "orderId": UUID, "orderNo": ORDER_NO, "kind": enum(["standard", "custom"]), "status": enum(ORDER_STATUS),
     "version": integer(1, 2147483647), "pickupAt": DT, "pickupDay": DATE, "amount": MONEY(),
     "courierPickup": boolean(), "customerName": nullable(string(1, 30)), "requestedAt": DT,
-    "isRemake": boolean(), "revision": REVISION,
+    "isRemake": boolean(), "revision": ORDER_REVISION,
 })
 S["OrderList"] = all_required({"items": arr(ref("OrderSummary"), 0, 100), "nextCursor": nullable(CURSOR)})
 S["CustomDecisionInput"] = obj({
@@ -925,11 +927,17 @@ S["ProductionDay"] = all_required({
         "courierPickup": boolean(),
         "isRemake": boolean(),
         "summary": all_required({
-            "size": nullable(string(1, 30)), "flavor": nullable(string(1, 30)), "design": nullable(string(1, 30)),
+            "size": nullable(string(1, 30)), "flavor": nullable(string(1, 30)), "designOption": nullable(string(1, 30)),
+            "design": nullable(string(1, 30)),
             "lettering": nullable(string(0, 50)), "colors": nullable(string(0, 100)), "designNotes": nullable(string(0, 500)),
-        }),
+            "extras": arr(string(1, 30), 0, 20, desc="더하는 옵션 이름(REQ-177)"),
+            "allergyAnswer": nullable(string(1, 200, col="order_details.allergy_answer",
+                                             desc="알레르기 답('없음'도 답). 그 주문의 행에만 보이고 할 일 요약·사장님 알림·장부에는 넣지 않음(REQ-142, REQ-177)")),
+            "excludedIngredients": nullable(string(1, 200, col="order_details.excluded_ingredients", desc="빼야 할 재료. 없으면 null이고 화면은 '없음'(REQ-177)")),
+            "referencePhotoCount": integer(0, 10, desc="참고 사진 수. 사진은 주문 화면(SCR-028)에서 봄"),
+        }, desc="주문 내용 현재 버전(SPEC-050, 설계 재검토 H6)"),
         "production": ref("Production"),
-    }), 0, 100, desc="확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 비면 화면이 '이날 만들 주문이 없어요'"),
+    }), 0, 100, desc="확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 알레르기 답·빼야 할 재료·더하는 옵션까지(REQ-177). 비면 화면이 '이날 만들 주문이 없어요'"),
 })
 
 # ── 결제 안내와 환불 ────────────────────────────────────────────────────────
@@ -1012,7 +1020,7 @@ S["ChangeRequest"] = all_required({
     "closedAt": nullable(DT),
     "createdAt": DT,
     "differencePayment": nullable(ref("PaymentRequest")),
-    "revision": REVISION,
+    "revision": CHANGE_REVISION,
 })
 S["ChangeDecisionInput"] = obj({
     "baseRevision": BASE_REVISION,
@@ -1123,13 +1131,16 @@ S["SkillPayload"] = obj({
             "review_text": string(0, 100000, desc="후기 글(후기 스킬). 카카오가 보낸 값을 그대로 받고, 1~1,000자(reviews.body) 밖이면 결과 review_invalid로 알림(DEC-07)"),
             "review_photos": string(0, 100000, desc="보안 이미지 플러그인 값(JSON 글자: privacyAgreement·imageQuantity·secureUrls 'List(…)'·expire). 5장을 넘으면 review_invalid"),
             "photo_consent": string(0, 100, desc="사진 게시 동의 답(기본 동의 안 함, DEC-18)"),
+            "customer_name": string(0, 1000, desc="주문자 이름(주문자 정보 블록, SPEC-072). AI를 거치지 않음. 1~30자 밖이면 결과 input_invalid로 다시 물음(REQ-175, REQ-178)"),
+            "customer_phone": string(0, 1000, desc="주문자 연락처(주문자 정보 블록, SPEC-072). AI를 거치지 않음. 숫자와 '-' 8~14자가 아니면 input_invalid"),
+            "depositor_name": string(0, 1000, desc="입금자 이름(입금자 이름 블록, SPEC-033). AI를 거치지 않음. 1~30자 밖이면 input_invalid. 이 블록을 거치지 않고 '결제 확인 요청'을 누르면 주문자 이름(REQ-176)"),
         }, desc="블록 파라미터(값은 글자). 카카오가 다른 이름을 더할 수 있음", additional=True),
         "detailParams": obj({}, additional=True),
         "clientExtra": obj({
             "cardKey": string(16, 64, r"^[A-Za-z0-9_-]+$", col="confirm_cards.card_key", desc="확인 카드 키(카드 스킬, G9)"),
             "choice": enum(["confirm", "confirm_with_photo_consent", "decline"], desc="누른 버튼(카드 스킬)"),
             "orderNo": ORDER_NO,
-        }, desc="버튼의 extra. 카드 스킬은 cardKey·choice, 후기 스킬은 orderNo", additional=True),
+        }, desc="버튼의 extra. 카드 스킬은 cardKey·choice(주문자 정보·입금자 이름 블록도 같고 값은 action.params로), 후기 스킬은 orderNo", additional=True),
     }, ["id"], additional=True),
     "contexts": arr({"type": "object"}, 0, 50),
     "flow": obj({}, additional=True),
@@ -1197,9 +1208,7 @@ S["AiTurnOutput"] = obj({
         "colors": string(0, 100, col="order_drafts.colors"),
         "allergy_answer": string(1, 200, col="order_drafts.allergy_answer"),
         "excluded_ingredients": string(0, 200, col="order_drafts.excluded_ingredients"),
-        "customer_name": string(1, 30, col="order_drafts.customer_name"),
-        "customer_phone": string(1, 20, PLACEHOLDER_PHONE, desc="AI는 플레이스홀더만 봄. 서버가 원래 값으로 바꿔 저장"),
-    }, desc="주문서 초안에 넣을 필드(옵션은 이름). 서버가 형식을 확인한 뒤 저장(SPEC-020)", minProperties=1),
+    }, desc="주문서 초안에 넣을 필드(옵션은 이름). 서버가 형식을 확인한 뒤 저장(SPEC-020). 주문자 이름·연락처는 AI가 넣지 않고 주문자 정보 블록으로만 받음(SPEC-072, REQ-178)", minProperties=1),
     "quote_request": obj({
         "size": string(1, 30), "flavor": string(1, 30), "design_option": string(1, 30), "design": string(1, 30),
         "extras": arr(string(1, 30), 0, 20, unique=True), "pickup_day": DATE,

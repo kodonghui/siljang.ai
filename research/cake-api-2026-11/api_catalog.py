@@ -101,6 +101,7 @@ SKILL_OUTCOMES = {
     "channel_linked": dict(spec="SPEC-008", meaning="연결 확인 중인 채널의 테스트 메시지를 받아 채널을 가게에 묶음", message="연결됐어요. 이제 이 채널로 온 손님 메시지를 받아요"),
     "server_error": dict(spec="SPEC-017", meaning="스킬을 처리하다 서버 오류가 남. 손님에게 오류 내용을 보이지 않음(G6), 로그에는 추적 ID", message="잠시 뒤 다시 말씀해 주세요"),
     # 확인 카드 버튼 (API-071)
+    "orderer_saved": dict(spec="SPEC-072", meaning="주문자 정보 블록의 이름·연락처가 형식에 맞아 초안에 남기고 주문 요청 카드를 보냄. 이 값은 AI로 보내지 않음(REQ-175, REQ-178)", message="(주문 요청 확인 카드: 요약에 주문자 이름·연락처)"),
     "order_requested": dict(spec="SPEC-029", meaning="주문 요청을 한 트랜잭션으로 남김. 기본 디자인이면 자리와 결제 안내까지", message="주문을 요청했어요(주문번호 {orderNo}). 결제가 확인되면 확정돼요"),
     "payment_claimed": dict(spec="SPEC-033", meaning="결제 안내를 '확인 요청됨'으로 두고 사장님께 결제 확인을 요청함", message="사장님께 알렸어요. 확인되면 알려 드릴게요"),
     "change_requested": dict(spec="SPEC-041", meaning="변경 요청을 남기고 사장님께 알림", message="변경을 요청했어요. 사장님이 보고 알려 드려요"),
@@ -108,6 +109,7 @@ SKILL_OUTCOMES = {
     "issue_reported": dict(spec="SPEC-058", meaning="문제 신고를 남기고 사장님께 알림(기한 뒤면 '기한 뒤'로)", message="신고를 받았어요. 사장님이 보시고 정하실 거예요"),
     "consent_withdrawn": dict(spec="SPEC-063", meaning="사진 게시 동의를 철회하고 그 사진을 포트폴리오와 예약 링크 페이지에서 내림(5분 이내)", message="사진 게시 동의를 철회했어요. 곧 사진이 내려가요"),
     "declined": dict(spec="SPEC-069", meaning="손님이 카드의 '안 할래요'를 누름. 아무것도 남기지 않음", message="알겠어요. 더 궁금한 것이 있으면 말씀해 주세요"),
+    "input_invalid": dict(spec="SPEC-072", meaning="주문자 정보·입금자 이름 블록의 값이 형식에 맞지 않음(이름 1~30자, 연락처 숫자와 '-' 8~14자). 아무것도 남기지 않고 같은 블록 버튼으로 다시 물음(SPEC-033, SPEC-072)", message="이름은 1~30자, 연락처는 숫자와 '-'로 8~14자로 넣어 주세요"),
     "card_stale": dict(spec="SPEC-069", meaning="카드에 묶인 버전(초안 고친 번호·주문 버전·환불 금액)이 지금과 달라 거절하고 새 카드를 보임(G9). 쓴 것 없음", message="내용이 바뀌었어요. 새 카드를 확인해 주세요"),
     "card_expired": dict(spec="SPEC-069", meaning="카드의 30분 기한이 지나 거절하고 새 카드를 보임(G9). 쓴 것 없음", message="시간이 지나 새 카드를 보내 드려요"),
     "card_not_yours": dict(spec="SPEC-069", meaning="카드를 받은 사용자가 아닌 사람이 누름(A7). 쓴 것 없음", message="이 버튼은 카드를 받은 분만 누를 수 있어요"),
@@ -132,7 +134,7 @@ DECISIONS = [
     dict(id="DEC-02", title="없는 ID·다른 가게 ID·형식이 틀린 ID는 같은 404", choice="경로의 ID가 없거나, 다른 가게 것이거나, 형식이 틀리면(100자를 넘는 것 포함) 모두 404 `not_found`, 같은 본문. 계약에 없는 경로도 같은 404. 경로는 있지만 방법이 없으면 405 `method_not_allowed`와 `Allow` 헤더. 403은 쓰지 않음(역할마다 세션 쿠키와 경로가 나뉨)", why="G1: 다른 가게 기록이 있는지조차 알리지 않음. SPEC-068 수락 기준", alt="형식이 틀린 ID는 422: 화면 개발에는 친절하지만 G1의 '구분하지 않음'과 어긋남", decided=DECIDED_06),
     dict(id="DEC-03", title="같은 상태로 가는 명령은 성공, 다른 결정이 있으면 409", choice="이미 그 상태인 명령(이미 마감된 날 마감, 확인된 가게 확인, 같은 '입금됨')은 200과 `outcome: unchanged`, 아무것도 바꾸지 않음. 다른 결정이 먼저 남았으면 409 `already_decided`", why="상태 머신 1-2의 '같은 상태로 가는 명령은 지금 상태를 반환함'과 G3의 '먼저 온 쓰기가 이김'", alt="같은 상태도 409: 두 번 누른 사장님께 오류가 보임", decided=DECIDED_06),
     dict(id="DEC-04", title="사장님·운영자 명령은 요청 키를 꼭 가짐", choice="사장님·운영자의 쓰기 명령은 `Idempotency-Key` 헤더(16~64자, 영문·숫자·`_`·`-`)가 꼭 있어야 하고, 빼면 422 `validation_failed`(header:Idempotency-Key, required). 같은 키가 다시 오면 처음 결과를 그대로 반환하고 `Idempotency-Replayed: true`를 붙임. 같은 키에 다른 내용은 422 `idempotency_key_reused`, 첫 요청을 처리하는 중이면 409 `request_in_progress`. 로그인·로그아웃, 사진 올리기(다시 해도 새 uploadId가 하나 더 생길 뿐), 구글 권한 요청 시작(기록을 바꾸지 않음)은 받지 않음. 카카오 스킬은 카카오 요청으로 만든 키(OPEN-1)와 카드 키를 씀", why="G2(화면 버튼은 화면이 만든 키)와 TBL-050 request_keys", alt="키 없이 버전 비교만: 네트워크가 끊겨 다시 보낸 요청이 두 번 남을 수 있음", decided=DECIDED_06),
-    dict(id="DEC-05", title="동시 변경은 revision 비교", choice="고칠 수 있는 기록은 응답에 `revision`(서버가 만든 값)을 포함하고, 명령은 `baseRevision`을 보냄. 다르면 409 `version_conflict`이고 아무것도 바꾸지 않음. 409에는 지금 상태를 포함하지 않고 화면이 다시 읽음(GET). 처음 저장(가격표·운영규정·결제 수단·영업 캘린더·채널·장부)은 `baseRevision: null`", why="G3(먼저 온 쓰기가 이기고 뒤는 '이미 바뀜'). 오류 응답을 Problem 한 형식으로 두고, 지금 상태는 늘 같은 읽기 API에서 옴. 버전이 없는 기록(상태만 있는 결제 기한 결정 등)도 같은 방법으로", alt="If-Match 헤더: HTTP 표준이지만 어긋남이 412라 계약서의 409와 다르고, 목록의 행마다 값을 포함할 곳이 없음", decided=DECIDED_06),
+    dict(id="DEC-05", title="동시 변경은 revision 비교", choice="고칠 수 있는 기록은 응답에 `revision`(서버가 만든 값)을 포함하고, 명령은 `baseRevision`을 보냄. 다르면 409 `version_conflict`이고 아무것도 바꾸지 않음. 409에는 지금 상태를 포함하지 않고 화면이 다시 읽음(GET). 처음 저장(가격표·운영규정·결제 수단·영업 캘린더·채널·장부)은 `baseRevision: null`. 주문·변경 요청의 revision은 쓸 때마다 하나 오르는 잠금 번호(05단계 `lock_version`, 4절 A6·5절 E15)로 만들고, 결제 안내는 `payment_requests.version`으로 만듦(2026-11-13 설계 재검토 H12)", why="G3(먼저 온 쓰기가 이기고 뒤는 '이미 바뀜'). 주문 내용 버전(`version`)은 상태만 바꾸는 쓰기(결제 확인·취소·받음)에서 오르지 않아 같은 버전을 읽은 결제 확인과 손님 취소가 둘 다 통과했음(RC-01). 그래서 revision은 쓸 때마다 바뀌는 값으로 둠. 오류 응답을 Problem 한 형식으로 두고, 지금 상태는 늘 같은 읽기 API에서 옴. 버전이 없는 기록(상태만 있는 결제 기한 결정 등)도 같은 방법으로", alt="If-Match 헤더: HTTP 표준이지만 어긋남이 412라 계약서의 409와 다르고, 목록의 행마다 값을 포함할 곳이 없음", decided=DECIDED_06),
     dict(id="DEC-06", title="확인이 필요한 저장은 409 confirmation_required", choice="제작 전 취소 환불 낮춤·확정 주문이 있는 날 휴무·마감 후 추가 수락·픽업 날이 아닌 인도·휴무일 재제작·예금주 다름은 아무것도 바꾸지 않고 409 `confirmation_required`와 `confirm` 목록을 반환함. 화면이 말을 보이고, 사장님이 확인하면 같은 요청에 `confirm` 값을 담아 다시 보냄", why="SPEC-005·007·031·038·054·060·006의 '먼저 보이고 확인받음'을 한 형식으로", alt="화면이 미리 계산해 묻기: 그 사이 상태가 바뀌면 확인 없이 저장될 수 있음", decided=DECIDED_06),
     dict(id="DEC-07", title="카카오 스킬은 늘 200과 스킬 응답", choice="카카오 스킬 API는 서버가 처리한 모든 경우에 200과 스킬 응답을 반환하고, 결과는 `Siljang-Outcome` 헤더와 이름 붙은 예시로 구분함. HTTP 오류는 스킬 키가 틀림(401)과 스킬 요청 형식이 아님(422)뿐. AI 실패·느림·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션 응답(R7)", why="G6(손님에게 오류 내용을 보이지 않음). 200이 아니면 카카오가 손님에게 자기 오류 말을 보임", alt="AI 실패를 503으로: HTTP 쪽은 깔끔하지만 손님은 카카오 오류 말만 봄", decided=DECIDED_06),
     dict(id="DEC-08", title="카카오 스킬 인증은 오픈빌더 헤더 값", choice="오픈빌더 스킬 설정의 헤더 값(공식 문서 2026-11-12 확인: '헤더값 입력, 테스트 헤더값 입력')에 가게 연결마다 다른 스킬 키를 넣음. 헤더 이름 `Siljang-Skill-Key`. 키는 서버 시크릿과 연결 ID로 만들어 DB에 두지 않음(REQ-135)", why="문서에 요청 서명·IP 목록이 없음. 봇 ID만으로는 남이 요청을 꾸밀 수 있음", alt="주소에 비밀 경로: 로그와 오픈빌더 화면에 그대로 보임", decided=DECIDED_06),
@@ -188,6 +190,19 @@ BREAKING_CHANGES = [
         ("RefundPreview.confirmedAmount", "받은 금액을 확인된 결제와 그 밖의 들어온 금액으로 나눠 보임(REQ-165)"),
         ("RefundPreview.unconfirmedAmount", "받은 금액을 확인된 결제와 그 밖의 들어온 금액으로 나눠 보임(REQ-165)"),
         ("RefundPreview.minAmount", "보상이 아닌 환불은 계산값보다 낮게 정하지 못함(REQ-170)"),
+    ]
+] + [
+    dict(what=w, why=why, decided="2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 H6·H11·H12)", client=client)
+    for w, why, client in [
+        ("꼭 넣을 필드 더함: ProductionDay.items[].summary의 designOption·extras·allergyAnswer·excludedIngredients·referencePhotoCount",
+         "제작 목록에 알레르기 답·빼야 할 재료·더하는 옵션까지 보임(REQ-177, SPEC-050, 설계 재검토 H6)",
+         "응답에만 더한 필드라 보내는 요청은 그대로. 제작 목록(SCR-030)이 새 필드를 읽음. 안쪽 필드라 A13은 찾지 않아 여기 적음"),
+        ("AI 출력에서 뺌: AiTurnOutput.draft_patch.customer_name·customer_phone",
+         "주문자 이름·연락처는 AI를 거치지 않는 주문자 정보 블록으로만 받음(REQ-175, REQ-178, SPEC-072, 설계 재검토 H11)",
+         "AI 출력(AI-1)만 좁힘. HTTP 요청·응답은 그대로. 이 필드를 담은 AI 출력은 형식 검사에서 받지 않음(SPEC-020)"),
+        ("값의 원본이 바뀜: Order·OrderSummary·ChangeRequest의 revision",
+         "쓸 때마다 하나 오르는 잠금 번호(orders·change_requests.lock_version)로 만듦(DEC-05, 설계 재검토 H12)",
+         "화면은 받은 revision을 baseRevision에 그대로 보내므로 바꿀 것 없음. 상태만 바뀐 뒤에 보낸 명령도 409 version_conflict가 됨"),
     ]
 ]
 

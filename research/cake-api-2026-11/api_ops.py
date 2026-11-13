@@ -1051,8 +1051,8 @@ op(id="API-069", method="delete", path="/owner/portfolio/items/{portfolioItemId}
 MESSAGE_OUTCOMES = ["answered", "callback_pending", "handed_over", "ai_unavailable", "ai_timeout", "ai_key_missing", "ai_limit_reached",
                     "ai_cost_limit_reached", "masking_failed", "ai_output_rejected", "card_shown", "photo_received", "photo_rejected",
                     "unsupported_message", "rate_limited", "duplicate", "not_accepting", "channel_linked", "server_error"]
-CARD_OUTCOMES = ["order_requested", "payment_claimed", "change_requested", "order_cancelled", "issue_reported", "consent_withdrawn",
-                 "declined", "card_stale", "card_expired", "card_not_yours", "card_used", "day_full", "retry_needed", "not_allowed_now",
+CARD_OUTCOMES = ["orderer_saved", "order_requested", "payment_claimed", "change_requested", "order_cancelled", "issue_reported", "consent_withdrawn",
+                 "declined", "input_invalid", "card_stale", "card_expired", "card_not_yours", "card_used", "day_full", "retry_needed", "not_allowed_now",
                  "not_accepting", "server_error"]
 REVIEW_OUTCOMES = ["review_saved", "review_not_allowed", "review_invalid", "photo_download_failed", "duplicate", "not_accepting", "server_error"]
 
@@ -1060,13 +1060,14 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
    summary="손님 메시지 수신(카카오 오픈빌더 스킬)", auth="skill", callbacks=True, outcomes=MESSAGE_OUTCOMES, ai="AI-1",
    spec=["SPEC-017", "SPEC-018", "SPEC-019", "SPEC-020", "SPEC-021", "SPEC-022", "SPEC-025", "SPEC-026", "SPEC-027", "SPEC-028",
          "SPEC-033", "SPEC-040", "SPEC-041", "SPEC-046", "SPEC-049", "SPEC-056", "SPEC-057", "SPEC-066", "SPEC-068", "SPEC-069",
-         "SPEC-013", "SPEC-014", "SPEC-016", "SPEC-008"],
+         "SPEC-013", "SPEC-014", "SPEC-016", "SPEC-008", "SPEC-072"],
    desc="카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 키가 아니면 401(DEC-08). "
         "처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). "
         "답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). "
         "콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). "
         "첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 친구가 아닌 손님에게 못 보낸 안내가 있으면 답보다 먼저 포함한다(SPEC-066). "
         "연결 확인 중인 채널의 테스트 메시지면 채널을 가게에 묶는다(channel_linked, SPEC-008). "
+        "주문서 초안이 다 찼는데 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). "
         "Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). "
         "Open: 콜백 유효 시간이 문서 안에서 5분과 1분으로 어긋남. 개발 전 테스트로 정함(OPEN-2). "
         "Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). "
@@ -1087,20 +1088,23 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
 
 op(id="API-071", method="post", path="/kakao/skills/card", op="pressConfirmCard", tag="카카오 스킬",
    summary="손님 확인 카드 버튼(카카오 오픈빌더 스킬)", auth="skill", outcomes=CARD_OUTCOMES,
-   spec=["SPEC-069", "SPEC-029", "SPEC-030", "SPEC-033", "SPEC-041", "SPEC-046", "SPEC-058", "SPEC-063", "SPEC-015", "SPEC-032", "SPEC-040"],
+   spec=["SPEC-069", "SPEC-029", "SPEC-030", "SPEC-033", "SPEC-041", "SPEC-046", "SPEC-058", "SPEC-063", "SPEC-015", "SPEC-032", "SPEC-040", "SPEC-072"],
    desc="확인 카드의 블록 버튼이 clientExtra(cardKey, choice)로 보내는 스킬. 서버는 카드 키로 저장된 카드를 찾고 그 사용자·그 주문의 현재 버전·30분 기한을 다시 본다(G9). "
         "주문 요청이면 한 트랜잭션으로 내용 확인·규정 동의·사진 게시 동의·주문 요청을 남기고, 기본 디자인이면 같은 트랜잭션에서 자리를 잡고 결제 안내까지(SPEC-029, SPEC-030). "
         "입금 알리기·변경 요청·취소·신고·동의 철회도 같은 방법. 카드를 받은 사용자가 아니면 card_not_yours, 버전이 바뀌었으면 card_stale과 새 카드, 기한이 지났으면 card_expired와 새 카드. "
-        "같은 카드를 다시 누르면 card_used와 처음 결과(G2). 아무것도 남기지 못하면 retry_needed. 카드 값은 서버 기록에서만 오고 손님 말로 바꿀 수 없다(SPEC-069).",
-   body="SkillPayload", body_examples={"order_request": E.SKILL_CARD},
+        "같은 카드를 다시 누르면 card_used와 처음 결과(G2). 아무것도 남기지 못하면 retry_needed. 카드 값은 서버 기록에서만 오고 손님 말로 바꿀 수 없다(SPEC-069). "
+        "주문자 정보 카드의 '주문자 정보' 블록과 입금 알리기 카드의 '입금자 이름' 블록도 이 스킬로 오고, action.params에 customer_name·customer_phone이나 depositor_name을 담는다(설계 재검토 H11). "
+        "이 값은 AI로 보내지 않는다(REQ-178). 형식(이름 1~30자, 연락처 숫자와 '-' 8~14자)이 맞으면 초안에 남기고 주문 요청 카드를 보내거나(orderer_saved, SPEC-072) 그 이름으로 결제 확인을 요청한다(payment_claimed, SPEC-033). "
+        "형식이 틀리면 아무것도 남기지 않고 다시 묻는다(input_invalid). 입금 알리기 카드의 '결제 확인 요청'을 바로 누르면 입금자 이름은 주문자 이름이다(REQ-176).",
+   body="SkillPayload", body_examples={"order_request": E.SKILL_CARD, "orderer_info": E.SKILL_ORDERER, "depositor_name": E.SKILL_DEPOSITOR},
    ok=[(200, "SkillTemplateResponse", {k: E.SKILL_OUTCOME_EXAMPLES[k] for k in CARD_OUTCOMES}, ["Siljang-Outcome"])],
    errors={401: ["skill_key_invalid"]},
    fields=[("/action/clientExtra/cardKey", "required")],
    omit=dict(SKILL_OMIT, **{"429": "카드는 한 번만 명령을 내려 빈도 한도가 없음"}),
-   kinds={"접근": ["security", "401:skill_key_invalid", "outcome:card_not_yours"], "입력": ["422:validation_failed"],
+   kinds={"접근": ["security", "401:skill_key_invalid", "outcome:card_not_yours"], "입력": ["422:validation_failed", "outcome:input_invalid"],
           "대상": ["outcome:not_allowed_now"], "상태": ["outcome:card_stale", "outcome:card_expired", "outcome:not_allowed_now"],
           "반복": ["outcome:card_used"], "동시": ["outcome:day_full", "outcome:card_stale"], "외부": ["outcome:retry_needed"],
-          "노출": ["closed", "outcome:server_error"],
+          "노출": ["closed", "outcome:server_error", "note:주문자 이름·연락처·입금자 이름은 AI로 보내지 않음(REQ-178)"],
           "AI": ["outcome:card_not_yours", "outcome:card_stale", "outcome:card_expired", "note:AI가 제안한 카드의 값은 서버 기록에서만 옴(SPEC-069)"],
           "화면": ["screen"]})
 

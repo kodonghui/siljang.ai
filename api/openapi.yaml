@@ -11434,10 +11434,16 @@ paths:
                       summary:
                         size: 1호
                         flavor: 생크림
+                        designOption: 기본 레터링
                         design: 하트 레터링
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         designNotes: null
+                        extras:
+                        - 초 추가
+                        allergyAnswer: 없음
+                        excludedIngredients: null
+                        referencePhotoCount: 0
                       production:
                         productionId: 8d224710-ffc7-592a-9d8a-ac34a713ea5f
                         needsCustomMaterial: false
@@ -17926,9 +17932,9 @@ paths:
       operationId: receiveCustomerMessage
       summary: 손님 메시지 수신(카카오 오픈빌더 스킬)
       description: |-
-        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 키가 아니면 401(DEC-08). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 친구가 아닌 손님에게 못 보낸 안내가 있으면 답보다 먼저 포함한다(SPEC-066). 연결 확인 중인 채널의 테스트 메시지면 채널을 가게에 묶는다(channel_linked, SPEC-008). Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간이 문서 안에서 5분과 1분으로 어긋남. 개발 전 테스트로 정함(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4).
+        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 키가 아니면 401(DEC-08). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 친구가 아닌 손님에게 못 보낸 안내가 있으면 답보다 먼저 포함한다(SPEC-066). 연결 확인 중인 채널의 테스트 메시지면 채널을 가게에 묶는다(channel_linked, SPEC-008). 주문서 초안이 다 찼는데 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간이 문서 안에서 5분과 1분으로 어긋남. 개발 전 테스트로 정함(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4).
 
-        SPEC: SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-028, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-049, SPEC-056, SPEC-057, SPEC-066, SPEC-068, SPEC-069, SPEC-013, SPEC-014, SPEC-016, SPEC-008
+        SPEC: SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-028, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-049, SPEC-056, SPEC-057, SPEC-066, SPEC-068, SPEC-069, SPEC-013, SPEC-014, SPEC-016, SPEC-008, SPEC-072
       tags:
       - 카카오 스킬
       security:
@@ -18125,7 +18131,7 @@ paths:
                       outputs:
                       - textCard:
                           title: 주문 요청 확인
-                          description: 11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 36,000원
+                          description: 11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 주문자 이지우 010-9876-5432 · 36,000원
                           buttons:
                           - label: 규정에 동의하고 주문 요청
                             action: block
@@ -18362,6 +18368,7 @@ paths:
         - SPEC-014
         - SPEC-016
         - SPEC-008
+        - SPEC-072
         omit:
           "403": 가게·손님 구분은 결과 코드로 알리고 HTTP 403을 쓰지 않음(DEC-07)
           "404": 경로에 기록 ID가 없음. 연결 안 된 채널은 결과 not_accepting(DEC-07)
@@ -18434,9 +18441,9 @@ paths:
       operationId: pressConfirmCard
       summary: 손님 확인 카드 버튼(카카오 오픈빌더 스킬)
       description: |-
-        확인 카드의 블록 버튼이 clientExtra(cardKey, choice)로 보내는 스킬. 서버는 카드 키로 저장된 카드를 찾고 그 사용자·그 주문의 현재 버전·30분 기한을 다시 본다(G9). 주문 요청이면 한 트랜잭션으로 내용 확인·규정 동의·사진 게시 동의·주문 요청을 남기고, 기본 디자인이면 같은 트랜잭션에서 자리를 잡고 결제 안내까지(SPEC-029, SPEC-030). 입금 알리기·변경 요청·취소·신고·동의 철회도 같은 방법. 카드를 받은 사용자가 아니면 card_not_yours, 버전이 바뀌었으면 card_stale과 새 카드, 기한이 지났으면 card_expired와 새 카드. 같은 카드를 다시 누르면 card_used와 처음 결과(G2). 아무것도 남기지 못하면 retry_needed. 카드 값은 서버 기록에서만 오고 손님 말로 바꿀 수 없다(SPEC-069).
+        확인 카드의 블록 버튼이 clientExtra(cardKey, choice)로 보내는 스킬. 서버는 카드 키로 저장된 카드를 찾고 그 사용자·그 주문의 현재 버전·30분 기한을 다시 본다(G9). 주문 요청이면 한 트랜잭션으로 내용 확인·규정 동의·사진 게시 동의·주문 요청을 남기고, 기본 디자인이면 같은 트랜잭션에서 자리를 잡고 결제 안내까지(SPEC-029, SPEC-030). 입금 알리기·변경 요청·취소·신고·동의 철회도 같은 방법. 카드를 받은 사용자가 아니면 card_not_yours, 버전이 바뀌었으면 card_stale과 새 카드, 기한이 지났으면 card_expired와 새 카드. 같은 카드를 다시 누르면 card_used와 처음 결과(G2). 아무것도 남기지 못하면 retry_needed. 카드 값은 서버 기록에서만 오고 손님 말로 바꿀 수 없다(SPEC-069). 주문자 정보 카드의 '주문자 정보' 블록과 입금 알리기 카드의 '입금자 이름' 블록도 이 스킬로 오고, action.params에 customer_name·customer_phone이나 depositor_name을 담는다(설계 재검토 H11). 이 값은 AI로 보내지 않는다(REQ-178). 형식(이름 1~30자, 연락처 숫자와 '-' 8~14자)이 맞으면 초안에 남기고 주문 요청 카드를 보내거나(orderer_saved, SPEC-072) 그 이름으로 결제 확인을 요청한다(payment_claimed, SPEC-033). 형식이 틀리면 아무것도 남기지 않고 다시 묻는다(input_invalid). 입금 알리기 카드의 '결제 확인 요청'을 바로 누르면 입금자 이름은 주문자 이름이다(REQ-176).
 
-        SPEC: SPEC-069, SPEC-029, SPEC-030, SPEC-033, SPEC-041, SPEC-046, SPEC-058, SPEC-063, SPEC-015, SPEC-032, SPEC-040
+        SPEC: SPEC-069, SPEC-029, SPEC-030, SPEC-033, SPEC-041, SPEC-046, SPEC-058, SPEC-063, SPEC-015, SPEC-032, SPEC-040, SPEC-072
       tags:
       - 카카오 스킬
       security:
@@ -18480,6 +18487,73 @@ paths:
                     clientExtra:
                       cardKey: ck_0321644e605677723e8616a4f0c654
                       choice: confirm
+              orderer_info:
+                value:
+                  intent:
+                    id: 374f8fbdcc51601f2277519c
+                    name: 주문자 정보
+                  userRequest:
+                    timezone: Asia/Seoul
+                    params:
+                      surface: Kakaotalk.plusfriend
+                    block:
+                      id: 374f8fbdcc51601f2277519c
+                      name: 주문자 정보
+                    utterance: 이름·연락처 넣기
+                    lang: ko
+                    user:
+                      id: Xq7bK2mN9pR4sT1v
+                      type: botUserKey
+                      properties:
+                        botUserKey: Xq7bK2mN9pR4sT1v
+                        plusfriendUserKey: pf902b340d9a
+                        isFriend: true
+                  bot:
+                    id: 6740a1b2c3d4e5f6a7b8c9d0
+                    name: 달빛케이크
+                  action:
+                    id: f45dc3752d2df2ab84e5212e
+                    name: card_skill
+                    params:
+                      customer_name: 이지우
+                      customer_phone: 010-9876-5432
+                    detailParams: {}
+                    clientExtra:
+                      cardKey: ck_f4ad6a3a53f92893389713958411c7
+                      choice: confirm
+              depositor_name:
+                value:
+                  intent:
+                    id: efefd9911643cd40a8235258
+                    name: 입금자 이름
+                  userRequest:
+                    timezone: Asia/Seoul
+                    params:
+                      surface: Kakaotalk.plusfriend
+                    block:
+                      id: efefd9911643cd40a8235258
+                      name: 입금자 이름
+                    utterance: 입금자 이름 넣기
+                    lang: ko
+                    user:
+                      id: Xq7bK2mN9pR4sT1v
+                      type: botUserKey
+                      properties:
+                        botUserKey: Xq7bK2mN9pR4sT1v
+                        plusfriendUserKey: pf902b340d9a
+                        isFriend: true
+                  bot:
+                    id: 6740a1b2c3d4e5f6a7b8c9d0
+                    name: 달빛케이크
+                  action:
+                    id: f45dc3752d2df2ab84e5212e
+                    name: card_skill
+                    params:
+                      depositor_name: 이민호
+                    detailParams: {}
+                    clientExtra:
+                      cardKey: ck_284c4d607d391e3a6c67f2c6402f38
+                      choice: confirm
       responses:
         "200":
           description: 스킬 응답. 결과는 Siljang-Outcome 헤더와 같은 이름의 예시(DEC-07)
@@ -18490,6 +18564,7 @@ paths:
               schema:
                 type: string
                 enum:
+                - orderer_saved
                 - order_requested
                 - payment_claimed
                 - change_requested
@@ -18497,6 +18572,7 @@ paths:
                 - issue_reported
                 - consent_withdrawn
                 - declined
+                - input_invalid
                 - card_stale
                 - card_expired
                 - card_not_yours
@@ -18511,6 +18587,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/SkillTemplateResponse'
               examples:
+                orderer_saved:
+                  summary: 주문자 정보 블록의 이름·연락처가 형식에 맞아 초안에 남기고 주문 요청 카드를 보냄. 이 값은 AI로 보내지 않음(REQ-175, REQ-178)
+                  value:
+                    version: "2.0"
+                    template:
+                      outputs:
+                      - textCard:
+                          title: 주문 요청 확인
+                          description: 11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 주문자 이지우 010-9876-5432 · 36,000원
+                          buttons:
+                          - label: 규정에 동의하고 주문 요청
+                            action: block
+                            blockId: 35aa1292cf287c9e16bfcb41
+                            extra:
+                              cardKey: ck_0321644e605677723e8616a4f0c654
+                              choice: confirm
+                          - label: 사진 게시도 동의하고 요청
+                            action: block
+                            blockId: 35aa1292cf287c9e16bfcb41
+                            extra:
+                              cardKey: ck_0321644e605677723e8616a4f0c654
+                              choice: confirm_with_photo_consent
+                          - label: 안 할래요
+                            action: block
+                            blockId: 35aa1292cf287c9e16bfcb41
+                            extra:
+                              cardKey: ck_0321644e605677723e8616a4f0c654
+                              choice: decline
                 order_requested:
                   summary: 주문 요청을 한 트랜잭션으로 남김. 기본 디자인이면 자리와 결제 안내까지
                   value:
@@ -18569,6 +18673,22 @@ paths:
                       outputs:
                       - simpleText:
                           text: 알겠어요. 더 궁금한 것이 있으면 말씀해 주세요
+                input_invalid:
+                  summary: 주문자 정보·입금자 이름 블록의 값이 형식에 맞지 않음(이름 1~30자, 연락처 숫자와 '-' 8~14자). 아무것도 남기지 않고 같은 블록 버튼으로 다시 물음(SPEC-033, SPEC-072)
+                  value:
+                    version: "2.0"
+                    template:
+                      outputs:
+                      - textCard:
+                          title: 주문자 정보
+                          description: 이름은 1~30자, 연락처는 숫자와 '-'로 8~14자로 넣어 주세요. 이 정보는 AI에 보내지 않아요
+                          buttons:
+                          - label: 이름·연락처 넣기
+                            action: block
+                            blockId: 374f8fbdcc51601f2277519c
+                            extra:
+                              cardKey: ck_f4ad6a3a53f92893389713958411c7
+                              choice: confirm
                 card_stale:
                   summary: 카드에 묶인 버전(초안 고친 번호·주문 버전·환불 금액)이 지금과 달라 거절하고 새 카드를 보임(G9). 쓴 것 없음
                   value:
@@ -18747,6 +18867,7 @@ paths:
         - SPEC-015
         - SPEC-032
         - SPEC-040
+        - SPEC-072
         omit:
           "403": 가게·손님 구분은 결과 코드로 알리고 HTTP 403을 쓰지 않음(DEC-07)
           "404": 경로에 기록 ID가 없음. 연결 안 된 채널은 결과 not_accepting(DEC-07)
@@ -18759,6 +18880,7 @@ paths:
           - outcome:card_not_yours
           입력:
           - 422:validation_failed
+          - outcome:input_invalid
           대상:
           - outcome:not_allowed_now
           상태:
@@ -18775,6 +18897,7 @@ paths:
           노출:
           - closed
           - outcome:server_error
+          - note:주문자 이름·연락처·입금자 이름은 AI로 보내지 않음(REQ-178)
           AI:
           - outcome:card_not_yours
           - outcome:card_stale
@@ -18783,6 +18906,7 @@ paths:
           화면:
           - screen
         outcomes:
+        - orderer_saved
         - order_requested
         - payment_claimed
         - change_requested
@@ -18790,6 +18914,7 @@ paths:
         - issue_reported
         - consent_withdrawn
         - declined
+        - input_invalid
         - card_stale
         - card_expired
         - card_not_yours
@@ -23116,7 +23241,7 @@ components:
           type: integer
           minimum: 1
           maximum: 2147483647
-          description: 주문 내용의 지금 버전
+          description: 주문 내용의 지금 버전. 상태만 바뀌면 오르지 않음(동시 변경은 revision으로 견줌)
         pickupAt:
           type: string
           format: date-time
@@ -23284,7 +23409,7 @@ components:
           minLength: 1
           maxLength: 64
           pattern: ^[A-Za-z0-9._-]+$
-          description: 서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)
+          description: 주문의 잠금 번호(orders.lock_version)로 만든 revision. 상태·시각·금액을 쓸 때마다 바뀜. 명령의 baseRevision에 그대로 보냄(DEC-05, 설계 재검토 H12)
       additionalProperties: false
     OrderSummary:
       type: object
@@ -23361,7 +23486,7 @@ components:
           minLength: 1
           maxLength: 64
           pattern: ^[A-Za-z0-9._-]+$
-          description: 서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)
+          description: 주문의 잠금 번호(orders.lock_version)로 만든 revision. 상태·시각·금액을 쓸 때마다 바뀜. 명령의 baseRevision에 그대로 보냄(DEC-05, 설계 재검토 H12)
       additionalProperties: false
     OrderList:
       type: object
@@ -23741,13 +23866,19 @@ components:
                 type: boolean
               summary:
                 type: object
+                description: 주문 내용 현재 버전(SPEC-050, 설계 재검토 H6)
                 required:
                 - size
                 - flavor
+                - designOption
                 - design
                 - lettering
                 - colors
                 - designNotes
+                - extras
+                - allergyAnswer
+                - excludedIngredients
+                - referencePhotoCount
                 properties:
                   size:
                     type:
@@ -23756,6 +23887,12 @@ components:
                     minLength: 1
                     maxLength: 30
                   flavor:
+                    type:
+                    - string
+                    - "null"
+                    minLength: 1
+                    maxLength: 30
+                  designOption:
                     type:
                     - string
                     - "null"
@@ -23785,13 +23922,43 @@ components:
                     - "null"
                     minLength: 0
                     maxLength: 500
+                  extras:
+                    type: array
+                    items:
+                      type: string
+                      minLength: 1
+                      maxLength: 30
+                    minItems: 0
+                    maxItems: 20
+                    description: 더하는 옵션 이름(REQ-177)
+                  allergyAnswer:
+                    type:
+                    - string
+                    - "null"
+                    minLength: 1
+                    maxLength: 200
+                    description: 알레르기 답('없음'도 답). 그 주문의 행에만 보이고 할 일 요약·사장님 알림·장부에는 넣지 않음(REQ-142, REQ-177)
+                    x-corthex-column: order_details.allergy_answer
+                  excludedIngredients:
+                    type:
+                    - string
+                    - "null"
+                    minLength: 1
+                    maxLength: 200
+                    description: 빼야 할 재료. 없으면 null이고 화면은 '없음'(REQ-177)
+                    x-corthex-column: order_details.excluded_ingredients
+                  referencePhotoCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 10
+                    description: 참고 사진 수. 사진은 주문 화면(SCR-028)에서 봄
                 additionalProperties: false
               production:
                 $ref: '#/components/schemas/Production'
             additionalProperties: false
           minItems: 0
           maxItems: 100
-          description: 확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 비면 화면이 '이날 만들 주문이 없어요'
+          description: 확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 알레르기 답·빼야 할 재료·더하는 옵션까지(REQ-177). 비면 화면이 '이날 만들 주문이 없어요'
       additionalProperties: false
     PaymentRequestList:
       type: object
@@ -24222,7 +24389,7 @@ components:
           minLength: 1
           maxLength: 64
           pattern: ^[A-Za-z0-9._-]+$
-          description: 서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)
+          description: 변경 요청의 잠금 번호(change_requests.lock_version)로 만든 revision. 쓸 때마다 바뀜(DEC-05, 설계 재검토 H12)
       additionalProperties: false
     ChangeDecisionInput:
       type: object
@@ -24815,6 +24982,21 @@ components:
                   minLength: 0
                   maxLength: 100
                   description: 사진 게시 동의 답(기본 동의 안 함, DEC-18)
+                customer_name:
+                  type: string
+                  minLength: 0
+                  maxLength: 1000
+                  description: 주문자 이름(주문자 정보 블록, SPEC-072). AI를 거치지 않음. 1~30자 밖이면 결과 input_invalid로 다시 물음(REQ-175, REQ-178)
+                customer_phone:
+                  type: string
+                  minLength: 0
+                  maxLength: 1000
+                  description: 주문자 연락처(주문자 정보 블록, SPEC-072). AI를 거치지 않음. 숫자와 '-' 8~14자가 아니면 input_invalid
+                depositor_name:
+                  type: string
+                  minLength: 0
+                  maxLength: 1000
+                  description: 입금자 이름(입금자 이름 블록, SPEC-033). AI를 거치지 않음. 1~30자 밖이면 input_invalid. 이 블록을 거치지 않고 '결제 확인 요청'을 누르면 주문자 이름(REQ-176)
               additionalProperties: true
             detailParams:
               type: object
@@ -24822,7 +25004,7 @@ components:
               additionalProperties: true
             clientExtra:
               type: object
-              description: 버튼의 extra. 카드 스킬은 cardKey·choice, 후기 스킬은 orderNo
+              description: 버튼의 extra. 카드 스킬은 cardKey·choice(주문자 정보·입금자 이름 블록도 같고 값은 action.params로), 후기 스킬은 orderNo
               properties:
                 cardKey:
                   type: string
@@ -25115,7 +25297,7 @@ components:
           description: 손님에게 보낼 글. 비면 서버가 '다시 한번 말씀해 주시겠어요?'(SPEC-020)
         draft_patch:
           type: object
-          description: 주문서 초안에 넣을 필드(옵션은 이름). 서버가 형식을 확인한 뒤 저장(SPEC-020)
+          description: 주문서 초안에 넣을 필드(옵션은 이름). 서버가 형식을 확인한 뒤 저장(SPEC-020). 주문자 이름·연락처는 AI가 넣지 않고 주문자 정보 블록으로만 받음(SPEC-072, REQ-178)
           properties:
             pickup_at:
               type: string
@@ -25173,17 +25355,6 @@ components:
               minLength: 0
               maxLength: 200
               x-corthex-column: order_drafts.excluded_ingredients
-            customer_name:
-              type: string
-              minLength: 1
-              maxLength: 30
-              x-corthex-column: order_drafts.customer_name
-            customer_phone:
-              type: string
-              minLength: 1
-              maxLength: 20
-              pattern: ^\[전화번호[0-9]{1,3}\]$
-              description: AI는 플레이스홀더만 봄. 서버가 원래 값으로 바꿔 저장
           additionalProperties: false
           minProperties: 1
         quote_request:
@@ -26185,6 +26356,12 @@ components:
         - API-070
         - API-071
         - API-072
+      orderer_saved:
+        spec: SPEC-072
+        meaning: 주문자 정보 블록의 이름·연락처가 형식에 맞아 초안에 남기고 주문 요청 카드를 보냄. 이 값은 AI로 보내지 않음(REQ-175, REQ-178)
+        message: '(주문 요청 확인 카드: 요약에 주문자 이름·연락처)'
+        operations:
+        - API-071
       order_requested:
         spec: SPEC-029
         meaning: 주문 요청을 한 트랜잭션으로 남김. 기본 디자인이면 자리와 결제 안내까지
@@ -26225,6 +26402,12 @@ components:
         spec: SPEC-069
         meaning: 손님이 카드의 '안 할래요'를 누름. 아무것도 남기지 않음
         message: 알겠어요. 더 궁금한 것이 있으면 말씀해 주세요
+        operations:
+        - API-071
+      input_invalid:
+        spec: SPEC-072
+        meaning: 주문자 정보·입금자 이름 블록의 값이 형식에 맞지 않음(이름 1~30자, 연락처 숫자와 '-' 8~14자). 아무것도 남기지 않고 같은 블록 버튼으로 다시 물음(SPEC-033, SPEC-072)
+        message: 이름은 1~30자, 연락처는 숫자와 '-'로 8~14자로 넣어 주세요
         operations:
         - API-071
       card_stale:
@@ -26320,8 +26503,8 @@ components:
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-05
       title: 동시 변경은 revision 비교
-      choice: '고칠 수 있는 기록은 응답에 `revision`(서버가 만든 값)을 포함하고, 명령은 `baseRevision`을 보냄. 다르면 409 `version_conflict`이고 아무것도 바꾸지 않음. 409에는 지금 상태를 포함하지 않고 화면이 다시 읽음(GET). 처음 저장(가격표·운영규정·결제 수단·영업 캘린더·채널·장부)은 `baseRevision: null`'
-      why: G3(먼저 온 쓰기가 이기고 뒤는 '이미 바뀜'). 오류 응답을 Problem 한 형식으로 두고, 지금 상태는 늘 같은 읽기 API에서 옴. 버전이 없는 기록(상태만 있는 결제 기한 결정 등)도 같은 방법으로
+      choice: '고칠 수 있는 기록은 응답에 `revision`(서버가 만든 값)을 포함하고, 명령은 `baseRevision`을 보냄. 다르면 409 `version_conflict`이고 아무것도 바꾸지 않음. 409에는 지금 상태를 포함하지 않고 화면이 다시 읽음(GET). 처음 저장(가격표·운영규정·결제 수단·영업 캘린더·채널·장부)은 `baseRevision: null`. 주문·변경 요청의 revision은 쓸 때마다 하나 오르는 잠금 번호(05단계 `lock_version`, 4절 A6·5절 E15)로 만들고, 결제 안내는 `payment_requests.version`으로 만듦(2026-11-13 설계 재검토 H12)'
+      why: G3(먼저 온 쓰기가 이기고 뒤는 '이미 바뀜'). 주문 내용 버전(`version`)은 상태만 바꾸는 쓰기(결제 확인·취소·받음)에서 오르지 않아 같은 버전을 읽은 결제 확인과 손님 취소가 둘 다 통과했음(RC-01). 그래서 revision은 쓸 때마다 바뀌는 값으로 둠. 오류 응답을 Problem 한 형식으로 두고, 지금 상태는 늘 같은 읽기 API에서 옴. 버전이 없는 기록(상태만 있는 결제 기한 결정 등)도 같은 방법으로
       alt: 'If-Match 헤더: HTTP 표준이지만 어긋남이 412라 계약서의 409와 다르고, 목록의 행마다 값을 포함할 곳이 없음'
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-06
@@ -26512,3 +26695,15 @@ components:
       why: 보상이 아닌 환불은 계산값보다 낮게 정하지 못함(REQ-170)
       decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 H1·H2)
       client: 응답에만 더한 필드라 보내는 요청은 그대로. 화면(08단계)은 새 필드를 읽음
+    - what: '꼭 넣을 필드 더함: ProductionDay.items[].summary의 designOption·extras·allergyAnswer·excludedIngredients·referencePhotoCount'
+      why: 제작 목록에 알레르기 답·빼야 할 재료·더하는 옵션까지 보임(REQ-177, SPEC-050, 설계 재검토 H6)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 H6·H11·H12)
+      client: 응답에만 더한 필드라 보내는 요청은 그대로. 제작 목록(SCR-030)이 새 필드를 읽음. 안쪽 필드라 A13은 찾지 않아 여기 적음
+    - what: 'AI 출력에서 뺌: AiTurnOutput.draft_patch.customer_name·customer_phone'
+      why: 주문자 이름·연락처는 AI를 거치지 않는 주문자 정보 블록으로만 받음(REQ-175, REQ-178, SPEC-072, 설계 재검토 H11)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 H6·H11·H12)
+      client: AI 출력(AI-1)만 좁힘. HTTP 요청·응답은 그대로. 이 필드를 담은 AI 출력은 형식 검사에서 받지 않음(SPEC-020)
+    - what: '값의 원본이 바뀜: Order·OrderSummary·ChangeRequest의 revision'
+      why: 쓸 때마다 하나 오르는 잠금 번호(orders·change_requests.lock_version)로 만듦(DEC-05, 설계 재검토 H12)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 H6·H11·H12)
+      client: 화면은 받은 revision을 baseRevision에 그대로 보내므로 바꿀 것 없음. 상태만 바뀐 뒤에 보낸 명령도 409 version_conflict가 됨
