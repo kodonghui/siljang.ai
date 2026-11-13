@@ -513,19 +513,29 @@ TASKS_EMPTY = {"items": [], "nextCursor": None, "alertChannelFriend": True}
 # ── 채널과 장부 ─────────────────────────────────────────────────────────────
 SKILL_SETUP = {
     "messageSkillUrl": API + "/kakao/skills/message", "cardSkillUrl": API + "/kakao/skills/card",
-    "reviewSkillUrl": API + "/kakao/skills/review", "headerName": "Siljang-Skill-Key", "headerValue": SKILL_KEY,
+    "reviewSkillUrl": API + "/kakao/skills/review", "eventSkillUrl": API + "/kakao/skills/event", "eventName": "siljang_notice",
+    "headerName": "Siljang-Skill-Key", "headerValue": SKILL_KEY,
 }
+# 가게 봇에서 카드 버튼이 부르는 블록 넷의 블록 ID(설계 재검토 H8). 스킬 요청 예시의 block.id와 같은 값
+BLOCK_IDS = {"card": h("block:확인 카드", 24), "ordererInfo": h("block:주문자 정보", 24),
+             "depositorName": h("block:입금자 이름", 24), "review": h("block:후기", 24)}
+ALL_BLOCKS = ["card", "orderer_info", "depositor_name", "review"]
 CHANNEL_ID = uid("kakao-channel:1")
 CHANNEL_PENDING = {
     "connectionId": CHANNEL_ID, "botId": BOT_ID, "channelPublicId": "_xMoonCake", "status": "pending", "checkStartedAt": None,
-    "checkExpiresAt": None, "linkedAt": None, "failureHints": [], "skill": SKILL_SETUP, "revision": rev("channel:1:pending"),
+    "checkExpiresAt": None, "linkedAt": None, "failureHints": [], "blockIds": BLOCK_IDS, "verifiedBlocks": [],
+    "eventStatus": "unchecked", "eventCheckedAt": None, "eventFailReason": None, "skill": SKILL_SETUP, "revision": rev("channel:1:pending"),
 }
 CHANNEL_CHECKING = dict(CHANNEL_PENDING, checkStartedAt=t("11-12", "11:50"), checkExpiresAt=t("11-12", "12:00"),
-                        revision=rev("channel:1:checking"))
-CHANNEL_LINKED = dict(CHANNEL_CHECKING, status="linked", linkedAt=t("11-12", "11:53"), revision=rev("channel:1:linked"))
-CHANNEL_FAILED = dict(CHANNEL_CHECKING, status="failed", failureHints=["skill_url", "skill_key_header", "open_builder_deploy"],
-                      revision=rev("channel:1:failed"))
-CHANNEL_INPUT = {"botId": BOT_ID, "channelPublicId": "_xMoonCake"}
+                        verifiedBlocks=["card", "orderer_info"], revision=rev("channel:1:checking"))
+CHANNEL_LINKED = dict(CHANNEL_CHECKING, status="linked", linkedAt=t("11-12", "11:53"), verifiedBlocks=ALL_BLOCKS,
+                      eventStatus="ready", eventCheckedAt=t("11-12", "11:55"), revision=rev("channel:1:linked"))
+CHANNEL_EVENT_CHECKING = dict(CHANNEL_LINKED, eventStatus="checking", eventCheckedAt=None, revision=rev("channel:1:event-checking"))
+CHANNEL_EVENT_UNAVAILABLE = dict(CHANNEL_LINKED, eventStatus="unavailable", eventFailReason="wallet_missing",
+                                 revision=rev("channel:1:event-unavailable"))
+CHANNEL_FAILED = dict(CHANNEL_CHECKING, status="failed", verifiedBlocks=["card", "orderer_info", "depositor_name"],
+                      failureHints=["review_block", "open_builder_deploy"], revision=rev("channel:1:failed"))
+CHANNEL_INPUT = {"botId": BOT_ID, "channelPublicId": "_xMoonCake", "blockIds": BLOCK_IDS}
 LEDGER_AUTH = {"authorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=example&state=" + h("state", 24),
                "state": "st." + h("state", 40), "expiresAt": t("11-12", "12:10")}
 LEDGER = {
@@ -645,6 +655,14 @@ SKILL_ORDERER = skill_request("이름·연락처 넣기", action="card", block="
 SKILL_DEPOSITOR = skill_request("입금자 이름 넣기", action="card", block="입금자 이름", callback=False,
                                 params={"depositor_name": "이민호"},
                                 client_extra={"cardKey": "ck_" + h("card:payclaim", 30), "choice": "confirm"})
+SKILL_CHECK_CARD = skill_request("시험: 확인 카드", action="card", block="확인 카드", callback=False, client_extra={"check": "card"})
+SKILL_CHECK_REVIEW = skill_request("시험: 후기", action="review", block="후기", callback=False,
+                                   params={"review_text": "연결 시험", "photo_consent": "동의 안 함"}, client_extra={"check": "review"})
+NOTICE_ID = uid("notification:1")
+SKILL_NOTICE = skill_request("", action="notice", block="안내", callback=False)
+SKILL_NOTICE["userRequest"]["params"]["noticeKey"] = NOTICE_ID
+SKILL_EVENT_TEST = skill_request("", action="notice", block="안내", callback=False)
+SKILL_EVENT_TEST["userRequest"]["params"]["check"] = "event"
 SKILL_REVIEW = skill_request("후기 남기기", action="review", block="후기", callback=False,
                              params={"review_text": "글씨가 정말 예쁘고 맛있었어요!",
                                      "review_photos": '{"privacyAgreement":"Y","imageQuantity":"2","secureUrls":"List(https://talk.kakao.example/p/1,https://talk.kakao.example/p/2)","expire":"2026-11-21T11:30:00"}',
@@ -665,12 +683,38 @@ def card(title, description, buttons):
 
 
 def card_button(label, card_key, choice):
-    return {"label": label, "action": "block", "blockId": h("block:확인 카드", 24), "extra": {"cardKey": card_key, "choice": choice}}
+    return {"label": label, "action": "block", "blockId": BLOCK_IDS["card"], "extra": {"cardKey": card_key, "choice": choice}}
+
+
+def check_button(label, block, key):
+    """연결 확인의 시험 버튼: 그 가게가 넣은 블록 ID를 부르고 extra.check에 블록 이름(SPEC-008, 설계 재검토 H8)"""
+    return {"label": label, "action": "block", "blockId": BLOCK_IDS[key], "extra": {"check": block}}
+
+
+# 주문 요청 확인 카드(설계 재검토 H9, DEC-22): 그 버전의 취소·환불 규정 글을 먼저, 요약 카드를 끝에 둠.
+# 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 글 둘(1/2, 2/2)로 보내고 청약철회 문장은 둘째 끝에. 자르지 않음
+CARD_CLAUSE_KEYS = ("pre_production_cancel", "staged_refund", "cancellation_fee", "date_change_refund_basis",
+                    "shop_cancel_compensation", "custom")  # 04단계 SPEC-028의 취소·환불 조문
+RULES_TEXT = ("취소·환불 규정(운영규정 버전 %d)\n" % RULES["version"]
+              + "".join("· %s: %s → %s\n" % (c["title"], c["conditionText"], c["effectText"])
+                        for c in CLAUSES if c["key"] in CARD_CLAUSE_KEYS)
+              + "주문제작이라 청약철회가 제한될 수 있어요")
+
+
+def order_card(summary, card_key, notice=None):
+    description = (notice + " · " if notice else "") + summary + " · 사진 게시 동의: 동의 안 함"
+    return {"version": "2.0", "template": {"outputs": [
+        {"simpleText": {"text": RULES_TEXT}},
+        {"textCard": {"title": "주문 요청 확인", "description": description, "buttons": [
+            card_button("규정에 동의하고 주문 요청", card_key, "confirm"),
+            card_button("사진 게시도 동의하고 요청", card_key, "confirm_with_photo_consent"),
+            card_button("안 할래요", card_key, "decline")]}}]}}
 
 
 ADD_FRIEND = "채널을 추가하시면 답을 바로 받아 보실 수 있어요."
 HANDED_OVER = "사장님 확인 뒤 답드릴게요."
 CK = "ck_" + h("card:order", 30)
+ORDER_SUMMARY = "11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 주문자 이지우 010-9876-5432 · 36,000원"
 SKILL_OUTCOME_EXAMPLES = {
     # 손님 메시지
     "answered": text("1호 생크림 케이크는 35,000원이에요. 이 금액은 11월 15일 12:39까지 유효하고, 견적만으로 그날 자리를 잡아 두지는 않아요."),
@@ -683,23 +727,26 @@ SKILL_OUTCOME_EXAMPLES = {
     "ai_cost_limit_reached": text(HANDED_OVER),
     "masking_failed": text(HANDED_OVER),
     "ai_output_rejected": text("1호 생크림 케이크는 35,000원이에요. 결제가 확인되면 주문이 확정돼요."),
-    "card_shown": card("주문 요청 확인", "11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 주문자 이지우 010-9876-5432 · 36,000원",
-                       [card_button("규정에 동의하고 주문 요청", CK, "confirm"),
-                        card_button("사진 게시도 동의하고 요청", CK, "confirm_with_photo_consent"),
-                        card_button("안 할래요", CK, "decline")]),
+    "card_shown": order_card(ORDER_SUMMARY, CK),
     "photo_received": text("사진을 받았어요"),
     "photo_rejected": text("사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요"),
     "unsupported_message": text("글이나 사진으로 말씀해 주세요"),
     "rate_limited": text("잠시 뒤 다시 말씀해 주세요"),
     "duplicate": text("1호 생크림 케이크는 35,000원이에요. 이 금액은 11월 15일 12:39까지 유효하고, 견적만으로 그날 자리를 잡아 두지는 않아요."),
     "not_accepting": text("아직 상담을 받지 않아요. 가게로 연락해 주세요: 010-1234-5678"),
-    "channel_linked": text("연결됐어요. 이제 이 채널로 온 손님 메시지를 받아요"),
+    "channel_test_card": card("연결 확인", "테스트 메시지를 받았어요. 시험 버튼 4개를 하나씩 눌러 주세요(1/4 확인 카드)",
+                              [check_button("시험: 확인 카드", "card", "card")]),
     "server_error": text("잠시 뒤 다시 말씀해 주세요"),
+    # 연결 확인의 시험 버튼(카드·후기 스킬)
+    "block_verified": card("연결 확인", "확인 카드 블록이 닿았어요(1/4). 다음 시험 버튼을 눌러 주세요",
+                           [check_button("시험: 주문자 정보", "orderer_info", "ordererInfo")]),
+    "channel_linked": text("버튼 블록 4개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요"),
+    # 먼저 보내는 안내(안내 스킬)
+    "notice_shown": text("주문이 확정됐어요. 11월 20일 14:00에 뵐게요."),
+    "notice_test": text("시험 안내예요. 이 안내가 보이면 손님에게 안내를 먼저 보낼 수 있어요"),
+    "notice_gone": text("지금은 전할 안내가 없어요"),
     # 확인 카드 버튼
-    "orderer_saved": card("주문 요청 확인", "11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 주문자 이지우 010-9876-5432 · 36,000원",
-                          [card_button("규정에 동의하고 주문 요청", CK, "confirm"),
-                           card_button("사진 게시도 동의하고 요청", CK, "confirm_with_photo_consent"),
-                           card_button("안 할래요", CK, "decline")]),
+    "orderer_saved": order_card(ORDER_SUMMARY, CK),
     "order_requested": text("주문을 요청했어요(주문번호 K7Q3M9). 결제가 확인되면 확정돼요.",
                             "입금하실 곳: 달빛은행 123456-01-234567 김달빛 · 36,000원 · 11월 13일 01:05까지"),
     "payment_claimed": text("사장님께 알렸어요. 확인되면 알려 드릴게요"),
@@ -709,14 +756,11 @@ SKILL_OUTCOME_EXAMPLES = {
     "consent_withdrawn": text("사진 게시 동의를 철회했어요. 곧 사진이 내려가요"),
     "declined": text("알겠어요. 더 궁금한 것이 있으면 말씀해 주세요"),
     "input_invalid": card("주문자 정보", "이름은 1~30자, 연락처는 숫자와 '-'로 8~14자로 넣어 주세요. 이 정보는 AI에 보내지 않아요",
-                          [{"label": "이름·연락처 넣기", "action": "block", "blockId": h("block:주문자 정보", 24),
+                          [{"label": "이름·연락처 넣기", "action": "block", "blockId": BLOCK_IDS["ordererInfo"],
                             "extra": {"cardKey": "ck_" + h("card:orderer", 30), "choice": "confirm"}}]),
-    "card_stale": card("주문 요청 확인", "내용이 바뀌었어요. 새 카드를 확인해 주세요 · 11월 20일 14:00 픽업 · 38,000원",
-                       [card_button("규정에 동의하고 주문 요청", "ck_" + h("card:order:2", 30), "confirm"),
-                        card_button("안 할래요", "ck_" + h("card:order:2", 30), "decline")]),
-    "card_expired": card("주문 요청 확인", "시간이 지나 새 카드를 보내 드려요 · 11월 20일 14:00 픽업 · 36,000원",
-                         [card_button("규정에 동의하고 주문 요청", "ck_" + h("card:order:3", 30), "confirm"),
-                          card_button("안 할래요", "ck_" + h("card:order:3", 30), "decline")]),
+    "card_stale": order_card(ORDER_SUMMARY.replace("36,000원", "38,000원"), "ck_" + h("card:order:2", 30),
+                             notice="내용이 바뀌었어요. 새 카드를 확인해 주세요"),
+    "card_expired": order_card(ORDER_SUMMARY, "ck_" + h("card:order:3", 30), notice="시간이 지나 새 카드를 보내 드려요"),
     "card_not_yours": text("이 버튼은 카드를 받은 분만 누를 수 있어요"),
     "card_used": text("주문을 요청했어요(주문번호 K7Q3M9). 결제가 확인되면 확정돼요."),
     "day_full": text("그 사이 그날이 다 찼어요. 이날은 어떠세요?",
@@ -730,4 +774,7 @@ SKILL_OUTCOME_EXAMPLES = {
     "review_invalid": text("후기는 1,000자, 사진은 5장까지 남길 수 있어요"),
     "photo_download_failed": text("사진을 받지 못했어요. 다시 보내 주세요"),
 }
+# 후기 스킬의 block_verified: 후기 블록이 닿았지만 아직 닿지 않은 블록이 있음(API-072)
+REVIEW_BLOCK_VERIFIED = card("연결 확인", "후기 블록이 닿았어요. 아직 닿지 않은 블록이 있어요. 이 시험 버튼을 눌러 주세요",
+                             [check_button("시험: 입금자 이름", "depositor_name", "depositorName")])
 CALLBACK_RESULT = {"taskId": h("task", 16), "status": "SUCCESS", "message": "OK", "timestamp": 1763619300000}

@@ -65,9 +65,9 @@ $fn$;
 -- ───────────── 1부: 정상 플로우 ─────────────
 
 -- 가게 등록·연결 (CTX-007)
-INSERT INTO owners (id, kakao_account_id, alert_user_key, alert_channel_friend) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 1001, 'owner-key-1', true),
-  ('a0000000-0000-0000-0000-000000000002', 1002, 'owner-key-2', false);
+INSERT INTO owners (id, kakao_account_id, alert_channel_friend, alert_friend_checked_at) VALUES
+  ('a0000000-0000-0000-0000-000000000001', 1001, true, now()),
+  ('a0000000-0000-0000-0000-000000000002', 1002, false, now());
 INSERT INTO operators (id, email, display_name, mfa_enrolled_at) VALUES
   ('a1000000-0000-0000-0000-000000000001', 'ops@example.com', '운영자', now());
 INSERT INTO shops (id, owner_id, name, contact_phone, business_name, representative_name, business_reg_no,
@@ -82,9 +82,13 @@ INSERT INTO shops (id, owner_id, name, contact_phone, business_name, representat
                    entrustment_terms_version, entrustment_consented_at) VALUES
   ('a2000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000002', '다른가게', '02-123-4567',
    '다른가게', '박사장', '1234567890', '간이과세자 면제', '2026-0456', 'bakery', 'license/b.jpg', 'entrust-v1', now());
-INSERT INTO kakao_channels (id, shop_id, bot_id, channel_public_id, status, check_started_at, linked_at) VALUES
-  ('a3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'bot-a', '_abcde', 'linked', now(), now()),
-  ('a3000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000002', 'bot-b', '_fghij', 'pending', now(), NULL);
+-- 연결됨: 버튼 블록 ID 넷이 시험 버튼으로 모두 닿고, 시험 안내가 닿아 먼저 보내기 됨(REQ-179, REQ-180)
+INSERT INTO kakao_channels (id, shop_id, bot_id, channel_public_id, status, check_started_at, linked_at, card_block_id, orderer_block_id,
+                            depositor_block_id, review_block_id, verified_blocks, test_user_key, event_status, event_task_id, event_checked_at) VALUES
+  ('a3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'bot-a', '_abcde', 'linked', now(), now(), 'blk-card-a',
+   'blk-orderer-a', 'blk-depositor-a', 'blk-review-a', ARRAY['card', 'orderer_info', 'depositor_name', 'review'], 'owner-a', 'ready', 'task-a', now()),
+  ('a3000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000002', 'bot-b', '_fghij', 'pending', now(), NULL, 'blk-card-b',
+   NULL, NULL, NULL, ARRAY['card'], 'owner-b', 'unchecked', NULL, NULL);
 INSERT INTO privacy_policies (id, shop_id, version, body, overseas_transfers) VALUES
   ('a4000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 1, '처리방침 글',
    '[{"items":"대화","country":"미국","recipient":"모델 회사","purpose":"답 만들기","refuse":"상담 대신 전화"}]');
@@ -204,9 +208,9 @@ UPDATE payment_requests SET status = 'claimed', claimed_at = now(), claim_card_i
 INSERT INTO owner_tasks (id, shop_id, kind, event_key, order_id, payment_request_id) VALUES
   ('f7000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'payment_claim', 'task:claim:e0..01',
    'd0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000001');
-INSERT INTO owner_alerts (id, shop_id, owner_task_id, kind, event_key, status, attempts, sent_at) VALUES
+INSERT INTO owner_alerts (id, shop_id, owner_task_id, kind, event_key, status, attempts, sent_at, kakao_task_id, requested_at) VALUES
   ('f8000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'f7000000-0000-0000-0000-000000000001', 'new_task',
-   'alert:task:f7..01', 'sent', 1, now());
+   'alert:task:f7..01', 'sent', 1, now(), 'task-alert-1', now());
 UPDATE payment_requests SET status = 'paid', paid_at = now(), arrived_amount = 40000, arrived_at = now(), version = version + 1
  WHERE id = 'e0000000-0000-0000-0000-000000000001';
 INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES
@@ -217,10 +221,12 @@ UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirm
 UPDATE slot_holds SET status = 'fixed', fixed_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000001';
 INSERT INTO productions (id, shop_id, order_id) VALUES
   ('f0000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001');
-INSERT INTO notifications (id, shop_id, customer_id, consultation_id, order_id, kind, event_key, template_key, body, status, attempts, sent_at) VALUES
+-- 친구인 손님에게 Event API로 보내고 발송 결과로 닿은 것을 확인한 뒤 보냄(REQ-182)
+INSERT INTO notifications (id, shop_id, customer_id, consultation_id, order_id, kind, event_key, template_key, body, status, attempts, sent_at,
+                           kakao_task_id, requested_at, delivery_checked_at) VALUES
   ('f9000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
    'c1000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'order_confirmed', 'notice:d0..01:confirmed',
-   'order_confirmed_v1', '주문이 확정됐어요. 12월 24일 15:00에 뵐게요.', 'sent', 1, now());
+   'order_confirmed_v1', '주문이 확정됐어요. 12월 24일 15:00에 뵐게요.', 'sent', 1, now(), 'task-notice-1', now(), now());
 INSERT INTO ledger_links (id, shop_id, spreadsheet_id, sheet_name, our_columns, credential_ref) VALUES
   ('fa000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'sheet-file-1', '주문', '{"주문번호":"A"}', 'secret-store/ledger/shop-a');
 INSERT INTO ledger_rows (id, shop_id, order_id, first_written_at, last_written_at) VALUES
@@ -490,11 +496,11 @@ INSERT INTO ledger_writes (id, shop_id, ledger_row_id, event_key, event_kind) VA
 INSERT INTO owner_tasks (id, shop_id, kind, event_key, order_id, refund_id) VALUES
   ('f7000000-0000-0000-0000-000000000007', 'a2000000-0000-0000-0000-000000000001', 'refund_send', 'task:refund_send:e2..02',
    'd0000000-0000-0000-0000-000000000005', 'e2000000-0000-0000-0000-000000000002');
-INSERT INTO owner_alerts (id, shop_id, owner_task_id, kind, event_key, status, attempts, sent_at) VALUES
+INSERT INTO owner_alerts (id, shop_id, owner_task_id, kind, event_key, status, attempts, sent_at, kakao_task_id, requested_at) VALUES
   ('f8000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'f7000000-0000-0000-0000-000000000007', 'new_task',
-   'alert:task:f7..07', 'sent', 1, now()),
+   'alert:task:f7..07', 'sent', 1, now(), 'task-alert-5', now()),
   ('f8000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'f7000000-0000-0000-0000-000000000007', 'task_realert',
-   'alert:realert:f7..07', 'sent', 1, now());
+   'alert:realert:f7..07', 'sent', 1, now(), 'task-alert-6', now());
 UPDATE owner_tasks SET realerted_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000007';
 -- 손님이 상담에서 알려 준 계좌로 보냄(SPEC-049) → 보냄 표시: 손님 안내·장부 쓰기·할 일 닫힘(REQ-172)
 UPDATE refunds SET method = 'bank_transfer', refund_bank_name = '우리은행', refund_account_number = '1002-987-654321', refund_holder_name = '최손님',
@@ -543,6 +549,17 @@ SELECT pg_temp.expect_fail('REQ-103 영업 신고 확인 전 예약 링크', 'sh
   UPDATE shops SET booking_slug = 'other-shop', booking_issued_at = now() WHERE id = 'a2000000-0000-0000-0000-000000000002'$$]);
 SELECT pg_temp.expect_fail('SPEC-008 채널 하나를 두 가게에', 'kakao_channels_bot_active_uq', ARRAY[$$
   INSERT INTO kakao_channels (shop_id, bot_id, status) VALUES ('a2000000-0000-0000-0000-000000000002', 'bot-a', 'pending')$$]);
+SELECT pg_temp.expect_fail('REQ-179 블록 ID 없이 연결됨', 'kakao_channels_blocks_chk', ARRAY[$$
+  UPDATE kakao_channels SET status = 'linked', linked_at = now() WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-179 시험 버튼이 닿지 않은 블록으로 연결됨', 'kakao_channels_blocks_chk', ARRAY[$$
+  UPDATE kakao_channels SET status = 'linked', linked_at = now(), orderer_block_id = 'blk-o', depositor_block_id = 'blk-d', review_block_id = 'blk-r'
+  WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('SPEC-008 모르는 블록 이름', 'kakao_channels_verified_blocks_check', ARRAY[$$
+  UPDATE kakao_channels SET verified_blocks = ARRAY['card', 'menu'] WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-180 사유 없는 먼저 보내기 안 됨', 'kakao_channels_event_chk', ARRAY[$$
+  UPDATE kakao_channels SET event_status = 'unavailable' WHERE id = 'a3000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-180 연결 전 시험 안내', 'kakao_channels_event_chk', ARRAY[$$
+  UPDATE kakao_channels SET event_status = 'checking', event_task_id = 'task-b' WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
 SELECT pg_temp.expect_fail('REQ-141 국외 이전 항목 빈 처리방침', 'privacy_policies_transfers_chk', ARRAY[$$
   INSERT INTO privacy_policies (shop_id, version, body, overseas_transfers) VALUES ('a2000000-0000-0000-0000-000000000001', 2, '글', '[]')$$]);
 SELECT pg_temp.expect_fail('R2 대소문자만 다른 운영자 이메일', 'operators_email_uq', ARRAY[$$
@@ -813,6 +830,12 @@ SELECT pg_temp.expect_fail('REQ-154 같은 이벤트의 안내 둘', 'notificati
   INSERT INTO notifications (shop_id, customer_id, consultation_id, kind, event_key, template_key, body)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
           'order_confirmed', 'notice:d0..01:confirmed', 't', '다시')$$]);
+SELECT pg_temp.expect_fail('REQ-182 taskId 없이 발송 결과 확인 중인 안내', 'notifications_kakao_task_chk', ARRAY[$$
+  UPDATE notifications SET status = 'confirming' WHERE id = 'f9000000-0000-0000-0000-000000000006'$$]);
+SELECT pg_temp.expect_fail('REQ-182 taskId 없이 보낸 사장님 알림', 'owner_alerts_kakao_task_chk', ARRAY[$$
+  UPDATE owner_alerts SET kakao_task_id = NULL WHERE id = 'f8000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('SPEC-066 모르는 전하지 못한 사유', 'notifications_fail_code_check', ARRAY[$$
+  UPDATE notifications SET fail_code = 'lost' WHERE id = 'f9000000-0000-0000-0000-000000000006'$$]);
 SELECT pg_temp.expect_fail('G4 다섯 번째 보내기', 'notifications_attempts_check', ARRAY[$$
   UPDATE notifications SET attempts = 5 WHERE id = 'f9000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-067 대상 없는 신고 할 일', 'owner_tasks_subject_chk', ARRAY[$$

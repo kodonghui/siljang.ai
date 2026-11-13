@@ -44,8 +44,8 @@
       status: active
       flows: [FL-003, FL-004, FL-005, FL-006, FL-007, FL-008, FL-009, FL-010, FL-011, FL-012]
       terms: [CTX-001, TERM-046, TERM-045, TERM-041, TERM-013, TERM-019, TERM-003]
-      specs: [SPEC-013, SPEC-014, SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-049, SPEC-056, SPEC-057]
-      apis: [API-070]
+      specs: [SPEC-013, SPEC-014, SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-049, SPEC-056, SPEC-057, SPEC-008]
+      apis: [API-070, API-073]
       note: "가게 카카오톡 채널에서 손님이 AI 상담과 말하는 곳. 견적·다른 날 권하기·에스컬레이션 건의 답이 여기로 옴"
       children:
         - id: SCR-004
@@ -66,7 +66,7 @@
           flows: [FL-004, FL-007, FL-008]
           terms: [CTX-004, TERM-049, TERM-030, TERM-014]
           specs: [SPEC-032, SPEC-066]
-          apis: []
+          apis: [API-073]
           note: "금액·가게 명의 계좌(있으면 카드 결제 링크)·결제 기한. 첫 결제·다시 낸 결제·차액 결제"
         - id: SCR-006
           name: 결제 확인 요청 카드
@@ -127,9 +127,9 @@
           flows: [FL-004, FL-005, FL-006, FL-007, FL-008, FL-009, FL-010, FL-011, FL-012]
           terms: [CTX-008, TERM-054, TERM-036]
           specs: [SPEC-066, SPEC-023, SPEC-024, SPEC-036, SPEC-039, SPEC-044, SPEC-045, SPEC-047, SPEC-052, SPEC-053, SPEC-059, SPEC-061]
-          apis: []
+          apis: [API-073]
           opens: [SCR-012]
-          note: "서비스가 먼저 보내는 안내: 주문 확정 안내, 전날 안내, 완성 사진, 지연 안내, 에스컬레이션 건의 답, 환불·보상 결과, 후기 부탁. 친구가 아니면 다음 대화 때 먼저 전함"
+          note: "서비스가 먼저 보내는 안내: 주문 확정 안내, 전날 안내, 완성 사진, 지연 안내, 에스컬레이션 건의 답, 환불·보상 결과, 후기 부탁. 가게 봇의 Event API와 안내 스킬로 보냄. 친구가 아니거나 그 가게의 먼저 보내기가 안 되면 다음 대화 때 먼저 전함"
         - id: SCR-012
           name: 후기 남기기
           path: kakao:shop/block/review
@@ -470,7 +470,7 @@
           terms: [CTX-007, TERM-053]
           specs: [SPEC-008]
           apis: [API-030, API-031, API-032]
-          note: "연결할 채널(오픈빌더 봇)을 정하고 스킬 설정 값을 옮긴 뒤 연결 확인(10분). 봇 ID를 찾는 방법 안내도 여기(OPEN-8)"
+          note: "연결할 채널(오픈빌더 봇)과 버튼 블록 ID 넷을 정하고 스킬 설정 값을 옮긴 뒤 연결 확인(10분, 시험 버튼 넷)과 먼저 보내기 시험 안내. 봇 ID를 찾는 방법 안내도 여기(OPEN-8)"
         - id: SCR-042
           name: 장부 연결
           path: /owner/ledger

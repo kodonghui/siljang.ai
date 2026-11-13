@@ -57,10 +57,11 @@
 | `day-full` | 화면 고유(W3) | 그 사이 그날이 다 참 | 1 |
 | `handed-over` | 화면 고유(W3) | AI가 답하지 않고 사장님께 에스컬레이션함 | 2 |
 | `fixed-answer` | 화면 고유(W3) | AI 답이 서버 확인을 지나지 못해 정해진 문장으로 답함 | 1 |
-| `link-test` | 화면 고유(W3) | 채널 연결 확인용 테스트 메시지에 답함 | 1 |
-| `deferred` | 화면 고유(W3) | 손님이 채널 친구가 아니어서 다음 대화 때 먼저 전함 | 2 |
+| `link-test` | 화면 고유(W3) | 채널 연결 확인의 테스트 메시지·시험 버튼·시험 안내에 답함(SPEC-008) | 1 |
+| `deferred` | 화면 고유(W3) | 손님이 채널 친구가 아니거나, 그 가게의 먼저 보내기가 안 되거나, 카카오가 전하지 못해 다음 대화 때 먼저 전함(REQ-181) | 2 |
 | `not-sent` | 화면 고유(W3) | 사장님이 우리 서비스 채널 친구가 아니어서 알림이 가지 않음 | 2 |
-| `checking` | 화면 고유(W3) | 채널 연결 확인 중(최대 10분) | 1 |
+| `checking` | 화면 고유(W3) | 채널 연결 확인 중(최대 10분, 시험 버튼 넷)이거나 먼저 보내기 시험 안내의 결과를 기다림 | 1 |
+| `event-off` | 화면 고유(W3) | 채널은 연결됐지만 먼저 보내기(시험 안내)가 안 됨. 그 가게의 손님 안내는 모두 다음 대화 때 전함(REQ-180, REQ-181) | 1 |
 | `reconnect` | 화면 고유(W3) | 구글 권한이 끊겨 장부를 다시 연결해야 함 | 1 |
 | `on-hold` | 화면 고유(W3) | 영업 신고가 보류됨 | 2 |
 | `mismatch` | 화면 고유(W3) | 들어온 금액이 안내와 달라 맞추는 중 | 1 |
@@ -86,17 +87,17 @@
 | `ai_cost_limit_reached` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
 | `masking_failed` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
 | `ai_output_rejected` | (가게 규칙의 계산값으로 만든 정해진 문장) | 06단계 뼈대 그대로 |
-| `card_shown` | (확인 카드: 요약과 버튼. 주문서 초안이 다 찼는데 주문자 이름·연락처가 없으면 주문자 정보 카드) | 06단계 뼈대 그대로 |
+| `card_shown` | (확인 카드: 요약과 버튼. 주문 요청 카드는 그 버전의 취소·환불 규정 글을 먼저, 요약 카드를 끝에(DEC-22). 주문서 초안이 다 찼는데 주문자 이름·연락처가 없으면 주문자 정보 카드) | 06단계 뼈대 그대로 |
 | `photo_received` | 사진을 받았어요 | 06단계 뼈대 그대로 |
 | `photo_rejected` | 사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요 | 06단계 뼈대 그대로 |
 | `unsupported_message` | 글이나 사진으로 말씀해 주세요 | 06단계 뼈대 그대로 |
 | `rate_limited` | 잠시 뒤 다시 말씀해 주세요 | 06단계 뼈대 그대로 |
 | `duplicate` | (처음 결과와 같은 말) | 06단계 뼈대 그대로 |
 | `not_accepting` | 아직 상담을 받지 않아요. 가게로 연락해 주세요: {가게 연락처} | 06단계 뼈대 그대로 |
-| `channel_linked` | 연결됐어요. 이제 이 채널로 온 손님 메시지를 받아요 | 06단계 뼈대 그대로 |
+| `channel_test_card` | 테스트 메시지를 받았어요. 시험 버튼 4개를 하나씩 눌러 주세요 + 첫 시험 버튼 '시험: 확인 카드' | 06단계 뼈대 그대로 |
 | `server_error` | 잠시 뒤 다시 말씀해 주세요 | 06단계 뼈대 그대로 |
 | `order_requested` | 기본 디자인: 주문을 요청했어요(주문번호 {orderNo}). 결제가 확인되면 확정돼요 + 결제 안내 / 맞춤 주문: 주문을 요청했어요(주문번호 {orderNo}). 사장님이 보고 알려 드릴게요 + (채널 친구가 아니면) 채널을 추가하시면 답을 바로 받아 보실 수 있어요 | 08단계에서 바꿈: 맞춤 주문의 문구와 채널 추가 권유를 나눔(SPEC-029) |
-| `orderer_saved` | (주문 요청 확인 카드: 요약에 주문자 이름·연락처) | 06단계 뼈대 그대로 |
+| `orderer_saved` | (주문 요청 확인 카드: 규정 글을 먼저, 요약 카드에 주문자 이름·연락처) | 06단계 뼈대 그대로 |
 | `payment_claimed` | 사장님께 알렸어요. 확인되면 알려 드릴게요 | 06단계 뼈대 그대로 |
 | `change_requested` | 변경을 요청했어요. 사장님이 보고 알려 드려요 | 06단계 뼈대 그대로 |
 | `order_cancelled` | 결제한 주문: 주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요 / 결제 전 주문: 주문을 취소했어요 | 08단계에서 바꿈: 결제 전 주문은 환불 문장을 뺌(SPEC-046) |
@@ -111,10 +112,15 @@
 | `day_full` | 그 사이 그날이 다 찼어요. 이날은 어떠세요? + 가까운 날 최대 3개 바로가기 / 가까운 날이 없으면: 가까운 날에 자리가 없어요. 사장님께 확인을 요청할 수 있어요 | 08단계에서 바꿈: 가까운 날이 없을 때의 문구를 더함(SPEC-014 빈 경우) |
 | `retry_needed` | 다시 눌러 주세요 | 06단계 뼈대 그대로 |
 | `not_allowed_now` | 지금은 할 수 없어요: {지금 상태} | 06단계 뼈대 그대로 |
+| `block_verified` | {블록} 블록이 닿았어요({n}/4). 다음 시험 버튼을 눌러 주세요 + 다음 시험 버튼 | 06단계 뼈대 그대로 |
+| `channel_linked` | 버튼 블록 4개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요 | 06단계 뼈대 그대로 |
 | `review_saved` | 후기를 남겨 주셔서 고마워요 | 06단계 뼈대 그대로 |
 | `review_not_allowed` | 받으신 주문에만 후기를 남길 수 있어요 | 06단계 뼈대 그대로 |
 | `review_invalid` | 후기는 1,000자, 사진은 5장까지 남길 수 있어요 | 06단계 뼈대 그대로 |
 | `photo_download_failed` | 사진을 받지 못했어요. 다시 보내 주세요 | 06단계 뼈대 그대로 |
+| `notice_shown` | (그 안내의 글과 버튼. 서버의 정해진 템플릿: 결제 안내는 SCR-005, 확정 안내·전날 안내·완성 사진·지연 안내·답·결과·후기 부탁은 SCR-011) | 06단계 뼈대 그대로 |
+| `notice_test` | 시험 안내예요. 이 안내가 보이면 손님에게 안내를 먼저 보낼 수 있어요 | 06단계 뼈대 그대로 |
+| `notice_gone` | 지금은 전할 안내가 없어요 | 06단계 뼈대 그대로 |
 <!-- 08-screens:outcomes:end -->
 
 저장하기 전에 사장님 확인을 받는 창의 말입니다(06단계 DEC-06, 409 confirmation_required). 06단계 6절과 글자까지 같습니다(검사 C10).
@@ -137,17 +143,17 @@
 | --- | --- | --- | --- | --- | --- |
 | [SCR-001](SCR-001.md) | 예약 링크 페이지 | 손님 | normal · loading · empty · error · rate-limited · stale | permission | 5 |
 | [SCR-002](SCR-002.md) | 가게 개인정보 처리방침 | 손님 | normal · loading · error · rate-limited | empty · permission · stale | 4 |
-| [SCR-003](SCR-003.md) | 가게 채널 상담 | 손님 | normal · loading · empty · error · permission · stale · handed-over · fixed-answer · rate-limited · link-test | - | 22 |
-| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · orderer · done · stale · expired · day-full · permission · error | loading · empty | 21 |
-| [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · deferred · stale · error | loading · empty · permission | 0 |
-| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · depositor · done · stale · expired · permission · error | loading · empty | 21 |
+| [SCR-003](SCR-003.md) | 가게 채널 상담 | 손님 | normal · loading · empty · error · permission · stale · handed-over · fixed-answer · rate-limited · link-test | - | 28 |
+| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · orderer · done · stale · expired · day-full · permission · error | loading · empty | 23 |
+| [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · deferred · stale · error | loading · empty · permission | 6 |
+| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · depositor · done · stale · expired · permission · error | loading · empty | 23 |
 | [SCR-007](SCR-007.md) | 내 주문 보기 | 손님 | normal · loading · empty · error · permission · stale · handed-over · rate-limited | - | 22 |
-| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 21 |
-| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 21 |
-| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 21 |
-| [SCR-011](SCR-011.md) | 손님 알림 | 손님 | normal · deferred · stale · error | loading · empty · permission | 0 |
-| [SCR-012](SCR-012.md) | 후기 남기기 | 손님 | normal · done · permission · error | loading · empty · stale | 10 |
-| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 21 |
+| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 23 |
+| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 23 |
+| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 23 |
+| [SCR-011](SCR-011.md) | 손님 알림 | 손님 | normal · deferred · stale · error | loading · empty · permission | 6 |
+| [SCR-012](SCR-012.md) | 후기 남기기 | 손님 | normal · done · permission · error | loading · empty · stale | 12 |
+| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 23 |
 | [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 8 |
 | [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 16 |
 | [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
@@ -175,7 +181,7 @@
 | [SCR-038](SCR-038.md) | 운영규정 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 15 |
 | [SCR-039](SCR-039.md) | 운영규정 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
 | [SCR-040](SCR-040.md) | 결제 수단 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 15 |
-| [SCR-041](SCR-041.md) | 카카오톡 채널 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · checking · done | - | 26 |
+| [SCR-041](SCR-041.md) | 카카오톡 채널 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · checking · event-off · done | - | 31 |
 | [SCR-042](SCR-042.md) | 장부 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · reconnect · done | - | 34 |
 | [SCR-043](SCR-043.md) | 예약 링크 | 사장님 | normal · loading · empty · error · permission · stale | - | 5 |
 | [SCR-044](SCR-044.md) | 포트폴리오 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 22 |
@@ -196,8 +202,8 @@
 | W3 | 화면 고유 상태 | 기본 6개 밖에 submitting·confirm·rate-limited·done·expired·day-full·handed-over·fixed-answer·link-test·deferred·not-sent·checking·reconnect·on-hold·mismatch·awaiting-payment를 씀. 뜻은 README 4절 | 버튼 막힘(반복), 확인 창(DEC-06), 카드 30분, 채널 친구가 아닌 손님처럼 화면 모습이 달라지는 경우를 와이어프레임으로 따로 보이려고 | 기본 6개에 모두 넣음: 상태 수는 줄지만 확인 창·카드 기한 같은 모습이 와이어프레임에 없음 |
 | W4 | 사장님·운영자 화면 레이아웃 | 사장님 화면은 1280에서 왼쪽 메뉴(할 일·주문·입금 대조·제작·픽업·영업 캘린더·가게 설정), 360에서 위쪽 막대와 메뉴 버튼. 목록은 1280에서 표, 360에서 카드. 운영자 화면은 메뉴 둘(영업 신고 확인·운영자 알림) | 07단계 화면 트리의 1뎁스 화면 7개를 그대로 메뉴로 씀. 360에서 표는 가로 넘침이 생김 | 360에서 아래쪽 탭 막대: 탭 5개 밖은 '더보기'에 숨어 입금 대조·영업 캘린더가 한 번 더 눌러야 보임 |
 | W5 | 손님 문구(카카오 스킬 결과) | 06단계 7절의 뼈대를 그대로 쓰고 5곳(handed_over·order_requested·order_cancelled·consent_withdrawn·day_full)만 다듬음. 전체는 README 5절 | 06단계가 '08단계에서 다듬음'으로 전달함. 결과마다 손님이 할 수 있는 다음 행동이 보이게 | AI가 상황마다 문구를 만듦: 자연스럽지만 금액·상태를 잘못 말할 위험(SPEC-020, SPEC-066) |
-| W6 | 주문 요청 카드의 구성 | 말풍선 3개: ① 주문 내용 요약(문구 철자 그대로) ② 그 버전의 취소·환불 규정과 '주문제작이라 청약철회가 제한될 수 있어요' ③ 버튼 카드('규정에 동의하고 주문 요청'·'사진 게시도 동의하고 요청'·'안 할래요', 30분 기한 표시). 사진 게시 동의는 두 번째 버튼으로만 함(기본 동의 안 함) | 카카오 카드에는 체크박스가 없고 버튼은 3개까지. 06단계 계약의 choice 값(confirm·confirm_with_photo_consent·decline)과 같음. 규정을 요약과 따로 보이라는 SPEC-028 | 카드 하나에 모두: 설명 글자 수 한도를 넘을 수 있고 규정이 요약과 섞임 |
-| W7 | OPEN-8 봇 ID 찾기 안내(SCR-041) | 봇 ID 필드 아래 '봇 ID 찾는 법'을 펼쳐 보이고, 오픈빌더에서 봇을 열었을 때 주소의 /bot/ 다음 값이라고 안내함. 봇 ID가 틀리면 10분 안에 테스트 메시지가 오지 않아 '연결 안 됨'과 사유 후보 '테스트 메시지가 오지 않음'(API-030 test_message_missing)이 보이고, 그 도움말에 '봇 ID가 오픈빌더 주소의 값과 같은지 확인해 주세요'를 넣음. 주소 형식은 개발 전 실제 오픈빌더 화면으로 확인 | 06단계 OPEN-8이 08단계 안내로 전달함. 06단계 계약의 사유 후보 4개(스킬 주소·스킬 키 헤더·오픈빌더 배포·테스트 메시지 안 옴) 안에서 안내해 계약을 바꾸지 않음. 실제 오픈빌더 화면은 이번에 확인하지 못해(동희님 PC 확인 필요) 확인 전 문구로 둠 | 봇 ID 없이 스킬 키만으로 연결: 사장님이 찾을 것이 줄지만 06단계 API-031 계약이 바뀜 |
+| W6 | 주문 요청 카드의 구성 | 한 응답의 출력 안에서 ① 그 버전의 취소·환불 규정 글(조문마다 '· 제목: 조건 → 효과' 한 줄, 끝에 '주문제작이라 청약철회가 제한될 수 있어요'. 1,000자를 넘으면 조문 사이에서 나눠 글 둘) ② 요약 카드(주문 내용 요약·문구 철자 그대로·주문자 이름·연락처·'사진 게시 동의: 동의 안 함', 버튼 '규정에 동의하고 주문 요청'·'사진 게시도 동의하고 요청'·'안 할래요', 30분 기한 표시). 사진 게시 동의는 두 번째 버튼으로만 함(기본 동의 안 함). 2026-11-13 설계 재검토 H9로 06단계 DEC-22에 맞춰 규정 글을 앞으로 옮김(전에는 요약·규정·버튼 카드 순) | 카카오 카드에는 체크박스가 없고 버튼은 3개까지. 한 응답의 출력은 3개, 글은 1,000자, 카드의 제목과 설명은 합쳐 400자라 규정 글을 카드와 따로 둠(SPEC-028, REQ-184). 06단계 계약의 choice 값(confirm·confirm_with_photo_consent·decline)과 같음 | 카드 하나에 모두: 설명 400자를 넘고 규정이 요약과 섞임. 조문 이름만 보이고 링크로: 손님이 동의 버튼 앞에서 규정을 읽지 못함(설계 재검토 H9) |
+| W7 | OPEN-8 봇 ID 찾기 안내(SCR-041) | 봇 ID 필드 아래 '봇 ID 찾는 법'을 펼쳐 보이고, 오픈빌더에서 봇을 열었을 때 주소의 /bot/ 다음 값이라고 안내함. 봇 ID가 틀리면 10분 안에 테스트 메시지가 오지 않아 '연결 안 됨'과 사유 후보 '테스트 메시지가 오지 않음'(API-030 test_message_missing)이 보이고, 그 도움말에 '봇 ID가 오픈빌더 주소의 값과 같은지 확인해 주세요'를 넣음. 주소 형식은 개발 전 실제 오픈빌더 화면으로 확인 | 06단계 OPEN-8이 08단계 안내로 전달함. 06단계 계약의 사유 후보(스킬 주소·스킬 키 헤더·오픈빌더 배포·테스트 메시지 안 옴과, 설계 재검토 H8로 더한 닿지 않은 버튼 블록 넷) 안에서 안내해 계약을 바꾸지 않음. 버튼 블록 ID를 찾는 곳도 같은 펼치기에 넣고 실제 화면으로 확인해 문구를 정함. 실제 오픈빌더 화면은 이번에 확인하지 못해(동희님 PC 확인 필요) 확인 전 문구로 둠 | 봇 ID 없이 스킬 키만으로 연결: 사장님이 찾을 것이 줄지만 06단계 API-031 계약이 바뀜 |
 | W8 | 결제 안내에 '결제했어요' 바로가기 | 결제 안내(SCR-005) 말풍선 아래에 바로가기 '결제했어요'를 두고, 누르면 그 말이 상담으로 가서 결제 확인 요청 카드(SCR-006)가 나옴 | SPEC-033은 손님이 말해야 카드가 나옴. 바로가기는 말을 대신 보낼 뿐 명령을 내리지 않아 R9(손님이 눌러야 명령)와 맞음 | 바로가기 없음: 손님이 직접 써야 함 |
 | W9 | 운영자 화면의 로그인 끊김(SCR-047~049) | 운영자 로그인이 없거나 만료됐거나 운영자 계정이 아니면(401) 운영자 로그인(SCR-046)으로 보내고, 로그인하면 원래 화면으로 돌아옴. 보내기 전에도 운영자 기록은 하나도 보이지 않음 | 06단계 DEC-11이 'SPEC-001의 운영자 화면은 운영자 계정이 아니면 찾을 수 없음'을 '운영자 기록을 0건 보인다'로 읽고 화면 디자인을 08단계로 전달함. 세션이 끊긴 운영자와 운영자가 아닌 사람을 서버가 구별하지 않으므로 같은 화면을 보임 | '찾을 수 없어요' 화면: SPEC-001 문구 그대로지만, 세션이 끊긴 운영자도 주소를 직접 쳐서 로그인 화면으로 가야 함 |
 <!-- 08-screens:decisions:end -->
@@ -211,6 +217,8 @@
 - 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
 
 ## 9. 검사
+
+2026-11-14 02:17 KST, 설계 재검토 H7·H8·H9를 고친 뒤(12절) 다시 생성한 파일에 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 181행·액션 137행, C5 그린 상태 339개·상태 이름 25개, C6 응답 행 792개(※ 화면이 나눈 행 3, 카카오 스킬 212, 기본값과 다르게 정한 행 101), C8 참조 1609곳, C9 프레임 678개, C11 허용 예외 785곳입니다. C10은 확인 문구 6개, 손님 문구 44개(같음 33, 08단계에서 바꿈 6, 설명 5)입니다.
 
 2026-11-13 23:40 KST, 설계 재검토 H11·H6을 고친 뒤(12절) 다시 생성한 파일에 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 176행·액션 136행, C5 그린 상태 338개·상태 이름 24개, C6 응답 행 755개(※ 화면이 나눈 행 3, 카카오 스킬 180, 기본값과 다르게 정한 행 96), C8 참조 1547곳, C9 프레임 676개, C11 허용 예외 763곳입니다. C10은 확인 문구 6개, 손님 문구 39개(같음 30, 08단계에서 바꿈 6, 설명 3)입니다.
 
@@ -272,3 +280,16 @@
 - SCR-030 제작 목록: 주문마다 도안 옵션·추가 옵션·알레르기 답·빼야 할 재료·참고 사진 수를 보임(H6, RD-08, API-051 `ProductionDay`).
 - 상태 이름이 22개에서 24개로(`orderer`, `depositor`). 손님 결과 문구에 `orderer_saved`·`input_invalid`를 더하고, 입금자 이름 블록의 문구는 06단계 뼈대에 없어 C10의 바꾼 문구로 적음.
 - 09단계 보드 SCR-004·006·030을 다시 그림(09 README 12절).
+
+2026-11-13 설계 독립 재검토의 높음 묶음 H7(RD-01, RD-10, RA-10), H8(RD-04), H9(RD-03)을 같은 결정 카드 '추천안대로 (추천)'에 따라 `screens_guest.py`·`screens_owner_a.py`·`screens_owner_b.py`·`screens_common.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR C).
+
+- SCR-041 카카오톡 채널 연결(H8, H7): 버튼 블록 ID 넷(확인 카드·주문자 정보·입금자 이름·후기)의 필드와 연결 표의 '버튼 블록 4개 모두 닿음'. 연결 확인은 테스트 메시지와 시험 버튼 넷(닿은 블록 n/4)이고, 블록 ID가 비면 409 `channel_setup_incomplete`, 같은 봇의 블록 ID만 바꾸면 `blocks_changed`(연결 확인 중으로 돌아감). 연결되면 시험 안내로 먼저 보내기를 확인하고, 안 되면 새 상태 `event-off`(사유 7가지와 '시험 안내 다시 보내기', API-032 `event_recheck`). 스킬 설정 값에 안내 블록의 이벤트 이름 `siljang_notice`. 연결 순서는 1~5단계이고, 가게 채널을 우리 앱에, 우리 월렛을 봇에 연결하는 절차는 개발 전 시험으로 정함(OPEN-9).
+- SCR-003 상담: `link-test`가 테스트 메시지(`channel_test_card`) → 시험 버튼 넷(`block_verified`) → 연결됨(`channel_linked`) → 시험 안내(API-073 `notice_test`)의 차례를 보임. 손님에게 먼저 보내는 안내의 결과(`notice_shown`·`notice_gone`과 안내 스킬 실패)는 이 화면에서 나오지 않는 이유를 적음.
+- SCR-005 결제 안내·SCR-011 손님 알림(H7): 가게 봇의 Event API로 보내면 카카오가 안내 스킬(API-073)을 불러 글을 받음(`notice_shown`). 발송 결과로 닿은 것을 확인한 뒤에만 '보냄'(REQ-182). 친구가 아니거나 그 가게의 먼저 보내기가 안 되거나 카카오가 전하지 못하면 다음 대화 때(`deferred`, REQ-181), 안내 스킬이 실패하면 카카오가 보내지 않아 1분·5분·30분 뒤 다시(`error`), 지난 안내는 `notice_gone`(`stale`).
+- SCR-019 사장님 알림(H7, RD-10): 우리 서비스 채널의 봇이 Event API로 사장님의 카카오 로그인 사용자 번호에 보냄(REQ-183). 발송 결과로 친구가 아님을 알면 `not-sent`(REQ-182). 스킬을 호출하지 않아 API는 그대로 없음(06단계 DEC-21).
+- SCR-004 주문 요청 확인(H9, RD-03): 주문 요청 카드를 06단계 DEC-22의 차례로, 그 버전의 취소·환불 규정 글(조문마다 한 줄, 1,000자를 넘으면 조문 사이에서 나눠 글 둘)을 먼저, 요약 카드(요약·사진 게시 동의·버튼 셋)를 끝에 둠. 새 카드의 알림 말은 카드 설명 맨 위에. 결정 W6을 이 차례로 고침(7절).
+- SCR-038 운영규정: 취소·환불 조문이 주문 요청 카드의 규정 글에 다 들어가지 않으면 저장하지 않고(422 `exceeds_card_limit`) 넘친 조문을 굵게(REQ-184). 케이스 유형 '한도'와 긴 글 행.
+- 카카오 화면 13개의 긴 글 첫 행에 카카오 한도(카드 제목과 설명 합쳐 400자, 한 응답의 출력 3개, 글 말풍선 1,000자, 버튼 이름 14자)를 적음. 카드 화면(SCR-004·006·008·009·010·012·013)은 채널 연결 확인의 시험 버튼 결과(`block_verified`·`channel_linked`)가 그 카드에서 나오지 않는 이유를 적음.
+- 상태 이름이 24개에서 25개로(`event-off`). `link-test`·`deferred`·`checking`의 뜻을 고침(4절). 결정 W7의 이유에 닿지 않은 버튼 블록과 블록 ID 찾는 곳을 더함. W3의 상태 목록은 PR B처럼 그대로 두고 4절 표를 전체로 봄.
+- 손님 결과 문구 5개(`channel_test_card`·`block_verified`·`notice_shown`·`notice_test`·`notice_gone`)를 더하고 `channel_linked`는 06단계의 새 뜻(버튼 블록 넷이 모두 닿음)대로 씀. `check_screens.py`의 카카오 스킬 API 목록에 API-073을 더함(C6이 스킬 결과의 상태를 화면에 정하게 함).
+- 09단계 보드 SCR-004·041을 다시 그림(09 README 12절).

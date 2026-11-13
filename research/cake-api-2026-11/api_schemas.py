@@ -165,7 +165,7 @@ S["OwnerSessionInput"] = obj({
 
 S["Owner"] = all_required({
     "ownerId": UUID,
-    "alertChannelFriend": boolean("우리 서비스 카카오톡 채널 친구인지. 아니면 알림은 할 일 목록에만(SPEC-067)"),
+    "alertChannelFriend": boolean("우리 서비스 카카오톡 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침(DEC-21, REQ-183). 아니면 알림은 할 일 목록에만(SPEC-067)"),
     "createdAt": DT,
 })
 
@@ -548,18 +548,28 @@ S["CalendarDayInput"] = obj({
 S["CalendarDayResult"] = all_required({"outcome": outcome(), "day": ref("CalendarDay")})
 
 # ── 카카오톡 채널 ───────────────────────────────────────────────────────────
+BLOCK_NAMES = ["card", "orderer_info", "depositor_name", "review"]
 S["KakaoChannelInput"] = obj({
     "baseRevision": nullable(BASE_REVISION),
     "botId": string(1, 64, r"^\S+$", col="kakao_channels.bot_id", desc="오픈빌더 봇 ID(OPEN-8)"),
     "channelPublicId": nullable(string(2, 40, r"^_[A-Za-z0-9]+$", col="kakao_channels.channel_public_id", desc="채널 공개 ID(예: _xYzAbC). 예약 링크 페이지의 문의 버튼이 엶")),
-}, ["baseRevision", "botId", "channelPublicId"])
+    "blockIds": obj({
+        "card": nullable(string(1, 100, r"^\S+$", col="kakao_channels.card_block_id", desc="'확인 카드' 블록 ID. 확인 카드 버튼이 부름(SPEC-069)")),
+        "ordererInfo": nullable(string(1, 100, r"^\S+$", col="kakao_channels.orderer_block_id", desc="'주문자 정보' 블록 ID. 주문자 정보 카드 버튼이 부름(SPEC-072)")),
+        "depositorName": nullable(string(1, 100, r"^\S+$", col="kakao_channels.depositor_block_id", desc="'입금자 이름' 블록 ID. 결제 확인 요청 카드 버튼이 부름(SPEC-033)")),
+        "review": nullable(string(1, 100, r"^\S+$", col="kakao_channels.review_block_id", desc="'후기' 블록 ID. 후기 부탁 버튼이 부름(SPEC-061)")),
+    }, ["card", "ordererInfo", "depositorName", "review"],
+        desc="카드 버튼이 부를 가게 봇 블록 넷의 블록 ID(REQ-179, 설계 재검토 H8). 아직 만들지 않은 블록은 null이고, 넷이 모두 있어야 연결 확인을 시작함(API-032)"),
+}, ["baseRevision", "botId", "channelPublicId", "blockIds"])
 S["SkillSetup"] = all_required({
     "messageSkillUrl": URL,
     "cardSkillUrl": URL,
     "reviewSkillUrl": URL,
+    "eventSkillUrl": URL,
+    "eventName": enum(["siljang_notice"], desc="가게 봇의 '안내' 블록에 붙일 Event API 이벤트 이름. 그 블록이 안내 스킬(eventSkillUrl, API-073)을 부름(DEC-20)"),
     "headerName": enum(["Siljang-Skill-Key"]),
     "headerValue": string(43, 43, r"^[A-Za-z0-9_-]{43}$", desc="스킬 키. 오픈빌더 스킬 설정의 헤더 값에 넣음(DEC-08). 이 응답 밖과 로그에 남기지 않음"),
-}, desc="사장님이 오픈빌더에 넣을 스킬 주소와 헤더")
+}, desc="사장님이 오픈빌더에 넣을 스킬 주소 넷(메시지·카드·후기·안내)과 헤더, 안내 블록의 이벤트 이름")
 S["KakaoChannel"] = all_required({
     "connectionId": UUID,
     "botId": string(1, 64),
@@ -568,12 +578,23 @@ S["KakaoChannel"] = all_required({
     "checkStartedAt": nullable(DT),
     "checkExpiresAt": nullable(DT),
     "linkedAt": nullable(DT),
-    "failureHints": arr(enum(["skill_url", "skill_key_header", "open_builder_deploy", "test_message_missing"]), 0, 4, unique=True,
-                        desc="연결 안 됨의 사유 후보(SPEC-008)"),
+    "failureHints": arr(enum(["skill_url", "skill_key_header", "open_builder_deploy", "test_message_missing",
+                              "card_block", "orderer_block", "depositor_block", "review_block"]), 0, 8, unique=True,
+                        desc="연결 안 됨의 사유 후보(SPEC-008). card_block·orderer_block·depositor_block·review_block은 시험 버튼이 우리 스킬에 닿지 않은 블록(REQ-179)"),
+    "blockIds": all_required({
+        "card": nullable(string(1, 100)), "ordererInfo": nullable(string(1, 100)),
+        "depositorName": nullable(string(1, 100)), "review": nullable(string(1, 100)),
+    }, desc="넣은 블록 ID 넷(REQ-179)"),
+    "verifiedBlocks": arr(enum(BLOCK_NAMES), 0, 4, unique=True, desc="연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록. 넷이 모두 닿아야 연결됨(REQ-179)"),
+    "eventStatus": enum(["unchecked", "checking", "ready", "unavailable"],
+                        desc="먼저 보내기(Event API): 아직 안 봄·시험 안내 결과 기다림·됨·안 됨. 안 됨이면 그 가게의 손님 안내는 모두 다음 대화 때 전함(REQ-180, REQ-181)"),
+    "eventCheckedAt": nullable(DT),
+    "eventFailReason": nullable(enum(["app_not_linked", "wallet_missing", "event_block", "event_skill", "owner_not_friend", "not_delivered", "kakao_error"],
+                                     desc="먼저 보내기가 안 되는 사유: 가게 채널이 우리 앱에 연결 안 됨·우리 월렛이 봇에 없음·이벤트 이름이나 배포·안내 스킬·사장님이 가게 채널 친구가 아님·닿지 않음·카카오 오류")),
     "skill": ref("SkillSetup"),
     "revision": REVISION,
 })
-S["KakaoChannelResult"] = all_required({"outcome": outcome(("created", "done", "unchanged"), "created: 새 연결(연결 확인 중), done: 연결 확인을 시작함, unchanged: 같은 값이거나 이미 확인 중·연결됨"), "kakaoChannel": ref("KakaoChannel")})
+S["KakaoChannelResult"] = all_required({"outcome": outcome(("created", "done", "unchanged"), "created: 새 연결(연결 확인 중), done: 연결 확인이나 시험 안내를 시작함, 같은 봇의 블록 ID를 바꿔 다시 확인하게 함, unchanged: 같은 값이거나 이미 확인 중·연결됨(먼저 보내기 됨이거나 시험 중)"), "kakaoChannel": ref("KakaoChannel")})
 
 # ── 장부 ────────────────────────────────────────────────────────────────────
 S["LedgerAuthorizationInput"] = obj({
@@ -1114,7 +1135,10 @@ S["SkillPayload"] = obj({
         "utterance": string(0, 100000, desc="손님 말. 1,000자를 넘으면 앞 1,000자만 AI에(SPEC-017). 필드 한도 없음(messages.body_masked)"),
         "callbackUrl": string(9, 2048, r"^https://", fmt="uri", desc="콜백 주소(블록에서 콜백을 켰을 때). 한 번만, 유효 시간 안(OPEN-2)"),
         "block": obj({"id": string(1, 200), "name": string(0, 200)}, additional=True),
-        "params": obj({}, desc="카카오가 붙이는 값(예: surface). 사진이 어떻게 오는지는 OPEN-3", additional=True),
+        "params": obj({
+            "noticeKey": dict(UUID, description="Event API 요청의 params로 우리가 넘긴 안내 ID(안내 스킬 API-073). 손님에게 보이지 않음(SPEC-066)"),
+            "check": enum(["event"], desc="연결 확인의 시험 안내(안내 스킬 API-073, SPEC-008)"),
+        }, desc="카카오가 붙이는 값(예: surface)과 Event API 요청의 params. 사진이 어떻게 오는지는 OPEN-3", additional=True),
         "user": obj({
             "id": string(1, 70, col="customers.kakao_user_key", desc="botUserKey(최대 70자). 손님 구분 키(G1)"),
             "type": string(1, 32),
@@ -1140,7 +1164,8 @@ S["SkillPayload"] = obj({
             "cardKey": string(16, 64, r"^[A-Za-z0-9_-]+$", col="confirm_cards.card_key", desc="확인 카드 키(카드 스킬, G9)"),
             "choice": enum(["confirm", "confirm_with_photo_consent", "decline"], desc="누른 버튼(카드 스킬)"),
             "orderNo": ORDER_NO,
-        }, desc="버튼의 extra. 카드 스킬은 cardKey·choice(주문자 정보·입금자 이름 블록도 같고 값은 action.params로), 후기 스킬은 orderNo", additional=True),
+            "check": enum(BLOCK_NAMES, desc="연결 확인의 시험 버튼이 부른 블록(SPEC-008, REQ-179). 주문·카드·후기를 남기지 않음"),
+        }, desc="버튼의 extra. 카드 스킬은 cardKey·choice(주문자 정보·입금자 이름 블록도 같고 값은 action.params로), 후기 스킬은 orderNo, 연결 확인의 시험 버튼은 check", additional=True),
     }, ["id"], additional=True),
     "contexts": arr({"type": "object"}, 0, 50),
     "flow": obj({}, additional=True),
@@ -1158,6 +1183,7 @@ BUTTON = obj({
         "cardKey": string(16, 64, r"^[A-Za-z0-9_-]+$", col="confirm_cards.card_key"),
         "choice": enum(["confirm", "confirm_with_photo_consent", "decline"]),
         "orderNo": ORDER_NO,
+        "check": enum(BLOCK_NAMES),
     }, desc="블록 버튼이 다음 스킬 요청의 clientExtra로 넘기는 값. 내부 ID 없음(G6)"),
 }, ["label", "action"])
 QUICK_REPLY = obj({
