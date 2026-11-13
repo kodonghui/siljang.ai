@@ -58,7 +58,9 @@ ALLOW = {
              r"확정까지", r"확정했", r"'확정'", r"확정\)", r"확정으로", r"확정할", r"확정받",
              r"주문 요청·확정", r"플로우만 확정",
              # document status words after the stage 03 checkpoint (2026-11-12), not TERM-011 수락
-             r"^status: 확정", r"\| 확정 \|", r"단계 확정", r"상태: 확정", r"\d 확정:", r"(\d|,) 확정 뒤"],
+             r"^status: 확정", r"\| 확정 \|", r"단계 확정", r"상태: 확정", r"\d 확정:", r"(\d|,) 확정 뒤",
+             # section name for fixes made after a stage was confirmed (design review, 2026-11-13)
+             r"확정한 뒤 고친"],
     "시트": [r"구글 시트"],
     "입금": [r"입금했다고", r"입금 대조", r"들어온 입금", r"입금이 확인", r"입금자", r"입금됨", r"미입금"],
     "거래": [r"전자상거래법"],

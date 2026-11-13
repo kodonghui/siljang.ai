@@ -1,36 +1,38 @@
 # 05단계 ERD: 수제케이크 주문제작 데이터베이스
 
-상태: 확정(2026-11-12 11:56 동희님 '추천대로 굳힘', 10절). 원본은 [`db/schema.sql`](../../db/schema.sql)이고, 사람이 보는 곳은 ERD Editor로 여는 [`db/schema.erd.json`](../../db/schema.erd.json)입니다(`truth: source`). 이 문서의 표 목록과 다이어그램은 같은 원본에서 `build_erd.py`가 만듭니다.
+상태: 확정(2026-11-12 11:56 동희님 '추천대로 굳힘', 10절). 2026-11-13 설계 재검토의 환불 길(H1·H2)을 마이그레이션 0002로 고쳤습니다(11절). 원본은 [`db/schema.sql`](../../db/schema.sql)이고, 사람이 보는 곳은 ERD Editor로 여는 [`db/schema.erd.json`](../../db/schema.erd.json)입니다(`truth: source`). 이 문서의 표 목록과 다이어그램은 같은 원본에서 `build_erd.py`가 만듭니다.
 
 ## 1. 한눈에
 
-- 테이블 51개(TBL-001~051), 컬럼 585개입니다. 외래 키 105개, CHECK 275개, UNIQUE 72개, EXCLUDE 1개로 DB가 지키는 규칙을 적었고, 제약 밖 인덱스는 46개(그 가운데 부분 인덱스 33개)입니다.
-- 기능 명세 SPEC-001~069가 읽고 쓰는 데이터 680건을 테이블.컬럼 355개에 하나씩 이었습니다([`erd_map.py`](../../research/cake-erd-2026-11/erd_map.py)). 모든 SPEC에 대응이 있고, 쓰이지 않는 테이블은 없습니다.
+- 테이블 51개(TBL-001~051), 컬럼 591개입니다. 외래 키 107개, CHECK 285개, UNIQUE 72개, EXCLUDE 1개로 DB가 지키는 규칙을 적었고, 제약 밖 인덱스는 47개(그 가운데 부분 인덱스 34개)입니다.
+- 기능 명세 SPEC-001~071이 읽고 쓰는 데이터 725건을 테이블.컬럼 364개에 하나씩 이었습니다([`erd_map.py`](../../research/cake-erd-2026-11/erd_map.py)). 모든 SPEC에 대응이 있고, 쓰이지 않는 테이블은 없습니다.
 - 용어집 TERM-001~074가 모두 자리를 가집니다. 애그리거트·읽기 모델 31개는 테이블 헤더 주석(16개)이나 '테이블 없음' 행(15개)에, 상태·값 이름 23개는 컬럼 설명에 TERM 번호로 있습니다.
-- PostgreSQL 16.15의 빈 DB에 `db/schema.sql`과 마이그레이션 `0001_init.sql`을 각각 만들어 카탈로그가 같음을 봤고, 규칙 테스트 87개가 모두 기대한 제약에 막혔습니다(8절).
-- ERD Editor 다이어그램은 MCP 서버(1.2.0)로 이 원본을 들여와 만들었고, 다이어그램의 DDL을 빈 DB에 만들어 견주면 CHECK 275개 말고는 같습니다(9절).
+- PostgreSQL 16.15의 빈 DB에 `db/schema.sql`과 마이그레이션 `0001_init.sql`·`0002_refund_path.sql`을 각각 만들어 카탈로그가 같음을 봤고, 규칙 테스트 99개가 모두 기대한 제약에 막혔습니다(8절).
+- ERD Editor 다이어그램은 MCP 서버(1.2.0)로 이 원본을 들여와 만들었고, 2026-11-13의 바꿈은 편집 도구로 더했습니다(`erd_editor_sync.py`). 다이어그램의 DDL을 빈 DB에 만들어 견주면 CHECK 285개 말고는 같습니다(9절).
 - 체크포인트: 2026-11-12 11:56 동희님이 이 작업 대화의 결정 카드에서 '추천대로 굳힘'을 고르셔서, 이 스키마와 5절의 결정 사항 E1~E14를 추천대로 확정했습니다. SPEC-021을 좁혀 읽은 E5(카드번호는 끝 4자리만 남김)도 함께 정해졌습니다.
 
 ## 2. 읽은 것과 만든 것
 
 | 읽은 것 | 버전 | 쓴 것 |
 | --- | --- | --- |
-| [`docs/04-functional-spec/spec.md`](../04-functional-spec/spec.md) | 04단계 확정(2026-11-12 09:57 동희님 '추천대로 확정'), 커밋 ddb9c85 | SPEC-001~069의 데이터, 상태 머신 1-1~1-8, 공통 규칙 G1~G9, 요구사항 해석 R2~R21, AI-1 |
-| [`docs/02-prd/requirements.md`](../02-prd/requirements.md) | 버전 3(REQ-001~163, 유효한 161), 커밋 ddb9c85 | 컬럼 설명과 제약에 단 REQ 번호 |
+| [`docs/04-functional-spec/spec.md`](../04-functional-spec/spec.md) | 04단계 확정(2026-11-12 09:57 동희님 '추천대로 확정'), 커밋 ddb9c85. 2026-11-13 SPEC-070·071을 더하고 환불 길을 고침(spec.md 8절) | SPEC-001~071의 데이터, 상태 머신 1-1~1-8, 공통 규칙 G1~G9, 요구사항 해석 R2~R21, AI-1 |
+| [`docs/02-prd/requirements.md`](../02-prd/requirements.md) | 05단계를 확정했을 때는 버전 3(REQ-001~163, 유효한 161), 커밋 ddb9c85. 지금은 버전 5(REQ-001~174, 유효한 170) | 컬럼 설명과 제약에 단 REQ 번호 |
 | [`docs/01-domain/domain.md`](../01-domain/domain.md) | 커밋 dc7dfae | CTX-001~009, TERM-001~074와 이름, 애그리거트 규칙(3-1), 읽기 모델(5-2) |
-| [`docs/03-user-flow/`](../03-user-flow/) | FL-001~014, 커밋 ddb9c85 | 플로우의 순서(한 트랜잭션으로 써야 하는 곳) |
+| [`docs/03-user-flow/`](../03-user-flow/) | FL-001~014, 커밋 ddb9c85. 2026-11-13 FL-008·009·011을 고침 | 플로우의 순서(한 트랜잭션으로 써야 하는 곳) |
 
 | 만든 것 | 무엇 |
 | --- | --- |
 | [`db/schema.sql`](../../db/schema.sql) | 원본 DDL. 테이블마다 `-- TBL-번호 이름 (컨텍스트) ← SPEC 목록 \| terms: 용어` 헤더 주석과 TBL 번호로 시작하는 테이블 설명, 컬럼마다 설명 |
 | [`db/migrations/0001_init.sql`](../../db/migrations/0001_init.sql) | 첫 마이그레이션(확정할 때의 `schema.sql` 사본). 한 번 적용한 뒤에는 고치지 않고 0002부터 더함 |
+| [`db/migrations/0002_refund_path.sql`](../../db/migrations/0002_refund_path.sql) | 환불 길(설계 재검토 H1·H2)의 바꿈(11절). 0001 위에 적용하면 `schema.sql`과 같은 카탈로그(D2) |
 | [`db/schema.erd.json`](../../db/schema.erd.json) | ERD Editor 다이어그램. 컨텍스트마다 색 그룹, 맨 위 메모 |
-| [`research/cake-erd-2026-11/`](../../research/cake-erd-2026-11/) | `build_erd.py`(헤더 주석 SPEC 목록·컬럼 설명·이 문서의 표와 다이어그램을 만듦), `erd_map.py`(SPEC → 테이블.컬럼 대응), `check_erd.py`(검사), `rule_tests.sql`(규칙 테스트), `erd_editor_build.py`(ERD Editor 다이어그램 만들기와 견주기) |
+| [`research/cake-erd-2026-11/`](../../research/cake-erd-2026-11/) | `build_erd.py`(헤더 주석 SPEC 목록·컬럼 설명·이 문서의 표와 다이어그램을 만듦), `erd_map.py`(SPEC → 테이블.컬럼 대응), `check_erd.py`(검사), `rule_tests.sql`(규칙 테스트), `erd_editor_build.py`(ERD Editor 다이어그램 만들기와 견주기), `erd_editor_sync.py`(마이그레이션 0002부터의 바꿈을 ERD Editor 편집 도구로 다이어그램에 옮김) |
 
 다시 만들고 검사하는 법(저장소 맨 위에서):
 
 ```sh
 python3 -B research/cake-erd-2026-11/build_erd.py . --write
+python3 -B research/cake-erd-2026-11/erd_editor_sync.py . --write
 python3 -B research/cake-erd-2026-11/check_erd.py . --db "host=… port=… user=…"
 python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=… port=… user=…"
 ```
@@ -77,34 +79,34 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-020 | `order_drafts` | 주문서 초안 | CTX-001 | 013, 019, 020, 025, 027, 028, 029, 065 | TERM-003, TERM-057 |
 | TBL-021 | `reference_photos` | 참고 사진 | CTX-001 | 013, 019, 031, 065 | TERM-019 |
 | TBL-022 | `quotes` | 견적 | CTX-001 | 013, 020, 025, 027, 028, 031 | TERM-013, TERM-058 |
-| TBL-023 | `orders` | 주문 | CTX-003 | 013, 016, 029, 030, 031, 036, 037, 038, 039, 040, 041, 045, 046, 047, 048, 050, 052, 054, 055, 056, 060, 061, 062, 064, 065, 068 | TERM-001 |
+| TBL-023 | `orders` | 주문 | CTX-003 | 013, 016, 029, 030, 031, 036, 037, 038, 039, 040, 041, 045, 046, 047, 048, 050, 052, 054, 055, 056, 060, 061, 062, 064, 065, 068, 070 | TERM-001 |
 | TBL-024 | `confirm_cards` | 손님 확인 카드 | CTX-001 | 028, 029, 033, 040, 041, 046, 057, 058, 063, 069 | 없음 |
-| TBL-025 | `change_requests` | 변경 요청 | CTX-003 | 041, 042, 043, 044, 045, 046, 048 | TERM-001 |
+| TBL-025 | `change_requests` | 변경 요청 | CTX-003 | 041, 042, 043, 044, 045, 046, 048, 070 | TERM-001 |
 | TBL-026 | `order_details` | 주문 내용 | CTX-003 | 029, 031, 045, 050, 054, 059, 060, 064, 065 | TERM-004 |
 | TBL-027 | `handoffs` | 에스컬레이션 건 | CTX-001 | 014, 015, 017, 020, 021, 022, 023, 025, 026, 029, 030, 040, 053, 056 | TERM-008, TERM-018 |
 | TBL-028 | `issue_details` | 신고 내용 | CTX-001 | 057, 058, 059, 065 | TERM-032 |
 | TBL-029 | `issue_photos` | 신고 사진 | CTX-001 | 057, 059, 065 | TERM-032 |
 | TBL-030 | `issue_reports` | 문제 신고 | CTX-003 | 058, 059, 060, 061 | TERM-031 |
-| TBL-031 | `payment_requests` | 결제 안내 | CTX-004 | 006, 015, 029, 030, 031, 032, 033, 034, 035, 037, 038, 039, 043, 044, 046, 048, 068 | TERM-049 |
-| TBL-032 | `payments` | 확인된 결제 | CTX-004 | 016, 034, 035, 036, 040, 043, 046, 047, 059 | TERM-049, TERM-014 |
-| TBL-033 | `refunds` | 환불 | CTX-004 | 016, 036, 046, 047, 048, 049, 059, 065 | TERM-049 |
-| TBL-034 | `slot_holds` | 그날 자리 | CTX-002 | 011, 012, 014, 015, 029, 030, 031, 033, 036, 037, 038, 045, 046, 048, 060 | TERM-007 |
-| TBL-035 | `productions` | 제작 | CTX-005 | 016, 036, 045, 050, 051, 053, 054, 055, 058, 060, 061 | TERM-050 |
+| TBL-031 | `payment_requests` | 결제 안내 | CTX-004 | 006, 015, 016, 029, 030, 031, 032, 033, 034, 035, 036, 037, 038, 039, 043, 044, 046, 047, 048, 059, 068, 070, 071 | TERM-049 |
+| TBL-032 | `payments` | 확인된 결제 | CTX-004 | 016, 034, 035, 036, 040, 043, 046, 047, 059, 070 | TERM-049, TERM-014 |
+| TBL-033 | `refunds` | 환불 | CTX-004 | 016, 035, 036, 045, 046, 047, 048, 049, 059, 065, 070, 071 | TERM-049 |
+| TBL-034 | `slot_holds` | 그날 자리 | CTX-002 | 011, 012, 014, 015, 029, 030, 031, 033, 036, 037, 038, 045, 046, 048, 060, 070 | TERM-007 |
+| TBL-035 | `productions` | 제작 | CTX-005 | 016, 036, 045, 050, 051, 053, 054, 055, 058, 060, 061, 070 | TERM-050 |
 | TBL-036 | `production_undos` | 제작 표시 되돌린 기록 | CTX-005 | 051 | TERM-050 |
 | TBL-037 | `completion_photos` | 완성 사진 | CTX-005 | 011, 053, 063 | TERM-050 |
 | TBL-038 | `reviews` | 후기 | CTX-006 | 062 | TERM-051 |
 | TBL-039 | `review_photos` | 후기 사진 | CTX-006 | 011, 062, 063 | TERM-051 |
 | TBL-040 | `photo_consents` | 사진 게시 동의 | CTX-006 | 028, 029, 062, 063 | TERM-051 |
 | TBL-041 | `portfolio_items` | 포트폴리오 | CTX-006 | 011, 063 | TERM-052 |
-| TBL-042 | `owner_tasks` | 사장님 할 일 | CTX-008 | 003, 007, 022, 023, 024, 029, 031, 033, 034, 035, 036, 037, 041, 042, 045, 046, 047, 058, 059, 064, 067 | TERM-059 |
+| TBL-042 | `owner_tasks` | 사장님 할 일 | CTX-008 | 003, 007, 022, 023, 024, 029, 031, 033, 034, 035, 036, 037, 041, 042, 045, 046, 047, 048, 049, 058, 059, 064, 067, 071 | TERM-059 |
 | TBL-043 | `owner_alerts` | 사장님 알림 | CTX-008 | 003, 022, 024, 044, 046, 048, 050, 057, 058, 064, 067 | TERM-035 |
-| TBL-044 | `notifications` | 알림 | CTX-008 | 022, 023, 024, 029, 031, 032, 035, 036, 039, 042, 044, 045, 047, 048, 052, 053, 059, 061, 066 | TERM-054 |
+| TBL-044 | `notifications` | 알림 | CTX-008 | 022, 023, 024, 029, 031, 032, 035, 036, 039, 042, 044, 045, 047, 048, 052, 053, 059, 061, 066, 070 | TERM-054 |
 | TBL-045 | `ledger_links` | 장부 연결 | CTX-009 | 009, 064 | TERM-028 |
 | TBL-046 | `ledger_rows` | 장부 행 | CTX-009 | 060, 064 | TERM-055 |
-| TBL-047 | `ledger_writes` | 장부 쓰기 | CTX-009 | 009, 036, 039, 045, 046, 047, 048, 054, 055, 060, 064 | TERM-055 |
+| TBL-047 | `ledger_writes` | 장부 쓰기 | CTX-009 | 009, 036, 039, 045, 046, 047, 048, 054, 055, 060, 064, 070 | TERM-055 |
 | TBL-048 | `ai_calls` | AI 호출 기록 | CTX-001 | 017, 020, 021, 068 | TERM-045 |
 | TBL-049 | `ai_tool_calls` | AI 도구 호출 기록 | CTX-001 | 013, 014, 020, 021, 026, 040 | 없음 |
-| TBL-050 | `request_keys` | 요청 키 | 공통 | 002, 003, 004, 005, 007, 031, 034, 038, 039, 042, 047, 048, 051, 054, 059 | 없음 |
+| TBL-050 | `request_keys` | 요청 키 | 공통 | 002, 003, 004, 005, 007, 031, 034, 038, 039, 042, 047, 048, 051, 054, 059, 070, 071 | 없음 |
 | TBL-051 | `ops_events` | 운영 기록 | 공통 | 008, 010, 017, 029, 065 | 없음 |
 <!-- build_erd:tables:end -->
 
@@ -143,7 +145,7 @@ flowchart LR
   C5 -->|1| C4
   C7 -->|3| C0
   C7 -->|4| C2
-  C7 -->|1| C3
+  C7 -->|2| C3
   C8 -->|1| C2
   C8 -->|1| C6
   C9 -->|1| C6
@@ -434,6 +436,7 @@ erDiagram
     uuid order_id FK "주문"
     uuid change_request_id FK "금액이 내려간 변경"
     uuid issue_report_id FK "보상의 문제 신고"
+    uuid payment_request_id FK "돌려줄 들어온 입금의 결제…"
     int amount "정한 환불 금액"
   }
   shops ||--o{ payment_accounts : "shop_id"
@@ -442,10 +445,11 @@ erDiagram
   payment_accounts ||--o{ payment_requests : "payment_account_id"
   confirm_cards |o--o{ payment_requests : "claim_card_id"
   orders ||--o{ payments : "order_id"
-  payment_requests ||--o| payments : "payment_request_id"
+  payment_requests ||--o{ payments : "payment_request_id"
   orders ||--o{ refunds : "order_id"
   change_requests |o--o{ refunds : "change_request_id"
   issue_reports |o--o{ refunds : "issue_report_id"
+  payment_requests |o--o{ refunds : "payment_request_id"
 ```
 
 ### CTX-005 제작·전달
@@ -553,6 +557,7 @@ erDiagram
     uuid change_request_id FK "변경 요청"
     uuid issue_report_id FK "문제 신고"
     uuid payment_request_id FK "결제 안내"
+    uuid refund_id FK "보낼 환불"
   }
   owner_alerts {
     uuid id PK "사장님 알림 ID"
@@ -574,6 +579,7 @@ erDiagram
   change_requests |o--o{ owner_tasks : "change_request_id"
   issue_reports |o--o{ owner_tasks : "issue_report_id"
   payment_requests |o--o{ owner_tasks : "payment_request_id"
+  refunds |o--o{ owner_tasks : "refund_id"
   owner_tasks |o--o{ owner_alerts : "owner_task_id"
   owner_alerts |o--o{ owner_alerts : "batched_into_id"
   customers ||--o{ notifications : "customer_id"
@@ -633,7 +639,7 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 | 번호 | 규칙 | 근거 | 앱이 하는 일 |
 | --- | --- | --- | --- |
 | A1 | 확정은 결제 확인으로만 | REQ-060, 1-2 | 주문을 `confirmed`로 바꾸는 쓰기는 `payments` 행을 남기는 같은 트랜잭션에서만 합니다. DB는 확정 시각이 있는지만 봅니다 |
-| A2 | 환불 합은 받은 금액을 넘지 않음 | REQ-086 | 주문 행을 잠그고(`SELECT … FOR UPDATE`) 그 주문의 `payments` 합과 `refunds` 합을 셉니다 |
+| A2 | 환불 합은 받은 금액을 넘지 않음 | REQ-165(REQ-086을 넓힘) | 주문 행을 잠그고(`SELECT … FOR UPDATE`) 그 주문 결제 안내의 들어온 금액(`payment_requests.arrived_amount`) 합과 `refunds` 합을 셉니다. 보상이 아닌 환불이 계산값보다 낮은 쓰기는 `refunds_floor_chk`가 막습니다(REQ-170) |
 | A3 | 하루 최대 개수를 넘지 않음 | G3 | `calendar_days`의 (가게, 날짜) 행을 없으면 만들고 잠근 뒤, 그날 가예약된 자리와 확정된 자리를 세고 잡습니다. 마감 후 추가 수락은 사장님이 추가 수락한 날(R10)에만 |
 | A4 | 픽업 날짜 | G8 | `orders.pickup_day`는 가게 시간대(`shops.time_zone`)로 본 `pickup_at`의 날짜이고, 유효한 자리의 날짜와 같습니다 |
 | A5 | 결제 안내 금액 | REQ-076, R13 | 첫 결제는 수락한 버전(기본 디자인은 요청한 버전)의 금액, 차액 결제는 변경 요청의 추가 금액입니다 |
@@ -648,6 +654,8 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 | A14 | 장부에 적는 값 | 1-8, R21 | 적을 때 그 주문의 지금 값으로 적어 옛 이벤트가 새 값을 덮지 않게 합니다. 재제작 주문은 원래 주문의 행에 적습니다 |
 | A15 | 마스킹한 값 | SPEC-021, REQ-137 | AI·로그로는 `messages.body_masked`만 보내고, 원래 값(`masked_values`)은 그 가게 사장님 화면에만 보입니다 |
 | A16 | 지난 기록 지우기 | SPEC-065 | 6절의 순서대로 지웁니다 |
+| A17 | 결제 확인 취소 | REQ-169, SPEC-070 | 제작을 시작하지 않은 주문만 받습니다. 한 트랜잭션으로 결제에 취소 시각·사유를 남기고, 결제 안내는 나감으로(들어온 금액 지움), 주문은 결제 기다림으로, 자리는 가예약으로 되돌리고, 제작 행을 지웁니다 |
+| A18 | 환불 보내기 | REQ-172, REQ-173 | 돌려줄 금액이 있는 환불을 정하는 트랜잭션에서 할 일 '환불 보내기'(`refund_send`)를 열고, 보내지 않은 채 24시간이 지나면 한 번 다시 알립니다(`realerted_at`). '보냄'을 남기는 트랜잭션에서 할 일을 닫고 손님 안내와 장부 쓰기를 남깁니다 |
 
 ## 5. 이 단계의 결정 사항
 
@@ -658,7 +666,7 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 | E1 | 가게에 딸린 테이블은 모두 `shop_id`를 갖고, 다른 테이블을 `(shop_id, 대상_id)` 복합 외래 키로 참조함 | 한 가게의 행이 다른 가게의 행을 참조하는 일을 DB가 막음(G1, SPEC-068). 규칙 테스트 G1 2개 | `id`만으로 참조함: 컬럼과 인덱스가 줄지만 가게가 섞인 행을 앱만 막음 |
 | E2 | 주문 내용은 버전마다 한 행(`order_details`), 주문 행은 현재 버전의 금액·픽업 일시·가격표 버전을 함께 가짐. 둘이 늘 같음을 지연 외래 키(`orders_current_details_fk`)로 트랜잭션 끝에 확인 | 목록·전날 안내가 주문 행만 읽어도 되고, 이전 버전은 남음(REQ-027). 규칙 테스트 E2 2개 | 현재 버전을 주문 행에 두지 않음: 읽을 때마다 마지막 버전을 찾아야 함 |
 | E3 | 인도 시각·미수령 시각은 `productions`에만 두고 주문 행에는 상태만 | 같은 시각을 두 곳에 두지 않음 | 주문 행에도 둠: 둘이 어긋날 수 있음 |
-| E4 | 확인된 결제는 `(결제 안내, 주문, 금액)`으로 결제 안내를 참조함(`payments_match_fk`), 결제 안내마다 하나 | 확인된 결제가 안내한 주문·금액과 다를 수 없음(REQ-081, REQ-153) | 결제 안내 ID만: 금액이 다른 결제를 DB가 받음 |
+| E4 | 확인된 결제는 `(결제 안내, 주문, 금액)`으로 결제 안내를 참조함(`payments_match_fk`), 결제 안내마다 하나. 2026-11-13부터 결제 확인을 취소한 것은 빼고 하나(`payments_one_live_per_request`, 11절) | 확인된 결제가 안내한 주문·금액과 다를 수 없음(REQ-081, REQ-153) | 결제 안내 ID만: 금액이 다른 결제를 DB가 받음 |
 | E5 | 상담에서 마스킹한 카드번호는 끝 4자리만 남김(`masked_values_card_last4_chk`) | 손님이 실수로 보낸 카드번호 전체는 사장님에게도 쓸모가 없고, 남기면 새어 나갈 때 피해가 큼. 전화번호·계좌번호는 원래 값을 그대로 둠 | SPEC-021을 글자 그대로: 카드번호 전체를 그 가게 사장님 화면에만 보임. 반론: 끝 4자리만으로는 사장님이 손님에게 어느 카드인지 되물을 때 덜 분명함 |
 | E6 | 잡힌 자리는 결제 안내를 참조해야 함(`slot_holds_held_chk`). 그래서 기본 디자인 주문 요청은 주문·첫 버전·동의·결제 안내·자리를 한 트랜잭션으로 쓰고, 맞춤 주문은 수락 때 결제 안내와 자리를 함께 씀 | 자리는 결제 기한까지 잡는데(R13) 그 기한이 결제 안내에 있음. R11의 '한 트랜잭션'을 테이블로 옮김 | 자리에 기한을 따로 둠: 결제 안내와 기한이 어긋날 수 있음 |
 | E7 | 퀵 여부 컬럼(`courier_pickup`)을 주문서 초안과 주문 내용에 더함. 말이 없으면 매장 픽업 | REQ-092 오늘 픽업 목록이 퀵 여부를 보이는데 SPEC에 받는 필드가 없었음 | 인도할 때만 고름(`productions.handover_kind`): 오늘 목록에 미리 보이지 않음 |
@@ -716,28 +724,29 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 
 ## 8. 검사 결과
 
-2026-11-12 11:48 KST, PostgreSQL 16.15, `check_erd.py . --db ...` 출력 그대로입니다. E1의 시각은 다이어그램 파일을 커밋한 시각입니다.
+2026-11-13 22:05 KST, PostgreSQL 16.15, `check_erd.py . --db ...` 출력 그대로입니다(설계 재검토 H1·H2를 고친 뒤, 11절). E1의 시각은 이 바꿈을 커밋하기 전 다이어그램 파일의 시각입니다. 2026-11-12 11:48 검사는 컬럼 585, 외래 키 105, CHECK 275, 규칙 테스트 87개로 14개 모두 통과였습니다.
 
 ```text
 통과 S1 TBL 번호 51개(TBL-001~TBL-051), 테이블 이름 중복 없음
 통과 S2 헤더 주석 컨텍스트가 CTX-001~009나 공통
 통과 S3 헤더 주석 SPEC 목록이 erd_map.py 대응과 같음
-통과 S4 SPEC 69개 모두 대응 있음: 데이터 680건 → 컬럼 355개(전체 컬럼 585개)
+통과 S4 SPEC 71개 모두 대응 있음: 데이터 725건 → 컬럼 364개(전체 컬럼 591개)
 통과 S5 쓰이지 않는 테이블 없음(51개 모두 SPEC 대응에 나옴)
-통과 S6 컬럼 585개 모두 설명 있음
+통과 S6 컬럼 591개 모두 설명 있음
 통과 S7 애그리거트 13개·읽기 모델 18개 용어가 테이블 헤더 주석 16개·'테이블 없음' 행 15개에 한 번씩, 나머지 용어 23개는 컬럼·테이블 설명에. 용어집 74개 모두 자리 있음. 컨텍스트 예외 TERM-059→owner_tasks
 통과 S8 테이블 설명이 테이블마다 하나이고 헤더 주석과 같은 TBL 번호로 시작
 통과 S9 build_erd.py로 만든 부분(헤더 주석 SPEC·컬럼 설명·README 표와 다이어그램)이 최신
 통과 D1 db/schema.sql을 빈 DB에 한 트랜잭션으로 적용(PostgreSQL 16.15)
-통과 D2 마이그레이션 1개(0001_init.sql)로 빈 DB에서 다시 만든 카탈로그가 schema.sql과 같음(column 585, constraint 504, extension 1, index 170, table 51)
-통과 D3 DB 테이블 51개 모두 기본 키와 TBL 설명, 대응 컬럼 모두 있음(기본 키 51, 외래 키 105, CHECK 275, UNIQUE 72, EXCLUDE 1)
-통과 D4 규칙 테스트 87개 가운데 기대한 제약에 막힘 87개, 안 막힘 0개
-통과 E1 ERD Editor 파일(2026-11-12T02:48:12+00:00)의 테이블 51개·컬럼 585개·관계 105개·인덱스 70개와 컨텍스트 그룹이 스키마와 같음. 다이어그램이 담지 못하는 부분·식 인덱스 34개와 EXCLUDE는 after 스크립트에, CHECK는 schema.sql에만
+통과 D2 마이그레이션 2개(0001_init.sql, 0002_refund_path.sql)로 빈 DB에서 다시 만든 카탈로그가 schema.sql과 같음(column 591, constraint 516, extension 1, index 171, table 51)
+통과 D3 DB 테이블 51개 모두 기본 키와 TBL 설명, 대응 컬럼 모두 있음(기본 키 51, 외래 키 107, CHECK 285, UNIQUE 72, EXCLUDE 1)
+통과 D4 규칙 테스트 99개 가운데 기대한 제약에 막힘 99개, 안 막힘 0개
+통과 E1 ERD Editor 파일(2026-11-13T13:03:13+00:00, 커밋 전 파일 시각)의 테이블 51개·컬럼 591개·관계 107개·인덱스 71개와 컨텍스트 그룹이 스키마와 같음. 다이어그램이 담지 못하는 부분·식 인덱스 35개와 EXCLUDE는 after 스크립트에, CHECK는 schema.sql에만
 
 검사 14개: 통과 14, 실패 0, 미확인 0
 ```
 
-- 규칙 테스트(`rule_tests.sql`)는 한 트랜잭션 안에서 가게 둘과 주문 넷의 정상 플로우를 먼저 쓰고(지연 외래 키 확인 포함), 막아야 할 쓰기 87개가 각각 기대한 이름의 제약에 막히는지 봅니다. 끝에 되돌려 아무것도 남기지 않습니다. 이름의 앞머리로 묶으면 SPEC 행 37개, REQ 문장 19개, 공통 규칙 G1~G9 11개, 상태 머신 1-2~1-7 8개, 요구사항 해석 R2~R21 5개, AI-1 4개, 지연 외래 키(E2) 2개, 상담마다 채우는 초안 하나 1개입니다.
+- 규칙 테스트(`rule_tests.sql`)는 한 트랜잭션 안에서 가게 둘과 주문 다섯의 정상 플로우를 먼저 쓰고(지연 외래 키 확인 포함), 막아야 할 쓰기 99개가 각각 기대한 이름의 제약에 막히는지 봅니다. 끝에 되돌려 아무것도 남기지 않습니다. 이름의 앞머리로 묶으면 SPEC 행 40개, REQ 문장 28개, 공통 규칙 G1~G9 11개, 상태 머신 1-2~1-7 8개, 요구사항 해석 R2~R21 5개, AI-1 4개, 지연 외래 키(E2) 2개, 상담마다 채우는 초안 하나 1개입니다.
+- PostgreSQL은 한 행의 CHECK를 이름 차례로 보고 처음 어긋난 것 하나로 막습니다. 그래서 규칙 테스트는 기대한 제약 말고는 모두 맞는 행을 씁니다. 새 CHECK를 더하면 그 이름이 앞서는 테스트가 다른 제약에 막히지 않는지 함께 봅니다(11절의 SPEC-035 10배 테스트).
 - D2와 E1이 차이를 잡는지는 일부러 다르게 만든 사본으로 봤습니다(마이그레이션에 컬럼을 더하고 제약을 지운 사본, 컬럼 설명과 인덱스를 바꾼 사본). 둘 다 실패와 그 행을 보였습니다.
 - 보지 못한 것: 앱이 지키는 규칙(4절)은 앱이 없어 테스트하지 못했습니다. 지우기 순서(6절)는 외래 키 그래프로만 봤고 실제로 지워 보지는 않았습니다.
 
@@ -745,10 +754,11 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 
 - 여는 법: VS Code의 ERD Editor 확장 4.0.0 이상(또는 JetBrains·Obsidian 플러그인 1.0.0 이상)으로 `db/schema.erd.json`을 엽니다. 그룹은 CTX-001부터 위에서 아래로 쌓여 있고 맨 위 노란 메모에 이 다이어그램의 한계를 적었습니다.
 - 만든 법: `erd_editor_build.py --build`가 ERD Editor MCP 서버(`@dineug/erd-editor-mcp` 1.2.0, headless)로 `db/schema.sql`을 들여오고(`erd_import_sql`), 데이터베이스를 PostgreSQL로 맞추고, 컨텍스트 그룹과 배치, 메모를 도구로 더했습니다. JSON은 손으로 쓰지 않았습니다.
-- 다이어그램이 담지 못하는 것: CHECK 275개(다이어그램에 자리가 없음), 부분 인덱스 33개의 WHERE 조건, 식 인덱스 1개(`operators_email_uq`), EXCLUDE 1개, 지연 외래 키 설정 1개. 부분 인덱스는 들여오면 조건 없는 인덱스가 되어 '가게마다 가격표 하나'처럼 실제보다 센 규칙으로 보이므로 다이어그램의 인덱스에서 빼고, 이것들을 모두 DDL의 after 스크립트에 원본 그대로 옮겼습니다. 외래 키와 UNIQUE의 이름은 다이어그램이 다시 지어 원본과 다릅니다.
-- 견준 결과(`--compare`, 다이어그램 파일 2026-11-12 만듦): 다이어그램의 DDL 102,991자를 빈 DB에 만들어 원본 DB와 뜻으로 견주면 컬럼 585·기본 키 51·외래 키 105·고유 92·인덱스 26·EXCLUDE 1·테이블 설명과 컬럼 설명이 모두 같고, 다른 것은 CHECK(원본 275개, 다이어그램 0개)뿐입니다.
+- 고친 법(마이그레이션 0002부터): `erd_editor_sync.py --write`가 `db/schema.sql`과 다이어그램의 차이(E1이 견주는 것)를 찾아 ERD Editor MCP 편집 도구(`erd_batch` 안의 `erd_add_column`·`erd_move_column`·`erd_change_column_comment`·`erd_set_column_unique`·`erd_link_columns`·`erd_change_relationship_on_delete`·`erd_add_index`, `erd_set_ddl_script`, `erd_change_memo_value` 등)로 옮기고 `erd_save`로 저장합니다. 들여오기(`erd_import_*`)와 `--build`는 쓰지 않아 배치와 그룹이 그대로 남습니다. 다이어그램 파일은 ID를 찾으려고 읽기만 합니다. 쓰기 없이 돌리면 바꿀 편집만 보입니다.
+- 다이어그램이 담지 못하는 것: CHECK 285개(다이어그램에 자리가 없음), 부분 인덱스 34개의 WHERE 조건, 식 인덱스 1개(`operators_email_uq`), EXCLUDE 1개, 지연 외래 키 설정 1개. 부분 인덱스는 들여오면 조건 없는 인덱스가 되어 '가게마다 가격표 하나'처럼 실제보다 센 규칙으로 보이므로 다이어그램의 인덱스에서 빼고, 이것들을 모두 DDL의 after 스크립트에 원본 그대로 옮겼습니다. 외래 키와 UNIQUE의 이름은 다이어그램이 다시 지어 원본과 다릅니다.
+- 견준 결과(`--compare`, 2026-11-13 편집 도구로 고친 다이어그램): 다이어그램의 DDL 104,897자를 빈 DB에 만들어 원본 DB와 뜻으로 견주면 컬럼 591·기본 키 51·외래 키 107·고유 93·인덱스 26·EXCLUDE 1·테이블 설명과 컬럼 설명이 모두 같고(`db/schema.sql에만 0줄, 다이어그램에만 0줄`), 다른 것은 CHECK(원본 285개, 다이어그램 0개)뿐입니다. 2026-11-12에는 102,991자, 컬럼 585·외래 키 105·고유 92, CHECK 275개였습니다.
 - 주의: ERD Editor의 DDL은 외래 키를 인덱스보다 먼저 쓰는데, 복합 UNIQUE가 인덱스로 바뀌어 그 순서로는 PostgreSQL에 적용되지 않습니다(견줄 때는 인덱스를 앞에 둠). 그래서 DB는 늘 `db/schema.sql`과 마이그레이션으로 만들고, 다이어그램의 DDL로 만들지 않습니다.
-- 그래서 `truth`는 `source`입니다(계약: 들여와 견줄 때 잃는 것이 있으면 `source`를 유지). 확정한 뒤 바꿀 때는 `db/schema.sql`과 새 마이그레이션을 먼저 고치고, 같은 변경을 ERD Editor 편집 도구로 다이어그램에 더한 뒤 `check_erd.py`의 E1로 맞는지 봅니다. 다시 들여오면 배치가 지워지므로 확정한 뒤에는 들여오지 않습니다.
+- 그래서 `truth`는 `source`입니다(계약: 들여와 견줄 때 잃는 것이 있으면 `source`를 유지). 확정한 뒤 바꿀 때는 `db/schema.sql`과 새 마이그레이션을 먼저 고치고, 같은 변경을 ERD Editor 편집 도구로 다이어그램에 더한 뒤(`erd_editor_sync.py --write`) `check_erd.py`의 E1로 맞는지 봅니다. 다시 들여오면 배치가 지워지므로 확정한 뒤에는 들여오지 않습니다.
 - 보지 못한 것: 이 작업 환경에 VS Code가 없어 다이어그램을 화면으로 열어 보지는 못했습니다. 그룹 사이 중복이 없고 테이블이 모두 자기 그룹 안에 있음은 파일의 좌표로 봤습니다.
 
 ## 10. 체크포인트
@@ -756,3 +766,22 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 - 질문(2026-11-12 11:52 무렵, 이 작업 대화의 결정 카드): "ERD 표 51개와 정한 것 14개를 추천대로 굳힐까요?" 고를 것은 추천대로 굳힘, E5만 바꿈(카드번호를 SPEC-021 글자대로 전체 남김), 고칠 것 말씀이었습니다.
 - 결정: 2026-11-12 11:56 동희님이 '추천대로 굳힘'을 고르셨습니다. 테이블 51개(TBL-001~051)와 5절의 E1~E14를 이대로 확정하고 `db/migrations/0001_init.sql`을 첫 마이그레이션으로 둡니다. 확인 요청한 뒤 PR #6에 댓글과 리뷰는 없었습니다.
 - 확정한 뒤: 06단계 API 계약을 이 테이블과 컬럼으로 씁니다. 바꿈은 `db/schema.sql`과 새 마이그레이션(0002부터)으로 하고, 이미 보이는 데이터나 보내는 요청을 깨는 바꿈은 다시 확인 요청합니다.
+
+## 11. 확정한 뒤 고친 것
+
+2026-11-13 설계 독립 재검토([research/design-review-2026-11](../../research/design-review-2026-11/README.md))의 높음 묶음 H1(RB-01, RC-05, RD-02, RA-15)과 H2(RA-01, RE-02, RE-03, RE-04)를 동희님 2026-11-13 20:59 결정 카드 '추천안대로 (추천)'에 따라 고쳤습니다. 요구사항은 버전 5(REQ-165~174, REQ-086·REQ-151 제외), 기능 명세는 SPEC-070·071을 더하고 환불 길의 행을 고쳤습니다(spec.md 8절). 바꿈은 새 마이그레이션 [`0002_refund_path.sql`](../../db/migrations/0002_refund_path.sql) 하나이고 `0001_init.sql`은 그대로입니다.
+
+| 무엇 | 테이블.컬럼·제약 | 근거 |
+| --- | --- | --- |
+| 받은 금액을 결제 안내의 들어온 금액 합으로 셈 | `payment_requests.arrived_amount`, `arrived_at` 더함. 확인됨은 안내 금액 이상, 맞추는 중은 다르게 들어온 금액과 같음, 나감·확인 요청됨은 없음, 안내 금액의 10배까지(`payment_requests_arrived_chk`, `_arrived_amount_chk`, `_arrived_status_chk`, `_arrived_paid_chk`, `_arrived_mismatch_chk`) | REQ-165(REQ-086을 넓힘), 4절 A2 |
+| 결제로 확인하지 않은 들어온 입금 남기기 | 닫힘·기한 지남 결제 안내에 들어온 금액을 남김. 환불 원인 `over_received`(더 들어온 금액·기한 뒤 차액) 더함. `refunds.payment_request_id` 더하고 취소 뒤 들어온 입금·더 들어온 금액이면 꼭 있게 함(`refunds_request_fk`, `refunds_request_chk`, 참조용 `refunds_shop_scope`) | REQ-166, SPEC-071 |
+| 결제 확인 요청 중 손님 취소 | 할 일 종류 '들어온 입금 대조'(`owner_tasks.kind = 'arrival_check'`, 결제 안내를 꼭 참조) | REQ-167 |
+| 잘못 누른 결제 확인 취소 | `payments.voided_at`, `void_reason` 더함(`payments_void_chk`). 결제 안내마다 하나는 `payments_one_per_request`(UNIQUE)에서 취소한 것을 뺀 부분 UNIQUE `payments_one_live_per_request`로 바꿈(5절 E4). 손님 안내 `payment_corrected`, 장부 쓰기 `payment_voided` 더함 | REQ-169, SPEC-070, 4절 A17 |
+| 환불은 계산값보다 낮게 정하지 못함 | `refunds_floor_chk`: 보상이 아니면 환불 금액이 계산값 이상. '환불 없음'은 계산값이 0일 때만 | REQ-170 |
+| 환불 보내기 할 일과 보냄 안내 | 할 일 종류 '환불 보내기'(`owner_tasks.kind = 'refund_send'`)와 보낼 환불(`owner_tasks.refund_id`, `owner_tasks_refund_fk`). 손님 안내 `refund_sent`, 장부 쓰기 `refund_sent` 더함 | REQ-172, REQ-173, 4절 A18 |
+
+- 마이그레이션 0002: 컬럼과 제약을 더하고, 종류 CHECK(`refunds_cause_check`, `owner_tasks_kind_check`, `owner_tasks_subject_chk`, `notifications_kind_check`, `ledger_writes_event_kind_check`)는 지우고 다시 만듭니다. 이미 확인됨·맞추는 중인 결제 안내의 들어온 금액은 안내 금액·다르게 들어온 금액으로 채운 뒤 제약을 더합니다(운영 데이터는 아직 없음). 컬럼 설명은 `schema.sql`과 같은 줄을 옮겨 D2가 같음을 봅니다.
+- 다이어그램: `erd_editor_sync.py`를 새로 만들어 편집 도구로 옮겼습니다(9절). 1단계 테이블·컬럼 편집 41개, 2단계 관계 2개·인덱스(`refunds_shop_scope`) 편집 7개, 3단계 메모(CHECK 285개)와 after 스크립트 2개. 첫 실행에서 새 관계 2개의 지울 때 동작이 'none'으로 들어가, 외래 키 읽기를 고치고 `erd_change_relationship_on_delete` 2개로 `restrict`로 맞췄습니다. 마지막 쓰기 없는 실행은 편집 0개입니다.
+- 규칙 테스트 87개 → 99개. 정상 플로우에 주문 하나를 더해 결제 확인 취소 → 입금했다고 알린 뒤 손님 취소 → 들어온 입금 남기기 → 환불 → 환불 보내기를 쓰고, 차액 결제에서 더 들어온 금액을 환불(`over_received`)로 돌려줍니다. 새 테스트 12개: REQ-165 3개, REQ-167 1개, REQ-169 2개, REQ-170 2개, REQ-173 1개, SPEC-035 1개, SPEC-071 2개.
+- 바뀐 테스트 3개: 'REQ-153 결제 안내 하나에 확인된 결제 둘'은 기대 제약이 `payments_one_live_per_request`로, 'SPEC-035 다르게 들어온 금액이 10배를 넘음'은 맞추는 중의 들어온 금액도 같이 넘게 써서 이름이 앞서는 `payment_requests_arrived_amount_chk`가 막음(전에는 `payment_requests_mismatch_amount_chk`), 'SPEC-047 계산값과 다른 금액에 사유 없음'은 낮은 금액을 `refunds_floor_chk`가 먼저 막으므로 '계산값보다 높은 금액에 사유 없음'으로 바꿈(기대 제약 `refunds_override_chk` 그대로).
+- 검사: 8절. 14개 모두 통과, `--compare` 차이 0줄.

@@ -1,8 +1,8 @@
 -- 수제케이크 주문제작: 데이터베이스 스키마 (CORTHEX 05단계 ERD)
 --
 -- 원본: 이 파일. 사람이 보는 곳: docs/05-erd/README.md(컨텍스트별 다이어그램과 테이블).
--- 입력: docs/04-functional-spec/spec.md(SPEC-001~069, 상태 머신 1-1~1-8, 공통 규칙 G1~G9, AI-1),
---       docs/01-domain/domain.md(CTX-001~009, TERM-001~074), docs/02-prd/requirements.md(REQ-001~163).
+-- 입력: docs/04-functional-spec/spec.md(SPEC-001~071, 상태 머신 1-1~1-8, 공통 규칙 G1~G9, AI-1),
+--       docs/01-domain/domain.md(CTX-001~009, TERM-001~074), docs/02-prd/requirements.md(REQ-001~174).
 -- 데이터베이스: PostgreSQL. 16에서 검사함(research/cake-erd-2026-11/check_erd.py).
 -- 바꾸는 법: 이 파일을 고치고 같은 변경을 db/migrations/에 새 번호로 더함. 적용한 마이그레이션은 고치지 않음.
 --
@@ -449,7 +449,7 @@ CREATE TABLE quotes (
 CREATE INDEX quotes_draft_idx ON quotes (draft_id, quoted_at); -- 초안의 마지막 견적
 COMMENT ON TABLE quotes IS 'TBL-022 견적(TERM-013): 가게 규칙이 계산한 금액과 근거, 버전과 유효 기한';
 
--- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-029, SPEC-030, SPEC-031, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068 | terms: TERM-001
+-- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-029, SPEC-030, SPEC-031, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070 | terms: TERM-001
 CREATE TABLE orders (
   id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 주문 ID(손님에게 보이지 않음)
   shop_id                  uuid NOT NULL,                -- 가게
@@ -535,7 +535,7 @@ CREATE TABLE confirm_cards (
 );
 COMMENT ON TABLE confirm_cards IS 'TBL-024 손님 확인 카드: 상담·사용자·버전·30분 기한에 묶인 명령 버튼(G9)';
 
--- TBL-025 change_requests (CTX-003) ← SPEC-041, SPEC-042, SPEC-043, SPEC-044, SPEC-045, SPEC-046, SPEC-048 | terms: TERM-001
+-- TBL-025 change_requests (CTX-003) ← SPEC-041, SPEC-042, SPEC-043, SPEC-044, SPEC-045, SPEC-046, SPEC-048, SPEC-070 | terms: TERM-001
 CREATE TABLE change_requests (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 변경 요청 ID
   shop_id          uuid NOT NULL,                        -- 가게
@@ -708,7 +708,7 @@ CREATE TABLE issue_reports (
 );
 COMMENT ON TABLE issue_reports IS 'TBL-030 문제 신고(TERM-031): 받은 주문의 신고와 사장님이 정한 보상(1-6)';
 
--- TBL-031 payment_requests (CTX-004) ← SPEC-006, SPEC-015, SPEC-029, SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-034, SPEC-035, SPEC-037, SPEC-038, SPEC-039, SPEC-043, SPEC-044, SPEC-046, SPEC-048, SPEC-068 | terms: TERM-049
+-- TBL-031 payment_requests (CTX-004) ← SPEC-006, SPEC-015, SPEC-016, SPEC-029, SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-043, SPEC-044, SPEC-046, SPEC-047, SPEC-048, SPEC-059, SPEC-068, SPEC-070, SPEC-071 | terms: TERM-049
 CREATE TABLE payment_requests (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 결제 안내 ID
   shop_id             uuid NOT NULL,                     -- 가게
@@ -730,6 +730,8 @@ CREATE TABLE payment_requests (
   depositor_name      text CHECK (char_length(depositor_name) BETWEEN 1 AND 30), -- 입금자 이름(입금 대조, TERM-063). AI로 보내지 않음
   mismatch_amount     integer CHECK (mismatch_amount BETWEEN 1 AND 100000000), -- 다르게 들어온 금액(R15). 안내 금액의 10배까지(SPEC-035)
   mismatch_at         timestamptz,                       -- '금액 불일치'를 남긴 시각. 맞추는 중에는 결제 기한을 멈춤(REQ-161)
+  arrived_amount      integer CHECK (arrived_amount BETWEEN 1 AND 100000000), -- 들어온 금액(받은 금액의 몫, REQ-165). 입금됨은 안내 금액, 맞추는 중은 다르게 들어온 금액(모자란 금액이 마저 들어오면 안내 금액, 더 들어온 채 대조 완료면 그대로), 결제로 확인하지 않은 들어온 입금은 사장님이 남긴 금액(SPEC-071)
+  arrived_at          timestamptz,                       -- 들어온 금액을 남긴 시각. 결제 확인 취소(SPEC-070)면 지움
   paid_at             timestamptz,                       -- 확인됨이 된 시각
   expired_at          timestamptz,                       -- 기한 지남이 된 시각
   closed_at           timestamptz,                       -- 닫힌 시각
@@ -748,6 +750,11 @@ CREATE TABLE payment_requests (
   CONSTRAINT payment_requests_claim_rejected_chk CHECK (claim_rejected_at IS NULL OR claimed_at IS NOT NULL),
   CONSTRAINT payment_requests_mismatch_chk CHECK (status <> 'mismatch' OR (mismatch_amount IS NOT NULL AND mismatch_at IS NOT NULL)),
   CONSTRAINT payment_requests_mismatch_amount_chk CHECK (mismatch_amount IS NULL OR mismatch_amount <= amount * 10),
+  CONSTRAINT payment_requests_arrived_chk CHECK ((arrived_amount IS NULL) = (arrived_at IS NULL)),
+  CONSTRAINT payment_requests_arrived_amount_chk CHECK (arrived_amount IS NULL OR arrived_amount <= amount * 10), -- 안내 금액의 10배까지(SPEC-035, SPEC-071)
+  CONSTRAINT payment_requests_arrived_status_chk CHECK (status NOT IN ('open', 'claimed') OR arrived_amount IS NULL), -- 나감·확인 요청됨에는 들어온 금액이 없음
+  CONSTRAINT payment_requests_arrived_paid_chk CHECK (status <> 'paid' OR (arrived_amount IS NOT NULL AND arrived_amount >= amount)), -- 확인됨은 안내 금액 이상이 들어옴
+  CONSTRAINT payment_requests_arrived_mismatch_chk CHECK (status <> 'mismatch' OR arrived_amount IS NOT DISTINCT FROM mismatch_amount), -- 맞추는 중의 들어온 금액은 다르게 들어온 금액
   CONSTRAINT payment_requests_paid_chk CHECK ((status = 'paid') = (paid_at IS NOT NULL)),
   CONSTRAINT payment_requests_expired_chk CHECK (status <> 'expired' OR expired_at IS NOT NULL),
   CONSTRAINT payment_requests_closed_chk CHECK ((status = 'closed') = (closed_at IS NOT NULL AND close_reason IS NOT NULL))
@@ -757,57 +764,65 @@ CREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status 
 CREATE INDEX payment_requests_shop_status_idx ON payment_requests (shop_id, status); -- 입금 대조 화면(TERM-063)
 COMMENT ON TABLE payment_requests IS 'TBL-031 결제 안내: 금액·결제 방법·결제 기한을 담은 안내와 그 상태(1-3)';
 
--- TBL-032 payments (CTX-004) ← SPEC-016, SPEC-034, SPEC-035, SPEC-036, SPEC-040, SPEC-043, SPEC-046, SPEC-047, SPEC-059 | terms: TERM-049, TERM-014
+-- TBL-032 payments (CTX-004) ← SPEC-016, SPEC-034, SPEC-035, SPEC-036, SPEC-040, SPEC-043, SPEC-046, SPEC-047, SPEC-059, SPEC-070 | terms: TERM-049, TERM-014
 CREATE TABLE payments (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 확인된 결제 ID
   shop_id             uuid NOT NULL,                     -- 가게
   order_id            uuid NOT NULL,                     -- 주문
   payment_request_id  uuid NOT NULL,                     -- 확인한 결제 안내
-  amount              integer NOT NULL CHECK (amount BETWEEN 1 AND 10000000), -- 확인된 금액 = 안내 금액(받은 금액의 몫). 선결제(TERM-014)는 가게 계좌로 감
-  resolution          text NOT NULL DEFAULT 'exact' CHECK (resolution IN ('exact', 'shortfall_paid', 'excess_returned')), -- 입금됨·대조 완료(모자란 금액이 입금됨)·대조 완료(더 들어온 금액을 반환함)(R15)
+  amount              integer NOT NULL CHECK (amount BETWEEN 1 AND 10000000), -- 확인된 금액 = 안내 금액. 받은 금액은 결제 안내의 들어온 금액으로 셈(REQ-165). 선결제(TERM-014)는 가게 계좌로 감
+  resolution          text NOT NULL DEFAULT 'exact' CHECK (resolution IN ('exact', 'shortfall_paid', 'excess_returned')), -- 입금됨·대조 완료(모자란 금액이 입금됨)·대조 완료(더 들어온 금액은 환불로 돌려줌, SPEC-047)(R15)
   confirmed_at        timestamptz NOT NULL DEFAULT now(), -- 사장님이 확인한 시각
+  voided_at           timestamptz,                       -- 사장님이 잘못 누른 결제 확인을 취소한 시각(SPEC-070). 취소한 결제는 받은 금액에 들지 않음
+  void_reason         text CHECK (char_length(void_reason) BETWEEN 1 AND 200), -- 결제 확인을 취소한 사유(REQ-169). 손님 안내에는 적지 않음
   CONSTRAINT payments_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT payments_request_fk FOREIGN KEY (shop_id, payment_request_id) REFERENCES payment_requests (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT payments_match_fk FOREIGN KEY (payment_request_id, order_id, amount) REFERENCES payment_requests (id, order_id, amount) ON DELETE RESTRICT, -- 확인된 결제는 그 안내의 주문·금액과 같음(REQ-081)
-  CONSTRAINT payments_one_per_request UNIQUE (payment_request_id) -- 결제 안내 하나에 확인된 결제 하나(REQ-153). '입금됨'을 두 번 눌러도 하나(REQ-132)
+  CONSTRAINT payments_void_chk CHECK ((voided_at IS NULL) = (void_reason IS NULL)) -- 결제 확인 취소에는 사유(REQ-169)
 );
-CREATE INDEX payments_order_idx ON payments (order_id); -- 받은 금액 합(SPEC-016)
-COMMENT ON TABLE payments IS 'TBL-032 확인된 결제(TERM-049): 결제 안내마다 하나, 사장님이 입금 대조로 확인';
+CREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL; -- 결제 안내 하나에 확인된 결제 하나(REQ-153, 결제 확인을 취소한 것은 빼고). '입금됨'을 두 번 눌러도 하나(REQ-132)
+CREATE INDEX payments_order_idx ON payments (order_id); -- 확인된 결제 합(SPEC-016)
+COMMENT ON TABLE payments IS 'TBL-032 확인된 결제(TERM-049): 결제 안내마다 하나(결제 확인을 취소한 것은 빼고), 사장님이 입금 대조로 확인';
 
--- TBL-033 refunds (CTX-004) ← SPEC-016, SPEC-036, SPEC-046, SPEC-047, SPEC-048, SPEC-049, SPEC-059, SPEC-065 | terms: TERM-049
+-- TBL-033 refunds (CTX-004) ← SPEC-016, SPEC-035, SPEC-036, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-049, SPEC-059, SPEC-065, SPEC-070, SPEC-071 | terms: TERM-049
 CREATE TABLE refunds (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 환불 ID
   shop_id                uuid NOT NULL,                  -- 가게
   order_id               uuid NOT NULL,                  -- 주문
-  cause                  text NOT NULL CHECK (cause IN ('customer_cancel', 'shop_cancel', 'change_reduced', 'compensation', 'paid_after_cancel')), -- 손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금
+  cause                  text NOT NULL CHECK (cause IN ('customer_cancel', 'shop_cancel', 'change_reduced', 'compensation', 'paid_after_cancel', 'over_received')), -- 손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 입금, 기한 뒤 차액, SPEC-071)
   change_request_id      uuid,                           -- 금액이 내려간 변경
   issue_report_id        uuid,                           -- 보상의 문제 신고
+  payment_request_id     uuid,                           -- 돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)
   event_key              text NOT NULL,                  -- 같은 환불을 두 번 정하지 않음(G2)
   decision               text NOT NULL CHECK (decision IN ('full', 'partial', 'none')), -- 전액 환불·일부 환불·환불 없이 취소(REQ-085)
-  amount                 integer NOT NULL CHECK (amount BETWEEN 0 AND 10000000), -- 정한 환불 금액. 주문의 환불 합은 받은 금액을 넘지 않음(REQ-086, 앱이 주문 행을 잠그고 셈)
+  amount                 integer NOT NULL CHECK (amount BETWEEN 0 AND 10000000), -- 정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170)
   calculated_amount      integer NOT NULL CHECK (calculated_amount BETWEEN 0 AND 10000000), -- 가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값
-  calc_basis             jsonb NOT NULL,                 -- 근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액(REQ-084)
-  override_reason        text CHECK (char_length(override_reason) BETWEEN 1 AND 200), -- 계산값과 다른 금액을 고른 이유(SPEC-047)
+  calc_basis             jsonb NOT NULL,                 -- 근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액의 몫(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-084, REQ-165)
+  override_reason        text CHECK (char_length(override_reason) BETWEEN 1 AND 200), -- 계산값과 다른 금액을 고른 이유(SPEC-047). 보상이 아니면 계산값보다 높을 때만
   method                 text CHECK (method IN ('bank_transfer', 'card_cancel')), -- 가게 계좌에서 반환·카드 결제 취소
   refund_bank_name       text CHECK (char_length(refund_bank_name) BETWEEN 1 AND 30), -- 환불받을 손님 은행(SPEC-049)
   refund_account_number  text CHECK (refund_account_number ~ '^[0-9-]+$'), -- 환불받을 손님 계좌번호. 그 가게 사장님 화면의 이 환불에만, AI·로그 0번(R19). 보존 기간 뒤 지움
   refund_holder_name     text CHECK (char_length(refund_holder_name) BETWEEN 1 AND 30), -- 환불받을 계좌의 예금주
   decided_at             timestamptz NOT NULL DEFAULT now(), -- 정한 시각
-  sent_at                timestamptz,                    -- 사장님이 '보냄'을 표시한 시각. 우리는 돈을 옮기지 않음(REQ-079)
+  sent_at                timestamptz,                    -- 사장님이 '보냄'을 표시한 시각(REQ-172). 우리는 돈을 옮기지 않음(REQ-079). 그 전까지 환불 보내기 할 일이 남음(REQ-173)
+  CONSTRAINT refunds_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT refunds_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT refunds_change_fk FOREIGN KEY (shop_id, change_request_id) REFERENCES change_requests (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT refunds_issue_fk FOREIGN KEY (shop_id, issue_report_id) REFERENCES issue_reports (shop_id, id) ON DELETE RESTRICT,
+  CONSTRAINT refunds_request_fk FOREIGN KEY (shop_id, payment_request_id) REFERENCES payment_requests (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT refunds_event_uq UNIQUE (shop_id, event_key),
   CONSTRAINT refunds_decision_chk CHECK ((decision = 'none') = (amount = 0)),
   CONSTRAINT refunds_override_chk CHECK (amount = calculated_amount OR override_reason IS NOT NULL),
+  CONSTRAINT refunds_floor_chk CHECK (cause = 'compensation' OR amount >= calculated_amount), -- 보상이 아닌 환불은 계산값보다 낮게 정하지 못함(REQ-170). 환불 없이 취소는 계산값 0원일 때만
   CONSTRAINT refunds_change_chk CHECK ((cause = 'change_reduced') = (change_request_id IS NOT NULL)),
   CONSTRAINT refunds_issue_chk CHECK ((cause = 'compensation') = (issue_report_id IS NOT NULL)),
+  CONSTRAINT refunds_request_chk CHECK ((cause IN ('paid_after_cancel', 'over_received')) = (payment_request_id IS NOT NULL)),
   CONSTRAINT refunds_sent_chk CHECK (sent_at IS NULL OR (decision <> 'none' AND method IS NOT NULL))
 );
-CREATE INDEX refunds_order_idx ON refunds (order_id); -- 환불 합(REQ-086)
+CREATE INDEX refunds_order_idx ON refunds (order_id); -- 환불 합(REQ-165)
 COMMENT ON TABLE refunds IS 'TBL-033 환불: 사장님이 계산값을 보고 정한 환불과 보낸 표시';
 
--- TBL-034 slot_holds (CTX-002) ← SPEC-011, SPEC-012, SPEC-014, SPEC-015, SPEC-029, SPEC-030, SPEC-031, SPEC-033, SPEC-036, SPEC-037, SPEC-038, SPEC-045, SPEC-046, SPEC-048, SPEC-060 | terms: TERM-007
+-- TBL-034 slot_holds (CTX-002) ← SPEC-011, SPEC-012, SPEC-014, SPEC-015, SPEC-029, SPEC-030, SPEC-031, SPEC-033, SPEC-036, SPEC-037, SPEC-038, SPEC-045, SPEC-046, SPEC-048, SPEC-060, SPEC-070 | terms: TERM-007
 CREATE TABLE slot_holds (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 자리 ID
   shop_id             uuid NOT NULL,                     -- 가게
@@ -835,7 +850,7 @@ CREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE
 CREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed'); -- 날짜별 잡힌 자리 세기(잡힘 + 확정 자리)
 COMMENT ON TABLE slot_holds IS 'TBL-034 그날 자리(TERM-007): 하루 최대 개수 가운데 한 주문에 묶은 자리(1-4)';
 
--- TBL-035 productions (CTX-005) ← SPEC-016, SPEC-036, SPEC-045, SPEC-050, SPEC-051, SPEC-053, SPEC-054, SPEC-055, SPEC-058, SPEC-060, SPEC-061 | terms: TERM-050
+-- TBL-035 productions (CTX-005) ← SPEC-016, SPEC-036, SPEC-045, SPEC-050, SPEC-051, SPEC-053, SPEC-054, SPEC-055, SPEC-058, SPEC-060, SPEC-061, SPEC-070 | terms: TERM-050
 CREATE TABLE productions (
   id                          uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 제작 ID
   shop_id                     uuid NOT NULL,             -- 가게
@@ -960,21 +975,22 @@ CREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (co
 CREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL; -- 동의를 철회하면 바로 내릴 행 찾기
 COMMENT ON TABLE portfolio_items IS 'TBL-041 포트폴리오(TERM-052): 손님이 게시에 동의한 사진만 올린 목록';
 
--- TBL-042 owner_tasks (CTX-008) ← SPEC-003, SPEC-007, SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-041, SPEC-042, SPEC-045, SPEC-046, SPEC-047, SPEC-058, SPEC-059, SPEC-064, SPEC-067 | terms: TERM-059
+-- TBL-042 owner_tasks (CTX-008) ← SPEC-003, SPEC-007, SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-041, SPEC-042, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-049, SPEC-058, SPEC-059, SPEC-064, SPEC-067, SPEC-071 | terms: TERM-059
 CREATE TABLE owner_tasks (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 할 일 ID
   shop_id             uuid NOT NULL,                     -- 가게
-  kind                text NOT NULL CHECK (kind IN ('handoff', 'custom_order', 'change_request', 'issue_report', 'payment_claim', 'payment_mismatch', 'payment_overdue', 'refund_decision', 'paid_after_cancel', 'stale_change', 'ledger_relink', 'license_on_hold', 'calendar_conflict')), -- 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날
+  kind                text NOT NULL CHECK (kind IN ('handoff', 'custom_order', 'change_request', 'issue_report', 'payment_claim', 'payment_mismatch', 'payment_overdue', 'refund_decision', 'paid_after_cancel', 'stale_change', 'ledger_relink', 'license_on_hold', 'calendar_conflict', 'refund_send', 'arrival_check')), -- 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)
   event_key           text NOT NULL,                     -- 할 일을 만든 이벤트 키. 할 일마다 한 번(G2)
   order_id            uuid,                              -- 관련 주문
   handoff_id          uuid,                              -- 에스컬레이션 건
   change_request_id   uuid,                              -- 변경 요청
   issue_report_id     uuid,                              -- 문제 신고
   payment_request_id  uuid,                              -- 결제 안내
+  refund_id           uuid,                              -- 보낼 환불(환불 보내기, REQ-173)
   wait_status         text CHECK (wait_status IN ('waiting', 'late', 'parked', 'answered')), -- 사장님 답 기다림(1-7): 기다림·지연·할 일에 남음·답함. 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고만
   wait_due_at         timestamptz,                       -- 기다림이 끝나는 시각. 답하는 시간 안에서만 셈(REQ-118)
   late_notice_at      timestamptz,                       -- 손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156)
-  realerted_at        timestamptz,                       -- 지연 뒤 사장님께 다시 알린 시각(한 번, REQ-117)
+  realerted_at        timestamptz,                       -- 사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)
   detail              jsonb,                             -- 보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음
   opened_at           timestamptz NOT NULL DEFAULT now(), -- 생긴 시각
   closed_at           timestamptz,                       -- 사장님이 처리해 닫힌 시각(SPEC-067)
@@ -984,14 +1000,16 @@ CREATE TABLE owner_tasks (
   CONSTRAINT owner_tasks_change_fk FOREIGN KEY (shop_id, change_request_id) REFERENCES change_requests (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT owner_tasks_issue_fk FOREIGN KEY (shop_id, issue_report_id) REFERENCES issue_reports (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT owner_tasks_request_fk FOREIGN KEY (shop_id, payment_request_id) REFERENCES payment_requests (shop_id, id) ON DELETE RESTRICT,
+  CONSTRAINT owner_tasks_refund_fk FOREIGN KEY (shop_id, refund_id) REFERENCES refunds (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT owner_tasks_event_uq UNIQUE (shop_id, event_key),
   CONSTRAINT owner_tasks_wait_kind_chk CHECK ((kind IN ('handoff', 'custom_order', 'change_request', 'issue_report')) = (wait_status IS NOT NULL AND wait_due_at IS NOT NULL)), -- 지연 안내는 이 넷에만(REQ-116, REQ-156)
   CONSTRAINT owner_tasks_subject_chk CHECK (
     (kind <> 'handoff' OR handoff_id IS NOT NULL)
     AND (kind NOT IN ('change_request', 'stale_change') OR change_request_id IS NOT NULL)
     AND (kind <> 'issue_report' OR issue_report_id IS NOT NULL)
-    AND (kind NOT IN ('payment_claim', 'payment_mismatch') OR payment_request_id IS NOT NULL)
-    AND (kind NOT IN ('custom_order', 'payment_overdue', 'refund_decision', 'paid_after_cancel') OR order_id IS NOT NULL)), -- 할 일마다 참조할 대상이 있음
+    AND (kind NOT IN ('payment_claim', 'payment_mismatch', 'arrival_check') OR payment_request_id IS NOT NULL)
+    AND (kind <> 'refund_send' OR refund_id IS NOT NULL)
+    AND (kind NOT IN ('custom_order', 'payment_overdue', 'refund_decision', 'paid_after_cancel', 'refund_send', 'arrival_check') OR order_id IS NOT NULL)), -- 할 일마다 참조할 대상이 있음
   CONSTRAINT owner_tasks_late_chk CHECK (wait_status IS NULL OR wait_status IN ('waiting', 'answered') OR late_notice_at IS NOT NULL), -- 지연·할 일에 남음은 지연 안내 뒤
   CONSTRAINT owner_tasks_answered_chk CHECK (wait_status IS NULL OR (wait_status = 'answered') = (closed_at IS NOT NULL))
 );
@@ -1022,14 +1040,14 @@ CREATE TABLE owner_alerts (
 CREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending'; -- 보낼 알림
 COMMENT ON TABLE owner_alerts IS 'TBL-043 사장님 알림(TERM-035): 우리 서비스 채널로 보내는 할 일 종류와 목록 주소';
 
--- TBL-044 notifications (CTX-008) ← SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-032, SPEC-035, SPEC-036, SPEC-039, SPEC-042, SPEC-044, SPEC-045, SPEC-047, SPEC-048, SPEC-052, SPEC-053, SPEC-059, SPEC-061, SPEC-066 | terms: TERM-054
+-- TBL-044 notifications (CTX-008) ← SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-032, SPEC-035, SPEC-036, SPEC-039, SPEC-042, SPEC-044, SPEC-045, SPEC-047, SPEC-048, SPEC-052, SPEC-053, SPEC-059, SPEC-061, SPEC-066, SPEC-070 | terms: TERM-054
 CREATE TABLE notifications (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 알림 ID
   shop_id          uuid NOT NULL,                        -- 가게
   customer_id      uuid NOT NULL,                        -- 받을 손님
   consultation_id  uuid NOT NULL,                        -- 그 손님의 상담(못 보내면 다음 대화 때 먼저 전함)
   order_id         uuid,                                 -- 관련 주문
-  kind             text NOT NULL CHECK (kind IN ('owner_reply', 'delay_notice', 'channel_add', 'custom_rejected', 'payment_request', 'payment_mismatch', 'order_confirmed', 'cancelled', 'change_result', 'change_not_applied', 'refund', 'compensation', 'day_before', 'completion_photo', 'review_request')), -- 사장님 답·지연 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·금액 불일치·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁
+  kind             text NOT NULL CHECK (kind IN ('owner_reply', 'delay_notice', 'channel_add', 'custom_rejected', 'payment_request', 'payment_mismatch', 'order_confirmed', 'cancelled', 'change_result', 'change_not_applied', 'refund', 'compensation', 'day_before', 'completion_photo', 'review_request', 'refund_sent', 'payment_corrected')), -- 사장님 답·지연 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·금액 불일치·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁·환불 보냄(REQ-172)·결제 확인 정정(REQ-169)
   event_key        text NOT NULL,                        -- 같은 주문의 같은 이벤트는 한 번(REQ-154)
   template_key     text NOT NULL,                        -- 서버의 정해진 템플릿. AI가 쓰지 않고 광고를 넣지 않음(REQ-111)
   body             text NOT NULL CHECK (char_length(body) BETWEEN 1 AND 2000), -- 보낼 글. 다른 손님 정보·내부 ID 없음(G6)
@@ -1080,13 +1098,13 @@ CREATE TABLE ledger_rows (
 );
 COMMENT ON TABLE ledger_rows IS 'TBL-046 장부 행(TERM-055): 장부에 옮겨 적는 주문 한 행의 우리 쪽 기록';
 
--- TBL-047 ledger_writes (CTX-009) ← SPEC-009, SPEC-036, SPEC-039, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-054, SPEC-055, SPEC-060, SPEC-064 | terms: TERM-055
+-- TBL-047 ledger_writes (CTX-009) ← SPEC-009, SPEC-036, SPEC-039, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-054, SPEC-055, SPEC-060, SPEC-064, SPEC-070 | terms: TERM-055
 CREATE TABLE ledger_writes (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 장부 쓰기 ID
   shop_id          uuid NOT NULL,                        -- 가게
   ledger_row_id    uuid NOT NULL,                        -- 장부 행
   event_key        text NOT NULL,                        -- 이벤트마다 한 번(REQ-132)
-  event_kind       text NOT NULL CHECK (event_kind IN ('confirmed', 'changed', 'cancelled', 'refund', 'handed_over', 'no_pickup', 'remake')), -- 확정·변경·취소·환불·인도·미수령·재제작
+  event_kind       text NOT NULL CHECK (event_kind IN ('confirmed', 'changed', 'cancelled', 'refund', 'handed_over', 'no_pickup', 'remake', 'refund_sent', 'payment_voided')), -- 확정·변경·취소·환불·인도·미수령·재제작·환불 보냄(REQ-172)·결제 확인 취소(REQ-169)
   status           text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'retrying', 'written', 'alerted', 'unlinked')), -- 기다림·다시 적기·적힘·사장님께 알림·연결 끊김(1-8)
   attempts         smallint NOT NULL DEFAULT 0 CHECK (attempts >= 0), -- 적기를 해 본 횟수
   next_attempt_at  timestamptz,                          -- 다음 시도(1분·5분·30분·2시간·6시간, 그 뒤 하루 한 번)
@@ -1154,7 +1172,7 @@ CREATE TABLE ai_tool_calls (
 CREATE INDEX ai_tool_calls_call_idx ON ai_tool_calls (ai_call_id); -- 호출마다 도구 목록
 COMMENT ON TABLE ai_tool_calls IS 'TBL-049 AI 도구 호출 기록: 이름·결과·대화 ID·대상 ID·마스킹한 인자';
 
--- TBL-050 request_keys (공통) ← SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-007, SPEC-031, SPEC-034, SPEC-038, SPEC-039, SPEC-042, SPEC-047, SPEC-048, SPEC-051, SPEC-054, SPEC-059 | terms: none
+-- TBL-050 request_keys (공통) ← SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-007, SPEC-031, SPEC-034, SPEC-038, SPEC-039, SPEC-042, SPEC-047, SPEC-048, SPEC-051, SPEC-054, SPEC-059, SPEC-070, SPEC-071 | terms: none
 CREATE TABLE request_keys (
   actor_kind       text NOT NULL CHECK (actor_kind IN ('owner', 'operator')), -- 누른 쪽: 사장님·운영자
   actor_id         uuid NOT NULL,                        -- 그 사람의 ID(owners.id나 operators.id)
@@ -1582,6 +1600,8 @@ COMMENT ON COLUMN payment_requests.claim_rejected_at IS '사장님이 ''미입�
 COMMENT ON COLUMN payment_requests.depositor_name IS '입금자 이름(입금 대조, TERM-063). AI로 보내지 않음';
 COMMENT ON COLUMN payment_requests.mismatch_amount IS '다르게 들어온 금액(R15). 안내 금액의 10배까지(SPEC-035)';
 COMMENT ON COLUMN payment_requests.mismatch_at IS '''금액 불일치''를 남긴 시각. 맞추는 중에는 결제 기한을 멈춤(REQ-161)';
+COMMENT ON COLUMN payment_requests.arrived_amount IS '들어온 금액(받은 금액의 몫, REQ-165). 입금됨은 안내 금액, 맞추는 중은 다르게 들어온 금액(모자란 금액이 마저 들어오면 안내 금액, 더 들어온 채 대조 완료면 그대로), 결제로 확인하지 않은 들어온 입금은 사장님이 남긴 금액(SPEC-071)';
+COMMENT ON COLUMN payment_requests.arrived_at IS '들어온 금액을 남긴 시각. 결제 확인 취소(SPEC-070)면 지움';
 COMMENT ON COLUMN payment_requests.paid_at IS '확인됨이 된 시각';
 COMMENT ON COLUMN payment_requests.expired_at IS '기한 지남이 된 시각';
 COMMENT ON COLUMN payment_requests.closed_at IS '닫힌 시각';
@@ -1590,27 +1610,30 @@ COMMENT ON COLUMN payments.id IS '확인된 결제 ID';
 COMMENT ON COLUMN payments.shop_id IS '가게';
 COMMENT ON COLUMN payments.order_id IS '주문';
 COMMENT ON COLUMN payments.payment_request_id IS '확인한 결제 안내';
-COMMENT ON COLUMN payments.amount IS '확인된 금액 = 안내 금액(받은 금액의 몫). 선결제(TERM-014)는 가게 계좌로 감';
-COMMENT ON COLUMN payments.resolution IS '입금됨·대조 완료(모자란 금액이 입금됨)·대조 완료(더 들어온 금액을 반환함)(R15)';
+COMMENT ON COLUMN payments.amount IS '확인된 금액 = 안내 금액. 받은 금액은 결제 안내의 들어온 금액으로 셈(REQ-165). 선결제(TERM-014)는 가게 계좌로 감';
+COMMENT ON COLUMN payments.resolution IS '입금됨·대조 완료(모자란 금액이 입금됨)·대조 완료(더 들어온 금액은 환불로 돌려줌, SPEC-047)(R15)';
 COMMENT ON COLUMN payments.confirmed_at IS '사장님이 확인한 시각';
+COMMENT ON COLUMN payments.voided_at IS '사장님이 잘못 누른 결제 확인을 취소한 시각(SPEC-070). 취소한 결제는 받은 금액에 들지 않음';
+COMMENT ON COLUMN payments.void_reason IS '결제 확인을 취소한 사유(REQ-169). 손님 안내에는 적지 않음';
 COMMENT ON COLUMN refunds.id IS '환불 ID';
 COMMENT ON COLUMN refunds.shop_id IS '가게';
 COMMENT ON COLUMN refunds.order_id IS '주문';
-COMMENT ON COLUMN refunds.cause IS '손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금';
+COMMENT ON COLUMN refunds.cause IS '손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 입금, 기한 뒤 차액, SPEC-071)';
 COMMENT ON COLUMN refunds.change_request_id IS '금액이 내려간 변경';
 COMMENT ON COLUMN refunds.issue_report_id IS '보상의 문제 신고';
+COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)';
 COMMENT ON COLUMN refunds.event_key IS '같은 환불을 두 번 정하지 않음(G2)';
 COMMENT ON COLUMN refunds.decision IS '전액 환불·일부 환불·환불 없이 취소(REQ-085)';
-COMMENT ON COLUMN refunds.amount IS '정한 환불 금액. 주문의 환불 합은 받은 금액을 넘지 않음(REQ-086, 앱이 주문 행을 잠그고 셈)';
+COMMENT ON COLUMN refunds.amount IS '정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170)';
 COMMENT ON COLUMN refunds.calculated_amount IS '가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값';
-COMMENT ON COLUMN refunds.calc_basis IS '근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액(REQ-084)';
-COMMENT ON COLUMN refunds.override_reason IS '계산값과 다른 금액을 고른 이유(SPEC-047)';
+COMMENT ON COLUMN refunds.calc_basis IS '근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액의 몫(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-084, REQ-165)';
+COMMENT ON COLUMN refunds.override_reason IS '계산값과 다른 금액을 고른 이유(SPEC-047). 보상이 아니면 계산값보다 높을 때만';
 COMMENT ON COLUMN refunds.method IS '가게 계좌에서 반환·카드 결제 취소';
 COMMENT ON COLUMN refunds.refund_bank_name IS '환불받을 손님 은행(SPEC-049)';
 COMMENT ON COLUMN refunds.refund_account_number IS '환불받을 손님 계좌번호. 그 가게 사장님 화면의 이 환불에만, AI·로그 0번(R19). 보존 기간 뒤 지움';
 COMMENT ON COLUMN refunds.refund_holder_name IS '환불받을 계좌의 예금주';
 COMMENT ON COLUMN refunds.decided_at IS '정한 시각';
-COMMENT ON COLUMN refunds.sent_at IS '사장님이 ''보냄''을 표시한 시각. 우리는 돈을 옮기지 않음(REQ-079)';
+COMMENT ON COLUMN refunds.sent_at IS '사장님이 ''보냄''을 표시한 시각(REQ-172). 우리는 돈을 옮기지 않음(REQ-079). 그 전까지 환불 보내기 할 일이 남음(REQ-173)';
 COMMENT ON COLUMN slot_holds.id IS '자리 ID';
 COMMENT ON COLUMN slot_holds.shop_id IS '가게';
 COMMENT ON COLUMN slot_holds.day IS '자리의 날짜(가게 시간대)';
@@ -1684,17 +1707,18 @@ COMMENT ON COLUMN portfolio_items.unpublished_at IS '내린 시각. 예약 링�
 COMMENT ON COLUMN portfolio_items.unpublish_reason IS '동의 철회·사장님이 내림';
 COMMENT ON COLUMN owner_tasks.id IS '할 일 ID';
 COMMENT ON COLUMN owner_tasks.shop_id IS '가게';
-COMMENT ON COLUMN owner_tasks.kind IS '에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날';
+COMMENT ON COLUMN owner_tasks.kind IS '에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)';
 COMMENT ON COLUMN owner_tasks.event_key IS '할 일을 만든 이벤트 키. 할 일마다 한 번(G2)';
 COMMENT ON COLUMN owner_tasks.order_id IS '관련 주문';
 COMMENT ON COLUMN owner_tasks.handoff_id IS '에스컬레이션 건';
 COMMENT ON COLUMN owner_tasks.change_request_id IS '변경 요청';
 COMMENT ON COLUMN owner_tasks.issue_report_id IS '문제 신고';
 COMMENT ON COLUMN owner_tasks.payment_request_id IS '결제 안내';
+COMMENT ON COLUMN owner_tasks.refund_id IS '보낼 환불(환불 보내기, REQ-173)';
 COMMENT ON COLUMN owner_tasks.wait_status IS '사장님 답 기다림(1-7): 기다림·지연·할 일에 남음·답함. 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고만';
 COMMENT ON COLUMN owner_tasks.wait_due_at IS '기다림이 끝나는 시각. 답하는 시간 안에서만 셈(REQ-118)';
 COMMENT ON COLUMN owner_tasks.late_notice_at IS '손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156)';
-COMMENT ON COLUMN owner_tasks.realerted_at IS '지연 뒤 사장님께 다시 알린 시각(한 번, REQ-117)';
+COMMENT ON COLUMN owner_tasks.realerted_at IS '사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)';
 COMMENT ON COLUMN owner_tasks.detail IS '보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음';
 COMMENT ON COLUMN owner_tasks.opened_at IS '생긴 시각';
 COMMENT ON COLUMN owner_tasks.closed_at IS '사장님이 처리해 닫힌 시각(SPEC-067)';
@@ -1714,7 +1738,7 @@ COMMENT ON COLUMN notifications.shop_id IS '가게';
 COMMENT ON COLUMN notifications.customer_id IS '받을 손님';
 COMMENT ON COLUMN notifications.consultation_id IS '그 손님의 상담(못 보내면 다음 대화 때 먼저 전함)';
 COMMENT ON COLUMN notifications.order_id IS '관련 주문';
-COMMENT ON COLUMN notifications.kind IS '사장님 답·지연 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·금액 불일치·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁';
+COMMENT ON COLUMN notifications.kind IS '사장님 답·지연 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·금액 불일치·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁·환불 보냄(REQ-172)·결제 확인 정정(REQ-169)';
 COMMENT ON COLUMN notifications.event_key IS '같은 주문의 같은 이벤트는 한 번(REQ-154)';
 COMMENT ON COLUMN notifications.template_key IS '서버의 정해진 템플릿. AI가 쓰지 않고 광고를 넣지 않음(REQ-111)';
 COMMENT ON COLUMN notifications.body IS '보낼 글. 다른 손님 정보·내부 ID 없음(G6)';
@@ -1744,7 +1768,7 @@ COMMENT ON COLUMN ledger_writes.id IS '장부 쓰기 ID';
 COMMENT ON COLUMN ledger_writes.shop_id IS '가게';
 COMMENT ON COLUMN ledger_writes.ledger_row_id IS '장부 행';
 COMMENT ON COLUMN ledger_writes.event_key IS '이벤트마다 한 번(REQ-132)';
-COMMENT ON COLUMN ledger_writes.event_kind IS '확정·변경·취소·환불·인도·미수령·재제작';
+COMMENT ON COLUMN ledger_writes.event_kind IS '확정·변경·취소·환불·인도·미수령·재제작·환불 보냄(REQ-172)·결제 확인 취소(REQ-169)';
 COMMENT ON COLUMN ledger_writes.status IS '기다림·다시 적기·적힘·사장님께 알림·연결 끊김(1-8)';
 COMMENT ON COLUMN ledger_writes.attempts IS '적기를 해 본 횟수';
 COMMENT ON COLUMN ledger_writes.next_attempt_at IS '다음 시도(1분·5분·30분·2시간·6시간, 그 뒤 하루 한 번)';
