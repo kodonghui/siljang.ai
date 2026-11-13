@@ -1,0 +1,29 @@
+// Candidate pairs checked on 2026-11-13 (foreground background needed-ratio label). Lines starting with // are comments.
+// A '주문서'
+#1D1C1A #F5F3EE 4.5 A ink/paper
+#5B574F #F5F3EE 4.5 A muted/paper
+#5B574F #FFFFFF 4.5 A muted/white
+#5B574F #ECE9E2 4.5 A muted/sunken
+#2B4BA6 #FFFFFF 4.5 A accent/white
+#2B4BA6 #E7ECF8 4.5 A accent/accent-soft
+#2B4BA6 #F5F3EE 4.5 A accent/paper
+#B42318 #FFFFFF 4.5 A danger/white
+#B42318 #FBEAE8 4.5 A danger/dsoft
+#8A4A00 #FFF1DC 4.5 A warn/wsoft
+#8A4A00 #FFFFFF 4.5 A warn/white
+#26663A #E5F2E8 4.5 A success/ssoft
+#8A8478 #FFFFFF 3 A line-control/white
+#8A8478 #F5F3EE 3 A line-control/paper
+#1D1C1A #ECE9E2 4.5 A ink/sunken
+// B '쇼케이스'
+#14201F #F2F5F4 4.5 B ink/bg
+#4F5E5D #F2F5F4 4.5 B muted/bg
+#4F5E5D #FFFFFF 4.5 B muted/white
+#0E5A5C #FFFFFF 4.5 B accent/white
+#0E5A5C #DDEDEC 4.5 B accent/asoft
+#0E5A5C #F2F5F4 4.5 B accent/bg
+#CFE6E4 #0E5A5C 4.5 B menu-muted on accent
+#7F8F8D #FFFFFF 3 B line-control/white
+#7F8F8D #F2F5F4 3 B line-control/bg
+#B42318 #FFFFFF 4.5 B danger/white
+#8A4A00 #FFF1DC 4.5 B warn/wsoft
