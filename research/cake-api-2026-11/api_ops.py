@@ -625,7 +625,9 @@ op(id="API-042", method="post", path="/owner/handoffs/{handoffId}/answer", op="a
 
 op(id="API-043", method="get", path="/owner/consultations/{consultationId}/messages", op="listConsultationMessages", tag="에스컬레이션 건·상담",
    summary="상담 대화 조회", spec=["SPEC-021", "SPEC-019", "SPEC-068", "SPEC-065"], auth="owner",
-   desc="그 가게 상담만. 사장님 화면에는 마스킹한 번호를 원래 값으로 되돌린 글과 참고 사진(서명 주소)이 보인다. 새 메시지가 뒤. 지워진 상담(SPEC-065)은 status deleted와 빈 items.",
+   desc="그 가게 상담만. 사장님 화면에는 마스킹한 번호를 원래 값으로 되돌린 글과 참고 사진(서명 주소)이 보인다. 새 메시지가 뒤. "
+        "다룬 주문이 모두 끝나 상담 끝남으로 닫힌 상담(SPEC-025)은 status ended로 대화가 지우기 전까지 그대로 보이고, 그 손님의 다음 말은 새 상담에 남는다. "
+        "지워진 상담(SPEC-065)은 status deleted와 빈 items.",
    params=[pid("consultationId", "상담", E.CONSULT_ID), CURSOR, LIMIT],
    ok=[(200, "ConsultationMessagePage", {"messages": E.MESSAGES,
                                          "deleted": dict(E.MESSAGES, status="deleted", items=[], nextCursor=None)})],
@@ -638,7 +640,8 @@ op(id="API-043", method="get", path="/owner/consultations/{consultationId}/messa
 # ═══ 주문 ═════════════════════════════════════════════════════════════════════
 op(id="API-044", method="get", path="/owner/orders", op="listOrders", tag="주문",
    summary="주문 목록", spec=["SPEC-031", "SPEC-037", "SPEC-068"], auth="owner",
-   desc="상태·종류·픽업 날짜로 거른다. status=payment_overdue가 결제 기한 지난 주문 목록(SPEC-037), status=requested&kind=custom이 답할 맞춤 주문.",
+   desc="상태·종류·픽업 날짜로 거른다. status=payment_overdue가 결제 기한 지난 주문 목록(SPEC-037), status=requested&kind=custom이 답할 맞춤 주문. "
+        "끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)은 나오지 않는다.",
    params=[q("status", {"type": "string", "enum": ["requested", "awaiting_payment", "payment_overdue", "confirmed", "received", "no_pickup", "rejected", "cancelled"]},
              "주문 상태", "requested"),
            q("kind", {"type": "string", "enum": ["standard", "custom"]}, "기본 디자인·맞춤"),
@@ -654,7 +657,7 @@ op(id="API-044", method="get", path="/owner/orders", op="listOrders", tag="주�
 op(id="API-045", method="get", path="/owner/orders/{orderId}", op="getOrder", tag="주문",
    summary="주문 하나", spec=["SPEC-031", "SPEC-013", "SPEC-045", "SPEC-068"], auth="owner",
    desc="주문 내용 버전(새 버전이 앞), 참고 사진, 견적과 계산 근거(사장님께 전부, SPEC-013), 픽업 날의 자리, 결제 안내·결제·환불·변경 요청·제작·문제 신고·사진 게시 동의. "
-        "다른 가게 주문이면 404(SPEC-068).",
+        "다른 가게 주문과 끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)이면 404(SPEC-068).",
    params=[pid("orderId", "주문", E.ORDER_ID)],
    ok=[(200, "Order", {"custom_requested": E.CUSTOM_REQUESTED, "confirmed": E.ORDER_CONFIRMED, "changed": E.ORDER_CHANGED,
                        "remake": E.ORDER_REMAKE})],
