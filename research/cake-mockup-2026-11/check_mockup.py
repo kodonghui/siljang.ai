@@ -517,7 +517,7 @@ def main():
     readme = root / "docs/09-mockup/README.md"
     texts = [(b.name, "\n".join(t for _, t in b.texts + [("attr", v) for _, v in b.attrs])) for b in boards]
     texts.append(("canvas.json", "\n".join([n.get("text", "") for n in canvas.get("notes", {}).values()] + [r.get("title", "") for r in cb.values()])))
-    for key, path in cand.items():
+    for key, path in list(cand.items()) + [("base", base)]:
         if path.exists():
             texts.append((path.name, "\n".join(re.findall(r'"\$description": "([^"]*)"', path.read_text(encoding="utf-8")))))
     if readme.exists():
