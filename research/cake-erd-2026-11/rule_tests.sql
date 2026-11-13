@@ -1,6 +1,7 @@
 -- 05단계 규칙 테스트: db/schema.sql의 테이블이 정상 플로우를 수락하고, 테이블로 지키기로 한 규칙을 어기는 쓰기는 막는지 봄.
 -- check_erd.py가 마이그레이션으로 만든 빈 DB에서 돌림. 모든 쓰기는 마지막에 되돌림(ROLLBACK).
--- 1부: 정상 플로우(기본 디자인 주문 → 입금 알리기 → 확정 → 인도 → 신고 → 재제작 → 후기·포트폴리오,
+-- 1부: 정상 플로우(알레르기 정보 동의 → 기본 디자인 주문 → 입금 알리기 → 확정 → 완성 사진의 게시 동의 → 인도 → 신고 → 재제작 →
+--      후기·포트폴리오 → 완성 사진 동의 철회(먼저 내림), 주문 4는 알레르기 정보 동의 안 함,
 --      맞춤 주문 → 금액 변경 수락 → 확정 → 차액 결제(더 들어온 금액은 환불) 변경 반영, 확정 뒤 손님 취소 → 환불,
 --      잘못 누른 결제 확인 취소 → 입금했다고 알린 뒤 손님 취소 → 들어온 입금 남기기 → 환불 → 환불 보내기).
 -- 2부: 규칙마다 어기는 쓰기 하나. 기대한 제약으로 막히면 ok, 들어가거나 다른 제약에 걸리면 테스트 실패.
@@ -102,13 +103,14 @@ INSERT INTO shops (id, owner_id, name, contact_phone, business_name, representat
                    entrustment_terms_version, entrustment_consented_at) VALUES
   ('a2000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000002', '다른가게', '02-123-4567',
    '다른가게', '박사장', '1234567890', '간이과세자 면제', '2026-0456', 'bakery', 'license/b.jpg', 'entrust-v1', now());
--- 연결됨: 버튼 블록 ID 넷이 시험 버튼으로 모두 닿고, 시험 안내가 닿아 먼저 보내기 됨(REQ-179, REQ-180)
+-- 연결됨: 버튼 블록 ID 다섯이 시험 버튼으로 모두 닿고, 시험 안내가 닿아 먼저 보내기 됨(REQ-206, REQ-180)
 INSERT INTO kakao_channels (id, shop_id, bot_id, channel_public_id, status, check_started_at, linked_at, card_block_id, orderer_block_id,
-                            depositor_block_id, review_block_id, verified_blocks, test_user_key, event_status, event_task_id, event_checked_at) VALUES
+                            allergy_block_id, depositor_block_id, review_block_id, verified_blocks, test_user_key, event_status, event_task_id, event_checked_at) VALUES
   ('a3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'bot-a', '_abcde', 'linked', now(), now(), 'blk-card-a',
-   'blk-orderer-a', 'blk-depositor-a', 'blk-review-a', ARRAY['card', 'orderer_info', 'depositor_name', 'review'], 'owner-a', 'ready', 'task-a', now()),
+   'blk-orderer-a', 'blk-allergy-a', 'blk-depositor-a', 'blk-review-a', ARRAY['card', 'orderer_info', 'allergy_answer', 'depositor_name', 'review'],
+   'owner-a', 'ready', 'task-a', now()),
   ('a3000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000002', 'bot-b', '_fghij', 'pending', now(), NULL, 'blk-card-b',
-   NULL, NULL, NULL, ARRAY['card'], 'owner-b', 'unchecked', NULL, NULL);
+   NULL, NULL, NULL, NULL, ARRAY['card'], 'owner-b', 'unchecked', NULL, NULL);
 INSERT INTO privacy_policies (id, shop_id, version, body, overseas_transfers) VALUES
   ('a4000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 1, '처리방침 글',
    '[{"items":"대화","country":"미국","recipient":"모델 회사","purpose":"답 만들기","refuse":"상담 대신 전화"}]');
@@ -167,16 +169,16 @@ INSERT INTO masked_values (id, shop_id, consultation_id, kind, placeholder, orig
   ('c3000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'card', '[카드번호1]', NULL, NULL, '1111'),
   ('c3000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'long_number', '[긴숫자1]', NULL, NULL, NULL);
 INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                          design_option_id, design_id, lettering, allergy_answer, customer_name, customer_phone, order_kind) VALUES
+                          design_option_id, design_id, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, order_kind) VALUES
   ('c4000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'submitted', 2,
    'b0000000-0000-0000-0000-000000000001', '2026-12-24 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
-   'b1000000-0000-0000-0000-000000000003', 'b3000000-0000-0000-0000-000000000001', '생일 축하해', '없음', '이손님', '010-9999-8888', 'standard'),
+   'b1000000-0000-0000-0000-000000000003', 'b3000000-0000-0000-0000-000000000001', '생일 축하해', '없음', 'agreed', 'allergy-v1', now(), '이손님', '010-9999-8888', 'standard'),
   ('c4000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'submitted', 1,
    'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
-   NULL, NULL, '사랑해', '땅콩', '최손님', '010-7777-6666', 'custom'),
+   NULL, NULL, '사랑해', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 'custom'),
   ('c4000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'submitted', 1,
    'b0000000-0000-0000-0000-000000000001', '2026-12-24 07:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
-   NULL, NULL, NULL, '없음', '이손님', '010-9999-8888', 'standard');
+   NULL, NULL, NULL, NULL, 'declined', 'allergy-v1', now(), '이손님', '010-9999-8888', 'standard');
 UPDATE order_drafts SET extra_option_ids = '{b1000000-0000-0000-0000-000000000004}' WHERE id = 'c4000000-0000-0000-0000-000000000002';
 INSERT INTO reference_photos (id, shop_id, draft_id, message_id, position, storage_key, content_type, byte_size) VALUES
   ('c5000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000002',
@@ -188,6 +190,11 @@ INSERT INTO quotes (id, shop_id, draft_id, draft_revision, price_list_id, operat
    'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', 'custom', 'range', 50000, 70000, '{"lines":["1호","2단"]}', now() + interval '72 hours'),
   ('c6000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000003', 1,
    'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', 'standard', 'fixed', 35000, NULL, '{"lines":["1호","생크림"]}', now() + interval '72 hours');
+-- 알레르기 정보 카드(SPEC-075): 주문자 정보 카드 앞에서 알레르기 정보에 따로 동의를 받고, 동의하면 전용 블록으로 답을 받음(REQ-201, REQ-202).
+-- 초안 1·2·5는 동의함, 초안 3(주문 4)은 동의 안 함이라 알레르기 답 없이 빼야 할 재료만(REQ-203)
+INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, draft_id, draft_revision, payload, expires_at, used_at, outcome) VALUES
+  ('c7000000-0000-0000-0000-000000000018', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
+   'card-allergy-info-0001', 'allergy_info', 'c4000000-0000-0000-0000-000000000001', 2, '{"consent_version":"allergy-v1"}', now() + interval '30 minutes', now(), 'done');
 -- 주문자 정보 카드(SPEC-072): 주문 요청 카드 앞에서 이름·연락처를 AI를 거치지 않는 입력으로 받음(REQ-175)
 INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, draft_id, draft_revision, payload, expires_at, used_at, outcome) VALUES
   ('c7000000-0000-0000-0000-000000000010', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
@@ -200,21 +207,19 @@ INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, 
   ('c7000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
    'card-order-request-0003', 'order_request', 'c4000000-0000-0000-0000-000000000003', 1, '{"amount":35000}', now() + interval '30 minutes', now(), 'done');
 
--- 주문 1: 기본 디자인 주문 요청(한 트랜잭션: 주문·첫 버전·사진 게시 동의·결제 안내·자리)
+-- 주문 1: 기본 디자인 주문 요청(한 트랜잭션: 주문·첫 버전(초안의 알레르기 정보 동의를 옮김)·결제 안내·자리). 사진 게시 동의는 묻지 않음
 INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_id, kind, status, version, price_list_id, operating_rules_id,
                     details_confirmed_at, terms_consented_at, pickup_at, pickup_day, amount) VALUES
   ('d0000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'K7Q2M9', 'c0000000-0000-0000-0000-000000000001',
    'c1000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000001', 'standard', 'awaiting_payment', 1,
    'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', now(), now(), '2026-12-24 06:00:00+00', '2026-12-24', 40000);
 INSERT INTO order_details (id, shop_id, order_id, version, source, quote_id, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                           design_option_id, design_id, lettering, allergy_answer, customer_name, customer_phone, amount) VALUES
+                           design_option_id, design_id, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount) VALUES
   ('d1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 1, 'request',
    'c6000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', '2026-12-24 06:00:00+00', 'b1000000-0000-0000-0000-000000000001',
-   'b1000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000003', 'b3000000-0000-0000-0000-000000000001', '생일 축하해', '없음',
+   'b1000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000003', 'b3000000-0000-0000-0000-000000000001', '생일 축하해', '없음', 'agreed', 'allergy-v1', now(),
    '이손님', '010-9999-8888', 40000);
 UPDATE confirm_cards SET order_id = 'd0000000-0000-0000-0000-000000000001' WHERE id = 'c7000000-0000-0000-0000-000000000001';
-INSERT INTO photo_consents (id, shop_id, order_id, scope, consented) VALUES
-  ('d3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'order', false);
 INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at) VALUES
   ('e0000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'first',
    'pay:d0..01:first', 'open', 40000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours');
@@ -261,6 +266,15 @@ INSERT INTO ledger_writes (id, shop_id, ledger_row_id, event_key, event_kind, st
    'ledger:d0..01:confirmed', 'confirmed', 'written', 1, now());
 UPDATE productions SET production_started_at = now(), completed_at = now(), handed_over_at = now(), handover_kind = 'pickup'
  WHERE id = 'f0000000-0000-0000-0000-000000000001';
+-- 완성 사진 안내의 한 문장 동의(SPEC-053): '올려도 돼요'를 누르면 그 안내의 사진마다 동의를 남김(REQ-207)
+INSERT INTO completion_photos (id, shop_id, production_id, position, storage_key, content_type, byte_size) VALUES
+  ('f4100000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 1, 'completion/1-1.jpg', 'image/jpeg', 2500000);
+INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, order_id, order_version, payload, expires_at, used_at, outcome) VALUES
+  ('c7000000-0000-0000-0000-000000000019', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
+   'card-photo-consent-0001', 'photo_consent', 'd0000000-0000-0000-0000-000000000001', 1, '{"photos":1}', now() + interval '30 minutes', now(), 'done');
+INSERT INTO photo_consents (id, shop_id, order_id, scope, completion_photo_id, consented, publishable) VALUES
+  ('d3000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'completion_photo',
+   'f4100000-0000-0000-0000-000000000001', true, true);
 UPDATE orders SET lock_version = lock_version + 1, status = 'received' WHERE id = 'd0000000-0000-0000-0000-000000000001';
 UPDATE slot_holds SET status = 'done', done_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000001';
 
@@ -282,10 +296,10 @@ INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, kind, s
   ('d0000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'R4T8W2', 'c0000000-0000-0000-0000-000000000001',
    'c1000000-0000-0000-0000-000000000001', 'standard', 'confirmed', 1, 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001',
    '2026-12-26 06:00:00+00', '2026-12-26', 0, now(), 'd0000000-0000-0000-0000-000000000001');
-INSERT INTO order_details (id, shop_id, order_id, version, source, price_list_id, pickup_at, size_option_id, flavor_option_id, lettering, allergy_answer, amount) VALUES
+INSERT INTO order_details (id, shop_id, order_id, version, source, price_list_id, pickup_at, size_option_id, flavor_option_id, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, amount) VALUES
   ('d1000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 1, 'remake',
    'b0000000-0000-0000-0000-000000000001', '2026-12-26 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
-   '생일 축하해', '없음', 0);
+   '생일 축하해', '없음', 'agreed', 'allergy-v1', now(), 0);
 UPDATE issue_reports SET status = 'decided', compensation = 'remake', decided_at = now(), remake_order_id = 'd0000000-0000-0000-0000-000000000002'
  WHERE id = 'f2000000-0000-0000-0000-000000000001';
 INSERT INTO slot_holds (id, shop_id, day, order_id, hold_key, status, overbooked, fixed_at) VALUES
@@ -300,16 +314,24 @@ UPDATE issue_reports SET status = 'closed', closed_at = now() WHERE id = 'f20000
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 
--- 후기 → 사진 게시 동의 → 포트폴리오
+-- 후기 → 사진마다 게시 동의(REQ-208) → 동의한 사진만 포트폴리오(REQ-209) → 완성 사진 동의 철회는 먼저 내리고 남김(REQ-098, 4절 A26)
 INSERT INTO reviews (id, shop_id, order_id, version, body) VALUES
   ('f3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 1, '다시 만들어 주셔서 감사해요');
 INSERT INTO review_photos (id, shop_id, review_id, position, storage_key, content_type, byte_size) VALUES
-  ('f4000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'f3000000-0000-0000-0000-000000000001', 1, 'review/1.jpg', 'image/png', 3000000);
-INSERT INTO photo_consents (id, shop_id, order_id, scope, review_photo_id, consented) VALUES
+  ('f4000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'f3000000-0000-0000-0000-000000000001', 1, 'review/1.jpg', 'image/png', 3000000),
+  ('f4000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'f3000000-0000-0000-0000-000000000001', 2, 'review/2.jpg', 'image/png', 2800000);
+INSERT INTO photo_consents (id, shop_id, order_id, scope, review_photo_id, consented, publishable) VALUES
   ('d3000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'review_photo',
-   'f4000000-0000-0000-0000-000000000001', true);
+   'f4000000-0000-0000-0000-000000000001', true, true),
+  ('d3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'review_photo',
+   'f4000000-0000-0000-0000-000000000002', false, false);
 INSERT INTO portfolio_items (id, shop_id, photo_consent_id, review_photo_id) VALUES
   ('f5000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000002', 'f4000000-0000-0000-0000-000000000001');
+INSERT INTO portfolio_items (id, shop_id, photo_consent_id, completion_photo_id) VALUES
+  ('f5000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000003', 'f4100000-0000-0000-0000-000000000001');
+UPDATE portfolio_items SET unpublished_at = now(), unpublish_reason = 'consent_withdrawn', consent_live = NULL
+ WHERE id = 'f5000000-0000-0000-0000-000000000002';
+UPDATE photo_consents SET withdrawn_at = now(), publishable = false WHERE id = 'd3000000-0000-0000-0000-000000000003';
 
 -- 에스컬레이션 건(먹어도 되는지) → 사장님 답 기다림
 INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, reason) VALUES
@@ -339,20 +361,20 @@ INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_i
    'c1000000-0000-0000-0000-000000000002', 'c4000000-0000-0000-0000-000000000002', 'custom', 'requested', 1,
    'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', now(), now(), '2026-12-28 06:00:00+00', '2026-12-28', 50000);
 INSERT INTO order_details (id, shop_id, order_id, version, source, quote_id, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                           extra_option_ids, lettering, allergy_answer, customer_name, customer_phone, amount) VALUES
+                           extra_option_ids, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount) VALUES
   ('d1000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 1, 'request',
    'c6000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 'b1000000-0000-0000-0000-000000000001',
-   'b1000000-0000-0000-0000-000000000002', '{b1000000-0000-0000-0000-000000000004}', '사랑해', '땅콩', '최손님', '010-7777-6666', 50000);
+   'b1000000-0000-0000-0000-000000000002', '{b1000000-0000-0000-0000-000000000004}', '사랑해', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 50000);
 INSERT INTO owner_tasks (id, shop_id, kind, event_key, order_id, wait_status, wait_due_at) VALUES
   ('f7000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'custom_order', 'task:custom:d0..03',
    'd0000000-0000-0000-0000-000000000003', 'waiting', now() + interval '2 hours');
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 INSERT INTO order_details (id, shop_id, order_id, version, source, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                           extra_option_ids, lettering, allergy_answer, customer_name, customer_phone, amount, amount_change_reason) VALUES
+                           extra_option_ids, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount, amount_change_reason) VALUES
   ('d1000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 2, 'owner_amount_change',
    'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
-   '{b1000000-0000-0000-0000-000000000004}', '사랑해', '땅콩', '최손님', '010-7777-6666', 55000, '2단 받침 재료를 더함');
+   '{b1000000-0000-0000-0000-000000000004}', '사랑해', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 55000, '2단 받침 재료를 더함');
 UPDATE orders SET lock_version = lock_version + 1, version = 2, amount = 55000, accepted_at = now(), accepted_version = 2, status = 'awaiting_payment'
  WHERE id = 'd0000000-0000-0000-0000-000000000003';
 UPDATE owner_tasks SET wait_status = 'answered', closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000003';
@@ -393,10 +415,10 @@ INSERT INTO refunds (id, shop_id, order_id, cause, payment_request_id, event_key
   ('e2000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'over_received',
    'e0000000-0000-0000-0000-000000000004', 'refund:e0..04:over_received', 'full', 1000, 1000, '{"arrived":6000,"amount":5000}');
 INSERT INTO order_details (id, shop_id, order_id, version, source, change_request_id, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                           extra_option_ids, lettering, allergy_answer, customer_name, customer_phone, amount) VALUES
+                           extra_option_ids, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount) VALUES
   ('d1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 3, 'change_request',
    'd2000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 'b1000000-0000-0000-0000-000000000001',
-   'b1000000-0000-0000-0000-000000000002', '{b1000000-0000-0000-0000-000000000004}', '사랑해 엄마', '땅콩', '최손님', '010-7777-6666', 60000);
+   'b1000000-0000-0000-0000-000000000002', '{b1000000-0000-0000-0000-000000000004}', '사랑해 엄마', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 60000);
 UPDATE orders SET lock_version = lock_version + 1, version = 3, amount = 60000 WHERE id = 'd0000000-0000-0000-0000-000000000003';
 UPDATE change_requests SET lock_version = lock_version + 1, status = 'applied', applied_version = 3, applied_at = now() WHERE id = 'd2000000-0000-0000-0000-000000000001';
 UPDATE productions SET changed_after_start = true WHERE id = 'f0000000-0000-0000-0000-000000000003';
@@ -410,10 +432,10 @@ INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_i
    'c1000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000003', 'standard', 'awaiting_payment', 1,
    'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', now(), now(), '2026-12-24 07:00:00+00', '2026-12-24', 35000);
 INSERT INTO order_details (id, shop_id, order_id, version, source, quote_id, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                           allergy_answer, customer_name, customer_phone, amount) VALUES
+                           allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount) VALUES
   ('d1000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 1, 'request',
    'c6000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', '2026-12-24 07:00:00+00', 'b1000000-0000-0000-0000-000000000001',
-   'b1000000-0000-0000-0000-000000000002', '없음', '이손님', '010-9999-8888', 35000);
+   'b1000000-0000-0000-0000-000000000002', NULL, 'declined', 'allergy-v1', now(), '이손님', '010-9999-8888', 35000);
 INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, paid_at, arrived_amount, arrived_at) VALUES
   ('e0000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'first',
    'pay:d0..04:first', 'paid', 35000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours', now(), 35000, now());
@@ -439,20 +461,20 @@ SET CONSTRAINTS ALL DEFERRED;
 -- 주문 5: 입금됨 → 확정 → 잘못 누른 결제 확인 취소(SPEC-070) → 입금했다고 알린 뒤 손님 취소 → 들어온 입금 대조 할 일 →
 --         들어온 입금 남기기(SPEC-071) → 손님 취소의 환불 → 환불 보내기 할 일 → 24시간 뒤 다시 알림 → 보냄(REQ-172, REQ-173)
 INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                          design_option_id, design_id, lettering, allergy_answer, customer_name, customer_phone, order_kind) VALUES
+                          design_option_id, design_id, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, order_kind) VALUES
   ('c4000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'submitted', 1,
    'b0000000-0000-0000-0000-000000000001', '2026-12-28 07:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
-   NULL, NULL, NULL, '없음', '최손님', '010-7777-6666', 'standard');
+   NULL, NULL, NULL, '없음', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 'standard');
 INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_id, kind, status, version, price_list_id, operating_rules_id,
                     details_confirmed_at, terms_consented_at, pickup_at, pickup_day, amount) VALUES
   ('d0000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'M3V7B5', 'c0000000-0000-0000-0000-000000000002',
    'c1000000-0000-0000-0000-000000000002', 'c4000000-0000-0000-0000-000000000005', 'standard', 'awaiting_payment', 1,
    'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', now(), now(), '2026-12-28 07:00:00+00', '2026-12-28', 35000);
 INSERT INTO order_details (id, shop_id, order_id, version, source, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                           allergy_answer, customer_name, customer_phone, amount) VALUES
+                           allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount) VALUES
   ('d1000000-0000-0000-0000-000000000007', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 1, 'request',
    'b0000000-0000-0000-0000-000000000001', '2026-12-28 07:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
-   '없음', '최손님', '010-7777-6666', 35000);
+   '없음', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 35000);
 INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at) VALUES
   ('e0000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 'first',
    'pay:d0..05:first', 'open', 35000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours');
@@ -594,10 +616,15 @@ SELECT pg_temp.expect_fail('REQ-103 영업 신고 확인 전 예약 링크', 'sh
   UPDATE shops SET booking_slug = 'other-shop', booking_issued_at = now() WHERE id = 'a2000000-0000-0000-0000-000000000002'$$]);
 SELECT pg_temp.expect_fail('SPEC-008 채널 하나를 두 가게에', 'kakao_channels_bot_active_uq', ARRAY[$$
   INSERT INTO kakao_channels (shop_id, bot_id, status) VALUES ('a2000000-0000-0000-0000-000000000002', 'bot-a', 'pending')$$]);
-SELECT pg_temp.expect_fail('REQ-179 블록 ID 없이 연결됨', 'kakao_channels_blocks_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('REQ-206 블록 ID 없이 연결됨', 'kakao_channels_blocks_chk', ARRAY[$$
   UPDATE kakao_channels SET status = 'linked', linked_at = now() WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
-SELECT pg_temp.expect_fail('REQ-179 시험 버튼이 닿지 않은 블록으로 연결됨', 'kakao_channels_blocks_chk', ARRAY[$$
-  UPDATE kakao_channels SET status = 'linked', linked_at = now(), orderer_block_id = 'blk-o', depositor_block_id = 'blk-d', review_block_id = 'blk-r'
+SELECT pg_temp.expect_fail('REQ-206 시험 버튼이 닿지 않은 블록으로 연결됨', 'kakao_channels_blocks_chk', ARRAY[$$
+  UPDATE kakao_channels SET status = 'linked', linked_at = now(), orderer_block_id = 'blk-o', allergy_block_id = 'blk-l', depositor_block_id = 'blk-d',
+         review_block_id = 'blk-r'
+  WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-206 알레르기 답 블록 없이 블록 넷으로 연결됨', 'kakao_channels_blocks_chk', ARRAY[$$
+  UPDATE kakao_channels SET status = 'linked', linked_at = now(), orderer_block_id = 'blk-o', depositor_block_id = 'blk-d', review_block_id = 'blk-r',
+         verified_blocks = ARRAY['card', 'orderer_info', 'depositor_name', 'review']
   WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
 SELECT pg_temp.expect_fail('SPEC-008 모르는 블록 이름', 'kakao_channels_verified_blocks_check', ARRAY[$$
   UPDATE kakao_channels SET verified_blocks = ARRAY['card', 'menu'] WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
@@ -740,13 +767,13 @@ SELECT pg_temp.expect_fail('E2 없는 버전을 현재 버전으로', 'orders_cu
 SELECT pg_temp.expect_fail('SPEC-048 사유 없는 가게 사정 취소', 'orders_shop_cancel_reason_chk', ARRAY[$$
   UPDATE orders SET cancel_kind = 'shop' WHERE id = 'd0000000-0000-0000-0000-000000000004'$$]);
 SELECT pg_temp.expect_fail('SPEC-045 같은 버전의 주문 내용 둘', 'order_details_version_uq', ARRAY[$$
-  INSERT INTO order_details (shop_id, order_id, version, source, price_list_id, pickup_at, amount, amount_change_reason)
+  INSERT INTO order_details (shop_id, order_id, version, source, price_list_id, pickup_at, amount, amount_change_reason, allergy_consent, allergy_consent_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 3, 'owner_amount_change',
-          'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 60000, '같은 버전')$$]);
+          'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 60000, '같은 버전', 'not_required', now())$$]);
 SELECT pg_temp.expect_fail('SPEC-045 같은 변경을 두 번 반영', 'order_details_change_uq', ARRAY[$$
-  INSERT INTO order_details (shop_id, order_id, version, source, change_request_id, price_list_id, pickup_at, amount)
+  INSERT INTO order_details (shop_id, order_id, version, source, change_request_id, price_list_id, pickup_at, amount, allergy_consent, allergy_consent_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 4, 'change_request',
-          'd2000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 60000)$$]);
+          'd2000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 60000, 'not_required', now())$$]);
 SELECT pg_temp.expect_fail('1-5 한 주문에 열린 변경 요청 둘', 'change_requests_one_open_per_order', ARRAY[$$
   INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, order_id, order_version, payload, expires_at)
   VALUES ('c7000000-0000-0000-0000-000000000021', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
@@ -885,10 +912,34 @@ SELECT pg_temp.expect_fail('SPEC-051 5분 지나 되돌림', 'production_undos_w
   VALUES ('a2000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000003', 'production_started', now() - interval '6 minutes', now())$$]);
 SELECT pg_temp.expect_fail('SPEC-062 주문마다 지금 후기 둘', 'reviews_one_current_per_order', ARRAY[$$
   INSERT INTO reviews (shop_id, order_id, version, body) VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 2, '또 씀')$$]);
-SELECT pg_temp.expect_fail('REQ-097 사진 없는 포트폴리오 항목', 'portfolio_items_one_photo_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('REQ-209 사진 없는 포트폴리오 항목', 'portfolio_items_one_photo_chk', ARRAY[$$
   INSERT INTO portfolio_items (shop_id, photo_consent_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000002')$$]);
 SELECT pg_temp.expect_fail('REQ-098 동의하지 않은 것을 철회함', 'photo_consents_withdraw_chk', ARRAY[$$
   UPDATE photo_consents SET withdrawn_at = now() WHERE id = 'd3000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-209 동의하지 않은 후기 사진을 올림', 'portfolio_items_consent_live_fk', ARRAY[$$
+  INSERT INTO portfolio_items (shop_id, photo_consent_id, review_photo_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000001', 'f4000000-0000-0000-0000-000000000002')$$]);
+SELECT pg_temp.expect_fail('REQ-209 철회한 완성 사진을 다시 올림', 'portfolio_items_consent_live_fk', ARRAY[$$
+  INSERT INTO portfolio_items (shop_id, photo_consent_id, completion_photo_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000003', 'f4100000-0000-0000-0000-000000000001')$$]);
+SELECT pg_temp.expect_fail('REQ-209 다른 후기 사진의 동의로 올림', 'portfolio_items_consent_review_photo_fk', ARRAY[$$
+  INSERT INTO portfolio_items (shop_id, photo_consent_id, review_photo_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000002', 'f4000000-0000-0000-0000-000000000002')$$]);
+SELECT pg_temp.expect_fail('REQ-209 후기 사진의 동의로 완성 사진을 올림', 'portfolio_items_consent_completion_photo_fk', ARRAY[$$
+  INSERT INTO portfolio_items (shop_id, photo_consent_id, completion_photo_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000002', 'f4100000-0000-0000-0000-000000000001')$$]);
+SELECT pg_temp.expect_fail('REQ-098 올려 둔 채 동의를 철회함', 'portfolio_items_consent_live_fk', ARRAY[$$
+  UPDATE photo_consents SET withdrawn_at = now(), publishable = false WHERE id = 'd3000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-098 철회했는데 게시 가능', 'photo_consents_publishable_chk', ARRAY[$$
+  UPDATE photo_consents SET withdrawn_at = now() WHERE id = 'd3000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-209 내린 항목에 동의가 살아 있음', 'portfolio_items_live_chk', ARRAY[$$
+  UPDATE portfolio_items SET unpublished_at = now(), unpublish_reason = 'owner_removed' WHERE id = 'f5000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-207 사진 없는 완성 사진 동의', 'photo_consents_scope_chk', ARRAY[$$
+  INSERT INTO photo_consents (shop_id, order_id, scope, consented)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'completion_photo', false)$$]);
+SELECT pg_temp.expect_fail('REQ-207 완성 사진 하나에 동의 둘', 'photo_consents_completion_photo_uq', ARRAY[$$
+  INSERT INTO photo_consents (shop_id, order_id, scope, completion_photo_id, consented)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'completion_photo', 'f4100000-0000-0000-0000-000000000001', false)$$]);
 
 -- 알림·장부 (CTX-008, CTX-009)
 SELECT pg_temp.expect_fail('REQ-154 같은 이벤트의 안내 둘', 'notifications_event_uq', ARRAY[$$
@@ -929,11 +980,30 @@ SELECT pg_temp.expect_fail('G2 같은 화면 요청 키 두 번', 'request_keys_
   INSERT INTO request_keys (actor_kind, actor_id, request_key, command, response_status)
   VALUES ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000001', 'confirm_payment', 200)$$]);
 
--- 설계 재검토 H11(주문자 정보 카드)·H12(잠금 번호)
+-- 설계 재검토 H11(주문자 정보 카드)·H12(잠금 번호)·H5(알레르기 정보 따로 동의)·H10(사진 게시 동의 카드)
 SELECT pg_temp.expect_fail('H12 잠금 번호 0인 주문', 'orders_lock_version_check', ARRAY[$$
   UPDATE orders SET lock_version = 0 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
 SELECT pg_temp.expect_fail('H12 잠금 번호 0인 변경 요청', 'change_requests_lock_version_check', ARRAY[$$
   UPDATE change_requests SET lock_version = 0 WHERE id = 'd2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-201 초안 없는 알레르기 정보 카드', 'confirm_cards_draft_chk', ARRAY[$$
+  INSERT INTO confirm_cards (shop_id, consultation_id, customer_id, card_key, kind, payload, expires_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
+          'card-allergy-info-x001', 'allergy_info', '{}', now() + interval '30 minutes')$$]);
+SELECT pg_temp.expect_fail('REQ-207 주문 없는 사진 게시 동의 카드', 'confirm_cards_order_chk', ARRAY[$$
+  INSERT INTO confirm_cards (shop_id, consultation_id, customer_id, card_key, kind, payload, expires_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
+          'card-photo-consent-x001', 'photo_consent', '{}', now() + interval '30 minutes')$$]);
+SELECT pg_temp.expect_fail('REQ-200 동의 없이 알레르기 답', 'order_drafts_allergy_answer_chk', ARRAY[$$
+  UPDATE order_drafts SET allergy_consent = NULL, allergy_consent_version = NULL, allergy_consent_at = NULL
+   WHERE id = 'c4000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-201 동의 글 버전 없는 동의', 'order_drafts_allergy_consent_chk', ARRAY[$$
+  UPDATE order_drafts SET allergy_consent_version = NULL WHERE id = 'c4000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-201 알레르기 정보 동의의 답이 없는 주문 내용 버전', 'column "allergy_consent"', ARRAY[$$
+  UPDATE order_details SET allergy_consent = NULL, allergy_consent_version = NULL WHERE id = 'd1000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-203 동의하지 않은 주문에 알레르기 답', 'order_details_allergy_answer_chk', ARRAY[$$
+  UPDATE order_details SET allergy_consent = 'declined' WHERE id = 'd1000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-205 동의 필요 없음에 동의 글 버전', 'order_details_allergy_consent_chk', ARRAY[$$
+  UPDATE order_details SET allergy_consent = 'not_required' WHERE id = 'd1000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('REQ-175 초안 없는 주문자 정보 카드', 'confirm_cards_draft_chk', ARRAY[$$
   INSERT INTO confirm_cards (shop_id, consultation_id, customer_id, card_key, kind, payload, expires_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
@@ -1274,7 +1344,7 @@ SELECT pg_temp.expect_left('REQ-189 상담 끝남 뒤 같은 손님의 새 상�
              RETURNING status)
   SELECT status FROM c$$, 'open');
 CREATE TEMP TABLE purge_before AS SELECT pg_temp.kept_counts() AS counts;
-SELECT pg_temp.expect_left('SPEC-065 지우기 전 끝난 주문의 개인정보', $$SELECT pg_temp.order_personal_left()::text$$, '19');
+SELECT pg_temp.expect_left('SPEC-065 지우기 전 끝난 주문의 개인정보', $$SELECT pg_temp.order_personal_left()::text$$, '21');
 SELECT pg_temp.expect_left('SPEC-065 지우기 전 지울 상담의 내용', $$SELECT pg_temp.consult_content_left()::text$$, '23');
 SELECT pg_temp.expect_left('SPEC-065 첫 지우기(31일 뒤)', $$SELECT pg_temp.purge_run(now() + interval '31 days')$$,
   'orders 4, consultations 2, issues 0, kept_ended 0, customers 1, access_logs 1');
@@ -1285,6 +1355,12 @@ SELECT pg_temp.expect_left('REQ-185 주문자 이름은 보관 기록으로', $$
   SELECT count(*) || '/' || string_agg(customer_name, ',' ORDER BY customer_name) || '/' || count(issue_keep_until) FROM kept_records$$,
   '4/이손님,이손님,최손님/1');
 SELECT pg_temp.expect_left('REQ-187 계약·결제 기록은 그대로', $$SELECT (pg_temp.kept_counts() = (SELECT counts FROM purge_before))::text$$, 'true');
+SELECT pg_temp.expect_left('REQ-201 지운 뒤에도 알레르기 정보 동의 기록은 남음', $$
+  SELECT count(*) FILTER (WHERE allergy_answer IS NULL) || '/' || string_agg(DISTINCT allergy_consent, ',' ORDER BY allergy_consent) || '/' ||
+         count(allergy_consent_version) || '/' || count(allergy_consent_at)
+    FROM order_details WHERE order_id IN ('d0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002',
+                                          'd0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000005')$$,
+  '4/agreed,declined/4/4');
 SELECT pg_temp.expect_left('REQ-185 끝나지 않은 주문은 지우지 않음', $$
   SELECT (SELECT count(customer_phone) FROM order_details WHERE order_id = 'd0000000-0000-0000-0000-000000000003') || '/' ||
          (SELECT count(*) FROM reference_photos WHERE draft_id = 'c4000000-0000-0000-0000-000000000002') || '/' ||

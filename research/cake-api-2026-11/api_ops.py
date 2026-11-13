@@ -529,7 +529,7 @@ op(id="API-029", method="patch", path="/owner/calendar/days/{day}", op="updateCa
 # ═══ 카카오톡 채널 ════════════════════════════════════════════════════════════
 op(id="API-030", method="get", path="/owner/kakao-channel", op="getKakaoChannel", tag="카카오톡 채널",
    summary="채널 연결 상태와 스킬 설정 값", spec=["SPEC-008"], auth="owner",
-   desc="연결 확인 중이면 화면이 몇 초마다 다시 읽고 시험 버튼으로 닿은 블록(verifiedBlocks)을 보인다. 10분 안에 테스트 메시지가 오지 않거나 시험 버튼 넷이 모두 닿지 않으면 failed와 사유 후보(failureHints, 닿지 않은 블록 포함, REQ-179). "
+   desc="연결 확인 중이면 화면이 몇 초마다 다시 읽고 시험 버튼으로 닿은 블록(verifiedBlocks)을 보인다. 10분 안에 테스트 메시지가 오지 않거나 시험 버튼 다섯이 모두 닿지 않으면 failed와 사유 후보(failureHints, 닿지 않은 블록 포함, REQ-206). "
         "연결됨이면 먼저 보내기 상태(eventStatus: 시험 안내 결과 기다림·됨·안 됨과 사유 eventFailReason)를 보인다. 안 됨이면 그 가게의 손님 안내는 모두 다음 대화 때 전한다(REQ-180, REQ-181, DEC-20). "
         "skill.headerValue는 오픈빌더 스킬 설정의 헤더 값(DEC-08)이라 이 응답에만 포함한다.",
    ok=[(200, "KakaoChannel", {"pending": E.CHANNEL_CHECKING, "linked": E.CHANNEL_LINKED, "failed": E.CHANNEL_FAILED,
@@ -542,7 +542,7 @@ op(id="API-030", method="get", path="/owner/kakao-channel", op="getKakaoChannel"
 
 op(id="API-031", method="put", path="/owner/kakao-channel", op="setKakaoChannel", tag="카카오톡 채널",
    summary="연결할 채널(오픈빌더 봇) 설정", spec=["SPEC-008"], auth="owner", idem=True,
-   desc="오픈빌더 봇 ID와 채널 공개 ID, 카드 버튼이 부를 블록 넷의 블록 ID(blockIds, 아직 없으면 null, REQ-179)를 받아 '연결 확인 중' 연결을 만들고, "
+   desc="오픈빌더 봇 ID와 채널 공개 ID, 카드 버튼이 부를 블록 다섯의 블록 ID(blockIds, 아직 없으면 null, REQ-206)를 받아 '연결 확인 중' 연결을 만들고, "
         "오픈빌더에 넣을 스킬 주소 넷(메시지·카드·후기·안내)과 헤더 값, 안내 블록의 이벤트 이름을 반환한다(DEC-08, DEC-20). "
         "같은 봇의 블록 ID만 바꾸면 새 연결을 만들지 않고 그 연결을 '연결 확인 중'으로 되돌려 닿은 블록과 먼저 보내기 상태를 비운다(같은 봇의 연결은 하나, 05단계 `kakao_channels_bot_active_uq`). "
         "다시 연결될 때까지 그 채널의 손님 메시지에는 not_accepting으로 답한다(blocks_changed). "
@@ -563,8 +563,8 @@ op(id="API-031", method="put", path="/owner/kakao-channel", op="setKakaoChannel"
 op(id="API-032", method="post", path="/owner/kakao-channel/check", op="startKakaoChannelCheck", tag="카카오톡 채널",
    summary="연결 확인 시작(10분)", spec=["SPEC-008"], auth="owner", idem=True,
    desc="'연결 확인'을 누르면 10분 동안 그 봇의 테스트 메시지와 시험 버튼을 기다린다. 테스트 메시지가 메시지 스킬(API-070)로 오면 그 사용자에게 시험 버튼을 하나씩 답하고(channel_test_card), "
-        "버튼이 카드 스킬(API-071)이나 후기 스킬(API-072)에 닿을 때마다 그 블록을 확인됨으로 남긴다(block_verified). 넷이 모두 닿으면 '연결됨'이 되고(channel_linked) "
-        "그 사용자에게 시험 안내를 Event API로 한 번 보내 결과로 먼저 보내기 됨·안 됨을 남긴다(REQ-179, REQ-180, DEC-20). 블록 ID가 하나라도 비면 시작하지 않고 409 channel_setup_incomplete. "
+        "버튼이 카드 스킬(API-071)이나 후기 스킬(API-072)에 닿을 때마다 그 블록을 확인됨으로 남긴다(block_verified). 다섯이 모두 닿으면 '연결됨'이 되고(channel_linked) "
+        "그 사용자에게 시험 안내를 Event API로 한 번 보내 결과로 먼저 보내기 됨·안 됨을 남긴다(REQ-206, REQ-180, DEC-20). 블록 ID가 하나라도 비면 시작하지 않고 409 channel_setup_incomplete. "
         "여러 번 눌러도 연결은 하나(G2): 확인 중이면 unchanged, 연결 안 됨이면 다시 10분을 센다. 연결됨인데 먼저 보내기가 안 됨이거나 아직 안 봤으면 시험 안내를 다시 보내고(done, eventStatus checking), "
         "됨이거나 시험 중이면 unchanged. "
         "Open: 가게가 우리에게 줄 권한(가게 채널을 우리 앱에 연결, 우리 월렛을 가게 봇에 연결)의 절차는 개발 전 시험으로 정함(OPEN-9).",
@@ -575,7 +575,7 @@ op(id="API-032", method="post", path="/owner/kakao-channel/check", op="startKaka
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed", "note:본문이 없고 요청 키 헤더만 받음"],
           "대상": ["404:not_set"], "상태": ["409:channel_setup_incomplete", "example:event_recheck"], "반복": ["idem", "example:unchanged"],
-          "외부": ["note:10분 안에 테스트 메시지와 시험 버튼 넷이 없으면 API-030에서 failed", "note:시험 안내 결과는 API-030의 eventStatus"],
+          "외부": ["note:10분 안에 테스트 메시지와 시험 버튼 다섯이 없으면 API-030에서 failed", "note:시험 안내 결과는 API-030의 eventStatus"],
           "노출": ["closed"], "화면": ["screen"]})
 
 # ═══ 장부 ═════════════════════════════════════════════════════════════════════
@@ -640,7 +640,7 @@ op(id="API-037", method="get", path="/owner/booking-link", op="getBookingLink", 
 
 op(id="API-038", method="get", path="/public/shops/{slug}", op="getBookingPage", tag="예약 링크",
    summary="예약 링크 페이지", spec=["SPEC-011", "SPEC-014", "SPEC-063"], auth="public",
-   desc="누구나 연다. 포트폴리오(게시 동의한 사진만), 현재 버전의 가격표, 오늘부터 60일의 날(받음·마감·휴무, 남은 자리 수 없음), 가게 신원 정보, 처리방침 주소, 문의 주소. "
+   desc="누구나 연다. 포트폴리오(손님이 게시에 동의하고 철회하지 않은 완성 사진·후기 사진만, REQ-209), 현재 버전의 가격표(가게가 도안으로 올린 견본 사진은 손님 동의 없이 보임, REQ-210), 오늘부터 60일의 날(받음·마감·휴무, 남은 자리 수 없음), 가게 신원 정보, 처리방침 주소, 문의 주소. "
         "같은 주소에서 1분에 60번을 넘으면 429(DEC-16). 응답은 최대 60초 캐시되어 내린 사진은 5분 안에 사라진다(SPEC-063). "
         "채널을 열 수 없으면 화면이 inquiryUrl을 글로 보인다.",
    params=[PSLUG],
@@ -653,7 +653,7 @@ op(id="API-038", method="get", path="/public/shops/{slug}", op="getBookingPage",
 
 op(id="API-039", method="get", path="/public/shops/{slug}/privacy-policy", op="getPrivacyPolicy", tag="예약 링크",
    summary="가게 개인정보 처리방침", spec=["SPEC-010", "SPEC-011", "SPEC-018"], auth="public",
-   desc="가장 최근 버전. 국외 이전 다섯 항목(REQ-141)을 받는 자마다 포함한다. AI 상담 고지가 이 주소를 건다(SPEC-018).",
+   desc="가장 최근 버전. 국외 이전 다섯 항목(REQ-141)을 받는 자마다 포함한다. AI 상담 고지가 이 주소를 건다(SPEC-018). 처리하는 개인정보 항목에 알레르기 정보(따로 동의한 손님에게서만, 쓰는 목적·보는 사람·지우는 때)를 적고, AI를 거치지 않는 입력으로 받으므로 AI 모델 회사의 국외 이전 항목에는 넣지 않는다(REQ-204, SPEC-010, SPEC-075).",
    params=[PSLUG],
    ok=[(200, "PrivacyPolicy", {"policy": E.PRIVACY}, ["Cache-Control"])],
    errors={404: ["not_found"], 429: ["rate_limited"]},
@@ -737,7 +737,7 @@ op(id="API-044", method="get", path="/owner/orders", op="listOrders", tag="주�
 
 op(id="API-045", method="get", path="/owner/orders/{orderId}", op="getOrder", tag="주문",
    summary="주문 하나", spec=["SPEC-031", "SPEC-013", "SPEC-045", "SPEC-068"], auth="owner",
-   desc="주문 내용 버전(새 버전이 앞), 참고 사진, 견적과 계산 근거(사장님께 전부, SPEC-013), 픽업 날의 자리, 결제 안내·결제·환불·변경 요청·제작·문제 신고·사진 게시 동의. "
+   desc="주문 내용 버전(새 버전이 앞), 참고 사진, 견적과 계산 근거(사장님께 전부, SPEC-013), 픽업 날의 자리, 결제 안내·결제·환불·변경 요청·제작(완성 사진과 사진마다의 게시 동의)·문제 신고. 주문 내용 버전마다 알레르기 정보 동의(동의함·동의 안 함·동의 필요 없음)와 알레르기 답(동의 안 함이면 없음, REQ-203). "
         "다른 가게 주문과 끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)이면 404(SPEC-068).",
    params=[pid("orderId", "주문", E.ORDER_ID)],
    ok=[(200, "Order", {"custom_requested": E.CUSTOM_REQUESTED, "confirmed": E.ORDER_CONFIRMED, "changed": E.ORDER_CHANGED,
@@ -848,7 +848,7 @@ op(id="API-050", method="post", path="/owner/orders/{orderId}/refunds", op="deci
 # ═══ 제작 ═════════════════════════════════════════════════════════════════════
 op(id="API-051", method="get", path="/owner/production-days/{day}", op="getProductionDay", tag="제작",
    summary="날짜별 제작 목록과 그날 픽업", spec=["SPEC-050", "SPEC-054", "SPEC-045"], auth="owner",
-   desc="확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 픽업 시각·퀵 여부(SPEC-054), 맞춤 재료 필요·변경됨 표시. 결제 전·취소된 주문은 없다.",
+   desc="확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 픽업 시각·퀵 여부(SPEC-054), 맞춤 재료 필요·변경됨 표시. 결제 전·취소된 주문은 없다. 알레르기 정보에 동의하지 않은 주문은 요약의 allergyConsent가 declined이고 알레르기 답이 없다(REQ-203).",
    params=[pday("2026-11-20", "볼 날")],
    ok=[(200, "ProductionDay", {"day": E.PRODUCTION_DAY, "empty": E.PRODUCTION_DAY_EMPTY})],
    errors={404: ["shop_not_registered"]},
@@ -859,7 +859,7 @@ op(id="API-051", method="get", path="/owner/production-days/{day}", op="getProdu
 
 op(id="API-052", method="post", path="/owner/orders/{orderId}/production-marks", op="markProduction", tag="제작",
    summary="맞춤 재료 주문·제작 시작·완성 표시", spec=["SPEC-051", "SPEC-053", "SPEC-066"], auth="owner", idem=True,
-   desc="그 시각을 남긴다. 이 시각은 환불 계산의 근거다(SPEC-051). 완성에는 사진을 5장까지 붙일 수 있고, 완성 사진 보내기를 켠 가게면 픽업 전에 손님에게 한 번 보낸다(SPEC-053). "
+   desc="그 시각을 남긴다. 이 시각은 환불 계산의 근거다(SPEC-051). 완성에는 사진을 5장까지 붙일 수 있고, 완성 사진 보내기를 켠 가게면 픽업 전에 손님에게 한 번 보내고 그 안내에서 사진마다 게시 동의를 묻는다(SPEC-053, REQ-207, API-073). "
         "이미 남긴 표시는 unchanged. 취소된 주문은 409 invalid_state.",
    params=[pid("orderId", "주문", E.ORDER_ID)],
    body="ProductionMarkInput",
@@ -1118,7 +1118,7 @@ op(id="API-066", method="get", path="/owner/reviews", op="listReviews", tag="후
 
 op(id="API-067", method="get", path="/owner/portfolio", op="getPortfolio", tag="후기·포트폴리오",
    summary="포트폴리오와 올릴 수 있는 사진", spec=["SPEC-063"], auth="owner",
-   desc="올린 사진과, 올릴 수 있는지 보이는 후보(게시 동의한 사진만 올릴 수 있음).",
+   desc="올린 사진과, 올릴 수 있는지 보이는 후보(완성 사진·후기 사진. 손님이 그 사진의 게시에 동의하고 철회하지 않은 사진만 올릴 수 있음, REQ-209). 가게가 도안으로 올린 견본 사진은 손님 사진이 아니라 후보에 없고 가격표에 보인다(REQ-210).",
    ok=[(200, "Portfolio", {"portfolio": E.PORTFOLIO, "empty": {"items": [], "candidates": []}})],
    errors={404: ["shop_not_registered"]},
    omit={"403": O403, "409": O409_READ, "422": O422_NOINPUT},
@@ -1127,8 +1127,9 @@ op(id="API-067", method="get", path="/owner/portfolio", op="getPortfolio", tag="
 
 op(id="API-068", method="post", path="/owner/portfolio/items", op="addPortfolioItem", tag="후기·포트폴리오",
    summary="포트폴리오 게시", spec=["SPEC-063"], auth="owner", idem=True,
-   desc="게시 동의한 사진만 올린다. 동의하지 않았거나 철회한 사진은 409 photo_consent_missing. 이미 올렸으면 200 unchanged. 사진이 없거나 다른 가게 것이면 404.",
-   body="PortfolioInput", body_examples={"add": {"source": "review_photo", "photoId": E.REVIEW_PHOTO_1}},
+   desc="손님이 그 사진의 게시에 동의하고 철회하지 않은 사진만 올린다(완성 사진·후기 사진, REQ-209). 데이터베이스도 포트폴리오 항목의 동의가 그 사진의 것이고 동의함·철회 안 함인지 확인한다(05단계, 설계 재검토 H10). 동의하지 않았거나 철회한 사진은 409 photo_consent_missing. 이미 올렸으면 200 unchanged. 사진이 없거나 다른 가게 것이면 404.",
+   body="PortfolioInput", body_examples={"add": {"source": "review_photo", "photoId": E.REVIEW_PHOTO_1},
+                                     "add_completion": {"source": "completion_photo", "photoId": E.COMPLETION_PHOTO_1}},
    ok=[(201, "PortfolioResult", {"added": {"outcome": "done", "item": E.PORTFOLIO_ITEM}}),
        (200, "PortfolioResult", {"unchanged": {"outcome": "unchanged", "item": E.PORTFOLIO_ITEM}})],
    errors={404: ["not_found"], 409: ["photo_consent_missing"]},
@@ -1154,8 +1155,8 @@ op(id="API-069", method="delete", path="/owner/portfolio/items/{portfolioItemId}
 MESSAGE_OUTCOMES = ["answered", "callback_pending", "handed_over", "ai_unavailable", "ai_timeout", "ai_key_missing", "ai_limit_reached",
                     "ai_cost_limit_reached", "masking_failed", "ai_output_rejected", "card_shown", "photo_received", "photo_rejected",
                     "unsupported_message", "rate_limited", "duplicate", "not_accepting", "channel_test_card", "server_error"]
-CARD_OUTCOMES = ["orderer_saved", "order_requested", "payment_claimed", "change_requested", "order_cancelled", "issue_reported", "consent_withdrawn",
-                 "declined", "input_invalid", "card_stale", "card_expired", "card_not_yours", "card_used", "day_full", "retry_needed", "not_allowed_now",
+CARD_OUTCOMES = ["allergy_saved", "allergy_declined", "orderer_saved", "order_requested", "payment_claimed", "change_requested", "order_cancelled",
+                 "issue_reported", "photo_consent_saved", "consent_withdrawn", "declined", "input_invalid", "card_stale", "card_expired", "card_not_yours", "card_used", "day_full", "retry_needed", "not_allowed_now",
                  "block_verified", "channel_linked", "not_accepting", "server_error"]
 REVIEW_OUTCOMES = ["review_saved", "review_not_allowed", "review_invalid", "photo_download_failed", "duplicate", "block_verified", "channel_linked",
                    "not_accepting", "server_error"]
@@ -1165,15 +1166,18 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
    summary="손님 메시지 수신(카카오 오픈빌더 스킬)", auth="skill", callbacks=True, outcomes=MESSAGE_OUTCOMES, ai="AI-1",
    spec=["SPEC-017", "SPEC-018", "SPEC-019", "SPEC-020", "SPEC-021", "SPEC-022", "SPEC-025", "SPEC-026", "SPEC-027", "SPEC-028",
          "SPEC-033", "SPEC-040", "SPEC-041", "SPEC-046", "SPEC-049", "SPEC-056", "SPEC-057", "SPEC-066", "SPEC-068", "SPEC-069",
-         "SPEC-013", "SPEC-014", "SPEC-016", "SPEC-008", "SPEC-072"],
+         "SPEC-013", "SPEC-014", "SPEC-016", "SPEC-008", "SPEC-072", "SPEC-075"],
    desc="카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 키가 아니면 401(DEC-08). "
         "처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). "
         "답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). "
         "콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). "
         "첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). "
         "연결 확인 중인 채널의 테스트 메시지면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008). 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). "
-        "주문서 초안이 다 찼는데 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). "
-        "주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장)을 먼저, 요약 카드(요약·사진 게시 동의 '동의 안 함'·버튼 셋)를 끝에 둔다. "
+        "주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, "
+        "버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. "
+        "AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). "
+        "그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). "
+        "주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). "
         "규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. "
         "Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). "
         "Open: 콜백 유효 시간이 문서 안에서 5분과 1분으로 어긋남. 개발 전 테스트로 정함(OPEN-2). "
@@ -1190,23 +1194,31 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
           "동시": ["outcome:answered", "note:답을 만드는 동안 온 메시지는 다음 차례에 한꺼번에(3-3)"],
           "한도": ["outcome:rate_limited", "outcome:ai_cost_limit_reached", "outcome:photo_rejected"],
           "외부": ["outcome:ai_unavailable", "outcome:ai_timeout", "outcome:ai_key_missing", "outcome:ai_limit_reached", "callback"],
-          "노출": ["closed", "outcome:server_error"], "빈·끊김": ["outcome:callback_pending", "note:빈 AI 답은 다시 묻고 두 번이면 에스컬레이션함(SPEC-020)"],
+          "노출": ["closed", "outcome:server_error", "note:알레르기 답은 AI 모델에 보내지 않음(REQ-204)"], "빈·끊김": ["outcome:callback_pending", "note:빈 AI 답은 다시 묻고 두 번이면 에스컬레이션함(SPEC-020)"],
           "AI": ["outcome:ai_output_rejected", "outcome:handed_over", "outcome:masking_failed"], "화면": ["screen"]})
 
 op(id="API-071", method="post", path="/kakao/skills/card", op="pressConfirmCard", tag="카카오 스킬",
    summary="손님 확인 카드 버튼(카카오 오픈빌더 스킬)", auth="skill", outcomes=CARD_OUTCOMES,
-   spec=["SPEC-069", "SPEC-029", "SPEC-030", "SPEC-033", "SPEC-041", "SPEC-046", "SPEC-058", "SPEC-063", "SPEC-015", "SPEC-032", "SPEC-040", "SPEC-072"],
+   spec=["SPEC-069", "SPEC-029", "SPEC-030", "SPEC-033", "SPEC-041", "SPEC-046", "SPEC-058", "SPEC-063", "SPEC-015", "SPEC-032", "SPEC-040", "SPEC-072",
+         "SPEC-075", "SPEC-053"],
    desc="확인 카드의 블록 버튼이 clientExtra(cardKey, choice)로 보내는 스킬. 서버는 카드 키로 저장된 카드를 찾고 그 사용자·그 주문의 현재 버전·30분 기한을 다시 본다(G9). "
-        "주문 요청이면 한 트랜잭션으로 내용 확인·규정 동의·사진 게시 동의·주문 요청을 남기고, 기본 디자인이면 같은 트랜잭션에서 자리를 잡고 결제 안내까지(SPEC-029, SPEC-030). "
+        "주문 요청이면 한 트랜잭션으로 내용 확인·규정 동의·주문 요청을 남기고 초안의 알레르기 정보 동의(답·동의 글 버전·시각)와 알레르기 답을 주문 내용 버전에 옮기며, 기본 디자인이면 같은 트랜잭션에서 자리를 잡고 결제 안내까지(SPEC-029, SPEC-030). "
+        "초안에 알레르기 정보 동의의 답이 없거나 동의했는데 알레르기 답이 없으면 주문 요청을 남기지 않고 알레르기 정보 카드를 보낸다(card_stale, REQ-201). "
         "입금 알리기·변경 요청·취소·신고·동의 철회도 같은 방법. 카드를 받은 사용자가 아니면 card_not_yours, 버전이 바뀌었으면 card_stale과 새 카드, 기한이 지났으면 card_expired와 새 카드. "
         "같은 카드를 다시 누르면 card_used와 처음 결과(G2). 아무것도 남기지 못하면 retry_needed. 카드 값은 서버 기록에서만 오고 손님 말로 바꿀 수 없다(SPEC-069). "
         "주문자 정보 카드의 '주문자 정보' 블록과 입금 알리기 카드의 '입금자 이름' 블록도 이 스킬로 오고, action.params에 customer_name·customer_phone이나 depositor_name을 담는다(설계 재검토 H11). "
         "이 값은 AI로 보내지 않는다(REQ-178). 형식(이름 1~30자, 연락처 숫자와 '-' 8~14자)이 맞으면 초안에 남기고 주문 요청 카드를 보내거나(orderer_saved, SPEC-072) 그 이름으로 결제 확인을 요청한다(payment_claimed, SPEC-033). "
         "형식이 틀리면 아무것도 남기지 않고 다시 묻는다(input_invalid). 입금 알리기 카드의 '결제 확인 요청'을 바로 누르면 입금자 이름은 주문자 이름이다(REQ-176). "
+        "알레르기 정보 카드의 '동의하고 알려 주기'가 연 '알레르기 답' 블록은 받은 답을 action.params.allergy_answer에 담아 이 스킬로 온다. 답이 1~200자('없음'도 답)면 동의(동의 글 버전·시각)와 알레르기 답을 한 트랜잭션으로 초안에 남기고, "
+        "주문자 이름·연락처가 없으면 주문자 정보 카드를, 있으면 주문 요청 카드를 보낸다(allergy_saved, SPEC-075, REQ-201, REQ-202). 답이 비거나 200자를 넘으면 아무것도 남기지 않고 '알레르기가 있는 재료를 200자까지 알려 주세요(없으면 없음)' 카드(알레르기 답 블록 버튼)를 다시 보낸다(input_invalid). 알레르기 정보 카드는 보낸 뒤 초안이 바뀌어도 card_stale로 거절하지 않고 받은 동의와 답을 남기며, 다음 카드를 바뀐 초안으로 만든다(SPEC-075). "
+        "'동의 안 함'은 거부와 동의 글 버전·시각을 초안에 남기고 알레르기를 묻지 않은 채 다음 카드를 보낸다(allergy_declined, REQ-203). 알레르기 답은 AI 모델·로그·사장님 알림에 보내지 않는다(REQ-204, REQ-142, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). "
+        "완성 사진 안내(API-073)의 사진 게시 동의 카드에서 누른 '올려도 돼요'·'안 돼요'는 그 안내의 사진마다 동의를 남긴다(photo_consent_saved, SPEC-053, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). "
+        "동의를 철회하는 카드(consent_withdrawn)는 완성 사진·후기 사진의 동의 모두를 다루고, 그 사진의 올라 있는 포트폴리오 항목을 먼저 내린 뒤 철회를 남긴다(SPEC-063, REQ-209). "
         "주문자 정보를 받아 보내는 주문 요청 확인 카드와 card_stale·card_expired의 새 카드는 API-070의 card_shown처럼 규정 글을 먼저, 요약 카드를 끝에 둔다(DEC-22). "
-        "연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: card·orderer_info·depositor_name)은 주문·카드를 남기지 않고 그 블록이 닿았다는 것만 남긴 뒤 다음 시험 버튼을 답하고(block_verified), "
-        "넷이 모두 닿으면 채널을 '연결됨'으로 묶고 시험 안내를 보낸다(channel_linked, SPEC-008, REQ-179, 설계 재검토 H8). clientExtra에 cardKey도 check도 없으면 422.",
-   body="SkillPayload", body_examples={"order_request": E.SKILL_CARD, "orderer_info": E.SKILL_ORDERER, "depositor_name": E.SKILL_DEPOSITOR,
+        "연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: card·orderer_info·allergy_answer·depositor_name)은 주문·카드를 남기지 않고 그 블록이 닿았다는 것만 남긴 뒤 다음 시험 버튼을 답하고(block_verified), "
+        "다섯이 모두 닿으면 채널을 '연결됨'으로 묶고 시험 안내를 보낸다(channel_linked, SPEC-008, REQ-206, 설계 재검토 H8·H5). clientExtra에 cardKey도 check도 없으면 422.",
+   body="SkillPayload", body_examples={"order_request": E.SKILL_CARD, "orderer_info": E.SKILL_ORDERER, "allergy_answer": E.SKILL_ALLERGY,
+                                       "depositor_name": E.SKILL_DEPOSITOR, "photo_consent": E.SKILL_PHOTO_CONSENT,
                                        "check_button": E.SKILL_CHECK_CARD},
    ok=[(200, "SkillTemplateResponse", {k: E.SKILL_OUTCOME_EXAMPLES[k] for k in CARD_OUTCOMES}, ["Siljang-Outcome"])],
    errors={401: ["skill_key_invalid"]},
@@ -1215,7 +1227,7 @@ op(id="API-071", method="post", path="/kakao/skills/card", op="pressConfirmCard"
    kinds={"접근": ["security", "401:skill_key_invalid", "outcome:card_not_yours"], "입력": ["422:validation_failed", "outcome:input_invalid"],
           "대상": ["outcome:not_allowed_now"], "상태": ["outcome:card_stale", "outcome:card_expired", "outcome:not_allowed_now", "outcome:block_verified", "outcome:channel_linked"],
           "반복": ["outcome:card_used"], "동시": ["outcome:day_full", "outcome:card_stale"], "외부": ["outcome:retry_needed"],
-          "노출": ["closed", "outcome:server_error", "note:주문자 이름·연락처·입금자 이름은 AI로 보내지 않음(REQ-178)"],
+          "노출": ["closed", "outcome:server_error", "note:주문자 이름·연락처·입금자 이름·알레르기 답은 AI로 보내지 않음(REQ-178, REQ-204)"],
           "AI": ["outcome:card_not_yours", "outcome:card_stale", "outcome:card_expired", "note:AI가 제안한 카드의 값은 서버 기록에서만 옴(SPEC-069)"],
           "화면": ["screen"]})
 
@@ -1223,10 +1235,10 @@ op(id="API-072", method="post", path="/kakao/skills/review", op="submitReview", 
    summary="후기 수신(카카오 오픈빌더 스킬)", auth="skill", outcomes=REVIEW_OUTCOMES,
    spec=["SPEC-062", "SPEC-019", "SPEC-061", "SPEC-008"],
    desc="후기 부탁 안내(SPEC-061)의 버튼이 여는 오픈빌더 '후기' 블록이 보내는 스킬(DEC-18). action.params의 review_text(1~1,000자), "
-        "review_photos(보안 이미지 플러그인 값: privacyAgreement·imageQuantity·secureUrls·expire, 5장까지), photo_consent(게시 동의, 기본 동의 안 함)와 clientExtra.orderNo. "
+        "review_photos(보안 이미지 플러그인 값: privacyAgreement·imageQuantity·secureUrls·expire, 5장까지), photo_consent(그 사진들을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 후기 하나에 한 번 물은 답. 기본 동의 안 함이고 답을 사진마다 남김, REQ-208, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)와 clientExtra.orderNo. "
         "받은 주문이고 그 주문을 요청한 사용자일 때만 남긴다. 사진은 서명 주소가 사는 10분 안에 내려받고 한 번 다시 받아도 실패하면 photo_download_failed. 같은 주문의 두 번째 후기는 새 버전. "
         "후기 부탁 버튼은 그 가게가 넣은 '후기' 블록 ID를 부른다. 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: review)은 후기를 남기지 않고 그 블록이 닿았다는 것만 남기며, "
-        "넷째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-179).",
+        "다섯째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-206).",
    body="SkillPayload", body_examples={"review": E.SKILL_REVIEW, "check_button": E.SKILL_CHECK_REVIEW},
    ok=[(200, "SkillTemplateResponse", dict({k: E.SKILL_OUTCOME_EXAMPLES[k] for k in REVIEW_OUTCOMES},
                                           duplicate=E.SKILL_OUTCOME_EXAMPLES["review_saved"],
@@ -1242,10 +1254,12 @@ op(id="API-072", method="post", path="/kakao/skills/review", op="submitReview", 
 
 op(id="API-073", method="post", path="/kakao/skills/event", op="showNotice", tag="카카오 스킬",
    summary="먼저 보내는 안내 보이기(카카오 Event API가 부르는 스킬)", auth="skill", outcomes=EVENT_OUTCOMES,
-   spec=["SPEC-066", "SPEC-008"],
+   spec=["SPEC-066", "SPEC-008", "SPEC-053"],
    desc="우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). "
         "userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). "
         "안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). "
+        "완성 사진 안내(SPEC-053)는 사진과 함께, 그 사진을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 묻는 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, "
+        "누른 답은 카드 스킬로 와서 그 안내의 사진마다 남는다(API-071 photo_consent_saved, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). "
         "손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), "
         "그 안내는 다음 대화 때 먼저 전한다(DEC-20이 정한 DEC-07의 예외). "
         "결제 안내의 글에는 계좌번호를 넣어 두지 않고 계좌 자리만 두며, 이 스킬이 보일 때 그 결제 안내의 계좌를 복호화해 채운다(SPEC-032, REQ-191). "

@@ -55,9 +55,9 @@
           status: active
           flows: [FL-006]
           terms: [CTX-003, TERM-061, TERM-040, TERM-010, TERM-009]
-          specs: [SPEC-028, SPEC-029, SPEC-030, SPEC-069, SPEC-072]
+          specs: [SPEC-028, SPEC-029, SPEC-030, SPEC-069, SPEC-072, SPEC-075]
           apis: [API-071]
-          note: "주문 내용 요약과 그 버전의 취소·환불 규정을 따로 보고 동의한 뒤 주문 요청 버튼을 누름"
+          note: "알레르기 정보에 따로 동의하고 답한 뒤, 주문 내용 요약과 그 버전의 취소·환불 규정을 따로 보고 동의하고 주문 요청 버튼을 누름"
         - id: SCR-005
           name: 결제 안내
           path: kakao:shop/payment-request
@@ -129,7 +129,7 @@
           specs: [SPEC-066, SPEC-023, SPEC-024, SPEC-036, SPEC-039, SPEC-044, SPEC-045, SPEC-047, SPEC-052, SPEC-053, SPEC-059, SPEC-061]
           apis: [API-073]
           opens: [SCR-012]
-          note: "서비스가 먼저 보내는 안내: 주문 확정 안내, 전날 안내, 완성 사진, 지연 안내, 에스컬레이션 건의 답, 환불·보상 결과, 후기 부탁. 가게 봇의 Event API와 안내 스킬로 보냄. 친구가 아니거나 그 가게의 먼저 보내기가 안 되면 다음 대화 때 먼저 전함"
+          note: "서비스가 먼저 보내는 안내: 주문 확정 안내, 전날 안내, 완성 사진(그 사진의 게시 동의를 한 문장으로 물음), 지연 안내, 에스컬레이션 건의 답, 환불·보상 결과, 후기 부탁. 가게 봇의 Event API와 안내 스킬로 보냄. 친구가 아니거나 그 가게의 먼저 보내기가 안 되면 다음 대화 때 먼저 전함"
         - id: SCR-012
           name: 후기 남기기
           path: kakao:shop/block/review
@@ -139,7 +139,7 @@
           terms: [CTX-006, TERM-051]
           specs: [SPEC-062, SPEC-061, SPEC-019]
           apis: [API-072]
-          note: "후기 부탁 안내의 버튼이나 채널의 '후기' 블록에서 글·사진을 남기고 사진 게시 동의(기본 동의 안 함)를 고름"
+          note: "후기 부탁 안내의 버튼이나 채널의 '후기' 블록에서 글·사진을 남기고, 그 사진을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지 한 문장으로 답함(기본 동의 안 함, 사진마다 남김)"
         - id: SCR-013
           name: 사진 게시 동의 철회 카드
           path: kakao:shop/card/consent_withdrawal
@@ -149,7 +149,7 @@
           terms: [CTX-006, TERM-052, TERM-051]
           specs: [SPEC-063, SPEC-069]
           apis: [API-071]
-          note: "손님이 사진 게시 동의를 철회하겠다고 하면 보이는 확인 카드. 누르면 포트폴리오에서 내려감"
+          note: "손님이 완성 사진·후기 사진의 게시 동의를 철회하겠다고 하면 보이는 확인 카드. 누르면 포트폴리오에서 먼저 내린 뒤 철회를 남김"
 
 # ── 사장님 ──
 - id: SCR-014
@@ -470,7 +470,7 @@
           terms: [CTX-007, TERM-053]
           specs: [SPEC-008]
           apis: [API-030, API-031, API-032]
-          note: "연결할 채널(오픈빌더 봇)과 버튼 블록 ID 넷을 정하고 스킬 설정 값을 옮긴 뒤 연결 확인(10분, 시험 버튼 넷)과 먼저 보내기 시험 안내. 봇 ID를 찾는 방법 안내도 여기(OPEN-8)"
+          note: "연결할 채널(오픈빌더 봇)과 버튼 블록 ID 다섯을 정하고 스킬 설정 값을 옮긴 뒤 연결 확인(10분, 시험 버튼 다섯)과 먼저 보내기 시험 안내. 봇 ID를 찾는 방법 안내도 여기(OPEN-8)"
         - id: SCR-042
           name: 장부 연결
           path: /owner/ledger
@@ -502,7 +502,7 @@
           terms: [CTX-006, TERM-052, TERM-071]
           specs: [SPEC-063]
           apis: [API-067, API-068, API-069]
-          note: "게시 동의한 후기 사진을 골라 올리거나 내림"
+          note: "손님이 게시에 동의하고 철회하지 않은 완성 사진·후기 사진을 골라 올리거나 내림"
         - id: SCR-045
           name: 후기
           path: /owner/reviews

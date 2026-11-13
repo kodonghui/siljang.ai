@@ -263,7 +263,7 @@ DETAILS_V1 = {
     "version": 1, "source": "request", "createdAt": t("11-12", "13:05"), "pickupAt": t("11-20", "14:00"), "courierPickup": False,
     "size": opt("1ho", "1호"), "flavor": opt("cream", "생크림"), "designOption": opt("basic", "기본 레터링"),
     "design": {"designId": uid("design:heart"), "name": "하트 레터링"}, "extras": [opt("candle", "초 추가")],
-    "designNotes": None, "lettering": "생일 축하해 지우야", "colors": "연분홍", "allergyAnswer": "없음",
+    "designNotes": None, "lettering": "생일 축하해 지우야", "colors": "연분홍", "allergyAnswer": "없음", "allergyConsent": "agreed",
     "excludedIngredients": None, "customerName": "이지우", "customerPhone": "010-9876-5432", "amount": 36000,
     "amountChangeReason": None,
 }
@@ -328,7 +328,7 @@ PRODUCTION = {
 PRODUCTION_STARTED = dict(PRODUCTION, productionStartedAt=t("11-19", "15:00"), undoableUntil=t("11-19", "15:05"),
                           revision=rev("production:K7Q3M9:started"))
 PRODUCTION_DONE = dict(PRODUCTION_STARTED, completedAt=t("11-20", "11:30"), undoableUntil=t("11-20", "11:35"),
-                       completionPhotos=[{"url": surl("completion:1")}], revision=rev("production:K7Q3M9:done"))
+                       completionPhotos=[{"url": surl("completion:1"), "consent": "consented"}], revision=rev("production:K7Q3M9:done"))
 PRODUCTION_HANDED = dict(PRODUCTION_DONE, handedOverAt=t("11-20", "14:05"), handoverKind="pickup", undoableUntil=None,
                          revision=rev("production:K7Q3M9:handed"))
 PRODUCTION_NO_PICKUP = dict(PRODUCTION_DONE, noPickupAt=t("11-20", "20:10"), undoableUntil=None, revision=rev("production:K7Q3M9:nopickup"))
@@ -348,7 +348,7 @@ ORDER_CONFIRMED = {
                                           validUntil=t("11-15", "13:00"), quotedAt=t("11-12", "13:00")),
     "day": {"capacity": 5, "held": 5, "remaining": 0, "full": True},
     "paymentRequests": [PR_FIRST_PAID], "payments": [PAYMENT], "refunds": [], "changeRequests": [],
-    "production": PRODUCTION, "issueReports": [], "photoConsent": {"consented": True, "withdrawnAt": None},
+    "production": PRODUCTION, "issueReports": [],
     "revision": rev("order:K7Q3M9:confirmed"),
 }
 ORDER_AWAITING = dict(ORDER_CONFIRMED, status="awaiting_payment", confirmedAt=None, paymentRequests=[PR_CLAIMED], payments=[],
@@ -368,7 +368,7 @@ CUSTOM_REQUESTED = {
     "referencePhotos": [{"url": surl("reference:bear")}], "quote": QUOTE,
     "day": {"capacity": 5, "held": 5, "remaining": 0, "full": True},
     "paymentRequests": [], "payments": [], "refunds": [], "changeRequests": [], "production": None, "issueReports": [],
-    "photoConsent": {"consented": False, "withdrawnAt": None}, "revision": rev("order:P4X8N2:requested"),
+    "revision": rev("order:P4X8N2:requested"),
 }
 CUSTOM_ACCEPTED = dict(CUSTOM_REQUESTED, status="awaiting_payment", version=2, amount=75000, acceptedAt=t("11-12", "15:00"),
                        details=[CUSTOM_DETAILS_V2, CUSTOM_DETAILS_V1], paymentRequests=[PR_CUSTOM_OPEN],
@@ -387,7 +387,7 @@ ORDER_REMAKE = dict(ORDER_CONFIRMED, orderId=REMAKE_ID, orderNo=REMAKE_NO, picku
                     details=[REMAKE_DETAILS], quote=None, day={"capacity": 5, "held": 3, "remaining": 2, "full": False},
                     paymentRequests=[], payments=[], production=dict(PRODUCTION, productionId=uid("production:R2D5T7"),
                                                                      revision=rev("production:R2D5T7:0")),
-                    photoConsent=None, revision=rev("order:R2D5T7:confirmed"))
+                    revision=rev("order:R2D5T7:confirmed"))
 
 
 def summary(o, courier=False):
@@ -522,10 +522,10 @@ SKILL_SETUP = {
     "reviewSkillUrl": API + "/kakao/skills/review", "eventSkillUrl": API + "/kakao/skills/event", "eventName": "siljang_notice",
     "headerName": "Siljang-Skill-Key", "headerValue": SKILL_KEY,
 }
-# 가게 봇에서 카드 버튼이 부르는 블록 넷의 블록 ID(설계 재검토 H8). 스킬 요청 예시의 block.id와 같은 값
-BLOCK_IDS = {"card": h("block:확인 카드", 24), "ordererInfo": h("block:주문자 정보", 24),
+# 가게 봇에서 카드 버튼이 부르는 블록 다섯의 블록 ID(설계 재검토 H8·H5). 스킬 요청 예시의 block.id와 같은 값
+BLOCK_IDS = {"card": h("block:확인 카드", 24), "ordererInfo": h("block:주문자 정보", 24), "allergyAnswer": h("block:알레르기 답", 24),
              "depositorName": h("block:입금자 이름", 24), "review": h("block:후기", 24)}
-ALL_BLOCKS = ["card", "orderer_info", "depositor_name", "review"]
+ALL_BLOCKS = ["card", "orderer_info", "allergy_answer", "depositor_name", "review"]
 CHANNEL_ID = uid("kakao-channel:1")
 CHANNEL_PENDING = {
     "connectionId": CHANNEL_ID, "botId": BOT_ID, "channelPublicId": "_xMoonCake", "status": "pending", "checkStartedAt": None,
@@ -539,7 +539,7 @@ CHANNEL_LINKED = dict(CHANNEL_CHECKING, status="linked", linkedAt=t("11-12", "11
 CHANNEL_EVENT_CHECKING = dict(CHANNEL_LINKED, eventStatus="checking", eventCheckedAt=None, revision=rev("channel:1:event-checking"))
 CHANNEL_EVENT_UNAVAILABLE = dict(CHANNEL_LINKED, eventStatus="unavailable", eventFailReason="wallet_missing",
                                  revision=rev("channel:1:event-unavailable"))
-CHANNEL_FAILED = dict(CHANNEL_CHECKING, status="failed", verifiedBlocks=["card", "orderer_info", "depositor_name"],
+CHANNEL_FAILED = dict(CHANNEL_CHECKING, status="failed", verifiedBlocks=["card", "orderer_info", "allergy_answer", "depositor_name"],
                       failureHints=["review_block", "open_builder_deploy"], revision=rev("channel:1:failed"))
 CHANNEL_INPUT = {"botId": BOT_ID, "channelPublicId": "_xMoonCake", "blockIds": BLOCK_IDS}
 LEDGER_AUTH = {"authorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=example&state=" + h("state", 24),
@@ -595,7 +595,7 @@ BOOKING_PAGE = {
 BOOKING_PAGE_NO_PHOTOS = dict(BOOKING_PAGE, portfolio=[])
 PRIVACY = {
     "shopName": "달빛케이크", "version": 1,
-    "body": "달빛케이크(이하 '가게')는 케이크 주문 상담과 예약을 위해 다음과 같이 개인정보를 처리합니다. 1. 처리하는 개인정보: 카카오 사용자 키, 상담 대화, 주문자 이름·연락처, 알레르기 답 …",
+    "body": "달빛케이크(이하 '가게')는 케이크 주문 상담과 예약을 위해 다음과 같이 개인정보를 처리합니다. 1. 처리하는 개인정보: 카카오 사용자 키, 상담 대화, 주문자 이름·연락처, 알레르기 정보(따로 동의한 손님에게서만) …",
     "overseasTransfers": [{
         "recipient": "AI 모델 회사(개발 전에 정함, OPEN-7)", "country": "정한 회사의 처리 지역", "personalData": "마스킹한 상담 대화(전화·계좌·카드 번호는 플레이스홀더)",
         "whenAndHow": "손님 메시지마다 암호화된 연결로 보냄", "purposeAndRetention": "상담 답 만들기. 회사 약관의 가장 짧은 보관",
@@ -609,7 +609,7 @@ PRODUCTION_DAY = {"day": "2026-11-20", "items": [
     {"order": ORDER_REF, "status": "confirmed", "pickupAt": t("11-20", "14:00"), "courierPickup": False, "isRemake": False,
      "summary": {"size": "1호", "flavor": "생크림", "designOption": "기본 레터링", "design": "하트 레터링",
                  "lettering": "생일 축하해 지우야", "colors": "연분홍", "designNotes": None, "extras": ["초 추가"],
-                 "allergyAnswer": "없음", "excludedIngredients": None, "referencePhotoCount": 0},
+                 "allergyAnswer": "없음", "allergyConsent": "agreed", "excludedIngredients": None, "referencePhotoCount": 0},
      "production": PRODUCTION_STARTED},
 ]}
 PRODUCTION_DAY_EMPTY = {"day": "2026-11-24", "items": []}
@@ -617,6 +617,7 @@ PRODUCTION_DAY_EMPTY = {"day": "2026-11-24", "items": []}
 # ── 후기와 포트폴리오 ──────────────────────────────────────────────────────
 REVIEW_PHOTO_1 = uid("review-photo:1")
 REVIEW_PHOTO_2 = uid("review-photo:2")
+COMPLETION_PHOTO_1 = uid("completion-photo:1")
 REVIEWS = {"items": [{
     "reviewId": uid("review:1"), "order": ORDER_REF, "version": 1, "body": "글씨가 정말 예쁘고 맛있었어요!", "createdAt": t("11-21", "11:20"),
     "photos": [
@@ -628,6 +629,7 @@ PORTFOLIO_ITEM = {"portfolioItemId": uid("portfolio:1"), "source": "review_photo
 PORTFOLIO = {"items": [PORTFOLIO_ITEM], "candidates": [
     {"source": "review_photo", "photoId": REVIEW_PHOTO_1, "url": surl("review:1"), "order": ORDER_REF, "consent": "consented"},
     {"source": "review_photo", "photoId": REVIEW_PHOTO_2, "url": surl("review:2"), "order": ORDER_REF, "consent": "not_consented"},
+    {"source": "completion_photo", "photoId": COMPLETION_PHOTO_1, "url": surl("completion:1"), "order": ORDER_REF, "consent": "consented"},
 ]}
 
 # ── 카카오 스킬 요청 ────────────────────────────────────────────────────────
@@ -661,6 +663,13 @@ SKILL_ORDERER = skill_request("이름·연락처 넣기", action="card", block="
 SKILL_DEPOSITOR = skill_request("입금자 이름 넣기", action="card", block="입금자 이름", callback=False,
                                 params={"depositor_name": "이민호"},
                                 client_extra={"cardKey": "ck_" + h("card:payclaim", 30), "choice": "confirm"})
+# 알레르기 정보 카드의 '동의하고 알려 주기'가 연 '알레르기 답' 블록(설계 재검토 H5, SPEC-075)
+SKILL_ALLERGY = skill_request("동의하고 알려 주기", action="card", block="알레르기 답", callback=False,
+                              params={"allergy_answer": "땅콩"},
+                              client_extra={"cardKey": "ck_" + h("card:allergy", 30), "choice": "confirm"})
+# 완성 사진 안내의 사진 게시 동의 카드(설계 재검토 H10, SPEC-053)
+SKILL_PHOTO_CONSENT = skill_request("올려도 돼요", action="card", block="확인 카드", callback=False,
+                                    client_extra={"cardKey": "ck_" + h("card:photo-consent", 30), "choice": "confirm"})
 SKILL_CHECK_CARD = skill_request("시험: 확인 카드", action="card", block="확인 카드", callback=False, client_extra={"check": "card"})
 SKILL_CHECK_REVIEW = skill_request("시험: 후기", action="review", block="후기", callback=False,
                                    params={"review_text": "연결 시험", "photo_consent": "동의 안 함"}, client_extra={"check": "review"})
@@ -708,19 +717,31 @@ RULES_TEXT = ("취소·환불 규정(운영규정 버전 %d)\n" % RULES["version
 
 
 def order_card(summary, card_key, notice=None):
-    description = (notice + " · " if notice else "") + summary + " · 사진 게시 동의: 동의 안 함"
+    description = (notice + " · " if notice else "") + summary
     return {"version": "2.0", "template": {"outputs": [
         {"simpleText": {"text": RULES_TEXT}},
         {"textCard": {"title": "주문 요청 확인", "description": description, "buttons": [
             card_button("규정에 동의하고 주문 요청", card_key, "confirm"),
-            card_button("사진 게시도 동의하고 요청", card_key, "confirm_with_photo_consent"),
             card_button("안 할래요", card_key, "decline")]}}]}}
+
+
+# 알레르기 정보 카드(설계 재검토 H5, SPEC-075): 주문자 정보 카드와 주문 요청 카드 앞. 동의 글은 우리 서비스가 쓰고 버전을 붙임
+ALLERGY_TEXT = ("알레르기 정보는 이 주문의 케이크를 만드는 데만 써요. 알레르기가 있는 재료만 받고, 이 가게 사장님만 보며, 주문이 끝나고 30일 뒤 지워요. "
+                "동의하지 않아도 돼요. 그러면 알레르기는 묻지 않고 빼야 할 재료만으로 주문해요")
+ALLERGY_CARD = card("알레르기 정보", ALLERGY_TEXT, [
+    {"label": "동의하고 알려 주기", "action": "block", "blockId": BLOCK_IDS["allergyAnswer"],
+     "extra": {"cardKey": "ck_" + h("card:allergy", 30), "choice": "confirm"}},
+    card_button("동의 안 함", "ck_" + h("card:allergy", 30), "decline")])
+# 주문자 정보 카드(설계 재검토 H11, SPEC-072)
+ORDERER_CARD_OUTPUT = {"textCard": {"title": "주문자 정보", "description": "주문하시는 분의 이름과 연락처를 넣어 주세요. 이 정보는 AI에 보내지 않아요",
+                                    "buttons": [{"label": "이름·연락처 넣기", "action": "block", "blockId": BLOCK_IDS["ordererInfo"],
+                                                 "extra": {"cardKey": "ck_" + h("card:orderer", 30), "choice": "confirm"}}]}}
 
 
 ADD_FRIEND = "채널을 추가하시면 답을 바로 받아 보실 수 있어요."
 HANDED_OVER = "사장님 확인 뒤 답드릴게요."
 CK = "ck_" + h("card:order", 30)
-ORDER_SUMMARY = "11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 주문자 이지우 010-9876-5432 · 36,000원"
+ORDER_SUMMARY = "11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 알레르기: 없음 · 주문자 이지우 010-9876-5432 · 36,000원"
 SKILL_OUTCOME_EXAMPLES = {
     # 손님 메시지
     "answered": text("1호 생크림 케이크는 35,000원이에요. 이 금액은 11월 15일 12:39까지 유효하고, 견적만으로 그날 자리를 잡아 두지는 않아요."),
@@ -733,25 +754,28 @@ SKILL_OUTCOME_EXAMPLES = {
     "ai_cost_limit_reached": text(HANDED_OVER),
     "masking_failed": text(HANDED_OVER),
     "ai_output_rejected": text("1호 생크림 케이크는 35,000원이에요. 결제가 확인되면 주문이 확정돼요."),
-    "card_shown": order_card(ORDER_SUMMARY, CK),
+    "card_shown": ALLERGY_CARD,
     "photo_received": text("사진을 받았어요"),
     "photo_rejected": text("사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요"),
     "unsupported_message": text("글이나 사진으로 말씀해 주세요"),
     "rate_limited": text("잠시 뒤 다시 말씀해 주세요"),
     "duplicate": text("1호 생크림 케이크는 35,000원이에요. 이 금액은 11월 15일 12:39까지 유효하고, 견적만으로 그날 자리를 잡아 두지는 않아요."),
     "not_accepting": text("아직 상담을 받지 않아요. 가게로 연락해 주세요: 010-1234-5678"),
-    "channel_test_card": card("연결 확인", "테스트 메시지를 받았어요. 시험 버튼 4개를 하나씩 눌러 주세요(1/4 확인 카드)",
+    "channel_test_card": card("연결 확인", "테스트 메시지를 받았어요. 시험 버튼 5개를 하나씩 눌러 주세요(1/5 확인 카드)",
                               [check_button("시험: 확인 카드", "card", "card")]),
     "server_error": text("잠시 뒤 다시 말씀해 주세요"),
     # 연결 확인의 시험 버튼(카드·후기 스킬)
-    "block_verified": card("연결 확인", "확인 카드 블록이 닿았어요(1/4). 다음 시험 버튼을 눌러 주세요",
+    "block_verified": card("연결 확인", "확인 카드 블록이 닿았어요(1/5). 다음 시험 버튼을 눌러 주세요",
                            [check_button("시험: 주문자 정보", "orderer_info", "ordererInfo")]),
-    "channel_linked": text("버튼 블록 4개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요"),
+    "channel_linked": text("버튼 블록 5개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요"),
     # 먼저 보내는 안내(안내 스킬)
     "notice_shown": text("주문이 확정됐어요. 11월 20일 14:00에 뵐게요."),
     "notice_test": text("시험 안내예요. 이 안내가 보이면 손님에게 안내를 먼저 보낼 수 있어요"),
     "notice_gone": text("지금은 전할 안내가 없어요"),
     # 확인 카드 버튼
+    "allergy_saved": {"version": "2.0", "template": {"outputs": [ORDERER_CARD_OUTPUT]}},
+    "allergy_declined": {"version": "2.0", "template": {"outputs": [
+        {"simpleText": {"text": "알겠어요. 알레르기는 묻지 않고 빼야 할 재료만으로 주문을 이어갈게요"}}, ORDERER_CARD_OUTPUT]}},
     "orderer_saved": order_card(ORDER_SUMMARY, CK),
     "order_requested": text("주문을 요청했어요(주문번호 K7Q3M9). 결제가 확인되면 확정돼요.",
                             "입금하실 곳: 달빛은행 123456-01-234567 김달빛 · 36,000원 · 11월 13일 01:05까지"),
@@ -759,6 +783,7 @@ SKILL_OUTCOME_EXAMPLES = {
     "change_requested": text("변경을 요청했어요. 사장님이 보고 알려 드려요"),
     "order_cancelled": text("주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요"),
     "issue_reported": text("신고를 받았어요. 사장님이 보시고 정하실 거예요"),
+    "photo_consent_saved": text("알려 주셔서 고마워요. 사진 게시 동의는 언제든 철회할 수 있어요"),
     "consent_withdrawn": text("사진 게시 동의를 철회했어요. 곧 사진이 내려가요"),
     "declined": text("알겠어요. 더 궁금한 것이 있으면 말씀해 주세요"),
     "input_invalid": card("주문자 정보", "이름은 1~30자, 연락처는 숫자와 '-'로 8~14자로 넣어 주세요. 이 정보는 AI에 보내지 않아요",
