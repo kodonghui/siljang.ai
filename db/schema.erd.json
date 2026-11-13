@@ -27,7 +27,7 @@
     "lockSettings": 63,
     "ddlScripts": {
       "before": "CREATE EXTENSION IF NOT EXISTS btree_gist; -- refund_tiers의 EXCLUDE에 씀",
-      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py·erd_editor_sync.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status <> 'deleted';\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL;\nCREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE status IN ('held', 'fixed');\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_order_uq ON photo_consents (order_id) WHERE scope = 'order';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
+      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py·erd_editor_sync.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status NOT IN ('ended', 'deleted');\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX consultations_ordered_idx ON consultations (last_customer_message_at) WHERE status = 'ordered';\nCREATE INDEX consultations_ended_idx ON consultations (ended_at) WHERE status = 'ended';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE INDEX orders_purge_due_idx ON orders (finished_at) WHERE finished_at IS NOT NULL AND personal_data_purged_at IS NULL;\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL;\nCREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE status IN ('held', 'fixed');\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_order_uq ON photo_consents (order_id) WHERE scope = 'order';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX kept_records_issue_due_idx ON kept_records (issue_keep_until) WHERE issue_keep_until IS NOT NULL AND issue_purged_at IS NULL;\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
     }
   },
   "doc": {
@@ -82,7 +82,8 @@
       "03h7y0179n9e4e4gq7aukd260",
       "03h7y0179sukl6c8nic8nn7g1",
       "03h7y0179sukl6c8niz928w4a",
-      "03h7y0179sukl6c8njfcxe8qh"
+      "03h7y0179sukl6c8njfcxe8qh",
+      "03h8b7tnrfhbd2g1wkkguu20l"
     ],
     "relationshipIds": [
       "03h7y0179y91t3fbncx4e1mp5",
@@ -191,7 +192,8 @@
       "03h7y017apioxvv0yn53av364",
       "03h7y017apioxvv0yn6f9zqm3",
       "03h89a0gml68t8w9rfe7rlq8h",
-      "03h89a0gmw3f6g8nxnl1wwsio"
+      "03h89a0gmw3f6g8nxnl1wwsio",
+      "03h8b7tsd5h0fbccotqvvwasz"
     ],
     "indexIds": [
       "03h7y017apioxvv0yn8m6arb8",
@@ -264,7 +266,8 @@
       "03h7y017b606uh594khnzprsm",
       "03h7y017b606uh594kml02wt2",
       "03h7y017b606uh594kqh53vyq",
-      "03h89a0gn1i02nrgg1g3ijlnn"
+      "03h89a0gn1i02nrgg1g3ijlnn",
+      "03h8b7tsdaz6udoggxs76nr9b"
     ],
     "memoIds": [
       "03h7y0184s9oftzxoejnroyg3"
@@ -622,7 +625,8 @@
           "03h7y0178vyo98xl8m8rx7cg4",
           "03h7y0178vyo98xl8mbd5flqr",
           "03h7y0178vyo98xl8md1f945q",
-          "03h7y0178vyo98xl8mem56jdk"
+          "03h7y0178vyo98xl8mem56jdk",
+          "03h8b7tnqd414q9optd5p5bug"
         ],
         "groupId": "03h7y017wa1qi7u3p6412i1g8",
         "ui": {
@@ -633,7 +637,7 @@
       "03h7y0178vyo98xl8mfwdxckm": {
         "id": "03h7y0178vyo98xl8mfwdxckm",
         "name": "consultations",
-        "comment": "TBL-017 상담(TERM-046): 손님 한 사람과 가게의 대화 하나",
+        "comment": "TBL-017 상담(TERM-046): 손님 한 사람과 가게의 대화 하나. 다룬 주문이 모두 끝나면 닫고 다음 말은 새 상담(REQ-189)",
         "columnIds": [
           "03h7y0178vyo98xl8mhvolr69",
           "03h7y0178vyo98xl8mkyw1ymx",
@@ -642,6 +646,7 @@
           "03h7y0178vyo98xl8mqwwr9nv",
           "03h7y0178vyo98xl8ms9hic1a",
           "03h7y0178vyo98xl8mul6vm6g",
+          "03h8b7tnqiilx5upexzz2bz1m",
           "03h7y0178vyo98xl8mwpkmuq3",
           "03h7y0178vyo98xl8myma2k8r",
           "03h7y0178vyo98xl8n0u89zs3",
@@ -808,6 +813,7 @@
           "03h7y01796y3abgmnn2mjxjti",
           "03h7y01796y3abgmnn5i9rwk0",
           "03h7y01796y3abgmnn7f9vyau",
+          "03h8b7tnqo48dwseb5or76q6g",
           "03h7y01796y3abgmnn852yqxn",
           "03h7y01796y3abgmnnadn4a06",
           "03h89odkbre5fbzrs4x1w3zkg"
@@ -950,7 +956,8 @@
           "03h7y0179cdtx0zvntap43uud",
           "03h7y0179cdtx0zvntbvd8svm",
           "03h7y0179cdtx0zvnte6q961e",
-          "03h7y0179cdtx0zvntfd4d4f6"
+          "03h7y0179cdtx0zvntfd4d4f6",
+          "03h8b7tnr9xkd6201mzvvpeac"
         ],
         "groupId": "03h7y017wa1qi7u3p6412i1g8",
         "ui": {
@@ -1505,6 +1512,27 @@
         "ui": {
           "x": 74,
           "y": 9410
+        }
+      },
+      "03h8b7tnrfhbd2g1wkkguu20l": {
+        "id": "03h8b7tnrfhbd2g1wkkguu20l",
+        "name": "kept_records",
+        "comment": "TBL-052 보관 기록: 끝나고 30일이 지난 주문을 지금 데이터와 나눈 표시와 주문자 이름. 계약·결제 기록은 5년, 문제 신고 기록은 3년(잠정, 5-2 질문 7)",
+        "columnIds": [
+          "03h8b7tnrfhbd2g1wkocqt8kb",
+          "03h8b7tnrqcgabf66wq8k5rb4",
+          "03h8b7tnrvqxpwrqmpg5yxrvy",
+          "03h8b7tnrvqxpwrqmpj6tk4yo",
+          "03h8b7tns1cvzqth8fnm01dzr",
+          "03h8b7tns6si36qewvtphbn6v",
+          "03h8b7tnsca4j3wi93ykdkjjr",
+          "03h8b7tnsca4j3wi942lfah3x",
+          "03h8b7tnshqck0x2sv49n1xec"
+        ],
+        "groupId": "03h7y017wfhgli8koxk63sce2",
+        "ui": {
+          "x": 2137,
+          "y": 4144
         }
       }
     },
@@ -2765,9 +2793,9 @@
         "id": "03h7y0178vyo98xl8m8rx7cg4",
         "tableId": "03h7y0178vyo98xl8m05p4fdr",
         "name": "kakao_user_key",
-        "comment": "그 채널의 카카오 사용자 키. 손님 명령은 이 키로 구분함(G1)",
+        "comment": "그 채널의 카카오 사용자 키. 손님 명령은 이 키로 구분함(G1). 상담이 모두 지워지고 주문이 모두 보관 기록이 되면 지움(SPEC-065, REQ-190)",
         "dataType": "text",
-        "options": 8
+        "options": 0
       },
       "03h7y0178vyo98xl8mbd5flqr": {
         "id": "03h7y0178vyo98xl8mbd5flqr",
@@ -2794,6 +2822,14 @@
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
+      },
+      "03h8b7tnqd414q9optd5p5bug": {
+        "id": "03h8b7tnqd414q9optd5p5bug",
+        "tableId": "03h7y0178vyo98xl8m05p4fdr",
+        "name": "purged_at",
+        "comment": "카카오 사용자 키를 지운 시각(SPEC-065, REQ-190). 같은 사용자가 다시 말을 걸면 새 손님 행으로 받음",
+        "dataType": "timestamptz",
+        "options": 0
       },
       "03h7y0178vyo98xl8mhvolr69": {
         "id": "03h7y0178vyo98xl8mhvolr69",
@@ -2824,7 +2860,7 @@
         "id": "03h7y0178vyo98xl8mnudl56o",
         "tableId": "03h7y0178vyo98xl8mfwdxckm",
         "name": "status",
-        "comment": "열림·사장님 답 기다림·문의 끊김·주문으로 전환됨·지워짐(1-1)",
+        "comment": "열림·사장님 답 기다림·문의 끊김·주문으로 전환됨·상담 끝남·지워짐(1-1). 상담 끝남과 지워짐은 다시 열지 않고 손님의 다음 말은 새 상담(REQ-189)",
         "dataType": "text",
         "default": "'open'",
         "options": 8
@@ -2849,7 +2885,7 @@
         "id": "03h7y0178vyo98xl8mul6vm6g",
         "tableId": "03h7y0178vyo98xl8mfwdxckm",
         "name": "dropped_at",
-        "comment": "문의 끊김으로 닫은 시각(30일 지우기 셈, REQ-143)",
+        "comment": "문의 끊김으로 닫은 시각(30일 지우기 셈, REQ-186)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -2882,7 +2918,15 @@
         "id": "03h7y0178vyo98xl8n1h4dy2o",
         "tableId": "03h7y0178vyo98xl8mfwdxckm",
         "name": "deleted_at",
-        "comment": "대화·사진·초안을 지운 시각(SPEC-065). 이 행은 내용 없이 남김",
+        "comment": "대화·사진·주문이 되지 않은 초안을 지운 시각(SPEC-065, REQ-186). 이 행은 내용 없이 남기고 주문·AI 호출 기록(비용)이 참조함",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8b7tnqiilx5upexzz2bz1m": {
+        "id": "03h8b7tnqiilx5upexzz2bz1m",
+        "tableId": "03h7y0178vyo98xl8mfwdxckm",
+        "name": "ended_at",
+        "comment": "상담 끝남으로 닫은 시각: 다룬 주문이 모두 끝나고 손님의 마지막 메시지 뒤 가게가 정한 시간이 지남(30일 지우기 셈, SPEC-025, REQ-189)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -3630,7 +3674,7 @@
         "id": "03h7y01796y3abgmnn852yqxn",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "personal_data_purged_at",
-        "comment": "법정 보존 기간 뒤 개인정보를 지운 시각(SPEC-065)",
+        "comment": "끝나고 30일 뒤 개인정보를 지우고 보관 기록(kept_records)으로 나눈 시각(SPEC-065, REQ-185, REQ-187). 이 주문은 화면·API·AI가 읽지 않음(A22)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -3651,6 +3695,14 @@
         "dataType": "integer",
         "default": "1",
         "options": 8
+      },
+      "03h8b7tnqo48dwseb5or76q6g": {
+        "id": "03h8b7tnqo48dwseb5or76q6g",
+        "tableId": "03h7y01791hwo1dbakj3f6d7s",
+        "name": "finished_at",
+        "comment": "주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없음(SPEC-025, SPEC-065). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)",
+        "dataType": "timestamptz",
+        "options": 0
       },
       "03h7y01796y3abgmnnep8htyb": {
         "id": "03h7y01796y3abgmnnep8htyb",
@@ -3737,7 +3789,7 @@
         "id": "03h7y01796y3abgmnnza72xku",
         "tableId": "03h7y01796y3abgmnnczgybr2",
         "name": "payload",
-        "comment": "서버가 저장된 값으로 만든 카드 내용(요약·금액·규정 버전·환불 계산값). AI가 쓰지 않음",
+        "comment": "서버가 저장된 값으로 만든 카드 내용(요약·금액·규정 버전·환불 계산값). AI가 쓰지 않음. 주문이 끝나고 30일 뒤 빈 객체({})로 비움(SPEC-065)",
         "dataType": "jsonb",
         "options": 8
       },
@@ -3819,7 +3871,7 @@
         "id": "03h7y01796y3abgmnojxudcfk",
         "tableId": "03h7y01796y3abgmno7gmyh7i",
         "name": "changes",
-        "comment": "바꾸려는 내용(디자인·문구·날짜·시간)",
+        "comment": "바꾸려는 내용(디자인·문구·날짜·시간). 주문이 끝나고 30일 뒤 빈 객체({})로 비움(SPEC-065)",
         "dataType": "jsonb",
         "options": 8
       },
@@ -4042,7 +4094,7 @@
         "id": "03h7y01796y3abgmnq1ih9ugf",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "design_notes",
-        "comment": "디자인 설명",
+        "comment": "디자인 설명. 주문이 끝나고 30일 뒤 비움(SPEC-065)",
         "dataType": "text",
         "options": 0
       },
@@ -4050,7 +4102,7 @@
         "id": "03h7y01796y3abgmnq44vrpwp",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "lettering",
-        "comment": "문구(TERM-021). 철자는 손님이 쓴 그대로(SPEC-028)",
+        "comment": "문구(TERM-021). 철자는 손님이 쓴 그대로(SPEC-028). 주문이 끝나고 30일 뒤 비움(SPEC-065)",
         "dataType": "text",
         "options": 0
       },
@@ -4066,7 +4118,7 @@
         "id": "03h7y01796y3abgmnq6z15qvo",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "allergy_answer",
-        "comment": "알레르기 답. 이 주문 밖에서 쓰지 않고 장부에 적지 않음(REQ-142, SPEC-064). 보존 기간 뒤 지움",
+        "comment": "알레르기 답. 이 주문 밖에서 쓰지 않고 장부에 적지 않음(REQ-142, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)",
         "dataType": "text",
         "options": 0
       },
@@ -4074,7 +4126,7 @@
         "id": "03h7y01796y3abgmnq8pe1pff",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "excluded_ingredients",
-        "comment": "빼야 할 재료",
+        "comment": "빼야 할 재료. 주문이 끝나고 30일 뒤 비움(SPEC-065)",
         "dataType": "text",
         "options": 0
       },
@@ -4082,7 +4134,7 @@
         "id": "03h7y01796y3abgmnqc5154ex",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "customer_name",
-        "comment": "주문자 이름. 보존 기간 뒤 지움(SPEC-065)",
+        "comment": "주문자 이름. 주문이 끝나고 30일 뒤 비우고 보관 기록으로 옮김(SPEC-065, REQ-185)",
         "dataType": "text",
         "options": 0
       },
@@ -4090,7 +4142,7 @@
         "id": "03h7y01796y3abgmnqcrdpwt5",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "customer_phone",
-        "comment": "주문자 연락처. 보존 기간 뒤 지움",
+        "comment": "주문자 연락처. 주문이 끝나고 30일 뒤 지움(SPEC-065)",
         "dataType": "text",
         "options": 0
       },
@@ -4271,7 +4323,7 @@
         "id": "03h7y0179cdtx0zvnt8j4bqkl",
         "tableId": "03h7y0179cdtx0zvnsyhk9o72",
         "name": "description",
-        "comment": "설명. 사진 없이도 신고할 수 있음",
+        "comment": "설명. 사진 없이도 신고할 수 있음. 신고된 것은 주문이 끝난 날부터 3년 뒤 비움(SPEC-065, REQ-188)",
         "dataType": "text",
         "options": 0
       },
@@ -4311,6 +4363,14 @@
         "default": "now()",
         "options": 8
       },
+      "03h8b7tnr9xkd6201mzvvpeac": {
+        "id": "03h8b7tnr9xkd6201mzvvpeac",
+        "tableId": "03h7y0179cdtx0zvnsyhk9o72",
+        "name": "content_purged_at",
+        "comment": "신고된 설명과 사진을 지운 시각(주문이 끝난 날부터 3년, SPEC-065, REQ-188)",
+        "dataType": "timestamptz",
+        "options": 0
+      },
       "03h7y0179cdtx0zvntk3033p6": {
         "id": "03h7y0179cdtx0zvntk3033p6",
         "tableId": "03h7y0179cdtx0zvnthrmllf5",
@@ -4340,9 +4400,9 @@
         "id": "03h7y0179cdtx0zvntqkd66tf",
         "tableId": "03h7y0179cdtx0zvnthrmllf5",
         "name": "message_id",
-        "comment": "사진이 온 메시지",
+        "comment": "사진이 온 메시지. 상담을 지울 때 신고된 사진은 메시지 연결만 비우고 주문이 끝난 날부터 3년 남김(SPEC-065, REQ-187)",
         "dataType": "uuid",
-        "options": 8
+        "options": 0
       },
       "03h7y0179cdtx0zvntsjl87k0": {
         "id": "03h7y0179cdtx0zvntsjl87k0",
@@ -4636,7 +4696,7 @@
         "id": "03h7y0179cdtx0zvnvs0fcfkv",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "depositor_name",
-        "comment": "입금자 이름(입금 대조, TERM-063). 손님이 결제 확인을 요청할 때 AI를 거치지 않는 입력으로 받고, 따로 넣지 않으면 주문자 이름(SPEC-033, REQ-176). AI로 보내지 않음(REQ-178)",
+        "comment": "입금자 이름(입금 대조, TERM-063). 손님이 결제 확인을 요청할 때 AI를 거치지 않는 입력으로 받고, 따로 넣지 않으면 주문자 이름(SPEC-033, REQ-176). AI로 보내지 않음(REQ-178). 주문이 끝나고 30일 뒤 지움(SPEC-065)",
         "dataType": "text",
         "options": 0
       },
@@ -4888,7 +4948,7 @@
         "id": "03h7y0179cdtx0zvnxejhsfxx",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "refund_bank_name",
-        "comment": "환불받을 손님 은행(SPEC-049)",
+        "comment": "환불받을 손님 은행(SPEC-049). 주문이 끝나고 30일 뒤 지움(SPEC-065)",
         "dataType": "text",
         "options": 0
       },
@@ -4896,7 +4956,7 @@
         "id": "03h7y0179cdtx0zvnxff5b6ie",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "refund_account_number",
-        "comment": "환불받을 손님 계좌번호. 그 가게 사장님 화면의 이 환불에만, AI·로그 0번(R19). 보존 기간 뒤 지움",
+        "comment": "환불받을 손님 계좌번호. 그 가게 사장님 화면의 이 환불에만, AI·로그 0번(R19). 주문이 끝나고 30일 뒤 지움(SPEC-065)",
         "dataType": "text",
         "options": 0
       },
@@ -4904,7 +4964,7 @@
         "id": "03h7y0179cdtx0zvnxhqr0v0z",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "refund_holder_name",
-        "comment": "환불받을 계좌의 예금주",
+        "comment": "환불받을 계좌의 예금주. 주문이 끝나고 30일 뒤 지움(SPEC-065)",
         "dataType": "text",
         "options": 0
       },
@@ -5630,7 +5690,7 @@
         "id": "03h7y0179n9e4e4gq3vp4cwyp",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "detail",
-        "comment": "보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음",
+        "comment": "보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음. 주문이 끝나고 30일 뒤 비움(SPEC-065)",
         "dataType": "jsonb",
         "options": 0
       },
@@ -5680,7 +5740,7 @@
         "id": "03h7y0179n9e4e4gq47kc64gn",
         "tableId": "03h7y0179n9e4e4gq430lqp8h",
         "name": "owner_task_id",
-        "comment": "알린 할 일",
+        "comment": "알린 할 일. 상담을 지울 때 그 상담의 에스컬레이션 할 일은 지우고 이 연결만 비움(SPEC-065, 설계 재검토 H3)",
         "dataType": "uuid",
         "options": 0
       },
@@ -5852,7 +5912,7 @@
         "id": "03h7y0179n9e4e4gq57px5ew3",
         "tableId": "03h7y0179n9e4e4gq4qs0he2r",
         "name": "body",
-        "comment": "보낼 글. 다른 손님 정보·내부 ID 없음(G6)",
+        "comment": "보낼 글. 다른 손님 정보·내부 ID 없음(G6). 주문이 끝나고 30일 뒤나 상담을 지울 때 행째 지움(SPEC-065)",
         "dataType": "text",
         "options": 8
       },
@@ -6553,6 +6613,80 @@
         "tableId": "03h7y0179sukl6c8njfcxe8qh",
         "name": "created_at",
         "comment": "남긴 시각",
+        "dataType": "timestamptz",
+        "default": "now()",
+        "options": 8
+      },
+      "03h8b7tnrfhbd2g1wkocqt8kb": {
+        "id": "03h8b7tnrfhbd2g1wkocqt8kb",
+        "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+        "name": "id",
+        "comment": "보관 기록 ID",
+        "dataType": "uuid",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "03h8b7tnrqcgabf66wq8k5rb4": {
+        "id": "03h8b7tnrqcgabf66wq8k5rb4",
+        "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+        "name": "shop_id",
+        "comment": "가게",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h8b7tnrvqxpwrqmpg5yxrvy": {
+        "id": "03h8b7tnrvqxpwrqmpg5yxrvy",
+        "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+        "name": "order_id",
+        "comment": "보관 기록이 된 주문. 주문 내용 버전·결제·환불·문제 신고 행은 그 주문에 그대로 남음",
+        "dataType": "uuid",
+        "options": 12
+      },
+      "03h8b7tnrvqxpwrqmpj6tk4yo": {
+        "id": "03h8b7tnrvqxpwrqmpj6tk4yo",
+        "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+        "name": "customer_name",
+        "comment": "주문자 이름: 계약 기록에서 손님을 알아볼 정보로 주문 내용에서 옮겨 둠(REQ-185). 주문자 정보가 없는 재제작 주문은 빈 값(원래 주문의 보관 기록에 있음)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8b7tns1cvzqth8fnm01dzr": {
+        "id": "03h8b7tns1cvzqth8fnm01dzr",
+        "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+        "name": "finished_at",
+        "comment": "주문이 끝난 시각(보관 기간의 셈)",
+        "dataType": "timestamptz",
+        "options": 8
+      },
+      "03h8b7tns6si36qewvtphbn6v": {
+        "id": "03h8b7tns6si36qewvtphbn6v",
+        "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+        "name": "contract_keep_until",
+        "comment": "계약·결제 기록을 둘 때까지: 끝난 날부터 5년(REQ-187, 잠정). 지나면 이 행을 지움(REQ-188)",
+        "dataType": "timestamptz",
+        "options": 8
+      },
+      "03h8b7tnsca4j3wi93ykdkjjr": {
+        "id": "03h8b7tnsca4j3wi93ykdkjjr",
+        "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+        "name": "issue_keep_until",
+        "comment": "문제 신고 기록을 둘 때까지: 끝난 날부터 3년(REQ-187, 잠정). 그 주문에 신고가 없으면 빈 값",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8b7tnsca4j3wi942lfah3x": {
+        "id": "03h8b7tnsca4j3wi942lfah3x",
+        "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+        "name": "issue_purged_at",
+        "comment": "문제 신고의 설명·사진을 지운 시각(REQ-188)",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8b7tnshqck0x2sv49n1xec": {
+        "id": "03h8b7tnshqck0x2sv49n1xec",
+        "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+        "name": "created_at",
+        "comment": "보관 기록으로 나눈 시각(끝나고 30일 뒤)",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -8684,6 +8818,26 @@
             "03h89a0g5q745jz67001czqbf"
           ]
         }
+      },
+      "03h8b7tsd5h0fbccotqvvwasz": {
+        "id": "03h8b7tsd5h0fbccotqvvwasz",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y01791hwo1dbakj3f6d7s",
+          "columnIds": [
+            "03h7y01791hwo1dbaknsm2x1p",
+            "03h7y01791hwo1dbakki2jxir"
+          ]
+        },
+        "end": {
+          "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+          "columnIds": [
+            "03h8b7tnrqcgabf66wq8k5rb4",
+            "03h8b7tnrvqxpwrqmpg5yxrvy"
+          ]
+        }
       }
     },
     "indexEntities": {
@@ -9399,6 +9553,15 @@
           "03h89a0gn1i02nrgg1oaltbvu"
         ],
         "unique": true
+      },
+      "03h8b7tsdaz6udoggxs76nr9b": {
+        "id": "03h8b7tsdaz6udoggxs76nr9b",
+        "name": "kept_records_contract_due_idx",
+        "tableId": "03h8b7tnrfhbd2g1wkkguu20l",
+        "indexColumnIds": [
+          "03h8b7tsdrd4i477wcpa11jgv"
+        ],
+        "unique": false
       }
     },
     "indexColumnEntities": {
@@ -10271,12 +10434,18 @@
         "indexId": "03h89a0gn1i02nrgg1g3ijlnn",
         "columnId": "03h7y0179cdtx0zvnwn7vhbby",
         "orderType": 1
+      },
+      "03h8b7tsdrd4i477wcpa11jgv": {
+        "id": "03h8b7tsdrd4i477wcpa11jgv",
+        "indexId": "03h8b7tsdaz6udoggxs76nr9b",
+        "columnId": "03h8b7tns6si36qewvtphbn6v",
+        "orderType": 1
       }
     },
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 304개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 312개는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,

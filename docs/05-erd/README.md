@@ -74,22 +74,22 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-013 | `business_calendars` | 영업 캘린더 설정 | CTX-002 | 007, 010, 011, 012, 014, 024, 052, 061 | TERM-048 |
 | TBL-014 | `calendar_days` | 영업 캘린더 날짜 행 | CTX-002 | 007, 011, 012, 014, 015 | TERM-048 |
 | TBL-015 | `payment_accounts` | 결제 수단 | CTX-004 | 006, 032 | 없음 |
-| TBL-016 | `customers` | 손님 | CTX-001 | 017, 022, 029, 040, 066, 068, 069 | TERM-043 |
+| TBL-016 | `customers` | 손님 | CTX-001 | 017, 022, 029, 040, 065, 066, 068, 069 | TERM-043 |
 | TBL-017 | `consultations` | 상담 | CTX-001 | 017, 018, 022, 023, 025, 029, 065, 068 | TERM-046 |
 | TBL-018 | `messages` | 상담 대화 | CTX-001 | 017, 018, 019, 020, 021, 022, 065, 066 | TERM-046 |
 | TBL-019 | `masked_values` | 마스킹 원본 값 | CTX-001 | 021, 022, 049, 065, 068 | 없음 |
 | TBL-020 | `order_drafts` | 주문서 초안 | CTX-001 | 013, 019, 020, 025, 027, 028, 029, 065, 072 | TERM-003, TERM-057 |
 | TBL-021 | `reference_photos` | 참고 사진 | CTX-001 | 013, 019, 031, 065 | TERM-019 |
 | TBL-022 | `quotes` | 견적 | CTX-001 | 013, 020, 025, 027, 028, 031 | TERM-013, TERM-058 |
-| TBL-023 | `orders` | 주문 | CTX-003 | 013, 016, 029, 030, 031, 034, 036, 037, 038, 039, 040, 041, 045, 046, 047, 048, 050, 052, 054, 055, 056, 060, 061, 062, 064, 065, 068, 070 | TERM-001 |
-| TBL-024 | `confirm_cards` | 손님 확인 카드 | CTX-001 | 028, 029, 033, 040, 041, 046, 057, 058, 063, 069, 072 | 없음 |
-| TBL-025 | `change_requests` | 변경 요청 | CTX-003 | 041, 042, 043, 044, 045, 046, 048, 070 | TERM-001 |
+| TBL-023 | `orders` | 주문 | CTX-003 | 013, 016, 025, 029, 030, 031, 034, 036, 037, 038, 039, 040, 041, 045, 046, 047, 048, 050, 052, 054, 055, 056, 060, 061, 062, 064, 065, 068, 070 | TERM-001 |
+| TBL-024 | `confirm_cards` | 손님 확인 카드 | CTX-001 | 028, 029, 033, 040, 041, 046, 057, 058, 063, 065, 069, 072 | 없음 |
+| TBL-025 | `change_requests` | 변경 요청 | CTX-003 | 041, 042, 043, 044, 045, 046, 048, 065, 070 | TERM-001 |
 | TBL-026 | `order_details` | 주문 내용 | CTX-003 | 029, 031, 033, 045, 050, 054, 059, 060, 064, 065 | TERM-004 |
-| TBL-027 | `handoffs` | 에스컬레이션 건 | CTX-001 | 014, 015, 017, 020, 021, 022, 023, 025, 026, 029, 030, 040, 053, 056 | TERM-008, TERM-018 |
+| TBL-027 | `handoffs` | 에스컬레이션 건 | CTX-001 | 014, 015, 017, 020, 021, 022, 023, 025, 026, 029, 030, 040, 053, 056, 065 | TERM-008, TERM-018 |
 | TBL-028 | `issue_details` | 신고 내용 | CTX-001 | 057, 058, 059, 065 | TERM-032 |
 | TBL-029 | `issue_photos` | 신고 사진 | CTX-001 | 057, 059, 065 | TERM-032 |
 | TBL-030 | `issue_reports` | 문제 신고 | CTX-003 | 058, 059, 060, 061 | TERM-031 |
-| TBL-031 | `payment_requests` | 결제 안내 | CTX-004 | 006, 015, 016, 029, 030, 031, 032, 033, 034, 035, 036, 037, 038, 039, 043, 044, 046, 047, 048, 059, 068, 070, 071 | TERM-049 |
+| TBL-031 | `payment_requests` | 결제 안내 | CTX-004 | 006, 015, 016, 029, 030, 031, 032, 033, 034, 035, 036, 037, 038, 039, 043, 044, 046, 047, 048, 059, 065, 068, 070, 071 | TERM-049 |
 | TBL-032 | `payments` | 확인된 결제 | CTX-004 | 016, 034, 035, 036, 040, 043, 046, 047, 059, 070 | TERM-049, TERM-014 |
 | TBL-033 | `refunds` | 환불 | CTX-004 | 016, 035, 036, 045, 046, 047, 048, 049, 059, 065, 070, 071 | TERM-049 |
 | TBL-034 | `slot_holds` | 그날 자리 | CTX-002 | 011, 012, 014, 015, 029, 030, 031, 033, 036, 037, 038, 045, 046, 048, 060, 070 | TERM-007 |
@@ -100,16 +100,17 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-039 | `review_photos` | 후기 사진 | CTX-006 | 011, 062, 063 | TERM-051 |
 | TBL-040 | `photo_consents` | 사진 게시 동의 | CTX-006 | 028, 029, 062, 063 | TERM-051 |
 | TBL-041 | `portfolio_items` | 포트폴리오 | CTX-006 | 011, 063 | TERM-052 |
-| TBL-042 | `owner_tasks` | 사장님 할 일 | CTX-008 | 003, 007, 022, 023, 024, 029, 031, 033, 034, 035, 036, 037, 041, 042, 045, 046, 047, 048, 049, 058, 059, 064, 067, 071 | TERM-059 |
-| TBL-043 | `owner_alerts` | 사장님 알림 | CTX-008 | 003, 022, 024, 044, 046, 048, 050, 057, 058, 064, 067 | TERM-035 |
-| TBL-044 | `notifications` | 알림 | CTX-008 | 022, 023, 024, 029, 031, 032, 035, 036, 039, 042, 044, 045, 047, 048, 052, 053, 059, 061, 066, 070 | TERM-054 |
+| TBL-042 | `owner_tasks` | 사장님 할 일 | CTX-008 | 003, 007, 022, 023, 024, 029, 031, 033, 034, 035, 036, 037, 041, 042, 045, 046, 047, 048, 049, 058, 059, 064, 065, 067, 071 | TERM-059 |
+| TBL-043 | `owner_alerts` | 사장님 알림 | CTX-008 | 003, 022, 024, 044, 046, 048, 050, 057, 058, 064, 065, 067 | TERM-035 |
+| TBL-044 | `notifications` | 알림 | CTX-008 | 022, 023, 024, 029, 031, 032, 035, 036, 039, 042, 044, 045, 047, 048, 052, 053, 059, 061, 065, 066, 070 | TERM-054 |
 | TBL-045 | `ledger_links` | 장부 연결 | CTX-009 | 009, 064 | TERM-028 |
 | TBL-046 | `ledger_rows` | 장부 행 | CTX-009 | 060, 064 | TERM-055 |
 | TBL-047 | `ledger_writes` | 장부 쓰기 | CTX-009 | 009, 036, 039, 045, 046, 047, 048, 054, 055, 060, 064, 070 | TERM-055 |
 | TBL-048 | `ai_calls` | AI 호출 기록 | CTX-001 | 017, 020, 021, 068 | TERM-045 |
-| TBL-049 | `ai_tool_calls` | AI 도구 호출 기록 | CTX-001 | 013, 014, 020, 021, 026, 040 | 없음 |
+| TBL-049 | `ai_tool_calls` | AI 도구 호출 기록 | CTX-001 | 013, 014, 020, 021, 026, 040, 065 | 없음 |
 | TBL-050 | `request_keys` | 요청 키 | 공통 | 002, 003, 004, 005, 007, 031, 034, 038, 039, 042, 047, 048, 051, 054, 059, 070, 071 | 없음 |
 | TBL-051 | `ops_events` | 운영 기록 | 공통 | 008, 010, 017, 029, 065 | 없음 |
+| TBL-052 | `kept_records` | 보관 기록 | CTX-003 | 065 | 없음 |
 <!-- build_erd:tables:end -->
 
 ### 3-3. 컨텍스트별 다이어그램
@@ -123,7 +124,7 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 flowchart LR
   C0["CTX-001 상담<br/>테이블 13개"]
   C1["CTX-002 가게 규칙<br/>테이블 10개"]
-  C2["CTX-003 주문<br/>테이블 4개"]
+  C2["CTX-003 주문<br/>테이블 5개"]
   C3["CTX-004 결제·환불<br/>테이블 4개"]
   C4["CTX-005 제작·전달<br/>테이블 3개"]
   C5["CTX-006 후기·포트폴리오<br/>테이블 4개"]
@@ -258,7 +259,7 @@ erDiagram
   consultations ||--o{ issue_details : "consultation_id"
   orders |o--o{ issue_details : "order_id"
   issue_details ||--o{ issue_photos : "issue_details_id"
-  messages ||--o{ issue_photos : "message_id"
+  messages |o--o{ issue_photos : "message_id"
   consultations ||--o{ ai_calls : "consultation_id"
   ai_calls ||--o{ ai_tool_calls : "ai_call_id"
   consultations ||--o{ ai_tool_calls : "consultation_id"
@@ -337,7 +338,7 @@ erDiagram
 
 ### CTX-003 주문
 
-테이블: TBL-023 `orders`, TBL-025 `change_requests`, TBL-026 `order_details`, TBL-030 `issue_reports`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
+테이블: TBL-023 `orders`, TBL-025 `change_requests`, TBL-026 `order_details`, TBL-030 `issue_reports`, TBL-052 `kept_records`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
 
 ```mermaid
 erDiagram
@@ -384,6 +385,10 @@ erDiagram
     text status "신고됨·보상 정해짐·닫힘"
     uuid remake_order_id FK "재제작 주문"
   }
+  kept_records {
+    uuid id PK "보관 기록 ID"
+    uuid order_id FK "보관 기록이 된 주문"
+  }
   customers ||--o{ orders : "customer_id"
   consultations ||--o{ orders : "consultation_id"
   order_drafts |o--o| orders : "draft_id"
@@ -404,6 +409,7 @@ erDiagram
   confirm_cards ||--o| issue_reports : "card_id"
   issue_reports |o--o{ issue_reports : "follows_report_id"
   orders |o--o| issue_reports : "remake_order_id"
+  orders ||--o| kept_records : "order_id"
 ```
 
 ### CTX-004 결제·환불
