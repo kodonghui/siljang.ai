@@ -43,16 +43,16 @@
 <!-- 08-screens:states:start -->
 | 상태 이름 | 분류 | 뜻 | 쓰는 화면 수 |
 | --- | --- | --- | --- |
-| `normal` | 기본 | 데이터가 있고 할 수 있는 일이 보임 | 49 |
-| `loading` | 기본 | 데이터가 오는 중 | 37 |
-| `empty` | 기본 | 보일 것이 아직 없음 | 24 |
-| `error` | 기본 | 불러오기나 액션이 실패함 | 49 |
-| `permission` | 기본 | 이 사용자가 볼 수 없거나 할 수 없음 | 42 |
-| `stale` | 기본 | 보이는 데이터가 지금과 다를 수 있음 | 43 |
-| `submitting` | 화면 고유(W3) | 누른 액션의 결과를 기다리는 중. 버튼이 막힘 | 24 |
-| `confirm` | 화면 고유(W3) | 저장하기 전에 확인을 받는 창(서버가 요구하는 DEC-06 확인, 또는 되돌리기 어려운 액션 앞에서 화면이 여는 확인) | 11 |
+| `normal` | 기본 | 데이터가 있고 할 수 있는 일이 보임 | 50 |
+| `loading` | 기본 | 데이터가 오는 중 | 38 |
+| `empty` | 기본 | 보일 것이 아직 없음 | 26 |
+| `error` | 기본 | 불러오기나 액션이 실패함 | 50 |
+| `permission` | 기본 | 이 사용자가 볼 수 없거나 할 수 없음 | 43 |
+| `stale` | 기본 | 보이는 데이터가 지금과 다를 수 있음 | 44 |
+| `submitting` | 화면 고유(W3) | 누른 액션의 결과를 기다리는 중. 버튼이 막힘 | 25 |
+| `confirm` | 화면 고유(W3) | 저장하기 전에 확인을 받는 창(서버가 요구하는 DEC-06 확인, 또는 되돌리기 어려운 액션 앞에서 화면이 여는 확인) | 12 |
 | `rate-limited` | 화면 고유(W3) | 요청 빈도 한도에 닿아 잠시 막힘 | 6 |
-| `done` | 화면 고유(W3) | 명령을 남긴 뒤의 결과, 또는 이미 처리한 건을 읽기 전용으로 봄 | 29 |
+| `done` | 화면 고유(W3) | 명령을 남긴 뒤의 결과, 또는 이미 처리한 건을 읽기 전용으로 봄 | 30 |
 | `expired` | 화면 고유(W3) | 기한이 지남(카드 30분, 결제 기한) | 7 |
 | `day-full` | 화면 고유(W3) | 그 사이 그날이 다 참 | 1 |
 | `handed-over` | 화면 고유(W3) | AI가 답하지 않고 사장님께 에스컬레이션함 | 2 |
@@ -180,7 +180,7 @@
 | [SCR-037](SCR-037.md) | 가격표 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
 | [SCR-038](SCR-038.md) | 운영규정 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 15 |
 | [SCR-039](SCR-039.md) | 운영규정 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
-| [SCR-040](SCR-040.md) | 결제 수단 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 15 |
+| [SCR-040](SCR-040.md) | 결제 수단 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 16 |
 | [SCR-041](SCR-041.md) | 카카오톡 채널 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · checking · event-off · done | - | 31 |
 | [SCR-042](SCR-042.md) | 장부 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · reconnect · done | - | 34 |
 | [SCR-043](SCR-043.md) | 예약 링크 | 사장님 | normal · loading · empty · error · permission · stale | - | 5 |
@@ -188,8 +188,9 @@
 | [SCR-045](SCR-045.md) | 후기 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
 | [SCR-046](SCR-046.md) | 운영자 로그인 | 운영자 | normal · error · rate-limited · submitting | loading · empty · permission · stale | 5 |
 | [SCR-047](SCR-047.md) | 영업 신고 확인 목록 | 운영자 | normal · loading · empty · error · permission · stale | - | 10 |
-| [SCR-048](SCR-048.md) | 영업 신고 확인 | 운영자 | normal · loading · on-hold · error · permission · stale · submitting · confirm · done | empty | 18 |
+| [SCR-048](SCR-048.md) | 영업 신고 확인 | 운영자 | normal · loading · empty · on-hold · error · permission · stale · submitting · confirm · done | - | 21 |
 | [SCR-049](SCR-049.md) | 운영자 알림 | 운영자 | normal · loading · empty · error · permission · stale | - | 5 |
+| [SCR-050](SCR-050.md) | 가게 기록 보기 | 운영자 | normal · loading · empty · error · permission · stale · confirm · submitting · done | - | 30 |
 <!-- 08-screens:screens:end -->
 
 ## 7. 결정 사항
@@ -217,6 +218,8 @@
 - 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
 
 ## 9. 검사
+
+2026-11-14 06:03 KST, 설계 재검토 H4를 고친 뒤(12절) 다시 생성한 파일에 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C1 화면 50개, C3 플로우 노드 없음 4개, C4 데이터 190행·액션 145행, C5 그린 상태 349개, C6 응답 행 826개(※ 화면이 나눈 행 3, 카카오 스킬 212, 기본값과 다르게 정한 행 110), C8 참조 1676곳, C9 프레임 698개(1.3MB), C13 생성 파일 52개, C14 08단계 파일 51개·상태 349개입니다. C5 상태 이름 25개, C10 확인 문구 6개·손님 문구 44개, C11 허용 예외 785곳은 같습니다. `check_screens.py`의 C1 이름과 `build_screens.py` 머리말의 화면 수를 50개로 고쳤습니다.
 
 2026-11-14 04:26 KST, 설계 재검토 H3을 고친 뒤(12절) 다시 생성한 파일에 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C8 참조 1611곳입니다. C4 데이터 181행·액션 137행, C5 그린 상태 339개·상태 이름 25개, C6 응답 행 792개, C9 프레임 678개, C10 확인 문구 6개·손님 문구 44개, C11 허용 예외 785곳은 H7·H8·H9를 고친 뒤와 같습니다.
 
@@ -302,3 +305,13 @@
 - SCR-020 주문 목록·SCR-021 주문 상세: 끝나고 30일이 지나 보관 기록이 된 주문은 목록에 나오지 않고, 열면 없는 주문과 같은 '찾을 수 없어요'(SCR-021#error, 06단계 5절 '보관 기록').
 - SCR-007 내 주문 보기: 보관 기록이 된 주문은 세지 않고, 손님이 그 주문을 말하면(사진 게시 동의 철회 포함) 사장님께 에스컬레이션(`handed-over`, SPEC-040).
 - 09단계 보드 SCR-018을 다시 그림(09 README 12절).
+
+2026-11-13 설계 독립 재검토의 높음 묶음 H4(RC-10, RC-09, RA-16)를 같은 결정 카드 '추천안대로 (추천)'에 따라 `screens_operator.py`·`screens_owner_a.py`·`screens_owner_b.py`·`screens_guest.py`·`screens_common.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR D2).
+
+- SCR-050 가게 기록 보기(새, 운영자, API-074~077, 상태 9개): 가게의 주문·상담을 가린 값(이름 첫 글자, 번호 끝 4자리, 알레르기 답은 있는지만, 사진은 장 수만)으로 보고, '원래 값 열기'·'보관 기록 열기'는 사유(5~200자)를 적는 창(`confirm`)을 거쳐 그 값 하나만 읽기 전용으로 보임(`done`, 복사·저장·내려받기 없음). 원래 값을 두지 않는 카드번호·긴 숫자(409 `original_not_kept`)는 `error`, 연 뒤 지워진 값(409 `original_erased`)은 `stale`, 지운 상담은 `empty`, 접속기록을 남기지 못한 실패(500)는 기록과 값 없이 `error`(REQ-192~196, SPEC-073·074).
+- SCR-048 영업 신고 확인: 결제 계좌 표(은행·예금주·끝 4자리, 예금주가 대표자·상호와 같은지, 사장님이 가게 명의가 맞다고 답했는지)를 더함. 결제 계좌가 없는 가게(API-013 `no_account`)와 409 `payment_account_missing`은 새 `empty`(확인됨은 막히고 보류는 됨). 확인됨이면 예금주를 확인한 운영자·시각, 위에 '가게 기록 보기' 링크(REQ-197). '해당 없음'이던 empty를 상태로 바꿈.
+- SCR-047 영업 신고 확인 목록: 가게 기록을 찾을 가게도 여기서 고름(FL-014). 플로우 노드가 없는 화면이 4개로.
+- SCR-040 결제 수단: 영업 신고가 확인된 가게가 다른 예금주로 바꾸면 409 `holder_not_verified`를 예금주 필드 옆 `error`로(REQ-199). 바꾸면 사장님 카카오 알림, 바꾼 뒤 결제 안내부터 새 계좌, 보류된 가게면 다시 확인 중(REQ-198, SPEC-003). 계좌번호는 앱이 암호화해 저장(REQ-191). SCR-019 사장님 알림: '결제 받을 계좌가 바뀌었어요'와 '결제 수단 보기'(FL-002, 할 일 없음, 계좌번호 없음). SCR-035 영업 신고: 예금주 때문에 보류됐으면 계좌를 바꿔도 다시 확인 중.
+- SCR-017 에스컬레이션 건·SCR-018 상담 대화: 전화번호·계좌번호는 원래 값, 카드번호는 '[카드번호1] …1111', 주민등록번호처럼 보이는 숫자와 긴 숫자는 '[긴숫자1]'만(REQ-192). 원래 값은 사장님과 사유를 적고 연 운영자에게만(REQ-193). SCR-026 환불 송금: 계좌번호 형식을 숫자만 10~16자리로(06단계 11절의 깨지는 변화). SCR-005 결제 안내: 계좌는 보일 때 복호화해 채우고 이미 나간 안내의 계좌는 그대로(REQ-191, REQ-198).
+- 결과 문구(`OK_TEXT`)에 API-013의 `no_account`·`holder_different`와 API-074~077의 예시 11개를 더하고 API-013 `pending`·API-043 `messages`를 고침. 상태 이름은 25개 그대로이고, 새 화면도 기존 상태(`confirm`·`done`)로 그림.
+- 09단계 보드 SCR-048을 다시 그리고 SCR-050을 새로 그림(09 README 12절).

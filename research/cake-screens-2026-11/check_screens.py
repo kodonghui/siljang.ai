@@ -172,7 +172,7 @@ def main():
     files = sorted(p.name for p in d8.iterdir()) if d8.exists() else []
     want = sorted(["%s.md" % i for i in order] + ["README.md", "wireframes.html"])
     problems = ["없는 파일 %s" % f for f in sorted(set(want) - set(files))] + ["사이트맵에 없는 파일 %s" % f for f in sorted(set(files) - set(want))]
-    rep.add("C1", "화면마다 정의 파일 하나(사이트맵과 같은 49개)와 README·와이어프레임", problems,
+    rep.add("C1", "화면마다 정의 파일 하나(사이트맵과 같은 50개)와 README·와이어프레임", problems,
             "SCR 파일 %d개, 사이트맵 화면 %d개" % (sum(1 for f in files if f.startswith("SCR-")), len(order)))
     docs = {sid: (d8 / ("%s.md" % sid)).read_text(encoding="utf-8") for sid in order if (d8 / ("%s.md" % sid)).exists()}
 
