@@ -8,7 +8,7 @@ info:
   version: 0.1.0
   summary: 수제케이크 주문제작 AI 상담·예약 API(06단계 계약, 첫 버전)
   description: |-
-    수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~074)에서 만들었다.
+    수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~075)에서 만들었다.
     이 파일은 research/cake-api-2026-11/build_api.py가 만든다. 손으로 고치지 않는다.
 
     **API와 응답의 ID.** API마다 `x-corthex.id`(API-001~077)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
@@ -5590,7 +5590,7 @@ paths:
       operationId: getKakaoChannel
       summary: 채널 연결 상태와 스킬 설정 값
       description: |-
-        연결 확인 중이면 화면이 몇 초마다 다시 읽고 시험 버튼으로 닿은 블록(verifiedBlocks)을 보인다. 10분 안에 테스트 메시지가 오지 않거나 시험 버튼 넷이 모두 닿지 않으면 failed와 사유 후보(failureHints, 닿지 않은 블록 포함, REQ-179). 연결됨이면 먼저 보내기 상태(eventStatus: 시험 안내 결과 기다림·됨·안 됨과 사유 eventFailReason)를 보인다. 안 됨이면 그 가게의 손님 안내는 모두 다음 대화 때 전한다(REQ-180, REQ-181, DEC-20). skill.headerValue는 오픈빌더 스킬 설정의 헤더 값(DEC-08)이라 이 응답에만 포함한다.
+        연결 확인 중이면 화면이 몇 초마다 다시 읽고 시험 버튼으로 닿은 블록(verifiedBlocks)을 보인다. 10분 안에 테스트 메시지가 오지 않거나 시험 버튼 다섯이 모두 닿지 않으면 failed와 사유 후보(failureHints, 닿지 않은 블록 포함, REQ-206). 연결됨이면 먼저 보내기 상태(eventStatus: 시험 안내 결과 기다림·됨·안 됨과 사유 eventFailReason)를 보인다. 안 됨이면 그 가게의 손님 안내는 모두 다음 대화 때 전한다(REQ-180, REQ-181, DEC-20). skill.headerValue는 오픈빌더 스킬 설정의 헤더 값(DEC-08)이라 이 응답에만 포함한다.
 
         SPEC: SPEC-008
       tags:
@@ -5618,6 +5618,7 @@ paths:
                     blockIds:
                       card: 35aa1292cf287c9e16bfcb41
                       ordererInfo: 374f8fbdcc51601f2277519c
+                      allergyAnswer: 3d98290aeea8ecbe10e4dc07
                       depositorName: efefd9911643cd40a8235258
                       review: d6a9b901c84d260f84c83a4e
                     verifiedBlocks:
@@ -5648,11 +5649,13 @@ paths:
                     blockIds:
                       card: 35aa1292cf287c9e16bfcb41
                       ordererInfo: 374f8fbdcc51601f2277519c
+                      allergyAnswer: 3d98290aeea8ecbe10e4dc07
                       depositorName: efefd9911643cd40a8235258
                       review: d6a9b901c84d260f84c83a4e
                     verifiedBlocks:
                     - card
                     - orderer_info
+                    - allergy_answer
                     - depositor_name
                     - review
                     eventStatus: ready
@@ -5682,11 +5685,13 @@ paths:
                     blockIds:
                       card: 35aa1292cf287c9e16bfcb41
                       ordererInfo: 374f8fbdcc51601f2277519c
+                      allergyAnswer: 3d98290aeea8ecbe10e4dc07
                       depositorName: efefd9911643cd40a8235258
                       review: d6a9b901c84d260f84c83a4e
                     verifiedBlocks:
                     - card
                     - orderer_info
+                    - allergy_answer
                     - depositor_name
                     eventStatus: unchecked
                     eventCheckedAt: null
@@ -5713,11 +5718,13 @@ paths:
                     blockIds:
                       card: 35aa1292cf287c9e16bfcb41
                       ordererInfo: 374f8fbdcc51601f2277519c
+                      allergyAnswer: 3d98290aeea8ecbe10e4dc07
                       depositorName: efefd9911643cd40a8235258
                       review: d6a9b901c84d260f84c83a4e
                     verifiedBlocks:
                     - card
                     - orderer_info
+                    - allergy_answer
                     - depositor_name
                     - review
                     eventStatus: checking
@@ -5745,11 +5752,13 @@ paths:
                     blockIds:
                       card: 35aa1292cf287c9e16bfcb41
                       ordererInfo: 374f8fbdcc51601f2277519c
+                      allergyAnswer: 3d98290aeea8ecbe10e4dc07
                       depositorName: efefd9911643cd40a8235258
                       review: d6a9b901c84d260f84c83a4e
                     verifiedBlocks:
                     - card
                     - orderer_info
+                    - allergy_answer
                     - depositor_name
                     - review
                     eventStatus: unavailable
@@ -5858,7 +5867,7 @@ paths:
       operationId: setKakaoChannel
       summary: 연결할 채널(오픈빌더 봇) 설정
       description: |-
-        오픈빌더 봇 ID와 채널 공개 ID, 카드 버튼이 부를 블록 넷의 블록 ID(blockIds, 아직 없으면 null, REQ-179)를 받아 '연결 확인 중' 연결을 만들고, 오픈빌더에 넣을 스킬 주소 넷(메시지·카드·후기·안내)과 헤더 값, 안내 블록의 이벤트 이름을 반환한다(DEC-08, DEC-20). 같은 봇의 블록 ID만 바꾸면 새 연결을 만들지 않고 그 연결을 '연결 확인 중'으로 되돌려 닿은 블록과 먼저 보내기 상태를 비운다(같은 봇의 연결은 하나, 05단계 `kakao_channels_bot_active_uq`). 다시 연결될 때까지 그 채널의 손님 메시지에는 not_accepting으로 답한다(blocks_changed). 그 봇이 이미 다른 가게에 묶였으면 묶지 않고 409 channel_linked_elsewhere, 운영자에게 알림(SPEC-008). 연결된 채널을 바꾸면 새 채널이 연결될 때 옛 채널 메시지를 그만 받는다. 예약 링크는 내리지 않고 문의 버튼이 새 채널을 연다. Open: 사장님이 봇 ID를 찾는 곳은 07·08단계 연결 안내에서 정하고, 봇 ID 형식은 첫 테스트 메시지에서 확인(OPEN-8).
+        오픈빌더 봇 ID와 채널 공개 ID, 카드 버튼이 부를 블록 다섯의 블록 ID(blockIds, 아직 없으면 null, REQ-206)를 받아 '연결 확인 중' 연결을 만들고, 오픈빌더에 넣을 스킬 주소 넷(메시지·카드·후기·안내)과 헤더 값, 안내 블록의 이벤트 이름을 반환한다(DEC-08, DEC-20). 같은 봇의 블록 ID만 바꾸면 새 연결을 만들지 않고 그 연결을 '연결 확인 중'으로 되돌려 닿은 블록과 먼저 보내기 상태를 비운다(같은 봇의 연결은 하나, 05단계 `kakao_channels_bot_active_uq`). 다시 연결될 때까지 그 채널의 손님 메시지에는 not_accepting으로 답한다(blocks_changed). 그 봇이 이미 다른 가게에 묶였으면 묶지 않고 409 channel_linked_elsewhere, 운영자에게 알림(SPEC-008). 연결된 채널을 바꾸면 새 채널이 연결될 때 옛 채널 메시지를 그만 받는다. 예약 링크는 내리지 않고 문의 버튼이 새 채널을 연다. Open: 사장님이 봇 ID를 찾는 곳은 07·08단계 연결 안내에서 정하고, 봇 ID 형식은 첫 테스트 메시지에서 확인(OPEN-8).
 
         SPEC: SPEC-008
       tags:
@@ -5881,6 +5890,7 @@ paths:
                   blockIds:
                     card: 35aa1292cf287c9e16bfcb41
                     ordererInfo: 374f8fbdcc51601f2277519c
+                    allergyAnswer: 3d98290aeea8ecbe10e4dc07
                     depositorName: efefd9911643cd40a8235258
                     review: d6a9b901c84d260f84c83a4e
                   baseRevision: null
@@ -5911,6 +5921,7 @@ paths:
                       blockIds:
                         card: 35aa1292cf287c9e16bfcb41
                         ordererInfo: 374f8fbdcc51601f2277519c
+                        allergyAnswer: 3d98290aeea8ecbe10e4dc07
                         depositorName: efefd9911643cd40a8235258
                         review: d6a9b901c84d260f84c83a4e
                       verifiedBlocks: []
@@ -5942,6 +5953,7 @@ paths:
                       blockIds:
                         card: 35aa1292cf287c9e16bfcb41
                         ordererInfo: 374f8fbdcc51601f2277519c
+                        allergyAnswer: 3d98290aeea8ecbe10e4dc07
                         depositorName: efefd9911643cd40a8235258
                         review: d6a9b901c84d260f84c83a4e
                       verifiedBlocks: []
@@ -5972,6 +5984,7 @@ paths:
                       blockIds:
                         card: 35aa1292cf287c9e16bfcb41
                         ordererInfo: 374f8fbdcc51601f2277519c
+                        allergyAnswer: 3d98290aeea8ecbe10e4dc07
                         depositorName: efefd9911643cd40a8235258
                         review: d6a9b901c84d260f84c83a4e
                       verifiedBlocks: []
@@ -6159,7 +6172,7 @@ paths:
       operationId: startKakaoChannelCheck
       summary: 연결 확인 시작(10분)
       description: |-
-        '연결 확인'을 누르면 10분 동안 그 봇의 테스트 메시지와 시험 버튼을 기다린다. 테스트 메시지가 메시지 스킬(API-070)로 오면 그 사용자에게 시험 버튼을 하나씩 답하고(channel_test_card), 버튼이 카드 스킬(API-071)이나 후기 스킬(API-072)에 닿을 때마다 그 블록을 확인됨으로 남긴다(block_verified). 넷이 모두 닿으면 '연결됨'이 되고(channel_linked) 그 사용자에게 시험 안내를 Event API로 한 번 보내 결과로 먼저 보내기 됨·안 됨을 남긴다(REQ-179, REQ-180, DEC-20). 블록 ID가 하나라도 비면 시작하지 않고 409 channel_setup_incomplete. 여러 번 눌러도 연결은 하나(G2): 확인 중이면 unchanged, 연결 안 됨이면 다시 10분을 센다. 연결됨인데 먼저 보내기가 안 됨이거나 아직 안 봤으면 시험 안내를 다시 보내고(done, eventStatus checking), 됨이거나 시험 중이면 unchanged. Open: 가게가 우리에게 줄 권한(가게 채널을 우리 앱에 연결, 우리 월렛을 가게 봇에 연결)의 절차는 개발 전 시험으로 정함(OPEN-9).
+        '연결 확인'을 누르면 10분 동안 그 봇의 테스트 메시지와 시험 버튼을 기다린다. 테스트 메시지가 메시지 스킬(API-070)로 오면 그 사용자에게 시험 버튼을 하나씩 답하고(channel_test_card), 버튼이 카드 스킬(API-071)이나 후기 스킬(API-072)에 닿을 때마다 그 블록을 확인됨으로 남긴다(block_verified). 다섯이 모두 닿으면 '연결됨'이 되고(channel_linked) 그 사용자에게 시험 안내를 Event API로 한 번 보내 결과로 먼저 보내기 됨·안 됨을 남긴다(REQ-206, REQ-180, DEC-20). 블록 ID가 하나라도 비면 시작하지 않고 409 channel_setup_incomplete. 여러 번 눌러도 연결은 하나(G2): 확인 중이면 unchanged, 연결 안 됨이면 다시 10분을 센다. 연결됨인데 먼저 보내기가 안 됨이거나 아직 안 봤으면 시험 안내를 다시 보내고(done, eventStatus checking), 됨이거나 시험 중이면 unchanged. Open: 가게가 우리에게 줄 권한(가게 채널을 우리 앱에 연결, 우리 월렛을 가게 봇에 연결)의 절차는 개발 전 시험으로 정함(OPEN-9).
 
         SPEC: SPEC-008
       tags:
@@ -6194,6 +6207,7 @@ paths:
                       blockIds:
                         card: 35aa1292cf287c9e16bfcb41
                         ordererInfo: 374f8fbdcc51601f2277519c
+                        allergyAnswer: 3d98290aeea8ecbe10e4dc07
                         depositorName: efefd9911643cd40a8235258
                         review: d6a9b901c84d260f84c83a4e
                       verifiedBlocks:
@@ -6227,11 +6241,13 @@ paths:
                       blockIds:
                         card: 35aa1292cf287c9e16bfcb41
                         ordererInfo: 374f8fbdcc51601f2277519c
+                        allergyAnswer: 3d98290aeea8ecbe10e4dc07
                         depositorName: efefd9911643cd40a8235258
                         review: d6a9b901c84d260f84c83a4e
                       verifiedBlocks:
                       - card
                       - orderer_info
+                      - allergy_answer
                       - depositor_name
                       - review
                       eventStatus: ready
@@ -6261,11 +6277,13 @@ paths:
                       blockIds:
                         card: 35aa1292cf287c9e16bfcb41
                         ordererInfo: 374f8fbdcc51601f2277519c
+                        allergyAnswer: 3d98290aeea8ecbe10e4dc07
                         depositorName: efefd9911643cd40a8235258
                         review: d6a9b901c84d260f84c83a4e
                       verifiedBlocks:
                       - card
                       - orderer_info
+                      - allergy_answer
                       - depositor_name
                       - review
                       eventStatus: checking
@@ -6332,7 +6350,7 @@ paths:
           description: |-
             지금 상태와 충돌해 아무것도 바꾸지 않음
 
-            - `channel_setup_incomplete`: 카드 버튼이 부를 블록 ID 넷 가운데 빈 것이 있어 연결 확인을 시작하지 않음(REQ-179). 아무것도 바꾸지 않음
+            - `channel_setup_incomplete`: 카드 버튼이 부를 블록 ID 다섯 가운데 빈 것이 있어 연결 확인을 시작하지 않음(REQ-206). 아무것도 바꾸지 않음
             - `request_in_progress`: 같은 요청 키의 첫 요청을 아직 처리하는 중
           content:
             application/problem+json:
@@ -6342,9 +6360,9 @@ paths:
                 channel_setup_incomplete:
                   value:
                     type: /problems/channel_setup_incomplete
-                    title: 버튼 블록 ID 4개를 모두 넣어 주세요
+                    title: 버튼 블록 ID 5개를 모두 넣어 주세요
                     status: 409
-                    detail: 카드 버튼이 부를 블록 ID 넷 가운데 빈 것이 있어 연결 확인을 시작하지 않음(REQ-179)
+                    detail: 카드 버튼이 부를 블록 ID 다섯 가운데 빈 것이 있어 연결 확인을 시작하지 않음(REQ-206)
                     instance: /owner/kakao-channel/check
                     code: channel_setup_incomplete
                     traceId: 5b6ebf5372b5c03a711eafb9767f6a82
@@ -6427,7 +6445,7 @@ paths:
           - idem
           - example:unchanged
           외부:
-          - note:10분 안에 테스트 메시지와 시험 버튼 넷이 없으면 API-030에서 failed
+          - note:10분 안에 테스트 메시지와 시험 버튼 다섯이 없으면 API-030에서 failed
           - note:시험 안내 결과는 API-030의 eventStatus
           노출:
           - closed
@@ -7362,7 +7380,7 @@ paths:
       operationId: getBookingPage
       summary: 예약 링크 페이지
       description: |-
-        누구나 연다. 포트폴리오(게시 동의한 사진만), 현재 버전의 가격표, 오늘부터 60일의 날(받음·마감·휴무, 남은 자리 수 없음), 가게 신원 정보, 처리방침 주소, 문의 주소. 같은 주소에서 1분에 60번을 넘으면 429(DEC-16). 응답은 최대 60초 캐시되어 내린 사진은 5분 안에 사라진다(SPEC-063). 채널을 열 수 없으면 화면이 inquiryUrl을 글로 보인다.
+        누구나 연다. 포트폴리오(손님이 게시에 동의하고 철회하지 않은 완성 사진·후기 사진만, REQ-209), 현재 버전의 가격표(가게가 도안으로 올린 견본 사진은 손님 동의 없이 보임, REQ-210), 오늘부터 60일의 날(받음·마감·휴무, 남은 자리 수 없음), 가게 신원 정보, 처리방침 주소, 문의 주소. 같은 주소에서 1분에 60번을 넘으면 429(DEC-16). 응답은 최대 60초 캐시되어 내린 사진은 5분 안에 사라진다(SPEC-063). 채널을 열 수 없으면 화면이 inquiryUrl을 글로 보인다.
 
         SPEC: SPEC-011, SPEC-014, SPEC-063
       tags:
@@ -7876,7 +7894,7 @@ paths:
       operationId: getPrivacyPolicy
       summary: 가게 개인정보 처리방침
       description: |-
-        가장 최근 버전. 국외 이전 다섯 항목(REQ-141)을 받는 자마다 포함한다. AI 상담 고지가 이 주소를 건다(SPEC-018).
+        가장 최근 버전. 국외 이전 다섯 항목(REQ-141)을 받는 자마다 포함한다. AI 상담 고지가 이 주소를 건다(SPEC-018). 처리하는 개인정보 항목에 알레르기 정보(따로 동의한 손님에게서만, 쓰는 목적·보는 사람·지우는 때)를 적고, AI를 거치지 않는 입력으로 받으므로 AI 모델 회사의 국외 이전 항목에는 넣지 않는다(REQ-204, SPEC-010, SPEC-075).
 
         SPEC: SPEC-010, SPEC-011, SPEC-018
       tags:
@@ -7912,7 +7930,7 @@ paths:
                   value:
                     shopName: 달빛케이크
                     version: 1
-                    body: '달빛케이크(이하 ''가게'')는 케이크 주문 상담과 예약을 위해 다음과 같이 개인정보를 처리합니다. 1. 처리하는 개인정보: 카카오 사용자 키, 상담 대화, 주문자 이름·연락처, 알레르기 답 …'
+                    body: '달빛케이크(이하 ''가게'')는 케이크 주문 상담과 예약을 위해 다음과 같이 개인정보를 처리합니다. 1. 처리하는 개인정보: 카카오 사용자 키, 상담 대화, 주문자 이름·연락처, 알레르기 정보(따로 동의한 손님에게서만) …'
                     overseasTransfers:
                     - recipient: AI 모델 회사(개발 전에 정함, OPEN-7)
                       country: 정한 회사의 처리 지역
@@ -9027,7 +9045,7 @@ paths:
       operationId: getOrder
       summary: 주문 하나
       description: |-
-        주문 내용 버전(새 버전이 앞), 참고 사진, 견적과 계산 근거(사장님께 전부, SPEC-013), 픽업 날의 자리, 결제 안내·결제·환불·변경 요청·제작·문제 신고·사진 게시 동의. 다른 가게 주문과 끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)이면 404(SPEC-068).
+        주문 내용 버전(새 버전이 앞), 참고 사진, 견적과 계산 근거(사장님께 전부, SPEC-013), 픽업 날의 자리, 결제 안내·결제·환불·변경 요청·제작(완성 사진과 사진마다의 게시 동의)·문제 신고. 주문 내용 버전마다 알레르기 정보 동의(동의함·동의 안 함·동의 필요 없음)와 알레르기 답(동의 안 함이면 없음, REQ-203). 다른 가게 주문과 끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)이면 404(SPEC-068).
 
         SPEC: SPEC-031, SPEC-013, SPEC-045, SPEC-068
       tags:
@@ -9095,6 +9113,7 @@ paths:
                       lettering: HAPPY BIRTHDAY
                       colors: 하늘색
                       allergyAnswer: 없음
+                      allergyConsent: agreed
                       excludedIngredients: null
                       customerName: 박하늘
                       customerPhone: 010-2222-3333
@@ -9137,9 +9156,6 @@ paths:
                     changeRequests: []
                     production: null
                     issueReports: []
-                    photoConsent:
-                      consented: false
-                      withdrawnAt: null
                     revision: 21c5e38f3fa4
                 confirmed:
                   value:
@@ -9186,6 +9202,7 @@ paths:
                       lettering: 생일 축하해 지우야
                       colors: 연분홍
                       allergyAnswer: 없음
+                      allergyConsent: agreed
                       excludedIngredients: null
                       customerName: 이지우
                       customerPhone: 010-9876-5432
@@ -9268,9 +9285,6 @@ paths:
                       undoableUntil: null
                       revision: fdd4eed8e58b
                     issueReports: []
-                    photoConsent:
-                      consented: true
-                      withdrawnAt: null
                     revision: 7f14e2e6ed1a
                 changed:
                   value:
@@ -9317,6 +9331,7 @@ paths:
                       lettering: 생일 축하해 지우야!
                       colors: 연분홍
                       allergyAnswer: 없음
+                      allergyConsent: agreed
                       excludedIngredients: null
                       customerName: 이지우
                       customerPhone: 010-9876-5432
@@ -9346,6 +9361,7 @@ paths:
                       lettering: 생일 축하해 지우야
                       colors: 연분홍
                       allergyAnswer: 없음
+                      allergyConsent: agreed
                       excludedIngredients: null
                       customerName: 이지우
                       customerPhone: 010-9876-5432
@@ -9428,9 +9444,6 @@ paths:
                       undoableUntil: null
                       revision: fdd4eed8e58b
                     issueReports: []
-                    photoConsent:
-                      consented: true
-                      withdrawnAt: null
                     revision: e3dc0567e893
                 remake:
                   value:
@@ -9479,6 +9492,7 @@ paths:
                       lettering: 생일 축하해 지우야
                       colors: 연분홍
                       allergyAnswer: 없음
+                      allergyConsent: agreed
                       excludedIngredients: null
                       customerName: 이지우
                       customerPhone: 010-9876-5432
@@ -9510,7 +9524,6 @@ paths:
                       undoableUntil: null
                       revision: 7d1f4feba6c7
                     issueReports: []
-                    photoConsent: null
                     revision: 1e9fca2c7f28
         "401":
           description: |-
@@ -9691,6 +9704,7 @@ paths:
                         lettering: HAPPY BIRTHDAY
                         colors: 하늘색
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 박하늘
                         customerPhone: 010-2222-3333
@@ -9718,6 +9732,7 @@ paths:
                         lettering: HAPPY BIRTHDAY
                         colors: 하늘색
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 박하늘
                         customerPhone: 010-2222-3333
@@ -9781,9 +9796,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: false
-                        withdrawnAt: null
                       revision: a5898cd88a5c
                     paymentRequest:
                       paymentRequestId: ae0bb9c5-9cf8-57d5-85b6-385f2489bf6a
@@ -9852,6 +9864,7 @@ paths:
                         lettering: HAPPY BIRTHDAY
                         colors: 하늘색
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 박하늘
                         customerPhone: 010-2222-3333
@@ -9894,9 +9907,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: false
-                        withdrawnAt: null
                       revision: c69bae19ef0f
                     paymentRequest: null
         "401":
@@ -10195,6 +10205,7 @@ paths:
                         lettering: HAPPY BIRTHDAY
                         colors: 하늘색
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 박하늘
                         customerPhone: 010-2222-3333
@@ -10222,6 +10233,7 @@ paths:
                         lettering: HAPPY BIRTHDAY
                         colors: 하늘색
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 박하늘
                         customerPhone: 010-2222-3333
@@ -10306,9 +10318,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: false
-                        withdrawnAt: null
                       revision: 4b3234047e6d
                     paymentRequest:
                       paymentRequestId: afe7ffbf-7542-541b-b504-e18f14330937
@@ -10377,6 +10386,7 @@ paths:
                         lettering: HAPPY BIRTHDAY
                         colors: 하늘색
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 박하늘
                         customerPhone: 010-2222-3333
@@ -10404,6 +10414,7 @@ paths:
                         lettering: HAPPY BIRTHDAY
                         colors: 하늘색
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 박하늘
                         customerPhone: 010-2222-3333
@@ -10467,9 +10478,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: false
-                        withdrawnAt: null
                       revision: 4129bca88e3f
                     paymentRequest: null
         "401":
@@ -10756,6 +10764,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -10825,9 +10834,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 3d5e3ac001c0
                     refundPreview:
                       order:
@@ -10898,6 +10904,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -10939,9 +10946,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 3d5e3ac001c0
                     refundPreview: null
                 unchanged:
@@ -10992,6 +10996,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -11061,9 +11066,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 3d5e3ac001c0
                     refundPreview: null
         "401":
@@ -11768,7 +11770,7 @@ paths:
       operationId: getProductionDay
       summary: 날짜별 제작 목록과 그날 픽업
       description: |-
-        확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 픽업 시각·퀵 여부(SPEC-054), 맞춤 재료 필요·변경됨 표시. 결제 전·취소된 주문은 없다.
+        확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 픽업 시각·퀵 여부(SPEC-054), 맞춤 재료 필요·변경됨 표시. 결제 전·취소된 주문은 없다. 알레르기 정보에 동의하지 않은 주문은 요약의 allergyConsent가 declined이고 알레르기 답이 없다(REQ-203).
 
         SPEC: SPEC-050, SPEC-054, SPEC-045
       tags:
@@ -11814,6 +11816,7 @@ paths:
                         extras:
                         - 초 추가
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         referencePhotoCount: 0
                       production:
@@ -11939,7 +11942,7 @@ paths:
       operationId: markProduction
       summary: 맞춤 재료 주문·제작 시작·완성 표시
       description: |-
-        그 시각을 남긴다. 이 시각은 환불 계산의 근거다(SPEC-051). 완성에는 사진을 5장까지 붙일 수 있고, 완성 사진 보내기를 켠 가게면 픽업 전에 손님에게 한 번 보낸다(SPEC-053). 이미 남긴 표시는 unchanged. 취소된 주문은 409 invalid_state.
+        그 시각을 남긴다. 이 시각은 환불 계산의 근거다(SPEC-051). 완성에는 사진을 5장까지 붙일 수 있고, 완성 사진 보내기를 켠 가게면 픽업 전에 손님에게 한 번 보내고 그 안내에서 사진마다 게시 동의를 묻는다(SPEC-053, REQ-207, API-073). 이미 남긴 표시는 unchanged. 취소된 주문은 409 invalid_state.
 
         SPEC: SPEC-051, SPEC-053, SPEC-066
       tags:
@@ -12014,6 +12017,7 @@ paths:
                       completedAt: '2026-11-20T11:30:00+09:00'
                       completionPhotos:
                       - url: https://files.siljang.example/v1/e42ae7007349716d03413096?exp=1763619300&sig=d6ca96dc384b1d4aa9bf108fb41ac9e5
+                        consent: consented
                       changedAfterStart: false
                       handedOverAt: null
                       handoverKind: null
@@ -12544,6 +12548,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -12619,6 +12624,7 @@ paths:
                         completedAt: '2026-11-20T11:30:00+09:00'
                         completionPhotos:
                         - url: https://files.siljang.example/v1/e42ae7007349716d03413096?exp=1763619300&sig=d6ca96dc384b1d4aa9bf108fb41ac9e5
+                          consent: consented
                         changedAfterStart: false
                         handedOverAt: '2026-11-20T14:05:00+09:00'
                         handoverKind: pickup
@@ -12627,9 +12633,6 @@ paths:
                         undoableUntil: null
                         revision: 9cac257a8f98
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 8a9e5b188703
                     paymentRequest: null
                 unchanged:
@@ -12680,6 +12683,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -12755,6 +12759,7 @@ paths:
                         completedAt: '2026-11-20T11:30:00+09:00'
                         completionPhotos:
                         - url: https://files.siljang.example/v1/e42ae7007349716d03413096?exp=1763619300&sig=d6ca96dc384b1d4aa9bf108fb41ac9e5
+                          consent: consented
                         changedAfterStart: false
                         handedOverAt: '2026-11-20T14:05:00+09:00'
                         handoverKind: pickup
@@ -12763,9 +12768,6 @@ paths:
                         undoableUntil: null
                         revision: 9cac257a8f98
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 8a9e5b188703
                     paymentRequest: null
         "401":
@@ -13050,6 +13052,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -13125,6 +13128,7 @@ paths:
                         completedAt: '2026-11-20T11:30:00+09:00'
                         completionPhotos:
                         - url: https://files.siljang.example/v1/e42ae7007349716d03413096?exp=1763619300&sig=d6ca96dc384b1d4aa9bf108fb41ac9e5
+                          consent: consented
                         changedAfterStart: false
                         handedOverAt: null
                         handoverKind: null
@@ -13133,9 +13137,6 @@ paths:
                         undoableUntil: null
                         revision: 8ac0623fce9a
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: dacfcfa9a4bd
                     paymentRequest: null
                 unchanged:
@@ -13186,6 +13187,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -13261,6 +13263,7 @@ paths:
                         completedAt: '2026-11-20T11:30:00+09:00'
                         completionPhotos:
                         - url: https://files.siljang.example/v1/e42ae7007349716d03413096?exp=1763619300&sig=d6ca96dc384b1d4aa9bf108fb41ac9e5
+                          consent: consented
                         changedAfterStart: false
                         handedOverAt: null
                         handoverKind: null
@@ -13269,9 +13272,6 @@ paths:
                         undoableUntil: null
                         revision: 8ac0623fce9a
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: dacfcfa9a4bd
                     paymentRequest: null
         "401":
@@ -13530,6 +13530,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -13605,6 +13606,7 @@ paths:
                         completedAt: '2026-11-20T11:30:00+09:00'
                         completionPhotos:
                         - url: https://files.siljang.example/v1/e42ae7007349716d03413096?exp=1763619300&sig=d6ca96dc384b1d4aa9bf108fb41ac9e5
+                          consent: consented
                         changedAfterStart: false
                         handedOverAt: null
                         handoverKind: null
@@ -13613,9 +13615,6 @@ paths:
                         undoableUntil: null
                         revision: a86933bc8a99
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: ac59ef1e3b07
                     paymentRequest: null
         "401":
@@ -14283,6 +14282,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -14365,9 +14365,6 @@ paths:
                         undoableUntil: null
                         revision: fdd4eed8e58b
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 7f14e2e6ed1a
                     changeRequest: null
                 mismatch:
@@ -14440,6 +14437,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -14502,9 +14500,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: ee6bcb0b7d64
                     changeRequest: null
                 difference_applied:
@@ -14584,6 +14579,7 @@ paths:
                         lettering: 생일 축하해 지우야!
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -14613,6 +14609,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -14695,9 +14692,6 @@ paths:
                         undoableUntil: null
                         revision: fdd4eed8e58b
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: e3dc0567e893
                     changeRequest:
                       changeRequestId: 6d96f249-8f76-5f14-b626-aec0569639ec
@@ -14814,6 +14808,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -14883,9 +14878,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 124a78ef40fc
                     changeRequest: null
                 arrived:
@@ -14958,6 +14950,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -15027,9 +15020,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 124a78ef40fc
                     changeRequest: null
                 voided:
@@ -15109,6 +15099,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -15178,9 +15169,6 @@ paths:
                       changeRequests: []
                       production: null
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: effba4fe1d93
                     changeRequest: null
                 unchanged:
@@ -15261,6 +15249,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -15343,9 +15332,6 @@ paths:
                         undoableUntil: null
                         revision: fdd4eed8e58b
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 7f14e2e6ed1a
                     changeRequest: null
         "401":
@@ -16401,6 +16387,7 @@ paths:
                         lettering: 생일 축하해 지우야!
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -16430,6 +16417,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -16512,9 +16500,6 @@ paths:
                         undoableUntil: null
                         revision: fdd4eed8e58b
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: e3dc0567e893
                     paymentRequest: null
                 awaiting_difference:
@@ -16609,6 +16594,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -16691,9 +16677,6 @@ paths:
                         undoableUntil: null
                         revision: fdd4eed8e58b
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 7f14e2e6ed1a
                     paymentRequest:
                       paymentRequestId: 5b4c3160-dfc6-53f6-bc17-c9f7d0a32a07
@@ -16788,6 +16771,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -16870,9 +16854,6 @@ paths:
                         undoableUntil: null
                         revision: fdd4eed8e58b
                       issueReports: []
-                      photoConsent:
-                        consented: true
-                        withdrawnAt: null
                       revision: 7f14e2e6ed1a
                     paymentRequest: null
         "401":
@@ -17358,6 +17339,7 @@ paths:
                         lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
+                        allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
@@ -17389,7 +17371,6 @@ paths:
                         undoableUntil: null
                         revision: 7d1f4feba6c7
                       issueReports: []
-                      photoConsent: null
                       revision: 1e9fca2c7f28
                     refund: null
                 partial_refund:
@@ -17782,7 +17763,7 @@ paths:
       operationId: getPortfolio
       summary: 포트폴리오와 올릴 수 있는 사진
       description: |-
-        올린 사진과, 올릴 수 있는지 보이는 후보(게시 동의한 사진만 올릴 수 있음).
+        올린 사진과, 올릴 수 있는지 보이는 후보(완성 사진·후기 사진. 손님이 그 사진의 게시에 동의하고 철회하지 않은 사진만 올릴 수 있음, REQ-209). 가게가 도안으로 올린 견본 사진은 손님 사진이 아니라 후보에 없고 가격표에 보인다(REQ-210).
 
         SPEC: SPEC-063
       tags:
@@ -17820,6 +17801,13 @@ paths:
                         orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
                         orderNo: K7Q3M9
                       consent: not_consented
+                    - source: completion_photo
+                      photoId: 774b8056-73cf-559c-bef4-2027922f360a
+                      url: https://files.siljang.example/v1/e42ae7007349716d03413096?exp=1763619300&sig=d6ca96dc384b1d4aa9bf108fb41ac9e5
+                      order:
+                        orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                        orderNo: K7Q3M9
+                      consent: consented
                 empty:
                   summary: 빈 목록
                   value:
@@ -17904,7 +17892,7 @@ paths:
       operationId: addPortfolioItem
       summary: 포트폴리오 게시
       description: |-
-        게시 동의한 사진만 올린다. 동의하지 않았거나 철회한 사진은 409 photo_consent_missing. 이미 올렸으면 200 unchanged. 사진이 없거나 다른 가게 것이면 404.
+        손님이 그 사진의 게시에 동의하고 철회하지 않은 사진만 올린다(완성 사진·후기 사진, REQ-209). 데이터베이스도 포트폴리오 항목의 동의가 그 사진의 것이고 동의함·철회 안 함인지 확인한다(05단계, 설계 재검토 H10). 동의하지 않았거나 철회한 사진은 409 photo_consent_missing. 이미 올렸으면 200 unchanged. 사진이 없거나 다른 가게 것이면 404.
 
         SPEC: SPEC-063
       tags:
@@ -17924,6 +17912,10 @@ paths:
                 value:
                   source: review_photo
                   photoId: 55014b4a-aeda-51ce-be70-fe882b3803d5
+              add_completion:
+                value:
+                  source: completion_photo
+                  photoId: 774b8056-73cf-559c-bef4-2027922f360a
       responses:
         "201":
           description: '성공. 예시: added'
@@ -18304,9 +18296,9 @@ paths:
       operationId: receiveCustomerMessage
       summary: 손님 메시지 수신(카카오 오픈빌더 스킬)
       description: |-
-        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 키가 아니면 401(DEC-08). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). 연결 확인 중인 채널의 테스트 메시지면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008). 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). 주문서 초안이 다 찼는데 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). 주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장)을 먼저, 요약 카드(요약·사진 게시 동의 '동의 안 함'·버튼 셋)를 끝에 둔다. 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간이 문서 안에서 5분과 1분으로 어긋남. 개발 전 테스트로 정함(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4).
+        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 키가 아니면 401(DEC-08). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). 연결 확인 중인 채널의 테스트 메시지면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008). 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). 주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, 버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). 그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). 주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간이 문서 안에서 5분과 1분으로 어긋남. 개발 전 테스트로 정함(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4).
 
-        SPEC: SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-028, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-049, SPEC-056, SPEC-057, SPEC-066, SPEC-068, SPEC-069, SPEC-013, SPEC-014, SPEC-016, SPEC-008, SPEC-072
+        SPEC: SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-028, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-049, SPEC-056, SPEC-057, SPEC-066, SPEC-068, SPEC-069, SPEC-013, SPEC-014, SPEC-016, SPEC-008, SPEC-072, SPEC-075
       tags:
       - 카카오 스킬
       security:
@@ -18496,38 +18488,26 @@ paths:
                       - simpleText:
                           text: 1호 생크림 케이크는 35,000원이에요. 결제가 확인되면 주문이 확정돼요.
                 card_shown:
-                  summary: 서버가 저장된 값으로 확인 카드(주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회)를 보임. 주문 요청 카드는 그 버전의 취소·환불 규정 글(하나나 둘)을 먼저, 요약 카드를 끝에 둠(SPEC-028, DEC-22)
+                  summary: 서버가 저장된 값으로 확인 카드(알레르기 정보·주문자 정보·주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회)를 보임. 주문서 초안이 다 차면 알레르기 정보 카드(SPEC-075)와 주문자 정보 카드(SPEC-072)를 주문 요청 카드 앞에 보냄. 주문 요청 카드는 그 버전의 취소·환불 규정 글(하나나 둘)을 먼저, 요약 카드를 끝에 둠(SPEC-028, DEC-22)
                   value:
                     version: "2.0"
                     template:
                       outputs:
-                      - simpleText:
-                          text: |-
-                            취소·환불 규정(운영규정 버전 2)
-                            · 제작 전 취소: 맞춤 재료를 주문하기 전이고 제작을 시작하기 전에 취소하는 경우 → 취소 수수료 5,000원을 뺀 금액을 모두 돌려드립니다.
-                            · 제작 뒤 취소: 맞춤 재료를 주문했거나 제작을 시작한 뒤 취소하는 경우 → 픽업 72시간 전까지는 50%, 그 뒤에는 돌려드리지 않습니다.
-                            주문제작이라 청약철회가 제한될 수 있어요
                       - textCard:
-                          title: 주문 요청 확인
-                          description: '11월 20일 14:00 픽업 · 1호 생크림 · 문구 ''생일 축하해 지우야'' · 주문자 이지우 010-9876-5432 · 36,000원 · 사진 게시 동의: 동의 안 함'
+                          title: 알레르기 정보
+                          description: 알레르기 정보는 이 주문의 케이크를 만드는 데만 써요. 알레르기가 있는 재료만 받고, 이 가게 사장님만 보며, 주문이 끝나고 30일 뒤 지워요. 동의하지 않아도 돼요. 그러면 알레르기는 묻지 않고 빼야 할 재료만으로 주문해요
                           buttons:
-                          - label: 규정에 동의하고 주문 요청
+                          - label: 동의하고 알려 주기
                             action: block
-                            blockId: 35aa1292cf287c9e16bfcb41
+                            blockId: 3d98290aeea8ecbe10e4dc07
                             extra:
-                              cardKey: ck_0321644e605677723e8616a4f0c654
+                              cardKey: ck_6eec260f6dcdf6f715778566bd5d4e
                               choice: confirm
-                          - label: 사진 게시도 동의하고 요청
+                          - label: 동의 안 함
                             action: block
                             blockId: 35aa1292cf287c9e16bfcb41
                             extra:
-                              cardKey: ck_0321644e605677723e8616a4f0c654
-                              choice: confirm_with_photo_consent
-                          - label: 안 할래요
-                            action: block
-                            blockId: 35aa1292cf287c9e16bfcb41
-                            extra:
-                              cardKey: ck_0321644e605677723e8616a4f0c654
+                              cardKey: ck_6eec260f6dcdf6f715778566bd5d4e
                               choice: decline
                 photo_received:
                   summary: 참고·신고 사진을 받아 초안이나 신고 내용에 붙임. AI 모델로 보내지 않음
@@ -18578,14 +18558,14 @@ paths:
                       - simpleText:
                           text: '아직 상담을 받지 않아요. 가게로 연락해 주세요: 010-1234-5678'
                 channel_test_card:
-                  summary: 연결 확인 중인 채널의 테스트 메시지를 받아 그 사용자를 시험 사용자로 남기고 첫 시험 버튼(그 가게가 넣은 블록 ID)을 보임(REQ-179)
+                  summary: 연결 확인 중인 채널의 테스트 메시지를 받아 그 사용자를 시험 사용자로 남기고 첫 시험 버튼(그 가게가 넣은 블록 ID)을 보임(REQ-206)
                   value:
                     version: "2.0"
                     template:
                       outputs:
                       - textCard:
                           title: 연결 확인
-                          description: 테스트 메시지를 받았어요. 시험 버튼 4개를 하나씩 눌러 주세요(1/4 확인 카드)
+                          description: 테스트 메시지를 받았어요. 시험 버튼 5개를 하나씩 눌러 주세요(1/5 확인 카드)
                           buttons:
                           - label: '시험: 확인 카드'
                             action: block
@@ -18754,6 +18734,7 @@ paths:
         - SPEC-016
         - SPEC-008
         - SPEC-072
+        - SPEC-075
         omit:
           "403": 가게·손님 구분은 결과 코드로 알리고 HTTP 403을 쓰지 않음(DEC-07)
           "404": 경로에 기록 ID가 없음. 연결 안 된 채널은 결과 not_accepting(DEC-07)
@@ -18792,6 +18773,7 @@ paths:
           노출:
           - closed
           - outcome:server_error
+          - note:알레르기 답은 AI 모델에 보내지 않음(REQ-204)
           빈·끊김:
           - outcome:callback_pending
           - note:빈 AI 답은 다시 묻고 두 번이면 에스컬레이션함(SPEC-020)
@@ -18827,9 +18809,9 @@ paths:
       operationId: pressConfirmCard
       summary: 손님 확인 카드 버튼(카카오 오픈빌더 스킬)
       description: |-
-        확인 카드의 블록 버튼이 clientExtra(cardKey, choice)로 보내는 스킬. 서버는 카드 키로 저장된 카드를 찾고 그 사용자·그 주문의 현재 버전·30분 기한을 다시 본다(G9). 주문 요청이면 한 트랜잭션으로 내용 확인·규정 동의·사진 게시 동의·주문 요청을 남기고, 기본 디자인이면 같은 트랜잭션에서 자리를 잡고 결제 안내까지(SPEC-029, SPEC-030). 입금 알리기·변경 요청·취소·신고·동의 철회도 같은 방법. 카드를 받은 사용자가 아니면 card_not_yours, 버전이 바뀌었으면 card_stale과 새 카드, 기한이 지났으면 card_expired와 새 카드. 같은 카드를 다시 누르면 card_used와 처음 결과(G2). 아무것도 남기지 못하면 retry_needed. 카드 값은 서버 기록에서만 오고 손님 말로 바꿀 수 없다(SPEC-069). 주문자 정보 카드의 '주문자 정보' 블록과 입금 알리기 카드의 '입금자 이름' 블록도 이 스킬로 오고, action.params에 customer_name·customer_phone이나 depositor_name을 담는다(설계 재검토 H11). 이 값은 AI로 보내지 않는다(REQ-178). 형식(이름 1~30자, 연락처 숫자와 '-' 8~14자)이 맞으면 초안에 남기고 주문 요청 카드를 보내거나(orderer_saved, SPEC-072) 그 이름으로 결제 확인을 요청한다(payment_claimed, SPEC-033). 형식이 틀리면 아무것도 남기지 않고 다시 묻는다(input_invalid). 입금 알리기 카드의 '결제 확인 요청'을 바로 누르면 입금자 이름은 주문자 이름이다(REQ-176). 주문자 정보를 받아 보내는 주문 요청 확인 카드와 card_stale·card_expired의 새 카드는 API-070의 card_shown처럼 규정 글을 먼저, 요약 카드를 끝에 둔다(DEC-22). 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: card·orderer_info·depositor_name)은 주문·카드를 남기지 않고 그 블록이 닿았다는 것만 남긴 뒤 다음 시험 버튼을 답하고(block_verified), 넷이 모두 닿으면 채널을 '연결됨'으로 묶고 시험 안내를 보낸다(channel_linked, SPEC-008, REQ-179, 설계 재검토 H8). clientExtra에 cardKey도 check도 없으면 422.
+        확인 카드의 블록 버튼이 clientExtra(cardKey, choice)로 보내는 스킬. 서버는 카드 키로 저장된 카드를 찾고 그 사용자·그 주문의 현재 버전·30분 기한을 다시 본다(G9). 주문 요청이면 한 트랜잭션으로 내용 확인·규정 동의·주문 요청을 남기고 초안의 알레르기 정보 동의(답·동의 글 버전·시각)와 알레르기 답을 주문 내용 버전에 옮기며, 기본 디자인이면 같은 트랜잭션에서 자리를 잡고 결제 안내까지(SPEC-029, SPEC-030). 초안에 알레르기 정보 동의의 답이 없거나 동의했는데 알레르기 답이 없으면 주문 요청을 남기지 않고 알레르기 정보 카드를 보낸다(card_stale, REQ-201). 입금 알리기·변경 요청·취소·신고·동의 철회도 같은 방법. 카드를 받은 사용자가 아니면 card_not_yours, 버전이 바뀌었으면 card_stale과 새 카드, 기한이 지났으면 card_expired와 새 카드. 같은 카드를 다시 누르면 card_used와 처음 결과(G2). 아무것도 남기지 못하면 retry_needed. 카드 값은 서버 기록에서만 오고 손님 말로 바꿀 수 없다(SPEC-069). 주문자 정보 카드의 '주문자 정보' 블록과 입금 알리기 카드의 '입금자 이름' 블록도 이 스킬로 오고, action.params에 customer_name·customer_phone이나 depositor_name을 담는다(설계 재검토 H11). 이 값은 AI로 보내지 않는다(REQ-178). 형식(이름 1~30자, 연락처 숫자와 '-' 8~14자)이 맞으면 초안에 남기고 주문 요청 카드를 보내거나(orderer_saved, SPEC-072) 그 이름으로 결제 확인을 요청한다(payment_claimed, SPEC-033). 형식이 틀리면 아무것도 남기지 않고 다시 묻는다(input_invalid). 입금 알리기 카드의 '결제 확인 요청'을 바로 누르면 입금자 이름은 주문자 이름이다(REQ-176). 알레르기 정보 카드의 '동의하고 알려 주기'가 연 '알레르기 답' 블록은 받은 답을 action.params.allergy_answer에 담아 이 스킬로 온다. 답이 1~200자('없음'도 답)면 동의(동의 글 버전·시각)와 알레르기 답을 한 트랜잭션으로 초안에 남기고, 주문자 이름·연락처가 없으면 주문자 정보 카드를, 있으면 주문 요청 카드를 보낸다(allergy_saved, SPEC-075, REQ-201, REQ-202). 답이 비거나 200자를 넘으면 아무것도 남기지 않고 '알레르기가 있는 재료를 200자까지 알려 주세요(없으면 없음)' 카드(알레르기 답 블록 버튼)를 다시 보낸다(input_invalid). 알레르기 정보 카드는 보낸 뒤 초안이 바뀌어도 card_stale로 거절하지 않고 받은 동의와 답을 남기며, 다음 카드를 바뀐 초안으로 만든다(SPEC-075). '동의 안 함'은 거부와 동의 글 버전·시각을 초안에 남기고 알레르기를 묻지 않은 채 다음 카드를 보낸다(allergy_declined, REQ-203). 알레르기 답은 AI 모델·로그·사장님 알림에 보내지 않는다(REQ-204, REQ-142, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). 완성 사진 안내(API-073)의 사진 게시 동의 카드에서 누른 '올려도 돼요'·'안 돼요'는 그 안내의 사진마다 동의를 남긴다(photo_consent_saved, SPEC-053, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). 동의를 철회하는 카드(consent_withdrawn)는 완성 사진·후기 사진의 동의 모두를 다루고, 그 사진의 올라 있는 포트폴리오 항목을 먼저 내린 뒤 철회를 남긴다(SPEC-063, REQ-209). 주문자 정보를 받아 보내는 주문 요청 확인 카드와 card_stale·card_expired의 새 카드는 API-070의 card_shown처럼 규정 글을 먼저, 요약 카드를 끝에 둔다(DEC-22). 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: card·orderer_info·allergy_answer·depositor_name)은 주문·카드를 남기지 않고 그 블록이 닿았다는 것만 남긴 뒤 다음 시험 버튼을 답하고(block_verified), 다섯이 모두 닿으면 채널을 '연결됨'으로 묶고 시험 안내를 보낸다(channel_linked, SPEC-008, REQ-206, 설계 재검토 H8·H5). clientExtra에 cardKey도 check도 없으면 422.
 
-        SPEC: SPEC-069, SPEC-029, SPEC-030, SPEC-033, SPEC-041, SPEC-046, SPEC-058, SPEC-063, SPEC-015, SPEC-032, SPEC-040, SPEC-072
+        SPEC: SPEC-069, SPEC-029, SPEC-030, SPEC-033, SPEC-041, SPEC-046, SPEC-058, SPEC-063, SPEC-015, SPEC-032, SPEC-040, SPEC-072, SPEC-075, SPEC-053
       tags:
       - 카카오 스킬
       security:
@@ -18907,6 +18889,39 @@ paths:
                     clientExtra:
                       cardKey: ck_f4ad6a3a53f92893389713958411c7
                       choice: confirm
+              allergy_answer:
+                value:
+                  intent:
+                    id: 3d98290aeea8ecbe10e4dc07
+                    name: 알레르기 답
+                  userRequest:
+                    timezone: Asia/Seoul
+                    params:
+                      surface: Kakaotalk.plusfriend
+                    block:
+                      id: 3d98290aeea8ecbe10e4dc07
+                      name: 알레르기 답
+                    utterance: 동의하고 알려 주기
+                    lang: ko
+                    user:
+                      id: Xq7bK2mN9pR4sT1v
+                      type: botUserKey
+                      properties:
+                        botUserKey: Xq7bK2mN9pR4sT1v
+                        plusfriendUserKey: pf902b340d9a
+                        isFriend: true
+                  bot:
+                    id: 6740a1b2c3d4e5f6a7b8c9d0
+                    name: 달빛케이크
+                  action:
+                    id: f45dc3752d2df2ab84e5212e
+                    name: card_skill
+                    params:
+                      allergy_answer: 땅콩
+                    detailParams: {}
+                    clientExtra:
+                      cardKey: ck_6eec260f6dcdf6f715778566bd5d4e
+                      choice: confirm
               depositor_name:
                 value:
                   intent:
@@ -18939,6 +18954,38 @@ paths:
                     detailParams: {}
                     clientExtra:
                       cardKey: ck_284c4d607d391e3a6c67f2c6402f38
+                      choice: confirm
+              photo_consent:
+                value:
+                  intent:
+                    id: 35aa1292cf287c9e16bfcb41
+                    name: 확인 카드
+                  userRequest:
+                    timezone: Asia/Seoul
+                    params:
+                      surface: Kakaotalk.plusfriend
+                    block:
+                      id: 35aa1292cf287c9e16bfcb41
+                      name: 확인 카드
+                    utterance: 올려도 돼요
+                    lang: ko
+                    user:
+                      id: Xq7bK2mN9pR4sT1v
+                      type: botUserKey
+                      properties:
+                        botUserKey: Xq7bK2mN9pR4sT1v
+                        plusfriendUserKey: pf902b340d9a
+                        isFriend: true
+                  bot:
+                    id: 6740a1b2c3d4e5f6a7b8c9d0
+                    name: 달빛케이크
+                  action:
+                    id: f45dc3752d2df2ab84e5212e
+                    name: card_skill
+                    params: {}
+                    detailParams: {}
+                    clientExtra:
+                      cardKey: ck_55bb9ca5ce48847a3c9b3e48a4fd08
                       choice: confirm
               check_button:
                 value:
@@ -18981,12 +19028,15 @@ paths:
               schema:
                 type: string
                 enum:
+                - allergy_saved
+                - allergy_declined
                 - orderer_saved
                 - order_requested
                 - payment_claimed
                 - change_requested
                 - order_cancelled
                 - issue_reported
+                - photo_consent_saved
                 - consent_withdrawn
                 - declined
                 - input_invalid
@@ -19006,6 +19056,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/SkillTemplateResponse'
               examples:
+                allergy_saved:
+                  summary: 알레르기 정보 카드의 '동의하고 알려 주기'가 연 알레르기 답 블록의 답(1~200자, '없음'도 답)이 맞아 동의(동의 글 버전·시각)와 답을 초안에 남기고, 주문자 이름·연락처가 없으면 주문자 정보 카드를, 있으면 주문 요청 카드를 보냄. 알레르기 답은 AI로 보내지 않음(REQ-201, REQ-202, REQ-204, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄)
+                  value:
+                    version: "2.0"
+                    template:
+                      outputs:
+                      - textCard:
+                          title: 주문자 정보
+                          description: 주문하시는 분의 이름과 연락처를 넣어 주세요. 이 정보는 AI에 보내지 않아요
+                          buttons:
+                          - label: 이름·연락처 넣기
+                            action: block
+                            blockId: 374f8fbdcc51601f2277519c
+                            extra:
+                              cardKey: ck_f4ad6a3a53f92893389713958411c7
+                              choice: confirm
+                allergy_declined:
+                  summary: 알레르기 정보 카드의 '동의 안 함'을 누름. 거부와 동의 글 버전·시각을 초안에 남기고 알레르기는 묻지 않고 빼야 할 재료만으로 다음 카드를 보냄. 제작 목록에는 '알레르기 정보 동의 안 함'(REQ-203)
+                  value:
+                    version: "2.0"
+                    template:
+                      outputs:
+                      - simpleText:
+                          text: 알겠어요. 알레르기는 묻지 않고 빼야 할 재료만으로 주문을 이어갈게요
+                      - textCard:
+                          title: 주문자 정보
+                          description: 주문하시는 분의 이름과 연락처를 넣어 주세요. 이 정보는 AI에 보내지 않아요
+                          buttons:
+                          - label: 이름·연락처 넣기
+                            action: block
+                            blockId: 374f8fbdcc51601f2277519c
+                            extra:
+                              cardKey: ck_f4ad6a3a53f92893389713958411c7
+                              choice: confirm
                 orderer_saved:
                   summary: 주문자 정보 블록의 이름·연락처가 형식에 맞아 초안에 남기고 주문 요청 카드(규정 글을 먼저, DEC-22)를 보냄. 이 값은 AI로 보내지 않음(REQ-175, REQ-178)
                   value:
@@ -19020,7 +19104,7 @@ paths:
                             주문제작이라 청약철회가 제한될 수 있어요
                       - textCard:
                           title: 주문 요청 확인
-                          description: '11월 20일 14:00 픽업 · 1호 생크림 · 문구 ''생일 축하해 지우야'' · 주문자 이지우 010-9876-5432 · 36,000원 · 사진 게시 동의: 동의 안 함'
+                          description: '11월 20일 14:00 픽업 · 1호 생크림 · 문구 ''생일 축하해 지우야'' · 알레르기: 없음 · 주문자 이지우 010-9876-5432 · 36,000원'
                           buttons:
                           - label: 규정에 동의하고 주문 요청
                             action: block
@@ -19028,12 +19112,6 @@ paths:
                             extra:
                               cardKey: ck_0321644e605677723e8616a4f0c654
                               choice: confirm
-                          - label: 사진 게시도 동의하고 요청
-                            action: block
-                            blockId: 35aa1292cf287c9e16bfcb41
-                            extra:
-                              cardKey: ck_0321644e605677723e8616a4f0c654
-                              choice: confirm_with_photo_consent
                           - label: 안 할래요
                             action: block
                             blockId: 35aa1292cf287c9e16bfcb41
@@ -19082,8 +19160,16 @@ paths:
                       outputs:
                       - simpleText:
                           text: 신고를 받았어요. 사장님이 보시고 정하실 거예요
+                photo_consent_saved:
+                  summary: 완성 사진 안내의 사진 게시 동의 카드에서 누른 답('올려도 돼요'·'안 돼요')을 그 안내의 사진마다 남김. 누르지 않은 사진은 동의 안 함이고, 동의한 뒤 바꾸려면 동의 철회(REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)
+                  value:
+                    version: "2.0"
+                    template:
+                      outputs:
+                      - simpleText:
+                          text: 알려 주셔서 고마워요. 사진 게시 동의는 언제든 철회할 수 있어요
                 consent_withdrawn:
-                  summary: 사진 게시 동의를 철회하고 그 사진을 포트폴리오와 예약 링크 페이지에서 내림(5분 이내)
+                  summary: 완성 사진·후기 사진의 게시 동의를 철회함. 그 사진의 올라 있는 포트폴리오 항목을 먼저 내린 뒤 철회를 남기고 예약 링크 페이지에서 5분 안에 사라짐(REQ-098, REQ-209)
                   value:
                     version: "2.0"
                     template:
@@ -19099,7 +19185,7 @@ paths:
                       - simpleText:
                           text: 알겠어요. 더 궁금한 것이 있으면 말씀해 주세요
                 input_invalid:
-                  summary: 주문자 정보·입금자 이름 블록의 값이 형식에 맞지 않음(이름 1~30자, 연락처 숫자와 '-' 8~14자). 아무것도 남기지 않고 같은 블록 버튼으로 다시 물음(SPEC-033, SPEC-072)
+                  summary: 주문자 정보·알레르기 답·입금자 이름 블록의 값이 형식에 맞지 않음(이름 1~30자, 연락처 숫자와 '-' 8~14자, 알레르기 답 1~200자). 아무것도 남기지 않고 같은 블록 버튼으로 다시 물음(SPEC-033, SPEC-072, SPEC-075)
                   value:
                     version: "2.0"
                     template:
@@ -19128,7 +19214,7 @@ paths:
                             주문제작이라 청약철회가 제한될 수 있어요
                       - textCard:
                           title: 주문 요청 확인
-                          description: '내용이 바뀌었어요. 새 카드를 확인해 주세요 · 11월 20일 14:00 픽업 · 1호 생크림 · 문구 ''생일 축하해 지우야'' · 주문자 이지우 010-9876-5432 · 38,000원 · 사진 게시 동의: 동의 안 함'
+                          description: '내용이 바뀌었어요. 새 카드를 확인해 주세요 · 11월 20일 14:00 픽업 · 1호 생크림 · 문구 ''생일 축하해 지우야'' · 알레르기: 없음 · 주문자 이지우 010-9876-5432 · 38,000원'
                           buttons:
                           - label: 규정에 동의하고 주문 요청
                             action: block
@@ -19136,12 +19222,6 @@ paths:
                             extra:
                               cardKey: ck_90050d2fedecf36b241379d82f4d87
                               choice: confirm
-                          - label: 사진 게시도 동의하고 요청
-                            action: block
-                            blockId: 35aa1292cf287c9e16bfcb41
-                            extra:
-                              cardKey: ck_90050d2fedecf36b241379d82f4d87
-                              choice: confirm_with_photo_consent
                           - label: 안 할래요
                             action: block
                             blockId: 35aa1292cf287c9e16bfcb41
@@ -19162,7 +19242,7 @@ paths:
                             주문제작이라 청약철회가 제한될 수 있어요
                       - textCard:
                           title: 주문 요청 확인
-                          description: '시간이 지나 새 카드를 보내 드려요 · 11월 20일 14:00 픽업 · 1호 생크림 · 문구 ''생일 축하해 지우야'' · 주문자 이지우 010-9876-5432 · 36,000원 · 사진 게시 동의: 동의 안 함'
+                          description: '시간이 지나 새 카드를 보내 드려요 · 11월 20일 14:00 픽업 · 1호 생크림 · 문구 ''생일 축하해 지우야'' · 알레르기: 없음 · 주문자 이지우 010-9876-5432 · 36,000원'
                           buttons:
                           - label: 규정에 동의하고 주문 요청
                             action: block
@@ -19170,12 +19250,6 @@ paths:
                             extra:
                               cardKey: ck_ba8759d61815e73b9a7ac1cc4ecbe2
                               choice: confirm
-                          - label: 사진 게시도 동의하고 요청
-                            action: block
-                            blockId: 35aa1292cf287c9e16bfcb41
-                            extra:
-                              cardKey: ck_ba8759d61815e73b9a7ac1cc4ecbe2
-                              choice: confirm_with_photo_consent
                           - label: 안 할래요
                             action: block
                             blockId: 35aa1292cf287c9e16bfcb41
@@ -19230,14 +19304,14 @@ paths:
                       - simpleText:
                           text: '지금은 할 수 없어요: 이미 받은 주문이에요'
                 block_verified:
-                  summary: 연결 확인 중에 시험 사용자가 누른 시험 버튼이 우리 스킬에 닿아 그 블록을 확인됨으로 남기고 다음 시험 버튼을 보임. 주문·카드·후기는 남기지 않음(REQ-179)
+                  summary: 연결 확인 중에 시험 사용자가 누른 시험 버튼이 우리 스킬에 닿아 그 블록을 확인됨으로 남기고 다음 시험 버튼을 보임. 주문·카드·후기는 남기지 않음(REQ-206)
                   value:
                     version: "2.0"
                     template:
                       outputs:
                       - textCard:
                           title: 연결 확인
-                          description: 확인 카드 블록이 닿았어요(1/4). 다음 시험 버튼을 눌러 주세요
+                          description: 확인 카드 블록이 닿았어요(1/5). 다음 시험 버튼을 눌러 주세요
                           buttons:
                           - label: '시험: 주문자 정보'
                             action: block
@@ -19245,13 +19319,13 @@ paths:
                             extra:
                               check: orderer_info
                 channel_linked:
-                  summary: 시험 버튼으로 버튼 블록 넷이 모두 닿아 채널을 가게에 묶음. 이어서 시험 사용자에게 시험 안내를 Event API로 한 번 보냄(REQ-179, REQ-180)
+                  summary: 시험 버튼으로 버튼 블록 다섯이 모두 닿아 채널을 가게에 묶음. 이어서 시험 사용자에게 시험 안내를 Event API로 한 번 보냄(REQ-206, REQ-180)
                   value:
                     version: "2.0"
                     template:
                       outputs:
                       - simpleText:
-                          text: 버튼 블록 4개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요
+                          text: 버튼 블록 5개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요
                 not_accepting:
                   summary: 연결되지 않은 채널이거나 예약 링크를 내기 전 가게. 상담을 열지 않음
                   value:
@@ -19340,6 +19414,8 @@ paths:
         - SPEC-032
         - SPEC-040
         - SPEC-072
+        - SPEC-075
+        - SPEC-053
         omit:
           "403": 가게·손님 구분은 결과 코드로 알리고 HTTP 403을 쓰지 않음(DEC-07)
           "404": 경로에 기록 ID가 없음. 연결 안 된 채널은 결과 not_accepting(DEC-07)
@@ -19371,7 +19447,7 @@ paths:
           노출:
           - closed
           - outcome:server_error
-          - note:주문자 이름·연락처·입금자 이름은 AI로 보내지 않음(REQ-178)
+          - note:주문자 이름·연락처·입금자 이름·알레르기 답은 AI로 보내지 않음(REQ-178, REQ-204)
           AI:
           - outcome:card_not_yours
           - outcome:card_stale
@@ -19380,12 +19456,15 @@ paths:
           화면:
           - screen
         outcomes:
+        - allergy_saved
+        - allergy_declined
         - orderer_saved
         - order_requested
         - payment_claimed
         - change_requested
         - order_cancelled
         - issue_reported
+        - photo_consent_saved
         - consent_withdrawn
         - declined
         - input_invalid
@@ -19405,7 +19484,7 @@ paths:
       operationId: submitReview
       summary: 후기 수신(카카오 오픈빌더 스킬)
       description: |-
-        후기 부탁 안내(SPEC-061)의 버튼이 여는 오픈빌더 '후기' 블록이 보내는 스킬(DEC-18). action.params의 review_text(1~1,000자), review_photos(보안 이미지 플러그인 값: privacyAgreement·imageQuantity·secureUrls·expire, 5장까지), photo_consent(게시 동의, 기본 동의 안 함)와 clientExtra.orderNo. 받은 주문이고 그 주문을 요청한 사용자일 때만 남긴다. 사진은 서명 주소가 사는 10분 안에 내려받고 한 번 다시 받아도 실패하면 photo_download_failed. 같은 주문의 두 번째 후기는 새 버전. 후기 부탁 버튼은 그 가게가 넣은 '후기' 블록 ID를 부른다. 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: review)은 후기를 남기지 않고 그 블록이 닿았다는 것만 남기며, 넷째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-179).
+        후기 부탁 안내(SPEC-061)의 버튼이 여는 오픈빌더 '후기' 블록이 보내는 스킬(DEC-18). action.params의 review_text(1~1,000자), review_photos(보안 이미지 플러그인 값: privacyAgreement·imageQuantity·secureUrls·expire, 5장까지), photo_consent(그 사진들을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 후기 하나에 한 번 물은 답. 기본 동의 안 함이고 답을 사진마다 남김, REQ-208, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)와 clientExtra.orderNo. 받은 주문이고 그 주문을 요청한 사용자일 때만 남긴다. 사진은 서명 주소가 사는 10분 안에 내려받고 한 번 다시 받아도 실패하면 photo_download_failed. 같은 주문의 두 번째 후기는 새 버전. 후기 부탁 버튼은 그 가게가 넣은 '후기' 블록 ID를 부른다. 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: review)은 후기를 남기지 않고 그 블록이 닿았다는 것만 남기며, 다섯째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-206).
 
         SPEC: SPEC-062, SPEC-019, SPEC-061, SPEC-008
       tags:
@@ -19511,7 +19590,7 @@ paths:
                 $ref: '#/components/schemas/SkillTemplateResponse'
               examples:
                 review_saved:
-                  summary: 받은 주문의 후기와 사진, 사진마다 게시 동의(기본 동의 안 함)를 남김
+                  summary: 받은 주문의 후기와 사진, 사진마다 게시 동의(그 사진들을 포트폴리오와 예약 링크 페이지에 올려도 되는지 한 문장으로 물은 답, 기본 동의 안 함)를 남김(REQ-208, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)
                   value:
                     version: "2.0"
                     template:
@@ -19551,7 +19630,7 @@ paths:
                       - simpleText:
                           text: 후기를 남겨 주셔서 고마워요
                 block_verified:
-                  summary: 연결 확인 중에 시험 사용자가 누른 시험 버튼이 우리 스킬에 닿아 그 블록을 확인됨으로 남기고 다음 시험 버튼을 보임. 주문·카드·후기는 남기지 않음(REQ-179)
+                  summary: 연결 확인 중에 시험 사용자가 누른 시험 버튼이 우리 스킬에 닿아 그 블록을 확인됨으로 남기고 다음 시험 버튼을 보임. 주문·카드·후기는 남기지 않음(REQ-206)
                   value:
                     version: "2.0"
                     template:
@@ -19566,13 +19645,13 @@ paths:
                             extra:
                               check: depositor_name
                 channel_linked:
-                  summary: 시험 버튼으로 버튼 블록 넷이 모두 닿아 채널을 가게에 묶음. 이어서 시험 사용자에게 시험 안내를 Event API로 한 번 보냄(REQ-179, REQ-180)
+                  summary: 시험 버튼으로 버튼 블록 다섯이 모두 닿아 채널을 가게에 묶음. 이어서 시험 사용자에게 시험 안내를 Event API로 한 번 보냄(REQ-206, REQ-180)
                   value:
                     version: "2.0"
                     template:
                       outputs:
                       - simpleText:
-                          text: 버튼 블록 4개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요
+                          text: 버튼 블록 5개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요
                 not_accepting:
                   summary: 연결되지 않은 채널이거나 예약 링크를 내기 전 가게. 상담을 열지 않음
                   value:
@@ -19698,9 +19777,9 @@ paths:
       operationId: showNotice
       summary: 먼저 보내는 안내 보이기(카카오 Event API가 부르는 스킬)
       description: |-
-        우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). 안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). 손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), 그 안내는 다음 대화 때 먼저 전한다(DEC-20이 정한 DEC-07의 예외). 결제 안내의 글에는 계좌번호를 넣어 두지 않고 계좌 자리만 두며, 이 스킬이 보일 때 그 결제 안내의 계좌를 복호화해 채운다(SPEC-032, REQ-191). Open: 가게 채널을 우리 앱에 연결하고 우리 월렛을 가게 봇에 연결하는 절차, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양은 개발 전 시험으로 확인(OPEN-9).
+        우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). 안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). 완성 사진 안내(SPEC-053)는 사진과 함께, 그 사진을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 묻는 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, 누른 답은 카드 스킬로 와서 그 안내의 사진마다 남는다(API-071 photo_consent_saved, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). 손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), 그 안내는 다음 대화 때 먼저 전한다(DEC-20이 정한 DEC-07의 예외). 결제 안내의 글에는 계좌번호를 넣어 두지 않고 계좌 자리만 두며, 이 스킬이 보일 때 그 결제 안내의 계좌를 복호화해 채운다(SPEC-032, REQ-191). Open: 가게 채널을 우리 앱에 연결하고 우리 월렛을 가게 봇에 연결하는 절차, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양은 개발 전 시험으로 확인(OPEN-9).
 
-        SPEC: SPEC-066, SPEC-008
+        SPEC: SPEC-066, SPEC-008, SPEC-053
       tags:
       - 카카오 스킬
       security:
@@ -19793,7 +19872,7 @@ paths:
                 $ref: '#/components/schemas/SkillTemplateResponse'
               examples:
                 notice_shown:
-                  summary: Event API가 넘긴 안내 키로 저장된 안내의 글과 버튼을 보임(템플릿, AI 없음, 광고 없음)
+                  summary: Event API가 넘긴 안내 키로 저장된 안내의 글과 버튼을 보임(템플릿, AI 없음, 광고 없음). 완성 사진 안내는 사진과 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', SPEC-053)
                   value:
                     version: "2.0"
                     template:
@@ -19878,6 +19957,7 @@ paths:
         spec:
         - SPEC-066
         - SPEC-008
+        - SPEC-053
         omit:
           "403": 가게·손님 구분은 결과 코드로 알리고 HTTP 403을 쓰지 않음(DEC-07)
           "404": 경로에 기록 ID가 없음. 없는 안내 키는 결과 notice_gone(DEC-07)
@@ -23046,10 +23126,11 @@ components:
           x-corthex-column: kakao_channels.channel_public_id
         blockIds:
           type: object
-          description: 카드 버튼이 부를 가게 봇 블록 넷의 블록 ID(REQ-179, 설계 재검토 H8). 아직 만들지 않은 블록은 null이고, 넷이 모두 있어야 연결 확인을 시작함(API-032)
+          description: 카드 버튼이 부를 가게 봇 블록 다섯의 블록 ID(REQ-206, 설계 재검토 H8·H5). 아직 만들지 않은 블록은 null이고, 다섯이 모두 있어야 연결 확인을 시작함(API-032)
           required:
           - card
           - ordererInfo
+          - allergyAnswer
           - depositorName
           - review
           properties:
@@ -23071,6 +23152,15 @@ components:
               pattern: ^\S+$
               description: '''주문자 정보'' 블록 ID. 주문자 정보 카드 버튼이 부름(SPEC-072)'
               x-corthex-column: kakao_channels.orderer_block_id
+            allergyAnswer:
+              type:
+              - string
+              - "null"
+              minLength: 1
+              maxLength: 100
+              pattern: ^\S+$
+              description: '''알레르기 답'' 블록 ID. 알레르기 정보 카드의 ''동의하고 알려 주기'' 버튼이 부름(SPEC-075)'
+              x-corthex-column: kakao_channels.allergy_block_id
             depositorName:
               type:
               - string
@@ -23201,18 +23291,20 @@ components:
             - test_message_missing
             - card_block
             - orderer_block
+            - allergy_block
             - depositor_block
             - review_block
           minItems: 0
-          maxItems: 8
+          maxItems: 9
           uniqueItems: true
-          description: 연결 안 됨의 사유 후보(SPEC-008). card_block·orderer_block·depositor_block·review_block은 시험 버튼이 우리 스킬에 닿지 않은 블록(REQ-179)
+          description: 연결 안 됨의 사유 후보(SPEC-008). card_block·orderer_block·allergy_block·depositor_block·review_block은 시험 버튼이 우리 스킬에 닿지 않은 블록(REQ-206)
         blockIds:
           type: object
-          description: 넣은 블록 ID 넷(REQ-179)
+          description: 넣은 블록 ID 다섯(REQ-206)
           required:
           - card
           - ordererInfo
+          - allergyAnswer
           - depositorName
           - review
           properties:
@@ -23223,6 +23315,12 @@ components:
               minLength: 1
               maxLength: 100
             ordererInfo:
+              type:
+              - string
+              - "null"
+              minLength: 1
+              maxLength: 100
+            allergyAnswer:
               type:
               - string
               - "null"
@@ -23248,12 +23346,13 @@ components:
             enum:
             - card
             - orderer_info
+            - allergy_answer
             - depositor_name
             - review
           minItems: 0
-          maxItems: 4
+          maxItems: 5
           uniqueItems: true
-          description: 연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록. 넷이 모두 닿아야 연결됨(REQ-179)
+          description: 연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록. 다섯이 모두 닿아야 연결됨(REQ-206)
         eventStatus:
           type: string
           enum:
@@ -23697,6 +23796,7 @@ components:
                 additionalProperties: false
               minItems: 0
               maxItems: 50
+              description: 가게가 도안으로 올린 견본 사진. 손님 사진이 아니라 게시 동의 없이 보임(REQ-210)
           additionalProperties: false
         days:
           type: array
@@ -23735,7 +23835,7 @@ components:
             additionalProperties: false
           minItems: 0
           maxItems: 100
-          description: 게시 동의한 사진만. 비면 화면이 '아직 사진이 없어요'
+          description: 손님이 게시에 동의하고 철회하지 않은 완성 사진·후기 사진만(REQ-209). 비면 화면이 '아직 사진이 없어요'
         privacyPolicyUrl:
           type: string
           format: uri
@@ -24255,6 +24355,7 @@ components:
       - lettering
       - colors
       - allergyAnswer
+      - allergyConsent
       - excludedIngredients
       - customerName
       - customerPhone
@@ -24387,7 +24488,14 @@ components:
           - "null"
           minLength: 1
           maxLength: 200
-          description: 이 주문 밖에서 쓰지 않음(REQ-142)
+          description: 이 주문 밖에서 쓰지 않음(REQ-142). 알레르기 정보에 동의하지 않은 주문은 null(REQ-203)
+        allergyConsent:
+          type: string
+          enum:
+          - agreed
+          - declined
+          - not_required
+          description: '알레르기 정보 동의: 동의함·동의 안 함(알레르기는 묻지 않고 빼야 할 재료만 받음, REQ-203)·동의 필요 없음(동의 단계를 끈 배포, REQ-205). 주문 요청 때 초안에서 옮김(REQ-201, SPEC-029). 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄'
         excludedIngredients:
           type:
           - string
@@ -24936,15 +25044,24 @@ components:
             type: object
             required:
             - url
+            - consent
             properties:
               url:
                 type: string
                 format: uri
                 maxLength: 2048
                 description: 15분 사는 서명 주소. 저장 위치는 포함하지 않음(DEC-09)
+              consent:
+                type: string
+                enum:
+                - consented
+                - not_consented
+                - withdrawn
+                description: 그 사진의 게시 동의. 완성 사진 안내에서 사진마다 받고 답이 없으면 not_consented(REQ-207). 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄
             additionalProperties: false
           minItems: 0
           maxItems: 5
+          description: 완성 사진과 사진마다의 게시 동의(SPEC-053). 포트폴리오에 올리는 것은 API-067·068
         changedAfterStart:
           type: boolean
           description: 재료 주문·제작 시작 뒤 변경이 반영됨(SPEC-045)
@@ -25015,7 +25132,6 @@ components:
       - changeRequests
       - production
       - issueReports
-      - photoConsent
       - revision
       properties:
         orderId:
@@ -25194,22 +25310,6 @@ components:
             $ref: '#/components/schemas/IssueReportSummary'
           minItems: 0
           maxItems: 20
-        photoConsent:
-          type:
-          - object
-          - "null"
-          required:
-          - consented
-          - withdrawnAt
-          properties:
-            consented:
-              type: boolean
-            withdrawnAt:
-              type:
-              - string
-              - "null"
-              format: date-time
-          additionalProperties: false
         revision:
           type: string
           minLength: 1
@@ -25683,6 +25783,7 @@ components:
                 - designNotes
                 - extras
                 - allergyAnswer
+                - allergyConsent
                 - excludedIngredients
                 - referencePhotoCount
                 properties:
@@ -25743,8 +25844,15 @@ components:
                     - "null"
                     minLength: 1
                     maxLength: 200
-                    description: 알레르기 답('없음'도 답). 그 주문의 행에만 보이고 할 일 요약·사장님 알림·장부에는 넣지 않음(REQ-142, REQ-177)
+                    description: 알레르기 답('없음'도 답). 알레르기 정보에 동의하지 않은 주문은 null. 그 주문의 행에만 보이고 할 일 요약·사장님 알림·장부에는 넣지 않음(REQ-142, REQ-177)
                     x-corthex-column: order_details.allergy_answer
+                  allergyConsent:
+                    type: string
+                    enum:
+                    - agreed
+                    - declined
+                    - not_required
+                    description: '알레르기 정보 동의. declined면 allergyAnswer가 null이고 화면은 ''알레르기: 동의 안 함(빼야 할 재료만 받음)''(REQ-203, SPEC-050)'
                   excludedIngredients:
                     type:
                     - string
@@ -26606,7 +26714,7 @@ components:
             additionalProperties: false
           minItems: 0
           maxItems: 200
-          description: 올릴 수 있는지 보이는 사진들. consented만 올릴 수 있음
+          description: 올릴 수 있는지 보이는 완성 사진·후기 사진. consented(동의하고 철회하지 않음)만 올릴 수 있음(REQ-209)
       additionalProperties: false
     PortfolioInput:
       type: object
@@ -26796,7 +26904,7 @@ components:
                   type: string
                   minLength: 0
                   maxLength: 100
-                  description: 사진 게시 동의 답(기본 동의 안 함, DEC-18)
+                  description: '후기 사진의 게시 동의 답: 그 사진들을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지(언제든 철회할 수 있음). 기본 동의 안 함이고 답을 사진마다 남김(REQ-208, DEC-18)'
                 customer_name:
                   type: string
                   minLength: 0
@@ -26812,6 +26920,11 @@ components:
                   minLength: 0
                   maxLength: 1000
                   description: 입금자 이름(입금자 이름 블록, SPEC-033). AI를 거치지 않음. 1~30자 밖이면 input_invalid. 이 블록을 거치지 않고 '결제 확인 요청'을 누르면 주문자 이름(REQ-176)
+                allergy_answer:
+                  type: string
+                  minLength: 0
+                  maxLength: 1000
+                  description: 알레르기 답(알레르기 답 블록, SPEC-075). 알레르기 정보 카드의 '동의하고 알려 주기'가 연 블록이 받음. AI를 거치지 않음. 1~200자 밖이면 결과 input_invalid로 다시 물음('없음'도 답, REQ-202, REQ-204)
               additionalProperties: true
             detailParams:
               type: object
@@ -26819,7 +26932,7 @@ components:
               additionalProperties: true
             clientExtra:
               type: object
-              description: 버튼의 extra. 카드 스킬은 cardKey·choice(주문자 정보·입금자 이름 블록도 같고 값은 action.params로), 후기 스킬은 orderNo, 연결 확인의 시험 버튼은 check
+              description: 버튼의 extra. 카드 스킬은 cardKey·choice(주문자 정보·알레르기 답·입금자 이름 블록도 같고 값은 action.params로), 후기 스킬은 orderNo, 연결 확인의 시험 버튼은 check
               properties:
                 cardKey:
                   type: string
@@ -26832,9 +26945,8 @@ components:
                   type: string
                   enum:
                   - confirm
-                  - confirm_with_photo_consent
                   - decline
-                  description: 누른 버튼(카드 스킬)
+                  description: 누른 버튼(카드 스킬). 알레르기 정보 카드는 동의하고 알려 주기·동의 안 함, 사진 게시 동의 카드는 올려도 돼요·안 돼요
                 orderNo:
                   type: string
                   minLength: 6
@@ -26846,9 +26958,10 @@ components:
                   enum:
                   - card
                   - orderer_info
+                  - allergy_answer
                   - depositor_name
                   - review
-                  description: 연결 확인의 시험 버튼이 부른 블록(SPEC-008, REQ-179). 주문·카드·후기를 남기지 않음
+                  description: 연결 확인의 시험 버튼이 부른 블록(SPEC-008, REQ-206). 주문·카드·후기를 남기지 않음
               additionalProperties: true
           additionalProperties: true
         contexts:
@@ -26964,7 +27077,6 @@ components:
                                     type: string
                                     enum:
                                     - confirm
-                                    - confirm_with_photo_consent
                                     - decline
                                   orderNo:
                                     type: string
@@ -26977,6 +27089,7 @@ components:
                                     enum:
                                     - card
                                     - orderer_info
+                                    - allergy_answer
                                     - depositor_name
                                     - review
                                 additionalProperties: false
@@ -27046,7 +27159,6 @@ components:
                         type: string
                         enum:
                         - confirm
-                        - confirm_with_photo_consent
                         - decline
                       orderNo:
                         type: string
@@ -27059,6 +27171,7 @@ components:
                         enum:
                         - card
                         - orderer_info
+                        - allergy_answer
                         - depositor_name
                         - review
                     additionalProperties: false
@@ -27134,7 +27247,7 @@ components:
           description: 손님에게 보낼 글. 비면 서버가 '다시 한번 말씀해 주시겠어요?'(SPEC-020)
         draft_patch:
           type: object
-          description: 주문서 초안에 넣을 필드(옵션은 이름). 서버가 형식을 확인한 뒤 저장(SPEC-020). 주문자 이름·연락처는 AI가 넣지 않고 주문자 정보 블록으로만 받음(SPEC-072, REQ-178)
+          description: 주문서 초안에 넣을 필드(옵션은 이름). 서버가 형식을 확인한 뒤 저장(SPEC-020). 주문자 이름·연락처는 AI가 넣지 않고 주문자 정보 블록으로만 받음(SPEC-072, REQ-178). 알레르기 답도 AI가 넣지 않고 알레르기 정보 동의 뒤 알레르기 답 블록으로만 받음(SPEC-075, REQ-200, REQ-204)
           properties:
             pickup_at:
               type: string
@@ -27182,11 +27295,6 @@ components:
               minLength: 0
               maxLength: 100
               x-corthex-column: order_drafts.colors
-            allergy_answer:
-              type: string
-              minLength: 1
-              maxLength: 200
-              x-corthex-column: order_drafts.allergy_answer
             excluded_ingredients:
               type: string
               minLength: 0
@@ -28622,8 +28730,8 @@ components:
         - API-008
       channel_setup_incomplete:
         status: 409
-        meaning: 카드 버튼이 부를 블록 ID 넷 가운데 빈 것이 있어 연결 확인을 시작하지 않음(REQ-179). 아무것도 바꾸지 않음
-        message: 버튼 블록 ID 4개를 모두 넣어 주세요
+        meaning: 카드 버튼이 부를 블록 ID 다섯 가운데 빈 것이 있어 연결 확인을 시작하지 않음(REQ-206). 아무것도 바꾸지 않음
+        message: 버튼 블록 ID 5개를 모두 넣어 주세요
         client: 빈 블록 ID 필드를 보이고 채널 연결 입력(API-031)으로 보냄
         spec: SPEC-008
         operations:
@@ -29005,8 +29113,8 @@ components:
         - API-070
       card_shown:
         spec: SPEC-069
-        meaning: 서버가 저장된 값으로 확인 카드(주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회)를 보임. 주문 요청 카드는 그 버전의 취소·환불 규정 글(하나나 둘)을 먼저, 요약 카드를 끝에 둠(SPEC-028, DEC-22)
-        message: '(주문 요청 카드: 규정 글과 청약철회 제한 문장, 요약과 버튼)'
+        meaning: 서버가 저장된 값으로 확인 카드(알레르기 정보·주문자 정보·주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회)를 보임. 주문서 초안이 다 차면 알레르기 정보 카드(SPEC-075)와 주문자 정보 카드(SPEC-072)를 주문 요청 카드 앞에 보냄. 주문 요청 카드는 그 버전의 취소·환불 규정 글(하나나 둘)을 먼저, 요약 카드를 끝에 둠(SPEC-028, DEC-22)
+        message: '(알레르기 정보 카드: 쓰는 목적·받는 항목·보는 사람·지우는 때와 버튼 ''동의하고 알려 주기''·''동의 안 함''. 주문 요청 카드: 규정 글과 청약철회 제한 문장, 요약과 버튼)'
         operations:
         - API-070
       photo_received:
@@ -29050,8 +29158,8 @@ components:
         - API-072
       channel_test_card:
         spec: SPEC-008
-        meaning: 연결 확인 중인 채널의 테스트 메시지를 받아 그 사용자를 시험 사용자로 남기고 첫 시험 버튼(그 가게가 넣은 블록 ID)을 보임(REQ-179)
-        message: 테스트 메시지를 받았어요. 시험 버튼 4개를 하나씩 눌러 주세요
+        meaning: 연결 확인 중인 채널의 테스트 메시지를 받아 그 사용자를 시험 사용자로 남기고 첫 시험 버튼(그 가게가 넣은 블록 ID)을 보임(REQ-206)
+        message: 테스트 메시지를 받았어요. 시험 버튼 5개를 하나씩 눌러 주세요
         operations:
         - API-070
       server_error:
@@ -29062,6 +29170,18 @@ components:
         - API-070
         - API-071
         - API-072
+      allergy_saved:
+        spec: SPEC-075
+        meaning: 알레르기 정보 카드의 '동의하고 알려 주기'가 연 알레르기 답 블록의 답(1~200자, '없음'도 답)이 맞아 동의(동의 글 버전·시각)와 답을 초안에 남기고, 주문자 이름·연락처가 없으면 주문자 정보 카드를, 있으면 주문 요청 카드를 보냄. 알레르기 답은 AI로 보내지 않음(REQ-201, REQ-202, REQ-204, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄)
+        message: (주문자 정보 카드나 주문 요청 확인 카드)
+        operations:
+        - API-071
+      allergy_declined:
+        spec: SPEC-075
+        meaning: 알레르기 정보 카드의 '동의 안 함'을 누름. 거부와 동의 글 버전·시각을 초안에 남기고 알레르기는 묻지 않고 빼야 할 재료만으로 다음 카드를 보냄. 제작 목록에는 '알레르기 정보 동의 안 함'(REQ-203)
+        message: 알겠어요. 알레르기는 묻지 않고 빼야 할 재료만으로 주문을 이어갈게요 + (주문자 정보 카드나 주문 요청 확인 카드)
+        operations:
+        - API-071
       orderer_saved:
         spec: SPEC-072
         meaning: 주문자 정보 블록의 이름·연락처가 형식에 맞아 초안에 남기고 주문 요청 카드(규정 글을 먼저, DEC-22)를 보냄. 이 값은 AI로 보내지 않음(REQ-175, REQ-178)
@@ -29098,9 +29218,15 @@ components:
         message: 신고를 받았어요. 사장님이 보시고 정하실 거예요
         operations:
         - API-071
+      photo_consent_saved:
+        spec: SPEC-053
+        meaning: 완성 사진 안내의 사진 게시 동의 카드에서 누른 답('올려도 돼요'·'안 돼요')을 그 안내의 사진마다 남김. 누르지 않은 사진은 동의 안 함이고, 동의한 뒤 바꾸려면 동의 철회(REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)
+        message: 알려 주셔서 고마워요. 사진 게시 동의는 언제든 철회할 수 있어요
+        operations:
+        - API-071
       consent_withdrawn:
         spec: SPEC-063
-        meaning: 사진 게시 동의를 철회하고 그 사진을 포트폴리오와 예약 링크 페이지에서 내림(5분 이내)
+        meaning: 완성 사진·후기 사진의 게시 동의를 철회함. 그 사진의 올라 있는 포트폴리오 항목을 먼저 내린 뒤 철회를 남기고 예약 링크 페이지에서 5분 안에 사라짐(REQ-098, REQ-209)
         message: 사진 게시 동의를 철회했어요. 곧 사진이 내려가요
         operations:
         - API-071
@@ -29112,7 +29238,7 @@ components:
         - API-071
       input_invalid:
         spec: SPEC-072
-        meaning: 주문자 정보·입금자 이름 블록의 값이 형식에 맞지 않음(이름 1~30자, 연락처 숫자와 '-' 8~14자). 아무것도 남기지 않고 같은 블록 버튼으로 다시 물음(SPEC-033, SPEC-072)
+        meaning: 주문자 정보·알레르기 답·입금자 이름 블록의 값이 형식에 맞지 않음(이름 1~30자, 연락처 숫자와 '-' 8~14자, 알레르기 답 1~200자). 아무것도 남기지 않고 같은 블록 버튼으로 다시 물음(SPEC-033, SPEC-072, SPEC-075)
         message: 이름은 1~30자, 연락처는 숫자와 '-'로 8~14자로 넣어 주세요
         operations:
         - API-071
@@ -29160,21 +29286,21 @@ components:
         - API-071
       block_verified:
         spec: SPEC-008
-        meaning: 연결 확인 중에 시험 사용자가 누른 시험 버튼이 우리 스킬에 닿아 그 블록을 확인됨으로 남기고 다음 시험 버튼을 보임. 주문·카드·후기는 남기지 않음(REQ-179)
-        message: '{블록} 블록이 닿았어요({n}/4). 다음 시험 버튼을 눌러 주세요'
+        meaning: 연결 확인 중에 시험 사용자가 누른 시험 버튼이 우리 스킬에 닿아 그 블록을 확인됨으로 남기고 다음 시험 버튼을 보임. 주문·카드·후기는 남기지 않음(REQ-206)
+        message: '{블록} 블록이 닿았어요({n}/5). 다음 시험 버튼을 눌러 주세요'
         operations:
         - API-071
         - API-072
       channel_linked:
         spec: SPEC-008
-        meaning: 시험 버튼으로 버튼 블록 넷이 모두 닿아 채널을 가게에 묶음. 이어서 시험 사용자에게 시험 안내를 Event API로 한 번 보냄(REQ-179, REQ-180)
-        message: 버튼 블록 4개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요
+        meaning: 시험 버튼으로 버튼 블록 다섯이 모두 닿아 채널을 가게에 묶음. 이어서 시험 사용자에게 시험 안내를 Event API로 한 번 보냄(REQ-206, REQ-180)
+        message: 버튼 블록 5개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요
         operations:
         - API-071
         - API-072
       review_saved:
         spec: SPEC-062
-        meaning: 받은 주문의 후기와 사진, 사진마다 게시 동의(기본 동의 안 함)를 남김
+        meaning: 받은 주문의 후기와 사진, 사진마다 게시 동의(그 사진들을 포트폴리오와 예약 링크 페이지에 올려도 되는지 한 문장으로 물은 답, 기본 동의 안 함)를 남김(REQ-208, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)
         message: 후기를 남겨 주셔서 고마워요
         operations:
         - API-072
@@ -29198,7 +29324,7 @@ components:
         - API-072
       notice_shown:
         spec: SPEC-066
-        meaning: Event API가 넘긴 안내 키로 저장된 안내의 글과 버튼을 보임(템플릿, AI 없음, 광고 없음)
+        meaning: Event API가 넘긴 안내 키로 저장된 안내의 글과 버튼을 보임(템플릿, AI 없음, 광고 없음). 완성 사진 안내는 사진과 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', SPEC-053)
         message: '(그 안내의 글: 확정 안내, 결제 결과·변경 결과·취소·환불·전날·후기 부탁 안내 등)'
         operations:
         - API-073
@@ -29321,7 +29447,7 @@ components:
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-18
       title: 후기는 카카오 '후기' 블록의 스킬로 받음
-      choice: 후기는 후기 부탁 안내의 버튼이 여는 오픈빌더 블록이 `POST /kakao/skills/review`로 보냄(글, 보안 이미지 플러그인 사진 5장까지, 게시 동의). 게시 동의는 후기 하나에 한 번 묻고 그 답을 사진마다 남김(기본 동의 안 함)
+      choice: 후기는 후기 부탁 안내의 버튼이 여는 오픈빌더 블록이 `POST /kakao/skills/review`로 보냄(글, 보안 이미지 플러그인 사진 5장까지, 게시 동의). 게시 동의는 후기 하나에 한 번 묻고 그 답을 사진마다 남김(기본 동의 안 함). 묻는 말은 그 사진들을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로(2026-11-13 설계 재검토 H10, REQ-208)
       why: AI-1이 후기를 다루지 않음(SPEC-062는 AI 없음). 카카오 대화에서 사진마다 따로 묻기는 번거로움
       alt: '사진마다 묻기: SPEC-062 글자 그대로지만 손님 단계가 사진 수만큼 늘어남'
       needs_user: true
@@ -29346,7 +29472,7 @@ components:
       decided: 확정(2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)', 설계 재검토 H7)
     - id: DEC-22
       title: 주문 요청 카드는 규정 글과 요약 카드를 나눠 보냄
-      choice: '주문 요청 확인 카드(API-070 card_shown, API-071 orderer_saved·card_stale·card_expired)는 한 응답의 출력으로 그 버전의 취소·환불 규정 글(simpleText 하나나 둘)을 먼저, 요약 카드(textCard: 요약과 사진 게시 동의 ''동의 안 함'', 버튼 셋)를 끝에 둠. 규정 글은 ''취소·환불 규정(운영규정 버전 N)'' 줄, 취소·환불 조문마다 ''· 제목: 조건 → 효과'' 한 줄, 끝에 ''주문제작이라 청약철회가 제한될 수 있어요''. 1,000자를 넘으면 조문 사이에서 나눠 첫 줄 끝에 1/2·2/2를 붙이고 청약철회 문장은 둘째 글 끝에 둠. 자르지 않고, 글 둘에 들어가지 않는 운영규정은 저장 때 422 `exceeds_card_limit`(API-021)'
+      choice: '주문 요청 확인 카드(API-070 card_shown, API-071 orderer_saved·card_stale·card_expired)는 한 응답의 출력으로 그 버전의 취소·환불 규정 글(simpleText 하나나 둘)을 먼저, 요약 카드(textCard: 요약과 알레르기 답이나 ''알레르기 정보 동의 안 함'', 버튼 둘. 2026-11-13 설계 재검토 H5·H10으로 사진 게시 동의 줄과 버튼을 빼고 알레르기 정보 카드를 앞에 둠)를 끝에 둠. 규정 글은 ''취소·환불 규정(운영규정 버전 N)'' 줄, 취소·환불 조문마다 ''· 제목: 조건 → 효과'' 한 줄, 끝에 ''주문제작이라 청약철회가 제한될 수 있어요''. 1,000자를 넘으면 조문 사이에서 나눠 첫 줄 끝에 1/2·2/2를 붙이고 청약철회 문장은 둘째 글 끝에 둠. 자르지 않고, 글 둘에 들어가지 않는 운영규정은 저장 때 422 `exceeds_card_limit`(API-021)'
       why: 카드 설명은 400자라 규정을 다 담지 못하고 손님이 잘린 규정에 동의하게 됨(RD-03). 카카오 응답의 출력은 3개까지라 글 둘과 카드 하나가 한도(카카오 응답 형식 문서)
       alt: '규정은 링크로: 카카오 안에서 동의할 글이 보이지 않음. 규정을 줄여 카드에 넣음: 동의한 글이 저장된 버전과 달라짐'
       decided: 확정(2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)', 설계 재검토 H9)
@@ -29401,7 +29527,7 @@ components:
       job: 장부 쓰기와 다시 적기(1분·5분·30분·2시간·6시간, 그 뒤 하루 한 번), 24시간 실패 알림
       seen_in: API-033(못 적은 쓰기 수), API-035(다시 연결하면 다시 적음)
     - spec: SPEC-065
-      job: '지난 기록 지우기: 하루 한 번 03:00, 05단계 README 6절의 여섯 차례. 끝나고 30일 지난 주문의 개인정보를 지우고 보관 기록으로 나눔, 닫히고 30일 지난 상담의 대화·사진·초안을 지움, 3년 지난 신고 설명·사진과 5년 지난 보관 기록을 지움, 상담과 주문이 모두 지워진 손님의 카카오 사용자 키를 지움, 2년 지난 접속기록을 지움(접속기록을 지키는 트리거가 2년이 지나지 않은 행의 지우기를 막음, REQ-196). 30일·3년·5년은 잠정(REQ-185~190)'
+      job: '지난 기록 지우기: 하루 한 번 03:00, 05단계 README 6절의 여섯 차례. 끝나고 30일 지난 주문의 개인정보를 지우고 보관 기록으로 나눔(알레르기 답은 지우고 알레르기 정보 동의의 답·동의 글 버전·시각은 남김), 닫히고 30일 지난 상담의 대화·사진·초안을 지움, 3년 지난 신고 설명·사진과 5년 지난 보관 기록을 지움, 상담과 주문이 모두 지워진 손님의 카카오 사용자 키를 지움, 2년 지난 접속기록을 지움(접속기록을 지키는 트리거가 2년이 지나지 않은 행의 지우기를 막음, REQ-196). 30일·3년·5년은 잠정(REQ-185~190)'
       seen_in: API-043(지운 상담은 status deleted), API-044·045(보관 기록이 된 주문은 목록에 없고 하나를 읽으면 404), API-077(지운 값은 409 original_erased)
     - spec: SPEC-066
       job: '손님에게 먼저 보내는 안내: 가게의 먼저 보내기가 되고 손님이 친구면 우리 앱 키로 가게 봇의 Event API(siljang_notice, 안내 키)를 부름. 요청이 SUCCESS면 taskId와 함께 ''확인 중''으로 두고 1분·5분·30분 뒤 발송 결과 조회(GET /v1/tasks/{taskId}): 닿음은 ''보냄'', 채널 친구 아님(101)은 다음 대화 때와 손님 친구 아님, 스킬·카카오 오류(201~205·301·999)는 다시 보내기, 발송 제한(401~407)은 다음 대화 때와 운영자 알림, 30분 뒤에도 모름은 다음 대화 때. 요청이 FAIL이면 채널 연결·이벤트 이름·월렛 없음은 가게의 먼저 보내기 ''안 됨''과 사장님 알림, 월렛 잔액 없음은 운영자 알림, 그 밖은 다시 보내기. 먼저 보내기가 안 되는 가게와 친구가 아닌 손님은 다음 대화 때 먼저(DEC-20)'
@@ -29410,7 +29536,7 @@ components:
       job: '사장님 알림: 우리 서비스 채널 봇이 Event API로 사장님의 카카오 로그인 사용자 번호(appUserId)에 할 일 종류와 목록 주소(1분 안 같은 종류는 묶음). 발송 결과 조회는 손님 안내와 같고, 채널 친구 아님(101)이면 사장님을 친구 아님으로 고치고 할 일 목록에만(DEC-21)'
       seen_in: API-040(할 일), API-002(채널 친구가 아니면 안내)
     - spec: SPEC-008
-      job: '채널 연결 확인: 10분이 지나도 테스트 메시지와 시험 버튼 넷이 다 닿지 않으면 ''연결 안 됨''과 사유 후보. 연결되면 시험 사용자에게 시험 안내를 Event API로 보내고 발송 결과로 먼저 보내기 됨·안 됨(사유)을 남김(DEC-20)'
+      job: '채널 연결 확인: 10분이 지나도 테스트 메시지와 시험 버튼 다섯이 다 닿지 않으면 ''연결 안 됨''과 사유 후보. 연결되면 시험 사용자에게 시험 안내를 Event API로 보내고 발송 결과로 먼저 보내기 됨·안 됨(사유)을 남김(DEC-20)'
       seen_in: API-030(verifiedBlocks, eventStatus), API-032(다시 시험), API-073(시험 안내)
     - spec: SPEC-074
       job: '접속기록 남기기: 손님 개인정보(이름·연락처·대화·원래 값·계좌·알레르기 답·사진)를 돌려주거나 바꾸는 사장님 API(할 일·에스컬레이션 건·상담·주문·제작·결제 안내·환불·변경 요청·문제 신고·후기, API-040~066)와 운영자의 가게 기록 API(API-074~077)는 응답과 같은 트랜잭션에서 접속기록 한 행(누가·언제·접속지·가게·손님 ID·API 번호·경로, 연 경우의 대상·사유)을 남기고, 남기지 못하면 500 internal로 개인정보를 돌려주지 않음. 가게 설정 API·카카오 스킬·서버 안의 일은 남기지 않음. 접속기록은 넣기만 하고 2년 동안 고치거나 지우지 못함(05단계 A24)'
@@ -29532,3 +29658,39 @@ components:
       why: 카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 원래 값을 두지 않음(REQ-192, SPEC-021)
       decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 H4)
       client: 사장님 화면에서 전화번호·계좌번호는 그대로 원래 값으로 되돌리고, 카드번호는 '[카드번호1] …1111', 긴 숫자는 플레이스홀더 그대로 보임. 값의 바뀜이라 A13은 찾지 않아 여기 적음
+    - what: '필드 없앰: Order.photoConsent'
+      why: 주문 요청 때의 사진 게시 동의를 없애고 완성 사진·후기 사진마다 동의를 받음(REQ-207, REQ-208, SPEC-028, SPEC-053, 설계 재검토 H10)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H5·H10, 잠정: 5-2 질문 4·6의 답으로 다시 봄)'
+      client: 주문 상세(SCR-021)는 제작 구역의 완성 사진마다 게시 동의(Production.completionPhotos[].consent)를 보임
+    - what: '꼭 넣을 필드 더함: OrderDetailsVersion.allergyConsent'
+      why: 주문 내용 버전마다 알레르기 정보 동의의 답(동의함·동의 안 함·동의 필요 없음)을 남김(REQ-201, REQ-203, REQ-205, SPEC-029, 설계 재검토 H5)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H5·H10, 잠정: 5-2 질문 4·6의 답으로 다시 봄)'
+      client: '응답에만 더한 필드라 보내는 요청은 그대로. 주문 상세(SCR-021)가 ''알레르기: 동의 안 함''을 보임'
+    - what: '꼭 넣을 필드 더함: KakaoChannelInput.blockIds.allergyAnswer'
+      why: 알레르기 답을 AI를 거치지 않는 전용 블록으로 받아 버튼 블록이 다섯이 됨(REQ-202, REQ-206, SPEC-008, SPEC-075, 설계 재검토 H5)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H5·H10, 잠정: 5-2 질문 4·6의 답으로 다시 봄)'
+      client: 채널 연결 화면(SCR-041)이 알레르기 답 블록 ID를 함께 보냄(아직 만들지 않았으면 null). 안쪽 필드라 A13은 찾지 않아 여기 적음
+    - what: '꼭 넣을 필드와 고를 값 더함: KakaoChannel.blockIds.allergyAnswer, verifiedBlocks의 allergy_answer(5개까지), failureHints의 allergy_block'
+      why: 버튼 블록이 다섯이 되어 시험 버튼 다섯이 모두 닿아야 연결됨(REQ-206, SPEC-008)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H5·H10, 잠정: 5-2 질문 4·6의 답으로 다시 봄)'
+      client: 응답에만 더한 값. 채널 연결 화면(SCR-041)이 n/5와 닿지 않은 알레르기 답 블록을 보임. 안쪽 필드·고를 값이라 A13은 찾지 않아 여기 적음
+    - what: '꼭 넣을 필드 더함: ProductionDay.items[].summary.allergyConsent'
+      why: '알레르기 정보에 동의하지 않은 주문을 제작 목록에 ''알레르기: 동의 안 함''으로 보임(REQ-203, SPEC-050, 설계 재검토 H5)'
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H5·H10, 잠정: 5-2 질문 4·6의 답으로 다시 봄)'
+      client: 응답에만 더한 필드. 제작 목록(SCR-030)이 읽음. 안쪽 필드라 A13은 찾지 않아 여기 적음
+    - what: '꼭 넣을 필드 더함: Production.completionPhotos[].consent'
+      why: 완성 사진마다 게시 동의를 받음(REQ-207, SPEC-053, 설계 재검토 H10)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H5·H10, 잠정: 5-2 질문 4·6의 답으로 다시 봄)'
+      client: 응답에만 더한 필드. 주문 상세(SCR-021)와 제작 목록(SCR-030)이 완성 사진의 동의를 보임. 안쪽 필드라 A13은 찾지 않아 여기 적음
+    - what: '고를 값 없앰: SkillPayload.action.clientExtra.choice와 스킬 응답 버튼 extra.choice의 confirm_with_photo_consent'
+      why: 주문 요청 카드에서 '사진 게시도 동의하고 요청' 버튼을 뺌(REQ-207, SPEC-028, 설계 재검토 H10)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H5·H10, 잠정: 5-2 질문 4·6의 답으로 다시 봄)'
+      client: 버튼은 서버가 만들어 카카오가 그대로 보이므로 화면 코드에 바꿀 것 없음. 안쪽 필드라 A13은 찾지 않아 여기 적음
+    - what: 'AI 출력에서 뺌: AiTurnOutput.draft_patch.allergy_answer'
+      why: 알레르기 답은 알레르기 정보 동의 뒤 AI를 거치지 않는 알레르기 답 블록으로만 받고 AI 모델에 보내지 않음(REQ-200, REQ-202, REQ-204, SPEC-020, SPEC-075, 설계 재검토 H5)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H5·H10, 잠정: 5-2 질문 4·6의 답으로 다시 봄)'
+      client: AI 출력(AI-1)만 좁힘. HTTP 요청·응답은 그대로. 이 필드를 담은 AI 출력은 형식 검사에서 받지 않음(SPEC-020)
+    - what: '응답 구성 바뀜: 주문 요청 확인 카드(API-070 card_shown, API-071 allergy_saved·allergy_declined·orderer_saved·card_stale·card_expired)'
+      why: 주문 요청 카드 앞에 알레르기 정보 카드를 보내고, 요약 카드에서 사진 게시 동의 줄과 버튼을 빼고 알레르기 답이나 '알레르기 정보 동의 안 함'을 넣음(REQ-201, REQ-203, REQ-207, SPEC-028, SPEC-075, 설계 재검토 H5·H10)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H5·H10, 잠정: 5-2 질문 4·6의 답으로 다시 봄)'
+      client: 카카오가 그대로 보임. 스킬 응답 형식 안의 바뀜이라 A13은 찾지 않아 여기 적음

@@ -558,7 +558,7 @@ S["CalendarDayInput"] = obj({
 S["CalendarDayResult"] = all_required({"outcome": outcome(), "day": ref("CalendarDay")})
 
 # ── 카카오톡 채널 ───────────────────────────────────────────────────────────
-BLOCK_NAMES = ["card", "orderer_info", "depositor_name", "review"]
+BLOCK_NAMES = ["card", "orderer_info", "allergy_answer", "depositor_name", "review"]
 S["KakaoChannelInput"] = obj({
     "baseRevision": nullable(BASE_REVISION),
     "botId": string(1, 64, r"^\S+$", col="kakao_channels.bot_id", desc="오픈빌더 봇 ID(OPEN-8)"),
@@ -566,10 +566,11 @@ S["KakaoChannelInput"] = obj({
     "blockIds": obj({
         "card": nullable(string(1, 100, r"^\S+$", col="kakao_channels.card_block_id", desc="'확인 카드' 블록 ID. 확인 카드 버튼이 부름(SPEC-069)")),
         "ordererInfo": nullable(string(1, 100, r"^\S+$", col="kakao_channels.orderer_block_id", desc="'주문자 정보' 블록 ID. 주문자 정보 카드 버튼이 부름(SPEC-072)")),
+        "allergyAnswer": nullable(string(1, 100, r"^\S+$", col="kakao_channels.allergy_block_id", desc="'알레르기 답' 블록 ID. 알레르기 정보 카드의 '동의하고 알려 주기' 버튼이 부름(SPEC-075)")),
         "depositorName": nullable(string(1, 100, r"^\S+$", col="kakao_channels.depositor_block_id", desc="'입금자 이름' 블록 ID. 결제 확인 요청 카드 버튼이 부름(SPEC-033)")),
         "review": nullable(string(1, 100, r"^\S+$", col="kakao_channels.review_block_id", desc="'후기' 블록 ID. 후기 부탁 버튼이 부름(SPEC-061)")),
-    }, ["card", "ordererInfo", "depositorName", "review"],
-        desc="카드 버튼이 부를 가게 봇 블록 넷의 블록 ID(REQ-179, 설계 재검토 H8). 아직 만들지 않은 블록은 null이고, 넷이 모두 있어야 연결 확인을 시작함(API-032)"),
+    }, ["card", "ordererInfo", "allergyAnswer", "depositorName", "review"],
+        desc="카드 버튼이 부를 가게 봇 블록 다섯의 블록 ID(REQ-206, 설계 재검토 H8·H5). 아직 만들지 않은 블록은 null이고, 다섯이 모두 있어야 연결 확인을 시작함(API-032)"),
 }, ["baseRevision", "botId", "channelPublicId", "blockIds"])
 S["SkillSetup"] = all_required({
     "messageSkillUrl": URL,
@@ -589,13 +590,13 @@ S["KakaoChannel"] = all_required({
     "checkExpiresAt": nullable(DT),
     "linkedAt": nullable(DT),
     "failureHints": arr(enum(["skill_url", "skill_key_header", "open_builder_deploy", "test_message_missing",
-                              "card_block", "orderer_block", "depositor_block", "review_block"]), 0, 8, unique=True,
-                        desc="연결 안 됨의 사유 후보(SPEC-008). card_block·orderer_block·depositor_block·review_block은 시험 버튼이 우리 스킬에 닿지 않은 블록(REQ-179)"),
+                              "card_block", "orderer_block", "allergy_block", "depositor_block", "review_block"]), 0, 9, unique=True,
+                        desc="연결 안 됨의 사유 후보(SPEC-008). card_block·orderer_block·allergy_block·depositor_block·review_block은 시험 버튼이 우리 스킬에 닿지 않은 블록(REQ-206)"),
     "blockIds": all_required({
-        "card": nullable(string(1, 100)), "ordererInfo": nullable(string(1, 100)),
+        "card": nullable(string(1, 100)), "ordererInfo": nullable(string(1, 100)), "allergyAnswer": nullable(string(1, 100)),
         "depositorName": nullable(string(1, 100)), "review": nullable(string(1, 100)),
-    }, desc="넣은 블록 ID 넷(REQ-179)"),
-    "verifiedBlocks": arr(enum(BLOCK_NAMES), 0, 4, unique=True, desc="연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록. 넷이 모두 닿아야 연결됨(REQ-179)"),
+    }, desc="넣은 블록 ID 다섯(REQ-206)"),
+    "verifiedBlocks": arr(enum(BLOCK_NAMES), 0, 5, unique=True, desc="연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록. 다섯이 모두 닿아야 연결됨(REQ-206)"),
     "eventStatus": enum(["unchecked", "checking", "ready", "unavailable"],
                         desc="먼저 보내기(Event API): 아직 안 봄·시험 안내 결과 기다림·됨·안 됨. 안 됨이면 그 가게의 손님 안내는 모두 다음 대화 때 전함(REQ-180, REQ-181)"),
     "eventCheckedAt": nullable(DT),
@@ -660,11 +661,12 @@ S["BookingPage"] = all_required({
     "priceList": all_required({
         "version": integer(1, 2147483647),
         "options": arr(ref("PublicPriceOption"), 0, 100),
-        "designs": arr(all_required({"name": string(1, 30), "imageUrl": SIGNED_URL, "inStandard": boolean()}), 0, 50),
+        "designs": arr(all_required({"name": string(1, 30), "imageUrl": SIGNED_URL, "inStandard": boolean()}), 0, 50,
+                       desc="가게가 도안으로 올린 견본 사진. 손님 사진이 아니라 게시 동의 없이 보임(REQ-210)"),
     }),
     "days": arr(all_required({"day": DATE, "status": enum(["open", "closed", "day_off"], desc="받음·마감(다 참·마감 시각 지남·사장님 마감)·휴무. 남은 자리 수는 보이지 않음")}), 60, 61,
                 desc="오늘부터 60일"),
-    "portfolio": arr(all_required({"imageUrl": SIGNED_URL}), 0, 100, desc="게시 동의한 사진만. 비면 화면이 '아직 사진이 없어요'"),
+    "portfolio": arr(all_required({"imageUrl": SIGNED_URL}), 0, 100, desc="손님이 게시에 동의하고 철회하지 않은 완성 사진·후기 사진만(REQ-209). 비면 화면이 '아직 사진이 없어요'"),
     "privacyPolicyUrl": URL,
     "inquiryUrl": nullable(URL),
 }, desc="예약 링크 페이지(SPEC-011). 손님 이름·주문·남은 자리 수·내부 ID 없음(G6)")
@@ -761,7 +763,9 @@ S["OrderDetailsVersion"] = all_required({
     "design": nullable(all_required({"designId": UUID, "name": string(1, 30)})),
     "extras": arr(OPTION_REF, 0, 50),
     "designNotes": nullable(string(0, 500)), "lettering": nullable(string(0, 50)), "colors": nullable(string(0, 100)),
-    "allergyAnswer": nullable(string(1, 200, desc="이 주문 밖에서 쓰지 않음(REQ-142)")),
+    "allergyAnswer": nullable(string(1, 200, desc="이 주문 밖에서 쓰지 않음(REQ-142). 알레르기 정보에 동의하지 않은 주문은 null(REQ-203)")),
+    "allergyConsent": enum(["agreed", "declined", "not_required"],
+                           desc="알레르기 정보 동의: 동의함·동의 안 함(알레르기는 묻지 않고 빼야 할 재료만 받음, REQ-203)·동의 필요 없음(동의 단계를 끈 배포, REQ-205). 주문 요청 때 초안에서 옮김(REQ-201, SPEC-029). 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄"),
     "excludedIngredients": nullable(string(0, 200)),
     "customerName": nullable(string(1, 30)), "customerPhone": nullable(string(8, 14, PHONE_RE)),
     "amount": MONEY(),
@@ -841,7 +845,11 @@ S["Production"] = all_required({
     "customMaterialOrderedAt": nullable(DT),
     "productionStartedAt": nullable(DT),
     "completedAt": nullable(DT),
-    "completionPhotos": arr(all_required({"url": SIGNED_URL}), 0, 5),
+    "completionPhotos": arr(all_required({
+        "url": SIGNED_URL,
+        "consent": enum(["consented", "not_consented", "withdrawn"],
+                        desc="그 사진의 게시 동의. 완성 사진 안내에서 사진마다 받고 답이 없으면 not_consented(REQ-207). 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄"),
+    }), 0, 5, desc="완성 사진과 사진마다의 게시 동의(SPEC-053). 포트폴리오에 올리는 것은 API-067·068"),
     "changedAfterStart": boolean("재료 주문·제작 시작 뒤 변경이 반영됨(SPEC-045)"),
     "handedOverAt": nullable(DT),
     "handoverKind": nullable(enum(["pickup", "courier"])),
@@ -880,7 +888,6 @@ S["Order"] = all_required({
     "changeRequests": arr(ref("ChangeRequestSummary"), 0, 50),
     "production": nullable(ref("Production")),
     "issueReports": arr(ref("IssueReportSummary"), 0, 20),
-    "photoConsent": nullable(all_required({"consented": boolean(), "withdrawnAt": nullable(DT)})),
     "revision": ORDER_REVISION,
 }, desc="사장님이 보는 주문 하나(그 가게 것만)")
 S["OrderSummary"] = all_required({
@@ -963,7 +970,9 @@ S["ProductionDay"] = all_required({
             "lettering": nullable(string(0, 50)), "colors": nullable(string(0, 100)), "designNotes": nullable(string(0, 500)),
             "extras": arr(string(1, 30), 0, 20, desc="더하는 옵션 이름(REQ-177)"),
             "allergyAnswer": nullable(string(1, 200, col="order_details.allergy_answer",
-                                             desc="알레르기 답('없음'도 답). 그 주문의 행에만 보이고 할 일 요약·사장님 알림·장부에는 넣지 않음(REQ-142, REQ-177)")),
+                                             desc="알레르기 답('없음'도 답). 알레르기 정보에 동의하지 않은 주문은 null. 그 주문의 행에만 보이고 할 일 요약·사장님 알림·장부에는 넣지 않음(REQ-142, REQ-177)")),
+            "allergyConsent": enum(["agreed", "declined", "not_required"],
+                                   desc="알레르기 정보 동의. declined면 allergyAnswer가 null이고 화면은 '알레르기: 동의 안 함(빼야 할 재료만 받음)'(REQ-203, SPEC-050)"),
             "excludedIngredients": nullable(string(1, 200, col="order_details.excluded_ingredients", desc="빼야 할 재료. 없으면 null이고 화면은 '없음'(REQ-177)")),
             "referencePhotoCount": integer(0, 10, desc="참고 사진 수. 사진은 주문 화면(SCR-028)에서 봄"),
         }, desc="주문 내용 현재 버전(SPEC-050, 설계 재검토 H6)"),
@@ -1128,7 +1137,7 @@ S["Portfolio"] = all_required({
     "candidates": arr(all_required({
         "source": enum(["review_photo", "completion_photo"]), "photoId": UUID, "url": SIGNED_URL,
         "order": ref("OrderRef"), "consent": enum(["consented", "not_consented", "withdrawn"]),
-    }), 0, 200, desc="올릴 수 있는지 보이는 사진들. consented만 올릴 수 있음"),
+    }), 0, 200, desc="올릴 수 있는지 보이는 완성 사진·후기 사진. consented(동의하고 철회하지 않음)만 올릴 수 있음(REQ-209)"),
 })
 S["PortfolioInput"] = obj({
     "source": enum(["review_photo", "completion_photo"]),
@@ -1164,18 +1173,19 @@ S["SkillPayload"] = obj({
         "params": obj({
             "review_text": string(0, 100000, desc="후기 글(후기 스킬). 카카오가 보낸 값을 그대로 받고, 1~1,000자(reviews.body) 밖이면 결과 review_invalid로 알림(DEC-07)"),
             "review_photos": string(0, 100000, desc="보안 이미지 플러그인 값(JSON 글자: privacyAgreement·imageQuantity·secureUrls 'List(…)'·expire). 5장을 넘으면 review_invalid"),
-            "photo_consent": string(0, 100, desc="사진 게시 동의 답(기본 동의 안 함, DEC-18)"),
+            "photo_consent": string(0, 100, desc="후기 사진의 게시 동의 답: 그 사진들을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지(언제든 철회할 수 있음). 기본 동의 안 함이고 답을 사진마다 남김(REQ-208, DEC-18)"),
             "customer_name": string(0, 1000, desc="주문자 이름(주문자 정보 블록, SPEC-072). AI를 거치지 않음. 1~30자 밖이면 결과 input_invalid로 다시 물음(REQ-175, REQ-178)"),
             "customer_phone": string(0, 1000, desc="주문자 연락처(주문자 정보 블록, SPEC-072). AI를 거치지 않음. 숫자와 '-' 8~14자가 아니면 input_invalid"),
             "depositor_name": string(0, 1000, desc="입금자 이름(입금자 이름 블록, SPEC-033). AI를 거치지 않음. 1~30자 밖이면 input_invalid. 이 블록을 거치지 않고 '결제 확인 요청'을 누르면 주문자 이름(REQ-176)"),
+            "allergy_answer": string(0, 1000, desc="알레르기 답(알레르기 답 블록, SPEC-075). 알레르기 정보 카드의 '동의하고 알려 주기'가 연 블록이 받음. AI를 거치지 않음. 1~200자 밖이면 결과 input_invalid로 다시 물음('없음'도 답, REQ-202, REQ-204)"),
         }, desc="블록 파라미터(값은 글자). 카카오가 다른 이름을 더할 수 있음", additional=True),
         "detailParams": obj({}, additional=True),
         "clientExtra": obj({
             "cardKey": string(16, 64, r"^[A-Za-z0-9_-]+$", col="confirm_cards.card_key", desc="확인 카드 키(카드 스킬, G9)"),
-            "choice": enum(["confirm", "confirm_with_photo_consent", "decline"], desc="누른 버튼(카드 스킬)"),
+            "choice": enum(["confirm", "decline"], desc="누른 버튼(카드 스킬). 알레르기 정보 카드는 동의하고 알려 주기·동의 안 함, 사진 게시 동의 카드는 올려도 돼요·안 돼요"),
             "orderNo": ORDER_NO,
-            "check": enum(BLOCK_NAMES, desc="연결 확인의 시험 버튼이 부른 블록(SPEC-008, REQ-179). 주문·카드·후기를 남기지 않음"),
-        }, desc="버튼의 extra. 카드 스킬은 cardKey·choice(주문자 정보·입금자 이름 블록도 같고 값은 action.params로), 후기 스킬은 orderNo, 연결 확인의 시험 버튼은 check", additional=True),
+            "check": enum(BLOCK_NAMES, desc="연결 확인의 시험 버튼이 부른 블록(SPEC-008, REQ-206). 주문·카드·후기를 남기지 않음"),
+        }, desc="버튼의 extra. 카드 스킬은 cardKey·choice(주문자 정보·알레르기 답·입금자 이름 블록도 같고 값은 action.params로), 후기 스킬은 orderNo, 연결 확인의 시험 버튼은 check", additional=True),
     }, ["id"], additional=True),
     "contexts": arr({"type": "object"}, 0, 50),
     "flow": obj({}, additional=True),
@@ -1191,7 +1201,7 @@ BUTTON = obj({
     "phoneNumber": string(8, 14, PHONE_RE),
     "extra": obj({
         "cardKey": string(16, 64, r"^[A-Za-z0-9_-]+$", col="confirm_cards.card_key"),
-        "choice": enum(["confirm", "confirm_with_photo_consent", "decline"]),
+        "choice": enum(["confirm", "decline"]),
         "orderNo": ORDER_NO,
         "check": enum(BLOCK_NAMES),
     }, desc="블록 버튼이 다음 스킬 요청의 clientExtra로 넘기는 값. 내부 ID 없음(G6)"),
@@ -1242,9 +1252,8 @@ S["AiTurnOutput"] = obj({
         "design_notes": string(0, 500, col="order_drafts.design_notes"),
         "lettering": string(0, 50, col="order_drafts.lettering"),
         "colors": string(0, 100, col="order_drafts.colors"),
-        "allergy_answer": string(1, 200, col="order_drafts.allergy_answer"),
         "excluded_ingredients": string(0, 200, col="order_drafts.excluded_ingredients"),
-    }, desc="주문서 초안에 넣을 필드(옵션은 이름). 서버가 형식을 확인한 뒤 저장(SPEC-020). 주문자 이름·연락처는 AI가 넣지 않고 주문자 정보 블록으로만 받음(SPEC-072, REQ-178)", minProperties=1),
+    }, desc="주문서 초안에 넣을 필드(옵션은 이름). 서버가 형식을 확인한 뒤 저장(SPEC-020). 주문자 이름·연락처는 AI가 넣지 않고 주문자 정보 블록으로만 받음(SPEC-072, REQ-178). 알레르기 답도 AI가 넣지 않고 알레르기 정보 동의 뒤 알레르기 답 블록으로만 받음(SPEC-075, REQ-200, REQ-204)", minProperties=1),
     "quote_request": obj({
         "size": string(1, 30), "flavor": string(1, 30), "design_option": string(1, 30), "design": string(1, 30),
         "extras": arr(string(1, 30), 0, 20, unique=True), "pickup_day": DATE,
