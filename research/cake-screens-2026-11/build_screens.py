@@ -6,6 +6,7 @@
 - docs/07-sitemap/sitemap.yaml                경로·접근 권한·상위 화면·플로우·SPEC·API
 - api/openapi.yaml                            API마다의 응답 목록(2xx는 예시 이름, 오류는 오류 코드)
 - docs/06-api/README.md 6절·7절              오류 코드의 '화면에 보이는 말', 저장 전 확인 문구, 카카오 스킬 결과
+- research/cake-mockup-2026-11/canvas/project/canvas.json  09단계 목업 보드(화면 정의의 '목업' 줄. 없으면 그 줄을 쓰지 않음)
 
 생성하는 것(손으로 고치지 않음)
 - docs/08-screens/SCR-0xx.md 49개             화면 정의(06단계 응답마다 상태 하나)
@@ -31,6 +32,7 @@ screens_*.py의 scr() 키
 - long: [(항목, 한도, 화면에서)]
 """
 import html
+import json
 import re
 import sys
 from pathlib import Path
@@ -56,6 +58,22 @@ SHELL_NAME = {"public": "손님 웹 페이지(360 한 열, 1280 가운데 열)",
               "login": "로그인(가운데 카드)", "owner": "사장님 화면(1280 왼쪽 메뉴, 360 위쪽 막대와 메뉴 버튼)",
               "owner-setup": "가게 등록 전 사장님 화면(메뉴 없음)", "operator": "운영자 화면(1280 왼쪽 메뉴, 360 위쪽 막대와 메뉴 버튼)"}
 VARIANT_NOTE = "※ 06단계 계약의 예시에는 없고 이 화면이 응답 값으로 나눈 경우"
+MOCKUP = "research/cake-mockup-2026-11/canvas/project"
+
+
+def read_mockups(root):
+    """09단계 목업: canvas.json의 SCR-0xx-360·1280 보드마다 (보드 제목 끝의 그린 상태, 캔버스 페이지 이름)"""
+    path = root / MOCKUP / "canvas.json"
+    if not path.exists():
+        return {}
+    canvas = json.loads(path.read_text(encoding="utf-8"))
+    pages = {p["id"]: p["name"] for p in canvas.get("pages", [])}
+    out = {}
+    for name, b in canvas.get("boards", {}).items():
+        m = re.fullmatch(r"(SCR-\d{3})-(360|1280)\.dc\.html", name)
+        if m:
+            out.setdefault(m.group(1), {})[m.group(2)] = (b.get("title", "").rsplit(" · ", 1)[-1], pages.get(b.get("page"), ""))
+    return out
 
 
 # ── 원본 읽기 ────────────────────────────────────────────────────────────────
@@ -284,7 +302,7 @@ def menu_of(sid, nodes, roots):
     return top, first
 
 
-def screen_md(m, nodes):
+def screen_md(m, nodes, mockups=None):
     sid, node, s = m["id"], m["node"], m["s"]
     parent = node["parent"]
     lines = ["# %s %s" % (sid, node["name"]), ""]
@@ -296,6 +314,11 @@ def screen_md(m, nodes):
     lines.append("- 관련 SPEC: %s" % (", ".join(node.get("specs") or []) or "없음"))
     lines.append("- API: %s" % (", ".join(node.get("apis") or []) or "없음(서버가 보내는 안내만 보임)"))
     lines.append("- 와이어프레임: `wireframes.html#%s`(상태 %d개, 360·1280)" % (sid, len(s["states"])))
+    mk = (mockups or {}).get(sid) or {}
+    if set(mk) == {"360", "1280"}:
+        links = ", ".join("[`%s-%s`](../../%s/%s-%s.dc.html)(%s)" % (sid, w, MOCKUP, sid, w, mk[w][0].replace(", ", "·"))
+                          for w in ("360", "1280"))
+        lines.append("- 목업: %s. 캔버스의 '%s' 페이지([09단계 README](../09-mockup/README.md) 2절)" % (links, mk["360"][1]))
     lines += ["", "목적: " + s["purpose"], "", "## 데이터", ""]
     lines.append(md_table(["데이터", "출처"], s["data"]) if s["data"] else "보이는 데이터가 없습니다.")
     lines += ["", "## 액션", "", md_table(["액션", "결과", "실패"], s["actions"]) if s["actions"] else "액션이 없습니다."]
@@ -908,8 +931,9 @@ def outputs_of(root):
         raise Stop("화면 정의 문제 %d개\n  " % len(problems) + "\n  ".join(problems))
     out = {}
     base = root / "docs/08-screens"
+    mockups = read_mockups(root)
     for m in model:
-        out[base / ("%s.md" % m["id"])] = screen_md(m, nodes)
+        out[base / ("%s.md" % m["id"])] = screen_md(m, nodes, mockups)
     readme = base / "README.md"
     text = readme.read_text(encoding="utf-8") if readme.exists() else README_SKELETON
     out[readme] = with_blocks(text, readme_blocks(model, nodes, roots, contract))
