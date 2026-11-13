@@ -55,7 +55,7 @@
           status: active
           flows: [FL-006]
           terms: [CTX-003, TERM-061, TERM-040, TERM-010, TERM-009]
-          specs: [SPEC-028, SPEC-029, SPEC-030, SPEC-069]
+          specs: [SPEC-028, SPEC-029, SPEC-030, SPEC-069, SPEC-072]
           apis: [API-071]
           note: "주문 내용 요약과 그 버전의 취소·환불 규정을 따로 보고 동의한 뒤 주문 요청 버튼을 누름"
         - id: SCR-005
