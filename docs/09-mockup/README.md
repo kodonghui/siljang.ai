@@ -1,6 +1,6 @@
 # 09단계 목업: 수제케이크 주문제작 화면
 
-상태: 진행 중. 첫 체크포인트(방향 고르기) 전입니다. 후보 둘을 같은 화면·상태·너비로 그려 Claude Design 캔버스에 나란히 두었고, 동희님이 방향을 고르시면 나머지 화면을 그 방향으로 그립니다. 원본은 후보 토큰 [`design/candidates/`](../../design/candidates/)와 아트보드를 쓰는 [`research/cake-mockup-2026-11/gen.py`](../../research/cake-mockup-2026-11/gen.py)이고, 검사는 [`check_mockup.py`](../../research/cake-mockup-2026-11/check_mockup.py)입니다.
+상태: 진행 중. 첫 체크포인트(방향 고르기)를 2026-11-13 13:41에 지났습니다. 동희님이 후보 A '주문서'에 손님 화면의 사진을 크게 두는 방향을 고르셨고(8절), 그 토큰을 [`design/base.tokens.json`](../../design/base.tokens.json)으로 옮겼습니다. 다음은 나머지 화면을 이 방향으로 그리는 일이고, 개발 전에 토큰을 고정하는 두 번째 체크포인트가 남았습니다. 원본은 토큰을 쓰는 [`make_tokens.py`](../../research/cake-mockup-2026-11/make_tokens.py)와 아트보드를 쓰는 [`research/cake-mockup-2026-11/gen.py`](../../research/cake-mockup-2026-11/gen.py)이고, 검사는 [`check_mockup.py`](../../research/cake-mockup-2026-11/check_mockup.py)입니다.
 
 ## 1. 요약
 
@@ -8,8 +8,9 @@
 - 화면 3개는 손님이 처음 보는 화면(SCR-001 예약 링크 페이지), 사장님이 매일 여는 목록(SCR-016 할 일 목록), 사장님이 가장 많이 판단하는 화면(SCR-022 맞춤 주문 검토: 금액 변경과 확인 창)입니다. 손님·사장님, 사진·표·입력 필드를 함께 보도록 골랐습니다.
 - 토큰은 후보마다 DTCG 2025.10 형식 파일입니다(A 51개, B 55개). 아트보드는 토큰 이름(CSS 변수)만 쓰고, 프레임 크기(360·1280 × 800)와 아트보드 너비만 숫자로 둡니다.
 - 같은 내용이 B에서 더 깁니다. 전체 길이 프레임 높이가 SCR-001은 360에서 A 1384·B 1840, 1280에서 A 1442·B 1894이고, SCR-022는 360에서 A 1164·B 1378, 1280에서 A 890·B 1068입니다(Playwright Chromium으로 잰 값).
-- 검사: `check_mockup.py` 14개 중 통과 11, 실패 0, 미확인 3(방향을 고른 뒤 보는 것 2, 아이콘 크기 토큰 1). page-check는 13개 아트보드 모두 오류 0입니다(6절).
-- 다음: 방향을 고르는 체크포인트(8절).
+- 검사: `check_mockup.py` 14개 중 통과 12, 실패 0, 미확인 2(아이콘 크기 토큰, 화면 정의의 목업 링크). 방향을 고른 기록(C13)이 이번에 통과했고, page-check는 13개 아트보드 모두 오류 0입니다(6절).
+- 방향: 2026-11-13 13:41 결정 카드에서 동희님이 질문 넷 모두 추천을 고르셨습니다. A '주문서' + 손님 화면 사진 크게, 보는 곳은 Claude Design 캔버스 유지, 49개 화면을 모두 그리되 주요 상태만, 빠진 입력은 임시로 두고 진행입니다(8절).
+- 다음: 나머지 화면을 A 방향과 `design/base.tokens.json`으로 그립니다(9절).
 
 ## 2. 보는 곳
 
@@ -31,7 +32,9 @@
 
 | 산출물 | 내용 |
 | --- | --- |
-| [`design/candidates/a.tokens.json`](../../design/candidates/a.tokens.json), [`b.tokens.json`](../../design/candidates/b.tokens.json) | 후보 토큰. 원본은 [`make_tokens.py`](../../research/cake-mockup-2026-11/make_tokens.py). 체크포인트 뒤 고른 쪽을 `design/base.tokens.json`으로 옮김 |
+| [`design/candidates/a.tokens.json`](../../design/candidates/a.tokens.json), [`b.tokens.json`](../../design/candidates/b.tokens.json) | 후보 토큰. 원본은 [`make_tokens.py`](../../research/cake-mockup-2026-11/make_tokens.py). 방향을 고를 때의 비교 기록이라 고치지 않음 |
+| [`design/base.tokens.json`](../../design/base.tokens.json) | 고른 방향의 토큰 55개: 후보 A 51개에 손님 화면의 사진 크기 1개와 아이콘 크기 3개를 더함(8절). 원본은 같은 `make_tokens.py` |
+| [`docs/09-mockup/exports/`](exports/) | 고른 후보 A 아트보드 6개의 PNG(2배 해상도). [`export_png.js`](../../research/cake-mockup-2026-11/export_png.js)로 만듦 |
 | 캔버스와 그 내보내기 | 아트보드 13개(`Main`, `A·B-SCR-001·016·022-360·1280`)와 `canvas.json` |
 | `research/cake-mockup-2026-11/` | `gen.py`(아트보드 12개 생성), `heights.json`(아트보드 높이), `check_mockup.py`(검사), `make_tokens.py`, `css_vars.py`, `contrast.py`, `dc2html.py`, `check_local.js`. 표는 그 폴더의 [README](../../research/cake-mockup-2026-11/README.md) |
 | 이 문서 | 후보 비교, 그린 것, 검사 결과, 체크포인트 질문 |
@@ -62,15 +65,15 @@
 | SCR-022 맞춤 주문 검토 | 360 | normal 전체 길이(버튼 셋은 화면 아래 고정), normal에서 '금액 변경 수락'을 누른 뒤, confirm(그날 남은 자리가 없을 때). 둘째·셋째는 끝까지 내린 화면 |
 | | 1280 | normal 전체 길이 |
 
-그리지 않은 것: 세 화면의 loading·error·permission·stale·submitting·done과 나머지 46개 화면입니다. 이것들은 08단계 회색조 와이어프레임에 있고, 방향을 고른 뒤 그립니다(8절 질문 3).
+그리지 않은 것: 세 화면의 loading·error·permission·stale·submitting·done과 나머지 46개 화면입니다. 이것들은 08단계 회색조 와이어프레임에 있고, 고른 방향 A로 8절의 범위(주요 상태)만큼 그립니다.
 
 ## 6. 검사
 
-`python3 -B research/cake-mockup-2026-11/check_mockup.py . --page-check <page-check.js>` (2026-11-13, 이 브랜치):
+`python3 -B research/cake-mockup-2026-11/check_mockup.py . --page-check <page-check.js>` (2026-11-13, 방향을 고른 기록을 적은 뒤):
 
 | 검사 | 결과 | 내용 |
 | --- | --- | --- |
-| C1 토큰 파일 형식(DTCG 2025.10) | 통과 | 그룹은 `$value` 없음, 토큰은 `$value`·`$type`, 색은 `colorSpace`·`components`(`hex`는 `components`와 같은지), 크기는 `value`·`unit` |
+| C1 토큰 파일 형식(DTCG 2025.10) | 통과 | 후보 A 51개, B 55개, `base.tokens.json` 55개. 그룹은 `$value` 없음, 토큰은 `$value`·`$type`, 색은 `colorSpace`·`components`(`hex`는 `components`와 같은지), 크기는 `value`·`unit` |
 | C2 아트보드의 토큰 값 | 통과 | 아트보드 13개의 토큰 루트 14개가 토큰 파일과 같음(`css_vars.py`로 비교, 글꼴 이름의 따옴표만 다름). 토큰의 글꼴·굵기를 모두 불러옴 |
 | C3 토큰 이름만 씀 | 통과 | 날값은 0·%·fr·개수, 360·1280 × 800 프레임, 아트보드 너비뿐. 예외 1곳: `Main`의 두 후보 판 사이 간격 80px(어느 후보의 토큰에도 속하지 않는 캔버스 배치) |
 | C4 쓴 변수가 그 후보의 토큰에 있음 | 통과 | A 51개 중 51개, B 55개 중 55개를 씀 |
@@ -81,8 +84,8 @@
 | C9 용어집 금지어 | 통과 | 보이는 문구, 캔버스 제목, 토큰 설명, 이 문서. 허용 예외는 후보 이름 A '주문서' 같은 곳 |
 | C10 용어 정리 전의 말 | 통과 | 위 글과 `gen.py`·`make_tokens.py` |
 | C11 page-check | 통과 | 13개 아래 표 |
-| C12 아이콘 크기 토큰 | 미확인 | 아이콘 크기(16·18·20·22·24·28)가 아직 SVG 속성 값입니다. 개발 전 토큰을 고정할 때 정합니다 |
-| C13 고른 방향과 동희님 말 | 미확인 | 체크포인트 전 |
+| C12 아이콘 크기 토큰 | 미확인 | 아이콘 크기(16·18·20·22·24·28)가 아직 SVG 속성 값입니다. `base.tokens.json`에 아이콘 크기 토큰(16·20·24)을 더했고, 나머지 화면을 그릴 때 아트보드를 이 토큰으로 바꿉니다 |
+| C13 고른 방향과 동희님 말 | 통과 | `.corthex/stages.json` 09의 첫 체크포인트(approved·by·where·date), 8절의 `고른 방향: A`와 동희님 말, `design/base.tokens.json` |
 | C14 화면 정의의 목업 링크 | 미확인 | 방향을 고른 뒤 남은 화면을 그리고 넣음 |
 
 page-check(corthex-uxui의 `page-check.js`: 한국어 줄바꿈, 넘침, 글자 대비, 누름 영역)는 Playwright Chromium에서 뷰포트를 아트보드 너비로 두고 돌렸습니다. 13개 모두 그린 크기가 `$preview`와 같고, 가로 넘침과 콘솔 오류가 없습니다.
@@ -116,9 +119,35 @@ page-check(corthex-uxui의 `page-check.js`: 한국어 줄바꿈, 넘침, 글자 
   - SCR-001 1280의 '문의하기' 아래에 있던 안내 '가게 카카오톡 채널 상담이 열려요'를 뺐습니다. 정의에 없는 문구이고, PC에서 카카오톡을 열 수 없으면 채널 주소와 복사 버튼을 보이는 SPEC-011의 동작과 맞지 않을 수 있어서입니다.
 - 따로 고칠 거리(06단계): 계약(`api/openapi.yaml`)의 예시 문자열 6,485개를 용어집 금지어와 대어 보니(07·08단계 검사의 금지어 목록과 허용 예외를 씀) 문자열 6개에서 7건이 걸렸습니다. API-040 할 일 요약(TERM-049와 검사 스크립트의 추가 금지어, 2건), API-039 처리방침 본문(TERM-001), API-070 확인 카드 예시의 설명과 API-071 결제 카드(TERM-049), API-035 구글 인가 오류(TERM-028), API-070 AI 답 검사 예시의 설명(TERM-011, 같은 문장이 두 예시에 있음)입니다. 계좌 이체 뜻의 말처럼 허용 예외일 수 있는 것이 섞여 있어, 06단계 예시를 고칠 때 하나씩 정합니다. 06단계 검사(`check_api.py`)는 예시 문자열의 금지어를 보지 않습니다.
 
-## 8. 체크포인트 질문: 방향 고르기
+## 8. 첫 체크포인트: 방향 고르기
 
-이 체크포인트를 지나기 전에는 화면을 더 그리지 않습니다.
+고른 방향: A (후보 A '주문서'에 손님 화면의 사진을 크게)
+
+2026-11-13 13:21 KST, 이전 작업 대화(Claude Code 세션)에서 결정 카드로 질문 넷을 드렸고, 13:41에 동희님이 넷 모두 추천을 고르셨습니다. 기록 행: [Notion 09 기록](https://app.notion.com/p/417bf16cc3ec81ea80a9f6a12240bd80).
+
+| 질문 | 동희님이 고른 답 | 카드에 있던 다른 답 |
+| --- | --- | --- |
+| 방향 | "A + 손님 화면 사진 크게 (추천)" | A '주문서' 그대로 / B '쇼케이스' |
+| 보는 곳 | "Claude Design 캔버스 유지 (추천)" | Figma로 옮김 |
+| 그릴 범위 | "49개 모두, 주요 상태만 (추천)" | 모든 상태 / 핵심 화면만 먼저 |
+| 빠진 입력 | "임시로 두고 진행 (추천)" | 먼저 자료를 드림 |
+
+카드의 질문(원문):
+
+- 방향: "09단계(목업) 방향 고르기 체크포인트입니다. 캔버스(https://claude.ai/artifact/1Jb9SwBK66MzN2dNd3QFma)에 후보 A '주문서'(얇은 선·촘촘한 도구형)와 B '쇼케이스'(사진 먼저·넓은 여백의 가게형)를 화면 3개 × 360·1280으로 나란히 그려 두었습니다. 나머지 화면을 어느 방향으로 그릴까요? (반론: 손님은 사진을 보고 케이크를 고르므로, A만 쓰면 손님에게 사무용 도구처럼 보일 수 있습니다.)"
+- 보는 곳: "09단계 시안을 사람이 보는 곳을 어디로 할까요? 지금은 Claude Design 캔버스(동희님 계정의 비공개 페이지)에 아트보드 13개가 있고, 저장소의 내보내기와 바이트까지 같게 맞춰 두었습니다."
+- 그릴 범위: "방향을 고른 뒤 화면을 얼마나 그릴까요? 화면은 49개이고, 08단계에서 정의한 상태는 336개입니다."
+- 빠진 입력: "09단계 입력 가운데 로고, 브랜드 색, 글꼴, 참고 사이트, 실제 케이크 사진, 서비스 이름('Siljang'은 임시)이 아직 없습니다. 어떻게 할까요?"
+
+이 답에 따른 결정 사항:
+
+- 토큰: 후보 A의 51개를 [`design/base.tokens.json`](../../design/base.tokens.json)으로 옮기고 4개를 더해 55개입니다. `size.photo` 240px은 손님 화면의 포트폴리오 사진 한 장, `size.icon-sm`·`icon-md`·`icon-lg` 16·20·24px은 아이콘 크기입니다(C12를 풀 준비). `size.thumb` 104px은 값이 같고, 설명을 손님 화면 가격표의 도안 그림까지 넓혔습니다. 후보 파일 두 개는 비교 기록이라 바꾸지 않았습니다.
+- 보는 곳: 지금 캔버스(2절)에 이어 그립니다. `.corthex/project.json`의 09 항목에 `claude-design`으로 적었습니다.
+- 그릴 범위: 49개 화면의 normal(360·1280)과 모습이 크게 다른 상태(빈 상태, 오류, 확인 창, 카드 기한, 채널 친구가 아닐 때)를 그리고, 나머지 상태는 08단계 회색조 와이어프레임에 맡깁니다.
+- 빠진 입력: 후보 A의 색·글꼴과 회색 사진 자리로 진행하고, 자료를 받는 대로 토큰 고정 체크포인트 전에 반영합니다.
+- 고른 아트보드: 캔버스 왼쪽 열의 A 6개입니다. 저장소 파일은 [`A-SCR-001-360`](../../research/cake-mockup-2026-11/canvas/project/A-SCR-001-360.dc.html), [`A-SCR-001-1280`](../../research/cake-mockup-2026-11/canvas/project/A-SCR-001-1280.dc.html), [`A-SCR-016-360`](../../research/cake-mockup-2026-11/canvas/project/A-SCR-016-360.dc.html), [`A-SCR-016-1280`](../../research/cake-mockup-2026-11/canvas/project/A-SCR-016-1280.dc.html), [`A-SCR-022-360`](../../research/cake-mockup-2026-11/canvas/project/A-SCR-022-360.dc.html), [`A-SCR-022-1280`](../../research/cake-mockup-2026-11/canvas/project/A-SCR-022-1280.dc.html)이고, 내보내기는 [`exports/`](exports/)의 PNG 6개(2배 해상도, [`export_png.js`](../../research/cake-mockup-2026-11/export_png.js)로 만듦)입니다. PNG는 방향을 고를 때의 후보 A 토큰으로 그린 그림이고, 손님 화면 사진은 아직 키우기 전입니다.
+
+체크포인트 전에 적어 둔 질문과 추천(그대로 둠):
 
 1. 방향: A '주문서'와 B '쇼케이스' 가운데 무엇으로 할까요?
    - 추천: A로 가고, 손님 화면은 사진을 크게 둡니다. 화면 49개 중 36개가 사장님·운영자 화면이고 표·금액·날짜가 많습니다. 같은 내용이 A에서 SCR-022 기준 약 18% 짧아 휴대폰에서 덜 내립니다(360 프레임 1164 대 1378).
@@ -128,12 +157,10 @@ page-check(corthex-uxui의 `page-check.js`: 한국어 줄바꿈, 넘침, 글자 
 3. 그릴 범위: 고른 방향으로 49개 화면을 모두 그리되, 화면마다 normal(360·1280)과 모습이 크게 다른 상태(빈 상태, 오류, 확인 창, 카드 기한, 채널 친구가 아닐 때)만 그리고 나머지 상태는 08단계 와이어프레임에 맡기는 것을 추천합니다. 모든 상태(336개 × 2 너비)를 그리면 오래 걸리고 고르기 어렵습니다.
 4. 빠진 입력: 로고, 브랜드 색, 글꼴, 참고 사이트, 실제 케이크 사진, 서비스 이름. 지금처럼 임시로 두고 진행하다가 받는 대로 토큰을 고정하기 전에 반영하는 것을 추천합니다.
 
-고르신 뒤 이 절에 고른 방향(`고른 방향: A` 또는 `B`)과 동희님 말, 날짜, 장소, 고른 아트보드 링크를 적고, 고른 아트보드의 내보내기(PNG 또는 PDF)를 남깁니다.
-
 ## 9. 체크포인트 뒤 할 일
 
-1. 고른 후보를 `design/base.tokens.json`으로 옮깁니다. 아이콘 크기 토큰(C12)과, 1번 질문의 답에 따라 사진 크기 토큰을 더합니다. 라이트·다크 같은 모드가 생기면 모드별 파일과 `design/tokens.resolver.json`을 둡니다.
-2. 나머지 화면을 고른 방향으로 그립니다(3번 질문의 범위). 다른 후보의 아트보드는 캔버스 아래로 옮겨 비교 기록으로 남깁니다.
+1. 마침(2026-11-13): 고른 후보 A를 `design/base.tokens.json`으로 옮기고 사진 크기와 아이콘 크기 토큰을 더했습니다(8절). 라이트·다크 같은 모드가 생기면 모드별 파일과 `design/tokens.resolver.json`을 둡니다.
+2. 나머지 화면을 A 방향으로 그립니다(8절의 그릴 범위). 새 아트보드는 `base.tokens.json`의 변수를 씁니다. 손님 화면은 포트폴리오 사진을 키우고(360은 240px 정사각형을 옆으로 넘겨 보는 줄, 1280은 한 열이 240px 이상인 격자), 가격표의 도안 그림을 104px로 둡니다. 아이콘 크기는 `size.icon-*` 토큰으로 바꿉니다(C12). 후보 B의 아트보드는 캔버스 아래로 옮겨 비교 기록으로 남깁니다.
 3. 화면 정의에서 고른 시안을 링크합니다. 화면 정의는 생성 파일이라 08단계 원본(`research/cake-screens-2026-11/`)에 목업 머리말을 더하고 다시 생성합니다(C14).
 4. 개발 전에 토큰을 고정하는 두 번째 체크포인트를 거쳐 `.corthex/stages.json`의 09를 done으로 적습니다.
 5. 설계 단계(01~09)를 모두 마친 뒤, 10단계 전에 독립 재검토를 합니다.
@@ -141,7 +168,8 @@ page-check(corthex-uxui의 `page-check.js`: 한국어 줄바꿈, 넘침, 글자 
 ## 10. 관리 방법
 
 - 아트보드를 바꿀 때는 `gen.py`를 고치고 `python3 -B research/cake-mockup-2026-11/gen.py [이름 ...]`로 다시 씁니다. 높이는 `heights.json`에서 읽습니다. 내용이 바뀌어 높이가 달라지면 page-check가 잰 높이로 `heights.json`과 `canvas.json`의 크기를 고칩니다. `A·B-SCR-001-360`과 `Main`은 이전 세션에서 쓴 파일이라 `gen.py`가 쓰지 않습니다.
-- 토큰을 바꿀 때는 `make_tokens.py`를 고치고 다시 만든 뒤, 아트보드 루트의 변수를 같게 맞춥니다(C2가 다르면 실패).
+- 토큰을 바꿀 때는 `make_tokens.py`를 고치고 다시 만든 뒤(`python3 -B research/cake-mockup-2026-11/make_tokens.py`가 후보 두 개와 `design/base.tokens.json`을 함께 씀), 아트보드 루트의 변수를 같게 맞춥니다(C2가 다르면 실패).
+- 고른 아트보드의 PNG: `dc2html.py`로 혼자 열리는 HTML을 만든 뒤 `node research/cake-mockup-2026-11/export_png.js <HTML 절대 경로> <아트보드 너비> docs/09-mockup/exports/<이름>.png 2`.
 - 검사: `python3 -B research/cake-mockup-2026-11/check_mockup.py . --page-check <corthex-uxui의 page-check.js>`. `--page-check`가 없으면 C11은 미확인입니다.
 - 캔버스에 올리기: 바뀐 파일만 한 번에 하나씩 같은 Artifact 주소에 올립니다(root는 `research/cake-mockup-2026-11/canvas`, 파일은 `project/<이름>`). 올린 뒤 캔버스의 `project/` 파일 14개를 모두 내려받아 저장소 파일과 바이트까지 견줍니다(한글 한 글자를 바꾸면 바이트 수가 그대로일 수 있어 크기만 보지 않습니다). 2026-11-13 마지막으로 올린 뒤 14개 모두 같았습니다.
 
@@ -149,3 +177,5 @@ page-check(corthex-uxui의 `page-check.js`: 한국어 줄바꿈, 넘침, 글자 
 
 - 2026-11-13 10:11 KST: 이전 계정에서 09단계를 멈추고 인계(PR #18). 그때 아트보드는 `Main`과 A·B-SCR-001-360 3개.
 - 2026-11-13 새 계정: 캔버스를 새로 만들어 이전 파일을 올리고, `gen.py`로 아트보드 10개를 처음 생성. page-check 오류(SCR-022 360의 글자 잘림 4곳씩)를 고치고, 프레임 위치를 맞추고, 캡션 줄바꿈을 다듬어 13개 모두 오류 0. 문구를 08단계 정의와 대어 정의에 없는 안내 한 줄을 빼고, 용어집 금지어(SCR-016 결제 확인 요청의 요약, 도안 그림의 접근성 이름)와 용어 정리 전의 말(토큰 설명과 `Main`, 셀·영역으로 바꿈)을 고침. `check_mockup.py`를 만들어 14개 검사.
+- 2026-11-13 13:21~13:41 KST: 방향 고르기 결정 카드(이전 작업 대화). 동희님이 질문 넷 모두 추천을 고르심(8절).
+- 2026-11-13 오후: 이전 작업 대화가 결정을 저장소에 적던 중(커밋 전) 멈춰, 새 작업 대화에서 이어 함. `make_tokens.py`가 `design/base.tokens.json`(55개)도 쓰게 하고, A 아트보드 6개를 PNG로 내보내고(`export_png.js`), `.corthex/stages.json`(hub 스크립트)·`.corthex/project.json`·이 문서에 결정을 적음.
