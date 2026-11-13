@@ -63,6 +63,13 @@
       "source": "docs/08-screens/",
       "truth": "source",
       "note": "사람이 보는 뷰는 08단계 기본값인 회색조 와이어프레임(상태마다 360·1280 프레임)으로 2026-11-13에 시작했고, 다른 도구를 고르시면 바꿉니다. 와이어프레임은 한 페이지 docs/08-screens/wireframes.html로 생성하고, 설치 없이 보시도록 그 페이지를 Artifact(link, 동희님 계정의 비공개 페이지)로 게시했습니다. 원본은 research/cake-screens-2026-11/screens_*.py의 화면 데이터와 07단계 사이트맵·06단계 계약이고, 사람이든 AI든 원본만 고칩니다. research/cake-screens-2026-11/build_screens.py가 원본에서 화면 정의 49개(docs/08-screens/SCR-0xx.md), README의 표, 와이어프레임 페이지를 다시 생성하고, check_screens.py(검사 15개)가 검사합니다. 원본이 바뀌면 다시 생성해 같은 주소에 게시합니다. 2026-11-13 작업 계정을 옮기며 새 주소로 다시 게시했습니다(옛 주소 YSLmrCtZj6FjYbzs1vsrLP의 페이지는 이전 계정에 남아 있고 더 고치지 않습니다)."
+    },
+    "09-mockup": {
+      "human": "claude-design",
+      "link": "https://claude.ai/artifact/1Jb9SwBK66MzN2dNd3QFma",
+      "source": "design/",
+      "truth": "source",
+      "note": "사람이 보는 뷰는 09단계 기본값 가운데 Claude Design 캔버스(Artifact의 Design 타입, 동희님 계정의 비공개 페이지)입니다. 2026-11-13 13:41 방향 고르기 체크포인트의 결정 카드에서 동희님이 'Claude Design 캔버스 유지 (추천)'을 고르셨습니다(질문 \"09단계 시안을 사람이 보는 곳을 어디로 할까요? 지금은 Claude Design 캔버스(동희님 계정의 비공개 페이지)에 아트보드 13개가 있고, 저장소의 내보내기와 바이트까지 같게 맞춰 두었습니다.\", 기록 행 https://app.notion.com/p/417bf16cc3ec81ea80a9f6a12240bd80). 원본은 design/의 토큰(design/base.tokens.json, 원본 스크립트 research/cake-mockup-2026-11/make_tokens.py)과 research/cake-mockup-2026-11/의 아트보드 생성 스크립트이고, 캔버스 파일은 research/cake-mockup-2026-11/canvas/project/에 같은 바이트로 둡니다. 사람이든 AI든 원본을 고치고 다시 생성해 같은 주소에 올립니다. 후보 토큰(design/candidates/)은 방향을 고를 때의 비교 기록이라 고치지 않습니다."
     }
   }
 }

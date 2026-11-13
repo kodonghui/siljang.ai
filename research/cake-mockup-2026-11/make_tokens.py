@@ -1,4 +1,4 @@
-import json, pathlib, sys
+import copy, json, pathlib, sys
 def col(h, desc, alpha=None):
     h=h.lstrip('#'); comps=[round(int(h[i:i+2],16)/255,4) for i in (0,2,4)]
     v={"colorSpace":"srgb","components":comps}
@@ -88,10 +88,23 @@ B={
          "bar":dim(60,"위쪽 막대 높이"),"menu":dim(248,"1280 왼쪽 메뉴 너비"),"aside":dim(380,"1280 오른쪽 열 너비"),
          "thumb":dim(152,"360 참고 사진 한 장(가로 스크롤 행)"),"content":dim(1120,"1280 손님 화면 가운데 열 최대 너비")}
 }
-# usage (repository root): python3 -B research/cake-mockup-2026-11/make_tokens.py [out_dir]   default out_dir: design/candidates
-out=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else "design/candidates")
-out.mkdir(parents=True,exist_ok=True)
-for name,d in (("a",A),("b",B)):
-    with open(out/("%s.tokens.json"%name),"w",encoding="utf-8") as f:
+# 고른 방향(docs/09-mockup/README.md 8절): 후보 A에 손님 화면의 사진 크기와 아이콘 크기를 더함. 후보 파일은 비교 기록이라 그대로 둠
+BASE=copy.deepcopy(A)
+BASE["$description"]=("09단계 디자인 토큰. 2026-11-13 방향 고르기 체크포인트에서 고른 후보 A '주문서'에 손님 화면의 사진 크기와 "
+                      "아이콘 크기를 더함. 개발 전 토큰 고정 체크포인트를 지나기 전까지 바뀔 수 있음")
+BASE["size"]["thumb"]=dim(104,"사장님 화면의 사진 한 장(360에서 한 줄 세 장), 손님 화면 가격표의 도안 그림")
+BASE["size"]["photo"]=dim(240,"손님 화면의 포트폴리오 사진 한 장(360은 옆으로 넘겨 보는 줄의 한 장, 1280은 한 열의 최소 너비)")
+BASE["size"]["icon-sm"]=dim(16,"글 옆의 작은 표시(펼침 화살표)")
+BASE["size"]["icon-md"]=dim(20,"버튼 안의 아이콘(달 넘김, 복사)")
+BASE["size"]["icon-lg"]=dim(24,"위쪽 막대의 아이콘 버튼, 사진 자리와 빈 상태의 표시")
+
+# usage (repository root): python3 -B research/cake-mockup-2026-11/make_tokens.py [out_dir]
+#   default: candidates to design/candidates, the chosen base to design/base.tokens.json. With out_dir, all three go there.
+arg=pathlib.Path(sys.argv[1]) if len(sys.argv)>1 else None
+targets=[((arg or pathlib.Path("design/candidates"))/"a.tokens.json",A),((arg or pathlib.Path("design/candidates"))/"b.tokens.json",B),
+         ((arg or pathlib.Path("design"))/"base.tokens.json",BASE)]
+for path,d in targets:
+    path.parent.mkdir(parents=True,exist_ok=True)
+    with open(path,"w",encoding="utf-8") as f:
         json.dump(d,f,ensure_ascii=False,indent=2); f.write("\n")
-print("ok", out)
+print("ok", ", ".join(str(p) for p,_ in targets))
