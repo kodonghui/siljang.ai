@@ -6,11 +6,13 @@
 캔버스 내보내기(research/cake-mockup-2026-11/canvas/project/)의 아트보드를 후보 토큰(design/candidates/*.tokens.json),
 08단계 화면 정의(docs/08-screens/), 07단계 사이트맵, 06단계 예시와 대어 본다. --page-check에 corthex-uxui의
 page-check.js를 주면 아트보드마다 Playwright Chromium으로 그 검사를 돌린다(없으면 '미확인'). 방향을 고른 뒤에는
-고른 기록과 design/base.tokens.json, 화면 정의의 목업 링크도 본다.
+고른 기록과 design/base.tokens.json, 화면 정의의 목업 링크도 본다. 09단계를 마친 뒤에는 토큰 고정 기록과, 고정한
+design/base.tokens.json의 SHA-256(앞 12자리)이 README에 적은 값과 같은지 본다.
 
 아트보드 이름: 후보 시안은 A|B-SCR-000-360|1280(토큰 루트 a|b), 고른 방향으로 그린 49개 화면은 SCR-000-360|1280
 (토큰 루트 base, gen_screens.py가 만듦), 두 후보를 나란히 둔 Main.
 """
+import hashlib
 import html
 import json
 import re
@@ -658,17 +660,18 @@ def main():
     rep.add("C12", "고른 방향 화면의 아이콘 크기가 base 토큰 size.icon-sm·md·lg", sorted(set(problems)),
             "아이콘 %d개. 후보 시안(A·B)은 고르기 전 그림이라 SVG 속성 값 %s 그대로 둠" % (n, "·".join(map(str, icons))))
 
-    # C13 방향 선택 기록 / C14 화면 정의의 목업 링크
+    # C13 방향 선택 기록과 토큰 고정 기록 / C14 화면 정의의 목업 링크
     stages = json.loads((root / ".corthex/stages.json").read_text(encoding="utf-8")).get("stages", {})
-    cps = (stages.get("09-mockup") or {}).get("checkpoints") or []
+    st09 = stages.get("09-mockup") or {}
+    cps = st09.get("checkpoints") or []
     if not cps:
         rep.add("C13", "고른 방향과 동희님 말이 기록됨", [], unseen="방향 선택 체크포인트 전(.corthex/stages.json 09-mockup에 체크포인트 없음)")
     else:
         problems = []
-        cp = cps[0]
-        for k in ("approved", "by", "where", "date"):
-            if not cp.get(k):
-                problems.append("stages.json 09-mockup 첫 체크포인트에 %s 없음" % k)
+        for i, cp in enumerate(cps[:2]):
+            for k in ("approved", "by", "where", "date"):
+                if not cp.get(k):
+                    problems.append("stages.json 09-mockup %s 체크포인트에 %s 없음" % (("첫", "둘째")[i], k))
         text = readme.read_text(encoding="utf-8") if readme.exists() else ""
         m = re.search(r"고른 방향: ([AB])", text)
         if not m:
@@ -677,8 +680,28 @@ def main():
             problems.append("docs/09-mockup/README.md의 고른 방향 가까이에 동희님 말(큰따옴표)이 없음")
         if not base.exists():
             problems.append("design/base.tokens.json 없음")
-        rep.add("C13", "고른 방향과 동희님 말이 기록됨(stages.json·README), design/base.tokens.json이 있음", problems,
-                "고른 방향 %s" % (m.group(1) if m else "-"))
+        # 토큰 고정(둘째 체크포인트): 09가 done이면 반드시, 고정한 뒤에는 파일이 README에 적은 해시와 같아야 함
+        frozen = ""
+        if st09.get("state") == "done" or len(cps) > 1:
+            if len(cps) < 2:
+                problems.append("stages.json 09-mockup이 done인데 토큰 고정 체크포인트(둘째)가 없음")
+            mf = re.search(r"고정한 토큰: `design/base\.tokens\.json` (\d+)개 \(SHA-256 `([0-9a-f]{12})`\)", text)
+            if not mf:
+                problems.append("docs/09-mockup/README.md에 '고정한 토큰: `design/base.tokens.json` N개 (SHA-256 `앞 12자리`)' 줄이 없음")
+            elif base.exists():
+                # 줄 끝을 LF로 맞춰 셈(Windows에서 CRLF로 받아도 같은 값)
+                digest = hashlib.sha256(base.read_bytes().replace(b"\r\n", b"\n")).hexdigest()[:12]
+                if digest != mf.group(2):
+                    problems.append("design/base.tokens.json의 SHA-256 앞 12자리 %s가 README에 고정한 %s와 다름"
+                                    "(고정한 뒤 바꾸려면 새 결정을 README 8-2절에 적고 해시를 고침)" % (digest, mf.group(2)))
+                n_tok = len(token_errors(json.loads(base.read_text(encoding="utf-8")))[1])
+                if n_tok != int(mf.group(1)):
+                    problems.append("design/base.tokens.json의 토큰 %d개, README에 고정한 수 %s개" % (n_tok, mf.group(1)))
+                frozen = ", 토큰 고정 %s개(SHA-256 %s)" % (mf.group(1), mf.group(2))
+            if not re.search(r"고정한 토큰[^\n]*\n(?:[^\n]*\n){0,8}[^\n]*\"[^\"]+\"", text):
+                problems.append("docs/09-mockup/README.md의 고정한 토큰 가까이에 동희님 말(큰따옴표)이 없음")
+        rep.add("C13", "고른 방향과 토큰 고정, 동희님 말이 기록됨(stages.json·README), design/base.tokens.json이 고정한 해시와 같음", problems,
+                "고른 방향 %s%s" % (m.group(1) if m else "-", frozen))
     # 화면 정의 머리말의 '- 목업:' 줄이 그 화면의 360·1280 보드 파일을 링크(build_screens.py가 canvas.json에서 씀)
     problems, linked = [], set()
     allscr = {p.stem for p in d8.glob("SCR-*.md")}
