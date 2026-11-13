@@ -59,7 +59,7 @@ COMMENT ON COLUMN owners.alert_friend_checked_at IS '우리 채널 친구인지 
 COMMENT ON COLUMN kakao_channels.check_started_at IS '''연결 확인''을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 넷이 와야 함)';
 COMMENT ON COLUMN kakao_channels.card_block_id IS '가게 봇의 ''확인 카드'' 블록 ID. 확인 카드 버튼이 부름(SPEC-008, REQ-179)';
 COMMENT ON COLUMN kakao_channels.orderer_block_id IS '가게 봇의 ''주문자 정보'' 블록 ID. 주문자 정보 카드 버튼이 부름(SPEC-072)';
-COMMENT ON COLUMN kakao_channels.depositor_block_id IS '가게 봇의 ''입금자 이름'' 블록 ID. 입금 알리기 카드 버튼이 부름(SPEC-033)';
+COMMENT ON COLUMN kakao_channels.depositor_block_id IS '가게 봇의 ''입금자 이름'' 블록 ID. 결제 확인 요청 카드 버튼이 부름(SPEC-033)';
 COMMENT ON COLUMN kakao_channels.review_block_id IS '가게 봇의 ''후기'' 블록 ID. 후기 부탁 버튼이 부름(SPEC-061)';
 COMMENT ON COLUMN kakao_channels.verified_blocks IS '연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록(REQ-179)';
 COMMENT ON COLUMN kakao_channels.test_user_key IS '연결 확인 때 테스트 메시지를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008)';

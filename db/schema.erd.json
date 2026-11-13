@@ -1938,7 +1938,7 @@
         "id": "03h8ae91y5h7owsg5tsfep4i7",
         "tableId": "03h7y0178l0hvzg6deiwnudw3",
         "name": "depositor_block_id",
-        "comment": "가게 봇의 '입금자 이름' 블록 ID. 입금 알리기 카드 버튼이 부름(SPEC-033)",
+        "comment": "가게 봇의 '입금자 이름' 블록 ID. 결제 확인 요청 카드 버튼이 부름(SPEC-033)",
         "dataType": "text",
         "options": 0
       },
