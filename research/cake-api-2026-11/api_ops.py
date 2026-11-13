@@ -1,4 +1,4 @@
-"""06단계 API 계약의 API 72개(API-001~072). build_api.py가 OpenAPI paths로 바꾼다.
+"""06단계 API 계약의 API 73개(API-001~073). build_api.py가 OpenAPI paths로 바꾼다.
 
 API마다 적는 것
 - id·method·path·op(operationId)·tag·summary·desc·spec(SPEC ID)
@@ -79,7 +79,10 @@ def op(**kw):
 # ═══ 로그인 ═══════════════════════════════════════════════════════════════════
 op(id="API-001", method="post", path="/owner/session", op="createOwnerSession", tag="로그인",
    summary="사장님 로그인(카카오 인가 코드)", spec=["SPEC-001", "SPEC-068"], auth="public",
-   desc="카카오 로그인 화면이 redirectUri로 준 인가 코드를 서버가 카카오 토큰으로 바꿔 카카오 회원번호만 남기고 토큰은 버린다(DEC-10, REQ-135). "
+   desc="카카오 로그인 화면이 redirectUri로 준 인가 코드를 서버가 카카오 토큰으로 바꿔 카카오 로그인 사용자 번호만 남기고 토큰은 버린다(DEC-10, REQ-135). "
+        "토큰을 버리기 전에 카카오톡 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`, 채널 추가 상태 동의 `plusfriends`)를 한 번 해 "
+        "사장님이 우리 서비스 채널 친구인지 남긴다(alertChannelFriend). 동의하지 않았거나 조회가 실패하면 로그인은 막지 않고 친구 여부를 바꾸지 않는다. "
+        "사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-183). "
         "세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_owner`. `next`가 화면이 열 곳(가게 등록·신고증 다시 올리기·할 일 목록). "
         "카카오 로그인이 실패하거나 동의를 거부하면 우리 쪽 기록을 남기지 않음. "
         "Open: 세션 길이는 사장님 30일(쓰면 늘어남)을 첫 값으로 제안, 개발 전에 정함(OPEN-5).",
@@ -93,7 +96,7 @@ op(id="API-001", method="post", path="/owner/session", op="createOwnerSession", 
    errors={401: ["kakao_login_failed"], 429: ["rate_limited"], 503: ["kakao_unavailable"]},
    fields=[("/kakaoCode", "required")],
    omit={"403": "누구나 로그인을 시도함", "404": O404_NOPATH,
-         "409": "같은 카카오 계정이 동시에 들어와도 카카오 회원번호로 사장님 행은 하나(충돌할 상태가 없음)"},
+         "409": "같은 카카오 계정이 동시에 들어와도 카카오 로그인 사용자 번호로 사장님 행은 하나(충돌할 상태가 없음)"},
    kinds={"접근": ["401:kakao_login_failed"], "입력": ["422:validation_failed"], "상태": ["example:license_on_hold"],
           "외부": ["401:kakao_login_failed", "503:kakao_unavailable"], "한도": ["429:rate_limited"],
           "노출": ["closed", "note:카카오 토큰은 응답·로그에 없음(REQ-135)"], "화면": ["screen"]})
@@ -101,7 +104,8 @@ op(id="API-001", method="post", path="/owner/session", op="createOwnerSession", 
 op(id="API-002", method="get", path="/owner/me", op="getOwnerMe", tag="로그인",
    summary="로그인한 사장님과 가게, 상단 배너", spec=["SPEC-001", "SPEC-067"], auth="owner",
    desc="사장님 화면을 열 때 세션을 확인한다. 세션이 없거나 만료됐으면 401이고 화면은 로그인으로 보낸 뒤 원래 주소로 돌아온다(SPEC-001). "
-        "`banners`의 add_alert_channel은 사장님이 우리 서비스 채널 친구가 아니라 알림이 할 일 목록에만 남는다는 안내(SPEC-067).",
+        "`banners`의 add_alert_channel은 사장님이 우리 서비스 채널 친구가 아니라 알림이 할 일 목록에만 남는다는 안내(SPEC-067). "
+        "친구가 아니라고 남아 있으면 마지막으로 본 지 1분이 지났을 때 우리 앱의 Admin 키로 채널 관계를 다시 조회해(target_id_type=user_id) 친구가 되었으면 배너를 빼고 보인다(DEC-21, REQ-183).",
    ok=[(200, "Me", {
        "friend": {"owner": E.OWNER, "shop": E.SHOP_SUMMARY, "banners": []},
        "not_friend": {"owner": dict(E.OWNER, alertChannelFriend=False), "shop": E.SHOP_SUMMARY, "banners": ["add_alert_channel"]},
@@ -320,15 +324,17 @@ op(id="API-020", method="get", path="/owner/operating-rules", op="getCurrentOper
 op(id="API-021", method="post", path="/owner/operating-rules/versions", op="createOperatingRulesVersion", tag="운영규정",
    summary="운영규정 확정(새 버전)", spec=["SPEC-005"], auth="owner", idem=True,
    desc="조문마다 조건과 효과를 새 버전과 함께 남긴다. 제작 전 취소 환불을 전액보다 낮추면 아무것도 남기지 않고 409 confirmation_required(lowered_refund)를 반환하고, "
-        "사장님이 '그래도 저장'을 누르면 confirm에 lowered_refund를 담아 다시 보낸다. 그 선택을 그 버전에 남긴다(REQ-032). 단계별 환불 기간이 중복되거나 비면 422.",
+        "사장님이 '그래도 저장'을 누르면 confirm에 lowered_refund를 담아 다시 보낸다. 그 선택을 그 버전에 남긴다(REQ-032). 단계별 환불 기간이 중복되거나 비면 422. "
+        "취소·환불 조문으로 만든 주문 요청 확인 카드의 규정 글이 1,000자 글 둘에 들어가지 않으면(조문을 가르지 않음) 아무것도 남기지 않고 422(field /clauses, code exceeds_card_limit, REQ-184, DEC-22).",
    body="OperatingRulesInput", body_examples={"confirm": E.RULES_INPUT, "lowered_confirmed": E.RULES_INPUT_LOWERED},
    ok=[(201, "OperatingRulesResult", {"created": {"outcome": "created", "operatingRules": E.RULES}}),
        (200, "OperatingRulesResult", {"unchanged": {"outcome": "unchanged", "operatingRules": E.RULES}})],
    errors={404: ["shop_not_registered"], 409: ["version_conflict", "confirmation_required"]},
-   fields=[("/refundTiers/1", "overlaps"), ("/quoteValidHours", "out_of_range")],
+   fields=[("/refundTiers/1", "overlaps"), ("/quoteValidHours", "out_of_range"), ("/clauses", "exceeds_card_limit")],
    confirm=["lowered_refund"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:shop_not_registered"],
+          "한도": ["422:validation_failed", "note:카드의 규정 글이 1,000자 글 둘을 넘으면 exceeds_card_limit(REQ-184)"],
           "상태": ["409:confirmation_required", "example:unchanged"], "반복": ["idem"], "동시": ["revision", "409:version_conflict"],
           "노출": ["closed"], "화면": ["screen"]})
 
@@ -442,41 +448,54 @@ op(id="API-029", method="patch", path="/owner/calendar/days/{day}", op="updateCa
 # ═══ 카카오톡 채널 ════════════════════════════════════════════════════════════
 op(id="API-030", method="get", path="/owner/kakao-channel", op="getKakaoChannel", tag="카카오톡 채널",
    summary="채널 연결 상태와 스킬 설정 값", spec=["SPEC-008"], auth="owner",
-   desc="연결 확인 중이면 화면이 몇 초마다 다시 읽는다. 10분 안에 테스트 메시지가 오지 않으면 failed와 사유 후보(failureHints). "
+   desc="연결 확인 중이면 화면이 몇 초마다 다시 읽고 시험 버튼으로 닿은 블록(verifiedBlocks)을 보인다. 10분 안에 테스트 메시지가 오지 않거나 시험 버튼 넷이 모두 닿지 않으면 failed와 사유 후보(failureHints, 닿지 않은 블록 포함, REQ-179). "
+        "연결됨이면 먼저 보내기 상태(eventStatus: 시험 안내 결과 기다림·됨·안 됨과 사유 eventFailReason)를 보인다. 안 됨이면 그 가게의 손님 안내는 모두 다음 대화 때 전한다(REQ-180, REQ-181, DEC-20). "
         "skill.headerValue는 오픈빌더 스킬 설정의 헤더 값(DEC-08)이라 이 응답에만 포함한다.",
-   ok=[(200, "KakaoChannel", {"pending": E.CHANNEL_CHECKING, "linked": E.CHANNEL_LINKED, "failed": E.CHANNEL_FAILED})],
+   ok=[(200, "KakaoChannel", {"pending": E.CHANNEL_CHECKING, "linked": E.CHANNEL_LINKED, "failed": E.CHANNEL_FAILED,
+                              "event_checking": E.CHANNEL_EVENT_CHECKING, "event_unavailable": E.CHANNEL_EVENT_UNAVAILABLE})],
    errors={404: ["shop_not_registered", "not_set"]},
    omit={"403": O403, "409": O409_READ, "422": O422_NOINPUT},
-   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_set"], "외부": ["example:failed"],
+   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_set"], "외부": ["example:failed", "example:event_unavailable"],
+          "상태": ["example:event_checking"],
           "노출": ["closed", "note:스킬 키는 이 응답에만(DEC-08)"], "빈·끊김": ["404:not_set"], "화면": ["screen"]})
 
 op(id="API-031", method="put", path="/owner/kakao-channel", op="setKakaoChannel", tag="카카오톡 채널",
    summary="연결할 채널(오픈빌더 봇) 설정", spec=["SPEC-008"], auth="owner", idem=True,
-   desc="오픈빌더 봇 ID와 채널 공개 ID를 받아 '연결 확인 중' 연결을 만들고, 오픈빌더에 넣을 스킬 주소와 헤더 값을 반환한다(DEC-08). "
+   desc="오픈빌더 봇 ID와 채널 공개 ID, 카드 버튼이 부를 블록 넷의 블록 ID(blockIds, 아직 없으면 null, REQ-179)를 받아 '연결 확인 중' 연결을 만들고, "
+        "오픈빌더에 넣을 스킬 주소 넷(메시지·카드·후기·안내)과 헤더 값, 안내 블록의 이벤트 이름을 반환한다(DEC-08, DEC-20). "
+        "같은 봇의 블록 ID만 바꾸면 새 연결을 만들지 않고 그 연결을 '연결 확인 중'으로 되돌려 닿은 블록과 먼저 보내기 상태를 비운다(같은 봇의 연결은 하나, 05단계 `kakao_channels_bot_active_uq`). "
+        "다시 연결될 때까지 그 채널의 손님 메시지에는 not_accepting으로 답한다(blocks_changed). "
         "그 봇이 이미 다른 가게에 묶였으면 묶지 않고 409 channel_linked_elsewhere, 운영자에게 알림(SPEC-008). "
         "연결된 채널을 바꾸면 새 채널이 연결될 때 옛 채널 메시지를 그만 받는다. 예약 링크는 내리지 않고 문의 버튼이 새 채널을 연다. "
         "Open: 사장님이 봇 ID를 찾는 곳은 07·08단계 연결 안내에서 정하고, 봇 ID 형식은 첫 테스트 메시지에서 확인(OPEN-8).",
    body="KakaoChannelInput", body_examples={"connect": dict(E.CHANNEL_INPUT, baseRevision=None)},
    ok=[(200, "KakaoChannelResult", {"created": {"outcome": "created", "kakaoChannel": E.CHANNEL_PENDING},
-                                    "unchanged": {"outcome": "unchanged", "kakaoChannel": E.CHANNEL_PENDING}})],
+                                    "unchanged": {"outcome": "unchanged", "kakaoChannel": E.CHANNEL_PENDING},
+                                    "blocks_changed": {"outcome": "done", "kakaoChannel": E.CHANNEL_PENDING}})],
    errors={404: ["shop_not_registered"], 409: ["version_conflict", "channel_linked_elsewhere"]},
-   fields=[("/botId", "required")],
+   fields=[("/botId", "required"), ("/blockIds/review", "too_long")],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["409:channel_linked_elsewhere"],
-          "상태": ["note:바꾸면 새 채널이 연결될 때 옛 채널은 그만 받음"], "반복": ["idem", "example:unchanged"],
+          "상태": ["note:바꾸면 새 채널이 연결될 때 옛 채널은 그만 받음", "example:blocks_changed"], "반복": ["idem", "example:unchanged"],
           "동시": ["revision", "409:version_conflict"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-032", method="post", path="/owner/kakao-channel/check", op="startKakaoChannelCheck", tag="카카오톡 채널",
    summary="연결 확인 시작(10분)", spec=["SPEC-008"], auth="owner", idem=True,
-   desc="'연결 확인'을 누르면 10분 동안 그 봇의 테스트 메시지를 기다린다. 테스트 메시지가 메시지 스킬(API-070)로 오면 채널이 '연결됨'이 된다. "
-        "여러 번 눌러도 연결은 하나(G2): 확인 중이거나 연결됨이면 unchanged, 연결 안 됨이면 다시 10분을 센다.",
+   desc="'연결 확인'을 누르면 10분 동안 그 봇의 테스트 메시지와 시험 버튼을 기다린다. 테스트 메시지가 메시지 스킬(API-070)로 오면 그 사용자에게 시험 버튼을 하나씩 답하고(channel_test_card), "
+        "버튼이 카드 스킬(API-071)이나 후기 스킬(API-072)에 닿을 때마다 그 블록을 확인됨으로 남긴다(block_verified). 넷이 모두 닿으면 '연결됨'이 되고(channel_linked) "
+        "그 사용자에게 시험 안내를 Event API로 한 번 보내 결과로 먼저 보내기 됨·안 됨을 남긴다(REQ-179, REQ-180, DEC-20). 블록 ID가 하나라도 비면 시작하지 않고 409 channel_setup_incomplete. "
+        "여러 번 눌러도 연결은 하나(G2): 확인 중이면 unchanged, 연결 안 됨이면 다시 10분을 센다. 연결됨인데 먼저 보내기가 안 됨이거나 아직 안 봤으면 시험 안내를 다시 보내고(done, eventStatus checking), "
+        "됨이거나 시험 중이면 unchanged. "
+        "Open: 가게가 우리에게 줄 권한(가게 채널을 우리 앱에 연결, 우리 월렛을 가게 봇에 연결)의 절차는 개발 전 시험으로 정함(OPEN-9).",
    ok=[(200, "KakaoChannelResult", {"started": {"outcome": "done", "kakaoChannel": E.CHANNEL_CHECKING},
-                                    "unchanged": {"outcome": "unchanged", "kakaoChannel": E.CHANNEL_LINKED}})],
-   errors={404: ["shop_not_registered", "not_set"]},
+                                    "unchanged": {"outcome": "unchanged", "kakaoChannel": E.CHANNEL_LINKED},
+                                    "event_recheck": {"outcome": "done", "kakaoChannel": E.CHANNEL_EVENT_CHECKING}})],
+   errors={404: ["shop_not_registered", "not_set"], 409: ["channel_setup_incomplete"]},
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed", "note:본문이 없고 요청 키 헤더만 받음"],
-          "대상": ["404:not_set"], "반복": ["idem", "example:unchanged"],
-          "외부": ["note:10분 안에 테스트 메시지가 없으면 API-030에서 failed"], "노출": ["closed"], "화면": ["screen"]})
+          "대상": ["404:not_set"], "상태": ["409:channel_setup_incomplete", "example:event_recheck"], "반복": ["idem", "example:unchanged"],
+          "외부": ["note:10분 안에 테스트 메시지와 시험 버튼 넷이 없으면 API-030에서 failed", "note:시험 안내 결과는 API-030의 eventStatus"],
+          "노출": ["closed"], "화면": ["screen"]})
 
 # ═══ 장부 ═════════════════════════════════════════════════════════════════════
 op(id="API-033", method="get", path="/owner/ledger", op="getLedger", tag="장부",
@@ -1050,11 +1069,13 @@ op(id="API-069", method="delete", path="/owner/portfolio/items/{portfolioItemId}
 # ═══ 카카오 스킬 ══════════════════════════════════════════════════════════════
 MESSAGE_OUTCOMES = ["answered", "callback_pending", "handed_over", "ai_unavailable", "ai_timeout", "ai_key_missing", "ai_limit_reached",
                     "ai_cost_limit_reached", "masking_failed", "ai_output_rejected", "card_shown", "photo_received", "photo_rejected",
-                    "unsupported_message", "rate_limited", "duplicate", "not_accepting", "channel_linked", "server_error"]
+                    "unsupported_message", "rate_limited", "duplicate", "not_accepting", "channel_test_card", "server_error"]
 CARD_OUTCOMES = ["orderer_saved", "order_requested", "payment_claimed", "change_requested", "order_cancelled", "issue_reported", "consent_withdrawn",
                  "declined", "input_invalid", "card_stale", "card_expired", "card_not_yours", "card_used", "day_full", "retry_needed", "not_allowed_now",
-                 "not_accepting", "server_error"]
-REVIEW_OUTCOMES = ["review_saved", "review_not_allowed", "review_invalid", "photo_download_failed", "duplicate", "not_accepting", "server_error"]
+                 "block_verified", "channel_linked", "not_accepting", "server_error"]
+REVIEW_OUTCOMES = ["review_saved", "review_not_allowed", "review_invalid", "photo_download_failed", "duplicate", "block_verified", "channel_linked",
+                   "not_accepting", "server_error"]
+EVENT_OUTCOMES = ["notice_shown", "notice_test", "notice_gone"]
 
 op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustomerMessage", tag="카카오 스킬",
    summary="손님 메시지 수신(카카오 오픈빌더 스킬)", auth="skill", callbacks=True, outcomes=MESSAGE_OUTCOMES, ai="AI-1",
@@ -1065,9 +1086,11 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
         "처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). "
         "답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). "
         "콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). "
-        "첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 친구가 아닌 손님에게 못 보낸 안내가 있으면 답보다 먼저 포함한다(SPEC-066). "
-        "연결 확인 중인 채널의 테스트 메시지면 채널을 가게에 묶는다(channel_linked, SPEC-008). "
+        "첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). "
+        "연결 확인 중인 채널의 테스트 메시지면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008). 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). "
         "주문서 초안이 다 찼는데 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). "
+        "주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장)을 먼저, 요약 카드(요약·사진 게시 동의 '동의 안 함'·버튼 셋)를 끝에 둔다. "
+        "규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. "
         "Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). "
         "Open: 콜백 유효 시간이 문서 안에서 5분과 1분으로 어긋남. 개발 전 테스트로 정함(OPEN-2). "
         "Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). "
@@ -1079,7 +1102,7 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
    omit=dict(SKILL_OMIT, **{"429": "손님 메시지 한도는 결과 rate_limited(DEC-07, DEC-16)"}),
    kinds={"접근": ["security", "401:skill_key_invalid", "note:그 가게 상담·주문만 읽고 씀(REQ-134)"],
           "입력": ["422:validation_failed", "outcome:unsupported_message", "outcome:photo_rejected"],
-          "대상": ["outcome:not_accepting"], "상태": ["outcome:handed_over", "outcome:card_shown"], "반복": ["outcome:duplicate"],
+          "대상": ["outcome:not_accepting"], "상태": ["outcome:handed_over", "outcome:card_shown", "outcome:channel_test_card"], "반복": ["outcome:duplicate"],
           "동시": ["outcome:answered", "note:답을 만드는 동안 온 메시지는 다음 차례에 한꺼번에(3-3)"],
           "한도": ["outcome:rate_limited", "outcome:ai_cost_limit_reached", "outcome:photo_rejected"],
           "외부": ["outcome:ai_unavailable", "outcome:ai_timeout", "outcome:ai_key_missing", "outcome:ai_limit_reached", "callback"],
@@ -1095,14 +1118,18 @@ op(id="API-071", method="post", path="/kakao/skills/card", op="pressConfirmCard"
         "같은 카드를 다시 누르면 card_used와 처음 결과(G2). 아무것도 남기지 못하면 retry_needed. 카드 값은 서버 기록에서만 오고 손님 말로 바꿀 수 없다(SPEC-069). "
         "주문자 정보 카드의 '주문자 정보' 블록과 입금 알리기 카드의 '입금자 이름' 블록도 이 스킬로 오고, action.params에 customer_name·customer_phone이나 depositor_name을 담는다(설계 재검토 H11). "
         "이 값은 AI로 보내지 않는다(REQ-178). 형식(이름 1~30자, 연락처 숫자와 '-' 8~14자)이 맞으면 초안에 남기고 주문 요청 카드를 보내거나(orderer_saved, SPEC-072) 그 이름으로 결제 확인을 요청한다(payment_claimed, SPEC-033). "
-        "형식이 틀리면 아무것도 남기지 않고 다시 묻는다(input_invalid). 입금 알리기 카드의 '결제 확인 요청'을 바로 누르면 입금자 이름은 주문자 이름이다(REQ-176).",
-   body="SkillPayload", body_examples={"order_request": E.SKILL_CARD, "orderer_info": E.SKILL_ORDERER, "depositor_name": E.SKILL_DEPOSITOR},
+        "형식이 틀리면 아무것도 남기지 않고 다시 묻는다(input_invalid). 입금 알리기 카드의 '결제 확인 요청'을 바로 누르면 입금자 이름은 주문자 이름이다(REQ-176). "
+        "주문자 정보를 받아 보내는 주문 요청 확인 카드와 card_stale·card_expired의 새 카드는 API-070의 card_shown처럼 규정 글을 먼저, 요약 카드를 끝에 둔다(DEC-22). "
+        "연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: card·orderer_info·depositor_name)은 주문·카드를 남기지 않고 그 블록이 닿았다는 것만 남긴 뒤 다음 시험 버튼을 답하고(block_verified), "
+        "넷이 모두 닿으면 채널을 '연결됨'으로 묶고 시험 안내를 보낸다(channel_linked, SPEC-008, REQ-179, 설계 재검토 H8). clientExtra에 cardKey도 check도 없으면 422.",
+   body="SkillPayload", body_examples={"order_request": E.SKILL_CARD, "orderer_info": E.SKILL_ORDERER, "depositor_name": E.SKILL_DEPOSITOR,
+                                       "check_button": E.SKILL_CHECK_CARD},
    ok=[(200, "SkillTemplateResponse", {k: E.SKILL_OUTCOME_EXAMPLES[k] for k in CARD_OUTCOMES}, ["Siljang-Outcome"])],
    errors={401: ["skill_key_invalid"]},
    fields=[("/action/clientExtra/cardKey", "required")],
    omit=dict(SKILL_OMIT, **{"429": "카드는 한 번만 명령을 내려 빈도 한도가 없음"}),
    kinds={"접근": ["security", "401:skill_key_invalid", "outcome:card_not_yours"], "입력": ["422:validation_failed", "outcome:input_invalid"],
-          "대상": ["outcome:not_allowed_now"], "상태": ["outcome:card_stale", "outcome:card_expired", "outcome:not_allowed_now"],
+          "대상": ["outcome:not_allowed_now"], "상태": ["outcome:card_stale", "outcome:card_expired", "outcome:not_allowed_now", "outcome:block_verified", "outcome:channel_linked"],
           "반복": ["outcome:card_used"], "동시": ["outcome:day_full", "outcome:card_stale"], "외부": ["outcome:retry_needed"],
           "노출": ["closed", "outcome:server_error", "note:주문자 이름·연락처·입금자 이름은 AI로 보내지 않음(REQ-178)"],
           "AI": ["outcome:card_not_yours", "outcome:card_stale", "outcome:card_expired", "note:AI가 제안한 카드의 값은 서버 기록에서만 옴(SPEC-069)"],
@@ -1110,17 +1137,43 @@ op(id="API-071", method="post", path="/kakao/skills/card", op="pressConfirmCard"
 
 op(id="API-072", method="post", path="/kakao/skills/review", op="submitReview", tag="카카오 스킬",
    summary="후기 수신(카카오 오픈빌더 스킬)", auth="skill", outcomes=REVIEW_OUTCOMES,
-   spec=["SPEC-062", "SPEC-019", "SPEC-061"],
+   spec=["SPEC-062", "SPEC-019", "SPEC-061", "SPEC-008"],
    desc="후기 부탁 안내(SPEC-061)의 버튼이 여는 오픈빌더 '후기' 블록이 보내는 스킬(DEC-18). action.params의 review_text(1~1,000자), "
         "review_photos(보안 이미지 플러그인 값: privacyAgreement·imageQuantity·secureUrls·expire, 5장까지), photo_consent(게시 동의, 기본 동의 안 함)와 clientExtra.orderNo. "
-        "받은 주문이고 그 주문을 요청한 사용자일 때만 남긴다. 사진은 서명 주소가 사는 10분 안에 내려받고 한 번 다시 받아도 실패하면 photo_download_failed. 같은 주문의 두 번째 후기는 새 버전.",
-   body="SkillPayload", body_examples={"review": E.SKILL_REVIEW},
+        "받은 주문이고 그 주문을 요청한 사용자일 때만 남긴다. 사진은 서명 주소가 사는 10분 안에 내려받고 한 번 다시 받아도 실패하면 photo_download_failed. 같은 주문의 두 번째 후기는 새 버전. "
+        "후기 부탁 버튼은 그 가게가 넣은 '후기' 블록 ID를 부른다. 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: review)은 후기를 남기지 않고 그 블록이 닿았다는 것만 남기며, "
+        "넷째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-179).",
+   body="SkillPayload", body_examples={"review": E.SKILL_REVIEW, "check_button": E.SKILL_CHECK_REVIEW},
    ok=[(200, "SkillTemplateResponse", dict({k: E.SKILL_OUTCOME_EXAMPLES[k] for k in REVIEW_OUTCOMES},
-                                          duplicate=E.SKILL_OUTCOME_EXAMPLES["review_saved"]), ["Siljang-Outcome"])],
+                                          duplicate=E.SKILL_OUTCOME_EXAMPLES["review_saved"],
+                                          block_verified=E.REVIEW_BLOCK_VERIFIED), ["Siljang-Outcome"])],
    errors={401: ["skill_key_invalid"]},
    fields=[("/action/params", "required")],
    omit=dict(SKILL_OMIT, **{"429": "후기는 주문마다 받아 빈도 한도가 없음"}),
    kinds={"접근": ["security", "401:skill_key_invalid", "outcome:review_not_allowed"], "입력": ["422:validation_failed", "outcome:review_invalid"],
-          "대상": ["outcome:review_not_allowed"], "반복": ["outcome:duplicate", "note:같은 주문의 두 번째 후기는 새 버전"],
+          "대상": ["outcome:review_not_allowed"], "상태": ["outcome:block_verified", "outcome:channel_linked"],
+          "반복": ["outcome:duplicate", "note:같은 주문의 두 번째 후기는 새 버전"],
           "한도": ["outcome:review_invalid"], "외부": ["outcome:photo_download_failed"], "노출": ["closed", "outcome:server_error"],
           "화면": ["screen"]})
+
+op(id="API-073", method="post", path="/kakao/skills/event", op="showNotice", tag="카카오 스킬",
+   summary="먼저 보내는 안내 보이기(카카오 Event API가 부르는 스킬)", auth="skill", outcomes=EVENT_OUTCOMES,
+   spec=["SPEC-066", "SPEC-008"],
+   desc="우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). "
+        "userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). "
+        "안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). "
+        "손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), "
+        "그 안내는 다음 대화 때 먼저 전한다(DEC-20이 정한 DEC-07의 예외). "
+        "Open: 가게 채널을 우리 앱에 연결하고 우리 월렛을 가게 봇에 연결하는 절차, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양은 개발 전 시험으로 확인(OPEN-9).",
+   body="SkillPayload", body_examples={"notice": E.SKILL_NOTICE, "event_test": E.SKILL_EVENT_TEST},
+   ok=[(200, "SkillTemplateResponse", {k: E.SKILL_OUTCOME_EXAMPLES[k] for k in EVENT_OUTCOMES}, ["Siljang-Outcome"])],
+   errors={401: ["skill_key_invalid"]},
+   fields=[("/userRequest", "required")],
+   omit=dict(SKILL_OMIT, **{"404": "경로에 기록 ID가 없음. 없는 안내 키는 결과 notice_gone(DEC-07)",
+                            "409": "같은 안내 키로 다시 불려도 200과 같은 글(DEC-07)",
+                            "429": "우리 서버가 보낸 이벤트로만 불림(보내는 빈도는 우리가 정함)"}),
+   kinds={"접근": ["security", "401:skill_key_invalid", "note:그 가게의 안내만 보임(G1)"], "입력": ["422:validation_failed"],
+          "대상": ["outcome:notice_gone"], "상태": ["outcome:notice_test"],
+          "반복": ["note:같은 안내 키로 다시 불려도 같은 글(SPEC-066)"],
+          "외부": ["note:안내를 만들지 못하면 500으로 카카오가 보내지 않음(errorType 201), 다음 대화 때 먼저 전함"],
+          "노출": ["closed", "note:Event API에는 안내 키만 보내고 글은 이 스킬이 우리 기록에서 읽음(SPEC-066)"], "화면": ["screen"]})

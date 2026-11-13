@@ -27,6 +27,7 @@ ERRORS = {
     "order_cancelled": dict(status=409, meaning="그 사이 손님이나 가게가 주문을 취소함", message="그 사이 주문이 취소됐어요", client="주문을 다시 읽어 취소된 상태를 보임", spec="SPEC-031"),
     "confirmation_required": dict(status=409, meaning="확인을 받아야 저장하는 일. confirm에 확인할 것 목록. 아무것도 바꾸지 않음", message="저장하기 전에 확인해 주세요", client="confirm의 말을 보이고, 사장님이 확인하면 같은 요청에 confirm 값을 담아 새 요청 키로 다시 보냄", spec="SPEC-005"),
     "already_registered": dict(status=409, meaning="이 카카오 계정에 이미 가게가 있음(계정 하나에 가게 하나, R2)", message="이미 등록한 가게가 있어요", client="내 가게 조회(API-009)를 엶", spec="SPEC-002"),
+    "channel_setup_incomplete": dict(status=409, meaning="카드 버튼이 부를 블록 ID 넷 가운데 빈 것이 있어 연결 확인을 시작하지 않음(REQ-179). 아무것도 바꾸지 않음", message="버튼 블록 ID 4개를 모두 넣어 주세요", client="빈 블록 ID 필드를 보이고 채널 연결 입력(API-031)으로 보냄", spec="SPEC-008"),
     "channel_linked_elsewhere": dict(status=409, meaning="그 오픈빌더 봇이 이미 다른 가게에 연결됨. 묶지 않고 운영자에게 알림", message="이미 다른 가게에 연결된 채널이에요", client="다른 채널을 고르게 하고 우리 서비스 채널로 문의하게 함(G7 이미 다른 가게)", spec="SPEC-008"),
     "slot_released": dict(status=409, meaning="결제 기한이 지나 자리가 풀린 결제 안내라 '입금됨'을 받지 않음(R14)", message="자리가 풀린 주문이에요. 먼저 '결제 기한 연장'으로 자리를 다시 잡아 주세요", client="결제 기한 지난 주문의 결제 기한 연장 화면으로 보냄", spec="SPEC-034"),
     "stale_change": dict(status=409, meaning="이전 버전을 보고 만든 변경이라 반영하지 않음. 변경 요청은 '오래된 버전이라 받지 않음'으로 닫힘", message="그 사이 주문이 바뀌어 이 변경은 반영할 수 없어요", client="변경 요청과 지금 주문 버전을 다시 읽어 보임", spec="SPEC-045"),
@@ -60,6 +61,7 @@ FIELD_CODES = {
     "gap": "단계별 환불 기간 사이가 빔",
     "exceeds_received": "환불 금액이 받은 금액에서 이미 정한 환불을 뺀 값을 넘음",
     "below_calculated": "보상이 아닌 환불 금액이 환불 계산값보다 낮음(REQ-170)",
+    "exceeds_card_limit": "취소·환불 조문으로 만든 주문 요청 카드의 규정 글이 1,000자 글 둘에 들어가지 않음(REQ-184)",
     "in_past": "지난 날짜나 시각",
     "outside_window": "허용된 시간 밖(08:00~20:50, 60일 안 등)",
     "not_after_start": "끝이 시작보다 앞섬",
@@ -91,17 +93,17 @@ SKILL_OUTCOMES = {
     "ai_cost_limit_reached": dict(spec="SPEC-017", meaning="가게의 하루 AI 비용 한도(REQ-163, 기본 5,000원)에 닿아 AI 없이 에스컬레이션함", message="사장님 확인 뒤 답드릴게요", handoff="ai_cost_limit"),
     "masking_failed": dict(spec="SPEC-021", meaning="번호 마스킹이 실패해 AI를 호출하지 않고 에스컬레이션함", message="사장님 확인 뒤 답드릴게요", handoff="masking_failed"),
     "ai_output_rejected": dict(spec="SPEC-020", meaning="AI 답이나 제안이 서버 확인(금액·날짜 판정·확정이라 말함·조문·플레이스홀더·광고·카드 대상)을 지나지 못해 그 부분을 버리고 정해진 문장으로 답함. 버린 제안은 쓰지 않음", message="(계산값으로 만든 정해진 문장)"),
-    "card_shown": dict(spec="SPEC-069", meaning="서버가 저장된 값으로 확인 카드(주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회)를 보임", message="(카드: 요약과 버튼)"),
+    "card_shown": dict(spec="SPEC-069", meaning="서버가 저장된 값으로 확인 카드(주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회)를 보임. 주문 요청 카드는 그 버전의 취소·환불 규정 글(하나나 둘)을 먼저, 요약 카드를 끝에 둠(SPEC-028, DEC-22)", message="(주문 요청 카드: 규정 글과 청약철회 제한 문장, 요약과 버튼)"),
     "photo_received": dict(spec="SPEC-019", meaning="참고·신고 사진을 받아 초안이나 신고 내용에 붙임. AI 모델로 보내지 않음", message="사진을 받았어요"),
     "photo_rejected": dict(spec="SPEC-019", meaning="사진 한도(상담마다 10장, 장당 20MB)를 넘었거나 사진이 아닌 파일", message="사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요"),
     "unsupported_message": dict(spec="SPEC-017", meaning="음성·파일·이모티콘만 온 메시지", message="글이나 사진으로 말씀해 주세요"),
     "rate_limited": dict(spec="SPEC-017", meaning="한 손님이 1분에 20개를 넘게 보냄. 기록만 하고 AI를 호출하지 않음. 그 1분 안 첫 번째에만 이 말", message="잠시 뒤 다시 말씀해 주세요"),
     "duplicate": dict(spec="SPEC-017", meaning="같은 카카오 요청이 다시 옴. 처음 결과를 다시 보내고 기록·AI 호출·명령을 다시 하지 않음(REQ-132)", message="(처음 결과와 같은 말)"),
     "not_accepting": dict(spec="SPEC-017", meaning="연결되지 않은 채널이거나 예약 링크를 내기 전 가게. 상담을 열지 않음", message="아직 상담을 받지 않아요. 가게로 연락해 주세요: {가게 연락처}"),
-    "channel_linked": dict(spec="SPEC-008", meaning="연결 확인 중인 채널의 테스트 메시지를 받아 채널을 가게에 묶음", message="연결됐어요. 이제 이 채널로 온 손님 메시지를 받아요"),
+    "channel_test_card": dict(spec="SPEC-008", meaning="연결 확인 중인 채널의 테스트 메시지를 받아 그 사용자를 시험 사용자로 남기고 첫 시험 버튼(그 가게가 넣은 블록 ID)을 보임(REQ-179)", message="테스트 메시지를 받았어요. 시험 버튼 4개를 하나씩 눌러 주세요"),
     "server_error": dict(spec="SPEC-017", meaning="스킬을 처리하다 서버 오류가 남. 손님에게 오류 내용을 보이지 않음(G6), 로그에는 추적 ID", message="잠시 뒤 다시 말씀해 주세요"),
     # 확인 카드 버튼 (API-071)
-    "orderer_saved": dict(spec="SPEC-072", meaning="주문자 정보 블록의 이름·연락처가 형식에 맞아 초안에 남기고 주문 요청 카드를 보냄. 이 값은 AI로 보내지 않음(REQ-175, REQ-178)", message="(주문 요청 확인 카드: 요약에 주문자 이름·연락처)"),
+    "orderer_saved": dict(spec="SPEC-072", meaning="주문자 정보 블록의 이름·연락처가 형식에 맞아 초안에 남기고 주문 요청 카드(규정 글을 먼저, DEC-22)를 보냄. 이 값은 AI로 보내지 않음(REQ-175, REQ-178)", message="(주문 요청 확인 카드: 규정 글, 요약에 주문자 이름·연락처)"),
     "order_requested": dict(spec="SPEC-029", meaning="주문 요청을 한 트랜잭션으로 남김. 기본 디자인이면 자리와 결제 안내까지", message="주문을 요청했어요(주문번호 {orderNo}). 결제가 확인되면 확정돼요"),
     "payment_claimed": dict(spec="SPEC-033", meaning="결제 안내를 '확인 요청됨'으로 두고 사장님께 결제 확인을 요청함", message="사장님께 알렸어요. 확인되면 알려 드릴게요"),
     "change_requested": dict(spec="SPEC-041", meaning="변경 요청을 남기고 사장님께 알림", message="변경을 요청했어요. 사장님이 보고 알려 드려요"),
@@ -117,11 +119,18 @@ SKILL_OUTCOMES = {
     "day_full": dict(spec="SPEC-029", meaning="기본 디자인 주문의 자리를 같은 트랜잭션에서 잡지 못해 주문 요청도 남기지 않음(R11). 가까운 날 최대 3개", message="그 사이 그날이 다 찼어요. 이날은 어떠세요?"),
     "retry_needed": dict(spec="SPEC-029", meaning="한 트랜잭션의 쓰기 가운데 하나가 실패해 하나도 남기지 않음(REQ-054)", message="다시 눌러 주세요"),
     "not_allowed_now": dict(spec="SPEC-033", meaning="지금 상태에서는 그 명령을 받지 않음(열린 결제 안내 없음, 받은 주문의 취소, 결제 전 주문의 변경 등). 지금 상태를 알림", message="지금은 할 수 없어요: {지금 상태}"),
+    # 연결 확인의 시험 버튼 (API-071·072)
+    "block_verified": dict(spec="SPEC-008", meaning="연결 확인 중에 시험 사용자가 누른 시험 버튼이 우리 스킬에 닿아 그 블록을 확인됨으로 남기고 다음 시험 버튼을 보임. 주문·카드·후기는 남기지 않음(REQ-179)", message="{블록} 블록이 닿았어요({n}/4). 다음 시험 버튼을 눌러 주세요"),
+    "channel_linked": dict(spec="SPEC-008", meaning="시험 버튼으로 버튼 블록 넷이 모두 닿아 채널을 가게에 묶음. 이어서 시험 사용자에게 시험 안내를 Event API로 한 번 보냄(REQ-179, REQ-180)", message="버튼 블록 4개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요"),
     # 후기 (API-072)
     "review_saved": dict(spec="SPEC-062", meaning="받은 주문의 후기와 사진, 사진마다 게시 동의(기본 동의 안 함)를 남김", message="후기를 남겨 주셔서 고마워요"),
     "review_not_allowed": dict(spec="SPEC-062", meaning="받은 주문이 아니거나 그 주문을 요청한 사용자가 아님. 남기지 않음", message="받으신 주문에만 후기를 남길 수 있어요"),
     "review_invalid": dict(spec="SPEC-062", meaning="후기 글이 1~1,000자 밖이거나 사진이 5장을 넘음", message="후기는 1,000자, 사진은 5장까지 남길 수 있어요"),
     "photo_download_failed": dict(spec="SPEC-019", meaning="카카오 사진 주소에서 한 번 다시 받아도 실패함", message="사진을 받지 못했어요. 다시 보내 주세요"),
+    # 먼저 보내는 안내 (API-073)
+    "notice_shown": dict(spec="SPEC-066", meaning="Event API가 넘긴 안내 키로 저장된 안내의 글과 버튼을 보임(템플릿, AI 없음, 광고 없음)", message="(그 안내의 글: 확정 안내, 결제 결과·변경 결과·취소·환불·전날·후기 부탁 안내 등)"),
+    "notice_test": dict(spec="SPEC-008", meaning="채널을 연결한 뒤 시험 사용자에게 보낸 시험 안내를 보임. 발송 결과로 먼저 보내기 됨·안 됨을 정함(REQ-180)", message="시험 안내예요. 이 안내가 보이면 손님에게 안내를 먼저 보낼 수 있어요"),
+    "notice_gone": dict(spec="SPEC-066", meaning="안내 키가 없거나 그 가게 것이 아님. 짧은 글만 보임", message="지금은 전할 안내가 없어요"),
 }
 
 # ── 결정 사항 (DEC). 체크포인트에서 함께 확인 요청. decided가 빈 동안은 Claude 추천 ─────────────────
@@ -149,6 +158,9 @@ DECISIONS = [
     dict(id="DEC-17", title="AI-1 출력 스키마를 이 계약에 확정함", choice="AI-1이 '06단계에서 확정'으로 전달한 출력 스키마를 `components.schemas.AiTurnOutput`으로 둠(HTTP로 오가지 않는 서버 안 구조화 출력). SPEC-049의 환불 계좌를 받는 필드 `refund_account_patch`를 더함", why="AI-1 출력 목록에 환불 계좌 필드가 없어 SPEC-049를 할 수 없었음", alt="환불 계좌는 사장님이 상담을 보고 손으로 넣음: AI 필드는 줄지만 사장님 일이 늘어남", decided=DECIDED_06),
     dict(id="DEC-18", title="후기는 카카오 '후기' 블록의 스킬로 받음", choice="후기는 후기 부탁 안내의 버튼이 여는 오픈빌더 블록이 `POST /kakao/skills/review`로 보냄(글, 보안 이미지 플러그인 사진 5장까지, 게시 동의). 게시 동의는 후기 하나에 한 번 묻고 그 답을 사진마다 남김(기본 동의 안 함)", why="AI-1이 후기를 다루지 않음(SPEC-062는 AI 없음). 카카오 대화에서 사진마다 따로 묻기는 번거로움", alt="사진마다 묻기: SPEC-062 글자 그대로지만 손님 단계가 사진 수만큼 늘어남", needs_user=True, decided=DECIDED_06),
     dict(id="DEC-19", title="응답에 포함하는 것", choice="손님·공개 응답에는 주문번호 밖의 ID(uuid)를 포함하지 않음. 사장님·운영자 응답은 uuid ID를 씀. 마스킹 원본 값은 에스컬레이션 건·상담 대화·환불 화면에만, 계좌는 결제 수단과 환불 화면에만", why="G6, REQ-137, R19", alt="모든 응답에 같은 형식: 손님 응답에 내부 ID가 섞일 수 있음", decided=DECIDED_06),
+    dict(id="DEC-20", title="손님 안내는 가게 봇의 Event API를 우리 앱 키와 우리 월렛으로", choice="가게 채널을 우리 카카오 디벨로퍼스 앱(비즈니스 인증, 카카오 로그인 활성화)에 연결하고, 가게 봇마다 우리 월렛 하나를 연결함(월렛은 '연결대기'일 때 봇 하나에만 연결됨). 우리 서버가 우리 앱의 REST API 키로 `POST https://bot-api.kakao.com/v2/bots/{botId}/talk`(이벤트 이름 `siljang_notice`, 받는 사람은 손님의 봇 사용자 키, params에는 안내 키만)를 부르고, 가게 봇의 '안내' 블록이 안내 스킬(API-073)을 불러 우리 기록의 글과 버튼을 보임. 카카오가 요청을 받으면(taskId) '확인 중'으로 두고 `GET https://bot-api.kakao.com/v1/tasks/{taskId}`로 1분·5분·30분 뒤 발송 결과를 조회해 닿았을 때만 '보냄'. 메시지 비용(닿은 건당 15원, 부가세 별도)은 우리가 내고 요금에 넣음. 연결한 뒤 시험 안내를 한 번 보내 먼저 보내기 됨·안 됨을 가게마다 남기고, 안 되는 가게의 손님 안내는 다음 대화 때 전함. 안내 스킬이 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 보내지 않게 함(DEC-07의 예외)", why="가게마다 앱과 월렛을 만들게 하면 사장님 일이 크게 늘고 우리가 가게의 키를 맡아야 함(RD-01, RA-10). Event API는 채널 친구에게만 가고 요청 성공은 받았다는 뜻일 뿐이라 결과 조회로만 닿았는지 앎(카카오 비즈니스 도움말 Event API, 2026-11-13 다시 읽음)", alt="가게마다 자기 앱·월렛: 비용은 가게가 내지만 등록이 어렵고 가게의 키를 맡아야 함. 먼저 보내기 없이 다음 대화 때만 전함: 확정 안내와 결제 결과가 늦게 감(먼저 보내기가 안 되는 가게와 OPEN-9가 안 될 때의 대안으로 남김)", decided="확정(2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)', 설계 재검토 H7)"),
+    dict(id="DEC-21", title="사장님 알림은 우리 서비스 채널 봇이 카카오 로그인 사용자 번호로", choice="우리 서비스 채널(우리 앱에 연결)의 봇이 Event API로 사장님의 카카오 로그인 사용자 번호(appUserId, 05단계 `owners.kakao_account_id`)에 할 일 종류와 목록 주소를 보냄. 우리 봇의 알림 블록은 이벤트 data의 글을 그대로 보여 스킬이 없음. 친구인지는 카카오 로그인 때 채널 추가 상태 동의(`plusfriends`)와 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`)로 보고, 친구가 아니라고 남은 동안 사장님 화면을 열면 마지막으로 본 지 1분이 지났을 때 우리 앱의 Admin 키로 다시 조회함(API-001, API-002). 발송 결과가 '채널 친구 아님'(101)이면 친구 아님으로 고침. 05단계 `alert_user_key`를 지움(E17)", why="우리 채널의 사용자 키를 알 길이 없어 사장님 알림이 하나도 가지 못했음(RD-10). appUserId는 로그인 때 이미 받는 값이고 앱에 연결한 채널의 봇은 appUserId로 보낼 수 있음(앱이 연결되지 않으면 errorType 302)", alt="사장님이 우리 채널에 코드를 보내 사용자 키를 이음: 할 일과 스킬 API가 늘어남. 채널 추가·차단 웹훅으로 친구 여부를 받음: 받는 API가 하나 더 필요해 첫 버전은 조회와 발송 결과로", decided="확정(2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)', 설계 재검토 H7)"),
+    dict(id="DEC-22", title="주문 요청 카드는 규정 글과 요약 카드를 나눠 보냄", choice="주문 요청 확인 카드(API-070 card_shown, API-071 orderer_saved·card_stale·card_expired)는 한 응답의 출력으로 그 버전의 취소·환불 규정 글(simpleText 하나나 둘)을 먼저, 요약 카드(textCard: 요약과 사진 게시 동의 '동의 안 함', 버튼 셋)를 끝에 둠. 규정 글은 '취소·환불 규정(운영규정 버전 N)' 줄, 취소·환불 조문마다 '· 제목: 조건 → 효과' 한 줄, 끝에 '주문제작이라 청약철회가 제한될 수 있어요'. 1,000자를 넘으면 조문 사이에서 나눠 첫 줄 끝에 1/2·2/2를 붙이고 청약철회 문장은 둘째 글 끝에 둠. 자르지 않고, 글 둘에 들어가지 않는 운영규정은 저장 때 422 `exceeds_card_limit`(API-021)", why="카드 설명은 400자라 규정을 다 담지 못하고 손님이 잘린 규정에 동의하게 됨(RD-03). 카카오 응답의 출력은 3개까지라 글 둘과 카드 하나가 한도(카카오 응답 형식 문서)", alt="규정은 링크로: 카카오 안에서 동의할 글이 보이지 않음. 규정을 줄여 카드에 넣음: 동의한 글이 저장된 버전과 달라짐", decided="확정(2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)', 설계 재검토 H9)"),
 ]
 
 # ── 열린 질문 (계약 안 description의 'Open:'과 같은 것) ─────────────────────────────
@@ -161,6 +173,7 @@ OPEN_QUESTIONS = [
     dict(id="OPEN-6", where="API-004", text="운영자 인증 서비스(비밀번호·2단계 인증 키를 맡길 곳)는 개발 전에 고름. 고른 서비스가 자기 로그인 화면을 쓰면 이 API를 그 플로우로 바꿈(운영자 화면만 씀)"),
     dict(id="OPEN-7", where="components.schemas.AiTurnOutput", text="AI 모델 회사·모델은 개발 전(10단계 전)에 고름. 고르는 날 그 회사의 지금 약관·데이터 방침을 확인하고 처리방침의 국외 이전 항목을 채움(AI-1)"),
     dict(id="OPEN-8", where="API-031", text="사장님이 오픈빌더 봇 ID를 찾는 곳(봇 설정 화면이나 주소)을 07·08단계 연결 안내에서 정함. 봇 ID 형식은 첫 테스트 메시지에서 확인"),
+    dict(id="OPEN-9", where="API-032, API-073", text="먼저 보내기에 가게가 우리에게 줄 권한과 절차: 가게 채널을 우리 카카오 디벨로퍼스 앱에 연결하는 방법(채널은 가게가, 앱은 우리가 가짐), 우리 서비스 계정이 월렛 작업 권한이 있는 봇 작업자로 초대받아 우리 월렛을 가게 봇에 연결할 수 있는지, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양(utterance, userRequest.params). 10단계 WBS의 선행 일로 개발 전에 시험 채널로 확인하고, 안 되면 먼저 보내기 없이 '다음 대화 때 전함'으로만 시작(REQ-181, 02단계 1-3 가정)"),
 ]
 
 # ── 서버 안의 일 (호출하는 API가 없는 SPEC). 정해진 시각이나 이벤트로 서버가 함 ──────────────
@@ -173,8 +186,9 @@ JOBS = [
     dict(spec="SPEC-061", job="후기 부탁: 인도한 다음 날 가게가 정한 시각에 한 번(신고가 있으면 보내지 않음)", seen_in="API-027(시각 설정), API-072(버튼이 여는 후기 블록)"),
     dict(spec="SPEC-064", job="장부 쓰기와 다시 적기(1분·5분·30분·2시간·6시간, 그 뒤 하루 한 번), 24시간 실패 알림", seen_in="API-033(못 적은 쓰기 수), API-035(다시 연결하면 다시 적음)"),
     dict(spec="SPEC-065", job="지난 기록 지우기: 하루 한 번 03:00(05단계 README 6절 순서)", seen_in="API-043(지운 상담은 status deleted)"),
-    dict(spec="SPEC-066", job="손님에게 먼저 보내는 안내: 친구면 카카오 이벤트 API로 바로, 아니면 다음 대화 때 먼저(1분·5분·30분 다시 보내기)", seen_in="API-070(먼저 전함), API-042"),
-    dict(spec="SPEC-067", job="사장님 알림: 우리 서비스 채널로 할 일 종류와 목록 주소(1분 안 같은 종류는 묶음)", seen_in="API-040(할 일), API-002(채널 친구가 아니면 안내)"),
+    dict(spec="SPEC-066", job="손님에게 먼저 보내는 안내: 가게의 먼저 보내기가 되고 손님이 친구면 우리 앱 키로 가게 봇의 Event API(siljang_notice, 안내 키)를 부름. 요청이 SUCCESS면 taskId와 함께 '확인 중'으로 두고 1분·5분·30분 뒤 발송 결과 조회(GET /v1/tasks/{taskId}): 닿음은 '보냄', 채널 친구 아님(101)은 다음 대화 때와 손님 친구 아님, 스킬·카카오 오류(201~205·301·999)는 다시 보내기, 발송 제한(401~407)은 다음 대화 때와 운영자 알림, 30분 뒤에도 모름은 다음 대화 때. 요청이 FAIL이면 채널 연결·이벤트 이름·월렛 없음은 가게의 먼저 보내기 '안 됨'과 사장님 알림, 월렛 잔액 없음은 운영자 알림, 그 밖은 다시 보내기. 먼저 보내기가 안 되는 가게와 친구가 아닌 손님은 다음 대화 때 먼저(DEC-20)", seen_in="API-073(안내 스킬), API-070(먼저 전함), API-030(먼저 보내기 상태), API-042"),
+    dict(spec="SPEC-067", job="사장님 알림: 우리 서비스 채널 봇이 Event API로 사장님의 카카오 로그인 사용자 번호(appUserId)에 할 일 종류와 목록 주소(1분 안 같은 종류는 묶음). 발송 결과 조회는 손님 안내와 같고, 채널 친구 아님(101)이면 사장님을 친구 아님으로 고치고 할 일 목록에만(DEC-21)", seen_in="API-040(할 일), API-002(채널 친구가 아니면 안내)"),
+    dict(spec="SPEC-008", job="채널 연결 확인: 10분이 지나도 테스트 메시지와 시험 버튼 넷이 다 닿지 않으면 '연결 안 됨'과 사유 후보. 연결되면 시험 사용자에게 시험 안내를 Event API로 보내고 발송 결과로 먼저 보내기 됨·안 됨(사유)을 남김(DEC-20)", seen_in="API-030(verifiedBlocks, eventStatus), API-032(다시 시험), API-073(시험 안내)"),
     dict(spec="SPEC-047", job="환불 보내기 다시 알림: 정한 뒤 24시간이 지나도 '보냄'이 없으면 사장님께 한 번 다시 알림(REQ-173)", seen_in="API-040(할 일 refund_send), API-061(보냄이면 닫힘)"),
 ]
 
@@ -203,6 +217,32 @@ BREAKING_CHANGES = [
         ("값의 원본이 바뀜: Order·OrderSummary·ChangeRequest의 revision",
          "쓸 때마다 하나 오르는 잠금 번호(orders·change_requests.lock_version)로 만듦(DEC-05, 설계 재검토 H12)",
          "화면은 받은 revision을 baseRevision에 그대로 보내므로 바꿀 것 없음. 상태만 바뀐 뒤에 보낸 명령도 409 version_conflict가 됨"),
+    ]
+] + [
+    dict(what=f"꼭 넣을 필드 더함: {w}", why=why, decided="2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 H7·H8)", client=client)
+    for w, why, client in [
+        ("KakaoChannelInput.blockIds", "카드 버튼이 부를 가게 봇 블록 넷의 블록 ID를 받음(REQ-179, SPEC-008, 설계 재검토 H8)",
+         "채널 연결 화면(SCR-041)이 블록 ID 넷을 함께 보냄. 아직 만들지 않은 블록은 null"),
+        ("SkillSetup.eventSkillUrl", "가게 봇의 안내 블록이 부를 안내 스킬 주소(API-073, REQ-180, DEC-20)", "응답에만 더한 필드. 연결 안내에 보임"),
+        ("SkillSetup.eventName", "안내 블록에 붙일 이벤트 이름 siljang_notice(DEC-20)", "응답에만 더한 필드. 연결 안내에 보임"),
+        ("KakaoChannel.blockIds", "넣은 블록 ID 넷을 보임(REQ-179)", "응답에만 더한 필드. 채널 연결 화면이 블록 ID 입력에 채움"),
+        ("KakaoChannel.verifiedBlocks", "시험 버튼으로 닿은 블록(REQ-179)", "응답에만 더한 필드. 연결 확인 중 진행을 보임"),
+        ("KakaoChannel.eventStatus", "먼저 보내기 됨·안 됨(REQ-180, REQ-181)", "응답에만 더한 필드. 연결됨 화면에 보임"),
+        ("KakaoChannel.eventCheckedAt", "시험 안내 결과를 받은 시각(REQ-180)", "응답에만 더한 필드"),
+        ("KakaoChannel.eventFailReason", "먼저 보내기가 안 되는 사유(REQ-180)", "응답에만 더한 필드. 사유마다 확인할 곳을 보임"),
+    ]
+] + [
+    dict(what=w, why=why, decided="2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 H7·H8·H9)", client=client)
+    for w, why, client in [
+        ("스킬 결과 옮김: API-070의 channel_linked를 API-071·072로 옮기고 API-070은 channel_test_card",
+         "채널은 테스트 메시지가 아니라 시험 버튼 넷이 모두 닿아야 연결됨(REQ-179, SPEC-008, 설계 재검토 H8)",
+         "카카오가 그대로 보임. 화면은 API-030의 verifiedBlocks로 진행을 보임. Siljang-Outcome 값이라 A13은 찾지 않아 여기 적음"),
+        ("응답 구성 바뀜: 주문 요청 확인 카드(API-070 card_shown, API-071 orderer_saved·card_stale·card_expired)",
+         "규정 글을 요약 카드와 나눠 먼저 보내고 청약철회 제한 문장을 따로 둠(REQ-184, SPEC-028, DEC-22, 설계 재검토 H9)",
+         "카카오가 그대로 보임. 스킬 응답 형식 안의 바뀜이라 A13은 찾지 않아 여기 적음"),
+        ("값을 고치는 곳이 늘어남: Owner.alertChannelFriend",
+         "로그인 때의 채널 관계 조회와 알림 발송 결과로 고침(REQ-183, DEC-21, 설계 재검토 H7)",
+         "화면은 그대로 읽음. 친구가 되면 API-002의 배너가 빠짐"),
     ]
 ]
 
