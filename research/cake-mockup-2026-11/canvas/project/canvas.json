@@ -1,0 +1,179 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-13T00:50:41Z"
+  },
+  "title": "Siljang 목업 시안",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 2640,
+      "h": 2130,
+      "title": "토큰 비교 · A 주문서 | B 쇼케이스"
+    },
+    "A-SCR-001-360.dc.html": {
+      "x": 0,
+      "y": 2550,
+      "w": 840,
+      "h": 1600,
+      "title": "A · SCR-001 예약 링크 페이지 · 360 · normal, empty"
+    },
+    "B-SCR-001-360.dc.html": {
+      "x": 1360,
+      "y": 2550,
+      "w": 864,
+      "h": 1700,
+      "title": "B · SCR-001 예약 링크 페이지 · 360 · normal, empty"
+    },
+    "A-SCR-001-1280.dc.html": {
+      "x": 0,
+      "y": 4670,
+      "w": 1280,
+      "h": 1500,
+      "title": "A · SCR-001 예약 링크 페이지 · 1280 · normal"
+    },
+    "B-SCR-001-1280.dc.html": {
+      "x": 1360,
+      "y": 4670,
+      "w": 1280,
+      "h": 1600,
+      "title": "B · SCR-001 예약 링크 페이지 · 1280 · normal"
+    },
+    "A-SCR-016-360.dc.html": {
+      "x": 0,
+      "y": 6690,
+      "w": 1240,
+      "h": 980,
+      "title": "A · SCR-016 할 일 목록 · 360 · normal, not-sent, empty"
+    },
+    "B-SCR-016-360.dc.html": {
+      "x": 1360,
+      "y": 6690,
+      "w": 1272,
+      "h": 1000,
+      "title": "B · SCR-016 할 일 목록 · 360 · normal, not-sent, empty"
+    },
+    "A-SCR-016-1280.dc.html": {
+      "x": 0,
+      "y": 8110,
+      "w": 1280,
+      "h": 800,
+      "title": "A · SCR-016 할 일 목록 · 1280 · normal"
+    },
+    "B-SCR-016-1280.dc.html": {
+      "x": 1360,
+      "y": 8110,
+      "w": 1280,
+      "h": 820,
+      "title": "B · SCR-016 할 일 목록 · 1280 · normal"
+    },
+    "A-SCR-022-360.dc.html": {
+      "x": 0,
+      "y": 9350,
+      "w": 1240,
+      "h": 1500,
+      "title": "A · SCR-022 맞춤 주문 검토 · 360 · normal, 금액 변경 펼침, confirm"
+    },
+    "B-SCR-022-360.dc.html": {
+      "x": 1360,
+      "y": 9350,
+      "w": 1272,
+      "h": 1600,
+      "title": "B · SCR-022 맞춤 주문 검토 · 360 · normal, 금액 변경 펼침, confirm"
+    },
+    "A-SCR-022-1280.dc.html": {
+      "x": 0,
+      "y": 11370,
+      "w": 1280,
+      "h": 1000,
+      "title": "A · SCR-022 맞춤 주문 검토 · 1280 · normal"
+    },
+    "B-SCR-022-1280.dc.html": {
+      "x": 1360,
+      "y": 11370,
+      "w": 1280,
+      "h": 1100,
+      "title": "B · SCR-022 맞춤 주문 검토 · 1280 · normal"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "A-SCR-001-360.dc.html",
+    "B-SCR-001-360.dc.html",
+    "A-SCR-001-1280.dc.html",
+    "B-SCR-001-1280.dc.html",
+    "A-SCR-016-360.dc.html",
+    "B-SCR-016-360.dc.html",
+    "A-SCR-016-1280.dc.html",
+    "B-SCR-016-1280.dc.html",
+    "A-SCR-022-360.dc.html",
+    "B-SCR-022-360.dc.html",
+    "A-SCR-022-1280.dc.html",
+    "B-SCR-022-1280.dc.html"
+  ],
+  "notes": {
+    "colA": {
+      "x": 0,
+      "y": -300,
+      "text": "A 주문서",
+      "kind": "title1",
+      "maxW": 1280
+    },
+    "colB": {
+      "x": 1360,
+      "y": -300,
+      "text": "B 쇼케이스",
+      "kind": "title1",
+      "maxW": 1280
+    },
+    "row1": {
+      "x": 0,
+      "y": 2250,
+      "text": "SCR-001 예약 링크 페이지 · 360",
+      "kind": "title1",
+      "maxW": 2640
+    },
+    "row2": {
+      "x": 0,
+      "y": 4370,
+      "text": "SCR-001 예약 링크 페이지 · 1280",
+      "kind": "title1",
+      "maxW": 2640
+    },
+    "row3": {
+      "x": 0,
+      "y": 6390,
+      "text": "SCR-016 할 일 목록 · 360",
+      "kind": "title1",
+      "maxW": 2640
+    },
+    "row4": {
+      "x": 0,
+      "y": 7810,
+      "text": "SCR-016 할 일 목록 · 1280",
+      "kind": "title1",
+      "maxW": 2640
+    },
+    "row5": {
+      "x": 0,
+      "y": 9050,
+      "text": "SCR-022 맞춤 주문 검토 · 360",
+      "kind": "title1",
+      "maxW": 2640
+    },
+    "row6": {
+      "x": 0,
+      "y": 11070,
+      "text": "SCR-022 맞춤 주문 검토 · 1280",
+      "kind": "title1",
+      "maxW": 2640
+    }
+  },
+  "designSystems": []
+}
