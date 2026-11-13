@@ -411,7 +411,7 @@ INSERT INTO ledger_writes (id, shop_id, ledger_row_id, event_key, event_kind) VA
   ('fc000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'fb000000-0000-0000-0000-000000000005',
    'ledger:d0..05:confirmed', 'confirmed');
 -- 잘못 누른 결제 확인 취소: 확인된 결제에 취소 시각·사유, 결제 안내는 나감, 주문은 결제 기다림, 확정 자리는 잡힌 자리, 제작 목록에서 뺌
-UPDATE payments SET voided_at = now(), void_reason = '다른 손님 입금을 이 주문으로 잘못 봄' WHERE id = 'e1000000-0000-0000-0000-000000000006';
+UPDATE payments SET voided_at = now(), void_reason = '다른 손님이 보낸 돈을 이 주문의 결제로 잘못 봄' WHERE id = 'e1000000-0000-0000-0000-000000000006';
 UPDATE payment_requests SET status = 'open', paid_at = NULL, arrived_amount = NULL, arrived_at = NULL, version = version + 1
  WHERE id = 'e0000000-0000-0000-0000-000000000006';
 UPDATE orders SET status = 'awaiting_payment', confirmed_at = NULL WHERE id = 'd0000000-0000-0000-0000-000000000005';
@@ -420,11 +420,11 @@ DELETE FROM productions WHERE id = 'f0000000-0000-0000-0000-000000000005';
 INSERT INTO notifications (id, shop_id, customer_id, consultation_id, order_id, kind, event_key, template_key, body, status) VALUES
   ('f9000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002',
    'c1000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000005', 'payment_corrected', 'notice:e1..06:payment_corrected',
-   'payment_corrected_v1', '결제 확인을 잘못 남겨 바로잡았어요. 입금하셨다면 알려 주세요.', 'deferred');
+   'payment_corrected_v1', '결제 확인을 잘못 남겨 바로잡았어요. 이미 보내셨다면 알려 주세요.', 'deferred');
 INSERT INTO ledger_writes (id, shop_id, ledger_row_id, event_key, event_kind) VALUES
   ('fc000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'fb000000-0000-0000-0000-000000000005',
    'ledger:e1..06:payment_voided', 'payment_voided');
--- 입금 알리기 → 손님 취소(결제 확인 요청 중) → 결제 안내 닫힘 → 들어온 입금 대조 할 일(REQ-167)
+-- 손님이 보냈다고 알림 → 손님 취소(결제 확인 요청 중) → 결제 안내 닫힘 → 들어온 입금 대조 할 일(REQ-167)
 INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, order_id, order_version, payload, expires_at, used_at, outcome) VALUES
   ('c7000000-0000-0000-0000-000000000015', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002',
    'card-payment-claim-0002', 'payment_claim', 'd0000000-0000-0000-0000-000000000005', 1, '{}', now() + interval '30 minutes', now(), 'done'),

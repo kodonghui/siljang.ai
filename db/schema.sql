@@ -789,7 +789,7 @@ CREATE TABLE refunds (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 환불 ID
   shop_id                uuid NOT NULL,                  -- 가게
   order_id               uuid NOT NULL,                  -- 주문
-  cause                  text NOT NULL CHECK (cause IN ('customer_cancel', 'shop_cancel', 'change_reduced', 'compensation', 'paid_after_cancel', 'over_received')), -- 손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 입금, 기한 뒤 차액, SPEC-071)
+  cause                  text NOT NULL CHECK (cause IN ('customer_cancel', 'shop_cancel', 'change_reduced', 'compensation', 'paid_after_cancel', 'over_received')), -- 손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 몫, 기한 뒤 차액, SPEC-071)
   change_request_id      uuid,                           -- 금액이 내려간 변경
   issue_report_id        uuid,                           -- 보상의 문제 신고
   payment_request_id     uuid,                           -- 돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)
@@ -1618,7 +1618,7 @@ COMMENT ON COLUMN payments.void_reason IS '결제 확인을 취소한 사유(REQ
 COMMENT ON COLUMN refunds.id IS '환불 ID';
 COMMENT ON COLUMN refunds.shop_id IS '가게';
 COMMENT ON COLUMN refunds.order_id IS '주문';
-COMMENT ON COLUMN refunds.cause IS '손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 입금, 기한 뒤 차액, SPEC-071)';
+COMMENT ON COLUMN refunds.cause IS '손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 몫, 기한 뒤 차액, SPEC-071)';
 COMMENT ON COLUMN refunds.change_request_id IS '금액이 내려간 변경';
 COMMENT ON COLUMN refunds.issue_report_id IS '보상의 문제 신고';
 COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)';

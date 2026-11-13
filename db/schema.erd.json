@@ -4688,7 +4688,7 @@
         "id": "03h7y0179cdtx0zvnwthm5vs0",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "cause",
-        "comment": "손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 입금, 기한 뒤 차액, SPEC-071)",
+        "comment": "손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 몫, 기한 뒤 차액, SPEC-071)",
         "dataType": "text",
         "options": 8
       },

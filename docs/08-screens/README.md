@@ -156,10 +156,10 @@
 | [SCR-023](SCR-023.md) | 결제 기한 지난 주문 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 20 |
 | [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 20 |
 | [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 17 |
-| [SCR-026](SCR-026.md) | 환불 송금 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 16 |
+| [SCR-026](SCR-026.md) | 환불 송금 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 17 |
 | [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 16 |
 | [SCR-028](SCR-028.md) | 입금 대조 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
-| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · submitting · mismatch · expired · done | empty | 21 |
+| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · submitting · mismatch · expired · done | empty | 23 |
 | [SCR-030](SCR-030.md) | 제작 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 34 |
 | [SCR-031](SCR-031.md) | 픽업 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 37 |
 | [SCR-032](SCR-032.md) | 영업 캘린더 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 17 |
@@ -208,6 +208,8 @@
 
 ## 9. 검사
 
+2026-11-13 22:37 KST 설계 재검토 H1·H2를 고친 뒤(12절) 다시 생성한 파일에 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 173행·액션 134행, C6 응답 행 743개(※ 화면이 나눈 행 3, 카카오 스킬 168, 기본값과 다르게 정한 행 96), C8 참조 1523곳, C11 허용 예외 678곳, C15 `check_sitemap.py` 통과 16·미확인 1(허브 옵션 없이)입니다. C11은 12절 제목의 앞부분을 `check_screens.py`의 금지어 예외에 더했습니다(그 제목의 낱말은 단계 문서를 마친 일을 말하고, 03단계 `check_flows.py`도 같은 예외를 둠). 그린 상태 336개와 프레임 672개는 그대로입니다. 아래 표는 2026-11-13 09:27의 결과로 남깁니다.
+
 `python3 -B research/cake-screens-2026-11/check_screens.py . --hub <허브의 hub.py>`를 2026-11-13 09:27 KST에 다시 생성한 파일(11절의 체크포인트 뒤 고친 것 포함)에 실행한 결과: 검사 15개 통과 15, 실패 0, 미확인 0. `--hub`를 주지 않으면 C14는 '미확인'입니다.
 
 | 검사 | 결과 |
@@ -245,3 +247,13 @@
 - 답(2026-11-13 09:13, 동희님): 결정 카드에서 '추천대로 확정'을 고르심. 화면 정의 49개(상태 336개, 06단계 응답 740행 연결)와 결정 사항 W1~W9를 추천안대로 확정하셨습니다. W7의 봇 ID 찾는 위치는 확인 전 문구 그대로 확정했고, 개발 전에 동희님 PC의 실제 오픈빌더 화면으로 확인합니다(10절). 확인을 요청한 뒤 PR #17에 달린 댓글과 코드 검토 의견은 없었습니다.
 - 체크포인트 뒤 고친 것(2026-11-13 09:19에 받은 PR #17 자동 코드 검토 의견 2건): SCR-025의 입력 규칙이 '환불 없음'까지 막던 문구를 06단계 계약(API-050, 환불 없음은 금액 0원)에 맞게 고쳤습니다. SCR-048의 결과 상태 와이어프레임에 보류 사유 필드와 '확인됨'·'보류' 버튼이 보이던 것을 화면 정의대로 고쳐 버튼 없이 확인한 운영자·시각을 보입니다(M7). 같은 종류로 화면 정의에 읽기 전용이라고 적은 결과 상태 6곳(SCR-017·021·024·026·027·029의 done)도 와이어프레임에서 입력 필드와 버튼을 빼고 남긴 값을 보이게 고쳤습니다. 화면 정의의 내용, 결정 사항 W1~W9, 상태 336개, 응답 740행, 프레임 672개는 그대로입니다.
 - 기록: 이 절, `.corthex/stages.json`의 08단계, Notion 08단계 기록 행(https://app.notion.com/p/416bf16cc3ec81f390afc8e14560e86c).
+
+## 12. 확정한 뒤 고친 것
+
+2026-11-13 설계 독립 재검토의 높음 묶음 H1(RB-01, RC-05, RD-02, RA-15)과 H2(RA-01, RE-02, RE-03, RE-04)를 동희님 2026-11-13 20:59 결정 카드 '추천안대로 (추천)'에 따라 `screens_owner_a.py`·`screens_common.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다.
+
+- SCR-016 할 일 목록: 환불 보내기 → SCR-026, 들어온 입금 대조 → SCR-029(REQ-173, REQ-167).
+- SCR-025 환불 결정: 받은 금액을 확인된 결제와 그 밖의 들어온 금액으로 나눠 보임(REQ-165), 계산값보다 낮은 금액은 막고(422 `below_calculated`) '환불 없음'은 계산값이 0원일 때만(REQ-170, RA-01). '환불 없음'으로 정하면 환불 송금(SCR-026)으로 가지 않고 주문 상세로(RE-04).
+- SCR-026 환불 송금: 할 일 '환불 보내기'가 엶. '보냄' 뒤 '보냄을 남겼어요. 손님에게 환불 안내를 보냈어요'는 이제 계약(API-061 `customerNotice`)과 맞음, 친구가 아니면 다음 대화 때(`sent_deferred`)(REQ-172, RE-03).
+- SCR-029 입금 대조: 닫힘·기한 지남 결제 안내에 '들어옴(금액)'(SPEC-071, RB-01·RD-02), 제작 전 확인된 결제에 '결제 확인 취소'(SPEC-070, RA-15). 응답 `API-059#200:arrived`·`voided`를 done 상태로.
+- 그린 상태의 와이어프레임(`layout`)은 바꾸지 않아 09단계 보드는 다시 그리지 않았습니다. 바뀐 것은 상태 설명과 결과 문구이고, 보드에 그린 글자는 모두 화면 정의에 그대로 있습니다(09단계 C8 통과).

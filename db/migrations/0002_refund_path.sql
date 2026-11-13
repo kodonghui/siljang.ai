@@ -65,7 +65,7 @@ COMMENT ON COLUMN payments.amount IS '확인된 금액 = 안내 금액. 받은 �
 COMMENT ON COLUMN payments.resolution IS '입금됨·대조 완료(모자란 금액이 입금됨)·대조 완료(더 들어온 금액은 환불로 돌려줌, SPEC-047)(R15)';
 COMMENT ON COLUMN payments.voided_at IS '사장님이 잘못 누른 결제 확인을 취소한 시각(SPEC-070). 취소한 결제는 받은 금액에 들지 않음';
 COMMENT ON COLUMN payments.void_reason IS '결제 확인을 취소한 사유(REQ-169). 손님 안내에는 적지 않음';
-COMMENT ON COLUMN refunds.cause IS '손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 입금, 기한 뒤 차액, SPEC-071)';
+COMMENT ON COLUMN refunds.cause IS '손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 몫, 기한 뒤 차액, SPEC-071)';
 COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)';
 COMMENT ON COLUMN refunds.amount IS '정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170)';
 COMMENT ON COLUMN refunds.calc_basis IS '근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액의 몫(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-084, REQ-165)';
