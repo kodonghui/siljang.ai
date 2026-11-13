@@ -71,7 +71,7 @@ COMMENT ON COLUMN refunds.amount IS '정한 환불 금액. 주문의 환불 합�
 COMMENT ON COLUMN refunds.calc_basis IS '근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액의 몫(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-084, REQ-165)';
 COMMENT ON COLUMN refunds.override_reason IS '계산값과 다른 금액을 고른 이유(SPEC-047). 보상이 아니면 계산값보다 높을 때만';
 COMMENT ON COLUMN refunds.sent_at IS '사장님이 ''보냄''을 표시한 시각(REQ-172). 우리는 돈을 옮기지 않음(REQ-079). 그 전까지 환불 보내기 할 일이 남음(REQ-173)';
-COMMENT ON COLUMN owner_tasks.kind IS '에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)';
+COMMENT ON COLUMN owner_tasks.kind IS '에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 들어온 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)';
 COMMENT ON COLUMN owner_tasks.refund_id IS '보낼 환불(환불 보내기, REQ-173)';
 COMMENT ON COLUMN owner_tasks.realerted_at IS '사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)';
 COMMENT ON COLUMN notifications.kind IS '사장님 답·지연 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·금액 불일치·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁·환불 보냄(REQ-172)·결제 확인 정정(REQ-169)';

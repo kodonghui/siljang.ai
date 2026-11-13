@@ -979,7 +979,7 @@ COMMENT ON TABLE portfolio_items IS 'TBL-041 포트폴리오(TERM-052): 손님�
 CREATE TABLE owner_tasks (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 할 일 ID
   shop_id             uuid NOT NULL,                     -- 가게
-  kind                text NOT NULL CHECK (kind IN ('handoff', 'custom_order', 'change_request', 'issue_report', 'payment_claim', 'payment_mismatch', 'payment_overdue', 'refund_decision', 'paid_after_cancel', 'stale_change', 'ledger_relink', 'license_on_hold', 'calendar_conflict', 'refund_send', 'arrival_check')), -- 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)
+  kind                text NOT NULL CHECK (kind IN ('handoff', 'custom_order', 'change_request', 'issue_report', 'payment_claim', 'payment_mismatch', 'payment_overdue', 'refund_decision', 'paid_after_cancel', 'stale_change', 'ledger_relink', 'license_on_hold', 'calendar_conflict', 'refund_send', 'arrival_check')), -- 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 들어온 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)
   event_key           text NOT NULL,                     -- 할 일을 만든 이벤트 키. 할 일마다 한 번(G2)
   order_id            uuid,                              -- 관련 주문
   handoff_id          uuid,                              -- 에스컬레이션 건
@@ -1707,7 +1707,7 @@ COMMENT ON COLUMN portfolio_items.unpublished_at IS '내린 시각. 예약 링�
 COMMENT ON COLUMN portfolio_items.unpublish_reason IS '동의 철회·사장님이 내림';
 COMMENT ON COLUMN owner_tasks.id IS '할 일 ID';
 COMMENT ON COLUMN owner_tasks.shop_id IS '가게';
-COMMENT ON COLUMN owner_tasks.kind IS '에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)';
+COMMENT ON COLUMN owner_tasks.kind IS '에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 들어온 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)';
 COMMENT ON COLUMN owner_tasks.event_key IS '할 일을 만든 이벤트 키. 할 일마다 한 번(G2)';
 COMMENT ON COLUMN owner_tasks.order_id IS '관련 주문';
 COMMENT ON COLUMN owner_tasks.handoff_id IS '에스컬레이션 건';
