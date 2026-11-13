@@ -441,7 +441,7 @@ def race_check(pg: Pg, rep: Report) -> None:
     blocked = n1 == "1" and n2 == "0" and nf == "confirmed, 잠금 번호 2" and nw >= 0.5
     rep.add("D5", reproduced and blocked,
             "두 세션이 같은 주문에 결제 확인과 손님 취소를 같은 값을 읽고 동시에 씀: 옛 방식은 늦은 취소가 확인을 덮어쓰고(문제 재현), "
-            "잠금 번호는 늦은 취소가 먼저 쓴 쪽의 커밋을 기다린 뒤 0행이라 확정이 남음",
+            "잠금 번호는 늦은 취소가 먼저 쓴 쪽의 커밋을 기다린 뒤 0행이라 결제 확인이 남음",
             [f"{name}: 결제 확인 {a}행, 손님 취소 {b}행(기다림 {w:.1f}초) → {f}" for name, a, b, w, f in runs])
 
 
