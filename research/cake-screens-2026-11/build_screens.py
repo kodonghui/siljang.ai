@@ -20,7 +20,8 @@ screens_*.py의 scr() 키
 - purpose: 한 문장. 끝에 '(FL-…)'나 '(플로우 노드 없음: 사유)'
 - data: [(데이터, 출처)]  출처는 'API-0xx …'나 '서버 안내'·'화면' 같은 말
 - actions: [(액션, 결과, 실패)]
-- states: [(상태, 설명, 프레임)]  프레임 None이면 normal은 레이아웃, loading은 회색 막대
+- states: [(상태, 설명, 프레임)]  프레임 None이면 normal은 레이아웃, loading은 회색 막대.
+          읽기 전용 결과(f_result)는 폼·버튼 줄을 빼고 남긴 값을 그 자리에 보임
 - na: {기본 상태: 해당 없는 이유}
 - resp: {'API-0xx#코드:예시나 오류 코드': (상태 또는 '-', 문구나 None)}  코드 부분에 '='가 있으면 계약 예시 밖의 화면 변형 행
 - kinds: {케이스 유형: 화면에 보이는 것}
@@ -596,6 +597,23 @@ def content_html(sid, s, frame, w, state):
                 htmls.append(r_block(b, w))
         if not hit:
             tail = '<div class="btns"><span class="btn pri busy">%s</span></div>' % t(frame[1])
+    elif kind == "result":
+        extra = frame[3]
+        names = [label_of(x) for x in extra]
+        if None in names or len(set(names)) != len(names):
+            raise Stop("%s#%s: result 프레임의 블록에 이름이 없거나 겹침" % (sid, state))
+        slots = [bi for bi, b in enumerate(blocks) if b[0] == "form"] + [bi for bi, b in enumerate(blocks) if b[0] == "btns"]
+        if not slots:
+            raise Stop("%s#%s: result 프레임인데 레이아웃에 폼·버튼 줄이 없음" % (sid, state))
+        swap, used, htmls = dict(zip(names, extra)), set(), []
+        for b in blocks:
+            lab = label_of(b)
+            if lab in swap:
+                htmls.append(r_block(swap[lab], w))
+                used.add(lab)
+            else:
+                htmls.append("" if b[0] in ("form", "btns") else r_block(b, w))
+        htmls[slots[0]] += "".join(r_block(x, w) for x in extra if label_of(x) not in used)
     elif kind in (None, "field", "banner", "dialog"):
         htmls = [r_block(b, w) for b in blocks]
     else:
@@ -607,7 +625,7 @@ def content_html(sid, s, frame, w, state):
         if tag not in base:
             raise Stop("%s#%s: field 프레임의 '%s' 필드가 없음" % (sid, state, label))
         return base.replace(tag, tag + '<span class="ferr">%s</span>' % t(text), 1)
-    if kind == "banner":
+    if kind in ("banner", "result"):
         return '<div class="sbanner">%s%s</div>%s' % (t(frame[1]), r_btns(frame[2], None, None) if frame[2] else "", base)
     if kind == "dialog":
         _, title, body, buttons = frame

@@ -1,5 +1,5 @@
 """08단계 화면 정의: 운영자 화면 SCR-046~049(운영자 로그인·영업 신고 확인 목록·영업 신고 확인·운영자 알림)."""
-from screens_common import (E_KEY, E_QUERY, E_RETRY, S_CONFLICT, STALE_BOX, bar, btns, f_banner, f_box, f_busy, f_dialog,
+from screens_common import (E_KEY, E_QUERY, E_RETRY, S_CONFLICT, STALE_BOX, bar, btns, f_banner, f_box, f_busy, f_dialog, f_result,
                             f_replace, form, h, kv, lst, msg, nf_box, note, photos, s_loading, s_stale_list, s_submit, scr,
                             tabs)
 
@@ -103,7 +103,8 @@ scr("SCR-048", shell="operator",
             ("confirm", "'확인됨'을 누르면 서버로 보내기 전에 화면이 확인 창을 엶: '확인됨으로 남길까요? 첫 버전에서는 확인됨을 보류로 바꿀 수 없어요'. '확인됨으로 남기기'를 눌러야 보냄. '취소'면 아무것도 바뀌지 않음",
              f_dialog("확인됨으로 남길까요?", "첫 버전에서는 확인됨을 보류로 바꿀 수 없어요", ["취소", "확인됨으로 남기기"])),
             ("done", "확인됨(verified): '확인됨으로 남겼어요'와 '목록으로'. 보류(on_hold): '보류로 남겼어요. 사장님께 사유를 알렸어요'. 이미 확인된 가게(unchanged): '이미 확인된 가게예요'. 확인된 가게를 열면 '확인됨'과 확인한 운영자·시각만 보이고 버튼은 없음(M7)",
-             f_banner("확인됨으로 남겼어요", ["목록으로"]))],
+             f_result("확인됨으로 남겼어요", ["목록으로"],
+                      [kv("확인 기록", [("상태", "확인됨"), ("확인한 운영자", "운영자 1"), ("확인 시각", "11월 13일 10:20")])]))],
     na={"empty": "가게 등록 때 신고증을 올려야 가게가 생김(SPEC-002). 빈 영업 신고는 없음"},
     resp={"API-013#200:on_hold": ("on-hold", None),
           "API-013#200:licenseStatus=verified": ("done", "확인된 가게: '확인됨'과 확인한 운영자·시각, 버튼 없음(M7)"),

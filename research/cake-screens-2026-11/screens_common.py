@@ -353,6 +353,12 @@ def f_banner(text, buttons=()):
     return ("banner", text, list(buttons))
 
 
+def f_result(text, buttons=(), blocks=()):
+    """읽기 전용 결과: 위에 결과 문구와 버튼. 레이아웃의 폼과 버튼 줄은 빼고, blocks 가운데 레이아웃에 같은 이름이
+    있는 블록은 그 자리를 바꾸고 나머지는 첫 폼(없으면 첫 버튼 줄) 자리에 놓는다."""
+    return ("result", text, list(buttons), list(blocks))
+
+
 def f_field(label, text):
     return ("field", label, text)
 
