@@ -861,7 +861,7 @@
       "page": "operator"
     },
     "SCR-046-1280.dc.html": {
-      "x": 1288,
+      "x": 1680,
       "y": 0,
       "w": 1344,
       "h": 892,
@@ -877,7 +877,7 @@
       "page": "operator"
     },
     "SCR-047-1280.dc.html": {
-      "x": 1288,
+      "x": 1680,
       "y": 1312,
       "w": 1344,
       "h": 892,
@@ -887,33 +887,49 @@
     "SCR-048-360.dc.html": {
       "x": 0,
       "y": 2624,
-      "w": 1208,
-      "h": 923,
-      "title": "SCR-048 영업 신고 확인 · 360 · normal, error, confirm",
+      "w": 1600,
+      "h": 1253,
+      "title": "SCR-048 영업 신고 확인 · 360 · normal, empty, error, confirm",
       "page": "operator"
     },
     "SCR-048-1280.dc.html": {
-      "x": 1288,
+      "x": 1680,
       "y": 2624,
       "w": 1344,
-      "h": 892,
+      "h": 912,
       "title": "SCR-048 영업 신고 확인 · 1280 · normal",
       "page": "operator"
     },
     "SCR-049-360.dc.html": {
       "x": 0,
-      "y": 3967,
+      "y": 4297,
       "w": 1208,
       "h": 892,
       "title": "SCR-049 운영자 알림 · 360 · normal, empty, error",
       "page": "operator"
     },
     "SCR-049-1280.dc.html": {
-      "x": 1288,
-      "y": 3967,
+      "x": 1680,
+      "y": 4297,
       "w": 1344,
       "h": 892,
       "title": "SCR-049 운영자 알림 · 1280 · normal",
+      "page": "operator"
+    },
+    "SCR-050-360.dc.html": {
+      "x": 0,
+      "y": 5609,
+      "w": 1600,
+      "h": 892,
+      "title": "SCR-050 가게 기록 보기 · 360 · normal, empty, error, confirm",
+      "page": "operator"
+    },
+    "SCR-050-1280.dc.html": {
+      "x": 1680,
+      "y": 5609,
+      "w": 1344,
+      "h": 892,
+      "title": "SCR-050 가게 기록 보기 · 1280 · normal",
       "page": "operator"
     }
   },
@@ -1028,7 +1044,9 @@
     "SCR-048-360.dc.html",
     "SCR-048-1280.dc.html",
     "SCR-049-360.dc.html",
-    "SCR-049-1280.dc.html"
+    "SCR-049-1280.dc.html",
+    "SCR-050-360.dc.html",
+    "SCR-050-1280.dc.html"
   ],
   "notes": {
     "colA": {
@@ -1202,7 +1220,7 @@
     "legend": {
       "x": 2792,
       "y": 0,
-      "text": "A '주문서' 방향에 손님 화면 사진을 크게 해서 그린 화면 49개. 화면마다 360 보드(normal 전체 길이, 이어서 모습이 크게 다른 상태를 360 × 800으로)와 1280 보드(normal). 색·글꼴과 회색 사진 자리는 임시이고 토큰 고정 전에 바꿈. 고르기 전 후보는 '후보 A·B (방향 고르기)' 페이지.",
+      "text": "A '주문서' 방향에 손님 화면 사진을 크게 해서 그린 화면 50개. 화면마다 360 보드(normal 전체 길이, 이어서 모습이 크게 다른 상태를 360 × 800으로)와 1280 보드(normal). 색·글꼴과 회색 사진 자리는 임시이고 토큰 고정 전에 바꿈. 고르기 전 후보는 '후보 A·B (방향 고르기)' 페이지.",
       "w": 640,
       "page": "customer"
     },
@@ -1467,7 +1485,7 @@
       "y": -300,
       "text": "SCR-046 운영자 로그인",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3024,
       "page": "operator"
     },
     "scr047": {
@@ -1475,7 +1493,7 @@
       "y": 1012,
       "text": "SCR-047 영업 신고 확인 목록",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3024,
       "page": "operator"
     },
     "scr048": {
@@ -1483,15 +1501,23 @@
       "y": 2324,
       "text": "SCR-048 영업 신고 확인",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3024,
       "page": "operator"
     },
     "scr049": {
       "x": 0,
-      "y": 3667,
+      "y": 3997,
       "text": "SCR-049 운영자 알림",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3024,
+      "page": "operator"
+    },
+    "scr050": {
+      "x": 0,
+      "y": 5309,
+      "text": "SCR-050 가게 기록 보기",
+      "kind": "title1",
+      "maxW": 3024,
       "page": "operator"
     }
   },
