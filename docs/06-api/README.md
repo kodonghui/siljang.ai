@@ -433,7 +433,7 @@ D1의 참고: `operators.email`·`kakao_channels.bot_id`·`ledger_links.spreadsh
 | API-049 환불 미리보기 | 받은 금액 = 결제 안내의 들어온 금액 합, 나눠 보기(`confirmedAmount`·`unconfirmedAmount`), 가장 작은 금액 `minAmount` = 계산값. 원인 `over_received`와 `paymentRequestId` | REQ-165, REQ-170, SPEC-071 |
 | API-050 환불 결정 | 계산값보다 낮으면 422 `below_calculated`, 높으면 사유. 환불 없음은 계산값이 0원일 때만. 할 일 '환불 보내기'를 열고 24시간 뒤 다시 알림, 손님 계좌 묻기. 예시 `none`·`over_received` | REQ-170, REQ-171, REQ-173 |
 | API-061 환불 '보냄' | 할 일을 닫고 손님에게 보냄 안내를 한 번(`customerNotice` `sent`·`deferred`), 장부 쓰기. 08단계 SCR-026의 결과 문구와 계약이 맞음 | REQ-172(RE-03) |
-| API-040 할 일, `OwnerTask` | 종류 `refund_send`(subject `refund`)·`arrival_check`(subject `payment_request`), 예시 2개 | REQ-167, REQ-173 |
+| API-040 할 일, `OwnerTask` | 종류 `refund_send`(subject `refund`)·`arrival_check`(subject `payment_request`), 예시 2개. 설명의 `paid_after_cancel` 이름은 '취소 뒤 들어온 입금' | REQ-167, REQ-173 |
 | API-048 가게 사정 취소 | 받은 금액(REQ-165), 결제 확인 요청 중이었으면 들어온 입금 대조 할 일 | SPEC-071 |
 | 서버 안의 일(10절) | 환불 보내기 다시 알림(정한 뒤 24시간) | REQ-173 |
 
