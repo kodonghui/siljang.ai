@@ -235,12 +235,12 @@
           path: kakao:service/chat
           access: 사장님
           status: active
-          flows: [FL-001, FL-005, FL-006, FL-007, FL-008, FL-009, FL-011]
+          flows: [FL-001, FL-002, FL-005, FL-006, FL-007, FL-008, FL-009, FL-011]
           terms: [CTX-008, TERM-035, TERM-054]
-          specs: [SPEC-067, SPEC-003, SPEC-024]
+          specs: [SPEC-067, SPEC-003, SPEC-024, SPEC-006]
           apis: []
-          opens: [SCR-016]
-          note: "우리 서비스 카카오톡 채널로 오는 알림. 할 일 유형과 할 일 목록 주소만 담음"
+          opens: [SCR-016, SCR-040]
+          note: "우리 서비스 카카오톡 채널로 오는 알림. 할 일 유형과 할 일 목록 주소만 담음. 결제 받을 계좌가 바뀌면 할 일 없이 알림과 결제 수단 주소만(계좌번호 없음, REQ-198)"
     - id: SCR-020
       name: 주문 목록
       path: /owner/orders
@@ -456,11 +456,11 @@
           path: /owner/payment-destination
           access: 사장님
           status: active
-          flows: [FL-001]
+          flows: [FL-001, FL-002]
           terms: [CTX-004, TERM-049]
           specs: [SPEC-006]
           apis: [API-024, API-025]
-          note: "가게 명의 계좌(있으면 카드 결제 링크)를 등록하거나 바꿈. 없으면 예약 링크가 나오지 않음(REQ-164)"
+          note: "가게 명의 계좌(있으면 카드 결제 링크)를 등록하거나 바꿈. 없으면 예약 링크가 나오지 않음(REQ-164). 바꾸면 사장님 카카오 알림과 바꾼 뒤 결제 안내부터 새 계좌, 영업 신고가 확인된 가게는 확인된 예금주의 계좌로만(REQ-198, REQ-199)"
         - id: SCR-041
           name: 카카오톡 채널 연결
           path: /owner/kakao-channel
@@ -534,12 +534,11 @@
       path: /operator/shops
       access: 운영자
       status: active
-      flows: []
-      no_flow: "영업 신고 확인으로 이동하는 목록"
+      flows: [FL-014]
       terms: [CTX-007, TERM-053, TERM-074]
       specs: [SPEC-003, SPEC-002]
       apis: [API-012, API-005, API-006]
-      note: "확인할 가게 목록. 운영자의 첫 화면이고 로그아웃도 여기서"
+      note: "확인할 가게 목록. 운영자의 첫 화면이고 로그아웃도 여기서. 손님 문제나 분쟁으로 가게 기록을 찾을 때도 여기서 가게를 고름(FL-014)"
       children:
         - id: SCR-048
           name: 영업 신고 확인
@@ -550,7 +549,8 @@
           terms: [CTX-007, TERM-053, TERM-074]
           specs: [SPEC-003]
           apis: [API-013, API-014]
-          note: "신고증 사진을 직접 보고 확인됨이나 보류(사유)를 기록"
+          note: "신고증 사진과 결제 계좌의 은행·예금주·끝 4자리를 직접 보고(예금주가 대표자·상호와 같은지) 확인됨이나 보류(사유)를 기록. 결제 계좌가 없으면 확인됨을 남기지 않음(REQ-197). '가게 기록 보기'로 SCR-050"
+          opens: [SCR-050]
     - id: SCR-049
       name: 운영자 알림
       path: /operator/alerts
@@ -562,3 +562,14 @@
       specs: [SPEC-008, SPEC-010, SPEC-017]
       apis: [API-015]
       note: "다른 가게에 이미 연결된 채널, 처리방침의 국외 이전 항목 누락, 한 가게의 AI 실패 반복. 내용 없이 건수만"
+    - id: SCR-050
+      name: 가게 기록 보기
+      path: /operator/shops/:shopId/records
+      also_paths: [/operator/shops/:shopId/consultations/:consultationId, /operator/shops/:shopId/orders/:orderId]
+      access: 운영자
+      status: active
+      flows: [FL-014]
+      terms: [CTX-007, TERM-074, TERM-053, TERM-046, TERM-001]
+      specs: [SPEC-073, SPEC-074]
+      apis: [API-074, API-075, API-076, API-077]
+      note: "손님 문제·분쟁·사장님의 보관 기록 요청 때 가게의 주문·상담을 가린 값으로만 보고, 사유를 적어 원래 값이나 보관 기록 하나를 엶. 본 것과 연 것은 접속기록에 남고 연 값은 저장·내려받기 없음(REQ-194~196)"
