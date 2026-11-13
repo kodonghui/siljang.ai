@@ -733,7 +733,7 @@ S["ConsultationMessage"] = all_required({
 })
 S["ConsultationMessagePage"] = all_required({
     "consultationId": UUID,
-    "status": enum(["open", "awaiting_owner", "dropped", "ordered", "deleted"]),
+    "status": enum(["open", "awaiting_owner", "dropped", "ordered", "ended", "deleted"]),
     "customerChannelFriend": boolean(),
     "items": arr(ref("ConsultationMessage"), 0, 100),
     "nextCursor": nullable(CURSOR),

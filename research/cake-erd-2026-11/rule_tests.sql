@@ -6,6 +6,8 @@
 -- 2부: 규칙마다 어기는 쓰기 하나. 기대한 제약으로 막히면 ok, 들어가거나 다른 제약에 걸리면 테스트 실패.
 --      같은 잠금 번호를 읽고 늦게 쓴 쓰기(expect_stale)는 0행이면 ok, 덮어쓰면 테스트 실패(설계 재검토 H12, README 4절 A6).
 --      1부의 주문·변경 요청 쓰기는 앱처럼 잠금 번호를 하나씩 올림.
+--      끝에서 지우기(README 6절)를 정한 차례대로 실제로 돌려(pg_temp.purge_run) 남은 행과 값이 기대한 값인지 봄(expect_left,
+--      설계 재검토 H3). 지운 것도 끝의 ROLLBACK으로 함께 되돌림.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -59,6 +61,23 @@ BEGIN
   INSERT INTO rule_results VALUES (test_name, err IS NULL AND first_rows = 1 AND stale_rows = 0,
     coalesce(err, CASE WHEN first_rows <> 1 THEN '먼저 쓴 쪽이 ' || first_rows || '행'
                        WHEN stale_rows <> 0 THEN '늦은 쓰기가 ' || stale_rows || '행을 덮어씀' ELSE '0행' END));
+END
+$fn$;
+
+-- 값 하나를 돌려주는 쿼리를 돌려 기대한 값(want)과 같은지 봄. 오류가 나면 그 오류를 실패로 남김. 쓴 것은 되돌리지 않음(설계 재검토 H3, 지우기 결과)
+CREATE FUNCTION pg_temp.expect_left(test_name text, query text, want text) RETURNS void
+LANGUAGE plpgsql AS $fn$
+DECLARE
+  got text;
+  err text;
+BEGIN
+  BEGIN
+    EXECUTE query INTO got;
+  EXCEPTION
+    WHEN OTHERS THEN err := SQLSTATE || ' ' || SQLERRM;
+  END;
+  INSERT INTO rule_results VALUES (test_name, err IS NULL AND got IS NOT DISTINCT FROM want,
+    coalesce(err, '값 ' || coalesce(got, '(빈 값)') || ', 기대 ' || want));
 END
 $fn$;
 
@@ -894,6 +913,341 @@ SELECT pg_temp.expect_stale('H12 같은 잠금 번호를 읽은 변경 수락 �
     WHERE id = 'd2000000-0000-0000-0000-000000000001' AND lock_version = 3$$], $$
   UPDATE change_requests SET status = 'closed_by_cancel', closed_at = now(), lock_version = lock_version + 1
   WHERE id = 'd2000000-0000-0000-0000-000000000001' AND lock_version = 3$$);
+
+-- 설계 재검토 H3(보관과 지우기, README 6절)
+SELECT pg_temp.expect_fail('REQ-190 키를 지운 손님에 지운 시각 없음', 'customers_purged_chk', ARRAY[$$
+  UPDATE customers SET kakao_user_key = NULL WHERE id = 'c0000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-189 닫은 시각 없는 상담 끝남', 'consultations_ended_chk', ARRAY[$$
+  UPDATE consultations SET status = 'ended' WHERE id = 'c1000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('SPEC-025 받기 전 주문에 끝난 시각', 'orders_finished_chk', ARRAY[$$
+  UPDATE orders SET finished_at = now(), lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('SPEC-065 끝나지 않은 주문의 개인정보를 지움', 'orders_purged_chk', ARRAY[$$
+  UPDATE orders SET personal_data_purged_at = now(), lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('REQ-188 설명을 둔 채 지운 시각', 'issue_details_purged_chk', ARRAY[$$
+  UPDATE issue_details SET content_purged_at = now() WHERE id = 'f1000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-187 끝난 날까지만 두는 보관 기록', 'kept_records_keep_chk', ARRAY[$$
+  INSERT INTO kept_records (shop_id, order_id, finished_at, contract_keep_until)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', now(), now())$$]);
+SELECT pg_temp.expect_fail('REQ-188 신고 기록 없이 신고를 지운 표시', 'kept_records_issue_purged_chk', ARRAY[$$
+  INSERT INTO kept_records (shop_id, order_id, finished_at, contract_keep_until, issue_purged_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', now(), now() + interval '5 years', now())$$]);
+SELECT pg_temp.expect_fail('SPEC-065 주문 하나에 보관 기록 둘', 'kept_records_order_uq', ARRAY[$$
+  INSERT INTO kept_records (shop_id, order_id, finished_at, contract_keep_until)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', now(), now() + interval '5 years')$$, $$
+  INSERT INTO kept_records (shop_id, order_id, finished_at, contract_keep_until)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', now(), now() + interval '5 years')$$]);
+
+-- 지우기(README 6절)를 now_at 시각에 돌린 것처럼 차례대로 씀: 1 끝나고 30일 지난 주문 → 2 닫히고 30일 지난 상담 →
+-- 3 3년 지난 문제 신고 기록 → 4 5년 지난 보관 기록 → 5 손님의 카카오 사용자 키 → 운영 기록에 건수만. 앱은 주문 하나·상담 하나를
+-- 한 트랜잭션으로 하고 사진 파일은 트랜잭션이 끝난 뒤 지움(여기서는 한 번에 함). 30일·3년·5년은 잠정(5-2 질문 7)
+CREATE FUNCTION pg_temp.purge_run(now_at timestamptz) RETURNS text
+LANGUAGE plpgsql AS $fn$
+DECLARE
+  due uuid[];
+  cons uuid[];
+  n_orders int;
+  n_cons int;
+  n_issues int;
+  n_kept int;
+  n_customers int;
+BEGIN
+  -- 1. 끝나고 30일 지난 주문: 보관 기록으로 나누고(주문자 이름은 마지막 버전에서 옮김) 개인정보를 지움
+  SELECT coalesce(array_agg(id), '{}') INTO due FROM orders
+   WHERE finished_at <= now_at - interval '30 days' AND personal_data_purged_at IS NULL;
+  INSERT INTO kept_records (shop_id, order_id, customer_name, finished_at, contract_keep_until, issue_keep_until, created_at)
+  SELECT o.shop_id, o.id,
+         (SELECT d.customer_name FROM order_details d WHERE d.order_id = o.id AND d.customer_name IS NOT NULL ORDER BY d.version DESC LIMIT 1),
+         o.finished_at, o.finished_at + interval '5 years',
+         CASE WHEN EXISTS (SELECT 1 FROM issue_reports r WHERE r.order_id = o.id) THEN o.finished_at + interval '3 years' END,
+         now_at
+    FROM orders o WHERE o.id = ANY (due);
+  UPDATE order_details SET customer_name = NULL, customer_phone = NULL, allergy_answer = NULL, excluded_ingredients = NULL,
+         lettering = NULL, design_notes = NULL
+   WHERE order_id = ANY (due);
+  UPDATE order_drafts SET customer_name = NULL, customer_phone = NULL, allergy_answer = NULL, excluded_ingredients = NULL,
+         lettering = NULL, design_notes = NULL, updated_at = now_at
+   WHERE id IN (SELECT draft_id FROM orders WHERE id = ANY (due));
+  DELETE FROM reference_photos WHERE draft_id IN (SELECT draft_id FROM orders WHERE id = ANY (due));
+  UPDATE payment_requests SET depositor_name = NULL, version = version + 1 WHERE order_id = ANY (due) AND depositor_name IS NOT NULL;
+  UPDATE refunds SET refund_bank_name = NULL, refund_account_number = NULL, refund_holder_name = NULL
+   WHERE order_id = ANY (due) AND num_nonnulls(refund_bank_name, refund_account_number, refund_holder_name) > 0;
+  UPDATE confirm_cards SET payload = '{}'
+   WHERE payload <> '{}' AND (order_id = ANY (due) OR draft_id IN (SELECT draft_id FROM orders WHERE id = ANY (due)));
+  UPDATE change_requests SET changes = '{}', lock_version = lock_version + 1 WHERE order_id = ANY (due) AND changes <> '{}';
+  UPDATE owner_tasks SET detail = NULL
+   WHERE detail IS NOT NULL AND (order_id = ANY (due)
+      OR change_request_id IN (SELECT id FROM change_requests WHERE order_id = ANY (due))
+      OR issue_report_id IN (SELECT id FROM issue_reports WHERE order_id = ANY (due))
+      OR payment_request_id IN (SELECT id FROM payment_requests WHERE order_id = ANY (due))
+      OR refund_id IN (SELECT id FROM refunds WHERE order_id = ANY (due)));
+  DELETE FROM notifications WHERE order_id = ANY (due);
+  UPDATE orders SET personal_data_purged_at = now_at, lock_version = lock_version + 1, updated_at = now_at WHERE id = ANY (due);
+  n_orders := cardinality(due);
+
+  -- 2. 문의 끊김·상담 끝남 뒤 30일 지난 상담: 열린 에스컬레이션 건이 없고 다룬 주문이 모두 1을 지났으면 내용을 지움
+  SELECT coalesce(array_agg(c.id), '{}') INTO cons FROM consultations c
+   WHERE ((c.status = 'dropped' AND c.dropped_at <= now_at - interval '30 days')
+       OR (c.status = 'ended' AND c.ended_at <= now_at - interval '30 days'))
+     AND NOT EXISTS (SELECT 1 FROM handoffs h WHERE h.consultation_id = c.id AND h.status = 'open')
+     AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.personal_data_purged_at IS NULL AND (o.consultation_id = c.id
+           OR o.id IN (SELECT order_id FROM confirm_cards WHERE consultation_id = c.id)
+           OR o.id IN (SELECT order_id FROM issue_details WHERE consultation_id = c.id)
+           OR o.id IN (SELECT order_id FROM handoffs WHERE consultation_id = c.id)
+           OR o.id IN (SELECT order_id FROM notifications WHERE consultation_id = c.id)));
+  -- 묶인 사장님 알림(batched_into_id)이 자기 테이블을 참조해도 알림은 지우지 않고 할 일 연결만 비움(RC-03)
+  UPDATE owner_alerts SET owner_task_id = NULL
+   WHERE owner_task_id IN (SELECT t.id FROM owner_tasks t JOIN handoffs h ON h.id = t.handoff_id WHERE h.consultation_id = ANY (cons));
+  DELETE FROM owner_tasks WHERE handoff_id IN (SELECT id FROM handoffs WHERE consultation_id = ANY (cons));
+  DELETE FROM handoffs WHERE consultation_id = ANY (cons);
+  DELETE FROM confirm_cards WHERE draft_id IN (SELECT d.id FROM order_drafts d
+    WHERE d.consultation_id = ANY (cons) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id));
+  DELETE FROM quotes WHERE draft_id IN (SELECT d.id FROM order_drafts d
+    WHERE d.consultation_id = ANY (cons) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id));
+  DELETE FROM reference_photos WHERE draft_id IN (SELECT id FROM order_drafts WHERE consultation_id = ANY (cons));
+  DELETE FROM issue_photos WHERE issue_details_id IN (SELECT id FROM issue_details WHERE consultation_id = ANY (cons) AND status <> 'reported');
+  DELETE FROM issue_details WHERE consultation_id = ANY (cons) AND status <> 'reported';
+  UPDATE issue_photos SET message_id = NULL WHERE message_id IN (SELECT id FROM messages WHERE consultation_id = ANY (cons));
+  DELETE FROM order_drafts d WHERE d.consultation_id = ANY (cons) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id);
+  DELETE FROM masked_values WHERE consultation_id = ANY (cons);
+  DELETE FROM notifications WHERE consultation_id = ANY (cons);
+  DELETE FROM ai_tool_calls WHERE consultation_id = ANY (cons);
+  DELETE FROM messages WHERE consultation_id = ANY (cons);
+  UPDATE consultations SET status = 'deleted', deleted_at = now_at, turn_trace_id = NULL, turn_started_at = NULL WHERE id = ANY (cons);
+  n_cons := cardinality(cons);
+
+  -- 3. 끝나고 3년 지난 문제 신고 기록: 신고 설명과 신고 사진(신고·보상 행은 남음)
+  SELECT coalesce(array_agg(order_id), '{}') INTO due FROM kept_records
+   WHERE issue_keep_until <= now_at AND issue_purged_at IS NULL;
+  DELETE FROM issue_photos WHERE issue_details_id IN (SELECT id FROM issue_details WHERE order_id = ANY (due) AND status = 'reported');
+  UPDATE issue_details SET description = NULL, content_purged_at = now_at, updated_at = now_at
+   WHERE order_id = ANY (due) AND status = 'reported';
+  UPDATE kept_records SET issue_purged_at = now_at WHERE order_id = ANY (due);
+  n_issues := cardinality(due);
+
+  -- 4. 끝나고 5년 지난 보관 기록: 주문자 이름과 함께 지움. 주문·결제·환불 행은 개인정보 없이 남음
+  DELETE FROM kept_records WHERE contract_keep_until <= now_at;
+  GET DIAGNOSTICS n_kept = ROW_COUNT;
+
+  -- 5. 상담이 모두 지워지고 주문이 모두 보관 기록이 된 손님의 카카오 사용자 키
+  UPDATE customers u SET kakao_user_key = NULL, purged_at = now_at
+   WHERE u.kakao_user_key IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM consultations c WHERE c.customer_id = u.id AND c.status <> 'deleted')
+     AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = u.id AND o.personal_data_purged_at IS NULL);
+  GET DIAGNOSTICS n_customers = ROW_COUNT;
+
+  INSERT INTO ops_events (kind, count, detail, created_at)
+  VALUES ('purge_run', n_orders + n_cons + n_issues + n_kept + n_customers,
+          jsonb_build_object('orders', n_orders, 'consultations', n_cons, 'issues', n_issues, 'kept_ended', n_kept, 'customers', n_customers),
+          now_at);
+  RETURN format('orders %s, consultations %s, issues %s, kept_ended %s, customers %s', n_orders, n_cons, n_issues, n_kept, n_customers);
+END
+$fn$;
+
+-- 끝나 30일 뒤 지울 주문 넷(d0..01·02·04·05)에 남은 개인정보: 주문 내용·초안의 이름·연락처·알레르기·빼야 할 재료·문구·디자인 설명,
+-- 참고 사진, 입금자 이름, 환불 계좌, 카드·변경 요청 내용, 손님 안내 글, 할 일의 글감
+CREATE FUNCTION pg_temp.order_personal_left() RETURNS bigint
+LANGUAGE sql AS $fn$
+  WITH o AS (SELECT id, draft_id FROM orders WHERE id IN ('d0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002',
+                                                         'd0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000005'))
+  SELECT (SELECT count(*) FROM order_details WHERE order_id IN (SELECT id FROM o)
+            AND num_nonnulls(customer_name, customer_phone, allergy_answer, excluded_ingredients, lettering, design_notes) > 0)
+       + (SELECT count(*) FROM order_drafts WHERE id IN (SELECT draft_id FROM o)
+            AND num_nonnulls(customer_name, customer_phone, allergy_answer, excluded_ingredients, lettering, design_notes) > 0)
+       + (SELECT count(*) FROM reference_photos WHERE draft_id IN (SELECT draft_id FROM o))
+       + (SELECT count(*) FROM payment_requests WHERE order_id IN (SELECT id FROM o) AND depositor_name IS NOT NULL)
+       + (SELECT count(*) FROM refunds WHERE order_id IN (SELECT id FROM o)
+            AND num_nonnulls(refund_bank_name, refund_account_number, refund_holder_name) > 0)
+       + (SELECT count(*) FROM confirm_cards WHERE (order_id IN (SELECT id FROM o) OR draft_id IN (SELECT draft_id FROM o)) AND payload <> '{}')
+       + (SELECT count(*) FROM change_requests WHERE order_id IN (SELECT id FROM o) AND changes <> '{}')
+       + (SELECT count(*) FROM notifications WHERE order_id IN (SELECT id FROM o))
+       + (SELECT count(*) FROM owner_tasks WHERE order_id IN (SELECT id FROM o) AND detail IS NOT NULL)
+$fn$;
+
+-- 30일 뒤 지울 상담 둘(손님 1의 상담 끝남 c1..01, 손님 3의 문의 끊김 c1..03)에 남은 내용: 대화, 마스킹 원본 값, 에스컬레이션 건과
+-- 그 할 일, 주문이 되지 않은 초안과 그 견적·카드, 참고 사진, 신고되지 않은 신고 내용, 대화에 묶인 신고 사진, 손님 안내, AI 도구 호출 기록
+CREATE FUNCTION pg_temp.consult_content_left() RETURNS bigint
+LANGUAGE sql AS $fn$
+  WITH c AS (SELECT unnest(ARRAY['c1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003']::uuid[]) AS id),
+       u AS (SELECT d.id FROM order_drafts d WHERE d.consultation_id IN (SELECT id FROM c) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id))
+  SELECT (SELECT count(*) FROM messages WHERE consultation_id IN (SELECT id FROM c))
+       + (SELECT count(*) FROM masked_values WHERE consultation_id IN (SELECT id FROM c))
+       + (SELECT count(*) FROM handoffs WHERE consultation_id IN (SELECT id FROM c))
+       + (SELECT count(*) FROM owner_tasks WHERE handoff_id IN (SELECT id FROM handoffs WHERE consultation_id IN (SELECT id FROM c)))
+       + (SELECT count(*) FROM u)
+       + (SELECT count(*) FROM quotes WHERE draft_id IN (SELECT id FROM u))
+       + (SELECT count(*) FROM confirm_cards WHERE draft_id IN (SELECT id FROM u))
+       + (SELECT count(*) FROM reference_photos WHERE draft_id IN (SELECT id FROM order_drafts WHERE consultation_id IN (SELECT id FROM c)))
+       + (SELECT count(*) FROM issue_details WHERE consultation_id IN (SELECT id FROM c) AND status <> 'reported')
+       + (SELECT count(*) FROM issue_photos WHERE message_id IN (SELECT id FROM messages WHERE consultation_id IN (SELECT id FROM c))
+            OR issue_details_id IN (SELECT id FROM issue_details WHERE consultation_id IN (SELECT id FROM c) AND status <> 'reported'))
+       + (SELECT count(*) FROM notifications WHERE consultation_id IN (SELECT id FROM c))
+       + (SELECT count(*) FROM ai_tool_calls WHERE consultation_id IN (SELECT id FROM c))
+$fn$;
+
+-- 지우기가 건드리지 않아야 할 계약·결제 기록과 남겨 두는 행의 수
+CREATE FUNCTION pg_temp.kept_counts() RETURNS text
+LANGUAGE sql AS $fn$
+  SELECT concat_ws('/', (SELECT count(*) FROM orders), (SELECT count(*) FROM order_details), (SELECT count(*) FROM payment_requests),
+         (SELECT count(*) FROM payments), (SELECT count(*) FROM refunds), (SELECT count(*) FROM change_requests),
+         (SELECT count(*) FROM issue_reports), (SELECT count(*) FROM slot_holds), (SELECT count(*) FROM productions),
+         (SELECT count(*) FROM ledger_rows), (SELECT count(*) FROM ledger_writes), (SELECT count(*) FROM reviews),
+         (SELECT count(*) FROM photo_consents), (SELECT count(*) FROM owner_alerts), (SELECT count(*) FROM ai_calls),
+         (SELECT count(*) FROM customers))
+$fn$;
+
+-- 지우기가 건드리는 테이블의 모든 행과 값(운영 기록은 빼고)
+CREATE FUNCTION pg_temp.purge_fingerprint() RETURNS text
+LANGUAGE sql AS $fn$
+  SELECT md5(string_agg(r, E'\n' ORDER BY r)) FROM (
+              SELECT 'customers ' || t::text AS r FROM customers t
+    UNION ALL SELECT 'consultations ' || t::text FROM consultations t
+    UNION ALL SELECT 'messages ' || t::text FROM messages t
+    UNION ALL SELECT 'masked_values ' || t::text FROM masked_values t
+    UNION ALL SELECT 'order_drafts ' || t::text FROM order_drafts t
+    UNION ALL SELECT 'reference_photos ' || t::text FROM reference_photos t
+    UNION ALL SELECT 'quotes ' || t::text FROM quotes t
+    UNION ALL SELECT 'orders ' || t::text FROM orders t
+    UNION ALL SELECT 'confirm_cards ' || t::text FROM confirm_cards t
+    UNION ALL SELECT 'change_requests ' || t::text FROM change_requests t
+    UNION ALL SELECT 'order_details ' || t::text FROM order_details t
+    UNION ALL SELECT 'handoffs ' || t::text FROM handoffs t
+    UNION ALL SELECT 'issue_details ' || t::text FROM issue_details t
+    UNION ALL SELECT 'issue_photos ' || t::text FROM issue_photos t
+    UNION ALL SELECT 'issue_reports ' || t::text FROM issue_reports t
+    UNION ALL SELECT 'payment_requests ' || t::text FROM payment_requests t
+    UNION ALL SELECT 'payments ' || t::text FROM payments t
+    UNION ALL SELECT 'refunds ' || t::text FROM refunds t
+    UNION ALL SELECT 'owner_tasks ' || t::text FROM owner_tasks t
+    UNION ALL SELECT 'owner_alerts ' || t::text FROM owner_alerts t
+    UNION ALL SELECT 'notifications ' || t::text FROM notifications t
+    UNION ALL SELECT 'ai_tool_calls ' || t::text FROM ai_tool_calls t
+    UNION ALL SELECT 'kept_records ' || t::text FROM kept_records t) s
+$fn$;
+
+-- 지우기를 돌려 볼 데이터. 손님 1의 상담은 다룬 주문(주문 1·재제작 2·주문 4)이 모두 끝나 상담 끝남, 손님 2의 상담은 주문 3이
+-- 끝나지 않아(보내지 않은 환불) 그대로, 손님 3의 상담은 주문 없이 문의 끊김. 사장님 알림 하나(f8..08)는 에스컬레이션 할 일의 알림(f8..07)에 묶임
+UPDATE productions SET production_started_at = now(), completed_at = now(), handed_over_at = now(), handover_kind = 'pickup'
+ WHERE id = 'f0000000-0000-0000-0000-000000000002';
+UPDATE orders SET lock_version = lock_version + 1, status = 'received' WHERE id = 'd0000000-0000-0000-0000-000000000002';
+UPDATE slot_holds SET status = 'done', done_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000002';
+UPDATE handoffs SET status = 'answered', answer_text = '드셔도 괜찮아요', answered_at = now() WHERE id = 'f6000000-0000-0000-0000-000000000001';
+UPDATE owner_tasks SET wait_status = 'answered', closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000002';
+UPDATE payment_requests SET depositor_name = '이손님', version = version + 1 WHERE id = 'e0000000-0000-0000-0000-000000000001';
+UPDATE owner_tasks SET detail = '{"depositor":"이손님"}' WHERE id = 'f7000000-0000-0000-0000-000000000001';
+INSERT INTO owner_alerts (id, shop_id, owner_task_id, kind, event_key, status, attempts, sent_at, kakao_task_id, requested_at) VALUES
+  ('f8000000-0000-0000-0000-000000000007', 'a2000000-0000-0000-0000-000000000001', 'f7000000-0000-0000-0000-000000000002', 'new_task',
+   'alert:task:f7..02', 'sent', 1, now(), 'task-alert-7', now());
+INSERT INTO owner_alerts (id, shop_id, owner_task_id, kind, event_key, status, batched_into_id) VALUES
+  ('f8000000-0000-0000-0000-000000000008', 'a2000000-0000-0000-0000-000000000001', 'f7000000-0000-0000-0000-000000000001', 'new_task',
+   'alert:batch:f7..01', 'batched', 'f8000000-0000-0000-0000-000000000007');
+UPDATE orders SET finished_at = now(), lock_version = lock_version + 1
+ WHERE id IN ('d0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002',
+              'd0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000005');
+UPDATE consultations SET status = 'ended', ended_at = now() WHERE id = 'c1000000-0000-0000-0000-000000000001';
+INSERT INTO customers (id, shop_id, kakao_channel_id, kakao_user_key, channel_friend, friend_checked_at) VALUES
+  ('c0000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'user-key-3', false, now());
+INSERT INTO consultations (id, shop_id, customer_id, status, ai_disclosed_at, last_customer_message_at, dropped_at) VALUES
+  ('c1000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000003', 'dropped', now(), now(), now());
+INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id, delivery, sent_at) VALUES
+  ('c2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'inbound', 'customer', 'photo', 'km-5', NULL, 'trace-5', NULL, NULL),
+  ('c2000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'inbound', 'customer', 'photo', 'km-6', NULL, 'trace-6', NULL, NULL),
+  ('c2000000-0000-0000-0000-000000000007', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'inbound', 'customer', 'text', 'km-7', '연락처는 [전화번호1]이에요', 'trace-7', NULL, NULL);
+INSERT INTO masked_values (id, shop_id, consultation_id, kind, placeholder, original_value) VALUES
+  ('c3000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'phone', '[전화번호1]', '010-5555-4444');
+INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_at, size_option_id, flavor_option_id,
+                          lettering, customer_name, customer_phone, order_kind) VALUES
+  ('c4000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'active', 1,
+   'b0000000-0000-0000-0000-000000000001', '2026-12-26 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
+   '축하해', '박손님', '010-5555-4444', 'custom');
+INSERT INTO reference_photos (id, shop_id, draft_id, message_id, position, storage_key, content_type, byte_size) VALUES
+  ('c5000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000006',
+   'c2000000-0000-0000-0000-000000000005', 1, 'ref/3-1.jpg', 'image/jpeg', 1500000);
+INSERT INTO quotes (id, shop_id, draft_id, draft_revision, price_list_id, operating_rules_id, order_kind, display_kind, amount, amount_max, basis, valid_until) VALUES
+  ('c6000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000006', 1,
+   'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', 'custom', 'range', 35000, 50000, '{"lines":["1호","사진 디자인"]}', now() + interval '72 hours');
+INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, draft_id, draft_revision, payload, expires_at) VALUES
+  ('c7000000-0000-0000-0000-000000000017', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000003',
+   'card-orderer-info-0003', 'orderer_info', 'c4000000-0000-0000-0000-000000000006', 1, '{"fields":["customer_name","customer_phone"]}', now() + interval '30 minutes');
+INSERT INTO issue_details (id, shop_id, consultation_id, description, status) VALUES
+  ('f1000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', '다른 가게 케이크였어요', 'abandoned');
+INSERT INTO issue_photos (id, shop_id, issue_details_id, message_id, position, storage_key, content_type, byte_size) VALUES
+  ('f1100000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000003',
+   'c2000000-0000-0000-0000-000000000006', 1, 'issue/3-1.jpg', 'image/jpeg', 900000);
+INSERT INTO notifications (id, shop_id, customer_id, consultation_id, kind, event_key, template_key, body, status) VALUES
+  ('f9000000-0000-0000-0000-000000000007', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000003',
+   'c1000000-0000-0000-0000-000000000003', 'owner_reply', 'notice:c1..03:owner_reply', 'owner_reply_v1', '사장님 답이 왔어요: 사진 디자인은 3일 전까지 주문해 주세요.', 'deferred');
+INSERT INTO ai_calls (id, shop_id, consultation_id, trace_id, attempt, provider, model, prompt_version, sent_at, result, error_kind) VALUES
+  ('fd000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'trace-7', 1,
+   'provider-x', 'model-x', 'consult-v1', now(), 'failure', 'model_error');
+INSERT INTO ai_tool_calls (id, shop_id, ai_call_id, consultation_id, tool_name, target_id, args_masked, result, duration_ms) VALUES
+  ('fe000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'fd000000-0000-0000-0000-000000000002',
+   'c1000000-0000-0000-0000-000000000003', 'quote', 'c4000000-0000-0000-0000-000000000006', '{"size":"1호","photo":true}', 'ok', 40);
+SET CONSTRAINTS ALL IMMEDIATE;
+SET CONSTRAINTS ALL DEFERRED;
+
+SELECT pg_temp.expect_left('REQ-189 상담 끝남 뒤 같은 손님의 새 상담', $$
+  WITH c AS (INSERT INTO consultations (id, shop_id, customer_id, status, ai_disclosed_at, last_customer_message_at)
+             VALUES ('c1000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
+                     'open', now(), now())
+             RETURNING status)
+  SELECT status FROM c$$, 'open');
+CREATE TEMP TABLE purge_before AS SELECT pg_temp.kept_counts() AS counts;
+SELECT pg_temp.expect_left('SPEC-065 지우기 전 끝난 주문의 개인정보', $$SELECT pg_temp.order_personal_left()::text$$, '19');
+SELECT pg_temp.expect_left('SPEC-065 지우기 전 지울 상담의 내용', $$SELECT pg_temp.consult_content_left()::text$$, '21');
+SELECT pg_temp.expect_left('SPEC-065 첫 지우기(31일 뒤)', $$SELECT pg_temp.purge_run(now() + interval '31 days')$$,
+  'orders 4, consultations 2, issues 0, kept_ended 0, customers 1');
+SELECT pg_temp.expect_left('REQ-185 끝나고 30일 지난 주문의 개인정보 0건', $$SELECT pg_temp.order_personal_left()::text$$, '0');
+SELECT pg_temp.expect_left('REQ-185 주문자 이름은 보관 기록으로', $$
+  SELECT count(*) || '/' || string_agg(customer_name, ',' ORDER BY customer_name) || '/' || count(issue_keep_until) FROM kept_records$$,
+  '4/이손님,이손님,최손님/1');
+SELECT pg_temp.expect_left('REQ-187 계약·결제 기록은 그대로', $$SELECT (pg_temp.kept_counts() = (SELECT counts FROM purge_before))::text$$, 'true');
+SELECT pg_temp.expect_left('REQ-185 끝나지 않은 주문은 지우지 않음', $$
+  SELECT (SELECT count(customer_phone) FROM order_details WHERE order_id = 'd0000000-0000-0000-0000-000000000003') || '/' ||
+         (SELECT count(*) FROM reference_photos WHERE draft_id = 'c4000000-0000-0000-0000-000000000002') || '/' ||
+         (SELECT status FROM consultations WHERE id = 'c1000000-0000-0000-0000-000000000002') || '/' ||
+         (SELECT count(*) FROM kept_records WHERE order_id = 'd0000000-0000-0000-0000-000000000003')$$, '3/1/ordered/0');
+SELECT pg_temp.expect_left('REQ-186 상담 끝남·문의 끊김 30일 뒤 상담의 내용 0건', $$
+  SELECT pg_temp.consult_content_left() || '/' ||
+         (SELECT string_agg(status, ',' ORDER BY id) FROM consultations
+           WHERE id IN ('c1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003'))$$, '0/deleted,deleted');
+SELECT pg_temp.expect_left('H3 묶인 사장님 알림은 남고 할 일 연결만 비움(RC-03)', $$
+  SELECT (SELECT count(*) FROM owner_alerts WHERE id IN ('f8000000-0000-0000-0000-000000000007', 'f8000000-0000-0000-0000-000000000008')) || '/' ||
+         (SELECT count(*) FROM owner_alerts WHERE id = 'f8000000-0000-0000-0000-000000000007' AND owner_task_id IS NULL) || '/' ||
+         (SELECT status FROM owner_alerts WHERE id = 'f8000000-0000-0000-0000-000000000008') || '/' ||
+         (SELECT count(*) FROM owner_tasks WHERE id = 'f7000000-0000-0000-0000-000000000002')$$, '2/1/batched/0');
+SELECT pg_temp.expect_left('REQ-187 신고한 설명과 사진은 남음', $$
+  SELECT (SELECT description FROM issue_details WHERE id = 'f1000000-0000-0000-0000-000000000001') || '/' ||
+         (SELECT count(*) FROM issue_photos WHERE issue_details_id = 'f1000000-0000-0000-0000-000000000001' AND message_id IS NULL) || '/' ||
+         (SELECT count(*) FROM issue_details WHERE id = 'f1000000-0000-0000-0000-000000000003')$$, '케이크 옆면이 무너졌어요/1/0');
+SELECT pg_temp.expect_left('REQ-190 상담이 모두 지워지고 주문이 없는 손님의 키', $$
+  SELECT string_agg(coalesce(kakao_user_key, '-'), ',' ORDER BY id) || '/' || count(purged_at) FROM customers$$, 'user-key-1,user-key-2,-/1');
+CREATE TEMP TABLE purge_after_first AS SELECT pg_temp.purge_fingerprint() AS fp;
+SELECT pg_temp.expect_left('SPEC-065 같은 날 두 번째 지우기', $$SELECT pg_temp.purge_run(now() + interval '31 days')$$,
+  'orders 0, consultations 0, issues 0, kept_ended 0, customers 0');
+SELECT pg_temp.expect_left('SPEC-065 두 번 돌아도 남은 행과 값이 같음', $$
+  SELECT (pg_temp.purge_fingerprint() = (SELECT fp FROM purge_after_first))::text$$, 'true');
+SELECT pg_temp.expect_left('REQ-188 3년 지난 문제 신고 기록', $$SELECT pg_temp.purge_run(now() + interval '3 years 1 day')$$,
+  'orders 0, consultations 0, issues 1, kept_ended 0, customers 0');
+SELECT pg_temp.expect_left('REQ-188 신고 설명과 사진은 지우고 신고와 보상은 남음', $$
+  SELECT coalesce((SELECT description FROM issue_details WHERE id = 'f1000000-0000-0000-0000-000000000001'), '-') || '/' ||
+         (SELECT count(*) FROM issue_photos WHERE issue_details_id = 'f1000000-0000-0000-0000-000000000001') || '/' ||
+         (SELECT compensation FROM issue_reports WHERE id = 'f2000000-0000-0000-0000-000000000001') || '/' ||
+         ((SELECT content_purged_at FROM issue_details WHERE id = 'f1000000-0000-0000-0000-000000000001') IS NOT NULL
+          AND (SELECT issue_purged_at FROM kept_records WHERE order_id = 'd0000000-0000-0000-0000-000000000001') IS NOT NULL)::text$$,
+  '-/0/remake/true');
+SELECT pg_temp.expect_left('REQ-188 5년 지난 보관 기록', $$SELECT pg_temp.purge_run(now() + interval '5 years 1 day')$$,
+  'orders 0, consultations 0, issues 0, kept_ended 4, customers 0');
+SELECT pg_temp.expect_left('REQ-188 이름은 지우고 주문·결제 행은 개인정보 없이 남음', $$
+  SELECT (SELECT count(*) FROM kept_records) || '/' ||
+         (SELECT count(*) FROM orders WHERE personal_data_purged_at IS NOT NULL) || '/' ||
+         (SELECT count(*) FROM payments WHERE order_id IN (SELECT id FROM orders WHERE personal_data_purged_at IS NOT NULL)) || '/' ||
+         pg_temp.order_personal_left()$$, '0/4/3/0');
+SELECT pg_temp.expect_left('SPEC-065 운영 기록에는 건수만', $$
+  SELECT count(*) || '/' || sum((detail ->> 'kept_ended')::int) || '/' ||
+         count(*) FILTER (WHERE (SELECT bool_and(jsonb_typeof(value) = 'number') FROM jsonb_each(detail)))
+    FROM ops_events WHERE kind = 'purge_run' AND detail ? 'kept_ended'$$, '4/4/4');
+SET CONSTRAINTS ALL IMMEDIATE;  -- 지운 뒤에도 주문 행과 현재 버전 행이 맞는지 여기서 봄
+SET CONSTRAINTS ALL DEFERRED;
 
 -- 결과
 SELECT count(*) FILTER (WHERE ok) AS blocked, count(*) FILTER (WHERE NOT ok) AS not_blocked FROM rule_results \gset

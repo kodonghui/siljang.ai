@@ -7,6 +7,7 @@
 
 옮기는 것(check_erd.py E1이 견주는 것과 같음)
 - 테이블: 없는 테이블 더하기·남는 테이블 빼기, 테이블 설명, 컨텍스트 그룹
+- 새 테이블의 자리: erd_add_table은 그룹 밖 빈 곳에 두므로 그 컨텍스트 그룹 상자 안의 빈 곳으로 옮김(erd_move_table)
 - 컬럼: 없는 컬럼 더하기(스키마의 차례 자리로 옮김)·남는 컬럼 빼기, 타입·기본 키·NOT NULL·설명, 한 컬럼 UNIQUE 표시
 - 관계(외래 키): 없는 관계 잇기·남는 관계 빼기
 - 다이어그램에 두는 인덱스(조건 없는 인덱스와 여러 컬럼 UNIQUE): 더하기·빼기·다시 만들기
@@ -329,6 +330,46 @@ def memo_ops(schema_text: str, d: Diagram) -> list[dict]:
     return ops
 
 
+def place_new_tables(mcp, names: list[str]) -> list[dict]:
+    """새 테이블 자리: 그룹 상자 안에서 같은 그룹 테이블의 오른쪽이나 아래 자리 가운데, 위에서부터 처음으로 들어가고
+    어느 테이블과도 겹치지 않는 곳으로 옮김(너비는 erd_list의 어림값, 사이 60). 들어갈 곳이 없으면 그대로 두고 알림."""
+    tables: dict[str, dict] = {}
+    groups: dict[str, dict] = {}
+    offset = 0
+    while True:
+        page = json.loads(mcp.call("erd_list", path=ERD, offset=offset))
+        tables.update({t["name"]: t for t in page["tables"]})
+        groups.update({g["id"]: g for g in page.get("tableGroups", [])})
+        if page.get("nextOffset") is None:
+            break
+        offset = page["nextOffset"]
+    gap, pad, ops = 60, 24, []
+    for name in names:
+        t = tables[name]
+        g = groups.get(t.get("groupId"))
+        if not g:
+            continue
+        others = [o for o in tables.values() if o["name"] != name and o.get("groupId") == t["groupId"]]
+
+        def free(x: float, y: float) -> bool:
+            if (x < g["x"] + pad or y < g["y"] + pad or x + t["width"] > g["x"] + g["width"] - pad
+                    or y + t["height"] > g["y"] + g["height"] - pad):
+                return False
+            return all(x + t["width"] + gap <= o["x"] or o["x"] + o["width"] + gap <= x
+                       or y + t["height"] + gap <= o["y"] or o["y"] + o["height"] + gap <= y
+                       for o in tables.values() if o["name"] != name)
+
+        spots = sorted({(o["x"] + o["width"] + gap, o["y"]) for o in others} | {(o["x"], o["y"] + o["height"] + gap) for o in others},
+                       key=lambda p: (p[1], p[0]))
+        spot = next((p for p in spots if free(*p)), None)
+        if spot is None:
+            print(f"  {name}: 그룹 '{g['name']}' 상자 안에 빈 곳이 없어 자리를 그대로 둠")
+            continue
+        ops.append({"tool": "erd_move_table", "args": {"tableId": t["id"], "x": spot[0], "y": spot[1]}})
+        tables[name] = {**t, "x": spot[0], "y": spot[1]}
+    return ops
+
+
 def show(title: str, ops: list[dict]) -> None:
     print(f"{title}: 편집 {len(ops)}개")
     for op in ops:
@@ -365,6 +406,7 @@ def main(argv: list[str]) -> int:
     tables = build_erd.parse(schema_text)
 
     d = Diagram(root)
+    new_names = [t.name for t in tables if t.name not in d.tables]
     ops1 = step_tables_columns(schema_text, tables, d)
     show("1단계 테이블·컬럼", ops1)
     mcp = eb.Mcp(root) if write else None
@@ -372,6 +414,14 @@ def main(argv: list[str]) -> int:
         if write and ops1:
             run_batches(mcp, ops1)
             mcp.call("erd_save", path=ERD)
+        if write and new_names:
+            moves = place_new_tables(mcp, new_names)
+            show("1단계 새 테이블 자리", moves)
+            if moves:
+                run_batches(mcp, moves)
+                mcp.call("erd_save", path=ERD)
+        elif new_names:
+            print(f"1단계 새 테이블 자리: 더한 뒤 그룹 상자 안의 빈 곳으로 옮김(--write): {', '.join(new_names)}")
         d = Diagram(root)  # 새 컬럼 ID를 다시 읽음
         ops2 = step_relations_indexes(schema_text, tables, d) if (write or not ops1) else []
         if not write and ops1:
