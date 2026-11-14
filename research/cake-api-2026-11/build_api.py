@@ -305,10 +305,10 @@ def schemas():
     return S
 
 
-INFO_DESCRIPTION = """수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~076)에서 만들었다.
+INFO_DESCRIPTION = """수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~078)에서 만들었다.
 이 파일은 research/cake-api-2026-11/build_api.py가 만든다. 손으로 고치지 않는다.
 
-**API와 응답의 ID.** API마다 `x-corthex.id`(API-001~079)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
+**API와 응답의 ID.** API마다 `x-corthex.id`(API-001~082)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
 `x-corthex.omit`은 응답 목록(2xx·422·401·403·404·409·default) 가운데 그 API가 반환하지 않는 것과 사유, `x-corthex.kinds`는 케이스 유형마다 그 경우를 보여 주는 응답·예시다.
 
 **오류 형식.** 모든 오류는 RFC 9457 Problem Details(`application/problem+json`)에 `code`와 `traceId`를 더한 형식. 코드는 `components.x-corthex.errors`에만 있다.

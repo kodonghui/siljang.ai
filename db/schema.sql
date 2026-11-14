@@ -42,7 +42,7 @@ CREATE TABLE owners (
 );
 COMMENT ON TABLE owners IS 'TBL-001 사장님(TERM-044): 카카오 로그인으로 들어오는 가게 주인';
 
--- TBL-002 operators (CTX-007) ← SPEC-001, SPEC-003 | terms: TERM-074
+-- TBL-002 operators (CTX-007) ← SPEC-001, SPEC-003, SPEC-078 | terms: TERM-074
 CREATE TABLE operators (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 운영자 ID
   email            text NOT NULL CHECK (email ~ '^[^@[:space:]]+@[^@[:space:]]+$'), -- 운영자 계정 이메일. 비밀번호·2단계 인증 키는 인증 서비스나 시크릿 저장소에(REQ-135)
@@ -54,17 +54,20 @@ CREATE TABLE operators (
 CREATE UNIQUE INDEX operators_email_uq ON operators (lower(email)); -- 이메일 하나에 운영자 하나
 COMMENT ON TABLE operators IS 'TBL-002 운영자(TERM-074): 우리 서비스 쪽 사람, 영업 신고를 눈으로 확인';
 
--- TBL-003 shops (CTX-007) ← SPEC-001, SPEC-002, SPEC-003, SPEC-006, SPEC-009, SPEC-010, SPEC-011, SPEC-017, SPEC-024, SPEC-025, SPEC-052, SPEC-053, SPEC-068, SPEC-073 | terms: TERM-053
+-- TBL-003 shops (CTX-007) ← SPEC-001, SPEC-002, SPEC-003, SPEC-006, SPEC-009, SPEC-010, SPEC-011, SPEC-017, SPEC-024, SPEC-025, SPEC-036, SPEC-052, SPEC-053, SPEC-068, SPEC-073, SPEC-077, SPEC-078 | terms: TERM-053
 CREATE TABLE shops (
   id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 가게 ID. 모든 기록이 이 값으로 나뉨(SPEC-068)
   owner_id                  uuid NOT NULL REFERENCES owners (id) ON DELETE RESTRICT, -- 가게 주인
   name                      text NOT NULL CHECK (char_length(name) BETWEEN 1 AND 40), -- 가게 이름
-  contact_phone             text NOT NULL CHECK (contact_phone ~ '^[0-9-]{8,14}$'), -- 가게 연락처
-  pickup_address            text CHECK (char_length(pickup_address) BETWEEN 1 AND 200), -- 픽업 장소(가게 위치). 전날 안내에 포함함(SPEC-052). 등록 필드(SPEC-002)에 없어 가게 설정에서 받음
-  business_name             text NOT NULL CHECK (char_length(business_name) BETWEEN 1 AND 60), -- 상호
-  representative_name       text NOT NULL CHECK (char_length(representative_name) BETWEEN 1 AND 30), -- 대표자
-  business_reg_no           text NOT NULL CHECK (business_reg_no ~ '^[0-9]{10}$'), -- 사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시(SPEC-002)
+  contact_phone             text NOT NULL CHECK (contact_phone ~ '^[0-9-]{8,14}$'), -- 가게 연락처(전화번호). 예약 링크 페이지의 가게 신원 정보(REQ-239). 사장님이 가게 설정에서 바로 고침(REQ-244)
+  contact_email             text NOT NULL CHECK (char_length(contact_email) BETWEEN 3 AND 100 AND contact_email ~ '^[^@[:space:]]+@[^@[:space:]]+$'), -- 전자우편주소. 예약 링크 페이지의 가게 신원 정보(REQ-239). 사장님이 가게 설정에서 바로 고침(REQ-244)
+  business_address          text NOT NULL CHECK (char_length(business_address) BETWEEN 1 AND 200), -- 사업장 주소. 예약 링크 페이지와 확정 안내의 가게 신원 정보(REQ-239, REQ-242). 픽업 장소와 다를 수 있음. 사장님이 가게 설정에서 바로 고침(REQ-244)
+  pickup_address            text CHECK (char_length(pickup_address) BETWEEN 1 AND 200), -- 픽업 장소(가게 위치). 전날 안내에 포함함(SPEC-052). 등록 필드(SPEC-002)에 없어 가게 설정에서 받음(SPEC-077)
+  business_name             text NOT NULL CHECK (char_length(business_name) BETWEEN 1 AND 60), -- 상호. 등록 뒤에는 변경 요청을 운영자가 반영해야 바뀜(REQ-245, TBL-058)
+  representative_name       text NOT NULL CHECK (char_length(representative_name) BETWEEN 1 AND 30), -- 대표자 성명. 등록 뒤에는 변경 요청을 운영자가 반영해야 바뀜(REQ-245, TBL-058)
+  business_reg_no           text NOT NULL CHECK (business_reg_no ~ '^[0-9]{10}$'), -- 사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시(SPEC-002). 등록 뒤에는 변경 요청을 운영자가 반영해야 바뀜(REQ-245)
   mail_order_reg_no         text CHECK (char_length(mail_order_reg_no) BETWEEN 1 AND 40), -- 통신판매업 신고번호
+  mail_order_authority      text CHECK (char_length(mail_order_authority) BETWEEN 1 AND 40), -- 통신판매업 신고를 받은 기관(예: 서울특별시 마포구청). 신고번호와 함께 있음(REQ-239)
   mail_order_exemption      text CHECK (char_length(mail_order_exemption) BETWEEN 1 AND 200), -- 신고번호 대신 면제 사유
   food_license_no           text NOT NULL CHECK (char_length(food_license_no) BETWEEN 1 AND 30), -- 영업 신고 번호
   food_business_type        text NOT NULL CHECK (food_business_type IN ('instant_sale_manufacturing', 'bakery')), -- 영업 종류: 즉석판매제조·가공업, 제과점영업. 그 밖은 첫 버전에서 받지 않음
@@ -77,16 +80,17 @@ CREATE TABLE shops (
   entrustment_consented_at  timestamptz NOT NULL,              -- 그 조건에 동의한 시각
   time_zone                 text NOT NULL DEFAULT 'Asia/Seoul', -- 가게 시간대. 시각 계산은 이 시간대로(G8)
   completion_photo_enabled  boolean NOT NULL DEFAULT false,    -- 완성 사진 보내기(SPEC-009, 기본 꺼짐)
-  idle_close_hours          smallint NOT NULL DEFAULT 24 CHECK (idle_close_hours BETWEEN 1 AND 720), -- 문의 끊김까지 시간(REQ-211, 기본 24시간)
-  owner_wait_minutes        smallint NOT NULL DEFAULT 120 CHECK (owner_wait_minutes BETWEEN 10 AND 1440), -- 사장님 답 기다리는 시간(REQ-116, 기본 2시간)
-  daily_ai_cost_limit_krw   integer NOT NULL DEFAULT 5000 CHECK (daily_ai_cost_limit_krw BETWEEN 0 AND 1000000), -- 하루 AI 비용 한도(REQ-163, 기본 5,000원)
+  idle_close_hours          smallint NOT NULL DEFAULT 24 CHECK (idle_close_hours BETWEEN 1 AND 720), -- 문의 끊김까지 시간(REQ-211, 기본 24시간). 사장님이 바꾸면 저장한 때부터 씀(REQ-243)
+  owner_wait_minutes        smallint NOT NULL DEFAULT 120 CHECK (owner_wait_minutes BETWEEN 10 AND 1440), -- 사장님 답 기다리는 시간(REQ-116, 기본 2시간). 바꾸면 그 뒤 시작된 기다림부터(owner_tasks.wait_due_at, REQ-243)
+  daily_ai_cost_limit_krw   integer NOT NULL DEFAULT 5000 CHECK (daily_ai_cost_limit_krw BETWEEN 0 AND 1000000), -- 하루 AI 비용 한도(REQ-163, 기본 5,000원). 사장님이 정하고 바꾸면 저장한 때부터 그날 쓴 비용과 견줌(REQ-243)
   booking_slug              text CHECK (booking_slug ~ '^[a-z0-9][a-z0-9-]{2,39}$'), -- 예약 링크(TERM-042) 주소의 가게 몫. 낸 뒤 바뀌지 않음(SPEC-010)
   booking_issued_at         timestamptz,                       -- 예약 링크를 낸 시각
   created_at                timestamptz NOT NULL DEFAULT now(), -- 등록한 시각
   updated_at                timestamptz NOT NULL DEFAULT now(), -- 마지막으로 고친 시각
   CONSTRAINT shops_one_per_owner UNIQUE (owner_id),            -- 카카오 계정 하나에 가게 하나(R2, SPEC-002)
   CONSTRAINT shops_booking_slug_uq UNIQUE (booking_slug),      -- 가게마다 하나인 예약 링크
-  CONSTRAINT shops_mail_order_chk CHECK (mail_order_reg_no IS NOT NULL OR mail_order_exemption IS NOT NULL), -- 통신판매업 신고번호나 면제 사유(REQ-106)
+  CONSTRAINT shops_mail_order_chk CHECK (mail_order_reg_no IS NOT NULL OR mail_order_exemption IS NOT NULL), -- 통신판매업 신고번호나 면제 사유(REQ-239)
+  CONSTRAINT shops_mail_order_authority_chk CHECK ((mail_order_reg_no IS NULL) = (mail_order_authority IS NULL)), -- 신고번호와 신고를 받은 기관은 함께(REQ-239)
   CONSTRAINT shops_hold_reason_chk CHECK ((license_status = 'on_hold') = (license_hold_reason IS NOT NULL)), -- 보류에는 이유가 있음(SPEC-003)
   CONSTRAINT shops_reviewed_chk CHECK (license_status = 'pending' OR (license_reviewed_by IS NOT NULL AND license_reviewed_at IS NOT NULL)), -- 확인·보류는 운영자와 시각을 남김
   CONSTRAINT shops_booking_needs_license CHECK (booking_slug IS NULL OR license_status = 'verified'), -- 영업 신고 확인 전에는 예약 링크 없음(REQ-103)
@@ -94,7 +98,7 @@ CREATE TABLE shops (
 );
 CREATE INDEX shops_business_reg_no_idx ON shops (business_reg_no); -- 같은 사업자등록번호 중복 표시(SPEC-002)
 CREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending'; -- 운영자 확인 목록(SPEC-003)
-COMMENT ON TABLE shops IS 'TBL-003 가게(TERM-053): 영업 신고·처리 위탁 동의·예약 링크와 가게가 정하는 시간 값';
+COMMENT ON TABLE shops IS 'TBL-003 가게(TERM-053): 가게 신원 정보·영업 신고·처리 위탁 동의·예약 링크와 가게가 정하는 시간 값';
 
 -- TBL-004 kakao_channels (CTX-007) ← SPEC-008, SPEC-010, SPEC-011, SPEC-017, SPEC-066, SPEC-068, SPEC-075 | terms: TERM-053
 CREATE TABLE kakao_channels (
@@ -280,7 +284,7 @@ CREATE TABLE business_calendars (
   reply_start             time NOT NULL DEFAULT '09:00', -- 답하는 시간 시작(REQ-118). 사장님 답 기다림은 이 안에서만 셈
   reply_end               time NOT NULL DEFAULT '21:00', -- 답하는 시간 끝
   day_before_notice_time  time NOT NULL DEFAULT '18:00' CHECK (day_before_notice_time BETWEEN '08:00' AND '20:50'), -- 전날 안내 시각(SPEC-052)
-  review_request_time     time NOT NULL DEFAULT '11:00' CHECK (review_request_time BETWEEN '08:00' AND '20:50'), -- 후기 부탁 시각(SPEC-061, 인도한 다음 날)
+  review_request_time     time NOT NULL DEFAULT '11:00' CHECK (review_request_time BETWEEN '08:00' AND '20:50'), -- 후기 부탁 시각(SPEC-061, 인도한 다음 날). 바꾸면 아직 보내지 않은 후기 부탁부터 씀(REQ-243)
   updated_at              timestamptz NOT NULL DEFAULT now(), -- 마지막으로 바꾼 시각
   CONSTRAINT business_calendars_reply_chk CHECK (reply_start < reply_end) -- 시작이 끝보다 앞(SPEC-007)
 );
@@ -298,7 +302,7 @@ CREATE TABLE calendar_days (
 );
 COMMENT ON TABLE calendar_days IS 'TBL-014 영업 캘린더 날짜 행: 날짜별 휴무·마감과 가예약의 잠금 행';
 
--- TBL-015 payment_accounts (CTX-004) ← SPEC-003, SPEC-006, SPEC-032 | terms: none
+-- TBL-015 payment_accounts (CTX-004) ← SPEC-003, SPEC-006, SPEC-032, SPEC-078 | terms: none
 CREATE TABLE payment_accounts (
   id                         uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 결제 수단 ID
   shop_id                    uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 가게
@@ -622,7 +626,7 @@ CREATE TABLE change_requests (
 CREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference'); -- 한 주문에 열린 변경 요청 하나(1-5)
 COMMENT ON TABLE change_requests IS 'TBL-025 변경 요청: 확정된 주문을 바꾸자는 손님 요청과 사장님 답(1-5)';
 
--- TBL-026 order_details (CTX-003) ← SPEC-016, SPEC-029, SPEC-031, SPEC-033, SPEC-045, SPEC-050, SPEC-054, SPEC-059, SPEC-060, SPEC-064, SPEC-065, SPEC-073, SPEC-076 | terms: TERM-004
+-- TBL-026 order_details (CTX-003) ← SPEC-016, SPEC-029, SPEC-031, SPEC-033, SPEC-040, SPEC-045, SPEC-050, SPEC-054, SPEC-059, SPEC-060, SPEC-064, SPEC-065, SPEC-073, SPEC-076 | terms: TERM-004
 CREATE TABLE order_details (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 주문 내용 버전 ID
   shop_id               uuid NOT NULL,                   -- 가게
@@ -877,7 +881,7 @@ COMMENT ON TABLE payments IS 'TBL-032 확인된 결제(TERM-049): 결제 안내�
 ALTER TABLE orders ADD CONSTRAINT orders_confirmed_payment_fk FOREIGN KEY (shop_id, id, confirmed_payment_id)
   REFERENCES payments (shop_id, order_id, id) ON DELETE RESTRICT;
 
--- TBL-033 refunds (CTX-004) ← SPEC-016, SPEC-035, SPEC-036, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-049, SPEC-059, SPEC-065, SPEC-070, SPEC-071, SPEC-073 | terms: TERM-049
+-- TBL-033 refunds (CTX-004) ← SPEC-016, SPEC-035, SPEC-036, SPEC-040, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-049, SPEC-059, SPEC-065, SPEC-070, SPEC-071, SPEC-073 | terms: TERM-049
 CREATE TABLE refunds (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 환불 ID
   shop_id                uuid NOT NULL,                  -- 가게
@@ -1091,7 +1095,7 @@ CREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (co
 CREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL; -- 동의를 철회하면 먼저 내릴 행 찾기
 COMMENT ON TABLE portfolio_items IS 'TBL-041 포트폴리오(TERM-052): 손님이 게시에 동의한 사진만 올린 목록';
 
--- TBL-042 owner_tasks (CTX-008) ← SPEC-003, SPEC-007, SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-041, SPEC-042, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-049, SPEC-058, SPEC-059, SPEC-064, SPEC-065, SPEC-067, SPEC-071 | terms: TERM-059
+-- TBL-042 owner_tasks (CTX-008) ← SPEC-003, SPEC-007, SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-041, SPEC-042, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-049, SPEC-058, SPEC-059, SPEC-064, SPEC-065, SPEC-067, SPEC-071, SPEC-077 | terms: TERM-059
 CREATE TABLE owner_tasks (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 할 일 ID
   shop_id             uuid NOT NULL,                     -- 가게
@@ -1134,12 +1138,12 @@ CREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE clos
 CREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting'; -- 지연 안내 보낼 것 찾기(SPEC-024)
 COMMENT ON TABLE owner_tasks IS 'TBL-042 사장님 할 일: 사장님이 정할 일과 사장님 답 기다림(1-7)';
 
--- TBL-043 owner_alerts (CTX-008) ← SPEC-003, SPEC-006, SPEC-022, SPEC-024, SPEC-044, SPEC-046, SPEC-048, SPEC-050, SPEC-057, SPEC-058, SPEC-064, SPEC-065, SPEC-067, SPEC-076 | terms: TERM-035
+-- TBL-043 owner_alerts (CTX-008) ← SPEC-003, SPEC-006, SPEC-022, SPEC-024, SPEC-044, SPEC-046, SPEC-048, SPEC-050, SPEC-057, SPEC-058, SPEC-064, SPEC-065, SPEC-067, SPEC-076, SPEC-078 | terms: TERM-035
 CREATE TABLE owner_alerts (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 사장님 알림 ID
   shop_id          uuid NOT NULL,                        -- 가게
   owner_task_id    uuid,                                 -- 알린 할 일. 상담을 지울 때 그 상담의 에스컬레이션 할 일은 지우고 이 연결만 비움(SPEC-065, 설계 재검토 H3)
-  kind             text NOT NULL CHECK (kind IN ('new_task', 'task_realert', 'handoff_appended', 'health_concern', 'ledger_failing', 'license_on_hold', 'order_cancelled', 'change_not_applied', 'payment_account_changed')), -- 새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)·결제 받을 계좌 바뀜(할 일 없이 알림만, 계좌번호 없음, SPEC-067, REQ-198)
+  kind             text NOT NULL CHECK (kind IN ('new_task', 'task_realert', 'handoff_appended', 'health_concern', 'ledger_failing', 'license_on_hold', 'order_cancelled', 'change_not_applied', 'payment_account_changed', 'identity_change_applied', 'identity_change_on_hold')), -- 새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)·결제 받을 계좌 바뀜(할 일 없이 알림만, 계좌번호 없음, SPEC-067, REQ-198)·사업자 정보 변경 반영됨·보류됨(할 일 없이 알림만, SPEC-078, REQ-245)
   event_key        text NOT NULL,                        -- 알림마다 한 번(SPEC-067). 형식 alert:{알린 일}:{할 일 ID나 대상 ID}, 하루 한 번까지인 다시 알림은 뒤에 :{가게 날짜}(4절 A33)
   status           text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirming', 'sent', 'not_friend', 'failed', 'batched')), -- 보낼 것·발송 결과 확인 중·보냄(닿음 확인)·우리 채널 친구가 아님·실패(할 일 목록에만)·다른 알림에 묶임
   batched_into_id  uuid,                                 -- 1분 안 같은 종류는 하나로 묶어 보냄(SPEC-067)
@@ -1248,7 +1252,7 @@ CREATE TABLE ledger_writes (
 CREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying'); -- 적을 것
 COMMENT ON TABLE ledger_writes IS 'TBL-047 장부 쓰기: 이벤트마다 한 번 남기고 실패하면 다시 적음(1-8)';
 
--- TBL-048 ai_calls (CTX-001) ← SPEC-017, SPEC-020, SPEC-021, SPEC-068 | terms: TERM-045
+-- TBL-048 ai_calls (CTX-001) ← SPEC-017, SPEC-020, SPEC-021, SPEC-068, SPEC-077 | terms: TERM-045
 CREATE TABLE ai_calls (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- AI 호출 ID
   shop_id             uuid NOT NULL,                     -- 가게
@@ -1303,7 +1307,7 @@ CREATE TABLE ai_tool_calls (
 CREATE INDEX ai_tool_calls_call_idx ON ai_tool_calls (ai_call_id); -- 호출마다 도구 목록
 COMMENT ON TABLE ai_tool_calls IS 'TBL-049 AI 도구 호출 기록: 이름·결과·대화 ID·대상 ID·마스킹한 인자';
 
--- TBL-050 request_keys (공통) ← SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-007, SPEC-031, SPEC-034, SPEC-038, SPEC-039, SPEC-042, SPEC-047, SPEC-048, SPEC-051, SPEC-054, SPEC-059, SPEC-065, SPEC-070, SPEC-071 | terms: none
+-- TBL-050 request_keys (공통) ← SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-007, SPEC-031, SPEC-034, SPEC-038, SPEC-039, SPEC-042, SPEC-047, SPEC-048, SPEC-051, SPEC-054, SPEC-059, SPEC-065, SPEC-070, SPEC-071, SPEC-077, SPEC-078 | terms: none
 CREATE TABLE request_keys (
   actor_kind       text NOT NULL CHECK (actor_kind IN ('owner', 'operator')), -- 누른 쪽: 사장님·운영자
   actor_id         uuid NOT NULL,                        -- 그 사람의 ID(owners.id나 operators.id)
@@ -1618,6 +1622,30 @@ CREATE TABLE order_detail_extras (
 );
 COMMENT ON TABLE order_detail_extras IS 'TBL-057 주문 내용의 더하는 옵션: 주문 내용 버전마다 더한 옵션마다 한 행. 그 버전과 같은 가격표 버전의 더하는 옵션만(설계 재검토 M17)';
 
+-- TBL-058 shop_identity_changes (CTX-007) ← SPEC-078 | terms: TERM-053
+CREATE TABLE shop_identity_changes (
+  id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 변경 요청 ID
+  shop_id                   uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 바꿀 가게
+  business_name             text NOT NULL CHECK (char_length(business_name) BETWEEN 1 AND 60), -- 새 상호(바꾸지 않으면 요청할 때의 값)
+  representative_name       text NOT NULL CHECK (char_length(representative_name) BETWEEN 1 AND 30), -- 새 대표자 성명(바꾸지 않으면 요청할 때의 값)
+  business_reg_no           text NOT NULL CHECK (business_reg_no ~ '^[0-9]{10}$'), -- 새 사업자등록번호(검증 숫자는 앱이 봄)
+  prev_business_name        text NOT NULL CHECK (char_length(prev_business_name) BETWEEN 1 AND 60), -- 요청할 때 확인된 상호. 반영한 뒤에도 무엇을 바꿨는지 남음
+  prev_representative_name  text NOT NULL CHECK (char_length(prev_representative_name) BETWEEN 1 AND 30), -- 요청할 때 확인된 대표자 성명
+  prev_business_reg_no      text NOT NULL CHECK (prev_business_reg_no ~ '^[0-9]{10}$'), -- 요청할 때 확인된 사업자등록번호
+  evidence_photo_key        text NOT NULL,                     -- 증빙 사진(영업 신고증이나 사업자등록증 한 장) 저장 위치. 그 가게 사장님과 운영자만 봄(G1, G6)
+  status                    text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'on_hold')), -- 확인 기다림·반영함·보류(SPEC-078). 반영·보류한 요청은 고치지 않음
+  hold_reason               text CHECK (char_length(hold_reason) BETWEEN 1 AND 200), -- 보류 이유. 사장님께 한 번 알림(owner_alerts identity_change_on_hold)
+  reviewed_by               uuid REFERENCES operators (id) ON DELETE RESTRICT, -- 반영·보류한 운영자
+  reviewed_at               timestamptz,                       -- 반영·보류한 시각
+  requested_at              timestamptz NOT NULL DEFAULT now(), -- 요청한 시각
+  CONSTRAINT shop_identity_changes_differs_chk CHECK ((business_name, representative_name, business_reg_no) IS DISTINCT FROM (prev_business_name, prev_representative_name, prev_business_reg_no)), -- 세 값이 모두 그대로인 요청은 남기지 않음(SPEC-078)
+  CONSTRAINT shop_identity_changes_hold_chk CHECK ((status = 'on_hold') = (hold_reason IS NOT NULL)), -- 보류에는 이유가 있음
+  CONSTRAINT shop_identity_changes_reviewed_chk CHECK ((status = 'pending') = (reviewed_by IS NULL) AND (status = 'pending') = (reviewed_at IS NULL)) -- 반영·보류는 운영자와 시각을 남김
+);
+CREATE UNIQUE INDEX shop_identity_changes_one_pending ON shop_identity_changes (shop_id) WHERE status = 'pending'; -- 가게마다 확인을 기다리는 변경 요청은 하나(SPEC-078)
+CREATE INDEX shop_identity_changes_queue_idx ON shop_identity_changes (requested_at) WHERE status = 'pending'; -- 운영자 확인 목록(SPEC-078)
+COMMENT ON TABLE shop_identity_changes IS 'TBL-058 사업자 정보 변경 요청: 상호·대표자·사업자등록번호의 새 값과 증빙 사진. 운영자가 반영해야 가게 정보가 바뀜(REQ-245, 설계 재검토 M14)';
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- 컨텍스트별 테이블
 -- CTX-001 상담: TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-024, TBL-027, TBL-028, TBL-029, TBL-048, TBL-049, TBL-055, TBL-056
@@ -1626,7 +1654,7 @@ COMMENT ON TABLE order_detail_extras IS 'TBL-057 주문 내용의 더하는 옵�
 -- CTX-004 결제·환불: TBL-015, TBL-031, TBL-032, TBL-033
 -- CTX-005 제작·전달: TBL-035, TBL-036, TBL-037
 -- CTX-006 후기·포트폴리오: TBL-038, TBL-039, TBL-040, TBL-041
--- CTX-007 가게 등록·연결: TBL-001, TBL-002, TBL-003, TBL-004, TBL-005
+-- CTX-007 가게 등록·연결: TBL-001, TBL-002, TBL-003, TBL-004, TBL-005, TBL-058
 -- CTX-008 알림: TBL-042, TBL-043, TBL-044
 -- CTX-009 장부 연결: TBL-045, TBL-046, TBL-047
 -- 공통: TBL-050, TBL-051, TBL-053, TBL-054
@@ -1668,12 +1696,15 @@ COMMENT ON COLUMN operators.created_at IS '만든 시각';
 COMMENT ON COLUMN shops.id IS '가게 ID. 모든 기록이 이 값으로 나뉨(SPEC-068)';
 COMMENT ON COLUMN shops.owner_id IS '가게 주인';
 COMMENT ON COLUMN shops.name IS '가게 이름';
-COMMENT ON COLUMN shops.contact_phone IS '가게 연락처';
-COMMENT ON COLUMN shops.pickup_address IS '픽업 장소(가게 위치). 전날 안내에 포함함(SPEC-052). 등록 필드(SPEC-002)에 없어 가게 설정에서 받음';
-COMMENT ON COLUMN shops.business_name IS '상호';
-COMMENT ON COLUMN shops.representative_name IS '대표자';
-COMMENT ON COLUMN shops.business_reg_no IS '사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시(SPEC-002)';
+COMMENT ON COLUMN shops.contact_phone IS '가게 연락처(전화번호). 예약 링크 페이지의 가게 신원 정보(REQ-239). 사장님이 가게 설정에서 바로 고침(REQ-244)';
+COMMENT ON COLUMN shops.contact_email IS '전자우편주소. 예약 링크 페이지의 가게 신원 정보(REQ-239). 사장님이 가게 설정에서 바로 고침(REQ-244)';
+COMMENT ON COLUMN shops.business_address IS '사업장 주소. 예약 링크 페이지와 확정 안내의 가게 신원 정보(REQ-239, REQ-242). 픽업 장소와 다를 수 있음. 사장님이 가게 설정에서 바로 고침(REQ-244)';
+COMMENT ON COLUMN shops.pickup_address IS '픽업 장소(가게 위치). 전날 안내에 포함함(SPEC-052). 등록 필드(SPEC-002)에 없어 가게 설정에서 받음(SPEC-077)';
+COMMENT ON COLUMN shops.business_name IS '상호. 등록 뒤에는 변경 요청을 운영자가 반영해야 바뀜(REQ-245, TBL-058)';
+COMMENT ON COLUMN shops.representative_name IS '대표자 성명. 등록 뒤에는 변경 요청을 운영자가 반영해야 바뀜(REQ-245, TBL-058)';
+COMMENT ON COLUMN shops.business_reg_no IS '사업자등록번호(검증 숫자는 앱이 봄). 중복돼도 받고 운영자 화면에 중복 표시(SPEC-002). 등록 뒤에는 변경 요청을 운영자가 반영해야 바뀜(REQ-245)';
 COMMENT ON COLUMN shops.mail_order_reg_no IS '통신판매업 신고번호';
+COMMENT ON COLUMN shops.mail_order_authority IS '통신판매업 신고를 받은 기관(예: 서울특별시 마포구청). 신고번호와 함께 있음(REQ-239)';
 COMMENT ON COLUMN shops.mail_order_exemption IS '신고번호 대신 면제 사유';
 COMMENT ON COLUMN shops.food_license_no IS '영업 신고 번호';
 COMMENT ON COLUMN shops.food_business_type IS '영업 종류: 즉석판매제조·가공업, 제과점영업. 그 밖은 첫 버전에서 받지 않음';
@@ -1686,9 +1717,9 @@ COMMENT ON COLUMN shops.entrustment_terms_version IS '동의한 개인정보 처
 COMMENT ON COLUMN shops.entrustment_consented_at IS '그 조건에 동의한 시각';
 COMMENT ON COLUMN shops.time_zone IS '가게 시간대. 시각 계산은 이 시간대로(G8)';
 COMMENT ON COLUMN shops.completion_photo_enabled IS '완성 사진 보내기(SPEC-009, 기본 꺼짐)';
-COMMENT ON COLUMN shops.idle_close_hours IS '문의 끊김까지 시간(REQ-211, 기본 24시간)';
-COMMENT ON COLUMN shops.owner_wait_minutes IS '사장님 답 기다리는 시간(REQ-116, 기본 2시간)';
-COMMENT ON COLUMN shops.daily_ai_cost_limit_krw IS '하루 AI 비용 한도(REQ-163, 기본 5,000원)';
+COMMENT ON COLUMN shops.idle_close_hours IS '문의 끊김까지 시간(REQ-211, 기본 24시간). 사장님이 바꾸면 저장한 때부터 씀(REQ-243)';
+COMMENT ON COLUMN shops.owner_wait_minutes IS '사장님 답 기다리는 시간(REQ-116, 기본 2시간). 바꾸면 그 뒤 시작된 기다림부터(owner_tasks.wait_due_at, REQ-243)';
+COMMENT ON COLUMN shops.daily_ai_cost_limit_krw IS '하루 AI 비용 한도(REQ-163, 기본 5,000원). 사장님이 정하고 바꾸면 저장한 때부터 그날 쓴 비용과 견줌(REQ-243)';
 COMMENT ON COLUMN shops.booking_slug IS '예약 링크(TERM-042) 주소의 가게 몫. 낸 뒤 바뀌지 않음(SPEC-010)';
 COMMENT ON COLUMN shops.booking_issued_at IS '예약 링크를 낸 시각';
 COMMENT ON COLUMN shops.created_at IS '등록한 시각';
@@ -1788,7 +1819,7 @@ COMMENT ON COLUMN business_calendars.order_cutoff_time IS '주문 마감: 그날
 COMMENT ON COLUMN business_calendars.reply_start IS '답하는 시간 시작(REQ-118). 사장님 답 기다림은 이 안에서만 셈';
 COMMENT ON COLUMN business_calendars.reply_end IS '답하는 시간 끝';
 COMMENT ON COLUMN business_calendars.day_before_notice_time IS '전날 안내 시각(SPEC-052)';
-COMMENT ON COLUMN business_calendars.review_request_time IS '후기 부탁 시각(SPEC-061, 인도한 다음 날)';
+COMMENT ON COLUMN business_calendars.review_request_time IS '후기 부탁 시각(SPEC-061, 인도한 다음 날). 바꾸면 아직 보내지 않은 후기 부탁부터 씀(REQ-243)';
 COMMENT ON COLUMN business_calendars.updated_at IS '마지막으로 바꾼 시각';
 COMMENT ON COLUMN calendar_days.shop_id IS '가게';
 COMMENT ON COLUMN calendar_days.day IS '가게 시간대의 날짜';
@@ -2191,7 +2222,7 @@ COMMENT ON COLUMN owner_tasks.closed_at IS '사장님이 처리해 닫히거나 
 COMMENT ON COLUMN owner_alerts.id IS '사장님 알림 ID';
 COMMENT ON COLUMN owner_alerts.shop_id IS '가게';
 COMMENT ON COLUMN owner_alerts.owner_task_id IS '알린 할 일. 상담을 지울 때 그 상담의 에스컬레이션 할 일은 지우고 이 연결만 비움(SPEC-065, 설계 재검토 H3)';
-COMMENT ON COLUMN owner_alerts.kind IS '새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)·결제 받을 계좌 바뀜(할 일 없이 알림만, 계좌번호 없음, SPEC-067, REQ-198)';
+COMMENT ON COLUMN owner_alerts.kind IS '새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)·결제 받을 계좌 바뀜(할 일 없이 알림만, 계좌번호 없음, SPEC-067, REQ-198)·사업자 정보 변경 반영됨·보류됨(할 일 없이 알림만, SPEC-078, REQ-245)';
 COMMENT ON COLUMN owner_alerts.event_key IS '알림마다 한 번(SPEC-067). 형식 alert:{알린 일}:{할 일 ID나 대상 ID}, 하루 한 번까지인 다시 알림은 뒤에 :{가게 날짜}(4절 A33)';
 COMMENT ON COLUMN owner_alerts.status IS '보낼 것·발송 결과 확인 중·보냄(닿음 확인)·우리 채널 친구가 아님·실패(할 일 목록에만)·다른 알림에 묶임';
 COMMENT ON COLUMN owner_alerts.batched_into_id IS '1분 안 같은 종류는 하나로 묶어 보냄(SPEC-067)';
@@ -2350,4 +2381,18 @@ COMMENT ON COLUMN order_detail_extras.order_detail_id IS '주문 내용 버전';
 COMMENT ON COLUMN order_detail_extras.price_list_id IS '그 버전의 가격표 버전. 주문 내용과 같음(order_detail_extras_detail_fk)';
 COMMENT ON COLUMN order_detail_extras.option_id IS '더한 옵션: 같은 가격표 버전의 ''더하는 옵션''만(order_detail_extras_option_fk). 이전 버전의 행도 지우지 않음(REQ-027)';
 COMMENT ON COLUMN order_detail_extras.option_group IS '늘 ''더하는 옵션''. 옵션의 무리를 외래 키로 맞추려고 둔 값';
+COMMENT ON COLUMN shop_identity_changes.id IS '변경 요청 ID';
+COMMENT ON COLUMN shop_identity_changes.shop_id IS '바꿀 가게';
+COMMENT ON COLUMN shop_identity_changes.business_name IS '새 상호(바꾸지 않으면 요청할 때의 값)';
+COMMENT ON COLUMN shop_identity_changes.representative_name IS '새 대표자 성명(바꾸지 않으면 요청할 때의 값)';
+COMMENT ON COLUMN shop_identity_changes.business_reg_no IS '새 사업자등록번호(검증 숫자는 앱이 봄)';
+COMMENT ON COLUMN shop_identity_changes.prev_business_name IS '요청할 때 확인된 상호. 반영한 뒤에도 무엇을 바꿨는지 남음';
+COMMENT ON COLUMN shop_identity_changes.prev_representative_name IS '요청할 때 확인된 대표자 성명';
+COMMENT ON COLUMN shop_identity_changes.prev_business_reg_no IS '요청할 때 확인된 사업자등록번호';
+COMMENT ON COLUMN shop_identity_changes.evidence_photo_key IS '증빙 사진(영업 신고증이나 사업자등록증 한 장) 저장 위치. 그 가게 사장님과 운영자만 봄(G1, G6)';
+COMMENT ON COLUMN shop_identity_changes.status IS '확인 기다림·반영함·보류(SPEC-078). 반영·보류한 요청은 고치지 않음';
+COMMENT ON COLUMN shop_identity_changes.hold_reason IS '보류 이유. 사장님께 한 번 알림(owner_alerts identity_change_on_hold)';
+COMMENT ON COLUMN shop_identity_changes.reviewed_by IS '반영·보류한 운영자';
+COMMENT ON COLUMN shop_identity_changes.reviewed_at IS '반영·보류한 시각';
+COMMENT ON COLUMN shop_identity_changes.requested_at IS '요청한 시각';
 -- ▲ 컬럼 설명 끝

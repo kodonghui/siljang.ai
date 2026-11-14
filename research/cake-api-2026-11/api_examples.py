@@ -73,13 +73,14 @@ UPLOAD_COMPLETION = dict(UPLOAD_LICENSE, uploadId="upl_" + h("upload:completion"
 # ── 가게 ────────────────────────────────────────────────────────────────────
 SHOP = {
     "shopId": SHOP_ID, "name": "달빛케이크", "contactPhone": "010-1234-5678", "pickupAddress": "서울 마포구 달빛로 12, 1층",
+    "businessAddress": "서울 마포구 달빛로 12, 2층", "contactEmail": "moonlight@example.com",
     "businessName": "달빛케이크", "representativeName": "김달빛", "businessRegNo": BRN,
-    "mailOrderRegNo": "제2026-서울마포-0123호", "mailOrderExemption": None,
+    "mailOrderRegNo": "제2026-서울마포-0123호", "mailOrderAuthority": "서울특별시 마포구청", "mailOrderExemption": None,
     "foodLicenseNo": "2026-0123456", "foodBusinessType": "instant_sale_manufacturing",
     "licenseStatus": "verified", "licenseHoldReason": None, "licensePhotoUrl": surl("license"),
     "entrustmentTermsVersion": "2026.11", "entrustmentConsentedAt": t("11-12", "10:05"),
     "timeZone": "Asia/Seoul", "completionPhotoEnabled": True, "idleCloseHours": 24, "ownerWaitMinutes": 120,
-    "dailyAiCostLimitKrw": 5000, "bookingUrl": "https://siljang.example/s/moonlight-cake",
+    "dailyAiCostLimitKrw": 5000, "bookingUrl": "https://siljang.example/s/moonlight-cake", "identityChange": None,
     "createdAt": t("11-12", "10:05"), "updatedAt": t("11-12", "15:20"), "revision": rev("shop:3"),
 }
 SHOP_PENDING = dict(SHOP, licenseStatus="pending", pickupAddress=None, completionPhotoEnabled=False, bookingUrl=None,
@@ -88,8 +89,9 @@ SHOP_ON_HOLD = dict(SHOP_PENDING, licenseStatus="on_hold", licenseHoldReason="�
                     updatedAt=t("11-12", "13:40"), revision=rev("shop:2"))
 
 SHOP_REGISTRATION = {
-    "name": "달빛케이크", "contactPhone": "010-1234-5678", "businessName": "달빛케이크", "representativeName": "김달빛",
-    "businessRegNo": BRN, "mailOrderRegNo": "제2026-서울마포-0123호", "mailOrderExemption": None,
+    "name": "달빛케이크", "contactPhone": "010-1234-5678", "businessAddress": "서울 마포구 달빛로 12, 2층",
+    "contactEmail": "moonlight@example.com", "businessName": "달빛케이크", "representativeName": "김달빛",
+    "businessRegNo": BRN, "mailOrderRegNo": "제2026-서울마포-0123호", "mailOrderAuthority": "서울특별시 마포구청", "mailOrderExemption": None,
     "foodLicenseNo": "2026-0123456", "foodBusinessType": "instant_sale_manufacturing",
     "licensePhotoUploadId": UPLOAD_LICENSE["uploadId"], "entrustmentTermsVersion": "2026.11", "entrustmentConsent": True,
 }
@@ -103,11 +105,12 @@ REVIEW_SUMMARY = {
     "duplicateBusinessRegNo": False, "createdAt": t("11-12", "10:05"), "revision": rev("shop:1"),
 }
 REVIEW_DETAIL = {
-    "shopId": SHOP_ID, "name": "달빛케이크", "contactPhone": "010-1234-5678", "businessName": "달빛케이크",
-    "representativeName": "김달빛", "businessRegNo": BRN, "mailOrderRegNo": "제2026-서울마포-0123호", "mailOrderExemption": None,
+    "shopId": SHOP_ID, "name": "달빛케이크", "contactPhone": "010-1234-5678", "businessAddress": "서울 마포구 달빛로 12, 2층",
+    "contactEmail": "moonlight@example.com", "businessName": "달빛케이크", "representativeName": "김달빛", "businessRegNo": BRN, "mailOrderRegNo": "제2026-서울마포-0123호", "mailOrderAuthority": "서울특별시 마포구청", "mailOrderExemption": None,
     "foodLicenseNo": "2026-0123456", "foodBusinessType": "instant_sale_manufacturing", "licensePhotoUrl": surl("license"),
     "licenseStatus": "pending", "licenseHoldReason": None, "licenseReviewedAt": None, "licenseReviewedBy": None,
-    "duplicates": [], "paymentAccount": PAYMENT_ACCOUNT_REVIEW, "createdAt": t("11-12", "10:05"), "revision": rev("shop:1"),
+    "pendingIdentityChange": None, "duplicates": [], "paymentAccount": PAYMENT_ACCOUNT_REVIEW, "createdAt": t("11-12", "10:05"),
+    "revision": rev("shop:1"),
 }
 REVIEW_DETAIL_VERIFIED = dict(REVIEW_DETAIL, licenseStatus="verified", licenseReviewedAt=t("11-12", "11:30"),
                               licenseReviewedBy=OPERATOR, revision=rev("shop:2v"),
@@ -117,6 +120,43 @@ REVIEW_DETAIL_HOLDER_DIFFERENT = dict(REVIEW_DETAIL, paymentAccount=dict(PAYMENT
                                                                          holderMismatchConfirmed=True))
 REVIEW_DETAIL_ON_HOLD = dict(REVIEW_DETAIL, licenseStatus="on_hold", licenseHoldReason=SHOP_ON_HOLD["licenseHoldReason"],
                              licenseReviewedAt=t("11-12", "13:40"), licenseReviewedBy=OPERATOR, revision=rev("shop:2"))
+
+# ── 사업자 정보 변경 요청 (설계 재검토 M14, SPEC-078) ─────────────────────────────
+IDENTITY_CHANGE_ID = uid("identity-change:1")
+IDENTITY_PREVIOUS = {"businessName": "달빛케이크", "representativeName": "김달빛", "businessRegNo": BRN}
+IDENTITY_CHANGE_INPUT = {"baseRevision": rev("shop:3"), "businessName": "달빛케이크 공방", "representativeName": "김달빛",
+                         "businessRegNo": BRN, "evidencePhotoUploadId": "upl_" + h("upload:identity", 24)}
+IDENTITY_CHANGE = {
+    "changeId": IDENTITY_CHANGE_ID, "status": "pending", "businessName": "달빛케이크 공방", "representativeName": "김달빛",
+    "businessRegNo": BRN, "previous": IDENTITY_PREVIOUS, "evidencePhotoUrl": surl("identity:1"), "holdReason": None,
+    "requestedAt": t("11-14", "10:20"), "reviewedAt": None,
+}
+SHOP_IDENTITY_PENDING = dict(SHOP, identityChange=IDENTITY_CHANGE, updatedAt=t("11-14", "10:20"), revision=rev("shop:4"))
+IDENTITY_HOLD_REASON = "증빙 사진의 상호가 보이지 않아요. 사업자등록증 전체가 보이게 다시 찍어 올려 주세요"
+SHOP_IDENTITY_ON_HOLD = dict(SHOP, identityChange=dict(IDENTITY_CHANGE, status="on_hold", holdReason=IDENTITY_HOLD_REASON,
+                                                        reviewedAt=t("11-14", "11:05")),
+                             updatedAt=t("11-14", "11:05"), revision=rev("shop:5h"))
+IDENTITY_REVIEW = {
+    "changeId": IDENTITY_CHANGE_ID, "shop": {"shopId": SHOP_ID, "name": "달빛케이크", "licenseStatus": "verified"},
+    "status": "pending", "businessName": "달빛케이크 공방", "representativeName": "김달빛", "businessRegNo": BRN,
+    "previous": IDENTITY_PREVIOUS, "evidencePhotoUrl": surl("identity:1"),
+    "paymentAccount": {"bankName": "달빛은행", "holderName": "김달빛", "accountLast4": "4567", "holderMatchesNew": True},
+    "holdReason": None, "requestedAt": t("11-14", "10:20"), "reviewedAt": None, "reviewedBy": None, "revision": rev("identity:1"),
+}
+IDENTITY_REVIEW_APPLIED = dict(IDENTITY_REVIEW, status="applied", reviewedAt=t("11-14", "11:05"), reviewedBy=OPERATOR,
+                               revision=rev("identity:2a"))
+IDENTITY_REVIEW_ON_HOLD = dict(IDENTITY_REVIEW, status="on_hold", holdReason=IDENTITY_HOLD_REASON, reviewedAt=t("11-14", "11:05"),
+                               reviewedBy=OPERATOR, revision=rev("identity:2h"))
+# 대표자를 바꾸는 요청에 지금 계좌의 예금주가 새 대표자·상호와 다름: 표시만 하고 막지 않음(REQ-197)
+IDENTITY_REVIEW_HOLDER_DIFFERENT = dict(IDENTITY_REVIEW, changeId=uid("identity-change:2"),
+                                        shop={"shopId": OTHER_SHOP_ID, "name": "별빛베이커리", "licenseStatus": "verified"},
+                                        businessName="별빛베이커리", representativeName="이하늘",
+                                        previous={"businessName": "별빛베이커리", "representativeName": "최별빛", "businessRegNo": BRN},
+                                        evidencePhotoUrl=surl("identity:2"),
+                                        paymentAccount={"bankName": "별빛은행", "holderName": "최별빛", "accountLast4": "8812", "holderMatchesNew": False},
+                                        requestedAt=t("11-14", "10:45"), revision=rev("identity:star"))
+REVIEW_DETAIL_IDENTITY_PENDING = dict(REVIEW_DETAIL, pendingIdentityChange=dict(
+    IDENTITY_REVIEW, shop={"shopId": SHOP_ID, "name": "달빛케이크", "licenseStatus": "pending"}))
 OPERATOR_ALERTS = {"items": [
     {"alertId": uid("alert:1"), "kind": "ai_failure_burst", "shop": {"shopId": SHOP_ID, "name": "달빛케이크"}, "count": 5, "createdAt": t("11-12", "16:02")},
     {"alertId": uid("alert:2"), "kind": "channel_already_linked", "shop": {"shopId": OTHER_SHOP_ID, "name": "별빛베이커리"}, "count": 1, "createdAt": t("11-12", "14:10")},
@@ -650,8 +690,8 @@ def booking_days():
 
 
 BOOKING_PAGE = {
-    "shop": {"name": "달빛케이크", "businessName": "달빛케이크", "representativeName": "김달빛", "contactPhone": "010-1234-5678",
-             "businessRegNo": BRN, "mailOrderRegNo": "제2026-서울마포-0123호", "mailOrderExemption": None,
+    "shop": {"name": "달빛케이크", "businessName": "달빛케이크", "representativeName": "김달빛", "businessAddress": "서울 마포구 달빛로 12, 2층",
+             "contactPhone": "010-1234-5678", "contactEmail": "moonlight@example.com", "businessRegNo": BRN, "mailOrderRegNo": "제2026-서울마포-0123호", "mailOrderAuthority": "서울특별시 마포구청", "mailOrderExemption": None,
              "pickupAddress": "서울 마포구 달빛로 12, 1층"},
     "priceList": {"version": 4, "options": [{k: v for k, v in o.items() if k not in ("optionId", "position")} for o in PRICE_OPTIONS],
                   "designs": [{"name": d["name"], "imageUrl": d["imageUrl"], "inStandard": d["inStandard"]} for d in DESIGNS]},
@@ -779,13 +819,14 @@ def check_button(label, block, key):
 
 
 # 주문 요청 확인 카드(설계 재검토 H9, DEC-22): 그 버전의 취소·환불 규정 글을 먼저, 요약 카드를 끝에 둠.
-# 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 글 둘(1/2, 2/2)로 보내고 청약철회 문장은 둘째 끝에. 자르지 않음
+# 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 글 둘(1/2, 2/2)로 보내고 청약철회 문장과 미성년자 취소 고지(REQ-240)는 둘째 끝에. 자르지 않음
 CARD_CLAUSE_KEYS = ("pre_production_cancel", "staged_refund", "cancellation_fee", "date_change_refund_basis",
                     "shop_cancel_compensation", "custom")  # 04단계 SPEC-028의 취소·환불 조문
 RULES_TEXT = ("취소·환불 규정(운영규정 버전 %d)\n" % RULES["version"]
               + "".join("· %s: %s → %s\n" % (c["title"], c["conditionText"], c["effectText"])
                         for c in CLAUSES if c["key"] in CARD_CLAUSE_KEYS)
-              + "주문제작이라 청약철회가 제한될 수 있어요")
+              + "주문제작이라 청약철회가 제한될 수 있어요\n"
+              + "미성년자가 법정대리인의 동의 없이 한 주문은 본인이나 법정대리인이 취소할 수 있어요")
 
 
 def order_card(summary, card_key, notice=None):
@@ -813,6 +854,11 @@ ORDERER_CARD_OUTPUT = {"textCard": {"title": "주문자 정보", "description": 
 ADD_FRIEND = "채널을 추가하시면 답을 바로 받아 보실 수 있어요."
 HANDED_OVER = "사장님 확인 뒤 답드릴게요."
 CK = "ck_" + h("card:order", 30)
+# 확정 안내(SPEC-036, REQ-242): 주문 내용·픽업 일시·결제가 확인된 금액·가게 신원(주문 확정 때의 확인된 값)을 한 글로, 그 주문의 취소·환불 규정 글을 다음 글로
+CONFIRMED_NOTICE = ("주문이 확정됐어요(주문번호 K7Q3M9).\n"
+                    "11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 알레르기: 없음\n"
+                    "결제 확인 36,000원\n"
+                    "가게: 달빛케이크 · 대표자 김달빛 · 서울 마포구 달빛로 12, 2층 · 010-1234-5678")
 ORDER_SUMMARY = "11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 알레르기: 없음 · 주문자 이지우 010-9876-5432 · 36,000원"
 SKILL_OUTCOME_EXAMPLES = {
     # 손님 메시지
@@ -841,7 +887,7 @@ SKILL_OUTCOME_EXAMPLES = {
                            [check_button("시험: 주문자 정보", "orderer_info", "ordererInfo")]),
     "channel_linked": text("버튼 블록 5개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요"),
     # 먼저 보내는 안내(안내 스킬)
-    "notice_shown": text("주문이 확정됐어요. 11월 20일 14:00에 뵐게요."),
+    "notice_shown": text(CONFIRMED_NOTICE, RULES_TEXT),
     "notice_test": text("시험 안내예요. 이 안내가 보이면 손님에게 안내를 먼저 보낼 수 있어요"),
     "notice_gone": text("지금은 전할 안내가 없어요"),
     # 확인 카드 버튼

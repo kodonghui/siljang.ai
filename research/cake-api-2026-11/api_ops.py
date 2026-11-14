@@ -1,4 +1,4 @@
-"""06단계 API 계약의 API 79개(API-001~079). build_api.py가 OpenAPI paths로 바꾼다.
+"""06단계 API 계약의 API 82개(API-001~082). build_api.py가 OpenAPI paths로 바꾼다.
 
 API마다 적는 것
 - id·method·path·op(operationId)·tag·summary·desc·spec(SPEC ID)
@@ -189,39 +189,51 @@ op(id="API-007", method="post", path="/owner/uploads", op="createUpload", tag="�
 # ═══ 가게 ═════════════════════════════════════════════════════════════════════
 op(id="API-008", method="post", path="/owner/shop", op="registerShop", tag="가게",
    summary="가게 등록", spec=["SPEC-002", "SPEC-068"], auth="owner", idem=True,
-   desc="가게 이름·연락처·사업자 정보·영업 신고와 신고증 사진(uploadId), 개인정보 처리 위탁·재위탁 조건의 버전과 동의를 받아 가게를 '영업 신고 확인 기다림'으로 남긴다. "
+   desc="가게 이름·연락처·사업장 주소·전자우편주소·사업자 정보(상호·대표자·사업자등록번호, 통신판매업 신고번호와 그 신고를 받은 기관이나 면제 사유, REQ-239)·영업 신고와 신고증 사진(uploadId), 개인정보 처리 위탁·재위탁 조건의 버전과 동의를 받아 가게를 '영업 신고 확인 기다림'으로 남긴다. "
         "동의하지 않으면 422 consent_required이고 넣은 값도 남기지 않는다(REQ-107). 카카오 계정 하나에 가게 하나라 두 번째는 409 already_registered(R2). "
         "같은 사업자등록번호의 다른 가게도 받고 운영자 화면에 중복을 표시한다(API-012). 신고증 사진을 옮기지 못하면 503이고 아무것도 남기지 않는다.",
    body="ShopRegistration", body_examples={"register": E.SHOP_REGISTRATION},
    ok=[(201, "Shop", {"registered": E.SHOP_PENDING})],
    errors={422: ["consent_required"], 409: ["already_registered"], 503: ["storage_unavailable"]},
-   fields=[("/businessRegNo", "checksum_failed"), ("/foodBusinessType", "not_allowed"), ("/licensePhotoUploadId", "upload_not_found")],
+   fields=[("/businessRegNo", "checksum_failed"), ("/foodBusinessType", "not_allowed"), ("/licensePhotoUploadId", "upload_not_found"),
+           ("/mailOrderAuthority", "required")],
    omit={"403": O403, "404": O404_NOPATH},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "상태": ["422:consent_required", "409:already_registered"],
           "반복": ["idem", "409:already_registered"], "동시": ["201", "note:같은 사업자등록번호도 받고 운영자 화면에 중복 표시(API-012)"],
           "외부": ["503:storage_unavailable"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-009", method="get", path="/owner/shop", op="getShop", tag="가게",
-   summary="내 가게 조회", spec=["SPEC-002", "SPEC-003", "SPEC-009"], auth="owner",
-   desc="사장님은 자기 가게의 영업 신고 상태와 보류 이유만 본다(SPEC-003). 신고증 사진은 15분 사는 서명 주소(DEC-09).",
-   ok=[(200, "Shop", {"verified": E.SHOP, "pending": E.SHOP_PENDING, "on_hold": E.SHOP_ON_HOLD})],
+   summary="내 가게 조회", spec=["SPEC-002", "SPEC-003", "SPEC-009", "SPEC-077", "SPEC-078"], auth="owner",
+   desc="사장님은 자기 가게의 영업 신고 상태와 보류 이유만 본다(SPEC-003). 신고증 사진은 15분 사는 서명 주소(DEC-09). "
+        "상호·대표자·사업자등록번호는 운영자가 확인한 지금 값이고, 가장 최근의 사업자 정보 변경 요청과 그 결과(보류 이유 포함)는 identityChange로 본다(SPEC-078, REQ-245).",
+   ok=[(200, "Shop", {"verified": E.SHOP, "pending": E.SHOP_PENDING, "on_hold": E.SHOP_ON_HOLD,
+                      "identity_change_pending": E.SHOP_IDENTITY_PENDING, "identity_change_on_hold": E.SHOP_IDENTITY_ON_HOLD})],
    errors={404: ["shop_not_registered"]},
    omit={"403": O403, "409": O409_READ, "422": O422_NOINPUT},
-   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:shop_not_registered"], "상태": ["example:on_hold"],
+   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:shop_not_registered"],
+          "상태": ["example:on_hold", "example:identity_change_pending", "example:identity_change_on_hold"],
           "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-010", method="patch", path="/owner/shop", op="updateShop", tag="가게",
-   summary="가게 설정 수정", spec=["SPEC-009", "SPEC-017", "SPEC-024", "SPEC-025", "SPEC-052"], auth="owner", idem=True,
-   desc="이름·연락처·픽업 장소(E14, DEC-13)·완성 사진 보내기(SPEC-009)·문의 끊김 시간(SPEC-025)·사장님 답 기다리는 시간(SPEC-024)·하루 AI 비용 한도(REQ-163)를 바꾼다. "
-        "바꿀 필드만 보낸다. 사업자 정보와 영업 신고는 여기서 바꾸지 않는다(신고증은 API-011). 바뀐 것이 없으면 outcome unchanged.",
+   summary="가게 설정 수정", spec=["SPEC-077", "SPEC-009", "SPEC-017", "SPEC-024", "SPEC-025", "SPEC-052"], auth="owner", idem=True,
+   desc="가게 이름·전화번호·사업장 주소·전자우편주소·픽업 장소(E14, DEC-13)·통신판매업 신고번호와 그 신고를 받은 기관(또는 면제 사유)·완성 사진 보내기(SPEC-009)·"
+        "문의 끊김 시간(SPEC-025)·사장님 답 기다리는 시간(SPEC-024)·하루 AI 비용 한도(REQ-163)를 바꾼다(SPEC-077). 바꿀 필드만 보내고 바로 저장하며, "
+        "예약 링크 페이지와 그 뒤 나가는 안내(전날 안내의 연락처·픽업 장소, 확정 안내의 가게 신원)가 바뀐 값을 쓴다(REQ-244). "
+        "통신판매업 신고번호와 기관은 바꾼 뒤 값으로 보아 함께 있거나 함께 없어야 하고(아니면 빈 쪽의 필드 오류 required), 신고번호와 면제 사유 가운데 하나는 늘 있어야 한다(아니면 /mailOrderRegNo required, REQ-239). "
+        "사장님 답 기다리는 시간은 그 뒤 시작된 기다림부터 쓰고(이미 시작된 기다림의 지연 안내 시각은 그대로), 문의 끊김 시간과 하루 AI 비용 한도는 저장한 때부터 쓴다(REQ-243, 05단계 A37). "
+        "상호·대표자·사업자등록번호는 여기서 바꾸지 않는다(변경 요청 API-080, SPEC-078). 영업 신고 번호·종류와 신고증은 보류일 때 API-011. 바뀐 것이 없으면 outcome unchanged.",
    body="ShopUpdate",
-   body_examples={"pickup_address": {"baseRevision": E.rev("shop:2"), "pickupAddress": "서울 마포구 달빛로 12, 1층", "completionPhotoEnabled": True}},
+   body_examples={"pickup_address": {"baseRevision": E.rev("shop:2"), "pickupAddress": "서울 마포구 달빛로 12, 1층", "completionPhotoEnabled": True},
+                  "identity_contact": {"baseRevision": E.rev("shop:2"), "contactEmail": "moonlight@example.com", "businessAddress": "서울 마포구 달빛로 12, 2층"},
+                  "wait_minutes": {"baseRevision": E.rev("shop:2"), "ownerWaitMinutes": 30}},
    ok=[(200, "ShopResult", {"updated": {"outcome": "done", "shop": E.SHOP}, "unchanged": {"outcome": "unchanged", "shop": E.SHOP}})],
    errors={404: ["shop_not_registered"], 409: ["version_conflict"]},
-   fields=[("/contactPhone", "bad_format"), ("/ownerWaitMinutes", "out_of_range")],
+   fields=[("/contactPhone", "bad_format"), ("/ownerWaitMinutes", "out_of_range"), ("/contactEmail", "bad_format"), ("/mailOrderAuthority", "required")],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:shop_not_registered"],
-          "반복": ["idem", "example:unchanged"], "동시": ["revision", "409:version_conflict"], "노출": ["closed"], "화면": ["screen"]})
+          "상태": ["note:기다리는 시간은 그 뒤 시작된 기다림부터, 문의 끊김 시간과 하루 AI 비용 한도는 저장한 때부터(REQ-243)"],
+          "반복": ["idem", "example:unchanged"], "동시": ["revision", "409:version_conflict"],
+          "노출": ["closed", "note:사업장 주소·전자우편주소·전화번호는 예약 링크 페이지에 보이는 가게 신원 정보(REQ-239)"], "화면": ["screen"]})
 
 op(id="API-011", method="put", path="/owner/shop/license", op="resubmitLicense", tag="가게",
    summary="보류된 영업 신고 재업로드", spec=["SPEC-003"], auth="owner", idem=True,
@@ -235,6 +247,22 @@ op(id="API-011", method="put", path="/owner/shop/license", op="resubmitLicense",
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:shop_not_registered"],
           "상태": ["409:invalid_state"], "반복": ["idem"], "동시": ["revision", "409:version_conflict"], "노출": ["closed"], "화면": ["screen"]})
+
+op(id="API-080", method="post", path="/owner/shop/identity-changes", op="requestIdentityChange", tag="가게",
+   summary="사업자 정보 변경 요청(상호·대표자·사업자등록번호)", spec=["SPEC-078"], auth="owner", idem=True,
+   desc="상호·대표자·사업자등록번호의 새 값 셋(바꾸지 않는 값은 지금 값)과 증빙 사진(영업 신고증이나 사업자등록증 한 장, 용도 license_photo로 올린 uploadId)을 받아 "
+        "변경 요청을 '확인 기다림'으로 남긴다. 요청할 때의 확인된 값도 그 요청에 남기고, 운영자가 반영(API-082)하기 전까지 가게 정보·예약 링크 페이지·확정 안내는 확인된 지금 값을 쓴다(REQ-245). "
+        "세 값이 모두 지금과 같으면 남기지 않고 outcome unchanged. 확인을 기다리는 변경 요청이 이미 있으면 409 identity_change_pending이고 그 요청은 내 가게 조회(API-009)의 identityChange로 본다. "
+        "영업 신고 상태와 상관없이 남길 수 있다. 증빙 사진을 옮기지 못하면 503이고 아무것도 남기지 않는다. 운영자는 사업자 정보 변경 확인 목록(API-081)에서 본다.",
+   body="IdentityChangeInput", body_examples={"rename": E.IDENTITY_CHANGE_INPUT},
+   ok=[(201, "ShopResult", {"requested": {"outcome": "done", "shop": E.SHOP_IDENTITY_PENDING}}),
+       (200, "ShopResult", {"unchanged": {"outcome": "unchanged", "shop": E.SHOP}})],
+   errors={404: ["shop_not_registered"], 409: ["version_conflict", "identity_change_pending"], 503: ["storage_unavailable"]},
+   fields=[("/businessRegNo", "checksum_failed"), ("/evidencePhotoUploadId", "upload_not_found")],
+   omit={"403": O403},
+   kinds={"접근": ["security", "401:unauthenticated", "note:그 가게 사장님만 남김(G1)"], "입력": ["422:validation_failed"], "대상": ["404:shop_not_registered"],
+          "상태": ["409:identity_change_pending"], "반복": ["idem", "example:unchanged"], "동시": ["revision", "409:version_conflict"],
+          "외부": ["503:storage_unavailable"], "노출": ["closed", "note:증빙 사진은 그 가게 사장님과 운영자만 봄(G6)"], "화면": ["screen"]})
 
 # ═══ 운영자 ═══════════════════════════════════════════════════════════════════
 op(id="API-012", method="get", path="/operator/shops", op="listReviewShops", tag="운영자",
@@ -253,21 +281,23 @@ op(id="API-012", method="get", path="/operator/shops", op="listReviewShops", tag
           "빈·끊김": ["example:empty"], "화면": ["screen"]})
 
 op(id="API-013", method="get", path="/operator/shops/{shopId}", op="getReviewShop", tag="운영자",
-   summary="영업 신고 확인할 가게 하나", spec=["SPEC-003"], auth="operator",
-   desc="신고증 사진(서명 주소)과 넣은 신고 번호·영업 종류·상호, 같은 사업자등록번호의 다른 가게를 보인다. "
+   summary="영업 신고 확인할 가게 하나", spec=["SPEC-003", "SPEC-078"], auth="operator",
+   desc="신고증 사진(서명 주소)과 넣은 신고 번호·영업 종류·상호, 가게 신원 정보(사업장 주소·전자우편주소·통신판매업 신고번호와 기관, REQ-239), 같은 사업자등록번호의 다른 가게를 보인다. "
+        "확인을 기다리는 사업자 정보 변경 요청이 있으면 pendingIdentityChange로 보이고, 그 요청을 먼저 반영·보류(API-082)한 뒤 영업 신고를 정한다(SPEC-003, SPEC-078). "
         "결제 계좌는 은행·예금주·끝 4자리와 예금주가 대표자·상호와 같은지(holderMatches), 사장님이 가게 명의가 맞다고 답했는지, 예금주를 확인한 운영자·시각만 보이고 "
         "계좌번호 전체는 보이지 않는다(REQ-197, SPEC-003). 계좌가 없으면 paymentAccount가 null이고 확인됨을 남길 수 없다.",
    params=[pid("shopId", "가게", E.SHOP_ID)],
    ok=[(200, "ReviewShopDetail", {"pending": E.REVIEW_DETAIL, "on_hold": E.REVIEW_DETAIL_ON_HOLD, "no_account": E.REVIEW_DETAIL_NO_ACCOUNT,
-                                  "holder_different": E.REVIEW_DETAIL_HOLDER_DIFFERENT})],
+                                  "holder_different": E.REVIEW_DETAIL_HOLDER_DIFFERENT, "identity_change_pending": E.REVIEW_DETAIL_IDENTITY_PENDING})],
    errors={404: ["not_found"]},
    omit={"403": O403_OPERATOR, "409": O409_READ, "422": O422_PATHONLY},
    kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-014", method="post", path="/operator/shops/{shopId}/license-review", op="reviewLicense", tag="운영자",
-   summary="영업 신고 확인·보류", spec=["SPEC-003"], auth="operator", idem=True,
+   summary="영업 신고 확인·보류", spec=["SPEC-003", "SPEC-078"], auth="operator", idem=True,
    desc="운영자는 신고증과 함께 결제 계좌의 예금주가 대표자·상호와 같은지 보고 정한다(REQ-197). 확인됨이면 확인한 운영자·시각과, 그 가게의 지금 결제 계좌에 예금주를 확인한 운영자·시각을 남긴다. "
         "결제 계좌가 없으면 확인됨은 409 payment_account_missing('결제 계좌 등록 기다림')이고 보류는 남길 수 있다. "
+        "확인을 기다리는 사업자 정보 변경 요청이 있으면 확인됨은 409 identity_change_pending(먼저 API-082로 반영·보류, SPEC-003·SPEC-078)이고 보류는 남길 수 있다. "
         "보류면 이유를 남기고 사장님께 우리 서비스 채널로 이유를 한 번 알린다(못 가면 할 일 목록, G4). "
         "확인됨을 다시 확인하면 unchanged. 확인됨을 보류로 바꾸기는 첫 버전에서 하지 않음(409 invalid_state, M7). "
         "다른 운영자가 먼저 정했으면 409 already_decided, 그 밖에 가게가 바뀌었으면 409 version_conflict(G3).",
@@ -278,11 +308,11 @@ op(id="API-014", method="post", path="/operator/shops/{shopId}/license-review", 
    ok=[(200, "LicenseReviewResult", {"verified": {"outcome": "done", "shop": E.REVIEW_DETAIL_VERIFIED},
                                      "on_hold": {"outcome": "done", "shop": E.REVIEW_DETAIL_ON_HOLD},
                                      "unchanged": {"outcome": "unchanged", "shop": E.REVIEW_DETAIL_VERIFIED}})],
-   errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "invalid_state", "payment_account_missing"]},
+   errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "invalid_state", "payment_account_missing", "identity_change_pending"]},
    fields=[("/holdReason", "required")],
    omit={"403": O403_OPERATOR},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
-          "상태": ["409:invalid_state", "409:payment_account_missing", "example:unchanged"], "반복": ["idem"], "동시": ["revision", "409:already_decided"],
+          "상태": ["409:invalid_state", "409:payment_account_missing", "409:identity_change_pending", "example:unchanged"], "반복": ["idem"], "동시": ["revision", "409:already_decided"],
           "외부": ["200", "note:사장님 알림이 못 가도 할 일 목록에 보류 이유(G4)"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-015", method="get", path="/operator/alerts", op="listOperatorAlerts", tag="운영자",
@@ -294,6 +324,40 @@ op(id="API-015", method="get", path="/operator/alerts", op="listOperatorAlerts",
    omit={"403": O403_OPERATOR, "404": O404_NOPATH, "409": O409_READ},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "노출": ["closed"],
           "빈·끊김": ["example:empty"], "화면": ["screen"]})
+
+op(id="API-081", method="get", path="/operator/identity-changes", op="listIdentityChanges", tag="운영자",
+   summary="사업자 정보 변경 요청 목록", spec=["SPEC-078"], auth="operator",
+   desc="운영자가 확인할 사업자 정보 변경 요청을 요청한 차례로 보인다(status가 없으면 pending). 요청마다 지금 값과 새 값, 증빙 사진(서명 주소), "
+        "결제 계좌의 은행·예금주·끝 4자리와 예금주가 새 대표자·상호와 같은지(holderMatchesNew)를 보인다. 다르면 표시만 하고 막지 않는다(REQ-197). 계좌번호 전체는 보이지 않는다(SPEC-003).",
+   params=[q("status", {"type": "string", "enum": ["pending", "applied", "on_hold"]}, "변경 요청 상태로 거름. 없으면 pending", "pending"), CURSOR, LIMIT],
+   ok=[(200, "IdentityChangeList", {"pending": {"items": [E.IDENTITY_REVIEW, E.IDENTITY_REVIEW_HOLDER_DIFFERENT], "nextCursor": None},
+                                    "empty": E.EMPTY_PAGE})],
+   fields=[("query:status", "not_allowed")],
+   omit={"403": O403_OPERATOR, "404": O404_NOPATH, "409": O409_READ},
+   kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"],
+          "상태": ["example:pending", "note:예금주가 새 대표자·상호와 다르면 holderMatchesNew false로 보이고 막지 않음(REQ-197)"],
+          "노출": ["closed", "note:계좌는 은행·예금주·끝 4자리만(SPEC-003)"], "빈·끊김": ["example:empty"], "화면": ["screen"]})
+
+op(id="API-082", method="post", path="/operator/identity-changes/{changeId}/review", op="reviewIdentityChange", tag="운영자",
+   summary="사업자 정보 변경 반영·보류", spec=["SPEC-078", "SPEC-003"], auth="operator", idem=True,
+   desc="운영자가 변경 요청을 '반영'이나 '보류(이유)'로 정한다. 반영이면 한 트랜잭션에서 그 가게의 상호·대표자·사업자등록번호가 요청할 때의 값과 같을 때만 새 값으로 바꾸고, "
+        "요청을 반영함으로 두고 반영한 운영자·시각을 남기고, 사장님께 우리 서비스 채널로 한 번 알린다(할 일 없이 알림만, 못 가도 내 가게 조회의 identityChange로 결과를 봄, G4). "
+        "그 뒤 예약 링크 페이지·확정 안내·운영자 화면이 새 값을 쓴다(REQ-245, 05단계 A37). 예금주가 새 대표자·상호와 달라도 막지 않고 운영자가 보고 정하며(REQ-197), 반영 뒤 계좌를 바꾸면 새 대표자·상호가 기준이다(REQ-199). "
+        "보류면 이유를 남기고 사장님께 한 번 알린다. 반영·보류한 요청은 고치지 않는다: 같은 결정을 다시 보내면 unchanged, 다른 운영자가 먼저 정했으면 409 already_decided, "
+        "그 밖에 요청이나 가게의 세 값이 바뀌었으면 409 version_conflict(G3).",
+   params=[pid("changeId", "변경 요청", E.IDENTITY_CHANGE_ID)],
+   body="IdentityChangeReviewInput",
+   body_examples={"apply": {"baseRevision": E.rev("identity:1"), "decision": "applied"},
+                  "hold": {"baseRevision": E.rev("identity:1"), "decision": "on_hold", "holdReason": E.IDENTITY_HOLD_REASON}},
+   ok=[(200, "IdentityChangeReviewResult", {"applied": {"outcome": "done", "change": E.IDENTITY_REVIEW_APPLIED},
+                                            "on_hold": {"outcome": "done", "change": E.IDENTITY_REVIEW_ON_HOLD},
+                                            "unchanged": {"outcome": "unchanged", "change": E.IDENTITY_REVIEW_APPLIED}})],
+   errors={404: ["not_found"], 409: ["version_conflict", "already_decided"]},
+   fields=[("/holdReason", "required")],
+   omit={"403": O403_OPERATOR},
+   kinds={"접근": ["security", "401:unauthenticated", "note:반영·보류는 운영자만(G1)"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
+          "상태": ["example:unchanged", "note:예금주가 새 대표자·상호와 달라도 막지 않음(REQ-197)"], "반복": ["idem"], "동시": ["revision", "409:already_decided"],
+          "외부": ["200", "note:사장님 알림이 못 가도 내 가게 조회의 identityChange로 결과를 봄(G4)"], "노출": ["closed"], "화면": ["screen"]})
 
 # ═══ 운영자: 가게 기록 보기 (설계 재검토 H4) ═══════════════════════════════════════════════
 LOG_NOTE = "note:접속기록을 남기지 못하면 500 internal로 아무것도 돌려주지 않음(SPEC-074)"
@@ -430,7 +494,7 @@ op(id="API-021", method="post", path="/owner/operating-rules/versions", op="crea
         "단계별 환불 조문(staged_refund)이 있으면 단계 행이 꼭 있고(없으면 /refundTiers required), 단계 행이 있으면 그 조문이 꼭 있다(없으면 /clauses required). "
         "단계 행이 없는 버전은 맞춤 재료 주문·제작 시작 뒤 취소도 제작 전 비율로 셈한다(화면이 저장 전에 알리고 막지 않음, SPEC-005). "
         "고정 취소 수수료는 0원~1,000만 원만 보고, 주문 금액과는 환불을 계산할 때 견준다(바탕보다 크면 환불 0원, SPEC-016). "
-        "취소·환불 조문으로 만든 주문 요청 확인 카드의 규정 글이 1,000자 글 둘에 들어가지 않으면(조문을 가르지 않음) 아무것도 남기지 않고 422(field /clauses, code exceeds_card_limit, REQ-184, DEC-22).",
+        "취소·환불 조문으로 만든 주문 요청 확인 카드의 규정 글(끝의 청약철회 제한 문장과 미성년자 취소 고지까지, REQ-240)이 1,000자 글 둘에 들어가지 않으면(조문을 가르지 않음) 아무것도 남기지 않고 422(field /clauses, code exceeds_card_limit, REQ-184, DEC-22).",
    body="OperatingRulesInput", body_examples={"confirm": E.RULES_INPUT, "lowered_confirmed": E.RULES_INPUT_LOWERED},
    ok=[(201, "OperatingRulesResult", {"created": {"outcome": "created", "operatingRules": E.RULES}}),
        (200, "OperatingRulesResult", {"unchanged": {"outcome": "unchanged", "operatingRules": E.RULES}})],
@@ -509,7 +573,8 @@ op(id="API-026", method="get", path="/owner/calendar", op="getCalendarSettings",
 op(id="API-027", method="put", path="/owner/calendar", op="setCalendarSettings", tag="영업 캘린더",
    summary="영업 캘린더 설정 등록·수정", spec=["SPEC-007", "SPEC-052", "SPEC-061"], auth="owner", idem=True,
    desc="바꾼 기준은 그 뒤 잡는 자리에만 쓴다(R4). 바꾼 기준을 넘는 날과 주문은 그대로 두고 conflicts로 보인다. "
-        "확정 주문이 있는 요일을 휴무로 바꾸면 409 confirmation_required(closed_day_with_orders, 건수). 전날 안내·후기 부탁 시각은 08:00~20:50(SPEC-052, SPEC-061).",
+        "확정 주문이 있는 요일을 휴무로 바꾸면 409 confirmation_required(closed_day_with_orders, 건수). 전날 안내·후기 부탁 시각은 08:00~20:50(SPEC-052, SPEC-061). "
+        "바꾼 전날 안내·후기 부탁 시각은 아직 보내지 않은 안내부터 쓰고(보낼 시각을 다시 셈) 이미 보낸 것은 다시 보내지 않는다(REQ-243).",
    body="CalendarSettingsInput", body_examples={"first": E.CALENDAR_INPUT},
    ok=[(200, "CalendarSettingsResult", {
        "created": {"outcome": "created", "calendar": E.CALENDAR, "conflicts": []},
@@ -1276,6 +1341,7 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
         "문의 끊김이나 상담 끝남으로 닫힌 손님에게도 이 안내(결제 안내·사장님 답·전날 안내 등)는 막지 않는다(REQ-212). 이때 보인 결제 안내는 그때를 전해진 시각으로 남겨 결제 기한을 그때부터 세고(REQ-218), "
         "결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). "
         "새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드를 보이고(SPEC-076), 손님이 확인하기 전에 입금했다고 하면 입금 알리기 카드 대신 그 카드를 다시 보인다(card_shown, SPEC-033). "
+        "손님이 자기 주문을 물으면 그 사용자가 요청한 주문마다 상태·픽업 일시·주문 내용 요약·금액과 결제가 확인된 시각·정한 환불과 보낸 때를 서버가 저장된 값으로 보인다(SPEC-040, REQ-241). "
         "요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). "
         "연결 확인 중인 채널에 그 연결의 연결 문구(API-032가 사장님 화면에만 보인 '연결 ' 뒤 숫자 6자리)가 오면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008, REQ-238). "
         "다른 말이면 not_accepting과 같은 말로 답하고 시험을 시작하지 않는다. 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). "
@@ -1283,7 +1349,7 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
         "버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. "
         "AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). "
         "그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). "
-        "주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). "
+        "주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장과 미성년자 취소 고지, REQ-240)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). "
         "규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. "
         "Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). "
         "Open: 콜백 유효 시간은 문서 본문과 오류 표 모두 5분(2026-11-14 다시 확인). 전체 기한 55초는 그보다 짧고, 실제 채널에서 개발 전 시험(OPEN-2). "
@@ -1364,10 +1430,11 @@ op(id="API-072", method="post", path="/kakao/skills/review", op="submitReview", 
 
 op(id="API-073", method="post", path="/kakao/skills/event", op="showNotice", tag="카카오 스킬",
    summary="먼저 보내는 안내 보이기(카카오 Event API가 부르는 스킬)", auth="skill", outcomes=EVENT_OUTCOMES,
-   spec=["SPEC-066", "SPEC-008", "SPEC-053", "SPEC-076"],
+   spec=["SPEC-066", "SPEC-008", "SPEC-053", "SPEC-076", "SPEC-036"],
    desc="우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). "
         "userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). "
         "안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). "
+        "확정 안내는 주문 내용·픽업 일시·결제가 확인된 금액·가게의 상호·대표자·사업장 주소·전화번호(주문 확정 때의 확인된 값)를 담은 글과 그 주문의 운영규정 버전의 취소·환불 규정 글을 보인다(SPEC-036, REQ-242). "
         "완성 사진 안내(SPEC-053)는 사진과 함께, 그 사진을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 묻는 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, "
         "누른 답은 카드 스킬로 와서 그 안내의 사진마다 남는다(API-071 photo_consent_saved, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). "
         "손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), "
