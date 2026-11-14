@@ -1267,22 +1267,29 @@ def scr016(cx, frame):
 
 
 def scr022(cx, frame):
+    """A 방향 시안의 사진·요청 내용·견적 부품에 08 정의의 '최종 금액' 폼과 결과 한 줄, 버튼 줄(설계 재검토 M5·M6).
+    견적이 '70,000원부터'라 '수락' 없이 '금액 변경 수락'·'거절'(REQ-230, SPEC-031)."""
     w, kind = cx.w, frame[0] if frame else None
+    lay = cx.s["layout"]
+    amount = next(b for b in lay if b[0] == "form")
+    result = next(b for b in lay if b[0] == "note")
+    act = next(b for b in lay if b[0] == "btns")
     if w == 1280:
         left = T.block(T.head("참고 사진", "3장") + "\n" + T.ref_grid(), first=True)
-        right = "\n".join([T.block(T.head("요청 내용") + "\n" + T.kv(gen.REQUEST[2:]), first=True), T.block(T.head("가게 규칙 계산") + "\n" + T.quote())])
+        right = "\n".join([T.block(T.head("요청 내용") + "\n" + T.kv(gen.REQUEST[2:]), first=True), T.block(T.head("가게 규칙 계산") + "\n" + T.quote()),
+                           render_block(amount, cx), render_block(result, cx)])
         body = ('<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-xxl); align-items: start">\n'
                 + left + '\n<div style="min-width: 0; display: flex; flex-direction: column; gap: var(--space-xl)">\n' + right + '\n</div>\n</div>\n'
-                + T.actions_wide())
+                + render_block(act, cx))
         return desk(cx.sid, "맞춤 주문 검토", True, cx.d.get("meta", ""), body)
     top = topbar("맞춤 주문 검토", "back")
     if kind == "box":
         return phone(top, '<div style="padding: var(--space-xl) var(--space-lg)">' + T.statebox(frame[1], frame[2], frame[3], "error") + '</div>',
                      fixed=True)
     bands = "\n".join([T.band(T.head("참고 사진", "3장") + "\n" + T.ref_row(), first=True), T.band(T.head("요청 내용") + "\n" + T.kv(gen.REQUEST)),
-                       T.band(T.head("가게 규칙 계산") + "\n" + T.quote())])
+                       T.band(T.head("가게 규칙 계산") + "\n" + T.quote()), render_block(amount, cx), render_block(result, cx)])
     overlay = T.dialog(cx.sid, frame[1], frame[2], frame[3]) if kind == "dialog" else ""
-    return phone(top, bands, T.actions(), overlay, fixed=frame is not None)
+    return phone(top, bands, T.footer(act[1], act[2], act[3]), overlay, fixed=frame is not None)
 
 
 def scr032_cal(b, cx, first):
