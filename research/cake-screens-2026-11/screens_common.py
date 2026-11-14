@@ -46,6 +46,8 @@ STATE_INFO = {
     "allergy": "주문자 정보·주문 요청 카드 앞에서 알레르기 정보에 따로 동의를 받고, 동의하면 알레르기 답을 AI를 거치지 않는 블록으로 받음(SPEC-075)",
     "photo-consent": "완성 사진 안내에서 그 사진의 게시 동의를 한 문장으로 묻고 누른 답을 사진마다 남김(SPEC-053)",
     "amount-confirm": "결제 안내를 전할 때 계좌 대신 새 금액 확인 카드를 보이고, 손님이 사장님이 정한 새 금액을 확인하거나 받지 않음(SPEC-076)",
+    "confirm-notify": "되돌릴 수 없고 손님에게 안내가 가는 사장님 액션 앞에서 화면이 여는 확인 창. 무엇이 손님에게 가는지 한 줄과 '돌아가기'(설계 재검토 M19)",
+    "load-failed": "화면의 데이터를 불러오지 못해 폼을 보일 수 없음. '다시 시도'만 있음(입력 오류와 저장 실패는 error, 설계 재검토 M19)",
 }
 
 # 로그인 화면은 401이 권한 없음이 아니라 폼 옆 오류(계약 기본값)
@@ -431,7 +433,7 @@ def f_field(label, text):
     return ("field", label, text)
 
 
-def f_dialog(title, body, buttons=("취소", "확인")):
+def f_dialog(title, body, buttons=("돌아가기", "확인")):
     return ("dialog", title, body, list(buttons))
 
 
@@ -468,6 +470,20 @@ STALE_BOX = f_banner("그 사이 바뀌었어요. 지금 상태를 확인해 주
 E_FIELD = "입력이 한도나 형식에 맞지 않음(422 validation_failed): 필드 옆에 '입력한 내용을 확인해 주세요'와 필드마다의 사유. 넣은 값은 그대로 둠"
 E_KEY = "같은 요청 키로 다른 내용을 보냄(422 idempotency_key_reused): '다시 시도해 주세요'. 새 요청 키로 다시 보냄"
 E_QUERY = "주소의 필터·페이지 값이 틀림(422 validation_failed): '입력한 내용을 확인해 주세요'와 '처음부터 보기'"
+# 설계 재검토 M19(RE-05): 폼 화면의 입력 오류·저장 실패(폼과 넣은 값은 그대로)와 불러오기 실패(폼을 보일 수 없음)를 나눔
+E_SAVE = "그 밖의 저장 실패: 넣은 값은 그대로 두고 폼 위에 '문제가 생겼어요. 다시 시도해 주세요'와 다시 시도 버튼, 추적 ID"
+LOAD_FAILED_BOX = f_box("문제가 생겼어요. 다시 시도해 주세요", "추적 ID: 0000-0000", ["다시 시도"])
+
+
+def s_load_failed(extra=""):
+    t = "불러오기 실패: 폼을 보일 수 없어 " + E_RETRY + ". 입력 오류와 저장 실패는 error(폼과 넣은 값은 그대로)"
+    return ("load-failed", t + (". " + extra if extra else ""), LOAD_FAILED_BOX)
+
+
+def s_notify(text, title, body, action):
+    """되돌릴 수 없고 손님에게 안내가 가는 사장님 액션 앞에서 화면이 여는 확인 창(설계 재검토 M19, RE-06). 서버로 보내기 전이라 04·06단계는 그대로."""
+    return ("confirm-notify", text + ". '%s'를 눌러야 보내고 '돌아가기'면 아무것도 바뀌지 않음" % action,
+            f_dialog(title, body, ["돌아가기", action]))
 
 
 def s_loading(extra=""):
@@ -501,9 +517,9 @@ def s_submit(button):
 
 def s_confirm(kind, yes, extra=""):
     t = ("저장하기 전에 사장님 확인이 필요함(409 confirmation_required, %s): 확인 창에 '%s'. '%s'를 누르면 confirm에 %s를 넣고 "
-         "새 요청 키로 다시 보냄. '취소'면 아무것도 바뀌지 않음" % (kind, CONFIRM_MSG[kind], yes, kind))
+         "새 요청 키로 다시 보냄. '돌아가기'면 아무것도 바뀌지 않음" % (kind, CONFIRM_MSG[kind], yes, kind))
     return ("confirm", t + (". " + extra if extra else ""),
-            f_dialog("저장하기 전에 확인해 주세요", CONFIRM_MSG[kind].replace("{count}", "2"), ["취소", yes]))
+            f_dialog("저장하기 전에 확인해 주세요", CONFIRM_MSG[kind].replace("{count}", "2"), ["돌아가기", yes]))
 
 
 # ── 08단계 결정 사항(체크포인트에서 확인 요청) ─────────────────────────────────────

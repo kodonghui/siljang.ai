@@ -71,6 +71,8 @@
 | `allergy` | 화면 고유(W3) | 주문자 정보·주문 요청 카드 앞에서 알레르기 정보에 따로 동의를 받고, 동의하면 알레르기 답을 AI를 거치지 않는 블록으로 받음(SPEC-075) | 1 |
 | `photo-consent` | 화면 고유(W3) | 완성 사진 안내에서 그 사진의 게시 동의를 한 문장으로 묻고 누른 답을 사진마다 남김(SPEC-053) | 1 |
 | `amount-confirm` | 화면 고유(W3) | 결제 안내를 전할 때 계좌 대신 새 금액 확인 카드를 보이고, 손님이 사장님이 정한 새 금액을 확인하거나 받지 않음(SPEC-076) | 1 |
+| `confirm-notify` | 화면 고유(W3) | 되돌릴 수 없고 손님에게 안내가 가는 사장님 액션 앞에서 화면이 여는 확인 창. 무엇이 손님에게 가는지 한 줄과 '돌아가기'(설계 재검토 M19) | 7 |
+| `load-failed` | 화면 고유(W3) | 화면의 데이터를 불러오지 못해 폼을 보일 수 없음. '다시 시도'만 있음(입력 오류와 저장 실패는 error, 설계 재검토 M19) | 6 |
 <!-- 08-screens:states:end -->
 
 ## 5. 손님 문구와 확인 문구
@@ -172,25 +174,25 @@
 | [SCR-019](SCR-019.md) | 사장님 알림 | 사장님 | normal · not-sent · error · stale | loading · empty · permission | 0 |
 | [SCR-020](SCR-020.md) | 주문 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 7 |
 | [SCR-021](SCR-021.md) | 주문 상세 | 사장님 | normal · loading · error · permission · stale · confirm · submitting · done | empty | 20 |
-| [SCR-022](SCR-022.md) | 맞춤 주문 검토 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 21 |
-| [SCR-023](SCR-023.md) | 결제 기한 지난 주문 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 21 |
-| [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 21 |
-| [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 20 |
+| [SCR-022](SCR-022.md) | 맞춤 주문 검토 | 사장님 | normal · loading · error · permission · stale · submitting · confirm-notify · confirm · done | empty | 21 |
+| [SCR-023](SCR-023.md) | 결제 기한 지난 주문 | 사장님 | normal · loading · error · permission · stale · submitting · confirm-notify · confirm · done | empty | 21 |
+| [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm-notify · confirm · awaiting-payment · done | empty | 21 |
+| [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · confirm-notify · submitting · done | empty | 20 |
 | [SCR-026](SCR-026.md) | 환불 송금 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 17 |
-| [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 20 |
+| [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm-notify · confirm · done | empty | 20 |
 | [SCR-028](SCR-028.md) | 입금 대조 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
-| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · submitting · mismatch · expired · done | empty | 25 |
+| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · confirm-notify · submitting · mismatch · expired · done | empty | 25 |
 | [SCR-030](SCR-030.md) | 제작 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 34 |
-| [SCR-031](SCR-031.md) | 픽업 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 37 |
-| [SCR-032](SCR-032.md) | 영업 캘린더 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 17 |
-| [SCR-033](SCR-033.md) | 영업 캘린더 설정 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 16 |
-| [SCR-034](SCR-034.md) | 가게 설정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 19 |
+| [SCR-031](SCR-031.md) | 픽업 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm-notify · confirm · done | - | 37 |
+| [SCR-032](SCR-032.md) | 영업 캘린더 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · confirm · done | - | 17 |
+| [SCR-033](SCR-033.md) | 영업 캘린더 설정 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · confirm · done | - | 16 |
+| [SCR-034](SCR-034.md) | 가게 설정 | 사장님 | normal · loading · error · load-failed · permission · stale · submitting · done | empty | 19 |
 | [SCR-035](SCR-035.md) | 영업 신고 | 사장님 | normal · loading · error · permission · stale · submitting · on-hold · done | empty | 35 |
-| [SCR-036](SCR-036.md) | 가격표와 도안 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 22 |
+| [SCR-036](SCR-036.md) | 가격표와 도안 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · done | - | 22 |
 | [SCR-037](SCR-037.md) | 가격표 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
-| [SCR-038](SCR-038.md) | 운영규정 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 15 |
+| [SCR-038](SCR-038.md) | 운영규정 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · confirm · done | - | 15 |
 | [SCR-039](SCR-039.md) | 운영규정 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
-| [SCR-040](SCR-040.md) | 결제 수단 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 16 |
+| [SCR-040](SCR-040.md) | 결제 수단 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · confirm · done | - | 16 |
 | [SCR-041](SCR-041.md) | 카카오톡 채널 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · checking · event-off · done | - | 41 |
 | [SCR-042](SCR-042.md) | 장부 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · reconnect · done | - | 34 |
 | [SCR-043](SCR-043.md) | 예약 링크 | 사장님 | normal · loading · empty · error · permission · stale | - | 5 |
