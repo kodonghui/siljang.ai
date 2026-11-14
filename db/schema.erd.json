@@ -221,7 +221,8 @@
       "03h8fnqbx9njz9apx47sadq1h",
       "03h8fnqbx9njz9apx49e320n6",
       "03h8gnq5avsmfi0qge0a73bgv",
-      "03h8gnq5b1b7t8vvc4nlq48j3"
+      "03h8gnq5b1b7t8vvc4nlq48j3",
+      "03h8h9o7fmal8i2s5slfxxedx"
     ],
     "indexIds": [
       "03h7y017apioxvv0yn8m6arb8",
@@ -306,7 +307,8 @@
       "03h8fnqbxf49uorl0q9183858",
       "03h8fnqbxkjjausnvnnb4t9m4",
       "03h8fnqbxkjjausnvo2bmhhxo",
-      "03h8fnqbxpxoqm824l39mouo5"
+      "03h8fnqbxpxoqm824l39mouo5",
+      "03h8h9o7frncabk7v0ewen77i"
     ],
     "memoIds": [
       "03h7y0184s9oftzxoejnroyg3"
@@ -1063,7 +1065,14 @@
           "03h7y0179cdtx0zvnukmxyf47",
           "03h7y0179cdtx0zvnumioqwqu",
           "03h7y0179cdtx0zvnupu6k9rz",
-          "03h7y0179cdtx0zvnur2t59mq"
+          "03h7y0179cdtx0zvnur2t59mq",
+          "03h8h9o09zry2vvha2ifrgrci",
+          "03h8h9o0ar65lhoe6c4h9c45b",
+          "03h8h9o0awk9bb26ig5xs5mp6",
+          "03h8h9o0b7gvrzasg8iy1xeag",
+          "03h8h9o0bnyjibw6mrujwy3rf",
+          "03h8h9o0btg13bfsgn4j4ub0x",
+          "03h8h9o0bysmtus2rrdy2oan4"
         ],
         "groupId": "03h7y017wfhgli8koxk63sce2",
         "ui": {
@@ -4851,9 +4860,9 @@
         "id": "03h7y0179cdtx0zvnuc80tb5e",
         "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
         "name": "card_id",
-        "comment": "손님이 누른 신고 카드",
+        "comment": "손님이 누른 신고 카드. 주문자의 신고에만 있고 사장님이 에스컬레이션 건에서 남긴 신고에는 없음(issue_reports_reporter_chk)",
         "dataType": "uuid",
-        "options": 12
+        "options": 4
       },
       "03h7y0179cdtx0zvnudx3ivrt": {
         "id": "03h7y0179cdtx0zvnudx3ivrt",
@@ -4884,7 +4893,7 @@
         "id": "03h7y0179cdtx0zvnujqq7pbt",
         "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
         "name": "compensation",
-        "comment": "보상(TERM-033): 재제작·일부 환불·전액 환불·보상 없음. 사장님만 정함(REQ-073)",
+        "comment": "보상(TERM-033): 재제작·일부 환불·전액 환불·그 밖의 보상(사장님이 직접 처리, 환불·장부 없음)·보상 없음. 사장님만 정함(REQ-246)",
         "dataType": "text",
         "options": 0
       },
@@ -4920,6 +4929,63 @@
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
+      },
+      "03h8h9o09zry2vvha2ifrgrci": {
+        "id": "03h8h9o09zry2vvha2ifrgrci",
+        "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
+        "name": "problem_kind",
+        "comment": "문제 종류: 상함·변질·이물·그 밖. 사장님이 보상을 정할 때 꼭 고름(REQ-247). 손님과 AI 상담은 고르지 않음",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8h9o0ar65lhoe6c4h9c45b": {
+        "id": "03h8h9o0ar65lhoe6c4h9c45b",
+        "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
+        "name": "no_compensation_reason",
+        "comment": "상함·변질·이물에 보상 없음을 고른 사유(REQ-248, 소비자분쟁해결기준을 보인 뒤). 사장님 화면에만. 주문이 끝난 날부터 3년 뒤 비움(SPEC-065)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8h9o0awk9bb26ig5xs5mp6": {
+        "id": "03h8h9o0awk9bb26ig5xs5mp6",
+        "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
+        "name": "other_compensation_note",
+        "comment": "그 밖의 보상에서 사장님이 한 일(REQ-249). 사장님 화면에만. 주문이 끝난 날부터 3년 뒤 비움(SPEC-065)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8h9o0b7gvrzasg8iy1xeag": {
+        "id": "03h8h9o0b7gvrzasg8iy1xeag",
+        "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
+        "name": "other_compensation_amount",
+        "comment": "그 밖의 보상의 금액(선택, 0원~1억 원). 환불·장부 행은 만들지 않음(REQ-249)",
+        "dataType": "integer",
+        "options": 0
+      },
+      "03h8h9o0bnyjibw6mrujwy3rf": {
+        "id": "03h8h9o0bnyjibw6mrujwy3rf",
+        "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
+        "name": "reported_by",
+        "comment": "신고한 사람: 주문자(신고 카드)·사장님이 에스컬레이션 건에서 남김(주문자가 아닌 사람의 말, SPEC-079)",
+        "dataType": "text",
+        "default": "'orderer'",
+        "options": 8
+      },
+      "03h8h9o0btg13bfsgn4j4ub0x": {
+        "id": "03h8h9o0btg13bfsgn4j4ub0x",
+        "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
+        "name": "handoff_id",
+        "comment": "사장님이 남긴 신고의 에스컬레이션 건(사유 다른 사용자, 같은 주문, 건마다 하나, 4절 A38). 상담을 지울 때 그 건을 지우기 전에 비움(SPEC-065, 5절 E32)",
+        "dataType": "uuid",
+        "options": 4
+      },
+      "03h8h9o0bysmtus2rrdy2oan4": {
+        "id": "03h8h9o0bysmtus2rrdy2oan4",
+        "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
+        "name": "notes_purged_at",
+        "comment": "보상 없음 사유와 그 밖의 보상의 한 일을 비운 시각(주문이 끝난 날부터 3년, SPEC-065)",
+        "dataType": "timestamptz",
+        "options": 0
       },
       "03h7y0179cdtx0zvnuu7mrkh2": {
         "id": "03h7y0179cdtx0zvnuu7mrkh2",
@@ -10226,6 +10292,28 @@
             "03h8gnpy0efamelbp0avs7bj3"
           ]
         }
+      },
+      "03h8h9o7fmal8i2s5slfxxedx": {
+        "id": "03h8h9o7fmal8i2s5slfxxedx",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y01796y3abgmnqlpn52la",
+          "columnIds": [
+            "03h7y01796y3abgmnqpvpngmb",
+            "03h7y01796y3abgmnqn82qw4d",
+            "03h7y01796y3abgmnqvnrua9y"
+          ]
+        },
+        "end": {
+          "tableId": "03h7y0179cdtx0zvnu0h1hb7f",
+          "columnIds": [
+            "03h7y0179cdtx0zvnu6b5yhe2",
+            "03h8h9o0btg13bfsgn4j4ub0x",
+            "03h7y0179cdtx0zvnu6w90fo9"
+          ]
+        }
       }
     },
     "indexEntities": {
@@ -11065,6 +11153,17 @@
           "03h8fnqbxpxoqm824l80p4dpn",
           "03h8fnqbxpxoqm824lbfed56d",
           "03h8fnqbxpxoqm824le6ekgpk"
+        ],
+        "unique": true
+      },
+      "03h8h9o7frncabk7v0ewen77i": {
+        "id": "03h8h9o7frncabk7v0ewen77i",
+        "name": "handoffs_order_scope",
+        "tableId": "03h7y01796y3abgmnqlpn52la",
+        "indexColumnIds": [
+          "03h8h9o7frncabk7v0iuy8v1u",
+          "03h8h9o7frncabk7v0m8tblo2",
+          "03h8h9o7frncabk7v0qjoy70p"
         ],
         "unique": true
       }
@@ -12119,12 +12218,30 @@
         "indexId": "03h8fnqbxpxoqm824l39mouo5",
         "columnId": "03h7y0178l0hvzg6dg05q3010",
         "orderType": 1
+      },
+      "03h8h9o7frncabk7v0iuy8v1u": {
+        "id": "03h8h9o7frncabk7v0iuy8v1u",
+        "indexId": "03h8h9o7frncabk7v0ewen77i",
+        "columnId": "03h7y01796y3abgmnqpvpngmb",
+        "orderType": 1
+      },
+      "03h8h9o7frncabk7v0m8tblo2": {
+        "id": "03h8h9o7frncabk7v0m8tblo2",
+        "indexId": "03h8h9o7frncabk7v0ewen77i",
+        "columnId": "03h7y01796y3abgmnqn82qw4d",
+        "orderType": 1
+      },
+      "03h8h9o7frncabk7v0qjoy70p": {
+        "id": "03h8h9o7frncabk7v0qjoy70p",
+        "indexId": "03h8h9o7frncabk7v0ewen77i",
+        "columnId": "03h7y01796y3abgmnqvnrua9y",
+        "orderType": 1
       }
     },
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 396개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 410개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,

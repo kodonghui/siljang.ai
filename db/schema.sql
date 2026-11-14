@@ -222,7 +222,7 @@ CREATE TABLE designs (
 );
 COMMENT ON TABLE designs IS 'TBL-009 도안(TERM-020): 가게가 그릴 수 있게 정해 둔 그림, 가격표 버전에 담음';
 
--- TBL-010 operating_rules (CTX-002) ← SPEC-005, SPEC-010, SPEC-013, SPEC-016, SPEC-029, SPEC-032, SPEC-040, SPEC-041, SPEC-042, SPEC-043, SPEC-058 | terms: TERM-017
+-- TBL-010 operating_rules (CTX-002) ← SPEC-005, SPEC-010, SPEC-013, SPEC-016, SPEC-029, SPEC-032, SPEC-040, SPEC-041, SPEC-042, SPEC-043, SPEC-058, SPEC-079 | terms: TERM-017
 CREATE TABLE operating_rules (
   id                          uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 운영규정 버전 ID
   shop_id                     uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 가게
@@ -500,7 +500,7 @@ CREATE TABLE quotes (
 CREATE INDEX quotes_draft_idx ON quotes (draft_id, quoted_at); -- 초안의 마지막 견적
 COMMENT ON TABLE quotes IS 'TBL-022 견적(TERM-013): 가게 규칙이 계산한 금액과 근거, 버전과 유효 기한';
 
--- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-024, SPEC-025, SPEC-029, SPEC-030, SPEC-031, SPEC-034, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-042, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-059, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070, SPEC-073, SPEC-076 | terms: TERM-001
+-- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-024, SPEC-025, SPEC-029, SPEC-030, SPEC-031, SPEC-034, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-042, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-059, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070, SPEC-073, SPEC-076, SPEC-079 | terms: TERM-001
 CREATE TABLE orders (
   id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 주문 ID(손님에게 보이지 않음)
   shop_id                  uuid NOT NULL,                -- 가게
@@ -679,7 +679,7 @@ COMMENT ON TABLE order_details IS 'TBL-026 주문 내용(TERM-004): 주문에 �
 ALTER TABLE orders ADD CONSTRAINT orders_current_details_fk FOREIGN KEY (id, version, price_list_id, amount, pickup_at)
   REFERENCES order_details (order_id, version, price_list_id, amount, pickup_at) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;
 
--- TBL-027 handoffs (CTX-001) ← SPEC-014, SPEC-015, SPEC-017, SPEC-020, SPEC-021, SPEC-022, SPEC-023, SPEC-024, SPEC-025, SPEC-026, SPEC-029, SPEC-030, SPEC-040, SPEC-053, SPEC-056, SPEC-065 | terms: TERM-008, TERM-018
+-- TBL-027 handoffs (CTX-001) ← SPEC-014, SPEC-015, SPEC-017, SPEC-020, SPEC-021, SPEC-022, SPEC-023, SPEC-024, SPEC-025, SPEC-026, SPEC-029, SPEC-030, SPEC-040, SPEC-053, SPEC-056, SPEC-065, SPEC-079 | terms: TERM-008, TERM-018
 CREATE TABLE handoffs (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 에스컬레이션 건 ID
   shop_id                uuid NOT NULL,                  -- 가게
@@ -698,6 +698,7 @@ CREATE TABLE handoffs (
   closed_at              timestamptz,                    -- 답 없어 닫힌 시각(남긴 지 7일, REQ-216). 그 뒤 상담은 문의 끊김으로 닫히고 지워질 수 있음(1-1)
   created_at             timestamptz NOT NULL DEFAULT now(), -- 에스컬레이션한 시각
   CONSTRAINT handoffs_shop_scope UNIQUE (shop_id, id),
+  CONSTRAINT handoffs_order_scope UNIQUE (shop_id, id, order_id), -- 그 건에서 남긴 문제 신고가 같은 주문인지 보는 외래 키의 대상(issue_reports_handoff_fk, 설계 재검토 M12)
   CONSTRAINT handoffs_consultation_fk FOREIGN KEY (shop_id, consultation_id) REFERENCES consultations (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT handoffs_message_fk FOREIGN KEY (shop_id, source_message_id) REFERENCES messages (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT handoffs_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
@@ -716,7 +717,7 @@ CREATE UNIQUE INDEX handoffs_one_open_day_per_consultation ON handoffs (consulta
 CREATE INDEX handoffs_open_age_idx ON handoffs (created_at) WHERE status = 'open'; -- 남긴 지 7일 지난 열린 에스컬레이션 건 찾기(SPEC-024, REQ-216)
 COMMENT ON TABLE handoffs IS 'TBL-027 에스컬레이션 건(TERM-008): AI가 답하지 않고 사장님께 에스컬레이션한 손님 질문';
 
--- TBL-028 issue_details (CTX-001) ← SPEC-057, SPEC-058, SPEC-059, SPEC-065 | terms: TERM-032
+-- TBL-028 issue_details (CTX-001) ← SPEC-057, SPEC-058, SPEC-059, SPEC-065, SPEC-079 | terms: TERM-032
 CREATE TABLE issue_details (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 신고 내용 ID
   shop_id          uuid NOT NULL,                        -- 가게
@@ -754,33 +755,51 @@ CREATE TABLE issue_photos (
 );
 COMMENT ON TABLE issue_photos IS 'TBL-029 신고 사진: 신고 내용에 붙은 사진(5장까지)';
 
--- TBL-030 issue_reports (CTX-003) ← SPEC-058, SPEC-059, SPEC-060, SPEC-061 | terms: TERM-031
+-- TBL-030 issue_reports (CTX-003) ← SPEC-058, SPEC-059, SPEC-060, SPEC-061, SPEC-065, SPEC-079 | terms: TERM-031
 CREATE TABLE issue_reports (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 문제 신고 ID
   shop_id            uuid NOT NULL,                      -- 가게
   order_id           uuid NOT NULL,                      -- 받은 주문
   issue_details_id   uuid NOT NULL,                      -- 모은 신고 내용(TERM-032)
-  card_id            uuid NOT NULL,                      -- 손님이 누른 신고 카드
+  card_id            uuid,                               -- 손님이 누른 신고 카드. 주문자의 신고에만 있고 사장님이 에스컬레이션 건에서 남긴 신고에는 없음(issue_reports_reporter_chk)
   follows_report_id  uuid,                               -- 같은 주문의 두 번째 신고면 첫 신고(연결, SPEC-058)
   late               boolean NOT NULL,                   -- 운영규정의 신고 기한 뒤에 옴(REQ-072)
   status             text NOT NULL DEFAULT 'reported' CHECK (status IN ('reported', 'decided', 'closed')), -- 신고됨·보상 정해짐·닫힘(1-6)
-  compensation       text CHECK (compensation IN ('remake', 'partial_refund', 'full_refund', 'none')), -- 보상(TERM-033): 재제작·일부 환불·전액 환불·보상 없음. 사장님만 정함(REQ-073)
+  compensation       text CHECK (compensation IN ('remake', 'partial_refund', 'full_refund', 'other_compensation', 'none')), -- 보상(TERM-033): 재제작·일부 환불·전액 환불·그 밖의 보상(사장님이 직접 처리, 환불·장부 없음)·보상 없음. 사장님만 정함(REQ-246)
   decided_at         timestamptz,                        -- 보상을 정한 시각
   remake_order_id    uuid,                               -- 재제작 주문(TERM-034). 보상 하나에 하나(SPEC-060)
   closed_at          timestamptz,                        -- 보상 안내를 보내고 닫은 시각
   reported_at        timestamptz NOT NULL DEFAULT now(), -- 신고한 시각
+  problem_kind       text CHECK (problem_kind IN ('spoiled', 'foreign_matter', 'other')), -- 문제 종류: 상함·변질·이물·그 밖. 사장님이 보상을 정할 때 꼭 고름(REQ-247). 손님과 AI 상담은 고르지 않음
+  no_compensation_reason text CHECK (char_length(no_compensation_reason) BETWEEN 1 AND 200), -- 상함·변질·이물에 보상 없음을 고른 사유(REQ-248, 소비자분쟁해결기준을 보인 뒤). 사장님 화면에만. 주문이 끝난 날부터 3년 뒤 비움(SPEC-065)
+  other_compensation_note text CHECK (char_length(other_compensation_note) BETWEEN 1 AND 200), -- 그 밖의 보상에서 사장님이 한 일(REQ-249). 사장님 화면에만. 주문이 끝난 날부터 3년 뒤 비움(SPEC-065)
+  other_compensation_amount integer CHECK (other_compensation_amount BETWEEN 0 AND 100000000), -- 그 밖의 보상의 금액(선택, 0원~1억 원). 환불·장부 행은 만들지 않음(REQ-249)
+  reported_by        text NOT NULL DEFAULT 'orderer' CHECK (reported_by IN ('orderer', 'owner_from_handoff')), -- 신고한 사람: 주문자(신고 카드)·사장님이 에스컬레이션 건에서 남김(주문자가 아닌 사람의 말, SPEC-079)
+  handoff_id         uuid,                               -- 사장님이 남긴 신고의 에스컬레이션 건(사유 다른 사용자, 같은 주문, 건마다 하나, 4절 A38). 상담을 지울 때 그 건을 지우기 전에 비움(SPEC-065, 5절 E32)
+  notes_purged_at    timestamptz,                        -- 보상 없음 사유와 그 밖의 보상의 한 일을 비운 시각(주문이 끝난 날부터 3년, SPEC-065)
   CONSTRAINT issue_reports_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT issue_reports_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT issue_reports_details_fk FOREIGN KEY (shop_id, issue_details_id) REFERENCES issue_details (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT issue_reports_card_fk FOREIGN KEY (shop_id, card_id) REFERENCES confirm_cards (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT issue_reports_follows_fk FOREIGN KEY (shop_id, follows_report_id) REFERENCES issue_reports (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT issue_reports_remake_fk FOREIGN KEY (shop_id, remake_order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
+  CONSTRAINT issue_reports_handoff_fk FOREIGN KEY (shop_id, handoff_id, order_id) REFERENCES handoffs (shop_id, id, order_id) ON DELETE RESTRICT, -- 그 건의 주문과 같은 주문(설계 재검토 M12)
   CONSTRAINT issue_reports_details_uq UNIQUE (issue_details_id),
   CONSTRAINT issue_reports_card_uq UNIQUE (card_id),     -- 버튼 두 번에 신고 하나(G2)
   CONSTRAINT issue_reports_remake_uq UNIQUE (remake_order_id),
+  CONSTRAINT issue_reports_handoff_uq UNIQUE (handoff_id),   -- 에스컬레이션 건 하나에 신고 하나(SPEC-079)
   CONSTRAINT issue_reports_decided_chk CHECK ((status IN ('decided', 'closed')) = (compensation IS NOT NULL AND decided_at IS NOT NULL)),
   CONSTRAINT issue_reports_closed_chk CHECK ((status = 'closed') = (closed_at IS NOT NULL)),
-  CONSTRAINT issue_reports_remake_chk CHECK (remake_order_id IS NULL OR compensation IS NOT DISTINCT FROM 'remake')
+  CONSTRAINT issue_reports_remake_chk CHECK (remake_order_id IS NULL OR compensation IS NOT DISTINCT FROM 'remake'),
+  CONSTRAINT issue_reports_problem_kind_chk CHECK ((problem_kind IS NULL) = (compensation IS NULL)), -- 보상을 정하면 문제 종류도(REQ-247)
+  CONSTRAINT issue_reports_none_reason_chk CHECK (no_compensation_reason IS NULL OR (compensation = 'none' AND problem_kind IN ('spoiled', 'foreign_matter'))), -- 사유는 상함·변질·이물의 보상 없음에만
+  CONSTRAINT issue_reports_none_reason_needed_chk CHECK (compensation IS DISTINCT FROM 'none' OR problem_kind NOT IN ('spoiled', 'foreign_matter') OR no_compensation_reason IS NOT NULL OR notes_purged_at IS NOT NULL), -- 상함·변질·이물의 보상 없음에는 사유(REQ-248)
+  CONSTRAINT issue_reports_other_note_chk CHECK (other_compensation_note IS NULL OR compensation = 'other_compensation'),
+  CONSTRAINT issue_reports_other_note_needed_chk CHECK (compensation IS DISTINCT FROM 'other_compensation' OR other_compensation_note IS NOT NULL OR notes_purged_at IS NOT NULL), -- 그 밖의 보상에는 한 일(REQ-249)
+  CONSTRAINT issue_reports_other_amount_chk CHECK (other_compensation_amount IS NULL OR compensation = 'other_compensation'),
+  CONSTRAINT issue_reports_notes_purged_chk CHECK (notes_purged_at IS NULL OR (no_compensation_reason IS NULL AND other_compensation_note IS NULL)), -- 비운 뒤 다시 쓰지 않음
+  CONSTRAINT issue_reports_reporter_chk CHECK ((reported_by = 'orderer') = (card_id IS NOT NULL)), -- 신고 카드는 주문자의 신고에만(RB-15)
+  CONSTRAINT issue_reports_handoff_chk CHECK (handoff_id IS NULL OR reported_by = 'owner_from_handoff') -- 에스컬레이션 건은 사장님이 남긴 신고에만
 );
 COMMENT ON TABLE issue_reports IS 'TBL-030 문제 신고(TERM-031): 받은 주문의 신고와 사장님이 정한 보상(1-6)';
 
@@ -1095,7 +1114,7 @@ CREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (co
 CREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL; -- 동의를 철회하면 먼저 내릴 행 찾기
 COMMENT ON TABLE portfolio_items IS 'TBL-041 포트폴리오(TERM-052): 손님이 게시에 동의한 사진만 올린 목록';
 
--- TBL-042 owner_tasks (CTX-008) ← SPEC-003, SPEC-007, SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-041, SPEC-042, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-049, SPEC-058, SPEC-059, SPEC-064, SPEC-065, SPEC-067, SPEC-071, SPEC-077 | terms: TERM-059
+-- TBL-042 owner_tasks (CTX-008) ← SPEC-003, SPEC-007, SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-041, SPEC-042, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-049, SPEC-058, SPEC-059, SPEC-064, SPEC-065, SPEC-067, SPEC-071, SPEC-077, SPEC-079 | terms: TERM-059
 CREATE TABLE owner_tasks (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 할 일 ID
   shop_id             uuid NOT NULL,                     -- 가게
@@ -1307,7 +1326,7 @@ CREATE TABLE ai_tool_calls (
 CREATE INDEX ai_tool_calls_call_idx ON ai_tool_calls (ai_call_id); -- 호출마다 도구 목록
 COMMENT ON TABLE ai_tool_calls IS 'TBL-049 AI 도구 호출 기록: 이름·결과·대화 ID·대상 ID·마스킹한 인자';
 
--- TBL-050 request_keys (공통) ← SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-007, SPEC-031, SPEC-034, SPEC-038, SPEC-039, SPEC-042, SPEC-047, SPEC-048, SPEC-051, SPEC-054, SPEC-059, SPEC-065, SPEC-070, SPEC-071, SPEC-077, SPEC-078 | terms: none
+-- TBL-050 request_keys (공통) ← SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-007, SPEC-031, SPEC-034, SPEC-038, SPEC-039, SPEC-042, SPEC-047, SPEC-048, SPEC-051, SPEC-054, SPEC-059, SPEC-065, SPEC-070, SPEC-071, SPEC-077, SPEC-078, SPEC-079 | terms: none
 CREATE TABLE request_keys (
   actor_kind       text NOT NULL CHECK (actor_kind IN ('owner', 'operator')), -- 누른 쪽: 사장님·운영자
   actor_id         uuid NOT NULL,                        -- 그 사람의 ID(owners.id나 operators.id)
@@ -2057,15 +2076,22 @@ COMMENT ON COLUMN issue_reports.id IS '문제 신고 ID';
 COMMENT ON COLUMN issue_reports.shop_id IS '가게';
 COMMENT ON COLUMN issue_reports.order_id IS '받은 주문';
 COMMENT ON COLUMN issue_reports.issue_details_id IS '모은 신고 내용(TERM-032)';
-COMMENT ON COLUMN issue_reports.card_id IS '손님이 누른 신고 카드';
+COMMENT ON COLUMN issue_reports.card_id IS '손님이 누른 신고 카드. 주문자의 신고에만 있고 사장님이 에스컬레이션 건에서 남긴 신고에는 없음(issue_reports_reporter_chk)';
 COMMENT ON COLUMN issue_reports.follows_report_id IS '같은 주문의 두 번째 신고면 첫 신고(연결, SPEC-058)';
 COMMENT ON COLUMN issue_reports.late IS '운영규정의 신고 기한 뒤에 옴(REQ-072)';
 COMMENT ON COLUMN issue_reports.status IS '신고됨·보상 정해짐·닫힘(1-6)';
-COMMENT ON COLUMN issue_reports.compensation IS '보상(TERM-033): 재제작·일부 환불·전액 환불·보상 없음. 사장님만 정함(REQ-073)';
+COMMENT ON COLUMN issue_reports.compensation IS '보상(TERM-033): 재제작·일부 환불·전액 환불·그 밖의 보상(사장님이 직접 처리, 환불·장부 없음)·보상 없음. 사장님만 정함(REQ-246)';
 COMMENT ON COLUMN issue_reports.decided_at IS '보상을 정한 시각';
 COMMENT ON COLUMN issue_reports.remake_order_id IS '재제작 주문(TERM-034). 보상 하나에 하나(SPEC-060)';
 COMMENT ON COLUMN issue_reports.closed_at IS '보상 안내를 보내고 닫은 시각';
 COMMENT ON COLUMN issue_reports.reported_at IS '신고한 시각';
+COMMENT ON COLUMN issue_reports.problem_kind IS '문제 종류: 상함·변질·이물·그 밖. 사장님이 보상을 정할 때 꼭 고름(REQ-247). 손님과 AI 상담은 고르지 않음';
+COMMENT ON COLUMN issue_reports.no_compensation_reason IS '상함·변질·이물에 보상 없음을 고른 사유(REQ-248, 소비자분쟁해결기준을 보인 뒤). 사장님 화면에만. 주문이 끝난 날부터 3년 뒤 비움(SPEC-065)';
+COMMENT ON COLUMN issue_reports.other_compensation_note IS '그 밖의 보상에서 사장님이 한 일(REQ-249). 사장님 화면에만. 주문이 끝난 날부터 3년 뒤 비움(SPEC-065)';
+COMMENT ON COLUMN issue_reports.other_compensation_amount IS '그 밖의 보상의 금액(선택, 0원~1억 원). 환불·장부 행은 만들지 않음(REQ-249)';
+COMMENT ON COLUMN issue_reports.reported_by IS '신고한 사람: 주문자(신고 카드)·사장님이 에스컬레이션 건에서 남김(주문자가 아닌 사람의 말, SPEC-079)';
+COMMENT ON COLUMN issue_reports.handoff_id IS '사장님이 남긴 신고의 에스컬레이션 건(사유 다른 사용자, 같은 주문, 건마다 하나, 4절 A38). 상담을 지울 때 그 건을 지우기 전에 비움(SPEC-065, 5절 E32)';
+COMMENT ON COLUMN issue_reports.notes_purged_at IS '보상 없음 사유와 그 밖의 보상의 한 일을 비운 시각(주문이 끝난 날부터 3년, SPEC-065)';
 COMMENT ON COLUMN payment_requests.id IS '결제 안내 ID';
 COMMENT ON COLUMN payment_requests.shop_id IS '가게';
 COMMENT ON COLUMN payment_requests.order_id IS '주문. 재제작 주문에는 없음(트리거 payment_requests_remake, SPEC-060)';
