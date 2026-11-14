@@ -1,14 +1,14 @@
 # 05단계 ERD: 수제케이크 주문제작 데이터베이스
 
-상태: 확정(2026-11-12 11:56 동희님 '추천대로 굳힘', 10절). 2026-11-13 설계 재검토의 높음 묶음(H1·H2, H11·H12, H7·H8, H3, H4, H5·H10)과 중간 묶음(M1·M2·M3·M9·M10)을 마이그레이션 0002~0008로, 합친 PR에 남은 Codex 자동 검토 의견 넷을 0009로, 중간 묶음 M4·M13을 0010으로, M5·M6을 0011로 고쳤습니다(11절). 원본은 [`db/schema.sql`](../../db/schema.sql)이고, 사람이 보는 곳은 ERD Editor로 여는 [`db/schema.erd.json`](../../db/schema.erd.json)입니다(`truth: source`). 이 문서의 표 목록과 다이어그램은 같은 원본에서 `build_erd.py`가 만듭니다.
+상태: 확정(2026-11-12 11:56 동희님 '추천대로 굳힘', 10절). 2026-11-13 설계 재검토의 높음 묶음(H1·H2, H11·H12, H7·H8, H3, H4, H5·H10)과 중간 묶음(M1·M2·M3·M9·M10)을 마이그레이션 0002~0008로, 합친 PR에 남은 Codex 자동 검토 의견 넷을 0009로, 중간 묶음 M4·M13을 0010으로, M5·M6을 0011로, M7·M17을 0012로 고쳤습니다(11절). 원본은 [`db/schema.sql`](../../db/schema.sql)이고, 사람이 보는 곳은 ERD Editor로 여는 [`db/schema.erd.json`](../../db/schema.erd.json)입니다(`truth: source`). 이 문서의 표 목록과 다이어그램은 같은 원본에서 `build_erd.py`가 만듭니다.
 
 ## 1. 한눈에
 
-- 테이블 54개(TBL-001~054), 컬럼 668개입니다. 외래 키 118개, CHECK 363개, UNIQUE 76개, EXCLUDE 1개로 데이터베이스가 지키는 규칙을 적었고, 제약 밖 인덱스는 59개(그 가운데 부분 인덱스 43개)입니다. 접속기록은 트리거 둘(`access_logs_guard`)이 고치거나 비우는 것을 막고, 주문 상태와 제작 행의 짝은 지연 제약 트리거 둘(`orders_production_sync`)이, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값은 트리거 하나(`refunds_unconfirmed`)가, 재제작 주문이 돈을 낸 원래 주문을 가리키고 결제 안내·환불·장부 행을 두지 않음은 트리거 넷(`orders_remake_root`, `payment_requests_remake` 등)이, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않음은 지연 제약 트리거 하나(`orders_remake_finish`)가, 한 주문에 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐임은 트리거 하나(`slot_holds_pair`)가 봅니다.
-- 기능 명세 SPEC-001~076이 읽고 쓰는 데이터 964건을 테이블.컬럼 449개에 하나씩 이었습니다([`erd_map.py`](../../research/cake-erd-2026-11/erd_map.py)). 모든 SPEC에 대응이 있고, 쓰이지 않는 테이블은 없습니다.
+- 테이블 57개(TBL-001~057), 컬럼 692개입니다. 외래 키 128개, CHECK 376개, UNIQUE 87개, EXCLUDE 1개로 데이터베이스가 지키는 규칙을 적었고, 제약 밖 인덱스는 61개(그 가운데 부분 인덱스 44개)입니다. 접속기록은 트리거 둘(`access_logs_guard`)이 고치거나 비우는 것을 막고, 주문 상태와 제작 행의 짝은 지연 제약 트리거 둘(`orders_production_sync`)이, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값은 트리거 하나(`refunds_unconfirmed`)가, 재제작 주문이 돈을 낸 원래 주문을 가리키고 결제 안내·환불·장부 행을 두지 않음은 트리거 넷(`orders_remake_root`, `payment_requests_remake` 등)이, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않음은 지연 제약 트리거 하나(`orders_remake_finish`)가, 한 주문에 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐임은 트리거 하나(`slot_holds_pair`)가, 취소 환불의 취소한 주문이 환불을 남기는 주문이나 그 재제작 주문임은 트리거 하나(`refunds_cancelled`)가, 주문 확정 뒤 그 주문을 확정한 결제가 확인을 취소한 것이 아님은 지연 제약 트리거 둘(`orders_confirmed_payment_live`, `payments_confirmed_void`)이 봅니다.
+- 기능 명세 SPEC-001~076이 읽고 쓰는 데이터 998건을 테이블.컬럼 468개에 하나씩 이었습니다([`erd_map.py`](../../research/cake-erd-2026-11/erd_map.py)). 모든 SPEC에 대응이 있고, 쓰이지 않는 테이블은 없습니다.
 - 용어집 TERM-001~074가 모두 자리를 가집니다. 애그리거트·읽기 모델 31개는 테이블 헤더 주석(16개)이나 '테이블 없음' 행(15개)에, 상태·값 이름 23개는 컬럼 설명에 TERM 번호로 있습니다.
-- PostgreSQL 16.15의 빈 데이터베이스에 `db/schema.sql`과 마이그레이션 `0001_init.sql`~`0011_amount_confirm_standard_quote.sql`을 각각 만들어 카탈로그가 같음을 봤고, 규칙 테스트 221개가 모두 기대한 결과였습니다(막아야 할 쓰기 188개는 막힘, 늦은 쓰기 3개는 0행, 받아야 할 쓰기 5개는 들어감, 지우기 결과 25개는 기대한 값). 지우기(6절)를 31일·32일·3년·5년 뒤 시각으로 돌려, 지운 뒤 개인정보는 0건이고 계약·결제 기록은 그대로 남으며, 저장소가 실패한 사진 파일은 지울 파일로 남아 다음 날 지워짐을 봤고(8절 D4), 두 세션이 같은 주문을 동시에 쓰면 잠금 번호가 늦은 쓰기를 막음도 봤습니다(8절 D5).
-- ERD Editor 다이어그램은 MCP 서버(1.2.0)로 이 원본을 들여와 만들었고, 2026-11-13·14의 바꿈은 편집 도구로 더했습니다(`erd_editor_sync.py`). 다이어그램의 DDL을 빈 데이터베이스에 만들어 견주면 CHECK 363개 말고는 같습니다(9절).
+- PostgreSQL 16.15의 빈 데이터베이스에 `db/schema.sql`과 마이그레이션 `0001_init.sql`~`0012_request_keys_questions_extras.sql`을 각각 만들어 카탈로그가 같음을 봤고, 규칙 테스트 257개가 모두 기대한 결과였습니다(막아야 할 쓰기 220개는 막힘, 늦은 쓰기 3개는 0행, 받아야 할 쓰기 8개는 들어감, 지우기 결과 26개는 기대한 값). 지우기(6절)를 31일·32일·3년·5년 뒤 시각으로 돌려, 지운 뒤 개인정보는 0건이고 계약·결제 기록은 그대로 남으며, 저장소가 실패한 사진 파일은 지울 파일로 남아 다음 날 지워짐을 봤고(8절 D4), 두 세션이 같은 주문을 동시에 쓰면 잠금 번호가 늦은 쓰기를 막음도 봤습니다(8절 D5).
+- ERD Editor 다이어그램은 MCP 서버(1.2.0)로 이 원본을 들여와 만들었고, 2026-11-13·14의 바꿈은 편집 도구로 더했습니다(`erd_editor_sync.py`). 다이어그램의 DDL을 빈 데이터베이스에 만들어 견주면 CHECK 376개 말고는 같습니다(9절).
 - 체크포인트: 2026-11-12 11:56 동희님이 이 작업 대화의 결정 카드에서 '추천대로 굳힘'을 고르셔서, 이 스키마와 5절의 결정 사항 E1~E14를 추천대로 확정했습니다. SPEC-021을 좁혀 읽은 E5(카드번호는 끝 4자리만 남김)도 함께 정해졌습니다.
 
 ## 2. 읽은 것과 만든 것
@@ -33,7 +33,8 @@
 | [`db/migrations/0008_wait_ends_due_cap.sql`](../../db/migrations/0008_wait_ends_due_cap.sql) | 사장님 답 기다림의 끝, 결제 기한의 시작과 상한, 그날 자리 세기, 주문 상태와 제작 행의 짝(설계 재검토 M1·M2·M3·M9·M10)의 바꿈(11절) |
 | [`db/migrations/0009_refund_excess_file_queue.sql`](../../db/migrations/0009_refund_excess_file_queue.sql) | 더 들어온 금액의 환불 계산값과 환불 금액 상한, 지울 사진 파일 테이블, 운영자가 여는 상담의 대화 글(Codex 후속)의 바꿈(11절) |
 | [`db/migrations/0010_refund_calc_remake.sql`](../../db/migrations/0010_refund_calc_remake.sql) | 금액이 내려간 변경의 차액 돌려주기, 재제작 주문이 돈을 낸 원래 주문을 가리킴과 재제작 주문의 결제 안내·환불·장부 행 막기, 끝나지 않은 재제작 주문이 있는 원래 주문을 끝내지 않기(Codex 의견), 환불 계산의 차례를 적은 설명(설계 재검토 M4·M13)의 바꿈(11절) |
-| [`db/migrations/0011_amount_confirm_standard_quote.sql`](../../db/migrations/0011_amount_confirm_standard_quote.sql) | 손님의 새 금액 확인(결제 안내의 확인 필요·확인한 시각·받지 않은 시각·누른 카드), 차액을 기다리는 날짜 변경의 잡힌 자리와 확정된 자리, 닿을 수 없던 오래된 버전 변경 상태와 할 일 빼기, 기본 디자인 범위의 옵션과 견적(설계 재검토 M5·M6)의 바꿈(11절). 0001~0011을 차례로 적용하면 `schema.sql`과 같은 카탈로그(D2) |
+| [`db/migrations/0011_amount_confirm_standard_quote.sql`](../../db/migrations/0011_amount_confirm_standard_quote.sql) | 손님의 새 금액 확인(결제 안내의 확인 필요·확인한 시각·받지 않은 시각·누른 카드), 차액을 기다리는 날짜 변경의 잡힌 자리와 확정된 자리, 닿을 수 없던 오래된 버전 변경 상태와 할 일 빼기, 기본 디자인 범위의 옵션과 견적(설계 재검토 M5·M6)의 바꿈(11절) |
+| [`db/migrations/0012_request_keys_questions_extras.sql`](../../db/migrations/0012_request_keys_questions_extras.sql) | 화면 요청 키의 요청 지문·처리 상태·처음 결과, 환불의 취소한 주문과 대상마다 하나, 주문을 확정한 결제, 덧붙은 질문과 날짜마다의 마감된 날 질문 건·추가 수락을 쓴 주문 요청, 초안의 픽업 날짜와 시각, 더하는 옵션 연결 테이블과 (상담, 손님) 쌍 외래 키(설계 재검토 M7·M17)의 바꿈(11절). 0001~0012를 차례로 적용하면 `schema.sql`과 같은 카탈로그(D2) |
 | [`db/schema.erd.json`](../../db/schema.erd.json) | ERD Editor 다이어그램. 컨텍스트마다 색 그룹, 맨 위 메모 |
 | [`research/cake-erd-2026-11/`](../../research/cake-erd-2026-11/) | `build_erd.py`(헤더 주석 SPEC 목록·컬럼 설명·이 문서의 표와 다이어그램을 만듦), `erd_map.py`(SPEC → 테이블.컬럼 대응), `check_erd.py`(검사), `rule_tests.sql`(규칙 테스트와 지우기를 돌려 남는 것), `erd_editor_build.py`(ERD Editor 다이어그램 만들기와 견주기), `erd_editor_sync.py`(마이그레이션 0002부터의 바꿈을 ERD Editor 편집 도구로 다이어그램에 옮김) |
 
@@ -115,11 +116,14 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-047 | `ledger_writes` | 장부 쓰기 | CTX-009 | 009, 036, 039, 045, 046, 047, 048, 054, 055, 060, 064, 070, 076 | TERM-055 |
 | TBL-048 | `ai_calls` | AI 호출 기록 | CTX-001 | 017, 020, 021, 068 | TERM-045 |
 | TBL-049 | `ai_tool_calls` | AI 도구 호출 기록 | CTX-001 | 013, 014, 020, 021, 026, 040, 065 | 없음 |
-| TBL-050 | `request_keys` | 요청 키 | 공통 | 002, 003, 004, 005, 007, 031, 034, 038, 039, 042, 047, 048, 051, 054, 059, 070, 071 | 없음 |
+| TBL-050 | `request_keys` | 요청 키 | 공통 | 002, 003, 004, 005, 007, 031, 034, 038, 039, 042, 047, 048, 051, 054, 059, 065, 070, 071 | 없음 |
 | TBL-051 | `ops_events` | 운영 기록 | 공통 | 008, 010, 017, 029, 065 | 없음 |
 | TBL-052 | `kept_records` | 보관 기록 | CTX-003 | 065, 073 | 없음 |
 | TBL-053 | `access_logs` | 접속기록 | 공통 | 065, 073, 074 | 없음 |
 | TBL-054 | `file_deletions` | 지울 파일 | 공통 | 065 | 없음 |
+| TBL-055 | `handoff_questions` | 덧붙은 질문 | CTX-001 | 022, 023, 065 | TERM-008 |
+| TBL-056 | `order_draft_extras` | 초안의 더하는 옵션 | CTX-001 | 013, 065 | TERM-003 |
+| TBL-057 | `order_detail_extras` | 주문 내용의 더하는 옵션 | CTX-003 | 029, 050 | TERM-004 |
 <!-- build_erd:tables:end -->
 
 ### 3-3. 컨텍스트별 다이어그램
@@ -131,9 +135,9 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 
 ```mermaid
 flowchart LR
-  C0["CTX-001 상담<br/>테이블 13개"]
+  C0["CTX-001 상담<br/>테이블 15개"]
   C1["CTX-002 가게 규칙<br/>테이블 10개"]
-  C2["CTX-003 주문<br/>테이블 5개"]
+  C2["CTX-003 주문<br/>테이블 6개"]
   C3["CTX-004 결제·환불<br/>테이블 4개"]
   C4["CTX-005 제작·전달<br/>테이블 3개"]
   C5["CTX-006 후기·포트폴리오<br/>테이블 4개"]
@@ -141,16 +145,17 @@ flowchart LR
   C7["CTX-008 알림<br/>테이블 3개"]
   C8["CTX-009 장부 연결<br/>테이블 3개"]
   C9["공통<br/>테이블 4개"]
-  C0 -->|7| C1
-  C0 -->|3| C2
+  C0 -->|8| C1
+  C0 -->|5| C2
   C0 -->|1| C6
   C1 -->|1| C2
   C1 -->|1| C3
   C1 -->|4| C6
   C2 -->|7| C0
-  C2 -->|7| C1
+  C2 -->|8| C1
+  C2 -->|1| C3
   C3 -->|2| C0
-  C3 -->|6| C2
+  C3 -->|7| C2
   C3 -->|2| C6
   C4 -->|1| C2
   C5 -->|2| C2
@@ -165,7 +170,7 @@ flowchart LR
 
 ### CTX-001 상담
 
-테이블: TBL-016 `customers`, TBL-017 `consultations`, TBL-018 `messages`, TBL-019 `masked_values`, TBL-020 `order_drafts`, TBL-021 `reference_photos`, TBL-022 `quotes`, TBL-024 `confirm_cards`, TBL-027 `handoffs`, TBL-028 `issue_details`, TBL-029 `issue_photos`, TBL-048 `ai_calls`, TBL-049 `ai_tool_calls`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
+테이블: TBL-016 `customers`, TBL-017 `consultations`, TBL-018 `messages`, TBL-019 `masked_values`, TBL-020 `order_drafts`, TBL-021 `reference_photos`, TBL-022 `quotes`, TBL-024 `confirm_cards`, TBL-027 `handoffs`, TBL-028 `issue_details`, TBL-029 `issue_photos`, TBL-048 `ai_calls`, TBL-049 `ai_tool_calls`, TBL-055 `handoff_questions`, TBL-056 `order_draft_extras`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
 
 ```mermaid
 erDiagram
@@ -224,6 +229,7 @@ erDiagram
     uuid source_message_id FK "에스컬레이션한 손님 말"
     uuid order_id FK "관련 주문"
     text status "열림·답함·답 없어 닫힘"
+    uuid day_used_order_id FK "추가 수락을 쓴 주문 요청"
   }
   issue_details {
     uuid id PK "신고 내용 ID"
@@ -245,6 +251,18 @@ erDiagram
     uuid ai_call_id FK "도구를 호출한 AI 호출"
     uuid consultation_id FK "대화 ID"
   }
+  handoff_questions {
+    uuid id PK "덧붙은 질문 ID"
+    uuid handoff_id FK "덧붙은 열린 에스컬레이션 건"
+    uuid message_id FK "덧붙은 손님 말"
+    uuid order_id FK "관련 주문"
+  }
+  order_draft_extras {
+    uuid draft_id PK, FK "주문서 초안"
+    uuid price_list_id FK "초안의 가격표 버전"
+    uuid option_id PK, FK "더한 옵션"
+    text option_group FK "늘 '더하는 옵션'"
+  }
   kakao_channels ||--o{ customers : "kakao_channel_id"
   customers ||--o{ consultations : "customer_id"
   consultations ||--o{ messages : "consultation_id"
@@ -258,13 +276,14 @@ erDiagram
   order_drafts ||--o{ quotes : "draft_id"
   price_lists ||--o{ quotes : "price_list_id"
   operating_rules ||--o{ quotes : "operating_rules_id"
-  consultations ||--o{ confirm_cards : "consultation_id"
+  consultations ||--o{ confirm_cards : "consultation_id_customer_id"
   customers ||--o{ confirm_cards : "customer_id"
   order_drafts |o--o{ confirm_cards : "draft_id"
   orders |o--o{ confirm_cards : "order_id"
   consultations ||--o{ handoffs : "consultation_id"
   messages ||--o| handoffs : "source_message_id"
   orders |o--o{ handoffs : "order_id"
+  orders |o--o| handoffs : "day_used_order_id"
   consultations ||--o{ issue_details : "consultation_id"
   orders |o--o{ issue_details : "order_id"
   issue_details ||--o{ issue_photos : "issue_details_id"
@@ -272,6 +291,11 @@ erDiagram
   consultations ||--o{ ai_calls : "consultation_id"
   ai_calls ||--o{ ai_tool_calls : "ai_call_id"
   consultations ||--o{ ai_tool_calls : "consultation_id"
+  handoffs ||--o{ handoff_questions : "handoff_id"
+  messages ||--o| handoff_questions : "message_id"
+  orders |o--o{ handoff_questions : "order_id"
+  order_drafts ||--o{ order_draft_extras : "draft_id_price_list_id"
+  price_options ||--o{ order_draft_extras : "price_list_id"
 ```
 
 ### CTX-002 가게 규칙
@@ -347,7 +371,7 @@ erDiagram
 
 ### CTX-003 주문
 
-테이블: TBL-023 `orders`, TBL-025 `change_requests`, TBL-026 `order_details`, TBL-030 `issue_reports`, TBL-052 `kept_records`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
+테이블: TBL-023 `orders`, TBL-025 `change_requests`, TBL-026 `order_details`, TBL-030 `issue_reports`, TBL-052 `kept_records`, TBL-057 `order_detail_extras`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
 
 ```mermaid
 erDiagram
@@ -364,6 +388,7 @@ erDiagram
     uuid operating_rules_id FK "동의한 운영규정 버전"
     timestamptz pickup_at FK "픽업 일시"
     int amount FK "현재 버전의 금액"
+    uuid confirmed_payment_id FK "주문을 확정한 확인된 결제"
     uuid remake_of_order_id FK "재제작"
   }
   change_requests {
@@ -398,13 +423,20 @@ erDiagram
     uuid id PK "보관 기록 ID"
     uuid order_id FK "보관 기록이 된 주문"
   }
+  order_detail_extras {
+    uuid order_detail_id PK, FK "주문 내용 버전"
+    uuid price_list_id FK "그 버전의 가격표 버전"
+    uuid option_id PK, FK "더한 옵션"
+    text option_group FK "늘 '더하는 옵션'"
+  }
   customers ||--o{ orders : "customer_id"
-  consultations ||--o{ orders : "consultation_id"
+  consultations ||--o{ orders : "consultation_id_customer_id"
   order_drafts |o--o| orders : "draft_id"
   price_lists ||--o{ orders : "price_list_id"
   operating_rules ||--o{ orders : "operating_rules_id"
   orders |o--o{ orders : "remake_of_order_id"
   order_details ||--o| orders : "current_version"
+  payments |o--o| orders : "id_confirmed_payment_id"
   orders ||--o{ change_requests : "order_id"
   confirm_cards ||--o| change_requests : "card_id"
   orders ||--o{ order_details : "order_id"
@@ -419,6 +451,8 @@ erDiagram
   issue_reports |o--o{ issue_reports : "follows_report_id"
   orders |o--o| issue_reports : "remake_order_id"
   orders ||--o| kept_records : "order_id"
+  order_details ||--o{ order_detail_extras : "order_detail_id_price_list_id"
+  price_options ||--o{ order_detail_extras : "price_list_id"
 ```
 
 ### CTX-004 결제·환불
@@ -456,6 +490,7 @@ erDiagram
     uuid change_request_id FK "금액이 내려간 변경"
     uuid issue_report_id FK "보상의 문제 신고"
     uuid payment_request_id FK "돌려줄 들어온 입금의 결제…"
+    uuid cancelled_order_id FK "취소 환불"
     int amount "정한 환불 금액"
   }
   shops ||--o{ payment_accounts : "shop_id"
@@ -468,9 +503,10 @@ erDiagram
   orders ||--o{ payments : "order_id"
   payment_requests ||--o{ payments : "payment_request_id"
   orders ||--o{ refunds : "order_id"
-  change_requests |o--o{ refunds : "change_request_id"
-  issue_reports |o--o{ refunds : "issue_report_id"
-  payment_requests |o--o{ refunds : "payment_request_id"
+  change_requests |o--o| refunds : "change_request_id"
+  issue_reports |o--o| refunds : "issue_report_id"
+  payment_requests |o--o| refunds : "payment_request_id"
+  orders |o--o| refunds : "cancelled_order_id"
 ```
 
 ### CTX-005 제작·전달
@@ -607,7 +643,7 @@ erDiagram
   owner_tasks |o--o{ owner_alerts : "owner_task_id"
   owner_alerts |o--o{ owner_alerts : "batched_into_id"
   customers ||--o{ notifications : "customer_id"
-  consultations ||--o{ notifications : "consultation_id"
+  consultations ||--o{ notifications : "consultation_id_customer_id"
   orders |o--o{ notifications : "order_id"
 ```
 
@@ -676,9 +712,9 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 
 | 번호 | 규칙 | 근거 | 앱이 하는 일 |
 | --- | --- | --- | --- |
-| A1 | 확정은 결제 확인으로만 | REQ-060, 1-2 | 주문을 `confirmed`로 바꾸는 쓰기는 `payments` 행을 남기는 같은 트랜잭션에서만 합니다. DB는 확정 시각이 있는지만 봅니다 |
+| A1 | 확정은 결제 확인으로만 | REQ-060, 1-2, SPEC-036, SPEC-070, 설계 재검토 M7, 5절 E29 | 주문을 `confirmed`로 바꾸는 쓰기는 `payments` 행을 남기는 같은 트랜잭션에서만 하고, 그 결제를 주문을 확정한 결제(`orders.confirmed_payment_id`)로 씁니다. 결제 확인 취소(A17)는 주문을 결제 기다림으로 돌리며 주문을 확정한 결제를 비웁니다. 데이터베이스는 주문 확정 뒤 상태(확정·받음·미수령)의 주문에 그 주문을 확정한 결제가 있고(재제작 주문은 뺌) 그것이 그 주문의 결제이며 확정 시각이 있는지(`orders_confirmed_payment_chk`, `orders_confirmed_payment_fk`), 커밋할 때 그 결제의 확인이 취소되지 않았는지(지연 제약 트리거 `orders_confirmed_payment_live`, `payments_confirmed_void`)를 봅니다 |
 | A2 | 환불 합은 받은 금액을 넘지 않음 | REQ-165(REQ-086을 넓힘) | 주문 행을 잠그고(`SELECT … FOR UPDATE`) 그 주문 결제 안내의 들어온 금액(`payment_requests.arrived_amount`) 합과 `refunds` 합을 셉니다. 보상이 아닌 환불이 계산값보다 낮은 쓰기는 `refunds_floor_chk`가 막습니다(REQ-170) |
-| A3 | 하루 최대 개수를 넘지 않음 | G3, 1-4, REQ-220, REQ-221, REQ-225, REQ-226 | `calendar_days`의 (가게, 날짜) 행을 없으면 만들고 잠근 뒤, 그날 잡힌 자리·확정된 자리·종료된 자리를 세고(`slot_holds_day_live_idx`) 잡습니다. 픽업 일시가 지나 종료된 자리도 그날 만든 수라 셉니다(설계 재검토 M9). 손님이 고른 날이 다 찼거나 휴무일이면 자리를 잡지 않고 손님에게 알립니다(REQ-220, REQ-225). 마감 후 추가 수락(`overbooked`)은 사장님이 추가 수락한 날(R10)이나, 사장님이 고르는 주문에서 다 찬 날·휴무일임을 보고 확인한 자리(REQ-221, REQ-226)에만 씁니다 |
+| A3 | 하루 최대 개수를 넘지 않음 | G3, 1-4, REQ-220, REQ-221, REQ-225, REQ-226 | `calendar_days`의 (가게, 날짜) 행을 없으면 만들고 잠근 뒤, 그날 잡힌 자리·확정된 자리·종료된 자리를 세고(`slot_holds_day_live_idx`) 잡습니다. 픽업 일시가 지나 종료된 자리도 그날 만든 수라 셉니다(설계 재검토 M9). 손님이 고른 날이 다 찼거나 휴무일이면 자리를 잡지 않고 손님에게 알립니다(REQ-220, REQ-225). 마감 후 추가 수락(`overbooked`)은 사장님이 추가 수락한 날(R10)이나, 사장님이 고르는 주문에서 다 찬 날·휴무일임을 보고 확인한 자리(REQ-221, REQ-226)에만 씁니다. 사장님이 추가 수락한 날은 그 마감된 날 질문 건의 날짜에 24시간 안의 주문 요청 하나만 쓰고, 쓴 주문 요청을 그 건에 남깁니다(`handoffs.day_used_order_id`, A34) |
 | A4 | 픽업 날짜 | G8 | `orders.pickup_day`는 가게 시간대(`shops.time_zone`)로 본 `pickup_at`의 날짜이고, 유효한 자리의 날짜와 같습니다 |
 | A5 | 결제 안내 금액 | REQ-076, REQ-230, REQ-231, R13 | 첫 결제는 수락한 버전(기본 디자인은 요청한 버전)의 금액, 차액 결제는 변경 요청의 올라간 금액(사장님이 고른 방향과 양수 차이 금액으로 앱이 셈한 `change_requests.amount_delta`)입니다. '부터'·'범위' 견적의 맞춤 주문은 사장님이 수락할 때 넣은 최종 금액이고 견적의 아래 끝보다 낮을 수 없으며, 결제 안내에 손님이 요청한 금액(`requested_amount`)을 함께 둡니다(A32) |
 | A6 | 상태가 가는 길과 동시 쓰기 | 1-1~1-8, G3, 설계 재검토 H12 | DB는 상태와 시각의 쌍만 봅니다. 어느 상태에서 어디로 갈 수 있는지는 앱의 상태 머신이 지킵니다. 주문·변경 요청은 읽은 잠금 번호와 같을 때만 쓰고 하나 올립니다(`UPDATE … SET …, lock_version = lock_version + 1 WHERE id = … AND lock_version = 읽은 값`). 0행이면 그 사이 다른 쓰기가 있었던 것이라 다시 읽어 지금 상태로 판단합니다(5절 E15, 8절 D5). 결제 안내는 `payment_requests.version`(비교해 쓰는 번호)이 같은 일을 합니다. 2026-11-13 전에는 내용 버전(`version`)을 견줬는데, 상태만 바꾸는 쓰기에서 오르지 않아 늦은 쓰기를 막지 못했습니다(11절) |
@@ -707,15 +743,29 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 | A29 | 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값 | SPEC-016, SPEC-071, REQ-165, Codex 후속 | 계산값은 그 결제 안내에서 결제로 확인하지 않은 몫, 곧 그 결제 안내의 들어온 금액에서 결제 확인을 취소하지 않은 확인된 결제를 뺀 값입니다(더 들어온 금액은 넘은 몫만, 취소 뒤 들어온 입금은 확인된 결제가 없어 전부). 주문 행을 잠그고 셈하고(A2), 데이터베이스는 환불 행을 쓰거나 계산값을 고칠 때 트리거 `refunds_unconfirmed`로 그 몫을 넘는 계산값을 막습니다. 환불 금액과 계산값의 상한은 들어온 금액의 상한과 같은 1억 원입니다 |
 | A30 | 환불 계산값 | SPEC-005, SPEC-016, SPEC-045, SPEC-047, SPEC-048, REQ-084, 설계 재검토 M4 | 주문 행을 잠그고(A2) SPEC-016의 차례로 셉니다. ① 바탕 = 받은 금액 - 이미 정한 환불 합계 - 따로 정할 환불의 계산값(아직 정하지 않은 금액이 내려간 변경·취소 뒤 들어온 입금·더 들어온 금액의 환불). ② 비율: 맞춤 재료 주문과 제작 시작이 둘 다 표시되지 않았으면 제작 전 취소 조문의 비율(`operating_rules.pre_production_refund_pct`), 하나라도 표시됐으면 기준 픽업 일시까지 남은 시간(1시간 미만 버림, 지났으면 0)이 든 단계별 환불 행(`refund_tiers.hours_before_min`은 넣고 `hours_before_max`는 뺌)의 비율입니다. 기준 픽업 일시는 운영규정의 `date_change_refund_basis`에 따라 주문 내용 첫 버전의 픽업 일시(`order_details.pickup_at`)나 지금 픽업 일시이고, 단계별 환불이 없는 버전은 제작 전 비율을 씁니다. ③ 고정 취소 수수료를 먼저 빼고(바탕보다 크면 0원) ④ 비율을 곱해 원 미만을 버리며 ⑤ 결과는 0원 이상 바탕 이하입니다. 가게 사정 취소는 바탕 전액(보상 조문은 글로만), 금액이 내려간 변경은 내려간 금액(차액 돌려주기: 일부 환불로 남기고 0원이면 환불 없음, `refunds_change_decision_chk`), 보상은 사장님이 고른 금액입니다. 수수료가 주문 금액보다 큰지는 운영규정을 저장할 때 볼 수 없어(0원~1,000만 원만 봄) 계산 때 봅니다. 계산값과 다른 금액은 사유 1~200자를 꼭 받고(`refunds_override_chk`), 보상이 아니면 높은 금액만 됩니다(`refunds_floor_chk`). 데이터베이스는 계산값을 셈하지 않고, 앱이 셈한 값을 근거(`refunds.calc_basis`)와 함께 씁니다 |
 | A31 | 재제작 주문의 돈과 후기 부탁 | SPEC-016, SPEC-042, SPEC-046~048, SPEC-059~061, SPEC-064, R21, 설계 재검토 M13 | 재제작 주문은 결제 없는 주문이라 돈의 일을 원래 주문에서 합니다. 재제작 주문의 취소·가게 사정 취소·다시 신고의 보상은 원래 주문의 받은 금액·이미 정한 환불·따로 정할 환불과 운영규정 버전으로, 시각과 픽업 일시는 재제작 주문 것으로 셈해(A30) 환불을 원래 주문에 남기고, 다시 신고의 보상 한도는 원래 주문의 받은 금액입니다. 재제작 주문의 변경 요청은 금액이 그대로일 때만 수락하고, 장부는 원래 주문 행에 '재제작'으로 적습니다(A14). 재제작 주문의 취소·다시 신고의 환불을 원래 주문에 남기므로 원래 주문은 그 재제작 주문이 모두 끝날 때까지 끝나지 않습니다(A22). 후기 부탁은 보내기 직전에 그 주문에 문제 신고가 한 번이라도 들어왔는지(닫힌 신고 포함) 다시 보고, 신고가 있었던 주문과 재제작 주문에는 보내지 않습니다. 데이터베이스는 재제작 주문이 돈을 낸 원래 주문을 가리키는지(`orders_remake_root`, 재제작의 재제작도 원래 주문에 이음)와 재제작 주문에 결제 안내·환불·장부 행이 없는지(`payment_requests_remake`, `refunds_remake`, `ledger_rows_remake`), 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지(`orders_remake_finish`)를 봅니다 |
-
 | A32 | 기본 디자인 범위와 손님의 새 금액 확인 | REQ-228~235, SPEC-004, SPEC-013, SPEC-031~035, SPEC-042~045, SPEC-076, 1-4, 1-5, 설계 재검토 M5·M6, 5절 E25·E26 | (1) 주문 종류는 AI가 아니라 가게 규칙이 가릅니다. 고른 옵션·도안이 모두 그 가격표 버전의 기본 디자인 범위 안(`price_options.in_standard`, `designs.in_standard`, 도안은 값을 정하는 옵션도 범위 안)이고 참고 사진·빼야 할 재료가 없고 견적이 '확정'이면 기본 디자인, 아니면 맞춤입니다. 데이터베이스는 범위 안의 옵션과 기본 디자인 견적이 '확정'인지만 봅니다(`price_options_standard_fixed_chk`, `quotes_standard_fixed_chk`). (2) 손님이 본 금액은 견적이 '확정'이면 그 금액, '부터'면 아래 끝, '범위'면 위 끝이고, 결제 안내의 요청한 금액(`requested_amount`)과 주문 첫 버전의 견적(`order_details.quote_id`)으로 셉니다. 맞춤 주문을 그보다 높게 수락하거나 금액이 오르는 변경을 수락하면 결제 안내를 새 금액 확인 필요(`needs_amount_confirm`)로 내고 계좌 대신 새 금액 확인 카드(`confirm_cards.kind = 'amount_confirm'`)를 보냅니다. 손님이 확인하면 그 시각을 확인한 시각과 전해진 시각으로 쓰고 그때부터 결제 기한을 셉니다. 받지 않으면 맞춤 주문은 손님 취소로 자리를 바로 풀고, 변경은 '차액 없어 닫힘'으로 원래 주문대로 둡니다. 확인 전에 들어온 돈을 사장님이 결제로 확인하면('입금됨'·'대조 완료') 그 시각을 손님의 확인으로 남깁니다. 데이터베이스는 차액 결제가 늘 확인 필요인지, 첫 결제·다시 낸 결제의 확인 필요가 요청한 금액보다 높은 금액에만 있는지, 확인 전에 전해짐·결제 확인 요청·확인됨이 없는지, 받지 않으면 닫힘인지를 봅니다(`payment_requests_needs_confirm_chk` 등 여섯). '범위'의 위 끝과 견주는 것은 앱이 합니다. (3) 날짜를 바꾸고 금액이 오르는 변경은 차액을 기다리는 동안 옛 날의 확정된 자리를 그대로 두고 새 날 자리를 차액 결제 안내로 잡습니다(그날 자리 세기는 A3). 차액이 결제로 확인되면 옛 자리를 풀고(`date_changed`) 새 자리를 확정하며, 변경 요청이 반영되지 않고 닫히면 새 자리를 '변경 닫힘'(`change_closed`)으로 풉니다. 데이터베이스는 주문마다 잡힌 자리 하나·확정된 자리 하나(`slot_holds_one_held_per_order`, `slot_holds_one_fixed_per_order`)와 둘이 함께 있는 것이 차액 결제 안내의 자리뿐인지(트리거 `slot_holds_pair`)를 봅니다 |
+| A33 | 같은 일은 한 번만: 이벤트 키의 형식과 대상마다 하나 | G2, REQ-132, REQ-154, SPEC-067, 06 DEC-04, 설계 재검토 M7(RD-05, RC-06), 5절 E27·E29 | 자동으로 하는 일은 아래 표의 형식으로 키를 짓고 그 키로 한 번만 남깁니다. 대상 ID는 그 행의 UUID(소문자 36자), 종류·사유는 그 테이블의 영문 값입니다. 대상은 그 일을 만든 기록이라, 같은 주문에 같은 종류의 일이 다시 생기면(두 번째 변경, 결제 확인 취소 뒤 다른 결제로 주문을 확정함, 환불 둘) 그때의 변경 요청·결제·환불이 대상이 되어 저마다 한 번씩 남습니다. 데이터베이스는 가게마다 같은 키를 한 번만 받고(키마다 `(shop_id, 키)` UNIQUE), 환불은 키가 달라도 대상마다 하나를 따로 봅니다: 취소 환불은 취소한 주문마다(`refunds_cancelled_uq`, 재제작 주문의 취소 환불은 원래 주문에 남기고 취소한 주문은 그 재제작 주문, 트리거 `refunds_cancelled`), 금액이 내려간 변경의 환불은 변경 요청마다(`refunds_change_uq`), 보상은 문제 신고마다(`refunds_issue_uq`), 취소 뒤 들어온 입금·더 들어온 금액의 환불은 결제 안내마다(`refunds_request_uq`, 그 결제 안내에서 결제로 확인하지 않은 몫을 한 번에 정함, A29). 주문 확정은 주문을 확정한 결제 하나로 봅니다(A1). 사장님·운영자 화면의 요청 키는 06 DEC-04와 5절 E27을 따릅니다 |
+| A34 | 덧붙은 질문과 마감된 날 질문 | SPEC-014, SPEC-022, SPEC-023, SPEC-029, R10, REQ-225, 설계 재검토 M17(RC-08), 5절 E28 | 같은 상담에 열린 에스컬레이션 건이 있으면 새 질문은 그 건에 덧붙고 질문마다 `handoff_questions` 한 행(사유·손님 말·관련 주문)을 남깁니다. 덧붙은 질문의 손님 말이 그 건과 같은 상담의 메시지인지는 앱이 봅니다(같은 말은 한 번만, `handoff_questions_message_uq`). 마감된 날 질문은 덧붙이지 않고, 다른 열린 건이 있어도 상담과 날짜마다 따로 건을 엽니다(`handoffs_one_open_day_per_consultation`). 사장님이 그 건에서 추가 수락하면 24시간 안에 그 날짜로 온 주문 요청 하나가 마감 후 추가 수락(`overbooked`)으로 자리를 잡고, 그 주문 요청을 그 건에 남겨 다시 쓰지 않습니다(`handoffs.day_used_order_id`, 하나만 `handoffs_day_used_uq`, 추가 수락한 건만 `handoffs_day_used_chk`) |
+
+A33의 키 형식입니다. 키는 가게마다 한 번(키마다 `(shop_id, 키)` UNIQUE)이라 같은 이벤트를 다시 처리해도 처음 행만 남습니다. 들어온 입금의 환불을 정한 뒤 같은 결제 안내에 또 들어온 금액을 돌려주는 길은 이번 고침 밖입니다(열린 문제).
+
+| 컬럼 | 형식 | 대상 | 한 번만 | 규칙 테스트 |
+| --- | --- | --- | --- | --- |
+| `payment_requests.event_key` | `pay:{대상 ID}:{결제 종류}` | 첫 결제(`first`)는 주문, 다시 낸 결제(`reissue`)는 기한이 지난 결제 안내, 차액 결제(`difference`)는 변경 요청 | `payment_requests_event_uq` | G2 같은 이벤트의 결제 안내 둘 |
+| `refunds.event_key` | `refund:{대상 ID}:{사유}` | 손님 취소·가게 사정 취소는 취소한 주문, 금액이 내려간 변경은 변경 요청, 보상은 문제 신고, 취소 뒤 들어온 입금·더 들어온 금액은 결제 안내. 사유는 `cause` | `refunds_event_uq`와 대상마다 `refunds_cancelled_uq`·`refunds_change_uq`·`refunds_issue_uq`·`refunds_request_uq` | G2 같은 환불을 두 번 정함, M7 다른 이벤트 키로 같은 주문의 취소 환불 둘·같은 변경 요청에 환불 둘·같은 신고에 보상 환불 둘·같은 결제 안내의 들어온 입금에 환불 둘 |
+| `slot_holds.hold_key` | `hold:{주문 ID}:{결제 안내 ID}`, 날짜 변경은 `hold:{주문 ID}:{변경 요청 ID}`, 재제작은 `hold:{주문 ID}:remake` | 자리를 잡은 주문과 그 사유 | `slot_holds_key_uq` | G2 같은 가예약 키 둘 |
+| `owner_tasks.event_key` | `task:{만든 이벤트}:{대상 ID}` | 할 일을 만든 이벤트와 그 대상(건·주문·결제 안내·환불 등) | `owner_tasks_event_uq` | G2 같은 이벤트의 할 일 둘 |
+| `owner_alerts.event_key` | `alert:{알린 일}:{할 일 ID나 대상 ID}`, 하루 한 번까지인 다시 알림은 뒤에 `:{가게 날짜}` | 알림 종류와 그 대상 | `owner_alerts_event_uq` | G2 같은 이벤트의 사장님 알림 둘 |
+| `notifications.event_key` | `notice:{대상 ID}:{안내 종류}` | 손님 안내의 대상(주문·결제 안내·변경 요청 등)과 종류 | `notifications_event_uq` | REQ-154 같은 이벤트의 안내 둘 |
+| `ledger_writes.event_key` | `ledger:{대상 ID}:{이벤트 종류}`, 재제작은 `ledger:{대상 ID}:remake:{재제작 주문의 일}` | 그 장부 쓰기를 만든 일의 기록: 주문 확정(`confirmed`)은 주문을 확정한 결제, 변경(`changed`)은 적용된 변경 요청, 환불(`refund`)·환불 보냄(`refund_sent`)은 환불, 결제 확인 취소(`payment_voided`)는 확인을 취소한 결제, 취소(`cancelled`)·인도(`handed_over`)·미수령(`no_pickup`)은 주문(주문마다 한 번뿐인 끝 상태). 재제작은 재제작 주문(그 변경은 변경 요청)과 그 일(`created`·`changed`·`handed_over`·`no_pickup`·`cancelled`). 그래서 같은 주문에 변경이 두 번 있거나 결제 확인 취소 뒤 다른 결제로 주문을 확정하더라도 일마다 한 번씩 적힘 | `ledger_writes_event_uq` | REQ-132 같은 이벤트의 장부 쓰기 둘 |
+
 ## 5. 이 단계의 결정 사항
 
 스키마를 확정할 때 함께 정한 결정 사항입니다(2026-11-12 11:56 확정, 10절). 바꾸면 테이블이나 컬럼이 달라지므로 바꿀 때는 새 마이그레이션과 함께 다시 확인 요청합니다.
 
 | 번호 | 결정 사항 | 사유 | 대안과 그 결과 |
 | --- | --- | --- | --- |
-| E1 | 가게에 딸린 테이블은 모두 `shop_id`를 갖고, 다른 테이블을 `(shop_id, 대상_id)` 복합 외래 키로 참조함 | 한 가게의 행이 다른 가게의 행을 참조하는 일을 DB가 막음(G1, SPEC-068). 규칙 테스트 G1 2개 | `id`만으로 참조함: 컬럼과 인덱스가 줄지만 가게가 섞인 행을 앱만 막음 |
+| E1 | 가게에 딸린 테이블은 모두 `shop_id`를 갖고, 다른 테이블을 `(shop_id, 대상_id)` 복합 외래 키로 참조함. 주문·확인 카드·손님 안내는 상담을 `(shop_id, 상담_id, 손님_id)`로 참조해 손님도 맞는지 보고, 더하는 옵션 연결 테이블은 초안·주문 내용을 `(shop_id, 대상_id, 가격표 버전)`으로, 옵션을 `(가격표 버전, 옵션_id, 무리)`로 참조함(가격표 버전이 가게에 묶여 가게가 섞이지 않음, E30, 2026-11-14 설계 재검토 M17) | 한 가게의 행이 다른 가게의 행을 참조하는 일을 DB가 막음(G1, SPEC-068). 규칙 테스트 G1 2개 | `id`만으로 참조함: 컬럼과 인덱스가 줄지만 가게가 섞인 행을 앱만 막음 |
 | E2 | 주문 내용은 버전마다 한 행(`order_details`), 주문 행은 현재 버전의 금액·픽업 일시·가격표 버전을 함께 가짐. 둘이 늘 같음을 지연 외래 키(`orders_current_details_fk`)로 트랜잭션 끝에 확인 | 목록·전날 안내가 주문 행만 읽어도 되고, 이전 버전은 남음(REQ-027). 규칙 테스트 E2 2개 | 현재 버전을 주문 행에 두지 않음: 읽을 때마다 마지막 버전을 찾아야 함 |
 | E3 | 인도 시각·미수령 시각은 `productions`에만 두고 주문 행에는 상태만 | 같은 시각을 두 곳에 두지 않음. 2026-11-14 설계 재검토 M9부터 주문 상태와 두 시각의 짝은 커밋 때 트리거가 봄(4절 A27, 11절) | 주문 행에도 둠: 둘이 어긋날 수 있음 |
 | E4 | 확인된 결제는 `(결제 안내, 주문, 금액)`으로 결제 안내를 참조함(`payments_match_fk`), 결제 안내마다 하나. 2026-11-13부터 결제 확인을 취소한 것은 빼고 하나(`payments_one_live_per_request`, 11절) | 확인된 결제가 안내한 주문·금액과 다를 수 없음(REQ-081, REQ-153) | 결제 안내 ID만: 금액이 다른 결제를 DB가 받음 |
@@ -739,12 +789,16 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 | E22 | 알레르기 정보 동의는 초안과 주문 내용 버전의 컬럼 셋(동의의 답·동의 글 버전·시각)으로 두고, 동의 없는 알레르기 답을 CHECK로 막음(`order_drafts_allergy_answer_chk`, `order_details_allergy_answer_chk`). 동의 단계를 끄는 것은 배포 설정이라 컬럼이 없고 답은 '동의 필요 없음'. 사진 게시 동의는 완성 사진·후기 사진 한 장마다 한 행이고, 포트폴리오 항목은 `(shop_id, photo_consent_id, consent_live)`로 동의의 `(shop_id, id, publishable)`을 참조해 동의함·철회 안 함인 동안만 올라 있음. 사진과 동의의 짝도 복합 외래 키로 봄 | 설계 재검토 H5(RA-02)·H10(RE-01, RA-14, RB-16, RC-11): 알레르기 정보를 따로 동의받았는지와 동의한 사진만 올라 있는지를 앱만이 아니라 데이터베이스가 지킴. 동의는 초안마다 한 번이라 그 행에 두면 '동의 없는 답'을 한 행의 CHECK로 막을 수 있음. 잠정, 5-2 질문 4·6 | 동의를 따로 테이블로 둠: 동의와 답이 다른 행이라 동의 없는 답을 CHECK로 막지 못함. 철회 때 트리거가 올라 있는 항목을 내림: 숨은 쓰기가 생기고 다이어그램에 보이지 않음. 앱만 봄: 화면을 거치지 않은 쓰기를 막지 못함 |
 | E23 | 결제 안내에 손님에게 전해진 시각(`payment_requests.delivered_at`)과 낼 때 정하는 결제 기한 상한(`due_cap_at`)을 두고, 결제 기한(`due_at`)은 둘로 계산한 값을 씀. 기한이 상한을 넘거나 전해지기 전인데 상한과 다르면 CHECK로 막음(`payment_requests_due_cap_chk`, `payment_requests_delivered_chk`). 2026-11-14 설계 재검토 M2로 더함(11절) | 설계 재검토 M2(RB-08, RE-08, RA-10): 결제 기한을 낸 시각부터 세면 친구가 아니어서 전하지 못한 동안 기한이 흘러 손님이 보기도 전에 자리가 풀림. 전해진 때부터 세되 그날 주문 마감을 넘지 않아야(REQ-218) 다른 손님이 그날 자리를 오래 기다리지 않음. 상한을 낼 때 정해 두면 운영규정이나 주문 마감을 나중에 바꿔도 이미 나간 안내의 상한이 그대로이고, 기한 처리 작업과 확인 요청됨의 끝(REQ-223)이 같은 값을 봄 | 결제 기한만 두고 앱이 상한을 매번 계산: 운영규정 버전과 픽업 날짜를 다시 읽어야 하고 바뀐 규정이 이미 나간 안내에 닿음. 전해진 시각을 `notifications`에서 찾음: 결제 안내 하나에 손님 안내가 여러 행이라 처음 전해진 때를 한 값으로 보지 못함. 낸 시각부터 세되 기한을 길게 둠: 대화 중인 손님의 자리도 오래 묶임 |
 | E24 | 지우기가 지운 참고 사진·신고 사진의 저장 위치를 새 테이블 `file_deletions`(TBL-054, 공통)에 그 사진 행을 지우는 트랜잭션에서 함께 넣고, 저장소에서 파일을 지운(이미 없는 파일 포함) 뒤에만 그 행을 지움. 실패하면 실패 횟수와 시각(`attempts`, `last_tried_at`, 둘은 함께 `file_deletions_tried_chk`)을 남기고 다음 날 다시. 같은 파일은 한 행(`file_deletions_key_uq`). 2026-11-14 Codex 후속으로 더함(11절) | 사진 행을 지운 뒤 저장소가 실패하거나 작업이 멈추면 저장 위치가 어디에도 남지 않아 '다음 날 다시 지움'을 할 수 없고, 손님 사진 파일이 보관 기간을 넘어 남음([PR #30 의견](https://github.com/kodonghui/siljang.ai/pull/30#discussion_r4567801476)) | 사진 행에 지운 표시만 두고 파일을 지운 뒤 행을 지움: 사진 행을 읽는 곳마다 지운 표시를 걸러야 하고 지우는 차례(6절)가 이틀에 걸침 |
-
 | E25 | 손님의 새 금액 확인은 결제 안내의 컬럼 넷(`payment_requests.needs_amount_confirm`·`amount_confirmed_at`·`amount_declined_at`·`amount_card_id`)으로 둠. 확인한 시각을 전해진 시각으로 써서 결제 기한이 그때부터 흐르고(5절 E23), 확인 전에는 결제 확인 요청·확인됨이 없고 받지 않으면 닫힘을 CHECK 여섯이 봄. 2026-11-14 설계 재검토 M5로 더함(11절) | 설계 재검토 M5(RA-08, RE-17): 사장님이 다른 금액으로 수락하면 손님이 그 금액을 받아들이기 전에 계좌와 결제 기한이 나가 손님이 모르는 금액을 기한 안에 내야 했음. 확인은 결제 안내 하나에 한 번이고 그 결과가 결제 기한·결제 확인 요청과 같은 행에 있어야 확인 전의 쓰기를 한 행의 CHECK로 막을 수 있음. 맞춤 주문의 첫 결제와 변경의 차액 결제가 같은 길을 씀 | 변경 요청에 확인 상태를 둠: 맞춤 주문의 금액 확인을 담지 못하고 차액 결제 안내와 어긋날 수 있음. 확인을 따로 테이블로 둠: 결제 안내와 다른 행이라 확인 전 결제 확인 요청을 CHECK로 막지 못함. 확인 없이 결제 안내만 냄(지금까지): 손님이 동의하지 않은 금액이 결제 기한과 함께 흐름 |
 | E26 | 날짜를 바꾸고 금액이 오르는 변경의 차액을 기다리는 동안 한 주문에 옛 날의 확정된 자리와 새 날의 잡힌 자리를 함께 둠. 주문마다 살아 있는 자리 하나를 잡힌 자리 하나·확정된 자리 하나(부분 UNIQUE 둘)로 나누고, 둘이 함께 있는 것은 잡힌 자리가 차액 결제 안내를 가리킬 때만(트리거 `slot_holds_pair`). 2026-11-14 설계 재검토 M5로 더함(11절) | 설계 재검토 M5(RB-07): 차액을 기다리는 동안 옛 날 자리를 풀면 손님이 차액을 내지 않을 때 원래 날짜도 잃고, 새 날을 잡지 않으면 차액을 낸 뒤 그날이 다 차 있을 수 있음. 자리 상태(1-4)와 그날 자리 세기(A3)를 바꾸지 않고 두 자리를 각각 세어 그날 하루 최대 개수가 그대로 지켜짐 | 옛 자리를 풀고 새 자리만 잡음: 차액을 내지 않으면 원래 주문의 날을 지킬 수 없음. 차액이 확인될 때 새 날을 잡음: 그 사이 새 날이 다 찰 수 있음. 자리 행에 '변경 기다림' 상태를 더함: 1-4 상태 머신과 그날 자리 세기 인덱스가 바뀜 |
+| E27 | 사장님·운영자 화면의 요청 키(`request_keys`, TBL-050)에 요청 지문(`request_hash`: 명령·경로의 ID·본문을 정한 차례로 이어 시크릿 저장소의 키로 만든 HMAC-SHA256)과 처리 상태(`state`, 처리 중의 기한 `processing_expires_at` = 받은 때 + 60초), 끝났을 때의 처음 결과(`response_status` 200~499·`response_code`·`response_ref`)와 끝난 시각을 두고, 처음 결과 본문(`response_body`)은 두지 않음. 같은 키에 지문이 다르면 422 `idempotency_key_reused`, 처리 중이면 409 `request_in_progress`, 끝났으면 같은 상태 코드와 `response_ref`가 가리킨 기록을 지금 읽은 본문(06 DEC-04). 입력 검사 실패(422)·서버 오류(5xx)는 남기지 않고 처리 중 행을 지움. 기한이 지난 처리 중 행은 같은 키·같은 지문의 다음 요청이 이어받음. 24시간 뒤 지우기(6절 7)가 지움. 2026-11-14 설계 재검토 M7로 바꿈(11절) | 설계 재검토 M7(RC-16): 06 DEC-04는 같은 키에 다른 내용 422, 처리 중 409, 다시 오면 처음 결과를 약속했지만 이 테이블에는 요청 지문과 처리 상태가 없고 처음 결과의 ID와 상태만 있어 셋 다 지킬 수 없었음. 처음 결과 본문을 두면 이름·연락처·원래 값 같은 개인정보가 지우기(6절) 밖에 남음 | 처음 결과 본문을 그대로 둠: 다시 보낸 요청에 처음과 같은 바이트를 주지만 개인정보가 요청 키에 복사되고 그것을 따로 지워야 함. 지문 없이 키만 봄: 다른 내용을 같은 키로 보내면 처음 결과를 잘못 돌려줌. 처리 중 기한 없음: 처리하던 서버가 멈추면 그 키가 계속 409 |
+| E28 | 열린 에스컬레이션 건에 덧붙은 질문을 새 테이블 `handoff_questions`(TBL-055, CTX-001)의 행으로 두고(사유·손님 말·관련 주문, 같은 말은 한 번), 마감된 날 질문은 덧붙이지 않고 상담과 날짜마다 따로 건(`handoffs_one_open_day_per_consultation`)으로 둠. 추가 수락은 그 건의 날짜에 24시간 안의 주문 요청 하나에만 쓰고 그 주문 요청을 `handoffs.day_used_order_id`(하나만)로 남김. 2026-11-14 설계 재검토 M17로 더함(11절) | 설계 재검토 M17(RC-08): 덧붙은 질문은 행이 없어 사유·관련 주문을 남길 곳이 없었고, 열린 건에 덧붙은 마감된 날 질문은 그 날짜와 추가 수락을 기록할 수 없었음(건마다 날짜 하나). 추가 수락을 쓴 주문을 남기지 않으면 한 번의 추가 수락으로 24시간 동안 몇 번이고 넘겨 받을 수 있음(4절 A3, 마감 후 추가 수락 확인과 이음) | 덧붙은 질문을 에스컬레이션 건의 배열 컬럼으로: 외래 키를 걸 수 없음. 마감된 날 질문도 덧붙이고 날짜·결정을 질문 행에: 건 하나에서 날짜마다 따로 고르는 화면과 API가 필요하고 열린 건 하나 규칙과 어긋남. 추가 수락을 24시간 동안 여러 번 씀: 사장님이 받은 수보다 많이 넘겨 받음 |
+| E29 | 환불은 대상마다 하나를 이벤트 키와 따로 UNIQUE로 봄: 취소 환불은 취소한 주문(`refunds.cancelled_order_id`, 그 주문이나 그 재제작 주문)마다, 금액이 내려간 변경의 환불은 변경 요청마다, 보상은 문제 신고마다, 들어온 입금의 환불은 결제 안내마다. 주문은 그 주문을 확정한 결제(`orders.confirmed_payment_id`)를 가리키고 주문 확정 뒤 상태면 꼭 있으며(재제작 주문은 뺌) 그 결제의 확인 취소는 주문을 결제 기다림으로 돌릴 때만 됨(지연 제약 트리거). 이벤트 키의 형식은 4절 A33. 2026-11-14 설계 재검토 M7로 더함(11절) | 설계 재검토 M7(RD-05, RC-06): 환불·결제의 '한 번만'을 이벤트 키의 `(shop_id, 키)` UNIQUE에만 맡기면 키를 다르게 지은 두 쓰기(다시 시도, 다른 작업)가 같은 대상에 환불 둘을 남길 수 있었고 키 형식도 정해지지 않았음. 주문 확정이 어느 결제로 됐는지 남지 않아 결제 확인을 취소한 뒤에도 주문 확정이 남을 수 있었음 | 키 형식만 정함: 앱이 형식을 어기면 데이터베이스가 막지 못함. 환불을 주문마다 하나: 재제작 주문의 취소 환불을 원래 주문에 남기므로(A31) 원래 주문과 재제작 주문의 취소가 함께 막힘. 확정을 결제 행에만 표시: 주문의 상태와 결제를 한 행의 CHECK로 잇지 못함 |
+| E30 | 주문서 초안의 픽업 일시(`pickup_at`)를 날짜(`pickup_day`)와 비울 수 있는 시각(`pickup_time`)으로 나누고(날짜 없이 시각만은 막음), 더하는 옵션 uuid 배열 둘을 연결 테이블 `order_draft_extras`(TBL-056)·`order_detail_extras`(TBL-057)로 옮겨 초안·주문 내용과 같은 가격표 버전의 '더하는 옵션'만 외래 키로 받음. 주문·확인 카드·손님 안내는 상담을 (가게, 상담, 손님)으로 참조함(`consultations_customer_key`). 초안의 가격표 버전을 바꾸려면 앱이 그 초안의 더하는 옵션 행을 먼저 지움. 2026-11-14 설계 재검토 M17로 바꿈(11절) | 설계 재검토 M17(RC-13, RC-12): 날짜만 들은 초안을 timestamptz 하나로는 남길 수 없어 시각을 지어내야 했고, uuid[]에는 외래 키가 없어 다른 가게·다른 가격표 버전의 옵션이 들어갈 수 있었으며, 주문의 손님과 상담의 손님이 같은지 데이터베이스가 보지 않았음 | 픽업 일시에 자정 같은 값을 넣고 '시각 모름'을 따로 표시: 값과 뜻이 갈라짐. 배열을 트리거로 봄: 옵션을 지우거나 가격표를 바꿀 때마다 배열을 다시 봐야 함. 상담의 손님을 앱만 맞춤: 다른 손님의 상담에 주문이 붙을 수 있음 |
+
 ## 6. 지난 기록 지우기의 차례 (SPEC-065)
 
-하루 한 번 03:00에 아래 여섯 차례를 차례대로 돌고 끝에 저장소의 사진 파일을 지우며, 두 번 돌아도 결과가 같고, 중간에 멈추면 다음 날 이어서 지웁니다. 외래 키가 모두 `RESTRICT`(트랜잭션 끝으로 미룰 수 없음)라 참조하는 행부터 지우고, 차례가 어긋나면 그 문장이 바로 실패합니다. 30일·3년·5년은 잠정이고 5-2 질문 7의 답으로 다시 봅니다(REQ-185~188). 규칙 테스트의 `pg_temp.purge_run(시각)`이 이 차례를 그대로 써서 8절 D4가 돌려 봅니다.
+하루 한 번 03:00에 아래 일곱 차례를 차례대로 돌고 끝에 저장소의 사진 파일을 지우며, 두 번 돌아도 결과가 같고, 중간에 멈추면 다음 날 이어서 지웁니다. 외래 키가 모두 `RESTRICT`(트랜잭션 끝으로 미룰 수 없음)라 참조하는 행부터 지우고, 차례가 어긋나면 그 문장이 바로 실패합니다. 30일·3년·5년은 잠정이고 5-2 질문 7의 답으로 다시 봅니다(REQ-185~188). 규칙 테스트의 `pg_temp.purge_run(시각)`이 이 차례를 그대로 써서 8절 D4가 돌려 봅니다.
 
 **1. 끝나고 30일 지난 주문**(`orders.finished_at`이 30일 지남, `personal_data_purged_at` 없음. 끝나지 않은 재제작 주문이 있는 원래 주문은 `finished_at`이 없어 들지 않음, 4절 A22)마다 한 트랜잭션으로(REQ-185, REQ-187):
 
@@ -758,14 +812,14 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 
 남는 것: 주문 행, 주문 내용 버전의 나머지(옵션·금액·픽업 일시·가격표 버전, 알레르기 정보 동의 기록), 동의한 운영규정 버전, 결제 안내·결제·환불·변경 요청 행, 자리, 제작, 장부 행, 문제 신고와 그 설명·사진(3년까지).
 
-**2. 닫히고 30일 지난 상담**(문의 끊김 `dropped_at`이나 상담 끝남 `ended_at`이 30일 지남, 열린 에스컬레이션 건 없음, 다룬 주문이 모두 1을 지남)마다 한 트랜잭션으로(REQ-186):
+**2. 닫히고 30일 지난 상담**(문의 끊김 `dropped_at`이나 상담 끝남 `ended_at`이 30일 지남, 열린 에스컬레이션 건 없음, 다룬 주문이 모두 1을 지남. 다룬 주문에는 추가 수락을 쓴 주문 요청과 덧붙은 질문의 관련 주문도 듦)마다 한 트랜잭션으로(REQ-186):
 
 1. 그 상담의 에스컬레이션 건 할 일을 참조하는 `owner_alerts`는 `owner_task_id`만 비움. 알림 행은 글이 없어 남고, 묶인 알림(`batched_into_id`)이 같은 테이블을 참조해도 지우는 차례가 막히지 않음(RC-03)
-2. 에스컬레이션 건의 `owner_tasks` → `handoffs`
+2. 에스컬레이션 건의 `owner_tasks`와 덧붙은 질문 `handoff_questions` → `handoffs`
 3. 주문이 되지 않은 초안의 `confirm_cards`와 `quotes`
 4. 그 상담 초안의 `reference_photos`(저장 위치는 `file_deletions`로)
 5. 신고로 전환되지 않은 `issue_details`의 `issue_photos`(저장 위치는 `file_deletions`로) → `issue_details`. 신고된 것의 사진은 `issue_photos.message_id`만 비우고 3에서 지움
-6. 주문이 되지 않은 `order_drafts`
+6. 주문이 되지 않은 초안의 더하는 옵션 `order_draft_extras` → `order_drafts`
 7. `masked_values`, `notifications`, `ai_tool_calls`
 8. `messages`
 9. 상담 행은 내용 없이 남김: `status = 'deleted'`, `deleted_at` 기록. 주문 행과 AI 호출 기록(`ai_calls`, 비용)이 이 행을 참조함
@@ -778,15 +832,17 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 
 **6. 2년 지난 접속기록**(`access_logs.accessed_at`이 2년 지남): 그 행을 지움(REQ-196). 접속기록을 지키는 트리거 `access_logs_guard`가 지금 시각으로 2년이 지나지 않은 행의 지우기를 막으므로 이 차례는 늘 지금 시각으로 셉니다(규칙 테스트의 `purge_run`은 앞당긴 시각으로 돌려도 이 차례만 지금 시각). 접속기록을 참조하는 외래 키는 없습니다.
 
+**7. 하루 지난 화면 요청 키**(`request_keys.created_at`이 24시간 지남): 그 행을 지움(06 DEC-04, 5절 E27). 사장님·운영자가 같은 요청을 다시 보내는 것은 하루 안에만 받습니다. 요청 키에는 요청 지문과 처음 결과가 가리킨 기록의 ID만 있어 개인정보가 없고, 요청 키를 참조하는 외래 키는 없습니다.
+
 **끝: 저장소의 사진 파일**: `file_deletions`의 행마다(이번 차례들이 넣은 것과 지난날 남은 것) 저장소에서 파일을 지우고(이미 없는 파일은 지운 것으로 봄) 지운 행만 지웁니다. 저장소가 실패하면 그 행에 실패 횟수(`attempts`)와 시각(`last_tried_at`)을 남기고 다음 날 다시 지웁니다(5절 E24). 사진 행을 지운 트랜잭션이 저장 위치를 함께 남기므로, 사진 행을 지운 뒤 저장소가 실패하거나 작업이 멈춰도 지울 파일을 잃지 않습니다([PR #30 의견](https://github.com/kodonghui/siljang.ai/pull/30#discussion_r4567801476)). 지울 파일을 참조하는 외래 키는 없습니다.
 
 끝에 차례마다 지운 건수와 저장소에서 지운 파일 수, 아직 지우지 못한 파일 수를 `ops_events`(`purge_run`)에 내용 없이 남깁니다.
 
-이 차례는 행을 지우는 테이블 15개(지울 파일 포함)를 참조하는 외래 키 15개(2026-11-14 10:30 KST `db/schema.sql`을 빈 데이터베이스에 만들어 카탈로그에서 읽음, 지울 파일을 참조하는 것은 없음)를 모두 따릅니다. 지우는 행을 참조하는 행은 먼저 지우거나 그 참조를 비우고, 주문·주문 내용·신고·결제 안내·변경 요청이 참조하는 초안·견적·신고 내용·카드는 지우지 않습니다. 지우지 않고 남기는 것과 그 이유입니다.
+이 차례는 행을 지우는 테이블 18개(지울 파일·요청 키 포함)를 참조하는 외래 키 19개(2026-11-14 17:39 KST `db/schema.sql`을 빈 데이터베이스에 만들어 카탈로그에서 읽음, 지울 파일·요청 키·덧붙은 질문·초안의 더하는 옵션을 참조하는 것은 없음)를 모두 따릅니다. 지우는 행을 참조하는 행은 먼저 지우거나 그 참조를 비우고, 주문·주문 내용·신고·결제 안내·변경 요청이 참조하는 초안·견적·신고 내용·카드는 지우지 않습니다. 지우지 않고 남기는 것과 그 이유입니다.
 
 | 남는 것 | 이유 |
 | --- | --- |
-| 주문·주문 내용 버전(개인정보를 뺀 것)·결제 안내·결제·환불·변경 요청·장부 행 | 계약·결제 기록(REQ-187). 5년 뒤에도 개인정보 없이 남아 가게별 숫자를 셈 |
+| 주문·주문 내용 버전(개인정보를 뺀 것)과 그 더하는 옵션(`order_detail_extras`)·결제 안내·결제·환불·변경 요청·장부 행 | 계약·결제 기록(REQ-187). 5년 뒤에도 개인정보 없이 남아 가게별 숫자를 셈 |
 | 사장님 알림(`owner_alerts`) | 종류·시각·발송 결과뿐이라 개인정보가 없음 |
 | AI 호출 기록(`ai_calls`) | 숫자와 종류만(5절 E11) |
 | 상담 행(`deleted`)과 키를 지운 손님 행 | 주문이 참조함. 내용과 개인정보가 없음 |
@@ -816,47 +872,47 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 
 ## 8. 검사 결과
 
-2026-11-14 14:25 KST, PostgreSQL 16.15, `check_erd.py . --db ...` 출력 그대로입니다(M5·M6을 고친 뒤, 11절). E1의 시각은 다이어그램 파일을 마지막으로 커밋한 시각(이 PR에서 다이어그램을 마지막으로 고친 커밋)이라, 합친 뒤 main에서는 합친 커밋의 시각으로 보입니다. 2026-11-14 12:46 검사(M4·M13과 그 PR의 Codex 의견을 고친 뒤)는 컬럼 664, CHECK 355, 규칙 테스트 207개, 함수 6·트리거 10으로 15개 모두 통과였고, 2026-11-14 11:52 검사(M4·M13을 고친 뒤, Codex 의견 전)는 데이터 908건, 규칙 테스트 204개, 함수 5·트리거 9로 15개 모두 통과였고, 2026-11-14 10:36 검사(Codex 후속을 고친 뒤)는 컬럼 664, CHECK 354, 규칙 테스트 198개로 15개 모두 통과였고, 2026-11-14 09:09 검사(M1·M2·M3·M9·M10을 고친 뒤)는 컬럼 657, CHECK 351, 규칙 테스트 185개로 15개 모두 통과였고, 2026-11-14 07:18 검사(H5·H10을 고친 뒤)는 컬럼 654, CHECK 345, 규칙 테스트 175개로 15개 모두 통과였고, 2026-11-14 05:29 검사(H4를 고친 뒤)는 컬럼 644, CHECK 333, 규칙 테스트 157개로 15개 모두 통과였고, 2026-11-14 04:05 검사(H3을 고친 뒤)는 컬럼 624, CHECK 312, 규칙 테스트 140개로 15개 모두 통과였고, 2026-11-14 01:32 검사(H7·H8을 고친 뒤)는 컬럼 611, CHECK 304, 규칙 테스트 113개로 15개 모두 통과였고, 2026-11-13 23:42 검사(H11·H12를 고친 뒤)는 컬럼 593, CHECK 287, 규칙 테스트 105개로 15개 모두 통과였고, 2026-11-13 22:42 검사(H1·H2를 고친 뒤)는 컬럼 591, CHECK 285, 규칙 테스트 99개로 14개 모두 통과였고, 2026-11-12 11:48 검사는 컬럼 585, 외래 키 105, CHECK 275, 규칙 테스트 87개로 14개 모두 통과였습니다.
+2026-11-14 18:34 KST, PostgreSQL 16.15, `check_erd.py . --db ...` 출력 그대로입니다(M7·M17을 고치고 새 글의 금지어를 허용 꼴로 고치고 Codex 의견대로 장부 쓰기 키의 대상을 고친 뒤, 11절). E1의 시각은 다이어그램 파일을 마지막으로 커밋한 시각(이 PR에서 다이어그램을 마지막으로 고친 커밋)이라, 합친 뒤 main에서는 합친 커밋의 시각으로 보입니다. 2026-11-14 14:25 검사(M5·M6을 고친 뒤)는 컬럼 668, CHECK 363, 규칙 테스트 221개, 함수 7·트리거 11로 15개 모두 통과였고, 2026-11-14 12:46 검사(M4·M13과 그 PR의 Codex 의견을 고친 뒤)는 컬럼 664, CHECK 355, 규칙 테스트 207개, 함수 6·트리거 10으로 15개 모두 통과였고, 2026-11-14 11:52 검사(M4·M13을 고친 뒤, Codex 의견 전)는 데이터 908건, 규칙 테스트 204개, 함수 5·트리거 9로 15개 모두 통과였고, 2026-11-14 10:36 검사(Codex 후속을 고친 뒤)는 컬럼 664, CHECK 354, 규칙 테스트 198개로 15개 모두 통과였고, 2026-11-14 09:09 검사(M1·M2·M3·M9·M10을 고친 뒤)는 컬럼 657, CHECK 351, 규칙 테스트 185개로 15개 모두 통과였고, 2026-11-14 07:18 검사(H5·H10을 고친 뒤)는 컬럼 654, CHECK 345, 규칙 테스트 175개로 15개 모두 통과였고, 2026-11-14 05:29 검사(H4를 고친 뒤)는 컬럼 644, CHECK 333, 규칙 테스트 157개로 15개 모두 통과였고, 2026-11-14 04:05 검사(H3을 고친 뒤)는 컬럼 624, CHECK 312, 규칙 테스트 140개로 15개 모두 통과였고, 2026-11-14 01:32 검사(H7·H8을 고친 뒤)는 컬럼 611, CHECK 304, 규칙 테스트 113개로 15개 모두 통과였고, 2026-11-13 23:42 검사(H11·H12를 고친 뒤)는 컬럼 593, CHECK 287, 규칙 테스트 105개로 15개 모두 통과였고, 2026-11-13 22:42 검사(H1·H2를 고친 뒤)는 컬럼 591, CHECK 285, 규칙 테스트 99개로 14개 모두 통과였고, 2026-11-12 11:48 검사는 컬럼 585, 외래 키 105, CHECK 275, 규칙 테스트 87개로 14개 모두 통과였습니다.
 
 ```text
-통과 S1 TBL 번호 54개(TBL-001~TBL-054), 테이블 이름 중복 없음
+통과 S1 TBL 번호 57개(TBL-001~TBL-057), 테이블 이름 중복 없음
 통과 S2 헤더 주석 컨텍스트가 CTX-001~009나 공통
 통과 S3 헤더 주석 SPEC 목록이 erd_map.py 대응과 같음
-통과 S4 SPEC 76개 모두 대응 있음: 데이터 964건 → 컬럼 449개(전체 컬럼 668개)
-통과 S5 쓰이지 않는 테이블 없음(54개 모두 SPEC 대응에 나옴)
-통과 S6 컬럼 668개 모두 설명 있음
+통과 S4 SPEC 76개 모두 대응 있음: 데이터 998건 → 컬럼 468개(전체 컬럼 692개)
+통과 S5 쓰이지 않는 테이블 없음(57개 모두 SPEC 대응에 나옴)
+통과 S6 컬럼 692개 모두 설명 있음
 통과 S7 애그리거트 13개·읽기 모델 18개 용어가 테이블 헤더 주석 16개·'테이블 없음' 행 15개에 한 번씩, 나머지 용어 23개는 컬럼·테이블 설명에. 용어집 74개 모두 자리 있음. 컨텍스트 예외 TERM-059→owner_tasks
 통과 S8 테이블 설명이 테이블마다 하나이고 헤더 주석과 같은 TBL 번호로 시작
 통과 S9 build_erd.py로 만든 부분(헤더 주석 SPEC·컬럼 설명·README 표와 다이어그램)이 최신
 통과 D1 db/schema.sql을 빈 DB에 한 트랜잭션으로 적용(PostgreSQL 16.15)
-통과 D2 마이그레이션 11개(0001_init.sql, 0002_refund_path.sql, 0003_order_input_lock.sql, 0004_kakao_event_path.sql, 0005_retention_split.sql, 0006_account_encryption_access_log.sql, 0007_consent_allergy_photo.sql, 0008_wait_ends_due_cap.sql, 0009_refund_excess_file_queue.sql, 0010_refund_calc_remake.sql, 0011_amount_confirm_standard_quote.sql)로 빈 DB에서 다시 만든 카탈로그가 schema.sql과 같음(column 668, constraint 615, extension 1, function 7, index 190, table 54, trigger 11)
-통과 D3 DB 테이블 54개 모두 기본 키와 TBL 설명, 대응 컬럼 모두 있음(기본 키 54, 외래 키 118, CHECK 363, UNIQUE 76, EXCLUDE 1)
-통과 D4 규칙 테스트 221개 가운데 기대한 제약에 막힘(늦은 쓰기 3개는 0행, 받아야 할 쓰기 5개는 들어감, 지우기 결과 25개는 기대한 값) 221개, 안 막힘 0개
+통과 D2 마이그레이션 12개(0001_init.sql, 0002_refund_path.sql, 0003_order_input_lock.sql, 0004_kakao_event_path.sql, 0005_retention_split.sql, 0006_account_encryption_access_log.sql, 0007_consent_allergy_photo.sql, 0008_wait_ends_due_cap.sql, 0009_refund_excess_file_queue.sql, 0010_refund_calc_remake.sql, 0011_amount_confirm_standard_quote.sql, 0012_request_keys_questions_extras.sql)로 빈 DB에서 다시 만든 카탈로그가 schema.sql과 같음(column 692, constraint 654, extension 1, function 9, index 206, table 57, trigger 14)
+통과 D3 DB 테이블 57개 모두 기본 키와 TBL 설명, 대응 컬럼 모두 있음(기본 키 57, 외래 키 128, CHECK 376, UNIQUE 87, EXCLUDE 1)
+통과 D4 규칙 테스트 257개 가운데 기대한 제약에 막힘(늦은 쓰기 3개는 0행, 받아야 할 쓰기 8개는 들어감, 지우기 결과 26개는 기대한 값) 257개, 안 막힘 0개
 통과 D5 두 세션이 같은 주문에 결제 확인과 손님 취소를 같은 값을 읽고 동시에 씀: 옛 방식은 늦은 취소가 확인을 덮어쓰고(문제 재현), 잠금 번호는 늦은 취소가 먼저 쓴 쪽의 커밋을 기다린 뒤 0행이라 결제 확인이 남음
       옛 방식(내용 버전 version 비교): 결제 확인 1행, 손님 취소 1행(기다림 1.4초) → cancelled, 잠금 번호 1
       잠금 번호(lock_version 비교): 결제 확인 1행, 손님 취소 0행(기다림 1.5초) → confirmed, 잠금 번호 2
-통과 E1 ERD Editor 파일(2026-11-14T05:25:28+00:00)의 테이블 54개·컬럼 668개·관계 118개·인덱스 77개와 컨텍스트 그룹이 스키마와 같음. 다이어그램이 담지 못하는 부분·식 인덱스 44개와 EXCLUDE는 after 스크립트에, CHECK는 schema.sql에만
+통과 E1 ERD Editor 파일(2026-11-14T09:34:38+00:00)의 테이블 57개·컬럼 692개·관계 128개·인덱스 83개와 컨텍스트 그룹이 스키마와 같음. 다이어그램이 담지 못하는 부분·식 인덱스 45개와 EXCLUDE는 after 스크립트에, CHECK는 schema.sql에만
 
 검사 15개: 통과 15, 실패 0, 미확인 0
 ```
 
-- 규칙 테스트(`rule_tests.sql`)는 한 트랜잭션 안에서 가게 둘과 주문 다섯의 정상 플로우를 먼저 쓰고(지연 외래 키 확인 포함), 막아야 할 쓰기 188개가 각각 기대한 이름의 제약(접속기록, 주문 상태·제작 행의 짝, 결제로 확인하지 않은 몫을 넘는 환불 계산값, 재제작 주문의 원래 주문과 결제 안내·환불·장부 행, 끝나지 않은 재제작 주문이 있는 원래 주문의 끝남, 한 주문의 잡힌 자리와 확정된 자리의 짝은 트리거, 주문 내용 버전의 알레르기 정보 동의는 NOT NULL의 컬럼 이름)에 막히는지, 같은 잠금 번호를 읽고 늦게 쓴 쓰기 3개가 0행인지(`expect_stale`), 넓힌 범위 안의 쓰기 2개, 금액이 내려간 변경의 차액 돌려주기 1개, 원래 주문과 재제작 주문을 함께 다시 엶 1개, 금액이 오르는 날짜 변경의 새 날 자리를 잡고 변경이 닫혀 풂 1개가 들어가는지(`expect_ok`, 쓴 것은 되돌림), 지우기를 돌린 뒤 남은 행과 값 25개가 기대한 값인지(`expect_left`) 봅니다. 1부의 주문·변경 요청 쓰기는 앱처럼 잠금 번호를 올립니다. 끝에 되돌려 아무것도 남기지 않습니다. 이름의 앞머리로 묶으면 SPEC 행 63개, REQ 문장 89개, 공통 규칙 G1~G9 11개, 상태 머신 1-2~1-7 9개, 요구사항 해석 R2~R21 5개, AI-1 4개, 4절 A27 3개, 지연 외래 키(E2) 2개, 상담마다 채우는 초안 하나 1개, 설계 재검토 H12 5개, H3 1개, M4 2개, M13 7개, M5 12개, M6 2개, Codex 후속 5개입니다. 주문 상태와 제작 행의 짝(A27)과 원래 주문의 끝남(A31)은 지연 제약 트리거라, 지연 외래 키처럼 `expect_fail`이 쓰기 뒤 `SET CONSTRAINTS ALL IMMEDIATE`로 바로 봅니다.
-- 지우기(6절)는 `pg_temp.purge_run(시각, 저장소가 실패할 파일)`이 6절의 여섯 차례와 끝의 사진 파일 차례를 SQL로 그대로 씁니다(저장소는 없어 실패할 파일만 정함). 정상 플로우 뒤에 주문 넷(손님 1의 주문 1·재제작 주문 2·주문 4, 손님 2의 주문 5)을 끝난 것으로 두고(이때 원래 주문 1이 끝난 채 재제작 주문 2만 다시 열면 막히고 둘을 함께 다시 열면 들어감을 봄), 그 셋을 다룬 손님 1의 상담을 상담 끝남으로, 주문 없이 끊긴 손님 3의 상담(대화·마스킹 원본 값·초안·참고 사진·견적·주문자 정보 카드·신고하지 않은 신고 내용과 사진·안내·AI 도구 호출 기록)을 더하고, 보내지 않은 환불이 있는 손님 2의 주문 3은 끝나지 않은 채 둡니다. 31일 뒤 시각으로 돌리면 끝난 주문 넷의 개인정보 21건(알레르기 정보 카드와 사진 게시 동의 카드의 내용 포함)과 두 상담의 내용 23건(손님 1의 상담에 카드번호 끝 4자리만 둔 행과 아무것도 두지 않은 긴 숫자 행을 포함)이 0건이 되고, 주문자 이름은 보관 기록 넷으로 옮겨지고, 알레르기 정보 동의 기록(동의함 셋·동의 안 함 하나, 동의 글 버전과 시각)은 남고, 계약·결제 기록과 남겨 두는 행 16가지의 행 수는 그대로이고, 주문 3과 주문 3·5를 다룬 손님 2의 상담은 그대로이고, 묶인 사장님 알림 둘은 남고 할 일 연결만 비고, 새 상담이 열린 손님 1과 끝나지 않은 주문이 있는 손님 2의 키는 남고 손님 3의 키만 지워집니다. 접속기록은 2년 1일 전 행 하나만 지워지고 1년 전 행 하나와 지금의 행 둘(원래 값 열기, 상담의 대화 글 열기)이 남습니다. 이때 저장소가 손님 3의 참고 사진 파일에 실패한 것으로 두면 사진 행은 0건이고 지울 파일 1행이 실패 1번으로 남고(신고 사진 파일 하나는 지워짐), 32일 뒤(다음 날) 돌리면 그 파일을 지워 지울 파일이 0건이 됩니다. 같은 시각에 다시 돌리면 0건이고 지우기가 건드리는 테이블(지울 파일 포함)의 행과 값의 지문(md5)이 같습니다. 3년 1일 뒤에는 신고 설명과 사진(파일까지)만 지워지고 신고와 보상은 남고, 5년 1일 뒤에는 보관 기록 넷이 지워지고 주문·결제 행은 개인정보 없이 남습니다. 각 단계의 기대한 값은 `rule_tests.sql`의 `expect_left` 줄에 있습니다.
+- 규칙 테스트(`rule_tests.sql`)는 한 트랜잭션 안에서 가게 둘과 주문 다섯의 정상 플로우를 먼저 쓰고(지연 외래 키 확인 포함), 막아야 할 쓰기 220개가 각각 기대한 이름의 제약(접속기록, 주문 상태·제작 행의 짝, 결제로 확인하지 않은 몫을 넘는 환불 계산값, 재제작 주문의 원래 주문과 결제 안내·환불·장부 행, 끝나지 않은 재제작 주문이 있는 원래 주문의 끝남, 한 주문의 잡힌 자리와 확정된 자리의 짝, 취소 환불의 취소한 주문, 주문을 확정한 결제의 확인 취소는 트리거, 주문 내용 버전의 알레르기 정보 동의는 NOT NULL의 컬럼 이름)에 막히는지, 같은 잠금 번호를 읽고 늦게 쓴 쓰기 3개가 0행인지(`expect_stale`), 넓힌 범위 안의 쓰기 2개, 금액이 내려간 변경의 차액 돌려주기 1개, 원래 주문과 재제작 주문을 함께 다시 엶 1개, 금액이 오르는 날짜 변경의 새 날 자리를 잡고 변경이 닫혀 풂 1개, 재제작 주문의 취소 환불을 원래 주문에 남김 1개, 열린 건이 있어도 마감된 날 질문을 날짜마다 따로 둠 1개, 날짜만 아는 초안 1개가 들어가는지(`expect_ok`, 쓴 것은 되돌림), 지우기를 돌린 뒤 남은 행과 값 26개가 기대한 값인지(`expect_left`) 봅니다. 1부의 주문·변경 요청 쓰기는 앱처럼 잠금 번호를 올립니다. 끝에 되돌려 아무것도 남기지 않습니다. 이름의 앞머리로 묶으면 SPEC 행 63개, REQ 문장 89개, 공통 규칙 G1~G9 14개, 상태 머신 1-2~1-7 9개, 요구사항 해석 R2~R21 5개, AI-1 4개, 4절 A27 3개, 지연 외래 키(E2) 2개, 상담마다 채우는 초안 하나 1개, 설계 재검토 H12 5개, H3 1개, M4 2개, M13 7개, M5 12개, M6 2개, M7 10개, M17 17개, 06단계 DEC-04 6개, Codex 후속 5개입니다. 주문 상태와 제작 행의 짝(A27), 원래 주문의 끝남(A31)과 주문을 확정한 결제의 확인 취소(A1)는 지연 제약 트리거라, 지연 외래 키처럼 `expect_fail`이 쓰기 뒤 `SET CONSTRAINTS ALL IMMEDIATE`로 바로 봅니다.
+- 지우기(6절)는 `pg_temp.purge_run(시각, 저장소가 실패할 파일)`이 6절의 일곱 차례와 끝의 사진 파일 차례를 SQL로 그대로 씁니다(저장소는 없어 실패할 파일만 정함). 정상 플로우 뒤에 주문 넷(손님 1의 주문 1·재제작 주문 2·주문 4, 손님 2의 주문 5)을 끝난 것으로 두고(이때 원래 주문 1이 끝난 채 재제작 주문 2만 다시 열면 막히고 둘을 함께 다시 열면 들어감을 봄), 그 셋을 다룬 손님 1의 상담을 상담 끝남으로, 주문 없이 끊긴 손님 3의 상담(대화·마스킹 원본 값·초안·참고 사진·견적·주문자 정보 카드·신고하지 않은 신고 내용과 사진·안내·AI 도구 호출 기록)을 더하고, 보내지 않은 환불이 있는 손님 2의 주문 3은 끝나지 않은 채 둡니다. 31일 뒤 시각으로 돌리면 끝난 주문 넷의 개인정보 21건(알레르기 정보 카드와 사진 게시 동의 카드의 내용 포함)과 두 상담의 내용 25건(손님 1의 상담에 카드번호 끝 4자리만 둔 행과 아무것도 두지 않은 긴 숫자 행, 덧붙은 질문 하나, 손님 3의 초안에 더한 옵션 하나를 포함)이 0건이 되고, 주문자 이름은 보관 기록 넷으로 옮겨지고, 알레르기 정보 동의 기록(동의함 셋·동의 안 함 하나, 동의 글 버전과 시각)은 남고, 계약·결제 기록과 남겨 두는 행 17가지(주문 내용의 더하는 옵션 포함)의 행 수는 그대로이고, 주문 3과 주문 3·5를 다룬 손님 2의 상담은 그대로이고, 묶인 사장님 알림 둘은 남고 할 일 연결만 비고, 새 상담이 열린 손님 1과 끝나지 않은 주문이 있는 손님 2의 키는 남고 손님 3의 키만 지워집니다. 접속기록은 2년 1일 전 행 하나만 지워지고 1년 전 행 하나와 지금의 행 둘(원래 값 열기, 상담의 대화 글 열기)이 남고, 하루 지난 화면 요청 키 하나가 지워져 0건이 됩니다(지운 수 1은 운영 기록에). 이때 저장소가 손님 3의 참고 사진 파일에 실패한 것으로 두면 사진 행은 0건이고 지울 파일 1행이 실패 1번으로 남고(신고 사진 파일 하나는 지워짐), 32일 뒤(다음 날) 돌리면 그 파일을 지워 지울 파일이 0건이 됩니다. 같은 시각에 다시 돌리면 0건이고 지우기가 건드리는 테이블(지울 파일 포함)의 행과 값의 지문(md5)이 같습니다. 3년 1일 뒤에는 신고 설명과 사진(파일까지)만 지워지고 신고와 보상은 남고, 5년 1일 뒤에는 보관 기록 넷이 지워지고 주문·결제 행은 개인정보 없이 남습니다. 각 단계의 기대한 값은 `rule_tests.sql`의 `expect_left` 줄에 있습니다.
 - PostgreSQL은 한 행의 CHECK를 이름 차례로 보고 처음 어긋난 것 하나로 막습니다. 그래서 규칙 테스트는 기대한 제약 말고는 모두 맞는 행을 씁니다. 새 CHECK를 더하면 그 이름이 앞서는 테스트가 다른 제약에 막히지 않는지 함께 봅니다(11절의 SPEC-035 10배 테스트).
 - D2와 E1이 차이를 잡는지는 일부러 다르게 만든 사본으로 봤습니다(마이그레이션에 컬럼을 더하고 제약을 지운 사본, 컬럼 설명과 인덱스를 바꾼 사본). 둘 다 실패와 그 행을 보였습니다.
-- D5는 검사용 데이터베이스에 주문 한 행을 외래 키 트리거 없이 만들고(`session_replication_role = replica`, CHECK는 그대로 봄), 두 psql 세션으로 사장님 결제 확인(먼저 쓰고 1.5초 뒤 커밋)과 손님 취소(같은 값을 읽은 채 늦게 씀)를 동시에 돌립니다. 내용 버전(`version`)을 견주는 옛 방식은 늦은 취소가 기다린 뒤에도 조건이 맞아 확인을 덮어쓰고(RC-01 재현), 잠금 번호를 견주면 늦은 취소가 같은 시간을 기다린 뒤 0행이라 결제 확인이 남습니다. 옛 방식이 덮어쓰지 않으면 시험이 헛돈 것으로 보아 실패로 셉니다.
-- 보지 못한 것: 앱이 지키는 규칙(4절)은 앱이 없어 테스트하지 못했습니다. A19~A26, A28~A32(시험 버튼, 발송 결과 조회, 카드 글 길이, 주문이 끝남·상담 끝남·보관 기록을 읽지 않음, 진짜 키로 하는 암호화와 복호화, 응답과 같은 트랜잭션의 접속기록, 예금주 확인과 계좌 바꾸기, 알레르기 정보 카드의 차례와 AI로 알레르기 답을 보내지 않음, 사진마다 동의를 남기고 철회 때 먼저 내림, 기한 처리 작업이 기다림을 닫고 결제 기한을 계산함, 결제로 확인하지 않은 몫을 계산값으로 냄, 환불 계산의 차례와 기준 픽업 일시, 재제작 주문의 취소·다시 신고를 원래 주문의 돈으로 셈하고 후기 부탁을 보내지 않음, 가게 규칙으로 주문 종류를 가름, 손님이 본 금액과 견줘 새 금액 확인 카드를 보내고 답에 따라 결제 안내·주문·변경 요청·자리를 씀)도 같습니다. 데이터베이스 쪽은 봉투 모양과 평문 거절, 원래 값을 두지 않는 번호, 접속기록 고치기·지우기·비우기 막힘, 동의 없는 알레르기 답과 동의가 살아 있지 않은 포트폴리오 항목의 막힘, 결제 기한 상한과 답 없어 닫히는 종류, 주문 상태와 제작 행의 짝(A27), 결제로 확인하지 않은 몫을 넘는 환불 계산값의 막힘(A29), 금액이 내려간 변경의 전액 환불과 재제작 주문을 가리키는 재제작, 재제작 주문의 결제 안내·환불·장부 행, 끝나지 않은 재제작 주문이 있는 원래 주문의 끝남의 막힘(A30·A31), 범위 안의 '부터'·'범위' 옵션과 '확정'이 아닌 기본 디자인 견적, 새 금액 확인 전의 전해짐·결제 확인 요청·확인됨과 받지 않은 열린 결제 안내, 차액 결제가 아닌 잡힌 자리와 확정된 자리의 짝의 막힘(A32)을 D4로 봤습니다. A6의 잠금 번호는 D4·D5가 데이터베이스 쪽 동작만 봤고, 앱이 모든 쓰기에서 잠금 번호를 올리는지는 10단계 뒤 앱 테스트로 봅니다. 지우기(6절)는 데이터베이스에서 지우는 차례와 지울 파일이 남고 다음 날 지워지는 것만 D4로 돌려 봤고(저장소가 실패한 파일은 `failed_keys`로 정함), 하루 한 번의 실행, 주문 하나·상담 하나씩의 트랜잭션, 저장소에서 실제로 파일을 지우는 것은 10단계 뒤 앱 테스트로 봅니다.
+- D5는 검사용 데이터베이스에 주문 한 행과 그 확인된 결제 한 행(주문을 확정한 결제, A1)을 외래 키 트리거 없이 만들고(`session_replication_role = replica`, CHECK는 그대로 봄), 두 psql 세션으로 사장님 결제 확인(먼저 쓰고 1.5초 뒤 커밋)과 손님 취소(같은 값을 읽은 채 늦게 씀)를 동시에 돌립니다. 내용 버전(`version`)을 견주는 옛 방식은 늦은 취소가 기다린 뒤에도 조건이 맞아 확인을 덮어쓰고(RC-01 재현), 잠금 번호를 견주면 늦은 취소가 같은 시간을 기다린 뒤 0행이라 결제 확인이 남습니다. 옛 방식이 덮어쓰지 않으면 시험이 헛돈 것으로 보아 실패로 셉니다.
+- 보지 못한 것: 앱이 지키는 규칙(4절)은 앱이 없어 테스트하지 못했습니다. A19~A26, A28~A34(시험 버튼, 발송 결과 조회, 카드 글 길이, 주문이 끝남·상담 끝남·보관 기록을 읽지 않음, 진짜 키로 하는 암호화와 복호화, 응답과 같은 트랜잭션의 접속기록, 예금주 확인과 계좌 바꾸기, 알레르기 정보 카드의 차례와 AI로 알레르기 답을 보내지 않음, 사진마다 동의를 남기고 철회 때 먼저 내림, 기한 처리 작업이 기다림을 닫고 결제 기한을 계산함, 결제로 확인하지 않은 몫을 계산값으로 냄, 환불 계산의 차례와 기준 픽업 일시, 재제작 주문의 취소·다시 신고를 원래 주문의 돈으로 셈하고 후기 부탁을 보내지 않음, 가게 규칙으로 주문 종류를 가름, 손님이 본 금액과 견줘 새 금액 확인 카드를 보내고 답에 따라 결제 안내·주문·변경 요청·자리를 씀, 요청 지문을 셈하고 기한이 지난 처리 중 키를 이어받고 처음 결과의 기록을 다시 읽어 돌려줌, 이벤트 키를 형식대로 지음, 덧붙은 질문의 손님 말이 같은 상담의 것인지 봄)도 같습니다. 데이터베이스 쪽은 봉투 모양과 평문 거절, 원래 값을 두지 않는 번호, 접속기록 고치기·지우기·비우기 막힘, 동의 없는 알레르기 답과 동의가 살아 있지 않은 포트폴리오 항목의 막힘, 결제 기한 상한과 답 없어 닫히는 종류, 주문 상태와 제작 행의 짝(A27), 결제로 확인하지 않은 몫을 넘는 환불 계산값의 막힘(A29), 금액이 내려간 변경의 전액 환불과 재제작 주문을 가리키는 재제작, 재제작 주문의 결제 안내·환불·장부 행, 끝나지 않은 재제작 주문이 있는 원래 주문의 끝남의 막힘(A30·A31), 범위 안의 '부터'·'범위' 옵션과 '확정'이 아닌 기본 디자인 견적, 새 금액 확인 전의 전해짐·결제 확인 요청·확인됨과 받지 않은 열린 결제 안내, 차액 결제가 아닌 잡힌 자리와 확정된 자리의 짝의 막힘(A32), 처리 중·끝남이 어긋난 요청 키와 서버 오류를 처음 결과로 남김(E27), 대상마다 둘째 환불, 주문을 확정한 결제 없는 주문 확정·다른 주문의 결제로 주문 확정·확인을 취소한 결제로 주문 확정(A1·A33), 날짜마다 둘째 마감된 날 건, 추가 수락 없이 쓰거나 두 번 쓴 주문 요청, 마감된 날 질문의 덧붙음과 같은 말 두 번(A34), 날짜 없는 시각, 다른 가격표 버전·가게·무리의 더하는 옵션, 다른 손님의 상담(E30)의 막힘을 D4로 봤습니다. A6의 잠금 번호는 D4·D5가 데이터베이스 쪽 동작만 봤고, 앱이 모든 쓰기에서 잠금 번호를 올리는지는 10단계 뒤 앱 테스트로 봅니다. 지우기(6절)는 데이터베이스에서 지우는 차례와 지울 파일이 남고 다음 날 지워지는 것만 D4로 돌려 봤고(저장소가 실패한 파일은 `failed_keys`로 정함), 하루 한 번의 실행, 주문 하나·상담 하나씩의 트랜잭션, 저장소에서 실제로 파일을 지우는 것은 10단계 뒤 앱 테스트로 봅니다.
 
 ## 9. ERD Editor
 
 - 여는 법: VS Code의 ERD Editor 확장 4.0.0 이상(또는 JetBrains·Obsidian 플러그인 1.0.0 이상)으로 `db/schema.erd.json`을 엽니다. 그룹은 CTX-001부터 위에서 아래로 쌓여 있고 맨 위 노란 메모에 이 다이어그램의 한계를 적었습니다.
 - 만든 법: `erd_editor_build.py --build`가 ERD Editor MCP 서버(`@dineug/erd-editor-mcp` 1.2.0, headless)로 `db/schema.sql`을 들여오고(`erd_import_sql`), 데이터베이스를 PostgreSQL로 맞추고, 컨텍스트 그룹과 배치, 메모를 도구로 더했습니다. JSON은 손으로 쓰지 않았습니다.
 - 고친 법(마이그레이션 0002부터): `erd_editor_sync.py --write`가 `db/schema.sql`과 다이어그램의 차이(E1이 견주는 것)를 찾아 ERD Editor MCP 편집 도구(`erd_batch` 안의 `erd_add_column`·`erd_move_column`·`erd_change_column_comment`·`erd_set_column_unique`·`erd_link_columns`·`erd_change_relationship_on_delete`·`erd_add_index`, `erd_set_ddl_script`, `erd_change_memo_value` 등)로 옮기고 `erd_save`로 저장합니다. 마이그레이션 0003부터는 컬럼 기본값도 견주어 `erd_change_column_default`로 옮깁니다. 마이그레이션 0005부터는 `erd_add_table`이 새 테이블을 그룹 밖 빈 곳에 두므로, 그 컨텍스트 그룹 상자 안의 빈 곳을 찾아 `erd_move_table`로 옮깁니다(`place_new_tables`). 마이그레이션 0006부터는 상자 안에 빈 곳이 없으면 상자를 아래로 늘려(`erd_resize_table_group`, 다른 그룹 상자와 겹치지 않을 때만) 그룹의 맨 아래 테이블 밑에 두고, 새 테이블의 편집은 늘 새 `erd_batch` 묶음(한 번에 100개까지)에서 시작합니다. 마이그레이션 0008부터는 메모의 트리거 문장을 `db/schema.sql`의 함수 목록으로 다시 씁니다(`trigger_text`). 들여오기(`erd_import_*`)와 `--build`는 쓰지 않아 배치와 그룹이 그대로 남습니다. 다이어그램 파일은 ID를 찾으려고 읽기만 합니다. 쓰기 없이 돌리면 바꿀 편집만 보입니다.
-- 다이어그램이 담지 못하는 것: CHECK 363개(다이어그램에 자리가 없음), 부분 인덱스 43개의 WHERE 조건, 식 인덱스 1개(`operators_email_uq`), EXCLUDE 1개, 지연 외래 키 설정 1개. 부분 인덱스는 들여오면 조건 없는 인덱스가 되어 '가게마다 가격표 하나'처럼 실제보다 센 규칙으로 보이므로 다이어그램의 인덱스에서 빼고, 이것들을 모두 DDL의 after 스크립트에 원본 그대로 옮겼습니다. 접속기록을 지키는 함수 `access_logs_guard()`와 트리거 둘(마이그레이션 0006), 주문 상태와 제작 행의 짝을 보는 함수 `orders_production_sync_check()`와 지연 제약 트리거 둘(마이그레이션 0008), 더 들어온 금액의 환불 계산값을 보는 함수 `refunds_unconfirmed_check()`와 트리거 하나(마이그레이션 0009), 재제작 주문이 돈을 낸 원래 주문을 가리키고 결제 안내·환불·장부 행을 두지 않음을 보는 함수 `orders_remake_root_check()`·`remake_money_check()`와 트리거 넷, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 보는 함수 `orders_remake_finish_check()`와 지연 제약 트리거 하나(마이그레이션 0010), 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 함수 `slot_holds_pair_check()`와 트리거 하나(마이그레이션 0011)는 CHECK처럼 규칙이라 after 스크립트에도 넣지 않고 `db/schema.sql`과 그 마이그레이션에만 두며, 맨 위 메모에 그렇게 적었습니다. 외래 키와 UNIQUE의 이름은 다이어그램이 다시 지어 원본과 다릅니다.
-- 견준 결과(`--compare`, 2026-11-14 편집 도구로 고친 다이어그램, 14:20 KST 출력): 다이어그램의 DDL 125,984자를 빈 데이터베이스에 만들어 원본 데이터베이스와 뜻으로 견주면 컬럼 668·기본 키 54·외래 키 118·고유 98·인덱스 37·EXCLUDE 1·테이블 설명과 컬럼 설명이 모두 같고(`db/schema.sql에만 0줄, 다이어그램에만 0줄`), 다른 것은 CHECK(원본 363개, 다이어그램 0개)뿐입니다(M5·M6을 고친 뒤). 견주기는 트리거와 함수를 보지 않습니다(8절 D2가 봄). M4·M13과 그 PR의 Codex 의견을 고친 뒤에는 123,617자, 컬럼 664, CHECK 355개였고, M4·M13을 고친 뒤(Codex 의견 전)에는 123,555자였고, Codex 후속을 고친 뒤에는 122,664자, 컬럼 664, CHECK 354개였고, M1·M2·M3·M9·M10을 고친 뒤에는 121,262자, 컬럼 657, CHECK 351개였고, H5·H10을 고친 뒤에는 119,779자, 컬럼 654, CHECK 345개였고, H4를 고친 뒤에는 116,284자, 컬럼 644, CHECK 333개였고, H3을 고친 뒤에는 112,305자, 컬럼 624, CHECK 312개였고, H7·H8을 고친 뒤에는 108,676자, 컬럼 611, CHECK 304개였고, H11·H12를 고친 뒤에는 105,657자, 컬럼 593, CHECK 287개였고, H1·H2를 고친 뒤에는 104,900자, 컬럼 591, CHECK 285개였고, 2026-11-12에는 102,991자, 컬럼 585·외래 키 105·고유 92, CHECK 275개였습니다.
+- 다이어그램이 담지 못하는 것: CHECK 376개(다이어그램에 자리가 없음), 부분 인덱스 44개의 WHERE 조건, 식 인덱스 1개(`operators_email_uq`), EXCLUDE 1개, 지연 외래 키 설정 1개. 부분 인덱스는 들여오면 조건 없는 인덱스가 되어 '가게마다 가격표 하나'처럼 실제보다 센 규칙으로 보이므로 다이어그램의 인덱스에서 빼고, 이것들을 모두 DDL의 after 스크립트에 원본 그대로 옮겼습니다. 접속기록을 지키는 함수 `access_logs_guard()`와 트리거 둘(마이그레이션 0006), 주문 상태와 제작 행의 짝을 보는 함수 `orders_production_sync_check()`와 지연 제약 트리거 둘(마이그레이션 0008), 더 들어온 금액의 환불 계산값을 보는 함수 `refunds_unconfirmed_check()`와 트리거 하나(마이그레이션 0009), 재제작 주문이 돈을 낸 원래 주문을 가리키고 결제 안내·환불·장부 행을 두지 않음을 보는 함수 `orders_remake_root_check()`·`remake_money_check()`와 트리거 넷, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 보는 함수 `orders_remake_finish_check()`와 지연 제약 트리거 하나(마이그레이션 0010), 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 함수 `slot_holds_pair_check()`와 트리거 하나(마이그레이션 0011), 취소 환불의 취소한 주문을 보는 함수 `refunds_cancelled_check()`와 트리거 하나, 주문 확정 뒤 그 주문을 확정한 결제가 확인을 취소한 것이 아닌지 보는 함수 `confirmed_payment_live_check()`와 지연 제약 트리거 둘(마이그레이션 0012)은 CHECK처럼 규칙이라 after 스크립트에도 넣지 않고 `db/schema.sql`과 그 마이그레이션에만 두며, 맨 위 메모에 그렇게 적었습니다. 외래 키와 UNIQUE의 이름은 다이어그램이 다시 지어 원본과 다릅니다.
+- 견준 결과(`--compare`, 2026-11-14 편집 도구로 고친 다이어그램, 18:34 KST 출력): 다이어그램의 DDL 133,919자를 빈 데이터베이스에 만들어 원본 데이터베이스와 뜻으로 견주면 컬럼 692·기본 키 57·외래 키 128·고유 110·인덱스 38·EXCLUDE 1·테이블 설명과 컬럼 설명이 모두 같고(`db/schema.sql에만 0줄, 다이어그램에만 0줄`), 다른 것은 CHECK(원본 376개, 다이어그램 0개)뿐입니다(M7·M17을 고친 뒤). 견주기는 트리거와 함수를 보지 않습니다(8절 D2가 봄). M5·M6을 고친 뒤에는 125,984자, 컬럼 668, CHECK 363개였고, M4·M13과 그 PR의 Codex 의견을 고친 뒤에는 123,617자, 컬럼 664, CHECK 355개였고, M4·M13을 고친 뒤(Codex 의견 전)에는 123,555자였고, Codex 후속을 고친 뒤에는 122,664자, 컬럼 664, CHECK 354개였고, M1·M2·M3·M9·M10을 고친 뒤에는 121,262자, 컬럼 657, CHECK 351개였고, H5·H10을 고친 뒤에는 119,779자, 컬럼 654, CHECK 345개였고, H4를 고친 뒤에는 116,284자, 컬럼 644, CHECK 333개였고, H3을 고친 뒤에는 112,305자, 컬럼 624, CHECK 312개였고, H7·H8을 고친 뒤에는 108,676자, 컬럼 611, CHECK 304개였고, H11·H12를 고친 뒤에는 105,657자, 컬럼 593, CHECK 287개였고, H1·H2를 고친 뒤에는 104,900자, 컬럼 591, CHECK 285개였고, 2026-11-12에는 102,991자, 컬럼 585·외래 키 105·고유 92, CHECK 275개였습니다.
 - 주의: ERD Editor의 DDL은 외래 키를 인덱스보다 먼저 쓰는데, 복합 UNIQUE가 인덱스로 바뀌어 그 순서로는 PostgreSQL에 적용되지 않습니다(견줄 때는 인덱스를 앞에 둠). 그래서 DB는 늘 `db/schema.sql`과 마이그레이션으로 만들고, 다이어그램의 DDL로 만들지 않습니다.
 - 그래서 `truth`는 `source`입니다(계약: 들여와 견줄 때 잃는 것이 있으면 `source`를 유지). 확정한 뒤 바꿀 때는 `db/schema.sql`과 새 마이그레이션을 먼저 고치고, 같은 변경을 ERD Editor 편집 도구로 다이어그램에 더한 뒤(`erd_editor_sync.py --write`) `check_erd.py`의 E1로 맞는지 봅니다. 다시 들여오면 배치가 지워지므로 확정한 뒤에는 들여오지 않습니다.
-- 보지 못한 것: 이 작업 환경에 VS Code가 없어 다이어그램을 화면으로 열어 보지는 못했습니다. 그룹 사이 중복이 없고 테이블이 모두 자기 그룹 안에 있음은 파일의 좌표로 봤습니다. 새 테이블 `kept_records`도 CTX-003 그룹 상자 안(x 2137, y 4144)에, `access_logs`는 높이를 274에서 700으로 늘린 공통 그룹 상자 안(x 74, y 9668, `ops_events` 아래)에, `file_deletions`는 같은 공통 그룹 상자 안(x 1340, y 9668, `access_logs` 오른쪽)에 있습니다.
+- 보지 못한 것: 이 작업 환경에 VS Code가 없어 다이어그램을 화면으로 열어 보지는 못했습니다. 그룹 사이 중복이 없고 테이블이 모두 자기 그룹 안에 있음은 파일의 좌표로 봤습니다. 새 테이블 `kept_records`도 CTX-003 그룹 상자 안(x 2137, y 4144)에, `access_logs`는 높이를 274에서 700으로 늘린 공통 그룹 상자 안(x 74, y 9668, `ops_events` 아래)에, `file_deletions`는 같은 공통 그룹 상자 안(x 1340, y 9668, `access_logs` 오른쪽)에 있습니다. 새 테이블 `handoff_questions`와 `order_draft_extras`는 너비를 4630에서 6793으로, 높이를 1876에서 1924로 늘린 CTX-001 그룹 상자 안(x 5563, y 352와 y 610)에, `order_detail_extras`는 너비를 3737에서 5818로, 높이를 1488에서 1560으로 늘린 CTX-003 그룹 상자 안(x 4583, y 3434)에 있습니다. 두 상자는 아래가 다음 그룹 상자에 막혀 오른쪽으로 늘렸고(`erd_editor_sync.py`가 아래로 늘리지 못하면 오른쪽으로 늘리게 고침), 편집 도구가 보는 테이블 크기로 상자가 그룹의 테이블을 모두 담습니다.
 
 ## 10. 체크포인트
 
@@ -1037,4 +1093,22 @@ DB는 한 행 안의 규칙(CHECK), 행 사이의 관계(외래 키·UNIQUE), '�
 - 대응(`erd_map.py`): SPEC-076(21건: 새 금액 확인의 네 컬럼, 카드의 종류·내용·손님·키·기한, 요청한 금액과 표시 방식, 정한 금액의 사유, 결제 기한과 상한, 전해진 시각, 닫는 사유, 손님 취소, 풀린 사유, 차액 없어 닫힘, 사장님 알림, 장부 쓰기)을 더하고, SPEC-013·027·028·031에 주문 종류와 표시 방식·아래 끝·위 끝·요청 때 쓴 견적, SPEC-015·042~045에 새 날 자리와 그 풂, 새 금액 확인과 받지 않음, SPEC-032~035·066에 확인한 시각·요청한 금액의 표시 방식·확인 카드를 다시 보임·결제로 확인한 시각을 손님의 확인으로·변경 닫기를 더하고, SPEC-042·043·045·070의 이름을 지금 뜻으로 고쳤습니다(데이터 909건 → 964건, 컬럼 445개 → 449개. 새로 쓰인 컬럼은 결제 안내의 새 컬럼 넷).
 - 규칙 테스트 207개 → 221개. 1부의 차액 결제(주문 3 버전 2 변경의 차액 5,000원)를 새 금액 확인 필요로 쓰고, 손님이 누른 새 금액 확인 카드(`amount_confirm`)와 확인한 시각·전해진 시각을 남깁니다. 새 테스트 14개: 범위 값의 옵션을 기본 디자인 범위에 넣음 1개(`price_options_standard_fixed_chk`), 범위 견적의 기본 디자인 주문 1개(`quotes_standard_fixed_chk`), 오래된 버전 상태의 변경 요청과 이전 버전 변경 할 일 2개(`change_requests_status_check`, `owner_tasks_kind_check`), 주문 하나에 잡힌 자리 둘 1개(`slot_holds_one_held_per_order`), 차액 결제가 아닌 잡힌 자리를 확정된 자리와 함께 1개(트리거 `slot_holds_pair`), 들어가야 할 새 날 자리를 잡고 변경이 닫혀 풂 1개(`expect_ok`), 새 금액 확인이 없는 차액 결제와 요청한 금액보다 높지 않은 다시 낸 결제의 확인 필요 2개(`payment_requests_needs_confirm_chk`), 확인 전에 전해짐·결제 확인 요청·확인됨 3개(`payment_requests_amount_delivered_chk`, `_amount_claim_chk`, `_amount_paid_chk`), 받지 않았는데 열린 결제 안내 1개(`_amount_declined_chk`), 확인 필요가 아닌 결제 안내의 확인한 시각 1개(`_amount_answer_chk`). 주문 하나에 확정된 자리 둘을 막는 1-4 테스트는 인덱스 이름을 `slot_holds_one_fixed_per_order`로 고쳤습니다.
 - 다이어그램: `erd_editor_sync.py --write`로 1단계 편집 41개(컬럼 4개 더함과 이름·타입·자리, NOT NULL 1개, 기본값 1개, 컬럼 설명 23개), 2단계 관계 1개(`payment_requests.amount_card_id` → `confirm_cards`), 3단계 메모(CHECK 수와 트리거 함수)와 after 스크립트(잡힌 자리·확정된 자리의 부분 UNIQUE 둘) 2개를 옮겼습니다. 메모가 새 트리거 함수를 적도록 `erd_editor_sync.py`의 `TRIGGER_TEXT`에 더했습니다(9절). 마지막 쓰기 없는 실행은 편집 0개, `erd_editor_build.py --compare` 차이 0줄입니다.
+- 검사: 8절. 15개 모두 통과.
+
+2026-11-14 같은 재검토의 중간 묶음 M7(RC-16, RD-05, RC-06)과 M17(RC-08, RC-13, RC-12)도 같은 결정 카드의 '모두 지금 고침 (추천)'대로 검토자의 고치는 방향을 따라 고쳤습니다(두 묶음에는 Claude 추천이 없음). 기능 명세는 SPEC-020·022·023·065를 고쳤고(spec.md 8절), 06단계는 DEC-04와 이 컬럼을 읽는 스키마를 고쳤으며(06 README 15절, 깨지는 변화는 11절), 화면 정의는 SCR-017을 고쳤습니다(08 README 12절). 바꿈은 새 마이그레이션 [`0012_request_keys_questions_extras.sql`](../../db/migrations/0012_request_keys_questions_extras.sql)입니다.
+
+| 무엇 | 테이블.컬럼·제약 | 근거 |
+| --- | --- | --- |
+| 같은 요청 키의 다른 내용·처리 중·다시 옴 | `request_keys`에 `request_hash`(HMAC-SHA256 16진수 64자)·`state`(처리 중·끝남)·`processing_expires_at`(받은 때 + 60초)·`response_code`·`response_ref`(가리킨 기록의 ID)·`done_at`을 더하고, `response_status`는 끝났을 때만 200~499로 두며(서버 오류는 남기지 않음) `response_body`를 뺌(`request_keys_state_chk`). 지우기가 24시간 지난 행을 지움(6절 7) | 06 DEC-04, G2, REQ-132, 5절 E27, RC-16 |
+| 이벤트 키 형식과 대상마다 하나 | 이벤트 키·가예약 키 설명에 형식을 적음(4절 A33). `refunds.cancelled_order_id`(`refunds_cancelled_fk`, `refunds_cancelled_chk`, 함수 `refunds_cancelled_check()`와 트리거 `refunds_cancelled`)와 대상마다 UNIQUE 넷(`refunds_cancelled_uq`, `refunds_change_uq`, `refunds_issue_uq`, `refunds_request_uq`). `orders.confirmed_payment_id`(`orders_confirmed_payment_chk`, `orders_confirmed_payment_fk`와 그 참조 키 `payments_order_key`, 함수 `confirmed_payment_live_check()`와 지연 제약 트리거 `orders_confirmed_payment_live`·`payments_confirmed_void`) | G2, REQ-060, REQ-154, SPEC-036, SPEC-070, 4절 A1·A33, 5절 E29, RD-05·RC-06 |
+| 덧붙은 질문과 마감된 날 질문 | 새 테이블 `handoff_questions`(TBL-055, CTX-001: 질문마다 사유·손님 말·관련 주문, 같은 말은 한 번 `handoff_questions_message_uq`). 마감된 날 질문은 상담과 날짜마다 열린 건 하나(`handoffs_one_open_day_per_consultation`)로 두고 `handoffs_one_open_per_consultation`에서 뺌. `handoffs.day_used_order_id`(추가 수락을 쓴 주문 요청, `handoffs_day_used_fk`·`_uq`·`_chk`). `handoffs.source_message_id`·`requested_day` 설명을 고침 | SPEC-014, SPEC-022, SPEC-023, SPEC-029, R10, REQ-225, 4절 A3·A34, 5절 E28, RC-08 |
+| 날짜만 아는 초안 | `order_drafts.pickup_at`을 `pickup_day`(date)와 `pickup_time`(time)으로 나누고 날짜 없이 시각만은 막음(`order_drafts_pickup_time_chk`) | SPEC-014, SPEC-020, SPEC-027, SPEC-029, 5절 E30, RC-13 |
+| 더하는 옵션과 (상담, 손님) 쌍 | `order_drafts.extra_option_ids`·`order_details.extra_option_ids`(uuid[])를 새 연결 테이블 `order_draft_extras`(TBL-056, CTX-001)·`order_detail_extras`(TBL-057, CTX-003)로 옮김: 초안·주문 내용과 같은 가격표 버전(`order_draft_extras_draft_fk`·`order_detail_extras_detail_fk`, 참조 키 `order_drafts_list_key`·`order_details_list_key`)의 더하는 옵션만(`*_option_fk`, 참조 키 `price_options_group_key`). 주문·확인 카드·손님 안내는 (가게, 상담, 손님)으로 상담을 참조(`*_consultation_fk`, 참조 키 `consultations_customer_key`) | SPEC-013, SPEC-027, SPEC-028, SPEC-029, SPEC-050, G1, 5절 E1·E30, RC-12 |
+
+- 마이그레이션 0012: 요청 키 행을 지우고(하루만 쓰는 값) 컬럼 여섯을 더하고 하나를 빼며, 새 테이블 셋, 컬럼 다섯(초안의 픽업 날짜·시각, 주문을 확정한 결제, 환불의 취소한 주문, 에스컬레이션 건의 추가 수락을 쓴 주문 요청)을 더하고 초안의 픽업 일시와 더하는 옵션 배열 둘을 뺍니다. 외래 키 열(새 테이블 일곱 포함)·UNIQUE 열하나·CHECK 열셋·인덱스 둘(마감된 날 질문 건의 부분 UNIQUE, 건마다 덧붙은 질문)을 더하고, 상담을 참조하는 외래 키 셋과 `order_drafts_options_need_list_chk`·`handoffs_day_chk`·`handoffs_one_open_per_consultation`을 다시 만들고, 함수 둘과 트리거 셋을 만듭니다. 운영 데이터가 아직 없어(10단계 전) 옮길 행이 없고, 있으면 초안의 픽업 일시는 가게 시간대의 날짜와 시각으로, 더하는 옵션 배열은 연결 테이블 행으로, 확정된 뒤의 주문은 취소하지 않은 첫 결제·다시 낸 결제를 주문을 확정한 결제로, 취소 환불은 취소한 주문으로 옮김을 머리 주석에 적었습니다. 컬럼 설명 39줄은 `schema.sql`과 같은 줄을 옮겨 D2가 같음을 봅니다. D2는 함수 9개와 트리거 14개를 견줍니다(8절).
+- 대응(`erd_map.py`): 더하는 옵션 두 곳을 연결 테이블로, 픽업 일시를 날짜와 시각으로 바꾸고, SPEC-013·014·020·022·023·027·029·030·034·036·046·047·048·050·065·070에 덧붙은 질문, 마감된 날 질문 건과 추가 수락을 쓴 주문 요청, 요청 키의 지문·처리 상태·처음 결과, 주문을 확정한 결제, 취소한 주문을 더했습니다(데이터 964건 → 998건, 컬럼 449개 → 468개).
+- 규칙 테스트 221개 → 257개. 정상 플로우의 초안 셋은 픽업 날짜와 시각으로, 더하는 옵션은 연결 테이블 행으로, 확정된 주문 셋은 주문을 확정한 결제로, 취소 환불 둘은 취소한 주문으로 쓰고, 덧붙은 질문 하나와 끝난 요청 키 하나를 더합니다. 새 테스트 36개: 06 DEC-04 6개(처리 중인 키의 처음 결과·기한 없는 처리 중·결과 종류 없는 끝남은 `request_keys_state_chk`, 16진수 64자가 아닌 지문, 서버 오류를 처음 결과로, 하루 지난 키는 지우기가 지움), M7 10개(취소한 주문 없는 취소 환불, 다른 주문의 취소로 환불(트리거 `refunds_cancelled`), 재제작 주문의 취소 환불을 원래 주문에(`expect_ok`), 대상마다 둘째 환불 넷, 주문을 확정한 결제 없는 주문 확정, 다른 주문의 결제로 주문 확정, 주문을 확정한 결제의 확인을 취소하고 주문은 확정된 그대로(지연 트리거 `payments_confirmed_void`)), G2 3개(같은 가예약 키·이벤트의 할 일·사장님 알림 둘), M17 17개(열린 건이 있어도 날짜마다 따로 건(`expect_ok`), 같은 날 마감된 날 건 둘, 날짜 없는 마감된 날 질문과 마감된 날이 아닌 질문의 날짜, 추가 수락 없이 쓴 주문 요청, 주문 요청 하나가 추가 수락 둘을 씀, 마감된 날 질문을 덧붙임, 같은 말을 두 번 덧붙임, 날짜만 아는 초안(`expect_ok`), 날짜 없이 시각만, 다른 가격표 버전·무리·두 번의 더하는 옵션, 다른 가게의 더하는 옵션을 주문 내용에, 다른 손님의 상담으로 주문·확인 카드·손님 안내). G2의 같은 화면 요청 키, G2·M13의 환불, H12의 늦은 쓰기 둘은 새 컬럼에 맞춰 고쳤습니다. D5의 준비도 주문을 확정한 결제를 씁니다(`check_erd.py`).
+- 다이어그램: `erd_editor_sync.py --write`로 새 테이블 셋과 컬럼·설명, 관계와 인덱스, 메모(CHECK 수와 트리거 함수 둘)와 after 스크립트를 옮겼습니다. 새 테이블 셋이 그룹 상자 밖에 남아, 상자를 아래로 늘리지 못하면 오른쪽으로 늘리고 상자 밖에 남은 테이블도 옮기도록 `place_new_tables`를 고쳤습니다(9절). 메모가 새 트리거 함수를 적도록 `TRIGGER_TEXT`에 더했습니다. 마지막 쓰기 없는 실행은 편집 0개, `erd_editor_build.py --compare` 차이 0줄입니다.
+- 금지어: 이 PR이 새로 쓴 설명에서 용어집이 허용하지 않는 꼴로 쓴 '확정'을 '주문을 확정한 결제'·'주문 확정 뒤 상태'처럼 허용 꼴로 고치고(스키마·마이그레이션 0012의 설명과 함수 `confirmed_payment_live_check()`의 오류 글, 매핑 이름, 규칙 테스트 이름 셋, 다이어그램 메모 `TRIGGER_TEXT`, `check_erd.py`의 D5 설명), 키 형식 표의 옛말을 '사유'로 고쳤습니다. 바꾼 문서의 금지어 수는 main과 같거나 적고, 새로 보이는 것은 8절 출력 그대로인 D2·D3 두 줄의 숫자가 바뀐 것뿐입니다.
+- Codex 의견([PR #37](https://github.com/kodonghui/siljang.ai/pull/37#discussion_r4572803814)): 장부 쓰기 키의 대상을 주문으로 읽으면 같은 주문의 두 번째 변경이나 재제작 주문의 다음 일이 첫 키에 막혀 장부가 고쳐지지 않습니다. 대상을 그 일을 만든 기록(주문을 확정한 결제·변경 요청·환불·확인을 취소한 결제, 끝 상태는 주문)으로 정하고 재제작은 뒤에 그 일을 붙였습니다(4절 A33과 키 형식 표, `ledger_writes.event_key` 설명과 마이그레이션 0012의 같은 설명, 다이어그램). UNIQUE는 그대로입니다.
 - 검사: 8절. 15개 모두 통과.

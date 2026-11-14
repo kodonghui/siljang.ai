@@ -714,6 +714,8 @@ S["CustomerLine"] = all_required({
     "at": DT,
     "text": nullable(string(0, 4000, desc="전화번호·계좌번호는 원래 값으로 되돌린 글(그 가게 사장님 화면에만, SPEC-021). 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192)")),
     "photos": arr(all_required({"url": SIGNED_URL}), 0, 10),
+    "reason": enum(HANDOFF_REASONS, desc="이 말의 사유. 첫 줄은 에스컬레이션 건의 사유이고, 덧붙은 질문은 질문마다 남은 사유(05단계 handoff_questions). 마감된 날 질문은 덧붙지 않고 날짜마다 따로 건이 됨(SPEC-022)"),
+    "order": dict(nullable(ref("OrderRef")), description="이 말과 관련된 주문. 첫 줄은 에스컬레이션 건의 주문, 덧붙은 질문은 질문마다 남은 주문. 없으면 null"),
 })
 S["Handoff"] = all_required({
     "handoffId": UUID,
@@ -722,11 +724,12 @@ S["Handoff"] = all_required({
     "status": enum(["open", "answered", "closed_no_answer"], desc="열림·답함·답 없어 닫힘(남긴 지 7일 동안 사장님 답이 없음, REQ-216)"),
     "requestedDay": nullable(DATE),
     "order": nullable(ref("OrderRef")),
-    "customerLines": arr(ref("CustomerLine"), 1, 50, desc="에스컬레이션한 손님 말과 그 뒤 덧붙은 말"),
+    "customerLines": arr(ref("CustomerLine"), 1, 50, desc="에스컬레이션한 손님 말과 그 뒤 이 건에 덧붙은 질문(질문마다 사유와 관련 주문, SPEC-022)"),
     "customerChannelFriend": boolean(),
     "answerText": nullable(string(1, 1000)),
     "dayDecision": nullable(enum(["accepted", "declined"])),
     "dayAcceptExpiresAt": nullable(DT),
+    "dayUsedOrder": dict(nullable(ref("OrderRef")), description="추가 수락을 쓴 주문 요청: dayAcceptExpiresAt 전에 그 날짜로 와서 마감 후 추가 수락으로 자리를 잡은 주문 하나. 쓰면 다시 쓰지 않음(SPEC-023). 아니면 null"),
     "answeredAt": nullable(DT),
     "closedAt": nullable(dict(DT, description="답 없어 닫힌 시각(남긴 지 7일, REQ-216). 닫힌 건에 답하면 409 invalid_state")),
     "createdAt": DT,
@@ -1287,7 +1290,8 @@ PLACEHOLDER_ACCOUNT = r"^\[계좌번호[0-9]{1,3}\]$"
 S["AiTurnOutput"] = obj({
     "reply": string(0, 600, desc="손님에게 보낼 글. 비면 서버가 '다시 한번 말씀해 주시겠어요?'(SPEC-020)"),
     "draft_patch": obj({
-        "pickup_at": DT,
+        "pickup_day": dict(DATE, description="원하는 픽업 날짜(가게 시간대). 날짜만 들었으면 날짜만 넣음(SPEC-020)"),
+        "pickup_time": string(5, 5, HHMM_RE, col="order_drafts.pickup_time", desc="원하는 픽업 시각(가게 시간대, HH:MM). 초안에 날짜가 없으면 시각만은 받지 않음"),
         "courier_pickup": boolean(col="order_drafts.courier_pickup"),
         "size": string(1, 30), "flavor": string(1, 30), "design_option": string(1, 30), "design": string(1, 30),
         "extras": arr(string(1, 30), 0, 20, unique=True),

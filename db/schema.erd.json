@@ -27,7 +27,7 @@
     "lockSettings": 63,
     "ddlScripts": {
       "before": "CREATE EXTENSION IF NOT EXISTS btree_gist; -- refund_tiers의 EXCLUDE에 씀",
-      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py·erd_editor_sync.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status NOT IN ('ended', 'deleted');\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX consultations_ordered_idx ON consultations (last_customer_message_at) WHERE status = 'ordered';\nCREATE INDEX consultations_ended_idx ON consultations (ended_at) WHERE status = 'ended';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE INDEX orders_purge_due_idx ON orders (finished_at) WHERE finished_at IS NOT NULL AND personal_data_purged_at IS NULL;\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE INDEX handoffs_open_age_idx ON handoffs (created_at) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE INDEX payment_requests_claim_cap_idx ON payment_requests (due_cap_at) WHERE status = 'claimed';\nCREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL;\nCREATE UNIQUE INDEX slot_holds_one_held_per_order ON slot_holds (order_id) WHERE status = 'held';\nCREATE UNIQUE INDEX slot_holds_one_fixed_per_order ON slot_holds (order_id) WHERE status = 'fixed';\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed', 'done');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_completion_photo_uq ON photo_consents (completion_photo_id) WHERE scope = 'completion_photo';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX kept_records_issue_due_idx ON kept_records (issue_keep_until) WHERE issue_keep_until IS NOT NULL AND issue_purged_at IS NULL;\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
+      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py·erd_editor_sync.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status NOT IN ('ended', 'deleted');\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX consultations_ordered_idx ON consultations (last_customer_message_at) WHERE status = 'ordered';\nCREATE INDEX consultations_ended_idx ON consultations (ended_at) WHERE status = 'ended';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE INDEX orders_purge_due_idx ON orders (finished_at) WHERE finished_at IS NOT NULL AND personal_data_purged_at IS NULL;\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason <> 'closed_day';\nCREATE UNIQUE INDEX handoffs_one_open_day_per_consultation ON handoffs (consultation_id, requested_day) WHERE status = 'open' AND reason = 'closed_day';\nCREATE INDEX handoffs_open_age_idx ON handoffs (created_at) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE INDEX payment_requests_claim_cap_idx ON payment_requests (due_cap_at) WHERE status = 'claimed';\nCREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL;\nCREATE UNIQUE INDEX slot_holds_one_held_per_order ON slot_holds (order_id) WHERE status = 'held';\nCREATE UNIQUE INDEX slot_holds_one_fixed_per_order ON slot_holds (order_id) WHERE status = 'fixed';\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed', 'done');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_completion_photo_uq ON photo_consents (completion_photo_id) WHERE scope = 'completion_photo';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX kept_records_issue_due_idx ON kept_records (issue_keep_until) WHERE issue_keep_until IS NOT NULL AND issue_purged_at IS NULL;\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
     }
   },
   "doc": {
@@ -85,7 +85,10 @@
       "03h7y0179sukl6c8njfcxe8qh",
       "03h8b7tnrfhbd2g1wkkguu20l",
       "03h8boz8wiz0oga3u2prq5sgi",
-      "03h8dcdgozyyepdxxnkmbrubi"
+      "03h8dcdgozyyepdxxnkmbrubi",
+      "03h8fnq555wh6jkhyb4ogzxmc",
+      "03h8fnq5bjh70g2sy7xrnz0vf",
+      "03h8fnq5i83oocwxxzm97hh19"
     ],
     "relationshipIds": [
       "03h7y0179y91t3fbncx4e1mp5",
@@ -121,13 +124,11 @@
       "03h7y017a3sieixs3ukpj0sz0",
       "03h7y017a3sieixs3ulur9etr",
       "03h7y017a3sieixs3unlqsv0a",
-      "03h7y017a3sieixs3upssj3qg",
       "03h7y017a3sieixs3usox65fj",
       "03h7y017a3sieixs3uvbq0467",
       "03h7y017a3sieixs3ux6vom6w",
       "03h7y017a3sieixs3uxejqmeq",
       "03h7y017a3sieixs3uzfgcck3",
-      "03h7y017a3sieixs3v1vsej9c",
       "03h7y017a3sieixs3v3fqwhku",
       "03h7y017a3sieixs3v78aikl4",
       "03h7y017a3sieixs3v97pd28n",
@@ -184,7 +185,6 @@
       "03h7y017apioxvv0yml6ls9mk",
       "03h7y017apioxvv0ymm0w5ycm",
       "03h7y017apioxvv0ymp49fq7g",
-      "03h7y017apioxvv0ymrbsg22j",
       "03h7y017apioxvv0ymte4eua3",
       "03h7y017apioxvv0ymv0v3l4j",
       "03h7y017apioxvv0ymvt3ix5t",
@@ -205,7 +205,20 @@
       "03h8cadw3z8vrld38pv7c06cr",
       "03h8cadw3z8vrld38pyk84i26",
       "03h8dcdlrfkrl9xf6gw66jejs",
-      "03h8ek7i15tzjc09hbts8uvs4"
+      "03h8ek7i15tzjc09hbts8uvs4",
+      "03h8fnqbx4785sa85mpaz7zfo",
+      "03h8fnqbx4785sa85mqxb6c93",
+      "03h8fnqbx4785sa85msovzswb",
+      "03h8fnqbx4785sa85mv5jp8dk",
+      "03h8fnqbx4785sa85my3qxurv",
+      "03h8fnqbx9njz9apx3v6nvttp",
+      "03h8fnqbx9njz9apx3ymjssyt",
+      "03h8fnqbx9njz9apx3z8litho",
+      "03h8fnqbx9njz9apx41at4vzp",
+      "03h8fnqbx9njz9apx4301f4i2",
+      "03h8fnqbx9njz9apx457yvq3o",
+      "03h8fnqbx9njz9apx47sadq1h",
+      "03h8fnqbx9njz9apx49e320n6"
     ],
     "indexIds": [
       "03h7y017apioxvv0yn8m6arb8",
@@ -284,7 +297,13 @@
       "03h8bozdi3hfi94fuj7bk8vs2",
       "03h8cadw3z6ijyt2p0dgozbn7",
       "03h8cadw44lbjhkylqjpew4rm",
-      "03h8cadw4a4365lzkikmwwm4m"
+      "03h8cadw4a4365lzkikmwwm4m",
+      "03h8fnqbx9lw27k1ez4i5tnux",
+      "03h8fnqbxf49uorl0pxeh07if",
+      "03h8fnqbxf49uorl0q9183858",
+      "03h8fnqbxkjjausnvnnb4t9m4",
+      "03h8fnqbxkjjausnvo2bmhhxo",
+      "03h8fnqbxpxoqm824l39mouo5"
     ],
     "memoIds": [
       "03h7y0184s9oftzxoejnroyg3"
@@ -735,13 +754,13 @@
           "03h7y01791hwo1dbai4rkpgo1",
           "03h7y01791hwo1dbai668gz60",
           "03h7y01791hwo1dbai7we0e2n",
-          "03h7y01791hwo1dbai9ulylfa",
+          "03h8fnq4vad4a061oc7qyar8e",
+          "03h8fnq4vfxb2k7pt4f0ipxuz",
           "03h7y01791hwo1dbaic9ol53r",
           "03h7y01791hwo1dbaidt9t5f5",
           "03h7y01791hwo1dbaigb7wtbx",
           "03h7y01791hwo1dbaijgascqt",
           "03h7y01791hwo1dbaik4qc5m4",
-          "03h7y01791hwo1dbailsjnfq9",
           "03h7y01791hwo1dbaio5gbtrx",
           "03h7y01791hwo1dbaipsv4foz",
           "03h7y01791hwo1dbairprr9uw",
@@ -833,6 +852,7 @@
           "03h7y01796y3abgmnmqc0fgq7",
           "03h7y01796y3abgmnmt7507j5",
           "03h7y01796y3abgmnmvcp2p9v",
+          "03h8fnq4w1o0b2dw3k5jnq0ch",
           "03h7y01796y3abgmnmxj4ycc9",
           "03h7y01796y3abgmnmyxy78y3",
           "03h7y01796y3abgmnn0p2yocz",
@@ -925,7 +945,6 @@
           "03h7y01796y3abgmnpstyxt3l",
           "03h7y01796y3abgmnpw196p29",
           "03h7y01796y3abgmnpyb810eq",
-          "03h7y01796y3abgmnpzg3j9w3",
           "03h7y01796y3abgmnq1ih9ugf",
           "03h7y01796y3abgmnq44vrpwp",
           "03h7y01796y3abgmnq625fzej",
@@ -962,6 +981,7 @@
           "03h7y01796y3abgmnr30krnke",
           "03h7y01796y3abgmnr5qj22ja",
           "03h7y01796y3abgmnr6khhce6",
+          "03h8fnq4wcm9i15bfjehmc40w",
           "03h7y0179cdtx0zvnsrgt0rs9",
           "03h7y0179cdtx0zvnsto1gn3i",
           "03h8cvje0htplit0obnoq6qoq",
@@ -1118,6 +1138,7 @@
           "03h7y0179cdtx0zvnwvlc0q1i",
           "03h7y0179cdtx0zvnwykhplh3",
           "03h89a0g5q745jz67001czqbf",
+          "03h8fnq4wi4sslfdnhhjx8tbl",
           "03h7y0179cdtx0zvnx05xy5mg",
           "03h7y0179cdtx0zvnx1u0kjtu",
           "03h7y0179cdtx0zvnx430f6df",
@@ -1520,15 +1541,20 @@
       "03h7y0179sukl6c8niz928w4a": {
         "id": "03h7y0179sukl6c8niz928w4a",
         "name": "request_keys",
-        "comment": "TBL-050 요청 키: 사장님·운영자 화면 명령의 처음 결과(같은 키는 한 번만, G2)",
+        "comment": "TBL-050 요청 키: 사장님·운영자 화면 명령의 요청 지문·처리 상태·처음 결과(같은 키는 한 번만, G2, 06 DEC-04)",
         "columnIds": [
           "03h7y0179sukl6c8nj15bj4eo",
           "03h7y0179sukl6c8nj2azruzu",
           "03h7y0179sukl6c8nj52c1pcp",
           "03h7y0179sukl6c8nj7lq3rda",
+          "03h8fnq4wszmdptg86az3n5nk",
+          "03h8fnq4wygkh8nichxgk4947",
+          "03h8fnq4wygkh8nici1vkdnds",
           "03h7y0179sukl6c8nj7r8vmhf",
-          "03h7y0179sukl6c8nja2cnr3q",
-          "03h7y0179sukl6c8njc8necth"
+          "03h8fnq4x411g8n1npu9a2ivq",
+          "03h8fnq4x9h9pc31uq7z2w4sl",
+          "03h7y0179sukl6c8njc8necth",
+          "03h8fnq4xev3same2a11ynatr"
         ],
         "groupId": "03h7y017wqizg5foqnrelun2p",
         "ui": {
@@ -1618,6 +1644,59 @@
         "ui": {
           "x": 1340,
           "y": 9668
+        }
+      },
+      "03h8fnq555wh6jkhyb4ogzxmc": {
+        "id": "03h8fnq555wh6jkhyb4ogzxmc",
+        "name": "handoff_questions",
+        "comment": "TBL-055 덧붙은 질문(TERM-008): 열린 에스컬레이션 건에 덧붙은 손님 질문마다 한 행(사유·관련 주문). 마감된 날 질문은 날짜마다 따로 건을 둠(설계 재검토 M17)",
+        "columnIds": [
+          "03h8fnq55b80qwyvbpnydaqkz",
+          "03h8fnq55b80qwyvbpsjnw36f",
+          "03h8fnq55gqk9ttn4tt8knywm",
+          "03h8fnq55rnxgiraxwh4q2pl9",
+          "03h8fnq55rnxgiraxwkjsxbdq",
+          "03h8fnq55x3ddykgmtbpxz6ib",
+          "03h8fnq562q0iiffowp0o010t"
+        ],
+        "groupId": "03h7y017wa1qi7u3p6412i1g8",
+        "ui": {
+          "x": 5563,
+          "y": 352
+        }
+      },
+      "03h8fnq5bjh70g2sy7xrnz0vf": {
+        "id": "03h8fnq5bjh70g2sy7xrnz0vf",
+        "name": "order_draft_extras",
+        "comment": "TBL-056 초안의 더하는 옵션: 주문서 초안에 더한 옵션마다 한 행. 초안과 같은 가격표 버전의 더하는 옵션만(설계 재검토 M17)",
+        "columnIds": [
+          "03h8fnq5bp1xt92lx16mhpwfe",
+          "03h8fnq5bp1xt92lx1a0nebdm",
+          "03h8fnq5bug2l3sfqczfzu3h4",
+          "03h8fnq5bzy09lhulkeajyz1o",
+          "03h8fnq5c5auz3hcdy0d28dvr"
+        ],
+        "groupId": "03h7y017wa1qi7u3p6412i1g8",
+        "ui": {
+          "x": 5563,
+          "y": 610
+        }
+      },
+      "03h8fnq5i83oocwxxzm97hh19": {
+        "id": "03h8fnq5i83oocwxxzm97hh19",
+        "name": "order_detail_extras",
+        "comment": "TBL-057 주문 내용의 더하는 옵션: 주문 내용 버전마다 더한 옵션마다 한 행. 그 버전과 같은 가격표 버전의 더하는 옵션만(설계 재검토 M17)",
+        "columnIds": [
+          "03h8fnq5idmwz63oetzmeee7a",
+          "03h8fnq5idmwz63oeu3kluch7",
+          "03h8fnq5ij4btvg2oqgichjmi",
+          "03h8fnq5ij4btvg2oqk6t9won",
+          "03h8fnq5ioj59x0jljq948adg"
+        ],
+        "groupId": "03h7y017wfhgli8koxk63sce2",
+        "ui": {
+          "x": 4583,
+          "y": 3434
         }
       }
     },
@@ -3271,14 +3350,6 @@
         "dataType": "uuid",
         "options": 0
       },
-      "03h7y01791hwo1dbai9ulylfa": {
-        "id": "03h7y01791hwo1dbai9ulylfa",
-        "tableId": "03h7y01791hwo1dbahxpd3ebr",
-        "name": "pickup_at",
-        "comment": "원하는 픽업 일시",
-        "dataType": "timestamptz",
-        "options": 0
-      },
       "03h7y01791hwo1dbaic9ol53r": {
         "id": "03h7y01791hwo1dbaic9ol53r",
         "tableId": "03h7y01791hwo1dbahxpd3ebr",
@@ -3319,15 +3390,6 @@
         "comment": "고른 도안",
         "dataType": "uuid",
         "options": 0
-      },
-      "03h7y01791hwo1dbailsjnfq9": {
-        "id": "03h7y01791hwo1dbailsjnfq9",
-        "tableId": "03h7y01791hwo1dbahxpd3ebr",
-        "name": "extra_option_ids",
-        "comment": "더하는 옵션들(같은 버전)",
-        "dataType": "uuid[]",
-        "default": "'{}'",
-        "options": 8
       },
       "03h7y01791hwo1dbaio5gbtrx": {
         "id": "03h7y01791hwo1dbaio5gbtrx",
@@ -3433,6 +3495,22 @@
         "name": "allergy_consent_at",
         "comment": "동의함·동의 안 함을 누른 시각, 동의 필요 없음이면 알레르기 답 블록을 연 시각(REQ-201, REQ-205)",
         "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8fnq4vad4a061oc7qyar8e": {
+        "id": "03h8fnq4vad4a061oc7qyar8e",
+        "tableId": "03h7y01791hwo1dbahxpd3ebr",
+        "name": "pickup_day",
+        "comment": "원하는 픽업 날짜(가게 시간대). 날짜만 알아도 남김(SPEC-014, SPEC-020, 설계 재검토 M17)",
+        "dataType": "date",
+        "options": 0
+      },
+      "03h8fnq4vfxb2k7pt4f0ipxuz": {
+        "id": "03h8fnq4vfxb2k7pt4f0ipxuz",
+        "tableId": "03h7y01791hwo1dbahxpd3ebr",
+        "name": "pickup_time",
+        "comment": "원하는 픽업 시각(가게 시간대). 비어 있으면 아직 모름. 주문 요청 때 날짜와 합쳐 가게 시간대로 픽업 일시(orders.pickup_at)를 만듦(SPEC-029)",
+        "dataType": "time",
         "options": 0
       },
       "03h7y01791hwo1dbaj95u7ibq": {
@@ -3861,6 +3939,14 @@
         "dataType": "timestamptz",
         "options": 0
       },
+      "03h8fnq4w1o0b2dw3k5jnq0ch": {
+        "id": "03h8fnq4w1o0b2dw3k5jnq0ch",
+        "tableId": "03h7y01791hwo1dbakj3f6d7s",
+        "name": "confirmed_payment_id",
+        "comment": "주문을 확정한 확인된 결제(첫 결제나 다시 낸 결제, SPEC-034, SPEC-036). 주문 확정 뒤 상태면 꼭 있음(재제작 주문은 빼고). 그 결제 확인을 취소하면 비우고 결제 기다림으로 돌림(SPEC-070, 트리거 payments_confirmed_void, 설계 재검토 M7)",
+        "dataType": "uuid",
+        "options": 0
+      },
       "03h7y01796y3abgmnnep8htyb": {
         "id": "03h7y01796y3abgmnnep8htyb",
         "tableId": "03h7y01796y3abgmnnczgybr2",
@@ -4238,15 +4324,6 @@
         "dataType": "uuid",
         "options": 0
       },
-      "03h7y01796y3abgmnpzg3j9w3": {
-        "id": "03h7y01796y3abgmnpzg3j9w3",
-        "tableId": "03h7y01796y3abgmnp67p8m07",
-        "name": "extra_option_ids",
-        "comment": "더하는 옵션들(같은 버전)",
-        "dataType": "uuid[]",
-        "default": "'{}'",
-        "options": 8
-      },
       "03h7y01796y3abgmnq1ih9ugf": {
         "id": "03h7y01796y3abgmnq1ih9ugf",
         "tableId": "03h7y01796y3abgmnp67p8m07",
@@ -4381,7 +4458,7 @@
         "id": "03h7y01796y3abgmnqsdf3zgl",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "source_message_id",
-        "comment": "에스컬레이션한 손님 말. 같은 메시지는 한 번만 에스컬레이션함(SPEC-022). 열린 동안 온 새 질문은 이 상담의 뒤 메시지로 덧붙음",
+        "comment": "에스컬레이션한 손님 말. 같은 메시지는 한 번만 에스컬레이션함(SPEC-022). 열린 동안 온 새 질문은 덧붙은 질문(handoff_questions)으로 남음",
         "dataType": "uuid",
         "options": 12
       },
@@ -4405,7 +4482,7 @@
         "id": "03h7y01796y3abgmnqzej3x7t",
         "tableId": "03h7y01796y3abgmnqlpn52la",
         "name": "requested_day",
-        "comment": "마감된 날에 추가로 받을지 묻는 질문의 날짜(SPEC-014)",
+        "comment": "마감된 날에 추가로 받을지 묻는 질문의 날짜(SPEC-014). 마감된 날 질문에만 있고, 다른 열린 건이 있어도 날짜마다 따로 건(handoffs_one_open_day_per_consultation, 설계 재검토 M17)",
         "dataType": "date",
         "options": 0
       },
@@ -4474,6 +4551,14 @@
         "comment": "답 없어 닫힌 시각(남긴 지 7일, REQ-216). 그 뒤 상담은 문의 끊김으로 닫히고 지워질 수 있음(1-1)",
         "dataType": "timestamptz",
         "options": 0
+      },
+      "03h8fnq4wcm9i15bfjehmc40w": {
+        "id": "03h8fnq4wcm9i15bfjehmc40w",
+        "tableId": "03h7y01796y3abgmnqlpn52la",
+        "name": "day_used_order_id",
+        "comment": "추가 수락을 쓴 주문 요청: 그 날짜에 마감 후 추가 수락(slot_holds.overbooked)으로 자리를 잡은 주문. 추가 수락 하나는 주문 요청 하나에만(SPEC-023, SPEC-029, 4절 A34)",
+        "dataType": "uuid",
+        "options": 4
       },
       "03h7y0179cdtx0zvnt04cqpda": {
         "id": "03h7y0179cdtx0zvnt04cqpda",
@@ -4786,7 +4871,7 @@
         "id": "03h7y0179cdtx0zvnv4p22k4s",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "event_key",
-        "comment": "같은 이벤트의 결제 안내는 한 번(REQ-154)",
+        "comment": "같은 이벤트의 결제 안내는 한 번(REQ-154). 형식 pay:{대상 ID}:{결제 종류}. 대상은 첫 결제면 주문, 다시 낸 결제면 기한이 지난 결제 안내, 차액 결제면 변경 요청(4절 A33)",
         "dataType": "text",
         "options": 8
       },
@@ -5116,7 +5201,7 @@
         "name": "change_request_id",
         "comment": "금액이 내려간 변경",
         "dataType": "uuid",
-        "options": 0
+        "options": 4
       },
       "03h7y0179cdtx0zvnwykhplh3": {
         "id": "03h7y0179cdtx0zvnwykhplh3",
@@ -5124,13 +5209,13 @@
         "name": "issue_report_id",
         "comment": "보상의 문제 신고",
         "dataType": "uuid",
-        "options": 0
+        "options": 4
       },
       "03h7y0179cdtx0zvnx05xy5mg": {
         "id": "03h7y0179cdtx0zvnx05xy5mg",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "event_key",
-        "comment": "같은 환불을 두 번 정하지 않음(G2)",
+        "comment": "같은 환불을 두 번 정하지 않음(G2). 형식 refund:{대상 ID}:{사유}. 대상은 취소한 주문·변경 요청·문제 신고·결제 안내이고 대상마다 하나는 UNIQUE로도 막음(4절 A33)",
         "dataType": "text",
         "options": 8
       },
@@ -5221,7 +5306,7 @@
         "name": "payment_request_id",
         "comment": "돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)",
         "dataType": "uuid",
-        "options": 0
+        "options": 4
       },
       "03h8boz8n9dqhnqy7uk3dqqf3": {
         "id": "03h8boz8n9dqhnqy7uk3dqqf3",
@@ -5238,6 +5323,14 @@
         "comment": "환불받을 계좌번호 끝 4자리(운영자 화면의 가린 값, SPEC-073). 주문이 끝나고 30일 뒤 지움(SPEC-065)",
         "dataType": "text",
         "options": 0
+      },
+      "03h8fnq4wi4sslfdnhhjx8tbl": {
+        "id": "03h8fnq4wi4sslfdnhhjx8tbl",
+        "tableId": "03h7y0179cdtx0zvnwm6jizml",
+        "name": "cancelled_order_id",
+        "comment": "취소 환불(손님 취소·가게 사정 취소)이면 취소한 주문: 그 주문이나 그 재제작 주문(트리거 refunds_cancelled). 취소한 주문마다 환불 하나(refunds_cancelled_uq, 4절 A33, 설계 재검토 M7)",
+        "dataType": "uuid",
+        "options": 4
       },
       "03h7y0179cdtx0zvnxpphy6ai": {
         "id": "03h7y0179cdtx0zvnxpphy6ai",
@@ -5284,7 +5377,7 @@
         "id": "03h7y0179huqyalz2a00p60oi",
         "tableId": "03h7y0179cdtx0zvnxn50yn3m",
         "name": "hold_key",
-        "comment": "같은 주문의 같은 가예약은 한 번(주문 ID와 결제 안내 ID 등, SPEC-015)",
+        "comment": "같은 주문의 같은 가예약은 한 번(SPEC-015). 형식 hold:{주문 ID}:{결제 안내 ID}, 날짜 변경은 hold:{주문 ID}:{변경 요청 ID}, 재제작은 hold:{주문 ID}:remake(4절 A33)",
         "dataType": "text",
         "options": 8
       },
@@ -5882,7 +5975,7 @@
         "id": "03h7y0179huqyalz2e8a8ll2g",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "event_key",
-        "comment": "할 일을 만든 이벤트 키. 할 일마다 한 번(G2)",
+        "comment": "할 일을 만든 이벤트 키. 할 일마다 한 번(G2). 형식 task:{만든 이벤트}:{대상 ID}(4절 A33)",
         "dataType": "text",
         "options": 8
       },
@@ -6028,7 +6121,7 @@
         "id": "03h7y0179n9e4e4gq4c64ofav",
         "tableId": "03h7y0179n9e4e4gq430lqp8h",
         "name": "event_key",
-        "comment": "알림마다 한 번(SPEC-067)",
+        "comment": "알림마다 한 번(SPEC-067). 형식 alert:{알린 일}:{할 일 ID나 대상 ID}, 하루 한 번까지인 다시 알림은 뒤에 :{가게 날짜}(4절 A33)",
         "dataType": "text",
         "options": 8
       },
@@ -6168,7 +6261,7 @@
         "id": "03h7y0179n9e4e4gq53k29xme",
         "tableId": "03h7y0179n9e4e4gq4qs0he2r",
         "name": "event_key",
-        "comment": "같은 주문의 같은 이벤트는 한 번(REQ-154)",
+        "comment": "같은 주문의 같은 이벤트는 한 번(REQ-154). 형식 notice:{대상 ID}:{안내 종류}(4절 A33)",
         "dataType": "text",
         "options": 8
       },
@@ -6433,7 +6526,7 @@
         "id": "03h7y0179n9e4e4gq6tkhnv04",
         "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
         "name": "event_key",
-        "comment": "이벤트마다 한 번(REQ-132)",
+        "comment": "이벤트마다 한 번(REQ-132). 형식 ledger:{대상 ID}:{이벤트 종류}, 재제작은 ledger:{대상 ID}:remake:{재제작 주문의 일}. 대상은 그 일을 만든 기록(주문 확정은 주문을 확정한 결제, 변경은 변경 요청, 환불은 환불, 4절 A33)",
         "dataType": "text",
         "options": 8
       },
@@ -6817,26 +6910,68 @@
         "id": "03h7y0179sukl6c8nj7r8vmhf",
         "tableId": "03h7y0179sukl6c8niz928w4a",
         "name": "response_status",
-        "comment": "처음 결과의 종류(G7)",
+        "comment": "끝남: 처음 결과의 HTTP 상태 코드. 같은 키가 다시 오면 같은 코드로 돌려줌. 입력 검사 실패(422)·서버 오류(5xx)는 남기지 않고 처리 중 행을 지워 다시 보낼 수 있게 함(06 DEC-04)",
         "dataType": "smallint",
-        "options": 8
-      },
-      "03h7y0179sukl6c8nja2cnr3q": {
-        "id": "03h7y0179sukl6c8nja2cnr3q",
-        "tableId": "03h7y0179sukl6c8niz928w4a",
-        "name": "response_body",
-        "comment": "처음 결과. 같은 키가 다시 오면 그대로 반환함. ID와 상태만(개인정보·시크릿 없음)",
-        "dataType": "jsonb",
         "options": 0
       },
       "03h7y0179sukl6c8njc8necth": {
         "id": "03h7y0179sukl6c8njc8necth",
         "tableId": "03h7y0179sukl6c8niz928w4a",
         "name": "created_at",
-        "comment": "처음 받은 시각",
+        "comment": "처음 받은 시각. 24시간이 지나면 지우기(SPEC-065)가 지움(06 DEC-04)",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
+      },
+      "03h8fnq4wszmdptg86az3n5nk": {
+        "id": "03h8fnq4wszmdptg86az3n5nk",
+        "tableId": "03h7y0179sukl6c8niz928w4a",
+        "name": "request_hash",
+        "comment": "요청 지문: 명령·경로의 ID·본문을 정한 차례로 이어 시크릿 저장소의 키로 만든 HMAC-SHA256(16진수 64자). 같은 키에 지문이 다르면 422 idempotency_key_reused(06 DEC-04). 본문의 값은 지문으로만 남음",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h8fnq4wygkh8nichxgk4947": {
+        "id": "03h8fnq4wygkh8nichxgk4947",
+        "tableId": "03h7y0179sukl6c8niz928w4a",
+        "name": "state",
+        "comment": "처리 중·끝남. 처리 중에 같은 키가 오면 409 request_in_progress(06 DEC-04)",
+        "dataType": "text",
+        "default": "'processing'",
+        "options": 8
+      },
+      "03h8fnq4wygkh8nici1vkdnds": {
+        "id": "03h8fnq4wygkh8nici1vkdnds",
+        "tableId": "03h7y0179sukl6c8niz928w4a",
+        "name": "processing_expires_at",
+        "comment": "처리 중의 기한(받은 시각 + 60초). 끝나지 않고 지나면(서버가 멈춤) 같은 키·같은 지문의 다음 요청이 이 행을 이어받아 처음부터 처리함(5절 E27)",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8fnq4x411g8n1npu9a2ivq": {
+        "id": "03h8fnq4x411g8n1npu9a2ivq",
+        "tableId": "03h7y0179sukl6c8niz928w4a",
+        "name": "response_code",
+        "comment": "끝남: 처음 결과의 종류(G7의 결과나 오류 코드)",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h8fnq4x9h9pc31uq7z2w4sl": {
+        "id": "03h8fnq4x9h9pc31uq7z2w4sl",
+        "tableId": "03h7y0179sukl6c8niz928w4a",
+        "name": "response_ref",
+        "comment": "처음 결과가 가리킨 기록의 ID(예: 결제 안내·주문). 같은 키가 다시 오면 그 기록의 지금 상태를 다시 읽어 본문을 만듦(06 DEC-04). ID만 두고 개인정보·시크릿은 두지 않음",
+        "dataType": "jsonb",
+        "default": "'{}'",
+        "options": 8
+      },
+      "03h8fnq4xev3same2a11ynatr": {
+        "id": "03h8fnq4xev3same2a11ynatr",
+        "tableId": "03h7y0179sukl6c8niz928w4a",
+        "name": "done_at",
+        "comment": "끝난 시각",
+        "dataType": "timestamptz",
+        "options": 0
       },
       "03h7y0179sukl6c8njga30tgv": {
         "id": "03h7y0179sukl6c8njga30tgv",
@@ -7136,6 +7271,146 @@
         "comment": "마지막으로 지우려다 실패한 시각. 다음 날 지우기가 다시 지움",
         "dataType": "timestamptz",
         "options": 0
+      },
+      "03h8fnq55b80qwyvbpnydaqkz": {
+        "id": "03h8fnq55b80qwyvbpnydaqkz",
+        "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+        "name": "id",
+        "comment": "덧붙은 질문 ID",
+        "dataType": "uuid",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "03h8fnq55b80qwyvbpsjnw36f": {
+        "id": "03h8fnq55b80qwyvbpsjnw36f",
+        "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+        "name": "shop_id",
+        "comment": "가게",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h8fnq55gqk9ttn4tt8knywm": {
+        "id": "03h8fnq55gqk9ttn4tt8knywm",
+        "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+        "name": "handoff_id",
+        "comment": "덧붙은 열린 에스컬레이션 건(마감된 날 질문 건은 아님)",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h8fnq55rnxgiraxwh4q2pl9": {
+        "id": "03h8fnq55rnxgiraxwh4q2pl9",
+        "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+        "name": "message_id",
+        "comment": "덧붙은 손님 말: 그 건과 같은 상담의 메시지(앱이 지킴, 4절 A34). 같은 메시지는 한 번만",
+        "dataType": "uuid",
+        "options": 12
+      },
+      "03h8fnq55rnxgiraxwkjsxbdq": {
+        "id": "03h8fnq55rnxgiraxwkjsxbdq",
+        "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+        "name": "reason",
+        "comment": "덧붙은 사유(에스컬레이션 건의 사유와 같은 값). 마감된 날 질문은 덧붙이지 않고 날짜마다 따로 건을 둠(SPEC-014)",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h8fnq55x3ddykgmtbpxz6ib": {
+        "id": "03h8fnq55x3ddykgmtbpxz6ib",
+        "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+        "name": "order_id",
+        "comment": "관련 주문(있으면)",
+        "dataType": "uuid",
+        "options": 0
+      },
+      "03h8fnq562q0iiffowp0o010t": {
+        "id": "03h8fnq562q0iiffowp0o010t",
+        "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+        "name": "created_at",
+        "comment": "덧붙은 시각. 상담을 지울 때 함께 지움(SPEC-065)",
+        "dataType": "timestamptz",
+        "default": "now()",
+        "options": 8
+      },
+      "03h8fnq5bp1xt92lx16mhpwfe": {
+        "id": "03h8fnq5bp1xt92lx16mhpwfe",
+        "tableId": "03h8fnq5bjh70g2sy7xrnz0vf",
+        "name": "shop_id",
+        "comment": "가게",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h8fnq5bp1xt92lx1a0nebdm": {
+        "id": "03h8fnq5bp1xt92lx1a0nebdm",
+        "tableId": "03h8fnq5bjh70g2sy7xrnz0vf",
+        "name": "draft_id",
+        "comment": "주문서 초안",
+        "dataType": "uuid",
+        "options": 10
+      },
+      "03h8fnq5bug2l3sfqczfzu3h4": {
+        "id": "03h8fnq5bug2l3sfqczfzu3h4",
+        "tableId": "03h8fnq5bjh70g2sy7xrnz0vf",
+        "name": "price_list_id",
+        "comment": "초안의 가격표 버전. 초안과 같음(order_draft_extras_draft_fk)",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h8fnq5bzy09lhulkeajyz1o": {
+        "id": "03h8fnq5bzy09lhulkeajyz1o",
+        "tableId": "03h8fnq5bjh70g2sy7xrnz0vf",
+        "name": "option_id",
+        "comment": "더한 옵션: 같은 가격표 버전의 '더하는 옵션'만(order_draft_extras_option_fk)",
+        "dataType": "uuid",
+        "options": 10
+      },
+      "03h8fnq5c5auz3hcdy0d28dvr": {
+        "id": "03h8fnq5c5auz3hcdy0d28dvr",
+        "tableId": "03h8fnq5bjh70g2sy7xrnz0vf",
+        "name": "option_group",
+        "comment": "늘 '더하는 옵션'. 옵션의 무리를 외래 키로 맞추려고 둔 값",
+        "dataType": "text",
+        "default": "'extra'",
+        "options": 8
+      },
+      "03h8fnq5idmwz63oetzmeee7a": {
+        "id": "03h8fnq5idmwz63oetzmeee7a",
+        "tableId": "03h8fnq5i83oocwxxzm97hh19",
+        "name": "shop_id",
+        "comment": "가게",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h8fnq5idmwz63oeu3kluch7": {
+        "id": "03h8fnq5idmwz63oeu3kluch7",
+        "tableId": "03h8fnq5i83oocwxxzm97hh19",
+        "name": "order_detail_id",
+        "comment": "주문 내용 버전",
+        "dataType": "uuid",
+        "options": 10
+      },
+      "03h8fnq5ij4btvg2oqgichjmi": {
+        "id": "03h8fnq5ij4btvg2oqgichjmi",
+        "tableId": "03h8fnq5i83oocwxxzm97hh19",
+        "name": "price_list_id",
+        "comment": "그 버전의 가격표 버전. 주문 내용과 같음(order_detail_extras_detail_fk)",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h8fnq5ij4btvg2oqk6t9won": {
+        "id": "03h8fnq5ij4btvg2oqk6t9won",
+        "tableId": "03h8fnq5i83oocwxxzm97hh19",
+        "name": "option_id",
+        "comment": "더한 옵션: 같은 가격표 버전의 '더하는 옵션'만(order_detail_extras_option_fk). 이전 버전의 행도 지우지 않음(REQ-027)",
+        "dataType": "uuid",
+        "options": 10
+      },
+      "03h8fnq5ioj59x0jljq948adg": {
+        "id": "03h8fnq5ioj59x0jljq948adg",
+        "tableId": "03h8fnq5i83oocwxxzm97hh19",
+        "name": "option_group",
+        "comment": "늘 '더하는 옵션'. 옵션의 무리를 외래 키로 맞추려고 둔 값",
+        "dataType": "text",
+        "default": "'extra'",
+        "options": 8
       }
     },
     "relationshipEntities": {
@@ -7781,26 +8056,6 @@
           ]
         }
       },
-      "03h7y017a3sieixs3upssj3qg": {
-        "id": "03h7y017a3sieixs3upssj3qg",
-        "relationshipType": 4,
-        "onDelete": 32,
-        "onUpdate": 1,
-        "start": {
-          "tableId": "03h7y0178vyo98xl8mfwdxckm",
-          "columnIds": [
-            "03h7y0178vyo98xl8mkyw1ymx",
-            "03h7y0178vyo98xl8mhvolr69"
-          ]
-        },
-        "end": {
-          "tableId": "03h7y01791hwo1dbakj3f6d7s",
-          "columnIds": [
-            "03h7y01791hwo1dbaknsm2x1p",
-            "03h7y01791hwo1dbakttv7wo3"
-          ]
-        }
-      },
       "03h7y017a3sieixs3usox65fj": {
         "id": "03h7y017a3sieixs3usox65fj",
         "relationshipType": 4,
@@ -7904,26 +8159,6 @@
             "03h7y01791hwo1dbal2inrhju",
             "03h7y01796y3abgmnmlzqxwmh",
             "03h7y01796y3abgmnmievo3t8"
-          ]
-        }
-      },
-      "03h7y017a3sieixs3v1vsej9c": {
-        "id": "03h7y017a3sieixs3v1vsej9c",
-        "relationshipType": 4,
-        "onDelete": 32,
-        "onUpdate": 1,
-        "start": {
-          "tableId": "03h7y0178vyo98xl8mfwdxckm",
-          "columnIds": [
-            "03h7y0178vyo98xl8mkyw1ymx",
-            "03h7y0178vyo98xl8mhvolr69"
-          ]
-        },
-        "end": {
-          "tableId": "03h7y01796y3abgmnnczgybr2",
-          "columnIds": [
-            "03h7y01796y3abgmnnfv81rcc",
-            "03h7y01796y3abgmnnjb8bau8"
           ]
         }
       },
@@ -9049,26 +9284,6 @@
           ]
         }
       },
-      "03h7y017apioxvv0ymrbsg22j": {
-        "id": "03h7y017apioxvv0ymrbsg22j",
-        "relationshipType": 4,
-        "onDelete": 32,
-        "onUpdate": 1,
-        "start": {
-          "tableId": "03h7y0178vyo98xl8mfwdxckm",
-          "columnIds": [
-            "03h7y0178vyo98xl8mkyw1ymx",
-            "03h7y0178vyo98xl8mhvolr69"
-          ]
-        },
-        "end": {
-          "tableId": "03h7y0179n9e4e4gq4qs0he2r",
-          "columnIds": [
-            "03h7y0179n9e4e4gq4uttn9ih",
-            "03h7y0179n9e4e4gq4xf25as2"
-          ]
-        }
-      },
       "03h7y017apioxvv0ymte4eua3": {
         "id": "03h7y017apioxvv0ymte4eua3",
         "relationshipType": 4,
@@ -9478,6 +9693,282 @@
           "columnIds": [
             "03h7y0179cdtx0zvnux35tmsk",
             "03h8ek7cus17soz7l0lcgb64o"
+          ]
+        }
+      },
+      "03h8fnqbx4785sa85mpaz7zfo": {
+        "id": "03h8fnqbx4785sa85mpaz7zfo",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178vyo98xl8mfwdxckm",
+          "columnIds": [
+            "03h7y0178vyo98xl8mkyw1ymx",
+            "03h7y0178vyo98xl8mhvolr69",
+            "03h7y0178vyo98xl8mmmjjh7a"
+          ]
+        },
+        "end": {
+          "tableId": "03h7y01796y3abgmnnczgybr2",
+          "columnIds": [
+            "03h7y01796y3abgmnnfv81rcc",
+            "03h7y01796y3abgmnnjb8bau8",
+            "03h7y01796y3abgmnnjmtce1e"
+          ]
+        }
+      },
+      "03h8fnqbx4785sa85mqxb6c93": {
+        "id": "03h8fnqbx4785sa85mqxb6c93",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y01796y3abgmnqlpn52la",
+          "columnIds": [
+            "03h7y01796y3abgmnqpvpngmb",
+            "03h7y01796y3abgmnqn82qw4d"
+          ]
+        },
+        "end": {
+          "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+          "columnIds": [
+            "03h8fnq55b80qwyvbpsjnw36f",
+            "03h8fnq55gqk9ttn4tt8knywm"
+          ]
+        }
+      },
+      "03h8fnqbx4785sa85msovzswb": {
+        "id": "03h8fnqbx4785sa85msovzswb",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178vyo98xl8n4u42owk",
+          "columnIds": [
+            "03h7y0178vyo98xl8n7ehd43p",
+            "03h7y0178vyo98xl8n6qmhu08"
+          ]
+        },
+        "end": {
+          "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+          "columnIds": [
+            "03h8fnq55b80qwyvbpsjnw36f",
+            "03h8fnq55rnxgiraxwh4q2pl9"
+          ]
+        }
+      },
+      "03h8fnqbx4785sa85mv5jp8dk": {
+        "id": "03h8fnqbx4785sa85mv5jp8dk",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y01791hwo1dbakj3f6d7s",
+          "columnIds": [
+            "03h7y01791hwo1dbaknsm2x1p",
+            "03h7y01791hwo1dbakki2jxir"
+          ]
+        },
+        "end": {
+          "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+          "columnIds": [
+            "03h8fnq55b80qwyvbpsjnw36f",
+            "03h8fnq55x3ddykgmtbpxz6ib"
+          ]
+        }
+      },
+      "03h8fnqbx4785sa85my3qxurv": {
+        "id": "03h8fnqbx4785sa85my3qxurv",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y01791hwo1dbakj3f6d7s",
+          "columnIds": [
+            "03h7y01791hwo1dbaknsm2x1p",
+            "03h7y01791hwo1dbakki2jxir"
+          ]
+        },
+        "end": {
+          "tableId": "03h7y01796y3abgmnqlpn52la",
+          "columnIds": [
+            "03h7y01796y3abgmnqpvpngmb",
+            "03h8fnq4wcm9i15bfjehmc40w"
+          ]
+        }
+      },
+      "03h8fnqbx9njz9apx3v6nvttp": {
+        "id": "03h8fnqbx9njz9apx3v6nvttp",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178vyo98xl8mfwdxckm",
+          "columnIds": [
+            "03h7y0178vyo98xl8mkyw1ymx",
+            "03h7y0178vyo98xl8mhvolr69",
+            "03h7y0178vyo98xl8mmmjjh7a"
+          ]
+        },
+        "end": {
+          "tableId": "03h7y0179n9e4e4gq4qs0he2r",
+          "columnIds": [
+            "03h7y0179n9e4e4gq4uttn9ih",
+            "03h7y0179n9e4e4gq4xf25as2",
+            "03h7y0179n9e4e4gq4wr5wmnl"
+          ]
+        }
+      },
+      "03h8fnqbx9njz9apx3ymjssyt": {
+        "id": "03h8fnqbx9njz9apx3ymjssyt",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178l0hvzg6dfsvvxkb0",
+          "columnIds": [
+            "03h7y0178l0hvzg6dfz05czob",
+            "03h7y0178l0hvzg6dfumiyafh",
+            "03h7y0178l0hvzg6dg05q3010"
+          ]
+        },
+        "end": {
+          "tableId": "03h8fnq5i83oocwxxzm97hh19",
+          "columnIds": [
+            "03h8fnq5ij4btvg2oqgichjmi",
+            "03h8fnq5ij4btvg2oqk6t9won",
+            "03h8fnq5ioj59x0jljq948adg"
+          ]
+        }
+      },
+      "03h8fnqbx9njz9apx3z8litho": {
+        "id": "03h8fnqbx9njz9apx3z8litho",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y01796y3abgmnp67p8m07",
+          "columnIds": [
+            "03h7y01796y3abgmnpa2y48kp",
+            "03h7y01796y3abgmnp7355wqn",
+            "03h7y01796y3abgmnpldvnpxa"
+          ]
+        },
+        "end": {
+          "tableId": "03h8fnq5i83oocwxxzm97hh19",
+          "columnIds": [
+            "03h8fnq5idmwz63oetzmeee7a",
+            "03h8fnq5idmwz63oeu3kluch7",
+            "03h8fnq5ij4btvg2oqgichjmi"
+          ]
+        }
+      },
+      "03h8fnqbx9njz9apx41at4vzp": {
+        "id": "03h8fnqbx9njz9apx41at4vzp",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178l0hvzg6dfsvvxkb0",
+          "columnIds": [
+            "03h7y0178l0hvzg6dfz05czob",
+            "03h7y0178l0hvzg6dfumiyafh",
+            "03h7y0178l0hvzg6dg05q3010"
+          ]
+        },
+        "end": {
+          "tableId": "03h8fnq5bjh70g2sy7xrnz0vf",
+          "columnIds": [
+            "03h8fnq5bug2l3sfqczfzu3h4",
+            "03h8fnq5bzy09lhulkeajyz1o",
+            "03h8fnq5c5auz3hcdy0d28dvr"
+          ]
+        }
+      },
+      "03h8fnqbx9njz9apx4301f4i2": {
+        "id": "03h8fnqbx9njz9apx4301f4i2",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y01791hwo1dbahxpd3ebr",
+          "columnIds": [
+            "03h7y01791hwo1dbai0rvggow",
+            "03h7y01791hwo1dbahzf01j00",
+            "03h7y01791hwo1dbai7we0e2n"
+          ]
+        },
+        "end": {
+          "tableId": "03h8fnq5bjh70g2sy7xrnz0vf",
+          "columnIds": [
+            "03h8fnq5bp1xt92lx16mhpwfe",
+            "03h8fnq5bp1xt92lx1a0nebdm",
+            "03h8fnq5bug2l3sfqczfzu3h4"
+          ]
+        }
+      },
+      "03h8fnqbx9njz9apx457yvq3o": {
+        "id": "03h8fnqbx9njz9apx457yvq3o",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178vyo98xl8mfwdxckm",
+          "columnIds": [
+            "03h7y0178vyo98xl8mkyw1ymx",
+            "03h7y0178vyo98xl8mhvolr69",
+            "03h7y0178vyo98xl8mmmjjh7a"
+          ]
+        },
+        "end": {
+          "tableId": "03h7y01791hwo1dbakj3f6d7s",
+          "columnIds": [
+            "03h7y01791hwo1dbaknsm2x1p",
+            "03h7y01791hwo1dbakttv7wo3",
+            "03h7y01791hwo1dbakrkyva43"
+          ]
+        }
+      },
+      "03h8fnqbx9njz9apx47sadq1h": {
+        "id": "03h8fnqbx9njz9apx47sadq1h",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0179cdtx0zvnw6vcy251",
+          "columnIds": [
+            "03h7y0179cdtx0zvnwb5clhud",
+            "03h7y0179cdtx0zvnwbsoq2tn",
+            "03h7y0179cdtx0zvnw871p29k"
+          ]
+        },
+        "end": {
+          "tableId": "03h7y01791hwo1dbakj3f6d7s",
+          "columnIds": [
+            "03h7y01791hwo1dbaknsm2x1p",
+            "03h7y01791hwo1dbakki2jxir",
+            "03h8fnq4w1o0b2dw3k5jnq0ch"
+          ]
+        }
+      },
+      "03h8fnqbx9njz9apx49e320n6": {
+        "id": "03h8fnqbx9njz9apx49e320n6",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y01791hwo1dbakj3f6d7s",
+          "columnIds": [
+            "03h7y01791hwo1dbaknsm2x1p",
+            "03h7y01791hwo1dbakki2jxir"
+          ]
+        },
+        "end": {
+          "tableId": "03h7y0179cdtx0zvnwm6jizml",
+          "columnIds": [
+            "03h7y0179cdtx0zvnwpyxsmvh",
+            "03h8fnq4wi4sslfdnhhjx8tbl"
           ]
         }
       }
@@ -10254,6 +10745,71 @@
           "03h8cadw4a4365lzkiorpxb6r",
           "03h8cadw4a4365lzkisaokyjh",
           "03h8cadw4a4365lzkixegsjeb"
+        ],
+        "unique": true
+      },
+      "03h8fnqbx9lw27k1ez4i5tnux": {
+        "id": "03h8fnqbx9lw27k1ez4i5tnux",
+        "name": "consultations_customer_key",
+        "tableId": "03h7y0178vyo98xl8mfwdxckm",
+        "indexColumnIds": [
+          "03h8fnqbxf49uorl0pjzovb8b",
+          "03h8fnqbxf49uorl0pokgpxvh",
+          "03h8fnqbxf49uorl0ps144w11"
+        ],
+        "unique": true
+      },
+      "03h8fnqbxf49uorl0pxeh07if": {
+        "id": "03h8fnqbxf49uorl0pxeh07if",
+        "name": "handoff_questions_handoff_idx",
+        "tableId": "03h8fnq555wh6jkhyb4ogzxmc",
+        "indexColumnIds": [
+          "03h8fnqbxf49uorl0q0lp6xo6",
+          "03h8fnqbxf49uorl0q3jmdpjk"
+        ],
+        "unique": false
+      },
+      "03h8fnqbxf49uorl0q9183858": {
+        "id": "03h8fnqbxf49uorl0q9183858",
+        "name": "order_details_list_key",
+        "tableId": "03h7y01796y3abgmnp67p8m07",
+        "indexColumnIds": [
+          "03h8fnqbxf49uorl0qci98q72",
+          "03h8fnqbxkjjausnvne4xiabg",
+          "03h8fnqbxkjjausnvnhvkxnc1"
+        ],
+        "unique": true
+      },
+      "03h8fnqbxkjjausnvnnb4t9m4": {
+        "id": "03h8fnqbxkjjausnvnnb4t9m4",
+        "name": "order_drafts_list_key",
+        "tableId": "03h7y01791hwo1dbahxpd3ebr",
+        "indexColumnIds": [
+          "03h8fnqbxkjjausnvnr3fjznl",
+          "03h8fnqbxkjjausnvnuvcrprw",
+          "03h8fnqbxkjjausnvnyecvm20"
+        ],
+        "unique": true
+      },
+      "03h8fnqbxkjjausnvo2bmhhxo": {
+        "id": "03h8fnqbxkjjausnvo2bmhhxo",
+        "name": "payments_order_key",
+        "tableId": "03h7y0179cdtx0zvnw6vcy251",
+        "indexColumnIds": [
+          "03h8fnqbxpxoqm824ks7e14s6",
+          "03h8fnqbxpxoqm824kuafz0ve",
+          "03h8fnqbxpxoqm824kyk31xsa"
+        ],
+        "unique": true
+      },
+      "03h8fnqbxpxoqm824l39mouo5": {
+        "id": "03h8fnqbxpxoqm824l39mouo5",
+        "name": "price_options_group_key",
+        "tableId": "03h7y0178l0hvzg6dfsvvxkb0",
+        "indexColumnIds": [
+          "03h8fnqbxpxoqm824l80p4dpn",
+          "03h8fnqbxpxoqm824lbfed56d",
+          "03h8fnqbxpxoqm824le6ekgpk"
         ],
         "unique": true
       }
@@ -11206,12 +11762,114 @@
         "indexId": "03h8cadw4a4365lzkikmwwm4m",
         "columnId": "03h7y0179huqyalz2d9s7lug9",
         "orderType": 1
+      },
+      "03h8fnqbxf49uorl0pjzovb8b": {
+        "id": "03h8fnqbxf49uorl0pjzovb8b",
+        "indexId": "03h8fnqbx9lw27k1ez4i5tnux",
+        "columnId": "03h7y0178vyo98xl8mkyw1ymx",
+        "orderType": 1
+      },
+      "03h8fnqbxf49uorl0pokgpxvh": {
+        "id": "03h8fnqbxf49uorl0pokgpxvh",
+        "indexId": "03h8fnqbx9lw27k1ez4i5tnux",
+        "columnId": "03h7y0178vyo98xl8mhvolr69",
+        "orderType": 1
+      },
+      "03h8fnqbxf49uorl0ps144w11": {
+        "id": "03h8fnqbxf49uorl0ps144w11",
+        "indexId": "03h8fnqbx9lw27k1ez4i5tnux",
+        "columnId": "03h7y0178vyo98xl8mmmjjh7a",
+        "orderType": 1
+      },
+      "03h8fnqbxf49uorl0q0lp6xo6": {
+        "id": "03h8fnqbxf49uorl0q0lp6xo6",
+        "indexId": "03h8fnqbxf49uorl0pxeh07if",
+        "columnId": "03h8fnq55gqk9ttn4tt8knywm",
+        "orderType": 1
+      },
+      "03h8fnqbxf49uorl0q3jmdpjk": {
+        "id": "03h8fnqbxf49uorl0q3jmdpjk",
+        "indexId": "03h8fnqbxf49uorl0pxeh07if",
+        "columnId": "03h8fnq562q0iiffowp0o010t",
+        "orderType": 1
+      },
+      "03h8fnqbxf49uorl0qci98q72": {
+        "id": "03h8fnqbxf49uorl0qci98q72",
+        "indexId": "03h8fnqbxf49uorl0q9183858",
+        "columnId": "03h7y01796y3abgmnpa2y48kp",
+        "orderType": 1
+      },
+      "03h8fnqbxkjjausnvne4xiabg": {
+        "id": "03h8fnqbxkjjausnvne4xiabg",
+        "indexId": "03h8fnqbxf49uorl0q9183858",
+        "columnId": "03h7y01796y3abgmnp7355wqn",
+        "orderType": 1
+      },
+      "03h8fnqbxkjjausnvnhvkxnc1": {
+        "id": "03h8fnqbxkjjausnvnhvkxnc1",
+        "indexId": "03h8fnqbxf49uorl0q9183858",
+        "columnId": "03h7y01796y3abgmnpldvnpxa",
+        "orderType": 1
+      },
+      "03h8fnqbxkjjausnvnr3fjznl": {
+        "id": "03h8fnqbxkjjausnvnr3fjznl",
+        "indexId": "03h8fnqbxkjjausnvnnb4t9m4",
+        "columnId": "03h7y01791hwo1dbai0rvggow",
+        "orderType": 1
+      },
+      "03h8fnqbxkjjausnvnuvcrprw": {
+        "id": "03h8fnqbxkjjausnvnuvcrprw",
+        "indexId": "03h8fnqbxkjjausnvnnb4t9m4",
+        "columnId": "03h7y01791hwo1dbahzf01j00",
+        "orderType": 1
+      },
+      "03h8fnqbxkjjausnvnyecvm20": {
+        "id": "03h8fnqbxkjjausnvnyecvm20",
+        "indexId": "03h8fnqbxkjjausnvnnb4t9m4",
+        "columnId": "03h7y01791hwo1dbai7we0e2n",
+        "orderType": 1
+      },
+      "03h8fnqbxpxoqm824ks7e14s6": {
+        "id": "03h8fnqbxpxoqm824ks7e14s6",
+        "indexId": "03h8fnqbxkjjausnvo2bmhhxo",
+        "columnId": "03h7y0179cdtx0zvnwb5clhud",
+        "orderType": 1
+      },
+      "03h8fnqbxpxoqm824kuafz0ve": {
+        "id": "03h8fnqbxpxoqm824kuafz0ve",
+        "indexId": "03h8fnqbxkjjausnvo2bmhhxo",
+        "columnId": "03h7y0179cdtx0zvnwbsoq2tn",
+        "orderType": 1
+      },
+      "03h8fnqbxpxoqm824kyk31xsa": {
+        "id": "03h8fnqbxpxoqm824kyk31xsa",
+        "indexId": "03h8fnqbxkjjausnvo2bmhhxo",
+        "columnId": "03h7y0179cdtx0zvnw871p29k",
+        "orderType": 1
+      },
+      "03h8fnqbxpxoqm824l80p4dpn": {
+        "id": "03h8fnqbxpxoqm824l80p4dpn",
+        "indexId": "03h8fnqbxpxoqm824l39mouo5",
+        "columnId": "03h7y0178l0hvzg6dfz05czob",
+        "orderType": 1
+      },
+      "03h8fnqbxpxoqm824lbfed56d": {
+        "id": "03h8fnqbxpxoqm824lbfed56d",
+        "indexId": "03h8fnqbxpxoqm824l39mouo5",
+        "columnId": "03h7y0178l0hvzg6dfumiyafh",
+        "orderType": 1
+      },
+      "03h8fnqbxpxoqm824le6ekgpk": {
+        "id": "03h8fnqbxpxoqm824le6ekgpk",
+        "indexId": "03h8fnqbxpxoqm824l39mouo5",
+        "columnId": "03h7y0178l0hvzg6dg05q3010",
+        "orderType": 1
       }
     },
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 363개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 376개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,
@@ -11229,8 +11887,8 @@
         "ui": {
           "x": 50,
           "y": 300,
-          "width": 4630,
-          "height": 1876
+          "width": 6793,
+          "height": 1924
         }
       },
       "03h7y017wa1qi7u3p69dov8oe": {
@@ -11251,8 +11909,8 @@
         "ui": {
           "x": 50,
           "y": 3382,
-          "width": 3737,
-          "height": 1488
+          "width": 5818,
+          "height": 1560
         }
       },
       "03h7y017wfhgli8koxnibs12i": {

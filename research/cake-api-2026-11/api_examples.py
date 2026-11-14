@@ -515,14 +515,16 @@ ISSUE_SUMMARY = {"issueReportId": ISSUE["issueReportId"], "status": "reported", 
 # ── 에스컬레이션 건과 상담 ────────────────────────────────────────────────────────
 HANDOFF = {
     "handoffId": uid("handoff:1"), "consultationId": CONSULT_ID, "reason": "edibility", "status": "open", "requestedDay": None,
-    "order": None, "customerLines": [{"at": t("11-12", "12:40"), "text": "땅콩 알레르기가 있는데 먹어도 되나요?", "photos": []}],
-    "customerChannelFriend": True, "answerText": None, "dayDecision": None, "dayAcceptExpiresAt": None, "answeredAt": None,
+    "order": None, "customerLines": [{"at": t("11-12", "12:40"), "text": "땅콩 알레르기가 있는데 먹어도 되나요?", "photos": [],
+                                      "reason": "edibility", "order": None}],
+    "customerChannelFriend": True, "answerText": None, "dayDecision": None, "dayAcceptExpiresAt": None, "dayUsedOrder": None, "answeredAt": None,
     "closedAt": None, "createdAt": t("11-12", "12:40"), "revision": rev("handoff:1:open"),
 }
 HANDOFF_ANSWERED = dict(HANDOFF, status="answered", answerText="땅콩은 쓰지 않지만 같은 주방에서 견과류를 다뤄요. 걱정되시면 드시지 않는 게 좋아요.",
                         answeredAt=t("11-12", "13:00"), revision=rev("handoff:1:answered"))
 HANDOFF_DAY = dict(HANDOFF, handoffId=uid("handoff:2"), reason="closed_day", requestedDay="2026-11-20",
-                   customerLines=[{"at": t("11-12", "16:00"), "text": "20일이 마감이라던데 그래도 안 될까요?", "photos": []}],
+                   customerLines=[{"at": t("11-12", "16:00"), "text": "20일이 마감이라던데 그래도 안 될까요?", "photos": [],
+                                   "reason": "closed_day", "order": None}],
                    customerChannelFriend=False, revision=rev("handoff:2:open"))
 # 남긴 지 7일 동안 사장님 답이 없어 '답 없어 닫힘'으로 닫힌 에스컬레이션 건(REQ-216)
 HANDOFF_CLOSED = dict(HANDOFF, status="closed_no_answer", closedAt=t("11-19", "12:40"), revision=rev("handoff:1:closed"))

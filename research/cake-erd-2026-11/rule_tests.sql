@@ -191,18 +191,18 @@ INSERT INTO masked_values (id, shop_id, consultation_id, kind, placeholder, orig
   ('c3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'phone', '[전화번호1]', 'v1:TESTnonce000000000000ciphertext0011tag16', encode(sha256('hmac-test-1'::bytea), 'hex'), '8888'),
   ('c3000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'card', '[카드번호1]', NULL, NULL, '1111'),
   ('c3000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'long_number', '[긴숫자1]', NULL, NULL, NULL);
-INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_at, size_option_id, flavor_option_id,
+INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_day, pickup_time, size_option_id, flavor_option_id,
                           design_option_id, design_id, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, order_kind) VALUES
   ('c4000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'submitted', 2,
-   'b0000000-0000-0000-0000-000000000001', '2026-12-24 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
+   'b0000000-0000-0000-0000-000000000001', '2026-12-24', '15:00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
    'b1000000-0000-0000-0000-000000000003', 'b3000000-0000-0000-0000-000000000001', '생일 축하해', '없음', 'agreed', 'allergy-v1', now(), '이손님', '010-9999-8888', 'standard'),
   ('c4000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'submitted', 1,
-   'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
+   'b0000000-0000-0000-0000-000000000001', '2026-12-28', '15:00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
    NULL, NULL, '사랑해', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 'custom'),
   ('c4000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'submitted', 1,
-   'b0000000-0000-0000-0000-000000000001', '2026-12-24 07:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
+   'b0000000-0000-0000-0000-000000000001', '2026-12-24', '16:00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
    NULL, NULL, NULL, NULL, 'declined', 'allergy-v1', now(), '이손님', '010-9999-8888', 'standard');
-UPDATE order_drafts SET extra_option_ids = '{b1000000-0000-0000-0000-000000000004}' WHERE id = 'c4000000-0000-0000-0000-000000000002';
+INSERT INTO order_draft_extras (shop_id, draft_id, price_list_id, option_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004');
 INSERT INTO reference_photos (id, shop_id, draft_id, message_id, position, storage_key, content_type, byte_size) VALUES
   ('c5000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000002',
    'c2000000-0000-0000-0000-000000000003', 1, 'ref/2-1.jpg', 'image/jpeg', 2048000);
@@ -271,7 +271,7 @@ INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES
   ('e1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
    'e0000000-0000-0000-0000-000000000001', 40000);
 UPDATE owner_tasks SET wait_status = 'answered', closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000001';
-UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirmed_at = now() WHERE id = 'd0000000-0000-0000-0000-000000000001';
+UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirmed_at = now(), confirmed_payment_id = 'e1000000-0000-0000-0000-000000000001' WHERE id = 'd0000000-0000-0000-0000-000000000001';
 UPDATE slot_holds SET status = 'fixed', fixed_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000001';
 INSERT INTO productions (id, shop_id, order_id) VALUES
   ('f0000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001');
@@ -361,6 +361,9 @@ UPDATE photo_consents SET withdrawn_at = now(), publishable = false WHERE id = '
 INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, reason) VALUES
   ('f6000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
    'c2000000-0000-0000-0000-000000000001', 'edibility');
+-- 열린 건에 덧붙은 질문(SPEC-022): 같은 상담의 다음 손님 말(사진)을 '답할 수 없음'으로 덧붙임
+INSERT INTO handoff_questions (id, shop_id, handoff_id, message_id, reason) VALUES
+  ('f6100000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'f6000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000004', 'cannot_answer');
 INSERT INTO owner_tasks (id, shop_id, kind, event_key, handoff_id, wait_status, wait_due_at) VALUES
   ('f7000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'handoff', 'task:handoff:f6..01',
    'f6000000-0000-0000-0000-000000000001', 'waiting', now() + interval '2 hours');
@@ -373,8 +376,9 @@ INSERT INTO ai_calls (id, shop_id, consultation_id, trace_id, attempt, provider,
 INSERT INTO ai_tool_calls (id, shop_id, ai_call_id, consultation_id, tool_name, target_id, args_masked, result, duration_ms) VALUES
   ('fe000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'fd000000-0000-0000-0000-000000000001',
    'c1000000-0000-0000-0000-000000000001', 'quote', 'c4000000-0000-0000-0000-000000000001', '{"size":"1호","flavor":"생크림"}', 'ok', 35);
-INSERT INTO request_keys (actor_kind, actor_id, request_key, command, response_status, response_body) VALUES
-  ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000001', 'confirm_payment', 200, '{"payment_request":"e0..01","status":"paid"}');
+INSERT INTO request_keys (actor_kind, actor_id, request_key, command, request_hash, state, response_status, response_code, response_ref, done_at) VALUES
+  ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000001', 'confirm_payment', encode(sha256('hmac-test-7'::bytea), 'hex'), 'done', 200, 'paid',
+   '{"payment_request":"e0000000-0000-0000-0000-000000000001","order":"d0000000-0000-0000-0000-000000000001"}', now());
 INSERT INTO ops_events (shop_id, kind, count, detail) VALUES
   (NULL, 'purge_run', 0, '{"consultations":0,"orders":0}');
 
@@ -385,20 +389,22 @@ INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_i
    'c1000000-0000-0000-0000-000000000002', 'c4000000-0000-0000-0000-000000000002', 'custom', 'requested', 1,
    'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', now(), now(), '2026-12-28 06:00:00+00', '2026-12-28', 50000);
 INSERT INTO order_details (id, shop_id, order_id, version, source, quote_id, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                           extra_option_ids, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount) VALUES
+                           lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount) VALUES
   ('d1000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 1, 'request',
    'c6000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 'b1000000-0000-0000-0000-000000000001',
-   'b1000000-0000-0000-0000-000000000002', '{b1000000-0000-0000-0000-000000000004}', '사랑해', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 50000);
+   'b1000000-0000-0000-0000-000000000002', '사랑해', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 50000);
+INSERT INTO order_detail_extras (shop_id, order_detail_id, price_list_id, option_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004');
 INSERT INTO owner_tasks (id, shop_id, kind, event_key, order_id, wait_status, wait_due_at) VALUES
   ('f7000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'custom_order', 'task:custom:d0..03',
    'd0000000-0000-0000-0000-000000000003', 'waiting', now() + interval '2 hours');
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 INSERT INTO order_details (id, shop_id, order_id, version, source, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                           extra_option_ids, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount, amount_change_reason) VALUES
+                           lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount, amount_change_reason) VALUES
   ('d1000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 2, 'owner_amount_change',
    'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
-   '{b1000000-0000-0000-0000-000000000004}', '사랑해', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 55000, '2단 받침 재료를 더함');
+   '사랑해', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 55000, '2단 받침 재료를 더함');
+INSERT INTO order_detail_extras (shop_id, order_detail_id, price_list_id, option_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004');
 UPDATE orders SET lock_version = lock_version + 1, version = 2, amount = 55000, accepted_at = now(), accepted_version = 2, status = 'awaiting_payment'
  WHERE id = 'd0000000-0000-0000-0000-000000000003';
 UPDATE owner_tasks SET wait_status = 'answered', closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000003';
@@ -414,7 +420,7 @@ UPDATE payment_requests SET status = 'paid', paid_at = now(), arrived_amount = 5
 INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES
   ('e1000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003',
    'e0000000-0000-0000-0000-000000000003', 55000);
-UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirmed_at = now() WHERE id = 'd0000000-0000-0000-0000-000000000003';
+UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirmed_at = now(), confirmed_payment_id = 'e1000000-0000-0000-0000-000000000003' WHERE id = 'd0000000-0000-0000-0000-000000000003';
 UPDATE slot_holds SET status = 'fixed', fixed_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000003';
 INSERT INTO productions (id, shop_id, order_id, needs_custom_material) VALUES
   ('f0000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', true);
@@ -445,10 +451,11 @@ INSERT INTO refunds (id, shop_id, order_id, cause, payment_request_id, event_key
   ('e2000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'over_received',
    'e0000000-0000-0000-0000-000000000004', 'refund:e0..04:over_received', 'full', 1000, 1000, '{"arrived":6000,"amount":5000}');
 INSERT INTO order_details (id, shop_id, order_id, version, source, change_request_id, price_list_id, pickup_at, size_option_id, flavor_option_id,
-                           extra_option_ids, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount) VALUES
+                           lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, amount) VALUES
   ('d1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 3, 'change_request',
    'd2000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', '2026-12-28 06:00:00+00', 'b1000000-0000-0000-0000-000000000001',
-   'b1000000-0000-0000-0000-000000000002', '{b1000000-0000-0000-0000-000000000004}', '사랑해 엄마', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 60000);
+   'b1000000-0000-0000-0000-000000000002', '사랑해 엄마', '땅콩', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 60000);
+INSERT INTO order_detail_extras (shop_id, order_detail_id, price_list_id, option_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004');
 UPDATE orders SET lock_version = lock_version + 1, version = 3, amount = 60000 WHERE id = 'd0000000-0000-0000-0000-000000000003';
 UPDATE change_requests SET lock_version = lock_version + 1, status = 'applied', applied_version = 3, applied_at = now() WHERE id = 'd2000000-0000-0000-0000-000000000001';
 UPDATE productions SET changed_after_start = true WHERE id = 'f0000000-0000-0000-0000-000000000003';
@@ -478,11 +485,12 @@ INSERT INTO slot_holds (id, shop_id, day, order_id, payment_request_id, hold_key
 INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, order_id, order_version, payload, expires_at, used_at, outcome) VALUES
   ('c7000000-0000-0000-0000-000000000014', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
    'card-cancel-000000001', 'cancel', 'd0000000-0000-0000-0000-000000000004', 1, '{"refund":17500}', now() + interval '30 minutes', now(), 'done');
-UPDATE orders SET lock_version = lock_version + 1, status = 'cancelled', confirmed_at = now(), cancelled_at = now(), cancel_kind = 'customer' WHERE id = 'd0000000-0000-0000-0000-000000000004';
+UPDATE orders SET lock_version = lock_version + 1, status = 'cancelled', confirmed_at = now(), confirmed_payment_id = 'e1000000-0000-0000-0000-000000000005', cancelled_at = now(), cancel_kind = 'customer' WHERE id = 'd0000000-0000-0000-0000-000000000004';
 UPDATE slot_holds SET status = 'released', released_at = now(), release_reason = 'order_cancelled' WHERE id = 'e3000000-0000-0000-0000-000000000004';
-INSERT INTO refunds (id, shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis, method,
+INSERT INTO refunds (id, shop_id, order_id, cause, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis, method,
                      refund_bank_name, refund_account_enc, refund_account_last4, refund_holder_name, sent_at) VALUES
   ('e2000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'customer_cancel',
+   'd0000000-0000-0000-0000-000000000004',
    'refund:d0..04:cancel', 'partial', 17500, 17500, '{"rules":"b4..01","tier":"24~72시간 50%","received":35000}', 'bank_transfer',
    '신한은행', 'v1:TESTnonce000000000000ciphertext0021tag16', '6789', '이손님', now());
 SET CONSTRAINTS ALL IMMEDIATE;
@@ -490,10 +498,10 @@ SET CONSTRAINTS ALL DEFERRED;
 
 -- 주문 5: 입금됨 → 확정 → 잘못 누른 결제 확인 취소(SPEC-070) → 입금했다고 알린 뒤 손님 취소 → 들어온 입금 대조 할 일 →
 --         들어온 입금 남기기(SPEC-071) → 손님 취소의 환불 → 환불 보내기 할 일 → 24시간 뒤 다시 알림 → 보냄(REQ-172, REQ-173)
-INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_at, size_option_id, flavor_option_id,
+INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_day, pickup_time, size_option_id, flavor_option_id,
                           design_option_id, design_id, lettering, allergy_answer, allergy_consent, allergy_consent_version, allergy_consent_at, customer_name, customer_phone, order_kind) VALUES
   ('c4000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'submitted', 1,
-   'b0000000-0000-0000-0000-000000000001', '2026-12-28 07:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
+   'b0000000-0000-0000-0000-000000000001', '2026-12-28', '16:00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
    NULL, NULL, NULL, '없음', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 'standard');
 INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_id, kind, status, version, price_list_id, operating_rules_id,
                     details_confirmed_at, terms_consented_at, pickup_at, pickup_day, amount) VALUES
@@ -518,7 +526,7 @@ UPDATE payment_requests SET status = 'paid', paid_at = now(), arrived_amount = 3
 INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES
   ('e1000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005',
    'e0000000-0000-0000-0000-000000000006', 35000);
-UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirmed_at = now() WHERE id = 'd0000000-0000-0000-0000-000000000005';
+UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirmed_at = now(), confirmed_payment_id = 'e1000000-0000-0000-0000-000000000006' WHERE id = 'd0000000-0000-0000-0000-000000000005';
 UPDATE slot_holds SET status = 'fixed', fixed_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000005';
 INSERT INTO productions (id, shop_id, order_id) VALUES
   ('f0000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005');
@@ -531,7 +539,7 @@ INSERT INTO ledger_writes (id, shop_id, ledger_row_id, event_key, event_kind) VA
 UPDATE payments SET voided_at = now(), void_reason = '다른 손님이 보낸 돈을 이 주문의 결제로 잘못 봄' WHERE id = 'e1000000-0000-0000-0000-000000000006';
 UPDATE payment_requests SET status = 'open', paid_at = NULL, arrived_amount = NULL, arrived_at = NULL, version = version + 1
  WHERE id = 'e0000000-0000-0000-0000-000000000006';
-UPDATE orders SET lock_version = lock_version + 1, status = 'awaiting_payment', confirmed_at = NULL WHERE id = 'd0000000-0000-0000-0000-000000000005';
+UPDATE orders SET lock_version = lock_version + 1, status = 'awaiting_payment', confirmed_at = NULL, confirmed_payment_id = NULL WHERE id = 'd0000000-0000-0000-0000-000000000005';
 UPDATE slot_holds SET status = 'held', fixed_at = NULL WHERE id = 'e3000000-0000-0000-0000-000000000005';
 DELETE FROM productions WHERE id = 'f0000000-0000-0000-0000-000000000005';
 INSERT INTO notifications (id, shop_id, customer_id, consultation_id, order_id, kind, event_key, template_key, body, status) VALUES
@@ -562,8 +570,9 @@ UPDATE owner_tasks SET closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000
 INSERT INTO owner_tasks (id, shop_id, kind, event_key, order_id, wait_status, wait_due_at) VALUES
   ('f7000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'refund_decision', 'task:refund_decision:d0..05',
    'd0000000-0000-0000-0000-000000000005', 'waiting', now() + interval '2 hours');
-INSERT INTO refunds (id, shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis) VALUES
+INSERT INTO refunds (id, shop_id, order_id, cause, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis) VALUES
   ('e2000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 'customer_cancel',
+   'd0000000-0000-0000-0000-000000000005',
    'refund:d0..05:cancel', 'full', 35000, 35000, '{"rules":"b4..01","clause":"pre_production_cancel","received":35000,"confirmed":0,"arrived_unconfirmed":35000}');
 UPDATE owner_tasks SET wait_status = 'answered', closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000006';
 INSERT INTO ledger_writes (id, shop_id, ledger_row_id, event_key, event_kind) VALUES
@@ -984,8 +993,8 @@ SELECT pg_temp.expect_ok('Codex 후속 결제 확인을 취소한 결제는 확�
 SELECT pg_temp.expect_fail('Codex 후속 1억 원을 넘는 환불', 'refunds_amount_check', ARRAY[$$
   UPDATE refunds SET amount = 100000001, override_reason = '손님과 따로 이야기함' WHERE id = 'e2000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('G2 같은 환불을 두 번 정함', 'refunds_event_uq', ARRAY[$$
-  INSERT INTO refunds (shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis)
-  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'customer_cancel', 'refund:d0..04:cancel',
+  INSERT INTO refunds (shop_id, order_id, cause, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'customer_cancel', 'd0000000-0000-0000-0000-000000000004', 'refund:d0..04:cancel',
           'partial', 17500, 17500, '{}')$$]);
 SELECT pg_temp.expect_fail('SPEC-059 신고 없는 보상 환불', 'refunds_issue_chk', ARRAY[$$
   INSERT INTO refunds (shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis)
@@ -1009,8 +1018,8 @@ SELECT pg_temp.expect_fail('M13 재제작 주문에 결제 안내', 'payment_req
   VALUES ('e0000000-0000-0000-0000-0000000000f2', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'first',
           'pay:d0..02:first', 'open', 40000, 'b7000000-0000-0000-0000-000000000001', now(), now() + interval '12 hours', now() + interval '2 days')$$]);
 SELECT pg_temp.expect_fail('M13 재제작 주문에 환불', 'refunds_remake', ARRAY[$$
-  INSERT INTO refunds (shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis)
-  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'customer_cancel', 'refund:d0..02:cancel',
+  INSERT INTO refunds (shop_id, order_id, cause, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'customer_cancel', 'd0000000-0000-0000-0000-000000000002', 'refund:d0..02:cancel',
           'full', 45000, 45000, '{}')$$]);
 SELECT pg_temp.expect_fail('M13 재제작 주문의 장부 행', 'ledger_rows_remake', ARRAY[$$
   INSERT INTO ledger_rows (shop_id, order_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002')$$]);
@@ -1033,7 +1042,7 @@ SELECT pg_temp.expect_fail('SPEC-049 환불 계좌의 끝 4자리 없이 암호�
 -- 제작·전달, 후기·포트폴리오 (CTX-005, CTX-006)
 SELECT pg_temp.expect_fail('A27 받음인데 제작 행에 인도 시각 없음', 'orders_production_sync', ARRAY[$$
   UPDATE orders SET status = 'received', lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
-SELECT pg_temp.expect_fail('A27 인도 시각을 남기고 주문은 확정 그대로', 'orders_production_sync', ARRAY[$$
+SELECT pg_temp.expect_fail('A27 인도 시각을 남기고 주문은 확정된 그대로', 'orders_production_sync', ARRAY[$$
   UPDATE productions SET handed_over_at = now(), handover_kind = 'pickup' WHERE id = 'f0000000-0000-0000-0000-000000000003'$$]);
 SELECT pg_temp.expect_fail('A27 인도한 주문을 미수령으로', 'orders_production_sync', ARRAY[$$
   UPDATE orders SET status = 'no_pickup', lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000001'$$]);
@@ -1123,8 +1132,145 @@ SELECT pg_temp.expect_fail('SPEC-009 가게마다 유효한 장부 연결 둘', 
   INSERT INTO ledger_links (shop_id, spreadsheet_id, sheet_name, our_columns, credential_ref)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'sheet-2', '주문', '{}', 'secret-store/ledger/shop-a-2')$$]);
 SELECT pg_temp.expect_fail('G2 같은 화면 요청 키 두 번', 'request_keys_pkey', ARRAY[$$
-  INSERT INTO request_keys (actor_kind, actor_id, request_key, command, response_status)
-  VALUES ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000001', 'confirm_payment', 200)$$]);
+  INSERT INTO request_keys (actor_kind, actor_id, request_key, command, request_hash, processing_expires_at)
+  VALUES ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000001', 'confirm_payment', encode(sha256('hmac-test-8'::bytea), 'hex'),
+          now() + interval '60 seconds')$$]);
+
+-- 설계 재검토 M7(같은 요청 거르기: 요청 키의 지문·처리 상태·처음 결과, 대상마다 환불 하나, 주문을 확정한 결제, 이벤트 키 중복)
+SELECT pg_temp.expect_fail('DEC-04 처리 중인 요청 키에 처음 결과', 'request_keys_state_chk', ARRAY[$$
+  INSERT INTO request_keys (actor_kind, actor_id, request_key, command, request_hash, processing_expires_at, response_status, response_code)
+  VALUES ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000002', 'confirm_payment', encode(sha256('hmac-test-8'::bytea), 'hex'),
+          now() + interval '60 seconds', 200, 'paid')$$]);
+SELECT pg_temp.expect_fail('DEC-04 처리 중 기한 없는 요청 키', 'request_keys_state_chk', ARRAY[$$
+  INSERT INTO request_keys (actor_kind, actor_id, request_key, command, request_hash)
+  VALUES ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000003', 'confirm_payment', encode(sha256('hmac-test-8'::bytea), 'hex'))$$]);
+SELECT pg_temp.expect_fail('DEC-04 끝난 요청 키에 결과 종류가 없음', 'request_keys_state_chk', ARRAY[$$
+  UPDATE request_keys SET response_code = NULL WHERE request_key = 'screen-key-000000001'$$]);
+SELECT pg_temp.expect_fail('DEC-04 요청 지문이 16진수 64자가 아님', 'request_keys_request_hash_check', ARRAY[$$
+  INSERT INTO request_keys (actor_kind, actor_id, request_key, command, request_hash, processing_expires_at)
+  VALUES ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000004', 'confirm_payment', 'not-a-hash', now() + interval '60 seconds')$$]);
+SELECT pg_temp.expect_fail('DEC-04 서버 오류를 처음 결과로 남김', 'request_keys_response_status_check', ARRAY[$$
+  INSERT INTO request_keys (actor_kind, actor_id, request_key, command, request_hash, state, response_status, response_code, done_at)
+  VALUES ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000005', 'confirm_payment', encode(sha256('hmac-test-8'::bytea), 'hex'),
+          'done', 500, 'internal_error', now())$$]);
+SELECT pg_temp.expect_fail('M7 취소 환불에 취소한 주문 없음', 'refunds_cancelled_chk', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, issue_report_id, payment_request_id, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'customer_cancel', NULL, NULL, NULL, NULL, 'refund:m7-1', 'none', 0, 0, '{}')$$]);
+SELECT pg_temp.expect_fail('M7 다른 주문의 취소로 환불', 'refunds_cancelled', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, issue_report_id, payment_request_id, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'customer_cancel', NULL, NULL, NULL, 'd0000000-0000-0000-0000-000000000005', 'refund:m7-2', 'none', 0, 0, '{}')$$]);
+SELECT pg_temp.expect_ok('M7 재제작 주문의 취소 환불은 원래 주문에', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, issue_report_id, payment_request_id, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'customer_cancel', NULL, NULL, NULL, 'd0000000-0000-0000-0000-000000000002', 'refund:d0..02:cancel', 'none', 0, 0, '{}')$$]);
+SELECT pg_temp.expect_fail('M7 다른 이벤트 키로 같은 주문의 취소 환불 둘', 'refunds_cancelled_uq', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, issue_report_id, payment_request_id, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'customer_cancel', NULL, NULL, NULL, 'd0000000-0000-0000-0000-000000000004', 'refund:m7-3', 'none', 0, 0, '{}')$$]);
+SELECT pg_temp.expect_fail('M7 같은 변경 요청에 환불 둘', 'refunds_change_uq', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, issue_report_id, payment_request_id, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'change_reduced', 'd2000000-0000-0000-0000-000000000001', NULL, NULL, NULL, 'refund:m7-4', 'partial', 1000, 1000, '{}')$$, $$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, issue_report_id, payment_request_id, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'change_reduced', 'd2000000-0000-0000-0000-000000000001', NULL, NULL, NULL, 'refund:m7-5', 'partial', 1000, 1000, '{}')$$]);
+SELECT pg_temp.expect_fail('M7 같은 신고에 보상 환불 둘', 'refunds_issue_uq', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, issue_report_id, payment_request_id, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'compensation', NULL, 'f2000000-0000-0000-0000-000000000001', NULL, NULL, 'refund:m7-6', 'partial', 1000, 1000, '{}')$$, $$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, issue_report_id, payment_request_id, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'compensation', NULL, 'f2000000-0000-0000-0000-000000000001', NULL, NULL, 'refund:m7-7', 'partial', 1000, 1000, '{}')$$]);
+SELECT pg_temp.expect_fail('M7 같은 결제 안내의 들어온 입금에 환불 둘', 'refunds_request_uq', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, issue_report_id, payment_request_id, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'over_received', NULL, NULL, 'e0000000-0000-0000-0000-000000000004', NULL, 'refund:m7-8', 'none', 0, 0, '{}')$$]);
+SELECT pg_temp.expect_fail('M7 주문을 확정한 결제 없는 주문 확정', 'orders_confirmed_payment_chk', ARRAY[$$
+  UPDATE orders SET confirmed_payment_id = NULL, lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('M7 다른 주문의 결제로 주문 확정', 'orders_confirmed_payment_fk', ARRAY[$$
+  UPDATE orders SET confirmed_payment_id = 'e1000000-0000-0000-0000-000000000001', lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('M7 주문을 확정한 결제의 확인을 취소하고 주문은 확정된 그대로', 'payments_confirmed_void', ARRAY[$$
+  UPDATE payments SET voided_at = now(), void_reason = '잘못 누름' WHERE id = 'e1000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('G2 같은 가예약 키 둘', 'slot_holds_key_uq', ARRAY[$$
+  INSERT INTO slot_holds (shop_id, day, order_id, payment_request_id, hold_key, status)
+  VALUES ('a2000000-0000-0000-0000-000000000001', '2026-12-24', 'd0000000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000005', 'hold:d0..04:e0..05', 'held')$$]);
+SELECT pg_temp.expect_fail('G2 같은 이벤트의 할 일 둘', 'owner_tasks_event_uq', ARRAY[$$
+  INSERT INTO owner_tasks (shop_id, kind, event_key, handoff_id, wait_status, wait_due_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'handoff', 'task:handoff:f6..01', 'f6000000-0000-0000-0000-000000000001', 'waiting', now() + interval '2 hours')$$]);
+SELECT pg_temp.expect_fail('G2 같은 이벤트의 사장님 알림 둘', 'owner_alerts_event_uq', ARRAY[$$
+  INSERT INTO owner_alerts (shop_id, owner_task_id, kind, event_key)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'f7000000-0000-0000-0000-000000000001', 'new_task', 'alert:task:f7..01')$$]);
+
+-- 설계 재검토 M17(덧붙은 질문과 마감된 날 질문, 초안의 픽업 날짜·시각, 더하는 옵션 연결 테이블, 상담과 손님의 쌍)
+SELECT pg_temp.expect_ok('M17 열린 건이 있어도 마감된 날 질문은 날짜마다 따로 건', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000e1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-e1', '25일에도 받으실 수 있나요', 'trace-e1')$$, $$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000e2', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-e2', '26일에도 받으실 수 있나요', 'trace-e2')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, requested_day)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000e1', 'closed_day', '2026-12-26')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, requested_day)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000e2', 'closed_day', '2026-12-27')$$]);
+SELECT pg_temp.expect_fail('M17 같은 날의 마감된 날 질문 건 둘', 'handoffs_one_open_day_per_consultation', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000e1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-e1', '25일에도 받으실 수 있나요', 'trace-e1')$$, $$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000e2', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-e2', '26일에도 받으실 수 있나요', 'trace-e2')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, requested_day)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000e1', 'closed_day', '2026-12-26')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, requested_day)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000e2', 'closed_day', '2026-12-26')$$]);
+SELECT pg_temp.expect_fail('M17 날짜 없는 마감된 날 질문', 'handoffs_day_chk', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000e3', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-e3', '27일에도 받으실 수 있나요', 'trace-e3')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000e3', 'closed_day')$$]);
+SELECT pg_temp.expect_fail('M17 마감된 날이 아닌 질문에 날짜', 'handoffs_day_chk', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000e3', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-e3', '27일에도 받으실 수 있나요', 'trace-e3')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, requested_day)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000e3', 'cannot_answer', '2026-12-26')$$]);
+SELECT pg_temp.expect_fail('M17 추가 수락 없이 쓴 주문 요청', 'handoffs_day_used_chk', ARRAY[$$
+  UPDATE handoffs SET day_used_order_id = 'd0000000-0000-0000-0000-000000000001' WHERE id = 'f6000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('M17 주문 요청 하나가 추가 수락 둘을 씀', 'handoffs_day_used_uq', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000e3', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-e3', '27일에도 받으실 수 있나요', 'trace-e3')$$, $$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000e4', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-e4', '28일에도 받으실 수 있나요', 'trace-e4')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, requested_day, status, day_decision, day_accept_expires_at, answered_at, day_used_order_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000e3', 'closed_day', '2026-12-26', 'answered', 'accepted', now() + interval '24 hours', now(), 'd0000000-0000-0000-0000-000000000003')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, requested_day, status, day_decision, day_accept_expires_at, answered_at, day_used_order_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000e4', 'closed_day', '2026-12-27', 'answered', 'accepted', now() + interval '24 hours', now(), 'd0000000-0000-0000-0000-000000000003')$$]);
+SELECT pg_temp.expect_fail('M17 마감된 날 질문을 덧붙임', 'handoff_questions_reason_check', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000e1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-e1', '25일에도 받으실 수 있나요', 'trace-e1')$$, $$
+  INSERT INTO handoff_questions (shop_id, handoff_id, message_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'f6000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000e1', 'closed_day')$$]);
+SELECT pg_temp.expect_fail('M17 같은 손님 말을 두 번 덧붙임', 'handoff_questions_message_uq', ARRAY[$$
+  INSERT INTO handoff_questions (shop_id, handoff_id, message_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'f6000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000004', 'cannot_answer')$$]);
+SELECT pg_temp.expect_ok('M17 날짜만 아는 초안', ARRAY[$$
+  INSERT INTO order_drafts (shop_id, consultation_id, pickup_day) VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '2026-12-26')$$]);
+SELECT pg_temp.expect_fail('M17 날짜 없이 시각만 있는 초안', 'order_drafts_pickup_time_chk', ARRAY[$$
+  INSERT INTO order_drafts (shop_id, consultation_id, pickup_time) VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '15:00')$$]);
+SELECT pg_temp.expect_fail('M17 다른 가격표 버전의 더하는 옵션을 초안에', 'order_draft_extras_draft_fk', ARRAY[$$
+  UPDATE price_lists SET superseded_at = now() WHERE id = 'b0000000-0000-0000-0000-000000000001'$$, $$
+  INSERT INTO price_lists (id, shop_id, version) VALUES ('b0000000-0000-0000-0000-0000000000a2', 'a2000000-0000-0000-0000-000000000001', 2)$$, $$
+  INSERT INTO price_options (id, shop_id, price_list_id, option_group, name, amount)
+  VALUES ('b1000000-0000-0000-0000-0000000000a1', 'a2000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-0000000000a2', 'extra', '3단', 30000)$$, $$
+  INSERT INTO order_draft_extras (shop_id, draft_id, price_list_id, option_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-0000000000a2', 'b1000000-0000-0000-0000-0000000000a1')$$]);
+SELECT pg_temp.expect_fail('M17 크기 옵션을 더하는 옵션으로', 'order_draft_extras_option_fk', ARRAY[$$
+  INSERT INTO order_draft_extras (shop_id, draft_id, price_list_id, option_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000001')$$]);
+SELECT pg_temp.expect_fail('M17 같은 더하는 옵션을 초안에 두 번', 'order_draft_extras_pkey', ARRAY[$$
+  INSERT INTO order_draft_extras (shop_id, draft_id, price_list_id, option_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004')$$]);
+SELECT pg_temp.expect_fail('M17 다른 가게의 더하는 옵션을 주문 내용에', 'order_detail_extras_detail_fk', ARRAY[$$
+  INSERT INTO price_lists (id, shop_id, version) VALUES ('b0000000-0000-0000-0000-0000000000b2', 'a2000000-0000-0000-0000-000000000002', 9)$$, $$
+  INSERT INTO price_options (id, shop_id, price_list_id, option_group, name, amount)
+  VALUES ('b1000000-0000-0000-0000-0000000000b1', 'a2000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-0000000000b2', 'extra', '초 세트', 3000)$$, $$
+  INSERT INTO order_detail_extras (shop_id, order_detail_id, price_list_id, option_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-0000000000b2', 'b1000000-0000-0000-0000-0000000000b1')$$]);
+SELECT pg_temp.expect_fail('M17 다른 손님의 상담으로 주문', 'orders_consultation_fk', ARRAY[$$
+  UPDATE orders SET customer_id = 'c0000000-0000-0000-0000-000000000001', lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('M17 다른 손님의 상담으로 확인 카드', 'confirm_cards_consultation_fk', ARRAY[$$
+  UPDATE confirm_cards SET customer_id = 'c0000000-0000-0000-0000-000000000002' WHERE id = 'c7000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('M17 다른 손님의 상담으로 손님 안내', 'notifications_consultation_fk', ARRAY[$$
+  UPDATE notifications SET customer_id = 'c0000000-0000-0000-0000-000000000002' WHERE id = 'f9000000-0000-0000-0000-000000000001'$$]);
 
 -- 설계 재검토 H11(주문자 정보 카드)·H12(잠금 번호)·H5(알레르기 정보 따로 동의)·H10(사진 게시 동의 카드)
 SELECT pg_temp.expect_fail('H12 잠금 번호 0인 주문', 'orders_lock_version_check', ARRAY[$$
@@ -1155,18 +1301,22 @@ SELECT pg_temp.expect_fail('REQ-175 초안 없는 주문자 정보 카드', 'con
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
           'card-orderer-info-x001', 'orderer_info', '{}', now() + interval '30 minutes')$$]);
 SELECT pg_temp.expect_stale('H12 같은 잠금 번호를 읽은 결제 확인 뒤 손님 취소', ARRAY[
+  $$INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES ('e1000000-0000-0000-0000-0000000000f6', 'a2000000-0000-0000-0000-000000000001',
+    'd0000000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000006', 35000)$$,
   $$UPDATE orders SET status = 'awaiting_payment', confirmed_at = NULL, cancelled_at = NULL, cancel_kind = NULL, lock_version = 5
     WHERE id = 'd0000000-0000-0000-0000-000000000005'$$,
-  $$UPDATE orders SET status = 'confirmed', confirmed_at = now(), lock_version = lock_version + 1, updated_at = now()
+  $$UPDATE orders SET status = 'confirmed', confirmed_at = now(), confirmed_payment_id = 'e1000000-0000-0000-0000-0000000000f6', lock_version = lock_version + 1, updated_at = now()
     WHERE id = 'd0000000-0000-0000-0000-000000000005' AND lock_version = 5$$], $$
   UPDATE orders SET status = 'cancelled', cancelled_at = now(), cancel_kind = 'customer', lock_version = lock_version + 1, updated_at = now()
   WHERE id = 'd0000000-0000-0000-0000-000000000005' AND lock_version = 5$$);
 SELECT pg_temp.expect_stale('H12 같은 잠금 번호를 읽은 손님 취소 뒤 결제 확인', ARRAY[
+  $$INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES ('e1000000-0000-0000-0000-0000000000f6', 'a2000000-0000-0000-0000-000000000001',
+    'd0000000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000006', 35000)$$,
   $$UPDATE orders SET status = 'awaiting_payment', confirmed_at = NULL, cancelled_at = NULL, cancel_kind = NULL, lock_version = 5
     WHERE id = 'd0000000-0000-0000-0000-000000000005'$$,
   $$UPDATE orders SET status = 'cancelled', cancelled_at = now(), cancel_kind = 'customer', lock_version = lock_version + 1, updated_at = now()
     WHERE id = 'd0000000-0000-0000-0000-000000000005' AND lock_version = 5$$], $$
-  UPDATE orders SET status = 'confirmed', confirmed_at = now(), lock_version = lock_version + 1, updated_at = now()
+  UPDATE orders SET status = 'confirmed', confirmed_at = now(), confirmed_payment_id = 'e1000000-0000-0000-0000-0000000000f6', lock_version = lock_version + 1, updated_at = now()
   WHERE id = 'd0000000-0000-0000-0000-000000000005' AND lock_version = 5$$);
 SELECT pg_temp.expect_stale('H12 같은 잠금 번호를 읽은 변경 수락 뒤 취소로 닫기', ARRAY[
   $$UPDATE change_requests SET status = 'requested', amount_delta = NULL, decided_at = NULL, applied_version = NULL, applied_at = NULL, lock_version = 3
@@ -1260,6 +1410,7 @@ DECLARE
   n_logs int;
   n_files int;
   n_files_left int;
+  n_keys int;
 BEGIN
   -- 1. 끝나고 30일 지난 주문: 보관 기록으로 나누고(주문자 이름은 마지막 버전에서 옮김) 개인정보를 지움
   SELECT coalesce(array_agg(id), '{}') INTO due FROM orders
@@ -1305,11 +1456,14 @@ BEGIN
            OR o.id IN (SELECT order_id FROM confirm_cards WHERE consultation_id = c.id)
            OR o.id IN (SELECT order_id FROM issue_details WHERE consultation_id = c.id)
            OR o.id IN (SELECT order_id FROM handoffs WHERE consultation_id = c.id)
+           OR o.id IN (SELECT day_used_order_id FROM handoffs WHERE consultation_id = c.id)
+           OR o.id IN (SELECT q.order_id FROM handoff_questions q JOIN handoffs h ON h.id = q.handoff_id WHERE h.consultation_id = c.id)
            OR o.id IN (SELECT order_id FROM notifications WHERE consultation_id = c.id)));
   -- 묶인 사장님 알림(batched_into_id)이 자기 테이블을 참조해도 알림은 지우지 않고 할 일 연결만 비움(RC-03)
   UPDATE owner_alerts SET owner_task_id = NULL
    WHERE owner_task_id IN (SELECT t.id FROM owner_tasks t JOIN handoffs h ON h.id = t.handoff_id WHERE h.consultation_id = ANY (cons));
   DELETE FROM owner_tasks WHERE handoff_id IN (SELECT id FROM handoffs WHERE consultation_id = ANY (cons));
+  DELETE FROM handoff_questions WHERE handoff_id IN (SELECT id FROM handoffs WHERE consultation_id = ANY (cons));
   DELETE FROM handoffs WHERE consultation_id = ANY (cons);
   DELETE FROM confirm_cards WHERE draft_id IN (SELECT d.id FROM order_drafts d
     WHERE d.consultation_id = ANY (cons) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id));
@@ -1324,6 +1478,8 @@ BEGIN
   SELECT shop_id, storage_key, 'issue_photo', now_at FROM gone ON CONFLICT (storage_key) DO NOTHING;
   DELETE FROM issue_details WHERE consultation_id = ANY (cons) AND status <> 'reported';
   UPDATE issue_photos SET message_id = NULL WHERE message_id IN (SELECT id FROM messages WHERE consultation_id = ANY (cons));
+  DELETE FROM order_draft_extras WHERE draft_id IN (SELECT d.id FROM order_drafts d
+    WHERE d.consultation_id = ANY (cons) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id));
   DELETE FROM order_drafts d WHERE d.consultation_id = ANY (cons) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id);
   DELETE FROM masked_values WHERE consultation_id = ANY (cons);
   DELETE FROM notifications WHERE consultation_id = ANY (cons);
@@ -1360,6 +1516,10 @@ BEGIN
   DELETE FROM access_logs WHERE accessed_at <= least(now_at, now()) - interval '2 years';
   GET DIAGNOSTICS n_logs = ROW_COUNT;
 
+  -- 7. 하루 지난 화면 요청 키(06 DEC-04): 같은 키를 다시 보내는 것은 하루 안에만 받음
+  DELETE FROM request_keys WHERE created_at <= now_at - interval '24 hours';
+  GET DIAGNOSTICS n_keys = ROW_COUNT;
+
   -- 저장소의 사진 파일: 이번과 지난번에 남은 지울 파일을 저장소에서 지우고(이미 없는 파일은 지운 것으로 봄) 지운 파일의 행만 지움.
   -- 저장소가 실패한 파일은 행이 남고 실패 횟수와 시각을 남겨 다음 날 다시 지움(5절 E24)
   DELETE FROM file_deletions WHERE storage_key <> ALL (failed_keys);
@@ -1368,9 +1528,9 @@ BEGIN
   SELECT count(*) INTO n_files_left FROM file_deletions;
 
   INSERT INTO ops_events (kind, count, detail, created_at)
-  VALUES ('purge_run', n_orders + n_cons + n_issues + n_kept + n_customers + n_logs,
+  VALUES ('purge_run', n_orders + n_cons + n_issues + n_kept + n_customers + n_logs + n_keys,
           jsonb_build_object('orders', n_orders, 'consultations', n_cons, 'issues', n_issues, 'kept_ended', n_kept, 'customers', n_customers,
-                             'access_logs', n_logs, 'files', n_files, 'files_left', n_files_left),
+                             'access_logs', n_logs, 'files', n_files, 'files_left', n_files_left, 'request_keys', n_keys),
           now_at);
   RETURN format('orders %s, consultations %s, issues %s, kept_ended %s, customers %s, access_logs %s',
                 n_orders, n_cons, n_issues, n_kept, n_customers, n_logs);
@@ -1398,7 +1558,8 @@ LANGUAGE sql AS $fn$
 $fn$;
 
 -- 30일 뒤 지울 상담 둘(손님 1의 상담 끝남 c1..01, 손님 3의 문의 끊김 c1..03)에 남은 내용: 대화, 마스킹 원본 값, 에스컬레이션 건과
--- 그 할 일, 주문이 되지 않은 초안과 그 견적·카드, 참고 사진, 신고되지 않은 신고 내용, 대화에 묶인 신고 사진, 손님 안내, AI 도구 호출 기록
+-- 그 할 일·덧붙은 질문, 주문이 되지 않은 초안과 그 더하는 옵션·견적·카드, 참고 사진, 신고되지 않은 신고 내용, 대화에 묶인 신고 사진, 손님 안내,
+-- AI 도구 호출 기록
 CREATE FUNCTION pg_temp.consult_content_left() RETURNS bigint
 LANGUAGE sql AS $fn$
   WITH c AS (SELECT unnest(ARRAY['c1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003']::uuid[]) AS id),
@@ -1407,7 +1568,9 @@ LANGUAGE sql AS $fn$
        + (SELECT count(*) FROM masked_values WHERE consultation_id IN (SELECT id FROM c))
        + (SELECT count(*) FROM handoffs WHERE consultation_id IN (SELECT id FROM c))
        + (SELECT count(*) FROM owner_tasks WHERE handoff_id IN (SELECT id FROM handoffs WHERE consultation_id IN (SELECT id FROM c)))
+       + (SELECT count(*) FROM handoff_questions WHERE handoff_id IN (SELECT id FROM handoffs WHERE consultation_id IN (SELECT id FROM c)))
        + (SELECT count(*) FROM u)
+       + (SELECT count(*) FROM order_draft_extras WHERE draft_id IN (SELECT id FROM u))
        + (SELECT count(*) FROM quotes WHERE draft_id IN (SELECT id FROM u))
        + (SELECT count(*) FROM confirm_cards WHERE draft_id IN (SELECT id FROM u))
        + (SELECT count(*) FROM reference_photos WHERE draft_id IN (SELECT id FROM order_drafts WHERE consultation_id IN (SELECT id FROM c)))
@@ -1426,7 +1589,7 @@ LANGUAGE sql AS $fn$
          (SELECT count(*) FROM issue_reports), (SELECT count(*) FROM slot_holds), (SELECT count(*) FROM productions),
          (SELECT count(*) FROM ledger_rows), (SELECT count(*) FROM ledger_writes), (SELECT count(*) FROM reviews),
          (SELECT count(*) FROM photo_consents), (SELECT count(*) FROM owner_alerts), (SELECT count(*) FROM ai_calls),
-         (SELECT count(*) FROM customers))
+         (SELECT count(*) FROM customers), (SELECT count(*) FROM order_detail_extras))
 $fn$;
 
 -- 지우기가 건드리는 테이블의 모든 행과 값(운영 기록은 빼고)
@@ -1438,13 +1601,16 @@ LANGUAGE sql AS $fn$
     UNION ALL SELECT 'messages ' || t::text FROM messages t
     UNION ALL SELECT 'masked_values ' || t::text FROM masked_values t
     UNION ALL SELECT 'order_drafts ' || t::text FROM order_drafts t
+    UNION ALL SELECT 'order_draft_extras ' || t::text FROM order_draft_extras t
     UNION ALL SELECT 'reference_photos ' || t::text FROM reference_photos t
     UNION ALL SELECT 'quotes ' || t::text FROM quotes t
     UNION ALL SELECT 'orders ' || t::text FROM orders t
     UNION ALL SELECT 'confirm_cards ' || t::text FROM confirm_cards t
     UNION ALL SELECT 'change_requests ' || t::text FROM change_requests t
     UNION ALL SELECT 'order_details ' || t::text FROM order_details t
+    UNION ALL SELECT 'order_detail_extras ' || t::text FROM order_detail_extras t
     UNION ALL SELECT 'handoffs ' || t::text FROM handoffs t
+    UNION ALL SELECT 'handoff_questions ' || t::text FROM handoff_questions t
     UNION ALL SELECT 'issue_details ' || t::text FROM issue_details t
     UNION ALL SELECT 'issue_photos ' || t::text FROM issue_photos t
     UNION ALL SELECT 'issue_reports ' || t::text FROM issue_reports t
@@ -1457,7 +1623,8 @@ LANGUAGE sql AS $fn$
     UNION ALL SELECT 'ai_tool_calls ' || t::text FROM ai_tool_calls t
     UNION ALL SELECT 'kept_records ' || t::text FROM kept_records t
     UNION ALL SELECT 'access_logs ' || t::text FROM access_logs t
-    UNION ALL SELECT 'file_deletions ' || t::text FROM file_deletions t) s
+    UNION ALL SELECT 'file_deletions ' || t::text FROM file_deletions t
+    UNION ALL SELECT 'request_keys ' || t::text FROM request_keys t) s
 $fn$;
 
 -- 지우기를 돌려 볼 데이터. 손님 1의 상담은 다룬 주문(주문 1·재제작 2·주문 4)이 모두 끝나 상담 끝남, 손님 2의 상담은 주문 3이
@@ -1490,11 +1657,12 @@ INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kak
   ('c2000000-0000-0000-0000-000000000007', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'inbound', 'customer', 'text', 'km-7', '연락처는 [전화번호1]이에요', 'trace-7', NULL, NULL);
 INSERT INTO masked_values (id, shop_id, consultation_id, kind, placeholder, original_enc, value_hmac, last4) VALUES
   ('c3000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'phone', '[전화번호1]', 'v1:TESTnonce000000000000ciphertext0015tag16', encode(sha256('hmac-test-6'::bytea), 'hex'), '4444');
-INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_at, size_option_id, flavor_option_id,
+INSERT INTO order_drafts (id, shop_id, consultation_id, status, revision, price_list_id, pickup_day, pickup_time, size_option_id, flavor_option_id,
                           lettering, customer_name, customer_phone, order_kind) VALUES
   ('c4000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'active', 1,
-   'b0000000-0000-0000-0000-000000000001', '2026-12-26 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
+   'b0000000-0000-0000-0000-000000000001', '2026-12-26', '15:00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
    '축하해', '박손님', '010-5555-4444', 'custom');
+INSERT INTO order_draft_extras (shop_id, draft_id, price_list_id, option_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004');
 INSERT INTO reference_photos (id, shop_id, draft_id, message_id, position, storage_key, content_type, byte_size) VALUES
   ('c5000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c4000000-0000-0000-0000-000000000006',
    'c2000000-0000-0000-0000-000000000005', 1, 'ref/3-1.jpg', 'image/jpeg', 1500000);
@@ -1536,7 +1704,7 @@ SELECT pg_temp.expect_left('REQ-189 상담 끝남 뒤 같은 손님의 새 상�
   SELECT status FROM c$$, 'open');
 CREATE TEMP TABLE purge_before AS SELECT pg_temp.kept_counts() AS counts;
 SELECT pg_temp.expect_left('SPEC-065 지우기 전 끝난 주문의 개인정보', $$SELECT pg_temp.order_personal_left()::text$$, '21');
-SELECT pg_temp.expect_left('SPEC-065 지우기 전 지울 상담의 내용', $$SELECT pg_temp.consult_content_left()::text$$, '23');
+SELECT pg_temp.expect_left('SPEC-065 지우기 전 지울 상담의 내용', $$SELECT pg_temp.consult_content_left()::text$$, '25');
 SELECT pg_temp.expect_left('SPEC-065 첫 지우기(31일 뒤, 저장소가 참고 사진 파일 하나에 실패)',
   $$SELECT pg_temp.purge_run(now() + interval '31 days', ARRAY['ref/3-1.jpg'])$$,
   'orders 4, consultations 2, issues 0, kept_ended 0, customers 1, access_logs 1');
@@ -1546,6 +1714,9 @@ SELECT pg_temp.expect_left('SPEC-065 저장소가 실패한 사진 파일은 지
             FROM file_deletions) || '/' ||
          (SELECT (detail ->> 'files') || ' ' || (detail ->> 'files_left') FROM ops_events WHERE kind = 'purge_run' AND detail ? 'files')$$,
   '0/ref/3-1.jpg reference_photo 1 true/1 1');
+SELECT pg_temp.expect_left('DEC-04 하루 지난 요청 키는 지우기가 지움', $$
+  SELECT count(*) || '/' || (SELECT detail ->> 'request_keys' FROM ops_events WHERE kind = 'purge_run' AND created_at = now() + interval '31 days')
+    FROM request_keys$$, '0/1');
 SELECT pg_temp.expect_left('REQ-196 2년 지난 접속기록만 지움', $$
   SELECT count(*) || '/' || string_agg(right(id::text, 1), ',' ORDER BY id) FROM access_logs$$, '3/1,2,4');
 SELECT pg_temp.expect_left('REQ-185 끝나고 30일 지난 주문의 개인정보 0건', $$SELECT pg_temp.order_personal_left()::text$$, '0');

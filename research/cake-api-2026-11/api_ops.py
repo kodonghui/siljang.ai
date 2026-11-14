@@ -689,7 +689,7 @@ op(id="API-040", method="get", path="/owner/tasks", op="listOwnerTasks", tag="�
 # ═══ 에스컬레이션 건과 상담 ═════════════════════════════════════════════════════════
 op(id="API-041", method="get", path="/owner/handoffs/{handoffId}", op="getHandoff", tag="에스컬레이션 건·상담",
    summary="에스컬레이션 건 하나", spec=["SPEC-022", "SPEC-023", "SPEC-021"], auth="owner",
-   desc="에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 덧붙은 말. 마감된 날 질문이면 requestedDay. "
+   desc="에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 이 건에 덧붙은 질문(질문마다 사유와 관련 주문). 마감된 날 질문이면 requestedDay(마감된 날 질문은 열린 건에 덧붙지 않고 상담과 날짜마다 따로 건, SPEC-022). 추가 수락을 쓴 주문 요청이 있으면 dayUsedOrder. "
         "남긴 지 7일 동안 사장님 답이 없으면 서버가 status closed_no_answer와 closedAt으로 닫고 손님에게 다시 물어 달라고 한 번 알린다(REQ-216).",
    params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF["handoffId"])],
    ok=[(200, "Handoff", {"edibility": E.HANDOFF, "closed_day": E.HANDOFF_DAY, "closed_no_answer": E.HANDOFF_CLOSED})],
@@ -701,7 +701,7 @@ op(id="API-041", method="get", path="/owner/handoffs/{handoffId}", op="getHandof
 op(id="API-042", method="post", path="/owner/handoffs/{handoffId}/answer", op="answerHandoff", tag="에스컬레이션 건·상담",
    summary="에스컬레이션 건 답변", spec=["SPEC-023", "SPEC-024", "SPEC-066"], auth="owner", idem=True,
    desc="사장님 답을 AI가 고치지 않고 그대로 손님에게 전한다(친구면 바로, 아니면 다음 대화 때 먼저, SPEC-066). 기다림 타이머를 멈춘다(SPEC-024). "
-        "마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락한 날로 표시한다. "
+        "마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락한 날로 표시하고, 그 안에 그 날짜로 온 주문 요청 하나가 마감 후 추가 수락으로 자리를 잡아 dayUsedOrder로 남는다(다시 쓰지 않음, SPEC-023). "
         "이미 답한 질문은 409 already_decided. 남긴 지 7일 동안 답이 없어 '답 없어 닫힘'으로 닫힌 건은 409 invalid_state(손님이 다시 물으면 새 건, REQ-216). "
         "사장님이 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict.",
    params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF["handoffId"])],
