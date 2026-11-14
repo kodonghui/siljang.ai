@@ -319,12 +319,26 @@ def after_script(mcp, schema_text: str) -> str:
     return after
 
 
+# 다이어그램이 담지 못하는 트리거 함수와 메모에 적는 하는 일(설계 재검토 H4·M9)
+TRIGGER_TEXT = {
+    "access_logs_guard": "접속기록을 고치지 못하게 막는 access_logs_guard",
+    "orders_production_sync_check": "받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check",
+}
+
+
+def trigger_text(schema_text: str) -> str:
+    names = re.findall(r"^CREATE FUNCTION (\w+)\(", code_only(schema_text), re.M)
+    return "트리거(" + ", ".join(TRIGGER_TEXT.get(name, name) for name in names) + ")"
+
+
 def memo_ops(schema_text: str, d: Diagram) -> list[dict]:
     n = check_count(schema_text)
+    triggers = trigger_text(schema_text)
     ops = []
     for mid, m in d.memos.items():
         value = m.get("value", "")
         new = re.sub(r"CHECK 제약 \d+개", f"CHECK 제약 {n}개", value)
+        new = re.sub(r"(CHECK 제약 \d+개와 ).*?(는 db/schema\.sql에만)", lambda g: g.group(1) + triggers + g.group(2), new)
         if new != value:
             ops.append({"tool": "erd_change_memo_value", "args": {"memoId": mid, "value": new}})
     return ops

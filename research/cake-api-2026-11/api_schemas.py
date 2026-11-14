@@ -684,8 +684,11 @@ S["OrderRef"] = all_required({"orderId": UUID, "orderNo": ORDER_NO})
 S["OwnerTask"] = all_required({
     "taskId": UUID,
     "kind": enum(TASK_KINDS),
-    "waitStatus": nullable(enum(["waiting", "late", "parked", "answered"], desc="사장님 답 기다림(1-7)")),
-    "waitDueAt": nullable(DT),
+    "waitStatus": nullable(enum(["waiting", "late", "answered", "closed_no_answer"],
+                                desc="사장님 답 기다림(1-7): 기다림·지연(지연 안내와 다시 알림을 보낸 뒤 할 일 목록에 남음)·답함·답 없어 닫힘. "
+                                     "에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정에만(REQ-215). "
+                                     "답 없어 닫힘은 에스컬레이션 건·맞춤 주문·변경 요청·결제 확인 요청만")),
+    "waitDueAt": nullable(dict(DT, description="지연 안내를 보낼 시각(기다리는 시간을 답하는 시간 안에서만 셈, REQ-118). 답 없어 닫는 때(1-7)와 다름")),
     "order": nullable(ref("OrderRef")),
     "subject": nullable(all_required({
         "type": enum(["handoff", "order", "change_request", "issue_report", "payment_request", "refund", "ledger", "shop", "calendar"]),
@@ -711,7 +714,7 @@ S["Handoff"] = all_required({
     "handoffId": UUID,
     "consultationId": UUID,
     "reason": enum(HANDOFF_REASONS),
-    "status": enum(["open", "answered"]),
+    "status": enum(["open", "answered", "closed_no_answer"], desc="열림·답함·답 없어 닫힘(남긴 지 7일 동안 사장님 답이 없음, REQ-216)"),
     "requestedDay": nullable(DATE),
     "order": nullable(ref("OrderRef")),
     "customerLines": arr(ref("CustomerLine"), 1, 50, desc="에스컬레이션한 손님 말과 그 뒤 덧붙은 말"),
@@ -720,6 +723,7 @@ S["Handoff"] = all_required({
     "dayDecision": nullable(enum(["accepted", "declined"])),
     "dayAcceptExpiresAt": nullable(DT),
     "answeredAt": nullable(DT),
+    "closedAt": nullable(dict(DT, description="답 없어 닫힌 시각(남긴 지 7일, REQ-216). 닫힌 건에 답하면 409 invalid_state")),
     "createdAt": DT,
     "revision": REVISION,
 })
@@ -792,7 +796,12 @@ S["PaymentRequest"] = all_required({
     "amount": integer(1, 10000000),
     "requestedAmount": nullable(integer(0, 10000000, desc="금액을 바꿔 수락했으면 손님이 요청한 금액(REQ-155)")),
     "issuedAt": DT,
-    "dueAt": DT,
+    "deliveredAt": nullable(dict(DT, description="결제 안내가 손님에게 전해진 시각: 대화 중 답으로 보임·먼저 보낸 안내가 닿음·다음 대화 때 전함. "
+                                                 "null이면 아직 못 전함(SPEC-032, SPEC-037)")),
+    "dueAt": dict(DT, description="결제 기한: 전해진 시각에 운영규정의 결제 기한(기본 12시간)을 더한 때와 결제 기한 상한 가운데 이른 쪽. "
+                                   "전해지기 전에는 상한(REQ-218)"),
+    "dueCapAt": dict(DT, description="결제 기한 상한: 첫 결제·다시 낸 결제는 그 픽업 날짜의 주문 마감(이미 지났으면 픽업 일시), "
+                                      "차액 결제는 변경 마감. 낼 때 정함. 확인 요청됨도 이때 기한 지남(REQ-218, REQ-223)"),
     "claimedAt": nullable(DT),
     "claimRejectedAt": nullable(DT),
     "depositorName": nullable(string(1, 30, desc="입금자 이름(입금 대조). AI로 보내지 않음")),
@@ -832,7 +841,8 @@ S["ChangeSet"] = obj({
     "designNotes": string(0, 500), "lettering": string(0, 50), "colors": string(0, 100),
     "pickupAt": DT, "courierPickup": boolean(),
 }, desc="바꾸려는 내용(옵션은 이름). 서버가 그 주문의 가격표 버전에서 찾음", minProperties=1)
-CHANGE_STATUS = ["requested", "awaiting_difference", "applied", "rejected", "closed_no_difference", "stale", "closed_by_cancel"]
+CHANGE_STATUS = ["requested", "awaiting_difference", "applied", "rejected", "closed_no_difference", "stale", "closed_by_cancel",
+                 "closed_no_answer"]
 S["ChangeRequestSummary"] = all_required({
     "changeRequestId": UUID, "status": enum(CHANGE_STATUS), "baseVersion": integer(1, 2147483647), "createdAt": DT,
 })
@@ -873,7 +883,9 @@ S["Order"] = all_required({
     "rejectedAt": nullable(DT),
     "rejectReason": nullable(string(0, 200)),
     "cancelledAt": nullable(DT),
-    "cancelKind": nullable(enum(["customer", "shop", "no_payment"])),
+    "cancelKind": nullable(enum(["customer", "shop", "no_payment", "no_answer"],
+                                desc="손님이 취소함·가게 사정으로 취소됨·결제 없어 취소됨(사장님이 고르거나 픽업 일시까지 고르지 않음, REQ-217)·"
+                                     "답 없어 닫힘(맞춤 주문 요청에 그 픽업 날짜의 주문 마감까지 사장님 답이 없음, REQ-213)")),
     "cancelReason": nullable(string(1, 200)),
     "remakeOf": nullable(ref("OrderRef")),
     "consultationId": UUID,
@@ -894,7 +906,14 @@ S["OrderSummary"] = all_required({
     "orderId": UUID, "orderNo": ORDER_NO, "kind": enum(["standard", "custom"]), "status": enum(ORDER_STATUS),
     "version": integer(1, 2147483647), "pickupAt": DT, "pickupDay": DATE, "amount": MONEY(),
     "courierPickup": boolean(), "customerName": nullable(string(1, 30)), "requestedAt": DT,
-    "isRemake": boolean(), "revision": ORDER_REVISION,
+    "isRemake": boolean(),
+    "paymentNotice": nullable(all_required({
+        "status": enum(["open", "claimed", "mismatch", "paid", "expired", "closed"]),
+        "deliveredAt": nullable(DT),
+        "dueAt": DT,
+    }, desc="가장 최근 결제 안내의 상태, 손님에게 전해진 시각(null이면 아직 못 전함), 결제 기한. "
+            "결제 기한 지난 주문 목록이 보임(SPEC-037). 결제 안내가 없으면 null")),
+    "revision": ORDER_REVISION,
 })
 S["OrderList"] = all_required({"items": arr(ref("OrderSummary"), 0, 100), "nextCursor": nullable(CURSOR)})
 S["CustomDecisionInput"] = obj({
@@ -903,7 +922,7 @@ S["CustomDecisionInput"] = obj({
     "amount": integer(1, 10000000, col="order_details.amount", desc="바꾼 금액. accept_with_amount만. 지금 금액과 같으면 수락으로 봄"),
     "amountChangeReason": string(1, 200, col="order_details.amount_change_reason", desc="금액을 바꾼 이유. accept_with_amount면 꼭"),
     "rejectReason": string(0, 200, col="orders.reject_reason"),
-    "confirm": confirm_list(["overbooking"]),
+    "confirm": confirm_list(["overbooking", "closed_day"]),
 }, ["baseRevision", "decision"])
 S["OrderCommandResult"] = all_required({
     "outcome": outcome(("done", "unchanged")),
@@ -913,7 +932,7 @@ S["OrderCommandResult"] = all_required({
 S["OverdueDecisionInput"] = obj({
     "baseRevision": BASE_REVISION,
     "decision": enum(["wait", "cancel"], desc="결제 기한 연장(SPEC-038)·결제 없어 취소(SPEC-039)"),
-    "confirm": confirm_list(["overbooking"]),
+    "confirm": confirm_list(["overbooking", "closed_day", "past_cutoff"]),
 }, ["baseRevision", "decision"])
 S["ShopCancelInput"] = obj({
     "baseRevision": BASE_REVISION,
@@ -1067,7 +1086,7 @@ S["ChangeDecisionInput"] = obj({
     "decision": enum(["accept", "reject"]),
     "amountDelta": integer(-10000000, 10000000, col="change_requests.amount_delta", desc="수락할 때 금액 차이: 오르면 추가 금액(1원~1,000만 원), 내려가면 음수, 그대로면 0"),
     "rejectReason": string(0, 200, col="change_requests.reject_reason"),
-    "confirm": confirm_list(["overbooking"]),
+    "confirm": confirm_list(["overbooking", "closed_day"]),
 }, ["baseRevision", "decision"])
 S["ChangeDecisionResult"] = all_required({
     "outcome": outcome(),
@@ -1102,7 +1121,7 @@ S["CompensationInput"] = obj({
     "remakePickupAt": dict(DT, description="재제작의 새 픽업 일시(지금 뒤 60일 안). remake만"),
     "refundAmount": integer(1, 10000000, col="refunds.amount", desc="일부 환불 금액. partial_refund만(SPEC-047과 같은 한도)"),
     "refundOverrideReason": string(1, 200, col="refunds.override_reason"),
-    "confirm": confirm_list(["closed_day"]),
+    "confirm": confirm_list(["closed_day", "overbooking"]),
 }, ["baseRevision", "compensation"])
 S["CompensationResult"] = all_required({
     "outcome": outcome(),
@@ -1163,7 +1182,7 @@ S["SkillPayload"] = obj({
             "type": string(1, 32),
             "properties": obj({
                 "botUserKey": string(1, 70), "plusfriendUserKey": string(1, 200), "appUserId": string(1, 200),
-                "isFriend": boolean("채널 친구인지(REQ-120). 있으면 손님 행에 남김"),
+                "isFriend": boolean("채널 친구인지(REQ-120). 요청마다 손님 행을 고침: true면 친구, 없거나 false면 친구 아님(REQ-219)"),
             }, additional=True),
         }, ["id", "type"], additional=True),
     }, ["utterance", "user"], additional=True),

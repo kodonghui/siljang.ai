@@ -138,6 +138,7 @@
 | `overbooking` | 그날 남은 자리가 없어요. 추가로 받을까요? |
 | `not_pickup_day` | 오늘이 픽업 날이 아니에요. 그래도 인도를 기록할까요? |
 | `closed_day` | 휴무일이에요. 이날로 정할까요? |
+| `past_cutoff` | 주문 마감이 지난 날이에요(새 결제 기한은 픽업 일시까지). 결제 기한을 연장할까요? |
 | `holder_mismatch` | 예금주가 상호·대표자와 달라요. 가게 명의 계좌가 맞나요? |
 <!-- 08-screens:confirms:end -->
 
@@ -162,14 +163,14 @@
 | [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 8 |
 | [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 16 |
 | [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
-| [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 15 |
+| [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 17 |
 | [SCR-018](SCR-018.md) | 상담 대화 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
 | [SCR-019](SCR-019.md) | 사장님 알림 | 사장님 | normal · not-sent · error · stale | loading · empty · permission | 0 |
 | [SCR-020](SCR-020.md) | 주문 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 7 |
-| [SCR-021](SCR-021.md) | 주문 상세 | 사장님 | normal · loading · error · permission · stale · confirm · submitting · done | empty | 19 |
-| [SCR-022](SCR-022.md) | 맞춤 주문 검토 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 20 |
-| [SCR-023](SCR-023.md) | 결제 기한 지난 주문 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 20 |
-| [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 20 |
+| [SCR-021](SCR-021.md) | 주문 상세 | 사장님 | normal · loading · error · permission · stale · confirm · submitting · done | empty | 20 |
+| [SCR-022](SCR-022.md) | 맞춤 주문 검토 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 21 |
+| [SCR-023](SCR-023.md) | 결제 기한 지난 주문 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 21 |
+| [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 22 |
 | [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 17 |
 | [SCR-026](SCR-026.md) | 환불 송금 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 17 |
 | [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 16 |
@@ -223,6 +224,8 @@
 - 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
 
 ## 9. 검사
+
+2026-11-14 09:46 KST, 설계 재검토 M1·M2·M3·M9·M10을 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 196행, C6 응답 행 851개(※ 화면이 나눈 행 3, 카카오 스킬 230, 기본값과 다르게 정한 행 114), C8 참조 1728곳, C10 확인 문구 7개(06단계의 `past_cutoff`를 더함), C11 허용 예외 810곳입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C4 액션 147행, C5 그린 상태 351개·상태 이름 27개, C9 프레임 702개(1.3MB), C10 손님 문구 47개(같음 36, 08단계에서 바꿈 6, 설명 5), C13 생성 파일 52개, C14 08단계 파일 51개·상태 351개는 같습니다.
 
 2026-11-14 07:57 KST, 설계 재검토 H5·H10을 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 193행·액션 147행, C5 그린 상태 351개·상태 이름 27개, C6 응답 행 844개(※ 화면이 나눈 행 3, 카카오 스킬 230, 기본값과 다르게 정한 행 110), C8 참조 1712곳, C9 프레임 702개(1.3MB), C10 손님 문구 47개(같음 36, 08단계에서 바꿈 6, 설명 5), C11 허용 예외 809곳, C14 상태 351개입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C10 확인 문구 6개, C13 생성 파일 52개, C14 08단계 파일 51개는 같습니다.
 
@@ -333,3 +336,16 @@
 - 결과 문구(`OUTCOME_TEXT`)에 `allergy_saved`·`allergy_declined`·`photo_consent_saved`를 더하고 `card_shown`·`orderer_saved`·`input_invalid`(알레르기 답 문구를 더함, `OUTCOME_CHANGED`)·`channel_test_card`·`block_verified`·`channel_linked`·`notice_shown`을 고침. 상태 이름 25개 → 27개(`allergy`, `photo-consent`). 결정 W6(주문 요청 카드의 구성)과 W7(닿지 않은 버튼 블록 다섯)을 고침.
 - 처음 다시 만들었을 때 C4가 SCR-004의 새 데이터 행 출처 'API-070 card_shown(SCR-003)'과 SCR-011의 '카드 스킬 API-071 …'을 이 화면의 API가 아니라고 막아, 'SCR-003의 API-070 card_shown'과 '서버 안내 SPEC-053과 카드 스킬 결과 photo_consent_saved'로 고침.
 - 09단계 보드 SCR-002·004·012·030·041을 다시 그림(09 README 12절).
+
+2026-11-13 설계 독립 재검토의 중간 묶음 M1(RB-03, RA-17), M2(RB-08, RE-08, RD-07), M3(RA-04, RA-11, RB-04, RB-05), M9(RB-19, RC-17, RB-20), M10(RA-03)을 같은 결정 카드 '추천안대로 (추천)'에 따라 `screens_common.py`·`screens_guest.py`·`screens_owner_a.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR F). 06단계 계약의 새 응답 예시(`API-041#200:closed_no_answer`, `API-045#200:custom_no_answer`, `API-062#200:closed_no_answer`)와 오류 행(`API-042#409:invalid_state`, `API-063#409:invalid_state`)을 화면 상태에 연결했습니다.
+
+- SCR-016 할 일 목록·SCR-019 사장님 알림(M1): 기다림은 기다림·지연·답함·답 없어 닫힘이고, 결제 확인 요청·금액 불일치·환불 결정도 지연 안내를 보낼 시각이 지나면 '지연'과 다시 알림 한 번(REQ-215). 맞춤 주문 요청·변경 요청·에스컬레이션 건·결제 확인 요청이 사장님 답 없이 닫히면 '처리한 일'에 '답 없어 닫힘'. 데이터의 '답 기한'을 06단계 `waitDueAt`의 뜻(지연 안내를 보낼 시각)으로 고침.
+- SCR-017 에스컬레이션 건(M1): 남긴 지 7일 동안 답이 없어 닫힌 건(`closed_no_answer`, `closedAt`)과 그 건에 답하려 함(409 `invalid_state`)은 `stale`에서 '답이 없어 닫혔어요'와 손님 말을 읽기 전용으로(REQ-216).
+- SCR-022 맞춤 주문 검토·SCR-024 변경 요청(M1, M3): 그 픽업 날짜의 주문 마감까지 답이 없어 닫힌 맞춤 주문 요청(`custom_no_answer`)과 변경 마감까지 답이 없어 닫힌 변경 요청(`closed_no_answer`)은 `stale`(수락·거절하면 409 `invalid_state`, REQ-213, REQ-214). 고른 날이 휴무일이면 `confirm`에서 '휴무일이에요. 이날로 정할까요?'(`closed_day`)를 같은 창에 보이고, 확인하면 마감 후 추가 수락(REQ-221).
+- SCR-023 결제 기한 지난 주문(M1, M2, M3): 결제 안내가 손님에게 전해진 시각이나 '아직 못 전함'. 결제 기한 연장은 픽업 일시가 지났을 때만 막고, 휴무일(`closed_day`)과 그 픽업 날짜의 주문 마감이 지난 날(`past_cutoff`, 새 결제 기한은 픽업 일시까지)은 `confirm`에서 확인받음(REQ-218, REQ-221). 사장님이 픽업 일시까지 고르지 않으면 서버가 결제 없어 취소(REQ-217).
+- SCR-027 문제 신고(M3): 재제작 픽업 날이 휴무일이거나 다 찼으면 `confirm`(`closed_day`·`overbooking`), 확인하면 마감 후 추가 수락(REQ-221, REQ-226).
+- SCR-005 결제 안내·SCR-020 주문 목록·SCR-021 주문 상세·SCR-028·029 입금 대조(M2, M3): 결제 기한은 손님에게 전해진 때부터 세고 결제 기한 상한(그날 주문 마감, 이미 지났으면 픽업 일시, 차액 결제는 변경 마감)을 넘지 않음. 상한이 지난 뒤 전하게 된 결제 안내는 계좌 없이 '결제 기한이 지나 사장님이 확인하고 있어요'만(SCR-005#stale). 결제 기한 지난 주문 목록과 주문 상세에 전해진 시각이나 '아직 못 전함'(06단계 `paymentNotice`·`deliveredAt`). 확인 요청된 안내는 결제 기한 상한까지 자리를 지키고, 상한이 지나면 SCR-029#expired가 되고 결제 확인 요청 할 일은 '답 없어 닫힘'(REQ-223).
+- SCR-004 주문 요청 카드·SCR-003 가게 채널 상담(M2, M3, M10): 손님이 채널 친구가 아니면(카카오가 친구라고 알리지 않으면 친구 아님, REQ-219) 요약 카드 설명 끝에 '채널을 추가하면 결제 안내와 사장님 답을 바로 받아요' 한 줄, 주문 요청의 조건은 아님(REQ-121). 받을 수 없는 날(휴무일·주문 마감 지남·다 참·사장님 마감)은 그날 자리를 잡지 않고 알린 뒤 손님이 그래도 원하면 사장님께 에스컬레이션(REQ-220, REQ-225). 상담은 열린 에스컬레이션 건과 다룬 주문이 없을 때만 문의 끊김으로 닫히고, 닫힌 뒤에도 결제 안내·사장님 답·전날 안내는 감(REQ-211, REQ-212).
+- SCR-011 손님 알림·SCR-009 취소 카드(M1, M9, M10): 지연 안내는 결제 확인 요청·맞추는 중·환불 결정의 기다림에도 한 번. 답 없어 닫힘 안내(맞춤 주문 요청·변경 요청·에스컬레이션 건)와 결제 없어 취소 안내를 더함. 닫힌 상담의 손님에게도 주문과 에스컬레이션 건의 안내는 감. 결제 기한 지난 주문도 손님이 취소할 수 있음(1-2).
+- 확인 문구에 06단계 `past_cutoff`를 더해 7개(C10). 결과 문구(`OK_TEXT`)에 API-041 `closed_no_answer`, API-045 `custom_no_answer`, API-062 `closed_no_answer`를 더하고 API-044 `overdue`를 고침. 상태 이름 27개와 그린 상태 351개는 그대로입니다.
+- 그린 상태의 와이어프레임(프레임과 `layout`)은 바꾸지 않아 09단계 보드는 다시 그리지 않았습니다. 바꾼 화면 16개로 `gen_screens.py`를 다시 돌려도 보드 파일이 그대로였고, 09단계 `check_mockup.py`가 통과했습니다(C8 문구 5575개).

@@ -664,7 +664,8 @@ op(id="API-039", method="get", path="/public/shops/{slug}/privacy-policy", op="g
 op(id="API-040", method="get", path="/owner/tasks", op="listOwnerTasks", tag="할 일",
    summary="할 일 목록", spec=["SPEC-067", "SPEC-022", "SPEC-024", "SPEC-037"], auth="owner",
    desc="사장님이 정할 일(에스컬레이션 건·맞춤 주문·결제 확인 요청·맞추는 중·결제 기한 지남·변경 요청·문제 신고·환불 결정·취소 뒤 들어온 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)). 환불 보내기는 '보냄'을 표시하면 닫히고, 정한 뒤 24시간이 지나면 한 번 다시 알린다. "
-        "기다림 상태(waitStatus)는 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고에만(SPEC-024). subject가 열 화면. "
+        "기다림 상태(waitStatus)는 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정에만(SPEC-024, REQ-215): 기다림·지연·답함·답 없어 닫힘. "
+        "답 없어 닫힘은 에스컬레이션 건(7일)·맞춤 주문(그 픽업 날짜의 주문 마감)·변경 요청(변경 마감)·결제 확인 요청(결제 기한 상한)만이고, 맞추는 중·환불 결정·문제 신고는 지연 뒤에도 할 일 목록에 남는다(1-7). subject가 열 화면. "
         "알림은 우리 서비스 채널로 가고, 사장님이 채널 친구가 아니면 alertChannelFriend false(SPEC-067).",
    params=[q("status", {"type": "string", "enum": ["open", "closed"]}, "열림·닫힘. 없으면 open", "open"), CURSOR, LIMIT],
    ok=[(200, "OwnerTaskList", {"open_tasks": E.TASKS, "not_friend": E.TASKS_NOT_FRIEND, "empty": E.TASKS_EMPTY})],
@@ -678,30 +679,32 @@ op(id="API-040", method="get", path="/owner/tasks", op="listOwnerTasks", tag="�
 # ═══ 에스컬레이션 건과 상담 ═════════════════════════════════════════════════════════
 op(id="API-041", method="get", path="/owner/handoffs/{handoffId}", op="getHandoff", tag="에스컬레이션 건·상담",
    summary="에스컬레이션 건 하나", spec=["SPEC-022", "SPEC-023", "SPEC-021"], auth="owner",
-   desc="에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 덧붙은 말. 마감된 날 질문이면 requestedDay.",
+   desc="에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 덧붙은 말. 마감된 날 질문이면 requestedDay. "
+        "남긴 지 7일 동안 사장님 답이 없으면 서버가 status closed_no_answer와 closedAt으로 닫고 손님에게 다시 물어 달라고 한 번 알린다(REQ-216).",
    params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF["handoffId"])],
-   ok=[(200, "Handoff", {"edibility": E.HANDOFF, "closed_day": E.HANDOFF_DAY})],
+   ok=[(200, "Handoff", {"edibility": E.HANDOFF, "closed_day": E.HANDOFF_DAY, "closed_no_answer": E.HANDOFF_CLOSED})],
    errors={404: ["not_found"]},
    omit={"403": O403, "409": O409_READ, "422": O422_PATHONLY},
-   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"],
+   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "상태": ["example:closed_no_answer"],
           "노출": ["closed", "note:원래 값은 그 가게 사장님 화면과 사유를 적고 연 운영자에게만(SPEC-021, DEC-19)"], "화면": ["screen"]})
 
 op(id="API-042", method="post", path="/owner/handoffs/{handoffId}/answer", op="answerHandoff", tag="에스컬레이션 건·상담",
    summary="에스컬레이션 건 답변", spec=["SPEC-023", "SPEC-024", "SPEC-066"], auth="owner", idem=True,
    desc="사장님 답을 AI가 고치지 않고 그대로 손님에게 전한다(친구면 바로, 아니면 다음 대화 때 먼저, SPEC-066). 기다림 타이머를 멈춘다(SPEC-024). "
         "마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락한 날로 표시한다. "
-        "이미 답한 질문은 409 already_decided. 사장님이 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict.",
+        "이미 답한 질문은 409 already_decided. 남긴 지 7일 동안 답이 없어 '답 없어 닫힘'으로 닫힌 건은 409 invalid_state(손님이 다시 물으면 새 건, REQ-216). "
+        "사장님이 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict.",
    params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF["handoffId"])],
    body="HandoffAnswerInput",
    body_examples={"answer": {"baseRevision": E.HANDOFF["revision"], "text": E.HANDOFF_ANSWERED["answerText"]},
                   "accept_day": {"baseRevision": E.HANDOFF_DAY["revision"], "dayDecision": "accepted", "text": "20일 받아 드릴게요. 주문을 이어가 주세요."}},
    ok=[(200, "HandoffAnswerResult", {"sent": {"outcome": "done", "handoff": E.HANDOFF_ANSWERED, "delivery": "sent"},
                                      "deferred": {"outcome": "done", "handoff": E.HANDOFF_DAY_ACCEPTED, "delivery": "deferred"}})],
-   errors={404: ["not_found"], 409: ["version_conflict", "already_decided"]},
+   errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "invalid_state"]},
    fields=[("/text", "too_long")],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
-          "상태": ["409:already_decided"], "반복": ["idem"], "동시": ["revision", "409:version_conflict"],
+          "상태": ["409:already_decided", "409:invalid_state"], "반복": ["idem"], "동시": ["revision", "409:version_conflict"],
           "외부": ["example:deferred"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-043", method="get", path="/owner/consultations/{consultationId}/messages", op="listConsultationMessages", tag="에스컬레이션 건·상담",
@@ -721,7 +724,8 @@ op(id="API-043", method="get", path="/owner/consultations/{consultationId}/messa
 # ═══ 주문 ═════════════════════════════════════════════════════════════════════
 op(id="API-044", method="get", path="/owner/orders", op="listOrders", tag="주문",
    summary="주문 목록", spec=["SPEC-031", "SPEC-037", "SPEC-068"], auth="owner",
-   desc="상태·종류·픽업 날짜로 거른다. status=payment_overdue가 결제 기한 지난 주문 목록(SPEC-037), status=requested&kind=custom이 답할 맞춤 주문. "
+   desc="상태·종류·픽업 날짜로 거른다. status=payment_overdue가 결제 기한 지난 주문 목록(SPEC-037)이고, paymentNotice로 결제 안내가 손님에게 전해진 시각이나 아직 못 전함(deliveredAt null)을 보인다. "
+        "status=requested&kind=custom이 답할 맞춤 주문. "
         "끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)은 나오지 않는다.",
    params=[q("status", {"type": "string", "enum": ["requested", "awaiting_payment", "payment_overdue", "confirmed", "received", "no_pickup", "rejected", "cancelled"]},
              "주문 상태", "requested"),
@@ -741,7 +745,7 @@ op(id="API-045", method="get", path="/owner/orders/{orderId}", op="getOrder", ta
         "다른 가게 주문과 끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)이면 404(SPEC-068).",
    params=[pid("orderId", "주문", E.ORDER_ID)],
    ok=[(200, "Order", {"custom_requested": E.CUSTOM_REQUESTED, "confirmed": E.ORDER_CONFIRMED, "changed": E.ORDER_CHANGED,
-                       "remake": E.ORDER_REMAKE})],
+                       "remake": E.ORDER_REMAKE, "custom_no_answer": E.CUSTOM_NO_ANSWER})],
    errors={404: ["not_found"]},
    omit={"403": O403, "409": O409_READ, "422": O422_PATHONLY},
    kinds={"접근": ["security", "401:unauthenticated", "404:not_found"], "대상": ["404:not_found"], "노출": ["closed"], "화면": ["screen"]})
@@ -750,7 +754,9 @@ op(id="API-046", method="post", path="/owner/orders/{orderId}/custom-decision", 
    summary="맞춤 주문 검토(수락·금액 변경 수락·거절)", spec=["SPEC-031", "SPEC-015", "SPEC-032"], auth="owner", idem=True,
    desc="수락하면 그날 자리를 결제 기한까지 잡고 결제 안내를 낸다(SPEC-032). 그날 자리가 없으면 먼저 409 confirmation_required(overbooking)이고, "
         "사장님이 확인하면 confirm에 담아 추가 수락한다(R10). 금액을 바꿔 수락하면 새 주문 내용 버전(사유 포함)과 요청 금액을 함께 보이는 결제 안내. "
-        "거절이면 거절됨과 손님 안내. 이미 답한 주문은 409 already_decided, 그 사이 손님이 취소했으면 409 order_cancelled.",
+        "휴무일이면 409 confirmation_required(closed_day)이고 확인하면 마감 후 추가 수락으로 잡는다(REQ-221). "
+        "거절이면 거절됨과 손님 안내. 이미 답한 주문은 409 already_decided, 그 사이 손님이 취소했으면 409 order_cancelled, "
+        "그 픽업 날짜의 주문 마감까지 답이 없어 '답 없어 닫힘'(cancelKind no_answer)으로 닫힌 요청은 409 invalid_state(REQ-213).",
    params=[pid("orderId", "주문", E.CUSTOM_ID)],
    body="CustomDecisionInput",
    body_examples={"accept": {"baseRevision": E.CUSTOM_REQUESTED["revision"], "decision": "accept"},
@@ -761,16 +767,18 @@ op(id="API-046", method="post", path="/owner/orders/{orderId}/custom-decision", 
                                     "rejected": {"outcome": "done", "order": E.CUSTOM_REJECTED, "paymentRequest": None}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "order_cancelled", "invalid_state", "confirmation_required"]},
    fields=[("/amount", "out_of_range"), ("/amountChangeReason", "required")],
-   confirm=["overbooking"],
+   confirm=["overbooking", "closed_day"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
-          "상태": ["409:already_decided", "409:order_cancelled", "409:confirmation_required"], "반복": ["idem"],
+          "상태": ["409:already_decided", "409:order_cancelled", "409:invalid_state", "409:confirmation_required"], "반복": ["idem"],
           "동시": ["revision", "409:version_conflict"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-047", method="post", path="/owner/orders/{orderId}/overdue-decision", op="decideOverdueOrder", tag="주문",
    summary="결제 기한 지난 주문: 결제 기한 연장·취소", spec=["SPEC-038", "SPEC-039", "SPEC-015", "SPEC-032", "SPEC-037"], auth="owner", idem=True,
-   desc="결제 기한 연장이면 그날 자리를 새 결제 기한까지 다시 잡고 다시 낸 결제 안내를 보낸다(SPEC-038). 남은 자리가 없으면 409 confirmation_required(overbooking). "
-        "취소면 '결제 없어 취소됨', 손님 안내 한 번, 장부 쓰기(SPEC-039). 픽업 일시나 주문 마감이 지났으면 결제 기한 연장은 409 invalid_state(취소만). "
+   desc="결제 기한 연장이면 그날 자리를 새 결제 기한까지 다시 잡고 다시 낸 결제 안내를 보낸다(SPEC-038). 새 결제 기한은 그 안내가 손님에게 전해진 때부터 센다(REQ-218). "
+        "남은 자리가 없으면 409 confirmation_required(overbooking), 휴무일이 됐으면 closed_day(REQ-221), 그 픽업 날짜의 주문 마감이 지났으면 past_cutoff(새 결제 기한은 픽업 일시까지). "
+        "취소면 '결제 없어 취소됨', 손님 안내 한 번, 장부 쓰기(SPEC-039). 픽업 일시가 지났으면 결제 기한 연장은 409 invalid_state(취소만). "
+        "픽업 일시까지 고르지 않으면 서버가 결제 없어 취소로 두고(REQ-217) 그 뒤의 고르기는 409 invalid_state. "
         "이미 고른 주문은 409 already_decided. 그 사이 결제가 확인됐으면 409 version_conflict(G3).",
    params=[pid("orderId", "주문", E.CUSTOM_ID)],
    body="OverdueDecisionInput",
@@ -780,7 +788,7 @@ op(id="API-047", method="post", path="/owner/orders/{orderId}/overdue-decision",
                                     "cancelled": {"outcome": "done", "order": E.CUSTOM_NO_PAYMENT, "paymentRequest": None}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "invalid_state", "confirmation_required"]},
    fields=[("/decision", "not_allowed")],
-   confirm=["overbooking"],
+   confirm=["overbooking", "closed_day", "past_cutoff"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
           "상태": ["409:invalid_state", "409:already_decided", "409:confirmation_required"], "반복": ["idem"],
@@ -1044,19 +1052,22 @@ op(id="API-061", method="post", path="/owner/refunds/{refundId}/sent", op="markR
 # ═══ 변경 요청 ════════════════════════════════════════════════════════════════
 op(id="API-062", method="get", path="/owner/change-requests/{changeRequestId}", op="getChangeRequest", tag="변경 요청",
    summary="변경 요청 하나", spec=["SPEC-042", "SPEC-041", "SPEC-043", "SPEC-044"], auth="owner",
-   desc="바꾸려는 내용, 묶인 주문 버전과 현재 버전, 변경 마감 시각, 새 날을 사장님이 정해야 하는지, 차액 결제. 차액 결제 기한이 지나면 서버가 '차액 없어 닫힘'으로 둔다(SPEC-044).",
+   desc="바꾸려는 내용, 묶인 주문 버전과 현재 버전, 변경 마감 시각, 새 날을 사장님이 정해야 하는지, 차액 결제. 차액 결제 기한이 지나면 서버가 '차액 없어 닫힘'으로 둔다(SPEC-044). "
+        "변경 마감까지 사장님 답이 없으면 서버가 '답 없어 닫힘'(closed_no_answer)으로 닫고 주문은 원래대로 둔다(REQ-214).",
    params=[pid("changeRequestId", "변경 요청", E.CHANGE["changeRequestId"])],
-   ok=[(200, "ChangeRequest", {"requested": E.CHANGE, "awaiting_difference": E.CHANGE_AWAITING, "closed_no_difference": E.CHANGE_CLOSED})],
+   ok=[(200, "ChangeRequest", {"requested": E.CHANGE, "awaiting_difference": E.CHANGE_AWAITING, "closed_no_difference": E.CHANGE_CLOSED,
+                               "closed_no_answer": E.CHANGE_NO_ANSWER})],
    errors={404: ["not_found"]},
    omit={"403": O403, "409": O409_READ, "422": O422_PATHONLY},
-   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "상태": ["example:closed_no_difference"],
+   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "상태": ["example:closed_no_difference", "example:closed_no_answer"],
           "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-063", method="post", path="/owner/change-requests/{changeRequestId}/decision", op="decideChangeRequest", tag="변경 요청",
    summary="변경 요청 응답(수락·거절)", spec=["SPEC-042", "SPEC-043", "SPEC-045", "SPEC-015", "SPEC-032"], auth="owner", idem=True,
    desc="금액이 그대로거나 내려가면 바로 반영해 주문 버전을 하나 올린다(SPEC-045, 내려가면 환불 정할 일). 오르면 차액 결제 안내를 내고(SPEC-043) 확인되면 반영한다. "
-        "날짜가 바뀌면 옛 날 자리를 풀고 새 날에 확정 자리를 잡는다(결제 안내 없음). 새 날이 다 찼으면 409 confirmation_required(overbooking). "
-        "거절이면 주문은 그대로이고 손님에게 알린다. 그 사이 손님이 취소했으면 409 order_cancelled, 이전 버전을 보고 만든 변경이면 409 stale_change, 이미 답했으면 409 already_decided.",
+        "날짜가 바뀌면 옛 날 자리를 풀고 새 날에 확정된 자리를 잡는다(결제 안내 없음). 새 날이 다 찼으면 409 confirmation_required(overbooking), 휴무일이면 closed_day(REQ-221, REQ-226). "
+        "거절이면 주문은 그대로이고 손님에게 알린다. 그 사이 손님이 취소했으면 409 order_cancelled, 이전 버전을 보고 만든 변경이면 409 stale_change, 이미 답했으면 409 already_decided, "
+        "변경 마감까지 답이 없어 '답 없어 닫힘'으로 닫힌 변경 요청은 409 invalid_state(REQ-214).",
    params=[pid("changeRequestId", "변경 요청", E.CHANGE["changeRequestId"])],
    body="ChangeDecisionInput",
    body_examples={"accept_same": {"baseRevision": E.CHANGE["revision"], "decision": "accept", "amountDelta": 0},
@@ -1066,12 +1077,12 @@ op(id="API-063", method="post", path="/owner/change-requests/{changeRequestId}/d
                                       "awaiting_difference": {"outcome": "done", "changeRequest": E.CHANGE_AWAITING, "order": E.ORDER_CONFIRMED,
                                                               "paymentRequest": E.PR_DIFFERENCE},
                                       "rejected": {"outcome": "done", "changeRequest": E.CHANGE_REJECTED, "order": E.ORDER_CONFIRMED, "paymentRequest": None}})],
-   errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "order_cancelled", "stale_change", "confirmation_required"]},
+   errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "order_cancelled", "stale_change", "invalid_state", "confirmation_required"]},
    fields=[("/amountDelta", "out_of_range")],
-   confirm=["overbooking"],
+   confirm=["overbooking", "closed_day"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
-          "상태": ["409:order_cancelled", "409:already_decided", "409:confirmation_required"], "반복": ["idem"],
+          "상태": ["409:order_cancelled", "409:already_decided", "409:invalid_state", "409:confirmation_required"], "반복": ["idem"],
           "동시": ["revision", "409:version_conflict", "409:stale_change"], "노출": ["closed"], "화면": ["screen"]})
 
 # ═══ 문제 신고 ════════════════════════════════════════════════════════════════
@@ -1086,8 +1097,8 @@ op(id="API-064", method="get", path="/owner/issue-reports/{issueReportId}", op="
 
 op(id="API-065", method="post", path="/owner/issue-reports/{issueReportId}/compensation", op="decideCompensation", tag="문제 신고",
    summary="보상 결정(재제작·일부 환불·전액 환불·없음)", spec=["SPEC-059", "SPEC-060", "SPEC-047", "SPEC-015"], auth="owner", idem=True,
-   desc="보상은 사장님만 정한다(AI·손님에게 길이 없음). 재제작이면 새 픽업 일시(지금 뒤 60일 안)로 결제 없는 재제작 주문을 확정으로 남기고 자리를 잡는다(SPEC-060, 다 찬 날이면 마감 후 추가 수락). "
-        "휴무일이면 409 confirmation_required(closed_day). 환불이면 환불 결정과 같은 한도로 환불을 남긴다(SPEC-047). 손님에게 보상 안내를 한 번 보내고 신고를 닫는다. "
+   desc="보상은 사장님만 정한다(AI·손님에게 길이 없음). 재제작이면 새 픽업 일시(지금 뒤 60일 안)로 결제 없는 재제작 주문을 확정으로 남기고 자리를 잡는다(SPEC-060). "
+        "휴무일이면 409 confirmation_required(closed_day), 다 찬 날이면 overbooking이고 확인하면 마감 후 추가 수락으로 잡는다(REQ-221, REQ-226). 환불이면 환불 결정과 같은 한도로 환불을 남긴다(SPEC-047). 손님에게 보상 안내를 한 번 보내고 신고를 닫는다. "
         "이미 정한 보상은 고치지 않는다(409 already_decided).",
    params=[pid("issueReportId", "문제 신고", E.ISSUE["issueReportId"])],
    body="CompensationInput",
@@ -1098,7 +1109,7 @@ op(id="API-065", method="post", path="/owner/issue-reports/{issueReportId}/compe
                                     "partial_refund": {"outcome": "done", "issueReport": E.ISSUE_PARTIAL, "remakeOrder": None, "refund": E.REFUND_COMP}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "confirmation_required"]},
    fields=[("/remakePickupAt", "outside_window"), ("/refundAmount", "exceeds_received")],
-   confirm=["closed_day"],
+   confirm=["closed_day", "overbooking"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated", "note:AI·손님은 보상을 정할 수 없음(AI 도구에 없음)"], "입력": ["422:validation_failed"],
           "대상": ["404:not_found"], "상태": ["409:already_decided", "409:confirmation_required"], "반복": ["idem"],
@@ -1172,6 +1183,9 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
         "답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). "
         "콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). "
         "첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). "
+        "문의 끊김이나 상담 끝남으로 닫힌 손님에게도 이 안내(결제 안내·사장님 답·전날 안내 등)는 막지 않는다(REQ-212). 이때 보인 결제 안내는 그때를 전해진 시각으로 남겨 결제 기한을 그때부터 세고(REQ-218), "
+        "결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). "
+        "요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). "
         "연결 확인 중인 채널의 테스트 메시지면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008). 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). "
         "주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, "
         "버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. "

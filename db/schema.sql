@@ -73,7 +73,7 @@ CREATE TABLE shops (
   entrustment_consented_at  timestamptz NOT NULL,              -- 그 조건에 동의한 시각
   time_zone                 text NOT NULL DEFAULT 'Asia/Seoul', -- 가게 시간대. 시각 계산은 이 시간대로(G8)
   completion_photo_enabled  boolean NOT NULL DEFAULT false,    -- 완성 사진 보내기(SPEC-009, 기본 꺼짐)
-  idle_close_hours          smallint NOT NULL DEFAULT 24 CHECK (idle_close_hours BETWEEN 1 AND 720), -- 문의 끊김까지 시간(REQ-019, 기본 24시간)
+  idle_close_hours          smallint NOT NULL DEFAULT 24 CHECK (idle_close_hours BETWEEN 1 AND 720), -- 문의 끊김까지 시간(REQ-211, 기본 24시간)
   owner_wait_minutes        smallint NOT NULL DEFAULT 120 CHECK (owner_wait_minutes BETWEEN 10 AND 1440), -- 사장님 답 기다리는 시간(REQ-116, 기본 2시간)
   daily_ai_cost_limit_krw   integer NOT NULL DEFAULT 5000 CHECK (daily_ai_cost_limit_krw BETWEEN 0 AND 1000000), -- 하루 AI 비용 한도(REQ-163, 기본 5,000원)
   booking_slug              text CHECK (booking_slug ~ '^[a-z0-9][a-z0-9-]{2,39}$'), -- 예약 링크(TERM-042) 주소의 가게 몫. 낸 뒤 바뀌지 않음(SPEC-010)
@@ -212,7 +212,7 @@ CREATE TABLE operating_rules (
   shop_id                     uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 가게
   version                     integer NOT NULL CHECK (version >= 1), -- 버전(TERM-005). 받은 주문은 그때 버전을 따름(REQ-030)
   quote_valid_hours           smallint NOT NULL DEFAULT 72 CHECK (quote_valid_hours BETWEEN 1 AND 720), -- 견적 유효 기한(REQ-034, 기본 안내 뒤 72시간)
-  payment_due_hours           smallint NOT NULL DEFAULT 12 CHECK (payment_due_hours BETWEEN 1 AND 720), -- 결제 기한(TERM-030, REQ-087, 기본 결제 안내 뒤 12시간)
+  payment_due_hours           smallint NOT NULL DEFAULT 12 CHECK (payment_due_hours BETWEEN 1 AND 720), -- 결제 기한(TERM-030, REQ-218): 결제 안내가 손님에게 전해진 뒤 기본 12시간, 결제 기한 상한까지
   issue_report_hours          smallint NOT NULL DEFAULT 24 CHECK (issue_report_hours BETWEEN 1 AND 720), -- 문제 신고 기한(REQ-072, 기본 받은 뒤 24시간)
   change_deadline_hours       smallint NOT NULL CHECK (change_deadline_hours BETWEEN 1 AND 720), -- 변경 마감: 픽업 일시 몇 시간 전까지(SPEC-041). 기본값 없음, 가게가 넣음
   cancellation_fee_krw        integer NOT NULL DEFAULT 0 CHECK (cancellation_fee_krw BETWEEN 0 AND 10000000), -- 고정 취소 수수료(TERM-016). 계산에서는 주문 금액까지만 뺌
@@ -312,7 +312,7 @@ CREATE TABLE customers (
   shop_id            uuid NOT NULL,                      -- 가게
   kakao_channel_id   uuid NOT NULL,                      -- 메시지를 보낸 가게 채널
   kakao_user_key     text,                               -- 그 채널의 카카오 사용자 키. 손님 명령은 이 키로 구분함(G1). 상담이 모두 지워지고 주문이 모두 보관 기록이 되면 지움(SPEC-065, REQ-190)
-  channel_friend     boolean NOT NULL DEFAULT false,     -- 채널 친구인지. 먼저 보내는 안내는 친구에게만(REQ-120)
+  channel_friend     boolean NOT NULL DEFAULT false,     -- 채널 친구인지. 손님이 말을 걸 때마다 카카오가 알린 값으로 고치고 알리지 않았으면 친구 아님, 먼저 보낸 안내가 친구 아님으로 실패해도 친구 아님(REQ-219). 먼저 보내는 안내는 친구에게만(REQ-120)
   friend_checked_at  timestamptz,                        -- 친구 여부를 마지막으로 본 시각
   created_at         timestamptz NOT NULL DEFAULT now(), -- 처음 말을 건 시각
   purged_at          timestamptz,                        -- 카카오 사용자 키를 지운 시각(SPEC-065, REQ-190). 같은 사용자가 다시 말을 걸면 새 손님 행으로 받음
@@ -330,7 +330,7 @@ CREATE TABLE consultations (
   customer_id               uuid NOT NULL,               -- 손님
   status                    text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'awaiting_owner', 'dropped', 'ordered', 'ended', 'deleted')), -- 열림·사장님 답 기다림·문의 끊김·주문으로 전환됨·상담 끝남·지워짐(1-1). 상담 끝남과 지워짐은 다시 열지 않고 손님의 다음 말은 새 상담(REQ-189)
   ai_disclosed_at           timestamptz,                 -- AI 상담 고지(TERM-041)를 보낸 시각(REQ-002). 상담마다 한 번, 이어가는 상담에는 다시 보내지 않음(R5)
-  last_customer_message_at  timestamptz,                 -- 손님의 마지막 메시지 시각(문의 끊김 셈, REQ-019)
+  last_customer_message_at  timestamptz,                 -- 손님의 마지막 메시지 시각(문의 끊김 셈, REQ-211)
   dropped_at                timestamptz,                 -- 문의 끊김으로 닫은 시각(30일 지우기 셈, REQ-186)
   ended_at                  timestamptz,                 -- 상담 끝남으로 닫은 시각: 다룬 주문이 모두 끝나고 손님의 마지막 메시지 뒤 가게가 정한 시간이 지남(30일 지우기 셈, SPEC-025, REQ-189)
   turn_trace_id             text,                        -- AI 답을 만드는 중인 차례의 추적 ID. 빈 값이면 쉬는 중. 이어 온 메시지는 다음 차례에 모아 답함(3-3)
@@ -480,7 +480,7 @@ CREATE TABLE quotes (
 CREATE INDEX quotes_draft_idx ON quotes (draft_id, quoted_at); -- 초안의 마지막 견적
 COMMENT ON TABLE quotes IS 'TBL-022 견적(TERM-013): 가게 규칙이 계산한 금액과 근거, 버전과 유효 기한';
 
--- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-025, SPEC-029, SPEC-030, SPEC-031, SPEC-034, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070, SPEC-073 | terms: TERM-001
+-- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-024, SPEC-025, SPEC-029, SPEC-030, SPEC-031, SPEC-034, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070, SPEC-073 | terms: TERM-001
 CREATE TABLE orders (
   id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 주문 ID(손님에게 보이지 않음)
   shop_id                  uuid NOT NULL,                -- 가게
@@ -505,7 +505,7 @@ CREATE TABLE orders (
   rejected_at              timestamptz,                  -- 맞춤 주문을 거절한 시각
   reject_reason            text CHECK (char_length(reject_reason) <= 200), -- 거절 사유
   cancelled_at             timestamptz,                  -- 취소된 시각
-  cancel_kind              text CHECK (cancel_kind IN ('customer', 'shop', 'no_payment')), -- 손님이 취소함·가게 사정으로 취소됨·결제 없어 취소됨
+  cancel_kind              text CHECK (cancel_kind IN ('customer', 'shop', 'no_payment', 'no_answer')), -- 손님이 취소함·가게 사정으로 취소됨·결제 없어 취소됨(사장님이 고르거나 픽업 일시까지 고르지 않음, REQ-217)·답 없어 닫힘(맞춤 주문 요청에 그 픽업 날짜의 주문 마감까지 사장님 답이 없음, REQ-213)
   cancel_reason            text CHECK (char_length(cancel_reason) BETWEEN 1 AND 200), -- 가게 사정 취소의 사유(SPEC-048)
   remake_of_order_id       uuid,                         -- 재제작(TERM-034) 주문이면 원래 주문(R21)
   finished_at              timestamptz,                  -- 주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없음(SPEC-025, SPEC-065). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)
@@ -532,6 +532,7 @@ CREATE TABLE orders (
   CONSTRAINT orders_rejected_custom_chk CHECK (status <> 'rejected' OR kind = 'custom'),
   CONSTRAINT orders_cancel_chk CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL AND cancel_kind IS NOT NULL)),
   CONSTRAINT orders_shop_cancel_reason_chk CHECK ((cancel_kind IS NOT DISTINCT FROM 'shop') = (cancel_reason IS NOT NULL)), -- 가게 사정 취소에는 사유(SPEC-048)
+  CONSTRAINT orders_no_answer_chk CHECK (cancel_kind IS DISTINCT FROM 'no_answer' OR (kind = 'custom' AND accepted_at IS NULL AND remake_of_order_id IS NULL)), -- 답 없어 닫힘은 수락하지 않은 맞춤 주문 요청만(REQ-213)
   CONSTRAINT orders_finished_chk CHECK (finished_at IS NULL OR status IN ('received', 'no_pickup', 'rejected', 'cancelled')), -- 끝난 주문은 받음·미수령·거절됨·취소됨 가운데 하나(SPEC-025)
   CONSTRAINT orders_purged_chk CHECK (personal_data_purged_at IS NULL OR finished_at IS NOT NULL) -- 개인정보를 지운 주문은 끝난 주문이고 다시 열지 않음(SPEC-065, A22)
 );
@@ -571,7 +572,7 @@ CREATE TABLE confirm_cards (
 );
 COMMENT ON TABLE confirm_cards IS 'TBL-024 손님 확인 카드: 상담·사용자·버전·30분 기한에 묶인 명령 버튼(G9)';
 
--- TBL-025 change_requests (CTX-003) ← SPEC-041, SPEC-042, SPEC-043, SPEC-044, SPEC-045, SPEC-046, SPEC-048, SPEC-065, SPEC-070 | terms: TERM-001
+-- TBL-025 change_requests (CTX-003) ← SPEC-024, SPEC-041, SPEC-042, SPEC-043, SPEC-044, SPEC-045, SPEC-046, SPEC-048, SPEC-065, SPEC-070 | terms: TERM-001
 CREATE TABLE change_requests (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 변경 요청 ID
   shop_id          uuid NOT NULL,                        -- 가게
@@ -580,8 +581,8 @@ CREATE TABLE change_requests (
   base_version     integer NOT NULL CHECK (base_version >= 1), -- 카드에 묶인 주문 버전. 현재 버전과 다르면 받지 않음(REQ-133)
   changes          jsonb NOT NULL,                       -- 바꾸려는 내용(디자인·문구·날짜·시간). 주문이 끝나고 30일 뒤 빈 객체({})로 비움(SPEC-065)
   new_pickup_at    timestamptz,                          -- 날짜·시간을 바꾸면 새 픽업 일시
-  needs_owner_day  boolean NOT NULL DEFAULT false,       -- 새 날이 휴무·마감이라 받을지 사장님이 정함(SPEC-041)
-  status           text NOT NULL DEFAULT 'requested' CHECK (status IN ('requested', 'awaiting_difference', 'applied', 'rejected', 'closed_no_difference', 'stale', 'closed_by_cancel')), -- 요청됨·차액 결제 기다림·반영됨·거절됨·차액 없어 닫힘·오래된 버전이라 받지 않음·주문 취소로 닫힘(1-5)
+  needs_owner_day  boolean NOT NULL DEFAULT false,       -- 새 날이 휴무일이거나 마감된 날이라 사장님이 휴무일임이나 초과해 받는 것을 확인한 뒤에만 받음(SPEC-041, REQ-221, REQ-226)
+  status           text NOT NULL DEFAULT 'requested' CHECK (status IN ('requested', 'awaiting_difference', 'applied', 'rejected', 'closed_no_difference', 'stale', 'closed_by_cancel', 'closed_no_answer')), -- 요청됨·차액 결제 기다림·반영됨·거절됨·차액 없어 닫힘·오래된 버전이라 받지 않음·주문 취소로 닫힘·답 없어 닫힘(1-5). 답 없어 닫힘은 변경 마감까지 사장님 답이 없을 때(REQ-214)
   amount_delta     integer CHECK (amount_delta BETWEEN -10000000 AND 10000000), -- 수락할 때 금액 차이: 더하면 추가 금액, 빼면 줄어든 금액, 0이면 그대로(SPEC-042)
   reject_reason    text CHECK (char_length(reject_reason) <= 200), -- 거절 사유
   decided_at       timestamptz,                          -- 사장님이 답한 시각
@@ -597,7 +598,8 @@ CREATE TABLE change_requests (
   CONSTRAINT change_requests_difference_chk CHECK (status <> 'awaiting_difference' OR coalesce(amount_delta, 0) > 0), -- 차액 결제는 금액이 오를 때만(REQ-067)
   CONSTRAINT change_requests_applied_chk CHECK ((status = 'applied') = (applied_at IS NOT NULL AND applied_version IS NOT NULL)),
   CONSTRAINT change_requests_applied_version_chk CHECK (applied_version IS NULL OR applied_version = base_version + 1), -- 버전이 같을 때만 반영하고 버전은 하나 오름(SPEC-045)
-  CONSTRAINT change_requests_decided_chk CHECK (status NOT IN ('awaiting_difference', 'rejected') OR decided_at IS NOT NULL)
+  CONSTRAINT change_requests_decided_chk CHECK (status NOT IN ('awaiting_difference', 'rejected') OR decided_at IS NOT NULL),
+  CONSTRAINT change_requests_no_answer_chk CHECK (status <> 'closed_no_answer' OR (closed_at IS NOT NULL AND decided_at IS NULL)) -- 답 없어 닫힘은 사장님이 답하지 않은 채 변경 마감에 닫은 것(REQ-214)
 );
 CREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference'); -- 한 주문에 열린 변경 요청 하나(1-5)
 COMMENT ON TABLE change_requests IS 'TBL-025 변경 요청: 확정된 주문을 바꾸자는 손님 요청과 사장님 답(1-5)';
@@ -655,7 +657,7 @@ COMMENT ON TABLE order_details IS 'TBL-026 주문 내용(TERM-004): 주문에 �
 ALTER TABLE orders ADD CONSTRAINT orders_current_details_fk FOREIGN KEY (id, version, price_list_id, amount, pickup_at)
   REFERENCES order_details (order_id, version, price_list_id, amount, pickup_at) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;
 
--- TBL-027 handoffs (CTX-001) ← SPEC-014, SPEC-015, SPEC-017, SPEC-020, SPEC-021, SPEC-022, SPEC-023, SPEC-025, SPEC-026, SPEC-029, SPEC-030, SPEC-040, SPEC-053, SPEC-056, SPEC-065 | terms: TERM-008, TERM-018
+-- TBL-027 handoffs (CTX-001) ← SPEC-014, SPEC-015, SPEC-017, SPEC-020, SPEC-021, SPEC-022, SPEC-023, SPEC-024, SPEC-025, SPEC-026, SPEC-029, SPEC-030, SPEC-040, SPEC-053, SPEC-056, SPEC-065 | terms: TERM-008, TERM-018
 CREATE TABLE handoffs (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 에스컬레이션 건 ID
   shop_id                uuid NOT NULL,                  -- 가게
@@ -664,12 +666,13 @@ CREATE TABLE handoffs (
   order_id               uuid,                           -- 관련 주문(있으면)
   reason                 text NOT NULL CHECK (reason IN ('edibility', 'cannot_answer', 'closed_day', 'legal_medical', 'customer_request', 'other_user', 'pre_receipt_issue', 'ai_failure', 'ai_cost_limit', 'callback_timeout', 'masking_failed', 'empty_answer', 'clause_missing')), -- 에스컬레이션한 사유: 먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·AI 실패·AI 비용 한도·콜백 시간 초과·마스킹 실패·빈 답·조문 없음
   requested_day          date,                           -- 마감된 날에 추가로 받을지 묻는 질문의 날짜(SPEC-014)
-  status                 text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'answered')), -- 열림·답함
+  status                 text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'answered', 'closed_no_answer')), -- 열림·답함·답 없어 닫힘(남긴 지 7일, REQ-216)
   answer_text            text CHECK (char_length(answer_text) BETWEEN 1 AND 1000), -- 사장님 답. AI가 고치지 않고 그대로 전함(SPEC-023)
   day_decision           text CHECK (day_decision IN ('accepted', 'declined')), -- 마감된 날: 추가 수락·받지 않음
   day_accept_expires_at  timestamptz,                    -- 추가 수락한 날에 주문 요청으로 자리를 잡을 수 있는 기한(24시간, SPEC-023)
   appended_alerted_at    timestamptz,                    -- '새 질문 덧붙음' 알림을 마지막으로 보낸 시각(하루 한 번까지, SPEC-022)
   answered_at            timestamptz,                    -- 답한 시각
+  closed_at              timestamptz,                    -- 답 없어 닫힌 시각(남긴 지 7일, REQ-216). 그 뒤 상담은 문의 끊김으로 닫히고 지워질 수 있음(1-1)
   created_at             timestamptz NOT NULL DEFAULT now(), -- 에스컬레이션한 시각
   CONSTRAINT handoffs_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT handoffs_consultation_fk FOREIGN KEY (shop_id, consultation_id) REFERENCES consultations (shop_id, id) ON DELETE RESTRICT,
@@ -679,9 +682,11 @@ CREATE TABLE handoffs (
   CONSTRAINT handoffs_answered_chk CHECK ((status = 'answered') = (answered_at IS NOT NULL)),
   CONSTRAINT handoffs_answer_chk CHECK (status <> 'answered' OR answer_text IS NOT NULL OR day_decision IS NOT NULL),
   CONSTRAINT handoffs_day_chk CHECK (day_decision IS NULL OR requested_day IS NOT NULL),
-  CONSTRAINT handoffs_day_accept_chk CHECK ((day_decision IS NOT DISTINCT FROM 'accepted') = (day_accept_expires_at IS NOT NULL))
+  CONSTRAINT handoffs_day_accept_chk CHECK ((day_decision IS NOT DISTINCT FROM 'accepted') = (day_accept_expires_at IS NOT NULL)),
+  CONSTRAINT handoffs_closed_chk CHECK ((status = 'closed_no_answer') = (closed_at IS NOT NULL)) -- 답 없어 닫힘에만 닫힌 시각
 );
 CREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open'; -- 열린 에스컬레이션 건이 있으면 새 질문을 덧붙임(SPEC-022)
+CREATE INDEX handoffs_open_age_idx ON handoffs (created_at) WHERE status = 'open'; -- 남긴 지 7일 지난 열린 에스컬레이션 건 찾기(SPEC-024, REQ-216)
 COMMENT ON TABLE handoffs IS 'TBL-027 에스컬레이션 건(TERM-008): AI가 답하지 않고 사장님께 에스컬레이션한 손님 질문';
 
 -- TBL-028 issue_details (CTX-001) ← SPEC-057, SPEC-058, SPEC-059, SPEC-065 | terms: TERM-032
@@ -752,7 +757,7 @@ CREATE TABLE issue_reports (
 );
 COMMENT ON TABLE issue_reports IS 'TBL-030 문제 신고(TERM-031): 받은 주문의 신고와 사장님이 정한 보상(1-6)';
 
--- TBL-031 payment_requests (CTX-004) ← SPEC-006, SPEC-015, SPEC-016, SPEC-029, SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-043, SPEC-044, SPEC-046, SPEC-047, SPEC-048, SPEC-059, SPEC-065, SPEC-068, SPEC-070, SPEC-071 | terms: TERM-049
+-- TBL-031 payment_requests (CTX-004) ← SPEC-006, SPEC-015, SPEC-016, SPEC-024, SPEC-029, SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-043, SPEC-044, SPEC-046, SPEC-047, SPEC-048, SPEC-059, SPEC-065, SPEC-068, SPEC-070, SPEC-071 | terms: TERM-049
 CREATE TABLE payment_requests (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 결제 안내 ID
   shop_id             uuid NOT NULL,                     -- 가게
@@ -766,9 +771,11 @@ CREATE TABLE payment_requests (
   requested_amount    integer CHECK (requested_amount BETWEEN 0 AND 10000000), -- 금액 변경 수락이면 손님이 요청한 금액(함께 보임, REQ-155)
   payment_account_id  uuid NOT NULL,                     -- 이 안내에 포함한 가게 계좌. 계좌를 바꿔도 나간 안내는 그대로
   card_payment_url    text CHECK (card_payment_url ~ '^https://'), -- 이 안내에 포함한 카드 결제 링크(있으면)
-  issued_at           timestamptz NOT NULL DEFAULT now(), -- 낸 시각. 결제 기한은 보낸 시각이 아니라 이때부터 셈(R12)
-  due_at              timestamptz NOT NULL,              -- 결제 기한(TERM-030). 차액 결제는 변경 마감과 이른 쪽(R18)
-  claimed_at          timestamptz,                       -- 손님 '입금 알리기' 시각. 기한 전이면 자리를 지킴(R14)
+  issued_at           timestamptz NOT NULL DEFAULT now(), -- 낸 시각. 결제 기한은 이때가 아니라 손님에게 전해진 시각부터 셈(REQ-218)
+  delivered_at        timestamptz,                       -- 결제 안내가 손님에게 전해진 시각: 대화 중 답으로 보임·먼저 보낸 안내가 닿음·다음 대화 때 전함(SPEC-032). 빈 값이면 '아직 못 전함'(SPEC-037)
+  due_at              timestamptz NOT NULL,              -- 결제 기한(TERM-030): 전해진 시각에 운영규정의 결제 기한을 더한 때와 결제 기한 상한 가운데 이른 쪽. 전해지기 전에는 상한(REQ-218)
+  due_cap_at          timestamptz NOT NULL,              -- 결제 기한 상한: 첫 결제·다시 낸 결제는 그 픽업 날짜의 주문 마감(이미 지났으면 픽업 일시), 차액 결제는 변경 마감(REQ-218, R18). 낼 때 정함. 확인 요청됨도 이때 기한 지남(REQ-223)
+  claimed_at          timestamptz,                       -- 손님이 입금했다고 알려 결제 확인을 요청한 시각(REQ-224). 기한 전이면 결제 기한 상한까지 자리를 지킴(R14, REQ-223)
   claim_card_id       uuid,                              -- 손님이 누른 입금 알리기 카드
   claim_rejected_at   timestamptz,                       -- 사장님이 '미입금'을 고른 시각. 확인 요청은 결제 안내마다 한 번이라 다시 받지 않음(SPEC-033)
   depositor_name      text CHECK (char_length(depositor_name) BETWEEN 1 AND 30), -- 입금자 이름(입금 대조, TERM-063). 손님이 결제 확인을 요청할 때 AI를 거치지 않는 입력으로 받고, 따로 넣지 않으면 주문자 이름(SPEC-033, REQ-176). AI로 보내지 않음(REQ-178). 주문이 끝나고 30일 뒤 지움(SPEC-065)
@@ -790,6 +797,8 @@ CREATE TABLE payment_requests (
   CONSTRAINT payment_requests_difference_chk CHECK ((kind = 'difference') = (change_request_id IS NOT NULL)),
   CONSTRAINT payment_requests_requested_amount_chk CHECK (requested_amount IS NULL OR kind = 'first'),
   CONSTRAINT payment_requests_due_chk CHECK (due_at > issued_at),
+  CONSTRAINT payment_requests_due_cap_chk CHECK (due_at <= due_cap_at), -- 결제 기한은 상한을 넘지 않음(REQ-218)
+  CONSTRAINT payment_requests_delivered_chk CHECK ((delivered_at IS NOT NULL OR due_at = due_cap_at) AND (delivered_at IS NULL OR delivered_at >= issued_at)), -- 전해지기 전에는 상한이 결제 기한(SPEC-032)
   CONSTRAINT payment_requests_claimed_chk CHECK (status <> 'claimed' OR (claimed_at IS NOT NULL AND claim_rejected_at IS NULL)),
   CONSTRAINT payment_requests_claim_rejected_chk CHECK (claim_rejected_at IS NULL OR claimed_at IS NOT NULL),
   CONSTRAINT payment_requests_mismatch_chk CHECK (status <> 'mismatch' OR (mismatch_amount IS NOT NULL AND mismatch_at IS NOT NULL)),
@@ -805,6 +814,7 @@ CREATE TABLE payment_requests (
 );
 CREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch'); -- 한 주문에 열린 결제 안내 하나(1-3)
 CREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open'; -- 기한 지남 찾기. 확인 요청됨·맞추는 중은 빠짐(R14, R15)
+CREATE INDEX payment_requests_claim_cap_idx ON payment_requests (due_cap_at) WHERE status = 'claimed'; -- 결제 기한 상한이 지난 확인 요청 찾기(SPEC-037, REQ-223)
 CREATE INDEX payment_requests_shop_status_idx ON payment_requests (shop_id, status); -- 입금 대조 화면(TERM-063)
 COMMENT ON TABLE payment_requests IS 'TBL-031 결제 안내: 금액·결제 방법·결제 기한을 담은 안내와 그 상태(1-3)';
 
@@ -874,10 +884,10 @@ CREATE TABLE slot_holds (
   shop_id             uuid NOT NULL,                     -- 가게
   day                 date NOT NULL,                     -- 자리의 날짜(가게 시간대)
   order_id            uuid NOT NULL,                     -- 자리를 가진 주문
-  payment_request_id  uuid,                              -- 잡힘이면 그 결제 안내. 그 결제 기한까지 잡음(R13)
+  payment_request_id  uuid,                              -- 잡힘이면 그 결제 안내. 그 결제 기한까지 잡고, 확인 요청됨이면 결제 기한 상한까지(R13, REQ-223)
   hold_key            text NOT NULL,                     -- 같은 주문의 같은 가예약은 한 번(주문 ID와 결제 안내 ID 등, SPEC-015)
   status              text NOT NULL CHECK (status IN ('held', 'fixed', 'released', 'done')), -- 가예약됨·확정됨·해제됨·종료됨(1-4)
-  overbooked          boolean NOT NULL DEFAULT false,    -- 마감 후 추가 수락: 다 찬 날에 사장님이 추가 수락한 자리(R10). 그날은 다른 손님에게 계속 마감(REQ-045)
+  overbooked          boolean NOT NULL DEFAULT false,    -- 마감 후 추가 수락: 다 찬 날이나 휴무일에 사장님이 확인하고 받은 자리(R10, REQ-221, REQ-226). 그날은 다른 손님에게 계속 마감(REQ-045)
   fixed_at            timestamptz,                       -- 확정 자리가 된 시각(결제 확인됨, 날짜 변경의 새 날, 재제작)
   released_at         timestamptz,                       -- 풀린 시각
   release_reason      text CHECK (release_reason IN ('payment_overdue', 'order_cancelled', 'date_changed')), -- 결제 기한 지남·주문 취소·날짜 변경의 옛 날
@@ -893,7 +903,7 @@ CREATE TABLE slot_holds (
   CONSTRAINT slot_holds_done_chk CHECK ((status = 'done') = (done_at IS NOT NULL))
 );
 CREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE status IN ('held', 'fixed'); -- 주문 하나에 유효한 자리 하나
-CREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed'); -- 날짜별 잡힌 자리 세기(잡힘 + 확정 자리)
+CREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed', 'done'); -- 날짜별 그날 자리 세기(잡힘 + 확정된 자리 + 종료됨, 1-4)
 COMMENT ON TABLE slot_holds IS 'TBL-034 그날 자리(TERM-007): 하루 최대 개수 가운데 한 주문에 묶은 자리(1-4)';
 
 -- TBL-035 productions (CTX-005) ← SPEC-016, SPEC-036, SPEC-045, SPEC-050, SPEC-051, SPEC-053, SPEC-054, SPEC-055, SPEC-058, SPEC-060, SPEC-061, SPEC-070 | terms: TERM-050
@@ -906,9 +916,9 @@ CREATE TABLE productions (
   production_started_at       timestamptz,               -- 제작 시작 시각(환불 근거, REQ-090)
   completed_at                timestamptz,               -- 완성 표시 시각
   changed_after_start         boolean NOT NULL DEFAULT false, -- 재료 주문·제작 시작 뒤 변경이 반영됨. 제작 목록의 '변경됨'(SPEC-045)
-  handed_over_at              timestamptz,               -- 인도 시각(REQ-091)
+  handed_over_at              timestamptz,               -- 인도 시각(REQ-091). 있으면 주문은 받음(4절 A27)
   handover_kind               text CHECK (handover_kind IN ('pickup', 'courier')), -- 픽업 완료됨·퀵(TERM-024)으로 보냄
-  no_pickup_at                timestamptz,               -- 미수령(TERM-025) 표시 시각
+  no_pickup_at                timestamptz,               -- 미수령(TERM-025) 표시 시각. 인도 시각 없이 있으면 주문은 미수령(4절 A27)
   discarded_at                timestamptz,               -- 미수령 케이크 폐기 시각(REQ-094)
   created_at                  timestamptz NOT NULL DEFAULT now(), -- 제작 목록에 오른 시각(주문 확정)
   CONSTRAINT productions_shop_scope UNIQUE (shop_id, id),
@@ -1045,13 +1055,13 @@ CREATE TABLE owner_tasks (
   issue_report_id     uuid,                              -- 문제 신고
   payment_request_id  uuid,                              -- 결제 안내
   refund_id           uuid,                              -- 보낼 환불(환불 보내기, REQ-173)
-  wait_status         text CHECK (wait_status IN ('waiting', 'late', 'parked', 'answered')), -- 사장님 답 기다림(1-7): 기다림·지연·할 일에 남음·답함. 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고만
-  wait_due_at         timestamptz,                       -- 기다림이 끝나는 시각. 답하는 시간 안에서만 셈(REQ-118)
-  late_notice_at      timestamptz,                       -- 손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156)
-  realerted_at        timestamptz,                       -- 사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)
+  wait_status         text CHECK (wait_status IN ('waiting', 'late', 'answered', 'closed_no_answer')), -- 사장님 답 기다림(1-7): 기다림·지연(지연 안내와 다시 알림 뒤 할 일 목록에 남음)·답함·답 없어 닫힘. 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정만(REQ-215)
+  wait_due_at         timestamptz,                       -- 지연 안내를 보낼 시각: 기다리는 시간을 답하는 시간 안에서만 셈(REQ-118). 답 없어 닫는 때(1-7)와 다름
+  late_notice_at      timestamptz,                       -- 손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156, REQ-215)
+  realerted_at        timestamptz,                       -- 사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117, REQ-215), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)
   detail              jsonb,                             -- 보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음. 주문이 끝나고 30일 뒤 비움(SPEC-065)
   opened_at           timestamptz NOT NULL DEFAULT now(), -- 생긴 시각
-  closed_at           timestamptz,                       -- 사장님이 처리해 닫힌 시각(SPEC-067)
+  closed_at           timestamptz,                       -- 사장님이 처리해 닫히거나 답 없어 닫힌 시각(SPEC-067, 1-7)
   CONSTRAINT owner_tasks_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT owner_tasks_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT owner_tasks_handoff_fk FOREIGN KEY (shop_id, handoff_id) REFERENCES handoffs (shop_id, id) ON DELETE RESTRICT,
@@ -1060,7 +1070,7 @@ CREATE TABLE owner_tasks (
   CONSTRAINT owner_tasks_request_fk FOREIGN KEY (shop_id, payment_request_id) REFERENCES payment_requests (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT owner_tasks_refund_fk FOREIGN KEY (shop_id, refund_id) REFERENCES refunds (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT owner_tasks_event_uq UNIQUE (shop_id, event_key),
-  CONSTRAINT owner_tasks_wait_kind_chk CHECK ((kind IN ('handoff', 'custom_order', 'change_request', 'issue_report')) = (wait_status IS NOT NULL AND wait_due_at IS NOT NULL)), -- 지연 안내는 이 넷에만(REQ-116, REQ-156)
+  CONSTRAINT owner_tasks_wait_kind_chk CHECK ((kind IN ('handoff', 'custom_order', 'change_request', 'issue_report', 'payment_claim', 'payment_mismatch', 'refund_decision')) = (wait_status IS NOT NULL AND wait_due_at IS NOT NULL)), -- 지연 안내는 이 일곱에만(REQ-116, REQ-156, REQ-215)
   CONSTRAINT owner_tasks_subject_chk CHECK (
     (kind <> 'handoff' OR handoff_id IS NOT NULL)
     AND (kind NOT IN ('change_request', 'stale_change') OR change_request_id IS NOT NULL)
@@ -1068,8 +1078,9 @@ CREATE TABLE owner_tasks (
     AND (kind NOT IN ('payment_claim', 'payment_mismatch', 'arrival_check') OR payment_request_id IS NOT NULL)
     AND (kind <> 'refund_send' OR refund_id IS NOT NULL)
     AND (kind NOT IN ('custom_order', 'payment_overdue', 'refund_decision', 'paid_after_cancel', 'refund_send', 'arrival_check') OR order_id IS NOT NULL)), -- 할 일마다 참조할 대상이 있음
-  CONSTRAINT owner_tasks_late_chk CHECK (wait_status IS NULL OR wait_status IN ('waiting', 'answered') OR late_notice_at IS NOT NULL), -- 지연·할 일에 남음은 지연 안내 뒤
-  CONSTRAINT owner_tasks_answered_chk CHECK (wait_status IS NULL OR (wait_status = 'answered') = (closed_at IS NOT NULL))
+  CONSTRAINT owner_tasks_late_chk CHECK (wait_status IS DISTINCT FROM 'late' OR late_notice_at IS NOT NULL), -- 지연은 지연 안내 뒤. 지연 안내 전에 닫는 때가 오면 지연 안내 없이 닫힘(1-7)
+  CONSTRAINT owner_tasks_answered_chk CHECK (wait_status IS NULL OR (wait_status IN ('answered', 'closed_no_answer')) = (closed_at IS NOT NULL)), -- 기다림은 답함·답 없어 닫힘일 때 닫힘
+  CONSTRAINT owner_tasks_no_answer_chk CHECK (wait_status IS DISTINCT FROM 'closed_no_answer' OR kind IN ('handoff', 'custom_order', 'change_request', 'payment_claim')) -- 답 없어 닫힘은 닫는 때가 있는 넷만. 맞추는 중·환불 결정·문제 신고는 사장님만 끝냄(1-7)
 );
 CREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL; -- 할 일 목록(TERM-059)
 CREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting'; -- 지연 안내 보낼 것 찾기(SPEC-024)
@@ -1109,9 +1120,9 @@ CREATE TABLE notifications (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 알림 ID
   shop_id          uuid NOT NULL,                        -- 가게
   customer_id      uuid NOT NULL,                        -- 받을 손님
-  consultation_id  uuid NOT NULL,                        -- 그 손님의 상담(못 보내면 다음 대화 때 먼저 전함)
+  consultation_id  uuid NOT NULL,                        -- 그 손님의 상담. 상담이 문의 끊김이어도 이 안내는 보내고, 못 보내면 다음 대화 때(새 상담이면 고지 뒤) 먼저 전함(REQ-122, REQ-212)
   order_id         uuid,                                 -- 관련 주문
-  kind             text NOT NULL CHECK (kind IN ('owner_reply', 'delay_notice', 'channel_add', 'custom_rejected', 'payment_request', 'payment_mismatch', 'order_confirmed', 'cancelled', 'change_result', 'change_not_applied', 'refund', 'compensation', 'day_before', 'completion_photo', 'review_request', 'refund_sent', 'payment_corrected')), -- 사장님 답·지연 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·금액 불일치·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁·환불 보냄(REQ-172)·결제 확인 정정(REQ-169)
+  kind             text NOT NULL CHECK (kind IN ('owner_reply', 'delay_notice', 'channel_add', 'custom_rejected', 'payment_request', 'payment_mismatch', 'order_confirmed', 'cancelled', 'change_result', 'change_not_applied', 'refund', 'compensation', 'day_before', 'completion_photo', 'review_request', 'refund_sent', 'payment_corrected', 'no_answer_closed')), -- 사장님 답·지연 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·금액 불일치·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁·환불 보냄(REQ-172)·결제 확인 정정(REQ-169)·답 없어 닫힘(맞춤 주문 요청·변경 요청·에스컬레이션 건, REQ-213, REQ-214, REQ-216)
   event_key        text NOT NULL,                        -- 같은 주문의 같은 이벤트는 한 번(REQ-154)
   template_key     text NOT NULL,                        -- 서버의 정해진 템플릿. AI가 쓰지 않고 광고를 넣지 않음(REQ-111)
   body             text NOT NULL CHECK (char_length(body) BETWEEN 1 AND 2000), -- 보낼 글. 다른 손님 정보·내부 ID 없음(G6). 결제 안내의 가게 계좌번호는 넣지 않고 자리만 두어 안내를 보일 때 채움(SPEC-032, REQ-191). 주문이 끝나고 30일 뒤나 상담을 지울 때 행째 지움(SPEC-065)
@@ -1327,6 +1338,38 @@ $guard$;
 CREATE TRIGGER access_logs_guard BEFORE UPDATE OR DELETE ON access_logs FOR EACH ROW EXECUTE FUNCTION access_logs_guard();
 CREATE TRIGGER access_logs_guard_truncate BEFORE TRUNCATE ON access_logs FOR EACH STATEMENT EXECUTE FUNCTION access_logs_guard();
 
+-- 받음·미수령인 주문은 제작 행의 인도·미수령 시각과 짝이 맞아야 커밋됨(설계 재검토 M9, 4절 A27, 5절 E3). 주문 상태와 제작 행을
+-- 한 트랜잭션에서 쓰므로 트랜잭션 끝에 봄(지연 제약 트리거). 받음이면 인도 시각이 있고, 미수령이면 인도 시각 없이 미수령 시각이 있음
+CREATE FUNCTION orders_production_sync_check() RETURNS trigger
+LANGUAGE plpgsql AS $sync$
+DECLARE
+  target uuid;
+  order_status text;
+  handed timestamptz;
+  missed timestamptz;
+BEGIN
+  IF TG_TABLE_NAME = 'orders' THEN
+    target := NEW.id;
+  ELSIF TG_OP = 'DELETE' THEN
+    target := OLD.order_id;
+  ELSE
+    target := NEW.order_id;
+  END IF;
+  SELECT o.status INTO order_status FROM orders o WHERE o.id = target;
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+  SELECT p.handed_over_at, p.no_pickup_at INTO handed, missed FROM productions p WHERE p.order_id = target;
+  IF (order_status = 'received') <> (handed IS NOT NULL)
+     OR (order_status = 'no_pickup') <> (missed IS NOT NULL AND handed IS NULL) THEN
+    RAISE EXCEPTION 'orders_production_sync: 주문 상태(%)와 제작 행의 인도·미수령 시각이 맞지 않음', order_status USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END
+$sync$;
+CREATE CONSTRAINT TRIGGER orders_production_sync AFTER INSERT OR UPDATE OF status ON orders DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION orders_production_sync_check();
+CREATE CONSTRAINT TRIGGER productions_order_sync AFTER INSERT OR UPDATE OF handed_over_at, no_pickup_at OR DELETE ON productions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION orders_production_sync_check();
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- 컨텍스트별 테이블
 -- CTX-001 상담: TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-024, TBL-027, TBL-028, TBL-029, TBL-048, TBL-049
@@ -1395,7 +1438,7 @@ COMMENT ON COLUMN shops.entrustment_terms_version IS '동의한 개인정보 처
 COMMENT ON COLUMN shops.entrustment_consented_at IS '그 조건에 동의한 시각';
 COMMENT ON COLUMN shops.time_zone IS '가게 시간대. 시각 계산은 이 시간대로(G8)';
 COMMENT ON COLUMN shops.completion_photo_enabled IS '완성 사진 보내기(SPEC-009, 기본 꺼짐)';
-COMMENT ON COLUMN shops.idle_close_hours IS '문의 끊김까지 시간(REQ-019, 기본 24시간)';
+COMMENT ON COLUMN shops.idle_close_hours IS '문의 끊김까지 시간(REQ-211, 기본 24시간)';
 COMMENT ON COLUMN shops.owner_wait_minutes IS '사장님 답 기다리는 시간(REQ-116, 기본 2시간)';
 COMMENT ON COLUMN shops.daily_ai_cost_limit_krw IS '하루 AI 비용 한도(REQ-163, 기본 5,000원)';
 COMMENT ON COLUMN shops.booking_slug IS '예약 링크(TERM-042) 주소의 가게 몫. 낸 뒤 바뀌지 않음(SPEC-010)';
@@ -1462,7 +1505,7 @@ COMMENT ON COLUMN operating_rules.id IS '운영규정 버전 ID';
 COMMENT ON COLUMN operating_rules.shop_id IS '가게';
 COMMENT ON COLUMN operating_rules.version IS '버전(TERM-005). 받은 주문은 그때 버전을 따름(REQ-030)';
 COMMENT ON COLUMN operating_rules.quote_valid_hours IS '견적 유효 기한(REQ-034, 기본 안내 뒤 72시간)';
-COMMENT ON COLUMN operating_rules.payment_due_hours IS '결제 기한(TERM-030, REQ-087, 기본 결제 안내 뒤 12시간)';
+COMMENT ON COLUMN operating_rules.payment_due_hours IS '결제 기한(TERM-030, REQ-218): 결제 안내가 손님에게 전해진 뒤 기본 12시간, 결제 기한 상한까지';
 COMMENT ON COLUMN operating_rules.issue_report_hours IS '문제 신고 기한(REQ-072, 기본 받은 뒤 24시간)';
 COMMENT ON COLUMN operating_rules.change_deadline_hours IS '변경 마감: 픽업 일시 몇 시간 전까지(SPEC-041). 기본값 없음, 가게가 넣음';
 COMMENT ON COLUMN operating_rules.cancellation_fee_krw IS '고정 취소 수수료(TERM-016). 계산에서는 주문 금액까지만 뺌';
@@ -1517,7 +1560,7 @@ COMMENT ON COLUMN customers.id IS '손님 ID';
 COMMENT ON COLUMN customers.shop_id IS '가게';
 COMMENT ON COLUMN customers.kakao_channel_id IS '메시지를 보낸 가게 채널';
 COMMENT ON COLUMN customers.kakao_user_key IS '그 채널의 카카오 사용자 키. 손님 명령은 이 키로 구분함(G1). 상담이 모두 지워지고 주문이 모두 보관 기록이 되면 지움(SPEC-065, REQ-190)';
-COMMENT ON COLUMN customers.channel_friend IS '채널 친구인지. 먼저 보내는 안내는 친구에게만(REQ-120)';
+COMMENT ON COLUMN customers.channel_friend IS '채널 친구인지. 손님이 말을 걸 때마다 카카오가 알린 값으로 고치고 알리지 않았으면 친구 아님, 먼저 보낸 안내가 친구 아님으로 실패해도 친구 아님(REQ-219). 먼저 보내는 안내는 친구에게만(REQ-120)';
 COMMENT ON COLUMN customers.friend_checked_at IS '친구 여부를 마지막으로 본 시각';
 COMMENT ON COLUMN customers.created_at IS '처음 말을 건 시각';
 COMMENT ON COLUMN customers.purged_at IS '카카오 사용자 키를 지운 시각(SPEC-065, REQ-190). 같은 사용자가 다시 말을 걸면 새 손님 행으로 받음';
@@ -1526,7 +1569,7 @@ COMMENT ON COLUMN consultations.shop_id IS '가게. 채널로 찾은 가게 ID�
 COMMENT ON COLUMN consultations.customer_id IS '손님';
 COMMENT ON COLUMN consultations.status IS '열림·사장님 답 기다림·문의 끊김·주문으로 전환됨·상담 끝남·지워짐(1-1). 상담 끝남과 지워짐은 다시 열지 않고 손님의 다음 말은 새 상담(REQ-189)';
 COMMENT ON COLUMN consultations.ai_disclosed_at IS 'AI 상담 고지(TERM-041)를 보낸 시각(REQ-002). 상담마다 한 번, 이어가는 상담에는 다시 보내지 않음(R5)';
-COMMENT ON COLUMN consultations.last_customer_message_at IS '손님의 마지막 메시지 시각(문의 끊김 셈, REQ-019)';
+COMMENT ON COLUMN consultations.last_customer_message_at IS '손님의 마지막 메시지 시각(문의 끊김 셈, REQ-211)';
 COMMENT ON COLUMN consultations.dropped_at IS '문의 끊김으로 닫은 시각(30일 지우기 셈, REQ-186)';
 COMMENT ON COLUMN consultations.ended_at IS '상담 끝남으로 닫은 시각: 다룬 주문이 모두 끝나고 손님의 마지막 메시지 뒤 가게가 정한 시간이 지남(30일 지우기 셈, SPEC-025, REQ-189)';
 COMMENT ON COLUMN consultations.turn_trace_id IS 'AI 답을 만드는 중인 차례의 추적 ID. 빈 값이면 쉬는 중. 이어 온 메시지는 다음 차례에 모아 답함(3-3)';
@@ -1625,7 +1668,7 @@ COMMENT ON COLUMN orders.confirmed_at IS '주문 확정(TERM-012) 시각. 결제
 COMMENT ON COLUMN orders.rejected_at IS '맞춤 주문을 거절한 시각';
 COMMENT ON COLUMN orders.reject_reason IS '거절 사유';
 COMMENT ON COLUMN orders.cancelled_at IS '취소된 시각';
-COMMENT ON COLUMN orders.cancel_kind IS '손님이 취소함·가게 사정으로 취소됨·결제 없어 취소됨';
+COMMENT ON COLUMN orders.cancel_kind IS '손님이 취소함·가게 사정으로 취소됨·결제 없어 취소됨(사장님이 고르거나 픽업 일시까지 고르지 않음, REQ-217)·답 없어 닫힘(맞춤 주문 요청에 그 픽업 날짜의 주문 마감까지 사장님 답이 없음, REQ-213)';
 COMMENT ON COLUMN orders.cancel_reason IS '가게 사정 취소의 사유(SPEC-048)';
 COMMENT ON COLUMN orders.remake_of_order_id IS '재제작(TERM-034) 주문이면 원래 주문(R21)';
 COMMENT ON COLUMN orders.finished_at IS '주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없음(SPEC-025, SPEC-065). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)';
@@ -1654,8 +1697,8 @@ COMMENT ON COLUMN change_requests.card_id IS '손님이 누른 변경 요청 카
 COMMENT ON COLUMN change_requests.base_version IS '카드에 묶인 주문 버전. 현재 버전과 다르면 받지 않음(REQ-133)';
 COMMENT ON COLUMN change_requests.changes IS '바꾸려는 내용(디자인·문구·날짜·시간). 주문이 끝나고 30일 뒤 빈 객체({})로 비움(SPEC-065)';
 COMMENT ON COLUMN change_requests.new_pickup_at IS '날짜·시간을 바꾸면 새 픽업 일시';
-COMMENT ON COLUMN change_requests.needs_owner_day IS '새 날이 휴무·마감이라 받을지 사장님이 정함(SPEC-041)';
-COMMENT ON COLUMN change_requests.status IS '요청됨·차액 결제 기다림·반영됨·거절됨·차액 없어 닫힘·오래된 버전이라 받지 않음·주문 취소로 닫힘(1-5)';
+COMMENT ON COLUMN change_requests.needs_owner_day IS '새 날이 휴무일이거나 마감된 날이라 사장님이 휴무일임이나 초과해 받는 것을 확인한 뒤에만 받음(SPEC-041, REQ-221, REQ-226)';
+COMMENT ON COLUMN change_requests.status IS '요청됨·차액 결제 기다림·반영됨·거절됨·차액 없어 닫힘·오래된 버전이라 받지 않음·주문 취소로 닫힘·답 없어 닫힘(1-5). 답 없어 닫힘은 변경 마감까지 사장님 답이 없을 때(REQ-214)';
 COMMENT ON COLUMN change_requests.amount_delta IS '수락할 때 금액 차이: 더하면 추가 금액, 빼면 줄어든 금액, 0이면 그대로(SPEC-042)';
 COMMENT ON COLUMN change_requests.reject_reason IS '거절 사유';
 COMMENT ON COLUMN change_requests.decided_at IS '사장님이 답한 시각';
@@ -1699,12 +1742,13 @@ COMMENT ON COLUMN handoffs.source_message_id IS '에스컬레이션한 손님 �
 COMMENT ON COLUMN handoffs.order_id IS '관련 주문(있으면)';
 COMMENT ON COLUMN handoffs.reason IS '에스컬레이션한 사유: 먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·AI 실패·AI 비용 한도·콜백 시간 초과·마스킹 실패·빈 답·조문 없음';
 COMMENT ON COLUMN handoffs.requested_day IS '마감된 날에 추가로 받을지 묻는 질문의 날짜(SPEC-014)';
-COMMENT ON COLUMN handoffs.status IS '열림·답함';
+COMMENT ON COLUMN handoffs.status IS '열림·답함·답 없어 닫힘(남긴 지 7일, REQ-216)';
 COMMENT ON COLUMN handoffs.answer_text IS '사장님 답. AI가 고치지 않고 그대로 전함(SPEC-023)';
 COMMENT ON COLUMN handoffs.day_decision IS '마감된 날: 추가 수락·받지 않음';
 COMMENT ON COLUMN handoffs.day_accept_expires_at IS '추가 수락한 날에 주문 요청으로 자리를 잡을 수 있는 기한(24시간, SPEC-023)';
 COMMENT ON COLUMN handoffs.appended_alerted_at IS '''새 질문 덧붙음'' 알림을 마지막으로 보낸 시각(하루 한 번까지, SPEC-022)';
 COMMENT ON COLUMN handoffs.answered_at IS '답한 시각';
+COMMENT ON COLUMN handoffs.closed_at IS '답 없어 닫힌 시각(남긴 지 7일, REQ-216). 그 뒤 상담은 문의 끊김으로 닫히고 지워질 수 있음(1-1)';
 COMMENT ON COLUMN handoffs.created_at IS '에스컬레이션한 시각';
 COMMENT ON COLUMN issue_details.id IS '신고 내용 ID';
 COMMENT ON COLUMN issue_details.shop_id IS '가게';
@@ -1750,9 +1794,11 @@ COMMENT ON COLUMN payment_requests.amount IS '안내 금액: 수락한 버전(�
 COMMENT ON COLUMN payment_requests.requested_amount IS '금액 변경 수락이면 손님이 요청한 금액(함께 보임, REQ-155)';
 COMMENT ON COLUMN payment_requests.payment_account_id IS '이 안내에 포함한 가게 계좌. 계좌를 바꿔도 나간 안내는 그대로';
 COMMENT ON COLUMN payment_requests.card_payment_url IS '이 안내에 포함한 카드 결제 링크(있으면)';
-COMMENT ON COLUMN payment_requests.issued_at IS '낸 시각. 결제 기한은 보낸 시각이 아니라 이때부터 셈(R12)';
-COMMENT ON COLUMN payment_requests.due_at IS '결제 기한(TERM-030). 차액 결제는 변경 마감과 이른 쪽(R18)';
-COMMENT ON COLUMN payment_requests.claimed_at IS '손님 ''입금 알리기'' 시각. 기한 전이면 자리를 지킴(R14)';
+COMMENT ON COLUMN payment_requests.issued_at IS '낸 시각. 결제 기한은 이때가 아니라 손님에게 전해진 시각부터 셈(REQ-218)';
+COMMENT ON COLUMN payment_requests.delivered_at IS '결제 안내가 손님에게 전해진 시각: 대화 중 답으로 보임·먼저 보낸 안내가 닿음·다음 대화 때 전함(SPEC-032). 빈 값이면 ''아직 못 전함''(SPEC-037)';
+COMMENT ON COLUMN payment_requests.due_at IS '결제 기한(TERM-030): 전해진 시각에 운영규정의 결제 기한을 더한 때와 결제 기한 상한 가운데 이른 쪽. 전해지기 전에는 상한(REQ-218)';
+COMMENT ON COLUMN payment_requests.due_cap_at IS '결제 기한 상한: 첫 결제·다시 낸 결제는 그 픽업 날짜의 주문 마감(이미 지났으면 픽업 일시), 차액 결제는 변경 마감(REQ-218, R18). 낼 때 정함. 확인 요청됨도 이때 기한 지남(REQ-223)';
+COMMENT ON COLUMN payment_requests.claimed_at IS '손님이 입금했다고 알려 결제 확인을 요청한 시각(REQ-224). 기한 전이면 결제 기한 상한까지 자리를 지킴(R14, REQ-223)';
 COMMENT ON COLUMN payment_requests.claim_card_id IS '손님이 누른 입금 알리기 카드';
 COMMENT ON COLUMN payment_requests.claim_rejected_at IS '사장님이 ''미입금''을 고른 시각. 확인 요청은 결제 안내마다 한 번이라 다시 받지 않음(SPEC-033)';
 COMMENT ON COLUMN payment_requests.depositor_name IS '입금자 이름(입금 대조, TERM-063). 손님이 결제 확인을 요청할 때 AI를 거치지 않는 입력으로 받고, 따로 넣지 않으면 주문자 이름(SPEC-033, REQ-176). AI로 보내지 않음(REQ-178). 주문이 끝나고 30일 뒤 지움(SPEC-065)';
@@ -1797,10 +1843,10 @@ COMMENT ON COLUMN slot_holds.id IS '자리 ID';
 COMMENT ON COLUMN slot_holds.shop_id IS '가게';
 COMMENT ON COLUMN slot_holds.day IS '자리의 날짜(가게 시간대)';
 COMMENT ON COLUMN slot_holds.order_id IS '자리를 가진 주문';
-COMMENT ON COLUMN slot_holds.payment_request_id IS '잡힘이면 그 결제 안내. 그 결제 기한까지 잡음(R13)';
+COMMENT ON COLUMN slot_holds.payment_request_id IS '잡힘이면 그 결제 안내. 그 결제 기한까지 잡고, 확인 요청됨이면 결제 기한 상한까지(R13, REQ-223)';
 COMMENT ON COLUMN slot_holds.hold_key IS '같은 주문의 같은 가예약은 한 번(주문 ID와 결제 안내 ID 등, SPEC-015)';
 COMMENT ON COLUMN slot_holds.status IS '가예약됨·확정됨·해제됨·종료됨(1-4)';
-COMMENT ON COLUMN slot_holds.overbooked IS '마감 후 추가 수락: 다 찬 날에 사장님이 추가 수락한 자리(R10). 그날은 다른 손님에게 계속 마감(REQ-045)';
+COMMENT ON COLUMN slot_holds.overbooked IS '마감 후 추가 수락: 다 찬 날이나 휴무일에 사장님이 확인하고 받은 자리(R10, REQ-221, REQ-226). 그날은 다른 손님에게 계속 마감(REQ-045)';
 COMMENT ON COLUMN slot_holds.fixed_at IS '확정 자리가 된 시각(결제 확인됨, 날짜 변경의 새 날, 재제작)';
 COMMENT ON COLUMN slot_holds.released_at IS '풀린 시각';
 COMMENT ON COLUMN slot_holds.release_reason IS '결제 기한 지남·주문 취소·날짜 변경의 옛 날';
@@ -1814,9 +1860,9 @@ COMMENT ON COLUMN productions.custom_material_ordered_at IS '맞춤 재료 주�
 COMMENT ON COLUMN productions.production_started_at IS '제작 시작 시각(환불 근거, REQ-090)';
 COMMENT ON COLUMN productions.completed_at IS '완성 표시 시각';
 COMMENT ON COLUMN productions.changed_after_start IS '재료 주문·제작 시작 뒤 변경이 반영됨. 제작 목록의 ''변경됨''(SPEC-045)';
-COMMENT ON COLUMN productions.handed_over_at IS '인도 시각(REQ-091)';
+COMMENT ON COLUMN productions.handed_over_at IS '인도 시각(REQ-091). 있으면 주문은 받음(4절 A27)';
 COMMENT ON COLUMN productions.handover_kind IS '픽업 완료됨·퀵(TERM-024)으로 보냄';
-COMMENT ON COLUMN productions.no_pickup_at IS '미수령(TERM-025) 표시 시각';
+COMMENT ON COLUMN productions.no_pickup_at IS '미수령(TERM-025) 표시 시각. 인도 시각 없이 있으면 주문은 미수령(4절 A27)';
 COMMENT ON COLUMN productions.discarded_at IS '미수령 케이크 폐기 시각(REQ-094)';
 COMMENT ON COLUMN productions.created_at IS '제작 목록에 오른 시각(주문 확정)';
 COMMENT ON COLUMN production_undos.id IS '되돌림 ID';
@@ -1877,13 +1923,13 @@ COMMENT ON COLUMN owner_tasks.change_request_id IS '변경 요청';
 COMMENT ON COLUMN owner_tasks.issue_report_id IS '문제 신고';
 COMMENT ON COLUMN owner_tasks.payment_request_id IS '결제 안내';
 COMMENT ON COLUMN owner_tasks.refund_id IS '보낼 환불(환불 보내기, REQ-173)';
-COMMENT ON COLUMN owner_tasks.wait_status IS '사장님 답 기다림(1-7): 기다림·지연·할 일에 남음·답함. 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고만';
-COMMENT ON COLUMN owner_tasks.wait_due_at IS '기다림이 끝나는 시각. 답하는 시간 안에서만 셈(REQ-118)';
-COMMENT ON COLUMN owner_tasks.late_notice_at IS '손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156)';
-COMMENT ON COLUMN owner_tasks.realerted_at IS '사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)';
+COMMENT ON COLUMN owner_tasks.wait_status IS '사장님 답 기다림(1-7): 기다림·지연(지연 안내와 다시 알림 뒤 할 일 목록에 남음)·답함·답 없어 닫힘. 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정만(REQ-215)';
+COMMENT ON COLUMN owner_tasks.wait_due_at IS '지연 안내를 보낼 시각: 기다리는 시간을 답하는 시간 안에서만 셈(REQ-118). 답 없어 닫는 때(1-7)와 다름';
+COMMENT ON COLUMN owner_tasks.late_notice_at IS '손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156, REQ-215)';
+COMMENT ON COLUMN owner_tasks.realerted_at IS '사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117, REQ-215), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)';
 COMMENT ON COLUMN owner_tasks.detail IS '보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음. 주문이 끝나고 30일 뒤 비움(SPEC-065)';
 COMMENT ON COLUMN owner_tasks.opened_at IS '생긴 시각';
-COMMENT ON COLUMN owner_tasks.closed_at IS '사장님이 처리해 닫힌 시각(SPEC-067)';
+COMMENT ON COLUMN owner_tasks.closed_at IS '사장님이 처리해 닫히거나 답 없어 닫힌 시각(SPEC-067, 1-7)';
 COMMENT ON COLUMN owner_alerts.id IS '사장님 알림 ID';
 COMMENT ON COLUMN owner_alerts.shop_id IS '가게';
 COMMENT ON COLUMN owner_alerts.owner_task_id IS '알린 할 일. 상담을 지울 때 그 상담의 에스컬레이션 할 일은 지우고 이 연결만 비움(SPEC-065, 설계 재검토 H3)';
@@ -1902,9 +1948,9 @@ COMMENT ON COLUMN owner_alerts.created_at IS '만든 시각';
 COMMENT ON COLUMN notifications.id IS '알림 ID';
 COMMENT ON COLUMN notifications.shop_id IS '가게';
 COMMENT ON COLUMN notifications.customer_id IS '받을 손님';
-COMMENT ON COLUMN notifications.consultation_id IS '그 손님의 상담(못 보내면 다음 대화 때 먼저 전함)';
+COMMENT ON COLUMN notifications.consultation_id IS '그 손님의 상담. 상담이 문의 끊김이어도 이 안내는 보내고, 못 보내면 다음 대화 때(새 상담이면 고지 뒤) 먼저 전함(REQ-122, REQ-212)';
 COMMENT ON COLUMN notifications.order_id IS '관련 주문';
-COMMENT ON COLUMN notifications.kind IS '사장님 답·지연 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·금액 불일치·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁·환불 보냄(REQ-172)·결제 확인 정정(REQ-169)';
+COMMENT ON COLUMN notifications.kind IS '사장님 답·지연 안내(TERM-036)·채널 추가 권함·맞춤 거절·결제 안내·금액 불일치·확정 안내·취소·변경 결과(반영·거절)·변경 안 됨·환불·보상·전날 안내·완성 사진·후기 부탁·환불 보냄(REQ-172)·결제 확인 정정(REQ-169)·답 없어 닫힘(맞춤 주문 요청·변경 요청·에스컬레이션 건, REQ-213, REQ-214, REQ-216)';
 COMMENT ON COLUMN notifications.event_key IS '같은 주문의 같은 이벤트는 한 번(REQ-154)';
 COMMENT ON COLUMN notifications.template_key IS '서버의 정해진 템플릿. AI가 쓰지 않고 광고를 넣지 않음(REQ-111)';
 COMMENT ON COLUMN notifications.body IS '보낼 글. 다른 손님 정보·내부 ID 없음(G6). 결제 안내의 가게 계좌번호는 넣지 않고 자리만 두어 안내를 보일 때 채움(SPEC-032, REQ-191). 주문이 끝나고 30일 뒤나 상담을 지울 때 행째 지움(SPEC-065)';

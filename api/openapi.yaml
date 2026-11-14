@@ -8022,7 +8022,7 @@ paths:
       operationId: listOwnerTasks
       summary: 할 일 목록
       description: |-
-        사장님이 정할 일(에스컬레이션 건·맞춤 주문·결제 확인 요청·맞추는 중·결제 기한 지남·변경 요청·문제 신고·환불 결정·취소 뒤 들어온 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)). 환불 보내기는 '보냄'을 표시하면 닫히고, 정한 뒤 24시간이 지나면 한 번 다시 알린다. 기다림 상태(waitStatus)는 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고에만(SPEC-024). subject가 열 화면. 알림은 우리 서비스 채널로 가고, 사장님이 채널 친구가 아니면 alertChannelFriend false(SPEC-067).
+        사장님이 정할 일(에스컬레이션 건·맞춤 주문·결제 확인 요청·맞추는 중·결제 기한 지남·변경 요청·문제 신고·환불 결정·취소 뒤 들어온 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)). 환불 보내기는 '보냄'을 표시하면 닫히고, 정한 뒤 24시간이 지나면 한 번 다시 알린다. 기다림 상태(waitStatus)는 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정에만(SPEC-024, REQ-215): 기다림·지연·답함·답 없어 닫힘. 답 없어 닫힘은 에스컬레이션 건(7일)·맞춤 주문(그 픽업 날짜의 주문 마감)·변경 요청(변경 마감)·결제 확인 요청(결제 기한 상한)만이고, 맞추는 중·환불 결정·문제 신고는 지연 뒤에도 할 일 목록에 남는다(1-7). subject가 열 화면. 알림은 우리 서비스 채널로 가고, 사장님이 채널 친구가 아니면 alertChannelFriend false(SPEC-067).
 
         SPEC: SPEC-067, SPEC-022, SPEC-024, SPEC-037
       tags:
@@ -8079,15 +8079,15 @@ paths:
                       closedAt: null
                     - taskId: 072547ab-400d-5fbf-b9d9-ff0fd681db16
                       kind: payment_claim
-                      waitStatus: null
-                      waitDueAt: null
+                      waitStatus: waiting
+                      waitDueAt: '2026-11-12T15:40:00+09:00'
                       order:
                         orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
                         orderNo: K7Q3M9
                       subject:
                         type: payment_request
                         id: 319cfb99-4f34-5128-b1ed-e1197c6449b3
-                      summary: 입금 확인 요청 36,000원
+                      summary: 결제 확인 요청 36,000원
                       openedAt: '2026-11-12T13:40:00+09:00'
                       closedAt: null
                     - taskId: a21cdbdb-b6eb-5654-bc35-7fb11387bfc7
@@ -8250,7 +8250,7 @@ paths:
       operationId: getHandoff
       summary: 에스컬레이션 건 하나
       description: |-
-        에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 덧붙은 말. 마감된 날 질문이면 requestedDay.
+        에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 덧붙은 말. 마감된 날 질문이면 requestedDay. 남긴 지 7일 동안 사장님 답이 없으면 서버가 status closed_no_answer와 closedAt으로 닫고 손님에게 다시 물어 달라고 한 번 알린다(REQ-216).
 
         SPEC: SPEC-022, SPEC-023, SPEC-021
       tags:
@@ -8269,7 +8269,7 @@ paths:
       - ownerSession: []
       responses:
         "200":
-          description: '성공. 예시: edibility, closed_day'
+          description: '성공. 예시: edibility, closed_day, closed_no_answer'
           content:
             application/json:
               schema:
@@ -8292,6 +8292,7 @@ paths:
                     dayDecision: null
                     dayAcceptExpiresAt: null
                     answeredAt: null
+                    closedAt: null
                     createdAt: '2026-11-12T12:40:00+09:00'
                     revision: 5180abda389e
                 closed_day:
@@ -8311,8 +8312,29 @@ paths:
                     dayDecision: null
                     dayAcceptExpiresAt: null
                     answeredAt: null
+                    closedAt: null
                     createdAt: '2026-11-12T12:40:00+09:00'
                     revision: edb8d91d4d88
+                closed_no_answer:
+                  value:
+                    handoffId: 1acf198e-ed93-5325-a5a7-f7aeed2ba3c4
+                    consultationId: bcd84dae-e6a0-5123-9b55-01b028834b28
+                    reason: edibility
+                    status: closed_no_answer
+                    requestedDay: null
+                    order: null
+                    customerLines:
+                    - at: '2026-11-12T12:40:00+09:00'
+                      text: 땅콩 알레르기가 있는데 먹어도 되나요?
+                      photos: []
+                    customerChannelFriend: true
+                    answerText: null
+                    dayDecision: null
+                    dayAcceptExpiresAt: null
+                    answeredAt: null
+                    closedAt: '2026-11-19T12:40:00+09:00'
+                    createdAt: '2026-11-12T12:40:00+09:00'
+                    revision: 938bb8f5292a
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -8383,6 +8405,8 @@ paths:
           - 401:unauthenticated
           대상:
           - 404:not_found
+          상태:
+          - example:closed_no_answer
           노출:
           - closed
           - note:원래 값은 그 가게 사장님 화면과 사유를 적고 연 운영자에게만(SPEC-021, DEC-19)
@@ -8393,7 +8417,7 @@ paths:
       operationId: answerHandoff
       summary: 에스컬레이션 건 답변
       description: |-
-        사장님 답을 AI가 고치지 않고 그대로 손님에게 전한다(친구면 바로, 아니면 다음 대화 때 먼저, SPEC-066). 기다림 타이머를 멈춘다(SPEC-024). 마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락한 날로 표시한다. 이미 답한 질문은 409 already_decided. 사장님이 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict.
+        사장님 답을 AI가 고치지 않고 그대로 손님에게 전한다(친구면 바로, 아니면 다음 대화 때 먼저, SPEC-066). 기다림 타이머를 멈춘다(SPEC-024). 마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락한 날로 표시한다. 이미 답한 질문은 409 already_decided. 남긴 지 7일 동안 답이 없어 '답 없어 닫힘'으로 닫힌 건은 409 invalid_state(손님이 다시 물으면 새 건, REQ-216). 사장님이 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict.
 
         SPEC: SPEC-023, SPEC-024, SPEC-066
       tags:
@@ -8457,6 +8481,7 @@ paths:
                       dayDecision: null
                       dayAcceptExpiresAt: null
                       answeredAt: '2026-11-12T13:00:00+09:00'
+                      closedAt: null
                       createdAt: '2026-11-12T12:40:00+09:00'
                       revision: e725557d3898
                     delivery: sent
@@ -8479,6 +8504,7 @@ paths:
                       dayDecision: accepted
                       dayAcceptExpiresAt: '2026-11-13T16:30:00+09:00'
                       answeredAt: '2026-11-12T16:30:00+09:00'
+                      closedAt: null
                       createdAt: '2026-11-12T12:40:00+09:00'
                       revision: 5b1ff62b6836
                     delivery: deferred
@@ -8526,6 +8552,7 @@ paths:
 
             - `version_conflict`: 화면이 본 뒤에 그 기록이 바뀜(baseRevision이 지금과 다름). 아무것도 바꾸지 않음
             - `already_decided`: 다른 결정이 이미 남음(이미 처리됨·이미 답함)
+            - `invalid_state`: 지금 상태에서는 할 수 없는 명령(상태 머신 1-1~1-8이 허용하지 않음)
             - `request_in_progress`: 같은 요청 키의 첫 요청을 아직 처리하는 중
           content:
             application/problem+json:
@@ -8550,6 +8577,15 @@ paths:
                     instance: /owner/handoffs/1acf198e-ed93-5325-a5a7-f7aeed2ba3c4/answer
                     code: already_decided
                     traceId: 59dd5ba4c5c7f1a7e4ef9a02058e61dd
+                invalid_state:
+                  value:
+                    type: /problems/invalid_state
+                    title: 지금 상태에서는 할 수 없어요
+                    status: 409
+                    detail: 지금 상태에서는 할 수 없는 명령(상태 머신 1-1~1-8이 허용하지 않음)
+                    instance: /owner/handoffs/1acf198e-ed93-5325-a5a7-f7aeed2ba3c4/answer
+                    code: invalid_state
+                    traceId: fd7055090a1297be2ea7c73938ab82be
                 request_in_progress:
                   value:
                     type: /problems/request_in_progress
@@ -8638,6 +8674,7 @@ paths:
           - 404:not_found
           상태:
           - 409:already_decided
+          - 409:invalid_state
           반복:
           - idem
           동시:
@@ -8832,7 +8869,7 @@ paths:
       operationId: listOrders
       summary: 주문 목록
       description: |-
-        상태·종류·픽업 날짜로 거른다. status=payment_overdue가 결제 기한 지난 주문 목록(SPEC-037), status=requested&kind=custom이 답할 맞춤 주문. 끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)은 나오지 않는다.
+        상태·종류·픽업 날짜로 거른다. status=payment_overdue가 결제 기한 지난 주문 목록(SPEC-037)이고, paymentNotice로 결제 안내가 손님에게 전해진 시각이나 아직 못 전함(deliveredAt null)을 보인다. status=requested&kind=custom이 답할 맞춤 주문. 끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)은 나오지 않는다.
 
         SPEC: SPEC-031, SPEC-037, SPEC-068
       tags:
@@ -8904,6 +8941,7 @@ paths:
                       customerName: 박하늘
                       requestedAt: '2026-11-12T14:10:00+09:00'
                       isRemake: false
+                      paymentNotice: null
                       revision: 21c5e38f3fa4
                     - orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
                       orderNo: K7Q3M9
@@ -8917,6 +8955,10 @@ paths:
                       customerName: 이지우
                       requestedAt: '2026-11-12T13:05:00+09:00'
                       isRemake: false
+                      paymentNotice:
+                        status: paid
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
+                        dueAt: '2026-11-13T01:05:00+09:00'
                       revision: 7f14e2e6ed1a
                     nextCursor: b3JkZXI6MjAyNi0xMS0yMA
                 overdue:
@@ -8934,7 +8976,28 @@ paths:
                       customerName: 박하늘
                       requestedAt: '2026-11-12T14:10:00+09:00'
                       isRemake: false
+                      paymentNotice:
+                        status: expired
+                        deliveredAt: '2026-11-12T15:00:00+09:00'
+                        dueAt: '2026-11-13T03:00:00+09:00'
                       revision: 6dea8dff09f8
+                    - orderId: 9fbb3d0b-8f03-55e6-964b-e4d13c966cbd
+                      orderNo: W5N2C8
+                      kind: custom
+                      status: payment_overdue
+                      version: 2
+                      pickupAt: '2026-11-21T11:00:00+09:00'
+                      pickupDay: '2026-11-21'
+                      amount: 75000
+                      courierPickup: false
+                      customerName: 박서윤
+                      requestedAt: '2026-11-14T09:30:00+09:00'
+                      isRemake: false
+                      paymentNotice:
+                        status: expired
+                        deliveredAt: null
+                        dueAt: '2026-11-19T18:00:00+09:00'
+                      revision: dccdfbcbb1d4
                     nextCursor: null
                 empty:
                   summary: 빈 목록
@@ -9064,7 +9127,7 @@ paths:
       - ownerSession: []
       responses:
         "200":
-          description: '성공. 예시: custom_requested, confirmed, changed, remake'
+          description: '성공. 예시: custom_requested, confirmed, changed, remake, custom_no_answer'
           content:
             application/json:
               schema:
@@ -9248,7 +9311,9 @@ paths:
                       amount: 36000
                       requestedAmount: null
                       issuedAt: '2026-11-12T13:05:00+09:00'
+                      deliveredAt: '2026-11-12T13:05:00+09:00'
                       dueAt: '2026-11-13T01:05:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: '2026-11-12T13:40:00+09:00'
                       claimRejectedAt: null
                       depositorName: 이지우
@@ -9407,7 +9472,9 @@ paths:
                       amount: 36000
                       requestedAmount: null
                       issuedAt: '2026-11-12T13:05:00+09:00'
+                      deliveredAt: '2026-11-12T13:05:00+09:00'
                       dueAt: '2026-11-13T01:05:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: '2026-11-12T13:40:00+09:00'
                       claimRejectedAt: null
                       depositorName: 이지우
@@ -9525,6 +9592,93 @@ paths:
                       revision: 7d1f4feba6c7
                     issueReports: []
                     revision: 1e9fca2c7f28
+                custom_no_answer:
+                  value:
+                    orderId: 68598d4e-7858-598f-aa63-2b51daa7d590
+                    orderNo: P4X8N2
+                    kind: custom
+                    status: cancelled
+                    version: 1
+                    pickupAt: '2026-11-20T16:00:00+09:00'
+                    pickupDay: '2026-11-20'
+                    amount: 70000
+                    requestedAt: '2026-11-12T14:10:00+09:00'
+                    acceptedAt: null
+                    confirmedAt: null
+                    rejectedAt: null
+                    rejectReason: null
+                    cancelledAt: '2026-11-18T18:00:00+09:00'
+                    cancelKind: no_answer
+                    cancelReason: null
+                    remakeOf: null
+                    consultationId: 5d2d21e3-02ab-5396-85c3-43380c537f74
+                    details:
+                    - version: 1
+                      source: request
+                      createdAt: '2026-11-12T14:10:00+09:00'
+                      pickupAt: '2026-11-20T16:00:00+09:00'
+                      courierPickup: false
+                      size:
+                        optionId: 4645bbce-00c7-5cc8-8a1e-007c7a5cf0cf
+                        name: 2호
+                      flavor:
+                        optionId: c60b7ba9-a265-5f95-b14f-0d250b0159ee
+                        name: 생크림
+                      designOption:
+                        optionId: 4c70ee75-187a-564a-8d47-bb1b73f99f63
+                        name: 캐릭터 그림
+                      design:
+                        designId: 19a0d673-5780-5e62-9db7-9384a5c9c0aa
+                        name: 곰돌이
+                      extras: []
+                      designNotes: 사진처럼 곰돌이 얼굴을 크게
+                      lettering: HAPPY BIRTHDAY
+                      colors: 하늘색
+                      allergyAnswer: 없음
+                      allergyConsent: agreed
+                      excludedIngredients: null
+                      customerName: 박하늘
+                      customerPhone: 010-2222-3333
+                      amount: 70000
+                      amountChangeReason: null
+                    referencePhotos:
+                    - url: https://files.siljang.example/v1/151b62e087fdeb6061a55a24?exp=1763619300&sig=49025c078e7e47a6504b2fd7329f5bdf
+                    quote:
+                      priceListVersion: 4
+                      operatingRulesVersion: 2
+                      orderKind: custom
+                      displayKind: from
+                      amount: 70000
+                      amountMax: null
+                      basis:
+                        lines:
+                        - group: size
+                          name: 2호
+                          amount: 45000
+                        - group: flavor
+                          name: 생크림
+                          amount: 0
+                        - group: design
+                          name: 캐릭터 그림
+                          amount: 20000
+                        surcharges:
+                        - optionA: 2호
+                          optionB: 캐릭터 그림
+                          amount: 5000
+                      validUntil: '2026-11-15T14:08:00+09:00'
+                      quotedAt: '2026-11-12T14:08:00+09:00'
+                    day:
+                      capacity: 5
+                      held: 5
+                      remaining: 0
+                      full: true
+                    paymentRequests: []
+                    payments: []
+                    refunds: []
+                    changeRequests: []
+                    production: null
+                    issueReports: []
+                    revision: 65ba70f3de2d
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -9606,7 +9760,7 @@ paths:
       operationId: decideCustomOrder
       summary: 맞춤 주문 검토(수락·금액 변경 수락·거절)
       description: |-
-        수락하면 그날 자리를 결제 기한까지 잡고 결제 안내를 낸다(SPEC-032). 그날 자리가 없으면 먼저 409 confirmation_required(overbooking)이고, 사장님이 확인하면 confirm에 담아 추가 수락한다(R10). 금액을 바꿔 수락하면 새 주문 내용 버전(사유 포함)과 요청 금액을 함께 보이는 결제 안내. 거절이면 거절됨과 손님 안내. 이미 답한 주문은 409 already_decided, 그 사이 손님이 취소했으면 409 order_cancelled.
+        수락하면 그날 자리를 결제 기한까지 잡고 결제 안내를 낸다(SPEC-032). 그날 자리가 없으면 먼저 409 confirmation_required(overbooking)이고, 사장님이 확인하면 confirm에 담아 추가 수락한다(R10). 금액을 바꿔 수락하면 새 주문 내용 버전(사유 포함)과 요청 금액을 함께 보이는 결제 안내. 휴무일이면 409 confirmation_required(closed_day)이고 확인하면 마감 후 추가 수락으로 잡는다(REQ-221). 거절이면 거절됨과 손님 안내. 이미 답한 주문은 409 already_decided, 그 사이 손님이 취소했으면 409 order_cancelled, 그 픽업 날짜의 주문 마감까지 답이 없어 '답 없어 닫힘'(cancelKind no_answer)으로 닫힌 요청은 409 invalid_state(REQ-213).
 
         SPEC: SPEC-031, SPEC-015, SPEC-032
       tags:
@@ -9779,7 +9933,9 @@ paths:
                         amount: 75000
                         requestedAmount: 70000
                         issuedAt: '2026-11-12T15:00:00+09:00'
+                        deliveredAt: '2026-11-12T15:00:00+09:00'
                         dueAt: '2026-11-13T03:00:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: null
                         claimRejectedAt: null
                         depositorName: null
@@ -9807,7 +9963,9 @@ paths:
                       amount: 75000
                       requestedAmount: 70000
                       issuedAt: '2026-11-12T15:00:00+09:00'
+                      deliveredAt: '2026-11-12T15:00:00+09:00'
                       dueAt: '2026-11-13T03:00:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: null
                       claimRejectedAt: null
                       depositorName: null
@@ -10010,6 +10168,18 @@ paths:
                     confirm:
                     - kind: overbooking
                       day: '2026-11-20'
+                confirmation_required_closed_day:
+                  value:
+                    type: /problems/confirmation_required
+                    title: 저장하기 전에 확인해 주세요
+                    status: 409
+                    detail: 휴무일이에요. 이날로 정할까요?
+                    instance: /owner/orders/68598d4e-7858-598f-aa63-2b51daa7d590/custom-decision
+                    code: confirmation_required
+                    traceId: bd23c4b43ebdc6bb2c1e7d50eb676f86
+                    confirm:
+                    - kind: closed_day
+                      day: '2026-11-25'
                 request_in_progress:
                   value:
                     type: /problems/request_in_progress
@@ -10101,6 +10271,7 @@ paths:
           상태:
           - 409:already_decided
           - 409:order_cancelled
+          - 409:invalid_state
           - 409:confirmation_required
           반복:
           - idem
@@ -10116,7 +10287,7 @@ paths:
       operationId: decideOverdueOrder
       summary: '결제 기한 지난 주문: 결제 기한 연장·취소'
       description: |-
-        결제 기한 연장이면 그날 자리를 새 결제 기한까지 다시 잡고 다시 낸 결제 안내를 보낸다(SPEC-038). 남은 자리가 없으면 409 confirmation_required(overbooking). 취소면 '결제 없어 취소됨', 손님 안내 한 번, 장부 쓰기(SPEC-039). 픽업 일시나 주문 마감이 지났으면 결제 기한 연장은 409 invalid_state(취소만). 이미 고른 주문은 409 already_decided. 그 사이 결제가 확인됐으면 409 version_conflict(G3).
+        결제 기한 연장이면 그날 자리를 새 결제 기한까지 다시 잡고 다시 낸 결제 안내를 보낸다(SPEC-038). 새 결제 기한은 그 안내가 손님에게 전해진 때부터 센다(REQ-218). 남은 자리가 없으면 409 confirmation_required(overbooking), 휴무일이 됐으면 closed_day(REQ-221), 그 픽업 날짜의 주문 마감이 지났으면 past_cutoff(새 결제 기한은 픽업 일시까지). 취소면 '결제 없어 취소됨', 손님 안내 한 번, 장부 쓰기(SPEC-039). 픽업 일시가 지났으면 결제 기한 연장은 409 invalid_state(취소만). 픽업 일시까지 고르지 않으면 서버가 결제 없어 취소로 두고(REQ-217) 그 뒤의 고르기는 409 invalid_state. 이미 고른 주문은 409 already_decided. 그 사이 결제가 확인됐으면 409 version_conflict(G3).
 
         SPEC: SPEC-038, SPEC-039, SPEC-015, SPEC-032, SPEC-037
       tags:
@@ -10280,7 +10451,9 @@ paths:
                         amount: 75000
                         requestedAmount: null
                         issuedAt: '2026-11-13T09:10:00+09:00'
+                        deliveredAt: '2026-11-13T09:10:00+09:00'
                         dueAt: '2026-11-13T21:10:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: null
                         claimRejectedAt: null
                         depositorName: null
@@ -10301,7 +10474,9 @@ paths:
                         amount: 75000
                         requestedAmount: 70000
                         issuedAt: '2026-11-12T15:00:00+09:00'
+                        deliveredAt: '2026-11-12T15:00:00+09:00'
                         dueAt: '2026-11-13T03:00:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: null
                         claimRejectedAt: null
                         depositorName: null
@@ -10329,7 +10504,9 @@ paths:
                       amount: 75000
                       requestedAmount: null
                       issuedAt: '2026-11-13T09:10:00+09:00'
+                      deliveredAt: '2026-11-13T09:10:00+09:00'
                       dueAt: '2026-11-13T21:10:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: null
                       claimRejectedAt: null
                       depositorName: null
@@ -10461,7 +10638,9 @@ paths:
                         amount: 75000
                         requestedAmount: 70000
                         issuedAt: '2026-11-12T15:00:00+09:00'
+                        deliveredAt: '2026-11-12T15:00:00+09:00'
                         dueAt: '2026-11-13T03:00:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: null
                         claimRejectedAt: null
                         depositorName: null
@@ -10570,6 +10749,30 @@ paths:
                     traceId: dd612dd3ae018b6ddbf1f2e9dc54fb50
                     confirm:
                     - kind: overbooking
+                      day: '2026-11-20'
+                confirmation_required_closed_day:
+                  value:
+                    type: /problems/confirmation_required
+                    title: 저장하기 전에 확인해 주세요
+                    status: 409
+                    detail: 휴무일이에요. 이날로 정할까요?
+                    instance: /owner/orders/68598d4e-7858-598f-aa63-2b51daa7d590/overdue-decision
+                    code: confirmation_required
+                    traceId: 3153526aabff3bde272b8bfaffc10f0e
+                    confirm:
+                    - kind: closed_day
+                      day: '2026-11-25'
+                confirmation_required_past_cutoff:
+                  value:
+                    type: /problems/confirmation_required
+                    title: 저장하기 전에 확인해 주세요
+                    status: 409
+                    detail: 주문 마감이 지난 날이에요(새 결제 기한은 픽업 일시까지). 결제 기한을 연장할까요?
+                    instance: /owner/orders/68598d4e-7858-598f-aa63-2b51daa7d590/overdue-decision
+                    code: confirmation_required
+                    traceId: b9bbc1cbd42fe05ba0f0a5a31afae031
+                    confirm:
+                    - kind: past_cutoff
                       day: '2026-11-20'
                 request_in_progress:
                   value:
@@ -10810,7 +11013,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -11042,7 +11247,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -12594,7 +12801,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -12729,7 +12938,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -13098,7 +13309,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -13233,7 +13446,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -13576,7 +13791,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -13829,7 +14046,9 @@ paths:
                       amount: 36000
                       requestedAmount: null
                       issuedAt: '2026-11-12T13:05:00+09:00'
+                      deliveredAt: '2026-11-12T13:05:00+09:00'
                       dueAt: '2026-11-13T01:05:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: '2026-11-12T13:40:00+09:00'
                       claimRejectedAt: null
                       depositorName: 이지우
@@ -13850,7 +14069,9 @@ paths:
                       amount: 75000
                       requestedAmount: 70000
                       issuedAt: '2026-11-12T15:00:00+09:00'
+                      deliveredAt: '2026-11-12T15:00:00+09:00'
                       dueAt: '2026-11-13T03:00:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: null
                       claimRejectedAt: null
                       depositorName: null
@@ -14009,7 +14230,9 @@ paths:
                     amount: 36000
                     requestedAmount: null
                     issuedAt: '2026-11-12T13:05:00+09:00'
+                    deliveredAt: '2026-11-12T13:05:00+09:00'
                     dueAt: '2026-11-13T01:05:00+09:00'
+                    dueCapAt: '2026-11-18T18:00:00+09:00'
                     claimedAt: '2026-11-12T13:40:00+09:00'
                     claimRejectedAt: null
                     depositorName: 이지우
@@ -14032,7 +14255,9 @@ paths:
                     amount: 36000
                     requestedAmount: null
                     issuedAt: '2026-11-12T13:05:00+09:00'
+                    deliveredAt: '2026-11-12T13:05:00+09:00'
                     dueAt: '2026-11-13T01:05:00+09:00'
+                    dueCapAt: '2026-11-18T18:00:00+09:00'
                     claimedAt: '2026-11-12T13:40:00+09:00'
                     claimRejectedAt: null
                     depositorName: 이지우
@@ -14055,7 +14280,9 @@ paths:
                     amount: 75000
                     requestedAmount: 70000
                     issuedAt: '2026-11-12T15:00:00+09:00'
+                    deliveredAt: '2026-11-12T15:00:00+09:00'
                     dueAt: '2026-11-13T03:00:00+09:00'
+                    dueCapAt: '2026-11-18T18:00:00+09:00'
                     claimedAt: null
                     claimRejectedAt: null
                     depositorName: null
@@ -14218,7 +14445,9 @@ paths:
                       amount: 36000
                       requestedAmount: null
                       issuedAt: '2026-11-12T13:05:00+09:00'
+                      deliveredAt: '2026-11-12T13:05:00+09:00'
                       dueAt: '2026-11-13T01:05:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: '2026-11-12T13:40:00+09:00'
                       claimRejectedAt: null
                       depositorName: 이지우
@@ -14328,7 +14557,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -14380,7 +14611,9 @@ paths:
                       amount: 36000
                       requestedAmount: null
                       issuedAt: '2026-11-12T13:05:00+09:00'
+                      deliveredAt: '2026-11-12T13:05:00+09:00'
                       dueAt: '2026-11-13T01:05:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: '2026-11-12T13:40:00+09:00'
                       claimRejectedAt: null
                       depositorName: 이지우
@@ -14483,7 +14716,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -14515,7 +14750,9 @@ paths:
                       amount: 20000
                       requestedAmount: null
                       issuedAt: '2026-11-15T10:20:00+09:00'
+                      deliveredAt: '2026-11-15T10:20:00+09:00'
                       dueAt: '2026-11-15T22:20:00+09:00'
+                      dueCapAt: '2026-11-18T14:00:00+09:00'
                       claimedAt: null
                       claimRejectedAt: null
                       depositorName: null
@@ -14655,7 +14892,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -14725,7 +14964,9 @@ paths:
                         amount: 20000
                         requestedAmount: null
                         issuedAt: '2026-11-15T10:20:00+09:00'
+                        deliveredAt: '2026-11-15T10:20:00+09:00'
                         dueAt: '2026-11-15T22:20:00+09:00'
+                        dueCapAt: '2026-11-18T14:00:00+09:00'
                         claimedAt: null
                         claimRejectedAt: null
                         depositorName: null
@@ -14751,7 +14992,9 @@ paths:
                       amount: 36000
                       requestedAmount: null
                       issuedAt: '2026-11-12T13:05:00+09:00'
+                      deliveredAt: '2026-11-12T13:05:00+09:00'
                       dueAt: '2026-11-13T01:05:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: '2026-11-12T13:40:00+09:00'
                       claimRejectedAt: null
                       depositorName: 이지우
@@ -14854,7 +15097,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -14893,7 +15138,9 @@ paths:
                       amount: 36000
                       requestedAmount: null
                       issuedAt: '2026-11-12T13:05:00+09:00'
+                      deliveredAt: '2026-11-12T13:05:00+09:00'
                       dueAt: '2026-11-13T01:05:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: '2026-11-12T13:40:00+09:00'
                       claimRejectedAt: null
                       depositorName: 이지우
@@ -14996,7 +15243,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -15035,7 +15284,9 @@ paths:
                       amount: 36000
                       requestedAmount: null
                       issuedAt: '2026-11-12T13:05:00+09:00'
+                      deliveredAt: '2026-11-12T13:05:00+09:00'
                       dueAt: '2026-11-13T01:05:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: null
                       claimRejectedAt: null
                       depositorName: null
@@ -15145,7 +15396,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: null
                         claimRejectedAt: null
                         depositorName: null
@@ -15185,7 +15438,9 @@ paths:
                       amount: 36000
                       requestedAmount: null
                       issuedAt: '2026-11-12T13:05:00+09:00'
+                      deliveredAt: '2026-11-12T13:05:00+09:00'
                       dueAt: '2026-11-13T01:05:00+09:00'
+                      dueCapAt: '2026-11-18T18:00:00+09:00'
                       claimedAt: '2026-11-12T13:40:00+09:00'
                       claimRejectedAt: null
                       depositorName: 이지우
@@ -15295,7 +15550,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -16045,7 +16302,7 @@ paths:
       operationId: getChangeRequest
       summary: 변경 요청 하나
       description: |-
-        바꾸려는 내용, 묶인 주문 버전과 현재 버전, 변경 마감 시각, 새 날을 사장님이 정해야 하는지, 차액 결제. 차액 결제 기한이 지나면 서버가 '차액 없어 닫힘'으로 둔다(SPEC-044).
+        바꾸려는 내용, 묶인 주문 버전과 현재 버전, 변경 마감 시각, 새 날을 사장님이 정해야 하는지, 차액 결제. 차액 결제 기한이 지나면 서버가 '차액 없어 닫힘'으로 둔다(SPEC-044). 변경 마감까지 사장님 답이 없으면 서버가 '답 없어 닫힘'(closed_no_answer)으로 닫고 주문은 원래대로 둔다(REQ-214).
 
         SPEC: SPEC-042, SPEC-041, SPEC-043, SPEC-044
       tags:
@@ -16064,7 +16321,7 @@ paths:
       - ownerSession: []
       responses:
         "200":
-          description: '성공. 예시: requested, awaiting_difference, closed_no_difference'
+          description: '성공. 예시: requested, awaiting_difference, closed_no_difference, closed_no_answer'
           content:
             application/json:
               schema:
@@ -16126,7 +16383,9 @@ paths:
                       amount: 20000
                       requestedAmount: null
                       issuedAt: '2026-11-15T10:20:00+09:00'
+                      deliveredAt: '2026-11-15T10:20:00+09:00'
                       dueAt: '2026-11-15T22:20:00+09:00'
+                      dueCapAt: '2026-11-18T14:00:00+09:00'
                       claimedAt: null
                       claimRejectedAt: null
                       depositorName: null
@@ -16172,7 +16431,9 @@ paths:
                       amount: 20000
                       requestedAmount: null
                       issuedAt: '2026-11-15T10:20:00+09:00'
+                      deliveredAt: '2026-11-15T10:20:00+09:00'
                       dueAt: '2026-11-15T22:20:00+09:00'
+                      dueCapAt: '2026-11-18T14:00:00+09:00'
                       claimedAt: null
                       claimRejectedAt: null
                       depositorName: null
@@ -16185,6 +16446,29 @@ paths:
                       closeReason: change_closed
                       revision: 2d995a7a96aa
                     revision: 9d5de79d9c82
+                closed_no_answer:
+                  value:
+                    changeRequestId: 0cb9c97f-781b-5e75-937e-260b8ff623da
+                    order:
+                      orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                      orderNo: K7Q3M9
+                    baseVersion: 1
+                    orderVersion: 1
+                    changes:
+                      lettering: 생일 축하해 지우야!
+                    newPickupAt: null
+                    needsOwnerDay: false
+                    status: closed_no_answer
+                    amountDelta: null
+                    rejectReason: null
+                    changeDeadlineAt: '2026-11-18T14:00:00+09:00'
+                    decidedAt: null
+                    appliedVersion: null
+                    appliedAt: null
+                    closedAt: '2026-11-18T14:00:00+09:00'
+                    createdAt: '2026-11-15T10:00:00+09:00'
+                    differencePayment: null
+                    revision: a5c417edaad8
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -16258,6 +16542,7 @@ paths:
           - 404:not_found
           상태:
           - example:closed_no_difference
+          - example:closed_no_answer
           노출:
           - closed
           화면:
@@ -16267,7 +16552,7 @@ paths:
       operationId: decideChangeRequest
       summary: 변경 요청 응답(수락·거절)
       description: |-
-        금액이 그대로거나 내려가면 바로 반영해 주문 버전을 하나 올린다(SPEC-045, 내려가면 환불 정할 일). 오르면 차액 결제 안내를 내고(SPEC-043) 확인되면 반영한다. 날짜가 바뀌면 옛 날 자리를 풀고 새 날에 확정 자리를 잡는다(결제 안내 없음). 새 날이 다 찼으면 409 confirmation_required(overbooking). 거절이면 주문은 그대로이고 손님에게 알린다. 그 사이 손님이 취소했으면 409 order_cancelled, 이전 버전을 보고 만든 변경이면 409 stale_change, 이미 답했으면 409 already_decided.
+        금액이 그대로거나 내려가면 바로 반영해 주문 버전을 하나 올린다(SPEC-045, 내려가면 환불 정할 일). 오르면 차액 결제 안내를 내고(SPEC-043) 확인되면 반영한다. 날짜가 바뀌면 옛 날 자리를 풀고 새 날에 확정된 자리를 잡는다(결제 안내 없음). 새 날이 다 찼으면 409 confirmation_required(overbooking), 휴무일이면 closed_day(REQ-221, REQ-226). 거절이면 주문은 그대로이고 손님에게 알린다. 그 사이 손님이 취소했으면 409 order_cancelled, 이전 버전을 보고 만든 변경이면 409 stale_change, 이미 답했으면 409 already_decided, 변경 마감까지 답이 없어 '답 없어 닫힘'으로 닫힌 변경 요청은 409 invalid_state(REQ-214).
 
         SPEC: SPEC-042, SPEC-043, SPEC-045, SPEC-015, SPEC-032
       tags:
@@ -16463,7 +16748,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -16537,7 +16824,9 @@ paths:
                         amount: 20000
                         requestedAmount: null
                         issuedAt: '2026-11-15T10:20:00+09:00'
+                        deliveredAt: '2026-11-15T10:20:00+09:00'
                         dueAt: '2026-11-15T22:20:00+09:00'
+                        dueCapAt: '2026-11-18T14:00:00+09:00'
                         claimedAt: null
                         claimRejectedAt: null
                         depositorName: null
@@ -16640,7 +16929,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -16688,7 +16979,9 @@ paths:
                       amount: 20000
                       requestedAmount: null
                       issuedAt: '2026-11-15T10:20:00+09:00'
+                      deliveredAt: '2026-11-15T10:20:00+09:00'
                       dueAt: '2026-11-15T22:20:00+09:00'
+                      dueCapAt: '2026-11-18T14:00:00+09:00'
                       claimedAt: null
                       claimRejectedAt: null
                       depositorName: null
@@ -16817,7 +17110,9 @@ paths:
                         amount: 36000
                         requestedAmount: null
                         issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
                         dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
@@ -16902,6 +17197,7 @@ paths:
             - `already_decided`: 다른 결정이 이미 남음(이미 처리됨·이미 답함)
             - `order_cancelled`: 그 사이 손님이나 가게가 주문을 취소함
             - `stale_change`: 이전 버전을 보고 만든 변경이라 반영하지 않음. 변경 요청은 '오래된 버전이라 받지 않음'으로 닫힘
+            - `invalid_state`: 지금 상태에서는 할 수 없는 명령(상태 머신 1-1~1-8이 허용하지 않음)
             - `confirmation_required`: 확인을 받아야 저장하는 일. confirm에 확인할 것 목록. 아무것도 바꾸지 않음
             - `request_in_progress`: 같은 요청 키의 첫 요청을 아직 처리하는 중
           content:
@@ -16945,6 +17241,15 @@ paths:
                     instance: /owner/change-requests/0cb9c97f-781b-5e75-937e-260b8ff623da/decision
                     code: stale_change
                     traceId: a7f20724d03890f1c7cac74a23f0a038
+                invalid_state:
+                  value:
+                    type: /problems/invalid_state
+                    title: 지금 상태에서는 할 수 없어요
+                    status: 409
+                    detail: 지금 상태에서는 할 수 없는 명령(상태 머신 1-1~1-8이 허용하지 않음)
+                    instance: /owner/change-requests/0cb9c97f-781b-5e75-937e-260b8ff623da/decision
+                    code: invalid_state
+                    traceId: 75ec42b9a8eaa08d953a6359f028f279
                 confirmation_required:
                   value:
                     type: /problems/confirmation_required
@@ -16957,6 +17262,18 @@ paths:
                     confirm:
                     - kind: overbooking
                       day: '2026-11-20'
+                confirmation_required_closed_day:
+                  value:
+                    type: /problems/confirmation_required
+                    title: 저장하기 전에 확인해 주세요
+                    status: 409
+                    detail: 휴무일이에요. 이날로 정할까요?
+                    instance: /owner/change-requests/0cb9c97f-781b-5e75-937e-260b8ff623da/decision
+                    code: confirmation_required
+                    traceId: ec1da2bda32a4876b84461915a02d8fc
+                    confirm:
+                    - kind: closed_day
+                      day: '2026-11-25'
                 request_in_progress:
                   value:
                     type: /problems/request_in_progress
@@ -17048,6 +17365,7 @@ paths:
           상태:
           - 409:order_cancelled
           - 409:already_decided
+          - 409:invalid_state
           - 409:confirmation_required
           반복:
           - idem
@@ -17216,7 +17534,7 @@ paths:
       operationId: decideCompensation
       summary: 보상 결정(재제작·일부 환불·전액 환불·없음)
       description: |-
-        보상은 사장님만 정한다(AI·손님에게 길이 없음). 재제작이면 새 픽업 일시(지금 뒤 60일 안)로 결제 없는 재제작 주문을 확정으로 남기고 자리를 잡는다(SPEC-060, 다 찬 날이면 마감 후 추가 수락). 휴무일이면 409 confirmation_required(closed_day). 환불이면 환불 결정과 같은 한도로 환불을 남긴다(SPEC-047). 손님에게 보상 안내를 한 번 보내고 신고를 닫는다. 이미 정한 보상은 고치지 않는다(409 already_decided).
+        보상은 사장님만 정한다(AI·손님에게 길이 없음). 재제작이면 새 픽업 일시(지금 뒤 60일 안)로 결제 없는 재제작 주문을 확정으로 남기고 자리를 잡는다(SPEC-060). 휴무일이면 409 confirmation_required(closed_day), 다 찬 날이면 overbooking이고 확인하면 마감 후 추가 수락으로 잡는다(REQ-221, REQ-226). 환불이면 환불 결정과 같은 한도로 환불을 남긴다(SPEC-047). 손님에게 보상 안내를 한 번 보내고 신고를 닫는다. 이미 정한 보상은 고치지 않는다(409 already_decided).
 
         SPEC: SPEC-059, SPEC-060, SPEC-047, SPEC-015
       tags:
@@ -17510,6 +17828,18 @@ paths:
                     confirm:
                     - kind: closed_day
                       day: '2026-11-25'
+                confirmation_required_overbooking:
+                  value:
+                    type: /problems/confirmation_required
+                    title: 저장하기 전에 확인해 주세요
+                    status: 409
+                    detail: 그날 남은 자리가 없어요. 추가로 받을까요?
+                    instance: /owner/issue-reports/75d85057-a59d-5318-b843-45c79a6523ea/compensation
+                    code: confirmation_required
+                    traceId: 936eefcd2b5cfbc0acc6a36b5e5c5145
+                    confirm:
+                    - kind: overbooking
+                      day: '2026-11-20'
                 request_in_progress:
                   value:
                     type: /problems/request_in_progress
@@ -18296,7 +18626,7 @@ paths:
       operationId: receiveCustomerMessage
       summary: 손님 메시지 수신(카카오 오픈빌더 스킬)
       description: |-
-        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 키가 아니면 401(DEC-08). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). 연결 확인 중인 채널의 테스트 메시지면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008). 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). 주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, 버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). 그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). 주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간이 문서 안에서 5분과 1분으로 어긋남. 개발 전 테스트로 정함(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4).
+        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 키가 아니면 401(DEC-08). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 콜백 기한(유효 시간 - 5초)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도는 모두 에스컬레이션함(R7). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). 문의 끊김이나 상담 끝남으로 닫힌 손님에게도 이 안내(결제 안내·사장님 답·전날 안내 등)는 막지 않는다(REQ-212). 이때 보인 결제 안내는 그때를 전해진 시각으로 남겨 결제 기한을 그때부터 세고(REQ-218), 결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). 요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). 연결 확인 중인 채널의 테스트 메시지면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008). 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). 주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, 버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). 그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). 주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간이 문서 안에서 5분과 1분으로 어긋남. 개발 전 테스트로 정함(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4).
 
         SPEC: SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-028, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-049, SPEC-056, SPEC-057, SPEC-066, SPEC-068, SPEC-069, SPEC-013, SPEC-014, SPEC-016, SPEC-008, SPEC-072, SPEC-075
       tags:
@@ -21002,6 +21332,7 @@ components:
           - overbooking
           - not_pickup_day
           - closed_day
+          - past_cutoff
           - holder_mismatch
         count:
           type: integer
@@ -23971,15 +24302,16 @@ components:
           enum:
           - waiting
           - late
-          - parked
           - answered
+          - closed_no_answer
           - null
-          description: 사장님 답 기다림(1-7)
+          description: '사장님 답 기다림(1-7): 기다림·지연(지연 안내와 다시 알림을 보낸 뒤 할 일 목록에 남음)·답함·답 없어 닫힘. 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정에만(REQ-215). 답 없어 닫힘은 에스컬레이션 건·맞춤 주문·변경 요청·결제 확인 요청만'
         waitDueAt:
           type:
           - string
           - "null"
           format: date-time
+          description: 지연 안내를 보낼 시각(기다리는 시간을 답하는 시간 안에서만 셈, REQ-118). 답 없어 닫는 때(1-7)와 다름
         order:
           anyOf:
           - $ref: '#/components/schemas/OrderRef'
@@ -24097,6 +24429,7 @@ components:
       - dayDecision
       - dayAcceptExpiresAt
       - answeredAt
+      - closedAt
       - createdAt
       - revision
       properties:
@@ -24127,6 +24460,8 @@ components:
           enum:
           - open
           - answered
+          - closed_no_answer
+          description: 열림·답함·답 없어 닫힘(남긴 지 7일 동안 사장님 답이 없음, REQ-216)
         requestedDay:
           type:
           - string
@@ -24169,6 +24504,12 @@ components:
           - string
           - "null"
           format: date-time
+        closedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+          description: 답 없어 닫힌 시각(남긴 지 7일, REQ-216). 닫힌 건에 답하면 409 invalid_state
         createdAt:
           type: string
           format: date-time
@@ -24648,7 +24989,9 @@ components:
       - amount
       - requestedAmount
       - issuedAt
+      - deliveredAt
       - dueAt
+      - dueCapAt
       - claimedAt
       - claimRejectedAt
       - depositorName
@@ -24697,9 +25040,20 @@ components:
         issuedAt:
           type: string
           format: date-time
+        deliveredAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+          description: '결제 안내가 손님에게 전해진 시각: 대화 중 답으로 보임·먼저 보낸 안내가 닿음·다음 대화 때 전함. null이면 아직 못 전함(SPEC-032, SPEC-037)'
         dueAt:
           type: string
           format: date-time
+          description: '결제 기한: 전해진 시각에 운영규정의 결제 기한(기본 12시간)을 더한 때와 결제 기한 상한 가운데 이른 쪽. 전해지기 전에는 상한(REQ-218)'
+        dueCapAt:
+          type: string
+          format: date-time
+          description: '결제 기한 상한: 첫 결제·다시 낸 결제는 그 픽업 날짜의 주문 마감(이미 지났으면 픽업 일시), 차액 결제는 변경 마감. 낼 때 정함. 확인 요청됨도 이때 기한 지남(REQ-218, REQ-223)'
         claimedAt:
           type:
           - string
@@ -24970,6 +25324,7 @@ components:
           - closed_no_difference
           - stale
           - closed_by_cancel
+          - closed_no_answer
         baseVersion:
           type: integer
           minimum: 1
@@ -25212,7 +25567,9 @@ components:
           - customer
           - shop
           - no_payment
+          - no_answer
           - null
+          description: 손님이 취소함·가게 사정으로 취소됨·결제 없어 취소됨(사장님이 고르거나 픽업 일시까지 고르지 않음, REQ-217)·답 없어 닫힘(맞춤 주문 요청에 그 픽업 날짜의 주문 마감까지 사장님 답이 없음, REQ-213)
         cancelReason:
           type:
           - string
@@ -25332,6 +25689,7 @@ components:
       - customerName
       - requestedAt
       - isRemake
+      - paymentNotice
       - revision
       properties:
         orderId:
@@ -25387,6 +25745,34 @@ components:
           format: date-time
         isRemake:
           type: boolean
+        paymentNotice:
+          type:
+          - object
+          - "null"
+          description: 가장 최근 결제 안내의 상태, 손님에게 전해진 시각(null이면 아직 못 전함), 결제 기한. 결제 기한 지난 주문 목록이 보임(SPEC-037). 결제 안내가 없으면 null
+          required:
+          - status
+          - deliveredAt
+          - dueAt
+          properties:
+            status:
+              type: string
+              enum:
+              - open
+              - claimed
+              - mismatch
+              - paid
+              - expired
+              - closed
+            deliveredAt:
+              type:
+              - string
+              - "null"
+              format: date-time
+            dueAt:
+              type: string
+              format: date-time
+          additionalProperties: false
         revision:
           type: string
           minLength: 1
@@ -25456,8 +25842,9 @@ components:
             type: string
             enum:
             - overbooking
+            - closed_day
           minItems: 0
-          maxItems: 1
+          maxItems: 2
           uniqueItems: true
           description: 409 confirmation_required로 받은 확인할 것 가운데 사장님이 확인한 것(DEC-06)
       additionalProperties: false
@@ -25506,8 +25893,10 @@ components:
             type: string
             enum:
             - overbooking
+            - closed_day
+            - past_cutoff
           minItems: 0
-          maxItems: 1
+          maxItems: 3
           uniqueItems: true
           description: 409 confirmation_required로 받은 확인할 것 가운데 사장님이 확인한 것(DEC-06)
       additionalProperties: false
@@ -26255,6 +26644,7 @@ components:
           - closed_no_difference
           - stale
           - closed_by_cancel
+          - closed_no_answer
         amountDelta:
           type:
           - integer
@@ -26339,8 +26729,9 @@ components:
             type: string
             enum:
             - overbooking
+            - closed_day
           minItems: 0
-          maxItems: 1
+          maxItems: 2
           uniqueItems: true
           description: 409 confirmation_required로 받은 확인할 것 가운데 사장님이 확인한 것(DEC-06)
       additionalProperties: false
@@ -26532,8 +26923,9 @@ components:
             type: string
             enum:
             - closed_day
+            - overbooking
           minItems: 0
-          maxItems: 1
+          maxItems: 2
           uniqueItems: true
           description: 409 confirmation_required로 받은 확인할 것 가운데 사장님이 확인한 것(DEC-06)
       additionalProperties: false
@@ -26853,7 +27245,7 @@ components:
                       maxLength: 200
                     isFriend:
                       type: boolean
-                      description: 채널 친구인지(REQ-120). 있으면 손님 행에 남김
+                      description: '채널 친구인지(REQ-120). 요청마다 손님 행을 고침: true면 친구, 없거나 false면 친구 아님(REQ-219)'
                   additionalProperties: true
               additionalProperties: true
           additionalProperties: true
@@ -28667,6 +29059,7 @@ components:
         operations:
         - API-011
         - API-014
+        - API-042
         - API-046
         - API-047
         - API-048
@@ -28678,6 +29071,7 @@ components:
         - API-056
         - API-059
         - API-061
+        - API-063
       already_decided:
         status: 409
         meaning: 다른 결정이 이미 남음(이미 처리됨·이미 답함)
@@ -29019,12 +29413,13 @@ components:
         - API-029
       overbooking:
         spec: SPEC-031
-        meaning: 하루 최대 개수에 닿은 날에 마감 후 추가 수락(R10). 그날은 다른 손님에게 계속 마감
+        meaning: 하루 최대 개수에 닿은 날에 사장님이 고르는 주문(맞춤 주문 수락·날짜 변경 수락·결제 기한 연장·재제작)을 마감 후 추가 수락(R10, REQ-226). 그날은 다른 손님에게 계속 마감
         message: 그날 남은 자리가 없어요. 추가로 받을까요?
         operations:
         - API-046
         - API-047
         - API-063
+        - API-065
       not_pickup_day:
         spec: SPEC-054
         meaning: 픽업 날짜 전에 인도를 기록함
@@ -29033,10 +29428,19 @@ components:
         - API-054
       closed_day:
         spec: SPEC-060
-        meaning: 휴무일을 재제작 픽업 날로 정함
+        meaning: 휴무일에 사장님이 고르는 주문(맞춤 주문 수락·날짜 변경 수락·결제 기한 연장·재제작)의 자리를 잡음. 마감 후 추가 수락으로 남음(REQ-221)
         message: 휴무일이에요. 이날로 정할까요?
         operations:
+        - API-046
+        - API-047
+        - API-063
         - API-065
+      past_cutoff:
+        spec: SPEC-038
+        meaning: 그 픽업 날짜의 주문 마감이 지난 주문의 결제 기한을 연장함. 새 결제 기한은 픽업 일시까지(REQ-218)
+        message: 주문 마감이 지난 날이에요(새 결제 기한은 픽업 일시까지). 결제 기한을 연장할까요?
+        operations:
+        - API-047
       holder_mismatch:
         spec: SPEC-006
         meaning: 예금주가 등록한 상호·대표자와 다름. 사장님 답을 남김
@@ -29506,16 +29910,16 @@ components:
       text: '먼저 보내기에 가게가 우리에게 줄 권한과 절차: 가게 채널을 우리 카카오 디벨로퍼스 앱에 연결하는 방법(채널은 가게가, 앱은 우리가 가짐), 우리 서비스 계정이 월렛 작업 권한이 있는 봇 작업자로 초대받아 우리 월렛을 가게 봇에 연결할 수 있는지, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양(utterance, userRequest.params). 10단계 WBS의 선행 일로 개발 전에 시험 채널로 확인하고, 안 되면 먼저 보내기 없이 ''다음 대화 때 전함''으로만 시작(REQ-181, 02단계 1-3 가정)'
     jobs:
     - spec: SPEC-024
-      job: '사장님 답 기다림 타이머: 기다리는 시간이 지나면 지연 안내 한 번과 다시 알림 한 번(답하는 시간 안에서만 셈)'
-      seen_in: API-040(할 일의 waitStatus), API-042(답하면 멈춤), API-010(기다리는 시간 설정)
+      job: '사장님 답 기다림 타이머: 기다리는 시간이 지나면 지연 안내 한 번과 다시 알림 한 번(답하는 시간 안에서만 셈, 결제 확인 요청·맞추는 중·환불 결정도, REQ-215). 닫는 때(하루 내내 셈)가 오면 맞춤 주문 요청은 그 픽업 날짜의 주문 마감에 주문을 ''답 없어 닫힘''으로, 변경 요청은 변경 마감에, 에스컬레이션 건은 남긴 지 7일에 ''답 없어 닫힘''으로 닫고 손님에게 한 번 알림(REQ-213, REQ-214, REQ-216). 결제 확인 요청은 결제 기한 상한에 결제 기한 지남으로(SPEC-037). 맞추는 중·환불 결정·문제 신고는 닫지 않음(1-7)'
+      seen_in: API-040(할 일의 waitStatus), API-041(status closed_no_answer), API-042(답하면 멈춤, 닫힌 건은 409 invalid_state), API-045(cancelKind no_answer), API-062(status closed_no_answer), API-010(기다리는 시간 설정)
     - spec: SPEC-025
-      job: '문의 끊김과 상담 끝남: 마지막 손님 메시지 뒤 가게가 정한 시간이 지나면 상담을 닫음. 다룬 주문이 없으면 문의 끊김(다시 말하면 이어감), 다룬 주문이 모두 끝났으면 상담 끝남(다음 말은 새 상담, REQ-189)'
+      job: '문의 끊김과 상담 끝남: 마지막 손님 메시지 뒤 가게가 정한 시간이 지나면 상담을 닫음. 열린 에스컬레이션 건과 다룬 주문이 없으면 문의 끊김(다시 말하면 이어감, REQ-211), 다룬 주문이 모두 끝났으면 상담 끝남(다음 말은 새 상담, REQ-189). 닫힌 상담의 손님에게도 결제 안내·사장님 답·전날 안내 같은 주문과 에스컬레이션 건의 안내는 보냄(REQ-212)'
       seen_in: API-070(이어가기, 새 상담의 AI 상담 고지), API-010(끊김 시간 설정), API-043(status dropped·ended)
     - spec: SPEC-037
-      job: '결제 기한 처리: 기한이 지난 결제 안내의 자리를 풀고 사장님께 고를 일을 남김'
-      seen_in: API-040(할 일), API-044(status=payment_overdue), API-047(고르기)
+      job: '결제 기한 처리: 결제 기한(전해진 때부터 세고 결제 기한 상한을 넘지 않음, REQ-218)이 지난 결제 안내의 자리를 풀고 사장님께 고를 일을 남김. 확인 요청됨은 결제 기한 상한에, 맞추는 중은 하지 않음(REQ-223). 사장님이 픽업 일시까지 고르지 않으면 결제 없어 취소하고 손님에게 한 번 알림(REQ-217)'
+      seen_in: API-040(할 일), API-044(status=payment_overdue, paymentNotice), API-045(paymentRequests의 deliveredAt·dueCapAt), API-047(고르기)
     - spec: SPEC-044
-      job: '차액 결제 기한 처리: 변경 요청을 ''차액 없어 닫힘''으로'
+      job: '차액 결제 기한 처리: 변경 요청을 ''차액 없어 닫힘''으로. 확인 요청됨인 차액 결제는 결제 기한 상한(변경 마감)까지 닫지 않음(REQ-223)'
       seen_in: API-062
     - spec: SPEC-052
       job: '전날 안내: 다음 날 픽업할 손님에게 가게가 정한 시각(08:00~20:50)에 한 번'
@@ -29530,7 +29934,7 @@ components:
       job: '지난 기록 지우기: 하루 한 번 03:00, 05단계 README 6절의 여섯 차례. 끝나고 30일 지난 주문의 개인정보를 지우고 보관 기록으로 나눔(알레르기 답은 지우고 알레르기 정보 동의의 답·동의 글 버전·시각은 남김), 닫히고 30일 지난 상담의 대화·사진·초안을 지움, 3년 지난 신고 설명·사진과 5년 지난 보관 기록을 지움, 상담과 주문이 모두 지워진 손님의 카카오 사용자 키를 지움, 2년 지난 접속기록을 지움(접속기록을 지키는 트리거가 2년이 지나지 않은 행의 지우기를 막음, REQ-196). 30일·3년·5년은 잠정(REQ-185~190)'
       seen_in: API-043(지운 상담은 status deleted), API-044·045(보관 기록이 된 주문은 목록에 없고 하나를 읽으면 404), API-077(지운 값은 409 original_erased)
     - spec: SPEC-066
-      job: '손님에게 먼저 보내는 안내: 가게의 먼저 보내기가 되고 손님이 친구면 우리 앱 키로 가게 봇의 Event API(siljang_notice, 안내 키)를 부름. 요청이 SUCCESS면 taskId와 함께 ''확인 중''으로 두고 1분·5분·30분 뒤 발송 결과 조회(GET /v1/tasks/{taskId}): 닿음은 ''보냄'', 채널 친구 아님(101)은 다음 대화 때와 손님 친구 아님, 스킬·카카오 오류(201~205·301·999)는 다시 보내기, 발송 제한(401~407)은 다음 대화 때와 운영자 알림, 30분 뒤에도 모름은 다음 대화 때. 요청이 FAIL이면 채널 연결·이벤트 이름·월렛 없음은 가게의 먼저 보내기 ''안 됨''과 사장님 알림, 월렛 잔액 없음은 운영자 알림, 그 밖은 다시 보내기. 먼저 보내기가 안 되는 가게와 친구가 아닌 손님은 다음 대화 때 먼저(DEC-20)'
+      job: '손님에게 먼저 보내는 안내: 가게의 먼저 보내기가 되고 손님이 친구면 우리 앱 키로 가게 봇의 Event API(siljang_notice, 안내 키)를 부름. 요청이 SUCCESS면 taskId와 함께 ''확인 중''으로 두고 1분·5분·30분 뒤 발송 결과 조회(GET /v1/tasks/{taskId}): 닿음은 ''보냄'', 채널 친구 아님(101)은 다음 대화 때와 손님 친구 아님, 스킬·카카오 오류(201~205·301·999)는 다시 보내기, 발송 제한(401~407)은 다음 대화 때와 운영자 알림, 30분 뒤에도 모름은 다음 대화 때. 요청이 FAIL이면 채널 연결·이벤트 이름·월렛 없음은 가게의 먼저 보내기 ''안 됨''과 사장님 알림, 월렛 잔액 없음은 운영자 알림, 그 밖은 다시 보내기. 먼저 보내기가 안 되는 가게와 친구가 아닌 손님은 다음 대화 때 먼저(DEC-20). 결제 안내가 닿았다고 확인되거나 다음 대화 때 보인 때를 그 결제 안내의 전해진 시각으로 남기고 결제 기한을 그때부터 셈(REQ-218)'
       seen_in: API-073(안내 스킬), API-070(먼저 전함), API-030(먼저 보내기 상태), API-042
     - spec: SPEC-067
       job: '사장님 알림: 우리 서비스 채널 봇이 Event API로 사장님의 카카오 로그인 사용자 번호(appUserId)에 할 일 종류와 목록 주소(1분 안 같은 종류는 묶음). 발송 결과 조회는 손님 안내와 같고, 채널 친구 아님(101)이면 사장님을 친구 아님으로 고치고 할 일 목록에만(DEC-21)'
@@ -29694,3 +30098,39 @@ components:
       why: 주문 요청 카드 앞에 알레르기 정보 카드를 보내고, 요약 카드에서 사진 게시 동의 줄과 버튼을 빼고 알레르기 답이나 '알레르기 정보 동의 안 함'을 넣음(REQ-201, REQ-203, REQ-207, SPEC-028, SPEC-075, 설계 재검토 H5·H10)
       decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H5·H10, 잠정: 5-2 질문 4·6의 답으로 다시 봄)'
       client: 카카오가 그대로 보임. 스킬 응답 형식 안의 바뀜이라 A13은 찾지 않아 여기 적음
+    - what: '고를 값 없앰: OwnerTask.waitStatus'
+      why: '''할 일에 남음''(parked)을 ''지연''(late)에 합치고 ''답 없어 닫힘''(closed_no_answer)을 더함. 두 상태의 동작 차이가 없었음(1-7, REQ-215, 설계 재검토 M1·M9)'
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 M1·M2·M3·M9·M10)
+      client: 할 일 목록(SCR-016)이 parked 대신 late를 '지연'으로, closed_no_answer를 '답 없어 닫힘'으로 보임
+    - what: '꼭 넣을 필드 더함: Handoff.closedAt'
+      why: 남긴 지 7일 동안 사장님 답이 없는 에스컬레이션 건을 '답 없어 닫힘'으로 닫은 시각(REQ-216, 설계 재검토 M1)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 M1·M2·M3·M9·M10)
+      client: 응답에만 더한 필드라 보내는 요청은 그대로. 에스컬레이션 건 화면(SCR-017)이 닫힌 건에 '답 없어 닫혔어요'를 보임
+    - what: '꼭 넣을 필드 더함: PaymentRequest.deliveredAt'
+      why: 결제 기한을 결제 안내가 손님에게 전해진 때부터 셈(REQ-218, SPEC-032, 설계 재검토 M2)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 M1·M2·M3·M9·M10)
+      client: 응답에만 더한 필드. 주문 상세(SCR-021)와 결제 기한 지난 주문(SCR-023)이 전해진 시각이나 '아직 못 전함'을 보임
+    - what: '꼭 넣을 필드 더함: PaymentRequest.dueCapAt'
+      why: 결제 기한이 넘지 않는 결제 기한 상한(그날 주문 마감, 차액 결제는 변경 마감). 확인 요청됨도 이때 기한 지남(REQ-218, REQ-223, 설계 재검토 M2·M3)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 M1·M2·M3·M9·M10)
+      client: 응답에만 더한 필드. 주문 상세(SCR-021)가 결제 기한과 함께 보임
+    - what: '꼭 넣을 필드 더함: OrderSummary.paymentNotice'
+      why: 결제 기한 지난 주문 목록에 결제 안내가 손님에게 전해진 시각이나 '아직 못 전함'을 보임(SPEC-037, 설계 재검토 M2)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 M1·M2·M3·M9·M10)
+      client: 응답에만 더한 필드. 주문 목록(SCR-020)이 읽음. 결제 안내가 없는 주문은 null
+    - what: '고를 값 더함: Order.cancelKind의 no_answer, ChangeRequest·ChangeRequestSummary.status와 Handoff.status의 closed_no_answer'
+      why: 맞춤 주문 요청은 그 픽업 날짜의 주문 마감, 변경 요청은 변경 마감, 에스컬레이션 건은 남긴 지 7일에 사장님 답이 없으면 '답 없어 닫힘'(REQ-213, REQ-214, REQ-216, 설계 재검토 M1)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 M1·M2·M3·M9·M10)
+      client: 응답에만 더한 값. 화면은 '답 없어 닫힘'을 보임. 고를 값을 더한 것이라 A13은 찾지 않아 여기 적음
+    - what: '응답이 바뀜: 답 없어 닫힌 건에 답하면 409 invalid_state(API-042 에스컬레이션 건 답변, API-046 맞춤 주문 검토, API-063 변경 요청 응답)'
+      why: 닫힌 기다림에는 사장님 답을 받지 않고 손님이 다시 요청하거나 다시 묻게 함(SPEC-024, 1-7)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 M1·M2·M3·M9·M10)
+      client: 화면은 detail을 보이고 그 건을 다시 읽어 '답 없어 닫힘'을 보임. 이미 있는 오류 코드라 A13은 찾지 않아 여기 적음
+    - what: '확인할 것 더함: API-046·063의 closed_day, API-047의 closed_day·past_cutoff, API-065의 overbooking'
+      why: 휴무일·다 찬 날에 사장님이 고르는 주문(맞춤 주문 수락·날짜 변경 수락·결제 기한 연장·재제작)은 확인받은 뒤 마감 후 추가 수락으로 잡고, 주문 마감이 지난 주문의 결제 기한 연장은 막지 않고 확인받음(REQ-221, REQ-226, SPEC-038)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 M1·M2·M3·M9·M10)
+      client: 화면은 409 confirmation_required의 confirm을 보이고 확인하면 confirm에 담아 다시 보냄(DEC-06). 전에 409 invalid_state였던 주문 마감 지난 결제 기한 연장이 확인 뒤 됨. 요청 필드의 고를 값이라 A13은 찾지 않아 여기 적음
+    - what: '값의 뜻이 바뀜: PaymentRequest.dueAt과 스킬 요청의 userRequest.user.properties.isFriend'
+      why: 결제 기한은 낸 시각이 아니라 손님에게 전해진 때부터 세고 결제 기한 상한을 넘지 않음(REQ-218). 스킬 요청에 isFriend가 없으면 친구 아님으로 고침(REQ-219)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 M1·M2·M3·M9·M10)
+      client: 화면은 dueAt을 그대로 보임. 전해지기 전에는 dueAt이 상한과 같음. 값의 뜻이라 A13은 찾지 않아 여기 적음
