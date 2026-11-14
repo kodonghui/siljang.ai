@@ -795,6 +795,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
     ],
     "SPEC-060": [
         ("원래 주문", "orders.remake_of_order_id"),
+        ("원래 주문은 재제작 주문이 끝난 뒤 끝남", "orders.finished_at"),
         ("확정으로 시작", "orders.confirmed_at"),
         ("결제 없음", "orders.amount"),
         ("새 픽업 일시", "orders.pickup_at"),

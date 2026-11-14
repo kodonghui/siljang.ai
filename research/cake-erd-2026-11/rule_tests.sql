@@ -966,6 +966,8 @@ SELECT pg_temp.expect_fail('M13 재제작 주문에 환불', 'refunds_remake', A
           'full', 45000, 45000, '{}')$$]);
 SELECT pg_temp.expect_fail('M13 재제작 주문의 장부 행', 'ledger_rows_remake', ARRAY[$$
   INSERT INTO ledger_rows (shop_id, order_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002')$$]);
+SELECT pg_temp.expect_fail('M13 끝나지 않은 재제작 주문이 있는 원래 주문을 끝냄', 'orders_remake_finish', ARRAY[$$
+  UPDATE orders SET finished_at = now(), lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-006 https가 아닌 카드 결제 링크', 'payment_accounts_card_payment_url_check', ARRAY[$$
   UPDATE payment_accounts SET card_payment_url = 'http://pay.example.com' WHERE id = 'b7000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-006 가게마다 지금 계좌 둘', 'payment_accounts_one_current', ARRAY[$$
@@ -1470,6 +1472,13 @@ INSERT INTO ai_tool_calls (id, shop_id, ai_call_id, consultation_id, tool_name, 
    'c1000000-0000-0000-0000-000000000003', 'quote', 'c4000000-0000-0000-0000-000000000006', '{"size":"1호","photo":true}', 'ok', 40);
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
+
+-- 끝난 원래 주문 1과 재제작 주문 2: 원래 주문이 끝난 채 재제작 주문만 다시 열지 못하고, 둘을 함께 다시 열면 들어감(설계 재검토 M13의 Codex 자동 검토 의견)
+SELECT pg_temp.expect_fail('M13 원래 주문이 끝난 채 재제작 주문만 다시 엶', 'orders_remake_finish', ARRAY[$$
+  UPDATE orders SET finished_at = NULL, lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_ok('M13 원래 주문과 재제작 주문을 함께 다시 엶', ARRAY[$$
+  UPDATE orders SET finished_at = NULL, lock_version = lock_version + 1
+   WHERE id IN ('d0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002')$$]);
 
 SELECT pg_temp.expect_left('REQ-189 상담 끝남 뒤 같은 손님의 새 상담', $$
   WITH c AS (INSERT INTO consultations (id, shop_id, customer_id, status, ai_disclosed_at, last_customer_message_at)

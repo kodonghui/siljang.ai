@@ -508,7 +508,7 @@ CREATE TABLE orders (
   cancel_kind              text CHECK (cancel_kind IN ('customer', 'shop', 'no_payment', 'no_answer')), -- 손님이 취소함·가게 사정으로 취소됨·결제 없어 취소됨(사장님이 고르거나 픽업 일시까지 고르지 않음, REQ-217)·답 없어 닫힘(맞춤 주문 요청에 그 픽업 날짜의 주문 마감까지 사장님 답이 없음, REQ-213)
   cancel_reason            text CHECK (char_length(cancel_reason) BETWEEN 1 AND 200), -- 가게 사정 취소의 사유(SPEC-048)
   remake_of_order_id       uuid,                         -- 재제작(TERM-034) 주문이면 돈을 낸 원래 주문(R21). 재제작 주문을 가리키지 않음(트리거 orders_remake_root). 가격표·운영규정 버전은 원래 주문 것(SPEC-060, 4절 A31)
-  finished_at              timestamptz,                  -- 주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없음(SPEC-025, SPEC-065). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)
+  finished_at              timestamptz,                  -- 주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없고, 원래 주문은 끝나지 않은 재제작 주문도 없음(SPEC-025, SPEC-060, SPEC-065, 트리거 orders_remake_finish). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)
   personal_data_purged_at  timestamptz,                  -- 끝나고 30일 뒤 개인정보를 지우고 보관 기록(kept_records)으로 나눈 시각(SPEC-065, REQ-185, REQ-187). 이 주문은 화면·API·AI가 읽지 않음(A22)
   updated_at               timestamptz NOT NULL DEFAULT now(), -- 마지막으로 바뀐 시각
   lock_version             integer NOT NULL DEFAULT 1 CHECK (lock_version >= 1), -- 잠금 번호: 이 행을 쓸 때마다(상태·시각·금액·버전) 하나 오름. 읽은 값과 같을 때만 씀(A6, E15, 설계 재검토 H12). 06단계 주문의 revision(DEC-05)
@@ -1426,6 +1426,22 @@ CREATE TRIGGER payment_requests_remake BEFORE INSERT OR UPDATE OF order_id ON pa
 CREATE TRIGGER refunds_remake BEFORE INSERT OR UPDATE OF order_id ON refunds FOR EACH ROW EXECUTE FUNCTION remake_money_check();
 CREATE TRIGGER ledger_rows_remake BEFORE INSERT OR UPDATE OF order_id ON ledger_rows FOR EACH ROW EXECUTE FUNCTION remake_money_check();
 
+-- 원래 주문은 그 재제작 주문(TERM-034)이 모두 끝날 때까지 끝나지 않음(SPEC-060, SPEC-065, 4절 A22·A31, 설계 재검토 M13의 Codex 자동 검토 의견).
+-- 재제작 주문의 취소·다시 신고의 환불을 원래 주문에 남기므로, 원래 주문이 먼저 끝나 지워지면 그 환불을 남길 곳이 없음. 끝난 시각을
+-- 원래 주문과 재제작 주문에 한 트랜잭션에서 쓰므로 트랜잭션 끝에 봄(지연 제약 트리거). 끝난 재제작 주문을 다시 열면 원래 주문도 다시 엶
+CREATE FUNCTION orders_remake_finish_check() RETURNS trigger
+LANGUAGE plpgsql AS $remake_finish$
+BEGIN
+  IF EXISTS (SELECT 1 FROM orders o JOIN orders r ON r.remake_of_order_id = o.id
+              WHERE o.id IN (NEW.id, NEW.remake_of_order_id) AND o.finished_at IS NOT NULL AND r.finished_at IS NULL) THEN
+    RAISE EXCEPTION 'orders_remake_finish: 끝나지 않은 재제작 주문이 있는 원래 주문(%)은 끝나지 않음', coalesce(NEW.remake_of_order_id, NEW.id)
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END
+$remake_finish$;
+CREATE CONSTRAINT TRIGGER orders_remake_finish AFTER INSERT OR UPDATE OF finished_at, remake_of_order_id ON orders DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION orders_remake_finish_check();
+
 -- TBL-054 file_deletions (공통) ← SPEC-065 | terms: none
 CREATE TABLE file_deletions (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 지울 파일 ID
@@ -1741,7 +1757,7 @@ COMMENT ON COLUMN orders.cancelled_at IS '취소된 시각';
 COMMENT ON COLUMN orders.cancel_kind IS '손님이 취소함·가게 사정으로 취소됨·결제 없어 취소됨(사장님이 고르거나 픽업 일시까지 고르지 않음, REQ-217)·답 없어 닫힘(맞춤 주문 요청에 그 픽업 날짜의 주문 마감까지 사장님 답이 없음, REQ-213)';
 COMMENT ON COLUMN orders.cancel_reason IS '가게 사정 취소의 사유(SPEC-048)';
 COMMENT ON COLUMN orders.remake_of_order_id IS '재제작(TERM-034) 주문이면 돈을 낸 원래 주문(R21). 재제작 주문을 가리키지 않음(트리거 orders_remake_root). 가격표·운영규정 버전은 원래 주문 것(SPEC-060, 4절 A31)';
-COMMENT ON COLUMN orders.finished_at IS '주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없음(SPEC-025, SPEC-065). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)';
+COMMENT ON COLUMN orders.finished_at IS '주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없고, 원래 주문은 끝나지 않은 재제작 주문도 없음(SPEC-025, SPEC-060, SPEC-065, 트리거 orders_remake_finish). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)';
 COMMENT ON COLUMN orders.personal_data_purged_at IS '끝나고 30일 뒤 개인정보를 지우고 보관 기록(kept_records)으로 나눈 시각(SPEC-065, REQ-185, REQ-187). 이 주문은 화면·API·AI가 읽지 않음(A22)';
 COMMENT ON COLUMN orders.updated_at IS '마지막으로 바뀐 시각';
 COMMENT ON COLUMN orders.lock_version IS '잠금 번호: 이 행을 쓸 때마다(상태·시각·금액·버전) 하나 오름. 읽은 값과 같을 때만 씀(A6, E15, 설계 재검토 H12). 06단계 주문의 revision(DEC-05)';
