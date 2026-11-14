@@ -1226,7 +1226,7 @@ CREATE TABLE ledger_writes (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 장부 쓰기 ID
   shop_id          uuid NOT NULL,                        -- 가게
   ledger_row_id    uuid NOT NULL,                        -- 장부 행
-  event_key        text NOT NULL,                        -- 이벤트마다 한 번(REQ-132). 형식 ledger:{대상 ID}:{이벤트 종류}(4절 A33)
+  event_key        text NOT NULL,                        -- 이벤트마다 한 번(REQ-132). 형식 ledger:{대상 ID}:{이벤트 종류}, 재제작은 ledger:{대상 ID}:remake:{재제작 주문의 일}. 대상은 그 일을 만든 기록(주문 확정은 주문을 확정한 결제, 변경은 변경 요청, 환불은 환불, 4절 A33)
   event_kind       text NOT NULL CHECK (event_kind IN ('confirmed', 'changed', 'cancelled', 'refund', 'handed_over', 'no_pickup', 'remake', 'refund_sent', 'payment_voided')), -- 확정·변경·취소·환불·인도·미수령·재제작(원래 주문 행에 재제작 주문의 만듦·변경·인도·미수령·취소, SPEC-060)·환불 보냄(REQ-172)·결제 확인 취소(REQ-169)
   status           text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'retrying', 'written', 'alerted', 'unlinked')), -- 기다림·다시 적기·적힘·사장님께 알림·연결 끊김(1-8)
   attempts         smallint NOT NULL DEFAULT 0 CHECK (attempts >= 0), -- 적기를 해 본 횟수
@@ -2229,7 +2229,7 @@ COMMENT ON COLUMN ledger_rows.last_written_at IS '마지막으로 고친 시각'
 COMMENT ON COLUMN ledger_writes.id IS '장부 쓰기 ID';
 COMMENT ON COLUMN ledger_writes.shop_id IS '가게';
 COMMENT ON COLUMN ledger_writes.ledger_row_id IS '장부 행';
-COMMENT ON COLUMN ledger_writes.event_key IS '이벤트마다 한 번(REQ-132). 형식 ledger:{대상 ID}:{이벤트 종류}(4절 A33)';
+COMMENT ON COLUMN ledger_writes.event_key IS '이벤트마다 한 번(REQ-132). 형식 ledger:{대상 ID}:{이벤트 종류}, 재제작은 ledger:{대상 ID}:remake:{재제작 주문의 일}. 대상은 그 일을 만든 기록(주문 확정은 주문을 확정한 결제, 변경은 변경 요청, 환불은 환불, 4절 A33)';
 COMMENT ON COLUMN ledger_writes.event_kind IS '확정·변경·취소·환불·인도·미수령·재제작(원래 주문 행에 재제작 주문의 만듦·변경·인도·미수령·취소, SPEC-060)·환불 보냄(REQ-172)·결제 확인 취소(REQ-169)';
 COMMENT ON COLUMN ledger_writes.status IS '기다림·다시 적기·적힘·사장님께 알림·연결 끊김(1-8)';
 COMMENT ON COLUMN ledger_writes.attempts IS '적기를 해 본 횟수';

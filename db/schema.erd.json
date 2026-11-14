@@ -6526,7 +6526,7 @@
         "id": "03h7y0179n9e4e4gq6tkhnv04",
         "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
         "name": "event_key",
-        "comment": "이벤트마다 한 번(REQ-132). 형식 ledger:{대상 ID}:{이벤트 종류}(4절 A33)",
+        "comment": "이벤트마다 한 번(REQ-132). 형식 ledger:{대상 ID}:{이벤트 종류}, 재제작은 ledger:{대상 ID}:remake:{재제작 주문의 일}. 대상은 그 일을 만든 기록(주문 확정은 주문을 확정한 결제, 변경은 변경 요청, 환불은 환불, 4절 A33)",
         "dataType": "text",
         "options": 8
       },

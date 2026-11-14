@@ -201,7 +201,7 @@ COMMENT ON COLUMN slot_holds.hold_key IS '같은 주문의 같은 가예약은 �
 COMMENT ON COLUMN owner_tasks.event_key IS '할 일을 만든 이벤트 키. 할 일마다 한 번(G2). 형식 task:{만든 이벤트}:{대상 ID}(4절 A33)';
 COMMENT ON COLUMN owner_alerts.event_key IS '알림마다 한 번(SPEC-067). 형식 alert:{알린 일}:{할 일 ID나 대상 ID}, 하루 한 번까지인 다시 알림은 뒤에 :{가게 날짜}(4절 A33)';
 COMMENT ON COLUMN notifications.event_key IS '같은 주문의 같은 이벤트는 한 번(REQ-154). 형식 notice:{대상 ID}:{안내 종류}(4절 A33)';
-COMMENT ON COLUMN ledger_writes.event_key IS '이벤트마다 한 번(REQ-132). 형식 ledger:{대상 ID}:{이벤트 종류}(4절 A33)';
+COMMENT ON COLUMN ledger_writes.event_key IS '이벤트마다 한 번(REQ-132). 형식 ledger:{대상 ID}:{이벤트 종류}, 재제작은 ledger:{대상 ID}:remake:{재제작 주문의 일}. 대상은 그 일을 만든 기록(주문 확정은 주문을 확정한 결제, 변경은 변경 요청, 환불은 환불, 4절 A33)';
 COMMENT ON COLUMN request_keys.request_hash IS '요청 지문: 명령·경로의 ID·본문을 정한 차례로 이어 시크릿 저장소의 키로 만든 HMAC-SHA256(16진수 64자). 같은 키에 지문이 다르면 422 idempotency_key_reused(06 DEC-04). 본문의 값은 지문으로만 남음';
 COMMENT ON COLUMN request_keys.state IS '처리 중·끝남. 처리 중에 같은 키가 오면 409 request_in_progress(06 DEC-04)';
 COMMENT ON COLUMN request_keys.processing_expires_at IS '처리 중의 기한(받은 시각 + 60초). 끝나지 않고 지나면(서버가 멈춤) 같은 키·같은 지문의 다음 요청이 이 행을 이어받아 처음부터 처리함(5절 E27)';
