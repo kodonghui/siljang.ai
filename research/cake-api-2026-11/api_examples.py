@@ -287,7 +287,8 @@ QUOTE = {
 }
 PR_FIRST_PAID = {
     "paymentRequestId": uid("pr:K7Q3M9:1"), "order": ORDER_REF, "kind": "first", "status": "paid", "amount": 36000,
-    "requestedAmount": None, "issuedAt": t("11-12", "13:05"), "dueAt": t("11-13", "01:05"), "claimedAt": t("11-12", "13:40"),
+    "requestedAmount": None, "issuedAt": t("11-12", "13:05"), "deliveredAt": t("11-12", "13:05"), "dueAt": t("11-13", "01:05"),
+    "dueCapAt": t("11-18", "18:00"), "claimedAt": t("11-12", "13:40"),
     "claimRejectedAt": None, "depositorName": "이지우", "mismatchAmount": None, "arrivedAmount": 36000, "arrivedAt": t("11-12", "14:02"),
     "paidAt": t("11-12", "14:02"), "expiredAt": None,
     "closedAt": None, "closeReason": None, "revision": rev("pr:K7Q3M9:1:paid"),
@@ -295,7 +296,8 @@ PR_FIRST_PAID = {
 PR_CLAIMED = dict(PR_FIRST_PAID, status="claimed", paidAt=None, arrivedAmount=None, arrivedAt=None, revision=rev("pr:K7Q3M9:1:claimed"))
 PR_CUSTOM_OPEN = {
     "paymentRequestId": uid("pr:P4X8N2:1"), "order": CUSTOM_REF, "kind": "first", "status": "open", "amount": 75000,
-    "requestedAmount": 70000, "issuedAt": t("11-12", "15:00"), "dueAt": t("11-13", "03:00"), "claimedAt": None,
+    "requestedAmount": 70000, "issuedAt": t("11-12", "15:00"), "deliveredAt": t("11-12", "15:00"), "dueAt": t("11-13", "03:00"),
+    "dueCapAt": t("11-18", "18:00"), "claimedAt": None,
     "claimRejectedAt": None, "depositorName": None, "mismatchAmount": None, "arrivedAmount": None, "arrivedAt": None,
     "paidAt": None, "expiredAt": None, "closedAt": None, "closeReason": None, "revision": rev("pr:P4X8N2:1:open"),
 }
@@ -303,10 +305,12 @@ PR_MISMATCH = dict(PR_CLAIMED, status="mismatch", mismatchAmount=31000, arrivedA
                    revision=rev("pr:K7Q3M9:1:mismatch"))
 PR_EXPIRED = dict(PR_CUSTOM_OPEN, status="expired", expiredAt=t("11-13", "03:00"), revision=rev("pr:P4X8N2:1:expired"))
 PR_REISSUE = dict(PR_CUSTOM_OPEN, paymentRequestId=uid("pr:P4X8N2:2"), kind="reissue", requestedAmount=None,
-                  issuedAt=t("11-13", "09:10"), dueAt=t("11-13", "21:10"), revision=rev("pr:P4X8N2:2:open"))
+                  issuedAt=t("11-13", "09:10"), deliveredAt=t("11-13", "09:10"), dueAt=t("11-13", "21:10"),
+                  revision=rev("pr:P4X8N2:2:open"))
 PR_DIFFERENCE = {
     "paymentRequestId": uid("pr:K7Q3M9:diff"), "order": ORDER_REF, "kind": "difference", "status": "open", "amount": 20000,
-    "requestedAmount": None, "issuedAt": t("11-15", "10:20"), "dueAt": t("11-15", "22:20"), "claimedAt": None,
+    "requestedAmount": None, "issuedAt": t("11-15", "10:20"), "deliveredAt": t("11-15", "10:20"), "dueAt": t("11-15", "22:20"),
+    "dueCapAt": t("11-18", "14:00"), "claimedAt": None,
     "claimRejectedAt": None, "depositorName": None, "mismatchAmount": None, "arrivedAmount": None, "arrivedAt": None,
     "paidAt": None, "expiredAt": None, "closedAt": None, "closeReason": None, "revision": rev("pr:K7Q3M9:diff:open"),
 }
@@ -381,6 +385,9 @@ CUSTOM_REISSUED = dict(CUSTOM_ACCEPTED, paymentRequests=[PR_REISSUE, PR_EXPIRED]
                        day={"capacity": 5, "held": 6, "remaining": 0, "full": True}, revision=rev("order:P4X8N2:reissued"))
 CUSTOM_NO_PAYMENT = dict(CUSTOM_OVERDUE, status="cancelled", cancelledAt=t("11-13", "09:12"), cancelKind="no_payment",
                          revision=rev("order:P4X8N2:nopayment"))
+# 그 픽업 날짜의 주문 마감(11/18 18:00)까지 사장님 답이 없어 '답 없어 닫힘'으로 닫힌 맞춤 주문 요청(REQ-213)
+CUSTOM_NO_ANSWER = dict(CUSTOM_REQUESTED, status="cancelled", cancelledAt=t("11-18", "18:00"), cancelKind="no_answer",
+                        revision=rev("order:P4X8N2:noanswer"))
 REMAKE_DETAILS = dict(DETAILS_V1, source="remake", createdAt=t("11-21", "12:00"), pickupAt=t("11-25", "15:00"), amount=0)
 ORDER_REMAKE = dict(ORDER_CONFIRMED, orderId=REMAKE_ID, orderNo=REMAKE_NO, pickupAt=t("11-25", "15:00"), pickupDay="2026-11-25",
                     amount=0, requestedAt=t("11-21", "12:00"), confirmedAt=t("11-21", "12:00"), remakeOf=ORDER_REF,
@@ -394,11 +401,18 @@ def summary(o, courier=False):
     return {"orderId": o["orderId"], "orderNo": o["orderNo"], "kind": o["kind"], "status": o["status"], "version": o["version"],
             "pickupAt": o["pickupAt"], "pickupDay": o["pickupDay"], "amount": o["amount"], "courierPickup": courier,
             "customerName": o["details"][0]["customerName"], "requestedAt": o["requestedAt"], "isRemake": o["remakeOf"] is not None,
+            "paymentNotice": ({"status": o["paymentRequests"][0]["status"], "deliveredAt": o["paymentRequests"][0]["deliveredAt"],
+                               "dueAt": o["paymentRequests"][0]["dueAt"]} if o["paymentRequests"] else None),
             "revision": o["revision"]}
 
 
 ORDER_LIST = {"items": [summary(CUSTOM_REQUESTED), summary(ORDER_CONFIRMED)], "nextCursor": "b3JkZXI6MjAyNi0xMS0yMA"}
-ORDER_LIST_OVERDUE = {"items": [summary(CUSTOM_OVERDUE)], "nextCursor": None}
+# 결제 안내가 손님에게 전해지지 않은 채 결제 기한 상한(그날 주문 마감)에 기한 지남이 된 주문(SPEC-037 '아직 못 전함')
+ORDER_OVERDUE_UNDELIVERED = dict(summary(CUSTOM_OVERDUE), orderId=uid("order:W5N2C8"), orderNo="W5N2C8", pickupAt=t("11-21", "11:00"),
+                                 pickupDay="2026-11-21", customerName="박서윤", requestedAt=t("11-14", "09:30"),
+                                 paymentNotice={"status": "expired", "deliveredAt": None, "dueAt": t("11-19", "18:00")},
+                                 revision=rev("order:W5N2C8:overdue"))
+ORDER_LIST_OVERDUE = {"items": [summary(CUSTOM_OVERDUE), ORDER_OVERDUE_UNDELIVERED], "nextCursor": None}
 EMPTY_PAGE = {"items": [], "nextCursor": None}
 
 # ── 환불 ────────────────────────────────────────────────────────────────────
@@ -445,6 +459,8 @@ CHANGE_CLOSED = dict(CHANGE_AWAITING, status="closed_no_difference", closedAt=t(
                      revision=rev("change:2:closed"))
 CHANGE_REJECTED = dict(CHANGE_TWO_TIER, status="rejected", decidedAt=t("11-15", "10:20"), rejectReason="2단은 사흘 전까지만 받아요",
                        revision=rev("change:2:rejected"))
+# 변경 마감(11/18 14:00)까지 사장님 답이 없어 '답 없어 닫힘'으로 닫힌 변경 요청. 주문은 원래대로(REQ-214)
+CHANGE_NO_ANSWER = dict(CHANGE, status="closed_no_answer", closedAt=t("11-18", "14:00"), revision=rev("change:1:noanswer"))
 CHANGE_SUMMARY = {"changeRequestId": CHANGE["changeRequestId"], "status": "applied", "baseVersion": 1, "createdAt": t("11-15", "10:00")}
 
 # ── 문제 신고 ───────────────────────────────────────────────────────────────
@@ -470,13 +486,15 @@ HANDOFF = {
     "handoffId": uid("handoff:1"), "consultationId": CONSULT_ID, "reason": "edibility", "status": "open", "requestedDay": None,
     "order": None, "customerLines": [{"at": t("11-12", "12:40"), "text": "땅콩 알레르기가 있는데 먹어도 되나요?", "photos": []}],
     "customerChannelFriend": True, "answerText": None, "dayDecision": None, "dayAcceptExpiresAt": None, "answeredAt": None,
-    "createdAt": t("11-12", "12:40"), "revision": rev("handoff:1:open"),
+    "closedAt": None, "createdAt": t("11-12", "12:40"), "revision": rev("handoff:1:open"),
 }
 HANDOFF_ANSWERED = dict(HANDOFF, status="answered", answerText="땅콩은 쓰지 않지만 같은 주방에서 견과류를 다뤄요. 걱정되시면 드시지 않는 게 좋아요.",
                         answeredAt=t("11-12", "13:00"), revision=rev("handoff:1:answered"))
 HANDOFF_DAY = dict(HANDOFF, handoffId=uid("handoff:2"), reason="closed_day", requestedDay="2026-11-20",
                    customerLines=[{"at": t("11-12", "16:00"), "text": "20일이 마감이라던데 그래도 안 될까요?", "photos": []}],
                    customerChannelFriend=False, revision=rev("handoff:2:open"))
+# 남긴 지 7일 동안 사장님 답이 없어 '답 없어 닫힘'으로 닫힌 에스컬레이션 건(REQ-216)
+HANDOFF_CLOSED = dict(HANDOFF, status="closed_no_answer", closedAt=t("11-19", "12:40"), revision=rev("handoff:1:closed"))
 HANDOFF_DAY_ACCEPTED = dict(HANDOFF_DAY, status="answered", dayDecision="accepted", dayAcceptExpiresAt=t("11-13", "16:30"),
                             answeredAt=t("11-12", "16:30"), revision=rev("handoff:2:answered"))
 MESSAGES = {
@@ -503,8 +521,8 @@ TASKS = {"items": [
     {"taskId": uid("task:2"), "kind": "custom_order", "waitStatus": "late", "waitDueAt": t("11-12", "16:10"), "order": CUSTOM_REF,
      "subject": {"type": "order", "id": CUSTOM_ID}, "summary": "맞춤 주문 11/20 16:00, 그날 남은 자리 0", "openedAt": t("11-12", "14:10"),
      "closedAt": None},
-    {"taskId": uid("task:3"), "kind": "payment_claim", "waitStatus": None, "waitDueAt": None, "order": ORDER_REF,
-     "subject": {"type": "payment_request", "id": PR_CLAIMED["paymentRequestId"]}, "summary": "입금 확인 요청 36,000원",
+    {"taskId": uid("task:3"), "kind": "payment_claim", "waitStatus": "waiting", "waitDueAt": t("11-12", "15:40"), "order": ORDER_REF,
+     "subject": {"type": "payment_request", "id": PR_CLAIMED["paymentRequestId"]}, "summary": "결제 확인 요청 36,000원",
      "openedAt": t("11-12", "13:40"), "closedAt": None},
     {"taskId": uid("task:4"), "kind": "refund_send", "waitStatus": None, "waitDueAt": None, "order": ORDER_REF,
      "subject": {"type": "refund", "id": REFUND["refundId"]}, "summary": "환불 보내기 31,000원(정한 지 24시간 지남)",

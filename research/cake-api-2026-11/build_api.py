@@ -89,6 +89,7 @@ CONFIRM_FACTS = {
     "overbooking": {"day": "2026-11-20"},
     "not_pickup_day": {"day": "2026-11-20"},
     "closed_day": {"day": "2026-11-25"},
+    "past_cutoff": {"day": "2026-11-20"},
 }
 
 
@@ -128,17 +129,19 @@ def field_errors(o):
     return [{"field": f, "code": c} for f, c in fields]
 
 
-def problem(o, status, code, *, fields=None, detail=None):
+def problem(o, status, code, *, fields=None, detail=None, kinds=None):
     e = C.ERRORS[code]
     assert e["status"] == status, (o["id"], code, status)
+    # 확인할 것이 여럿인 API는 확인할 것마다 예시 하나(첫 것만 예전 traceId 그대로)
+    extra = ":" + kinds[0] if kinds and o["confirm"] and kinds[0] != o["confirm"][0] else ""
     v = {"type": f"/problems/{code}", "title": e["message"], "status": status,
          "detail": detail or e["meaning"].split(". ")[0], "instance": instance(o), "code": code,
-         "traceId": E.trace(o["id"] + ":" + code + ":" + str(len(fields or [])))}
+         "traceId": E.trace(o["id"] + ":" + code + ":" + str(len(fields or [])) + extra)}
     if code == "validation_failed":
         v["errors"] = fields if fields is not None else field_errors(o)
     if code == "confirmation_required":
         items, words = [], []
-        for kind in o["confirm"]:
+        for kind in kinds or o["confirm"]:
             item = {"kind": kind, **CONFIRM_FACTS.get(kind, {})}
             items.append(item)
             words.append(C.CONFIRMATIONS[kind]["message"].format(count=item.get("count", "")))
@@ -153,6 +156,10 @@ def problem(o, status, code, *, fields=None, detail=None):
 def error_response(o, status, codes):
     examples = {}
     for code in codes:
+        if code == "confirmation_required" and len(o["confirm"]) > 1:
+            for i, kind in enumerate(o["confirm"]):
+                examples[code if i == 0 else f"{code}_{kind}"] = {"value": problem(o, status, code, kinds=[kind])}
+            continue
         examples[code] = {"value": problem(o, status, code)}
     if status == 422 and o["idem"] and o["fields"]:
         examples["missing_idempotency_key"] = {
