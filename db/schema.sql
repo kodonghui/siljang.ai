@@ -832,8 +832,8 @@ CREATE TABLE payment_requests (
   depositor_name      text CHECK (char_length(depositor_name) BETWEEN 1 AND 30), -- 입금자 이름(입금 대조, TERM-063). 손님이 결제 확인을 요청할 때 AI를 거치지 않는 입력으로 받고, 따로 넣지 않으면 주문자 이름(SPEC-033, REQ-176). AI로 보내지 않음(REQ-178). 주문이 끝나고 30일 뒤 지움(SPEC-065)
   mismatch_amount     integer CHECK (mismatch_amount BETWEEN 1 AND 100000000), -- 다르게 들어온 금액(R15). 안내 금액의 10배까지(SPEC-035)
   mismatch_at         timestamptz,                       -- '금액 불일치'를 남긴 시각. 맞추는 중에는 결제 기한을 멈춤(REQ-161)
-  arrived_amount      integer CHECK (arrived_amount BETWEEN 1 AND 100000000), -- 들어온 금액(받은 금액의 몫, REQ-165). 입금됨은 안내 금액, 맞추는 중은 다르게 들어온 금액(모자란 금액이 마저 들어오면 안내 금액, 더 들어온 채 대조 완료면 그대로), 결제로 확인하지 않은 들어온 입금은 사장님이 남긴 금액(SPEC-071)
-  arrived_at          timestamptz,                       -- 들어온 금액을 남긴 시각. 결제 확인 취소(SPEC-070)면 지움
+  arrived_amount      integer CHECK (arrived_amount BETWEEN 1 AND 100000000), -- 들어온 금액(받은 금액의 몫, REQ-165). 입금됨은 안내 금액, 맞추는 중은 다르게 들어온 금액(모자란 금액이 마저 들어오면 안내 금액, 더 들어온 채 대조 완료면 그대로), 결제로 확인하지 않은 들어온 입금은 사장님이 남긴 금액. 같은 결제 안내에 또 들어오면 더함(확인됨에 더 들어온 입금도, SPEC-071)
+  arrived_at          timestamptz,                       -- 들어온 금액을 마지막으로 남긴 시각. 결제 확인 취소(SPEC-070)면 지움
   paid_at             timestamptz,                       -- 확인됨이 된 시각
   expired_at          timestamptz,                       -- 기한 지남이 된 시각
   closed_at           timestamptz,                       -- 닫힌 시각
@@ -862,7 +862,7 @@ CREATE TABLE payment_requests (
   CONSTRAINT payment_requests_mismatch_chk CHECK (status <> 'mismatch' OR (mismatch_amount IS NOT NULL AND mismatch_at IS NOT NULL)),
   CONSTRAINT payment_requests_mismatch_amount_chk CHECK (mismatch_amount IS NULL OR mismatch_amount <= amount * 10),
   CONSTRAINT payment_requests_arrived_chk CHECK ((arrived_amount IS NULL) = (arrived_at IS NULL)),
-  CONSTRAINT payment_requests_arrived_amount_chk CHECK (arrived_amount IS NULL OR arrived_amount <= amount * 10), -- 안내 금액의 10배까지(SPEC-035, SPEC-071)
+  CONSTRAINT payment_requests_arrived_amount_chk CHECK (arrived_amount IS NULL OR arrived_amount <= amount * 10), -- 들어온 금액(더한 합)은 안내 금액의 10배까지(SPEC-035, SPEC-071)
   CONSTRAINT payment_requests_arrived_status_chk CHECK (status NOT IN ('open', 'claimed') OR arrived_amount IS NULL), -- 나감·확인 요청됨에는 들어온 금액이 없음
   CONSTRAINT payment_requests_arrived_paid_chk CHECK (status <> 'paid' OR (arrived_amount IS NOT NULL AND arrived_amount >= amount)), -- 확인됨은 안내 금액 이상이 들어옴
   CONSTRAINT payment_requests_arrived_mismatch_chk CHECK (status <> 'mismatch' OR arrived_amount IS NOT DISTINCT FROM mismatch_amount), -- 맞추는 중의 들어온 금액은 다르게 들어온 금액
@@ -909,9 +909,10 @@ CREATE TABLE refunds (
   cause                  text NOT NULL CHECK (cause IN ('customer_cancel', 'shop_cancel', 'change_reduced', 'compensation', 'paid_after_cancel', 'over_received')), -- 손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 몫, 기한 뒤 차액, SPEC-071)
   change_request_id      uuid,                           -- 금액이 내려간 변경
   issue_report_id        uuid,                           -- 보상의 문제 신고
-  payment_request_id     uuid,                           -- 돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)
+  payment_request_id     uuid,                           -- 돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071). 결제 확인 요청 중이거나 맞추는 중에 취소한 주문의 취소 환불도 그 결제 안내의 들어온 금액을 셈했으면 가짐
+  counted_arrived_amount integer CHECK (counted_arrived_amount BETWEEN 1 AND 100000000), -- 이 환불이 셈한 그 결제 안내의 들어온 금액(합). 비어 있으면 트리거 refunds_unconfirmed가 지금 값으로 채움. 같은 결제 안내에 다시 들어온 입금의 환불은 앞 환불보다 크게 셈하고 계산값은 새로 들어온 몫까지(4절 A29, 설계 재검토 남은 빈 곳)
   cancelled_order_id     uuid,                           -- 취소 환불(손님 취소·가게 사정 취소)이면 취소한 주문: 그 주문이나 그 재제작 주문(트리거 refunds_cancelled). 취소한 주문마다 환불 하나(refunds_cancelled_uq, 4절 A33, 설계 재검토 M7)
-  event_key              text NOT NULL,                  -- 같은 환불을 두 번 정하지 않음(G2). 형식 refund:{대상 ID}:{사유}. 대상은 취소한 주문·변경 요청·문제 신고·결제 안내이고 대상마다 하나는 UNIQUE로도 막음(4절 A33)
+  event_key              text NOT NULL,                  -- 같은 환불을 두 번 정하지 않음(G2). 형식 refund:{대상 ID}:{사유}, 들어온 입금의 환불은 refund:{결제 안내 ID}:{사유}:{셈한 들어온 금액}. 대상은 취소한 주문·변경 요청·문제 신고·결제 안내이고 대상마다 하나(결제 안내는 셈한 들어온 금액마다 하나)는 UNIQUE로도 막음(4절 A33)
   decision               text NOT NULL CHECK (decision IN ('full', 'partial', 'none')), -- 전액 환불·일부 환불·환불 없이 취소(REQ-085). 금액이 내려간 변경은 차액 돌려주기라 전액 환불이 없음(refunds_change_decision_chk, SPEC-047)
   amount                 integer NOT NULL CHECK (amount BETWEEN 0 AND 100000000), -- 정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170). 상한은 들어온 금액의 상한과 같은 1억 원
   calculated_amount      integer NOT NULL CHECK (calculated_amount BETWEEN 0 AND 100000000), -- 가게 규칙의 계산값(SPEC-016, 4절 A30). 손님 취소는 바탕(받은 금액 - 이미 정한 환불 - 따로 정할 환불)에서 취소 수수료(TERM-016)를 먼저 빼고(바탕보다 크면 0) 비율을 곱해 원 미만 버림. 가게 사정 취소는 바탕 전액, 금액이 내려간 변경은 내려간 금액, 보상은 고른 금액. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)
@@ -934,14 +935,15 @@ CREATE TABLE refunds (
   CONSTRAINT refunds_cancelled_uq UNIQUE (cancelled_order_id), -- 취소한 주문마다 취소 환불 하나(4절 A33, 설계 재검토 M7)
   CONSTRAINT refunds_change_uq UNIQUE (change_request_id), -- 금액이 내려간 변경 요청마다 환불 하나
   CONSTRAINT refunds_issue_uq UNIQUE (issue_report_id), -- 문제 신고마다 보상 환불 하나(보상은 신고마다 하나, SPEC-059)
-  CONSTRAINT refunds_request_uq UNIQUE (payment_request_id), -- 결제 안내마다 들어온 입금의 환불 하나(SPEC-071)
+  CONSTRAINT refunds_request_uq UNIQUE (payment_request_id, counted_arrived_amount), -- 결제 안내의 들어온 금액(합)마다 환불 하나. 같은 결제 안내에 다시 들어온 입금은 새 환불(SPEC-071, 설계 재검토 남은 빈 곳)
   CONSTRAINT refunds_decision_chk CHECK ((decision = 'none') = (amount = 0)),
   CONSTRAINT refunds_override_chk CHECK (amount = calculated_amount OR override_reason IS NOT NULL),
   CONSTRAINT refunds_floor_chk CHECK (cause = 'compensation' OR amount >= calculated_amount), -- 보상이 아닌 환불은 계산값보다 낮게 정하지 못함(REQ-170). 환불 없이 취소는 계산값 0원일 때만
   CONSTRAINT refunds_change_chk CHECK ((cause = 'change_reduced') = (change_request_id IS NOT NULL)),
   CONSTRAINT refunds_change_decision_chk CHECK (cause <> 'change_reduced' OR decision <> 'full'), -- 금액이 내려간 변경은 차액 돌려주기(일부 환불, 계산값 0원이면 환불 없음)만(SPEC-047)
   CONSTRAINT refunds_issue_chk CHECK ((cause = 'compensation') = (issue_report_id IS NOT NULL)),
-  CONSTRAINT refunds_request_chk CHECK ((cause IN ('paid_after_cancel', 'over_received')) = (payment_request_id IS NOT NULL)),
+  CONSTRAINT refunds_request_chk CHECK ((cause NOT IN ('paid_after_cancel', 'over_received') OR payment_request_id IS NOT NULL) AND (cause IN ('paid_after_cancel', 'over_received', 'customer_cancel', 'shop_cancel') OR payment_request_id IS NULL)), -- 들어온 입금의 환불은 결제 안내가 꼭, 취소 환불은 결제 확인 요청 중이거나 맞추는 중이던 결제 안내의 들어온 금액을 셈했으면 가짐(SPEC-071)
+  CONSTRAINT refunds_counted_chk CHECK (counted_arrived_amount IS NULL OR payment_request_id IS NOT NULL), -- 셈한 들어온 금액은 결제 안내가 있을 때만(있으면 트리거가 채움)
   CONSTRAINT refunds_cancelled_chk CHECK ((cause IN ('customer_cancel', 'shop_cancel')) = (cancelled_order_id IS NOT NULL)), -- 취소 환불에만 취소한 주문
   CONSTRAINT refunds_sent_chk CHECK (sent_at IS NULL OR (decision <> 'none' AND method IS NOT NULL)),
   CONSTRAINT refunds_account_pair_chk CHECK ((refund_account_enc IS NULL) = (refund_account_last4 IS NULL)) -- 암호화한 계좌번호와 끝 4자리는 함께
@@ -1450,31 +1452,59 @@ $sync$;
 CREATE CONSTRAINT TRIGGER orders_production_sync AFTER INSERT OR UPDATE OF status ON orders DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION orders_production_sync_check();
 CREATE CONSTRAINT TRIGGER productions_order_sync AFTER INSERT OR UPDATE OF handed_over_at, no_pickup_at OR DELETE ON productions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION orders_production_sync_check();
 
--- 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 결제 확인을 취소하지 않은
--- 확인된 결제)을 넘지 않음(SPEC-016, SPEC-071, 4절 A29, Codex 후속). 환불 행을 쓸 때 봄. 결제 안내가 없거나 다른 가게의 것이면
--- CHECK(refunds_request_chk)와 외래 키(refunds_request_fk)가 막으므로 넘김
+-- 결제 안내의 들어온 금액을 셈한 환불: 취소 뒤 들어온 입금·더 들어온 금액의 환불과, 결제 확인 요청 중이거나 맞추는 중에 취소한 주문의 취소 환불(SPEC-016,
+-- SPEC-071, 4절 A29, Codex 후속, 설계 재검토 남은 빈 곳). 셈한 들어온 금액이 비어 있으면 그 결제 안내의 지금 들어온 금액으로 채우고,
+-- 그 결제 안내 행을 잠가 같은 결제 안내의 환불을 차례로 셈함. 셈한 금액은 그 결제 안내의 들어온 금액 이하이고 앞 환불이 셈한 금액보다
+-- 작지 않음(같으면 refunds_request_uq). 들어온 입금의 환불 계산값은 셈한 금액 - (결제 확인을 취소하지 않은 확인된 결제와, 앞 환불이 셈한
+-- 금액 가운데 큰 값)을 넘지 않아 앞 환불이 셈한 몫을 다시 돌려주지 않음. 결제 안내가 없거나 다른 가게의 것이면 CHECK(refunds_request_chk)와
+-- 외래 키(refunds_request_fk)가 막으므로 넘김
 CREATE FUNCTION refunds_unconfirmed_check() RETURNS trigger
 LANGUAGE plpgsql AS $unconfirmed$
 DECLARE
   arrived integer;
   confirmed bigint;
+  latest integer;
+  prior integer;
 BEGIN
-  IF NEW.cause NOT IN ('paid_after_cancel', 'over_received') OR NEW.payment_request_id IS NULL THEN
+  IF NEW.payment_request_id IS NULL THEN
     RETURN NEW;
   END IF;
-  SELECT r.arrived_amount INTO arrived FROM payment_requests r WHERE r.id = NEW.payment_request_id AND r.shop_id = NEW.shop_id;
+  SELECT r.arrived_amount INTO arrived FROM payment_requests r WHERE r.id = NEW.payment_request_id AND r.shop_id = NEW.shop_id FOR NO KEY UPDATE;
   IF NOT FOUND THEN
     RETURN NEW;
   END IF;
-  SELECT coalesce(sum(p.amount), 0) INTO confirmed FROM payments p WHERE p.payment_request_id = NEW.payment_request_id AND p.voided_at IS NULL;
-  IF NEW.calculated_amount > coalesce(arrived, 0) - confirmed THEN
-    RAISE EXCEPTION 'refunds_unconfirmed: 환불 계산값(%원)이 그 결제 안내에서 결제로 확인하지 않은 몫(%원)을 넘음', NEW.calculated_amount, coalesce(arrived, 0) - confirmed
+  IF arrived IS NULL THEN
+    RAISE EXCEPTION 'refunds_unconfirmed: 그 결제 안내에 들어온 금액이 없음' USING ERRCODE = 'check_violation';
+  END IF;
+  IF NEW.counted_arrived_amount IS NULL THEN
+    NEW.counted_arrived_amount := arrived;
+  END IF;
+  IF NEW.counted_arrived_amount > arrived THEN
+    RAISE EXCEPTION 'refunds_unconfirmed: 셈한 들어온 금액(%원)이 그 결제 안내의 들어온 금액(%원)을 넘음', NEW.counted_arrived_amount, arrived
       USING ERRCODE = 'check_violation';
+  END IF;
+  IF TG_OP = 'INSERT' OR NEW.payment_request_id IS DISTINCT FROM OLD.payment_request_id
+     OR NEW.counted_arrived_amount IS DISTINCT FROM OLD.counted_arrived_amount THEN
+    SELECT max(f.counted_arrived_amount) INTO latest FROM refunds f WHERE f.payment_request_id = NEW.payment_request_id AND f.id <> NEW.id;
+    IF NEW.counted_arrived_amount < latest THEN
+      RAISE EXCEPTION 'refunds_unconfirmed: 앞 환불이 그 결제 안내의 들어온 금액을 %원까지 셈함(새 환불은 그보다 적게 셈하지 못함)', latest
+        USING ERRCODE = 'check_violation';
+    END IF;
+  END IF;
+  IF NEW.cause NOT IN ('paid_after_cancel', 'over_received') THEN
+    RETURN NEW;
+  END IF;
+  SELECT max(f.counted_arrived_amount) INTO prior FROM refunds f
+   WHERE f.payment_request_id = NEW.payment_request_id AND f.id <> NEW.id AND f.counted_arrived_amount < NEW.counted_arrived_amount;
+  SELECT coalesce(sum(p.amount), 0) INTO confirmed FROM payments p WHERE p.payment_request_id = NEW.payment_request_id AND p.voided_at IS NULL;
+  IF NEW.calculated_amount > NEW.counted_arrived_amount - greatest(confirmed, coalesce(prior, 0)) THEN
+    RAISE EXCEPTION 'refunds_unconfirmed: 환불 계산값(%원)이 그 결제 안내에서 결제로 확인하지 않았고 앞 환불이 셈하지 않은 몫(%원)을 넘음',
+      NEW.calculated_amount, NEW.counted_arrived_amount - greatest(confirmed, coalesce(prior, 0)) USING ERRCODE = 'check_violation';
   END IF;
   RETURN NEW;
 END
 $unconfirmed$;
-CREATE TRIGGER refunds_unconfirmed BEFORE INSERT OR UPDATE OF cause, payment_request_id, calculated_amount ON refunds FOR EACH ROW EXECUTE FUNCTION refunds_unconfirmed_check();
+CREATE TRIGGER refunds_unconfirmed BEFORE INSERT OR UPDATE OF cause, payment_request_id, calculated_amount, counted_arrived_amount ON refunds FOR EACH ROW EXECUTE FUNCTION refunds_unconfirmed_check();
 
 -- 재제작 주문(TERM-034)은 결제 없는 주문이라 돈과 장부를 원래 주문에 남김(SPEC-060, SPEC-016, R21, 4절 A31, 설계 재검토 M13).
 -- 재제작 주문은 돈을 낸 원래 주문을 가리키고(재제작의 재제작도 그 원래 주문), 재제작 주문에는 결제 안내·환불·장부 행을 두지 않음.
@@ -2119,8 +2149,8 @@ COMMENT ON COLUMN payment_requests.claim_rejected_at IS '사장님이 ''미입�
 COMMENT ON COLUMN payment_requests.depositor_name IS '입금자 이름(입금 대조, TERM-063). 손님이 결제 확인을 요청할 때 AI를 거치지 않는 입력으로 받고, 따로 넣지 않으면 주문자 이름(SPEC-033, REQ-176). AI로 보내지 않음(REQ-178). 주문이 끝나고 30일 뒤 지움(SPEC-065)';
 COMMENT ON COLUMN payment_requests.mismatch_amount IS '다르게 들어온 금액(R15). 안내 금액의 10배까지(SPEC-035)';
 COMMENT ON COLUMN payment_requests.mismatch_at IS '''금액 불일치''를 남긴 시각. 맞추는 중에는 결제 기한을 멈춤(REQ-161)';
-COMMENT ON COLUMN payment_requests.arrived_amount IS '들어온 금액(받은 금액의 몫, REQ-165). 입금됨은 안내 금액, 맞추는 중은 다르게 들어온 금액(모자란 금액이 마저 들어오면 안내 금액, 더 들어온 채 대조 완료면 그대로), 결제로 확인하지 않은 들어온 입금은 사장님이 남긴 금액(SPEC-071)';
-COMMENT ON COLUMN payment_requests.arrived_at IS '들어온 금액을 남긴 시각. 결제 확인 취소(SPEC-070)면 지움';
+COMMENT ON COLUMN payment_requests.arrived_amount IS '들어온 금액(받은 금액의 몫, REQ-165). 입금됨은 안내 금액, 맞추는 중은 다르게 들어온 금액(모자란 금액이 마저 들어오면 안내 금액, 더 들어온 채 대조 완료면 그대로), 결제로 확인하지 않은 들어온 입금은 사장님이 남긴 금액. 같은 결제 안내에 또 들어오면 더함(확인됨에 더 들어온 입금도, SPEC-071)';
+COMMENT ON COLUMN payment_requests.arrived_at IS '들어온 금액을 마지막으로 남긴 시각. 결제 확인 취소(SPEC-070)면 지움';
 COMMENT ON COLUMN payment_requests.paid_at IS '확인됨이 된 시각';
 COMMENT ON COLUMN payment_requests.expired_at IS '기한 지남이 된 시각';
 COMMENT ON COLUMN payment_requests.closed_at IS '닫힌 시각';
@@ -2140,9 +2170,10 @@ COMMENT ON COLUMN refunds.order_id IS '주문. 재제작 주문의 취소·보�
 COMMENT ON COLUMN refunds.cause IS '손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 몫, 기한 뒤 차액, SPEC-071)';
 COMMENT ON COLUMN refunds.change_request_id IS '금액이 내려간 변경';
 COMMENT ON COLUMN refunds.issue_report_id IS '보상의 문제 신고';
-COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)';
+COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071). 결제 확인 요청 중이거나 맞추는 중에 취소한 주문의 취소 환불도 그 결제 안내의 들어온 금액을 셈했으면 가짐';
+COMMENT ON COLUMN refunds.counted_arrived_amount IS '이 환불이 셈한 그 결제 안내의 들어온 금액(합). 비어 있으면 트리거 refunds_unconfirmed가 지금 값으로 채움. 같은 결제 안내에 다시 들어온 입금의 환불은 앞 환불보다 크게 셈하고 계산값은 새로 들어온 몫까지(4절 A29, 설계 재검토 남은 빈 곳)';
 COMMENT ON COLUMN refunds.cancelled_order_id IS '취소 환불(손님 취소·가게 사정 취소)이면 취소한 주문: 그 주문이나 그 재제작 주문(트리거 refunds_cancelled). 취소한 주문마다 환불 하나(refunds_cancelled_uq, 4절 A33, 설계 재검토 M7)';
-COMMENT ON COLUMN refunds.event_key IS '같은 환불을 두 번 정하지 않음(G2). 형식 refund:{대상 ID}:{사유}. 대상은 취소한 주문·변경 요청·문제 신고·결제 안내이고 대상마다 하나는 UNIQUE로도 막음(4절 A33)';
+COMMENT ON COLUMN refunds.event_key IS '같은 환불을 두 번 정하지 않음(G2). 형식 refund:{대상 ID}:{사유}, 들어온 입금의 환불은 refund:{결제 안내 ID}:{사유}:{셈한 들어온 금액}. 대상은 취소한 주문·변경 요청·문제 신고·결제 안내이고 대상마다 하나(결제 안내는 셈한 들어온 금액마다 하나)는 UNIQUE로도 막음(4절 A33)';
 COMMENT ON COLUMN refunds.decision IS '전액 환불·일부 환불·환불 없이 취소(REQ-085). 금액이 내려간 변경은 차액 돌려주기라 전액 환불이 없음(refunds_change_decision_chk, SPEC-047)';
 COMMENT ON COLUMN refunds.amount IS '정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170). 상한은 들어온 금액의 상한과 같은 1억 원';
 COMMENT ON COLUMN refunds.calculated_amount IS '가게 규칙의 계산값(SPEC-016, 4절 A30). 손님 취소는 바탕(받은 금액 - 이미 정한 환불 - 따로 정할 환불)에서 취소 수수료(TERM-016)를 먼저 빼고(바탕보다 크면 0) 비율을 곱해 원 미만 버림. 가게 사정 취소는 바탕 전액, 금액이 내려간 변경은 내려간 금액, 보상은 고른 금액. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)';

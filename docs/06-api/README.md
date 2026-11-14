@@ -427,9 +427,13 @@ curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-01234567
 
 같은 재검토의 중간 묶음 M12(15절)로 A13이 찾는 깨지는 변화 8개를 목록에 적었습니다: 보상 결정 요청에 꼭 넣을 `CompensationInput.problemKind`(문제 종류, 문제 신고 화면 SCR-027이 함께 보냄)를 더함, 응답에 꼭 있는 필드 `IssueReport.problemKind`·`noCompensationReason`·`otherCompensationNote`·`otherCompensationAmount`·`reportedBy`·`handoff`와 `Handoff.issueReport`를 더함. A13이 찾지 않는 것 4개도 목록에 적었습니다: 보상에 고를 값 `other_compensation`(그 밖의 보상)을 더함, 상함·변질이나 이물의 보상 없음이 409 `confirmation_required`(`no_compensation_standard`)를 받음, API-070의 `handed_over`와 다른 사용자의 주문 질문의 뜻(같은 사용자에게서만 받고, 다른 사용자에게는 없는 주문번호와 같은 답, 사정을 말하면 에스컬레이션), API-071 `issue_reported`의 뜻(기한 뒤 신고도 같은 말). 결정은 동희님 2026-11-13 20:59 결정 카드 '모두 지금 고침 (추천)'(RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)이고 내 주문 보기(SCR-007)·문제 신고 카드(SCR-010)·손님 알림(SCR-011)·에스컬레이션 건(SCR-017)·문제 신고(SCR-027)·운영규정(SCR-038)이 함께 바뀝니다(08단계 12절). 새 API-083, 확인할 것 `no_compensation_standard`, DEC-24, 보상 결정 요청에 넣지 않아도 되는 필드 3개(`noCompensationReason`·`otherCompensationNote`·`otherCompensationAmount`), 응답·요청 예시를 더한 것은 깨지는 변화가 아닙니다.
 
+같은 재검토가 남긴 빈 곳(PR J2, 15절)으로 A13이 찾지 않는 것 4개를 목록에 적었습니다(A13이 찾는 것은 0개): 응답의 안쪽 필드 `OrderSummary.paymentNotice.awaitingAmountConfirm`을 꼭 있게 더함(주문 목록 SCR-020의 '손님 확인 기다림'), API-059 들어옴(`arrived`)의 뜻이 바뀜(확인된 결제 안내에도 남기고, 다시 남기면 들어온 금액에 더함), API-049 계산값과 API-050 409 `already_decided`의 뜻이 바뀜(환불을 정한 뒤 같은 결제 안내에 또 들어온 입금은 새로 들어온 몫만 새 환불로), API-059 결제 확인 취소(`void`)가 409 `invalid_state`를 받는 경우를 더함(들어온 금액이 안내 금액보다 많음).
+
 첫 버전(2026-11-12)에는 앞 계약이 없어 깨지는 변화가 없었습니다. 다음 버전부터 `check_api.py`의 A13이 main의 `api/openapi.yaml`과 견줘 API·응답·오류 코드·필드·고를 값을 없애거나, 타입을 바꾸거나, 꼭 넣을 필드를 더한 것을 찾고, 그것이 목록에 있고 동희님이 정했는지 봅니다.
 
 ## 12. 검사
+
+2026-11-15 01:52 KST, 설계 재검토가 남긴 빈 곳을 고친 뒤(15절) `check_api.py . --db ... --mock ...`를 다시 돌린 결과: 검사 17개: 통과 17, 실패 0, 미확인 0. 바뀐 숫자는 A5 예시 886개·성공 응답 시각 902개, A13 main의 `api/openapi.yaml`과 견준 깨지는 변화 0개(A13이 찾지 않는 4개는 11절 목록에 적음), M1 목 서버 요청 956개입니다. A2·A4·A12 API 83개, A3 SPEC 79개, A6 오류 예시 490개, A7 테이블.컬럼 104개(157자리), A8 누구나 쓰는 API 5개, A9 말로만 적은 근거 88개, A10 열린 질문 11개, A11 결정 사항 24개, D1 테이블.컬럼 104개에 값 5885개(글자 수 CHECK가 있는 컬럼 42개)는 같습니다. 12-2의 Schemathesis는 이번에 다시 돌리지 않았습니다.
 
 2026-11-14 22:53 KST, 설계 재검토 M12를 고친 뒤(15절, 그 PR의 Codex 의견을 고친 뒤 23:42에 다시 돌려도 출력이 같음) `check_api.py . --db ... --mock ...`를 다시 돌린 결과: 검사 17개: 통과 17, 실패 0, 미확인 0. 바뀐 숫자는 A2·A4·A12 API 83개(API-083 에스컬레이션 건에서 문제 신고로 남기기), A3 SPEC 79개(SPEC-079 에스컬레이션 건에서 문제 신고로 남기기), A5 예시 881개·성공 응답 시각 876개, A6 오류 예시 490개, A7 테이블.컬럼 104개(157자리), A9 말로만 적은 근거 88개, A11 결정 사항 24개(DEC-24), A13 main의 `api/openapi.yaml`과 견준 깨지는 변화 8개가 모두 목록에 있음(11절), D1 테이블.컬럼 104개에 값 5885개(글자 수 CHECK가 있는 컬럼 42개), M1 목 서버 요청 953개입니다. A8 누구나 쓰는 API 5개, A10 열린 질문 11개는 같습니다. 12-2의 Schemathesis는 이번에 다시 돌리지 않았습니다.
 
@@ -749,3 +753,17 @@ D1의 참고: `operators.email`·`kakao_channels.bot_id`·`ledger_links.spreadsh
 - 결정과 다르게 하거나 더한 것(가장 가까운 일관된 고침): (1) 검토자가 적은 이름 대신 용어집의 보상(TERM-033)을 써 '그 밖의 보상'(`other_compensation`)으로 적었습니다. (2) 손님에게 가는 그 밖의 보상 안내는 '사장님이 직접 연락해 보상을 처리해 드려요' 한 문장으로 두었습니다. (3) 에스컬레이션 건에서 남긴 신고의 기한은 그 건이 생긴 시각으로 보고, 할 일은 올리되 사장님 알림과 문제 신고의 지연 안내는 보내지 않습니다(그 건의 기다림이 이미 돎, DEC-24). (4) 남긴 신고를 에스컬레이션 건 응답의 `Handoff.issueReport`로 보여, 화면이 같은 건에서 다시 남기지 않고 그 신고로 가게 했습니다. (5) RB-15를 따른 것(REQ-251~254, API-083, DEC-24)은 Claude 추천이라 동희님 확인을 요청합니다(되돌릴 수 있음).
 - [PR #40 Codex 의견](https://github.com/kodonghui/siljang.ai/pull/40#discussion_r4573944173)을 같은 PR에서 고침: 다른 카카오 사용자의 사정이 다른 사유의 열린 건에 덧붙은 질문으로 남으면 API-083이 그 건의 사유로 409 `invalid_state`를 주어 신고로 남길 수 없었습니다. 04 SPEC-022와 05 인덱스 `handoffs_one_open_other_user_per_order`대로 관련 주문이 있는 그 사정은 상담과 주문마다 따로 건이 되게 API-041·070·083의 설명과 깨지는 변화 목록(`components.x-corthex.breakingChanges`)의 API-070 행을 고쳤습니다. 경로·스키마·응답 수는 그대로입니다.
 - 검사: 12절의 2026-11-14 22:53 KST 결과.
+
+2026-11-15 같은 재검토가 남긴 빈 곳(PR J2)도 같은 결정 카드의 '모두 지금 고침 (추천)'대로 고쳤습니다. 'Claude 추천'이 없어 조정 세션이 적은 방향(PR J2 지시)대로입니다.
+
+| 고친 곳 | 고친 것 | 근거 |
+| --- | --- | --- |
+| API-059 입금 대조 `arrived`, `ReconciliationInput.arrivedAmount` | 확인된 결제 안내에도 결제 뒤 더 들어온 입금을 남기고, 이미 들어옴을 남긴 결제 안내에 그 결제 안내의 지금 revision으로 다시 남기면 들어온 금액에 더함(더한 합은 안내 금액의 10배까지). 그 결제 안내의 들어온 금액을 셈한 환불을 이미 정했으면 새로 들어온 몫의 '더 들어온 금액' 환불 정할 일을 새로 남김(예시 `arrived_again`) | SPEC-071, REQ-166 |
+| API-049 환불 계산 미리보기, `RefundBasis.excludedAmount`, `RefundPreview.calculatedAmount` | 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫에서 앞 환불이 셈한 몫(`basis.excludedAmount`)을 뺀 값(예시 `over_received_again`: 1,000원을 정한 뒤 20,000원이 또 들어오면 20,000원) | SPEC-016, REQ-165 |
+| API-050 환불 결정 | 새로 들어온 몫 없이 같은 결제 안내의 환불을 또 정하면 409 `already_decided`, 또 들어온 입금은 새 환불(요청 예시 `over_received_again`) | SPEC-047, SPEC-071 |
+| API-059 결제 확인 취소 `void` | 들어온 금액이 안내 금액보다 많은 결제 안내는 409 `invalid_state`(취소하면 들어온 금액이 지워져 더 들어온 돈의 기록이 없어짐) | SPEC-070 |
+| API-044 주문 목록, `OrderSummary.paymentNotice.awaitingAmountConfirm` | 새 금액 확인이 필요한 나감 결제 안내를 손님이 아직 확인하지 않았으면 true. 주문 목록(SCR-020)이 '아직 못 전함' 대신 '손님 확인 기다림'을 보임(예시 `awaiting_amount_confirm`) | SPEC-076, SPEC-037 |
+
+- 깨지는 변화: A13이 찾지 않는 4개를 11절 목록에 적었습니다(안쪽 필드 하나, 뜻이 바뀐 것 셋). API 83개, 오류 코드, 결정 사항 24개는 그대로이고 예시 881개 → 886개입니다.
+- 05단계 `refunds.counted_arrived_amount`(마이그레이션 0016)가 환불이 셈한 그 결제 안내의 들어온 금액을 남깁니다. 계약에는 따로 두지 않고 계산값과 `basis.excludedAmount`로 보입니다.
+- 검사: 12절의 2026-11-15 01:52 KST 결과.

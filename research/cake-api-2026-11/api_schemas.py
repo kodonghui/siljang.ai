@@ -956,7 +956,7 @@ S["RefundBasis"] = all_required({
     "pickupBasisAt": nullable(dict(DT, description="단계별 환불의 남은 시간을 센 기준 픽업 일시(날짜를 바꾼 주문은 운영규정의 기준일에 따라 첫 버전이나 지금 픽업 일시). 단계 비율을 쓰지 않으면 null")),
     "cancellationFeeKrw": integer(0, 10000000, desc="먼저 뺀 고정 취소 수수료(손님 취소만, 그 밖은 0)"),
     "receivedAmount": integer(0, 100000000, desc="받은 금액(REQ-165). 재제작 주문의 일이면 원래 주문의 받은 금액"),
-    "excludedAmount": integer(0, 100000000, desc="받은 금액에서 빼 바탕을 만든 금액: 이미 정한 환불 합계 + 따로 정할 환불의 계산값(아직 정하지 않은 금액이 내려간 변경·취소 뒤 들어온 입금·더 들어온 금액)"),
+    "excludedAmount": integer(0, 100000000, desc="받은 금액에서 빼 바탕을 만든 금액: 이미 정한 환불 합계 + 따로 정할 환불의 계산값(아직 정하지 않은 금액이 내려간 변경·취소 뒤 들어온 입금·더 들어온 금액). 취소 뒤 들어온 입금·더 들어온 금액의 환불이면 그 결제 안내의 결제로 확인하지 않은 몫 가운데 앞 환불이 이미 셈한 몫(환불을 정한 뒤 같은 결제 안내에 또 들어온 입금, SPEC-016·071)"),
     "remakeOrder": dict(nullable(ref("OrderRef")), description="재제작 주문의 취소·다시 신고의 보상이면 그 재제작 주문(시각과 픽업 일시는 이 주문 것). 돈과 환불은 원래 주문(SPEC-060). 아니면 null"),
 }, desc="환불 계산 근거(SPEC-016, REQ-084). 사장님께 전부. 손님 취소의 차례: 바탕 = receivedAmount - excludedAmount → 고정 취소 수수료를 먼저 뺌(바탕보다 크면 0원) → "
         "비율(tierRefundPct나 preProductionRefundPct)을 곱해 원 미만 버림 → 0원 이상 바탕 이하. 가게 사정 취소는 바탕 전액, 금액이 내려간 변경은 내려간 금액, 보상은 고른 금액")
@@ -1041,8 +1041,10 @@ S["OrderSummary"] = all_required({
         "status": enum(["open", "claimed", "mismatch", "paid", "expired", "closed"]),
         "deliveredAt": nullable(DT),
         "dueAt": DT,
-    }, desc="가장 최근 결제 안내의 상태, 손님에게 전해진 시각(null이면 아직 못 전함. 새 금액 확인이 필요하면 손님이 아직 확인하지 않음, SPEC-076), 결제 기한. "
-            "결제 기한 지난 주문 목록이 보임(SPEC-037). 결제 안내가 없으면 null")),
+        "awaitingAmountConfirm": boolean("새 금액 확인이 필요한 나감 결제 안내를 손님이 아직 확인하지 않음(SPEC-076). true이면 deliveredAt은 null이고 주문 목록(SCR-020)이 "
+                                         "'아직 못 전함' 대신 '손님 확인 기다림'을 보임. 확인했거나 받지 않았거나 나감이 아니면 false"),
+    }, desc="가장 최근 결제 안내의 상태, 손님에게 전해진 시각(null이면 아직 못 전함. 새 금액 확인이 필요하면 손님이 아직 확인하지 않음, SPEC-076), 결제 기한, "
+            "손님의 새 금액 확인을 기다리는지. 결제 기한 지난 주문 목록이 보임(SPEC-037). 결제 안내가 없으면 null")),
     "revision": ORDER_REVISION,
 })
 S["OrderList"] = all_required({"items": arr(ref("OrderSummary"), 0, 100), "nextCursor": nullable(CURSOR)})
@@ -1076,7 +1078,7 @@ S["RefundPreview"] = all_required({
     "unconfirmedAmount": integer(0, 100000000, desc="결제로 확인하지 않은 들어온 금액: 맞추는 중의 들어온 금액, 안내 금액을 넘어 들어온 금액, 사장님이 들어왔다고 남긴 금액(SPEC-071)"),
     "refundedAmount": integer(0, 100000000, desc="이미 정한 환불의 합"),
     "calculatedAmount": integer(0, 100000000, desc="가게 규칙의 계산값(maxAmount를 넘지 않음). 손님이 취소 카드에서 본 금액. 손님 취소는 바탕에서 수수료를 먼저 빼고(바탕보다 크면 0원) 비율을 곱해 원 미만 버림(basis, SPEC-016). "
-                                               "취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 확인된 결제, SPEC-016·071)"),
+                                               "취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 확인된 결제)에서 앞 환불이 셈한 몫(basis.excludedAmount)을 뺀 값. 환불을 정한 뒤 같은 결제 안내에 또 들어온 입금이면 새로 들어온 몫(SPEC-016·071)"),
     "minAmount": integer(0, 100000000, desc="정할 수 있는 가장 작은 금액 = 계산값(REQ-170). 낮으면 422 below_calculated"),
     "maxAmount": integer(0, 100000000, desc="정할 수 있는 가장 큰 금액(받은 금액 - 이미 정한 환불, REQ-165)"),
     "basis": ref("RefundBasis"),
@@ -1138,7 +1140,7 @@ S["ReconciliationInput"] = obj({
                    desc="입금됨(SPEC-034)·미입금·금액 불일치(SPEC-035)·대조 완료·들어옴(닫힘·기한 지남 결제 안내에 들어온 입금, SPEC-071)·결제 확인 취소(SPEC-070)·"
                         "변경 닫기(맞추는 중인 차액 결제만: 변경 요청을 차액 없어 닫힘으로 두고 들어온 금액은 '더 들어온 금액' 환불로, SPEC-035, REQ-235)"),
     "mismatchAmount": integer(1, 100000000, col="payment_requests.mismatch_amount", desc="들어온 금액. mismatch만, 안내 금액의 10배까지"),
-    "arrivedAmount": integer(1, 100000000, col="payment_requests.arrived_amount", desc="들어온 금액. arrived만, 안내 금액의 10배까지(SPEC-071)"),
+    "arrivedAmount": integer(1, 100000000, col="payment_requests.arrived_amount", desc="이번에 들어온 금액. arrived만. 그 결제 안내에 이미 남긴 들어온 금액에 더하고, 더한 합은 안내 금액의 10배까지(넘으면 422 out_of_range, SPEC-071)"),
     "voidReason": string(1, 200, col="payments.void_reason", desc="결제 확인을 취소한 사유. void만, 제작 시작 전(REQ-169)"),
     "resolution": enum(["shortfall_paid", "excess_returned"], col="payments.resolution", desc="대조 완료의 사유. resolved만"),
 }, ["baseRevision", "result"])

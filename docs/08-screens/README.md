@@ -172,16 +172,16 @@
 | [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 28 |
 | [SCR-018](SCR-018.md) | 상담 대화 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
 | [SCR-019](SCR-019.md) | 사장님 알림 | 사장님 | normal · not-sent · error · stale | loading · empty · permission | 0 |
-| [SCR-020](SCR-020.md) | 주문 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 7 |
+| [SCR-020](SCR-020.md) | 주문 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 8 |
 | [SCR-021](SCR-021.md) | 주문 상세 | 사장님 | normal · loading · error · permission · stale · confirm · submitting · done | empty | 20 |
 | [SCR-022](SCR-022.md) | 맞춤 주문 검토 | 사장님 | normal · loading · error · permission · stale · submitting · confirm-notify · confirm · done | empty | 21 |
 | [SCR-023](SCR-023.md) | 결제 기한 지난 주문 | 사장님 | normal · loading · error · permission · stale · submitting · confirm-notify · confirm · done | empty | 21 |
 | [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm-notify · confirm · awaiting-payment · done | empty | 21 |
-| [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · confirm-notify · submitting · done | empty | 20 |
+| [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · confirm-notify · submitting · done | empty | 21 |
 | [SCR-026](SCR-026.md) | 환불 송금 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 17 |
 | [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm-notify · confirm · done | empty | 20 |
 | [SCR-028](SCR-028.md) | 입금 대조 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
-| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · confirm-notify · submitting · mismatch · expired · done | empty | 25 |
+| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · confirm-notify · submitting · mismatch · expired · done | empty | 26 |
 | [SCR-030](SCR-030.md) | 제작 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 34 |
 | [SCR-031](SCR-031.md) | 픽업 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm-notify · confirm · done | - | 37 |
 | [SCR-032](SCR-032.md) | 영업 캘린더 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · confirm · done | - | 17 |
@@ -231,6 +231,8 @@
 - 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
 
 ## 9. 검사
+
+2026-11-15 02:28 KST, 설계 재검토가 남긴 빈 곳을 고쳐 다시 생성하고(12절) 09단계 보드를 그린 뒤 SCR-004·005·006·011의 '목업' 줄을 다시 생성하고 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C6 응답 행 960개(06단계의 새 응답 예시 셋: API-044 `awaiting_amount_confirm`, API-049 `over_received_again`, API-059 `arrived_again`. ※ 화면이 나눈 행 3, 카카오 스킬 270, 기본값과 다르게 정한 행 133), C8 참조 1901곳, C11 허용 예외 909곳입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C4 데이터 220행·액션 160행, C5 그린 상태 367개·상태 이름 30개, C9 프레임 734개·1.5MB, C10 확인 문구 8개·손님 문구 49개, C13 생성 파일 52개, C14 상태 367개는 같습니다.
 
 2026-11-15 01:08 KST, 설계 재검토 M19·M20을 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 220행(SCR-019의 할 일이 아닌 알림 두 행), C5 그린 상태 367개·상태 이름 30개(`confirm-notify` 7곳, `load-failed` 6곳), C6 기본값과 다르게 정한 행 132(불러오기 실패 6), C8 참조 1897곳, C9 프레임 734개·1.5MB, C11 허용 예외 901곳, C14 상태 367개입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C4 액션 160행, C6 응답 행 957개(※ 화면이 나눈 행 3, 카카오 스킬 270), C10 확인 문구 8개·손님 문구 49개, C13 생성 파일 52개는 같습니다.
 
@@ -461,4 +463,14 @@
 - 상태와 문구: 상태 이름 28개 → 30개(`confirm-notify`, `load-failed`), 그린 상태 354개 → 367개, 와이어프레임의 프레임 708개 → 734개(4절).
 - 09단계: 보드 26개를 다시 그림(09 README 12절).
 - 결정과 다르게 하거나 더한 것: (1) 불러오기 실패는 `error`에서 나눈 새 상태 `load-failed`이고, 09단계가 그리는 상태 밖이라 09 README 12절 '그리지 않은 것'에 적었습니다. (2) 지적에 없던 '손님이 몸이 불편하다고 함' 알림(SPEC-057, 05단계 `health_concern`)도 SCR-019의 할 일이 아닌 알림으로 더해 04단계 1-9절 표와 맞췄습니다. (3) 확인 창의 말은 액션마다 한 줄(SCR-022·024·029는 누른 버튼에 따라 다름)로 정하고, 와이어프레임은 그 가운데 하나를 그렸습니다.
-- 남은 것: SCR-019의 '영업 신고가 확인됐어요' 알림은 05단계 `owner_alerts.kind`에 맞는 종류가 없습니다(보류는 `license_on_hold`). 이번 묶음의 지적 밖이라 고치지 않고 PR 본문에 적었습니다.
+- 남은 것: SCR-019의 '영업 신고가 확인됐어요' 알림은 05단계 `owner_alerts.kind`에 맞는 종류가 없습니다(보류는 `license_on_hold`). 이번 묶음의 지적 밖이라 고치지 않고 PR 본문에 적었습니다. → PR J2에서 고침(아래 PR J2 단락).
+
+2026-11-15 같은 재검토가 남긴 빈 곳(PR H1·G2·J1이 남김)도 같은 결정 카드의 '모두 지금 고침 (추천)'대로 `screens_owner_a.py`·`screens_common.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR J2). 'Claude 추천'이 없어 검토자의 고치는 방향대로이고, J1이 남긴 영업 신고 확인 알림은 더 작은 쪽(08단계만 고침)을 골랐습니다. 05단계의 새 `refunds.counted_arrived_amount`(마이그레이션 0016)와 06단계의 새 필드 `OrderSummary.paymentNotice.awaitingAmountConfirm`, API-049·050·059의 바뀐 뜻(06 README 11절)을 따릅니다.
+
+- SCR-025 환불 결정: 환불을 정한 뒤 같은 결제 안내에 또 들어온 돈은 새 환불(더 들어온 금액)로 정하고, 근거의 바탕에서 뺀 금액에 앞 환불이 셈한 몫이 들어 계산값은 새로 들어온 몫만(SPEC-016·047). 이미 정함(`already_decided`)은 그 뒤 같은 결제 안내에 새로 들어온 돈이 없을 때. 응답 예시 `over_received_again`은 `normal`.
+- SCR-029 입금 대조: '들어옴(금액)'을 확인됨 안내(결제를 확인한 뒤 더 들어온 입금)에도 보이고, 같은 안내에 또 들어오면 지금 버전으로 다시 남겨 더함(이번 금액 1원부터, 더한 합은 안내 금액의 10배까지, 옛 버전은 `stale`). 들어온 금액이 안내 금액보다 많은 안내의 '결제 확인 취소'는 `invalid_state`로 막힘(SPEC-070·071). 응답 예시 `arrived_again`은 `done`이고 `OK_TEXT`에 그 문구를 더함.
+- SCR-020 주문 목록: 새 금액 확인을 손님이 아직 하지 않은 결제 안내는 '아직 못 전함' 대신 '손님 확인 기다림'(API-044 `paymentNotice.awaitingAmountConfirm`, SPEC-076). 응답 예시 `awaiting_amount_confirm`은 `normal`.
+- SCR-019 사장님 알림: '영업 신고가 확인됐어요' 말풍선을 뺌. 05단계 `owner_alerts.kind`와 04단계 1-9절 표에는 보류(`license_on_hold`)만 있고 SPEC-003도 보류만 알리므로, 확인됨은 알림 없이 영업 신고(SCR-035)에서 봄.
+- 상태와 문구: 상태 이름 30개와 그린 상태 367개, 와이어프레임의 프레임 734개는 그대로.
+- 09단계: SCR-019·020·025·029의 보드는 바뀐 글을 그리지 않아 그대로이고, 손님이 주문마다 보는 카드 상태 다섯(SCR-004 `allergy`·`orderer`, SCR-005 `amount-confirm`, SCR-006 `depositor`, SCR-011 `photo-consent`)을 새로 그림(09 README 12절). 이 화면 정의 넷의 '목업' 줄은 보드를 그린 뒤 다시 생성해 새 상태를 적음(C13).
+- 결정과 다르게 하거나 더한 것: (1) 지시의 예('보내지 않은 환불은 결제 안내마다 하나') 대신 환불마다 그 결제 안내의 들어온 금액을 어디까지 셈했는지 남기고 (결제 안내, 셈한 금액)마다 환불 하나로 좁혔습니다(보낸 뒤 또 들어온 돈도 같은 규칙, 05 README A33). (2) 결제를 확인한 뒤 같은 결제 안내에 더 들어온 입금도 '들어옴'으로 남기게 넓혔습니다(전에는 확인됨 안내에 남길 길이 없어 돌려줄 환불을 정할 수 없었음).

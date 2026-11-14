@@ -381,6 +381,8 @@ PR_VOIDED = dict(PR_FIRST_PAID, status="open", claimedAt=None, depositorName=Non
 # 손님이 취소한 뒤 닫힌 결제 안내에 들어온 입금을 남김(SPEC-071)
 PR_CLOSED_ARRIVED = dict(PR_CLAIMED, status="closed", closedAt=t("11-14", "09:00"), closeReason="order_cancelled",
                          arrivedAmount=36000, arrivedAt=t("11-14", "09:40"), revision=rev("pr:K7Q3M9:1:closed:arrived"))
+# 그 환불을 정한 뒤 같은 결제 안내에 36,000원이 또 들어와 '들어옴'을 한 번 더 남김: 들어온 금액에 더함(SPEC-071, 설계 재검토 남은 빈 곳)
+PR_CLOSED_ARRIVED_AGAIN = dict(PR_CLOSED_ARRIVED, arrivedAmount=72000, arrivedAt=t("11-14", "15:10"), revision=rev("pr:K7Q3M9:1:closed:arrived:2"))
 PRODUCTION = {
     "productionId": uid("production:K7Q3M9"), "needsCustomMaterial": False, "customMaterialOrderedAt": None,
     "productionStartedAt": None, "completedAt": None, "completionPhotos": [], "changedAfterStart": False,
@@ -455,12 +457,18 @@ ORDER_REMAKE = dict(ORDER_CONFIRMED, orderId=REMAKE_ID, orderNo=REMAKE_NO, picku
                     revision=rev("order:R2D5T7:confirmed"))
 
 
+def notice(pr):
+    """가장 최근 결제 안내의 요약. 새 금액 확인이 필요한 나감 결제 안내를 손님이 아직 확인하지 않았으면 확인 기다림(SPEC-076)"""
+    awaiting = (pr["status"] == "open" and pr.get("needsAmountConfirm", False)
+                and pr.get("amountConfirmedAt") is None and pr.get("amountDeclinedAt") is None)
+    return {"status": pr["status"], "deliveredAt": pr["deliveredAt"], "dueAt": pr["dueAt"], "awaitingAmountConfirm": awaiting}
+
+
 def summary(o, courier=False):
     return {"orderId": o["orderId"], "orderNo": o["orderNo"], "kind": o["kind"], "status": o["status"], "version": o["version"],
             "pickupAt": o["pickupAt"], "pickupDay": o["pickupDay"], "amount": o["amount"], "courierPickup": courier,
             "customerName": o["details"][0]["customerName"], "requestedAt": o["requestedAt"], "isRemake": o["remakeOf"] is not None,
-            "paymentNotice": ({"status": o["paymentRequests"][0]["status"], "deliveredAt": o["paymentRequests"][0]["deliveredAt"],
-                               "dueAt": o["paymentRequests"][0]["dueAt"]} if o["paymentRequests"] else None),
+            "paymentNotice": (notice(o["paymentRequests"][0]) if o["paymentRequests"] else None),
             "revision": o["revision"]}
 
 
@@ -468,9 +476,11 @@ ORDER_LIST = {"items": [summary(CUSTOM_REQUESTED), summary(ORDER_CONFIRMED)], "n
 # 결제 안내가 손님에게 전해지지 않은 채 결제 기한 상한(그날 주문 마감)에 기한 지남이 된 주문(SPEC-037 '아직 못 전함')
 ORDER_OVERDUE_UNDELIVERED = dict(summary(CUSTOM_OVERDUE), orderId=uid("order:W5N2C8"), orderNo="W5N2C8", pickupAt=t("11-21", "11:00"),
                                  pickupDay="2026-11-21", customerName="박서윤", requestedAt=t("11-14", "09:30"),
-                                 paymentNotice={"status": "expired", "deliveredAt": None, "dueAt": t("11-19", "18:00")},
+                                 paymentNotice={"status": "expired", "deliveredAt": None, "dueAt": t("11-19", "18:00"), "awaitingAmountConfirm": False},
                                  revision=rev("order:W5N2C8:overdue"))
 ORDER_LIST_OVERDUE = {"items": [summary(CUSTOM_OVERDUE), ORDER_OVERDUE_UNDELIVERED], "nextCursor": None}
+# 사장님이 손님이 본 견적보다 높게 정한 맞춤 주문: 손님이 새 금액을 확인하기 전(SCR-020 '손님 확인 기다림', SPEC-076)
+ORDER_LIST_AWAITING_CONFIRM = {"items": [summary(CUSTOM_ACCEPTED)], "nextCursor": None}
 EMPTY_PAGE = {"items": [], "nextCursor": None}
 
 # ── 환불 ────────────────────────────────────────────────────────────────────
@@ -489,6 +499,9 @@ REFUND_PREVIEW_OVER = dict(REFUND_PREVIEW, cause="over_received", receivedAmount
                            calculatedAmount=1000, minAmount=1000, maxAmount=57000,
                            basis=dict(REFUND_BASIS, clauseTitles=[], cancelledAt=None, cancellationFeeKrw=0, receivedAmount=57000,
                                       preProductionRefundPct=None))
+# 그 1,000원을 정한 뒤 같은 차액 결제 안내에 20,000원이 또 들어옴(들어온 금액 41,000원): 앞 환불이 셈한 1,000원은 빼고 새로 들어온 20,000원만(SPEC-016, 설계 재검토 남은 빈 곳)
+REFUND_PREVIEW_OVER_AGAIN = dict(REFUND_PREVIEW_OVER, receivedAmount=77000, unconfirmedAmount=21000, refundedAmount=1000, calculatedAmount=20000,
+                                 minAmount=20000, maxAmount=76000, basis=dict(REFUND_PREVIEW_OVER["basis"], receivedAmount=77000, excludedAmount=1000))
 # 맞춤 재료를 주문한 뒤 픽업 80시간 전 손님 취소: 단계 '72시간 전부터 50%'. (36,000 - 5,000) × 50% = 15,500원(SPEC-016)
 REFUND_PREVIEW_AFTER_START = dict(REFUND_PREVIEW, calculatedAmount=15500, minAmount=15500,
                                   basis=dict(REFUND_BASIS, clauseTitles=["제작 뒤 취소"], cancelledAt=t("11-17", "06:00"),

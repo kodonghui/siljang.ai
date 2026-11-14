@@ -1100,6 +1100,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("기한 지난 결제 안내", "payment_requests.expired_at"),
         ("환불 원인", "refunds.cause"),
         ("돌려줄 결제 안내", "refunds.payment_request_id"),
+        ("앞 환불이 셈한 들어온 금액", "refunds.counted_arrived_amount"),
         ("환불 정할 일", "owner_tasks.kind"),
         ("들어온 입금 대조 할 일", "owner_tasks.payment_request_id"),
         ("두 번 눌러도 한 번", "request_keys.request_key"),

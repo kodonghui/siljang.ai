@@ -1224,6 +1224,28 @@ SELECT pg_temp.expect_ok('Codex 후속 결제 확인을 취소한 결제는 확�
   INSERT INTO refunds (shop_id, order_id, cause, payment_request_id, event_key, decision, amount, calculated_amount, calc_basis)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 'paid_after_cancel', 'e0000000-0000-0000-0000-000000000006',
           'refund:x-5', 'full', 35000, 35000, '{"arrived":35000,"confirmed":0}')$$]);
+-- 설계 재검토 남은 빈 곳: 환불을 정한 뒤 같은 결제 안내에 또 들어온 돈(SPEC-016, SPEC-071, 4절 A29). 차액 결제 안내 e0..04(안내 5,000원,
+-- 들어온 6,000원, 확인된 결제 5,000원)에는 더 들어온 1,000원의 환불 e2..03이 들어온 금액 6,000원까지 셈함(트리거가 채움)
+SELECT pg_temp.expect_ok('남은 빈 곳 환불을 정한 뒤 같은 결제 안내에 또 들어온 5,000원의 새 환불(앞 환불이 셈한 몫은 빼고)', ARRAY[$$
+  UPDATE payment_requests SET arrived_amount = 11000, arrived_at = now() WHERE id = 'e0000000-0000-0000-0000-000000000004'$$, $$
+  INSERT INTO refunds (shop_id, order_id, cause, payment_request_id, counted_arrived_amount, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'over_received', 'e0000000-0000-0000-0000-000000000004', NULL, 'refund:j2-1', 'full', 5000, 5000, '{}')$$]);
+SELECT pg_temp.expect_fail('남은 빈 곳 또 들어온 입금의 환불이 앞 환불이 셈한 1,000원까지 다시 돌려줌', 'refunds_unconfirmed', ARRAY[$$
+  UPDATE payment_requests SET arrived_amount = 11000, arrived_at = now() WHERE id = 'e0000000-0000-0000-0000-000000000004'$$, $$
+  INSERT INTO refunds (shop_id, order_id, cause, payment_request_id, counted_arrived_amount, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'over_received', 'e0000000-0000-0000-0000-000000000004', NULL, 'refund:j2-2', 'full', 6000, 6000, '{}')$$]);
+SELECT pg_temp.expect_fail('남은 빈 곳 앞 환불보다 적게 셈한 환불', 'refunds_unconfirmed', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, payment_request_id, counted_arrived_amount, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'over_received', 'e0000000-0000-0000-0000-000000000004', 5500, 'refund:j2-3', 'none', 0, 0, '{}')$$]);
+SELECT pg_temp.expect_fail('남은 빈 곳 셈한 들어온 금액이 그 결제 안내의 들어온 금액을 넘음', 'refunds_unconfirmed', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, payment_request_id, counted_arrived_amount, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'over_received', 'e0000000-0000-0000-0000-000000000004', 7000, 'refund:j2-4', 'full', 1000, 1000, '{}')$$]);
+SELECT pg_temp.expect_fail('남은 빈 곳 결제 안내 없이 셈한 들어온 금액', 'refunds_counted_chk', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, counted_arrived_amount, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'change_reduced', 'd2000000-0000-0000-0000-000000000001', 1000, 'refund:j2-5', 'partial', 1000, 1000, '{}')$$]);
+SELECT pg_temp.expect_fail('남은 빈 곳 금액이 내려간 변경의 환불에 결제 안내', 'refunds_request_chk', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, payment_request_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'change_reduced', 'd2000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000004', 'refund:j2-6', 'partial', 1000, 1000, '{}')$$]);
 SELECT pg_temp.expect_fail('Codex 후속 1억 원을 넘는 환불', 'refunds_amount_check', ARRAY[$$
   UPDATE refunds SET amount = 100000001, override_reason = '손님과 따로 이야기함' WHERE id = 'e2000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('G2 같은 환불을 두 번 정함', 'refunds_event_uq', ARRAY[$$
