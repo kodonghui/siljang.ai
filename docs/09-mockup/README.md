@@ -354,3 +354,9 @@ page-check(corthex-uxui의 `page-check.js`: 한국어 줄바꿈, 넘침, 글자 
 - SCR-050 보드는 주문 탭(normal·empty·error·confirm)만 그려 상담 화면이 없습니다. `gen_screens.py`로 보드 100개를 모두 다시 그려도 보드 파일과 `canvas.json`이 같았습니다.
 - 검사: `check_mockup.py . --page-check` 14개 모두 통과(6절). 문구 5,575개, 값을 빼고 맞춘 문구 567개, 이유를 적은 예외 10개, 정의에 없는 접근성 이름 18개, page-check 경고는 같습니다.
 - 바뀐 보드가 없어 캔버스(Artifact)에 새로 올릴 것은 없습니다.
+
+2026-11-13 설계 독립 재검토의 중간 묶음 M4(RB-06, RC-18, RE-16, RC-14, RD-19)와 M13(RB-17)을 같은 결정 카드에 따라 고쳤습니다(PR G1). 08단계 SCR-009·011·025·027·038의 데이터·액션 행, 상태 설명, 케이스 유형과 SCR-025의 응답 행(`API-049#200:after_start`·`remake_cancel`)이 바뀌었습니다(08 README 12절). 이 단계의 원본(`screen_samples.py`, `gen_screens.py`)과 보드는 바꾸지 않았습니다.
+
+- 그린 상태의 와이어프레임(프레임과 `layout`)이 그대로라 `gen_screens.py`로 보드 100개를 모두 다시 그려도 보드 파일과 `canvas.json`이 같았습니다.
+- 검사: `check_mockup.py . --page-check` 14개 모두 통과(6절). 문구 5,575개, 값을 빼고 맞춘 문구 567개, 이유를 적은 예외 10개, 정의에 없는 접근성 이름 18개, page-check 경고는 같습니다.
+- 바뀐 보드가 없어 캔버스(Artifact)에 새로 올릴 것은 없습니다.
