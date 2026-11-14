@@ -480,7 +480,7 @@ CREATE TABLE quotes (
 CREATE INDEX quotes_draft_idx ON quotes (draft_id, quoted_at); -- 초안의 마지막 견적
 COMMENT ON TABLE quotes IS 'TBL-022 견적(TERM-013): 가게 규칙이 계산한 금액과 근거, 버전과 유효 기한';
 
--- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-025, SPEC-029, SPEC-030, SPEC-031, SPEC-034, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070, SPEC-073 | terms: TERM-001
+-- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-024, SPEC-025, SPEC-029, SPEC-030, SPEC-031, SPEC-034, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070, SPEC-073 | terms: TERM-001
 CREATE TABLE orders (
   id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 주문 ID(손님에게 보이지 않음)
   shop_id                  uuid NOT NULL,                -- 가게
@@ -572,7 +572,7 @@ CREATE TABLE confirm_cards (
 );
 COMMENT ON TABLE confirm_cards IS 'TBL-024 손님 확인 카드: 상담·사용자·버전·30분 기한에 묶인 명령 버튼(G9)';
 
--- TBL-025 change_requests (CTX-003) ← SPEC-041, SPEC-042, SPEC-043, SPEC-044, SPEC-045, SPEC-046, SPEC-048, SPEC-065, SPEC-070 | terms: TERM-001
+-- TBL-025 change_requests (CTX-003) ← SPEC-024, SPEC-041, SPEC-042, SPEC-043, SPEC-044, SPEC-045, SPEC-046, SPEC-048, SPEC-065, SPEC-070 | terms: TERM-001
 CREATE TABLE change_requests (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 변경 요청 ID
   shop_id          uuid NOT NULL,                        -- 가게
@@ -657,7 +657,7 @@ COMMENT ON TABLE order_details IS 'TBL-026 주문 내용(TERM-004): 주문에 �
 ALTER TABLE orders ADD CONSTRAINT orders_current_details_fk FOREIGN KEY (id, version, price_list_id, amount, pickup_at)
   REFERENCES order_details (order_id, version, price_list_id, amount, pickup_at) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;
 
--- TBL-027 handoffs (CTX-001) ← SPEC-014, SPEC-015, SPEC-017, SPEC-020, SPEC-021, SPEC-022, SPEC-023, SPEC-025, SPEC-026, SPEC-029, SPEC-030, SPEC-040, SPEC-053, SPEC-056, SPEC-065 | terms: TERM-008, TERM-018
+-- TBL-027 handoffs (CTX-001) ← SPEC-014, SPEC-015, SPEC-017, SPEC-020, SPEC-021, SPEC-022, SPEC-023, SPEC-024, SPEC-025, SPEC-026, SPEC-029, SPEC-030, SPEC-040, SPEC-053, SPEC-056, SPEC-065 | terms: TERM-008, TERM-018
 CREATE TABLE handoffs (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 에스컬레이션 건 ID
   shop_id                uuid NOT NULL,                  -- 가게
@@ -757,7 +757,7 @@ CREATE TABLE issue_reports (
 );
 COMMENT ON TABLE issue_reports IS 'TBL-030 문제 신고(TERM-031): 받은 주문의 신고와 사장님이 정한 보상(1-6)';
 
--- TBL-031 payment_requests (CTX-004) ← SPEC-006, SPEC-015, SPEC-016, SPEC-029, SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-043, SPEC-044, SPEC-046, SPEC-047, SPEC-048, SPEC-059, SPEC-065, SPEC-068, SPEC-070, SPEC-071 | terms: TERM-049
+-- TBL-031 payment_requests (CTX-004) ← SPEC-006, SPEC-015, SPEC-016, SPEC-024, SPEC-029, SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-034, SPEC-035, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-043, SPEC-044, SPEC-046, SPEC-047, SPEC-048, SPEC-059, SPEC-065, SPEC-068, SPEC-070, SPEC-071 | terms: TERM-049
 CREATE TABLE payment_requests (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 결제 안내 ID
   shop_id             uuid NOT NULL,                     -- 가게

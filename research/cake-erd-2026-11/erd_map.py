@@ -233,6 +233,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("날짜 행 잠금", "calendar_days.day"),
         ("확인 요청됨이면 지킴", "payment_requests.claimed_at"),
         ("추가 수락한 날(24시간)", "handoffs.day_accept_expires_at"),
+        ("그날 자리 세기(종료됨 포함, 1-4)", "slot_holds.done_at"),
+        ("확인 요청됨은 결제 기한 상한까지", "payment_requests.due_cap_at"),
     ],
     "SPEC-016": [
         ("받은 운영규정 버전", "orders.operating_rules_id"),
@@ -344,6 +346,13 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("지연 안내 글", "notifications.kind"),
         ("다시 알림(한 번)", "owner_tasks.realerted_at"),
         ("다시 알림 종류", "owner_alerts.kind"),
+        ("답 없어 닫힘(맞춤 주문 요청)", "orders.cancel_kind"),
+        ("답 없어 닫힘(변경 요청)", "change_requests.status"),
+        ("답 없어 닫힘(에스컬레이션 건)", "handoffs.status"),
+        ("에스컬레이션 건 7일", "handoffs.created_at"),
+        ("닫힌 시각", "handoffs.closed_at"),
+        ("결제 확인 요청은 상한에", "payment_requests.due_cap_at"),
+        ("할 일 닫힘", "owner_tasks.closed_at"),
     ],
     "SPEC-025": [
         ("마지막 손님 메시지", "consultations.last_customer_message_at"),
@@ -454,6 +463,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("계좌(보일 때 복호화)", "payment_accounts.account_number_enc"),
         ("안내 글에는 계좌 자리만", "notifications.body"),
         ("손님 안내", "notifications.kind"),
+        ("손님에게 전해진 시각", "payment_requests.delivered_at"),
+        ("결제 기한 상한", "payment_requests.due_cap_at"),
     ],
     "SPEC-033": [
         ("입금자 이름(따로 넣지 않으면 주문자 이름)", "payment_requests.depositor_name"),
@@ -509,6 +520,9 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("가예약 해제", "slot_holds.release_reason"),
         ("결제 기한 지남", "orders.status"),
         ("고를 일", "owner_tasks.kind"),
+        ("전해진 시각·아직 못 전함", "payment_requests.delivered_at"),
+        ("확인 요청됨의 상한", "payment_requests.due_cap_at"),
+        ("픽업 일시까지 고르지 않으면 결제 없어 취소", "orders.cancel_kind"),
     ],
     "SPEC-038": [
         ("다시 낸 결제", "payment_requests.kind"),
