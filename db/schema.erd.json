@@ -84,7 +84,8 @@
       "03h7y0179sukl6c8niz928w4a",
       "03h7y0179sukl6c8njfcxe8qh",
       "03h8b7tnrfhbd2g1wkkguu20l",
-      "03h8boz8wiz0oga3u2prq5sgi"
+      "03h8boz8wiz0oga3u2prq5sgi",
+      "03h8dcdgozyyepdxxnkmbrubi"
     ],
     "relationshipIds": [
       "03h7y0179y91t3fbncx4e1mp5",
@@ -202,7 +203,8 @@
       "03h8cadw3trbsx4q4fr6cn6ph",
       "03h8cadw3z8vrld38pueryj7l",
       "03h8cadw3z8vrld38pv7c06cr",
-      "03h8cadw3z8vrld38pyk84i26"
+      "03h8cadw3z8vrld38pyk84i26",
+      "03h8dcdlrfkrl9xf6gw66jejs"
     ],
     "indexIds": [
       "03h7y017apioxvv0yn8m6arb8",
@@ -1591,6 +1593,25 @@
         "groupId": "03h7y017wqizg5foqnrelun2p",
         "ui": {
           "x": 74,
+          "y": 9668
+        }
+      },
+      "03h8dcdgozyyepdxxnkmbrubi": {
+        "id": "03h8dcdgozyyepdxxnkmbrubi",
+        "name": "file_deletions",
+        "comment": "TBL-054 지울 파일: 지우기(SPEC-065)가 지운 참고 사진·신고 사진의 저장 위치. 저장소에서 파일을 지운 뒤에만 행을 지우고, 실패하면 남아 다음 날 다시 지움",
+        "columnIds": [
+          "03h8dcdgp5icbzk7h099kb6x4",
+          "03h8dcdgpayfxwfc2zdf85j9t",
+          "03h8dcdgpgexpr29y2q81ed9x",
+          "03h8dcdgplutqx36jrlipqvvp",
+          "03h8dcdgpr8hnox9it3a3vis0",
+          "03h8dcdgpr8hnox9it808r9lr",
+          "03h8dcdgpwu85f1vb9z1ap3fh"
+        ],
+        "groupId": "03h7y017wqizg5foqnrelun2p",
+        "ui": {
+          "x": 1340,
           "y": 9668
         }
       }
@@ -5087,7 +5108,7 @@
         "id": "03h7y0179cdtx0zvnx430f6df",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "amount",
-        "comment": "정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170)",
+        "comment": "정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170). 상한은 들어온 금액의 상한과 같은 1억 원",
         "dataType": "integer",
         "options": 8
       },
@@ -5095,7 +5116,7 @@
         "id": "03h7y0179cdtx0zvnx59s58zj",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "calculated_amount",
-        "comment": "가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값",
+        "comment": "가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)",
         "dataType": "integer",
         "options": 8
       },
@@ -6982,7 +7003,7 @@
         "id": "03h8boz8xl4of7t8twg9srx14",
         "tableId": "03h8boz8wiz0oga3u2prq5sgi",
         "name": "target_kind",
-        "comment": "연 대상: 대화 속 원래 값·주문자 이름과 연락처·환불 계좌·보관 기록(SPEC-073)",
+        "comment": "연 대상: 대화 속 원래 값·주문자 이름과 연락처·환불 계좌·보관 기록·상담의 대화 글(SPEC-073, REQ-227)",
         "dataType": "text",
         "options": 0
       },
@@ -6990,7 +7011,7 @@
         "id": "03h8boz8xqp6og1nxl6ssp851",
         "tableId": "03h8boz8wiz0oga3u2prq5sgi",
         "name": "target_id",
-        "comment": "연 대상의 ID. 대상 행이 지워져도 이 기록은 2년 남으므로 외래 키를 두지 않음",
+        "comment": "연 대상의 ID(상담의 대화 글은 상담 ID). 대상 행이 지워져도 이 기록은 2년 남으므로 외래 키를 두지 않음",
         "dataType": "uuid",
         "options": 0
       },
@@ -7018,6 +7039,65 @@
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
+      },
+      "03h8dcdgp5icbzk7h099kb6x4": {
+        "id": "03h8dcdgp5icbzk7h099kb6x4",
+        "tableId": "03h8dcdgozyyepdxxnkmbrubi",
+        "name": "id",
+        "comment": "지울 파일 ID",
+        "dataType": "uuid",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "03h8dcdgpayfxwfc2zdf85j9t": {
+        "id": "03h8dcdgpayfxwfc2zdf85j9t",
+        "tableId": "03h8dcdgozyyepdxxnkmbrubi",
+        "name": "shop_id",
+        "comment": "어느 가게의 사진 파일인지",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h8dcdgpgexpr29y2q81ed9x": {
+        "id": "03h8dcdgpgexpr29y2q81ed9x",
+        "tableId": "03h8dcdgozyyepdxxnkmbrubi",
+        "name": "storage_key",
+        "comment": "저장소에서 지울 사진 파일의 저장 위치(지운 참고 사진·신고 사진 행의 storage_key). 사진의 내용·손님 정보는 두지 않음",
+        "dataType": "text",
+        "options": 12
+      },
+      "03h8dcdgplutqx36jrlipqvvp": {
+        "id": "03h8dcdgplutqx36jrlipqvvp",
+        "tableId": "03h8dcdgozyyepdxxnkmbrubi",
+        "name": "source",
+        "comment": "지운 행: 참고 사진·신고 사진(SPEC-065)",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h8dcdgpr8hnox9it3a3vis0": {
+        "id": "03h8dcdgpr8hnox9it3a3vis0",
+        "tableId": "03h8dcdgozyyepdxxnkmbrubi",
+        "name": "queued_at",
+        "comment": "사진 행을 지운 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)",
+        "dataType": "timestamptz",
+        "default": "now()",
+        "options": 8
+      },
+      "03h8dcdgpr8hnox9it808r9lr": {
+        "id": "03h8dcdgpr8hnox9it808r9lr",
+        "tableId": "03h8dcdgozyyepdxxnkmbrubi",
+        "name": "attempts",
+        "comment": "저장소에서 지우려다 실패한 횟수. 지우면 이 행을 지움",
+        "dataType": "integer",
+        "default": "0",
+        "options": 8
+      },
+      "03h8dcdgpwu85f1vb9z1ap3fh": {
+        "id": "03h8dcdgpwu85f1vb9z1ap3fh",
+        "tableId": "03h8dcdgozyyepdxxnkmbrubi",
+        "name": "last_tried_at",
+        "comment": "마지막으로 지우려다 실패한 시각. 다음 날 지우기가 다시 지움",
+        "dataType": "timestamptz",
+        "options": 0
       }
     },
     "relationshipEntities": {
@@ -9324,6 +9404,24 @@
             "03h7y0179huqyalz2dplq2n06"
           ]
         }
+      },
+      "03h8dcdlrfkrl9xf6gw66jejs": {
+        "id": "03h8dcdlrfkrl9xf6gw66jejs",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178fic3fnl5vhrhwxmb",
+          "columnIds": [
+            "03h7y0178l0hvzg6dd0hij69u"
+          ]
+        },
+        "end": {
+          "tableId": "03h8dcdgozyyepdxxnkmbrubi",
+          "columnIds": [
+            "03h8dcdgpayfxwfc2zdf85j9t"
+          ]
+        }
       }
     },
     "indexEntities": {
@@ -11055,7 +11153,7 @@
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 351개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 354개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,

@@ -17,7 +17,7 @@
   D2 db/migrations/*.sql을 차례대로 다른 빈 DB에 적용하면 두 DB의 테이블·컬럼·제약·인덱스·설명·확장이 같음
   D3 실제 DB에서 테이블마다 기본 키가 있고, 테이블 설명이 헤더 주석의 TBL 번호로 시작하며, 대응한 컬럼이 모두 있음
   D4 규칙 테스트(rule_tests.sql)의 테스트가 모두 기대한 제약에 막힘. 같은 잠금 번호를 읽고 늦게 쓴 쓰기(expect_stale)는 0행.
-     지우기를 돌린 뒤 남은 행과 값(expect_left)은 기대한 값(설계 재검토 H3)
+     지우기를 돌린 뒤 남은 행과 값(expect_left)은 기대한 값(설계 재검토 H3). 넓힌 범위 안의 쓰기(expect_ok)는 들어감(Codex 후속)
   D5 두 세션이 같은 주문에 결제 확인과 손님 취소를 같은 값을 읽고 동시에 쓰면, 잠금 번호(lock_version)를 견줄 때는
      늦은 쪽이 먼저 쓴 쪽의 커밋을 기다린 뒤 0행이고, 내용 버전(version)을 견주는 옛 방식으로는 늦은 쪽이 덮어씀(설계 재검토 H12)
   E1 ERD Editor 파일(db/schema.erd.json)의 테이블·컬럼·타입·NOT NULL·기본 키가 스키마와 같음.
@@ -364,7 +364,8 @@ def db_checks(root: Path, rep: Report, tables: list, base: str | None, keep: boo
                 issues)
 
         rule_text = RULE_TESTS.read_text(encoding="utf-8")
-        expected = len(re.findall(r"^SELECT pg_temp\.expect_(?:fail|stale|left)\(", rule_text, re.M))
+        expected = len(re.findall(r"^SELECT pg_temp\.expect_(?:fail|stale|left|ok)\(", rule_text, re.M))
+        accepted = len(re.findall(r"^SELECT pg_temp\.expect_ok\(", rule_text, re.M))
         stale = len(re.findall(r"^SELECT pg_temp\.expect_stale\(", rule_text, re.M))
         left = len(re.findall(r"^SELECT pg_temp\.expect_left\(", rule_text, re.M))
         r = pg.run(DB_SCHEMA, "-f", str(RULE_TESTS))
@@ -375,7 +376,7 @@ def db_checks(root: Path, rep: Report, tables: list, base: str | None, keep: boo
             blocked, not_blocked = int(m.group(1)), int(m.group(2))
             fails = [l.strip() for l in r.stdout.splitlines() if "|" in l and "rule_tests:" not in l][:20]
             rep.add("D4", not_blocked == 0 and blocked == expected,
-                    f"규칙 테스트 {expected}개 가운데 기대한 제약에 막힘(늦은 쓰기 {stale}개는 0행, 지우기 결과 {left}개는 기대한 값) {blocked}개, 안 막힘 {not_blocked}개", fails if not_blocked else [])
+                    f"규칙 테스트 {expected}개 가운데 기대한 제약에 막힘(늦은 쓰기 {stale}개는 0행, 받아야 할 쓰기 {accepted}개는 들어감, 지우기 결과 {left}개는 기대한 값) {blocked}개, 안 막힘 {not_blocked}개", fails if not_blocked else [])
         race_check(pg, rep)
     finally:
         if not keep:
