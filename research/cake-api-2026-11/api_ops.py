@@ -297,7 +297,8 @@ op(id="API-074", method="get", path="/operator/shops/{shopId}/records", op="list
 
 op(id="API-075", method="get", path="/operator/shops/{shopId}/consultations/{consultationId}", op="getShopConsultation", tag="운영자",
    summary="상담 하나(가린 값)", spec=["SPEC-073", "SPEC-074"], auth="operator",
-   desc="그 가게 상담의 대화를 마스킹한 글(플레이스홀더 그대로)로 보이고, 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. "
+   desc="그 가게 상담의 메시지마다 발신자·시각·종류·글자 수·사진 수만 보이고 대화 글은 보이지 않는다: 번호 마스킹(SPEC-021)은 대화 속 이름·알레르기 같은 말을 가리지 않기 때문이다(REQ-227). "
+        "대화 글은 사유를 적어 API-077(targetKind consultation_text, 보고 있는 페이지의 cursor)로 한 페이지씩 연다. 대화 속 번호는 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. "
         "카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 있고 열 수 없다(REQ-192). 사진은 수만 보이고 열지 않는다(REQ-194). "
         "지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074).",
    params=[pid("shopId", "가게", E.SHOP_ID), pid("consultationId", "상담", E.CONSULT_ID), CURSOR, LIMIT],
@@ -307,7 +308,7 @@ op(id="API-075", method="get", path="/operator/shops/{shopId}/consultations/{con
    omit={"403": O403_OPERATOR, "409": O409_READ},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
           "상태": ["example:deleted"], "외부": [LOG_NOTE],
-          "노출": ["closed", "note:대화는 플레이스홀더 그대로, 번호는 끝 4자리만, 사진은 수만(REQ-194)"],
+          "노출": ["closed", "note:대화 글은 보이지 않고 메시지마다 글자 수만(REQ-227), 번호는 끝 4자리만, 사진은 수만(REQ-194)"],
           "빈·끊김": ["example:deleted"], "화면": ["screen"]})
 
 op(id="API-076", method="get", path="/operator/shops/{shopId}/orders/{orderId}", op="getShopOrder", tag="운영자",
@@ -324,20 +325,22 @@ op(id="API-076", method="get", path="/operator/shops/{shopId}/orders/{orderId}",
           "화면": ["screen"]})
 
 op(id="API-077", method="post", path="/operator/shops/{shopId}/originals", op="openOriginal", tag="운영자",
-   summary="원래 값·보관 기록 열기(사유)", spec=["SPEC-073", "SPEC-074"], auth="operator", idem=True,
+   summary="원래 값·보관 기록·대화 글 열기(사유)", spec=["SPEC-073", "SPEC-074"], auth="operator", idem=True,
    desc="운영자가 대상 하나와 사유(5~200자)를 보내면 그 값 하나만 연다(REQ-195): 대화 속 전화번호·계좌번호(masked_value), 주문자 이름·연락처(order_contact), "
-        "환불 계좌(refund_account), 보관 기록(kept_record). 응답과 같은 트랜잭션에서 운영자·시각·접속지·대상·사유를 접속기록에 남기고(action open_original·open_kept), "
+        "환불 계좌(refund_account), 보관 기록(kept_record), 상담의 대화 글 한 페이지(consultation_text: targetId는 상담 ID, cursor는 API-075에서 보고 있는 페이지, 번호는 플레이스홀더 그대로, REQ-227). 응답과 같은 트랜잭션에서 운영자·시각·접속지·대상·사유를 접속기록에 남기고(action open_original·open_kept), "
         "남기지 못하면 500으로 값을 돌려주지 않는다(SPEC-074). 같은 요청 키로 다시 오면 다시 열어 같은 응답을 돌려주고 접속기록도 한 행 더 남긴다(요청 키 기록에는 원래 값을 두지 않음). "
-        "원래 값을 두지 않는 값(카드번호·긴 숫자, REQ-192)은 409 original_not_kept, 지우기 작업이 비운 값(SPEC-065)은 409 original_erased이고 둘 다 접속기록에 열기 행을 남기지 않는다. "
+        "원래 값을 두지 않는 값(카드번호·긴 숫자, REQ-192)은 409 original_not_kept, 지우기 작업이 비운 값과 지운 상담의 대화 글(SPEC-065)은 409 original_erased이고 둘 다 접속기록에 열기 행을 남기지 않는다. "
         "연 값은 이 응답에만 있고 로그·오류 보고에는 없다(G6). 화면은 연 값을 저장하거나 내려받게 하지 않는다.",
    params=[pid("shopId", "가게", E.SHOP_ID)],
    body="OriginalOpenInput",
    body_examples={"masked_value": E.OPEN_ORIGINAL_INPUT,
                   "order_contact": {"targetKind": "order_contact", "targetId": E.ORDER_ID, "reason": "사장님 문의: 픽업 날 연락처 확인"},
                   "refund_account": {"targetKind": "refund_account", "targetId": E.REFUND["refundId"], "reason": "손님 문의: 환불이 들어오지 않음"},
-                  "kept_record": {"targetKind": "kept_record", "targetId": E.KEPT_RECORD_ID, "reason": "사장님 요청: 9월 주문 분쟁 자료"}},
+                  "kept_record": {"targetKind": "kept_record", "targetId": E.KEPT_RECORD_ID, "reason": "사장님 요청: 9월 주문 분쟁 자료"},
+                  "consultation_text": {"targetKind": "consultation_text", "targetId": E.CONSULT_ID, "reason": "손님 문의: 알레르기 안내 확인"}},
    ok=[(200, "OriginalValue", {"masked_value": E.ORIGINAL_MASKED, "order_contact": E.ORIGINAL_CONTACT,
-                               "refund_account": E.ORIGINAL_REFUND, "kept_record": E.ORIGINAL_KEPT})],
+                               "refund_account": E.ORIGINAL_REFUND, "kept_record": E.ORIGINAL_KEPT,
+                               "consultation_text": E.ORIGINAL_CONSULTATION_TEXT})],
    errors={404: ["not_found"], 409: ["original_not_kept", "original_erased"]},
    fields=[("/reason", "too_short")],
    omit={"403": O403_OPERATOR},
@@ -818,12 +821,13 @@ op(id="API-049", method="get", path="/owner/orders/{orderId}/refund-preview", op
    desc="그 주문이 받은 운영규정 버전, 취소 시각(아직이면 지금), 맞춤 재료 주문·제작 시작 시각, 받은 금액으로 계산값과 근거를 낸다. "
         "받은 금액은 결제 안내의 들어온 금액 합(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-165). "
         "정할 수 있는 가장 작은 금액은 계산값(REQ-170), 가장 큰 금액은 받은 금액 - 이미 정한 환불. 받은 금액이 0원이면 0원(SPEC-016). 같은 입력이면 같은 값. "
-        "취소 뒤 들어온 입금·더 들어온 금액(SPEC-071)은 paymentRequestId로 그 결제 안내의 들어온 금액을 계산값으로 낸다.",
+        "취소 뒤 들어온 입금·더 들어온 금액(SPEC-071)은 paymentRequestId로 그 결제 안내에서 결제로 확인하지 않은 몫(그 결제 안내의 들어온 금액 - 결제 확인을 취소하지 않은 확인된 결제)을 계산값으로 낸다: "
+        "닫힘·기한 지남 결제 안내는 들어온 금액 전액, 더 들어온 채 확인된 결제 안내는 넘은 몫만(차액 20,000원에 21,000원이면 1,000원, SPEC-016).",
    params=[pid("orderId", "주문", E.ORDER_ID),
            q("cause", {"type": "string", "enum": ["customer_cancel", "shop_cancel", "change_reduced", "paid_after_cancel", "over_received"]}, "환불 사유", "customer_cancel", True),
            q("changeRequestId", {"type": "string", "minLength": 1, "maxLength": 100}, "금액이 내려간 변경(cause가 change_reduced일 때 꼭). 없거나 다른 주문 것이면 404"),
            q("paymentRequestId", {"type": "string", "minLength": 1, "maxLength": 100}, "돌려줄 들어온 입금의 결제 안내(cause가 paid_after_cancel·over_received일 때 꼭). 없거나 다른 주문 것이면 404")],
-   ok=[(200, "RefundPreview", {"customer_cancel": E.REFUND_PREVIEW, "shop_cancel": E.REFUND_PREVIEW_SHOP})],
+   ok=[(200, "RefundPreview", {"customer_cancel": E.REFUND_PREVIEW, "shop_cancel": E.REFUND_PREVIEW_SHOP, "over_received": E.REFUND_PREVIEW_OVER})],
    errors={404: ["not_found"]},
    fields=[("query:cause", "required")],
    omit={"403": O403, "409": O409_READ + ". 받은 금액이 0원이면 0원으로 계산(SPEC-016)"},

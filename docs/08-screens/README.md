@@ -171,7 +171,7 @@
 | [SCR-022](SCR-022.md) | 맞춤 주문 검토 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 21 |
 | [SCR-023](SCR-023.md) | 결제 기한 지난 주문 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 21 |
 | [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 22 |
-| [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 17 |
+| [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 18 |
 | [SCR-026](SCR-026.md) | 환불 송금 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 17 |
 | [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 16 |
 | [SCR-028](SCR-028.md) | 입금 대조 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
@@ -196,7 +196,7 @@
 | [SCR-047](SCR-047.md) | 영업 신고 확인 목록 | 운영자 | normal · loading · empty · error · permission · stale | - | 10 |
 | [SCR-048](SCR-048.md) | 영업 신고 확인 | 운영자 | normal · loading · empty · on-hold · error · permission · stale · submitting · confirm · done | - | 21 |
 | [SCR-049](SCR-049.md) | 운영자 알림 | 운영자 | normal · loading · empty · error · permission · stale | - | 5 |
-| [SCR-050](SCR-050.md) | 가게 기록 보기 | 운영자 | normal · loading · empty · error · permission · stale · confirm · submitting · done | - | 30 |
+| [SCR-050](SCR-050.md) | 가게 기록 보기 | 운영자 | normal · loading · empty · error · permission · stale · confirm · submitting · done | - | 31 |
 <!-- 08-screens:screens:end -->
 
 ## 7. 결정 사항
@@ -224,6 +224,8 @@
 - 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
 
 ## 9. 검사
+
+2026-11-14 10:55 KST, Codex 후속을 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C6 응답 행 853개(※ 화면이 나눈 행 3, 카카오 스킬 230, 기본값과 다르게 정한 행 115), C8 참조 1730곳입니다. C4 데이터 196행·액션 147행, C5 그린 상태 351개·상태 이름 27개, C9 프레임 702개(1.3MB), C10 확인 문구 7개·손님 문구 47개, C11 허용 예외 810곳, C13 생성 파일 52개는 같습니다.
 
 2026-11-14 09:46 KST, 설계 재검토 M1·M2·M3·M9·M10을 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 196행, C6 응답 행 851개(※ 화면이 나눈 행 3, 카카오 스킬 230, 기본값과 다르게 정한 행 114), C8 참조 1728곳, C10 확인 문구 7개(06단계의 `past_cutoff`를 더함), C11 허용 예외 810곳입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C4 액션 147행, C5 그린 상태 351개·상태 이름 27개, C9 프레임 702개(1.3MB), C10 손님 문구 47개(같음 36, 08단계에서 바꿈 6, 설명 5), C13 생성 파일 52개, C14 08단계 파일 51개·상태 351개는 같습니다.
 
@@ -349,3 +351,9 @@
 - SCR-011 손님 알림·SCR-009 취소 카드(M1, M9, M10): 지연 안내는 결제 확인 요청·맞추는 중·환불 결정의 기다림에도 한 번. 답 없어 닫힘 안내(맞춤 주문 요청·변경 요청·에스컬레이션 건)와 결제 없어 취소 안내를 더함. 닫힌 상담의 손님에게도 주문과 에스컬레이션 건의 안내는 감. 결제 기한 지난 주문도 손님이 취소할 수 있음(1-2).
 - 확인 문구에 06단계 `past_cutoff`를 더해 7개(C10). 결과 문구(`OK_TEXT`)에 API-041 `closed_no_answer`, API-045 `custom_no_answer`, API-062 `closed_no_answer`를 더하고 API-044 `overdue`를 고침. 상태 이름 27개와 그린 상태 351개는 그대로입니다.
 - 그린 상태의 와이어프레임(프레임과 `layout`)은 바꾸지 않아 09단계 보드는 다시 그리지 않았습니다. 바꾼 화면 16개로 `gen_screens.py`를 다시 돌려도 보드 파일이 그대로였고, 09단계 `check_mockup.py`가 통과했습니다(C8 문구 5575개).
+
+2026-11-14 Codex 후속: [PR #31 Codex 의견](https://github.com/kodonghui/siljang.ai/pull/31#discussion_r4568849791)과 [PR #27 Codex 의견](https://github.com/kodonghui/siljang.ai/pull/27#discussion_r4564156224)을 따른 06단계 계약의 바뀜을 `screens_common.py`·`screens_operator.py`에 반영하고 `build_screens.py . --write`로 다시 만들었습니다.
+
+- SCR-050 가게 기록 보기: 상담은 메시지마다 발신자·시각·종류·글자 수·사진 수만 보이고 대화 글은 보이지 않음(REQ-227, 06단계 `OperatorMessage.textLength`). '대화 글 열기'로 사유를 적어 보고 있는 페이지의 대화 글을 엶(`confirm` → `done`, 응답 행 `API-077#200:consultation_text`). 지운 상담의 대화 글(409 `original_erased`)은 `stale`. 노출 케이스와 긴 글 행('대화 글'은 연 때만 4,000자)을 고침.
+- SCR-025 환불 결정: 새 응답 행 `API-049#200:over_received`(더 들어온 금액의 계산값은 그 결제 안내에서 결제로 확인하지 않은 몫, 예: 1,000원)를 `normal`에 이음.
+- 상태 이름 27개, 그린 상태 351개, 와이어프레임의 프레임과 `layout`은 그대로입니다. 09단계 보드는 `gen_screens.py`로 100개를 모두 다시 그려도 같았습니다(09 README 12절).

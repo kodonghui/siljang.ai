@@ -833,7 +833,7 @@ S["RefundBasis"] = all_required({
 REFUND_CAUSES = ["customer_cancel", "shop_cancel", "change_reduced", "compensation", "paid_after_cancel", "over_received"]
 S["RefundSummary"] = all_required({
     "refundId": UUID, "cause": enum(REFUND_CAUSES), "decision": enum(["full", "partial", "none"]),
-    "amount": integer(0, 10000000), "decidedAt": DT, "sentAt": nullable(DT),
+    "amount": integer(0, 100000000), "decidedAt": DT, "sentAt": nullable(DT),
 })
 S["ChangeSet"] = obj({
     "size": string(1, 30), "flavor": string(1, 30), "design": string(1, 30),
@@ -945,9 +945,9 @@ S["RefundPreview"] = all_required({
     "confirmedAmount": integer(0, 100000000, desc="확인된 결제의 합(결제 확인을 취소한 것은 빼고)"),
     "unconfirmedAmount": integer(0, 100000000, desc="결제로 확인하지 않은 들어온 금액: 맞추는 중의 들어온 금액, 안내 금액을 넘어 들어온 금액, 사장님이 들어왔다고 남긴 금액(SPEC-071)"),
     "refundedAmount": integer(0, 100000000, desc="이미 정한 환불의 합"),
-    "calculatedAmount": integer(0, 10000000, desc="가게 규칙의 계산값(maxAmount를 넘지 않음). 손님이 취소 카드에서 본 금액"),
-    "minAmount": integer(0, 10000000, desc="정할 수 있는 가장 작은 금액 = 계산값(REQ-170). 낮으면 422 below_calculated"),
-    "maxAmount": integer(0, 10000000, desc="정할 수 있는 가장 큰 금액(받은 금액 - 이미 정한 환불, REQ-165)"),
+    "calculatedAmount": integer(0, 100000000, desc="가게 규칙의 계산값(maxAmount를 넘지 않음). 손님이 취소 카드에서 본 금액. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 확인된 결제, SPEC-016·071)"),
+    "minAmount": integer(0, 100000000, desc="정할 수 있는 가장 작은 금액 = 계산값(REQ-170). 낮으면 422 below_calculated"),
+    "maxAmount": integer(0, 100000000, desc="정할 수 있는 가장 큰 금액(받은 금액 - 이미 정한 환불, REQ-165)"),
     "basis": ref("RefundBasis"),
 })
 S["ShopCancelResult"] = all_required({
@@ -1024,7 +1024,7 @@ S["RefundInput"] = obj({
     "changeRequestId": dict(UUID, description="금액이 내려간 변경(cause가 change_reduced일 때 꼭)"),
     "paymentRequestId": dict(UUID, description="돌려줄 들어온 입금의 결제 안내(cause가 paid_after_cancel·over_received일 때 꼭, SPEC-071)"),
     "decision": enum(["full", "partial", "none"], col="refunds.decision", desc="전액 환불·일부 환불·환불 없이 취소(계산값이 0원일 때만, REQ-170)"),
-    "amount": integer(0, 10000000, col="refunds.amount", desc="none이면 0. 계산값보다 낮으면 필드 오류 below_calculated(REQ-170), 받은 금액 - 이미 정한 환불을 넘으면 exceeds_received"),
+    "amount": integer(0, 100000000, col="refunds.amount", desc="none이면 0. 계산값보다 낮으면 필드 오류 below_calculated(REQ-170), 받은 금액 - 이미 정한 환불을 넘으면 exceeds_received"),
     "overrideReason": string(1, 200, col="refunds.override_reason", desc="계산값보다 높은 금액이면 꼭"),
 }, ["baseRevision", "cause", "decision", "amount"], desc="주문의 baseRevision으로 정함. 같은 사유의 환불은 한 번(G2). 우리는 돈을 옮기지 않음(REQ-079)")
 REFUND_ACCOUNT_IN = obj({
@@ -1037,8 +1037,8 @@ S["Refund"] = all_required({
     "order": ref("OrderRef"),
     "cause": enum(REFUND_CAUSES),
     "decision": enum(["full", "partial", "none"]),
-    "amount": integer(0, 10000000),
-    "calculatedAmount": integer(0, 10000000),
+    "amount": integer(0, 100000000),
+    "calculatedAmount": integer(0, 100000000),
     "basis": ref("RefundBasis"),
     "overrideReason": nullable(string(1, 200)),
     "method": nullable(enum(["bank_transfer", "card_cancel"])),
@@ -1119,7 +1119,7 @@ S["CompensationInput"] = obj({
     "baseRevision": BASE_REVISION,
     "compensation": enum(["remake", "partial_refund", "full_refund", "none"], col="issue_reports.compensation"),
     "remakePickupAt": dict(DT, description="재제작의 새 픽업 일시(지금 뒤 60일 안). remake만"),
-    "refundAmount": integer(1, 10000000, col="refunds.amount", desc="일부 환불 금액. partial_refund만(SPEC-047과 같은 한도)"),
+    "refundAmount": integer(1, 100000000, col="refunds.amount", desc="일부 환불 금액. partial_refund만(SPEC-047과 같은 한도)"),
     "refundOverrideReason": string(1, 200, col="refunds.override_reason"),
     "confirm": confirm_list(["closed_day", "overbooking"]),
 }, ["baseRevision", "compensation"])
@@ -1306,7 +1306,7 @@ MASKED_DIGITS = string(4, 40, r"^[*-]*[0-9]{4}$", desc="가린 번호: 끝 4자�
 CONSULT_STATUS = ["open", "awaiting_owner", "dropped", "ordered", "ended", "deleted"]
 PR_KINDS = ["first", "reissue", "difference"]
 PR_STATUS = ["open", "claimed", "mismatch", "paid", "expired", "closed"]
-OPEN_TARGETS = ["masked_value", "order_contact", "refund_account", "kept_record"]
+OPEN_TARGETS = ["masked_value", "order_contact", "refund_account", "kept_record", "consultation_text"]
 
 S["OperatorOrderRow"] = all_required({
     "orderId": UUID,
@@ -1349,16 +1349,22 @@ S["OperatorMessage"] = all_required({
     "direction": enum(["inbound", "outbound"]),
     "author": enum(["customer", "ai", "system"]),
     "kind": enum(["text", "photo", "card", "unsupported"]),
-    "textMasked": nullable(string(0, 4000, desc="마스킹한 글(플레이스홀더 그대로). 끝 4자리는 maskedValues에서(SPEC-073)")),
+    "textLength": integer(0, 4000, desc="대화 글의 글자 수만. 번호 마스킹은 대화 속 이름·알레르기 같은 말을 가리지 않아 글은 보이지 않고, 사유를 적어 API-077(targetKind consultation_text)로 엶(REQ-227)"),
     "photoCount": integer(0, 10, desc="사진 수만. 사진은 보이지 않음(REQ-194)"),
-})
+}, desc="운영자가 보는 메시지 하나: 발신자·시각·종류·글자 수·사진 수만(REQ-227)")
+S["OperatorMessageText"] = all_required({
+    "messageId": UUID,
+    "at": DT,
+    "author": enum(["customer", "ai", "system"]),
+    "textMasked": nullable(string(0, 4000, desc="마스킹한 글(번호는 플레이스홀더 그대로, SPEC-021). 끝 4자리는 API-075의 maskedValues에서. 글이 없는 메시지(사진 등)는 null")),
+}, desc="사유를 적어 연 대화 글의 메시지 하나(REQ-227, SPEC-073)")
 S["OperatorConsultation"] = all_required({
     "consultationId": UUID,
     "status": enum(CONSULT_STATUS),
     "maskedValues": arr(ref("OperatorMaskedValue"), 0, 200, desc="대화 속 플레이스홀더마다 끝 4자리와 열 수 있는지"),
     "items": arr(ref("OperatorMessage"), 0, 100),
     "nextCursor": nullable(CURSOR),
-}, desc="운영자가 보는 상담 하나(가린 값, SPEC-073). 지운 상담은 status deleted와 빈 목록")
+}, desc="운영자가 보는 상담 하나(가린 값, SPEC-073). 메시지마다 발신자·시각·종류·글자 수·사진 수만 있고 대화 글은 없음(REQ-227). 지운 상담은 status deleted와 빈 목록")
 S["OperatorOrder"] = all_required({
     "orderId": UUID,
     "orderNo": ORDER_NO,
@@ -1378,7 +1384,7 @@ S["OperatorOrder"] = all_required({
     }), 0, 20, desc="결제 안내 요약. 입금자 이름은 보이지 않음"),
     "refunds": arr(all_required({
         "refundId": UUID, "cause": enum(REFUND_CAUSES), "decision": enum(["full", "partial", "none"]),
-        "amount": integer(0, 10000000), "decidedAt": DT, "sentAt": nullable(DT),
+        "amount": integer(0, 100000000), "decidedAt": DT, "sentAt": nullable(DT),
         "refundAccount": nullable(all_required({
             "bankName": nullable(string(1, 30)), "accountMasked": MASKED_DIGITS, "holderNameMasked": nullable(MASKED_NAME),
         }, desc="가린 환불 계좌. 원래 값은 사유를 적어 API-077(targetKind refund_account)로")),
@@ -1387,10 +1393,11 @@ S["OperatorOrder"] = all_required({
 }, desc="운영자가 보는 주문 하나(가린 값, SPEC-073)")
 S["OriginalOpenInput"] = obj({
     "targetKind": enum(OPEN_TARGETS, col="access_logs.target_kind",
-                       desc="대화 속 전화번호·계좌번호(maskedValueId)·주문자 이름과 연락처(orderId)·환불 계좌(refundId)·보관 기록(keptRecordId)"),
+                       desc="대화 속 전화번호·계좌번호(maskedValueId)·주문자 이름과 연락처(orderId)·환불 계좌(refundId)·보관 기록(keptRecordId)·상담의 대화 글(consultationId, REQ-227)"),
     "targetId": dict(UUID, description="연 대상의 ID(targetKind마다 위의 ID)"),
+    "cursor": dict(CURSOR, description="consultation_text만: 열 페이지. API-075에서 보고 있는 페이지의 커서이고 첫 페이지면 넣지 않음. 그 페이지의 메시지 20개까지의 대화 글을 엶"),
     "reason": string(5, 200, col="access_logs.reason", desc="사유 5~200자(REQ-195). 접속기록에 남음"),
-}, ["targetKind", "targetId", "reason"], desc="원래 값이나 보관 기록 하나를 사유와 함께 엶(SPEC-073)")
+}, ["targetKind", "targetId", "reason"], desc="원래 값이나 보관 기록 하나, 상담의 대화 글 한 페이지를 사유와 함께 엶(SPEC-073, REQ-227)")
 S["KeptRecord"] = all_required({
     "keptRecordId": UUID,
     "orderNo": ORDER_NO,
@@ -1406,7 +1413,7 @@ S["KeptRecord"] = all_required({
         "kind": enum(PR_KINDS), "status": enum(PR_STATUS), "amount": integer(1, 10000000), "issuedAt": DT, "paidAt": nullable(DT),
     }), 0, 20),
     "refunds": arr(all_required({
-        "cause": enum(REFUND_CAUSES), "decision": enum(["full", "partial", "none"]), "amount": integer(0, 10000000),
+        "cause": enum(REFUND_CAUSES), "decision": enum(["full", "partial", "none"]), "amount": integer(0, 100000000),
         "decidedAt": DT, "sentAt": nullable(DT),
     }), 0, 20),
 }, desc="보관 기록(REQ-187, 05단계 A22): 주문자 이름·끝난 날·보관 기간과 계약·결제 기록. 운영자가 사유를 적어 열 때만(SPEC-073)")
@@ -1419,4 +1426,8 @@ S["OriginalValue"] = all_required({
     "refundAccount": nullable(all_required({"bankName": nullable(string(1, 30)), "accountNumber": string(10, 40, ACCOUNT_RE),
                                             "holderName": nullable(string(1, 30))})),
     "keptRecord": nullable(ref("KeptRecord")),
-}, desc="연 원래 값 하나(targetKind의 필드만 있고 나머지는 null). 이 응답과 그 화면에만 있고 로그·오류 보고에는 없음(G6)")
+    "consultationText": nullable(all_required({
+        "consultationId": UUID,
+        "items": arr(ref("OperatorMessageText"), 0, 20, desc="그 페이지의 메시지(API-075의 기본 페이지와 같은 20개까지)"),
+    }, desc="연 상담의 대화 글 한 페이지(REQ-227). 다른 페이지도 사유를 적어 엶")),
+}, desc="연 원래 값·보관 기록·대화 글 한 페이지(targetKind의 필드만 있고 나머지는 null). 이 응답과 그 화면에만 있고 로그·오류 보고에는 없음(G6)")
