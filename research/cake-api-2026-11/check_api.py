@@ -366,8 +366,57 @@ def iter_examples(doc: Doc):
             yield f"헤더 {name}", ptr("components", "headers", name, "schema"), h["example"], None, None
 
 
+def example_consistency(value) -> list[str]:
+    """한 응답 예시 안의 기록끼리 맞는지(설계 재검토 RD-12): 같은 ID의 기록은 같은 status·revision, 확정 시각이 있는 주문(재제작 밖)에는
+    확인된 결제가 있음, 명령 결과의 위쪽 기록(결제 안내·결제·변경 요청 등)은 같은 주문의 목록에도 있음. 기록은 첫 키가 ...Id인 객체."""
+    found, recs = [], []
+
+    def walk(v, path):
+        if isinstance(v, dict):
+            keys = list(v)
+            if keys and keys[0].endswith("Id") and isinstance(v[keys[0]], str):
+                recs.append((keys[0], v[keys[0]], path or "/", v))
+            for k, x in v.items():
+                walk(x, f"{path}/{k}")
+        elif isinstance(v, list):
+            for i, x in enumerate(v):
+                walk(x, f"{path}/{i}")
+
+    walk(value, "")
+    first = {}
+    for key, rid, path, obj in recs:
+        if (key, rid) not in first:
+            first[(key, rid)] = (path, obj)
+            continue
+        p0, o0 = first[(key, rid)]
+        diff = [f"{f} {o0[f]!r}≠{obj[f]!r}" for f in ("status", "revision") if f in o0 and f in obj and o0[f] != obj[f]]
+        if diff:
+            found.append(f"같은 {key}의 {p0}와 {path}가 다름({', '.join(diff)})")
+    for key, rid, path, obj in recs:
+        if key == "orderId" and isinstance(obj.get("payments"), list) and obj.get("confirmedAt") and not obj.get("remakeOf"):
+            if not any(not pay.get("voidedAt") for pay in obj["payments"]):
+                found.append(f"주문 {path}에 확정 시각이 있는데 확인된 결제가 없음")
+    order = value.get("order") if isinstance(value, dict) else None
+    if isinstance(order, dict) and "orderId" in order:
+        pr_ids = {pr.get("paymentRequestId") for pr in order.get("paymentRequests") or []}
+        top_pr = value.get("paymentRequest") if isinstance(value.get("paymentRequest"), dict) else {}
+        for key, rec in value.items():
+            lst = key + "s"
+            if key == "order" or not isinstance(rec, dict) or not rec or not isinstance(order.get(lst), list):
+                continue
+            own = next(iter(rec))
+            ref = rec.get("order")
+            mine = (isinstance(ref, dict) and ref.get("orderId") == order["orderId"]) or (
+                key == "payment" and (rec.get("paymentRequestId") in pr_ids or (
+                    top_pr.get("paymentRequestId") == rec.get("paymentRequestId")
+                    and (top_pr.get("order") or {}).get("orderId") == order["orderId"])))
+            if mine and rec.get(own) not in {x.get(own) for x in order[lst] if isinstance(x, dict)}:
+                found.append(f"위쪽 {key}가 같은 주문의 order.{lst}에 없음")
+    return found
+
+
 def a5_examples(rep: Report, doc: Doc, validator_for) -> None:
-    bad, n = [], 0
+    bad, n, consistent = [], 0, 0
     for path, m, op in doc.ops:
         for status, resp in op["responses"].items():
             for mt, media in (resp.get("content") or {}).items():
@@ -390,10 +439,12 @@ def a5_examples(rep: Report, doc: Doc, validator_for) -> None:
         if status is not None and str(status).startswith("2") and op is not None:
             schema = doc.get(pointer)
             date_times(doc, schema, value, offsets, where)
+            consistent += 1
+            bad += [f"{where} 예시 안 기록이 어긋남(RD-12): {x}" for x in example_consistency(value)]
     wrong_offset = [f"{w}: {v}" for w, v in offsets if not v.endswith("+09:00")]
     bad += [f"시각이 가게 시간대(+09:00)가 아님(DEC-15) {x}" for x in wrong_offset]
     rep.add("A5", not bad, f"예시 {n}개가 모두 스키마에 맞고(형식: date·date-time·uuid·uri 포함), 내용이 있는 응답마다 예시가 있음, "
-                           f"성공 응답의 시각 {len(offsets)}개가 +09:00", bad)
+                           f"성공 응답의 시각 {len(offsets)}개가 +09:00, 성공 응답 예시 {consistent}개 안의 같은 기록·확정과 결제·명령 결과와 주문 목록이 맞음", bad)
 
 
 def pointer_exists(doc: Doc, op: dict, field: str) -> bool:
@@ -721,8 +772,27 @@ def a11_decisions(rep: Report, doc: Doc) -> None:
     used = set(re.findall(r"DEC-\d{2}", t))
     unknown = sorted(used - set(decs))
     unused = [d for d in decs if d not in used]
-    rep.add("A11", not unknown and not unused, f"결정 사항 {len(decs)}개가 모두 계약에 쓰이고, 계약의 DEC ID가 모두 목록에 있음",
-            [f"목록에 없는 {u}" for u in unknown] + [f"계약에 쓰이지 않은 {u}" for u in unused])
+    # DEC-14: 목록을 주는 API는 설명에 '순서:'가 있고, 나누지 않는 목록은 DEC-14의 예외에 적힌 것만(설계 재검토 RD-13)
+    dec14 = next((d for d in doc.data["components"]["x-corthex"]["decisions"] if d["id"] == "DEC-14"), {})
+    dec14_text = " ".join(str(v) for v in dec14.values())
+    lists, order_bad = 0, []
+    for path, m, op in doc.ops:
+        ok = op["responses"].get("200") or op["responses"].get("201") or {}
+        media = (ok.get("content") or {}).get("application/json")
+        if not media:
+            continue
+        props = doc.deref(media["schema"]).get("properties", {})
+        if "items" not in props or doc.deref(props["items"]).get("type") != "array":
+            continue
+        lists += 1
+        if "순서:" not in op.get("description", ""):
+            order_bad.append(f"{xid(op)} 목록의 정렬 순서('순서:')가 설명에 없음(DEC-14)")
+        api_no = xid(op).split("-")[1]
+        if "nextCursor" not in props and xid(op) not in dec14_text and f"·{api_no}" not in dec14_text:
+            order_bad.append(f"{xid(op)} 커서 없는 목록이 DEC-14의 예외에 없음")
+    rep.add("A11", not unknown and not unused and not order_bad,
+            f"결정 사항 {len(decs)}개가 모두 계약에 쓰이고, 계약의 DEC ID가 모두 목록에 있음. 목록을 주는 API {lists}개가 모두 정렬 순서를 적고 커서 없는 목록은 DEC-14의 예외에 있음",
+            [f"목록에 없는 {u}" for u in unknown] + [f"계약에 쓰이지 않은 {u}" for u in unused] + order_bad)
 
 
 def a12_api_refs(rep: Report, doc: Doc) -> None:

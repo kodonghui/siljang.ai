@@ -104,7 +104,7 @@ BASE_REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="화면이 본 기록�
 ORDER_REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="주문의 잠금 번호(orders.lock_version)로 만든 revision. 상태·시각·금액을 쓸 때마다 바뀜. 명령의 baseRevision에 그대로 보냄(DEC-05, 설계 재검토 H12)")
 CHANGE_REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="변경 요청의 잠금 번호(change_requests.lock_version)로 만든 revision. 쓸 때마다 바뀜(DEC-05, 설계 재검토 H12)")
 UPLOAD_ID = string(24, 204, r"^upl_[A-Za-z0-9_-]{20,200}$", desc="POST /owner/uploads가 준 ID. 1시간 안에 써야 함(DEC-09)")
-ORDER_NO = string(6, 12, r"^[0-9A-Z]{6,12}$", desc="주문번호. 손님에게 보이는 유일한 번호(G6)")
+ORDER_NO = string(6, 8, r"^[0-9A-Z]{6,8}$", desc="주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)")
 PHONE_RE = r"^[0-9-]{8,14}$"
 EMAIL_RE = r"^[^@\s]+@[^@\s]+$"
 HHMM_RE = r"^([01][0-9]|2[0-3]):[0-5][0-9]$"
@@ -810,7 +810,7 @@ S["OwnerTaskList"] = all_required({
 # ── 에스컬레이션 건과 상담 ────────────────────────────────────────────────────────
 S["CustomerLine"] = all_required({
     "at": DT,
-    "text": nullable(string(0, 4000, desc="전화번호·계좌번호는 원래 값으로 되돌린 글(그 가게 사장님 화면에만, SPEC-021). 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192)")),
+    "text": nullable(string(0, 100000, desc="전화번호·계좌번호는 원래 값으로 되돌린 글(그 가게 사장님 화면에만, SPEC-021). 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192). 손님 글은 받은 길이 그대로(스킬 요청의 발화와 같은 100,000자까지, SPEC-017은 1,000자를 넘는 글도 상담 기록에 남김, 설계 재검토 RD-17)")),
     "photos": arr(all_required({"url": SIGNED_URL}), 0, 10),
     "reason": enum(HANDOFF_REASONS, desc="이 말의 사유. 첫 줄은 에스컬레이션 건의 사유이고, 덧붙은 질문은 질문마다 남은 사유(05단계 handoff_questions). 마감된 날 질문은 덧붙지 않고 날짜마다 따로 건이 됨(SPEC-022)"),
     "order": dict(nullable(ref("OrderRef")), description="이 말과 관련된 주문. 첫 줄은 에스컬레이션 건의 주문, 덧붙은 질문은 질문마다 남은 주문. 없으면 null"),
@@ -860,11 +860,13 @@ S["ConsultationMessage"] = all_required({
     "messageId": UUID,
     "at": DT,
     "direction": enum(["inbound", "outbound"]),
-    "author": enum(["customer", "ai", "system"]),
+    "author": enum(["customer", "ai", "system", "owner", "notice"],
+                   desc="손님·AI 상담·서버가 만든 글(고지·정해진 문장)·사장님 답(그 상담의 손님 안내 가운데 owner_reply)·서버가 보낸 그 밖의 손님 안내(결제 안내·확정 안내·지연 안내 등, 05단계 notifications). owner·notice는 손님 안내를 시각 순으로 섞어 준 것(설계 재검토 RD-17)"),
     "kind": enum(["text", "photo", "card", "unsupported"]),
-    "text": nullable(string(0, 4000, desc="사장님 화면에는 전화번호·계좌번호를 원래 값으로 되돌린 글. 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192)")),
+    "text": nullable(string(0, 100000, desc="사장님 화면에는 전화번호·계좌번호를 원래 값으로 되돌린 글. 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192). 손님 글은 받은 길이 그대로(스킬 요청의 발화와 같은 100,000자까지, SPEC-017은 1,000자를 넘는 글도 상담 기록에 남김). 손님 안내는 보낸 글(결제 안내의 계좌번호 자리는 채우지 않음, 설계 재검토 RD-17)")),
     "photos": arr(all_required({"url": SIGNED_URL}), 0, 10),
-    "delivery": nullable(enum(["skill_response", "callback", "deferred", "delivered_later", "failed"])),
+    "delivery": nullable(enum(["skill_response", "callback", "deferred", "delivered_later", "failed", "sending", "event_api"],
+                              desc="나간 글이 간 길: 바로 답·콜백·다음 대화 때 전할 것·그렇게 전함·실패. 손님 안내는 그 밖에 보내는 중(sending: 보낼 것·다시 보낼 것·발송 결과 확인 중)과 먼저 보냄(event_api: 카카오 Event API로 보내고 닿음을 확인함, SPEC-066). 들어온 글은 null")),
 })
 S["ConsultationMessagePage"] = all_required({
     "consultationId": UUID,
@@ -1394,7 +1396,7 @@ OUTPUT = {"oneOf": [
         "title": string(1, 50), "description": string(1, 400),
         "buttons": arr(BUTTON, 0, 3),
     }, ["title"])}, ["textCard"]),
-    obj({"simpleImage": obj({"imageUrl": URL, "altText": string(1, 1000)}, ["imageUrl", "altText"])}, ["simpleImage"]),
+    obj({"simpleImage": obj({"imageUrl": URL, "altText": string(1, 50, desc="스크린 리더가 읽는 대체 글. 카카오 응답 형식의 최대 50자(설계 재검토 RD-14). 접근성 때문에 꼭 넣는 값으로 둠")}, ["imageUrl", "altText"])}, ["simpleImage"]),
 ]}
 S["SkillTemplateResponse"] = obj({
     "version": enum(["2.0"]),
