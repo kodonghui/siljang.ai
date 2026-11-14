@@ -392,20 +392,20 @@
       status: active
       flows: [FL-001, FL-002]
       terms: [CTX-007, TERM-053]
-      specs: [SPEC-009, SPEC-017, SPEC-024, SPEC-025, SPEC-052]
+      specs: [SPEC-009, SPEC-017, SPEC-024, SPEC-025, SPEC-052, SPEC-077]
       apis: [API-009, API-010, API-003]
-      note: "가게 정보, 완성 사진 보내기, 문의 끊김 시간, 사장님 답 기다리는 시간, 하루 AI 비용 한도. 로그아웃도 여기서"
+      note: "가게 정보(이름·전화번호·사업장 주소·전자우편주소·픽업 장소·통신판매업 신고), 완성 사진 보내기, 문의 끊김 시간, 사장님 답 기다리는 시간, 하루 AI 비용 한도(SPEC-077). 상호·대표자·사업자등록번호는 영업 신고에서 변경 요청. 로그아웃도 여기서"
       children:
         - id: SCR-035
           name: 영업 신고
           path: /owner/shop/license
           access: 사장님
           status: active
-          flows: [FL-001]
+          flows: [FL-001, FL-002]
           terms: [CTX-007, TERM-053, TERM-074]
-          specs: [SPEC-003]
-          apis: [API-009, API-011, API-007]
-          note: "운영자 확인 상태(확인 중·확인됨·보류)와 보류 사유. 보류면 신고증을 다시 올림"
+          specs: [SPEC-003, SPEC-078]
+          apis: [API-009, API-011, API-007, API-080]
+          note: "운영자 확인 상태(확인 중·확인됨·보류)와 보류 사유. 보류면 신고증을 다시 올림. 상호·대표자·사업자등록번호는 증빙 사진과 변경 요청을 남기고 운영자가 반영해야 바뀜(SPEC-078)"
         - id: SCR-036
           name: 가격표와 도안
           path: /owner/price-list
@@ -535,20 +535,20 @@
       status: active
       flows: [FL-014]
       terms: [CTX-007, TERM-053, TERM-074]
-      specs: [SPEC-003, SPEC-002]
-      apis: [API-012, API-005, API-006]
-      note: "확인할 가게 목록. 운영자의 첫 화면이고 로그아웃도 여기서. 손님 문제나 분쟁으로 가게 기록을 찾을 때도 여기서 가게를 고름(FL-014)"
+      specs: [SPEC-003, SPEC-002, SPEC-078]
+      apis: [API-012, API-005, API-006, API-081]
+      note: "확인할 가게 목록과 사업자 정보 변경 요청 목록(SPEC-078). 운영자의 첫 화면이고 로그아웃도 여기서. 손님 문제나 분쟁으로 가게 기록을 찾을 때도 여기서 가게를 고름(FL-014)"
       children:
         - id: SCR-048
           name: 영업 신고 확인
           path: /operator/shops/:shopId
           access: 운영자
           status: active
-          flows: [FL-001]
+          flows: [FL-001, FL-002]
           terms: [CTX-007, TERM-053, TERM-074]
-          specs: [SPEC-003]
-          apis: [API-013, API-014]
-          note: "신고증 사진과 결제 계좌의 은행·예금주·끝 4자리를 직접 보고(예금주가 대표자·상호와 같은지) 확인됨이나 보류(사유)를 기록. 결제 계좌가 없으면 확인됨을 남기지 않음(REQ-197). '가게 기록 보기'로 SCR-050"
+          specs: [SPEC-003, SPEC-078]
+          apis: [API-013, API-014, API-082]
+          note: "신고증 사진과 결제 계좌의 은행·예금주·끝 4자리를 직접 보고(예금주가 대표자·상호와 같은지) 확인됨이나 보류(사유)를 기록. 결제 계좌가 없으면 확인됨을 남기지 않음(REQ-197). 사업자 정보 변경 요청은 지금 값과 새 값·증빙 사진을 보고 반영이나 보류(사유)를 기록하고, 확인을 기다리는 요청이 있으면 그것을 먼저 정함(SPEC-078). '가게 기록 보기'로 SCR-050"
           opens: [SCR-050]
     - id: SCR-049
       name: 운영자 알림

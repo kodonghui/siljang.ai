@@ -5,7 +5,7 @@
 ## 1. 요약
 
 <!-- 07-sitemap:counts:start -->
-화면 50개: 손님 13, 사장님 32, 운영자 5. 화면에 연결된 플로우 14/14개, 화면에 매핑된 API 79개, SPEC 76개.
+화면 50개: 손님 13, 사장님 32, 운영자 5. 화면에 연결된 플로우 14/14개, 화면에 매핑된 API 82개, SPEC 78개.
 <!-- 07-sitemap:counts:end -->
 
 - 루트는 3개입니다. 손님은 예약 링크 페이지(SCR-001), 사장님은 사장님 로그인(SCR-014), 운영자는 운영자 로그인(SCR-046)으로 진입합니다. 요구사항에 서비스 소개 페이지가 없어 셋을 묶는 공통 첫 화면은 두지 않았습니다(S1).
@@ -63,9 +63,9 @@
 | 분기 | 서비스나 AI 상담이 판단하는 분기 노드라 사람에게 보이는 화면이 없음 | 50 |
 | 서버 처리 | 서버에서만 처리되어 화면에 보이지 않음 | 37 |
 | 외부 | 우리 서비스 밖(은행 앱·인스타그램·구글 시트 장부·가게 현장)에서 보거나 일어남 | 11 |
-| 종료 | 결과만 적은 종료 노드 | 23 |
+| 종료 | 결과만 적은 종료 노드 | 25 |
 
-플로우 노드 333개 가운데 화면이 있는 노드 212개, 사유를 적은 노드 121개입니다(다른 플로우 연결 노드 12개는 제외).
+플로우 노드 341개 가운데 화면이 있는 노드 218개, 사유를 적은 노드 123개입니다(다른 플로우 연결 노드 12개는 제외).
 <!-- 07-sitemap:reasons:end -->
 
 ## 4. 화면 목록
@@ -109,7 +109,7 @@
 | SCR-032 | 　└ 영업 캘린더 | `/owner/calendar` | 사장님 | FL-001, FL-002, FL-006, FL-007 |
 | SCR-033 | 　　└ 영업 캘린더 설정 | `/owner/calendar/settings` | 사장님 | FL-001, FL-002 |
 | SCR-034 | 　└ 가게 설정 | `/owner/shop` | 사장님 | FL-001, FL-002 |
-| SCR-035 | 　　└ 영업 신고 | `/owner/shop/license` | 사장님 | FL-001 |
+| SCR-035 | 　　└ 영업 신고 | `/owner/shop/license` | 사장님 | FL-001, FL-002 |
 | SCR-036 | 　　└ 가격표와 도안 | `/owner/price-list` | 사장님 | FL-001, FL-002 |
 | SCR-037 | 　　　└ 가격표 버전 이력 | `/owner/price-list/versions`<br>`/owner/price-list/versions/:version` | 사장님 | FL-002 |
 | SCR-038 | 　　└ 운영규정 | `/owner/operating-rules` | 사장님 | FL-001, FL-002 |
@@ -122,7 +122,7 @@
 | SCR-045 | 　　└ 후기 | `/owner/reviews` | 사장님 | 없음(5절) |
 | SCR-046 | 운영자 로그인 | `/operator/login` | 비로그인 | 없음(5절) |
 | SCR-047 | 　└ 영업 신고 확인 목록 | `/operator/shops` | 운영자 | FL-014 |
-| SCR-048 | 　　└ 영업 신고 확인 | `/operator/shops/:shopId` | 운영자 | FL-001 |
+| SCR-048 | 　　└ 영업 신고 확인 | `/operator/shops/:shopId` | 운영자 | FL-001, FL-002 |
 | SCR-049 | 　└ 운영자 알림 | `/operator/alerts` | 운영자 | 없음(5절) |
 | SCR-050 | 　└ 가게 기록 보기 | `/operator/shops/:shopId/records`<br>`/operator/shops/:shopId/consultations/:consultationId`<br>`/operator/shops/:shopId/orders/:orderId` | 운영자 | FL-014 |
 <!-- 07-sitemap:screens:end -->
@@ -176,8 +176,8 @@
 | SCR-031 | SPEC-054, SPEC-055 | API-051, API-054, API-055, API-056 | CTX-005, TERM-069, TERM-024, TERM-025 |  |
 | SCR-032 | SPEC-007, SPEC-012, SPEC-015 | API-028, API-029 | CTX-002, TERM-060, TERM-048, TERM-026, TERM-027 |  |
 | SCR-033 | SPEC-007 | API-026, API-027 | CTX-002, TERM-048 |  |
-| SCR-034 | SPEC-009, SPEC-017, SPEC-024, SPEC-025, SPEC-052 | API-009, API-010, API-003 | CTX-007, TERM-053 |  |
-| SCR-035 | SPEC-003 | API-009, API-011, API-007 | CTX-007, TERM-053, TERM-074 |  |
+| SCR-034 | SPEC-009, SPEC-017, SPEC-024, SPEC-025, SPEC-052, SPEC-077 | API-009, API-010, API-003 | CTX-007, TERM-053 |  |
+| SCR-035 | SPEC-003, SPEC-078 | API-009, API-011, API-007, API-080 | CTX-007, TERM-053, TERM-074 |  |
 | SCR-036 | SPEC-004 | API-016, API-017, API-007 | CTX-002, TERM-047, TERM-020, TERM-005 |  |
 | SCR-037 | SPEC-004, SPEC-013 | API-018, API-019 | CTX-002, TERM-047, TERM-005 |  |
 | SCR-038 | SPEC-005 | API-020, API-021 | CTX-002, TERM-017 |  |
@@ -189,8 +189,8 @@
 | SCR-044 | SPEC-063 | API-067, API-068, API-069 | CTX-006, TERM-052, TERM-071 |  |
 | SCR-045 | SPEC-062 | API-066 | CTX-006, TERM-051, TERM-071 |  |
 | SCR-046 | SPEC-001 | API-004 | CTX-007, TERM-074 |  |
-| SCR-047 | SPEC-003, SPEC-002 | API-012, API-005, API-006 | CTX-007, TERM-053, TERM-074 |  |
-| SCR-048 | SPEC-003 | API-013, API-014 | CTX-007, TERM-053, TERM-074 | SCR-050 |
+| SCR-047 | SPEC-003, SPEC-002, SPEC-078 | API-012, API-005, API-006, API-081 | CTX-007, TERM-053, TERM-074 |  |
+| SCR-048 | SPEC-003, SPEC-078 | API-013, API-014, API-082 | CTX-007, TERM-053, TERM-074 | SCR-050 |
 | SCR-049 | SPEC-008, SPEC-010, SPEC-017 | API-015 | CTX-008, TERM-054, TERM-074 |  |
 | SCR-050 | SPEC-073, SPEC-074 | API-074, API-075, API-076, API-077 | CTX-007, TERM-074, TERM-053, TERM-046, TERM-001 |  |
 <!-- 07-sitemap:details:end -->
@@ -387,3 +387,12 @@
 - SCR-041 카카오톡 채널 연결: API-079(스킬 키 바꾸기)와 SPEC-017(스킬 요청 인증)을 더함. 스킬 키는 연결을 만들 때와 바꿀 때 한 번만 보이고, 바꾸면 옛 키를 24시간 더 받거나 바로 끊음(REQ-237). 연결 확인은 화면의 연결 문구를 그 채널에 보내야 시작함(REQ-238). S10(API마다 화면이 있음)은 79/79.
 - FL-001의 07단계 화면 표: 03단계에서 고친 B8(한 번만 보이는 스킬 키와 연결 문구)의 내용 열을 다시 만듦. 노드 수(333)와 3절 사유 표는 그대로.
 - M16(AI-1의 데이터 다루기·시간·호출 상한)과 M18의 RD-09(본문·쿼리의 다른 기록 ID)는 화면·경로·SPEC·API가 그대로라 사이트맵을 바꾸지 않음.
+
+2026-11-14 같은 재검토의 중간 묶음 M11(RA-05)과 M14(RB-12)도 같은 결정 카드 '모두 지금 고침 (추천)'대로 검토자의 고치는 방향을 따라 `sitemap.yaml`에서 고치고 `build_sitemap.py . --write`로 다시 만들었습니다(PR I1).
+
+- SCR-034 가게 설정: SPEC-077(가게 정보와 설정 바꾸기)을 더함. 전화번호·사업장 주소·전자우편주소·통신판매업 신고번호와 기관, 사장님 답 기다리는 시간·문의 끊김 시간·하루 AI 비용 한도를 여기서 바꾸고, 상호·대표자·사업자등록번호는 영업 신고 화면의 변경 요청으로 감(REQ-243·244).
+- SCR-035 영업 신고: SPEC-078과 API-080(사업자 정보 변경 요청)을 더하고 FL-002에 이음. 변경 요청의 확인 기다림과 보류 이유를 보임(REQ-245).
+- SCR-047 영업 신고 확인 목록: SPEC-078과 API-081(사업자 정보 변경 요청 목록)을 더함. 운영자가 확인할 사업자 정보 변경 요청도 이 목록에서 봄.
+- SCR-048 영업 신고 확인: SPEC-078과 API-082(반영·보류)를 더하고 FL-002에 이음. 확인을 기다리는 변경 요청을 먼저 반영·보류함. S10(API마다 화면이 있음)은 82/82, S11(SPEC마다 화면이 있음)은 78/78.
+- 03단계에서 고친 FL-001·002·006·007·008의 07단계 화면 표: FL-002의 새 노드 G1·G2·E4·B1·D5·B2·B3·E5에 화면(SCR-034·035·048)과 사유를 적고 나머지 열을 다시 만듦. 노드 333개 → 341개(화면이 있는 노드 212개 → 218개, 종료 23개 → 25개).
+- REQ-239~242(예약 링크 페이지의 가게 신원 정보, 규정 글의 미성년자 취소 고지, 내 주문, 확정 안내)는 화면·경로·API가 그대로라 SCR-001·004·007·011의 매핑을 바꾸지 않음(보이는 내용은 08단계).

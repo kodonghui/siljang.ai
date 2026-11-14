@@ -494,7 +494,7 @@ op(id="API-021", method="post", path="/owner/operating-rules/versions", op="crea
         "단계별 환불 조문(staged_refund)이 있으면 단계 행이 꼭 있고(없으면 /refundTiers required), 단계 행이 있으면 그 조문이 꼭 있다(없으면 /clauses required). "
         "단계 행이 없는 버전은 맞춤 재료 주문·제작 시작 뒤 취소도 제작 전 비율로 셈한다(화면이 저장 전에 알리고 막지 않음, SPEC-005). "
         "고정 취소 수수료는 0원~1,000만 원만 보고, 주문 금액과는 환불을 계산할 때 견준다(바탕보다 크면 환불 0원, SPEC-016). "
-        "취소·환불 조문으로 만든 주문 요청 확인 카드의 규정 글이 1,000자 글 둘에 들어가지 않으면(조문을 가르지 않음) 아무것도 남기지 않고 422(field /clauses, code exceeds_card_limit, REQ-184, DEC-22).",
+        "취소·환불 조문으로 만든 주문 요청 확인 카드의 규정 글(끝의 청약철회 제한 문장과 미성년자 취소 고지까지, REQ-240)이 1,000자 글 둘에 들어가지 않으면(조문을 가르지 않음) 아무것도 남기지 않고 422(field /clauses, code exceeds_card_limit, REQ-184, DEC-22).",
    body="OperatingRulesInput", body_examples={"confirm": E.RULES_INPUT, "lowered_confirmed": E.RULES_INPUT_LOWERED},
    ok=[(201, "OperatingRulesResult", {"created": {"outcome": "created", "operatingRules": E.RULES}}),
        (200, "OperatingRulesResult", {"unchanged": {"outcome": "unchanged", "operatingRules": E.RULES}})],
@@ -1434,7 +1434,7 @@ op(id="API-073", method="post", path="/kakao/skills/event", op="showNotice", tag
    desc="우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). "
         "userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). "
         "안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). "
-        "확정 안내는 주문 내용·픽업 일시·결제가 확인된 금액·가게의 상호·대표자·사업장 주소·전화번호(확정할 때의 확인된 값)를 담은 글과 그 주문의 운영규정 버전의 취소·환불 규정 글을 보인다(SPEC-036, REQ-242). "
+        "확정 안내는 주문 내용·픽업 일시·결제가 확인된 금액·가게의 상호·대표자·사업장 주소·전화번호(주문 확정 때의 확인된 값)를 담은 글과 그 주문의 운영규정 버전의 취소·환불 규정 글을 보인다(SPEC-036, REQ-242). "
         "완성 사진 안내(SPEC-053)는 사진과 함께, 그 사진을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 묻는 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, "
         "누른 답은 카드 스킬로 와서 그 안내의 사진마다 남는다(API-071 photo_consent_saved, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). "
         "손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), "
