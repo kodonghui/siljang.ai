@@ -1,8 +1,8 @@
 -- 수제케이크 주문제작: 데이터베이스 스키마 (CORTHEX 05단계 ERD)
 --
 -- 원본: 이 파일. 사람이 보는 곳: docs/05-erd/README.md(컨텍스트별 다이어그램과 테이블).
--- 입력: docs/04-functional-spec/spec.md(SPEC-001~071, 상태 머신 1-1~1-8, 공통 규칙 G1~G9, AI-1),
---       docs/01-domain/domain.md(CTX-001~009, TERM-001~074), docs/02-prd/requirements.md(REQ-001~174).
+-- 입력: docs/04-functional-spec/spec.md(SPEC-001~079, 상태 머신 1-1~1-8, 공통 규칙 G1~G9, AI-1),
+--       docs/01-domain/domain.md(CTX-001~009, TERM-001~074), docs/02-prd/requirements.md(REQ-001~254).
 -- 데이터베이스: PostgreSQL. 16에서 검사함(research/cake-erd-2026-11/check_erd.py).
 -- 바꾸는 법: 이 파일을 고치고 같은 변경을 db/migrations/에 새 번호로 더함. 적용한 마이그레이션은 고치지 않음.
 --
@@ -302,7 +302,7 @@ CREATE TABLE calendar_days (
 );
 COMMENT ON TABLE calendar_days IS 'TBL-014 영업 캘린더 날짜 행: 날짜별 휴무·마감과 가예약의 잠금 행';
 
--- TBL-015 payment_accounts (CTX-004) ← SPEC-003, SPEC-006, SPEC-032, SPEC-078 | terms: none
+-- TBL-015 payment_accounts (CTX-004) ← SPEC-003, SPEC-006, SPEC-010, SPEC-032, SPEC-078 | terms: none
 CREATE TABLE payment_accounts (
   id                         uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 결제 수단 ID
   shop_id                    uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 가게
@@ -474,7 +474,7 @@ CREATE TABLE reference_photos (
 );
 COMMENT ON TABLE reference_photos IS 'TBL-021 참고 사진(TERM-019): 손님이 원하는 디자인을 보여 준 사진';
 
--- TBL-022 quotes (CTX-001) ← SPEC-013, SPEC-020, SPEC-025, SPEC-027, SPEC-028, SPEC-031, SPEC-032, SPEC-076 | terms: TERM-013, TERM-058
+-- TBL-022 quotes (CTX-001) ← SPEC-013, SPEC-020, SPEC-025, SPEC-027, SPEC-028, SPEC-031, SPEC-032, SPEC-065, SPEC-076 | terms: TERM-013, TERM-058
 CREATE TABLE quotes (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 견적 ID
   shop_id             uuid NOT NULL,                     -- 가게
@@ -1327,6 +1327,7 @@ CREATE TABLE ai_tool_calls (
   CONSTRAINT ai_tool_calls_consultation_fk FOREIGN KEY (shop_id, consultation_id) REFERENCES consultations (shop_id, id) ON DELETE RESTRICT
 );
 CREATE INDEX ai_tool_calls_call_idx ON ai_tool_calls (ai_call_id); -- 호출마다 도구 목록
+CREATE INDEX ai_tool_calls_called_idx ON ai_tool_calls (called_at); -- 30일 지난 도구 호출 기록 찾기(README 6절 8, E11)
 COMMENT ON TABLE ai_tool_calls IS 'TBL-049 AI 도구 호출 기록: 이름·결과·대화 ID·대상 ID·마스킹한 인자';
 
 -- TBL-050 request_keys (공통) ← SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-007, SPEC-031, SPEC-034, SPEC-038, SPEC-039, SPEC-042, SPEC-047, SPEC-048, SPEC-051, SPEC-054, SPEC-059, SPEC-065, SPEC-070, SPEC-071, SPEC-077, SPEC-078, SPEC-079 | terms: none

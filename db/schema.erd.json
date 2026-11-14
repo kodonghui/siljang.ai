@@ -309,7 +309,8 @@
       "03h8fnqbxkjjausnvo2bmhhxo",
       "03h8fnqbxpxoqm824l39mouo5",
       "03h8h9o7frncabk7v0ewen77i",
-      "03h8ib0zk5ujpxq905zqe5ljc"
+      "03h8ib0zk5ujpxq905zqe5ljc",
+      "03h8iqu5omb8s93akkr6ef4aq"
     ],
     "memoIds": [
       "03h7y0184s9oftzxoejnroyg3"
@@ -11186,6 +11187,15 @@
           "03h8ib0zk5ujpxq90678svjuh"
         ],
         "unique": true
+      },
+      "03h8iqu5omb8s93akkr6ef4aq": {
+        "id": "03h8iqu5omb8s93akkr6ef4aq",
+        "name": "ai_tool_calls_called_idx",
+        "tableId": "03h7y0179sukl6c8nic8nn7g1",
+        "indexColumnIds": [
+          "03h8iqu5orxi2t2oxzi8twosg"
+        ],
+        "unique": false
       }
     },
     "indexColumnEntities": {
@@ -12267,6 +12277,12 @@
         "id": "03h8ib0zk5ujpxq90678svjuh",
         "indexId": "03h8ib0zk5ujpxq905zqe5ljc",
         "columnId": "03h8ib0sbclwv4zapgzlhetnv",
+        "orderType": 1
+      },
+      "03h8iqu5orxi2t2oxzi8twosg": {
+        "id": "03h8iqu5orxi2t2oxzi8twosg",
+        "indexId": "03h8iqu5omb8s93akkr6ef4aq",
+        "columnId": "03h7y0179sukl6c8nixns0ubf",
         "orderType": 1
       }
     },
