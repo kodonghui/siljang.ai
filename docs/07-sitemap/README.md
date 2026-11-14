@@ -5,7 +5,7 @@
 ## 1. 요약
 
 <!-- 07-sitemap:counts:start -->
-화면 50개: 손님 13, 사장님 32, 운영자 5. 화면에 연결된 플로우 14/14개, 화면에 매핑된 API 77개, SPEC 75개.
+화면 50개: 손님 13, 사장님 32, 운영자 5. 화면에 연결된 플로우 14/14개, 화면에 매핑된 API 77개, SPEC 76개.
 <!-- 07-sitemap:counts:end -->
 
 - 루트는 3개입니다. 손님은 예약 링크 페이지(SCR-001), 사장님은 사장님 로그인(SCR-014), 운영자는 운영자 로그인(SCR-046)으로 진입합니다. 요구사항에 서비스 소개 페이지가 없어 셋을 묶는 공통 첫 화면은 두지 않았습니다(S1).
@@ -65,7 +65,7 @@
 | 외부 | 우리 서비스 밖(은행 앱·인스타그램·구글 시트 장부·가게 현장)에서 보거나 일어남 | 11 |
 | 종료 | 결과만 적은 종료 노드 | 23 |
 
-플로우 노드 326개 가운데 화면이 있는 노드 205개, 사유를 적은 노드 121개입니다(다른 플로우 연결 노드 12개는 제외).
+플로우 노드 333개 가운데 화면이 있는 노드 212개, 사유를 적은 노드 121개입니다(다른 플로우 연결 노드 12개는 제외).
 <!-- 07-sitemap:reasons:end -->
 
 ## 4. 화면 목록
@@ -103,7 +103,7 @@
 | SCR-026 | 　　　└ 환불 송금 | `/owner/refunds/:refundId` | 사장님 | FL-009, FL-011 |
 | SCR-027 | 　　　└ 문제 신고 | `/owner/issue-reports/:issueReportId` | 사장님 | FL-011 |
 | SCR-028 | 　└ 입금 대조 목록 | `/owner/payment-requests` | 사장님 | FL-007 |
-| SCR-029 | 　　└ 입금 대조 | `/owner/payment-requests/:paymentRequestId` | 사장님 | FL-007, FL-009 |
+| SCR-029 | 　　└ 입금 대조 | `/owner/payment-requests/:paymentRequestId` | 사장님 | FL-007, FL-008, FL-009 |
 | SCR-030 | 　└ 제작 목록 | `/owner/production` | 사장님 | FL-008, FL-010 |
 | SCR-031 | 　└ 픽업 목록 | `/owner/pickups` | 사장님 | FL-010 |
 | SCR-032 | 　└ 영업 캘린더 | `/owner/calendar` | 사장님 | FL-001, FL-002, FL-006, FL-007 |
@@ -147,7 +147,7 @@
 | SCR-002 | SPEC-010, SPEC-011, SPEC-018 | API-039 | CTX-007, TERM-053 |  |
 | SCR-003 | SPEC-013, SPEC-014, SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-049, SPEC-056, SPEC-057, SPEC-008 | API-070, API-073 | CTX-001, TERM-046, TERM-045, TERM-041, TERM-013, TERM-019, TERM-003 |  |
 | SCR-004 | SPEC-028, SPEC-029, SPEC-030, SPEC-069, SPEC-072, SPEC-075 | API-071 | CTX-003, TERM-061, TERM-040, TERM-010, TERM-009 |  |
-| SCR-005 | SPEC-032, SPEC-066 | API-073 | CTX-004, TERM-049, TERM-030, TERM-014 |  |
+| SCR-005 | SPEC-032, SPEC-066, SPEC-076 | API-073, API-071 | CTX-004, TERM-049, TERM-030, TERM-014 |  |
 | SCR-006 | SPEC-033, SPEC-069 | API-071 | CTX-004, TERM-049 |  |
 | SCR-007 | SPEC-040 | API-070 | CTX-003, TERM-065, TERM-072 |  |
 | SCR-008 | SPEC-041, SPEC-069 | API-071 | CTX-003, TERM-066, TERM-005 |  |

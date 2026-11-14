@@ -65,9 +65,9 @@
           status: active
           flows: [FL-004, FL-007, FL-008]
           terms: [CTX-004, TERM-049, TERM-030, TERM-014]
-          specs: [SPEC-032, SPEC-066]
-          apis: [API-073]
-          note: "금액·가게 명의 계좌(있으면 카드 결제 링크)·결제 기한. 첫 결제·다시 낸 결제·차액 결제"
+          specs: [SPEC-032, SPEC-066, SPEC-076]
+          apis: [API-073, API-071]
+          note: "금액·가게 명의 계좌(있으면 카드 결제 링크)·결제 기한. 첫 결제·다시 낸 결제·차액 결제. 손님이 본 금액보다 높으면 새 금액 확인 카드를 먼저 보이고 확인한 뒤 계좌를 보임"
         - id: SCR-006
           name: 결제 확인 요청 카드
           path: kakao:shop/card/payment_claim
@@ -340,7 +340,7 @@
           path: /owner/payment-requests/:paymentRequestId
           access: 사장님
           status: active
-          flows: [FL-007, FL-009]
+          flows: [FL-007, FL-008, FL-009]
           terms: [CTX-004, TERM-063, TERM-049]
           specs: [SPEC-034, SPEC-035, SPEC-036, SPEC-070, SPEC-071]
           apis: [API-058, API-059]
