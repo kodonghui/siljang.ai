@@ -7,7 +7,8 @@
 
 옮기는 것(check_erd.py E1이 견주는 것과 같음)
 - 테이블: 없는 테이블 더하기·남는 테이블 빼기, 테이블 설명, 컨텍스트 그룹
-- 새 테이블의 자리: erd_add_table은 그룹 밖 빈 곳에 두므로 그 컨텍스트 그룹 상자 안의 빈 곳으로 옮김(erd_move_table)
+- 새 테이블의 자리: erd_add_table은 그룹 밖 빈 곳에 두므로 그 컨텍스트 그룹 상자 안의 빈 곳으로 옮김(erd_move_table).
+  앞 실행에서 자리를 찾지 못해 그룹 상자 밖에 남은 테이블도 같은 길로 옮김
 - 컬럼: 없는 컬럼 더하기(스키마의 차례 자리로 옮김)·남는 컬럼 빼기, 타입·기본 키·NOT NULL·설명, 한 컬럼 UNIQUE 표시
 - 관계(외래 키): 없는 관계 잇기·남는 관계 빼기
 - 다이어그램에 두는 인덱스(조건 없는 인덱스와 여러 컬럼 UNIQUE): 더하기·빼기·다시 만들기
@@ -354,7 +355,9 @@ def memo_ops(schema_text: str, d: Diagram) -> list[dict]:
 def place_new_tables(mcp, names: list[str]) -> list[dict]:
     """새 테이블 자리: 그룹 상자 안에서 같은 그룹 테이블의 오른쪽이나 아래 자리 가운데, 위에서부터 처음으로 들어가고
     어느 테이블과도 겹치지 않는 곳으로 옮김(너비는 erd_list의 어림값, 사이 60). 상자 안에 들어갈 곳이 없으면 상자를 아래로 늘려
-    그룹의 맨 아래 테이블 밑(왼쪽 맞춤)에 둠. 늘린 상자가 다른 그룹 상자나 그룹 밖 테이블과 겹치면 그대로 두고 알림."""
+    그룹의 맨 아래 테이블 밑(왼쪽 맞춤)에 두고, 아래로 늘린 상자가 다른 그룹 상자나 그룹 밖 테이블과 겹치면 오른쪽으로 늘려
+    그룹의 맨 오른쪽 테이블 옆(위 맞춤)에 둠. 둘 다 겹치면 그대로 두고 알림. 이미 있는 테이블도 왼쪽 위 모서리가 자기 그룹
+    상자 밖이면(앞 실행에서 자리를 찾지 못한 것) 같은 길로 옮김."""
     tables: dict[str, dict] = {}
     groups: dict[str, dict] = {}
     offset = 0
@@ -366,12 +369,20 @@ def place_new_tables(mcp, names: list[str]) -> list[dict]:
             break
         offset = page["nextOffset"]
     gap, pad, ops = 60, 24, []
+
+    def inside(t: dict, g: dict) -> bool:  # 왼쪽 위 모서리만 봄(erd_list의 너비는 어림값이라 상자 안 테이블도 넘쳐 보임)
+        return g["x"] <= t["x"] < g["x"] + g["width"] and g["y"] <= t["y"] < g["y"] + g["height"]
+
+    names = list(dict.fromkeys(names + [n for n, t in tables.items()
+                                        if groups.get(t.get("groupId")) and not inside(t, groups[t["groupId"]])]))
+    todo, grows = set(names), {}  # 자리를 기다리는 테이블은 이웃으로 세지 않음. 상자 늘리기는 모두 옮긴 뒤에
     for name in names:
+        todo.discard(name)
         t = tables[name]
         g = groups.get(t.get("groupId"))
         if not g:
             continue
-        others = [o for o in tables.values() if o["name"] != name and o.get("groupId") == t["groupId"]]
+        others = [o for o in tables.values() if o["name"] != name and o.get("groupId") == t["groupId"] and o["name"] not in todo]
 
         def free(x: float, y: float) -> bool:
             if (x < g["x"] + pad or y < g["y"] + pad or x + t["width"] > g["x"] + g["width"] - pad
@@ -379,34 +390,43 @@ def place_new_tables(mcp, names: list[str]) -> list[dict]:
                 return False
             return all(x + t["width"] + gap <= o["x"] or o["x"] + o["width"] + gap <= x
                        or y + t["height"] + gap <= o["y"] or o["y"] + o["height"] + gap <= y
-                       for o in tables.values() if o["name"] != name)
+                       for o in tables.values() if o["name"] != name and o["name"] not in todo)
 
         spots = sorted({(o["x"] + o["width"] + gap, o["y"]) for o in others} | {(o["x"], o["y"] + o["height"] + gap) for o in others},
                        key=lambda p: (p[1], p[0]))
         spot = next((p for p in spots if free(*p)), None)
         grow = None
         if spot is None and others:
-            x0 = min(o["x"] for o in others)
-            y0 = max(o["y"] + o["height"] for o in others) + gap
-            width = max(g["width"], x0 + t["width"] + pad - g["x"])
-            height = y0 + t["height"] + pad - g["y"]
+            down_x, down_y = min(o["x"] for o in others), max(o["y"] + o["height"] for o in others) + gap
+            right_x, right_y = max(o["x"] + o["width"] for o in others) + gap, min(o["y"] for o in others)
+            for x0, y0 in ((down_x, down_y), (right_x, right_y)):  # 아래로 늘림, 막히면 오른쪽으로 늘림
+                width = max(g["width"], x0 + t["width"] + pad - g["x"])
+                height = max(g["height"], y0 + t["height"] + pad - g["y"])
 
-            def hits(o: dict) -> bool:
-                return not (g["x"] + width <= o["x"] or o["x"] + o["width"] <= g["x"]
-                            or g["y"] + height <= o["y"] or o["y"] + o["height"] <= g["y"])
+                def hits(o: dict) -> bool:
+                    return not (g["x"] + width <= o["x"] or o["x"] + o["width"] <= g["x"]
+                                or g["y"] + height <= o["y"] or o["y"] + o["height"] <= g["y"])
 
-            clash = ([o["name"] for o in groups.values() if o["id"] != g["id"] and hits(o)]
-                     + [o["name"] for o in tables.values() if o["name"] != name and o.get("groupId") != g["id"] and hits(o)])
-            if not clash:
-                spot, grow = (x0, y0), (width, height)
+                clash = ([o["name"] for o in groups.values() if o["id"] != g["id"] and hits(o)]
+                         + [o["name"] for o in tables.values()
+                            if o["name"] != name and o["name"] not in todo and o.get("groupId") != g["id"] and hits(o)])
+                if not clash:
+                    spot, grow = (x0, y0), (width, height)
+                    break
         if spot is None:
             print(f"  {name}: 그룹 '{g['name']}' 상자 안에 빈 곳이 없어 자리를 그대로 둠")
             continue
         ops.append({"tool": "erd_move_table", "args": {"tableId": t["id"], "x": spot[0], "y": spot[1]}})
         tables[name] = {**t, "x": spot[0], "y": spot[1]}
-        if grow:  # 테이블을 옮긴 뒤에 늘림(상자는 그 그룹 테이블을 모두 담아야 함)
-            ops.append({"tool": "erd_resize_table_group", "args": {"groupId": g["id"], "width": grow[0], "height": grow[1]}})
+        if grow:
+            grows[g["id"]] = grow
             groups[g["id"]] = {**g, "width": grow[0], "height": grow[1]}
+    # 테이블을 모두 옮긴 뒤에 늘림. 편집 도구는 상자가 그 그룹 테이블을 모두(사이 24를 두고) 담아야 받으므로 그 크기 이상으로
+    for gid, (w, h) in grows.items():
+        g, members = groups[gid], [o for o in tables.values() if o.get("groupId") == gid]
+        w = max([w] + [o["x"] + o["width"] + pad - g["x"] for o in members])
+        h = max([h] + [o["y"] + o["height"] + pad - g["y"] for o in members])
+        ops.append({"tool": "erd_resize_table_group", "args": {"groupId": gid, "width": w, "height": h}})
     return ops
 
 
@@ -456,7 +476,7 @@ def main(argv: list[str]) -> int:
         if write and ops1:
             run_batches(mcp, ops1)
             mcp.call("erd_save", path=ERD)
-        if write and new_names:
+        if write:  # 새 테이블과 그룹 상자 밖에 남은 테이블
             moves = place_new_tables(mcp, new_names)
             show("1단계 새 테이블 자리", moves)
             if moves:
