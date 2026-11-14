@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """09단계 A 방향 화면 50개를 그린다: 화면마다 normal(360·1280)과 모습이 크게 다른 상태(빈 상태·오류·확인 창·카드 기한·
-채널 친구가 아닐 때)의 360.
+채널 친구가 아닐 때, 손님이 주문마다 보는 카드: 알레르기 정보·주문자 정보·새 금액 확인·입금자 이름·사진 게시 동의)의 360.
 
 08단계 원본(research/cake-screens-2026-11/screens_*.py)의 레이아웃 블록과 상태 프레임을 그대로 읽고, 블록마다 후보 A의
 부품(gen.py의 class A)을 design/base.tokens.json의 변수로 그린다. 와이어프레임의 자리 값은 screen_samples.py의 06단계 예시
@@ -36,7 +36,9 @@ gen.SHOP_INFO = SHOP_INFO
 
 OUT = HERE / "canvas" / "project"
 HEIGHTS = HERE / "heights.json"
-KEY_STATES = ("empty", "error", "confirm-notify", "confirm", "expired", "not-sent", "deferred")
+# 뒤 다섯은 손님이 주문마다 보는 카드(SCR-004·005·006·011, 설계 재검토 남은 빈 곳)
+KEY_STATES = ("empty", "error", "confirm-notify", "confirm", "expired", "not-sent", "deferred",
+              "allergy", "orderer", "amount-confirm", "depositor", "photo-consent")
 VARS = subprocess.run([sys.executable, "-B", str(HERE / "css_vars.py"), str(REPO / "design/base.tokens.json")],
                       capture_output=True, text=True, check=True).stdout.strip().replace('"', "'")
 LINE = gen.LINE
@@ -1464,6 +1466,12 @@ STATE_NOTE = {"not-sent": "알림 채널 친구가 아닐 때", "deferred": "손
               ("SCR-027", "confirm-notify"): "재제작을 고르고 '보상 정하기'를 누른 뒤",
               ("SCR-029", "confirm-notify"): "'입금됨'을 누른 뒤",
               ("SCR-031", "confirm-notify"): "'픽업 완료'를 누른 뒤",
+              # 손님이 주문마다 보는 카드(설계 재검토 남은 빈 곳)
+              ("SCR-004", "allergy"): "알레르기 정보 동의를 아직 고르지 않았을 때",
+              ("SCR-004", "orderer"): "주문자 이름·연락처가 없을 때",
+              ("SCR-005", "amount-confirm"): "견적보다 높게 정한 맞춤 주문의 결제 안내",
+              ("SCR-006", "depositor"): "'입금자 이름이 달라요'를 누른 뒤",
+              ("SCR-011", "photo-consent"): "완성 사진 보내기를 켠 가게의 완성 사진 안내",
               # 필드 옆 입력 오류(설계 재검토 M19 RE-05): 오류가 난 필드까지 내린 모습
               ("SCR-015", "error"): "사업자등록번호가 10자리가 아닐 때",
               ("SCR-032", "error"): "하루 최대 개수가 100을 넘을 때",

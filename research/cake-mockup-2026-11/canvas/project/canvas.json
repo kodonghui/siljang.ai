@@ -141,7 +141,7 @@
       "page": "customer"
     },
     "SCR-001-1280.dc.html": {
-      "x": 1288,
+      "x": 2072,
       "y": 0,
       "w": 1344,
       "h": 1721,
@@ -157,7 +157,7 @@
       "page": "customer"
     },
     "SCR-002-1280.dc.html": {
-      "x": 1288,
+      "x": 2072,
       "y": 2221,
       "w": 1344,
       "h": 892,
@@ -173,7 +173,7 @@
       "page": "customer"
     },
     "SCR-003-1280.dc.html": {
-      "x": 1288,
+      "x": 2072,
       "y": 3533,
       "w": 1344,
       "h": 892,
@@ -183,13 +183,13 @@
     "SCR-004-360.dc.html": {
       "x": 0,
       "y": 4845,
-      "w": 1208,
-      "h": 892,
-      "title": "SCR-004 주문 요청 카드 · 360 · normal, expired, error",
+      "w": 1992,
+      "h": 912,
+      "title": "SCR-004 주문 요청 카드 · 360 · normal, allergy, orderer, expired, error",
       "page": "customer"
     },
     "SCR-004-1280.dc.html": {
-      "x": 1288,
+      "x": 2072,
       "y": 4845,
       "w": 1344,
       "h": 929,
@@ -199,13 +199,13 @@
     "SCR-005-360.dc.html": {
       "x": 0,
       "y": 6194,
-      "w": 1208,
-      "h": 892,
-      "title": "SCR-005 결제 안내 · 360 · normal, deferred, error",
+      "w": 1600,
+      "h": 912,
+      "title": "SCR-005 결제 안내 · 360 · normal, amount-confirm, deferred, error",
       "page": "customer"
     },
     "SCR-005-1280.dc.html": {
-      "x": 1288,
+      "x": 2072,
       "y": 6194,
       "w": 1344,
       "h": 892,
@@ -214,15 +214,15 @@
     },
     "SCR-006-360.dc.html": {
       "x": 0,
-      "y": 7506,
-      "w": 1208,
-      "h": 892,
-      "title": "SCR-006 결제 확인 요청 카드 · 360 · normal, expired, error",
+      "y": 7526,
+      "w": 1600,
+      "h": 912,
+      "title": "SCR-006 결제 확인 요청 카드 · 360 · normal, depositor, expired, error",
       "page": "customer"
     },
     "SCR-006-1280.dc.html": {
-      "x": 1288,
-      "y": 7506,
+      "x": 2072,
+      "y": 7526,
       "w": 1344,
       "h": 892,
       "title": "SCR-006 결제 확인 요청 카드 · 1280 · normal",
@@ -230,15 +230,15 @@
     },
     "SCR-007-360.dc.html": {
       "x": 0,
-      "y": 8818,
+      "y": 8858,
       "w": 1208,
       "h": 892,
       "title": "SCR-007 내 주문 보기 · 360 · normal, empty, error",
       "page": "customer"
     },
     "SCR-007-1280.dc.html": {
-      "x": 1288,
-      "y": 8818,
+      "x": 2072,
+      "y": 8858,
       "w": 1344,
       "h": 892,
       "title": "SCR-007 내 주문 보기 · 1280 · normal",
@@ -246,15 +246,15 @@
     },
     "SCR-008-360.dc.html": {
       "x": 0,
-      "y": 10130,
+      "y": 10170,
       "w": 1208,
       "h": 892,
       "title": "SCR-008 변경 요청 카드 · 360 · normal, expired, error",
       "page": "customer"
     },
     "SCR-008-1280.dc.html": {
-      "x": 1288,
-      "y": 10130,
+      "x": 2072,
+      "y": 10170,
       "w": 1344,
       "h": 892,
       "title": "SCR-008 변경 요청 카드 · 1280 · normal",
@@ -262,15 +262,15 @@
     },
     "SCR-009-360.dc.html": {
       "x": 0,
-      "y": 11442,
+      "y": 11482,
       "w": 1208,
       "h": 892,
       "title": "SCR-009 취소 카드 · 360 · normal, expired, error",
       "page": "customer"
     },
     "SCR-009-1280.dc.html": {
-      "x": 1288,
-      "y": 11442,
+      "x": 2072,
+      "y": 11482,
       "w": 1344,
       "h": 892,
       "title": "SCR-009 취소 카드 · 1280 · normal",
@@ -278,15 +278,15 @@
     },
     "SCR-010-360.dc.html": {
       "x": 0,
-      "y": 12754,
+      "y": 12794,
       "w": 1208,
       "h": 892,
       "title": "SCR-010 문제 신고 카드 · 360 · normal, expired, error",
       "page": "customer"
     },
     "SCR-010-1280.dc.html": {
-      "x": 1288,
-      "y": 12754,
+      "x": 2072,
+      "y": 12794,
       "w": 1344,
       "h": 892,
       "title": "SCR-010 문제 신고 카드 · 1280 · normal",
@@ -294,15 +294,15 @@
     },
     "SCR-011-360.dc.html": {
       "x": 0,
-      "y": 14066,
-      "w": 1208,
-      "h": 1011,
-      "title": "SCR-011 손님 알림 · 360 · normal, deferred, error",
+      "y": 14106,
+      "w": 1600,
+      "h": 1031,
+      "title": "SCR-011 손님 알림 · 360 · normal, photo-consent, deferred, error",
       "page": "customer"
     },
     "SCR-011-1280.dc.html": {
-      "x": 1288,
-      "y": 14066,
+      "x": 2072,
+      "y": 14106,
       "w": 1344,
       "h": 1077,
       "title": "SCR-011 손님 알림 · 1280 · normal",
@@ -310,15 +310,15 @@
     },
     "SCR-012-360.dc.html": {
       "x": 0,
-      "y": 15563,
+      "y": 15603,
       "w": 816,
       "h": 892,
       "title": "SCR-012 후기 남기기 · 360 · normal, error",
       "page": "customer"
     },
     "SCR-012-1280.dc.html": {
-      "x": 1288,
-      "y": 15563,
+      "x": 2072,
+      "y": 15603,
       "w": 1344,
       "h": 892,
       "title": "SCR-012 후기 남기기 · 1280 · normal",
@@ -326,15 +326,15 @@
     },
     "SCR-013-360.dc.html": {
       "x": 0,
-      "y": 16875,
+      "y": 16915,
       "w": 1208,
       "h": 892,
       "title": "SCR-013 사진 게시 동의 철회 카드 · 360 · normal, expired, error",
       "page": "customer"
     },
     "SCR-013-1280.dc.html": {
-      "x": 1288,
-      "y": 16875,
+      "x": 2072,
+      "y": 16915,
       "w": 1344,
       "h": 892,
       "title": "SCR-013 사진 게시 동의 철회 카드 · 1280 · normal",
@@ -1118,7 +1118,7 @@
       "y": -300,
       "text": "SCR-001 예약 링크 페이지",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr002": {
@@ -1126,7 +1126,7 @@
       "y": 1921,
       "text": "SCR-002 가게 개인정보 처리방침",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr003": {
@@ -1134,7 +1134,7 @@
       "y": 3233,
       "text": "SCR-003 가게 채널 상담",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr004": {
@@ -1142,7 +1142,7 @@
       "y": 4545,
       "text": "SCR-004 주문 요청 카드",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr005": {
@@ -1150,75 +1150,75 @@
       "y": 5894,
       "text": "SCR-005 결제 안내",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr006": {
       "x": 0,
-      "y": 7206,
+      "y": 7226,
       "text": "SCR-006 결제 확인 요청 카드",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr007": {
       "x": 0,
-      "y": 8518,
+      "y": 8558,
       "text": "SCR-007 내 주문 보기",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr008": {
       "x": 0,
-      "y": 9830,
+      "y": 9870,
       "text": "SCR-008 변경 요청 카드",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr009": {
       "x": 0,
-      "y": 11142,
+      "y": 11182,
       "text": "SCR-009 취소 카드",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr010": {
       "x": 0,
-      "y": 12454,
+      "y": 12494,
       "text": "SCR-010 문제 신고 카드",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr011": {
       "x": 0,
-      "y": 13766,
+      "y": 13806,
       "text": "SCR-011 손님 알림",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr012": {
       "x": 0,
-      "y": 15263,
+      "y": 15303,
       "text": "SCR-012 후기 남기기",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "scr013": {
       "x": 0,
-      "y": 16575,
+      "y": 16615,
       "text": "SCR-013 사진 게시 동의 철회 카드",
       "kind": "title1",
-      "maxW": 2632,
+      "maxW": 3416,
       "page": "customer"
     },
     "legend": {
-      "x": 2792,
+      "x": 3576,
       "y": 0,
       "text": "A '주문서' 방향에 손님 화면 사진을 크게 해서 그린 화면 50개. 화면마다 360 보드(normal 전체 길이, 이어서 모습이 크게 다른 상태를 360 × 800으로)와 1280 보드(normal). 색·글꼴과 회색 사진 자리는 임시이고 토큰 고정 전에 바꿈. 고르기 전 후보는 '후보 A·B (방향 고르기)' 페이지.",
       "w": 640,
