@@ -192,7 +192,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("맛", "order_drafts.flavor_option_id"),
         ("디자인", "order_drafts.design_option_id"),
         ("도안", "order_drafts.design_id"),
-        ("더하는 옵션", "order_drafts.extra_option_ids"),
+        ("더하는 옵션(초안과 같은 가격표 버전의 더하는 옵션만)", "order_draft_extras.option_id"),
         ("옵션 값", "price_options.amount"),
         ("기본 디자인 범위", "price_options.in_standard"),
         ("옵션 규칙", "price_option_rules.rule_kind"),
@@ -210,6 +210,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("현재 버전 가격표", "price_lists.version"),
         ("빼야 할 재료가 있으면 맞춤", "order_drafts.excluded_ingredients"),
         ("고른 옵션의 값 표시 방식", "price_options.price_kind"),
+        ("더하는 옵션의 가격표 버전", "order_draft_extras.price_list_id"),
     ],
     "SPEC-014": [
         ("요일 휴무", "business_calendars.closed_weekdays"),
@@ -222,6 +223,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("마감된 날 에스컬레이션함", "handoffs.reason"),
         ("추가로 받을지 묻는 날짜", "handoffs.requested_day"),
         ("날짜 판정 도구 호출", "ai_tool_calls.tool_name"),
+        ("마감된 날 질문은 날짜마다 따로 건", "handoffs.requested_day"),
     ],
     "SPEC-015": [
         ("자리 날짜", "slot_holds.day"),
@@ -293,7 +295,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("맞춤 주문으로 가름", "order_drafts.order_kind"),
     ],
     "SPEC-020": [
-        ("픽업 일시", "order_drafts.pickup_at"),
+        ("픽업 날짜(날짜만 알아도 남김)", "order_drafts.pickup_day"),
+        ("픽업 시각(모르면 비움)", "order_drafts.pickup_time"),
         ("문구", "order_drafts.lettering"),
         ("색", "order_drafts.colors"),
         ("디자인 설명", "order_drafts.design_notes"),
@@ -334,6 +337,11 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("기다림 타이머", "owner_tasks.wait_due_at"),
         ("사장님께는 원래 값", "masked_values.original_enc"),
         ("손님에게 알린 말", "messages.author"),
+        ("덧붙은 질문(열린 건에 덧붙은 손님 말)", "handoff_questions.message_id"),
+        ("덧붙은 질문의 사유", "handoff_questions.reason"),
+        ("덧붙은 질문의 관련 주문", "handoff_questions.order_id"),
+        ("덧붙은 시각", "handoff_questions.created_at"),
+        ("마감된 날 질문은 덧붙이지 않고 따로 건", "handoffs.requested_day"),
     ],
     "SPEC-023": [
         ("사장님 답", "handoffs.answer_text"),
@@ -345,6 +353,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("할 일 닫힘", "owner_tasks.closed_at"),
         ("답함", "owner_tasks.wait_status"),
         ("상담 다시 열림", "consultations.status"),
+        ("추가 수락을 쓴 주문 요청(하나만)", "handoffs.day_used_order_id"),
+        ("덧붙은 질문도 함께 보임", "handoff_questions.message_id"),
     ],
     "SPEC-024": [
         ("기다리는 시간", "shops.owner_wait_minutes"),
@@ -382,7 +392,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("조문이 비면 에스컬레이션함", "handoffs.reason"),
     ],
     "SPEC-027": [
-        ("빈 항목: 픽업 일시", "order_drafts.pickup_at"),
+        ("빈 항목: 픽업 날짜", "order_drafts.pickup_day"),
+        ("빈 항목: 픽업 시각", "order_drafts.pickup_time"),
         ("빈 항목: 크기", "order_drafts.size_option_id"),
         ("빈 항목: 맛", "order_drafts.flavor_option_id"),
         ("빈 항목: 문구", "order_drafts.lettering"),
@@ -438,6 +449,11 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("가게 규칙이 가른 주문 종류", "order_drafts.order_kind"),
         ("근거 견적", "order_details.quote_id"),
         ("주문서 초안", "orders.draft_id"),
+        ("추가 수락을 쓴 주문 요청", "handoffs.day_used_order_id"),
+        ("더하는 옵션을 주문 내용으로 옮김", "order_detail_extras.option_id"),
+        ("초안의 픽업 날짜와 시각을 가게 시간대로 합침", "order_drafts.pickup_day"),
+        ("초안의 픽업 시각", "order_drafts.pickup_time"),
+        ("요청한 상담과 그 상담의 손님", "orders.customer_id"),
     ],
     "SPEC-030": [
         ("결제 기한까지 잡은 자리", "slot_holds.payment_request_id"),
@@ -445,6 +461,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("추가 수락한 날은 마감 후 추가 수락", "slot_holds.overbooked"),
         ("추가 수락한 날 24시간", "handoffs.day_accept_expires_at"),
         ("기본 디자인 주문", "orders.kind"),
+        ("추가 수락을 쓴 주문 요청", "handoffs.day_used_order_id"),
     ],
     "SPEC-031": [
         ("맞춤 주문 요청됨", "orders.status"),
@@ -517,6 +534,14 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("두 번 눌러도 하나", "request_keys.request_key"),
         ("할 일 닫힘", "owner_tasks.closed_at"),
         ("확인 전 들어온 돈을 확인하면 그 시각을 새 금액 확인으로", "payment_requests.amount_confirmed_at"),
+        ("주문을 확정시킨 결제", "orders.confirmed_payment_id"),
+        ("같은 키의 요청 지문(다르면 422)", "request_keys.request_hash"),
+        ("처리 중(409)·끝남", "request_keys.state"),
+        ("처리 중의 기한 60초", "request_keys.processing_expires_at"),
+        ("처음 결과의 상태 코드", "request_keys.response_status"),
+        ("처음 결과의 종류", "request_keys.response_code"),
+        ("처음 결과가 가리킨 기록(지금 상태를 다시 읽음)", "request_keys.response_ref"),
+        ("끝난 시각", "request_keys.done_at"),
     ],
     "SPEC-035": [
         ("다르게 들어온 금액", "payment_requests.mismatch_amount"),
@@ -541,6 +566,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("취소된 주문에 입금", "owner_tasks.kind"),
         ("환불 결정", "refunds.cause"),
         ("취소된 주문에 들어온 금액", "payment_requests.arrived_amount"),
+        ("주문을 확정시킨 결제(다시 낸 결제)", "orders.confirmed_payment_id"),
     ],
     "SPEC-037": [
         ("기한 지남", "payment_requests.expired_at"),
@@ -670,6 +696,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("사장님 '취소됨' 알림", "owner_alerts.kind"),
         ("쓴 조문", "rule_clauses.effect_text"),
         ("재제작 주문의 환불은 원래 주문에", "orders.remake_of_order_id"),
+        ("취소한 주문마다 환불 하나", "refunds.cancelled_order_id"),
     ],
     "SPEC-047": [
         ("환불 결정", "refunds.decision"),
@@ -693,6 +720,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("근거의 조문", "rule_clauses.effect_text"),
         ("환불을 남긴 주문(재제작 주문이면 원래 주문)", "refunds.order_id"),
         ("금액이 내려간 변경은 차액 돌려주기", "refunds.cause"),
+        ("취소 환불은 취소한 주문마다 하나", "refunds.cancelled_order_id"),
     ],
     "SPEC-048": [
         ("가게 사정 취소", "orders.cancel_kind"),
@@ -711,6 +739,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("두 번 눌러도 한 번", "request_keys.request_key"),
         ("재제작 주문의 환불은 원래 주문에", "orders.remake_of_order_id"),
         ("가게 사정 취소의 보상 조문 글", "rule_clauses.effect_text"),
+        ("취소한 주문마다 환불 하나", "refunds.cancelled_order_id"),
     ],
     "SPEC-049": [
         ("환불받을 은행", "refunds.refund_bank_name"),
@@ -723,7 +752,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
     ],
     "SPEC-050": [
         ("디자인 옵션", "order_details.design_option_id"),
-        ("더하는 옵션", "order_details.extra_option_ids"),
+        ("더하는 옵션", "order_detail_extras.option_id"),
         ("알레르기 답", "order_details.allergy_answer"),
         ("알레르기 정보 동의 안 함", "order_details.allergy_consent"),
         ("빼야 할 재료", "order_details.excluded_ingredients"),
@@ -734,6 +763,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("맞춤 재료 필요", "productions.needs_custom_material"),
         ("변경됨", "productions.changed_after_start"),
         ("취소됨 알림", "owner_alerts.kind"),
+        ("더하는 옵션의 가격표 버전", "order_detail_extras.price_list_id"),
     ],
     "SPEC-051": [
         ("맞춤 재료 주문 시각", "productions.custom_material_ordered_at"),
@@ -945,6 +975,9 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("저장소에서 실패한 횟수", "file_deletions.attempts"),
         ("마지막 실패 시각(다음 날 다시)", "file_deletions.last_tried_at"),
         ("지운 건수와 아직 지우지 못한 파일 수", "ops_events.detail"),
+        ("덧붙은 질문(상담과 함께 지움)", "handoff_questions.created_at"),
+        ("주문이 되지 않은 초안의 더하는 옵션", "order_draft_extras.draft_id"),
+        ("하루 지난 요청 키", "request_keys.created_at"),
     ],
     "SPEC-066": [
         ("안내 종류", "notifications.kind"),
@@ -1026,6 +1059,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("정정 안내", "notifications.kind"),
         ("장부 쓰기", "ledger_writes.event_kind"),
         ("두 번 눌러도 한 번", "request_keys.request_key"),
+        ("확정시킨 결제를 비움", "orders.confirmed_payment_id"),
     ],
     "SPEC-071": [
         ("들어온 금액", "payment_requests.arrived_amount"),

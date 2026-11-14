@@ -115,11 +115,14 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-047 | `ledger_writes` | 장부 쓰기 | CTX-009 | 009, 036, 039, 045, 046, 047, 048, 054, 055, 060, 064, 070, 076 | TERM-055 |
 | TBL-048 | `ai_calls` | AI 호출 기록 | CTX-001 | 017, 020, 021, 068 | TERM-045 |
 | TBL-049 | `ai_tool_calls` | AI 도구 호출 기록 | CTX-001 | 013, 014, 020, 021, 026, 040, 065 | 없음 |
-| TBL-050 | `request_keys` | 요청 키 | 공통 | 002, 003, 004, 005, 007, 031, 034, 038, 039, 042, 047, 048, 051, 054, 059, 070, 071 | 없음 |
+| TBL-050 | `request_keys` | 요청 키 | 공통 | 002, 003, 004, 005, 007, 031, 034, 038, 039, 042, 047, 048, 051, 054, 059, 065, 070, 071 | 없음 |
 | TBL-051 | `ops_events` | 운영 기록 | 공통 | 008, 010, 017, 029, 065 | 없음 |
 | TBL-052 | `kept_records` | 보관 기록 | CTX-003 | 065, 073 | 없음 |
 | TBL-053 | `access_logs` | 접속기록 | 공통 | 065, 073, 074 | 없음 |
 | TBL-054 | `file_deletions` | 지울 파일 | 공통 | 065 | 없음 |
+| TBL-055 | `handoff_questions` | 덧붙은 질문 | CTX-001 | 022, 023, 065 | TERM-008 |
+| TBL-056 | `order_draft_extras` | 초안의 더하는 옵션 | CTX-001 | 013, 065 | TERM-003 |
+| TBL-057 | `order_detail_extras` | 주문 내용의 더하는 옵션 | CTX-003 | 029, 050 | TERM-004 |
 <!-- build_erd:tables:end -->
 
 ### 3-3. 컨텍스트별 다이어그램
@@ -131,9 +134,9 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 
 ```mermaid
 flowchart LR
-  C0["CTX-001 상담<br/>테이블 13개"]
+  C0["CTX-001 상담<br/>테이블 15개"]
   C1["CTX-002 가게 규칙<br/>테이블 10개"]
-  C2["CTX-003 주문<br/>테이블 5개"]
+  C2["CTX-003 주문<br/>테이블 6개"]
   C3["CTX-004 결제·환불<br/>테이블 4개"]
   C4["CTX-005 제작·전달<br/>테이블 3개"]
   C5["CTX-006 후기·포트폴리오<br/>테이블 4개"]
@@ -141,16 +144,17 @@ flowchart LR
   C7["CTX-008 알림<br/>테이블 3개"]
   C8["CTX-009 장부 연결<br/>테이블 3개"]
   C9["공통<br/>테이블 4개"]
-  C0 -->|7| C1
-  C0 -->|3| C2
+  C0 -->|8| C1
+  C0 -->|5| C2
   C0 -->|1| C6
   C1 -->|1| C2
   C1 -->|1| C3
   C1 -->|4| C6
   C2 -->|7| C0
-  C2 -->|7| C1
+  C2 -->|8| C1
+  C2 -->|1| C3
   C3 -->|2| C0
-  C3 -->|6| C2
+  C3 -->|7| C2
   C3 -->|2| C6
   C4 -->|1| C2
   C5 -->|2| C2
@@ -165,7 +169,7 @@ flowchart LR
 
 ### CTX-001 상담
 
-테이블: TBL-016 `customers`, TBL-017 `consultations`, TBL-018 `messages`, TBL-019 `masked_values`, TBL-020 `order_drafts`, TBL-021 `reference_photos`, TBL-022 `quotes`, TBL-024 `confirm_cards`, TBL-027 `handoffs`, TBL-028 `issue_details`, TBL-029 `issue_photos`, TBL-048 `ai_calls`, TBL-049 `ai_tool_calls`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
+테이블: TBL-016 `customers`, TBL-017 `consultations`, TBL-018 `messages`, TBL-019 `masked_values`, TBL-020 `order_drafts`, TBL-021 `reference_photos`, TBL-022 `quotes`, TBL-024 `confirm_cards`, TBL-027 `handoffs`, TBL-028 `issue_details`, TBL-029 `issue_photos`, TBL-048 `ai_calls`, TBL-049 `ai_tool_calls`, TBL-055 `handoff_questions`, TBL-056 `order_draft_extras`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
 
 ```mermaid
 erDiagram
@@ -224,6 +228,7 @@ erDiagram
     uuid source_message_id FK "에스컬레이션한 손님 말"
     uuid order_id FK "관련 주문"
     text status "열림·답함·답 없어 닫힘"
+    uuid day_used_order_id FK "추가 수락을 쓴 주문 요청"
   }
   issue_details {
     uuid id PK "신고 내용 ID"
@@ -245,6 +250,18 @@ erDiagram
     uuid ai_call_id FK "도구를 호출한 AI 호출"
     uuid consultation_id FK "대화 ID"
   }
+  handoff_questions {
+    uuid id PK "덧붙은 질문 ID"
+    uuid handoff_id FK "덧붙은 열린 에스컬레이션 건"
+    uuid message_id FK "덧붙은 손님 말"
+    uuid order_id FK "관련 주문"
+  }
+  order_draft_extras {
+    uuid draft_id PK, FK "주문서 초안"
+    uuid price_list_id FK "초안의 가격표 버전"
+    uuid option_id PK, FK "더한 옵션"
+    text option_group FK "늘 '더하는 옵션'"
+  }
   kakao_channels ||--o{ customers : "kakao_channel_id"
   customers ||--o{ consultations : "customer_id"
   consultations ||--o{ messages : "consultation_id"
@@ -258,13 +275,14 @@ erDiagram
   order_drafts ||--o{ quotes : "draft_id"
   price_lists ||--o{ quotes : "price_list_id"
   operating_rules ||--o{ quotes : "operating_rules_id"
-  consultations ||--o{ confirm_cards : "consultation_id"
+  consultations ||--o{ confirm_cards : "consultation_id_customer_id"
   customers ||--o{ confirm_cards : "customer_id"
   order_drafts |o--o{ confirm_cards : "draft_id"
   orders |o--o{ confirm_cards : "order_id"
   consultations ||--o{ handoffs : "consultation_id"
   messages ||--o| handoffs : "source_message_id"
   orders |o--o{ handoffs : "order_id"
+  orders |o--o| handoffs : "day_used_order_id"
   consultations ||--o{ issue_details : "consultation_id"
   orders |o--o{ issue_details : "order_id"
   issue_details ||--o{ issue_photos : "issue_details_id"
@@ -272,6 +290,11 @@ erDiagram
   consultations ||--o{ ai_calls : "consultation_id"
   ai_calls ||--o{ ai_tool_calls : "ai_call_id"
   consultations ||--o{ ai_tool_calls : "consultation_id"
+  handoffs ||--o{ handoff_questions : "handoff_id"
+  messages ||--o| handoff_questions : "message_id"
+  orders |o--o{ handoff_questions : "order_id"
+  order_drafts ||--o{ order_draft_extras : "draft_id_price_list_id"
+  price_options ||--o{ order_draft_extras : "price_list_id"
 ```
 
 ### CTX-002 가게 규칙
@@ -347,7 +370,7 @@ erDiagram
 
 ### CTX-003 주문
 
-테이블: TBL-023 `orders`, TBL-025 `change_requests`, TBL-026 `order_details`, TBL-030 `issue_reports`, TBL-052 `kept_records`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
+테이블: TBL-023 `orders`, TBL-025 `change_requests`, TBL-026 `order_details`, TBL-030 `issue_reports`, TBL-052 `kept_records`, TBL-057 `order_detail_extras`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
 
 ```mermaid
 erDiagram
@@ -364,6 +387,7 @@ erDiagram
     uuid operating_rules_id FK "동의한 운영규정 버전"
     timestamptz pickup_at FK "픽업 일시"
     int amount FK "현재 버전의 금액"
+    uuid confirmed_payment_id FK "주문을 확정시킨 확인된 결제"
     uuid remake_of_order_id FK "재제작"
   }
   change_requests {
@@ -398,13 +422,20 @@ erDiagram
     uuid id PK "보관 기록 ID"
     uuid order_id FK "보관 기록이 된 주문"
   }
+  order_detail_extras {
+    uuid order_detail_id PK, FK "주문 내용 버전"
+    uuid price_list_id FK "그 버전의 가격표 버전"
+    uuid option_id PK, FK "더한 옵션"
+    text option_group FK "늘 '더하는 옵션'"
+  }
   customers ||--o{ orders : "customer_id"
-  consultations ||--o{ orders : "consultation_id"
+  consultations ||--o{ orders : "consultation_id_customer_id"
   order_drafts |o--o| orders : "draft_id"
   price_lists ||--o{ orders : "price_list_id"
   operating_rules ||--o{ orders : "operating_rules_id"
   orders |o--o{ orders : "remake_of_order_id"
   order_details ||--o| orders : "current_version"
+  payments |o--o| orders : "id_confirmed_payment_id"
   orders ||--o{ change_requests : "order_id"
   confirm_cards ||--o| change_requests : "card_id"
   orders ||--o{ order_details : "order_id"
@@ -419,6 +450,8 @@ erDiagram
   issue_reports |o--o{ issue_reports : "follows_report_id"
   orders |o--o| issue_reports : "remake_order_id"
   orders ||--o| kept_records : "order_id"
+  order_details ||--o{ order_detail_extras : "order_detail_id_price_list_id"
+  price_options ||--o{ order_detail_extras : "price_list_id"
 ```
 
 ### CTX-004 결제·환불
@@ -456,6 +489,7 @@ erDiagram
     uuid change_request_id FK "금액이 내려간 변경"
     uuid issue_report_id FK "보상의 문제 신고"
     uuid payment_request_id FK "돌려줄 들어온 입금의 결제…"
+    uuid cancelled_order_id FK "취소 환불"
     int amount "정한 환불 금액"
   }
   shops ||--o{ payment_accounts : "shop_id"
@@ -468,9 +502,10 @@ erDiagram
   orders ||--o{ payments : "order_id"
   payment_requests ||--o{ payments : "payment_request_id"
   orders ||--o{ refunds : "order_id"
-  change_requests |o--o{ refunds : "change_request_id"
-  issue_reports |o--o{ refunds : "issue_report_id"
-  payment_requests |o--o{ refunds : "payment_request_id"
+  change_requests |o--o| refunds : "change_request_id"
+  issue_reports |o--o| refunds : "issue_report_id"
+  payment_requests |o--o| refunds : "payment_request_id"
+  orders |o--o| refunds : "cancelled_order_id"
 ```
 
 ### CTX-005 제작·전달
@@ -607,7 +642,7 @@ erDiagram
   owner_tasks |o--o{ owner_alerts : "owner_task_id"
   owner_alerts |o--o{ owner_alerts : "batched_into_id"
   customers ||--o{ notifications : "customer_id"
-  consultations ||--o{ notifications : "consultation_id"
+  consultations ||--o{ notifications : "consultation_id_customer_id"
   orders |o--o{ notifications : "order_id"
 ```
 

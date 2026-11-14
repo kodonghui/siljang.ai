@@ -387,15 +387,19 @@ def db_checks(root: Path, rep: Report, tables: list, base: str | None, keep: boo
 # ── D5 두 세션 동시 쓰기(설계 재검토 H12) ──────────────────────────────────────
 
 RACE_ORDER = "e5000000-0000-0000-0000-000000000001"
-# 외래 키 트리거를 건너뛰어 주문 한 행만 만듦(검사용 DB에서만, 슈퍼유저). CHECK는 그대로 봄
+RACE_SHOP = "e5000000-0000-0000-0000-000000000002"
+RACE_PAYMENT = "e5000000-0000-0000-0000-000000000003"  # 결제 확인이 주문을 확정시킨 결제(orders_confirmed_payment_chk, 설계 재검토 M7)
+# 외래 키 트리거를 건너뛰어 주문 한 행과 그 확인된 결제 한 행만 만듦(검사용 DB에서만, 슈퍼유저). CHECK는 그대로 봄
 RACE_SETUP = (
     "SET session_replication_role = replica; "
-    f"DELETE FROM orders WHERE id = '{RACE_ORDER}'; "
+    f"DELETE FROM payments WHERE id = '{RACE_PAYMENT}'; DELETE FROM orders WHERE id = '{RACE_ORDER}'; "
     "INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, draft_id, kind, status, price_list_id, "
     "operating_rules_id, details_confirmed_at, terms_consented_at, pickup_at, pickup_day, amount) "
-    f"VALUES ('{RACE_ORDER}', gen_random_uuid(), 'RACE01', gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), "
+    f"VALUES ('{RACE_ORDER}', '{RACE_SHOP}', 'RACE01', gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), "
     "'standard', 'awaiting_payment', gen_random_uuid(), gen_random_uuid(), now(), now(), now() + interval '3 days', "
-    "current_date + 3, 36000)"
+    "current_date + 3, 36000); "
+    "INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) "
+    f"VALUES ('{RACE_PAYMENT}', '{RACE_SHOP}', '{RACE_ORDER}', gen_random_uuid(), 36000)"
 )
 RACE_WAYS = (  # (이름, 쓸 때 함께 바꾸는 것, 견주는 조건)
     ("옛 방식(내용 버전 version 비교)", "updated_at = now()", "version = 1"),
@@ -409,7 +413,7 @@ def race_once(pg: Pg, bump: str, pred: str) -> tuple[str, str, float, str]:
     if r.returncode:
         raise RuntimeError(r.stderr.strip())
     where = f"WHERE id = '{RACE_ORDER}' AND {pred}"
-    confirm = (f"BEGIN;\nUPDATE orders SET status = 'confirmed', confirmed_at = now(), {bump} {where};\n"
+    confirm = (f"BEGIN;\nUPDATE orders SET status = 'confirmed', confirmed_at = now(), confirmed_payment_id = '{RACE_PAYMENT}', {bump} {where};\n"
                "\\echo rows :ROW_COUNT\nSELECT pg_sleep(1.5);\nCOMMIT;\n")
     cancel = (f"BEGIN;\nUPDATE orders SET status = 'cancelled', cancelled_at = now(), cancel_kind = 'customer', {bump} {where};\n"
               "\\echo rows :ROW_COUNT\nCOMMIT;\n")
