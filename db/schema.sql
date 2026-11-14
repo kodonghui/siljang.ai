@@ -909,7 +909,7 @@ CREATE TABLE refunds (
   cause                  text NOT NULL CHECK (cause IN ('customer_cancel', 'shop_cancel', 'change_reduced', 'compensation', 'paid_after_cancel', 'over_received')), -- 손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 몫, 기한 뒤 차액, SPEC-071)
   change_request_id      uuid,                           -- 금액이 내려간 변경
   issue_report_id        uuid,                           -- 보상의 문제 신고
-  payment_request_id     uuid,                           -- 돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071). 결제 확인 요청 중에 취소한 주문의 취소 환불도 그 결제 안내의 들어온 금액을 셈했으면 가짐
+  payment_request_id     uuid,                           -- 돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071). 결제 확인 요청 중이거나 맞추는 중에 취소한 주문의 취소 환불도 그 결제 안내의 들어온 금액을 셈했으면 가짐
   counted_arrived_amount integer CHECK (counted_arrived_amount BETWEEN 1 AND 100000000), -- 이 환불이 셈한 그 결제 안내의 들어온 금액(합). 비어 있으면 트리거 refunds_unconfirmed가 지금 값으로 채움. 같은 결제 안내에 다시 들어온 입금의 환불은 앞 환불보다 크게 셈하고 계산값은 새로 들어온 몫까지(4절 A29, 설계 재검토 남은 빈 곳)
   cancelled_order_id     uuid,                           -- 취소 환불(손님 취소·가게 사정 취소)이면 취소한 주문: 그 주문이나 그 재제작 주문(트리거 refunds_cancelled). 취소한 주문마다 환불 하나(refunds_cancelled_uq, 4절 A33, 설계 재검토 M7)
   event_key              text NOT NULL,                  -- 같은 환불을 두 번 정하지 않음(G2). 형식 refund:{대상 ID}:{사유}, 들어온 입금의 환불은 refund:{결제 안내 ID}:{사유}:{셈한 들어온 금액}. 대상은 취소한 주문·변경 요청·문제 신고·결제 안내이고 대상마다 하나(결제 안내는 셈한 들어온 금액마다 하나)는 UNIQUE로도 막음(4절 A33)
@@ -942,7 +942,7 @@ CREATE TABLE refunds (
   CONSTRAINT refunds_change_chk CHECK ((cause = 'change_reduced') = (change_request_id IS NOT NULL)),
   CONSTRAINT refunds_change_decision_chk CHECK (cause <> 'change_reduced' OR decision <> 'full'), -- 금액이 내려간 변경은 차액 돌려주기(일부 환불, 계산값 0원이면 환불 없음)만(SPEC-047)
   CONSTRAINT refunds_issue_chk CHECK ((cause = 'compensation') = (issue_report_id IS NOT NULL)),
-  CONSTRAINT refunds_request_chk CHECK ((cause NOT IN ('paid_after_cancel', 'over_received') OR payment_request_id IS NOT NULL) AND (cause IN ('paid_after_cancel', 'over_received', 'customer_cancel', 'shop_cancel') OR payment_request_id IS NULL)), -- 들어온 입금의 환불은 결제 안내가 꼭, 취소 환불은 결제 확인 요청 중이던 결제 안내의 들어온 금액을 셈했으면 가짐(SPEC-071)
+  CONSTRAINT refunds_request_chk CHECK ((cause NOT IN ('paid_after_cancel', 'over_received') OR payment_request_id IS NOT NULL) AND (cause IN ('paid_after_cancel', 'over_received', 'customer_cancel', 'shop_cancel') OR payment_request_id IS NULL)), -- 들어온 입금의 환불은 결제 안내가 꼭, 취소 환불은 결제 확인 요청 중이거나 맞추는 중이던 결제 안내의 들어온 금액을 셈했으면 가짐(SPEC-071)
   CONSTRAINT refunds_counted_chk CHECK (counted_arrived_amount IS NULL OR payment_request_id IS NOT NULL), -- 셈한 들어온 금액은 결제 안내가 있을 때만(있으면 트리거가 채움)
   CONSTRAINT refunds_cancelled_chk CHECK ((cause IN ('customer_cancel', 'shop_cancel')) = (cancelled_order_id IS NOT NULL)), -- 취소 환불에만 취소한 주문
   CONSTRAINT refunds_sent_chk CHECK (sent_at IS NULL OR (decision <> 'none' AND method IS NOT NULL)),
@@ -1452,7 +1452,7 @@ $sync$;
 CREATE CONSTRAINT TRIGGER orders_production_sync AFTER INSERT OR UPDATE OF status ON orders DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION orders_production_sync_check();
 CREATE CONSTRAINT TRIGGER productions_order_sync AFTER INSERT OR UPDATE OF handed_over_at, no_pickup_at OR DELETE ON productions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION orders_production_sync_check();
 
--- 결제 안내의 들어온 금액을 셈한 환불: 취소 뒤 들어온 입금·더 들어온 금액의 환불과, 결제 확인 요청 중에 취소한 주문의 취소 환불(SPEC-016,
+-- 결제 안내의 들어온 금액을 셈한 환불: 취소 뒤 들어온 입금·더 들어온 금액의 환불과, 결제 확인 요청 중이거나 맞추는 중에 취소한 주문의 취소 환불(SPEC-016,
 -- SPEC-071, 4절 A29, Codex 후속, 설계 재검토 남은 빈 곳). 셈한 들어온 금액이 비어 있으면 그 결제 안내의 지금 들어온 금액으로 채우고,
 -- 그 결제 안내 행을 잠가 같은 결제 안내의 환불을 차례로 셈함. 셈한 금액은 그 결제 안내의 들어온 금액 이하이고 앞 환불이 셈한 금액보다
 -- 작지 않음(같으면 refunds_request_uq). 들어온 입금의 환불 계산값은 셈한 금액 - (결제 확인을 취소하지 않은 확인된 결제와, 앞 환불이 셈한
@@ -2170,7 +2170,7 @@ COMMENT ON COLUMN refunds.order_id IS '주문. 재제작 주문의 취소·보�
 COMMENT ON COLUMN refunds.cause IS '손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 몫, 기한 뒤 차액, SPEC-071)';
 COMMENT ON COLUMN refunds.change_request_id IS '금액이 내려간 변경';
 COMMENT ON COLUMN refunds.issue_report_id IS '보상의 문제 신고';
-COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071). 결제 확인 요청 중에 취소한 주문의 취소 환불도 그 결제 안내의 들어온 금액을 셈했으면 가짐';
+COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071). 결제 확인 요청 중이거나 맞추는 중에 취소한 주문의 취소 환불도 그 결제 안내의 들어온 금액을 셈했으면 가짐';
 COMMENT ON COLUMN refunds.counted_arrived_amount IS '이 환불이 셈한 그 결제 안내의 들어온 금액(합). 비어 있으면 트리거 refunds_unconfirmed가 지금 값으로 채움. 같은 결제 안내에 다시 들어온 입금의 환불은 앞 환불보다 크게 셈하고 계산값은 새로 들어온 몫까지(4절 A29, 설계 재검토 남은 빈 곳)';
 COMMENT ON COLUMN refunds.cancelled_order_id IS '취소 환불(손님 취소·가게 사정 취소)이면 취소한 주문: 그 주문이나 그 재제작 주문(트리거 refunds_cancelled). 취소한 주문마다 환불 하나(refunds_cancelled_uq, 4절 A33, 설계 재검토 M7)';
 COMMENT ON COLUMN refunds.event_key IS '같은 환불을 두 번 정하지 않음(G2). 형식 refund:{대상 ID}:{사유}, 들어온 입금의 환불은 refund:{결제 안내 ID}:{사유}:{셈한 들어온 금액}. 대상은 취소한 주문·변경 요청·문제 신고·결제 안내이고 대상마다 하나(결제 안내는 셈한 들어온 금액마다 하나)는 UNIQUE로도 막음(4절 A33)';

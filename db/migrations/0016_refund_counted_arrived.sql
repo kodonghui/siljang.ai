@@ -1,7 +1,7 @@
 -- 0016_refund_counted_arrived: 들어온 입금의 환불을 정한 뒤 같은 결제 안내에 또 들어온 돈의 환불(설계 재검토 남은 빈 곳, 2026-11-15,
 -- 2026-11-13 20:59 결정 카드 '모두 지금 고침 (추천)'. 설계 재검토 H1·M5가 남긴 빈 곳, docs/05-erd/README.md 4절 A29·A33)
 -- refunds에 이 환불이 셈한 그 결제 안내의 들어온 금액(counted_arrived_amount)을 더하고, 결제 안내마다 하나이던 refunds_request_uq를
--- (결제 안내, 셈한 들어온 금액)으로 좁힘. 결제 확인 요청 중에 취소한 주문의 취소 환불도 그 결제 안내를 가질 수 있게 refunds_request_chk를
+-- (결제 안내, 셈한 들어온 금액)으로 좁힘. 결제 확인 요청 중이거나 맞추는 중에 취소한 주문의 취소 환불도 그 결제 안내를 가질 수 있게 refunds_request_chk를
 -- 넓히고 refunds_counted_chk를 더함. 트리거 refunds_unconfirmed가 셈한 금액을 채우고 같은 결제 안내의 환불을 차례로 셈해 앞 환불이 셈한
 -- 몫을 다시 돌려주지 않음(SPEC-016, SPEC-071).
 -- 0015_issue_kind_reporter.sql 뒤에 한 트랜잭션으로 적용: psql -1 -v ON_ERROR_STOP=1 -f db/migrations/0016_refund_counted_arrived.sql
@@ -73,6 +73,6 @@ CREATE TRIGGER refunds_unconfirmed BEFORE INSERT OR UPDATE OF cause, payment_req
 -- 컬럼 설명(db/schema.sql 끝과 같음)
 COMMENT ON COLUMN payment_requests.arrived_amount IS '들어온 금액(받은 금액의 몫, REQ-165). 입금됨은 안내 금액, 맞추는 중은 다르게 들어온 금액(모자란 금액이 마저 들어오면 안내 금액, 더 들어온 채 대조 완료면 그대로), 결제로 확인하지 않은 들어온 입금은 사장님이 남긴 금액. 같은 결제 안내에 또 들어오면 더함(확인됨에 더 들어온 입금도, SPEC-071)';
 COMMENT ON COLUMN payment_requests.arrived_at IS '들어온 금액을 마지막으로 남긴 시각. 결제 확인 취소(SPEC-070)면 지움';
-COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071). 결제 확인 요청 중에 취소한 주문의 취소 환불도 그 결제 안내의 들어온 금액을 셈했으면 가짐';
+COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071). 결제 확인 요청 중이거나 맞추는 중에 취소한 주문의 취소 환불도 그 결제 안내의 들어온 금액을 셈했으면 가짐';
 COMMENT ON COLUMN refunds.counted_arrived_amount IS '이 환불이 셈한 그 결제 안내의 들어온 금액(합). 비어 있으면 트리거 refunds_unconfirmed가 지금 값으로 채움. 같은 결제 안내에 다시 들어온 입금의 환불은 앞 환불보다 크게 셈하고 계산값은 새로 들어온 몫까지(4절 A29, 설계 재검토 남은 빈 곳)';
 COMMENT ON COLUMN refunds.event_key IS '같은 환불을 두 번 정하지 않음(G2). 형식 refund:{대상 ID}:{사유}, 들어온 입금의 환불은 refund:{결제 안내 ID}:{사유}:{셈한 들어온 금액}. 대상은 취소한 주문·변경 요청·문제 신고·결제 안내이고 대상마다 하나(결제 안내는 셈한 들어온 금액마다 하나)는 UNIQUE로도 막음(4절 A33)';
