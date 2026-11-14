@@ -482,7 +482,9 @@ def s_load_failed(extra=""):
 
 def s_notify(text, title, body, action):
     """되돌릴 수 없고 손님에게 안내가 가는 사장님 액션 앞에서 화면이 여는 확인 창(설계 재검토 M19, RE-06). 서버로 보내기 전이라 04·06단계는 그대로."""
-    return ("confirm-notify", text + ". '%s'를 눌러야 보내고 '돌아가기'면 아무것도 바뀌지 않음" % action,
+    last = ord(action[-1]) - 0xAC00
+    josa = "을" if 0 <= last < 11172 and last % 28 else "를"  # 받침이 있으면 '을'('환불 결정'을)
+    return ("confirm-notify", text + ". '%s'%s 눌러야 보내고 '돌아가기'면 아무것도 바뀌지 않음" % (action, josa),
             f_dialog(title, body, ["돌아가기", action]))
 
 
