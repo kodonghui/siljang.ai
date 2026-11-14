@@ -384,7 +384,9 @@ class Base(gen.A):
             desc = ' aria-invalid="true" aria-describedby="' + " ".join([fid + "-e"] + ([hid] if help_ else [])) + '"'
         lab = '<label for="' + fid + '" style="font-weight: var(--font-weight-semibold)">' + e(label) + '</label>'
         col = "display: flex; flex-direction: column; gap: var(--space-xs)"
-        inp = ("flex: 1 1 0; align-self: stretch; min-width: 0; padding: 0; border: 0; background: transparent; font: inherit; "
+        # 누르는 곳은 테두리를 포함한 입력 필드 전체(size.control 44px). input이 위아래 테두리 위까지 덮음(설계 재검토 낮음 RE-12)
+        inp = ("flex: 1 1 0; align-self: stretch; margin-block: calc(-1 * var(--border-width-hairline)); min-width: 0; padding: 0; border: 0; "
+               "background: transparent; font: inherit; "
                "color: var(--color-ink); outline: none")
         if kind in ("text", "number", "date", "time"):
             mode = ' inputmode="numeric"' if kind == "number" else ""
@@ -471,31 +473,42 @@ class Base(gen.A):
         return '<div style="display: flex; flex-direction: column; gap: var(--space-lg)">\n' + "\n".join(items) + '\n</div>'
 
     # ── 버튼 ──────────────────────────────────────────────────────────────
-    def kind_of(self, i, primary, danger):
+    off, stack = set(), False
+
+    def kind_of(self, i, primary, danger, label=None):
+        if label is not None and label in self.off:
+            return "off"
         if danger is not None and i == danger:
             return "danger"
         return "primary" if i == primary else "secondary"
 
     def footer(self, labels, primary, danger, busy=None):
-        btns = [(lab, self.kind_of(i, primary, danger)) for i, lab in enumerate(labels)]
+        btns = [(lab, self.kind_of(i, primary, danger, lab)) for i, lab in enumerate(labels)]
         first, rest = btns[0], btns[1:]
         if primary is not None and primary != 0:
             first = btns[primary]
             rest = [b for i, b in enumerate(btns) if i != primary]
-        big = self.btn(first[1], e(first[0]), h="var(--size-control-lg)", full=True, size="title")
-        if rest:
+        big = self.btn(first[1], e(first[0]), h="var(--size-control-lg)", full=True, size="title", attrs=self.off_attr(first[1]))
+        if rest and self.stack:  # 버튼을 모두 세로로, 주된 버튼이 맨 위(각 size.control-lg)
+            big += "".join(self.btn(k, e(lab), h="var(--size-control-lg)", full=True, attrs=self.off_attr(k)) for lab, k in rest)
+        elif rest:
             big += ('<div style="display: grid; grid-template-columns: repeat(' + str(len(rest)) + ', minmax(0, 1fr)); gap: var(--space-sm)">'
-                    + "".join(self.btn(k, e(lab), pad="var(--space-sm)") for lab, k in rest) + '</div>')
+                    + "".join(self.btn(k, e(lab), pad="var(--space-sm)", attrs=self.off_attr(k)) for lab, k in rest) + '</div>')
         return ('<div style="display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); '
                 'background: var(--color-surface); border-top: ' + LINE + '">' + big + '</div>')
+
+    @staticmethod
+    def off_attr(kind):
+        return ' disabled' if kind == "off" else ""
 
     def btnrow(self, labels, primary, danger, wide=True):
         out = []
         dang = []
         for i, lab in enumerate(labels):
-            k = self.kind_of(i, primary, danger)
+            k = self.kind_of(i, primary, danger, lab)
             # 360 본문 안의 버튼 줄은 줄 너비를 채움(아래 고정 버튼과 같은 모양), 1280은 글 길이만큼
-            b = self.btn(k, e(lab), pad="var(--space-xl)" if k == "primary" else "var(--space-lg)", extra="" if wide else "flex: 1 0 auto")
+            b = self.btn(k, e(lab), pad="var(--space-xl)" if k in ("primary", "off") else "var(--space-lg)", extra="" if wide else "flex: 1 0 auto",
+                         attrs=self.off_attr(k))
             (dang if k == "danger" and wide and len(labels) > 1 else out).append(b)
         spacer = '<span style="flex: 1 1 0"></span>' if dang else ""
         return ('<div style="display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm)">' + "".join(out) + spacer
@@ -549,7 +562,9 @@ class Base(gen.A):
     # ── 탭 ───────────────────────────────────────────────────────────────
     def tabsx(self, labels, active, counts=None, aria="보기"):
         counts = counts or {}
-        tab = ("flex: none; min-height: var(--size-target); display: inline-flex; align-items: center; gap: var(--space-xs); padding: 0; "
+        # 누르는 곳은 가로·세로 size.target 이상(설계 재검토 낮음 RE-12: 한 글자·두 글자 탭이 15~30px이었음)
+        tab = ("flex: none; min-width: var(--size-target); min-height: var(--size-target); display: inline-flex; align-items: center; "
+               "justify-content: center; gap: var(--space-xs); padding: 0 var(--space-sm); "
                "margin-bottom: calc(-1 * var(--border-width-hairline)); border: 0; background: transparent; font: inherit; white-space: nowrap")
         out = []
         for i, lab in enumerate(labels):
@@ -564,7 +579,7 @@ class Base(gen.A):
             out.append('<button type="button" role="tab" aria-selected="' + ("true" if on else "false") + '" style="' + tab + '; border-bottom: '
                        'var(--border-width-strong) solid ' + ("var(--color-accent); color: var(--color-ink); font-weight: var(--font-weight-semibold)"
                                                              if on else "transparent; color: var(--color-ink-muted)") + '">' + e(lab) + badge + '</button>')
-        return ('<div role="tablist" aria-label="' + a(aria) + '" style="display: flex; gap: var(--space-lg); overflow-x: auto; scrollbar-width: none; '
+        return ('<div role="tablist" aria-label="' + a(aria) + '" style="display: flex; gap: var(--space-xs); overflow-x: auto; scrollbar-width: none; '
                 'border-bottom: ' + LINE + '">' + "".join(out) + '</div>')
 
     # ── 영업 캘린더(사장님) ─────────────────────────────────────────────────────
@@ -809,7 +824,8 @@ def bubble(bb, side_owner=False):
     if k == "sys":
         return ('<p style="align-self: center; margin: 0; padding: var(--space-xs) var(--space-md); border-radius: var(--radius-md); '
                 'background: var(--color-surface-sunken); font-size: var(--font-size-small); text-align: center">' + e(bb[1])
-                + ' <a href="#" style="text-underline-offset: var(--space-xxs)">' + e(bb[2]) + '</a></p>')
+                + ' <a href="#" style="display: inline-flex; align-items: center; min-height: var(--size-target); vertical-align: middle; '
+                'text-underline-offset: var(--space-xxs)">' + e(bb[2]) + '</a></p>')
     if k == "day":
         return ('<p style="align-self: center; margin: var(--space-xs) 0 0; font-size: var(--font-size-caption); color: var(--color-ink-muted)">'
                 + e(bb[1]) + '</p>')
@@ -1050,7 +1066,9 @@ def content(cx, frame=None):
         prev = max((j for j, h in enumerate(htmls) if h), default=None)
         nd = cx.sample(b) if b[0] == "note" else {}
         nxt = blocks[i + 1] if i + 1 < len(blocks) else None
-        if i + 1 in heads:  # 제목은 다음 섹션이 가짐
+        if nd.get("hide"):  # 고른 뒤에만 보이는 결과 줄(설계 재검토 낮음 RE-13)
+            htmls.append("")
+        elif i + 1 in heads:  # 제목은 다음 섹션이 가짐
             htmls.append("")
         elif (b[0] == "tabs" and nxt and (nxt[0] if nxt[0] != "msgwrap" else "msgwrap")
               in ("list", "photos", "kv", "form", "msgwrap", "cal", "text")):
@@ -1095,6 +1113,8 @@ def draw(sid, w, state=None, frame=None):
     """화면 하나의 한 프레임."""
     cx = Ctx(sid, w, state)
     s, shell = cx.s, cx.s["shell"]
+    T.off = set(cx.st.get("off", cx.d.get("off", ())))  # 막힌 버튼(설계 재검토 낮음 RE-13)
+    T.stack = bool(cx.d.get("stack"))  # 360 아래 버튼을 모두 세로로
     fixed = state is not None
     kind = frame[0] if frame else None
     if (sid, state) in STATE_DRAW:
@@ -1107,6 +1127,8 @@ def draw(sid, w, state=None, frame=None):
             bubbles = list(cx.st["chat"])
         elif kind == "chat+":
             bubbles += cx.st.get("chat+") or frame[1]
+        elif kind == "chat=":  # normal의 카드가 그 상태에서는 없음(설계 재검토 낮음 RE-13)
+            bubbles = list(frame[1])
         title = SERVICE if sid == "SCR-019" else SHOP
         return kakao_frame(title, bubbles, w, fixed=fixed)
     title = screen_title(cx)
@@ -1132,7 +1154,8 @@ def draw(sid, w, state=None, frame=None):
         if shell == "public":
             header = public_header(cx, title)
         else:
-            header = topbar(title, lead, right, cx.d.get("meta", ""))
+            # 머리 값은 그 상태 것이 먼저이고, 화면 내용을 못 보이는 상자 프레임(찾을 수 없음·불러오기 실패)에는 없음(설계 재검토 낮음 RE-13)
+            header = topbar(title, lead, right, cx.st.get("meta", "" if kind == "box" else cx.d.get("meta", "")))
         return phone(header, body, footer, overlay, fixed=fixed, inert=bool(overlay and cx.st.get("inert")))
     # 1280
     if shell == "public":

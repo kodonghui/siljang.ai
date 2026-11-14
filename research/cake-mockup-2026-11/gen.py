@@ -156,6 +156,7 @@ class A:
             "secondary": "border: var(--border-width-hairline) solid var(--color-line-control); background: var(--color-surface); color: var(--color-ink)",
             "danger": "border: var(--border-width-hairline) solid var(--color-danger); background: var(--color-surface); color: var(--color-danger)",
             "warn": "border: var(--border-width-hairline) solid var(--color-warning); background: var(--color-surface); color: var(--color-warning)",
+            "off": "border: 0; background: var(--color-surface-sunken); color: var(--color-ink-muted)",  # 막힌 버튼(설계 재검토 낮음 RE-13)
         }[kind]
         st = css("width: 100%" if full else "", "height: " + h, "padding-inline: " + pad, look,
                  "border-radius: var(--radius-md)", "font: inherit",
