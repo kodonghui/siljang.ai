@@ -434,8 +434,8 @@ S["ClauseInput"] = obj({
     "effectText": string(1, 1000, col="rule_clauses.effect_text", desc="AI가 인용할 때는 이 글자 그대로(SPEC-026)"),
 }, ["key", "position", "title", "conditionText", "effectText"])
 S["RefundTierInput"] = obj({
-    "hoursBeforeMin": integer(0, 8760, col="refund_tiers.hours_before_min"),
-    "hoursBeforeMax": nullable(integer(1, 8760, col="refund_tiers.hours_before_max")),
+    "hoursBeforeMin": integer(0, 8760, col="refund_tiers.hours_before_min", desc="기준 픽업 일시 몇 시간 전부터(이 값 포함). 남은 시간은 1시간 미만을 버림(SPEC-016)"),
+    "hoursBeforeMax": nullable(integer(1, 8760, col="refund_tiers.hours_before_max", desc="몇 시간 전까지(이 값 뺌). null이면 끝없음")),
     "refundPct": integer(0, 100, col="refund_tiers.refund_pct"),
 }, ["hoursBeforeMin", "hoursBeforeMax", "refundPct"])
 _rules_fields = {
@@ -443,13 +443,18 @@ _rules_fields = {
     "paymentDueHours": integer(1, 720, col="operating_rules.payment_due_hours", desc="결제 기한(기본 12)"),
     "issueReportHours": integer(1, 720, col="operating_rules.issue_report_hours", desc="문제 신고 기한(기본 24)"),
     "changeDeadlineHours": integer(1, 720, col="operating_rules.change_deadline_hours", desc="변경 마감: 픽업 몇 시간 전까지"),
-    "cancellationFeeKrw": integer(0, 10000000, col="operating_rules.cancellation_fee_krw"),
-    "preProductionRefundPct": integer(0, 100, col="operating_rules.pre_production_refund_pct", desc="제작 전 취소 환불 비율. 100 밑이면 confirm에 lowered_refund가 있어야 저장(REQ-032)"),
-    "dateChangeRefundBasis": enum(["original_pickup", "new_pickup"], col="operating_rules.date_change_refund_basis"),
+    "cancellationFeeKrw": integer(0, 10000000, col="operating_rules.cancellation_fee_krw",
+                                  desc="고정 취소 수수료 0원~1,000만 원. 저장할 때는 주문 금액과 견주지 않고, 환불 계산에서 비율보다 먼저 빼며 바탕보다 크면 환불 0원(SPEC-005, SPEC-016)"),
+    "preProductionRefundPct": integer(0, 100, col="operating_rules.pre_production_refund_pct",
+                                      desc="제작 전 취소 환불 비율. 100 밑이면 confirm에 lowered_refund가 있어야 저장(REQ-032). 단계별 환불이 없는 버전은 맞춤 재료 주문·제작 시작 뒤 취소에도 씀(SPEC-016)"),
+    "dateChangeRefundBasis": enum(["original_pickup", "new_pickup"], col="operating_rules.date_change_refund_basis",
+                                  desc="날짜를 바꾼 주문의 환불 기준일: 처음 픽업일(주문 내용 첫 버전)·바꾼 픽업일. 단계별 환불의 남은 시간을 이 픽업 일시까지로 셈(SPEC-016)"),
 }
 S["OperatingRulesInput"] = obj(dict({"baseRevision": nullable(BASE_REVISION)}, **_rules_fields, **{
     "clauses": arr(ref("ClauseInput"), 1, 50),
-    "refundTiers": arr(ref("RefundTierInput"), 0, 20),
+    "refundTiers": arr(ref("RefundTierInput"), 0, 20,
+                       desc="단계별 환불. hoursBeforeMin 차례로 놓으면 0시간부터 시작해 끝없음(hoursBeforeMax null)으로 끝나고, 행의 hoursBeforeMax가 다음 행의 "
+                            "hoursBeforeMin과 같음(겹치면 overlaps, 비면 gap). 단계별 환불 조문(staged_refund)과 함께 있거나 함께 없음(SPEC-005)"),
     "confirm": confirm_list(["lowered_refund"]),
 }), ["baseRevision", *_rules_fields.keys(), "clauses", "refundTiers"])
 S["Clause"] = all_required({
@@ -826,10 +831,15 @@ S["RefundBasis"] = all_required({
     "cancelledAt": nullable(DT),
     "customMaterialOrderedAt": nullable(DT),
     "productionStartedAt": nullable(DT),
-    "tierRefundPct": nullable(integer(0, 100)),
-    "cancellationFeeKrw": integer(0, 10000000),
-    "receivedAmount": integer(0, 100000000),
-}, desc="환불 계산 근거(SPEC-016, REQ-084). 사장님께 전부")
+    "tierRefundPct": nullable(integer(0, 100, desc="쓴 단계별 환불 비율(맞춤 재료 주문·제작 시작 뒤 손님 취소). 아니면 null")),
+    "preProductionRefundPct": nullable(integer(0, 100, desc="쓴 제작 전 취소 비율(맞춤 재료 주문·제작 시작 전 손님 취소, 단계별 환불이 없는 버전은 뒤에도). 아니면 null")),
+    "pickupBasisAt": nullable(dict(DT, description="단계별 환불의 남은 시간을 센 기준 픽업 일시(날짜를 바꾼 주문은 운영규정의 기준일에 따라 첫 버전이나 지금 픽업 일시). 단계 비율을 쓰지 않으면 null")),
+    "cancellationFeeKrw": integer(0, 10000000, desc="먼저 뺀 고정 취소 수수료(손님 취소만, 그 밖은 0)"),
+    "receivedAmount": integer(0, 100000000, desc="받은 금액(REQ-165). 재제작 주문의 일이면 원래 주문의 받은 금액"),
+    "excludedAmount": integer(0, 100000000, desc="받은 금액에서 빼 바탕을 만든 금액: 이미 정한 환불 합계 + 따로 정할 환불의 계산값(아직 정하지 않은 금액이 내려간 변경·취소 뒤 들어온 입금·더 들어온 금액)"),
+    "remakeOrder": dict(nullable(ref("OrderRef")), description="재제작 주문의 취소·다시 신고의 보상이면 그 재제작 주문(시각과 픽업 일시는 이 주문 것). 돈과 환불은 원래 주문(SPEC-060). 아니면 null"),
+}, desc="환불 계산 근거(SPEC-016, REQ-084). 사장님께 전부. 손님 취소의 차례: 바탕 = receivedAmount - excludedAmount → 고정 취소 수수료를 먼저 뺌(바탕보다 크면 0원) → "
+        "비율(tierRefundPct나 preProductionRefundPct)을 곱해 원 미만 버림 → 0원 이상 바탕 이하. 가게 사정 취소는 바탕 전액, 금액이 내려간 변경은 내려간 금액, 보상은 고른 금액")
 REFUND_CAUSES = ["customer_cancel", "shop_cancel", "change_reduced", "compensation", "paid_after_cancel", "over_received"]
 S["RefundSummary"] = all_required({
     "refundId": UUID, "cause": enum(REFUND_CAUSES), "decision": enum(["full", "partial", "none"]),
@@ -945,11 +955,12 @@ S["RefundPreview"] = all_required({
     "confirmedAmount": integer(0, 100000000, desc="확인된 결제의 합(결제 확인을 취소한 것은 빼고)"),
     "unconfirmedAmount": integer(0, 100000000, desc="결제로 확인하지 않은 들어온 금액: 맞추는 중의 들어온 금액, 안내 금액을 넘어 들어온 금액, 사장님이 들어왔다고 남긴 금액(SPEC-071)"),
     "refundedAmount": integer(0, 100000000, desc="이미 정한 환불의 합"),
-    "calculatedAmount": integer(0, 100000000, desc="가게 규칙의 계산값(maxAmount를 넘지 않음). 손님이 취소 카드에서 본 금액. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 확인된 결제, SPEC-016·071)"),
+    "calculatedAmount": integer(0, 100000000, desc="가게 규칙의 계산값(maxAmount를 넘지 않음). 손님이 취소 카드에서 본 금액. 손님 취소는 바탕에서 수수료를 먼저 빼고(바탕보다 크면 0원) 비율을 곱해 원 미만 버림(basis, SPEC-016). "
+                                               "취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 확인된 결제, SPEC-016·071)"),
     "minAmount": integer(0, 100000000, desc="정할 수 있는 가장 작은 금액 = 계산값(REQ-170). 낮으면 422 below_calculated"),
     "maxAmount": integer(0, 100000000, desc="정할 수 있는 가장 큰 금액(받은 금액 - 이미 정한 환불, REQ-165)"),
     "basis": ref("RefundBasis"),
-})
+}, desc="환불 계산 미리보기. order는 돈을 받고 환불을 남길 주문(재제작 주문이면 원래 주문, 그 재제작 주문은 basis.remakeOrder)")
 S["ShopCancelResult"] = all_required({
     "outcome": outcome(),
     "order": ref("Order"),
@@ -1023,10 +1034,12 @@ S["RefundInput"] = obj({
                   desc="손님 취소·가게 사정 취소·금액이 내려간 변경·취소 뒤 들어온 입금·더 들어온 금액(SPEC-071). 보상 환불은 API-065"),
     "changeRequestId": dict(UUID, description="금액이 내려간 변경(cause가 change_reduced일 때 꼭)"),
     "paymentRequestId": dict(UUID, description="돌려줄 들어온 입금의 결제 안내(cause가 paid_after_cancel·over_received일 때 꼭, SPEC-071)"),
-    "decision": enum(["full", "partial", "none"], col="refunds.decision", desc="전액 환불·일부 환불·환불 없이 취소(계산값이 0원일 때만, REQ-170)"),
+    "decision": enum(["full", "partial", "none"], col="refunds.decision",
+                     desc="전액 환불·일부 환불·환불 없이 취소(계산값이 0원일 때만, REQ-170). 금액이 내려간 변경(change_reduced)은 차액 돌려주기라 partial(계산값 0원이면 none)만, full이면 필드 오류 not_allowed(SPEC-047)"),
     "amount": integer(0, 100000000, col="refunds.amount", desc="none이면 0. 계산값보다 낮으면 필드 오류 below_calculated(REQ-170), 받은 금액 - 이미 정한 환불을 넘으면 exceeds_received"),
-    "overrideReason": string(1, 200, col="refunds.override_reason", desc="계산값보다 높은 금액이면 꼭"),
-}, ["baseRevision", "cause", "decision", "amount"], desc="주문의 baseRevision으로 정함. 같은 사유의 환불은 한 번(G2). 우리는 돈을 옮기지 않음(REQ-079)")
+    "overrideReason": string(1, 200, col="refunds.override_reason", desc="계산값과 다른 금액(보상이 아니라 높은 금액만 됨)이면 꼭 1~200자(없으면 필드 오류 required, REQ-084). 같으면 보내지 않음"),
+}, ["baseRevision", "cause", "decision", "amount"], desc="주문의 baseRevision으로 정함. 같은 사유의 환불은 한 번(G2). 우리는 돈을 옮기지 않음(REQ-079). "
+                                                      "경로의 주문이 재제작 주문이면 원래 주문의 돈으로 셈해 환불을 원래 주문에 남김(SPEC-060)")
 REFUND_ACCOUNT_IN = obj({
     "bankName": string(1, 30, col="refunds.refund_bank_name"),
     "accountNumber": string(10, 40, ACCOUNT_RE, desc="숫자와 '-', 숫자만 10~16자리. 데이터베이스에는 앱이 암호화한 값과 끝 4자리만 둠(REQ-191, refunds.refund_account_enc·refund_account_last4)"),
@@ -1040,7 +1053,7 @@ S["Refund"] = all_required({
     "amount": integer(0, 100000000),
     "calculatedAmount": integer(0, 100000000),
     "basis": ref("RefundBasis"),
-    "overrideReason": nullable(string(1, 200)),
+    "overrideReason": nullable(string(1, 200, desc="계산값과 다르게 정한 사유. 같거나 보상이면 null")),
     "method": nullable(enum(["bank_transfer", "card_cancel"])),
     "refundAccount": nullable(all_required({
         "bankName": nullable(string(1, 30)), "accountNumber": string(1, 40, r"^[0-9-]+$"), "holderName": nullable(string(1, 30)),
@@ -1048,7 +1061,7 @@ S["Refund"] = all_required({
     "decidedAt": DT,
     "sentAt": nullable(DT),
     "revision": REVISION,
-})
+}, desc="정한 환불. order는 환불을 남긴 주문(재제작 주문의 취소·보상 환불은 원래 주문, 그 재제작 주문은 basis.remakeOrder, SPEC-060)")
 S["RefundResult"] = all_required({
     "outcome": outcome(),
     "refund": ref("Refund"),
@@ -1084,7 +1097,7 @@ S["ChangeRequest"] = all_required({
 S["ChangeDecisionInput"] = obj({
     "baseRevision": BASE_REVISION,
     "decision": enum(["accept", "reject"]),
-    "amountDelta": integer(-10000000, 10000000, col="change_requests.amount_delta", desc="수락할 때 금액 차이: 오르면 추가 금액(1원~1,000만 원), 내려가면 음수, 그대로면 0"),
+    "amountDelta": integer(-10000000, 10000000, col="change_requests.amount_delta", desc="수락할 때 금액 차이: 오르면 추가 금액(1원~1,000만 원), 내려가면 음수, 그대로면 0. 재제작 주문의 변경 요청은 0만(아니면 422 not_allowed, 차액 결제·차액 돌려주기 없음, SPEC-042, SPEC-060)"),
     "rejectReason": string(0, 200, col="change_requests.reject_reason"),
     "confirm": confirm_list(["overbooking", "closed_day"]),
 }, ["baseRevision", "decision"])
@@ -1100,7 +1113,7 @@ S["IssueReport"] = all_required({
     "issueReportId": UUID,
     "order": ref("OrderRef"),
     "orderVersion": integer(1, 2147483647),
-    "paidAmount": integer(0, 100000000),
+    "paidAmount": integer(0, 100000000, desc="결제 금액(받은 금액, REQ-165). 재제작 주문에 들어온 신고(다시 신고)면 원래 주문의 받은 금액(SPEC-059)"),
     "late": boolean("신고 기한 뒤에 옴(REQ-072)"),
     "status": enum(["reported", "decided", "closed"]),
     "description": nullable(string(1, 1000)),
@@ -1119,8 +1132,9 @@ S["CompensationInput"] = obj({
     "baseRevision": BASE_REVISION,
     "compensation": enum(["remake", "partial_refund", "full_refund", "none"], col="issue_reports.compensation"),
     "remakePickupAt": dict(DT, description="재제작의 새 픽업 일시(지금 뒤 60일 안). remake만"),
-    "refundAmount": integer(1, 100000000, col="refunds.amount", desc="일부 환불 금액. partial_refund만(SPEC-047과 같은 한도)"),
-    "refundOverrideReason": string(1, 200, col="refunds.override_reason"),
+    "refundAmount": integer(1, 100000000, col="refunds.amount",
+                            desc="일부 환불 금액. partial_refund만(SPEC-047과 같은 한도: 받은 금액 - 이미 정한 환불, 재제작 주문에 들어온 신고면 원래 주문의 것). "
+                                 "보상은 고른 금액이 계산값이라 다르게 정한 사유를 받지 않음(SPEC-059)"),
     "confirm": confirm_list(["closed_day", "overbooking"]),
 }, ["baseRevision", "compensation"])
 S["CompensationResult"] = all_required({

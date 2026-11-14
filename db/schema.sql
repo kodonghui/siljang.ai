@@ -215,10 +215,10 @@ CREATE TABLE operating_rules (
   payment_due_hours           smallint NOT NULL DEFAULT 12 CHECK (payment_due_hours BETWEEN 1 AND 720), -- 결제 기한(TERM-030, REQ-218): 결제 안내가 손님에게 전해진 뒤 기본 12시간, 결제 기한 상한까지
   issue_report_hours          smallint NOT NULL DEFAULT 24 CHECK (issue_report_hours BETWEEN 1 AND 720), -- 문제 신고 기한(REQ-072, 기본 받은 뒤 24시간)
   change_deadline_hours       smallint NOT NULL CHECK (change_deadline_hours BETWEEN 1 AND 720), -- 변경 마감: 픽업 일시 몇 시간 전까지(SPEC-041). 기본값 없음, 가게가 넣음
-  cancellation_fee_krw        integer NOT NULL DEFAULT 0 CHECK (cancellation_fee_krw BETWEEN 0 AND 10000000), -- 고정 취소 수수료(TERM-016). 계산에서는 주문 금액까지만 뺌
-  pre_production_refund_pct   smallint NOT NULL DEFAULT 100 CHECK (pre_production_refund_pct BETWEEN 0 AND 100), -- 제작 전 취소의 환불 비율. 수수료를 뺀 뒤, 기본 전액(REQ-031)
+  cancellation_fee_krw        integer NOT NULL DEFAULT 0 CHECK (cancellation_fee_krw BETWEEN 0 AND 10000000), -- 고정 취소 수수료(TERM-016), 0원~1,000만 원. 저장할 때는 주문 금액과 견주지 않고, 환불 계산에서 비율보다 먼저 빼며 바탕보다 크면 환불 0원(SPEC-016, 4절 A30)
+  pre_production_refund_pct   smallint NOT NULL DEFAULT 100 CHECK (pre_production_refund_pct BETWEEN 0 AND 100), -- 제작 전 취소의 환불 비율: 수수료를 뺀 값에 곱하고 원 미만 버림, 기본 전액(REQ-031). 단계별 환불이 없는 버전은 맞춤 재료 주문·제작 시작 뒤 취소에도 씀(SPEC-016)
   pre_production_lowered_ack  boolean NOT NULL DEFAULT false, -- 전액보다 낮출 때 위험과 근거를 보고 '그래도 저장'을 누름(REQ-032)
-  date_change_refund_basis    text NOT NULL CHECK (date_change_refund_basis IN ('original_pickup', 'new_pickup')), -- 날짜를 바꾼 주문의 환불 기준일: 처음 픽업일·바꾼 픽업일. 기본값 없음, 가게가 정함
+  date_change_refund_basis    text NOT NULL CHECK (date_change_refund_basis IN ('original_pickup', 'new_pickup')), -- 날짜를 바꾼 주문의 환불 기준일: 처음 픽업일(주문 내용 첫 버전의 픽업 일시)·바꾼 픽업일. 단계별 환불의 남은 시간을 이 픽업 일시까지로 셈(SPEC-016). 기본값 없음, 가게가 정함
   created_at                  timestamptz NOT NULL DEFAULT now(), -- 이 버전을 확정한 시각
   superseded_at               timestamptz,               -- 새 버전이 생긴 시각. 빈 값이 현재 버전
   CONSTRAINT operating_rules_shop_scope UNIQUE (shop_id, id),
@@ -228,7 +228,7 @@ CREATE TABLE operating_rules (
 CREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL; -- 가게마다 현재 버전 하나
 COMMENT ON TABLE operating_rules IS 'TBL-010 운영규정(TERM-017) 버전: 계산에 쓰는 기한·수수료·비율';
 
--- TBL-011 rule_clauses (CTX-002) ← SPEC-005, SPEC-016, SPEC-026, SPEC-028, SPEC-041, SPEC-046, SPEC-047 | terms: TERM-017
+-- TBL-011 rule_clauses (CTX-002) ← SPEC-005, SPEC-016, SPEC-026, SPEC-028, SPEC-041, SPEC-046, SPEC-047, SPEC-048 | terms: TERM-017
 CREATE TABLE rule_clauses (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 조문 ID
   shop_id             uuid NOT NULL,                     -- 가게
@@ -249,14 +249,14 @@ CREATE TABLE refund_tiers (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 단계 ID
   shop_id             uuid NOT NULL,                     -- 가게
   operating_rules_id  uuid NOT NULL,                     -- 운영규정 버전
-  hours_before_min    integer NOT NULL CHECK (hours_before_min BETWEEN 0 AND 8760), -- 취소가 픽업 일시 몇 시간 전부터(이 값 포함)
+  hours_before_min    integer NOT NULL CHECK (hours_before_min BETWEEN 0 AND 8760), -- 취소가 기준 픽업 일시 몇 시간 전부터(이 값 포함). 남은 시간은 1시간 미만을 버림(SPEC-016)
   hours_before_max    integer CHECK (hours_before_max BETWEEN 1 AND 8760), -- 몇 시간 전까지(이 값 빼고). 빈 값은 그보다 이른 때 전부
   refund_pct          smallint NOT NULL CHECK (refund_pct BETWEEN 0 AND 100), -- 환불 비율
   CONSTRAINT refund_tiers_rules_fk FOREIGN KEY (shop_id, operating_rules_id) REFERENCES operating_rules (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT refund_tiers_span_chk CHECK (hours_before_max IS NULL OR hours_before_max > hours_before_min),
   CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&) -- 단계별 환불 기간이 중복되면 저장하지 않음(SPEC-005)
 );
-COMMENT ON TABLE refund_tiers IS 'TBL-012 단계별 환불: 픽업 몇 시간 전 취소면 몇 퍼센트';
+COMMENT ON TABLE refund_tiers IS 'TBL-012 단계별 환불: 기준 픽업 일시 몇 시간 전 취소면 몇 퍼센트. 버전마다 0시간부터 끝없음(빈 값)까지 빈 구간 없이 이어지고(앱, SPEC-005) 겹치지 않음(refund_tiers_no_overlap)';
 
 -- TBL-013 business_calendars (CTX-002) ← SPEC-007, SPEC-010, SPEC-011, SPEC-012, SPEC-014, SPEC-024, SPEC-052, SPEC-061 | terms: TERM-048
 CREATE TABLE business_calendars (
@@ -480,7 +480,7 @@ CREATE TABLE quotes (
 CREATE INDEX quotes_draft_idx ON quotes (draft_id, quoted_at); -- 초안의 마지막 견적
 COMMENT ON TABLE quotes IS 'TBL-022 견적(TERM-013): 가게 규칙이 계산한 금액과 근거, 버전과 유효 기한';
 
--- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-024, SPEC-025, SPEC-029, SPEC-030, SPEC-031, SPEC-034, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070, SPEC-073 | terms: TERM-001
+-- TBL-023 orders (CTX-003) ← SPEC-013, SPEC-016, SPEC-024, SPEC-025, SPEC-029, SPEC-030, SPEC-031, SPEC-034, SPEC-036, SPEC-037, SPEC-038, SPEC-039, SPEC-040, SPEC-041, SPEC-042, SPEC-045, SPEC-046, SPEC-047, SPEC-048, SPEC-050, SPEC-052, SPEC-054, SPEC-055, SPEC-056, SPEC-059, SPEC-060, SPEC-061, SPEC-062, SPEC-064, SPEC-065, SPEC-068, SPEC-070, SPEC-073 | terms: TERM-001
 CREATE TABLE orders (
   id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 주문 ID(손님에게 보이지 않음)
   shop_id                  uuid NOT NULL,                -- 가게
@@ -507,8 +507,8 @@ CREATE TABLE orders (
   cancelled_at             timestamptz,                  -- 취소된 시각
   cancel_kind              text CHECK (cancel_kind IN ('customer', 'shop', 'no_payment', 'no_answer')), -- 손님이 취소함·가게 사정으로 취소됨·결제 없어 취소됨(사장님이 고르거나 픽업 일시까지 고르지 않음, REQ-217)·답 없어 닫힘(맞춤 주문 요청에 그 픽업 날짜의 주문 마감까지 사장님 답이 없음, REQ-213)
   cancel_reason            text CHECK (char_length(cancel_reason) BETWEEN 1 AND 200), -- 가게 사정 취소의 사유(SPEC-048)
-  remake_of_order_id       uuid,                         -- 재제작(TERM-034) 주문이면 원래 주문(R21)
-  finished_at              timestamptz,                  -- 주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없음(SPEC-025, SPEC-065). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)
+  remake_of_order_id       uuid,                         -- 재제작(TERM-034) 주문이면 돈을 낸 원래 주문(R21). 재제작 주문을 가리키지 않음(트리거 orders_remake_root). 가격표·운영규정 버전은 원래 주문 것(SPEC-060, 4절 A31)
+  finished_at              timestamptz,                  -- 주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없고, 원래 주문은 끝나지 않은 재제작 주문도 없음(SPEC-025, SPEC-060, SPEC-065, 트리거 orders_remake_finish). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)
   personal_data_purged_at  timestamptz,                  -- 끝나고 30일 뒤 개인정보를 지우고 보관 기록(kept_records)으로 나눈 시각(SPEC-065, REQ-185, REQ-187). 이 주문은 화면·API·AI가 읽지 않음(A22)
   updated_at               timestamptz NOT NULL DEFAULT now(), -- 마지막으로 바뀐 시각
   lock_version             integer NOT NULL DEFAULT 1 CHECK (lock_version >= 1), -- 잠금 번호: 이 행을 쓸 때마다(상태·시각·금액·버전) 하나 오름. 읽은 값과 같을 때만 씀(A6, E15, 설계 재검토 H12). 06단계 주문의 revision(DEC-05)
@@ -604,7 +604,7 @@ CREATE TABLE change_requests (
 CREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference'); -- 한 주문에 열린 변경 요청 하나(1-5)
 COMMENT ON TABLE change_requests IS 'TBL-025 변경 요청: 확정된 주문을 바꾸자는 손님 요청과 사장님 답(1-5)';
 
--- TBL-026 order_details (CTX-003) ← SPEC-029, SPEC-031, SPEC-033, SPEC-045, SPEC-050, SPEC-054, SPEC-059, SPEC-060, SPEC-064, SPEC-065, SPEC-073 | terms: TERM-004
+-- TBL-026 order_details (CTX-003) ← SPEC-016, SPEC-029, SPEC-031, SPEC-033, SPEC-045, SPEC-050, SPEC-054, SPEC-059, SPEC-060, SPEC-064, SPEC-065, SPEC-073 | terms: TERM-004
 CREATE TABLE order_details (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 주문 내용 버전 ID
   shop_id               uuid NOT NULL,                   -- 가게
@@ -761,7 +761,7 @@ COMMENT ON TABLE issue_reports IS 'TBL-030 문제 신고(TERM-031): 받은 주�
 CREATE TABLE payment_requests (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 결제 안내 ID
   shop_id             uuid NOT NULL,                     -- 가게
-  order_id            uuid NOT NULL,                     -- 주문
+  order_id            uuid NOT NULL,                     -- 주문. 재제작 주문에는 없음(트리거 payment_requests_remake, SPEC-060)
   kind                text NOT NULL CHECK (kind IN ('first', 'reissue', 'difference')), -- 첫 결제·다시 낸 결제(결제 기한 연장, TERM-037)·차액 결제(R13). 날짜 변경·재제작에는 없음
   change_request_id   uuid,                              -- 차액 결제의 변경 요청
   event_key           text NOT NULL,                     -- 같은 이벤트의 결제 안내는 한 번(REQ-154)
@@ -842,17 +842,17 @@ COMMENT ON TABLE payments IS 'TBL-032 확인된 결제(TERM-049): 결제 안내�
 CREATE TABLE refunds (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 환불 ID
   shop_id                uuid NOT NULL,                  -- 가게
-  order_id               uuid NOT NULL,                  -- 주문
+  order_id               uuid NOT NULL,                  -- 주문. 재제작 주문의 취소·보상 환불은 원래 주문에 남김(트리거 refunds_remake, SPEC-060, 4절 A31)
   cause                  text NOT NULL CHECK (cause IN ('customer_cancel', 'shop_cancel', 'change_reduced', 'compensation', 'paid_after_cancel', 'over_received')), -- 손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 몫, 기한 뒤 차액, SPEC-071)
   change_request_id      uuid,                           -- 금액이 내려간 변경
   issue_report_id        uuid,                           -- 보상의 문제 신고
   payment_request_id     uuid,                           -- 돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)
   event_key              text NOT NULL,                  -- 같은 환불을 두 번 정하지 않음(G2)
-  decision               text NOT NULL CHECK (decision IN ('full', 'partial', 'none')), -- 전액 환불·일부 환불·환불 없이 취소(REQ-085)
+  decision               text NOT NULL CHECK (decision IN ('full', 'partial', 'none')), -- 전액 환불·일부 환불·환불 없이 취소(REQ-085). 금액이 내려간 변경은 차액 돌려주기라 전액 환불이 없음(refunds_change_decision_chk, SPEC-047)
   amount                 integer NOT NULL CHECK (amount BETWEEN 0 AND 100000000), -- 정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170). 상한은 들어온 금액의 상한과 같은 1억 원
-  calculated_amount      integer NOT NULL CHECK (calculated_amount BETWEEN 0 AND 100000000), -- 가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)
+  calculated_amount      integer NOT NULL CHECK (calculated_amount BETWEEN 0 AND 100000000), -- 가게 규칙의 계산값(SPEC-016, 4절 A30). 손님 취소는 바탕(받은 금액 - 이미 정한 환불 - 따로 정할 환불)에서 취소 수수료(TERM-016)를 먼저 빼고(바탕보다 크면 0) 비율을 곱해 원 미만 버림. 가게 사정 취소는 바탕 전액, 금액이 내려간 변경은 내려간 금액, 보상은 고른 금액. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)
   calc_basis             jsonb NOT NULL,                 -- 근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액의 몫(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-084, REQ-165)
-  override_reason        text CHECK (char_length(override_reason) BETWEEN 1 AND 200), -- 계산값과 다른 금액을 고른 이유(SPEC-047). 보상이 아니면 계산값보다 높을 때만
+  override_reason        text CHECK (char_length(override_reason) BETWEEN 1 AND 200), -- 계산값과 다른 금액을 고른 사유 1~200자(SPEC-047, REQ-084). 다르면 꼭(refunds_override_chk), 보상이 아니면 높을 때만 다를 수 있음(refunds_floor_chk). 보상은 고른 금액이 계산값이라 비움
   method                 text CHECK (method IN ('bank_transfer', 'card_cancel')), -- 가게 계좌에서 반환·카드 결제 취소
   refund_bank_name       text CHECK (char_length(refund_bank_name) BETWEEN 1 AND 30), -- 환불받을 손님 은행(SPEC-049). 주문이 끝나고 30일 뒤 지움(SPEC-065)
   refund_account_enc     text CHECK (refund_account_enc ~ '^v[1-9][0-9]{0,2}:[A-Za-z0-9_-]{39,}$'), -- 환불받을 손님 계좌번호를 앱이 암호화한 값(5절 E20, REQ-191). 숫자와 '-' 형식은 06단계 API가 봄. 그 가게 사장님 화면의 이 환불과 사유를 적고 연 운영자에게만, AI·로그 0번(R19, REQ-193). 주문이 끝나고 30일 뒤 지움(SPEC-065)
@@ -870,6 +870,7 @@ CREATE TABLE refunds (
   CONSTRAINT refunds_override_chk CHECK (amount = calculated_amount OR override_reason IS NOT NULL),
   CONSTRAINT refunds_floor_chk CHECK (cause = 'compensation' OR amount >= calculated_amount), -- 보상이 아닌 환불은 계산값보다 낮게 정하지 못함(REQ-170). 환불 없이 취소는 계산값 0원일 때만
   CONSTRAINT refunds_change_chk CHECK ((cause = 'change_reduced') = (change_request_id IS NOT NULL)),
+  CONSTRAINT refunds_change_decision_chk CHECK (cause <> 'change_reduced' OR decision <> 'full'), -- 금액이 내려간 변경은 차액 돌려주기(일부 환불, 계산값 0원이면 환불 없음)만(SPEC-047)
   CONSTRAINT refunds_issue_chk CHECK ((cause = 'compensation') = (issue_report_id IS NOT NULL)),
   CONSTRAINT refunds_request_chk CHECK ((cause IN ('paid_after_cancel', 'over_received')) = (payment_request_id IS NOT NULL)),
   CONSTRAINT refunds_sent_chk CHECK (sent_at IS NULL OR (decision <> 'none' AND method IS NOT NULL)),
@@ -1170,7 +1171,7 @@ COMMENT ON TABLE ledger_links IS 'TBL-045 장부(TERM-028) 연결: 사장님 구
 CREATE TABLE ledger_rows (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 장부 행 ID
   shop_id           uuid NOT NULL,                       -- 가게
-  order_id          uuid NOT NULL,                       -- 주문. 재제작 주문은 원래 주문 행에 적음(R21)
+  order_id          uuid NOT NULL,                       -- 주문. 재제작 주문의 행은 두지 않고 그 이벤트를 원래 주문 행에 적음(트리거 ledger_rows_remake, R21, SPEC-064)
   first_written_at  timestamptz,                         -- 처음 적은 시각
   last_written_at   timestamptz,                         -- 마지막으로 고친 시각
   CONSTRAINT ledger_rows_shop_scope UNIQUE (shop_id, id),
@@ -1185,7 +1186,7 @@ CREATE TABLE ledger_writes (
   shop_id          uuid NOT NULL,                        -- 가게
   ledger_row_id    uuid NOT NULL,                        -- 장부 행
   event_key        text NOT NULL,                        -- 이벤트마다 한 번(REQ-132)
-  event_kind       text NOT NULL CHECK (event_kind IN ('confirmed', 'changed', 'cancelled', 'refund', 'handed_over', 'no_pickup', 'remake', 'refund_sent', 'payment_voided')), -- 확정·변경·취소·환불·인도·미수령·재제작·환불 보냄(REQ-172)·결제 확인 취소(REQ-169)
+  event_kind       text NOT NULL CHECK (event_kind IN ('confirmed', 'changed', 'cancelled', 'refund', 'handed_over', 'no_pickup', 'remake', 'refund_sent', 'payment_voided')), -- 확정·변경·취소·환불·인도·미수령·재제작(원래 주문 행에 재제작 주문의 만듦·변경·인도·미수령·취소, SPEC-060)·환불 보냄(REQ-172)·결제 확인 취소(REQ-169)
   status           text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'retrying', 'written', 'alerted', 'unlinked')), -- 기다림·다시 적기·적힘·사장님께 알림·연결 끊김(1-8)
   attempts         smallint NOT NULL DEFAULT 0 CHECK (attempts >= 0), -- 적기를 해 본 횟수
   next_attempt_at  timestamptz,                          -- 다음 시도(1분·5분·30분·2시간·6시간, 그 뒤 하루 한 번)
@@ -1396,6 +1397,51 @@ END
 $unconfirmed$;
 CREATE TRIGGER refunds_unconfirmed BEFORE INSERT OR UPDATE OF cause, payment_request_id, calculated_amount ON refunds FOR EACH ROW EXECUTE FUNCTION refunds_unconfirmed_check();
 
+-- 재제작 주문(TERM-034)은 결제 없는 주문이라 돈과 장부를 원래 주문에 남김(SPEC-060, SPEC-016, R21, 4절 A31, 설계 재검토 M13).
+-- 재제작 주문은 돈을 낸 원래 주문을 가리키고(재제작의 재제작도 그 원래 주문), 재제작 주문에는 결제 안내·환불·장부 행을 두지 않음.
+-- 가리킨 주문이 없거나 다른 가게의 것이면 외래 키(orders_remake_fk, 각 테이블의 주문 외래 키)가 막으므로 넘김
+CREATE FUNCTION orders_remake_root_check() RETURNS trigger
+LANGUAGE plpgsql AS $remake_root$
+BEGIN
+  IF NEW.remake_of_order_id IS NOT NULL AND EXISTS (
+       SELECT 1 FROM orders o WHERE o.id = NEW.remake_of_order_id AND o.shop_id = NEW.shop_id AND o.remake_of_order_id IS NOT NULL) THEN
+    RAISE EXCEPTION 'orders_remake_root: 재제작 주문(%)을 가리키는 재제작은 돈을 낸 원래 주문에 이어야 함', NEW.remake_of_order_id
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END
+$remake_root$;
+CREATE TRIGGER orders_remake_root BEFORE INSERT OR UPDATE OF remake_of_order_id ON orders FOR EACH ROW EXECUTE FUNCTION orders_remake_root_check();
+CREATE FUNCTION remake_money_check() RETURNS trigger
+LANGUAGE plpgsql AS $remake_money$
+BEGIN
+  IF EXISTS (SELECT 1 FROM orders o WHERE o.id = NEW.order_id AND o.shop_id = NEW.shop_id AND o.remake_of_order_id IS NOT NULL) THEN
+    RAISE EXCEPTION '%: 재제작 주문(%)에는 결제 안내·환불·장부 행을 두지 않고 원래 주문에 남김', TG_NAME, NEW.order_id
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END
+$remake_money$;
+CREATE TRIGGER payment_requests_remake BEFORE INSERT OR UPDATE OF order_id ON payment_requests FOR EACH ROW EXECUTE FUNCTION remake_money_check();
+CREATE TRIGGER refunds_remake BEFORE INSERT OR UPDATE OF order_id ON refunds FOR EACH ROW EXECUTE FUNCTION remake_money_check();
+CREATE TRIGGER ledger_rows_remake BEFORE INSERT OR UPDATE OF order_id ON ledger_rows FOR EACH ROW EXECUTE FUNCTION remake_money_check();
+
+-- 원래 주문은 그 재제작 주문(TERM-034)이 모두 끝날 때까지 끝나지 않음(SPEC-060, SPEC-065, 4절 A22·A31, 설계 재검토 M13의 Codex 자동 검토 의견).
+-- 재제작 주문의 취소·다시 신고의 환불을 원래 주문에 남기므로, 원래 주문이 먼저 끝나 지워지면 그 환불을 남길 곳이 없음. 끝난 시각을
+-- 원래 주문과 재제작 주문에 한 트랜잭션에서 쓰므로 트랜잭션 끝에 봄(지연 제약 트리거). 끝난 재제작 주문을 다시 열면 원래 주문도 다시 엶
+CREATE FUNCTION orders_remake_finish_check() RETURNS trigger
+LANGUAGE plpgsql AS $remake_finish$
+BEGIN
+  IF EXISTS (SELECT 1 FROM orders o JOIN orders r ON r.remake_of_order_id = o.id
+              WHERE o.id IN (NEW.id, NEW.remake_of_order_id) AND o.finished_at IS NOT NULL AND r.finished_at IS NULL) THEN
+    RAISE EXCEPTION 'orders_remake_finish: 끝나지 않은 재제작 주문이 있는 원래 주문(%)은 끝나지 않음', coalesce(NEW.remake_of_order_id, NEW.id)
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END
+$remake_finish$;
+CREATE CONSTRAINT TRIGGER orders_remake_finish AFTER INSERT OR UPDATE OF finished_at, remake_of_order_id ON orders DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION orders_remake_finish_check();
+
 -- TBL-054 file_deletions (공통) ← SPEC-065 | terms: none
 CREATE TABLE file_deletions (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 지울 파일 ID
@@ -1548,10 +1594,10 @@ COMMENT ON COLUMN operating_rules.quote_valid_hours IS '견적 유효 기한(REQ
 COMMENT ON COLUMN operating_rules.payment_due_hours IS '결제 기한(TERM-030, REQ-218): 결제 안내가 손님에게 전해진 뒤 기본 12시간, 결제 기한 상한까지';
 COMMENT ON COLUMN operating_rules.issue_report_hours IS '문제 신고 기한(REQ-072, 기본 받은 뒤 24시간)';
 COMMENT ON COLUMN operating_rules.change_deadline_hours IS '변경 마감: 픽업 일시 몇 시간 전까지(SPEC-041). 기본값 없음, 가게가 넣음';
-COMMENT ON COLUMN operating_rules.cancellation_fee_krw IS '고정 취소 수수료(TERM-016). 계산에서는 주문 금액까지만 뺌';
-COMMENT ON COLUMN operating_rules.pre_production_refund_pct IS '제작 전 취소의 환불 비율. 수수료를 뺀 뒤, 기본 전액(REQ-031)';
+COMMENT ON COLUMN operating_rules.cancellation_fee_krw IS '고정 취소 수수료(TERM-016), 0원~1,000만 원. 저장할 때는 주문 금액과 견주지 않고, 환불 계산에서 비율보다 먼저 빼며 바탕보다 크면 환불 0원(SPEC-016, 4절 A30)';
+COMMENT ON COLUMN operating_rules.pre_production_refund_pct IS '제작 전 취소의 환불 비율: 수수료를 뺀 값에 곱하고 원 미만 버림, 기본 전액(REQ-031). 단계별 환불이 없는 버전은 맞춤 재료 주문·제작 시작 뒤 취소에도 씀(SPEC-016)';
 COMMENT ON COLUMN operating_rules.pre_production_lowered_ack IS '전액보다 낮출 때 위험과 근거를 보고 ''그래도 저장''을 누름(REQ-032)';
-COMMENT ON COLUMN operating_rules.date_change_refund_basis IS '날짜를 바꾼 주문의 환불 기준일: 처음 픽업일·바꾼 픽업일. 기본값 없음, 가게가 정함';
+COMMENT ON COLUMN operating_rules.date_change_refund_basis IS '날짜를 바꾼 주문의 환불 기준일: 처음 픽업일(주문 내용 첫 버전의 픽업 일시)·바꾼 픽업일. 단계별 환불의 남은 시간을 이 픽업 일시까지로 셈(SPEC-016). 기본값 없음, 가게가 정함';
 COMMENT ON COLUMN operating_rules.created_at IS '이 버전을 확정한 시각';
 COMMENT ON COLUMN operating_rules.superseded_at IS '새 버전이 생긴 시각. 빈 값이 현재 버전';
 COMMENT ON COLUMN rule_clauses.id IS '조문 ID';
@@ -1565,7 +1611,7 @@ COMMENT ON COLUMN rule_clauses.effect_text IS '효과. AI가 인용할 때는 �
 COMMENT ON COLUMN refund_tiers.id IS '단계 ID';
 COMMENT ON COLUMN refund_tiers.shop_id IS '가게';
 COMMENT ON COLUMN refund_tiers.operating_rules_id IS '운영규정 버전';
-COMMENT ON COLUMN refund_tiers.hours_before_min IS '취소가 픽업 일시 몇 시간 전부터(이 값 포함)';
+COMMENT ON COLUMN refund_tiers.hours_before_min IS '취소가 기준 픽업 일시 몇 시간 전부터(이 값 포함). 남은 시간은 1시간 미만을 버림(SPEC-016)';
 COMMENT ON COLUMN refund_tiers.hours_before_max IS '몇 시간 전까지(이 값 빼고). 빈 값은 그보다 이른 때 전부';
 COMMENT ON COLUMN refund_tiers.refund_pct IS '환불 비율';
 COMMENT ON COLUMN business_calendars.shop_id IS '가게(가게마다 하나)';
@@ -1710,8 +1756,8 @@ COMMENT ON COLUMN orders.reject_reason IS '거절 사유';
 COMMENT ON COLUMN orders.cancelled_at IS '취소된 시각';
 COMMENT ON COLUMN orders.cancel_kind IS '손님이 취소함·가게 사정으로 취소됨·결제 없어 취소됨(사장님이 고르거나 픽업 일시까지 고르지 않음, REQ-217)·답 없어 닫힘(맞춤 주문 요청에 그 픽업 날짜의 주문 마감까지 사장님 답이 없음, REQ-213)';
 COMMENT ON COLUMN orders.cancel_reason IS '가게 사정 취소의 사유(SPEC-048)';
-COMMENT ON COLUMN orders.remake_of_order_id IS '재제작(TERM-034) 주문이면 원래 주문(R21)';
-COMMENT ON COLUMN orders.finished_at IS '주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없음(SPEC-025, SPEC-065). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)';
+COMMENT ON COLUMN orders.remake_of_order_id IS '재제작(TERM-034) 주문이면 돈을 낸 원래 주문(R21). 재제작 주문을 가리키지 않음(트리거 orders_remake_root). 가격표·운영규정 버전은 원래 주문 것(SPEC-060, 4절 A31)';
+COMMENT ON COLUMN orders.finished_at IS '주문이 끝난 시각: 받음·미수령·거절됨·취소됨이고 보내지 않은 환불·열린 신고·변경 요청·결제 안내·할 일이 없고, 원래 주문은 끝나지 않은 재제작 주문도 없음(SPEC-025, SPEC-060, SPEC-065, 트리거 orders_remake_finish). 그 뒤 늦은 신고나 들어온 입금 대조로 다시 열리면 개인정보를 지우기 전까지는 비움(A22)';
 COMMENT ON COLUMN orders.personal_data_purged_at IS '끝나고 30일 뒤 개인정보를 지우고 보관 기록(kept_records)으로 나눈 시각(SPEC-065, REQ-185, REQ-187). 이 주문은 화면·API·AI가 읽지 않음(A22)';
 COMMENT ON COLUMN orders.updated_at IS '마지막으로 바뀐 시각';
 COMMENT ON COLUMN orders.lock_version IS '잠금 번호: 이 행을 쓸 때마다(상태·시각·금액·버전) 하나 오름. 읽은 값과 같을 때만 씀(A6, E15, 설계 재검토 H12). 06단계 주문의 revision(DEC-05)';
@@ -1824,7 +1870,7 @@ COMMENT ON COLUMN issue_reports.closed_at IS '보상 안내를 보내고 닫은 
 COMMENT ON COLUMN issue_reports.reported_at IS '신고한 시각';
 COMMENT ON COLUMN payment_requests.id IS '결제 안내 ID';
 COMMENT ON COLUMN payment_requests.shop_id IS '가게';
-COMMENT ON COLUMN payment_requests.order_id IS '주문';
+COMMENT ON COLUMN payment_requests.order_id IS '주문. 재제작 주문에는 없음(트리거 payment_requests_remake, SPEC-060)';
 COMMENT ON COLUMN payment_requests.kind IS '첫 결제·다시 낸 결제(결제 기한 연장, TERM-037)·차액 결제(R13). 날짜 변경·재제작에는 없음';
 COMMENT ON COLUMN payment_requests.change_request_id IS '차액 결제의 변경 요청';
 COMMENT ON COLUMN payment_requests.event_key IS '같은 이벤트의 결제 안내는 한 번(REQ-154)';
@@ -1861,17 +1907,17 @@ COMMENT ON COLUMN payments.voided_at IS '사장님이 잘못 누른 결제 확�
 COMMENT ON COLUMN payments.void_reason IS '결제 확인을 취소한 사유(REQ-169). 손님 안내에는 적지 않음';
 COMMENT ON COLUMN refunds.id IS '환불 ID';
 COMMENT ON COLUMN refunds.shop_id IS '가게';
-COMMENT ON COLUMN refunds.order_id IS '주문';
+COMMENT ON COLUMN refunds.order_id IS '주문. 재제작 주문의 취소·보상 환불은 원래 주문에 남김(트리거 refunds_remake, SPEC-060, 4절 A31)';
 COMMENT ON COLUMN refunds.cause IS '손님 취소·가게 사정 취소·금액이 내려간 변경·보상·취소 뒤 들어온 입금·더 들어온 금액(안내 금액을 넘은 몫, 기한 뒤 차액, SPEC-071)';
 COMMENT ON COLUMN refunds.change_request_id IS '금액이 내려간 변경';
 COMMENT ON COLUMN refunds.issue_report_id IS '보상의 문제 신고';
 COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)';
 COMMENT ON COLUMN refunds.event_key IS '같은 환불을 두 번 정하지 않음(G2)';
-COMMENT ON COLUMN refunds.decision IS '전액 환불·일부 환불·환불 없이 취소(REQ-085)';
+COMMENT ON COLUMN refunds.decision IS '전액 환불·일부 환불·환불 없이 취소(REQ-085). 금액이 내려간 변경은 차액 돌려주기라 전액 환불이 없음(refunds_change_decision_chk, SPEC-047)';
 COMMENT ON COLUMN refunds.amount IS '정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170). 상한은 들어온 금액의 상한과 같은 1억 원';
-COMMENT ON COLUMN refunds.calculated_amount IS '가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)';
+COMMENT ON COLUMN refunds.calculated_amount IS '가게 규칙의 계산값(SPEC-016, 4절 A30). 손님 취소는 바탕(받은 금액 - 이미 정한 환불 - 따로 정할 환불)에서 취소 수수료(TERM-016)를 먼저 빼고(바탕보다 크면 0) 비율을 곱해 원 미만 버림. 가게 사정 취소는 바탕 전액, 금액이 내려간 변경은 내려간 금액, 보상은 고른 금액. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)';
 COMMENT ON COLUMN refunds.calc_basis IS '근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액의 몫(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-084, REQ-165)';
-COMMENT ON COLUMN refunds.override_reason IS '계산값과 다른 금액을 고른 이유(SPEC-047). 보상이 아니면 계산값보다 높을 때만';
+COMMENT ON COLUMN refunds.override_reason IS '계산값과 다른 금액을 고른 사유 1~200자(SPEC-047, REQ-084). 다르면 꼭(refunds_override_chk), 보상이 아니면 높을 때만 다를 수 있음(refunds_floor_chk). 보상은 고른 금액이 계산값이라 비움';
 COMMENT ON COLUMN refunds.method IS '가게 계좌에서 반환·카드 결제 취소';
 COMMENT ON COLUMN refunds.refund_bank_name IS '환불받을 손님 은행(SPEC-049). 주문이 끝나고 30일 뒤 지움(SPEC-065)';
 COMMENT ON COLUMN refunds.refund_account_enc IS '환불받을 손님 계좌번호를 앱이 암호화한 값(5절 E20, REQ-191). 숫자와 ''-'' 형식은 06단계 API가 봄. 그 가게 사장님 화면의 이 환불과 사유를 적고 연 운영자에게만, AI·로그 0번(R19, REQ-193). 주문이 끝나고 30일 뒤 지움(SPEC-065)';
@@ -2017,14 +2063,14 @@ COMMENT ON COLUMN ledger_links.linked_at IS '연결한 시각';
 COMMENT ON COLUMN ledger_links.unlinked_at IS '끊은 시각';
 COMMENT ON COLUMN ledger_rows.id IS '장부 행 ID';
 COMMENT ON COLUMN ledger_rows.shop_id IS '가게';
-COMMENT ON COLUMN ledger_rows.order_id IS '주문. 재제작 주문은 원래 주문 행에 적음(R21)';
+COMMENT ON COLUMN ledger_rows.order_id IS '주문. 재제작 주문의 행은 두지 않고 그 이벤트를 원래 주문 행에 적음(트리거 ledger_rows_remake, R21, SPEC-064)';
 COMMENT ON COLUMN ledger_rows.first_written_at IS '처음 적은 시각';
 COMMENT ON COLUMN ledger_rows.last_written_at IS '마지막으로 고친 시각';
 COMMENT ON COLUMN ledger_writes.id IS '장부 쓰기 ID';
 COMMENT ON COLUMN ledger_writes.shop_id IS '가게';
 COMMENT ON COLUMN ledger_writes.ledger_row_id IS '장부 행';
 COMMENT ON COLUMN ledger_writes.event_key IS '이벤트마다 한 번(REQ-132)';
-COMMENT ON COLUMN ledger_writes.event_kind IS '확정·변경·취소·환불·인도·미수령·재제작·환불 보냄(REQ-172)·결제 확인 취소(REQ-169)';
+COMMENT ON COLUMN ledger_writes.event_kind IS '확정·변경·취소·환불·인도·미수령·재제작(원래 주문 행에 재제작 주문의 만듦·변경·인도·미수령·취소, SPEC-060)·환불 보냄(REQ-172)·결제 확인 취소(REQ-169)';
 COMMENT ON COLUMN ledger_writes.status IS '기다림·다시 적기·적힘·사장님께 알림·연결 끊김(1-8)';
 COMMENT ON COLUMN ledger_writes.attempts IS '적기를 해 본 횟수';
 COMMENT ON COLUMN ledger_writes.next_attempt_at IS '다음 시도(1분·5분·30분·2시간·6시간, 그 뒤 하루 한 번)';

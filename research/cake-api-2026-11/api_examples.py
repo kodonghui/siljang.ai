@@ -418,18 +418,26 @@ EMPTY_PAGE = {"items": [], "nextCursor": None}
 # ── 환불 ────────────────────────────────────────────────────────────────────
 REFUND_BASIS = {
     "operatingRulesVersion": 2, "clauseTitles": ["제작 전 취소"], "cancelledAt": t("11-14", "09:00"),
-    "customMaterialOrderedAt": None, "productionStartedAt": None, "tierRefundPct": None, "cancellationFeeKrw": 5000,
-    "receivedAmount": 36000,
+    "customMaterialOrderedAt": None, "productionStartedAt": None, "tierRefundPct": None, "preProductionRefundPct": 100,
+    "pickupBasisAt": None, "cancellationFeeKrw": 5000, "receivedAmount": 36000, "excludedAmount": 0, "remakeOrder": None,
 }
 REFUND_PREVIEW = {"order": ORDER_REF, "cause": "customer_cancel", "receivedAmount": 36000, "confirmedAmount": 36000,
                   "unconfirmedAmount": 0, "refundedAmount": 0, "calculatedAmount": 31000, "minAmount": 31000, "maxAmount": 36000,
                   "basis": REFUND_BASIS}
 REFUND_PREVIEW_SHOP = dict(REFUND_PREVIEW, cause="shop_cancel", calculatedAmount=36000, minAmount=36000,
-                           basis=dict(REFUND_BASIS, clauseTitles=["가게 사정 취소"], cancellationFeeKrw=0))
+                           basis=dict(REFUND_BASIS, clauseTitles=["가게 사정 취소"], cancellationFeeKrw=0, preProductionRefundPct=None))
 # 차액 20,000원 안내에 21,000원이 들어와 차액 결제를 확인함(SPEC-071). 계산값은 그 결제 안내의 들어온 금액 - 확인된 결제 = 1,000원(SPEC-016)
 REFUND_PREVIEW_OVER = dict(REFUND_PREVIEW, cause="over_received", receivedAmount=57000, confirmedAmount=56000, unconfirmedAmount=1000,
                            calculatedAmount=1000, minAmount=1000, maxAmount=57000,
-                           basis=dict(REFUND_BASIS, clauseTitles=[], cancelledAt=None, cancellationFeeKrw=0, receivedAmount=57000))
+                           basis=dict(REFUND_BASIS, clauseTitles=[], cancelledAt=None, cancellationFeeKrw=0, receivedAmount=57000,
+                                      preProductionRefundPct=None))
+# 맞춤 재료를 주문한 뒤 픽업 80시간 전 손님 취소: 단계 '72시간 전부터 50%'. (36,000 - 5,000) × 50% = 15,500원(SPEC-016)
+REFUND_PREVIEW_AFTER_START = dict(REFUND_PREVIEW, calculatedAmount=15500, minAmount=15500,
+                                  basis=dict(REFUND_BASIS, clauseTitles=["제작 뒤 취소"], cancelledAt=t("11-17", "06:00"),
+                                             customMaterialOrderedAt=t("11-16", "10:00"), tierRefundPct=50, preProductionRefundPct=None,
+                                             pickupBasisAt=t("11-20", "14:00")))
+# 재제작 주문(R2D5T7)의 손님 취소: 원래 주문(K7Q3M9)의 받은 금액과 운영규정 버전으로 셈하고 환불은 원래 주문에 남김(SPEC-016, SPEC-060)
+REFUND_PREVIEW_REMAKE = dict(REFUND_PREVIEW, basis=dict(REFUND_BASIS, cancelledAt=t("11-22", "10:00"), remakeOrder=REMAKE_REF))
 REFUND = {
     "refundId": uid("refund:K7Q3M9:1"), "order": ORDER_REF, "cause": "customer_cancel", "decision": "partial", "amount": 31000,
     "calculatedAmount": 31000, "basis": REFUND_BASIS, "overrideReason": None, "method": None, "refundAccount": None,
@@ -477,7 +485,7 @@ ISSUE = {
 ISSUE_REMAKE = dict(ISSUE, status="closed", compensation="remake", decidedAt=t("11-21", "12:00"), remakeOrder=REMAKE_REF,
                     closedAt=t("11-21", "12:00"), revision=rev("issue:1:remake"))
 REFUND_COMP = dict(REFUND, refundId=uid("refund:K7Q3M9:comp"), cause="compensation", amount=20000, calculatedAmount=20000,
-                   basis=dict(REFUND_BASIS, clauseTitles=[], cancelledAt=None, cancellationFeeKrw=0),
+                   basis=dict(REFUND_BASIS, clauseTitles=[], cancelledAt=None, cancellationFeeKrw=0, preProductionRefundPct=None),
                    decidedAt=t("11-21", "12:00"), revision=rev("refund:comp"))
 ISSUE_PARTIAL = dict(ISSUE, status="closed", compensation="partial_refund", decidedAt=t("11-21", "12:00"),
                      refund={"refundId": REFUND_COMP["refundId"], "cause": "compensation", "decision": "partial", "amount": 20000,

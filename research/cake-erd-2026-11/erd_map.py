@@ -82,6 +82,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("단계별 환불 기간", "refund_tiers.hours_before_min"),
         ("단계별 환불 비율", "refund_tiers.refund_pct"),
         ("저장 두 번에 버전 하나", "request_keys.request_key"),
+        ("단계별 환불 기간 끝(빈 값은 끝없음)", "refund_tiers.hours_before_max"),
     ],
     "SPEC-006": [
         ("은행", "payment_accounts.bank_name"),
@@ -251,6 +252,11 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("이미 정한 환불", "refunds.amount"),
         ("환불 계산값", "refunds.calculated_amount"),
         ("근거", "refunds.calc_basis"),
+        ("기준 픽업 일시(지금 픽업 일시)", "orders.pickup_at"),
+        ("처음 픽업 일시(주문 내용 첫 버전)", "order_details.pickup_at"),
+        ("단계 구간 시작", "refund_tiers.hours_before_min"),
+        ("단계 구간 끝", "refund_tiers.hours_before_max"),
+        ("재제작 주문은 원래 주문의 받은 금액", "orders.remake_of_order_id"),
     ],
     "SPEC-017": [
         ("채널로 가게 찾기", "kakao_channels.bot_id"),
@@ -578,6 +584,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("거절 알림", "notifications.kind"),
         ("답함", "owner_tasks.wait_status"),
         ("두 번 눌러도 한 번", "request_keys.request_key"),
+        ("재제작 주문은 금액이 그대로일 때만", "orders.remake_of_order_id"),
     ],
     "SPEC-043": [
         ("차액 결제", "payment_requests.kind"),
@@ -629,6 +636,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("환불 계산 근거", "refunds.calc_basis"),
         ("사장님 '취소됨' 알림", "owner_alerts.kind"),
         ("쓴 조문", "rule_clauses.effect_text"),
+        ("재제작 주문의 환불은 원래 주문에", "orders.remake_of_order_id"),
     ],
     "SPEC-047": [
         ("환불 결정", "refunds.decision"),
@@ -650,6 +658,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("두 번 눌러도 한 번", "request_keys.request_key"),
         ("근거의 운영규정 버전", "orders.operating_rules_id"),
         ("근거의 조문", "rule_clauses.effect_text"),
+        ("환불을 남긴 주문(재제작 주문이면 원래 주문)", "refunds.order_id"),
+        ("금액이 내려간 변경은 차액 돌려주기", "refunds.cause"),
     ],
     "SPEC-048": [
         ("가게 사정 취소", "orders.cancel_kind"),
@@ -666,6 +676,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("장부 쓰기", "ledger_writes.event_kind"),
         ("사장님 '취소됨' 알림", "owner_alerts.kind"),
         ("두 번 눌러도 한 번", "request_keys.request_key"),
+        ("재제작 주문의 환불은 원래 주문에", "orders.remake_of_order_id"),
+        ("가게 사정 취소의 보상 조문 글", "rule_clauses.effect_text"),
     ],
     "SPEC-049": [
         ("환불받을 은행", "refunds.refund_bank_name"),
@@ -779,9 +791,11 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("보상 안내", "notifications.kind"),
         ("두 번 눌러도 한 번", "request_keys.request_key"),
         ("할 일 닫힘", "owner_tasks.closed_at"),
+        ("재제작 주문의 신고는 원래 주문의 한도", "orders.remake_of_order_id"),
     ],
     "SPEC-060": [
         ("원래 주문", "orders.remake_of_order_id"),
+        ("원래 주문은 재제작 주문이 끝난 뒤 끝남", "orders.finished_at"),
         ("확정으로 시작", "orders.confirmed_at"),
         ("결제 없음", "orders.amount"),
         ("새 픽업 일시", "orders.pickup_at"),
@@ -800,6 +814,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("보낼 시각", "notifications.scheduled_for"),
         ("신고 들어온 주문은 빼기", "issue_reports.order_id"),
         ("받은 주문", "orders.status"),
+        ("재제작 주문은 빼기", "orders.remake_of_order_id"),
     ],
     "SPEC-062": [
         ("후기 글", "reviews.body"),
@@ -847,6 +862,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("장부에 적을 주문번호", "orders.order_no"),
         ("장부에 적을 이름", "order_details.customer_name"),
         ("장부에 적을 연락처", "order_details.customer_phone"),
+        ("재제작 주문은 원래 주문 행에", "orders.remake_of_order_id"),
     ],
     "SPEC-065": [
         ("끊긴 상담", "consultations.dropped_at"),
