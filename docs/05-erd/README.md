@@ -1189,7 +1189,7 @@ A33의 키 형식입니다. 키는 가게마다 한 번(키마다 `(shop_id, 키
 | 들어온 금액의 설명 | `payment_requests.arrived_amount`·`arrived_at`·`payment_requests_arrived_amount_chk`의 설명: 같은 결제 안내에 또 들어오면 더한 합(확인됨에 더 들어온 입금도), 마지막으로 남긴 시각 | SPEC-071 |
 
 - 마이그레이션 0016: `refunds`에 컬럼 하나를 더하고 결제 안내를 가진 환불 행을 지금 들어온 금액으로 채운 뒤, `refunds_request_uq`·`refunds_request_chk`를 지우고 다시 만들고 `refunds_counted_chk`를 더하고, 함수와 트리거를 다시 만들고, 바뀐 컬럼 설명 다섯을 고침. 빈 DB에 0001~0016을 적용한 카탈로그가 `schema.sql`과 같음(D2).
-- 대응(`erd_map.py`): SPEC-071에 '앞 환불이 셈한 들어온 금액'(`refunds.counted_arrived_amount`)을 더함.
+- 대응(`erd_map.py`): SPEC-071에 '앞 환불이 셈한 들어온 금액'(`refunds.counted_arrived_amount`)을 더함(데이터 1083건 → 1084건, 대응 컬럼 499개 → 500개).
 - 규칙 테스트 303개 → 309개: 환불을 정한 뒤 같은 결제 안내에 또 들어온 5,000원의 새 환불(들어감), 앞 환불이 셈한 1,000원까지 다시 돌려줌·앞 환불보다 적게 셈함·셈한 금액이 들어온 금액을 넘음(`refunds_unconfirmed`), 결제 안내 없이 셈한 금액(`refunds_counted_chk`), 금액이 내려간 변경의 환불에 결제 안내(`refunds_request_chk`). 있던 테스트는 그대로 지나감(결제 안내의 같은 들어온 금액에 환불 둘은 `refunds_request_uq`).
 - 다이어그램: `erd_editor_sync.py --write`로 `refunds.counted_arrived_amount`와 설명, 바뀐 설명 넷, UNIQUE 인덱스 `refunds_request_uq`(두 컬럼), 메모의 CHECK 수를 고침(`--compare`로 다시 볼 편집 0개).
 - 검사: 8절. 15개 모두 통과.

@@ -879,7 +879,7 @@ op(id="API-044", method="get", path="/owner/orders", op="listOrders", tag="주�
            q("kind", {"type": "string", "enum": ["standard", "custom"]}, "기본 디자인·맞춤"),
            q("pickupFrom", {"type": "string", "format": "date"}, "픽업 날짜 첫 날"),
            q("pickupTo", {"type": "string", "format": "date"}, "픽업 날짜 끝 날"), CURSOR, LIMIT],
-   ok=[(200, "OrderList", {"orders": E.ORDER_LIST, "overdue": E.ORDER_LIST_OVERDUE, "empty": E.EMPTY_PAGE})],
+   ok=[(200, "OrderList", {"orders": E.ORDER_LIST, "overdue": E.ORDER_LIST_OVERDUE, "awaiting_amount_confirm": E.ORDER_LIST_AWAITING_CONFIRM, "empty": E.EMPTY_PAGE})],
    errors={404: ["shop_not_registered"]},
    fields=[("query:pickupTo", "not_after_start")],
    omit={"403": O403, "409": O409_READ},
@@ -977,13 +977,14 @@ op(id="API-049", method="get", path="/owner/orders/{orderId}/refund-preview", op
         "→ 비율을 곱해 원 미만 버림 → 0원 이상 바탕 이하(예시 after_start: (36,000 - 5,000) × 50% = 15,500원). 가게 사정 취소는 바탕 전액, 금액이 내려간 변경은 내려간 금액. "
         "orderId가 재제작 주문이면 원래 주문의 받은 금액·이미 정한 환불·운영규정 버전과 재제작 주문의 시각·픽업 일시로 셈하고, order는 원래 주문, basis.remakeOrder는 재제작 주문(예시 remake_cancel, SPEC-060). "
         "취소 뒤 들어온 입금·더 들어온 금액(SPEC-071)은 paymentRequestId로 그 결제 안내에서 결제로 확인하지 않은 몫(그 결제 안내의 들어온 금액 - 결제 확인을 취소하지 않은 확인된 결제)을 계산값으로 낸다: "
-        "닫힘·기한 지남 결제 안내는 들어온 금액 전액, 더 들어온 채 확인된 결제 안내는 넘은 몫만(차액 20,000원에 21,000원이면 1,000원, SPEC-016).",
+        "닫힘·기한 지남 결제 안내는 들어온 금액 전액, 더 들어온 채 확인된 결제 안내는 넘은 몫만(차액 20,000원에 21,000원이면 1,000원, SPEC-016). "
+        "그 결제 안내의 들어온 금액을 셈한 환불을 이미 정했으면 앞 환불이 셈한 몫(basis.excludedAmount)을 빼 새로 들어온 몫만 낸다(예시 over_received_again: 1,000원을 정한 뒤 20,000원이 또 들어오면 20,000원, 설계 재검토 남은 빈 곳).",
    params=[pid("orderId", "주문", E.ORDER_ID),
            q("cause", {"type": "string", "enum": ["customer_cancel", "shop_cancel", "change_reduced", "paid_after_cancel", "over_received"]}, "환불 사유", "customer_cancel", True),
            q("changeRequestId", {"type": "string", "minLength": 1, "maxLength": 100}, "금액이 내려간 변경(cause가 change_reduced일 때 꼭). 없거나 다른 주문 것이면 422 reference_not_found(DEC-02)"),
            q("paymentRequestId", {"type": "string", "minLength": 1, "maxLength": 100}, "돌려줄 들어온 입금의 결제 안내(cause가 paid_after_cancel·over_received일 때 꼭). 없거나 다른 주문 것이면 422 reference_not_found(DEC-02)")],
    ok=[(200, "RefundPreview", {"customer_cancel": E.REFUND_PREVIEW, "shop_cancel": E.REFUND_PREVIEW_SHOP, "over_received": E.REFUND_PREVIEW_OVER,
-                               "after_start": E.REFUND_PREVIEW_AFTER_START, "remake_cancel": E.REFUND_PREVIEW_REMAKE})],
+                               "over_received_again": E.REFUND_PREVIEW_OVER_AGAIN, "after_start": E.REFUND_PREVIEW_AFTER_START, "remake_cancel": E.REFUND_PREVIEW_REMAKE})],
    errors={404: ["not_found"]},
    fields=[("query:cause", "required"), ("query:changeRequestId", "reference_not_found")],
    omit={"403": O403, "409": O409_READ + ". 받은 금액이 0원이면 0원으로 계산(SPEC-016)"},
@@ -998,14 +999,18 @@ op(id="API-050", method="post", path="/owner/orders/{orderId}/refunds", op="deci
         "orderId가 재제작 주문이면 원래 주문의 돈으로 셈해 환불을 원래 주문에 남긴다(refund.order는 원래 주문, SPEC-060). 손님에게 환불 금액과 받는 방법을 한 번 알리고 장부 쓰기를 남긴다. "
         "돌려줄 금액이 있으면 할 일 '환불 보내기'를 열고(정한 뒤 24시간이 지나면 한 번 다시 알림, REQ-173), 계좌로 돌려줄 환불에 손님 계좌가 없으면 상담에서 묻는다(REQ-171). "
         "취소 뒤 들어온 입금·더 들어온 금액은 paymentRequestId가 꼭 있다(SPEC-071). 본문의 changeRequestId·paymentRequestId가 없거나 그 주문 것이 아니면 422 reference_not_found(DEC-02). "
-        "우리는 돈을 옮기지 않는다: 사장님이 가게 계좌에서 반환한 뒤 API-061로 '보냄'을 표시한다(REQ-079). 보상 환불은 API-065. 같은 사유의 환불을 이미 정했으면 409 already_decided.",
+        "우리는 돈을 옮기지 않는다: 사장님이 가게 계좌에서 반환한 뒤 API-061로 '보냄'을 표시한다(REQ-079). 보상 환불은 API-065. 같은 사유의 환불을 이미 정했으면 409 already_decided. "
+        "취소 뒤 들어온 입금·더 들어온 금액의 환불은 그 결제 안내의 지금 들어온 금액까지 셈한 것으로 남아, 새로 들어온 몫 없이 같은 결제 안내의 환불을 또 정하면 409 already_decided이고, "
+        "환불을 정한 뒤 같은 결제 안내에 또 들어온 입금(API-059 arrived)은 새 환불로 정한다(예시 over_received_again, SPEC-047, SPEC-071).",
    params=[pid("orderId", "주문", E.ORDER_ID)],
    body="RefundInput",
    body_examples={"partial": E.REFUND_INPUT,
                   "override": dict(E.REFUND_INPUT, amount=36000, decision="full", overrideReason="단골 손님이라 수수료를 받지 않아요"),
                   "none": dict(E.REFUND_INPUT, baseRevision=E.rev("order:K7Q3M9:cancelled-after-start"), decision="none", amount=0),
                   "over_received": {"baseRevision": E.ORDER_CHANGED["revision"], "cause": "over_received",
-                                    "paymentRequestId": E.PR_DIFFERENCE["paymentRequestId"], "decision": "full", "amount": 1000}},
+                                    "paymentRequestId": E.PR_DIFFERENCE["paymentRequestId"], "decision": "full", "amount": 1000},
+                  "over_received_again": {"baseRevision": E.ORDER_CHANGED["revision"], "cause": "over_received",
+                                          "paymentRequestId": E.PR_DIFFERENCE["paymentRequestId"], "decision": "full", "amount": 20000}},
    ok=[(201, "RefundResult", {"decided": {"outcome": "done", "refund": E.REFUND, "customerNotice": "sent"},
                               "deferred_notice": {"outcome": "done", "refund": E.REFUND, "customerNotice": "deferred"}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "invalid_state"]},
@@ -1149,15 +1154,19 @@ op(id="API-059", method="post", path="/owner/payment-requests/{paymentRequestId}
         "그 사이 주문이 취소됐으면 확정하지 않고 outcome paid_after_cancel과 환불 정할 일(SPEC-036). "
         "기한이 지나 자리가 풀린 결제 안내의 '입금됨'은 409 slot_released(먼저 결제 기한 연장, R14). 같은 결과를 다시 누르면 unchanged, 다른 결과가 이미 남았으면 409 already_decided. "
         "확인과 기한 처리가 동시에 일어나면 확인이 이긴다. "
-        "들어옴(arrived)은 닫힘·기한 지남 결제 안내에 결제로 확인하지 않은 들어온 금액을 남겨 받은 금액에 넣고 환불 정할 일을 남긴다(SPEC-071, REQ-166). 들어온 입금 대조 할 일이 이 화면을 연다(REQ-167). "
+        "들어옴(arrived)은 닫힘·기한 지남 결제 안내와 확인된 결제 안내(결제를 확인한 뒤 더 들어온 입금)에 결제로 확인하지 않은 들어온 금액을 남겨 받은 금액에 넣고 환불 정할 일을 남긴다(SPEC-071, REQ-166). 들어온 입금 대조 할 일이 이 화면을 연다(REQ-167). "
+        "같은 결제 안내에 또 들어온 입금은 그 결제 안내의 지금 revision으로 들어옴을 다시 남겨 들어온 금액에 더한다(같은 결과여도 unchanged가 아님, 같은 요청 키는 처음 응답, 옛 revision은 409 version_conflict). "
+        "그 결제 안내의 들어온 금액을 셈한 환불을 이미 정했으면 새로 들어온 몫을 돌려줄 '더 들어온 금액' 환불 정할 일을 새로 남기고, 아직 정하지 않았으면 그 정할 일의 계산값이 커진다(예시 arrived_again, 설계 재검토 남은 빈 곳). "
+        "확인된 결제 안내의 들어옴은 결제 뒤 더 들어온 입금이라 already_decided가 아니다. "
         "결제 확인 취소(void)는 제작을 시작하지 않은 확인된 결제에만: 사유와 시각을 남기고 결제 안내는 나감, 주문은 결제 기다림, 자리는 가예약으로 되돌리고 손님에게 정정 안내를 한 번 보낸다(SPEC-070, REQ-169). "
-        "제작을 시작했거나, 차액 결제이거나, 반영됐거나 열린 변경 요청이나 정한 환불이 있으면 409 invalid_state(SPEC-070).",
+        "제작을 시작했거나, 차액 결제이거나, 반영됐거나 열린 변경 요청이나 정한 환불이 있거나, 들어온 금액이 안내 금액보다 많으면(더 들어온 금액의 환불이 먼저) 409 invalid_state(SPEC-070).",
    params=[pid("paymentRequestId", "결제 안내", E.PR_CLAIMED["paymentRequestId"])],
    body="ReconciliationInput",
    body_examples={"received": {"baseRevision": E.PR_CLAIMED["revision"], "result": "received"},
                   "mismatch": {"baseRevision": E.PR_CLAIMED["revision"], "result": "mismatch", "mismatchAmount": 31000},
                   "resolved": {"baseRevision": E.PR_MISMATCH["revision"], "result": "resolved", "resolution": "shortfall_paid"},
                   "arrived": {"baseRevision": E.rev("pr:closed"), "result": "arrived", "arrivedAmount": 36000},
+                  "arrived_again": {"baseRevision": E.PR_CLOSED_ARRIVED["revision"], "result": "arrived", "arrivedAmount": 36000},
                   "void": {"baseRevision": E.PR_FIRST_PAID["revision"], "result": "void", "voidReason": E.PAYMENT_VOIDED["voidReason"]},
                   "close_change": {"baseRevision": E.PR_DIFF_MISMATCH["revision"], "result": "close_change"}},
    ok=[(200, "ReconciliationResult", {
@@ -1175,6 +1184,7 @@ op(id="API-059", method="post", path="/owner/payment-requests/{paymentRequestId}
                                                                                     arrivedAt=E.t("11-14", "09:40"), revision=E.rev("pr:closed")),
                              "payment": None, "order": E.ORDER_CANCELLED_BY_CUSTOMER, "changeRequest": None},
        "arrived": {"outcome": "done", "paymentRequest": E.PR_CLOSED_ARRIVED, "payment": None, "order": E.ORDER_CANCELLED_BY_CUSTOMER, "changeRequest": None},
+       "arrived_again": {"outcome": "done", "paymentRequest": E.PR_CLOSED_ARRIVED_AGAIN, "payment": None, "order": E.ORDER_CANCELLED_BY_CUSTOMER, "changeRequest": None},
        "voided": {"outcome": "done", "paymentRequest": E.PR_VOIDED, "payment": E.PAYMENT_VOIDED,
                   "order": dict(E.ORDER_AWAITING, paymentRequests=[E.PR_VOIDED], payments=[E.PAYMENT_VOIDED], production=None,
                                 revision=E.rev("order:K7Q3M9:voided")), "changeRequest": None},
