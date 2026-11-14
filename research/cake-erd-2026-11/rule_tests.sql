@@ -993,6 +993,22 @@ SELECT pg_temp.expect_fail('SPEC-065 비운 뒤 다시 쓴 보상 없음 사유'
           'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$, $$
   UPDATE issue_reports SET status = 'decided', compensation = 'none', problem_kind = 'spoiled', decided_at = now(),
          no_compensation_reason = '손님이 하루 밖에 두셨어요', notes_purged_at = now() WHERE id = 'f2000000-0000-0000-0000-000000000005'$$]);
+-- 관련 주문이 있는 다른 카카오 사용자의 사정은 다른 열린 건(상담 1의 먹어도 되는지)에 덧붙지 않고 상담과 주문마다 따로 건(SPEC-022, PR #40 Codex 의견)
+SELECT pg_temp.expect_ok('RB-15 다른 열린 건이 있는 상담에서 관련 주문이 있는 다른 카카오 사용자 건은 따로 열림', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-f1', '선물로 받은 케이크가 상했어요', 'trace-f1')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000f1', 'd0000000-0000-0000-0000-000000000003', 'other_user')$$]);
+SELECT pg_temp.expect_fail('RB-15 같은 상담·같은 주문의 열린 다른 카카오 사용자 건 둘', 'handoffs_one_open_other_user_per_order', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-f1', '선물로 받은 케이크가 상했어요', 'trace-f1')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000003', 'other_user')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000f1', 'd0000000-0000-0000-0000-000000000003', 'other_user')$$]);
+SELECT pg_temp.expect_fail('RB-15 관련 주문이 없는 다른 카카오 사용자 건은 열린 건 하나 규칙을 따름', 'handoffs_one_open_per_consultation', ARRAY[$$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000004', 'other_user')$$]);
 SELECT pg_temp.expect_fail('RB-15 신고 카드 없는 주문자 신고', 'issue_reports_reporter_chk', ARRAY[$$
   INSERT INTO issue_details (id, shop_id, consultation_id, order_id, status)
   VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',

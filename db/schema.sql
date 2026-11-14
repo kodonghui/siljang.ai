@@ -712,8 +712,9 @@ CREATE TABLE handoffs (
   CONSTRAINT handoffs_day_accept_chk CHECK ((day_decision IS NOT DISTINCT FROM 'accepted') = (day_accept_expires_at IS NOT NULL)),
   CONSTRAINT handoffs_closed_chk CHECK ((status = 'closed_no_answer') = (closed_at IS NOT NULL)) -- 답 없어 닫힘에만 닫힌 시각
 );
-CREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason <> 'closed_day'; -- 열린 에스컬레이션 건이 있으면 새 질문은 그 건의 덧붙은 질문(SPEC-022). 마감된 날 질문 건은 빼고 셈
+CREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason <> 'closed_day' AND (reason <> 'other_user' OR order_id IS NULL); -- 열린 에스컬레이션 건이 있으면 새 질문은 그 건의 덧붙은 질문(SPEC-022). 마감된 날 질문 건과 관련 주문이 있는 다른 카카오 사용자 건은 빼고 셈
 CREATE UNIQUE INDEX handoffs_one_open_day_per_consultation ON handoffs (consultation_id, requested_day) WHERE status = 'open' AND reason = 'closed_day'; -- 마감된 날 질문은 상담과 날짜마다 열린 건 하나(SPEC-014, 설계 재검토 M17)
+CREATE UNIQUE INDEX handoffs_one_open_other_user_per_order ON handoffs (consultation_id, order_id) WHERE status = 'open' AND reason = 'other_user' AND order_id IS NOT NULL; -- 다른 카카오 사용자의 사정은 관련 주문이 있으면 덧붙이지 않고 상담과 주문마다 열린 건 하나. 사장님이 그 건에서 그 주문의 문제 신고로 남김(SPEC-022, SPEC-079, 설계 재검토 M12)
 CREATE INDEX handoffs_open_age_idx ON handoffs (created_at) WHERE status = 'open'; -- 남긴 지 7일 지난 열린 에스컬레이션 건 찾기(SPEC-024, REQ-216)
 COMMENT ON TABLE handoffs IS 'TBL-027 에스컬레이션 건(TERM-008): AI가 답하지 않고 사장님께 에스컬레이션한 손님 질문';
 

@@ -7,6 +7,8 @@
 --     문제 신고로 남길 수 있음(SPEC-079). 그 신고에는 신고 카드가 없고(card_id의 NOT NULL을 풀고 issue_reports_reporter_chk) 에스컬레이션 건이
 --     있음. 그 건의 관련 주문이 신고의 주문과 같은지는 (shop_id, handoff_id, order_id) 외래 키로 봄(대상은 handoffs_order_scope). 건 하나에 신고 하나(issue_reports_handoff_uq).
 --     외래 키는 다른 테이블처럼 RESTRICT이고, 상담을 지울 때 그 건을 지우기 전에 신고의 연결을 비움(지우기 2단계, docs/05-erd/README.md 5절 E32).
+--     다른 카카오 사용자의 사정은 관련 주문이 있으면 다른 열린 건에 덧붙이지 않고 상담과 주문마다 따로 건(handoffs_one_open_per_consultation을 다시 만들어 빼고
+--     handoffs_one_open_other_user_per_order를 더함, PR #40 Codex 의견): 덧붙은 질문이면 건의 사유·관련 주문이 달라 그 건에서 신고로 남길 수 없었음.
 -- 0014_shop_identity_settings.sql 뒤에 한 트랜잭션으로 적용: psql -1 -v ON_ERROR_STOP=1 -f db/migrations/0015_issue_kind_reporter.sql
 -- 적용한 결과는 db/schema.sql과 같음(check_erd.py D2). 아직 운영 데이터가 없어(10단계 전) 옮길 행이 없음. 보상을 정한 신고 행이 있으면
 -- 문제 종류가 없어 issue_reports_problem_kind_chk에서 실패함: 그때는 사장님께 문제 종류를 받아 넣는 마이그레이션을 앞에 둠.
@@ -14,6 +16,11 @@
 -- TBL-027 handoffs: 그 건에서 남긴 문제 신고가 같은 주문인지 보는 외래 키의 대상
 ALTER TABLE handoffs
   ADD CONSTRAINT handoffs_order_scope UNIQUE (shop_id, id, order_id);
+
+-- TBL-027 handoffs: 관련 주문이 있는 다른 카카오 사용자의 사정은 다른 열린 건에 덧붙이지 않고 상담과 주문마다 따로 건(SPEC-022, SPEC-079)
+DROP INDEX handoffs_one_open_per_consultation;
+CREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason <> 'closed_day' AND (reason <> 'other_user' OR order_id IS NULL); -- 열린 에스컬레이션 건이 있으면 새 질문은 그 건의 덧붙은 질문(SPEC-022). 마감된 날 질문 건과 관련 주문이 있는 다른 카카오 사용자 건은 빼고 셈
+CREATE UNIQUE INDEX handoffs_one_open_other_user_per_order ON handoffs (consultation_id, order_id) WHERE status = 'open' AND reason = 'other_user' AND order_id IS NOT NULL; -- 다른 카카오 사용자의 사정은 관련 주문이 있으면 덧붙이지 않고 상담과 주문마다 열린 건 하나. 사장님이 그 건에서 그 주문의 문제 신고로 남김(SPEC-022, SPEC-079, 설계 재검토 M12)
 
 -- TBL-030 issue_reports: 문제 종류·보상 없음의 사유·그 밖의 보상·신고한 사람과 에스컬레이션 건
 ALTER TABLE issue_reports
