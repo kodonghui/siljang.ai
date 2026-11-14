@@ -163,6 +163,7 @@
   terms: [CTX-007, TERM-044]
   specs: [SPEC-001]
   apis: [API-078, API-001]
+  opens: [SCR-035]
   note: "카카오 로그인. 서버가 서명한 state로 시작하고 돌아온 state를 이 브라우저의 로그인 시작 쿠키와 맞춰 봄(DEC-10). 가게가 없으면 가게 등록으로, 있으면 할 일 목록으로 감"
   children:
     - id: SCR-015
@@ -174,6 +175,7 @@
       terms: [CTX-007, TERM-053]
       specs: [SPEC-002, SPEC-068]
       apis: [API-007, API-008]
+      opens: [SCR-016]
       note: "가게 이름·연락처·사업자 정보·영업 신고증 사진·처리 위탁 동의를 넣고 등록"
     - id: SCR-016
       name: 할 일 목록
@@ -184,7 +186,7 @@
       terms: [CTX-001, TERM-059, TERM-035, TERM-008]
       specs: [SPEC-067, SPEC-024, SPEC-037]
       apis: [API-040, API-002]
-      opens: [SCR-022, SCR-023, SCR-024, SCR-025, SCR-026, SCR-027, SCR-029, SCR-032, SCR-035, SCR-042, SCR-043]
+      opens: [SCR-015, SCR-022, SCR-023, SCR-024, SCR-025, SCR-026, SCR-027, SCR-029, SCR-032, SCR-035, SCR-042, SCR-043]
       opens_by_task:
         handoff: SCR-017
         custom_order: SCR-022
@@ -217,6 +219,7 @@
           terms: [CTX-001, TERM-008, TERM-018]
           specs: [SPEC-022, SPEC-023, SPEC-056, SPEC-079]
           apis: [API-041, API-042, API-083]
+          opens: [SCR-027]
           note: "AI 상담이 에스컬레이션 건과 에스컬레이션한 사유를 보고 답을 쓰면 손님에게 전달됨. 다른 카카오 사용자가 받은 주문의 문제를 말한 건이면 그 주문의 문제 신고로 남김"
           children:
             - id: SCR-018
@@ -238,7 +241,7 @@
           terms: [CTX-008, TERM-035, TERM-054]
           specs: [SPEC-067, SPEC-003, SPEC-024, SPEC-006]
           apis: []
-          opens: [SCR-016, SCR-040]
+          opens: [SCR-016, SCR-021, SCR-040]
           note: "우리 서비스 카카오톡 채널로 오는 알림. 할 일 유형과 할 일 목록 주소만 담음. 결제 받을 계좌가 바뀌면 할 일 없이 알림과 결제 수단 주소만(계좌번호 없음, REQ-198)"
     - id: SCR-020
       name: 주문 목록
@@ -261,6 +264,7 @@
           terms: [CTX-003, TERM-001, TERM-004, TERM-005]
           specs: [SPEC-045, SPEC-048, SPEC-068]
           apis: [API-045, API-048]
+          opens: [SCR-018, SCR-029]
           note: "주문 내용(버전)·결제·제작 상태. 가게 사정 취소도 여기서"
           children:
             - id: SCR-022
@@ -302,6 +306,7 @@
               terms: [CTX-004, TERM-067, TERM-016]
               specs: [SPEC-047, SPEC-016, SPEC-071]
               apis: [API-049, API-050]
+              opens: [SCR-026]
               note: "가게 규칙이 계산한 환불 금액과 그 근거(받은 금액의 몫)를 보고 계산값 이상으로 환불을 정함"
             - id: SCR-026
               name: 환불 송금
@@ -322,6 +327,7 @@
               terms: [CTX-003, TERM-073, TERM-031, TERM-033, TERM-034]
               specs: [SPEC-058, SPEC-059, SPEC-060, SPEC-079]
               apis: [API-064, API-065]
+              opens: [SCR-026]
               note: "신고 사진·설명과 주문 내용 버전·결제 금액을 보고 문제 종류와 재제작·일부 환불·전액 환불·그 밖의 보상·보상 없음을 고름"
     - id: SCR-028
       name: 입금 대조 목록
@@ -343,6 +349,7 @@
           terms: [CTX-004, TERM-063, TERM-049]
           specs: [SPEC-034, SPEC-035, SPEC-036, SPEC-070, SPEC-071]
           apis: [API-058, API-059]
+          opens: [SCR-021, SCR-023, SCR-025]
           note: "안내 금액·입금자 이름·결제 기한을 은행 앱과 맞춰 보고 입금됨·미입금·금액 불일치를 고름. 닫힌 결제 안내에는 들어옴(금액), 제작 전 확인된 결제에는 결제 확인 취소, 맞추는 중인 차액 결제에는 변경 닫기"
     - id: SCR-030
       name: 제작 목록
@@ -490,7 +497,7 @@
           terms: [CTX-007, TERM-042]
           specs: [SPEC-010]
           apis: [API-037]
-          opens: [SCR-035, SCR-036, SCR-038, SCR-040, SCR-041]
+          opens: [SCR-001, SCR-033, SCR-035, SCR-036, SCR-038, SCR-040, SCR-041]
           note: "예약 링크와 미충족 조건(영업 신고·가격표·운영규정·결제 수단·채널 연결). 링크를 복사해 카카오톡 채널과 인스타그램 프로필에 등록"
         - id: SCR-044
           name: 포트폴리오
@@ -512,6 +519,7 @@
           terms: [CTX-006, TERM-051, TERM-071]
           specs: [SPEC-062]
           apis: [API-066]
+          opens: [SCR-021, SCR-044]
           note: "받은 후기와 사진마다의 게시 동의"
 
 # ── 운영자 ──
