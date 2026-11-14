@@ -167,10 +167,10 @@
 | [SCR-012](SCR-012.md) | 후기 남기기 | 손님 | normal · done · permission · error | loading · empty · stale | 12 |
 | [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
 | [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 12 |
-| [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 16 |
+| [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 17 |
 | [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
 | [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 28 |
-| [SCR-018](SCR-018.md) | 상담 대화 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
+| [SCR-018](SCR-018.md) | 상담 대화 | 사장님 | normal · loading · empty · error · permission · stale | - | 7 |
 | [SCR-019](SCR-019.md) | 사장님 알림 | 사장님 | normal · not-sent · error · stale | loading · empty · permission | 0 |
 | [SCR-020](SCR-020.md) | 주문 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 8 |
 | [SCR-021](SCR-021.md) | 주문 상세 | 사장님 | normal · loading · error · permission · stale · confirm · submitting · done | empty | 20 |
@@ -182,13 +182,13 @@
 | [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm-notify · confirm · done | empty | 20 |
 | [SCR-028](SCR-028.md) | 입금 대조 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
 | [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · confirm-notify · submitting · mismatch · expired · done | empty | 26 |
-| [SCR-030](SCR-030.md) | 제작 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 34 |
+| [SCR-030](SCR-030.md) | 제작 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 35 |
 | [SCR-031](SCR-031.md) | 픽업 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm-notify · confirm · done | - | 37 |
 | [SCR-032](SCR-032.md) | 영업 캘린더 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · confirm · done | - | 17 |
 | [SCR-033](SCR-033.md) | 영업 캘린더 설정 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · confirm · done | - | 16 |
 | [SCR-034](SCR-034.md) | 가게 설정 | 사장님 | normal · loading · error · load-failed · permission · stale · submitting · done | empty | 19 |
-| [SCR-035](SCR-035.md) | 영업 신고 | 사장님 | normal · loading · error · permission · stale · submitting · on-hold · done | empty | 35 |
-| [SCR-036](SCR-036.md) | 가격표와 도안 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · done | - | 22 |
+| [SCR-035](SCR-035.md) | 영업 신고 | 사장님 | normal · loading · error · permission · stale · submitting · on-hold · done | empty | 36 |
+| [SCR-036](SCR-036.md) | 가격표와 도안 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · done | - | 23 |
 | [SCR-037](SCR-037.md) | 가격표 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
 | [SCR-038](SCR-038.md) | 운영규정 | 사장님 | normal · loading · empty · error · load-failed · permission · stale · submitting · confirm · done | - | 15 |
 | [SCR-039](SCR-039.md) | 운영규정 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
@@ -231,6 +231,8 @@
 - 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
 
 ## 9. 검사
+
+2026-11-15 04:57 KST, 설계 재검토 낮음 K2로 SCR-015·018·030·035·036을 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C6 응답 행 965개(06단계의 새 응답 둘을 쓰는 다섯 화면: API-007 429 `rate_limited`의 SCR-015·030·035·036, API-043 `with_owner_reply`의 SCR-018. ※ 화면이 나눈 행 3, 카카오 스킬 270, 기본값과 다르게 정한 행 137), C8 참조 1906곳, C11 허용 예외 912곳입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C4 데이터 220행·액션 160행, C5 그린 상태 367개·상태 이름 30개, C9 프레임 734개·1.5MB, C10 확인 문구 8개·손님 문구 49개, C13 생성 파일 52개, C14 상태 367개는 같습니다.
 
 2026-11-15 03:18 KST, 설계 재검토 M8로 5절 머리말과 12절에 손님 문구의 출처를 적은 뒤(화면 정의와 생성물은 그대로) `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 숫자는 02:28 검사와 같습니다.
 
@@ -478,3 +480,10 @@
 - 결정과 다르게 하거나 더한 것: (1) 지시의 예('보내지 않은 환불은 결제 안내마다 하나') 대신 환불마다 그 결제 안내의 들어온 금액을 어디까지 셈했는지 남기고 (결제 안내, 셈한 금액)마다 환불 하나로 좁혔습니다(보낸 뒤 또 들어온 돈도 같은 규칙, 05 README A33). (2) 결제를 확인한 뒤 같은 결제 안내에 더 들어온 입금도 '들어옴'으로 남기게 넓혔습니다(전에는 확인됨 안내에 남길 길이 없어 돌려줄 환불을 정할 수 없었음).
 
 2026-11-15 같은 재검토의 중간 묶음 M8(RE-15)도 같은 결정 카드의 '모두 지금 고침 (추천)'대로 검토자의 고치는 방향 가운데 둘째 길로 고쳤습니다(Claude 추천 없음). 손님에게 가는 문구의 출처를 이 문서 5절 한 곳으로 정해 5절 머리말과 06단계 README 7절에 적고, 06단계 계약의 결과 표와 예시 글은 참고용 뼈대로 두었습니다(바꾸면 C10이 견주는 06단계 뼈대가 바뀜). SPEC-035의 금액 불일치 안내는 04단계와 SCR-011·SCR-029가 이미 같아 고치지 않았습니다. 화면 정의·상태·와이어프레임은 그대로이고, 검사는 9절의 2026-11-15 03:18 KST 결과입니다.
+
+2026-11-15 같은 재검토의 낮음 K2(RD-17, RD-18)를 동희님 2026-11-13 20:59 결정 카드 '높음·중간 뒤에 따로 고침 (추천)'대로 `screens_owner_a.py`·`screens_owner_b.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다. 'Claude 추천'이 없어 검토자의 고치는 방향대로이고, 06단계의 바뀐 계약(06단계 README 11절·15절)을 따릅니다.
+
+- SCR-018 상담 대화(RD-17): 대화에 그 상담의 손님 안내(사장님 답, 결제 안내·확정 안내 같은 그 밖의 안내)가 시각 순으로 섞여 오른쪽에 '사장님 답'·'안내' 라벨로 보임. 전달 결과에 '먼저 보냄'·'보내는 중'을 더함. 메시지 글은 100,000자까지(다섯 줄을 넘으면 '더 보기'). 응답 예시 `with_owner_reply`는 `normal`.
+- SCR-015·030·035·036 사진 올리기(RD-18): 사진을 너무 자주 올리면(429 `rate_limited`: 사장님마다 1분 30번, 쓰지 않은 올린 파일 50개) 각 화면의 `error`에서 사진 필드 옆에 '잠시 뒤 다시 시도해 주세요'를 보이고 Retry-After 초 뒤 다시 올림(06단계 DEC-16).
+- 상태와 문구: 상태 이름 30개와 그린 상태 367개, 와이어프레임의 프레임 734개, 손님 문구와 확인 문구는 그대로. 09단계는 그리는 상태가 늘지 않아 보드를 다시 그리지 않았습니다.
+- 검사: 9절의 2026-11-15 04:57 KST 결과.

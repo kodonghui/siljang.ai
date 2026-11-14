@@ -85,7 +85,7 @@ paths:
       operationId: createOwnerSession
       summary: 사장님 로그인(카카오 인가 코드)
       description: |-
-        카카오 로그인 화면이 redirectUri로 준 인가 코드와 state를 받는다. state가 로그인 시작(API-078)의 서명·10분과 로그인 시작 쿠키 `siljang_login`의 nonce에 맞을 때만 카카오를 호출하고, 아니면 카카오를 호출하지 않고 401 kakao_login_failed(DEC-10, 설계 재검토 RD-11). 서버가 인가 코드를 nonce로 다시 만든 PKCE code_verifier와 함께 카카오 토큰으로 바꿔 카카오 로그인 사용자 번호만 남기고 토큰은 버린다(DEC-10, REQ-135). 토큰을 버리기 전에 카카오톡 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`, 채널 추가 상태 동의 `plusfriends`)를 한 번 해 사장님이 우리 서비스 채널 친구인지 남긴다(alertChannelFriend). 동의하지 않았거나 조회가 실패하면 로그인은 막지 않고 친구 여부를 바꾸지 않는다. 사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-183). 세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_owner`이고, 로그인 시작 쿠키는 지운다. `next`가 화면이 열 곳(가게 등록·신고증 다시 올리기·할 일 목록). 카카오 로그인이 실패하거나 동의를 거부하면 우리 쪽 기록을 남기지 않음. Open: 세션 길이는 사장님 30일(쓰면 늘어남)을 첫 값으로 제안, 개발 전에 정함(OPEN-5). Open: 카카오가 PKCE 매개변수를 받는지 개발 전 시험(OPEN-11).
+        카카오 로그인 화면이 redirectUri로 준 인가 코드와 state를 받는다. state가 로그인 시작(API-078)의 서명·10분과 로그인 시작 쿠키 `siljang_login`의 nonce에 맞을 때만 카카오를 호출하고, 아니면 카카오를 호출하지 않고 401 kakao_login_failed(DEC-10, 설계 재검토 RD-11). 서버가 인가 코드를 nonce로 다시 만든 PKCE code_verifier와 함께 카카오 토큰으로 바꿔 카카오 로그인 사용자 번호만 남기고 토큰은 버린다(DEC-10, REQ-135). 토큰을 버리기 전에 카카오톡 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`, 채널 추가 상태 동의 `plusfriends`)를 한 번 해 사장님이 우리 서비스 채널 친구인지 남긴다(alertChannelFriend). 동의하지 않았거나 조회가 실패하면 로그인은 막지 않고 친구 여부를 바꾸지 않는다. 사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-260). 세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_owner`이고, 로그인 시작 쿠키는 지운다. `next`가 화면이 열 곳(가게 등록·신고증 다시 올리기·할 일 목록). 카카오 로그인이 실패하거나 동의를 거부하면 우리 쪽 기록을 남기지 않음. Open: 세션 길이는 사장님 30일(쓰면 늘어남)을 첫 값으로 제안, 개발 전에 정함(OPEN-5). Open: 카카오가 PKCE 매개변수를 받는지 개발 전 시험(OPEN-11).
 
         SPEC: SPEC-001, SPEC-068
       tags:
@@ -339,7 +339,7 @@ paths:
       operationId: getOwnerMe
       summary: 로그인한 사장님과 가게, 상단 배너
       description: |-
-        사장님 화면을 열 때 세션을 확인한다. 세션이 없거나 만료됐으면 401이고 화면은 로그인으로 보낸 뒤 원래 주소로 돌아온다(SPEC-001). `banners`의 add_alert_channel은 사장님이 우리 서비스 채널 친구가 아니라 알림이 할 일 목록에만 남는다는 안내(SPEC-067). 친구가 아니라고 남아 있으면 마지막으로 본 지 1분이 지났을 때 우리 앱의 Admin 키로 채널 관계를 다시 조회해(target_id_type=user_id) 친구가 되었으면 배너를 빼고 보인다(DEC-21, REQ-183).
+        사장님 화면을 열 때 세션을 확인한다. 세션이 없거나 만료됐으면 401이고 화면은 로그인으로 보낸 뒤 원래 주소로 돌아온다(SPEC-001). `banners`의 add_alert_channel은 사장님이 우리 서비스 채널 친구가 아니라 알림이 할 일 목록에만 남는다는 안내(SPEC-067). 친구가 아니라고 남아 있으면 마지막으로 본 지 1분이 지났을 때 우리 앱의 Admin 키로 채널 관계를 다시 조회해(target_id_type=user_id) 친구가 되었으면 배너를 빼고 보인다(DEC-21, REQ-260).
 
         SPEC: SPEC-001, SPEC-067
       tags:
@@ -720,7 +720,7 @@ paths:
       operationId: createUpload
       summary: 사진 업로드(신고증·도안·완성 사진)
       description: |-
-        사진 한 장을 먼저 올리고 받은 uploadId를 명령에 쓴다(1시간 안, DEC-09). 용도별 한도: 신고증 JPG·PNG·HEIC 10MB, 도안 JPG·PNG·HEIC·WEBP 10MB, 완성 사진 JPG·PNG·HEIC·WEBP 20MB. 파일 종류는 내용으로 확인한다. 저장 위치는 응답에 포함하지 않는다(G6). 다시 올려도 새 uploadId가 하나 더 생길 뿐이라 요청 키를 받지 않는다(DEC-04 밖).
+        사진 한 장을 먼저 올리고 받은 uploadId를 명령에 쓴다(1시간 안, DEC-09). 용도별 한도: 신고증 JPG·PNG·HEIC 10MB, 도안 JPG·PNG·HEIC·WEBP 10MB, 완성 사진 JPG·PNG·HEIC·WEBP 20MB. 파일 종류는 내용으로 확인한다. 저장 위치는 응답에 포함하지 않는다(G6). 다시 올려도 새 uploadId가 하나 더 생길 뿐이라 요청 키를 받지 않는다(DEC-04 밖). 사장님마다 1분에 30번, 아직 쓰지 않은 올린 파일(1시간 안)은 50개까지 받고, 넘으면 429 rate_limited와 Retry-After(DEC-16, 설계 재검토 RD-18).
 
         SPEC: SPEC-002, SPEC-004, SPEC-053
       tags:
@@ -818,6 +818,29 @@ paths:
                     errors:
                     - field: /file
                       code: not_allowed
+        "429":
+          description: |-
+            너무 자주 호출함(DEC-16)
+
+            - `rate_limited`: 같은 곳에서 너무 자주 호출함(예약 링크 페이지 1분 60번, 사장님 로그인 1분 10번)
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                rate_limited:
+                  value:
+                    type: /problems/rate_limited
+                    title: 잠시 뒤 다시 시도해 주세요
+                    status: 429
+                    detail: 같은 곳에서 너무 자주 호출함(예약 링크 페이지 1분 60번, 사장님 로그인 1분 10번)
+                    instance: /owner/uploads
+                    code: rate_limited
+                    traceId: 20b619587ebc2263a58e8c2f18d2e939
+                    retryAfterSeconds: 30
         "503":
           description: |-
             외부 서비스가 답하지 않아 아무것도 바꾸지 않음
@@ -872,6 +895,7 @@ paths:
           - 413:file_too_large
           한도:
           - 413:file_too_large
+          - 429:rate_limited
           외부:
           - 503:storage_unavailable
           노출:
@@ -1929,7 +1953,7 @@ paths:
       operationId: listReviewShops
       summary: 영업 신고 확인할 가게 목록
       description: |-
-        이 목록에는 가게 등록 정보만 있다. 손님·주문 기록은 가게 기록 보기(API-074~077)에서 가린 값으로만 본다(SPEC-003, SPEC-073). 같은 사업자등록번호의 다른 가게가 있으면 duplicateBusinessRegNo(SPEC-002).
+        이 목록에는 가게 등록 정보만 있다. 손님·주문 기록은 가게 기록 보기(API-074~077)에서 가린 값으로만 본다(SPEC-003, SPEC-073). 같은 사업자등록번호의 다른 가게가 있으면 duplicateBusinessRegNo(SPEC-002). 순서: 등록한 시각(createdAt)이 이른 가게가 앞(오래 기다린 확인부터), 같으면 가게 ID 순(DEC-14).
 
         SPEC: SPEC-003, SPEC-002
       tags:
@@ -2727,7 +2751,7 @@ paths:
       operationId: listOperatorAlerts
       summary: 운영자 알림
       description: |-
-        이미 다른 가게에 묶인 채널(SPEC-008), 처리방침 국외 이전 항목 빔(SPEC-010), 한 가게에서 5분에 AI 실패 5번(AI-1). 내용 없이 건수만(E10).
+        이미 다른 가게에 묶인 채널(SPEC-008), 처리방침 국외 이전 항목 빔(SPEC-010), 한 가게에서 5분에 AI 실패 5번(AI-1). 내용 없이 건수만(E10). 순서: 새 알림(createdAt이 늦은 것)이 앞, 같으면 알림 ID 순(DEC-14).
 
         SPEC: SPEC-008, SPEC-010, SPEC-017
       tags:
@@ -3509,7 +3533,7 @@ paths:
       operationId: listPriceListVersions
       summary: 가격표 버전 목록
       description: |-
-        새 버전이 앞. 이전 버전은 지우지 않는다(REQ-027).
+        이전 버전은 지우지 않는다(REQ-027). 순서: 새 버전이 앞. 버전은 저장할 때마다 하나라 나누지 않고 1,000개까지 한 번에 준다(DEC-14의 예외).
 
         SPEC: SPEC-004
       tags:
@@ -4364,7 +4388,7 @@ paths:
       operationId: listOperatingRulesVersions
       summary: 운영규정 버전 목록
       description: |-
-        새 버전이 앞. 이전 버전은 지우지 않는다(REQ-027).
+        이전 버전은 지우지 않는다(REQ-027). 순서: 새 버전이 앞. 버전은 저장할 때마다 하나라 나누지 않고 1,000개까지 한 번에 준다(DEC-14의 예외).
 
         SPEC: SPEC-005
       tags:
@@ -5377,7 +5401,7 @@ paths:
       operationId: listCalendarDays
       summary: 날짜별 남은 자리와 마감 현황
       description: |-
-        from~to(62일까지)의 날마다 하루 최대 개수·잡힌 자리·남은 자리·마감·마감 후 추가 수락. 남은 자리 수는 사장님 화면에만(G6).
+        from~to(62일까지)의 날마다 하루 최대 개수·잡힌 자리·남은 자리·마감·마감 후 추가 수락. 남은 자리 수는 사장님 화면에만(G6). 순서: 날짜 순(from부터 to까지 하루 한 행). 나누지 않고 한 번에 준다(DEC-14의 예외).
 
         SPEC: SPEC-007, SPEC-012, SPEC-015
       tags:
@@ -8210,7 +8234,7 @@ paths:
       operationId: getPrivacyPolicy
       summary: 가게 개인정보 처리방침
       description: |-
-        가장 최근 버전. 국외 이전 다섯 항목(REQ-141)을 받는 자마다 포함한다. AI 상담 고지가 이 주소를 건다(SPEC-018). 처리하는 개인정보 항목에 알레르기 정보(따로 동의한 손님에게서만, 쓰는 목적·보는 사람·지우는 때)를 적고, AI를 거치지 않는 입력으로 받으므로 AI 모델 회사의 국외 이전 항목에는 넣지 않는다(REQ-204, SPEC-010, SPEC-075).
+        가장 최근 버전. 국외 이전 다섯 항목(REQ-141)을 받는 자마다 포함한다. AI 상담 고지가 이 주소를 건다(SPEC-018): 고지의 링크는 늘 가장 최근 버전을 보이고, 고지 때 게시된 버전은 05단계 consultations.ai_disclosed_policy_version에 남는다(설계 재검토 RC-20). 처리하는 개인정보 항목에 알레르기 정보(따로 동의한 손님에게서만, 쓰는 목적·보는 사람·지우는 때)를 적고, AI를 거치지 않는 입력으로 받으므로 AI 모델 회사의 국외 이전 항목에는 넣지 않는다(REQ-204, SPEC-010, SPEC-075).
 
         SPEC: SPEC-010, SPEC-011, SPEC-018
       tags:
@@ -8338,7 +8362,7 @@ paths:
       operationId: listOwnerTasks
       summary: 할 일 목록
       description: |-
-        사장님이 정할 일(에스컬레이션 건·맞춤 주문·결제 확인 요청·맞추는 중·결제 기한 지남·변경 요청·문제 신고·환불 결정·취소 뒤 들어온 입금·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)). 환불 보내기는 '보냄'을 표시하면 닫히고, 정한 뒤 24시간이 지나면 한 번 다시 알린다. 기다림 상태(waitStatus)는 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정에만(SPEC-024, REQ-215): 기다림·지연·답함·답 없어 닫힘. 답 없어 닫힘은 에스컬레이션 건(7일)·맞춤 주문(그 픽업 날짜의 주문 마감)·변경 요청(변경 마감)·결제 확인 요청(결제 기한 상한)만이고, 맞추는 중·환불 결정·문제 신고는 지연 뒤에도 할 일 목록에 남는다(1-7). subject가 열 화면. 알림은 우리 서비스 채널로 가고, 사장님이 채널 친구가 아니면 alertChannelFriend false(SPEC-067).
+        사장님이 정할 일(에스컬레이션 건·맞춤 주문·결제 확인 요청·맞추는 중·결제 기한 지남·변경 요청·문제 신고·환불 결정·취소 뒤 들어온 입금·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)). 환불 보내기는 '보냄'을 표시하면 닫히고, 정한 뒤 24시간이 지나면 한 번 다시 알린다. 기다림 상태(waitStatus)는 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정에만(SPEC-024, REQ-215): 기다림·지연·답함·답 없어 닫힘. 답 없어 닫힘은 에스컬레이션 건(7일)·맞춤 주문(그 픽업 날짜의 주문 마감)·변경 요청(변경 마감)·결제 확인 요청(결제 기한 상한)만이고, 맞추는 중·환불 결정·문제 신고는 지연 뒤에도 할 일 목록에 남는다(1-7). subject가 열 화면. 알림은 우리 서비스 채널로 가고, 사장님이 채널 친구가 아니면 alertChannelFriend false(SPEC-067). 순서: 열린 할 일은 지연(waitStatus late)이 앞, 그다음 기다림 기한(waitDueAt)이 이른 것, 기다림 기한이 없는 할 일은 그 뒤에 연 시각(openedAt) 순. 닫힌 할 일은 닫힌 시각(closedAt)이 늦은 것이 앞. 같으면 할 일 ID 순(DEC-14, 설계 재검토 RD-13).
 
         SPEC: SPEC-067, SPEC-022, SPEC-024, SPEC-037
       tags:
@@ -8369,17 +8393,6 @@ paths:
                 open_tasks:
                   value:
                     items:
-                    - taskId: 549a3602-384d-585a-a030-5a53b3b6f421
-                      kind: handoff
-                      waitStatus: waiting
-                      waitDueAt: '2026-11-12T14:40:00+09:00'
-                      order: null
-                      subject:
-                        type: handoff
-                        id: 1acf198e-ed93-5325-a5a7-f7aeed2ba3c4
-                      summary: 먹어도 되는지 묻는 질문
-                      openedAt: '2026-11-12T12:40:00+09:00'
-                      closedAt: null
                     - taskId: 60e52553-091f-50e9-8031-f391f7deffa6
                       kind: custom_order
                       waitStatus: late
@@ -8392,6 +8405,17 @@ paths:
                         id: 68598d4e-7858-598f-aa63-2b51daa7d590
                       summary: 맞춤 주문 11/20 16:00, 그날 남은 자리 0
                       openedAt: '2026-11-12T14:10:00+09:00'
+                      closedAt: null
+                    - taskId: 549a3602-384d-585a-a030-5a53b3b6f421
+                      kind: handoff
+                      waitStatus: waiting
+                      waitDueAt: '2026-11-12T14:40:00+09:00'
+                      order: null
+                      subject:
+                        type: handoff
+                        id: 1acf198e-ed93-5325-a5a7-f7aeed2ba3c4
+                      summary: 먹어도 되는지 묻는 질문
+                      openedAt: '2026-11-12T12:40:00+09:00'
                       closedAt: null
                     - taskId: 072547ab-400d-5fbf-b9d9-ff0fd681db16
                       kind: payment_claim
@@ -8406,19 +8430,6 @@ paths:
                       summary: 결제 확인 요청 36,000원
                       openedAt: '2026-11-12T13:40:00+09:00'
                       closedAt: null
-                    - taskId: a21cdbdb-b6eb-5654-bc35-7fb11387bfc7
-                      kind: refund_send
-                      waitStatus: null
-                      waitDueAt: null
-                      order:
-                        orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
-                        orderNo: K7Q3M9
-                      subject:
-                        type: refund
-                        id: ab9a070a-a48f-5384-b325-937dc5cf94d4
-                      summary: 환불 보내기 31,000원(정한 지 24시간 지남)
-                      openedAt: '2026-11-14T10:00:00+09:00'
-                      closedAt: null
                     - taskId: 347d9bb5-9466-5e90-b531-530314e2bde1
                       kind: arrival_check
                       waitStatus: null
@@ -8432,21 +8443,36 @@ paths:
                       summary: 입금했다고 알린 뒤 취소한 주문의 들어온 입금 대조 75,000원
                       openedAt: '2026-11-13T09:12:00+09:00'
                       closedAt: null
+                    - taskId: a21cdbdb-b6eb-5654-bc35-7fb11387bfc7
+                      kind: refund_send
+                      waitStatus: null
+                      waitDueAt: null
+                      order:
+                        orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                        orderNo: K7Q3M9
+                      subject:
+                        type: refund
+                        id: ab9a070a-a48f-5384-b325-937dc5cf94d4
+                      summary: 환불 보내기 31,000원(정한 지 24시간 지남)
+                      openedAt: '2026-11-14T10:00:00+09:00'
+                      closedAt: null
                     nextCursor: null
                     alertChannelFriend: true
                 not_friend:
                   value:
                     items:
-                    - taskId: 549a3602-384d-585a-a030-5a53b3b6f421
-                      kind: handoff
-                      waitStatus: waiting
-                      waitDueAt: '2026-11-12T14:40:00+09:00'
-                      order: null
+                    - taskId: 60e52553-091f-50e9-8031-f391f7deffa6
+                      kind: custom_order
+                      waitStatus: late
+                      waitDueAt: '2026-11-12T16:10:00+09:00'
+                      order:
+                        orderId: 68598d4e-7858-598f-aa63-2b51daa7d590
+                        orderNo: P4X8N2
                       subject:
-                        type: handoff
-                        id: 1acf198e-ed93-5325-a5a7-f7aeed2ba3c4
-                      summary: 먹어도 되는지 묻는 질문
-                      openedAt: '2026-11-12T12:40:00+09:00'
+                        type: order
+                        id: 68598d4e-7858-598f-aa63-2b51daa7d590
+                      summary: 맞춤 주문 11/20 16:00, 그날 남은 자리 0
+                      openedAt: '2026-11-12T14:10:00+09:00'
                       closedAt: null
                     nextCursor: null
                     alertChannelFriend: false
@@ -9060,7 +9086,7 @@ paths:
       operationId: listConsultationMessages
       summary: 상담 대화 조회
       description: |-
-        그 가게 상담만. 사장님 화면에는 마스킹한 전화번호·계좌번호를 원래 값으로 되돌린 글과 참고 사진(서명 주소)이 보인다. 카드번호는 플레이스홀더와 끝 4자리, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 보인다(원래 값을 두지 않음, REQ-192). 새 메시지가 뒤. 다룬 주문이 모두 끝나 상담 끝남으로 닫힌 상담(SPEC-025)은 status ended로 대화가 지우기 전까지 그대로 보이고, 그 손님의 다음 말은 새 상담에 남는다. 지워진 상담(SPEC-065)은 status deleted와 빈 items.
+        그 가게 상담만. 사장님 화면에는 마스킹한 전화번호·계좌번호를 원래 값으로 되돌린 글과 참고 사진(서명 주소)이 보인다. 카드번호는 플레이스홀더와 끝 4자리, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 보인다(원래 값을 두지 않음, REQ-192). 그 상담의 손님 안내(05단계 notifications)도 함께 준다: 사장님 답은 author owner, 서버가 보낸 그 밖의 안내(결제 안내·확정 안내·지연 안내 등)는 author notice이고 direction outbound, kind text, 사진 없음. 안내의 at은 전한 시각(아직 못 전했으면 만든 시각), delivery는 보내는 중 sending·먼저 보냄 event_api·다음 대화 때 전할 것 deferred·그렇게 전함 delivered_later·보내지 못함 failed. 결제 안내의 계좌번호 자리는 채우지 않은 글 그대로이고, 주문이 끝나고 30일이 지나 지운 그 주문의 안내는 빠진다(SPEC-065, 설계 재검토 RD-17). 순서: 시각(at) 순이고 새 메시지가 뒤, 같은 시각이면 남긴 차례(DEC-14). 다룬 주문이 모두 끝나 상담 끝남으로 닫힌 상담(SPEC-025)은 status ended로 대화가 지우기 전까지 그대로 보이고, 그 손님의 다음 말은 새 상담에 남는다. 지워진 상담(SPEC-065)은 status deleted와 빈 items.
 
         SPEC: SPEC-021, SPEC-019, SPEC-068, SPEC-065
       tags:
@@ -9081,7 +9107,7 @@ paths:
       - ownerSession: []
       responses:
         "200":
-          description: '성공. 예시: messages, deleted'
+          description: '성공. 예시: messages, with_owner_reply, deleted'
           content:
             application/json:
               schema:
@@ -9125,6 +9151,61 @@ paths:
                       text: 땅콩 알레르기가 있는데 먹어도 되나요?
                       photos: []
                       delivery: null
+                    nextCursor: null
+                with_owner_reply:
+                  value:
+                    consultationId: bcd84dae-e6a0-5123-9b55-01b028834b28
+                    status: open
+                    customerChannelFriend: true
+                    items:
+                    - messageId: 1618ebaf-a9f8-5d8c-b135-6614ada27d5f
+                      at: '2026-11-12T12:39:00+09:00'
+                      direction: outbound
+                      author: system
+                      kind: text
+                      text: 'AI가 상담해요. 개인정보 처리방침: https://siljang.example/s/moonlight-cake/privacy'
+                      photos: []
+                      delivery: skill_response
+                    - messageId: 23224ec0-8ddc-543d-b985-ad0756170be5
+                      at: '2026-11-12T12:39:00+09:00'
+                      direction: inbound
+                      author: customer
+                      kind: text
+                      text: 1호 생크림 케이크 얼마예요? 010-9876-5432로 연락 주세요
+                      photos: []
+                      delivery: null
+                    - messageId: 7e51ea94-a224-534c-ad93-cd9d1703c3f3
+                      at: '2026-11-12T12:39:03+09:00'
+                      direction: outbound
+                      author: ai
+                      kind: text
+                      text: 1호 생크림 케이크는 35,000원이에요. 이 금액은 11월 15일 12:39까지 유효하고, 견적만으로 그날 자리를 잡아 두지는 않아요.
+                      photos: []
+                      delivery: skill_response
+                    - messageId: 8a738f36-3636-51be-90a8-36ae1bc8d2e7
+                      at: '2026-11-12T12:40:00+09:00'
+                      direction: inbound
+                      author: customer
+                      kind: text
+                      text: 땅콩 알레르기가 있는데 먹어도 되나요?
+                      photos: []
+                      delivery: null
+                    - messageId: 9c3dca7a-02f5-5e05-946e-0a95e607658b
+                      at: '2026-11-12T14:40:00+09:00'
+                      direction: outbound
+                      author: notice
+                      kind: text
+                      text: 사장님 답이 늦어지고 있어요. 답이 오면 바로 알려 드릴게요
+                      photos: []
+                      delivery: event_api
+                    - messageId: 6c9b41e5-42e4-5210-9d48-61d41282eb78
+                      at: '2026-11-12T15:02:00+09:00'
+                      direction: outbound
+                      author: owner
+                      kind: text
+                      text: 땅콩은 넣지 않지만 같은 작업대에서 견과류를 다뤄요. 걱정되시면 견과류를 다루지 않는 날로 잡아 드릴게요
+                      photos: []
+                      delivery: event_api
                     nextCursor: null
                 deleted:
                   value:
@@ -9238,7 +9319,7 @@ paths:
       operationId: listOrders
       summary: 주문 목록
       description: |-
-        상태·종류·픽업 날짜로 거른다. status=payment_overdue가 결제 기한 지난 주문 목록(SPEC-037)이고, paymentNotice로 결제 안내가 손님에게 전해진 시각이나 아직 못 전함(deliveredAt null)을 보인다. status=requested&kind=custom이 답할 맞춤 주문. 끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)은 나오지 않는다.
+        상태·종류·픽업 날짜로 거른다. status=payment_overdue가 결제 기한 지난 주문 목록(SPEC-037)이고, paymentNotice로 결제 안내가 손님에게 전해진 시각이나 아직 못 전함(deliveredAt null)을 보인다. status=requested&kind=custom이 답할 맞춤 주문. 끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)은 나오지 않는다. 순서: 픽업 일시(pickupAt)가 이른 주문이 앞, 같으면 요청 시각(requestedAt) 순, 그다음 주문 ID 순(DEC-14).
 
         SPEC: SPEC-031, SPEC-037, SPEC-068
       tags:
@@ -9298,20 +9379,6 @@ paths:
                 orders:
                   value:
                     items:
-                    - orderId: 68598d4e-7858-598f-aa63-2b51daa7d590
-                      orderNo: P4X8N2
-                      kind: custom
-                      status: requested
-                      version: 1
-                      pickupAt: '2026-11-20T16:00:00+09:00'
-                      pickupDay: '2026-11-20'
-                      amount: 70000
-                      courierPickup: false
-                      customerName: 박하늘
-                      requestedAt: '2026-11-12T14:10:00+09:00'
-                      isRemake: false
-                      paymentNotice: null
-                      revision: 21c5e38f3fa4
                     - orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
                       orderNo: K7Q3M9
                       kind: standard
@@ -9330,6 +9397,20 @@ paths:
                         dueAt: '2026-11-13T01:05:00+09:00'
                         awaitingAmountConfirm: false
                       revision: 7f14e2e6ed1a
+                    - orderId: 68598d4e-7858-598f-aa63-2b51daa7d590
+                      orderNo: P4X8N2
+                      kind: custom
+                      status: requested
+                      version: 1
+                      pickupAt: '2026-11-20T16:00:00+09:00'
+                      pickupDay: '2026-11-20'
+                      amount: 70000
+                      courierPickup: false
+                      customerName: 박하늘
+                      requestedAt: '2026-11-12T14:10:00+09:00'
+                      isRemake: false
+                      paymentNotice: null
+                      revision: 21c5e38f3fa4
                     nextCursor: b3JkZXI6MjAyNi0xMS0yMA
                 overdue:
                   value:
@@ -11520,7 +11601,7 @@ paths:
                       amount: 36000
                       requestedAt: '2026-11-12T13:05:00+09:00'
                       acceptedAt: null
-                      confirmedAt: '2026-11-12T14:02:00+09:00'
+                      confirmedAt: null
                       rejectedAt: null
                       rejectReason: null
                       cancelledAt: '2026-11-14T09:00:00+09:00'
@@ -11589,13 +11670,39 @@ paths:
                         held: 5
                         remaining: 0
                         full: true
-                      paymentRequests: []
+                      paymentRequests:
+                      - paymentRequestId: 319cfb99-4f34-5128-b1ed-e1197c6449b3
+                        order:
+                          orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                          orderNo: K7Q3M9
+                        kind: first
+                        status: closed
+                        amount: 36000
+                        requestedQuote: null
+                        needsAmountConfirm: false
+                        amountConfirmedAt: null
+                        amountDeclinedAt: null
+                        issuedAt: '2026-11-12T13:05:00+09:00'
+                        deliveredAt: '2026-11-12T13:05:00+09:00'
+                        dueAt: '2026-11-13T01:05:00+09:00'
+                        dueCapAt: '2026-11-18T18:00:00+09:00'
+                        claimedAt: null
+                        claimRejectedAt: null
+                        depositorName: null
+                        mismatchAmount: null
+                        arrivedAmount: null
+                        arrivedAt: null
+                        paidAt: null
+                        expiredAt: null
+                        closedAt: '2026-11-14T09:00:00+09:00'
+                        closeReason: order_cancelled
+                        revision: ea6313c1adf7
                       payments: []
                       refunds: []
                       changeRequests: []
                       production: null
                       issueReports: []
-                      revision: 3d5e3ac001c0
+                      revision: d80cc061cbdc
                     refundPreview: null
                 unchanged:
                   summary: 이미 그 상태라 바꾼 것 없음(DEC-03)
@@ -12561,7 +12668,7 @@ paths:
       operationId: getProductionDay
       summary: 날짜별 제작 목록과 그날 픽업
       description: |-
-        확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 픽업 시각·퀵 여부(SPEC-054), 맞춤 재료 필요·변경됨 표시. 결제 전·취소된 주문은 없다. 알레르기 정보에 동의하지 않은 주문은 요약의 allergyConsent가 declined이고 알레르기 답이 없다(REQ-203).
+        확정된 주문과 재제작 주문만(SPEC-050). 픽업 시각·퀵 여부(SPEC-054), 맞춤 재료 필요·변경됨 표시. 결제 전·취소된 주문은 없다. 알레르기 정보에 동의하지 않은 주문은 요약의 allergyConsent가 declined이고 알레르기 답이 없다(REQ-203). 순서: 픽업 일시 순, 같으면 주문번호 순. 그날의 주문을 나누지 않고 한 번에 준다(DEC-14의 예외).
 
         SPEC: SPEC-050, SPEC-054, SPEC-045
       tags:
@@ -14603,7 +14710,7 @@ paths:
       operationId: listPaymentRequests
       summary: 입금 대조 목록
       description: |-
-        안내 금액·입금자 이름·결제 기한·확인 요청 여부. 입금자 이름은 사장님 화면에만, AI로 보내지 않는다.
+        안내 금액·입금자 이름·결제 기한·확인 요청 여부. 입금자 이름은 사장님 화면에만, AI로 보내지 않는다. 순서: 결제 기한(dueAt)이 이른 것이 앞, 기한이 없는 것(새 금액 확인 전)은 그 뒤에 보낸 시각(issuedAt) 순, 같으면 결제 안내 ID 순(DEC-14).
 
         SPEC: SPEC-034, SPEC-033, SPEC-035, SPEC-037
       tags:
@@ -15383,7 +15490,7 @@ paths:
                           orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
                           orderNo: K7Q3M9
                         kind: first
-                        status: claimed
+                        status: mismatch
                         amount: 36000
                         requestedQuote: null
                         needsAmountConfirm: false
@@ -15396,14 +15503,14 @@ paths:
                         claimedAt: '2026-11-12T13:40:00+09:00'
                         claimRejectedAt: null
                         depositorName: 이지우
-                        mismatchAmount: null
-                        arrivedAmount: null
-                        arrivedAt: null
+                        mismatchAmount: 31000
+                        arrivedAmount: 31000
+                        arrivedAt: '2026-11-12T14:02:00+09:00'
                         paidAt: null
                         expiredAt: null
                         closedAt: null
                         closeReason: null
-                        revision: e499d2e00301
+                        revision: 0082ca659308
                       payments: []
                       refunds: []
                       changeRequests: []
@@ -15457,7 +15564,7 @@ paths:
                       version: 2
                       pickupAt: '2026-11-20T14:00:00+09:00'
                       pickupDay: '2026-11-20'
-                      amount: 36000
+                      amount: 56000
                       requestedAt: '2026-11-12T13:05:00+09:00'
                       acceptedAt: null
                       confirmedAt: '2026-11-12T14:02:00+09:00'
@@ -15471,7 +15578,7 @@ paths:
                       details:
                       - version: 2
                         source: change_request
-                        createdAt: '2026-11-15T10:20:00+09:00'
+                        createdAt: '2026-11-15T12:00:00+09:00'
                         pickupAt: '2026-11-20T14:00:00+09:00'
                         courierPickup: false
                         size:
@@ -15489,15 +15596,17 @@ paths:
                         extras:
                         - optionId: d3d96df1-78c3-53f3-83ab-9db53600b837
                           name: 초 추가
+                        - optionId: 3bf9d3df-0935-5cd1-94ec-c76efa3b9852
+                          name: 2단
                         designNotes: null
-                        lettering: 생일 축하해 지우야!
+                        lettering: 생일 축하해 지우야
                         colors: 연분홍
                         allergyAnswer: 없음
                         allergyConsent: agreed
                         excludedIngredients: null
                         customerName: 이지우
                         customerPhone: 010-9876-5432
-                        amount: 36000
+                        amount: 56000
                         amountChangeReason: null
                       - version: 1
                         source: request
@@ -15586,6 +15695,32 @@ paths:
                         closedAt: null
                         closeReason: null
                         revision: 27ee169f5f27
+                      - paymentRequestId: 5b4c3160-dfc6-53f6-bc17-c9f7d0a32a07
+                        order:
+                          orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                          orderNo: K7Q3M9
+                        kind: difference
+                        status: paid
+                        amount: 20000
+                        requestedQuote: null
+                        needsAmountConfirm: true
+                        amountConfirmedAt: '2026-11-15T10:20:00+09:00'
+                        amountDeclinedAt: null
+                        issuedAt: '2026-11-15T10:20:00+09:00'
+                        deliveredAt: '2026-11-15T10:20:00+09:00'
+                        dueAt: '2026-11-15T22:20:00+09:00'
+                        dueCapAt: '2026-11-18T14:00:00+09:00'
+                        claimedAt: null
+                        claimRejectedAt: null
+                        depositorName: null
+                        mismatchAmount: null
+                        arrivedAmount: 20000
+                        arrivedAt: '2026-11-15T12:00:00+09:00'
+                        paidAt: '2026-11-15T12:00:00+09:00'
+                        expiredAt: null
+                        closedAt: null
+                        closeReason: null
+                        revision: "591649802708"
                       payments:
                       - paymentId: 042b0fab-a05b-5daf-b003-731c5699c0df
                         paymentRequestId: 319cfb99-4f34-5128-b1ed-e1197c6449b3
@@ -15594,8 +15729,19 @@ paths:
                         confirmedAt: '2026-11-12T14:02:00+09:00'
                         voidedAt: null
                         voidReason: null
+                      - paymentId: 26631c80-c627-5e53-a997-e1f0eb02a114
+                        paymentRequestId: 5b4c3160-dfc6-53f6-bc17-c9f7d0a32a07
+                        amount: 20000
+                        resolution: exact
+                        confirmedAt: '2026-11-15T12:00:00+09:00'
+                        voidedAt: null
+                        voidReason: null
                       refunds: []
-                      changeRequests: []
+                      changeRequests:
+                      - changeRequestId: 6d96f249-8f76-5f14-b626-aec0569639ec
+                        status: applied
+                        baseVersion: 1
+                        createdAt: '2026-11-15T10:00:00+09:00'
                       production:
                         productionId: 8d224710-ffc7-592a-9d8a-ac34a713ea5f
                         needsCustomMaterial: false
@@ -15611,7 +15757,7 @@ paths:
                         undoableUntil: null
                         revision: fdd4eed8e58b
                       issueReports: []
-                      revision: e3dc0567e893
+                      revision: 01ee3fcd8ee7
                     changeRequest:
                       changeRequestId: 6d96f249-8f76-5f14-b626-aec0569639ec
                       order:
@@ -15641,27 +15787,27 @@ paths:
                           orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
                           orderNo: K7Q3M9
                         kind: difference
-                        status: open
+                        status: paid
                         amount: 20000
                         requestedQuote: null
                         needsAmountConfirm: true
-                        amountConfirmedAt: null
+                        amountConfirmedAt: '2026-11-15T10:20:00+09:00'
                         amountDeclinedAt: null
                         issuedAt: '2026-11-15T10:20:00+09:00'
-                        deliveredAt: null
-                        dueAt: '2026-11-18T14:00:00+09:00'
+                        deliveredAt: '2026-11-15T10:20:00+09:00'
+                        dueAt: '2026-11-15T22:20:00+09:00'
                         dueCapAt: '2026-11-18T14:00:00+09:00'
                         claimedAt: null
                         claimRejectedAt: null
                         depositorName: null
                         mismatchAmount: null
-                        arrivedAmount: null
-                        arrivedAt: null
-                        paidAt: null
+                        arrivedAmount: 20000
+                        arrivedAt: '2026-11-15T12:00:00+09:00'
+                        paidAt: '2026-11-15T12:00:00+09:00'
                         expiredAt: null
                         closedAt: null
                         closeReason: null
-                        revision: "177483138887"
+                        revision: "591649802708"
                       revision: 487ccd0d9d9b
                 paid_after_cancel:
                   value:
@@ -15705,7 +15851,7 @@ paths:
                       amount: 36000
                       requestedAt: '2026-11-12T13:05:00+09:00'
                       acceptedAt: null
-                      confirmedAt: '2026-11-12T14:02:00+09:00'
+                      confirmedAt: null
                       rejectedAt: null
                       rejectReason: null
                       cancelledAt: '2026-11-14T09:00:00+09:00'
@@ -15780,7 +15926,7 @@ paths:
                           orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
                           orderNo: K7Q3M9
                         kind: first
-                        status: paid
+                        status: closed
                         amount: 36000
                         requestedQuote: null
                         needsAmountConfirm: false
@@ -15795,25 +15941,18 @@ paths:
                         depositorName: 이지우
                         mismatchAmount: null
                         arrivedAmount: 36000
-                        arrivedAt: '2026-11-12T14:02:00+09:00'
-                        paidAt: '2026-11-12T14:02:00+09:00'
+                        arrivedAt: '2026-11-14T09:40:00+09:00'
+                        paidAt: null
                         expiredAt: null
-                        closedAt: null
-                        closeReason: null
-                        revision: 27ee169f5f27
-                      payments:
-                      - paymentId: 042b0fab-a05b-5daf-b003-731c5699c0df
-                        paymentRequestId: 319cfb99-4f34-5128-b1ed-e1197c6449b3
-                        amount: 36000
-                        resolution: exact
-                        confirmedAt: '2026-11-12T14:02:00+09:00'
-                        voidedAt: null
-                        voidReason: null
+                        closedAt: '2026-11-14T09:00:00+09:00'
+                        closeReason: order_cancelled
+                        revision: a45a043b9c44
+                      payments: []
                       refunds: []
                       changeRequests: []
                       production: null
                       issueReports: []
-                      revision: 124a78ef40fc
+                      revision: 400c2f3b9187
                     changeRequest: null
                 arrived:
                   value:
@@ -15857,7 +15996,7 @@ paths:
                       amount: 36000
                       requestedAt: '2026-11-12T13:05:00+09:00'
                       acceptedAt: null
-                      confirmedAt: '2026-11-12T14:02:00+09:00'
+                      confirmedAt: null
                       rejectedAt: null
                       rejectReason: null
                       cancelledAt: '2026-11-14T09:00:00+09:00'
@@ -15932,7 +16071,7 @@ paths:
                           orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
                           orderNo: K7Q3M9
                         kind: first
-                        status: paid
+                        status: closed
                         amount: 36000
                         requestedQuote: null
                         needsAmountConfirm: false
@@ -15947,25 +16086,18 @@ paths:
                         depositorName: 이지우
                         mismatchAmount: null
                         arrivedAmount: 36000
-                        arrivedAt: '2026-11-12T14:02:00+09:00'
-                        paidAt: '2026-11-12T14:02:00+09:00'
+                        arrivedAt: '2026-11-14T09:40:00+09:00'
+                        paidAt: null
                         expiredAt: null
-                        closedAt: null
-                        closeReason: null
-                        revision: 27ee169f5f27
-                      payments:
-                      - paymentId: 042b0fab-a05b-5daf-b003-731c5699c0df
-                        paymentRequestId: 319cfb99-4f34-5128-b1ed-e1197c6449b3
-                        amount: 36000
-                        resolution: exact
-                        confirmedAt: '2026-11-12T14:02:00+09:00'
-                        voidedAt: null
-                        voidReason: null
+                        closedAt: '2026-11-14T09:00:00+09:00'
+                        closeReason: order_cancelled
+                        revision: 6030044b27ba
+                      payments: []
                       refunds: []
                       changeRequests: []
                       production: null
                       issueReports: []
-                      revision: 124a78ef40fc
+                      revision: 400c2f3b9187
                     changeRequest: null
                 arrived_again:
                   value:
@@ -16009,7 +16141,7 @@ paths:
                       amount: 36000
                       requestedAt: '2026-11-12T13:05:00+09:00'
                       acceptedAt: null
-                      confirmedAt: '2026-11-12T14:02:00+09:00'
+                      confirmedAt: null
                       rejectedAt: null
                       rejectReason: null
                       cancelledAt: '2026-11-14T09:00:00+09:00'
@@ -16084,7 +16216,7 @@ paths:
                           orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
                           orderNo: K7Q3M9
                         kind: first
-                        status: paid
+                        status: closed
                         amount: 36000
                         requestedQuote: null
                         needsAmountConfirm: false
@@ -16098,26 +16230,19 @@ paths:
                         claimRejectedAt: null
                         depositorName: 이지우
                         mismatchAmount: null
-                        arrivedAmount: 36000
-                        arrivedAt: '2026-11-12T14:02:00+09:00'
-                        paidAt: '2026-11-12T14:02:00+09:00'
+                        arrivedAmount: 72000
+                        arrivedAt: '2026-11-14T15:10:00+09:00'
+                        paidAt: null
                         expiredAt: null
-                        closedAt: null
-                        closeReason: null
-                        revision: 27ee169f5f27
-                      payments:
-                      - paymentId: 042b0fab-a05b-5daf-b003-731c5699c0df
-                        paymentRequestId: 319cfb99-4f34-5128-b1ed-e1197c6449b3
-                        amount: 36000
-                        resolution: exact
-                        confirmedAt: '2026-11-12T14:02:00+09:00'
-                        voidedAt: null
-                        voidReason: null
+                        closedAt: '2026-11-14T09:00:00+09:00'
+                        closeReason: order_cancelled
+                        revision: 1bafc730cbc7
+                      payments: []
                       refunds: []
                       changeRequests: []
                       production: null
                       issueReports: []
-                      revision: 124a78ef40fc
+                      revision: 400c2f3b9187
                     changeRequest: null
                 voided:
                   value:
@@ -16416,6 +16541,32 @@ paths:
                         closedAt: null
                         closeReason: null
                         revision: 27ee169f5f27
+                      - paymentRequestId: 5b4c3160-dfc6-53f6-bc17-c9f7d0a32a07
+                        order:
+                          orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                          orderNo: K7Q3M9
+                        kind: difference
+                        status: closed
+                        amount: 20000
+                        requestedQuote: null
+                        needsAmountConfirm: true
+                        amountConfirmedAt: '2026-11-15T10:20:00+09:00'
+                        amountDeclinedAt: null
+                        issuedAt: '2026-11-15T10:20:00+09:00'
+                        deliveredAt: '2026-11-15T10:20:00+09:00'
+                        dueAt: '2026-11-15T22:20:00+09:00'
+                        dueCapAt: '2026-11-18T14:00:00+09:00'
+                        claimedAt: null
+                        claimRejectedAt: null
+                        depositorName: null
+                        mismatchAmount: 15000
+                        arrivedAmount: 15000
+                        arrivedAt: '2026-11-15T12:00:00+09:00'
+                        paidAt: null
+                        expiredAt: null
+                        closedAt: '2026-11-15T14:00:00+09:00'
+                        closeReason: change_closed
+                        revision: 9cc8397a27c4
                       payments:
                       - paymentId: 042b0fab-a05b-5daf-b003-731c5699c0df
                         paymentRequestId: 319cfb99-4f34-5128-b1ed-e1197c6449b3
@@ -16425,7 +16576,11 @@ paths:
                         voidedAt: null
                         voidReason: null
                       refunds: []
-                      changeRequests: []
+                      changeRequests:
+                      - changeRequestId: 6d96f249-8f76-5f14-b626-aec0569639ec
+                        status: closed_no_difference
+                        baseVersion: 1
+                        createdAt: '2026-11-15T10:00:00+09:00'
                       production:
                         productionId: 8d224710-ffc7-592a-9d8a-ac34a713ea5f
                         needsCustomMaterial: false
@@ -17888,7 +18043,11 @@ paths:
                         voidedAt: null
                         voidReason: null
                       refunds: []
-                      changeRequests: []
+                      changeRequests:
+                      - changeRequestId: 0cb9c97f-781b-5e75-937e-260b8ff623da
+                        status: applied
+                        baseVersion: 1
+                        createdAt: '2026-11-15T10:00:00+09:00'
                       production:
                         productionId: 8d224710-ffc7-592a-9d8a-ac34a713ea5f
                         needsCustomMaterial: false
@@ -18067,6 +18226,32 @@ paths:
                         closedAt: null
                         closeReason: null
                         revision: 27ee169f5f27
+                      - paymentRequestId: 5b4c3160-dfc6-53f6-bc17-c9f7d0a32a07
+                        order:
+                          orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                          orderNo: K7Q3M9
+                        kind: difference
+                        status: open
+                        amount: 20000
+                        requestedQuote: null
+                        needsAmountConfirm: true
+                        amountConfirmedAt: null
+                        amountDeclinedAt: null
+                        issuedAt: '2026-11-15T10:20:00+09:00'
+                        deliveredAt: null
+                        dueAt: '2026-11-18T14:00:00+09:00'
+                        dueCapAt: '2026-11-18T14:00:00+09:00'
+                        claimedAt: null
+                        claimRejectedAt: null
+                        depositorName: null
+                        mismatchAmount: null
+                        arrivedAmount: null
+                        arrivedAt: null
+                        paidAt: null
+                        expiredAt: null
+                        closedAt: null
+                        closeReason: null
+                        revision: "177483138887"
                       payments:
                       - paymentId: 042b0fab-a05b-5daf-b003-731c5699c0df
                         paymentRequestId: 319cfb99-4f34-5128-b1ed-e1197c6449b3
@@ -18076,7 +18261,11 @@ paths:
                         voidedAt: null
                         voidReason: null
                       refunds: []
-                      changeRequests: []
+                      changeRequests:
+                      - changeRequestId: 6d96f249-8f76-5f14-b626-aec0569639ec
+                        status: awaiting_difference
+                        baseVersion: 1
+                        createdAt: '2026-11-15T10:00:00+09:00'
                       production:
                         productionId: 8d224710-ffc7-592a-9d8a-ac34a713ea5f
                         needsCustomMaterial: false
@@ -18264,7 +18453,11 @@ paths:
                         voidedAt: null
                         voidReason: null
                       refunds: []
-                      changeRequests: []
+                      changeRequests:
+                      - changeRequestId: 6d96f249-8f76-5f14-b626-aec0569639ec
+                        status: rejected
+                        baseVersion: 1
+                        createdAt: '2026-11-15T10:00:00+09:00'
                       production:
                         productionId: 8d224710-ffc7-592a-9d8a-ac34a713ea5f
                         needsCustomMaterial: false
@@ -19263,7 +19456,7 @@ paths:
       operationId: listReviews
       summary: 후기와 사진 게시 동의
       description: |-
-        후기마다 현재 버전의 글과 사진, 사진마다 게시 동의 상태와 포트폴리오에 올렸는지.
+        후기마다 현재 버전의 글과 사진, 사진마다 게시 동의 상태와 포트폴리오에 올렸는지. 순서: 새 후기(createdAt이 늦은 것)가 앞, 같으면 후기 ID 순(DEC-14).
 
         SPEC: SPEC-062, SPEC-063
       tags:
@@ -19409,7 +19602,7 @@ paths:
       operationId: getPortfolio
       summary: 포트폴리오와 올릴 수 있는 사진
       description: |-
-        올린 사진과, 올릴 수 있는지 보이는 후보(완성 사진·후기 사진. 손님이 그 사진의 게시에 동의하고 철회하지 않은 사진만 올릴 수 있음, REQ-209). 가게가 도안으로 올린 견본 사진은 손님 사진이 아니라 후보에 없고 가격표에 보인다(REQ-210).
+        올린 사진과, 올릴 수 있는지 보이는 후보(완성 사진·후기 사진. 손님이 그 사진의 게시에 동의하고 철회하지 않은 사진만 올릴 수 있음, REQ-209). 가게가 도안으로 올린 견본 사진은 손님 사진이 아니라 후보에 없고 가격표에 보인다(REQ-210). 순서: 올린 사진은 올린 시각(publishedAt)이 늦은 것이 앞, 후보는 사진을 남긴 시각이 늦은 것이 앞. 나누지 않고 각각 200개까지 한 번에 준다(DEC-14의 예외).
 
         SPEC: SPEC-063
       tags:
@@ -21210,7 +21403,7 @@ paths:
       operationId: submitReview
       summary: 후기 수신(카카오 오픈빌더 스킬)
       description: |-
-        후기 부탁 안내(SPEC-061)의 버튼이 여는 오픈빌더 '후기' 블록이 보내는 스킬(DEC-18). action.params의 review_text(1~1,000자), review_photos(보안 이미지 플러그인 값: privacyAgreement·imageQuantity·secureUrls·expire, 5장까지), photo_consent(그 사진들을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 후기 하나에 한 번 물은 답. 기본 동의 안 함이고 답을 사진마다 남김, REQ-208, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)와 clientExtra.orderNo. 받은 주문이고 그 주문을 요청한 사용자일 때만 남긴다. 사진은 서명 주소가 사는 10분 안에 내려받고 한 번 다시 받아도 실패하면 photo_download_failed. 같은 주문의 두 번째 후기는 새 버전. 후기 부탁 버튼은 그 가게가 넣은 '후기' 블록 ID를 부른다. 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: review)은 후기를 남기지 않고 그 블록이 닿았다는 것만 남기며, 다섯째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-206).
+        후기 부탁 안내(SPEC-061)의 버튼이 여는 오픈빌더 '후기' 블록이 보내는 스킬(DEC-18). action.params의 review_text(1~1,000자), review_photos(보안 이미지 플러그인 값: privacyAgreement·imageQuantity·secureUrls·expire, 5장까지), photo_consent(그 사진들을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 후기 하나에 한 번 물은 답. 기본 동의 안 함이고 답을 사진마다 남김, REQ-208, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)와 clientExtra.orderNo. 받은 주문이고 그 주문을 요청한 사용자일 때만 남긴다. 사진은 서명 주소가 사는 10분 안에 내려받고 한 번 다시 받아도 실패하면 photo_download_failed. 같은 주문의 두 번째 후기는 새 버전. 후기 부탁 버튼은 그 가게가 넣은 '후기' 블록 ID를 부른다. 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: review)은 후기를 남기지 않고 그 블록이 닿았다는 것만 남기며, 다섯째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-206). Open: 블록이 파라미터를 다 채운 뒤 부르는 스킬 요청에도 후기 부탁 버튼의 extra(clientExtra.orderNo)가 남는지 카카오 문서에 없어 남는다고 가정하고(확인 전 가정), 남지 않으면 그 사용자에게 가장 최근에 보낸 후기 부탁의 주문에 붙인다(OPEN-12).
 
         SPEC: SPEC-062, SPEC-019, SPEC-061, SPEC-008
       tags:
@@ -21926,7 +22119,7 @@ paths:
       operationId: getShopConsultation
       summary: 상담 하나(가린 값)
       description: |-
-        그 가게 상담의 메시지마다 발신자·시각·종류·글자 수·사진 수만 보이고 대화 글은 보이지 않는다: 번호 마스킹(SPEC-021)은 대화 속 이름·알레르기 같은 말을 가리지 않기 때문이다(REQ-227). 대화 글은 사유를 적어 API-077(targetKind consultation_text, 보고 있는 페이지의 cursor)로 한 페이지씩 연다. 대화 속 번호는 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. 카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 있고 열 수 없다(REQ-192). 사진은 수만 보이고 열지 않는다(REQ-194). 지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074).
+        그 가게 상담의 메시지마다 발신자·시각·종류·글자 수·사진 수만 보이고 대화 글은 보이지 않는다: 번호 마스킹(SPEC-021)은 대화 속 이름·알레르기 같은 말을 가리지 않기 때문이다(REQ-227). 대화 글은 사유를 적어 API-077(targetKind consultation_text, 보고 있는 페이지의 cursor)로 한 페이지씩 연다. 대화 속 번호는 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. 카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 있고 열 수 없다(REQ-192). 사진은 수만 보이고 열지 않는다(REQ-194). 지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074). 순서: 시각(at) 순이고 새 메시지가 뒤, 같은 시각이면 남긴 차례(DEC-14). 사장님 답과 손님 안내는 이 보기에 넣지 않는다(대화 글을 보이지 않는 보기).
 
         SPEC: SPEC-073, SPEC-074
       tags:
@@ -23374,7 +23567,7 @@ paths:
       operationId: listIdentityChanges
       summary: 사업자 정보 변경 요청 목록
       description: |-
-        운영자가 확인할 사업자 정보 변경 요청을 요청한 차례로 보인다(status가 없으면 pending). 요청마다 지금 값과 새 값, 증빙 사진(서명 주소), 결제 계좌의 은행·예금주·끝 4자리와 예금주가 새 대표자·상호와 같은지(holderMatchesNew)를 보인다. 다르면 표시만 하고 막지 않는다(REQ-197). 계좌번호 전체는 보이지 않는다(SPEC-003).
+        운영자가 확인할 사업자 정보 변경 요청을 요청한 차례로 보인다(status가 없으면 pending). 요청마다 지금 값과 새 값, 증빙 사진(서명 주소), 결제 계좌의 은행·예금주·끝 4자리와 예금주가 새 대표자·상호와 같은지(holderMatchesNew)를 보인다. 다르면 표시만 하고 막지 않는다(REQ-197). 계좌번호 전체는 보이지 않는다(SPEC-003). 순서: 요청한 시각이 이른 것이 앞, 같으면 요청 ID 순(DEC-14).
 
         SPEC: SPEC-078
       tags:
@@ -24453,7 +24646,7 @@ components:
           format: uuid
         alertChannelFriend:
           type: boolean
-          description: 우리 서비스 카카오톡 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침(DEC-21, REQ-183). 아니면 알림은 할 일 목록에만(SPEC-067)
+          description: 우리 서비스 카카오톡 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침(DEC-21, REQ-260). 아니면 알림은 할 일 목록에만(SPEC-067)
         createdAt:
           type: string
           format: date-time
@@ -27872,9 +28065,9 @@ components:
         orderNo:
           type: string
           minLength: 6
-          maxLength: 12
-          pattern: ^[0-9A-Z]{6,12}$
-          description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+          maxLength: 8
+          pattern: ^[0-9A-Z]{6,8}$
+          description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
       additionalProperties: false
     OwnerTask:
       type: object
@@ -27925,7 +28118,7 @@ components:
           - string
           - "null"
           format: date-time
-          description: 지연 안내를 보낼 시각(기다리는 시간을 답하는 시간 안에서만 셈, REQ-118). 답 없어 닫는 때(1-7)와 다름
+          description: 지연 안내를 보낼 시각(기다리는 시간을 답하는 시간 안에서만 셈, REQ-259). 답 없어 닫는 때(1-7)와 다름
         order:
           anyOf:
           - $ref: '#/components/schemas/OrderRef'
@@ -28012,8 +28205,8 @@ components:
           - string
           - "null"
           minLength: 0
-          maxLength: 4000
-          description: 전화번호·계좌번호는 원래 값으로 되돌린 글(그 가게 사장님 화면에만, SPEC-021). 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192)
+          maxLength: 100000
+          description: 전화번호·계좌번호는 원래 값으로 되돌린 글(그 가게 사장님 화면에만, SPEC-021). 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192). 손님 글은 받은 길이 그대로(스킬 요청의 발화와 같은 100,000자까지, SPEC-017은 1,000자를 넘는 글도 상담 기록에 남김, 설계 재검토 RD-17)
         photos:
           type: array
           items:
@@ -28288,6 +28481,9 @@ components:
           - customer
           - ai
           - system
+          - owner
+          - notice
+          description: 손님·AI 상담·서버가 만든 글(고지·정해진 문장)·사장님 답(그 상담의 손님 안내 가운데 owner_reply)·서버가 보낸 그 밖의 손님 안내(결제 안내·확정 안내·지연 안내 등, 05단계 notifications). owner·notice는 손님 안내를 시각 순으로 섞어 준 것(설계 재검토 RD-17)
         kind:
           type: string
           enum:
@@ -28300,8 +28496,8 @@ components:
           - string
           - "null"
           minLength: 0
-          maxLength: 4000
-          description: 사장님 화면에는 전화번호·계좌번호를 원래 값으로 되돌린 글. 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192)
+          maxLength: 100000
+          description: 사장님 화면에는 전화번호·계좌번호를 원래 값으로 되돌린 글. 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192). 손님 글은 받은 길이 그대로(스킬 요청의 발화와 같은 100,000자까지, SPEC-017은 1,000자를 넘는 글도 상담 기록에 남김). 손님 안내는 보낸 글(결제 안내의 계좌번호 자리는 채우지 않음, 설계 재검토 RD-17)
         photos:
           type: array
           items:
@@ -28327,7 +28523,10 @@ components:
           - deferred
           - delivered_later
           - failed
+          - sending
+          - event_api
           - null
+          description: '나간 글이 간 길: 바로 답·콜백·다음 대화 때 전할 것·그렇게 전함·실패. 손님 안내는 그 밖에 보내는 중(sending: 보낼 것·다시 보낼 것·발송 결과 확인 중)과 먼저 보냄(event_api: 카카오 Event API로 보내고 닿음을 확인함, SPEC-066). 들어온 글은 null'
       additionalProperties: false
     ConsultationMessagePage:
       type: object
@@ -29255,9 +29454,9 @@ components:
         orderNo:
           type: string
           minLength: 6
-          maxLength: 12
-          pattern: ^[0-9A-Z]{6,12}$
-          description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+          maxLength: 8
+          pattern: ^[0-9A-Z]{6,8}$
+          description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
         kind:
           type: string
           enum:
@@ -29458,9 +29657,9 @@ components:
         orderNo:
           type: string
           minLength: 6
-          maxLength: 12
-          pattern: ^[0-9A-Z]{6,12}$
-          description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+          maxLength: 8
+          pattern: ^[0-9A-Z]{6,8}$
+          description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
         kind:
           type: string
           enum:
@@ -31212,9 +31411,9 @@ components:
                 orderNo:
                   type: string
                   minLength: 6
-                  maxLength: 12
-                  pattern: ^[0-9A-Z]{6,12}$
-                  description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+                  maxLength: 8
+                  pattern: ^[0-9A-Z]{6,8}$
+                  description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
                 check:
                   type: string
                   enum:
@@ -31343,9 +31542,9 @@ components:
                                   orderNo:
                                     type: string
                                     minLength: 6
-                                    maxLength: 12
-                                    pattern: ^[0-9A-Z]{6,12}$
-                                    description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+                                    maxLength: 8
+                                    pattern: ^[0-9A-Z]{6,8}$
+                                    description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
                                   check:
                                     type: string
                                     enum:
@@ -31377,7 +31576,8 @@ components:
                         altText:
                           type: string
                           minLength: 1
-                          maxLength: 1000
+                          maxLength: 50
+                          description: 스크린 리더가 읽는 대체 글. 카카오 응답 형식의 최대 50자(설계 재검토 RD-14). 접근성 때문에 꼭 넣는 값으로 둠
                       additionalProperties: false
                   additionalProperties: false
               minItems: 1
@@ -31425,9 +31625,9 @@ components:
                       orderNo:
                         type: string
                         minLength: 6
-                        maxLength: 12
-                        pattern: ^[0-9A-Z]{6,12}$
-                        description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+                        maxLength: 8
+                        pattern: ^[0-9A-Z]{6,8}$
+                        description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
                       check:
                         type: string
                         enum:
@@ -31632,9 +31832,9 @@ components:
             order_no:
               type: string
               minLength: 6
-              maxLength: 12
-              pattern: ^[0-9A-Z]{6,12}$
-              description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+              maxLength: 8
+              pattern: ^[0-9A-Z]{6,8}$
+              description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
             photo_positions:
               type: array
               items:
@@ -31696,9 +31896,9 @@ components:
             order_no:
               type: string
               minLength: 6
-              maxLength: 12
-              pattern: ^[0-9A-Z]{6,12}$
-              description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+              maxLength: 8
+              pattern: ^[0-9A-Z]{6,8}$
+              description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
             changes:
               $ref: '#/components/schemas/ChangeSet'
           additionalProperties: false
@@ -31726,9 +31926,9 @@ components:
         orderNo:
           type: string
           minLength: 6
-          maxLength: 12
-          pattern: ^[0-9A-Z]{6,12}$
-          description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+          maxLength: 8
+          pattern: ^[0-9A-Z]{6,8}$
+          description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
         kept:
           type: boolean
           description: 끝나고 30일이 지나 보관 기록이 됨. true면 주문번호·끝난 날·보관 기간과 keptRecordId만 있고 나머지는 null(SPEC-073, 05단계 A22)
@@ -31831,9 +32031,9 @@ components:
           items:
             type: string
             minLength: 6
-            maxLength: 12
-            pattern: ^[0-9A-Z]{6,12}$
-            description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+            maxLength: 8
+            pattern: ^[0-9A-Z]{6,8}$
+            description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
           minItems: 0
           maxItems: 20
           description: 이 상담에서 다룬 주문번호
@@ -32059,9 +32259,9 @@ components:
         orderNo:
           type: string
           minLength: 6
-          maxLength: 12
-          pattern: ^[0-9A-Z]{6,12}$
-          description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+          maxLength: 8
+          pattern: ^[0-9A-Z]{6,8}$
+          description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
         kind:
           type: string
           enum:
@@ -32301,9 +32501,9 @@ components:
         orderNo:
           type: string
           minLength: 6
-          maxLength: 12
-          pattern: ^[0-9A-Z]{6,12}$
-          description: 주문번호. 손님에게 보이는 유일한 번호(G6)
+          maxLength: 8
+          pattern: ^[0-9A-Z]{6,8}$
+          description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
         customerName:
           type:
           - string
@@ -33221,6 +33421,7 @@ components:
         operations:
         - API-078
         - API-001
+        - API-007
         - API-038
         - API-039
       too_many_attempts:
@@ -33820,8 +34021,8 @@ components:
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-14
       title: 목록은 커서 방식
-      choice: 목록은 `cursor`와 `limit`(1~100, 기본 20)로 나눠 받고 `nextCursor`가 없으면 끝
-      why: 할 일·주문이 쌓여도 같은 속도. 행이 끼어도 중복되거나 빠지지 않음
+      choice: '목록은 `cursor`와 `limit`(1~100, 기본 20)로 나눠 받고 `nextCursor`가 없으면 끝. 목록을 주는 API는 설명의 ''순서:''에 정렬 키를 적고, 같은 값이면 ID 순으로 끊어 쪽 사이에 겹침·빠짐이 없게 함(2026-11-15 설계 재검토 RD-13). 예외: 범위가 정해진 목록은 나누지 않고 한 번에 줌: 가격표·운영규정 버전(API-018·022, 저장할 때마다 하나라 1,000개까지), 영업 캘린더(API-028, 62일까지), 날짜별 제작 목록(API-051, 그날의 주문 100개까지), 포트폴리오(API-067, 올린 사진과 후보 각각 200개까지)'
+      why: 할 일·주문이 쌓여도 같은 속도. 행이 끼어도 중복되거나 빠지지 않음. 순서가 없으면 화면과 서버가 따로 정하고 쪽 나누기 테스트를 쓸 수 없음(할 일은 지연된 것이 뒤로 밀리면 안 됨)
       alt: '쪽 번호: 화면은 쉽지만 새 행이 생기면 중복됨'
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-15
@@ -33832,8 +34033,8 @@ components:
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-16
       title: 요청 빈도 한도
-      choice: 예약 링크 페이지는 같은 주소에서 1분 60번(SPEC-011), 사장님 로그인은 1분 10번, 운영자 로그인 실패는 15분 5번을 넘으면 429와 `Retry-After`. 손님 메시지의 1분 20번(SPEC-017)은 스킬 응답 `rate_limited`
-      why: SPEC-011의 긁어 가기 막기와 로그인 무차별 대입 막기
+      choice: 예약 링크 페이지는 같은 주소에서 1분 60번(SPEC-011), 사장님 로그인은 1분 10번, 운영자 로그인 실패는 15분 5번을 넘으면 429와 `Retry-After`. 손님 메시지의 1분 20번(SPEC-017)은 스킬 응답 `rate_limited`. 사진 올리기(API-007)는 사장님마다 1분 30번, 쓰지 않은 올린 파일(1시간 안)은 50개까지이고 넘으면 429 `rate_limited`와 `Retry-After`(2026-11-15 설계 재검토 RD-18)
+      why: SPEC-011의 긁어 가기 막기와 로그인 무차별 대입 막기. 사진 올리기는 가게 등록 전(신고증)에도 카카오 계정만으로 열려 있어 한 사람이 저장소를 채워 다른 가게의 등록을 막지 않게 함
       alt: '한도 없음: 첫 버전 가게 1~3곳이라 버틸 수 있지만 운영자 계정이 위험'
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-17
@@ -33919,6 +34120,9 @@ components:
     - id: OPEN-11
       where: API-078, API-001
       text: '카카오 로그인의 PKCE: 카카오 로그인 문서(2026-11-14 확인)의 OIDC 설정은 code_challenge_methods_supported S256을 알리지만, 인가 코드 받기·토큰 받기의 매개변수 표에는 code_challenge·code_verifier가 없음. 개발 전 시험 앱으로 보내 보고, 받지 않으면 PKCE 없이 state만으로 시작(state는 매개변수 표에 있음, 설계 재검토 RD-11)'
+    - id: OPEN-12
+      where: API-072
+      text: '후기 블록이 글·사진·게시 동의를 차례로 물은 뒤 부르는 스킬 요청에도 후기 부탁 버튼의 extra(clientExtra.orderNo)가 남는지: 카카오 응답 형식 문서(2026-11-13 설계 재검토 RD-20)는 extra를 ''블록 호출시'' 준다고만 적음. 확인 전 가정: 남음. 개발 전 시험 채널의 실제 후기 블록으로 확인하고, 남지 않으면 그 사용자에게 가장 최근에 보낸 후기 부탁(05단계 notifications의 review_request)의 주문에 붙임'
     jobs:
     - spec: SPEC-024
       job: '사장님 답 기다림 타이머: 기다리는 시간이 지나면 지연 안내 한 번과 다시 알림 한 번(답하는 시간 안에서만 셈, 결제 확인 요청·맞추는 중·환불 결정도, REQ-215). 닫는 때(하루 내내 셈)가 오면 맞춤 주문 요청은 그 픽업 날짜의 주문 마감에 주문을 ''답 없어 닫힘''으로, 변경 요청은 변경 마감에, 에스컬레이션 건은 남긴 지 7일에 ''답 없어 닫힘''으로 닫고 손님에게 한 번 알림(REQ-213, REQ-214, REQ-216). 결제 확인 요청은 결제 기한 상한에 결제 기한 지남으로(SPEC-037). 맞추는 중·환불 결정·문제 신고는 닫지 않음(1-7)'
@@ -34457,3 +34661,23 @@ components:
       why: 들어온 금액이 안내 금액보다 많은 결제 안내는 결제 확인 취소를 409 invalid_state로 막음(취소하면 들어온 금액이 지워짐, SPEC-070)
       decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토가 남긴 빈 곳, PR J2)
       client: 입금 대조 화면(SCR-029)이 그때 결제 확인 취소를 보이지 않음. 있던 409의 경우를 더한 것이라 A13은 찾지 않아 여기 적음
+    - what: '값의 뜻이 바뀜: ConsultationMessage.author에 owner·notice, delivery에 sending·event_api(API-043)'
+      why: 상담 대화 조회가 그 상담의 손님 안내(사장님 답과 서버가 보낸 안내)를 시각 순으로 섞어 줌. 사장님이 손님이 실제로 받은 안내와 자기 답을 대화에서 봄(설계 재검토 RD-17)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '높음·중간 뒤에 따로 고침 (추천)'(설계 재검토 낮음 K2, 검토자의 고치는 방향대로)
+      client: 상담 대화 화면(SCR-018)이 '사장님 답'·'안내' 라벨과 '보내는 중'·'먼저 보냄'을 보임. 응답 enum에 값을 더한 것이라 A13은 찾지 않아 여기 적음
+    - what: '값의 한도가 넓어짐: ConsultationMessage.text·CustomerLine.text 4,000자 → 100,000자(API-041·043)'
+      why: 스킬 요청의 발화를 100,000자까지 받고 SPEC-017은 1,000자를 넘는 글도 상담 기록에 남기므로 주는 한도를 받는 한도와 맞춤(설계 재검토 RD-17)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '높음·중간 뒤에 따로 고침 (추천)'(설계 재검토 낮음 K2, 검토자의 고치는 방향대로)
+      client: 상담 대화·에스컬레이션 건 화면이 긴 글을 '더 보기'로 접음. 응답 글 길이의 한도라 A13은 찾지 않아 여기 적음
+    - what: '값의 한도가 좁아짐: 주문번호(orderNo 등) 6~12자 → 6~8자'
+      why: 04단계 SPEC-029의 주문번호 형식(영문 대문자·숫자 6~8자의 무작위 값, 설계 재검토 낮음 K1·RB-24)과 05단계 `orders.order_no` CHECK에 맞춤
+      decided: 2026-11-13 20:59 동희님 결정 카드 '높음·중간 뒤에 따로 고침 (추천)'(설계 재검토 낮음 K2, 검토자의 고치는 방향대로)
+      client: 화면의 주문번호 입력 검사와 스킬 요청의 주문번호가 8자까지. 패턴을 좁힌 것이라 A13은 찾지 않아 여기 적음
+    - what: '값의 한도가 좁아짐: 스킬 응답 simpleImage.altText 1~1,000자 → 1~50자(API-070~072)'
+      why: 카카오 응답 형식의 altText는 최대 50자(설계 재검토 RD-14). 꼭 넣는 값은 접근성 때문에 그대로
+      decided: 2026-11-13 20:59 동희님 결정 카드 '높음·중간 뒤에 따로 고침 (추천)'(설계 재검토 낮음 K2, 검토자의 고치는 방향대로)
+      client: 서버가 만드는 스킬 응답이라 화면은 그대로. 패턴·길이를 좁힌 것이라 A13은 찾지 않아 여기 적음
+    - what: '응답을 더함: API-007 429 rate_limited'
+      why: 사진 올리기에 사장님마다의 빈도 한도(1분 30번)와 쓰지 않은 올린 파일 50개 한도(DEC-16, 설계 재검토 RD-18)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '높음·중간 뒤에 따로 고침 (추천)'(설계 재검토 낮음 K2, 검토자의 고치는 방향대로)
+      client: 사진을 올리는 화면이 429의 Retry-After 뒤에 다시 올리게 함. 응답 코드를 더한 것이라 A13은 찾지 않아 여기 적음

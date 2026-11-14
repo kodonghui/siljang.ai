@@ -180,9 +180,9 @@ INSERT INTO payment_accounts (id, shop_id, bank_name, account_number_enc, accoun
 INSERT INTO customers (id, shop_id, kakao_channel_id, kakao_user_key, channel_friend, friend_checked_at) VALUES
   ('c0000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'user-key-1', true, now()),
   ('c0000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'user-key-2', false, now());
-INSERT INTO consultations (id, shop_id, customer_id, status, ai_disclosed_at, last_customer_message_at) VALUES
-  ('c1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'ordered', now(), now()),
-  ('c1000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002', 'ordered', now(), now());
+INSERT INTO consultations (id, shop_id, customer_id, status, ai_disclosed_at, ai_disclosed_policy_version, last_customer_message_at) VALUES
+  ('c1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'ordered', now(), 1, now()),
+  ('c1000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002', 'ordered', now(), 1, now());
 INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id, delivery, sent_at) VALUES
   ('c2000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-1', '24일 1호 생크림요, 연락처 [전화번호1]', 'trace-1', NULL, NULL),
   ('c2000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'outbound', 'ai', 'text', NULL, '1호 생크림은 40,000원이에요', 'trace-1', 'skill_response', now()),
@@ -886,6 +886,11 @@ SELECT pg_temp.expect_fail('AI-1 모르는 다시 한 종류', 'ai_calls_call_ki
 SELECT pg_temp.expect_ok('AI-1 차례마다 호출 상한을 정해진 문장을 쓴 이유로 남김', ARRAY[$$
   UPDATE ai_calls SET fallback_reason = 'call_limit' WHERE id = 'fd000000-0000-0000-0000-000000000001'$$]);
 
+SELECT pg_temp.expect_fail('RC-20 고지 시각만 있고 고지한 처리방침 버전 없음', 'consultations_disclosed_policy_chk', ARRAY[$$
+  UPDATE consultations SET ai_disclosed_policy_version = NULL WHERE id = 'c1000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('RC-20 그 가게에 없는 처리방침 버전을 고지', 'consultations_disclosed_policy_fk', ARRAY[$$
+  UPDATE consultations SET ai_disclosed_policy_version = 9 WHERE id = 'c1000000-0000-0000-0000-000000000002'$$]);
+
 -- 주문 (CTX-003)
 SELECT pg_temp.expect_fail('REQ-054 규정 동의 없는 주문 요청', 'orders_consent_chk', ARRAY[$$
   INSERT INTO orders (shop_id, order_no, customer_id, consultation_id, draft_id, kind, status, price_list_id, operating_rules_id,
@@ -903,6 +908,10 @@ SELECT pg_temp.expect_fail('1-2 없는 주문 상태', 'orders_status_check', AR
   UPDATE orders SET status = 'done' WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
 SELECT pg_temp.expect_fail('R21 결제 있는 재제작 주문', 'orders_remake_chk', ARRAY[$$
   UPDATE orders SET amount = 1000 WHERE id = 'd0000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('RC-19 재제작이 아닌 주문의 0원', 'orders_amount_paid_chk', ARRAY[$$
+  UPDATE orders SET amount = 0 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('RB-24 9자 주문번호(SPEC-029는 6~8자)', 'orders_order_no_check', ARRAY[$$
+  UPDATE orders SET order_no = 'ABCDE1234' WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
 SELECT pg_temp.expect_fail('E2 주문 행 금액이 현재 버전과 다름', 'orders_current_details_fk', ARRAY[$$
   UPDATE orders SET amount = 61000 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
 SELECT pg_temp.expect_fail('E2 없는 버전을 현재 버전으로', 'orders_current_details_fk', ARRAY[$$
@@ -1916,8 +1925,8 @@ UPDATE orders SET finished_at = now(), lock_version = lock_version + 1
 UPDATE consultations SET status = 'ended', ended_at = now() WHERE id = 'c1000000-0000-0000-0000-000000000001';
 INSERT INTO customers (id, shop_id, kakao_channel_id, kakao_user_key, channel_friend, friend_checked_at) VALUES
   ('c0000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'user-key-3', false, now());
-INSERT INTO consultations (id, shop_id, customer_id, status, ai_disclosed_at, last_customer_message_at, dropped_at) VALUES
-  ('c1000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000003', 'dropped', now(), now(), now());
+INSERT INTO consultations (id, shop_id, customer_id, status, ai_disclosed_at, ai_disclosed_policy_version, last_customer_message_at, dropped_at) VALUES
+  ('c1000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000003', 'dropped', now(), 1, now(), now());
 INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id, delivery, sent_at) VALUES
   ('c2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'inbound', 'customer', 'photo', 'km-5', NULL, 'trace-5', NULL, NULL),
   ('c2000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'inbound', 'customer', 'photo', 'km-6', NULL, 'trace-6', NULL, NULL),
@@ -1977,9 +1986,9 @@ SELECT pg_temp.expect_ok('M13 원래 주문과 재제작 주문을 함께 다시
    WHERE id IN ('d0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002')$$]);
 
 SELECT pg_temp.expect_left('REQ-189 상담 끝남 뒤 같은 손님의 새 상담', $$
-  WITH c AS (INSERT INTO consultations (id, shop_id, customer_id, status, ai_disclosed_at, last_customer_message_at)
+  WITH c AS (INSERT INTO consultations (id, shop_id, customer_id, status, ai_disclosed_at, ai_disclosed_policy_version, last_customer_message_at)
              VALUES ('c1000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001',
-                     'open', now(), now())
+                     'open', now(), 1, now())
              RETURNING status)
   SELECT status FROM c$$, 'open');
 -- 열린 새 상담(c1..04)의 AI 도구 호출 기록 둘: 지금 남긴 것은 31일 뒤 지우기에, 2일 뒤 남긴 것은 32일 뒤 지우기에 30일이 지남(README 6절 8)

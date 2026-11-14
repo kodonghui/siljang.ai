@@ -472,7 +472,7 @@ def summary(o, courier=False):
             "revision": o["revision"]}
 
 
-ORDER_LIST = {"items": [summary(CUSTOM_REQUESTED), summary(ORDER_CONFIRMED)], "nextCursor": "b3JkZXI6MjAyNi0xMS0yMA"}
+ORDER_LIST = {"items": [summary(ORDER_CONFIRMED), summary(CUSTOM_REQUESTED)], "nextCursor": "b3JkZXI6MjAyNi0xMS0yMA"}
 # 결제 안내가 손님에게 전해지지 않은 채 결제 기한 상한(그날 주문 마감)에 기한 지남이 된 주문(SPEC-037 '아직 못 전함')
 ORDER_OVERDUE_UNDELIVERED = dict(summary(CUSTOM_OVERDUE), orderId=uid("order:W5N2C8"), orderNo="W5N2C8", pickupAt=t("11-21", "11:00"),
                                  pickupDay="2026-11-21", customerName="박서윤", requestedAt=t("11-14", "09:30"),
@@ -549,6 +549,36 @@ CHANGE_REJECTED = dict(CHANGE_TWO_TIER, status="rejected", decidedAt=t("11-15", 
 # 변경 마감(11/18 14:00)까지 사장님 답이 없어 '답 없어 닫힘'으로 닫힌 변경 요청. 주문은 원래대로(REQ-214)
 CHANGE_NO_ANSWER = dict(CHANGE, status="closed_no_answer", closedAt=t("11-18", "14:00"), revision=rev("change:1:noanswer"))
 CHANGE_SUMMARY = {"changeRequestId": CHANGE["changeRequestId"], "status": "applied", "baseVersion": 1, "createdAt": t("11-15", "10:00")}
+
+
+# 명령 결과의 위쪽 기록(결제 안내·결제·변경 요청)을 order 안 목록에도 같은 상태로 넣은 주문(설계 재검토 RD-12, check_api A5)
+def change_summary(c):
+    return {"changeRequestId": c["changeRequestId"], "status": c["status"], "baseVersion": c["baseVersion"], "createdAt": c["createdAt"]}
+
+
+ORDER_CHANGED_APPLIED = dict(ORDER_CHANGED, changeRequests=[change_summary(CHANGE_APPLIED)])
+ORDER_AWAITING_DIFFERENCE = dict(ORDER_CONFIRMED, paymentRequests=[PR_FIRST_PAID, PR_DIFFERENCE], changeRequests=[change_summary(CHANGE_AWAITING)])
+ORDER_CHANGE_REJECTED = dict(ORDER_CONFIRMED, changeRequests=[change_summary(CHANGE_REJECTED)])
+ORDER_CHANGE_CLOSED_BY_OWNER = dict(ORDER_CONFIRMED, paymentRequests=[PR_FIRST_PAID, PR_DIFF_CHANGE_CLOSED],
+                                    changeRequests=[change_summary(CHANGE_CLOSED_BY_OWNER)])
+# 차액 20,000원을 확인해 2단 변경이 반영된 주문(버전 2, 56,000원)
+PR_DIFF_PAID = dict(PR_DIFFERENCE_CONFIRMED, status="paid", paidAt=t("11-15", "12:00"), arrivedAmount=20000, arrivedAt=t("11-15", "12:00"),
+                    revision=rev("pr:diff:paid"))
+PAYMENT_DIFF = dict(PAYMENT, paymentId=uid("payment:K7Q3M9:diff"), paymentRequestId=PR_DIFFERENCE["paymentRequestId"], amount=20000,
+                    confirmedAt=t("11-15", "12:00"))
+CHANGE_DIFF_APPLIED = dict(CHANGE_AWAITING, status="applied", appliedVersion=2, appliedAt=t("11-15", "12:00"), orderVersion=2,
+                           differencePayment=PR_DIFF_PAID, revision=rev("change:2:applied"))
+DETAILS_V2_TWO_TIER = dict(DETAILS_V1, version=2, source="change_request", createdAt=t("11-15", "12:00"),
+                           extras=[opt("candle", "초 추가"), opt("two_tier", "2단")], amount=56000)
+ORDER_DIFF_APPLIED = dict(ORDER_CONFIRMED, version=2, amount=56000, details=[DETAILS_V2_TWO_TIER, DETAILS_V1],
+                          paymentRequests=[PR_FIRST_PAID, PR_DIFF_PAID], payments=[PAYMENT, PAYMENT_DIFF],
+                          changeRequests=[change_summary(CHANGE_DIFF_APPLIED)], revision=rev("order:K7Q3M9:v2:twotier"))
+# 결제 전에 취소된 주문: 확정 시각·확인된 결제가 없음(가게 사정 취소는 결제 안내를 닫음, 손님 취소 뒤 들어온 입금은 닫힌 결제 안내에 남음)
+PR_CLOSED_SHOP_CANCEL = dict(PR_VOIDED, status="closed", closedAt=t("11-14", "09:00"), closeReason="order_cancelled",
+                             revision=rev("pr:K7Q3M9:1:closed:shopcancel"))
+ORDER_SHOP_CANCELLED_UNPAID = dict(ORDER_CANCELLED_BY_SHOP, confirmedAt=None, paymentRequests=[PR_CLOSED_SHOP_CANCEL], payments=[],
+                                   revision=rev("order:K7Q3M9:shopcancel:unpaid"))
+ORDER_CANCELLED_UNPAID = dict(ORDER_CANCELLED_BY_CUSTOMER, confirmedAt=None, payments=[], revision=rev("order:K7Q3M9:customercancel:unpaid"))
 
 # ── 문제 신고 ───────────────────────────────────────────────────────────────
 ISSUE = {
@@ -627,24 +657,31 @@ MESSAGES = {
     ],
     "nextCursor": None,
 }
+# 사장님 답을 기다리다 지연 안내가 가고 사장님이 답한 대화: 그 상담의 손님 안내를 시각 순으로 섞음(author notice·owner, 설계 재검토 RD-17)
+MESSAGES_WITH_REPLY = dict(MESSAGES, status="open", items=MESSAGES["items"] + [
+    {"messageId": uid("notice:delay:1"), "at": t("11-12", "14:40"), "direction": "outbound", "author": "notice", "kind": "text",
+     "text": "사장님 답이 늦어지고 있어요. 답이 오면 바로 알려 드릴게요", "photos": [], "delivery": "event_api"},
+    {"messageId": uid("notice:reply:1"), "at": t("11-12", "15:02"), "direction": "outbound", "author": "owner", "kind": "text",
+     "text": "땅콩은 넣지 않지만 같은 작업대에서 견과류를 다뤄요. 걱정되시면 견과류를 다루지 않는 날로 잡아 드릴게요", "photos": [], "delivery": "event_api"},
+])
 
 # ── 할 일 ───────────────────────────────────────────────────────────────────
 TASKS = {"items": [
-    {"taskId": uid("task:1"), "kind": "handoff", "waitStatus": "waiting", "waitDueAt": t("11-12", "14:40"), "order": None,
-     "subject": {"type": "handoff", "id": HANDOFF["handoffId"]}, "summary": "먹어도 되는지 묻는 질문", "openedAt": t("11-12", "12:40"),
-     "closedAt": None},
     {"taskId": uid("task:2"), "kind": "custom_order", "waitStatus": "late", "waitDueAt": t("11-12", "16:10"), "order": CUSTOM_REF,
      "subject": {"type": "order", "id": CUSTOM_ID}, "summary": "맞춤 주문 11/20 16:00, 그날 남은 자리 0", "openedAt": t("11-12", "14:10"),
+     "closedAt": None},
+    {"taskId": uid("task:1"), "kind": "handoff", "waitStatus": "waiting", "waitDueAt": t("11-12", "14:40"), "order": None,
+     "subject": {"type": "handoff", "id": HANDOFF["handoffId"]}, "summary": "먹어도 되는지 묻는 질문", "openedAt": t("11-12", "12:40"),
      "closedAt": None},
     {"taskId": uid("task:3"), "kind": "payment_claim", "waitStatus": "waiting", "waitDueAt": t("11-12", "15:40"), "order": ORDER_REF,
      "subject": {"type": "payment_request", "id": PR_CLAIMED["paymentRequestId"]}, "summary": "결제 확인 요청 36,000원",
      "openedAt": t("11-12", "13:40"), "closedAt": None},
-    {"taskId": uid("task:4"), "kind": "refund_send", "waitStatus": None, "waitDueAt": None, "order": ORDER_REF,
-     "subject": {"type": "refund", "id": REFUND["refundId"]}, "summary": "환불 보내기 31,000원(정한 지 24시간 지남)",
-     "openedAt": t("11-14", "10:00"), "closedAt": None},
     {"taskId": uid("task:5"), "kind": "arrival_check", "waitStatus": None, "waitDueAt": None, "order": CUSTOM_REF,
      "subject": {"type": "payment_request", "id": PR_CUSTOM_OPEN["paymentRequestId"]}, "summary": "입금했다고 알린 뒤 취소한 주문의 들어온 입금 대조 75,000원",
      "openedAt": t("11-13", "09:12"), "closedAt": None},
+    {"taskId": uid("task:4"), "kind": "refund_send", "waitStatus": None, "waitDueAt": None, "order": ORDER_REF,
+     "subject": {"type": "refund", "id": REFUND["refundId"]}, "summary": "환불 보내기 31,000원(정한 지 24시간 지남)",
+     "openedAt": t("11-14", "10:00"), "closedAt": None}
 ], "nextCursor": None, "alertChannelFriend": True}
 TASKS_NOT_FRIEND = dict(TASKS, items=TASKS["items"][:1], alertChannelFriend=False)
 TASKS_EMPTY = {"items": [], "nextCursor": None, "alertChannelFriend": True}

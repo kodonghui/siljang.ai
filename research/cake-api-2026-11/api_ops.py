@@ -100,7 +100,7 @@ op(id="API-001", method="post", path="/owner/session", op="createOwnerSession", 
         "카카오 로그인 사용자 번호만 남기고 토큰은 버린다(DEC-10, REQ-135). "
         "토큰을 버리기 전에 카카오톡 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`, 채널 추가 상태 동의 `plusfriends`)를 한 번 해 "
         "사장님이 우리 서비스 채널 친구인지 남긴다(alertChannelFriend). 동의하지 않았거나 조회가 실패하면 로그인은 막지 않고 친구 여부를 바꾸지 않는다. "
-        "사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-183). "
+        "사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-260). "
         "세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_owner`이고, 로그인 시작 쿠키는 지운다. `next`가 화면이 열 곳(가게 등록·신고증 다시 올리기·할 일 목록). "
         "카카오 로그인이 실패하거나 동의를 거부하면 우리 쪽 기록을 남기지 않음. "
         "Open: 세션 길이는 사장님 30일(쓰면 늘어남)을 첫 값으로 제안, 개발 전에 정함(OPEN-5). "
@@ -125,7 +125,7 @@ op(id="API-002", method="get", path="/owner/me", op="getOwnerMe", tag="로그인
    summary="로그인한 사장님과 가게, 상단 배너", spec=["SPEC-001", "SPEC-067"], auth="owner",
    desc="사장님 화면을 열 때 세션을 확인한다. 세션이 없거나 만료됐으면 401이고 화면은 로그인으로 보낸 뒤 원래 주소로 돌아온다(SPEC-001). "
         "`banners`의 add_alert_channel은 사장님이 우리 서비스 채널 친구가 아니라 알림이 할 일 목록에만 남는다는 안내(SPEC-067). "
-        "친구가 아니라고 남아 있으면 마지막으로 본 지 1분이 지났을 때 우리 앱의 Admin 키로 채널 관계를 다시 조회해(target_id_type=user_id) 친구가 되었으면 배너를 빼고 보인다(DEC-21, REQ-183).",
+        "친구가 아니라고 남아 있으면 마지막으로 본 지 1분이 지났을 때 우리 앱의 Admin 키로 채널 관계를 다시 조회해(target_id_type=user_id) 친구가 되었으면 배너를 빼고 보인다(DEC-21, REQ-260).",
    ok=[(200, "Me", {
        "friend": {"owner": E.OWNER, "shop": E.SHOP_SUMMARY, "banners": []},
        "not_friend": {"owner": dict(E.OWNER, alertChannelFriend=False), "shop": E.SHOP_SUMMARY, "banners": ["add_alert_channel"]},
@@ -177,14 +177,14 @@ op(id="API-007", method="post", path="/owner/uploads", op="createUpload", tag="�
    summary="사진 업로드(신고증·도안·완성 사진)", spec=["SPEC-002", "SPEC-004", "SPEC-053"], auth="owner",
    desc="사진 한 장을 먼저 올리고 받은 uploadId를 명령에 쓴다(1시간 안, DEC-09). 용도별 한도: 신고증 JPG·PNG·HEIC 10MB, 도안 JPG·PNG·HEIC·WEBP 10MB, "
         "완성 사진 JPG·PNG·HEIC·WEBP 20MB. 파일 종류는 내용으로 확인한다. 저장 위치는 응답에 포함하지 않는다(G6). "
-        "다시 올려도 새 uploadId가 하나 더 생길 뿐이라 요청 키를 받지 않는다(DEC-04 밖).",
+        "다시 올려도 새 uploadId가 하나 더 생길 뿐이라 요청 키를 받지 않는다(DEC-04 밖). 사장님마다 1분에 30번, 아직 쓰지 않은 올린 파일(1시간 안)은 50개까지 받고, 넘으면 429 rate_limited와 Retry-After(DEC-16, 설계 재검토 RD-18).",
    body="UploadForm", body_type="multipart",
    ok=[(201, "Upload", {"license_photo": E.UPLOAD_LICENSE, "completion_photo": E.UPLOAD_COMPLETION})],
-   errors={413: ["file_too_large"], 503: ["storage_unavailable"]},
+   errors={413: ["file_too_large"], 429: ["rate_limited"], 503: ["storage_unavailable"]},
    fields=[("/file", "not_allowed")],
    omit={"403": O403, "404": O404_NOPATH, "409": "올리기는 다른 기록과 충돌하지 않음"},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed", "413:file_too_large"],
-          "한도": ["413:file_too_large"], "외부": ["503:storage_unavailable"], "노출": ["closed"], "화면": ["screen"]})
+          "한도": ["413:file_too_large", "429:rate_limited"], "외부": ["503:storage_unavailable"], "노출": ["closed"], "화면": ["screen"]})
 
 # ═══ 가게 ═════════════════════════════════════════════════════════════════════
 op(id="API-008", method="post", path="/owner/shop", op="registerShop", tag="가게",
@@ -267,7 +267,7 @@ op(id="API-080", method="post", path="/owner/shop/identity-changes", op="request
 # ═══ 운영자 ═══════════════════════════════════════════════════════════════════
 op(id="API-012", method="get", path="/operator/shops", op="listReviewShops", tag="운영자",
    summary="영업 신고 확인할 가게 목록", spec=["SPEC-003", "SPEC-002"], auth="operator",
-   desc="이 목록에는 가게 등록 정보만 있다. 손님·주문 기록은 가게 기록 보기(API-074~077)에서 가린 값으로만 본다(SPEC-003, SPEC-073). 같은 사업자등록번호의 다른 가게가 있으면 duplicateBusinessRegNo(SPEC-002).",
+   desc="이 목록에는 가게 등록 정보만 있다. 손님·주문 기록은 가게 기록 보기(API-074~077)에서 가린 값으로만 본다(SPEC-003, SPEC-073). 같은 사업자등록번호의 다른 가게가 있으면 duplicateBusinessRegNo(SPEC-002). 순서: 등록한 시각(createdAt)이 이른 가게가 앞(오래 기다린 확인부터), 같으면 가게 ID 순(DEC-14).",
    params=[q("status", {"type": "string", "enum": ["pending", "on_hold", "verified"]}, "영업 신고 상태로 거름. 없으면 pending", "pending"), CURSOR, LIMIT],
    ok=[(200, "ReviewShopList", {"pending": {"items": [E.REVIEW_SUMMARY, dict(E.REVIEW_SUMMARY, shopId=E.OTHER_SHOP_ID, name="별빛베이커리",
                                                                              businessName="별빛베이커리", representativeName="최별빛",
@@ -317,7 +317,7 @@ op(id="API-014", method="post", path="/operator/shops/{shopId}/license-review", 
 
 op(id="API-015", method="get", path="/operator/alerts", op="listOperatorAlerts", tag="운영자",
    summary="운영자 알림", spec=["SPEC-008", "SPEC-010", "SPEC-017"], auth="operator",
-   desc="이미 다른 가게에 묶인 채널(SPEC-008), 처리방침 국외 이전 항목 빔(SPEC-010), 한 가게에서 5분에 AI 실패 5번(AI-1). 내용 없이 건수만(E10).",
+   desc="이미 다른 가게에 묶인 채널(SPEC-008), 처리방침 국외 이전 항목 빔(SPEC-010), 한 가게에서 5분에 AI 실패 5번(AI-1). 내용 없이 건수만(E10). 순서: 새 알림(createdAt이 늦은 것)이 앞, 같으면 알림 ID 순(DEC-14).",
    params=[CURSOR, LIMIT],
    ok=[(200, "OperatorAlertList", {"alerts": E.OPERATOR_ALERTS, "empty": E.EMPTY_PAGE})],
    fields=[("query:cursor", "bad_format")],
@@ -328,7 +328,7 @@ op(id="API-015", method="get", path="/operator/alerts", op="listOperatorAlerts",
 op(id="API-081", method="get", path="/operator/identity-changes", op="listIdentityChanges", tag="운영자",
    summary="사업자 정보 변경 요청 목록", spec=["SPEC-078"], auth="operator",
    desc="운영자가 확인할 사업자 정보 변경 요청을 요청한 차례로 보인다(status가 없으면 pending). 요청마다 지금 값과 새 값, 증빙 사진(서명 주소), "
-        "결제 계좌의 은행·예금주·끝 4자리와 예금주가 새 대표자·상호와 같은지(holderMatchesNew)를 보인다. 다르면 표시만 하고 막지 않는다(REQ-197). 계좌번호 전체는 보이지 않는다(SPEC-003).",
+        "결제 계좌의 은행·예금주·끝 4자리와 예금주가 새 대표자·상호와 같은지(holderMatchesNew)를 보인다. 다르면 표시만 하고 막지 않는다(REQ-197). 계좌번호 전체는 보이지 않는다(SPEC-003). 순서: 요청한 시각이 이른 것이 앞, 같으면 요청 ID 순(DEC-14).",
    params=[q("status", {"type": "string", "enum": ["pending", "applied", "on_hold"]}, "변경 요청 상태로 거름. 없으면 pending", "pending"), CURSOR, LIMIT],
    ok=[(200, "IdentityChangeList", {"pending": {"items": [E.IDENTITY_REVIEW, E.IDENTITY_REVIEW_HOLDER_DIFFERENT], "nextCursor": None},
                                     "empty": E.EMPTY_PAGE})],
@@ -384,7 +384,7 @@ op(id="API-075", method="get", path="/operator/shops/{shopId}/consultations/{con
    desc="그 가게 상담의 메시지마다 발신자·시각·종류·글자 수·사진 수만 보이고 대화 글은 보이지 않는다: 번호 마스킹(SPEC-021)은 대화 속 이름·알레르기 같은 말을 가리지 않기 때문이다(REQ-227). "
         "대화 글은 사유를 적어 API-077(targetKind consultation_text, 보고 있는 페이지의 cursor)로 한 페이지씩 연다. 대화 속 번호는 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. "
         "카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 있고 열 수 없다(REQ-192). 사진은 수만 보이고 열지 않는다(REQ-194). "
-        "지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074).",
+        "지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074). 순서: 시각(at) 순이고 새 메시지가 뒤, 같은 시각이면 남긴 차례(DEC-14). 사장님 답과 손님 안내는 이 보기에 넣지 않는다(대화 글을 보이지 않는 보기).",
    params=[pid("shopId", "가게", E.SHOP_ID), pid("consultationId", "상담", E.CONSULT_ID), CURSOR, LIMIT],
    ok=[(200, "OperatorConsultation", {"consultation": E.OP_CONSULTATION, "deleted": E.OP_CONSULTATION_DELETED})],
    errors={404: ["not_found"]},
@@ -460,7 +460,7 @@ op(id="API-017", method="post", path="/owner/price-list/versions", op="createPri
 
 op(id="API-018", method="get", path="/owner/price-list/versions", op="listPriceListVersions", tag="가격표",
    summary="가격표 버전 목록", spec=["SPEC-004"], auth="owner",
-   desc="새 버전이 앞. 이전 버전은 지우지 않는다(REQ-027).",
+   desc="이전 버전은 지우지 않는다(REQ-027). 순서: 새 버전이 앞. 버전은 저장할 때마다 하나라 나누지 않고 1,000개까지 한 번에 준다(DEC-14의 예외).",
    ok=[(200, "VersionList", {"versions": E.PRICE_VERSIONS, "empty": {"items": []}})],
    errors={404: ["shop_not_registered"]},
    omit={"403": O403, "409": O409_READ, "422": O422_NOINPUT},
@@ -511,7 +511,7 @@ op(id="API-021", method="post", path="/owner/operating-rules/versions", op="crea
 
 op(id="API-022", method="get", path="/owner/operating-rules/versions", op="listOperatingRulesVersions", tag="운영규정",
    summary="운영규정 버전 목록", spec=["SPEC-005"], auth="owner",
-   desc="새 버전이 앞. 이전 버전은 지우지 않는다(REQ-027).",
+   desc="이전 버전은 지우지 않는다(REQ-027). 순서: 새 버전이 앞. 버전은 저장할 때마다 하나라 나누지 않고 1,000개까지 한 번에 준다(DEC-14의 예외).",
    ok=[(200, "VersionList", {"versions": {"items": [{"version": 2, "createdAt": E.t("11-12", "11:20"), "supersededAt": None},
                                                     {"version": 1, "createdAt": E.t("11-12", "10:50"), "supersededAt": E.t("11-12", "11:20")}]},
                              "empty": {"items": []}})],
@@ -592,7 +592,7 @@ op(id="API-027", method="put", path="/owner/calendar", op="setCalendarSettings",
 
 op(id="API-028", method="get", path="/owner/calendar/days", op="listCalendarDays", tag="영업 캘린더",
    summary="날짜별 남은 자리와 마감 현황", spec=["SPEC-007", "SPEC-012", "SPEC-015"], auth="owner",
-   desc="from~to(62일까지)의 날마다 하루 최대 개수·잡힌 자리·남은 자리·마감·마감 후 추가 수락. 남은 자리 수는 사장님 화면에만(G6).",
+   desc="from~to(62일까지)의 날마다 하루 최대 개수·잡힌 자리·남은 자리·마감·마감 후 추가 수락. 남은 자리 수는 사장님 화면에만(G6). 순서: 날짜 순(from부터 to까지 하루 한 행). 나누지 않고 한 번에 준다(DEC-14의 예외).",
    params=[q("from", {"type": "string", "format": "date"}, "첫 날(가게 시간대)", "2026-11-19", True),
            q("to", {"type": "string", "format": "date"}, "끝 날. from부터 62일까지", "2026-11-23", True)],
    ok=[(200, "CalendarDayList", {"days": E.CALENDAR_DAYS})],
@@ -774,7 +774,7 @@ op(id="API-038", method="get", path="/public/shops/{slug}", op="getBookingPage",
 
 op(id="API-039", method="get", path="/public/shops/{slug}/privacy-policy", op="getPrivacyPolicy", tag="예약 링크",
    summary="가게 개인정보 처리방침", spec=["SPEC-010", "SPEC-011", "SPEC-018"], auth="public",
-   desc="가장 최근 버전. 국외 이전 다섯 항목(REQ-141)을 받는 자마다 포함한다. AI 상담 고지가 이 주소를 건다(SPEC-018). 처리하는 개인정보 항목에 알레르기 정보(따로 동의한 손님에게서만, 쓰는 목적·보는 사람·지우는 때)를 적고, AI를 거치지 않는 입력으로 받으므로 AI 모델 회사의 국외 이전 항목에는 넣지 않는다(REQ-204, SPEC-010, SPEC-075).",
+   desc="가장 최근 버전. 국외 이전 다섯 항목(REQ-141)을 받는 자마다 포함한다. AI 상담 고지가 이 주소를 건다(SPEC-018): 고지의 링크는 늘 가장 최근 버전을 보이고, 고지 때 게시된 버전은 05단계 consultations.ai_disclosed_policy_version에 남는다(설계 재검토 RC-20). 처리하는 개인정보 항목에 알레르기 정보(따로 동의한 손님에게서만, 쓰는 목적·보는 사람·지우는 때)를 적고, AI를 거치지 않는 입력으로 받으므로 AI 모델 회사의 국외 이전 항목에는 넣지 않는다(REQ-204, SPEC-010, SPEC-075).",
    params=[PSLUG],
    ok=[(200, "PrivacyPolicy", {"policy": E.PRIVACY}, ["Cache-Control"])],
    errors={404: ["not_found"], 429: ["rate_limited"]},
@@ -787,7 +787,7 @@ op(id="API-040", method="get", path="/owner/tasks", op="listOwnerTasks", tag="�
    desc="사장님이 정할 일(에스컬레이션 건·맞춤 주문·결제 확인 요청·맞추는 중·결제 기한 지남·변경 요청·문제 신고·환불 결정·취소 뒤 들어온 입금·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)). 환불 보내기는 '보냄'을 표시하면 닫히고, 정한 뒤 24시간이 지나면 한 번 다시 알린다. "
         "기다림 상태(waitStatus)는 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정에만(SPEC-024, REQ-215): 기다림·지연·답함·답 없어 닫힘. "
         "답 없어 닫힘은 에스컬레이션 건(7일)·맞춤 주문(그 픽업 날짜의 주문 마감)·변경 요청(변경 마감)·결제 확인 요청(결제 기한 상한)만이고, 맞추는 중·환불 결정·문제 신고는 지연 뒤에도 할 일 목록에 남는다(1-7). subject가 열 화면. "
-        "알림은 우리 서비스 채널로 가고, 사장님이 채널 친구가 아니면 alertChannelFriend false(SPEC-067).",
+        "알림은 우리 서비스 채널로 가고, 사장님이 채널 친구가 아니면 alertChannelFriend false(SPEC-067). 순서: 열린 할 일은 지연(waitStatus late)이 앞, 그다음 기다림 기한(waitDueAt)이 이른 것, 기다림 기한이 없는 할 일은 그 뒤에 연 시각(openedAt) 순. 닫힌 할 일은 닫힌 시각(closedAt)이 늦은 것이 앞. 같으면 할 일 ID 순(DEC-14, 설계 재검토 RD-13).",
    params=[q("status", {"type": "string", "enum": ["open", "closed"]}, "열림·닫힘. 없으면 open", "open"), CURSOR, LIMIT],
    ok=[(200, "OwnerTaskList", {"open_tasks": E.TASKS, "not_friend": E.TASKS_NOT_FRIEND, "empty": E.TASKS_EMPTY})],
    errors={404: ["shop_not_registered"]},
@@ -856,11 +856,13 @@ op(id="API-083", method="post", path="/owner/handoffs/{handoffId}/issue-report",
 
 op(id="API-043", method="get", path="/owner/consultations/{consultationId}/messages", op="listConsultationMessages", tag="에스컬레이션 건·상담",
    summary="상담 대화 조회", spec=["SPEC-021", "SPEC-019", "SPEC-068", "SPEC-065"], auth="owner",
-   desc="그 가게 상담만. 사장님 화면에는 마스킹한 전화번호·계좌번호를 원래 값으로 되돌린 글과 참고 사진(서명 주소)이 보인다. 카드번호는 플레이스홀더와 끝 4자리, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 보인다(원래 값을 두지 않음, REQ-192). 새 메시지가 뒤. "
+   desc="그 가게 상담만. 사장님 화면에는 마스킹한 전화번호·계좌번호를 원래 값으로 되돌린 글과 참고 사진(서명 주소)이 보인다. 카드번호는 플레이스홀더와 끝 4자리, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 보인다(원래 값을 두지 않음, REQ-192). "
+        "그 상담의 손님 안내(05단계 notifications)도 함께 준다: 사장님 답은 author owner, 서버가 보낸 그 밖의 안내(결제 안내·확정 안내·지연 안내 등)는 author notice이고 direction outbound, kind text, 사진 없음. 안내의 at은 전한 시각(아직 못 전했으면 만든 시각), delivery는 보내는 중 sending·먼저 보냄 event_api·다음 대화 때 전할 것 deferred·그렇게 전함 delivered_later·보내지 못함 failed. 결제 안내의 계좌번호 자리는 채우지 않은 글 그대로이고, 주문이 끝나고 30일이 지나 지운 그 주문의 안내는 빠진다(SPEC-065, 설계 재검토 RD-17). "
+        "순서: 시각(at) 순이고 새 메시지가 뒤, 같은 시각이면 남긴 차례(DEC-14). "
         "다룬 주문이 모두 끝나 상담 끝남으로 닫힌 상담(SPEC-025)은 status ended로 대화가 지우기 전까지 그대로 보이고, 그 손님의 다음 말은 새 상담에 남는다. "
         "지워진 상담(SPEC-065)은 status deleted와 빈 items.",
    params=[pid("consultationId", "상담", E.CONSULT_ID), CURSOR, LIMIT],
-   ok=[(200, "ConsultationMessagePage", {"messages": E.MESSAGES,
+   ok=[(200, "ConsultationMessagePage", {"messages": E.MESSAGES, "with_owner_reply": E.MESSAGES_WITH_REPLY,
                                          "deleted": dict(E.MESSAGES, status="deleted", items=[], nextCursor=None)})],
    errors={404: ["not_found"]},
    fields=[("query:limit", "out_of_range")],
@@ -873,7 +875,7 @@ op(id="API-044", method="get", path="/owner/orders", op="listOrders", tag="주�
    summary="주문 목록", spec=["SPEC-031", "SPEC-037", "SPEC-068"], auth="owner",
    desc="상태·종류·픽업 날짜로 거른다. status=payment_overdue가 결제 기한 지난 주문 목록(SPEC-037)이고, paymentNotice로 결제 안내가 손님에게 전해진 시각이나 아직 못 전함(deliveredAt null)을 보인다. "
         "status=requested&kind=custom이 답할 맞춤 주문. "
-        "끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)은 나오지 않는다.",
+        "끝나고 30일이 지나 보관 기록이 된 주문(SPEC-065, REQ-187)은 나오지 않는다. 순서: 픽업 일시(pickupAt)가 이른 주문이 앞, 같으면 요청 시각(requestedAt) 순, 그다음 주문 ID 순(DEC-14).",
    params=[q("status", {"type": "string", "enum": ["requested", "awaiting_payment", "payment_overdue", "confirmed", "received", "no_pickup", "rejected", "cancelled"]},
              "주문 상태", "requested"),
            q("kind", {"type": "string", "enum": ["standard", "custom"]}, "기본 디자인·맞춤"),
@@ -957,7 +959,7 @@ op(id="API-048", method="post", path="/owner/orders/{orderId}/shop-cancel", op="
    body="ShopCancelInput",
    body_examples={"cancel": {"baseRevision": E.ORDER_CONFIRMED["revision"], "reason": "오븐이 고장 나 그날 만들 수 없어요"}},
    ok=[(200, "ShopCancelResult", {"cancelled_paid": {"outcome": "done", "order": E.ORDER_CANCELLED_BY_SHOP, "refundPreview": E.REFUND_PREVIEW_SHOP},
-                                  "cancelled_unpaid": {"outcome": "done", "order": dict(E.ORDER_CANCELLED_BY_SHOP, paymentRequests=[], payments=[]),
+                                  "cancelled_unpaid": {"outcome": "done", "order": E.ORDER_SHOP_CANCELLED_UNPAID,
                                                        "refundPreview": None},
                                   "unchanged": {"outcome": "unchanged", "order": E.ORDER_CANCELLED_BY_SHOP, "refundPreview": None}})],
    errors={404: ["not_found"], 409: ["version_conflict", "invalid_state", "already_decided"]},
@@ -1024,7 +1026,7 @@ op(id="API-050", method="post", path="/owner/orders/{orderId}/refunds", op="deci
 # ═══ 제작 ═════════════════════════════════════════════════════════════════════
 op(id="API-051", method="get", path="/owner/production-days/{day}", op="getProductionDay", tag="제작",
    summary="날짜별 제작 목록과 그날 픽업", spec=["SPEC-050", "SPEC-054", "SPEC-045"], auth="owner",
-   desc="확정된 주문과 재제작 주문만, 픽업 일시 순(SPEC-050). 픽업 시각·퀵 여부(SPEC-054), 맞춤 재료 필요·변경됨 표시. 결제 전·취소된 주문은 없다. 알레르기 정보에 동의하지 않은 주문은 요약의 allergyConsent가 declined이고 알레르기 답이 없다(REQ-203).",
+   desc="확정된 주문과 재제작 주문만(SPEC-050). 픽업 시각·퀵 여부(SPEC-054), 맞춤 재료 필요·변경됨 표시. 결제 전·취소된 주문은 없다. 알레르기 정보에 동의하지 않은 주문은 요약의 allergyConsent가 declined이고 알레르기 답이 없다(REQ-203). 순서: 픽업 일시 순, 같으면 주문번호 순. 그날의 주문을 나누지 않고 한 번에 준다(DEC-14의 예외).",
    params=[pday("2026-11-20", "볼 날")],
    ok=[(200, "ProductionDay", {"day": E.PRODUCTION_DAY, "empty": E.PRODUCTION_DAY_EMPTY})],
    errors={404: ["shop_not_registered"]},
@@ -1123,7 +1125,7 @@ op(id="API-056", method="post", path="/owner/orders/{orderId}/discard", op="disc
 # ═══ 결제 안내 ════════════════════════════════════════════════════════════════
 op(id="API-057", method="get", path="/owner/payment-requests", op="listPaymentRequests", tag="결제 안내",
    summary="입금 대조 목록", spec=["SPEC-034", "SPEC-033", "SPEC-035", "SPEC-037"], auth="owner",
-   desc="안내 금액·입금자 이름·결제 기한·확인 요청 여부. 입금자 이름은 사장님 화면에만, AI로 보내지 않는다.",
+   desc="안내 금액·입금자 이름·결제 기한·확인 요청 여부. 입금자 이름은 사장님 화면에만, AI로 보내지 않는다. 순서: 결제 기한(dueAt)이 이른 것이 앞, 기한이 없는 것(새 금액 확인 전)은 그 뒤에 보낸 시각(issuedAt) 순, 같으면 결제 안내 ID 순(DEC-14).",
    params=[q("status", {"type": "string", "enum": ["open", "claimed", "mismatch", "paid", "expired", "closed"]}, "결제 안내 상태", "claimed"),
            CURSOR, LIMIT],
    ok=[(200, "PaymentRequestList", {"claimed": {"items": [E.PR_CLAIMED, E.PR_CUSTOM_OPEN], "nextCursor": None}, "empty": E.EMPTY_PAGE})],
@@ -1171,24 +1173,25 @@ op(id="API-059", method="post", path="/owner/payment-requests/{paymentRequestId}
                   "close_change": {"baseRevision": E.PR_DIFF_MISMATCH["revision"], "result": "close_change"}},
    ok=[(200, "ReconciliationResult", {
        "confirmed": {"outcome": "done", "paymentRequest": E.PR_FIRST_PAID, "payment": E.PAYMENT, "order": E.ORDER_CONFIRMED, "changeRequest": None},
-       "mismatch": {"outcome": "done", "paymentRequest": E.PR_MISMATCH, "payment": None, "order": E.ORDER_AWAITING, "changeRequest": None},
-       "difference_applied": {"outcome": "done", "paymentRequest": dict(E.PR_DIFFERENCE_CONFIRMED, status="paid", paidAt=E.t("11-15", "12:00"),
-                                                                      arrivedAmount=20000, arrivedAt=E.t("11-15", "12:00"), revision=E.rev("pr:diff:paid")),
-                              "payment": dict(E.PAYMENT, paymentId=E.uid("payment:K7Q3M9:diff"), paymentRequestId=E.PR_DIFFERENCE["paymentRequestId"],
-                                              amount=20000, confirmedAt=E.t("11-15", "12:00")),
-                              "order": E.ORDER_CHANGED, "changeRequest": dict(E.CHANGE_AWAITING, status="applied", appliedVersion=2,
-                                                                               appliedAt=E.t("11-15", "12:00"), orderVersion=2,
-                                                                               revision=E.rev("change:2:applied"))},
+       "mismatch": {"outcome": "done", "paymentRequest": E.PR_MISMATCH, "payment": None, "order": dict(E.ORDER_AWAITING, paymentRequests=[E.PR_MISMATCH]),
+                    "changeRequest": None},
+       "difference_applied": {"outcome": "done", "paymentRequest": E.PR_DIFF_PAID, "payment": E.PAYMENT_DIFF, "order": E.ORDER_DIFF_APPLIED,
+                              "changeRequest": E.CHANGE_DIFF_APPLIED},
        "paid_after_cancel": {"outcome": "paid_after_cancel", "paymentRequest": dict(E.PR_CLAIMED, status="closed", closedAt=E.t("11-14", "09:00"),
                                                                                     closeReason="order_cancelled", arrivedAmount=36000,
                                                                                     arrivedAt=E.t("11-14", "09:40"), revision=E.rev("pr:closed")),
-                             "payment": None, "order": E.ORDER_CANCELLED_BY_CUSTOMER, "changeRequest": None},
-       "arrived": {"outcome": "done", "paymentRequest": E.PR_CLOSED_ARRIVED, "payment": None, "order": E.ORDER_CANCELLED_BY_CUSTOMER, "changeRequest": None},
-       "arrived_again": {"outcome": "done", "paymentRequest": E.PR_CLOSED_ARRIVED_AGAIN, "payment": None, "order": E.ORDER_CANCELLED_BY_CUSTOMER, "changeRequest": None},
+                             "payment": None, "order": dict(E.ORDER_CANCELLED_UNPAID, paymentRequests=[dict(E.PR_CLAIMED, status="closed", closedAt=E.t("11-14", "09:00"),
+                                                                                                      closeReason="order_cancelled", arrivedAmount=36000,
+                                                                                                      arrivedAt=E.t("11-14", "09:40"), revision=E.rev("pr:closed"))]),
+                             "changeRequest": None},
+       "arrived": {"outcome": "done", "paymentRequest": E.PR_CLOSED_ARRIVED, "payment": None,
+                   "order": dict(E.ORDER_CANCELLED_UNPAID, paymentRequests=[E.PR_CLOSED_ARRIVED]), "changeRequest": None},
+       "arrived_again": {"outcome": "done", "paymentRequest": E.PR_CLOSED_ARRIVED_AGAIN, "payment": None,
+                         "order": dict(E.ORDER_CANCELLED_UNPAID, paymentRequests=[E.PR_CLOSED_ARRIVED_AGAIN]), "changeRequest": None},
        "voided": {"outcome": "done", "paymentRequest": E.PR_VOIDED, "payment": E.PAYMENT_VOIDED,
                   "order": dict(E.ORDER_AWAITING, paymentRequests=[E.PR_VOIDED], payments=[E.PAYMENT_VOIDED], production=None,
                                 revision=E.rev("order:K7Q3M9:voided")), "changeRequest": None},
-       "change_closed": {"outcome": "done", "paymentRequest": E.PR_DIFF_CHANGE_CLOSED, "payment": None, "order": E.ORDER_CONFIRMED,
+       "change_closed": {"outcome": "done", "paymentRequest": E.PR_DIFF_CHANGE_CLOSED, "payment": None, "order": E.ORDER_CHANGE_CLOSED_BY_OWNER,
                          "changeRequest": E.CHANGE_CLOSED_BY_OWNER},
        "unchanged": {"outcome": "unchanged", "paymentRequest": E.PR_FIRST_PAID, "payment": E.PAYMENT, "order": E.ORDER_CONFIRMED, "changeRequest": None}})],
    errors={404: ["not_found"], 409: ["version_conflict", "slot_released", "already_decided", "invalid_state"]},
@@ -1263,10 +1266,10 @@ op(id="API-063", method="post", path="/owner/change-requests/{changeRequestId}/d
    body_examples={"accept_same": {"baseRevision": E.CHANGE["revision"], "decision": "accept", "amountDirection": "same"},
                   "accept_more": {"baseRevision": E.CHANGE_TWO_TIER["revision"], "decision": "accept", "amountDirection": "up", "amountDifference": 20000},
                   "reject": {"baseRevision": E.CHANGE_TWO_TIER["revision"], "decision": "reject", "rejectReason": "2단은 사흘 전까지만 받아요"}},
-   ok=[(200, "ChangeDecisionResult", {"applied": {"outcome": "done", "changeRequest": E.CHANGE_APPLIED, "order": E.ORDER_CHANGED, "paymentRequest": None},
-                                      "awaiting_difference": {"outcome": "done", "changeRequest": E.CHANGE_AWAITING, "order": E.ORDER_CONFIRMED,
+   ok=[(200, "ChangeDecisionResult", {"applied": {"outcome": "done", "changeRequest": E.CHANGE_APPLIED, "order": E.ORDER_CHANGED_APPLIED, "paymentRequest": None},
+                                      "awaiting_difference": {"outcome": "done", "changeRequest": E.CHANGE_AWAITING, "order": E.ORDER_AWAITING_DIFFERENCE,
                                                               "paymentRequest": E.PR_DIFFERENCE},
-                                      "rejected": {"outcome": "done", "changeRequest": E.CHANGE_REJECTED, "order": E.ORDER_CONFIRMED, "paymentRequest": None}})],
+                                      "rejected": {"outcome": "done", "changeRequest": E.CHANGE_REJECTED, "order": E.ORDER_CHANGE_REJECTED, "paymentRequest": None}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "order_cancelled", "invalid_state", "confirmation_required"]},
    fields=[("/amountDirection", "required"), ("/amountDirection", "not_allowed"), ("/amountDifference", "required"),
            ("/amountDifference", "out_of_range"), ("/amountDifference", "not_allowed")],
@@ -1328,7 +1331,7 @@ op(id="API-065", method="post", path="/owner/issue-reports/{issueReportId}/compe
 # ═══ 후기와 포트폴리오 ════════════════════════════════════════════════════════
 op(id="API-066", method="get", path="/owner/reviews", op="listReviews", tag="후기·포트폴리오",
    summary="후기와 사진 게시 동의", spec=["SPEC-062", "SPEC-063"], auth="owner",
-   desc="후기마다 현재 버전의 글과 사진, 사진마다 게시 동의 상태와 포트폴리오에 올렸는지.",
+   desc="후기마다 현재 버전의 글과 사진, 사진마다 게시 동의 상태와 포트폴리오에 올렸는지. 순서: 새 후기(createdAt이 늦은 것)가 앞, 같으면 후기 ID 순(DEC-14).",
    params=[CURSOR, LIMIT],
    ok=[(200, "ReviewList", {"reviews": E.REVIEWS, "empty": E.EMPTY_PAGE})],
    errors={404: ["shop_not_registered"]},
@@ -1339,7 +1342,7 @@ op(id="API-066", method="get", path="/owner/reviews", op="listReviews", tag="후
 
 op(id="API-067", method="get", path="/owner/portfolio", op="getPortfolio", tag="후기·포트폴리오",
    summary="포트폴리오와 올릴 수 있는 사진", spec=["SPEC-063"], auth="owner",
-   desc="올린 사진과, 올릴 수 있는지 보이는 후보(완성 사진·후기 사진. 손님이 그 사진의 게시에 동의하고 철회하지 않은 사진만 올릴 수 있음, REQ-209). 가게가 도안으로 올린 견본 사진은 손님 사진이 아니라 후보에 없고 가격표에 보인다(REQ-210).",
+   desc="올린 사진과, 올릴 수 있는지 보이는 후보(완성 사진·후기 사진. 손님이 그 사진의 게시에 동의하고 철회하지 않은 사진만 올릴 수 있음, REQ-209). 가게가 도안으로 올린 견본 사진은 손님 사진이 아니라 후보에 없고 가격표에 보인다(REQ-210). 순서: 올린 사진은 올린 시각(publishedAt)이 늦은 것이 앞, 후보는 사진을 남긴 시각이 늦은 것이 앞. 나누지 않고 각각 200개까지 한 번에 준다(DEC-14의 예외).",
    ok=[(200, "Portfolio", {"portfolio": E.PORTFOLIO, "empty": {"items": [], "candidates": []}})],
    errors={404: ["shop_not_registered"]},
    omit={"403": O403, "409": O409_READ, "422": O422_NOINPUT},
@@ -1472,7 +1475,7 @@ op(id="API-072", method="post", path="/kakao/skills/review", op="submitReview", 
         "review_photos(보안 이미지 플러그인 값: privacyAgreement·imageQuantity·secureUrls·expire, 5장까지), photo_consent(그 사진들을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 후기 하나에 한 번 물은 답. 기본 동의 안 함이고 답을 사진마다 남김, REQ-208, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)와 clientExtra.orderNo. "
         "받은 주문이고 그 주문을 요청한 사용자일 때만 남긴다. 사진은 서명 주소가 사는 10분 안에 내려받고 한 번 다시 받아도 실패하면 photo_download_failed. 같은 주문의 두 번째 후기는 새 버전. "
         "후기 부탁 버튼은 그 가게가 넣은 '후기' 블록 ID를 부른다. 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: review)은 후기를 남기지 않고 그 블록이 닿았다는 것만 남기며, "
-        "다섯째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-206).",
+        "다섯째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-206). Open: 블록이 파라미터를 다 채운 뒤 부르는 스킬 요청에도 후기 부탁 버튼의 extra(clientExtra.orderNo)가 남는지 카카오 문서에 없어 남는다고 가정하고(확인 전 가정), 남지 않으면 그 사용자에게 가장 최근에 보낸 후기 부탁의 주문에 붙인다(OPEN-12).",
    body="SkillPayload", body_examples={"review": E.SKILL_REVIEW, "check_button": E.SKILL_CHECK_REVIEW},
    ok=[(200, "SkillTemplateResponse", dict({k: E.SKILL_OUTCOME_EXAMPLES[k] for k in REVIEW_OUTCOMES},
                                           duplicate=E.SKILL_OUTCOME_EXAMPLES["review_saved"],

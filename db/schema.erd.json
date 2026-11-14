@@ -222,7 +222,8 @@
       "03h8fnqbx9njz9apx49e320n6",
       "03h8gnq5avsmfi0qge0a73bgv",
       "03h8gnq5b1b7t8vvc4nlq48j3",
-      "03h8h9o7fmal8i2s5slfxxedx"
+      "03h8h9o7fmal8i2s5slfxxedx",
+      "03h8j8qws1dw85bg330wpceby"
     ],
     "indexIds": [
       "03h7y017apioxvv0yn8m6arb8",
@@ -698,6 +699,7 @@
           "03h7y0178vyo98xl8mmmjjh7a",
           "03h7y0178vyo98xl8mnudl56o",
           "03h7y0178vyo98xl8mqwwr9nv",
+          "03h8j8qpqyw8tcfia5xwho287",
           "03h7y0178vyo98xl8ms9hic1a",
           "03h7y0178vyo98xl8mul6vm6g",
           "03h8b7tnqiilx5upexzz2bz1m",
@@ -1763,7 +1765,7 @@
         "id": "03h7y0178fic3fnl5uunzf43j",
         "tableId": "03h7y0178fic3fnl5upga2t57",
         "name": "kakao_account_id",
-        "comment": "카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-183). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)",
+        "comment": "카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-260). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)",
         "dataType": "bigint",
         "options": 12
       },
@@ -2748,7 +2750,7 @@
         "id": "03h7y0178qg91ufre0ediif3t",
         "tableId": "03h7y0178qg91ufre06oh33jx",
         "name": "clause_key",
-        "comment": "템플릿의 조문 필드(REQ-031, REQ-033)나 가게가 더한 조문",
+        "comment": "템플릿의 조문 필드(REQ-031, REQ-258)나 가게가 더한 조문",
         "dataType": "text",
         "options": 8
       },
@@ -2878,7 +2880,7 @@
         "id": "03h7y0178qg91ufre1ed0q8sl",
         "tableId": "03h7y0178qg91ufre121gf2iv",
         "name": "reply_start",
-        "comment": "답하는 시간(TERM-080) 시작(REQ-118). 사장님 답 기다림은 이 안에서만 셈",
+        "comment": "답하는 시간(TERM-080) 시작(REQ-259). 사장님 답 기다림은 이 안에서만 셈",
         "dataType": "time",
         "default": "'09:00'",
         "options": 8
@@ -3231,6 +3233,14 @@
         "name": "ended_at",
         "comment": "상담 끝남으로 닫은 시각: 다룬 주문이 모두 끝나고 손님의 마지막 메시지 뒤 가게가 정한 시간이 지남(30일 지우기 셈, SPEC-025, REQ-189)",
         "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8j8qpqyw8tcfia5xwho287": {
+        "id": "03h8j8qpqyw8tcfia5xwho287",
+        "tableId": "03h7y0178vyo98xl8mfwdxckm",
+        "name": "ai_disclosed_policy_version",
+        "comment": "AI 상담 고지를 보낸 때 게시된 가장 최근 가게 처리방침(TBL-005)의 버전(REQ-140). 고지 시각과 함께 씀. 고지의 링크는 늘 가장 최근 버전을 보여 고지 때의 버전은 이 값으로 앎(4절 A39, 설계 재검토 RC-20)",
+        "dataType": "integer",
         "options": 0
       },
       "03h7y0178vyo98xl8n6qmhu08": {
@@ -3822,7 +3832,7 @@
         "id": "03h7y01791hwo1dbakplv380x",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "order_no",
-        "comment": "주문번호(TERM-081): 손님에게 보이는 유일한 번호. 차례 번호가 아닌 무작위라 주문 수가 드러나지 않음(G6)",
+        "comment": "주문번호(TERM-081): 손님에게 보이는 유일한 번호. 영문 대문자·숫자 6~8자(SPEC-029). 차례 번호가 아닌 무작위라 주문 수가 드러나지 않음(G6)",
         "dataType": "text",
         "options": 8
       },
@@ -6203,7 +6213,7 @@
         "id": "03h7y0179huqyalz2elqhv9m2",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "wait_due_at",
-        "comment": "지연 안내를 보낼 시각: 기다리는 시간을 답하는 시간 안에서만 셈(REQ-118). 답 없어 닫는 때(1-7)와 다름",
+        "comment": "지연 안내를 보낼 시각: 기다리는 시간을 답하는 시간 안에서만 셈(REQ-259). 답 없어 닫는 때(1-7)와 다름",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -10325,6 +10335,26 @@
             "03h7y0179cdtx0zvnu6w90fo9"
           ]
         }
+      },
+      "03h8j8qws1dw85bg330wpceby": {
+        "id": "03h8j8qws1dw85bg330wpceby",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178l0hvzg6df21wv102",
+          "columnIds": [
+            "03h7y0178l0hvzg6df7iz048w",
+            "03h7y0178l0hvzg6df8x17p4j"
+          ]
+        },
+        "end": {
+          "tableId": "03h7y0178vyo98xl8mfwdxckm",
+          "columnIds": [
+            "03h7y0178vyo98xl8mkyw1ymx",
+            "03h8j8qpqyw8tcfia5xwho287"
+          ]
+        }
       }
     },
     "indexEntities": {
@@ -12289,7 +12319,7 @@
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 412개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 414개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,
