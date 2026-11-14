@@ -126,7 +126,7 @@
 | `review_not_allowed` | 받으신 주문에만 후기를 남길 수 있어요 | 06단계 뼈대 그대로 |
 | `review_invalid` | 후기는 1,000자, 사진은 5장까지 남길 수 있어요 | 06단계 뼈대 그대로 |
 | `photo_download_failed` | 사진을 받지 못했어요. 다시 보내 주세요 | 06단계 뼈대 그대로 |
-| `notice_shown` | (그 안내의 글과 버튼. 서버의 정해진 템플릿: 결제 안내는 SCR-005, 확정 안내·전날 안내·완성 사진(사진 게시 동의 카드와 함께)·지연 안내·답·결과·후기 부탁은 SCR-011. 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드(SCR-005#amount-confirm)) | 06단계 뼈대 그대로 |
+| `notice_shown` | (그 안내의 글과 버튼. 서버의 정해진 템플릿: 결제 안내는 SCR-005, 확정 안내(결제가 확인된 금액·가게 신원을 담은 글과 그 주문의 규정 글)·전날 안내·완성 사진(사진 게시 동의 카드와 함께)·지연 안내·답·결과·후기 부탁은 SCR-011. 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드(SCR-005#amount-confirm)) | 06단계 뼈대 그대로 |
 | `notice_test` | 시험 안내예요. 이 안내가 보이면 손님에게 안내를 먼저 보낼 수 있어요 | 06단계 뼈대 그대로 |
 | `notice_gone` | 지금은 전할 안내가 없어요 | 06단계 뼈대 그대로 |
 <!-- 08-screens:outcomes:end -->
@@ -183,8 +183,8 @@
 | [SCR-031](SCR-031.md) | 픽업 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 37 |
 | [SCR-032](SCR-032.md) | 영업 캘린더 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 17 |
 | [SCR-033](SCR-033.md) | 영업 캘린더 설정 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 16 |
-| [SCR-034](SCR-034.md) | 가게 설정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 17 |
-| [SCR-035](SCR-035.md) | 영업 신고 | 사장님 | normal · loading · error · permission · stale · submitting · on-hold · done | empty | 22 |
+| [SCR-034](SCR-034.md) | 가게 설정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 19 |
+| [SCR-035](SCR-035.md) | 영업 신고 | 사장님 | normal · loading · error · permission · stale · submitting · on-hold · done | empty | 35 |
 | [SCR-036](SCR-036.md) | 가격표와 도안 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 22 |
 | [SCR-037](SCR-037.md) | 가격표 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
 | [SCR-038](SCR-038.md) | 운영규정 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 15 |
@@ -196,8 +196,8 @@
 | [SCR-044](SCR-044.md) | 포트폴리오 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 21 |
 | [SCR-045](SCR-045.md) | 후기 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
 | [SCR-046](SCR-046.md) | 운영자 로그인 | 운영자 | normal · error · rate-limited · submitting | loading · empty · permission · stale | 5 |
-| [SCR-047](SCR-047.md) | 영업 신고 확인 목록 | 운영자 | normal · loading · empty · error · permission · stale | - | 10 |
-| [SCR-048](SCR-048.md) | 영업 신고 확인 | 운영자 | normal · loading · empty · on-hold · error · permission · stale · submitting · confirm · done | - | 21 |
+| [SCR-047](SCR-047.md) | 영업 신고 확인 목록 | 운영자 | normal · loading · empty · error · permission · stale | - | 15 |
+| [SCR-048](SCR-048.md) | 영업 신고 확인 | 운영자 | normal · loading · empty · on-hold · error · permission · stale · submitting · confirm · done | - | 34 |
 | [SCR-049](SCR-049.md) | 운영자 알림 | 운영자 | normal · loading · empty · error · permission · stale | - | 5 |
 | [SCR-050](SCR-050.md) | 가게 기록 보기 | 운영자 | normal · loading · empty · error · permission · stale · confirm · submitting · done | - | 31 |
 <!-- 08-screens:screens:end -->
@@ -228,6 +228,8 @@
 - 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
 
 ## 9. 검사
+
+2026-11-14 21:22 KST, 설계 재검토 M11·M14를 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 215행·액션 158행(SCR-007의 주문 내용·결제 확인·환불 행, SCR-034·035·047·048의 사업자 정보와 변경 요청 행, '변경 요청'·'반영'·'보류'와 '사업자 정보 변경' 탭의 액션), C6 응답 행 942개(※ 화면이 나눈 행 3, 카카오 스킬 270, 기본값과 다르게 정한 행 123), C8 참조 1857곳, C9 와이어프레임 페이지 1.4MB, C11 허용 예외 854곳입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C5 그린 상태 354개·상태 이름 28개, C9 프레임 708개, C10 확인 문구 7개·손님 문구 49개, C13 생성 파일 52개, C14 08단계 파일 51개·상태 354개는 같습니다.
 
 2026-11-14 19:48 KST, 설계 재검토 M16·M18을 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 204행·액션 152행(SCR-014 로그인 주소와 state 행, SCR-041 연결 문구 행·스킬 키 행과 스킬 키 바꾸기), C6 응답 행 909개(※ 화면이 나눈 행 3, 카카오 스킬 270, 기본값과 다르게 정한 행 118), C8 참조 1810곳입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C5 그린 상태 354개·상태 이름 28개, C9 프레임 708개(1.3MB), C10 확인 문구 7개·손님 문구 49개, C11 허용 예외 834곳, C13 생성 파일 52개, C14 08단계 파일 51개·상태 354개는 같습니다.
 
@@ -413,3 +415,19 @@
 - 상태와 문구: `OUTCOME_TEXT`의 `channel_test_card`, 상태 설명 `link-test`·`checking`, `OK_TEXT`의 API-031 `created`·API-032 `started`를 고치고 API-078 `started`·API-079 `regenerated`·`revoked`를 더함. W7의 사유 후보 이름을 '연결 문구가 오지 않음'으로. 상태 이름 28개와 그린 상태 354개는 그대로이고, SCR-041 `checking`의 와이어프레임 프레임에 연결 문구를, SCR-003 `link-test` 프레임에 연결 문구 메시지를 넣음.
 - 09단계: SCR-041#empty의 연결 순서 넷째 줄이 바뀌어 SCR-041-360 보드의 그 글 하나를 다시 그림(09 README 12절).
 - 결정과 다르게 하거나 더한 것: (1) 옛 키 고르기는 같은 자리의 라디오 둘(24시간 더 받기 기본)로 두고 확인 창(`confirm`)을 더하지 않았습니다(`confirm`은 09단계가 그리는 상태라 새 보드가 필요함). 바로 끊기의 결과는 `done`에서 '배포할 때까지 손님 메시지를 받지 않아요'로 알립니다. (2) 검토자의 '옛 키는 바로 거절'은 배포하는 동안 손님 메시지가 끊겨 24시간 겹침을 기본으로 두었습니다(06단계 DEC-08).
+
+2026-11-14 같은 재검토의 중간 묶음 M11(RA-05)과 M14(RB-12)도 같은 결정 카드의 '모두 지금 고침 (추천)'대로 검토자의 고치는 방향을 따라(두 묶음에는 Claude 추천이 없음) `screens_common.py`·`screens_guest.py`·`screens_owner_a.py`·`screens_owner_b.py`·`screens_operator.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR I1). 06단계 계약의 새 API-080~082, 가게의 새 필드(`businessAddress`·`contactEmail`·`mailOrderAuthority`·`identityChange`, 운영자 화면의 `pendingIdentityChange`), 응답 예시 `API-009#200:identity_change_pending`·`identity_change_on_hold`와 `API-013#200:identity_change_pending`, 오류 코드 `identity_change_pending`(409)을 화면 상태에 이었습니다.
+
+- SCR-001 예약 링크 페이지(M11): 가게 정보에 사업장 주소·전자우편주소와 통신판매업 신고를 받은 기관을 더하고, 상호·대표자·사업자등록번호는 운영자가 확인한 값(REQ-239). 노출은 '가게 신원 정보만'.
+- SCR-004 주문 요청 확인·SCR-038 운영규정(M11): 규정 글 끝의 청약철회 제한 문장 다음에 '미성년자가 법정대리인의 동의 없이 한 주문은 본인이나 법정대리인이 취소할 수 있어요'(REQ-240). 글 둘로 나누면 두 문장은 둘째 끝이고, 운영규정의 카드 글 한도(422 `exceeds_card_limit`)가 두 문장까지 셈.
+- SCR-007 내 주문 보기(M11): 카드에 주문 내용 요약 한 줄, '{금액}원 · 결제 확인 M월 D일 HH:MM', 정한 환불이 있으면 금액과 보낸 때(REQ-241, 06단계 API-070 `card_shown`의 새 필드). 카드의 값은 서버에 저장된 값.
+- SCR-011 손님 알림(M11): 주문 확정 안내는 주문번호·주문 내용·픽업 일시·결제가 확인된 금액·가게의 상호·대표자·사업장 주소·연락처(주문 확정 때의 확인된 값)를 담은 글과 그 주문의 취소·환불 규정 글(REQ-242). `notice_shown`의 설명을 고쳐 같은 문구를 쓰는 SCR-005도 다시 생성됨.
+- SCR-015 가게 등록(M11, M14): 사업장 주소(1~200자)·전자우편주소·통신판매업 신고 기관(신고번호가 있을 때 1~40자)을 받고, 상호·대표자·사업자등록번호 아래 '등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)'.
+- SCR-034 가게 설정(M14): 가게 이름·연락처·사업장 주소·전자우편주소·픽업 장소·통신판매업 신고번호와 기관을 바로 바꾸고(REQ-244), 상호·대표자·사업자등록번호는 읽기 전용 '사업자 정보' 표와 '변경 요청'(SCR-035). 기능 필드 아래에 바꾼 값을 쓰는 때(기다리는 시간은 그 뒤 시작되는 기다림부터, 문의 끊김 시간과 하루 AI 비용 한도는 저장한 때부터, REQ-243). 변경 요청이 확인을 기다리면 '변경 확인 기다림', 보류됐으면 '변경 요청 보류'.
+- SCR-033 영업 캘린더 설정(M14): 후기 부탁 시각의 범위(08:00~20:50)와 기본값(11:00), 바꾼 전날 안내 시각과 후기 부탁 시각은 아직 보내지 않은 안내부터 씀(REQ-243, SPEC-007). `layout`은 그대로.
+- SCR-035 영업 신고(M14): '사업자 정보' 표와 '변경 요청'. 새 값 셋과 증빙 사진(영업 신고증이나 사업자등록증 한 장)을 보내면(API-080) `requested`·`unchanged`는 `done`, 이미 확인을 기다리는 요청(409 `identity_change_pending`)은 `stale`. 운영자가 반영하기 전까지 예약 링크 페이지·확정 안내는 확인된 지금 값(REQ-245, SPEC-078). 목적의 플로우를 사이트맵대로 FL-001, FL-002로.
+- SCR-047 영업 신고 확인 목록(M14): 넷째 탭 '사업자 정보 변경'(API-081, 요청한 차례, 바뀌는 값과 요청 시각, 예금주가 새 대표자·상호와 다르면 라벨만). 빈 탭은 '확인할 변경 요청이 없어요'.
+- SCR-048 영업 신고 확인(M14): 확인을 기다리는 변경 요청이 있으면 대조 표 위에 '사업자 정보 변경 요청' 상자(지금 값 → 새 값, 증빙 사진, 예금주가 새 대표자·상호와 같은지)와 '반영'(확인 창을 거침)·'보류'(이유 1~200자). API-082의 `applied`·`on_hold`·`unchanged`는 `done`이고, 정하기 전의 '확인됨'은 막힘(409 `identity_change_pending`은 `stale`). 대조 표에 사업장 주소·전자우편주소·신고 기관을 더하고 목적의 플로우를 FL-001, FL-002로.
+- 상태와 문구: `OK_TEXT`에 API-009 `identity_change_pending`·`identity_change_on_hold`, API-013 `identity_change_pending`, API-080 `requested`·`unchanged`, API-081 `pending`·`empty`, API-082 `applied`·`on_hold`·`unchanged`를 더하고 `OUTCOME_TEXT`의 `notice_shown`을 고침. 상태 이름 28개와 그린 상태 354개는 그대로이고, 와이어프레임의 프레임 708개에 새 필드·표·탭을 그림.
+- 09단계: SCR-001·004·007·011·015·034·035·047·048의 보드를 다시 그림(09 README 12절).
+- 결정과 다르게 하거나 더한 것: (1) 사업자 정보 변경 요청은 새 화면을 만들지 않고 사장님은 SCR-035(증빙 사진을 올리는 영업 신고 화면)에서, 운영자는 SCR-047의 탭과 SCR-048의 상자에서 다룹니다(07단계 화면 50개 그대로). (2) 검토자가 고칠 곳으로 적은 08단계 화면은 예약 링크 페이지(M11)와 SCR-034(M14)이지만, 같은 요구사항(REQ-240~245)이 보이는 SCR-004·007·011·015·033·035·038·047·048도 고쳤습니다. (3) 변경 요청의 '반영'은 가게 신원이 바뀌는 일이라 '확인됨'처럼 화면의 확인 창을 거치게 했고, '보류'는 영업 신고의 보류처럼 이유만 받습니다.
