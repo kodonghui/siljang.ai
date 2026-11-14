@@ -2,7 +2,7 @@
 --
 -- 원본: 이 파일. 사람이 보는 곳: docs/05-erd/README.md(컨텍스트별 다이어그램과 테이블).
 -- 입력: docs/04-functional-spec/spec.md(SPEC-001~079, 상태 머신 1-1~1-8, 공통 규칙 G1~G9, AI-1),
---       docs/01-domain/domain.md(CTX-001~009, TERM-001~086), docs/02-prd/requirements.md(REQ-001~254).
+--       docs/01-domain/domain.md(CTX-001~009, TERM-001~086), docs/02-prd/requirements.md(REQ-001~262).
 -- 데이터베이스: PostgreSQL. 16에서 검사함(research/cake-erd-2026-11/check_erd.py).
 -- 바꾸는 법: 이 파일을 고치고 같은 변경을 db/migrations/에 새 번호로 더함. 적용한 마이그레이션은 고치지 않음.
 --
@@ -33,7 +33,7 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;  -- refund_tiers의 기간 중복 막
 -- TBL-001 owners (CTX-007) ← SPEC-001, SPEC-067 | terms: TERM-044
 CREATE TABLE owners (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 사장님 ID
-  kakao_account_id      bigint NOT NULL,                    -- 카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-183). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)
+  kakao_account_id      bigint NOT NULL,                    -- 카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-260). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)
   alert_channel_friend  boolean NOT NULL DEFAULT false,     -- 우리 서비스 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침. 아니면 알림은 '못 보냄'으로 할 일 목록에만(SPEC-067)
   alert_friend_checked_at timestamptz,                      -- 우리 채널 친구인지 마지막으로 본 시각(채널 관계 조회나 발송 결과, SPEC-001)
   last_login_at         timestamptz,                        -- 마지막 로그인 시각
@@ -249,7 +249,7 @@ CREATE TABLE rule_clauses (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 조문 ID
   shop_id             uuid NOT NULL,                     -- 가게
   operating_rules_id  uuid NOT NULL,                     -- 운영규정 버전
-  clause_key          text NOT NULL CHECK (clause_key IN ('pre_production_cancel', 'staged_refund', 'cancellation_fee', 'date_change_refund_basis', 'shop_cancel_compensation', 'other_shop_design', 'issue_report_window', 'quote_validity', 'payment_due', 'change_deadline', 'custom')), -- 템플릿의 조문 필드(REQ-031, REQ-033)나 가게가 더한 조문
+  clause_key          text NOT NULL CHECK (clause_key IN ('pre_production_cancel', 'staged_refund', 'cancellation_fee', 'date_change_refund_basis', 'shop_cancel_compensation', 'other_shop_design', 'issue_report_window', 'quote_validity', 'payment_due', 'change_deadline', 'custom')), -- 템플릿의 조문 필드(REQ-031, REQ-258)나 가게가 더한 조문
   position            smallint NOT NULL CHECK (position >= 1), -- 조문 순서(제 몇 조)
   title               text NOT NULL CHECK (char_length(title) BETWEEN 1 AND 60), -- 조문 제목
   condition_text      text NOT NULL CHECK (char_length(condition_text) BETWEEN 1 AND 1000), -- 조건
@@ -281,7 +281,7 @@ CREATE TABLE business_calendars (
   daily_capacity          smallint NOT NULL CHECK (daily_capacity BETWEEN 0 AND 100), -- 하루 최대 개수(TERM-026). 바꾼 값은 그 뒤 잡는 자리에만(R4)
   order_cutoff_days       smallint NOT NULL CHECK (order_cutoff_days BETWEEN 0 AND 30), -- 주문 마감(TERM-027): 픽업일 며칠 전
   order_cutoff_time       time NOT NULL,                 -- 주문 마감: 그날 몇 시
-  reply_start             time NOT NULL DEFAULT '09:00', -- 답하는 시간(TERM-080) 시작(REQ-118). 사장님 답 기다림은 이 안에서만 셈
+  reply_start             time NOT NULL DEFAULT '09:00', -- 답하는 시간(TERM-080) 시작(REQ-259). 사장님 답 기다림은 이 안에서만 셈
   reply_end               time NOT NULL DEFAULT '21:00', -- 답하는 시간 끝
   day_before_notice_time  time NOT NULL DEFAULT '18:00' CHECK (day_before_notice_time BETWEEN '08:00' AND '20:50'), -- 전날 안내 시각(SPEC-052)
   review_request_time     time NOT NULL DEFAULT '11:00' CHECK (review_request_time BETWEEN '08:00' AND '20:50'), -- 후기 부탁 시각(SPEC-061, 인도한 다음 날). 바꾸면 아직 보내지 않은 후기 부탁부터 씀(REQ-243)
@@ -346,6 +346,7 @@ CREATE TABLE consultations (
   customer_id               uuid NOT NULL,               -- 손님
   status                    text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'awaiting_owner', 'dropped', 'ordered', 'ended', 'deleted')), -- 열림·사장님 답 기다림·문의 끊김(TERM-075)·주문으로 전환됨·상담 끝남·지워짐(1-1). 상담 끝남과 지워짐은 다시 열지 않고 손님의 다음 말은 새 상담(REQ-189)
   ai_disclosed_at           timestamptz,                 -- AI 상담 고지(TERM-041)를 보낸 시각(REQ-002). 상담마다 한 번, 이어가는 상담에는 다시 보내지 않음(R5)
+  ai_disclosed_policy_version integer,                  -- 그 고지에 링크한 가게 처리방침(TBL-005)의 버전(REQ-140). 고지 시각과 함께 쓰고, 고지할 때 게시된 가장 최근 버전(4절 A39, 설계 재검토 RC-20)
   last_customer_message_at  timestamptz,                 -- 손님의 마지막 메시지 시각(문의 끊김 셈, REQ-211)
   dropped_at                timestamptz,                 -- 문의 끊김으로 닫은 시각(30일 지우기 셈, REQ-186)
   ended_at                  timestamptz,                 -- 상담 끝남으로 닫은 시각: 다룬 주문이 모두 끝나고 손님의 마지막 메시지 뒤 가게가 정한 시간이 지남(30일 지우기 셈, SPEC-025, REQ-189)
@@ -356,7 +357,9 @@ CREATE TABLE consultations (
   CONSTRAINT consultations_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT consultations_customer_key UNIQUE (shop_id, id, customer_id), -- 주문·확인 카드·손님 안내가 (상담, 손님) 쌍으로 참조하는 키: 그 상담의 손님만(설계 재검토 M17)
   CONSTRAINT consultations_customer_fk FOREIGN KEY (shop_id, customer_id) REFERENCES customers (shop_id, id) ON DELETE RESTRICT,
+  CONSTRAINT consultations_disclosed_policy_fk FOREIGN KEY (shop_id, ai_disclosed_policy_version) REFERENCES privacy_policies (shop_id, version) ON DELETE RESTRICT, -- 고지한 처리방침은 그 가게의 버전(설계 재검토 RC-20)
   CONSTRAINT consultations_deleted_chk CHECK ((status = 'deleted') = (deleted_at IS NOT NULL)),
+  CONSTRAINT consultations_disclosed_policy_chk CHECK ((ai_disclosed_at IS NULL) = (ai_disclosed_policy_version IS NULL)), -- 고지 시각과 고지한 처리방침 버전은 함께 있음(설계 재검토 RC-20)
   CONSTRAINT consultations_dropped_chk CHECK (status <> 'dropped' OR dropped_at IS NOT NULL),
   CONSTRAINT consultations_ended_chk CHECK (status <> 'ended' OR ended_at IS NOT NULL),
   CONSTRAINT consultations_turn_chk CHECK ((turn_trace_id IS NULL) = (turn_started_at IS NULL))
@@ -504,7 +507,7 @@ COMMENT ON TABLE quotes IS 'TBL-022 견적(TERM-013): 가게 규칙이 계산한
 CREATE TABLE orders (
   id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 주문 ID(손님에게 보이지 않음)
   shop_id                  uuid NOT NULL,                -- 가게
-  order_no                 text NOT NULL CHECK (order_no ~ '^[0-9A-Z]{6,12}$'), -- 주문번호(TERM-081): 손님에게 보이는 유일한 번호. 차례 번호가 아닌 무작위라 주문 수가 드러나지 않음(G6)
+  order_no                 text NOT NULL CHECK (order_no ~ '^[0-9A-Z]{6,8}$'), -- 주문번호(TERM-081): 손님에게 보이는 유일한 번호. 영문 대문자·숫자 6~8자(SPEC-029). 차례 번호가 아닌 무작위라 주문 수가 드러나지 않음(G6)
   customer_id              uuid NOT NULL,                -- 요청한 카카오 사용자. 변경·취소·신고는 이 사용자만(REQ-062)
   consultation_id          uuid NOT NULL,                -- 요청한 상담
   draft_id                 uuid,                         -- 요청한 주문서 초안. 참고 사진은 이 초안에 붙어 있음. 재제작 주문은 빈 값
@@ -544,6 +547,7 @@ CREATE TABLE orders (
   CONSTRAINT orders_remake_fk FOREIGN KEY (shop_id, remake_of_order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT orders_consent_chk CHECK (remake_of_order_id IS NOT NULL OR (draft_id IS NOT NULL AND details_confirmed_at IS NOT NULL AND terms_consented_at IS NOT NULL)), -- 내용 확인·규정 동의 없이는 주문 요청 없음(REQ-053, REQ-054)
   CONSTRAINT orders_remake_chk CHECK (remake_of_order_id IS NULL OR (draft_id IS NULL AND amount = 0)), -- 재제작은 결제 없는 주문(REQ-074)
+  CONSTRAINT orders_amount_paid_chk CHECK (remake_of_order_id IS NOT NULL OR amount >= 1), -- 재제작이 아닌 주문은 1원부터: 결제 안내가 1원부터라 0원 견적은 주문 요청을 남기지 않고 에스컬레이션(SPEC-029, 설계 재검토 RC-19)
   CONSTRAINT orders_requested_custom_chk CHECK (status <> 'requested' OR kind = 'custom'), -- 사장님 답을 기다리는 요청은 맞춤 주문만. 기본 디자인은 바로 결제 기다림(1-2)
   CONSTRAINT orders_accept_custom_chk CHECK (kind = 'custom' OR accepted_at IS NULL), -- 수락은 맞춤 주문만(TERM-011)
   CONSTRAINT orders_accepted_before_payment_chk CHECK (kind <> 'custom' OR remake_of_order_id IS NOT NULL OR status IN ('requested', 'rejected', 'cancelled') OR accepted_at IS NOT NULL), -- 맞춤 주문은 수락 뒤에만 결제로(REQ-058)
@@ -1130,7 +1134,7 @@ CREATE TABLE owner_tasks (
   payment_request_id  uuid,                              -- 결제 안내
   refund_id           uuid,                              -- 보낼 환불(환불 보내기, REQ-173)
   wait_status         text CHECK (wait_status IN ('waiting', 'late', 'answered', 'closed_no_answer')), -- 사장님 답 기다림(1-7): 기다림·지연(지연 안내와 다시 알림 뒤 할 일 목록에 남음)·답함·답 없어 닫힘. 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정만(REQ-215)
-  wait_due_at         timestamptz,                       -- 지연 안내를 보낼 시각: 기다리는 시간을 답하는 시간 안에서만 셈(REQ-118). 답 없어 닫는 때(1-7)와 다름
+  wait_due_at         timestamptz,                       -- 지연 안내를 보낼 시각: 기다리는 시간을 답하는 시간 안에서만 셈(REQ-259). 답 없어 닫는 때(1-7)와 다름
   late_notice_at      timestamptz,                       -- 손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156, REQ-215)
   realerted_at        timestamptz,                       -- 사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117, REQ-215), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)
   detail              jsonb,                             -- 보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음. 주문이 끝나고 30일 뒤 비움(SPEC-065)
@@ -1733,7 +1737,7 @@ COMMENT ON TABLE shop_identity_changes IS 'TBL-058 사업자 정보 변경 요�
 
 -- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음.
 COMMENT ON COLUMN owners.id IS '사장님 ID';
-COMMENT ON COLUMN owners.kakao_account_id IS '카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-183). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)';
+COMMENT ON COLUMN owners.kakao_account_id IS '카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-260). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)';
 COMMENT ON COLUMN owners.alert_channel_friend IS '우리 서비스 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침. 아니면 알림은 ''못 보냄''으로 할 일 목록에만(SPEC-067)';
 COMMENT ON COLUMN owners.alert_friend_checked_at IS '우리 채널 친구인지 마지막으로 본 시각(채널 관계 조회나 발송 결과, SPEC-001)';
 COMMENT ON COLUMN owners.last_login_at IS '마지막 로그인 시각';
@@ -1851,7 +1855,7 @@ COMMENT ON COLUMN operating_rules.superseded_at IS '새 버전이 생긴 시각.
 COMMENT ON COLUMN rule_clauses.id IS '조문 ID';
 COMMENT ON COLUMN rule_clauses.shop_id IS '가게';
 COMMENT ON COLUMN rule_clauses.operating_rules_id IS '운영규정 버전';
-COMMENT ON COLUMN rule_clauses.clause_key IS '템플릿의 조문 필드(REQ-031, REQ-033)나 가게가 더한 조문';
+COMMENT ON COLUMN rule_clauses.clause_key IS '템플릿의 조문 필드(REQ-031, REQ-258)나 가게가 더한 조문';
 COMMENT ON COLUMN rule_clauses.position IS '조문 순서(제 몇 조)';
 COMMENT ON COLUMN rule_clauses.title IS '조문 제목';
 COMMENT ON COLUMN rule_clauses.condition_text IS '조건';
@@ -1867,7 +1871,7 @@ COMMENT ON COLUMN business_calendars.closed_weekdays IS '요일별 휴무(1=월 
 COMMENT ON COLUMN business_calendars.daily_capacity IS '하루 최대 개수(TERM-026). 바꾼 값은 그 뒤 잡는 자리에만(R4)';
 COMMENT ON COLUMN business_calendars.order_cutoff_days IS '주문 마감(TERM-027): 픽업일 며칠 전';
 COMMENT ON COLUMN business_calendars.order_cutoff_time IS '주문 마감: 그날 몇 시';
-COMMENT ON COLUMN business_calendars.reply_start IS '답하는 시간(TERM-080) 시작(REQ-118). 사장님 답 기다림은 이 안에서만 셈';
+COMMENT ON COLUMN business_calendars.reply_start IS '답하는 시간(TERM-080) 시작(REQ-259). 사장님 답 기다림은 이 안에서만 셈';
 COMMENT ON COLUMN business_calendars.reply_end IS '답하는 시간 끝';
 COMMENT ON COLUMN business_calendars.day_before_notice_time IS '전날 안내 시각(SPEC-052)';
 COMMENT ON COLUMN business_calendars.review_request_time IS '후기 부탁 시각(SPEC-061, 인도한 다음 날). 바꾸면 아직 보내지 않은 후기 부탁부터 씀(REQ-243)';
@@ -1903,6 +1907,7 @@ COMMENT ON COLUMN consultations.shop_id IS '가게. 채널로 찾은 가게 ID�
 COMMENT ON COLUMN consultations.customer_id IS '손님';
 COMMENT ON COLUMN consultations.status IS '열림·사장님 답 기다림·문의 끊김(TERM-075)·주문으로 전환됨·상담 끝남·지워짐(1-1). 상담 끝남과 지워짐은 다시 열지 않고 손님의 다음 말은 새 상담(REQ-189)';
 COMMENT ON COLUMN consultations.ai_disclosed_at IS 'AI 상담 고지(TERM-041)를 보낸 시각(REQ-002). 상담마다 한 번, 이어가는 상담에는 다시 보내지 않음(R5)';
+COMMENT ON COLUMN consultations.ai_disclosed_policy_version IS '그 고지에 링크한 가게 처리방침(TBL-005)의 버전(REQ-140). 고지 시각과 함께 쓰고, 고지할 때 게시된 가장 최근 버전(4절 A39, 설계 재검토 RC-20)';
 COMMENT ON COLUMN consultations.last_customer_message_at IS '손님의 마지막 메시지 시각(문의 끊김 셈, REQ-211)';
 COMMENT ON COLUMN consultations.dropped_at IS '문의 끊김으로 닫은 시각(30일 지우기 셈, REQ-186)';
 COMMENT ON COLUMN consultations.ended_at IS '상담 끝남으로 닫은 시각: 다룬 주문이 모두 끝나고 손님의 마지막 메시지 뒤 가게가 정한 시간이 지남(30일 지우기 셈, SPEC-025, REQ-189)';
@@ -1981,7 +1986,7 @@ COMMENT ON COLUMN quotes.valid_until IS '유효 기한(기본 안내 뒤 72시�
 COMMENT ON COLUMN quotes.quoted_at IS '안내한 시각';
 COMMENT ON COLUMN orders.id IS '주문 ID(손님에게 보이지 않음)';
 COMMENT ON COLUMN orders.shop_id IS '가게';
-COMMENT ON COLUMN orders.order_no IS '주문번호(TERM-081): 손님에게 보이는 유일한 번호. 차례 번호가 아닌 무작위라 주문 수가 드러나지 않음(G6)';
+COMMENT ON COLUMN orders.order_no IS '주문번호(TERM-081): 손님에게 보이는 유일한 번호. 영문 대문자·숫자 6~8자(SPEC-029). 차례 번호가 아닌 무작위라 주문 수가 드러나지 않음(G6)';
 COMMENT ON COLUMN orders.customer_id IS '요청한 카카오 사용자. 변경·취소·신고는 이 사용자만(REQ-062)';
 COMMENT ON COLUMN orders.consultation_id IS '요청한 상담';
 COMMENT ON COLUMN orders.draft_id IS '요청한 주문서 초안. 참고 사진은 이 초안에 붙어 있음. 재제작 주문은 빈 값';
@@ -2272,7 +2277,7 @@ COMMENT ON COLUMN owner_tasks.issue_report_id IS '문제 신고';
 COMMENT ON COLUMN owner_tasks.payment_request_id IS '결제 안내';
 COMMENT ON COLUMN owner_tasks.refund_id IS '보낼 환불(환불 보내기, REQ-173)';
 COMMENT ON COLUMN owner_tasks.wait_status IS '사장님 답 기다림(1-7): 기다림·지연(지연 안내와 다시 알림 뒤 할 일 목록에 남음)·답함·답 없어 닫힘. 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정만(REQ-215)';
-COMMENT ON COLUMN owner_tasks.wait_due_at IS '지연 안내를 보낼 시각: 기다리는 시간을 답하는 시간 안에서만 셈(REQ-118). 답 없어 닫는 때(1-7)와 다름';
+COMMENT ON COLUMN owner_tasks.wait_due_at IS '지연 안내를 보낼 시각: 기다리는 시간을 답하는 시간 안에서만 셈(REQ-259). 답 없어 닫는 때(1-7)와 다름';
 COMMENT ON COLUMN owner_tasks.late_notice_at IS '손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156, REQ-215)';
 COMMENT ON COLUMN owner_tasks.realerted_at IS '사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117, REQ-215), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)';
 COMMENT ON COLUMN owner_tasks.detail IS '보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음. 주문이 끝나고 30일 뒤 비움(SPEC-065)';

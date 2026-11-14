@@ -295,6 +295,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
     ],
     "SPEC-018": [
         ("고지 시각", "consultations.ai_disclosed_at"),
+        ("고지한 처리방침 버전", "consultations.ai_disclosed_policy_version"),
         ("고지 메시지", "messages.author"),
         ("처리방침 링크", "privacy_policies.published_at"),
     ],
