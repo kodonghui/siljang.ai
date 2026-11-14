@@ -784,7 +784,7 @@ S["QuoteView"] = all_required({
     "priceListVersion": integer(1, 2147483647),
     "operatingRulesVersion": integer(1, 2147483647),
     "orderKind": enum(["standard", "custom"], desc="기본 디자인·맞춤. 가게 규칙이 그 가격표 버전의 기본 디자인 범위로 가름: 범위 밖 옵션·도안, 참고 사진, 빼야 할 재료 가운데 하나라도 있거나 표시 방식이 '확정'이 아니면 맞춤(REQ-229, SPEC-013). AI가 정하지 않음"),
-    "displayKind": enum(["fixed", "from", "range"], desc="확정·부터·범위. '부터'면 amount가 아래 끝, '범위'면 amount~amountMax(SPEC-013)"),
+    "displayKind": enum(["fixed", "from", "range"], desc="표시 방식('확정'·'부터'·'범위'). '부터'면 amount가 아래 끝, '범위'면 amount~amountMax(SPEC-013)"),
     "amount": MONEY(), "amountMax": nullable(MONEY()),
     "basis": all_required({
         "lines": arr(all_required({"group": enum(["size", "flavor", "design", "extra"]), "name": string(1, 30), "amount": MONEY()}), 0, 60),
@@ -935,7 +935,7 @@ S["OrderList"] = all_required({"items": arr(ref("OrderSummary"), 0, 100), "nextC
 S["CustomDecisionInput"] = obj({
     "baseRevision": BASE_REVISION,
     "decision": enum(["accept", "accept_with_amount", "reject"], desc="수락·금액 변경 수락·거절(SPEC-031). accept는 표시 방식이 '확정'인 견적에만(견적 금액으로 감). '부터'·'범위' 견적은 accept_with_amount로 최종 금액을 넣어야 하고 accept면 422 /amount required(REQ-230)"),
-    "amount": integer(1, 10000000, col="order_details.amount", desc="정한 금액. accept_with_amount만. '부터'·'범위' 견적은 아래 끝 이상(낮으면 422 below_quote_min, REQ-230). '확정' 견적에서 견적 금액과 같으면 수락으로 봄. 손님이 본 금액(확정은 그 금액, 부터는 아래 끝, 범위는 위 끝)보다 높으면 결제 안내는 손님의 새 금액 확인을 기다림(SPEC-076, REQ-232)"),
+    "amount": integer(1, 10000000, col="order_details.amount", desc="정한 금액. accept_with_amount만. '부터'·'범위' 견적은 아래 끝 이상(낮으면 422 below_quote_min, REQ-230). '확정' 견적에서 견적 금액과 같으면 수락으로 봄. 손님이 본 금액(표시 방식이 '확정'이면 그 금액, '부터'는 아래 끝, '범위'는 위 끝)보다 높으면 결제 안내는 손님의 새 금액 확인을 기다림(SPEC-076, REQ-232)"),
     "amountChangeReason": string(1, 200, col="order_details.amount_change_reason", desc="금액을 정하거나 바꾼 이유. accept_with_amount면 꼭. 손님에게 결제 안내와 새 금액 확인 카드로 그대로 보임(REQ-231)"),
     "rejectReason": string(0, 200, col="orders.reject_reason"),
     "confirm": confirm_list(["overbooking", "closed_day"]),
@@ -1086,6 +1086,7 @@ S["ChangeRequest"] = all_required({
     "order": ref("OrderRef"),
     "baseVersion": integer(1, 2147483647, desc="손님 카드에 묶였던 주문 버전"),
     "orderVersion": integer(1, 2147483647, desc="지금 주문 버전. 다르면 반영하지 않음(REQ-133)"),
+    "orderAmount": integer(0, 10000000, col="order_details.amount", desc="지금 주문 버전의 금액(원, 재제작 주문은 0). 변경 요청 화면이 수락 전 결과 한 줄의 새 금액(지금 금액에 고른 방향과 차이 금액을 더하거나 뺌)과 내려감의 한도(지금 금액 이하)를 보임(SPEC-042)"),
     "changes": ref("ChangeSet"),
     "newPickupAt": nullable(DT),
     "needsOwnerDay": boolean("새 날이 휴무·마감이라 받을지 사장님이 정함"),

@@ -15189,6 +15189,7 @@ paths:
                         orderNo: K7Q3M9
                       baseVersion: 1
                       orderVersion: 2
+                      orderAmount: 36000
                       changes:
                         extras:
                         - 초 추가
@@ -15866,6 +15867,7 @@ paths:
                         orderNo: K7Q3M9
                       baseVersion: 1
                       orderVersion: 1
+                      orderAmount: 36000
                       changes:
                         extras:
                         - 초 추가
@@ -16853,6 +16855,7 @@ paths:
                       orderNo: K7Q3M9
                     baseVersion: 1
                     orderVersion: 1
+                    orderAmount: 36000
                     changes:
                       lettering: 생일 축하해 지우야!
                     newPickupAt: null
@@ -16876,6 +16879,7 @@ paths:
                       orderNo: K7Q3M9
                     baseVersion: 1
                     orderVersion: 1
+                    orderAmount: 36000
                     changes:
                       extras:
                       - 초 추가
@@ -16927,6 +16931,7 @@ paths:
                       orderNo: K7Q3M9
                     baseVersion: 1
                     orderVersion: 1
+                    orderAmount: 36000
                     changes:
                       extras:
                       - 초 추가
@@ -16978,6 +16983,7 @@ paths:
                       orderNo: K7Q3M9
                     baseVersion: 1
                     orderVersion: 1
+                    orderAmount: 36000
                     changes:
                       lettering: 생일 축하해 지우야!
                     newPickupAt: null
@@ -17138,6 +17144,7 @@ paths:
                         orderNo: K7Q3M9
                       baseVersion: 1
                       orderVersion: 2
+                      orderAmount: 36000
                       changes:
                         lettering: 생일 축하해 지우야!
                       newPickupAt: null
@@ -17327,6 +17334,7 @@ paths:
                         orderNo: K7Q3M9
                       baseVersion: 1
                       orderVersion: 1
+                      orderAmount: 36000
                       changes:
                         extras:
                         - 초 추가
@@ -17540,6 +17548,7 @@ paths:
                         orderNo: K7Q3M9
                       baseVersion: 1
                       orderVersion: 1
+                      orderAmount: 36000
                       changes:
                         extras:
                         - 초 추가
@@ -20053,7 +20062,7 @@ paths:
                       - simpleText:
                           text: 새 금액을 확인했어요.
                       - simpleText:
-                          text: '입금하실 곳: 달빛은행 123456-01-234567 김달빛 · 75,000원 · 11월 13일 03:00까지'
+                          text: '가게 계좌: 달빛은행 123456-01-234567 김달빛 · 75,000원 · 11월 13일 03:00까지'
                 amount_declined:
                   summary: 새 금액 확인 카드에서 '안 할래요'(맞춤 주문)나 '그대로 둘래요'(변경)를 누름. 그 시각을 남기고 결제 안내를 닫음. 맞춤 주문은 '손님이 취소함'으로 두고 자리를 바로 풀고 장부 쓰기를 남김(받은 금액이 없어 환불 없음). 변경은 변경 요청을 '차액 없어 닫힘'으로 두고 원래 주문대로 감(차액을 기다리며 잡아 둔 새 날 자리는 풂, REQ-234). 어느 쪽이든 사장님께 알림(REQ-233)
                   value:
@@ -25556,7 +25565,7 @@ components:
           - fixed
           - from
           - range
-          description: 확정·부터·범위. '부터'면 amount가 아래 끝, '범위'면 amount~amountMax(SPEC-013)
+          description: 표시 방식('확정'·'부터'·'범위'). '부터'면 amount가 아래 끝, '범위'면 amount~amountMax(SPEC-013)
         amount:
           type: integer
           minimum: 0
@@ -26551,7 +26560,7 @@ components:
           type: integer
           minimum: 1
           maximum: 10000000
-          description: 정한 금액. accept_with_amount만. '부터'·'범위' 견적은 아래 끝 이상(낮으면 422 below_quote_min, REQ-230). '확정' 견적에서 견적 금액과 같으면 수락으로 봄. 손님이 본 금액(확정은 그 금액, 부터는 아래 끝, 범위는 위 끝)보다 높으면 결제 안내는 손님의 새 금액 확인을 기다림(SPEC-076, REQ-232)
+          description: 정한 금액. accept_with_amount만. '부터'·'범위' 견적은 아래 끝 이상(낮으면 422 below_quote_min, REQ-230). '확정' 견적에서 견적 금액과 같으면 수락으로 봄. 손님이 본 금액(표시 방식이 '확정'이면 그 금액, '부터'는 아래 끝, '범위'는 위 끝)보다 높으면 결제 안내는 손님의 새 금액 확인을 기다림(SPEC-076, REQ-232)
           x-corthex-column: order_details.amount
         amountChangeReason:
           type: string
@@ -27326,6 +27335,7 @@ components:
       - order
       - baseVersion
       - orderVersion
+      - orderAmount
       - changes
       - newPickupAt
       - needsOwnerDay
@@ -27356,6 +27366,12 @@ components:
           minimum: 1
           maximum: 2147483647
           description: 지금 주문 버전. 다르면 반영하지 않음(REQ-133)
+        orderAmount:
+          type: integer
+          minimum: 0
+          maximum: 10000000
+          description: 지금 주문 버전의 금액(원, 재제작 주문은 0). 변경 요청 화면이 수락 전 결과 한 줄의 새 금액(지금 금액에 고른 방향과 차이 금액을 더하거나 뺌)과 내려감의 한도(지금 금액 이하)를 보임(SPEC-042)
+          x-corthex-column: order_details.amount
         changes:
           $ref: '#/components/schemas/ChangeSet'
         newPickupAt:
@@ -31030,6 +31046,10 @@ components:
       why: 손님이 새 금액을 받지 않은 시각(REQ-233)
       decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M5·M6, 검토자의 고치는 방향대로)
       client: 응답에만 더한 필드. 주문·변경 요청 화면이 '손님이 새 금액을 받지 않음'을 보임
+    - what: '꼭 넣을 필드 더함: ChangeRequest.orderAmount'
+      why: 지금 주문 버전의 금액. 변경 요청 화면이 수락 전 결과 한 줄에 새 금액(지금 금액과 고른 방향·차이 금액으로 셈)과 내려감의 한도를 보임(SPEC-042, 설계 재검토 M5)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M5·M6, 검토자의 고치는 방향대로)
+      client: 응답에만 더한 필드. 변경 요청 화면(SCR-024)이 결과 한 줄과 차이 금액 필드의 한도에 씀
     - what: '요청이 좁아짐: API-046 CustomDecisionInput.decision·amount'
       why: '''부터''·''범위'' 견적의 맞춤 주문은 accept를 받지 않고(422 /amount required) accept_with_amount의 금액이 견적의 아래 끝보다 낮으면 422 /amount below_quote_min(REQ-230, SPEC-031, 설계 재검토 M6)'
       decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M5·M6, 검토자의 고치는 방향대로)

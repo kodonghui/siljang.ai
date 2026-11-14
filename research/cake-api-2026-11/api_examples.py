@@ -468,7 +468,7 @@ REFUND_INPUT = {"baseRevision": ORDER_CANCELLED_BY_CUSTOMER["revision"], "cause"
 
 # ── 변경 요청 ───────────────────────────────────────────────────────────────
 CHANGE = {
-    "changeRequestId": uid("change:K7Q3M9:1"), "order": ORDER_REF, "baseVersion": 1, "orderVersion": 1,
+    "changeRequestId": uid("change:K7Q3M9:1"), "order": ORDER_REF, "baseVersion": 1, "orderVersion": 1, "orderAmount": 36000,
     "changes": {"lettering": "생일 축하해 지우야!"}, "newPickupAt": None, "needsOwnerDay": False, "status": "requested",
     "amountDelta": None, "rejectReason": None, "changeDeadlineAt": t("11-18", "14:00"), "decidedAt": None, "appliedVersion": None,
     "appliedAt": None, "closedAt": None, "createdAt": t("11-15", "10:00"), "differencePayment": None,
@@ -832,7 +832,7 @@ SKILL_OUTCOME_EXAMPLES = {
     "order_requested": text("주문을 요청했어요(주문번호 K7Q3M9). 결제가 확인되면 확정돼요.",
                             "입금하실 곳: 달빛은행 123456-01-234567 김달빛 · 36,000원 · 11월 13일 01:05까지"),
     "payment_claimed": text("사장님께 알렸어요. 확인되면 알려 드릴게요"),
-    "amount_confirmed": text("새 금액을 확인했어요.", "입금하실 곳: 달빛은행 123456-01-234567 김달빛 · 75,000원 · 11월 13일 03:00까지"),
+    "amount_confirmed": text("새 금액을 확인했어요.", "가게 계좌: 달빛은행 123456-01-234567 김달빛 · 75,000원 · 11월 13일 03:00까지"),
     "amount_declined": text("알겠어요. 주문을 취소했어요"),
     "change_requested": text("변경을 요청했어요. 사장님이 보고 알려 드려요"),
     "order_cancelled": text("주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요"),
