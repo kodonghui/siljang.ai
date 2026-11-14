@@ -1085,7 +1085,7 @@
       "03h7y0179cdtx0zvnusbp9xrh": {
         "id": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "payment_requests",
-        "comment": "TBL-031 결제 안내: 금액·결제 방법·결제 기한을 담은 안내와 그 상태(1-3)",
+        "comment": "TBL-031 결제 안내(TERM-078): 금액·결제 방법·결제 기한을 담은 안내와 그 상태(1-3)",
         "columnIds": [
           "03h7y0179cdtx0zvnuu7mrkh2",
           "03h7y0179cdtx0zvnux35tmsk",
@@ -2663,7 +2663,7 @@
         "id": "03h7y0178qg91ufrdzstsr6ki",
         "tableId": "03h7y0178qg91ufrdzgb4zqc0",
         "name": "change_deadline_hours",
-        "comment": "변경 마감: 픽업 일시 몇 시간 전까지(SPEC-041). 기본값 없음, 가게가 넣음",
+        "comment": "변경 마감(TERM-076): 픽업 일시 몇 시간 전까지(SPEC-041). 기본값 없음, 가게가 넣음",
         "dataType": "smallint",
         "options": 8
       },
@@ -2878,7 +2878,7 @@
         "id": "03h7y0178qg91ufre1ed0q8sl",
         "tableId": "03h7y0178qg91ufre121gf2iv",
         "name": "reply_start",
-        "comment": "답하는 시간 시작(REQ-118). 사장님 답 기다림은 이 안에서만 셈",
+        "comment": "답하는 시간(TERM-080) 시작(REQ-118). 사장님 답 기다림은 이 안에서만 셈",
         "dataType": "time",
         "default": "'09:00'",
         "options": 8
@@ -3104,7 +3104,7 @@
         "id": "03h7y0178vyo98xl8mbd5flqr",
         "tableId": "03h7y0178vyo98xl8m05p4fdr",
         "name": "channel_friend",
-        "comment": "채널 친구인지. 손님이 말을 걸 때마다 카카오가 알린 값으로 고치고 알리지 않았으면 친구 아님, 먼저 보낸 안내가 친구 아님으로 실패해도 친구 아님(REQ-219). 먼저 보내는 안내는 친구에게만(REQ-120)",
+        "comment": "채널 친구(TERM-077)인지. 손님이 말을 걸 때마다 카카오가 알린 값으로 고치고 알리지 않았으면 친구 아님, 먼저 보낸 안내가 친구 아님으로 실패해도 친구 아님(REQ-219). 먼저 보내는 안내는 친구에게만(REQ-120)",
         "dataType": "boolean",
         "default": "false",
         "options": 8
@@ -3163,7 +3163,7 @@
         "id": "03h7y0178vyo98xl8mnudl56o",
         "tableId": "03h7y0178vyo98xl8mfwdxckm",
         "name": "status",
-        "comment": "열림·사장님 답 기다림·문의 끊김·주문으로 전환됨·상담 끝남·지워짐(1-1). 상담 끝남과 지워짐은 다시 열지 않고 손님의 다음 말은 새 상담(REQ-189)",
+        "comment": "열림·사장님 답 기다림·문의 끊김(TERM-075)·주문으로 전환됨·상담 끝남·지워짐(1-1). 상담 끝남과 지워짐은 다시 열지 않고 손님의 다음 말은 새 상담(REQ-189)",
         "dataType": "text",
         "default": "'open'",
         "options": 8
@@ -3822,7 +3822,7 @@
         "id": "03h7y01791hwo1dbakplv380x",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "order_no",
-        "comment": "주문번호: 손님에게 보이는 유일한 번호. 차례 번호가 아닌 무작위라 주문 수가 드러나지 않음(G6)",
+        "comment": "주문번호(TERM-081): 손님에게 보이는 유일한 번호. 차례 번호가 아닌 무작위라 주문 수가 드러나지 않음(G6)",
         "dataType": "text",
         "options": 8
       },
@@ -4099,7 +4099,7 @@
         "id": "03h7y01796y3abgmnnomyt6fc",
         "tableId": "03h7y01796y3abgmnnczgybr2",
         "name": "kind",
-        "comment": "주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)·알레르기 정보(SPEC-075, 주문자 정보 카드 앞에서 따로 동의를 받음)·사진 게시 동의(SPEC-053, 완성 사진 안내의 버튼)·새 금액 확인(SPEC-076, 결제 안내를 전할 때 계좌 대신)",
+        "comment": "주문 요청·입금 알리기(TERM-082)·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)·알레르기 정보(SPEC-075, 주문자 정보 카드 앞에서 따로 동의를 받음)·사진 게시 동의(SPEC-053, 완성 사진 안내의 버튼)·새 금액 확인(SPEC-076, 결제 안내를 전할 때 계좌 대신)",
         "dataType": "text",
         "options": 8
       },
@@ -5019,7 +5019,7 @@
         "id": "03h7y0179cdtx0zvnv1dxph3r",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "kind",
-        "comment": "첫 결제·다시 낸 결제(결제 기한 연장, TERM-037)·차액 결제(R13). 날짜 변경·재제작에는 없음",
+        "comment": "첫 결제·다시 낸 결제(결제 기한 연장, TERM-037·TERM-086)·차액 결제(R13, TERM-079). 날짜 변경·재제작에는 없음",
         "dataType": "text",
         "options": 8
       },
@@ -5043,7 +5043,7 @@
         "id": "03h7y0179cdtx0zvnv7gdcuin",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "status",
-        "comment": "나감·확인 요청됨·맞추는 중·확인됨·기한 지남·닫힘(1-3)",
+        "comment": "나감·확인 요청됨(TERM-083)·맞추는 중(TERM-084)·확인됨·기한 지남·닫힘(1-3)",
         "dataType": "text",
         "default": "'open'",
         "options": 8
@@ -5296,7 +5296,7 @@
         "id": "03h7y0179cdtx0zvnwhlrafq2",
         "tableId": "03h7y0179cdtx0zvnw6vcy251",
         "name": "resolution",
-        "comment": "입금됨·대조 완료(모자란 금액이 입금됨)·대조 완료(더 들어온 금액은 환불로 돌려줌, SPEC-047)(R15)",
+        "comment": "입금됨·대조 완료(TERM-085, 모자란 금액이 입금됨)·대조 완료(더 들어온 금액은 환불로 돌려줌, SPEC-047)(R15)",
         "dataType": "text",
         "default": "'exact'",
         "options": 8

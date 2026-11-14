@@ -221,7 +221,7 @@ erDiagram
     uuid id PK "카드 ID"
     uuid consultation_id FK "카드를 보낸 상담"
     uuid customer_id FK "카드를 받은 사용자"
-    text kind "주문 요청·입금 알리기·변경…"
+    text kind "주문 요청·입금 알리기"
     uuid draft_id FK "주문 요청·주문자 정보…"
     uuid order_id FK "대상 주문"
   }
@@ -475,7 +475,7 @@ erDiagram
     uuid order_id FK "주문"
     text kind "첫 결제·다시 낸 결제"
     uuid change_request_id FK "차액 결제의 변경 요청"
-    text status "나감·확인 요청됨·맞추는 중…"
+    text status "나감·확인 요청됨"
     int version "비교해 쓰는 번호"
     int amount "안내 금액"
     uuid amount_card_id FK "손님이 누른 새 금액 확인…"
