@@ -23,7 +23,7 @@
 | [`docs/04-functional-spec/spec.md`](../04-functional-spec/spec.md) | 04단계 확정, SPEC-010은 06단계 뒤 수정본(커밋 a3a7c90) | SPEC-001~069가 어느 화면에 나오는지 |
 | [`api/openapi.yaml`](../../api/openapi.yaml) | 06단계 확정(2026-11-12 14:01, 커밋 a3a7c90) | 화면별 호출 API, 할 일 유형·상단 배너의 이동 화면, 웹 경로 이름 |
 | [`docs/01-domain/domain.md`](../01-domain/domain.md) | CTX-001~009, TERM-001~074 | 화면 이름과 `terms`, 용어집 금지어 |
-| [`docs/02-prd/requirements.md`](../02-prd/requirements.md) | REQ-001~164(4차 개정) | 화면 설명에 단 REQ 번호 |
+| [`docs/02-prd/requirements.md`](../02-prd/requirements.md) | 만들 때는 REQ-001~164(4차 개정). 지금 화면 설명의 번호는 버전 5(REQ-001~262, 유효한 231)를 따름 | 화면 설명에 단 REQ 번호 |
 
 | 산출물 | 내용 |
 | --- | --- |
@@ -38,7 +38,7 @@
 - SCR ID는 트리 순서로 붙였고 재사용하거나 번호를 바꾸지 않습니다. 새 화면은 다음 번호를 받고, 삭제하는 화면은 `status: removed`로 둡니다.
 - `flows`는 플로우 문서의 '화면 (07단계)' 표에서 그 화면을 적은 플로우와 같아야 합니다(검사 S9가 양쪽을 대조). 플로우 노드가 없는 화면은 `no_flow`에 사유를 적습니다.
 - 값은 CORTHEX 허브 파서가 읽는 형식만 씁니다: 문자열은 큰따옴표, 목록은 `[a, b]`, 탭과 블록 문자열(`|`, `>`)은 쓰지 않습니다(검사 S2).
-- `opens`는 하위 화면이 아니지만 그 화면에서 바로 이동하는 화면입니다(할 일 목록에서 여는 결정 화면 등, 6절).
+- `opens`는 하위 화면이 아니지만 그 화면에서 바로 이동하는 화면입니다(할 일 목록에서 여는 결정 화면 등, 6절). 08단계 화면 정의의 액션 표와 응답 표에서 괄호로 단 화면 ID(예: '주문 상세(SCR-021)')는 그 화면에서 바로 이동하는 화면이라, 그 화면의 상위·하위·`opens`·`opens_by_task`·`opens_by_banner` 가운데 하나에 있어야 합니다. 08단계 검사 C4가 이것을 대조합니다(대상이 카카오톡 대화 화면이면 링크로 여는 화면이 아니라 카드라 빼고, 다른 화면에서 여는 화면은 괄호 없이 씀).
 - 화면이 없는 읽기 모델(용어)은 원본 맨 위 `# without a screen:` 행에 적었습니다: TERM-057(AI 상담이 보는 주문서 초안), TERM-058(AI 상담이 보는 가게 규칙 판정), TERM-070(전날 안내를 보낼 때 서버가 쓰는 내일 픽업 주문).
 - 사이트맵 페이지는 원본에서 생성합니다. Artifact로 게시한 페이지는 https://claude.ai/artifact/HKQiAbycumHo5nkG9CWjpx 입니다(동희님 계정의 비공개 페이지, `.corthex/project.json`의 `07-sitemap.link`). 원본을 바꾸면 다시 생성해 같은 주소에 게시합니다. 작업 계정을 옮길 때마다(2026-11-12 밤, 2026-11-13) 새 주소로 다시 게시했고, 옛 주소의 페이지는 더 고치지 않습니다.
 
@@ -156,22 +156,22 @@
 | SCR-011 | SPEC-066, SPEC-023, SPEC-024, SPEC-036, SPEC-039, SPEC-044, SPEC-045, SPEC-047, SPEC-052, SPEC-053, SPEC-059, SPEC-061 | API-073 | CTX-008, TERM-054, TERM-036 | SCR-012 |
 | SCR-012 | SPEC-062, SPEC-061, SPEC-019 | API-072 | CTX-006, TERM-051 |  |
 | SCR-013 | SPEC-063, SPEC-069 | API-071 | CTX-006, TERM-052, TERM-051 |  |
-| SCR-014 | SPEC-001 | API-078, API-001 | CTX-007, TERM-044 |  |
-| SCR-015 | SPEC-002, SPEC-068 | API-007, API-008 | CTX-007, TERM-053 |  |
-| SCR-016 | SPEC-067, SPEC-024, SPEC-037 | API-040, API-002 | CTX-001, TERM-059, TERM-035, TERM-008 | SCR-022, SCR-023, SCR-024, SCR-025, SCR-026, SCR-027, SCR-029, SCR-032, SCR-035, SCR-042, SCR-043 |
-| SCR-017 | SPEC-022, SPEC-023, SPEC-056, SPEC-079 | API-041, API-042, API-083 | CTX-001, TERM-008, TERM-018 |  |
+| SCR-014 | SPEC-001 | API-078, API-001 | CTX-007, TERM-044 | SCR-035 |
+| SCR-015 | SPEC-002, SPEC-068 | API-007, API-008 | CTX-007, TERM-053 | SCR-016 |
+| SCR-016 | SPEC-067, SPEC-024, SPEC-037 | API-040, API-002 | CTX-001, TERM-059, TERM-035, TERM-008 | SCR-015, SCR-022, SCR-023, SCR-024, SCR-025, SCR-026, SCR-027, SCR-029, SCR-032, SCR-035, SCR-042, SCR-043 |
+| SCR-017 | SPEC-022, SPEC-023, SPEC-056, SPEC-079 | API-041, API-042, API-083 | CTX-001, TERM-008, TERM-018 | SCR-027 |
 | SCR-018 | SPEC-021, SPEC-019, SPEC-065, SPEC-068 | API-043 | CTX-001, TERM-046, TERM-019 |  |
-| SCR-019 | SPEC-067, SPEC-003, SPEC-024, SPEC-006 | 없음(먼저 보내는 안내) | CTX-008, TERM-035, TERM-054 | SCR-016, SCR-040 |
+| SCR-019 | SPEC-067, SPEC-003, SPEC-024, SPEC-006 | 없음(먼저 보내는 안내) | CTX-008, TERM-035, TERM-054 | SCR-016, SCR-021, SCR-040 |
 | SCR-020 | SPEC-031, SPEC-037, SPEC-068 | API-044 | CTX-003, TERM-001, TERM-064 |  |
-| SCR-021 | SPEC-045, SPEC-048, SPEC-068 | API-045, API-048 | CTX-003, TERM-001, TERM-004, TERM-005 |  |
+| SCR-021 | SPEC-045, SPEC-048, SPEC-068 | API-045, API-048 | CTX-003, TERM-001, TERM-004, TERM-005 | SCR-018, SCR-029 |
 | SCR-022 | SPEC-031 | API-045, API-046 | CTX-003, TERM-062, TERM-038, TERM-011 |  |
 | SCR-023 | SPEC-037, SPEC-038, SPEC-039 | API-045, API-047 | CTX-003, TERM-064, TERM-037 |  |
 | SCR-024 | SPEC-042, SPEC-043, SPEC-044, SPEC-045 | API-062, API-063 | CTX-003, TERM-066 |  |
-| SCR-025 | SPEC-047, SPEC-016, SPEC-071 | API-049, API-050 | CTX-004, TERM-067, TERM-016 |  |
+| SCR-025 | SPEC-047, SPEC-016, SPEC-071 | API-049, API-050 | CTX-004, TERM-067, TERM-016 | SCR-026 |
 | SCR-026 | SPEC-047, SPEC-049, SPEC-066 | API-060, API-061 | CTX-004, TERM-049 |  |
-| SCR-027 | SPEC-058, SPEC-059, SPEC-060, SPEC-079 | API-064, API-065 | CTX-003, TERM-073, TERM-031, TERM-033, TERM-034 |  |
+| SCR-027 | SPEC-058, SPEC-059, SPEC-060, SPEC-079 | API-064, API-065 | CTX-003, TERM-073, TERM-031, TERM-033, TERM-034 | SCR-026 |
 | SCR-028 | SPEC-034, SPEC-033, SPEC-035, SPEC-037 | API-057 | CTX-004, TERM-063 |  |
-| SCR-029 | SPEC-034, SPEC-035, SPEC-036, SPEC-070, SPEC-071 | API-058, API-059 | CTX-004, TERM-063, TERM-049 |  |
+| SCR-029 | SPEC-034, SPEC-035, SPEC-036, SPEC-070, SPEC-071 | API-058, API-059 | CTX-004, TERM-063, TERM-049 | SCR-021, SCR-023, SCR-025 |
 | SCR-030 | SPEC-050, SPEC-051, SPEC-053, SPEC-060 | API-051, API-052, API-053, API-007 | CTX-005, TERM-068, TERM-050, TERM-022 |  |
 | SCR-031 | SPEC-054, SPEC-055 | API-051, API-054, API-055, API-056 | CTX-005, TERM-069, TERM-024, TERM-025 |  |
 | SCR-032 | SPEC-007, SPEC-012, SPEC-015 | API-028, API-029 | CTX-002, TERM-060, TERM-048, TERM-026, TERM-027 |  |
@@ -185,9 +185,9 @@
 | SCR-040 | SPEC-006 | API-024, API-025 | CTX-004, TERM-049 |  |
 | SCR-041 | SPEC-008, SPEC-017 | API-030, API-031, API-032, API-079 | CTX-007, TERM-053 |  |
 | SCR-042 | SPEC-009, SPEC-064 | API-033, API-034, API-035, API-036 | CTX-009, TERM-028, TERM-055 |  |
-| SCR-043 | SPEC-010 | API-037 | CTX-007, TERM-042 | SCR-035, SCR-036, SCR-038, SCR-040, SCR-041 |
+| SCR-043 | SPEC-010 | API-037 | CTX-007, TERM-042 | SCR-001, SCR-033, SCR-035, SCR-036, SCR-038, SCR-040, SCR-041 |
 | SCR-044 | SPEC-063 | API-067, API-068, API-069 | CTX-006, TERM-052, TERM-071 |  |
-| SCR-045 | SPEC-062 | API-066 | CTX-006, TERM-051, TERM-071 |  |
+| SCR-045 | SPEC-062 | API-066 | CTX-006, TERM-051, TERM-071 | SCR-021, SCR-044 |
 | SCR-046 | SPEC-001 | API-004 | CTX-007, TERM-074 |  |
 | SCR-047 | SPEC-003, SPEC-002, SPEC-078 | API-012, API-005, API-006, API-081 | CTX-007, TERM-053, TERM-074 |  |
 | SCR-048 | SPEC-003, SPEC-078 | API-013, API-014, API-082 | CTX-007, TERM-053, TERM-074 | SCR-050 |
@@ -247,6 +247,8 @@
 - 열린 질문 OPEN-8(사장님이 오픈빌더 봇 ID를 찾는 위치)은 SCR-041 카카오톡 채널 연결 화면의 안내 문구로 08단계에서 정합니다. OPEN-6(운영자 인증 서비스)은 SCR-046에, OPEN-10(스킬 요청이 카카오에서 왔는지)은 SCR-041과 상담 화면(API-070)에, OPEN-11(카카오 로그인의 PKCE)은 SCR-014에 걸려 있습니다.
 
 ## 9. 검사
+
+2026-11-15 06:11 KST, 설계 재검토 낮음 K3로 화면 열한 개의 `opens`에 바로 이동 16개를 더하고 이 문서의 입력 표·관리 방법·13절을 고친 뒤 `--hub`와 함께 돌린 결과: 검사 17개 통과 17, 실패 0, 미확인 0. 바뀐 숫자는 S14 허용 예외 84곳(13절 표의 화면 이름과 근거 글에서 5곳 늚)이고, 나머지(S8 노드 355개, S10 83/83, S11 79/79 등)는 03:18 검사와 같습니다. 구조도·화면 목록·슬라이드는 `opens`를 그리지 않아 다시 생성해도 그대로입니다(S16).
 
 2026-11-15 03:18 KST, 설계 재검토 M8로 03단계 플로우를 고치고 이 문서의 화면 표를 다시 만든 뒤(13절) `--hub`와 함께 돌린 결과: 검사 17개 통과 17, 실패 0, 미확인 0. 바뀐 숫자는 S8 노드 355개(화면 227, 분기 54, 서버 처리 37, 외부 10, 종료 27)이고, 나머지(S7 SPEC 79·API 83개, S10 83/83, S11 79/79 등)는 2026-11-14 23:00 검사와 같습니다.
 
@@ -413,3 +415,21 @@
 - 새 노드: FL-004 D6(오늘 AI 비용이 한도에 닿았나, 분기)과 K14(AI 답 없이 사장님께 에스컬레이션, SCR-003 가게 채널 상담), FL-007 D8(사장님이 손님과 정한 뒤 고름)과 P14(결제 확인 취소)는 SCR-029 입금 대조.
 - 바뀐 노드: FL-007 E1은 '가게 사정으로 취소함(받은 금액 전액 환불, FL-009)'이 되어 사유가 외부에서 종료로. FL-001 S·D7, FL-006 O17, FL-007 P11, FL-008 D4, FL-013 L5는 이름만 바뀌고 화면은 그대로.
 - 노드 351개 → 355개(화면이 있는 노드 224개 → 227개, 분기 53개 → 54개, 외부 11개 → 10개, 종료 26개 → 27개). 화면·경로·SPEC·API는 그대로이고 S10은 83/83, S11은 79/79.
+
+2026-11-15 같은 재검토의 낮음 K3(RE-19)를 같은 결정 카드의 '높음·중간 뒤에 따로 고침 (추천)'대로 고쳤습니다. 08단계 화면 정의의 바로 이동 가운데 사이트맵에 없던 16개를 `opens`에 더하고 `build_sitemap.py . --write`로 6절 표를 다시 만들었습니다. `sitemap.html`은 이동 화면을 그리지 않아 바뀌지 않습니다(S16 생성 파일 16개가 원본과 같음).
+
+| 화면 | 더한 `opens` | 08단계 화면 정의의 근거 |
+| --- | --- | --- |
+| SCR-014 사장님 로그인 | SCR-035 | 보류된 가게는 영업 신고로 이동 |
+| SCR-015 가게 등록 | SCR-016 | 등록하면 할 일 목록으로 이동 |
+| SCR-016 할 일 목록 | SCR-015 | 가게가 없으면 가게 등록으로 보냄 |
+| SCR-017 에스컬레이션 건 | SCR-027 | '문제 신고로 남겼어요'와 문제 신고 링크 |
+| SCR-019 사장님 알림 | SCR-021 | 할 일이 아닌 알림 말풍선의 '주문 보기' 버튼 |
+| SCR-021 주문 상세 | SCR-018, SCR-029 | 상담 대화 보기, 결제 안내 누르기(입금 대조) |
+| SCR-025 환불 결정 | SCR-026 | 정한 뒤 환불 송금으로 이동 |
+| SCR-027 문제 신고 | SCR-026 | 일부·전액 환불을 정한 뒤 환불 송금 |
+| SCR-029 입금 대조 | SCR-021, SCR-023, SCR-025 | 가게 사정 취소, 기한이 지난 미입금, 환불 결정 링크 |
+| SCR-043 예약 링크 | SCR-001, SCR-033 | 예약 링크 페이지 열기(새 탭), 조건의 영업 캘린더 |
+| SCR-045 후기 | SCR-021, SCR-044 | 주문 보기, 포트폴리오로 |
+
+- 같은 PR에서 2절 입력 표의 요구사항 범위를 지금 번호(버전 5, REQ-001~262)로 고쳤습니다(K2가 넘긴 것).

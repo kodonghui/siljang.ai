@@ -189,6 +189,9 @@ def main():
             continue
         if head["경로"] != "`%s`" % n["path"]:
             problems.append("%s: 경로 %s ≠ 사이트맵 %s" % (sid, head["경로"], n["path"]))
+        also = ", ".join("`%s`" % p for p in n.get("also_paths") or [])  # 사이트맵의 둘째 경로(설계 재검토 낮음 RE-14)
+        if head.get("다른 경로", "") != also:
+            problems.append("%s: 다른 경로 %s ≠ 사이트맵 also_paths %s" % (sid, head.get("다른 경로", "(없음)"), also or "(없음)"))
         if head["접근 권한"] != n["access"]:
             problems.append("%s: 접근 권한 %s ≠ 사이트맵 %s" % (sid, head["접근 권한"], n["access"]))
         if not head["상위 화면"].startswith(n["parent"] or "없음(루트)"):
@@ -199,7 +202,7 @@ def main():
             problems.append("%s: API가 사이트맵과 다름" % sid)
         if not head["와이어프레임"].startswith("`wireframes.html#%s`" % sid):
             problems.append("%s: 와이어프레임 링크가 틀림" % sid)
-    rep.add("C2", "머리말(경로·접근 권한·상위 화면·SPEC·API·와이어프레임)이 사이트맵과 같음", problems)
+    rep.add("C2", "머리말(경로·다른 경로·접근 권한·상위 화면·SPEC·API·와이어프레임)이 사이트맵과 같음", problems)
 
     # C3 목적과 플로우
     problems, no_flow = [], 0
@@ -221,7 +224,7 @@ def main():
     rep.add("C3", "목적 한 문장과 플로우 ID(사이트맵과 같음)", problems, "플로우 노드 없음 %d개" % no_flow)
 
     # C4 데이터·액션
-    problems, nrows, nacts = [], 0, 0
+    problems, nrows, nacts, nnav = [], 0, 0, 0
     for sid, text in docs.items():
         sec = sections(text)
         apis = set(nodes[sid].get("apis") or [])
@@ -244,7 +247,20 @@ def main():
                 problems.append("%s: 액션 %s에 결과나 실패가 빠짐" % (sid, r[:1]))
         if "데이터" not in sec or "액션" not in sec:
             problems.append("%s: 데이터나 액션 절이 없음" % sid)
-    rep.add("C4", "데이터마다 출처, 액션마다 결과와 실패", problems, "데이터 %d행, 액션 %d행" % (nrows, nacts))
+        # 바로 이동(설계 재검토 낮음 RE-19): 액션·응답 표에서 괄호로 단 화면 ID는 사이트맵의 상위·하위·opens에 있어야 함.
+        # 카카오톡 대화 화면은 링크로 여는 화면이 아니라 카드라 대상에서 뺌
+        n = nodes[sid]
+        rel = {n["parent"]} | {c["id"] for c in n.get("children") or []} | set(n.get("opens") or []) \
+            | set((n.get("opens_by_task") or {}).values()) | set((n.get("opens_by_banner") or {}).values())
+        for part in ("액션", "응답과 상태"):
+            for t in re.findall(r"\((SCR-\d{3})\)", sec.get(part, "")):
+                if t == sid or t not in nodes or nodes[t]["path"].startswith("kakao:"):
+                    continue
+                nnav += 1
+                if t not in rel:
+                    problems.append("%s: %s 표의 바로 이동 %s가 사이트맵의 상위·하위·opens에 없음" % (sid, part, t))
+    rep.add("C4", "데이터마다 출처, 액션마다 결과와 실패, 바로 이동하는 화면이 사이트맵에 있음", problems,
+            "데이터 %d행, 액션 %d행, 바로 이동 %d곳" % (nrows, nacts, nnav))
 
     # C5 상태
     problems, described, total = [], {}, 0
