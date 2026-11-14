@@ -3,7 +3,8 @@
 -- 1부: 정상 플로우(알레르기 정보 동의 → 기본 디자인 주문 → 입금 알리기 → 확정 → 완성 사진의 게시 동의 → 인도 → 신고 → 재제작 →
 --      후기·포트폴리오 → 완성 사진 동의 철회(먼저 내림), 주문 4는 알레르기 정보 동의 안 함,
 --      맞춤 주문 → 금액 변경 수락 → 확정 → 차액 결제(더 들어온 금액은 환불) 변경 반영, 확정 뒤 손님 취소 → 환불,
---      잘못 누른 결제 확인 취소 → 입금했다고 알린 뒤 손님 취소 → 들어온 입금 남기기 → 환불 → 환불 보내기).
+--      잘못 누른 결제 확인 취소 → 입금했다고 알린 뒤 손님 취소 → 들어온 입금 남기기 → 환불 → 환불 보내기,
+--      사업자 정보 변경 요청 반영 → 다음 변경 요청 확인 기다림).
 -- 2부: 규칙마다 어기는 쓰기 하나. 기대한 제약으로 막히면 ok, 들어가거나 다른 제약에 걸리면 테스트 실패.
 --      같은 잠금 번호를 읽고 늦게 쓴 쓰기(expect_stale)는 0행이면 ok, 덮어쓰면 테스트 실패(설계 재검토 H12, README 4절 A6).
 --      넓힌 범위 안의 쓰기(expect_ok)는 들어가면 ok, 막히면 테스트 실패. 들어간 것은 되돌림(Codex 후속).
@@ -114,18 +115,18 @@ INSERT INTO owners (id, kakao_account_id, alert_channel_friend, alert_friend_che
   ('a0000000-0000-0000-0000-000000000002', 1002, false, now());
 INSERT INTO operators (id, email, display_name, mfa_enrolled_at) VALUES
   ('a1000000-0000-0000-0000-000000000001', 'ops@example.com', '운영자', now());
-INSERT INTO shops (id, owner_id, name, contact_phone, business_name, representative_name, business_reg_no,
-                   mail_order_reg_no, food_license_no, food_business_type, license_photo_key, license_status,
+INSERT INTO shops (id, owner_id, name, contact_phone, contact_email, business_address, business_name, representative_name, business_reg_no,
+                   mail_order_reg_no, mail_order_authority, food_license_no, food_business_type, license_photo_key, license_status,
                    license_reviewed_by, license_reviewed_at, entrustment_terms_version, entrustment_consented_at,
                    booking_slug, booking_issued_at) VALUES
-  ('a2000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', '달콤케이크', '010-1234-5678',
-   '달콤케이크', '김사장', '1234567890', '2026-서울강남-0001', '2026-0123', 'instant_sale_manufacturing',
+  ('a2000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', '달콤케이크', '010-1234-5678', 'dalkom@example.com',
+   '서울 강남구 달콤로 1', '달콤케이크', '김사장', '1234567890', '2026-서울강남-0001', '서울특별시 강남구청', '2026-0123', 'instant_sale_manufacturing',
    'license/a.jpg', 'verified', 'a1000000-0000-0000-0000-000000000001', now(), 'entrust-v1', now(), 'dalkom', now());
-INSERT INTO shops (id, owner_id, name, contact_phone, business_name, representative_name, business_reg_no,
+INSERT INTO shops (id, owner_id, name, contact_phone, contact_email, business_address, business_name, representative_name, business_reg_no,
                    mail_order_exemption, food_license_no, food_business_type, license_photo_key,
                    entrustment_terms_version, entrustment_consented_at) VALUES
-  ('a2000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000002', '다른가게', '02-123-4567',
-   '다른가게', '박사장', '1234567890', '간이과세자 면제', '2026-0456', 'bakery', 'license/b.jpg', 'entrust-v1', now());
+  ('a2000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000002', '다른가게', '02-123-4567', 'other@example.com',
+   '서울 마포구 다른로 2', '다른가게', '박사장', '1234567890', '간이과세자 면제', '2026-0456', 'bakery', 'license/b.jpg', 'entrust-v1', now());
 -- 연결됨: 버튼 블록 ID 다섯이 시험 버튼으로 모두 닿고, 시험 안내가 닿아 먼저 보내기 됨(REQ-206, REQ-180)
 INSERT INTO kakao_channels (id, shop_id, bot_id, channel_public_id, status, check_started_at, linked_at, card_block_id, orderer_block_id,
                             allergy_block_id, depositor_block_id, review_block_id, verified_blocks, test_user_key, event_status, event_task_id, event_checked_at,
@@ -608,6 +609,18 @@ INSERT INTO payment_accounts (id, shop_id, bank_name, account_number_enc, accoun
   ('b7000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000002', '하나은행', 'v1:TESTnonce000000000000ciphertext0003tag16', '7890', '박사장');
 INSERT INTO owner_alerts (id, shop_id, kind, event_key, status) VALUES
   ('f8000000-0000-0000-0000-000000000009', 'a2000000-0000-0000-0000-000000000002', 'payment_account_changed', 'alert:account:b7..03', 'pending');
+-- 사업자 정보 변경 요청(SPEC-078, REQ-245): 상호를 바꾸는 요청을 운영자가 반영하고 사장님께 할 일 없이 알림, 그 뒤 대표자를 바꾸는 요청이 확인 기다림
+INSERT INTO shop_identity_changes (id, shop_id, business_name, representative_name, business_reg_no, prev_business_name,
+                                   prev_representative_name, prev_business_reg_no, evidence_photo_key, status, reviewed_by, reviewed_at, requested_at) VALUES
+  ('a5000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000002', '다른가게 공방', '박사장', '1234567890', '다른가게',
+   '박사장', '1234567890', 'identity/b-1.jpg', 'applied', 'a1000000-0000-0000-0000-000000000001', now(), now() - interval '1 day');
+UPDATE shops SET business_name = '다른가게 공방', updated_at = now() WHERE id = 'a2000000-0000-0000-0000-000000000002';
+INSERT INTO owner_alerts (id, shop_id, kind, event_key, status) VALUES
+  ('f8000000-0000-0000-0000-000000000010', 'a2000000-0000-0000-0000-000000000002', 'identity_change_applied', 'alert:identity_change_applied:a5..01', 'pending');
+INSERT INTO shop_identity_changes (id, shop_id, business_name, representative_name, business_reg_no, prev_business_name,
+                                   prev_representative_name, prev_business_reg_no, evidence_photo_key) VALUES
+  ('a5000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000002', '다른가게 공방', '이사장', '1234567890', '다른가게 공방',
+   '박사장', '1234567890', 'identity/b-2.jpg');
 -- 접속기록(SPEC-074): 1년 전 사장님의 주문 상세 읽음, 지금 운영자가 사유를 적고 대화 속 전화번호를 엶(SPEC-073),
 -- 2년 1일 전 운영자의 보관 기록 열기(지우기가 지울 행), 지금 운영자가 사유를 적고 상담의 대화 글을 엶(REQ-227). 접속지는 문서용 주소
 INSERT INTO access_logs (id, shop_id, actor_kind, owner_id, operator_id, action, api_id, request_path, subject_ids,
@@ -640,18 +653,49 @@ SELECT pg_temp.expect_fail('G1 다른 가게 채널에 손님 붙이기', 'custo
 
 -- 가게 등록·연결 (CTX-007)
 SELECT pg_temp.expect_fail('SPEC-002 카카오 계정 하나에 가게 둘', 'shops_one_per_owner', ARRAY[$$
-  INSERT INTO shops (owner_id, name, contact_phone, business_name, representative_name, business_reg_no, mail_order_reg_no, food_license_no,
-                     food_business_type, license_photo_key, entrustment_terms_version, entrustment_consented_at)
-  VALUES ('a0000000-0000-0000-0000-000000000001', '두번째', '010-1111-2222', '두번째', '김사장', '1112223334', '2026-0002', '1', 'bakery', 'x', 'v1', now())$$]);
+  INSERT INTO shops (owner_id, name, contact_phone, contact_email, business_address, business_name, representative_name, business_reg_no, mail_order_reg_no,
+                     mail_order_authority, food_license_no, food_business_type, license_photo_key, entrustment_terms_version, entrustment_consented_at)
+  VALUES ('a0000000-0000-0000-0000-000000000001', '두번째', '010-1111-2222', 'second@example.com', '서울 강남구 달콤로 3', '두번째', '김사장', '1112223334',
+          '2026-0002', '서울특별시 강남구청', '1', 'bakery', 'x', 'v1', now())$$]);
 SELECT pg_temp.expect_fail('REQ-107 처리 위탁 동의 없는 가게', 'entrustment_consented_at', ARRAY[$$
   INSERT INTO owners (id, kakao_account_id) VALUES ('a0000000-0000-0000-0000-000000000009', 1009)$$, $$
-  INSERT INTO shops (owner_id, name, contact_phone, business_name, representative_name, business_reg_no, mail_order_reg_no, food_license_no,
-                     food_business_type, license_photo_key, entrustment_terms_version)
-  VALUES ('a0000000-0000-0000-0000-000000000009', '동의없음', '010-1111-2222', '동의없음', '정사장', '1112223334', '2026-0003', '1', 'bakery', 'x', 'v1')$$]);
+  INSERT INTO shops (owner_id, name, contact_phone, contact_email, business_address, business_name, representative_name, business_reg_no, mail_order_reg_no,
+                     mail_order_authority, food_license_no, food_business_type, license_photo_key, entrustment_terms_version)
+  VALUES ('a0000000-0000-0000-0000-000000000009', '동의없음', '010-1111-2222', 'none@example.com', '서울 종로구 동의로 4', '동의없음', '정사장', '1112223334',
+          '2026-0003', '서울특별시 종로구청', '1', 'bakery', 'x', 'v1')$$]);
 SELECT pg_temp.expect_fail('SPEC-002 영업 종류가 둘 밖', 'shops_food_business_type_check', ARRAY[$$
   UPDATE shops SET food_business_type = 'none' WHERE id = 'a2000000-0000-0000-0000-000000000002'$$]);
-SELECT pg_temp.expect_fail('REQ-106 통신판매업 신고번호도 면제 사유도 없음', 'shops_mail_order_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('REQ-239 통신판매업 신고번호도 면제 사유도 없음', 'shops_mail_order_chk', ARRAY[$$
   UPDATE shops SET mail_order_exemption = NULL WHERE id = 'a2000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-239 신고번호만 있고 신고를 받은 기관이 없음', 'shops_mail_order_authority_chk', ARRAY[$$
+  UPDATE shops SET mail_order_authority = NULL WHERE id = 'a2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-239 신고번호 없이 신고를 받은 기관만', 'shops_mail_order_authority_chk', ARRAY[$$
+  UPDATE shops SET mail_order_authority = '서울특별시 마포구청' WHERE id = 'a2000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-239 전자우편주소 형식이 아님', 'shops_contact_email_check', ARRAY[$$
+  UPDATE shops SET contact_email = 'dalkom at example.com' WHERE id = 'a2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-239 사업장 주소 없음', 'business_address', ARRAY[$$
+  UPDATE shops SET business_address = NULL WHERE id = 'a2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('SPEC-078 한 가게에 확인을 기다리는 변경 요청 둘', 'shop_identity_changes_one_pending', ARRAY[$$
+  INSERT INTO shop_identity_changes (shop_id, business_name, representative_name, business_reg_no, prev_business_name, prev_representative_name,
+                                     prev_business_reg_no, evidence_photo_key)
+  VALUES ('a2000000-0000-0000-0000-000000000002', '다른가게 공방', '박사장', '9876543210', '다른가게 공방', '박사장', '1234567890', 'identity/b-3.jpg')$$]);
+SELECT pg_temp.expect_fail('SPEC-078 세 값이 모두 그대로인 변경 요청', 'shop_identity_changes_differs_chk', ARRAY[$$
+  INSERT INTO shop_identity_changes (shop_id, business_name, representative_name, business_reg_no, prev_business_name, prev_representative_name,
+                                     prev_business_reg_no, evidence_photo_key)
+  VALUES ('a2000000-0000-0000-0000-000000000001', '달콤케이크', '김사장', '1234567890', '달콤케이크', '김사장', '1234567890', 'identity/a-1.jpg')$$]);
+SELECT pg_temp.expect_fail('SPEC-078 이유 없는 보류', 'shop_identity_changes_hold_chk', ARRAY[$$
+  UPDATE shop_identity_changes SET status = 'on_hold', reviewed_by = 'a1000000-0000-0000-0000-000000000001', reviewed_at = now()
+   WHERE id = 'a5000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('SPEC-078 운영자·시각 없는 반영', 'shop_identity_changes_reviewed_chk', ARRAY[$$
+  UPDATE shop_identity_changes SET status = 'applied' WHERE id = 'a5000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('SPEC-078 확인 기다림에 남은 운영자', 'shop_identity_changes_reviewed_chk', ARRAY[$$
+  UPDATE shop_identity_changes SET reviewed_by = 'a1000000-0000-0000-0000-000000000001', reviewed_at = now() WHERE id = 'a5000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_ok('SPEC-078 보류한 뒤 새 변경 요청', ARRAY[$$
+  UPDATE shop_identity_changes SET status = 'on_hold', hold_reason = '증빙 사진의 대표자 이름이 보이지 않아요', reviewed_by = 'a1000000-0000-0000-0000-000000000001',
+         reviewed_at = now() WHERE id = 'a5000000-0000-0000-0000-000000000002'$$, $$
+  INSERT INTO shop_identity_changes (shop_id, business_name, representative_name, business_reg_no, prev_business_name, prev_representative_name,
+                                     prev_business_reg_no, evidence_photo_key)
+  VALUES ('a2000000-0000-0000-0000-000000000002', '다른가게 공방', '이사장', '1234567890', '다른가게 공방', '박사장', '1234567890', 'identity/b-4.jpg')$$]);
 SELECT pg_temp.expect_fail('SPEC-003 이유 없는 보류', 'shops_hold_reason_chk', ARRAY[$$
   UPDATE shops SET license_status = 'on_hold', license_reviewed_by = 'a1000000-0000-0000-0000-000000000001', license_reviewed_at = now()
    WHERE id = 'a2000000-0000-0000-0000-000000000002'$$]);
