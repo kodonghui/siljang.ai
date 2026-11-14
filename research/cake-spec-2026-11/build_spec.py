@@ -6,6 +6,9 @@ python3 -I build_spec.py <repo> [--write]
   수락 기준 끝의 ' (확인: REQ-…)'는 그 기준이 직접 확인하는 요구사항(그 행의 요구사항 가운데서).
   우선순위 필수이고 확정인 요구사항마다 확인하는 수락 기준이 있어야 함. 없이 두는 것은
   spec.md 의 '<!-- AC-EXEMPT -->' 표에 이유와 함께 둠
+  플로우 다이어그램의 (FL, REQ) 짝마다 그 REQ를 받는 SPEC 가운데 그 FL을 출처로 적은 행이 있어야 하고,
+  SPEC이 출처로 적은 플로우의 다이어그램에는 그 SPEC의 요구사항이 하나 이상 있어야 하며,
+  행의 본문이 인용한 유효 요구사항은 출처 열에 있어야 함(설계 재검토 RB-26)
 """
 import os, re, sys, importlib.util
 
@@ -106,6 +109,29 @@ for q, why in exempt.items():
 miss_ac = sorted(must - set(checked) - set(exempt))
 if miss_ac: errors.append("확인하는 수락 기준이 없는 필수 요구사항: " + ", ".join(miss_ac))
 
+# 플로우 스텝의 (FL, REQ) 짝과 SPEC 행의 출처가 맞는지(설계 재검토 RB-26)
+flow_reqs = {}
+for f in sorted(os.listdir(os.path.join(repo, "docs/03-user-flow"))):
+    fm = re.match(r"(FL-\d{3})", f)
+    if not fm: continue
+    body = open(os.path.join(repo, "docs/03-user-flow", f), encoding="utf-8").read()
+    dm = re.search(r"```mermaid\n(.*?)```", body, flags=re.S)
+    flow_reqs[fm.group(1)] = set(ids(dm.group(1), "REQ")) if dm else set()
+row_fl = {r["id"]: set(ids(r["fl"], "FL")) for r in ROWS}
+row_rq = {r["id"]: set(ids(r["req"], "REQ")) for r in ROWS}
+pairs = sorted((f, q) for f, qs in flow_reqs.items() for q in qs if q in func and q in cover)
+pair_miss = [f"{f}·{q}" for f, q in pairs if not any(f in row_fl[s] for s in spec_ids if q in row_rq[s])]
+if pair_miss: errors.append("플로우 스텝의 (FL, REQ) 짝을 받는 SPEC이 없음: " + ", ".join(pair_miss))
+links = [(s, f) for s in spec_ids for f in sorted(row_fl[s])]
+link_miss = [f"{s}→{f}" for s, f in links if not (row_rq[s] & flow_reqs.get(f, set()))]
+if link_miss: errors.append("SPEC이 출처로 적은 플로우의 다이어그램에 그 SPEC의 요구사항이 없음: " + ", ".join(link_miss))
+cite_miss = []
+for r in ROWS:
+    text = " ".join([r["name"], r["pre"], r["main"]] + list(r["exc"]) + list(r["ac"]))
+    extra = sorted({q for q in ids(text, "REQ") if q in live} - row_rq[r["id"]])
+    if extra: cite_miss.append(f"{r['id']}({', '.join(extra)})")
+if cite_miss: errors.append("본문이 인용한 요구사항이 출처 열에 없음: " + ", ".join(cite_miss))
+
 print(f"SPEC 행 {len(ROWS)}개, AI 호출이 있는 행 {sum(1 for r in ROWS if r['ai'])}개")
 print(f"기능 요구사항 {len(func)}개 가운데 SPEC 있음 {len(func) - len(miss_func)}개; 없는 것 {miss_func}")
 print(f"기능 필수 {len(must_func)}개 가운데 SPEC 있음 {len(must_func) - len(miss_must)}개")
@@ -115,6 +141,7 @@ n_tag = sum(1 for r in ROWS for a in r["ac"] if TAG.search(a))
 print(f"필수 요구사항 {len(must)}개 가운데 확인하는 수락 기준 있음 {len(must & set(checked))}개, "
       f"수락 기준 없이 둠 {len(must & set(exempt))}개 {sorted(must & set(exempt))}, 없는 것 {miss_ac}")
 print(f"수락 기준 {n_ac}개 가운데 확인 꼬리표가 있는 것 {n_tag}개, 꼬리표가 가리킨 요구사항 {len(checked)}개")
+print(f"플로우 스텝의 (FL, REQ) 짝 {len(pairs)}개 가운데 받는 SPEC이 없는 것 {len(pair_miss)}개, SPEC→플로우 연결 {len(links)}개 가운데 다이어그램에 근거가 없는 것 {len(link_miss)}개, 본문 인용이 출처 열에 없는 행 {len(cite_miss)}개")
 kind_count = {k: 0 for k in KINDS}
 for r in ROWS:
     for e in r["exc"]:
