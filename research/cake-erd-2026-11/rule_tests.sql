@@ -942,6 +942,30 @@ SELECT pg_temp.expect_fail('G2 같은 환불을 두 번 정함', 'refunds_event_
 SELECT pg_temp.expect_fail('SPEC-059 신고 없는 보상 환불', 'refunds_issue_chk', ARRAY[$$
   INSERT INTO refunds (shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'compensation', 'refund:x', 'full', 40000, 40000, '{}')$$]);
+SELECT pg_temp.expect_fail('M4 금액이 내려간 변경에 전액 환불', 'refunds_change_decision_chk', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'change_reduced', 'd2000000-0000-0000-0000-000000000001',
+          'refund:x-reduced', 'full', 10000, 10000, '{}')$$]);
+SELECT pg_temp.expect_ok('M4 금액이 내려간 변경의 차액 돌려주기(일부 환불)', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, change_request_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'change_reduced', 'd2000000-0000-0000-0000-000000000001',
+          'refund:x-reduced', 'partial', 10000, 10000, '{}')$$]);
+SELECT pg_temp.expect_fail('M13 재제작 주문을 가리키는 재제작', 'orders_remake_root', ARRAY[$$
+  INSERT INTO orders (id, shop_id, order_no, customer_id, consultation_id, kind, status, version, price_list_id, operating_rules_id,
+                      pickup_at, pickup_day, amount, confirmed_at, remake_of_order_id)
+  VALUES ('d0000000-0000-0000-0000-0000000000f2', 'a2000000-0000-0000-0000-000000000001', 'R4T8W3', 'c0000000-0000-0000-0000-000000000001',
+          'c1000000-0000-0000-0000-000000000001', 'standard', 'confirmed', 1, 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001',
+          '2026-12-28 06:00:00+00', '2026-12-28', 0, now(), 'd0000000-0000-0000-0000-000000000002')$$]);
+SELECT pg_temp.expect_fail('M13 재제작 주문에 결제 안내', 'payment_requests_remake', ARRAY[$$
+  INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, delivered_at, due_at, due_cap_at)
+  VALUES ('e0000000-0000-0000-0000-0000000000f2', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'first',
+          'pay:d0..02:first', 'open', 40000, 'b7000000-0000-0000-0000-000000000001', now(), now() + interval '12 hours', now() + interval '2 days')$$]);
+SELECT pg_temp.expect_fail('M13 재제작 주문에 환불', 'refunds_remake', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'customer_cancel', 'refund:d0..02:cancel',
+          'full', 45000, 45000, '{}')$$]);
+SELECT pg_temp.expect_fail('M13 재제작 주문의 장부 행', 'ledger_rows_remake', ARRAY[$$
+  INSERT INTO ledger_rows (shop_id, order_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002')$$]);
 SELECT pg_temp.expect_fail('SPEC-006 https가 아닌 카드 결제 링크', 'payment_accounts_card_payment_url_check', ARRAY[$$
   UPDATE payment_accounts SET card_payment_url = 'http://pay.example.com' WHERE id = 'b7000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-006 가게마다 지금 계좌 둘', 'payment_accounts_one_current', ARRAY[$$

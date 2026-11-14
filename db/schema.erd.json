@@ -555,7 +555,7 @@
       "03h7y0178qg91ufre0offtu90": {
         "id": "03h7y0178qg91ufre0offtu90",
         "name": "refund_tiers",
-        "comment": "TBL-012 단계별 환불: 픽업 몇 시간 전 취소면 몇 퍼센트",
+        "comment": "TBL-012 단계별 환불: 기준 픽업 일시 몇 시간 전 취소면 몇 퍼센트. 버전마다 0시간부터 끝없음(빈 값)까지 빈 구간 없이 이어지고(앱, SPEC-005) 겹치지 않음(refund_tiers_no_overlap)",
         "columnIds": [
           "03h7y0178qg91ufre0r0r14z8",
           "03h7y0178qg91ufre0t98mqy3",
@@ -2480,7 +2480,7 @@
         "id": "03h7y0178qg91ufrdzvs4d7sj",
         "tableId": "03h7y0178qg91ufrdzgb4zqc0",
         "name": "cancellation_fee_krw",
-        "comment": "고정 취소 수수료(TERM-016). 계산에서는 주문 금액까지만 뺌",
+        "comment": "고정 취소 수수료(TERM-016), 0원~1,000만 원. 저장할 때는 주문 금액과 견주지 않고, 환불 계산에서 비율보다 먼저 빼며 바탕보다 크면 환불 0원(SPEC-016, 4절 A30)",
         "dataType": "integer",
         "default": "0",
         "options": 8
@@ -2489,7 +2489,7 @@
         "id": "03h7y0178qg91ufrdzxcz6xfl",
         "tableId": "03h7y0178qg91ufrdzgb4zqc0",
         "name": "pre_production_refund_pct",
-        "comment": "제작 전 취소의 환불 비율. 수수료를 뺀 뒤, 기본 전액(REQ-031)",
+        "comment": "제작 전 취소의 환불 비율: 수수료를 뺀 값에 곱하고 원 미만 버림, 기본 전액(REQ-031). 단계별 환불이 없는 버전은 맞춤 재료 주문·제작 시작 뒤 취소에도 씀(SPEC-016)",
         "dataType": "smallint",
         "default": "100",
         "options": 8
@@ -2507,7 +2507,7 @@
         "id": "03h7y0178qg91ufre027lc77r",
         "tableId": "03h7y0178qg91ufrdzgb4zqc0",
         "name": "date_change_refund_basis",
-        "comment": "날짜를 바꾼 주문의 환불 기준일: 처음 픽업일·바꾼 픽업일. 기본값 없음, 가게가 정함",
+        "comment": "날짜를 바꾼 주문의 환불 기준일: 처음 픽업일(주문 내용 첫 버전의 픽업 일시)·바꾼 픽업일. 단계별 환불의 남은 시간을 이 픽업 일시까지로 셈(SPEC-016). 기본값 없음, 가게가 정함",
         "dataType": "text",
         "options": 8
       },
@@ -2622,7 +2622,7 @@
         "id": "03h7y0178qg91ufre0wtile89",
         "tableId": "03h7y0178qg91ufre0offtu90",
         "name": "hours_before_min",
-        "comment": "취소가 픽업 일시 몇 시간 전부터(이 값 포함)",
+        "comment": "취소가 기준 픽업 일시 몇 시간 전부터(이 값 포함). 남은 시간은 1시간 미만을 버림(SPEC-016)",
         "dataType": "integer",
         "options": 8
       },
@@ -3818,7 +3818,7 @@
         "id": "03h7y01796y3abgmnn7f9vyau",
         "tableId": "03h7y01791hwo1dbakj3f6d7s",
         "name": "remake_of_order_id",
-        "comment": "재제작(TERM-034) 주문이면 원래 주문(R21)",
+        "comment": "재제작(TERM-034) 주문이면 돈을 낸 원래 주문(R21). 재제작 주문을 가리키지 않음(트리거 orders_remake_root). 가격표·운영규정 버전은 원래 주문 것(SPEC-060, 4절 A31)",
         "dataType": "uuid",
         "options": 0
       },
@@ -4757,7 +4757,7 @@
         "id": "03h7y0179cdtx0zvnuz87ey0t",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "order_id",
-        "comment": "주문",
+        "comment": "주문. 재제작 주문에는 없음(트리거 payment_requests_remake, SPEC-060)",
         "dataType": "uuid",
         "options": 8
       },
@@ -5060,7 +5060,7 @@
         "id": "03h7y0179cdtx0zvnwsdqumpx",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "order_id",
-        "comment": "주문",
+        "comment": "주문. 재제작 주문의 취소·보상 환불은 원래 주문에 남김(트리거 refunds_remake, SPEC-060, 4절 A31)",
         "dataType": "uuid",
         "options": 8
       },
@@ -5100,7 +5100,7 @@
         "id": "03h7y0179cdtx0zvnx1u0kjtu",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "decision",
-        "comment": "전액 환불·일부 환불·환불 없이 취소(REQ-085)",
+        "comment": "전액 환불·일부 환불·환불 없이 취소(REQ-085). 금액이 내려간 변경은 차액 돌려주기라 전액 환불이 없음(refunds_change_decision_chk, SPEC-047)",
         "dataType": "text",
         "options": 8
       },
@@ -5116,7 +5116,7 @@
         "id": "03h7y0179cdtx0zvnx59s58zj",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "calculated_amount",
-        "comment": "가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)",
+        "comment": "가게 규칙의 계산값(SPEC-016, 4절 A30). 손님 취소는 바탕(받은 금액 - 이미 정한 환불 - 따로 정할 환불)에서 취소 수수료(TERM-016)를 먼저 빼고(바탕보다 크면 0) 비율을 곱해 원 미만 버림. 가게 사정 취소는 바탕 전액, 금액이 내려간 변경은 내려간 금액, 보상은 고른 금액. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)",
         "dataType": "integer",
         "options": 8
       },
@@ -5132,7 +5132,7 @@
         "id": "03h7y0179cdtx0zvnx9ar14cm",
         "tableId": "03h7y0179cdtx0zvnwm6jizml",
         "name": "override_reason",
-        "comment": "계산값과 다른 금액을 고른 이유(SPEC-047). 보상이 아니면 계산값보다 높을 때만",
+        "comment": "계산값과 다른 금액을 고른 사유 1~200자(SPEC-047, REQ-084). 다르면 꼭(refunds_override_chk), 보상이 아니면 높을 때만 다를 수 있음(refunds_floor_chk). 보상은 고른 금액이 계산값이라 비움",
         "dataType": "text",
         "options": 0
       },
@@ -6346,7 +6346,7 @@
         "id": "03h7y0179n9e4e4gq6esyn8q5",
         "tableId": "03h7y0179n9e4e4gq69098pnw",
         "name": "order_id",
-        "comment": "주문. 재제작 주문은 원래 주문 행에 적음(R21)",
+        "comment": "주문. 재제작 주문의 행은 두지 않고 그 이벤트를 원래 주문 행에 적음(트리거 ledger_rows_remake, R21, SPEC-064)",
         "dataType": "uuid",
         "options": 12
       },
@@ -6403,7 +6403,7 @@
         "id": "03h7y0179n9e4e4gq6u94zmkw",
         "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
         "name": "event_kind",
-        "comment": "확정·변경·취소·환불·인도·미수령·재제작·환불 보냄(REQ-172)·결제 확인 취소(REQ-169)",
+        "comment": "확정·변경·취소·환불·인도·미수령·재제작(원래 주문 행에 재제작 주문의 만듦·변경·인도·미수령·취소, SPEC-060)·환불 보냄(REQ-172)·결제 확인 취소(REQ-169)",
         "dataType": "text",
         "options": 8
       },
@@ -11153,7 +11153,7 @@
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 354개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 355개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,
