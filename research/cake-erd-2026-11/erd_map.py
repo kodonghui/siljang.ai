@@ -159,6 +159,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("지금 운영규정", "operating_rules.superseded_at"),
         ("영업 캘린더", "business_calendars.daily_capacity"),
         ("채널 연결", "kakao_channels.status"),
+        ("결제 수단(지금 쓰는 가게 명의 계좌, REQ-164)", "payment_accounts.retired_at"),
         ("처리방침 글", "privacy_policies.body"),
         ("처리방침 버전", "privacy_policies.version"),
         ("국외 이전 다섯 항목", "privacy_policies.overseas_transfers"),
@@ -1010,6 +1011,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("덧붙은 질문(상담과 함께 지움)", "handoff_questions.created_at"),
         ("주문이 되지 않은 초안의 더하는 옵션", "order_draft_extras.draft_id"),
         ("하루 지난 요청 키", "request_keys.created_at"),
+        ("주문이 되지 않은 초안의 견적(상담과 함께 지움)", "quotes.draft_id"),
+        ("30일 지난 AI 도구 호출 기록(상담이 열려 있어도)", "ai_tool_calls.called_at"),
     ],
     "SPEC-066": [
         ("안내 종류", "notifications.kind"),

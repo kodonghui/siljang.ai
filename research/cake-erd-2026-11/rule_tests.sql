@@ -1667,6 +1667,7 @@ DECLARE
   n_files int;
   n_files_left int;
   n_keys int;
+  n_tools int;
 BEGIN
   -- 1. 끝나고 30일 지난 주문: 보관 기록으로 나누고(주문자 이름은 마지막 버전에서 옮김) 개인정보를 지움
   SELECT coalesce(array_agg(id), '{}') INTO due FROM orders
@@ -1780,6 +1781,11 @@ BEGIN
   DELETE FROM request_keys WHERE created_at <= now_at - interval '24 hours';
   GET DIAGNOSTICS n_keys = ROW_COUNT;
 
+  -- 8. 30일 지난 AI 도구 호출 기록(AI-1의 30일 보관, README 5절 E11): 상담이 열려 있거나 다룬 주문이 끝나지 않아 2가 지나간 상담의 것도 지움.
+  --    닫힌 상담의 기록은 2에서 상담과 함께 지움. AI 호출 기록(ai_calls, 비용)은 남김(설계 재검토 M8, RC-15)
+  DELETE FROM ai_tool_calls WHERE called_at <= now_at - interval '30 days';
+  GET DIAGNOSTICS n_tools = ROW_COUNT;
+
   -- 저장소의 사진 파일: 이번과 지난번에 남은 지울 파일을 저장소에서 지우고(이미 없는 파일은 지운 것으로 봄) 지운 파일의 행만 지움.
   -- 저장소가 실패한 파일은 행이 남고 실패 횟수와 시각을 남겨 다음 날 다시 지움(5절 E24)
   DELETE FROM file_deletions WHERE storage_key <> ALL (failed_keys);
@@ -1788,9 +1794,10 @@ BEGIN
   SELECT count(*) INTO n_files_left FROM file_deletions;
 
   INSERT INTO ops_events (kind, count, detail, created_at)
-  VALUES ('purge_run', n_orders + n_cons + n_issues + n_kept + n_customers + n_logs + n_keys,
+  VALUES ('purge_run', n_orders + n_cons + n_issues + n_kept + n_customers + n_logs + n_keys + n_tools,
           jsonb_build_object('orders', n_orders, 'consultations', n_cons, 'issues', n_issues, 'kept_ended', n_kept, 'customers', n_customers,
-                             'access_logs', n_logs, 'files', n_files, 'files_left', n_files_left, 'request_keys', n_keys),
+                             'access_logs', n_logs, 'files', n_files, 'files_left', n_files_left, 'request_keys', n_keys,
+                             'ai_tool_calls', n_tools),
           now_at);
   RETURN format('orders %s, consultations %s, issues %s, kept_ended %s, customers %s, access_logs %s',
                 n_orders, n_cons, n_issues, n_kept, n_customers, n_logs);
@@ -1975,6 +1982,15 @@ SELECT pg_temp.expect_left('REQ-189 상담 끝남 뒤 같은 손님의 새 상�
                      'open', now(), now())
              RETURNING status)
   SELECT status FROM c$$, 'open');
+-- 열린 새 상담(c1..04)의 AI 도구 호출 기록 둘: 지금 남긴 것은 31일 뒤 지우기에, 2일 뒤 남긴 것은 32일 뒤 지우기에 30일이 지남(README 6절 8)
+INSERT INTO ai_calls (id, shop_id, consultation_id, trace_id, attempt, provider, model, prompt_version, sent_at, result, error_kind) VALUES
+  ('fd000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000004', 'trace-g1', 1,
+   'provider-x', 'model-x', 'consult-v1', now(), 'failure', 'model_error');
+INSERT INTO ai_tool_calls (id, shop_id, ai_call_id, consultation_id, tool_name, target_id, args_masked, result, duration_ms, called_at) VALUES
+  ('fe000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'fd000000-0000-0000-0000-000000000003',
+   'c1000000-0000-0000-0000-000000000004', 'check_day', NULL, '{"date":"2026-12-24"}', 'ok', 20, now()),
+  ('fe000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'fd000000-0000-0000-0000-000000000003',
+   'c1000000-0000-0000-0000-000000000004', 'quote', NULL, '{"size":"2호"}', 'ok', 30, now() + interval '2 days');
 CREATE TEMP TABLE purge_before AS SELECT pg_temp.kept_counts() AS counts;
 SELECT pg_temp.expect_left('SPEC-065 지우기 전 끝난 주문의 개인정보', $$SELECT pg_temp.order_personal_left()::text$$, '21');
 SELECT pg_temp.expect_left('SPEC-065 지우기 전 지울 상담의 내용', $$SELECT pg_temp.consult_content_left()::text$$, '26');
@@ -1994,6 +2010,11 @@ SELECT pg_temp.expect_left('SPEC-065 저장소가 실패한 사진 파일은 지
 SELECT pg_temp.expect_left('DEC-04 하루 지난 요청 키는 지우기가 지움', $$
   SELECT count(*) || '/' || (SELECT detail ->> 'request_keys' FROM ops_events WHERE kind = 'purge_run' AND created_at = now() + interval '31 days')
     FROM request_keys$$, '0/1');
+SELECT pg_temp.expect_left('AI-1 열린 상담이어도 30일 지난 도구 호출 기록은 지움(README 6절 8)', $$
+  SELECT (SELECT string_agg(right(id::text, 1), ',' ORDER BY id) FROM ai_tool_calls) || '/' ||
+         (SELECT detail ->> 'ai_tool_calls' FROM ops_events WHERE kind = 'purge_run' AND created_at = now() + interval '31 days') || '/' ||
+         (SELECT count(*) FROM ai_calls WHERE consultation_id = 'c1000000-0000-0000-0000-000000000004') || '/' ||
+         (SELECT status FROM consultations WHERE id = 'c1000000-0000-0000-0000-000000000004')$$, '4/1/1/open');
 SELECT pg_temp.expect_left('REQ-196 2년 지난 접속기록만 지움', $$
   SELECT count(*) || '/' || string_agg(right(id::text, 1), ',' ORDER BY id) FROM access_logs$$, '3/1,2,4');
 SELECT pg_temp.expect_left('REQ-185 끝나고 30일 지난 주문의 개인정보 0건', $$SELECT pg_temp.order_personal_left()::text$$, '0');
@@ -2033,6 +2054,9 @@ SELECT pg_temp.expect_left('SPEC-065 다음 날 지우기가 남은 사진 파�
   SELECT (SELECT count(*) FROM file_deletions) || '/' ||
          (SELECT (detail ->> 'files') || ' ' || (detail ->> 'files_left') FROM ops_events
            WHERE kind = 'purge_run' AND created_at = now() + interval '32 days')$$, '0/1 0');
+SELECT pg_temp.expect_left('AI-1 다음 날 30일이 된 도구 호출 기록을 지움', $$
+  SELECT (SELECT count(*) FROM ai_tool_calls) || '/' ||
+         (SELECT detail ->> 'ai_tool_calls' FROM ops_events WHERE kind = 'purge_run' AND created_at = now() + interval '32 days')$$, '0/1');
 CREATE TEMP TABLE purge_after_first AS SELECT pg_temp.purge_fingerprint() AS fp;
 SELECT pg_temp.expect_left('SPEC-065 같은 날 두 번째 지우기', $$SELECT pg_temp.purge_run(now() + interval '32 days')$$,
   'orders 0, consultations 0, issues 0, kept_ended 0, customers 0, access_logs 0');
