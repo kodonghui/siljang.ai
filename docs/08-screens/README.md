@@ -47,12 +47,12 @@
 | `loading` | 기본 | 데이터가 오는 중 | 38 |
 | `empty` | 기본 | 보일 것이 아직 없음 | 26 |
 | `error` | 기본 | 불러오기나 액션이 실패함 | 50 |
-| `permission` | 기본 | 이 사용자가 볼 수 없거나 할 수 없음 | 43 |
+| `permission` | 기본 | 이 사용자가 볼 수 없거나 할 수 없음 | 44 |
 | `stale` | 기본 | 보이는 데이터가 지금과 다를 수 있음 | 44 |
 | `submitting` | 화면 고유(W3) | 누른 액션의 결과를 기다리는 중. 버튼이 막힘 | 25 |
 | `confirm` | 화면 고유(W3) | 저장하기 전에 확인을 받는 창(서버가 요구하는 DEC-06 확인, 또는 되돌리기 어려운 액션 앞에서 화면이 여는 확인) | 12 |
 | `rate-limited` | 화면 고유(W3) | 요청 빈도 한도에 닿아 잠시 막힘 | 6 |
-| `done` | 화면 고유(W3) | 명령을 남긴 뒤의 결과, 또는 이미 처리한 건을 읽기 전용으로 봄 | 30 |
+| `done` | 화면 고유(W3) | 명령을 남긴 뒤의 결과, 또는 이미 처리한 건을 읽기 전용으로 봄 | 31 |
 | `expired` | 화면 고유(W3) | 기한이 지남(카드 30분, 결제 기한) | 7 |
 | `day-full` | 화면 고유(W3) | 그 사이 그날이 다 참 | 1 |
 | `handed-over` | 화면 고유(W3) | AI가 답하지 않고 사장님께 에스컬레이션함 | 2 |
@@ -65,11 +65,12 @@
 | `reconnect` | 화면 고유(W3) | 구글 권한이 끊겨 장부를 다시 연결해야 함 | 1 |
 | `on-hold` | 화면 고유(W3) | 영업 신고가 보류됨 | 2 |
 | `mismatch` | 화면 고유(W3) | 들어온 금액이 안내와 달라 맞추는 중 | 1 |
-| `awaiting-payment` | 화면 고유(W3) | 차액 결제를 기다림 | 1 |
+| `awaiting-payment` | 화면 고유(W3) | 차액 결제를 기다림(손님이 새 금액을 확인하기를 기다리는 동안 포함, SPEC-076) | 1 |
 | `orderer` | 화면 고유(W3) | 주문 요청 카드 앞에서 주문자 이름·연락처를 AI를 거치지 않는 블록으로 받음(SPEC-072) | 1 |
 | `depositor` | 화면 고유(W3) | 결제 확인 요청 때 입금자 이름을 AI를 거치지 않는 블록으로 받음(SPEC-033) | 1 |
 | `allergy` | 화면 고유(W3) | 주문자 정보·주문 요청 카드 앞에서 알레르기 정보에 따로 동의를 받고, 동의하면 알레르기 답을 AI를 거치지 않는 블록으로 받음(SPEC-075) | 1 |
 | `photo-consent` | 화면 고유(W3) | 완성 사진 안내에서 그 사진의 게시 동의를 한 문장으로 묻고 누른 답을 사진마다 남김(SPEC-053) | 1 |
+| `amount-confirm` | 화면 고유(W3) | 결제 안내를 전할 때 계좌 대신 새 금액 확인 카드를 보이고, 손님이 사장님이 정한 새 금액을 확인하거나 받지 않음(SPEC-076) | 1 |
 <!-- 08-screens:states:end -->
 
 ## 5. 손님 문구와 확인 문구
@@ -89,7 +90,7 @@
 | `ai_cost_limit_reached` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
 | `masking_failed` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
 | `ai_output_rejected` | (가게 규칙의 계산값으로 만든 정해진 문장) | 06단계 뼈대 그대로 |
-| `card_shown` | (확인 카드: 요약과 버튼. 주문 요청 카드는 그 버전의 취소·환불 규정 글을 먼저, 요약 카드를 끝에(DEC-22). 주문서 초안이 다 찼는데 알레르기 정보 동의의 답이 없으면 알레르기 정보 카드, 그다음 주문자 이름·연락처가 없으면 주문자 정보 카드) | 06단계 뼈대 그대로 |
+| `card_shown` | (확인 카드: 요약과 버튼. 주문 요청 카드는 그 버전의 취소·환불 규정 글을 먼저, 요약 카드를 끝에(DEC-22). 주문서 초안이 다 찼는데 알레르기 정보 동의의 답이 없으면 알레르기 정보 카드, 그다음 주문자 이름·연락처가 없으면 주문자 정보 카드. 새 금액 확인이 필요한데 손님이 아직 확인하지 않은 결제 안내에 입금했다고 하면 결제 확인 요청 카드 대신 새 금액 확인 카드를 다시(SCR-005#amount-confirm)) | 06단계 뼈대 그대로 |
 | `photo_received` | 사진을 받았어요 | 06단계 뼈대 그대로 |
 | `photo_rejected` | 사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요 | 06단계 뼈대 그대로 |
 | `unsupported_message` | 글이나 사진으로 말씀해 주세요 | 06단계 뼈대 그대로 |
@@ -103,6 +104,8 @@
 | `allergy_declined` | 알겠어요. 알레르기는 묻지 않고 빼야 할 재료만으로 주문을 이어갈게요 + (주문자 정보 카드나 주문 요청 확인 카드) | 06단계 뼈대 그대로 |
 | `orderer_saved` | (주문 요청 확인 카드: 규정 글을 먼저, 요약 카드에 주문자 이름·연락처와 알레르기 답이나 '알레르기 정보 동의 안 함') | 06단계 뼈대 그대로 |
 | `payment_claimed` | 사장님께 알렸어요. 확인되면 알려 드릴게요 | 06단계 뼈대 그대로 |
+| `amount_confirmed` | 새 금액을 확인했어요 + 결제 안내(가게 계좌·금액·결제 기한) | 06단계 뼈대 그대로 |
+| `amount_declined` | 맞춤 주문: 알겠어요. 주문을 취소했어요 / 변경: 알겠어요. 바꾸지 않고 원래 주문대로 할게요 | 06단계 뼈대 그대로 |
 | `change_requested` | 변경을 요청했어요. 사장님이 보고 알려 드려요 | 06단계 뼈대 그대로 |
 | `order_cancelled` | 결제한 주문: 주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요 / 결제 전 주문: 주문을 취소했어요 | 08단계에서 바꿈: 결제 전 주문은 환불 문장을 뺌(SPEC-046) |
 | `issue_reported` | 신고를 받았어요. 사장님이 보시고 정하실 거예요 | 06단계 뼈대 그대로 |
@@ -123,7 +126,7 @@
 | `review_not_allowed` | 받으신 주문에만 후기를 남길 수 있어요 | 06단계 뼈대 그대로 |
 | `review_invalid` | 후기는 1,000자, 사진은 5장까지 남길 수 있어요 | 06단계 뼈대 그대로 |
 | `photo_download_failed` | 사진을 받지 못했어요. 다시 보내 주세요 | 06단계 뼈대 그대로 |
-| `notice_shown` | (그 안내의 글과 버튼. 서버의 정해진 템플릿: 결제 안내는 SCR-005, 확정 안내·전날 안내·완성 사진(사진 게시 동의 카드와 함께)·지연 안내·답·결과·후기 부탁은 SCR-011) | 06단계 뼈대 그대로 |
+| `notice_shown` | (그 안내의 글과 버튼. 서버의 정해진 템플릿: 결제 안내는 SCR-005, 확정 안내·전날 안내·완성 사진(사진 게시 동의 카드와 함께)·지연 안내·답·결과·후기 부탁은 SCR-011. 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드(SCR-005#amount-confirm)) | 06단계 뼈대 그대로 |
 | `notice_test` | 시험 안내예요. 이 안내가 보이면 손님에게 안내를 먼저 보낼 수 있어요 | 06단계 뼈대 그대로 |
 | `notice_gone` | 지금은 전할 안내가 없어요 | 06단계 뼈대 그대로 |
 <!-- 08-screens:outcomes:end -->
@@ -150,16 +153,16 @@
 | [SCR-001](SCR-001.md) | 예약 링크 페이지 | 손님 | normal · loading · empty · error · rate-limited · stale | permission | 5 |
 | [SCR-002](SCR-002.md) | 가게 개인정보 처리방침 | 손님 | normal · loading · error · rate-limited | empty · permission · stale | 4 |
 | [SCR-003](SCR-003.md) | 가게 채널 상담 | 손님 | normal · loading · empty · error · permission · stale · handed-over · fixed-answer · rate-limited · link-test | - | 28 |
-| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · allergy · orderer · done · stale · expired · day-full · permission · error | loading · empty | 26 |
-| [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · deferred · stale · error | loading · empty · permission | 6 |
-| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · depositor · done · stale · expired · permission · error | loading · empty | 26 |
+| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · allergy · orderer · done · stale · expired · day-full · permission · error | loading · empty | 28 |
+| [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · amount-confirm · done · deferred · stale · permission · error | loading · empty | 34 |
+| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · depositor · done · stale · expired · permission · error | loading · empty | 28 |
 | [SCR-007](SCR-007.md) | 내 주문 보기 | 손님 | normal · loading · empty · error · permission · stale · handed-over · rate-limited | - | 22 |
-| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 26 |
-| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 26 |
-| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 26 |
+| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
+| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
+| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
 | [SCR-011](SCR-011.md) | 손님 알림 | 손님 | normal · photo-consent · deferred · stale · error | loading · empty · permission | 6 |
 | [SCR-012](SCR-012.md) | 후기 남기기 | 손님 | normal · done · permission · error | loading · empty · stale | 12 |
-| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 26 |
+| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
 | [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 8 |
 | [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 16 |
 | [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
@@ -170,12 +173,12 @@
 | [SCR-021](SCR-021.md) | 주문 상세 | 사장님 | normal · loading · error · permission · stale · confirm · submitting · done | empty | 20 |
 | [SCR-022](SCR-022.md) | 맞춤 주문 검토 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 21 |
 | [SCR-023](SCR-023.md) | 결제 기한 지난 주문 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 21 |
-| [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 22 |
+| [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 21 |
 | [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 20 |
 | [SCR-026](SCR-026.md) | 환불 송금 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 17 |
 | [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 16 |
 | [SCR-028](SCR-028.md) | 입금 대조 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
-| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · submitting · mismatch · expired · done | empty | 23 |
+| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · submitting · mismatch · expired · done | empty | 25 |
 | [SCR-030](SCR-030.md) | 제작 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 34 |
 | [SCR-031](SCR-031.md) | 픽업 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 37 |
 | [SCR-032](SCR-032.md) | 영업 캘린더 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 17 |
