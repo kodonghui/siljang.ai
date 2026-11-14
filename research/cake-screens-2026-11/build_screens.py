@@ -331,7 +331,7 @@ def screen_md(m, nodes, mockups=None):
     for name, text, _, _ in s["states"]:
         resp = by_state.get(name, [])
         if not resp:
-            resp_text = {"loading": "(데이터를 불러오는 동안)", "confirm": "(화면이 여는 확인 창)"}.get(name, "-")
+            resp_text = {"loading": "(데이터를 불러오는 동안)", "confirm": "(화면이 여는 확인 창)", "confirm-notify": "(화면이 여는 확인 창)"}.get(name, "-")
         else:
             resp_text = ", ".join(resp)
         srows.append(["%s#%s" % (sid, name), text, resp_text])
@@ -645,9 +645,13 @@ def content_html(sid, s, frame, w, state):
     if kind == "field":
         _, label, text = frame
         tag = '<div class="fd" data-field="%s">' % e(label)
-        if tag not in base:
-            raise Stop("%s#%s: field 프레임의 '%s' 필드가 없음" % (sid, state, label))
-        return base.replace(tag, tag + '<span class="ferr">%s</span>' % t(text), 1)
+        err = '<span class="ferr">%s</span>' % t(text)
+        if tag in base:
+            return base.replace(tag, tag + err, 1)
+        cap = '<div class="cap">%s</div>' % t(label)  # 목록·표의 행 오류는 그 블록 제목 아래(설계 재검토 M19)
+        if cap not in base:
+            raise Stop("%s#%s: field 프레임의 '%s' 필드나 목록이 없음" % (sid, state, label))
+        return base.replace(cap, cap + err, 1)
     if kind in ("banner", "result"):
         return '<div class="sbanner">%s%s</div>%s' % (t(frame[1]), r_btns(frame[2], None, None) if frame[2] else "", base)
     if kind == "dialog":
@@ -777,6 +781,7 @@ figure.fr figcaption{font-size:.75rem;color:var(--muted);margin-top:4px;font-fam
 .in.toggle{width:46px;height:26px;border-radius:13px;background:var(--f-fill)}
 .in.check,.in.radio{width:22px;height:22px;border-radius:5px}.in.radio{border-radius:11px}
 .ferr{font-size:.8rem;color:var(--f-ink);font-weight:600;order:3}
+.card>.ferr{display:block;margin:0 0 6px}
 .btns{display:flex;flex-wrap:wrap;gap:8px}
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:8px;border:1px solid var(--f-line);background:var(--f-bg);font-weight:600}
 .btn.pri{background:var(--f-dark);color:var(--f-on-dark);border-color:var(--f-dark)}

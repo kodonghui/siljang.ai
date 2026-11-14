@@ -349,7 +349,7 @@
       "page": "owner"
     },
     "SCR-014-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 0,
       "w": 1344,
       "h": 892,
@@ -360,12 +360,12 @@
       "x": 0,
       "y": 1332,
       "w": 816,
-      "h": 1645,
+      "h": 1666,
       "title": "SCR-015 가게 등록 · 360 · normal, error",
       "page": "owner"
     },
     "SCR-015-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 1332,
       "w": 1344,
       "h": 1748,
@@ -381,7 +381,7 @@
       "page": "owner"
     },
     "SCR-016-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 3500,
       "w": 1344,
       "h": 892,
@@ -397,7 +397,7 @@
       "page": "owner"
     },
     "SCR-017-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 4812,
       "w": 1344,
       "h": 896,
@@ -413,7 +413,7 @@
       "page": "owner"
     },
     "SCR-018-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 6128,
       "w": 1344,
       "h": 892,
@@ -429,7 +429,7 @@
       "page": "owner"
     },
     "SCR-019-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 7440,
       "w": 1344,
       "h": 892,
@@ -445,7 +445,7 @@
       "page": "owner"
     },
     "SCR-020-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 8752,
       "w": 1344,
       "h": 892,
@@ -461,7 +461,7 @@
       "page": "owner"
     },
     "SCR-021-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 10064,
       "w": 1344,
       "h": 892,
@@ -471,13 +471,13 @@
     "SCR-022-360.dc.html": {
       "x": 0,
       "y": 11376,
-      "w": 1208,
+      "w": 1600,
       "h": 1559,
-      "title": "SCR-022 맞춤 주문 검토 · 360 · normal, error, confirm",
+      "title": "SCR-022 맞춤 주문 검토 · 360 · normal, error, confirm-notify, confirm",
       "page": "owner"
     },
     "SCR-022-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 11376,
       "w": 1344,
       "h": 1305,
@@ -487,13 +487,13 @@
     "SCR-023-360.dc.html": {
       "x": 0,
       "y": 13355,
-      "w": 1208,
+      "w": 1600,
       "h": 912,
-      "title": "SCR-023 결제 기한 지난 주문 · 360 · normal, error, confirm",
+      "title": "SCR-023 결제 기한 지난 주문 · 360 · normal, error, confirm-notify, confirm",
       "page": "owner"
     },
     "SCR-023-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 13355,
       "w": 1344,
       "h": 892,
@@ -503,13 +503,13 @@
     "SCR-024-360.dc.html": {
       "x": 0,
       "y": 14687,
-      "w": 1208,
+      "w": 1600,
       "h": 1059,
-      "title": "SCR-024 변경 요청 · 360 · normal, error, confirm",
+      "title": "SCR-024 변경 요청 · 360 · normal, error, confirm-notify, confirm",
       "page": "owner"
     },
     "SCR-024-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 14687,
       "w": 1344,
       "h": 1050,
@@ -519,13 +519,13 @@
     "SCR-025-360.dc.html": {
       "x": 0,
       "y": 16166,
-      "w": 816,
+      "w": 1208,
       "h": 1121,
-      "title": "SCR-025 환불 결정 · 360 · normal, error",
+      "title": "SCR-025 환불 결정 · 360 · normal, error, confirm-notify",
       "page": "owner"
     },
     "SCR-025-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 16166,
       "w": 1344,
       "h": 1202,
@@ -541,7 +541,7 @@
       "page": "owner"
     },
     "SCR-026-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 17788,
       "w": 1344,
       "h": 892,
@@ -551,30 +551,30 @@
     "SCR-027-360.dc.html": {
       "x": 0,
       "y": 19120,
-      "w": 1208,
-      "h": 1364,
-      "title": "SCR-027 문제 신고 · 360 · normal, error, confirm",
+      "w": 1600,
+      "h": 1189,
+      "title": "SCR-027 문제 신고 · 360 · normal, error, confirm-notify, confirm",
       "page": "owner"
     },
     "SCR-027-1280.dc.html": {
-      "x": 1680,
+      "x": 2072,
       "y": 19120,
       "w": 1344,
-      "h": 1441,
+      "h": 1266,
       "title": "SCR-027 문제 신고 · 1280 · normal",
       "page": "owner"
     },
     "SCR-028-360.dc.html": {
       "x": 0,
-      "y": 20981,
+      "y": 20806,
       "w": 1208,
       "h": 892,
       "title": "SCR-028 입금 대조 목록 · 360 · normal, empty, error",
       "page": "owner"
     },
     "SCR-028-1280.dc.html": {
-      "x": 1680,
-      "y": 20981,
+      "x": 2072,
+      "y": 20806,
       "w": 1344,
       "h": 892,
       "title": "SCR-028 입금 대조 목록 · 1280 · normal",
@@ -582,15 +582,15 @@
     },
     "SCR-029-360.dc.html": {
       "x": 0,
-      "y": 22293,
-      "w": 1208,
+      "y": 22118,
+      "w": 1600,
       "h": 892,
-      "title": "SCR-029 입금 대조 · 360 · normal, error, expired",
+      "title": "SCR-029 입금 대조 · 360 · normal, error, confirm-notify, expired",
       "page": "owner"
     },
     "SCR-029-1280.dc.html": {
-      "x": 1680,
-      "y": 22293,
+      "x": 2072,
+      "y": 22118,
       "w": 1344,
       "h": 892,
       "title": "SCR-029 입금 대조 · 1280 · normal",
@@ -598,15 +598,15 @@
     },
     "SCR-030-360.dc.html": {
       "x": 0,
-      "y": 23605,
+      "y": 23430,
       "w": 1208,
       "h": 892,
       "title": "SCR-030 제작 목록 · 360 · normal, empty, error",
       "page": "owner"
     },
     "SCR-030-1280.dc.html": {
-      "x": 1680,
-      "y": 23605,
+      "x": 2072,
+      "y": 23430,
       "w": 1344,
       "h": 892,
       "title": "SCR-030 제작 목록 · 1280 · normal",
@@ -614,15 +614,15 @@
     },
     "SCR-031-360.dc.html": {
       "x": 0,
-      "y": 24917,
-      "w": 1600,
+      "y": 24742,
+      "w": 1992,
       "h": 912,
-      "title": "SCR-031 픽업 목록 · 360 · normal, empty, error, confirm",
+      "title": "SCR-031 픽업 목록 · 360 · normal, empty, error, confirm-notify, confirm",
       "page": "owner"
     },
     "SCR-031-1280.dc.html": {
-      "x": 1680,
-      "y": 24917,
+      "x": 2072,
+      "y": 24742,
       "w": 1344,
       "h": 892,
       "title": "SCR-031 픽업 목록 · 1280 · normal",
@@ -630,15 +630,15 @@
     },
     "SCR-032-360.dc.html": {
       "x": 0,
-      "y": 26249,
+      "y": 26074,
       "w": 1600,
       "h": 1136,
       "title": "SCR-032 영업 캘린더 · 360 · normal, empty, error, confirm",
       "page": "owner"
     },
     "SCR-032-1280.dc.html": {
-      "x": 1680,
-      "y": 26249,
+      "x": 2072,
+      "y": 26074,
       "w": 1344,
       "h": 892,
       "title": "SCR-032 영업 캘린더 · 1280 · normal",
@@ -646,15 +646,15 @@
     },
     "SCR-033-360.dc.html": {
       "x": 0,
-      "y": 27805,
+      "y": 27630,
       "w": 1600,
       "h": 912,
       "title": "SCR-033 영업 캘린더 설정 · 360 · normal, empty, error, confirm",
       "page": "owner"
     },
     "SCR-033-1280.dc.html": {
-      "x": 1680,
-      "y": 27805,
+      "x": 2072,
+      "y": 27630,
       "w": 1344,
       "h": 892,
       "title": "SCR-033 영업 캘린더 설정 · 1280 · normal",
@@ -662,15 +662,15 @@
     },
     "SCR-034-360.dc.html": {
       "x": 0,
-      "y": 29137,
+      "y": 28962,
       "w": 816,
-      "h": 2028,
+      "h": 2069,
       "title": "SCR-034 가게 설정 · 360 · normal, error",
       "page": "owner"
     },
     "SCR-034-1280.dc.html": {
-      "x": 1680,
-      "y": 29137,
+      "x": 2072,
+      "y": 28962,
       "w": 1344,
       "h": 2116,
       "title": "SCR-034 가게 설정 · 1280 · normal",
@@ -678,15 +678,15 @@
     },
     "SCR-035-360.dc.html": {
       "x": 0,
-      "y": 31673,
+      "y": 31498,
       "w": 816,
       "h": 951,
       "title": "SCR-035 영업 신고 · 360 · normal, error",
       "page": "owner"
     },
     "SCR-035-1280.dc.html": {
-      "x": 1680,
-      "y": 31673,
+      "x": 2072,
+      "y": 31498,
       "w": 1344,
       "h": 1196,
       "title": "SCR-035 영업 신고 · 1280 · normal",
@@ -694,31 +694,31 @@
     },
     "SCR-036-360.dc.html": {
       "x": 0,
-      "y": 33289,
+      "y": 33114,
       "w": 1208,
-      "h": 1127,
+      "h": 1224,
       "title": "SCR-036 가격표와 도안 · 360 · normal, empty, error",
       "page": "owner"
     },
     "SCR-036-1280.dc.html": {
-      "x": 1680,
-      "y": 33289,
+      "x": 2072,
+      "y": 33114,
       "w": 1344,
-      "h": 993,
+      "h": 1049,
       "title": "SCR-036 가격표와 도안 · 1280 · normal",
       "page": "owner"
     },
     "SCR-037-360.dc.html": {
       "x": 0,
-      "y": 34836,
+      "y": 34758,
       "w": 1208,
       "h": 892,
       "title": "SCR-037 가격표 버전 이력 · 360 · normal, empty, error",
       "page": "owner"
     },
     "SCR-037-1280.dc.html": {
-      "x": 1680,
-      "y": 34836,
+      "x": 2072,
+      "y": 34758,
       "w": 1344,
       "h": 892,
       "title": "SCR-037 가격표 버전 이력 · 1280 · normal",
@@ -726,31 +726,31 @@
     },
     "SCR-038-360.dc.html": {
       "x": 0,
-      "y": 36148,
+      "y": 36070,
       "w": 1600,
-      "h": 1302,
+      "h": 2598,
       "title": "SCR-038 운영규정 · 360 · normal, empty, error, confirm",
       "page": "owner"
     },
     "SCR-038-1280.dc.html": {
-      "x": 1680,
-      "y": 36148,
+      "x": 2072,
+      "y": 36070,
       "w": 1344,
-      "h": 1336,
+      "h": 2135,
       "title": "SCR-038 운영규정 · 1280 · normal",
       "page": "owner"
     },
     "SCR-039-360.dc.html": {
       "x": 0,
-      "y": 37904,
+      "y": 39088,
       "w": 1208,
       "h": 892,
       "title": "SCR-039 운영규정 버전 이력 · 360 · normal, empty, error",
       "page": "owner"
     },
     "SCR-039-1280.dc.html": {
-      "x": 1680,
-      "y": 37904,
+      "x": 2072,
+      "y": 39088,
       "w": 1344,
       "h": 892,
       "title": "SCR-039 운영규정 버전 이력 · 1280 · normal",
@@ -758,15 +758,15 @@
     },
     "SCR-040-360.dc.html": {
       "x": 0,
-      "y": 39216,
+      "y": 40400,
       "w": 1600,
-      "h": 912,
+      "h": 932,
       "title": "SCR-040 결제 수단 · 360 · normal, empty, error, confirm",
       "page": "owner"
     },
     "SCR-040-1280.dc.html": {
-      "x": 1680,
-      "y": 39216,
+      "x": 2072,
+      "y": 40400,
       "w": 1344,
       "h": 892,
       "title": "SCR-040 결제 수단 · 1280 · normal",
@@ -774,15 +774,15 @@
     },
     "SCR-041-360.dc.html": {
       "x": 0,
-      "y": 40548,
+      "y": 41752,
       "w": 1208,
       "h": 931,
       "title": "SCR-041 카카오톡 채널 연결 · 360 · normal, empty, error",
       "page": "owner"
     },
     "SCR-041-1280.dc.html": {
-      "x": 1680,
-      "y": 40548,
+      "x": 2072,
+      "y": 41752,
       "w": 1344,
       "h": 971,
       "title": "SCR-041 카카오톡 채널 연결 · 1280 · normal",
@@ -790,15 +790,15 @@
     },
     "SCR-042-360.dc.html": {
       "x": 0,
-      "y": 41939,
+      "y": 43143,
       "w": 1208,
       "h": 892,
       "title": "SCR-042 장부 연결 · 360 · normal, empty, error",
       "page": "owner"
     },
     "SCR-042-1280.dc.html": {
-      "x": 1680,
-      "y": 41939,
+      "x": 2072,
+      "y": 43143,
       "w": 1344,
       "h": 892,
       "title": "SCR-042 장부 연결 · 1280 · normal",
@@ -806,15 +806,15 @@
     },
     "SCR-043-360.dc.html": {
       "x": 0,
-      "y": 43251,
+      "y": 44455,
       "w": 1208,
       "h": 912,
       "title": "SCR-043 예약 링크 · 360 · normal, empty, error",
       "page": "owner"
     },
     "SCR-043-1280.dc.html": {
-      "x": 1680,
-      "y": 43251,
+      "x": 2072,
+      "y": 44455,
       "w": 1344,
       "h": 892,
       "title": "SCR-043 예약 링크 · 1280 · normal",
@@ -822,15 +822,15 @@
     },
     "SCR-044-360.dc.html": {
       "x": 0,
-      "y": 44583,
+      "y": 45787,
       "w": 1208,
       "h": 1088,
       "title": "SCR-044 포트폴리오 · 360 · normal, empty, error",
       "page": "owner"
     },
     "SCR-044-1280.dc.html": {
-      "x": 1680,
-      "y": 44583,
+      "x": 2072,
+      "y": 45787,
       "w": 1344,
       "h": 892,
       "title": "SCR-044 포트폴리오 · 1280 · normal",
@@ -838,15 +838,15 @@
     },
     "SCR-045-360.dc.html": {
       "x": 0,
-      "y": 46091,
+      "y": 47295,
       "w": 1208,
       "h": 892,
       "title": "SCR-045 후기 · 360 · normal, empty, error",
       "page": "owner"
     },
     "SCR-045-1280.dc.html": {
-      "x": 1680,
-      "y": 46091,
+      "x": 2072,
+      "y": 47295,
       "w": 1344,
       "h": 892,
       "title": "SCR-045 후기 · 1280 · normal",
@@ -1229,7 +1229,7 @@
       "y": -300,
       "text": "SCR-014 사장님 로그인",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr015": {
@@ -1237,7 +1237,7 @@
       "y": 1032,
       "text": "SCR-015 가게 등록",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr016": {
@@ -1245,7 +1245,7 @@
       "y": 3200,
       "text": "SCR-016 할 일 목록",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr017": {
@@ -1253,7 +1253,7 @@
       "y": 4512,
       "text": "SCR-017 에스컬레이션 건",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr018": {
@@ -1261,7 +1261,7 @@
       "y": 5828,
       "text": "SCR-018 상담 대화",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr019": {
@@ -1269,7 +1269,7 @@
       "y": 7140,
       "text": "SCR-019 사장님 알림",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr020": {
@@ -1277,7 +1277,7 @@
       "y": 8452,
       "text": "SCR-020 주문 목록",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr021": {
@@ -1285,7 +1285,7 @@
       "y": 9764,
       "text": "SCR-021 주문 상세",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr022": {
@@ -1293,7 +1293,7 @@
       "y": 11076,
       "text": "SCR-022 맞춤 주문 검토",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr023": {
@@ -1301,7 +1301,7 @@
       "y": 13055,
       "text": "SCR-023 결제 기한 지난 주문",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr024": {
@@ -1309,7 +1309,7 @@
       "y": 14387,
       "text": "SCR-024 변경 요청",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr025": {
@@ -1317,7 +1317,7 @@
       "y": 15866,
       "text": "SCR-025 환불 결정",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr026": {
@@ -1325,7 +1325,7 @@
       "y": 17488,
       "text": "SCR-026 환불 송금",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr027": {
@@ -1333,151 +1333,151 @@
       "y": 18820,
       "text": "SCR-027 문제 신고",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr028": {
       "x": 0,
-      "y": 20681,
+      "y": 20506,
       "text": "SCR-028 입금 대조 목록",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr029": {
       "x": 0,
-      "y": 21993,
+      "y": 21818,
       "text": "SCR-029 입금 대조",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr030": {
       "x": 0,
-      "y": 23305,
+      "y": 23130,
       "text": "SCR-030 제작 목록",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr031": {
       "x": 0,
-      "y": 24617,
+      "y": 24442,
       "text": "SCR-031 픽업 목록",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr032": {
       "x": 0,
-      "y": 25949,
+      "y": 25774,
       "text": "SCR-032 영업 캘린더",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr033": {
       "x": 0,
-      "y": 27505,
+      "y": 27330,
       "text": "SCR-033 영업 캘린더 설정",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr034": {
       "x": 0,
-      "y": 28837,
+      "y": 28662,
       "text": "SCR-034 가게 설정",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr035": {
       "x": 0,
-      "y": 31373,
+      "y": 31198,
       "text": "SCR-035 영업 신고",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr036": {
       "x": 0,
-      "y": 32989,
+      "y": 32814,
       "text": "SCR-036 가격표와 도안",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr037": {
       "x": 0,
-      "y": 34536,
+      "y": 34458,
       "text": "SCR-037 가격표 버전 이력",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr038": {
       "x": 0,
-      "y": 35848,
+      "y": 35770,
       "text": "SCR-038 운영규정",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr039": {
       "x": 0,
-      "y": 37604,
+      "y": 38788,
       "text": "SCR-039 운영규정 버전 이력",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr040": {
       "x": 0,
-      "y": 38916,
+      "y": 40100,
       "text": "SCR-040 결제 수단",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr041": {
       "x": 0,
-      "y": 40248,
+      "y": 41452,
       "text": "SCR-041 카카오톡 채널 연결",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr042": {
       "x": 0,
-      "y": 41639,
+      "y": 42843,
       "text": "SCR-042 장부 연결",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr043": {
       "x": 0,
-      "y": 42951,
+      "y": 44155,
       "text": "SCR-043 예약 링크",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr044": {
       "x": 0,
-      "y": 44283,
+      "y": 45487,
       "text": "SCR-044 포트폴리오",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr045": {
       "x": 0,
-      "y": 45791,
+      "y": 46995,
       "text": "SCR-045 후기",
       "kind": "title1",
-      "maxW": 3024,
+      "maxW": 3416,
       "page": "owner"
     },
     "scr046": {

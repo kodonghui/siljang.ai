@@ -36,7 +36,7 @@ gen.SHOP_INFO = SHOP_INFO
 
 OUT = HERE / "canvas" / "project"
 HEIGHTS = HERE / "heights.json"
-KEY_STATES = ("empty", "error", "confirm", "expired", "not-sent", "deferred")
+KEY_STATES = ("empty", "error", "confirm-notify", "confirm", "expired", "not-sent", "deferred")
 VARS = subprocess.run([sys.executable, "-B", str(HERE / "css_vars.py"), str(REPO / "design/base.tokens.json")],
                       capture_output=True, text=True, check=True).stdout.strip().replace('"', "'")
 LINE = gen.LINE
@@ -117,6 +117,12 @@ class Base(gen.A):
 
     def note(self, text):
         return '<p style="margin: 0; font-size: var(--font-size-small); color: var(--color-ink-muted)">' + e(text) + '</p>'
+
+    def ferr(self, eid, text):
+        """필드·목록 옆 입력 오류 한 줄(설계 재검토 M19 RE-05): 위험 색 아이콘과 글. 필드는 aria-describedby로 이 줄을 가리킴."""
+        return ('<span id="' + eid + '" style="display: flex; align-items: center; gap: var(--space-xs); font-size: var(--font-size-small); '
+                'font-weight: var(--font-weight-medium); color: var(--color-danger)">' + icon("alert", 16, style="flex: none") + '<span>'
+                + e(text) + '</span></span>')
 
     def link(self, text, small=True):
         fs = "font-size: var(--font-size-small); " if small else ""
@@ -293,9 +299,9 @@ class Base(gen.A):
                 + LINE + '">' + cg + '<thead><tr>' + "".join('<th scope="col" style="' + th + '">' + e(x) + '</th>' for x in cols)
                 + '</tr></thead>\n<tbody>\n' + body + '\n</tbody></table>')
 
-    def cards(self, cols, rows, spec, link=False):
+    def cards(self, cols, rows, spec, link=False, bad=()):
         out = []
-        for r in rows:
+        for ri, r in enumerate(rows):
             title = r[spec.get("title", 0)]
             title_html = self.rowlink(title, strong=True) if link else self.cell(title)
             tags = "".join(self.cell(r[i]) for i in spec.get("tag", []) if r[i] not in ("—", "", None))
@@ -310,7 +316,8 @@ class Base(gen.A):
             foot = self.cell(fc) if fc is not None else ""
             # 버튼 줄은 왼쪽부터(줄이 바뀌어도 같은 쪽), 금액·시각 같은 값은 오른쪽 끝
             act = isinstance(fc, tuple) and fc[0] in ("btns", "marks", "btn", "photos")
-            out.append('<li style="display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border: ' + LINE
+            line = "var(--border-width-hairline) solid var(--color-danger)" if ri in bad else LINE  # 입력 오류가 난 행
+            out.append('<li style="display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border: ' + line
                        + '; border-radius: var(--radius-md); background: var(--color-surface)">'
                        '<div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); min-height: var(--space-xl)">'
                        '<span style="font-weight: var(--font-weight-semibold)">' + title_html + '</span>'
@@ -365,6 +372,14 @@ class Base(gen.A):
         help_ = ('<span id="' + hid + '" style="font-size: var(--font-size-small); color: var(--color-ink-muted)">' + e(helps[name]) + '</span>'
                  if name in helps else "")
         desc = ' aria-describedby="' + hid + '"' if help_ else ""
+        # 입력 오류 프레임(설계 재검토 M19 RE-05): 폼과 넣은 값은 그대로 두고 그 필드 아래에 사유. 테두리는 위험 색
+        err = d["err"] if d.get("err") and d["err"][0] == name else None
+        err_ = ""
+        if err:
+            if kind not in ("text", "number", "date", "time"):
+                raise SystemExit("입력 오류를 그리지 않는 필드 종류 " + kind)
+            err_ = self.ferr(fid + "-e", err[1])
+            desc = ' aria-invalid="true" aria-describedby="' + " ".join([fid + "-e"] + ([hid] if help_ else [])) + '"'
         lab = '<label for="' + fid + '" style="font-weight: var(--font-weight-semibold)">' + e(label) + '</label>'
         col = "display: flex; flex-direction: column; gap: var(--space-xs)"
         inp = ("flex: 1 1 0; align-self: stretch; min-width: 0; padding: 0; border: 0; background: transparent; font: inherit; "
@@ -373,7 +388,8 @@ class Base(gen.A):
             mode = ' inputmode="numeric"' if kind == "number" else ""
             ic = icon("calendar", 20, style="color: var(--color-ink-muted)") if kind == "date" else ""
             return ('<div style="' + col + '">' + lab + self.ctrl_box('<input id="' + fid + '"' + mode + desc + ' value="' + a(v) + '" style="'
-                                                                      + inp + '">' + ic) + help_ + '</div>')
+                                                                      + inp + '">' + ic, "border-color: var(--color-danger)" if err else "")
+                    + err_ + help_ + '</div>')
         if kind == "select":
             return ('<div style="' + col + '">' + lab + '<button type="button" id="' + fid + '" aria-haspopup="listbox"' + desc + ' style="'
                     'display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); min-height: var(--size-control); '
@@ -441,6 +457,8 @@ class Base(gen.A):
 
     def form(self, sid, label, fields, d, w):
         fid = self.uid("f")
+        # hide: 고른 값에 따라 나오는 필드 가운데 지금 안 보이는 것. start: 360 입력 오류 프레임은 오류 필드 바로 앞 필드부터(내린 모습)
+        fields = [f for f in fields[d.get("start", 0):] if f[0] not in d.get("hide", ())]
         items = [self.field("%s-%d" % (fid, i), n, k, d) for i, (n, k) in enumerate(fields)]
         if d.get("inline") and w == 1280:
             return ('<div style="display: grid; grid-template-columns: repeat(' + str(len(items)) + ', minmax(0, 1fr)); gap: var(--space-md)">'
@@ -612,6 +630,7 @@ class Ctx:
         self.s = C.SCREENS[sid]
         self.d = SAMPLES.get(sid, {})
         self.st = (self.d.get("states") or {}).get(state, {}) if state else {}
+        self.ferr = None  # 입력 오류 프레임의 (필드나 목록 이름, 사유)
 
     def sample(self, b):
         """06 예시 값. 상태 프레임이면 그 상태의 'blocks'가 블록별로 덮어씀(사전 값은 한 단계 더 합침)."""
@@ -658,6 +677,8 @@ def render_block(b, cx, first=False, head=None):
         inner += T.kvx(rows, d.get("copy"))
         if d.get("note"):
             inner += "\n" + T.note(d["note"])
+        if d.get("link") and not title:  # 제목을 숨긴 표의 링크(예: '버전 이력')는 표 아래에(설계 재검토 M20 RE-10)
+            inner += "\n" + T.link(d["link"])
         return T.sect(w, inner, title, d.get("meta", ""), d.get("link", ""), first)
     if k == "list":
         label, cols = b[1], d.get("cols") or b[2]
@@ -674,7 +695,9 @@ def render_block(b, cx, first=False, head=None):
         elif w == 1280:
             inner = T.tablex(cols, rows, d.get("widths"), lc)
         else:
-            inner = T.cards(cols, rows, spec, link=lc is not None and lc == spec.get("title", 0))
+            inner = T.cards(cols, rows, spec, link=lc is not None and lc == spec.get("title", 0), bad=d.get("bad", ()))
+        if cx.ferr and cx.ferr[0] == label:  # 목록의 입력 오류: 목록 위에 사유, 그 행은 위험 색 테두리
+            inner = T.ferr(T.uid("e"), cx.ferr[1]) + "\n" + inner
         if d.get("extra") and w == 1280:
             inner += "\n" + T.kvx(d["extra"])
         elif d.get("extra"):
@@ -685,6 +708,9 @@ def render_block(b, cx, first=False, head=None):
     if k == "form":
         if d.get("hidden"):
             return ""
+        names = [n for n, _ in b[2]]
+        if cx.ferr and cx.ferr[0] in names:
+            d = dict(d, err=cx.ferr, start=max(0, names.index(cx.ferr[0]) - 1) if w == 360 else 0)
         title = d.get("title", b[1])
         f0, k0 = b[2][0]
         lab0 = d.get("labels", {}).get(f0, f0)
@@ -997,6 +1023,12 @@ def content(cx, frame=None):
         _, label, block = frame
         blocks = [("msgwrap", block, b) if (b[1] == label if b[0] in ("kv", "list", "form", "photos", "cal") else False) else b
                   for b in blocks]
+    if kind == "field" and cx.w == 360:  # 입력 오류 프레임(360 × 800)은 오류가 난 블록까지 내린 모습(설계 재검토 M19 RE-05)
+        at = next(i for i, b in enumerate(blocks) if (b[0] == "form" and any(n == frame[1] for n, _ in b[2]))
+                  or (b[0] in ("list", "kv") and b[1] == frame[1]))
+        if at and blocks[at - 1][0] == "h":
+            at -= 1
+        blocks = blocks[at:]
     footer = ""
     last = blocks[-1] if blocks else None
     if cx.w == 360 and last and last[0] == "btns" and kind != "box":
@@ -1082,7 +1114,9 @@ def draw(sid, w, state=None, frame=None):
         box = T.statebox(bt, bb, bbtn, tone)
         body, footer = '<div style="padding: var(--space-xl) var(--space-lg)">' + box + '</div>', ""
     else:
-        body, footer = content(cx, frame if kind == "replace" else None)
+        if kind == "field":
+            cx.ferr = (frame[1], frame[2])
+        body, footer = content(cx, frame if kind in ("replace", "field") else None)
         if kind == "banner":
             body = T.sect(w, T.bannerx(frame[1], frame[2]), None, first=True) + "\n" + body
     if shell in ("login",):
@@ -1347,10 +1381,35 @@ def scr041_empty(cx, frame):
     return phone(topbar(screen_title(cx), "back"), body, T.footer(["저장"], 0, None), fixed=True)
 
 
+def scr043_empty(cx, frame):
+    """SCR-043#empty: 08 정의의 조건 7개 목록(설계 재검토 M20 RE-10). 마친 것은 체크와 '마침', 남은 것은 그 화면 링크(결제 수단은
+    '결제 수단 등록하기'), 영업 신고 확인은 '운영자가 확인하고 있어요'. 예약 링크 주소·'복사'·주소를 넣어 달라는 안내는 없음.
+    08 회색 와이어프레임은 목록을 자리 값으로 그렸으므로 시안은 정의 글대로 그림."""
+    items = [("영업 신고 확인", "wait", "운영자가 확인하고 있어요"), ("가격표", "done", "마침"), ("운영규정", "done", "마침"),
+             ("영업 캘린더", "done", "마침"), ("결제 수단", "link", "결제 수단 등록하기"), ("채널 연결", "done", "마침"),
+             ("개인정보 처리방침", "done", "마침")]
+    rows = []
+    for i, (name, st, text) in enumerate(items):
+        if st == "done":
+            right = ('<span style="flex: none; display: inline-flex; align-items: center; gap: var(--space-xs); color: var(--color-success); '
+                     'font-weight: var(--font-weight-semibold)">' + icon("check", 16) + e(text) + '</span>')
+        elif st == "link":
+            right = T.link(text)
+        else:
+            right = '<span style="font-size: var(--font-size-small); color: var(--color-ink-muted); text-align: right">' + e(text) + '</span>'
+        rows.append('<li style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); min-height: '
+                    'var(--size-target); padding: var(--space-xs) var(--space-md);' + ("" if i == 0 else " border-top: " + LINE + ";")
+                    + '"><span style="font-weight: var(--font-weight-medium)">' + e(name) + '</span>' + right + '</li>')
+    ul = ('<ul style="margin: 0; padding: 0; list-style: none; border: ' + LINE + '; border-radius: var(--radius-md); '
+          'background: var(--color-surface)">\n' + "\n".join(rows) + '\n</ul>')
+    body = T.band(T.head(frame[1]) + "\n" + ul, first=True)
+    return phone(topbar(screen_title(cx), lead_of(cx)), body, fixed=True)
+
+
 SPECIAL = {("SCR-032", "잡힌 자리/하루 최대 · 휴무 · 다 참 · 마감 · 추가 수락"): scr032_cal,
            ("SCR-041", "스킬 설정 값"): sp_skill}
 CUSTOM = {"SCR-001": scr001, "SCR-016": scr016, "SCR-022": scr022}
-STATE_DRAW = {("SCR-041", "empty"): scr041_empty}
+STATE_DRAW = {("SCR-041", "empty"): scr041_empty, ("SCR-043", "empty"): scr043_empty}
 
 
 # ── 아트보드 ────────────────────────────────────────────────────────────────────
@@ -1386,6 +1445,8 @@ def figures(sid, w):
         if frame[0] == "box":  # 08단계 자리 값 '추적 ID: 0000-0000'을 06단계 모양의 추적 ID로
             frame = (frame[0], frame[1], frame[2].replace("0000-0000", trace(sid + ":" + name)), frame[3])
         note = STATE_NOTE.get((sid, name)) or STATE_NOTE.get(name, "")
+        if frame[0] == "field":  # 입력 오류 프레임은 오류가 난 블록까지 내린 모습(content())
+            note += " · 오류가 난 곳까지 내린 모습"
         cap = "%s#%s\u00a0· 360 × 800%s" % (sid, name, (" · " + note) if note else "")
         T.idp, T.idn = "%s-%s" % (sid[4:], name), 0
         out.append(T.fig(cap, draw(sid, 360, name, frame)))
@@ -1395,6 +1456,22 @@ def figures(sid, w):
 
 # 캡션 끝에 붙이는 '언제 보이는지'. 화면별 것이 먼저.
 STATE_NOTE = {"not-sent": "알림 채널 친구가 아닐 때", "deferred": "손님이 채널 친구가 아닐 때", "expired": "카드 30분이 지난 뒤",
+              # 되돌릴 수 없고 손님에게 안내가 가는 액션 앞의 확인 창(설계 재검토 M19 RE-06)
+              ("SCR-022", "confirm-notify"): "'거절'을 누른 뒤",
+              ("SCR-023", "confirm-notify"): "'주문 취소'를 누른 뒤",
+              ("SCR-024", "confirm-notify"): "'그대로'를 고르고 '수락'을 누른 뒤",
+              ("SCR-025", "confirm-notify"): "'환불 결정'을 누른 뒤",
+              ("SCR-027", "confirm-notify"): "재제작을 고르고 '보상 정하기'를 누른 뒤",
+              ("SCR-029", "confirm-notify"): "'입금됨'을 누른 뒤",
+              ("SCR-031", "confirm-notify"): "'픽업 완료'를 누른 뒤",
+              # 필드 옆 입력 오류(설계 재검토 M19 RE-05): 오류가 난 필드까지 내린 모습
+              ("SCR-015", "error"): "사업자등록번호가 10자리가 아닐 때",
+              ("SCR-032", "error"): "하루 최대 개수가 100을 넘을 때",
+              ("SCR-033", "error"): "전날 안내 시각이 20:50보다 늦을 때",
+              ("SCR-034", "error"): "하루 AI 비용 한도가 1,000,000원을 넘을 때",
+              ("SCR-036", "error"): "같은 조합을 더함과 함께 못 고름으로 함께 정했을 때",
+              ("SCR-038", "error"): "단계별 환불의 기간이 겹칠 때",
+              ("SCR-040", "error"): "카드 결제 링크가 https로 시작하지 않을 때",
               ("SCR-021", "confirm"): "가게 사정 취소를 누른 뒤",
               ("SCR-022", "confirm"): "그날 남은 자리가 없을 때",
               ("SCR-023", "confirm"): "결제 기한을 연장할 때 그날 남은 자리가 없으면",
