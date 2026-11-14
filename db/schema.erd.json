@@ -3239,7 +3239,7 @@
         "id": "03h8j8qpqyw8tcfia5xwho287",
         "tableId": "03h7y0178vyo98xl8mfwdxckm",
         "name": "ai_disclosed_policy_version",
-        "comment": "그 고지에 링크한 가게 처리방침(TBL-005)의 버전(REQ-140). 고지 시각과 함께 쓰고, 고지할 때 게시된 가장 최근 버전(4절 A39, 설계 재검토 RC-20)",
+        "comment": "AI 상담 고지를 보낸 때 게시된 가장 최근 가게 처리방침(TBL-005)의 버전(REQ-140). 고지 시각과 함께 씀. 고지의 링크는 늘 가장 최근 버전을 보여 고지 때의 버전은 이 값으로 앎(4절 A39, 설계 재검토 RC-20)",
         "dataType": "integer",
         "options": 0
       },

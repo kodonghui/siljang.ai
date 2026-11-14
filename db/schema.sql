@@ -346,7 +346,7 @@ CREATE TABLE consultations (
   customer_id               uuid NOT NULL,               -- 손님
   status                    text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'awaiting_owner', 'dropped', 'ordered', 'ended', 'deleted')), -- 열림·사장님 답 기다림·문의 끊김(TERM-075)·주문으로 전환됨·상담 끝남·지워짐(1-1). 상담 끝남과 지워짐은 다시 열지 않고 손님의 다음 말은 새 상담(REQ-189)
   ai_disclosed_at           timestamptz,                 -- AI 상담 고지(TERM-041)를 보낸 시각(REQ-002). 상담마다 한 번, 이어가는 상담에는 다시 보내지 않음(R5)
-  ai_disclosed_policy_version integer,                  -- 그 고지에 링크한 가게 처리방침(TBL-005)의 버전(REQ-140). 고지 시각과 함께 쓰고, 고지할 때 게시된 가장 최근 버전(4절 A39, 설계 재검토 RC-20)
+  ai_disclosed_policy_version integer,                  -- AI 상담 고지를 보낸 때 게시된 가장 최근 가게 처리방침(TBL-005)의 버전(REQ-140). 고지 시각과 함께 씀. 고지의 링크는 늘 가장 최근 버전을 보여 고지 때의 버전은 이 값으로 앎(4절 A39, 설계 재검토 RC-20)
   last_customer_message_at  timestamptz,                 -- 손님의 마지막 메시지 시각(문의 끊김 셈, REQ-211)
   dropped_at                timestamptz,                 -- 문의 끊김으로 닫은 시각(30일 지우기 셈, REQ-186)
   ended_at                  timestamptz,                 -- 상담 끝남으로 닫은 시각: 다룬 주문이 모두 끝나고 손님의 마지막 메시지 뒤 가게가 정한 시간이 지남(30일 지우기 셈, SPEC-025, REQ-189)
@@ -1907,7 +1907,7 @@ COMMENT ON COLUMN consultations.shop_id IS '가게. 채널로 찾은 가게 ID�
 COMMENT ON COLUMN consultations.customer_id IS '손님';
 COMMENT ON COLUMN consultations.status IS '열림·사장님 답 기다림·문의 끊김(TERM-075)·주문으로 전환됨·상담 끝남·지워짐(1-1). 상담 끝남과 지워짐은 다시 열지 않고 손님의 다음 말은 새 상담(REQ-189)';
 COMMENT ON COLUMN consultations.ai_disclosed_at IS 'AI 상담 고지(TERM-041)를 보낸 시각(REQ-002). 상담마다 한 번, 이어가는 상담에는 다시 보내지 않음(R5)';
-COMMENT ON COLUMN consultations.ai_disclosed_policy_version IS '그 고지에 링크한 가게 처리방침(TBL-005)의 버전(REQ-140). 고지 시각과 함께 쓰고, 고지할 때 게시된 가장 최근 버전(4절 A39, 설계 재검토 RC-20)';
+COMMENT ON COLUMN consultations.ai_disclosed_policy_version IS 'AI 상담 고지를 보낸 때 게시된 가장 최근 가게 처리방침(TBL-005)의 버전(REQ-140). 고지 시각과 함께 씀. 고지의 링크는 늘 가장 최근 버전을 보여 고지 때의 버전은 이 값으로 앎(4절 A39, 설계 재검토 RC-20)';
 COMMENT ON COLUMN consultations.last_customer_message_at IS '손님의 마지막 메시지 시각(문의 끊김 셈, REQ-211)';
 COMMENT ON COLUMN consultations.dropped_at IS '문의 끊김으로 닫은 시각(30일 지우기 셈, REQ-186)';
 COMMENT ON COLUMN consultations.ended_at IS '상담 끝남으로 닫은 시각: 다룬 주문이 모두 끝나고 손님의 마지막 메시지 뒤 가게가 정한 시간이 지남(30일 지우기 셈, SPEC-025, REQ-189)';
