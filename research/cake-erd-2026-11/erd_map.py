@@ -880,6 +880,11 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("두 번 눌러도 한 번", "request_keys.request_key"),
         ("할 일 닫힘", "owner_tasks.closed_at"),
         ("재제작 주문의 신고는 원래 주문의 한도", "orders.remake_of_order_id"),
+        ("문제 종류", "issue_reports.problem_kind"),
+        ("보상 없음 사유", "issue_reports.no_compensation_reason"),
+        ("그 밖의 보상의 한 일", "issue_reports.other_compensation_note"),
+        ("그 밖의 보상 금액", "issue_reports.other_compensation_amount"),
+        ("사장님이 남긴 신고면 보상 안내 없음", "issue_reports.reported_by"),
     ],
     "SPEC-060": [
         ("원래 주문", "orders.remake_of_order_id"),
@@ -953,6 +958,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("재제작 주문은 원래 주문 행에", "orders.remake_of_order_id"),
     ],
     "SPEC-065": [
+        ("보상 없음 사유·그 밖의 보상의 한 일을 비운 시각", "issue_reports.notes_purged_at"),
+        ("지우는 에스컬레이션 건과 신고의 연결", "issue_reports.handoff_id"),
         ("끊긴 상담", "consultations.dropped_at"),
         ("끝난 상담", "consultations.ended_at"),
         ("지워짐", "consultations.deleted_at"),
@@ -1223,6 +1230,22 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("사장님께 반영·보류 알림", "owner_alerts.kind"),
         ("운영자 계정", "operators.id"),
         ("먼저 남긴 처리가 이김(같은 키)", "request_keys.request_key"),
+    ],
+    "SPEC-079": [
+        ("에스컬레이션 건", "issue_reports.handoff_id"),
+        ("사유 다른 카카오 사용자", "handoffs.reason"),
+        ("관련 주문", "handoffs.order_id"),
+        ("받은 주문", "orders.status"),
+        ("신고한 사람", "issue_reports.reported_by"),
+        ("신고 카드 없음", "issue_reports.card_id"),
+        ("신고 설명", "issue_details.description"),
+        ("그 건의 상담", "issue_details.consultation_id"),
+        ("신고됨", "issue_details.status"),
+        ("기한 뒤(그 건이 생긴 시각으로)", "issue_reports.late"),
+        ("에스컬레이션한 시각", "handoffs.created_at"),
+        ("신고 기한", "operating_rules.issue_report_hours"),
+        ("신고 할 일", "owner_tasks.issue_report_id"),
+        ("두 번 눌러도 한 번", "request_keys.request_key"),
     ],
 }
 

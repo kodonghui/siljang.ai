@@ -279,7 +279,7 @@ if "--appendix" in flags:
     for r in sorted(REQ):
         if excluded(r):
             # '제외(버전 2, REQ-153로 바꿈)' -> '제외 (버전 2, REQ-153)'
-            m = re.match(r"제외\((.*?)(?:로 바꿈)?\)$", REQ[r]["status"])
+            m = re.match(r"제외\((.*?)(?:으?로 바꿈)?\)$", REQ[r]["status"])
             where = "제외 (%s)" % m.group(1) if m else "제외"
         else:
             where = ", ".join(by_req.get(r, [])) or "없음 (2절)"

@@ -523,7 +523,7 @@ S["RefundTierInput"] = obj({
 _rules_fields = {
     "quoteValidHours": integer(1, 720, col="operating_rules.quote_valid_hours", desc="견적 유효 기한(기본 72)"),
     "paymentDueHours": integer(1, 720, col="operating_rules.payment_due_hours", desc="결제 기한(기본 12)"),
-    "issueReportHours": integer(1, 720, col="operating_rules.issue_report_hours", desc="문제 신고 기한(기본 24)"),
+    "issueReportHours": integer(1, 720, col="operating_rules.issue_report_hours", desc="문제 신고 기한(기본 24). 사장님이 빨리 확인하기 위한 기한이라 기한 뒤의 신고도 받고 사장님 화면에만 '기한 뒤'로 보임. 조문 글은 '받은 뒤 24시간 안에 알려 주시면 빨리 확인할 수 있어요'처럼 기한 뒤 신고를 막지 않는 글(REQ-250)"),
     "changeDeadlineHours": integer(1, 720, col="operating_rules.change_deadline_hours", desc="변경 마감: 픽업 몇 시간 전까지"),
     "cancellationFeeKrw": integer(0, 10000000, col="operating_rules.cancellation_fee_krw",
                                   desc="고정 취소 수수료 0원~1,000만 원. 저장할 때는 주문 금액과 견주지 않고, 환불 계산에서 비율보다 먼저 빼며 바탕보다 크면 환불 0원(SPEC-005, SPEC-016)"),
@@ -828,6 +828,9 @@ S["Handoff"] = all_required({
     "dayDecision": nullable(enum(["accepted", "declined"])),
     "dayAcceptExpiresAt": nullable(DT),
     "dayUsedOrder": dict(nullable(ref("OrderRef")), description="추가 수락을 쓴 주문 요청: dayAcceptExpiresAt 전에 그 날짜로 와서 마감 후 추가 수락으로 자리를 잡은 주문 하나. 쓰면 다시 쓰지 않음(SPEC-023). 아니면 null"),
+    "issueReport": dict(nullable(ref("IssueReportSummary")),
+                        description="사장님이 이 건에서 남긴 문제 신고(API-083, SPEC-079). 한 건에 하나이고 없으면 null. "
+                                    "사유가 other_user이고 관련 주문이 받은 주문인 열린 건에서만 남길 수 있음"),
     "answeredAt": nullable(DT),
     "closedAt": nullable(dict(DT, description="답 없어 닫힌 시각(남긴 지 7일, REQ-216). 닫힌 건에 답하면 409 invalid_state")),
     "createdAt": DT,
@@ -838,6 +841,16 @@ S["HandoffAnswerInput"] = obj({
     "text": string(1, 1000, col="handoffs.answer_text", desc="손님에게 그대로 전할 답(AI가 고치지 않음)"),
     "dayDecision": enum(["accepted", "declined"], col="handoffs.day_decision", desc="마감된 날에 추가로 받을지(사유가 closed_day일 때만)"),
 }, ["baseRevision"], anyOf=[{"required": ["text"]}, {"required": ["dayDecision"]}])
+S["IssueFromHandoffInput"] = obj({
+    "baseRevision": BASE_REVISION,
+    "description": string(1, 1000, col="issue_details.description",
+                          desc="신고 설명. 화면이 그 건의 손님 말로 미리 채우고 사장님이 고침(SPEC-079). 사진은 없음"),
+}, ["baseRevision", "description"])
+S["IssueFromHandoffResult"] = all_required({
+    "outcome": outcome(),
+    "issueReport": ref("IssueReport"),
+    "handoff": ref("Handoff"),
+})
 S["HandoffAnswerResult"] = all_required({
     "outcome": outcome(),
     "handoff": ref("Handoff"),
@@ -1224,29 +1237,46 @@ S["IssueReport"] = all_required({
     "order": ref("OrderRef"),
     "orderVersion": integer(1, 2147483647),
     "paidAmount": integer(0, 100000000, desc="결제 금액(받은 금액, REQ-165). 재제작 주문에 들어온 신고(다시 신고)면 원래 주문의 받은 금액(SPEC-059)"),
-    "late": boolean("신고 기한 뒤에 옴(REQ-072)"),
+    "late": boolean("신고 기한 뒤에 옴(REQ-072). 사장님 화면에만 보이고 손님 안내·카드에는 쓰지 않음(REQ-250). 사장님이 에스컬레이션 건에서 남긴 신고는 그 건이 생긴 시각으로 봄(DEC-24)"),
     "status": enum(["reported", "decided", "closed"]),
     "description": nullable(string(1, 1000)),
     "healthConcern": boolean("먹고 아프다는 말(SPEC-057)"),
     "photos": arr(all_required({"url": SIGNED_URL}), 0, 5),
     "followUps": arr(all_required({"issueReportId": UUID, "reportedAt": DT}), 0, 20, desc="같은 주문의 뒤 신고(연결)"),
-    "compensation": nullable(enum(["remake", "partial_refund", "full_refund", "none"])),
+    "problemKind": nullable(enum(["spoiled", "foreign_matter", "other"], desc="사장님이 보상을 정할 때 고른 문제 종류: 상함·변질·이물·그 밖(REQ-247). 정하기 전에는 null")),
+    "compensation": nullable(enum(["remake", "partial_refund", "full_refund", "other_compensation", "none"])),
+    "noCompensationReason": nullable(string(1, 200, desc="상함·변질이나 이물에 보상 없음으로 닫은 사유(REQ-248). 사장님 화면에만. 주문이 끝난 날부터 3년이 지나면 신고 설명과 함께 비워 null(SPEC-065)")),
+    "otherCompensationNote": nullable(string(1, 200, desc="그 밖의 보상으로 사장님이 한 일(REQ-249). 사장님 화면에만. 3년이 지나면 비워 null(SPEC-065)")),
+    "otherCompensationAmount": nullable(integer(0, 100000000, desc="그 밖의 보상의 금액(사장님이 넣었을 때만). 환불·장부 쓰기가 아닌 기록(REQ-249)")),
     "decidedAt": nullable(DT),
     "remakeOrder": nullable(ref("OrderRef")),
     "refund": nullable(ref("RefundSummary")),
     "closedAt": nullable(DT),
+    "reportedBy": enum(["orderer", "owner_from_handoff"], col="issue_reports.reported_by",
+                       desc="신고한 사람: 주문자(신고 카드)·사장님이 에스컬레이션 건에서 남김(다른 카카오 사용자의 말, SPEC-079)"),
+    "handoff": nullable(all_required({"handoffId": UUID, "createdAt": DT},
+                                     desc="사장님이 에스컬레이션 건에서 남긴 신고의 그 건. 신고한 사람에게는 그 건의 답(API-042)으로 결과를 전함(DEC-24). 주문자의 신고면 null")),
     "reportedAt": DT,
     "revision": REVISION,
 })
 S["CompensationInput"] = obj({
     "baseRevision": BASE_REVISION,
-    "compensation": enum(["remake", "partial_refund", "full_refund", "none"], col="issue_reports.compensation"),
+    "problemKind": enum(["spoiled", "foreign_matter", "other"], col="issue_reports.problem_kind",
+                        desc="문제 종류: 상함·변질·이물·그 밖. 사장님이 보상을 정할 때 꼭 고름(손님·AI는 고르지 않음, REQ-247)"),
+    "compensation": enum(["remake", "partial_refund", "full_refund", "other_compensation", "none"], col="issue_reports.compensation",
+                         desc="재제작·일부 환불·전액 환불·그 밖의 보상(사장님이 직접 처리, 환불·장부 쓰기 없음, REQ-249)·보상 없음"),
     "remakePickupAt": dict(DT, description="재제작의 새 픽업 일시(지금 뒤 60일 안). remake만"),
     "refundAmount": integer(1, 100000000, col="refunds.amount",
                             desc="일부 환불 금액. partial_refund만(SPEC-047과 같은 한도: 받은 금액 - 이미 정한 환불, 재제작 주문에 들어온 신고면 원래 주문의 것). "
                                  "보상은 고른 금액이 계산값이라 다르게 정한 사유를 받지 않음(SPEC-059)"),
-    "confirm": confirm_list(["closed_day", "overbooking"]),
-}, ["baseRevision", "compensation"])
+    "noCompensationReason": string(1, 200, col="issue_reports.no_compensation_reason",
+                                   desc="보상 없음의 사유. 상함·변질이나 이물에 보상 없음일 때만 받고, 그때는 confirm의 no_compensation_standard와 함께 꼭 넣음(REQ-248). 사장님 화면에만"),
+    "otherCompensationNote": string(1, 200, col="issue_reports.other_compensation_note",
+                                    desc="그 밖의 보상으로 사장님이 한 일(예: 진료비를 직접 보내 드림). other_compensation만이고 그때는 꼭 넣음(REQ-249). 사장님 화면에만"),
+    "otherCompensationAmount": integer(0, 100000000, col="issue_reports.other_compensation_amount",
+                                       desc="그 밖의 보상의 금액(선택, 0원~1억 원). other_compensation만. 환불·장부 쓰기를 만들지 않음"),
+    "confirm": confirm_list(["closed_day", "overbooking", "no_compensation_standard"]),
+}, ["baseRevision", "problemKind", "compensation"])
 S["CompensationResult"] = all_required({
     "outcome": outcome(),
     "issueReport": ref("IssueReport"),

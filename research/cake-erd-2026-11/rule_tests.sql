@@ -326,7 +326,7 @@ INSERT INTO order_details (id, shop_id, order_id, version, source, price_list_id
   ('d1000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 1, 'remake',
    'b0000000-0000-0000-0000-000000000001', '2026-12-26 06:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
    '생일 축하해', '없음', 'agreed', 'allergy-v1', now(), 0);
-UPDATE issue_reports SET status = 'decided', compensation = 'remake', decided_at = now(), remake_order_id = 'd0000000-0000-0000-0000-000000000002'
+UPDATE issue_reports SET status = 'decided', compensation = 'remake', problem_kind = 'other', decided_at = now(), remake_order_id = 'd0000000-0000-0000-0000-000000000002'
  WHERE id = 'f2000000-0000-0000-0000-000000000001';
 INSERT INTO slot_holds (id, shop_id, day, order_id, hold_key, status, overbooked, fixed_at) VALUES
   ('e3000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', '2026-12-26', 'd0000000-0000-0000-0000-000000000002',
@@ -950,6 +950,155 @@ SELECT pg_temp.expect_fail('G2 신고 카드 하나에 신고 둘', 'issue_repor
   INSERT INTO issue_reports (shop_id, order_id, issue_details_id, card_id, late, follows_report_id)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000002',
           'c7000000-0000-0000-0000-000000000012', true, 'f2000000-0000-0000-0000-000000000001')$$]);
+-- 문제 종류·보상 없음 사유·그 밖의 보상, 에스컬레이션 건에서 사장님이 남긴 신고(설계 재검토 M12, 4절 A38, 5절 E32)
+SELECT pg_temp.expect_fail('REQ-247 보상을 정하면서 문제 종류 없음', 'issue_reports_problem_kind_chk', ARRAY[$$
+  UPDATE issue_reports SET problem_kind = NULL WHERE id = 'f2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-248 상함·변질에 사유 없는 보상 없음', 'issue_reports_none_reason_needed_chk', ARRAY[$$
+  INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('f6000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'c2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'other_user')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에 머리카락이 있었어요', 'reported')$$, $$
+  INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('f2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+          'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$, $$
+  UPDATE issue_reports SET status = 'decided', compensation = 'none', problem_kind = 'spoiled', decided_at = now() WHERE id = 'f2000000-0000-0000-0000-000000000005'$$]);
+SELECT pg_temp.expect_fail('REQ-248 보상 없음 사유는 상함·변질·이물의 보상 없음에만', 'issue_reports_none_reason_chk', ARRAY[$$
+  UPDATE issue_reports SET no_compensation_reason = '손님이 하루 밖에 두셨어요' WHERE id = 'f2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-249 그 밖의 보상에 사장님이 한 일 없음', 'issue_reports_other_note_needed_chk', ARRAY[$$
+  INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('f6000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'c2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'other_user')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에 머리카락이 있었어요', 'reported')$$, $$
+  INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('f2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+          'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$, $$
+  UPDATE issue_reports SET status = 'decided', compensation = 'other_compensation', problem_kind = 'foreign_matter', decided_at = now() WHERE id = 'f2000000-0000-0000-0000-000000000005'$$]);
+SELECT pg_temp.expect_fail('REQ-249 한 일은 그 밖의 보상에만', 'issue_reports_other_note_chk', ARRAY[$$
+  UPDATE issue_reports SET other_compensation_note = '꽃다발을 드림' WHERE id = 'f2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-249 금액은 그 밖의 보상에만', 'issue_reports_other_amount_chk', ARRAY[$$
+  UPDATE issue_reports SET other_compensation_amount = 30000 WHERE id = 'f2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('SPEC-065 비운 뒤 다시 쓴 보상 없음 사유', 'issue_reports_notes_purged_chk', ARRAY[$$
+  INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('f6000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'c2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'other_user')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에 머리카락이 있었어요', 'reported')$$, $$
+  INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('f2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+          'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$, $$
+  UPDATE issue_reports SET status = 'decided', compensation = 'none', problem_kind = 'spoiled', decided_at = now(),
+         no_compensation_reason = '손님이 하루 밖에 두셨어요', notes_purged_at = now() WHERE id = 'f2000000-0000-0000-0000-000000000005'$$]);
+-- 관련 주문이 있는 다른 카카오 사용자의 사정은 다른 열린 건(상담 1의 먹어도 되는지)에 덧붙지 않고 상담과 주문마다 따로 건(SPEC-022, PR #40 Codex 의견)
+SELECT pg_temp.expect_ok('RB-15 다른 열린 건이 있는 상담에서 관련 주문이 있는 다른 카카오 사용자 건은 따로 열림', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-f1', '선물로 받은 케이크가 상했어요', 'trace-f1')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000f1', 'd0000000-0000-0000-0000-000000000003', 'other_user')$$]);
+SELECT pg_temp.expect_fail('RB-15 같은 상담·같은 주문의 열린 다른 카카오 사용자 건 둘', 'handoffs_one_open_other_user_per_order', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-f1', '선물로 받은 케이크가 상했어요', 'trace-f1')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000003', 'other_user')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000f1', 'd0000000-0000-0000-0000-000000000003', 'other_user')$$]);
+SELECT pg_temp.expect_fail('RB-15 관련 주문이 없는 다른 카카오 사용자 건은 열린 건 하나 규칙을 따름', 'handoffs_one_open_per_consultation', ARRAY[$$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000004', 'other_user')$$]);
+SELECT pg_temp.expect_fail('RB-15 신고 카드 없는 주문자 신고', 'issue_reports_reporter_chk', ARRAY[$$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001',
+          'd0000000-0000-0000-0000-000000000001', 'reported')$$, $$
+  INSERT INTO issue_reports (shop_id, order_id, issue_details_id, late)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000005', false)$$]);
+SELECT pg_temp.expect_fail('RB-15 주문자 신고에 에스컬레이션 건', 'issue_reports_handoff_chk', ARRAY[$$
+  UPDATE issue_reports SET handoff_id = 'f6000000-0000-0000-0000-000000000001' WHERE id = 'f2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('RB-15 다른 주문의 에스컬레이션 건에서 남긴 신고', 'issue_reports_handoff_fk', ARRAY[$$
+  INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('f6000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'c2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000003', 'other_user')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에 머리카락이 있었어요', 'reported')$$, $$
+  INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('f2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+          'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$]);
+SELECT pg_temp.expect_fail('RB-15 에스컬레이션 건 하나에 신고 둘', 'issue_reports_handoff_uq', ARRAY[$$
+  INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('f6000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'c2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'other_user')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에 머리카락이 있었어요', 'reported')$$, $$
+  INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('f2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+          'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, status)
+  VALUES ('f1000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', 'reported')$$, $$
+  INSERT INTO issue_reports (shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000006', true,
+          'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$]);
+SELECT pg_temp.expect_fail('E32 신고 연결을 끊지 않고 에스컬레이션 건을 지움', 'issue_reports_handoff_fk', ARRAY[$$
+  INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('f6000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'c2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'other_user')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에 머리카락이 있었어요', 'reported')$$, $$
+  INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('f2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+          'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$, $$
+  DELETE FROM handoffs WHERE id = 'f6000000-0000-0000-0000-000000000005'$$]);
+SELECT pg_temp.expect_ok('RB-15 다른 카카오 사용자의 에스컬레이션 건에서 사장님이 남긴 신고(신고 카드 없음)', ARRAY[$$
+  INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('f6000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'c2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'other_user')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에 머리카락이 있었어요', 'reported')$$, $$
+  INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('f2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+          'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$]);
+SELECT pg_temp.expect_ok('REQ-248 상함·변질에 사유를 남긴 보상 없음', ARRAY[$$
+  INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('f6000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'c2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'other_user')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에 머리카락이 있었어요', 'reported')$$, $$
+  INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('f2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+          'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$, $$
+  UPDATE issue_reports SET status = 'decided', compensation = 'none', problem_kind = 'spoiled', decided_at = now(),
+         no_compensation_reason = '냉장 보관 안내를 했는데 하루 밖에 두셨어요' WHERE id = 'f2000000-0000-0000-0000-000000000005'$$]);
+SELECT pg_temp.expect_ok('REQ-249 그 밖의 보상(한 일과 금액, 환불 없음)', ARRAY[$$
+  INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('f6000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'c2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'other_user')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에 머리카락이 있었어요', 'reported')$$, $$
+  INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('f2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+          'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$, $$
+  UPDATE issue_reports SET status = 'decided', compensation = 'other_compensation', problem_kind = 'foreign_matter', decided_at = now(),
+         other_compensation_note = '진료비 30,000원을 직접 보내 드림', other_compensation_amount = 30000 WHERE id = 'f2000000-0000-0000-0000-000000000005'$$]);
+SELECT pg_temp.expect_ok('REQ-247 그 밖 문제의 보상 없음은 사유 없이', ARRAY[$$
+  INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason)
+  VALUES ('f6000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'c2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'other_user')$$, $$
+  INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status)
+  VALUES ('f1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002',
+          'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에 머리카락이 있었어요', 'reported')$$, $$
+  INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id)
+  VALUES ('f2000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+          'f1000000-0000-0000-0000-000000000005', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000005')$$, $$
+  UPDATE issue_reports SET status = 'decided', compensation = 'none', problem_kind = 'other', decided_at = now() WHERE id = 'f2000000-0000-0000-0000-000000000005'$$]);
 
 -- 결제·환불 (CTX-004)
 SELECT pg_temp.expect_fail('1-3 한 주문에 열린 결제 안내 둘', 'payment_requests_one_open_per_order', ARRAY[$$
@@ -1549,6 +1698,8 @@ BEGIN
    WHERE owner_task_id IN (SELECT t.id FROM owner_tasks t JOIN handoffs h ON h.id = t.handoff_id WHERE h.consultation_id = ANY (cons));
   DELETE FROM owner_tasks WHERE handoff_id IN (SELECT id FROM handoffs WHERE consultation_id = ANY (cons));
   DELETE FROM handoff_questions WHERE handoff_id IN (SELECT id FROM handoffs WHERE consultation_id = ANY (cons));
+  -- 그 건에서 사장님이 남긴 문제 신고는 보관 기록이라 남기고 건과의 연결만 끊음(설계 재검토 M12, 5절 E32)
+  UPDATE issue_reports SET handoff_id = NULL WHERE handoff_id IN (SELECT id FROM handoffs WHERE consultation_id = ANY (cons));
   DELETE FROM handoffs WHERE consultation_id = ANY (cons);
   DELETE FROM confirm_cards WHERE draft_id IN (SELECT d.id FROM order_drafts d
     WHERE d.consultation_id = ANY (cons) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id));
@@ -1582,6 +1733,8 @@ BEGIN
   SELECT shop_id, storage_key, 'issue_photo', now_at FROM gone ON CONFLICT (storage_key) DO NOTHING;
   UPDATE issue_details SET description = NULL, content_purged_at = now_at, updated_at = now_at
    WHERE order_id = ANY (due) AND status = 'reported';
+  UPDATE issue_reports SET no_compensation_reason = NULL, other_compensation_note = NULL, notes_purged_at = now_at
+   WHERE order_id = ANY (due) AND notes_purged_at IS NULL;  -- 보상 없음 사유와 그 밖의 보상의 한 일(설계 재검토 M12)
   UPDATE kept_records SET issue_purged_at = now_at WHERE order_id = ANY (due);
   n_issues := cardinality(due);
 
@@ -1771,6 +1924,19 @@ INSERT INTO ai_calls (id, shop_id, consultation_id, trace_id, attempt, provider,
 INSERT INTO ai_tool_calls (id, shop_id, ai_call_id, consultation_id, tool_name, target_id, args_masked, result, duration_ms) VALUES
   ('fe000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'fd000000-0000-0000-0000-000000000002',
    'c1000000-0000-0000-0000-000000000003', 'quote', 'c4000000-0000-0000-0000-000000000006', '{"size":"1호","photo":true}', 'ok', 40);
+-- 손님 3은 주문 1을 선물로 받은 사람(설계 재검토 M12, RB-15): 그 말은 다른 사용자의 에스컬레이션 건이 되고, 사장님이 그 건에서 주문 1의 문제 신고로
+-- 남겨 상함·변질에 보상 없음(사유)으로 닫고 답함. 손님 3의 상담을 지울 때 그 건은 지우고 신고는 연결만 끊김(5절 E32)
+INSERT INTO handoffs (id, shop_id, consultation_id, source_message_id, order_id, reason, status, answer_text, answered_at) VALUES
+  ('f6000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003',
+   'c2000000-0000-0000-0000-000000000007', 'd0000000-0000-0000-0000-000000000001', 'other_user', 'answered', '확인했어요. 주문하신 분께 연락드릴게요', now());
+INSERT INTO issue_details (id, shop_id, consultation_id, order_id, description, status) VALUES
+  ('f1000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003',
+   'd0000000-0000-0000-0000-000000000001', '선물로 받은 케이크에서 상한 냄새가 났어요', 'reported');
+INSERT INTO issue_reports (id, shop_id, order_id, issue_details_id, late, reported_by, handoff_id, status, problem_kind, compensation,
+                           no_compensation_reason, decided_at, closed_at) VALUES
+  ('f2000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
+   'f1000000-0000-0000-0000-000000000004', true, 'owner_from_handoff', 'f6000000-0000-0000-0000-000000000003', 'closed', 'spoiled', 'none',
+   '냉장 보관 안내를 했는데 하루 밖에 두셨어요', now(), now());
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 
@@ -1789,10 +1955,14 @@ SELECT pg_temp.expect_left('REQ-189 상담 끝남 뒤 같은 손님의 새 상�
   SELECT status FROM c$$, 'open');
 CREATE TEMP TABLE purge_before AS SELECT pg_temp.kept_counts() AS counts;
 SELECT pg_temp.expect_left('SPEC-065 지우기 전 끝난 주문의 개인정보', $$SELECT pg_temp.order_personal_left()::text$$, '21');
-SELECT pg_temp.expect_left('SPEC-065 지우기 전 지울 상담의 내용', $$SELECT pg_temp.consult_content_left()::text$$, '25');
+SELECT pg_temp.expect_left('SPEC-065 지우기 전 지울 상담의 내용', $$SELECT pg_temp.consult_content_left()::text$$, '26');
 SELECT pg_temp.expect_left('SPEC-065 첫 지우기(31일 뒤, 저장소가 참고 사진 파일 하나에 실패)',
   $$SELECT pg_temp.purge_run(now() + interval '31 days', ARRAY['ref/3-1.jpg'])$$,
   'orders 4, consultations 2, issues 0, kept_ended 0, customers 1, access_logs 1');
+SELECT pg_temp.expect_left('E32 상담을 지우면 에스컬레이션 건은 지우고 그 건에서 남긴 신고는 연결만 끊김', $$
+  SELECT (SELECT count(*) FROM handoffs WHERE id = 'f6000000-0000-0000-0000-000000000003') || '/' ||
+         (SELECT coalesce(handoff_id::text, '-') || ' ' || reported_by || ' ' || (no_compensation_reason IS NOT NULL)::text
+            FROM issue_reports WHERE id = 'f2000000-0000-0000-0000-000000000003')$$, '0/- owner_from_handoff true');
 SELECT pg_temp.expect_left('SPEC-065 저장소가 실패한 사진 파일은 지울 파일로 남음', $$
   SELECT (SELECT count(*) FROM reference_photos WHERE storage_key = 'ref/3-1.jpg') || '/' ||
          (SELECT string_agg(storage_key || ' ' || source || ' ' || attempts || ' ' || (last_tried_at = queued_at)::text, ',' ORDER BY storage_key)
@@ -1855,6 +2025,11 @@ SELECT pg_temp.expect_left('REQ-188 신고 설명과 사진은 지우고 신고�
          ((SELECT content_purged_at FROM issue_details WHERE id = 'f1000000-0000-0000-0000-000000000001') IS NOT NULL
           AND (SELECT issue_purged_at FROM kept_records WHERE order_id = 'd0000000-0000-0000-0000-000000000001') IS NOT NULL)::text$$,
   '-/0/remake/true');
+SELECT pg_temp.expect_left('M12 3년 지난 신고의 보상 없음 사유도 비우고 문제 종류와 보상은 남음', $$
+  SELECT (SELECT coalesce(no_compensation_reason, '-') || '/' || (notes_purged_at IS NOT NULL)::text || '/' || reported_by || '/' ||
+                 problem_kind || '/' || compensation FROM issue_reports WHERE id = 'f2000000-0000-0000-0000-000000000003') || '/' ||
+         coalesce((SELECT description FROM issue_details WHERE id = 'f1000000-0000-0000-0000-000000000004'), '-')$$,
+  '-/true/owner_from_handoff/spoiled/none/-');
 SELECT pg_temp.expect_left('SPEC-065 3년 지난 신고 사진의 파일도 지움', $$
   SELECT (SELECT count(*) FROM file_deletions) || '/' ||
          (SELECT (detail ->> 'files') || ' ' || (detail ->> 'files_left') FROM ops_events

@@ -923,13 +923,17 @@ def heading(title, sub=""):
             + sep_wrap(sub) + '</p></div>')
 
 
-def phone(header, body, footer="", overlay="", fixed=False):
+def phone(header, body, footer="", overlay="", fixed=False, inert=False):
+    """inert: 확인 창이 열린 동안 뒤 화면(머리·본문·바닥 버튼)은 누를 수 없음(모달). 상태 견본의 'inert'로 켬(설계 재검토 M12, SCR-027)."""
+    if inert:
+        header, footer = (re.sub(r"^<(\w+)", r"<\1 inert", x, count=1) for x in (header, footer))
     if fixed:
         frame, scroll = "width: 360px; height: 800px; position: relative; overflow: hidden", "; min-height: 0; overflow-y: auto; scrollbar-width: none"
     else:
         frame, scroll = "width: 360px; min-height: 800px", ""
     return ('<div style="' + frame + '; display: flex; flex-direction: column; background: var(--color-paper)">\n' + header + '\n'
-            '<main style="flex: 1 1 auto' + scroll + '; display: flex; flex-direction: column">\n' + body + '\n</main>\n' + footer + overlay + '\n</div>')
+            '<main' + (" inert" if inert else "") + ' style="flex: 1 1 auto' + scroll + '; display: flex; flex-direction: column">\n' + body
+            + '\n</main>\n' + footer + overlay + '\n</div>')
 
 
 def desk(sid, title, back, meta, body, operator=False):
@@ -1093,7 +1097,7 @@ def draw(sid, w, state=None, frame=None):
             header = public_header(cx, title)
         else:
             header = topbar(title, lead, right, cx.d.get("meta", ""))
-        return phone(header, body, footer, overlay, fixed=fixed)
+        return phone(header, body, footer, overlay, fixed=fixed, inert=bool(overlay and cx.st.get("inert")))
     # 1280
     if shell == "public":
         return public_wide(cx, title, body)

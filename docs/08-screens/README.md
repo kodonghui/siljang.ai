@@ -143,6 +143,7 @@
 | `closed_day` | 휴무일이에요. 이날로 정할까요? |
 | `past_cutoff` | 주문 마감이 지난 날이에요(새 결제 기한은 픽업 일시까지). 결제 기한을 연장할까요? |
 | `holder_mismatch` | 예금주가 상호·대표자와 달라요. 가게 명의 계좌가 맞나요? |
+| `no_compensation_standard` | 상함·변질이나 이물은 소비자분쟁해결기준(공정위 고시 제2025-14호 별표, 제빵류)이 교환이나 환급을 정해요. 보상 없이 닫으면 분쟁 때 가게에 불리할 수 있어요. 사유를 남기고 그래도 보상 없이 닫을까요? |
 <!-- 08-screens:confirms:end -->
 
 ## 6. 화면 목록
@@ -166,7 +167,7 @@
 | [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 12 |
 | [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 16 |
 | [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
-| [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 17 |
+| [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 28 |
 | [SCR-018](SCR-018.md) | 상담 대화 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
 | [SCR-019](SCR-019.md) | 사장님 알림 | 사장님 | normal · not-sent · error · stale | loading · empty · permission | 0 |
 | [SCR-020](SCR-020.md) | 주문 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 7 |
@@ -176,7 +177,7 @@
 | [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 21 |
 | [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 20 |
 | [SCR-026](SCR-026.md) | 환불 송금 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 17 |
-| [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 16 |
+| [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 20 |
 | [SCR-028](SCR-028.md) | 입금 대조 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
 | [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · submitting · mismatch · expired · done | empty | 25 |
 | [SCR-030](SCR-030.md) | 제작 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 34 |
@@ -228,6 +229,8 @@
 - 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
 
 ## 9. 검사
+
+2026-11-14 23:05 KST, 설계 재검토 M12를 고쳐 다시 생성하고(12절, 그 PR의 Codex 의견을 고친 뒤 23:42에 다시 돌려도 출력이 같음) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 218행·액션 160행(SCR-017의 남긴 문제 신고 행과 '이 주문의 문제 신고로 남기기', SCR-027의 신고한 사람 행·문제 종류와 사유·한 일 행과 '그 밖의 보상'), C6 응답 행 957개(※ 화면이 나눈 행 3, 카카오 스킬 270, 기본값과 다르게 정한 행 126), C8 참조 1880곳, C10 확인 문구 8개(`no_compensation_standard`)입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C5 그린 상태 354개·상태 이름 28개, C9 프레임 708개·1.4MB, C10 손님 문구 49개, C11 허용 예외 854곳, C13 생성 파일 52개, C14 08단계 파일 51개·상태 354개는 같습니다.
 
 2026-11-14 21:22 KST, 설계 재검토 M11·M14를 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 215행·액션 158행(SCR-007의 주문 내용·결제 확인·환불 행, SCR-034·035·047·048의 사업자 정보와 변경 요청 행, '변경 요청'·'반영'·'보류'와 '사업자 정보 변경' 탭의 액션), C6 응답 행 942개(※ 화면이 나눈 행 3, 카카오 스킬 270, 기본값과 다르게 정한 행 123), C8 참조 1857곳, C9 와이어프레임 페이지 1.4MB, C11 허용 예외 854곳입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C5 그린 상태 354개·상태 이름 28개, C9 프레임 708개, C10 확인 문구 7개·손님 문구 49개, C13 생성 파일 52개, C14 08단계 파일 51개·상태 354개는 같습니다.
 
@@ -431,3 +434,15 @@
 - 상태와 문구: `OK_TEXT`에 API-009 `identity_change_pending`·`identity_change_on_hold`, API-013 `identity_change_pending`, API-080 `requested`·`unchanged`, API-081 `pending`·`empty`, API-082 `applied`·`on_hold`·`unchanged`를 더하고 `OUTCOME_TEXT`의 `notice_shown`을 고침. 상태 이름 28개와 그린 상태 354개는 그대로이고, 와이어프레임의 프레임 708개에 새 필드·표·탭을 그림.
 - 09단계: SCR-001·004·007·011·015·034·035·047·048의 보드를 다시 그림(09 README 12절).
 - 결정과 다르게 하거나 더한 것: (1) 사업자 정보 변경 요청은 새 화면을 만들지 않고 사장님은 SCR-035(증빙 사진을 올리는 영업 신고 화면)에서, 운영자는 SCR-047의 탭과 SCR-048의 상자에서 다룹니다(07단계 화면 50개 그대로). (2) 검토자가 고칠 곳으로 적은 08단계 화면은 예약 링크 페이지(M11)와 SCR-034(M14)이지만, 같은 요구사항(REQ-240~245)이 보이는 SCR-004·007·011·015·033·035·038·047·048도 고쳤습니다. (3) 변경 요청의 '반영'은 가게 신원이 바뀌는 일이라 '확인됨'처럼 화면의 확인 창을 거치게 했고, '보류'는 영업 신고의 보류처럼 이유만 받습니다.
+
+2026-11-14 같은 재검토의 중간 묶음 M12(RA-13, RB-15)도 같은 결정 카드의 '모두 지금 고침 (추천)'대로 `screens_common.py`·`screens_guest.py`·`screens_owner_a.py`·`screens_owner_b.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR I2). RA-13은 검토자의 고치는 방향대로이고, RB-15는 Claude 추천이라 동희님 확인을 요청합니다. 06단계 계약의 새 API-083, 문제 신고의 새 필드(`problemKind`·`noCompensationReason`·`otherCompensationNote`·`otherCompensationAmount`·`reportedBy`·`handoff`)와 `Handoff.issueReport`, 확인할 것 `no_compensation_standard`, 응답 예시 `API-041#200:other_user_reported`, `API-064#200:other_compensation`·`from_handoff`, `API-065#200:none_with_reason`·`other_compensation`, `API-083#201:created`·`API-083#200:unchanged`를 화면에 이었습니다.
+
+- SCR-027 문제 신고(RA-13): 보상 앞에 문제 종류(상함·변질·이물·그 밖, 꼭 고름)를 고르고 보상은 다섯(그 밖의 보상을 더함). 상함·변질이나 이물에 보상 없음이면 `confirm` 창에 소비자분쟁해결기준(제빵류: 교환 또는 환급)과 위험, 사유 필드(1~200자)와 '그래도 보상 없이 닫기'(REQ-248). 그 밖의 보상은 한 일(1~200자)과 금액(선택)만 남기고 환불 송금으로 가지 않음(REQ-249). '기한 뒤'·사유·한 일은 사장님 화면에만. 에스컬레이션 건에서 남긴 신고면 위에 그 건 링크와 '신고한 분은 주문자가 아님'(DEC-24). `none_with_reason`·`other_compensation`은 `done`. `layout`의 보상 폼에 '문제 종류' 고르기와 다섯째 보상을 그림.
+- SCR-017 에스컬레이션 건(RB-15): 사유가 다른 카카오 사용자이고 관련 주문이 받은 주문인 열린 건에 '이 주문의 문제 신고로 남기기'(설명 1~1,000자, 손님 말로 미리 채움, API-083). `created`·`unchanged`와 `other_user_reported`는 `normal`(남긴 신고 링크, 건은 열린 채로 답할 수 있음), 남길 수 없는 상태(409 `invalid_state`)는 `stale`. 견본은 먹어도 되는지 묻는 건이라 `layout`은 그대로.
+- SCR-007 내 주문 보기(RB-15): 다른 사용자에게는 없는 주문번호와 같은 '찾을 수 없는 주문이에요'를 주고, 선물로 받았다는 것처럼 사정을 말하면 '사장님 확인 뒤 답드릴게요'로 에스컬레이션(`permission`의 그림을 두 차례 대화로, REQ-251~253).
+- SCR-010 문제 신고 카드·SCR-038 운영규정(RA-13): 기한 뒤여도 같은 말이고 카드와 손님에게 가는 말에 '기한'을 쓰지 않음. 운영규정의 신고 기한 조문 글은 '받은 뒤 24시간 안에 알려 주시면 빨리 확인할 수 있어요'처럼 기한 뒤 신고를 막지 않는 글(REQ-250).
+- SCR-011 손님 알림: 결과 안내의 보상에 그 밖의 보상 문장('사장님이 직접 연락해 보상을 처리해 드려요')을 더하고, 에스컬레이션 건에서 남긴 신고는 보상 안내 없이 그 건의 답으로 전함(DEC-24).
+- 상태와 문구: `CONFIRM_MSG`에 `no_compensation_standard`, `OK_TEXT`에 위 응답 예시 7개를 더함. 상태 이름 28개와 그린 상태 354개는 그대로이고, 와이어프레임의 프레임 708개에 새 필드를 그림.
+- SCR-017 에스컬레이션 건([PR #40 Codex 의견](https://github.com/kodonghui/siljang.ai/pull/40#discussion_r4573944173)): `normal`에 다른 카카오 사용자의 사정(관련 주문 있음)은 다른 질문에 덧붙지 않고 주문마다 따로 건이라는 말을 더함(04 SPEC-022). 그래서 '이 주문의 문제 신고로 남기기'는 그 건의 사유와 관련 주문만 보고 보임.
+- 09단계: SCR-027의 보드를 다시 그림(09 README 12절).
+- 결정과 다르게 하거나 더한 것: (1) 에스컬레이션 건에서 문제 신고로 남긴 뒤에도 그 건은 닫지 않고 `normal`로 두어, 사장님이 신고한 분에게 결과를 답으로 전하게 했습니다(새 상태를 만들지 않음). (2) 기준과 위험은 보상 없음을 고른 저장 때의 확인 창에서 보입니다(모든 신고에 경고를 붙이지 않음).
