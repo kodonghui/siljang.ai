@@ -27,7 +27,7 @@
     "lockSettings": 63,
     "ddlScripts": {
       "before": "CREATE EXTENSION IF NOT EXISTS btree_gist; -- refund_tiers의 EXCLUDE에 씀",
-      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py·erd_editor_sync.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status NOT IN ('ended', 'deleted');\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX consultations_ordered_idx ON consultations (last_customer_message_at) WHERE status = 'ordered';\nCREATE INDEX consultations_ended_idx ON consultations (ended_at) WHERE status = 'ended';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE INDEX orders_purge_due_idx ON orders (finished_at) WHERE finished_at IS NOT NULL AND personal_data_purged_at IS NULL;\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE INDEX handoffs_open_age_idx ON handoffs (created_at) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE INDEX payment_requests_claim_cap_idx ON payment_requests (due_cap_at) WHERE status = 'claimed';\nCREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL;\nCREATE UNIQUE INDEX slot_holds_one_live_per_order ON slot_holds (order_id) WHERE status IN ('held', 'fixed');\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed', 'done');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_completion_photo_uq ON photo_consents (completion_photo_id) WHERE scope = 'completion_photo';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX kept_records_issue_due_idx ON kept_records (issue_keep_until) WHERE issue_keep_until IS NOT NULL AND issue_purged_at IS NULL;\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
+      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py·erd_editor_sync.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status NOT IN ('ended', 'deleted');\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX consultations_ordered_idx ON consultations (last_customer_message_at) WHERE status = 'ordered';\nCREATE INDEX consultations_ended_idx ON consultations (ended_at) WHERE status = 'ended';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE INDEX orders_purge_due_idx ON orders (finished_at) WHERE finished_at IS NOT NULL AND personal_data_purged_at IS NULL;\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open';\nCREATE INDEX handoffs_open_age_idx ON handoffs (created_at) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE INDEX payment_requests_claim_cap_idx ON payment_requests (due_cap_at) WHERE status = 'claimed';\nCREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL;\nCREATE UNIQUE INDEX slot_holds_one_held_per_order ON slot_holds (order_id) WHERE status = 'held';\nCREATE UNIQUE INDEX slot_holds_one_fixed_per_order ON slot_holds (order_id) WHERE status = 'fixed';\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed', 'done');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_completion_photo_uq ON photo_consents (completion_photo_id) WHERE scope = 'completion_photo';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX kept_records_issue_due_idx ON kept_records (issue_keep_until) WHERE issue_keep_until IS NOT NULL AND issue_purged_at IS NULL;\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
     }
   },
   "doc": {
@@ -204,7 +204,8 @@
       "03h8cadw3z8vrld38pueryj7l",
       "03h8cadw3z8vrld38pv7c06cr",
       "03h8cadw3z8vrld38pyk84i26",
-      "03h8dcdlrfkrl9xf6gw66jejs"
+      "03h8dcdlrfkrl9xf6gw66jejs",
+      "03h8ek7i15tzjc09hbts8uvs4"
     ],
     "indexIds": [
       "03h7y017apioxvv0yn8m6arb8",
@@ -1055,6 +1056,10 @@
           "03h7y0179cdtx0zvnv89bb1gm",
           "03h7y0179cdtx0zvnv9wgm7u8",
           "03h7y0179cdtx0zvnvdlz1wos",
+          "03h8ek7cuh3sjp3d61be1vc05",
+          "03h8ek7cumpn9akeu1sx3f9oh",
+          "03h8ek7cus17soz7l0hwab2wa",
+          "03h8ek7cus17soz7l0lcgb64o",
           "03h7y0179cdtx0zvnvdvn3e4o",
           "03h7y0179cdtx0zvnvhm3tlc4",
           "03h7y0179cdtx0zvnvig3icse",
@@ -2278,7 +2283,7 @@
         "id": "03h7y0178l0hvzg6dg9vru4l7",
         "tableId": "03h7y0178l0hvzg6dfsvvxkb0",
         "name": "in_standard",
-        "comment": "기본 디자인 범위 안인지. 밖이면 맞춤 주문(SPEC-013)",
+        "comment": "기본 디자인 범위 안인지: 사장님이 옵션마다 고르고 가격표 버전에 함께 남음. 값이 '확정'인 옵션만 넣음(price_options_standard_fixed_chk). 범위 밖 옵션을 고르면 맞춤 주문(SPEC-004, SPEC-013, REQ-228, REQ-229)",
         "dataType": "boolean",
         "default": "true",
         "options": 8
@@ -2402,7 +2407,7 @@
         "id": "03h7y0178qg91ufrdzc2kn115",
         "tableId": "03h7y0178qg91ufrdyyvtbjn6",
         "name": "in_standard",
-        "comment": "기본 디자인 범위 안인지",
+        "comment": "기본 디자인 범위 안인지: 사장님이 도안마다 고르고 가격표 버전에 함께 남음. 값을 정하는 디자인 옵션이 범위 밖이면 넣지 않음(앱, SPEC-004, REQ-228)",
         "dataType": "boolean",
         "default": "true",
         "options": 8
@@ -3384,7 +3389,7 @@
         "id": "03h7y01791hwo1dbaj2sbvdkh",
         "tableId": "03h7y01791hwo1dbahxpd3ebr",
         "name": "order_kind",
-        "comment": "가게 규칙이 가른 주문 종류. 참고 사진이 있으면 맞춤(SPEC-019)",
+        "comment": "가게 규칙이 가른 주문 종류(견적과 같음, SPEC-013). 기본 디자인 범위 밖 옵션·도안, 참고 사진(SPEC-019), 빼야 할 재료, '부터'·'범위' 값이 하나라도 있으면 맞춤(REQ-229)",
         "dataType": "text",
         "options": 0
       },
@@ -3558,7 +3563,7 @@
         "id": "03h7y01791hwo1dbak5y32uz3",
         "tableId": "03h7y01791hwo1dbajsplumlp",
         "name": "order_kind",
-        "comment": "기본 디자인·맞춤",
+        "comment": "기본 디자인·맞춤: 고른 옵션·도안이 모두 그 버전의 기본 디자인 범위 안이고 참고 사진·빼야 할 재료가 없고 표시 방식이 '확정'일 때만 기본 디자인(quotes_standard_fixed_chk, SPEC-013, REQ-229)",
         "dataType": "text",
         "options": 8
       },
@@ -3566,7 +3571,7 @@
         "id": "03h7y01791hwo1dbak77l95xb",
         "tableId": "03h7y01791hwo1dbajsplumlp",
         "name": "display_kind",
-        "comment": "표시 방식: 확정·부터·범위(REQ-006)",
+        "comment": "표시 방식: 확정·부터·범위(REQ-006). 고른 옵션에 '부터'가 있으면 부터, 아니고 '범위'가 있으면 범위(SPEC-013)",
         "dataType": "text",
         "options": 8
       },
@@ -3574,7 +3579,7 @@
         "id": "03h7y01791hwo1dbak9aef9j6",
         "tableId": "03h7y01791hwo1dbajsplumlp",
         "name": "amount",
-        "comment": "금액(범위면 아래 끝)",
+        "comment": "금액: 고른 옵션 값(범위면 아래 끝)과 더하는 값의 합. '부터'·'범위'면 아래 끝이고 맞춤 주문의 최종 금액은 이 값 이상(SPEC-031, REQ-230)",
         "dataType": "integer",
         "options": 8
       },
@@ -3582,7 +3587,7 @@
         "id": "03h7y01791hwo1dbakbf228jc",
         "tableId": "03h7y01791hwo1dbajsplumlp",
         "name": "amount_max",
-        "comment": "범위의 위 끝",
+        "comment": "범위의 위 끝: 범위 옵션의 위 끝과 나머지 값의 합. 사장님이 정한 금액이 이보다 높으면 손님이 새 금액을 확인(SPEC-076)",
         "dataType": "integer",
         "options": 0
       },
@@ -3901,7 +3906,7 @@
         "id": "03h7y01796y3abgmnnomyt6fc",
         "tableId": "03h7y01796y3abgmnnczgybr2",
         "name": "kind",
-        "comment": "주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)·알레르기 정보(SPEC-075, 주문자 정보 카드 앞에서 따로 동의를 받음)·사진 게시 동의(SPEC-053, 완성 사진 안내의 버튼)",
+        "comment": "주문 요청·입금 알리기·변경 요청·취소·신고·동의 철회(SPEC-069)·주문자 정보(SPEC-072, 주문 요청 카드 앞에서 이름·연락처를 받음)·알레르기 정보(SPEC-075, 주문자 정보 카드 앞에서 따로 동의를 받음)·사진 게시 동의(SPEC-053, 완성 사진 안내의 버튼)·새 금액 확인(SPEC-076, 결제 안내를 전할 때 계좌 대신)",
         "dataType": "text",
         "options": 8
       },
@@ -4048,7 +4053,7 @@
         "id": "03h7y01796y3abgmnoq6xm5yz",
         "tableId": "03h7y01796y3abgmno7gmyh7i",
         "name": "status",
-        "comment": "요청됨·차액 결제 기다림·반영됨·거절됨·차액 없어 닫힘·오래된 버전이라 받지 않음·주문 취소로 닫힘·답 없어 닫힘(1-5). 답 없어 닫힘은 변경 마감까지 사장님 답이 없을 때(REQ-214)",
+        "comment": "요청됨·차액 결제 기다림(손님의 새 금액 확인과 차액 맞추는 중을 포함하고 차액 결제 안내의 상태로 가름)·반영됨·거절됨·차액 없어 닫힘(차액 결제 기한 지남·손님이 새 금액을 받지 않음·변경 닫기)·주문 취소로 닫힘·답 없어 닫힘(1-5). 답 없어 닫힘은 변경 마감까지 사장님 답이 없을 때(REQ-214)",
         "dataType": "text",
         "default": "'requested'",
         "options": 8
@@ -4057,7 +4062,7 @@
         "id": "03h7y01796y3abgmnorf5sct4",
         "tableId": "03h7y01796y3abgmno7gmyh7i",
         "name": "amount_delta",
-        "comment": "수락할 때 금액 차이: 더하면 추가 금액, 빼면 줄어든 금액, 0이면 그대로(SPEC-042)",
+        "comment": "수락할 때 금액 차이: 사장님이 고른 방향(그대로·올라감·내려감)과 양수 차이 금액으로 앱이 셈(올라감 +, 내려감 -, 그대로 0). 사장님이 부호를 넣지 않음(SPEC-042, 설계 재검토 M5)",
         "dataType": "integer",
         "options": 0
       },
@@ -4807,7 +4812,7 @@
         "id": "03h7y0179cdtx0zvnv9wgm7u8",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "amount",
-        "comment": "안내 금액: 수락한 버전(기본 디자인은 요청한 버전)의 금액(REQ-076). 차액은 사장님이 정한 추가 금액",
+        "comment": "안내 금액: 수락한 버전(기본 디자인은 요청한 버전)의 금액(REQ-076). 차액 결제는 사장님이 고른 방향과 차이 금액으로 셈한 오른 금액(SPEC-042)",
         "dataType": "integer",
         "options": 8
       },
@@ -4815,7 +4820,7 @@
         "id": "03h7y0179cdtx0zvnvdlz1wos",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "requested_amount",
-        "comment": "금액 변경 수락이면 손님이 요청한 금액(함께 보임, REQ-155)",
+        "comment": "금액을 정하거나 바꿔 수락한 맞춤 주문에서 손님이 요청한 견적 금액('부터'·'범위'면 아래 끝). 표시 방식과 위 끝은 그 주문 첫 버전의 견적(order_details.quote_id)에서 읽어 함께 보임(REQ-231). 다시 낸 결제도 같은 값",
         "dataType": "integer",
         "options": 0
       },
@@ -4928,7 +4933,7 @@
         "id": "03h7y0179cdtx0zvnw4viqpcs",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "close_reason",
-        "comment": "새 결제 안내·주문 취소·변경 요청이 닫힘",
+        "comment": "새 결제 안내·주문 취소(맞춤 주문의 새 금액을 받지 않음 포함)·변경 요청이 닫힘(차액의 새 금액을 받지 않음·변경 닫기 포함)",
         "dataType": "text",
         "options": 0
       },
@@ -4952,7 +4957,7 @@
         "id": "03h8cvje0n9pmo4xwgtule35n",
         "tableId": "03h7y0179cdtx0zvnusbp9xrh",
         "name": "delivered_at",
-        "comment": "결제 안내가 손님에게 전해진 시각: 대화 중 답으로 보임·먼저 보낸 안내가 닿음·다음 대화 때 전함(SPEC-032). 빈 값이면 '아직 못 전함'(SPEC-037)",
+        "comment": "결제 안내가 손님에게 전해진 시각: 대화 중 답으로 보임·먼저 보낸 안내가 닿음·다음 대화 때 전함(SPEC-032). 새 금액 확인이 필요하면 손님이 확인한 시각(SPEC-076). 빈 값이면 '아직 못 전함'(SPEC-037)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -4963,6 +4968,39 @@
         "comment": "결제 기한 상한: 첫 결제·다시 낸 결제는 그 픽업 날짜의 주문 마감(이미 지났으면 픽업 일시), 차액 결제는 변경 마감(REQ-218, R18). 낼 때 정함. 확인 요청됨도 이때 기한 지남(REQ-223)",
         "dataType": "timestamptz",
         "options": 8
+      },
+      "03h8ek7cuh3sjp3d61be1vc05": {
+        "id": "03h8ek7cuh3sjp3d61be1vc05",
+        "tableId": "03h7y0179cdtx0zvnusbp9xrh",
+        "name": "needs_amount_confirm",
+        "comment": "새 금액 확인이 필요한 결제 안내: 손님이 본 금액(견적이 금액 하나면 그 금액, '부터'면 아래 끝, '범위'면 위 끝)보다 높게 정한 맞춤 주문의 첫 결제와 확인 전에 다시 낸 결제, 금액이 오르는 변경의 차액 결제. 손님이 확인하기 전에는 계좌를 보이지 않고 결제 기한은 상한(SPEC-076, REQ-232)",
+        "dataType": "boolean",
+        "default": "false",
+        "options": 8
+      },
+      "03h8ek7cumpn9akeu1sx3f9oh": {
+        "id": "03h8ek7cumpn9akeu1sx3f9oh",
+        "tableId": "03h7y0179cdtx0zvnusbp9xrh",
+        "name": "amount_confirmed_at",
+        "comment": "손님이 새 금액을 확인한 시각. 이때가 전해진 시각(payment_requests_amount_delivered_chk). 확인 전에 들어온 돈을 사장님이 결제로 확인('입금됨'·'대조 완료')하면 그 시각(SPEC-034)",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8ek7cus17soz7l0hwab2wa": {
+        "id": "03h8ek7cus17soz7l0hwab2wa",
+        "tableId": "03h7y0179cdtx0zvnusbp9xrh",
+        "name": "amount_declined_at",
+        "comment": "손님이 새 금액을 받지 않은 시각. 결제 안내를 닫음: 맞춤 주문은 손님 취소(주문 취소), 변경은 변경 요청이 차액 없어 닫힘(REQ-233)",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8ek7cus17soz7l0lcgb64o": {
+        "id": "03h8ek7cus17soz7l0lcgb64o",
+        "tableId": "03h7y0179cdtx0zvnusbp9xrh",
+        "name": "amount_card_id",
+        "comment": "손님이 누른 새 금액 확인 카드(SPEC-076). 사장님의 결제 확인으로 남긴 확인이면 빈 값",
+        "dataType": "uuid",
+        "options": 0
       },
       "03h7y0179cdtx0zvnw871p29k": {
         "id": "03h7y0179cdtx0zvnw871p29k",
@@ -5238,7 +5276,7 @@
         "id": "03h7y0179huqyalz29yd73p48",
         "tableId": "03h7y0179cdtx0zvnxn50yn3m",
         "name": "payment_request_id",
-        "comment": "잡힘이면 그 결제 안내. 그 결제 기한까지 잡고, 확인 요청됨이면 결제 기한 상한까지(R13, REQ-223)",
+        "comment": "잡힘이면 그 결제 안내. 그 결제 기한까지 잡고, 확인 요청됨이면 결제 기한 상한까지(R13, REQ-223). 금액이 오르는 날짜 변경의 새 날 자리는 차액 결제 안내(REQ-234)",
         "dataType": "uuid",
         "options": 0
       },
@@ -5254,7 +5292,7 @@
         "id": "03h7y0179huqyalz2a23dci6v",
         "tableId": "03h7y0179cdtx0zvnxn50yn3m",
         "name": "status",
-        "comment": "가예약됨·확정됨·해제됨·종료됨(1-4)",
+        "comment": "가예약됨·확정됨·해제됨·종료됨(1-4). 한 주문에 잡힌 자리와 확정된 자리는 각각 하나까지이고, 둘이 함께 있는 것은 차액을 기다리는 날짜 변경뿐(트리거 slot_holds_pair, REQ-234)",
         "dataType": "text",
         "options": 8
       },
@@ -5271,7 +5309,7 @@
         "id": "03h7y0179huqyalz2a5ujcefe",
         "tableId": "03h7y0179cdtx0zvnxn50yn3m",
         "name": "fixed_at",
-        "comment": "확정 자리가 된 시각(결제 확인됨, 날짜 변경의 새 날, 재제작)",
+        "comment": "확정 자리가 된 시각(결제 확인됨, 날짜 변경의 새 날(차액을 기다린 새 날 자리는 변경 반영 때), 재제작)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -5287,7 +5325,7 @@
         "id": "03h7y0179huqyalz2a8tcbxr6",
         "tableId": "03h7y0179cdtx0zvnxn50yn3m",
         "name": "release_reason",
-        "comment": "결제 기한 지남·주문 취소·날짜 변경의 옛 날",
+        "comment": "결제 기한 지남·주문 취소·날짜 변경의 옛 날·변경 요청이 반영되지 않고 닫혀 차액을 기다린 새 날을 풂(REQ-234)",
         "dataType": "text",
         "options": 0
       },
@@ -5836,7 +5874,7 @@
         "id": "03h7y0179huqyalz2e5zx9fbp",
         "tableId": "03h7y0179huqyalz2e0amvow3",
         "name": "kind",
-        "comment": "에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 들어온 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)",
+        "comment": "에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·결제 기한 지남·환불 결정·취소 뒤 들어온 입금·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)",
         "dataType": "text",
         "options": 8
       },
@@ -9422,6 +9460,26 @@
             "03h8dcdgpayfxwfc2zdf85j9t"
           ]
         }
+      },
+      "03h8ek7i15tzjc09hbts8uvs4": {
+        "id": "03h8ek7i15tzjc09hbts8uvs4",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y01796y3abgmnnczgybr2",
+          "columnIds": [
+            "03h7y01796y3abgmnnfv81rcc",
+            "03h7y01796y3abgmnnep8htyb"
+          ]
+        },
+        "end": {
+          "tableId": "03h7y0179cdtx0zvnusbp9xrh",
+          "columnIds": [
+            "03h7y0179cdtx0zvnux35tmsk",
+            "03h8ek7cus17soz7l0lcgb64o"
+          ]
+        }
       }
     },
     "indexEntities": {
@@ -11153,7 +11211,7 @@
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 355개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 363개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,
