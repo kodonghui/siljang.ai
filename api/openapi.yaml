@@ -8,10 +8,10 @@ info:
   version: 0.1.0
   summary: 수제케이크 주문제작 AI 상담·예약 API(06단계 계약, 첫 버전)
   description: |-
-    수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~076)에서 만들었다.
+    수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~078)에서 만들었다.
     이 파일은 research/cake-api-2026-11/build_api.py가 만든다. 손으로 고치지 않는다.
 
-    **API와 응답의 ID.** API마다 `x-corthex.id`(API-001~079)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
+    **API와 응답의 ID.** API마다 `x-corthex.id`(API-001~082)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
     `x-corthex.omit`은 응답 목록(2xx·422·401·403·404·409·default) 가운데 그 API가 반환하지 않는 것과 사유, `x-corthex.kinds`는 케이스 유형마다 그 경우를 보여 주는 응답·예시다.
 
     **오류 형식.** 모든 오류는 RFC 9457 Problem Details(`application/problem+json`)에 `code`와 `traceId`를 더한 형식. 코드는 `components.x-corthex.errors`에만 있다.
@@ -883,7 +883,7 @@ paths:
       operationId: registerShop
       summary: 가게 등록
       description: |-
-        가게 이름·연락처·사업자 정보·영업 신고와 신고증 사진(uploadId), 개인정보 처리 위탁·재위탁 조건의 버전과 동의를 받아 가게를 '영업 신고 확인 기다림'으로 남긴다. 동의하지 않으면 422 consent_required이고 넣은 값도 남기지 않는다(REQ-107). 카카오 계정 하나에 가게 하나라 두 번째는 409 already_registered(R2). 같은 사업자등록번호의 다른 가게도 받고 운영자 화면에 중복을 표시한다(API-012). 신고증 사진을 옮기지 못하면 503이고 아무것도 남기지 않는다.
+        가게 이름·연락처·사업장 주소·전자우편주소·사업자 정보(상호·대표자·사업자등록번호, 통신판매업 신고번호와 그 신고를 받은 기관이나 면제 사유, REQ-239)·영업 신고와 신고증 사진(uploadId), 개인정보 처리 위탁·재위탁 조건의 버전과 동의를 받아 가게를 '영업 신고 확인 기다림'으로 남긴다. 동의하지 않으면 422 consent_required이고 넣은 값도 남기지 않는다(REQ-107). 카카오 계정 하나에 가게 하나라 두 번째는 409 already_registered(R2). 같은 사업자등록번호의 다른 가게도 받고 운영자 화면에 중복을 표시한다(API-012). 신고증 사진을 옮기지 못하면 503이고 아무것도 남기지 않는다.
 
         SPEC: SPEC-002, SPEC-068
       tags:
@@ -903,10 +903,13 @@ paths:
                 value:
                   name: 달빛케이크
                   contactPhone: 010-1234-5678
+                  businessAddress: 서울 마포구 달빛로 12, 2층
+                  contactEmail: moonlight@example.com
                   businessName: 달빛케이크
                   representativeName: 김달빛
                   businessRegNo: "1234567891"
                   mailOrderRegNo: 제2026-서울마포-0123호
+                  mailOrderAuthority: 서울특별시 마포구청
                   mailOrderExemption: null
                   foodLicenseNo: 2026-0123456
                   foodBusinessType: instant_sale_manufacturing
@@ -930,10 +933,13 @@ paths:
                     name: 달빛케이크
                     contactPhone: 010-1234-5678
                     pickupAddress: null
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
                     businessName: 달빛케이크
                     representativeName: 김달빛
                     businessRegNo: "1234567891"
                     mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
                     mailOrderExemption: null
                     foodLicenseNo: 2026-0123456
                     foodBusinessType: instant_sale_manufacturing
@@ -948,6 +954,7 @@ paths:
                     ownerWaitMinutes: 120
                     dailyAiCostLimitKrw: 5000
                     bookingUrl: null
+                    identityChange: null
                     createdAt: '2026-11-12T10:05:00+09:00'
                     updatedAt: '2026-11-12T10:05:00+09:00'
                     revision: 4841fd716c98
@@ -1027,6 +1034,8 @@ paths:
                       code: not_allowed
                     - field: /licensePhotoUploadId
                       code: upload_not_found
+                    - field: /mailOrderAuthority
+                      code: required
                 consent_required:
                   value:
                     type: /problems/consent_required
@@ -1126,16 +1135,16 @@ paths:
       operationId: getShop
       summary: 내 가게 조회
       description: |-
-        사장님은 자기 가게의 영업 신고 상태와 보류 이유만 본다(SPEC-003). 신고증 사진은 15분 사는 서명 주소(DEC-09).
+        사장님은 자기 가게의 영업 신고 상태와 보류 이유만 본다(SPEC-003). 신고증 사진은 15분 사는 서명 주소(DEC-09). 상호·대표자·사업자등록번호는 운영자가 확인한 지금 값이고, 가장 최근의 사업자 정보 변경 요청과 그 결과(보류 이유 포함)는 identityChange로 본다(SPEC-078, REQ-245).
 
-        SPEC: SPEC-002, SPEC-003, SPEC-009
+        SPEC: SPEC-002, SPEC-003, SPEC-009, SPEC-077, SPEC-078
       tags:
       - 가게
       security:
       - ownerSession: []
       responses:
         "200":
-          description: '성공. 예시: verified, pending, on_hold'
+          description: '성공. 예시: verified, pending, on_hold, identity_change_pending, identity_change_on_hold'
           content:
             application/json:
               schema:
@@ -1147,10 +1156,13 @@ paths:
                     name: 달빛케이크
                     contactPhone: 010-1234-5678
                     pickupAddress: 서울 마포구 달빛로 12, 1층
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
                     businessName: 달빛케이크
                     representativeName: 김달빛
                     businessRegNo: "1234567891"
                     mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
                     mailOrderExemption: null
                     foodLicenseNo: 2026-0123456
                     foodBusinessType: instant_sale_manufacturing
@@ -1165,6 +1177,7 @@ paths:
                     ownerWaitMinutes: 120
                     dailyAiCostLimitKrw: 5000
                     bookingUrl: https://siljang.example/s/moonlight-cake
+                    identityChange: null
                     createdAt: '2026-11-12T10:05:00+09:00'
                     updatedAt: '2026-11-12T15:20:00+09:00'
                     revision: 105995083ca7
@@ -1174,10 +1187,13 @@ paths:
                     name: 달빛케이크
                     contactPhone: 010-1234-5678
                     pickupAddress: null
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
                     businessName: 달빛케이크
                     representativeName: 김달빛
                     businessRegNo: "1234567891"
                     mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
                     mailOrderExemption: null
                     foodLicenseNo: 2026-0123456
                     foodBusinessType: instant_sale_manufacturing
@@ -1192,6 +1208,7 @@ paths:
                     ownerWaitMinutes: 120
                     dailyAiCostLimitKrw: 5000
                     bookingUrl: null
+                    identityChange: null
                     createdAt: '2026-11-12T10:05:00+09:00'
                     updatedAt: '2026-11-12T10:05:00+09:00'
                     revision: 4841fd716c98
@@ -1201,10 +1218,13 @@ paths:
                     name: 달빛케이크
                     contactPhone: 010-1234-5678
                     pickupAddress: null
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
                     businessName: 달빛케이크
                     representativeName: 김달빛
                     businessRegNo: "1234567891"
                     mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
                     mailOrderExemption: null
                     foodLicenseNo: 2026-0123456
                     foodBusinessType: instant_sale_manufacturing
@@ -1219,9 +1239,98 @@ paths:
                     ownerWaitMinutes: 120
                     dailyAiCostLimitKrw: 5000
                     bookingUrl: null
+                    identityChange: null
                     createdAt: '2026-11-12T10:05:00+09:00'
                     updatedAt: '2026-11-12T13:40:00+09:00'
                     revision: cf360653f1b5
+                identity_change_pending:
+                  value:
+                    shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
+                    name: 달빛케이크
+                    contactPhone: 010-1234-5678
+                    pickupAddress: 서울 마포구 달빛로 12, 1층
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
+                    businessName: 달빛케이크
+                    representativeName: 김달빛
+                    businessRegNo: "1234567891"
+                    mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
+                    mailOrderExemption: null
+                    foodLicenseNo: 2026-0123456
+                    foodBusinessType: instant_sale_manufacturing
+                    licenseStatus: verified
+                    licenseHoldReason: null
+                    licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                    entrustmentTermsVersion: "2026.11"
+                    entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
+                    timeZone: Asia/Seoul
+                    completionPhotoEnabled: true
+                    idleCloseHours: 24
+                    ownerWaitMinutes: 120
+                    dailyAiCostLimitKrw: 5000
+                    bookingUrl: https://siljang.example/s/moonlight-cake
+                    identityChange:
+                      changeId: 03721c5e-75d1-58cf-b2ab-51e5893a1389
+                      status: pending
+                      businessName: 달빛케이크 공방
+                      representativeName: 김달빛
+                      businessRegNo: "1234567891"
+                      previous:
+                        businessName: 달빛케이크
+                        representativeName: 김달빛
+                        businessRegNo: "1234567891"
+                      evidencePhotoUrl: https://files.siljang.example/v1/0be73926cf12eaa6df087a8d?exp=1763619300&sig=82b6b28d8028416205a7547d2f12f43a
+                      holdReason: null
+                      requestedAt: '2026-11-14T10:20:00+09:00'
+                      reviewedAt: null
+                    createdAt: '2026-11-12T10:05:00+09:00'
+                    updatedAt: '2026-11-14T10:20:00+09:00'
+                    revision: d6d64927f2e9
+                identity_change_on_hold:
+                  value:
+                    shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
+                    name: 달빛케이크
+                    contactPhone: 010-1234-5678
+                    pickupAddress: 서울 마포구 달빛로 12, 1층
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
+                    businessName: 달빛케이크
+                    representativeName: 김달빛
+                    businessRegNo: "1234567891"
+                    mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
+                    mailOrderExemption: null
+                    foodLicenseNo: 2026-0123456
+                    foodBusinessType: instant_sale_manufacturing
+                    licenseStatus: verified
+                    licenseHoldReason: null
+                    licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                    entrustmentTermsVersion: "2026.11"
+                    entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
+                    timeZone: Asia/Seoul
+                    completionPhotoEnabled: true
+                    idleCloseHours: 24
+                    ownerWaitMinutes: 120
+                    dailyAiCostLimitKrw: 5000
+                    bookingUrl: https://siljang.example/s/moonlight-cake
+                    identityChange:
+                      changeId: 03721c5e-75d1-58cf-b2ab-51e5893a1389
+                      status: on_hold
+                      businessName: 달빛케이크 공방
+                      representativeName: 김달빛
+                      businessRegNo: "1234567891"
+                      previous:
+                        businessName: 달빛케이크
+                        representativeName: 김달빛
+                        businessRegNo: "1234567891"
+                      evidencePhotoUrl: https://files.siljang.example/v1/0be73926cf12eaa6df087a8d?exp=1763619300&sig=82b6b28d8028416205a7547d2f12f43a
+                      holdReason: 증빙 사진의 상호가 보이지 않아요. 사업자등록증 전체가 보이게 다시 찍어 올려 주세요
+                      requestedAt: '2026-11-14T10:20:00+09:00'
+                      reviewedAt: '2026-11-14T11:05:00+09:00'
+                    createdAt: '2026-11-12T10:05:00+09:00'
+                    updatedAt: '2026-11-14T11:05:00+09:00'
+                    revision: 4654307cbf8d
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -1282,6 +1391,8 @@ paths:
         - SPEC-002
         - SPEC-003
         - SPEC-009
+        - SPEC-077
+        - SPEC-078
         omit:
           "403": 역할마다 세션 쿠키와 경로가 나뉘고(DEC-10, DEC-11), 다른 가게 기록은 404로 숨김(DEC-02)
           "409": 읽기만 함
@@ -1294,6 +1405,8 @@ paths:
           - 404:shop_not_registered
           상태:
           - example:on_hold
+          - example:identity_change_pending
+          - example:identity_change_on_hold
           노출:
           - closed
           화면:
@@ -1302,9 +1415,9 @@ paths:
       operationId: updateShop
       summary: 가게 설정 수정
       description: |-
-        이름·연락처·픽업 장소(E14, DEC-13)·완성 사진 보내기(SPEC-009)·문의 끊김 시간(SPEC-025)·사장님 답 기다리는 시간(SPEC-024)·하루 AI 비용 한도(REQ-163)를 바꾼다. 바꿀 필드만 보낸다. 사업자 정보와 영업 신고는 여기서 바꾸지 않는다(신고증은 API-011). 바뀐 것이 없으면 outcome unchanged.
+        가게 이름·전화번호·사업장 주소·전자우편주소·픽업 장소(E14, DEC-13)·통신판매업 신고번호와 그 신고를 받은 기관(또는 면제 사유)·완성 사진 보내기(SPEC-009)·문의 끊김 시간(SPEC-025)·사장님 답 기다리는 시간(SPEC-024)·하루 AI 비용 한도(REQ-163)를 바꾼다(SPEC-077). 바꿀 필드만 보내고 바로 저장하며, 예약 링크 페이지와 그 뒤 나가는 안내(전날 안내의 연락처·픽업 장소, 확정 안내의 가게 신원)가 바뀐 값을 쓴다(REQ-244). 통신판매업 신고번호와 기관은 바꾼 뒤 값으로 보아 함께 있거나 함께 없어야 하고(아니면 빈 쪽의 필드 오류 required), 신고번호와 면제 사유 가운데 하나는 늘 있어야 한다(아니면 /mailOrderRegNo required, REQ-239). 사장님 답 기다리는 시간은 그 뒤 시작된 기다림부터 쓰고(이미 시작된 기다림의 지연 안내 시각은 그대로), 문의 끊김 시간과 하루 AI 비용 한도는 저장한 때부터 쓴다(REQ-243, 05단계 A37). 상호·대표자·사업자등록번호는 여기서 바꾸지 않는다(변경 요청 API-080, SPEC-078). 영업 신고 번호·종류와 신고증은 보류일 때 API-011. 바뀐 것이 없으면 outcome unchanged.
 
-        SPEC: SPEC-009, SPEC-017, SPEC-024, SPEC-025, SPEC-052
+        SPEC: SPEC-077, SPEC-009, SPEC-017, SPEC-024, SPEC-025, SPEC-052
       tags:
       - 가게
       parameters:
@@ -1323,6 +1436,15 @@ paths:
                   baseRevision: cf360653f1b5
                   pickupAddress: 서울 마포구 달빛로 12, 1층
                   completionPhotoEnabled: true
+              identity_contact:
+                value:
+                  baseRevision: cf360653f1b5
+                  contactEmail: moonlight@example.com
+                  businessAddress: 서울 마포구 달빛로 12, 2층
+              wait_minutes:
+                value:
+                  baseRevision: cf360653f1b5
+                  ownerWaitMinutes: 30
       responses:
         "200":
           description: '성공. 예시: updated, unchanged'
@@ -1343,10 +1465,13 @@ paths:
                       name: 달빛케이크
                       contactPhone: 010-1234-5678
                       pickupAddress: 서울 마포구 달빛로 12, 1층
+                      businessAddress: 서울 마포구 달빛로 12, 2층
+                      contactEmail: moonlight@example.com
                       businessName: 달빛케이크
                       representativeName: 김달빛
                       businessRegNo: "1234567891"
                       mailOrderRegNo: 제2026-서울마포-0123호
+                      mailOrderAuthority: 서울특별시 마포구청
                       mailOrderExemption: null
                       foodLicenseNo: 2026-0123456
                       foodBusinessType: instant_sale_manufacturing
@@ -1361,6 +1486,7 @@ paths:
                       ownerWaitMinutes: 120
                       dailyAiCostLimitKrw: 5000
                       bookingUrl: https://siljang.example/s/moonlight-cake
+                      identityChange: null
                       createdAt: '2026-11-12T10:05:00+09:00'
                       updatedAt: '2026-11-12T15:20:00+09:00'
                       revision: 105995083ca7
@@ -1373,10 +1499,13 @@ paths:
                       name: 달빛케이크
                       contactPhone: 010-1234-5678
                       pickupAddress: 서울 마포구 달빛로 12, 1층
+                      businessAddress: 서울 마포구 달빛로 12, 2층
+                      contactEmail: moonlight@example.com
                       businessName: 달빛케이크
                       representativeName: 김달빛
                       businessRegNo: "1234567891"
                       mailOrderRegNo: 제2026-서울마포-0123호
+                      mailOrderAuthority: 서울특별시 마포구청
                       mailOrderExemption: null
                       foodLicenseNo: 2026-0123456
                       foodBusinessType: instant_sale_manufacturing
@@ -1391,6 +1520,7 @@ paths:
                       ownerWaitMinutes: 120
                       dailyAiCostLimitKrw: 5000
                       bookingUrl: https://siljang.example/s/moonlight-cake
+                      identityChange: null
                       createdAt: '2026-11-12T10:05:00+09:00'
                       updatedAt: '2026-11-12T15:20:00+09:00'
                       revision: 105995083ca7
@@ -1486,6 +1616,10 @@ paths:
                       code: bad_format
                     - field: /ownerWaitMinutes
                       code: out_of_range
+                    - field: /contactEmail
+                      code: bad_format
+                    - field: /mailOrderAuthority
+                      code: required
                 idempotency_key_reused:
                   value:
                     type: /problems/idempotency_key_reused
@@ -1527,6 +1661,7 @@ paths:
       x-corthex:
         id: API-010
         spec:
+        - SPEC-077
         - SPEC-009
         - SPEC-017
         - SPEC-024
@@ -1542,6 +1677,8 @@ paths:
           - 422:validation_failed
           대상:
           - 404:shop_not_registered
+          상태:
+          - note:기다리는 시간은 그 뒤 시작된 기다림부터, 문의 끊김 시간과 하루 AI 비용 한도는 저장한 때부터(REQ-243)
           반복:
           - idem
           - example:unchanged
@@ -1550,6 +1687,7 @@ paths:
           - 409:version_conflict
           노출:
           - closed
+          - note:사업장 주소·전자우편주소·전화번호는 예약 링크 페이지에 보이는 가게 신원 정보(REQ-239)
           화면:
           - screen
   /owner/shop/license:
@@ -1598,10 +1736,13 @@ paths:
                       name: 달빛케이크
                       contactPhone: 010-1234-5678
                       pickupAddress: null
+                      businessAddress: 서울 마포구 달빛로 12, 2층
+                      contactEmail: moonlight@example.com
                       businessName: 달빛케이크
                       representativeName: 김달빛
                       businessRegNo: "1234567891"
                       mailOrderRegNo: 제2026-서울마포-0123호
+                      mailOrderAuthority: 서울특별시 마포구청
                       mailOrderExemption: null
                       foodLicenseNo: 2026-0123456
                       foodBusinessType: instant_sale_manufacturing
@@ -1616,6 +1757,7 @@ paths:
                       ownerWaitMinutes: 120
                       dailyAiCostLimitKrw: 5000
                       bookingUrl: null
+                      identityChange: null
                       createdAt: '2026-11-12T10:05:00+09:00'
                       updatedAt: '2026-11-12T10:05:00+09:00'
                       revision: 48bdb6a33d45
@@ -1933,9 +2075,9 @@ paths:
       operationId: getReviewShop
       summary: 영업 신고 확인할 가게 하나
       description: |-
-        신고증 사진(서명 주소)과 넣은 신고 번호·영업 종류·상호, 같은 사업자등록번호의 다른 가게를 보인다. 결제 계좌는 은행·예금주·끝 4자리와 예금주가 대표자·상호와 같은지(holderMatches), 사장님이 가게 명의가 맞다고 답했는지, 예금주를 확인한 운영자·시각만 보이고 계좌번호 전체는 보이지 않는다(REQ-197, SPEC-003). 계좌가 없으면 paymentAccount가 null이고 확인됨을 남길 수 없다.
+        신고증 사진(서명 주소)과 넣은 신고 번호·영업 종류·상호, 가게 신원 정보(사업장 주소·전자우편주소·통신판매업 신고번호와 기관, REQ-239), 같은 사업자등록번호의 다른 가게를 보인다. 확인을 기다리는 사업자 정보 변경 요청이 있으면 pendingIdentityChange로 보이고, 그 요청을 먼저 반영·보류(API-082)한 뒤 영업 신고를 정한다(SPEC-003, SPEC-078). 결제 계좌는 은행·예금주·끝 4자리와 예금주가 대표자·상호와 같은지(holderMatches), 사장님이 가게 명의가 맞다고 답했는지, 예금주를 확인한 운영자·시각만 보이고 계좌번호 전체는 보이지 않는다(REQ-197, SPEC-003). 계좌가 없으면 paymentAccount가 null이고 확인됨을 남길 수 없다.
 
-        SPEC: SPEC-003
+        SPEC: SPEC-003, SPEC-078
       tags:
       - 운영자
       parameters:
@@ -1952,7 +2094,7 @@ paths:
       - operatorSession: []
       responses:
         "200":
-          description: '성공. 예시: pending, on_hold, no_account, holder_different'
+          description: '성공. 예시: pending, on_hold, no_account, holder_different, identity_change_pending'
           content:
             application/json:
               schema:
@@ -1963,10 +2105,13 @@ paths:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
                     name: 달빛케이크
                     contactPhone: 010-1234-5678
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
                     businessName: 달빛케이크
                     representativeName: 김달빛
                     businessRegNo: "1234567891"
                     mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
                     mailOrderExemption: null
                     foodLicenseNo: 2026-0123456
                     foodBusinessType: instant_sale_manufacturing
@@ -1975,6 +2120,7 @@ paths:
                     licenseHoldReason: null
                     licenseReviewedAt: null
                     licenseReviewedBy: null
+                    pendingIdentityChange: null
                     duplicates: []
                     paymentAccount:
                       bankName: 달빛은행
@@ -1992,10 +2138,13 @@ paths:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
                     name: 달빛케이크
                     contactPhone: 010-1234-5678
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
                     businessName: 달빛케이크
                     representativeName: 김달빛
                     businessRegNo: "1234567891"
                     mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
                     mailOrderExemption: null
                     foodLicenseNo: 2026-0123456
                     foodBusinessType: instant_sale_manufacturing
@@ -2006,6 +2155,7 @@ paths:
                     licenseReviewedBy:
                       operatorId: 8392f770-80d8-5a1e-b2af-794bceb48ad0
                       displayName: 운영자 한빛
+                    pendingIdentityChange: null
                     duplicates: []
                     paymentAccount:
                       bankName: 달빛은행
@@ -2023,10 +2173,13 @@ paths:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
                     name: 달빛케이크
                     contactPhone: 010-1234-5678
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
                     businessName: 달빛케이크
                     representativeName: 김달빛
                     businessRegNo: "1234567891"
                     mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
                     mailOrderExemption: null
                     foodLicenseNo: 2026-0123456
                     foodBusinessType: instant_sale_manufacturing
@@ -2035,6 +2188,7 @@ paths:
                     licenseHoldReason: null
                     licenseReviewedAt: null
                     licenseReviewedBy: null
+                    pendingIdentityChange: null
                     duplicates: []
                     paymentAccount: null
                     createdAt: '2026-11-12T10:05:00+09:00'
@@ -2044,10 +2198,13 @@ paths:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
                     name: 달빛케이크
                     contactPhone: 010-1234-5678
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
                     businessName: 달빛케이크
                     representativeName: 김달빛
                     businessRegNo: "1234567891"
                     mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
                     mailOrderExemption: null
                     foodLicenseNo: 2026-0123456
                     foodBusinessType: instant_sale_manufacturing
@@ -2056,6 +2213,7 @@ paths:
                     licenseHoldReason: null
                     licenseReviewedAt: null
                     licenseReviewedBy: null
+                    pendingIdentityChange: null
                     duplicates: []
                     paymentAccount:
                       bankName: 달빛은행
@@ -2063,6 +2221,63 @@ paths:
                       accountLast4: "4567"
                       holderMatches: false
                       holderMismatchConfirmed: true
+                      holderCheckedAt: null
+                      holderCheckedBy: null
+                      createdAt: '2026-11-12T11:30:00+09:00'
+                    createdAt: '2026-11-12T10:05:00+09:00'
+                    revision: 4841fd716c98
+                identity_change_pending:
+                  value:
+                    shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
+                    name: 달빛케이크
+                    contactPhone: 010-1234-5678
+                    businessAddress: 서울 마포구 달빛로 12, 2층
+                    contactEmail: moonlight@example.com
+                    businessName: 달빛케이크
+                    representativeName: 김달빛
+                    businessRegNo: "1234567891"
+                    mailOrderRegNo: 제2026-서울마포-0123호
+                    mailOrderAuthority: 서울특별시 마포구청
+                    mailOrderExemption: null
+                    foodLicenseNo: 2026-0123456
+                    foodBusinessType: instant_sale_manufacturing
+                    licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                    licenseStatus: pending
+                    licenseHoldReason: null
+                    licenseReviewedAt: null
+                    licenseReviewedBy: null
+                    pendingIdentityChange:
+                      changeId: 03721c5e-75d1-58cf-b2ab-51e5893a1389
+                      shop:
+                        shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
+                        name: 달빛케이크
+                        licenseStatus: pending
+                      status: pending
+                      businessName: 달빛케이크 공방
+                      representativeName: 김달빛
+                      businessRegNo: "1234567891"
+                      previous:
+                        businessName: 달빛케이크
+                        representativeName: 김달빛
+                        businessRegNo: "1234567891"
+                      evidencePhotoUrl: https://files.siljang.example/v1/0be73926cf12eaa6df087a8d?exp=1763619300&sig=82b6b28d8028416205a7547d2f12f43a
+                      paymentAccount:
+                        bankName: 달빛은행
+                        holderName: 김달빛
+                        accountLast4: "4567"
+                        holderMatchesNew: true
+                      holdReason: null
+                      requestedAt: '2026-11-14T10:20:00+09:00'
+                      reviewedAt: null
+                      reviewedBy: null
+                      revision: 22a8893cb7bc
+                    duplicates: []
+                    paymentAccount:
+                      bankName: 달빛은행
+                      holderName: 김달빛
+                      accountLast4: "4567"
+                      holderMatches: true
+                      holderMismatchConfirmed: null
                       holderCheckedAt: null
                       holderCheckedBy: null
                       createdAt: '2026-11-12T11:30:00+09:00'
@@ -2126,6 +2341,7 @@ paths:
         id: API-013
         spec:
         - SPEC-003
+        - SPEC-078
         omit:
           "403": 운영자 계정은 모두 같은 권한(첫 버전)
           "409": 읽기만 함
@@ -2145,9 +2361,9 @@ paths:
       operationId: reviewLicense
       summary: 영업 신고 확인·보류
       description: |-
-        운영자는 신고증과 함께 결제 계좌의 예금주가 대표자·상호와 같은지 보고 정한다(REQ-197). 확인됨이면 확인한 운영자·시각과, 그 가게의 지금 결제 계좌에 예금주를 확인한 운영자·시각을 남긴다. 결제 계좌가 없으면 확인됨은 409 payment_account_missing('결제 계좌 등록 기다림')이고 보류는 남길 수 있다. 보류면 이유를 남기고 사장님께 우리 서비스 채널로 이유를 한 번 알린다(못 가면 할 일 목록, G4). 확인됨을 다시 확인하면 unchanged. 확인됨을 보류로 바꾸기는 첫 버전에서 하지 않음(409 invalid_state, M7). 다른 운영자가 먼저 정했으면 409 already_decided, 그 밖에 가게가 바뀌었으면 409 version_conflict(G3).
+        운영자는 신고증과 함께 결제 계좌의 예금주가 대표자·상호와 같은지 보고 정한다(REQ-197). 확인됨이면 확인한 운영자·시각과, 그 가게의 지금 결제 계좌에 예금주를 확인한 운영자·시각을 남긴다. 결제 계좌가 없으면 확인됨은 409 payment_account_missing('결제 계좌 등록 기다림')이고 보류는 남길 수 있다. 확인을 기다리는 사업자 정보 변경 요청이 있으면 확인됨은 409 identity_change_pending(먼저 API-082로 반영·보류, SPEC-003·SPEC-078)이고 보류는 남길 수 있다. 보류면 이유를 남기고 사장님께 우리 서비스 채널로 이유를 한 번 알린다(못 가면 할 일 목록, G4). 확인됨을 다시 확인하면 unchanged. 확인됨을 보류로 바꾸기는 첫 버전에서 하지 않음(409 invalid_state, M7). 다른 운영자가 먼저 정했으면 409 already_decided, 그 밖에 가게가 바뀌었으면 409 version_conflict(G3).
 
-        SPEC: SPEC-003
+        SPEC: SPEC-003, SPEC-078
       tags:
       - 운영자
       parameters:
@@ -2197,10 +2413,13 @@ paths:
                       shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
                       name: 달빛케이크
                       contactPhone: 010-1234-5678
+                      businessAddress: 서울 마포구 달빛로 12, 2층
+                      contactEmail: moonlight@example.com
                       businessName: 달빛케이크
                       representativeName: 김달빛
                       businessRegNo: "1234567891"
                       mailOrderRegNo: 제2026-서울마포-0123호
+                      mailOrderAuthority: 서울특별시 마포구청
                       mailOrderExemption: null
                       foodLicenseNo: 2026-0123456
                       foodBusinessType: instant_sale_manufacturing
@@ -2211,6 +2430,7 @@ paths:
                       licenseReviewedBy:
                         operatorId: 8392f770-80d8-5a1e-b2af-794bceb48ad0
                         displayName: 운영자 한빛
+                      pendingIdentityChange: null
                       duplicates: []
                       paymentAccount:
                         bankName: 달빛은행
@@ -2232,10 +2452,13 @@ paths:
                       shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
                       name: 달빛케이크
                       contactPhone: 010-1234-5678
+                      businessAddress: 서울 마포구 달빛로 12, 2층
+                      contactEmail: moonlight@example.com
                       businessName: 달빛케이크
                       representativeName: 김달빛
                       businessRegNo: "1234567891"
                       mailOrderRegNo: 제2026-서울마포-0123호
+                      mailOrderAuthority: 서울특별시 마포구청
                       mailOrderExemption: null
                       foodLicenseNo: 2026-0123456
                       foodBusinessType: instant_sale_manufacturing
@@ -2246,6 +2469,7 @@ paths:
                       licenseReviewedBy:
                         operatorId: 8392f770-80d8-5a1e-b2af-794bceb48ad0
                         displayName: 운영자 한빛
+                      pendingIdentityChange: null
                       duplicates: []
                       paymentAccount:
                         bankName: 달빛은행
@@ -2266,10 +2490,13 @@ paths:
                       shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
                       name: 달빛케이크
                       contactPhone: 010-1234-5678
+                      businessAddress: 서울 마포구 달빛로 12, 2층
+                      contactEmail: moonlight@example.com
                       businessName: 달빛케이크
                       representativeName: 김달빛
                       businessRegNo: "1234567891"
                       mailOrderRegNo: 제2026-서울마포-0123호
+                      mailOrderAuthority: 서울특별시 마포구청
                       mailOrderExemption: null
                       foodLicenseNo: 2026-0123456
                       foodBusinessType: instant_sale_manufacturing
@@ -2280,6 +2507,7 @@ paths:
                       licenseReviewedBy:
                         operatorId: 8392f770-80d8-5a1e-b2af-794bceb48ad0
                         displayName: 운영자 한빛
+                      pendingIdentityChange: null
                       duplicates: []
                       paymentAccount:
                         bankName: 달빛은행
@@ -2340,6 +2568,7 @@ paths:
             - `already_decided`: 다른 결정이 이미 남음(이미 처리됨·이미 답함)
             - `invalid_state`: 지금 상태에서는 할 수 없는 명령(상태 머신 1-1~1-8이 허용하지 않음)
             - `payment_account_missing`: 결제 계좌가 등록되지 않은 가게라 영업 신고 확인됨을 남기지 않음(REQ-197). 보류는 남길 수 있음. 아무것도 바꾸지 않음
+            - `identity_change_pending`: 확인을 기다리는 사업자 정보 변경 요청이 있음(가게마다 하나, SPEC-078). 사장님의 새 변경 요청은 남기지 않고, 운영자의 영업 신고 확인됨은 그 요청을 먼저 반영·보류해야 남김(SPEC-003). 아무것도 바꾸지 않음
             - `request_in_progress`: 같은 요청 키의 첫 요청을 아직 처리하는 중(받은 뒤 60초가 지나도 끝나지 않으면 다음 요청이 이어받음, DEC-04)
           content:
             application/problem+json:
@@ -2382,6 +2611,15 @@ paths:
                     instance: /operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/license-review
                     code: payment_account_missing
                     traceId: c212e4f4a082c3168ce5e7c55b900164
+                identity_change_pending:
+                  value:
+                    type: /problems/identity_change_pending
+                    title: 확인을 기다리는 변경 요청이 있어요
+                    status: 409
+                    detail: 확인을 기다리는 사업자 정보 변경 요청이 있음(가게마다 하나, SPEC-078)
+                    instance: /operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/license-review
+                    code: identity_change_pending
+                    traceId: deabbc33479ca33ced41802a31481c59
                 request_in_progress:
                   value:
                     type: /problems/request_in_progress
@@ -2456,6 +2694,7 @@ paths:
         id: API-014
         spec:
         - SPEC-003
+        - SPEC-078
         omit:
           "403": 운영자 계정은 모두 같은 권한(첫 버전)
         kinds:
@@ -2469,6 +2708,7 @@ paths:
           상태:
           - 409:invalid_state
           - 409:payment_account_missing
+          - 409:identity_change_pending
           - example:unchanged
           반복:
           - idem
@@ -4861,7 +5101,7 @@ paths:
       operationId: setCalendarSettings
       summary: 영업 캘린더 설정 등록·수정
       description: |-
-        바꾼 기준은 그 뒤 잡는 자리에만 쓴다(R4). 바꾼 기준을 넘는 날과 주문은 그대로 두고 conflicts로 보인다. 확정 주문이 있는 요일을 휴무로 바꾸면 409 confirmation_required(closed_day_with_orders, 건수). 전날 안내·후기 부탁 시각은 08:00~20:50(SPEC-052, SPEC-061).
+        바꾼 기준은 그 뒤 잡는 자리에만 쓴다(R4). 바꾼 기준을 넘는 날과 주문은 그대로 두고 conflicts로 보인다. 확정 주문이 있는 요일을 휴무로 바꾸면 409 confirmation_required(closed_day_with_orders, 건수). 전날 안내·후기 부탁 시각은 08:00~20:50(SPEC-052, SPEC-061). 바꾼 전날 안내·후기 부탁 시각은 아직 보내지 않은 안내부터 쓰고(보낼 시각을 다시 셈) 이미 보낸 것은 다시 보내지 않는다(REQ-243).
 
         SPEC: SPEC-007, SPEC-052, SPEC-061
       tags:
@@ -7488,9 +7728,12 @@ paths:
                       name: 달빛케이크
                       businessName: 달빛케이크
                       representativeName: 김달빛
+                      businessAddress: 서울 마포구 달빛로 12, 2층
                       contactPhone: 010-1234-5678
+                      contactEmail: moonlight@example.com
                       businessRegNo: "1234567891"
                       mailOrderRegNo: 제2026-서울마포-0123호
+                      mailOrderAuthority: 서울특별시 마포구청
                       mailOrderExemption: null
                       pickupAddress: 서울 마포구 달빛로 12, 1층
                     priceList:
@@ -7685,9 +7928,12 @@ paths:
                       name: 달빛케이크
                       businessName: 달빛케이크
                       representativeName: 김달빛
+                      businessAddress: 서울 마포구 달빛로 12, 2층
                       contactPhone: 010-1234-5678
+                      contactEmail: moonlight@example.com
                       businessRegNo: "1234567891"
                       mailOrderRegNo: 제2026-서울마포-0123호
+                      mailOrderAuthority: 서울특별시 마포구청
                       mailOrderExemption: null
                       pickupAddress: 서울 마포구 달빛로 12, 1층
                     priceList:
@@ -19246,7 +19492,7 @@ paths:
       operationId: receiveCustomerMessage
       summary: 손님 메시지 수신(카카오 오픈빌더 스킬)
       description: |-
-        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 지금 버전 키나, 바꾼 뒤 24시간 안의 앞 버전 키가 아니면 401(DEC-08, REQ-237). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 전체 기한(받은 때부터 55초, AI-1)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도·차례마다 호출 상한(8번)은 모두 에스컬레이션함(R7, AI-1). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). 문의 끊김이나 상담 끝남으로 닫힌 손님에게도 이 안내(결제 안내·사장님 답·전날 안내 등)는 막지 않는다(REQ-212). 이때 보인 결제 안내는 그때를 전해진 시각으로 남겨 결제 기한을 그때부터 세고(REQ-218), 결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드를 보이고(SPEC-076), 손님이 확인하기 전에 입금했다고 하면 입금 알리기 카드 대신 그 카드를 다시 보인다(card_shown, SPEC-033). 요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). 연결 확인 중인 채널에 그 연결의 연결 문구(API-032가 사장님 화면에만 보인 '연결 ' 뒤 숫자 6자리)가 오면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008, REQ-238). 다른 말이면 not_accepting과 같은 말로 답하고 시험을 시작하지 않는다. 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). 주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, 버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). 그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). 주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간은 문서 본문과 오류 표 모두 5분(2026-11-14 다시 확인). 전체 기한 55초는 그보다 짧고, 실제 채널에서 개발 전 시험(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4). Open: 봇 ID와 스킬 키를 아는 사람이 꾸민 요청과 카카오의 요청을 가를 수단(요청 출처)이 문서에 없어 11단계 전에 카카오에 문의(OPEN-10).
+        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 지금 버전 키나, 바꾼 뒤 24시간 안의 앞 버전 키가 아니면 401(DEC-08, REQ-237). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 전체 기한(받은 때부터 55초, AI-1)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도·차례마다 호출 상한(8번)은 모두 에스컬레이션함(R7, AI-1). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). 문의 끊김이나 상담 끝남으로 닫힌 손님에게도 이 안내(결제 안내·사장님 답·전날 안내 등)는 막지 않는다(REQ-212). 이때 보인 결제 안내는 그때를 전해진 시각으로 남겨 결제 기한을 그때부터 세고(REQ-218), 결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드를 보이고(SPEC-076), 손님이 확인하기 전에 입금했다고 하면 입금 알리기 카드 대신 그 카드를 다시 보인다(card_shown, SPEC-033). 손님이 자기 주문을 물으면 그 사용자가 요청한 주문마다 상태·픽업 일시·주문 내용 요약·금액과 결제가 확인된 시각·정한 환불과 보낸 때를 서버가 저장된 값으로 보인다(SPEC-040, REQ-241). 요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). 연결 확인 중인 채널에 그 연결의 연결 문구(API-032가 사장님 화면에만 보인 '연결 ' 뒤 숫자 6자리)가 오면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008, REQ-238). 다른 말이면 not_accepting과 같은 말로 답하고 시험을 시작하지 않는다. 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). 주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, 버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). 그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). 주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장과 미성년자 취소 고지, REQ-240)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간은 문서 본문과 오류 표 모두 5분(2026-11-14 다시 확인). 전체 기한 55초는 그보다 짧고, 실제 채널에서 개발 전 시험(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4). Open: 봇 ID와 스킬 키를 아는 사람이 꾸민 요청과 카카오의 요청을 가를 수단(요청 출처)이 문서에 없어 11단계 전에 카카오에 문의(OPEN-10).
 
         SPEC: SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-028, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-049, SPEC-056, SPEC-057, SPEC-066, SPEC-068, SPEC-069, SPEC-013, SPEC-014, SPEC-016, SPEC-008, SPEC-072, SPEC-075, SPEC-076
       tags:
@@ -20121,6 +20367,7 @@ paths:
                             · 제작 전 취소: 맞춤 재료를 주문하기 전이고 제작을 시작하기 전에 취소하는 경우 → 취소 수수료 5,000원을 뺀 금액을 모두 돌려드립니다.
                             · 제작 뒤 취소: 맞춤 재료를 주문했거나 제작을 시작한 뒤 취소하는 경우 → 픽업 72시간 전까지는 50%, 그 뒤에는 돌려드리지 않습니다.
                             주문제작이라 청약철회가 제한될 수 있어요
+                            미성년자가 법정대리인의 동의 없이 한 주문은 본인이나 법정대리인이 취소할 수 있어요
                       - textCard:
                           title: 주문 요청 확인
                           description: '11월 20일 14:00 픽업 · 1호 생크림 · 문구 ''생일 축하해 지우야'' · 알레르기: 없음 · 주문자 이지우 010-9876-5432 · 36,000원'
@@ -20249,6 +20496,7 @@ paths:
                             · 제작 전 취소: 맞춤 재료를 주문하기 전이고 제작을 시작하기 전에 취소하는 경우 → 취소 수수료 5,000원을 뺀 금액을 모두 돌려드립니다.
                             · 제작 뒤 취소: 맞춤 재료를 주문했거나 제작을 시작한 뒤 취소하는 경우 → 픽업 72시간 전까지는 50%, 그 뒤에는 돌려드리지 않습니다.
                             주문제작이라 청약철회가 제한될 수 있어요
+                            미성년자가 법정대리인의 동의 없이 한 주문은 본인이나 법정대리인이 취소할 수 있어요
                       - textCard:
                           title: 주문 요청 확인
                           description: '내용이 바뀌었어요. 새 카드를 확인해 주세요 · 11월 20일 14:00 픽업 · 1호 생크림 · 문구 ''생일 축하해 지우야'' · 알레르기: 없음 · 주문자 이지우 010-9876-5432 · 38,000원'
@@ -20277,6 +20525,7 @@ paths:
                             · 제작 전 취소: 맞춤 재료를 주문하기 전이고 제작을 시작하기 전에 취소하는 경우 → 취소 수수료 5,000원을 뺀 금액을 모두 돌려드립니다.
                             · 제작 뒤 취소: 맞춤 재료를 주문했거나 제작을 시작한 뒤 취소하는 경우 → 픽업 72시간 전까지는 50%, 그 뒤에는 돌려드리지 않습니다.
                             주문제작이라 청약철회가 제한될 수 있어요
+                            미성년자가 법정대리인의 동의 없이 한 주문은 본인이나 법정대리인이 취소할 수 있어요
                       - textCard:
                           title: 주문 요청 확인
                           description: '시간이 지나 새 카드를 보내 드려요 · 11월 20일 14:00 픽업 · 1호 생크림 · 문구 ''생일 축하해 지우야'' · 알레르기: 없음 · 주문자 이지우 010-9876-5432 · 36,000원'
@@ -20819,9 +21068,9 @@ paths:
       operationId: showNotice
       summary: 먼저 보내는 안내 보이기(카카오 Event API가 부르는 스킬)
       description: |-
-        우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). 안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). 완성 사진 안내(SPEC-053)는 사진과 함께, 그 사진을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 묻는 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, 누른 답은 카드 스킬로 와서 그 안내의 사진마다 남는다(API-071 photo_consent_saved, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). 손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), 그 안내는 다음 대화 때 먼저 전한다(DEC-20이 정한 DEC-07의 예외). 새 금액 확인이 필요한 결제 안내는 계좌 자리 대신 새 금액 확인 카드(맞춤 주문은 요청한 견적·정한 금액·사유와 '이 금액으로 할게요'·'안 할래요', 변경은 바뀌는 내용·지금 금액과 새 금액·차액·변경 마감과 '바꿀게요'·'그대로 둘래요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, 누른 답은 카드 스킬로 온다(API-071 amount_confirmed·amount_declined, SPEC-076, REQ-232). 결제 안내의 글에는 계좌번호를 넣어 두지 않고 계좌 자리만 두며, 이 스킬이 보일 때 그 결제 안내의 계좌를 복호화해 채운다(SPEC-032, REQ-191). Open: 가게 채널을 우리 앱에 연결하고 우리 월렛을 가게 봇에 연결하는 절차, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양은 개발 전 시험으로 확인(OPEN-9).
+        우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). 안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). 확정 안내는 주문 내용·픽업 일시·결제가 확인된 금액·가게의 상호·대표자·사업장 주소·전화번호(확정할 때의 확인된 값)를 담은 글과 그 주문의 운영규정 버전의 취소·환불 규정 글을 보인다(SPEC-036, REQ-242). 완성 사진 안내(SPEC-053)는 사진과 함께, 그 사진을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 묻는 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, 누른 답은 카드 스킬로 와서 그 안내의 사진마다 남는다(API-071 photo_consent_saved, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). 손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), 그 안내는 다음 대화 때 먼저 전한다(DEC-20이 정한 DEC-07의 예외). 새 금액 확인이 필요한 결제 안내는 계좌 자리 대신 새 금액 확인 카드(맞춤 주문은 요청한 견적·정한 금액·사유와 '이 금액으로 할게요'·'안 할래요', 변경은 바뀌는 내용·지금 금액과 새 금액·차액·변경 마감과 '바꿀게요'·'그대로 둘래요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, 누른 답은 카드 스킬로 온다(API-071 amount_confirmed·amount_declined, SPEC-076, REQ-232). 결제 안내의 글에는 계좌번호를 넣어 두지 않고 계좌 자리만 두며, 이 스킬이 보일 때 그 결제 안내의 계좌를 복호화해 채운다(SPEC-032, REQ-191). Open: 가게 채널을 우리 앱에 연결하고 우리 월렛을 가게 봇에 연결하는 절차, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양은 개발 전 시험으로 확인(OPEN-9).
 
-        SPEC: SPEC-066, SPEC-008, SPEC-053, SPEC-076
+        SPEC: SPEC-066, SPEC-008, SPEC-053, SPEC-076, SPEC-036
       tags:
       - 카카오 스킬
       security:
@@ -20914,13 +21163,24 @@ paths:
                 $ref: '#/components/schemas/SkillTemplateResponse'
               examples:
                 notice_shown:
-                  summary: Event API가 넘긴 안내 키로 저장된 안내의 글과 버튼을 보임(템플릿, AI 없음, 광고 없음). 완성 사진 안내는 사진과 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', SPEC-053). 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드(맞춤 주문은 요청한 견적·정한 금액·사유, 변경은 바뀌는 내용·지금 금액과 새 금액·차액·변경 마감, SPEC-076)
+                  summary: Event API가 넘긴 안내 키로 저장된 안내의 글과 버튼을 보임(템플릿, AI 없음, 광고 없음). 확정 안내는 주문 내용·픽업 일시·결제가 확인된 금액·가게의 상호·대표자·사업장 주소·전화번호를 담은 글과 그 주문의 취소·환불 규정 글(SPEC-036, REQ-242). 완성 사진 안내는 사진과 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', SPEC-053). 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드(맞춤 주문은 요청한 견적·정한 금액·사유, 변경은 바뀌는 내용·지금 금액과 새 금액·차액·변경 마감, SPEC-076)
                   value:
                     version: "2.0"
                     template:
                       outputs:
                       - simpleText:
-                          text: 주문이 확정됐어요. 11월 20일 14:00에 뵐게요.
+                          text: |-
+                            주문이 확정됐어요(주문번호 K7Q3M9).
+                            11월 20일 14:00 픽업 · 1호 생크림 · 문구 '생일 축하해 지우야' · 알레르기: 없음
+                            결제 확인 36,000원
+                            가게: 달빛케이크 · 대표자 김달빛 · 서울 마포구 달빛로 12, 2층 · 010-1234-5678
+                      - simpleText:
+                          text: |-
+                            취소·환불 규정(운영규정 버전 2)
+                            · 제작 전 취소: 맞춤 재료를 주문하기 전이고 제작을 시작하기 전에 취소하는 경우 → 취소 수수료 5,000원을 뺀 금액을 모두 돌려드립니다.
+                            · 제작 뒤 취소: 맞춤 재료를 주문했거나 제작을 시작한 뒤 취소하는 경우 → 픽업 72시간 전까지는 50%, 그 뒤에는 돌려드리지 않습니다.
+                            주문제작이라 청약철회가 제한될 수 있어요
+                            미성년자가 법정대리인의 동의 없이 한 주문은 본인이나 법정대리인이 취소할 수 있어요
                 notice_test:
                   summary: 채널을 연결한 뒤 시험 사용자에게 보낸 시험 안내를 보임. 발송 결과로 먼저 보내기 됨·안 됨을 정함(REQ-180)
                   value:
@@ -21001,6 +21261,7 @@ paths:
         - SPEC-008
         - SPEC-053
         - SPEC-076
+        - SPEC-036
         omit:
           "403": 가게·손님 구분은 결과 코드로 알리고 HTTP 403을 쓰지 않음(DEC-07)
           "404": 경로에 기록 ID가 없음. 없는 안내 키는 결과 notice_gone(DEC-07)
@@ -22355,6 +22616,806 @@ paths:
           - note:새 키는 이 응답에만 한 번(DEC-08)
           화면:
           - screen
+  /owner/shop/identity-changes:
+    post:
+      operationId: requestIdentityChange
+      summary: 사업자 정보 변경 요청(상호·대표자·사업자등록번호)
+      description: |-
+        상호·대표자·사업자등록번호의 새 값 셋(바꾸지 않는 값은 지금 값)과 증빙 사진(영업 신고증이나 사업자등록증 한 장, 용도 license_photo로 올린 uploadId)을 받아 변경 요청을 '확인 기다림'으로 남긴다. 요청할 때의 확인된 값도 그 요청에 남기고, 운영자가 반영(API-082)하기 전까지 가게 정보·예약 링크 페이지·확정 안내는 확인된 지금 값을 쓴다(REQ-245). 세 값이 모두 지금과 같으면 남기지 않고 outcome unchanged. 확인을 기다리는 변경 요청이 이미 있으면 409 identity_change_pending이고 그 요청은 내 가게 조회(API-009)의 identityChange로 본다. 영업 신고 상태와 상관없이 남길 수 있다. 증빙 사진을 옮기지 못하면 503이고 아무것도 남기지 않는다. 운영자는 사업자 정보 변경 확인 목록(API-081)에서 본다.
+
+        SPEC: SPEC-078
+      tags:
+      - 가게
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      security:
+      - ownerSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityChangeInput'
+            examples:
+              rename:
+                value:
+                  baseRevision: 105995083ca7
+                  businessName: 달빛케이크 공방
+                  representativeName: 김달빛
+                  businessRegNo: "1234567891"
+                  evidencePhotoUploadId: upl_02c7abb253fe6f75d4518e14
+      responses:
+        "201":
+          description: '성공. 예시: requested'
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopResult'
+              examples:
+                requested:
+                  value:
+                    outcome: done
+                    shop:
+                      shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
+                      name: 달빛케이크
+                      contactPhone: 010-1234-5678
+                      pickupAddress: 서울 마포구 달빛로 12, 1층
+                      businessAddress: 서울 마포구 달빛로 12, 2층
+                      contactEmail: moonlight@example.com
+                      businessName: 달빛케이크
+                      representativeName: 김달빛
+                      businessRegNo: "1234567891"
+                      mailOrderRegNo: 제2026-서울마포-0123호
+                      mailOrderAuthority: 서울특별시 마포구청
+                      mailOrderExemption: null
+                      foodLicenseNo: 2026-0123456
+                      foodBusinessType: instant_sale_manufacturing
+                      licenseStatus: verified
+                      licenseHoldReason: null
+                      licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                      entrustmentTermsVersion: "2026.11"
+                      entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
+                      timeZone: Asia/Seoul
+                      completionPhotoEnabled: true
+                      idleCloseHours: 24
+                      ownerWaitMinutes: 120
+                      dailyAiCostLimitKrw: 5000
+                      bookingUrl: https://siljang.example/s/moonlight-cake
+                      identityChange:
+                        changeId: 03721c5e-75d1-58cf-b2ab-51e5893a1389
+                        status: pending
+                        businessName: 달빛케이크 공방
+                        representativeName: 김달빛
+                        businessRegNo: "1234567891"
+                        previous:
+                          businessName: 달빛케이크
+                          representativeName: 김달빛
+                          businessRegNo: "1234567891"
+                        evidencePhotoUrl: https://files.siljang.example/v1/0be73926cf12eaa6df087a8d?exp=1763619300&sig=82b6b28d8028416205a7547d2f12f43a
+                        holdReason: null
+                        requestedAt: '2026-11-14T10:20:00+09:00'
+                        reviewedAt: null
+                      createdAt: '2026-11-12T10:05:00+09:00'
+                      updatedAt: '2026-11-14T10:20:00+09:00'
+                      revision: d6d64927f2e9
+        "200":
+          description: '성공. 예시: unchanged'
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopResult'
+              examples:
+                unchanged:
+                  summary: 이미 그 상태라 바꾼 것 없음(DEC-03)
+                  value:
+                    outcome: unchanged
+                    shop:
+                      shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
+                      name: 달빛케이크
+                      contactPhone: 010-1234-5678
+                      pickupAddress: 서울 마포구 달빛로 12, 1층
+                      businessAddress: 서울 마포구 달빛로 12, 2층
+                      contactEmail: moonlight@example.com
+                      businessName: 달빛케이크
+                      representativeName: 김달빛
+                      businessRegNo: "1234567891"
+                      mailOrderRegNo: 제2026-서울마포-0123호
+                      mailOrderAuthority: 서울특별시 마포구청
+                      mailOrderExemption: null
+                      foodLicenseNo: 2026-0123456
+                      foodBusinessType: instant_sale_manufacturing
+                      licenseStatus: verified
+                      licenseHoldReason: null
+                      licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                      entrustmentTermsVersion: "2026.11"
+                      entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
+                      timeZone: Asia/Seoul
+                      completionPhotoEnabled: true
+                      idleCloseHours: 24
+                      ownerWaitMinutes: 120
+                      dailyAiCostLimitKrw: 5000
+                      bookingUrl: https://siljang.example/s/moonlight-cake
+                      identityChange: null
+                      createdAt: '2026-11-12T10:05:00+09:00'
+                      updatedAt: '2026-11-12T15:20:00+09:00'
+                      revision: 105995083ca7
+        "401":
+          description: |-
+            로그인이나 스킬 키가 없거나 맞지 않음
+
+            - `unauthenticated`: 로그인(세션 쿠키)이 없거나 만료됨
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                unauthenticated:
+                  value:
+                    type: /problems/unauthenticated
+                    title: 다시 로그인해 주세요
+                    status: 401
+                    detail: 로그인(세션 쿠키)이 없거나 만료됨
+                    instance: /owner/shop/identity-changes
+                    code: unauthenticated
+                    traceId: 87178128cdb4027550dafaeca0f3f855
+        "404":
+          description: |-
+            찾을 수 없음(DEC-02)
+
+            - `shop_not_registered`: 로그인한 사장님에게 아직 가게가 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                shop_not_registered:
+                  value:
+                    type: /problems/shop_not_registered
+                    title: 가게를 먼저 등록해 주세요
+                    status: 404
+                    detail: 로그인한 사장님에게 아직 가게가 없음
+                    instance: /owner/shop/identity-changes
+                    code: shop_not_registered
+                    traceId: ff95c21ea4814884136995a9750f824b
+        "409":
+          description: |-
+            지금 상태와 충돌해 아무것도 바꾸지 않음
+
+            - `version_conflict`: 화면이 본 뒤에 그 기록이 바뀜(baseRevision이 지금과 다름). 아무것도 바꾸지 않음
+            - `identity_change_pending`: 확인을 기다리는 사업자 정보 변경 요청이 있음(가게마다 하나, SPEC-078). 사장님의 새 변경 요청은 남기지 않고, 운영자의 영업 신고 확인됨은 그 요청을 먼저 반영·보류해야 남김(SPEC-003). 아무것도 바꾸지 않음
+            - `request_in_progress`: 같은 요청 키의 첫 요청을 아직 처리하는 중(받은 뒤 60초가 지나도 끝나지 않으면 다음 요청이 이어받음, DEC-04)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                version_conflict:
+                  value:
+                    type: /problems/version_conflict
+                    title: 그 사이 바뀌었어요. 지금 상태를 확인해 주세요
+                    status: 409
+                    detail: 화면이 본 뒤에 그 기록이 바뀜(baseRevision이 지금과 다름)
+                    instance: /owner/shop/identity-changes
+                    code: version_conflict
+                    traceId: d30bf5a8da205a4fa3914231884cfc53
+                identity_change_pending:
+                  value:
+                    type: /problems/identity_change_pending
+                    title: 확인을 기다리는 변경 요청이 있어요
+                    status: 409
+                    detail: 확인을 기다리는 사업자 정보 변경 요청이 있음(가게마다 하나, SPEC-078)
+                    instance: /owner/shop/identity-changes
+                    code: identity_change_pending
+                    traceId: feb38f0815fc642a9ef642f5306e68fa
+                request_in_progress:
+                  value:
+                    type: /problems/request_in_progress
+                    title: 처리하고 있어요. 잠시 뒤 다시 확인해 주세요
+                    status: 409
+                    detail: 같은 요청 키의 첫 요청을 아직 처리하는 중(받은 뒤 60초가 지나도 끝나지 않으면 다음 요청이 이어받음, DEC-04)
+                    instance: /owner/shop/identity-changes
+                    code: request_in_progress
+                    traceId: fe9b71bfbff2590d98164c5b9725a5af
+        "422":
+          description: |-
+            입력이 계약에 맞지 않아 아무것도 바꾸지 않음(DEC-01)
+
+            - `validation_failed`: 입력 필드가 계약의 한도나 형식에 맞지 않음. 필드마다 errors에 위치와 사유 코드
+            - `idempotency_key_reused`: 같은 요청 키로 다른 명령이나 다른 내용을 보냄(서버가 요청 지문으로 가림, DEC-04)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validation_failed:
+                  value:
+                    type: /problems/validation_failed
+                    title: 입력한 내용을 확인해 주세요
+                    status: 422
+                    detail: 입력 필드가 계약의 한도나 형식에 맞지 않음
+                    instance: /owner/shop/identity-changes
+                    code: validation_failed
+                    traceId: 3439b72d92683f8cc07639990a296a3f
+                    errors:
+                    - field: /businessRegNo
+                      code: checksum_failed
+                    - field: /evidencePhotoUploadId
+                      code: upload_not_found
+                idempotency_key_reused:
+                  value:
+                    type: /problems/idempotency_key_reused
+                    title: 다시 시도해 주세요
+                    status: 422
+                    detail: 같은 요청 키로 다른 명령이나 다른 내용을 보냄(서버가 요청 지문으로 가림, DEC-04)
+                    instance: /owner/shop/identity-changes
+                    code: idempotency_key_reused
+                    traceId: 648146e6b4404a58aca726d81fdd6ffa
+                missing_idempotency_key:
+                  summary: 요청 키 헤더가 없음(DEC-04)
+                  value:
+                    type: /problems/validation_failed
+                    title: 입력한 내용을 확인해 주세요
+                    status: 422
+                    detail: 요청 키 헤더가 없음
+                    instance: /owner/shop/identity-changes
+                    code: validation_failed
+                    traceId: a2f177c4d486b62a109b5818898ad022
+                    errors:
+                    - field: header:Idempotency-Key
+                      code: required
+        "503":
+          description: |-
+            외부 서비스가 답하지 않아 아무것도 바꾸지 않음
+
+            - `storage_unavailable`: 사진 저장소에 쓰지 못함. 등록·저장 전체를 남기지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                storage_unavailable:
+                  value:
+                    type: /problems/storage_unavailable
+                    title: 사진을 저장하지 못했어요. 다시 올려 주세요
+                    status: 503
+                    detail: 사진 저장소에 쓰지 못함
+                    instance: /owner/shop/identity-changes
+                    code: storage_unavailable
+                    traceId: aee109250cf8736c73055800e0abc26a
+        default:
+          description: 예상하지 못한 서버 오류(500). 내용은 로그에만
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                internal:
+                  value:
+                    type: /problems/internal
+                    title: 문제가 생겼어요. 다시 시도해 주세요
+                    status: 500
+                    detail: 예상하지 못한 서버 오류
+                    instance: /owner/shop/identity-changes
+                    code: internal
+                    traceId: b0d4fd9a17ea59c374af4e67a789bb1b
+      x-corthex:
+        id: API-080
+        spec:
+        - SPEC-078
+        omit:
+          "403": 역할마다 세션 쿠키와 경로가 나뉘고(DEC-10, DEC-11), 다른 가게 기록은 404로 숨김(DEC-02)
+        kinds:
+          접근:
+          - security
+          - 401:unauthenticated
+          - note:그 가게 사장님만 남김(G1)
+          입력:
+          - 422:validation_failed
+          대상:
+          - 404:shop_not_registered
+          상태:
+          - 409:identity_change_pending
+          반복:
+          - idem
+          - example:unchanged
+          동시:
+          - revision
+          - 409:version_conflict
+          외부:
+          - 503:storage_unavailable
+          노출:
+          - closed
+          - note:증빙 사진은 그 가게 사장님과 운영자만 봄(G6)
+          화면:
+          - screen
+  /operator/identity-changes:
+    get:
+      operationId: listIdentityChanges
+      summary: 사업자 정보 변경 요청 목록
+      description: |-
+        운영자가 확인할 사업자 정보 변경 요청을 요청한 차례로 보인다(status가 없으면 pending). 요청마다 지금 값과 새 값, 증빙 사진(서명 주소), 결제 계좌의 은행·예금주·끝 4자리와 예금주가 새 대표자·상호와 같은지(holderMatchesNew)를 보인다. 다르면 표시만 하고 막지 않는다(REQ-197). 계좌번호 전체는 보이지 않는다(SPEC-003).
+
+        SPEC: SPEC-078
+      tags:
+      - 운영자
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - pending
+          - applied
+          - on_hold
+        description: 변경 요청 상태로 거름. 없으면 pending
+        example: pending
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      security:
+      - operatorSession: []
+      responses:
+        "200":
+          description: '성공. 예시: pending, empty'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityChangeList'
+              examples:
+                pending:
+                  value:
+                    items:
+                    - changeId: 03721c5e-75d1-58cf-b2ab-51e5893a1389
+                      shop:
+                        shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
+                        name: 달빛케이크
+                        licenseStatus: verified
+                      status: pending
+                      businessName: 달빛케이크 공방
+                      representativeName: 김달빛
+                      businessRegNo: "1234567891"
+                      previous:
+                        businessName: 달빛케이크
+                        representativeName: 김달빛
+                        businessRegNo: "1234567891"
+                      evidencePhotoUrl: https://files.siljang.example/v1/0be73926cf12eaa6df087a8d?exp=1763619300&sig=82b6b28d8028416205a7547d2f12f43a
+                      paymentAccount:
+                        bankName: 달빛은행
+                        holderName: 김달빛
+                        accountLast4: "4567"
+                        holderMatchesNew: true
+                      holdReason: null
+                      requestedAt: '2026-11-14T10:20:00+09:00'
+                      reviewedAt: null
+                      reviewedBy: null
+                      revision: 22a8893cb7bc
+                    - changeId: 95ff3647-2333-56d4-b342-41940ddc83e6
+                      shop:
+                        shopId: 0894787e-7efa-5245-bd59-ccf5a84ba71e
+                        name: 별빛베이커리
+                        licenseStatus: verified
+                      status: pending
+                      businessName: 별빛베이커리
+                      representativeName: 이하늘
+                      businessRegNo: "1234567891"
+                      previous:
+                        businessName: 별빛베이커리
+                        representativeName: 최별빛
+                        businessRegNo: "1234567891"
+                      evidencePhotoUrl: https://files.siljang.example/v1/ad25e2ebc9c62bf3ab406233?exp=1763619300&sig=8811389923d17a69a12f267a45101197
+                      paymentAccount:
+                        bankName: 별빛은행
+                        holderName: 최별빛
+                        accountLast4: "8812"
+                        holderMatchesNew: false
+                      holdReason: null
+                      requestedAt: '2026-11-14T10:45:00+09:00'
+                      reviewedAt: null
+                      reviewedBy: null
+                      revision: 8976ab351d1a
+                    nextCursor: null
+                empty:
+                  summary: 빈 목록
+                  value:
+                    items: []
+                    nextCursor: null
+        "401":
+          description: |-
+            로그인이나 스킬 키가 없거나 맞지 않음
+
+            - `unauthenticated`: 로그인(세션 쿠키)이 없거나 만료됨
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                unauthenticated:
+                  value:
+                    type: /problems/unauthenticated
+                    title: 다시 로그인해 주세요
+                    status: 401
+                    detail: 로그인(세션 쿠키)이 없거나 만료됨
+                    instance: /operator/identity-changes
+                    code: unauthenticated
+                    traceId: 0c5c67ffaf0cc1808367edede8f308f2
+        "422":
+          description: |-
+            입력이 계약에 맞지 않아 아무것도 바꾸지 않음(DEC-01)
+
+            - `validation_failed`: 입력 필드가 계약의 한도나 형식에 맞지 않음. 필드마다 errors에 위치와 사유 코드
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validation_failed:
+                  value:
+                    type: /problems/validation_failed
+                    title: 입력한 내용을 확인해 주세요
+                    status: 422
+                    detail: 입력 필드가 계약의 한도나 형식에 맞지 않음
+                    instance: /operator/identity-changes
+                    code: validation_failed
+                    traceId: a05848d2cab4f601cfa1a26a26b2c4b4
+                    errors:
+                    - field: query:status
+                      code: not_allowed
+        default:
+          description: 예상하지 못한 서버 오류(500). 내용은 로그에만
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                internal:
+                  value:
+                    type: /problems/internal
+                    title: 문제가 생겼어요. 다시 시도해 주세요
+                    status: 500
+                    detail: 예상하지 못한 서버 오류
+                    instance: /operator/identity-changes
+                    code: internal
+                    traceId: 6ade82a0344c846b549bfa75b4fd4fc1
+      x-corthex:
+        id: API-081
+        spec:
+        - SPEC-078
+        omit:
+          "403": 운영자 계정은 모두 같은 권한(첫 버전)
+          "404": 경로에 기록 ID가 없음
+          "409": 읽기만 함
+        kinds:
+          접근:
+          - security
+          - 401:unauthenticated
+          입력:
+          - 422:validation_failed
+          상태:
+          - example:pending
+          - note:예금주가 새 대표자·상호와 다르면 holderMatchesNew false로 보이고 막지 않음(REQ-197)
+          노출:
+          - closed
+          - note:계좌는 은행·예금주·끝 4자리만(SPEC-003)
+          빈·끊김:
+          - example:empty
+          화면:
+          - screen
+  /operator/identity-changes/{changeId}/review:
+    post:
+      operationId: reviewIdentityChange
+      summary: 사업자 정보 변경 반영·보류
+      description: |-
+        운영자가 변경 요청을 '반영'이나 '보류(이유)'로 정한다. 반영이면 한 트랜잭션에서 그 가게의 상호·대표자·사업자등록번호가 요청할 때의 값과 같을 때만 새 값으로 바꾸고, 요청을 반영함으로 두고 반영한 운영자·시각을 남기고, 사장님께 우리 서비스 채널로 한 번 알린다(할 일 없이 알림만, 못 가도 내 가게 조회의 identityChange로 결과를 봄, G4). 그 뒤 예약 링크 페이지·확정 안내·운영자 화면이 새 값을 쓴다(REQ-245, 05단계 A37). 예금주가 새 대표자·상호와 달라도 막지 않고 운영자가 보고 정하며(REQ-197), 반영 뒤 계좌를 바꾸면 새 대표자·상호가 기준이다(REQ-199). 보류면 이유를 남기고 사장님께 한 번 알린다. 반영·보류한 요청은 고치지 않는다: 같은 결정을 다시 보내면 unchanged, 다른 운영자가 먼저 정했으면 409 already_decided, 그 밖에 요청이나 가게의 세 값이 바뀌었으면 409 version_conflict(G3).
+
+        SPEC: SPEC-078, SPEC-003
+      tags:
+      - 운영자
+      parameters:
+      - name: changeId
+        in: path
+        required: true
+        example: 03721c5e-75d1-58cf-b2ab-51e5893a1389
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description: 변경 요청 ID(uuid). 없거나 다른 가게 것이거나 형식이 틀리면 404(DEC-02)
+      - $ref: '#/components/parameters/IdempotencyKey'
+      security:
+      - operatorSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityChangeReviewInput'
+            examples:
+              apply:
+                value:
+                  baseRevision: 22a8893cb7bc
+                  decision: applied
+              hold:
+                value:
+                  baseRevision: 22a8893cb7bc
+                  decision: on_hold
+                  holdReason: 증빙 사진의 상호가 보이지 않아요. 사업자등록증 전체가 보이게 다시 찍어 올려 주세요
+      responses:
+        "200":
+          description: '성공. 예시: applied, on_hold, unchanged'
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityChangeReviewResult'
+              examples:
+                applied:
+                  value:
+                    outcome: done
+                    change:
+                      changeId: 03721c5e-75d1-58cf-b2ab-51e5893a1389
+                      shop:
+                        shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
+                        name: 달빛케이크
+                        licenseStatus: verified
+                      status: applied
+                      businessName: 달빛케이크 공방
+                      representativeName: 김달빛
+                      businessRegNo: "1234567891"
+                      previous:
+                        businessName: 달빛케이크
+                        representativeName: 김달빛
+                        businessRegNo: "1234567891"
+                      evidencePhotoUrl: https://files.siljang.example/v1/0be73926cf12eaa6df087a8d?exp=1763619300&sig=82b6b28d8028416205a7547d2f12f43a
+                      paymentAccount:
+                        bankName: 달빛은행
+                        holderName: 김달빛
+                        accountLast4: "4567"
+                        holderMatchesNew: true
+                      holdReason: null
+                      requestedAt: '2026-11-14T10:20:00+09:00'
+                      reviewedAt: '2026-11-14T11:05:00+09:00'
+                      reviewedBy:
+                        operatorId: 8392f770-80d8-5a1e-b2af-794bceb48ad0
+                        displayName: 운영자 한빛
+                      revision: d0483d6aa2d9
+                on_hold:
+                  value:
+                    outcome: done
+                    change:
+                      changeId: 03721c5e-75d1-58cf-b2ab-51e5893a1389
+                      shop:
+                        shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
+                        name: 달빛케이크
+                        licenseStatus: verified
+                      status: on_hold
+                      businessName: 달빛케이크 공방
+                      representativeName: 김달빛
+                      businessRegNo: "1234567891"
+                      previous:
+                        businessName: 달빛케이크
+                        representativeName: 김달빛
+                        businessRegNo: "1234567891"
+                      evidencePhotoUrl: https://files.siljang.example/v1/0be73926cf12eaa6df087a8d?exp=1763619300&sig=82b6b28d8028416205a7547d2f12f43a
+                      paymentAccount:
+                        bankName: 달빛은행
+                        holderName: 김달빛
+                        accountLast4: "4567"
+                        holderMatchesNew: true
+                      holdReason: 증빙 사진의 상호가 보이지 않아요. 사업자등록증 전체가 보이게 다시 찍어 올려 주세요
+                      requestedAt: '2026-11-14T10:20:00+09:00'
+                      reviewedAt: '2026-11-14T11:05:00+09:00'
+                      reviewedBy:
+                        operatorId: 8392f770-80d8-5a1e-b2af-794bceb48ad0
+                        displayName: 운영자 한빛
+                      revision: d28186235279
+                unchanged:
+                  summary: 이미 그 상태라 바꾼 것 없음(DEC-03)
+                  value:
+                    outcome: unchanged
+                    change:
+                      changeId: 03721c5e-75d1-58cf-b2ab-51e5893a1389
+                      shop:
+                        shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
+                        name: 달빛케이크
+                        licenseStatus: verified
+                      status: applied
+                      businessName: 달빛케이크 공방
+                      representativeName: 김달빛
+                      businessRegNo: "1234567891"
+                      previous:
+                        businessName: 달빛케이크
+                        representativeName: 김달빛
+                        businessRegNo: "1234567891"
+                      evidencePhotoUrl: https://files.siljang.example/v1/0be73926cf12eaa6df087a8d?exp=1763619300&sig=82b6b28d8028416205a7547d2f12f43a
+                      paymentAccount:
+                        bankName: 달빛은행
+                        holderName: 김달빛
+                        accountLast4: "4567"
+                        holderMatchesNew: true
+                      holdReason: null
+                      requestedAt: '2026-11-14T10:20:00+09:00'
+                      reviewedAt: '2026-11-14T11:05:00+09:00'
+                      reviewedBy:
+                        operatorId: 8392f770-80d8-5a1e-b2af-794bceb48ad0
+                        displayName: 운영자 한빛
+                      revision: d0483d6aa2d9
+        "401":
+          description: |-
+            로그인이나 스킬 키가 없거나 맞지 않음
+
+            - `unauthenticated`: 로그인(세션 쿠키)이 없거나 만료됨
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                unauthenticated:
+                  value:
+                    type: /problems/unauthenticated
+                    title: 다시 로그인해 주세요
+                    status: 401
+                    detail: 로그인(세션 쿠키)이 없거나 만료됨
+                    instance: /operator/identity-changes/03721c5e-75d1-58cf-b2ab-51e5893a1389/review
+                    code: unauthenticated
+                    traceId: b34510293f92a7367fb968aa1c247077
+        "404":
+          description: |-
+            찾을 수 없음(DEC-02)
+
+            - `not_found`: 경로의 기록이 없거나, 다른 가게 것이거나, ID 형식이 틀림. 셋을 구분하지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                not_found:
+                  value:
+                    type: /problems/not_found
+                    title: 찾을 수 없어요
+                    status: 404
+                    detail: 경로의 기록이 없거나, 다른 가게 것이거나, ID 형식이 틀림
+                    instance: /operator/identity-changes/03721c5e-75d1-58cf-b2ab-51e5893a1389/review
+                    code: not_found
+                    traceId: 61647d48e9842796267aca95b7eda7c6
+        "409":
+          description: |-
+            지금 상태와 충돌해 아무것도 바꾸지 않음
+
+            - `version_conflict`: 화면이 본 뒤에 그 기록이 바뀜(baseRevision이 지금과 다름). 아무것도 바꾸지 않음
+            - `already_decided`: 다른 결정이 이미 남음(이미 처리됨·이미 답함)
+            - `request_in_progress`: 같은 요청 키의 첫 요청을 아직 처리하는 중(받은 뒤 60초가 지나도 끝나지 않으면 다음 요청이 이어받음, DEC-04)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                version_conflict:
+                  value:
+                    type: /problems/version_conflict
+                    title: 그 사이 바뀌었어요. 지금 상태를 확인해 주세요
+                    status: 409
+                    detail: 화면이 본 뒤에 그 기록이 바뀜(baseRevision이 지금과 다름)
+                    instance: /operator/identity-changes/03721c5e-75d1-58cf-b2ab-51e5893a1389/review
+                    code: version_conflict
+                    traceId: 96ae2a6393dbf76e99bfbe8508d0bcf8
+                already_decided:
+                  value:
+                    type: /problems/already_decided
+                    title: 이미 처리됐어요
+                    status: 409
+                    detail: 다른 결정이 이미 남음(이미 처리됨·이미 답함)
+                    instance: /operator/identity-changes/03721c5e-75d1-58cf-b2ab-51e5893a1389/review
+                    code: already_decided
+                    traceId: f9405ff0cf0d7089c02bf1718fa72e8a
+                request_in_progress:
+                  value:
+                    type: /problems/request_in_progress
+                    title: 처리하고 있어요. 잠시 뒤 다시 확인해 주세요
+                    status: 409
+                    detail: 같은 요청 키의 첫 요청을 아직 처리하는 중(받은 뒤 60초가 지나도 끝나지 않으면 다음 요청이 이어받음, DEC-04)
+                    instance: /operator/identity-changes/03721c5e-75d1-58cf-b2ab-51e5893a1389/review
+                    code: request_in_progress
+                    traceId: 8c851fa96a274296664e22f5a5b25e33
+        "422":
+          description: |-
+            입력이 계약에 맞지 않아 아무것도 바꾸지 않음(DEC-01)
+
+            - `validation_failed`: 입력 필드가 계약의 한도나 형식에 맞지 않음. 필드마다 errors에 위치와 사유 코드
+            - `idempotency_key_reused`: 같은 요청 키로 다른 명령이나 다른 내용을 보냄(서버가 요청 지문으로 가림, DEC-04)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validation_failed:
+                  value:
+                    type: /problems/validation_failed
+                    title: 입력한 내용을 확인해 주세요
+                    status: 422
+                    detail: 입력 필드가 계약의 한도나 형식에 맞지 않음
+                    instance: /operator/identity-changes/03721c5e-75d1-58cf-b2ab-51e5893a1389/review
+                    code: validation_failed
+                    traceId: a548acdf50ec6a48d754bf339d08852d
+                    errors:
+                    - field: /holdReason
+                      code: required
+                idempotency_key_reused:
+                  value:
+                    type: /problems/idempotency_key_reused
+                    title: 다시 시도해 주세요
+                    status: 422
+                    detail: 같은 요청 키로 다른 명령이나 다른 내용을 보냄(서버가 요청 지문으로 가림, DEC-04)
+                    instance: /operator/identity-changes/03721c5e-75d1-58cf-b2ab-51e5893a1389/review
+                    code: idempotency_key_reused
+                    traceId: 4aadbc8dc6bec1e478a323afcaa94cac
+                missing_idempotency_key:
+                  summary: 요청 키 헤더가 없음(DEC-04)
+                  value:
+                    type: /problems/validation_failed
+                    title: 입력한 내용을 확인해 주세요
+                    status: 422
+                    detail: 요청 키 헤더가 없음
+                    instance: /operator/identity-changes/03721c5e-75d1-58cf-b2ab-51e5893a1389/review
+                    code: validation_failed
+                    traceId: 7eeb64f51d2c4403a07c27f4bf16331f
+                    errors:
+                    - field: header:Idempotency-Key
+                      code: required
+        default:
+          description: 예상하지 못한 서버 오류(500). 내용은 로그에만
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                internal:
+                  value:
+                    type: /problems/internal
+                    title: 문제가 생겼어요. 다시 시도해 주세요
+                    status: 500
+                    detail: 예상하지 못한 서버 오류
+                    instance: /operator/identity-changes/03721c5e-75d1-58cf-b2ab-51e5893a1389/review
+                    code: internal
+                    traceId: 4aec8aad3e944790095fa8ffc1018728
+      x-corthex:
+        id: API-082
+        spec:
+        - SPEC-078
+        - SPEC-003
+        omit:
+          "403": 운영자 계정은 모두 같은 권한(첫 버전)
+        kinds:
+          접근:
+          - security
+          - 401:unauthenticated
+          - note:반영·보류는 운영자만(G1)
+          입력:
+          - 422:validation_failed
+          대상:
+          - 404:not_found
+          상태:
+          - example:unchanged
+          - note:예금주가 새 대표자·상호와 달라도 막지 않음(REQ-197)
+          반복:
+          - idem
+          동시:
+          - revision
+          - 409:already_decided
+          외부:
+          - "200"
+          - note:사장님 알림이 못 가도 내 가게 조회의 identityChange로 결과를 봄(G4)
+          노출:
+          - closed
+          화면:
+          - screen
 components:
   schemas:
     Problem:
@@ -22424,6 +23485,7 @@ components:
           - photo_consent_missing
           - payment_account_missing
           - holder_not_verified
+          - identity_change_pending
           - original_not_kept
           - original_erased
           - request_in_progress
@@ -22778,6 +23840,8 @@ components:
       required:
       - name
       - contactPhone
+      - businessAddress
+      - contactEmail
       - businessName
       - representativeName
       - businessRegNo
@@ -22798,6 +23862,19 @@ components:
           maxLength: 14
           pattern: ^[0-9-]{8,14}$
           x-corthex-column: shops.contact_phone
+        businessAddress:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 사업장 주소. 예약 링크 페이지와 확정 안내의 가게 신원 정보(REQ-239, REQ-242). 픽업 장소와 다를 수 있음
+          x-corthex-column: shops.business_address
+        contactEmail:
+          type: string
+          minLength: 3
+          maxLength: 100
+          pattern: ^[^@\s]+@[^@\s]+$
+          description: 전자우편주소. 예약 링크 페이지의 가게 신원 정보(REQ-239)
+          x-corthex-column: shops.contact_email
         businessName:
           type: string
           minLength: 1
@@ -22821,14 +23898,23 @@ components:
           - "null"
           minLength: 1
           maxLength: 40
+          description: 통신판매업 신고번호. 신고를 받은 기관과 함께(REQ-239)
           x-corthex-column: shops.mail_order_reg_no
+        mailOrderAuthority:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 40
+          description: '통신판매업 신고를 받은 기관(예: 서울특별시 마포구청). 신고번호와 함께 있거나 함께 없음: 하나만 있으면 빈 쪽의 필드 오류 required(REQ-239)'
+          x-corthex-column: shops.mail_order_authority
         mailOrderExemption:
           type:
           - string
           - "null"
           minLength: 1
           maxLength: 200
-          description: 통신판매업 신고번호 대신 면제 사유. 둘 가운데 하나는 꼭(REQ-106)
+          description: 통신판매업 신고번호 대신 면제 사유. 둘 가운데 하나는 꼭(REQ-239)
           x-corthex-column: shops.mail_order_exemption
         foodLicenseNo:
           type: string
@@ -22861,7 +23947,7 @@ components:
       additionalProperties: false
     ShopUpdate:
       type: object
-      description: 바꿀 필드만 보냄(baseRevision 밖 한 필드 이상)
+      description: 바꿀 필드만 보냄(baseRevision 밖 한 필드 이상). 상호·대표자·사업자등록번호는 받지 않음(변경 요청 API-080, SPEC-078)
       required:
       - baseRevision
       properties:
@@ -22882,6 +23968,19 @@ components:
           maxLength: 14
           pattern: ^[0-9-]{8,14}$
           x-corthex-column: shops.contact_phone
+        businessAddress:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 사업장 주소. 예약 링크 페이지와 확정 안내의 가게 신원 정보(REQ-239, REQ-242). 픽업 장소와 다를 수 있음
+          x-corthex-column: shops.business_address
+        contactEmail:
+          type: string
+          minLength: 3
+          maxLength: 100
+          pattern: ^[^@\s]+@[^@\s]+$
+          description: 전자우편주소. 예약 링크 페이지의 가게 신원 정보(REQ-239)
+          x-corthex-column: shops.contact_email
         pickupAddress:
           type:
           - string
@@ -22890,6 +23989,30 @@ components:
           maxLength: 200
           description: 픽업 장소. 전날 안내에 포함함(E14, DEC-13)
           x-corthex-column: shops.pickup_address
+        mailOrderRegNo:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 40
+          description: 통신판매업 신고번호. 신고를 받은 기관과 함께(REQ-239)
+          x-corthex-column: shops.mail_order_reg_no
+        mailOrderAuthority:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 40
+          description: '통신판매업 신고를 받은 기관(예: 서울특별시 마포구청). 신고번호와 함께 있거나 함께 없음: 하나만 있으면 빈 쪽의 필드 오류 required(REQ-239)'
+          x-corthex-column: shops.mail_order_authority
+        mailOrderExemption:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 200
+          description: 통신판매업 신고번호 대신 면제 사유. 둘 가운데 하나는 꼭(REQ-239)
+          x-corthex-column: shops.mail_order_exemption
         completionPhotoEnabled:
           type: boolean
           description: 완성 사진 보내기(SPEC-009)
@@ -22898,19 +24021,19 @@ components:
           type: integer
           minimum: 1
           maximum: 720
-          description: 문의 끊김까지 시간(SPEC-025)
+          description: 문의 끊김까지 시간(SPEC-025). 저장한 때부터 씀(REQ-243)
           x-corthex-column: shops.idle_close_hours
         ownerWaitMinutes:
           type: integer
           minimum: 10
           maximum: 1440
-          description: 사장님 답 기다리는 시간(SPEC-024)
+          description: 사장님 답 기다리는 시간(SPEC-024). 그 뒤 시작된 기다림부터 씀(REQ-243)
           x-corthex-column: shops.owner_wait_minutes
         dailyAiCostLimitKrw:
           type: integer
           minimum: 0
           maximum: 1000000
-          description: 하루 AI 비용 한도(REQ-163)
+          description: 하루 AI 비용 한도(REQ-163). 저장한 때부터 그날 쓴 비용과 견줌(REQ-243)
           x-corthex-column: shops.daily_ai_cost_limit_krw
       additionalProperties: false
       minProperties: 2
@@ -22949,16 +24072,19 @@ components:
       additionalProperties: false
     Shop:
       type: object
-      description: 사장님이 보는 가게(그 가게 사장님만)
+      description: 사장님이 보는 가게(그 가게 사장님만). 상호·대표자·사업자등록번호는 운영자가 확인한 지금 값이고, 바꾸는 중이면 새 값은 identityChange에만(REQ-245)
       required:
       - shopId
       - name
       - contactPhone
+      - businessAddress
+      - contactEmail
       - pickupAddress
       - businessName
       - representativeName
       - businessRegNo
       - mailOrderRegNo
+      - mailOrderAuthority
       - mailOrderExemption
       - foodLicenseNo
       - foodBusinessType
@@ -22973,6 +24099,7 @@ components:
       - ownerWaitMinutes
       - dailyAiCostLimitKrw
       - bookingUrl
+      - identityChange
       - createdAt
       - updatedAt
       - revision
@@ -22989,6 +24116,15 @@ components:
           minLength: 8
           maxLength: 14
           pattern: ^[0-9-]{8,14}$
+        businessAddress:
+          type: string
+          minLength: 1
+          maxLength: 200
+        contactEmail:
+          type: string
+          minLength: 3
+          maxLength: 100
+          pattern: ^[^@\s]+@[^@\s]+$
         pickupAddress:
           type:
           - string
@@ -23009,6 +24145,12 @@ components:
           maxLength: 10
           pattern: ^[0-9]{10}$
         mailOrderRegNo:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 40
+        mailOrderAuthority:
           type:
           - string
           - "null"
@@ -23078,6 +24220,11 @@ components:
           - "null"
           format: uri
           maxLength: 2048
+        identityChange:
+          anyOf:
+          - $ref: '#/components/schemas/IdentityChange'
+          - type: "null"
+          description: 가장 최근의 사업자 정보 변경 요청(확인 기다림·반영함·보류). 없으면 null. 알림이 못 가도 영업 신고 화면이 이 값으로 결과를 보임(SPEC-078, G4)
         createdAt:
           type: string
           format: date-time
@@ -23105,6 +24252,332 @@ components:
           description: 'done: 바꿈, unchanged: 이미 그 상태라 아무것도 바꾸지 않음(DEC-03)'
         shop:
           $ref: '#/components/schemas/Shop'
+      additionalProperties: false
+    IdentityChangeInput:
+      type: object
+      description: 상호·대표자·사업자등록번호의 새 값 셋을 모두 보냄(바꾸지 않는 값은 지금 값)
+      required:
+      - baseRevision
+      - businessName
+      - representativeName
+      - businessRegNo
+      - evidencePhotoUploadId
+      properties:
+        baseRevision:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._-]+$
+          description: 화면이 본 기록의 revision. 지금과 다르면 409 version_conflict(DEC-05, G3)
+        businessName:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: 새 상호. 바꾸지 않으면 지금 값
+          x-corthex-column: shop_identity_changes.business_name
+        representativeName:
+          type: string
+          minLength: 1
+          maxLength: 30
+          description: 새 대표자 성명. 바꾸지 않으면 지금 값
+          x-corthex-column: shop_identity_changes.representative_name
+        businessRegNo:
+          type: string
+          minLength: 10
+          maxLength: 10
+          pattern: ^[0-9]{10}$
+          description: 새 사업자등록번호 10자리. 바꾸지 않으면 지금 값. 검증 숫자가 틀리면 필드 오류 checksum_failed
+          x-corthex-column: shop_identity_changes.business_reg_no
+        evidencePhotoUploadId:
+          type: string
+          minLength: 24
+          maxLength: 204
+          pattern: ^upl_[A-Za-z0-9_-]{20,200}$
+          description: 용도 license_photo로 올린 증빙 사진(영업 신고증이나 사업자등록증 한 장)
+      additionalProperties: false
+    IdentityChange:
+      type: object
+      description: '사장님이 보는 사업자 정보 변경 요청: 새 값과 요청할 때의 값, 증빙 사진, 결과(그 가게 사장님만, REQ-245)'
+      required:
+      - changeId
+      - status
+      - businessName
+      - representativeName
+      - businessRegNo
+      - previous
+      - evidencePhotoUrl
+      - holdReason
+      - requestedAt
+      - reviewedAt
+      properties:
+        changeId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - pending
+          - applied
+          - on_hold
+          description: 확인 기다림·반영함·보류(SPEC-078). 반영·보류한 요청은 고치지 않음
+        businessName:
+          type: string
+          minLength: 1
+          maxLength: 60
+        representativeName:
+          type: string
+          minLength: 1
+          maxLength: 30
+        businessRegNo:
+          type: string
+          minLength: 10
+          maxLength: 10
+          pattern: ^[0-9]{10}$
+        previous:
+          type: object
+          description: 요청할 때 확인된 값
+          required:
+          - businessName
+          - representativeName
+          - businessRegNo
+          properties:
+            businessName:
+              type: string
+              minLength: 1
+              maxLength: 60
+            representativeName:
+              type: string
+              minLength: 1
+              maxLength: 30
+            businessRegNo:
+              type: string
+              minLength: 10
+              maxLength: 10
+              pattern: ^[0-9]{10}$
+          additionalProperties: false
+        evidencePhotoUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: 15분 사는 서명 주소. 저장 위치는 포함하지 않음(DEC-09)
+        holdReason:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 200
+          description: 보류 이유. 보류일 때만
+        requestedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+      additionalProperties: false
+    IdentityChangeReview:
+      type: object
+      description: '운영자가 보는 사업자 정보 변경 요청: 지금 값과 새 값, 증빙 사진, 결제 계좌의 은행·예금주·끝 4자리(SPEC-078)'
+      required:
+      - changeId
+      - shop
+      - status
+      - businessName
+      - representativeName
+      - businessRegNo
+      - previous
+      - evidencePhotoUrl
+      - paymentAccount
+      - holdReason
+      - requestedAt
+      - reviewedAt
+      - reviewedBy
+      - revision
+      properties:
+        changeId:
+          type: string
+          format: uuid
+        shop:
+          type: object
+          required:
+          - shopId
+          - name
+          - licenseStatus
+          properties:
+            shopId:
+              type: string
+              format: uuid
+            name:
+              type: string
+              minLength: 1
+              maxLength: 40
+            licenseStatus:
+              type: string
+              enum:
+              - pending
+              - on_hold
+              - verified
+          additionalProperties: false
+        status:
+          type: string
+          enum:
+          - pending
+          - applied
+          - on_hold
+        businessName:
+          type: string
+          minLength: 1
+          maxLength: 60
+        representativeName:
+          type: string
+          minLength: 1
+          maxLength: 30
+        businessRegNo:
+          type: string
+          minLength: 10
+          maxLength: 10
+          pattern: ^[0-9]{10}$
+        previous:
+          type: object
+          description: 요청할 때 확인된 값. 반영하면 가게의 세 값이 이 값과 같을 때만 새 값으로 바꿈(05단계 A37)
+          required:
+          - businessName
+          - representativeName
+          - businessRegNo
+          properties:
+            businessName:
+              type: string
+              minLength: 1
+              maxLength: 60
+            representativeName:
+              type: string
+              minLength: 1
+              maxLength: 30
+            businessRegNo:
+              type: string
+              minLength: 10
+              maxLength: 10
+              pattern: ^[0-9]{10}$
+          additionalProperties: false
+        evidencePhotoUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: 15분 사는 서명 주소. 저장 위치는 포함하지 않음(DEC-09)
+        paymentAccount:
+          type:
+          - object
+          - "null"
+          description: 지금 쓰는 결제 계좌의 은행·예금주·끝 4자리. 없으면 null
+          required:
+          - bankName
+          - holderName
+          - accountLast4
+          - holderMatchesNew
+          properties:
+            bankName:
+              type: string
+              minLength: 1
+              maxLength: 30
+            holderName:
+              type: string
+              minLength: 1
+              maxLength: 30
+            accountLast4:
+              type: string
+              minLength: 4
+              maxLength: 4
+              pattern: ^[0-9]{4}$
+              description: 계좌번호 끝 4자리. 계좌번호 전체는 운영자에게도 보이지 않음(SPEC-003)
+            holderMatchesNew:
+              type: boolean
+              description: 예금주가 새 대표자나 새 상호와 같음. 다르면 운영자가 보고 반영이나 보류를 정함(막지 않음, REQ-197)
+          additionalProperties: false
+        holdReason:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 200
+        requestedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        reviewedBy:
+          anyOf:
+          - $ref: '#/components/schemas/Operator'
+          - type: "null"
+        revision:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._-]+$
+          description: 서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)
+      additionalProperties: false
+    IdentityChangeList:
+      type: object
+      required:
+      - items
+      - nextCursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdentityChangeReview'
+          minItems: 0
+          maxItems: 100
+        nextCursor:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 200
+          pattern: ^[A-Za-z0-9_-]+$
+      additionalProperties: false
+    IdentityChangeReviewInput:
+      type: object
+      required:
+      - baseRevision
+      - decision
+      properties:
+        baseRevision:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._-]+$
+          description: 화면이 본 기록의 revision. 지금과 다르면 409 version_conflict(DEC-05, G3)
+        decision:
+          type: string
+          enum:
+          - applied
+          - on_hold
+          description: 반영·보류(SPEC-078). 반영·보류한 요청은 고치지 않음
+        holdReason:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 보류 이유. decision이 on_hold면 꼭
+          x-corthex-column: shop_identity_changes.hold_reason
+      additionalProperties: false
+    IdentityChangeReviewResult:
+      type: object
+      required:
+      - outcome
+      - change
+      properties:
+        outcome:
+          type: string
+          enum:
+          - done
+          - unchanged
+          description: 'done: 바꿈, unchanged: 이미 그 상태라 아무것도 바꾸지 않음(DEC-03)'
+        change:
+          $ref: '#/components/schemas/IdentityChangeReview'
       additionalProperties: false
     ReviewShopSummary:
       type: object
@@ -23197,10 +24670,13 @@ components:
       - shopId
       - name
       - contactPhone
+      - businessAddress
+      - contactEmail
       - businessName
       - representativeName
       - businessRegNo
       - mailOrderRegNo
+      - mailOrderAuthority
       - mailOrderExemption
       - foodLicenseNo
       - foodBusinessType
@@ -23209,6 +24685,7 @@ components:
       - licenseHoldReason
       - licenseReviewedAt
       - licenseReviewedBy
+      - pendingIdentityChange
       - duplicates
       - paymentAccount
       - createdAt
@@ -23226,6 +24703,15 @@ components:
           minLength: 8
           maxLength: 14
           pattern: ^[0-9-]{8,14}$
+        businessAddress:
+          type: string
+          minLength: 1
+          maxLength: 200
+        contactEmail:
+          type: string
+          minLength: 3
+          maxLength: 100
+          pattern: ^[^@\s]+@[^@\s]+$
         businessName:
           type: string
           minLength: 1
@@ -23240,6 +24726,12 @@ components:
           maxLength: 10
           pattern: ^[0-9]{10}$
         mailOrderRegNo:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 40
+        mailOrderAuthority:
           type:
           - string
           - "null"
@@ -23286,6 +24778,11 @@ components:
           anyOf:
           - $ref: '#/components/schemas/Operator'
           - type: "null"
+        pendingIdentityChange:
+          anyOf:
+          - $ref: '#/components/schemas/IdentityChangeReview'
+          - type: "null"
+          description: 확인을 기다리는 사업자 정보 변경 요청. 있으면 먼저 반영·보류(API-082)한 뒤 영업 신고 확인됨을 남김(SPEC-003, SPEC-078). 없으면 null
         duplicates:
           type: array
           items:
@@ -25348,14 +26845,17 @@ components:
       properties:
         shop:
           type: object
-          description: 가게 신원 정보(REQ-106)
+          description: 가게 신원 정보(전자상거래법 제13조①, REQ-239). 상호·대표자·사업자등록번호는 운영자가 확인한 값(SPEC-078)
           required:
           - name
           - businessName
           - representativeName
+          - businessAddress
           - contactPhone
+          - contactEmail
           - businessRegNo
           - mailOrderRegNo
+          - mailOrderAuthority
           - mailOrderExemption
           - pickupAddress
           properties:
@@ -25371,17 +26871,32 @@ components:
               type: string
               minLength: 1
               maxLength: 30
+            businessAddress:
+              type: string
+              minLength: 1
+              maxLength: 200
             contactPhone:
               type: string
               minLength: 8
               maxLength: 14
               pattern: ^[0-9-]{8,14}$
+            contactEmail:
+              type: string
+              minLength: 3
+              maxLength: 100
+              pattern: ^[^@\s]+@[^@\s]+$
             businessRegNo:
               type: string
               minLength: 10
               maxLength: 10
               pattern: ^[0-9]{10}$
             mailOrderRegNo:
+              type:
+              - string
+              - "null"
+              minLength: 1
+              maxLength: 40
+            mailOrderAuthority:
               type:
               - string
               - "null"
@@ -30208,9 +31723,12 @@ components:
         - API-008
         - API-010
         - API-011
+        - API-080
         - API-012
         - API-014
         - API-015
+        - API-081
+        - API-082
         - API-074
         - API-075
         - API-077
@@ -30263,7 +31781,9 @@ components:
         - API-008
         - API-010
         - API-011
+        - API-080
         - API-014
+        - API-082
         - API-077
         - API-017
         - API-021
@@ -30329,10 +31849,13 @@ components:
         - API-009
         - API-010
         - API-011
+        - API-080
         - API-012
         - API-013
         - API-014
         - API-015
+        - API-081
+        - API-082
         - API-074
         - API-075
         - API-076
@@ -30426,6 +31949,7 @@ components:
         operations:
         - API-013
         - API-014
+        - API-082
         - API-074
         - API-075
         - API-076
@@ -30467,6 +31991,7 @@ components:
         - API-009
         - API-010
         - API-011
+        - API-080
         - API-016
         - API-017
         - API-018
@@ -30528,7 +32053,9 @@ components:
         operations:
         - API-010
         - API-011
+        - API-080
         - API-014
+        - API-082
         - API-017
         - API-021
         - API-025
@@ -30581,6 +32108,7 @@ components:
         spec: G3
         operations:
         - API-014
+        - API-082
         - API-042
         - API-046
         - API-047
@@ -30679,6 +32207,15 @@ components:
         spec: SPEC-006
         operations:
         - API-025
+      identity_change_pending:
+        status: 409
+        meaning: 확인을 기다리는 사업자 정보 변경 요청이 있음(가게마다 하나, SPEC-078). 사장님의 새 변경 요청은 남기지 않고, 운영자의 영업 신고 확인됨은 그 요청을 먼저 반영·보류해야 남김(SPEC-003). 아무것도 바꾸지 않음
+        message: 확인을 기다리는 변경 요청이 있어요
+        client: 그 변경 요청을 보임(사장님은 영업 신고 화면의 identityChange, 운영자는 pendingIdentityChange로 가는 링크)
+        spec: SPEC-078
+        operations:
+        - API-080
+        - API-014
       original_not_kept:
         status: 409
         meaning: 원래 값을 두지 않는 값(카드번호의 끝 4자리 밖, 주민등록번호처럼 보이는 숫자와 무엇인지 모르는 긴 숫자, REQ-192)이라 열 수 없음. 접속기록에 열기 행을 남기지 않음
@@ -30705,7 +32242,9 @@ components:
         - API-008
         - API-010
         - API-011
+        - API-080
         - API-014
+        - API-082
         - API-077
         - API-017
         - API-021
@@ -30779,10 +32318,13 @@ components:
         - API-009
         - API-010
         - API-011
+        - API-080
         - API-012
         - API-013
         - API-014
         - API-015
+        - API-081
+        - API-082
         - API-074
         - API-075
         - API-076
@@ -30871,6 +32413,7 @@ components:
         operations:
         - API-007
         - API-008
+        - API-080
     fieldErrors:
       required: 꼭 넣어야 함
       too_short: 글자 수나 개수가 모자람
@@ -31239,7 +32782,7 @@ components:
         - API-072
       notice_shown:
         spec: SPEC-066
-        meaning: Event API가 넘긴 안내 키로 저장된 안내의 글과 버튼을 보임(템플릿, AI 없음, 광고 없음). 완성 사진 안내는 사진과 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', SPEC-053). 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드(맞춤 주문은 요청한 견적·정한 금액·사유, 변경은 바뀌는 내용·지금 금액과 새 금액·차액·변경 마감, SPEC-076)
+        meaning: Event API가 넘긴 안내 키로 저장된 안내의 글과 버튼을 보임(템플릿, AI 없음, 광고 없음). 확정 안내는 주문 내용·픽업 일시·결제가 확인된 금액·가게의 상호·대표자·사업장 주소·전화번호를 담은 글과 그 주문의 취소·환불 규정 글(SPEC-036, REQ-242). 완성 사진 안내는 사진과 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', SPEC-053). 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드(맞춤 주문은 요청한 견적·정한 금액·사유, 변경은 바뀌는 내용·지금 금액과 새 금액·차액·변경 마감, SPEC-076)
         message: '(그 안내의 글: 확정 안내, 결제 결과·변경 결과·취소·환불·전날·후기 부탁 안내 등)'
         operations:
         - API-073
@@ -31387,7 +32930,7 @@ components:
       decided: 확정(2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)', 설계 재검토 H7)
     - id: DEC-22
       title: 주문 요청 카드는 규정 글과 요약 카드를 나눠 보냄
-      choice: '주문 요청 확인 카드(API-070 card_shown, API-071 orderer_saved·card_stale·card_expired)는 한 응답의 출력으로 그 버전의 취소·환불 규정 글(simpleText 하나나 둘)을 먼저, 요약 카드(textCard: 요약과 알레르기 답이나 ''알레르기 정보 동의 안 함'', 버튼 둘. 2026-11-13 설계 재검토 H5·H10으로 사진 게시 동의 줄과 버튼을 빼고 알레르기 정보 카드를 앞에 둠)를 끝에 둠. 규정 글은 ''취소·환불 규정(운영규정 버전 N)'' 줄, 취소·환불 조문마다 ''· 제목: 조건 → 효과'' 한 줄, 끝에 ''주문제작이라 청약철회가 제한될 수 있어요''. 1,000자를 넘으면 조문 사이에서 나눠 첫 줄 끝에 1/2·2/2를 붙이고 청약철회 문장은 둘째 글 끝에 둠. 자르지 않고, 글 둘에 들어가지 않는 운영규정은 저장 때 422 `exceeds_card_limit`(API-021)'
+      choice: '주문 요청 확인 카드(API-070 card_shown, API-071 orderer_saved·card_stale·card_expired)는 한 응답의 출력으로 그 버전의 취소·환불 규정 글(simpleText 하나나 둘)을 먼저, 요약 카드(textCard: 요약과 알레르기 답이나 ''알레르기 정보 동의 안 함'', 버튼 둘. 2026-11-13 설계 재검토 H5·H10으로 사진 게시 동의 줄과 버튼을 빼고 알레르기 정보 카드를 앞에 둠)를 끝에 둠. 규정 글은 ''취소·환불 규정(운영규정 버전 N)'' 줄, 취소·환불 조문마다 ''· 제목: 조건 → 효과'' 한 줄, 끝에 ''주문제작이라 청약철회가 제한될 수 있어요''와 ''미성년자가 법정대리인의 동의 없이 한 주문은 본인이나 법정대리인이 취소할 수 있어요''(2026-11-14 설계 재검토 M11로 더함, REQ-240). 1,000자를 넘으면 조문 사이에서 나눠 첫 줄 끝에 1/2·2/2를 붙이고 청약철회 문장과 미성년자 취소 고지는 둘째 글 끝에 둠. 자르지 않고, 글 둘에 들어가지 않는 운영규정은 저장 때 422 `exceeds_card_limit`(API-021)'
       why: 카드 설명은 400자라 규정을 다 담지 못하고 손님이 잘린 규정에 동의하게 됨(RD-03). 카카오 응답의 출력은 3개까지라 글 둘과 카드 하나가 한도(카카오 응답 형식 문서)
       alt: '규정은 링크로: 카카오 안에서 동의할 글이 보이지 않음. 규정을 줄여 카드에 넣음: 동의한 글이 저장된 버전과 달라짐'
       decided: 확정(2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)', 설계 재검토 H9)
@@ -31849,3 +33392,59 @@ components:
       why: AI 답의 전체 기한은 콜백 유효 시간 - 5초가 아니라 받은 때부터 55초(콜백 문서는 5분, OPEN-2), 한 차례의 모델 호출이 8번에 닿으면 ai_limit_reached로 에스컬레이션(AI-1, 설계 재검토 RD-15·RC-07)
       decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M16·M18, 검토자의 고치는 방향대로)
       client: 손님에게 보이는 말은 그대로. 결과 이름의 뜻이라 A13은 찾지 않아 여기 적음
+    - what: '꼭 넣을 필드 더함: ShopRegistration.businessAddress'
+      why: 예약 링크 페이지와 확정 안내의 가게 신원 정보에 사업장 주소(전자상거래법 제13조①, REQ-239, REQ-242, 설계 재검토 RA-05)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 가게 등록 화면(SCR-015)이 사업장 주소를 함께 보냄. 없으면 422 /businessAddress required
+    - what: '꼭 넣을 필드 더함: ShopRegistration.contactEmail'
+      why: 예약 링크 페이지의 가게 신원 정보에 전자우편주소(REQ-239, 설계 재검토 RA-05)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 가게 등록 화면(SCR-015)이 전자우편주소를 함께 보냄. 없으면 422 /contactEmail required
+    - what: '꼭 넣을 필드 더함: Shop.businessAddress'
+      why: 사업장 주소(REQ-239). 가게 설정에서 바로 고침(REQ-244)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 응답에만 더한 필드. 가게 설정(SCR-034)이 보이고 고침
+    - what: '꼭 넣을 필드 더함: Shop.contactEmail'
+      why: 전자우편주소(REQ-239). 가게 설정에서 바로 고침(REQ-244)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 응답에만 더한 필드. 가게 설정(SCR-034)이 보이고 고침
+    - what: '꼭 넣을 필드 더함: Shop.mailOrderAuthority'
+      why: 통신판매업 신고를 받은 기관, 신고번호와 함께(REQ-239)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 응답에만 더한 필드. 가게 설정(SCR-034)이 보이고 고침
+    - what: '꼭 넣을 필드 더함: Shop.identityChange'
+      why: 가장 최근의 사업자 정보 변경 요청. 상호·대표자·사업자등록번호는 운영자가 반영해야 바뀜(REQ-245, SPEC-078, 설계 재검토 RB-12)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 응답에만 더한 필드. 영업 신고 화면(SCR-035)이 확인 기다림·보류 이유를 보임
+    - what: '꼭 넣을 필드 더함: ReviewShopDetail.businessAddress'
+      why: 운영자가 가게 신원 정보를 모두 봄(REQ-239)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 응답에만 더한 필드
+    - what: '꼭 넣을 필드 더함: ReviewShopDetail.contactEmail'
+      why: 운영자가 가게 신원 정보를 모두 봄(REQ-239)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 응답에만 더한 필드
+    - what: '꼭 넣을 필드 더함: ReviewShopDetail.mailOrderAuthority'
+      why: 운영자가 가게 신원 정보를 모두 봄(REQ-239)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 응답에만 더한 필드
+    - what: '꼭 넣을 필드 더함: ReviewShopDetail.pendingIdentityChange'
+      why: 확인을 기다리는 사업자 정보 변경 요청을 먼저 반영·보류한 뒤 영업 신고를 정함(SPEC-003, SPEC-078)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 응답에만 더한 필드. 영업 신고 확인(SCR-048)이 그 요청과 사업자 정보 변경 확인(SCR-047)으로 가는 링크를 보임
+    - what: '꼭 넣을 필드 더함: BookingPage.shop의 businessAddress·contactEmail·mailOrderAuthority'
+      why: 예약 링크 페이지의 가게 신원 정보를 전자상거래법 제13조① 그대로(REQ-239, REQ-106을 바꿈)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 응답에만 더한 필드. 예약 링크 페이지(SCR-001)가 가게 정보에 보임. 안쪽 필드라 A13은 찾지 않아 여기 적음
+    - what: '값의 뜻이 바뀜: 주문 요청 확인 카드의 규정 글(API-070 card_shown, API-071 orderer_saved·card_stale·card_expired)'
+      why: 규정 글 끝에 미성년자 취소 고지 한 줄을 더함(전자상거래법 제13조③, REQ-240, DEC-22)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 손님에게 보이는 글만 바뀜. 응답 형식은 그대로라 A13은 찾지 않아 여기 적음
+    - what: '값의 뜻이 바뀜: API-073 notice_shown의 확정 안내'
+      why: 확정 안내에 결제가 확인된 금액·가게의 상호·대표자·사업장 주소·전화번호와 그 주문의 취소·환불 규정 글을 담음(전자상거래법 제13조②, REQ-242, REQ-108을 바꿈)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 손님에게 보이는 글만 바뀜(simpleText 둘). 응답 형식은 그대로라 A13은 찾지 않아 여기 적음
+    - what: '값의 뜻이 바뀜: API-014 확인됨'
+      why: 확인을 기다리는 사업자 정보 변경 요청이 있으면 확인됨을 남기지 않고 409 identity_change_pending(SPEC-003, SPEC-078)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
+      client: 영업 신고 확인(SCR-048)이 그 요청을 먼저 정하게 함. 있던 409에 오류 코드를 더한 것이라 A13은 찾지 않아 여기 적음

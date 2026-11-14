@@ -106,6 +106,7 @@ CHANGE_REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="변경 요청의 잠
 UPLOAD_ID = string(24, 204, r"^upl_[A-Za-z0-9_-]{20,200}$", desc="POST /owner/uploads가 준 ID. 1시간 안에 써야 함(DEC-09)")
 ORDER_NO = string(6, 12, r"^[0-9A-Z]{6,12}$", desc="주문번호. 손님에게 보이는 유일한 번호(G6)")
 PHONE_RE = r"^[0-9-]{8,14}$"
+EMAIL_RE = r"^[^@\s]+@[^@\s]+$"
 HHMM_RE = r"^([01][0-9]|2[0-3]):[0-5][0-9]$"
 NOTICE_RE = r"^((0[89]|1[0-9]):[0-5][0-9]|20:([0-4][0-9]|50))$"
 ACCOUNT_RE = r"^-*([0-9]-*){10,16}$"
@@ -229,11 +230,15 @@ S["Upload"] = all_required({
 _shop_fields = {
     "name": string(1, 40, col="shops.name"),
     "contactPhone": string(8, 14, PHONE_RE, col="shops.contact_phone"),
+    "businessAddress": string(1, 200, col="shops.business_address", desc="사업장 주소. 예약 링크 페이지와 확정 안내의 가게 신원 정보(REQ-239, REQ-242). 픽업 장소와 다를 수 있음"),
+    "contactEmail": string(3, 100, EMAIL_RE, col="shops.contact_email", desc="전자우편주소. 예약 링크 페이지의 가게 신원 정보(REQ-239)"),
     "businessName": string(1, 60, col="shops.business_name"),
     "representativeName": string(1, 30, col="shops.representative_name"),
     "businessRegNo": string(10, 10, r"^[0-9]{10}$", col="shops.business_reg_no", desc="사업자등록번호 10자리. 검증 숫자가 틀리면 필드 오류 checksum_failed"),
-    "mailOrderRegNo": nullable(string(1, 40, col="shops.mail_order_reg_no")),
-    "mailOrderExemption": nullable(string(1, 200, col="shops.mail_order_exemption", desc="통신판매업 신고번호 대신 면제 사유. 둘 가운데 하나는 꼭(REQ-106)")),
+    "mailOrderRegNo": nullable(string(1, 40, col="shops.mail_order_reg_no", desc="통신판매업 신고번호. 신고를 받은 기관과 함께(REQ-239)")),
+    "mailOrderAuthority": nullable(string(1, 40, col="shops.mail_order_authority",
+                                          desc="통신판매업 신고를 받은 기관(예: 서울특별시 마포구청). 신고번호와 함께 있거나 함께 없음: 하나만 있으면 빈 쪽의 필드 오류 required(REQ-239)")),
+    "mailOrderExemption": nullable(string(1, 200, col="shops.mail_order_exemption", desc="통신판매업 신고번호 대신 면제 사유. 둘 가운데 하나는 꼭(REQ-239)")),
     "foodLicenseNo": string(1, 30, col="shops.food_license_no"),
     "foodBusinessType": enum(["instant_sale_manufacturing", "bakery"], col="shops.food_business_type",
                              desc="즉석판매제조·가공업, 제과점영업. 그 밖은 첫 버전에서 받지 않음(필드 오류 not_allowed)"),
@@ -242,19 +247,24 @@ _shop_fields = {
 S["ShopRegistration"] = obj(dict(_shop_fields, **{
     "entrustmentTermsVersion": string(1, 20, r"^[0-9A-Za-z.-]+$", col="shops.entrustment_terms_version", desc="화면이 보여 준 개인정보 처리 위탁·재위탁 조건의 버전"),
     "entrustmentConsent": boolean("그 조건에 동의함. false면 422 consent_required, 넣은 값도 남기지 않음(REQ-107)"),
-}), ["name", "contactPhone", "businessName", "representativeName", "businessRegNo", "foodLicenseNo", "foodBusinessType",
+}), ["name", "contactPhone", "businessAddress", "contactEmail", "businessName", "representativeName", "businessRegNo", "foodLicenseNo", "foodBusinessType",
      "licensePhotoUploadId", "entrustmentTermsVersion", "entrustmentConsent"])
 
 S["ShopUpdate"] = obj({
     "baseRevision": BASE_REVISION,
     "name": string(1, 40, col="shops.name"),
     "contactPhone": string(8, 14, PHONE_RE, col="shops.contact_phone"),
+    "businessAddress": _shop_fields["businessAddress"],
+    "contactEmail": _shop_fields["contactEmail"],
     "pickupAddress": nullable(string(1, 200, col="shops.pickup_address", desc="픽업 장소. 전날 안내에 포함함(E14, DEC-13)")),
+    "mailOrderRegNo": _shop_fields["mailOrderRegNo"],
+    "mailOrderAuthority": _shop_fields["mailOrderAuthority"],
+    "mailOrderExemption": _shop_fields["mailOrderExemption"],
     "completionPhotoEnabled": boolean("완성 사진 보내기(SPEC-009)", col="shops.completion_photo_enabled"),
-    "idleCloseHours": integer(1, 720, col="shops.idle_close_hours", desc="문의 끊김까지 시간(SPEC-025)"),
-    "ownerWaitMinutes": integer(10, 1440, col="shops.owner_wait_minutes", desc="사장님 답 기다리는 시간(SPEC-024)"),
-    "dailyAiCostLimitKrw": integer(0, 1000000, col="shops.daily_ai_cost_limit_krw", desc="하루 AI 비용 한도(REQ-163)"),
-}, ["baseRevision"], desc="바꿀 필드만 보냄(baseRevision 밖 한 필드 이상)", minProperties=2)
+    "idleCloseHours": integer(1, 720, col="shops.idle_close_hours", desc="문의 끊김까지 시간(SPEC-025). 저장한 때부터 씀(REQ-243)"),
+    "ownerWaitMinutes": integer(10, 1440, col="shops.owner_wait_minutes", desc="사장님 답 기다리는 시간(SPEC-024). 그 뒤 시작된 기다림부터 씀(REQ-243)"),
+    "dailyAiCostLimitKrw": integer(0, 1000000, col="shops.daily_ai_cost_limit_krw", desc="하루 AI 비용 한도(REQ-163). 저장한 때부터 그날 쓴 비용과 견줌(REQ-243)"),
+}, ["baseRevision"], desc="바꿀 필드만 보냄(baseRevision 밖 한 필드 이상). 상호·대표자·사업자등록번호는 받지 않음(변경 요청 API-080, SPEC-078)", minProperties=2)
 
 S["LicenseResubmission"] = obj({
     "baseRevision": BASE_REVISION,
@@ -267,11 +277,14 @@ S["Shop"] = all_required({
     "shopId": UUID,
     "name": string(1, 40),
     "contactPhone": string(8, 14, PHONE_RE),
+    "businessAddress": string(1, 200),
+    "contactEmail": string(3, 100, EMAIL_RE),
     "pickupAddress": nullable(string(1, 200)),
     "businessName": string(1, 60),
     "representativeName": string(1, 30),
     "businessRegNo": string(10, 10, r"^[0-9]{10}$"),
     "mailOrderRegNo": nullable(string(1, 40)),
+    "mailOrderAuthority": nullable(string(1, 40)),
     "mailOrderExemption": nullable(string(1, 200)),
     "foodLicenseNo": string(1, 30),
     "foodBusinessType": enum(["instant_sale_manufacturing", "bakery"]),
@@ -286,12 +299,65 @@ S["Shop"] = all_required({
     "ownerWaitMinutes": integer(10, 1440),
     "dailyAiCostLimitKrw": integer(0, 1000000),
     "bookingUrl": nullable(URL),
+    "identityChange": dict(nullable(ref("IdentityChange")), description="가장 최근의 사업자 정보 변경 요청(확인 기다림·반영함·보류). 없으면 null. 알림이 못 가도 영업 신고 화면이 이 값으로 결과를 보임(SPEC-078, G4)"),
     "createdAt": DT,
     "updatedAt": DT,
     "revision": REVISION,
-}, desc="사장님이 보는 가게(그 가게 사장님만)")
+}, desc="사장님이 보는 가게(그 가게 사장님만). 상호·대표자·사업자등록번호는 운영자가 확인한 지금 값이고, 바꾸는 중이면 새 값은 identityChange에만(REQ-245)")
 
 S["ShopResult"] = all_required({"outcome": outcome(("done", "unchanged")), "shop": ref("Shop")})
+
+# ── 사업자 정보 변경 요청 (설계 재검토 M14, SPEC-078) ─────────────────────────────
+_IDENTITY = {
+    "businessName": string(1, 60),
+    "representativeName": string(1, 30),
+    "businessRegNo": string(10, 10, r"^[0-9]{10}$"),
+}
+S["IdentityChangeInput"] = obj({
+    "baseRevision": BASE_REVISION,
+    "businessName": string(1, 60, col="shop_identity_changes.business_name", desc="새 상호. 바꾸지 않으면 지금 값"),
+    "representativeName": string(1, 30, col="shop_identity_changes.representative_name", desc="새 대표자 성명. 바꾸지 않으면 지금 값"),
+    "businessRegNo": string(10, 10, r"^[0-9]{10}$", col="shop_identity_changes.business_reg_no",
+                            desc="새 사업자등록번호 10자리. 바꾸지 않으면 지금 값. 검증 숫자가 틀리면 필드 오류 checksum_failed"),
+    "evidencePhotoUploadId": dict(UPLOAD_ID, description="용도 license_photo로 올린 증빙 사진(영업 신고증이나 사업자등록증 한 장)"),
+}, ["baseRevision", "businessName", "representativeName", "businessRegNo", "evidencePhotoUploadId"],
+   desc="상호·대표자·사업자등록번호의 새 값 셋을 모두 보냄(바꾸지 않는 값은 지금 값)")
+S["IdentityChange"] = all_required(dict({
+    "changeId": UUID,
+    "status": enum(["pending", "applied", "on_hold"], desc="확인 기다림·반영함·보류(SPEC-078). 반영·보류한 요청은 고치지 않음"),
+}, **_IDENTITY, **{
+    "previous": all_required(dict(_IDENTITY), desc="요청할 때 확인된 값"),
+    "evidencePhotoUrl": SIGNED_URL,
+    "holdReason": nullable(string(1, 200, desc="보류 이유. 보류일 때만")),
+    "requestedAt": DT,
+    "reviewedAt": nullable(DT),
+}), desc="사장님이 보는 사업자 정보 변경 요청: 새 값과 요청할 때의 값, 증빙 사진, 결과(그 가게 사장님만, REQ-245)")
+S["IdentityChangeReview"] = all_required(dict({
+    "changeId": UUID,
+    "shop": all_required({"shopId": UUID, "name": string(1, 40), "licenseStatus": enum(["pending", "on_hold", "verified"])}),
+    "status": enum(["pending", "applied", "on_hold"]),
+}, **_IDENTITY, **{
+    "previous": all_required(dict(_IDENTITY), desc="요청할 때 확인된 값. 반영하면 가게의 세 값이 이 값과 같을 때만 새 값으로 바꿈(05단계 A37)"),
+    "evidencePhotoUrl": SIGNED_URL,
+    "paymentAccount": nullable(all_required({
+        "bankName": string(1, 30),
+        "holderName": string(1, 30),
+        "accountLast4": string(4, 4, r"^[0-9]{4}$", desc="계좌번호 끝 4자리. 계좌번호 전체는 운영자에게도 보이지 않음(SPEC-003)"),
+        "holderMatchesNew": boolean("예금주가 새 대표자나 새 상호와 같음. 다르면 운영자가 보고 반영이나 보류를 정함(막지 않음, REQ-197)"),
+    }, desc="지금 쓰는 결제 계좌의 은행·예금주·끝 4자리. 없으면 null")),
+    "holdReason": nullable(string(1, 200)),
+    "requestedAt": DT,
+    "reviewedAt": nullable(DT),
+    "reviewedBy": nullable(ref("Operator")),
+    "revision": REVISION,
+}), desc="운영자가 보는 사업자 정보 변경 요청: 지금 값과 새 값, 증빙 사진, 결제 계좌의 은행·예금주·끝 4자리(SPEC-078)")
+S["IdentityChangeList"] = all_required({"items": arr(ref("IdentityChangeReview"), 0, 100), "nextCursor": nullable(CURSOR)})
+S["IdentityChangeReviewInput"] = obj({
+    "baseRevision": BASE_REVISION,
+    "decision": enum(["applied", "on_hold"], desc="반영·보류(SPEC-078). 반영·보류한 요청은 고치지 않음"),
+    "holdReason": string(1, 200, col="shop_identity_changes.hold_reason", desc="보류 이유. decision이 on_hold면 꼭"),
+}, ["baseRevision", "decision"])
+S["IdentityChangeReviewResult"] = all_required({"outcome": outcome(), "change": ref("IdentityChangeReview")})
 
 # ── 운영자 ──────────────────────────────────────────────────────────────────
 S["ReviewShopSummary"] = all_required({
@@ -314,10 +380,13 @@ S["ReviewShopDetail"] = all_required({
     "shopId": UUID,
     "name": string(1, 40),
     "contactPhone": string(8, 14, PHONE_RE),
+    "businessAddress": string(1, 200),
+    "contactEmail": string(3, 100, EMAIL_RE),
     "businessName": string(1, 60),
     "representativeName": string(1, 30),
     "businessRegNo": string(10, 10, r"^[0-9]{10}$"),
     "mailOrderRegNo": nullable(string(1, 40)),
+    "mailOrderAuthority": nullable(string(1, 40)),
     "mailOrderExemption": nullable(string(1, 200)),
     "foodLicenseNo": string(1, 30),
     "foodBusinessType": enum(["instant_sale_manufacturing", "bakery"]),
@@ -326,6 +395,8 @@ S["ReviewShopDetail"] = all_required({
     "licenseHoldReason": nullable(string(1, 200)),
     "licenseReviewedAt": nullable(DT),
     "licenseReviewedBy": nullable(ref("Operator")),
+    "pendingIdentityChange": dict(nullable(ref("IdentityChangeReview")),
+                                  description="확인을 기다리는 사업자 정보 변경 요청. 있으면 먼저 반영·보류(API-082)한 뒤 영업 신고 확인됨을 남김(SPEC-003, SPEC-078). 없으면 null"),
     "duplicates": arr(all_required({"shopId": UUID, "name": string(1, 40), "licenseStatus": enum(["pending", "on_hold", "verified"])}), 0, 20,
                       desc="같은 사업자등록번호의 다른 가게"),
     "paymentAccount": nullable(all_required({
@@ -685,10 +756,11 @@ S["PublicPriceOption"] = all_required({
 S["BookingPage"] = all_required({
     "shop": all_required({
         "name": string(1, 40), "businessName": string(1, 60), "representativeName": string(1, 30),
-        "contactPhone": string(8, 14, PHONE_RE), "businessRegNo": string(10, 10, r"^[0-9]{10}$"),
-        "mailOrderRegNo": nullable(string(1, 40)), "mailOrderExemption": nullable(string(1, 200)),
+        "businessAddress": string(1, 200), "contactPhone": string(8, 14, PHONE_RE), "contactEmail": string(3, 100, EMAIL_RE),
+        "businessRegNo": string(10, 10, r"^[0-9]{10}$"),
+        "mailOrderRegNo": nullable(string(1, 40)), "mailOrderAuthority": nullable(string(1, 40)), "mailOrderExemption": nullable(string(1, 200)),
         "pickupAddress": nullable(string(1, 200)),
-    }, desc="가게 신원 정보(REQ-106)"),
+    }, desc="가게 신원 정보(전자상거래법 제13조①, REQ-239). 상호·대표자·사업자등록번호는 운영자가 확인한 값(SPEC-078)"),
     "priceList": all_required({
         "version": integer(1, 2147483647),
         "options": arr(ref("PublicPriceOption"), 0, 100),
