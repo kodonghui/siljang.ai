@@ -446,6 +446,11 @@ def f_chat(*bubbles):
     return ("chat+", list(bubbles))
 
 
+def f_chat_only(*bubbles):
+    """normal의 대화(예: 주문 카드)가 그 상태에서는 없을 때: 대화 전체를 이것으로 바꿈(설계 재검토 낮음 RE-13)."""
+    return ("chat=", list(bubbles))
+
+
 def f_blocks(*blocks):
     return ("blocks", list(blocks))
 

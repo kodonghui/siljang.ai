@@ -307,6 +307,8 @@ def screen_md(m, nodes, mockups=None):
     parent = node["parent"]
     lines = ["# %s %s" % (sid, node["name"]), ""]
     lines.append("- 경로: `%s`" % node["path"])
+    if node.get("also_paths"):  # 사이트맵의 둘째 경로(설계 재검토 낮음 RE-14)
+        lines.append("- 다른 경로: %s" % ", ".join("`%s`" % p for p in node["also_paths"]))
     lines.append("- 접근 권한: %s" % node["access"])
     lines.append("- 상위 화면: %s" % ("%s %s" % (parent, nodes[parent]["name"]) if parent else "없음(루트)"))
     lines.append("- 화면 레이아웃: %s" % SHELL_NAME[s["shell"]])
@@ -598,8 +600,8 @@ def content_html(sid, s, frame, w, state):
         _, title, body, buttons = frame
         return '<div class="box"><div class="box-t">%s</div><p>%s</p>%s</div>' % (t(title), t(body), r_btns(buttons, len(buttons) - 1 if buttons else None, None) if buttons else "")
     tail, extras = "", True
-    if kind == "chat+":
-        htmls = [r_chat(list(b[1]) + list(frame[1])) if b[0] == "chat" else r_block(b, w) for b in blocks]
+    if kind in ("chat+", "chat="):  # chat=은 normal 대화 없이 그 상태의 대화 전체(설계 재검토 낮음 RE-13)
+        htmls = [r_chat((list(b[1]) if kind == "chat+" else []) + list(frame[1])) if b[0] == "chat" else r_block(b, w) for b in blocks]
         if not any(b[0] == "chat" for b in blocks):
             raise Stop("%s#%s: chat+ 프레임인데 레이아웃에 대화가 없음" % (sid, state))
     elif kind == "replace":
