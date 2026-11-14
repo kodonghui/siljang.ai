@@ -31,6 +31,9 @@ from build_screens import bkey, plan_wide  # noqa: E402  (screens_*.py도 함께
 from screen_samples import S as SAMPLES, SERVICE, SHOP, SHOP_INFO  # noqa: E402
 from api_examples import trace  # noqa: E402  (06단계 추적 ID: 32자리 16진수)
 
+# 예약 링크 페이지 1280의 가게 정보(gen.A.aside)를 가게 신원 정보(REQ-239, 설계 재검토 M11)로. 후보 시안은 gen.py가 따로 그려 그대로
+gen.SHOP_INFO = SHOP_INFO
+
 OUT = HERE / "canvas" / "project"
 HEIGHTS = HERE / "heights.json"
 KEY_STATES = ("empty", "error", "confirm", "expired", "not-sent", "deferred")
@@ -691,6 +694,8 @@ def render_block(b, cx, first=False, head=None):
             title = None
         return T.sect(w, T.form(sid, b[1], b[2], d, w), title, d.get("meta", ""), first=first)
     if k == "btns":
+        if isinstance(d, dict) and d.get("hidden"):  # 조건이 있을 때만 보이는 버튼 줄(예: SCR-048 '반영'·'보류')
+            return ""
         return T.sect(w, T.btnrow(b[1], b[2], b[3], wide=w == 1280), None, first=first)
     if k == "banner":
         return T.sect(w, T.bannerx(d.get("text", b[1])), None, first=first)
