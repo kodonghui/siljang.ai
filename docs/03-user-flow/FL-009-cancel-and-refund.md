@@ -5,7 +5,7 @@ notion: https://app.notion.com/p/415bf16cc3ec81459f12e9633dafd877
 
 # FL-009 주문 취소하고 환불받기
 
-채우는 요구사항: REQ-049, REQ-068, REQ-069, REQ-079, REQ-084, REQ-085, REQ-113, REQ-120, REQ-122, REQ-125, REQ-152, REQ-154, REQ-165, REQ-166, REQ-167, REQ-168, REQ-170, REQ-171, REQ-172, REQ-173, REQ-215, REQ-222, REQ-251, REQ-252, REQ-253
+채우는 요구사항: REQ-049, REQ-068, REQ-069, REQ-079, REQ-084, REQ-085, REQ-113, REQ-120, REQ-122, REQ-125, REQ-152, REQ-154, REQ-165, REQ-166, REQ-167, REQ-168, REQ-170, REQ-171, REQ-172, REQ-173, REQ-215, REQ-222, REQ-251, REQ-252, REQ-253, REQ-255
 
 | 항목 | 내용 |
 | --- | --- |
@@ -27,7 +27,7 @@ flowchart TD
   X3["취소하기 전에 지금 취소하면<br/>받는 환불 금액을 보여 줌<br/>REQ-068"]
   D1{"그래도 취소하나?"}
   E0(["끝: 주문은 그대로"])
-  X4["주문을 요청한 손님이 취소를 누름:<br/>손님이 취소함 (Claude 판단 R9, R16)<br/>REQ-251"]
+  X4["주문을 요청한 손님이 취소를 누름:<br/>손님이 취소함 (Claude 판단 R9, R16)<br/>REQ-251, REQ-255"]
   X5["받은 금액 전액을<br/>환불 계산값으로 냄<br/>REQ-069"]
   G2["손님에게 가게 사정 취소를 알림<br/>REQ-152"]
   X6["가예약 해제됨, 장부 행을 적거나 고침<br/>REQ-222, REQ-125"]

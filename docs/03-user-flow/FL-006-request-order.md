@@ -5,7 +5,7 @@ notion: https://app.notion.com/p/415bf16cc3ec81a29309dd1f69e1c6ec
 
 # FL-006 주문 요청하기
 
-채우는 요구사항: REQ-004, REQ-005, REQ-012, REQ-018, REQ-035, REQ-038, REQ-039, REQ-045, REQ-046, REQ-051, REQ-052, REQ-053, REQ-054, REQ-055, REQ-056, REQ-057, REQ-058, REQ-059, REQ-114, REQ-121, REQ-132, REQ-156, REQ-175, REQ-178, REQ-200, REQ-201, REQ-202, REQ-203, REQ-204, REQ-205, REQ-213, REQ-220, REQ-221, REQ-225, REQ-226, REQ-229, REQ-230, REQ-240
+채우는 요구사항: REQ-004, REQ-005, REQ-012, REQ-018, REQ-035, REQ-038, REQ-039, REQ-045, REQ-046, REQ-051, REQ-052, REQ-053, REQ-054, REQ-055, REQ-056, REQ-057, REQ-058, REQ-059, REQ-114, REQ-121, REQ-132, REQ-156, REQ-175, REQ-178, REQ-200, REQ-201, REQ-202, REQ-203, REQ-204, REQ-205, REQ-213, REQ-220, REQ-221, REQ-225, REQ-226, REQ-229, REQ-230, REQ-240, REQ-255
 
 | 항목 | 내용 |
 | --- | --- |
@@ -36,7 +36,7 @@ flowchart TD
   O6["그 버전의 취소·환불 규정과 '주문제작이라<br/>청약철회가 제한될 수 있음', 미성년자 계약 취소<br/>고지를 따로 알림<br/>REQ-052, REQ-240"]
   D5{"취소·환불 규정에<br/>동의하나?"}
   E1(["끝: 주문 요청을 받지 않음<br/>REQ-053"])
-  O8["손님이 주문 요청을 누름: 주문 내용 확인·<br/>규정 동의(버전·시각)·주문 요청을 함께 남김<br/>REQ-054, REQ-055, REQ-132 (Claude 판단 R9)"]
+  O8["손님이 주문 요청을 누름: 주문 내용 확인·<br/>규정 동의(버전·시각)·주문 요청을 함께 남김<br/>REQ-054, REQ-055, REQ-132, REQ-255 (Claude 판단 R9)"]
   O9["결제가 확인돼야 확정된다고 알림,<br/>확정되었다고 말하지 않음<br/>REQ-012"]
   D6{"손님이 채널 친구인가?"}
   O10["채널 추가를 권함<br/>REQ-121"]

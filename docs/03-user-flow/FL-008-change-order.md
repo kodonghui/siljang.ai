@@ -5,7 +5,7 @@ notion: https://app.notion.com/p/415bf16cc3ec819292ece5773f7e5d5f
 
 # FL-008 주문 바꾸기
 
-채우는 요구사항: REQ-042, REQ-064, REQ-065, REQ-066, REQ-067, REQ-084, REQ-085, REQ-088, REQ-114, REQ-125, REQ-133, REQ-152, REQ-153, REQ-154, REQ-156, REQ-162, REQ-165, REQ-166, REQ-174, REQ-214, REQ-221, REQ-226, REQ-232, REQ-233, REQ-234, REQ-235, REQ-241, REQ-251, REQ-252, REQ-253
+채우는 요구사항: REQ-042, REQ-064, REQ-065, REQ-066, REQ-067, REQ-084, REQ-085, REQ-088, REQ-114, REQ-125, REQ-133, REQ-152, REQ-153, REQ-154, REQ-156, REQ-162, REQ-165, REQ-166, REQ-174, REQ-214, REQ-221, REQ-226, REQ-232, REQ-233, REQ-234, REQ-235, REQ-241, REQ-251, REQ-252, REQ-253, REQ-255
 
 | 항목 | 내용 |
 | --- | --- |
@@ -27,7 +27,7 @@ flowchart TD
   D1{"운영규정의<br/>변경 마감 전인가?"}
   C3["그 조문을 인용해<br/>바꿀 수 없다고 알림<br/>REQ-065"]
   E0(["끝: 주문은 그대로"])
-  C4["손님이 변경 요청을 누름(카드의 버전이<br/>지금 주문 버전일 때만),<br/>사장님께 보내고 알림<br/>REQ-064, REQ-114, REQ-133 (Claude 판단 R9)"]
+  C4["손님이 변경 요청을 누름(카드의 버전이<br/>지금 주문 버전일 때만),<br/>사장님께 보내고 알림<br/>REQ-064, REQ-114, REQ-133, REQ-255 (Claude 판단 R9)"]
   D2{"사장님 답은?"}
   G6["가게가 정한 시간(기본 2시간) 안에 답이 없으면<br/>손님에게 지연 안내 한 번, 변경 마감까지<br/>답이 없으면 '답 없어 닫힘'으로 닫고<br/>원래 주문대로, 손님에게 알림<br/>REQ-156, REQ-214"]
   G2a["손님에게 거절을 알림<br/>REQ-152"]

@@ -5,7 +5,7 @@ notion: https://app.notion.com/p/415bf16cc3ec81e7be53f8558ac0be48
 
 # FL-011 문제 신고하고 보상받기
 
-채우는 요구사항: REQ-015, REQ-016, REQ-050, REQ-070, REQ-071, REQ-072, REQ-074, REQ-085, REQ-112, REQ-113, REQ-114, REQ-120, REQ-122, REQ-125, REQ-154, REQ-156, REQ-165, REQ-221, REQ-226, REQ-246, REQ-247, REQ-248, REQ-249, REQ-250, REQ-251, REQ-252, REQ-253, REQ-254
+채우는 요구사항: REQ-015, REQ-016, REQ-050, REQ-070, REQ-071, REQ-072, REQ-074, REQ-085, REQ-112, REQ-113, REQ-114, REQ-120, REQ-122, REQ-125, REQ-154, REQ-156, REQ-165, REQ-221, REQ-226, REQ-246, REQ-247, REQ-248, REQ-249, REQ-250, REQ-251, REQ-252, REQ-253, REQ-254, REQ-255
 
 | 항목 | 내용 |
 | --- | --- |
@@ -29,7 +29,7 @@ flowchart TD
   I1["문제 신고가 아닌 에스컬레이션 건으로<br/>사장님께 보냄<br/>REQ-071"]
   F5[["FL-005 에스컬레이션 건의 답 받기"]]
   I2["AI 상담이 사진·설명·주문번호만 모음,<br/>원인·책임·보상은 말하지 않고<br/>신고 기한을 이유로 막지 않음<br/>REQ-015, REQ-016, REQ-250"]
-  I3["손님이 신고를 누름:<br/>그 주문에 문제 신고<br/>REQ-070 (Claude 판단 R9)"]
+  I3["손님이 신고를 누름:<br/>그 주문에 문제 신고<br/>REQ-070, REQ-255 (Claude 판단 R9)"]
   D1{"운영규정의 신고 기한<br/>(기본 받은 뒤 24시간)<br/>뒤인가?"}
   I4["받되 사장님 화면에만<br/>'기한 뒤'로 표시<br/>REQ-072"]
   I5["사장님 알림<br/>REQ-114"]
