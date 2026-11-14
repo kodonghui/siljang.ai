@@ -161,7 +161,18 @@ S["ConfirmationNeeded"] = obj({
 S["OwnerSessionInput"] = obj({
     "kakaoCode": string(1, 512, r"^[A-Za-z0-9_-]+$", desc="카카오 로그인이 화면의 redirectUri로 준 인가 코드"),
     "redirectUri": string(1, 2048, r"^https://", fmt="uri", desc="카카오 로그인에 쓴 redirect_uri(서버 설정의 목록에 있는 것만)"),
-}, ["kakaoCode", "redirectUri"])
+    "state": string(16, 512, r"^[A-Za-z0-9._-]+$", desc="로그인 시작(API-078)이 준 state. 카카오가 redirectUri로 돌려준 값 그대로. 서명·10분·로그인 시작 쿠키와 맞아야 함(DEC-10)"),
+}, ["kakaoCode", "redirectUri", "state"])
+
+S["OwnerLoginStartInput"] = obj({
+    "redirectUri": string(1, 2048, r"^https://", fmt="uri", desc="카카오 로그인에 쓸 redirect_uri(서버 설정의 목록에 있는 것만, 아니면 not_allowed)"),
+}, ["redirectUri"])
+
+S["OwnerLoginStart"] = all_required({
+    "authorizationUrl": dict(URL, description="카카오 인가 주소. client_id·redirect_uri·response_type=code·state·code_challenge(S256)를 담음. 화면은 이 주소로 이동함(DEC-10, OPEN-11)"),
+    "state": string(16, 512, r"^[A-Za-z0-9._-]+$", desc="서버가 nonce와 만료 시각을 서명한 값. 저장하지 않음. 카카오가 redirectUri로 돌려주면 API-001에 그대로 보냄(DEC-10)"),
+    "expiresAt": dict(DT, description="state와 로그인 시작 쿠키가 지나는 시각(10분 뒤)"),
+}, desc="사장님 로그인 시작: 카카오 인가 주소와 state. nonce는 로그인 시작 쿠키 siljang_login에만 있음")
 
 S["Owner"] = all_required({
     "ownerId": UUID,
@@ -584,8 +595,15 @@ S["SkillSetup"] = all_required({
     "eventSkillUrl": URL,
     "eventName": enum(["siljang_notice"], desc="가게 봇의 '안내' 블록에 붙일 Event API 이벤트 이름. 그 블록이 안내 스킬(eventSkillUrl, API-073)을 부름(DEC-20)"),
     "headerName": enum(["Siljang-Skill-Key"]),
-    "headerValue": string(43, 43, r"^[A-Za-z0-9_-]{43}$", desc="스킬 키. 오픈빌더 스킬 설정의 헤더 값에 넣음(DEC-08). 이 응답 밖과 로그에 남기지 않음"),
-}, desc="사장님이 오픈빌더에 넣을 스킬 주소 넷(메시지·카드·후기·안내)과 헤더, 안내 블록의 이벤트 이름")
+    "keyVersion": integer(1, 10000, col="kakao_channels.skill_key_version", desc="지금 스킬 키의 버전. 바꿀 때마다 1 늘어남(REQ-237). 키 값은 이 응답에 없음(DEC-08)"),
+    "keyIssuedAt": dict(DT, description="지금 버전의 스킬 키를 만든 시각"),
+    "previousKeyValidUntil": nullable(dict(DT, description="앞 버전 키도 받는 끝(바꾼 때부터 24시간). 바로 끊었거나 바꾼 적이 없으면 null(REQ-237)")),
+}, desc="사장님이 오픈빌더에 넣을 스킬 주소 넷(메시지·카드·후기·안내)과 헤더 이름, 안내 블록의 이벤트 이름, 스킬 키의 버전. 키 값은 만들 때와 바꿀 때의 응답(skillKey)에만 한 번(DEC-08)")
+S["SkillKey"] = all_required({
+    "headerName": enum(["Siljang-Skill-Key"]),
+    "headerValue": string(43, 43, r"^[A-Za-z0-9_-]{43}$", desc="스킬 키. 오픈빌더 스킬 설정의 헤더 값에 넣음(DEC-08). 이 응답에만 한 번 보이고 다시 볼 수 없음(잃으면 API-079로 바꿈). 로그에 남기지 않음"),
+    "keyVersion": integer(1, 10000, col="kakao_channels.skill_key_version", desc="이 키의 버전(REQ-237)"),
+}, desc="새 스킬 키. 연결을 만든 응답(API-031 created)과 키를 바꾼 응답(API-079)에만 한 번")
 S["KakaoChannel"] = all_required({
     "connectionId": UUID,
     "botId": string(1, 64),
@@ -594,9 +612,11 @@ S["KakaoChannel"] = all_required({
     "checkStartedAt": nullable(DT),
     "checkExpiresAt": nullable(DT),
     "linkedAt": nullable(DT),
+    "proofPhrase": nullable(string(9, 9, r"^연결 [0-9]{6}$", desc="연결 문구. 연결 확인 중에만 있고 사장님 화면에만 보임. 그 채널 대화창에서 이 문구를 보내야 시험이 시작됨(REQ-238). 서버 시크릿과 연결 ID·연결 확인 시작 시각으로 만들어 저장하지 않음(DEC-08)")),
+    "claimExpiresAt": nullable(dict(DT, description="'연결 확인 중' 선점이 풀리는 시각(저장이나 연결 확인 시작에서 30분). 지나면 다른 가게가 같은 봇을 넣을 때 이 연결은 연결 안 됨(REQ-238). 연결 확인 중이 아니면 null")),
     "failureHints": arr(enum(["skill_url", "skill_key_header", "open_builder_deploy", "test_message_missing",
                               "card_block", "orderer_block", "allergy_block", "depositor_block", "review_block"]), 0, 9, unique=True,
-                        desc="연결 안 됨의 사유 후보(SPEC-008). card_block·orderer_block·allergy_block·depositor_block·review_block은 시험 버튼이 우리 스킬에 닿지 않은 블록(REQ-206)"),
+                        desc="연결 안 됨의 사유 후보(SPEC-008). test_message_missing은 연결 문구가 10분 안에 그 채널에서 오지 않음(REQ-238). card_block·orderer_block·allergy_block·depositor_block·review_block은 시험 버튼이 우리 스킬에 닿지 않은 블록(REQ-206)"),
     "blockIds": all_required({
         "card": nullable(string(1, 100)), "ordererInfo": nullable(string(1, 100)), "allergyAnswer": nullable(string(1, 100)),
         "depositorName": nullable(string(1, 100)), "review": nullable(string(1, 100)),
@@ -610,7 +630,13 @@ S["KakaoChannel"] = all_required({
     "skill": ref("SkillSetup"),
     "revision": REVISION,
 })
-S["KakaoChannelResult"] = all_required({"outcome": outcome(("created", "done", "unchanged"), "created: 새 연결(연결 확인 중), done: 연결 확인이나 시험 안내를 시작함, 같은 봇의 블록 ID를 바꿔 다시 확인하게 함, unchanged: 같은 값이거나 이미 확인 중·연결됨(먼저 보내기 됨이거나 시험 중)"), "kakaoChannel": ref("KakaoChannel")})
+S["KakaoChannelResult"] = all_required({"outcome": outcome(("created", "done", "unchanged"), "created: 새 연결(연결 확인 중), done: 연결 확인이나 시험 안내를 시작함, 같은 봇의 블록 ID를 바꿔 다시 확인하게 함, 스킬 키를 바꿈(API-079), unchanged: 같은 값이거나 이미 확인 중·연결됨(먼저 보내기 됨이거나 시험 중)"), "kakaoChannel": ref("KakaoChannel"),
+                                        "skillKey": nullable(ref("SkillKey"))},
+                                       desc="skillKey는 새 연결(created)과 스킬 키를 바꾼 응답(API-079)에만 있고 그 밖에는 null(DEC-08, REQ-237)")
+S["SkillKeyRegenerateInput"] = obj({
+    "baseRevision": BASE_REVISION,
+    "previousKey": enum(["keep_24h", "revoke_now"], desc="앞 버전 키: keep_24h는 바꾼 때부터 24시간 더 받음(오픈빌더의 헤더 값을 바꾸고 배포하는 동안 손님 메시지가 끊기지 않게), revoke_now는 바로 거절(키가 샜을 때). 그 전 버전은 늘 거절(REQ-237)"),
+}, ["baseRevision", "previousKey"])
 
 # ── 장부 ────────────────────────────────────────────────────────────────────
 S["LedgerAuthorizationInput"] = obj({
@@ -775,7 +801,7 @@ S["OrderDetailsVersion"] = all_required({
     "design": nullable(all_required({"designId": UUID, "name": string(1, 30)})),
     "extras": arr(OPTION_REF, 0, 50),
     "designNotes": nullable(string(0, 500)), "lettering": nullable(string(0, 50)), "colors": nullable(string(0, 100)),
-    "allergyAnswer": nullable(string(1, 200, desc="이 주문 밖에서 쓰지 않음(REQ-142). 알레르기 정보에 동의하지 않은 주문은 null(REQ-203)")),
+    "allergyAnswer": nullable(string(1, 200, desc="이 주문 밖에서 쓰지 않음(REQ-236). 알레르기 정보에 동의하지 않은 주문은 null(REQ-203)")),
     "allergyConsent": enum(["agreed", "declined", "not_required"],
                            desc="알레르기 정보 동의: 동의함·동의 안 함(알레르기는 묻지 않고 빼야 할 재료만 받음, REQ-203)·동의 필요 없음(동의 단계를 끈 배포, REQ-205). 주문 요청 때 초안에서 옮김(REQ-201, SPEC-029). 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄"),
     "excludedIngredients": nullable(string(0, 200)),
@@ -1009,7 +1035,7 @@ S["ProductionDay"] = all_required({
             "lettering": nullable(string(0, 50)), "colors": nullable(string(0, 100)), "designNotes": nullable(string(0, 500)),
             "extras": arr(string(1, 30), 0, 20, desc="더하는 옵션 이름(REQ-177)"),
             "allergyAnswer": nullable(string(1, 200, col="order_details.allergy_answer",
-                                             desc="알레르기 답('없음'도 답). 알레르기 정보에 동의하지 않은 주문은 null. 그 주문의 행에만 보이고 할 일 요약·사장님 알림·장부에는 넣지 않음(REQ-142, REQ-177)")),
+                                             desc="알레르기 답('없음'도 답). 알레르기 정보에 동의하지 않은 주문은 null. 그 주문의 행에만 보이고 할 일 요약·사장님 알림·장부에는 넣지 않음(REQ-236, REQ-177)")),
             "allergyConsent": enum(["agreed", "declined", "not_required"],
                                    desc="알레르기 정보 동의. declined면 allergyAnswer가 null이고 화면은 '알레르기: 동의 안 함(빼야 할 재료만 받음)'(REQ-203, SPEC-050)"),
             "excludedIngredients": nullable(string(1, 200, col="order_details.excluded_ingredients", desc="빼야 할 재료. 없으면 null이고 화면은 '없음'(REQ-177)")),

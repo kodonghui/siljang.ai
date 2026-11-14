@@ -1317,7 +1317,7 @@ def scr041_empty(cx, frame):
     봇 ID 필드 아래 펼쳐 둔 '봇 ID 찾는 법'(W7), '저장'.
     08 회색 와이어프레임은 상자 하나로 줄여 그렸으므로 시안은 정의 글대로 그림."""
     steps = ["오픈빌더에서 봇과 버튼 블록 다섯 열기", "봇 ID·채널 공개 ID·블록 ID 넣고 저장", "스킬 설정 값을 옮기고 안내 블록에 이벤트 이름을 붙인 뒤 배포",
-             "연결 확인: 테스트 메시지와 시험 버튼 다섯", "시험 안내 결과"]
+             "연결 확인: 연결 문구와 시험 버튼 다섯", "시험 안내 결과"]
     ol = ('<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-sm)">' + "".join(
         '<li' + (' aria-current="step"' if i == 1 else "") + ' style="display: flex; align-items: center; gap: var(--space-sm)">'
         '<span style="flex: none; width: var(--space-xl); height: var(--space-xl); display: inline-flex; align-items: center; justify-content: center; '

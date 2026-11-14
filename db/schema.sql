@@ -103,7 +103,7 @@ CREATE TABLE kakao_channels (
   bot_id             text NOT NULL,                      -- 오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 키(SPEC-017)
   channel_public_id  text,                               -- 채널 공개 ID. 예약 링크 페이지의 문의 버튼이 여는 채팅 주소(SPEC-011)
   status             text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'linked', 'failed', 'retired')), -- 연결 확인 중·연결됨·연결 안 됨·바꿔서 그만 받음(SPEC-008)
-  check_started_at   timestamptz,                        -- '연결 확인'을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 다섯이 와야 함)
+  check_started_at   timestamptz,                        -- '연결 확인'을 누른 시각(10분 안에 연결 문구와 버튼 블록 다섯이 와야 함)
   linked_at          timestamptz,                        -- 연결됨이 된 시각
   retired_at         timestamptz,                        -- 다른 채널로 바꿔 더 받지 않게 된 시각
   card_block_id      text CHECK (char_length(card_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '확인 카드' 블록 ID. 확인 카드 버튼이 부름(SPEC-008, REQ-206)
@@ -112,17 +112,23 @@ CREATE TABLE kakao_channels (
   depositor_block_id text CHECK (char_length(depositor_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '입금자 이름' 블록 ID. 결제 확인 요청 카드 버튼이 부름(SPEC-033)
   review_block_id    text CHECK (char_length(review_block_id) BETWEEN 1 AND 100), -- 가게 봇의 '후기' 블록 ID. 후기 부탁 버튼이 부름(SPEC-061)
   verified_blocks    text[] NOT NULL DEFAULT '{}' CHECK (verified_blocks <@ ARRAY['card', 'orderer_info', 'allergy_answer', 'depositor_name', 'review']::text[]), -- 연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록(REQ-206)
-  test_user_key      text CHECK (char_length(test_user_key) BETWEEN 1 AND 100), -- 연결 확인 때 테스트 메시지를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008)
+  test_user_key      text CHECK (char_length(test_user_key) BETWEEN 1 AND 100), -- 연결 확인 때 연결 문구를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008, REQ-238)
   event_status       text NOT NULL DEFAULT 'unchecked' CHECK (event_status IN ('unchecked', 'checking', 'ready', 'unavailable')), -- 먼저 보내기(Event API): 아직 안 봄·시험 중·됨·안 됨. 안 되면 손님 안내는 다음 대화 때(REQ-180, REQ-181)
   event_task_id      text CHECK (char_length(event_task_id) BETWEEN 1 AND 100), -- 시험 안내의 카카오 taskId. 발송 결과 조회에 씀(REQ-182)
   event_checked_at   timestamptz,                        -- 시험 안내의 발송 결과를 받은 시각
   event_fail_reason  text CHECK (event_fail_reason IN ('app_not_linked', 'wallet_missing', 'event_block', 'event_skill', 'owner_not_friend', 'not_delivered', 'kakao_error')), -- 먼저 보내기가 안 되는 사유: 채널이 우리 앱에 연결 안 됨·월렛 없음·이벤트 이름이나 배포·안내 스킬·사장님이 가게 채널 친구 아님·닿지 않음·카카오 오류
+  skill_key_version  smallint NOT NULL DEFAULT 1 CHECK (skill_key_version BETWEEN 1 AND 10000), -- 스킬 키 버전. 키는 서버 시크릿·연결 ID·버전으로 만들고 저장하지 않음(06단계 DEC-08). 사장님이 바꿀 때마다 1 늘림(REQ-237)
+  skill_key_issued_at timestamptz NOT NULL DEFAULT now(), -- 지금 버전의 스킬 키를 만든 시각(REQ-237)
+  previous_key_until timestamptz,                        -- 바로 앞 버전의 키도 받는 끝 시각: 바꾼 때부터 24시간까지. 바로 끊었거나 바꾼 적이 없으면 비움(REQ-237)
+  claim_expires_at   timestamptz,                        -- '연결 확인 중' 선점이 풀리는 시각: 마지막 저장이나 연결 확인 시작에서 30분. 지난 뒤 다른 가게가 같은 봇을 넣으면 이 연결은 '연결 안 됨'(REQ-238)
   created_at         timestamptz NOT NULL DEFAULT now(), -- 만든 시각
   CONSTRAINT kakao_channels_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT kakao_channels_linked_chk CHECK (status <> 'linked' OR linked_at IS NOT NULL),
   CONSTRAINT kakao_channels_retired_chk CHECK ((status = 'retired') = (retired_at IS NOT NULL)),
   CONSTRAINT kakao_channels_blocks_chk CHECK (status <> 'linked' OR (card_block_id IS NOT NULL AND orderer_block_id IS NOT NULL AND allergy_block_id IS NOT NULL AND depositor_block_id IS NOT NULL AND review_block_id IS NOT NULL AND verified_blocks @> ARRAY['card', 'orderer_info', 'allergy_answer', 'depositor_name', 'review']::text[])), -- 연결됨이면 블록 ID 다섯이 있고 시험 버튼으로 모두 닿음(REQ-206)
-  CONSTRAINT kakao_channels_event_chk CHECK ((event_status = 'unavailable') = (event_fail_reason IS NOT NULL) AND (event_status <> 'checking' OR event_task_id IS NOT NULL) AND (event_status NOT IN ('ready', 'unavailable') OR event_checked_at IS NOT NULL) AND (event_status = 'unchecked' OR status IN ('linked', 'retired'))) -- 시험 안내는 연결된 뒤. 안 됨에는 사유, 시험 중에는 taskId, 결과에는 받은 시각(REQ-180)
+  CONSTRAINT kakao_channels_event_chk CHECK ((event_status = 'unavailable') = (event_fail_reason IS NOT NULL) AND (event_status <> 'checking' OR event_task_id IS NOT NULL) AND (event_status NOT IN ('ready', 'unavailable') OR event_checked_at IS NOT NULL) AND (event_status = 'unchecked' OR status IN ('linked', 'retired'))), -- 시험 안내는 연결된 뒤. 안 됨에는 사유, 시험 중에는 taskId, 결과에는 받은 시각(REQ-180)
+  CONSTRAINT kakao_channels_prev_key_chk CHECK (previous_key_until IS NULL OR (skill_key_version >= 2 AND previous_key_until <= skill_key_issued_at + interval '24 hours')), -- 앞 버전 키는 키를 바꾼 뒤 24시간까지만(REQ-237)
+  CONSTRAINT kakao_channels_claim_chk CHECK ((status = 'pending') = (claim_expires_at IS NOT NULL)) -- 선점이 풀리는 시각은 연결 확인 중에만 있음(REQ-238)
 );
 CREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked'); -- 채널 하나는 가게 하나에만('이미 다른 가게', SPEC-008)
 CREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked'; -- 가게마다 받는 채널 하나
@@ -421,7 +427,7 @@ CREATE TABLE order_drafts (
   design_notes          text CHECK (char_length(design_notes) <= 500), -- 손님이 말한 디자인 설명
   lettering             text CHECK (char_length(lettering) <= 50), -- 문구(TERM-021), 50자까지(AI-1)
   colors                text CHECK (char_length(colors) <= 100), -- 색
-  allergy_answer        text CHECK (char_length(allergy_answer) BETWEEN 1 AND 200), -- 알레르기 답('없음'도 답, REQ-200). 알레르기 정보에 동의한 뒤 전용 블록으로 AI를 거치지 않고 받음(SPEC-075, REQ-202). AI로 보내지 않고(REQ-204) 이 주문 밖에서 쓰지 않음(REQ-142)
+  allergy_answer        text CHECK (char_length(allergy_answer) BETWEEN 1 AND 200), -- 알레르기 답('없음'도 답, REQ-200). 알레르기 정보에 동의한 뒤 전용 블록으로 AI를 거치지 않고 받음(SPEC-075, REQ-202). AI로 보내지 않고(REQ-204) 이 주문 밖에서 쓰지 않음(REQ-236)
   allergy_consent       text CHECK (allergy_consent IN ('agreed', 'declined', 'not_required')), -- 알레르기 정보 동의: 동의함·동의 안 함·동의 필요 없음(배포 설정으로 동의 단계를 끔, REQ-205). 비어 있으면 아직 묻지 않음(SPEC-075). 잠정, 5-2 질문 4
   allergy_consent_version text CHECK (char_length(allergy_consent_version) BETWEEN 1 AND 20), -- 손님이 본 알레르기 정보 동의 글의 버전. 동의함·동의 안 함에만(REQ-201)
   allergy_consent_at    timestamptz,                     -- 동의함·동의 안 함을 누른 시각, 동의 필요 없음이면 알레르기 답 블록을 연 시각(REQ-201, REQ-205)
@@ -635,7 +641,7 @@ CREATE TABLE order_details (
   design_notes          text CHECK (char_length(design_notes) <= 500), -- 디자인 설명. 주문이 끝나고 30일 뒤 비움(SPEC-065)
   lettering             text CHECK (char_length(lettering) <= 50), -- 문구(TERM-021). 철자는 손님이 쓴 그대로(SPEC-028). 주문이 끝나고 30일 뒤 비움(SPEC-065)
   colors                text CHECK (char_length(colors) <= 100), -- 색
-  allergy_answer        text CHECK (char_length(allergy_answer) BETWEEN 1 AND 200), -- 알레르기 답. 알레르기 정보에 동의한 주문에만(REQ-200, REQ-203). 이 주문 밖에서 쓰지 않고 장부에 적지 않고 AI로 보내지 않음(REQ-142, REQ-204, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)
+  allergy_answer        text CHECK (char_length(allergy_answer) BETWEEN 1 AND 200), -- 알레르기 답. 알레르기 정보에 동의한 주문에만(REQ-200, REQ-203). 이 주문 밖에서 쓰지 않고 장부에 적지 않고 AI로 보내지 않음(REQ-236, REQ-204, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)
   allergy_consent       text NOT NULL CHECK (allergy_consent IN ('agreed', 'declined', 'not_required')), -- 초안에서 옮긴 알레르기 정보 동의: 동의함·동의 안 함('알레르기 정보 동의 안 함'으로 보임, SPEC-050)·동의 필요 없음(REQ-201, REQ-205). 지우기는 이 동의 기록을 남김(SPEC-065)
   allergy_consent_version text CHECK (char_length(allergy_consent_version) BETWEEN 1 AND 20), -- 손님이 본 알레르기 정보 동의 글의 버전. 동의함·동의 안 함에만(REQ-201)
   allergy_consent_at    timestamptz NOT NULL,            -- 알레르기 정보 동의의 답을 남긴 시각(초안에서 옮김)
@@ -1248,7 +1254,8 @@ CREATE TABLE ai_calls (
   shop_id             uuid NOT NULL,                     -- 가게
   consultation_id     uuid NOT NULL,                     -- 대화 ID. 상담마다 비용 합(REQ-150)
   trace_id            text NOT NULL,                     -- 요청 추적 ID: 손님 메시지 한 차례의 그래프 실행(AI-1)
-  attempt             smallint NOT NULL DEFAULT 1 CHECK (attempt BETWEEN 1 AND 3), -- 그 차례 안 몇 번째 호출(시간 초과·429·5xx 재시도, 재생성)
+  attempt             smallint NOT NULL DEFAULT 1 CHECK (attempt >= 1), -- 차례 안 호출 순번(1부터, 위 끝 없음). 차례마다 호출 상한(8번)은 AI-1이 호출 전에 막음
+  call_kind           text NOT NULL DEFAULT 'first' CHECK (call_kind IN ('first', 'after_tool', 'retry', 'regenerate')), -- 다시 한 종류: 처음·도구 뒤 이어 하기·다시 하기(시간 초과·429·5xx)·다시 쓰기(서버 확인을 지나지 못한 답·빈 답). 처음은 순번 1에만
   provider            text NOT NULL,                     -- 모델 회사(고르는 날 정함, AI-1)
   model               text NOT NULL,                     -- 모델
   prompt_version      text NOT NULL,                     -- 프롬프트 버전
@@ -1266,11 +1273,12 @@ CREATE TABLE ai_calls (
   result              text NOT NULL CHECK (result IN ('success', 'failure', 'timeout', 'limit_reached')), -- 결과: 성공·실패·시간 초과·한도(가게 하루 한도나 모델 사용 한도)
   stop_reason         text,                              -- 모델 회사가 준 멈춘 사유
   error_kind          text,                              -- 실패 종류(내용 없이)
-  fallback_reason     text CHECK (fallback_reason IN ('schema_invalid', 'amount_mismatch', 'forbidden_phrase', 'clause_mismatch', 'placeholder_or_ad', 'card_not_allowed', 'empty_answer', 'model_error', 'timeout', 'cost_limit')), -- 정해진 문장이나 에스컬레이션을 쓴 이유(AI-1의 서버 확인·실패)
+  fallback_reason     text CHECK (fallback_reason IN ('schema_invalid', 'amount_mismatch', 'forbidden_phrase', 'clause_mismatch', 'placeholder_or_ad', 'card_not_allowed', 'empty_answer', 'model_error', 'timeout', 'cost_limit', 'call_limit')), -- 정해진 문장이나 에스컬레이션을 쓴 이유(AI-1의 서버 확인·실패·차례마다 호출 상한)
   created_at          timestamptz NOT NULL DEFAULT now(), -- 남긴 시각
   CONSTRAINT ai_calls_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT ai_calls_consultation_fk FOREIGN KEY (shop_id, consultation_id) REFERENCES consultations (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT ai_calls_attempt_uq UNIQUE (trace_id, attempt),
+  CONSTRAINT ai_calls_kind_chk CHECK ((call_kind = 'first') = (attempt = 1)), -- 처음은 순번 1에만(설계 재검토 RC-07)
   CONSTRAINT ai_calls_success_chk CHECK (result <> 'success' OR (input_tokens IS NOT NULL AND output_tokens IS NOT NULL AND cost_krw IS NOT NULL)) -- 성공한 호출은 토큰과 비용을 남김(REQ-150)
 );
 CREATE INDEX ai_calls_shop_time_idx ON ai_calls (shop_id, sent_at); -- 가게 하루 비용 합(REQ-163)
@@ -1690,7 +1698,7 @@ COMMENT ON COLUMN kakao_channels.shop_id IS '채널을 묶은 가게';
 COMMENT ON COLUMN kakao_channels.bot_id IS '오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 키(SPEC-017)';
 COMMENT ON COLUMN kakao_channels.channel_public_id IS '채널 공개 ID. 예약 링크 페이지의 문의 버튼이 여는 채팅 주소(SPEC-011)';
 COMMENT ON COLUMN kakao_channels.status IS '연결 확인 중·연결됨·연결 안 됨·바꿔서 그만 받음(SPEC-008)';
-COMMENT ON COLUMN kakao_channels.check_started_at IS '''연결 확인''을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 다섯이 와야 함)';
+COMMENT ON COLUMN kakao_channels.check_started_at IS '''연결 확인''을 누른 시각(10분 안에 연결 문구와 버튼 블록 다섯이 와야 함)';
 COMMENT ON COLUMN kakao_channels.linked_at IS '연결됨이 된 시각';
 COMMENT ON COLUMN kakao_channels.retired_at IS '다른 채널로 바꿔 더 받지 않게 된 시각';
 COMMENT ON COLUMN kakao_channels.card_block_id IS '가게 봇의 ''확인 카드'' 블록 ID. 확인 카드 버튼이 부름(SPEC-008, REQ-206)';
@@ -1699,11 +1707,15 @@ COMMENT ON COLUMN kakao_channels.allergy_block_id IS '가게 봇의 ''알레르�
 COMMENT ON COLUMN kakao_channels.depositor_block_id IS '가게 봇의 ''입금자 이름'' 블록 ID. 결제 확인 요청 카드 버튼이 부름(SPEC-033)';
 COMMENT ON COLUMN kakao_channels.review_block_id IS '가게 봇의 ''후기'' 블록 ID. 후기 부탁 버튼이 부름(SPEC-061)';
 COMMENT ON COLUMN kakao_channels.verified_blocks IS '연결 확인 때 시험 버튼으로 우리 스킬에 닿은 블록(REQ-206)';
-COMMENT ON COLUMN kakao_channels.test_user_key IS '연결 확인 때 테스트 메시지를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008)';
+COMMENT ON COLUMN kakao_channels.test_user_key IS '연결 확인 때 연결 문구를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008, REQ-238)';
 COMMENT ON COLUMN kakao_channels.event_status IS '먼저 보내기(Event API): 아직 안 봄·시험 중·됨·안 됨. 안 되면 손님 안내는 다음 대화 때(REQ-180, REQ-181)';
 COMMENT ON COLUMN kakao_channels.event_task_id IS '시험 안내의 카카오 taskId. 발송 결과 조회에 씀(REQ-182)';
 COMMENT ON COLUMN kakao_channels.event_checked_at IS '시험 안내의 발송 결과를 받은 시각';
 COMMENT ON COLUMN kakao_channels.event_fail_reason IS '먼저 보내기가 안 되는 사유: 채널이 우리 앱에 연결 안 됨·월렛 없음·이벤트 이름이나 배포·안내 스킬·사장님이 가게 채널 친구 아님·닿지 않음·카카오 오류';
+COMMENT ON COLUMN kakao_channels.skill_key_version IS '스킬 키 버전. 키는 서버 시크릿·연결 ID·버전으로 만들고 저장하지 않음(06단계 DEC-08). 사장님이 바꿀 때마다 1 늘림(REQ-237)';
+COMMENT ON COLUMN kakao_channels.skill_key_issued_at IS '지금 버전의 스킬 키를 만든 시각(REQ-237)';
+COMMENT ON COLUMN kakao_channels.previous_key_until IS '바로 앞 버전의 키도 받는 끝 시각: 바꾼 때부터 24시간까지. 바로 끊었거나 바꾼 적이 없으면 비움(REQ-237)';
+COMMENT ON COLUMN kakao_channels.claim_expires_at IS '''연결 확인 중'' 선점이 풀리는 시각: 마지막 저장이나 연결 확인 시작에서 30분. 지난 뒤 다른 가게가 같은 봇을 넣으면 이 연결은 ''연결 안 됨''(REQ-238)';
 COMMENT ON COLUMN kakao_channels.created_at IS '만든 시각';
 COMMENT ON COLUMN privacy_policies.id IS '처리방침 버전 ID';
 COMMENT ON COLUMN privacy_policies.shop_id IS '처리방침의 가게';
@@ -1853,7 +1865,7 @@ COMMENT ON COLUMN order_drafts.design_id IS '고른 도안';
 COMMENT ON COLUMN order_drafts.design_notes IS '손님이 말한 디자인 설명';
 COMMENT ON COLUMN order_drafts.lettering IS '문구(TERM-021), 50자까지(AI-1)';
 COMMENT ON COLUMN order_drafts.colors IS '색';
-COMMENT ON COLUMN order_drafts.allergy_answer IS '알레르기 답(''없음''도 답, REQ-200). 알레르기 정보에 동의한 뒤 전용 블록으로 AI를 거치지 않고 받음(SPEC-075, REQ-202). AI로 보내지 않고(REQ-204) 이 주문 밖에서 쓰지 않음(REQ-142)';
+COMMENT ON COLUMN order_drafts.allergy_answer IS '알레르기 답(''없음''도 답, REQ-200). 알레르기 정보에 동의한 뒤 전용 블록으로 AI를 거치지 않고 받음(SPEC-075, REQ-202). AI로 보내지 않고(REQ-204) 이 주문 밖에서 쓰지 않음(REQ-236)';
 COMMENT ON COLUMN order_drafts.allergy_consent IS '알레르기 정보 동의: 동의함·동의 안 함·동의 필요 없음(배포 설정으로 동의 단계를 끔, REQ-205). 비어 있으면 아직 묻지 않음(SPEC-075). 잠정, 5-2 질문 4';
 COMMENT ON COLUMN order_drafts.allergy_consent_version IS '손님이 본 알레르기 정보 동의 글의 버전. 동의함·동의 안 함에만(REQ-201)';
 COMMENT ON COLUMN order_drafts.allergy_consent_at IS '동의함·동의 안 함을 누른 시각, 동의 필요 없음이면 알레르기 답 블록을 연 시각(REQ-201, REQ-205)';
@@ -1965,7 +1977,7 @@ COMMENT ON COLUMN order_details.design_id IS '도안';
 COMMENT ON COLUMN order_details.design_notes IS '디자인 설명. 주문이 끝나고 30일 뒤 비움(SPEC-065)';
 COMMENT ON COLUMN order_details.lettering IS '문구(TERM-021). 철자는 손님이 쓴 그대로(SPEC-028). 주문이 끝나고 30일 뒤 비움(SPEC-065)';
 COMMENT ON COLUMN order_details.colors IS '색';
-COMMENT ON COLUMN order_details.allergy_answer IS '알레르기 답. 알레르기 정보에 동의한 주문에만(REQ-200, REQ-203). 이 주문 밖에서 쓰지 않고 장부에 적지 않고 AI로 보내지 않음(REQ-142, REQ-204, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)';
+COMMENT ON COLUMN order_details.allergy_answer IS '알레르기 답. 알레르기 정보에 동의한 주문에만(REQ-200, REQ-203). 이 주문 밖에서 쓰지 않고 장부에 적지 않고 AI로 보내지 않음(REQ-236, REQ-204, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)';
 COMMENT ON COLUMN order_details.allergy_consent IS '초안에서 옮긴 알레르기 정보 동의: 동의함·동의 안 함(''알레르기 정보 동의 안 함''으로 보임, SPEC-050)·동의 필요 없음(REQ-201, REQ-205). 지우기는 이 동의 기록을 남김(SPEC-065)';
 COMMENT ON COLUMN order_details.allergy_consent_version IS '손님이 본 알레르기 정보 동의 글의 버전. 동의함·동의 안 함에만(REQ-201)';
 COMMENT ON COLUMN order_details.allergy_consent_at IS '알레르기 정보 동의의 답을 남긴 시각(초안에서 옮김)';
@@ -2242,7 +2254,8 @@ COMMENT ON COLUMN ai_calls.id IS 'AI 호출 ID';
 COMMENT ON COLUMN ai_calls.shop_id IS '가게';
 COMMENT ON COLUMN ai_calls.consultation_id IS '대화 ID. 상담마다 비용 합(REQ-150)';
 COMMENT ON COLUMN ai_calls.trace_id IS '요청 추적 ID: 손님 메시지 한 차례의 그래프 실행(AI-1)';
-COMMENT ON COLUMN ai_calls.attempt IS '그 차례 안 몇 번째 호출(시간 초과·429·5xx 재시도, 재생성)';
+COMMENT ON COLUMN ai_calls.attempt IS '차례 안 호출 순번(1부터, 위 끝 없음). 차례마다 호출 상한(8번)은 AI-1이 호출 전에 막음';
+COMMENT ON COLUMN ai_calls.call_kind IS '다시 한 종류: 처음·도구 뒤 이어 하기·다시 하기(시간 초과·429·5xx)·다시 쓰기(서버 확인을 지나지 못한 답·빈 답). 처음은 순번 1에만';
 COMMENT ON COLUMN ai_calls.provider IS '모델 회사(고르는 날 정함, AI-1)';
 COMMENT ON COLUMN ai_calls.model IS '모델';
 COMMENT ON COLUMN ai_calls.prompt_version IS '프롬프트 버전';
@@ -2260,7 +2273,7 @@ COMMENT ON COLUMN ai_calls.cost_basis IS '요금표 버전과 환율 기준';
 COMMENT ON COLUMN ai_calls.result IS '결과: 성공·실패·시간 초과·한도(가게 하루 한도나 모델 사용 한도)';
 COMMENT ON COLUMN ai_calls.stop_reason IS '모델 회사가 준 멈춘 사유';
 COMMENT ON COLUMN ai_calls.error_kind IS '실패 종류(내용 없이)';
-COMMENT ON COLUMN ai_calls.fallback_reason IS '정해진 문장이나 에스컬레이션을 쓴 이유(AI-1의 서버 확인·실패)';
+COMMENT ON COLUMN ai_calls.fallback_reason IS '정해진 문장이나 에스컬레이션을 쓴 이유(AI-1의 서버 확인·실패·차례마다 호출 상한)';
 COMMENT ON COLUMN ai_calls.created_at IS '남긴 시각';
 COMMENT ON COLUMN ai_tool_calls.id IS '도구 호출 ID';
 COMMENT ON COLUMN ai_tool_calls.shop_id IS '가게';
