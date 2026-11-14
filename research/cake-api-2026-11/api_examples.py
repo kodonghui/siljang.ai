@@ -44,6 +44,9 @@ def brn_check_digit(first9):
 
 BRN = "123456789" + brn_check_digit("123456789")   # 지어낸 사업자등록번호(검증 숫자는 맞음)
 SKILL_KEY = "EXAMPLE_" + "0" * 35                 # 지어낸 스킬 키(43자). 실제 키가 아님
+SKILL_KEY_V2 = "EXAMPLE_" + "1" * 35              # 지어낸 스킬 키 버전 2(43자). 실제 키가 아님
+PROOF_PHRASE = "연결 482913"                      # 지어낸 연결 문구(REQ-238)
+LOGIN_STATE = h("login-state", 48)                # 지어낸 state(DEC-10)
 
 SHOP_ID = uid("shop:moonlight")
 OWNER_ID = uid("owner:moonlight")
@@ -571,7 +574,14 @@ TASKS_EMPTY = {"items": [], "nextCursor": None, "alertChannelFriend": True}
 SKILL_SETUP = {
     "messageSkillUrl": API + "/kakao/skills/message", "cardSkillUrl": API + "/kakao/skills/card",
     "reviewSkillUrl": API + "/kakao/skills/review", "eventSkillUrl": API + "/kakao/skills/event", "eventName": "siljang_notice",
-    "headerName": "Siljang-Skill-Key", "headerValue": SKILL_KEY,
+    "headerName": "Siljang-Skill-Key", "keyVersion": 1, "keyIssuedAt": t("11-12", "11:40"), "previousKeyValidUntil": None,
+}
+SKILL_KEY_SHOWN = {"headerName": "Siljang-Skill-Key", "headerValue": SKILL_KEY, "keyVersion": 1}
+SKILL_KEY_SHOWN_V2 = {"headerName": "Siljang-Skill-Key", "headerValue": SKILL_KEY_V2, "keyVersion": 2}
+OWNER_LOGIN_START = {
+    "authorizationUrl": "https://kauth.kakao.com/oauth/authorize?client_id=example&redirect_uri=https%3A%2F%2Fsiljang.example%2Fowner%2Flogin%2Fcallback"
+                        "&response_type=code&state=" + LOGIN_STATE + "&code_challenge=" + h("pkce-challenge", 43) + "&code_challenge_method=S256",
+    "state": LOGIN_STATE, "expiresAt": t("11-12", "10:10"),
 }
 # 가게 봇에서 카드 버튼이 부르는 블록 다섯의 블록 ID(설계 재검토 H8·H5). 스킬 요청 예시의 block.id와 같은 값
 BLOCK_IDS = {"card": h("block:확인 카드", 24), "ordererInfo": h("block:주문자 정보", 24), "allergyAnswer": h("block:알레르기 답", 24),
@@ -581,17 +591,24 @@ CHANNEL_ID = uid("kakao-channel:1")
 CHANNEL_PENDING = {
     "connectionId": CHANNEL_ID, "botId": BOT_ID, "channelPublicId": "_xMoonCake", "status": "pending", "checkStartedAt": None,
     "checkExpiresAt": None, "linkedAt": None, "failureHints": [], "blockIds": BLOCK_IDS, "verifiedBlocks": [],
-    "eventStatus": "unchecked", "eventCheckedAt": None, "eventFailReason": None, "skill": SKILL_SETUP, "revision": rev("channel:1:pending"),
+    "eventStatus": "unchecked", "eventCheckedAt": None, "eventFailReason": None, "skill": SKILL_SETUP, "proofPhrase": None,
+    "claimExpiresAt": t("11-12", "12:10"), "revision": rev("channel:1:pending"),
 }
 CHANNEL_CHECKING = dict(CHANNEL_PENDING, checkStartedAt=t("11-12", "11:50"), checkExpiresAt=t("11-12", "12:00"),
+                        proofPhrase=PROOF_PHRASE, claimExpiresAt=t("11-12", "12:20"),
                         verifiedBlocks=["card", "orderer_info"], revision=rev("channel:1:checking"))
-CHANNEL_LINKED = dict(CHANNEL_CHECKING, status="linked", linkedAt=t("11-12", "11:53"), verifiedBlocks=ALL_BLOCKS,
+CHANNEL_LINKED = dict(CHANNEL_CHECKING, status="linked", linkedAt=t("11-12", "11:53"), verifiedBlocks=ALL_BLOCKS, proofPhrase=None, claimExpiresAt=None,
                       eventStatus="ready", eventCheckedAt=t("11-12", "11:55"), revision=rev("channel:1:linked"))
 CHANNEL_EVENT_CHECKING = dict(CHANNEL_LINKED, eventStatus="checking", eventCheckedAt=None, revision=rev("channel:1:event-checking"))
 CHANNEL_EVENT_UNAVAILABLE = dict(CHANNEL_LINKED, eventStatus="unavailable", eventFailReason="wallet_missing",
                                  revision=rev("channel:1:event-unavailable"))
-CHANNEL_FAILED = dict(CHANNEL_CHECKING, status="failed", verifiedBlocks=["card", "orderer_info", "allergy_answer", "depositor_name"],
+CHANNEL_FAILED = dict(CHANNEL_CHECKING, status="failed", proofPhrase=None, claimExpiresAt=None, verifiedBlocks=["card", "orderer_info", "allergy_answer", "depositor_name"],
                       failureHints=["review_block", "open_builder_deploy"], revision=rev("channel:1:failed"))
+# 스킬 키를 바꾼 연결(REQ-237): 앞 버전을 24시간 받음·바로 끊음
+CHANNEL_KEY_ROTATED = dict(CHANNEL_LINKED, skill=dict(SKILL_SETUP, keyVersion=2, keyIssuedAt=t("11-14", "09:00"), previousKeyValidUntil=t("11-15", "09:00")),
+                           revision=rev("channel:1:key-2"))
+CHANNEL_KEY_REVOKED = dict(CHANNEL_LINKED, skill=dict(SKILL_SETUP, keyVersion=2, keyIssuedAt=t("11-14", "09:00"), previousKeyValidUntil=None),
+                           revision=rev("channel:1:key-2-revoked"))
 CHANNEL_INPUT = {"botId": BOT_ID, "channelPublicId": "_xMoonCake", "blockIds": BLOCK_IDS}
 LEDGER_AUTH = {"authorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=example&state=" + h("state", 24),
                "state": "st." + h("state", 40), "expiresAt": t("11-12", "12:10")}
@@ -706,6 +723,7 @@ def skill_request(utterance, *, action="message", params=None, client_extra=None
 
 SKILL_MESSAGE = skill_request("1호 생크림 케이크 얼마예요?")
 SKILL_MESSAGE_ALLERGY = skill_request("땅콩 알레르기가 있는데 먹어도 되나요?")
+SKILL_MESSAGE_PROOF = skill_request(PROOF_PHRASE)  # 연결 확인 중 채널에 사장님이 보낸 연결 문구(REQ-238)
 SKILL_CARD = skill_request("규정에 동의하고 주문 요청", action="card", block="확인 카드", callback=False,
                            client_extra={"cardKey": "ck_" + h("card:order", 30), "choice": "confirm"})
 SKILL_ORDERER = skill_request("이름·연락처 넣기", action="card", block="주문자 정보", callback=False,
@@ -815,7 +833,7 @@ SKILL_OUTCOME_EXAMPLES = {
     "rate_limited": text("잠시 뒤 다시 말씀해 주세요"),
     "duplicate": text("1호 생크림 케이크는 35,000원이에요. 이 금액은 11월 15일 12:39까지 유효하고, 견적만으로 그날 자리를 잡아 두지는 않아요."),
     "not_accepting": text("아직 상담을 받지 않아요. 가게로 연락해 주세요: 010-1234-5678"),
-    "channel_test_card": card("연결 확인", "테스트 메시지를 받았어요. 시험 버튼 5개를 하나씩 눌러 주세요(1/5 확인 카드)",
+    "channel_test_card": card("연결 확인", "연결 문구를 받았어요. 시험 버튼 5개를 하나씩 눌러 주세요(1/5 확인 카드)",
                               [check_button("시험: 확인 카드", "card", "card")]),
     "server_error": text("잠시 뒤 다시 말씀해 주세요"),
     # 연결 확인의 시험 버튼(카드·후기 스킬)

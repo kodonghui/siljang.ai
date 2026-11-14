@@ -162,8 +162,8 @@
   flows: [FL-001]
   terms: [CTX-007, TERM-044]
   specs: [SPEC-001]
-  apis: [API-001]
-  note: "카카오 로그인. 가게가 없으면 가게 등록으로, 있으면 할 일 목록으로 감"
+  apis: [API-078, API-001]
+  note: "카카오 로그인. 서버가 서명한 state로 시작하고 돌아온 state를 이 브라우저의 로그인 시작 쿠키와 맞춰 봄(DEC-10). 가게가 없으면 가게 등록으로, 있으면 할 일 목록으로 감"
   children:
     - id: SCR-015
       name: 가게 등록
@@ -467,9 +467,9 @@
           status: active
           flows: [FL-001]
           terms: [CTX-007, TERM-053]
-          specs: [SPEC-008]
-          apis: [API-030, API-031, API-032]
-          note: "연결할 채널(오픈빌더 봇)과 버튼 블록 ID 다섯을 정하고 스킬 설정 값을 옮긴 뒤 연결 확인(10분, 시험 버튼 다섯)과 먼저 보내기 시험 안내. 봇 ID를 찾는 방법 안내도 여기(OPEN-8)"
+          specs: [SPEC-008, SPEC-017]
+          apis: [API-030, API-031, API-032, API-079]
+          note: "연결할 채널(오픈빌더 봇)과 버튼 블록 ID 다섯을 정하고 스킬 설정 값과 한 번만 보이는 스킬 키를 옮긴 뒤 연결 확인(10분, 화면의 연결 문구와 시험 버튼 다섯)과 먼저 보내기 시험 안내. 스킬 키 바꾸기(옛 키를 24시간 더 받거나 바로 끊음)와 봇 ID를 찾는 방법 안내도 여기(OPEN-8)"
         - id: SCR-042
           name: 장부 연결
           path: /owner/ledger

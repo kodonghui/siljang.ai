@@ -57,10 +57,10 @@
 | `day-full` | 화면 고유(W3) | 그 사이 그날이 다 참 | 1 |
 | `handed-over` | 화면 고유(W3) | AI가 답하지 않고 사장님께 에스컬레이션함 | 2 |
 | `fixed-answer` | 화면 고유(W3) | AI 답이 서버 확인을 지나지 못해 정해진 문장으로 답함 | 1 |
-| `link-test` | 화면 고유(W3) | 채널 연결 확인의 테스트 메시지·시험 버튼·시험 안내에 답함(SPEC-008) | 1 |
+| `link-test` | 화면 고유(W3) | 채널 연결 확인의 연결 문구·시험 버튼·시험 안내에 답함(SPEC-008) | 1 |
 | `deferred` | 화면 고유(W3) | 손님이 채널 친구가 아니거나, 그 가게의 먼저 보내기가 안 되거나, 카카오가 전하지 못해 다음 대화 때 먼저 전함(REQ-181) | 2 |
 | `not-sent` | 화면 고유(W3) | 사장님이 우리 서비스 채널 친구가 아니어서 알림이 가지 않음 | 2 |
-| `checking` | 화면 고유(W3) | 채널 연결 확인 중(최대 10분, 시험 버튼 다섯)이거나 먼저 보내기 시험 안내의 결과를 기다림 | 1 |
+| `checking` | 화면 고유(W3) | 채널 연결 확인 중(최대 10분, 연결 문구와 시험 버튼 다섯)이거나 먼저 보내기 시험 안내의 결과를 기다림 | 1 |
 | `event-off` | 화면 고유(W3) | 채널은 연결됐지만 먼저 보내기(시험 안내)가 안 됨. 그 가게의 손님 안내는 모두 다음 대화 때 전함(REQ-180, REQ-181) | 1 |
 | `reconnect` | 화면 고유(W3) | 구글 권한이 끊겨 장부를 다시 연결해야 함 | 1 |
 | `on-hold` | 화면 고유(W3) | 영업 신고가 보류됨 | 2 |
@@ -97,7 +97,7 @@
 | `rate_limited` | 잠시 뒤 다시 말씀해 주세요 | 06단계 뼈대 그대로 |
 | `duplicate` | (처음 결과와 같은 말) | 06단계 뼈대 그대로 |
 | `not_accepting` | 아직 상담을 받지 않아요. 가게로 연락해 주세요: {가게 연락처} | 06단계 뼈대 그대로 |
-| `channel_test_card` | 테스트 메시지를 받았어요. 시험 버튼 5개를 하나씩 눌러 주세요 + 첫 시험 버튼 '시험: 확인 카드' | 06단계 뼈대 그대로 |
+| `channel_test_card` | 연결 문구를 받았어요. 시험 버튼 5개를 하나씩 눌러 주세요 + 첫 시험 버튼 '시험: 확인 카드' | 06단계 뼈대 그대로 |
 | `server_error` | 잠시 뒤 다시 말씀해 주세요 | 06단계 뼈대 그대로 |
 | `order_requested` | 기본 디자인: 주문을 요청했어요(주문번호 {orderNo}). 결제가 확인되면 확정돼요 + 결제 안내 / 맞춤 주문: 주문을 요청했어요(주문번호 {orderNo}). 사장님이 보고 알려 드릴게요 + (채널 친구가 아니면) 채널을 추가하시면 답을 바로 받아 보실 수 있어요 | 08단계에서 바꿈: 맞춤 주문의 문구와 채널 추가 권유를 나눔(SPEC-029) |
 | `allergy_saved` | (주문자 정보 카드나 주문 요청 확인 카드) | 06단계 뼈대 그대로 |
@@ -163,7 +163,7 @@
 | [SCR-011](SCR-011.md) | 손님 알림 | 손님 | normal · photo-consent · deferred · stale · error | loading · empty · permission | 6 |
 | [SCR-012](SCR-012.md) | 후기 남기기 | 손님 | normal · done · permission · error | loading · empty · stale | 12 |
 | [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
-| [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 8 |
+| [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 12 |
 | [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 16 |
 | [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
 | [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 17 |
@@ -190,10 +190,10 @@
 | [SCR-038](SCR-038.md) | 운영규정 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 15 |
 | [SCR-039](SCR-039.md) | 운영규정 버전 이력 | 사장님 | normal · loading · empty · error · permission | stale | 9 |
 | [SCR-040](SCR-040.md) | 결제 수단 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 16 |
-| [SCR-041](SCR-041.md) | 카카오톡 채널 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · checking · event-off · done | - | 31 |
+| [SCR-041](SCR-041.md) | 카카오톡 채널 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · checking · event-off · done | - | 41 |
 | [SCR-042](SCR-042.md) | 장부 연결 | 사장님 | normal · loading · empty · error · permission · stale · submitting · reconnect · done | - | 34 |
 | [SCR-043](SCR-043.md) | 예약 링크 | 사장님 | normal · loading · empty · error · permission · stale | - | 5 |
-| [SCR-044](SCR-044.md) | 포트폴리오 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 22 |
+| [SCR-044](SCR-044.md) | 포트폴리오 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 21 |
 | [SCR-045](SCR-045.md) | 후기 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
 | [SCR-046](SCR-046.md) | 운영자 로그인 | 운영자 | normal · error · rate-limited · submitting | loading · empty · permission · stale | 5 |
 | [SCR-047](SCR-047.md) | 영업 신고 확인 목록 | 운영자 | normal · loading · empty · error · permission · stale | - | 10 |
@@ -213,7 +213,7 @@
 | W4 | 사장님·운영자 화면 레이아웃 | 사장님 화면은 1280에서 왼쪽 메뉴(할 일·주문·입금 대조·제작·픽업·영업 캘린더·가게 설정), 360에서 위쪽 막대와 메뉴 버튼. 목록은 1280에서 표, 360에서 카드. 운영자 화면은 메뉴 둘(영업 신고 확인·운영자 알림) | 07단계 화면 트리의 1뎁스 화면 7개를 그대로 메뉴로 씀. 360에서 표는 가로 넘침이 생김 | 360에서 아래쪽 탭 막대: 탭 5개 밖은 '더보기'에 숨어 입금 대조·영업 캘린더가 한 번 더 눌러야 보임 |
 | W5 | 손님 문구(카카오 스킬 결과) | 06단계 7절의 뼈대를 그대로 쓰고 5곳(handed_over·order_requested·order_cancelled·consent_withdrawn·day_full)만 다듬음. 전체는 README 5절 | 06단계가 '08단계에서 다듬음'으로 전달함. 결과마다 손님이 할 수 있는 다음 행동이 보이게 | AI가 상황마다 문구를 만듦: 자연스럽지만 금액·상태를 잘못 말할 위험(SPEC-020, SPEC-066) |
 | W6 | 주문 요청 카드의 구성 | 한 응답의 출력 안에서 ① 그 버전의 취소·환불 규정 글(조문마다 '· 제목: 조건 → 효과' 한 줄, 끝에 '주문제작이라 청약철회가 제한될 수 있어요'. 1,000자를 넘으면 조문 사이에서 나눠 글 둘) ② 요약 카드(주문 내용 요약·문구 철자 그대로·주문자 이름·연락처·알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 '규정에 동의하고 주문 요청'·'안 할래요', 30분 기한 표시). 2026-11-13 설계 재검토 H9로 06단계 DEC-22에 맞춰 규정 글을 앞으로 옮김(전에는 요약·규정·버튼 카드 순). 같은 재검토 H5·H10으로 이 카드 앞에 알레르기 정보 카드(SCR-004#allergy)를 두고, 요약 카드의 '사진 게시 동의: 동의 안 함'과 버튼 '사진 게시도 동의하고 요청'을 뺌(사진 게시 동의는 완성 사진 안내 SCR-011과 후기 SCR-012에서 사진마다) | 카카오 카드에는 체크박스가 없고 버튼은 3개까지. 한 응답의 출력은 3개, 글은 1,000자, 카드의 제목과 설명은 합쳐 400자라 규정 글을 카드와 따로 둠(SPEC-028, REQ-184). 06단계 계약의 choice 값(confirm·decline)과 같음 | 카드 하나에 모두: 설명 400자를 넘고 규정이 요약과 섞임. 조문 이름만 보이고 링크로: 손님이 동의 버튼 앞에서 규정을 읽지 못함(설계 재검토 H9) |
-| W7 | OPEN-8 봇 ID 찾기 안내(SCR-041) | 봇 ID 필드 아래 '봇 ID 찾는 법'을 펼쳐 보이고, 오픈빌더에서 봇을 열었을 때 주소의 /bot/ 다음 값이라고 안내함. 봇 ID가 틀리면 10분 안에 테스트 메시지가 오지 않아 '연결 안 됨'과 사유 후보 '테스트 메시지가 오지 않음'(API-030 test_message_missing)이 보이고, 그 도움말에 '봇 ID가 오픈빌더 주소의 값과 같은지 확인해 주세요'를 넣음. 주소 형식은 개발 전 실제 오픈빌더 화면으로 확인 | 06단계 OPEN-8이 08단계 안내로 전달함. 06단계 계약의 사유 후보(스킬 주소·스킬 키 헤더·오픈빌더 배포·테스트 메시지 안 옴과, 설계 재검토 H8·H5로 더한 닿지 않은 버튼 블록 다섯) 안에서 안내해 계약을 바꾸지 않음. 버튼 블록 ID를 찾는 곳도 같은 펼치기에 넣고 실제 화면으로 확인해 문구를 정함. 실제 오픈빌더 화면은 이번에 확인하지 못해(동희님 PC 확인 필요) 확인 전 문구로 둠 | 봇 ID 없이 스킬 키만으로 연결: 사장님이 찾을 것이 줄지만 06단계 API-031 계약이 바뀜 |
+| W7 | OPEN-8 봇 ID 찾기 안내(SCR-041) | 봇 ID 필드 아래 '봇 ID 찾는 법'을 펼쳐 보이고, 오픈빌더에서 봇을 열었을 때 주소의 /bot/ 다음 값이라고 안내함. 봇 ID가 틀리면 10분 안에 연결 문구가 우리 스킬에 오지 않아 '연결 안 됨'과 사유 후보 '연결 문구가 오지 않음'(API-030 test_message_missing)이 보이고, 그 도움말에 '봇 ID가 오픈빌더 주소의 값과 같은지 확인해 주세요'를 넣음. 주소 형식은 개발 전 실제 오픈빌더 화면으로 확인 | 06단계 OPEN-8이 08단계 안내로 전달함. 06단계 계약의 사유 후보(스킬 주소·스킬 키 헤더·오픈빌더 배포·연결 문구 안 옴과, 설계 재검토 H8·H5로 더한 닿지 않은 버튼 블록 다섯) 안에서 안내해 계약을 바꾸지 않음. 버튼 블록 ID를 찾는 곳도 같은 펼치기에 넣고 실제 화면으로 확인해 문구를 정함. 실제 오픈빌더 화면은 이번에 확인하지 못해(동희님 PC 확인 필요) 확인 전 문구로 둠 | 봇 ID 없이 스킬 키만으로 연결: 사장님이 찾을 것이 줄지만 06단계 API-031 계약이 바뀜 |
 | W8 | 결제 안내에 '결제했어요' 바로가기 | 결제 안내(SCR-005) 말풍선 아래에 바로가기 '결제했어요'를 두고, 누르면 그 말이 상담으로 가서 결제 확인 요청 카드(SCR-006)가 나옴 | SPEC-033은 손님이 말해야 카드가 나옴. 바로가기는 말을 대신 보낼 뿐 명령을 내리지 않아 R9(손님이 눌러야 명령)와 맞음 | 바로가기 없음: 손님이 직접 써야 함 |
 | W9 | 운영자 화면의 로그인 끊김(SCR-047~049) | 운영자 로그인이 없거나 만료됐거나 운영자 계정이 아니면(401) 운영자 로그인(SCR-046)으로 보내고, 로그인하면 원래 화면으로 돌아옴. 보내기 전에도 운영자 기록은 하나도 보이지 않음 | 06단계 DEC-11이 'SPEC-001의 운영자 화면은 운영자 계정이 아니면 찾을 수 없음'을 '운영자 기록을 0건 보인다'로 읽고 화면 디자인을 08단계로 전달함. 세션이 끊긴 운영자와 운영자가 아닌 사람을 서버가 구별하지 않으므로 같은 화면을 보임 | '찾을 수 없어요' 화면: SPEC-001 문구 그대로지만, 세션이 끊긴 운영자도 주소를 직접 쳐서 로그인 화면으로 가야 함 |
 <!-- 08-screens:decisions:end -->

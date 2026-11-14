@@ -175,6 +175,10 @@ def error_response(o, status, codes):
 
 
 def header(name, o):
+    if name == "Set-Cookie" and o["path"] == "/owner/session/authorization":
+        return {"description": "로그인 시작 쿠키 `siljang_login`(HttpOnly·Secure·SameSite=Lax, 10분). state의 nonce를 담고, POST /owner/session이 견준 뒤 지움(DEC-10)",
+                "required": True, "schema": {"type": "string", "maxLength": 4096},
+                "example": "siljang_login=example-login-not-real; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600"}
     if name == "Set-Cookie":
         cookie = "siljang_operator" if o["path"].startswith("/operator") else "siljang_owner"
         ending = o["method"] == "delete"
@@ -304,16 +308,16 @@ def schemas():
 INFO_DESCRIPTION = """수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~076)에서 만들었다.
 이 파일은 research/cake-api-2026-11/build_api.py가 만든다. 손으로 고치지 않는다.
 
-**API와 응답의 ID.** API마다 `x-corthex.id`(API-001~077)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
+**API와 응답의 ID.** API마다 `x-corthex.id`(API-001~079)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
 `x-corthex.omit`은 응답 목록(2xx·422·401·403·404·409·default) 가운데 그 API가 반환하지 않는 것과 사유, `x-corthex.kinds`는 케이스 유형마다 그 경우를 보여 주는 응답·예시다.
 
 **오류 형식.** 모든 오류는 RFC 9457 Problem Details(`application/problem+json`)에 `code`와 `traceId`를 더한 형식. 코드는 `components.x-corthex.errors`에만 있다.
-입력 오류는 모두 422 `validation_failed`와 필드마다 `errors[{field, code}]`(DEC-01). 없는 ID·다른 가게 ID·형식이 틀린 ID는 같은 404(DEC-02). 403은 쓰지 않는다.
+입력 오류는 모두 422 `validation_failed`와 필드마다 `errors[{field, code}]`(DEC-01). 경로의 없는 ID·다른 가게 ID·형식이 틀린 ID는 같은 404, 본문·쿼리가 가리킨 다른 기록의 ID가 없거나 다른 가게 것이면 같은 422 `reference_not_found`(DEC-02). 403은 쓰지 않는다.
 
 **명령.** 같은 상태로 가는 명령은 200과 `outcome: unchanged`(DEC-03). 사장님·운영자의 쓰기 명령은 `Idempotency-Key` 헤더(DEC-04)와 본문의 `baseRevision`(DEC-05)을 보낸다.
 확인이 필요한 저장은 409 `confirmation_required`와 `confirm` 목록을 받고, 확인하면 같은 요청에 `confirm`을 담아 새 요청 키로 다시 보낸다(DEC-06).
 
-**카카오 스킬.** 늘 200과 스킬 응답, 결과는 `Siljang-Outcome` 헤더와 같은 이름의 예시(DEC-07). 인증은 오픈빌더 헤더 값 `Siljang-Skill-Key`(DEC-08).
+**카카오 스킬.** 늘 200과 스킬 응답, 결과는 `Siljang-Outcome` 헤더와 같은 이름의 예시(DEC-07). 인증은 오픈빌더 헤더 값 `Siljang-Skill-Key`의 연결마다 버전이 있는 스킬 키로, 바꾼 뒤 24시간은 앞 버전도 받는다(DEC-08).
 
 **형식.** 돈은 원 단위 정수, 시각은 가게 시간대 오프셋을 붙인 RFC 3339, 날짜는 가게 시간대의 YYYY-MM-DD(DEC-15). 목록은 `cursor`·`limit`(DEC-14).
 
@@ -370,11 +374,11 @@ def build_document():
             },
             "securitySchemes": {
                 "ownerSession": {"type": "apiKey", "in": "cookie", "name": "siljang_owner",
-                                 "description": "사장님 세션 쿠키(HttpOnly·Secure·SameSite=Lax). POST /owner/session이 줌(DEC-10)"},
+                                 "description": "사장님 세션 쿠키(HttpOnly·Secure·SameSite=Lax). POST /owner/session/authorization의 state로 시작한 로그인에 POST /owner/session이 줌(DEC-10)"},
                 "operatorSession": {"type": "apiKey", "in": "cookie", "name": "siljang_operator",
                                     "description": "운영자 세션 쿠키(HttpOnly·Secure·SameSite=Lax). POST /operator/session이 줌(DEC-11)"},
                 "kakaoSkillKey": {"type": "apiKey", "in": "header", "name": "Siljang-Skill-Key",
-                                  "description": "가게 연결마다 다른 스킬 키. 오픈빌더 스킬 설정의 헤더 값(DEC-08)"},
+                                  "description": "가게 연결마다 다른 스킬 키. 오픈빌더 스킬 설정의 헤더 값. 지금 버전과, 바꾼 뒤 24시간 동안의 앞 버전을 받음(DEC-08, REQ-237)"},
             },
             "x-corthex": x,
         },
