@@ -1086,7 +1086,9 @@ op(id="API-063", method="post", path="/owner/change-requests/{changeRequestId}/d
    desc="금액이 그대로거나 내려가면 바로 반영해 주문 버전을 하나 올린다(SPEC-045, 내려가면 환불 정할 일). 오르면 차액 결제 안내를 내고(SPEC-043) 확인되면 반영한다. "
         "날짜가 바뀌면 옛 날 자리를 풀고 새 날에 확정된 자리를 잡는다(결제 안내 없음). 새 날이 다 찼으면 409 confirmation_required(overbooking), 휴무일이면 closed_day(REQ-221, REQ-226). "
         "거절이면 주문은 그대로이고 손님에게 알린다. 그 사이 손님이 취소했으면 409 order_cancelled, 이전 버전을 보고 만든 변경이면 409 stale_change, 이미 답했으면 409 already_decided, "
-        "변경 마감까지 답이 없어 '답 없어 닫힘'으로 닫힌 변경 요청은 409 invalid_state(REQ-214).",
+        "변경 마감까지 답이 없어 '답 없어 닫힘'으로 닫힌 변경 요청은 409 invalid_state(REQ-214). "
+        "재제작 주문의 변경 요청은 금액이 그대로일 때만 수락한다(amountDelta가 0이 아니면 422 /amountDelta not_allowed, 차액 결제·차액 돌려주기 없음, "
+        "변경 마감은 원래 주문이 받은 운영규정 버전으로 셈, SPEC-042, SPEC-060).",
    params=[pid("changeRequestId", "변경 요청", E.CHANGE["changeRequestId"])],
    body="ChangeDecisionInput",
    body_examples={"accept_same": {"baseRevision": E.CHANGE["revision"], "decision": "accept", "amountDelta": 0},
@@ -1097,7 +1099,7 @@ op(id="API-063", method="post", path="/owner/change-requests/{changeRequestId}/d
                                                               "paymentRequest": E.PR_DIFFERENCE},
                                       "rejected": {"outcome": "done", "changeRequest": E.CHANGE_REJECTED, "order": E.ORDER_CONFIRMED, "paymentRequest": None}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "order_cancelled", "stale_change", "invalid_state", "confirmation_required"]},
-   fields=[("/amountDelta", "out_of_range")],
+   fields=[("/amountDelta", "out_of_range"), ("/amountDelta", "not_allowed")],
    confirm=["overbooking", "closed_day"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],

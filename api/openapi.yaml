@@ -16684,7 +16684,7 @@ paths:
       operationId: decideChangeRequest
       summary: 변경 요청 응답(수락·거절)
       description: |-
-        금액이 그대로거나 내려가면 바로 반영해 주문 버전을 하나 올린다(SPEC-045, 내려가면 환불 정할 일). 오르면 차액 결제 안내를 내고(SPEC-043) 확인되면 반영한다. 날짜가 바뀌면 옛 날 자리를 풀고 새 날에 확정된 자리를 잡는다(결제 안내 없음). 새 날이 다 찼으면 409 confirmation_required(overbooking), 휴무일이면 closed_day(REQ-221, REQ-226). 거절이면 주문은 그대로이고 손님에게 알린다. 그 사이 손님이 취소했으면 409 order_cancelled, 이전 버전을 보고 만든 변경이면 409 stale_change, 이미 답했으면 409 already_decided, 변경 마감까지 답이 없어 '답 없어 닫힘'으로 닫힌 변경 요청은 409 invalid_state(REQ-214).
+        금액이 그대로거나 내려가면 바로 반영해 주문 버전을 하나 올린다(SPEC-045, 내려가면 환불 정할 일). 오르면 차액 결제 안내를 내고(SPEC-043) 확인되면 반영한다. 날짜가 바뀌면 옛 날 자리를 풀고 새 날에 확정된 자리를 잡는다(결제 안내 없음). 새 날이 다 찼으면 409 confirmation_required(overbooking), 휴무일이면 closed_day(REQ-221, REQ-226). 거절이면 주문은 그대로이고 손님에게 알린다. 그 사이 손님이 취소했으면 409 order_cancelled, 이전 버전을 보고 만든 변경이면 409 stale_change, 이미 답했으면 409 already_decided, 변경 마감까지 답이 없어 '답 없어 닫힘'으로 닫힌 변경 요청은 409 invalid_state(REQ-214). 재제작 주문의 변경 요청은 금액이 그대로일 때만 수락한다(amountDelta가 0이 아니면 422 /amountDelta not_allowed, 차액 결제·차액 돌려주기 없음, 변경 마감은 원래 주문이 받은 운영규정 버전으로 셈, SPEC-042, SPEC-060).
 
         SPEC: SPEC-042, SPEC-043, SPEC-045, SPEC-015, SPEC-032
       tags:
@@ -17438,6 +17438,8 @@ paths:
                     errors:
                     - field: /amountDelta
                       code: out_of_range
+                    - field: /amountDelta
+                      code: not_allowed
                 idempotency_key_reused:
                   value:
                     type: /problems/idempotency_key_reused
@@ -26938,7 +26940,7 @@ components:
           type: integer
           minimum: -10000000
           maximum: 10000000
-          description: '수락할 때 금액 차이: 오르면 추가 금액(1원~1,000만 원), 내려가면 음수, 그대로면 0'
+          description: '수락할 때 금액 차이: 오르면 추가 금액(1원~1,000만 원), 내려가면 음수, 그대로면 0. 재제작 주문의 변경 요청은 0만(아니면 422 not_allowed, 차액 결제·차액 돌려주기 없음, SPEC-042, SPEC-060)'
           x-corthex-column: change_requests.amount_delta
         rejectReason:
           type: string
@@ -30449,6 +30451,10 @@ components:
       why: 단계별 환불은 0시간부터 끝없음까지 빈 구간·겹침 없이 이어지고(422 gap·overlaps), 단계별 환불 조문과 단계 행은 함께 있거나 함께 없음(422 required, SPEC-005, 설계 재검토 M4)
       decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M4·M13, 검토자의 고치는 방향대로)
       client: 운영규정 화면(SCR-038)이 저장 전에 같은 규칙으로 그 행을 보임. 요청 값의 조건이라 A13은 찾지 않아 여기 적음
+    - what: '요청이 좁아짐: API-063 ChangeDecisionInput.amountDelta'
+      why: 재제작 주문의 변경 요청은 금액이 그대로일 때만 수락하고 amountDelta가 0이 아니면 422 not_allowed(차액 결제·차액 돌려주기 없음, SPEC-042, SPEC-060, 설계 재검토 M13)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M4·M13, 검토자의 고치는 방향대로)
+      client: 변경 요청 화면(SCR-024)은 그 오류를 금액 변화 필드 옆에 보임. 요청 값의 조건이라 A13은 찾지 않아 여기 적음
     - what: '값의 뜻이 바뀜: 재제작 주문에 들어온 신고의 IssueReport.paidAmount, 재제작 주문의 환불 미리보기·환불의 order'
       why: 재제작 주문은 결제 없는 주문이라 다시 신고의 한도와 취소·보상 환불을 원래 주문의 돈으로 셈하고 환불을 원래 주문에 남김(SPEC-059, SPEC-060, 설계 재검토 M13)
       decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M4·M13, 검토자의 고치는 방향대로)

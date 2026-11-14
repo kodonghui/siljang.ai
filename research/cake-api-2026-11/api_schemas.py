@@ -1097,7 +1097,7 @@ S["ChangeRequest"] = all_required({
 S["ChangeDecisionInput"] = obj({
     "baseRevision": BASE_REVISION,
     "decision": enum(["accept", "reject"]),
-    "amountDelta": integer(-10000000, 10000000, col="change_requests.amount_delta", desc="수락할 때 금액 차이: 오르면 추가 금액(1원~1,000만 원), 내려가면 음수, 그대로면 0"),
+    "amountDelta": integer(-10000000, 10000000, col="change_requests.amount_delta", desc="수락할 때 금액 차이: 오르면 추가 금액(1원~1,000만 원), 내려가면 음수, 그대로면 0. 재제작 주문의 변경 요청은 0만(아니면 422 not_allowed, 차액 결제·차액 돌려주기 없음, SPEC-042, SPEC-060)"),
     "rejectReason": string(0, 200, col="change_requests.reject_reason"),
     "confirm": confirm_list(["overbooking", "closed_day"]),
 }, ["baseRevision", "decision"])
