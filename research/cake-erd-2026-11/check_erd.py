@@ -388,7 +388,7 @@ def db_checks(root: Path, rep: Report, tables: list, base: str | None, keep: boo
 
 RACE_ORDER = "e5000000-0000-0000-0000-000000000001"
 RACE_SHOP = "e5000000-0000-0000-0000-000000000002"
-RACE_PAYMENT = "e5000000-0000-0000-0000-000000000003"  # 결제 확인이 주문을 확정시킨 결제(orders_confirmed_payment_chk, 설계 재검토 M7)
+RACE_PAYMENT = "e5000000-0000-0000-0000-000000000003"  # 결제 확인이 주문을 확정한 결제(orders_confirmed_payment_chk, 설계 재검토 M7)
 # 외래 키 트리거를 건너뛰어 주문 한 행과 그 확인된 결제 한 행만 만듦(검사용 DB에서만, 슈퍼유저). CHECK는 그대로 봄
 RACE_SETUP = (
     "SET session_replication_role = replica; "

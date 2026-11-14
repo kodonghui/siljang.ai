@@ -534,7 +534,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("두 번 눌러도 하나", "request_keys.request_key"),
         ("할 일 닫힘", "owner_tasks.closed_at"),
         ("확인 전 들어온 돈을 확인하면 그 시각을 새 금액 확인으로", "payment_requests.amount_confirmed_at"),
-        ("주문을 확정시킨 결제", "orders.confirmed_payment_id"),
+        ("주문을 확정한 결제", "orders.confirmed_payment_id"),
         ("같은 키의 요청 지문(다르면 422)", "request_keys.request_hash"),
         ("처리 중(409)·끝남", "request_keys.state"),
         ("처리 중의 기한 60초", "request_keys.processing_expires_at"),
@@ -566,7 +566,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("취소된 주문에 입금", "owner_tasks.kind"),
         ("환불 결정", "refunds.cause"),
         ("취소된 주문에 들어온 금액", "payment_requests.arrived_amount"),
-        ("주문을 확정시킨 결제(다시 낸 결제)", "orders.confirmed_payment_id"),
+        ("주문을 확정한 결제(다시 낸 결제)", "orders.confirmed_payment_id"),
     ],
     "SPEC-037": [
         ("기한 지남", "payment_requests.expired_at"),
@@ -1059,7 +1059,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("정정 안내", "notifications.kind"),
         ("장부 쓰기", "ledger_writes.event_kind"),
         ("두 번 눌러도 한 번", "request_keys.request_key"),
-        ("확정시킨 결제를 비움", "orders.confirmed_payment_id"),
+        ("주문을 확정한 결제를 비움", "orders.confirmed_payment_id"),
     ],
     "SPEC-071": [
         ("들어온 금액", "payment_requests.arrived_amount"),

@@ -23,9 +23,9 @@
 -- - 같은 요청 거르기(G2): 카카오 메시지 ID(messages), 카드 키(confirm_cards), 화면 키(request_keys: 요청 지문·처리 상태·
 --   처음 결과, 06 DEC-04), 자동으로 하는 일의 이벤트 키(각 테이블의 event_key·hold_key, 형식은 docs/05-erd/README.md 4절 A33).
 --   돈이 오가는 기록은 대상마다 하나를 UNIQUE로도 막음(환불의 취소한 주문·변경 요청·문제 신고·결제 안내, 결제 안내마다 확인된 결제
---   하나, 주문을 확정시킨 결제 orders.confirmed_payment_id, 설계 재검토 M7).
+--   하나, 주문을 확정한 결제 orders.confirmed_payment_id, 설계 재검토 M7).
 -- - 시크릿(토큰·키·비밀번호)은 어느 테이블에도 두지 않음(REQ-135). 시크릿 저장소의 이름만 둠.
--- - 앱이 지키는 규칙: 테이블 하나로 말할 수 없는 규칙(확정은 결제 확인으로만(데이터베이스는 확정시킨 결제를 봄), 환불 합 ≤ 받은 금액,
+-- - 앱이 지키는 규칙: 테이블 하나로 말할 수 없는 규칙(주문 확정은 결제 확인으로만(데이터베이스는 주문을 확정한 결제를 봄), 환불 합 ≤ 받은 금액,
 --   하루 최대 개수 넘기지 않기 등)은 docs/05-erd/README.md 4절에 모아 두고 12단계 테스트로 봄.
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;  -- refund_tiers의 기간 중복 막기(EXCLUDE)에 씀
@@ -512,7 +512,7 @@ CREATE TABLE orders (
   accepted_at              timestamptz,                  -- 사장님 수락(TERM-011) 시각. 1-2에 수락 상태가 없어 상태가 아닌 시각으로 둠
   accepted_version         integer,                      -- 수락한 버전. 결제 안내 금액의 기준(REQ-076)
   confirmed_at             timestamptz,                  -- 주문 확정(TERM-012) 시각. 결제 확인됨으로만(REQ-060). 받음·미수령의 시각은 productions에
-  confirmed_payment_id     uuid,                         -- 주문을 확정시킨 확인된 결제(첫 결제나 다시 낸 결제, SPEC-034, SPEC-036). 확정 뒤 상태면 꼭 있음(재제작 주문은 빼고). 그 결제 확인을 취소하면 비우고 결제 기다림으로 돌림(SPEC-070, 트리거 payments_confirmed_void, 설계 재검토 M7)
+  confirmed_payment_id     uuid,                         -- 주문을 확정한 확인된 결제(첫 결제나 다시 낸 결제, SPEC-034, SPEC-036). 주문 확정 뒤 상태면 꼭 있음(재제작 주문은 빼고). 그 결제 확인을 취소하면 비우고 결제 기다림으로 돌림(SPEC-070, 트리거 payments_confirmed_void, 설계 재검토 M7)
   rejected_at              timestamptz,                  -- 맞춤 주문을 거절한 시각
   reject_reason            text CHECK (char_length(reject_reason) <= 200), -- 거절 사유
   cancelled_at             timestamptz,                  -- 취소된 시각
@@ -538,8 +538,8 @@ CREATE TABLE orders (
   CONSTRAINT orders_accept_custom_chk CHECK (kind = 'custom' OR accepted_at IS NULL), -- 수락은 맞춤 주문만(TERM-011)
   CONSTRAINT orders_accepted_before_payment_chk CHECK (kind <> 'custom' OR remake_of_order_id IS NOT NULL OR status IN ('requested', 'rejected', 'cancelled') OR accepted_at IS NOT NULL), -- 맞춤 주문은 수락 뒤에만 결제로(REQ-058)
   CONSTRAINT orders_accepted_version_chk CHECK ((accepted_at IS NULL) = (accepted_version IS NULL)),
-  CONSTRAINT orders_confirmed_chk CHECK (status NOT IN ('confirmed', 'received', 'no_pickup') OR confirmed_at IS NOT NULL), -- 확정 시각 없이 확정 뒤 상태 없음
-  CONSTRAINT orders_confirmed_payment_chk CHECK ((status NOT IN ('confirmed', 'received', 'no_pickup') OR confirmed_payment_id IS NOT NULL OR remake_of_order_id IS NOT NULL) AND (confirmed_payment_id IS NULL OR confirmed_at IS NOT NULL)), -- 확정 뒤 상태면 확정시킨 결제가 있음(재제작 주문은 빼고). 확정은 결제 확인으로만(REQ-060, 설계 재검토 M7)
+  CONSTRAINT orders_confirmed_chk CHECK (status NOT IN ('confirmed', 'received', 'no_pickup') OR confirmed_at IS NOT NULL), -- 확정 시각 없이 주문 확정 뒤 상태 없음
+  CONSTRAINT orders_confirmed_payment_chk CHECK ((status NOT IN ('confirmed', 'received', 'no_pickup') OR confirmed_payment_id IS NOT NULL OR remake_of_order_id IS NOT NULL) AND (confirmed_payment_id IS NULL OR confirmed_at IS NOT NULL)), -- 주문 확정 뒤 상태면 주문을 확정한 결제가 있음(재제작 주문은 빼고). 주문 확정은 결제 확인으로만(REQ-060, 설계 재검토 M7)
   CONSTRAINT orders_rejected_chk CHECK ((status = 'rejected') = (rejected_at IS NOT NULL)),
   CONSTRAINT orders_rejected_custom_chk CHECK (status <> 'rejected' OR kind = 'custom'),
   CONSTRAINT orders_cancel_chk CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL AND cancel_kind IS NOT NULL)),
@@ -860,14 +860,14 @@ CREATE TABLE payments (
   CONSTRAINT payments_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT payments_request_fk FOREIGN KEY (shop_id, payment_request_id) REFERENCES payment_requests (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT payments_match_fk FOREIGN KEY (payment_request_id, order_id, amount) REFERENCES payment_requests (id, order_id, amount) ON DELETE RESTRICT, -- 확인된 결제는 그 안내의 주문·금액과 같음(REQ-081)
-  CONSTRAINT payments_order_key UNIQUE (shop_id, order_id, id), -- 주문이 확정시킨 결제를 참조하는 키(orders_confirmed_payment_fk, 설계 재검토 M7)
+  CONSTRAINT payments_order_key UNIQUE (shop_id, order_id, id), -- 주문을 확정한 결제를 참조하는 키(orders_confirmed_payment_fk, 설계 재검토 M7)
   CONSTRAINT payments_void_chk CHECK ((voided_at IS NULL) = (void_reason IS NULL)) -- 결제 확인 취소에는 사유(REQ-169)
 );
 CREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL; -- 결제 안내 하나에 확인된 결제 하나(REQ-153, 결제 확인을 취소한 것은 빼고). '입금됨'을 두 번 눌러도 하나(REQ-132)
 CREATE INDEX payments_order_idx ON payments (order_id); -- 확인된 결제 합(SPEC-016)
 COMMENT ON TABLE payments IS 'TBL-032 확인된 결제(TERM-049): 결제 안내마다 하나(결제 확인을 취소한 것은 빼고), 사장님이 입금 대조로 확인';
 
--- 주문을 확정시킨 결제는 그 주문의 확인된 결제(설계 재검토 M7). payments가 orders 뒤에 만들어지므로 여기서 더함
+-- 주문을 확정한 결제는 그 주문의 확인된 결제(설계 재검토 M7). payments가 orders 뒤에 만들어지므로 여기서 더함
 ALTER TABLE orders ADD CONSTRAINT orders_confirmed_payment_fk FOREIGN KEY (shop_id, id, confirmed_payment_id)
   REFERENCES payments (shop_id, order_id, id) ON DELETE RESTRICT;
 
@@ -1536,15 +1536,15 @@ END
 $cancelled$;
 CREATE TRIGGER refunds_cancelled BEFORE INSERT OR UPDATE OF order_id, cancelled_order_id ON refunds FOR EACH ROW EXECUTE FUNCTION refunds_cancelled_check();
 
--- 확정 뒤 상태(확정·받음·미수령)인 주문의 확정시킨 결제는 결제 확인을 취소한 것이 아님(REQ-060, SPEC-070, 설계 재검토 M7). 결제 확인을
--- 취소하는 트랜잭션이 주문을 결제 기다림으로 돌리고 확정시킨 결제를 비우므로 트랜잭션 끝에 지금 행을 다시 읽어 봄(지연 제약 트리거)
+-- 주문 확정 뒤 상태(확정·받음·미수령)인 주문을 확정한 결제는 결제 확인을 취소한 것이 아님(REQ-060, SPEC-070, 설계 재검토 M7). 결제 확인을
+-- 취소하는 트랜잭션이 주문을 결제 기다림으로 돌리고 주문을 확정한 결제를 비우므로 트랜잭션 끝에 지금 행을 다시 읽어 봄(지연 제약 트리거)
 CREATE FUNCTION confirmed_payment_live_check() RETURNS trigger
 LANGUAGE plpgsql AS $confirmed_live$
 BEGIN
   IF EXISTS (SELECT 1 FROM orders o JOIN payments p ON p.id = o.confirmed_payment_id
               WHERE CASE TG_TABLE_NAME WHEN 'orders' THEN o.id = NEW.id ELSE p.id = NEW.id END
                 AND o.status IN ('confirmed', 'received', 'no_pickup') AND p.voided_at IS NOT NULL) THEN
-    RAISE EXCEPTION '%: 확정 뒤 상태인 주문의 확정시킨 결제는 결제 확인을 취소하지 않은 것이어야 함(결제 확인을 취소하면 주문을 결제 기다림으로 돌림)', TG_NAME
+    RAISE EXCEPTION '%: 주문 확정 뒤 상태인 주문을 확정한 결제는 결제 확인을 취소하지 않은 것이어야 함(결제 확인을 취소하면 주문을 결제 기다림으로 돌림)', TG_NAME
       USING ERRCODE = 'check_violation';
   END IF;
   RETURN NULL;
@@ -1905,7 +1905,7 @@ COMMENT ON COLUMN orders.requested_at IS '주문 요청(TERM-010) 시각';
 COMMENT ON COLUMN orders.accepted_at IS '사장님 수락(TERM-011) 시각. 1-2에 수락 상태가 없어 상태가 아닌 시각으로 둠';
 COMMENT ON COLUMN orders.accepted_version IS '수락한 버전. 결제 안내 금액의 기준(REQ-076)';
 COMMENT ON COLUMN orders.confirmed_at IS '주문 확정(TERM-012) 시각. 결제 확인됨으로만(REQ-060). 받음·미수령의 시각은 productions에';
-COMMENT ON COLUMN orders.confirmed_payment_id IS '주문을 확정시킨 확인된 결제(첫 결제나 다시 낸 결제, SPEC-034, SPEC-036). 확정 뒤 상태면 꼭 있음(재제작 주문은 빼고). 그 결제 확인을 취소하면 비우고 결제 기다림으로 돌림(SPEC-070, 트리거 payments_confirmed_void, 설계 재검토 M7)';
+COMMENT ON COLUMN orders.confirmed_payment_id IS '주문을 확정한 확인된 결제(첫 결제나 다시 낸 결제, SPEC-034, SPEC-036). 주문 확정 뒤 상태면 꼭 있음(재제작 주문은 빼고). 그 결제 확인을 취소하면 비우고 결제 기다림으로 돌림(SPEC-070, 트리거 payments_confirmed_void, 설계 재검토 M7)';
 COMMENT ON COLUMN orders.rejected_at IS '맞춤 주문을 거절한 시각';
 COMMENT ON COLUMN orders.reject_reason IS '거절 사유';
 COMMENT ON COLUMN orders.cancelled_at IS '취소된 시각';

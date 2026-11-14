@@ -1042,7 +1042,7 @@ SELECT pg_temp.expect_fail('SPEC-049 환불 계좌의 끝 4자리 없이 암호�
 -- 제작·전달, 후기·포트폴리오 (CTX-005, CTX-006)
 SELECT pg_temp.expect_fail('A27 받음인데 제작 행에 인도 시각 없음', 'orders_production_sync', ARRAY[$$
   UPDATE orders SET status = 'received', lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
-SELECT pg_temp.expect_fail('A27 인도 시각을 남기고 주문은 확정 그대로', 'orders_production_sync', ARRAY[$$
+SELECT pg_temp.expect_fail('A27 인도 시각을 남기고 주문은 확정된 그대로', 'orders_production_sync', ARRAY[$$
   UPDATE productions SET handed_over_at = now(), handover_kind = 'pickup' WHERE id = 'f0000000-0000-0000-0000-000000000003'$$]);
 SELECT pg_temp.expect_fail('A27 인도한 주문을 미수령으로', 'orders_production_sync', ARRAY[$$
   UPDATE orders SET status = 'no_pickup', lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000001'$$]);
@@ -1136,7 +1136,7 @@ SELECT pg_temp.expect_fail('G2 같은 화면 요청 키 두 번', 'request_keys_
   VALUES ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000001', 'confirm_payment', encode(sha256('hmac-test-8'::bytea), 'hex'),
           now() + interval '60 seconds')$$]);
 
--- 설계 재검토 M7(같은 요청 거르기: 요청 키의 지문·처리 상태·처음 결과, 대상마다 환불 하나, 주문을 확정시킨 결제, 이벤트 키 중복)
+-- 설계 재검토 M7(같은 요청 거르기: 요청 키의 지문·처리 상태·처음 결과, 대상마다 환불 하나, 주문을 확정한 결제, 이벤트 키 중복)
 SELECT pg_temp.expect_fail('DEC-04 처리 중인 요청 키에 처음 결과', 'request_keys_state_chk', ARRAY[$$
   INSERT INTO request_keys (actor_kind, actor_id, request_key, command, request_hash, processing_expires_at, response_status, response_code)
   VALUES ('owner', 'a0000000-0000-0000-0000-000000000001', 'screen-key-000000002', 'confirm_payment', encode(sha256('hmac-test-8'::bytea), 'hex'),
@@ -1178,11 +1178,11 @@ SELECT pg_temp.expect_fail('M7 같은 신고에 보상 환불 둘', 'refunds_iss
 SELECT pg_temp.expect_fail('M7 같은 결제 안내의 들어온 입금에 환불 둘', 'refunds_request_uq', ARRAY[$$
   INSERT INTO refunds (shop_id, order_id, cause, change_request_id, issue_report_id, payment_request_id, cancelled_order_id, event_key, decision, amount, calculated_amount, calc_basis)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'over_received', NULL, NULL, 'e0000000-0000-0000-0000-000000000004', NULL, 'refund:m7-8', 'none', 0, 0, '{}')$$]);
-SELECT pg_temp.expect_fail('M7 확정시킨 결제 없는 확정', 'orders_confirmed_payment_chk', ARRAY[$$
+SELECT pg_temp.expect_fail('M7 주문을 확정한 결제 없는 주문 확정', 'orders_confirmed_payment_chk', ARRAY[$$
   UPDATE orders SET confirmed_payment_id = NULL, lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
-SELECT pg_temp.expect_fail('M7 다른 주문의 결제로 확정', 'orders_confirmed_payment_fk', ARRAY[$$
+SELECT pg_temp.expect_fail('M7 다른 주문의 결제로 주문 확정', 'orders_confirmed_payment_fk', ARRAY[$$
   UPDATE orders SET confirmed_payment_id = 'e1000000-0000-0000-0000-000000000001', lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
-SELECT pg_temp.expect_fail('M7 확정시킨 결제의 확인을 취소하고 주문은 확정 그대로', 'payments_confirmed_void', ARRAY[$$
+SELECT pg_temp.expect_fail('M7 주문을 확정한 결제의 확인을 취소하고 주문은 확정된 그대로', 'payments_confirmed_void', ARRAY[$$
   UPDATE payments SET voided_at = now(), void_reason = '잘못 누름' WHERE id = 'e1000000-0000-0000-0000-000000000003'$$]);
 SELECT pg_temp.expect_fail('G2 같은 가예약 키 둘', 'slot_holds_key_uq', ARRAY[$$
   INSERT INTO slot_holds (shop_id, day, order_id, payment_request_id, hold_key, status)

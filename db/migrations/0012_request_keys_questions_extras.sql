@@ -4,7 +4,7 @@
 --     종류·가리킨 기록(response_status, response_code, response_ref)·끝난 시각(done_at)을 두고 처음 결과 본문(response_body)을 뺌. 같은 키에
 --     지문이 다르면 422, 처리 중이면 409, 끝났으면 같은 상태 코드와 그 기록의 지금 상태를 다시 읽은 본문(06 DEC-04). 24시간 뒤 지우기가 지움.
 -- M7(RC-06): 환불은 취소한 주문(cancelled_order_id)·변경 요청·문제 신고·결제 안내마다 하나(UNIQUE 넷, 트리거 refunds_cancelled). 주문은
---     확정시킨 결제(confirmed_payment_id)를 가리키고 확정 뒤 상태면 꼭 있음(orders_confirmed_payment_chk·_fk, 지연 트리거
+--     그 주문을 확정한 결제(confirmed_payment_id)를 가리키고 주문 확정 뒤 상태면 꼭 있음(orders_confirmed_payment_chk·_fk, 지연 트리거
 --     orders_confirmed_payment_live·payments_confirmed_void). event_key·hold_key의 형식은 docs/05-erd/README.md 4절 A33(컬럼 설명을 고침).
 -- M17(RC-08): 열린 에스컬레이션 건에 덧붙은 질문을 행으로(handoff_questions, TBL-055). 마감된 날 질문은 날짜마다 따로 건
 --     (handoffs_one_open_day_per_consultation, handoffs_day_chk)이고, 추가 수락을 쓴 주문 요청을 하나만 남김(handoffs.day_used_order_id).
@@ -14,7 +14,7 @@
 -- 0011_amount_confirm_standard_quote.sql 뒤에 한 트랜잭션으로 적용: psql -1 -v ON_ERROR_STOP=1 -f db/migrations/0012_request_keys_questions_extras.sql
 -- 적용한 결과는 db/schema.sql과 같음(check_erd.py D2). 아직 운영 데이터가 없어(10단계 전) 옮길 행이 없음. 있으면 아래 UPDATE·INSERT가 옛 값을
 -- 옮김: 초안의 픽업 일시는 가게 시간대의 날짜와 시각으로, 더하는 옵션 배열은 연결 테이블의 행으로(같은 버전의 더하는 옵션이 아닌 값이 있으면
--- 외래 키가 막아 적용이 멈추므로 고쳐서 다시 적용), 확정 뒤 주문은 취소하지 않은 첫 결제·다시 낸 결제를 확정시킨 결제로, 취소 환불은 취소한
+-- 외래 키가 막아 적용이 멈추므로 고쳐서 다시 적용), 확정된 뒤의 주문은 취소하지 않은 첫 결제·다시 낸 결제를 주문을 확정한 결제로, 취소 환불은 취소한
 -- 주문(그 주문이 취소되지 않았으면 취소된 재제작 주문)으로. 요청 키는 하루만 쓰는 값이라 지우고 새 꼴로 다시 받음.
 
 -- TBL-050 request_keys: 요청 지문·처리 상태·처음 결과(06 DEC-04, 5절 E27)
@@ -121,7 +121,7 @@ CREATE TABLE handoff_questions (
 COMMENT ON TABLE handoff_questions IS 'TBL-055 덧붙은 질문(TERM-008): 열린 에스컬레이션 건에 덧붙은 손님 질문마다 한 행(사유·관련 주문). 마감된 날 질문은 날짜마다 따로 건을 둠(설계 재검토 M17)';
 CREATE INDEX handoff_questions_handoff_idx ON handoff_questions (handoff_id, created_at); -- 건마다 덧붙은 질문(SPEC-023)
 
--- TBL-023 orders: 주문을 확정시킨 결제(RC-06)
+-- TBL-023 orders: 주문을 확정한 결제(RC-06)
 ALTER TABLE orders ADD COLUMN confirmed_payment_id uuid;
 UPDATE orders o
    SET confirmed_payment_id = (SELECT p.id FROM payments p JOIN payment_requests r ON r.id = p.payment_request_id
@@ -167,15 +167,15 @@ END
 $cancelled$;
 CREATE TRIGGER refunds_cancelled BEFORE INSERT OR UPDATE OF order_id, cancelled_order_id ON refunds FOR EACH ROW EXECUTE FUNCTION refunds_cancelled_check();
 
--- 확정 뒤 상태(확정·받음·미수령)인 주문의 확정시킨 결제는 결제 확인을 취소한 것이 아님(REQ-060, SPEC-070, 설계 재검토 M7). 결제 확인을
--- 취소하는 트랜잭션이 주문을 결제 기다림으로 돌리고 확정시킨 결제를 비우므로 트랜잭션 끝에 지금 행을 다시 읽어 봄(지연 제약 트리거)
+-- 주문 확정 뒤 상태(확정·받음·미수령)인 주문을 확정한 결제는 결제 확인을 취소한 것이 아님(REQ-060, SPEC-070, 설계 재검토 M7). 결제 확인을
+-- 취소하는 트랜잭션이 주문을 결제 기다림으로 돌리고 주문을 확정한 결제를 비우므로 트랜잭션 끝에 지금 행을 다시 읽어 봄(지연 제약 트리거)
 CREATE FUNCTION confirmed_payment_live_check() RETURNS trigger
 LANGUAGE plpgsql AS $confirmed_live$
 BEGIN
   IF EXISTS (SELECT 1 FROM orders o JOIN payments p ON p.id = o.confirmed_payment_id
               WHERE CASE TG_TABLE_NAME WHEN 'orders' THEN o.id = NEW.id ELSE p.id = NEW.id END
                 AND o.status IN ('confirmed', 'received', 'no_pickup') AND p.voided_at IS NOT NULL) THEN
-    RAISE EXCEPTION '%: 확정 뒤 상태인 주문의 확정시킨 결제는 결제 확인을 취소하지 않은 것이어야 함(결제 확인을 취소하면 주문을 결제 기다림으로 돌림)', TG_NAME
+    RAISE EXCEPTION '%: 주문 확정 뒤 상태인 주문을 확정한 결제는 결제 확인을 취소하지 않은 것이어야 함(결제 확인을 취소하면 주문을 결제 기다림으로 돌림)', TG_NAME
       USING ERRCODE = 'check_violation';
   END IF;
   RETURN NULL;
@@ -190,7 +190,7 @@ COMMENT ON TABLE request_keys IS 'TBL-050 요청 키: 사장님·운영자 화�
 -- 컬럼 설명(db/schema.sql과 같은 줄)
 COMMENT ON COLUMN order_drafts.pickup_day IS '원하는 픽업 날짜(가게 시간대). 날짜만 알아도 남김(SPEC-014, SPEC-020, 설계 재검토 M17)';
 COMMENT ON COLUMN order_drafts.pickup_time IS '원하는 픽업 시각(가게 시간대). 비어 있으면 아직 모름. 주문 요청 때 날짜와 합쳐 가게 시간대로 픽업 일시(orders.pickup_at)를 만듦(SPEC-029)';
-COMMENT ON COLUMN orders.confirmed_payment_id IS '주문을 확정시킨 확인된 결제(첫 결제나 다시 낸 결제, SPEC-034, SPEC-036). 확정 뒤 상태면 꼭 있음(재제작 주문은 빼고). 그 결제 확인을 취소하면 비우고 결제 기다림으로 돌림(SPEC-070, 트리거 payments_confirmed_void, 설계 재검토 M7)';
+COMMENT ON COLUMN orders.confirmed_payment_id IS '주문을 확정한 확인된 결제(첫 결제나 다시 낸 결제, SPEC-034, SPEC-036). 주문 확정 뒤 상태면 꼭 있음(재제작 주문은 빼고). 그 결제 확인을 취소하면 비우고 결제 기다림으로 돌림(SPEC-070, 트리거 payments_confirmed_void, 설계 재검토 M7)';
 COMMENT ON COLUMN handoffs.source_message_id IS '에스컬레이션한 손님 말. 같은 메시지는 한 번만 에스컬레이션함(SPEC-022). 열린 동안 온 새 질문은 덧붙은 질문(handoff_questions)으로 남음';
 COMMENT ON COLUMN handoffs.requested_day IS '마감된 날에 추가로 받을지 묻는 질문의 날짜(SPEC-014). 마감된 날 질문에만 있고, 다른 열린 건이 있어도 날짜마다 따로 건(handoffs_one_open_day_per_consultation, 설계 재검토 M17)';
 COMMENT ON COLUMN handoffs.day_used_order_id IS '추가 수락을 쓴 주문 요청: 그 날짜에 마감 후 추가 수락(slot_holds.overbooked)으로 자리를 잡은 주문. 추가 수락 하나는 주문 요청 하나에만(SPEC-023, SPEC-029, 4절 A34)';
