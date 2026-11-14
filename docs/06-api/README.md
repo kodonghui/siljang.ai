@@ -22,7 +22,7 @@ API 83개 · 응답 417개 · 오류 코드 37개 · 필드 오류 사유 24개 
 | --- | --- | --- |
 | [`docs/04-functional-spec/spec.md`](../04-functional-spec/spec.md) | 04단계 확정(2026-11-12), 커밋 af62db2 | SPEC-001~069의 주 플로우·예외·수락 기준, 공통 규칙 G1~G9, 상태 머신 1-1~1-8, AI-1(상담 답 만들기) |
 | [`db/schema.sql`](../../db/schema.sql) | 05단계 확정(2026-11-12 11:56), 커밋 af62db2 | 요청 필드의 한도(TBL-001~051의 컬럼), 상태 값, 응답에 포함하는 필드 |
-| [`docs/02-prd/requirements.md`](../02-prd/requirements.md) | 버전 3(REQ-001~163) | 설명에 단 REQ 번호 |
+| [`docs/02-prd/requirements.md`](../02-prd/requirements.md) | 버전 3(REQ-001~163). 지금 설명의 번호는 버전 5(REQ-001~262)를 따름(설계 재검토 낮음 K2에서 K1이 바꾼 REQ-118→259·REQ-183→260을 고침, 깨지는 변화 목록의 지난 항목은 그대로) | 설명에 단 REQ 번호 |
 | [`docs/01-domain/domain.md`](../01-domain/domain.md) | TERM-001~074 | 이름 |
 | 카카오 비즈니스 공식 문서: [스킬 만들기](https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/make_skill), [응답 형식](https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/answer_json_format), [콜백](https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/ai_chatbot_callback_guide), [플러그인 값](https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/apply_skill_to_plugin), [이벤트 API](https://kakaobusiness.gitbook.io/main/tool/chatbot/main_notions/event-api) | 2026-11-12에 읽음 | 스킬 요청·응답의 필드와 한도, 헤더 값 인증(DEC-08), 콜백, 보안 이미지 플러그인. 문서에 없는 것은 9절 열린 질문 |
 | 카카오 비즈니스 [이벤트 API](https://kakaobusiness.gitbook.io/main/tool/chatbot/main_notions/event-api)(발송 결과 조회 포함)와 [월렛](https://kakaobusiness.gitbook.io/main/tool/chatbot/main_notions/wallet), 카카오 디벨로퍼스 [카카오톡 채널 REST API](https://developers.kakao.com/docs/ko/kakaotalk-channel/rest-api) | 2026-11-13에 다시 읽음(설계 재검토 H7) | Event API 요청과 taskId, 발송 결과 조회와 errorType, 월렛 연결 조건, 채널 관계 조회(DEC-20, DEC-21). 문서로 확인되지 않은 권한은 OPEN-9 |
@@ -795,4 +795,5 @@ D1의 참고: `operators.email`·`kakao_channels.bot_id`·`ledger_links.spreadsh
 
 - 깨지는 변화: A13이 찾지 않는 5개를 11절 목록에 적었습니다(A13이 찾는 것은 0개). 응답 416개 → 417개(API-007 429), 열린 질문 11개 → 12개(OPEN-12), 예시 886개 → 888개. API 83개, 오류 코드 37개, 결정 사항 24개, 스키마 150개는 그대로입니다.
 - 05단계 RC-20의 고지한 처리방침 버전(`consultations.ai_disclosed_policy_version`)은 사장님 화면이 읽지 않아 계약에 두지 않았습니다. RC-21의 남는 기록과 11단계에 더할 인덱스는 05단계 README 6절입니다.
+- K1이 바꾼 요구사항 번호 둘(REQ-118→259, REQ-183→260, 02단계 11절)을 지금 설명 네 곳(API-001 사장님 로그인과 API-002 내 정보의 사장님 알림, `Owner.alertChannelFriend`, `OwnerTask.waitDueAt`)과 2절 표에서 고쳤습니다. 깨지는 변화 목록의 지난 항목(설계 재검토 H7)은 그때 번호 그대로 둡니다.
 - 검사: 12절의 2026-11-15 04:52 KST 결과.

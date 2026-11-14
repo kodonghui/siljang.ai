@@ -177,7 +177,7 @@ S["OwnerLoginStart"] = all_required({
 
 S["Owner"] = all_required({
     "ownerId": UUID,
-    "alertChannelFriend": boolean("우리 서비스 카카오톡 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침(DEC-21, REQ-183). 아니면 알림은 할 일 목록에만(SPEC-067)"),
+    "alertChannelFriend": boolean("우리 서비스 카카오톡 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침(DEC-21, REQ-260). 아니면 알림은 할 일 목록에만(SPEC-067)"),
     "createdAt": DT,
 })
 
@@ -791,7 +791,7 @@ S["OwnerTask"] = all_required({
                                 desc="사장님 답 기다림(1-7): 기다림·지연(지연 안내와 다시 알림을 보낸 뒤 할 일 목록에 남음)·답함·답 없어 닫힘. "
                                      "에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정에만(REQ-215). "
                                      "답 없어 닫힘은 에스컬레이션 건·맞춤 주문·변경 요청·결제 확인 요청만")),
-    "waitDueAt": nullable(dict(DT, description="지연 안내를 보낼 시각(기다리는 시간을 답하는 시간 안에서만 셈, REQ-118). 답 없어 닫는 때(1-7)와 다름")),
+    "waitDueAt": nullable(dict(DT, description="지연 안내를 보낼 시각(기다리는 시간을 답하는 시간 안에서만 셈, REQ-259). 답 없어 닫는 때(1-7)와 다름")),
     "order": nullable(ref("OrderRef")),
     "subject": nullable(all_required({
         "type": enum(["handoff", "order", "change_request", "issue_report", "payment_request", "refund", "ledger", "shop", "calendar"]),
