@@ -319,10 +319,11 @@ def after_script(mcp, schema_text: str) -> str:
     return after
 
 
-# 다이어그램이 담지 못하는 트리거 함수와 메모에 적는 하는 일(설계 재검토 H4·M9)
+# 다이어그램이 담지 못하는 트리거 함수와 메모에 적는 하는 일(설계 재검토 H4·M9, Codex 후속)
 TRIGGER_TEXT = {
     "access_logs_guard": "접속기록을 고치지 못하게 막는 access_logs_guard",
     "orders_production_sync_check": "받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check",
+    "refunds_unconfirmed_check": "취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check",
 }
 
 

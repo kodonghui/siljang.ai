@@ -6,6 +6,7 @@
 --      잘못 누른 결제 확인 취소 → 입금했다고 알린 뒤 손님 취소 → 들어온 입금 남기기 → 환불 → 환불 보내기).
 -- 2부: 규칙마다 어기는 쓰기 하나. 기대한 제약으로 막히면 ok, 들어가거나 다른 제약에 걸리면 테스트 실패.
 --      같은 잠금 번호를 읽고 늦게 쓴 쓰기(expect_stale)는 0행이면 ok, 덮어쓰면 테스트 실패(설계 재검토 H12, README 4절 A6).
+--      넓힌 범위 안의 쓰기(expect_ok)는 들어가면 ok, 막히면 테스트 실패. 들어간 것은 되돌림(Codex 후속).
 --      1부의 주문·변경 요청 쓰기는 앱처럼 잠금 번호를 하나씩 올림.
 --      끝에서 지우기(README 6절)를 정한 차례대로 실제로 돌려(pg_temp.purge_run) 남은 행과 값이 기대한 값인지 봄(expect_left,
 --      설계 재검토 H3). 지운 것도 끝의 ROLLBACK으로 함께 되돌림.
@@ -80,6 +81,28 @@ BEGIN
   END;
   INSERT INTO rule_results VALUES (test_name, err IS NULL AND got IS NOT DISTINCT FROM want,
     coalesce(err, '값 ' || coalesce(got, '(빈 값)') || ', 기대 ' || want));
+END
+$fn$;
+
+-- 문장들을 돌려 막히지 않고 들어가는지 봄(트랜잭션 끝에 보는 규칙까지). 들어간 것은 되돌림(Codex 후속: 넓힌 범위와 트리거가 받아야 할 값)
+CREATE FUNCTION pg_temp.expect_ok(test_name text, stmts text[]) RETURNS void
+LANGUAGE plpgsql AS $fn$
+DECLARE
+  stmt text;
+  err text;
+BEGIN
+  BEGIN
+    FOREACH stmt IN ARRAY stmts LOOP
+      EXECUTE stmt;
+    END LOOP;
+    SET CONSTRAINTS ALL IMMEDIATE;
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'rollback';  -- 쓴 것을 되돌림
+  EXCEPTION
+    WHEN raise_exception THEN NULL;
+    WHEN integrity_constraint_violation THEN err := SQLSTATE || ' ' || SQLERRM;
+  END;
+  SET CONSTRAINTS ALL DEFERRED;
+  INSERT INTO rule_results VALUES (test_name, err IS NULL, coalesce(err, '들어감'));
 END
 $fn$;
 
@@ -570,7 +593,7 @@ INSERT INTO payment_accounts (id, shop_id, bank_name, account_number_enc, accoun
 INSERT INTO owner_alerts (id, shop_id, kind, event_key, status) VALUES
   ('f8000000-0000-0000-0000-000000000009', 'a2000000-0000-0000-0000-000000000002', 'payment_account_changed', 'alert:account:b7..03', 'pending');
 -- 접속기록(SPEC-074): 1년 전 사장님의 주문 상세 읽음, 지금 운영자가 사유를 적고 대화 속 전화번호를 엶(SPEC-073),
--- 2년 1일 전 운영자의 보관 기록 열기(지우기가 지울 행). 접속지는 문서용 주소
+-- 2년 1일 전 운영자의 보관 기록 열기(지우기가 지울 행), 지금 운영자가 사유를 적고 상담의 대화 글을 엶(REQ-227). 접속지는 문서용 주소
 INSERT INTO access_logs (id, shop_id, actor_kind, owner_id, operator_id, action, api_id, request_path, subject_ids,
                          target_kind, target_id, reason, client_ip, accessed_at) VALUES
   ('ac000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'owner', 'a0000000-0000-0000-0000-000000000001', NULL, 'read', 'API-045',
@@ -581,7 +604,10 @@ INSERT INTO access_logs (id, shop_id, actor_kind, owner_id, operator_id, action,
    '손님 문의: 픽업 연락이 안 됨', '2001:db8::1', now()),
   ('ac000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'operator', NULL, 'a1000000-0000-0000-0000-000000000001', 'open_kept', 'API-077',
    '/operator/shops/a2000000-0000-0000-0000-000000000001/originals', '["c0000000-0000-0000-0000-000000000002"]', 'kept_record', 'ad000000-0000-0000-0000-000000000001',
-   '사장님 요청: 분쟁 기록 확인', '198.51.100.7', now() - interval '2 years 1 day');
+   '사장님 요청: 분쟁 기록 확인', '198.51.100.7', now() - interval '2 years 1 day'),
+  ('ac000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'operator', NULL, 'a1000000-0000-0000-0000-000000000001', 'open_original', 'API-077',
+   '/operator/shops/a2000000-0000-0000-0000-000000000001/originals', '["c0000000-0000-0000-0000-000000000001"]', 'consultation_text', 'c1000000-0000-0000-0000-000000000001',
+   '손님 문의: 알레르기 안내 확인', '2001:db8::1', now());
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 
@@ -888,6 +914,27 @@ SELECT pg_temp.expect_fail('SPEC-071 없는 결제 안내의 들어온 입금 �
   INSERT INTO refunds (shop_id, order_id, cause, payment_request_id, event_key, decision, amount, calculated_amount, calc_basis)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'paid_after_cancel', 'e0000000-0000-0000-0000-0000000000ff',
           'refund:x-3', 'full', 1000, 1000, '{}')$$]);
+SELECT pg_temp.expect_fail('Codex 후속 더 들어온 금액의 환불 계산값이 들어온 금액 전부', 'refunds_unconfirmed', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, payment_request_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'over_received', 'e0000000-0000-0000-0000-000000000004',
+          'refund:x-4', 'full', 6000, 6000, '{"arrived":6000}')$$]);
+SELECT pg_temp.expect_fail('Codex 후속 정한 환불의 계산값을 더 들어온 금액보다 크게 고침', 'refunds_unconfirmed', ARRAY[$$
+  UPDATE refunds SET calculated_amount = 1001, amount = 1001 WHERE id = 'e2000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_ok('Codex 후속 1천만 원을 넘게 더 들어온 금액의 환불(확인된 결제를 뺀 몫)', ARRAY[$$
+  INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, due_cap_at, paid_at, arrived_amount, arrived_at)
+  VALUES ('e0000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'reissue',
+          'pay:x-big', 'paid', 1500000, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour', now(), 15000000, now())$$, $$
+  INSERT INTO payments (shop_id, order_id, payment_request_id, amount, resolution)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-0000000000f1', 1500000, 'excess_returned')$$, $$
+  INSERT INTO refunds (shop_id, order_id, cause, payment_request_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'over_received', 'e0000000-0000-0000-0000-0000000000f1',
+          'refund:x-big', 'full', 13500000, 13500000, '{"arrived":15000000,"confirmed":1500000}')$$]);
+SELECT pg_temp.expect_ok('Codex 후속 결제 확인을 취소한 결제는 확인된 결제로 세지 않음', ARRAY[$$
+  INSERT INTO refunds (shop_id, order_id, cause, payment_request_id, event_key, decision, amount, calculated_amount, calc_basis)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 'paid_after_cancel', 'e0000000-0000-0000-0000-000000000006',
+          'refund:x-5', 'full', 35000, 35000, '{"arrived":35000,"confirmed":0}')$$]);
+SELECT pg_temp.expect_fail('Codex 후속 1억 원을 넘는 환불', 'refunds_amount_check', ARRAY[$$
+  UPDATE refunds SET amount = 100000001, override_reason = '손님과 따로 이야기함' WHERE id = 'e2000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('G2 같은 환불을 두 번 정함', 'refunds_event_uq', ARRAY[$$
   INSERT INTO refunds (shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'customer_cancel', 'refund:d0..04:cancel',
@@ -1095,6 +1142,10 @@ SELECT pg_temp.expect_fail('SPEC-073 보관 기록을 원래 값 열기로', 'ac
   INSERT INTO access_logs (shop_id, actor_kind, operator_id, action, api_id, request_path, target_kind, target_id, reason, client_ip)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'operator', 'a1000000-0000-0000-0000-000000000001', 'open_original', 'API-077', '/operator/shops/a2000000-0000-0000-0000-000000000001/originals',
           'kept_record', 'ad000000-0000-0000-0000-000000000001', '사장님 요청: 분쟁 기록 확인', '2001:db8::1')$$]);
+SELECT pg_temp.expect_fail('REQ-227 상담의 대화 글을 보관 기록 열기로', 'access_logs_target_chk', ARRAY[$$
+  INSERT INTO access_logs (shop_id, actor_kind, operator_id, action, api_id, request_path, target_kind, target_id, reason, client_ip)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'operator', 'a1000000-0000-0000-0000-000000000001', 'open_kept', 'API-077', '/operator/shops/a2000000-0000-0000-0000-000000000001/originals',
+          'consultation_text', 'c1000000-0000-0000-0000-000000000001', '손님 문의: 알레르기 안내 확인', '2001:db8::1')$$]);
 SELECT pg_temp.expect_fail('SPEC-074 요청 주소의 쿼리 문자열을 남김', 'access_logs_request_path_check', ARRAY[$$
   INSERT INTO access_logs (shop_id, actor_kind, owner_id, action, api_id, request_path, client_ip)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'owner', 'a0000000-0000-0000-0000-000000000001', 'read', 'API-044', '/owner/orders?phone=010-9999-8888', '203.0.113.10')$$]);
@@ -1105,10 +1156,24 @@ SELECT pg_temp.expect_fail('REQ-196 1년 전 접속기록을 지움', 'access_lo
 SELECT pg_temp.expect_fail('REQ-196 접속기록을 비움', 'access_logs_guard', ARRAY[$$
   TRUNCATE access_logs$$]);
 
+-- 지울 파일 (공통, SPEC-065, Codex 후속)
+SELECT pg_temp.expect_fail('SPEC-065 같은 사진 파일을 지울 파일에 두 번', 'file_deletions_key_uq', ARRAY[$$
+  INSERT INTO file_deletions (shop_id, storage_key, source) VALUES
+    ('a2000000-0000-0000-0000-000000000001', 'ref/x-1.jpg', 'reference_photo'),
+    ('a2000000-0000-0000-0000-000000000001', 'ref/x-1.jpg', 'reference_photo')$$]);
+SELECT pg_temp.expect_fail('SPEC-065 실패한 시각 없는 실패 횟수', 'file_deletions_tried_chk', ARRAY[$$
+  INSERT INTO file_deletions (shop_id, storage_key, source, attempts)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'ref/x-2.jpg', 'reference_photo', 1)$$]);
+SELECT pg_temp.expect_fail('SPEC-065 완성 사진을 지울 파일로', 'file_deletions_source_check', ARRAY[$$
+  INSERT INTO file_deletions (shop_id, storage_key, source)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'done/x-3.jpg', 'completion_photo')$$]);
+
 -- 지우기(README 6절)를 now_at 시각에 돌린 것처럼 차례대로 씀: 1 끝나고 30일 지난 주문 → 2 닫히고 30일 지난 상담 →
--- 3 3년 지난 문제 신고 기록 → 4 5년 지난 보관 기록 → 5 손님의 카카오 사용자 키 → 6 2년 지난 접속기록 → 운영 기록에 건수만.
--- 앱은 주문 하나·상담 하나를 한 트랜잭션으로 하고 사진 파일은 트랜잭션이 끝난 뒤 지움(여기서는 한 번에 함). 30일·3년·5년은 잠정(5-2 질문 7)
-CREATE FUNCTION pg_temp.purge_run(now_at timestamptz) RETURNS text
+-- 3 3년 지난 문제 신고 기록 → 4 5년 지난 보관 기록 → 5 손님의 카카오 사용자 키 → 6 2년 지난 접속기록 → 저장소의 사진 파일 →
+-- 운영 기록에 건수만. 앱은 주문 하나·상담 하나를 한 트랜잭션으로 하고(여기서는 한 번에 함), 사진 행을 지우는 문장이 그 저장 위치를
+-- 같은 트랜잭션에서 지울 파일(file_deletions)로 넣음(5절 E24). 저장소는 이 테스트에 없어 failed_keys에 든 파일만 실패한 것으로 보고,
+-- 지운 파일의 행만 지우고 실패한 행은 횟수와 시각을 남겨 다음 날 다시 지움. 30일·3년·5년은 잠정(5-2 질문 7)
+CREATE FUNCTION pg_temp.purge_run(now_at timestamptz, failed_keys text[] DEFAULT '{}') RETURNS text
 LANGUAGE plpgsql AS $fn$
 DECLARE
   due uuid[];
@@ -1119,6 +1184,8 @@ DECLARE
   n_kept int;
   n_customers int;
   n_logs int;
+  n_files int;
+  n_files_left int;
 BEGIN
   -- 1. 끝나고 30일 지난 주문: 보관 기록으로 나누고(주문자 이름은 마지막 버전에서 옮김) 개인정보를 지움
   SELECT coalesce(array_agg(id), '{}') INTO due FROM orders
@@ -1136,7 +1203,9 @@ BEGIN
   UPDATE order_drafts SET customer_name = NULL, customer_phone = NULL, allergy_answer = NULL, excluded_ingredients = NULL,
          lettering = NULL, design_notes = NULL, updated_at = now_at
    WHERE id IN (SELECT draft_id FROM orders WHERE id = ANY (due));
-  DELETE FROM reference_photos WHERE draft_id IN (SELECT draft_id FROM orders WHERE id = ANY (due));
+  WITH gone AS (DELETE FROM reference_photos WHERE draft_id IN (SELECT draft_id FROM orders WHERE id = ANY (due)) RETURNING shop_id, storage_key)
+  INSERT INTO file_deletions (shop_id, storage_key, source, queued_at)
+  SELECT shop_id, storage_key, 'reference_photo', now_at FROM gone ON CONFLICT (storage_key) DO NOTHING;
   UPDATE payment_requests SET depositor_name = NULL, version = version + 1 WHERE order_id = ANY (due) AND depositor_name IS NOT NULL;
   UPDATE refunds SET refund_bank_name = NULL, refund_account_enc = NULL, refund_account_last4 = NULL, refund_holder_name = NULL
    WHERE order_id = ANY (due) AND num_nonnulls(refund_bank_name, refund_account_enc, refund_account_last4, refund_holder_name) > 0;
@@ -1172,8 +1241,13 @@ BEGIN
     WHERE d.consultation_id = ANY (cons) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id));
   DELETE FROM quotes WHERE draft_id IN (SELECT d.id FROM order_drafts d
     WHERE d.consultation_id = ANY (cons) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id));
-  DELETE FROM reference_photos WHERE draft_id IN (SELECT id FROM order_drafts WHERE consultation_id = ANY (cons));
-  DELETE FROM issue_photos WHERE issue_details_id IN (SELECT id FROM issue_details WHERE consultation_id = ANY (cons) AND status <> 'reported');
+  WITH gone AS (DELETE FROM reference_photos WHERE draft_id IN (SELECT id FROM order_drafts WHERE consultation_id = ANY (cons)) RETURNING shop_id, storage_key)
+  INSERT INTO file_deletions (shop_id, storage_key, source, queued_at)
+  SELECT shop_id, storage_key, 'reference_photo', now_at FROM gone ON CONFLICT (storage_key) DO NOTHING;
+  WITH gone AS (DELETE FROM issue_photos WHERE issue_details_id IN (SELECT id FROM issue_details WHERE consultation_id = ANY (cons) AND status <> 'reported')
+                RETURNING shop_id, storage_key)
+  INSERT INTO file_deletions (shop_id, storage_key, source, queued_at)
+  SELECT shop_id, storage_key, 'issue_photo', now_at FROM gone ON CONFLICT (storage_key) DO NOTHING;
   DELETE FROM issue_details WHERE consultation_id = ANY (cons) AND status <> 'reported';
   UPDATE issue_photos SET message_id = NULL WHERE message_id IN (SELECT id FROM messages WHERE consultation_id = ANY (cons));
   DELETE FROM order_drafts d WHERE d.consultation_id = ANY (cons) AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.draft_id = d.id);
@@ -1187,7 +1261,10 @@ BEGIN
   -- 3. 끝나고 3년 지난 문제 신고 기록: 신고 설명과 신고 사진(신고·보상 행은 남음)
   SELECT coalesce(array_agg(order_id), '{}') INTO due FROM kept_records
    WHERE issue_keep_until <= now_at AND issue_purged_at IS NULL;
-  DELETE FROM issue_photos WHERE issue_details_id IN (SELECT id FROM issue_details WHERE order_id = ANY (due) AND status = 'reported');
+  WITH gone AS (DELETE FROM issue_photos WHERE issue_details_id IN (SELECT id FROM issue_details WHERE order_id = ANY (due) AND status = 'reported')
+                RETURNING shop_id, storage_key)
+  INSERT INTO file_deletions (shop_id, storage_key, source, queued_at)
+  SELECT shop_id, storage_key, 'issue_photo', now_at FROM gone ON CONFLICT (storage_key) DO NOTHING;
   UPDATE issue_details SET description = NULL, content_purged_at = now_at, updated_at = now_at
    WHERE order_id = ANY (due) AND status = 'reported';
   UPDATE kept_records SET issue_purged_at = now_at WHERE order_id = ANY (due);
@@ -1209,10 +1286,17 @@ BEGIN
   DELETE FROM access_logs WHERE accessed_at <= least(now_at, now()) - interval '2 years';
   GET DIAGNOSTICS n_logs = ROW_COUNT;
 
+  -- 저장소의 사진 파일: 이번과 지난번에 남은 지울 파일을 저장소에서 지우고(이미 없는 파일은 지운 것으로 봄) 지운 파일의 행만 지움.
+  -- 저장소가 실패한 파일은 행이 남고 실패 횟수와 시각을 남겨 다음 날 다시 지움(5절 E24)
+  DELETE FROM file_deletions WHERE storage_key <> ALL (failed_keys);
+  GET DIAGNOSTICS n_files = ROW_COUNT;
+  UPDATE file_deletions SET attempts = attempts + 1, last_tried_at = now_at WHERE storage_key = ANY (failed_keys);
+  SELECT count(*) INTO n_files_left FROM file_deletions;
+
   INSERT INTO ops_events (kind, count, detail, created_at)
   VALUES ('purge_run', n_orders + n_cons + n_issues + n_kept + n_customers + n_logs,
           jsonb_build_object('orders', n_orders, 'consultations', n_cons, 'issues', n_issues, 'kept_ended', n_kept, 'customers', n_customers,
-                             'access_logs', n_logs),
+                             'access_logs', n_logs, 'files', n_files, 'files_left', n_files_left),
           now_at);
   RETURN format('orders %s, consultations %s, issues %s, kept_ended %s, customers %s, access_logs %s',
                 n_orders, n_cons, n_issues, n_kept, n_customers, n_logs);
@@ -1298,7 +1382,8 @@ LANGUAGE sql AS $fn$
     UNION ALL SELECT 'notifications ' || t::text FROM notifications t
     UNION ALL SELECT 'ai_tool_calls ' || t::text FROM ai_tool_calls t
     UNION ALL SELECT 'kept_records ' || t::text FROM kept_records t
-    UNION ALL SELECT 'access_logs ' || t::text FROM access_logs t) s
+    UNION ALL SELECT 'access_logs ' || t::text FROM access_logs t
+    UNION ALL SELECT 'file_deletions ' || t::text FROM file_deletions t) s
 $fn$;
 
 -- 지우기를 돌려 볼 데이터. 손님 1의 상담은 다룬 주문(주문 1·재제작 2·주문 4)이 모두 끝나 상담 끝남, 손님 2의 상담은 주문 3이
@@ -1371,10 +1456,17 @@ SELECT pg_temp.expect_left('REQ-189 상담 끝남 뒤 같은 손님의 새 상�
 CREATE TEMP TABLE purge_before AS SELECT pg_temp.kept_counts() AS counts;
 SELECT pg_temp.expect_left('SPEC-065 지우기 전 끝난 주문의 개인정보', $$SELECT pg_temp.order_personal_left()::text$$, '21');
 SELECT pg_temp.expect_left('SPEC-065 지우기 전 지울 상담의 내용', $$SELECT pg_temp.consult_content_left()::text$$, '23');
-SELECT pg_temp.expect_left('SPEC-065 첫 지우기(31일 뒤)', $$SELECT pg_temp.purge_run(now() + interval '31 days')$$,
+SELECT pg_temp.expect_left('SPEC-065 첫 지우기(31일 뒤, 저장소가 참고 사진 파일 하나에 실패)',
+  $$SELECT pg_temp.purge_run(now() + interval '31 days', ARRAY['ref/3-1.jpg'])$$,
   'orders 4, consultations 2, issues 0, kept_ended 0, customers 1, access_logs 1');
+SELECT pg_temp.expect_left('SPEC-065 저장소가 실패한 사진 파일은 지울 파일로 남음', $$
+  SELECT (SELECT count(*) FROM reference_photos WHERE storage_key = 'ref/3-1.jpg') || '/' ||
+         (SELECT string_agg(storage_key || ' ' || source || ' ' || attempts || ' ' || (last_tried_at = queued_at)::text, ',' ORDER BY storage_key)
+            FROM file_deletions) || '/' ||
+         (SELECT (detail ->> 'files') || ' ' || (detail ->> 'files_left') FROM ops_events WHERE kind = 'purge_run' AND detail ? 'files')$$,
+  '0/ref/3-1.jpg reference_photo 1 true/1 1');
 SELECT pg_temp.expect_left('REQ-196 2년 지난 접속기록만 지움', $$
-  SELECT count(*) || '/' || string_agg(right(id::text, 1), ',' ORDER BY id) FROM access_logs$$, '2/1,2');
+  SELECT count(*) || '/' || string_agg(right(id::text, 1), ',' ORDER BY id) FROM access_logs$$, '3/1,2,4');
 SELECT pg_temp.expect_left('REQ-185 끝나고 30일 지난 주문의 개인정보 0건', $$SELECT pg_temp.order_personal_left()::text$$, '0');
 SELECT pg_temp.expect_left('REQ-185 주문자 이름은 보관 기록으로', $$
   SELECT count(*) || '/' || string_agg(customer_name, ',' ORDER BY customer_name) || '/' || count(issue_keep_until) FROM kept_records$$,
@@ -1406,8 +1498,14 @@ SELECT pg_temp.expect_left('REQ-187 신고한 설명과 사진은 남음', $$
          (SELECT count(*) FROM issue_details WHERE id = 'f1000000-0000-0000-0000-000000000003')$$, '케이크 옆면이 무너졌어요/1/0');
 SELECT pg_temp.expect_left('REQ-190 상담이 모두 지워지고 주문이 없는 손님의 키', $$
   SELECT string_agg(coalesce(kakao_user_key, '-'), ',' ORDER BY id) || '/' || count(purged_at) FROM customers$$, 'user-key-1,user-key-2,-/1');
+SELECT pg_temp.expect_left('SPEC-065 다음 날 지우기', $$SELECT pg_temp.purge_run(now() + interval '32 days')$$,
+  'orders 0, consultations 0, issues 0, kept_ended 0, customers 0, access_logs 0');
+SELECT pg_temp.expect_left('SPEC-065 다음 날 지우기가 남은 사진 파일을 지움', $$
+  SELECT (SELECT count(*) FROM file_deletions) || '/' ||
+         (SELECT (detail ->> 'files') || ' ' || (detail ->> 'files_left') FROM ops_events
+           WHERE kind = 'purge_run' AND created_at = now() + interval '32 days')$$, '0/1 0');
 CREATE TEMP TABLE purge_after_first AS SELECT pg_temp.purge_fingerprint() AS fp;
-SELECT pg_temp.expect_left('SPEC-065 같은 날 두 번째 지우기', $$SELECT pg_temp.purge_run(now() + interval '31 days')$$,
+SELECT pg_temp.expect_left('SPEC-065 같은 날 두 번째 지우기', $$SELECT pg_temp.purge_run(now() + interval '32 days')$$,
   'orders 0, consultations 0, issues 0, kept_ended 0, customers 0, access_logs 0');
 SELECT pg_temp.expect_left('SPEC-065 두 번 돌아도 남은 행과 값이 같음', $$
   SELECT (pg_temp.purge_fingerprint() = (SELECT fp FROM purge_after_first))::text$$, 'true');
@@ -1420,6 +1518,10 @@ SELECT pg_temp.expect_left('REQ-188 신고 설명과 사진은 지우고 신고�
          ((SELECT content_purged_at FROM issue_details WHERE id = 'f1000000-0000-0000-0000-000000000001') IS NOT NULL
           AND (SELECT issue_purged_at FROM kept_records WHERE order_id = 'd0000000-0000-0000-0000-000000000001') IS NOT NULL)::text$$,
   '-/0/remake/true');
+SELECT pg_temp.expect_left('SPEC-065 3년 지난 신고 사진의 파일도 지움', $$
+  SELECT (SELECT count(*) FROM file_deletions) || '/' ||
+         (SELECT (detail ->> 'files') || ' ' || (detail ->> 'files_left') FROM ops_events
+           WHERE kind = 'purge_run' AND created_at = now() + interval '3 years 1 day')$$, '0/1 0');
 SELECT pg_temp.expect_left('REQ-188 5년 지난 보관 기록', $$SELECT pg_temp.purge_run(now() + interval '5 years 1 day')$$,
   'orders 0, consultations 0, issues 0, kept_ended 4, customers 0, access_logs 0');
 SELECT pg_temp.expect_left('REQ-188 이름은 지우고 주문·결제 행은 개인정보 없이 남음', $$
@@ -1430,7 +1532,7 @@ SELECT pg_temp.expect_left('REQ-188 이름은 지우고 주문·결제 행은 �
 SELECT pg_temp.expect_left('SPEC-065 운영 기록에는 건수만', $$
   SELECT count(*) || '/' || sum((detail ->> 'kept_ended')::int) || '/' ||
          count(*) FILTER (WHERE (SELECT bool_and(jsonb_typeof(value) = 'number') FROM jsonb_each(detail)))
-    FROM ops_events WHERE kind = 'purge_run' AND detail ? 'kept_ended'$$, '4/4/4');
+    FROM ops_events WHERE kind = 'purge_run' AND detail ? 'kept_ended'$$, '5/4/5');
 SET CONSTRAINTS ALL IMMEDIATE;  -- 지운 뒤에도 주문 행과 현재 버전 행이 맞는지 여기서 봄
 SET CONSTRAINTS ALL DEFERRED;
 

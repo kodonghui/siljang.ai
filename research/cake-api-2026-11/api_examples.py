@@ -426,6 +426,10 @@ REFUND_PREVIEW = {"order": ORDER_REF, "cause": "customer_cancel", "receivedAmoun
                   "basis": REFUND_BASIS}
 REFUND_PREVIEW_SHOP = dict(REFUND_PREVIEW, cause="shop_cancel", calculatedAmount=36000, minAmount=36000,
                            basis=dict(REFUND_BASIS, clauseTitles=["가게 사정 취소"], cancellationFeeKrw=0))
+# 차액 20,000원 안내에 21,000원이 들어와 차액 결제를 확인함(SPEC-071). 계산값은 그 결제 안내의 들어온 금액 - 확인된 결제 = 1,000원(SPEC-016)
+REFUND_PREVIEW_OVER = dict(REFUND_PREVIEW, cause="over_received", receivedAmount=57000, confirmedAmount=56000, unconfirmedAmount=1000,
+                           calculatedAmount=1000, minAmount=1000, maxAmount=57000,
+                           basis=dict(REFUND_BASIS, clauseTitles=[], cancelledAt=None, cancellationFeeKrw=0, receivedAmount=57000))
 REFUND = {
     "refundId": uid("refund:K7Q3M9:1"), "order": ORDER_REF, "cause": "customer_cancel", "decision": "partial", "amount": 31000,
     "calculatedAmount": 31000, "basis": REFUND_BASIS, "overrideReason": None, "method": None, "refundAccount": None,
@@ -843,22 +847,22 @@ OP_RECORDS_CONSULTATIONS = {"kind": "consultations", "orders": [], "nextCursor":
     {"consultationId": CONSULT_ID, "status": "awaiting_owner", "startedAt": t("11-12", "12:39"), "lastMessageAt": t("11-12", "12:41"),
      "orderNos": [], "maskedValueCount": 2}]}
 OP_RECORDS_EMPTY = {"kind": "orders", "orders": [], "consultations": [], "nextCursor": None}
+# 운영자가 보는 상담의 메시지: (메시지, 시각, 방향, 발신자, 종류, 마스킹한 글, 사진 수). 글은 API-077 consultation_text로만 보임(REQ-227)
+OP_MESSAGE_ROWS = [
+    ("msg:1", t("11-12", "12:39"), "outbound", "system", "text", "AI가 상담해요. 개인정보 처리방침: https://siljang.example/s/moonlight-cake/privacy", 0),
+    ("msg:2", t("11-12", "12:39"), "inbound", "customer", "text", "1호 생크림 케이크 얼마예요? [전화번호1]로 연락 주세요", 0),
+    ("msg:4", t("11-12", "12:40"), "inbound", "customer", "text", "땅콩 알레르기가 있는데 먹어도 되나요?", 0),
+    ("msg:5", t("11-12", "12:41"), "inbound", "customer", "photo", None, 2),
+    ("msg:6", t("11-12", "12:41", "30"), "inbound", "customer", "text", "결제는 카드 [카드번호1]로 할게요", 0),
+]
 OP_CONSULTATION = {
     "consultationId": CONSULT_ID, "status": "awaiting_owner",
     "maskedValues": [
         {"maskedValueId": OP_MASKED_PHONE_ID, "kind": "phone", "placeholder": "[전화번호1]", "last4": "5432", "originalKept": True},
         {"maskedValueId": uid("masked:2"), "kind": "card", "placeholder": "[카드번호1]", "last4": "1111", "originalKept": False},
     ],
-    "items": [
-        {"messageId": uid("msg:1"), "at": t("11-12", "12:39"), "direction": "outbound", "author": "system", "kind": "text",
-         "textMasked": "AI가 상담해요. 개인정보 처리방침: https://siljang.example/s/moonlight-cake/privacy", "photoCount": 0},
-        {"messageId": uid("msg:2"), "at": t("11-12", "12:39"), "direction": "inbound", "author": "customer", "kind": "text",
-         "textMasked": "1호 생크림 케이크 얼마예요? [전화번호1]로 연락 주세요", "photoCount": 0},
-        {"messageId": uid("msg:5"), "at": t("11-12", "12:41"), "direction": "inbound", "author": "customer", "kind": "photo",
-         "textMasked": None, "photoCount": 2},
-        {"messageId": uid("msg:6"), "at": t("11-12", "12:41", "30"), "direction": "inbound", "author": "customer", "kind": "text",
-         "textMasked": "결제는 카드 [카드번호1]로 할게요", "photoCount": 0},
-    ],
+    "items": [{"messageId": uid(m), "at": at, "direction": d, "author": a, "kind": k, "textLength": len(text or ""), "photoCount": n}
+              for m, at, d, a, k, text, n in OP_MESSAGE_ROWS],
     "nextCursor": None,
 }
 OP_CONSULTATION_DELETED = dict(OP_CONSULTATION, status="deleted", maskedValues=[], items=[], nextCursor=None)
@@ -875,7 +879,7 @@ OP_ORDER_REFUND = dict(OP_ORDER, status="cancelled", refunds=[
      "sentAt": None, "refundAccount": {"bankName": "하늘은행", "accountMasked": "***-***-**6789", "holderNameMasked": "이**"}}])
 OPEN_ORIGINAL_INPUT = {"targetKind": "masked_value", "targetId": OP_MASKED_PHONE_ID, "reason": "손님 문의: 픽업 연락이 안 됨"}
 ORIGINAL_BASE = {"targetKind": "masked_value", "targetId": OP_MASKED_PHONE_ID, "openedAt": t("11-14", "10:20"),
-                 "maskedValue": None, "orderContact": None, "refundAccount": None, "keptRecord": None}
+                 "maskedValue": None, "orderContact": None, "refundAccount": None, "keptRecord": None, "consultationText": None}
 ORIGINAL_MASKED = dict(ORIGINAL_BASE, maskedValue={"placeholder": "[전화번호1]", "kind": "phone", "value": "010-9876-5432"})
 ORIGINAL_CONTACT = dict(ORIGINAL_BASE, targetKind="order_contact", targetId=ORDER_ID,
                         orderContact={"customerName": "이지우", "customerPhone": "010-9876-5432"})
@@ -890,3 +894,6 @@ KEPT_RECORD = {
     "refunds": [],
 }
 ORIGINAL_KEPT = dict(ORIGINAL_BASE, targetKind="kept_record", targetId=KEPT_RECORD_ID, keptRecord=KEPT_RECORD)
+ORIGINAL_CONSULTATION_TEXT = dict(ORIGINAL_BASE, targetKind="consultation_text", targetId=CONSULT_ID, consultationText={
+    "consultationId": CONSULT_ID,
+    "items": [{"messageId": uid(m), "at": at, "author": a, "textMasked": text} for m, at, d, a, k, text, n in OP_MESSAGE_ROWS]})

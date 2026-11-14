@@ -849,8 +849,8 @@ CREATE TABLE refunds (
   payment_request_id     uuid,                           -- 돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)
   event_key              text NOT NULL,                  -- 같은 환불을 두 번 정하지 않음(G2)
   decision               text NOT NULL CHECK (decision IN ('full', 'partial', 'none')), -- 전액 환불·일부 환불·환불 없이 취소(REQ-085)
-  amount                 integer NOT NULL CHECK (amount BETWEEN 0 AND 10000000), -- 정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170)
-  calculated_amount      integer NOT NULL CHECK (calculated_amount BETWEEN 0 AND 10000000), -- 가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값
+  amount                 integer NOT NULL CHECK (amount BETWEEN 0 AND 100000000), -- 정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170). 상한은 들어온 금액의 상한과 같은 1억 원
+  calculated_amount      integer NOT NULL CHECK (calculated_amount BETWEEN 0 AND 100000000), -- 가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)
   calc_basis             jsonb NOT NULL,                 -- 근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액의 몫(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-084, REQ-165)
   override_reason        text CHECK (char_length(override_reason) BETWEEN 1 AND 200), -- 계산값과 다른 금액을 고른 이유(SPEC-047). 보상이 아니면 계산값보다 높을 때만
   method                 text CHECK (method IN ('bank_transfer', 'card_cancel')), -- 가게 계좌에서 반환·카드 결제 취소
@@ -1309,8 +1309,8 @@ CREATE TABLE access_logs (
   api_id        text NOT NULL CHECK (api_id ~ '^API-[0-9]{3}$'), -- 부른 06단계 API 번호
   request_path  text NOT NULL CHECK (char_length(request_path) BETWEEN 1 AND 300 AND strpos(request_path, '?') = 0), -- 요청 경로. ID만 담기고 쿼리 문자열은 넣지 않음(SPEC-074)
   subject_ids   jsonb NOT NULL DEFAULT '[]' CHECK (jsonb_typeof(subject_ids) = 'array'), -- 처리한 정보주체: 손님 ID 목록(값 없이 ID만). 손님 행은 지우지 않아 2년 동안 가리킬 수 있음
-  target_kind   text CHECK (target_kind IN ('masked_value', 'order_contact', 'refund_account', 'kept_record')), -- 연 대상: 대화 속 원래 값·주문자 이름과 연락처·환불 계좌·보관 기록(SPEC-073)
-  target_id     uuid,                                     -- 연 대상의 ID. 대상 행이 지워져도 이 기록은 2년 남으므로 외래 키를 두지 않음
+  target_kind   text CHECK (target_kind IN ('masked_value', 'order_contact', 'refund_account', 'kept_record', 'consultation_text')), -- 연 대상: 대화 속 원래 값·주문자 이름과 연락처·환불 계좌·보관 기록·상담의 대화 글(SPEC-073, REQ-227)
+  target_id     uuid,                                     -- 연 대상의 ID(상담의 대화 글은 상담 ID). 대상 행이 지워져도 이 기록은 2년 남으므로 외래 키를 두지 않음
   reason        text CHECK (char_length(reason) BETWEEN 5 AND 200), -- 운영자가 적은 사유(원래 값·보관 기록 열기, REQ-195)
   client_ip     text NOT NULL CHECK (client_ip ~ '^[0-9A-Fa-f:.]{2,45}$'), -- 접속지: 요청한 IP
   accessed_at   timestamptz NOT NULL DEFAULT now(),       -- 접속 일시. 2년이 지나면 지우기가 지움(SPEC-065, REQ-196)
@@ -1370,6 +1370,46 @@ $sync$;
 CREATE CONSTRAINT TRIGGER orders_production_sync AFTER INSERT OR UPDATE OF status ON orders DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION orders_production_sync_check();
 CREATE CONSTRAINT TRIGGER productions_order_sync AFTER INSERT OR UPDATE OF handed_over_at, no_pickup_at OR DELETE ON productions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION orders_production_sync_check();
 
+-- 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 결제 확인을 취소하지 않은
+-- 확인된 결제)을 넘지 않음(SPEC-016, SPEC-071, 4절 A29, Codex 후속). 환불 행을 쓸 때 봄. 결제 안내가 없거나 다른 가게의 것이면
+-- CHECK(refunds_request_chk)와 외래 키(refunds_request_fk)가 막으므로 넘김
+CREATE FUNCTION refunds_unconfirmed_check() RETURNS trigger
+LANGUAGE plpgsql AS $unconfirmed$
+DECLARE
+  arrived integer;
+  confirmed bigint;
+BEGIN
+  IF NEW.cause NOT IN ('paid_after_cancel', 'over_received') OR NEW.payment_request_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+  SELECT r.arrived_amount INTO arrived FROM payment_requests r WHERE r.id = NEW.payment_request_id AND r.shop_id = NEW.shop_id;
+  IF NOT FOUND THEN
+    RETURN NEW;
+  END IF;
+  SELECT coalesce(sum(p.amount), 0) INTO confirmed FROM payments p WHERE p.payment_request_id = NEW.payment_request_id AND p.voided_at IS NULL;
+  IF NEW.calculated_amount > coalesce(arrived, 0) - confirmed THEN
+    RAISE EXCEPTION 'refunds_unconfirmed: 환불 계산값(%원)이 그 결제 안내에서 결제로 확인하지 않은 몫(%원)을 넘음', NEW.calculated_amount, coalesce(arrived, 0) - confirmed
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END
+$unconfirmed$;
+CREATE TRIGGER refunds_unconfirmed BEFORE INSERT OR UPDATE OF cause, payment_request_id, calculated_amount ON refunds FOR EACH ROW EXECUTE FUNCTION refunds_unconfirmed_check();
+
+-- TBL-054 file_deletions (공통) ← SPEC-065 | terms: none
+CREATE TABLE file_deletions (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 지울 파일 ID
+  shop_id        uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 어느 가게의 사진 파일인지
+  storage_key    text NOT NULL,                            -- 저장소에서 지울 사진 파일의 저장 위치(지운 참고 사진·신고 사진 행의 storage_key). 사진의 내용·손님 정보는 두지 않음
+  source         text NOT NULL CHECK (source IN ('reference_photo', 'issue_photo')), -- 지운 행: 참고 사진·신고 사진(SPEC-065)
+  queued_at      timestamptz NOT NULL DEFAULT now(),       -- 사진 행을 지운 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)
+  attempts       integer NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 10000), -- 저장소에서 지우려다 실패한 횟수. 지우면 이 행을 지움
+  last_tried_at  timestamptz,                              -- 마지막으로 지우려다 실패한 시각. 다음 날 지우기가 다시 지움
+  CONSTRAINT file_deletions_key_uq UNIQUE (storage_key), -- 같은 파일은 한 행
+  CONSTRAINT file_deletions_tried_chk CHECK ((attempts = 0) = (last_tried_at IS NULL)) -- 실패한 적이 있으면 그 시각
+);
+COMMENT ON TABLE file_deletions IS 'TBL-054 지울 파일: 지우기(SPEC-065)가 지운 참고 사진·신고 사진의 저장 위치. 저장소에서 파일을 지운 뒤에만 행을 지우고, 실패하면 남아 다음 날 다시 지움';
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- 컨텍스트별 테이블
 -- CTX-001 상담: TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-024, TBL-027, TBL-028, TBL-029, TBL-048, TBL-049
@@ -1381,7 +1421,7 @@ CREATE CONSTRAINT TRIGGER productions_order_sync AFTER INSERT OR UPDATE OF hande
 -- CTX-007 가게 등록·연결: TBL-001, TBL-002, TBL-003, TBL-004, TBL-005
 -- CTX-008 알림: TBL-042, TBL-043, TBL-044
 -- CTX-009 장부 연결: TBL-045, TBL-046, TBL-047
--- 공통: TBL-050, TBL-051, TBL-053
+-- 공통: TBL-050, TBL-051, TBL-053, TBL-054
 --
 -- 테이블이 없는 용어. 한 행에 하나, 괄호 안은 컨텍스트와 사유. 컬럼으로만 있는 용어는 그 컬럼 설명에 TERM 번호가 있음.
 -- without a table: TERM-002 (CTX-001·CTX-003, 일상 말: 초안 TERM-003과 주문 내용 TERM-004로 나눠 씀)
@@ -1828,8 +1868,8 @@ COMMENT ON COLUMN refunds.issue_report_id IS '보상의 문제 신고';
 COMMENT ON COLUMN refunds.payment_request_id IS '돌려줄 들어온 입금의 결제 안내(취소 뒤 들어온 입금·더 들어온 금액, SPEC-071)';
 COMMENT ON COLUMN refunds.event_key IS '같은 환불을 두 번 정하지 않음(G2)';
 COMMENT ON COLUMN refunds.decision IS '전액 환불·일부 환불·환불 없이 취소(REQ-085)';
-COMMENT ON COLUMN refunds.amount IS '정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170)';
-COMMENT ON COLUMN refunds.calculated_amount IS '가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값';
+COMMENT ON COLUMN refunds.amount IS '정한 환불 금액. 주문의 환불 합은 받은 금액(결제 안내의 들어온 금액 합)을 넘지 않음(REQ-165, 앱이 주문 행을 잠그고 셈). 보상이 아니면 계산값 이상(REQ-170). 상한은 들어온 금액의 상한과 같은 1억 원';
+COMMENT ON COLUMN refunds.calculated_amount IS '가게 규칙의 계산값(SPEC-016). 취소 수수료(TERM-016)를 뺀 값. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 취소하지 않은 확인된 결제)을 넘지 않음(트리거 refunds_unconfirmed, 4절 A29)';
 COMMENT ON COLUMN refunds.calc_basis IS '근거: 운영규정 버전·조문·취소 시각·맞춤 재료 주문 시각·제작 시작 시각·받은 금액의 몫(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-084, REQ-165)';
 COMMENT ON COLUMN refunds.override_reason IS '계산값과 다른 금액을 고른 이유(SPEC-047). 보상이 아니면 계산값보다 높을 때만';
 COMMENT ON COLUMN refunds.method IS '가게 계좌에서 반환·카드 결제 취소';
@@ -2057,9 +2097,16 @@ COMMENT ON COLUMN access_logs.action IS '수행업무: 읽음·바꿈·원래 �
 COMMENT ON COLUMN access_logs.api_id IS '부른 06단계 API 번호';
 COMMENT ON COLUMN access_logs.request_path IS '요청 경로. ID만 담기고 쿼리 문자열은 넣지 않음(SPEC-074)';
 COMMENT ON COLUMN access_logs.subject_ids IS '처리한 정보주체: 손님 ID 목록(값 없이 ID만). 손님 행은 지우지 않아 2년 동안 가리킬 수 있음';
-COMMENT ON COLUMN access_logs.target_kind IS '연 대상: 대화 속 원래 값·주문자 이름과 연락처·환불 계좌·보관 기록(SPEC-073)';
-COMMENT ON COLUMN access_logs.target_id IS '연 대상의 ID. 대상 행이 지워져도 이 기록은 2년 남으므로 외래 키를 두지 않음';
+COMMENT ON COLUMN access_logs.target_kind IS '연 대상: 대화 속 원래 값·주문자 이름과 연락처·환불 계좌·보관 기록·상담의 대화 글(SPEC-073, REQ-227)';
+COMMENT ON COLUMN access_logs.target_id IS '연 대상의 ID(상담의 대화 글은 상담 ID). 대상 행이 지워져도 이 기록은 2년 남으므로 외래 키를 두지 않음';
 COMMENT ON COLUMN access_logs.reason IS '운영자가 적은 사유(원래 값·보관 기록 열기, REQ-195)';
 COMMENT ON COLUMN access_logs.client_ip IS '접속지: 요청한 IP';
 COMMENT ON COLUMN access_logs.accessed_at IS '접속 일시. 2년이 지나면 지우기가 지움(SPEC-065, REQ-196)';
+COMMENT ON COLUMN file_deletions.id IS '지울 파일 ID';
+COMMENT ON COLUMN file_deletions.shop_id IS '어느 가게의 사진 파일인지';
+COMMENT ON COLUMN file_deletions.storage_key IS '저장소에서 지울 사진 파일의 저장 위치(지운 참고 사진·신고 사진 행의 storage_key). 사진의 내용·손님 정보는 두지 않음';
+COMMENT ON COLUMN file_deletions.source IS '지운 행: 참고 사진·신고 사진(SPEC-065)';
+COMMENT ON COLUMN file_deletions.queued_at IS '사진 행을 지운 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)';
+COMMENT ON COLUMN file_deletions.attempts IS '저장소에서 지우려다 실패한 횟수. 지우면 이 행을 지움';
+COMMENT ON COLUMN file_deletions.last_tried_at IS '마지막으로 지우려다 실패한 시각. 다음 날 지우기가 다시 지움';
 -- ▲ 컬럼 설명 끝

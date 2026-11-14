@@ -11458,7 +11458,7 @@ paths:
       operationId: getRefundPreview
       summary: 환불 계산 미리보기(가게 규칙)
       description: |-
-        그 주문이 받은 운영규정 버전, 취소 시각(아직이면 지금), 맞춤 재료 주문·제작 시작 시각, 받은 금액으로 계산값과 근거를 낸다. 받은 금액은 결제 안내의 들어온 금액 합(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-165). 정할 수 있는 가장 작은 금액은 계산값(REQ-170), 가장 큰 금액은 받은 금액 - 이미 정한 환불. 받은 금액이 0원이면 0원(SPEC-016). 같은 입력이면 같은 값. 취소 뒤 들어온 입금·더 들어온 금액(SPEC-071)은 paymentRequestId로 그 결제 안내의 들어온 금액을 계산값으로 낸다.
+        그 주문이 받은 운영규정 버전, 취소 시각(아직이면 지금), 맞춤 재료 주문·제작 시작 시각, 받은 금액으로 계산값과 근거를 낸다. 받은 금액은 결제 안내의 들어온 금액 합(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-165). 정할 수 있는 가장 작은 금액은 계산값(REQ-170), 가장 큰 금액은 받은 금액 - 이미 정한 환불. 받은 금액이 0원이면 0원(SPEC-016). 같은 입력이면 같은 값. 취소 뒤 들어온 입금·더 들어온 금액(SPEC-071)은 paymentRequestId로 그 결제 안내에서 결제로 확인하지 않은 몫(그 결제 안내의 들어온 금액 - 결제 확인을 취소하지 않은 확인된 결제)을 계산값으로 낸다: 닫힘·기한 지남 결제 안내는 들어온 금액 전액, 더 들어온 채 확인된 결제 안내는 넘은 몫만(차액 20,000원에 21,000원이면 1,000원, SPEC-016).
 
         SPEC: SPEC-016, SPEC-047, SPEC-071
       tags:
@@ -11506,7 +11506,7 @@ paths:
       - ownerSession: []
       responses:
         "200":
-          description: '성공. 예시: customer_cancel, shop_cancel'
+          description: '성공. 예시: customer_cancel, shop_cancel, over_received'
           content:
             application/json:
               schema:
@@ -11558,6 +11558,28 @@ paths:
                       tierRefundPct: null
                       cancellationFeeKrw: 0
                       receivedAmount: 36000
+                over_received:
+                  value:
+                    order:
+                      orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                      orderNo: K7Q3M9
+                    cause: over_received
+                    receivedAmount: 57000
+                    confirmedAmount: 56000
+                    unconfirmedAmount: 1000
+                    refundedAmount: 0
+                    calculatedAmount: 1000
+                    minAmount: 1000
+                    maxAmount: 57000
+                    basis:
+                      operatingRulesVersion: 2
+                      clauseTitles: []
+                      cancelledAt: null
+                      customMaterialOrderedAt: null
+                      productionStartedAt: null
+                      tierRefundPct: null
+                      cancellationFeeKrw: 0
+                      receivedAmount: 57000
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -20517,7 +20539,7 @@ paths:
       operationId: getShopConsultation
       summary: 상담 하나(가린 값)
       description: |-
-        그 가게 상담의 대화를 마스킹한 글(플레이스홀더 그대로)로 보이고, 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. 카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 있고 열 수 없다(REQ-192). 사진은 수만 보이고 열지 않는다(REQ-194). 지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074).
+        그 가게 상담의 메시지마다 발신자·시각·종류·글자 수·사진 수만 보이고 대화 글은 보이지 않는다: 번호 마스킹(SPEC-021)은 대화 속 이름·알레르기 같은 말을 가리지 않기 때문이다(REQ-227). 대화 글은 사유를 적어 API-077(targetKind consultation_text, 보고 있는 페이지의 cursor)로 한 페이지씩 연다. 대화 속 번호는 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. 카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 있고 열 수 없다(REQ-192). 사진은 수만 보이고 열지 않는다(REQ-194). 지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074).
 
         SPEC: SPEC-073, SPEC-074
       tags:
@@ -20574,28 +20596,35 @@ paths:
                       direction: outbound
                       author: system
                       kind: text
-                      textMasked: 'AI가 상담해요. 개인정보 처리방침: https://siljang.example/s/moonlight-cake/privacy'
+                      textLength: 69
                       photoCount: 0
                     - messageId: 23224ec0-8ddc-543d-b985-ad0756170be5
                       at: '2026-11-12T12:39:00+09:00'
                       direction: inbound
                       author: customer
                       kind: text
-                      textMasked: 1호 생크림 케이크 얼마예요? [전화번호1]로 연락 주세요
+                      textLength: 32
+                      photoCount: 0
+                    - messageId: 8a738f36-3636-51be-90a8-36ae1bc8d2e7
+                      at: '2026-11-12T12:40:00+09:00'
+                      direction: inbound
+                      author: customer
+                      kind: text
+                      textLength: 21
                       photoCount: 0
                     - messageId: a1984ed5-0e77-5bc0-804c-62bf245141aa
                       at: '2026-11-12T12:41:00+09:00'
                       direction: inbound
                       author: customer
                       kind: photo
-                      textMasked: null
+                      textLength: 0
                       photoCount: 2
                     - messageId: 8f5f7c1d-e91f-53d8-927a-63f0c29a9c6e
                       at: '2026-11-12T12:41:30+09:00'
                       direction: inbound
                       author: customer
                       kind: text
-                      textMasked: 결제는 카드 [카드번호1]로 할게요
+                      textLength: 19
                       photoCount: 0
                     nextCursor: null
                 deleted:
@@ -20703,7 +20732,7 @@ paths:
           - note:접속기록을 남기지 못하면 500 internal로 아무것도 돌려주지 않음(SPEC-074)
           노출:
           - closed
-          - note:대화는 플레이스홀더 그대로, 번호는 끝 4자리만, 사진은 수만(REQ-194)
+          - note:대화 글은 보이지 않고 메시지마다 글자 수만(REQ-227), 번호는 끝 4자리만, 사진은 수만(REQ-194)
           빈·끊김:
           - example:deleted
           화면:
@@ -20883,9 +20912,9 @@ paths:
   /operator/shops/{shopId}/originals:
     post:
       operationId: openOriginal
-      summary: 원래 값·보관 기록 열기(사유)
+      summary: 원래 값·보관 기록·대화 글 열기(사유)
       description: |-
-        운영자가 대상 하나와 사유(5~200자)를 보내면 그 값 하나만 연다(REQ-195): 대화 속 전화번호·계좌번호(masked_value), 주문자 이름·연락처(order_contact), 환불 계좌(refund_account), 보관 기록(kept_record). 응답과 같은 트랜잭션에서 운영자·시각·접속지·대상·사유를 접속기록에 남기고(action open_original·open_kept), 남기지 못하면 500으로 값을 돌려주지 않는다(SPEC-074). 같은 요청 키로 다시 오면 다시 열어 같은 응답을 돌려주고 접속기록도 한 행 더 남긴다(요청 키 기록에는 원래 값을 두지 않음). 원래 값을 두지 않는 값(카드번호·긴 숫자, REQ-192)은 409 original_not_kept, 지우기 작업이 비운 값(SPEC-065)은 409 original_erased이고 둘 다 접속기록에 열기 행을 남기지 않는다. 연 값은 이 응답에만 있고 로그·오류 보고에는 없다(G6). 화면은 연 값을 저장하거나 내려받게 하지 않는다.
+        운영자가 대상 하나와 사유(5~200자)를 보내면 그 값 하나만 연다(REQ-195): 대화 속 전화번호·계좌번호(masked_value), 주문자 이름·연락처(order_contact), 환불 계좌(refund_account), 보관 기록(kept_record), 상담의 대화 글 한 페이지(consultation_text: targetId는 상담 ID, cursor는 API-075에서 보고 있는 페이지, 번호는 플레이스홀더 그대로, REQ-227). 응답과 같은 트랜잭션에서 운영자·시각·접속지·대상·사유를 접속기록에 남기고(action open_original·open_kept), 남기지 못하면 500으로 값을 돌려주지 않는다(SPEC-074). 같은 요청 키로 다시 오면 다시 열어 같은 응답을 돌려주고 접속기록도 한 행 더 남긴다(요청 키 기록에는 원래 값을 두지 않음). 원래 값을 두지 않는 값(카드번호·긴 숫자, REQ-192)은 409 original_not_kept, 지우기 작업이 비운 값과 지운 상담의 대화 글(SPEC-065)은 409 original_erased이고 둘 다 접속기록에 열기 행을 남기지 않는다. 연 값은 이 응답에만 있고 로그·오류 보고에는 없다(G6). 화면은 연 값을 저장하거나 내려받게 하지 않는다.
 
         SPEC: SPEC-073, SPEC-074
       tags:
@@ -20930,9 +20959,14 @@ paths:
                   targetKind: kept_record
                   targetId: 3adfdf03-a6d2-550f-8cc8-fffbee1b321a
                   reason: '사장님 요청: 9월 주문 분쟁 자료'
+              consultation_text:
+                value:
+                  targetKind: consultation_text
+                  targetId: bcd84dae-e6a0-5123-9b55-01b028834b28
+                  reason: '손님 문의: 알레르기 안내 확인'
       responses:
         "200":
-          description: '성공. 예시: masked_value, order_contact, refund_account, kept_record'
+          description: '성공. 예시: masked_value, order_contact, refund_account, kept_record, consultation_text'
           headers:
             Idempotency-Replayed:
               $ref: '#/components/headers/IdempotencyReplayed'
@@ -20953,6 +20987,7 @@ paths:
                     orderContact: null
                     refundAccount: null
                     keptRecord: null
+                    consultationText: null
                 order_contact:
                   value:
                     targetKind: order_contact
@@ -20964,6 +20999,7 @@ paths:
                       customerPhone: 010-9876-5432
                     refundAccount: null
                     keptRecord: null
+                    consultationText: null
                 refund_account:
                   value:
                     targetKind: refund_account
@@ -20976,6 +21012,7 @@ paths:
                       accountNumber: 110-123-456789
                       holderName: 이지우
                     keptRecord: null
+                    consultationText: null
                 kept_record:
                   value:
                     targetKind: kept_record
@@ -21005,6 +21042,39 @@ paths:
                         issuedAt: '2026-08-30T10:00:00+09:00'
                         paidAt: '2026-08-30T11:20:00+09:00'
                       refunds: []
+                    consultationText: null
+                consultation_text:
+                  value:
+                    targetKind: consultation_text
+                    targetId: bcd84dae-e6a0-5123-9b55-01b028834b28
+                    openedAt: '2026-11-14T10:20:00+09:00'
+                    maskedValue: null
+                    orderContact: null
+                    refundAccount: null
+                    keptRecord: null
+                    consultationText:
+                      consultationId: bcd84dae-e6a0-5123-9b55-01b028834b28
+                      items:
+                      - messageId: 1618ebaf-a9f8-5d8c-b135-6614ada27d5f
+                        at: '2026-11-12T12:39:00+09:00'
+                        author: system
+                        textMasked: 'AI가 상담해요. 개인정보 처리방침: https://siljang.example/s/moonlight-cake/privacy'
+                      - messageId: 23224ec0-8ddc-543d-b985-ad0756170be5
+                        at: '2026-11-12T12:39:00+09:00'
+                        author: customer
+                        textMasked: 1호 생크림 케이크 얼마예요? [전화번호1]로 연락 주세요
+                      - messageId: 8a738f36-3636-51be-90a8-36ae1bc8d2e7
+                        at: '2026-11-12T12:40:00+09:00'
+                        author: customer
+                        textMasked: 땅콩 알레르기가 있는데 먹어도 되나요?
+                      - messageId: a1984ed5-0e77-5bc0-804c-62bf245141aa
+                        at: '2026-11-12T12:41:00+09:00'
+                        author: customer
+                        textMasked: null
+                      - messageId: 8f5f7c1d-e91f-53d8-927a-63f0c29a9c6e
+                        at: '2026-11-12T12:41:30+09:00'
+                        author: customer
+                        textMasked: 결제는 카드 [카드번호1]로 할게요
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -21048,7 +21118,7 @@ paths:
             지금 상태와 충돌해 아무것도 바꾸지 않음
 
             - `original_not_kept`: 원래 값을 두지 않는 값(카드번호의 끝 4자리 밖, 주민등록번호처럼 보이는 숫자와 무엇인지 모르는 긴 숫자, REQ-192)이라 열 수 없음. 접속기록에 열기 행을 남기지 않음
-            - `original_erased`: 지우기 작업이 그 값을 이미 비움(끝나고 30일 지난 주문의 주문자 이름·연락처와 환불 계좌, SPEC-065). 접속기록에 열기 행을 남기지 않음. 보관 기록이 된 주문의 주문자 이름은 보관 기록 열기로 봄
+            - `original_erased`: 지우기 작업이 그 값을 이미 비움(끝나고 30일 지난 주문의 주문자 이름·연락처와 환불 계좌, 닫히고 30일 지난 상담의 대화 글, SPEC-065). 접속기록에 열기 행을 남기지 않음. 보관 기록이 된 주문의 주문자 이름은 보관 기록 열기로 봄
             - `request_in_progress`: 같은 요청 키의 첫 요청을 아직 처리하는 중
           content:
             application/problem+json:
@@ -21069,7 +21139,7 @@ paths:
                     type: /problems/original_erased
                     title: 지워진 값이에요
                     status: 409
-                    detail: 지우기 작업이 그 값을 이미 비움(끝나고 30일 지난 주문의 주문자 이름·연락처와 환불 계좌, SPEC-065)
+                    detail: 지우기 작업이 그 값을 이미 비움(끝나고 30일 지난 주문의 주문자 이름·연락처와 환불 계좌, 닫히고 30일 지난 상담의 대화 글, SPEC-065)
                     instance: /operator/shops/2dc42524-54e3-5d3d-847f-efdb54aa8706/originals
                     code: original_erased
                     traceId: f5894886b4a6e3f583e21af3e88e26f1
@@ -25250,7 +25320,7 @@ components:
         amount:
           type: integer
           minimum: 0
-          maximum: 10000000
+          maximum: 100000000
         decidedAt:
           type: string
           format: date-time
@@ -25966,17 +26036,17 @@ components:
         calculatedAmount:
           type: integer
           minimum: 0
-          maximum: 10000000
-          description: 가게 규칙의 계산값(maxAmount를 넘지 않음). 손님이 취소 카드에서 본 금액
+          maximum: 100000000
+          description: 가게 규칙의 계산값(maxAmount를 넘지 않음). 손님이 취소 카드에서 본 금액. 취소 뒤 들어온 입금·더 들어온 금액은 그 결제 안내에서 결제로 확인하지 않은 몫(들어온 금액 - 확인된 결제, SPEC-016·071)
         minAmount:
           type: integer
           minimum: 0
-          maximum: 10000000
+          maximum: 100000000
           description: 정할 수 있는 가장 작은 금액 = 계산값(REQ-170). 낮으면 422 below_calculated
         maxAmount:
           type: integer
           minimum: 0
-          maximum: 10000000
+          maximum: 100000000
           description: 정할 수 있는 가장 큰 금액(받은 금액 - 이미 정한 환불, REQ-165)
         basis:
           $ref: '#/components/schemas/RefundBasis'
@@ -26404,7 +26474,7 @@ components:
         amount:
           type: integer
           minimum: 0
-          maximum: 10000000
+          maximum: 100000000
           description: none이면 0. 계산값보다 낮으면 필드 오류 below_calculated(REQ-170), 받은 금액 - 이미 정한 환불을 넘으면 exceeds_received
           x-corthex-column: refunds.amount
         overrideReason:
@@ -26454,11 +26524,11 @@ components:
         amount:
           type: integer
           minimum: 0
-          maximum: 10000000
+          maximum: 100000000
         calculatedAmount:
           type: integer
           minimum: 0
-          maximum: 10000000
+          maximum: 100000000
         basis:
           $ref: '#/components/schemas/RefundBasis'
         overrideReason:
@@ -26909,7 +26979,7 @@ components:
         refundAmount:
           type: integer
           minimum: 1
-          maximum: 10000000
+          maximum: 100000000
           description: 일부 환불 금액. partial_refund만(SPEC-047과 같은 한도)
           x-corthex-column: refunds.amount
         refundOverrideReason:
@@ -28038,13 +28108,14 @@ components:
       additionalProperties: false
     OperatorMessage:
       type: object
+      description: '운영자가 보는 메시지 하나: 발신자·시각·종류·글자 수·사진 수만(REQ-227)'
       required:
       - messageId
       - at
       - direction
       - author
       - kind
-      - textMasked
+      - textLength
       - photoCount
       properties:
         messageId:
@@ -28071,22 +28142,49 @@ components:
           - photo
           - card
           - unsupported
-        textMasked:
-          type:
-          - string
-          - "null"
-          minLength: 0
-          maxLength: 4000
-          description: 마스킹한 글(플레이스홀더 그대로). 끝 4자리는 maskedValues에서(SPEC-073)
+        textLength:
+          type: integer
+          minimum: 0
+          maximum: 4000
+          description: 대화 글의 글자 수만. 번호 마스킹은 대화 속 이름·알레르기 같은 말을 가리지 않아 글은 보이지 않고, 사유를 적어 API-077(targetKind consultation_text)로 엶(REQ-227)
         photoCount:
           type: integer
           minimum: 0
           maximum: 10
           description: 사진 수만. 사진은 보이지 않음(REQ-194)
       additionalProperties: false
+    OperatorMessageText:
+      type: object
+      description: 사유를 적어 연 대화 글의 메시지 하나(REQ-227, SPEC-073)
+      required:
+      - messageId
+      - at
+      - author
+      - textMasked
+      properties:
+        messageId:
+          type: string
+          format: uuid
+        at:
+          type: string
+          format: date-time
+        author:
+          type: string
+          enum:
+          - customer
+          - ai
+          - system
+        textMasked:
+          type:
+          - string
+          - "null"
+          minLength: 0
+          maxLength: 4000
+          description: 마스킹한 글(번호는 플레이스홀더 그대로, SPEC-021). 끝 4자리는 API-075의 maskedValues에서. 글이 없는 메시지(사진 등)는 null
+      additionalProperties: false
     OperatorConsultation:
       type: object
-      description: 운영자가 보는 상담 하나(가린 값, SPEC-073). 지운 상담은 status deleted와 빈 목록
+      description: 운영자가 보는 상담 하나(가린 값, SPEC-073). 메시지마다 발신자·시각·종류·글자 수·사진 수만 있고 대화 글은 없음(REQ-227). 지운 상담은 status deleted와 빈 목록
       required:
       - consultationId
       - status
@@ -28292,7 +28390,7 @@ components:
               amount:
                 type: integer
                 minimum: 0
-                maximum: 10000000
+                maximum: 100000000
               decidedAt:
                 type: string
                 format: date-time
@@ -28341,7 +28439,7 @@ components:
       additionalProperties: false
     OriginalOpenInput:
       type: object
-      description: 원래 값이나 보관 기록 하나를 사유와 함께 엶(SPEC-073)
+      description: 원래 값이나 보관 기록 하나, 상담의 대화 글 한 페이지를 사유와 함께 엶(SPEC-073, REQ-227)
       required:
       - targetKind
       - targetId
@@ -28354,12 +28452,19 @@ components:
           - order_contact
           - refund_account
           - kept_record
-          description: 대화 속 전화번호·계좌번호(maskedValueId)·주문자 이름과 연락처(orderId)·환불 계좌(refundId)·보관 기록(keptRecordId)
+          - consultation_text
+          description: 대화 속 전화번호·계좌번호(maskedValueId)·주문자 이름과 연락처(orderId)·환불 계좌(refundId)·보관 기록(keptRecordId)·상담의 대화 글(consultationId, REQ-227)
           x-corthex-column: access_logs.target_kind
         targetId:
           type: string
           format: uuid
           description: 연 대상의 ID(targetKind마다 위의 ID)
+        cursor:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: ^[A-Za-z0-9_-]+$
+          description: 'consultation_text만: 열 페이지. API-075에서 보고 있는 페이지의 커서이고 첫 페이지면 넣지 않음. 그 페이지의 메시지 20개까지의 대화 글을 엶'
         reason:
           type: string
           minLength: 5
@@ -28518,7 +28623,7 @@ components:
               amount:
                 type: integer
                 minimum: 0
-                maximum: 10000000
+                maximum: 100000000
               decidedAt:
                 type: string
                 format: date-time
@@ -28533,7 +28638,7 @@ components:
       additionalProperties: false
     OriginalValue:
       type: object
-      description: 연 원래 값 하나(targetKind의 필드만 있고 나머지는 null). 이 응답과 그 화면에만 있고 로그·오류 보고에는 없음(G6)
+      description: 연 원래 값·보관 기록·대화 글 한 페이지(targetKind의 필드만 있고 나머지는 null). 이 응답과 그 화면에만 있고 로그·오류 보고에는 없음(G6)
       required:
       - targetKind
       - targetId
@@ -28542,6 +28647,7 @@ components:
       - orderContact
       - refundAccount
       - keptRecord
+      - consultationText
       properties:
         targetKind:
           type: string
@@ -28550,6 +28656,7 @@ components:
           - order_contact
           - refund_account
           - kept_record
+          - consultation_text
         targetId:
           type: string
           format: uuid
@@ -28632,6 +28739,26 @@ components:
           anyOf:
           - $ref: '#/components/schemas/KeptRecord'
           - type: "null"
+        consultationText:
+          type:
+          - object
+          - "null"
+          description: 연 상담의 대화 글 한 페이지(REQ-227). 다른 페이지도 사유를 적어 엶
+          required:
+          - consultationId
+          - items
+          properties:
+            consultationId:
+              type: string
+              format: uuid
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OperatorMessageText'
+              minItems: 0
+              maxItems: 20
+              description: 그 페이지의 메시지(API-075의 기본 페이지와 같은 20개까지)
+          additionalProperties: false
       additionalProperties: false
   parameters:
     Cursor:
@@ -29196,7 +29323,7 @@ components:
         - API-077
       original_erased:
         status: 409
-        meaning: 지우기 작업이 그 값을 이미 비움(끝나고 30일 지난 주문의 주문자 이름·연락처와 환불 계좌, SPEC-065). 접속기록에 열기 행을 남기지 않음. 보관 기록이 된 주문의 주문자 이름은 보관 기록 열기로 봄
+        meaning: 지우기 작업이 그 값을 이미 비움(끝나고 30일 지난 주문의 주문자 이름·연락처와 환불 계좌, 닫히고 30일 지난 상담의 대화 글, SPEC-065). 접속기록에 열기 행을 남기지 않음. 보관 기록이 된 주문의 주문자 이름은 보관 기록 열기로 봄
         message: 지워진 값이에요
         client: 그 값 옆에 '지워졌어요'를 보이고, 보관 기록이 된 주문이면 '보관 기록 열기'를 보임
         spec: SPEC-073
@@ -29931,8 +30058,8 @@ components:
       job: 장부 쓰기와 다시 적기(1분·5분·30분·2시간·6시간, 그 뒤 하루 한 번), 24시간 실패 알림
       seen_in: API-033(못 적은 쓰기 수), API-035(다시 연결하면 다시 적음)
     - spec: SPEC-065
-      job: '지난 기록 지우기: 하루 한 번 03:00, 05단계 README 6절의 여섯 차례. 끝나고 30일 지난 주문의 개인정보를 지우고 보관 기록으로 나눔(알레르기 답은 지우고 알레르기 정보 동의의 답·동의 글 버전·시각은 남김), 닫히고 30일 지난 상담의 대화·사진·초안을 지움, 3년 지난 신고 설명·사진과 5년 지난 보관 기록을 지움, 상담과 주문이 모두 지워진 손님의 카카오 사용자 키를 지움, 2년 지난 접속기록을 지움(접속기록을 지키는 트리거가 2년이 지나지 않은 행의 지우기를 막음, REQ-196). 30일·3년·5년은 잠정(REQ-185~190)'
-      seen_in: API-043(지운 상담은 status deleted), API-044·045(보관 기록이 된 주문은 목록에 없고 하나를 읽으면 404), API-077(지운 값은 409 original_erased)
+      job: '지난 기록 지우기: 하루 한 번 03:00, 05단계 README 6절의 여섯 차례. 끝나고 30일 지난 주문의 개인정보를 지우고 보관 기록으로 나눔(알레르기 답은 지우고 알레르기 정보 동의의 답·동의 글 버전·시각은 남김), 닫히고 30일 지난 상담의 대화·사진·초안을 지움, 3년 지난 신고 설명·사진과 5년 지난 보관 기록을 지움, 상담과 주문이 모두 지워진 손님의 카카오 사용자 키를 지움, 2년 지난 접속기록을 지움(접속기록을 지키는 트리거가 2년이 지나지 않은 행의 지우기를 막음, REQ-196). 참고 사진·신고 사진 행을 지우는 트랜잭션에서 그 파일의 저장 위치를 지울 파일(05단계 TBL-054)에 함께 남기고, 저장소에서 지운 뒤에만 그 행을 뺌(실패하거나 작업이 멈추면 다음 날 다시 지우고, 지운 수와 남은 수는 운영 기록에). 30일·3년·5년은 잠정(REQ-185~190)'
+      seen_in: API-043(지운 상담은 status deleted), API-044·045(보관 기록이 된 주문은 목록에 없고 하나를 읽으면 404), API-077(지운 값과 지운 상담의 대화 글은 409 original_erased)
     - spec: SPEC-066
       job: '손님에게 먼저 보내는 안내: 가게의 먼저 보내기가 되고 손님이 친구면 우리 앱 키로 가게 봇의 Event API(siljang_notice, 안내 키)를 부름. 요청이 SUCCESS면 taskId와 함께 ''확인 중''으로 두고 1분·5분·30분 뒤 발송 결과 조회(GET /v1/tasks/{taskId}): 닿음은 ''보냄'', 채널 친구 아님(101)은 다음 대화 때와 손님 친구 아님, 스킬·카카오 오류(201~205·301·999)는 다시 보내기, 발송 제한(401~407)은 다음 대화 때와 운영자 알림, 30분 뒤에도 모름은 다음 대화 때. 요청이 FAIL이면 채널 연결·이벤트 이름·월렛 없음은 가게의 먼저 보내기 ''안 됨''과 사장님 알림, 월렛 잔액 없음은 운영자 알림, 그 밖은 다시 보내기. 먼저 보내기가 안 되는 가게와 친구가 아닌 손님은 다음 대화 때 먼저(DEC-20). 결제 안내가 닿았다고 확인되거나 다음 대화 때 보인 때를 그 결제 안내의 전해진 시각으로 남기고 결제 기한을 그때부터 셈(REQ-218)'
       seen_in: API-073(안내 스킬), API-070(먼저 전함), API-030(먼저 보내기 상태), API-042
@@ -30134,3 +30261,15 @@ components:
       why: 결제 기한은 낸 시각이 아니라 손님에게 전해진 때부터 세고 결제 기한 상한을 넘지 않음(REQ-218). 스킬 요청에 isFriend가 없으면 친구 아님으로 고침(REQ-219)
       decided: 2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)'(설계 재검토 M1·M2·M3·M9·M10)
       client: 화면은 dueAt을 그대로 보임. 전해지기 전에는 dueAt이 상한과 같음. 값의 뜻이라 A13은 찾지 않아 여기 적음
+    - what: '필드 없앰: OperatorMessage.textMasked'
+      why: 번호만 가린 대화 글에는 손님 이름·알레르기 같은 말이 그대로 남아 운영자에게 보이지 않게 함(REQ-227, SPEC-073)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H4: 운영자에게는 가린 값만). Codex 후속(2026-11-14, PR #31 의견)으로 그 결정을 지키게 고침'
+      client: 가게 기록 보기(SCR-050)는 메시지마다 발신자·시각·종류·글자 수·사진 수만 보이고, 대화 글은 '대화 글 열기'로 사유를 적어 API-077로 엶
+    - what: '꼭 넣을 필드 더함: OperatorMessage.textLength'
+      why: 대화 글 대신 메시지마다 글자 수만 보임(REQ-227)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H4: 운영자에게는 가린 값만). Codex 후속(2026-11-14, PR #31 의견)으로 그 결정을 지키게 고침'
+      client: 응답에만 더한 필드. 가게 기록 보기(SCR-050)가 'N자'로 보임
+    - what: '꼭 넣을 필드 더함: OriginalValue.consultationText'
+      why: 사유를 적어 연 상담의 대화 글 한 페이지(targetKind consultation_text, REQ-227)
+      decided: '2026-11-13 20:59 동희님 결정 카드 ''추천안대로 (추천)''(설계 재검토 H4: 운영자에게는 가린 값만). Codex 후속(2026-11-14, PR #31 의견)으로 그 결정을 지키게 고침'
+      client: 응답에만 더한 필드. 다른 대상을 열면 null. 가게 기록 보기(SCR-050)의 연 상태가 읽음
