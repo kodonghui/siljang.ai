@@ -403,13 +403,18 @@ op(id="API-020", method="get", path="/owner/operating-rules", op="getCurrentOper
 op(id="API-021", method="post", path="/owner/operating-rules/versions", op="createOperatingRulesVersion", tag="운영규정",
    summary="운영규정 확정(새 버전)", spec=["SPEC-005"], auth="owner", idem=True,
    desc="조문마다 조건과 효과를 새 버전과 함께 남긴다. 제작 전 취소 환불을 전액보다 낮추면 아무것도 남기지 않고 409 confirmation_required(lowered_refund)를 반환하고, "
-        "사장님이 '그래도 저장'을 누르면 confirm에 lowered_refund를 담아 다시 보낸다. 그 선택을 그 버전에 남긴다(REQ-032). 단계별 환불 기간이 중복되거나 비면 422. "
+        "사장님이 '그래도 저장'을 누르면 confirm에 lowered_refund를 담아 다시 보낸다. 그 선택을 그 버전에 남긴다(REQ-032). "
+        "단계별 환불은 hoursBeforeMin 차례로 놓으면 0시간부터 시작해 끝없음(hoursBeforeMax null)으로 끝나고 행의 hoursBeforeMax가 다음 행의 hoursBeforeMin과 같아야 한다(겹치면 422 overlaps, 비면 gap). "
+        "단계별 환불 조문(staged_refund)이 있으면 단계 행이 꼭 있고(없으면 /refundTiers required), 단계 행이 있으면 그 조문이 꼭 있다(없으면 /clauses required). "
+        "단계 행이 없는 버전은 맞춤 재료 주문·제작 시작 뒤 취소도 제작 전 비율로 셈한다(화면이 저장 전에 알리고 막지 않음, SPEC-005). "
+        "고정 취소 수수료는 0원~1,000만 원만 보고, 주문 금액과는 환불을 계산할 때 견준다(바탕보다 크면 환불 0원, SPEC-016). "
         "취소·환불 조문으로 만든 주문 요청 확인 카드의 규정 글이 1,000자 글 둘에 들어가지 않으면(조문을 가르지 않음) 아무것도 남기지 않고 422(field /clauses, code exceeds_card_limit, REQ-184, DEC-22).",
    body="OperatingRulesInput", body_examples={"confirm": E.RULES_INPUT, "lowered_confirmed": E.RULES_INPUT_LOWERED},
    ok=[(201, "OperatingRulesResult", {"created": {"outcome": "created", "operatingRules": E.RULES}}),
        (200, "OperatingRulesResult", {"unchanged": {"outcome": "unchanged", "operatingRules": E.RULES}})],
    errors={404: ["shop_not_registered"], 409: ["version_conflict", "confirmation_required"]},
-   fields=[("/refundTiers/1", "overlaps"), ("/quoteValidHours", "out_of_range"), ("/clauses", "exceeds_card_limit")],
+   fields=[("/refundTiers/1", "overlaps"), ("/refundTiers/0", "gap"), ("/refundTiers", "required"), ("/quoteValidHours", "out_of_range"),
+           ("/clauses", "exceeds_card_limit")],
    confirm=["lowered_refund"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:shop_not_registered"],
@@ -799,7 +804,9 @@ op(id="API-047", method="post", path="/owner/orders/{orderId}/overdue-decision",
 
 op(id="API-048", method="post", path="/owner/orders/{orderId}/shop-cancel", op="cancelOrderByShop", tag="주문",
    summary="가게 사정 취소", spec=["SPEC-048", "SPEC-016", "SPEC-015", "SPEC-071"], auth="owner", idem=True,
-   desc="주문을 '가게 사정으로 취소됨'으로 두고 자리를 풀고 손님에게 알리고 장부 쓰기를 남긴다. 받은 금액(결제 안내의 들어온 금액 합, REQ-165)이 있으면 전액을 계산값으로 한 refundPreview를 반환하고 화면은 환불 결정(API-050)으로 간다. "
+   desc="주문을 '가게 사정으로 취소됨'으로 두고 자리를 풀고 손님에게 알리고 장부 쓰기를 남긴다. 운영규정에 가게 사정 취소의 보상 조문이 있으면 손님 안내에 그 효과 글을 붙이고 계산에는 넣지 않는다. "
+        "받은 금액(결제 안내의 들어온 금액 합, REQ-165)이 있으면 받은 금액에서 이미 정한 환불과 따로 정할 환불을 뺀 바탕 전액을 계산값으로 한 refundPreview를 반환하고 화면은 환불 결정(API-050)으로 간다. "
+        "재제작 주문이면 원래 주문의 돈으로 셈하고(refundPreview.order는 원래 주문, basis.remakeOrder는 이 주문) 환불은 원래 주문에 남긴다(SPEC-060). "
         "결제 확인 요청 중이었으면 들어온 입금 대조 할 일을 남긴다(SPEC-071). "
         "받은 주문은 409 invalid_state, 이미 가게 사정으로 취소했으면 unchanged, 다른 사유로 취소된 주문은 409 already_decided.",
    params=[pid("orderId", "주문", E.ORDER_ID)],
@@ -821,13 +828,18 @@ op(id="API-049", method="get", path="/owner/orders/{orderId}/refund-preview", op
    desc="그 주문이 받은 운영규정 버전, 취소 시각(아직이면 지금), 맞춤 재료 주문·제작 시작 시각, 받은 금액으로 계산값과 근거를 낸다. "
         "받은 금액은 결제 안내의 들어온 금액 합(확인된 결제와 결제로 확인하지 않은 들어온 금액, REQ-165). "
         "정할 수 있는 가장 작은 금액은 계산값(REQ-170), 가장 큰 금액은 받은 금액 - 이미 정한 환불. 받은 금액이 0원이면 0원(SPEC-016). 같은 입력이면 같은 값. "
+        "손님 취소는 SPEC-016의 차례로 셈한다: 바탕 = 받은 금액 - basis.excludedAmount(이미 정한 환불 + 따로 정할 환불의 계산값) → 맞춤 재료 주문·제작 시작 전이면 제작 전 비율, "
+        "뒤면 기준 픽업 일시(basis.pickupBasisAt)까지 남은 시간(1시간 미만 버림, 지났으면 0)이 든 단계의 비율(단계가 없는 버전은 제작 전 비율) → 고정 취소 수수료를 먼저 뺌(바탕보다 크면 0원) "
+        "→ 비율을 곱해 원 미만 버림 → 0원 이상 바탕 이하(예시 after_start: (36,000 - 5,000) × 50% = 15,500원). 가게 사정 취소는 바탕 전액, 금액이 내려간 변경은 내려간 금액. "
+        "orderId가 재제작 주문이면 원래 주문의 받은 금액·이미 정한 환불·운영규정 버전과 재제작 주문의 시각·픽업 일시로 셈하고, order는 원래 주문, basis.remakeOrder는 재제작 주문(예시 remake_cancel, SPEC-060). "
         "취소 뒤 들어온 입금·더 들어온 금액(SPEC-071)은 paymentRequestId로 그 결제 안내에서 결제로 확인하지 않은 몫(그 결제 안내의 들어온 금액 - 결제 확인을 취소하지 않은 확인된 결제)을 계산값으로 낸다: "
         "닫힘·기한 지남 결제 안내는 들어온 금액 전액, 더 들어온 채 확인된 결제 안내는 넘은 몫만(차액 20,000원에 21,000원이면 1,000원, SPEC-016).",
    params=[pid("orderId", "주문", E.ORDER_ID),
            q("cause", {"type": "string", "enum": ["customer_cancel", "shop_cancel", "change_reduced", "paid_after_cancel", "over_received"]}, "환불 사유", "customer_cancel", True),
            q("changeRequestId", {"type": "string", "minLength": 1, "maxLength": 100}, "금액이 내려간 변경(cause가 change_reduced일 때 꼭). 없거나 다른 주문 것이면 404"),
            q("paymentRequestId", {"type": "string", "minLength": 1, "maxLength": 100}, "돌려줄 들어온 입금의 결제 안내(cause가 paid_after_cancel·over_received일 때 꼭). 없거나 다른 주문 것이면 404")],
-   ok=[(200, "RefundPreview", {"customer_cancel": E.REFUND_PREVIEW, "shop_cancel": E.REFUND_PREVIEW_SHOP, "over_received": E.REFUND_PREVIEW_OVER})],
+   ok=[(200, "RefundPreview", {"customer_cancel": E.REFUND_PREVIEW, "shop_cancel": E.REFUND_PREVIEW_SHOP, "over_received": E.REFUND_PREVIEW_OVER,
+                               "after_start": E.REFUND_PREVIEW_AFTER_START, "remake_cancel": E.REFUND_PREVIEW_REMAKE})],
    errors={404: ["not_found"]},
    fields=[("query:cause", "required")],
    omit={"403": O403, "409": O409_READ + ". 받은 금액이 0원이면 0원으로 계산(SPEC-016)"},
@@ -837,7 +849,9 @@ op(id="API-049", method="get", path="/owner/orders/{orderId}/refund-preview", op
 op(id="API-050", method="post", path="/owner/orders/{orderId}/refunds", op="decideRefund", tag="환불",
    summary="환불 결정", spec=["SPEC-047", "SPEC-016", "SPEC-066", "SPEC-064", "SPEC-067", "SPEC-049", "SPEC-071"], auth="owner", idem=True,
    desc="전액 환불·일부 환불·환불 없이 취소 가운데 하나를 고른다. 보상이 아닌 환불은 계산값보다 낮을 수 없고(422 below_calculated, REQ-170) 받은 금액 - 이미 정한 환불을 넘을 수 없다(422 exceeds_received). "
-        "계산값보다 높으면 사유가 꼭 있다. 환불 없이 취소는 계산값이 0원일 때만. 손님에게 환불 금액과 받는 방법을 한 번 알리고 장부 쓰기를 남긴다. "
+        "계산값과 다르면(보상이 아니라 높을 때만 됨) 사유 1~200자가 꼭 있다(422 required, REQ-084). 환불 없이 취소는 계산값이 0원일 때만. "
+        "금액이 내려간 변경(change_reduced)은 차액 돌려주기라 partial만 받고(계산값이 0원이면 none) full이면 422 not_allowed(SPEC-047). "
+        "orderId가 재제작 주문이면 원래 주문의 돈으로 셈해 환불을 원래 주문에 남긴다(refund.order는 원래 주문, SPEC-060). 손님에게 환불 금액과 받는 방법을 한 번 알리고 장부 쓰기를 남긴다. "
         "돌려줄 금액이 있으면 할 일 '환불 보내기'를 열고(정한 뒤 24시간이 지나면 한 번 다시 알림, REQ-173), 계좌로 돌려줄 환불에 손님 계좌가 없으면 상담에서 묻는다(REQ-171). "
         "취소 뒤 들어온 입금·더 들어온 금액은 paymentRequestId가 꼭 있다(SPEC-071). "
         "우리는 돈을 옮기지 않는다: 사장님이 가게 계좌에서 반환한 뒤 API-061로 '보냄'을 표시한다(REQ-079). 보상 환불은 API-065. 같은 사유의 환불을 이미 정했으면 409 already_decided.",
@@ -851,7 +865,8 @@ op(id="API-050", method="post", path="/owner/orders/{orderId}/refunds", op="deci
    ok=[(201, "RefundResult", {"decided": {"outcome": "done", "refund": E.REFUND, "customerNotice": "sent"},
                               "deferred_notice": {"outcome": "done", "refund": E.REFUND, "customerNotice": "deferred"}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "invalid_state"]},
-   fields=[("/amount", "exceeds_received"), ("/amount", "below_calculated"), ("/overrideReason", "required"), ("/paymentRequestId", "required")],
+   fields=[("/amount", "exceeds_received"), ("/amount", "below_calculated"), ("/overrideReason", "required"), ("/paymentRequestId", "required"),
+           ("/decision", "not_allowed")],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
           "상태": ["409:invalid_state", "409:already_decided"], "반복": ["idem"], "동시": ["revision", "409:version_conflict"],
@@ -1102,7 +1117,8 @@ op(id="API-064", method="get", path="/owner/issue-reports/{issueReportId}", op="
 op(id="API-065", method="post", path="/owner/issue-reports/{issueReportId}/compensation", op="decideCompensation", tag="문제 신고",
    summary="보상 결정(재제작·일부 환불·전액 환불·없음)", spec=["SPEC-059", "SPEC-060", "SPEC-047", "SPEC-015"], auth="owner", idem=True,
    desc="보상은 사장님만 정한다(AI·손님에게 길이 없음). 재제작이면 새 픽업 일시(지금 뒤 60일 안)로 결제 없는 재제작 주문을 확정으로 남기고 자리를 잡는다(SPEC-060). "
-        "휴무일이면 409 confirmation_required(closed_day), 다 찬 날이면 overbooking이고 확인하면 마감 후 추가 수락으로 잡는다(REQ-221, REQ-226). 환불이면 환불 결정과 같은 한도로 환불을 남긴다(SPEC-047). 손님에게 보상 안내를 한 번 보내고 신고를 닫는다. "
+        "휴무일이면 409 confirmation_required(closed_day), 다 찬 날이면 overbooking이고 확인하면 마감 후 추가 수락으로 잡는다(REQ-221, REQ-226). 환불이면 환불 결정과 같은 한도(받은 금액 - 이미 정한 환불)로 환불을 남기고, 계산값은 고른 금액이라 다르게 정한 사유를 받지 않는다(SPEC-016, SPEC-047). "
+        "재제작 주문에 들어온 신고(다시 신고)는 원래 주문의 돈으로 한도를 보고 환불을 원래 주문에 남기며, 다시 재제작이면 새 재제작 주문도 원래 주문에 잇는다(SPEC-059, SPEC-060). 손님에게 보상 안내를 한 번 보내고 신고를 닫는다. "
         "이미 정한 보상은 고치지 않는다(409 already_decided).",
    params=[pid("issueReportId", "문제 신고", E.ISSUE["issueReportId"])],
    body="CompensationInput",
