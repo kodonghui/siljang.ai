@@ -65,9 +65,9 @@
           status: active
           flows: [FL-004, FL-007, FL-008]
           terms: [CTX-004, TERM-049, TERM-030, TERM-014]
-          specs: [SPEC-032, SPEC-066]
-          apis: [API-073]
-          note: "금액·가게 명의 계좌(있으면 카드 결제 링크)·결제 기한. 첫 결제·다시 낸 결제·차액 결제"
+          specs: [SPEC-032, SPEC-066, SPEC-076]
+          apis: [API-073, API-071]
+          note: "금액·가게 명의 계좌(있으면 카드 결제 링크)·결제 기한. 첫 결제·다시 낸 결제·차액 결제. 손님이 본 금액보다 높으면 새 금액 확인 카드를 먼저 보이고 확인한 뒤 계좌를 보임"
         - id: SCR-006
           name: 결제 확인 요청 카드
           path: kakao:shop/card/payment_claim
@@ -197,7 +197,6 @@
         paid_after_cancel: SCR-025
         refund_send: SCR-026
         arrival_check: SCR-029
-        stale_change: SCR-024
         ledger_relink: SCR-042
         license_on_hold: SCR-035
         calendar_conflict: SCR-032
@@ -273,7 +272,7 @@
               terms: [CTX-003, TERM-062, TERM-038, TERM-011]
               specs: [SPEC-031]
               apis: [API-045, API-046]
-              note: "참고 사진·가게 규칙 계산값·그날 남은 자리를 보고 수락·금액 변경 수락·거절을 고름"
+              note: "참고 사진·가게 규칙 계산값(견적의 표시 그대로)·그날 남은 자리를 보고 수락·금액 변경 수락·거절을 고름. '부터'·'범위' 견적은 최종 금액(아래 끝 이상)을 넣어 수락하고, 손님이 본 금액보다 높으면 손님이 새 금액을 확인한 뒤 계좌가 감"
             - id: SCR-023
               name: 결제 기한 지난 주문
               path: /owner/orders/:orderId/overdue-decision
@@ -293,7 +292,7 @@
               terms: [CTX-003, TERM-066]
               specs: [SPEC-042, SPEC-043, SPEC-044, SPEC-045]
               apis: [API-062, API-063]
-              note: "손님이 바꾸려는 내용과 그 버전의 변경 마감을 보고 수락하거나 거절. 차액이 있으면 차액 결제 안내로 감"
+              note: "손님이 바꾸려는 내용과 그 버전의 변경 마감을 보고 수락하거나 거절. 수락은 금액 그대로·올라감·내려감과 차이 금액(양수)을 고르고, 오르면 손님이 새 금액을 확인한 뒤 차액 결제 안내가 감"
             - id: SCR-025
               name: 환불 결정
               path: /owner/orders/:orderId/refund-decision
@@ -340,11 +339,11 @@
           path: /owner/payment-requests/:paymentRequestId
           access: 사장님
           status: active
-          flows: [FL-007, FL-009]
+          flows: [FL-007, FL-008, FL-009]
           terms: [CTX-004, TERM-063, TERM-049]
           specs: [SPEC-034, SPEC-035, SPEC-036, SPEC-070, SPEC-071]
           apis: [API-058, API-059]
-          note: "안내 금액·입금자 이름·결제 기한을 은행 앱과 맞춰 보고 입금됨·미입금·금액 불일치를 고름. 닫힌 결제 안내에는 들어옴(금액), 제작 전 확인된 결제에는 결제 확인 취소"
+          note: "안내 금액·입금자 이름·결제 기한을 은행 앱과 맞춰 보고 입금됨·미입금·금액 불일치를 고름. 닫힌 결제 안내에는 들어옴(금액), 제작 전 확인된 결제에는 결제 확인 취소, 맞추는 중인 차액 결제에는 변경 닫기"
     - id: SCR-030
       name: 제작 목록
       path: /owner/production
@@ -416,7 +415,7 @@
           terms: [CTX-002, TERM-047, TERM-020, TERM-005]
           specs: [SPEC-004]
           apis: [API-016, API-017, API-007]
-          note: "크기·맛·디자인 옵션 값과 옵션 규칙, 도안을 고쳐 새 버전으로 저장"
+          note: "크기·맛·디자인 옵션 값과 옵션 규칙, 도안, 옵션 값·도안마다 기본 디자인 범위를 고쳐 새 버전으로 저장"
           children:
             - id: SCR-037
               name: 가격표 버전 이력

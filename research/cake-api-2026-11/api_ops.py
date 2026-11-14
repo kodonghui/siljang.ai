@@ -361,12 +361,14 @@ op(id="API-016", method="get", path="/owner/price-list", op="getCurrentPriceList
 op(id="API-017", method="post", path="/owner/price-list/versions", op="createPriceListVersion", tag="가격표",
    summary="가격표 새 버전 저장", spec=["SPEC-004"], auth="owner", idem=True,
    desc="새 버전의 전체 내용을 받아 버전을 하나 올려 남긴다. 이전 버전은 '이전 버전'으로 읽기만 된다(REQ-027). 바꾼 것이 없으면 200 unchanged이고 버전은 그대로. "
-        "첫 저장은 baseRevision null. 옵션 규칙끼리 충돌하면(같은 조합이 허용이자 금지) 422와 충돌한 행. 도안 그림은 uploadId(새 그림)나 sourceDesignId(이전 버전 그림).",
+        "첫 저장은 baseRevision null. 옵션 규칙끼리 충돌하면(같은 조합이 허용이자 금지) 422와 충돌한 행. 도안 그림은 uploadId(새 그림)나 sourceDesignId(이전 버전 그림). "
+        "옵션·도안마다 기본 디자인 범위 안인지(inStandard)를 사장님이 고르고 그 버전에 함께 남는다(REQ-228). 값이 '부터'·'범위'인 옵션이나 범위 밖 옵션에 이은 도안을 범위에 넣으면 422 not_allowed와 그 행. "
+        "범위는 버전에 남아 이미 낸 견적과 요청된 주문은 그 버전의 범위로 가른다(SPEC-013, REQ-229).",
    body="PriceListInput", body_examples={"new_version": E.PRICE_LIST_INPUT},
    ok=[(201, "PriceListResult", {"created": {"outcome": "created", "priceList": E.PRICE_LIST}}),
        (200, "PriceListResult", {"unchanged": {"outcome": "unchanged", "priceList": E.PRICE_LIST}})],
    errors={404: ["shop_not_registered"], 409: ["version_conflict"]},
-   fields=[("/options/0/amount", "out_of_range"), ("/rules/0", "conflict")],
+   fields=[("/options/0/amount", "out_of_range"), ("/rules/0", "conflict"), ("/options/0/inStandard", "not_allowed"), ("/designs/0/inStandard", "not_allowed")],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["note:이전 버전을 고치는 API가 없음(API-019는 읽기만)"],
           "상태": ["example:unchanged"], "반복": ["idem"], "동시": ["revision", "409:version_conflict"],
@@ -671,7 +673,7 @@ op(id="API-039", method="get", path="/public/shops/{slug}/privacy-policy", op="g
 # ═══ 할 일 ════════════════════════════════════════════════════════════════════
 op(id="API-040", method="get", path="/owner/tasks", op="listOwnerTasks", tag="할 일",
    summary="할 일 목록", spec=["SPEC-067", "SPEC-022", "SPEC-024", "SPEC-037"], auth="owner",
-   desc="사장님이 정할 일(에스컬레이션 건·맞춤 주문·결제 확인 요청·맞추는 중·결제 기한 지남·변경 요청·문제 신고·환불 결정·취소 뒤 들어온 입금·이전 버전 변경·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)). 환불 보내기는 '보냄'을 표시하면 닫히고, 정한 뒤 24시간이 지나면 한 번 다시 알린다. "
+   desc="사장님이 정할 일(에스컬레이션 건·맞춤 주문·결제 확인 요청·맞추는 중·결제 기한 지남·변경 요청·문제 신고·환불 결정·취소 뒤 들어온 입금·장부 다시 연결·영업 신고 보류·영업 캘린더 기준을 넘는 날·환불 보내기(REQ-173)·들어온 입금 대조(REQ-167)). 환불 보내기는 '보냄'을 표시하면 닫히고, 정한 뒤 24시간이 지나면 한 번 다시 알린다. "
         "기다림 상태(waitStatus)는 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정에만(SPEC-024, REQ-215): 기다림·지연·답함·답 없어 닫힘. "
         "답 없어 닫힘은 에스컬레이션 건(7일)·맞춤 주문(그 픽업 날짜의 주문 마감)·변경 요청(변경 마감)·결제 확인 요청(결제 기한 상한)만이고, 맞추는 중·환불 결정·문제 신고는 지연 뒤에도 할 일 목록에 남는다(1-7). subject가 열 화면. "
         "알림은 우리 서비스 채널로 가고, 사장님이 채널 친구가 아니면 alertChannelFriend false(SPEC-067).",
@@ -759,22 +761,26 @@ op(id="API-045", method="get", path="/owner/orders/{orderId}", op="getOrder", ta
    kinds={"접근": ["security", "401:unauthenticated", "404:not_found"], "대상": ["404:not_found"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-046", method="post", path="/owner/orders/{orderId}/custom-decision", op="decideCustomOrder", tag="주문",
-   summary="맞춤 주문 검토(수락·금액 변경 수락·거절)", spec=["SPEC-031", "SPEC-015", "SPEC-032"], auth="owner", idem=True,
+   summary="맞춤 주문 검토(수락·금액 변경 수락·거절)", spec=["SPEC-031", "SPEC-015", "SPEC-032", "SPEC-076"], auth="owner", idem=True,
    desc="수락하면 그날 자리를 결제 기한까지 잡고 결제 안내를 낸다(SPEC-032). 그날 자리가 없으면 먼저 409 confirmation_required(overbooking)이고, "
-        "사장님이 확인하면 confirm에 담아 추가 수락한다(R10). 금액을 바꿔 수락하면 새 주문 내용 버전(사유 포함)과 요청 금액을 함께 보이는 결제 안내. "
+        "사장님이 확인하면 confirm에 담아 추가 수락한다(R10). "
+        "'수락'(accept)은 표시 방식이 '확정'인 견적에만 있고 견적 금액으로 간다. '부터'·'범위' 견적은 금액 변경 수락(accept_with_amount)으로 최종 금액과 사유를 넣어야 하고, "
+        "accept면 422 /amount required, 견적의 아래 끝보다 낮으면 422 /amount below_quote_min(REQ-230). "
+        "금액을 정하거나 바꿔 수락하면 새 주문 내용 버전(사유 포함)과 손님이 요청한 견적(requestedQuote, 표시 그대로)을 함께 보이는 결제 안내를 낸다(REQ-231). "
+        "정한 금액이 손님이 본 금액(표시 방식이 '확정'이면 그 금액, '부터'는 아래 끝, '범위'는 위 끝)보다 높으면 새 금액 확인이 필요한 결제 안내(needsAmountConfirm)라, 손님이 새 금액 확인 카드에서 확인한 뒤에 계좌를 보이고 그때부터 결제 기한을 센다. "
+        "확인 전의 결제 기한은 결제 기한 상한이고, 손님이 받지 않으면 손님 취소로 자리를 바로 푼다(SPEC-076, REQ-232, REQ-233). "
         "휴무일이면 409 confirmation_required(closed_day)이고 확인하면 마감 후 추가 수락으로 잡는다(REQ-221). "
         "거절이면 거절됨과 손님 안내. 이미 답한 주문은 409 already_decided, 그 사이 손님이 취소했으면 409 order_cancelled, "
         "그 픽업 날짜의 주문 마감까지 답이 없어 '답 없어 닫힘'(cancelKind no_answer)으로 닫힌 요청은 409 invalid_state(REQ-213).",
    params=[pid("orderId", "주문", E.CUSTOM_ID)],
    body="CustomDecisionInput",
-   body_examples={"accept": {"baseRevision": E.CUSTOM_REQUESTED["revision"], "decision": "accept"},
-                  "accept_with_amount": {"baseRevision": E.CUSTOM_REQUESTED["revision"], "decision": "accept_with_amount", "amount": 75000,
+   body_examples={"accept_with_amount": {"baseRevision": E.CUSTOM_REQUESTED["revision"], "decision": "accept_with_amount", "amount": 75000,
                                          "amountChangeReason": "곰돌이 얼굴 입체 장식이 더해져요", "confirm": ["overbooking"]},
                   "reject": {"baseRevision": E.CUSTOM_REQUESTED["revision"], "decision": "reject", "rejectReason": "그날은 입체 장식을 만들 시간이 없어요"}},
    ok=[(200, "OrderCommandResult", {"accepted": {"outcome": "done", "order": E.CUSTOM_ACCEPTED, "paymentRequest": E.PR_CUSTOM_OPEN},
                                     "rejected": {"outcome": "done", "order": E.CUSTOM_REJECTED, "paymentRequest": None}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "order_cancelled", "invalid_state", "confirmation_required"]},
-   fields=[("/amount", "out_of_range"), ("/amountChangeReason", "required")],
+   fields=[("/amount", "out_of_range"), ("/amount", "required"), ("/amount", "below_quote_min"), ("/amountChangeReason", "required")],
    confirm=["overbooking", "closed_day"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
@@ -787,7 +793,8 @@ op(id="API-047", method="post", path="/owner/orders/{orderId}/overdue-decision",
         "남은 자리가 없으면 409 confirmation_required(overbooking), 휴무일이 됐으면 closed_day(REQ-221), 그 픽업 날짜의 주문 마감이 지났으면 past_cutoff(새 결제 기한은 픽업 일시까지). "
         "취소면 '결제 없어 취소됨', 손님 안내 한 번, 장부 쓰기(SPEC-039). 픽업 일시가 지났으면 결제 기한 연장은 409 invalid_state(취소만). "
         "픽업 일시까지 고르지 않으면 서버가 결제 없어 취소로 두고(REQ-217) 그 뒤의 고르기는 409 invalid_state. "
-        "이미 고른 주문은 409 already_decided. 그 사이 결제가 확인됐으면 409 version_conflict(G3).",
+        "이미 고른 주문은 409 already_decided. 그 사이 결제가 확인됐으면 409 version_conflict(G3). "
+        "다시 낸 결제는 손님이 요청한 견적(requestedQuote)을 그대로 보이고, 손님이 새 금액을 아직 확인하지 않은 결제 안내를 다시 내면 다시 낸 결제도 새 금액 확인이 필요하다(SPEC-076, REQ-232).",
    params=[pid("orderId", "주문", E.CUSTOM_ID)],
    body="OverdueDecisionInput",
    body_examples={"wait": {"baseRevision": E.CUSTOM_OVERDUE["revision"], "decision": "wait"},
@@ -986,36 +993,41 @@ op(id="API-057", method="get", path="/owner/payment-requests", op="listPaymentRe
 
 op(id="API-058", method="get", path="/owner/payment-requests/{paymentRequestId}", op="getPaymentRequest", tag="결제 안내",
    summary="결제 안내 하나", spec=["SPEC-034", "SPEC-035"], auth="owner",
-   desc="할 일(결제 확인 요청·맞추는 중)이 여는 입금 대조 화면.",
+   desc="할 일(결제 확인 요청·맞추는 중)이 여는 입금 대조 화면. 새 금액 확인이 필요한데 손님이 아직 확인하지 않은 결제 안내는 needsAmountConfirm true, amountConfirmedAt·deliveredAt null이고 결제 기한은 상한(awaiting_amount_confirm, SPEC-076).",
    params=[pid("paymentRequestId", "결제 안내", E.PR_CLAIMED["paymentRequestId"])],
-   ok=[(200, "PaymentRequest", {"claimed": E.PR_CLAIMED, "mismatch": E.PR_MISMATCH, "expired": E.PR_EXPIRED})],
+   ok=[(200, "PaymentRequest", {"claimed": E.PR_CLAIMED, "mismatch": E.PR_MISMATCH, "expired": E.PR_EXPIRED,
+                                "awaiting_amount_confirm": E.PR_CUSTOM_OPEN})],
    errors={404: ["not_found"]},
    omit={"403": O403, "409": O409_READ, "422": O422_PATHONLY},
    kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-059", method="post", path="/owner/payment-requests/{paymentRequestId}/reconciliation", op="reconcilePaymentRequest", tag="결제 안내",
-   summary="입금 대조(입금됨·미입금·금액 불일치·대조 완료·들어옴·결제 확인 취소)", spec=["SPEC-034", "SPEC-035", "SPEC-036", "SPEC-045", "SPEC-015", "SPEC-064", "SPEC-070", "SPEC-071"],
+   summary="입금 대조(입금됨·미입금·금액 불일치·대조 완료·들어옴·결제 확인 취소·변경 닫기)", spec=["SPEC-034", "SPEC-035", "SPEC-036", "SPEC-045", "SPEC-015", "SPEC-064", "SPEC-070", "SPEC-071", "SPEC-044", "SPEC-076"],
    auth="owner", idem=True,
    desc="'입금됨'이면 결제 확인됨(결제 안내 하나에 하나)을 남기고 첫 결제·다시 낸 결제는 주문을 확정하고(SPEC-036), 차액 결제는 변경을 반영한다(SPEC-045). "
-        "금액 불일치이면 '맞추는 중'으로 두고 결제 기한을 멈추고 자리를 지킨다(SPEC-035). 대조 완료이면 확정. 미입금이면 확인 요청을 지운다. "
+        "금액 불일치이면 '맞추는 중'으로 두고 결제 기한을 멈추고 자리를 지킨다(SPEC-035). 대조 완료이면 확정(차액 결제면 변경 반영). 미입금이면 확인 요청을 지운다. "
+        "새 금액 확인이 필요한데 손님이 아직 확인하지 않은 결제 안내를 '입금됨'·'대조 완료'로 결제 확인하면 그 시각을 손님의 확인으로 함께 남긴다(SPEC-076). "
+        "변경 닫기(close_change)는 맞추는 중인 차액 결제에만: 변경 요청을 '차액 없어 닫힘'으로 두고 주문 내용·버전은 그대로, 차액을 기다리며 잡아 둔 새 날 자리를 풀고, "
+        "들어온 금액은 '더 들어온 금액'으로 돌려줄 환불을 정할 일로 남긴다(SPEC-035, REQ-235). 맞추는 중인 차액 결제가 아니면 409 invalid_state. "
         "그 사이 주문이 취소됐으면 확정하지 않고 outcome paid_after_cancel과 환불 정할 일(SPEC-036). "
         "기한이 지나 자리가 풀린 결제 안내의 '입금됨'은 409 slot_released(먼저 결제 기한 연장, R14). 같은 결과를 다시 누르면 unchanged, 다른 결과가 이미 남았으면 409 already_decided. "
         "확인과 기한 처리가 동시에 일어나면 확인이 이긴다. "
         "들어옴(arrived)은 닫힘·기한 지남 결제 안내에 결제로 확인하지 않은 들어온 금액을 남겨 받은 금액에 넣고 환불 정할 일을 남긴다(SPEC-071, REQ-166). 들어온 입금 대조 할 일이 이 화면을 연다(REQ-167). "
         "결제 확인 취소(void)는 제작을 시작하지 않은 확인된 결제에만: 사유와 시각을 남기고 결제 안내는 나감, 주문은 결제 기다림, 자리는 가예약으로 되돌리고 손님에게 정정 안내를 한 번 보낸다(SPEC-070, REQ-169). "
-        "제작을 시작했으면 409 invalid_state.",
+        "제작을 시작했거나, 차액 결제이거나, 반영됐거나 열린 변경 요청이나 정한 환불이 있으면 409 invalid_state(SPEC-070).",
    params=[pid("paymentRequestId", "결제 안내", E.PR_CLAIMED["paymentRequestId"])],
    body="ReconciliationInput",
    body_examples={"received": {"baseRevision": E.PR_CLAIMED["revision"], "result": "received"},
                   "mismatch": {"baseRevision": E.PR_CLAIMED["revision"], "result": "mismatch", "mismatchAmount": 31000},
                   "resolved": {"baseRevision": E.PR_MISMATCH["revision"], "result": "resolved", "resolution": "shortfall_paid"},
                   "arrived": {"baseRevision": E.rev("pr:closed"), "result": "arrived", "arrivedAmount": 36000},
-                  "void": {"baseRevision": E.PR_FIRST_PAID["revision"], "result": "void", "voidReason": E.PAYMENT_VOIDED["voidReason"]}},
+                  "void": {"baseRevision": E.PR_FIRST_PAID["revision"], "result": "void", "voidReason": E.PAYMENT_VOIDED["voidReason"]},
+                  "close_change": {"baseRevision": E.PR_DIFF_MISMATCH["revision"], "result": "close_change"}},
    ok=[(200, "ReconciliationResult", {
        "confirmed": {"outcome": "done", "paymentRequest": E.PR_FIRST_PAID, "payment": E.PAYMENT, "order": E.ORDER_CONFIRMED, "changeRequest": None},
        "mismatch": {"outcome": "done", "paymentRequest": E.PR_MISMATCH, "payment": None, "order": E.ORDER_AWAITING, "changeRequest": None},
-       "difference_applied": {"outcome": "done", "paymentRequest": dict(E.PR_DIFFERENCE, status="paid", paidAt=E.t("11-15", "12:00"),
-                                                                      revision=E.rev("pr:diff:paid")),
+       "difference_applied": {"outcome": "done", "paymentRequest": dict(E.PR_DIFFERENCE_CONFIRMED, status="paid", paidAt=E.t("11-15", "12:00"),
+                                                                      arrivedAmount=20000, arrivedAt=E.t("11-15", "12:00"), revision=E.rev("pr:diff:paid")),
                               "payment": dict(E.PAYMENT, paymentId=E.uid("payment:K7Q3M9:diff"), paymentRequestId=E.PR_DIFFERENCE["paymentRequestId"],
                                               amount=20000, confirmedAt=E.t("11-15", "12:00")),
                               "order": E.ORDER_CHANGED, "changeRequest": dict(E.CHANGE_AWAITING, status="applied", appliedVersion=2,
@@ -1029,12 +1041,14 @@ op(id="API-059", method="post", path="/owner/payment-requests/{paymentRequestId}
        "voided": {"outcome": "done", "paymentRequest": E.PR_VOIDED, "payment": E.PAYMENT_VOIDED,
                   "order": dict(E.ORDER_AWAITING, paymentRequests=[E.PR_VOIDED], payments=[E.PAYMENT_VOIDED], production=None,
                                 revision=E.rev("order:K7Q3M9:voided")), "changeRequest": None},
+       "change_closed": {"outcome": "done", "paymentRequest": E.PR_DIFF_CHANGE_CLOSED, "payment": None, "order": E.ORDER_CONFIRMED,
+                         "changeRequest": E.CHANGE_CLOSED_BY_OWNER},
        "unchanged": {"outcome": "unchanged", "paymentRequest": E.PR_FIRST_PAID, "payment": E.PAYMENT, "order": E.ORDER_CONFIRMED, "changeRequest": None}})],
    errors={404: ["not_found"], 409: ["version_conflict", "slot_released", "already_decided", "invalid_state"]},
    fields=[("/mismatchAmount", "out_of_range"), ("/arrivedAmount", "out_of_range"), ("/voidReason", "required")],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
-          "상태": ["409:slot_released", "409:already_decided", "example:paid_after_cancel"], "반복": ["idem", "example:unchanged"],
+          "상태": ["409:slot_released", "409:already_decided", "example:paid_after_cancel", "example:change_closed"], "반복": ["idem", "example:unchanged"],
           "동시": ["revision", "409:version_conflict", "note:확인이 기한 처리를 이김(SPEC-034)"], "노출": ["closed"], "화면": ["screen"]})
 
 # ═══ 환불 ═════════════════════════════════════════════════════════════════════
@@ -1071,7 +1085,9 @@ op(id="API-061", method="post", path="/owner/refunds/{refundId}/sent", op="markR
 # ═══ 변경 요청 ════════════════════════════════════════════════════════════════
 op(id="API-062", method="get", path="/owner/change-requests/{changeRequestId}", op="getChangeRequest", tag="변경 요청",
    summary="변경 요청 하나", spec=["SPEC-042", "SPEC-041", "SPEC-043", "SPEC-044"], auth="owner",
-   desc="바꾸려는 내용, 묶인 주문 버전과 현재 버전, 변경 마감 시각, 새 날을 사장님이 정해야 하는지, 차액 결제. 차액 결제 기한이 지나면 서버가 '차액 없어 닫힘'으로 둔다(SPEC-044). "
+   desc="바꾸려는 내용, 묶인 주문 버전과 현재 버전, 변경 마감 시각, 새 날을 사장님이 정해야 하는지, 차액 결제(손님의 새 금액 확인 포함, SPEC-076). "
+        "차액 결제 기한이 지나거나 손님이 새 금액을 받지 않으면 서버가 '차액 없어 닫힘'으로 두고 차액을 기다리며 잡아 둔 새 날 자리를 푼다(SPEC-044, REQ-233, REQ-234). "
+        "맞추는 중인 차액 결제는 기한으로 닫지 않고 사장님의 '대조 완료'나 '변경 닫기'(API-059)로만 끝난다(REQ-235). "
         "변경 마감까지 사장님 답이 없으면 서버가 '답 없어 닫힘'(closed_no_answer)으로 닫고 주문은 원래대로 둔다(REQ-214).",
    params=[pid("changeRequestId", "변경 요청", E.CHANGE["changeRequestId"])],
    ok=[(200, "ChangeRequest", {"requested": E.CHANGE, "awaiting_difference": E.CHANGE_AWAITING, "closed_no_difference": E.CHANGE_CLOSED,
@@ -1082,29 +1098,36 @@ op(id="API-062", method="get", path="/owner/change-requests/{changeRequestId}", 
           "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-063", method="post", path="/owner/change-requests/{changeRequestId}/decision", op="decideChangeRequest", tag="변경 요청",
-   summary="변경 요청 응답(수락·거절)", spec=["SPEC-042", "SPEC-043", "SPEC-045", "SPEC-015", "SPEC-032"], auth="owner", idem=True,
-   desc="금액이 그대로거나 내려가면 바로 반영해 주문 버전을 하나 올린다(SPEC-045, 내려가면 환불 정할 일). 오르면 차액 결제 안내를 내고(SPEC-043) 확인되면 반영한다. "
-        "날짜가 바뀌면 옛 날 자리를 풀고 새 날에 확정된 자리를 잡는다(결제 안내 없음). 새 날이 다 찼으면 409 confirmation_required(overbooking), 휴무일이면 closed_day(REQ-221, REQ-226). "
-        "거절이면 주문은 그대로이고 손님에게 알린다. 그 사이 손님이 취소했으면 409 order_cancelled, 이전 버전을 보고 만든 변경이면 409 stale_change, 이미 답했으면 409 already_decided, "
-        "변경 마감까지 답이 없어 '답 없어 닫힘'으로 닫힌 변경 요청은 409 invalid_state(REQ-214). "
-        "재제작 주문의 변경 요청은 금액이 그대로일 때만 수락한다(amountDelta가 0이 아니면 422 /amountDelta not_allowed, 차액 결제·차액 돌려주기 없음, "
-        "변경 마감은 원래 주문이 받은 운영규정 버전으로 셈, SPEC-042, SPEC-060).",
+   summary="변경 요청 응답(수락·거절)", spec=["SPEC-042", "SPEC-043", "SPEC-045", "SPEC-015", "SPEC-032", "SPEC-076"], auth="owner", idem=True,
+   desc="수락하려면 금액 방향(amountDirection: same·up·down)을 고르고, 올라감·내려감이면 차이 금액(amountDifference)을 양수로 넣는다(부호를 넣지 않음, DEC-23). 서버가 부호를 붙여 amountDelta로 남긴다. "
+        "금액이 그대로거나 내려가면 바로 반영해 주문 버전을 하나 올린다(SPEC-045, 내려가면 환불 정할 일). 날짜가 바뀌면 옛 날 자리를 풀고 새 날에 확정된 자리를 잡는다(결제 안내 없음). "
+        "오르면 변경 요청을 '차액 결제 기다림'으로 두고 새 금액 확인이 필요한 차액 결제 안내를 낸다(SPEC-043, SPEC-076). 손님이 새 금액을 확인하면 계좌를 보이고, 차액 결제가 확인되면 반영한다. "
+        "기다리는 동안 주문 내용·버전과 옛 날의 확정된 자리는 그대로이고, 날짜도 바뀌면 새 날 자리를 차액 결제 기한까지 잡는다(REQ-234). "
+        "새 날이 다 찼으면 409 confirmation_required(overbooking), 휴무일이면 closed_day(REQ-221, REQ-226). "
+        "거절이면 주문은 그대로이고 손님에게 알린다. 그 사이 손님이 취소했으면 409 order_cancelled, 이미 답했으면 409 already_decided, "
+        "변경 마감이 지난 변경 요청은 닫는 일이 아직 돌지 않았어도 409 invalid_state이고 '답 없어 닫힘'으로 닫는다(REQ-214). "
+        "수락인데 방향이 없으면 422 /amountDirection required, 올라감·내려감인데 차이 금액이 없으면 /amountDifference required, 내려감이 지금 금액을 넘거나 올라간 새 금액이 1,000만 원을 넘으면 /amountDifference out_of_range, "
+        "그대로·거절에 차이 금액을 보내면 /amountDifference not_allowed. "
+        "재제작 주문의 변경 요청은 금액이 그대로일 때만 수락한다(same이 아니면 422 /amountDirection not_allowed, 차액 결제·차액 돌려주기 없음, "
+        "변경 마감은 원래 주문이 받은 운영규정 버전으로 셈, SPEC-042, SPEC-060). "
+        "이전 버전을 보고 만든 변경은 변경 요청 카드에서 받지 않아(SPEC-041, G9) 여기 오지 않고, 반영 쓰기는 본 버전 위에서만 된다(REQ-133).",
    params=[pid("changeRequestId", "변경 요청", E.CHANGE["changeRequestId"])],
    body="ChangeDecisionInput",
-   body_examples={"accept_same": {"baseRevision": E.CHANGE["revision"], "decision": "accept", "amountDelta": 0},
-                  "accept_more": {"baseRevision": E.CHANGE_TWO_TIER["revision"], "decision": "accept", "amountDelta": 20000},
+   body_examples={"accept_same": {"baseRevision": E.CHANGE["revision"], "decision": "accept", "amountDirection": "same"},
+                  "accept_more": {"baseRevision": E.CHANGE_TWO_TIER["revision"], "decision": "accept", "amountDirection": "up", "amountDifference": 20000},
                   "reject": {"baseRevision": E.CHANGE_TWO_TIER["revision"], "decision": "reject", "rejectReason": "2단은 사흘 전까지만 받아요"}},
    ok=[(200, "ChangeDecisionResult", {"applied": {"outcome": "done", "changeRequest": E.CHANGE_APPLIED, "order": E.ORDER_CHANGED, "paymentRequest": None},
                                       "awaiting_difference": {"outcome": "done", "changeRequest": E.CHANGE_AWAITING, "order": E.ORDER_CONFIRMED,
                                                               "paymentRequest": E.PR_DIFFERENCE},
                                       "rejected": {"outcome": "done", "changeRequest": E.CHANGE_REJECTED, "order": E.ORDER_CONFIRMED, "paymentRequest": None}})],
-   errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "order_cancelled", "stale_change", "invalid_state", "confirmation_required"]},
-   fields=[("/amountDelta", "out_of_range"), ("/amountDelta", "not_allowed")],
+   errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "order_cancelled", "invalid_state", "confirmation_required"]},
+   fields=[("/amountDirection", "required"), ("/amountDirection", "not_allowed"), ("/amountDifference", "required"),
+           ("/amountDifference", "out_of_range"), ("/amountDifference", "not_allowed")],
    confirm=["overbooking", "closed_day"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
           "상태": ["409:order_cancelled", "409:already_decided", "409:invalid_state", "409:confirmation_required"], "반복": ["idem"],
-          "동시": ["revision", "409:version_conflict", "409:stale_change"], "노출": ["closed"], "화면": ["screen"]})
+          "동시": ["revision", "409:version_conflict", "note:한 주문에 열린 변경 요청은 하나이고 반영은 본 버전 위에서만 됨(REQ-133)"], "노출": ["closed"], "화면": ["screen"]})
 
 # ═══ 문제 신고 ════════════════════════════════════════════════════════════════
 op(id="API-064", method="get", path="/owner/issue-reports/{issueReportId}", op="getIssueReport", tag="문제 신고",
@@ -1188,7 +1211,7 @@ op(id="API-069", method="delete", path="/owner/portfolio/items/{portfolioItemId}
 MESSAGE_OUTCOMES = ["answered", "callback_pending", "handed_over", "ai_unavailable", "ai_timeout", "ai_key_missing", "ai_limit_reached",
                     "ai_cost_limit_reached", "masking_failed", "ai_output_rejected", "card_shown", "photo_received", "photo_rejected",
                     "unsupported_message", "rate_limited", "duplicate", "not_accepting", "channel_test_card", "server_error"]
-CARD_OUTCOMES = ["allergy_saved", "allergy_declined", "orderer_saved", "order_requested", "payment_claimed", "change_requested", "order_cancelled",
+CARD_OUTCOMES = ["allergy_saved", "allergy_declined", "orderer_saved", "order_requested", "payment_claimed", "amount_confirmed", "amount_declined", "change_requested", "order_cancelled",
                  "issue_reported", "photo_consent_saved", "consent_withdrawn", "declined", "input_invalid", "card_stale", "card_expired", "card_not_yours", "card_used", "day_full", "retry_needed", "not_allowed_now",
                  "block_verified", "channel_linked", "not_accepting", "server_error"]
 REVIEW_OUTCOMES = ["review_saved", "review_not_allowed", "review_invalid", "photo_download_failed", "duplicate", "block_verified", "channel_linked",
@@ -1199,7 +1222,7 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
    summary="손님 메시지 수신(카카오 오픈빌더 스킬)", auth="skill", callbacks=True, outcomes=MESSAGE_OUTCOMES, ai="AI-1",
    spec=["SPEC-017", "SPEC-018", "SPEC-019", "SPEC-020", "SPEC-021", "SPEC-022", "SPEC-025", "SPEC-026", "SPEC-027", "SPEC-028",
          "SPEC-033", "SPEC-040", "SPEC-041", "SPEC-046", "SPEC-049", "SPEC-056", "SPEC-057", "SPEC-066", "SPEC-068", "SPEC-069",
-         "SPEC-013", "SPEC-014", "SPEC-016", "SPEC-008", "SPEC-072", "SPEC-075"],
+         "SPEC-013", "SPEC-014", "SPEC-016", "SPEC-008", "SPEC-072", "SPEC-075", "SPEC-076"],
    desc="카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 키가 아니면 401(DEC-08). "
         "처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). "
         "답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). "
@@ -1207,6 +1230,7 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
         "첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). "
         "문의 끊김이나 상담 끝남으로 닫힌 손님에게도 이 안내(결제 안내·사장님 답·전날 안내 등)는 막지 않는다(REQ-212). 이때 보인 결제 안내는 그때를 전해진 시각으로 남겨 결제 기한을 그때부터 세고(REQ-218), "
         "결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). "
+        "새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드를 보이고(SPEC-076), 손님이 확인하기 전에 입금했다고 하면 입금 알리기 카드 대신 그 카드를 다시 보인다(card_shown, SPEC-033). "
         "요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). "
         "연결 확인 중인 채널의 테스트 메시지면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008). 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). "
         "주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, "
@@ -1236,7 +1260,7 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
 op(id="API-071", method="post", path="/kakao/skills/card", op="pressConfirmCard", tag="카카오 스킬",
    summary="손님 확인 카드 버튼(카카오 오픈빌더 스킬)", auth="skill", outcomes=CARD_OUTCOMES,
    spec=["SPEC-069", "SPEC-029", "SPEC-030", "SPEC-033", "SPEC-041", "SPEC-046", "SPEC-058", "SPEC-063", "SPEC-015", "SPEC-032", "SPEC-040", "SPEC-072",
-         "SPEC-075", "SPEC-053"],
+         "SPEC-075", "SPEC-053", "SPEC-076", "SPEC-044"],
    desc="확인 카드의 블록 버튼이 clientExtra(cardKey, choice)로 보내는 스킬. 서버는 카드 키로 저장된 카드를 찾고 그 사용자·그 주문의 현재 버전·30분 기한을 다시 본다(G9). "
         "주문 요청이면 한 트랜잭션으로 내용 확인·규정 동의·주문 요청을 남기고 초안의 알레르기 정보 동의(답·동의 글 버전·시각)와 알레르기 답을 주문 내용 버전에 옮기며, 기본 디자인이면 같은 트랜잭션에서 자리를 잡고 결제 안내까지(SPEC-029, SPEC-030). "
         "초안에 알레르기 정보 동의의 답이 없거나 동의했는데 알레르기 답이 없으면 주문 요청을 남기지 않고 알레르기 정보 카드를 보낸다(card_stale, REQ-201). "
@@ -1250,18 +1274,21 @@ op(id="API-071", method="post", path="/kakao/skills/card", op="pressConfirmCard"
         "'동의 안 함'은 거부와 동의 글 버전·시각을 초안에 남기고 알레르기를 묻지 않은 채 다음 카드를 보낸다(allergy_declined, REQ-203). 알레르기 답은 AI 모델·로그·사장님 알림에 보내지 않는다(REQ-204, REQ-142, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). "
         "완성 사진 안내(API-073)의 사진 게시 동의 카드에서 누른 '올려도 돼요'·'안 돼요'는 그 안내의 사진마다 동의를 남긴다(photo_consent_saved, SPEC-053, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). "
         "동의를 철회하는 카드(consent_withdrawn)는 완성 사진·후기 사진의 동의 모두를 다루고, 그 사진의 올라 있는 포트폴리오 항목을 먼저 내린 뒤 철회를 남긴다(SPEC-063, REQ-209). "
+        "새 금액 확인 카드(새 금액 확인이 필요한 결제 안내를 전할 때 계좌 대신 보임, SPEC-076)의 '이 금액으로 할게요'(맞춤 주문)·'바꿀게요'(변경)는 그 시각을 손님의 확인이자 결제 안내가 전해진 시각으로 남기고 계좌와 결제 기한을 보인다(amount_confirmed, REQ-232). "
+        "'안 할래요'·'그대로 둘래요'는 결제 안내를 닫고, 맞춤 주문은 손님 취소(자리를 바로 풂, 받은 금액이 없어 환불 없음), 변경은 변경 요청을 '차액 없어 닫힘'으로 두고(차액을 기다리며 잡아 둔 새 날 자리는 풂) 사장님께 알린다(amount_declined, REQ-233, SPEC-044). "
+        "그 사이 주문이 취소됐거나 변경 요청이 닫혔거나 결제 기한 상한이 지났으면 not_allowed_now와 지금 상태를 보인다. "
         "주문자 정보를 받아 보내는 주문 요청 확인 카드와 card_stale·card_expired의 새 카드는 API-070의 card_shown처럼 규정 글을 먼저, 요약 카드를 끝에 둔다(DEC-22). "
         "연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: card·orderer_info·allergy_answer·depositor_name)은 주문·카드를 남기지 않고 그 블록이 닿았다는 것만 남긴 뒤 다음 시험 버튼을 답하고(block_verified), "
         "다섯이 모두 닿으면 채널을 '연결됨'으로 묶고 시험 안내를 보낸다(channel_linked, SPEC-008, REQ-206, 설계 재검토 H8·H5). clientExtra에 cardKey도 check도 없으면 422.",
    body="SkillPayload", body_examples={"order_request": E.SKILL_CARD, "orderer_info": E.SKILL_ORDERER, "allergy_answer": E.SKILL_ALLERGY,
                                        "depositor_name": E.SKILL_DEPOSITOR, "photo_consent": E.SKILL_PHOTO_CONSENT,
-                                       "check_button": E.SKILL_CHECK_CARD},
+                                       "amount_confirm": E.SKILL_AMOUNT_CONFIRM, "check_button": E.SKILL_CHECK_CARD},
    ok=[(200, "SkillTemplateResponse", {k: E.SKILL_OUTCOME_EXAMPLES[k] for k in CARD_OUTCOMES}, ["Siljang-Outcome"])],
    errors={401: ["skill_key_invalid"]},
    fields=[("/action/clientExtra/cardKey", "required")],
    omit=dict(SKILL_OMIT, **{"429": "카드는 한 번만 명령을 내려 빈도 한도가 없음"}),
    kinds={"접근": ["security", "401:skill_key_invalid", "outcome:card_not_yours"], "입력": ["422:validation_failed", "outcome:input_invalid"],
-          "대상": ["outcome:not_allowed_now"], "상태": ["outcome:card_stale", "outcome:card_expired", "outcome:not_allowed_now", "outcome:block_verified", "outcome:channel_linked"],
+          "대상": ["outcome:not_allowed_now"], "상태": ["outcome:card_stale", "outcome:card_expired", "outcome:not_allowed_now", "outcome:block_verified", "outcome:channel_linked", "outcome:amount_declined"],
           "반복": ["outcome:card_used"], "동시": ["outcome:day_full", "outcome:card_stale"], "외부": ["outcome:retry_needed"],
           "노출": ["closed", "outcome:server_error", "note:주문자 이름·연락처·입금자 이름·알레르기 답은 AI로 보내지 않음(REQ-178, REQ-204)"],
           "AI": ["outcome:card_not_yours", "outcome:card_stale", "outcome:card_expired", "note:AI가 제안한 카드의 값은 서버 기록에서만 옴(SPEC-069)"],
@@ -1290,7 +1317,7 @@ op(id="API-072", method="post", path="/kakao/skills/review", op="submitReview", 
 
 op(id="API-073", method="post", path="/kakao/skills/event", op="showNotice", tag="카카오 스킬",
    summary="먼저 보내는 안내 보이기(카카오 Event API가 부르는 스킬)", auth="skill", outcomes=EVENT_OUTCOMES,
-   spec=["SPEC-066", "SPEC-008", "SPEC-053"],
+   spec=["SPEC-066", "SPEC-008", "SPEC-053", "SPEC-076"],
    desc="우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). "
         "userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). "
         "안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). "
@@ -1298,6 +1325,8 @@ op(id="API-073", method="post", path="/kakao/skills/event", op="showNotice", tag
         "누른 답은 카드 스킬로 와서 그 안내의 사진마다 남는다(API-071 photo_consent_saved, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). "
         "손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), "
         "그 안내는 다음 대화 때 먼저 전한다(DEC-20이 정한 DEC-07의 예외). "
+        "새 금액 확인이 필요한 결제 안내는 계좌 자리 대신 새 금액 확인 카드(맞춤 주문은 요청한 견적·정한 금액·사유와 '이 금액으로 할게요'·'안 할래요', 변경은 바뀌는 내용·지금 금액과 새 금액·차액·변경 마감과 '바꿀게요'·'그대로 둘래요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, "
+        "누른 답은 카드 스킬로 온다(API-071 amount_confirmed·amount_declined, SPEC-076, REQ-232). "
         "결제 안내의 글에는 계좌번호를 넣어 두지 않고 계좌 자리만 두며, 이 스킬이 보일 때 그 결제 안내의 계좌를 복호화해 채운다(SPEC-032, REQ-191). "
         "Open: 가게 채널을 우리 앱에 연결하고 우리 월렛을 가게 봇에 연결하는 절차, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양은 개발 전 시험으로 확인(OPEN-9).",
    body="SkillPayload", body_examples={"notice": E.SKILL_NOTICE, "event_test": E.SKILL_EVENT_TEST},

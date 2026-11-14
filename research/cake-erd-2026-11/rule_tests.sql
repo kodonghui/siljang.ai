@@ -425,9 +425,15 @@ INSERT INTO change_requests (id, shop_id, order_id, card_id, base_version, chang
   ('d2000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003',
    'c7000000-0000-0000-0000-000000000013', 2, '{"lettering":"사랑해 엄마","topper":"추가"}');
 UPDATE change_requests SET lock_version = lock_version + 1, status = 'awaiting_difference', amount_delta = 5000, decided_at = now() WHERE id = 'd2000000-0000-0000-0000-000000000001';
-INSERT INTO payment_requests (id, shop_id, order_id, kind, change_request_id, event_key, status, amount, payment_account_id, due_at, due_cap_at) VALUES
+INSERT INTO payment_requests (id, shop_id, order_id, kind, change_request_id, event_key, status, amount, needs_amount_confirm, payment_account_id, due_at, due_cap_at) VALUES
   ('e0000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'difference',
-   'd2000000-0000-0000-0000-000000000001', 'pay:d2..01:difference', 'open', 5000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours', now() + interval '12 hours');
+   'd2000000-0000-0000-0000-000000000001', 'pay:d2..01:difference', 'open', 5000, true, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours', now() + interval '12 hours');
+-- 손님이 새 금액 확인 카드에서 '바꿀게요'를 누름: 그때가 전해진 때이고 그때부터 계좌와 결제 기한을 보임(SPEC-076, REQ-232)
+INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, kind, order_id, order_version, payload, expires_at, used_at, outcome) VALUES
+  ('c7000000-0000-0000-0000-000000000023', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002',
+   'card-amount-confirm-0001', 'amount_confirm', 'd0000000-0000-0000-0000-000000000003', 2, '{"amount":60000,"difference":5000}', now() + interval '30 minutes', now(), 'done');
+UPDATE payment_requests SET amount_confirmed_at = now(), amount_card_id = 'c7000000-0000-0000-0000-000000000023', delivered_at = now()
+ WHERE id = 'e0000000-0000-0000-0000-000000000004';
 -- 차액 6,000원이 들어옴 → 금액 불일치(맞추는 중) → 대조 완료(더 들어옴) → 더 들어온 1,000원은 환불(SPEC-035, SPEC-071)
 UPDATE payment_requests SET status = 'mismatch', mismatch_amount = 6000, mismatch_at = now(), arrived_amount = 6000, arrived_at = now()
  WHERE id = 'e0000000-0000-0000-0000-000000000004';
@@ -671,6 +677,10 @@ SELECT pg_temp.expect_fail('SPEC-004 같은 조합의 옵션 규칙 둘(허용�
   INSERT INTO price_option_rules (shop_id, price_list_id, rule_kind, option_a_id, option_b_id)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'exclude',
           'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000004')$$]);
+SELECT pg_temp.expect_fail('M6 범위 값의 옵션을 기본 디자인 범위에 넣음', 'price_options_standard_fixed_chk', ARRAY[$$
+  UPDATE price_options SET in_standard = true WHERE id = 'b1000000-0000-0000-0000-000000000004'$$]);
+SELECT pg_temp.expect_fail('M6 범위 견적의 기본 디자인 주문', 'quotes_standard_fixed_chk', ARRAY[$$
+  UPDATE quotes SET order_kind = 'standard' WHERE id = 'c6000000-0000-0000-0000-000000000002'$$]);
 SELECT pg_temp.expect_fail('SPEC-004 값이 1,000만 원을 넘음', 'price_options_amount_check', ARRAY[$$
   UPDATE price_options SET amount = 10000001 WHERE id = 'b1000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-013 다른 버전의 옵션으로 초안 채우기', 'order_drafts_size_fk', ARRAY[$$
@@ -698,9 +708,21 @@ SELECT pg_temp.expect_fail('SPEC-007 하루 최대 개수 100 넘음', 'business
 SELECT pg_temp.expect_fail('G3 날짜 행 없는 날의 자리', 'slot_holds_day_fk', ARRAY[$$
   INSERT INTO slot_holds (shop_id, day, order_id, hold_key, status, fixed_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', '2027-01-05', 'd0000000-0000-0000-0000-000000000004', 'hold:x', 'fixed', now())$$]);
-SELECT pg_temp.expect_fail('1-4 주문 하나에 유효한 자리 둘', 'slot_holds_one_live_per_order', ARRAY[$$
+SELECT pg_temp.expect_fail('1-4 주문 하나에 확정된 자리 둘', 'slot_holds_one_fixed_per_order', ARRAY[$$
   INSERT INTO slot_holds (shop_id, day, order_id, hold_key, status, fixed_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', '2026-12-28', 'd0000000-0000-0000-0000-000000000003', 'hold:y', 'fixed', now())$$]);
+SELECT pg_temp.expect_fail('M5 주문 하나에 잡힌 자리 둘', 'slot_holds_one_held_per_order', ARRAY[$$
+  INSERT INTO slot_holds (shop_id, day, order_id, payment_request_id, hold_key, status)
+  VALUES ('a2000000-0000-0000-0000-000000000001', '2026-12-26', 'd0000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000004', 'hold:m5-1', 'held')$$, $$
+  INSERT INTO slot_holds (shop_id, day, order_id, payment_request_id, hold_key, status)
+  VALUES ('a2000000-0000-0000-0000-000000000001', '2026-12-24', 'd0000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000004', 'hold:m5-2', 'held')$$]);
+SELECT pg_temp.expect_fail('M5 차액 결제가 아닌 잡힌 자리를 확정된 자리와 함께', 'slot_holds_pair', ARRAY[$$
+  INSERT INTO slot_holds (shop_id, day, order_id, payment_request_id, hold_key, status)
+  VALUES ('a2000000-0000-0000-0000-000000000001', '2026-12-26', 'd0000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000003', 'hold:m5-3', 'held')$$]);
+SELECT pg_temp.expect_ok('M5 금액이 오르는 날짜 변경의 새 날 자리를 잡고 변경이 닫혀 풂', ARRAY[$$
+  INSERT INTO slot_holds (id, shop_id, day, order_id, payment_request_id, hold_key, status)
+  VALUES ('e3000000-0000-0000-0000-0000000000f5', 'a2000000-0000-0000-0000-000000000001', '2026-12-26', 'd0000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000004', 'hold:m5-4', 'held')$$, $$
+  UPDATE slot_holds SET status = 'released', released_at = now(), release_reason = 'change_closed' WHERE id = 'e3000000-0000-0000-0000-0000000000f5'$$]);
 SELECT pg_temp.expect_fail('R13 결제 안내 없이 잡힘', 'slot_holds_held_chk', ARRAY[$$
   INSERT INTO slot_holds (shop_id, day, order_id, hold_key, status)
   VALUES ('a2000000-0000-0000-0000-000000000001', '2026-12-24', 'd0000000-0000-0000-0000-000000000004', 'hold:z', 'held')$$]);
@@ -819,6 +841,12 @@ SELECT pg_temp.expect_fail('REQ-067 금액이 오르지 않는 차액 결제 기
    WHERE id = 'd2000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-045 버전을 건너뛴 반영', 'change_requests_applied_version_chk', ARRAY[$$
   UPDATE change_requests SET applied_version = 4 WHERE id = 'd2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('M5 닿을 수 없던 오래된 버전 상태의 변경 요청', 'change_requests_status_check', ARRAY[$$
+  INSERT INTO change_requests (shop_id, order_id, card_id, base_version, changes, status)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'c7000000-0000-0000-0000-000000000013', 3, '{}', 'stale')$$]);
+SELECT pg_temp.expect_fail('M5 이전 버전 변경 할 일', 'owner_tasks_kind_check', ARRAY[$$
+  INSERT INTO owner_tasks (shop_id, kind, event_key, order_id, change_request_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'stale_change', 'task:m5-stale', 'd0000000-0000-0000-0000-000000000003', 'd2000000-0000-0000-0000-000000000001')$$]);
 SELECT pg_temp.expect_fail('SPEC-060 재제작이 아닌 보상에 재제작 주문', 'issue_reports_remake_chk', ARRAY[$$
   UPDATE issue_reports SET compensation = 'none' WHERE id = 'f2000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('G2 신고 카드 하나에 신고 둘', 'issue_reports_card_uq', ARRAY[$$
@@ -856,6 +884,26 @@ SELECT pg_temp.expect_fail('R13 변경 요청 없는 차액 결제', 'payment_re
   INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'difference', 'x-6', 1000,
           'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour')$$]);
+SELECT pg_temp.expect_fail('M5 새 금액 확인이 없는 차액 결제', 'payment_requests_needs_confirm_chk', ARRAY[$$
+  INSERT INTO payment_requests (shop_id, order_id, kind, change_request_id, event_key, amount, payment_account_id, due_at, due_cap_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'difference', 'd2000000-0000-0000-0000-000000000001', 'x-m5-1', 1000, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour')$$]);
+SELECT pg_temp.expect_fail('M5 요청한 금액보다 높지 않은 다시 낸 결제의 새 금액 확인', 'payment_requests_needs_confirm_chk', ARRAY[$$
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, requested_amount, needs_amount_confirm, payment_account_id, due_at, due_cap_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'reissue', 'x-m5-2', 50000, 50000, true, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour')$$]);
+SELECT pg_temp.expect_fail('M5 새 금액을 확인하기 전에 전해짐', 'payment_requests_amount_delivered_chk', ARRAY[$$
+  INSERT INTO payment_requests (shop_id, order_id, kind, change_request_id, event_key, status, amount, needs_amount_confirm, payment_account_id, due_at, due_cap_at, delivered_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'difference', 'd2000000-0000-0000-0000-000000000001', 'x-m5-3', 'open', 1000, true, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour', now())$$]);
+SELECT pg_temp.expect_fail('M5 새 금액을 확인하기 전 결제 확인 요청', 'payment_requests_amount_claim_chk', ARRAY[$$
+  INSERT INTO payment_requests (shop_id, order_id, kind, change_request_id, event_key, status, amount, needs_amount_confirm, payment_account_id, due_at, due_cap_at, claimed_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'difference', 'd2000000-0000-0000-0000-000000000001', 'x-m5-4', 'claimed', 1000, true, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour', now())$$]);
+SELECT pg_temp.expect_fail('M5 새 금액 확인 없이 확인됨', 'payment_requests_amount_paid_chk', ARRAY[$$
+  INSERT INTO payment_requests (shop_id, order_id, kind, change_request_id, event_key, status, amount, needs_amount_confirm, payment_account_id, due_at, due_cap_at, arrived_amount, arrived_at, paid_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'difference', 'd2000000-0000-0000-0000-000000000001', 'x-m5-5', 'paid', 1000, true, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour', 1000, now(), now())$$]);
+SELECT pg_temp.expect_fail('M5 새 금액을 받지 않았는데 열린 결제 안내', 'payment_requests_amount_declined_chk', ARRAY[$$
+  INSERT INTO payment_requests (shop_id, order_id, kind, change_request_id, event_key, status, amount, needs_amount_confirm, payment_account_id, due_at, due_cap_at, amount_declined_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'difference', 'd2000000-0000-0000-0000-000000000001', 'x-m5-6', 'open', 1000, true, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour', now())$$]);
+SELECT pg_temp.expect_fail('M5 새 금액 확인이 필요 없는 결제 안내의 확인 시각', 'payment_requests_amount_answer_chk', ARRAY[$$
+  UPDATE payment_requests SET amount_confirmed_at = now(), version = version + 1 WHERE id = 'e0000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('R12 결제 기한이 낸 시각보다 앞', 'payment_requests_due_chk', ARRAY[$$
   INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-7', 40000,

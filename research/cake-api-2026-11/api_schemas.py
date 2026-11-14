@@ -113,7 +113,7 @@ MONEY = lambda col=None, lo=0: integer(lo, 10000000, col=col, desc="원")
 CURSOR = string(1, 200, r"^[A-Za-z0-9_-]+$")
 
 ORDER_STATUS = ["requested", "awaiting_payment", "payment_overdue", "confirmed", "received", "no_pickup", "rejected", "cancelled"]
-TASK_KINDS = ["handoff", "custom_order", "change_request", "issue_report", "payment_claim", "payment_mismatch", "payment_overdue", "refund_decision", "paid_after_cancel", "stale_change", "ledger_relink", "license_on_hold", "calendar_conflict", "refund_send", "arrival_check"]
+TASK_KINDS = ["handoff", "custom_order", "change_request", "issue_report", "payment_claim", "payment_mismatch", "payment_overdue", "refund_decision", "paid_after_cancel", "ledger_relink", "license_on_hold", "calendar_conflict", "refund_send", "arrival_check"]
 HANDOFF_REASONS = ["edibility", "cannot_answer", "closed_day", "legal_medical", "customer_request", "other_user", "pre_receipt_issue", "ai_failure", "ai_cost_limit", "callback_timeout", "masking_failed", "empty_answer", "clause_missing"]
 CLAUSE_KEYS = ["pre_production_cancel", "staged_refund", "cancellation_fee", "date_change_refund_basis", "shop_cancel_compensation", "other_shop_design", "issue_report_window", "quote_validity", "payment_due", "change_deadline", "custom"]
 IMAGE_TYPES = ["image/jpeg", "image/png", "image/heic", "image/webp"]
@@ -359,7 +359,7 @@ S["PriceOptionInput"] = obj({
     "priceKind": enum(["fixed", "from", "range"], col="price_options.price_kind", desc="확정·부터·범위"),
     "amount": MONEY("price_options.amount"),
     "amountMax": nullable(MONEY("price_options.amount_max")),
-    "inStandard": boolean("기본 디자인 범위 안인지. 밖이면 맞춤 주문(SPEC-013)", col="price_options.in_standard"),
+    "inStandard": boolean("기본 디자인 범위 안인지. 사장님이 옵션마다 고르고 이 가격표 버전에 함께 남음. 값이 '확정'(fixed)인 옵션만 넣을 수 있고 '부터'·'범위'를 넣으면 422 not_allowed(REQ-228). 범위 밖 옵션을 고른 주문은 맞춤 주문(SPEC-013, REQ-229)", col="price_options.in_standard"),
     "position": integer(0, 32767, col="price_options.position"),
 }, ["key", "group", "name", "priceKind", "amount", "amountMax", "inStandard", "position"])
 
@@ -375,7 +375,7 @@ S["DesignInput"] = obj({
     "uploadId": dict(UPLOAD_ID, description="새로 올린 도안 그림(용도 design_image)"),
     "sourceDesignId": dict(UUID, description="이전 버전의 도안 그림을 그대로 쓸 때 그 도안 ID(같은 가게)"),
     "optionKey": nullable(OPTION_KEY),
-    "inStandard": boolean(col="designs.in_standard"),
+    "inStandard": boolean("기본 디자인 범위 안인지. 사장님이 도안마다 고르고 이 가격표 버전에 함께 남음. 이은 디자인 옵션(optionKey)이 범위 밖이면 넣을 수 없어 422 not_allowed(REQ-228)", col="designs.in_standard"),
     "position": integer(0, 32767, col="designs.position"),
 }, ["name", "optionKey", "inStandard", "position"],
     oneOf=[{"required": ["uploadId"]}, {"required": ["sourceDesignId"]}])
@@ -783,8 +783,8 @@ S["OrderDetailsVersion"] = all_required({
 S["QuoteView"] = all_required({
     "priceListVersion": integer(1, 2147483647),
     "operatingRulesVersion": integer(1, 2147483647),
-    "orderKind": enum(["standard", "custom"]),
-    "displayKind": enum(["fixed", "from", "range"]),
+    "orderKind": enum(["standard", "custom"], desc="기본 디자인·맞춤. 가게 규칙이 그 가격표 버전의 기본 디자인 범위로 가름: 범위 밖 옵션·도안, 참고 사진, 빼야 할 재료 가운데 하나라도 있거나 표시 방식이 '확정'이 아니면 맞춤(REQ-229, SPEC-013). AI가 정하지 않음"),
+    "displayKind": enum(["fixed", "from", "range"], desc="표시 방식('확정'·'부터'·'범위'). '부터'면 amount가 아래 끝, '범위'면 amount~amountMax(SPEC-013)"),
     "amount": MONEY(), "amountMax": nullable(MONEY()),
     "basis": all_required({
         "lines": arr(all_required({"group": enum(["size", "flavor", "design", "extra"]), "name": string(1, 30), "amount": MONEY()}), 0, 60),
@@ -799,12 +799,18 @@ S["PaymentRequest"] = all_required({
     "kind": enum(["first", "reissue", "difference"], desc="첫 결제·다시 낸 결제·차액 결제(R13)"),
     "status": enum(["open", "claimed", "mismatch", "paid", "expired", "closed"], desc="나감·확인 요청됨·맞추는 중·확인됨·기한 지남·닫힘(1-3)"),
     "amount": integer(1, 10000000),
-    "requestedAmount": nullable(integer(0, 10000000, desc="금액을 바꿔 수락했으면 손님이 요청한 금액(REQ-155)")),
+    "requestedQuote": nullable(all_required({
+        "displayKind": enum(["fixed", "from", "range"], desc="손님이 받은 견적의 표시 방식"),
+        "amount": MONEY(), "amountMax": nullable(MONEY()),
+    }, desc="금액을 정하거나 바꿔 수락한 맞춤 주문에서 손님이 요청한 견적(표시 그대로: '50,000원', '50,000원부터', '50,000~70,000원'). 다시 낸 결제도 같은 값, 그 밖은 null(REQ-231)")),
+    "needsAmountConfirm": boolean("새 금액 확인이 필요한 결제 안내: 손님이 본 금액(견적이 금액 하나면 그 금액, '부터'면 아래 끝, '범위'면 위 끝)보다 높게 정한 맞춤 주문의 첫 결제와 확인받기 전에 다시 낸 결제, 금액이 오르는 변경의 차액 결제. 손님이 확인하기 전에는 계좌를 보이지 않음(SPEC-076, REQ-232)"),
+    "amountConfirmedAt": nullable(dict(DT, description="손님이 새 금액을 확인한 시각. 이때가 전해진 시각(deliveredAt)이고 결제 기한을 이때부터 셈. 확인 전에 들어온 돈을 사장님이 결제로 확인('입금됨'·'대조 완료')했으면 그 시각(SPEC-076)")),
+    "amountDeclinedAt": nullable(dict(DT, description="손님이 새 금액을 받지 않은 시각. 결제 안내는 닫힘(맞춤 주문은 손님 취소, 변경은 변경 요청이 차액 없어 닫힘, REQ-233)")),
     "issuedAt": DT,
     "deliveredAt": nullable(dict(DT, description="결제 안내가 손님에게 전해진 시각: 대화 중 답으로 보임·먼저 보낸 안내가 닿음·다음 대화 때 전함. "
-                                                 "null이면 아직 못 전함(SPEC-032, SPEC-037)")),
+                                                 "null이면 아직 못 전함(SPEC-032, SPEC-037). 새 금액 확인이 필요하면 손님이 확인한 시각(amountConfirmedAt, SPEC-076)")),
     "dueAt": dict(DT, description="결제 기한: 전해진 시각에 운영규정의 결제 기한(기본 12시간)을 더한 때와 결제 기한 상한 가운데 이른 쪽. "
-                                   "전해지기 전에는 상한(REQ-218)"),
+                                   "전해지기 전에는 상한(REQ-218). 새 금액 확인이 필요한 결제 안내는 손님이 확인하기 전에는 상한(REQ-232)"),
     "dueCapAt": dict(DT, description="결제 기한 상한: 첫 결제·다시 낸 결제는 그 픽업 날짜의 주문 마감(이미 지났으면 픽업 일시), "
                                       "차액 결제는 변경 마감. 낼 때 정함. 확인 요청됨도 이때 기한 지남(REQ-218, REQ-223)"),
     "claimedAt": nullable(DT),
@@ -816,7 +822,7 @@ S["PaymentRequest"] = all_required({
     "paidAt": nullable(DT),
     "expiredAt": nullable(DT),
     "closedAt": nullable(DT),
-    "closeReason": nullable(enum(["superseded", "order_cancelled", "change_closed"])),
+    "closeReason": nullable(enum(["superseded", "order_cancelled", "change_closed"], desc="새 결제 안내·주문 취소(맞춤 주문의 새 금액을 받지 않음 포함)·변경 요청이 닫힘(차액의 새 금액을 받지 않음·변경 닫기 포함)")),
     "revision": REVISION,
 })
 S["Payment"] = all_required({
@@ -851,7 +857,7 @@ S["ChangeSet"] = obj({
     "designNotes": string(0, 500), "lettering": string(0, 50), "colors": string(0, 100),
     "pickupAt": DT, "courierPickup": boolean(),
 }, desc="바꾸려는 내용(옵션은 이름). 서버가 그 주문의 가격표 버전에서 찾음", minProperties=1)
-CHANGE_STATUS = ["requested", "awaiting_difference", "applied", "rejected", "closed_no_difference", "stale", "closed_by_cancel",
+CHANGE_STATUS = ["requested", "awaiting_difference", "applied", "rejected", "closed_no_difference", "closed_by_cancel",
                  "closed_no_answer"]
 S["ChangeRequestSummary"] = all_required({
     "changeRequestId": UUID, "status": enum(CHANGE_STATUS), "baseVersion": integer(1, 2147483647), "createdAt": DT,
@@ -921,16 +927,16 @@ S["OrderSummary"] = all_required({
         "status": enum(["open", "claimed", "mismatch", "paid", "expired", "closed"]),
         "deliveredAt": nullable(DT),
         "dueAt": DT,
-    }, desc="가장 최근 결제 안내의 상태, 손님에게 전해진 시각(null이면 아직 못 전함), 결제 기한. "
+    }, desc="가장 최근 결제 안내의 상태, 손님에게 전해진 시각(null이면 아직 못 전함. 새 금액 확인이 필요하면 손님이 아직 확인하지 않음, SPEC-076), 결제 기한. "
             "결제 기한 지난 주문 목록이 보임(SPEC-037). 결제 안내가 없으면 null")),
     "revision": ORDER_REVISION,
 })
 S["OrderList"] = all_required({"items": arr(ref("OrderSummary"), 0, 100), "nextCursor": nullable(CURSOR)})
 S["CustomDecisionInput"] = obj({
     "baseRevision": BASE_REVISION,
-    "decision": enum(["accept", "accept_with_amount", "reject"], desc="수락·금액 변경 수락·거절(SPEC-031)"),
-    "amount": integer(1, 10000000, col="order_details.amount", desc="바꾼 금액. accept_with_amount만. 지금 금액과 같으면 수락으로 봄"),
-    "amountChangeReason": string(1, 200, col="order_details.amount_change_reason", desc="금액을 바꾼 이유. accept_with_amount면 꼭"),
+    "decision": enum(["accept", "accept_with_amount", "reject"], desc="수락·금액 변경 수락·거절(SPEC-031). accept는 표시 방식이 '확정'인 견적에만(견적 금액으로 감). '부터'·'범위' 견적은 accept_with_amount로 최종 금액을 넣어야 하고 accept면 422 /amount required(REQ-230)"),
+    "amount": integer(1, 10000000, col="order_details.amount", desc="정한 금액. accept_with_amount만. '부터'·'범위' 견적은 아래 끝 이상(낮으면 422 below_quote_min, REQ-230). '확정' 견적에서 견적 금액과 같으면 수락으로 봄. 손님이 본 금액(표시 방식이 '확정'이면 그 금액, '부터'는 아래 끝, '범위'는 위 끝)보다 높으면 결제 안내는 손님의 새 금액 확인을 기다림(SPEC-076, REQ-232)"),
+    "amountChangeReason": string(1, 200, col="order_details.amount_change_reason", desc="금액을 정하거나 바꾼 이유. accept_with_amount면 꼭. 손님에게 결제 안내와 새 금액 확인 카드로 그대로 보임(REQ-231)"),
     "rejectReason": string(0, 200, col="orders.reject_reason"),
     "confirm": confirm_list(["overbooking", "closed_day"]),
 }, ["baseRevision", "decision"])
@@ -1014,8 +1020,9 @@ S["ProductionDay"] = all_required({
 S["PaymentRequestList"] = all_required({"items": arr(ref("PaymentRequest"), 0, 100), "nextCursor": nullable(CURSOR)})
 S["ReconciliationInput"] = obj({
     "baseRevision": BASE_REVISION,
-    "result": enum(["received", "not_received", "mismatch", "resolved", "arrived", "void"],
-                   desc="입금됨(SPEC-034)·미입금·금액 불일치(SPEC-035)·대조 완료·들어옴(닫힘·기한 지남 결제 안내에 들어온 입금, SPEC-071)·결제 확인 취소(SPEC-070)"),
+    "result": enum(["received", "not_received", "mismatch", "resolved", "arrived", "void", "close_change"],
+                   desc="입금됨(SPEC-034)·미입금·금액 불일치(SPEC-035)·대조 완료·들어옴(닫힘·기한 지남 결제 안내에 들어온 입금, SPEC-071)·결제 확인 취소(SPEC-070)·"
+                        "변경 닫기(맞추는 중인 차액 결제만: 변경 요청을 차액 없어 닫힘으로 두고 들어온 금액은 '더 들어온 금액' 환불로, SPEC-035, REQ-235)"),
     "mismatchAmount": integer(1, 100000000, col="payment_requests.mismatch_amount", desc="들어온 금액. mismatch만, 안내 금액의 10배까지"),
     "arrivedAmount": integer(1, 100000000, col="payment_requests.arrived_amount", desc="들어온 금액. arrived만, 안내 금액의 10배까지(SPEC-071)"),
     "voidReason": string(1, 200, col="payments.void_reason", desc="결제 확인을 취소한 사유. void만, 제작 시작 전(REQ-169)"),
@@ -1079,11 +1086,12 @@ S["ChangeRequest"] = all_required({
     "order": ref("OrderRef"),
     "baseVersion": integer(1, 2147483647, desc="손님 카드에 묶였던 주문 버전"),
     "orderVersion": integer(1, 2147483647, desc="지금 주문 버전. 다르면 반영하지 않음(REQ-133)"),
+    "orderAmount": integer(0, 10000000, col="order_details.amount", desc="지금 주문 버전의 금액(원, 재제작 주문은 0). 변경 요청 화면이 수락 전 결과 한 줄의 새 금액(지금 금액에 고른 방향과 차이 금액을 더하거나 뺌)과 내려감의 한도(지금 금액 이하)를 보임(SPEC-042)"),
     "changes": ref("ChangeSet"),
     "newPickupAt": nullable(DT),
     "needsOwnerDay": boolean("새 날이 휴무·마감이라 받을지 사장님이 정함"),
-    "status": enum(CHANGE_STATUS),
-    "amountDelta": nullable(integer(-10000000, 10000000)),
+    "status": enum(CHANGE_STATUS, desc="요청됨·차액 결제 기다림(손님의 새 금액 확인과 차액 맞추는 중을 포함하고 differencePayment의 상태로 가름)·반영됨·거절됨·차액 없어 닫힘(차액 결제 기한 지남·손님이 새 금액을 받지 않음·변경 닫기)·주문 취소로 닫힘·답 없어 닫힘(1-5)"),
+    "amountDelta": nullable(integer(-10000000, 10000000, desc="수락한 금액 차이: 사장님이 고른 방향과 양수 차이 금액으로 서버가 셈(올라감 +, 내려감 -, 그대로 0, DEC-23). 답하기 전은 null")),
     "rejectReason": nullable(string(0, 200)),
     "changeDeadlineAt": DT,
     "decidedAt": nullable(DT),
@@ -1097,7 +1105,8 @@ S["ChangeRequest"] = all_required({
 S["ChangeDecisionInput"] = obj({
     "baseRevision": BASE_REVISION,
     "decision": enum(["accept", "reject"]),
-    "amountDelta": integer(-10000000, 10000000, col="change_requests.amount_delta", desc="수락할 때 금액 차이: 오르면 추가 금액(1원~1,000만 원), 내려가면 음수, 그대로면 0. 재제작 주문의 변경 요청은 0만(아니면 422 not_allowed, 차액 결제·차액 돌려주기 없음, SPEC-042, SPEC-060)"),
+    "amountDirection": enum(["same", "up", "down"], desc="수락할 때 금액 방향: 그대로·올라감·내려감. 수락이면 꼭(없으면 422 required). 부호를 넣지 않음(DEC-23). 재제작 주문의 변경 요청은 same만(아니면 422 not_allowed, 차액 결제·차액 돌려주기 없음, SPEC-042, SPEC-060)"),
+    "amountDifference": integer(1, 10000000, col="change_requests.amount_delta", desc="올라감·내려감의 차이 금액(양수, 원). up·down이면 꼭(없으면 422 required), same이나 거절이면 받지 않음(422 not_allowed). 내려감은 지금 금액 이하, 올라감은 새 금액이 1,000만 원 이하(아니면 422 out_of_range). 서버가 올라감은 +, 내려감은 -로 amountDelta에 남김(DEC-23)"),
     "rejectReason": string(0, 200, col="change_requests.reject_reason"),
     "confirm": confirm_list(["overbooking", "closed_day"]),
 }, ["baseRevision", "decision"])
@@ -1106,7 +1115,7 @@ S["ChangeDecisionResult"] = all_required({
     "changeRequest": ref("ChangeRequest"),
     "order": ref("Order"),
     "paymentRequest": nullable(ref("PaymentRequest")),
-}, desc="금액이 오르면 차액 결제 안내(SPEC-043), 그대로·내려가면 바로 반영(SPEC-045)")
+}, desc="금액이 오르면 새 금액 확인이 필요한 차액 결제 안내(SPEC-043, SPEC-076), 그대로·내려가면 바로 반영(SPEC-045)")
 
 # ── 문제 신고 ───────────────────────────────────────────────────────────────
 S["IssueReport"] = all_required({

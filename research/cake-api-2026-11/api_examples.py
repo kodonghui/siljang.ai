@@ -287,7 +287,8 @@ QUOTE = {
 }
 PR_FIRST_PAID = {
     "paymentRequestId": uid("pr:K7Q3M9:1"), "order": ORDER_REF, "kind": "first", "status": "paid", "amount": 36000,
-    "requestedAmount": None, "issuedAt": t("11-12", "13:05"), "deliveredAt": t("11-12", "13:05"), "dueAt": t("11-13", "01:05"),
+    "requestedQuote": None, "needsAmountConfirm": False, "amountConfirmedAt": None, "amountDeclinedAt": None,
+    "issuedAt": t("11-12", "13:05"), "deliveredAt": t("11-12", "13:05"), "dueAt": t("11-13", "01:05"),
     "dueCapAt": t("11-18", "18:00"), "claimedAt": t("11-12", "13:40"),
     "claimRejectedAt": None, "depositorName": "이지우", "mismatchAmount": None, "arrivedAmount": 36000, "arrivedAt": t("11-12", "14:02"),
     "paidAt": t("11-12", "14:02"), "expiredAt": None,
@@ -296,24 +297,38 @@ PR_FIRST_PAID = {
 PR_CLAIMED = dict(PR_FIRST_PAID, status="claimed", paidAt=None, arrivedAmount=None, arrivedAt=None, revision=rev("pr:K7Q3M9:1:claimed"))
 PR_CUSTOM_OPEN = {
     "paymentRequestId": uid("pr:P4X8N2:1"), "order": CUSTOM_REF, "kind": "first", "status": "open", "amount": 75000,
-    "requestedAmount": 70000, "issuedAt": t("11-12", "15:00"), "deliveredAt": t("11-12", "15:00"), "dueAt": t("11-13", "03:00"),
+    "requestedQuote": {"displayKind": "from", "amount": 70000, "amountMax": None}, "needsAmountConfirm": True,
+    "amountConfirmedAt": None, "amountDeclinedAt": None, "issuedAt": t("11-12", "15:00"), "deliveredAt": None, "dueAt": t("11-18", "18:00"),
     "dueCapAt": t("11-18", "18:00"), "claimedAt": None,
     "claimRejectedAt": None, "depositorName": None, "mismatchAmount": None, "arrivedAmount": None, "arrivedAt": None,
     "paidAt": None, "expiredAt": None, "closedAt": None, "closeReason": None, "revision": rev("pr:P4X8N2:1:open"),
 }
+# 손님이 새 금액(75,000원. 견적 '70,000원부터'의 아래 끝보다 높음)을 확인함: 그 시각이 전해진 시각이고 결제 기한은 그때부터(SPEC-076, REQ-232)
+PR_CUSTOM_CONFIRMED = dict(PR_CUSTOM_OPEN, amountConfirmedAt=t("11-12", "15:00"), deliveredAt=t("11-12", "15:00"), dueAt=t("11-13", "03:00"),
+                           revision=rev("pr:P4X8N2:1:confirmed"))
 PR_MISMATCH = dict(PR_CLAIMED, status="mismatch", mismatchAmount=31000, arrivedAmount=31000, arrivedAt=t("11-12", "14:02"),
                    revision=rev("pr:K7Q3M9:1:mismatch"))
-PR_EXPIRED = dict(PR_CUSTOM_OPEN, status="expired", expiredAt=t("11-13", "03:00"), revision=rev("pr:P4X8N2:1:expired"))
-PR_REISSUE = dict(PR_CUSTOM_OPEN, paymentRequestId=uid("pr:P4X8N2:2"), kind="reissue", requestedAmount=None,
+PR_EXPIRED = dict(PR_CUSTOM_CONFIRMED, status="expired", expiredAt=t("11-13", "03:00"), revision=rev("pr:P4X8N2:1:expired"))
+PR_REISSUE = dict(PR_CUSTOM_CONFIRMED, paymentRequestId=uid("pr:P4X8N2:2"), kind="reissue", needsAmountConfirm=False, amountConfirmedAt=None,
                   issuedAt=t("11-13", "09:10"), deliveredAt=t("11-13", "09:10"), dueAt=t("11-13", "21:10"),
                   revision=rev("pr:P4X8N2:2:open"))
 PR_DIFFERENCE = {
     "paymentRequestId": uid("pr:K7Q3M9:diff"), "order": ORDER_REF, "kind": "difference", "status": "open", "amount": 20000,
-    "requestedAmount": None, "issuedAt": t("11-15", "10:20"), "deliveredAt": t("11-15", "10:20"), "dueAt": t("11-15", "22:20"),
+    "requestedQuote": None, "needsAmountConfirm": True, "amountConfirmedAt": None, "amountDeclinedAt": None,
+    "issuedAt": t("11-15", "10:20"), "deliveredAt": None, "dueAt": t("11-18", "14:00"),
     "dueCapAt": t("11-18", "14:00"), "claimedAt": None,
     "claimRejectedAt": None, "depositorName": None, "mismatchAmount": None, "arrivedAmount": None, "arrivedAt": None,
     "paidAt": None, "expiredAt": None, "closedAt": None, "closeReason": None, "revision": rev("pr:K7Q3M9:diff:open"),
 }
+# 손님이 차액의 새 금액을 확인함(SPEC-076): 결제 기한은 확인한 때부터 12시간과 변경 마감 가운데 이른 때(SPEC-043)
+PR_DIFFERENCE_CONFIRMED = dict(PR_DIFFERENCE, amountConfirmedAt=t("11-15", "10:20"), deliveredAt=t("11-15", "10:20"), dueAt=t("11-15", "22:20"),
+                               revision=rev("pr:K7Q3M9:diff:confirmed"))
+# 차액 20,000원에 15,000원이 들어와 맞추는 중(SPEC-035)
+PR_DIFF_MISMATCH = dict(PR_DIFFERENCE_CONFIRMED, status="mismatch", mismatchAmount=15000, arrivedAmount=15000, arrivedAt=t("11-15", "12:00"),
+                        revision=rev("pr:K7Q3M9:diff:mismatch"))
+# 사장님이 '변경 닫기'를 고름: 변경 요청은 차액 없어 닫힘, 들어온 15,000원은 환불 정할 일로(REQ-235)
+PR_DIFF_CHANGE_CLOSED = dict(PR_DIFF_MISMATCH, status="closed", closedAt=t("11-15", "14:00"), closeReason="change_closed",
+                             revision=rev("pr:K7Q3M9:diff:changeclosed"))
 PAYMENT = {"paymentId": uid("payment:K7Q3M9:1"), "paymentRequestId": PR_FIRST_PAID["paymentRequestId"], "amount": 36000,
            "resolution": "exact", "confirmedAt": t("11-12", "14:02"), "voidedAt": None, "voidReason": None}
 # 잘못 누른 결제 확인을 제작 시작 전에 취소함(SPEC-070): 결제 안내는 나감, 주문은 결제 기다림, 제작 행 없음
@@ -453,7 +468,7 @@ REFUND_INPUT = {"baseRevision": ORDER_CANCELLED_BY_CUSTOMER["revision"], "cause"
 
 # ── 변경 요청 ───────────────────────────────────────────────────────────────
 CHANGE = {
-    "changeRequestId": uid("change:K7Q3M9:1"), "order": ORDER_REF, "baseVersion": 1, "orderVersion": 1,
+    "changeRequestId": uid("change:K7Q3M9:1"), "order": ORDER_REF, "baseVersion": 1, "orderVersion": 1, "orderAmount": 36000,
     "changes": {"lettering": "생일 축하해 지우야!"}, "newPickupAt": None, "needsOwnerDay": False, "status": "requested",
     "amountDelta": None, "rejectReason": None, "changeDeadlineAt": t("11-18", "14:00"), "decidedAt": None, "appliedVersion": None,
     "appliedAt": None, "closedAt": None, "createdAt": t("11-15", "10:00"), "differencePayment": None,
@@ -465,10 +480,14 @@ CHANGE_TWO_TIER = dict(CHANGE, changeRequestId=uid("change:K7Q3M9:2"), changes={
                        revision=rev("change:2:requested"))
 CHANGE_AWAITING = dict(CHANGE_TWO_TIER, status="awaiting_difference", amountDelta=20000, decidedAt=t("11-15", "10:20"),
                        differencePayment=PR_DIFFERENCE, revision=rev("change:2:awaiting"))
-CHANGE_CLOSED = dict(CHANGE_AWAITING, status="closed_no_difference", closedAt=t("11-15", "22:20"),
-                     differencePayment=dict(PR_DIFFERENCE, status="closed", closedAt=t("11-15", "22:20"), closeReason="change_closed",
-                                            revision=rev("pr:diff:closed")),
+# 손님이 새 금액 확인 카드에서 '그대로 둘래요'를 누름: 변경 요청은 차액 없어 닫힘, 차액 결제 안내는 닫힘(SPEC-076, REQ-233)
+CHANGE_CLOSED = dict(CHANGE_AWAITING, status="closed_no_difference", closedAt=t("11-15", "11:00"),
+                     differencePayment=dict(PR_DIFFERENCE, status="closed", amountDeclinedAt=t("11-15", "11:00"), closedAt=t("11-15", "11:00"),
+                                            closeReason="change_closed", revision=rev("pr:diff:closed")),
                      revision=rev("change:2:closed"))
+# 차액이 다르게 들어와 맞추는 중일 때 사장님이 '변경 닫기'를 고름(SPEC-035, REQ-235)
+CHANGE_CLOSED_BY_OWNER = dict(CHANGE_AWAITING, status="closed_no_difference", closedAt=t("11-15", "14:00"),
+                              differencePayment=PR_DIFF_CHANGE_CLOSED, revision=rev("change:2:closed:owner"))
 CHANGE_REJECTED = dict(CHANGE_TWO_TIER, status="rejected", decidedAt=t("11-15", "10:20"), rejectReason="2단은 사흘 전까지만 받아요",
                        revision=rev("change:2:rejected"))
 # 변경 마감(11/18 14:00)까지 사장님 답이 없어 '답 없어 닫힘'으로 닫힌 변경 요청. 주문은 원래대로(REQ-214)
@@ -700,6 +719,9 @@ SKILL_ALLERGY = skill_request("동의하고 알려 주기", action="card", block
 # 완성 사진 안내의 사진 게시 동의 카드(설계 재검토 H10, SPEC-053)
 SKILL_PHOTO_CONSENT = skill_request("올려도 돼요", action="card", block="확인 카드", callback=False,
                                     client_extra={"cardKey": "ck_" + h("card:photo-consent", 30), "choice": "confirm"})
+# 새 금액 확인 카드의 '이 금액으로 할게요'(설계 재검토 M5, SPEC-076)
+SKILL_AMOUNT_CONFIRM = skill_request("이 금액으로 할게요", action="card", block="확인 카드", callback=False,
+                                     client_extra={"cardKey": "ck_" + h("card:amount", 30), "choice": "confirm"})
 SKILL_CHECK_CARD = skill_request("시험: 확인 카드", action="card", block="확인 카드", callback=False, client_extra={"check": "card"})
 SKILL_CHECK_REVIEW = skill_request("시험: 후기", action="review", block="후기", callback=False,
                                    params={"review_text": "연결 시험", "photo_consent": "동의 안 함"}, client_extra={"check": "review"})
@@ -810,6 +832,8 @@ SKILL_OUTCOME_EXAMPLES = {
     "order_requested": text("주문을 요청했어요(주문번호 K7Q3M9). 결제가 확인되면 확정돼요.",
                             "입금하실 곳: 달빛은행 123456-01-234567 김달빛 · 36,000원 · 11월 13일 01:05까지"),
     "payment_claimed": text("사장님께 알렸어요. 확인되면 알려 드릴게요"),
+    "amount_confirmed": text("새 금액을 확인했어요.", "가게 계좌: 달빛은행 123456-01-234567 김달빛 · 75,000원 · 11월 13일 03:00까지"),
+    "amount_declined": text("알겠어요. 주문을 취소했어요"),
     "change_requested": text("변경을 요청했어요. 사장님이 보고 알려 드려요"),
     "order_cancelled": text("주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요"),
     "issue_reported": text("신고를 받았어요. 사장님이 보시고 정하실 거예요"),

@@ -47,12 +47,12 @@
 | `loading` | 기본 | 데이터가 오는 중 | 38 |
 | `empty` | 기본 | 보일 것이 아직 없음 | 26 |
 | `error` | 기본 | 불러오기나 액션이 실패함 | 50 |
-| `permission` | 기본 | 이 사용자가 볼 수 없거나 할 수 없음 | 43 |
+| `permission` | 기본 | 이 사용자가 볼 수 없거나 할 수 없음 | 44 |
 | `stale` | 기본 | 보이는 데이터가 지금과 다를 수 있음 | 44 |
 | `submitting` | 화면 고유(W3) | 누른 액션의 결과를 기다리는 중. 버튼이 막힘 | 25 |
 | `confirm` | 화면 고유(W3) | 저장하기 전에 확인을 받는 창(서버가 요구하는 DEC-06 확인, 또는 되돌리기 어려운 액션 앞에서 화면이 여는 확인) | 12 |
 | `rate-limited` | 화면 고유(W3) | 요청 빈도 한도에 닿아 잠시 막힘 | 6 |
-| `done` | 화면 고유(W3) | 명령을 남긴 뒤의 결과, 또는 이미 처리한 건을 읽기 전용으로 봄 | 30 |
+| `done` | 화면 고유(W3) | 명령을 남긴 뒤의 결과, 또는 이미 처리한 건을 읽기 전용으로 봄 | 31 |
 | `expired` | 화면 고유(W3) | 기한이 지남(카드 30분, 결제 기한) | 7 |
 | `day-full` | 화면 고유(W3) | 그 사이 그날이 다 참 | 1 |
 | `handed-over` | 화면 고유(W3) | AI가 답하지 않고 사장님께 에스컬레이션함 | 2 |
@@ -65,11 +65,12 @@
 | `reconnect` | 화면 고유(W3) | 구글 권한이 끊겨 장부를 다시 연결해야 함 | 1 |
 | `on-hold` | 화면 고유(W3) | 영업 신고가 보류됨 | 2 |
 | `mismatch` | 화면 고유(W3) | 들어온 금액이 안내와 달라 맞추는 중 | 1 |
-| `awaiting-payment` | 화면 고유(W3) | 차액 결제를 기다림 | 1 |
+| `awaiting-payment` | 화면 고유(W3) | 차액 결제를 기다림(손님이 새 금액을 확인하기를 기다리는 동안 포함, SPEC-076) | 1 |
 | `orderer` | 화면 고유(W3) | 주문 요청 카드 앞에서 주문자 이름·연락처를 AI를 거치지 않는 블록으로 받음(SPEC-072) | 1 |
 | `depositor` | 화면 고유(W3) | 결제 확인 요청 때 입금자 이름을 AI를 거치지 않는 블록으로 받음(SPEC-033) | 1 |
 | `allergy` | 화면 고유(W3) | 주문자 정보·주문 요청 카드 앞에서 알레르기 정보에 따로 동의를 받고, 동의하면 알레르기 답을 AI를 거치지 않는 블록으로 받음(SPEC-075) | 1 |
 | `photo-consent` | 화면 고유(W3) | 완성 사진 안내에서 그 사진의 게시 동의를 한 문장으로 묻고 누른 답을 사진마다 남김(SPEC-053) | 1 |
+| `amount-confirm` | 화면 고유(W3) | 결제 안내를 전할 때 계좌 대신 새 금액 확인 카드를 보이고, 손님이 사장님이 정한 새 금액을 확인하거나 받지 않음(SPEC-076) | 1 |
 <!-- 08-screens:states:end -->
 
 ## 5. 손님 문구와 확인 문구
@@ -89,7 +90,7 @@
 | `ai_cost_limit_reached` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
 | `masking_failed` | 사장님 확인 뒤 답드릴게요 | 06단계 뼈대 그대로 |
 | `ai_output_rejected` | (가게 규칙의 계산값으로 만든 정해진 문장) | 06단계 뼈대 그대로 |
-| `card_shown` | (확인 카드: 요약과 버튼. 주문 요청 카드는 그 버전의 취소·환불 규정 글을 먼저, 요약 카드를 끝에(DEC-22). 주문서 초안이 다 찼는데 알레르기 정보 동의의 답이 없으면 알레르기 정보 카드, 그다음 주문자 이름·연락처가 없으면 주문자 정보 카드) | 06단계 뼈대 그대로 |
+| `card_shown` | (확인 카드: 요약과 버튼. 주문 요청 카드는 그 버전의 취소·환불 규정 글을 먼저, 요약 카드를 끝에(DEC-22). 주문서 초안이 다 찼는데 알레르기 정보 동의의 답이 없으면 알레르기 정보 카드, 그다음 주문자 이름·연락처가 없으면 주문자 정보 카드. 새 금액 확인이 필요한데 손님이 아직 확인하지 않은 결제 안내에 입금했다고 하면 결제 확인 요청 카드 대신 새 금액 확인 카드를 다시(SCR-005#amount-confirm)) | 06단계 뼈대 그대로 |
 | `photo_received` | 사진을 받았어요 | 06단계 뼈대 그대로 |
 | `photo_rejected` | 사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요 | 06단계 뼈대 그대로 |
 | `unsupported_message` | 글이나 사진으로 말씀해 주세요 | 06단계 뼈대 그대로 |
@@ -103,6 +104,8 @@
 | `allergy_declined` | 알겠어요. 알레르기는 묻지 않고 빼야 할 재료만으로 주문을 이어갈게요 + (주문자 정보 카드나 주문 요청 확인 카드) | 06단계 뼈대 그대로 |
 | `orderer_saved` | (주문 요청 확인 카드: 규정 글을 먼저, 요약 카드에 주문자 이름·연락처와 알레르기 답이나 '알레르기 정보 동의 안 함') | 06단계 뼈대 그대로 |
 | `payment_claimed` | 사장님께 알렸어요. 확인되면 알려 드릴게요 | 06단계 뼈대 그대로 |
+| `amount_confirmed` | 새 금액을 확인했어요 + 결제 안내(가게 계좌·금액·결제 기한) | 06단계 뼈대 그대로 |
+| `amount_declined` | 맞춤 주문: 알겠어요. 주문을 취소했어요 / 변경: 알겠어요. 바꾸지 않고 원래 주문대로 할게요 | 06단계 뼈대 그대로 |
 | `change_requested` | 변경을 요청했어요. 사장님이 보고 알려 드려요 | 06단계 뼈대 그대로 |
 | `order_cancelled` | 결제한 주문: 주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요 / 결제 전 주문: 주문을 취소했어요 | 08단계에서 바꿈: 결제 전 주문은 환불 문장을 뺌(SPEC-046) |
 | `issue_reported` | 신고를 받았어요. 사장님이 보시고 정하실 거예요 | 06단계 뼈대 그대로 |
@@ -123,7 +126,7 @@
 | `review_not_allowed` | 받으신 주문에만 후기를 남길 수 있어요 | 06단계 뼈대 그대로 |
 | `review_invalid` | 후기는 1,000자, 사진은 5장까지 남길 수 있어요 | 06단계 뼈대 그대로 |
 | `photo_download_failed` | 사진을 받지 못했어요. 다시 보내 주세요 | 06단계 뼈대 그대로 |
-| `notice_shown` | (그 안내의 글과 버튼. 서버의 정해진 템플릿: 결제 안내는 SCR-005, 확정 안내·전날 안내·완성 사진(사진 게시 동의 카드와 함께)·지연 안내·답·결과·후기 부탁은 SCR-011) | 06단계 뼈대 그대로 |
+| `notice_shown` | (그 안내의 글과 버튼. 서버의 정해진 템플릿: 결제 안내는 SCR-005, 확정 안내·전날 안내·완성 사진(사진 게시 동의 카드와 함께)·지연 안내·답·결과·후기 부탁은 SCR-011. 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드(SCR-005#amount-confirm)) | 06단계 뼈대 그대로 |
 | `notice_test` | 시험 안내예요. 이 안내가 보이면 손님에게 안내를 먼저 보낼 수 있어요 | 06단계 뼈대 그대로 |
 | `notice_gone` | 지금은 전할 안내가 없어요 | 06단계 뼈대 그대로 |
 <!-- 08-screens:outcomes:end -->
@@ -150,16 +153,16 @@
 | [SCR-001](SCR-001.md) | 예약 링크 페이지 | 손님 | normal · loading · empty · error · rate-limited · stale | permission | 5 |
 | [SCR-002](SCR-002.md) | 가게 개인정보 처리방침 | 손님 | normal · loading · error · rate-limited | empty · permission · stale | 4 |
 | [SCR-003](SCR-003.md) | 가게 채널 상담 | 손님 | normal · loading · empty · error · permission · stale · handed-over · fixed-answer · rate-limited · link-test | - | 28 |
-| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · allergy · orderer · done · stale · expired · day-full · permission · error | loading · empty | 26 |
-| [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · deferred · stale · error | loading · empty · permission | 6 |
-| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · depositor · done · stale · expired · permission · error | loading · empty | 26 |
+| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · allergy · orderer · done · stale · expired · day-full · permission · error | loading · empty | 28 |
+| [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · amount-confirm · done · deferred · stale · permission · error | loading · empty | 34 |
+| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · depositor · done · stale · expired · permission · error | loading · empty | 28 |
 | [SCR-007](SCR-007.md) | 내 주문 보기 | 손님 | normal · loading · empty · error · permission · stale · handed-over · rate-limited | - | 22 |
-| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 26 |
-| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 26 |
-| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 26 |
+| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
+| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
+| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
 | [SCR-011](SCR-011.md) | 손님 알림 | 손님 | normal · photo-consent · deferred · stale · error | loading · empty · permission | 6 |
 | [SCR-012](SCR-012.md) | 후기 남기기 | 손님 | normal · done · permission · error | loading · empty · stale | 12 |
-| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 26 |
+| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
 | [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 8 |
 | [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 16 |
 | [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
@@ -170,12 +173,12 @@
 | [SCR-021](SCR-021.md) | 주문 상세 | 사장님 | normal · loading · error · permission · stale · confirm · submitting · done | empty | 20 |
 | [SCR-022](SCR-022.md) | 맞춤 주문 검토 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 21 |
 | [SCR-023](SCR-023.md) | 결제 기한 지난 주문 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 21 |
-| [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 22 |
+| [SCR-024](SCR-024.md) | 변경 요청 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · awaiting-payment · done | empty | 21 |
 | [SCR-025](SCR-025.md) | 환불 결정 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 20 |
 | [SCR-026](SCR-026.md) | 환불 송금 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 17 |
 | [SCR-027](SCR-027.md) | 문제 신고 | 사장님 | normal · loading · error · permission · stale · submitting · confirm · done | empty | 16 |
 | [SCR-028](SCR-028.md) | 입금 대조 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 6 |
-| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · submitting · mismatch · expired · done | empty | 23 |
+| [SCR-029](SCR-029.md) | 입금 대조 | 사장님 | normal · loading · error · permission · stale · submitting · mismatch · expired · done | empty | 25 |
 | [SCR-030](SCR-030.md) | 제작 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · done | - | 34 |
 | [SCR-031](SCR-031.md) | 픽업 목록 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 37 |
 | [SCR-032](SCR-032.md) | 영업 캘린더 | 사장님 | normal · loading · empty · error · permission · stale · submitting · confirm · done | - | 17 |
@@ -224,6 +227,8 @@
 - 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
 
 ## 9. 검사
+
+2026-11-14 16:06 KST, 설계 재검토 M5·M6을 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 201행·액션 151행, C5 그린 상태 354개·상태 이름 28개, C6 응답 행 896개(※ 화면이 나눈 행 3, 카카오 스킬 270, 기본값과 다르게 정한 행 116), C8 참조 1791곳, C9 프레임 708개(1.3MB), C10 손님 문구 49개(같음 38, 08단계에서 바꿈 6, 설명 5), C11 허용 예외 838곳, C14 상태 354개입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C10 확인 문구 7개, C13 생성 파일 52개, C14 08단계 파일 51개는 같습니다.
 
 2026-11-14 12:20 KST, 설계 재검토 M4·M13을 고쳐 다시 생성하고(12절) 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C6 응답 행 855개(※ 화면이 나눈 행 3, 카카오 스킬 230, 기본값과 다르게 정한 행 115), C8 참조 1732곳입니다. C4 데이터 196행·액션 147행, C5 그린 상태 351개·상태 이름 27개, C9 프레임 702개(1.3MB), C10 확인 문구 7개·손님 문구 47개, C11 허용 예외 810곳, C13 생성 파일 52개는 같습니다.
 
@@ -370,3 +375,33 @@
 - SCR-024 변경 요청(M13): 재제작 주문의 변경은 금액이 그대로일 때만 수락하고, 0원이 아닌 금액 변화는 422 `not_allowed`로 금액 변화 필드 옆에 보임(SPEC-042, SPEC-060). 06단계 변경 요청 응답에 재제작 주문 표시가 없어 미리 막지 않고 서버의 답으로 알림.
 - 결과 문구(`OK_TEXT`)에 API-049 `after_start`·`remake_cancel`을 더함. 상태 이름 27개, 그린 상태 351개, 와이어프레임의 프레임과 `layout`은 그대로입니다. 09단계 보드는 `gen_screens.py`로 100개를 모두 다시 그려도 같았습니다(09 README 12절).
 - 결정과 다르게 하거나 더한 것: 단계별 환불이 없는 버전의 알림은 막지 않는 화면 알림이라 확인 창(`confirm`)을 더하지 않았습니다(06단계 15절과 같음).
+
+2026-11-13 설계 독립 재검토의 중간 묶음 M5(RB-07, RA-08, RE-17)와 M6(RA-07, RB-18)을 같은 결정 카드의 '모두 지금 고침 (추천)'대로 검토자의 고치는 방향을 따라(두 묶음에는 Claude 추천이 없음) `screens_common.py`·`screens_guest.py`·`screens_owner_a.py`·`screens_owner_b.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR G2). 06단계 계약의 새 카드 결과 `amount_confirmed`·`amount_declined`(API-071)와 새 응답 예시 `API-058#200:awaiting_amount_confirm`·`API-059#200:change_closed`를 화면 상태에 이었습니다.
+
+- SCR-005 결제 안내(M5, M6): 손님이 본 금액보다 높게 정한 맞춤 주문과 금액이 오르는 변경은 결제 안내를 전할 때 계좌 대신 새 금액 확인 카드를 보임(새 상태 `amount-confirm`, SPEC-076). 카드에는 요청한 견적(견적의 표시 그대로, '70,000원부터'), 사장님이 정한 금액, 사유, 누를 기한을 둠(REQ-231, REQ-232). '이 금액으로 할게요'(변경은 '바꿀게요')면 가게 계좌·금액·결제 기한을 보이고(`amount_confirmed` → `normal`), '안 할래요'(변경은 '그대로 둘래요')면 맞춤 주문은 손님 취소, 변경은 원래 주문대로 둠(`amount_declined` → `done`, REQ-233). 시간이 지난 카드는 지금 값으로 만든 새 카드를 보임(`card_expired` → `amount-confirm`). 카드를 받은 사용자가 아니거나 채널 연결이 끊긴 가게를 '해당 없음'에서 상태 `permission`으로 옮김.
+- 다른 카드 화면: SCR-004·006·008·009·010·013의 응답 행에 `API-071#200:amount_confirmed`·`amount_declined`를 '나오지 않음'(결제 안내의 새 금액 확인 카드 결과)으로 더함. SCR-003·007의 `card_shown`과 SCR-006의 상태 변화에 '새 금액 확인이 필요한데 손님이 아직 확인하지 않은 결제 안내면 새 금액 확인 카드를 다시 보임'(SPEC-033)을, SCR-011의 `notice_shown`에 새 금액 확인 카드를 더함.
+- SCR-022 맞춤 주문 검토(M6): 견적이 '부터'·'범위'면 '수락' 없이 '금액 변경 수락'·'거절'만 둠('수락'은 '확정' 견적에만). '최종 금액'(원, 견적의 아래 끝 이상)과 사유를 받고(REQ-230), 아래 끝보다 낮으면 422 `below_quote_min` '견적의 아래 끝(70,000원)보다 낮게 정할 수 없어요', 금액이 없으면 '최종 금액을 넣어 주세요'. 폼 아래 결과 한 줄은 정한 금액이 손님이 본 금액(견적이 금액 하나면 그 금액, '부터'면 아래 끝, '범위'면 위 끝)보다 높으면 손님이 먼저 확인한다고 알리고, 완료 배너는 '수락했어요. 손님이 새 금액을 확인하면 결제 안내가 가요'.
+- SCR-024 변경 요청(M5): 지금 금액(API-062 `orderAmount`)을 보이고, 금액 변화를 부호 있는 숫자 대신 '그대로 · 올라감 · 내려감'과 양수 차이 금액으로 받음(DEC-23, 422 `/amountDirection` `required`·`not_allowed`, `/amountDifference` `required`·`out_of_range`·`not_allowed`). 수락 전에 결과 한 줄('바로 반영해요', '바로 반영하고 5,000원을 돌려줄 환불을 정할 일이 생겨요', '손님이 새 금액 56,000원(차액 20,000원)을 확인한 뒤 차액 결제 안내가 가요. 변경 마감까지 N시간')을 보임. 금액이 오르면 `awaiting-payment`에 '손님이 새 금액을 확인하기를 기다리고 있어요'와 새 금액·차액·변경 마감. 변경 마감이 지난 뒤의 수락·거절은 409 `invalid_state`로 `stale`('변경 마감까지 답이 없어 닫혔어요'). 닿을 수 없던 '이전 버전 변경'(`stale_change`)을 `stale`의 경우에서 뺌.
+- SCR-016 할 일 목록·SCR-019 사장님 알림: 할 일 종류에서 '이전 버전 변경'을 빼 변경 요청은 SCR-024로만 감. 손님이 새 금액을 받지 않은 알림에 '주문 보기'(SCR-021)를 더함(SPEC-067, SPEC-076).
+- SCR-020 주문 목록·SCR-021 주문 상세·SCR-028 입금 대조 목록: 새 금액 확인을 기다리는 결제 안내를 보임. SCR-021은 '요청한 견적 70,000원부터 → 75,000원', '손님 확인 기다림', '손님이 취소함 · 새 금액을 받지 않음'(`requestedQuote`·`needsAmountConfirm`·`amountConfirmedAt`·`amountDeclinedAt`), SCR-028은 요청한 견적(표시 그대로)과 '손님 확인 기다림'. SCR-020은 06단계 `OrderSummary.paymentNotice`에 확인 기다림 표시가 없어 손님이 확인하기 전에는 '아직 못 전함'으로 보임.
+- SCR-023 결제 기한 지난 주문: 손님이 새 금액을 확인하지 않은 채 기한이 지난 맞춤 주문을 연장하면 새 결제 안내도 새 금액 확인 카드부터 감(SPEC-076).
+- SCR-029 입금 대조(M5): 차액 결제가 안내와 다른 금액으로 들어오면 '금액 불일치' 뒤 '대조 완료'로 변경을 반영하거나 새 액션 '변경 닫기'로 변경 요청만 닫고 들어온 금액을 돌려줄 환불을 정함(REQ-235, `API-059#200:change_closed` → `done`, 환불 결정 SCR-025 링크). 손님이 새 금액을 확인하기 전의 '입금됨'·'대조 완료'는 확인으로 셈.
+- SCR-036 가격표와 도안(M6): 옵션·도안 행마다 '기본 디자인 범위' 체크(`inStandard`, REQ-228). 값이 '부터'·'범위'인 행은 '맞춤 주문으로만'이고 범위에 넣으면 422 `not_allowed` '이 행은 기본 디자인 범위에 넣을 수 없어요'. 주문 종류는 견적의 가격표 버전에 남은 이 범위로 가름(REQ-229).
+- 상태와 문구: 상태 이름 27개 → 28개(`amount-confirm`), `awaiting-payment`는 손님이 새 금액을 확인하기를 기다리는 동안을 포함. `OUTCOME_TEXT`에 `amount_confirmed`·`amount_declined`를, `OK_TEXT`에 API-058 `awaiting_amount_confirm`·API-059 `change_closed`를 더하고 API-046 `accepted`·API-062 `awaiting_difference`·`closed_no_difference`·API-063 `awaiting_difference`의 문구를 고침. 그린 상태 351개 → 354개, 와이어프레임 프레임 702개 → 708개.
+- 09단계: SCR-022·SCR-024의 보드 4개를 다시 그림(09 README 12절).
+- 결정과 다르게 하거나 더한 것: (1) 새 금액 확인은 상태 하나(`amount-confirm`)로 두고, 받지 않음은 `done`, 시간이 지난 카드는 다른 카드처럼 `expired`로 보내지 않고 지금 값의 새 카드를 보이는 `amount-confirm`으로 이었습니다. (2) SCR-020 목록은 06단계 요약 응답에 확인 기다림 표시가 없어 '아직 못 전함'으로 보이고, 필드를 더하는 것은 남은 것입니다. (3) SCR-024의 금액 방향은 처음 고른 값이 없습니다(고르지 않으면 422 `required`). 09단계 보드는 결과 한 줄을 보이려고 '그대로'를 고른 모습입니다.
+
+2026-11-13 설계 독립 재검토의 중간 묶음 M5(RB-07, RA-08, RE-17)와 M6(RA-07, RB-18)을 같은 결정 카드의 '모두 지금 고침 (추천)'대로 검토자의 고치는 방향을 따라(두 묶음에는 Claude 추천이 없음) `screens_common.py`·`screens_guest.py`·`screens_owner_a.py`·`screens_owner_b.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR G2). 06단계 계약의 새 카드 결과 `amount_confirmed`·`amount_declined`(API-071)와 새 응답 예시 `API-058#200:awaiting_amount_confirm`·`API-059#200:change_closed`를 화면 상태에 이었습니다.
+
+- SCR-005 결제 안내(M5, M6): 손님이 본 금액보다 높게 정한 맞춤 주문과 금액이 오르는 변경은 결제 안내를 전할 때 계좌 대신 새 금액 확인 카드를 보임(새 상태 `amount-confirm`, SPEC-076). 카드에는 요청한 견적(견적의 표시 그대로, '70,000원부터'), 사장님이 정한 금액, 사유, 누를 기한을 둠(REQ-231, REQ-232). '이 금액으로 할게요'(변경은 '바꿀게요')면 가게 계좌·금액·결제 기한을 보이고(`amount_confirmed` → `normal`), '안 할래요'(변경은 '그대로 둘래요')면 맞춤 주문은 손님 취소, 변경은 원래 주문대로 둠(`amount_declined` → `done`, REQ-233). 시간이 지난 카드는 지금 값으로 만든 새 카드를 보임(`card_expired` → `amount-confirm`). 카드를 받은 사용자가 아니거나 채널 연결이 끊긴 가게를 '해당 없음'에서 상태 `permission`으로 옮김.
+- 다른 카드 화면: SCR-004·006·008·009·010·013의 응답 행에 `API-071#200:amount_confirmed`·`amount_declined`를 '나오지 않음'(결제 안내의 새 금액 확인 카드 결과)으로 더함. SCR-003·007의 `card_shown`과 SCR-006의 상태 변화에 '새 금액 확인이 필요한데 손님이 아직 확인하지 않은 결제 안내면 새 금액 확인 카드를 다시 보임'(SPEC-033)을, SCR-011의 `notice_shown`에 새 금액 확인 카드를 더함.
+- SCR-022 맞춤 주문 검토(M6): 견적이 '부터'·'범위'면 '수락' 없이 '금액 변경 수락'·'거절'만 둠('수락'은 '확정' 견적에만). '최종 금액'(원, 견적의 아래 끝 이상)과 사유를 받고(REQ-230), 아래 끝보다 낮으면 422 `below_quote_min` '견적의 아래 끝(70,000원)보다 낮게 정할 수 없어요', 금액이 없으면 '최종 금액을 넣어 주세요'. 폼 아래 결과 한 줄은 정한 금액이 손님이 본 금액(견적이 금액 하나면 그 금액, '부터'면 아래 끝, '범위'면 위 끝)보다 높으면 손님이 먼저 확인한다고 알리고, 완료 배너는 '수락했어요. 손님이 새 금액을 확인하면 결제 안내가 가요'.
+- SCR-024 변경 요청(M5): 지금 금액(API-062 `orderAmount`)을 보이고, 금액 변화를 부호 있는 숫자 대신 '그대로 · 올라감 · 내려감'과 양수 차이 금액으로 받음(DEC-23, 422 `/amountDirection` `required`·`not_allowed`, `/amountDifference` `required`·`out_of_range`·`not_allowed`). 수락 전에 결과 한 줄('바로 반영해요', '바로 반영하고 5,000원을 돌려줄 환불을 정할 일이 생겨요', '손님이 새 금액 56,000원(차액 20,000원)을 확인한 뒤 차액 결제 안내가 가요. 변경 마감까지 N시간')을 보임. 금액이 오르면 `awaiting-payment`에 '손님이 새 금액을 확인하기를 기다리고 있어요'와 새 금액·차액·변경 마감. 변경 마감이 지난 뒤의 수락·거절은 409 `invalid_state`로 `stale`('변경 마감까지 답이 없어 닫혔어요'). 닿을 수 없던 '이전 버전 변경'(`stale_change`)을 `stale`의 경우에서 뺌.
+- SCR-016 할 일 목록·SCR-019 사장님 알림: 할 일 종류에서 '이전 버전 변경'을 빼 변경 요청은 SCR-024로만 감. 손님이 새 금액을 받지 않은 알림에 '주문 보기'(SCR-021)를 더함(SPEC-067, SPEC-076).
+- SCR-020 주문 목록·SCR-021 주문 상세·SCR-028 입금 대조 목록: 새 금액 확인을 기다리는 결제 안내를 보임. SCR-021은 '요청한 견적 70,000원부터 → 75,000원', '손님 확인 기다림', '손님이 취소함 · 새 금액을 받지 않음'(`requestedQuote`·`needsAmountConfirm`·`amountConfirmedAt`·`amountDeclinedAt`), SCR-028은 요청한 견적(표시 그대로)과 '손님 확인 기다림'. SCR-020은 06단계 `OrderSummary.paymentNotice`에 확인 기다림 표시가 없어 손님이 확인하기 전에는 '아직 못 전함'으로 보임.
+- SCR-023 결제 기한 지난 주문: 손님이 새 금액을 확인하지 않은 채 기한이 지난 맞춤 주문을 연장하면 새 결제 안내도 새 금액 확인 카드부터 감(SPEC-076).
+- SCR-029 입금 대조(M5): 차액 결제가 안내와 다른 금액으로 들어오면 '금액 불일치' 뒤 '대조 완료'로 변경을 반영하거나 새 액션 '변경 닫기'로 변경 요청만 닫고 들어온 금액을 돌려줄 환불을 정함(REQ-235, `API-059#200:change_closed` → `done`, 환불 결정 SCR-025 링크). 손님이 새 금액을 확인하기 전의 '입금됨'·'대조 완료'는 확인으로 셈.
+- SCR-036 가격표와 도안(M6): 옵션·도안 행마다 '기본 디자인 범위' 체크(`inStandard`, REQ-228). 값이 '부터'·'범위'인 행은 '맞춤 주문으로만'이고 범위에 넣으면 422 `not_allowed` '이 행은 기본 디자인 범위에 넣을 수 없어요'. 주문 종류는 견적의 가격표 버전에 남은 이 범위로 가름(REQ-229).
+- 상태와 문구: 상태 이름 27개 → 28개(`amount-confirm`), `awaiting-payment`는 손님이 새 금액을 확인하기를 기다리는 동안을 포함. `OUTCOME_TEXT`에 `amount_confirmed`·`amount_declined`를, `OK_TEXT`에 API-058 `awaiting_amount_confirm`·API-059 `change_closed`를 더하고 API-046 `accepted`·API-062 `awaiting_difference`·`closed_no_difference`·API-063 `awaiting_difference`의 문구를 고침. 그린 상태 351개 → 354개, 와이어프레임 프레임 702개 → 708개.
+- 09단계: SCR-022·SCR-024의 보드 4개를 다시 그림(09 README 12절).
+- 결정과 다르게 하거나 더한 것: (1) 새 금액 확인은 상태 하나(`amount-confirm`)로 두고, 받지 않음은 `done`, 시간이 지난 카드는 다른 카드처럼 `expired`로 보내지 않고 지금 값의 새 카드를 보이는 `amount-confirm`으로 이었습니다. (2) SCR-020 목록은 06단계 요약 응답에 확인 기다림 표시가 없어 '아직 못 전함'으로 보이고, 필드를 더하는 것은 남은 것입니다. (3) SCR-024의 금액 방향은 처음 고른 값이 없습니다(고르지 않으면 422 `required`). 09단계 보드는 결과 한 줄을 보이려고 '그대로'를 고른 모습입니다.

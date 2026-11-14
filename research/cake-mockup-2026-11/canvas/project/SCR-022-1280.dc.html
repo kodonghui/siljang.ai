@@ -67,16 +67,28 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-pressed)}
 <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: var(--space-md); border-top: var(--border-width-hairline) solid var(--color-line)"><span style="display: flex; flex-direction: column"><span style="font-weight: var(--font-weight-semibold)">그날 자리</span><span style="font-size: var(--font-size-small); color: var(--color-ink-muted)">11월 20일(금)</span></span><span><strong style="color: var(--color-warning); font-weight: var(--font-weight-bold)">남은 자리 0</strong> / 하루 최대 5</span></div>
 </div>
 </section>
+<section style="padding-top: var(--space-xl); border-top: var(--border-width-hairline) solid var(--color-line); display: flex; flex-direction: column; gap: var(--space-md)">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm)"><h2 style="margin: 0; font-size: var(--font-size-title); font-weight: var(--font-weight-semibold)">최종 금액</h2></div>
+<div style="display: flex; flex-direction: column; gap: var(--space-lg)">
+<div style="display: flex; flex-direction: column; gap: var(--space-xs)"><label for="f-022-1280-1-0" style="font-weight: var(--font-weight-semibold)">금액(원, 70,000원 이상)</label><div style="display: flex; align-items: center; gap: var(--space-sm); min-height: var(--size-control); padding-inline: var(--space-md); box-sizing: border-box; border: var(--border-width-hairline) solid var(--color-line-control); border-radius: var(--radius-sm); background: var(--color-surface)"><input id="f-022-1280-1-0" inputmode="numeric" value="75,000" style="flex: 1 1 0; align-self: stretch; min-width: 0; padding: 0; border: 0; background: transparent; font: inherit; color: var(--color-ink); outline: none"></div></div>
+<div style="display: flex; flex-direction: column; gap: var(--space-xs)"><label for="f-022-1280-1-1" style="font-weight: var(--font-weight-semibold)">사유</label><div style="display: flex; align-items: center; gap: var(--space-sm); min-height: var(--size-control); padding-inline: var(--space-md); box-sizing: border-box; border: var(--border-width-hairline) solid var(--color-line-control); border-radius: var(--radius-sm); background: var(--color-surface)"><input id="f-022-1280-1-1" value="곰돌이 얼굴 입체 장식이 더해져요" style="flex: 1 1 0; align-self: stretch; min-width: 0; padding: 0; border: 0; background: transparent; font: inherit; color: var(--color-ink); outline: none"></div></div>
+</div>
+</section>
+<section style="padding-top: var(--space-xl); border-top: var(--border-width-hairline) solid var(--color-line); display: flex; flex-direction: column; gap: var(--space-md)">
+<p style="margin: 0; font-size: var(--font-size-small); color: var(--color-ink-muted)">손님에게 75,000원 결제 안내가 가요. 보신 금액 70,000원보다 높아 손님이 먼저 확인해요</p>
+</section>
 </div>
 </div>
-<div style="display: flex; align-items: center; gap: var(--space-sm); padding-top: var(--space-lg); border-top: var(--border-width-hairline) solid var(--color-line)"><button type="button" style="height: var(--size-control); padding-inline: var(--space-xl); border: 0; background: var(--color-accent); color: var(--color-on-accent); border-radius: var(--radius-md); font: inherit; font-weight: var(--font-weight-semibold)">수락</button><button type="button" aria-expanded="false" style="height: var(--size-control); padding-inline: var(--space-lg); border: var(--border-width-hairline) solid var(--color-line-control); background: var(--color-surface); color: var(--color-ink); border-radius: var(--radius-md); font: inherit; font-weight: var(--font-weight-semibold)">금액 변경 수락</button><span style="flex: 1 1 0"></span><button type="button" aria-expanded="false" style="height: var(--size-control); padding-inline: var(--space-lg); border: var(--border-width-hairline) solid var(--color-danger); background: var(--color-surface); color: var(--color-danger); border-radius: var(--radius-md); font: inherit; font-weight: var(--font-weight-semibold)">거절</button></div>
+<section style="padding-top: var(--space-xl); border-top: var(--border-width-hairline) solid var(--color-line); display: flex; flex-direction: column; gap: var(--space-md)">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm)"><button type="button" style="height: var(--size-control); padding-inline: var(--space-xl); border: 0; background: var(--color-accent); color: var(--color-on-accent); border-radius: var(--radius-md); font: inherit; font-weight: var(--font-weight-semibold)">금액 변경 수락</button><span style="flex: 1 1 0"></span><button type="button" style="height: var(--size-control); padding-inline: var(--space-lg); border: var(--border-width-hairline) solid var(--color-danger); background: var(--color-surface); color: var(--color-danger); border-radius: var(--radius-md); font: inherit; font-weight: var(--font-weight-semibold)">거절</button></div>
+</section>
 </main>
 </div>
 </figure>
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1344,"height":982}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1344,"height":1305}}'>
 class Component extends DCLogic {
 renderVals() {
 return {};
