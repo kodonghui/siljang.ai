@@ -218,7 +218,7 @@ erDiagram
     uuid consultation_id FK "상담"
     uuid source_message_id FK "에스컬레이션한 손님 말"
     uuid order_id FK "관련 주문"
-    text status "열림·답함"
+    text status "열림·답함·답 없어 닫힘"
   }
   issue_details {
     uuid id PK "신고 내용 ID"

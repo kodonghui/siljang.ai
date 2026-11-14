@@ -220,9 +220,10 @@ INSERT INTO order_details (id, shop_id, order_id, version, source, quote_id, pri
    'b1000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000003', 'b3000000-0000-0000-0000-000000000001', '생일 축하해', '없음', 'agreed', 'allergy-v1', now(),
    '이손님', '010-9999-8888', 40000);
 UPDATE confirm_cards SET order_id = 'd0000000-0000-0000-0000-000000000001' WHERE id = 'c7000000-0000-0000-0000-000000000001';
-INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at) VALUES
+-- 결제 안내가 손님에게 전해진 때부터 12시간, 결제 기한 상한(그날 주문 마감)을 넘지 않음(REQ-218)
+INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, delivered_at, due_at, due_cap_at) VALUES
   ('e0000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'first',
-   'pay:d0..01:first', 'open', 40000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours');
+   'pay:d0..01:first', 'open', 40000, 'b7000000-0000-0000-0000-000000000001', now(), now() + interval '12 hours', now() + interval '2 days');
 INSERT INTO slot_holds (id, shop_id, day, order_id, payment_request_id, hold_key, status) VALUES
   ('e3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', '2026-12-24', 'd0000000-0000-0000-0000-000000000001',
    'e0000000-0000-0000-0000-000000000001', 'hold:d0..01:e0..01', 'held');
@@ -235,9 +236,9 @@ INSERT INTO confirm_cards (id, shop_id, consultation_id, customer_id, card_key, 
    'card-payment-claim-0001', 'payment_claim', 'd0000000-0000-0000-0000-000000000001', 1, '{}', now() + interval '30 minutes', now(), 'done');
 UPDATE payment_requests SET status = 'claimed', claimed_at = now(), claim_card_id = 'c7000000-0000-0000-0000-000000000011', version = version + 1
  WHERE id = 'e0000000-0000-0000-0000-000000000001';
-INSERT INTO owner_tasks (id, shop_id, kind, event_key, order_id, payment_request_id) VALUES
+INSERT INTO owner_tasks (id, shop_id, kind, event_key, order_id, payment_request_id, wait_status, wait_due_at) VALUES
   ('f7000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'payment_claim', 'task:claim:e0..01',
-   'd0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000001');
+   'd0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000001', 'waiting', now() + interval '2 hours');
 INSERT INTO owner_alerts (id, shop_id, owner_task_id, kind, event_key, status, attempts, sent_at, kakao_task_id, requested_at) VALUES
   ('f8000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'f7000000-0000-0000-0000-000000000001', 'new_task',
    'alert:task:f7..01', 'sent', 1, now(), 'task-alert-1', now());
@@ -246,7 +247,7 @@ UPDATE payment_requests SET status = 'paid', paid_at = now(), arrived_amount = 4
 INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES
   ('e1000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
    'e0000000-0000-0000-0000-000000000001', 40000);
-UPDATE owner_tasks SET closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000001';
+UPDATE owner_tasks SET wait_status = 'answered', closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000001';
 UPDATE orders SET lock_version = lock_version + 1, status = 'confirmed', confirmed_at = now() WHERE id = 'd0000000-0000-0000-0000-000000000001';
 UPDATE slot_holds SET status = 'fixed', fixed_at = now() WHERE id = 'e3000000-0000-0000-0000-000000000001';
 INSERT INTO productions (id, shop_id, order_id) VALUES
@@ -378,9 +379,9 @@ INSERT INTO order_details (id, shop_id, order_id, version, source, price_list_id
 UPDATE orders SET lock_version = lock_version + 1, version = 2, amount = 55000, accepted_at = now(), accepted_version = 2, status = 'awaiting_payment'
  WHERE id = 'd0000000-0000-0000-0000-000000000003';
 UPDATE owner_tasks SET wait_status = 'answered', closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000003';
-INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, requested_amount, payment_account_id, due_at) VALUES
+INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, requested_amount, payment_account_id, due_at, due_cap_at) VALUES
   ('e0000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'first',
-   'pay:d0..03:first', 'open', 55000, 50000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours');
+   'pay:d0..03:first', 'open', 55000, 50000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours', now() + interval '12 hours');
 INSERT INTO slot_holds (id, shop_id, day, order_id, payment_request_id, hold_key, status) VALUES
   ('e3000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000001', '2026-12-28', 'd0000000-0000-0000-0000-000000000003',
    'e0000000-0000-0000-0000-000000000003', 'hold:d0..03:e0..03', 'held');
@@ -401,9 +402,9 @@ INSERT INTO change_requests (id, shop_id, order_id, card_id, base_version, chang
   ('d2000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003',
    'c7000000-0000-0000-0000-000000000013', 2, '{"lettering":"사랑해 엄마","topper":"추가"}');
 UPDATE change_requests SET lock_version = lock_version + 1, status = 'awaiting_difference', amount_delta = 5000, decided_at = now() WHERE id = 'd2000000-0000-0000-0000-000000000001';
-INSERT INTO payment_requests (id, shop_id, order_id, kind, change_request_id, event_key, status, amount, payment_account_id, due_at) VALUES
+INSERT INTO payment_requests (id, shop_id, order_id, kind, change_request_id, event_key, status, amount, payment_account_id, due_at, due_cap_at) VALUES
   ('e0000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'difference',
-   'd2000000-0000-0000-0000-000000000001', 'pay:d2..01:difference', 'open', 5000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours');
+   'd2000000-0000-0000-0000-000000000001', 'pay:d2..01:difference', 'open', 5000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours', now() + interval '12 hours');
 -- 차액 6,000원이 들어옴 → 금액 불일치(맞추는 중) → 대조 완료(더 들어옴) → 더 들어온 1,000원은 환불(SPEC-035, SPEC-071)
 UPDATE payment_requests SET status = 'mismatch', mismatch_amount = 6000, mismatch_at = now(), arrived_amount = 6000, arrived_at = now()
  WHERE id = 'e0000000-0000-0000-0000-000000000004';
@@ -436,9 +437,9 @@ INSERT INTO order_details (id, shop_id, order_id, version, source, quote_id, pri
   ('d1000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 1, 'request',
    'c6000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', '2026-12-24 07:00:00+00', 'b1000000-0000-0000-0000-000000000001',
    'b1000000-0000-0000-0000-000000000002', NULL, 'declined', 'allergy-v1', now(), '이손님', '010-9999-8888', 35000);
-INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, paid_at, arrived_amount, arrived_at) VALUES
+INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, due_cap_at, paid_at, arrived_amount, arrived_at) VALUES
   ('e0000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004', 'first',
-   'pay:d0..04:first', 'paid', 35000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours', now(), 35000, now());
+   'pay:d0..04:first', 'paid', 35000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours', now() + interval '12 hours', now(), 35000, now());
 INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount) VALUES
   ('e1000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000004',
    'e0000000-0000-0000-0000-000000000005', 35000);
@@ -475,9 +476,9 @@ INSERT INTO order_details (id, shop_id, order_id, version, source, price_list_id
   ('d1000000-0000-0000-0000-000000000007', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 1, 'request',
    'b0000000-0000-0000-0000-000000000001', '2026-12-28 07:00:00+00', 'b1000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002',
    '없음', 'agreed', 'allergy-v1', now(), '최손님', '010-7777-6666', 35000);
-INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at) VALUES
+INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, due_cap_at) VALUES
   ('e0000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 'first',
-   'pay:d0..05:first', 'open', 35000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours');
+   'pay:d0..05:first', 'open', 35000, 'b7000000-0000-0000-0000-000000000001', now() + interval '12 hours', now() + interval '12 hours');
 INSERT INTO slot_holds (id, shop_id, day, order_id, payment_request_id, hold_key, status) VALUES
   ('e3000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000001', '2026-12-28', 'd0000000-0000-0000-0000-000000000005',
    'e0000000-0000-0000-0000-000000000006', 'hold:d0..05:e0..06', 'held');
@@ -529,13 +530,13 @@ INSERT INTO owner_tasks (id, shop_id, kind, event_key, order_id, payment_request
 -- 들어온 입금 남기기(닫힌 결제 안내에 35,000원) → 손님 취소의 환불 정할 일 → 환불(받은 금액 35,000원)
 UPDATE payment_requests SET arrived_amount = 35000, arrived_at = now(), version = version + 1 WHERE id = 'e0000000-0000-0000-0000-000000000006';
 UPDATE owner_tasks SET closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000005';
-INSERT INTO owner_tasks (id, shop_id, kind, event_key, order_id) VALUES
+INSERT INTO owner_tasks (id, shop_id, kind, event_key, order_id, wait_status, wait_due_at) VALUES
   ('f7000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000001', 'refund_decision', 'task:refund_decision:d0..05',
-   'd0000000-0000-0000-0000-000000000005');
+   'd0000000-0000-0000-0000-000000000005', 'waiting', now() + interval '2 hours');
 INSERT INTO refunds (id, shop_id, order_id, cause, event_key, decision, amount, calculated_amount, calc_basis) VALUES
   ('e2000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 'customer_cancel',
    'refund:d0..05:cancel', 'full', 35000, 35000, '{"rules":"b4..01","clause":"pre_production_cancel","received":35000,"confirmed":0,"arrived_unconfirmed":35000}');
-UPDATE owner_tasks SET closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000006';
+UPDATE owner_tasks SET wait_status = 'answered', closed_at = now() WHERE id = 'f7000000-0000-0000-0000-000000000006';
 INSERT INTO ledger_writes (id, shop_id, ledger_row_id, event_key, event_kind) VALUES
   ('fc000000-0000-0000-0000-000000000007', 'a2000000-0000-0000-0000-000000000001', 'fb000000-0000-0000-0000-000000000005',
    'ledger:e2..02:refund', 'refund');
@@ -588,9 +589,9 @@ SET CONSTRAINTS ALL DEFERRED;
 
 -- 가게 나누기(G1, SPEC-068)
 SELECT pg_temp.expect_fail('G1 다른 가게의 주문을 참조하는 결제 안내', 'payment_requests_order_fk', ARRAY[$$
-  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at)
   VALUES ('a2000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000001', 'first', 'x-1', 40000,
-          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour')$$]);
+          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour')$$]);
 SELECT pg_temp.expect_fail('G1 다른 가게 채널에 손님 붙이기', 'customers_channel_fk', ARRAY[$$
   INSERT INTO customers (shop_id, kakao_channel_id, kakao_user_key)
   VALUES ('a2000000-0000-0000-0000-000000000002', 'a3000000-0000-0000-0000-000000000001', 'user-key-9')$$]);
@@ -804,61 +805,65 @@ SELECT pg_temp.expect_fail('G2 신고 카드 하나에 신고 둘', 'issue_repor
 
 -- 결제·환불 (CTX-004)
 SELECT pg_temp.expect_fail('1-3 한 주문에 열린 결제 안내 둘', 'payment_requests_one_open_per_order', ARRAY[$$
-  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-2', 40000,
-          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour')$$, $$
-  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
+          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour')$$, $$
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-3', 40000,
-          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour')$$]);
+          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour')$$]);
 SELECT pg_temp.expect_fail('REQ-153 결제 안내 하나에 확인된 결제 둘', 'payments_one_live_per_request', ARRAY[$$
   INSERT INTO payments (shop_id, order_id, payment_request_id, amount)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000001', 40000)$$]);
 SELECT pg_temp.expect_fail('REQ-081 안내 금액과 다른 확인된 결제', 'payments_match_fk', ARRAY[$$
-  INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
+  INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at)
   VALUES ('e0000000-0000-0000-0000-000000000009', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue',
-          'x-4', 40000, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour')$$, $$
+          'x-4', 40000, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour')$$, $$
   INSERT INTO payments (shop_id, order_id, payment_request_id, amount)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000009', 39000)$$]);
 SELECT pg_temp.expect_fail('REQ-081 다른 주문의 결제 안내로 확인', 'payments_match_fk', ARRAY[$$
-  INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
+  INSERT INTO payment_requests (id, shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at)
   VALUES ('e0000000-0000-0000-0000-000000000009', 'a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue',
-          'x-5', 40000, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour')$$, $$
+          'x-5', 40000, 'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour')$$, $$
   INSERT INTO payments (shop_id, order_id, payment_request_id, amount)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000009', 40000)$$]);
 SELECT pg_temp.expect_fail('R13 변경 요청 없는 차액 결제', 'payment_requests_difference_chk', ARRAY[$$
-  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000003', 'difference', 'x-6', 1000,
-          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour')$$]);
+          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour')$$]);
 SELECT pg_temp.expect_fail('R12 결제 기한이 낸 시각보다 앞', 'payment_requests_due_chk', ARRAY[$$
-  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-7', 40000,
-          'b7000000-0000-0000-0000-000000000001', now() - interval '1 hour')$$]);
+          'b7000000-0000-0000-0000-000000000001', now() - interval '1 hour', now() - interval '1 hour')$$]);
+SELECT pg_temp.expect_fail('REQ-218 결제 기한이 결제 기한 상한을 넘음', 'payment_requests_due_cap_chk', ARRAY[$$
+  UPDATE payment_requests SET due_at = due_cap_at + interval '1 hour', version = version + 1 WHERE id = 'e0000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-218 전해지기 전인데 결제 기한이 상한과 다름', 'payment_requests_delivered_chk', ARRAY[$$
+  UPDATE payment_requests SET due_at = due_cap_at - interval '1 hour', version = version + 1 WHERE id = 'e0000000-0000-0000-0000-000000000003'$$]);
 SELECT pg_temp.expect_fail('G2 같은 이벤트의 결제 안내 둘', 'payment_requests_event_uq', ARRAY[$$
-  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at)
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'pay:d0..01:first', 40000,
-          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour')$$]);
+          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour')$$]);
 SELECT pg_temp.expect_fail('SPEC-035 다르게 들어온 금액이 10배를 넘음', 'payment_requests_arrived_amount_chk', ARRAY[$$
-  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, mismatch_amount, mismatch_at,
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, due_cap_at, mismatch_amount, mismatch_at,
                                 arrived_amount, arrived_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-8', 'mismatch', 40000,
-          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', 400001, now(), 400001, now())$$]);
+          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour', 400001, now(), 400001, now())$$]);
 SELECT pg_temp.expect_fail('SPEC-033 미입금 뒤 다시 확인 요청됨', 'payment_requests_claimed_chk', ARRAY[$$
-  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, claimed_at, claim_rejected_at)
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, due_cap_at, claimed_at, claim_rejected_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-9', 'claimed', 40000,
-          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now(), now())$$]);
+          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour', now(), now())$$]);
 SELECT pg_temp.expect_fail('REQ-165 확인됨인데 들어온 금액 없음', 'payment_requests_arrived_paid_chk', ARRAY[$$
   UPDATE payment_requests SET arrived_amount = NULL, arrived_at = NULL WHERE id = 'e0000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('REQ-165 들어온 금액에 남긴 시각 없음', 'payment_requests_arrived_chk', ARRAY[$$
   UPDATE payment_requests SET arrived_at = NULL WHERE id = 'e0000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('REQ-165 나간 결제 안내에 들어온 금액', 'payment_requests_arrived_status_chk', ARRAY[$$
-  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, arrived_amount, arrived_at)
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, amount, payment_account_id, due_at, due_cap_at, arrived_amount, arrived_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-10', 40000,
-          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', 40000, now())$$]);
+          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour', 40000, now())$$]);
 SELECT pg_temp.expect_fail('SPEC-035 맞추는 중의 들어온 금액이 다르게 들어온 금액과 다름', 'payment_requests_arrived_mismatch_chk', ARRAY[$$
-  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, mismatch_amount, mismatch_at,
+  INSERT INTO payment_requests (shop_id, order_id, kind, event_key, status, amount, payment_account_id, due_at, due_cap_at, mismatch_amount, mismatch_at,
                                 arrived_amount, arrived_at)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'reissue', 'x-11', 'mismatch', 40000,
-          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', 45000, now(), 40000, now())$$]);
+          'b7000000-0000-0000-0000-000000000001', now() + interval '1 hour', now() + interval '1 hour', 45000, now(), 40000, now())$$]);
 SELECT pg_temp.expect_fail('REQ-169 사유 없는 결제 확인 취소', 'payments_void_chk', ARRAY[$$
   UPDATE payments SET voided_at = now() WHERE id = 'e1000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('REQ-169 결제 확인 취소 뒤 다시 확인한 결제 둘', 'payments_one_live_per_request', ARRAY[$$
@@ -905,6 +910,12 @@ SELECT pg_temp.expect_fail('SPEC-049 환불 계좌의 끝 4자리 없이 암호�
   UPDATE refunds SET refund_account_last4 = NULL WHERE id = 'e2000000-0000-0000-0000-000000000001'$$]);
 
 -- 제작·전달, 후기·포트폴리오 (CTX-005, CTX-006)
+SELECT pg_temp.expect_fail('A27 받음인데 제작 행에 인도 시각 없음', 'orders_production_sync', ARRAY[$$
+  UPDATE orders SET status = 'received', lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('A27 인도 시각을 남기고 주문은 확정 그대로', 'orders_production_sync', ARRAY[$$
+  UPDATE productions SET handed_over_at = now(), handover_kind = 'pickup' WHERE id = 'f0000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('A27 인도한 주문을 미수령으로', 'orders_production_sync', ARRAY[$$
+  UPDATE orders SET status = 'no_pickup', lock_version = lock_version + 1 WHERE id = 'd0000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-055 폐기한 케이크를 인도함', 'productions_discard_chk', ARRAY[$$
   UPDATE productions SET no_pickup_at = now(), discarded_at = now() WHERE id = 'f0000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('SPEC-051 5분 지나 되돌림', 'production_undos_window_chk', ARRAY[$$
@@ -968,6 +979,20 @@ SELECT pg_temp.expect_fail('1-7 기다림이 없는 할 일에 기다림 상태'
   VALUES ('a2000000-0000-0000-0000-000000000001', 'payment_overdue', 'task:overdue:x', 'd0000000-0000-0000-0000-000000000001', 'waiting', now())$$]);
 SELECT pg_temp.expect_fail('1-7 지연 안내 없이 지연', 'owner_tasks_late_chk', ARRAY[$$
   UPDATE owner_tasks SET wait_status = 'late' WHERE id = 'f7000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-215 기다림 없는 결제 확인 요청 할 일', 'owner_tasks_wait_kind_chk', ARRAY[$$
+  INSERT INTO owner_tasks (shop_id, kind, event_key, order_id, payment_request_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'payment_claim', 'task:claim:x', 'd0000000-0000-0000-0000-000000000001',
+          'e0000000-0000-0000-0000-000000000001')$$]);
+SELECT pg_temp.expect_fail('1-7 환불 결정을 답 없어 닫힘으로', 'owner_tasks_no_answer_chk', ARRAY[$$
+  UPDATE owner_tasks SET wait_status = 'closed_no_answer' WHERE id = 'f7000000-0000-0000-0000-000000000006'$$]);
+SELECT pg_temp.expect_fail('REQ-213 수락한 맞춤 주문을 답 없어 닫힘으로', 'orders_no_answer_chk', ARRAY[$$
+  UPDATE orders SET status = 'cancelled', cancelled_at = now(), cancel_kind = 'no_answer', lock_version = lock_version + 1
+   WHERE id = 'd0000000-0000-0000-0000-000000000003'$$]);
+SELECT pg_temp.expect_fail('REQ-214 사장님이 답한 변경 요청을 답 없어 닫힘으로', 'change_requests_no_answer_chk', ARRAY[$$
+  UPDATE change_requests SET status = 'closed_no_answer', applied_at = NULL, applied_version = NULL, closed_at = now(),
+         lock_version = lock_version + 1 WHERE id = 'd2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-216 닫힌 시각 없는 답 없어 닫힘', 'handoffs_closed_chk', ARRAY[$$
+  UPDATE handoffs SET status = 'closed_no_answer' WHERE id = 'f6000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('REQ-126 주문 하나에 장부 행 둘', 'ledger_rows_order_uq', ARRAY[$$
   INSERT INTO ledger_rows (shop_id, order_id) VALUES ('a2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001')$$]);
 SELECT pg_temp.expect_fail('REQ-132 같은 이벤트의 장부 쓰기 둘', 'ledger_writes_event_uq', ARRAY[$$
