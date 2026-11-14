@@ -479,7 +479,8 @@ op(id="API-019", method="get", path="/owner/price-list/versions/{version}", op="
 # ═══ 운영규정 ═════════════════════════════════════════════════════════════════
 op(id="API-020", method="get", path="/owner/operating-rules", op="getCurrentOperatingRules", tag="운영규정",
    summary="현재 운영규정(없으면 템플릿)", spec=["SPEC-005"], auth="owner",
-   desc="확정한 버전이 없으면 템플릿(isTemplate true)을 반환한다: 제작 전 취소 전액 환불, 견적 유효 72시간·결제 기한 12시간·신고 기한 24시간(SPEC-005).",
+   desc="확정한 버전이 없으면 템플릿(isTemplate true)을 반환한다: 제작 전 취소 전액 환불, 견적 유효 72시간·결제 기한 12시간·신고 기한 24시간(SPEC-005). "
+        "신고 기한 조문 글은 '받은 뒤 24시간 안에 알려 주시면 빨리 확인할 수 있어요'처럼 기한 뒤 신고를 막지 않는 글이다(REQ-250).",
    ok=[(200, "OperatingRules", {"current": E.RULES, "template": E.RULES_TEMPLATE})],
    errors={404: ["shop_not_registered"]},
    omit={"403": O403, "409": O409_READ, "422": O422_NOINPUT},
@@ -798,11 +799,14 @@ op(id="API-040", method="get", path="/owner/tasks", op="listOwnerTasks", tag="�
 
 # ═══ 에스컬레이션 건과 상담 ═════════════════════════════════════════════════════════
 op(id="API-041", method="get", path="/owner/handoffs/{handoffId}", op="getHandoff", tag="에스컬레이션 건·상담",
-   summary="에스컬레이션 건 하나", spec=["SPEC-022", "SPEC-023", "SPEC-021"], auth="owner",
+   summary="에스컬레이션 건 하나", spec=["SPEC-022", "SPEC-023", "SPEC-021", "SPEC-079"], auth="owner",
    desc="에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 이 건에 덧붙은 질문(질문마다 사유와 관련 주문). 마감된 날 질문이면 requestedDay(마감된 날 질문은 열린 건에 덧붙지 않고 상담과 날짜마다 따로 건, SPEC-022). 추가 수락을 쓴 주문 요청이 있으면 dayUsedOrder. "
-        "남긴 지 7일 동안 사장님 답이 없으면 서버가 status closed_no_answer와 closedAt으로 닫고 손님에게 다시 물어 달라고 한 번 알린다(REQ-216).",
+        "남긴 지 7일 동안 사장님 답이 없으면 서버가 status closed_no_answer와 closedAt으로 닫고 손님에게 다시 물어 달라고 한 번 알린다(REQ-216). "
+        "사유가 다른 카카오 사용자(other_user)이고 관련 주문이 받은 주문인 열린 건이면 화면이 '이 주문의 문제 신고로 남기기'(API-083)를 보이고, 남긴 신고는 issueReport로 본다(SPEC-079). "
+        "그 손님에게는 주문 내용·금액·주문자를 보이지 않았고, 관련 주문은 사장님 화면에만 보인다(REQ-252).",
    params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF["handoffId"])],
-   ok=[(200, "Handoff", {"edibility": E.HANDOFF, "closed_day": E.HANDOFF_DAY, "closed_no_answer": E.HANDOFF_CLOSED})],
+   ok=[(200, "Handoff", {"edibility": E.HANDOFF, "closed_day": E.HANDOFF_DAY, "closed_no_answer": E.HANDOFF_CLOSED,
+                         "other_user_reported": E.HANDOFF_OTHER_USER_REPORTED})],
    errors={404: ["not_found"]},
    omit={"403": O403, "409": O409_READ, "422": O422_PATHONLY},
    kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "상태": ["example:closed_no_answer"],
@@ -826,6 +830,29 @@ op(id="API-042", method="post", path="/owner/handoffs/{handoffId}/answer", op="a
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
           "상태": ["409:already_decided", "409:invalid_state"], "반복": ["idem"], "동시": ["revision", "409:version_conflict"],
           "외부": ["example:deferred"], "노출": ["closed"], "화면": ["screen"]})
+
+op(id="API-083", method="post", path="/owner/handoffs/{handoffId}/issue-report", op="reportIssueFromHandoff", tag="에스컬레이션 건·상담",
+   summary="에스컬레이션 건에서 문제 신고로 남기기", spec=["SPEC-079", "SPEC-058", "SPEC-059"], auth="owner", idem=True,
+   desc="주문자가 아닌 카카오 사용자가 받은 주문의 문제를 말해 넘어온 에스컬레이션 건(사유 other_user, REQ-253)에서 사장님이 '이 주문의 문제 신고로 남기기'를 누른다. "
+        "서버는 그 건의 상담에 신고 내용(설명, 사진 없음)을 신고됨으로 두고, 그 건의 관련 주문에 문제 신고(reportedBy owner_from_handoff, 그 건)를 남긴다. "
+        "신고 기한은 그 건이 생긴 시각으로 보고 기한 뒤면 사장님 화면에만 '기한 뒤'(late). 같은 주문에 열린 신고가 있으면 받되 첫 신고에 잇는다(SPEC-058과 같음). "
+        "할 일 '문제 신고'를 올리되 사장님 알림과 문제 신고의 지연 안내(SPEC-024)는 보내지 않고, 그 건의 기다림과 7일 '답 없어 닫힘'은 그대로 돈다. 건은 이때 닫지 않는다(답할 때 닫힘, API-042). "
+        "보상은 보상 결정(API-065)으로 정하고 보상 안내는 보내지 않는다. 환불은 결제한 주문자에게 돌아가 지금 환불 안내 규칙대로 알리고, 신고한 사람에게는 사장님이 그 건에 답해 결과를 전한다(DEC-24). "
+        "사유가 other_user가 아니거나, 관련 주문이 없거나, 받은 주문(픽업 완료됨·퀵으로 보냄)이 아니거나, 건이 닫혔으면 남기지 않고 409 invalid_state. "
+        "이 건에서 남긴 신고가 이미 있으면 baseRevision과 상관없이 새로 남기지 않고 그 신고와 함께 200 unchanged(한 건에 신고 하나, G2). 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict. "
+        "AI·손님은 이 명령을 낼 수 없다(AI 도구에 없음).",
+   params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF_OTHER_USER["handoffId"])],
+   body="IssueFromHandoffInput",
+   body_examples={"from_handoff": {"baseRevision": E.HANDOFF_OTHER_USER["revision"], "description": E.ISSUE_FROM_HANDOFF["description"]}},
+   ok=[(201, "IssueFromHandoffResult", {"created": {"outcome": "done", "issueReport": E.ISSUE_FROM_HANDOFF, "handoff": E.HANDOFF_OTHER_USER_REPORTED}}),
+       (200, "IssueFromHandoffResult", {"unchanged": {"outcome": "unchanged", "issueReport": E.ISSUE_FROM_HANDOFF, "handoff": E.HANDOFF_OTHER_USER_REPORTED}})],
+   errors={404: ["not_found"], 409: ["version_conflict", "invalid_state"]},
+   fields=[("/description", "too_long")],
+   omit={"403": O403},
+   kinds={"접근": ["security", "401:unauthenticated", "note:사장님만. AI·손님은 이 명령을 낼 수 없음(AI 도구에 없음)"], "입력": ["422:validation_failed"],
+          "대상": ["404:not_found"], "상태": ["409:invalid_state"], "반복": ["idem", "example:unchanged"], "동시": ["revision", "409:version_conflict"],
+          "외부": ["note:문제 신고의 지연 안내(SPEC-024)와 사장님 알림은 보내지 않음. 그 건의 기다림이 그대로 돎(DEC-24)"],
+          "노출": ["closed", "note:신고한 사람에게는 주문 내용·금액·주문자를 보이지 않고 보상 안내도 보내지 않음(REQ-252, DEC-24)"], "화면": ["screen"]})
 
 op(id="API-043", method="get", path="/owner/consultations/{consultationId}/messages", op="listConsultationMessages", tag="에스컬레이션 건·상담",
    summary="상담 대화 조회", spec=["SPEC-021", "SPEC-019", "SPEC-068", "SPEC-065"], auth="owner",
@@ -1241,34 +1268,52 @@ op(id="API-063", method="post", path="/owner/change-requests/{changeRequestId}/d
 
 # ═══ 문제 신고 ════════════════════════════════════════════════════════════════
 op(id="API-064", method="get", path="/owner/issue-reports/{issueReportId}", op="getIssueReport", tag="문제 신고",
-   summary="문제 신고 하나", spec=["SPEC-058", "SPEC-059", "SPEC-057"], auth="owner",
-   desc="신고 사진·설명·주문 내용 버전·결제 금액, 기한 뒤인지, 먹고 아프다는 말인지, 같은 주문의 뒤 신고.",
+   summary="문제 신고 하나", spec=["SPEC-058", "SPEC-059", "SPEC-057", "SPEC-079"], auth="owner",
+   desc="신고 사진·설명·주문 내용 버전·결제 금액, 기한 뒤인지, 먹고 아프다는 말인지, 같은 주문의 뒤 신고. "
+        "보상을 정했으면 문제 종류·보상과 보상 없음의 사유나 그 밖의 보상의 한 일·금액(사장님 화면에만, SPEC-059). "
+        "신고한 사람이 주문자인지 사장님이 에스컬레이션 건에서 남긴 것인지와 그 건(SPEC-079). '기한 뒤'(late)는 사장님 화면에만 보이고 손님 안내에는 쓰지 않는다(REQ-250).",
    params=[pid("issueReportId", "문제 신고", E.ISSUE["issueReportId"])],
-   ok=[(200, "IssueReport", {"reported": E.ISSUE, "remake_decided": E.ISSUE_REMAKE})],
+   ok=[(200, "IssueReport", {"reported": E.ISSUE, "remake_decided": E.ISSUE_REMAKE, "other_compensation": E.ISSUE_OTHER,
+                             "from_handoff": E.ISSUE_FROM_HANDOFF})],
    errors={404: ["not_found"]},
    omit={"403": O403, "409": O409_READ, "422": O422_PATHONLY},
    kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-065", method="post", path="/owner/issue-reports/{issueReportId}/compensation", op="decideCompensation", tag="문제 신고",
-   summary="보상 결정(재제작·일부 환불·전액 환불·없음)", spec=["SPEC-059", "SPEC-060", "SPEC-047", "SPEC-015"], auth="owner", idem=True,
-   desc="보상은 사장님만 정한다(AI·손님에게 길이 없음). 재제작이면 새 픽업 일시(지금 뒤 60일 안)로 결제 없는 재제작 주문을 확정으로 남기고 자리를 잡는다(SPEC-060). "
+   summary="보상 결정(문제 종류와 재제작·일부 환불·전액 환불·그 밖의 보상·없음)", spec=["SPEC-059", "SPEC-060", "SPEC-047", "SPEC-015"], auth="owner", idem=True,
+   desc="보상은 사장님만 정한다(AI·손님에게 길이 없음, REQ-246). 문제 종류(spoiled 상함·변질, foreign_matter 이물, other 그 밖)를 꼭 함께 고른다(REQ-247). "
+        "재제작이면 새 픽업 일시(지금 뒤 60일 안)로 결제 없는 재제작 주문을 확정으로 남기고 자리를 잡는다(SPEC-060). "
         "휴무일이면 409 confirmation_required(closed_day), 다 찬 날이면 overbooking이고 확인하면 마감 후 추가 수락으로 잡는다(REQ-221, REQ-226). 환불이면 환불 결정과 같은 한도(받은 금액 - 이미 정한 환불)로 환불을 남기고, 계산값은 고른 금액이라 다르게 정한 사유를 받지 않는다(SPEC-016, SPEC-047). "
-        "재제작 주문에 들어온 신고(다시 신고)는 원래 주문의 돈으로 한도를 보고 환불을 원래 주문에 남기며, 다시 재제작이면 새 재제작 주문도 원래 주문에 잇는다(SPEC-059, SPEC-060). 손님에게 보상 안내를 한 번 보내고 신고를 닫는다. "
+        "상함·변질이나 이물에 보상 없음이면 저장하지 않고 409 confirmation_required(no_compensation_standard)로 소비자분쟁해결기준(공정위 고시 제2025-14호 별표, 제빵류: 교환 또는 환급)과 위험을 보이게 하고, "
+        "사장님이 사유(noCompensationReason, 1~200자)를 넣고 '그래도 보상 없이 닫기'를 누르면 confirm에 담아 다시 보낸다. 확인했는데 사유가 없으면 422 /noCompensationReason required, 다른 문제 종류나 보상에 사유를 보내면 422 /noCompensationReason not_allowed(REQ-248). "
+        "그 밖의 보상(other_compensation)은 사장님이 직접 처리하는 보상(예: 다른 상품, 진료비)이라 한 일(otherCompensationNote, 1~200자, 꼭)과 금액(otherCompensationAmount, 선택)만 남기고 환불·장부 쓰기를 만들지 않는다. "
+        "다른 보상에 한 일·금액을 보내면 422 not_allowed(REQ-249). 보상 없음의 사유와 그 밖의 보상의 한 일은 사장님 화면에만 보이고 손님 안내에 쓰지 않는다. "
+        "재제작 주문에 들어온 신고(다시 신고)는 원래 주문의 돈으로 한도를 보고 환불을 원래 주문에 남기며, 다시 재제작이면 새 재제작 주문도 원래 주문에 잇는다(SPEC-059, SPEC-060). "
+        "손님에게 보상 안내를 한 번 보내고(그 밖의 보상이면 '사장님이 직접 연락해 보상을 처리해 드려요') 신고를 닫는다. "
+        "사장님이 에스컬레이션 건에서 남긴 신고(reportedBy owner_from_handoff)는 보상 안내를 보내지 않고, 환불은 결제한 주문자에게 지금 환불 안내 규칙대로 가며, 신고한 사람에게는 그 건의 답(API-042)으로 결과를 전한다(DEC-24). "
         "이미 정한 보상은 고치지 않는다(409 already_decided).",
    params=[pid("issueReportId", "문제 신고", E.ISSUE["issueReportId"])],
    body="CompensationInput",
-   body_examples={"remake": {"baseRevision": E.ISSUE["revision"], "compensation": "remake", "remakePickupAt": E.t("11-25", "15:00")},
-                  "partial_refund": {"baseRevision": E.ISSUE["revision"], "compensation": "partial_refund", "refundAmount": 20000},
-                  "none": {"baseRevision": E.ISSUE["revision"], "compensation": "none"}},
+   body_examples={"remake": {"baseRevision": E.ISSUE["revision"], "problemKind": "other", "compensation": "remake", "remakePickupAt": E.t("11-25", "15:00")},
+                  "partial_refund": {"baseRevision": E.ISSUE["revision"], "problemKind": "other", "compensation": "partial_refund", "refundAmount": 20000},
+                  "none": {"baseRevision": E.ISSUE["revision"], "problemKind": "other", "compensation": "none"},
+                  "none_spoiled_confirmed": {"baseRevision": E.ISSUE_SPOILED["revision"], "problemKind": "spoiled", "compensation": "none",
+                                             "noCompensationReason": E.ISSUE_NONE_REASON["noCompensationReason"], "confirm": ["no_compensation_standard"]},
+                  "other_compensation": {"baseRevision": E.ISSUE_FOREIGN["revision"], "problemKind": "foreign_matter", "compensation": "other_compensation",
+                                         "otherCompensationNote": E.ISSUE_OTHER["otherCompensationNote"], "otherCompensationAmount": 30000}},
    ok=[(200, "CompensationResult", {"remake": {"outcome": "done", "issueReport": E.ISSUE_REMAKE, "remakeOrder": E.ORDER_REMAKE, "refund": None},
-                                    "partial_refund": {"outcome": "done", "issueReport": E.ISSUE_PARTIAL, "remakeOrder": None, "refund": E.REFUND_COMP}})],
+                                    "partial_refund": {"outcome": "done", "issueReport": E.ISSUE_PARTIAL, "remakeOrder": None, "refund": E.REFUND_COMP},
+                                    "none_with_reason": {"outcome": "done", "issueReport": E.ISSUE_NONE_REASON, "remakeOrder": None, "refund": None},
+                                    "other_compensation": {"outcome": "done", "issueReport": E.ISSUE_OTHER, "remakeOrder": None, "refund": None}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "confirmation_required"]},
-   fields=[("/remakePickupAt", "outside_window"), ("/refundAmount", "exceeds_received")],
-   confirm=["closed_day", "overbooking"],
+   fields=[("/remakePickupAt", "outside_window"), ("/refundAmount", "exceeds_received"), ("/noCompensationReason", "required"),
+           ("/noCompensationReason", "not_allowed"), ("/otherCompensationNote", "required")],
+   confirm=["closed_day", "overbooking", "no_compensation_standard"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated", "note:AI·손님은 보상을 정할 수 없음(AI 도구에 없음)"], "입력": ["422:validation_failed"],
           "대상": ["404:not_found"], "상태": ["409:already_decided", "409:confirmation_required"], "반복": ["idem"],
-          "동시": ["revision", "409:version_conflict"], "노출": ["closed"], "화면": ["screen"]})
+          "동시": ["revision", "409:version_conflict"],
+          "노출": ["closed", "note:보상 없음의 사유와 그 밖의 보상의 한 일은 사장님 화면에만. 에스컬레이션 건에서 남긴 신고는 보상 안내를 보내지 않음(DEC-24)"], "화면": ["screen"]})
 
 # ═══ 후기와 포트폴리오 ════════════════════════════════════════════════════════
 op(id="API-066", method="get", path="/owner/reviews", op="listReviews", tag="후기·포트폴리오",
@@ -1342,6 +1387,9 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
         "결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). "
         "새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드를 보이고(SPEC-076), 손님이 확인하기 전에 입금했다고 하면 입금 알리기 카드 대신 그 카드를 다시 보인다(card_shown, SPEC-033). "
         "손님이 자기 주문을 물으면 그 사용자가 요청한 주문마다 상태·픽업 일시·주문 내용 요약·금액과 결제가 확인된 시각·정한 환불과 보낸 때를 서버가 저장된 값으로 보인다(SPEC-040, REQ-241). "
+        "변경·취소·문제 신고는 그 주문을 요청한 같은 카카오 사용자에게서만 받는다(REQ-251). 다른 사용자가 주문번호로 묻거나 바꾸려 하면 없는 주문번호와 같은 답을 주어 주문이 있는지 알리지 않고(REQ-252), "
+        "선물로 받았다는 것처럼 사정을 말하면 사유 other_user로 에스컬레이션한다(handed_over, REQ-253). 사장님은 그 건에서 문제 신고로 남길 수 있다(API-083). "
+        "신고 기한 뒤의 신고도 막지 않고 손님에게 기한이 지났다거나 권리가 없다고 말하지 않는다(REQ-250). "
         "요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). "
         "연결 확인 중인 채널에 그 연결의 연결 문구(API-032가 사장님 화면에만 보인 '연결 ' 뒤 숫자 6자리)가 오면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008, REQ-238). "
         "다른 말이면 not_accepting과 같은 말로 답하고 시험을 시작하지 않는다. 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). "

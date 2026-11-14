@@ -8,10 +8,10 @@ info:
   version: 0.1.0
   summary: 수제케이크 주문제작 AI 상담·예약 API(06단계 계약, 첫 버전)
   description: |-
-    수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~078)에서 만들었다.
+    수제케이크 주문제작 AI 상담·예약(Siljang)의 API 계약. 05단계 테이블(db/schema.sql)과 04단계 기능 명세(SPEC-001~079)에서 만들었다.
     이 파일은 research/cake-api-2026-11/build_api.py가 만든다. 손으로 고치지 않는다.
 
-    **API와 응답의 ID.** API마다 `x-corthex.id`(API-001~082)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
+    **API와 응답의 ID.** API마다 `x-corthex.id`(API-001~083)와 `x-corthex.spec`(SPEC ID). 응답 하나는 `API-001#401`처럼 쓴다.
     `x-corthex.omit`은 응답 목록(2xx·422·401·403·404·409·default) 가운데 그 API가 반환하지 않는 것과 사유, `x-corthex.kinds`는 케이스 유형마다 그 경우를 보여 주는 응답·예시다.
 
     **오류 형식.** 모든 오류는 RFC 9457 Problem Details(`application/problem+json`)에 `code`와 `traceId`를 더한 형식. 코드는 `components.x-corthex.errors`에만 있다.
@@ -3813,7 +3813,7 @@ paths:
       operationId: getCurrentOperatingRules
       summary: 현재 운영규정(없으면 템플릿)
       description: |-
-        확정한 버전이 없으면 템플릿(isTemplate true)을 반환한다: 제작 전 취소 전액 환불, 견적 유효 72시간·결제 기한 12시간·신고 기한 24시간(SPEC-005).
+        확정한 버전이 없으면 템플릿(isTemplate true)을 반환한다: 제작 전 취소 전액 환불, 견적 유효 72시간·결제 기한 12시간·신고 기한 24시간(SPEC-005). 신고 기한 조문 글은 '받은 뒤 24시간 안에 알려 주시면 빨리 확인할 수 있어요'처럼 기한 뒤 신고를 막지 않는 글이다(REQ-250).
 
         SPEC: SPEC-005
       tags:
@@ -8566,9 +8566,9 @@ paths:
       operationId: getHandoff
       summary: 에스컬레이션 건 하나
       description: |-
-        에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 이 건에 덧붙은 질문(질문마다 사유와 관련 주문). 마감된 날 질문이면 requestedDay(마감된 날 질문은 열린 건에 덧붙지 않고 상담과 날짜마다 따로 건, SPEC-022). 추가 수락을 쓴 주문 요청이 있으면 dayUsedOrder. 남긴 지 7일 동안 사장님 답이 없으면 서버가 status closed_no_answer와 closedAt으로 닫고 손님에게 다시 물어 달라고 한 번 알린다(REQ-216).
+        에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 이 건에 덧붙은 질문(질문마다 사유와 관련 주문). 마감된 날 질문이면 requestedDay(마감된 날 질문은 열린 건에 덧붙지 않고 상담과 날짜마다 따로 건, SPEC-022). 추가 수락을 쓴 주문 요청이 있으면 dayUsedOrder. 남긴 지 7일 동안 사장님 답이 없으면 서버가 status closed_no_answer와 closedAt으로 닫고 손님에게 다시 물어 달라고 한 번 알린다(REQ-216). 사유가 다른 카카오 사용자(other_user)이고 관련 주문이 받은 주문인 열린 건이면 화면이 '이 주문의 문제 신고로 남기기'(API-083)를 보이고, 남긴 신고는 issueReport로 본다(SPEC-079). 그 손님에게는 주문 내용·금액·주문자를 보이지 않았고, 관련 주문은 사장님 화면에만 보인다(REQ-252).
 
-        SPEC: SPEC-022, SPEC-023, SPEC-021
+        SPEC: SPEC-022, SPEC-023, SPEC-021, SPEC-079
       tags:
       - 에스컬레이션 건·상담
       parameters:
@@ -8585,7 +8585,7 @@ paths:
       - ownerSession: []
       responses:
         "200":
-          description: '성공. 예시: edibility, closed_day, closed_no_answer'
+          description: '성공. 예시: edibility, closed_day, closed_no_answer, other_user_reported'
           content:
             application/json:
               schema:
@@ -8610,6 +8610,7 @@ paths:
                     dayDecision: null
                     dayAcceptExpiresAt: null
                     dayUsedOrder: null
+                    issueReport: null
                     answeredAt: null
                     closedAt: null
                     createdAt: '2026-11-12T12:40:00+09:00'
@@ -8633,6 +8634,7 @@ paths:
                     dayDecision: null
                     dayAcceptExpiresAt: null
                     dayUsedOrder: null
+                    issueReport: null
                     answeredAt: null
                     closedAt: null
                     createdAt: '2026-11-12T12:40:00+09:00'
@@ -8656,10 +8658,43 @@ paths:
                     dayDecision: null
                     dayAcceptExpiresAt: null
                     dayUsedOrder: null
+                    issueReport: null
                     answeredAt: null
                     closedAt: '2026-11-19T12:40:00+09:00'
                     createdAt: '2026-11-12T12:40:00+09:00'
                     revision: 938bb8f5292a
+                other_user_reported:
+                  value:
+                    handoffId: bd2982f9-5f5b-5abf-bbc3-46311e3c1088
+                    consultationId: 6e735c2c-91e5-547c-afea-adbe6248300b
+                    reason: other_user
+                    status: open
+                    requestedDay: null
+                    order:
+                      orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                      orderNo: K7Q3M9
+                    customerLines:
+                    - at: '2026-11-20T20:10:00+09:00'
+                      text: 선물로 받은 케이크에 머리카락이 있었어요. 주문번호는 K7Q3M9래요
+                      photos: []
+                      reason: other_user
+                      order:
+                        orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                        orderNo: K7Q3M9
+                    customerChannelFriend: true
+                    answerText: null
+                    dayDecision: null
+                    dayAcceptExpiresAt: null
+                    dayUsedOrder: null
+                    issueReport:
+                      issueReportId: d71fe4cf-199d-595c-86ed-4edf383e8e9f
+                      status: reported
+                      late: false
+                      reportedAt: '2026-11-20T20:30:00+09:00'
+                    answeredAt: null
+                    closedAt: null
+                    createdAt: '2026-11-20T20:10:00+09:00'
+                    revision: e4337a139978
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -8720,6 +8755,7 @@ paths:
         - SPEC-022
         - SPEC-023
         - SPEC-021
+        - SPEC-079
         omit:
           "403": 역할마다 세션 쿠키와 경로가 나뉘고(DEC-10, DEC-11), 다른 가게 기록은 404로 숨김(DEC-02)
           "409": 읽기만 함
@@ -8808,6 +8844,7 @@ paths:
                       dayDecision: null
                       dayAcceptExpiresAt: null
                       dayUsedOrder: null
+                      issueReport: null
                       answeredAt: '2026-11-12T13:00:00+09:00'
                       closedAt: null
                       createdAt: '2026-11-12T12:40:00+09:00'
@@ -8834,6 +8871,7 @@ paths:
                       dayDecision: accepted
                       dayAcceptExpiresAt: '2026-11-13T16:30:00+09:00'
                       dayUsedOrder: null
+                      issueReport: null
                       answeredAt: '2026-11-12T16:30:00+09:00'
                       closedAt: null
                       createdAt: '2026-11-12T12:40:00+09:00'
@@ -18259,9 +18297,9 @@ paths:
       operationId: getIssueReport
       summary: 문제 신고 하나
       description: |-
-        신고 사진·설명·주문 내용 버전·결제 금액, 기한 뒤인지, 먹고 아프다는 말인지, 같은 주문의 뒤 신고.
+        신고 사진·설명·주문 내용 버전·결제 금액, 기한 뒤인지, 먹고 아프다는 말인지, 같은 주문의 뒤 신고. 보상을 정했으면 문제 종류·보상과 보상 없음의 사유나 그 밖의 보상의 한 일·금액(사장님 화면에만, SPEC-059). 신고한 사람이 주문자인지 사장님이 에스컬레이션 건에서 남긴 것인지와 그 건(SPEC-079). '기한 뒤'(late)는 사장님 화면에만 보이고 손님 안내에는 쓰지 않는다(REQ-250).
 
-        SPEC: SPEC-058, SPEC-059, SPEC-057
+        SPEC: SPEC-058, SPEC-059, SPEC-057, SPEC-079
       tags:
       - 문제 신고
       parameters:
@@ -18278,7 +18316,7 @@ paths:
       - ownerSession: []
       responses:
         "200":
-          description: '성공. 예시: reported, remake_decided'
+          description: '성공. 예시: reported, remake_decided, other_compensation, from_handoff'
           content:
             application/json:
               schema:
@@ -18300,11 +18338,17 @@ paths:
                     - url: https://files.siljang.example/v1/9fd00f0a9e09396fadaae7c1?exp=1763619300&sig=9e344b1122ca1926fb8afa701cabdcc3
                     - url: https://files.siljang.example/v1/27d73ef4c0ccdfd0d17df69e?exp=1763619300&sig=9c01b593f5d94da42c9501fa21744e6b
                     followUps: []
+                    problemKind: null
                     compensation: null
+                    noCompensationReason: null
+                    otherCompensationNote: null
+                    otherCompensationAmount: null
                     decidedAt: null
                     remakeOrder: null
                     refund: null
                     closedAt: null
+                    reportedBy: orderer
+                    handoff: null
                     reportedAt: '2026-11-20T18:30:00+09:00'
                     revision: 4e4b659d0570
                 remake_decided:
@@ -18323,15 +18367,78 @@ paths:
                     - url: https://files.siljang.example/v1/9fd00f0a9e09396fadaae7c1?exp=1763619300&sig=9e344b1122ca1926fb8afa701cabdcc3
                     - url: https://files.siljang.example/v1/27d73ef4c0ccdfd0d17df69e?exp=1763619300&sig=9c01b593f5d94da42c9501fa21744e6b
                     followUps: []
+                    problemKind: other
                     compensation: remake
+                    noCompensationReason: null
+                    otherCompensationNote: null
+                    otherCompensationAmount: null
                     decidedAt: '2026-11-21T12:00:00+09:00'
                     remakeOrder:
                       orderId: 405e1752-5bb9-53fd-a40f-1968bf9da8dc
                       orderNo: R2D5T7
                     refund: null
                     closedAt: '2026-11-21T12:00:00+09:00'
+                    reportedBy: orderer
+                    handoff: null
                     reportedAt: '2026-11-20T18:30:00+09:00'
                     revision: d90c0b9d2828
+                other_compensation:
+                  value:
+                    issueReportId: fadf5976-bd62-5e90-b246-f55b3471e43e
+                    order:
+                      orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                      orderNo: K7Q3M9
+                    orderVersion: 1
+                    paidAmount: 36000
+                    late: false
+                    status: closed
+                    description: 케이크 안에 머리카락이 있었어요
+                    healthConcern: false
+                    photos:
+                    - url: https://files.siljang.example/v1/497e0247e640f49f2e21db0a?exp=1763619300&sig=06b26937c422bd54ce9f70ac43fa7e70
+                    followUps: []
+                    problemKind: foreign_matter
+                    compensation: other_compensation
+                    noCompensationReason: null
+                    otherCompensationNote: 진료비 30,000원을 직접 보내 드림
+                    otherCompensationAmount: 30000
+                    decidedAt: '2026-11-21T12:00:00+09:00'
+                    remakeOrder: null
+                    refund: null
+                    closedAt: '2026-11-21T12:00:00+09:00'
+                    reportedBy: orderer
+                    handoff: null
+                    reportedAt: '2026-11-20T18:30:00+09:00'
+                    revision: 88a0ca7ccfe0
+                from_handoff:
+                  value:
+                    issueReportId: d71fe4cf-199d-595c-86ed-4edf383e8e9f
+                    order:
+                      orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                      orderNo: K7Q3M9
+                    orderVersion: 1
+                    paidAmount: 36000
+                    late: false
+                    status: reported
+                    description: 선물로 받은 케이크에 머리카락이 있었어요
+                    healthConcern: false
+                    photos: []
+                    followUps: []
+                    problemKind: null
+                    compensation: null
+                    noCompensationReason: null
+                    otherCompensationNote: null
+                    otherCompensationAmount: null
+                    decidedAt: null
+                    remakeOrder: null
+                    refund: null
+                    closedAt: null
+                    reportedBy: owner_from_handoff
+                    handoff:
+                      handoffId: bd2982f9-5f5b-5abf-bbc3-46311e3c1088
+                      createdAt: '2026-11-20T20:10:00+09:00'
+                    reportedAt: '2026-11-20T20:30:00+09:00'
+                    revision: 499e47911de6
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -18392,6 +18499,7 @@ paths:
         - SPEC-058
         - SPEC-059
         - SPEC-057
+        - SPEC-079
         omit:
           "403": 역할마다 세션 쿠키와 경로가 나뉘고(DEC-10, DEC-11), 다른 가게 기록은 404로 숨김(DEC-02)
           "409": 읽기만 함
@@ -18409,9 +18517,9 @@ paths:
   /owner/issue-reports/{issueReportId}/compensation:
     post:
       operationId: decideCompensation
-      summary: 보상 결정(재제작·일부 환불·전액 환불·없음)
+      summary: 보상 결정(문제 종류와 재제작·일부 환불·전액 환불·그 밖의 보상·없음)
       description: |-
-        보상은 사장님만 정한다(AI·손님에게 길이 없음). 재제작이면 새 픽업 일시(지금 뒤 60일 안)로 결제 없는 재제작 주문을 확정으로 남기고 자리를 잡는다(SPEC-060). 휴무일이면 409 confirmation_required(closed_day), 다 찬 날이면 overbooking이고 확인하면 마감 후 추가 수락으로 잡는다(REQ-221, REQ-226). 환불이면 환불 결정과 같은 한도(받은 금액 - 이미 정한 환불)로 환불을 남기고, 계산값은 고른 금액이라 다르게 정한 사유를 받지 않는다(SPEC-016, SPEC-047). 재제작 주문에 들어온 신고(다시 신고)는 원래 주문의 돈으로 한도를 보고 환불을 원래 주문에 남기며, 다시 재제작이면 새 재제작 주문도 원래 주문에 잇는다(SPEC-059, SPEC-060). 손님에게 보상 안내를 한 번 보내고 신고를 닫는다. 이미 정한 보상은 고치지 않는다(409 already_decided).
+        보상은 사장님만 정한다(AI·손님에게 길이 없음, REQ-246). 문제 종류(spoiled 상함·변질, foreign_matter 이물, other 그 밖)를 꼭 함께 고른다(REQ-247). 재제작이면 새 픽업 일시(지금 뒤 60일 안)로 결제 없는 재제작 주문을 확정으로 남기고 자리를 잡는다(SPEC-060). 휴무일이면 409 confirmation_required(closed_day), 다 찬 날이면 overbooking이고 확인하면 마감 후 추가 수락으로 잡는다(REQ-221, REQ-226). 환불이면 환불 결정과 같은 한도(받은 금액 - 이미 정한 환불)로 환불을 남기고, 계산값은 고른 금액이라 다르게 정한 사유를 받지 않는다(SPEC-016, SPEC-047). 상함·변질이나 이물에 보상 없음이면 저장하지 않고 409 confirmation_required(no_compensation_standard)로 소비자분쟁해결기준(공정위 고시 제2025-14호 별표, 제빵류: 교환 또는 환급)과 위험을 보이게 하고, 사장님이 사유(noCompensationReason, 1~200자)를 넣고 '그래도 보상 없이 닫기'를 누르면 confirm에 담아 다시 보낸다. 확인했는데 사유가 없으면 422 /noCompensationReason required, 다른 문제 종류나 보상에 사유를 보내면 422 /noCompensationReason not_allowed(REQ-248). 그 밖의 보상(other_compensation)은 사장님이 직접 처리하는 보상(예: 다른 상품, 진료비)이라 한 일(otherCompensationNote, 1~200자, 꼭)과 금액(otherCompensationAmount, 선택)만 남기고 환불·장부 쓰기를 만들지 않는다. 다른 보상에 한 일·금액을 보내면 422 not_allowed(REQ-249). 보상 없음의 사유와 그 밖의 보상의 한 일은 사장님 화면에만 보이고 손님 안내에 쓰지 않는다. 재제작 주문에 들어온 신고(다시 신고)는 원래 주문의 돈으로 한도를 보고 환불을 원래 주문에 남기며, 다시 재제작이면 새 재제작 주문도 원래 주문에 잇는다(SPEC-059, SPEC-060). 손님에게 보상 안내를 한 번 보내고(그 밖의 보상이면 '사장님이 직접 연락해 보상을 처리해 드려요') 신고를 닫는다. 사장님이 에스컬레이션 건에서 남긴 신고(reportedBy owner_from_handoff)는 보상 안내를 보내지 않고, 환불은 결제한 주문자에게 지금 환불 안내 규칙대로 가며, 신고한 사람에게는 그 건의 답(API-042)으로 결과를 전한다(DEC-24). 이미 정한 보상은 고치지 않는다(409 already_decided).
 
         SPEC: SPEC-059, SPEC-060, SPEC-047, SPEC-015
       tags:
@@ -18439,20 +18547,38 @@ paths:
               remake:
                 value:
                   baseRevision: 4e4b659d0570
+                  problemKind: other
                   compensation: remake
                   remakePickupAt: '2026-11-25T15:00:00+09:00'
               partial_refund:
                 value:
                   baseRevision: 4e4b659d0570
+                  problemKind: other
                   compensation: partial_refund
                   refundAmount: 20000
               none:
                 value:
                   baseRevision: 4e4b659d0570
+                  problemKind: other
                   compensation: none
+              none_spoiled_confirmed:
+                value:
+                  baseRevision: 6018c0f88a91
+                  problemKind: spoiled
+                  compensation: none
+                  noCompensationReason: 냉장 보관 안내를 했는데 하루 밖에 두셨어요
+                  confirm:
+                  - no_compensation_standard
+              other_compensation:
+                value:
+                  baseRevision: c179dba23b76
+                  problemKind: foreign_matter
+                  compensation: other_compensation
+                  otherCompensationNote: 진료비 30,000원을 직접 보내 드림
+                  otherCompensationAmount: 30000
       responses:
         "200":
-          description: '성공. 예시: remake, partial_refund'
+          description: '성공. 예시: remake, partial_refund, none_with_reason, other_compensation'
           headers:
             Idempotency-Replayed:
               $ref: '#/components/headers/IdempotencyReplayed'
@@ -18479,13 +18605,19 @@ paths:
                       - url: https://files.siljang.example/v1/9fd00f0a9e09396fadaae7c1?exp=1763619300&sig=9e344b1122ca1926fb8afa701cabdcc3
                       - url: https://files.siljang.example/v1/27d73ef4c0ccdfd0d17df69e?exp=1763619300&sig=9c01b593f5d94da42c9501fa21744e6b
                       followUps: []
+                      problemKind: other
                       compensation: remake
+                      noCompensationReason: null
+                      otherCompensationNote: null
+                      otherCompensationAmount: null
                       decidedAt: '2026-11-21T12:00:00+09:00'
                       remakeOrder:
                         orderId: 405e1752-5bb9-53fd-a40f-1968bf9da8dc
                         orderNo: R2D5T7
                       refund: null
                       closedAt: '2026-11-21T12:00:00+09:00'
+                      reportedBy: orderer
+                      handoff: null
                       reportedAt: '2026-11-20T18:30:00+09:00'
                       revision: d90c0b9d2828
                     remakeOrder:
@@ -18586,7 +18718,11 @@ paths:
                       - url: https://files.siljang.example/v1/9fd00f0a9e09396fadaae7c1?exp=1763619300&sig=9e344b1122ca1926fb8afa701cabdcc3
                       - url: https://files.siljang.example/v1/27d73ef4c0ccdfd0d17df69e?exp=1763619300&sig=9c01b593f5d94da42c9501fa21744e6b
                       followUps: []
+                      problemKind: other
                       compensation: partial_refund
+                      noCompensationReason: null
+                      otherCompensationNote: null
+                      otherCompensationAmount: null
                       decidedAt: '2026-11-21T12:00:00+09:00'
                       remakeOrder: null
                       refund:
@@ -18597,6 +18733,8 @@ paths:
                         decidedAt: '2026-11-21T12:00:00+09:00'
                         sentAt: null
                       closedAt: '2026-11-21T12:00:00+09:00'
+                      reportedBy: orderer
+                      handoff: null
                       reportedAt: '2026-11-20T18:30:00+09:00'
                       revision: 7b3ba1351a76
                     remakeOrder: null
@@ -18628,6 +18766,70 @@ paths:
                       decidedAt: '2026-11-21T12:00:00+09:00'
                       sentAt: null
                       revision: 58e916a35f67
+                none_with_reason:
+                  value:
+                    outcome: done
+                    issueReport:
+                      issueReportId: c1f88799-4ceb-5fff-bd99-de83d0aa505d
+                      order:
+                        orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                        orderNo: K7Q3M9
+                      orderVersion: 1
+                      paidAmount: 36000
+                      late: false
+                      status: closed
+                      description: 크림에서 상한 냄새가 나요
+                      healthConcern: false
+                      photos:
+                      - url: https://files.siljang.example/v1/35b1d02122a1df6f3e2aa861?exp=1763619300&sig=02b994aecbd98de1b6381cebe33593c5
+                      followUps: []
+                      problemKind: spoiled
+                      compensation: none
+                      noCompensationReason: 냉장 보관 안내를 했는데 하루 밖에 두셨어요
+                      otherCompensationNote: null
+                      otherCompensationAmount: null
+                      decidedAt: '2026-11-21T12:00:00+09:00'
+                      remakeOrder: null
+                      refund: null
+                      closedAt: '2026-11-21T12:00:00+09:00'
+                      reportedBy: orderer
+                      handoff: null
+                      reportedAt: '2026-11-20T18:30:00+09:00'
+                      revision: f18efc2961f4
+                    remakeOrder: null
+                    refund: null
+                other_compensation:
+                  value:
+                    outcome: done
+                    issueReport:
+                      issueReportId: fadf5976-bd62-5e90-b246-f55b3471e43e
+                      order:
+                        orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                        orderNo: K7Q3M9
+                      orderVersion: 1
+                      paidAmount: 36000
+                      late: false
+                      status: closed
+                      description: 케이크 안에 머리카락이 있었어요
+                      healthConcern: false
+                      photos:
+                      - url: https://files.siljang.example/v1/497e0247e640f49f2e21db0a?exp=1763619300&sig=06b26937c422bd54ce9f70ac43fa7e70
+                      followUps: []
+                      problemKind: foreign_matter
+                      compensation: other_compensation
+                      noCompensationReason: null
+                      otherCompensationNote: 진료비 30,000원을 직접 보내 드림
+                      otherCompensationAmount: 30000
+                      decidedAt: '2026-11-21T12:00:00+09:00'
+                      remakeOrder: null
+                      refund: null
+                      closedAt: '2026-11-21T12:00:00+09:00'
+                      reportedBy: orderer
+                      handoff: null
+                      reportedAt: '2026-11-20T18:30:00+09:00'
+                      revision: 88a0ca7ccfe0
+                    remakeOrder: null
+                    refund: null
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -18721,6 +18923,17 @@ paths:
                     confirm:
                     - kind: overbooking
                       day: '2026-11-20'
+                confirmation_required_no_compensation_standard:
+                  value:
+                    type: /problems/confirmation_required
+                    title: 저장하기 전에 확인해 주세요
+                    status: 409
+                    detail: 상함·변질이나 이물은 소비자분쟁해결기준(공정위 고시 제2025-14호 별표, 제빵류)이 교환이나 환급을 정해요. 보상 없이 닫으면 분쟁 때 가게에 불리할 수 있어요. 사유를 남기고 그래도 보상 없이 닫을까요?
+                    instance: /owner/issue-reports/75d85057-a59d-5318-b843-45c79a6523ea/compensation
+                    code: confirmation_required
+                    traceId: d000342ecdbebe86a0258a0ff508e718
+                    confirm:
+                    - kind: no_compensation_standard
                 request_in_progress:
                   value:
                     type: /problems/request_in_progress
@@ -18755,6 +18968,12 @@ paths:
                       code: outside_window
                     - field: /refundAmount
                       code: exceeds_received
+                    - field: /noCompensationReason
+                      code: required
+                    - field: /noCompensationReason
+                      code: not_allowed
+                    - field: /otherCompensationNote
+                      code: required
                 idempotency_key_reused:
                   value:
                     type: /problems/idempotency_key_reused
@@ -18821,6 +19040,7 @@ paths:
           - 409:version_conflict
           노출:
           - closed
+          - note:보상 없음의 사유와 그 밖의 보상의 한 일은 사장님 화면에만. 에스컬레이션 건에서 남긴 신고는 보상 안내를 보내지 않음(DEC-24)
           화면:
           - screen
   /owner/reviews:
@@ -19492,7 +19712,7 @@ paths:
       operationId: receiveCustomerMessage
       summary: 손님 메시지 수신(카카오 오픈빌더 스킬)
       description: |-
-        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 지금 버전 키나, 바꾼 뒤 24시간 안의 앞 버전 키가 아니면 401(DEC-08, REQ-237). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 전체 기한(받은 때부터 55초, AI-1)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도·차례마다 호출 상한(8번)은 모두 에스컬레이션함(R7, AI-1). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). 문의 끊김이나 상담 끝남으로 닫힌 손님에게도 이 안내(결제 안내·사장님 답·전날 안내 등)는 막지 않는다(REQ-212). 이때 보인 결제 안내는 그때를 전해진 시각으로 남겨 결제 기한을 그때부터 세고(REQ-218), 결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드를 보이고(SPEC-076), 손님이 확인하기 전에 입금했다고 하면 입금 알리기 카드 대신 그 카드를 다시 보인다(card_shown, SPEC-033). 손님이 자기 주문을 물으면 그 사용자가 요청한 주문마다 상태·픽업 일시·주문 내용 요약·금액과 결제가 확인된 시각·정한 환불과 보낸 때를 서버가 저장된 값으로 보인다(SPEC-040, REQ-241). 요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). 연결 확인 중인 채널에 그 연결의 연결 문구(API-032가 사장님 화면에만 보인 '연결 ' 뒤 숫자 6자리)가 오면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008, REQ-238). 다른 말이면 not_accepting과 같은 말로 답하고 시험을 시작하지 않는다. 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). 주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, 버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). 그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). 주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장과 미성년자 취소 고지, REQ-240)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간은 문서 본문과 오류 표 모두 5분(2026-11-14 다시 확인). 전체 기한 55초는 그보다 짧고, 실제 채널에서 개발 전 시험(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4). Open: 봇 ID와 스킬 키를 아는 사람이 꾸민 요청과 카카오의 요청을 가를 수단(요청 출처)이 문서에 없어 11단계 전에 카카오에 문의(OPEN-10).
+        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 지금 버전 키나, 바꾼 뒤 24시간 안의 앞 버전 키가 아니면 401(DEC-08, REQ-237). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 전체 기한(받은 때부터 55초, AI-1)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도·차례마다 호출 상한(8번)은 모두 에스컬레이션함(R7, AI-1). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). 문의 끊김이나 상담 끝남으로 닫힌 손님에게도 이 안내(결제 안내·사장님 답·전날 안내 등)는 막지 않는다(REQ-212). 이때 보인 결제 안내는 그때를 전해진 시각으로 남겨 결제 기한을 그때부터 세고(REQ-218), 결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드를 보이고(SPEC-076), 손님이 확인하기 전에 입금했다고 하면 입금 알리기 카드 대신 그 카드를 다시 보인다(card_shown, SPEC-033). 손님이 자기 주문을 물으면 그 사용자가 요청한 주문마다 상태·픽업 일시·주문 내용 요약·금액과 결제가 확인된 시각·정한 환불과 보낸 때를 서버가 저장된 값으로 보인다(SPEC-040, REQ-241). 변경·취소·문제 신고는 그 주문을 요청한 같은 카카오 사용자에게서만 받는다(REQ-251). 다른 사용자가 주문번호로 묻거나 바꾸려 하면 없는 주문번호와 같은 답을 주어 주문이 있는지 알리지 않고(REQ-252), 선물로 받았다는 것처럼 사정을 말하면 사유 other_user로 에스컬레이션한다(handed_over, REQ-253). 사장님은 그 건에서 문제 신고로 남길 수 있다(API-083). 신고 기한 뒤의 신고도 막지 않고 손님에게 기한이 지났다거나 권리가 없다고 말하지 않는다(REQ-250). 요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). 연결 확인 중인 채널에 그 연결의 연결 문구(API-032가 사장님 화면에만 보인 '연결 ' 뒤 숫자 6자리)가 오면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008, REQ-238). 다른 말이면 not_accepting과 같은 말로 답하고 시험을 시작하지 않는다. 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). 주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, 버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). 그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). 주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장과 미성년자 취소 고지, REQ-240)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간은 문서 본문과 오류 표 모두 5분(2026-11-14 다시 확인). 전체 기한 55초는 그보다 짧고, 실제 채널에서 개발 전 시험(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4). Open: 봇 ID와 스킬 키를 아는 사람이 꾸민 요청과 카카오의 요청을 가를 수단(요청 출처)이 문서에 없어 11단계 전에 카카오에 문의(OPEN-10).
 
         SPEC: SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-028, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-049, SPEC-056, SPEC-057, SPEC-066, SPEC-068, SPEC-069, SPEC-013, SPEC-014, SPEC-016, SPEC-008, SPEC-072, SPEC-075, SPEC-076
       tags:
@@ -19649,7 +19869,7 @@ paths:
                     data:
                       text: 답을 준비하고 있어요
                 handed_over:
-                  summary: AI가 답하지 않고 사장님께 에스컬레이션함(먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·조문 없음·빈 답 두 번)
+                  summary: AI가 답하지 않고 사장님께 에스컬레이션함(먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자(남의 주문을 두고 사정을 말함, REQ-253)·받기 전 문제·조문 없음·빈 답 두 번)
                   value:
                     version: "2.0"
                     template:
@@ -19886,7 +20106,7 @@ paths:
                             - simpleText:
                                 text: 1호 생크림 케이크는 35,000원이에요. 이 금액은 11월 15일 12:39까지 유효하고, 견적만으로 그날 자리를 잡아 두지는 않아요.
                       handed_over:
-                        summary: AI가 답하지 않고 사장님께 에스컬레이션함(먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·조문 없음·빈 답 두 번)
+                        summary: AI가 답하지 않고 사장님께 에스컬레이션함(먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자(남의 주문을 두고 사정을 말함, REQ-253)·받기 전 문제·조문 없음·빈 답 두 번)
                         value:
                           version: "2.0"
                           template:
@@ -20437,7 +20657,7 @@ paths:
                       - simpleText:
                           text: 주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요
                 issue_reported:
-                  summary: 문제 신고를 남기고 사장님께 알림(기한 뒤면 '기한 뒤'로)
+                  summary: 문제 신고를 남기고 사장님께 알림. 그 주문을 요청한 같은 카카오 사용자만(REQ-251). 기한 뒤면 사장님 화면에만 '기한 뒤'로 표시하고 손님에게 가는 말은 같음(REQ-250)
                   value:
                     version: "2.0"
                     template:
@@ -23416,6 +23636,357 @@ paths:
           - closed
           화면:
           - screen
+  /owner/handoffs/{handoffId}/issue-report:
+    post:
+      operationId: reportIssueFromHandoff
+      summary: 에스컬레이션 건에서 문제 신고로 남기기
+      description: |-
+        주문자가 아닌 카카오 사용자가 받은 주문의 문제를 말해 넘어온 에스컬레이션 건(사유 other_user, REQ-253)에서 사장님이 '이 주문의 문제 신고로 남기기'를 누른다. 서버는 그 건의 상담에 신고 내용(설명, 사진 없음)을 신고됨으로 두고, 그 건의 관련 주문에 문제 신고(reportedBy owner_from_handoff, 그 건)를 남긴다. 신고 기한은 그 건이 생긴 시각으로 보고 기한 뒤면 사장님 화면에만 '기한 뒤'(late). 같은 주문에 열린 신고가 있으면 받되 첫 신고에 잇는다(SPEC-058과 같음). 할 일 '문제 신고'를 올리되 사장님 알림과 문제 신고의 지연 안내(SPEC-024)는 보내지 않고, 그 건의 기다림과 7일 '답 없어 닫힘'은 그대로 돈다. 건은 이때 닫지 않는다(답할 때 닫힘, API-042). 보상은 보상 결정(API-065)으로 정하고 보상 안내는 보내지 않는다. 환불은 결제한 주문자에게 돌아가 지금 환불 안내 규칙대로 알리고, 신고한 사람에게는 사장님이 그 건에 답해 결과를 전한다(DEC-24). 사유가 other_user가 아니거나, 관련 주문이 없거나, 받은 주문(픽업 완료됨·퀵으로 보냄)이 아니거나, 건이 닫혔으면 남기지 않고 409 invalid_state. 이 건에서 남긴 신고가 이미 있으면 baseRevision과 상관없이 새로 남기지 않고 그 신고와 함께 200 unchanged(한 건에 신고 하나, G2). 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict. AI·손님은 이 명령을 낼 수 없다(AI 도구에 없음).
+
+        SPEC: SPEC-079, SPEC-058, SPEC-059
+      tags:
+      - 에스컬레이션 건·상담
+      parameters:
+      - name: handoffId
+        in: path
+        required: true
+        example: bd2982f9-5f5b-5abf-bbc3-46311e3c1088
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description: 에스컬레이션 건 ID(uuid). 없거나 다른 가게 것이거나 형식이 틀리면 404(DEC-02)
+      - $ref: '#/components/parameters/IdempotencyKey'
+      security:
+      - ownerSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueFromHandoffInput'
+            examples:
+              from_handoff:
+                value:
+                  baseRevision: e4337a139978
+                  description: 선물로 받은 케이크에 머리카락이 있었어요
+      responses:
+        "201":
+          description: '성공. 예시: created'
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueFromHandoffResult'
+              examples:
+                created:
+                  summary: 새로 만듦
+                  value:
+                    outcome: done
+                    issueReport:
+                      issueReportId: d71fe4cf-199d-595c-86ed-4edf383e8e9f
+                      order:
+                        orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                        orderNo: K7Q3M9
+                      orderVersion: 1
+                      paidAmount: 36000
+                      late: false
+                      status: reported
+                      description: 선물로 받은 케이크에 머리카락이 있었어요
+                      healthConcern: false
+                      photos: []
+                      followUps: []
+                      problemKind: null
+                      compensation: null
+                      noCompensationReason: null
+                      otherCompensationNote: null
+                      otherCompensationAmount: null
+                      decidedAt: null
+                      remakeOrder: null
+                      refund: null
+                      closedAt: null
+                      reportedBy: owner_from_handoff
+                      handoff:
+                        handoffId: bd2982f9-5f5b-5abf-bbc3-46311e3c1088
+                        createdAt: '2026-11-20T20:10:00+09:00'
+                      reportedAt: '2026-11-20T20:30:00+09:00'
+                      revision: 499e47911de6
+                    handoff:
+                      handoffId: bd2982f9-5f5b-5abf-bbc3-46311e3c1088
+                      consultationId: 6e735c2c-91e5-547c-afea-adbe6248300b
+                      reason: other_user
+                      status: open
+                      requestedDay: null
+                      order:
+                        orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                        orderNo: K7Q3M9
+                      customerLines:
+                      - at: '2026-11-20T20:10:00+09:00'
+                        text: 선물로 받은 케이크에 머리카락이 있었어요. 주문번호는 K7Q3M9래요
+                        photos: []
+                        reason: other_user
+                        order:
+                          orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                          orderNo: K7Q3M9
+                      customerChannelFriend: true
+                      answerText: null
+                      dayDecision: null
+                      dayAcceptExpiresAt: null
+                      dayUsedOrder: null
+                      issueReport:
+                        issueReportId: d71fe4cf-199d-595c-86ed-4edf383e8e9f
+                        status: reported
+                        late: false
+                        reportedAt: '2026-11-20T20:30:00+09:00'
+                      answeredAt: null
+                      closedAt: null
+                      createdAt: '2026-11-20T20:10:00+09:00'
+                      revision: e4337a139978
+        "200":
+          description: '성공. 예시: unchanged'
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueFromHandoffResult'
+              examples:
+                unchanged:
+                  summary: 이미 그 상태라 바꾼 것 없음(DEC-03)
+                  value:
+                    outcome: unchanged
+                    issueReport:
+                      issueReportId: d71fe4cf-199d-595c-86ed-4edf383e8e9f
+                      order:
+                        orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                        orderNo: K7Q3M9
+                      orderVersion: 1
+                      paidAmount: 36000
+                      late: false
+                      status: reported
+                      description: 선물로 받은 케이크에 머리카락이 있었어요
+                      healthConcern: false
+                      photos: []
+                      followUps: []
+                      problemKind: null
+                      compensation: null
+                      noCompensationReason: null
+                      otherCompensationNote: null
+                      otherCompensationAmount: null
+                      decidedAt: null
+                      remakeOrder: null
+                      refund: null
+                      closedAt: null
+                      reportedBy: owner_from_handoff
+                      handoff:
+                        handoffId: bd2982f9-5f5b-5abf-bbc3-46311e3c1088
+                        createdAt: '2026-11-20T20:10:00+09:00'
+                      reportedAt: '2026-11-20T20:30:00+09:00'
+                      revision: 499e47911de6
+                    handoff:
+                      handoffId: bd2982f9-5f5b-5abf-bbc3-46311e3c1088
+                      consultationId: 6e735c2c-91e5-547c-afea-adbe6248300b
+                      reason: other_user
+                      status: open
+                      requestedDay: null
+                      order:
+                        orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                        orderNo: K7Q3M9
+                      customerLines:
+                      - at: '2026-11-20T20:10:00+09:00'
+                        text: 선물로 받은 케이크에 머리카락이 있었어요. 주문번호는 K7Q3M9래요
+                        photos: []
+                        reason: other_user
+                        order:
+                          orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
+                          orderNo: K7Q3M9
+                      customerChannelFriend: true
+                      answerText: null
+                      dayDecision: null
+                      dayAcceptExpiresAt: null
+                      dayUsedOrder: null
+                      issueReport:
+                        issueReportId: d71fe4cf-199d-595c-86ed-4edf383e8e9f
+                        status: reported
+                        late: false
+                        reportedAt: '2026-11-20T20:30:00+09:00'
+                      answeredAt: null
+                      closedAt: null
+                      createdAt: '2026-11-20T20:10:00+09:00'
+                      revision: e4337a139978
+        "401":
+          description: |-
+            로그인이나 스킬 키가 없거나 맞지 않음
+
+            - `unauthenticated`: 로그인(세션 쿠키)이 없거나 만료됨
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                unauthenticated:
+                  value:
+                    type: /problems/unauthenticated
+                    title: 다시 로그인해 주세요
+                    status: 401
+                    detail: 로그인(세션 쿠키)이 없거나 만료됨
+                    instance: /owner/handoffs/bd2982f9-5f5b-5abf-bbc3-46311e3c1088/issue-report
+                    code: unauthenticated
+                    traceId: 3c5145f85e09c6b28408e0d2b810dcf7
+        "404":
+          description: |-
+            찾을 수 없음(DEC-02)
+
+            - `not_found`: 경로의 기록이 없거나, 다른 가게 것이거나, ID 형식이 틀림. 셋을 구분하지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                not_found:
+                  value:
+                    type: /problems/not_found
+                    title: 찾을 수 없어요
+                    status: 404
+                    detail: 경로의 기록이 없거나, 다른 가게 것이거나, ID 형식이 틀림
+                    instance: /owner/handoffs/bd2982f9-5f5b-5abf-bbc3-46311e3c1088/issue-report
+                    code: not_found
+                    traceId: fcef031972616e496f48b3198194cbfd
+        "409":
+          description: |-
+            지금 상태와 충돌해 아무것도 바꾸지 않음
+
+            - `version_conflict`: 화면이 본 뒤에 그 기록이 바뀜(baseRevision이 지금과 다름). 아무것도 바꾸지 않음
+            - `invalid_state`: 지금 상태에서는 할 수 없는 명령(상태 머신 1-1~1-8이 허용하지 않음)
+            - `request_in_progress`: 같은 요청 키의 첫 요청을 아직 처리하는 중(받은 뒤 60초가 지나도 끝나지 않으면 다음 요청이 이어받음, DEC-04)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                version_conflict:
+                  value:
+                    type: /problems/version_conflict
+                    title: 그 사이 바뀌었어요. 지금 상태를 확인해 주세요
+                    status: 409
+                    detail: 화면이 본 뒤에 그 기록이 바뀜(baseRevision이 지금과 다름)
+                    instance: /owner/handoffs/bd2982f9-5f5b-5abf-bbc3-46311e3c1088/issue-report
+                    code: version_conflict
+                    traceId: a99f113b5d0cbad075b7805a6a936d89
+                invalid_state:
+                  value:
+                    type: /problems/invalid_state
+                    title: 지금 상태에서는 할 수 없어요
+                    status: 409
+                    detail: 지금 상태에서는 할 수 없는 명령(상태 머신 1-1~1-8이 허용하지 않음)
+                    instance: /owner/handoffs/bd2982f9-5f5b-5abf-bbc3-46311e3c1088/issue-report
+                    code: invalid_state
+                    traceId: d80b51293a3e8e5f5112574ec4a943d5
+                request_in_progress:
+                  value:
+                    type: /problems/request_in_progress
+                    title: 처리하고 있어요. 잠시 뒤 다시 확인해 주세요
+                    status: 409
+                    detail: 같은 요청 키의 첫 요청을 아직 처리하는 중(받은 뒤 60초가 지나도 끝나지 않으면 다음 요청이 이어받음, DEC-04)
+                    instance: /owner/handoffs/bd2982f9-5f5b-5abf-bbc3-46311e3c1088/issue-report
+                    code: request_in_progress
+                    traceId: eddc3a519ba7daa90b33b56725d9f8e3
+        "422":
+          description: |-
+            입력이 계약에 맞지 않아 아무것도 바꾸지 않음(DEC-01)
+
+            - `validation_failed`: 입력 필드가 계약의 한도나 형식에 맞지 않음. 필드마다 errors에 위치와 사유 코드
+            - `idempotency_key_reused`: 같은 요청 키로 다른 명령이나 다른 내용을 보냄(서버가 요청 지문으로 가림, DEC-04)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validation_failed:
+                  value:
+                    type: /problems/validation_failed
+                    title: 입력한 내용을 확인해 주세요
+                    status: 422
+                    detail: 입력 필드가 계약의 한도나 형식에 맞지 않음
+                    instance: /owner/handoffs/bd2982f9-5f5b-5abf-bbc3-46311e3c1088/issue-report
+                    code: validation_failed
+                    traceId: 313247e6835a7821632ca742fd4846c9
+                    errors:
+                    - field: /description
+                      code: too_long
+                idempotency_key_reused:
+                  value:
+                    type: /problems/idempotency_key_reused
+                    title: 다시 시도해 주세요
+                    status: 422
+                    detail: 같은 요청 키로 다른 명령이나 다른 내용을 보냄(서버가 요청 지문으로 가림, DEC-04)
+                    instance: /owner/handoffs/bd2982f9-5f5b-5abf-bbc3-46311e3c1088/issue-report
+                    code: idempotency_key_reused
+                    traceId: 8808be8f388688da7ce36b6beaf09cce
+                missing_idempotency_key:
+                  summary: 요청 키 헤더가 없음(DEC-04)
+                  value:
+                    type: /problems/validation_failed
+                    title: 입력한 내용을 확인해 주세요
+                    status: 422
+                    detail: 요청 키 헤더가 없음
+                    instance: /owner/handoffs/bd2982f9-5f5b-5abf-bbc3-46311e3c1088/issue-report
+                    code: validation_failed
+                    traceId: 973313aa16854147498f62b5e57522a1
+                    errors:
+                    - field: header:Idempotency-Key
+                      code: required
+        default:
+          description: 예상하지 못한 서버 오류(500). 내용은 로그에만
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                internal:
+                  value:
+                    type: /problems/internal
+                    title: 문제가 생겼어요. 다시 시도해 주세요
+                    status: 500
+                    detail: 예상하지 못한 서버 오류
+                    instance: /owner/handoffs/bd2982f9-5f5b-5abf-bbc3-46311e3c1088/issue-report
+                    code: internal
+                    traceId: d9e5ea5a16f0b7536ae5f9d408299f60
+      x-corthex:
+        id: API-083
+        spec:
+        - SPEC-079
+        - SPEC-058
+        - SPEC-059
+        omit:
+          "403": 역할마다 세션 쿠키와 경로가 나뉘고(DEC-10, DEC-11), 다른 가게 기록은 404로 숨김(DEC-02)
+        kinds:
+          접근:
+          - security
+          - 401:unauthenticated
+          - note:사장님만. AI·손님은 이 명령을 낼 수 없음(AI 도구에 없음)
+          입력:
+          - 422:validation_failed
+          대상:
+          - 404:not_found
+          상태:
+          - 409:invalid_state
+          반복:
+          - idem
+          - example:unchanged
+          동시:
+          - revision
+          - 409:version_conflict
+          외부:
+          - note:문제 신고의 지연 안내(SPEC-024)와 사장님 알림은 보내지 않음. 그 건의 기다림이 그대로 돎(DEC-24)
+          노출:
+          - closed
+          - note:신고한 사람에게는 주문 내용·금액·주문자를 보이지 않고 보상 안내도 보내지 않음(REQ-252, DEC-24)
+          화면:
+          - screen
 components:
   schemas:
     Problem:
@@ -23581,6 +24152,7 @@ components:
           - closed_day
           - past_cutoff
           - holder_mismatch
+          - no_compensation_standard
         count:
           type: integer
           minimum: 0
@@ -25480,7 +26052,7 @@ components:
           type: integer
           minimum: 1
           maximum: 720
-          description: 문제 신고 기한(기본 24)
+          description: 문제 신고 기한(기본 24). 사장님이 빨리 확인하기 위한 기한이라 기한 뒤의 신고도 받고 사장님 화면에만 '기한 뒤'로 보임. 조문 글은 '받은 뒤 24시간 안에 알려 주시면 빨리 확인할 수 있어요'처럼 기한 뒤 신고를 막지 않는 글(REQ-250)
           x-corthex-column: operating_rules.issue_report_hours
         changeDeadlineHours:
           type: integer
@@ -27280,6 +27852,7 @@ components:
       - dayDecision
       - dayAcceptExpiresAt
       - dayUsedOrder
+      - issueReport
       - answeredAt
       - closedAt
       - createdAt
@@ -27356,6 +27929,11 @@ components:
           - $ref: '#/components/schemas/OrderRef'
           - type: "null"
           description: '추가 수락을 쓴 주문 요청: dayAcceptExpiresAt 전에 그 날짜로 와서 마감 후 추가 수락으로 자리를 잡은 주문 하나. 쓰면 다시 쓰지 않음(SPEC-023). 아니면 null'
+        issueReport:
+          anyOf:
+          - $ref: '#/components/schemas/IssueReportSummary'
+          - type: "null"
+          description: 사장님이 이 건에서 남긴 문제 신고(API-083, SPEC-079). 한 건에 하나이고 없으면 null. 사유가 other_user이고 관련 주문이 받은 주문인 열린 건에서만 남길 수 있음
         answeredAt:
           type:
           - string
@@ -27407,6 +27985,43 @@ components:
         - text
       - required:
         - dayDecision
+    IssueFromHandoffInput:
+      type: object
+      required:
+      - baseRevision
+      - description
+      properties:
+        baseRevision:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._-]+$
+          description: 화면이 본 기록의 revision. 지금과 다르면 409 version_conflict(DEC-05, G3)
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: 신고 설명. 화면이 그 건의 손님 말로 미리 채우고 사장님이 고침(SPEC-079). 사진은 없음
+          x-corthex-column: issue_details.description
+      additionalProperties: false
+    IssueFromHandoffResult:
+      type: object
+      required:
+      - outcome
+      - issueReport
+      - handoff
+      properties:
+        outcome:
+          type: string
+          enum:
+          - done
+          - unchanged
+          description: 'done: 바꿈, unchanged: 이미 그 상태라 아무것도 바꾸지 않음(DEC-03)'
+        issueReport:
+          $ref: '#/components/schemas/IssueReport'
+        handoff:
+          $ref: '#/components/schemas/Handoff'
+      additionalProperties: false
     HandoffAnswerResult:
       type: object
       required:
@@ -29721,11 +30336,17 @@ components:
       - healthConcern
       - photos
       - followUps
+      - problemKind
       - compensation
+      - noCompensationReason
+      - otherCompensationNote
+      - otherCompensationAmount
       - decidedAt
       - remakeOrder
       - refund
       - closedAt
+      - reportedBy
+      - handoff
       - reportedAt
       - revision
       properties:
@@ -29745,7 +30366,7 @@ components:
           description: 결제 금액(받은 금액, REQ-165). 재제작 주문에 들어온 신고(다시 신고)면 원래 주문의 받은 금액(SPEC-059)
         late:
           type: boolean
-          description: 신고 기한 뒤에 옴(REQ-072)
+          description: 신고 기한 뒤에 옴(REQ-072). 사장님 화면에만 보이고 손님 안내·카드에는 쓰지 않음(REQ-250). 사장님이 에스컬레이션 건에서 남긴 신고는 그 건이 생긴 시각으로 봄(DEC-24)
         status:
           type: string
           enum:
@@ -29794,6 +30415,16 @@ components:
           minItems: 0
           maxItems: 20
           description: 같은 주문의 뒤 신고(연결)
+        problemKind:
+          type:
+          - string
+          - "null"
+          enum:
+          - spoiled
+          - foreign_matter
+          - other
+          - null
+          description: '사장님이 보상을 정할 때 고른 문제 종류: 상함·변질·이물·그 밖(REQ-247). 정하기 전에는 null'
         compensation:
           type:
           - string
@@ -29802,8 +30433,30 @@ components:
           - remake
           - partial_refund
           - full_refund
+          - other_compensation
           - none
           - null
+        noCompensationReason:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 200
+          description: 상함·변질이나 이물에 보상 없음으로 닫은 사유(REQ-248). 사장님 화면에만. 주문이 끝난 날부터 3년이 지나면 신고 설명과 함께 비워 null(SPEC-065)
+        otherCompensationNote:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 200
+          description: 그 밖의 보상으로 사장님이 한 일(REQ-249). 사장님 화면에만. 3년이 지나면 비워 null(SPEC-065)
+        otherCompensationAmount:
+          type:
+          - integer
+          - "null"
+          minimum: 0
+          maximum: 100000000
+          description: 그 밖의 보상의 금액(사장님이 넣었을 때만). 환불·장부 쓰기가 아닌 기록(REQ-249)
         decidedAt:
           type:
           - string
@@ -29822,6 +30475,29 @@ components:
           - string
           - "null"
           format: date-time
+        reportedBy:
+          type: string
+          enum:
+          - orderer
+          - owner_from_handoff
+          description: '신고한 사람: 주문자(신고 카드)·사장님이 에스컬레이션 건에서 남김(다른 카카오 사용자의 말, SPEC-079)'
+          x-corthex-column: issue_reports.reported_by
+        handoff:
+          type:
+          - object
+          - "null"
+          description: 사장님이 에스컬레이션 건에서 남긴 신고의 그 건. 신고한 사람에게는 그 건의 답(API-042)으로 결과를 전함(DEC-24). 주문자의 신고면 null
+          required:
+          - handoffId
+          - createdAt
+          properties:
+            handoffId:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+          additionalProperties: false
         reportedAt:
           type: string
           format: date-time
@@ -29836,6 +30512,7 @@ components:
       type: object
       required:
       - baseRevision
+      - problemKind
       - compensation
       properties:
         baseRevision:
@@ -29844,13 +30521,23 @@ components:
           maxLength: 64
           pattern: ^[A-Za-z0-9._-]+$
           description: 화면이 본 기록의 revision. 지금과 다르면 409 version_conflict(DEC-05, G3)
+        problemKind:
+          type: string
+          enum:
+          - spoiled
+          - foreign_matter
+          - other
+          description: '문제 종류: 상함·변질·이물·그 밖. 사장님이 보상을 정할 때 꼭 고름(손님·AI는 고르지 않음, REQ-247)'
+          x-corthex-column: issue_reports.problem_kind
         compensation:
           type: string
           enum:
           - remake
           - partial_refund
           - full_refund
+          - other_compensation
           - none
+          description: 재제작·일부 환불·전액 환불·그 밖의 보상(사장님이 직접 처리, 환불·장부 쓰기 없음, REQ-249)·보상 없음
           x-corthex-column: issue_reports.compensation
         remakePickupAt:
           type: string
@@ -29862,6 +30549,24 @@ components:
           maximum: 100000000
           description: '일부 환불 금액. partial_refund만(SPEC-047과 같은 한도: 받은 금액 - 이미 정한 환불, 재제작 주문에 들어온 신고면 원래 주문의 것). 보상은 고른 금액이 계산값이라 다르게 정한 사유를 받지 않음(SPEC-059)'
           x-corthex-column: refunds.amount
+        noCompensationReason:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 보상 없음의 사유. 상함·변질이나 이물에 보상 없음일 때만 받고, 그때는 confirm의 no_compensation_standard와 함께 꼭 넣음(REQ-248). 사장님 화면에만
+          x-corthex-column: issue_reports.no_compensation_reason
+        otherCompensationNote:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: '그 밖의 보상으로 사장님이 한 일(예: 진료비를 직접 보내 드림). other_compensation만이고 그때는 꼭 넣음(REQ-249). 사장님 화면에만'
+          x-corthex-column: issue_reports.other_compensation_note
+        otherCompensationAmount:
+          type: integer
+          minimum: 0
+          maximum: 100000000
+          description: 그 밖의 보상의 금액(선택, 0원~1억 원). other_compensation만. 환불·장부 쓰기를 만들지 않음
+          x-corthex-column: issue_reports.other_compensation_amount
         confirm:
           type: array
           items:
@@ -29869,8 +30574,9 @@ components:
             enum:
             - closed_day
             - overbooking
+            - no_compensation_standard
           minItems: 0
-          maxItems: 2
+          maxItems: 3
           uniqueItems: true
           description: 409 confirmation_required로 받은 확인할 것 가운데 사장님이 확인한 것(DEC-06)
       additionalProperties: false
@@ -31746,6 +32452,7 @@ components:
         - API-036
         - API-040
         - API-042
+        - API-083
         - API-043
         - API-044
         - API-046
@@ -31796,6 +32503,7 @@ components:
         - API-035
         - API-036
         - API-042
+        - API-083
         - API-046
         - API-047
         - API-048
@@ -31886,6 +32594,7 @@ components:
         - API-040
         - API-041
         - API-042
+        - API-083
         - API-043
         - API-044
         - API-045
@@ -31960,6 +32669,7 @@ components:
         - API-039
         - API-041
         - API-042
+        - API-083
         - API-043
         - API-045
         - API-046
@@ -32065,6 +32775,7 @@ components:
         - API-079
         - API-035
         - API-042
+        - API-083
         - API-046
         - API-047
         - API-048
@@ -32088,6 +32799,7 @@ components:
         - API-011
         - API-014
         - API-042
+        - API-083
         - API-046
         - API-047
         - API-048
@@ -32257,6 +32969,7 @@ components:
         - API-035
         - API-036
         - API-042
+        - API-083
         - API-046
         - API-047
         - API-048
@@ -32357,6 +33070,7 @@ components:
         - API-040
         - API-041
         - API-042
+        - API-083
         - API-043
         - API-044
         - API-045
@@ -32489,6 +33203,12 @@ components:
         message: 예금주가 상호·대표자와 달라요. 가게 명의 계좌가 맞나요?
         operations:
         - API-025
+      no_compensation_standard:
+        spec: SPEC-059
+        meaning: '상함·변질이나 이물 신고에 보상 없음. 소비자분쟁해결기준(제빵류: 교환 또는 환급)과 위험을 보이고 사유(noCompensationReason)를 받음. 사장님이 ''그래도 보상 없이 닫기''를 누른 선택을 그 신고에 남김(REQ-248)'
+        message: 상함·변질이나 이물은 소비자분쟁해결기준(공정위 고시 제2025-14호 별표, 제빵류)이 교환이나 환급을 정해요. 보상 없이 닫으면 분쟁 때 가게에 불리할 수 있어요. 사유를 남기고 그래도 보상 없이 닫을까요?
+        operations:
+        - API-065
     skillOutcomes:
       answered:
         spec: SPEC-020
@@ -32504,7 +33224,7 @@ components:
         - API-070
       handed_over:
         spec: SPEC-022
-        meaning: AI가 답하지 않고 사장님께 에스컬레이션함(먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·조문 없음·빈 답 두 번)
+        meaning: AI가 답하지 않고 사장님께 에스컬레이션함(먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자(남의 주문을 두고 사정을 말함, REQ-253)·받기 전 문제·조문 없음·빈 답 두 번)
         message: 사장님 확인 뒤 답드릴게요
         handoff: AI 출력의 handoff 사유나 서버가 정한 사유
         operations:
@@ -32672,7 +33392,7 @@ components:
         - API-071
       issue_reported:
         spec: SPEC-058
-        meaning: 문제 신고를 남기고 사장님께 알림(기한 뒤면 '기한 뒤'로)
+        meaning: 문제 신고를 남기고 사장님께 알림. 그 주문을 요청한 같은 카카오 사용자만(REQ-251). 기한 뒤면 사장님 화면에만 '기한 뒤'로 표시하고 손님에게 가는 말은 같음(REQ-250)
         message: 신고를 받았어요. 사장님이 보시고 정하실 거예요
         operations:
         - API-071
@@ -32940,6 +33660,12 @@ components:
       why: 화면에서 '-'를 빠뜨리면 금액이 내려가는 변경이 차액 결제 안내로 가는 잘못을 막음(설계 재검토 M5 RE-17의 고치는 방향 '증감을 명시적으로 고름')
       alt: '부호 있는 amountDelta 그대로: 사장님이 부호를 넣어야 해 빠뜨릴 수 있음. 새 총액을 받음: 화면이 그 사이 바뀐 지금 금액과 견줘야 하고 금액 그대로를 고르기 어려움'
       decided: 확정(2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)', 설계 재검토 M5)
+    - id: DEC-24
+      title: 에스컬레이션 건에서 남긴 문제 신고의 안내와 기한
+      choice: 사장님이 에스컬레이션 건에서 남긴 문제 신고(API-083, reportedBy owner_from_handoff)는 보상을 정해도(API-065) 보상 안내를 보내지 않는다. 신고한 사람에게는 사장님이 그 건에 답해(API-042) 결과를 전하고, 환불은 결제한 주문자에게 돌아가 지금 환불 안내 규칙(SPEC-047)대로 주문자에게 알린다. 재제작이면 재제작 주문의 안내도 주문자에게 간다. 신고 기한은 그 에스컬레이션 건이 생긴 시각으로 보고, 할 일 '문제 신고'는 올리되 사장님 알림과 문제 신고의 지연 안내(SPEC-024)는 보내지 않는다(그 건의 기다림과 7일 '답 없어 닫힘'이 그대로 돎)
+      why: 주문자가 아닌 사람에게 주문 내용·금액을 알리지 않으면서(REQ-252) 선물로 받은 사람의 문제도 같은 보상 정하기로 다룸. 설계 재검토 M12 RB-15의 고치는 방향 '주문자에게 무엇을 알릴지는 지금 환불 안내 규칙을 따름'
+      alt: '신고한 사람에게 보상 안내를 보냄: 주문자가 아닌 사람에게 환불 금액과 보상이 알려짐. 주문자에게 ''선물 받은 분의 신고'' 안내를 새로 보냄: 새 안내 글과 받는 사람 규칙이 필요하고, 환불이면 환불 안내로 이미 알게 됨'
+      decided: 확정(2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)', 설계 재검토 M12. RB-15는 Claude 추천이라 동희님 확인 요청)
     open:
     - id: OPEN-1
       where: API-070
@@ -33448,3 +34174,51 @@ components:
       why: 확인을 기다리는 사업자 정보 변경 요청이 있으면 확인됨을 남기지 않고 409 identity_change_pending(SPEC-003, SPEC-078)
       decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M11·M14, 검토자의 고치는 방향대로)
       client: 영업 신고 확인(SCR-048)이 그 요청을 먼저 정하게 함. 있던 409에 오류 코드를 더한 것이라 A13은 찾지 않아 여기 적음
+    - what: '꼭 넣을 필드 더함: CompensationInput.problemKind'
+      why: 보상을 정할 때 사장님이 문제 종류(상함·변질, 이물, 그 밖)를 꼭 고름. 손님·AI는 고르지 않음(REQ-247, 설계 재검토 RA-13)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 보상 정하기 화면(SCR-027)이 문제 종류를 함께 보냄. 없으면 422 /problemKind required
+    - what: '꼭 넣을 필드 더함: IssueReport.problemKind'
+      why: 사장님이 고른 문제 종류. 보상을 정하기 전에는 null(REQ-247)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 응답에만 더한 필드. 문제 신고 화면(SCR-027)이 보임
+    - what: '꼭 넣을 필드 더함: IssueReport.noCompensationReason'
+      why: 상함·변질이나 이물에 보상 없음으로 닫은 사유(REQ-248)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 응답에만 더한 필드. 사장님 화면에만 보임
+    - what: '꼭 넣을 필드 더함: IssueReport.otherCompensationNote'
+      why: 그 밖의 보상으로 사장님이 한 일(REQ-249)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 응답에만 더한 필드. 사장님 화면에만 보임
+    - what: '꼭 넣을 필드 더함: IssueReport.otherCompensationAmount'
+      why: 그 밖의 보상의 금액(사장님이 넣었을 때만, REQ-249). 환불·장부 쓰기가 아님
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 응답에만 더한 필드
+    - what: '꼭 넣을 필드 더함: IssueReport.reportedBy'
+      why: '신고한 사람: 주문자(신고 카드)·사장님이 에스컬레이션 건에서 남김(SPEC-079, 설계 재검토 RB-15)'
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 응답에만 더한 필드. 문제 신고 화면(SCR-027)이 사장님이 남긴 신고임을 보임
+    - what: '꼭 넣을 필드 더함: IssueReport.handoff'
+      why: 사장님이 에스컬레이션 건에서 남긴 신고의 그 건(SPEC-079). 신고한 사람에게는 그 건의 답으로 결과를 전함(DEC-24)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 응답에만 더한 필드. 문제 신고 화면(SCR-027)이 그 건으로 가는 링크를 보임
+    - what: '꼭 넣을 필드 더함: Handoff.issueReport'
+      why: 사장님이 이 건에서 남긴 문제 신고(SPEC-079). 한 건에 하나
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 응답에만 더한 필드. 에스컬레이션 건 화면(SCR-017)이 남긴 신고로 가는 링크를 보임
+    - what: '고를 값 더함: CompensationInput.compensation·IssueReport.compensation other_compensation'
+      why: 그 밖의 보상(사장님이 직접 처리, 환불·장부 쓰기 없음, 손님에게는 사장님이 직접 연락해 처리한다는 보상 안내 한 번, REQ-249, REQ-073을 바꿈)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 보상 정하기 화면(SCR-027)이 다섯째 보상으로 보임. 값을 더한 것이라 A13은 찾지 않아 여기 적음
+    - what: '고를 값 더함: CompensationInput.confirm no_compensation_standard'
+      why: 상함·변질이나 이물에 보상 없음이면 저장 전에 소비자분쟁해결기준과 위험을 보이고 사유를 받음(REQ-248). 지금까지 바로 남던 보상 없음이 409 confirmation_required를 받음
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 보상 정하기 화면(SCR-027)이 기준·위험·사유 입력을 보이고, 확인하면 confirm과 사유를 담아 새 요청 키로 다시 보냄. 있던 409에 확인할 것을 더한 것이라 A13은 찾지 않아 여기 적음
+    - what: '값의 뜻이 바뀜: API-070 handed_over와 다른 사용자의 주문 질문'
+      why: 변경·취소·문제 신고는 그 주문을 요청한 같은 카카오 사용자에게서만 받음(REQ-251). 다른 사용자에게는 없는 주문번호와 같은 답을 주고(REQ-252), 선물로 받았다는 것처럼 사정을 말하면 사유 other_user로 에스컬레이션(REQ-253, REQ-062·REQ-063을 바꿈)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 손님에게 보이는 말만 바뀜. 응답 형식은 그대로라 A13은 찾지 않아 여기 적음
+    - what: '값의 뜻이 바뀜: API-071 issue_reported'
+      why: 신고 기한 뒤의 신고도 같은 말로 받고 기한을 말하지 않음. '기한 뒤'는 사장님 화면에만(REQ-250)
+      decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M12. RA-13은 검토자의 고치는 방향대로, RB-15는 Claude 추천이라 동희님 확인 요청)
+      client: 손님에게 보이는 말은 그대로. 결과의 뜻이라 A13은 찾지 않아 여기 적음

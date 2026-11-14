@@ -541,27 +541,41 @@ CHANGE_SUMMARY = {"changeRequestId": CHANGE["changeRequestId"], "status": "appli
 ISSUE = {
     "issueReportId": uid("issue:K7Q3M9:1"), "order": ORDER_REF, "orderVersion": 1, "paidAmount": 36000, "late": False,
     "status": "reported", "description": "케이크 옆면이 무너져 있었어요", "healthConcern": False,
-    "photos": [{"url": surl("issue:1")}, {"url": surl("issue:2")}], "followUps": [], "compensation": None, "decidedAt": None,
-    "remakeOrder": None, "refund": None, "closedAt": None, "reportedAt": t("11-20", "18:30"), "revision": rev("issue:1:reported"),
+    "photos": [{"url": surl("issue:1")}, {"url": surl("issue:2")}], "followUps": [], "problemKind": None, "compensation": None,
+    "noCompensationReason": None, "otherCompensationNote": None, "otherCompensationAmount": None, "decidedAt": None,
+    "remakeOrder": None, "refund": None, "closedAt": None, "reportedBy": "orderer", "handoff": None,
+    "reportedAt": t("11-20", "18:30"), "revision": rev("issue:1:reported"),
 }
-ISSUE_REMAKE = dict(ISSUE, status="closed", compensation="remake", decidedAt=t("11-21", "12:00"), remakeOrder=REMAKE_REF,
+ISSUE_REMAKE = dict(ISSUE, status="closed", problemKind="other", compensation="remake", decidedAt=t("11-21", "12:00"), remakeOrder=REMAKE_REF,
                     closedAt=t("11-21", "12:00"), revision=rev("issue:1:remake"))
 REFUND_COMP = dict(REFUND, refundId=uid("refund:K7Q3M9:comp"), cause="compensation", amount=20000, calculatedAmount=20000,
                    basis=dict(REFUND_BASIS, clauseTitles=[], cancelledAt=None, cancellationFeeKrw=0, preProductionRefundPct=None),
                    decidedAt=t("11-21", "12:00"), revision=rev("refund:comp"))
-ISSUE_PARTIAL = dict(ISSUE, status="closed", compensation="partial_refund", decidedAt=t("11-21", "12:00"),
+ISSUE_PARTIAL = dict(ISSUE, status="closed", problemKind="other", compensation="partial_refund", decidedAt=t("11-21", "12:00"),
                      refund={"refundId": REFUND_COMP["refundId"], "cause": "compensation", "decision": "partial", "amount": 20000,
                              "decidedAt": t("11-21", "12:00"), "sentAt": None},
                      closedAt=t("11-21", "12:00"), revision=rev("issue:1:partial"))
 ISSUE_SUMMARY = {"issueReportId": ISSUE["issueReportId"], "status": "reported", "late": False, "reportedAt": t("11-20", "18:30")}
+# 이물 신고: 사장님이 진료비를 직접 보낸 그 밖의 보상(환불·장부 쓰기 없음, REQ-249)
+ISSUE_FOREIGN = dict(ISSUE, issueReportId=uid("issue:K7Q3M9:foreign"), description="케이크 안에 머리카락이 있었어요",
+                     photos=[{"url": surl("issue:3")}], revision=rev("issue:foreign:reported"))
+ISSUE_OTHER = dict(ISSUE_FOREIGN, status="closed", problemKind="foreign_matter", compensation="other_compensation",
+                   otherCompensationNote="진료비 30,000원을 직접 보내 드림", otherCompensationAmount=30000,
+                   decidedAt=t("11-21", "12:00"), closedAt=t("11-21", "12:00"), revision=rev("issue:foreign:other"))
+# 상함·변질 신고: 기준과 위험을 확인하고 사유와 함께 보상 없이 닫음(REQ-248)
+ISSUE_SPOILED = dict(ISSUE, issueReportId=uid("issue:K7Q3M9:spoiled"), description="크림에서 상한 냄새가 나요",
+                     photos=[{"url": surl("issue:4")}], revision=rev("issue:spoiled:reported"))
+ISSUE_NONE_REASON = dict(ISSUE_SPOILED, status="closed", problemKind="spoiled", compensation="none",
+                         noCompensationReason="냉장 보관 안내를 했는데 하루 밖에 두셨어요",
+                         decidedAt=t("11-21", "12:00"), closedAt=t("11-21", "12:00"), revision=rev("issue:spoiled:none"))
 
 # ── 에스컬레이션 건과 상담 ────────────────────────────────────────────────────────
 HANDOFF = {
     "handoffId": uid("handoff:1"), "consultationId": CONSULT_ID, "reason": "edibility", "status": "open", "requestedDay": None,
     "order": None, "customerLines": [{"at": t("11-12", "12:40"), "text": "땅콩 알레르기가 있는데 먹어도 되나요?", "photos": [],
                                       "reason": "edibility", "order": None}],
-    "customerChannelFriend": True, "answerText": None, "dayDecision": None, "dayAcceptExpiresAt": None, "dayUsedOrder": None, "answeredAt": None,
-    "closedAt": None, "createdAt": t("11-12", "12:40"), "revision": rev("handoff:1:open"),
+    "customerChannelFriend": True, "answerText": None, "dayDecision": None, "dayAcceptExpiresAt": None, "dayUsedOrder": None,
+    "issueReport": None, "answeredAt": None, "closedAt": None, "createdAt": t("11-12", "12:40"), "revision": rev("handoff:1:open"),
 }
 HANDOFF_ANSWERED = dict(HANDOFF, status="answered", answerText="땅콩은 쓰지 않지만 같은 주방에서 견과류를 다뤄요. 걱정되시면 드시지 않는 게 좋아요.",
                         answeredAt=t("11-12", "13:00"), revision=rev("handoff:1:answered"))
@@ -573,6 +587,18 @@ HANDOFF_DAY = dict(HANDOFF, handoffId=uid("handoff:2"), reason="closed_day", req
 HANDOFF_CLOSED = dict(HANDOFF, status="closed_no_answer", closedAt=t("11-19", "12:40"), revision=rev("handoff:1:closed"))
 HANDOFF_DAY_ACCEPTED = dict(HANDOFF_DAY, status="answered", dayDecision="accepted", dayAcceptExpiresAt=t("11-13", "16:30"),
                             answeredAt=t("11-12", "16:30"), revision=rev("handoff:2:answered"))
+# 주문자가 아닌 카카오 사용자가 선물로 받은 케이크의 문제를 말해 그 주문과 함께 넘어온 건(REQ-253)
+HANDOFF_OTHER_USER = dict(HANDOFF, handoffId=uid("handoff:3"), consultationId=uid("consultation:3"), reason="other_user", order=ORDER_REF,
+                          customerLines=[{"at": t("11-20", "20:10"), "text": "선물로 받은 케이크에 머리카락이 있었어요. 주문번호는 K7Q3M9래요",
+                                          "photos": [], "reason": "other_user", "order": ORDER_REF}],
+                          createdAt=t("11-20", "20:10"), revision=rev("handoff:3:open"))
+# 사장님이 그 건에서 남긴 문제 신고(SPEC-079). 신고 기한은 그 건이 생긴 시각으로 봄(DEC-24)
+ISSUE_FROM_HANDOFF = dict(ISSUE, issueReportId=uid("issue:K7Q3M9:handoff"), description="선물로 받은 케이크에 머리카락이 있었어요",
+                          photos=[], reportedBy="owner_from_handoff",
+                          handoff={"handoffId": HANDOFF_OTHER_USER["handoffId"], "createdAt": HANDOFF_OTHER_USER["createdAt"]},
+                          reportedAt=t("11-20", "20:30"), revision=rev("issue:handoff:reported"))
+HANDOFF_OTHER_USER_REPORTED = dict(HANDOFF_OTHER_USER, issueReport={"issueReportId": ISSUE_FROM_HANDOFF["issueReportId"], "status": "reported",
+                                                                    "late": False, "reportedAt": ISSUE_FROM_HANDOFF["reportedAt"]})
 MESSAGES = {
     "consultationId": CONSULT_ID, "status": "awaiting_owner", "customerChannelFriend": True,
     "items": [
