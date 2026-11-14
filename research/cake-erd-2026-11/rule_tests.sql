@@ -128,12 +128,13 @@ INSERT INTO shops (id, owner_id, name, contact_phone, business_name, representat
    '다른가게', '박사장', '1234567890', '간이과세자 면제', '2026-0456', 'bakery', 'license/b.jpg', 'entrust-v1', now());
 -- 연결됨: 버튼 블록 ID 다섯이 시험 버튼으로 모두 닿고, 시험 안내가 닿아 먼저 보내기 됨(REQ-206, REQ-180)
 INSERT INTO kakao_channels (id, shop_id, bot_id, channel_public_id, status, check_started_at, linked_at, card_block_id, orderer_block_id,
-                            allergy_block_id, depositor_block_id, review_block_id, verified_blocks, test_user_key, event_status, event_task_id, event_checked_at) VALUES
+                            allergy_block_id, depositor_block_id, review_block_id, verified_blocks, test_user_key, event_status, event_task_id, event_checked_at,
+                            claim_expires_at) VALUES
   ('a3000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 'bot-a', '_abcde', 'linked', now(), now(), 'blk-card-a',
    'blk-orderer-a', 'blk-allergy-a', 'blk-depositor-a', 'blk-review-a', ARRAY['card', 'orderer_info', 'allergy_answer', 'depositor_name', 'review'],
-   'owner-a', 'ready', 'task-a', now()),
+   'owner-a', 'ready', 'task-a', now(), NULL),
   ('a3000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000002', 'bot-b', '_fghij', 'pending', now(), NULL, 'blk-card-b',
-   NULL, NULL, NULL, NULL, ARRAY['card'], 'owner-b', 'unchecked', NULL, NULL);
+   NULL, NULL, NULL, NULL, ARRAY['card'], 'owner-b', 'unchecked', NULL, NULL, now() + interval '30 minutes');
 INSERT INTO privacy_policies (id, shop_id, version, body, overseas_transfers) VALUES
   ('a4000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000001', 1, '처리방침 글',
    '[{"items":"대화","country":"미국","recipient":"모델 회사","purpose":"답 만들기","refuse":"상담 대신 전화"}]');
@@ -657,7 +658,8 @@ SELECT pg_temp.expect_fail('SPEC-003 이유 없는 보류', 'shops_hold_reason_c
 SELECT pg_temp.expect_fail('REQ-103 영업 신고 확인 전 예약 링크', 'shops_booking_needs_license', ARRAY[$$
   UPDATE shops SET booking_slug = 'other-shop', booking_issued_at = now() WHERE id = 'a2000000-0000-0000-0000-000000000002'$$]);
 SELECT pg_temp.expect_fail('SPEC-008 채널 하나를 두 가게에', 'kakao_channels_bot_active_uq', ARRAY[$$
-  INSERT INTO kakao_channels (shop_id, bot_id, status) VALUES ('a2000000-0000-0000-0000-000000000002', 'bot-a', 'pending')$$]);
+  INSERT INTO kakao_channels (shop_id, bot_id, status, claim_expires_at)
+  VALUES ('a2000000-0000-0000-0000-000000000002', 'bot-a', 'pending', now() + interval '30 minutes')$$]);
 SELECT pg_temp.expect_fail('REQ-206 블록 ID 없이 연결됨', 'kakao_channels_blocks_chk', ARRAY[$$
   UPDATE kakao_channels SET status = 'linked', linked_at = now() WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
 SELECT pg_temp.expect_fail('REQ-206 시험 버튼이 닿지 않은 블록으로 연결됨', 'kakao_channels_blocks_chk', ARRAY[$$
@@ -674,6 +676,26 @@ SELECT pg_temp.expect_fail('REQ-180 사유 없는 먼저 보내기 안 됨', 'ka
   UPDATE kakao_channels SET event_status = 'unavailable' WHERE id = 'a3000000-0000-0000-0000-000000000001'$$]);
 SELECT pg_temp.expect_fail('REQ-180 연결 전 시험 안내', 'kakao_channels_event_chk', ARRAY[$$
   UPDATE kakao_channels SET event_status = 'checking', event_task_id = 'task-b' WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-237 키를 바꾸지 않았는데 앞 버전 키를 받음', 'kakao_channels_prev_key_chk', ARRAY[$$
+  UPDATE kakao_channels SET previous_key_until = now() + interval '1 hour' WHERE id = 'a3000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-237 앞 버전 키를 24시간 넘게 받음', 'kakao_channels_prev_key_chk', ARRAY[$$
+  UPDATE kakao_channels SET skill_key_version = 2, skill_key_issued_at = now(), previous_key_until = now() + interval '25 hours' WHERE id = 'a3000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-237 스킬 키 버전 0', 'kakao_channels_skill_key_version_check', ARRAY[$$
+  UPDATE kakao_channels SET skill_key_version = 0 WHERE id = 'a3000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_ok('REQ-237 키를 바꾸고 앞 버전 키를 24시간까지 받음', ARRAY[$$
+  UPDATE kakao_channels SET skill_key_version = 2, skill_key_issued_at = now(), previous_key_until = now() + interval '24 hours' WHERE id = 'a3000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_ok('REQ-237 키를 바꾸고 앞 버전 키를 바로 끊음', ARRAY[$$
+  UPDATE kakao_channels SET skill_key_version = 2, skill_key_issued_at = now(), previous_key_until = NULL WHERE id = 'a3000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-238 선점이 풀리는 시각 없는 연결 확인 중', 'kakao_channels_claim_chk', ARRAY[$$
+  UPDATE kakao_channels SET claim_expires_at = NULL WHERE id = 'a3000000-0000-0000-0000-000000000002'$$]);
+SELECT pg_temp.expect_fail('REQ-238 연결됨에 남은 선점', 'kakao_channels_claim_chk', ARRAY[$$
+  UPDATE kakao_channels SET claim_expires_at = now() + interval '30 minutes' WHERE id = 'a3000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('REQ-238 선점이 남은 봇을 다른 가게가 넣음', 'kakao_channels_bot_active_uq', ARRAY[$$
+  INSERT INTO kakao_channels (shop_id, bot_id, status, claim_expires_at) VALUES ('a2000000-0000-0000-0000-000000000001', 'bot-b', 'pending', now() + interval '30 minutes')$$]);
+SELECT pg_temp.expect_ok('REQ-238 30분이 지난 선점을 풀고 다른 가게가 같은 봇을 넣음', ARRAY[$$
+  UPDATE kakao_channels SET claim_expires_at = now() - interval '1 minute' WHERE id = 'a3000000-0000-0000-0000-000000000002'$$, $$
+  UPDATE kakao_channels SET status = 'failed', claim_expires_at = NULL WHERE bot_id = 'bot-b' AND status = 'pending' AND claim_expires_at < now()$$, $$
+  INSERT INTO kakao_channels (shop_id, bot_id, status, claim_expires_at) VALUES ('a2000000-0000-0000-0000-000000000001', 'bot-b', 'pending', now() + interval '30 minutes')$$]);
 SELECT pg_temp.expect_fail('REQ-141 국외 이전 항목 빈 처리방침', 'privacy_policies_transfers_chk', ARRAY[$$
   INSERT INTO privacy_policies (shop_id, version, body, overseas_transfers) VALUES ('a2000000-0000-0000-0000-000000000001', 2, '글', '[]')$$]);
 SELECT pg_temp.expect_fail('R2 대소문자만 다른 운영자 이메일', 'operators_email_uq', ARRAY[$$
@@ -800,6 +822,25 @@ SELECT pg_temp.expect_fail('AI-1 쓰기 도구 기록', 'ai_tool_calls_tool_name
 SELECT pg_temp.expect_fail('AI-1 같은 차례 같은 시도 두 번', 'ai_calls_attempt_uq', ARRAY[$$
   INSERT INTO ai_calls (shop_id, consultation_id, trace_id, attempt, provider, model, prompt_version, sent_at, result)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'trace-1', 1, 'p', 'm', 'v1', now(), 'failure')$$]);
+SELECT pg_temp.expect_ok('AI-1 한 차례에 도구 뒤 이어 하기·다시 하기·다시 쓰기로 8번 호출', ARRAY[$$
+  INSERT INTO ai_calls (shop_id, consultation_id, trace_id, attempt, call_kind, provider, model, prompt_version, sent_at, result)
+  SELECT 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'trace-1', n,
+         (ARRAY['after_tool', 'after_tool', 'retry', 'after_tool', 'regenerate', 'after_tool', 'retry'])[n - 1], 'p', 'm', 'v1', now(), 'failure'
+  FROM generate_series(2, 8) AS n$$]);
+SELECT pg_temp.expect_fail('AI-1 두 번째 호출을 처음으로 남김', 'ai_calls_kind_chk', ARRAY[$$
+  INSERT INTO ai_calls (shop_id, consultation_id, trace_id, attempt, call_kind, provider, model, prompt_version, sent_at, result)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'trace-1', 2, 'first', 'p', 'm', 'v1', now(), 'failure')$$]);
+SELECT pg_temp.expect_fail('AI-1 첫 호출을 다시 하기로 남김', 'ai_calls_kind_chk', ARRAY[$$
+  INSERT INTO ai_calls (shop_id, consultation_id, trace_id, attempt, call_kind, provider, model, prompt_version, sent_at, result)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'trace-8', 1, 'retry', 'p', 'm', 'v1', now(), 'failure')$$]);
+SELECT pg_temp.expect_fail('AI-1 호출 순번 0', 'ai_calls_attempt_check', ARRAY[$$
+  INSERT INTO ai_calls (shop_id, consultation_id, trace_id, attempt, call_kind, provider, model, prompt_version, sent_at, result)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'trace-8', 0, 'retry', 'p', 'm', 'v1', now(), 'failure')$$]);
+SELECT pg_temp.expect_fail('AI-1 모르는 다시 한 종류', 'ai_calls_call_kind_check', ARRAY[$$
+  INSERT INTO ai_calls (shop_id, consultation_id, trace_id, attempt, call_kind, provider, model, prompt_version, sent_at, result)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'trace-8', 2, 'repair', 'p', 'm', 'v1', now(), 'failure')$$]);
+SELECT pg_temp.expect_ok('AI-1 차례마다 호출 상한을 정해진 문장을 쓴 이유로 남김', ARRAY[$$
+  UPDATE ai_calls SET fallback_reason = 'call_limit' WHERE id = 'fd000000-0000-0000-0000-000000000001'$$]);
 
 -- 주문 (CTX-003)
 SELECT pg_temp.expect_fail('REQ-054 규정 동의 없는 주문 요청', 'orders_consent_chk', ARRAY[$$

@@ -423,6 +423,10 @@
           "03h8ae91z268hx14mqeg1khnm",
           "03h8ae91z268hx14mqgzmtk75",
           "03h8ae91z7opv4oy5shovw13h",
+          "03h8g65b0trd6wj788c9lpihg",
+          "03h8g65b14uxgqimaqmzamnms",
+          "03h8g65b1fq5nju39pc3iairw",
+          "03h8g65b1l4zmfru04ijq5676",
           "03h7y0178l0hvzg6df07hv645"
         ],
         "groupId": "03h7y017wkyrgfkkkeykxgwvj",
@@ -1490,6 +1494,7 @@
           "03h7y0179n9e4e4gq7hv7j9ph",
           "03h7y0179n9e4e4gq7jtiad9o",
           "03h7y0179sukl6c8nh9772b6d",
+          "03h8g65b1w74uio5m4k15rpey",
           "03h7y0179sukl6c8nhavxbf4n",
           "03h7y0179sukl6c8nhcwryuu8",
           "03h7y0179sukl6c8nhg0plt0j",
@@ -2081,7 +2086,7 @@
         "id": "03h7y0178l0hvzg6dev43es0x",
         "tableId": "03h7y0178l0hvzg6deiwnudw3",
         "name": "check_started_at",
-        "comment": "'연결 확인'을 누른 시각(10분 안에 테스트 메시지와 버튼 블록 다섯이 와야 함)",
+        "comment": "'연결 확인'을 누른 시각(10분 안에 연결 문구와 버튼 블록 다섯이 와야 함)",
         "dataType": "timestamptz",
         "options": 0
       },
@@ -2155,7 +2160,7 @@
         "id": "03h8ae91ywupd6ow8n8ylli0d",
         "tableId": "03h7y0178l0hvzg6deiwnudw3",
         "name": "test_user_key",
-        "comment": "연결 확인 때 테스트 메시지를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008)",
+        "comment": "연결 확인 때 연결 문구를 보낸 사용자 키. 시험 버튼과 시험 안내를 이 사용자로 함(SPEC-008, REQ-238)",
         "dataType": "text",
         "options": 0
       },
@@ -2198,6 +2203,40 @@
         "name": "allergy_block_id",
         "comment": "가게 봇의 '알레르기 답' 블록 ID. 알레르기 정보 동의 카드의 버튼이 부르고 AI를 거치지 않고 답을 받음(SPEC-075, REQ-202, REQ-206)",
         "dataType": "text",
+        "options": 0
+      },
+      "03h8g65b0trd6wj788c9lpihg": {
+        "id": "03h8g65b0trd6wj788c9lpihg",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "skill_key_version",
+        "comment": "스킬 키 버전. 키는 서버 시크릿·연결 ID·버전으로 만들고 저장하지 않음(06단계 DEC-08). 사장님이 바꿀 때마다 1 늘림(REQ-237)",
+        "dataType": "smallint",
+        "default": "1",
+        "options": 8
+      },
+      "03h8g65b14uxgqimaqmzamnms": {
+        "id": "03h8g65b14uxgqimaqmzamnms",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "skill_key_issued_at",
+        "comment": "지금 버전의 스킬 키를 만든 시각(REQ-237)",
+        "dataType": "timestamptz",
+        "default": "now()",
+        "options": 8
+      },
+      "03h8g65b1fq5nju39pc3iairw": {
+        "id": "03h8g65b1fq5nju39pc3iairw",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "previous_key_until",
+        "comment": "바로 앞 버전의 키도 받는 끝 시각: 바꾼 때부터 24시간까지. 바로 끊었거나 바꾼 적이 없으면 비움(REQ-237)",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h8g65b1l4zmfru04ijq5676": {
+        "id": "03h8g65b1l4zmfru04ijq5676",
+        "tableId": "03h7y0178l0hvzg6deiwnudw3",
+        "name": "claim_expires_at",
+        "comment": "'연결 확인 중' 선점이 풀리는 시각: 마지막 저장이나 연결 확인 시작에서 30분. 지난 뒤 다른 가게가 같은 봇을 넣으면 이 연결은 '연결 안 됨'(REQ-238)",
+        "dataType": "timestamptz",
         "options": 0
       },
       "03h7y0178l0hvzg6df42g49v0": {
@@ -3419,7 +3458,7 @@
         "id": "03h7y01791hwo1dbaiuq9gq9p",
         "tableId": "03h7y01791hwo1dbahxpd3ebr",
         "name": "allergy_answer",
-        "comment": "알레르기 답('없음'도 답, REQ-200). 알레르기 정보에 동의한 뒤 전용 블록으로 AI를 거치지 않고 받음(SPEC-075, REQ-202). AI로 보내지 않고(REQ-204) 이 주문 밖에서 쓰지 않음(REQ-142)",
+        "comment": "알레르기 답('없음'도 답, REQ-200). 알레르기 정보에 동의한 뒤 전용 블록으로 AI를 거치지 않고 받음(SPEC-075, REQ-202). AI로 보내지 않고(REQ-204) 이 주문 밖에서 쓰지 않음(REQ-236)",
         "dataType": "text",
         "options": 0
       },
@@ -4352,7 +4391,7 @@
         "id": "03h7y01796y3abgmnq6z15qvo",
         "tableId": "03h7y01796y3abgmnp67p8m07",
         "name": "allergy_answer",
-        "comment": "알레르기 답. 알레르기 정보에 동의한 주문에만(REQ-200, REQ-203). 이 주문 밖에서 쓰지 않고 장부에 적지 않고 AI로 보내지 않음(REQ-142, REQ-204, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)",
+        "comment": "알레르기 답. 알레르기 정보에 동의한 주문에만(REQ-200, REQ-203). 이 주문 밖에서 쓰지 않고 장부에 적지 않고 AI로 보내지 않음(REQ-236, REQ-204, SPEC-064). 주문이 끝나고 30일 뒤 지움(SPEC-065)",
         "dataType": "text",
         "options": 0
       },
@@ -6634,7 +6673,7 @@
         "id": "03h7y0179sukl6c8nh9772b6d",
         "tableId": "03h7y0179n9e4e4gq7aukd260",
         "name": "attempt",
-        "comment": "그 차례 안 몇 번째 호출(시간 초과·429·5xx 재시도, 재생성)",
+        "comment": "차례 안 호출 순번(1부터, 위 끝 없음). 차례마다 호출 상한(8번)은 AI-1이 호출 전에 막음",
         "dataType": "smallint",
         "default": "1",
         "options": 8
@@ -6779,7 +6818,7 @@
         "id": "03h7y0179sukl6c8ni949f7f1",
         "tableId": "03h7y0179n9e4e4gq7aukd260",
         "name": "fallback_reason",
-        "comment": "정해진 문장이나 에스컬레이션을 쓴 이유(AI-1의 서버 확인·실패)",
+        "comment": "정해진 문장이나 에스컬레이션을 쓴 이유(AI-1의 서버 확인·실패·차례마다 호출 상한)",
         "dataType": "text",
         "options": 0
       },
@@ -6790,6 +6829,15 @@
         "comment": "남긴 시각",
         "dataType": "timestamptz",
         "default": "now()",
+        "options": 8
+      },
+      "03h8g65b1w74uio5m4k15rpey": {
+        "id": "03h8g65b1w74uio5m4k15rpey",
+        "tableId": "03h7y0179n9e4e4gq7aukd260",
+        "name": "call_kind",
+        "comment": "다시 한 종류: 처음·도구 뒤 이어 하기·다시 하기(시간 초과·429·5xx)·다시 쓰기(서버 확인을 지나지 못한 답·빈 답). 처음은 순번 1에만",
+        "dataType": "text",
+        "default": "'first'",
         "options": 8
       },
       "03h7y0179sukl6c8nifl93c4n": {
@@ -11869,7 +11917,7 @@
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 376개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 381개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,
