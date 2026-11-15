@@ -425,7 +425,8 @@ def banned(label, text, allow_more=None):
             problems.append("%s: 옛 용어 '%s' → %s: …%s…" % (label, m.group(0), new, text[max(0, m.start() - 12): m.end() + 12]))
 
 
-check("금지어(01 용어집, 02·03 검사와 같은 허용 꼴)와 옛 용어(08·09 검사와 같은 목록): 작업·반복 설명·README·tech-stack.md·반복 0 안내서의 손으로 쓴 글")
+check("금지어(01 용어집, 02·03 검사와 같은 허용 꼴)와 옛 용어(08·09 검사와 같은 목록): 작업·반복 설명·README·tech-stack.md·반복 0 안내서·"
+      "카카오 시험 대본·시험 서버 README의 손으로 쓴 글")
 for tid, t in T.items():
     banned(tid, (t.get("name") or "") + " " + (t.get("done") or "") + " " + str(t.get("finished") or ""))
 for it, note in W.ITERATION_NOTES:
@@ -444,6 +445,11 @@ GUIDE = REPO / "docs/10-wbs/iteration-0-guide.md"
 if GUIDE.exists():
     # 반복 0 안내서도 손으로 쓴 글. 주소와 코드 글자(다른 회사 화면의 이름을 그대로 옮긴 것)는 뺌
     banned("iteration-0-guide.md", re.sub(r"https?://\S+|`[^`]*`", " ", GUIDE.read_text(encoding="utf-8")))
+# TASK-008의 카카오 시험 대본과 시험 서버 README도 손으로 쓴 글(규칙 215). 주소·코드 글자·코드 블록은 뺌
+for hand_doc in ("docs/10-wbs/kakao-test-script.md", "research/kakao-test-2026-11/README.md"):
+    p = REPO / hand_doc
+    if p.exists():
+        banned(hand_doc, re.sub(r"https?://\S+|`[^`]*`", " ", re.sub(r"```.*?```", " ", p.read_text(encoding="utf-8"), flags=re.S)))
 
 check("끝난 표시(finished): 끝난 날로 시작하고 앞선 작업이 모두 끝남")
 for tid, t in ACTIVE.items():

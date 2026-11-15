@@ -1,0 +1,34 @@
+{
+  "intent": { "id": "a00000000000000000000003", "name": "후기 시험" },
+  "userRequest": {
+    "timezone": "Asia/Seoul",
+    "params": { "surface": "BuilderBotTest", "ignoreMe": "true" },
+    "block": { "id": "b00000000000000000000003", "name": "후기 시험" },
+    "utterance": "예",
+    "lang": "ko",
+    "user": {
+      "id": "fakeBotUserKey0000000000000000000000000000000000000000000000000001",
+      "type": "botUserKey",
+      "properties": { "botUserKey": "fakeBotUserKey0000000000000000000000000000000000000000000000000001" }
+    }
+  },
+  "bot": { "id": "c00000000000000000000001", "name": "시험 봇" },
+  "action": {
+    "name": "시험 스킬",
+    "clientExtra": null,
+    "params": {
+      "review_text": "케이크가 맛있었어요. 연락처 010 9876 5432",
+      "photos": "{\"privacyAgreement\":\"Y\",\"imageQuantity\":\"1\",\"secureUrls\":\"List(http://secure.kakaocdn.net/dna/O5UOr/K6auLPnoAf/XXX/img.jpg?credential=FAKEcredential00000000000000000000&expires=1542358548&allow_ip=&allow_referer=&signature=FAKEsignature%2F0000000000000%3D)\",\"expire\":\"1970-01-19T05:25:58+0900\"}",
+      "consent": "예"
+    },
+    "id": "d00000000000000000000001",
+    "detailParams": {
+      "photos": {
+        "origin": "List(http://secure.kakaocdn.net/dna/O5UOr/K6auLPnoAf/XXX/img.jpg?credential=FAKEcredential00000000000000000000&expires=1542358548&allow_ip=&allow_referer=&signature=FAKEsignature%2F0000000000000%3D)",
+        "value": "{\"privacyAgreement\":\"Y\",\"imageQuantity\":\"1\",\"secureUrls\":\"List(http://secure.kakaocdn.net/dna/O5UOr/K6auLPnoAf/XXX/img.jpg?credential=FAKEcredential00000000000000000000&expires=1542358548&allow_ip=&allow_referer=&signature=FAKEsignature%2F0000000000000%3D)\",\"expire\":\"1970-01-19T05:25:58+0900\"}",
+        "groupName": ""
+      }
+    }
+  },
+  "contexts": []
+}

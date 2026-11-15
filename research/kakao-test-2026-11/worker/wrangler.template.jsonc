@@ -1,0 +1,21 @@
+// 시험 서버 설정의 원본. 계정 ID·KV ID·주소는 넣지 않음.
+// deploy.sh가 KV를 만들고 그 ID를 채운 wrangler.local.jsonc(저장소에 넣지 않음)로 배포함.
+// 로컬 시험(wrangler dev --local)은 이 파일을 그대로 씀(KV ID는 로컬 저장소 이름일 뿐).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "siljang-kakao-test",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  // 요청 본문이 로그에 남지 않게 Workers Logs를 끔. 기록은 마스킹한 KV 기록만
+  "observability": { "enabled": false },
+  "kv_namespaces": [{ "binding": "RECORDS", "id": "REPLACE_WITH_KV_ID" }],
+  "queues": {
+    "producers": [{ "binding": "CALLBACKS", "queue": "siljang-kakao-test-callbacks" }],
+    "consumers": [
+      { "queue": "siljang-kakao-test-callbacks", "max_batch_size": 1, "max_batch_timeout": 1, "max_retries": 0 }
+    ]
+  },
+  "vars": { "EVENT_NAME": "siljang_test_event", "RECORD_TTL_SECONDS": "1209600" }
+}
