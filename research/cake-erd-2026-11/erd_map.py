@@ -371,6 +371,9 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("답함", "owner_tasks.wait_status"),
         ("상담 다시 열림", "consultations.status"),
         ("추가 수락을 쓴 주문 요청(하나만)", "handoffs.day_used_order_id"),
+        ("결제 기다림 주문 한도: 한도를 넘겨 받기·받지 않음", "handoffs.limit_decision"),
+        ("한도를 넘겨 받은 24시간", "handoffs.limit_accept_expires_at"),
+        ("한도 넘겨 받기를 쓴 주문 요청(하나만)", "handoffs.limit_used_order_id"),
         ("덧붙은 질문도 함께 보임", "handoff_questions.message_id"),
     ],
     "SPEC-024": [
@@ -471,6 +474,11 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("초안의 픽업 날짜와 시각을 가게 시간대로 합침", "order_drafts.pickup_day"),
         ("초안의 픽업 시각", "order_drafts.pickup_time"),
         ("요청한 상담과 그 상담의 손님", "orders.customer_id"),
+        ("한 손님의 결제 기다림 주문 한도", "shops.awaiting_payment_limit"),
+        ("손님 행을 잠그고 결제 기다림 주문을 셈", "customers.id"),
+        ("한도에 닿으면 결제 기다림 주문 한도 건", "handoffs.reason"),
+        ("한도를 넘겨 받은 24시간", "handoffs.limit_accept_expires_at"),
+        ("한도 넘겨 받기를 쓴 주문 요청", "handoffs.limit_used_order_id"),
     ],
     "SPEC-030": [
         ("결제 기한까지 잡은 자리", "slot_holds.payment_request_id"),
@@ -479,6 +487,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("추가 수락한 날 24시간", "handoffs.day_accept_expires_at"),
         ("기본 디자인 주문", "orders.kind"),
         ("추가 수락을 쓴 주문 요청", "handoffs.day_used_order_id"),
+        ("결제 기다림 주문 한도에 닿으면 자리를 잡지 않음", "shops.awaiting_payment_limit"),
     ],
     "SPEC-031": [
         ("맞춤 주문 요청됨", "orders.status"),
@@ -1206,6 +1215,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("이미 시작된 기다림의 끝은 그대로", "owner_tasks.wait_due_at"),
         ("문의 끊김 시간", "shops.idle_close_hours"),
         ("하루 AI 비용 한도", "shops.daily_ai_cost_limit_krw"),
+        ("한 손님의 결제 기다림 주문 한도", "shops.awaiting_payment_limit"),
         ("그날 쓴 AI 비용", "ai_calls.cost_krw"),
         ("먼저 바뀌었는지", "shops.updated_at"),
         ("저장 두 번에 한 번", "request_keys.request_key"),

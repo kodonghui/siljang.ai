@@ -70,7 +70,7 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | --- | --- | --- | --- | --- | --- |
 | TBL-001 | `owners` | 사장님 | CTX-007 | 001, 067 | TERM-044 |
 | TBL-002 | `operators` | 운영자 | CTX-007 | 001, 003, 078 | TERM-074 |
-| TBL-003 | `shops` | 가게 | CTX-007 | 001, 002, 003, 006, 009, 010, 011, 017, 024, 025, 036, 052, 053, 068, 073, 077, 078 | TERM-053 |
+| TBL-003 | `shops` | 가게 | CTX-007 | 001, 002, 003, 006, 009, 010, 011, 017, 024, 025, 029, 030, 036, 052, 053, 068, 073, 077, 078 | TERM-053 |
 | TBL-004 | `kakao_channels` | 카카오톡 채널 연결 | CTX-007 | 008, 010, 011, 017, 066, 068, 075 | TERM-053 |
 | TBL-005 | `privacy_policies` | 가게 개인정보 처리방침 | CTX-007 | 010, 011, 018 | 없음 |
 | TBL-006 | `price_lists` | 가격표 버전 | CTX-002 | 004, 010, 011, 013, 027 | TERM-047 |
@@ -148,7 +148,7 @@ flowchart LR
   C8["CTX-009 장부 연결<br/>테이블 3개"]
   C9["공통<br/>테이블 4개"]
   C0 -->|8| C1
-  C0 -->|5| C2
+  C0 -->|6| C2
   C0 -->|2| C6
   C1 -->|1| C2
   C1 -->|1| C3
@@ -233,6 +233,7 @@ erDiagram
     uuid order_id FK "관련 주문"
     text status "열림·답함·답 없어 닫힘"
     uuid day_used_order_id FK "추가 수락을 쓴 주문 요청"
+    uuid limit_used_order_id FK "한도 넘겨 받기를 쓴 주문…"
   }
   issue_details {
     uuid id PK "신고 내용 ID"
@@ -288,6 +289,7 @@ erDiagram
   messages ||--o| handoffs : "source_message_id"
   orders |o--o{ handoffs : "order_id"
   orders |o--o| handoffs : "day_used_order_id"
+  orders |o--o| handoffs : "limit_used_order_id"
   consultations ||--o{ issue_details : "consultation_id"
   orders |o--o{ issue_details : "order_id"
   issue_details ||--o{ issue_photos : "issue_details_id"
