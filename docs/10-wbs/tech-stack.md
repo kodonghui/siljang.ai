@@ -2,7 +2,7 @@
 
 상태: 제안(2026-11-15, TASK-001). 고르는 일은 TASK-002(동희님)입니다. 2026-11-15 17시 무렵 체크포인트에서 동희님이 주신 방향을 바탕으로 썼습니다: "배포는 클라우드플레어에 수퍼베이스 등으로 MVP 할까 해. 실제 서비스 할때는 물론 좋은걸로 옮겨가야겠지만. 내 인도 ovh 서버나 싱가포르 ovh 서버 사용하는건 어떻게 생각해?"(답 전체는 [README](README.md) 9절).
 
-- 사실은 2026-11-15에 공식 문서를 열어 확인한 것만 적었습니다. 주소와 확인한 글은 9절에 있습니다. 확인하지 못한 것은 8절에 모았습니다.
+- 사실은 2026-11-15에 공식 문서를 열어 확인한 것만 적었습니다. 주소와 확인한 글은 10절에 있습니다. 확인하지 못한 것은 8절에 모았습니다.
 - 숫자 가운데 가게 수·상담 수·사진 크기는 Claude의 가정이고(6-2), 나머지는 저장소 원본이나 공식 가격표에서 옮겼습니다.
 - 금액은 미국 달러, 세금을 뺀 값입니다.
 
@@ -22,6 +22,7 @@
 | 배포 | wrangler로 스테이징·운영 Worker 둘, 개발 데이터베이스는 Supabase 무료 등급 | 출시 때 운영 프로젝트만 Pro로 |
 | 운영자 인증 | TASK-003에서 고름: Cloudflare Access 또는 Supabase Auth의 TOTP 2단계 인증 | 06 OPEN-6 |
 | OVH 서버 | 손님 개인정보는 두지 않음. 1분 외부 감시, 합성 상담 평가 돌리기, 카카오 시험 서버 | 5절 |
+| 사장님·운영자 앱 | 휴대폰 홈 화면에 추가하는 웹앱(PWA) 먼저, 스토어 앱(iOS·Android)은 웹 다음에 웹을 Capacitor로 감싸 만듦 | 동희님 결정 2026-11-15 17:56 무렵 "웹앱+스토어 앱인데 웹부터 만들어바". 9절 |
 | 월 비용 | 개발 0~5달러, 가게 10곳 약 30~35달러, 가게 100곳 약 35~60달러 | AI 사용료는 따로(상담 하나의 AI 비용 상한 REQ-262). 6절 |
 
 ## 1. 우리 프로젝트가 스택에 요구하는 것
@@ -123,7 +124,7 @@ flowchart LR
 
 ### 3-3. 한도와 우리 요구의 대조
 
-| 우리 요구 | 플랫폼 한도(9절 출처) | 판단 |
+| 우리 요구 | 플랫폼 한도(10절 출처) | 판단 |
 | --- | --- | --- |
 | 스킬 응답 4초 | Workers HTTP 요청은 벽시계 제한이 없고, CPU는 유료 플랜에서 요청마다 기본 30초(5분까지) | 맞음. 남은 위험은 서울 데이터베이스까지의 왕복이라 8-1에서 잼 |
 | AI 기한 55초, 콜백 유효 5분 | `waitUntil()`은 응답 뒤 30초까지. 큐 소비자는 벽시계 15분 | `waitUntil`로는 모자라 큐로 함 |
@@ -146,7 +147,7 @@ flowchart LR
 
 - TypeScript. 서버는 Hono, 데이터베이스는 node-postgres(`pg`)를 Hyperdrive와 함께 씁니다(Hyperdrive의 Supabase 안내가 권하는 드라이버).
 - 요청 검사기는 계약(`api/openapi.yaml`)의 JSON Schema에서 빌드 때 미리 만듭니다. Workers는 실행 중 `eval()`·`new Function`을 막기 때문입니다.
-- 두 AI 회사 모두 TypeScript 공식 SDK가 있습니다(9절 M1·M3). Workers에서 도는지는 8-1에서 봅니다.
+- 두 AI 회사 모두 TypeScript 공식 SDK가 있습니다(10절 M1·M3). Workers에서 도는지는 8-1에서 봅니다.
 - 웹은 React + Vite이고 09단계 토큰을 그대로 씁니다.
 - 저장소의 생성·검사 도구(Python)는 그대로 둡니다(7절).
 
@@ -154,7 +155,7 @@ flowchart LR
 
 ### 4-1. 옮길 곳과 옮길 때
 
-- 옮길 곳 후보는 9절 C1~C6에서 확인한 둘입니다: AWS 서울(ECS on Fargate + RDS for PostgreSQL 16.x), Google Cloud 서울(Cloud Run + Cloud SQL for PostgreSQL, asia-northeast3). Supabase는 그대로 두고 서버만 컨테이너로 옮기는 길도 있습니다.
+- 옮길 곳 후보는 10절 C1~C6에서 확인한 둘입니다: AWS 서울(ECS on Fargate + RDS for PostgreSQL 16.x), Google Cloud 서울(Cloud Run + Cloud SQL for PostgreSQL, asia-northeast3). Supabase는 그대로 두고 서버만 컨테이너로 옮기는 길도 있습니다.
 - 옮길 신호(Claude 제안): ① 8-1 시험이나 운영에서 4초 응답·연결 수가 맞지 않음, ② 법률 확인(TASK-013)이 국내 회사나 국내 처리만 허락함, ③ 가게가 늘어 전용 연결·읽기 복제·긴 백업 보관이 필요함, ④ 월 비용이 컨테이너보다 커짐.
 
 ### 4-2. 무엇이 바뀌고 무엇이 그대로인지
@@ -184,7 +185,7 @@ flowchart LR
 
 동희님 질문: "내 인도 ovh 서버나 싱가포르 ovh 서버 사용하는건 어떻게 생각해?"
 
-- 확인한 사실: OVHcloud에는 싱가포르(SGP)와 뭄바이(MUM) 리전이 있습니다. 아시아·태평양(뭄바이·싱가포르·시드니) VPS는 월 트래픽 한도(VPS-1 500GB, VPS-2·3 1TB, VPS-4 3TB)가 있고 넘으면 10Mbps로 묶입니다(9절).
+- 확인한 사실: OVHcloud에는 싱가포르(SGP)와 뭄바이(MUM) 리전이 있습니다. 아시아·태평양(뭄바이·싱가포르·시드니) VPS는 월 트래픽 한도(VPS-1 500GB, VPS-2·3 1TB, VPS-4 3TB)가 있고 넘으면 10Mbps로 묶입니다(10절).
 - 재지 않은 것: 서울까지의 지연. TASK-172에서 잽니다.
 - Claude 의견: 손님 개인정보를 다루는 운영(API·데이터베이스·사진·백업)은 서울에 두고, OVH 서버는 개인정보가 없는 보조 일에 쓰는 것을 권합니다.
 
@@ -212,14 +213,14 @@ flowchart LR
 
 | 항목 | 값 | 출처 |
 | --- | --- | --- |
-| Workers 유료 플랜 | 계정당 월 5달러부터. 요청 월 1,000만 포함 뒤 100만당 0.30달러, CPU 월 3,000만 ms 포함 뒤 100만 ms당 0.02달러. 정적 자산 요청은 무료, 나가는 데이터 요금 없음, Worker가 부르는 요청은 셈하지 않음 | 9절 W2 |
-| Workers 무료 | 요청마다 CPU 10ms, Cron Trigger 계정당 5개 | 9절 W1 |
-| Hyperdrive | 유료 플랜에 포함, 쿼리 수 제한 없음(무료는 하루 10만) | 9절 H3 |
-| Queues | 유료에서 월 100만 작업 포함 뒤 100만당 0.40달러. 메시지 하나에 보통 3 작업(쓰기·읽기·지우기) | 9절 Q2 |
-| Supabase 무료 | 0달러. 데이터베이스 500MB, 일주일 활동이 적으면 멈춤, 활성 프로젝트 2개, 자동 백업 없음 | 9절 S2·S4·S5 |
-| Supabase Pro | 월 25달러부터, 컴퓨트 크레딧 10달러(Micro 하나). 디스크 8GB(넘으면 GB당 0.125달러), 파일 저장 100GB(넘으면 GB당 0.0213달러), 나가는 데이터 250GB(넘으면 GB당 0.09달러), 매일 백업 7일 | 9절 S2 |
-| Supabase 컴퓨트 | Micro 월 10달러(1GB, 직결 60), Small 월 15달러(2GB, 직결 90) | 9절 S2 |
-| Supabase 추가 | PITR 7일 보관 월 100달러, IPv4 월 약 4달러 | 9절 S2·S8 |
+| Workers 유료 플랜 | 계정당 월 5달러부터. 요청 월 1,000만 포함 뒤 100만당 0.30달러, CPU 월 3,000만 ms 포함 뒤 100만 ms당 0.02달러. 정적 자산 요청은 무료, 나가는 데이터 요금 없음, Worker가 부르는 요청은 셈하지 않음 | 10절 W2 |
+| Workers 무료 | 요청마다 CPU 10ms, Cron Trigger 계정당 5개 | 10절 W1 |
+| Hyperdrive | 유료 플랜에 포함, 쿼리 수 제한 없음(무료는 하루 10만) | 10절 H3 |
+| Queues | 유료에서 월 100만 작업 포함 뒤 100만당 0.40달러. 메시지 하나에 보통 3 작업(쓰기·읽기·지우기) | 10절 Q2 |
+| Supabase 무료 | 0달러. 데이터베이스 500MB, 일주일 활동이 적으면 멈춤, 활성 프로젝트 2개, 자동 백업 없음 | 10절 S2·S4·S5 |
+| Supabase Pro | 월 25달러부터, 컴퓨트 크레딧 10달러(Micro 하나). 디스크 8GB(넘으면 GB당 0.125달러), 파일 저장 100GB(넘으면 GB당 0.0213달러), 나가는 데이터 250GB(넘으면 GB당 0.09달러), 매일 백업 7일 | 10절 S2 |
+| Supabase 컴퓨트 | Micro 월 10달러(1GB, 직결 60), Small 월 15달러(2GB, 직결 90) | 10절 S2 |
+| Supabase 추가 | PITR 7일 보관 월 100달러, IPv4 월 약 4달러 | 10절 S2·S8 |
 
 ### 6-2. 가정(Claude, 2026-11-15)
 
@@ -248,7 +249,7 @@ flowchart LR
 1. Workers의 기본 언어는 JavaScript·TypeScript입니다. Python Workers는 2026-09-21에 정식(GA)이 됐고 FastAPI도 쓸 수 있지만, Hyperdrive의 Supabase 안내와 트랜잭션 설명은 node-postgres·Postgres.js를 기준으로 하고, Python에서는 따로 권하는 드라이버(asyncpg·pg8000·psycopg)를 씁니다.
 2. 웹(React)이 TypeScript라 계약에서 만든 타입을 서버와 웹이 함께 씁니다. 한 사람이 유지할 언어가 하나입니다.
 3. leetmaster-v3의 `student-service`가 TypeScript·PostgreSQL 17·작업 표 worker라, 동희님이 이미 본 구조를 그대로 옮겨 씁니다(2절).
-4. 두 AI 회사 모두 TypeScript 공식 SDK가 있습니다(9절 M1·M3).
+4. 두 AI 회사 모두 TypeScript 공식 SDK가 있습니다(10절 M1·M3).
 
 Python을 남길 곳: 저장소의 생성·검사 도구(01~10단계)는 Python 그대로 둡니다. AI 평가는 모델에 보내는 부분만 서버와 같은 모델 호출 모듈(TypeScript)을 쓰고(REQ-266), 채점·집계는 Python이어도 됩니다.
 
@@ -293,8 +294,53 @@ Python을 남길 곳: 저장소의 생성·검사 도구(01~10단계)는 Python 
 - 1분 외부 감시 도구: TASK-016에서 고름.
 - Fastify가 Workers에서 도는지, 두 AI 회사 Python SDK가 Python Workers에서 도는지: 추천안에서는 쓰지 않아 보지 않았습니다.
 - 가게 10·100곳의 실제 사용량: 6-2는 가정입니다.
+- 감싼 앱(Capacitor)에서 세션 쿠키가 실리는지, 네이티브 HTTP·쿠키로 되는지, 파일 고르기가 카메라·사진 고르기를 여는지: TASK-179.
+- Google Play 회사(조직) 계정의 출시 전 시험 조건: 확인한 글(10절 GP2)은 개인 계정만 말합니다.
+- 사장님 로그인이 Apple 심사 4.8의 예외에 드는지: 들지 않는다고 보고 TASK-178에서 동희님께 확인 요청합니다.
 
-## 9. 출처(2026-11-15 확인)
+## 9. 사장님·운영자 앱: 웹앱 먼저, 스토어 앱은 그다음
+
+2026-11-15 17:56 무렵 동희님 결정(Claude Code 채팅의 결정 카드, 말 그대로): 손님 창구는 "지금대로 카카오 채널 (추천)", 사장님·운영자 앱은 "웹앱+스토어 앱인데 웹부터 만들어바". 손님 쪽(카카오 채널과 스킬 서버)은 이 문서 그대로입니다. 사장님·운영자 화면은 휴대폰 홈 화면에 추가하는 웹앱(PWA, 02 REQ-267)을 먼저 만들고, iOS·Android 스토어 앱(REQ-268)은 웹을 낸 다음 WBS 반복 9에서 만듭니다. 사장님 알림은 지금 설계대로 우리 서비스 채널의 카카오톡이고, 스토어 앱의 휴대폰 알림(앱 알림)은 스토어 앱 때 더합니다.
+
+### 9-1. 웹앱(PWA)으로 먼저 할 것
+
+- 홈 화면 설치: Chromium 브라우저(Chrome·삼성 인터넷·Edge)는 매니페스트에 `name`이나 `short_name`, 192px·512px 아이콘, `start_url`, `display`가 있고 https로 줄 때 설치를 권합니다(10절 MD1). iOS는 매니페스트의 `display`가 `standalone`이나 `fullscreen`이면 홈 화면에 추가한 아이콘이 주소창 없는 앱으로 열립니다(10절 AP5). 작업은 TASK-176입니다.
+- 서비스 워커는 설치의 조건이 아닙니다(MD1). 넣더라도 정적 파일만 저장하고, 손님 개인정보가 담긴 API 응답은 저장하지 않습니다.
+- 웹 알림(Web Push)은 넣지 않습니다. 넣는다면 iOS는 홈 화면에 추가한 웹앱에서 iOS 16.4부터 되고, 사장님이 버튼을 누른 때에만 권한을 물을 수 있으며, Apple Developer Program 가입은 필요 없습니다(AP4·AP5).
+
+### 9-2. 스토어 앱을 만드는 길
+
+| 길 | 하는 일 | 좋은 점 | 걸리는 점 |
+| --- | --- | --- | --- |
+| A. Capacitor로 웹을 감쌈 (추천) | 같은 React 웹 빌드를 iOS·Android 앱에 넣고, 기기 기능(알림·카메라)은 Capacitor 플러그인으로 씀(P1) | 화면을 다시 만들지 않고 09 토큰을 그대로 씀 | 앱 안 웹의 주소가 `capacitor://localhost`(iOS)·`https://localhost`(Android)라 API와 사이트가 달라짐. 웹 주소를 그대로 여는 `server.url`은 운영용이 아님(P3). iOS 빌드는 Xcode가 있는 Mac에서(클라우드 빌드 서비스도 있음, P8) |
+| B. Expo(React Native)로 다시 씀 | 화면을 React Native 부품으로 다시 쓰고, 웹은 React Native Web으로(X4) | 기기 기능과 앱다운 동작이 자연스러움. iOS 빌드를 Expo 클라우드의 macOS에서 함(X1) | 웹 화면(DOM·CSS)을 다시 씀. 09 토큰을 React Native 스타일로 옮김 |
+| C. Expo의 DOM 부품('use dom')으로 조금씩 | 지금 웹 부품을 Expo 앱 안에 넣고 부품 하나씩 네이티브로 바꿈(X2) | A와 B 사이를 조금씩 옮김 | 두 방식이 섞인 앱을 한동안 유지 |
+
+- 추천(Claude): A. 첫 버전 사장님 화면은 할 일 확인과 입력이 중심이라 웹으로 충분하고, 한 사람이 같은 화면을 두 번 만들지 않습니다. 다만 Apple 심사 4.2는 웹사이트를 다시 포장한 것 이상의 기능을 바라므로(AP1), 앱 알림, 알림을 누르면 그 화면으로 열림, 카메라로 사진 올리기를 앱에 더합니다. 앱다운 동작이 모자라면 C로 부품 하나씩 옮깁니다.
+- 반론: 처음부터 B로 하면 앱다운 품질이 좋지만 웹과 앱 화면을 두 벌 유지합니다. 스토어 앱은 웹 다음이라 지금은 웹 하나에 힘을 씁니다.
+
+### 9-3. 웹을 먼저 만들 때 지킬 것(감싼 앱에서도 되게)
+
+1. 라우팅: 화면 주소는 해시가 아닌 경로로 두고, API 주소는 설정 값 하나에서 읽습니다. Android에서 Capacitor의 기본 스킴 `https`를 바꾸면 경로가 바뀌지 않을 수 있습니다(P3). 알림 링크가 웹과 앱에서 같은 화면을 열도록, 우리 도메인의 `.well-known`에 연결 파일(`apple-app-site-association`·`assetlinks.json`)을 둘 수 있게 합니다(P6).
+2. 인증: 06 계약의 세션은 HttpOnly 쿠키(SameSite=Lax, DEC-10, 길이는 DEC-26)입니다. 감싼 앱에서는 API가 다른 사이트라 쿠키가 실리지 않을 수 있고, iOS 14부터는 제3자 쿠키가 기본으로 막힙니다(P2). 길은 Capacitor의 네이티브 HTTP·쿠키(기본은 꺼짐. 켜면 `fetch`·`XMLHttpRequest`와 `document.cookie`를 네이티브로 처리, P2·P4)나 앱용 토큰 로그인입니다. 06 계약을 바꿀 수 있는 일이라 TASK-179에서 고르고, 웹은 API를 호출하는 곳을 모듈 하나로 모아 둡니다.
+3. 앱 알림: 스토어 앱 때 더합니다(TASK-180). Capacitor의 Push Notifications 플러그인은 Android에서 Firebase Cloud Messaging을 쓰므로 Firebase 프로젝트가 필요합니다(P5).
+4. 카메라·파일 올리기: 웹은 파일 고르기(`<input type="file" accept="image/*">`)로 사진을 올립니다. 감싼 앱에서도 같은 입력이 사진 고르기를 여는지는 확인하지 못했습니다(8-3). 앱에서는 카메라·사진 권한 설명 문구(iOS `NSCameraUsageDescription` 등)가 필요합니다(P7).
+5. 로그인 방법: 사장님은 카카오 로그인입니다. Apple 심사 4.8은 제3자·소셜 로그인으로 주 계정을 만드는 앱에 이름·이메일만 받고 이메일을 숨길 수 있는 다른 로그인을 함께 두라고 합니다(AP1). 스토어 앱 전에 동희님 결정이 필요합니다(TASK-178).
+6. 계정 지우기: 앱에서 계정을 만들 수 있으면 Apple은 앱 안에서, Google은 앱 안과 웹 링크로 계정 지우기를 요구합니다(AP1, GP3). 01~06에는 사장님 계정 지우기가 없어 스토어 앱 전에 요구사항·SPEC·API로 더해야 합니다(TASK-178).
+
+### 9-4. 스토어 계정 비용과 심사(2026-11-15 확인)
+
+| 항목 | Apple App Store | Google Play |
+| --- | --- | --- |
+| 계정 비용 | Apple Developer Program 연 99달러(AP2) | 등록비 한 번 25달러(GP1) |
+| 출시 전 시험 | 확인한 글에 따로 없음 | 2023-11-13 뒤 만든 개인 계정은 비공개 테스트에 12명 이상이 14일 동안 계속 참여해야 출시를 신청함(GP2) |
+| 심사 시간 | 50%는 24시간 안, 90%는 48시간 안(AP3) | 계정에 따라 7일이나 그보다 오래 걸릴 수 있음(GP4) |
+| 걸리는 규칙 | 4.2 최소 기능, 4.8 로그인, 5.1.1(v) 앱 안 계정 지우기(AP1) | 앱 안과 웹 링크의 계정 지우기, 데이터 보안 양식의 지우기 문항(GP3) |
+
+- 빌드 비용: Capacitor는 직접 빌드하면 더 드는 돈이 없습니다(iOS는 Mac, P8). Expo의 클라우드 빌드는 무료 등급이 iOS·Android 각 15번까지(낮은 순위 대기열)이고 Starter는 월 19달러에 사용량입니다(X3).
+- 6-3의 월 비용에 더해지는 것: 스토어 앱을 내면 Apple 연 99달러(달마다 약 8달러)와 Google 처음 한 번 25달러.
+
+## 10. 출처(2026-11-15 확인)
 
 `curl -sS -L`로 열어 마지막 주소를 적고, 확인한 문장을 찾았습니다. 표의 ID(W1 등)는 본문이 가리킵니다. M·F·C 줄은 README 6-4 첫 버전([PR #50](https://github.com/kodonghui/siljang.ai/pull/50), 같은 날 확인)에서 옮겼습니다.
 
@@ -340,5 +386,27 @@ Python을 남길 곳: 저장소의 생성·검사 도구(01~10단계)는 Python 
 | C4 | Cloud Run 리전 asia-northeast3 (Seoul, South Korea) | https://docs.cloud.google.com/run/docs/locations |
 | C5 | Cloud SQL for PostgreSQL이 PostgreSQL 16(16.15)을 지원 | https://docs.cloud.google.com/sql/docs/postgres/db-versions |
 | C6 | Cloud SQL 리전 asia-northeast3(서울) | https://docs.cloud.google.com/sql/docs/postgres/locations |
+| P1 | Capacitor는 웹 앱을 iOS·Android에서 네이티브로 돌리는 런타임 | https://capacitorjs.com/docs |
+| P2 | 네이티브 쿠키(`document.cookie`를 네이티브로, 기본 꺼짐). iOS 14부터 제3자 쿠키를 기본으로 막고 `WKAppBoundDomains`에 도메인 10개까지 | https://capacitorjs.com/docs/apis/cookies |
+| P3 | `server.hostname` 기본 `localhost`, `iosScheme` 기본 `capacitor`, `androidScheme` 기본 `https`(바꾸면 WebView 117부터 경로를 바꾸지 못할 수 있음), `server.url`은 라이브 리로드용이고 운영용이 아님 | https://capacitorjs.com/docs/config |
+| P4 | 네이티브 HTTP(`fetch`·`XMLHttpRequest`를 네이티브로, 기본 꺼짐) | https://capacitorjs.com/docs/apis/http |
+| P5 | Push Notifications 플러그인은 Firebase Cloud Messaging SDK를 씀 | https://capacitorjs.com/docs/apis/push-notifications |
+| P6 | 유니버설 링크(iOS)·앱 링크(Android)는 웹사이트의 `.well-known` 폴더에 연결 파일을 둠 | https://capacitorjs.com/docs/guides/deep-links |
+| P7 | iOS 권한 설명 `NSCameraUsageDescription`·`NSPhotoLibraryUsageDescription`·`NSPhotoLibraryAddUsageDescription` | https://capacitorjs.com/docs/apis/camera |
+| P8 | iOS 앱 빌드에는 macOS가 필요(Ionic Appflow 같은 클라우드 빌드도 있음), Capacitor 8은 Xcode 26.0 이상 | https://capacitorjs.com/docs/getting-started/environment-setup |
+| X1 | Expo Build는 앱 빌드를 맡는 호스팅 서비스, iOS 빌드는 Expo 클라우드의 macOS에서 | https://docs.expo.dev/build/introduction/ |
+| X2 | 'use dom'으로 웹 부품을 Expo 앱 안에 두고 부품 하나씩 옮김 | https://docs.expo.dev/guides/dom-components/ |
+| X3 | 무료 0달러에 Android·iOS 빌드 각 15번까지(낮은 순위 대기열), Starter 월 19달러에 사용량 | https://expo.dev/pricing |
+| X4 | Expo 웹은 `react-native-web` | https://docs.expo.dev/workflow/web/ |
+| AP1 | 심사 지침 4.2(다시 포장한 웹사이트 이상의 기능), 4.8(제3자·소셜 로그인이면 이름·이메일만 받고 이메일을 숨길 수 있는 다른 로그인도), 5.1.1(v)(계정을 만들 수 있으면 앱 안에서 지우기) | https://developer.apple.com/app-store/review/guidelines/ |
+| AP2 | Apple Developer Program 연 99달러 | https://developer.apple.com/programs/whats-included/ |
+| AP3 | 심사 50%는 24시간 안, 90%는 48시간 안 | https://developer.apple.com/distribute/app-review/ |
+| AP4 | 웹 알림(Web Push)은 iOS 16.4 이상의 홈 화면 웹앱과 macOS 13 이상의 Safari 16, Apple Developer Program 가입 필요 없음 | https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers (같은 글의 JSON 원문으로 대조) |
+| AP5 | 매니페스트 `display`가 `standalone`·`fullscreen`이면 홈 화면 웹앱, 알림 권한은 사람이 누른 때에만 물음 | https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/ |
+| GP1 | Google Play 등록비 한 번 25달러 | https://support.google.com/googleplay/android-developer/answer/6112435?hl=en |
+| GP2 | 2023-11-13 뒤 만든 개인 계정은 비공개 테스트 12명 이상·14일 계속 | https://support.google.com/googleplay/android-developer/answer/14151465?hl=en |
+| GP3 | 계정을 만들 수 있는 앱은 앱 안 지우기와 웹 링크, 데이터 보안 양식에 지우기 문항 | https://support.google.com/googleplay/android-developer/answer/13327111?hl=en |
+| GP4 | 일부 계정은 심사가 7일이나 그보다 오래 | https://support.google.com/googleplay/android-developer/answer/9859751?hl=en |
+| MD1 | Chromium 설치 조건: `name`·`short_name` 가운데 하나, 아이콘 192px·512px, `start_url`, `display`·`display_override`, `prefer_related_applications`는 false나 없음, https. 서비스 워커는 설치 조건이 아님 | https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable |
 | N1 | Hono는 Node 어댑터로 Node.js에서도 돎 | https://hono.dev/docs/getting-started/nodejs |
 | L1 | 마이그레이션 0001~0020·규칙 테스트 324개·동시 쓰기 D5를 포함한 05 검사 15개가 PostgreSQL 17.11에서 통과(2026-11-15 17:29 KST, `check_erd.py . --db ...`, PostgreSQL 실행 파일은 npm `@embedded-postgres/linux-x64@17.11.0-beta.19`) | 이 저장소의 `research/cake-erd-2026-11/check_erd.py` |
