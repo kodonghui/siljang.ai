@@ -9,7 +9,8 @@
  * 2. FROM·JOIN·UPDATE·DELETE FROM·USING으로 든 가게 테이블마다, 그 테이블의 shop_id가 $1과 같다는 조건이
  *    (a) 그 테이블이 든 단계(괄호 묶음, UNION으로 나뉜 조각)의 WHERE에 AND로만 이어져 있거나
  *    (b) 그 테이블을 든 JOIN(안쪽·LEFT)의 ON에 AND로만 이어져 있다. 괄호 밖 OR가 있는 조건은 치지 않는다.
- *    BETWEEN의 짝 AND와 CASE … END·배열 [ ] 안의 AND는 조건을 잇는 AND가 아니다.
+ *    BETWEEN의 짝 AND와 CASE … END·배열 [ ] 안의 AND는 조건을 잇는 AND가 아니다. WHERE·ON의 끝은 식 밖에서만
+ *    찾는다(배열 [ ] 안의 쉼표, 함수 left(…)·right(…), COLLATION FOR (…), WITHIN GROUP (…)은 끝이 아님).
  *    `X.shop_id = Y.shop_id`는 Y가 가게 조건을 가지면 X도 갖는다. shops(가게 자체)의 가게 조건은 `X.id = $1`.
  *    별칭 없는 `shop_id = $1`은 그 단계의 FROM에 테이블이 하나일 때만 친다. 형 바꾸기는 ::uuid만 친다(::char는 첫 글자만
  *    남겨 여러 가게의 ID와 같아진다).
@@ -17,8 +18,10 @@
  *    UNION·EXCEPT·INTERSECT로 잇지 않는다(이은 조각의 값은 보지 않으므로).
  * 4. shop_id는 $1이나 다른 테이블의 shop_id(shops는 id)하고만 =로 견준다(WHERE shop_id = $2로 다른 가게 읽기를 막음).
  *    UPDATE·DO UPDATE의 SET은 shop_id를 넣지 않는다(한 열 꼴과 여러 열 꼴 `(shop_id, …) = …` 모두. 다른 가게로 옮기기를 막음).
+ *    SET 목록은 식 밖의 쉼표로만 나눈다(배열 [ ] 안의 쉼표와 IS DISTINCT FROM의 FROM은 목록의 끝이 아님).
  * 5. ON CONFLICT … DO UPDATE는 충돌 대상 열에 shop_id가 있다(다른 가게의 행을 고치지 않게).
- * 6. 별칭(하위 질의·함수·JOIN USING의 별칭 포함)은 문장 안에서 하나씩이고(안쪽 별칭이 바깥 가게 테이블의 별칭을 가리지
+ * 6. 별칭(하위 질의·함수·JOIN USING의 별칭, 별칭을 적지 않은 함수의 함수 이름, WITH ORDINALITY 뒤와 다른 스키마
+ *    함수의 별칭 포함)은 문장 안에서 하나씩이고(안쪽 별칭이 바깥 가게 테이블의 별칭을 가리지
  *    않게) 가게 테이블 이름을 다른 테이블의 별칭으로 쓰지 않는다. 가게 테이블 이름은 FROM·JOIN·
  *    UPDATE·INSERT INTO·DELETE FROM·USING 자리(public.이름 포함)와 `이름.열`에만 쓴다(TABLE 문, 안쪽의 TABLE public.이름,
  *    LOCK, 다른 스키마의 같은 이름, 알아보지 못한 자리를 막음).
@@ -403,13 +406,27 @@ function joinTypeAt(toks: readonly Tok[], k: number): Ref["join"] {
   return "inner";
 }
 
-/** 하위 질의·함수 항목의 닫는 괄호 뒤(start)에서 별칭을 읽는다. */
-function derivedItem(toks: readonly Tok[], start: number, level: string): { next: number; item: Item } {
+/**
+ * 하위 질의·함수 항목의 닫는 괄호 뒤(start)에서 별칭을 읽는다. 별칭을 적지 않은 함수는 함수 이름(implicit)이 별칭이고,
+ * WITH ORDINALITY 뒤의 별칭도 별칭이다. 별칭 뒤의 열 이름 목록이나 `AS (열 정의)`는 건너뛴다.
+ */
+function derivedItem(
+  toks: readonly Tok[],
+  start: number,
+  level: string,
+  implicit?: string,
+): { next: number; item: Item } {
   let q = start;
+  if (toks[q]?.v === "with" && toks[q + 1]?.v === "ordinality") q += 2;
   if (toks[q]?.v === "as") q += 1;
+  let alias = implicit;
   const maybe = toks[q]?.v;
-  if (isWord(maybe) && !NOT_ALIAS.has(maybe)) return { next: q + 1, item: { level, ref: null, alias: maybe } };
-  return { next: q, item: { level, ref: null } };
+  if (isWord(maybe) && !NOT_ALIAS.has(maybe)) {
+    alias = maybe;
+    q += 1;
+  }
+  if (toks[q]?.v === "(") q = matching(toks, q) + 1;
+  return { next: q, item: alias === undefined ? { level, ref: null } : { level, ref: null, alias } };
 }
 
 /** FROM·JOIN 따위 뒤의 항목 하나를 읽는다. */
@@ -435,11 +452,15 @@ function readItem(
     at = q + 1;
     q += 2;
   } else if (toks[q]?.v === ".") {
-    // 다른 스키마의 테이블이나 함수 안의 열(extract(epoch from o.x))이다. 이 검사의 테이블이 아니다
-    // (다른 스키마의 같은 이름은 규칙 6이 막는다).
+    // 다른 스키마의 함수는 함수 항목이다(별칭 겹침 검사에 넣음). 다른 스키마의 테이블이나 함수 안의 열
+    // (extract(epoch from o.x))은 이 검사의 테이블이 아니다(다른 스키마의 같은 이름은 규칙 6이 막는다).
+    const fn = toks[q + 1]?.v;
+    if (kind !== "insert" && isWord(fn) && toks[q + 2]?.v === "(") {
+      return derivedItem(toks, matching(toks, q + 2) + 1, level, fn);
+    }
     return { next: q, item: null };
   }
-  if (kind !== "insert" && toks[q]?.v === "(") return derivedItem(toks, matching(toks, q) + 1, level);
+  if (kind !== "insert" && toks[q]?.v === "(") return derivedItem(toks, matching(toks, q) + 1, level, table);
   let alias = table;
   if (toks[q]?.v === "as") q += 1;
   const maybe = toks[q]?.v;
@@ -495,12 +516,26 @@ function readItems(toks: readonly Tok[]): Item[] {
   return items;
 }
 
+/** 절을 끝내는 낱말이 식 안에 쓰인 자리: 함수 left(…)·right(…), COLLATION FOR (…), WITHIN GROUP (…). */
+function inExpression(toks: readonly Tok[], k: number): boolean {
+  const v = toks[k]?.v;
+  if ((v === "left" || v === "right") && toks[k + 1]?.v === "(") return true;
+  if (v === "for" && toks[k - 1]?.v === "collation") return true;
+  return v === "group" && toks[k - 1]?.v === "within";
+}
+
+/** start부터 같은 깊이의 끝 낱말(ends)까지. 배열 [ ] 안과 식 안의 낱말(inExpression)에서는 끝나지 않는다. */
 function clause(toks: readonly Tok[], start: number, depth: number, ends: ReadonlySet<string>): Tok[] {
   const out: Tok[] = [];
+  let brackets = 0;
   for (let k = start; k < toks.length; k += 1) {
     const t = toks[k] as Tok;
     if (t.depth < depth) break;
-    if (t.depth === depth && ends.has(t.v)) break;
+    if (t.depth === depth) {
+      if (t.v === "[") brackets += 1;
+      else if (t.v === "]" && brackets > 0) brackets -= 1;
+      else if (brackets === 0 && ends.has(t.v) && !inExpression(toks, k)) break;
+    }
     out.push(t);
   }
   return out;
@@ -649,37 +684,37 @@ function insertScoped(toks: readonly Tok[], ref: Ref): boolean {
 
 const END_SET = new Set(["from", "where", "returning", ";"]);
 
-/** UPDATE·DO UPDATE의 SET이 넣는 열 이름들(한 열 꼴 `a = …`과 여러 열 꼴 `(a, b) = …`). */
+/**
+ * UPDATE·DO UPDATE의 SET이 넣는 열 이름들(한 열 꼴 `a = …`과 여러 열 꼴 `(a, b) = …`). 항목은 같은 깊이의 , 뒤에서
+ * 시작하고 배열 [ ] 안의 쉼표는 나누지 않는다. FROM·WHERE·RETURNING·; 이나 깊이가 줄면 SET 목록이 끝난다
+ * (IS DISTINCT FROM의 FROM은 식 안이라 끝이 아니다).
+ */
 function setTargets(toks: readonly Tok[]): string[] {
   const out: string[] = [];
   toks.forEach((t, k) => {
     if (t.v !== "set") return;
-    let q = k + 1;
-    for (;;) {
-      const head = toks[q];
-      if (head === undefined || head.depth !== t.depth) break;
-      if (head.v === "(") {
-        const close = matching(toks, q);
-        for (const x of toks.slice(q + 1, close)) if (x.depth === t.depth + 1 && isWord(x.v)) out.push(x.v);
-      } else if (isWord(head.v)) {
-        out.push(head.v);
-      } else {
-        break;
+    let head = true;
+    let brackets = 0;
+    for (let j = k + 1; j < toks.length; j += 1) {
+      const x = toks[j] as Tok;
+      if (x.depth < t.depth) break;
+      if (x.depth !== t.depth) continue;
+      if (x.v === "[") brackets += 1;
+      else if (x.v === "]" && brackets > 0) brackets -= 1;
+      if (brackets > 0) continue;
+      if (END_SET.has(x.v) && !(x.v === "from" && toks[j - 1]?.v === "distinct")) break;
+      if (x.v === ",") {
+        head = true;
+        continue;
       }
-      // 다음 항목은 같은 깊이의 , 뒤. FROM·WHERE·RETURNING·; 이나 깊이가 줄면 SET 목록이 끝난다
-      let next = -1;
-      for (let j = q + 1; j < toks.length; j += 1) {
-        const x = toks[j] as Tok;
-        if (x.depth < t.depth) break;
-        if (x.depth !== t.depth) continue;
-        if (x.v === ",") {
-          next = j + 1;
-          break;
-        }
-        if (END_SET.has(x.v)) break;
+      if (!head) continue;
+      head = false;
+      if (x.v === "(") {
+        const close = matching(toks, j);
+        for (const y of toks.slice(j + 1, close)) if (y.depth === t.depth + 1 && isWord(y.v)) out.push(y.v);
+      } else if (isWord(x.v)) {
+        out.push(x.v);
       }
-      if (next === -1) break;
-      q = next;
     }
   });
   return out;

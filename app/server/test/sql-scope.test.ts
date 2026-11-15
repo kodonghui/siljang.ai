@@ -52,6 +52,13 @@ describe("가게 조건 검사: 지킨 SQL", () => {
     "배열 [ ] 뒤의 가게 조건": "SELECT o.id FROM orders o WHERE ARRAY[o.status] <@ ARRAY[$2, $3] AND o.shop_id = $1",
     "겹치지 않는 하위 질의 별칭": `SELECT o.id, (SELECT count(*) FROM payments p WHERE p.shop_id = o.shop_id) AS n
       FROM orders o, (SELECT 1) AS x WHERE o.shop_id = $1`,
+    "겹치지 않는 함수 별칭(이름 없는 함수, WITH ORDINALITY)": `SELECT o.id FROM orders o, jsonb_to_record($2) AS (v text),
+      unnest($3::text[]) WITH ORDINALITY AS u(v, n) WHERE o.shop_id = $1 AND o.status = u.v AND o.kind = jsonb_to_record.v`,
+    "ON 안 배열 [ ]과 함수 left(…) 뒤 LEFT JOIN": `SELECT o.id FROM shops s
+      JOIN orders o ON o.shop_id = s.id AND ARRAY[o.status, o.kind] <@ ARRAY['a', 'b'] AND left(o.status, 1) = 'x'
+      LEFT JOIN customers c ON c.shop_id = s.id AND c.id = o.customer_id WHERE s.id = $1`,
+    "SET 안 배열 [ ]과 IS DISTINCT FROM":
+      "UPDATE orders SET status = ARRAY['a', 'b']::text, kind = CASE WHEN kind IS DISTINCT FROM 'x' THEN 'a' ELSE 'b' END WHERE shop_id = $1",
   };
   for (const [name, sql] of Object.entries(good)) {
     it(name, () => {
@@ -252,6 +259,50 @@ describe("가게 조건 검사: 어긴 SQL", () => {
     "하위 질의 별칭에 가게 테이블 이름": [
       "SELECT (SELECT count(*) FROM payments p, (SELECT $2::uuid AS shop_id) orders WHERE p.shop_id = orders.shop_id) FROM orders WHERE orders.shop_id = $1",
       "alias orders is a shop table name",
+    ],
+    // 별칭을 적지 않은 함수는 함수 이름이 별칭이고, WITH ORDINALITY 뒤나 다른 스키마 함수의 별칭도 별칭이다.
+    "별칭 없는 함수의 이름이 바깥 별칭을 가림": [
+      "SELECT (SELECT count(*) FROM payments p, jsonb_to_record($2) AS (shop_id uuid) WHERE p.shop_id = jsonb_to_record.shop_id) FROM orders jsonb_to_record WHERE jsonb_to_record.shop_id = $1",
+      "alias jsonb_to_record repeated",
+    ],
+    "WITH ORDINALITY 뒤 별칭이 바깥 별칭을 가림": [
+      "SELECT (SELECT count(*) FROM payments p, unnest($2::uuid[]) WITH ORDINALITY AS o(shop_id, n) WHERE p.shop_id = o.shop_id) FROM orders o WHERE o.shop_id = $1",
+      "alias o repeated",
+    ],
+    "다른 스키마 함수의 별칭이 바깥 별칭을 가림": [
+      "SELECT (SELECT count(*) FROM payments p, pg_catalog.jsonb_to_record($2) AS o(shop_id uuid) WHERE p.shop_id = o.shop_id) FROM orders o WHERE o.shop_id = $1",
+      "alias o repeated",
+    ],
+    // 절의 끝은 식 밖에서만 찾는다(Codex 검토). 배열 [ ] 안의 쉼표, 함수 left(…)·right(…), COLLATION FOR (…),
+    // WITHIN GROUP (…)에서 절이 끝난다고 읽으면 그 뒤의 OR를 보지 못한다.
+    "ON 안 배열 [ ]의 쉼표 뒤 OR": [
+      "SELECT o.id FROM shops s JOIN orders o ON o.shop_id = $1 AND ARRAY[true, false] = ARRAY[true, false] OR true WHERE s.id = $1",
+      "unscoped orders o",
+    ],
+    "ON 안 함수 left(…) 뒤 OR": [
+      "SELECT o.id FROM shops s JOIN orders o ON o.shop_id = $1 AND left(o.status, 1) = 'x' OR true WHERE s.id = $1",
+      "unscoped orders o",
+    ],
+    "ON 안 함수 right(…) 뒤 OR": [
+      "SELECT o.id FROM shops s JOIN orders o ON o.shop_id = $1 AND right(o.status, 1) = 'x' OR true WHERE s.id = $1",
+      "unscoped orders o",
+    ],
+    "WHERE 안 COLLATION FOR (…) 뒤 OR": [
+      "SELECT o.id FROM orders o WHERE o.shop_id = $1 AND COLLATION FOR (o.status) IS NOT NULL OR true",
+      "unscoped orders o",
+    ],
+    "WHERE 안 WITHIN GROUP (…) 뒤 OR": [
+      "SELECT c.id, (SELECT count(*) FROM orders o WHERE o.shop_id = $1 AND mode() WITHIN GROUP (ORDER BY c.id) IS NOT NULL OR true) FROM customers c WHERE c.shop_id = $1 GROUP BY c.id",
+      "unscoped orders o",
+    ],
+    // SET 목록도 식 밖에서만 나눈다. 배열 [ ] 안의 쉼표와 IS DISTINCT FROM의 FROM은 목록의 끝이 아니다.
+    "SET 안 배열 [ ]의 쉼표 뒤 shop_id": [
+      "UPDATE orders SET status = ARRAY['a', 'b']::text, shop_id = x.shop_id FROM jsonb_to_record($2) AS x(shop_id uuid) WHERE orders.shop_id = $1",
+      "set shop_id",
+    ],
+    "SET 안 IS DISTINCT FROM 뒤 shop_id": [
+      "UPDATE orders SET status = CASE WHEN kind IS DISTINCT FROM 'x' THEN 'a' ELSE 'b' END, shop_id = x.shop_id FROM jsonb_to_record($2) AS x(shop_id uuid) WHERE orders.shop_id = $1",
+      "set shop_id",
     ],
   };
   for (const [name, [sql, expected]] of Object.entries(bad)) {
