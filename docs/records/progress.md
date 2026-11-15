@@ -6,6 +6,49 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-15 23:30 무렵 KST · TASK-017 마이그레이션 20개와 규칙 테스트를 CI에서([PR #59](https://github.com/kodonghui/siljang.ai/pull/59))
+
+- 한 일
+  - 앞 단락의 [PR #58](https://github.com/kodonghui/siljang.ai/pull/58)을 squash로 합쳤습니다(main `1b1c17b`, 23:04 무렵). 합친 뒤 main에서 돈 GitHub Actions run 43722314812(app)도 성공했습니다.
+  - CI [`.github/workflows/db.yml`](../../.github/workflows/db.yml)을 더했습니다. PR과 main push마다 PostgreSQL 16.15의 빈 서버를 띄워 아래를 차례로 돌립니다.
+    1. [`tools/db-migrate.sh`](../../tools/db-migrate.sh)(새): 마이그레이션 0001\~0020을 빈 데이터베이스에 파일 이름 차례로 하나씩(파일마다 한 트랜잭션) 적용하고 파일마다 한 줄을 찍습니다. 번호가 0001부터 이어지지 않거나 테이블이 이미 있으면 아무것도 하지 않고(끝 상태 2), 적용하다 실패하면 그 파일에서 멈춥니다(끝 상태 1).
+    2. [`tools/db-rule-tests.sh`](../../tools/db-rule-tests.sh)(새): 1에서 만든 데이터베이스에서 05 규칙 테스트를 돌리고, 파일 안의 시험 줄 수만큼 모두 기대한 대로인지 봅니다.
+    3. `check_erd.py`: 05 검사 15개.
+    4. 로그 키 검사.
+  - 서버는 공식 이미지 `postgres:16.15-bookworm`을 digest로 고정했습니다. 로컬 검사 서버와 같은 16.15이고, 2026-11-05에 만든 이미지라 나온 지 일주일이 넘었습니다(lockfile과 같은 기준). 이 작업 안에서만 도는 시험 서버라 비밀번호 없이 받고(trust), 작업에 비밀 값을 넘기지 않습니다.
+  - `check_erd.py`의 두 세션 동시 쓰기(D5)를 GitHub 러너의 Python 3.12에서도 돌게 고쳤습니다. 먼저 쓰는 세션의 입력을 닫은 뒤 `communicate()`를 부르면 3.12는 닫힌 입력을 비우다 ValueError로 멈춥니다(3.13은 넘어감). 이제 입력을 닫지 않고 비우기만 하며, 닫기는 `communicate()`가 합니다. 검사 내용은 그대로입니다.
+  - [`db/README.md`](../../db/README.md)(새)에 CI가 하는 일과 로컬에서 같은 일을 하는 명령을 적었습니다.
+  - WBS: TASK-017 끝난 조건의 '스테이징에도 같은 버전'을 TASK-174(Supabase에 맞추기)로 옮겼습니다([10 README](../10-wbs/README.md) 10절 첫 행). 스테이징 데이터베이스는 TASK-170(동희님 계정과 개발 프로젝트) 뒤에야 생깁니다.
+  - GitHub Actions가 성공한 뒤 TASK-017을 wbs_rows.py에서 끝남으로 적고 생성 절을 다시 만들었습니다(끝난 작업 6개).
+- 이유: TASK-017은 TASK-015만 기다리고, 가장 긴 앞선 작업 줄(TASK-015 → TASK-017 → TASK-018 → …)에 있습니다. 다음 TASK-018(공통 요청 처리)이 이 데이터베이스 위에서 시험합니다. 조정 세션 지시입니다.
+- 결과
+  - 완료 조건(CI에서 PostgreSQL 16에 마이그레이션 20개를 차례로 적용하고 05 규칙 테스트가 모두 통과)을 GitHub Actions에서 확인했습니다. db run 43723637548(`fdc2820`)이 성공했고 작업은 26초입니다. 같은 커밋의 app run 43723637515도 성공했습니다.
+  - db run의 결과
+    - 판: Python 3.12.3, psql 16.15, 서버 PostgreSQL 16.15(Debian 16.15-1.pgdg12+2)
+    - 마이그레이션: 20개 모두 ok(0001이 0.46초, 나머지는 0.04\~0.11초)
+    - 규칙 테스트: 324 blocked, 0 not blocked(파일 안의 시험 줄 324개)
+    - `check_erd.py`: 검사 15개 모두 통과(D2 카탈로그 column 727·constraint 706·index 215·table 58, D5 기다림 1.4초)
+    - 로그 키 검사: 4파일, 0건
+  - 끝남을 표시한 커밋 `644ed41`의 db run 43724159123과 app run 43724159146도 성공했습니다.
+- 확인한 것
+  - 로컬 PostgreSQL 16.15에서 두 스크립트와 `check_erd.py`를 돌렸습니다. `check_erd.py`는 Python 3.12와 3.13에서 15개 모두 통과했습니다(고치기 전 3.12는 D5에서 멈춤).
+  - 일부러 깨뜨린 사본
+    - 0005 끝에 오류를 넣으면 0005에서 멈추고 끝 상태 1입니다(0001\~0004의 테이블 51개만 남음).
+    - 0007의 번호를 0021로 바꾸면 끝 상태 2입니다('0007 자리에 0008_…').
+    - 테이블이 있는 데이터베이스와 인자 없음은 끝 상태 2입니다.
+    - 규칙 테스트가 기대하는 제약 둘(`shops_food_business_type_check`, `customers_channel_fk`)을 지운 데이터베이스는 322 blocked, 2 not blocked로 끝 상태 1이고, 두 시험 이름이 찍힙니다.
+    - D5의 잠금 번호 비교를 옛 방식(`version = 1`)으로 바꾼 사본은 D5가 실패합니다(끝 상태 1).
+  - 커밋 전 키 검사(375파일, 0건), 모델 이름·메일 주소 찾기, 새 글의 금지어 검사(0건).
+  - Codex 코드 검토와 보안 검토는 `fdc2820`에서 지적 없이 끝났습니다.
+  - `bash tools/stage-checks.sh d2b`(23:24 시작, 머리 `644ed41`): 검사 9개 모두 종료 코드 0, 끝 상태 0. prd·flows는 PROBLEMS 0 · AVOIDED WORDS 0, spec 오류 0, erd 15/15, api 17/17, sitemap 17/17, screens 15/15, mockup 14/14, wbs 검사 18개 · 오류 0(끝난 작업 6개). TASK-017을 표시하기 전 머리 `fdc2820`의 실행(23:18)도 모두 0이었습니다.
+- 하지 않은 것
+  - 스테이징 데이터베이스 적용과 적용한 판 남기기(TASK-174로 옮김)
+  - PostgreSQL 17(Supabase 새 프로젝트의 기본)에서 CI 돌리기(TASK-174)
+  - Workers에서 데이터베이스 연결(TASK-171·173)
+- 다음 행동
+  - 이 PR을 합친 뒤 조정 세션에 보고합니다.
+  - 앞선 작업이 끝난 다음 후보는 TASK-018(공통 요청 처리, 가장 긴 앞선 작업 줄)과 TASK-029(사장님·운영자 웹 바탕)입니다.
+
 ### 2026-11-15 23:05 무렵 KST · TASK-015 개발 저장소 뼈대: Workers·Hono 서버와 React·Vite 웹, 린트·시험·CI, 키 검사([PR #58](https://github.com/kodonghui/siljang.ai/pull/58))
 
 - 한 일

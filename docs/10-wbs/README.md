@@ -157,6 +157,7 @@ TASK-001은 2026-11-15에 끝났습니다. 우리 프로젝트가 스택에 요�
 
 결과(2026-11-15):
 
+- `tools/stage-checks.sh`(23:24 KST 시작, 머리 `644ed41`, [PR #59](https://github.com/kodonghui/siljang.ai/pull/59), 마이그레이션 20개와 규칙 테스트를 CI에서 TASK-017): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 TASK-017이 끝나 끝난 작업 6개로 검사 18개 · 오류 0. 05 검사(erd)는 이제 GitHub Actions의 [`db.yml`](../../.github/workflows/db.yml)에서도 PR마다 돕니다.
 - `tools/stage-checks.sh`(22:54 KST 시작, 머리 `49930fc`, [PR #58](https://github.com/kodonghui/siljang.ai/pull/58), 개발 저장소 뼈대 TASK-015): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 TASK-015가 끝나 끝난 작업 5개로 검사 18개 · 오류 0. 단계 검사는 이제 임시 폴더의 `checks.sh` 대신 저장소의 [`tools/stage-checks.sh`](../../tools/stage-checks.sh)로 돌립니다([PR #57](https://github.com/kodonghui/siljang.ai/pull/57)).
 - `checks.sh`(21:54 KST 시작, 머리 `36522b3`, [PR #56](https://github.com/kodonghui/siljang.ai/pull/56), 법률 질문 문서 TASK-013 준비): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 법률 질문 문서 검사(17)를 더해 검사 18개 · 오류 0.
 - `checks.sh`(21:01 KST 시작, 머리 `7b2bfd0`, [PR #55](https://github.com/kodonghui/siljang.ai/pull/55), 법령 원문 다시 확인 TASK-012): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다(02는 13절을 더하고 REQ-187·188·201의 출처만 고침). wbs는 TASK-012가 끝나 끝난 작업 4개, 검사 17개 · 오류 0.
