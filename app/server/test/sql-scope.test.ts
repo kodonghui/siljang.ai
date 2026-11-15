@@ -182,6 +182,32 @@ describe("가게 조건 검사: 어긴 SQL", () => {
       "SELECT o.id FROM orders o JOIN payments p ON p.shop_id::char = o.shop_id::char WHERE o.shop_id = $1",
       "unscoped payments p",
     ],
+    "설정을 바꾸는 내장 함수(글 읽기·이름 찾기가 바뀜)": [
+      "SELECT set_config('standard_conforming_strings', 'off', false) FROM shops s WHERE s.id = $1",
+      "function set_config",
+    ],
+    // 같은 갈래: SQL 글 다듬기가 PostgreSQL과 다르게 읽어 코드를 글로 지움(PostgreSQL 16.15에서 셋 모두 customers 전체를 읽음)
+    "줄 주석은 \\r에서도 끝남": ["SELECT c.kakao_user_key --\rFROM customers c", "unscoped customers c"],
+    "ASCII가 아닌 이름 글자 뒤의 $$는 글의 시작이 아님": [
+      "SELECT 1 AS é$$ FROM customers c -- $$",
+      "unscoped customers c",
+    ],
+    "ASCII가 아닌 $태그$": ["SELECT $é$ $$ $é$ AS x, c.kakao_user_key FROM customers c -- $$", "unscoped customers c"],
+    "숫자 뒤의 $$도 글의 시작(PostgreSQL은 이 꼴을 문법 오류로 거절하지만 읽기를 같게)": [
+      "SELECT 1$$ $$ AS x, c.kakao_user_key FROM customers c -- $$",
+      "unscoped customers c",
+    ],
+    // 따옴표 이름은 PostgreSQL에서 이름 하나다(점·공백·=·대문자를 그대로 둠). 검사가 따옴표를 벗겨 여러 낱말로 읽으면
+    // 없는 가게 조건을 보게 된다(PostgreSQL 16.15에서 첫 꼴은 customers 전체를 읽음). 소문자 낱말이 아닌 따옴표 이름은 막는다.
+    "따옴표 이름 안의 점": [
+      'SELECT c.kakao_user_key FROM customers c, (SELECT $1::uuid AS "c.shop_id") s WHERE "c.shop_id" = $1',
+      "quoted name",
+    ],
+    "따옴표 이름 안의 조건 글": [
+      'SELECT c.kakao_user_key FROM customers c, (SELECT true AS "c.shop_id = $1") s WHERE "c.shop_id = $1"',
+      "quoted name",
+    ],
+    "대문자 따옴표 이름(소문자 이름과 다른 이름)": ['SELECT o.id FROM "Orders" o WHERE o.shop_id = $1', "quoted name"],
   };
   for (const [name, [sql, expected]] of Object.entries(bad)) {
     it(name, () => {
@@ -193,7 +219,7 @@ describe("가게 조건 검사: 어긴 SQL", () => {
 describe("SQL 글 다듬기", () => {
   it("주석·글자 값·$$ 글을 비우고 소문자로", () => {
     const s = stripSql(
-      `SELECT 'orders' , $$customers$$, E'a\\'b orders' FROM "Orders" -- payments\n/* designs /* nested */ x */`,
+      `SELECT 'orders' , $$customers$$, E'a\\'b orders' FROM "orders" -- payments\n/* designs /* nested */ x */`,
     );
     expect(s).not.toMatch(/customers|payments|designs/);
     expect(s).toContain("orders");
@@ -202,6 +228,20 @@ describe("SQL 글 다듬기", () => {
 
   it("$1·$2는 $$ 글로 보지 않음", () => {
     expect(stripSql("WHERE a = $1 AND b = $2")).toBe("where a = $1 and b = $2");
+  });
+
+  it("PostgreSQL처럼 읽음: \\r로 끝나는 줄 주석, ASCII가 아닌 이름 글자와 $태그$", () => {
+    expect(stripSql("a --x\rb")).toMatch(/^a\s+b$/);
+    expect(stripSql("x é$$ y")).toBe("x é$$ y");
+    expect(stripSql("$é$ orders $é$ z")).not.toContain("orders");
+  });
+
+  it("PostgreSQL처럼 읽음: ASCII 글자만 소문자로, 숫자 뒤의 $$, 소문자 낱말이 아닌 따옴표 이름은 표시로", () => {
+    expect(stripSql("SELECT \u212A")).toBe("select \u212A"); // 켈빈 기호는 PostgreSQL에서 k가 아님
+    expect(stripSql("1$$ x $$ y")).toMatch(/^1 ''\s+y$/);
+    expect(stripSql('"c.shop_id"')).not.toContain("shop_id");
+    expect(stripSql('"c.shop_id"')).toContain('"');
+    expect(stripSql('"orders"."shop_id"')).toBe(" orders . shop_id ");
   });
 
   it("가게 테이블 이름이 있는 SQL만 고름", () => {

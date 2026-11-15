@@ -21,7 +21,11 @@
  *    UPDATE·INSERT INTO·DELETE FROM·USING 자리(public.이름 포함)와 `이름.열`에만 쓴다(TABLE 문, 안쪽의 TABLE public.이름,
  *    LOCK, 다른 스키마의 같은 이름, 알아보지 못한 자리를 막음).
  * 7. 검사가 이름이나 SQL을 보지 못하는 꼴을 쓰지 않는다: 유니코드 이스케이프(U&"…", U&'…'), SQL 글을 받아 돌리거나
- *    테이블을 이름으로 통째로 읽는 내장 함수(query_to_xml·table_to_xml 무리, ts_stat, ts_rewrite).
+ *    테이블을 이름으로 통째로 읽는 내장 함수(query_to_xml·table_to_xml 무리, ts_stat, ts_rewrite), 글 읽기·이름 찾기
+ *    설정을 바꾸는 set_config, 소문자 낱말이 아닌 따옴표 이름("c.shop_id"·"Orders" 따위는 PostgreSQL에서 이름 하나라
+ *    검사가 낱말로 나눠 읽으면 안 됨). 글 다듬기(stripSql)는 PostgreSQL처럼 읽는다(줄 주석은 \n·\r에서 끝나고, ASCII가
+ *    아닌 글자도 이름 글자라 이름을 잇는 $$는 글의 시작이 아니고 숫자·$1 뒤의 $$는 시작이며, $태그$에도 ASCII가 아닌
+ *    글자를 쓸 수 있고, 소문자로는 ASCII 글자만 바꿈).
  * 한계: 함수·뷰 안의 SQL은 보지 못한다(05에 업무 코드가 부르는 함수·뷰가 없고, SQL 글을 돌리는 내장 함수는 7로 막음).
  *    이 검사는 가게 조건을 빠뜨린 실수를 막는 것이고, 검사를 피하려고 일부러 꾸민 SQL을 모두 알아보지는 못한다(코드 검토가 본다).
  *    $1에 다른 가게 ID를 넣는 일은 ShopDb가 막는다($1을 스스로 채움). 실행 중에 이어 붙인 SQL은 정적 시험이 아니라
@@ -103,7 +107,10 @@ export type IdShopTable = Exclude<ShopTable, (typeof SHOP_TABLES_WITHOUT_ID)[num
 const SHOPS = "shops";
 const SCOPED = new Set<string>([...SHOP_TABLES, SHOPS]);
 
-/** SQL 글을 받아 돌리거나 테이블을 이름으로 통째로 읽는 내장 함수(규칙 7). 검사가 그 안을 보지 못한다. */
+/**
+ * SQL 글을 받아 돌리거나 테이블을 이름으로 통째로 읽는 내장 함수와, 글 읽기(standard_conforming_strings)·이름 찾기
+ * (search_path) 설정을 바꿔 뒤 SQL을 검사와 다르게 읽히게 할 수 있는 set_config(규칙 7). 검사가 그 안을 보지 못한다.
+ */
 const SQL_TEXT_FUNCTIONS = new Set([
   "query_to_xml",
   "query_to_xmlschema",
@@ -121,6 +128,7 @@ const SQL_TEXT_FUNCTIONS = new Set([
   "database_to_xml_and_xmlschema",
   "ts_stat",
   "ts_rewrite",
+  "set_config",
 ]);
 
 /** SQL이 가게 테이블을 하나라도 이름으로 드는지(정적 시험이 검사할 글을 고를 때). */
@@ -137,8 +145,10 @@ export function stripSql(sql: string): string {
     const ch = sql[i] as string;
     const next = sql[i + 1];
     if (ch === "-" && next === "-") {
-      const end = sql.indexOf("\n", i);
-      i = end === -1 ? n : end;
+      // PostgreSQL처럼 \n이나 \r에서 끝난다(\r만 쓴 줄 끝 뒤의 SQL을 주석으로 지우지 않게)
+      let end = i + 2;
+      while (end < n && sql[end] !== "\n" && sql[end] !== "\r") end += 1;
+      i = end;
       out += " ";
       continue;
     }
@@ -160,7 +170,8 @@ export function stripSql(sql: string): string {
       continue;
     }
     if (ch === "'") {
-      const backslash = /(^|[^a-z0-9_$])e$/i.test(out);
+      // E'…'는 E가 이름의 끝이 아닐 때만(ASCII가 아닌 글자도 PostgreSQL에서는 이름 글자)
+      const backslash = /(^|[^a-z0-9_$\u0080-\uffff])e$/i.test(out);
       i += 1;
       while (i < n) {
         const c = sql[i];
@@ -198,12 +209,17 @@ export function stripSql(sql: string): string {
         name += c;
         i += 1;
       }
-      out += ` ${name} `;
+      // 따옴표 이름은 PostgreSQL에서 이름 하나다. 따옴표 없이 쓴 것과 같게 읽히는 소문자 낱말만 그대로 두고, 나머지
+      // ("c.shop_id"·"Orders" 따위)는 표시 `"`로 바꿔 scopeViolations가 막는다(규칙 7).
+      out += /^[a-z_][a-z0-9_$]*$/.test(name) ? ` ${name} ` : ' " ';
       continue;
     }
     if (ch === "$") {
-      const tag = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(i, i + 64));
-      if (tag !== null && !/[A-Za-z0-9_$]$/.test(out)) {
+      // PostgreSQL과 같게: $태그$의 태그에 ASCII가 아닌 글자도 쓸 수 있고, 이름(글자나 _로 시작, ASCII가 아닌 글자 포함)을
+      // 잇는 $만 글의 시작이 아니다. 숫자나 $1 뒤의 $$는 글의 시작이다.
+      const tag = /^\$(?:[A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/.exec(sql.slice(i, i + 64));
+      const word = /[A-Za-z0-9_$\u0080-\uffff]*$/.exec(out)?.[0] ?? "";
+      if (tag !== null && !/^[A-Za-z_\u0080-\uffff]/.test(word)) {
         const end = sql.indexOf(tag[0], i + tag[0].length);
         i = end === -1 ? n : end + tag[0].length;
         out += " '' ";
@@ -213,7 +229,8 @@ export function stripSql(sql: string): string {
     out += ch;
     i += 1;
   }
-  return out.toLowerCase();
+  // PostgreSQL은 따옴표 없는 이름에서 ASCII 글자만 소문자로 바꾼다(켈빈 기호 같은 글자가 k로 바뀌어 다른 이름과 같아지지 않게)
+  return out.replace(/[A-Z]+/g, (w) => w.toLowerCase());
 }
 
 interface Tok {
@@ -643,7 +660,8 @@ function setTargets(toks: readonly Tok[]): string[] {
 
 /** 가게 조건을 어긴 곳의 목록(빈 목록이면 지킴). 값은 싣지 않고 규칙과 테이블·별칭 이름만. */
 export function scopeViolations(sql: string): string[] {
-  const toks = tokenize(stripSql(sql));
+  const stripped = stripSql(sql);
+  const toks = tokenize(stripped);
   const out: string[] = [];
   const first = toks[0]?.v;
   if (first === undefined || !["select", "with", "insert", "update", "delete"].includes(first)) {
@@ -653,8 +671,10 @@ export function scopeViolations(sql: string): string[] {
     if (t.v === ";" && k !== toks.length - 1) out.push("statement ;");
   });
 
-  // 7. 검사가 이름이나 SQL을 보지 못하는 꼴: 유니코드 이스케이프(글자 값·주석 안의 것도 함께 막음), SQL 글을 돌리는 내장 함수
+  // 7. 검사가 이름이나 SQL을 보지 못하는 꼴: 유니코드 이스케이프(글자 값·주석 안의 것도 함께 막음), SQL 글을 돌리는 내장 함수,
+  //    소문자 낱말이 아닌 따옴표 이름(stripSql이 `"`로 남김)
   if (/(^|[^A-Za-z0-9_$])u&["']/i.test(sql)) out.push("unicode escape");
+  if (stripped.includes('"')) out.push("quoted name");
   toks.forEach((t, k) => {
     if (SQL_TEXT_FUNCTIONS.has(t.v) && toks[k + 1]?.v === "(") out.push(`function ${t.v}`);
   });
