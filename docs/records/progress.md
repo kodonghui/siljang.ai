@@ -20,7 +20,7 @@
   - 기술 스택 추천(README 6절): 언어는 A(Python FastAPI 서버 + TypeScript React 웹), 반론은 B(TypeScript 하나: 언어가 하나로 줄고, 두 AI 회사 SDK와 비동기 처리는 B도 같음). 배포 후보 셋(Google Cloud Run·Cloud SQL asia-northeast3, AWS Fargate·RDS ap-northeast-2, Supabase ap-northeast-2와 컨테이너 서버)은 TASK-001에서 월 비용 범위를 확인한 뒤 추천합니다.
 - 확인한 것
   - `build_wbs.py .`(16:57): '검사 15개 · 오류 0'.
-  - `checks.sh`(16:58 시작, 이 PR의 머리): @@CHECKS@@
+  - `checks.sh`(16:58 시작, 머리 `0fe905e`): 검사 9개 모두 종료 코드 0: prd 문제 0·금지어 0(요구사항 266, 유효 235, 필수 191), flows 문제 0·금지어 0(필수 190/191, 전체 230/235), spec 오류 0(수락 기준 328), erd 15/15(규칙 테스트 324), api 17/17(목 서버 요청 961), sitemap 17/17(노드 357), screens 15/15(응답 행 974), mockup 14/14(문구 6,424), wbs 검사 15개 · 오류 0. 01~09단계 검사 8개의 출력은 PR #49를 합치기 직전 머리(`98a1e95`)에서 돌린 것과 걸린 시간만 다릅니다.
   - CORTHEX 허브 스냅숏(16:55, 이 가지와 main `da7f7fc`): 항목 562 → 731(작업 169개), 알림은 'SPEC을 잇지 않은 작업' 경고 30개가 더해졌고 오류 0(README 7절).
   - 하지 않은 것: Notion·Artifact·Miro·GitHub 이슈를 호출하지 않았습니다(지시). Notion 작업 데이터베이스는 이 일의 끝에 한 번 만듭니다. 스택 후보의 월 비용 범위, Supabase의 PostgreSQL 16 지원, 후보마다 카카오 스킬 응답 시간은 확인하지 않았습니다(TASK-001).
 - 다음 행동: 10단계 체크포인트(반복 계획, 언어 A·B)를 결정 카드로 동희님께 드립니다(조정 세션). 답을 README 9절과 이 파일에 말 그대로 적고 반복 0을 시작합니다.
