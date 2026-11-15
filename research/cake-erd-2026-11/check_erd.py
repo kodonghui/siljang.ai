@@ -420,7 +420,9 @@ def race_once(pg: Pg, bump: str, pred: str) -> tuple[str, str, float, str]:
     cmd = ["psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", pg.conn(DB_SCHEMA)]
     s1 = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     s1.stdin.write(confirm)
-    s1.stdin.close()
+    # 닫지 않고 flush만: psql은 줄마다 바로 돌리고, 아래 communicate()가 stdin을 닫음.
+    # 여기서 닫으면 Python 3.12의 communicate()가 닫힌 stdin을 flush하다 ValueError(3.13은 넘어감, GitHub 러너는 3.12)
+    s1.stdin.flush()
     for _ in range(50):  # 먼저 쓴 쪽이 행을 잡고 커밋을 미루는 중인지 봄
         busy = pg.query(DB_SCHEMA, "SELECT count(*) FROM pg_stat_activity WHERE state = 'active' AND query LIKE 'SELECT pg_sleep(1.5)%'")
         if busy and busy[0][0] == "1":
