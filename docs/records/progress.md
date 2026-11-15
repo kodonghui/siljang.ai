@@ -6,6 +6,44 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-16 00:30 무렵 KST · TASK-018 공통 요청 처리([PR #60](https://github.com/kodonghui/siljang.ai/pull/60))
+
+- 한 일
+  - 앞 단락의 [PR #59](https://github.com/kodonghui/siljang.ai/pull/59)를 squash로 합쳤습니다(main `493f7da`, 2026-11-15 23:32 무렵). 합친 뒤 main에서 돈 GitHub Actions run 43724907189(app)와 43724907195(db)도 성공했습니다.
+  - 뒤의 API 작업이 모두 쓰는 공통 층을 서버(`app/server/src/`)에 더했습니다.
+    - `db.ts`: 데이터베이스 연결 층. node-postgres `pg` 8.23.1, 요청마다 Client 하나(처음 쿼리 때 맺고 응답 뒤 닫음), 트랜잭션, `date`와 시간대 없는 `timestamp`는 글 그대로.
+    - `request-key.ts`: 요청 키(04 G2, 06 DEC-04, TBL-050). 같은 키·같은 지문은 처음 상태 코드와 지금 다시 읽은 본문, 다른 지문은 422 `idempotency_key_reused`, 처리 중은 409 `request_in_progress`. 처리 중 기한(60초)이 지난 행은 같은 지문만 이어받고, 명령의 쓰기와 '끝남' 표시는 한 트랜잭션입니다.
+    - `problem.ts`: 06 오류 코드 37개·필드 오류 사유 24개·확인 종류 8개를 한 곳에 두고, 코드마다 붙어야 하는 것(`errors`·`confirm`·`retryAfterSeconds`·`Allow`)을 봅니다. `app.ts`: 405와 `Allow`(06 DEC-02), 04 G6(응답·로그에 내부 내용 없음, 로그에는 오류 코드와 SQLSTATE만).
+    - `time.ts`(04 G8 시각 바탕), `confirm-card.ts`(04 G9 카드 누름 판단), `ops-events.ts`(TBL-051 쓰기), `body.ts`(본문 읽기, 256 KiB 한도를 읽으면서 셈).
+    - `settings.ts`: 새 비밀 값 `DATABASE_URL`·`REQUEST_HASH_KEY`(이름만 `.dev.vars.example`에).
+  - 드라이버는 Cloudflare Hyperdrive 문서(2026-11-15 확인)가 '권함'으로 적은 node-postgres이고, 10단계 기술 스택 제안의 선택과 같습니다. 같은 문서에서 호환 날짜가 2026-08-04 이후면 `nodejs_compat`가 기본으로 켜짐을 확인해, TASK-015 때 적은 'TASK-171·173에서 더함'을 고쳤습니다([`app/README.md`](../../app/README.md) 12, `wrangler.jsonc`).
+  - CI [`app.yml`](../../.github/workflows/app.yml)에 PostgreSQL 16.15 서비스 컨테이너(`db.yml`과 같은 이미지 digest)를 더해 마이그레이션 0001\~0020을 적용한 뒤 시험합니다. `REQUIRE_DATABASE_TESTS=1`이라 연결이 없으면 데이터베이스 시험이 건너뛰지 않고 실패합니다.
+  - Codex 코드 검토의 P2 둘을 `0bf936c`에서 고쳤습니다. 본문 한도를 다 읽은 뒤가 아니라 읽으면서 세고(한도를 넘으면 읽기를 멈춤), 같은 연결에서 동시에 연 트랜잭션 둘이 섞이지 않게 트랜잭션 표시를 연결을 기다리기 전에 세웁니다. 두 스레드는 해결로 표시했고 댓글은 달지 않았습니다.
+  - GitHub Actions가 성공한 뒤 TASK-018을 wbs_rows.py에서 끝남으로 적고 생성 절을 다시 만들었습니다(끝난 작업 7개).
+- 이유: TASK-018은 TASK-017만 기다리고 가장 긴 앞선 작업 줄에 있습니다. 뒤의 작업(TASK-019·020·021·022·023·024·025·026·028 등)이 이 공통 층을 씁니다. 조정 세션 지시입니다.
+- 결과
+  - 완료 조건(06 오류 코드 37개와 필드 오류 사유 24개가 계약의 모양으로 나가는 시험, 같은 요청 키를 두 번 보내면 처음 결과를 돌려주는 시험, G2·G6·G8·G9 시험)을 GitHub Actions에서 확인했습니다.
+    - `0eb055d`: app run 43727657069 성공. 마이그레이션 20개 모두 ok, 서버 시험 8파일 148개 통과(건너뜀 0), 웹 4개 통과, 빌드 273.29 KiB, 로그 키 검사 6파일 0건. 같은 커밋의 db run 43727657132도 성공.
+    - `0bf936c`(Codex 지적 고침): app run 43728118926 성공, 서버 시험 153개 통과. db run 43728118907 성공.
+    - `95ef74a`(끝남 표시): app run 43728246526, db run 43728246519 성공.
+  - 서버 시험 153개의 내역: contract 74(오류 코드 37개마다 앱이 내보낸 응답을 계약의 `Problem` 스키마로 검사, 사유 24개마다 같은 방법), request-key 25, app 15, time 10, db 8, ops-events 8, settings 7, confirm-card 6.
+- 확인한 것
+  - 로컬(Node 22.23.4, PostgreSQL 16.15): 153개 통과를 세 번. `TEST_DATABASE_URL` 없이 `REQUIRE_DATABASE_TESTS=1`이면 데이터베이스 시험 묶음 셋이 실패(끝 상태 1), 둘 다 없으면 건너뜀(148개일 때 127 통과·21 건너뜀).
+  - 동시 트랜잭션 시험은 고치기 전 코드에서 실패하는 것을 먼저 봤습니다.
+  - Workers 런타임: `wrangler dev`로 workerd에서 로컬 PostgreSQL에 직접 붙어 쿼리와 요청 키 다시 돌려주기(201 → 201과 `Idempotency-Replayed: true`)를 손으로 한 번 확인했습니다(Hyperdrive 없이).
+  - 커밋 전 키 검사(388파일, 0건), 모델 이름·메일 주소·계정 ID 찾기, 새 글의 금지어 검사(0건).
+  - Codex 보안 검토는 `0eb055d`에서 지적 없이 끝났습니다.
+  - `bash tools/stage-checks.sh d3b`(00:09 시작, 머리 `95ef74a`): 검사 9개 모두 종료 코드 0, 끝 상태 0. prd·flows는 PROBLEMS 0 · AVOIDED WORDS 0, spec 오류 0, erd 15/15, api 17/17, sitemap 17/17, screens 15/15, mockup 14/14, wbs 검사 18개 · 오류 0(끝난 작업 7개). 01\~09단계의 출력은 PR #59 때(`d2b`)와 시각만 다릅니다. 첫 커밋 `0eb055d`의 실행(`d3a`, 23:59)도 모두 0이었습니다.
+- 하지 않은 것
+  - Schemathesis(06 README 13절): 06 계약의 API 경로와 개발·스테이징 서버가 아직 없어 돌리지 않았습니다. 스테이징 배포(TASK-016)와 Hyperdrive 연결(TASK-173) 뒤에 돌립니다.
+  - Hyperdrive를 거친 연결과 Workers 런타임의 자동 시험(TASK-173), PostgreSQL 17(TASK-174).
+  - 넘긴 것: 계약의 요청 스키마로 필드마다 검사(본문을 받는 API 작업마다, 첫 작업 TASK-020), 세션에서 누른 사람 꺼내기와 세션·스킬 키 확인(TASK-020·021·028), 사진과 `file_too_large`(TASK-022), 가게 조건(TASK-019), 확인 카드 누름 남기기(TASK-081), 24시간 지난 요청 키 지우기(TASK-158), 자동으로 하는 일 실행기(TASK-023).
+  - 확인 요청: 요청 키에 409 `confirmation_required`·401·429를 남기지 않는 것은 이 작업의 해석입니다(DEC-04에는 422·5xx만 있음). 아무것도 바꾸지 않은 결과라 같은 까닭으로 묶었습니다.
+  - 관찰: PostgreSQL 기본 로그 설정은 제약 위반의 DETAIL에 넣은 행의 값을 서버 로그에 남깁니다(CI 작업 로그 끝에 붙는 서비스 컨테이너 로그에서 시험 값으로 봄). 앱의 응답·로그(G6)와는 별개라, 운영 데이터베이스의 로그 설정은 TASK-174(Supabase에 맞추기) 때 함께 보도록 넘깁니다. WBS의 작업 행은 바꾸지 않았습니다.
+- 다음 행동
+  - 이 PR을 합친 뒤 조정 세션에 보고합니다.
+  - 앞선 작업이 모두 끝나 바로 할 수 있는 Claude 작업은 TASK-019(가게 조건)·022(사진)·023(실행기)·024(접속기록)·025(암호화)·026(모델 호출 한 곳)·029(웹 바탕)이고, TASK-016(스테이징 배포)은 계정이 생기는 TASK-170(동희님) 뒤에 할 수 있습니다.
+
 ### 2026-11-15 23:30 무렵 KST · TASK-017 마이그레이션 20개와 규칙 테스트를 CI에서([PR #59](https://github.com/kodonghui/siljang.ai/pull/59))
 
 - 한 일
