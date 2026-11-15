@@ -2,7 +2,7 @@
 --
 -- 원본: 이 파일. 사람이 보는 곳: docs/05-erd/README.md(컨텍스트별 다이어그램과 테이블).
 -- 입력: docs/04-functional-spec/spec.md(SPEC-001~079, 상태 머신 1-1~1-8, 공통 규칙 G1~G9, AI-1),
---       docs/01-domain/domain.md(CTX-001~009, TERM-001~086), docs/02-prd/requirements.md(REQ-001~262).
+--       docs/01-domain/domain.md(CTX-001~009, TERM-001~086), docs/02-prd/requirements.md(REQ-001~266).
 -- 데이터베이스: PostgreSQL. 16에서 검사함(research/cake-erd-2026-11/check_erd.py).
 -- 바꾸는 법: 이 파일을 고치고 같은 변경을 db/migrations/에 새 번호로 더함. 적용한 마이그레이션은 고치지 않음.
 --
@@ -54,7 +54,7 @@ CREATE TABLE operators (
 CREATE UNIQUE INDEX operators_email_uq ON operators (lower(email)); -- 이메일 하나에 운영자 하나
 COMMENT ON TABLE operators IS 'TBL-002 운영자(TERM-074): 우리 서비스 쪽 사람, 영업 신고를 눈으로 확인';
 
--- TBL-003 shops (CTX-007) ← SPEC-001, SPEC-002, SPEC-003, SPEC-006, SPEC-009, SPEC-010, SPEC-011, SPEC-017, SPEC-024, SPEC-025, SPEC-036, SPEC-052, SPEC-053, SPEC-068, SPEC-073, SPEC-077, SPEC-078 | terms: TERM-053
+-- TBL-003 shops (CTX-007) ← SPEC-001, SPEC-002, SPEC-003, SPEC-006, SPEC-009, SPEC-010, SPEC-011, SPEC-017, SPEC-024, SPEC-025, SPEC-029, SPEC-030, SPEC-036, SPEC-052, SPEC-053, SPEC-068, SPEC-073, SPEC-077, SPEC-078 | terms: TERM-053
 CREATE TABLE shops (
   id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 가게 ID. 모든 기록이 이 값으로 나뉨(SPEC-068)
   owner_id                  uuid NOT NULL REFERENCES owners (id) ON DELETE RESTRICT, -- 가게 주인
@@ -83,6 +83,7 @@ CREATE TABLE shops (
   idle_close_hours          smallint NOT NULL DEFAULT 24 CHECK (idle_close_hours BETWEEN 1 AND 720), -- 문의 끊김까지 시간(REQ-211, 기본 24시간). 사장님이 바꾸면 저장한 때부터 씀(REQ-243)
   owner_wait_minutes        smallint NOT NULL DEFAULT 120 CHECK (owner_wait_minutes BETWEEN 10 AND 1440), -- 사장님 답 기다리는 시간(REQ-116, 기본 2시간). 바꾸면 그 뒤 시작된 기다림부터(owner_tasks.wait_due_at, REQ-243)
   daily_ai_cost_limit_krw   integer NOT NULL DEFAULT 5000 CHECK (daily_ai_cost_limit_krw BETWEEN 0 AND 1000000), -- 하루 AI 비용 한도(REQ-163, 기본 5,000원). 사장님이 정하고 바꾸면 저장한 때부터 그날 쓴 비용과 견줌(REQ-243)
+  awaiting_payment_limit    smallint NOT NULL DEFAULT 2 CHECK (awaiting_payment_limit BETWEEN 0 AND 10), -- 한 손님의 결제 기다림 주문 한도(REQ-263, REQ-265, 기본 2건, 0이면 한도 없음). 기본 디자인 주문 요청 때 그 손님의 결제 기다림 주문 수와 견줌(4절 A40). 바꾸면 저장한 때부터 씀
   booking_slug              text CHECK (booking_slug ~ '^[a-z0-9][a-z0-9-]{2,39}$'), -- 예약 링크(TERM-042) 주소의 가게 몫. 낸 뒤 바뀌지 않음(SPEC-010)
   booking_issued_at         timestamptz,                       -- 예약 링크를 낸 시각
   created_at                timestamptz NOT NULL DEFAULT now(), -- 등록한 시각
@@ -690,13 +691,16 @@ CREATE TABLE handoffs (
   consultation_id        uuid NOT NULL,                  -- 상담
   source_message_id      uuid NOT NULL,                  -- 에스컬레이션한 손님 말. 같은 메시지는 한 번만 에스컬레이션함(SPEC-022). 열린 동안 온 새 질문은 덧붙은 질문(handoff_questions)으로 남음
   order_id               uuid,                           -- 관련 주문(있으면)
-  reason                 text NOT NULL CHECK (reason IN ('edibility', 'cannot_answer', 'closed_day', 'legal_medical', 'customer_request', 'other_user', 'pre_receipt_issue', 'ai_failure', 'ai_cost_limit', 'callback_timeout', 'masking_failed', 'empty_answer', 'clause_missing')), -- 에스컬레이션한 사유: 먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·AI 실패·AI 비용 한도·콜백 시간 초과·마스킹 실패·빈 답·조문 없음
+  reason                 text NOT NULL CHECK (reason IN ('edibility', 'cannot_answer', 'closed_day', 'legal_medical', 'customer_request', 'other_user', 'pre_receipt_issue', 'ai_failure', 'ai_cost_limit', 'callback_timeout', 'masking_failed', 'empty_answer', 'clause_missing', 'order_limit')), -- 에스컬레이션한 사유: 먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·AI 실패·AI 비용 한도·콜백 시간 초과·마스킹 실패·빈 답·조문 없음·결제 기다림 주문 한도(REQ-263)
   requested_day          date,                           -- 마감된 날에 추가로 받을지 묻는 질문의 날짜(SPEC-014). 마감된 날 질문에만 있고, 다른 열린 건이 있어도 날짜마다 따로 건(handoffs_one_open_day_per_consultation, 설계 재검토 M17)
   status                 text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'answered', 'closed_no_answer')), -- 열림·답함·답 없어 닫힘(남긴 지 7일, REQ-216)
   answer_text            text CHECK (char_length(answer_text) BETWEEN 1 AND 1000), -- 사장님 답. AI가 고치지 않고 그대로 전함(SPEC-023)
   day_decision           text CHECK (day_decision IN ('accepted', 'declined')), -- 마감된 날: 추가 수락·받지 않음
   day_accept_expires_at  timestamptz,                    -- 추가 수락한 날에 주문 요청으로 자리를 잡을 수 있는 기한(24시간, SPEC-023)
   day_used_order_id      uuid,                           -- 추가 수락을 쓴 주문 요청: 그 날짜에 마감 후 추가 수락(slot_holds.overbooked)으로 자리를 잡은 주문. 추가 수락 하나는 주문 요청 하나에만(SPEC-023, SPEC-029, 4절 A34)
+  limit_decision         text CHECK (limit_decision IN ('accepted', 'declined')), -- 결제 기다림 주문 한도: 한도를 넘겨 받기·받지 않음(SPEC-023, REQ-264)
+  limit_accept_expires_at timestamptz,                   -- 한도를 넘겨 받은 상담의 주문 요청이 한도를 넘을 수 있는 기한(24시간, SPEC-023, REQ-264)
+  limit_used_order_id    uuid,                           -- 한도 넘겨 받기를 쓴 주문 요청. 넘겨 받기 하나는 주문 요청 하나에만(SPEC-023, SPEC-029, 4절 A40)
   appended_alerted_at    timestamptz,                    -- '새 질문 덧붙음' 알림을 마지막으로 보낸 시각(하루 한 번까지, SPEC-022)
   answered_at            timestamptz,                    -- 답한 시각
   closed_at              timestamptz,                    -- 답 없어 닫힌 시각(남긴 지 7일, REQ-216). 그 뒤 상담은 문의 끊김으로 닫히고 지워질 수 있음(1-1)
@@ -707,17 +711,23 @@ CREATE TABLE handoffs (
   CONSTRAINT handoffs_message_fk FOREIGN KEY (shop_id, source_message_id) REFERENCES messages (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT handoffs_order_fk FOREIGN KEY (shop_id, order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT handoffs_day_used_fk FOREIGN KEY (shop_id, day_used_order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
+  CONSTRAINT handoffs_limit_used_fk FOREIGN KEY (shop_id, limit_used_order_id) REFERENCES orders (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT handoffs_source_uq UNIQUE (source_message_id),
   CONSTRAINT handoffs_day_used_uq UNIQUE (day_used_order_id), -- 추가 수락 하나는 주문 요청 하나에만(SPEC-023, 설계 재검토 M17)
+  CONSTRAINT handoffs_limit_used_uq UNIQUE (limit_used_order_id), -- 한도 넘겨 받기 하나는 주문 요청 하나에만(SPEC-023, REQ-264)
   CONSTRAINT handoffs_answered_chk CHECK ((status = 'answered') = (answered_at IS NOT NULL)),
-  CONSTRAINT handoffs_answer_chk CHECK (status <> 'answered' OR answer_text IS NOT NULL OR day_decision IS NOT NULL),
+  CONSTRAINT handoffs_answer_chk CHECK (status <> 'answered' OR answer_text IS NOT NULL OR day_decision IS NOT NULL OR limit_decision IS NOT NULL),
   CONSTRAINT handoffs_day_chk CHECK ((reason = 'closed_day') = (requested_day IS NOT NULL) AND (day_decision IS NULL OR requested_day IS NOT NULL)), -- 날짜는 마감된 날 질문에만, 추가 수락·받지 않음은 날짜가 있는 건에만
   CONSTRAINT handoffs_day_used_chk CHECK (day_used_order_id IS NULL OR day_decision IS NOT DISTINCT FROM 'accepted'), -- 추가 수락한 건만 주문 요청이 씀(설계 재검토 M17)
   CONSTRAINT handoffs_day_accept_chk CHECK ((day_decision IS NOT DISTINCT FROM 'accepted') = (day_accept_expires_at IS NOT NULL)),
+  CONSTRAINT handoffs_limit_chk CHECK (limit_decision IS NULL OR reason = 'order_limit'), -- 한도를 넘겨 받기·받지 않음은 결제 기다림 주문 한도 건에만(REQ-263)
+  CONSTRAINT handoffs_limit_used_chk CHECK (limit_used_order_id IS NULL OR limit_decision IS NOT DISTINCT FROM 'accepted'), -- 한도를 넘겨 받은 건만 주문 요청이 씀(REQ-264)
+  CONSTRAINT handoffs_limit_accept_chk CHECK ((limit_decision IS NOT DISTINCT FROM 'accepted') = (limit_accept_expires_at IS NOT NULL)),
   CONSTRAINT handoffs_closed_chk CHECK ((status = 'closed_no_answer') = (closed_at IS NOT NULL)) -- 답 없어 닫힘에만 닫힌 시각
 );
-CREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason <> 'closed_day' AND (reason <> 'other_user' OR order_id IS NULL); -- 열린 에스컬레이션 건이 있으면 새 질문은 그 건의 덧붙은 질문(SPEC-022). 마감된 날 질문 건과 관련 주문이 있는 다른 카카오 사용자 건은 빼고 셈
+CREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason NOT IN ('closed_day', 'order_limit') AND (reason <> 'other_user' OR order_id IS NULL); -- 열린 에스컬레이션 건이 있으면 새 질문은 그 건의 덧붙은 질문(SPEC-022). 마감된 날 질문 건, 결제 기다림 주문 한도 건과 관련 주문이 있는 다른 카카오 사용자 건은 빼고 셈
 CREATE UNIQUE INDEX handoffs_one_open_day_per_consultation ON handoffs (consultation_id, requested_day) WHERE status = 'open' AND reason = 'closed_day'; -- 마감된 날 질문은 상담과 날짜마다 열린 건 하나(SPEC-014, 설계 재검토 M17)
+CREATE UNIQUE INDEX handoffs_one_open_limit_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason = 'order_limit'; -- 결제 기다림 주문 한도 건은 덧붙이지 않고 상담마다 열린 건 하나(SPEC-022, REQ-263)
 CREATE UNIQUE INDEX handoffs_one_open_other_user_per_order ON handoffs (consultation_id, order_id) WHERE status = 'open' AND reason = 'other_user' AND order_id IS NOT NULL; -- 다른 카카오 사용자의 사정은 관련 주문이 있으면 덧붙이지 않고 상담과 주문마다 열린 건 하나. 사장님이 그 건에서 그 주문의 문제 신고로 남김(SPEC-022, SPEC-079, 설계 재검토 M12)
 CREATE INDEX handoffs_open_age_idx ON handoffs (created_at) WHERE status = 'open'; -- 남긴 지 7일 지난 열린 에스컬레이션 건 찾기(SPEC-024, REQ-216)
 COMMENT ON TABLE handoffs IS 'TBL-027 에스컬레이션 건(TERM-008): AI가 답하지 않고 사장님께 에스컬레이션한 손님 질문';
@@ -1775,6 +1785,7 @@ COMMENT ON COLUMN shops.completion_photo_enabled IS '완성 사진 보내기(SPE
 COMMENT ON COLUMN shops.idle_close_hours IS '문의 끊김까지 시간(REQ-211, 기본 24시간). 사장님이 바꾸면 저장한 때부터 씀(REQ-243)';
 COMMENT ON COLUMN shops.owner_wait_minutes IS '사장님 답 기다리는 시간(REQ-116, 기본 2시간). 바꾸면 그 뒤 시작된 기다림부터(owner_tasks.wait_due_at, REQ-243)';
 COMMENT ON COLUMN shops.daily_ai_cost_limit_krw IS '하루 AI 비용 한도(REQ-163, 기본 5,000원). 사장님이 정하고 바꾸면 저장한 때부터 그날 쓴 비용과 견줌(REQ-243)';
+COMMENT ON COLUMN shops.awaiting_payment_limit IS '한 손님의 결제 기다림 주문 한도(REQ-263, REQ-265, 기본 2건, 0이면 한도 없음). 기본 디자인 주문 요청 때 그 손님의 결제 기다림 주문 수와 견줌(4절 A40). 바꾸면 저장한 때부터 씀';
 COMMENT ON COLUMN shops.booking_slug IS '예약 링크(TERM-042) 주소의 가게 몫. 낸 뒤 바뀌지 않음(SPEC-010)';
 COMMENT ON COLUMN shops.booking_issued_at IS '예약 링크를 낸 시각';
 COMMENT ON COLUMN shops.created_at IS '등록한 시각';
@@ -2079,13 +2090,16 @@ COMMENT ON COLUMN handoffs.shop_id IS '가게';
 COMMENT ON COLUMN handoffs.consultation_id IS '상담';
 COMMENT ON COLUMN handoffs.source_message_id IS '에스컬레이션한 손님 말. 같은 메시지는 한 번만 에스컬레이션함(SPEC-022). 열린 동안 온 새 질문은 덧붙은 질문(handoff_questions)으로 남음';
 COMMENT ON COLUMN handoffs.order_id IS '관련 주문(있으면)';
-COMMENT ON COLUMN handoffs.reason IS '에스컬레이션한 사유: 먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·AI 실패·AI 비용 한도·콜백 시간 초과·마스킹 실패·빈 답·조문 없음';
+COMMENT ON COLUMN handoffs.reason IS '에스컬레이션한 사유: 먹어도 되는지·답할 수 없음·마감된 날·법·의료·손님 요청·다른 사용자·받기 전 문제·AI 실패·AI 비용 한도·콜백 시간 초과·마스킹 실패·빈 답·조문 없음·결제 기다림 주문 한도(REQ-263)';
 COMMENT ON COLUMN handoffs.requested_day IS '마감된 날에 추가로 받을지 묻는 질문의 날짜(SPEC-014). 마감된 날 질문에만 있고, 다른 열린 건이 있어도 날짜마다 따로 건(handoffs_one_open_day_per_consultation, 설계 재검토 M17)';
 COMMENT ON COLUMN handoffs.status IS '열림·답함·답 없어 닫힘(남긴 지 7일, REQ-216)';
 COMMENT ON COLUMN handoffs.answer_text IS '사장님 답. AI가 고치지 않고 그대로 전함(SPEC-023)';
 COMMENT ON COLUMN handoffs.day_decision IS '마감된 날: 추가 수락·받지 않음';
 COMMENT ON COLUMN handoffs.day_accept_expires_at IS '추가 수락한 날에 주문 요청으로 자리를 잡을 수 있는 기한(24시간, SPEC-023)';
 COMMENT ON COLUMN handoffs.day_used_order_id IS '추가 수락을 쓴 주문 요청: 그 날짜에 마감 후 추가 수락(slot_holds.overbooked)으로 자리를 잡은 주문. 추가 수락 하나는 주문 요청 하나에만(SPEC-023, SPEC-029, 4절 A34)';
+COMMENT ON COLUMN handoffs.limit_decision IS '결제 기다림 주문 한도: 한도를 넘겨 받기·받지 않음(SPEC-023, REQ-264)';
+COMMENT ON COLUMN handoffs.limit_accept_expires_at IS '한도를 넘겨 받은 상담의 주문 요청이 한도를 넘을 수 있는 기한(24시간, SPEC-023, REQ-264)';
+COMMENT ON COLUMN handoffs.limit_used_order_id IS '한도 넘겨 받기를 쓴 주문 요청. 넘겨 받기 하나는 주문 요청 하나에만(SPEC-023, SPEC-029, 4절 A40)';
 COMMENT ON COLUMN handoffs.appended_alerted_at IS '''새 질문 덧붙음'' 알림을 마지막으로 보낸 시각(하루 한 번까지, SPEC-022)';
 COMMENT ON COLUMN handoffs.answered_at IS '답한 시각';
 COMMENT ON COLUMN handoffs.closed_at IS '답 없어 닫힌 시각(남긴 지 7일, REQ-216). 그 뒤 상담은 문의 끊김으로 닫히고 지워질 수 있음(1-1)';

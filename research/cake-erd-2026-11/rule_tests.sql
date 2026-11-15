@@ -1507,6 +1507,54 @@ SELECT pg_temp.expect_fail('M17 마감된 날 질문을 덧붙임', 'handoff_que
 SELECT pg_temp.expect_fail('M17 같은 손님 말을 두 번 덧붙임', 'handoff_questions_message_uq', ARRAY[$$
   INSERT INTO handoff_questions (shop_id, handoff_id, message_id, reason)
   VALUES ('a2000000-0000-0000-0000-000000000001', 'f6000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000004', 'cannot_answer')$$]);
+-- 동희님 결정 반영(2026-11-15 14:19 결정 카드 '가게가 한도를 정함', 설계 재검토 RB-25): 결제 기다림 주문 한도와 그 에스컬레이션 건
+SELECT pg_temp.expect_fail('RB-25 결제 기다림 주문 한도 11건', 'shops_awaiting_payment_limit_check', ARRAY[$$
+  UPDATE shops SET awaiting_payment_limit = 11 WHERE id = 'a2000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_ok('RB-25 열린 건이 있어도 한도 건은 따로 열림', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-f1', '하나 더 주문할게요', 'trace-f1')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000f1', 'order_limit')$$]);
+SELECT pg_temp.expect_fail('RB-25 한 상담의 열린 한도 건 둘', 'handoffs_one_open_limit_per_consultation', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-f1', '하나 더 주문할게요', 'trace-f1')$$, $$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f2', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-f2', '하나 더 주문할게요', 'trace-f2')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000f1', 'order_limit')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000f2', 'order_limit')$$]);
+SELECT pg_temp.expect_fail('RB-25 한도 건이 아닌 건에 한도 결정', 'handoffs_limit_chk', ARRAY[$$
+  UPDATE handoffs SET limit_decision = 'declined' WHERE id = 'f6000000-0000-0000-0000-000000000001'$$]);
+SELECT pg_temp.expect_fail('RB-25 기한 없이 한도를 넘겨 받음', 'handoffs_limit_accept_chk', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-f1', '하나 더 주문할게요', 'trace-f1')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, status, limit_decision, answered_at)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000f1', 'order_limit', 'answered', 'accepted', now())$$]);
+SELECT pg_temp.expect_fail('RB-25 받지 않은 한도 건을 쓴 주문 요청', 'handoffs_limit_used_chk', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-f1', '하나 더 주문할게요', 'trace-f1')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, status, limit_decision, answered_at, limit_used_order_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000f1', 'order_limit', 'answered', 'declined', now(), 'd0000000-0000-0000-0000-000000000003')$$]);
+SELECT pg_temp.expect_fail('RB-25 주문 요청 하나가 한도 넘겨 받기 둘을 씀', 'handoffs_limit_used_uq', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-f1', '하나 더 주문할게요', 'trace-f1')$$, $$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f2', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-f2', '하나 더 주문할게요', 'trace-f2')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, status, limit_decision, limit_accept_expires_at, answered_at, limit_used_order_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000f1', 'order_limit', 'answered', 'accepted', now() + interval '24 hours', now(), 'd0000000-0000-0000-0000-000000000003')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, status, limit_decision, limit_accept_expires_at, answered_at, limit_used_order_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000f2', 'order_limit', 'answered', 'accepted', now() + interval '24 hours', now(), 'd0000000-0000-0000-0000-000000000003')$$]);
+SELECT pg_temp.expect_ok('RB-25 한도를 넘겨 받은 건과 그것을 쓴 주문 요청', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'inbound', 'customer', 'text', 'km-f1', '하나 더 주문할게요', 'trace-f1')$$, $$
+  INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, status, limit_decision, limit_accept_expires_at, answered_at, limit_used_order_id)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c2000000-0000-0000-0000-0000000000f1', 'order_limit', 'answered', 'accepted', now() + interval '24 hours', now(), 'd0000000-0000-0000-0000-000000000003')$$]);
+SELECT pg_temp.expect_fail('RB-25 한도 건을 덧붙은 질문으로', 'handoff_questions_reason_check', ARRAY[$$
+  INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked, trace_id)
+  VALUES ('c2000000-0000-0000-0000-0000000000f1', 'a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'inbound', 'customer', 'text', 'km-f1', '하나 더 주문할게요', 'trace-f1')$$, $$
+  INSERT INTO handoff_questions (shop_id, handoff_id, message_id, reason)
+  VALUES ('a2000000-0000-0000-0000-000000000001', 'f6000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-0000000000f1', 'order_limit')$$]);
 SELECT pg_temp.expect_ok('M17 날짜만 아는 초안', ARRAY[$$
   INSERT INTO order_drafts (shop_id, consultation_id, pickup_day) VALUES ('a2000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', '2026-12-26')$$]);
 SELECT pg_temp.expect_fail('M17 날짜 없이 시각만 있는 초안', 'order_drafts_pickup_time_chk', ARRAY[$$
@@ -1723,6 +1771,7 @@ BEGIN
            OR o.id IN (SELECT order_id FROM issue_details WHERE consultation_id = c.id)
            OR o.id IN (SELECT order_id FROM handoffs WHERE consultation_id = c.id)
            OR o.id IN (SELECT day_used_order_id FROM handoffs WHERE consultation_id = c.id)
+           OR o.id IN (SELECT limit_used_order_id FROM handoffs WHERE consultation_id = c.id)
            OR o.id IN (SELECT q.order_id FROM handoff_questions q JOIN handoffs h ON h.id = q.handoff_id WHERE h.consultation_id = c.id)
            OR o.id IN (SELECT order_id FROM notifications WHERE consultation_id = c.id)));
   -- 묶인 사장님 알림(batched_into_id)이 자기 테이블을 참조해도 알림은 지우지 않고 할 일 연결만 비움(RC-03)

@@ -217,21 +217,22 @@ op(id="API-009", method="get", path="/owner/shop", op="getShop", tag="가게",
 op(id="API-010", method="patch", path="/owner/shop", op="updateShop", tag="가게",
    summary="가게 설정 수정", spec=["SPEC-077", "SPEC-009", "SPEC-017", "SPEC-024", "SPEC-025", "SPEC-052"], auth="owner", idem=True,
    desc="가게 이름·전화번호·사업장 주소·전자우편주소·픽업 장소(E14, DEC-13)·통신판매업 신고번호와 그 신고를 받은 기관(또는 면제 사유)·완성 사진 보내기(SPEC-009)·"
-        "문의 끊김 시간(SPEC-025)·사장님 답 기다리는 시간(SPEC-024)·하루 AI 비용 한도(REQ-163)를 바꾼다(SPEC-077). 바꿀 필드만 보내고 바로 저장하며, "
+        "문의 끊김 시간(SPEC-025)·사장님 답 기다리는 시간(SPEC-024)·하루 AI 비용 한도(REQ-163)·한 손님의 결제 기다림 주문 한도(0~10건, 0이면 한도 없음, REQ-265)를 바꾼다(SPEC-077). 바꿀 필드만 보내고 바로 저장하며, "
         "예약 링크 페이지와 그 뒤 나가는 안내(전날 안내의 연락처·픽업 장소, 확정 안내의 가게 신원)가 바뀐 값을 쓴다(REQ-244). "
         "통신판매업 신고번호와 기관은 바꾼 뒤 값으로 보아 함께 있거나 함께 없어야 하고(아니면 빈 쪽의 필드 오류 required), 신고번호와 면제 사유 가운데 하나는 늘 있어야 한다(아니면 /mailOrderRegNo required, REQ-239). "
-        "사장님 답 기다리는 시간은 그 뒤 시작된 기다림부터 쓰고(이미 시작된 기다림의 지연 안내 시각은 그대로), 문의 끊김 시간과 하루 AI 비용 한도는 저장한 때부터 쓴다(REQ-243, 05단계 A37). "
+        "사장님 답 기다리는 시간은 그 뒤 시작된 기다림부터 쓰고(이미 시작된 기다림의 지연 안내 시각은 그대로), 문의 끊김 시간과 하루 AI 비용 한도는 저장한 때부터 쓴다(REQ-243, 05단계 A37). 결제 기다림 주문 한도는 저장한 때부터 새 기본 디자인 주문 요청에 쓰고, 지금 그보다 많은 결제 기다림 주문은 그대로 둔다(REQ-265, 05단계 A40). "
         "상호·대표자·사업자등록번호는 여기서 바꾸지 않는다(변경 요청 API-080, SPEC-078). 영업 신고 번호·종류와 신고증은 보류일 때 API-011. 바뀐 것이 없으면 outcome unchanged.",
    body="ShopUpdate",
    body_examples={"pickup_address": {"baseRevision": E.rev("shop:2"), "pickupAddress": "서울 마포구 달빛로 12, 1층", "completionPhotoEnabled": True},
                   "identity_contact": {"baseRevision": E.rev("shop:2"), "contactEmail": "moonlight@example.com", "businessAddress": "서울 마포구 달빛로 12, 2층"},
-                  "wait_minutes": {"baseRevision": E.rev("shop:2"), "ownerWaitMinutes": 30}},
+                  "wait_minutes": {"baseRevision": E.rev("shop:2"), "ownerWaitMinutes": 30},
+                  "order_limit": {"baseRevision": E.rev("shop:2"), "awaitingPaymentLimit": 3}},
    ok=[(200, "ShopResult", {"updated": {"outcome": "done", "shop": E.SHOP}, "unchanged": {"outcome": "unchanged", "shop": E.SHOP}})],
    errors={404: ["shop_not_registered"], 409: ["version_conflict"]},
-   fields=[("/contactPhone", "bad_format"), ("/ownerWaitMinutes", "out_of_range"), ("/contactEmail", "bad_format"), ("/mailOrderAuthority", "required")],
+   fields=[("/contactPhone", "bad_format"), ("/ownerWaitMinutes", "out_of_range"), ("/contactEmail", "bad_format"), ("/mailOrderAuthority", "required"), ("/awaitingPaymentLimit", "out_of_range")],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:shop_not_registered"],
-          "상태": ["note:기다리는 시간은 그 뒤 시작된 기다림부터, 문의 끊김 시간과 하루 AI 비용 한도는 저장한 때부터(REQ-243)"],
+          "상태": ["note:기다리는 시간은 그 뒤 시작된 기다림부터, 문의 끊김 시간과 하루 AI 비용 한도는 저장한 때부터(REQ-243), 결제 기다림 주문 한도는 저장한 때부터 새 주문 요청에(REQ-265)"],
           "반복": ["idem", "example:unchanged"], "동시": ["revision", "409:version_conflict"],
           "노출": ["closed", "note:사업장 주소·전자우편주소·전화번호는 예약 링크 페이지에 보이는 가게 신원 정보(REQ-239)"], "화면": ["screen"]})
 
@@ -800,35 +801,37 @@ op(id="API-040", method="get", path="/owner/tasks", op="listOwnerTasks", tag="�
 # ═══ 에스컬레이션 건과 상담 ═════════════════════════════════════════════════════════
 op(id="API-041", method="get", path="/owner/handoffs/{handoffId}", op="getHandoff", tag="에스컬레이션 건·상담",
    summary="에스컬레이션 건 하나", spec=["SPEC-022", "SPEC-023", "SPEC-021", "SPEC-079"], auth="owner",
-   desc="에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 이 건에 덧붙은 질문(질문마다 사유와 관련 주문). 마감된 날 질문이면 requestedDay(마감된 날 질문은 열린 건에 덧붙지 않고 상담과 날짜마다 따로 건, SPEC-022). 다른 카카오 사용자의 사정도 관련 주문이 있으면 열린 건에 덧붙지 않고 상담과 주문마다 따로 건(SPEC-022). 추가 수락을 쓴 주문 요청이 있으면 dayUsedOrder. "
+   desc="에스컬레이션한 사유와 손님 말(전화번호·계좌번호는 원래 값으로 되돌린 글, 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만, SPEC-021), 그 뒤 이 건에 덧붙은 질문(질문마다 사유와 관련 주문). 마감된 날 질문이면 requestedDay(마감된 날 질문은 열린 건에 덧붙지 않고 상담과 날짜마다 따로 건, SPEC-022). 다른 카카오 사용자의 사정도 관련 주문이 있으면 열린 건에 덧붙지 않고 상담과 주문마다 따로 건(SPEC-022). 추가 수락을 쓴 주문 요청이 있으면 dayUsedOrder. 결제 기다림 주문 한도 건(사유 order_limit)도 열린 건에 덧붙지 않고 상담마다 따로 건이고(SPEC-022), 그 손님의 결제 기다림 주문을 awaitingPaymentOrders로, 사장님이 고른 것을 limitDecision으로, 한도를 넘겨 받은 것을 쓴 주문 요청을 limitUsedOrder로 본다(SPEC-023). "
         "남긴 지 7일 동안 사장님 답이 없으면 서버가 status closed_no_answer와 closedAt으로 닫고 손님에게 다시 물어 달라고 한 번 알린다(REQ-216). "
         "사유가 다른 카카오 사용자(other_user)이고 관련 주문이 받은 주문인 열린 건이면 화면이 '이 주문의 문제 신고로 남기기'(API-083)를 보이고, 남긴 신고는 issueReport로 본다(SPEC-079). "
         "그 손님에게는 주문 내용·금액·주문자를 보이지 않았고, 관련 주문은 사장님 화면에만 보인다(REQ-252).",
    params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF["handoffId"])],
    ok=[(200, "Handoff", {"edibility": E.HANDOFF, "closed_day": E.HANDOFF_DAY, "closed_no_answer": E.HANDOFF_CLOSED,
-                         "other_user_reported": E.HANDOFF_OTHER_USER_REPORTED})],
+                         "other_user_reported": E.HANDOFF_OTHER_USER_REPORTED, "order_limit": E.HANDOFF_LIMIT})],
    errors={404: ["not_found"]},
    omit={"403": O403, "409": O409_READ, "422": O422_PATHONLY},
-   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "상태": ["example:closed_no_answer"],
+   kinds={"접근": ["security", "401:unauthenticated"], "대상": ["404:not_found"], "상태": ["example:closed_no_answer", "example:order_limit"],
           "노출": ["closed", "note:원래 값은 그 가게 사장님 화면과 사유를 적고 연 운영자에게만(SPEC-021, DEC-19)"], "화면": ["screen"]})
 
 op(id="API-042", method="post", path="/owner/handoffs/{handoffId}/answer", op="answerHandoff", tag="에스컬레이션 건·상담",
-   summary="에스컬레이션 건 답변", spec=["SPEC-023", "SPEC-024", "SPEC-066"], auth="owner", idem=True,
+   summary="에스컬레이션 건 답변", spec=["SPEC-023", "SPEC-024", "SPEC-066", "SPEC-029"], auth="owner", idem=True,
    desc="사장님 답을 AI가 고치지 않고 그대로 손님에게 전한다(친구면 바로, 아니면 다음 대화 때 먼저, SPEC-066). 기다림 타이머를 멈춘다(SPEC-024). "
-        "마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락한 날로 표시하고, 그 안에 그 날짜로 온 주문 요청 하나가 마감 후 추가 수락으로 자리를 잡아 dayUsedOrder로 남는다(다시 쓰지 않음, SPEC-023). "
+        "마감된 날 질문이면 dayDecision: 추가 수락이면 그 상담의 그 날을 24시간 동안 추가 수락한 날로 표시하고, 그 안에 그 날짜로 온 주문 요청 하나가 마감 후 추가 수락으로 자리를 잡아 dayUsedOrder로 남는다(다시 쓰지 않음, SPEC-023). 결제 기다림 주문 한도 건이면 limitDecision: 한도를 넘겨 받기면 그때부터 24시간 동안 그 상담의 기본 디자인 주문 요청 하나가 한도를 넘겨 남아 limitUsedOrder로 남고(다시 쓰지 않음), 손님에게 '사장님이 주문을 받기로 했어요'와 새 주문 요청 확인 카드(처음 카드의 버튼은 G2대로 처음 결과)를 보낸다. 받지 않음이면 '결제를 기다리는 주문을 결제하거나 취소하면 새 주문을 요청할 수 있어요'를 보낸다(SPEC-023, REQ-264). text를 함께 보내면 그 답도 그대로 전한다. 사유가 order_limit이 아닌 건에 limitDecision을 보내면 422 /limitDecision not_allowed. "
         "이미 답한 질문은 409 already_decided. 남긴 지 7일 동안 답이 없어 '답 없어 닫힘'으로 닫힌 건은 409 invalid_state(손님이 다시 물으면 새 건, REQ-216). "
         "사장님이 화면을 연 뒤 손님 말이 덧붙었으면 409 version_conflict.",
    params=[pid("handoffId", "에스컬레이션 건", E.HANDOFF["handoffId"])],
    body="HandoffAnswerInput",
    body_examples={"answer": {"baseRevision": E.HANDOFF["revision"], "text": E.HANDOFF_ANSWERED["answerText"]},
-                  "accept_day": {"baseRevision": E.HANDOFF_DAY["revision"], "dayDecision": "accepted", "text": "20일 받아 드릴게요. 주문을 이어가 주세요."}},
+                  "accept_day": {"baseRevision": E.HANDOFF_DAY["revision"], "dayDecision": "accepted", "text": "20일 받아 드릴게요. 주문을 이어가 주세요."},
+                  "accept_limit": {"baseRevision": E.HANDOFF_LIMIT["revision"], "limitDecision": "accepted"}},
    ok=[(200, "HandoffAnswerResult", {"sent": {"outcome": "done", "handoff": E.HANDOFF_ANSWERED, "delivery": "sent"},
-                                     "deferred": {"outcome": "done", "handoff": E.HANDOFF_DAY_ACCEPTED, "delivery": "deferred"}})],
+                                     "deferred": {"outcome": "done", "handoff": E.HANDOFF_DAY_ACCEPTED, "delivery": "deferred"},
+                                     "limit_accepted": {"outcome": "done", "handoff": E.HANDOFF_LIMIT_ACCEPTED, "delivery": "sent"}})],
    errors={404: ["not_found"], 409: ["version_conflict", "already_decided", "invalid_state"]},
-   fields=[("/text", "too_long")],
+   fields=[("/text", "too_long"), ("/limitDecision", "not_allowed")],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"],
-          "상태": ["409:already_decided", "409:invalid_state"], "반복": ["idem"], "동시": ["revision", "409:version_conflict"],
+          "상태": ["409:already_decided", "409:invalid_state", "example:limit_accepted"], "반복": ["idem"], "동시": ["revision", "409:version_conflict"],
           "외부": ["example:deferred"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-083", method="post", path="/owner/handoffs/{handoffId}/issue-report", op="reportIssueFromHandoff", tag="에스컬레이션 건·상담",
@@ -1380,7 +1383,7 @@ MESSAGE_OUTCOMES = ["answered", "callback_pending", "handed_over", "ai_unavailab
                     "ai_cost_limit_reached", "masking_failed", "ai_output_rejected", "card_shown", "photo_received", "photo_rejected",
                     "unsupported_message", "rate_limited", "duplicate", "not_accepting", "channel_test_card", "server_error"]
 CARD_OUTCOMES = ["allergy_saved", "allergy_declined", "orderer_saved", "order_requested", "payment_claimed", "amount_confirmed", "amount_declined", "change_requested", "order_cancelled",
-                 "issue_reported", "photo_consent_saved", "consent_withdrawn", "declined", "input_invalid", "card_stale", "card_expired", "card_not_yours", "card_used", "day_full", "retry_needed", "not_allowed_now",
+                 "issue_reported", "photo_consent_saved", "consent_withdrawn", "declined", "input_invalid", "card_stale", "card_expired", "card_not_yours", "card_used", "day_full", "order_limit_reached", "retry_needed", "not_allowed_now",
                  "block_verified", "channel_linked", "not_accepting", "server_error"]
 REVIEW_OUTCOMES = ["review_saved", "review_not_allowed", "review_invalid", "photo_download_failed", "duplicate", "block_verified", "channel_linked",
                    "not_accepting", "server_error"]
@@ -1436,7 +1439,7 @@ op(id="API-071", method="post", path="/kakao/skills/card", op="pressConfirmCard"
    spec=["SPEC-069", "SPEC-029", "SPEC-030", "SPEC-033", "SPEC-041", "SPEC-046", "SPEC-058", "SPEC-063", "SPEC-015", "SPEC-032", "SPEC-040", "SPEC-072",
          "SPEC-075", "SPEC-053", "SPEC-076", "SPEC-044"],
    desc="확인 카드의 블록 버튼이 clientExtra(cardKey, choice)로 보내는 스킬. 서버는 카드 키로 저장된 카드를 찾고 그 사용자·그 주문의 현재 버전·30분 기한을 다시 본다(G9). "
-        "주문 요청이면 한 트랜잭션으로 내용 확인·규정 동의·주문 요청을 남기고 초안의 알레르기 정보 동의(답·동의 글 버전·시각)와 알레르기 답을 주문 내용 버전에 옮기며, 기본 디자인이면 같은 트랜잭션에서 자리를 잡고 결제 안내까지(SPEC-029, SPEC-030). "
+        "주문 요청이면 한 트랜잭션으로 내용 확인·규정 동의·주문 요청을 남기고 초안의 알레르기 정보 동의(답·동의 글 버전·시각)와 알레르기 답을 주문 내용 버전에 옮기며, 기본 디자인이면 같은 트랜잭션에서 자리를 잡고 결제 안내까지(SPEC-029, SPEC-030). 기본 디자인 주문 요청은 같은 트랜잭션에서 그 손님 행을 잠그고 이 가게의 그 손님 결제 기다림 주문을 세어, 가게의 한도(Shop.awaitingPaymentLimit, 0이면 한도 없음)에 닿았으면 주문 요청과 자리를 남기지 않고 사유 order_limit의 에스컬레이션 건을 열고(상담마다 열린 한도 건 하나) '사장님이 확인한 뒤 알려 드릴게요'로 답한다(order_limit_reached, REQ-263). 사장님이 그 상담에서 한도를 넘겨 받은 지 24시간 안이고 아직 쓰지 않았으면 그 주문 요청이 그것을 쓰고 남는다(API-042, REQ-264). 맞춤 주문 요청은 한도로 막지 않는다(사장님이 수락할 때 봄). "
         "초안에 알레르기 정보 동의의 답이 없거나 동의했는데 알레르기 답이 없으면 주문 요청을 남기지 않고 알레르기 정보 카드를 보낸다(card_stale, REQ-201). "
         "입금 알리기·변경 요청·취소·신고·동의 철회도 같은 방법. 카드를 받은 사용자가 아니면 card_not_yours, 버전이 바뀌었으면 card_stale과 새 카드, 기한이 지났으면 card_expired와 새 카드. "
         "같은 카드를 다시 누르면 card_used와 처음 결과(G2). 아무것도 남기지 못하면 retry_needed. 카드 값은 서버 기록에서만 오고 손님 말로 바꿀 수 없다(SPEC-069). "
@@ -1463,7 +1466,7 @@ op(id="API-071", method="post", path="/kakao/skills/card", op="pressConfirmCard"
    omit=dict(SKILL_OMIT, **{"429": "카드는 한 번만 명령을 내려 빈도 한도가 없음"}),
    kinds={"접근": ["security", "401:skill_key_invalid", "outcome:card_not_yours"], "입력": ["422:validation_failed", "outcome:input_invalid"],
           "대상": ["outcome:not_allowed_now"], "상태": ["outcome:card_stale", "outcome:card_expired", "outcome:not_allowed_now", "outcome:block_verified", "outcome:channel_linked", "outcome:amount_declined"],
-          "반복": ["outcome:card_used"], "동시": ["outcome:day_full", "outcome:card_stale"], "외부": ["outcome:retry_needed"],
+          "반복": ["outcome:card_used"], "동시": ["outcome:day_full", "outcome:card_stale"], "한도": ["outcome:order_limit_reached"], "외부": ["outcome:retry_needed"],
           "노출": ["closed", "outcome:server_error", "note:주문자 이름·연락처·입금자 이름·알레르기 답은 AI로 보내지 않음(REQ-178, REQ-204)"],
           "AI": ["outcome:card_not_yours", "outcome:card_stale", "outcome:card_expired", "note:AI가 제안한 카드의 값은 서버 기록에서만 옴(SPEC-069)"],
           "화면": ["screen"]})

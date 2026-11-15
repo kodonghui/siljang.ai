@@ -120,6 +120,7 @@
 | `card_not_yours` | 이 버튼은 카드를 받은 분만 누를 수 있어요 | 06단계 뼈대 그대로 |
 | `card_used` | (처음 결과와 같은 말) | 06단계 뼈대 그대로 |
 | `day_full` | 그 사이 그날이 다 찼어요. 이날은 어떠세요? + 가까운 날 최대 3개 바로가기 / 가까운 날이 없으면: 가까운 날에 자리가 없어요. 사장님께 확인을 요청할 수 있어요 | 08단계에서 바꿈: 가까운 날이 없을 때의 문구를 더함(SPEC-014 빈 경우) |
+| `order_limit_reached` | 사장님이 확인한 뒤 알려 드릴게요 | 06단계 뼈대 그대로 |
 | `retry_needed` | 다시 눌러 주세요 | 06단계 뼈대 그대로 |
 | `not_allowed_now` | 지금은 할 수 없어요: {지금 상태} | 06단계 뼈대 그대로 |
 | `block_verified` | {블록} 블록이 닿았어요({n}/5). 다음 시험 버튼을 눌러 주세요 + 다음 시험 버튼 | 06단계 뼈대 그대로 |
@@ -156,20 +157,20 @@
 | [SCR-001](SCR-001.md) | 예약 링크 페이지 | 손님 | normal · loading · empty · error · rate-limited · stale | permission | 5 |
 | [SCR-002](SCR-002.md) | 가게 개인정보 처리방침 | 손님 | normal · loading · error · rate-limited | empty · permission · stale | 4 |
 | [SCR-003](SCR-003.md) | 가게 채널 상담 | 손님 | normal · loading · empty · error · permission · stale · handed-over · fixed-answer · rate-limited · link-test | - | 28 |
-| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · allergy · orderer · done · stale · expired · day-full · permission · error | loading · empty | 28 |
-| [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · amount-confirm · done · deferred · stale · permission · error | loading · empty | 34 |
-| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · depositor · done · stale · expired · permission · error | loading · empty | 28 |
+| [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · allergy · orderer · done · stale · expired · day-full · permission · error | loading · empty | 29 |
+| [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · amount-confirm · done · deferred · stale · permission · error | loading · empty | 35 |
+| [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · depositor · done · stale · expired · permission · error | loading · empty | 29 |
 | [SCR-007](SCR-007.md) | 내 주문 보기 | 손님 | normal · loading · empty · error · permission · stale · handed-over · rate-limited | - | 22 |
-| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
-| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
-| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
+| [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 29 |
+| [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 29 |
+| [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 29 |
 | [SCR-011](SCR-011.md) | 손님 알림 | 손님 | normal · photo-consent · deferred · stale · error | loading · empty · permission | 6 |
 | [SCR-012](SCR-012.md) | 후기 남기기 | 손님 | normal · done · permission · error | loading · empty · stale | 12 |
-| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 28 |
+| [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 29 |
 | [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 12 |
 | [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 17 |
 | [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
-| [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 28 |
+| [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 30 |
 | [SCR-018](SCR-018.md) | 상담 대화 | 사장님 | normal · loading · empty · error · permission · stale | - | 7 |
 | [SCR-019](SCR-019.md) | 사장님 알림 | 사장님 | normal · not-sent · error · stale | loading · empty · permission | 0 |
 | [SCR-020](SCR-020.md) | 주문 목록 | 사장님 | normal · loading · empty · error · permission · stale | - | 8 |
@@ -231,6 +232,8 @@
 - 화면 본문이 근거로 든 SPEC 가운데 사이트맵의 그 화면 `specs`에 없는 것이 17개 화면에 있습니다. 대부분 다른 화면의 기능을 가리키는 참조(예: 사장님 화면의 SPEC-068 가게 데이터 분리)입니다. SCR-011 손님 알림은 SPEC-031·035·041·042·048의 결과 안내를 보이는데 사이트맵 `specs`에는 없어, 다음에 사이트맵을 고칠 때 더할 후보로 둡니다(이번에는 07단계 확정본을 바꾸지 않음).
 
 ## 9. 검사
+
+2026-11-15 15:17 KST, 동희님 결정 셋을 반영해 원본을 고쳐 다시 생성하고(12절) 09단계 보드를 다시 그린 뒤 다시 생성하고 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4 데이터 221행·액션 161행(SCR-017의 결제 기다림 주문 행과 '한도를 넘겨 받기·받지 않음'), C6 응답 행 974개(06단계의 새 응답 예시 둘 API-041 `order_limit`·API-042 `limit_accepted`와 카카오 스킬 결과 `order_limit_reached`의 카드 화면 일곱. ※ 화면이 나눈 행 3, 카카오 스킬 277, 기본값과 다르게 정한 행 138), C8 참조 1909곳, C10 손님 문구 50개(같음 39, 08단계에서 바꿈 6, 설명 5), C11 허용 예외 908곳입니다. C1 화면 50개, C3 플로우 노드 없음 4개, C4 바로 이동 70곳, C5 그린 상태 367개·상태 이름 30개, C9 프레임 734개·1.5MB, C10 확인 문구 8개, C13 생성 파일 52개, C14 상태 367개는 K3 뒤와 같습니다.
 
 2026-11-15 06:00 KST, 설계 재검토 낮음 K3로 원본·생성기·검사를 고쳐 다시 생성하고(12절) 09단계 보드를 다시 그린 뒤 다시 생성하고 이 문서에 그 기록을 쓴 뒤 `--hub`와 함께 돌린 결과: 검사 15개 통과 15, 실패 0, 미확인 0. 바뀐 숫자는 C4의 바로 이동 70곳(새로 견줌, 모두 사이트맵에 있음)과 C11 허용 예외 906곳(SCR-007의 `loading`·`empty`·`handed-over` 프레임 360·1280에서 주문 카드가 빠져 912곳에서 6곳 줄어듦)입니다. C2는 다른 경로 다섯 화면(SCR-014·037·039·042·050)도 견주고, 나머지 숫자(C6 응답 행 965개, C8 참조 1906곳, C9 프레임 734개, C13 생성 파일 52개, C14 상태 367개)는 K2 뒤와 같습니다.
 
@@ -447,7 +450,7 @@
 - 09단계: SCR-001·004·007·011·015·034·035·047·048의 보드를 다시 그림(09 README 12절).
 - 결정과 다르게 하거나 더한 것: (1) 사업자 정보 변경 요청은 새 화면을 만들지 않고 사장님은 SCR-035(증빙 사진을 올리는 영업 신고 화면)에서, 운영자는 SCR-047의 탭과 SCR-048의 상자에서 다룹니다(07단계 화면 50개 그대로). (2) 검토자가 고칠 곳으로 적은 08단계 화면은 예약 링크 페이지(M11)와 SCR-034(M14)이지만, 같은 요구사항(REQ-240~245)이 보이는 SCR-004·007·011·015·033·035·038·047·048도 고쳤습니다. (3) 변경 요청의 '반영'은 가게 신원이 바뀌는 일이라 '확인됨'처럼 화면의 확인 창을 거치게 했고, '보류'는 영업 신고의 보류처럼 이유만 받습니다.
 
-2026-11-14 같은 재검토의 중간 묶음 M12(RA-13, RB-15)도 같은 결정 카드의 '모두 지금 고침 (추천)'대로 `screens_common.py`·`screens_guest.py`·`screens_owner_a.py`·`screens_owner_b.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR I2). RA-13은 검토자의 고치는 방향대로이고, RB-15는 Claude 추천이라 동희님 확인을 요청합니다. 06단계 계약의 새 API-083, 문제 신고의 새 필드(`problemKind`·`noCompensationReason`·`otherCompensationNote`·`otherCompensationAmount`·`reportedBy`·`handoff`)와 `Handoff.issueReport`, 확인할 것 `no_compensation_standard`, 응답 예시 `API-041#200:other_user_reported`, `API-064#200:other_compensation`·`from_handoff`, `API-065#200:none_with_reason`·`other_compensation`, `API-083#201:created`·`API-083#200:unchanged`를 화면에 이었습니다.
+2026-11-14 같은 재검토의 중간 묶음 M12(RA-13, RB-15)도 같은 결정 카드의 '모두 지금 고침 (추천)'대로 `screens_common.py`·`screens_guest.py`·`screens_owner_a.py`·`screens_owner_b.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다(PR I2). RA-13은 검토자의 고치는 방향대로이고, RB-15는 Claude 추천이라 동희님 확인을 요청합니다(2026-11-15 14:19 동희님 결정 카드 '지금대로 둠 (추천)'으로 확정함). 06단계 계약의 새 API-083, 문제 신고의 새 필드(`problemKind`·`noCompensationReason`·`otherCompensationNote`·`otherCompensationAmount`·`reportedBy`·`handoff`)와 `Handoff.issueReport`, 확인할 것 `no_compensation_standard`, 응답 예시 `API-041#200:other_user_reported`, `API-064#200:other_compensation`·`from_handoff`, `API-065#200:none_with_reason`·`other_compensation`, `API-083#201:created`·`API-083#200:unchanged`를 화면에 이었습니다.
 
 - SCR-027 문제 신고(RA-13): 보상 앞에 문제 종류(상함·변질·이물·그 밖, 꼭 고름)를 고르고 보상은 다섯(그 밖의 보상을 더함). 상함·변질이나 이물에 보상 없음이면 `confirm` 창에 소비자분쟁해결기준(제빵류: 교환 또는 환급)과 위험, 사유 필드(1~200자)와 '그래도 보상 없이 닫기'(REQ-248). 그 밖의 보상은 한 일(1~200자)과 금액(선택)만 남기고 환불 송금으로 가지 않음(REQ-249). '기한 뒤'·사유·한 일은 사장님 화면에만. 에스컬레이션 건에서 남긴 신고면 위에 그 건 링크와 '신고한 분은 주문자가 아님'(DEC-24). `none_with_reason`·`other_compensation`은 `done`. `layout`의 보상 폼에 '문제 종류' 고르기와 다섯째 보상을 그림.
 - SCR-017 에스컬레이션 건(RB-15): 사유가 다른 카카오 사용자이고 관련 주문이 받은 주문인 열린 건에 '이 주문의 문제 신고로 남기기'(설명 1~1,000자, 손님 말로 미리 채움, API-083). `created`·`unchanged`와 `other_user_reported`는 `normal`(남긴 신고 링크, 건은 열린 채로 답할 수 있음), 남길 수 없는 상태(409 `invalid_state`)는 `stale`. 견본은 먹어도 되는지 묻는 건이라 `layout`은 그대로.
@@ -501,3 +504,13 @@
 - 상태와 문구: 상태 이름 30개와 그린 상태 367개, 와이어프레임의 프레임 734개, 손님 문구와 확인 문구는 그대로입니다.
 - 09단계: 보드 51개를 다시 그렸습니다(09 README 12절). 그리는 상태가 늘지 않아 화면 정의의 '목업' 줄은 그대로입니다(09를 그린 뒤 다시 생성해도 바뀐 파일 0개).
 - 검사: 9절의 2026-11-15 06:00 KST 결과.
+
+2026-11-15 동희님 결정 카드(2026-11-15 14:19, Claude Code 채팅)의 셋을 반영하며(PR D) `screens_common.py`·`screens_guest.py`·`screens_owner_a.py`·`screens_owner_b.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다. 06단계의 바뀐 계약(06단계 README 11절·15절)을 따릅니다.
+
+- 결제 기다림 주문 한도(설계 재검토 RB-25, '가게가 한도를 정함'): SCR-034 가게 정보에 '한 손님의 결제 기다림 주문 한도(건)' 필드(0~10건, 기본 2, 0이면 한도 없음, API-010 `awaitingPaymentLimit`). SCR-017은 사유에 '결제 기다림 주문 한도'를 더하고, 그 건이면 그 손님의 이 가게 결제 기다림 주문(주문번호 링크, 결제 기한이 이른 순, API-041 `awaitingPaymentOrders`)과 '한도를 넘겨 받기'·'받지 않음'(API-042 `limitDecision`)을 보입니다. 넘겨 받으면 그때부터 24시간 동안 그 상담의 기본 디자인 주문 요청 하나만 한도를 넘겨 남고(REQ-264) `done`에 넘겨 받은 기한을 보입니다. 응답 행은 `API-041#200:order_limit` → `normal`, `API-042#200:limit_accepted` → `done`입니다.
+- 손님 문구: 카카오 스킬 결과 `order_limit_reached` '사장님이 확인한 뒤 알려 드릴게요'(06단계 뼈대 그대로, 5절 표)는 주문 요청 카드(SCR-004 `done`)에서만 나오고, 다른 카드 화면 여섯(SCR-005·006·008·009·010·013)은 '나오지 않음'입니다. SCR-011 사장님 답 안내에 한도를 넘겨 받을 때의 '사장님이 주문을 받기로 했어요'와 새 주문 요청 확인 카드(SCR-004), 받지 않을 때의 '결제를 기다리는 주문을 결제하거나 취소하면 새 주문을 요청할 수 있어요'(REQ-264)를 더했습니다.
+- AI 모델 회사(06단계 OPEN-7을 닫은 DEC-25, '둘 다 시험해 평가로 고름 (추천)')는 화면 정의를 바꾸지 않습니다. 처리방침 화면(SCR-002)의 국외 이전 줄은 06단계 예시 `PRIVACY`에서 오고, 09단계 견본만 고쳤습니다(09 README 12절).
+- 신고 본인 확인(RB-15, '지금대로 둠 (추천)'): 화면은 그대로이고, 위 M12 기록의 확인 요청 표시에 확정했다고 적었습니다.
+- 상태와 문구: 상태 이름 30개와 그린 상태 367개, 와이어프레임의 프레임 734개, 확인 문구는 그대로이고 손님 문구는 49개 → 50개입니다.
+- 09단계: SCR-002·034의 보드 4개를 다시 그렸습니다(09 README 12절). 그리는 상태가 늘지 않아 화면 정의의 '목업' 줄은 그대로입니다(09를 그린 뒤 다시 생성해도 바뀐 파일 0개).
+- 검사: 9절의 2026-11-15 15:17 KST 결과.

@@ -115,7 +115,7 @@ CURSOR = string(1, 200, r"^[A-Za-z0-9_-]+$")
 
 ORDER_STATUS = ["requested", "awaiting_payment", "payment_overdue", "confirmed", "received", "no_pickup", "rejected", "cancelled"]
 TASK_KINDS = ["handoff", "custom_order", "change_request", "issue_report", "payment_claim", "payment_mismatch", "payment_overdue", "refund_decision", "paid_after_cancel", "ledger_relink", "license_on_hold", "calendar_conflict", "refund_send", "arrival_check"]
-HANDOFF_REASONS = ["edibility", "cannot_answer", "closed_day", "legal_medical", "customer_request", "other_user", "pre_receipt_issue", "ai_failure", "ai_cost_limit", "callback_timeout", "masking_failed", "empty_answer", "clause_missing"]
+HANDOFF_REASONS = ["edibility", "cannot_answer", "closed_day", "legal_medical", "customer_request", "other_user", "pre_receipt_issue", "ai_failure", "ai_cost_limit", "callback_timeout", "masking_failed", "empty_answer", "clause_missing", "order_limit"]
 CLAUSE_KEYS = ["pre_production_cancel", "staged_refund", "cancellation_fee", "date_change_refund_basis", "shop_cancel_compensation", "other_shop_design", "issue_report_window", "quote_validity", "payment_due", "change_deadline", "custom"]
 IMAGE_TYPES = ["image/jpeg", "image/png", "image/heic", "image/webp"]
 
@@ -264,6 +264,7 @@ S["ShopUpdate"] = obj({
     "idleCloseHours": integer(1, 720, col="shops.idle_close_hours", desc="문의 끊김까지 시간(SPEC-025). 저장한 때부터 씀(REQ-243)"),
     "ownerWaitMinutes": integer(10, 1440, col="shops.owner_wait_minutes", desc="사장님 답 기다리는 시간(SPEC-024). 그 뒤 시작된 기다림부터 씀(REQ-243)"),
     "dailyAiCostLimitKrw": integer(0, 1000000, col="shops.daily_ai_cost_limit_krw", desc="하루 AI 비용 한도(REQ-163). 저장한 때부터 그날 쓴 비용과 견줌(REQ-243)"),
+    "awaitingPaymentLimit": integer(0, 10, col="shops.awaiting_payment_limit", desc="한 손님의 결제 기다림 주문 한도(건, 0이면 한도 없음, REQ-265). 저장한 때부터 새 기본 디자인 주문 요청에 씀"),
 }, ["baseRevision"], desc="바꿀 필드만 보냄(baseRevision 밖 한 필드 이상). 상호·대표자·사업자등록번호는 받지 않음(변경 요청 API-080, SPEC-078)", minProperties=2)
 
 S["LicenseResubmission"] = obj({
@@ -298,6 +299,7 @@ S["Shop"] = all_required({
     "idleCloseHours": integer(1, 720),
     "ownerWaitMinutes": integer(10, 1440),
     "dailyAiCostLimitKrw": integer(0, 1000000),
+    "awaitingPaymentLimit": integer(0, 10, desc="한 손님의 결제 기다림 주문 한도(건). 0이면 한도 없음. 닿으면 기본 디자인 주문 요청은 사장님께 넘어감(SPEC-029, REQ-263)"),
     "bookingUrl": nullable(URL),
     "identityChange": dict(nullable(ref("IdentityChange")), description="가장 최근의 사업자 정보 변경 요청(확인 기다림·반영함·보류). 없으면 null. 알림이 못 가도 영업 신고 화면이 이 값으로 결과를 보임(SPEC-078, G4)"),
     "createdAt": DT,
@@ -812,7 +814,7 @@ S["CustomerLine"] = all_required({
     "at": DT,
     "text": nullable(string(0, 100000, desc="전화번호·계좌번호는 원래 값으로 되돌린 글(그 가게 사장님 화면에만, SPEC-021). 카드번호는 플레이스홀더와 끝 4자리, 긴 숫자는 플레이스홀더만(REQ-192). 손님 글은 받은 길이 그대로(스킬 요청의 발화와 같은 100,000자까지, SPEC-017은 1,000자를 넘는 글도 상담 기록에 남김, 설계 재검토 RD-17)")),
     "photos": arr(all_required({"url": SIGNED_URL}), 0, 10),
-    "reason": enum(HANDOFF_REASONS, desc="이 말의 사유. 첫 줄은 에스컬레이션 건의 사유이고, 덧붙은 질문은 질문마다 남은 사유(05단계 handoff_questions). 마감된 날 질문은 덧붙지 않고 날짜마다 따로 건이 됨(SPEC-022)"),
+    "reason": enum(HANDOFF_REASONS, desc="이 말의 사유. 첫 줄은 에스컬레이션 건의 사유이고, 덧붙은 질문은 질문마다 남은 사유(05단계 handoff_questions). 마감된 날 질문은 날짜마다, 결제 기다림 주문 한도는 상담마다 덧붙지 않고 따로 건이 됨(SPEC-022)"),
     "order": dict(nullable(ref("OrderRef")), description="이 말과 관련된 주문. 첫 줄은 에스컬레이션 건의 주문, 덧붙은 질문은 질문마다 남은 주문. 없으면 null"),
 })
 S["Handoff"] = all_required({
@@ -828,6 +830,10 @@ S["Handoff"] = all_required({
     "dayDecision": nullable(enum(["accepted", "declined"])),
     "dayAcceptExpiresAt": nullable(DT),
     "dayUsedOrder": dict(nullable(ref("OrderRef")), description="추가 수락을 쓴 주문 요청: dayAcceptExpiresAt 전에 그 날짜로 와서 마감 후 추가 수락으로 자리를 잡은 주문 하나. 쓰면 다시 쓰지 않음(SPEC-023). 아니면 null"),
+    "limitDecision": dict(nullable(enum(["accepted", "declined"])), description="결제 기다림 주문 한도 건(사유 order_limit)에서 사장님이 고른 것: 한도를 넘겨 받기·받지 않음(SPEC-023, REQ-264). 아니면 null"),
+    "limitAcceptExpiresAt": dict(nullable(DT), description="한도를 넘겨 받은 24시간이 끝나는 시각(REQ-264). 아니면 null"),
+    "limitUsedOrder": dict(nullable(ref("OrderRef")), description="한도를 넘겨 받은 것을 쓴 주문 요청: limitAcceptExpiresAt 전에 그 상담에서 와서 한도를 넘겨 남은 기본 디자인 주문 요청 하나. 쓰면 다시 쓰지 않음(SPEC-023, REQ-264). 아니면 null"),
+    "awaitingPaymentOrders": arr(ref("OrderRef"), 0, 20, desc="사유가 order_limit이면 그 손님의 이 가게 결제 기다림 주문(지금 값, 결제 기한이 이른 순, 20건까지). 사장님이 보고 한도를 넘겨 받을지 고름(SPEC-023). 다른 사유는 빈 목록"),
     "issueReport": dict(nullable(ref("IssueReportSummary")),
                         description="사장님이 이 건에서 남긴 문제 신고(API-083, SPEC-079). 한 건에 하나이고 없으면 null. "
                                     "사유가 other_user이고 관련 주문이 받은 주문인 열린 건에서만 남길 수 있음"),
@@ -840,7 +846,8 @@ S["HandoffAnswerInput"] = obj({
     "baseRevision": BASE_REVISION,
     "text": string(1, 1000, col="handoffs.answer_text", desc="손님에게 그대로 전할 답(AI가 고치지 않음)"),
     "dayDecision": enum(["accepted", "declined"], col="handoffs.day_decision", desc="마감된 날에 추가로 받을지(사유가 closed_day일 때만)"),
-}, ["baseRevision"], anyOf=[{"required": ["text"]}, {"required": ["dayDecision"]}])
+    "limitDecision": enum(["accepted", "declined"], col="handoffs.limit_decision", desc="결제 기다림 주문 한도를 넘겨 받을지(사유가 order_limit일 때만, REQ-264)"),
+}, ["baseRevision"], anyOf=[{"required": ["text"]}, {"required": ["dayDecision"]}, {"required": ["limitDecision"]}])
 S["IssueFromHandoffInput"] = obj({
     "baseRevision": BASE_REVISION,
     "description": string(1, 1000, col="issue_details.description",
@@ -1457,7 +1464,7 @@ S["AiTurnOutput"] = obj({
         "changes": ref("ChangeSet"),
     }, ["kind"], desc="보일 확인 카드. 서버가 허용된 종류인지·대상 주문이 이 사용자·이 가게 것인지 보고 저장된 값으로 만듦(SPEC-069)"),
 }, ["reply"], desc="AI-1 상담 답 만들기의 출력 하나(손님 메시지 한 차례). HTTP로 오가지 않는 서버 안 구조화 출력(DEC-17). 서버가 확인하고 어긋나는 부분은 버림. "
-          "Open: AI 모델 회사·모델은 개발 전(10단계 전)에 고르고, 고르는 날 그 회사의 약관·데이터 방침을 확인해 처리방침의 국외 이전 항목을 채움(OPEN-7)")
+          "모델 회사는 배포 설정으로 고른 한 회사(Anthropic이나 OpenAI의 유료 API)이고 이 출력 형식은 회사와 상관없이 같음. 모델은 같은 평가 세트로 두 회사를 시험해 12단계 평가를 지나는 것 가운데 가장 싼 것을 고름(DEC-25, REQ-266)")
 
 # ── 운영자: 가게 기록 보기와 원래 값 열기 (설계 재검토 H4, SPEC-073·074) ─────────────────
 MASKED_NAME = string(1, 30, r"^[^*\s]\**$", desc="가린 이름: 첫 글자 밖은 *(SPEC-073)")
