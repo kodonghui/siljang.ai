@@ -172,13 +172,13 @@ test("답들이 카카오 한도 안", () => {
   assertWithinLimits(startReply({ recordKey: "rec:2026-11-15T00:00:00.000Z:abcd", ms: 3, colo: "ICN", isFriend: true, hasAppUserId: false }));
   assertWithinLimits(menuReply(true));
   assertWithinLimits(reviewAskCard("b00000000000000000000003", "T-1A2B"));
-  assertWithinLimits(loginCard("https://example.workers.dev"));
+  assertWithinLimits(loginCard("https://example.workers.dev", "1763200000-0123456789abcdef0123456789abcdef"));
   assertWithinLimits(reviewReply("K-08b", { textLen: 10, photos: ["200 · image/jpeg"], consent: "예", extraKeys: ["orderNo"], orderNo: "T-1A2B", pending: true }));
   const card = reviewAskCard("b00000000000000000000003", "T-1A2B").template!.outputs[0] as { textCard: { buttons: Button[] } };
   assert.deepEqual(card.textCard.buttons[0], { label: "후기 남기기", action: "block", blockId: "b00000000000000000000003", extra: { orderNo: "T-1A2B" } });
-  const login = loginCard("https://example.workers.dev").template!.outputs[0] as { textCard: { buttons: Button[] } };
+  const login = loginCard("https://example.workers.dev", "1763200000-0123456789abcdef0123456789abcdef").template!.outputs[0] as { textCard: { buttons: Button[] } };
   assert.deepEqual(
     login.textCard.buttons.map((b) => b.webLinkUrl),
-    ["pkce", "pkce_wrong", "plain"].map((m) => `https://example.workers.dev/login/start?mode=${m}`),
+    ["pkce", "pkce_wrong", "plain"].map((m) => `https://example.workers.dev/login/start?mode=${m}&t=1763200000-0123456789abcdef0123456789abcdef`),
   );
 });

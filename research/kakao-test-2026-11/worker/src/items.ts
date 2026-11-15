@@ -225,8 +225,9 @@ export function reviewAskCard(reviewBlockId: string, orderNo: string): SkillResp
   });
 }
 
-export function loginCard(origin: string): SkillResponse {
-  const at = (mode: string) => `${origin}/login/start?mode=${mode}`;
+/** ticket: login.ts makeTicket(30분). 버튼 주소에 붙여 카드를 받은 사람만 로그인 시험을 열게 함 */
+export function loginCard(origin: string, ticket: string): SkillResponse {
+  const at = (mode: string) => `${origin}/login/start?mode=${mode}&t=${encodeURIComponent(ticket)}`;
   return textCard({
     title: "카카오 로그인 PKCE 시험(K-11)",
     description: "버튼을 위에서부터 하나씩 눌러 로그인하고, 결과 화면을 사진으로 남겨 주세요. 토큰은 서버에 남기지 않아요.",

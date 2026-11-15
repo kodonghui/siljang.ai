@@ -1,7 +1,20 @@
 // 카카오 로그인 PKCE 시험(K-11)의 순수 함수 단위 시험
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { authorizeUrl, randomB64url, resultPage, s256, summarizeToken, tokenForm, verdict } from "../src/login.ts";
+import {
+  TICKET_TTL_SEC,
+  authorizeUrl,
+  makeState,
+  makeTicket,
+  randomB64url,
+  resultPage,
+  s256,
+  stateValid,
+  summarizeToken,
+  ticketValid,
+  tokenForm,
+  verdict,
+} from "../src/login.ts";
 
 test("s256: RFC 7636 부록 B의 예", async () => {
   assert.equal(await s256("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"), "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
@@ -62,4 +75,30 @@ test("resultPage: 글을 HTML로 이스케이프", () => {
   assert.ok(!h.includes("<script>"));
   assert.ok(h.includes("&lt;script&gt;"));
   assert.ok(h.includes("a &quot;b&quot; &amp; &lt;c&gt;"));
+});
+
+test("로그인 시험 표: 같은 키로 만든 30분 안의 표만 맞음", async () => {
+  const now = Date.UTC(2026, 10, 15, 12, 0, 0);
+  const t = await makeTicket("k1", now);
+  assert.match(t, /^\d{10}-[0-9a-f]{32}$/);
+  assert.equal(Number(t.split("-")[0]), now / 1000 + TICKET_TTL_SEC);
+  assert.equal(await ticketValid("k1", t, now), true);
+  assert.equal(await ticketValid("k1", t, now + (TICKET_TTL_SEC - 1) * 1000), true);
+  assert.equal(await ticketValid("k1", t, now + (TICKET_TTL_SEC + 1) * 1000), false);
+  assert.equal(await ticketValid("k2", t, now), false);
+  const [exp, sig] = t.split("-");
+  assert.equal(await ticketValid("k1", `${Number(exp) + 600}-${sig}`, now), false);
+  assert.equal(await ticketValid("k1", null, now), false);
+  assert.equal(await ticketValid("k1", "", now), false);
+  assert.equal(await ticketValid("k1", `${t}x`, now), false);
+});
+
+test("state: 서버가 같은 키로 만든 것만 맞음", async () => {
+  const s = await makeState("k1");
+  assert.match(s, /^[A-Za-z0-9_-]{22}[0-9a-f]{24}$/);
+  assert.equal(await stateValid("k1", s), true);
+  assert.equal(await stateValid("k2", s), false);
+  assert.equal(await stateValid("k1", `${s.slice(0, 21)}${s[21] === "A" ? "B" : "A"}${s.slice(22)}`), false);
+  assert.equal(await stateValid("k1", "AAAAAAAAAAAAAAAAAAAAAA"), false);
+  assert.notEqual(await makeState("k1"), s);
 });

@@ -31,10 +31,14 @@ import {
   TOKEN_URL,
   authorizeUrl,
   isMode,
+  makeState,
+  makeTicket,
   randomB64url,
   resultPage,
   s256,
+  stateValid,
   summarizeToken,
+  ticketValid,
   tokenForm,
   verdict,
   type LoginMode,
@@ -67,6 +71,15 @@ const IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 const IMAGE_MAX_REDIRECTS = 3;
 const EVENT_TASK_WAIT_MS = 8000;
 const CFG_TTL = 30 * 86400;
+/** 키 없이 닿을 수 있는 기록(키가 틀린 스킬 요청, 오류)은 Worker 인스턴스마다 이 수까지만 */
+const UNAUTH_RECORD_CAP = 20;
+let unauthRecords = 0;
+
+function takeUnauthRecord(): boolean {
+  if (unauthRecords >= UNAUTH_RECORD_CAP) return false;
+  unauthRecords++;
+  return true;
+}
 
 type Answer = {
   item: ItemId;
@@ -270,7 +283,7 @@ async function answer(item: ItemId, c: SkillCtx): Promise<Answer> {
       if (!env.KAKAO_REST_API_KEY) {
         return { item, body: simpleText("로그인 시험(K-11): 시험 서버에 REST API 키가 없어 할 수 없어요(README의 배포 2단계).") };
       }
-      return { item, body: loginCard(new URL(c.req.url).origin) };
+      return { item, body: loginCard(new URL(c.req.url).origin, await makeTicket(c.hashKey, Date.now())) };
     }
     case "K-00":
     default:
@@ -496,8 +509,8 @@ async function handleSkill(req: Request, env: Env, ctx: ExecutionContext): Promi
   const obj = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, Json>) : null;
   const given = req.headers.get(SKILL_KEY_HEADER);
   if (given === null || !safeEqual(given, env.SKILL_KEY)) {
-    // 스킬 요청처럼 생긴 것만 남김(아무나 보낸 요청으로 KV 쓰기 한도를 쓰지 않게). 출처 IP는 남기지 않음
-    if (obj && ("userRequest" in obj || "bot" in obj)) {
+    // 스킬 요청처럼 생긴 것만, 인스턴스마다 정한 수까지만 남김(아무나 보낸 요청으로 KV 쓰기 한도를 쓰지 않게). 출처 IP는 남기지 않음
+    if (obj && ("userRequest" in obj || "bot" in obj) && takeUnauthRecord()) {
       ctx.waitUntil(
         (async () =>
           putRecord(env, recordKey(receivedMs), {
@@ -548,8 +561,11 @@ async function loginStart(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url);
   const mode = url.searchParams.get("mode");
   if (!isMode(mode)) return html(400, "로그인 시험 모드가 없어요", ["대화창의 '로그인 시험' 카드 버튼으로 열어 주세요."]);
-  if (!env.KAKAO_REST_API_KEY || !env.HASH_KEY) return html(503, "로그인 시험을 할 수 없어요", ["시험 서버에 REST API 키가 없어요(README의 배포 2단계)."]);
-  const state = randomB64url(16);
+  if (!env.HASH_KEY) return html(503, "로그인 시험을 할 수 없어요", ["시험 서버에 비밀 값이 없어요(README의 배포 2단계)."]);
+  if (!(await ticketValid(env.HASH_KEY, url.searchParams.get("t"), Date.now())))
+    return html(403, "로그인 시험 표가 맞지 않아요", ["카드를 받은 지 30분이 지났거나 카드 버튼이 아닌 곳에서 열었어요. 대화창에서 '로그인 시험'을 다시 보내 주세요."]);
+  if (!env.KAKAO_REST_API_KEY) return html(503, "로그인 시험을 할 수 없어요", ["시험 서버에 REST API 키가 없어요(README의 배포 2단계)."]);
+  const state = await makeState(env.HASH_KEY);
   const verifier = mode === "plain" ? null : randomB64url(32);
   const challenge = verifier ? await s256(verifier) : undefined;
   await env.RECORDS.put(`login:${state}`, JSON.stringify({ mode, verifier, at: Date.now() }), { expirationTtl: 600 });
@@ -564,11 +580,15 @@ async function loginCallback(req: Request, env: Env, ctx: ExecutionContext): Pro
   const code = url.searchParams.get("code");
   const authError = url.searchParams.get("error");
   const authErrorDescription = url.searchParams.get("error_description");
-  const saved = /^[A-Za-z0-9_-]{16,64}$/.test(state) ? await env.RECORDS.get(`login:${state}`) : null;
+  const again = "10분이 지났거나 이미 끝난 시험이에요. 대화창에서 '로그인 시험'을 다시 보내 주세요.";
+  if (!env.HASH_KEY) return html(503, "로그인 시험을 할 수 없어요", ["시험 서버에 비밀 값이 없어요(README의 배포 2단계)."]);
+  // 서버가 만든 state가 아니면 KV를 보지도, 기록을 쓰지도 않음
+  if (!(await stateValid(env.HASH_KEY, state))) return html(400, "로그인 시험: state가 맞지 않아요", [again]);
+  const saved = await env.RECORDS.get(`login:${state}`);
   const at = Date.now();
   if (!saved) {
     ctx.waitUntil(putRecord(env, recordKey(at), { v: 1, kind: "login_result", item: "K-11", stateFound: false, codeReceived: Boolean(code), authError }));
-    return html(400, "로그인 시험: state를 찾지 못했어요", ["10분이 지났거나 이미 끝난 시험이에요. 대화창에서 '로그인 시험'을 다시 눌러 주세요."]);
+    return html(400, "로그인 시험: state를 찾지 못했어요", [again]);
   }
   await env.RECORDS.delete(`login:${state}`);
   const s = JSON.parse(saved) as { mode: LoginMode; verifier: string | null; at: number };
@@ -650,8 +670,9 @@ export default {
       if (url.pathname === "/login/callback" && req.method === "GET") return await loginCallback(req, env, ctx);
       return new Response("not found", { status: 404 });
     } catch (e) {
-      // 오류 글에 손님 값이 섞일 수 있어 마스킹한 앞부분만
-      ctx.waitUntil(putRecord(env, recordKey(Date.now()), { v: 1, kind: "error", route: url.pathname, error: errName(e) }).catch(() => undefined));
+      // 오류 글에 손님 값이 섞일 수 있어 마스킹한 앞부분만. 키 없이 닿는 경로도 있어 인스턴스마다 정한 수까지만
+      if (takeUnauthRecord())
+        ctx.waitUntil(putRecord(env, recordKey(Date.now()), { v: 1, kind: "error", route: url.pathname, error: errName(e) }).catch(() => undefined));
       return new Response("error", { status: 500 });
     }
   },

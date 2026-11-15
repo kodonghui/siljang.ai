@@ -162,12 +162,25 @@ post skill-basic.json ".userRequest.params={\"check\":\"event\",\"sentAt\":\"$(d
 expect "K-10b 이벤트로 부른 요청" '[ "$CODE" = 200 ] && text | grep -q "K-10b"'
 post skill-basic.json '.userRequest.utterance="로그인 시험"'
 expect "K-11 REST API 키 없음 → 안내" '[ "$CODE" = 200 ] && text | grep -q "REST API 키가 없어"'
+# 로그인 시험 표(K-11 카드에만 붙음)와 서버가 서명한 state. 표·state는 시험 키 HK로 여기서 만들어 봄
+hm() { printf '%s' "$1" | openssl dgst -sha256 -hmac "$HK" | awk '{print $NF}'; }
+EXP_OK=$(( $(date +%s) + 600 ))
+EXP_OLD=$(( $(date +%s) - 60 ))
 CODE=$(get_code "$W/login/start?mode=pkce")
-expect "GET /login/start 키 없음 → 503" '[ "$CODE" = 503 ]'
+expect "GET /login/start 표 없음 → 403(KV 쓰기·인가 주소 없음)" '[ "$CODE" = 403 ]'
+CODE=$(get_code "$W/login/start?mode=pkce&t=$EXP_OK-0123456789abcdef0123456789abcdef")
+expect "GET /login/start 틀린 표 → 403" '[ "$CODE" = 403 ]'
+CODE=$(get_code "$W/login/start?mode=pkce&t=$EXP_OLD-$(hm "login-ticket:$EXP_OLD" | cut -c1-32)")
+expect "GET /login/start 지난 표 → 403" '[ "$CODE" = 403 ]'
+CODE=$(get_code "$W/login/start?mode=pkce&t=$EXP_OK-$(hm "login-ticket:$EXP_OK" | cut -c1-32)")
+expect "GET /login/start 맞는 표, REST API 키 없음 → 503" '[ "$CODE" = 503 ]'
 CODE=$(get_code "$W/login/start")
 expect "GET /login/start 모드 없음 → 400" '[ "$CODE" = 400 ]'
 CODE=$(get_code "$W/login/callback?state=AAAAAAAAAAAAAAAAAAAAAA&code=x")
-expect "GET /login/callback 모르는 state → 400" '[ "$CODE" = 400 ]'
+expect "GET /login/callback 서버가 만들지 않은 state → 400(기록 없음)" '[ "$CODE" = 400 ]'
+R22=BBBBBBBBBBBBBBBBBBBBBB
+CODE=$(get_code "$W/login/callback?state=$R22$(hm "login-state:$R22" | cut -c1-24)&error=access_denied")
+expect "GET /login/callback 서명은 맞고 KV에 없는 state → 400(기록 남김)" '[ "$CODE" = 400 ] && grep -q "찾지 못했어요" "$TMP/res.body"'
 
 # 큐 지연 콜백(27초)이 올 때까지 기다림(보낸 뒤 최대 60초)
 left=$((60 - (SECONDS - QUEUE_SENT)))
@@ -189,6 +202,7 @@ done
 N=$(wc -l < "$TMP/records.jsonl")
 echo "     기록 ${N}건: $(jq -s -c 'map(.kind)|group_by(.)|map({key:.[0],value:length})|from_entries' "$TMP/records.jsonl")"
 expect "기록 25건 이상" '[ "$N" -ge 25 ]'
+expect "로그인 기록은 서명이 맞는 state의 1건만" '[ "$(jq -s "map(select(.kind==\"login_result\" and .stateFound==false and .authError==\"access_denied\"))|length" "$TMP/records.jsonl")" = 1 ] && [ "$(jq -s "map(select(.kind==\"login_result\"))|length" "$TMP/records.jsonl")" = 1 ]'
 expect "키 틀린 스킬 요청 기록 2건(IP 없음)" '[ "$(jq -s "map(select(.kind==\"skill_rejected\" and (.headers[\"cf-connecting-ip\"]==null)))|length" "$TMP/records.jsonl")" = 2 ]'
 expect "콜백 결과 기록: 가짜 카카오 SUCCESS" 'jq -s -e "map(select(.kind==\"callback_result\" and .httpStatus==200 and .kakao.status==\"SUCCESS\"))|length>=1" "$TMP/records.jsonl" >/dev/null'
 expect "스킬 기록 항목: K-01~K-11 모두" '[ "$(jq -s -r "map(select(.kind==\"skill\")|.item)|unique|join(\",\")" "$TMP/records.jsonl")" = "K-00,K-01,K-02,K-03a,K-03b,K-04-1,K-04-2,K-04-3,K-04-4,K-05,K-06,K-07,K-07-setup,K-08,K-08b,K-09,K-10,K-10b,K-11" ]'
