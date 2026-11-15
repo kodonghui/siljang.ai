@@ -5,7 +5,8 @@
 #   이름     출력 폴더 이름(기본 now). 검사마다 <검사>.txt가
 #            ${STAGE_CHECKS_OUT:-${TMPDIR:-/tmp}/stage-checks}/<이름>/ 아래에 남는다.
 #   --no-api 06 계약 검사(api)를 건너뛴다. api는 Prism 목 서버를 다시 띄우고 오래 걸린다.
-# 끝 상태: 검사 하나라도 종료 코드가 0이 아니면 1.
+# 끝 상태: 검사 하나라도 종료 코드가 0이 아니면 1. prd·flows는 종료 코드가 늘 0이라
+#   출력의 PROBLEMS·AVOIDED WORDS 수가 0이 아니어도 실패로 치고, 그 줄에 '실패'를 붙인다.
 #
 # 미리 있어야 하는 것
 #   - PostgreSQL 16이 127.0.0.1:54329에서 돎(erd·api 검사가 user=postgres로 붙음, 비밀번호 없음, 로컬에서만 받음).
@@ -46,7 +47,17 @@ run() {
   "$@" > "$O/$name.txt" 2>&1
   local rc=$?
   [ $rc -ne 0 ] && FAIL=1
-  echo "$name exit=$rc :: $(grep -E '^(검사 [0-9]+개|오류 [0-9]+|problems|문제)' "$O/$name.txt" | tail -1)"
+  # prd·flows 검사기는 문제가 있어도 종료 코드가 0이고 'PROBLEMS (n)'·'AVOIDED WORDS (n)'만 찍는다.
+  # 그 수가 0이 아니면 실패로 친다(종료 코드만 보면 놓침).
+  local p a mark=""
+  p=$(grep -E '^PROBLEMS \([0-9]+\)' "$O/$name.txt" | tail -1 | grep -oE '[0-9]+')
+  a=$(grep -E '^AVOIDED WORDS \([0-9]+\)' "$O/$name.txt" | tail -1 | grep -oE '[0-9]+')
+  if [ -n "$p$a" ]; then
+    if [ "${p:-0}" != 0 ] || [ "${a:-0}" != 0 ]; then FAIL=1; mark=" 실패"; fi
+    echo "$name exit=$rc$mark :: PROBLEMS ${p:-?} · AVOIDED WORDS ${a:-?}"
+  else
+    echo "$name exit=$rc :: $(grep -E '^(검사 [0-9]+개|오류 [0-9]+|problems|문제)' "$O/$name.txt" | tail -1)"
+  fi
 }
 
 echo "$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S KST') start, head $(git rev-parse --short=7 HEAD), out $O"
