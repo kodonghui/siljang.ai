@@ -425,9 +425,9 @@ def banned(label, text, allow_more=None):
             problems.append("%s: 옛 용어 '%s' → %s: …%s…" % (label, m.group(0), new, text[max(0, m.start() - 12): m.end() + 12]))
 
 
-check("금지어(01 용어집, 02·03 검사와 같은 허용 꼴)와 옛 용어(08·09 검사와 같은 목록): 작업·반복 설명·README의 손으로 쓴 글")
+check("금지어(01 용어집, 02·03 검사와 같은 허용 꼴)와 옛 용어(08·09 검사와 같은 목록): 작업·반복 설명·README·tech-stack.md의 손으로 쓴 글")
 for tid, t in T.items():
-    banned(tid, (t.get("name") or "") + " " + (t.get("done") or ""))
+    banned(tid, (t.get("name") or "") + " " + (t.get("done") or "") + " " + str(t.get("finished") or ""))
 for it, note in W.ITERATION_NOTES:
     banned("반복 %s 설명" % it, note)
 if README.exists():
@@ -435,12 +435,28 @@ if README.exists():
     hand = re.sub(GEN_BLOCK, " ", README.read_text(encoding="utf-8"), flags=re.S)
     hand = re.sub(r"https?://\S+|`[^`]*`", " ", hand)
     banned("README", hand, {"확정": [r"확정한 뒤 고친 것"]})
+STACK = REPO / "docs/10-wbs/tech-stack.md"
+if STACK.exists():
+    # 10단계 기술 스택 제안(TASK-001)도 손으로 쓴 글이라 같은 금지어를 봄. 주소·코드 글자는 뺌
+    banned("tech-stack.md", re.sub(r"https?://\S+|`[^`]*`", " ", STACK.read_text(encoding="utf-8")))
+
+check("끝난 표시(finished): 끝난 날로 시작하고 앞선 작업이 모두 끝남")
+for tid, t in ACTIVE.items():
+    if t.get("finished") is None:
+        continue
+    if not re.match(r"20\d\d-\d\d-\d\d", str(t["finished"])):
+        problems.append("%s: finished는 끝난 날(YYYY-MM-DD)로 시작" % tid)
+    for d in DEPS[tid]:
+        if not ACTIVE.get(d, {}).get("finished"):
+            problems.append("%s: 끝났다고 적었지만 앞선 작업 %s가 끝나지 않음" % (tid, d))
 
 # ── 끝난 조건 만들기 ────────────────────────────────────────────────
 
 
 def done_lines(tid, t):
     out = []
+    if t.get("finished"):
+        out.append("끝남: %s" % t["finished"])
     if (t.get("done") or "").strip():
         out.append(t["done"].strip())
     for s, nums in AC_OF.get(tid, {}).items():
@@ -506,9 +522,10 @@ for t in ACTIVE.values():
 st_total = sum(len(STATES.get(s, [])) for s in SCR)
 st_drawn = sum(len(DRAWN.get(s, [])) for s in SCR)
 counts = ("작업 %d개 · 크기 합 %s일 · 반복 %d개 · 동희님 %d개 · Claude %d개 · SPEC %d개 · 수락 기준 %d개 · API %d개 · "
-          "화면 %d개(상태 %d개, 09에서 그린 %d개, 그리지 않은 %d개) · 테이블 %d개 · 앱 규칙 %d개 · 공통 규칙 %d개 · 열린 질문 %d개"
+          "화면 %d개(상태 %d개, 09에서 그린 %d개, 그리지 않은 %d개) · 테이블 %d개 · 앱 규칙 %d개 · 공통 규칙 %d개 · 열린 질문 %d개 · 끝난 작업 %d개"
           % (n_act, fmt_size(tot), len(ITER), by_owner["동희님"], by_owner["Claude"], len(SPECS), sum(AC_N.values()),
-             len(API), len(SCR), st_total, st_drawn, st_total - st_drawn, len(TBL_NAME), len(ARULES), len(GRULES), len(OPEN)))
+             len(API), len(SCR), st_total, st_drawn, st_total - st_drawn, len(TBL_NAME), len(ARULES), len(GRULES), len(OPEN),
+             sum(1 for t in ACTIVE.values() if t.get("finished"))))
 
 L = []
 L.append("# 10단계 WBS")
@@ -519,7 +536,8 @@ L.append(counts + ".")
 L.append("")
 L.append("읽는 법과 나눈 방식은 [README](README.md)에 있습니다. '닿는 것'은 만드는 API, 쓰고 읽는 테이블, 만드는 화면입니다. "
          "'끝난 조건'의 첫 줄은 손으로 쓴 조건이고, 수락 기준·응답 코드·스킬 결과·화면 상태·응답 행·규칙 줄은 원본에서 생성합니다. "
-         "화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다.")
+         "화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다. "
+         "끝난 작업은 끝난 조건 맨 앞에 '끝남'과 끝난 날·증거가 붙습니다.")
 L.append("")
 L.append("| 반복 | 이름 | 작업 | 크기 합(일) | 동희님 | Claude |")
 L.append("| --- | --- | --- | --- | --- | --- |")

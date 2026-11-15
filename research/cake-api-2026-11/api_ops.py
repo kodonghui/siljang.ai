@@ -103,7 +103,7 @@ op(id="API-001", method="post", path="/owner/session", op="createOwnerSession", 
         "사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-260). "
         "세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_owner`이고, 로그인 시작 쿠키는 지운다. `next`가 화면이 열 곳(가게 등록·신고증 다시 올리기·할 일 목록). "
         "카카오 로그인이 실패하거나 동의를 거부하면 우리 쪽 기록을 남기지 않음. "
-        "Open: 세션 길이는 사장님 30일(쓰면 늘어남)을 첫 값으로 제안, 개발 전에 정함(OPEN-5). "
+        "세션은 마지막으로 쓴 때부터 30일 동안 유지하고 쓸 때마다 다시 30일로 늘린다(DEC-26). "
         "Open: 카카오가 PKCE 매개변수를 받는지 개발 전 시험(OPEN-11).",
    body="OwnerSessionInput",
    body_examples={"kakao_code": {"kakaoCode": "kc_" + E.h("kakao-code", 40), "redirectUri": "https://siljang.example/owner/login/callback",
@@ -147,7 +147,7 @@ op(id="API-004", method="post", path="/operator/session", op="createOperatorSess
    desc="운영자 계정으로만 운영자 화면에 들어온다(R2). 맞지 않는 것이 어느 필드인지 알리지 않는다. 15분에 5번 실패하면 429(DEC-16). "
         "세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_operator`. 비밀번호는 인증 서비스로만 보내고 어디에도 남기지 않음(REQ-135). "
         "Open: 운영자 인증 서비스는 개발 전에 고름. 고른 서비스가 자기 로그인 화면을 쓰면 이 API를 그 플로우로 바꾸고, 그 서비스가 답하지 않을 때의 503을 더함(OPEN-6). "
-        "Open: 세션 길이 12시간을 첫 값으로 제안(OPEN-5).",
+        "세션은 로그인한 때부터 12시간이 지나면 끝나고 쓴다고 늘지 않는다(DEC-26).",
    body="OperatorSessionInput",
    body_examples={"login": {"email": "ops@siljang.example", "password": "example-password-not-real", "otp": "123456"}},
    ok=[(200, "Operator", {"signed_in": E.OPERATOR}, ["Set-Cookie"])],
