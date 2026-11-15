@@ -80,7 +80,7 @@ SHOP = {
     "licenseStatus": "verified", "licenseHoldReason": None, "licensePhotoUrl": surl("license"),
     "entrustmentTermsVersion": "2026.11", "entrustmentConsentedAt": t("11-12", "10:05"),
     "timeZone": "Asia/Seoul", "completionPhotoEnabled": True, "idleCloseHours": 24, "ownerWaitMinutes": 120,
-    "dailyAiCostLimitKrw": 5000, "bookingUrl": "https://siljang.example/s/moonlight-cake", "identityChange": None,
+    "dailyAiCostLimitKrw": 5000, "awaitingPaymentLimit": 2, "bookingUrl": "https://siljang.example/s/moonlight-cake", "identityChange": None,
     "createdAt": t("11-12", "10:05"), "updatedAt": t("11-12", "15:20"), "revision": rev("shop:3"),
 }
 SHOP_PENDING = dict(SHOP, licenseStatus="pending", pickupAddress=None, completionPhotoEnabled=False, bookingUrl=None,
@@ -618,6 +618,7 @@ HANDOFF = {
     "order": None, "customerLines": [{"at": t("11-12", "12:40"), "text": "땅콩 알레르기가 있는데 먹어도 되나요?", "photos": [],
                                       "reason": "edibility", "order": None}],
     "customerChannelFriend": True, "answerText": None, "dayDecision": None, "dayAcceptExpiresAt": None, "dayUsedOrder": None,
+    "limitDecision": None, "limitAcceptExpiresAt": None, "limitUsedOrder": None, "awaitingPaymentOrders": [],
     "issueReport": None, "answeredAt": None, "closedAt": None, "createdAt": t("11-12", "12:40"), "revision": rev("handoff:1:open"),
 }
 HANDOFF_ANSWERED = dict(HANDOFF, status="answered", answerText="땅콩은 쓰지 않지만 같은 주방에서 견과류를 다뤄요. 걱정되시면 드시지 않는 게 좋아요.",
@@ -640,6 +641,15 @@ ISSUE_FROM_HANDOFF = dict(ISSUE, issueReportId=uid("issue:K7Q3M9:handoff"), desc
                           photos=[], reportedBy="owner_from_handoff",
                           handoff={"handoffId": HANDOFF_OTHER_USER["handoffId"], "createdAt": HANDOFF_OTHER_USER["createdAt"]},
                           reportedAt=t("11-20", "20:30"), revision=rev("issue:handoff:reported"))
+# 결제 기다림 주문이 한도(2건)에 닿은 손님의 기본 디자인 주문 요청이 넘어온 건(REQ-263). 손님 말은 누른 카드 버튼
+LIMIT_OTHER_REF = {"orderId": uid("order:P4N8T2"), "orderNo": "P4N8T2"}
+HANDOFF_LIMIT = dict(HANDOFF, handoffId=uid("handoff:4"), reason="order_limit",
+                     customerLines=[{"at": t("11-13", "10:00"), "text": "규정에 동의하고 주문 요청", "photos": [],
+                                     "reason": "order_limit", "order": None}],
+                     awaitingPaymentOrders=[ORDER_REF, LIMIT_OTHER_REF], createdAt=t("11-13", "10:00"), revision=rev("handoff:4:open"))
+# 사장님이 한도를 넘겨 받음: 24시간 동안 그 상담의 주문 요청 하나가 한도를 넘음(REQ-264)
+HANDOFF_LIMIT_ACCEPTED = dict(HANDOFF_LIMIT, status="answered", limitDecision="accepted", limitAcceptExpiresAt=t("11-14", "10:20"),
+                              answeredAt=t("11-13", "10:20"), revision=rev("handoff:4:answered"))
 HANDOFF_OTHER_USER_REPORTED = dict(HANDOFF_OTHER_USER, issueReport={"issueReportId": ISSUE_FROM_HANDOFF["issueReportId"], "status": "reported",
                                                                     "late": False, "reportedAt": ISSUE_FROM_HANDOFF["reportedAt"]})
 MESSAGES = {
@@ -781,8 +791,8 @@ PRIVACY = {
     "shopName": "달빛케이크", "version": 1,
     "body": "달빛케이크(이하 '가게')는 케이크 주문 상담과 예약을 위해 다음과 같이 개인정보를 처리합니다. 1. 처리하는 개인정보: 카카오 사용자 키, 상담 대화, 주문자 이름·연락처, 알레르기 정보(따로 동의한 손님에게서만) …",
     "overseasTransfers": [{
-        "recipient": "AI 모델 회사(개발 전에 정함, OPEN-7)", "country": "정한 회사의 처리 지역", "personalData": "마스킹한 상담 대화(전화·계좌·카드 번호는 플레이스홀더)",
-        "whenAndHow": "손님 메시지마다 암호화된 연결로 보냄", "purposeAndRetention": "상담 답 만들기. 회사 약관의 가장 짧은 보관",
+        "recipient": "AI 모델 회사(Anthropic이나 OpenAI 가운데 평가로 고른 한 곳, DEC-25)", "country": "고른 회사의 처리 지역", "personalData": "마스킹한 상담 대화(전화·계좌·카드 번호는 플레이스홀더)",
+        "whenAndHow": "손님 메시지마다 암호화된 연결로 보냄", "purposeAndRetention": "상담 답 만들기. 회사가 30일까지 보관하고 지움(보관 안 함이 허가되면 보관하지 않음)",
         "howToRefuse": "AI 상담을 원하지 않으면 가게 연락처로 주문할 수 있어요. 거부하면 AI 상담을 쓸 수 없어요",
     }],
     "publishedAt": t("11-12", "12:05"),
@@ -993,6 +1003,7 @@ SKILL_OUTCOME_EXAMPLES = {
     "day_full": text("그 사이 그날이 다 찼어요. 이날은 어떠세요?",
                      quick=[{"label": "11월 19일", "action": "message", "messageText": "11월 19일로 할게요"},
                             {"label": "11월 21일", "action": "message", "messageText": "11월 21일로 할게요"}]),
+    "order_limit_reached": text("사장님이 확인한 뒤 알려 드릴게요"),
     "retry_needed": text("다시 눌러 주세요"),
     "not_allowed_now": text("지금은 할 수 없어요: 이미 받은 주문이에요"),
     # 후기
