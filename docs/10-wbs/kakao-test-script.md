@@ -153,7 +153,7 @@
 
 - 보낼 말: `로그인 시험`. 버튼 셋이 있는 카드가 옵니다.
 - 누를 것: 위에서부터 `① PKCE` → 카카오 로그인·동의 → 결과 화면, 대화창으로 돌아와 `② PKCE 틀린 값` → 결과, `③ PKCE 없이` → 결과. 버튼은 카드를 받은 뒤 30분 동안만 열립니다(카드를 받은 사람만 열게 하려는 것). '로그인 시험 표가 맞지 않아요'가 나오면 `로그인 시험`을 다시 보내 새 카드로 이어서 합니다.
-- 볼 것: 결과 화면의 '토큰 요청' 줄과 마지막 '판단' 줄. ①은 되고 ②는 거절이면 카카오가 PKCE를 검사합니다. ①·② 모두 되면 PKCE 값을 보지 않습니다. 거절이면 오류 코드(KOE…)를 적습니다.
+- 볼 것: 결과 화면의 '토큰 요청' 줄과 마지막 '판단' 줄. ①은 되고 ②가 `invalid_grant`로 거절되면 카카오가 PKCE를 검사합니다(RFC 7636이 verifier가 틀릴 때 돌려주라고 한 오류) [D7]. ①·② 모두 되면 PKCE 값을 보지 않습니다. ②가 다른 오류(서버 오류 등)면 PKCE 때문인지 알 수 없어 서버가 판단하지 않으니 ②를 다시 합니다. 거절이면 오류 코드(KOE…)를 적습니다.
 - 증거: 서버 기록(모드마다 인가 코드를 받았는지, 토큰 요청의 HTTP 상태·오류 코드, 토큰이 있었는지만. 토큰 값은 서버가 바로 버림). 결과 화면 사진 셋.
 - 막히면: KOE006은 1절 7의 리다이렉트 URI가 다른 것, KOE004는 카카오 로그인이 꺼진 것입니다 [D2].
 
@@ -200,3 +200,4 @@
 | D2 | 카카오 디벨로퍼스: 카카오 로그인 설정하기 | https://developers.kakao.com/docs/ko/kakaologin/prerequisite |
 | D5 | 카카오 디벨로퍼스: 카카오 로그인 REST API(인가 코드·토큰 받기) | https://developers.kakao.com/docs/ko/kakaologin/rest-api |
 | D6 | 카카오 OIDC 설정(code_challenge_methods_supported) | https://kauth.kakao.com/.well-known/openid-configuration |
+| D7 | RFC 7636 Proof Key for Code Exchange 4.6(verifier가 맞지 않으면 `invalid_grant`) | https://www.rfc-editor.org/rfc/rfc7636#section-4.6 |

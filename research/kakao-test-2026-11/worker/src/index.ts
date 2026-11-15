@@ -28,9 +28,12 @@ import {
 } from "./items.ts";
 import { simpleText, useCallback, type SkillResponse } from "./kakao.ts";
 import {
+  OUTCOME_LABEL,
   TOKEN_URL,
   authorizeUrl,
   isMode,
+  isOutcome,
+  outcomeOf,
   makeState,
   makeTicket,
   randomB64url,
@@ -42,6 +45,7 @@ import {
   tokenForm,
   verdict,
   type LoginMode,
+  type Outcome,
   type TokenSummary,
 } from "./login.ts";
 import { keyPaths, maskJson, maskText, maskUrl, shapeOf, userToken, type Json } from "./mask.ts";
@@ -622,11 +626,13 @@ async function loginCallback(req: Request, env: Env, ctx: ExecutionContext): Pro
       tokenError = errName(e);
     }
   }
-  if (token) await putQuiet(env, `cfg:login:${s.mode}`, token.ok ? "1" : "0", 86400);
-  const results: Partial<Record<LoginMode, boolean>> = {};
+  // 인가 코드가 없으면(취소 등) 결과를 남기지 않음. 보내기 실패는 알 수 없는 오류로
+  const outcome: Outcome | null = token ? outcomeOf(token) : tokenError ? "inconclusive" : null;
+  if (outcome) await putQuiet(env, `cfg:login:${s.mode}`, outcome, 86400);
+  const results: Partial<Record<LoginMode, Outcome>> = {};
   for (const m of ["pkce", "pkce_wrong", "plain"] as LoginMode[]) {
-    const v = m === s.mode && token ? (token.ok ? "1" : "0") : await env.RECORDS.get(`cfg:login:${m}`);
-    if (v !== null) results[m] = v === "1";
+    const v = m === s.mode && outcome ? outcome : await env.RECORDS.get(`cfg:login:${m}`);
+    if (isOutcome(v)) results[m] = v;
   }
   const judged = verdict(results);
   ctx.waitUntil(
@@ -642,6 +648,7 @@ async function loginCallback(req: Request, env: Env, ctx: ExecutionContext): Pro
       authErrorDescription: authErrorDescription ? maskText(authErrorDescription).slice(0, 200) : null,
       token,
       tokenError,
+      outcome,
       results,
       verdict: judged,
     }),
@@ -651,7 +658,7 @@ async function loginCallback(req: Request, env: Env, ctx: ExecutionContext): Pro
     token
       ? `토큰 요청: HTTP ${token.httpStatus}, ${token.ok ? "토큰 받음(서버에서 바로 버림)" : `거절(${[token.error, token.errorCode].filter(Boolean).join(", ") || "오류 코드 없음"})`}`
       : `토큰 요청: ${tokenError ?? "보내지 않음"}`,
-    `지금까지 결과: ${(["pkce", "pkce_wrong", "plain"] as LoginMode[]).map((m) => `${MODE_LABEL[m]} ${results[m] === undefined ? "아직" : results[m] ? "됨" : "안 됨"}`).join(", ")}`,
+    `지금까지 결과: ${(["pkce", "pkce_wrong", "plain"] as LoginMode[]).map((m) => `${MODE_LABEL[m]} ${results[m] === undefined ? "아직" : OUTCOME_LABEL[results[m]]}`).join(", ")}`,
     `판단: ${judged}`,
     "이 화면을 사진으로 남기고 대화창으로 돌아가 다음 버튼을 눌러 주세요.",
   ];

@@ -6,6 +6,7 @@ import {
   authorizeUrl,
   makeState,
   makeTicket,
+  outcomeOf,
   randomB64url,
   resultPage,
   s256,
@@ -63,11 +64,26 @@ test("summarizeToken: 토큰 값은 남기지 않고 있었는지만", () => {
   assert.equal(summarizeToken(500, null).ok, false);
 });
 
+test("outcomeOf: invalid_grant(4xx)만 거절, 다른 실패는 알 수 없음", () => {
+  assert.equal(outcomeOf(summarizeToken(200, { access_token: "x", token_type: "bearer" })), "ok");
+  assert.equal(outcomeOf(summarizeToken(400, { error: "invalid_grant", error_code: "KOE320" })), "rejected");
+  assert.equal(outcomeOf(summarizeToken(401, { error: "invalid_client", error_code: "KOE010" })), "inconclusive");
+  assert.equal(outcomeOf(summarizeToken(400, { error: "invalid_request" })), "inconclusive");
+  assert.equal(outcomeOf(summarizeToken(500, { error: "server_error" })), "inconclusive");
+  assert.equal(outcomeOf(summarizeToken(400, null)), "inconclusive");
+  assert.equal(outcomeOf(null), "inconclusive");
+});
+
 test("verdict: ①·②의 결과로 PKCE를 검사하는지", () => {
-  assert.match(verdict({ pkce: true }), /모두 해야/);
-  assert.match(verdict({ pkce: true, pkce_wrong: false }), /PKCE를 씀/);
-  assert.match(verdict({ pkce: true, pkce_wrong: true }), /보지 않음/);
-  assert.match(verdict({ pkce: false, pkce_wrong: false }), /①이 안 됨/);
+  assert.match(verdict({ pkce: "ok" }), /모두 해야/);
+  assert.match(verdict({ pkce: "ok", pkce_wrong: "rejected" }), /PKCE를 씀/);
+  assert.match(verdict({ pkce: "ok", pkce_wrong: "ok" }), /보지 않음/);
+  assert.match(verdict({ pkce: "rejected", pkce_wrong: "rejected" }), /①이 안 됨/);
+  assert.match(verdict({ pkce: "inconclusive", pkce_wrong: "ok" }), /①이 안 됨/);
+  // ①은 되고 ②가 PKCE와 관계없는 오류(서버 오류)면 'PKCE를 씀'으로 판단하지 않음(PR 검토 지적)
+  const v = verdict({ pkce: "ok", pkce_wrong: outcomeOf(summarizeToken(500, { error: "server_error" })) });
+  assert.doesNotMatch(v, /PKCE를 씀/);
+  assert.match(v, /판단하지 않아요/);
 });
 
 test("resultPage: 글을 HTML로 이스케이프", () => {

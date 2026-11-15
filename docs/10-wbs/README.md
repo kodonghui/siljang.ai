@@ -155,7 +155,7 @@ TASK-001은 2026-11-15에 끝났습니다. 우리 프로젝트가 스택에 요�
 
 결과(2026-11-15):
 
-- `checks.sh`(20:31 KST 시작, 머리 `0dc6692`, [PR #54](https://github.com/kodonghui/siljang.ai/pull/54), 카카오 시험 대본과 시험 서버): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 금지어 검사(14)가 대본과 서버 README도 훑어 검사 17개 · 오류 0. 시험 서버의 `npm run check`(형 검사 오류 0, 단위 시험 39개)와 `npm run e2e:local`(로컬 시험 49개 통과)은 [서버 README](../../research/kakao-test-2026-11/README.md) 3절에 있습니다.
+- `checks.sh`(20:31 KST 시작, 머리 `0dc6692`, [PR #54](https://github.com/kodonghui/siljang.ai/pull/54), 카카오 시험 대본과 시험 서버): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 금지어 검사(14)가 대본과 서버 README도 훑어 검사 17개 · 오류 0. 시험 서버의 `npm run check`(형 검사 오류 0, 단위 시험 40개)와 `npm run e2e:local`(로컬 시험 49개 통과)은 [서버 README](../../research/kakao-test-2026-11/README.md) 3절에 있습니다.
 - `checks.sh`(19:27 KST 시작, 머리 `2611048`, [PR #53](https://github.com/kodonghui/siljang.ai/pull/53), 반복 0 안내서): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 안내서 검사(16)를 더해 검사 17개 · 오류 0.
 - `checks.sh`(18:41 KST 시작, 머리 `e2a8d30`, [PR #52](https://github.com/kodonghui/siljang.ai/pull/52), 체크포인트 통과 기록): 검사 9개 모두 종료 코드 0이고 수는 아래 PR #51 줄과 같습니다. wbs는 끝난 작업 3개로 검사 16개 · 오류 0.
 - `checks.sh`(18:15 KST 시작, 머리 `097d714`, [PR #51](https://github.com/kodonghui/siljang.ai/pull/51)): 검사 9개 모두 종료 코드 0: prd 문제 0·금지어 0(요구사항 268, 유효 237, 필수 192), flows 문제 0·금지어 0(필수 190/192, 전체 230/237), spec 오류 0(수락 기준 328), erd 15/15(규칙 테스트 324), api 17/17(목 서버 요청 961), sitemap 17/17(노드 357), screens 15/15(응답 행 974), mockup 14/14(문구 6,424), wbs 검사 16개 · 오류 0. 아래 세 줄은 PR #50 때의 결과입니다.

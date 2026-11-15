@@ -110,12 +110,31 @@ export function summarizeToken(httpStatus: number, body: unknown): TokenSummary 
   };
 }
 
-export function verdict(results: Partial<Record<LoginMode, boolean>>): string {
+/** 토큰 요청 한 번의 결과. rejected는 RFC 7636 4.6이 code_verifier가 맞지 않을 때 돌려주라고 한 invalid_grant(4xx)만.
+ *  서버 오류(5xx), invalid_client·invalid_request 같은 다른 오류, 보내기 실패는 PKCE와 관계를 알 수 없어 inconclusive */
+export type Outcome = "ok" | "rejected" | "inconclusive";
+
+export const OUTCOME_LABEL: Record<Outcome, string> = { ok: "됨", rejected: "거절(invalid_grant)", inconclusive: "알 수 없는 오류" };
+
+export function outcomeOf(t: TokenSummary | null): Outcome {
+  if (!t) return "inconclusive";
+  if (t.ok) return "ok";
+  if (t.httpStatus >= 400 && t.httpStatus < 500 && t.error === "invalid_grant") return "rejected";
+  return "inconclusive";
+}
+
+export function isOutcome(v: string | null): v is Outcome {
+  return v === "ok" || v === "rejected" || v === "inconclusive";
+}
+
+export function verdict(results: Partial<Record<LoginMode, Outcome>>): string {
   const { pkce, pkce_wrong: wrong } = results;
   if (pkce === undefined || wrong === undefined) return "①과 ②를 모두 해야 판단할 수 있어요.";
-  if (pkce && !wrong) return "①은 되고 ②는 거절: 카카오가 code_verifier를 검사함(PKCE를 씀).";
-  if (pkce && wrong) return "①·② 모두 됨: 카카오가 PKCE 값을 보지 않음(PKCE 없이 state만으로 시작).";
-  return "①이 안 됨: 오류 코드를 보고 TASK-011에서 판단.";
+  if (pkce !== "ok") return "①이 안 됨: 오류 코드를 보고 설정(리다이렉트 URI, 카카오 로그인 켜기, Client Secret)을 확인한 뒤 다시 해요.";
+  if (wrong === "ok") return "①·② 모두 됨: 카카오가 PKCE 값을 보지 않음(PKCE 없이 state만으로 시작).";
+  if (wrong === "rejected")
+    return "①은 되고 ②는 invalid_grant로 거절: 카카오가 code_verifier를 검사함(PKCE를 씀). 오류 설명이 verifier 이야기인지 기록에서 한 번 더 봐요.";
+  return "②가 invalid_grant가 아닌 오류로 안 됨: PKCE 때문인지 알 수 없어 판단하지 않아요. ②를 다시 해요.";
 }
 
 export function resultPage(title: string, lines: string[]): string {
