@@ -6,7 +6,7 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
-### 2026-11-15 @@T_REC@@ KST · 10단계 WBS 초안: 작업 169개, 반복 계획, 개발 전 확인([PR #@@PR@@](https://github.com/kodonghui/siljang.ai/pull/@@PR@@))
+### 2026-11-15 16:58 KST · 10단계 WBS 초안: 작업 169개, 반복 계획, 개발 전 확인([PR #50](https://github.com/kodonghui/siljang.ai/pull/50))
 
 - 한 일
   - 10단계 작업 목록의 원본 [`research/cake-wbs-2026-11/wbs_rows.py`](../../research/cake-wbs-2026-11/wbs_rows.py)를 만들었습니다. 작업마다 반복, 맡은 이(동희님·Claude), 크기(0.5·1·2·3일), 출처, 닿는 API·테이블·화면, 앞선 작업, 끝난 조건이 있습니다.
@@ -20,7 +20,7 @@
   - 기술 스택 추천(README 6절): 언어는 A(Python FastAPI 서버 + TypeScript React 웹), 반론은 B(TypeScript 하나: 언어가 하나로 줄고, 두 AI 회사 SDK와 비동기 처리는 B도 같음). 배포 후보 셋(Google Cloud Run·Cloud SQL asia-northeast3, AWS Fargate·RDS ap-northeast-2, Supabase ap-northeast-2와 컨테이너 서버)은 TASK-001에서 월 비용 범위를 확인한 뒤 추천합니다.
 - 확인한 것
   - `build_wbs.py .`(16:57): '검사 15개 · 오류 0'.
-  - `checks.sh`(@@T_CHECKS@@ 시작, 이 PR의 머리): @@CHECKS@@
+  - `checks.sh`(16:58 시작, 이 PR의 머리): @@CHECKS@@
   - CORTHEX 허브 스냅숏(16:55, 이 가지와 main `da7f7fc`): 항목 562 → 731(작업 169개), 알림은 'SPEC을 잇지 않은 작업' 경고 30개가 더해졌고 오류 0(README 7절).
   - 하지 않은 것: Notion·Artifact·Miro·GitHub 이슈를 호출하지 않았습니다(지시). Notion 작업 데이터베이스는 이 일의 끝에 한 번 만듭니다. 스택 후보의 월 비용 범위, Supabase의 PostgreSQL 16 지원, 후보마다 카카오 스킬 응답 시간은 확인하지 않았습니다(TASK-001).
 - 다음 행동: 10단계 체크포인트(반복 계획, 언어 A·B)를 결정 카드로 동희님께 드립니다(조정 세션). 답을 README 9절과 이 파일에 말 그대로 적고 반복 0을 시작합니다.
