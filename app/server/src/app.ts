@@ -2,6 +2,7 @@ import { type Context, Hono } from "hono";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import { ApiError, problemResponse } from "./problem";
+import { mountRoutes, openRoute, type RouteDecl, type ScopeResolvers } from "./routes";
 import { readSettings, type Settings } from "./settings";
 import { newTraceId } from "./trace";
 
@@ -31,7 +32,22 @@ export interface AppOptions {
   readonly logSink?: LogSink;
   /** 데이터베이스 연결기. 기본은 settings의 DATABASE_URL로 pg Client 하나(요청마다). */
   readonly connect?: DbConnector;
+  /** 붙일 경로 선언. 기본은 APP_ROUTES. 시험만 시험용 경로를 더한다. */
+  readonly routes?: readonly RouteDecl[];
+  /** 가게 범위 해석기. 없는 출처의 가게 범위 경로는 닫혀 있다(routes.ts). 사장님 세션은 TASK-020부터. */
+  readonly scopes?: Partial<ScopeResolvers>;
 }
+
+/**
+ * 앱의 경로 선언(routes.ts). 새 API는 여기에 선언을 더하고, 가게 범위 경로는 교차 가게 시험 묶음
+ * (test/support/cross-shop.ts의 CROSS_SHOP_CASES)에도 더한다. 빠지면 시험이 실패한다(TASK-019).
+ */
+export const APP_ROUTES: readonly RouteDecl[] = [
+  // 기반 시설용 확인 주소(06 계약 밖). 1분 외부 감시(TASK-016)가 부른다. 데이터베이스는 보지 않는다.
+  openRoute("GET", "/healthz", "기반 시설 확인 주소(06 계약 밖, TASK-016 감시). 데이터베이스를 보지 않음", (c) =>
+    c.json({ status: "ok" }, 200, { "cache-control": "no-store" }),
+  ),
+];
 
 function pathOf(url: string): string {
   return new URL(url).pathname;
@@ -64,6 +80,7 @@ function routePattern(path: string): RegExp {
  * 06 계약의 경로(/owner/session 등)는 /api 뒤에 그대로 붙는다. 계약의 servers 주소는 TASK-016에서 정한다.
  * 공통 처리(TASK-018): 추적 ID, 설정, 요청마다 데이터베이스 연결, 06 Problem 오류 응답(04 G6: 내부 내용 없음),
  * 계약에 없는 방법은 405와 Allow(06 DEC-02). 요청 키는 쓰기 명령이 request-key.ts의 runCommand로 지킨다.
+ * 가게별 기록 나누기(TASK-019): 경로는 routes.ts의 선언으로만 붙고, 가게 범위 경로의 처리기는 가게 범위 연결(shop-scope.ts)만 받는다.
  */
 export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   const sink = options.logSink;
@@ -91,8 +108,8 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
     }
   });
 
-  // 기반 시설용 확인 주소(06 계약 밖). 1분 외부 감시(TASK-016)가 부른다. 데이터베이스는 보지 않는다.
-  app.get("/healthz", (c) => c.json({ status: "ok" }, 200, { "cache-control": "no-store" }));
+  // 경로는 모두 선언으로 붙인다(가게 범위 경로는 가게 범위 연결만 받음, TASK-019).
+  mountRoutes(app, options.routes ?? APP_ROUTES, options.scopes);
 
   app.notFound((c) => {
     const traceId = c.get("traceId") ?? newTraceId();
