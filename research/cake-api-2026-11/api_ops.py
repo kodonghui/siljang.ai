@@ -1,4 +1,4 @@
-"""06단계 API 계약의 API 82개(API-001~082). build_api.py가 OpenAPI paths로 바꾼다.
+"""06단계 API 계약의 API 83개(API-001~083). build_api.py가 OpenAPI paths로 바꾼다.
 
 API마다 적는 것
 - id·method·path·op(operationId)·tag·summary·desc·spec(SPEC ID)

@@ -32,7 +32,7 @@ API 83개 · 응답 417개 · 오류 코드 37개 · 필드 오류 사유 24개 
 | 만든 것 | 무엇 |
 | --- | --- |
 | [`api/openapi.yaml`](../../api/openapi.yaml) | 원본 계약. API마다 `operationId`와 `x-corthex`(API ID, SPEC ID, 뺀 응답과 사유, 케이스 유형 근거), 응답마다 예시. `components.x-corthex`에 오류 코드·필드 오류 사유·확인할 것·스킬 결과·결정 사항·열린 질문·서버 안의 일·깨지는 변화 |
-| [`research/cake-api-2026-11/`](../../research/cake-api-2026-11/) | `api_catalog.py`(오류 코드·결과·결정 사항·열린 질문), `api_schemas.py`(스키마), `api_examples.py`(예시), `api_ops.py`(API 82개), `build_api.py`(계약 파일과 이 문서의 표를 만듦), `check_api.py`(검사), `requirements.txt`(검사 도구 버전), `build_viewer.py`와 `viewer.html`(검토 도구 Swagger UI 페이지를 만듦, 3절) |
+| [`research/cake-api-2026-11/`](../../research/cake-api-2026-11/) | `api_catalog.py`(오류 코드·결과·결정 사항·열린 질문), `api_schemas.py`(스키마), `api_examples.py`(예시), `api_ops.py`(API 83개), `build_api.py`(계약 파일과 이 문서의 표를 만듦), `check_api.py`(검사), `requirements.txt`(검사 도구 버전), `build_viewer.py`와 `viewer.html`(검토 도구 Swagger UI 페이지를 만듦, 3절) |
 
 다시 만들고 검사하는 법(저장소 맨 위에서):
 
@@ -46,7 +46,7 @@ python -m venv .venv-api && .venv-api/bin/pip install -r research/cake-api-2026-
 
 ## 3. 보는 법
 
-- **Swagger UI 페이지(바로 보기)**: [Siljang API 계약](https://claude.ai/artifact/EKihED8HYG5vXWT3YQfUom)에서 설치 없이 봅니다. 동희님 계정의 비공개 페이지라 다른 사람은 공유해야 열립니다. 원본을 그대로 보여 주고, API 이름 앞의 API ID와 설명 끝의 '반환하지 않는 응답'만 `x-corthex`에서 옮겨 붙였습니다. 계약이 바뀌면 `build_viewer.py`로 다시 만들어(아래) 같은 주소에 올립니다. 작업 계정을 옮길 때마다(2026-11-12 밤, 2026-11-13) 새 주소로 다시 올렸고, 옛 주소의 페이지는 더 고치지 않습니다.
+- **Swagger UI 페이지(바로 보기)**: [Siljang API 계약](https://claude.ai/artifact/EKihED8HYG5vXWT3YQfUom)에서 설치 없이 봅니다. 동희님 계정의 비공개 페이지라 다른 사람은 공유해야 열립니다. 원본을 그대로 보여 주고, API 이름 앞의 API ID와 설명 끝의 '반환하지 않는 응답'만 `x-corthex`에서 옮겨 붙였습니다. 계약이 바뀌면 `build_viewer.py`로 다시 만들어(아래) 같은 주소에 올립니다. 작업 계정을 옮길 때마다(2026-11-12 밤, 2026-11-13) 새 주소로 다시 올렸고, 옛 주소의 페이지는 더 고치지 않습니다. 2026-11-15 14:57 KST에 설계 재검토를 모두 고친 main(`e4067ce`)의 계약으로 다시 만들어 같은 주소에 올렸습니다(버전 `1794722233-42e3`). PR #48(`220f09d`)에서 바뀐 계약은 일의 끝에 한 번 올릴 때 맞춥니다(2026-11-15 동희님 지시, [진행 기록](../records/progress.md)).
 - **Swagger UI(내 컴퓨터)**: `docker run --rm -p 8080:8080 -e SWAGGER_JSON=/api/openapi.yaml -v "$PWD/api:/api" swaggerapi/swagger-ui`를 돌리고 http://localhost:8080 을 엽니다. 도커가 없으면 https://editor.swagger.io 에 `api/openapi.yaml`을 끌어 놓아도 됩니다. API는 태그(로그인·가게·주문 …)로 묶여 있고, 응답마다 예시를 골라 볼 수 있습니다.
 - **목 서버**(화면 개발과 QA가 서버 없이 쓰는 곳): `npx @stoplight/prism-cli@5.14.2 mock api/openapi.yaml`을 돌리면 http://127.0.0.1:4010 에서 계약대로 답합니다. 맞는 요청은 성공 응답의 첫 예시, 로그인 없는 요청은 401의 첫 예시, 틀린 입력은 422의 첫 예시(`validation_failed`)를 받습니다. 다른 응답은 헤더로 고릅니다.
 
@@ -58,7 +58,7 @@ curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-01234567
      http://127.0.0.1:4010/owner/orders/68598d4e-7858-598f-aa63-2b51daa7d590/custom-decision
 ```
 
-페이지 재생성: `npm pack swagger-ui-dist@5.17.14`로 받은 꾸러미의 `package/swagger-ui.css`를 넣어 `python3 -B research/cake-api-2026-11/build_viewer.py . 나갈_폴더 --css package/swagger-ui.css`를 돌리면 `siljang-api-contract.html`과 `openapi.json`이 나옵니다. 스타일시트는 버전이 섞이지 않게 SHA-256을 확인합니다.
+페이지 재생성: `npm pack swagger-ui-dist@5.17.14`로 받은 꾸러미의 `package/swagger-ui.css`를 넣어 `python3 -B research/cake-api-2026-11/build_viewer.py . 나갈_폴더 --css package/swagger-ui.css`를 돌리면 `siljang-api-contract.html`과 `openapi.json`이 나옵니다. 스타일시트는 버전이 섞이지 않게 SHA-256을 확인합니다. 페이지 머리말의 계약 버전과 숫자(API·응답·오류 코드·결정 사항·열린 질문)는 원본 계약에서 세어 넣고, '고침' 날짜는 `api/openapi.yaml`을 마지막으로 바꾼 커밋의 날짜(KST)입니다.
 
 ## 4. API 목록
 
@@ -439,6 +439,8 @@ curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-01234567
 
 ## 12. 검사
 
+2026-11-15 15:40 KST, PR #48을 합친 main(`220f09d`)의 계약으로 12-2의 Schemathesis를 다시 돌렸습니다(아래 12-2). 이때 `check_api.py`는 다시 돌리지 않았습니다.
+
 2026-11-15 15:01 KST, 동희님 결정 반영을 고친 뒤(15절) `check_api.py . --db ... --mock ...`를 다시 돌린 결과: 검사 17개: 통과 17, 실패 0, 미확인 0. 바뀐 숫자는 A5 예시 893개·성공 응답 시각 940개·성공 응답 예시 261개(새 예시 5개: API-010 요청 `order_limit`, API-041 `order_limit`, API-042 요청 `accept_limit`·응답 `limit_accepted`, API-071 결과 `order_limit_reached`), A7 테이블.컬럼 106개(159자리. `shops.awaiting_payment_limit`·`handoffs.limit_decision`을 더함), A10 열린 질문 11개(OPEN-7을 닫음), A11 결정 사항 25개(DEC-25), A13 main의 `api/openapi.yaml`과 견준 깨지는 변화 5개가 모두 목록에 있음(11절), D1 테이블.컬럼 106개에 값 5905개, M1 목 서버 요청 961개입니다. A2·A4·A12 API 83개, A3 SPEC 79개, A6 오류 예시 491개, A8 누구나 쓰는 API 5개, A9 말로만 적은 근거 88개, D1의 글자 수 CHECK가 있는 컬럼 42개는 같습니다. 12-2의 Schemathesis는 이번에 다시 돌리지 않았습니다.
 
 2026-11-15 04:52 KST, 설계 재검토 낮음 K2를 고친 뒤(15절, 그 PR의 Codex 의견을 고친 뒤 05:10에 다시 돌려도 출력이 같음) `check_api.py . --db ... --mock ...`를 다시 돌린 결과: 검사 17개: 통과 17, 실패 0, 미확인 0. 바뀐 숫자는 A5 예시 888개·성공 응답 시각 934개와 새로 보는 성공 응답 예시 258개 안의 같은 기록, 확정 시각이 있는 주문의 결제, 명령 결과의 위쪽 기록과 주문 목록(RD-12), A6 오류 예시 491개, A10 열린 질문 12개, A11 목록을 주는 API 14개의 정렬 순서와 DEC-14의 예외(RD-13), M1 목 서버 요청 958개입니다. A13 main의 `api/openapi.yaml`과 견준 깨지는 변화 0개(A13이 찾지 않는 5개는 11절 목록에 적음), A2·A4·A12 API 83개, A3 SPEC 79개, A7 테이블.컬럼 104개(157자리), A8 누구나 쓰는 API 5개, A9 말로만 적은 근거 88개, A11 결정 사항 24개, D1 테이블.컬럼 104개에 값 5885개(글자 수 CHECK가 있는 컬럼 42개)는 같습니다. 새 검사가 잡는지 보려고 같은 A5·A11을 고치기 전 main(`0709e8e`)의 계약에 돌리면 A5가 예시 15곳(API-048 1, API-059 10, API-063 4), A11이 '순서:'가 없는 목록 14개와 DEC-14의 예외에 없는 커서 없는 목록 5개를 실패로 잡습니다. 12-2의 Schemathesis는 이번에 다시 돌리지 않았습니다.
@@ -475,7 +477,7 @@ curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-01234567
 
 2026-11-13 22:42 KST, 설계 재검토 H1·H2를 고친 뒤(15절) `check_api.py . --db ... --mock ...`를 다시 돌린 결과: 검사 17개 통과 17, 실패 0, 미확인 0. 바뀐 숫자는 A3 SPEC 71개 모두 API가 있음, A5 예시 707개·성공 응답 시각 595개, A7 테이블.컬럼 87개(128자리), A13 main의 `api/openapi.yaml`과 견준 깨지는 변화 7개가 모두 목록에 있음(11절), D1 테이블.컬럼 87개에 값 4845개(글자 수 CHECK가 있는 컬럼 27개), M1 목 서버 요청 786개입니다. A6 오류 예시 414개와 A9 말로만 적은 근거 41개는 같습니다. 12-2의 Schemathesis는 이번에 다시 돌리지 않았습니다. 아래 12-1 표는 2026-11-12의 결과로 남깁니다.
 
-검사는 2026-11-12에 이 버전으로 돌렸습니다. 숫자는 각 명령의 출력에서 옮겼습니다. 체크포인트 뒤(14:10 무렵) 결정 사항의 상태 열과 REQ-164 연결을 더한 버전으로 `check_api.py`를 다시 돌려도 17개 모두 통과했고 아래 숫자가 같았습니다. 도구 버전: Python 3.13.18, openapi-spec-validator 0.9.0, jsonschema 4.26.0, hypothesis 6.170.15, hypothesis-jsonschema 0.23.2, PostgreSQL 16.15, Prism 5.14.2(Node 22.23.4), Schemathesis 4.33.2.
+12-1의 검사는 2026-11-12에 이 버전으로 돌렸습니다(12-2의 Schemathesis는 2026-11-15에 `220f09d`로 다시 돌림). 숫자는 각 명령의 출력에서 옮겼습니다. 체크포인트 뒤(14:10 무렵) 결정 사항의 상태 열과 REQ-164 연결을 더한 버전으로 `check_api.py`를 다시 돌려도 17개 모두 통과했고 아래 숫자가 같았습니다. 도구 버전: Python 3.13.18, openapi-spec-validator 0.9.0, jsonschema 4.26.0, hypothesis 6.170.15, hypothesis-jsonschema 0.23.2, PostgreSQL 16.15, Prism 5.14.2(Node 22.23.4), Schemathesis 4.33.2.
 
 ### 12-1. `check_api.py`: 검사 17개 모두 통과
 
@@ -505,18 +507,22 @@ D1의 참고: `operators.email`·`kakao_channels.bot_id`·`ledger_links.spreadsh
 
 ### 12-2. 계약 테스트 도구 Schemathesis를 목 서버에 돌림
 
-`schemathesis run api/openapi.yaml --url http://127.0.0.1:4010 --checks all --phases examples,coverage,fuzzing -n 25 --seed 20261112 --generation-codec ascii`로 API 72개에 요청 1,323개를 만들었습니다.
+2026-11-15 15:40 KST, PR #48을 합친 main(`220f09d`)의 계약에 `schemathesis run api/openapi.yaml --url http://127.0.0.1:4010 --checks all --phases examples,coverage,fuzzing -n 25 --seed 20261112 --generation-codec ascii`를 돌려 API 83개에 테스트 사례 1,875개를 만들었습니다(14.51초, 종료 코드 1은 아래 실패 때문). 목 서버는 다른 검사와 겹치지 않게 4019번 포트에 띄웠고, 결과는 포트와 상관없습니다. 도구 버전은 위와 같습니다.
 
-- **예시 단계 통과**: 계약의 요청 예시로 호출한 응답이 모두 계약의 상태·형식·스키마에 맞았습니다.
-- **실패 128개는 모두 목 서버의 한계**입니다. 계약 쪽 실패는 없었습니다.
+- **예시 단계 통과**: 계약에 요청 예시가 있는 API 65개를 그 예시로 부른 응답이 모두 계약의 상태·형식·스키마에 맞았습니다. 요청 예시가 없는 18개(조회 15개, 로그아웃 2개, 사진 업로드 1개)는 건너뛰었습니다.
+- **실패 151개는 모두 목 서버의 한계**입니다. 계약 쪽 실패는 없었습니다. 커버리지·퍼징 단계의 실패도 모두 아래 세 가지이고, 응답 스키마나 계약에 없는 상태 번호로 실패한 것은 0개입니다.
 
 | 실패 | 수 | 사유 | 실제 서버(11단계)에서 |
 | --- | --- | --- | --- |
-| ST401 틀린 인증을 수락함 | 59 | Prism은 쿠키·헤더가 있는지만 보고 값은 확인하지 못함 | 세션과 스킬 키 값을 확인해 401 |
-| ST204 계약에 없는 방법에 `Allow` 없음 | 61 | Prism의 405에 `Allow` 헤더가 없음 | 405 `method_not_allowed`와 `Allow`(DEC-02) |
-| ST105 계약에 없는 형식 | 8 | JSON으로 읽을 수 없는 본문에 Prism이 자기 400(`application/json`)으로 답함 | 422 `validation_failed`(`/`, `bad_json`, DEC-01) |
+| ST401 틀린 인증을 수락함 | 71 | Prism은 쿠키·헤더가 있는지만 보고 값은 확인하지 못함 | 세션과 스킬 키 값을 확인해 401 |
+| ST204 계약에 없는 방법에 `Allow` 없음 | 72 | 경로마다 보낸 TRACE에 Prism이 `Allow` 헤더 없는 405로 답함 | 405 `method_not_allowed`와 `Allow`(DEC-02) |
+| ST105 계약에 없는 형식 | 8 | JSON으로 읽을 수 없는 본문에 Prism이 자기 400(`application/json; charset=utf-8`)으로 답함 | 422 `validation_failed`(`/`, `bad_json`, DEC-01) |
 
-- 경고: API 9개는 Schemathesis가 만든 쿠키·헤더 값이 모두 401을 받아 성공 응답을 보지 못했습니다. 이 API들도 M1에서 맞는 요청이 성공하는 것은 봤습니다.
+- **한계: 로그인이 꼭 필요한 API는 맞는 로그인으로 성공 응답을 보지 못했습니다.** Schemathesis에 세션 쿠키나 스킬 키를 주지 않았기 때문입니다.
+  - 로그인이 꼭 필요한 API 76개 가운데 71개는 Schemathesis가 만든 아무 값에도 Prism이 성공으로 답해 위 ST401로 잡혔고, 5개(카카오 스킬 셋 `POST /kakao/skills/event`·`message`·`review`, 환불 `POST /owner/orders/{orderId}/refunds`, 장부 연결 `PUT /owner/ledger`)는 401·403만 받아 경고로 남았습니다.
+  - 예시 단계만 따로 돌리면(`--phases examples`, 같은 seed) 테스트 사례 210개가 모두 통과했지만, 응답 205개가 401이었고 API 60개가 401·403만 받았습니다. 성공 응답 5개는 로그인이 필요 없는 API 5개(로그인 3개, 공개 페이지 2개)에서만 나왔습니다.
+  - 맞는 요청이 성공 응답을 받는 것은 `check_api.py`의 M1(위 15:01, 목 서버 요청 961개)에서 봤습니다. 실제 세션과 스킬 키로 성공 응답을 보는 일은 11단계에서 개발·스테이징 서버에 같은 명령을 돌려 합니다.
+- 2026-11-12(API 72개)에는 요청 1,323개, 실패 128개(ST401 59, ST204 61, ST105 8), 경고 API 9개였습니다.
 - 처음에는 ASCII 밖 글자로 돌렸는데, 요청 필드 이름에 그런 글자가 들어가면 Prism이 오류 헤더를 쓰다 멈췄습니다(Prism 5.14.2의 문제). 그래서 `--generation-codec ascii`로 돌렸습니다. 실제 서버 테스트는 이 옵션 없이 돌립니다.
 - 목 서버는 계약의 예시를 반환하므로 대부분의 검사를 일부러 통과합니다. 계약을 서버가 지키는지는 11단계에서 개발·스테이징 서버에 같은 명령을 돌려야 압니다.
 

@@ -4,8 +4,9 @@
   "team": false,
   "language": "ko",
   "records": {
-    "kind": "notion",
-    "location": "https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e"
+    "kind": "git",
+    "location": "docs/records/",
+    "note": "진행 기록은 저장소 docs/records/, Notion은 일의 끝에 한 번(2026-11-15 동희님 지시, 말 그대로는 docs/records/progress.md의 2026-11-15 15:27 단락). Notion 기록 데이터베이스 https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e 에는 2026-11-15까지의 기록이 있고, 일의 끝에 이 폴더의 기록을 한 번에 올립니다. 2026-11-15까지 kind는 notion, location은 이 데이터베이스였습니다."
   },
   "stages": {
     "01-domain": {
