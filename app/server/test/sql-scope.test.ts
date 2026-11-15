@@ -40,6 +40,12 @@ describe("가게 조건 검사: 지킨 SQL", () => {
     "public 스키마": "SELECT o.id FROM public.orders o WHERE o.shop_id = $1",
     "함수 안의 FROM": "SELECT extract(epoch from o.created_at) FROM orders o WHERE o.shop_id = $1",
     "가게 테이블이 없음": "SELECT state FROM request_keys WHERE actor_kind = $1 AND actor_id = $2",
+    "테이블 이름으로 쓴 열": "SELECT orders.id FROM orders WHERE orders.shop_id = $1",
+    "INSERT … SELECT의 하위 질의 안 UNION": `INSERT INTO designs (shop_id, price_list_id, name, image_key)
+      SELECT $1, $2, x.name, x.image_key FROM (SELECT d.name, d.image_key FROM designs d WHERE d.shop_id = $1
+        UNION ALL SELECT e.name, e.image_key FROM designs e WHERE e.shop_id = $1) x`,
+    "여러 열 꼴 SET(shop_id 없음)":
+      "UPDATE orders o SET (status, version) = ($2, o.version + 1) WHERE o.shop_id = $1 AND o.id = $3",
   };
   for (const [name, sql] of Object.entries(good)) {
     it(name, () => {
@@ -130,6 +136,51 @@ describe("가게 조건 검사: 어긴 SQL", () => {
     "테이블 이름을 가린 WITH": [
       "WITH orders AS (SELECT * FROM payments p WHERE p.shop_id = $1) SELECT * FROM orders",
       "name orders outside from",
+    ],
+    // Codex 검토(PR #61): INSERT 값의 원천을 UNION으로 이으면 뒤 조각의 shop_id를 보지 않았음
+    "INSERT … SELECT를 UNION으로 이은 다른 가게 값": [
+      "INSERT INTO price_lists (shop_id, version) SELECT $1, 42 UNION ALL SELECT $2, 42",
+      "insert price_lists price_lists",
+    ],
+    "INSERT VALUES 뒤에 UNION으로 이은 다른 가게 값": [
+      "INSERT INTO price_lists (shop_id, version) VALUES ($1, 42) UNION ALL SELECT $2, 43",
+      "insert price_lists price_lists",
+    ],
+    // Codex 검토(PR #61): 여러 열 꼴 SET은 = 옆이 괄호라 shop_id를 넣는 것을 보지 않았음
+    "여러 열 꼴 SET으로 다른 가게로 옮기기": [
+      "UPDATE price_lists SET (shop_id, version) = ($2, $3) WHERE shop_id = $1",
+      "set shop_id",
+    ],
+    "ON CONFLICT의 여러 열 꼴 SET": [
+      `INSERT INTO slot_holds (shop_id, day, hold_key) VALUES ($1, $2, $3)
+       ON CONFLICT (shop_id, hold_key) DO UPDATE SET day = excluded.day, (shop_id) = ROW($4)`,
+      "set shop_id",
+    ],
+    "하위 질의의 shop_id를 넣어 옮기기": [
+      "UPDATE orders o SET shop_id = x.shop_id FROM (SELECT $2::uuid AS shop_id) x WHERE o.shop_id = $1 AND o.id = $3",
+      "set shop_id",
+    ],
+    // Codex 검토(PR #61): 안쪽의 TABLE 스키마.이름은 테이블로도, 막을 이름으로도 보지 않았음
+    "WITH 안의 TABLE public.이름": [
+      "WITH leaked AS (TABLE public.orders) SELECT * FROM leaked",
+      "name orders outside from",
+    ],
+    "하위 질의의 TABLE public.이름": ["SELECT * FROM (TABLE public.orders) x", "name orders outside from"],
+    // 같은 갈래: 검사가 테이블 이름이나 SQL을 보지 못하는 꼴
+    "유니코드 이스케이프 이름": ['SELECT * FROM U&"\\006Frders" o', "unicode escape"],
+    "SQL 글을 실행하는 내장 함수": [
+      "SELECT query_to_xml('SELECT * FROM orders', true, true, '') FROM shops s WHERE s.id = $1",
+      "function query_to_xml",
+    ],
+    "테이블을 통째로 읽는 내장 함수": [
+      "SELECT table_to_xml('orders', true, true, '') FROM shops s WHERE s.id = $1",
+      "function table_to_xml",
+    ],
+    // 같은 갈래: 값을 자르는 형 바꾸기(char는 첫 글자만)로 묶은 것처럼 보임
+    "자르는 형 바꾸기로 묶기": ["SELECT o.id FROM orders o WHERE o.shop_id::char = $1::char", "unscoped orders o"],
+    "자르는 형 바꾸기로 JOIN": [
+      "SELECT o.id FROM orders o JOIN payments p ON p.shop_id::char = o.shop_id::char WHERE o.shop_id = $1",
+      "unscoped payments p",
     ],
   };
   for (const [name, [sql, expected]] of Object.entries(bad)) {

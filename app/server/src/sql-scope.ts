@@ -10,15 +10,22 @@
  *    (a) 그 테이블이 든 단계(괄호 묶음, UNION으로 나뉜 조각)의 WHERE에 AND로만 이어져 있거나
  *    (b) 그 테이블을 든 JOIN(안쪽·LEFT)의 ON에 AND로만 이어져 있다. 괄호 밖 OR가 있는 조건은 치지 않는다.
  *    `X.shop_id = Y.shop_id`는 Y가 가게 조건을 가지면 X도 갖는다. shops(가게 자체)의 가게 조건은 `X.id = $1`.
- *    별칭 없는 `shop_id = $1`은 그 단계의 FROM에 테이블이 하나일 때만 친다.
- * 3. INSERT는 열 목록의 첫 열이 shop_id이고 그 값이 $1이다(VALUES 줄마다, 또는 SELECT의 첫 값).
- * 4. shop_id는 $1이나 다른 테이블의 shop_id(shops는 id)하고만 =로 견주거나 넣는다(SET shop_id = $2로 다른 가게로 옮기기,
- *    WHERE shop_id = $2로 다른 가게 읽기를 막음).
+ *    별칭 없는 `shop_id = $1`은 그 단계의 FROM에 테이블이 하나일 때만 친다. 형 바꾸기는 ::uuid만 친다(::char는 첫 글자만
+ *    남겨 여러 가게의 ID와 같아진다).
+ * 3. INSERT는 열 목록의 첫 열이 shop_id이고 그 값이 $1이다(VALUES 줄마다, 또는 SELECT의 첫 값). 값의 원천을
+ *    UNION·EXCEPT·INTERSECT로 잇지 않는다(이은 조각의 값은 보지 않으므로).
+ * 4. shop_id는 $1이나 다른 테이블의 shop_id(shops는 id)하고만 =로 견준다(WHERE shop_id = $2로 다른 가게 읽기를 막음).
+ *    UPDATE·DO UPDATE의 SET은 shop_id를 넣지 않는다(한 열 꼴과 여러 열 꼴 `(shop_id, …) = …` 모두. 다른 가게로 옮기기를 막음).
  * 5. ON CONFLICT … DO UPDATE는 충돌 대상 열에 shop_id가 있다(다른 가게의 행을 고치지 않게).
  * 6. 별칭은 문장 안에서 하나씩이고 가게 테이블 이름을 다른 테이블의 별칭으로 쓰지 않는다. 가게 테이블 이름은 FROM·JOIN·
- *    UPDATE·INSERT INTO·DELETE FROM·USING 자리와 `이름.열`에만 쓴다(TABLE 문, LOCK, 알아보지 못한 자리를 막음).
- * 한계: 함수·뷰 안의 SQL은 보지 못한다(05에 업무 코드가 부르는 함수·뷰 없음). $1에 다른 가게 ID를 넣는 일은 ShopDb가
- * 막는다($1을 스스로 채움). 실행 중에 이어 붙인 SQL은 정적 시험이 아니라 ShopDb의 실행 중 검사가 본다.
+ *    UPDATE·INSERT INTO·DELETE FROM·USING 자리(public.이름 포함)와 `이름.열`에만 쓴다(TABLE 문, 안쪽의 TABLE public.이름,
+ *    LOCK, 다른 스키마의 같은 이름, 알아보지 못한 자리를 막음).
+ * 7. 검사가 이름이나 SQL을 보지 못하는 꼴을 쓰지 않는다: 유니코드 이스케이프(U&"…", U&'…'), SQL 글을 받아 돌리거나
+ *    테이블을 이름으로 통째로 읽는 내장 함수(query_to_xml·table_to_xml 무리, ts_stat, ts_rewrite).
+ * 한계: 함수·뷰 안의 SQL은 보지 못한다(05에 업무 코드가 부르는 함수·뷰가 없고, SQL 글을 돌리는 내장 함수는 7로 막음).
+ *    이 검사는 가게 조건을 빠뜨린 실수를 막는 것이고, 검사를 피하려고 일부러 꾸민 SQL을 모두 알아보지는 못한다(코드 검토가 본다).
+ *    $1에 다른 가게 ID를 넣는 일은 ShopDb가 막는다($1을 스스로 채움). 실행 중에 이어 붙인 SQL은 정적 시험이 아니라
+ *    ShopDb의 실행 중 검사가 본다.
  */
 
 /** 05의 가게에 딸린 테이블: shop_id 열을 가진 54개(db/schema.sql, 05 E1). 시험이 05와 데이터베이스와 같은지 본다. */
@@ -95,6 +102,26 @@ export type IdShopTable = Exclude<ShopTable, (typeof SHOP_TABLES_WITHOUT_ID)[num
 /** 가게 자체(05 TBL-003). 가게 조건은 id = $1. */
 const SHOPS = "shops";
 const SCOPED = new Set<string>([...SHOP_TABLES, SHOPS]);
+
+/** SQL 글을 받아 돌리거나 테이블을 이름으로 통째로 읽는 내장 함수(규칙 7). 검사가 그 안을 보지 못한다. */
+const SQL_TEXT_FUNCTIONS = new Set([
+  "query_to_xml",
+  "query_to_xmlschema",
+  "query_to_xml_and_xmlschema",
+  "table_to_xml",
+  "table_to_xmlschema",
+  "table_to_xml_and_xmlschema",
+  "cursor_to_xml",
+  "cursor_to_xmlschema",
+  "schema_to_xml",
+  "schema_to_xmlschema",
+  "schema_to_xml_and_xmlschema",
+  "database_to_xml",
+  "database_to_xmlschema",
+  "database_to_xml_and_xmlschema",
+  "ts_stat",
+  "ts_rewrite",
+]);
 
 /** SQL이 가게 테이블을 하나라도 이름으로 드는지(정적 시험이 검사할 글을 고를 때). */
 export function namesShopTable(sql: string): boolean {
@@ -380,7 +407,8 @@ function readItem(
     at = q + 1;
     q += 2;
   } else if (toks[q]?.v === ".") {
-    // 다른 스키마의 테이블이나 함수 안의 열(extract(epoch from o.x))이다. 이 검사의 테이블이 아니다.
+    // 다른 스키마의 테이블이나 함수 안의 열(extract(epoch from o.x))이다. 이 검사의 테이블이 아니다
+    // (다른 스키마의 같은 이름은 규칙 6이 막는다).
     return { next: q, item: null };
   }
   if (kind !== "insert" && toks[q]?.v === "(") {
@@ -483,7 +511,8 @@ function conjuncts(ts: readonly Tok[], depth: number): Tok[][] | null {
 
 function side(ts: readonly Tok[]): Side {
   let xs = ts;
-  while (xs.length >= 3 && xs[xs.length - 2]?.v === "::" && isWord(xs[xs.length - 1]?.v)) xs = xs.slice(0, -2);
+  // ::uuid만 벗긴다. 다른 형 바꾸기는 값을 바꿀 수 있다(uuid를 ::char로 바꾸면 첫 글자만 남음)
+  while (xs.length >= 3 && xs[xs.length - 2]?.v === "::" && xs[xs.length - 1]?.v === "uuid") xs = xs.slice(0, -2);
   if (xs.length === 1 && xs[0]?.v === "$1") return { kind: "param1" };
   if (xs.length === 1 && isWord(xs[0]?.v)) return { kind: "col", alias: null, col: xs[0]?.v as string };
   if (xs.length === 3 && isWord(xs[0]?.v) && xs[1]?.v === "." && isWord(xs[2]?.v)) {
@@ -535,6 +564,13 @@ function insertScoped(toks: readonly Tok[], ref: Ref): boolean {
   const closeCols = matching(toks, q);
   if (toks[q + 1]?.v !== "shop_id" || ![",", ")"].includes(toks[q + 2]?.v ?? "")) return false;
   q = closeCols + 1;
+  // 값의 원천은 VALUES 하나나 SELECT 하나. UNION·EXCEPT·INTERSECT로 이은 조각의 값은 아래에서 보지 않으므로 받지 않는다
+  const sourceDepth = toks[q]?.depth ?? 0;
+  for (let j = q; j < toks.length; j += 1) {
+    const x = toks[j] as Tok;
+    if (x.depth < sourceDepth) break;
+    if (x.depth === sourceDepth && (x.v === "union" || x.v === "except" || x.v === "intersect")) return false;
+  }
   const firstValueIsParam1 = (at: number): number => {
     let k = at;
     if (toks[k]?.v !== "$1") return -1;
@@ -567,6 +603,44 @@ function insertScoped(toks: readonly Tok[], ref: Ref): boolean {
   return false;
 }
 
+const END_SET = new Set(["from", "where", "returning", ";"]);
+
+/** UPDATE·DO UPDATE의 SET이 넣는 열 이름들(한 열 꼴 `a = …`과 여러 열 꼴 `(a, b) = …`). */
+function setTargets(toks: readonly Tok[]): string[] {
+  const out: string[] = [];
+  toks.forEach((t, k) => {
+    if (t.v !== "set") return;
+    let q = k + 1;
+    for (;;) {
+      const head = toks[q];
+      if (head === undefined || head.depth !== t.depth) break;
+      if (head.v === "(") {
+        const close = matching(toks, q);
+        for (const x of toks.slice(q + 1, close)) if (x.depth === t.depth + 1 && isWord(x.v)) out.push(x.v);
+      } else if (isWord(head.v)) {
+        out.push(head.v);
+      } else {
+        break;
+      }
+      // 다음 항목은 같은 깊이의 , 뒤. FROM·WHERE·RETURNING·; 이나 깊이가 줄면 SET 목록이 끝난다
+      let next = -1;
+      for (let j = q + 1; j < toks.length; j += 1) {
+        const x = toks[j] as Tok;
+        if (x.depth < t.depth) break;
+        if (x.depth !== t.depth) continue;
+        if (x.v === ",") {
+          next = j + 1;
+          break;
+        }
+        if (END_SET.has(x.v)) break;
+      }
+      if (next === -1) break;
+      q = next;
+    }
+  });
+  return out;
+}
+
 /** 가게 조건을 어긴 곳의 목록(빈 목록이면 지킴). 값은 싣지 않고 규칙과 테이블·별칭 이름만. */
 export function scopeViolations(sql: string): string[] {
   const toks = tokenize(stripSql(sql));
@@ -577,6 +651,12 @@ export function scopeViolations(sql: string): string[] {
   }
   toks.forEach((t, k) => {
     if (t.v === ";" && k !== toks.length - 1) out.push("statement ;");
+  });
+
+  // 7. 검사가 이름이나 SQL을 보지 못하는 꼴: 유니코드 이스케이프(글자 값·주석 안의 것도 함께 막음), SQL 글을 돌리는 내장 함수
+  if (/(^|[^A-Za-z0-9_$])u&["']/i.test(sql)) out.push("unicode escape");
+  toks.forEach((t, k) => {
+    if (SQL_TEXT_FUNCTIONS.has(t.v) && toks[k + 1]?.v === "(") out.push(`function ${t.v}`);
   });
 
   const items = readItems(toks);
@@ -593,9 +673,14 @@ export function scopeViolations(sql: string): string[] {
   const refAt = new Set(refs.map((r) => r.at));
   toks.forEach((t, k) => {
     if (!SCOPED.has(t.v) || refAt.has(k)) return;
-    if (toks[k + 1]?.v === "." || toks[k - 1]?.v === ".") return;
+    // `이름.열`(별칭 없이 테이블 이름으로 쓴 열)만 따로 받는다. `스키마.이름`은 FROM 따위 자리의 public.이름만 테이블로 읽고
+    // 다른 자리(안쪽의 TABLE public.이름 따위)와 다른 스키마의 같은 이름은 막는다
+    if (toks[k + 1]?.v === "." && toks[k - 1]?.v !== ".") return;
     out.push(`name ${t.v} outside from`);
   });
+
+  // 4. SET은 shop_id를 넣지 않음(한 열 꼴·여러 열 꼴 모두, 다른 가게로 옮기기를 막음)
+  if (setTargets(toks).includes("shop_id")) out.push("set shop_id");
 
   // 4. shop_id는 $1이나 다른 shop_id(shops는 id)하고만 견줌
   const shopsAliases = new Set(shopRefs.filter((r) => r.table === SHOPS).map((r) => r.alias));

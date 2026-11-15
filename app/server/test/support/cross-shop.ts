@@ -12,6 +12,7 @@ import { malformedIds, missingIds, type RecordIds, recordIds, type ShopFixture, 
  *
  * 가게 범위 경로(routes.ts의 shopRoute)는 하나도 빠짐없이 CROSS_SHOP_CASES에 등록한다. 시험(test/cross-shop.test.ts)이
  * 앱의 선언(app.ts의 APP_ROUTES)과 이 목록을 견주어, 등록되지 않은 가게 범위 경로가 있으면 실패한다(새 API가 빠지면 CI 실패).
+ * 등록한 사례는 모두 앱의 선언을 붙인 앱에서 실제로 부른다(시험용 경로의 사례와 함께).
  *
  * 등록한 경로마다 가게 A 사장님으로 다음을 부른다.
  * - 경로의 ID(kind 'path'): 가게 B의 ID, 어느 가게에도 없는 ID, B의 ID를 대문자로, 형식이 틀린 ID 둘('not-a-uuid', 101자)

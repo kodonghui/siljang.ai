@@ -219,6 +219,19 @@ const TEST_CASES: readonly CrossShopCase[] = [
   },
 ];
 
+/**
+ * 묶음이 붙이는 경로와 부르는 사례: 앱의 선언(APP_ROUTES)·등록 목록(CROSS_SHOP_CASES)과 시험용 경로·등록.
+ * 등록한 사례는 모두 부른다(앱의 등록 목록도 등록만 보고 끝나지 않음).
+ */
+const SUITE_ROUTES: readonly RouteDecl[] = [...APP_ROUTES, ...TEST_ROUTES];
+const SUITE_CASES: readonly CrossShopCase[] = [...CROSS_SHOP_CASES, ...TEST_CASES];
+
+/** 사례의 경로가 받는 가게 범위 출처(가게 범위 경로가 아니면 null). */
+function viaOf(c: CrossShopCase): ScopeKind | null {
+  const decl = SUITE_ROUTES.find((r) => r.method === c.method && r.path === c.path);
+  return decl?.kind === "shop" ? decl.via : null;
+}
+
 /** 시험용 해석기: 헤더의 사장님 ID·봇 ID로 가게를 찾는다(진짜는 TASK-020 세션, TASK-028 스킬 키). */
 function testScopes(shops: readonly ShopFixture[]): Partial<ScopeResolvers> {
   return {
@@ -241,7 +254,7 @@ describeDb("교차 가게 시험 묶음(SPEC-068, G1, 06 DEC-02)", () => {
 
   beforeAll(async () => {
     const { a, b } = await createShopPair(db);
-    const app = createApp({ routes: [...APP_ROUTES, ...TEST_ROUTES], scopes: testScopes([a, b]) });
+    const app = createApp({ routes: SUITE_ROUTES, scopes: testScopes([a, b]) });
     env = { app, a, b, as: (f) => ({ [OWNER_HEADER]: f.ownerId }) };
   });
 
@@ -249,8 +262,12 @@ describeDb("교차 가게 시험 묶음(SPEC-068, G1, 06 DEC-02)", () => {
     await db.close();
   });
 
-  for (const c of TEST_CASES) {
+  for (const c of SUITE_CASES) {
     it(`${routeKey(c.method, c.path)} (${c.kind === "path" ? "경로의 ID" : "본문·쿼리의 ID"})`, async () => {
+      // 묶음은 가게 A 사장님으로 부른다. 다른 출처의 경로는 그 작업이 부르는 쪽과 기대를 더할 때까지 여기서 실패한다
+      expect(viaOf(c), "부르는 쪽은 사장님만(손님 TASK-028, 운영자 TASK-021·159, 예약 링크 TASK-044·045가 더함)").toBe(
+        "owner",
+      );
       await runCrossShopCase(env, c);
     });
   }
@@ -417,6 +434,13 @@ describe("교차 가게 시험 묶음의 등록(새 가게 범위 API가 빠지�
   it("시험용 경로도 모두 등록됨", () => {
     const gaps = registryGaps([...APP_ROUTES, ...TEST_ROUTES], [...CROSS_SHOP_CASES, ...TEST_CASES]);
     expect(gaps).toEqual({ missing: [], stale: [] });
+  });
+
+  // Codex 검토(PR #61): 앱의 등록 목록은 등록만 보고 부르지 않았음(묶음은 시험용 사례만 불렀음)
+  it("앱의 등록 목록도 묶음이 부름(등록만 하고 부르지 않는 사례 없음), 묶음의 앱은 앱의 선언을 모두 붙임", () => {
+    for (const c of [...CROSS_SHOP_CASES, ...TEST_CASES]) expect(SUITE_CASES).toContain(c);
+    for (const r of APP_ROUTES) expect(SUITE_ROUTES).toContain(r);
+    expect(registryGaps(SUITE_ROUTES, SUITE_CASES)).toEqual({ missing: [], stale: [] });
   });
 
   it("등록하지 않은 가게 범위 경로를 잡음", () => {
