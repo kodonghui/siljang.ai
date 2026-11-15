@@ -5,7 +5,7 @@
 ## 1. 한눈에
 
 <!-- BEGIN generated:counts -->
-작업 181개 · 크기 합 245.5일 · 반복 10개 · 동희님 17개 · Claude 164개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 58개 · 앱 규칙 40개 · 공통 규칙 9개 · 열린 질문 10개 · 끝난 작업 6개.
+작업 181개 · 크기 합 245.5일 · 반복 10개 · 동희님 17개 · Claude 164개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 58개 · 앱 규칙 40개 · 공통 규칙 9개 · 열린 질문 10개 · 끝난 작업 7개.
 <!-- END generated:counts -->
 
 - 작업 표는 [`wbs.md`](wbs.md)입니다. 작업마다 출처(SPEC·REQ·OPEN·DEC·규칙), 닿는 것(API·테이블·화면), 앞선 작업, 맡은 이, 크기, 끝난 조건이 있고, 끝에 SPEC·API·화면·테이블·규칙에서 작업을 찾는 부록 A~E가 있습니다.
@@ -157,6 +157,8 @@ TASK-001은 2026-11-15에 끝났습니다. 우리 프로젝트가 스택에 요�
 
 결과(2026-11-15):
 
+- `tools/stage-checks.sh`(2026-11-16 00:22 KST 시작, 머리 `61dca20`, [PR #60](https://github.com/kodonghui/siljang.ai/pull/60), 세 번째 Codex 지적 고침과 끝남 글의 시험 수): 검사 9개 모두 종료 코드 0이고 수는 바로 아래 줄과 같습니다.
+- `tools/stage-checks.sh`(2026-11-16 00:09 KST 시작, 머리 `95ef74a`, [PR #60](https://github.com/kodonghui/siljang.ai/pull/60), 공통 요청 처리 TASK-018): 검사 9개 모두 종료 코드 0이고 01\~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 TASK-018이 끝나 끝난 작업 7개로 검사 18개 · 오류 0. 서버 시험(데이터베이스 시험 포함)은 이제 GitHub Actions의 [`app.yml`](../../.github/workflows/app.yml)에서 PostgreSQL 16.15에 마이그레이션을 적용한 뒤 PR마다 돕니다.
 - `tools/stage-checks.sh`(23:24 KST 시작, 머리 `644ed41`, [PR #59](https://github.com/kodonghui/siljang.ai/pull/59), 마이그레이션 20개와 규칙 테스트를 CI에서 TASK-017): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 TASK-017이 끝나 끝난 작업 6개로 검사 18개 · 오류 0. 05 검사(erd)는 이제 GitHub Actions의 [`db.yml`](../../.github/workflows/db.yml)에서도 PR마다 돕니다.
 - `tools/stage-checks.sh`(22:54 KST 시작, 머리 `49930fc`, [PR #58](https://github.com/kodonghui/siljang.ai/pull/58), 개발 저장소 뼈대 TASK-015): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 TASK-015가 끝나 끝난 작업 5개로 검사 18개 · 오류 0. 단계 검사는 이제 임시 폴더의 `checks.sh` 대신 저장소의 [`tools/stage-checks.sh`](../../tools/stage-checks.sh)로 돌립니다([PR #57](https://github.com/kodonghui/siljang.ai/pull/57)).
 - `checks.sh`(21:54 KST 시작, 머리 `36522b3`, [PR #56](https://github.com/kodonghui/siljang.ai/pull/56), 법률 질문 문서 TASK-013 준비): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 법률 질문 문서 검사(17)를 더해 검사 18개 · 오류 0.

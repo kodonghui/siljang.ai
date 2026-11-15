@@ -1,5 +1,8 @@
 # 11단계 앱(app/)의 린트·형식 검사·시험·빌드와 키 검사(TASK-015, REQ-135).
+# 데이터베이스가 있어야 하는 서버 시험(TASK-018: 요청 키·연결 층·운영 기록)은 이 작업 안의 PostgreSQL에
+# 마이그레이션 0001~0020을 적용한 뒤 돌린다. REQUIRE_DATABASE_TESTS=1이라 연결이 없으면 건너뛰지 않고 실패한다.
 # 이 작업에는 비밀 값을 하나도 넘기지 않는다. 시험은 키 없이 지나야 한다(11단계 계약).
+# 시험용 PostgreSQL은 이 작업 안에서만 돌고 비밀번호 없이 받는다(trust, 시험용이며 비밀 값이 아님).
 name: app
 
 on:
@@ -23,8 +26,25 @@ jobs:
   check:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    services:
+      postgres:
+        # db.yml과 같은 이미지(16.15, 2026-11-05, digest 고정)
+        image: postgres:16.15-bookworm@sha256:5264710be20f409750ac6dc4e5706dcef929c87e241605463f0f9aefa932a8d9
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
     env:
       WRANGLER_SEND_METRICS: "false"
+      PG: host=127.0.0.1 port=5432 user=postgres
+      # 서버 시험이 쓰는 시험용 데이터베이스(비밀 값 아님). 없으면 시험이 실패한다(건너뛰지 않음).
+      TEST_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/app_test
+      REQUIRE_DATABASE_TESTS: "1"
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -53,12 +73,17 @@ jobs:
       - name: 타입 검사(TypeScript)
         run: npm run typecheck 2>&1 | tee ci-logs/typecheck.log
 
-      - name: 시험(Vitest)
+      - name: 시험용 데이터베이스(마이그레이션 0001~0020)
+        run: |
+          psql -X -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE app_test TEMPLATE template0" "$PG dbname=postgres"
+          bash ../tools/db-migrate.sh "$PG dbname=app_test" 2>&1 | tee ci-logs/migrate.log
+
+      - name: 시험(Vitest, 데이터베이스 시험 포함)
         run: npm test 2>&1 | tee ci-logs/test.log
 
       - name: 빌드(웹 Vite, 서버 wrangler --dry-run)
         run: npm run build 2>&1 | tee ci-logs/build.log
 
-      - name: 로그 키 검사(설치·린트·타입 검사·시험·빌드 로그)
+      - name: 로그 키 검사(설치·린트·타입 검사·마이그레이션·시험·빌드 로그)
         if: ${{ !cancelled() }}
         run: node ../tools/check-no-keys.mjs ci-logs/*.log

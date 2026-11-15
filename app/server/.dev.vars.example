@@ -8,3 +8,10 @@ APP_ENV=development
 # AI 모델 키(비밀 값). 서버만 읽고, 웹 빌드(VITE_*)에는 절대 넣지 않는다. 없으면 AI 일만 503 ai_unavailable(TASK-026에서).
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
+
+# PostgreSQL 연결 문자열(비밀 값). postgres:// 나 postgresql:// 로 시작. Workers에서는 Hyperdrive 바인딩(TASK-173).
+# 없으면 데이터베이스가 필요한 요청만 500 internal.
+DATABASE_URL=
+
+# 요청 지문(request_keys.request_hash)을 만드는 HMAC-SHA256 키(비밀 값, 32자 이상). 없으면 쓰기 명령이 500 internal.
+REQUEST_HASH_KEY=
