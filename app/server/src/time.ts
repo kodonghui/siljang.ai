@@ -85,8 +85,11 @@ function offsetMs(instant: Date, timeZone: string): number {
 }
 
 /**
- * 가게 시간대의 날짜·시각(벽시계)을 UTC 절대 시각으로. 서머타임으로 없는 시각은 뒤로 밀린 시각,
- * 두 번 있는 시각은 앞의 것. date는 YYYY-MM-DD, time은 HH:MM이나 HH:MM:SS.
+ * 가게 시간대의 날짜·시각(벽시계)을 UTC 절대 시각으로. date는 YYYY-MM-DD, time은 HH:MM이나 HH:MM:SS.
+ * - 두 번 있는 시각(서머타임이 끝날 때)은 앞의 것.
+ * - 없는 시각(서머타임이 시작할 때)은 건너뛴 길이만큼 뒤로 밀린 시각(02:30이 없으면 03:30).
+ * 시차가 바뀌는 경계 앞뒤의 시차 둘로 후보를 만들어 맞는 것을 고른다. 처음 어림한 시차 하나에서 시작하면
+ * UTC보다 앞선 시간대(베를린·시드니 등)의 두 번 있는 시각에서 뒤의 것이 나오기 때문이다.
  */
 export function shopLocalToUtc(date: string, time: string, timeZone: string): Date {
   const dm = DATE.exec(date);
@@ -98,14 +101,14 @@ export function shopLocalToUtc(date: string, time: string, timeZone: string): Da
     throw new RangeError("date must be a real calendar date");
   }
   const wall = Date.UTC(y, mo - 1, d, Number(tm[1]), Number(tm[2]), Number(tm[3] ?? 0));
-  // 벽시계 값에서 그 무렵의 시차를 빼고, 시차가 바뀌는 경계면 한 번 더 맞춘다.
-  let guess = wall - offsetMs(new Date(wall), timeZone);
-  const second = wall - offsetMs(new Date(guess), timeZone);
-  if (second !== guess) {
-    const third = wall - offsetMs(new Date(second), timeZone);
-    guess = third === second ? second : Math.max(second, third);
-  }
-  return new Date(guess);
+  // 벽시계 값의 하루 앞과 하루 뒤의 시차(시차는 UTC-12~+14시간이라 참 시각은 그 사이에 있고, 사이에 경계가 하나 있으면 둘이 다름).
+  const before = offsetMs(new Date(wall - DAY), timeZone);
+  const after = offsetMs(new Date(wall + DAY), timeZone);
+  // 후보 중 그 시각의 시차가 후보를 만든 시차와 같은 것(= 가게 시간대에서 다시 같은 벽시계가 되는 것)만 남긴다.
+  const matches = [wall - before, wall - after].filter((t) => offsetMs(new Date(t), timeZone) === wall - t);
+  if (matches.length > 0) return new Date(Math.min(...matches));
+  // 맞는 후보가 없으면 없는 시각: 경계 앞의 시차로 세면 건너뛴 길이만큼 뒤로 밀린 시각이 된다.
+  return new Date(wall - before);
 }
 
 /** 하루 내내 세는 기한: 시작 시각에 그 길이를 그대로 더함(밤·휴무도 셈, G8). */
