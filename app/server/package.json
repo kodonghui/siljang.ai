@@ -1,0 +1,21 @@
+{
+  "name": "@siljang/server",
+  "private": true,
+  "description": "사장님·운영자 API와 카카오 스킬을 받는 Cloudflare Worker(Hono). 웹 빌드(../web/dist)를 같은 Worker의 정적 자산으로 준다.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "types": "wrangler types --include-env=false src/worker-runtime.d.ts",
+    "typecheck": "npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "build": "wrangler deploy --dry-run --outdir dist"
+  },
+  "dependencies": {
+    "hono": "4.13.17"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "wrangler": "4.158.0",
+    "yaml": "2.9.1"
+  }
+}

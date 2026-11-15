@@ -5,3 +5,19 @@ __pycache__/
 .venv-api/
 .hypothesis/
 .schemathesis/
+
+# 11단계 앱(app/): 설치물·빌드 결과·생성한 형식 파일·CI 로그
+node_modules/
+app/web/dist/
+app/server/dist/
+app/server/.wrangler/
+app/server/src/worker-runtime.d.ts
+app/ci-logs/
+
+# 로컬 값 파일(비밀 값이 들어갈 수 있음). 값 없는 예시 파일만 저장소에 둔다.
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+!.env.example

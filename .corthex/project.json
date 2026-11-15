@@ -77,6 +77,12 @@
       "source": "docs/10-wbs/wbs.md",
       "truth": "source",
       "note": "2026-11-15 시작. 사람이 보는 곳은 Notion 작업 데이터베이스(작업 한 행, 상태 보드)이고, 아직 만들지 않았습니다. 2026-11-15 동희님 지시(Claude Code 채팅 15:26·15:27, 말 그대로는 docs/records/progress.md의 2026-11-15 15:27 단락)에 따라 기록은 저장소에 두고 이 일의 끝에 한 번 올립니다. 올리면 link에 주소를 적고, 올린 뒤 다시 읽어 원본과 견줍니다. 10단계 기본값인 GitHub Projects를 쓰지 않는 이유는 이 작업 세션에 GitHub Projects를 다루는 도구가 없고 위 지시가 사람이 보는 곳을 Notion으로 두기 때문입니다. 동희님이 이 단계의 도구를 따로 고르시면 바꿉니다. 원본은 research/cake-wbs-2026-11/wbs_rows.py(작업 목록)이고, research/cake-wbs-2026-11/build_wbs.py가 원본과 01~09단계 산출물에서 docs/10-wbs/wbs.md와 docs/10-wbs/README.md의 생성 절을 다시 생성하고 검사합니다(검사 18개, 반복 0 안내서와 법률 질문 문서 대조 포함). 사람이든 AI든 wbs_rows.py만 고칩니다. 2026-11-15 18:31 무렵 체크포인트 통과: 동희님이 Claude Code 채팅의 결정 카드에서 기술 스택에 \"추천안대로 (추천)\", WBS에 \"확정하고 반복 0 시작 (추천)\"을 고르셨습니다(docs/records/progress.md의 같은 시각 단락, docs/10-wbs/README.md 9-3절). TASK-002가 끝났고 반복 0을 시작합니다. 반복 0의 동희님 몫(남은 10개)의 차례와 하는 법은 docs/10-wbs/iteration-0-guide.md(손으로 쓴 글)입니다. TASK-013에 보낼 질문 13개는 docs/10-wbs/legal-questions.md(손으로 쓴 글, 2026-11-15)입니다."
+    },
+    "11-development": {
+      "human": "github-pr",
+      "source": "app/",
+      "truth": "source",
+      "note": "기본값 제안, 동희님이 다른 곳을 고르시면 바꿈. 2026-11-15 TASK-015(개발 저장소 뼈대)로 시작. 코드는 app/(server: Cloudflare Workers의 Hono, web: React·Vite)이고 설계 메모는 app/README.md. 사람이 보는 곳은 GitHub PR(squash 합치기)과 CI(.github/workflows/app.yml)."
     }
   }
 }

@@ -1,0 +1,64 @@
+# 11단계 앱(app/)의 린트·형식 검사·시험·빌드와 키 검사(TASK-015, REQ-135).
+# 이 작업에는 비밀 값을 하나도 넘기지 않는다. 시험은 키 없이 지나야 한다(11단계 계약).
+name: app
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+    working-directory: app
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: app/.nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: 키 검사기 자체 시험
+        run: node ../tools/check-no-keys.mjs --self-test
+
+      - name: 저장소 키 검사(git이 추적하는 파일 전부)
+        run: node ../tools/check-no-keys.mjs --repo
+
+      - name: 설치
+        run: |
+          mkdir -p ci-logs
+          npm ci --no-audit --no-fund 2>&1 | tee ci-logs/install.log
+
+      - name: 린트·형식(Biome)
+        run: npm run lint 2>&1 | tee ci-logs/lint.log
+
+      - name: 타입 검사(TypeScript)
+        run: npm run typecheck 2>&1 | tee ci-logs/typecheck.log
+
+      - name: 시험(Vitest)
+        run: npm test 2>&1 | tee ci-logs/test.log
+
+      - name: 빌드(웹 Vite, 서버 wrangler --dry-run)
+        run: npm run build 2>&1 | tee ci-logs/build.log
+
+      - name: 로그 키 검사(설치·린트·타입 검사·시험·빌드 로그)
+        if: ${{ !cancelled() }}
+        run: node ../tools/check-no-keys.mjs ci-logs/*.log

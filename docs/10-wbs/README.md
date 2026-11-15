@@ -5,7 +5,7 @@
 ## 1. 한눈에
 
 <!-- BEGIN generated:counts -->
-작업 181개 · 크기 합 245.5일 · 반복 10개 · 동희님 17개 · Claude 164개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 58개 · 앱 규칙 40개 · 공통 규칙 9개 · 열린 질문 10개 · 끝난 작업 4개.
+작업 181개 · 크기 합 245.5일 · 반복 10개 · 동희님 17개 · Claude 164개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 58개 · 앱 규칙 40개 · 공통 규칙 9개 · 열린 질문 10개 · 끝난 작업 5개.
 <!-- END generated:counts -->
 
 - 작업 표는 [`wbs.md`](wbs.md)입니다. 작업마다 출처(SPEC·REQ·OPEN·DEC·규칙), 닿는 것(API·테이블·화면), 앞선 작업, 맡은 이, 크기, 끝난 조건이 있고, 끝에 SPEC·API·화면·테이블·규칙에서 작업을 찾는 부록 A~E가 있습니다.
@@ -157,6 +157,7 @@ TASK-001은 2026-11-15에 끝났습니다. 우리 프로젝트가 스택에 요�
 
 결과(2026-11-15):
 
+- `tools/stage-checks.sh`(22:54 KST 시작, 머리 `49930fc`, [PR #58](https://github.com/kodonghui/siljang.ai/pull/58), 개발 저장소 뼈대 TASK-015): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 TASK-015가 끝나 끝난 작업 5개로 검사 18개 · 오류 0. 단계 검사는 이제 임시 폴더의 `checks.sh` 대신 저장소의 [`tools/stage-checks.sh`](../../tools/stage-checks.sh)로 돌립니다([PR #57](https://github.com/kodonghui/siljang.ai/pull/57)).
 - `checks.sh`(21:54 KST 시작, 머리 `36522b3`, [PR #56](https://github.com/kodonghui/siljang.ai/pull/56), 법률 질문 문서 TASK-013 준비): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 법률 질문 문서 검사(17)를 더해 검사 18개 · 오류 0.
 - `checks.sh`(21:01 KST 시작, 머리 `7b2bfd0`, [PR #55](https://github.com/kodonghui/siljang.ai/pull/55), 법령 원문 다시 확인 TASK-012): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다(02는 13절을 더하고 REQ-187·188·201의 출처만 고침). wbs는 TASK-012가 끝나 끝난 작업 4개, 검사 17개 · 오류 0.
 - `checks.sh`(20:49 KST 시작, 머리 `a4fe23c`, [PR #54](https://github.com/kodonghui/siljang.ai/pull/54), 카카오 시험 대본과 시험 서버): 검사 9개 모두 종료 코드 0이고 01~09단계의 수는 아래 PR #51 줄과 같습니다. wbs는 금지어 검사(14)가 대본과 서버 README도 훑어 검사 17개 · 오류 0. 시험 서버의 `npm run check`(형 검사 오류 0, 단위 시험 41개)와 `npm run e2e:local`(로컬 시험 50개 통과)은 [서버 README](../../research/kakao-test-2026-11/README.md) 3절에 있습니다.

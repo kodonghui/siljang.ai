@@ -1,0 +1,19 @@
+// Cloudflare Worker 설정(TASK-015 뼈대). 계정 ID·도메인·비밀 값은 여기에 적지 않는다.
+// - 계정은 배포할 때 환경 변수 CLOUDFLARE_ACCOUNT_ID·CLOUDFLARE_API_TOKEN으로 고른다(동희님 TASK-170 뒤).
+// - 비밀 값(ANTHROPIC_API_KEY·OPENAI_API_KEY 등)은 `wrangler secret put`, 로컬은 .dev.vars(저장소에 넣지 않음).
+// - /api/* 만 Worker가 받고, 나머지 주소는 웹 빌드(../web/dist)의 정적 파일이다. 없는 화면 주소는 index.html(화면 라우팅은 웹이 함).
+// - Hyperdrive·Queues·Cron Trigger·Placement와 nodejs_compat(데이터베이스 드라이버가 씀)은 TASK-171·173에서 더한다.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "siljang",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "../web/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": {
+    "enabled": true
+  }
+}
