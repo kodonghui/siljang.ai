@@ -1,0 +1,17 @@
+{
+  "name": "siljang-kakao-test",
+  "private": true,
+  "type": "module",
+  "description": "TASK-008 카카오 시험 서버(버리는 서버). 제품 코드가 아님",
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test",
+    "e2e:local": "bash test/local-e2e.sh"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261031.1",
+    "typescript": "5.9.3",
+    "wrangler": "4.156.0"
+  }
+}

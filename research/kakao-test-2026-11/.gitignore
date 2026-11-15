@@ -1,0 +1,6 @@
+# 배포 때 만든 자원 ID·로컬 비밀 값·내려받은 기록은 저장소에 넣지 않음
+worker/node_modules/
+worker/.wrangler/
+worker/wrangler.local.jsonc
+worker/.dev.vars
+local/

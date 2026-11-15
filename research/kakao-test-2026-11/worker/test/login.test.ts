@@ -1,0 +1,65 @@
+// 카카오 로그인 PKCE 시험(K-11)의 순수 함수 단위 시험
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { authorizeUrl, randomB64url, resultPage, s256, summarizeToken, tokenForm, verdict } from "../src/login.ts";
+
+test("s256: RFC 7636 부록 B의 예", async () => {
+  assert.equal(await s256("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"), "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+});
+
+test("randomB64url: verifier 길이 43자(RFC 7636의 43~128자), 허용 글자만", () => {
+  const v = randomB64url(32);
+  assert.equal(v.length, 43);
+  assert.match(v, /^[A-Za-z0-9_-]+$/);
+  assert.notEqual(v, randomB64url(32));
+});
+
+test("authorizeUrl: challenge가 있을 때만 code_challenge·S256", () => {
+  const withC = new URL(authorizeUrl({ clientId: "fake-rest-key", redirectUri: "https://example.workers.dev/login/callback", state: "st", challenge: "ch" }));
+  assert.equal(withC.origin + withC.pathname, "https://kauth.kakao.com/oauth/authorize");
+  assert.equal(withC.searchParams.get("response_type"), "code");
+  assert.equal(withC.searchParams.get("state"), "st");
+  assert.equal(withC.searchParams.get("code_challenge"), "ch");
+  assert.equal(withC.searchParams.get("code_challenge_method"), "S256");
+  const plain = new URL(authorizeUrl({ clientId: "fake-rest-key", redirectUri: "https://example.workers.dev/login/callback", state: "st" }));
+  assert.equal(plain.searchParams.has("code_challenge"), false);
+  assert.equal(plain.searchParams.has("code_challenge_method"), false);
+});
+
+test("tokenForm: client_secret·code_verifier는 있을 때만", () => {
+  const f = tokenForm({ clientId: "k", redirectUri: "https://e/cb", code: "c", clientSecret: "s", verifier: "v" });
+  assert.equal(f.get("grant_type"), "authorization_code");
+  assert.equal(f.get("client_secret"), "s");
+  assert.equal(f.get("code_verifier"), "v");
+  const g = tokenForm({ clientId: "k", redirectUri: "https://e/cb", code: "c" });
+  assert.equal(g.has("client_secret"), false);
+  assert.equal(g.has("code_verifier"), false);
+});
+
+test("summarizeToken: 토큰 값은 남기지 않고 있었는지만", () => {
+  const ok = summarizeToken(200, { access_token: "FAKE_ACCESS_TOKEN_123", token_type: "bearer", refresh_token: "FAKE_REFRESH", id_token: "FAKE_ID_TOKEN", expires_in: 21599 });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.hasAccessToken, true);
+  assert.equal(ok.hasIdToken, true);
+  assert.equal(ok.tokenType, "bearer");
+  assert.ok(!JSON.stringify(ok).includes("FAKE_"));
+  const bad = summarizeToken(400, { error: "invalid_grant", error_description: "PKCE verification failed.", error_code: "KOE320" });
+  assert.equal(bad.ok, false);
+  assert.equal(bad.errorCode, "KOE320");
+  assert.equal(bad.error, "invalid_grant");
+  assert.equal(summarizeToken(500, null).ok, false);
+});
+
+test("verdict: ①·②의 결과로 PKCE를 검사하는지", () => {
+  assert.match(verdict({ pkce: true }), /모두 해야/);
+  assert.match(verdict({ pkce: true, pkce_wrong: false }), /PKCE를 씀/);
+  assert.match(verdict({ pkce: true, pkce_wrong: true }), /보지 않음/);
+  assert.match(verdict({ pkce: false, pkce_wrong: false }), /①이 안 됨/);
+});
+
+test("resultPage: 글을 HTML로 이스케이프", () => {
+  const h = resultPage("제목<script>", ['a "b" & <c>']);
+  assert.ok(!h.includes("<script>"));
+  assert.ok(h.includes("&lt;script&gt;"));
+  assert.ok(h.includes("a &quot;b&quot; &amp; &lt;c&gt;"));
+});

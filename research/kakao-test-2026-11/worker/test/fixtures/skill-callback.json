@@ -1,0 +1,19 @@
+{
+  "intent": { "id": "a00000000000000000000002", "name": "콜백 시험" },
+  "userRequest": {
+    "callbackUrl": "https://bot-api.kakao.com/v1/callback/FAKEcallbackToken000000000000000000?expires=1763200000",
+    "timezone": "Asia/Seoul",
+    "params": { "surface": "BuilderBotTest", "ignoreMe": "true" },
+    "block": { "id": "b00000000000000000000002", "name": "콜백 시험" },
+    "utterance": "콜백 시험",
+    "lang": "ko",
+    "user": {
+      "id": "fakeBotUserKey0000000000000000000000000000000000000000000000000001",
+      "type": "botUserKey",
+      "properties": { "botUserKey": "fakeBotUserKey0000000000000000000000000000000000000000000000000001" }
+    }
+  },
+  "bot": { "id": "c00000000000000000000001", "name": "시험 봇" },
+  "action": { "name": "시험 스킬", "clientExtra": null, "params": {}, "id": "d00000000000000000000001", "detailParams": {} },
+  "contexts": []
+}
