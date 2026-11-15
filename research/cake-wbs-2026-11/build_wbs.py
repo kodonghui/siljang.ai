@@ -413,8 +413,9 @@ def banned(label, text, allow_more=None):
     for w, term_id, term in AVOID:
         for m in re.finditer(re.escape(w), text):
             around = text[max(0, m.start() - 12): m.end() + 12]
+            # 허용 꼴은 ALLOW와 문서별 allow_more(예: 법령 이름 속 '거래')에서 온다
             pats = ALLOW.get(w, []) + (allow_more or {}).get(w, [])
-            if w in ALLOW and any(re.search(a, around) for a in pats):
+            if pats and any(re.search(a, around) for a in pats):
                 continue
             problems.append("%s: '%s'(%s %s의 금지어): …%s…" % (label, w, term_id, term, around))
     for w in EXTRA:
@@ -426,7 +427,7 @@ def banned(label, text, allow_more=None):
 
 
 check("금지어(01 용어집, 02·03 검사와 같은 허용 꼴)와 옛 용어(08·09 검사와 같은 목록): 작업·반복 설명·README·tech-stack.md·반복 0 안내서·"
-      "카카오 시험 대본·시험 서버 README의 손으로 쓴 글")
+      "카카오 시험 대본·시험 서버 README·법률 질문 문서의 손으로 쓴 글")
 for tid, t in T.items():
     banned(tid, (t.get("name") or "") + " " + (t.get("done") or "") + " " + str(t.get("finished") or ""))
 for it, note in W.ITERATION_NOTES:
@@ -450,6 +451,13 @@ for hand_doc in ("docs/10-wbs/kakao-test-script.md", "research/kakao-test-2026-1
     p = REPO / hand_doc
     if p.exists():
         banned(hand_doc, re.sub(r"https?://\S+|`[^`]*`", " ", re.sub(r"```.*?```", " ", p.read_text(encoding="utf-8"), flags=re.S)))
+# TASK-013에 보낼 법률 질문 문서도 손으로 쓴 글(규칙 215). 인용 상자(> 줄)는 법령 원문이라 빼고,
+# 법령 이름 속 '거래'(전자상거래법·전자금융거래법·공정거래위원회)는 허용한다
+LEGAL = REPO / "docs/10-wbs/legal-questions.md"
+LAW_NAMES = {"거래": [r"전자상거래", r"전자금융거래", r"공정거래위원회"]}
+if LEGAL.exists():
+    banned("legal-questions.md", re.sub(r"https?://\S+|`[^`]*`", " ",
+                                        re.sub(r"(?m)^\s*>.*$", " ", LEGAL.read_text(encoding="utf-8"))), LAW_NAMES)
 
 check("끝난 표시(finished): 끝난 날로 시작하고 앞선 작업이 모두 끝남")
 for tid, t in ACTIVE.items():
@@ -509,6 +517,60 @@ if GUIDE.exists():
                 problems.append("안내서: 원본에 없는 ID %s" % x)
 else:
     problems.append("안내서: docs/10-wbs/iteration-0-guide.md가 없음")
+
+check("법률 질문 문서(legal-questions.md): 3절 질문이 1부터 차례로 한 번씩이고 첫머리의 수와 같음, 질문마다 다섯 부분과 "
+      "'답:' 줄 하나, 2절 차례가 질문마다 한 번, 적힌 ID가 원본에 있고 REQ는 제외가 아님, 바뀌는 곳의 SPEC이 같은 줄 "
+      "REQ의 SPEC, 법령의 시행일·번호가 02 13절 표와 같음")
+if LEGAL.exists():
+    lq = LEGAL.read_text(encoding="utf-8")
+
+    def lq_part(head):
+        m = re.search(r"^## %s.*?$(.*?)(?=^## |\Z)" % re.escape(head), lq, flags=re.S | re.M)
+        return m.group(1) if m else ""
+
+    qsecs = re.findall(r"^### 질문 (\d+)\. [^\n]*\n(.*?)(?=^#{2,3} |\Z)", lq_part("3."), flags=re.S | re.M)
+    qnums = [int(n) for n, _ in qsecs]
+    if not qnums or qnums != list(range(1, len(qnums) + 1)):
+        problems.append("법률 질문 문서: 3절 질문 번호가 1부터 차례가 아님: %s" % qnums)
+    m = re.search(r"질문 (\d+)개", lq)
+    if not m or int(m.group(1)) != len(qnums):
+        problems.append("법률 질문 문서: 첫머리의 질문 수(%s)가 3절의 질문 %d개와 다름" % (m.group(1) if m else "없음", len(qnums)))
+    LQ_PARTS = ("사실", "관련 조문", "지금 잠정으로 하는 것", "확인 요청", "답에 따라 바뀌는 곳(우리 쪽 참고용)")
+    REQ_SPECS = defaultdict(set)
+    for sid, r in SPECS.items():
+        for q in re.findall(r"REQ-\d{3}", r["req"]):
+            REQ_SPECS[q].add(sid)
+    for n, body in qsecs:
+        miss = [p for p in LQ_PARTS if "**%s**" % p not in body]
+        if miss:
+            problems.append("법률 질문 문서 질문 %s: 부분이 없음: %s" % (n, ", ".join(miss)))
+        if len(re.findall(r"^답:", body, flags=re.M)) != 1:
+            problems.append("법률 질문 문서 질문 %s: '답:' 줄이 하나가 아님" % n)
+        ln = re.search(r"^\*\*답에 따라 바뀌는 곳\(우리 쪽 참고용\)\*\*:(.*)$", body, flags=re.M)
+        if ln:
+            reqs = set(re.findall(r"REQ-\d{3}", ln.group(1)))
+            mapped = set().union(*(REQ_SPECS[q] for q in reqs)) if reqs else set()
+            for s in sorted(set(re.findall(r"SPEC-\d{3}", ln.group(1))) - mapped):
+                problems.append("법률 질문 문서 질문 %s: %s가 같은 줄 REQ(%s)의 SPEC이 아님" % (n, s, "·".join(sorted(reqs))))
+    order = [int(x) for x in re.findall(r"^\| \d+ \| 질문 (\d+) \|", lq_part("2."), flags=re.M)]
+    if sorted(order) != qnums:
+        problems.append("법률 질문 문서: 2절 차례가 질문마다 한 번이 아님: %s" % order)
+    for rx, src in ((r"REQ-\d{3}", REQS), (r"SPEC-\d{3}", SPECS), (r"TASK-\d{3}", ACTIVE)):
+        for x in sorted(set(re.findall(rx + r"\b", lq))):
+            if x not in src:
+                problems.append("법률 질문 문서: 원본에 없는 ID %s" % x)
+            elif rx.startswith("REQ") and REQS[x]["excluded"]:
+                problems.append("법률 질문 문서: %s는 제외된 요구사항" % x)
+    # 법령 판: '[시행 날짜] … 제N호'의 짝이 TASK-012가 대조한 02 13절 표에 있어야 함(판이 바뀌면 함께 고침)
+    req_md = (REPO / "docs/02-prd/requirements.md").read_text(encoding="utf-8")
+    sec13 = re.search(r"^## 13\..*?(?=^## |\Z)", req_md, flags=re.S | re.M)
+    LAW_VER = r"\[시행 ([\d. ]+?)\][^|\[\n]*?제([\d-]+)호"
+    known_ver = set(re.findall(LAW_VER, sec13.group(0))) if sec13 else set()
+    for d, num in sorted(set(re.findall(LAW_VER, lq))):
+        if (d, num) not in known_ver:
+            problems.append("법률 질문 문서: 법령 판 [시행 %s] 제%s호가 02 13절 표에 없음" % (d, num))
+else:
+    problems.append("법률 질문 문서: docs/10-wbs/legal-questions.md가 없음")
 
 # ── 끝난 조건 만들기 ────────────────────────────────────────────────
 
