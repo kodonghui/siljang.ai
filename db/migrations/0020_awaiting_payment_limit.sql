@@ -1,5 +1,5 @@
 -- 0020_awaiting_payment_limit: 한 손님의 결제 기다림 주문 한도와 그 에스컬레이션 건
--- (동희님 2026-11-15 14:19 결정 카드 '가게가 한도를 정함', 설계 재검토 RB-25. 같은 카드의 '지금대로 둠 (추천)'으로 0015의 다른 카카오 사용자 건(RB-15)은 그대로 확정. docs/05-erd/README.md 11절)
+-- (동희님 2026-11-15 14:19 결정 카드 '가게가 한도를 정함', 설계 재검토 RB-25. 같은 카드의 '지금대로 둠 (추천)'으로 0015의 다른 카카오 사용자 건(RB-15)은 그대로 두기로 확정함. docs/05-erd/README.md 11절)
 -- 가게 설정 awaiting_payment_limit(0~10건, 기본 2건, 0이면 한도 없음)을 더하고, 한도에 닿은 기본 디자인 주문 요청을 사장님께 넘기는 사유 'order_limit'과
 -- 한도를 넘겨 받기·받지 않음(limit_decision), 넘겨 받은 24시간(limit_accept_expires_at), 그것을 쓴 주문 요청(limit_used_order_id, 하나만)을 에스컬레이션 건에 더함.
 -- 0019_disclosure_policy_order_amount.sql 뒤에 한 트랜잭션으로 적용: psql -1 -v ON_ERROR_STOP=1 -f db/migrations/0020_awaiting_payment_limit.sql
