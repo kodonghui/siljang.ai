@@ -72,6 +72,28 @@ describeDb("데이터베이스 연결 층(데이터베이스)", () => {
     expect(r.rows[0]?.n).toBe("0");
   });
 
+  it("같은 연결에서 트랜잭션 둘을 동시에 열면 뒤의 것은 TransactionMisuseError이고 앞의 것만 남는다", async () => {
+    const fresh = testDb();
+    try {
+      await fresh.query("CREATE TEMP TABLE IF NOT EXISTS tx_probe3 (v int)");
+      const [first, second] = await Promise.allSettled([
+        fresh.transaction(async (tx) => {
+          await tx.query("INSERT INTO tx_probe3 VALUES (1)");
+        }),
+        fresh.transaction(async (tx) => {
+          await tx.query("INSERT INTO tx_probe3 VALUES (2)");
+        }),
+      ]);
+      expect(first.status).toBe("fulfilled");
+      expect(second.status).toBe("rejected");
+      if (second.status === "rejected") expect(second.reason).toBeInstanceOf(TransactionMisuseError);
+      const r = await fresh.query<{ v: number }>("SELECT v FROM tx_probe3 ORDER BY v");
+      expect(r.rows.map((x) => x.v)).toEqual([1]);
+    } finally {
+      await fresh.close();
+    }
+  });
+
   it("데이터베이스 오류는 500 internal이고, 응답·로그에 SQL·넣은 값·제약 이름이 없다. 로그에는 SQLSTATE만(04 G6)", async () => {
     const { lines, sink } = collectLogs();
     const app = createApp({ logSink: sink });

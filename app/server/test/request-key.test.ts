@@ -2,8 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import { readJsonBody } from "../src/body";
 import { recordOpsEvent } from "../src/ops-events";
-import { ApiError, fieldError } from "../src/problem";
-import { canonicalJson, PROCESSING_SECONDS, requestHash, runCommand } from "../src/request-key";
+import { ApiError, ERROR_CODES, ERRORS, fieldError } from "../src/problem";
+import { canonicalJson, isStoredError, PROCESSING_SECONDS, requestHash, runCommand } from "../src/request-key";
 import { Secret } from "../src/settings";
 import {
   collectLogs,
@@ -154,6 +154,22 @@ describe("요청 지문", () => {
   it("정렬한 JSON은 undefined 속성을 빼고 배열 차례는 그대로", () => {
     expect(canonicalJson({ z: 1, a: undefined, m: [3, 1] })).toBe('{"m":[3,1],"z":1}');
     expect(canonicalJson("한글")).toBe('"한글"');
+  });
+});
+
+describe("처음 결과로 남기는 오류", () => {
+  it("남기는 것은 다시 만들 때 덧붙일 것이 없는 4xx뿐(422·401·405·429·확인 요청·5xx는 남기지 않음)", () => {
+    const stored = ERROR_CODES.filter((code) => isStoredError(code));
+    for (const code of stored) {
+      const status = ERRORS[code].status;
+      expect(status >= 400 && status < 500, code).toBe(true);
+      expect([401, 405, 422, 429], code).not.toContain(status);
+    }
+    for (const code of ["validation_failed", "confirmation_required", "method_not_allowed", "internal"] as const) {
+      expect(isStoredError(code), code).toBe(false);
+    }
+    expect(isStoredError("not_found")).toBe(true);
+    expect(isStoredError("version_conflict")).toBe(true);
   });
 });
 

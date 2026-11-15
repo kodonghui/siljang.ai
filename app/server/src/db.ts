@@ -106,8 +106,16 @@ class PgRequestDb implements RequestDb {
 
   async transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T> {
     if (this.#inTransaction) throw new TransactionMisuseError("nested transaction");
-    const client = await this.#connect();
+    // 연결을 기다리기 전에 표시한다. 기다리는 사이에 다른 transaction()·query()가 같은 연결의 같은 트랜잭션에
+    // 끼어들지 않게 하고, 연결에 실패하면 표시를 거둔다.
     this.#inTransaction = true;
+    let client: Client;
+    try {
+      client = await this.#connect();
+    } catch (e) {
+      this.#inTransaction = false;
+      throw e;
+    }
     let open = true;
     const tx: Queryable = {
       query: <R = Record<string, unknown>>(sql: string, params?: readonly unknown[]) => {

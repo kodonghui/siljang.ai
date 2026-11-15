@@ -159,4 +159,39 @@ describe("JSON 본문 읽기", () => {
       if (body.length > 0) expect(text).not.toContain(body.slice(0, 4));
     });
   }
+
+  it("Content-Length 없이 조각으로 오는 본문도 한도를 넘는 순간 멈추고 too_long", async () => {
+    const piece = new TextEncoder().encode("x".repeat(64 * 1024));
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        sent += 1;
+        if (sent > 64) controller.close();
+        else controller.enqueue(piece);
+      },
+    });
+    const init = { method: "POST", body: stream, duplex: "half" } as RequestInit;
+    const res = await bodyApp().request("/api/echo", init);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ errors: [{ field: "/", code: "too_long" }] });
+    // 한도(256 KiB)를 조금 넘긴 곳에서 멈춤: 64조각(4 MiB)을 다 읽지 않음.
+    expect(sent).toBeLessThan(10);
+  });
+
+  it("Content-Length가 한도보다 크면 읽기 전에 too_long", async () => {
+    const req = new Request("http://localhost/api/echo", {
+      method: "POST",
+      headers: { "content-length": String(MAX_JSON_BYTES + 1) },
+      body: "{}",
+    });
+    const res = await bodyApp().request(req);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ errors: [{ field: "/", code: "too_long" }] });
+  });
+
+  it("UTF-8이 아닌 본문 → bad_json", async () => {
+    const res = await bodyApp().request("/api/echo", { method: "POST", body: new Uint8Array([0x22, 0xff, 0x22]) });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ errors: [{ field: "/", code: "bad_json" }] });
+  });
 });

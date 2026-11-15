@@ -205,10 +205,13 @@ export interface CommandSpec {
 
 const RESULT_CODE = /^[a-z][a-z0-9_]{0,59}$/;
 
-/** 처음 결과로 남기는 오류인지. 422·5xx·확인 요청·401·429는 남기지 않는다(파일 첫머리 주석). */
+/**
+ * 처음 결과로 남기는 오류인지. 422·5xx·확인 요청·401·429는 남기지 않는다(파일 첫머리 주석).
+ * 405도 남기지 않는다: 다시 돌려줄 때 Allow 목록이 없어 계약의 모양으로 다시 만들 수 없다(처리기가 던질 일도 없음).
+ */
 export function isStoredError(code: ErrorCode): boolean {
   const status: number = ERRORS[code].status;
-  if (status >= 500 || status === 422 || status === 401 || status === 429) return false;
+  if (status >= 500 || status === 422 || status === 401 || status === 405 || status === 429) return false;
   return code !== "confirmation_required";
 }
 
