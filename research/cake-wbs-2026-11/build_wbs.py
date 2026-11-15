@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""10단계 WBS: wbs_rows.py(원본)에서 docs/10-wbs/wbs.md와 README 생성 절을 만들고 검사한다.
+"""10단계 WBS: wbs_rows.py(원본)에서 docs/10-wbs/wbs.md와 README 생성 절(counts·inputs·iterations·before-dev·checks)을
+만들고 검사한다.
 
 사용: python3 -I research/cake-wbs-2026-11/build_wbs.py <저장소> [--write]
   --write 없이: 검사하고, 생성 파일이 원본과 같은지 본다(다르면 오류).
@@ -41,6 +42,7 @@ import api_ops  # noqa: E402
 import erd_map  # noqa: E402
 import screens_common as C  # noqa: E402
 import build_screens  # noqa: E402,F401  (screens_*.py를 읽어 C.SCREENS를 채움)
+from check_screens import OLD_TERMS  # noqa: E402  (옛 용어 → 새 용어, 08·09 검사와 같은 목록)
 
 OWNERS = ("동희님", "Claude")
 SIZES = (0.5, 1, 2, 3)
@@ -308,7 +310,7 @@ for tid, t in ACTIVE.items():
         if x not in TBL_NAME:
             problems.append("%s: 없는 테이블 %s" % (tid, x))
 
-check("SPEC 79개마다 작업")
+check("SPEC %d개마다 작업" % len(SPECS))
 for s in SPECS:
     if not any(s in g(t, "src") for t in ACTIVE.values()):
         problems.append("%s: 작업 없음" % s)
@@ -390,18 +392,49 @@ while queue:
 if seen != len(ACTIVE):
     problems.append("앞선 작업에 고리: %s" % ", ".join(k for k, v in indeg.items() if v > 0))
 
-check("금지어(01 용어집, 02·03 검사와 같은 허용 꼴)")
-for tid, t in T.items():
-    text = (t.get("name") or "") + " " + (t.get("done") or "")
+# 가장 긴 앞선 작업 줄(크기 합). 고리가 없을 때만
+CRIT = (0, [])
+if seen == len(ACTIVE):
+    best = {}
+
+    def longest(k):
+        if k not in best:
+            prev_ = [longest(d) for d in DEPS[k] if d in ACTIVE and d != k]
+            p = max(prev_, key=lambda x: x[0]) if prev_ else (0, [])
+            best[k] = (p[0] + ACTIVE[k]["size"], p[1] + [k])
+        return best[k]
+
+    CRIT = max((longest(k) for k in ACTIVE), key=lambda x: x[0])
+
+GEN_BLOCK = r"<!-- BEGIN generated:([a-z0-9-]+) -->.*?<!-- END generated:\1 -->"
+
+
+def banned(label, text, allow_more=None):
     for w, term_id, term in AVOID:
         for m in re.finditer(re.escape(w), text):
             around = text[max(0, m.start() - 12): m.end() + 12]
-            if w in ALLOW and any(re.search(a, around) for a in ALLOW[w]):
+            pats = ALLOW.get(w, []) + (allow_more or {}).get(w, [])
+            if w in ALLOW and any(re.search(a, around) for a in pats):
                 continue
-            problems.append("%s: '%s'(%s %s의 금지어): …%s…" % (tid, w, term_id, term, around))
+            problems.append("%s: '%s'(%s %s의 금지어): …%s…" % (label, w, term_id, term, around))
     for w in EXTRA:
         if w in text:
-            problems.append("%s: '%s'" % (tid, w))
+            problems.append("%s: '%s'" % (label, w))
+    for rx, new in OLD_TERMS:
+        for m in re.finditer(rx, text):
+            problems.append("%s: 옛 용어 '%s' → %s: …%s…" % (label, m.group(0), new, text[max(0, m.start() - 12): m.end() + 12]))
+
+
+check("금지어(01 용어집, 02·03 검사와 같은 허용 꼴)와 옛 용어(08·09 검사와 같은 목록): 작업·반복 설명·README의 손으로 쓴 글")
+for tid, t in T.items():
+    banned(tid, (t.get("name") or "") + " " + (t.get("done") or ""))
+for it, note in W.ITERATION_NOTES:
+    banned("반복 %s 설명" % it, note)
+if README.exists():
+    # 생성 절·주소·코드 글자는 빼고 본다. '확정한 뒤 고친 것'은 단계 README마다 같은 절 이름
+    hand = re.sub(GEN_BLOCK, " ", README.read_text(encoding="utf-8"), flags=re.S)
+    hand = re.sub(r"https?://\S+|`[^`]*`", " ", hand)
+    banned("README", hand, {"확정": [r"확정한 뒤 고친 것"]})
 
 # ── 끝난 조건 만들기 ────────────────────────────────────────────────
 
@@ -486,7 +519,7 @@ L.append(counts + ".")
 L.append("")
 L.append("읽는 법과 나눈 방식은 [README](README.md)에 있습니다. '닿는 것'은 만드는 API, 쓰고 읽는 테이블, 만드는 화면입니다. "
          "'끝난 조건'의 첫 줄은 손으로 쓴 조건이고, 수락 기준·응답 코드·스킬 결과·화면 상태·응답 행·규칙 줄은 원본에서 생성합니다. "
-         "화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 저절로 들어갑니다.")
+         "화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다.")
 L.append("")
 L.append("| 반복 | 이름 | 작업 | 크기 합(일) | 동희님 | Claude |")
 L.append("| --- | --- | --- | --- | --- | --- |")
@@ -495,6 +528,10 @@ for it, name in ITER.items():
     L.append("| %s | %s | %d | %s | %d | %d |" % (it, name, len(ts), fmt_size(sum(t["size"] for t in ts)),
                                                  sum(1 for t in ts if t["owner"] == "동희님"),
                                                  sum(1 for t in ts if t["owner"] == "Claude")))
+L.append("")
+crit_line = ("가장 긴 앞선 작업 줄(차례대로만 할 수 있는 작업의 크기 합): %s일, 작업 %d개(%s)."
+             % (fmt_size(CRIT[0]), len(CRIT[1]), " → ".join(CRIT[1])))
+L.append(crit_line)
 L.append("")
 for it, name in ITER.items():
     L.append("## 반복 %s. %s" % (it, name))
@@ -592,14 +629,67 @@ if WRITE:
     OUT.write_text(text, encoding="utf-8")
 elif not OUT.exists() or OUT.read_text(encoding="utf-8") != text:
     stale.append(str(OUT.relative_to(REPO)))
+# README 생성 절: 숫자와 표는 여기서만 만든다(손으로 옮기지 않음)
+R = OrderedDict()
+R["counts"] = counts + "."
+R["inputs"] = "\n".join([
+    "| 단계 | 원본(읽기만) | 읽은 것 |",
+    "| --- | --- | --- |",
+    "| 01 | `docs/01-domain/domain.md` | 용어집의 금지어 %d개 |" % len(AVOID),
+    "| 02 | `docs/02-prd/requirements.md` | 요구사항 %d개(제외 %d개), SPEC 행에 없는 유효 요구사항 %d개(%s) |"
+    % (len(REQS), sum(1 for v in REQS.values() if v["excluded"]), len(REQ_OUTSIDE), ", ".join(REQ_OUTSIDE)),
+    "| 03 | `docs/03-user-flow/FL-*.md` | 플로우 %d개(출처 ID) |" % len(FLOWS),
+    "| 04 | `research/cake-spec-2026-11/spec_rows.py`, `docs/04-functional-spec/spec.md` | SPEC %d개, 수락 기준 %d개, 공통 규칙 %d개 |"
+    % (len(SPECS), sum(AC_N.values()), len(GRULES)),
+    "| 05 | `db/schema.sql`, `docs/05-erd/README.md`, `research/cake-erd-2026-11/erd_map.py` | 테이블 %d개, 앱 규칙 %d개, SPEC마다 닿는 테이블 |"
+    % (len(TBL_NAME), len(ARULES)),
+    "| 06 | `api/openapi.yaml`, `research/cake-api-2026-11/api_ops.py`·`api_catalog.py` | API %d개(응답 %d개), 카카오 스킬 API 넷의 결과 코드 %d개, 열린 질문 %d개, 결정 사항 %d개 |"
+    % (len(API), sum(len(v) for v in API_RESP.values()), sum(len(v) for v in SKILL_LISTS.values()), len(OPEN), len(DECS)),
+    "| 07 | `docs/07-sitemap/sitemap.yaml` | 화면 %d개와 화면마다 부르는 API |" % len(SCR),
+    "| 08 | `research/cake-screens-2026-11/screens_*.py`, `docs/08-screens/SCR-*.md` | 상태 %d개, 응답 행 %d개 |"
+    % (st_total, sum(RESP_ROWS.get(s, 0) for s in SCR)),
+    "| 09 | `research/cake-mockup-2026-11/gen_screens.py` | 그리는 상태 이름 %d개(%s), 그린 상태 %d개 |"
+    % (len(KEY_STATES), "·".join(KEY_STATES), st_drawn),
+])
+rows = ["| 반복 | 이름 | 작업 | 크기 합(일) | 동희님 | Claude | 끝나면 |", "| --- | --- | --- | --- | --- | --- | --- |"]
+for it, name in ITER.items():
+    ts = [t for t in ACTIVE.values() if t.get("it") == it]
+    note = dict(W.ITERATION_NOTES).get(it, "")
+    rows.append("| %s | %s | %d | %s | %d | %d | %s |" % (
+        it, name, len(ts), fmt_size(sum(t["size"] for t in ts)), sum(1 for t in ts if t["owner"] == "동희님"),
+        sum(1 for t in ts if t["owner"] == "Claude"), esc(note.split("끝나면 ", 1)[-1])))
+rows.append("| 합 | | %d | %s | %d | %d | |" % (n_act, fmt_size(tot), by_owner["동희님"], by_owner["Claude"]))
+rows.append("")
+rows.append(crit_line)
+R["iterations"] = "\n".join(rows)
+first = min(ITER)
+rows = ["| ID | 작업 | 맡은 이 | 크기 | 출처 | 앞선 작업 | 끝난 조건 |", "| --- | --- | --- | --- | --- | --- | --- |"]
+for tid, t in ACTIVE.items():
+    if t.get("it") == first:
+        rows.append("| %s | %s | %s | %s일 | %s | %s | %s |" % (
+            tid, esc(t["name"]), t["owner"], fmt_size(t["size"]), esc(", ".join(g(t, "src") + g(t, "rules")) or "없음"),
+            esc(", ".join(DEPS[tid]) or "없음"), "<br/>".join(esc(x) for x in done_lines(tid, t))))
+R["before-dev"] = "\n".join(rows)
+R["checks"] = "\n".join("%d. %s" % (i + 1, c) for i, c in enumerate(checks))
 if README.exists():
     rd = README.read_text(encoding="utf-8")
-    block = "<!-- BEGIN generated:counts -->\n%s\n<!-- END generated:counts -->" % counts
-    new = re.sub(r"<!-- BEGIN generated:counts -->.*?<!-- END generated:counts -->", lambda m: block, rd, flags=re.S)
+    new = rd
+    for name, body in R.items():
+        pat = r"<!-- BEGIN generated:%s -->.*?<!-- END generated:%s -->" % (name, name)
+        if not re.search(pat, rd, flags=re.S):
+            problems.append("README: 생성 절 generated:%s가 없음" % name)
+            continue
+        block = "<!-- BEGIN generated:%s -->\n%s\n<!-- END generated:%s -->" % (name, body, name)
+        new = re.sub(pat, lambda m: block, new, flags=re.S)
+    for m in re.finditer(r"<!-- BEGIN generated:([a-z0-9-]+) -->", rd):
+        if m.group(1) not in R:
+            problems.append("README: 모르는 생성 절 generated:%s" % m.group(1))
     if WRITE:
         README.write_text(new, encoding="utf-8")
     elif new != rd:
         stale.append(str(README.relative_to(REPO)))
+else:
+    problems.append("README: %s가 없음" % README.relative_to(REPO))
 for s in stale:
     problems.append("%s: 생성 절이 원본과 다름(--write로 다시 만듦)" % s)
 
