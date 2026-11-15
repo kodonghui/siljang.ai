@@ -108,6 +108,8 @@ function routePattern(path: string): RegExp {
  * 공통 처리(TASK-018): 추적 ID, 설정, 요청마다 데이터베이스 연결, 06 Problem 오류 응답(04 G6: 내부 내용 없음),
  * 계약에 없는 방법은 405와 Allow(06 DEC-02). 요청 키는 쓰기 명령이 request-key.ts의 runCommand로 지킨다.
  * 가게별 기록 나누기(TASK-019): 경로는 routes.ts의 선언으로만 붙고, 가게 범위 경로의 처리기는 가게 범위 연결(shop-scope.ts)만 받는다.
+ * 사진 올리기(TASK-022): 가게가 정해지기 전에도 여는 사장님 범위 경로(ownerRoute, 해석기 ownerAccount가 없으면 401)와,
+ * 요청마다 쓰는 바깥 서비스(services.ts의 시계·저장소·한도·서명 주소. 시험은 options.services로 바꿈)를 둔다.
  */
 export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   const sink = options.logSink;
