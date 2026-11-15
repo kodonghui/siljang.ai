@@ -35,9 +35,17 @@ export class Secret {
 export const APP_ENVS = ["development", "staging", "production"] as const;
 export type AppEnv = (typeof APP_ENVS)[number];
 
-/** 서버가 읽는 비밀 값의 이름. 공급사 SDK가 읽는 이름을 그대로 쓴다. */
-export const SECRET_NAMES = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"] as const;
+/**
+ * 서버가 읽는 비밀 값의 이름.
+ * - ANTHROPIC_API_KEY·OPENAI_API_KEY: 공급사 SDK가 읽는 이름 그대로.
+ * - DATABASE_URL: PostgreSQL 연결 문자열(로컬·CI). Workers에서는 TASK-173이 Hyperdrive 바인딩으로 바꾼다.
+ * - REQUEST_HASH_KEY: 요청 지문(request_keys.request_hash, 06 DEC-04)을 만드는 HMAC-SHA256 키. 32자 이상.
+ */
+export const SECRET_NAMES = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "DATABASE_URL", "REQUEST_HASH_KEY"] as const;
 export type SecretName = (typeof SECRET_NAMES)[number];
+
+/** HMAC 키의 가장 짧은 길이(글자). 짧은 키는 설정 잘못으로 멈춘다. */
+export const MIN_HASH_KEY_LENGTH = 32;
 
 export interface Settings {
   readonly appEnv: AppEnv;
@@ -74,6 +82,15 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
       secrets[name] = null;
       missingSecrets.push(name);
     }
+  }
+  // 값은 메시지에 싣지 않는다(이름과 조건만).
+  const db = secrets.DATABASE_URL?.reveal();
+  if (db !== undefined && !/^postgres(ql)?:\/\//.test(db)) {
+    throw new SettingsError("DATABASE_URL must start with postgres:// or postgresql://");
+  }
+  const hashKey = secrets.REQUEST_HASH_KEY?.reveal();
+  if (hashKey !== undefined && hashKey.length < MIN_HASH_KEY_LENGTH) {
+    throw new SettingsError(`REQUEST_HASH_KEY must be at least ${MIN_HASH_KEY_LENGTH} characters`);
   }
   return { appEnv, secrets, missingSecrets };
 }

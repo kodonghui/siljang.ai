@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
+import { MAX_JSON_BYTES, readJsonBody } from "../src/body";
 import worker from "../src/index";
 
 const TRACE_ID = /^[0-9a-f]{32}$/;
@@ -89,7 +90,7 @@ describe("오류 응답(06 Problem)", () => {
     expect(JSON.parse(starts[0] ?? "{}")).toEqual({
       level: "info",
       event: "settings_loaded",
-      names: ["ANTHROPIC_API_KEY"],
+      names: ["ANTHROPIC_API_KEY", "DATABASE_URL", "REQUEST_HASH_KEY"],
     });
     expect(lines.join("\n")).not.toContain(key);
   });
@@ -104,4 +105,58 @@ describe("오류 응답(06 Problem)", () => {
     expect(lines.join("\n")).not.toContain("prod-Q9x");
     expect(lines.join("\n")).toContain('"errorName":"SettingsError"');
   });
+});
+
+describe("경로는 있지만 방법이 없음(06 DEC-02)", () => {
+  it("405 method_not_allowed와 그 경로의 방법을 Allow에", async () => {
+    const app = createApp({ logSink: () => {} });
+    app.get("/owner/orders/:orderId", (c) => c.json({}));
+    app.patch("/owner/orders/:orderId", (c) => c.json({}));
+    const res = await app.request("/api/owner/orders/8f7c?x=1", { method: "DELETE" });
+    expect(res.status).toBe(405);
+    expect(res.headers.get("allow")).toBe("GET, PATCH");
+    expect(res.headers.get("content-type")).toBe("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      code: "method_not_allowed",
+      status: 405,
+      instance: "/api/owner/orders/8f7c",
+    });
+  });
+
+  it("없는 경로는 방법과 상관없이 404(있는지 알리지 않음)", async () => {
+    const app = createApp({ logSink: () => {} });
+    app.get("/owner/orders/:orderId", (c) => c.json({}));
+    for (const path of ["/api/owner/orders/1/extra", "/api/owner/order/1"]) {
+      const res = await app.request(path, { method: "DELETE" });
+      expect(res.status).toBe(404);
+      expect(res.headers.get("allow")).toBeNull();
+    }
+  });
+});
+
+describe("JSON 본문 읽기", () => {
+  function bodyApp() {
+    const app = createApp({ logSink: () => {} });
+    app.post("/echo", async (c) => c.json({ got: await readJsonBody(c) }));
+    return app;
+  }
+
+  it("JSON은 그대로 읽음", async () => {
+    const res = await bodyApp().request("/api/echo", { method: "POST", body: '{"a":[1,"둘"]}' });
+    expect(await res.json()).toEqual({ got: { a: [1, "둘"] } });
+  });
+
+  for (const [what, body, reason] of [
+    ["빈 본문", "", "bad_json"],
+    ["JSON이 아님", "{a:1", "bad_json"],
+    ["크기 한도 넘음", `"${"x".repeat(MAX_JSON_BYTES)}"`, "too_long"],
+  ] as const) {
+    it(`${what} → 422 ${reason}(/), 넣은 값은 응답에 없음`, async () => {
+      const res = await bodyApp().request("/api/echo", { method: "POST", body });
+      expect(res.status).toBe(422);
+      const text = await res.text();
+      expect(JSON.parse(text)).toMatchObject({ code: "validation_failed", errors: [{ field: "/", code: reason }] });
+      if (body.length > 0) expect(text).not.toContain(body.slice(0, 4));
+    });
+  }
 });

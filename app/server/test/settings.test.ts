@@ -38,7 +38,7 @@ describe("readSettings", () => {
     const anthropic = fakeKey("sk-ant-api03-");
     const openai = fakeKey("sk-proj-");
     const s = readSettings({ ANTHROPIC_API_KEY: anthropic, OPENAI_API_KEY: openai });
-    expect(s.missingSecrets).toEqual([]);
+    expect(s.missingSecrets).toEqual(["DATABASE_URL", "REQUEST_HASH_KEY"]);
     const a = s.secrets.ANTHROPIC_API_KEY;
     expect(a).toBeInstanceOf(Secret);
     expect(a?.reveal()).toBe(anthropic);
@@ -60,5 +60,25 @@ describe("readSettings", () => {
     const s = readSettings({ ANTHROPIC_API_KEY: "   " });
     expect(s.secrets.ANTHROPIC_API_KEY).toBeNull();
     expect(s.missingSecrets).toContain("ANTHROPIC_API_KEY");
+  });
+
+  it("DATABASE_URL은 postgres:// 꼴만, REQUEST_HASH_KEY는 32자 이상만 받고 값은 메시지에 싣지 않는다", () => {
+    const pw = "Pw-Zq7-only";
+    const ok = readSettings({
+      DATABASE_URL: `postgresql://u:${pw}@127.0.0.1:5432/db`,
+      REQUEST_HASH_KEY: "k".repeat(32),
+    });
+    expect(ok.secrets.DATABASE_URL?.reveal()).toContain(pw);
+    expect(JSON.stringify(ok)).not.toContain(pw);
+    for (const env of [{ DATABASE_URL: `mysql://u:${pw}@h/db` }, { REQUEST_HASH_KEY: `${pw}-short` }]) {
+      let caught: unknown;
+      try {
+        readSettings(env);
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).toBeInstanceOf(SettingsError);
+      expect(String((caught as Error).message)).not.toContain(pw);
+    }
   });
 });
