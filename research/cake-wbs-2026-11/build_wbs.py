@@ -425,7 +425,7 @@ def banned(label, text, allow_more=None):
             problems.append("%s: 옛 용어 '%s' → %s: …%s…" % (label, m.group(0), new, text[max(0, m.start() - 12): m.end() + 12]))
 
 
-check("금지어(01 용어집, 02·03 검사와 같은 허용 꼴)와 옛 용어(08·09 검사와 같은 목록): 작업·반복 설명·README·tech-stack.md의 손으로 쓴 글")
+check("금지어(01 용어집, 02·03 검사와 같은 허용 꼴)와 옛 용어(08·09 검사와 같은 목록): 작업·반복 설명·README·tech-stack.md·반복 0 안내서의 손으로 쓴 글")
 for tid, t in T.items():
     banned(tid, (t.get("name") or "") + " " + (t.get("done") or "") + " " + str(t.get("finished") or ""))
 for it, note in W.ITERATION_NOTES:
@@ -440,6 +440,10 @@ STACK = REPO / "docs/10-wbs/tech-stack.md"
 if STACK.exists():
     # 10단계 기술 스택 제안(TASK-001)도 손으로 쓴 글이라 같은 금지어를 봄. 주소·코드 글자는 뺌
     banned("tech-stack.md", re.sub(r"https?://\S+|`[^`]*`", " ", STACK.read_text(encoding="utf-8")))
+GUIDE = REPO / "docs/10-wbs/iteration-0-guide.md"
+if GUIDE.exists():
+    # 반복 0 안내서도 손으로 쓴 글. 주소와 코드 글자(다른 회사 화면의 이름을 그대로 옮긴 것)는 뺌
+    banned("iteration-0-guide.md", re.sub(r"https?://\S+|`[^`]*`", " ", GUIDE.read_text(encoding="utf-8")))
 
 check("끝난 표시(finished): 끝난 날로 시작하고 앞선 작업이 모두 끝남")
 for tid, t in ACTIVE.items():
@@ -450,6 +454,55 @@ for tid, t in ACTIVE.items():
     for d in DEPS[tid]:
         if not ACTIVE.get(d, {}).get("finished"):
             problems.append("%s: 끝났다고 적었지만 앞선 작업 %s가 끝나지 않음" % (tid, d))
+
+check("반복 0 안내서(iteration-0-guide.md): 첫 반복의 남은 동희님 몫마다 4절과 1절 표에 있고 ①~⑥이 있음, "
+      "끝난 몫은 5절 표, 첫머리의 수가 원본과 같음, 적힌 ID가 원본에 있음")
+if GUIDE.exists():
+    gd = GUIDE.read_text(encoding="utf-8")
+    it0 = min(ITER)
+    mine = [k for k, t in ACTIVE.items() if t.get("it") == it0 and t["owner"] == "동희님"]
+    left = [k for k in mine if not ACTIVE[k].get("finished")]
+    ended = [k for k in mine if ACTIVE[k].get("finished")]
+
+    def guide_part(head):
+        # '## 1.' 같은 절 머리부터 다음 '## ' 머리 앞까지
+        m = re.search(r"^## %s.*?$(.*?)(?=^## |\Z)" % re.escape(head), gd, flags=re.S | re.M)
+        return m.group(1) if m else ""
+
+    secs = {m.group(1): m.group(2) for m in re.finditer(
+        r"^### 4-\d+\. (TASK-\d{3})[^\n]*\n(.*?)(?=^#{2,3} |\Z)", gd, flags=re.S | re.M)}
+    table1 = re.findall(r"^\| \d+ \| (TASK-\d{3}) ", guide_part("1."), flags=re.M)
+    table5 = re.findall(r"^\| (TASK-\d{3}) \|", guide_part("5."), flags=re.M)
+    for k in left:
+        if k not in secs:
+            problems.append("안내서: 남은 동희님 몫 %s의 4절 절(### 4-n. %s …)이 없음" % (k, k))
+        else:
+            miss = [c for c in "①②③④⑤⑥" if not re.search(r"^- %s" % c, secs[k], flags=re.M)]
+            if miss:
+                problems.append("안내서 %s: %s 항목이 없음" % (k, "".join(miss)))
+        if k not in table1:
+            problems.append("안내서: 남은 동희님 몫 %s가 1절 표에 없음" % k)
+    for k in list(secs) + table1:
+        if k not in mine:
+            problems.append("안내서: %s는 반복 %s의 동희님 몫이 아님" % (k, it0))
+    for k in ended:
+        if k not in table5:
+            problems.append("안내서: 끝난 동희님 몫 %s가 5절 표에 없음" % k)
+    for k in table5:
+        if k not in ended:
+            problems.append("안내서: 5절 표의 %s는 끝난 동희님 몫이 아님" % k)
+    m = re.search(r"동희님인 작업 (\d+)개 가운데 끝난 (\d+)개.*?뺀 (\d+)개", gd)
+    if not m or [int(x) for x in m.groups()] != [len(mine), len(ended), len(left)]:
+        problems.append("안내서 첫머리의 수가 원본(동희님 몫 %d개, 끝난 %d개, 남은 %d개)과 다름"
+                        % (len(mine), len(ended), len(left)))
+    known = [(r"TASK-\d{3}", ACTIVE), (r"REQ-\d{3}", REQS), (r"OPEN-\d+", OPEN), (r"DEC-\d+", DECS),
+             (r"API-\d{3}", API), (r"TBL-\d{3}", TBL_NAME)]
+    for rx, src in known:
+        for x in sorted(set(re.findall(rx + r"\b", gd))):
+            if x not in src:
+                problems.append("안내서: 원본에 없는 ID %s" % x)
+else:
+    problems.append("안내서: docs/10-wbs/iteration-0-guide.md가 없음")
 
 # ── 끝난 조건 만들기 ────────────────────────────────────────────────
 
