@@ -40,18 +40,42 @@ export type AppEnv = (typeof APP_ENVS)[number];
  * - ANTHROPIC_API_KEY·OPENAI_API_KEY: 공급사 SDK가 읽는 이름 그대로.
  * - DATABASE_URL: PostgreSQL 연결 문자열(로컬·CI). Workers에서는 TASK-173이 Hyperdrive 바인딩으로 바꾼다.
  * - REQUEST_HASH_KEY: 요청 지문(request_keys.request_hash, 06 DEC-04)을 만드는 HMAC-SHA256 키. 32자 이상.
+ * - STORAGE_ACCESS_KEY_ID·STORAGE_SECRET_ACCESS_KEY: 사진 저장소(Supabase Storage의 S3 호환 주소)의 S3 접근 키(TASK-022,
+ *   storage.ts). Supabase의 publishable·secret 키가 아니다(TASK-174).
+ * - FILE_URL_KEY: 사진의 15분 서명 주소(file-url.ts)의 키를 뽑는 비밀 값. 32자 이상.
  */
-export const SECRET_NAMES = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "DATABASE_URL", "REQUEST_HASH_KEY"] as const;
+export const SECRET_NAMES = [
+  "ANTHROPIC_API_KEY",
+  "OPENAI_API_KEY",
+  "DATABASE_URL",
+  "REQUEST_HASH_KEY",
+  "STORAGE_ACCESS_KEY_ID",
+  "STORAGE_SECRET_ACCESS_KEY",
+  "FILE_URL_KEY",
+] as const;
 export type SecretName = (typeof SECRET_NAMES)[number];
 
 /** HMAC 키의 가장 짧은 길이(글자). 짧은 키는 설정 잘못으로 멈춘다. */
 export const MIN_HASH_KEY_LENGTH = 32;
+
+/** 사진 저장소의 주소(비밀 값이 아님). 세 값이 모두 있어야 한다. */
+export interface StorageSettings {
+  /** S3 호환 주소(https). development에서만 http://localhost·127.0.0.1을 받는다(로컬 시험 저장소). */
+  readonly endpoint: string;
+  readonly region: string;
+  readonly bucket: string;
+}
+
+/** 사진 저장소 주소를 담는 변수의 이름. */
+export const STORAGE_VAR_NAMES = ["STORAGE_ENDPOINT", "STORAGE_REGION", "STORAGE_BUCKET"] as const;
 
 export interface Settings {
   readonly appEnv: AppEnv;
   readonly secrets: Readonly<Record<SecretName, Secret | null>>;
   /** 값이 없는 비밀 값의 이름. 시작 로그에는 이 이름만 남긴다. */
   readonly missingSecrets: readonly SecretName[];
+  /** 사진 저장소의 주소. 세 변수가 모두 없으면 null(저장소가 필요한 요청만 500 internal). */
+  readonly storage: StorageSettings | null;
 }
 
 export class SettingsError extends Error {
@@ -88,9 +112,39 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
   if (db !== undefined && !/^postgres(ql)?:\/\//.test(db)) {
     throw new SettingsError("DATABASE_URL must start with postgres:// or postgresql://");
   }
-  const hashKey = secrets.REQUEST_HASH_KEY?.reveal();
-  if (hashKey !== undefined && hashKey.length < MIN_HASH_KEY_LENGTH) {
-    throw new SettingsError(`REQUEST_HASH_KEY must be at least ${MIN_HASH_KEY_LENGTH} characters`);
+  for (const name of ["REQUEST_HASH_KEY", "FILE_URL_KEY"] as const) {
+    const key = secrets[name]?.reveal();
+    if (key !== undefined && key.length < MIN_HASH_KEY_LENGTH) {
+      throw new SettingsError(`${name} must be at least ${MIN_HASH_KEY_LENGTH} characters`);
+    }
   }
-  return { appEnv, secrets, missingSecrets };
+  return { appEnv, secrets, missingSecrets, storage: readStorage(env, appEnv) };
+}
+
+function readStorage(env: Readonly<Record<string, unknown>>, appEnv: AppEnv): StorageSettings | null {
+  const values = STORAGE_VAR_NAMES.map((name) => {
+    const raw = env[name];
+    return typeof raw === "string" && raw.trim() !== "" ? raw.trim() : null;
+  });
+  if (values.every((v) => v === null)) return null;
+  const [endpoint, region, bucket] = values;
+  if (!endpoint || !region || !bucket) {
+    throw new SettingsError("STORAGE_ENDPOINT, STORAGE_REGION and STORAGE_BUCKET must be set together");
+  }
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    throw new SettingsError("STORAGE_ENDPOINT must be a URL");
+  }
+  const local = url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+  if (url.protocol !== "https:" && !(local && appEnv === "development")) {
+    throw new SettingsError("STORAGE_ENDPOINT must use https (http only for localhost in development)");
+  }
+  if (url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "") {
+    throw new SettingsError("STORAGE_ENDPOINT must not carry credentials, a query or a fragment");
+  }
+  if (!/^[a-z0-9-]{1,50}$/.test(region)) throw new SettingsError("STORAGE_REGION must look like ap-northeast-2");
+  if (!/^[A-Za-z0-9._-]{1,100}$/.test(bucket)) throw new SettingsError("STORAGE_BUCKET has an unexpected shape");
+  return { endpoint: `${url.origin}${url.pathname.replace(/\/+$/, "")}`, region, bucket };
 }

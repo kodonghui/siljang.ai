@@ -15,3 +15,15 @@ DATABASE_URL=
 
 # 요청 지문(request_keys.request_hash)을 만드는 HMAC-SHA256 키(비밀 값, 32자 이상). 없으면 쓰기 명령이 500 internal.
 REQUEST_HASH_KEY=
+
+# 사진 저장소(TASK-022): Supabase Storage의 S3 호환 주소와 S3 접근 키. Supabase publishable·secret 키가 아니다(TASK-174).
+# 주소는 https만(development에서만 http://localhost·127.0.0.1). 세 주소 값은 함께 넣거나 함께 비운다.
+# 없으면 사진 올리기·사진 주소만 500 internal.
+STORAGE_ENDPOINT=
+STORAGE_REGION=
+STORAGE_BUCKET=
+STORAGE_ACCESS_KEY_ID=
+STORAGE_SECRET_ACCESS_KEY=
+
+# 사진의 15분 서명 주소 키(비밀 값, 32자 이상). 없으면 사진 주소를 내는 요청과 사진 주소만 500 internal.
+FILE_URL_KEY=

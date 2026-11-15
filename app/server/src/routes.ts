@@ -4,14 +4,19 @@
  * - shopRoute: 가게 범위 경로. 처리기는 ShopRequest만 받는다. 날 데이터베이스 연결(RequestDb)과 Hono 맥락을 받지 않아
  *   가게 조건 없는 SQL을 보낼 길이 타입에 없다. 가게 범위는 경로마다 정한 출처의 해석기가 만든다. 해석기가 아직 없는
  *   출처의 경로는 닫혀 있다(사장님·운영자 401 unauthenticated, 손님 401 skill_key_invalid, 예약 링크 404).
- * - openRoute: 가게 범위가 아닌 경로(기반 시설, 로그인처럼 가게가 정해지기 전). 왜 가게 범위가 아닌지 적는다.
+ * - ownerRoute: 사장님 범위 경로(TASK-022). 사장님 세션은 있지만 가게가 정해지기 전이거나 가게 기록이 아닌 API(사진 올리기
+ *   API-007 등). 처리기는 OwnerRequest만 받고 데이터베이스 연결이 없다. 사장님은 사장님 해석기(TASK-020)가 정하고, 없으면
+ *   닫혀 있다(401 unauthenticated).
+ * - openRoute: 가게 범위도 사장님 범위도 아닌 경로(기반 시설, 로그인, 서명 주소). 왜 그런지 적는다.
  *   가게 테이블을 읽고 쓰지 않는다(정적 시험이 날 연결을 쥔 파일의 SQL을 봄).
  */
 import type { Context, Hono, HonoRequest } from "hono";
 import type { HonoEnv, Logger } from "./app";
 import { readJsonBody } from "./body";
+import { isOwnerScope, type OwnerScope } from "./owner-scope";
 import { ApiError } from "./problem";
 import { type CommandResult, runCommand, type StoredResult } from "./request-key";
+import type { Services } from "./services";
 import {
   actorOf,
   ForgedScopeError,
@@ -46,6 +51,8 @@ export interface ShopRequest {
   readonly req: HonoRequest;
   readonly traceId: string;
   readonly log: Logger;
+  /** 지금 시각·사진 저장소·한도·서명 주소(services.ts). */
+  readonly services: Services;
   /** 경로의 ID(uuid). 형식이 틀리면 없는 ID와 같은 404(06 DEC-02). */
   pathId(name: string): string;
   /** 본문 JSON(body.ts, 한 번만). */
@@ -66,6 +73,24 @@ export interface ShopRouteDecl {
   readonly handler: (r: ShopRequest) => Promise<Response>;
 }
 
+/** 사장님 범위 경로의 처리기가 받는 것. 데이터베이스 연결이 없다(가게 기록은 가게 범위 경로로만). */
+export interface OwnerRequest {
+  readonly owner: OwnerScope;
+  /** 경로 값·쿼리·헤더와 날 요청(raw). 사진 올리기만 본문을 raw로 읽는다(uploads.ts의 한도). */
+  readonly req: HonoRequest;
+  readonly traceId: string;
+  readonly log: Logger;
+  readonly services: Services;
+  json(body: unknown, status?: 200 | 201 | 202): Response;
+}
+
+export interface OwnerRouteDecl {
+  readonly kind: "owner";
+  readonly method: Method;
+  readonly path: string;
+  readonly handler: (r: OwnerRequest) => Promise<Response>;
+}
+
 export interface OpenRouteDecl {
   readonly kind: "open";
   readonly method: Method;
@@ -75,7 +100,7 @@ export interface OpenRouteDecl {
   readonly handler: (c: Context<HonoEnv>) => Response | Promise<Response>;
 }
 
-export type RouteDecl = ShopRouteDecl | OpenRouteDecl;
+export type RouteDecl = ShopRouteDecl | OwnerRouteDecl | OpenRouteDecl;
 
 export function shopRoute(
   method: Method,
@@ -84,6 +109,14 @@ export function shopRoute(
   handler: (r: ShopRequest) => Promise<Response>,
 ): ShopRouteDecl {
   return { kind: "shop", method, path, via, handler };
+}
+
+export function ownerRoute(
+  method: Method,
+  path: string,
+  handler: (r: OwnerRequest) => Promise<Response>,
+): OwnerRouteDecl {
+  return { kind: "owner", method, path, handler };
 }
 
 export function openRoute(
@@ -105,6 +138,12 @@ export function routeKey(method: string, path: string): string {
 export type ScopeResolver = (c: Context<HonoEnv>) => Promise<ShopScope>;
 export type ScopeResolvers = { readonly [K in ScopeKind]: ScopeResolver };
 
+/** 요청에서 로그인한 사장님을 찾는다. 찾지 못하면 401 unauthenticated(ApiError). createOwnerScope로 만든 것만 받는다. */
+export type OwnerResolver = (c: Context<HonoEnv>) => Promise<OwnerScope>;
+
+/** 사장님 세션 해석기가 아직 없음(TASK-020): 사장님 범위 경로는 닫혀 있다. */
+const CLOSED_OWNER: OwnerResolver = () => Promise.reject(new ApiError("unauthenticated"));
+
 /** 해석기가 아직 없는 출처: 닫혀 있다. 사장님 세션은 TASK-020, 운영자 세션은 TASK-021, 카카오 스킬은 TASK-028, 예약 링크는 TASK-044·045. */
 const CLOSED: ScopeResolvers = {
   owner: () => Promise.reject(new ApiError("unauthenticated")),
@@ -122,6 +161,7 @@ function shopRequest(c: Context<HonoEnv>, scope: ShopScope): ShopRequest {
     req: c.req,
     traceId: c.get("traceId"),
     log: c.get("log"),
+    services: c.get("services"),
     pathId: (name) => pathId(c.req.param(name)),
     body: () => readJsonBody(c),
     json: (body, status = 200) => c.json(body as object, status, headers),
@@ -138,11 +178,24 @@ function shopRequest(c: Context<HonoEnv>, scope: ShopScope): ShopRequest {
   };
 }
 
+function ownerRequest(c: Context<HonoEnv>, owner: OwnerScope): OwnerRequest {
+  const headers = { "cache-control": "no-store" };
+  return {
+    owner,
+    req: c.req,
+    traceId: c.get("traceId"),
+    log: c.get("log"),
+    services: c.get("services"),
+    json: (body, status = 200) => c.json(body as object, status, headers),
+  };
+}
+
 /** 선언을 앱에 붙인다. 같은 방법·경로를 두 번 선언하면 멈춘다. */
 export function mountRoutes(
   app: Hono<HonoEnv>,
   routes: readonly RouteDecl[],
   resolvers: Partial<ScopeResolvers> = {},
+  ownerResolver: OwnerResolver = CLOSED_OWNER,
 ): void {
   const resolve: ScopeResolvers = { ...CLOSED, ...resolvers };
   const seen = new Set<string>();
@@ -152,6 +205,14 @@ export function mountRoutes(
     seen.add(key);
     if (route.kind === "open") {
       app.on(route.method, route.path, (c) => route.handler(c));
+      continue;
+    }
+    if (route.kind === "owner") {
+      app.on(route.method, route.path, async (c) => {
+        const owner = await ownerResolver(c);
+        if (!isOwnerScope(owner)) throw new ForgedScopeError("owner scope did not come from createOwnerScope");
+        return route.handler(ownerRequest(c, owner));
+      });
       continue;
     }
     const resolver = resolve[route.via];

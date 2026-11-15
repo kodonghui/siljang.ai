@@ -17,5 +17,15 @@
   },
   "observability": {
     "enabled": true
-  }
+  },
+  // 사진 올리기의 사장님마다 1분 30번(06 DEC-16, TASK-022). 값은 src/rate-limit.ts의 UPLOAD_RATE와 같아야 한다(시험이 봄).
+  // namespace_id는 이 계정 안에서 한도를 나누는 번호다. 한도는 대략이고 Cloudflare 위치마다 센다
+  // (Cloudflare 문서 'Rate Limiting', 2026-11-16 확인, app/README.md 24).
+  "ratelimits": [
+    {
+      "name": "UPLOAD_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 30, "period": 60 }
+    }
+  ]
 }

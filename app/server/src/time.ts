@@ -111,6 +111,21 @@ export function shopLocalToUtc(date: string, time: string, timeZone: string): Da
   return new Date(wall - before);
 }
 
+/**
+ * 응답에 싣는 시각: 가게 시간대의 벽시계와 그 시차(06 DEC-15, 예: 2026-11-12T11:03:00+09:00). 초 아래는 버린다.
+ * 사진 올리기(TASK-022)의 expiresAt부터 쓴다.
+ */
+export function toShopIso(instant: Date, timeZone: string): string {
+  const p = parts(instant, timeZone);
+  const off = Math.round(offsetMs(instant, timeZone) / MINUTE);
+  const sign = off < 0 ? "-" : "+";
+  const abs = Math.abs(off);
+  return (
+    `${pad(p.y, 4)}-${pad(p.mo)}-${pad(p.d)}T${pad(p.h)}:${pad(p.mi)}:${pad(p.s)}` +
+    `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`
+  );
+}
+
 /** 하루 내내 세는 기한: 시작 시각에 그 길이를 그대로 더함(밤·휴무도 셈, G8). */
 export function addAllDay(start: Date, ms: number): Date {
   if (!Number.isFinite(ms) || ms < 0) throw new RangeError("duration must be a finite non-negative number");
