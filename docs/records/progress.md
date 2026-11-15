@@ -6,6 +6,25 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-15 18:31 무렵 KST · 10단계 체크포인트 통과: 기술 스택 결정과 반복 0 시작(PR_R0A)
+
+- 동희님 답(Claude Code 채팅의 결정 카드, 말 그대로)
+  - 기술 스택(10 README 9-2의 2, TASK-002): "추천안대로 (추천)"
+  - WBS와 반복 계획(10 README 9-2의 1): "확정하고 반복 0 시작 (추천)"
+- 한 일
+  - TASK-002를 끝남으로 표시했습니다(`wbs_rows.py`의 `finished`, `build_wbs.py . --write`).
+  - [10 README](../10-wbs/README.md)의 상태 줄을 '체크포인트 통과'로 바꾸고, 1·4·5·6절에서 스택을 아직 고르지 않았다는 글을 고치고, 9-3절(체크포인트 통과)에 두 답을 말 그대로 적었습니다. [`tech-stack.md`](../10-wbs/tech-stack.md)는 상태 줄을 결정으로 바꾸고 0절 위에 결정 줄을 두었습니다. `.corthex/project.json`의 `10-wbs` note에 통과 한 줄을 더하고, 그 안의 검사 수를 16개로 맞췄습니다.
+  - `build_wbs.py`의 금지어 검사는 README의 '확정'을 잡습니다. 9-3절에 말 그대로 옮긴 답 "확정하고 반복 0 시작 (추천)"만 허용 꼴로 더했고, 손으로 쓴 글에는 '확정' 대신 '체크포인트 통과'와 '정함'을 썼습니다.
+- 이유: 10단계 체크포인트(아래 18:21 단락의 다음 행동, 10 README 9-2의 확인 요청 1·2).
+- 결과
+  - MVP 스택은 [`tech-stack.md`](../10-wbs/tech-stack.md)의 추천안입니다: TypeScript 하나, 서버 Cloudflare Workers + Hono, 웹 React + Vite(홈 화면에 추가하는 웹앱), 데이터베이스 Supabase 서울 PostgreSQL 17 + Hyperdrive, 자동으로 하는 일 Cron Trigger 1분 + 작업 표, Queues, 사진 Supabase Storage 서울, OVH 서버는 개인정보가 없는 감시·AI 평가·카카오 시험에만 씁니다.
+  - 작업 181개와 반복 0~9를 이대로 두고 반복 0을 시작합니다. 추천안에 매인 작업 7개(TASK-170~175·179)는 그대로 갑니다. 스토어 앱 전 확인 요청(TASK-178)은 이번 카드에 없었고 반복 9 전에 드립니다.
+  - `build_wbs.py .` 출력: 작업 181개 · 크기 합 245.5일 · 반복 10개 · 동희님 17개 · Claude 164개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 58개 · 앱 규칙 40개 · 공통 규칙 9개 · 열린 질문 10개 · 끝난 작업 3개.
+- 확인한 것
+  - CHECKS_R0A
+  - 두 답의 글과 시각은 조정 세션이 전한 그대로입니다. Notion·Artifact·Miro는 호출하지 않았습니다(지시).
+- 다음 행동: 반복 0. 동희님 몫의 차례와 하는 법을 안내서(다음 PR)로 드리고, Claude는 TASK-008(카카오 시험 서버와 대본)과 TASK-012(법령 원문 다시 확인)를 먼저 합니다. 조정 세션이 이 PR을 합친 커밋으로 Notion에 한 번 올립니다.
+
 ### 2026-11-15 18:21 KST · 기술 스택 제안: Cloudflare·Supabase MVP와 옮길 길, OVH 평가, 로그인 유지 시간 결정([PR #51](https://github.com/kodonghui/siljang.ai/pull/51))
 
 - 한 일
