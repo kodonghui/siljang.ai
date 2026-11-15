@@ -6,6 +6,54 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-15 23:05 무렵 KST · TASK-015 개발 저장소 뼈대: Workers·Hono 서버와 React·Vite 웹, 린트·시험·CI, 키 검사([PR #58](https://github.com/kodonghui/siljang.ai/pull/58))
+
+- 한 일
+  - 11단계(개발)를 시작했습니다. `app/` 아래에 npm workspaces 둘을 만들었습니다. `server/`는 Cloudflare Workers의 Hono(TypeScript strict)이고, `web/`은 React·Vite입니다. 웹 빌드를 같은 Worker가 정적 자산으로 줍니다. 고른 것과 까닭은 [app/README.md](../../app/README.md)의 설계 메모 13줄에 적었습니다.
+  - 서버에는 기반 시설만 두었습니다.
+    - 설정 모듈 하나(`settings.ts`): 키를 `Secret`으로 감싸 글·JSON·로그로 바꾸면 가립니다. `APP_ENV`가 없으면 production입니다.
+    - JSON 한 줄 로그: event·traceId·errorName·names·status만 싣습니다.
+    - 06 Problem 꼴의 404·500과 W3C 꼴 추적 ID.
+    - 06 계약에 없는 `GET /api/healthz`(TASK-016 감시용, 계약 API가 아님).
+    - API는 `/api` 아래에 둡니다. 07 화면 주소와 06 API 경로가 같은 출처에서 겹치기 때문입니다.
+  - 시험은 서버 14개(설정 6, 앱 6, 06 계약 대조 2)와 웹 4개입니다. 린트·형식은 Biome 하나, 타입 검사는 TypeScript 7이며, 서버 코드는 Workers 런타임 형식만 봅니다.
+  - [`tools/check-no-keys.mjs`](../../tools/check-no-keys.mjs)를 더했습니다. 저장소 파일과 로그에서 키 꼴의 값 11가지를 찾고, 찾은 값은 찍지 않습니다.
+  - CI [`.github/workflows/app.yml`](../../.github/workflows/app.yml)을 더했습니다. 설치·린트·타입 검사·시험·빌드와 저장소·로그 키 검사를 돌리고, 작업에 비밀 값을 넘기지 않습니다.
+  - `.corthex/project.json`에 `11-development`(사람이 보는 곳 GitHub PR, 원본 `app/`)를 기본값 제안으로 더했습니다. 동희님이 다른 곳을 고르시면 바꿉니다.
+  - PR을 연 뒤 Codex 코드 검토(P2)의 지적을 받아 고쳤습니다. 키 검사기가 JSON처럼 따옴표 친 이름 뒤의 키 값을 놓쳤습니다. 이제 따옴표 친 이름·대소문자·이중 JSON까지 찾고, 코드의 이름 참조와 example·fake 같은 예시 값은 뺍니다.
+  - GitHub Actions가 성공한 뒤 TASK-015를 wbs_rows.py에서 끝남으로 적고, 생성 절을 다시 만들었습니다(끝난 작업 5개).
+- 이유: 반복 1의 첫 작업입니다. TASK-016(스테이징 배포)·TASK-017(마이그레이션을 CI에서)·TASK-173(Workers 서버 설정)이 이 뼈대를 앞선 작업으로 둡니다. 조정 세션 지시입니다.
+- 결과
+  - 완료 조건(빈 서버와 웹이 CI에서 린트·시험을 지나고, 저장소와 로그에 키가 없음을 검사하는 단계가 CI에 있음)을 GitHub Actions에서 확인했습니다. run 43721029115(`be8ca41`), 43721343956(`b616486`), 43721423550(`49930fc`)이 모두 성공했고, 한 번에 30초 안팎입니다.
+  - 마지막 실행(Node 22.23.4, npm 10.9.9)의 결과
+    - 키 검사기 자체 시험: 꼴 11개·예시 16개·깨끗한 줄 10개, 실패 0
+    - 저장소 키 검사: 371파일, 0건
+    - `npm ci`: 92개
+    - Biome: 28파일
+    - 시험: 서버 14개·웹 4개 통과
+    - 빌드: vite, `wrangler deploy --dry-run`
+    - 로그 키 검사: 5파일, 0건
+  - Vitest는 5.1.0입니다. 4.1은 Node 22의 npm 10.9가 vite 8과 함께 처음 풀다 멈춥니다. lockfile은 나온 지 일주일 넘은 판만 쓰도록 `npm install --before=2026-11-08`로 만들었습니다.
+- 확인한 것
+  - 깨끗한 작업 트리(`be8ca41`)에서 CI 단계를 그대로 돌렸습니다. 끝 상태는 모두 0입니다.
+  - 로컬 workerd(`wrangler dev`)로 띄워 확인했습니다.
+    - `/api/healthz`: 200, `no-store`
+    - 없는 `/api/owner/nope`: 404 `application/problem+json`, traceId 32자, instance
+    - 화면 주소 `/owner/orders`(navigate): `index.html`
+    - 시작 로그: 빠진 키의 이름만
+  - 타입 검사가 잡는지 틀린 파일을 잠깐 넣어 봤습니다. 형식 오류는 세 프로그램(web, server src, server test) 모두에서 잡혔고, 서버 src의 `node:fs` import도 잡혔습니다.
+  - 키 검사기: 인자가 없거나 없는 파일을 주면 끝 상태 2입니다. 꼴을 넓힌 뒤 저장소에서 새로 걸린 4줄은 모두 예시나 이름 참조라 빼는 꼴에 듭니다(06 예시 비밀번호 2, 카카오 시험 서버 2).
+  - `bash tools/stage-checks.sh prB2`(22:54 시작, 머리 `49930fc`): 검사 9개 모두 종료 코드 0, 끝 상태 0. prd·flows는 PROBLEMS 0 · AVOIDED WORDS 0, spec 오류 0, erd 15/15, api 17/17, sitemap 17/17, screens 15/15, mockup 14/14, wbs 검사 18개 · 오류 0(끝난 작업 5개). TASK-015를 표시하기 전 머리 `be8ca41`의 실행(22:49)도 모두 0이었습니다.
+- 하지 않은 것
+  - 배포: 계정이 없습니다(TASK-170 뒤 TASK-016).
+  - Workers 런타임 안 단위 시험(vitest-pool-workers는 아직 Vitest 4.1만 받음, TASK-171·173)
+  - 키가 없을 때 AI 일의 503 `ai_unavailable`: 아직 AI 호출이 없습니다(TASK-026).
+  - Hyperdrive·데이터베이스 연결(TASK-171·173)
+  - 화면: 웹은 빈 화면 하나뿐입니다.
+- 다음 행동
+  - 이 PR을 합친 뒤 조정 세션에 보고합니다.
+  - 앞선 작업이 끝난 다음 후보는 TASK-017(마이그레이션 0001\~0020을 CI에서)입니다. TASK-016은 배포라 동희님 계정(TASK-170)이 있어야 합니다.
+
 ### 2026-11-15 22:20 무렵 KST · 단계 검사 실행기와 작업 규칙 기록을 저장소로
 
 - 한 일
