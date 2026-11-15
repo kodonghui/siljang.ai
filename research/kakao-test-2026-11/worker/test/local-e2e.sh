@@ -99,7 +99,7 @@ expect "K-00 모르는 말 → 메뉴" '[ "$CODE" = 200 ] && text | grep -q "대
 post skill-basic.json '.userRequest.utterance="시험 시작"'
 expect "K-01 시험 시작 → 기록 키·바로가기 10개" '[ "$CODE" = 200 ] && text | grep -q "rec:" && jq -e ".template.quickReplies|length==10" "$TMP/res.body" >/dev/null'
 post skill-basic.json '.userRequest.utterance="같은 말"'
-expect "K-02 같은 말 → 거르기 후보 키" '[ "$CODE" = 200 ] && text | grep -q "OPEN-1"'
+expect "K-02 같은 말 → 거르기 후보 키·2초 묶음 번호·시각을 뺀 키" '[ "$CODE" = 200 ] && text | grep -q "OPEN-1" && text | grep -q "2초 묶음 번호 끝 4자리: [0-9]\{4\}" && text | grep -q "시각을 뺀 키: dn:"'
 
 # K-03 늦은 답(카카오 제한 5초 앞뒤)
 post skill-basic.json '.userRequest.utterance="늦게 4"'
@@ -206,6 +206,7 @@ expect "로그인 기록은 서명이 맞는 state의 1건만" '[ "$(jq -s "map(
 expect "키 틀린 스킬 요청 기록 2건(IP 없음)" '[ "$(jq -s "map(select(.kind==\"skill_rejected\" and (.headers[\"cf-connecting-ip\"]==null)))|length" "$TMP/records.jsonl")" = 2 ]'
 expect "콜백 결과 기록: 가짜 카카오 SUCCESS" 'jq -s -e "map(select(.kind==\"callback_result\" and .httpStatus==200 and .kakao.status==\"SUCCESS\"))|length>=1" "$TMP/records.jsonl" >/dev/null'
 expect "스킬 기록 항목: K-01~K-11 모두" '[ "$(jq -s -r "map(select(.kind==\"skill\")|.item)|unique|join(\",\")" "$TMP/records.jsonl")" = "K-00,K-01,K-02,K-03a,K-03b,K-04-1,K-04-2,K-04-3,K-04-4,K-05,K-06,K-07,K-07-setup,K-08,K-08b,K-09,K-10,K-10b,K-11" ]'
+expect "스킬 기록마다 후보 키(dk:)·시각을 뺀 키(dn:)·2초 묶음 번호" 'jq -s -e "map(select(.kind==\"skill\"))|all((.dedupKey|startswith(\"dk:\")) and (.dedupNoTimeKey|startswith(\"dn:\")) and (.dedupBucket|type==\"number\"))" "$TMP/records.jsonl" >/dev/null'
 expect "사용자 키는 uk: 표시" 'jq -s -e "map(select(.kind==\"skill\"))|all(.payload.userRequest.user.id|startswith(\"uk:\"))" "$TMP/records.jsonl" >/dev/null'
 expect "K-09 기록의 답에는 봇 ID 끝 4자 대신 ****" 'jq -s -r "map(select(.item==\"K-09\"))[0].response.body.template.outputs[0].simpleText.text" "$TMP/records.jsonl" | grep -q "끝 4자: \*\*\*\*"'
 expect "K-06 기록: 사진 주소는 꼴만, 사진 자체는 없음" 'jq -s -e "map(select(.item==\"K-06\"))[0].extra.photo.found[0].url|test(\"^http://127.0.0.1:[0-9]+/img/a.jpg[?]credential$\")" "$TMP/records.jsonl" >/dev/null'

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { type Json } from "../src/mask.ts";
-import { cfInfo, dedupCandidate, maskHeaders, recordKey, safeEqual, skillRecordBase } from "../src/record.ts";
+import { cfInfo, dedupBucket, dedupCandidate, maskHeaders, recordKey, safeEqual, skillRecordBase } from "../src/record.ts";
 
 const KEY = "unit-test-hash-key";
 const raw = readFileSync(new URL("./fixtures/skill-basic.json", import.meta.url), "utf8");
@@ -56,7 +56,7 @@ test("cfInfo: 고른 값만", () => {
   assert.equal(cfInfo(undefined).colo, null);
 });
 
-test("dedupCandidate: 같은 2초 칸 안의 같은 말은 같은 키, 말이나 2초 칸이 다르면 다른 키", async () => {
+test("dedupCandidate: 같은 2초 묶음 안의 같은 말은 같은 키, 말이나 묶음 번호가 다르면 다른 키", async () => {
   const t = Date.UTC(2026, 10, 15, 1, 0, 0);
   const a = await dedupCandidate(KEY, payload, t);
   assert.match(a, /^dk:[0-9a-f]{12}$/);
@@ -65,6 +65,19 @@ test("dedupCandidate: 같은 2초 칸 안의 같은 말은 같은 키, 말이나
   const other = JSON.parse(raw) as Record<string, any>;
   other.userRequest.utterance = "다른 말";
   assert.notEqual(a, await dedupCandidate(KEY, other, t));
+});
+
+test("2초 묶음 경계: 2ms 차이로도 묶음 번호와 후보 키가 다를 수 있고, 시각을 뺀 키는 같음(PR 검토 지적)", async () => {
+  const edge = Date.UTC(2026, 10, 15, 1, 0, 0) + 1999; // 묶음 끝
+  assert.equal(dedupBucket(edge) + 1, dedupBucket(edge + 2));
+  assert.notEqual(await dedupCandidate(KEY, payload, edge), await dedupCandidate(KEY, payload, edge + 2));
+  const n = await dedupCandidate(KEY, payload, edge, false);
+  assert.match(n, /^dn:[0-9a-f]{12}$/);
+  assert.equal(n, await dedupCandidate(KEY, payload, edge + 2, false));
+  assert.equal(n, await dedupCandidate(KEY, payload, edge + 60_000, false));
+  const other = JSON.parse(raw) as Record<string, any>;
+  other.userRequest.utterance = "다른 말";
+  assert.notEqual(n, await dedupCandidate(KEY, other, edge, false));
 });
 
 test("skillRecordBase: 마스킹한 본문·키 목록·해시, 손님 값 없음", async () => {

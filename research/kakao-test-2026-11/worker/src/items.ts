@@ -164,11 +164,14 @@ export function startReply(info: { recordKey: string; ms: number; colo: string; 
   );
 }
 
-export function sameReply(info: { dedupKey: string; bodyHash: string; newIdPaths: string[] }): SkillResponse {
+/** K-02 답. 후보 키는 2초 묶음 번호가 같은 요청끼리만 같으므로 번호와 시각을 뺀 키를 함께 보임 */
+export function sameReply(info: { dedupKey: string; dedupNoTimeKey: string; dedupBucket: number; bodyHash: string; newIdPaths: string[] }): SkillResponse {
   return simpleText(
     [
       "같은 말을 받았어요(K-02).",
       `- 같은 요청 거르기 후보 키(OPEN-1): ${info.dedupKey.slice(0, 9)}`,
+      `- 2초 묶음 번호 끝 4자리: ${String(info.dedupBucket).slice(-4)}`,
+      `- 시각을 뺀 키: ${info.dedupNoTimeKey.slice(0, 9)}`,
       `- 본문 해시: ${info.bodyHash.slice(0, 9)}`,
       `- 메시지 ID처럼 보이는 새 경로: ${info.newIdPaths.length ? info.newIdPaths.join(", ") : "없음"}`,
       "2초 안에 한 번 더, 10초 뒤에 한 번 더 보내 주세요.",

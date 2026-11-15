@@ -60,8 +60,14 @@ export function cfInfo(cf: unknown): CfInfo {
   };
 }
 
-/** OPEN-1의 확인 전 가정: 메시지 ID가 없으면 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각을 2초로 내린 값)의 해시 */
-export async function dedupCandidate(hashKey: string, p: Record<string, Json>, receivedMs: number): Promise<string> {
+/** 받은 시각의 2초 묶음 번호. 2초 안에 보낸 두 요청도 번호가 바뀌는 때에 걸치면 번호가 다름(그래서 후보 키도 다름) */
+export function dedupBucket(receivedMs: number): number {
+  return Math.floor(receivedMs / 2000);
+}
+
+/** OPEN-1의 확인 전 가정: 메시지 ID가 없으면 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각의 2초 묶음 번호)의 해시(dk:).
+ *  withTime이 false면 묶음 번호를 뺀 키(dn:): 요청마다 봇·사용자·블록·발화가 같게 오는지만 봄 */
+export async function dedupCandidate(hashKey: string, p: Record<string, Json>, receivedMs: number, withTime = true): Promise<string> {
   const g = (o: Json | undefined, ...ks: string[]): string => {
     let v: Json | undefined = o;
     for (const k of ks) v = v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, Json>)[k] : undefined;
@@ -72,9 +78,9 @@ export async function dedupCandidate(hashKey: string, p: Record<string, Json>, r
     g(p, "userRequest", "user", "id"),
     g(p, "userRequest", "block", "id"),
     g(p, "userRequest", "utterance"),
-    String(Math.floor(receivedMs / 2000)),
   ];
-  return "dk:" + (await hmacHex(hashKey, parts.join("\u0000"))).slice(0, 12);
+  if (withTime) parts.push(String(dedupBucket(receivedMs)));
+  return (withTime ? "dk:" : "dn:") + (await hmacHex(hashKey, parts.join("\u0000"))).slice(0, 12);
 }
 
 export type SkillRecordBase = {
@@ -86,6 +92,8 @@ export type SkillRecordBase = {
   bodyBytes: number;
   bodyHash: string;
   dedupKey: string;
+  dedupNoTimeKey: string;
+  dedupBucket: number;
   keys: string[];
   newIdLikePaths: string[];
   payload: Json;
@@ -111,6 +119,8 @@ export async function skillRecordBase(o: {
     bodyBytes: new TextEncoder().encode(o.raw).length,
     bodyHash: "bh:" + (await hmacHex(o.hashKey, "b\u0000" + o.raw)).slice(0, 12),
     dedupKey: await dedupCandidate(o.hashKey, o.payload, o.receivedMs),
+    dedupNoTimeKey: await dedupCandidate(o.hashKey, o.payload, o.receivedMs, false),
+    dedupBucket: dedupBucket(o.receivedMs),
     keys,
     newIdLikePaths: unknownIdLikePaths(keys),
     payload: await maskJson(o.hashKey, o.payload),

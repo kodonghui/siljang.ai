@@ -207,7 +207,21 @@ function describeProbe(p: Probe): string {
   return `${p.status ?? "받기 실패"} · ${p.contentType ?? "-"} · ${p.bytes ?? "-"}바이트${p.truncated ? "(20MB에서 멈춤)" : ""} · ${p.ms}ms${hops}${p.error ? ` · ${p.error}` : ""}`;
 }
 
-type SkillCtx = { env: Env; ctx: ExecutionContext; req: Request; p: Payload; key: string; receivedMs: number; hashKey: string; dedupKey: string; bodyHash: string; newIdPaths: string[]; colo: string };
+type SkillCtx = {
+  env: Env;
+  ctx: ExecutionContext;
+  req: Request;
+  p: Payload;
+  key: string;
+  receivedMs: number;
+  hashKey: string;
+  dedupKey: string;
+  dedupNoTimeKey: string;
+  dedupBucket: number;
+  bodyHash: string;
+  newIdPaths: string[];
+  colo: string;
+};
 
 async function answer(item: ItemId, c: SkillCtx): Promise<Answer> {
   const { env, p } = c;
@@ -225,7 +239,10 @@ async function answer(item: ItemId, c: SkillCtx): Promise<Answer> {
         }),
       };
     case "K-02":
-      return { item, body: sameReply({ dedupKey: c.dedupKey, bodyHash: c.bodyHash, newIdPaths: c.newIdPaths }) };
+      return {
+        item,
+        body: sameReply({ dedupKey: c.dedupKey, dedupNoTimeKey: c.dedupNoTimeKey, dedupBucket: c.dedupBucket, bodyHash: c.bodyHash, newIdPaths: c.newIdPaths }),
+      };
     case "K-03a":
     case "K-03b":
       await sleep((LATE_MS[item] ?? 0) - (Date.now() - c.receivedMs));
@@ -545,6 +562,8 @@ async function handleSkill(req: Request, env: Env, ctx: ExecutionContext): Promi
     receivedMs,
     hashKey,
     dedupKey: base.dedupKey,
+    dedupNoTimeKey: base.dedupNoTimeKey,
+    dedupBucket: base.dedupBucket,
     bodyHash: base.bodyHash,
     newIdPaths: base.newIdLikePaths,
     colo: String(base.cf.colo ?? "?"),
