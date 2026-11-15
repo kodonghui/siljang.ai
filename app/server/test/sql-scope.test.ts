@@ -36,7 +36,6 @@ describe("가게 조건 검사: 지킨 SQL", () => {
     BETWEEN: "SELECT o.id FROM orders o WHERE o.created_at BETWEEN $2 AND $3 AND o.shop_id = $1",
     "글자 값과 주석 안의 이름": `SELECT 'FROM orders' AS label, k.id FROM kakao_channels k -- JOIN customers
       WHERE k.shop_id = $1 /* OR true */`,
-    "따옴표 이름": 'SELECT o.id FROM "orders" o WHERE o."shop_id" = $1',
     "public 스키마": "SELECT o.id FROM public.orders o WHERE o.shop_id = $1",
     "함수 안의 FROM": "SELECT extract(epoch from o.created_at) FROM orders o WHERE o.shop_id = $1",
     "가게 테이블이 없음": "SELECT state FROM request_keys WHERE actor_kind = $1 AND actor_id = $2",
@@ -46,6 +45,13 @@ describe("가게 조건 검사: 지킨 SQL", () => {
         UNION ALL SELECT e.name, e.image_key FROM designs e WHERE e.shop_id = $1) x`,
     "여러 열 꼴 SET(shop_id 없음)":
       "UPDATE orders o SET (status, version) = ($2, o.version + 1) WHERE o.shop_id = $1 AND o.id = $3",
+    "NOT BETWEEN SYMMETRIC 뒤의 가게 조건":
+      "SELECT o.id FROM orders o WHERE o.created_at NOT BETWEEN SYMMETRIC $2 AND $3 AND o.shop_id = $1",
+    "CASE … END 뒤의 가게 조건":
+      "SELECT o.id FROM orders o WHERE CASE WHEN o.status = $2 THEN 1 ELSE 0 END = 1 AND o.shop_id = $1",
+    "배열 [ ] 뒤의 가게 조건": "SELECT o.id FROM orders o WHERE ARRAY[o.status] <@ ARRAY[$2, $3] AND o.shop_id = $1",
+    "겹치지 않는 하위 질의 별칭": `SELECT o.id, (SELECT count(*) FROM payments p WHERE p.shop_id = o.shop_id) AS n
+      FROM orders o, (SELECT 1) AS x WHERE o.shop_id = $1`,
   };
   for (const [name, sql] of Object.entries(good)) {
     it(name, () => {
@@ -208,6 +214,45 @@ describe("가게 조건 검사: 어긴 SQL", () => {
       "quoted name",
     ],
     "대문자 따옴표 이름(소문자 이름과 다른 이름)": ['SELECT o.id FROM "Orders" o WHERE o.shop_id = $1', "quoted name"],
+    // 소문자 낱말인 따옴표 이름도 막는다: "and"·"end"처럼 따옴표로 쓴 예약어는 PostgreSQL에서 이름인데 검사는 예약어로 읽는다
+    // (아래 둘째 꼴은 PostgreSQL 16.15에서 orders 전체를 읽음). 서버 코드의 SQL은 따옴표 이름을 쓰지 않는다.
+    "소문자 따옴표 이름": ['SELECT o.id FROM "orders" o WHERE o."shop_id" = $1', "quoted name"],
+    "따옴표로 쓴 예약어": [
+      'SELECT o.id FROM orders o, (SELECT false AS "and") d WHERE false BETWEEN "and" AND (o.shop_id = $1)',
+      "quoted name",
+    ],
+    // 잇는 AND가 아닌 AND(Codex 검토): BETWEEN의 짝 AND, CASE … END 안, 배열 [ ] 안. PostgreSQL 16.15에서 셋 모두
+    // orders 전체를 읽음(BETWEEN은 false <= (가게 조건)으로 늘 참, 나머지 둘은 상수로 접혀 거르는 조건이 없음).
+    "BETWEEN의 짝 AND": [
+      "SELECT o.id FROM orders o WHERE false BETWEEN false AND (o.shop_id = $1)",
+      "unscoped orders o",
+    ],
+    "CASE … END 안의 AND": [
+      "SELECT o.id FROM orders o WHERE CASE WHEN true THEN true ELSE false AND o.shop_id = $1 AND true END",
+      "unscoped orders o",
+    ],
+    "배열 [ ] 안의 AND": [
+      "SELECT o.id FROM orders o WHERE ARRAY[false AND o.shop_id = $1 AND true] = ARRAY[false]",
+      "unscoped orders o",
+    ],
+    // 안쪽 별칭이 바깥 가게 테이블의 별칭을 가리면 가게 조건을 바깥 테이블로 잘못 잇는다(Codex 검토). 하위 질의·함수·
+    // JOIN USING의 별칭도 별칭 겹침 검사에 넣는다.
+    "하위 질의 별칭이 바깥 별칭을 가림": [
+      "SELECT (SELECT count(*) FROM payments p, (SELECT $2::uuid AS shop_id) o WHERE p.shop_id = o.shop_id) FROM orders o WHERE o.shop_id = $1",
+      "alias o repeated",
+    ],
+    "함수 별칭이 바깥 별칭을 가림": [
+      "SELECT (SELECT count(*) FROM payments p, unnest(ARRAY[$2::uuid]) AS o(shop_id) WHERE p.shop_id = o.shop_id) FROM orders o WHERE o.shop_id = $1",
+      "alias o repeated",
+    ],
+    "JOIN USING 별칭이 바깥 별칭을 가림": [
+      "SELECT (SELECT count(*) FROM payments p JOIN (SELECT $2::uuid AS shop_id) x USING (shop_id) AS o WHERE p.shop_id = o.shop_id) FROM orders o WHERE o.shop_id = $1",
+      "alias o repeated",
+    ],
+    "하위 질의 별칭에 가게 테이블 이름": [
+      "SELECT (SELECT count(*) FROM payments p, (SELECT $2::uuid AS shop_id) orders WHERE p.shop_id = orders.shop_id) FROM orders WHERE orders.shop_id = $1",
+      "alias orders is a shop table name",
+    ],
   };
   for (const [name, [sql, expected]] of Object.entries(bad)) {
     it(name, () => {
@@ -236,12 +281,12 @@ describe("SQL 글 다듬기", () => {
     expect(stripSql("$é$ orders $é$ z")).not.toContain("orders");
   });
 
-  it("PostgreSQL처럼 읽음: ASCII 글자만 소문자로, 숫자 뒤의 $$, 소문자 낱말이 아닌 따옴표 이름은 표시로", () => {
+  it('PostgreSQL처럼 읽음: ASCII 글자만 소문자로, 숫자 뒤의 $$, 따옴표 이름은 표시 "로 감쌈', () => {
     expect(stripSql("SELECT \u212A")).toBe("select \u212A"); // 켈빈 기호는 PostgreSQL에서 k가 아님
     expect(stripSql("1$$ x $$ y")).toMatch(/^1 ''\s+y$/);
-    expect(stripSql('"c.shop_id"')).not.toContain("shop_id");
-    expect(stripSql('"c.shop_id"')).toContain('"');
-    expect(stripSql('"orders"."shop_id"')).toBe(" orders . shop_id ");
+    expect(stripSql('"c.shop_id"')).toBe(' " c.shop_id " ');
+    expect(stripSql('"Orders"."shop_id"')).toBe(' " orders " . " shop_id " ');
+    expect(namesShopTable('SELECT 1 FROM "orders"')).toBe(true);
   });
 
   it("가게 테이블 이름이 있는 SQL만 고름", () => {

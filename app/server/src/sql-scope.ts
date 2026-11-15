@@ -9,6 +9,7 @@
  * 2. FROM·JOIN·UPDATE·DELETE FROM·USING으로 든 가게 테이블마다, 그 테이블의 shop_id가 $1과 같다는 조건이
  *    (a) 그 테이블이 든 단계(괄호 묶음, UNION으로 나뉜 조각)의 WHERE에 AND로만 이어져 있거나
  *    (b) 그 테이블을 든 JOIN(안쪽·LEFT)의 ON에 AND로만 이어져 있다. 괄호 밖 OR가 있는 조건은 치지 않는다.
+ *    BETWEEN의 짝 AND와 CASE … END·배열 [ ] 안의 AND는 조건을 잇는 AND가 아니다.
  *    `X.shop_id = Y.shop_id`는 Y가 가게 조건을 가지면 X도 갖는다. shops(가게 자체)의 가게 조건은 `X.id = $1`.
  *    별칭 없는 `shop_id = $1`은 그 단계의 FROM에 테이블이 하나일 때만 친다. 형 바꾸기는 ::uuid만 친다(::char는 첫 글자만
  *    남겨 여러 가게의 ID와 같아진다).
@@ -17,13 +18,14 @@
  * 4. shop_id는 $1이나 다른 테이블의 shop_id(shops는 id)하고만 =로 견준다(WHERE shop_id = $2로 다른 가게 읽기를 막음).
  *    UPDATE·DO UPDATE의 SET은 shop_id를 넣지 않는다(한 열 꼴과 여러 열 꼴 `(shop_id, …) = …` 모두. 다른 가게로 옮기기를 막음).
  * 5. ON CONFLICT … DO UPDATE는 충돌 대상 열에 shop_id가 있다(다른 가게의 행을 고치지 않게).
- * 6. 별칭은 문장 안에서 하나씩이고 가게 테이블 이름을 다른 테이블의 별칭으로 쓰지 않는다. 가게 테이블 이름은 FROM·JOIN·
+ * 6. 별칭(하위 질의·함수·JOIN USING의 별칭 포함)은 문장 안에서 하나씩이고(안쪽 별칭이 바깥 가게 테이블의 별칭을 가리지
+ *    않게) 가게 테이블 이름을 다른 테이블의 별칭으로 쓰지 않는다. 가게 테이블 이름은 FROM·JOIN·
  *    UPDATE·INSERT INTO·DELETE FROM·USING 자리(public.이름 포함)와 `이름.열`에만 쓴다(TABLE 문, 안쪽의 TABLE public.이름,
  *    LOCK, 다른 스키마의 같은 이름, 알아보지 못한 자리를 막음).
  * 7. 검사가 이름이나 SQL을 보지 못하는 꼴을 쓰지 않는다: 유니코드 이스케이프(U&"…", U&'…'), SQL 글을 받아 돌리거나
  *    테이블을 이름으로 통째로 읽는 내장 함수(query_to_xml·table_to_xml 무리, ts_stat, ts_rewrite), 글 읽기·이름 찾기
- *    설정을 바꾸는 set_config, 소문자 낱말이 아닌 따옴표 이름("c.shop_id"·"Orders" 따위는 PostgreSQL에서 이름 하나라
- *    검사가 낱말로 나눠 읽으면 안 됨). 글 다듬기(stripSql)는 PostgreSQL처럼 읽는다(줄 주석은 \n·\r에서 끝나고, ASCII가
+ *    설정을 바꾸는 set_config, 따옴표 이름("c.shop_id"·"Orders"·"and" 따위는 PostgreSQL에서 이름 하나인데 검사는 낱말이나
+ *    예약어로 읽을 수 있음. 서버 코드의 SQL은 따옴표 이름을 쓰지 않음). 글 다듬기(stripSql)는 PostgreSQL처럼 읽는다(줄 주석은 \n·\r에서 끝나고, ASCII가
  *    아닌 글자도 이름 글자라 이름을 잇는 $$는 글의 시작이 아니고 숫자·$1 뒤의 $$는 시작이며, $태그$에도 ASCII가 아닌
  *    글자를 쓸 수 있고, 소문자로는 ASCII 글자만 바꿈).
  * 한계: 함수·뷰 안의 SQL은 보지 못한다(05에 업무 코드가 부르는 함수·뷰가 없고, SQL 글을 돌리는 내장 함수는 7로 막음).
@@ -136,7 +138,10 @@ export function namesShopTable(sql: string): boolean {
   return tokenize(stripSql(sql)).some((t) => SCOPED.has(t.v));
 }
 
-/** 주석·글자 값·$$ 글을 비우고 따옴표 이름을 벗겨 소문자로. 글자 값 안의 테이블 이름은 테이블이 아니다. */
+/**
+ * 주석·글자 값·$$ 글을 비우고, 따옴표 이름은 표시 `"`로 감싸고(규칙 7), ASCII 글자를 소문자로. 글자 값 안의 테이블 이름은
+ * 테이블이 아니다.
+ */
 export function stripSql(sql: string): string {
   let out = "";
   let i = 0;
@@ -209,9 +214,9 @@ export function stripSql(sql: string): string {
         name += c;
         i += 1;
       }
-      // 따옴표 이름은 PostgreSQL에서 이름 하나다. 따옴표 없이 쓴 것과 같게 읽히는 소문자 낱말만 그대로 두고, 나머지
-      // ("c.shop_id"·"Orders" 따위)는 표시 `"`로 바꿔 scopeViolations가 막는다(규칙 7).
-      out += /^[a-z_][a-z0-9_$]*$/.test(name) ? ` ${name} ` : ' " ';
+      // 따옴표 이름은 PostgreSQL에서 이름 하나다(점·공백·대문자·예약어를 그대로 둠). 검사는 이를 낱말이나 예약어로 잘못 읽을
+      // 수 있어 표시 `"`로 감싸 scopeViolations가 막게 하고(규칙 7), 이름은 남겨 정적 시험이 가게 테이블 SQL을 고르게 한다.
+      out += ` " ${name} " `;
       continue;
     }
     if (ch === "$") {
@@ -365,6 +370,8 @@ interface Ref {
 interface Item {
   readonly level: string;
   readonly ref: Ref | null;
+  /** 하위 질의·함수·JOIN USING의 별칭(테이블은 아니어도 별칭 겹침 검사에 넣는다, 규칙 6). */
+  readonly alias?: string;
 }
 
 type Side =
@@ -396,6 +403,15 @@ function joinTypeAt(toks: readonly Tok[], k: number): Ref["join"] {
   return "inner";
 }
 
+/** 하위 질의·함수 항목의 닫는 괄호 뒤(start)에서 별칭을 읽는다. */
+function derivedItem(toks: readonly Tok[], start: number, level: string): { next: number; item: Item } {
+  let q = start;
+  if (toks[q]?.v === "as") q += 1;
+  const maybe = toks[q]?.v;
+  if (isWord(maybe) && !NOT_ALIAS.has(maybe)) return { next: q + 1, item: { level, ref: null, alias: maybe } };
+  return { next: q, item: { level, ref: null } };
+}
+
 /** FROM·JOIN 따위 뒤의 항목 하나를 읽는다. */
 function readItem(
   toks: readonly Tok[],
@@ -409,12 +425,7 @@ function readItem(
   if (toks[q]?.v === "lateral") q += 1;
   const head = toks[q];
   if (head === undefined) return { next: q, item: null };
-  if (head.v === "(") {
-    q = matching(toks, q) + 1;
-    if (toks[q]?.v === "as") q += 1;
-    if (isWord(toks[q]?.v) && !NOT_ALIAS.has(toks[q]?.v as string)) q += 1;
-    return { next: q, item: { level, ref: null } };
-  }
+  if (head.v === "(") return derivedItem(toks, matching(toks, q) + 1, level);
   if (!isWord(head.v) || NOT_ALIAS.has(head.v)) return { next: q, item: null };
   let table = head.v;
   let at = q;
@@ -428,12 +439,7 @@ function readItem(
     // (다른 스키마의 같은 이름은 규칙 6이 막는다).
     return { next: q, item: null };
   }
-  if (kind !== "insert" && toks[q]?.v === "(") {
-    q = matching(toks, q) + 1;
-    if (toks[q]?.v === "as") q += 1;
-    if (isWord(toks[q]?.v) && !NOT_ALIAS.has(toks[q]?.v as string)) q += 1;
-    return { next: q, item: { level, ref: null } };
-  }
+  if (kind !== "insert" && toks[q]?.v === "(") return derivedItem(toks, matching(toks, q) + 1, level);
   let alias = table;
   if (toks[q]?.v === "as") q += 1;
   const maybe = toks[q]?.v;
@@ -464,8 +470,13 @@ function readItems(toks: readonly Tok[]): Item[] {
       if (prev !== "insert") continue;
       kind = "insert";
     } else if (t.v === "using") {
-      // DELETE … USING 목록. JOIN … USING (열)은 테이블이 아니다.
-      if (toks[k + 1]?.v === "(") continue;
+      // DELETE … USING 목록. JOIN … USING (열)은 테이블이 아니지만 뒤의 AS 별칭(PostgreSQL 14부터)은 별칭 겹침 검사에 넣는다.
+      if (toks[k + 1]?.v === "(") {
+        const close = matching(toks, k + 1);
+        const alias = toks[close + 2]?.v;
+        if (toks[close + 1]?.v === "as" && isWord(alias)) items.push({ level: t.level, ref: null, alias });
+        continue;
+      }
       kind = "from";
     } else {
       continue;
@@ -495,14 +506,30 @@ function clause(toks: readonly Tok[], start: number, depth: number, ends: Readon
   return out;
 }
 
-/** AND로 나눈 조건들. 괄호 밖 OR가 있으면 아무 조건도 확실하지 않아 null. 감싼 괄호는 벗겨 안을 나눈다. */
+/**
+ * AND로 나눈 조건들. 괄호 밖 OR가 있으면 아무 조건도 확실하지 않아 null. 감싼 괄호는 벗겨 안을 나눈다.
+ * BETWEEN의 짝 AND, CASE … END 안과 배열 [ ] 안의 AND는 조건을 잇는 AND가 아니라 나누지 않는다.
+ */
 function conjuncts(ts: readonly Tok[], depth: number): Tok[][] | null {
   const parts: Tok[][] = [[]];
+  let between = 0;
+  let cases = 0;
+  let brackets = 0;
   for (const t of ts) {
-    if (t.depth === depth && t.v === "or") return null;
-    if (t.depth === depth && t.v === "and") {
-      parts.push([]);
-      continue;
+    if (t.depth === depth) {
+      if (t.v === "or") return null;
+      if (t.v === "between") between += 1;
+      else if (t.v === "case") cases += 1;
+      else if (t.v === "end" && cases > 0) cases -= 1;
+      else if (t.v === "[") brackets += 1;
+      else if (t.v === "]" && brackets > 0) brackets -= 1;
+      else if (t.v === "and") {
+        if (between > 0) between -= 1;
+        else if (cases === 0 && brackets === 0) {
+          parts.push([]);
+          continue;
+        }
+      }
     }
     parts[parts.length - 1]?.push(t);
   }
@@ -685,10 +712,12 @@ export function scopeViolations(sql: string): string[] {
 
   // 6. 별칭과 가게 테이블 이름의 자리. 가게 테이블의 별칭은 문장 안에서 하나(다른 단계의 같은 별칭과 헷갈리지 않게).
   const count = new Map<string, number>();
-  for (const r of refs) count.set(r.alias, (count.get(r.alias) ?? 0) + 1);
+  const otherAliases = items.flatMap((it) => (it.alias === undefined ? [] : [it.alias]));
+  for (const a of [...refs.map((r) => r.alias), ...otherAliases]) count.set(a, (count.get(a) ?? 0) + 1);
   for (const r of shopRefs) if ((count.get(r.alias) ?? 0) > 1) out.push(`alias ${r.alias} repeated`);
   for (const r of refs)
     if (r.alias !== r.table && SCOPED.has(r.alias)) out.push(`alias ${r.alias} is a shop table name`);
+  for (const a of otherAliases) if (SCOPED.has(a)) out.push(`alias ${a} is a shop table name`);
   const aliases = new Map(shopRefs.map((r) => [r.alias, r] as const));
   const refAt = new Set(refs.map((r) => r.at));
   toks.forEach((t, k) => {
