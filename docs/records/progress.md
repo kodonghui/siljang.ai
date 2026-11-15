@@ -6,7 +6,7 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
-### 2026-11-16 01:40 무렵 KST · TASK-019 가게별 기록 나누기([PR #61](https://github.com/kodonghui/siljang.ai/pull/61))
+### 2026-11-16 02:00 무렵 KST · TASK-019 가게별 기록 나누기([PR #61](https://github.com/kodonghui/siljang.ai/pull/61))
 
 - 한 일
   - 앞 단락의 [PR #60](https://github.com/kodonghui/siljang.ai/pull/60)을 squash로 합쳤습니다(main `a5b66cf`, 2026-11-16 00:33 무렵). 합친 뒤 main에서 돈 GitHub Actions run 43730539920(app)과 43730539917(db)도 성공했습니다.
@@ -17,19 +17,27 @@
   - 시험: 교차 가게 시험 묶음(가게 둘·사장님 둘, 등록 목록 `CROSS_SHOP_CASES`와 등록 완결 시험), 가게 조건 정적 시험, 06 계약과 견주는 시험(가게 범위여야 하는 계약 API 70개의 출처). 실제 가게 범위 API가 아직 없어 등록 목록은 비어 있고, 시험용 경로 8개(등록 9건)로 층과 묶음이 일하는지 봅니다.
   - 06 DEC-04에 TASK-018이 구현하며 좁힌 해석(401, 409 `confirmation_required`, 429도 요청 키에 남기지 않음과 그 까닭)을 '구현하며 좁힌 해석, 2026-11-15'로 적었습니다. 원본 `api_catalog.py`를 고치고 `build_api.py . --write`로 다시 만들었으며, 06 README 5·12·15절은 손으로 고쳤습니다. 계약의 모양은 그대로입니다(깨지는 변화 0).
   - [`app/README.md`](../../app/README.md) 첫머리와 18\~22(층, 무엇이 막는지, 묶음, 새 API를 만들 때, 넘기는 것)를 더했습니다.
-  - GitHub Actions가 성공한 뒤 TASK-019를 wbs_rows.py에서 끝남으로 적고 생성 절을 다시 만들었습니다(끝난 작업 8개).
+  - Codex 코드 검토(`fc19d98`)의 P2 넷을 `499ddc3`에서 고쳤습니다. 고치기 전 코드에서 실패하는 시험을 먼저 더했습니다.
+    - 가게 조건 검사가 놓친 꼴 셋: INSERT 값의 원천을 UNION으로 이은 뒤 조각(`SELECT $2, …`), 여러 열 꼴 SET(`SET (shop_id, version) = ($2, $3)`), 안쪽의 `TABLE public.orders`. 이제 INSERT 값의 원천을 UNION·EXCEPT·INTERSECT로 잇지 못하고, SET은 shop_id를 넣지 못하며, 가게 테이블 이름은 `이름.열`과 FROM 따위 자리의 `public.이름`에만 씁니다.
+    - 같은 갈래로 찾은 다섯도 막았습니다: VALUES 뒤의 UNION, 하위 질의의 `x.shop_id`를 넣어 옮기기, 유니코드 이스케이프 이름(`U&"…"`), SQL 글을 돌리거나 테이블을 통째로 읽는 내장 함수(`query_to_xml`·`table_to_xml` 무리, `ts_stat`, `ts_rewrite`), `::uuid`가 아닌 형 바꾸기로 묶은 것처럼 보이는 조건(`::char`는 첫 글자만 남아 여러 가게의 ID와 같아짐). 이 다섯과 Codex의 셋은 모두 고치기 전 검사가 빈 목록(통과)을 돌려줬습니다.
+    - 묶음은 앱의 등록 목록(`CROSS_SHOP_CASES`)을 등록만 보고 부르지 않았습니다(시험용 사례만 부름). 이제 앱의 등록 목록과 시험용 등록을 함께 모두 부르고, 부르는 쪽이 아직 사장님뿐임을 사례마다 확인합니다.
+    - 네 스레드는 해결로 표시했고 댓글은 달지 않았습니다. 이 검사는 실수를 막는 것이라 검사를 피하려고 일부러 꾸민 SQL은 코드 검토가 함께 본다고 `sql-scope.ts` 첫머리와 앱 README 19에 적었습니다.
+  - `fc19d98`의 GitHub Actions가 성공한 뒤 TASK-019를 wbs_rows.py에서 끝남으로 적고 생성 절을 다시 만들었고(끝난 작업 8개), Codex 고침 뒤 다시 성공한 뒤 끝남 글의 서버 시험 수를 277개로 고쳤습니다.
 - 이유: TASK-019는 TASK-018만 기다리고, 가게 기록을 다루는 뒤의 API 작업(TASK-020부터)이 모두 이 층과 묶음을 씁니다. 조정 세션 지시입니다(동희님 10단계 카드 '확정하고 반복 0 시작 (추천)'과 '작업계속해').
 - 결과
   - 완료 조건(다른 가게의 ID로 부른 요청이 404이고 남는 기록이 0인 교차 가게 시험 묶음, 새 API가 묶음에 들어가지 않으면 실패하는 시험, SPEC-068 수락 기준 1·2, 05 A9 서버 시험, 04 G1 시험)을 GitHub Actions에서 확인했습니다.
-    - `fc19d98`: app run 43735859302 성공. 마이그레이션 20개 적용 뒤 서버 시험 12파일 261개 통과, 웹 4개 통과, 빌드, 로그 키 검사 6파일 0건. 같은 커밋의 db run 43735859325도 성공.
+    - `fc19d98`: app run 43735859302와 db run 43735859325 성공(서버 시험 261개).
+    - Codex 고침 `499ddc3`: app run 43737311249와 db run 43737311270 성공.
+    - 코드가 마지막으로 바뀐 뒤의 머리 `cd582e6`(조정 세션이 남긴 중간 저장 커밋, 기록만 바꿈): app run 43737556535 성공. 마이그레이션 20개 적용 뒤 서버 시험 12파일 277개 통과, 웹 4개 통과, 빌드, 로그 키 검사 6파일 0건. 같은 커밋의 db run 43737556646도 성공. 이 단락을 담은 기록 커밋의 실행은 PR 본문과 다음 단락에 적습니다.
   - 무엇이 막는지: 데이터베이스는 가게가 섞인 행만 막고(복합 외래 키, 05 E1, 23503을 시험), 다른 가게 행을 읽고 고치는 것은 막지 않습니다(05 A9, 날 연결로 B의 주문이 읽히는 것을 시험). 그래서 앱이 형식·실행 때 검사·정적 시험·교차 가게 묶음의 네 겹으로 막습니다.
-  - 서버 시험 261개의 내역: 앞 155개(contract 74, request-key 25, app 15, time 12, db 8, ops-events 8, settings 7, confirm-card 6)와 새 106개(sql-scope 56, cross-shop 26, shop-scope 14, shop-scope-static 10).
+  - 서버 시험 277개의 내역: 앞 155개(contract 74, request-key 25, app 15, time 12, db 8, ops-events 8, settings 7, confirm-card 6)와 새 122개(sql-scope 71, cross-shop 27, shop-scope 14, shop-scope-static 10). Codex 고침 전에는 새 106개(sql-scope 56, cross-shop 26)였습니다.
 - 확인한 것
-  - 로컬(Node 22.23.4, PostgreSQL 16.15): 처음 전체를 돌렸을 때 실패 9개(원인 다섯: 동기로 던진 `run`, E1 시험이 유일 제약에 먼저 걸림, A의 요청 키까지 기록 비교에 넣음, 손님 쪽 시험용 경로가 등록되지 않음, 주석의 이름까지 잡은 정적 시험)를 고친 뒤 261개 통과. lint(Biome 37파일)·typecheck·build 통과, 만드는 형식 파일 `worker-runtime.d.ts`는 바뀌지 않음.
+  - 로컬(Node 22.23.4, PostgreSQL 16.15): 처음 전체를 돌렸을 때 실패 9개(원인 다섯: 동기로 던진 `run`, E1 시험이 유일 제약에 먼저 걸림, A의 요청 키까지 기록 비교에 넣음, 손님 쪽 시험용 경로가 등록되지 않음, 주석의 이름까지 잡은 정적 시험)를 고친 뒤 261개 통과. lint(서버 Biome 37파일)·typecheck·build 통과, 만드는 형식 파일 `worker-runtime.d.ts`는 바뀌지 않음. Codex 고침 뒤 277개 통과, `npm run lint`(Biome 51파일)·typecheck·build 통과.
+  - Codex가 낸 꼴과 같은 갈래의 SQL이 PostgreSQL 16.15에서 실제로 돎을 확인했습니다(시험용 데이터베이스에서 실행 계획만 보거나 되돌림): VALUES 뒤 UNION ALL로 넣기, 여러 열 꼴 SET의 shop_id, CTE 안의 `TABLE public.orders`(가게 조건 없이 orders 전체를 읽음), uuid를 `::char`로 바꾸면 첫 글자만 남음.
   - 묶음이 틀린 경로를 실제로 잡는지: 날 연결로 가게 조건 없이 읽는 `openRoute`는 묶음이 실패하고, 가게 조건 없는 SQL을 보낸 `shopRoute`는 500입니다(시험 둘).
   - 커밋 전 키 검사(398파일, 0건), 모델 이름·메일 주소·계정 ID 찾기, 새 글의 금지어 검사(0건).
   - `bash tools/stage-checks.sh task019`(01:23 시작, 머리 `81becd0`에 DEC-04 고침을 얹은 작업 트리): 검사 9개 모두 종료 코드 0. api 검사 17개 통과(A13 main `a5b66cf`과 견준 깨지는 변화 0), wbs 검사 18개 · 오류 0. 끝남 표시 뒤 `build_wbs.py . --write`도 검사 18개 · 오류 0, 끝난 작업 8개.
-  - Codex 코드 검토·보안 검토는 이 단락을 쓸 때 아직 돌고 있었습니다.
+  - Codex: 코드 검토(`fc19d98`)의 P2 넷은 위처럼 고쳤습니다. 보안 검토는 `fc19d98`에서 끝나기 전에 새 커밋이 올라 `cd582e6`에서 다시 돌았고, 합치기 전 머리 커밋의 결과는 PR 본문에 적습니다.
 - 다음 행동
   - PR #61을 합치고 main의 app·db 실행을 확인한 뒤 브랜치를 main으로 되돌립니다.
   - 넘긴 것: 사장님 세션 해석기와 묶음에서 사장님으로 부르기(TASK-020), 가게 등록과 `shop_not_registered`(TASK-032), 손님(카카오 스킬) 해석기와 묶음의 부르는 쪽·기대(TASK-028, 같은 손님 규칙은 TASK-105), 운영자(TASK-021·159), 예약 링크(TASK-044·045), 여러 가게를 도는 서버 작업(TASK-023), 올린 파일 ID(TASK-022), 보관 기록이 된 주문의 404(TASK-091·158), 같은 가게의 다른 주문 것인 본문 ID(각 API 작업), 05 E27 글(이번에 고치지 않음), Swagger Artifact의 DEC-04 글(다음에 한 번에 올릴 때).
