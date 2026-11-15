@@ -74,7 +74,7 @@ flowchart LR
 - Claude가 써야 하는 값은 이 작업 세션이 쓰는 Claude Code 클라우드 환경에 둡니다. 여는 곳은 세션 제목 뒤의 꺾쇠 → `Edit cloud environment`이고, 두는 곳이 둘입니다 [AC1].
   - `Environment variables`: `이름=값`을 한 줄에 하나씩 넣고 `Save changes`. 세션의 명령이 읽는 환경 변수가 됩니다. 이 환경을 쓰는 사람은 누구나 값을 읽을 수 있고, 공식 문서는 프록시가 요청에 붙일 수 있는 키라면 `Network secrets`를 쓰라고 권합니다 [AC1].
   - `Network secrets`: 값이 세션 안에 들어오지 않고, 정한 호스트로 가는 요청에 프록시가 헤더로 붙입니다. `Add secret` → `Allowed websites`에 호스트 → `Custom headers`의 `Value`에 키 → `Add`. 저장한 뒤에는 값을 다시 볼 수 없고, Pro·Max·Ultra·Team·Enterprise 플랜에서 됩니다 [AC1].
-  - 이번 값들은 아래 표처럼 환경 변수로 두길 권합니다(Claude 판단). Claude가 값을 읽어 Hyperdrive 설정이나 시험 Worker의 비밀(`wrangler secret put` [C9])로 옮겨야 하고, Cloudflare API 토큰은 wrangler가 환경 변수로 읽기 때문입니다 [C8]. 토큰을 `Network secrets`(호스트 `api.cloudflare.com`)에만 두고 wrangler를 돌리는 길은 확인 못 함입니다. 대신 토큰 권한을 이 프로젝트 계정의 Workers·Hyperdrive·Queues로 좁혀 만듭니다(4-1의 ③ 4). 이 환경을 다른 사람과 함께 쓰시면 Claude에게 먼저 알려 주세요.
+  - 이번 값들은 아래 표처럼 환경 변수로 두길 권합니다(Claude 판단). Claude가 값을 읽어 Hyperdrive 설정이나 시험 Worker의 비밀(`wrangler secret put` [C9])로 옮겨야 하고, Cloudflare API 토큰은 wrangler가 환경 변수로 읽기 때문입니다 [C8]. 토큰을 `Network secrets`(호스트 `api.cloudflare.com`)에만 두고 wrangler를 돌리는 길은 확인 못 함입니다. 대신 토큰이 닿는 자원을 이 프로젝트 계정 하나로 좁혀 만듭니다(4-1의 ③ 4). 이 환경을 다른 사람과 함께 쓰시면 Claude에게 먼저 알려 주세요.
   - 이미 열린 세션은 VM이 다시 시작될 때 새 값을 읽습니다. Claude가 일하지 않는 동안 몇 분이 지나면 세션이 쉬고, 다음 메시지로 다시 시작될 때 새 값을 읽습니다 [AC1]. 그래서 값을 넣고 몇 분 뒤에 "TASK-170 끝"처럼 보내 주세요.
 - Claude는 값을 출력하지 않고, 배포한 Worker에는 `wrangler secret put`으로만 옮깁니다 [C9].
 - 동희님만 쓰는 비밀번호와 복구 코드는 동희님의 비밀번호 관리 앱에 둡니다.
