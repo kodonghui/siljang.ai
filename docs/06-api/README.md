@@ -32,7 +32,7 @@ API 83개 · 응답 417개 · 오류 코드 37개 · 필드 오류 사유 24개 
 | 만든 것 | 무엇 |
 | --- | --- |
 | [`api/openapi.yaml`](../../api/openapi.yaml) | 원본 계약. API마다 `operationId`와 `x-corthex`(API ID, SPEC ID, 뺀 응답과 사유, 케이스 유형 근거), 응답마다 예시. `components.x-corthex`에 오류 코드·필드 오류 사유·확인할 것·스킬 결과·결정 사항·열린 질문·서버 안의 일·깨지는 변화 |
-| [`research/cake-api-2026-11/`](../../research/cake-api-2026-11/) | `api_catalog.py`(오류 코드·결과·결정 사항·열린 질문), `api_schemas.py`(스키마), `api_examples.py`(예시), `api_ops.py`(API 82개), `build_api.py`(계약 파일과 이 문서의 표를 만듦), `check_api.py`(검사), `requirements.txt`(검사 도구 버전), `build_viewer.py`와 `viewer.html`(검토 도구 Swagger UI 페이지를 만듦, 3절) |
+| [`research/cake-api-2026-11/`](../../research/cake-api-2026-11/) | `api_catalog.py`(오류 코드·결과·결정 사항·열린 질문), `api_schemas.py`(스키마), `api_examples.py`(예시), `api_ops.py`(API 83개), `build_api.py`(계약 파일과 이 문서의 표를 만듦), `check_api.py`(검사), `requirements.txt`(검사 도구 버전), `build_viewer.py`와 `viewer.html`(검토 도구 Swagger UI 페이지를 만듦, 3절) |
 
 다시 만들고 검사하는 법(저장소 맨 위에서):
 
@@ -58,7 +58,7 @@ curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-01234567
      http://127.0.0.1:4010/owner/orders/68598d4e-7858-598f-aa63-2b51daa7d590/custom-decision
 ```
 
-페이지 재생성: `npm pack swagger-ui-dist@5.17.14`로 받은 꾸러미의 `package/swagger-ui.css`를 넣어 `python3 -B research/cake-api-2026-11/build_viewer.py . 나갈_폴더 --css package/swagger-ui.css`를 돌리면 `siljang-api-contract.html`과 `openapi.json`이 나옵니다. 스타일시트는 버전이 섞이지 않게 SHA-256을 확인합니다.
+페이지 재생성: `npm pack swagger-ui-dist@5.17.14`로 받은 꾸러미의 `package/swagger-ui.css`를 넣어 `python3 -B research/cake-api-2026-11/build_viewer.py . 나갈_폴더 --css package/swagger-ui.css`를 돌리면 `siljang-api-contract.html`과 `openapi.json`이 나옵니다. 스타일시트는 버전이 섞이지 않게 SHA-256을 확인합니다. 페이지 머리말의 계약 버전과 숫자(API·응답·오류 코드·결정 사항·열린 질문)는 원본 계약에서 세어 넣고, '고침' 날짜는 `api/openapi.yaml`을 마지막으로 바꾼 커밋의 날짜(KST)입니다.
 
 ## 4. API 목록
 
