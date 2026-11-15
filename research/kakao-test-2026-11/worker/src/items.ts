@@ -242,6 +242,23 @@ export function menuReply(unknown: boolean): SkillResponse {
   return simpleText(`${unknown ? "대본에 없는 말이에요. " : ""}시험 메뉴예요. 대본의 차례대로 눌러 주세요.`, menuReplies());
 }
 
+/** 사진을 받으러 갈 호스트: 카카오 쪽 도메인만. 대화창에 아무 주소나 적어 서버가 그 주소로 요청하게 만들지 못하게.
+ *  로컬 시험의 가짜 서버처럼 더할 호스트는 extra(쉼표로 나눈 목록, Worker 변수 EXTRA_IMAGE_HOSTS) */
+export const IMAGE_HOSTS = ["kakaocdn.net", "kakao.com", "kakao.co.kr", "daumcdn.net"];
+
+export function imageHostAllowed(url: string, extra?: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+  const more = (extra ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const h = u.hostname.toLowerCase();
+  return [...IMAGE_HOSTS, ...more].some((d) => h === d || h.endsWith(`.${d}`));
+}
+
 /** 보안 이미지 플러그인 값(JSON 글)에서 사진 주소 목록. secureUrls는 "List(주소, 주소)" 꼴(플러그인 문서의 예) */
 export function secureImageUrls(v: Json | undefined): string[] {
   if (typeof v !== "string") return [];

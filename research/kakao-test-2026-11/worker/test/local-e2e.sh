@@ -21,13 +21,20 @@ FAIL=0
 CODE=""
 TIME=""
 
+# wrangler dev는 자식 프로세스(cli.js, workerd)를 띄우므로 자식까지 멈춤. 멈추지 않으면 다음 시험이 옛 서버에 붙음
+killtree() {
+  local c
+  for c in $(pgrep -P "$1" 2>/dev/null); do killtree "$c"; done
+  kill "$1" 2>/dev/null
+}
 cleanup() {
-  [ -n "$WPID" ] && kill "$WPID" 2>/dev/null
-  [ -n "$MPID" ] && kill "$MPID" 2>/dev/null
+  [ -n "$WPID" ] && killtree "$WPID"
+  [ -n "$MPID" ] && killtree "$MPID"
   wait 2>/dev/null
   rm -rf "$TMP"
 }
 trap cleanup EXIT
+trap 'exit 130' INT TERM
 
 ok() { PASS=$((PASS + 1)); echo "PASS $*"; }
 ng() { FAIL=$((FAIL + 1)); echo "FAIL $*"; }
@@ -58,10 +65,16 @@ wait_for() {
   done
 }
 
+for u in "$W/health" "$M/"; do
+  if curl -s -o /dev/null --max-time 2 "$u"; then
+    echo "이미 무언가 ${u%/*}에서 답함: 남은 wrangler dev나 가짜 서버를 멈추거나 E2E_WORKER_PORT·E2E_MOCK_PORT를 바꿔요"
+    exit 1
+  fi
+done
 node test/mock-kakao.mjs "$PM" "$TMP/callbacks.jsonl" &
 MPID=$!
 npx wrangler dev -c wrangler.template.jsonc --local --ip 127.0.0.1 --port "$PW" --persist-to "$TMP/state" \
-  --var "SKILL_KEY:$SK" --var "HASH_KEY:$HK" --show-interactive-dev-session=false > "$TMP/wrangler.log" 2>&1 &
+  --var "SKILL_KEY:$SK" --var "HASH_KEY:$HK" --var "EXTRA_IMAGE_HOSTS:127.0.0.1" --show-interactive-dev-session=false > "$TMP/wrangler.log" 2>&1 &
 WPID=$!
 if ! wait_for 90 'curl -fsS "$W/health" 2>/dev/null | grep -q ok'; then
   echo "wrangler dev가 90초 안에 뜨지 않음"
@@ -118,6 +131,13 @@ QUEUE_SENT=$SECONDS
 # K-06 사진 메시지: 주소를 받아 바로 받아 보고 상태·종류·크기만
 post skill-basic.json ".userRequest.utterance=\"사진 $M/img/a.jpg?credential=SECRETCRED1234567\""
 expect "K-06 사진 받기 200·image/jpeg·2048바이트" '[ "$CODE" = 200 ] && text | grep -q "200 · image/jpeg · 2048바이트"'
+# 허용 호스트(카카오 쪽, 로컬은 EXTRA_IMAGE_HOSTS로 127.0.0.1을 더함) 밖은 받지 않음. 리다이렉트도 호스트마다 다시 확인
+post skill-basic.json ".userRequest.utterance=\"사진 https://example.invalid/c.jpg\""
+expect "K-06 카카오 쪽이 아닌 주소 → 받지 않고 건너뜀" '[ "$CODE" = 200 ] && text | grep -q "건너뜀: 카카오 쪽 호스트가 아님"'
+post skill-basic.json ".userRequest.utterance=\"사진 $M/redir/d.jpg\""
+expect "K-06 리다이렉트 1번 따라가 받기" '[ "$CODE" = 200 ] && text | grep -q "200 · image/jpeg · 2048바이트" && text | grep -q "리다이렉트 1번"'
+post skill-basic.json ".userRequest.utterance=\"사진 $M/redir-out/e.jpg\""
+expect "K-06 리다이렉트가 밖으로 가면 건너뜀" '[ "$CODE" = 200 ] && text | grep -q "리다이렉트가 카카오 쪽 밖으로 감"'
 
 # K-07·K-08 후기
 REVIEW_FIX='.action.params.photos |= gsub("http://secure.kakaocdn.net/dna/O5UOr/K6auLPnoAf/XXX/img.jpg"; "'"$M"'/img/b.jpg") | .action.detailParams.photos.origin |= gsub("http://secure.kakaocdn.net/dna/O5UOr/K6auLPnoAf/XXX/img.jpg"; "'"$M"'/img/b.jpg") | .action.detailParams.photos.value |= gsub("http://secure.kakaocdn.net/dna/O5UOr/K6auLPnoAf/XXX/img.jpg"; "'"$M"'/img/b.jpg")'
@@ -158,7 +178,7 @@ fi
 sleep 2
 
 # 기록 읽기: dev를 멈춘 뒤 로컬 KV에서
-kill "$WPID" 2>/dev/null
+killtree "$WPID"
 wait "$WPID" 2>/dev/null
 WPID=""
 npx wrangler kv key list --binding RECORDS --local --persist-to "$TMP/state" -c wrangler.template.jsonc --prefix rec: > "$TMP/keys.json" 2>"$TMP/kv.err"
@@ -175,6 +195,7 @@ expect "스킬 기록 항목: K-01~K-11 모두" '[ "$(jq -s -r "map(select(.kind
 expect "사용자 키는 uk: 표시" 'jq -s -e "map(select(.kind==\"skill\"))|all(.payload.userRequest.user.id|startswith(\"uk:\"))" "$TMP/records.jsonl" >/dev/null'
 expect "K-09 기록의 답에는 봇 ID 끝 4자 대신 ****" 'jq -s -r "map(select(.item==\"K-09\"))[0].response.body.template.outputs[0].simpleText.text" "$TMP/records.jsonl" | grep -q "끝 4자: \*\*\*\*"'
 expect "K-06 기록: 사진 주소는 꼴만, 사진 자체는 없음" 'jq -s -e "map(select(.item==\"K-06\"))[0].extra.photo.found[0].url|test(\"^http://127.0.0.1:[0-9]+/img/a.jpg[?]credential$\")" "$TMP/records.jsonl" >/dev/null'
+expect "K-06 기록: 건너뛴 주소도 호스트와 꼴은 남음" 'jq -s -e "map(select(.item==\"K-06\" and .extra.photo.probes[0].skipped==\"host\"))[0].extra.photo.found[0].url|test(\"^https://example.invalid/\")" "$TMP/records.jsonl" >/dev/null'
 LEAKS=""
 for raw in fakeBotUserKey fakePlusfriendKey01 1234567890 c00000000000000000000001 b00000000000000000000001 010-1234-5678 "010 9876 5432" SECRETCRED1234567 FAKEcredential FAKEsignature FAKEcallbackToken "$SK" "$HK"; do
   grep -qF -- "$raw" "$TMP/records.jsonl" && LEAKS="$LEAKS [$raw]"

@@ -13,6 +13,7 @@ import {
   classify,
   emptyVariant,
   findUrls,
+  imageHostAllowed,
   lateReply,
   loginCard,
   menuReply,
@@ -51,6 +52,8 @@ export interface Env {
   KAKAO_CLIENT_SECRET?: string;
   EVENT_NAME?: string;
   RECORD_TTL_SECONDS?: string;
+  /** 사진을 받으러 갈 호스트를 더할 때(쉼표 목록). 기본은 카카오 쪽 도메인만(items.ts IMAGE_HOSTS) */
+  EXTRA_IMAGE_HOSTS?: string;
 }
 
 /** 콜백을 늦게 보낼 때 큐에 넣는 값. 콜백 주소는 한 번 쓰면 끝나는 주소라 큐에만 잠깐 둠 */
@@ -61,6 +64,7 @@ const MAX_BODY = 256 * 1024;
 const WAIT_UNTIL_MAX_SEC = 25;
 const IMAGE_TIMEOUT_MS = 2500;
 const IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+const IMAGE_MAX_REDIRECTS = 3;
 const EVENT_TASK_WAIT_MS = 8000;
 const CFG_TTL = 30 * 86400;
 
@@ -73,7 +77,17 @@ type Answer = {
   extra?: Record<string, Json>;
 };
 
-type Probe = { status: number | null; contentType: string | null; bytes: number | null; truncated: boolean; ms: number; error: string | null };
+/** skipped: "host"(처음 주소가 허용 호스트 밖), "redirect-host"(리다이렉트가 허용 호스트 밖으로 감). redirects는 꼴만 남긴 주소 */
+type Probe = {
+  status: number | null;
+  contentType: string | null;
+  bytes: number | null;
+  truncated: boolean;
+  ms: number;
+  redirects: string[];
+  skipped: "host" | "redirect-host" | null;
+  error: string | null;
+};
 
 function ttl(env: Env): number {
   const n = Number(env.RECORD_TTL_SECONDS);
@@ -117,34 +131,63 @@ function html(status: number, title: string, lines: string[]): Response {
   });
 }
 
-async function probeImage(url: string): Promise<Probe> {
+/** 사진 주소를 바로 받아 상태·종류·크기만 잼. 대화창에 적힌 아무 주소로나 요청하지 않도록 허용 호스트(카카오 쪽)만 받고,
+ *  리다이렉트도 직접 따라가며 호스트마다 다시 확인함(최대 3번) */
+async function probeImage(url: string, extraHosts: string | undefined): Promise<Probe> {
   const t = Date.now();
+  const redirects: string[] = [];
+  const done = (p: Partial<Probe>): Probe => ({
+    status: null,
+    contentType: null,
+    bytes: null,
+    truncated: false,
+    redirects,
+    skipped: null,
+    error: null,
+    ...p,
+    ms: Date.now() - t,
+  });
+  const signal = AbortSignal.timeout(IMAGE_TIMEOUT_MS);
+  let current = url;
   try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS) });
-    let bytes = 0;
-    let truncated = false;
-    if (r.body) {
-      const reader = r.body.getReader();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        bytes += (value as Uint8Array).byteLength;
-        if (bytes > IMAGE_MAX_BYTES) {
-          truncated = true;
-          await reader.cancel();
-          break;
+    for (let hop = 0; ; hop++) {
+      if (!imageHostAllowed(current, extraHosts)) return done({ skipped: hop === 0 ? "host" : "redirect-host" });
+      const r = await fetch(current, { redirect: "manual", signal });
+      const location = r.headers.get("location");
+      if (r.status >= 300 && r.status < 400 && location) {
+        await r.body?.cancel();
+        if (hop >= IMAGE_MAX_REDIRECTS) return done({ status: r.status, error: `리다이렉트 ${IMAGE_MAX_REDIRECTS}번 넘음` });
+        current = new URL(location, current).toString();
+        redirects.push(maskUrl(current));
+        continue;
+      }
+      let bytes = 0;
+      let truncated = false;
+      if (r.body) {
+        const reader = r.body.getReader();
+        for (;;) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          bytes += (chunk.value as Uint8Array).byteLength;
+          if (bytes > IMAGE_MAX_BYTES) {
+            truncated = true;
+            await reader.cancel();
+            break;
+          }
         }
       }
+      // 사진은 세기만 하고 버림(저장하지 않음)
+      return done({ status: r.status, contentType: r.headers.get("content-type"), bytes, truncated });
     }
-    // 사진은 세기만 하고 버림(저장하지 않음)
-    return { status: r.status, contentType: r.headers.get("content-type"), bytes, truncated, ms: Date.now() - t, error: null };
   } catch (e) {
-    return { status: null, contentType: null, bytes: null, truncated: false, ms: Date.now() - t, error: errName(e) };
+    return done({ error: errName(e) });
   }
 }
 
 function describeProbe(p: Probe): string {
-  return `${p.status ?? "받기 실패"} · ${p.contentType ?? "-"} · ${p.bytes ?? "-"}바이트${p.truncated ? "(20MB에서 멈춤)" : ""} · ${p.ms}ms${p.error ? ` · ${p.error}` : ""}`;
+  if (p.skipped) return p.skipped === "host" ? "건너뜀: 카카오 쪽 호스트가 아님(기록에 주소 꼴이 남음)" : "건너뜀: 리다이렉트가 카카오 쪽 밖으로 감";
+  const hops = p.redirects.length ? ` · 리다이렉트 ${p.redirects.length}번` : "";
+  return `${p.status ?? "받기 실패"} · ${p.contentType ?? "-"} · ${p.bytes ?? "-"}바이트${p.truncated ? "(20MB에서 멈춤)" : ""} · ${p.ms}ms${hops}${p.error ? ` · ${p.error}` : ""}`;
 }
 
 type SkillCtx = { env: Env; ctx: ExecutionContext; req: Request; p: Payload; key: string; receivedMs: number; hashKey: string; dedupKey: string; bodyHash: string; newIdPaths: string[]; colo: string };
@@ -181,7 +224,7 @@ async function answer(item: ItemId, c: SkillCtx): Promise<Answer> {
       return callbackItem(c);
     case "K-06": {
       const found = findUrls(p).slice(0, 5);
-      const probes = await Promise.all(found.slice(0, 3).map((f) => probeImage(f.url)));
+      const probes = await Promise.all(found.slice(0, 3).map((f) => probeImage(f.url, env.EXTRA_IMAGE_HOSTS)));
       return {
         item,
         body: photoReply(found, probes.map(describeProbe)),
@@ -311,7 +354,7 @@ async function reviewItem(item: "K-07" | "K-08b", c: SkillCtx): Promise<Answer> 
   const text = params[REVIEW_PARAMS.text];
   const consent = params[REVIEW_PARAMS.consent];
   const urls = secureImageUrls(params[REVIEW_PARAMS.photos]).slice(0, 10);
-  const probes = await Promise.all(urls.map(probeImage));
+  const probes = await Promise.all(urls.map((u) => probeImage(u, env.EXTRA_IMAGE_HOSTS)));
   const clientExtra = p.action?.clientExtra && typeof p.action.clientExtra === "object" ? p.action.clientExtra : {};
   const orderNo = typeof clientExtra.orderNo === "string" ? clientExtra.orderNo : null;
   const uk = await userToken(c.hashKey, p.userRequest?.user?.id ?? "");

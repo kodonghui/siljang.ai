@@ -10,6 +10,7 @@ import {
   classify,
   emptyVariant,
   findUrls,
+  imageHostAllowed,
   loginCard,
   menuReply,
   reviewAskCard,
@@ -131,6 +132,31 @@ test("secureImageUrls: 보안 이미지 값의 List(...)에서 주소", () => {
   assert.ok(urls[0].startsWith("http://secure.kakaocdn.net/dna/"));
   assert.deepEqual(secureImageUrls(undefined), []);
   assert.deepEqual(secureImageUrls("List(http://a.example/1.jpg, http://a.example/2.jpg)"), ["http://a.example/1.jpg", "http://a.example/2.jpg"]);
+});
+
+test("imageHostAllowed: 카카오 쪽 호스트만, 더할 호스트는 쉼표 목록", () => {
+  for (const ok of [
+    "http://secure.kakaocdn.net/dna/a/b/c/img.jpg",
+    "https://k.kakaocdn.net/dn/x.jpg",
+    "http://dn-m.talk.kakao.com/a.jpg",
+    "https://kakao.com/a.png",
+    "https://t1.daumcdn.net/a.png",
+  ])
+    assert.equal(imageHostAllowed(ok), true, ok);
+  for (const bad of [
+    "https://example.com/a.jpg",
+    "https://evilkakaocdn.net/a.jpg",
+    "https://kakaocdn.net.evil.example/a.jpg",
+    "https://secure.kakaocdn.net@evil.example/a.jpg",
+    "ftp://secure.kakaocdn.net/a.jpg",
+    "http://127.0.0.1:8792/img/a.jpg",
+    "http://[::1]/a.jpg",
+    "주소 아님",
+  ])
+    assert.equal(imageHostAllowed(bad), false, bad);
+  assert.equal(imageHostAllowed("http://127.0.0.1:8792/img/a.jpg", "127.0.0.1"), true);
+  assert.equal(imageHostAllowed("https://img.example.org/x.jpg", " Example.org , "), true);
+  assert.equal(imageHostAllowed("https://example.com/x.jpg", " , "), false);
 });
 
 test("botIdReply: 대화창 답에는 끝 4자, 기록용 답에는 없음", () => {

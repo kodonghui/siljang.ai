@@ -17,7 +17,7 @@
 | `worker/src/mask.ts`, `worker/src/record.ts` | 손님 값 마스킹과 기록 본문 |
 | `worker/src/login.ts` | 카카오 로그인 PKCE 시험(S256, RFC 7636) |
 | `worker/test/*.test.ts` | 단위 시험(문서 예제 모양에 가짜 값, `worker/test/fixtures/README.md`) |
-| `worker/test/local-e2e.sh`, `worker/test/mock-kakao.mjs` | 계정 없이 wrangler dev와 가짜 카카오 서버로 하는 로컬 시험 |
+| `worker/test/local-e2e.sh`, `worker/test/mock-kakao.mjs` | 계정 없이 wrangler dev와 가짜 카카오 서버(콜백·사진·리다이렉트)로 하는 로컬 시험 |
 | `worker/wrangler.template.jsonc` | Worker 설정. KV ID 자리는 비워 둠 |
 | `deploy.sh` | 자원 만들기·배포·비밀 값 넣기(4절) |
 | `read-records.sh` | 기록 내려받기(5절) |
@@ -36,7 +36,8 @@ npm run e2e:local
 - `npm run check`: 형 검사(`tsc --noEmit`)와 단위 시험(`node --test`, Node 22의 형 지우기로 TS를 바로 돌림).
 - `npm run e2e:local`: wrangler dev(로컬 모드, 원격 바인딩 없음)에 무작위 시험 키를 넣어 띄우고, 가짜 카카오 서버로 콜백·사진을 받아 항목별 답과 KV 기록을 봅니다. 실제 카카오·Cloudflare에는 닿지 않습니다.
 - 모든 wrangler 명령은 `WRANGLER_SEND_METRICS=false`로 돌립니다(사용 통계 보내지 않음).
-- 2026-11-15 결과(Node 22.23.4, wrangler 4.156.0, TypeScript 5.9.3): 형 검사 오류 0, 단위 시험 36개 통과, 로컬 시험 40개 통과(1분 37초). npm 레지스트리에서 받는 데 막힘은 없었습니다. 로컬 시험에서 큐의 27초 지연 보내기와 waitUntil 2초 콜백이 가짜 카카오 서버에 닿았고, 기록 27건에 견본의 가짜 손님 값·시험 키가 그대로 남지 않았습니다.
+- 로컬 시험은 포트 8791(wrangler dev)과 8792(가짜 카카오 서버)가 비어 있어야 합니다. 이미 무언가 답하면 옛 서버에 붙지 않도록 바로 멈춥니다. 끝나면 wrangler dev의 자식 프로세스(workerd)까지 멈춥니다.
+- 2026-11-15 결과(Node 22.23.4, wrangler 4.156.0, TypeScript 5.9.3): 형 검사 오류 0, 단위 시험 37개 통과, 로컬 시험 44개 통과(1분 40초). npm 레지스트리에서 받는 데 막힘은 없었습니다. 로컬 시험에서 큐의 27초 지연 보내기와 waitUntil 2초 콜백이 가짜 카카오 서버에 닿았고, 허용 호스트 밖의 사진 주소와 밖으로 가는 리다이렉트는 받지 않고 건너뛰었으며, 기록 30건에 견본의 가짜 손님 값·시험 키가 그대로 남지 않았습니다.
 
 ## 4. 배포(TASK-170 뒤, Claude)
 
@@ -69,6 +70,7 @@ npm run e2e:local
   - 글: 숫자가 7개 넘게 이어지면(사이에 빈칸·점·붙임표 하나씩 허용) `#`으로, 이메일은 길이만. ISO 날짜·시각은 둡니다. 글 안의 JSON(보안 이미지 값)은 풀어서 같은 규칙으로.
   - 헤더: 스킬 키는 맞는지만, `authorization`·`cookie`는 길이만, 정해 둔 헤더(콘텐츠 종류, user-agent 등)만 값, 나머지는 꼴과 HMAC. 출처 IP는 스킬 요청에만(카카오 서버의 주소, OPEN-10 참고), 로그인 시험에서는 남기지 않습니다.
   - 사진은 받아서 상태·종류·바이트 수·걸린 ms만 세고 버립니다. 로그인 시험의 토큰도 받자마자 버리고 있었는지만 남깁니다. 봇 ID는 대화창 답에만 끝 4자를 보이고 기록에는 `****`로 남깁니다.
+- 사진을 받으러 가는 곳: 카카오 쪽 도메인(`kakaocdn.net`, `kakao.com`, `kakao.co.kr`, `daumcdn.net`과 그 하위)만입니다. 대화창에 누가 다른 주소를 적어도 서버가 그 주소로 요청하지 않게 하려는 것입니다. 목록 밖이면 받지 않고 '건너뜀'과 주소 꼴(호스트 포함)만 남깁니다. 리다이렉트는 3번까지 직접 따라가며 호스트마다 다시 봅니다. K-06에서 사진이 다른 호스트로 오면 Worker 변수 `EXTRA_IMAGE_HOSTS`(쉼표 목록)에 그 호스트를 더해 다시 올립니다. 로컬 시험은 이 변수로 `127.0.0.1`을 더합니다.
 
 ## 6. 지우는 법(TASK-011 뒤)
 
@@ -83,6 +85,7 @@ npx wrangler delete -c wrangler.local.jsonc
 
 - Cloudflare에 올려서 해 본 것은 아직 없습니다: 큐의 지연 보내기(`delaySeconds`), waitUntil로 25초까지 기다린 콜백, 사진 주소 받기는 로컬(wrangler dev)에서만 됐습니다.
 - 새 계정의 workers.dev 하위 도메인, Queues 토큰 권한의 이름(4절).
+- 보통 사진 메시지의 주소가 어느 호스트로 오는지(5절의 목록은 카카오 쪽 도메인으로 잡은 Claude 판단입니다).
 - 카카오 쪽의 확인 못 한 것은 대본 5절에 있습니다.
 
 ## 출처(2026-11-15 확인)
