@@ -1,0 +1,26 @@
+{
+  "name": "siljang-app",
+  "private": true,
+  "description": "수제케이크 주문제작 AI 상담·예약: 사장님·운영자 API(Workers·Hono)와 웹(React·Vite). 계약은 ../api/openapi.yaml, 스키마는 ../db/.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12 <23"
+  },
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "lint": "biome ci .",
+    "format": "biome format --write .",
+    "typecheck": "npm run typecheck -w web && npm run typecheck -w server",
+    "test": "npm run test -w server && npm run test -w web",
+    "build": "npm run build -w web && npm run build -w server",
+    "check:keys": "node ../tools/check-no-keys.mjs --repo"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.6",
+    "typescript": "7.0.2",
+    "vitest": "5.1.0"
+  }
+}

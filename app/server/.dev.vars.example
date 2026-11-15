@@ -1,0 +1,10 @@
+# 로컬 개발(wrangler dev)에서 읽는 값의 이름. 이 파일을 .dev.vars로 복사해 값을 채운다.
+# .dev.vars는 저장소에 넣지 않는다(.gitignore). 이 예시 파일에는 값을 적지 않는다.
+# 배포한 Worker의 비밀 값은 `wrangler secret put <이름>`으로만 넣는다.
+
+# 실행 환경 이름: development | staging | production. 비우면 production으로 친다.
+APP_ENV=development
+
+# AI 모델 키(비밀 값). 서버만 읽고, 웹 빌드(VITE_*)에는 절대 넣지 않는다. 없으면 AI 일만 503 ai_unavailable(TASK-026에서).
+ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
