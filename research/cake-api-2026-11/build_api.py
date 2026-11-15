@@ -186,7 +186,7 @@ def header(name, o):
             f"{cookie}=example-session-not-real; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + \
             ("43200" if cookie == "siljang_operator" else "2592000")
         return {"description": f"세션 쿠키 `{cookie}`(HttpOnly·Secure·SameSite=Lax, DEC-10). " +
-                               ("로그아웃이면 지움(Max-Age=0)" if ending else "세션 길이는 OPEN-5"),
+                               ("로그아웃이면 지움(Max-Age=0)" if ending else "세션 길이는 DEC-26: " + ("운영자 12시간" if cookie == "siljang_operator" else "사장님 30일, 쓰면 늘어남")),
                 "required": True, "schema": {"type": "string", "maxLength": 4096}, "example": value}
     if name == "Siljang-Outcome":
         return {"description": "스킬 결과 코드(DEC-07). 200 예시 이름과 같음. 뜻은 components.x-corthex.skillOutcomes",

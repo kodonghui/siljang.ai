@@ -85,7 +85,7 @@ paths:
       operationId: createOwnerSession
       summary: 사장님 로그인(카카오 인가 코드)
       description: |-
-        카카오 로그인 화면이 redirectUri로 준 인가 코드와 state를 받는다. state가 로그인 시작(API-078)의 서명·10분과 로그인 시작 쿠키 `siljang_login`의 nonce에 맞을 때만 카카오를 호출하고, 아니면 카카오를 호출하지 않고 401 kakao_login_failed(DEC-10, 설계 재검토 RD-11). 서버가 인가 코드를 nonce로 다시 만든 PKCE code_verifier와 함께 카카오 토큰으로 바꿔 카카오 로그인 사용자 번호만 남기고 토큰은 버린다(DEC-10, REQ-135). 토큰을 버리기 전에 카카오톡 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`, 채널 추가 상태 동의 `plusfriends`)를 한 번 해 사장님이 우리 서비스 채널 친구인지 남긴다(alertChannelFriend). 동의하지 않았거나 조회가 실패하면 로그인은 막지 않고 친구 여부를 바꾸지 않는다. 사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-260). 세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_owner`이고, 로그인 시작 쿠키는 지운다. `next`가 화면이 열 곳(가게 등록·신고증 다시 올리기·할 일 목록). 카카오 로그인이 실패하거나 동의를 거부하면 우리 쪽 기록을 남기지 않음. Open: 세션 길이는 사장님 30일(쓰면 늘어남)을 첫 값으로 제안, 개발 전에 정함(OPEN-5). Open: 카카오가 PKCE 매개변수를 받는지 개발 전 시험(OPEN-11).
+        카카오 로그인 화면이 redirectUri로 준 인가 코드와 state를 받는다. state가 로그인 시작(API-078)의 서명·10분과 로그인 시작 쿠키 `siljang_login`의 nonce에 맞을 때만 카카오를 호출하고, 아니면 카카오를 호출하지 않고 401 kakao_login_failed(DEC-10, 설계 재검토 RD-11). 서버가 인가 코드를 nonce로 다시 만든 PKCE code_verifier와 함께 카카오 토큰으로 바꿔 카카오 로그인 사용자 번호만 남기고 토큰은 버린다(DEC-10, REQ-135). 토큰을 버리기 전에 카카오톡 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`, 채널 추가 상태 동의 `plusfriends`)를 한 번 해 사장님이 우리 서비스 채널 친구인지 남긴다(alertChannelFriend). 동의하지 않았거나 조회가 실패하면 로그인은 막지 않고 친구 여부를 바꾸지 않는다. 사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-260). 세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_owner`이고, 로그인 시작 쿠키는 지운다. `next`가 화면이 열 곳(가게 등록·신고증 다시 올리기·할 일 목록). 카카오 로그인이 실패하거나 동의를 거부하면 우리 쪽 기록을 남기지 않음. 세션은 마지막으로 쓴 때부터 30일 동안 유지하고 쓸 때마다 다시 30일로 늘린다(DEC-26). Open: 카카오가 PKCE 매개변수를 받는지 개발 전 시험(OPEN-11).
 
         SPEC: SPEC-001, SPEC-068
       tags:
@@ -108,7 +108,7 @@ paths:
           description: '성공. 예시: new_owner, returning_owner, license_on_hold'
           headers:
             Set-Cookie:
-              description: 세션 쿠키 `siljang_owner`(HttpOnly·Secure·SameSite=Lax, DEC-10). 세션 길이는 OPEN-5
+              description: '세션 쿠키 `siljang_owner`(HttpOnly·Secure·SameSite=Lax, DEC-10). 세션 길이는 DEC-26: 사장님 30일, 쓰면 늘어남'
               required: true
               schema:
                 type: string
@@ -445,7 +445,7 @@ paths:
       operationId: createOperatorSession
       summary: 운영자 로그인(이메일·비밀번호·2단계 인증)
       description: |-
-        운영자 계정으로만 운영자 화면에 들어온다(R2). 맞지 않는 것이 어느 필드인지 알리지 않는다. 15분에 5번 실패하면 429(DEC-16). 세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_operator`. 비밀번호는 인증 서비스로만 보내고 어디에도 남기지 않음(REQ-135). Open: 운영자 인증 서비스는 개발 전에 고름. 고른 서비스가 자기 로그인 화면을 쓰면 이 API를 그 플로우로 바꾸고, 그 서비스가 답하지 않을 때의 503을 더함(OPEN-6). Open: 세션 길이 12시간을 첫 값으로 제안(OPEN-5).
+        운영자 계정으로만 운영자 화면에 들어온다(R2). 맞지 않는 것이 어느 필드인지 알리지 않는다. 15분에 5번 실패하면 429(DEC-16). 세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_operator`. 비밀번호는 인증 서비스로만 보내고 어디에도 남기지 않음(REQ-135). Open: 운영자 인증 서비스는 개발 전에 고름. 고른 서비스가 자기 로그인 화면을 쓰면 이 API를 그 플로우로 바꾸고, 그 서비스가 답하지 않을 때의 503을 더함(OPEN-6). 세션은 로그인한 때부터 12시간이 지나면 끝나고 쓴다고 늘지 않는다(DEC-26).
 
         SPEC: SPEC-001
       tags:
@@ -468,7 +468,7 @@ paths:
           description: '성공. 예시: signed_in'
           headers:
             Set-Cookie:
-              description: 세션 쿠키 `siljang_operator`(HttpOnly·Secure·SameSite=Lax, DEC-10). 세션 길이는 OPEN-5
+              description: '세션 쿠키 `siljang_operator`(HttpOnly·Secure·SameSite=Lax, DEC-10). 세션 길이는 DEC-26: 운영자 12시간'
               required: true
               schema:
                 type: string
@@ -34289,6 +34289,12 @@ components:
       why: 한 회사에 묶이지 않고 같은 평가로 품질과 비용을 견줘 고름. 두 회사 모두 유료 API의 입력을 학습에 쓰지 않고 보관 기간을 숫자(30일)로 적으며, 보관 안 함(Zero Data Retention)을 따로 맺거나 허가함(04단계 AI-1 '데이터 다루기', 각 회사 공식 문서 2026-11-14 확인)
       alt: '한 회사만 먼저 고름: 평가 전에 정해야 하고 바꾸면 호출 코드와 평가를 다시 함. Google 유료 API도 후보로 둠: 보관 기간을 숫자로 적지 않아 처리방침에 적을 수 없어 뺌(04단계 AI-1)'
       decided: 확정(2026-11-15 14:19 동희님 결정 카드 '둘 다 시험해 평가로 고름 (추천)', 06단계 OPEN-7을 닫음)
+    - id: DEC-26
+      title: '로그인 유지 시간: 사장님 30일(쓰면 늘어남), 운영자 12시간'
+      choice: 사장님 세션(쿠키 `siljang_owner`, API-001)은 마지막으로 쓴 때부터 30일 동안 유지하고 쓸 때마다 다시 30일로 늘린다. 운영자 세션(쿠키 `siljang_operator`, API-004)은 로그인한 때부터 12시간이 지나면 끝나 다시 로그인한다(쓴다고 늘지 않음). 로그인 때 보내는 쿠키의 Max-Age는 사장님 2592000초(30일)·운영자 43200초(12시간)이고, 쓸 때마다 늘리는 방법(같은 쿠키를 다시 보내는 때)은 사장님 로그인 작업(10단계 TASK-020)에서 정한다
+      why: 사장님은 휴대폰 카카오톡의 알림 링크로 자주 들어오므로 쓸 때마다 늘려 다시 로그인하는 일을 줄이고, 30일 동안 쓰지 않으면 끝낸다. 운영자는 여러 가게의 손님 개인정보와 원래 값(API-074~077)을 보므로 쓰더라도 하루 안에 끊는다. 06단계 OPEN-5가 첫 값으로 제안한 길이
+      alt: '사장님도 로그인한 때부터 정한 날수에 끝냄: 할 일 알림 링크를 열 때 다시 로그인하는 일이 잦아짐. 운영자도 쓰면 늘어남: 켜 둔 운영자 화면이 날을 넘겨 열려 있게 됨'
+      decided: 확정(2026-11-15 17시 무렵 동희님 결정 카드 '제안대로 (추천)', 06단계 OPEN-5를 닫음)
     open:
     - id: OPEN-1
       where: API-070
@@ -34302,9 +34308,6 @@ components:
     - id: OPEN-4
       where: API-070
       text: 빈 응답(답을 보내지 않기)이 되는지 문서에 없음. 될 때까지 같은 메시지 반복과 한도 넘은 메시지에는 정해진 짧은 말을 다시 보냄
-    - id: OPEN-5
-      where: API-001, API-004
-      text: '세션 길이: 사장님 30일(쓰면 늘어남), 운영자 12시간을 첫 값으로 제안. 개발 전에 정함'
     - id: OPEN-6
       where: API-004
       text: 운영자 인증 서비스(비밀번호·2단계 인증 키를 맡길 곳)는 개발 전에 고름. 고른 서비스가 자기 로그인 화면을 쓰면 이 API를 그 플로우로 바꿈(운영자 화면만 씀)
