@@ -25,7 +25,7 @@ ITERATION_NOTES = [
 
 TASKS = [
     dict(id='TASK-001', it=0, name='기술 스택·배포 환경 후보 비교(공식 문서로 확인)', owner='Claude', size=1, src=['REQ-130', 'REQ-135', 'REQ-141', 'REQ-148', 'REQ-149'], done='tech-stack.md에 스택을 정하는 요구사항(ID)과 후보마다 서버·웹·PostgreSQL 운영·서울 리전·자동으로 하는 일·사진 저장·월 비용 범위(공식 가격표)·두 AI 회사 공식 SDK를 공식 문서 주소와 확인 날짜로 적고, 추천과 반론을 둠. 카카오 스킬 응답 시간은 서버가 없어 재지 못해 TASK-171(개발 전 시험)과 TASK-164(부하 시험)로 넘김', finished='2026-11-15, docs/10-wbs/tech-stack.md(기술 스택 제안)'),
-    dict(id='TASK-002', it=0, name='기술 스택·배포 환경 고르기', owner='동희님', size=0.5, src=['REQ-130', 'REQ-141'], dep=['TASK-001'], done='결정 카드에서 고른 답을 말 그대로 docs/records/progress.md에 남김'),
+    dict(id='TASK-002', it=0, name='기술 스택·배포 환경 고르기', owner='동희님', size=0.5, src=['REQ-130', 'REQ-141'], dep=['TASK-001'], done='결정 카드에서 고른 답을 말 그대로 docs/records/progress.md에 남김', finished="2026-11-15 18:31 무렵 동희님 결정 카드 '추천안대로 (추천)', docs/records/progress.md"),
     dict(id='TASK-003', it=0, name='운영자 인증 서비스 고르기(비밀번호·2단계 인증을 맡길 곳)', owner='동희님', size=0.5, src=['OPEN-6'], dep=['TASK-001'], done='고른 서비스를 결정 카드 답 그대로 기록에 남김'),
     dict(id='TASK-004', it=0, name='세션 길이 정하기(사장님 30일·운영자 12시간 제안)', owner='동희님', size=0.5, src=['DEC-26'], done='정한 길이를 결정 카드 답 그대로 기록에 남김', finished="2026-11-15 17시 무렵 동희님 결정 카드 '제안대로 (추천)', 06 DEC-26"),
     dict(id='TASK-005', it=0, name='Anthropic에 보관 안 함(Zero Data Retention) 신청', owner='동희님', size=0.5, src=['DEC-25', 'REQ-266'], done='신청한 날과 회사의 답(허가·거절·기다림)을 기록에 남김. 허가 전에는 처리방침에 30일 보관(04 AI-1)'),

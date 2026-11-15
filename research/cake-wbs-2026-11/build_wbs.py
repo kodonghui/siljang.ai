@@ -431,10 +431,11 @@ for tid, t in T.items():
 for it, note in W.ITERATION_NOTES:
     banned("반복 %s 설명" % it, note)
 if README.exists():
-    # 생성 절·주소·코드 글자는 빼고 본다. '확정한 뒤 고친 것'은 단계 README마다 같은 절 이름
+    # 생성 절·주소·코드 글자는 빼고 본다. '확정한 뒤 고친 것'은 단계 README마다 같은 절 이름,
+    # '확정하고 반복 0 시작'은 9-3절에 말 그대로 옮긴 동희님 결정 카드 답(2026-11-15 18:31 무렵)
     hand = re.sub(GEN_BLOCK, " ", README.read_text(encoding="utf-8"), flags=re.S)
     hand = re.sub(r"https?://\S+|`[^`]*`", " ", hand)
-    banned("README", hand, {"확정": [r"확정한 뒤 고친 것"]})
+    banned("README", hand, {"확정": [r"확정한 뒤 고친 것", r'"확정하고 반복 0 시작']})
 STACK = REPO / "docs/10-wbs/tech-stack.md"
 if STACK.exists():
     # 10단계 기술 스택 제안(TASK-001)도 손으로 쓴 글이라 같은 금지어를 봄. 주소·코드 글자는 뺌
