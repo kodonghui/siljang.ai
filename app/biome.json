@@ -1,7 +1,15 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/dist", "!**/.wrangler", "!**/worker-runtime.d.ts", "!**/ci-logs"]
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.wrangler",
+      "!**/worker-runtime.d.ts",
+      "!**/ci-logs",
+      "!**/web/src/styles/tokens.css"
+    ]
   },
   "formatter": {
     "enabled": true,

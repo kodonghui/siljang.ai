@@ -367,9 +367,12 @@ export interface Problem {
   readonly retryAfterSeconds: number | null;
 }
 
-const FIELD_PATTERN = /^((\/[A-Za-z0-9_]+)+|(header|query|path):[A-Za-z0-9_-]+|file|\/)$/;
-const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const TRACE_PATTERN = /^[0-9a-f]{32}$/;
+/** 06 FieldError.field */
+export const FIELD_PATTERN = /^((\/[A-Za-z0-9_]+)+|(header|query|path):[A-Za-z0-9_-]+|file|\/)$/;
+/** 06 ConfirmationNeeded.day(format: date) */
+export const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+/** 06 Problem.traceId */
+export const TRACE_PATTERN = /^[0-9a-f]{32}$/;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
