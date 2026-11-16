@@ -7,8 +7,10 @@
  *   기간인 'N일'은 날짜로 풀지 않는다. 해와 달은 평가의 오늘(EVAL_TODAY)로 정한다(오늘보다 앞선 날이면 다음 해·다음 달).
  * - 요일·오늘·내일·모레: 그 날로 푼다('토요일'은 오늘부터 가장 가까운 토요일, '이번 주'는 월요일부터 일요일까지,
  *   '다음 주 토요일'은 그 이레 뒤). '그날'은 사례의 날짜 판정으로 푼다(판단 견주기). 숫자가 아니라서 근거 숫자 검사에는 쓰지 않는다.
- * - 시각: HH:MM은 24시간 그대로 한 값(앞에 '오후' 같은 말이 붙으면 그 말대로). 말로 한 'N시'는 오전·오후·밤 같은 말이 붙으면
- *   한 값, 없으면 두 갈래(3시 → 3:00·15:00).
+ * - 시각: HH:MM은 24시간 그대로 한 값(24:00은 0:00, 앞에 '오후' 같은 말이 붙으면 그 말대로). 말로 한 'N시'는 오전·오후·밤
+ *   같은 말이 붙으면 한 값, 없으면 두 갈래(3시 → 3:00·15:00). 12시 표기: 오전·아침·새벽·밤·저녁 12시와 자정·0시·24시는
+ *   0:00, 오후·낮 12시와 정오는 12:00, 때를 붙이지 않은 '12시'는 12:00·0:00 두 값. 밤·한밤 1~5시는 새벽 시각이다.
+ *   여러 값으로 읽히는 시각은 모든 값이 근거와 서버 판단에 맞을 때만 근거가 있다(score.ts·judgment.ts).
  * - 개수·기간: 3일·2호·30개·350kcal처럼 단위가 붙은 숫자.
  * - 한글 숫자(삼만 원, 열 시)는 읽지 못한다(사람 검토 표본으로 봄).
  */
@@ -138,14 +140,36 @@ function weekdayDay(w: number, week: string | undefined): string {
   return isoDay(thisWeek);
 }
 
-const PERIOD = "(오전|오후|낮|밤|저녁|아침|새벽)";
+const PERIOD = "(오전|오후|한낮|낮|한밤중|한밤|밤|저녁|아침|새벽)";
 
-/** 시각 후보(분). 오후·저녁·밤은 12를 더하고, 말이 없으면 12시까지는 두 갈래다. */
+/**
+ * 시각 후보(분). 0시·24시는 0:00 하나. 오전·아침·새벽은 그대로(12시는 0:00), 오후는 12를 더하고(12시는 12:00), 낮·한낮은
+ * 1~6시에만 12를 더하고(12시는 12:00), 저녁은 12를 더하고(12시는 0:00), 밤·한밤은 1~5시는 그대로·6~11시는 12를 더하고
+ * 12시는 0:00이다. 말이 없으면 12시는 12:00·0:00, 1~11시는 오전·오후 두 갈래다.
+ */
 function clock(h: number, min: number, part: string | null): number[] {
-  if (part === "오후" || part === "저녁" || part === "밤") return [(h < 12 ? h + 12 : h) * 60 + min];
-  if (part === "오전" || part === "아침" || part === "새벽") return [h * 60 + min];
-  if (part === "낮") return [(h < 7 ? h + 12 : h) * 60 + min];
-  return h <= 12 ? [h * 60 + min, (h + 12) * 60 + min] : [h * 60 + min];
+  const at = (hour: number): number => hour * 60 + min;
+  if (h === 0 || h === 24) return [at(0)];
+  if (h > 12) return [at(h)];
+  switch (part) {
+    case "오전":
+    case "아침":
+    case "새벽":
+      return [at(h === 12 ? 0 : h)];
+    case "오후":
+      return [at(h === 12 ? 12 : h + 12)];
+    case "낮":
+    case "한낮":
+      return [at(h === 12 ? 12 : h < 7 ? h + 12 : h)];
+    case "저녁":
+      return [at(h === 12 ? 0 : h + 12)];
+    case "밤":
+    case "한밤":
+    case "한밤중":
+      return [at(h === 12 ? 0 : h <= 5 ? h : h + 12)];
+    default:
+      return h === 12 ? [at(12), at(0)] : [at(h), at(h + 12)];
+  }
 }
 
 const timeText = (minutes: number): string => `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
@@ -199,8 +223,8 @@ export function valueMentions(text: string): Mention[] {
   each(new RegExp(`(?:${PERIOD}\\s*)?(?<![A-Za-z0-9])([0-9]{1,2}):([0-9]{2})(?![0-9])`, "g"), (m, s, e) => {
     const h = Number(m[2]);
     const min = Number(m[3]);
-    if (h > 24 || min > 59) return;
-    const minutes = m[1] === undefined ? [h * 60 + min] : clock(h, min, m[1]);
+    if (h > 24 || min > 59 || (h === 24 && min > 0)) return;
+    const minutes = m[1] === undefined ? [(h % 24) * 60 + min] : clock(h, min, m[1]);
     take(s, e, { kind: "time", candidates: minutes.map(timeText), minutes });
   });
   // 말로 한 시각: 오후 3시, 3시 반, 10시 30분
@@ -211,6 +235,11 @@ export function valueMentions(text: string): Mention[] {
       take(s, e, { kind: "time", candidates: minutes.map(timeText), minutes });
     },
   );
+  // 정오(12:00)·자정(0:00)
+  each(/(?<![가-힣])(정오|자정)/g, (m, s, e) => {
+    const minutes = [m[1] === "정오" ? 720 : 0];
+    take(s, e, { kind: "time", candidates: minutes.map(timeText), minutes });
+  });
   // 단위가 붙은 숫자. 'N일'은 기간이 아니면 그 달의 날짜다(21일, 21일날).
   each(new RegExp(`(?<![A-Za-z0-9.,])([0-9]+)\\s*(${UNITS})`, "g"), (m, s, e) => {
     const n = Number(m[1]);
@@ -252,7 +281,7 @@ export function numberFacts(text: string): string[][] {
     .map((m) => [...m.candidates]);
 }
 
-/** 날짜 'M/D'는 'D일'로도, 시각은 모든 후보로 받아 준다. */
+/** 날짜 'M/D'는 'D일'로도 받아 준다. 근거 쪽 글의 시각은 모든 후보를 넣는다. */
 export function supportedSet(input: string): Set<string> {
   const set = new Set<string>();
   for (const candidates of numberFacts(input)) {
@@ -265,9 +294,10 @@ export function supportedSet(input: string): Set<string> {
   return set;
 }
 
+/** 답의 값 가운데 근거가 없는 값의 수. 여러 값으로 읽히면(말로 한 8시) 모든 값이 근거에 있어야 근거다. */
 export function unsupportedNumbers(reply: string, input: string): number {
   const ok = supportedSet(input);
-  return numberFacts(reply).filter((candidates) => !candidates.some((f) => ok.has(f))).length;
+  return numberFacts(reply).filter((candidates) => !candidates.every((f) => ok.has(f))).length;
 }
 
 // ── 서술어가 다스리는 값 ─────────────────────────────────────────────────────────────

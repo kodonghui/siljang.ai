@@ -28,6 +28,16 @@ export interface EvalShop {
    */
   readonly hours: { readonly open: string; readonly close: string };
   readonly closedWeekdays: readonly number[];
+  /**
+   * 운영규정 조문의 때별 규칙(픽업 며칠 전, 0=당일). change·cancel은 변경·취소를 받는 가장 늦은 날(그날 이전이면 받음),
+   * refund는 [며칠 전부터, 환불 비율 %]를 며칠 전이 큰 차례로 둔 표다. 조문에 없는 규칙은 비워 둔다(그 말을 하면 사람 검토).
+   * 답의 변경·취소·환불 말을 견줄 때 쓴다(judgment.ts). 조문 글과 같은지 시험이 본다(test/eval-score.test.ts).
+   */
+  readonly timed: {
+    readonly change?: number;
+    readonly cancel?: number;
+    readonly refund?: readonly (readonly [fromDays: number, percent: number])[];
+  };
 }
 
 export const EVAL_SHOPS: Readonly<Record<ShopKey, EvalShop>> = {
@@ -35,6 +45,15 @@ export const EVAL_SHOPS: Readonly<Record<ShopKey, EvalShop>> = {
     key: "S1",
     hours: { open: "11:00", close: "20:00" },
     closedWeekdays: [1],
+    timed: {
+      change: 3,
+      cancel: 0,
+      refund: [
+        [3, 100],
+        [2, 50],
+        [0, 0],
+      ],
+    },
     id: "00000000-0000-4000-8000-0000000e0001",
     name: "가나다 케이크(시험 가게)",
     policyUrl: "https://shop-s1.example.invalid/privacy",
@@ -64,6 +83,14 @@ export const EVAL_SHOPS: Readonly<Record<ShopKey, EvalShop>> = {
     key: "S2",
     hours: { open: "12:00", close: "19:00" },
     closedWeekdays: [1, 2],
+    timed: {
+      change: 2,
+      cancel: 0,
+      refund: [
+        [2, 100],
+        [0, 0],
+      ],
+    },
     id: "00000000-0000-4000-8000-0000000e0002",
     name: "마바사 디저트(시험 가게)",
     policyUrl: "https://shop-s2.example.invalid/privacy",
@@ -88,6 +115,7 @@ export const EVAL_SHOPS: Readonly<Record<ShopKey, EvalShop>> = {
     key: "S3",
     hours: { open: "10:00", close: "18:00" },
     closedWeekdays: [],
+    timed: { cancel: 3 },
     id: "00000000-0000-4000-8000-0000000e0003",
     name: "아자차 베이크(시험 가게)",
     policyUrl: "https://shop-s3.example.invalid/privacy",

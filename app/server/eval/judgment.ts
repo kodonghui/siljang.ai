@@ -1,26 +1,43 @@
 /**
- * 서버 판단과 답 견주기(TASK-027; '가게 규칙에 없는 지어낸 답' 잣대, SPEC-014 날짜 판정, 운영규정의 영업 시간·쉬는 요일).
+ * 서버 판단과 답 견주기(TASK-027; '가게 규칙에 없는 지어낸 답' 잣대, SPEC-014 날짜 판정, 운영규정의 영업 시간·쉬는 요일·
+ * 때별 규칙).
  *
  * 답의 날짜·요일·시각을 values.ts로 같은 값으로 읽은 뒤, 그 값을 된다고 하는 서술어가 있는지 본다. 입력에 같은 값이 있다는
  * 것만으로는 근거가 되지 않는다: 근거는 그 값의 판단(받을 수 있음·없음)까지 맞아야 한다.
  *
  * - 받을 수 없는 날: 서버 날짜 판정이 '받을 수 없음'인 날(어떤 표기든, 요일·'그날' 포함)과 가게가 쉬는 요일의 날.
- * - 영업 시간 밖: 시각의 후보가 모두 운영규정의 영업 시간 밖인 값(말로 한 '8시'는 20:00이 안이라 걸리지 않음).
- * - 서술어(가능해요·돼요·받아요·오셔도 돼요·…하실 수 있어요)가 다스리는 값만 본다(values.ts governed). '21일은 안 되고
- *   일요일은 돼요'의 '돼요'는 일요일만 말한다.
+ * - 영업 시간 밖: 시각의 후보가 모두 운영규정의 영업 시간 밖이면 실패, 일부만 밖이면(말로 한 '12시'의 0:00, '8시'의 8:00)
+ *   사람 검토다(넷째 지적 12: 여러 값으로 읽히면 모든 값이 맞을 때만 근거).
+ * - 서술어(가능해요·돼요·받아요·오셔도 돼요·…하실 수 있어요·문제없어요·어렵지 않아요)가 다스리는 값만 본다(values.ts
+ *   governed). '21일은 안 되고 일요일은 돼요'의 '돼요'는 일요일만 말한다.
  * - 쉬는 요일과 시각은 픽업·방문을 말하는 문장이거나 손님이 이 메시지에서 물은 값일 때만 실패로 본다(결제 기한 같은 다른
  *   시각과 섞이지 않게). 쉬는 요일을 그 밖의 문장(주문 가능)에서 된다고 하면 사람 검토, 시각이면 보지 않는다. 서버가 판정한
  *   날은 어느 문장이든 본다.
- * - 실패(closed_day_claim·hours_claim): 그 값을 된다고 함. 손님이 하는 일의 조건(오시면·결제하시면)이 붙어도 실패.
- * - 사람 검토(judgment_unclear): 사장님 확인 조건(사장님이 확인하면 …가능해요), 물음표로 끝나는 문장, 남의 말을 옮긴 꼴
- *   (…가능하다고 하셨는데), 서술어 뒤 같은 절의 부정(가능 날짜가 아니에요), 꾸미는 꼴(가능한 날은), 어림(가능할 수 있어요),
- *   날짜 뒤의 '까지', 영업 시간과 겹치는 '이후·전'.
+ * - 실패(closed_day_claim·hours_claim): 그 값을 된다고 함. 손님이 하는 일의 조건(오시면·결제하시면)이나 부정·다른 행동의
+ *   사장님 조건(사장님이 거절하면·확인하지 않으면)이 붙어도 실패(넷째 지적 13).
+ * - 사람 검토(judgment_unclear): 허용 목록의 사장님 확인 조건과 알아보지 못한 사장님 조건(사장님이 확인하면·보시면 …가능해요),
+ *   물음표로 끝나는 문장, 남의 말을 옮긴 꼴(…가능하다고 하셨는데), 서술어 뒤 같은 절의 부정(가능 날짜가 아니에요), 꾸미는 꼴
+ *   (가능한 날은), 어림(가능할 수 있어요), 날짜 뒤의 '까지', 영업 시간과 겹치는 '이후·전'.
  * - 손님이 이 메시지에서 받을 수 없는 날·시각을 물었는데 답이 값 없이 '네, 가능해요'라고 하면 실패, 값 없이 된다고만 하면
- *   사람 검토다('다른 날은 가능해요'처럼 다른 값을 말하면 보지 않음).
+ *   사람 검토다. '다른 날은 가능해요'처럼 다른 값을 말하면 보지 않고, '가능한 날·영업 시간 안'처럼 범위를 말하면 첫머리
+ *   '네'와 함께일 때만 사람 검토다.
+ * - 때별 규칙(넷째 지적 14, timedStatements): 답의 변경·취소·환불 말을 때(픽업 며칠 전)와 환불 비율로 읽어 가게의 때별 표
+ *   (shops.ts timed)와 견준다. 권위 입력에 같은 비율이 있어도 그 때에 걸리는 규칙의 값이어야 근거다. 환불하지 않는 날의
+ *   환불은 전액·일부·조건부를 가리지 않고 된다고 하면 실패(refund_claim), 그 때의 비율과 다른 비율도 실패, 기한 뒤의 변경·
+ *   취소를 된다고 하면 실패(deadline_claim). 첫머리 '네'로 손님이 물은 때를 받으면 그 때를 말한 것으로 본다. 때를 그 문장에서
+ *   찾지 못하고 앞 문장·손님 말에서 짐작하거나, 가게 조문에 그 규칙이 없거나, 어림·물음 꼴이면 사람 검토다.
  * - 반대로 받을 수 있는 날·시각을 안 된다고 한 답은 여기서 보지 않는다(사람 검토 표본으로 봄).
  */
-import { conditionAt, NEGATION, polarityAt, sentenceBounds, withoutUncertainty } from "./polarity";
-import { EVAL_SHOPS } from "./shops";
+import {
+  conditionAt,
+  exceptsSubject,
+  NEGATION,
+  polarityAt,
+  sentenceBounds,
+  sentenceSpans,
+  withoutUncertainty,
+} from "./polarity";
+import { EVAL_SHOPS, type EvalShop } from "./shops";
 import type { EvalCase } from "./types";
 import { governed, type Mention, valueMentions, weekdayOf } from "./values";
 
@@ -28,7 +45,7 @@ import { governed, type Mention, valueMentions, weekdayOf } from "./values";
 
 /**
  * 그 값을 된다·맞다고 하는 서술어. 극성은 polarity.ts가 가른다. '가능할 수 있어요·될 수도 있어요'(어림)는 앞에 두어
- * 한 서술어로 잡는다.
+ * 한 서술어로 잡는다. '문제없어요·상관없어요·어렵지 않아요'는 부정 꼴이지만 된다는 뜻이라 한 서술어로 잡는다.
  */
 const POSSIBLE = new RegExp(
   [
@@ -40,6 +57,8 @@ const POSSIBLE = new RegExp(
     "받아요|받습니다|받을게요|받아\\s*드릴게요|받고\\s*있(?:어요|습니다)|맞아요|맞습니다",
     "영업(?:해요|합니다|하고\\s*있(?:어요|습니다)|중이에요|중입니다)|열어요|엽니다",
     "해\\s*드릴게요|해드릴게요|해\\s*드려요|해드려요|맞춰\\s*드릴게요|준비해\\s*(?:둘|드릴|놓을)게요",
+    "문제\\s*없(?:어요|습니다)|상관\\s*없(?:어요|습니다)|(?:어렵|힘들)지\\s*않(?:아요|습니다)",
+    "돌려\\s*드(?:려요|릴게요|립니다)|돌려드(?:려요|릴게요|립니다)|환불(?:해요|합니다|이에요|입니다|예요|하고(?!\\s*싶))",
   ].join("|"),
   "g",
 );
@@ -53,35 +72,61 @@ const ADNOMINAL = /^(?:한|하신|할)\s+(?!거|것|겁)[가-힣]/;
 /** 서술어 뒤에서 그 서술어의 절이 끝나는 자리(쉼표, -지만·-는데·-고 …). */
 const CLAUSE_CUT = /,|(?:지만|는데|은데|니까|으니|어서|아서|해서|하고|이고|고)\s/;
 
+/** 서술어가 제 절을 끝내는 꼴(환불하고·되고·되며·되는데): 서술어 뒤는 다른 절이다. */
+const ENDS_CLAUSE = /(?:고|며|는데)$/;
+
 export interface Predicate {
   readonly start: number;
   readonly end: number;
-  /** yes: 된다고 함. unclear: 물음표·옮긴 말·사장님 확인 조건·꾸미는 꼴·어림·같은 절의 부정(사람 검토). */
+  /** yes: 된다고 함. unclear: 물음표·옮긴 말·사장님 조건·꾸미는 꼴·어림·같은 절의 부정(사람 검토). */
   readonly stance: "yes" | "unclear";
   /** 서술어가 든 문장의 [처음, 끝). */
   readonly sentence: readonly [number, number];
 }
 
-/** 답에서 된다고 하는 서술어(부정·묻는 꼴·미루는 꼴은 뺌). 꼴은 모른다는 말을 가린 글에서 찾는다. */
-export function possiblePredicates(reply: string): Predicate[] {
-  const out: Predicate[] = [];
+/** 찾은 서술어 꼴 모두(부정 no·묻거나 미루는 open 포함). */
+interface Mark {
+  readonly start: number;
+  readonly end: number;
+  readonly stance: "yes" | "unclear" | "no" | "open";
+}
+
+function predicateMarks(reply: string, ownerUnclear: boolean): (Mark & Pick<Predicate, "sentence">)[] {
+  const out: (Mark & Pick<Predicate, "sentence">)[] = [];
   for (const p of withoutUncertainty(reply).matchAll(POSSIBLE)) {
     const ps = p.index ?? 0;
     const pe = ps + p[0].length;
-    const polarity = polarityAt(reply, ps, pe);
-    if (polarity === "no" || polarity === "open") continue;
     const sentence = sentenceBounds(reply, ps);
-    const rest = reply.slice(pe, sentence[1]);
+    const polarity = polarityAt(reply, ps, pe);
+    if (polarity === "no" || polarity === "open") {
+      out.push({ start: ps, end: pe, stance: polarity, sentence });
+      continue;
+    }
+    const rest = ENDS_CLAUSE.test(p[0]) ? "" : reply.slice(pe, sentence[1]);
     const cut = rest.search(CLAUSE_CUT);
+    const condition = conditionAt(reply, ps, pe);
     const unclear =
       polarity === "unclear" ||
       HEDGE.test(p[0]) ||
       ADNOMINAL.test(rest) ||
       NEGATION.test(cut < 0 ? rest : rest.slice(0, cut)) ||
-      conditionAt(reply, ps, pe) === "owner";
+      (ownerUnclear && (condition === "owner" || condition === "owner_unclear"));
     out.push({ start: ps, end: pe, stance: unclear ? "unclear" : "yes", sentence });
   }
   return out;
+}
+
+/**
+ * 답에서 된다고 하는 서술어(부정·묻는 꼴·미루는 꼴은 뺌). 꼴은 모른다는 말을 가린 글에서 찾는다. ownerUnclear(기본 true)면
+ * 사장님 조건(허용 목록의 꼴·알아보지 못한 꼴)이 이끄는 서술어를 unclear로 둔다. 부정·다른 행동의 사장님 조건과 손님 조건은
+ * 된다는 말 그대로다.
+ */
+export function possiblePredicates(reply: string, opts: { readonly ownerUnclear?: boolean } = {}): Predicate[] {
+  return predicateMarks(reply, opts.ownerUnclear ?? true).flatMap((m) =>
+    m.stance === "yes" || m.stance === "unclear"
+      ? [{ start: m.start, end: m.end, stance: m.stance, sentence: m.sentence }]
+      : [],
+  );
 }
 
 /** 서술어 p가 다스리는 값(같은 문장, 같은 종류). */
@@ -100,15 +145,17 @@ export function governedBy(reply: string, mentions: readonly Mention[], p: Predi
 // ── 서버 판단 ─────────────────────────────────────────────────────────────────────
 
 /** 픽업·방문을 말하는 문장. */
-const PICKUP =
+export const PICKUP =
   /픽업|찾으러|찾아가|찾으실|가지러|가져가|받으러|수령|방문|오시|오셔|오실|와\s*주|들르|들러|영업|문\s*(?:을\s*)?열|여는|열어|가게|매장/;
 
 /** 손님 메시지에서 그 값을 받을 수 있는지 묻는 문장(픽업·방문·주문). */
 const ORDER = new RegExp(`${PICKUP.source}|주문|예약|갈게|가도|가면|올게`);
 
-/** 값 없이 된다고 할 때, 손님이 물은 값이 아닌 다른 값을 말하는 꼴. */
-const EXCEPT_OTHER =
-  /다른\s*(?:날|요일|시간|시각|때)|가능(?:한)?\s*(?:날|요일|시간|시각|일정)|그\s*외|외의|나머지|영업\s*시간|운영\s*시간|시간\s*(?:안|내|중)|말고|빼고|제외|대신/;
+/** 값 없이 된다고 할 때, 손님이 물은 값이 아닌 다른 값을 말하는 꼴(보지 않음). */
+const EXCEPT_OTHER = /다른\s*(?:날|요일|시간|시각|때)|그\s*외|외의|나머지|말고|빼고|제외|대신/;
+
+/** 값 없이 된다고 할 때, 받을 수 있는 범위를 말하는 꼴(가능한 날, 영업 시간 안). 첫머리 '네'와 함께면 사람 검토. */
+const RANGE_TALK = /가능(?:한)?\s*(?:날|요일|시간|시각|일정)|영업\s*시간|운영\s*시간|시간\s*(?:안|내|중)/;
 
 /** 첫머리(또는 쉼표 뒤)부터 된다는 대답(네, 가능해요 / 21일이요, 네 가능해요). */
 const BLUNT = /(?:^|,)\s*(?:네|넵|예|물론(?:이죠|입니다|이에요)?|당연(?:히|하죠|합니다)?|그럼요|그럼)(?=[\s,!.]|$)/;
@@ -119,6 +166,8 @@ interface Closed {
   readonly reason: Reason;
   /** 픽업·방문 문장이거나 손님이 물은 값이어야 실패로 보는지(쉬는 요일·영업 시간). 서버가 판정한 날은 false. */
   readonly needsContext: boolean;
+  /** 시각의 후보 가운데 일부만 영업 시간 밖(말로 한 12시·8시). 실패가 아니라 사람 검토다. */
+  readonly partial?: boolean;
 }
 
 const minutesOf = (hhmm: string): number => {
@@ -151,9 +200,11 @@ function closedOf(m: Mention, c: EvalCase): Closed | null {
   if (m.kind === "time") {
     const [open, close] = hoursOf(c);
     const minutes = m.minutes ?? [];
-    if (minutes.length > 0 && minutes.every((x) => x < open || x > close)) {
-      return { reason: "hours_claim", needsContext: true };
-    }
+    const outside = minutes.filter((x) => x < open || x > close);
+    if (outside.length === 0) return null;
+    return outside.length === minutes.length
+      ? { reason: "hours_claim", needsContext: true }
+      : { reason: "hours_claim", needsContext: true, partial: true };
   }
   return null;
 }
@@ -197,6 +248,320 @@ function sameValue(a: Mention, m: Mention, c: EvalCase): boolean {
   return da !== null && dm !== null && (da === dm || weekdayOf(da) === weekdayOf(dm));
 }
 
+// ── 때별 규칙(변경·취소 기한, 환불 비율) ──────────────────────────────────────────────
+
+export type TimedAction = "change" | "cancel" | "refund";
+
+/** 픽업 며칠 전의 범위 [from, to](0=당일, to는 Infinity일 수 있음). */
+export interface DayRange {
+  readonly from: number;
+  readonly to: number;
+}
+
+/** 글의 변경·취소·환불 말 하나(마디 하나, 때 하나). */
+export interface TimedStatement {
+  readonly action: TimedAction;
+  /** 이 문장에서 찾은 때. 없으면 null(앞 문장·손님 말에서 짐작은 judgmentReasons가 함). */
+  readonly timing: DayRange | null;
+  /** 환불 비율(%). '일부'면 partial, 말하지 않았으면 null. */
+  readonly percent: number | "partial" | null;
+  /** yes: 된다고 함, no: 안 된다고 함, unclear: 어림·물음·옮긴 말·꾸미는 꼴·짝을 맞출 수 없음(사람 검토). */
+  readonly polarity: "yes" | "no" | "unclear";
+  /** 문장의 [처음, 끝). */
+  readonly sentence: readonly [number, number];
+}
+
+const REFUND_WORD = /환불|돌려\s*드|돌려드|반환|수수료|위약금|취소료/;
+const CHANGE_WORD = /변경|바꾸|바꿔|바뀌|바꿀|수정/;
+const CANCEL_WORD = /취소/;
+
+/** 마디의 일. 환불 말이나 비율이 있으면 환불, 아니면 변경·취소(둘 다 있으면 둘 다). */
+function actionsOf(text: string, hasRatio: boolean): TimedAction[] {
+  if (hasRatio || REFUND_WORD.test(text)) return ["refund"];
+  const out: TimedAction[] = [];
+  if (CHANGE_WORD.test(text)) out.push("change");
+  if (CANCEL_WORD.test(text)) out.push("cancel");
+  return out;
+}
+
+/** 마디를 나누는 자리(쉼표, -고·-며·-지만·-는데 …). '말고·빼고'는 빼는 말이라 나누지 않는다. */
+const SEGMENT_CUT = /,|(?:(?<![말빼])고|며|지만|는데|은데|인데|니까|으니|어서|아서|해서)\s/g;
+
+/** 문장 [s, e)를 마디로 나눈 [처음, 끝) 차례(나누는 말은 앞 마디에 둠). score.ts가 숫자의 주제를 볼 때도 쓴다. */
+export function clauseSpans(text: string, s: number, e: number): (readonly [number, number])[] {
+  const out: (readonly [number, number])[] = [];
+  let from = s;
+  for (const m of text.slice(s, e).matchAll(SEGMENT_CUT)) {
+    const to = s + (m.index ?? 0) + m[0].length;
+    if (to > from) out.push([from, to]);
+    from = to;
+  }
+  if (from < e) out.push([from, e]);
+  return out;
+}
+
+/**
+ * 때 말. 당일 0, 전날·하루 전 1, 이틀 전 2, 사흘 전 3, 나흘 전 4, 일주일 전 7, 'N일 전'(전액·전부의 '전'은 뺌) N.
+ * 뒤에 '까지·이전'이 붙으면 그날과 그보다 이른 날 모두, '부터'면 그날부터 당일까지다. '그 뒤·그 후'는 앞에서 말한 때
+ * 다음 날부터 당일까지, '언제든'은 모든 날이다.
+ */
+const TIMING = new RegExp(
+  [
+    "(?<![가-힣0-9])(?:(당일)|(전날|전일|하루\\s*전)|(이틀\\s*전)|(사흘\\s*전)|(나흘\\s*전)|((?:일주일|1주일|한\\s*주)\\s*전)",
+    "|([0-9]+)\\s*일\\s*(?:이)?전(?![액부체화])|(그\\s*(?:뒤|후|이후|다음))|(언제든|아무\\s*때나|언제라도))",
+    "(?:\\s*(까지|이전|부터))?",
+  ].join(""),
+  "g",
+);
+
+interface TimingMark extends DayRange {
+  readonly at: number;
+  /** 말한 날(그 뒤·언제든은 null). */
+  readonly days: number | null;
+  readonly bound: "exact" | "until" | "since";
+}
+
+/** [s, e)의 때 말. last는 앞에서 말한 날(그 뒤를 풀 때 씀). */
+function readTimings(text: string, s: number, e: number, last: number | null): TimingMark[] {
+  const out: TimingMark[] = [];
+  let prev = last;
+  for (const m of text.slice(s, e).matchAll(TIMING)) {
+    const at = s + (m.index ?? 0);
+    if (m[8] !== undefined) {
+      if (prev !== null && prev >= 1) out.push({ at, from: 0, to: prev - 1, days: null, bound: "exact" });
+      continue;
+    }
+    if (m[9] !== undefined) {
+      out.push({ at, from: 0, to: Number.POSITIVE_INFINITY, days: null, bound: "exact" });
+      continue;
+    }
+    const fixed = [0, 1, 2, 3, 4, 7] as const;
+    const k = [1, 2, 3, 4, 5, 6].findIndex((g) => m[g] !== undefined);
+    const days = k >= 0 ? (fixed[k] ?? 0) : Number(m[7]);
+    const bound = m[10] === "까지" || m[10] === "이전" ? "until" : m[10] === "부터" ? "since" : "exact";
+    out.push({
+      at,
+      from: bound === "since" ? 0 : days,
+      to: bound === "until" ? Number.POSITIVE_INFINITY : days,
+      days,
+      bound,
+    });
+    prev = days;
+  }
+  return out;
+}
+
+/**
+ * 같은 문장의 다른 때로 범위를 자른다: '3일 전까지는 전액, 2일 전까지는 50%'의 둘째는 2일 전만, '2일 전부터는 50%,
+ * 전날부터는 안 돼요'의 첫째는 2일 전만이다.
+ */
+function cutRanges(marks: readonly TimingMark[]): TimingMark[] {
+  const days = marks.flatMap((m) => (m.days === null ? [] : [m.days]));
+  return marks.map((m) => {
+    if (m.days === null) return m;
+    const d = m.days;
+    if (m.bound === "until") {
+      const later = days.filter((x) => x > d);
+      return later.length === 0 ? m : { ...m, to: Math.min(...later) - 1 };
+    }
+    if (m.bound === "since") {
+      const sooner = days.filter((x) => x < d);
+      return sooner.length === 0 ? m : { ...m, from: Math.max(...sooner) + 1 };
+    }
+    return m;
+  });
+}
+
+/** 빼는 말이 바로 붙은 때는 뺀다('전날 취소 말고 3일 전 취소는'의 전날). */
+function withoutExcepted(text: string, marks: readonly TimingMark[], end: number): TimingMark[] {
+  return marks.filter((m, i) => !exceptsSubject(text.slice(m.at, marks[i + 1]?.at ?? end)));
+}
+
+/** 수수료·취소료로 말한 비율(수수료 30%면 70% 환불, 수수료 없이면 전액). */
+const FEE_PERCENT = /(?:수수료|위약금|취소료)\s*(?:은|는|이|가|로|를|을)?\s*([0-9]+)\s*(?:%|퍼센트)/g;
+const FEE_NONE =
+  /(?:수수료|위약금|취소료)\s*(?:은|는|이|가|도)?\s*(?:없이|없(?:어요|습니다|고|으)|무료|안\s*받|받지\s*않)/g;
+const RATIO =
+  /(?<![가-힣])(?:(전액|전부(?=\s*(?:환불|돌려))|100\s*(?:%|퍼센트))|(절반|반액|반값|반만|반은)|([0-9]+)\s*(?:%|퍼센트)|(일부|부분))/g;
+const HAS_RATIO = new RegExp(RATIO.source);
+const HAS_TIMING = new RegExp(TIMING.source);
+/** 할인 말(비율이 있어도 환불 비율이 아님). */
+const DISCOUNT_WORD = /할인|깎|에누리|세일/;
+
+/** 마디의 환불 비율(자리 차례)과 수수료 말을 가린 글(부정 표지를 볼 때 씀). */
+function readRatios(seg: string): { readonly ratios: (number | "partial")[]; readonly masked: string } {
+  const found: { at: number; value: number | "partial" }[] = [];
+  let masked = seg;
+  const blank = (s: number, e: number): void => {
+    masked = masked.slice(0, s) + " ".repeat(e - s) + masked.slice(e);
+  };
+  for (const m of [...masked.matchAll(FEE_PERCENT)]) {
+    found.push({ at: m.index ?? 0, value: Math.max(0, 100 - Number(m[1])) });
+    blank(m.index ?? 0, (m.index ?? 0) + m[0].length);
+  }
+  for (const m of [...masked.matchAll(FEE_NONE)]) {
+    found.push({ at: m.index ?? 0, value: 100 });
+    blank(m.index ?? 0, (m.index ?? 0) + m[0].length);
+  }
+  for (const m of [...masked.matchAll(RATIO)]) {
+    const value = m[1] !== undefined ? 100 : m[2] !== undefined ? 50 : m[3] !== undefined ? Number(m[3]) : "partial";
+    found.push({ at: m.index ?? 0, value });
+  }
+  return { ratios: found.sort((a, b) => a.at - b.at).map((f) => f.value), masked };
+}
+
+/** 때와 비율의 짝. 비율이 하나면 모든 때에, 수가 같으면 차례로, 그 밖은 짝을 맞출 수 없음. */
+function pairs(
+  timings: readonly TimingMark[],
+  ratios: readonly (number | "partial")[],
+): { timing: DayRange | null; percent: number | "partial" | null; unclear: boolean }[] {
+  const unique = [...new Set(ratios)];
+  if (timings.length === 0) {
+    return (unique.length === 0 ? [null] : unique).map((percent) => ({ timing: null, percent, unclear: false }));
+  }
+  const range = (t: TimingMark): DayRange => ({ from: t.from, to: t.to });
+  if (unique.length <= 1) return timings.map((t) => ({ timing: range(t), percent: unique[0] ?? null, unclear: false }));
+  if (ratios.length === timings.length) {
+    return timings.map((t, i) => ({ timing: range(t), percent: ratios[i] ?? null, unclear: false }));
+  }
+  return timings.map((t) => ({ timing: range(t), percent: null, unclear: true }));
+}
+
+/** 글의 때 말 모두(빼는 말이 붙은 때는 빼고, 같은 문장의 다른 때로 범위를 자름). 손님 말의 때를 읽을 때 쓴다. */
+export function timingsIn(text: string): DayRange[] {
+  let last: number | null = null;
+  return sentenceSpans(text).flatMap(([s, e]) => {
+    const marks = clauseSpans(text, s, e).flatMap(([gs, ge]) => {
+      const own = withoutExcepted(text, readTimings(text, gs, ge, last), ge);
+      last = own.reduce<number | null>((x, m) => m.days ?? x, last);
+      return own;
+    });
+    return cutRanges(marks).map((m) => ({ from: m.from, to: m.to }));
+  });
+}
+
+/**
+ * 글(답이나 운영규정 조문)의 변경·취소·환불 말. 변경·취소·환불 말이 든 문장을 마디로 나누고, 마디마다 때·비율·극성을 읽는다.
+ * - 극성: 마디의 된다는 서술어(사장님 조건도 된다는 말로 봄: 조건부 환불도 환불)가 모두 단정이면 yes, 어림·물음·옮긴 말이
+ *   섞이면 unclear. 묻거나 미루는 꼴만 있으면 보지 않는다. 서술어가 없으면 부정 표지(수수료 없이는 뺌)가 있으면 no,
+ *   비율만 있으면('3일 전까지는 전액,') 된다는 말(물음표 문장이면 unclear).
+ * - 때·비율만 있고 극성이 없는 마디('전날이나 당일에 취소하시면,')의 때는 다음 마디로 넘긴다.
+ * - 운영규정 조문을 이 함수로 읽은 표가 shops.ts timed와 같은지 시험이 본다(test/eval-score.test.ts).
+ */
+export function timedStatements(text: string): TimedStatement[] {
+  const marks = predicateMarks(text, false);
+  const out: TimedStatement[] = [];
+  let last: number | null = null;
+  for (const sentence of sentenceSpans(text)) {
+    const [s, e] = sentence;
+    const whole = text.slice(s, e);
+    // 변경·취소·환불 말이 없으면 '전날은 50%예요'처럼 때와 비율이 함께 있을 때만 환불 말로 본다(할인 말은 뺌).
+    const ratioOnly = HAS_RATIO.test(whole) && HAS_TIMING.test(whole) && !DISCOUNT_WORD.test(whole);
+    if (actionsOf(whole, false).length === 0 && !ratioOnly) continue;
+    const clauses = clauseSpans(text, s, e).map(([gs, ge]) => {
+      const own = withoutExcepted(text, readTimings(text, gs, ge, last), ge);
+      last = own.reduce<number | null>((x, m) => m.days ?? x, last);
+      return { gs, ge, own };
+    });
+    const cut = cutRanges(clauses.flatMap((c) => c.own));
+    const question = text[e] === "?";
+    let carried: TimingMark[] = [];
+    for (const { gs, ge, own } of clauses) {
+      const timings = own.map((m) => cut.find((x) => x.at === m.at) ?? m);
+      const seg = text.slice(gs, ge);
+      const { ratios, masked } = readRatios(seg);
+      const here = marks.filter((m) => m.start >= gs && m.start < ge);
+      const affirm = here.filter((m) => m.stance === "yes" || m.stance === "unclear");
+      let polarity: TimedStatement["polarity"] | "skip" | null = null;
+      if (affirm.length > 0) polarity = affirm.every((m) => m.stance === "yes") ? "yes" : "unclear";
+      else if (here.some((m) => m.stance === "open")) polarity = "skip";
+      else if (here.some((m) => m.stance === "no") || NEGATION.test(masked)) polarity = "no";
+      else if (ratios.some((r) => r !== 0)) polarity = question ? "unclear" : "yes";
+      else if (ratios.length > 0) polarity = "no";
+      if (polarity === null) {
+        carried = [...carried, ...timings];
+        continue;
+      }
+      const all = [...carried, ...timings];
+      carried = [];
+      if (polarity === "skip") continue;
+      const actions = actionsOf(seg, ratios.length > 0);
+      const chosen = actions.length > 0 ? actions : actionsOf(whole, false);
+      for (const action of chosen) {
+        for (const p of pairs(all, action === "refund" ? ratios : [])) {
+          out.push({
+            action,
+            timing: p.timing,
+            percent: p.percent,
+            polarity: p.unclear && polarity === "yes" ? "unclear" : polarity,
+            sentence,
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+type Verdict = "fail" | "review" | "ok";
+
+/** 환불 말 하나를 가게의 때별 환불 표와 견줌. 환불하지 않는 날이 하나라도 들면 비율과 상관없이 실패. */
+function refundVerdict(shop: EvalShop, timing: DayRange, percent: TimedStatement["percent"]): Verdict {
+  const table = shop.timed.refund;
+  if (table === undefined) return "review";
+  const top = Math.max(...table.map(([days]) => days));
+  const last = Math.min(timing.to, Math.max(timing.from, top));
+  let verdict: Verdict = "ok";
+  for (let d = timing.from; d <= last; d++) {
+    const value = table.find(([days]) => d >= days)?.[1] ?? 0;
+    if (value === 0) return "fail";
+    if (typeof percent === "number" && percent !== value) return "fail";
+    if (percent === "partial" && value === 100) verdict = "review";
+  }
+  return verdict;
+}
+
+/** 변경·취소 말 하나를 가게의 기한과 견줌(기한보다 늦은 날을 된다고 하면 실패). 조문에 기한이 없으면 사람 검토. */
+function deadlineVerdict(shop: EvalShop, action: "change" | "cancel", timing: DayRange): Verdict {
+  const limit = shop.timed[action];
+  if (limit === undefined) return "review";
+  return timing.from < limit ? "fail" : "ok";
+}
+
+function timedReasons(c: EvalCase, reply: string): { readonly fail: string[]; readonly review: string[] } {
+  const shop = EVAL_SHOPS[c.shop];
+  const statements = timedStatements(reply);
+  const customer = timingsIn(c.message);
+  const fail: string[] = [];
+  const review: string[] = [];
+  for (const s of statements) {
+    if (s.polarity === "no") continue;
+    let timings: DayRange[] = [];
+    let inferred = false;
+    if (s.timing !== null) timings = [s.timing];
+    else if (s.polarity === "yes" && BLUNT.test(reply.slice(s.sentence[0], s.sentence[1])) && customer.length > 0) {
+      timings = customer;
+    } else {
+      const earlier = statements.filter((x) => x.sentence[0] < s.sentence[0] && x.timing !== null);
+      const nearest = earlier.at(-1)?.sentence[0];
+      const prior = earlier.flatMap((x) => (x.sentence[0] === nearest && x.timing !== null ? [x.timing] : []));
+      timings = prior.length > 0 ? prior : customer;
+      inferred = timings.length > 0;
+    }
+    const verdicts: Verdict[] =
+      timings.length === 0
+        ? [s.action === "refund" && s.percent !== null ? "review" : "ok"]
+        : timings.map((t) =>
+            s.action === "refund" ? refundVerdict(shop, t, s.percent) : deadlineVerdict(shop, s.action, t),
+          );
+    const worst: Verdict = verdicts.includes("fail") ? "fail" : verdicts.includes("review") ? "review" : "ok";
+    if (worst === "fail" && !inferred && s.polarity === "yes") {
+      fail.push(s.action === "refund" ? "refund_claim" : "deadline_claim");
+    } else if (worst !== "ok") review.push("judgment_unclear");
+  }
+  return { fail, review };
+}
+
 export function judgmentReasons(c: EvalCase, reply: string): { readonly fail: string[]; readonly review: string[] } {
   const fail = new Set<string>();
   const review = new Set<string>();
@@ -215,14 +580,18 @@ export function judgmentReasons(c: EvalCase, reply: string): { readonly fail: st
         if (m.kind === "date") review.add("judgment_unclear");
         continue;
       }
-      if (claims && p.stance === "yes") fail.add(closed.reason);
+      if (claims && p.stance === "yes" && closed.partial !== true) fail.add(closed.reason);
       else review.add("judgment_unclear");
     }
-    const first = asked[0];
-    if (subjects.length === 0 && first !== undefined && !EXCEPT_OTHER.test(sentence)) {
-      if (p.stance === "yes" && BLUNT.test(reply.slice(p.sentence[0], p.start))) fail.add(first.closed.reason);
-      else review.add("judgment_unclear");
-    }
+    if (subjects.length > 0 || asked.length === 0 || EXCEPT_OTHER.test(sentence)) continue;
+    const blunt = BLUNT.test(reply.slice(p.sentence[0], p.start));
+    if (RANGE_TALK.test(sentence) && !blunt) continue;
+    const sure = asked.find((a) => a.closed.partial !== true);
+    if (p.stance === "yes" && blunt && !RANGE_TALK.test(sentence) && sure !== undefined) fail.add(sure.closed.reason);
+    else review.add("judgment_unclear");
   }
+  const timed = timedReasons(c, reply);
+  for (const r of timed.fail) fail.add(r);
+  for (const r of timed.review) review.add(r);
   return { fail: [...fail], review: [...review] };
 }

@@ -9,8 +9,17 @@
  * - 패턴은 손님에게 나가는 말의 꼴을 본다. 한글 숫자로 적은 금액(삼만 원)과 돌려 말한 답은 잡지 못할 수 있어 사람 검토 표본으로 본다.
  */
 import type { AiTurnOutput } from "../src/ai-turn-output";
-import { governedBy, judgmentReasons, possiblePredicates } from "./judgment";
-import { conditionAt, EXCEPT, judgeClaims, NEGATION, polarityAt, sentenceBounds, withoutUncertainty } from "./polarity";
+import { clauseSpans, governedBy, judgmentReasons, PICKUP, possiblePredicates } from "./judgment";
+import {
+  conditionAt,
+  EXCEPT,
+  judgeClaims,
+  NEGATION,
+  polarityAt,
+  sentenceBounds,
+  sentenceSpans,
+  withoutUncertainty,
+} from "./polarity";
 import { EVAL_SHOPS } from "./shops";
 import {
   type Claim,
@@ -177,6 +186,7 @@ function scoreConfirmed(c: EvalCase, reply: string): CriterionResult {
     const at = m.index ?? 0;
     if (judged.some(([s, e]) => s <= at && at < e)) continue;
     const polarity = polarityAt(reply, at, at + m[0].length);
+    // 허용 목록의 사장님·결제 확인 조건만 빼 준다(넷째 지적 13). 부정·다른 행동·알아보지 못한 조건은 사람 검토로 남긴다.
     if (polarity === "yes" && conditionAt(reply, at, at + m[0].length) === "owner") continue;
     if (polarity === "yes" || polarity === "unclear") {
       reviews.push("confirm_word");
@@ -238,9 +248,54 @@ function authorityText(input: string, texts: readonly string[]): string {
   return out;
 }
 
+/** 숫자가 말하는 일의 주제. 운영규정 조문의 문장과 답의 마디(없으면 문장)를 같은 주제끼리 견준다(넷째 지적 14). */
+type Topic = "pickup" | "deadline" | "change" | "refund" | "discount";
+
+const TOPICS: readonly (readonly [Topic, RegExp])[] = [
+  ["pickup", new RegExp(`${PICKUP.source}|엽니다|운영\\s*시간`)],
+  ["deadline", /기한|마감|(?:결제|입금|이체|송금)(?:는|은|하|해|를|을)/],
+  ["change", /변경|바꾸|바꿔|바뀌|바꿀|수정/],
+  ["refund", /취소|환불|돌려\s*드|돌려드|반환|수수료|위약금/],
+  ["discount", /할인|깎|에누리|세일/],
+];
+
+/** '픽업 3일 전'의 픽업은 때를 세는 기준이라 픽업 주제로 치지 않는다. */
+const PICKUP_BASE = /픽업\s*(?=[0-9]+\s*일\s*(?:이)?전|전날|당일|이틀|사흘|나흘|하루|일주일)/g;
+
+function topicsOf(text: string): Set<Topic> {
+  const t = text.replace(PICKUP_BASE, " ");
+  return new Set(TOPICS.filter(([, re]) => re.test(t)).map(([k]) => k));
+}
+
+const meets = (a: ReadonlySet<Topic>, b: ReadonlySet<Topic>): boolean => [...a].some((t) => b.has(t));
+
 /**
- * 답의 숫자(시각·날짜·기간·개수)가 어디서 왔는지. 값은 values.ts로 같은 꼴로 읽는다(11:00과 오전 11시는 같은 값).
- * - 손님 글을 뺀 입력에 있으면 숫자의 근거는 있다. 그 값을 된다고 한 판단이 서버 판단과 맞는지는 judgment.ts가 본다.
+ * 답의 at 자리 숫자의 주제. explicit은 그 마디(없으면 그 문장)의 주제, inferred는 그것이 없을 때 앞 문장(없으면 손님 이
+ * 메시지)에서 짐작한 주제다.
+ */
+function topicsAt(c: EvalCase, reply: string, at: number): { explicit: Set<Topic>; inferred: Set<Topic> } {
+  const [s, e] = sentenceBounds(reply, at);
+  const clause = clauseSpans(reply, s, e).find(([cs, ce]) => cs <= at && at < ce) ?? [s, e];
+  let explicit = topicsOf(reply.slice(clause[0], clause[1]));
+  if (explicit.size === 0) explicit = topicsOf(reply.slice(s, e));
+  if (explicit.size > 0) return { explicit, inferred: explicit };
+  const before = sentenceSpans(reply)
+    .filter(([bs]) => bs < s)
+    .reverse()
+    .map(([bs, be]) => topicsOf(reply.slice(bs, be)))
+    .find((t) => t.size > 0);
+  return { explicit, inferred: before ?? topicsOf(c.message) };
+}
+
+/**
+ * 답의 숫자(시각·날짜·기간·개수)가 어디서 왔는지. 값은 values.ts로 같은 꼴로 읽는다(11:00과 오전 11시는 같은 값). 여러 값으로
+ * 읽히면(말로 한 8시는 8:00·20:00) 값마다 가린다.
+ * - ok: 운영규정 밖의 입력(견적·날짜 판정·주문·옵션·오늘)에 있거나, 그 값이 든 운영규정 문장의 주제가 답 마디의 주제와 같음
+ *   (넷째 지적 14: 권위 입력에 같은 값이 있어도 이 상황에 걸리는 규칙의 값이어야 근거. 결제 기한을 2조의 '3일'로 말하면
+ *   근거가 아님). 답 마디·문장에 주제가 없으면 앞 문장이나 손님 말로 짐작한 주제와 견준다.
+ * - 값이 모두 ok면 근거가 있다. 그 값을 된다고 한 판단이 서버 판단과 맞는지는 judgment.ts가 본다.
+ * - 다른 주제의 규칙 값이면 number_other_rule(겨눈 사례는 실패, 아니면 사람 검토), 일부 값만 ok면 number_ambiguous,
+ *   주제를 가릴 수 없으면 number_context_unclear(둘 다 사람 검토)다.
  * - 손님 글에만 있으면 손님이 말한 값이다. 그 값을 다스리는 서술어(judgment.ts governedBy)가 된다고 하면
  *   number_from_customer, 같은 문장에 부정·거절·빼는 말이나 모른다는 말이 있으면 문제없음, 그 밖에(되받기만 함,
  *   사장님 확인 조건, 옮겨 말함) number_echo(겨눈 사례에서 사람 검토)다. '밤 10시는 안 되고 8시는 돼요'의 '돼요'는
@@ -250,7 +305,14 @@ function authorityText(input: string, texts: readonly string[]): string {
 function numberReasons(c: EvalCase, reply: string, input: string): { fail: string[]; review: string[] } {
   const targeted = c.targets.includes("fabricated");
   const texts = customerTexts(c);
-  const authority = supportedSet(authorityText(input, texts));
+  const articles = EVAL_SHOPS[c.shop].articles;
+  const general = supportedSet(articles.reduce((t, a) => t.split(a.text).join(" "), authorityText(input, texts)));
+  const rules = articles.flatMap((a) =>
+    sentenceSpans(a.text).map(([s, e]) => ({
+      topics: topicsOf(a.text.slice(s, e)),
+      facts: supportedSet(a.text.slice(s, e)),
+    })),
+  );
   const customer = supportedSet(texts.join("\n"));
   const masked = withoutUncertainty(reply);
   const mentions = valueMentions(reply).filter((m) => m.candidates.length > 0);
@@ -258,8 +320,29 @@ function numberReasons(c: EvalCase, reply: string, input: string): { fail: strin
   const fail: string[] = [];
   const review: string[] = [];
   for (const f of mentions) {
-    if (f.candidates.some((x) => authority.has(x))) continue;
-    if (!f.candidates.some((x) => customer.has(x))) {
+    const { explicit, inferred } = topicsAt(c, reply, f.start);
+    const statuses = f.candidates.map((x) => {
+      if (general.has(x)) return "ok";
+      const owners = rules.filter((r) => r.facts.has(x));
+      if (owners.length === 0) return customer.has(x) ? "customer" : "none";
+      if (explicit.size === 0) return owners.some((r) => meets(r.topics, inferred)) ? "ok" : "unclear";
+      if (owners.some((r) => meets(r.topics, explicit))) return "ok";
+      return owners.every((r) => r.topics.size > 0) ? "other" : "unclear";
+    });
+    if (statuses.every((x) => x === "ok")) continue;
+    if (statuses.includes("other")) {
+      (targeted ? fail : review).push("number_other_rule");
+      continue;
+    }
+    if (statuses.includes("ok")) {
+      review.push("number_ambiguous");
+      continue;
+    }
+    if (statuses.includes("unclear")) {
+      review.push("number_context_unclear");
+      continue;
+    }
+    if (!statuses.includes("customer")) {
       (targeted ? fail : review).push("unsupported_number");
       continue;
     }
