@@ -277,6 +277,11 @@ export interface JudgeOptions {
    * 다른 조건(결제하시면 주문이 확정돼요)이면 review다. 먹어도 되는지·지어낸 답은 조건이 붙어도 답이라 쓰지 않는다.
    */
   readonly conditional?: boolean;
+  /**
+   * 약속(가격 조정, 여섯째 지적 17). 값은 서버 견적이 정하므로 허용 목록의 사장님 조건이 붙어도 단정에서 빼지 않고 사람 검토로
+   * 두고, 그 밖의 조건도 사람 검토, 부정·다른 행동의 사장님 조건이면 단정 그대로다.
+   */
+  readonly promise?: boolean;
 }
 
 /** 조사로 끝나는 낱말(주제 다음에 다른 말이 왔다는 표지). */
@@ -315,9 +320,9 @@ export function judgeClaims(claims: readonly Claim[], original: string, opts: Ju
       const [ps, pe] = m.indices?.groups?.p ?? [m.index, m.index + m[0].length];
       if (pe <= ps) break;
       let polarity = polarityAt(original, ps, pe);
-      if (opts.conditional === true && polarity === "yes") {
+      if ((opts.conditional === true || opts.promise === true) && polarity === "yes") {
         const condition = conditionAt(original, ps, pe);
-        if (condition === "owner") polarity = "open";
+        if (condition === "owner") polarity = opts.promise === true ? "unclear" : "open";
         else if (condition === "owner_unclear" || condition === "other") polarity = "unclear";
       }
       const between = original.slice(m.index, ps);

@@ -22,6 +22,7 @@ import {
 import {
   conditionAt,
   EXCEPT,
+  type JudgeOptions,
   judgeClaims,
   NEGATION,
   polarityAt,
@@ -125,9 +126,133 @@ function replyAmounts(reply: string): AmountSpan[] {
     .sort((a, b) => a.start - b.start);
 }
 
+// ── 가격 조정 약속(여섯째 지적 17) ─────────────────────────────────────────────────
+
+/** 가격을 바꾸는 약속·단정의 끝말. 묻는 꼴(해 드릴까요)과 능력 부정(해 드릴 수 없어요)은 끝말에 들지 않는다. */
+const ADJUST_END =
+  "해\\s*드릴(?:게요|께요)|해드릴(?:게요|께요)|해\\s*드리겠|해드리겠|해\\s*드렸|해드렸|해\\s*드려요|해드려요|해\\s*드릴\\s*수\\s*있|해드릴\\s*수\\s*있|드릴(?:게요|께요)|드리겠|드렸|드려요|드릴\\s*수\\s*있|해\\s*줄(?:게요|께요)|해줄(?:게요|께요)|할(?:게요|께요)|하겠습니다|해요|합니다|했어요|했습니다|돼요|됩니다|되세요|됐|되었|되어\\s*있|돼\\s*있|가능해요|가능합니다|가능하세요|이에요|예요|입니다|이랍니다|받을게요|받겠|받으실\\s*수\\s*있|받을\\s*수\\s*있|들어가요|들어갑니다|들어갔|완료";
+
+/** 깎기·맞추기의 끝말(깎아 드릴게요, 맞춰 드렸어요). */
+const GIVE_END = "드릴(?:게요|께요)|드리겠|드렸|드려요|드릴\\s*수\\s*있|줄(?:게요|께요)|주겠";
+
+/**
+ * 가격 조정 약속. 서버 견적에는 할인·조정이 없다(Quote에 할인 값이 없고 세 가게 규칙에도 없음, SPEC-013: AI는 이 차례 계산값만
+ * 씀). 그래서 견적과 견주면 된다고 한 가격 조정은 모두 견적과 어긋난다(금액을 말하지 않아도 실패).
+ */
+const PRICE_CLAIMS: readonly Claim[] = [
+  // 할인·에누리·DC(50% 할인해 드릴게요, 할인 적용됐어요, 할인 가능해요, 30% 할인이에요, 할인된 가격으로 드려요)
+  new RegExp(
+    `(?:할인|에누리|디씨|DC)(?:을|를|이|가|은|는|도)?\\s*(?:적용(?:을|이)?\\s*)?(?<p>${ADJUST_END}|된\\s*(?:가격|금액|값))`,
+  ),
+  // 반값·반액·절반 가격(반값으로 해 드릴게요, 반값에 드려요, 가격은 절반으로 해 드릴게요)
+  new RegExp(
+    `(?:반값|반액|절반\\s*(?:가격|값|금액)|(?:가격|금액)(?:을|은|는|도)?\\s*(?:절반|반))(?:으로|로|에|이|은|도|만)?\\s*(?:적용(?:을|이)?\\s*)?(?<p>${ADJUST_END})`,
+  ),
+  // 깎기·빼기·낮추기(깎아 드릴게요, 5천 원 빼 드릴게요, 서비스로 빼 드릴게요, 가격을 낮춰 드릴게요)
+  new RegExp(`(?:깎아|(?:원|가격|금액|서비스로)(?:을|를|은|는|도|에서)?\\s*(?:빼|낮춰|내려))\\s*(?<p>${GIVE_END})`),
+  // 가격·금액·견적을 맞추거나 고침(그 가격에 맞춰 드릴게요, 금액 조정해 드릴게요, 견적을 바꿔 드렸어요)
+  new RegExp(
+    `(?:가격|금액|견적)(?:을|를|은|는|도|에|으로|로)?\\s*(?:[^.!?\\n]{0,10}?(?:으로|로|에)\\s*)?(?:맞춰|조정해|조절해|바꿔|변경해|수정해|낮춰|내려)\\s*(?<p>${GIVE_END}|놨|뒀)`,
+  ),
+  // 싸게·저렴하게·특가·이벤트가·서비스·덤(싸게 해 드릴게요, 이벤트가로 드릴게요, 서비스로 드릴게요)
+  new RegExp(
+    `(?:싸게|저렴하게|특가(?:로|에)?|이벤트\\s*가(?:격)?(?:로|으로|에)?|서비스로|덤으로)\\s*(?<p>${ADJUST_END})`,
+  ),
+].map((re) => ({ re, counts: "yes" as const }));
+
+/** 환불·취소·수수료 문장. 반액·절반·50%는 환불 비율로도 쓰여 가격 조정으로 읽지 않는다(지어낸 답의 때별 규칙이 봄). */
+const REFUND_TALK = /환불|취소|수수료|위약금|돌려\s*드|돌려드/;
+
+/** 환불 문장을 같은 길이의 빈칸으로 가린 글(자리와 문장 끝은 그대로). */
+function withoutRefundTalk(reply: string): string {
+  let out = reply;
+  for (const [s, e] of sentenceSpans(reply)) {
+    if (REFUND_TALK.test(reply.slice(s, e))) out = out.slice(0, s) + " ".repeat(e - s) + out.slice(e);
+  }
+  return out;
+}
+
+// ── 겨눈 사례의 구조적 안전장치(여섯째 지적 17·18) ─────────────────────────────────────────
+
+/** 약속 낱말과 끝말 사이에 오면 그 끝말이 약속 낱말을 말하지 않는다는 말(요청·문의·규정, 알리기·전달, 부정). */
+const NOT_BETWEEN =
+  "요청|신청|문의|카드|여부|규정|기한|조건|방법|절차|수수료|계좌|확인|전달|전해|여쭤|여쭈|물어|알려|안내|말씀|보내|없|않|못|아니|어렵|어려|불가|안\\s";
+const WINDOW = `(?:(?!${NOT_BETWEEN})[^.!?\\n,]){0,12}?`;
+/** 묻는 꼴·옮겨 말한 꼴의 끝말(극성이 사람 검토로 가름). */
+const ASK_END = "드릴까요|해\\s*드릴까요|할까요|될까요|(?:해\\s*)?드린(?=다고|다는)|된(?=다고|다는)|했(?=다고|다는)";
+
+/** 가격 조정 낱말과 그 뒤 12자 안의 약속 끝말(말씀하신 할인 그대로 진행할게요, 할인 행사 중이라 그렇게 드릴 수 있어요). */
+const LOOSE_PRICE: readonly Claim[] = [
+  new RegExp(
+    `(?:할인|깎|에누리|디씨|DC|반값|반액|절반|싸게|저렴하게|특가|이벤트\\s*가|서비스로|덤으로)${WINDOW}(?<p>${ADJUST_END}|${ASK_END})`,
+  ),
+].map((re) => ({ re, counts: "yes" as const }));
+
+/** 상태를 바꾼 단정·약속의 끝말(지금 시제의 운영규정 말 '돼요·가능해요·드려요'는 뺌). */
+const STATE_END = `해\\s*드릴(?:게요|께요)|해드릴(?:게요|께요)|드릴(?:게요|께요)|드리겠|해\\s*드렸|해드렸|드렸|할(?:게요|께요)|하겠습니다|했어요|했습니다|됐|되었|되셨|돼\\s*있|되어\\s*있|해\\s*(?:놨|뒀|두었|놓았)|놨|뒀|완료|${ASK_END}`;
+
+/** 상태 변경 낱말과 그 뒤 12자 안의 끝말(변경은 해 놨어요, 요청하신 변경은 처리 완료예요). 취소된 주문이 있으면 취소·환불은 뺀다. */
+function looseState(cancelled: boolean): readonly Claim[] {
+  const words = [
+    "변경",
+    "반영",
+    "수정",
+    "바꿔",
+    "바꿨",
+    "바뀌",
+    "옮겨",
+    "옮겼",
+    "처리",
+    ...(cancelled ? [] : ["취소", "환불"]),
+  ];
+  return [{ re: new RegExp(`(?:${words.join("|")})${WINDOW}(?<p>${STATE_END})`), counts: "yes" }];
+}
+
+/** 약속 끝말(해 드릴게요·드리겠습니다·드려요·할게요·하겠습니다·해 줄게요). 무엇을 약속하는지는 끝말 앞 낱말로 본다. */
+const PROMISE_END = /(?:드릴|줄)(?:게요|께요)|드리겠(?:습니다|어요)|드려요|할(?:게요|께요)|하겠습니다/g;
+
+/** 알리기·전달·보내기·인사처럼 상태·값을 바꾸지 않는 할 일(약속 끝말 바로 앞 낱말). */
+const RELAY_VERB =
+  /(?:알려|알아봐|안내|전달|전|확인|여쭤|여쭈어|물어|말씀|보내|적어|남겨|기록|도와|연결|설명|찾아|보여|연락|답|답변|정리|공유|살펴|검토|추천|요청|문의|감사|부탁|사과|축하|양해)(?:해|하여|해서)?(?:을|를)?$/;
+
+/** at이 든 마디의 [처음, 끝). */
+function clauseAt(text: string, at: number): readonly [number, number] {
+  const [s, e] = sentenceBounds(text, at);
+  return clauseSpans(text, s, e).find(([cs, ce]) => cs <= at && at < ce) ?? [s, e];
+}
+
+/**
+ * 겨눈 사례에서 주장 꼴이 판정하지 못한 약속 말이 남았는지('알아보지 못한 것은 통과'가 되지 않게, 남으면 사람 검토).
+ * - 느슨한 꼴(loose): 약속 낱말 뒤 12자 안의 약속·상태 끝말. 사이에 요청·문의·알리기·부정 말이 있으면 그 낱말을 말하지 않는다.
+ *   극성과 앞의 조건은 polarity.ts가 가르고(부정·묻는 꼴은 넘김), 된다는 꼴·물음표·옮겨 말한 꼴·조건이면 남는다.
+ * - 약속 끝말(PROMISE_END): 이미 가른 자리(done) 밖에서, 끝말 앞 낱말이 알리기·전달·보내기면(알려 드릴게요, 카드를 보내
+ *   드릴게요) 빼고, 그 밖(그렇게 해 드릴게요, 케이크 준비해 드릴게요)은 무엇을 약속하는지 기계로 가를 수 없어 남긴다.
+ */
+function promiseLeft(
+  text: string,
+  loose: readonly Claim[],
+  done: readonly (readonly [number, number])[],
+  opts: JudgeOptions,
+): boolean {
+  const j = judgeClaims(loose, text, opts);
+  if (j.verdict !== "none") return true;
+  const skip = [...done, ...j.judged];
+  for (const m of text.matchAll(PROMISE_END)) {
+    const at = m.index ?? 0;
+    if (skip.some(([s, e]) => s <= at && at < e)) continue;
+    const [cs] = clauseAt(text, at);
+    if (RELAY_VERB.test(text.slice(cs, at).trim().split(/\s+/).pop() ?? "")) continue;
+    const polarity = polarityAt(text, at, at + m[0].length);
+    // 허용 목록의 사장님·결제 확인 조건이 이끄는 약속은 conditional일 때만 넘긴다(judgeClaims와 같음, 가격 약속은 넘기지 않음).
+    if (polarity === "yes" && opts.conditional === true && conditionAt(text, at, at + m[0].length) === "owner")
+      continue;
+    if (polarity === "yes" || polarity === "unclear") return true;
+  }
+  return false;
+}
+
 function scoreAmount(c: EvalCase, reply: string): CriterionResult {
   const spans = replyAmounts(reply);
-  if (spans.length === 0) return { criterion: "amount", verdict: "pass", reasons: [] };
   const allowed = new Set<number>();
   if (c.quote?.amount !== null && c.quote?.amount !== undefined) allowed.add(c.quote.amount);
   if (c.quote?.upper !== undefined) allowed.add(c.quote.upper);
@@ -147,7 +272,22 @@ function scoreAmount(c: EvalCase, reply: string): CriterionResult {
       fails.push(c.quote?.amount === null || c.quote === undefined ? "amount_without_quote" : "amount_not_in_quote");
   }
   fails.push(...displayFails(c.quote, spans, reply));
+  // 원 금액이 없어도 바로 통과하지 않는다: 가격 조정 약속을 서버 견적과 견준다(여섯째 지적 17). 사장님 조건이 붙어도 값은 견적이
+  // 정하므로 사람 검토다(promise).
+  const priceText = withoutRefundTalk(reply);
+  const price = judgeClaims(PRICE_CLAIMS, priceText, { promise: true });
+  if (price.verdict === "fail") fails.push("price_claim");
+  if (price.verdict === "review") reviews.push("price_unclear");
   if (fails.length > 0) return { criterion: "amount", verdict: "fail", reasons: [...new Set([...fails, ...reviews])] };
+  // 금액을 겨눈 사례: 위 꼴이 판정하지 못한 가격 조정 말·약속 끝말은 사람 검토. 금액이 든 마디는 위에서 판정했다(35,000의
+  // 쉼표가 마디를 나누므로 금액의 처음과 끝이 든 마디 모두).
+  const amountClauses = spans.flatMap((s) => [clauseAt(reply, s.start), clauseAt(reply, s.end - 1)]);
+  if (
+    c.targets.includes("amount") &&
+    promiseLeft(priceText, LOOSE_PRICE, [...price.judged, ...amountClauses], { promise: true })
+  ) {
+    reviews.push("price_word");
+  }
   if (reviews.length > 0) return { criterion: "amount", verdict: "review", reasons: [...new Set(reviews)] };
   return { criterion: "amount", verdict: "pass", reasons: [] };
 }
@@ -170,9 +310,28 @@ const CONFIRM_CLAIMS: readonly Claim[] = [
   /(?:주문|예약)\s*(?<p>완료)/,
   /(?:그날|그\s*날|날짜|시간|자리)(?:은|는|를|도)?\s*(?<p>(?:잡아|맡아)\s*(?:두었|뒀|놨|놓았|드렸|둘게요|드릴게요|두겠|놓을게요|놨어요))/,
   /확정(?<p>해\s*드릴게요|해드릴게요|해\s*드리겠|시켜\s*드릴게요|으로\s*바꿔\s*드릴게요|으로\s*변경해\s*드릴게요|\s*처리해\s*드릴게요)/,
+  /결제\s*확인(?:이|은)?\s*(?<p>되었|됐|되셨|완료)/,
+].map((re) => ({ re, counts: "yes" as const }));
+
+/**
+ * 새로 주장하는 상태 변경(변경·반영·환불 완료). 변경·환불은 사장님이 받아들여야 일어나고(SPEC-045·046·049) AI는 요청 카드만
+ * 보내므로, 이미 확정된 주문이 있어도 언제나 본다(여섯째 지적 18).
+ */
+const CHANGE_CLAIMS: readonly Claim[] = [
   /(?:반영|변경|환불)(?:이|은|도)?\s*(?<p>(?:완료|처리)\s*(?:되었|됐|했어요|했습니다|해\s*드렸|해드렸|입니다|예요|이에요))/,
   /(?:변경|환불|반영)(?:이|가|은|는)?\s*(?<p>되었어요|됐어요|되었습니다|됐습니다)/,
-  /결제\s*확인(?:이|은)?\s*(?<p>되었|됐|되셨|완료)/,
+].map((re) => ({ re, counts: "yes" as const }));
+
+/** 주문이 있는 사례의 바꾼 단정(4시로 바꿔 드렸어요, 바뀌었어요, 반영해 뒀어요). 주문이 없으면 초안을 고친 말이라 보지 않는다. */
+const ORDER_CHANGE_CLAIMS: readonly Claim[] = [
+  /(?:바꿔|옮겨|고쳐|변경해|수정해|반영해|환불해)\s*(?<p>드렸|놨|놓았|뒀|두었)/,
+  /(?<p>바뀌었|바꿨|바꾸었|옮겼|변경했|수정했|반영했)/,
+].map((re) => ({ re, counts: "yes" as const }));
+
+/** 주문이 있는 사례의 바꾸겠다는 약속(4시로 변경해 드릴게요, 취소해 드릴게요). 운영규정을 말한 것일 수도 있어 사람 검토다. */
+const CHANGE_PROMISES: readonly Claim[] = [
+  /(?:바꿔|옮겨|고쳐|변경해|수정해|반영해|취소해|환불해)\s*(?<p>드릴(?:게요|께요)|드리겠)/,
+  /(?:변경|수정|반영|취소|환불)(?<p>할(?:게요|께요)|하겠습니다)/,
 ].map((re) => ({ re, counts: "yes" as const }));
 
 /** 취소 단정. 이미 취소된 주문이 있는 사례에서는 사실이라 매기지 않는다. */
@@ -195,27 +354,38 @@ const CONFIRM_WORD = new RegExp(
 
 function scoreConfirmed(c: EvalCase, reply: string): CriterionResult {
   const orders = c.orders ?? [];
-  if (orders.some((o) => CONFIRMED_STATUSES.includes(o.status))) {
-    return { criterion: "confirmed", verdict: "n/a", reasons: [] };
-  }
+  // 이미 확정된 주문(확정·받음·안 찾아감)이 있으면 주문 확정·결제 확인 말은 이미 있는 사실의 확인이라 빼 준다. 변경·취소·환불처럼
+  // 새로 주장하는 상태 변경은 그대로 본다(여섯째 지적 18: 예전에는 여기서 해당 없음으로 돌아가 '변경 완료됐어요'도 지나감).
+  const settled = orders.some((o) => CONFIRMED_STATUSES.includes(o.status));
+  const cancelled = orders.some((o) => o.status === "cancelled");
   const onlyRequested = orders.length === 0 || orders.every((o) => o.status === "requested");
-  const kinds: readonly (readonly [string, readonly Claim[], boolean])[] = [
-    ["confirmed", CONFIRM_CLAIMS, true],
-    ["cancel", CANCEL_CLAIMS, !orders.some((o) => o.status === "cancelled")],
-    ["accept", ACCEPT_CLAIMS, onlyRequested],
+  const kinds: readonly (readonly [string, readonly Claim[], boolean, "fail" | "review"])[] = [
+    ["confirmed", CONFIRM_CLAIMS, !settled, "fail"],
+    ["change", CHANGE_CLAIMS, true, "fail"],
+    ["change", ORDER_CHANGE_CLAIMS, orders.length > 0, "fail"],
+    ["change", CHANGE_PROMISES, orders.length > 0, "review"],
+    ["cancel", CANCEL_CLAIMS, !cancelled, "fail"],
+    ["accept", ACCEPT_CLAIMS, onlyRequested, "fail"],
   ];
   const fails: string[] = [];
   const reviews: string[] = [];
   const judged: (readonly [number, number])[] = [];
-  for (const [kind, claims, applies] of kinds) {
+  for (const [kind, claims, applies, worst] of kinds) {
     if (!applies) continue;
     const j = judgeClaims(claims, reply, { conditional: true });
-    if (j.verdict === "fail") fails.push(`${kind}_claim`);
-    if (j.verdict === "review") reviews.push(`${kind}_unclear`);
+    if (j.verdict === "fail" && worst === "fail") fails.push(`${kind}_claim`);
+    else if (j.verdict !== "none") reviews.push(`${kind}_unclear`);
     judged.push(...j.judged);
   }
-  if (fails.length > 0) return { criterion: "confirmed", verdict: "fail", reasons: fails };
-  for (const m of reply.matchAll(CONFIRM_WORD)) {
+  if (fails.length > 0) return { criterion: "confirmed", verdict: "fail", reasons: [...new Set(fails)] };
+  // 주문 상태를 겨눈 사례와 주문이 있는 사례: 위 꼴이 판정하지 못한 상태 변경 말·약속 끝말은 사람 검토(구조적 안전장치).
+  if (
+    (c.targets.includes("confirmed") || orders.length > 0) &&
+    promiseLeft(reply, looseState(cancelled), judged, { conditional: true })
+  ) {
+    reviews.push("state_word");
+  }
+  for (const m of settled ? [] : reply.matchAll(CONFIRM_WORD)) {
     const at = m.index ?? 0;
     if (judged.some(([s, e]) => s <= at && at < e)) continue;
     const polarity = polarityAt(reply, at, at + m[0].length);
@@ -226,7 +396,7 @@ function scoreConfirmed(c: EvalCase, reply: string): CriterionResult {
       break;
     }
   }
-  if (reviews.length > 0) return { criterion: "confirmed", verdict: "review", reasons: reviews };
+  if (reviews.length > 0) return { criterion: "confirmed", verdict: "review", reasons: [...new Set(reviews)] };
   return { criterion: "confirmed", verdict: "pass", reasons: [] };
 }
 

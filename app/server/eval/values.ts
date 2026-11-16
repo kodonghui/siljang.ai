@@ -4,7 +4,8 @@
  *
  * - 금액: 35,000원·3만 5천 원·3.5만 원·₩35,000·5천 원과 '61,000~66,000원'의 앞 끝을 원 단위 수로.
  * - 날짜: 2026-11-21·2026년 11월 21일·2026.11.21·11월 21일·11/21·11.21·21일(날)을 'M/D'로. '3일 전·3일 동안'처럼
- *   기간인 'N일'은 날짜로 풀지 않는다. 해와 달은 평가의 오늘(EVAL_TODAY)로 정한다(오늘보다 앞선 날이면 다음 해·다음 달).
+ *   기간인 'N일'은 날짜로 풀지 않는다. 적힌 해(2027-11-20·2027년·내년)는 그대로 두고, 없을 때만 해와 달을 평가의 오늘
+ *   (EVAL_TODAY)로 짐작한다(오늘보다 앞선 날이면 다음 해·다음 달). 짐작한 해와 다른 해를 적으면 'YYYY-MM-DD'로 둔다.
  * - 요일·오늘·내일·모레: 그 날로 푼다('토요일'은 오늘부터 가장 가까운 토요일, '이번 주'는 월요일부터 일요일까지,
  *   '다음 주 토요일'은 그 이레 뒤). '그날'은 사례의 날짜 판정으로 푼다(판단 견주기). 숫자가 아니라서 근거 숫자 검사에는 쓰지 않는다.
  * - 시각: HH:MM은 24시간 그대로 한 값(24:00은 0:00, 앞에 '오후' 같은 말이 붙으면 그 말대로). 말로 한 'N시'는 오전·오후·밤
@@ -163,11 +164,14 @@ export function weekdayOf(day: string): number {
   return new Date(`${day}T00:00:00Z`).getUTCDay();
 }
 
-/** 'M월 D일'의 해: 오늘보다 앞선 날이면 다음 해. */
-function monthDay(m: number, d: number): string {
-  const year = m > TODAY_M || (m === TODAY_M && d >= TODAY_D) ? TODAY_Y : TODAY_Y + 1;
-  return isoDay(Date.UTC(year, m - 1, d));
+/** 해를 적지 않은 'M월 D일'의 해: 오늘보다 앞선 날이면 다음 해. */
+function inferredYear(m: number, d: number): number {
+  return m > TODAY_M || (m === TODAY_M && d >= TODAY_D) ? TODAY_Y : TODAY_Y + 1;
 }
+
+/** 해를 적은 말(올해·내년·내후년). 숫자로 적은 해(2027년)는 날짜 꼴이 함께 읽는다. */
+const YEAR_WORDS: Readonly<Record<string, number>> = { 올해: 0, 금년: 0, 내년: 1, 명년: 1, 내후년: 2 };
+const YEAR_WORD = `(?:(${Object.keys(YEAR_WORDS).join("|")})\\s*)?`;
 
 /** 'D일'만 말함: 오늘보다 앞선 날이면 다음 달. */
 function dayOnly(d: number): string {
@@ -241,28 +245,41 @@ export function valueMentions(text: string): Mention[] {
   };
   for (const a of amountSpans(text)) body = body.slice(0, a.start) + " ".repeat(a.end - a.start) + body.slice(a.end);
 
-  const date = (m: number, d: number): Omit<Mention, "start" | "end"> | null =>
-    m >= 1 && m <= 12 && d >= 1 && d <= 31 ? { kind: "date", candidates: [`${m}/${d}`], day: monthDay(m, d) } : null;
+  /**
+   * 날짜 값. 적힌 해(2027-11-20·2027년·내년)는 그대로 두고, 없을 때만 오늘로 짐작한다(여섯째 지적 16). 근거와 견줄 꼴은 짐작한
+   * 해와 같으면 'M/D'(해를 적지 않은 근거 쪽의 같은 날과 맞음), 다르면 그 해를 붙인 'YYYY-MM-DD'라 다른 해의 같은 달·날과 맞지 않는다.
+   */
+  const date = (m: number, d: number, year?: number): Omit<Mention, "start" | "end"> | null => {
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    const guessed = inferredYear(m, d);
+    const day = isoDay(Date.UTC(year ?? guessed, m - 1, d));
+    return { kind: "date", candidates: [year === undefined || year === guessed ? `${m}/${d}` : day], day };
+  };
   const pushDate = (start: number, end: number, v: Omit<Mention, "start" | "end"> | null): void => {
     if (v !== null) take(start, end, v);
   };
+  const wordYear = (word: string | undefined): number | undefined =>
+    word === undefined ? undefined : TODAY_Y + (YEAR_WORDS[word] ?? 0);
   // 2026-11-21, 2026년 11월 21일, 2026.11.21, 2026/11/21
   each(
-    /(?<![0-9])20[0-9]{2}\s*(?:-|\.|\/|년)\s*([0-9]{1,2})\s*(?:-|\.|\/|월)\s*([0-9]{1,2})(?:\s*일)?(?![0-9])/g,
-    (m, s, e) => pushDate(s, e, date(Number(m[1]), Number(m[2]))),
+    /(?<![0-9])(20[0-9]{2})\s*(?:-|\.|\/|년)\s*([0-9]{1,2})\s*(?:-|\.|\/|월)\s*([0-9]{1,2})(?:\s*일)?(?![0-9])/g,
+    (m, s, e) => pushDate(s, e, date(Number(m[2]), Number(m[3]), Number(m[1]))),
   );
-  // 11월 21일
-  each(/(?<![A-Za-z0-9])([0-9]{1,2})\s*월\s*([0-9]{1,2})\s*일/g, (m, s, e) =>
-    pushDate(s, e, date(Number(m[1]), Number(m[2]))),
+  // 11월 21일, 내년 11월 21일
+  each(new RegExp(`${YEAR_WORD}(?<![A-Za-z0-9])([0-9]{1,2})\\s*월\\s*([0-9]{1,2})\\s*일`, "g"), (m, s, e) =>
+    pushDate(s, e, date(Number(m[2]), Number(m[3]), wordYear(m[1]))),
   );
   // 11/21
-  each(/(?<![A-Za-z0-9/.])([0-9]{1,2})\/([0-9]{1,2})(?![0-9/])/g, (m, s, e) =>
-    pushDate(s, e, date(Number(m[1]), Number(m[2]))),
+  each(new RegExp(`${YEAR_WORD}(?<![A-Za-z0-9/.])([0-9]{1,2})\\/([0-9]{1,2})(?![0-9/])`, "g"), (m, s, e) =>
+    pushDate(s, e, date(Number(m[2]), Number(m[3]), wordYear(m[1]))),
   );
   // 11.21(토). 뒤에 단위가 오면(1.5배, 2.5kg) 날짜가 아니다.
   each(
-    /(?<![A-Za-z0-9.,])([0-9]{1,2})\.([0-9]{1,2})(?![0-9.])(?!\s*(?:[A-Za-z%]|만|천|원|배|개|호|시|분|퍼센트|센티|그램|칼로리))/g,
-    (m, s, e) => pushDate(s, e, date(Number(m[1]), Number(m[2]))),
+    new RegExp(
+      `${YEAR_WORD}(?<![A-Za-z0-9.,])([0-9]{1,2})\\.([0-9]{1,2})(?![0-9.])(?!\\s*(?:[A-Za-z%]|만|천|원|배|개|호|시|분|퍼센트|센티|그램|칼로리))`,
+      "g",
+    ),
+    (m, s, e) => pushDate(s, e, date(Number(m[2]), Number(m[3]), wordYear(m[1]))),
   );
   // 시각 HH:MM(24시간). 앞에 오후 같은 말이 붙으면 그 말대로.
   each(new RegExp(`(?:${PERIOD}\\s*)?(?<![A-Za-z0-9])([0-9]{1,2}):([0-9]{2})(?![0-9])`, "g"), (m, s, e) => {
@@ -327,15 +344,19 @@ export function numberFacts(text: string): string[][] {
 }
 
 /**
- * 날짜 'M/D'는 'D일'로도 받아 준다. 근거 쪽 글의 시각은 모든 후보를 넣는다. 같은 값의 다른 표기(SAME_VALUE: 전액 → 100%,
- * 환불하지 않습니다 → 0%, 24시간 → 1일)도 넣는다.
+ * 날짜 'M/D'는 'D일'로도 받아 준다. 해를 적은 날('2026-11-10', 짐작한 해와 다른 해)은 해 없이 다시 말한 같은 달·날('11/10'·'10일')로도
+ * 받는다(답에 적은 해는 그 해로만 맞음, 여섯째 지적 16). 근거 쪽 글의 시각은 모든 후보를 넣는다. 같은 값의 다른 표기(SAME_VALUE:
+ * 전액 → 100%, 환불하지 않습니다 → 0%, 24시간 → 1일)도 넣는다.
  */
 export function supportedSet(input: string): Set<string> {
   const set = new Set<string>(sameValueFacts(input));
   for (const candidates of numberFacts(input)) {
     for (const f of candidates) {
       set.add(f);
-      const day = /^[0-9]+\/([0-9]+)$/.exec(f);
+      const iso = /^[0-9]{4}-([0-9]{2})-([0-9]{2})$/.exec(f);
+      const md = iso === null ? f : `${Number(iso[1])}/${Number(iso[2])}`;
+      set.add(md);
+      const day = /^[0-9]+\/([0-9]+)$/.exec(md);
       if (day !== null) set.add(`${day[1]}일`);
     }
   }
