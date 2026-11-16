@@ -8,7 +8,9 @@
       "!**/.wrangler",
       "!**/worker-runtime.d.ts",
       "!**/ci-logs",
-      "!**/web/src/styles/tokens.css"
+      "!**/web/src/styles/tokens.css",
+      "!**/server/eval/source-checklist.md",
+      "!**/server/eval-results"
     ]
   },
   "formatter": {
