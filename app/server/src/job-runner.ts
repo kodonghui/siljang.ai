@@ -283,7 +283,11 @@ async function startDaily(db: RequestDb, job: DailyJob, now: Date, windowMs: num
   if (now.getTime() >= slot.getTime() + windowMs) return false;
   return db.transaction(async (tx) => {
     await tx.query("SELECT pg_advisory_xact_lock($1::int, $2::int)", [LOCK_SPACE, lockKey(job.name)]);
-    const r = await tx.query<{ last_at: Date | null }>(LAST_DAILY_RUN, [job.marker, now]);
+    const r = await tx.query<{ last_at: Date | null }>(LAST_DAILY_RUN, [
+      job.marker,
+      slot,
+      new Date(slot.getTime() + DAY_MS),
+    ]);
     if (!dailyDue(now, r.rows[0]?.last_at ?? null, job.at, job.timeZone, windowMs)) return false;
     await recordOpsEvent(tx, { kind: job.marker, count: 0, detail: { started: 1 }, at: now });
     return true;
@@ -301,6 +305,7 @@ async function processItem(
   now: Date,
   limits: RunLimits,
   log: JobLog,
+  clock: () => number,
 ): Promise<ItemResult> {
   const scope = createShopScope(item.shopId, { kind: "job", job: job.name });
   const handler = job.handler;
@@ -321,7 +326,9 @@ async function processItem(
     }
   }
 
-  const ctx: LeaseContext = { job: job.name, now, leaseUntil: new Date(now.getTime() + limits.leaseMs) };
+  // 임대 끝은 실제로 잡는 시각부터 센다. 늦게 깨운 실행(예정 시각 now보다 시계가 뒤)이 이미 끝난 임대를 만들지 않게.
+  const leaseFrom = Math.max(now.getTime(), clock());
+  const ctx: LeaseContext = { job: job.name, now, leaseUntil: new Date(leaseFrom + limits.leaseMs) };
   let held: { readonly value: unknown } | null;
   try {
     held = await db.transaction(async (tx) => {
@@ -397,7 +404,9 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
       log("info", { event: "job_daily_started", job: job.name });
     }
     const rounds = job.every === "day" ? limits.dailyRounds : 1;
-    for (const name of job.sources) {
+    // 한 일 안의 찾는 곳도 분마다 차례를 돌린다. 앞 곳이 시간 한도를 다 써도 뒤 곳이 굶지 않게.
+    const turn = job.sources.length === 0 ? 0 : Math.floor(now.getTime() / 60_000) % job.sources.length;
+    for (const name of [...job.sources.slice(turn), ...job.sources.slice(0, turn)]) {
       const source = DUE_SOURCES[name];
       const cutoff = job.cutoff?.(name, now) ?? now;
       const seen = new Set<string>();
@@ -423,7 +432,7 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
             break;
           }
           seen.add(item.id);
-          const result = await processItem(options.db, job, source, item, cutoff, now, limits, log);
+          const result = await processItem(options.db, job, source, item, cutoff, now, limits, log, clock);
           tally[result] += 1;
         }
         if (stoppedByBudget || items.length < limits.batch || fresh.length === 0) break;

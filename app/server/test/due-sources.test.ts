@@ -93,7 +93,7 @@ describeDb("찾는 곳(데이터베이스)", () => {
       const r = await sdb.run(DUE_SOURCES[name].claim, [newUuid(), new Date()]);
       expect(r.rowCount, name).toBe(0);
     }
-    const last = await db.query<{ last_at: Date | null }>(LAST_DAILY_RUN, ["purge_run", new Date(0)]);
+    const last = await db.query<{ last_at: Date | null }>(LAST_DAILY_RUN, ["purge_run", new Date(0), new Date(60_000)]);
     expect(last.rows[0]?.last_at).toBeNull();
   });
 

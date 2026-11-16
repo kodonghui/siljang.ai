@@ -21,7 +21,7 @@ export const FIND_SHAPE =
 
 /** 하루 한 번 일이 그날 시작했는지 보는 SQL의 꼴: 운영 기록에서 가게와 무관한 그 종류의 마지막 시각($2 기준 시각까지). */
 export const LAST_RUN_SHAPE =
-  /^SELECT max\(t\.created_at\) AS last_at FROM ops_events t WHERE t\.kind = \$1 AND t\.shop_id IS NULL AND t\.created_at <= \$2$/;
+  /^SELECT max\(t\.created_at\) AS last_at FROM ops_events t WHERE t\.kind = \$1 AND t\.shop_id IS NULL AND t\.created_at >= \$2 AND t\.created_at < \$3$/;
 
 export interface DueSource {
   /** 05의 가게 테이블. */
@@ -156,7 +156,8 @@ export const DUE_SOURCE_NAMES = Object.keys(DUE_SOURCES) as DueSourceName[];
 
 /**
  * 하루 한 번 일(지난 기록 지우기 03:00, SPEC-065)이 그날 시작했는지: 가게와 무관한 운영 기록(ops_events, TBL-051)의 그 종류
- * 마지막 시각. $1 종류(purge_run), $2 기준 시각(그보다 뒤의 행은 보지 않음). 내용 없이 시각 하나만.
+ * 마지막 시각. $1 종류(purge_run), $2 그날의 때, $3 다음 날의 때. 그날 안이면 기준 시각보다 뒤의 표시도 본다(늦게 도착한
+ * 앞 분의 실행이 뒤 분의 시작을 못 보고 다시 시작하지 않게). 내용 없이 시각 하나만.
  */
 export const LAST_DAILY_RUN =
-  "SELECT max(t.created_at) AS last_at FROM ops_events t WHERE t.kind = $1 AND t.shop_id IS NULL AND t.created_at <= $2";
+  "SELECT max(t.created_at) AS last_at FROM ops_events t WHERE t.kind = $1 AND t.shop_id IS NULL AND t.created_at >= $2 AND t.created_at < $3";

@@ -51,7 +51,7 @@ const SCOPE_MAKERS: Record<string, string> = {
 const CROSS_SHOP_FILE = "due-sources.ts";
 const CROSS_SHOP_SHAPES: readonly RegExp[] = [
   /^SELECT t\.shop_id, t\.id, t\.([a-z_]+) AS due_at FROM ([a-z_]+) t WHERE (.+) AND t\.\1 <= \$1 ORDER BY t\.\1, t\.id LIMIT \$2$/,
-  /^SELECT max\(t\.created_at\) AS last_at FROM ops_events t WHERE t\.kind = \$1 AND t\.shop_id IS NULL AND t\.created_at <= \$2$/,
+  /^SELECT max\(t\.created_at\) AS last_at FROM ops_events t WHERE t\.kind = \$1 AND t\.shop_id IS NULL AND t\.created_at >= \$2 AND t\.created_at < \$3$/,
 ];
 
 /** 가게 범위 밖 읽기로 허락한 SQL인지(그 파일의 그 꼴만). 꼴 안의 조건에 다른 테이블을 끌어오는 하위 질의는 받지 않는다. */

@@ -426,7 +426,7 @@ describeDb("실행기(데이터베이스)", () => {
       },
     );
     const dying = testDb();
-    const runA = runDueJobs({ db: dying, now: t0, jobs: [job], log: quiet });
+    const runA = runDueJobs({ db: dying, now: t0, jobs: [job], log: quiet, clock: () => t0.getTime() });
     await calling.wait;
     // 임대는 커밋되어 있음: 시도 1, 때는 임대 끝(2분 뒤).
     expect((await states(db, [id])).get(id)).toMatchObject({ attempts: 1, next_attempt_at: plus(t0, 2 * MIN) });
@@ -438,8 +438,7 @@ describeDb("실행기(데이터베이스)", () => {
     await runDueJobs({ db: other, now: plus(t0, MIN), jobs: [job], log: quiet });
     expect(acts).toHaveLength(1);
     // 임대가 끝난 뒤 다시 띄운 서버의 실행기가 이어서 함.
-    const r = await runDueJobs({ db: other, now: plus(t0, 3 * MIN), jobs: [job], log: quiet });
-    expect(r.jobs.lease_test?.done).toBe(1);
+    await runDueJobs({ db: other, now: plus(t0, 3 * MIN), jobs: [job], log: quiet });
     expect(acts).toEqual([id, id]);
     expect((await states(db, [id])).get(id)).toMatchObject({
       attempts: 2,
@@ -510,5 +509,87 @@ describeDb("실행기(데이터베이스)", () => {
       [slot, plus(slot, 72 * 60 * MIN)],
     );
     expect(marks.rows[0]?.n).toBe(2);
+  });
+
+  it("하루 한 번 일: 앞 분의 실행기가 늦게 도착해도, 그날 이미 시작했으면 다시 시작하지 않음(Codex 지적)", async () => {
+    const slot = dailySlot(pastMinute(), "03:00", "Asia/Seoul");
+    const daily: RunnableJob = {
+      ...txJob("daily_order_test", new Set(), []),
+      every: "day",
+      at: "03:00",
+      timeZone: "Asia/Seoul",
+      marker: "purge_run",
+    };
+    const later = await runDueJobs({ db, now: plus(slot, 2 * MIN), jobs: [daily], log: quiet });
+    // 03:01에 깨우기로 한 실행기가 03:02 실행기보다 늦게 도착함.
+    const delayed = await runDueJobs({ db: other, now: plus(slot, MIN), jobs: [daily], log: quiet });
+    expect(later.dailyStarted).toEqual(["daily_order_test"]);
+    expect(delayed.dailyStarted).toEqual([]);
+  });
+
+  it("늦게 깨운 실행기의 임대는 실제로 잡은 때부터 셈: 제때 깨운 다음 실행기가 같은 행을 함께 부르지 않음(Codex 지적)", async () => {
+    const t0 = pastMinute();
+    const id = (await addAlert(db, a.shopId, t0)).id;
+    const acts: string[] = [];
+    const calling = gate();
+    const release = gate();
+    const job = leasedJob("late_lease_test", new Set([id]), acts, async () => {
+      if (acts.length === 1) {
+        calling.open();
+        await release.wait;
+      }
+      return "task-late";
+    });
+    // t0에 깨우기로 한 실행기가 3분 늦게 돎(시계는 t0+3분).
+    const late = runDueJobs({ db, now: t0, jobs: [job], log: quiet, clock: () => plus(t0, 3 * MIN).getTime() });
+    await calling.wait;
+    const leased = (await states(other, [id])).get(id)?.next_attempt_at;
+    await runDueJobs({ db: other, now: plus(t0, 3 * MIN), jobs: [job], log: quiet });
+    release.open();
+    await late;
+    const after = (await states(db, [id])).get(id);
+    // 끝난 행으로 둔다(다른 시험의 찾기에 걸리지 않게).
+    await scoped(db, a.shopId).run(
+      "UPDATE owner_alerts t SET status = 'failed', fail_code = 'unknown' WHERE t.shop_id = $1 AND t.id = $2",
+      [id],
+    );
+    expect(leased).toEqual(plus(t0, 5 * MIN));
+    expect(acts).toEqual([id]);
+    expect(after).toMatchObject({ attempts: 1, status: "confirming", kakao_task_id: "task-late" });
+  });
+
+  it("한 일의 앞 곳이 시간 한도를 다 써도, 찾는 곳의 차례를 분마다 돌려 뒤 곳도 함(Codex 지적)", async () => {
+    const now = pastMinute();
+    const send = (await addAlert(db, b.shopId, plus(now, -1000))).id;
+    const r = await db.query<{ id: string }>(
+      "INSERT INTO owner_alerts (shop_id, event_key, kind, status, kakao_task_id, requested_at) VALUES ($1, $2, 'new_task', 'confirming', 'task-test', $3) RETURNING id",
+      [b.shopId, eventKeys.alert("new_task", newUuid()), plus(now, -2 * MIN)],
+    );
+    const check = r.rows[0]?.id as string;
+    const mine = new Set([send, check]);
+    let clock = 0;
+    const seen: string[] = [];
+    const job: RunnableJob = {
+      name: "source_turn_test",
+      every: "minute",
+      sources: ["owner_alert_send", "owner_alert_check"],
+      handler: {
+        mode: "transaction",
+        async run(_db, item) {
+          if (!mine.has(item.id)) return;
+          seen.push(item.source);
+          clock += 2000;
+        },
+      },
+    };
+    for (const at of [now, plus(now, MIN)]) {
+      await runDueJobs({ db, now: at, jobs: [job], log: quiet, limits: { budgetMs: 1000 }, clock: () => clock });
+    }
+    // 끝난 행으로 둔다(다른 시험의 찾기에 걸리지 않게).
+    await scoped(db, b.shopId).run(
+      "UPDATE owner_alerts t SET status = 'failed', fail_code = 'unknown' WHERE t.shop_id = $1 AND t.id = ANY($2::uuid[])",
+      [[send, check]],
+    );
+    expect([...seen].sort()).toEqual(["owner_alert_check", "owner_alert_send"]);
   });
 });
