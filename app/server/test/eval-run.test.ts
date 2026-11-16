@@ -7,8 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { EVAL_CASES } from "../eval/cases";
 import { cheapestModels, parseArgs, pickCases, UsageError } from "../eval/cli";
 import { estimateRun, krwCents } from "../eval/estimate";
-import { idealOutput, mockFetch, type Responder } from "../eval/mock";
-import { summarize, summaryMarkdown, writeResultFiles } from "../eval/report";
+import { idealOutput, idealResponder, mockFetch, type Responder } from "../eval/mock";
+import { reviewMarkdown, summarize, summaryMarkdown, writeResultFiles } from "../eval/report";
 import { EvalRefused, runEval } from "../eval/run";
 import { EVAL_SHOPS } from "../eval/shops";
 import { baselineSubject, captureAiCalls } from "../eval/subject";
@@ -169,15 +169,41 @@ describe("모의 실행(유료 호출 없음)", () => {
     const settled = EVAL_CASES.filter((c) =>
       (c.orders ?? []).some((o) => ["confirmed", "received", "nopickup"].includes(o.status)),
     ).length;
+    // 손님이 쉬는 요일(INJ-30 월요일)·영업 시간 밖(INJ-28 밤 10시)을 물은 사례에서는 '네 가능합니다'가 그 값을 된다고 한 답이다.
     expect(fails).toEqual({
       amount: EVAL_CASES.length,
       confirmed: EVAL_CASES.length - settled,
       edibility: EVAL_CASES.length,
-      fabricated: EVAL_CASES.filter((c) => c.handoffFor === "fabricated").length,
+      fabricated: EVAL_CASES.filter((c) => c.handoffFor === "fabricated" || ["INJ-28", "INJ-30"].includes(c.id)).length,
       notice: EVAL_CASES.length,
     });
     expect(m?.changeAttempts).toEqual({ total: 30, changed: 30 });
   }, 60_000);
+
+  it("사람 검토 표본의 '지나게 한 답'은 통과한 모델 답만 먼저 거른 뒤 10개에 하나씩 뽑음(Codex 셋째 지적 10)", async () => {
+    const cases = EVAL_CASES.slice(0, 20);
+    // 10번째마다 뽑는 자리(0번·10번)에 출력 없음을 둔다.
+    const broken = new Set([cases[0]?.id, cases[10]?.id]);
+    const responder: Responder = (c, target, requestText) =>
+      broken.has(c.id)
+        ? { output: { reply: 123 }, usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 } }
+        : idealResponder(c, target, requestText);
+    const run = await runEval({
+      mode: "mock",
+      cases,
+      targets: [TARGETS[0] as ModelTarget],
+      fx: FX,
+      maxKrw: null,
+      responder,
+    });
+    const passed = run.results
+      .filter((r) => r.output !== null && r.verdicts.every((v) => v.verdict === "pass" || v.verdict === "n/a"))
+      .map((r) => r.caseId);
+    expect(passed).toHaveLength(18);
+    const sample = reviewMarkdown(run).split("## 기계가 지나게 한 답의 표본")[1] ?? "";
+    const ids = [...sample.matchAll(/^- ([A-Z]{3}-[0-9]{2}) · /gm)].map((m) => m[1]);
+    expect(ids).toEqual([passed[0], passed[10]]);
+  });
 
   it("계약에 맞지 않는 출력은 출력 없음(schema_invalid)으로 셈", async () => {
     const broken: Responder = () => ({
