@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec81ad9299d3242cc8ac7f
+notion: https://app.notion.com/p/419bf16cc3ec81408782e39fc6588cbc
 ---
 
 # FL-014 지난 기록 지우기

@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec81acba5bf18e12cbe7b6
+notion: https://app.notion.com/p/419bf16cc3ec81608202d9557d85c2f6
 ---
 
 # FL-007 결제하고 주문 확정받기

@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec81459f12e9633dafd877
+notion: https://app.notion.com/p/419bf16cc3ec813780c1d86cadd48b22
 ---
 
 # FL-009 주문 취소하고 환불받기

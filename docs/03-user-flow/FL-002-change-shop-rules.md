@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec8199b42ae617459e2192
+notion: https://app.notion.com/p/419bf16cc3ec81b7bd6afca3e04f13e2
 ---
 
 # FL-002 가게 규칙 바꾸기

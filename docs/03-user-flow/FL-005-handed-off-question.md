@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec81e6abb3fa6edd348415
+notion: https://app.notion.com/p/419bf16cc3ec8148bacee7dad23cb2c2
 ---
 
 # FL-005 에스컬레이션 건의 답 받기

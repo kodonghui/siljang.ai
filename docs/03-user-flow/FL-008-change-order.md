@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec819292ece5773f7e5d5f
+notion: https://app.notion.com/p/419bf16cc3ec8155a370e9cf1ee06e62
 ---
 
 # FL-008 주문 바꾸기

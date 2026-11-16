@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec812fa576e42ad37b7f69
+notion: https://app.notion.com/p/419bf16cc3ec816baaa2f9850a3f1123
 ---
 
 # FL-001 가게 등록하고 예약 링크 받기

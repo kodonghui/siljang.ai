@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec8122a9a3ff6c4c5b934b
+notion: https://app.notion.com/p/419bf16cc3ec810a821bf021fff944ad
 ---
 
 # FL-004 손님 메시지 하나에 답하기
