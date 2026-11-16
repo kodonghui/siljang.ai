@@ -120,7 +120,7 @@ export class AccessLogError extends Error {
   }
 }
 
-/** Cloudflare가 요청마다 넣는 접속지 헤더(Cloudflare 문서 'Cloudflare HTTP headers', 2026-11-16 확인, app/README.md 67). */
+/** Cloudflare가 요청마다 넣는 접속지 헤더(Cloudflare 문서 'Cloudflare HTTP headers', 2026-11-16 확인, app/README.md 70). */
 export const CLIENT_IP_HEADER = "CF-Connecting-IP";
 
 /** 05 access_logs.client_ip의 CHECK. */
