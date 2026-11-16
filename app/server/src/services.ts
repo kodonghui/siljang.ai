@@ -1,10 +1,12 @@
 /**
  * 요청마다 쓰는 바깥 서비스(TASK-022): 지금 시각, 사진 저장소, 요청 빈도 한도, 사진 서명 주소.
  * TASK-025: 계좌번호·원래 값 암호화(field-crypto.ts).
+ * TASK-026: 모델 호출 모듈(ai-model.ts). 설정(AI_PROVIDER 등)이 없으면 MissingSettingError.
  * 업무 코드는 Workers 바인딩과 설정 값을 직접 읽지 않고 이것을 받는다(tech-stack.md 4-3의 1). 시험은 AppOptions.services로
  * 메모리 저장소·메모리 한도·정한 시각을 넣는다.
  * 설정이 빠졌으면 그것을 쓰는 요청만 500 internal(MissingSettingError, 로그에는 이름만).
  */
+import { type AiModel, createAiModel } from "./ai-model";
 import type { Bindings } from "./app";
 import { type FieldCrypto, fieldCrypto } from "./field-crypto";
 import { type FileUrls, fileUrlSigner } from "./file-url";
@@ -23,6 +25,8 @@ export interface Services {
   fileUrls(): FileUrls;
   /** 계좌번호·원래 값 암호화. FIELD_KEY_CURRENT·FIELD_KEY_V<n>이 없으면 MissingSettingError. */
   fieldCrypto(): FieldCrypto;
+  /** 배포 설정으로 고른 회사·모델의 호출 모듈. AI_PROVIDER 등이 없으면 MissingSettingError. */
+  aiModel(): AiModel;
 }
 
 /** 시험이 바꾸는 것. */
@@ -31,12 +35,14 @@ export interface ServiceOverrides {
   readonly storage?: ObjectStore;
   readonly limiters?: { readonly [B in RateLimitRule["binding"]]?: RateLimiter };
   readonly fieldCrypto?: FieldCrypto;
+  readonly aiModel?: AiModel;
 }
 
 export function createServices(env: Bindings, settings: Settings, overrides: ServiceOverrides = {}): Services {
   let store: ObjectStore | undefined = overrides.storage;
   let urls: FileUrls | undefined;
   let fields: FieldCrypto | undefined = overrides.fieldCrypto;
+  let ai: AiModel | undefined = overrides.aiModel;
   return {
     now: overrides.now ?? (() => new Date()),
     storage() {
@@ -68,6 +74,12 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
         throw new MissingSettingError("FIELD_KEY_CURRENT and FIELD_KEY_V<n> are not set");
       fields = fieldCrypto(settings.fieldKeys);
       return fields;
+    },
+    aiModel() {
+      if (ai !== undefined) return ai;
+      if (settings.ai === null) throw new MissingSettingError("AI_PROVIDER and AI_MODEL are not set");
+      ai = createAiModel(settings.appEnv, settings.ai, overrides.now ? { now: overrides.now } : {});
+      return ai;
     },
   };
 }

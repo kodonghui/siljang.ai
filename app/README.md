@@ -1,6 +1,6 @@
 # app: 서버와 웹 (11단계 원본)
 
-TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(요청 키·오류 응답·데이터베이스 연결 층·시각과 확인 카드의 바탕·운영 기록), TASK-019의 가게별 기록 나누기(가게 범위 접근 층·가게 조건 검사·교차 가게 시험 묶음), TASK-022의 사진 올리기(06 API-007, 저장소 모듈, 사장님 범위 경로, 15분 서명 주소, 05 A11 사진 장수), TASK-025의 계좌번호·원래 값 암호화(05 A23·E20의 봉투와 키 버전, 05 A15 마스킹한 값 저장), TASK-023의 서버 안의 일 실행기(05 A33의 같은 일은 한 번만, 기다리는 일 찾기·잡기, 일 등록부, Cron 어댑터)입니다. 계약은 [../api/openapi.yaml](../api/openapi.yaml), 스키마는 [../db/](../db/)에 있고 여기서 고치지 않습니다.
+TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(요청 키·오류 응답·데이터베이스 연결 층·시각과 확인 카드의 바탕·운영 기록), TASK-019의 가게별 기록 나누기(가게 범위 접근 층·가게 조건 검사·교차 가게 시험 묶음), TASK-022의 사진 올리기(06 API-007, 저장소 모듈, 사장님 범위 경로, 15분 서명 주소, 05 A11 사진 장수), TASK-025의 계좌번호·원래 값 암호화(05 A23·E20의 봉투와 키 버전, 05 A15 마스킹한 값 저장), TASK-023의 서버 안의 일 실행기(05 A33의 같은 일은 한 번만, 기다리는 일 찾기·잡기, 일 등록부, Cron 어댑터), TASK-026의 모델 호출 한 곳(두 회사의 LangChain 채팅 모델을 배포 설정으로 고름, 호출마다 `ai_calls` 한 행과 금액, 운영에서 추적 도구 끔)입니다. 계약은 [../api/openapi.yaml](../api/openapi.yaml), 스키마는 [../db/](../db/)에 있고 여기서 고치지 않습니다.
 
 ## 설계 메모
 
@@ -120,6 +120,75 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
     - 실패 알림은 TASK-016, 접속기록은 TASK-024(요청 안)가 맡습니다.
     - 늘 던지는 행은 뒤의 행을 막지 않지만(41) 매분 다시 집혀 실패 로그를 남기고 시간을 씁니다. 맡는 작업은 다시 해도 안 될 실패를 던지지 말고 행의 상태(`failed`와 `fail_code` 같은 것)로 적어 찾기에서 빠지게 합니다.
     - 시간 넘김 뒤 실제로는 된 바깥 호출은 다시 보낼 수 있습니다(G4 다시 보내기와 같은 위험). 카카오 요청 ID로 결과를 조회하는 손님 안내(TASK-104)와 사장님 알림(TASK-072)이 다룹니다.
+48. 모델 호출 한 곳(TASK-026; REQ-266·138·150, 06 DEC-25·DEC-17, 04 5절 AI-1, 05 TBL-048): AI 모델은 `server/src/ai-model.ts`에서만 부릅니다. 그래프·도구 코드(TASK-069 등)는 `services.aiModel()`이 주는 모듈의 `call()`만 부릅니다.
+    - 파일: `ai-model.ts`(부르기·시간 재기·실패 나누기), `ai-turn-output.ts`(06 AiTurnOutput과 서버 확인), `ai-usage.ts`(응답 스트림의 사용량), `ai-prices.ts`(요금표와 금액 셈), `ai-calls.ts`(`ai_calls` 한 행과 순번), `settings.ts`(AI 설정·키·추적 도구 검사).
+    - `call()`은 한 번 부르고 `{ ok: true, output, aiCallId }`나 `{ ok: false, failure, retryable, aiCallId }`를 돌려줍니다. failure는 06 DEC-07의 스킬 결과(`ai_timeout`·`ai_unavailable`·`ai_key_missing`·`ai_limit_reached`)에 맞춘 넷과 AI-1의 `schema_invalid`입니다. 다시 할지, 차례마다 8번 상한, 비용 한도, 에스컬레이션은 그래프 층이 고릅니다(57).
+    - 정적 시험(`test/ai-model-static.test.ts`): `@langchain/anthropic`·`@langchain/openai`·`@langchain/core`는 `ai-model.ts`만 가져오고, 그 아래의 `@anthropic-ai/sdk`·`openai`·`langsmith`는 어디서도 가져오지 않으며, `ai_calls`에 쓰는 SQL은 `ai-calls.ts`에만 있습니다.
+49. 고른 라이브러리: LangChain.js의 `@langchain/core` 1.3.5, `@langchain/anthropic` 1.6.1, `@langchain/openai` 1.8.2와 서버 확인용 `@cfworker/json-schema` 4.1.6입니다. 그 아래 공식 SDK `@anthropic-ai/sdk` 1.6.0·`openai` 7.53.0과 `langsmith` 0.11.8·`zod` 4.6.7이 따라옵니다.
+    - 까닭: AI 부분은 LangChain·LangGraph로 만듭니다(02 동희님 2026-11-11 14:03, 04 5절 '11/11 결정'). 두 회사의 공식 SDK를 LangChain 채팅 모델이 감싸 같은 꼴로 부르고, TASK-069의 그래프(LangGraph)가 같은 모델 객체를 씁니다. 서버 확인은 Workers가 실행 중 `eval`·`new Function`을 막아(tech-stack.md 3-4) 그것 없이 도는 `@cfworker/json-schema`로 합니다(ajv는 시험에서만).
+    - 판: 11처럼 `npm install --before=2026-11-08`로 나온 지 일주일 넘은 판만 받았습니다(위 판은 모두 2026-11-07까지 나옴. 그 뒤의 `@langchain/core` 1.3.6·`@langchain/anthropic` 1.6.2·`@langchain/openai` 1.8.3은 받지 않음).
+    - Workers에서 도는지: 버리는 시험 Worker에 두 채팅 모델과 LangGraph 1.7.2의 그래프 하나를 넣어 로컬 workerd(wrangler dev 4.158.0, 앱과 같은 호환 날짜 2026-11-01이라 nodejs_compat이 켜짐)에서 가짜 응답으로 불렀습니다(200, 두 모델의 답과 그래프 결과가 옴). 묶은 크기 5191.72 KiB(gzip 931.36 KiB. Workers 한도는 압축 전 64 MiB), 시작 시간 52.4ms(한도 1초)였습니다. 이 브랜치의 `npm run build`(LangGraph 없음)는 4845.67 KiB(gzip 867.10 KiB)입니다. LangGraph는 확인만 하고 더하지 않았습니다(그래프는 TASK-069). Cloudflare에 배포한 Worker에서 부르는 것은 하지 않았습니다(57).
+50. 회사로 보내는 요청:
+    - Anthropic: Messages API(`/v1/messages`)를 스트리밍으로 부르고 출력은 구조화 출력(`output_config.format`의 json_schema)으로 받습니다. 키는 SDK 1.6.0이 `Authorization` 머리로 보냅니다. 요청마다 보관을 끄는 값이 없어 보관 안 함은 회사의 허가(TASK-005)로만 됩니다.
+    - OpenAI: Chat Completions가 아니라 Responses API(`/v1/responses`)를 스트리밍으로 부르고, `store: false`(LangChain `zdrEnabled`)와 strict json_schema(`text.format`)를 보냅니다. Responses를 고른 까닭은 OpenAI가 새 프로젝트에 Responses를 권하고, GPT-5.4부터 Chat Completions는 `reasoning_effort`가 none이 아니면 도구 호출을 받지 않기 때문입니다(OpenAI 'Migrate to the Responses API', 2026-11-16 확인). TASK-069의 그래프가 도구를 씁니다. 보관 안 함 허가는 TASK-006입니다.
+    - 둘 다: 보내는 곳은 고른 회사의 공식 주소 하나(`AI_ORIGINS`)이고 다른 곳으로 가려는 요청은 보내지 않습니다(`blocked_host`). 주소를 정해 두어 `ANTHROPIC_BASE_URL`·`OPENAI_BASE_URL`·`LANGSMITH_GATEWAY`가 바꾸지 못합니다. LangChain이 기본으로 켜는 브라우저 허용(`dangerouslyAllowBrowser`)은 끕니다. 최대 출력은 4,096토큰(추론 포함)입니다. `AI_EFFORT`는 Anthropic `output_config.effort`, OpenAI `reasoning.effort`로 보내고, 비우면 보내지 않아 모델의 기본값입니다(57). 프롬프트 캐시는 요청하지 않습니다.
+51. AI 출력 하나(06 DEC-17 AiTurnOutput, 04 AI-1 '서버가 확인함'):
+    - `AI_TURN_OUTPUT_SCHEMA`는 06 `components.schemas.AiTurnOutput`을 손으로 옮긴 것입니다(card.changes는 06 ChangeSet을 풀어 넣음). 시험이 설명·예시·`x-` 표시를 뺀 06과 같은지 보아 06이 바뀌면 실패합니다. 서버 확인(`checkTurnOutput`)은 06 계약 검사(ajv)와 18가지 값에서 같은 답을 냅니다.
+    - Anthropic에는 이 스키마를 그대로, OpenAI에는 strict 꼴(모든 필드를 required로, 없을 수 있는 필드는 null 허용, strict가 받지 않는 `minLength`·`maxLength`·`uniqueItems`·`minProperties`는 뺌)을 줍니다. 받은 뒤 OpenAI의 null을 지우고 회사와 상관없이 같은 06 스키마로 다시 확인하므로 뺀 제약도 서버가 봅니다.
+    - 맞지 않거나 JSON이 아니면 행은 `success`(토큰·금액 있음)에 `fallback_reason` `schema_invalid`이고, `call()`은 `failure: "schema_invalid"`(다시 하기 아님)입니다. 다시 쓰기는 그래프 층이 고릅니다. 어긋난 곳은 위치(`#/reply` 같은)만 알리고 값·글은 싣지 않습니다.
+52. `ai_calls` 한 행(05 TBL-048):
+    - 호출마다 한 행입니다. 성공·실패·시간 초과·사용 한도 모두이고, 키가 없어 부르지 않은 것도 한 행(`key_missing`)입니다. 운영에서 추적 도구가 켜져 부르지 않은 것(55)은 설정 잘못이라 행이 없습니다.
+    - 남기는 것: 회사·모델·프롬프트 판·추론 설정(`{ effort, max_output_tokens }`)·보낸 시각·첫 토큰까지·전체 시간·토큰 넷·금액(달러·원·근거)·결과·멈춘 사유·오류 종류·답을 쓰지 못한 까닭. 프롬프트·답·오류 글은 남기지 않습니다(G6).
+    - 순번: `FIRST_ATTEMPT`(1, `first`)와 `nextAttempt(앞, "after_tool" | "retry" | "regenerate")`입니다. 같은 차례(`trace_id`)·순번을 두 번 쓰면 05 `ai_calls_attempt_uq`(23505), `first`와 순번 1이 어긋나면 `ai_calls_kind_chk`(23514)가 막습니다. 성공 행은 토큰과 금액이 있어야 합니다(`ai_calls_success_chk`).
+    - 실패는 회사 SDK의 오류 꼴이 아니라 우리가 본 것(끊은 까닭, 받은 상태 코드)으로 나눠 회사와 상관없이 같습니다. `retryable`은 AI-1의 '1초 뒤 한 번만 다시 하기'를 할 수 있는 실패입니다.
+
+    | 본 것                        | result        | error_kind                    | fallback_reason | failure       | retryable |
+    | ---------------------------- | ------------- | ----------------------------- | --------------- | ------------- | --------- |
+    | 연결 3초·전체 20초 넘김      | timeout       | connect_timeout·total_timeout | timeout         | timeout       | 예        |
+    | 429                          | limit_reached | http_429                      | model_error     | limit_reached | 예        |
+    | 401·403                      | failure       | http_401·http_403             | model_error     | key_missing   | 아니요    |
+    | 5xx                          | failure       | http_5xx                      | model_error     | unavailable   | 예        |
+    | 그 밖의 4xx                  | failure       | http_4xx                      | model_error     | unavailable   | 아니요    |
+    | 머리를 받기 전 연결 실패     | failure       | network                       | model_error     | unavailable   | 예        |
+    | 머리를 받은 뒤 끊김          | failure       | stream_error                  | model_error     | unavailable   | 예        |
+    | 고른 회사가 아닌 주소        | failure       | blocked_host                  | model_error     | unavailable   | 아니요    |
+    | 키 없음(부르지 않음)         | failure       | key_missing                   | model_error     | key_missing   | 아니요    |
+    | 사용량이 없음, 요금표 밖(53) | failure       | usage_missing·price_tier      | model_error     | unavailable   | 아니요    |
+
+53. 토큰과 금액(REQ-150·163):
+    - 토큰은 LangChain의 `usage_metadata`가 아니라 회사 응답 스트림의 usage에서 읽습니다(`ai-usage.ts`의 `UsageMeter`. 받은 바이트는 바꾸지 않고 SDK에 넘김). `@langchain/anthropic` 1.6.1은 스트림 시작의 출력 토큰과 누적 출력 토큰을 더해 출력을 더 세었습니다(시험에서 150이 151). 끝 사용량(Anthropic은 `output_tokens`가 든 `message_delta`, OpenAI는 `response.completed`·`response.incomplete`·`response.failed`의 usage)이 오기 전에 끝난 스트림은 글이 다 왔어도 사용량 없음(`usage_missing`)으로 두고 금액을 세지 않습니다. Anthropic 스트림 시작의 출력 토큰(보통 1)은 끝 값이 아니기 때문입니다.
+    - 네 열은 겹치지 않습니다. Anthropic은 `input_tokens`(캐시를 뺀 입력)·`cache_creation_input_tokens`·`cache_read_input_tokens`·`output_tokens`(`message_delta`의 누적 값)이고, OpenAI는 `input_tokens`에서 `cached_tokens`·`cache_write_tokens`를 뺀 값과 그 둘, `output_tokens`입니다. 첫 토큰 시각은 손님에게 보일 출력의 첫 조각이 온 때입니다(추론 조각은 빼고).
+    - 요금표(`ai-prices.ts`, 판 2026-11-16): 백만 토큰당 달러, 행마다 확인 날짜 2026-11-16. 출처는 Anthropic https://platform.claude.com/docs/en/about-claude/pricing 와 OpenAI https://developers.openai.com/api/docs/pricing (Standard)입니다. 캐시 쓰기는 짧은 보관(Anthropic 5분, OpenAI 30분)의 값입니다.
+
+    | 모델              | 입력 | 캐시 쓰기 | 캐시 읽기 | 출력 | 이 값의 입력 한도 |
+    | ----------------- | ---- | --------- | --------- | ---- | ----------------- |
+    | claude-opus-5-5   | 4    | 5         | 0.20      | 20   |                   |
+    | claude-sonnet-5-5 | 2    | 2.50      | 0.10      | 10   |                   |
+    | claude-haiku-5-5  | 0.10 | 0.125     | 0.01      | 0.50 | 10만 토큰         |
+    | gpt-6-astra       | 10   | 12.50     | 1         | 50   | 27만 2천 토큰     |
+    | gpt-6.1-sol       | 2    | 2.50      | 0.10      | 10   | 27만 2천 토큰     |
+    | gpt-6.1-terra     | 1    | 1.25      | 0.05      | 5    | 27만 2천 토큰     |
+    | gpt-6-luna        | 0.10 | 0.125     | 0.01      | 0.50 | 27만 2천 토큰     |
+    - 원 환산: 설정 `AI_USD_KRW`(원/달러)와 `AI_USD_KRW_DATE`를 금액 근거(`cost_basis`, 예 `prices 2026-11-16 (gpt-6.1-terra checked 2026-11-16); usd-krw 1450.00 (2026-11-14)`)에 남깁니다. 환율을 바꿀 때는 설정만 바꿉니다.
+    - 셈은 정수로 하고 올림합니다(달러는 백만분의 1, 원은 100분의 1). 가게 하루 한도(REQ-163)의 셈이 실제보다 작게 나오지 않게 하기 위해서입니다. 예: 입력 1,000·출력 150·캐시 읽기 800·캐시 쓰기 100토큰은 claude-sonnet-5-5가 0.003830달러·5.56원, gpt-6.1-terra가 0.001915달러·2.78원입니다(1,450원/달러).
+    - 막는 것: 요금표에 없는 모델은 설정 검사가 시작에서 막습니다. 긴 문맥(위 표의 입력 한도를 넘음)과 긴 보관 캐시 쓰기(Anthropic 1시간, OpenAI 12시간)는 값이 달라 금액을 세지 않고 실패 행(`price_tier`)으로 둡니다. Anthropic `inference_geo`, OpenAI Batch·Fast·Ultrafast 처리는 쓰지 않아 값을 적지 않았습니다. 요금을 바꾸면 판(`AI_PRICE_TABLE_VERSION`)과 행의 확인 날짜를 함께 바꿉니다.
+54. 시간(04 AI-1): 한 번의 호출은 연결 3초(응답 머리를 받기까지)와 전체 20초에서 끊습니다. 스트리밍이라 머리는 곧 옵니다. LangChain·SDK의 자체 다시 하기는 끕니다(`maxRetries: 0`). 시험이 상태 코드 500·529·429·401·400마다 요청이 하나만 감을 봅니다.
+55. 추적 도구(REQ-138):
+    - 운영(`APP_ENV=production`)에서 `LANGSMITH_TRACING`·`LANGSMITH_TRACING_V2`·`LANGCHAIN_TRACING_V2`·`LANGCHAIN_TRACING`·`LANGCHAIN_VERBOSE`·`LANGSMITH_GATEWAY`가 비어 있거나 `false`(대소문자 무관)가 아니면, 또는 `LANGSMITH_API_KEY`·`LANGCHAIN_API_KEY`·`LANGSMITH_GATEWAY_API_KEY`가 있으면 값을 싣지 않은 설정 오류로 시작에서 멈춥니다.
+    - Workers는 nodejs_compat에서 Worker의 변수와 비밀 값을 `process.env`에도 넣고 LangChain은 `process.env`를 읽습니다. 그래서 운영에서는 호출 직전에 `process.env`를 한 번 더 보고, 켜져 있으면 `TracingEnabledError`를 던집니다(요청 0, 행 0). 모델 호출에 callbacks를 넘기지 않습니다.
+    - 시험: 운영 설정에서 가짜 fetch가 받은 요청은 고른 회사의 주소뿐이고 추적 주소로 간 요청은 0입니다. 같은 시험에서 개발에 추적을 켜면 가짜 추적 주소로 가는 요청이 잡혀, 이 시험이 새는 요청을 실제로 잡을 수 있음을 봅니다.
+56. 키와 설정:
+    - `settings.ts`만 읽습니다. `AI_PROVIDER`(anthropic | openai), `AI_MODEL`(그 회사의 요금표 모델), `AI_EFFORT`(low | medium | high, 비우면 모델 기본), `AI_USD_KRW`(예 1450.25), `AI_USD_KRW_DATE`(YYYY-MM-DD)입니다. 다섯이 모두 비면 모델 호출만 설정 없음(`services.aiModel()`이 `MissingSettingError`, 요청은 500 `internal`)이고, 하나라도 틀리면 값을 싣지 않은 설정 오류입니다.
+    - 키는 `Secret`으로 감싸고 고른 회사의 것(`ANTHROPIC_API_KEY`나 `OPENAI_API_KEY`) 하나만 씁니다. 꺼내는 곳은 채팅 모델을 만드는 한 곳(`reveal()`)입니다. 고르지 않은 회사의 키는 없어도 되고, 고른 회사의 키가 없으면 호출마다 `key_missing` 행을 남기고 부르지 않습니다(06 DEC-07 `ai_key_missing`).
+    - CI에는 키가 없고 유료 호출은 0번입니다(모든 시험이 가짜 fetch와 회사 응답 꼴의 모의 스트림). 시험 키는 실행 중에 이어 붙인 가짜 글이라 키 검사(`check:keys`)의 꼴에 맞지 않습니다.
+57. 시험과 넘기는 것(TASK-026)
+    - 서버 시험 522 → 567개(27 → 32파일). `ai-model.test.ts` 14개: 같은 입력을 설정만 바꿔 두 회사(모의 스트림)에 보내 같은 `AiTurnOutput`과 각 회사 값의 `ai_calls` 행(회사·모델·토큰·금액), 요청 꼴(주소·스트리밍·최대 토큰·json_schema·`store: false`·키 머리·브라우저 머리 없음), 첫 토큰 시각, `schema_invalid`, 끝 사용량 전에 끝난 스트림의 `usage_missing`, 상태 코드·시간 초과·연결 실패·키 없음의 행, 운영의 추적 요청 0과 켜졌을 때 멈춤, 순번과 05 제약, 행에 글·키 없음. 이 밖에 사용량 읽기 11개(바이트를 어디서 끊어도 같음, 한글·이모지, CRLF, 누적, 끝 사용량 없음, OpenAI 뺄셈, 긴 보관), AiTurnOutput 5개, 설정·요금표·셈·서비스 12개, 정적 3개.
+    - 시험하지 않은 것: 진짜 키로 두 회사 부르기(유료 호출 0), 배포한 Worker에서 부르기(로컬 workerd만), 진짜 응답의 사용량 값(문서의 예를 따른 모의 스트림만).
+    - 진짜 키로 처음 부르기와 두 회사의 결과 견주기는 TASK-027(평가 도구), 키와 보관 안 함 허가는 TASK-005·006(동희님)입니다. Workers에 배포해 한 번씩 부르기는 tech-stack.md 8-1(TASK-171), Workers 런타임의 시험 풀(vitest-pool-workers)은 TASK-171·173입니다.
+    - 그래프(LangGraph는 이때 더함), 차례마다 8번 상한, 1초 뒤 한 번 다시 하기, 다시 쓰기, 에스컬레이션, A35·A13, `cost_limit`·`call_limit` 행은 TASK-069, 보내는 글의 마스킹은 TASK-066입니다.
+    - 실패·시간 초과 행과 끝 사용량이 오지 않은 행(`usage_missing`)은 토큰·금액이 비어 있습니다. 끊은 호출도 회사는 받은 입력과 그때까지 만든 출력을 셈할 수 있지만 우리는 그 값을 받지 못합니다. 가게 하루 비용 한도(REQ-163; 설정 TASK-037, 셈 TASK-069)가 이 몫을 어떻게 셀지 정합니다.
+    - `AI_EFFORT`를 비우면 effort를 보내지 않아 회사의 모델 기본값으로 돕니다(회사·모델마다 다르고 바뀔 수 있음). 모델과 effort는 TASK-162가 평가로 고릅니다.
+    - 프롬프트 캐시를 쓰게 되면 짧은 보관만 쓰거나 요금표에 긴 보관 값을 더합니다(지금은 막음, 53).
 
 ## 명령 (`app/`에서)
 

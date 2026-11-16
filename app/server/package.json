@@ -11,6 +11,10 @@
     "build": "wrangler deploy --dry-run --outdir dist"
   },
   "dependencies": {
+    "@cfworker/json-schema": "4.1.6",
+    "@langchain/anthropic": "1.6.1",
+    "@langchain/core": "1.3.5",
+    "@langchain/openai": "1.8.2",
     "aws4fetch": "1.0.20",
     "hono": "4.13.17",
     "pg": "8.23.1"

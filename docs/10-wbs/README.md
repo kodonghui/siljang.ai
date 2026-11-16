@@ -5,7 +5,7 @@
 ## 1. 한눈에
 
 <!-- BEGIN generated:counts -->
-작업 181개 · 크기 합 245.5일 · 반복 10개 · 동희님 17개 · Claude 164개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 58개 · 앱 규칙 40개 · 공통 규칙 9개 · 열린 질문 10개 · 끝난 작업 11개.
+작업 181개 · 크기 합 245.5일 · 반복 10개 · 동희님 17개 · Claude 164개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 58개 · 앱 규칙 40개 · 공통 규칙 9개 · 열린 질문 10개 · 끝난 작업 12개.
 <!-- END generated:counts -->
 
 - 작업 표는 [`wbs.md`](wbs.md)입니다. 작업마다 출처(SPEC·REQ·OPEN·DEC·규칙), 닿는 것(API·테이블·화면), 앞선 작업, 맡은 이, 크기, 끝난 조건이 있고, 끝에 SPEC·API·화면·테이블·규칙에서 작업을 찾는 부록 A~E가 있습니다.
@@ -232,3 +232,4 @@ Claude Code 채팅의 결정 카드로 9-2의 1·2를 확인 요청드렸고, �
 | 2026-11-16 | TASK-173(Workers 서버 설정)에 끝난 조건 '스테이징의 계좌번호 암호화 키(FIELD_KEY_CURRENT·FIELD_KEY_V1)를 넣고 사본을 저장소 밖 비밀 저장소에 둠'을 더하고, [기술 스택 제안](tech-stack.md) 3-2에 '계좌번호·원래 값 암호화 키' 행을 더함. 작업 수·크기·앞선 작업은 그대로 | 위와 같음. 스테이징도 키가 있어야 계좌번호를 쓰는 작업(TASK-040 등)을 돌려 볼 수 있음 | [PR #63](https://github.com/kodonghui/siljang.ai/pull/63) |
 | 2026-11-16 | [기술 스택 제안](tech-stack.md)의 0절 'AI 답·콜백·다시 하기' 행, 3-2의 '자동으로 하는 일 13개'·'발송 결과 조회·장부 다시 적기' 행, 3-3의 '1분마다 도는 일'·'1분\~6시간 뒤 다시 하기'·'트랜잭션과 행 잠금' 행을 고침: 발송 결과 조회(1·5·30분 뒤)와 장부 다시 적기(1분\~6시간 뒤)를 큐 `delaySeconds` 대신 1분 Cron이 05의 때 컬럼으로 찾아 함. 작업 수·크기·앞선 작업은 그대로 | TASK-023이 서버 안의 일 실행기를 만들며 원본을 보니 05에 그 때를 셀 컬럼과 부분 인덱스가 이미 있었음. 데이터베이스의 행이 곧 기다리는 일이라 서버를 다시 띄워도 이어지고(TASK-023 끝난 조건), 큐 메시지를 잃거나 두 번 받아도 상관없고, Cloudflare 없이 시험됨. 큐는 AI 답·콜백에만 씀([앱 README](../../app/README.md) 45) | [PR #64](https://github.com/kodonghui/siljang.ai/pull/64) |
 | 2026-11-16 | TASK-016(스테이징 배포와 외부 감시)에 끝난 조건 '서버 안의 일 실행기의 실패 로그(job_run_failed·job_find_failed 등, ID만 실음, 앱 README 44)가 생기면 운영자에게 알림이 옴'을 더함. 작업 수·크기·앞선 작업은 그대로 | 05 `ops_events.kind`에 실행기 실패 종류가 없어 TASK-023은 05를 바꾸지 않고 실패를 로그로만 남김([앱 README](../../app/README.md) 44). 그 로그를 보고 알릴 곳이 10단계 작업에 없었음 | [PR #64](https://github.com/kodonghui/siljang.ai/pull/64) |
+| 2026-11-16 | [기술 스택 제안](tech-stack.md) 3-4에 '모델 호출은 두 회사의 공식 SDK를 LangChain.js 채팅 모델로 감싸 부름' 줄을 더함(라이브러리와 판, 로컬 workerd에서 돈 것, OpenAI Responses API의 `store: false`, 진짜 키로 부르기는 TASK-027, 배포한 Worker에서는 8-1). 작업 수·크기·앞선 작업은 그대로 | 3-4는 '두 회사 모두 공식 SDK가 있음, Workers에서 도는지는 8-1'까지만 적었음. TASK-026이 AI 부분은 LangChain·LangGraph로 만든다는 11/11 결정(04 5절)을 따라 LangChain 채팅 모델로 부르고, 로컬 workerd에서 두 채팅 모델과 LangGraph 그래프가 돌며 묶은 크기·시작 시간이 Workers 한도 안임을 봄([앱 README](../../app/README.md) 49) | [PR #65](https://github.com/kodonghui/siljang.ai/pull/65) |
