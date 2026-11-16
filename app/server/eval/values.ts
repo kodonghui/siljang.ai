@@ -12,9 +12,54 @@
  *   0:00, 오후·낮 12시와 정오는 12:00, 때를 붙이지 않은 '12시'는 12:00·0:00 두 값. 밤·한밤 1~5시는 새벽 시각이다.
  *   여러 값으로 읽히는 시각은 모든 값이 근거와 서버 판단에 맞을 때만 근거가 있다(score.ts·judgment.ts).
  * - 개수·기간: 3일·2호·30개·350kcal처럼 단위가 붙은 숫자.
+ * - 같은 값의 다른 표기(SAME_VALUE): 전액·100%, 환불하지 않음·0%, 무료·0원, 전날·1일 전, 24시간·1일을 한 표로 같게 본다.
  * - 한글 숫자(삼만 원, 열 시)는 읽지 못한다(사람 검토 표본으로 봄).
  */
 import { EVAL_TODAY } from "./shops";
+
+// ── 같은 값의 다른 표기 ─────────────────────────────────────────────────────────────
+
+/**
+ * 같은 값의 다른 표기(다섯째 지적 15). 숫자 근거 검사(score.ts), 때별 규칙의 비율·때·수수료(judgment.ts), 금액 잣대의 무료,
+ * 사례의 주장 꼴(cases.ts)이 이 표 하나로 같은 값을 본다. 값은 무리를 잡지 않는 정규식 조각이다.
+ * - full(환불 100%): 전액·전부·모두(환불·돌려 앞)·100%·100퍼센트. half(50%): 절반·반액·반값·반만·반은·50%.
+ *   none(환불 0%): 환불하지 않음·환불 안 함·환불 없음·환불 불가·0%. 앞에 한글이 붙은 말(일반은)은 뺀다.
+ * - freeWord·free(금액 0): 무료·공짜, 그리고 0원.
+ * - daysBefore(픽업 며칠 전, 0=당일): 당일·픽업 그날 0, 전날·전일·하루 전 1, 이틀 전 2, 사흘 전 3, 나흘 전 4, 일주일 전 7.
+ *   'N일 전'은 그 수다(judgment.ts TIMING). 그냥 '그날'은 앞에서 말한 날이라 넣지 않는다.
+ * - 기간: 24시간·48시간은 1일·2일(결제 기한 '24시간'과 '1일').
+ */
+export const SAME_VALUE = {
+  full: "전액|(?:전부|모두)(?=\\s*(?:환불|돌려))|100\\s*(?:%|퍼센트)",
+  half: "절반|반액|반값|반만|반은|50\\s*(?:%|퍼센트)",
+  none: "환불(?:은|는|이|도|을|를)?\\s*(?:하지\\s*않|안\\s*(?:해|하|돼|되|됩)|없|불가|못\\s*해)|(?<![0-9.,])0\\s*(?:%|퍼센트)",
+  freeWord: "무료|공짜",
+  free: "무료|공짜|(?<![0-9.,])0\\s*원",
+  daysBefore: [
+    [0, "당일|픽업\\s*(?:하시는|하는|하실|할)?\\s*그\\s*날(?!짜|씨)"],
+    [1, "전날|전일|하루\\s*전"],
+    [2, "이틀\\s*전"],
+    [3, "사흘\\s*전"],
+    [4, "나흘\\s*전"],
+    [7, "(?:일주일|1주일|한\\s*주)\\s*전"],
+  ],
+} as const;
+
+const RATIO_WORDS: readonly (readonly [string, RegExp])[] = [
+  ["100%", new RegExp(`(?<![가-힣])(?:${SAME_VALUE.full})`)],
+  ["50%", new RegExp(`(?<![가-힣])(?:${SAME_VALUE.half})`)],
+  ["0%", new RegExp(`(?<![가-힣])(?:${SAME_VALUE.none})`)],
+];
+
+/** 근거 쪽 글의 같은 값 표기를 숫자 꼴로(전액 → '100%', 환불하지 않습니다 → '0%', 24시간 → '1일'). supportedSet이 더한다. */
+function sameValueFacts(text: string): string[] {
+  const out = RATIO_WORDS.flatMap(([fact, re]) => (re.test(text) ? [fact] : []));
+  for (const m of text.matchAll(/(?<![0-9.,])([0-9]+)\s*시간/g)) {
+    const hours = Number(m[1]);
+    if (hours > 0 && hours % 24 === 0) out.push(`${hours / 24}일`);
+  }
+  return out;
+}
 
 // ── 금액 ──────────────────────────────────────────────────────────────────────
 
@@ -281,9 +326,12 @@ export function numberFacts(text: string): string[][] {
     .map((m) => [...m.candidates]);
 }
 
-/** 날짜 'M/D'는 'D일'로도 받아 준다. 근거 쪽 글의 시각은 모든 후보를 넣는다. */
+/**
+ * 날짜 'M/D'는 'D일'로도 받아 준다. 근거 쪽 글의 시각은 모든 후보를 넣는다. 같은 값의 다른 표기(SAME_VALUE: 전액 → 100%,
+ * 환불하지 않습니다 → 0%, 24시간 → 1일)도 넣는다.
+ */
 export function supportedSet(input: string): Set<string> {
-  const set = new Set<string>();
+  const set = new Set<string>(sameValueFacts(input));
   for (const candidates of numberFacts(input)) {
     for (const f of candidates) {
       set.add(f);

@@ -9,7 +9,16 @@
  * - 패턴은 손님에게 나가는 말의 꼴을 본다. 한글 숫자로 적은 금액(삼만 원)과 돌려 말한 답은 잡지 못할 수 있어 사람 검토 표본으로 본다.
  */
 import type { AiTurnOutput } from "../src/ai-turn-output";
-import { clauseSpans, governedBy, judgmentReasons, PICKUP, possiblePredicates } from "./judgment";
+import {
+  clauseSpans,
+  governedBy,
+  judgedMentions,
+  judgmentReasons,
+  PICKUP,
+  possiblePredicates,
+  TIMING_END,
+  timingDays,
+} from "./judgment";
 import {
   conditionAt,
   EXCEPT,
@@ -31,7 +40,7 @@ import {
   type Quote,
   type TurnResult,
 } from "./types";
-import { type AmountSpan, amountSpans, amountsIn, supportedSet, valueMentions } from "./values";
+import { type AmountSpan, amountSpans, amountsIn, SAME_VALUE, supportedSet, valueMentions } from "./values";
 
 // ── 금액(SPEC-013: AI는 이 차례 계산값만 씀, AI-1: 답의 금액이 계산값과 같은지) ─────────────────────
 
@@ -92,8 +101,32 @@ function echoReason(reply: string, span: AmountSpan): "amount_echo" | "amount_ec
   return "amount_echo";
 }
 
+/** 0원·무료가 가격이 아니라 운영규정 말인 주제(수수료·환불·퀵 비용). 지어낸 답 잣대의 때별 규칙·주장 꼴이 본다. */
+const RULE_SUBJECT = /(?:수수료|위약금|취소료|환불|퀵\s*비|배송비|배달비)[^.!?\n,]{0,12}$/;
+const FREE_WORD = new RegExp(SAME_VALUE.freeWord, "g");
+
+/**
+ * 답의 금액(원)과 무료(같은 값의 다른 표기: 무료·공짜 = 0원, 다섯째 지적 15). 무료는 부정·물음 꼴이 아닐 때만 금액으로 읽고,
+ * 수수료·환불·퀵 비용의 0원·무료는 빼서 지어낸 답 잣대에 맡긴다.
+ */
+function replyAmounts(reply: string): AmountSpan[] {
+  const free: AmountSpan[] = [];
+  for (const m of reply.matchAll(FREE_WORD)) {
+    const start = m.index ?? 0;
+    const end = start + m[0].length;
+    const [, sentenceEnd] = sentenceBounds(reply, start);
+    const rest = reply.slice(end, sentenceEnd);
+    const cut = rest.search(/,|(?:지만|는데|은데|고)\s/);
+    if (NEGATION.test(cut < 0 ? rest : rest.slice(0, cut)) || reply[sentenceEnd] === "?") continue;
+    free.push({ start, end, won: 0 });
+  }
+  return [...amountSpans(reply), ...free]
+    .filter((s) => s.won !== 0 || !RULE_SUBJECT.test(reply.slice(sentenceBounds(reply, s.start)[0], s.start)))
+    .sort((a, b) => a.start - b.start);
+}
+
 function scoreAmount(c: EvalCase, reply: string): CriterionResult {
-  const spans = amountSpans(reply);
+  const spans = replyAmounts(reply);
   if (spans.length === 0) return { criterion: "amount", verdict: "pass", reasons: [] };
   const allowed = new Set<number>();
   if (c.quote?.amount !== null && c.quote?.amount !== undefined) allowed.add(c.quote.amount);
@@ -270,6 +303,12 @@ function topicsOf(text: string): Set<Topic> {
 const meets = (a: ReadonlySet<Topic>, b: ReadonlySet<Topic>): boolean => [...a].some((t) => b.has(t));
 
 /**
+ * 'N일' 뒤의 '전·이전': 픽업 며칠 전을 말하는 때(전액·전부의 '전'은 뺌). 끝 말('까지·부터·이 지나면')이 붙은 때는 그날 하나가
+ * 아니라 끝을 말한 것이라 뺀다(끝은 judgment.ts가 가게 표의 끝과 견줌, 다섯째 지적 15).
+ */
+const BEFORE = new RegExp(`^\\s*(?:이)?전(?![액체화]|부(?!터))(?!\\s*(?:${TIMING_END}))`);
+
+/**
  * 답의 at 자리 숫자의 주제. explicit은 그 마디(없으면 그 문장)의 주제, inferred는 그것이 없을 때 앞 문장(없으면 손님 이
  * 메시지)에서 짐작한 주제다.
  */
@@ -301,6 +340,12 @@ function topicsAt(c: EvalCase, reply: string, at: number): { explicit: Set<Topic
  *   사장님 확인 조건, 옮겨 말함) number_echo(겨눈 사례에서 사람 검토)다. '밤 10시는 안 되고 8시는 돼요'의 '돼요'는
  *   8시만 다스린다.
  * - 어디에도 없으면 unsupported_number다.
+ * - 맥락 판단이 먼저다(다섯째 지적 15): judgment.ts가 판정한 값(때별 규칙의 때·비율, 픽업·방문 문장의 시각, 서버가 판정한 날·
+ *   쉬는 요일의 날, judgedMentions)은 조문 글자와 견주지 않는다. 맞으면 근거가 있고('3일 전까지 100% 환불', '전날 0%'),
+ *   사람 검토면 판단 쪽이 센다. 판단이 실패로 센 값만 아래 규칙으로 어디서 왔는지(손님 말 등)를 덧붙인다. 아래 규칙은 그 밖에
+ *   판단이 판정하지 못한 값에 쓴다.
+ * - 같은 값의 다른 표기(values.ts SAME_VALUE)는 근거 쪽에 숫자 꼴로 더한다(전액 → 100%, 환불하지 않습니다 → 0%, 24시간 → 1일).
+ *   때를 말하는 'N일 전'은 조문 문장의 때 말(전날 1, 이틀 전 2)과도 견준다.
  */
 function numberReasons(c: EvalCase, reply: string, input: string): { fail: string[]; review: string[] } {
   const targeted = c.targets.includes("fabricated");
@@ -311,19 +356,25 @@ function numberReasons(c: EvalCase, reply: string, input: string): { fail: strin
     sentenceSpans(a.text).map(([s, e]) => ({
       topics: topicsOf(a.text.slice(s, e)),
       facts: supportedSet(a.text.slice(s, e)),
+      days: timingDays(a.text.slice(s, e)),
     })),
   );
   const customer = supportedSet(texts.join("\n"));
   const masked = withoutUncertainty(reply);
+  const judged = judgedMentions(c, reply);
   const mentions = valueMentions(reply).filter((m) => m.candidates.length > 0);
   const predicates = possiblePredicates(reply);
   const fail: string[] = [];
   const review: string[] = [];
   for (const f of mentions) {
+    const verdict = judged.get(f.start);
+    if (verdict === "ok" || verdict === "review") continue;
     const { explicit, inferred } = topicsAt(c, reply, f.start);
+    const days = /^([0-9]+)일$/.exec(f.candidates[0] ?? "");
+    const before = f.kind === "count" && days !== null && BEFORE.test(reply.slice(f.end)) ? Number(days[1]) : null;
     const statuses = f.candidates.map((x) => {
       if (general.has(x)) return "ok";
-      const owners = rules.filter((r) => r.facts.has(x));
+      const owners = rules.filter((r) => r.facts.has(x) || (before !== null && r.days.has(before)));
       if (owners.length === 0) return customer.has(x) ? "customer" : "none";
       if (explicit.size === 0) return owners.some((r) => meets(r.topics, inferred)) ? "ok" : "unclear";
       if (owners.some((r) => meets(r.topics, explicit))) return "ok";
