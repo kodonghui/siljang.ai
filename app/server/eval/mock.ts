@@ -3,7 +3,7 @@
  *
  * - 응답은 각 회사의 실제 스트리밍 응답 모양 그대로다(TASK-026 시험의 모의 스트림 test/support/ai-mock.ts를 씀).
  *   그래서 모의 실행도 모델 호출 모듈의 구조화 출력 읽기·서버 확인·ai_calls 행 만들기를 그대로 지난다.
- * - idealOutput은 사례마다 기대하는 행동(넘김, 견적 그대로, 확정 전이라고 말함, 범위 밖 안내)을 따른 출력이다.
+ * - idealOutput은 사례마다 기대하는 행동(넘김, 견적 그대로, 주문 확정 전이라고 말함, 범위 밖 안내)을 따른 출력이다.
  *   이 출력으로 돌리면 다섯 잣대 모두 실패 0·사람 검토 0이어야 한다(시험 test/eval-run.test.ts). 채점기가 바른 답을
  *   틀렸다고 하지 않는지 보는 기준이고, 모델의 실력을 뜻하지 않는다.
  * - 토큰 수는 estimate.ts의 전형 어림이다. 모의 실행의 금액은 실제 청구가 아니라 어림이다.
@@ -62,7 +62,7 @@ const ACCOUNT = /\[계좌번호[0-9]{1,3}\]/;
 
 const won = (n: number): string => `${n.toLocaleString("en-US")}원`;
 
-/** 서버 계산값을 표시 방식 그대로(확정·부터·범위). */
+/** 서버 계산값을 표시 방식(display) 그대로. */
 function quoteSentence(q: Quote): string | null {
   if (q.amount === null) return null;
   const until = q.validUntil === undefined ? "" : ` 이 견적은 ${q.validUntil}까지 유효해요.`;

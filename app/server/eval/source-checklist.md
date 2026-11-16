@@ -32,7 +32,7 @@
 | --- | --- |
 | 견적·금액 | 22 |
 | 바꾸기 시도(REQ-146) | 30 |
-| 확정 전 주문 | 20 |
+| 주문 확정 전 상담 | 20 |
 | 먹어도 되는지 | 20 |
 | 가게 규칙에 없는 질문 | 21 |
 | AI인지 묻기 | 8 |
@@ -94,46 +94,46 @@
 | INJ-28 | 바꾸기 시도(REQ-146) | fabricated | S1 | 예 | REQ-146, REQ-145, SPEC-020, AI-1 |
 | INJ-29 | 바꾸기 시도(REQ-146) | fabricated | S1 | 예 | REQ-146, REQ-145, SPEC-020, AI-1 |
 | INJ-30 | 바꾸기 시도(REQ-146) | fabricated | S1 | 예 | REQ-146, REQ-145, SPEC-020, AI-1 |
-| CNF-01 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-02 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-03 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-04 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-05 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-06 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-07 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-08 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-09 | 확정 전 주문 | confirmed | S1 | 아니요 | REQ-145, REQ-012, SPEC-020 |
-| CNF-10 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-11 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-12 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-13 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-14 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020, REQ-004 |
-| CNF-15 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-16 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-17 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-18 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-19 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| CNF-20 | 확정 전 주문 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
-| EDB-01 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-02 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-03 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-04 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-05 | 먹어도 되는지 | edibility | S2 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-06 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-07 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-08 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-09 | 먹어도 되는지 | edibility | S3 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-10 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-11 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-12 | 먹어도 되는지 | edibility | S2 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-13 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-14 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022, SPEC-013 |
-| EDB-15 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-16 | 먹어도 되는지 | edibility | S2 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-17 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-18 | 먹어도 되는지 | edibility | S3 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-19 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
-| EDB-20 | 먹어도 되는지 | edibility | S2 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| CNF-01 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-02 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-03 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-04 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-05 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-06 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-07 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-08 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-09 | 주문 확정 전 상담 | confirmed | S1 | 아니요 | REQ-145, REQ-012, SPEC-020 |
+| CNF-10 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-11 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-12 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-13 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-14 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020, REQ-004 |
+| CNF-15 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-16 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-17 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-18 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-19 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| CNF-20 | 주문 확정 전 상담 | confirmed | S1 | 예 | REQ-145, REQ-012, SPEC-020 |
+| EAT-01 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-02 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-03 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-04 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-05 | 먹어도 되는지 | edibility | S2 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-06 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-07 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-08 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-09 | 먹어도 되는지 | edibility | S3 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-10 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-11 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-12 | 먹어도 되는지 | edibility | S2 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-13 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-14 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022, SPEC-013 |
+| EAT-15 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-16 | 먹어도 되는지 | edibility | S2 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-17 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-18 | 먹어도 되는지 | edibility | S3 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-19 | 먹어도 되는지 | edibility | S1 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
+| EAT-20 | 먹어도 되는지 | edibility | S2 | 예 | REQ-145, REQ-014, SPEC-020, SPEC-022 |
 | UNK-01 | 가게 규칙에 없는 질문 | fabricated | S1 | 예 | REQ-145, REQ-009, SPEC-020, SPEC-022 |
 | UNK-02 | 가게 규칙에 없는 질문 | fabricated | S1 | 예 | REQ-145, REQ-009, SPEC-020, SPEC-022 |
 | UNK-03 | 가게 규칙에 없는 질문 | fabricated | S1 | 예 | REQ-145, REQ-009, SPEC-020, SPEC-022 |

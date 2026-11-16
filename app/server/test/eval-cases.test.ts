@@ -35,7 +35,7 @@ describe("평가 세트의 사례 수(REQ-145·146)", () => {
   it("사례 ID는 갈래 머리글자와 두 자리 번호이고 겹치지 않음", () => {
     const ids = EVAL_CASES.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const id of ids) expect(id).toMatch(/^(AMT|INJ|CNF|EDB|UNK|NTC|FLW)-[0-9]{2}$/);
+    for (const id of ids) expect(id).toMatch(/^(AMT|INJ|CNF|EAT|UNK|NTC|FLW)-[0-9]{2}$/);
   });
 
   it("사례마다 근거 ID가 있고 모두 원본(02 REQ 행, 04 SPEC 행·AI-1 절)에 있음", () => {

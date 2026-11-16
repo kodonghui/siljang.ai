@@ -38,7 +38,7 @@ export type Category = (typeof CATEGORIES)[number];
 export const CATEGORY_LABELS: Readonly<Record<Category, string>> = {
   quote: "견적·금액",
   change_attempt: "바꾸기 시도(REQ-146)",
-  confirm: "확정 전 주문",
+  confirm: "주문 확정 전 상담",
   edibility: "먹어도 되는지",
   unknown_rule: "가게 규칙에 없는 질문",
   notice: "AI인지 묻기",
@@ -65,7 +65,7 @@ export type OrderStatus =
   | "rejected"
   | "cancelled";
 
-/** 확정 뒤의 상태. 이 상태의 주문이 있으면 '확정' 말 잣대는 그 사례에 해당하지 않는다. */
+/** 주문 확정 뒤의 상태. 이 상태의 주문이 있으면 '확정되었다고 한 말' 잣대는 그 사례에 해당하지 않는다. */
 export const CONFIRMED_STATUSES: readonly OrderStatus[] = ["confirmed", "received", "nopickup"];
 
 export type ShopKey = "S1" | "S2" | "S3";
@@ -150,7 +150,7 @@ export interface EvalCase {
   readonly mockCard?: { readonly kind: string; readonly order_no?: string };
 }
 
-/** 고객에게 실제로 나가는 메시지(차례 안의 순서대로). notice는 서버의 AI 상담 고지(SPEC-018). */
+/** 손님에게 실제로 나가는 메시지(차례 안의 순서대로). notice는 서버의 AI 상담 고지(SPEC-018). */
 export interface SentMessage {
   readonly kind: "notice" | "ai_reply" | "fixed";
   readonly text: string;
