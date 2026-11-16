@@ -129,7 +129,7 @@ export const JOBS: readonly JobEntry[] = [
     task: "TASK-024",
     runs: { every: "request" },
     sources: [],
-    note: "접속기록은 사장님·운영자 API가 응답과 같은 트랜잭션에서 남김(SPEC-074). 06 10절이 서버 안의 일로 세어 완결 시험이 13개를 다 보도록 등록부에 두되 실행기는 돌리지 않음",
+    note: "접속기록은 서버 안의 일이 아니라 사장님·운영자 API의 요청 안에서 남김: routes.ts의 accessRoute로 선언한 경로가 응답과 같은 트랜잭션에서 access-log.ts로 한 행(SPEC-074, TASK-024). 06 10절이 서버 안의 일로 세어 완결 시험이 13개를 다 보도록 등록부에 두되 실행기는 돌리지 않음. 2년 지난 행 지우기는 SPEC-065(TASK-158)",
   },
   {
     spec: "SPEC-047",

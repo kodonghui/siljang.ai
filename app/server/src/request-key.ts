@@ -199,7 +199,10 @@ export interface CommandSpec {
   readonly body: unknown;
   /** 명령의 일. 한 트랜잭션 안에서 돈다. 계약의 오류는 ApiError로 던진다. */
   execute(tx: Queryable): Promise<CommandResult>;
-  /** 같은 키가 다시 왔을 때 처음 결과가 가리킨 기록(ref)을 지금 읽어 본문을 만든다(204면 undefined). */
+  /**
+   * 같은 키가 다시 왔을 때 처음 결과가 가리킨 기록(ref)을 지금 읽어 본문을 만든다(204면 undefined). 한 트랜잭션 안에서 돈다
+   * (접속기록과 같은 트랜잭션, TASK-024).
+   */
   render(db: Queryable, stored: StoredResult): Promise<unknown>;
 }
 
@@ -249,7 +252,10 @@ export async function runCommand(c: Context<HonoEnv>, spec: CommandSpec): Promis
   if (claim.kind === "reused") throw new ApiError("idempotency_key_reused");
   if (claim.kind === "in_progress") throw new ApiError("request_in_progress");
   if (claim.kind === "replay") {
-    const body = claim.stored.status >= 400 ? undefined : await spec.render(db, claim.stored);
+    // 다시 읽기는 한 트랜잭션에서 한다: 접속기록을 남기는 경로는 같은 트랜잭션에 접속기록 한 행을 넣는다(TASK-024, 05 A24).
+    // 남긴 오류의 다시 보냄은 아무것도 읽지 않는다(개인정보를 돌려주지 않으므로 접속기록도 없음).
+    const stored = claim.stored;
+    const body = stored.status >= 400 ? undefined : await db.transaction((tx) => spec.render(tx, stored));
     c.get("log")("info", {
       event: "request_replayed",
       traceId: c.get("traceId"),
