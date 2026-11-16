@@ -12,7 +12,7 @@ app/web/dist/
 app/server/dist/
 app/server/.wrangler/
 app/server/src/worker-runtime.d.ts
-# AI 평가 결과(TASK-027): 저장소에는 결과 표만 옮긴다(app/README.md 74)
+# AI 평가 결과(TASK-027): 저장소에는 결과 표만 옮긴다(app/README.md 79)
 app/server/eval-results/
 app/ci-logs/
 
