@@ -5,6 +5,8 @@
  * - 실행 환경 이름이 없으면 production으로 친다. development는 개발자의 .dev.vars만 정한다.
  */
 
+import { AI_PROVIDERS, type AiProvider, type FxRate, priceOf } from "./ai-prices";
+
 const MASK = "**********";
 
 /** 비밀 값 하나. 값은 reveal()로만 꺼낸다. */
@@ -87,6 +89,40 @@ const FIELD_KEY_NAME = /^FIELD_KEY_V([1-9][0-9]{0,2})$/;
 /** 키 값: 32바이트의 base64url(채움 없이 43자, 마지막 글자는 남는 비트가 0인 것). */
 const FIELD_KEY_VALUE = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 
+/**
+ * 모델 호출 설정(TASK-026; REQ-266, 06 DEC-25, 04 AI-1). 회사 하나와 그 모델을 배포 설정으로 고른다(ai-model.ts).
+ * - AI_PROVIDER: anthropic | openai. AI_MODEL: 요금표(ai-prices.ts)에 있는 그 회사의 모델 ID. 없는 모델은 시작에서 막는다.
+ * - AI_EFFORT(고르지 않아도 됨): low | medium | high. 비우면 회사의 기본값.
+ * - AI_USD_KRW·AI_USD_KRW_DATE: 원 환산 환율(예 1450.25)과 그 날짜(YYYY-MM-DD). ai_calls.cost_basis에 남는다.
+ * - 키는 고른 회사의 것(ANTHROPIC_API_KEY나 OPENAI_API_KEY) 하나만 쓴다. 없으면 호출마다 실패 행(key_missing).
+ * 다섯 변수가 모두 비면 null(AI 일만 쓰지 못함).
+ */
+export const AI_VAR_NAMES = ["AI_PROVIDER", "AI_MODEL", "AI_EFFORT", "AI_USD_KRW", "AI_USD_KRW_DATE"] as const;
+export const AI_EFFORTS = ["low", "medium", "high"] as const;
+export type AiEffort = (typeof AI_EFFORTS)[number];
+
+export interface AiSettings {
+  readonly provider: AiProvider;
+  readonly model: string;
+  readonly effort: AiEffort | null;
+  readonly fx: FxRate;
+  readonly apiKey: Secret | null;
+}
+
+/**
+ * 추적 도구(LangSmith)와 LangChain의 자세한 기록을 켜는 변수. LangChain은 process.env에서 읽고, Workers는 호환 날짜
+ * 2025-04-01 뒤로 Worker의 변수·비밀 값을 process.env에 넣는다(Cloudflare 문서 'process', 2026-11-16 확인).
+ * 운영에서는 비우거나 false여야 하고(REQ-138), 추적 도구 키도 두지 않는다. 어기면 시작에서 멈춘다.
+ */
+export const TRACING_SWITCH_NAMES = [
+  "LANGSMITH_TRACING",
+  "LANGSMITH_TRACING_V2",
+  "LANGCHAIN_TRACING_V2",
+  "LANGCHAIN_TRACING",
+  "LANGCHAIN_VERBOSE",
+] as const;
+export const TRACING_KEY_NAMES = ["LANGSMITH_API_KEY", "LANGCHAIN_API_KEY"] as const;
+
 export interface Settings {
   readonly appEnv: AppEnv;
   readonly secrets: Readonly<Record<SecretName, Secret | null>>;
@@ -96,6 +132,8 @@ export interface Settings {
   readonly storage: StorageSettings | null;
   /** 계좌번호·원래 값 암호화의 키. 하나도 없으면 null(암호화가 필요한 요청만 500 internal). */
   readonly fieldKeys: FieldKeySettings | null;
+  /** 모델 호출 설정. 다섯 AI_ 변수가 모두 없으면 null. */
+  readonly ai: AiSettings | null;
 }
 
 export class SettingsError extends Error {
@@ -138,7 +176,90 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
       throw new SettingsError(`${name} must be at least ${MIN_HASH_KEY_LENGTH} characters`);
     }
   }
-  return { appEnv, secrets, missingSecrets, storage: readStorage(env, appEnv), fieldKeys: readFieldKeys(env) };
+  checkTracing(env, appEnv);
+  return {
+    appEnv,
+    secrets,
+    missingSecrets,
+    storage: readStorage(env, appEnv),
+    fieldKeys: readFieldKeys(env),
+    ai: readAi(env, secrets),
+  };
+}
+
+/** 켜진 추적 변수의 이름(없으면 null). 비었거나 false(대소문자 무관)만 꺼짐으로 본다. */
+export function tracingSwitchOn(env: Readonly<Record<string, unknown>>): string | null {
+  for (const name of TRACING_SWITCH_NAMES) {
+    const raw = env[name];
+    if (raw === undefined || raw === null) continue;
+    const value = String(raw).trim().toLowerCase();
+    if (value === "" || value === "false") continue;
+    return name;
+  }
+  return null;
+}
+
+/**
+ * 지금 프로세스 환경(process.env)에서 켜진 추적 변수. LangChain이 읽는 곳이라 모델 호출 직전에 한 번 더 본다(ai-model.ts).
+ * 설정을 읽는 곳은 이 모듈 하나라는 규칙대로 여기에 둔다.
+ */
+export function tracingSwitchInProcess(): string | null {
+  const env = (globalThis as { process?: { env?: Record<string, unknown> } }).process?.env;
+  return env === undefined ? null : tracingSwitchOn(env);
+}
+
+function checkTracing(env: Readonly<Record<string, unknown>>, appEnv: AppEnv): void {
+  if (appEnv !== "production") return;
+  const on = tracingSwitchOn(env);
+  // 값은 메시지에 싣지 않는다(이름과 조건만).
+  if (on !== null) throw new SettingsError(`${on} must be unset or false in production (REQ-138)`);
+  for (const name of TRACING_KEY_NAMES) {
+    const raw = env[name];
+    if (typeof raw === "string" && raw.trim() !== "") {
+      throw new SettingsError(`${name} must not be set in production (REQ-138)`);
+    }
+  }
+}
+
+function readAi(
+  env: Readonly<Record<string, unknown>>,
+  secrets: Readonly<Record<SecretName, Secret | null>>,
+): AiSettings | null {
+  const value = (name: (typeof AI_VAR_NAMES)[number]): string => {
+    const raw = env[name];
+    return typeof raw === "string" ? raw.trim() : "";
+  };
+  if (AI_VAR_NAMES.every((name) => value(name) === "")) return null;
+  // 값은 메시지에 싣지 않는다(이름과 조건만).
+  const provider = value("AI_PROVIDER");
+  if (!(AI_PROVIDERS as readonly string[]).includes(provider)) {
+    throw new SettingsError("AI_PROVIDER must be anthropic or openai");
+  }
+  const chosen = provider as AiProvider;
+  const model = value("AI_MODEL");
+  if (priceOf(chosen, model) === undefined) {
+    throw new SettingsError("AI_MODEL must be a model of AI_PROVIDER in the price table (ai-prices.ts)");
+  }
+  const effort = value("AI_EFFORT");
+  if (effort !== "" && !(AI_EFFORTS as readonly string[]).includes(effort)) {
+    throw new SettingsError("AI_EFFORT must be low, medium or high (or unset)");
+  }
+  const rate = value("AI_USD_KRW");
+  if (!/^[1-9][0-9]{0,4}(\.[0-9]{1,2})?$/.test(rate)) {
+    throw new SettingsError("AI_USD_KRW must be the KRW per USD rate like 1450.25");
+  }
+  const date = value("AI_USD_KRW_DATE");
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
+  if (parsed === null || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    throw new SettingsError("AI_USD_KRW_DATE must be the rate date as YYYY-MM-DD");
+  }
+  return {
+    provider: chosen,
+    model,
+    effort: effort === "" ? null : (effort as AiEffort),
+    fx: { rate, date },
+    apiKey: chosen === "anthropic" ? secrets.ANTHROPIC_API_KEY : secrets.OPENAI_API_KEY,
+  };
 }
 
 function readFieldKeys(env: Readonly<Record<string, unknown>>): FieldKeySettings | null {
