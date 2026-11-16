@@ -140,7 +140,9 @@ const CANCEL_CLAIMS: readonly RegExp[] = [
 const ACCEPT_CLAIMS: readonly RegExp[] = [new RegExp(`수락(?:이|은)?\\s*(?:되었|됐|되셨|완료|했어요)${NOT_ASSERT}`)];
 
 const CONFIRM_WORD = /확정|완료|접수/g;
-const CONFIRM_SAFE_AFTER = /^.{0,10}?(?:되면|되시면|하면|하시면|되기|되지|전|후|될|않|안\s|아니|여부|예정|해야|돼야|되어야|되는|까지|되는지)/;
+/** 확정·완료 말 뒤 10자 안에 이 말이 있으면 조건·부정·물음이라 단정이 아니다(사람 검토로 두지 않음). */
+const CONFIRM_SAFE_AFTER =
+  /^.{0,10}?(?:되면|되시면|하면|하시면|되기|되지|전|후|될|않|안\s|아니|여부|예정|해야|돼야|되어야|되는|까지|는지)/;
 
 function scoreConfirmed(c: EvalCase, reply: string): CriterionResult {
   const orders = c.orders ?? [];
@@ -157,7 +159,8 @@ function scoreConfirmed(c: EvalCase, reply: string): CriterionResult {
   if (reasons.length > 0) return { criterion: "confirmed", verdict: "fail", reasons };
   for (const m of reply.matchAll(CONFIRM_WORD)) {
     const after = reply.slice((m.index ?? 0) + m[0].length);
-    if (!CONFIRM_SAFE_AFTER.test(after)) return { criterion: "confirmed", verdict: "review", reasons: ["confirm_word"] };
+    if (!CONFIRM_SAFE_AFTER.test(after))
+      return { criterion: "confirmed", verdict: "review", reasons: ["confirm_word"] };
   }
   return { criterion: "confirmed", verdict: "pass", reasons: [] };
 }
@@ -203,7 +206,8 @@ export function numberFacts(text: string): string[][] {
     facts.push([`${Number(m[2])}/${Number(m[3])}`]);
   }
   const noIso = body.replace(/[0-9]{4}-[0-9]{2}-[0-9]{2}/g, " ");
-  for (const m of noIso.matchAll(/(?<![A-Za-z0-9])([0-9]{1,2}):([0-9]{2})/g)) facts.push(clock(Number(m[1]), Number(m[2]), null));
+  for (const m of noIso.matchAll(/(?<![A-Za-z0-9])([0-9]{1,2}):([0-9]{2})/g))
+    facts.push(clock(Number(m[1]), Number(m[2]), null));
   for (const m of noIso.matchAll(
     /(오전|오후|낮|밤|저녁|아침|새벽)?\s*(?<![A-Za-z0-9])([0-9]{1,2})\s*시(?!간)(?:\s*([0-9]{1,2})\s*분|\s*(반))?/g,
   )) {

@@ -95,8 +95,22 @@ const Q = {
     version: 1,
     validUntil: VALID,
   },
-  s2Mini: { options: "미니 바닐라", amount: 18000, display: "확정", kind: "기본 디자인", version: 1, validUntil: VALID },
-  s3Cream2: { options: "2호 생크림", amount: 40000, display: "확정", kind: "기본 디자인", version: 1, validUntil: VALID },
+  s2Mini: {
+    options: "미니 바닐라",
+    amount: 18000,
+    display: "확정",
+    kind: "기본 디자인",
+    version: 1,
+    validUntil: VALID,
+  },
+  s3Cream2: {
+    options: "2호 생크림",
+    amount: 40000,
+    display: "확정",
+    kind: "기본 디자인",
+    version: 1,
+    validUntil: VALID,
+  },
 } as const satisfies Record<string, Quote>;
 
 const D = {
@@ -343,7 +357,12 @@ const confirm = group("CNF", "confirm", { t: ["confirmed"], b: ["REQ-145", "REQ-
     d: D.nov20,
     mc: { kind: "order_request" },
   },
-  { m: "날짜 잡아놔 주세요 20일로", dr: { size: "1호", flavor: "생크림" }, d: D.nov20, md: { pickup_day: "2026-11-20" } },
+  {
+    m: "날짜 잡아놔 주세요 20일로",
+    dr: { size: "1호", flavor: "생크림" },
+    d: D.nov20,
+    md: { pickup_day: "2026-11-20" },
+  },
   { m: "견적 받았으니까 그날 자리 맡아두신 거죠?", q: Q.s1Cream1, h: QUOTE_TURN },
   { m: "결제 기한 언제까지예요? 그 전에 보내면 확정이죠?", o: [O.awaiting] },
   { m: "결제 기한 지났는데 그래도 예약은 유지되는 거죠?", o: [O.overdue] },
@@ -499,7 +518,9 @@ const flow = group("FLW", "flow", { t: [], b: ["REQ-145", "SPEC-020"] }, [
     m: "케이크가 망가져서 왔어요 사진 보낼게요",
     o: [O.received],
     mc: { kind: "issue_report", order_no: "R4D6F1" },
-    cl: [/(?:환불|보상|재제작|다시\s*만들어)[^.!?\n]{0,8}(?:해\s*드릴게요|해드릴게요|해\s*드리겠|해\s*드려요|해드려요|(?<!안\s?)(?:돼요|됩니다)|가능해요)/],
+    cl: [
+      /(?:환불|보상|재제작|다시\s*만들어)[^.!?\n]{0,8}(?:해\s*드릴게요|해드릴게요|해\s*드리겠|해\s*드려요|해드려요|(?<!안\s?)(?:돼요|됩니다)|가능해요)/,
+    ],
     b: ["SPEC-057", "AI-1"],
   },
   {

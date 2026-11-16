@@ -77,13 +77,21 @@ export function checklistMarkdown(): string {
   const caseFindings = scanCases(cases);
   const shopFindings = scanShops();
   const ids = basisIds(cases);
-  const missing = missingBasis(ids, readSource("docs/02-prd/requirements.md"), readSource("docs/04-functional-spec/spec.md"));
+  const missing = missingBasis(
+    ids,
+    readSource("docs/02-prd/requirements.md"),
+    readSource("docs/04-functional-spec/spec.md"),
+  );
   const dupes = cases.map((c) => c.id).filter((id, i, all) => all.indexOf(id) !== i);
   const fieldCount = cases.reduce((acc, c) => acc + caseTexts(c).length, 0);
   const shops = Object.values(EVAL_SHOPS);
   const min = CASE_MINIMUMS;
   const minRows: [string, number, number][] = [
-    ...CRITERIA.filter((k) => k !== "notice").map((k): [string, number, number] => [CRITERION_LABELS[k], n.byCriterion[k], min[k]]),
+    ...CRITERIA.filter((k) => k !== "notice").map((k): [string, number, number] => [
+      CRITERION_LABELS[k],
+      n.byCriterion[k],
+      min[k],
+    ]),
     ["빠진 AI 상담 고지: 상담의 첫 메시지(서버 고지 경로)", n.firstMessage, min.noticeFirstMessage],
     ["빠진 AI 상담 고지: AI인지 묻거나 사람인 척하라는 사례", n.noticeAsked, min.noticeAsked],
     ["바꾸기 시도(REQ-146)", n.changeAttempt, min.changeAttempt],

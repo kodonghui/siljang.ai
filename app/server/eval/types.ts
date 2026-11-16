@@ -24,7 +24,15 @@ export const CRITERION_LABELS: Readonly<Record<Criterion, string>> = {
 };
 
 /** 사례의 갈래. change_attempt는 REQ-146의 바꾸기 시도(손님 메시지 속 지시)다. */
-export const CATEGORIES = ["quote", "change_attempt", "confirm", "edibility", "unknown_rule", "notice", "flow"] as const;
+export const CATEGORIES = [
+  "quote",
+  "change_attempt",
+  "confirm",
+  "edibility",
+  "unknown_rule",
+  "notice",
+  "flow",
+] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const CATEGORY_LABELS: Readonly<Record<Category, string>> = {

@@ -41,7 +41,12 @@ export interface ModelSummary {
   readonly noOutput: Readonly<Record<string, number>>;
   readonly handoff: { readonly ok: number; readonly missing: number; readonly unexpected: number };
   readonly calls: number;
-  readonly tokens: { readonly input: number; readonly output: number; readonly cacheRead: number; readonly cacheWrite: number };
+  readonly tokens: {
+    readonly input: number;
+    readonly output: number;
+    readonly cacheRead: number;
+    readonly cacheWrite: number;
+  };
   readonly krw: string;
   /** 1,000차례(손님 메시지 1,000개)당 금액. 상담 하나는 여러 차례라 상담당 값은 TASK-162가 정한다. */
   readonly krwPer1000Turns: string;
@@ -141,11 +146,13 @@ export function summaryMarkdown(run: RunResult): string {
   const s = summarize(run);
   const head = `| 항목 | ${s.map((m) => m.model).join(" | ")} |\n| --- |${s.map(() => " --- |").join("")}`;
   const row = (label: string, f: (m: ModelSummary) => string): string => `| ${label} | ${s.map(f).join(" | ")} |`;
-  const crit = (m: ModelSummary, k: Criterion): CriterionSummary => m.criteria.find((x) => x.criterion === k) as CriterionSummary;
+  const crit = (m: ModelSummary, k: Criterion): CriterionSummary =>
+    m.criteria.find((x) => x.criterion === k) as CriterionSummary;
   const notMeasured = new Map<string, number>();
   for (const m of s) {
     for (const c of m.criteria) {
-      for (const [part, n] of Object.entries(c.notMeasured)) notMeasured.set(part, Math.max(notMeasured.get(part) ?? 0, n));
+      for (const [part, n] of Object.entries(c.notMeasured))
+        notMeasured.set(part, Math.max(notMeasured.get(part) ?? 0, n));
     }
   }
   const mode =
@@ -186,7 +193,10 @@ export function summaryMarkdown(run: RunResult): string {
     "## 보조 지표(REQ-145 잣대가 아님)",
     "",
     head,
-    row("넘김 맞음 / 빠짐 / 넘기지 않아야 하는데 넘김", (m) => `${m.handoff.ok} / ${m.handoff.missing} / ${m.handoff.unexpected}`),
+    row(
+      "넘김 맞음 / 빠짐 / 넘기지 않아야 하는데 넘김",
+      (m) => `${m.handoff.ok} / ${m.handoff.missing} / ${m.handoff.unexpected}`,
+    ),
     "",
     "## 토큰·금액·시간",
     "",
@@ -214,9 +224,7 @@ export function reviewMarkdown(run: RunResult): string {
   const byId = new Map(EVAL_CASES.map((c) => [c.id, c]));
   const reply = (r: CaseResult): string => r.sent.map((m) => `[${m.kind}] ${m.text}`).join(" / ");
   const lines = [`# 사람 검토 표본 ${run.runId}`, "", "## 기계가 review로 둔 판정", ""];
-  const reviews = run.results.flatMap((r) =>
-    r.verdicts.filter((v) => v.verdict === "review").map((v) => ({ r, v })),
-  );
+  const reviews = run.results.flatMap((r) => r.verdicts.filter((v) => v.verdict === "review").map((v) => ({ r, v })));
   if (reviews.length === 0) lines.push("- 없음");
   for (const { r, v } of reviews) {
     lines.push(
@@ -250,7 +258,11 @@ export function writeResultFiles(dir: string, run: RunResult): Readonly<Record<s
     run: join(dir, "run.json"),
   };
   writeFileSync(paths.summary, summaryMarkdown(run), "utf8");
-  writeFileSync(paths.results, `${run.results.map((r) => JSON.stringify({ runId: run.runId, ...r })).join("\n")}\n`, "utf8");
+  writeFileSync(
+    paths.results,
+    `${run.results.map((r) => JSON.stringify({ runId: run.runId, ...r })).join("\n")}\n`,
+    "utf8",
+  );
   writeFileSync(paths.review, reviewMarkdown(run), "utf8");
   const meta = {
     runId: run.runId,

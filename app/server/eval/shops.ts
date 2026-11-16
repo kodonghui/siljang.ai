@@ -38,7 +38,11 @@ export const EVAL_SHOPS: Readonly<Record<ShopKey, EvalShop>> = {
     },
     regulationVersion: 2,
     articles: [
-      { no: 1, title: "영업 시간과 픽업", text: "픽업은 가게에서 화요일부터 일요일 11:00~20:00에 합니다. 월요일은 쉽니다." },
+      {
+        no: 1,
+        title: "영업 시간과 픽업",
+        text: "픽업은 가게에서 화요일부터 일요일 11:00~20:00에 합니다. 월요일은 쉽니다.",
+      },
       {
         no: 2,
         title: "주문 변경과 취소",

@@ -75,7 +75,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     if (a === "--model") models.push(value());
     else if (a === "--effort") {
       const v = value();
-      if (!(AI_EFFORTS as readonly string[]).includes(v)) throw new UsageError(`--effort must be ${AI_EFFORTS.join(", ")}`);
+      if (!(AI_EFFORTS as readonly string[]).includes(v))
+        throw new UsageError(`--effort must be ${AI_EFFORTS.join(", ")}`);
       effort = v as AiEffort;
     } else if (a === "--limit") {
       const v = value();
@@ -157,7 +158,10 @@ const say = (line: string): void => {
   process.stdout.write(`${line}\n`);
 };
 
-export async function main(argv: readonly string[], env: Readonly<Record<string, string | undefined>>): Promise<number> {
+export async function main(
+  argv: readonly string[],
+  env: Readonly<Record<string, string | undefined>>,
+): Promise<number> {
   let args: CliArgs;
   try {
     args = parseArgs(argv);
@@ -191,7 +195,9 @@ export async function main(argv: readonly string[], env: Readonly<Record<string,
   const cases = pickCases(EVAL_CASES, args.limit);
   const mode = args.real ? "real" : "mock";
   const estimate = estimateRun(baselineSubject, cases, r.targets, r.fx);
-  say(`모드 ${mode}${mode === "mock" ? "(모의 응답, 유료 호출 없음)" : "(실제 호출, 유료)"} · 사례 ${cases.length}개 · 모델 ${r.targets.map(targetName).join(", ")}`);
+  say(
+    `모드 ${mode}${mode === "mock" ? "(모의 응답, 유료 호출 없음)" : "(실제 호출, 유료)"} · 사례 ${cases.length}개 · 모델 ${r.targets.map(targetName).join(", ")}`,
+  );
   say(`환율 ${r.fx.rate}원(${r.fx.date}) · 프롬프트 ${baselineSubject.promptVersion}`);
   for (const t of estimate.targets) {
     say(

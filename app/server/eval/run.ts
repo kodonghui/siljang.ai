@@ -143,7 +143,13 @@ export async function runEval(o: RunOptions): Promise<RunResult> {
   run: for (const target of o.targets) {
     const name = targetName(target);
     const key = o.mode === "real" ? (o.keys?.[target.provider] ?? null) : MOCK_KEY;
-    const ai: AiSettings = { provider: target.provider, model: target.model, effort: target.effort, fx: o.fx, apiKey: key };
+    const ai: AiSettings = {
+      provider: target.provider,
+      model: target.model,
+      effort: target.effort,
+      fx: o.fx,
+      apiKey: key,
+    };
     for (const c of o.cases) {
       if (cap !== null && spent + upperCallCents(subject, c, target, o.fx) > cap) {
         stopped = { reason: "cost_cap", beforeCase: c.id, model: name };
