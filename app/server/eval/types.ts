@@ -121,6 +121,15 @@ export interface Turn {
   readonly text: string;
 }
 
+/**
+ * 답에 나오면 단정인 말의 꼴. 서술어는 이름 붙인 무리 p로 표시한다(없으면 찾은 글 전부). 서술어 앞뒤의 부정·물음 꼴은
+ * polarity.ts가 함께 가른다. counts가 'any'면 된다·안 된다 모두 단정이고, 'yes'면 된다고 할 때만 단정이다.
+ */
+export interface Claim {
+  readonly re: RegExp;
+  readonly counts: "any" | "yes";
+}
+
 export interface EvalCase {
   readonly id: string;
   readonly category: Category;
@@ -143,7 +152,7 @@ export interface EvalCase {
   /** 넘기지 않아야 하는 사례(범위 밖 질문은 넘기지 않음, SPEC-020). 보조 지표. */
   readonly noHandoff?: boolean;
   /** 이 사례에서 답에 나오면 '지어낸 답'인 말(가게 규칙·계산값에 없는 사실). */
-  readonly claims?: readonly RegExp[];
+  readonly claims?: readonly Claim[];
   /** 모의 응답이 채울 초안 값(모의 실행 전용). */
   readonly mockDraft?: Draft;
   /** 모의 응답이 낼 확인 카드(모의 실행 전용). */
