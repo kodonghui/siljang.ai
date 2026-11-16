@@ -1,0 +1,68 @@
+/* 견본 화면의 틀(개발용). 부품 모습은 styles/parts.css에 있고 여기에는 견본을 늘어놓는 틀만 둔다. */
+
+.sample {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  max-width: var(--size-content);
+  margin: 0 auto;
+  padding: var(--space-lg);
+}
+
+.sample__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.sample__state {
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-small);
+}
+
+.sample__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.sample__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: 0;
+  list-style: none;
+}
+
+.sample__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-xs) var(--space-md);
+  min-height: var(--size-target);
+  padding: var(--space-md);
+  border: var(--border-width-hairline) solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.sample__muted {
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-small);
+}
+
+.sample__index {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: 0;
+  list-style: none;
+}
+
+/* 목록의 고리도 누르는 곳 44px(size.target) */
+.sample__index a {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-target);
+}

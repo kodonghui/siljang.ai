@@ -1,6 +1,6 @@
 # app: 서버와 웹 (11단계 원본)
 
-TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(요청 키·오류 응답·데이터베이스 연결 층·시각과 확인 카드의 바탕·운영 기록), TASK-019의 가게별 기록 나누기(가게 범위 접근 층·가게 조건 검사·교차 가게 시험 묶음), TASK-022의 사진 올리기(06 API-007, 저장소 모듈, 사장님 범위 경로, 15분 서명 주소, 05 A11 사진 장수), TASK-025의 계좌번호·원래 값 암호화(05 A23·E20의 봉투와 키 버전, 05 A15 마스킹한 값 저장), TASK-023의 서버 안의 일 실행기(05 A33의 같은 일은 한 번만, 기다리는 일 찾기·잡기, 일 등록부, Cron 어댑터), TASK-026의 모델 호출 한 곳(두 회사의 LangChain 채팅 모델을 배포 설정으로 고름, 호출마다 `ai_calls` 한 행과 금액, 운영에서 추적 도구 끔)입니다. 계약은 [../api/openapi.yaml](../api/openapi.yaml), 스키마는 [../db/](../db/)에 있고 여기서 고치지 않습니다.
+TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(요청 키·오류 응답·데이터베이스 연결 층·시각과 확인 카드의 바탕·운영 기록), TASK-019의 가게별 기록 나누기(가게 범위 접근 층·가게 조건 검사·교차 가게 시험 묶음), TASK-022의 사진 올리기(06 API-007, 저장소 모듈, 사장님 범위 경로, 15분 서명 주소, 05 A11 사진 장수), TASK-025의 계좌번호·원래 값 암호화(05 A23·E20의 봉투와 키 버전, 05 A15 마스킹한 값 저장), TASK-023의 서버 안의 일 실행기(05 A33의 같은 일은 한 번만, 기다리는 일 찾기·잡기, 일 등록부, Cron 어댑터), TASK-026의 모델 호출 한 곳(두 회사의 LangChain 채팅 모델을 배포 설정으로 고름, 호출마다 `ai_calls` 한 행과 금액, 운영에서 추적 도구 끔), TASK-029의 사장님·운영자 웹 바탕(09 토큰, 08 공통 상태 부품, G7 표, 요청 키, 확인 창, 필드 오류)입니다. 계약은 [../api/openapi.yaml](../api/openapi.yaml), 스키마는 [../db/](../db/)에 있고 여기서 고치지 않습니다.
 
 ## 설계 메모
 
@@ -189,6 +189,45 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
     - 실패·시간 초과 행과 끝 사용량이 오지 않은 행(`usage_missing`)은 토큰·금액이 비어 있습니다. 끊은 호출도 회사는 받은 입력과 그때까지 만든 출력을 셈할 수 있지만 우리는 그 값을 받지 못합니다. 가게 하루 비용 한도(REQ-163; 설정 TASK-037, 셈 TASK-069)가 이 몫을 어떻게 셀지 정합니다.
     - `AI_EFFORT`를 비우면 effort를 보내지 않아 회사의 모델 기본값으로 돕니다(회사·모델마다 다르고 바뀔 수 있음). 모델과 effort는 TASK-162가 평가로 고릅니다.
     - 프롬프트 캐시를 쓰게 되면 짧은 보관만 쓰거나 요금표에 긴 보관 값을 더합니다(지금은 막음, 53).
+58. 웹 바탕(TASK-029; 04 G7·G2, REQ-147, 08 README 4·5절, 09 README 8-2절, 06 오류 37·필드 사유 24·확인 8·DEC-04): 사장님 화면과 운영자 화면이 같은 바탕을 씁니다. 화면 작업은 `web/src/ui/`(부품, `index.ts`에서 가져옴), `web/src/problems.ts`(G7 표), `web/src/useCommand.ts`(명령 하나와 요청 키), `web/src/api.ts`의 `request`(API 부르기)만 씁니다. 손님 화면(카카오)은 이 바탕 밖입니다.
+59. 토큰: 09 `design/base.tokens.json`(55개, 2026-11-13 고정)을 `web/scripts/gen-tokens.mjs`가 `web/src/styles/tokens.css`의 CSS 변수로 만듭니다(`npm run tokens -w web`). 이름은 09 목업의 `css_vars.py`와 같습니다(`color.paper` → `--color-paper`). 생성 파일은 손으로 고치지 않고 Biome도 고치지 않게 뺐습니다(`biome.json`). `web/src/styles/styles.test.ts`가 다시 만든 것과 같은지(`--check`), 손으로 쓴 CSS(`base.css`·`parts.css`·견본의 `samples.css`)에 숫자 크기·색 값이 없고 쓰는 변수가 토큰뿐인지, 부품에 인라인 style이 없는지 봅니다. 모드는 밝은 화면 하나(09 8-2절)라 어두운 모드는 없습니다. 맞는 토큰이 없던 곳은 가장 가까운 토큰을 썼습니다: 확인 창의 1280 너비는 09 목업이 360만 그려 그 창(328px)에 가장 가까운 `size.aside`(336px), 불러오는 중 막대의 길이는 비율(60%·40%), 추적 ID가 있는 배너의 글 바탕 너비는 `size.aside`입니다.
+60. 글꼴과 더한 의존성: 토큰의 첫 글꼴 IBM Plex Sans KR을 `@fontsource/ibm-plex-sans-kr` 5.3.0(토큰이 쓰는 굵기 400·500·600·700)으로 같은 출처에서 줍니다. 이유는 외부 요청 없이(09 목업은 Google Fonts 링크) 목업과 같은 글꼴로 보이고 page-check가 실제 글꼴로 재기 때문입니다. 글자 묶음별 파일이라 브라우저는 화면에 나온 글자의 파일만 받습니다. 대신 @font-face 선언이 커서(빌드 기준 약 300KB, gzip 135KB) 앱은 글꼴 CSS를 따로(`main.tsx`의 동적 import, `web/src/styles/fonts.ts`) 실어 첫 그림을 막지 않습니다. 첫 CSS는 약 8KB이고, 글꼴이 오기 전에는 토큰의 대체 글꼴로 보입니다(`font-display: swap`). `npm run build -w web` 끝에 `web/scripts/check-dist.mjs`가 첫 CSS에 @font-face가 없고 토큰·공통 부품이 있는지, 견본이 빌드에 없는지 봅니다. 시험이 06·08을 읽으려고 `yaml` 2.9.1을 web 개발 의존성에 더했습니다(server가 이미 쓰는 버전). 두 의존성 모두 정확한 버전으로 일주일 넘은 것을 `--before`로 넣었습니다.
+61. 공통 상태 부품(08 README 4절의 공통 상태, 09 방향 A 목업의 `statebox`·`msgbox`·`bannerx`·`dialog`·`field`·`ferr`와 같은 모습). 글은 08·09의 것이고, 08에 빠진 정의가 없어 08 원본은 고치지 않았습니다.
+    - 불러오는 중: `Skeleton`(레이아웃은 두고 데이터 자리에 회색 막대, `aria-busy`, 화면 읽기용 '불러오고 있어요').
+    - 빈: `EmptyState`(점선 상자와 화면 정의의 글). 06 `not_set`은 빈 입력 화면이라 화면이 그립니다.
+    - 불러오기 실패·권한: `LoadFailure`(서버 실패는 상자·추적 ID·'다시 시도', 로그인은 '로그인하면 이 화면으로 돌아와요', 가게 등록, 찾을 수 없음과 돌아가는 길).
+    - 오래됨: `CommandStatus`의 이미 바뀜·이미 처리됨·그 상태에서는 할 수 없음(주의 배너와 '다시 불러오기')과 목록의 `AsOf`('HH:MM 기준이에요'와 '새로 고침', 시각은 `clockText`로 가게 시간대).
+    - 보내는 중: `Button`의 `busy`('처리하고 있어요', `disabled` 대신 `aria-disabled`라 포커스가 남음). 같은 화면의 다른 액션은 화면이 `disabled`로 막습니다.
+    - 됨: `CommandStatus`의 성공 줄(화면 정의의 글, 예: '손님에게 보냈어요').
+    - 확인 창: `ConfirmDialog`(되돌릴 수 없는 일 등 화면이 여는 확인)와 `ConfirmRequired`(서버의 409 `confirmation_required`, 06 제목과 확인할 것마다 06 6절의 글, 날짜가 있으면 'M월 D일: '). 버튼은 '돌아가기'와 액션 이름입니다.
+    - 필드 오류: `Field`·`TextField`가 06 `errors[].field`(JSON 포인터)로 그 필드 옆에 사유를 보이고 넣은 값은 그대로 둡니다. 화면이 그린 필드 밖의 위치(본문 전체 `/`, 헤더, 화면에 없는 필드)는 `CommandStatus`가 폼 위 목록에 모읍니다. 사유 24개의 글은 `problems.ts`의 `FIELD_REASONS`이고 화면이 그 필드에 맞는 글을 주면(`messages`) 그것이 먼저입니다.
+    - 추적 ID가 있는 배너는 좁은 화면에서 버튼을 다음 줄로 내립니다(09 목업에는 추적 ID가 없었고, 360에서 ID가 줄 끝에서 잘렸음).
+62. G7 표(`web/src/problems.ts`의 `ERROR_CODES`): 06 오류 코드 37개마다 상태 코드·화면의 말(06 그대로)·G7 결과·08 화면 상태·다시 보내는 법입니다. `problems.test.ts`가 06(코드 목록·상태·말, `client`의 'G7 …' 8개, 다시 보내는 법)과 08 화면 정의의 응답→상태 509행(아래 예외 셋만 다름)에 견줍니다.
+
+    | 결과                         | 코드                                                                                                                                                                                                                                        | 08 상태               | 다시 보내기                            |
+    | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | -------------------------------------- |
+    | 필드 오류(G7)                | validation_failed, consent_required(06 'G7 동의 필요'), sheet_not_accessible, holder_not_verified, file_too_large                                                                                                                           | error                 | 안 함                                  |
+    | 이미 처리됨(G7)              | already_decided, already_registered                                                                                                                                                                                                         | stale                 | 안 함                                  |
+    | 이미 바뀜(G7)                | version_conflict, order_cancelled                                                                                                                                                                                                           | stale                 | 안 함                                  |
+    | 그 상태에서는 할 수 없음(G7) | invalid_state, slot_released, undo_window_passed, photo_consent_missing, identity_change_pending, original_erased / channel_setup_incomplete, channel_linked_elsewhere(06 'G7 이미 다른 가게'), original_not_kept / payment_account_missing | stale / error / empty | 안 함                                  |
+    | 찾을 수 없음(G7)             | not_found                                                                                                                                                                                                                                   | error                 | 안 함                                  |
+    | 서버 실패(G7)                | internal, kakao_unavailable, google_unavailable / storage_unavailable(파일을 다시 고름), method_not_allowed / idempotency_key_reused                                                                                                        | error                 | 같은 키 / 안 함 / 새 키                |
+    | 로그인                       | unauthenticated / kakao_login_failed, operator_login_failed, google_authorization_failed                                                                                                                                                    | permission / error    | 안 함                                  |
+    | 가게 등록                    | shop_not_registered                                                                                                                                                                                                                         | permission            | 안 함                                  |
+    | 빈 입력                      | not_set                                                                                                                                                                                                                                     | empty                 | 안 함                                  |
+    | 확인 창                      | confirmation_required                                                                                                                                                                                                                       | confirm               | 새 키(confirm 값을 담아)               |
+    | 처리 중                      | request_in_progress                                                                                                                                                                                                                         | submitting            | 1초 뒤 같은 키(70초까지)               |
+    | 한도                         | rate_limited / too_many_attempts                                                                                                                                                                                                            | rate-limited          | Retry-After 뒤 같은 키 / 그동안 막기만 |
+
+    성공(2xx)이 G7의 일곱째입니다. `skill_key_invalid`는 카카오 스킬 전용이라 화면에 오면 일반 서버 실패로 봅니다. 08이 그 화면에서만 다르게 정한 예외: 사진 올리기(API-007)의 `rate_limited`는 사진 필드 옆 오류(SCR-015·030·035·036), 인도 기록의 `already_decided`는 됨(SCR-031), 폼 화면의 읽기 `internal`은 load-failed(SCR-032·033·034·036·038·040). Problem이 아닌 응답과 연결 실패는 서버 실패이고, 연결 실패(0)와 5xx만 같은 키로 다시 시도합니다.
+63. 요청 키(04 G2, 06 DEC-04, `web/src/command.ts`): 키는 `ui-`와 무작위 16바이트의 16진수(35자, 06 `IdempotencyKey` 꼴)입니다. 명령을 누를 때마다 새 키이고, 보내는 동안 다시 누르면 무시합니다(두 번 보내지 않음). 같은 요청을 다시 보낼 때만 같은 키입니다: '다시 시도'(연결 실패·5xx), 처리 중(409 `request_in_progress`) 1초 뒤, 요청 빈도 한도(429 `rate_limited`) Retry-After 초 뒤. 확인 창에서 확인하면 같은 본문에 `confirm` 값을 담아 새 키로 보냅니다. 작업 지시서는 '같은 키'라고 했지만 06의 `confirmation_required` 안내가 '새 요청 키'이고, 같은 키에 바뀐 본문은 06이 422 `idempotency_key_reused`를 주므로 06을 따랐습니다. 422 `idempotency_key_reused`는 화면의 잘못이라 코드와 추적 ID를 남기고(지금은 브라우저 콘솔) '다시 시도'는 새 키입니다. `useCommand(send)`의 send는 그릴 때마다 새로 넘겨도 되고, 누른 때의 send로 보내며 그 명령의 다시 보내기·확인도 같은 send를 씁니다(바뀐 값으로 같은 키를 보내지 않음). 화면이 사라지면(effect 정리, `stopTimers`) 기다리는 타이머를 멈추고 아직 오지 않은 응답도 버려, 뒤늦게 온 429 `rate_limited`·409 `request_in_progress`로 스스로 다시 보내지 않습니다. 같은 명령을 다시 쓰면(StrictMode의 두 번 붙임, 숨겼다 다시 보임) 보내는 중이던 것은 결과를 모르는 연결 실패로 두어 '다시 시도'가 같은 키로 보내고, 한도로 막혀 있던 것은 풀어 둡니다.
+64. 접근성: 확인 창은 브라우저의 모달 `<dialog>`(`showModal`, 뒤는 막힘)이고, 열면 '돌아가기'에 포커스, Tab·Shift+Tab은 창 안에서 돌고, Esc는 '돌아가기'와 같으며, 닫히면 누른 버튼으로 포커스가 돌아갑니다(브라우저가 스스로 닫아도 화면 상태를 맞춤). 상태 알림은 문서에 늘 있는 보이지 않는 `aria-live` 영역 둘(`web/src/ui/announce.ts`; 됨은 polite, 실패는 assertive)에 넣습니다. 나타나는 부품 안의 live 영역은 읽지 않는 경우가 있어서입니다. 필드는 오류가 있으면 `aria-invalid`이고 `aria-describedby`가 오류 줄, 도움말 순서로 가리킵니다. 누르는 곳은 토큰의 크기입니다(버튼 높이 `size.control` 44px·너비 최소 `size.target` 44px, 필드 높이 `size.control`). 포커스 테두리는 `border-width.strong`입니다.
+65. page-check(이 컴퓨터에서만): `npm run check:pages -w web -- --out <폴더>`가 Vite 개발 서버로 `web/samples.html`(개발용 견본, 운영 빌드에 없음)을 띄우고, 미리 설치된 Playwright Chromium으로 견본 상태 18개를 360·1280(높이 800, deviceScaleFactor 1)으로 엽니다. 상태마다 corthex-uxui `page-check.js`(오류 0), 가로 넘침 없음, 콘솔 오류 없음, 실린 글꼴을 보고 스크린샷을 남기며, 확인 창(첫 포커스·Tab 가둠·Esc·포커스 돌려줌·확인하면 새 키와 confirm 값)과 '다시 시도'(같은 키), 두 번 눌러도 요청 하나를 키보드·마우스로 눌러 봅니다. 결과는 `<폴더>/report.json`과 `<상태>-<너비>.png`입니다. `page-check.js`는 `--page-check`, `PAGE_CHECK`, 아니면 `tools/stage-checks.sh`와 같은 곳에서 찾습니다. CI에는 브라우저가 없어 node 시험만 돕니다(06·08 대조, 요청 키, 부품 표시, 토큰, 견본이 그려짐과 실행기의 상태 목록). 검사 통과는 화면 확인이 아니어서 스크린샷을 눈으로 따로 봅니다.
+66. 시험과 넘기는 것(TASK-029)
+    - 웹 시험 4 → 116개(2 → 7파일). `problems.test.ts` 19개(06·08 대조, Problem 읽기, G7 나누기), `command.test.ts` 23개(요청 키와 상태, 화면이 사라질 때), `api.test.ts` 10개, `ui/parts.test.tsx` 25개(G7 일곱 결과가 서로 다른 모습, 필드·확인 창·버튼·상태 부품), `styles/styles.test.ts` 17개(토큰), `samples/samples.test.tsx` 21개, `App.test.tsx` 1개.
+    - 이 PR에서 본 것: page-check 360·1280에서 견본 18개와 흐름 장면 4개, 모두 오류 0·가로 넘침 0·콘솔 오류 0·IBM Plex Sans KR(400~700) 실림. 경고는 확인 창 뒤(scrim 아래, 막힌 내용)의 글 대비를 손으로 보라는 것뿐입니다. 흐름 4개(확인 창·다시 시도 × 2너비) 통과. 스크린샷은 deviceScaleFactor 1로 저장 실패·필드 오류·확인 창·한도·로그인(360), 확인 창·불러오기 실패(1280)를 눈으로 봤습니다.
+    - 시험하지 않은 것: 실제 화면(아직 없음)과 서버 API에 붙여 부르기, 화면 읽기 프로그램으로 실제로 듣기, 폰 실물의 키보드·터치, 320 등 다른 너비.
+    - 넘기는 것: 사장님·운영자 화면의 틀(08 W4: 1280 왼쪽 메뉴, 360 위 막대와 메뉴 버튼, 운영자 메뉴 둘, 목록의 표·카드 바꿈)은 맡은 WBS 작업이 없습니다. 반복 1에 TASK-029 뒤의 새 작업으로 두고, 로그인 뒤 메뉴 안에 들어가는 화면 작업(반복 2의 TASK-047부터)이 그 뒤를 따르게 하기를 추천합니다. 한 화면 작업 안에 넣으면 같은 반복에서 나란히 하는 다른 화면 작업이 드러나지 않는 선후를 갖게 됩니다. WBS 행은 조정 창이 더합니다. 화면의 잘못(`idempotency_key_reused`·`method_not_allowed`)은 지금 브라우저 콘솔에만 남고 서버로 모으기는 관측 작업 몫입니다. 필드마다 맞춘 글과 `version_conflict` 뒤 지금 상태 다시 읽기(06 client)는 각 화면 작업이, 마스킹한 값 부품은 TASK-159가 맡습니다.
 
 ## 명령 (`app/`에서)
 
@@ -211,3 +250,15 @@ TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:54329/app_test npm test
 ```
 
 개발 때는 `npm run dev -w server`(wrangler dev, 127.0.0.1:8787)와 `npm run dev -w web`(Vite, `/api`를 8787로 넘김)을 함께 띄웁니다.
+
+09 토큰을 다시 만들 때(`design/base.tokens.json`이 바뀐 뒤)는 아래 명령을 씁니다. 생성 파일 `web/src/styles/tokens.css`는 손으로 고치지 않습니다.
+
+```bash
+npm run tokens -w web
+```
+
+공통 부품을 실제 브라우저로 잴 때(이 컴퓨터에서만, 설명은 65)는 아래 명령을 씁니다. 견본은 `npm run dev -w web`을 띄운 뒤 `/samples.html`에서도 볼 수 있습니다.
+
+```bash
+npm run check:pages -w web -- --out /tmp/siljang-page-check
+```
