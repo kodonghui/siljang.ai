@@ -93,7 +93,7 @@ export interface AccessRow {
   readonly clientIp: string;
 }
 
-/** 접속기록을 남기지 못하는 까닭(로그의 code). 값은 싣지 않는다. */
+/** 접속기록을 남기지 못하는 이유(로그의 code). 값은 싣지 않는다. */
 export type AccessLogFailure =
   | "client_ip_missing"
   | "client_ip_invalid"
@@ -153,7 +153,7 @@ export function isClientIp(value: string): boolean {
 }
 
 /**
- * 접속지: CF-Connecting-IP만 읽는다. Cloudflare는 이 헤더에 Cloudflare에 접속한 쪽의 IP 하나를 넣고, X-Forwarded-For는
+ * 접속지: CF-Connecting-IP만 읽는다. Cloudflare는 이 헤더에 Cloudflare에 접속한 곳의 IP 하나를 넣고, X-Forwarded-For는
  * 부르는 쪽이 보낸 값에 덧붙인다(Cloudflare 문서). 없거나(Remove visitor IP headers를 켬, wrangler dev 밖의 시험) IP 꼴이
  * 아니면 AccessLogError(닫힘, 500).
  */

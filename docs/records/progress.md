@@ -6,6 +6,38 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-16 15:50 무렵 KST · TASK-024 접속기록 남기기 공통([PR #67](https://github.com/kodonghui/siljang.ai/pull/67))
+
+- 한 일
+  - 앞 단락의 [PR #66](https://github.com/kodonghui/siljang.ai/pull/66)을 squash로 합쳤습니다(main `751a2fc`, 2026-11-16 15:00 무렵). 합친 뒤 main에서 돈 GitHub Actions run 43813810893(app)과 43813811001(db)도 성공했습니다.
+  - 사장님·운영자가 손님 개인정보를 읽거나 바꾸거나 여는 요청마다 응답과 같은 트랜잭션에서 `access_logs`(TBL-053)에 한 행을 넣는 공통 층을 `app/server/`에 더했습니다(REQ-196, 04 SPEC-074·G6, 05 A24·E21, 06 README 5절 '접속기록').
+    - 새 파일: `src/access-log.ts`(남기는 API 31개, `CF-Connecting-IP` 읽기, 05 CHECK를 넣기 전에 보는 행 만들기, 넣는 SQL, 요청 하나의 접속기록 `AccessRecorder`), 시험 `test/access-log.test.ts`(31개)와 뒤 작업이 쓸 도우미 `test/support/access-log.ts`.
+    - 고침: `src/routes.ts`(`accessRoute`와 처리기가 받는 `AccessRequest`), `src/request-key.ts`(같은 요청 키로 다시 온 요청의 다시 읽기를 한 트랜잭션에서), `src/log.ts`(`api` 필드), `src/jobs.ts`(SPEC-074 항목 메모).
+  - 지시의 설계 쟁점 1\~7을 원본(04 SPEC-074, 05 A24·E21·TBL-053과 규칙 시험, 06 README 5절·625행·오류 표와 `components.x-corthex.jobs`, Cloudflare 문서, Miniflare 소스)으로 확인하고 아래처럼 골랐습니다. 자세한 것은 [`app/README.md`](../../app/README.md) 67\~73에 있습니다.
+    - 쟁점 1(어느 API): 경로 선언(`accessRoute`)에 06 API 번호를 두고, 처리기는 가게 범위 연결을 받지 않아 접속기록 한 행과 같은 트랜잭션인 읽기·쓰기 명령으로만 데이터베이스를 씁니다. 06 `components.x-corthex.jobs`의 SPEC-074 `seen_in`이 이미 기계로 읽히는 범위(API-040\~066, 074\~077)라 06 PR 없이 그 범위와 06 README 5절을 견주는 완결 시험을 두었습니다. 06의 API-040\~066은 `x-corthex.spec`에 SPEC-074가 없지만(API-074\~077만 있음) 06은 고치지 않았습니다.
+    - 쟁점 2(같은 트랜잭션): 읽기는 읽기와 넣기를 한 트랜잭션에서 하고 커밋된 뒤 200, 쓰기 명령은 명령·넣기·요청 키 '끝남' 표시가 한 트랜잭션, 같은 키로 다시 오면 다시 읽기와 넣기가 한 트랜잭션입니다(모든 명령의 다시 읽기가 이제 트랜잭션 안). 넣지 못하면 되돌리고 500 `internal`이며, 오류 응답과 남긴 오류의 다시 보냄은 행이 없습니다.
+    - 쟁점 3(누가·어디서): 가게 범위의 사장님·운영자만이고, 접속지는 `CF-Connecting-IP`만 믿습니다(Cloudflare 문서 'Cloudflare HTTP headers', 2026-11-15 고침, 2026-11-16 확인). 없거나 IP 꼴이 아니면 아무것도 읽기 전에 500입니다. `wrangler dev`는 요청에 그 헤더가 이미 있으면 그대로 두어(Miniflare 소스) 로컬에서는 흉내 낼 수 있음을 README 70에 적었습니다.
+    - 쟁점 4(무엇을): 경로는 쿼리 없이, 손님 ID만, 빈 목록도 한 행이고 05 CHECK 넷은 넣기 전에 도구가 봅니다. TASK-025의 평문 훑기 시험은 `information_schema`의 모든 기본 테이블을 보므로 `access_logs`도 보고, 이 PR의 시험은 접속기록 행의 글(`t::text`)에 손님 이름·연락처·연 원래 값이 없는지 직접 봅니다.
+    - 쟁점 5(데이터베이스가 막는 것과 넘김): SPEC-074 #2는 TASK-017 규칙 시험(`research/cake-erd-2026-11/rule_tests.sql` 1689\~1694행)에 이미 있고 앱의 연결로 한 번 더 봤습니다. 로컬 PostgreSQL 16.15에서 임시 역할(트랜잭션을 되돌림)로 본 권한을 근거로 TASK-174(앱 계정 권한), TASK-166(접속기록 점검 주기와 방법, 내부 관리계획), TASK-016(스테이징의 `CF-Connecting-IP`와 Cloudflare 설정 둘)의 끝난 조건에 더하고 10-wbs README 10절에 세 행을 적었습니다.
+    - 쟁점 6(시험용 경로와 도우미): 시험 파일 안에만 있는 경로로 SPEC-074 #1\~#3과 A24를 보였고(운영 선언에 없음을 정적 시험이 봄), 뒤 작업이 같은 도우미로 자기 API를 시험합니다.
+    - 쟁점 7(겹침): 2년 지난 행 지우기는 TASK-158 그대로이고, `jobs.ts`의 SPEC-074 항목은 이 층을 가리키게 고쳤습니다.
+  - 시험을 먼저 쓰고 빈 껍데기로 돌려 31개 가운데 24개가 실패하는 것을 본 뒤 구현했습니다. 껍데기에서도 지난 7개는 이미 있던 동작(05 트리거, 접속기록 0행, 06 범위 줄, 운영 선언의 대조)이나 실패 쪽(500)만 보는 시험이라 새 코드의 증거로 세지 않았습니다.
+- 이유: TASK-024는 TASK-018만 기다리고, 이어지는 작업이 12개(바로 뒤 TASK-077·159·166)입니다.
+- 결과
+  - 끝난 조건(SPEC-074 수락 기준 #1\~#3 자동 시험 통과, A24를 보는 서버 시험)을 시험용 경로로 확인했습니다. 실제 사장님·운영자 API는 아직 없어 뒤 작업이 같은 도우미로 봅니다.
+  - GitHub Actions의 실행 번호와 결과는 PR 본문에 적습니다.
+- 확인한 것
+  - 로컬(Node 22.23.4, PostgreSQL 16.15, 코드는 `b9a01ee`와 같음): `biome ci`·typecheck 종료 코드 0, 서버 시험 33파일 598개·웹 시험 7파일 116개 통과, 빌드 종료 코드 0(Worker 4856.13 KiB·gzip 869.86 KiB, 웹 첫 CSS 8.39 kB), 키 검사 478파일 0건.
+  - `bash tools/stage-checks.sh task024`(15:40 시작, 머리 `0e6a17e`): 검사 9개 모두 종료 코드 0(prd·flows 문제 0·금지어 0, spec 오류 0, erd 15/15, api 17/17, sitemap 17/17, screens 15/15, mockup 14/14, wbs 검사 18개 · 오류 0). 그 뒤에는 앱 주석 두 줄과 README·기록만 고쳤고, 단계 검사는 이 파일들을 읽지 않습니다.
+  - PostgreSQL 권한(임시 역할, 트랜잭션을 되돌려 역할이 남지 않음): `INSERT`만으로 넣기가 됨, `DELETE … WHERE accessed_at <= …`는 `SELECT(accessed_at)`이 있어야 됨(없으면 permission denied), `UPDATE`·`TRUNCATE`는 권한이 없으면 permission denied, 소유자가 아니면 트리거를 끄지 못함(`must be owner`).
+  - Cloudflare 문서는 2026-11-16 06:06 UTC 무렵 받은 사본으로 읽었습니다: 'Cloudflare HTTP headers'(2026-11-15 고침), 'Restoring original visitor IPs'(2026-04-23 고침). Miniflare 동작은 `app/node_modules`의 소스(5.20261104.0-beta, wrangler 4.158.0)에서 봤습니다.
+  - 확인하지 않은 것: 배포한 Worker에서 Cloudflare가 넣는 헤더, 실제 사장님·운영자 API(아직 없음), 스테이징·운영 데이터베이스의 역할(계정이 없음), Workers 런타임(workerd)에서 돌리기.
+  - 새로 쓴 글(코드·시험·문서의 더한 줄, 다시 만든 `wbs.md`는 뺌)에서 01 용어집 금지어, 10단계 검사의 더한 말(`build_wbs.py`의 EXTRA), 옛 용어(`check_screens.py`의 OLD_TERMS)가 0건입니다. 처음 훑었을 때 옛 용어 셋(주석 두 줄, README 요청 안 줄에 전부터 있던 말 하나)이 나와 고친 뒤 다시 훑었습니다.
+- 다음 행동
+  - PR 머리의 CI와 Codex 검토를 본 뒤 TASK-024를 끝남으로 표시하고(`build_wbs.py . --write`), squash로 합친 뒤 main에서 도는 app·db 실행을 확인합니다.
+  - 넘긴 것: TASK-174(앱 계정의 `access_logs` 권한과 소유자 아닌 역할), TASK-166(접속기록 점검 주기와 방법을 내부 관리계획 초안에), TASK-016(스테이징의 `CF-Connecting-IP`와 Cloudflare 설정 둘). 실제 API-040\~066·074\~077은 각 API 작업이 `accessRoute`와 도우미로 합니다.
+  - 열린 질문: 06의 API-040\~066 `x-corthex.spec`에 SPEC-074를 더할지는 06을 고칠 때 함께 봅니다(지금은 `seen_in` 범위를 원본으로 봄). 접속기록 점검 주기와 방법은 TASK-166이 초안을 만든 뒤 동희님께 확인 요청할 거리입니다.
+
 ### 2026-11-16 14:40 무렵 KST · TASK-029 사장님·운영자 웹 바탕([PR #66](https://github.com/kodonghui/siljang.ai/pull/66))
 
 - 한 일
