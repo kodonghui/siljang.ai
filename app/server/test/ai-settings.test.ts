@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AI_PRICE_TABLE_VERSION, AI_PRICES, costOf, PriceTierError, priceOf } from "../src/ai-prices";
+import { MissingSettingError } from "../src/request-key";
+import { createServices } from "../src/services";
 import {
   AI_VAR_NAMES,
   readSettings,
@@ -203,5 +205,20 @@ describe("요금표와 금액(REQ-150)", () => {
     const fx = { rate: "1450.00", date: "2026-11-14" };
     expect(() => costOf(sonnet, { input: -1, output: 0, cacheRead: 0, cacheWrite: 0 }, fx)).toThrow(TypeError);
     expect(() => costOf(sonnet, { input: 1.5, output: 0, cacheRead: 0, cacheWrite: 0 }, fx)).toThrow(TypeError);
+  });
+});
+
+describe("서비스의 모델 호출 모듈", () => {
+  it("AI_ 설정이 없으면 모델 호출이 필요한 곳만 MissingSettingError(500 internal)", () => {
+    expect(() => createServices({}, readSettings({})).aiModel()).toThrow(MissingSettingError);
+  });
+
+  it("설정한 회사·모델의 모듈을 한 번 만들어 씀, 설정만 바꾸면 회사가 바뀜", () => {
+    const anthropic = createServices({}, readSettings({ ...AI, ANTHROPIC_API_KEY: fakeKey("a-") }));
+    const m = anthropic.aiModel();
+    expect(anthropic.aiModel()).toBe(m);
+    expect(m).toMatchObject({ provider: "anthropic", model: "claude-sonnet-5-5" });
+    const openai = createServices({}, readSettings({ ...AI, AI_PROVIDER: "openai", AI_MODEL: "gpt-6-luna" }));
+    expect(openai.aiModel()).toMatchObject({ provider: "openai", model: "gpt-6-luna" });
   });
 });

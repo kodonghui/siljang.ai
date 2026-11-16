@@ -5,9 +5,23 @@
 # 실행 환경 이름: development | staging | production. 비우면 production으로 친다.
 APP_ENV=development
 
-# AI 모델 키(비밀 값). 서버만 읽고, 웹 빌드(VITE_*)에는 절대 넣지 않는다. 없으면 AI 일만 503 ai_unavailable(TASK-026에서).
+# AI 모델 키(비밀 값). 서버만 읽고, 웹 빌드(VITE_*)에는 절대 넣지 않는다. AI_PROVIDER로 고른 회사의 키만 쓴다.
+# 고른 회사의 키가 없으면 모델 호출마다 ai_calls에 key_missing 한 행을 남기고 부르지 않는다(06 DEC-07 ai_key_missing, TASK-026).
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
+
+# 모델 호출 설정(TASK-026, app/README.md 48~57). 다섯 값을 모두 비우면 모델 호출만 설정 없음(부르면 500 internal).
+# AI_PROVIDER: anthropic | openai. AI_MODEL: 그 회사의 요금표(server/src/ai-prices.ts)에 있는 모델 ID만.
+# AI_EFFORT: low | medium | high, 비우면 모델 기본. AI_USD_KRW: 원/달러 환율(예 1450.25), AI_USD_KRW_DATE: 그 환율의 날짜(YYYY-MM-DD).
+AI_PROVIDER=
+AI_MODEL=
+AI_EFFORT=
+AI_USD_KRW=
+AI_USD_KRW_DATE=
+
+# 추적 도구(LangSmith)는 운영(APP_ENV=production)에서 켜면 시작에서 멈춘다(REQ-138): LANGSMITH_TRACING·LANGSMITH_TRACING_V2·
+# LANGCHAIN_TRACING_V2·LANGCHAIN_TRACING·LANGCHAIN_VERBOSE·LANGSMITH_GATEWAY는 비우거나 false, LANGSMITH_API_KEY·
+# LANGCHAIN_API_KEY·LANGSMITH_GATEWAY_API_KEY는 두지 않는다. 로컬 개발에서만 켤 수 있다(합성 대화로만).
 
 # PostgreSQL 연결 문자열(비밀 값). postgres:// 나 postgresql:// 로 시작. Workers에서는 Hyperdrive 바인딩(TASK-173).
 # 없으면 데이터베이스가 필요한 요청만 500 internal.
