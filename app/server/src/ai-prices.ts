@@ -1,7 +1,7 @@
 /**
  * 모델별 요금표와 금액 셈(TASK-026; REQ-150·163, 05 TBL-048 cost_usd·cost_krw·cost_basis).
  *
- * - 값은 백만 토큰당 달러, 각 회사 공식 요금 문서에서 옮겼다(확인 날짜는 행마다, app/README.md 48).
+ * - 값은 백만 토큰당 달러, 각 회사 공식 요금 문서에서 옮겼다(확인 날짜는 행마다, app/README.md 53).
  *   Anthropic: https://platform.claude.com/docs/en/about-claude/pricing (입력, 5분 캐시 쓰기, 캐시 읽기, 출력)
  *   OpenAI: https://developers.openai.com/api/docs/pricing (Standard 처리의 입력, 30분 캐시 쓰기, 캐시 입력, 출력)
  * - 우리는 캐시 유지 시간을 늘려 쓰지 않으므로 캐시 쓰기는 가장 짧은 단계(Anthropic 5분, OpenAI 30분) 값이다.

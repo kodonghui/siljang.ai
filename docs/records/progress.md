@@ -6,6 +6,35 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-16 13:15 무렵 KST · TASK-026 모델 호출 한 곳([PR #65](https://github.com/kodonghui/siljang.ai/pull/65))
+
+- 한 일
+  - 앞 단락의 [PR #64](https://github.com/kodonghui/siljang.ai/pull/64)를 squash로 합쳤습니다(main `da89768`, 2026-11-16 12:19 무렵). 합친 뒤 main에서 돈 GitHub Actions run 43797461790(app)과 43797461850(db)도 성공했습니다.
+  - AI 모델을 부르는 한 곳을 서버(`app/server/src/`)에 더했습니다(REQ-266·138·150, 06 DEC-25·DEC-17, 04 5절 AI-1, 닿는 테이블 TBL-048 `ai_calls`).
+    - 새 파일: `ai-model.ts`(두 회사의 LangChain 채팅 모델, 연결 3초·전체 20초, 실패 나누기, 운영의 추적 도구 확인), `ai-turn-output.ts`(06 AiTurnOutput을 옮긴 스키마와 서버 확인, OpenAI strict 꼴), `ai-usage.ts`(응답 스트림에서 토큰·멈춘 사유·첫 출력 시각 읽기), `ai-prices.ts`(요금표와 금액 셈), `ai-calls.ts`(`ai_calls` 한 행과 순번 도구).
+    - 고침: `settings.ts`(AI 설정 다섯, 고른 회사의 키 하나, 운영의 추적 도구 변수 검사), `services.ts`(`aiModel()`), `.dev.vars.example`(이름만), `server/package.json`과 `package-lock.json`(`@langchain/core` 1.3.5·`@langchain/anthropic` 1.6.1·`@langchain/openai` 1.8.2·`@cfworker/json-schema` 4.1.6, `--before=2026-11-08`).
+  - 지시의 설계 쟁점 1\~8을 원본(02 REQ-266·138·150·163, 06 DEC-25·DEC-17·DEC-07, 04 5절 AI-1, 05 TBL-048과 제약 셋, tech-stack.md, 두 회사와 Cloudflare의 공식 문서)으로 확인하고 아래처럼 골랐습니다. 자세한 것은 [`app/README.md`](../../app/README.md) 48\~57에 있습니다.
+    - 쟁점 1(LangChain.js·LangGraph.js가 Workers에서 도는지): 됩니다. 버리는 시험 Worker에서 두 채팅 모델과 LangGraph 1.7.2의 그래프가 로컬 workerd로 가짜 응답을 받아 돌았고, 묶은 크기 5191.72 KiB(한도 압축 전 64 MiB)·시작 시간 52.4ms(한도 1초)였습니다. 크게 양보할 것이 없어 멈추지 않고 11/11 결정(AI 부분은 LangChain·LangGraph)대로 했습니다. LangGraph는 확인만 하고 TASK-069에서 더합니다.
+    - 쟁점 2(회사의 API): Anthropic은 Messages API, OpenAI는 Chat Completions가 아니라 Responses API에 `store: false`입니다. OpenAI가 새 프로젝트에 Responses를 권하고 GPT-5.4부터 Chat Completions는 effort가 none이 아니면 도구 호출을 받지 않기 때문입니다(2026-11-16 확인).
+    - 쟁점 3(AiTurnOutput 하나): 06을 손으로 옮기고 06과 견주는 시험을 두었습니다. 받은 뒤 서버가 06 스키마로 다시 확인하고, 어긋나면 `schema_invalid`입니다. 두 회사의 모의 응답이 같은 출력을 냅니다.
+    - 쟁점 4(`ai_calls` 한 행): 실패·시간 초과·키 없음도 한 행이고 글은 남기지 않습니다. 순번 도구(`FIRST_ATTEMPT`·`nextAttempt`)를 두고, 차례마다 8번 상한과 다시 하기는 그래프 층(TASK-069)이 합니다.
+    - 쟁점 5(요금표): 판 2026-11-16, 모델 7개(행마다 확인 날짜), 원/달러 환율은 날짜가 있는 설정으로 `cost_basis`에 남기고, 요금표에 없는 모델은 설정에서 막습니다. 토큰은 LangChain이 모은 값이 아니라 응답 스트림에서 읽습니다(LangChain이 Anthropic 출력 토큰을 더 세는 것을 시험에서 봄).
+    - 쟁점 6(시간): 연결 3초·전체 20초, LangChain·SDK의 다시 하기는 끄고, 끊으면 result `timeout`입니다.
+    - 쟁점 7(추적 도구): 운영에서 켜면 설정 오류로 시작에서 멈추고(닫힌 쪽), 호출 직전에 `process.env`를 한 번 더 봅니다. 가짜 fetch로 추적 주소 요청이 0임을 보고, 같은 시험이 개발에서는 추적 요청을 잡는 것도 봅니다.
+    - 쟁점 8(키): `settings.ts`만 `Secret`으로 읽고 고른 회사의 키만 씁니다. CI에는 키가 없고 유료 호출은 0번입니다. 진짜 키로 부르는 것은 시험하지 않았고 TASK-005·006·027에 넘깁니다.
+  - 시험 43개를 더했습니다(서버 시험 522 → 565, 27 → 32파일): `ai-model` 13, `ai-usage` 10, `ai-turn-output` 5, `ai-settings` 12, `ai-model-static` 3.
+  - 문서: [기술 스택 제안](../10-wbs/tech-stack.md) 3-4에 2026-11-16 줄(LangChain.js 채팅 모델과 판, 로컬 workerd 확인, OpenAI `store: false`)을 더하고 [10-wbs README](../10-wbs/README.md) 10절에 그 행을 적었습니다.
+- 이유: TASK-026은 TASK-018만 기다리고, 바로 뒤 둘(TASK-027 평가 도구, TASK-066 마스킹)을 포함해 62개 작업이 이 모듈을 기다립니다.
+- 결과
+  - 끝난 조건 넷(두 회사에 설정만 바꿔 같은 입력, 호출마다 `ai_calls`에 회사·모델·토큰·금액, 회사와 상관없이 같은 AiTurnOutput, 운영에서 추적 도구 꺼짐)을 서버 시험으로 확인했습니다. GitHub Actions의 결과는 CI가 끝난 뒤 이 단락에 더합니다.
+- 확인한 것
+  - 로컬(Node 22.23.4, PostgreSQL 16.15, 마이그레이션 0001\~0020): 서버 시험 32파일 565개 통과, `biome ci`, typecheck(src·test), 빌드(`wrangler deploy --dry-run`, 4845.67 KiB·gzip 867.10 KiB), 키 검사(446파일, 키 꼴 0건). 유료 AI 호출은 0번입니다.
+  - 새로 쓴 글(코드·시험·문서의 더한 줄)에서 01 용어집 금지어와 10단계 검사의 더한 말(`build_wbs.py`의 EXTRA)이 0건입니다.
+- 다음 행동
+  - CI와 Codex 검토를 본 뒤 TASK-026을 끝남으로 바꾸고 PR #65를 합칩니다.
+  - 넘긴 것: 진짜 키로 처음 부르기(TASK-027, 키와 보관 안 함 허가는 TASK-005·006), 배포한 Worker에서 부르기(tech-stack.md 8-1, TASK-171), 그래프·8번 상한·다시 하기·`cost_limit`·`call_limit`(TASK-069), 마스킹(TASK-066), 모델과 effort 고르기(TASK-162).
+  - 열린 질문: 실패·시간 초과 행은 토큰·금액이 비어 있어, 끊은 호출에 회사가 셈한 몫을 가게 하루 비용 한도에 어떻게 넣을지는 TASK-037·069에서 정합니다. `AI_EFFORT`를 비우면 회사의 모델 기본값으로 돕니다. 동희님께 확인 요청할 것은 새로 생기지 않았습니다.
+
 ### 2026-11-16 11:10 무렵 KST · TASK-023 서버 안의 일 실행기([PR #64](https://github.com/kodonghui/siljang.ai/pull/64))
 
 - 한 일

@@ -151,6 +151,7 @@ flowchart LR
 - TypeScript. 서버는 Hono, 데이터베이스는 node-postgres(`pg`)를 Hyperdrive와 함께 씁니다(Hyperdrive의 Supabase 안내가 권하는 드라이버).
 - 요청 검사기는 계약(`api/openapi.yaml`)의 JSON Schema에서 빌드 때 미리 만듭니다. Workers는 실행 중 `eval()`·`new Function`을 막기 때문입니다.
 - 두 AI 회사 모두 TypeScript 공식 SDK가 있습니다(10절 M1·M3). Workers에서 도는지는 8-1에서 봅니다.
+- 모델 호출은 두 회사의 공식 SDK를 LangChain.js 채팅 모델(`@langchain/anthropic` 1.6.1·`@langchain/openai` 1.8.2, `@langchain/core` 1.3.5)로 감싸 부릅니다(2026-11-16, TASK-026. AI 부분은 LangChain·LangGraph라는 04 5절의 11/11 결정). 로컬 workerd에서 두 채팅 모델과 LangGraph 1.7.2의 그래프가 가짜 응답으로 돌았고, 묶은 크기와 시작 시간이 Workers 한도 안입니다([앱 README](../../app/README.md) 49). OpenAI는 Responses API에 `store: false`로 보냅니다(앱 README 50). 진짜 키로 부르기는 TASK-027, 배포한 Worker에서 한 번씩 부르기는 8-1입니다.
 - 웹은 React + Vite이고 09단계 토큰을 그대로 씁니다.
 - 저장소의 생성·검사 도구(Python)는 그대로 둡니다(7절).
 
