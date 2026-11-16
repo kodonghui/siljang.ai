@@ -6,6 +6,45 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-16 16:30 무렵 KST · Notion·Artifact 한 번 올리기 결과와 다음 목록을 저장소에, 화면 레이아웃 작업 TASK-182([PR #68](https://github.com/kodonghui/siljang.ai/pull/68))
+
+- 때: 한 번 올리기는 2026-11-15 19:16에 시작해 밤사이 멈췄다가 2026-11-16 15:19에 마쳤습니다(표 쓰기 11/16 10:37까지, 작업 데이터베이스 12:06, 다시 받아 견주기 12:10, Artifact 12:34\~12:39, Notion 기록 15:15\~15:19). 이 저장소 기록 PR은 16:30 무렵에 열었습니다.
+- 한 일
+  - 앞 단락의 [PR #67](https://github.com/kodonghui/siljang.ai/pull/67)을 squash로 합쳤습니다(main `d301608`, 2026-11-16 16:01 무렵). 합친 뒤 main에서 돈 GitHub Actions run 43820877589(app)와 43820877561(db)도 성공했습니다.
+  - 올린 것(조정 세션이 맡긴 한 번 올리기 작업)
+    - 표 13개: main `6fd3d29`([PR #52](https://github.com/kodonghui/siljang.ai/pull/52))에서 만든 목표 값에 맞췄습니다. 바뀐 행이 많은 표 5개(REQ·FLOW·SPEC·TBL·SCR)는 새 판 행을 만들고, 옛 행 169개는 첫 페이지 아래 [옛 판 행 (2026-11-15까지)](https://app.notion.com/p/419bf16cc3ec81dc9fdfca4e6e656363) 페이지로 옮겼습니다(지우지 않음). 목표에 없는 ERR 행 `stale_change`도 그 페이지로 옮겼습니다.
+    - 10단계 작업: 첫 페이지 아래 [10단계 WBS 작업](https://app.notion.com/p/41abf16cc3ec8142ad8ff0d2e79a1039) 데이터베이스를 만들어 `wbs.md`(main `6fd3d29`)의 작업 181개를 한 행씩 넣고 상태별 보드 보기를 더했습니다. 제목 열 이름은 'TASK ID'입니다(이름이 'ID'면 Notion 도구가 행을 만들지 못함).
+    - Artifact: 06 [Swagger UI 페이지](https://claude.ai/artifact/EKihED8HYG5vXWT3YQfUom)(버전 `1794800056-dbf8`, 12:34), 08 [와이어프레임](https://claude.ai/artifact/PokGNrfpeMgDjSwqVeDZ94)(`1794800135-224b`, 12:35), 09 [캔버스](https://claude.ai/artifact/1Jb9SwBK66MzN2dNd3QFma)(`1794800384-2387`, 12:39)를 main `0e3ff83`의 파일로 같은 주소에 다시 올렸습니다. 07 [사이트맵](https://claude.ai/artifact/HKQiAbycumHo5nkG9CWjpx)은 `sitemap.html`이 `e4067ce` 뒤 바뀌지 않아 그대로 두었습니다(`1794722613-f2d3`).
+    - Notion 기록: 기록 데이터베이스에 [새 행](https://app.notion.com/p/41abf16cc3ec81d98f05f88b32b086cb) 하나(결정 셋 반영, 사람이 보는 뷰, 10단계 WBS·기술 스택·체크포인트, 반복 0·1, 이번 올리기), 첫 페이지의 '지금과 다음'·작업 로그 4개·다음 행동, 설계 재검토 행 6절 '남은 것'의 끝난 일 9곳을 고쳤습니다. 글은 main `da89768`(11/16 13:00) 기준이지만 실제로 들어간 때는 15:15\~15:19라, 그 사이 합친 [PR #65](https://github.com/kodonghui/siljang.ai/pull/65)(TASK-026)·[PR #66](https://github.com/kodonghui/siljang.ai/pull/66)(TASK-029)과 그 뒤의 [PR #67](https://github.com/kodonghui/siljang.ai/pull/67)(TASK-024)은 Notion 기록에 없습니다. 새 기록 행의 '최근 변경' 속성도 13:00입니다.
+    - 결과: 새로 만든 행 335개(새 번호 166개, 바뀐 행의 새 판 169개), 옮긴 행 170개, 그 자리에서 고친 행 5개(API-042의 SPEC, 보낼 때 글자가 깨진 DEC-23·DEC-25 대안과 TBL-034·TBL-043 본문), 지운 행 0개. 표마다 행 수는 REQ 268, HOT 27, FLOW 14, CAND 7, READ 22, SPEC 79, E 34, TBL 58, API 83, ERR 37, DEC 26, S 9, SCR 50, 작업 181입니다.
+    - 호출: 모두 67번(계획 50번, 상한 80번 안). Notion 52번(실패 7번: 미리 읽기 3, 작업 행 만들기 2, 제목 열 이름 바꾸기 2), Artifact 15번(게시 거절 3번: 올리기 전에 최신 판을 읽지 않음).
+  - 저장소에 옮긴 것(이 PR)
+    - 02\~04단계 `synced_at`을 `2026-11-16T12:10+09:00`로 바꾸고 머리말의 맞춤 상태 글을 고쳤습니다(02 `requirements.md` 머리말과 12절, 03 `README.md`, 04 `spec.md`). REQ-187·188·201의 출처는 [PR #55](https://github.com/kodonghui/siljang.ai/pull/55)(TASK-012)에서 바뀌어 Notion과 아직 다르다고 적었습니다.
+    - 플로우 파일 14개(FL-001\~014)의 `notion`을 새 판 행의 주소로 바꿨습니다. 저장소의 다른 Notion 링크 가운데 옮긴 행을 가리키는 것은 이 14개뿐이었습니다(한 번 올리기 작업의 확인).
+    - 06·08·09 README에 올린 판·시각·원본 `0e3ff83`을 적었습니다. 07 README는 그대로입니다.
+    - `.corthex/project.json`의 `10-wbs`에 WBS 데이터베이스 주소를 `link`로 넣고 note의 '아직 만들지 않았습니다'를 고쳤습니다.
+  - 10단계에 TASK-182(사장님·운영자 화면 레이아웃: 1280 왼쪽 메뉴, 360 위쪽 막대와 메뉴 버튼, 목록의 표·카드)를 더했습니다(반복 1, Claude, 크기 1, 앞선 작업 TASK-029, 출처 REQ-147).
+    - 끝난 조건은 08 README W4, 07 `sitemap.yaml`의 1뎁스 화면, 09 `gen_screens.py`의 메뉴(`OWNER_MENU`·`OPERATOR_MENU`·`parent_menu`)·위쪽 막대·접근성 이름에서 옮겼습니다. 사장님 메뉴 7개(SCR-016·020·028·030·031·032·034), 운영자 메뉴 2개(SCR-047·049), 지금 화면이 속한 1뎁스 표시, 목록의 1280 표·360 카드, 가게 등록 전·로그인 화면에는 메뉴 없음, 개발용 견본으로 360·1280 page-check와 360px 가로 스크롤 없음입니다.
+    - 원본끼리 다른 곳: 운영자 메뉴는 08 W4·SCR-047 정의·09 목업이 둘(영업 신고 확인·운영자 알림, SCR-050은 SCR-048에서 엶)인데, 08 와이어프레임(`build_screens.py`가 07 트리의 1뎁스로 메뉴를 만듦)은 07 트리에서 1뎁스인 SCR-050까지 셋을 그립니다. 작업은 08 W4·09를 따르고 그 차이를 끝난 조건에 적었습니다. 07·08은 바꾸지 않았습니다.
+    - 메뉴 안 화면 작업 33개(반복 2의 TASK-047\~060, 반복 3\~7의 TASK-087\~089·110\~115·128\~130·150\~154·160·161)의 앞선 작업 TASK-029를 TASK-182로 바꿨습니다. TASK-131·155는 앞선 화면 작업(TASK-111·088)을 거쳐 기다립니다. 메뉴 밖의 로그인(TASK-030·031)·가게 등록(TASK-046)·손님 웹 페이지(TASK-061·062)와 TASK-176(웹앱 설치)은 그대로 TASK-029를 기다립니다. 10-wbs README 10절에 한 행을 적었습니다.
+- 이유
+  - 2026-11-15 15:27 동희님 지시(기록은 저장소에, Notion은 마지막에 한 번)와 10단계 체크포인트 답 '체크포인트 뒤 한 번 (추천)'(2026-11-15 17시 무렵 단락)입니다. 올린 뒤에는 저장소의 맞춤 시각·주소·판을 고쳐야 저장소가 원본으로 남습니다.
+  - TASK-182: 08 W4를 맡은 작업이 없었고, TASK-029가 바탕만 만들며 새 작업을 추천했습니다([앱 README](../../app/README.md) 66, [PR #66](https://github.com/kodonghui/siljang.ai/pull/66)). 화면 작업이 모두 TASK-029만 기다려, 레이아웃을 한 화면 작업에 넣으면 같은 반복의 다른 화면 작업과 드러나지 않는 선후가 생깁니다.
+- 결과
+  - `build_wbs.py . --write`: 검사 18개 · 오류 0. 작업 181개 → 182개, 크기 합 245.5일 → 246.5일, 반복 1은 20개 → 21개(29일 → 30일), 가장 긴 앞선 작업 줄은 43.5일 그대로입니다.
+  - 다음 한 번 올리기 목록(이 PR 머리 기준, 표와 작업 57행)
+    - 표 5행: REQ-187·188·201 출처와 E19 사유([PR #55](https://github.com/kodonghui/siljang.ai/pull/55)), DEC-04 선택안([PR #61](https://github.com/kodonghui/siljang.ai/pull/61)). 한 번 올리기 작업의 `gen_full.py`로 이 PR 머리의 원본에서 목표를 다시 만들어 올린 목표(`6fd3d29`)와 견줬습니다. main `d301608`에서도 같은 5행이었고, 이 PR의 02\~04 머리말·플로우 `notion` 줄은 표의 값을 바꾸지 않습니다.
+    - 작업 52행: 상태와 끝난 조건 11행(TASK-012·015·017·018·019·022·023·024·025·026·029), 끝난 조건만 7행(TASK-016·158·166·167·171·173·174), 앞선 작업만 33행(위 메뉴 안 화면 작업), 새 행 1개(TASK-182). 한 번 올리기 작업의 `diff_wbs_main.py` 사본으로 셌습니다. main `d301608`에서는 18행(올린 뒤의 17행과 TASK-024)이었습니다.
+    - 기록: Notion 기록에 PR #65\~#68 단락, 첫 페이지 다음 행동의 수(지금 'Notion 행 20개(작업 15행)'·'끝난 작업 181개 가운데 11개')를 맞춥니다.
+- 확인한 것
+  - 올린 것의 대조는 한 번 올리기 작업의 결과를 옮겼습니다: 표 14개(작업 포함)의 속성을 12:10에 모든 행 다시 받아 기계로 견줘 다름 0(E24·E32는 사유의 링크를 Notion이 링크 글자로만 돌려줘 링크 글자로 견줌), Artifact는 올린 파일 9개를 다시 받아 원본과 같음, 기록은 첫 페이지(15:19)와 새 기록 행·재검토 행(15:35)을 다시 받아 보낸 글과 기계로 견줘 같음(Notion 표기 차이만).
+  - 올린 Artifact의 원본(`api/`, `docs/06-api`·`docs/07-sitemap`·`docs/08-screens`·`docs/09-mockup`, `design/`, `research/`의 cake-api·cake-sitemap·cake-screens·cake-mockup)은 `git diff --stat 0e3ff83 d301608`이 비어 그 사이 바뀌지 않았습니다. 이 PR은 그 가운데 06·08·09 README의 손으로 쓴 글만 고쳤고, 07·08·09의 생성 파일은 단계 검사로 원본과 같음을 봤습니다.
+  - TASK-182의 끝난 조건에 적은 메뉴는 09 `gen_screens.py`의 `OWNER_MENU`·`OPERATOR_MENU`·`parent_menu`와 08 와이어프레임 `wireframes.html`의 메뉴 글(사장님 7개, 운영자 셋)을 직접 열어 봤습니다.
+  - 확인하지 않은 것: 이 PR에서는 Notion·Artifact를 다시 읽지 않았습니다(위 대조를 옮김). 표 행의 본문(페이지 안 글)은 Notion에서 다시 받아 견주지 않고, 보낸 입력을 묶음 파일과 글자 단위로 견줬습니다(깨진 4곳을 고친 뒤 다름 0, 한 번 올리기 작업). TASK-182의 레이아웃은 아직 화면으로 만들지 않았습니다.
+- 다음 행동
+  - 이 PR의 CI와 Codex 검토를 본 뒤 squash로 합치고, main에서 도는 app·db 실행을 확인합니다.
+  - 다음 한 번 올리기는 위 목록대로 합니다. Notion·Artifact·Miro는 이 PR에서 손대지 않았습니다.
+
 ### 2026-11-16 15:50 무렵 KST · TASK-024 접속기록 남기기 공통([PR #67](https://github.com/kodonghui/siljang.ai/pull/67))
 
 - 한 일

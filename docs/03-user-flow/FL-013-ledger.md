@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec812dade8e7408106e0fb
+notion: https://app.notion.com/p/419bf16cc3ec8179a79bcb29fe19ea58
 ---
 
 # FL-013 장부 자동 기록

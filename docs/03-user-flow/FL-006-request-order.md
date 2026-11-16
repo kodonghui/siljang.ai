@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec81a29309dd1f69e1c6ec
+notion: https://app.notion.com/p/419bf16cc3ec81269572c4d3ca714b63
 ---
 
 # FL-006 주문 요청하기

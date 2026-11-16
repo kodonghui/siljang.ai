@@ -1,6 +1,6 @@
 ---
 status: 확정
-notion: https://app.notion.com/p/415bf16cc3ec81e7be53f8558ac0be48
+notion: https://app.notion.com/p/419bf16cc3ec81879833f66c6f214d0f
 ---
 
 # FL-011 문제 신고하고 보상받기
