@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { FIND_SHAPE, LAST_RUN_SHAPE } from "../src/due-sources";
 import { namesShopTable, SHOP_TABLES, SHOP_TABLES_WITHOUT_ID, scopeViolations } from "../src/sql-scope";
 import { EXPR, serverSources, stringLiterals } from "./support/source-scan";
 
@@ -38,7 +39,27 @@ const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
 /** 가게 범위를 만들 수 있는 파일(해석기)과 까닭. 해석기를 만드는 작업이 더한다. */
 const SCOPE_MAKERS: Record<string, string> = {
   "shop-scope.ts": "정의",
+  "job-runner.ts":
+    "서버 안의 일 실행기(TASK-023): 때가 된 행의 가게 ID로 그 행 하나를 잡고 처리하는 범위(출처 job)만 만든다. 가게 ID는 due-sources.ts의 찾기 결과",
 };
+
+/**
+ * 가게 범위 밖의 읽기(여러 가게에서 때가 된 행 찾기, TASK-023)를 둘 수 있는 파일과 그 꼴. 꼴은 이 시험이 따로 적어
+ * (src의 FIND_SHAPE·LAST_RUN_SHAPE와 같은지 봄) src를 고쳐 넓히지 못하게 한다. 찾기는 가게 ID·행 ID·때만 돌려주고,
+ * 행의 내용은 그 가게 범위 연결(ShopDb)로만 읽는다. 이 파일은 날 연결을 쥐지 않는다(SQL 글만).
+ */
+const CROSS_SHOP_FILE = "due-sources.ts";
+const CROSS_SHOP_SHAPES: readonly RegExp[] = [
+  /^SELECT t\.shop_id, t\.id, t\.([a-z_]+) AS due_at FROM ([a-z_]+) t WHERE (.+) AND t\.\1 <= \$1 ORDER BY t\.\1, t\.id LIMIT \$2$/,
+  /^SELECT max\(t\.created_at\) AS last_at FROM ops_events t WHERE t\.kind = \$1 AND t\.shop_id IS NULL AND t\.created_at <= \$2$/,
+];
+
+/** 가게 범위 밖 읽기로 허락한 SQL인지(그 파일의 그 꼴만). 꼴 안의 조건에 다른 테이블을 끌어오는 하위 질의는 받지 않는다. */
+function allowedCrossShop(file: string, sql: string): boolean {
+  if (file !== CROSS_SHOP_FILE) return false;
+  if (!CROSS_SHOP_SHAPES.some((re) => re.test(sql))) return false;
+  return (sql.match(/\b(from|join)\b/gi) ?? []).length === 1 && !sql.includes(EXPR.trim());
+}
 
 /** 가게 범위를 만드는 표시: createShopScope를 부르거나 가져오거나 이름 글자로 꺼냄(주석·오류 글의 언급은 치지 않음). */
 const MAKES_SCOPE = /\bcreateShopScope\s*\(|import[^;]*\bcreateShopScope\b|["'`]createShopScope["'`]/;
@@ -98,6 +119,7 @@ describe("서버 코드의 SQL(정적 검사)", () => {
     const found: string[] = [];
     for (const s of sources) {
       for (const sql of shopSql(s.text)) {
+        if (allowedCrossShop(s.name, sql)) continue;
         const violations = scopeViolations(sql.replaceAll(EXPR, " x "));
         if (violations.length > 0) found.push(`${s.name}: ${violations.join(", ")}`);
       }
@@ -120,6 +142,32 @@ describe("서버 코드의 SQL(정적 검사)", () => {
       ).toBe(true);
       expect(why.length).toBeGreaterThan(10);
     }
+  });
+
+  it("가게 범위 밖 찾기는 due-sources.ts의 정한 꼴뿐이고, 그 파일은 날 연결을 쥐지 않음(TASK-023)", () => {
+    expect(CROSS_SHOP_SHAPES.map((re) => re.source)).toEqual([FIND_SHAPE.source, LAST_RUN_SHAPE.source]);
+    const file = sources.find((s) => s.name === CROSS_SHOP_FILE);
+    expect(file).toBeDefined();
+    const text = (file as { text: string }).text;
+    expect(RAW_ACCESS.some((re) => re.test(text))).toBe(false);
+    expect(text).not.toMatch(/from\s+["']\.\/db["']/);
+    const unscoped = shopSql(text).filter((sql) => scopeViolations(sql.replaceAll(EXPR, " x ")).length > 0);
+    expect(unscoped.length).toBeGreaterThan(0);
+    for (const sql of unscoped) expect(allowedCrossShop(CROSS_SHOP_FILE, sql), sql).toBe(true);
+    // 꼴을 벗어난 것은 받지 않음: 다른 열을 돌려주기, 테이블 잇기, 다른 파일.
+    const find =
+      "SELECT t.shop_id, t.id, t.due_at AS due_at FROM payment_requests t WHERE t.status = 'open' AND t.due_at <= $1 ORDER BY t.due_at, t.id LIMIT $2";
+    expect(allowedCrossShop(CROSS_SHOP_FILE, find)).toBe(true);
+    expect(allowedCrossShop("job-runner.ts", find)).toBe(false);
+    expect(allowedCrossShop(CROSS_SHOP_FILE, find.replace("t.shop_id, t.id,", "t.shop_id, t.id, t.amount,"))).toBe(
+      false,
+    );
+    expect(
+      allowedCrossShop(
+        CROSS_SHOP_FILE,
+        find.replace("WHERE t.status", "WHERE t.id IN (SELECT o.id FROM orders o) AND t.status"),
+      ),
+    ).toBe(false);
   });
 
   it("SQL의 테이블 이름 자리에 값을 끼워 넣지 않음(정적 검사가 테이블을 볼 수 있게)", () => {
