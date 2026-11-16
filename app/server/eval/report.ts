@@ -225,7 +225,7 @@ export function reviewMarkdown(run: RunResult): string {
   const reply = (r: CaseResult): string => r.sent.map((m) => `[${m.kind}] ${m.text}`).join(" / ");
   const lines = [`# 사람 검토 표본 ${run.runId}`, "", "## 기계가 review로 둔 판정", ""];
   const reviews = run.results.flatMap((r) => r.verdicts.filter((v) => v.verdict === "review").map((v) => ({ r, v })));
-  if (reviews.length === 0) lines.push("- 없음");
+  if (reviews.length === 0) lines.push("- 없음", "");
   for (const { r, v } of reviews) {
     lines.push(
       `### ${r.caseId} · ${r.model} · ${CRITERION_LABELS[v.criterion]} (${v.reasons.join(", ")})`,
