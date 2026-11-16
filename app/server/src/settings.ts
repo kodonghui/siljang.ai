@@ -112,6 +112,7 @@ export interface AiSettings {
 /**
  * 추적 도구(LangSmith)와 LangChain의 자세한 기록을 켜는 변수. LangChain은 process.env에서 읽고, Workers는 호환 날짜
  * 2025-04-01 뒤로 Worker의 변수·비밀 값을 process.env에 넣는다(Cloudflare 문서 'process', 2026-11-16 확인).
+ * LANGSMITH_GATEWAY는 모델 호출을 LangSmith 중계 주소로 돌리는 변수다(@langchain/core utils/gateway).
  * 운영에서는 비우거나 false여야 하고(REQ-138), 추적 도구 키도 두지 않는다. 어기면 시작에서 멈춘다.
  */
 export const TRACING_SWITCH_NAMES = [
@@ -120,8 +121,9 @@ export const TRACING_SWITCH_NAMES = [
   "LANGCHAIN_TRACING_V2",
   "LANGCHAIN_TRACING",
   "LANGCHAIN_VERBOSE",
+  "LANGSMITH_GATEWAY",
 ] as const;
-export const TRACING_KEY_NAMES = ["LANGSMITH_API_KEY", "LANGCHAIN_API_KEY"] as const;
+export const TRACING_KEY_NAMES = ["LANGSMITH_API_KEY", "LANGCHAIN_API_KEY", "LANGSMITH_GATEWAY_API_KEY"] as const;
 
 export interface Settings {
   readonly appEnv: AppEnv;

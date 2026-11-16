@@ -9,16 +9,18 @@
  * - 한 번의 호출은 연결 3초(응답 머리를 받기까지), 전체 20초에서 끊는다. 스트리밍으로 받아 머리는 곧 오고 첫 토큰 시각도 잰다.
  *   모델 클라이언트의 자체 다시 하기는 끈다(LangChain·SDK maxRetries 0). 다시 하기는 그래프 층이 retryable을 보고 한다.
  * - 호출마다 ai_calls 한 행(ai-calls.ts): 회사·모델·토큰·금액(ai-prices.ts)·시간·결과. 내용은 남기지 않는다(G6).
+ *   토큰 수와 멈춘 사유는 회사 응답의 usage에서 그대로 읽는다(ai-usage.ts). 첫 토큰 시각은 첫 출력 글 조각(추론 제외)이다.
  * - 운영에서 추적 도구(LangSmith)가 켜져 있으면 부르지 않는다(REQ-138). 설정 검사가 먼저 막고, 호출 직전에 한 번 더 본다.
  * - 보내는 곳은 고른 회사의 공식 주소 하나다. 환경 변수(ANTHROPIC_BASE_URL 등)가 주소를 바꾸지 못하게 주소를 정해 둔다.
  */
 import { ChatAnthropic } from "@langchain/anthropic";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { AIMessage, type BaseMessage, HumanMessage, SystemMessage, type UsageMetadata } from "@langchain/core/messages";
+import { AIMessage, type BaseMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { ChatOpenAI } from "@langchain/openai";
-import { type Attempt, type AiCallRow, recordAiCall } from "./ai-calls";
-import { type AiProvider, type Cost, costOf, type ModelPrice, PriceTierError, priceOf, type TokenCounts } from "./ai-prices";
+import { type AiCallRow, type Attempt, recordAiCall } from "./ai-calls";
+import { type AiProvider, type Cost, costOf, type ModelPrice, PriceTierError, priceOf } from "./ai-prices";
 import { type AiTurnOutput, checkTurnOutput, providerOutputSchema, withoutNulls } from "./ai-turn-output";
+import { UsageMeter } from "./ai-usage";
 import { type AiSettings, type AppEnv, SettingsError, tracingSwitchInProcess } from "./settings";
 import type { ShopDb } from "./shop-scope";
 
@@ -91,18 +93,26 @@ class BlockedHostError extends Error {
   override readonly name = "BlockedHostError";
 }
 
-/** 호출 하나의 시간 재기와 끊기. 머리를 받기 전 connectMs, 처음부터 totalMs가 지나면 요청을 끊는다. */
+/**
+ * 호출 하나의 시간 재기와 끊기, 사용량 읽기. 머리를 받기 전 connectMs, 처음부터 totalMs가 지나면 요청을 끊는다.
+ * 받은 본문은 바꾸지 않고 UsageMeter를 거쳐 회사 SDK에 넘긴다.
+ */
 class CallWatch {
   readonly #ctrl = new AbortController();
   readonly #timers: ReturnType<typeof setTimeout>[] = [];
   #connectTimer: ReturnType<typeof setTimeout> | undefined;
+  readonly meter: UsageMeter;
   timedOut: "connect_timeout" | "total_timeout" | null = null;
   status: number | null = null;
   blocked = false;
 
-  constructor(connectMs: number, totalMs: number) {
+  constructor(provider: AiProvider, clock: () => number, connectMs: number, totalMs: number) {
+    this.meter = new UsageMeter(provider, clock);
     this.#connectTimer = setTimeout(() => this.#abort("connect_timeout"), connectMs);
-    this.#timers.push(this.#connectTimer, setTimeout(() => this.#abort("total_timeout"), totalMs));
+    this.#timers.push(
+      this.#connectTimer,
+      setTimeout(() => this.#abort("total_timeout"), totalMs),
+    );
   }
 
   #abort(kind: "connect_timeout" | "total_timeout"): void {
@@ -122,7 +132,9 @@ class CallWatch {
       const res = await base()(input, { ...init, signal: AbortSignal.any(signals) });
       clearTimeout(this.#connectTimer);
       this.status = res.status;
-      return res;
+      if (!res.ok || res.body === null) return res;
+      const body = res.body.pipeThrough(this.meter.stream());
+      return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
     };
   }
 
@@ -139,7 +151,10 @@ function toMessages(messages: readonly AiMessage[]): BaseMessage[] {
   });
 }
 
-/** 회사의 LangChain 채팅 모델. 키는 여기서만 꺼낸다. */
+/**
+ * 회사의 LangChain 채팅 모델. 키는 여기서만 꺼낸다. LangChain이 기본으로 켜는 브라우저 허용(dangerouslyAllowBrowser)은
+ * 끈다(서버에서만 부름). 주소를 정해 두어 ANTHROPIC_BASE_URL·OPENAI_BASE_URL·LANGSMITH_GATEWAY가 바꾸지 못한다.
+ */
 function chatModel(ai: AiSettings, key: string, fetchImpl: typeof fetch, totalMs: number): BaseChatModel {
   if (ai.provider === "anthropic") {
     return new ChatAnthropic({
@@ -149,7 +164,14 @@ function chatModel(ai: AiSettings, key: string, fetchImpl: typeof fetch, totalMs
       maxTokens: AI_MAX_OUTPUT_TOKENS,
       streaming: true,
       ...(ai.effort !== null ? { outputConfig: { effort: ai.effort } } : {}),
-      clientOptions: { fetch: fetchImpl, baseURL: AI_ORIGINS.anthropic, authToken: null, maxRetries: 0, timeout: totalMs },
+      clientOptions: {
+        fetch: fetchImpl,
+        baseURL: AI_ORIGINS.anthropic,
+        authToken: null,
+        maxRetries: 0,
+        timeout: totalMs,
+        dangerouslyAllowBrowser: false,
+      },
     });
   }
   return new ChatOpenAI({
@@ -169,30 +191,9 @@ function chatModel(ai: AiSettings, key: string, fetchImpl: typeof fetch, totalMs
       organization: null,
       project: null,
       maxRetries: 0,
+      dangerouslyAllowBrowser: false,
     },
   });
-}
-
-/** 네 토큰 수(겹치지 않게). LangChain의 input_tokens는 캐시 읽기·쓰기를 포함한 입력이다. */
-function tokensOf(message: AIMessage): TokenCounts | null {
-  const u = message.usage_metadata as UsageMetadata | undefined;
-  if (u === undefined) return null;
-  const cacheRead = u.input_token_details?.cache_read ?? 0;
-  const cacheWrite = u.input_token_details?.cache_creation ?? 0;
-  return {
-    input: Math.max(0, u.input_tokens - cacheRead - cacheWrite),
-    output: u.output_tokens,
-    cacheRead,
-    cacheWrite,
-  };
-}
-
-/** 회사가 준 멈춘 사유(Anthropic stop_reason, OpenAI Responses status·incomplete 까닭). 짧은 이름만. */
-function stopReasonOf(message: AIMessage): string | null {
-  const meta = message.response_metadata as Record<string, unknown>;
-  const incomplete = meta.incomplete_details as { reason?: unknown } | null | undefined;
-  const value = meta.stop_reason ?? incomplete?.reason ?? meta.status ?? meta.finish_reason;
-  return typeof value === "string" && value !== "" ? value.slice(0, 40) : null;
 }
 
 interface Classified {
@@ -206,21 +207,51 @@ interface Classified {
 /** 실패를 나눈다. 회사 SDK의 오류 꼴이 아니라 우리가 본 것(끊은 까닭, 받은 상태 코드)으로 나눠 회사와 상관없이 같다. */
 function classify(watch: CallWatch): Classified {
   if (watch.timedOut !== null) {
-    return { result: "timeout", errorKind: watch.timedOut, fallbackReason: "timeout", failure: "timeout", retryable: true };
+    return {
+      result: "timeout",
+      errorKind: watch.timedOut,
+      fallbackReason: "timeout",
+      failure: "timeout",
+      retryable: true,
+    };
   }
   if (watch.blocked) {
-    return { result: "failure", errorKind: "blocked_host", fallbackReason: "model_error", failure: "unavailable", retryable: false };
+    return {
+      result: "failure",
+      errorKind: "blocked_host",
+      fallbackReason: "model_error",
+      failure: "unavailable",
+      retryable: false,
+    };
   }
   const s = watch.status;
   if (s === 429) {
-    return { result: "limit_reached", errorKind: "http_429", fallbackReason: "model_error", failure: "limit_reached", retryable: true };
+    return {
+      result: "limit_reached",
+      errorKind: "http_429",
+      fallbackReason: "model_error",
+      failure: "limit_reached",
+      retryable: true,
+    };
   }
   if (s === 401 || s === 403) {
-    return { result: "failure", errorKind: `http_${s}`, fallbackReason: "model_error", failure: "key_missing", retryable: false };
+    return {
+      result: "failure",
+      errorKind: `http_${s}`,
+      fallbackReason: "model_error",
+      failure: "key_missing",
+      retryable: false,
+    };
   }
   if (s !== null && s >= 400) {
     const retryable = s >= 500;
-    return { result: "failure", errorKind: `http_${s}`, fallbackReason: "model_error", failure: "unavailable", retryable };
+    return {
+      result: "failure",
+      errorKind: `http_${s}`,
+      fallbackReason: "model_error",
+      failure: "unavailable",
+      retryable,
+    };
   }
   // 머리는 받았는데 본문이 끊김(스트림 오류) 또는 연결 실패.
   const errorKind = s === null ? "network" : "stream_error";
@@ -284,28 +315,18 @@ export function createAiModel(appEnv: AppEnv, ai: AiSettings, options: AiModelOp
       return fail(missing);
     }
 
-    const watch = new CallWatch(connectMs, totalMs);
-    let firstTokenAt: number | null = null;
-    let raw: AIMessage;
+    const watch = new CallWatch(ai.provider, clock, connectMs, totalMs);
     let parsed: unknown;
     try {
       const model = chatModel(ai, ai.apiKey.reveal(), watch.fetch(AI_ORIGINS[ai.provider], baseFetch), totalMs);
       const structured = model.withStructuredOutput(schema, {
         name: "ai_turn_output",
         method: "jsonSchema",
+        // 출력이 JSON이 아니면 던지지 않고 parsed: null(아래 확인에서 schema_invalid).
         includeRaw: true,
         ...(ai.provider === "openai" ? { strict: true } : {}),
       });
-      const result = await structured.invoke(toMessages(input.messages), {
-        callbacks: [
-          {
-            handleLLMNewToken() {
-              firstTokenAt ??= clock();
-            },
-          },
-        ],
-      });
-      raw = result.raw as AIMessage;
+      const result = await structured.invoke(toMessages(input.messages));
       parsed = result.parsed;
     } catch {
       // 오류 글에는 요청 내용이 섞일 수 있어 남기지 않는다(G6). 나누기는 우리가 본 상태로만.
@@ -314,16 +335,19 @@ export function createAiModel(appEnv: AppEnv, ai: AiSettings, options: AiModelOp
       watch.done();
     }
 
-    const firstTokenMs = firstTokenAt === null ? null : Math.max(0, Math.round(firstTokenAt - start));
+    const firstOutputAt = watch.meter.firstOutputAt();
+    const firstTokenMs = firstOutputAt === null ? null : Math.max(0, Math.round(firstOutputAt - start));
     const totalMsDone = Math.max(0, Math.round(clock() - start));
-    const stopReason = stopReasonOf(raw);
-    const tokens = tokensOf(raw);
+    const stopReason = watch.meter.stopReason();
+    const tokens = watch.meter.tokens();
     const noCost = (errorKind: string): Promise<AiCallOutcome> =>
       fail(
         { result: "failure", errorKind, fallbackReason: "model_error", failure: "unavailable", retryable: false },
         { firstTokenMs, totalMs: totalMsDone, tokens, stopReason },
       );
     if (tokens === null) return noCost("usage_missing");
+    // 긴 보관 캐시 쓰기는 요금표에 값이 없어 금액을 맞게 셀 수 없다(이 모듈은 요청하지 않음).
+    if (watch.meter.longCacheWrites() > 0) return noCost("price_tier");
     let cost: Cost;
     try {
       cost = costOf(price, tokens, ai.fx);

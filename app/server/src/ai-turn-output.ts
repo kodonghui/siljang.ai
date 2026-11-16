@@ -138,8 +138,16 @@ export interface AiTurnOutput {
   readonly quote_request?: Readonly<Record<string, unknown>>;
   readonly handoff?: { readonly reason: string; readonly requested_day?: string };
   readonly issue_patch?: Readonly<Record<string, unknown>>;
-  readonly refund_account_patch?: { readonly account_number: string; readonly bank_name?: string; readonly holder_name?: string };
-  readonly card?: { readonly kind: string; readonly order_no?: string; readonly changes?: Readonly<Record<string, unknown>> };
+  readonly refund_account_patch?: {
+    readonly account_number: string;
+    readonly bank_name?: string;
+    readonly holder_name?: string;
+  };
+  readonly card?: {
+    readonly kind: string;
+    readonly order_no?: string;
+    readonly changes?: Readonly<Record<string, unknown>>;
+  };
 }
 
 const validator = new Validator(AI_TURN_OUTPUT_SCHEMA, "2020-12", false);
