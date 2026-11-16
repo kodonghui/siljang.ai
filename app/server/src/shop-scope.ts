@@ -27,9 +27,15 @@ export type ScopeVia =
   /** 운영자가 연 가게(TASK-021 세션, TASK-159 화면). 손님·주문 기록은 가린 값으로만(SPEC-073). */
   | { readonly kind: "operator"; readonly operatorId: string }
   /** 예약 링크 주소의 가게(TASK-044·045). 읽기만. */
-  | { readonly kind: "public" };
+  | { readonly kind: "public" }
+  /**
+   * 서버 안의 일(TASK-023 실행기): 여러 가게에서 때가 된 행을 찾은 뒤 그 행의 가게로 만든 범위. 요청 경로가 아니라
+   * 실행기(job-runner.ts)만 만들고, job은 일 등록부(jobs.ts)의 이름이다.
+   */
+  | { readonly kind: "job"; readonly job: string };
 
-export type ScopeKind = ScopeVia["kind"];
+/** 요청 경로의 가게 범위 출처. 서버 안의 일(job)은 경로가 없어 빠진다. */
+export type ScopeKind = Exclude<ScopeVia["kind"], "job">;
 
 const scopeBrand: unique symbol = Symbol("ShopScope");
 

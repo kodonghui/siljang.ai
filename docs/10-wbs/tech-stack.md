@@ -17,7 +17,7 @@
 | 웹 | React + Vite, 같은 Worker의 정적 자산 | 정적 자산 요청은 무료. Cloudflare가 새 프로젝트에 권하는 방식 |
 | 데이터베이스 | Supabase 서울(ap-northeast-2)의 PostgreSQL 17, node-postgres + Hyperdrive(읽기 캐시 끔) | 05의 마이그레이션 0001~0020과 규칙 테스트를 그대로 씀. 05 검사 15개가 PostgreSQL 17.11에서도 통과(이 PR에서 돌림) |
 | 자동으로 하는 일 | Cron Trigger 1분 + 데이터베이스의 작업 표(05 A33) | 06의 서버 안의 일 13개를 작업 표에서 때가 된 것부터 집음 |
-| AI 답·콜백·다시 하기 | Cloudflare Queues | 응답 뒤 30초(`waitUntil`)로는 AI 기한 55초가 모자람. 큐 소비자는 15분 |
+| AI 답·콜백 | Cloudflare Queues | 응답 뒤 30초(`waitUntil`)로는 AI 기한 55초가 모자람. 큐 소비자는 15분. 발송 결과 조회·장부 다시 적기처럼 때가 정해진 다시 하기는 큐 대신 1분 Cron(2026-11-16, 3-2) |
 | 사진 | Supabase Storage(서울) | 손님 사진이 한국 리전에 머묾 |
 | 비밀 값 | Workers secrets(`wrangler secret put`), 로컬은 `.dev.vars` | 저장소·로그에 키 0건(REQ-135) |
 | 백업 | Supabase Pro 매일 백업(7일) + 새 프로젝트로 복구 시험 | REQ-149 |
@@ -117,8 +117,8 @@ flowchart LR
 | 카카오 스킬 받기 | Worker가 요청 키를 기록하고 4초 안에 답함. AI 답이 4초 안에 안 되면 콜백을 쓰겠다고 답하고, 같은 트랜잭션에서 큐에 '이 상담의 답 만들기'(상담 ID만)를 넣음. 큐 소비자가 AI를 불러 콜백 주소로 보냄 | API-070~073, REQ-130·131, OPEN-2 |
 | 사장님·운영자 API | Worker(Hono). 요청 하나에 Hyperdrive로 트랜잭션 하나 | API-001~069, API-074~083 |
 | 웹 | React + Vite 빌드를 같은 Worker의 정적 자산으로. API와 같은 주소라 세션 쿠키(SameSite=Lax)가 그대로 감 | 08·09, TASK-029 |
-| 자동으로 하는 일 13개 | Cron Trigger가 1분마다 깨어 작업 표에서 때가 된 일을 집고, CPU 30초 안에 끝나지 않을 일은 큐로 나눔. Cron은 UTC라 매일 03:00(KST) 지우기는 UTC 18:00 | 06 10절, 05 A33, TASK-023 |
-| 발송 결과 조회(1·5·30분 뒤), 장부 다시 적기(1분~6시간 뒤) | 큐 메시지의 `delaySeconds`(24시간까지). 하루 한 번 다시 적기는 Cron | SPEC-066·067, SPEC-064 |
+| 자동으로 하는 일 13개 | Cron Trigger가 1분마다 깨어 작업 표에서 때가 된 행을 집음. 작업 표는 따로 된 테이블이 아니라 05 테이블의 때 컬럼과 부분 인덱스이고, 한 번에 일마다 50행·45초까지 하고 남은 것은 다음 분에 함. Cron은 UTC라 매일 03:00(KST) 지우기는 UTC 18:00. 실행기와 일 등록부는 [앱 README](../../app/README.md) 38\~47 | 06 10절, 05 A33, TASK-023 |
+| 발송 결과 조회(1·5·30분 뒤), 장부 다시 적기(1분\~6시간 뒤, 그 뒤 하루 한 번) | 1분 Cron이 05의 때 컬럼(`requested_at`·`delivery_checked_at`, `next_attempt_at`)과 부분 인덱스로 때가 된 행을 찾아 함. 2026-11-16 큐 `delaySeconds`에서 바꿈(TASK-023): 05에 그 컬럼과 인덱스가 이미 있어 서버를 다시 띄워도 기다리던 일이 이어지고, 큐 메시지를 잃거나 두 번 받아도 상관없고, Cloudflare 없이 시험됨 | SPEC-066·067, SPEC-064, TASK-023 |
 | 사진 | Supabase Storage(서울)의 비공개 버킷. 서버를 거쳐서만 올리고 읽음. 지울 파일 표(TBL-054)를 따라 지움 | SPEC-019·002·053, SPEC-065 |
 | 비밀 값 | Workers secrets. 로컬은 `.dev.vars`(저장소에 넣지 않음) | REQ-135 |
 | 계좌번호·원래 값 암호화 키 | Workers secrets `FIELD_KEY_V<버전>`(버전마다 32바이트)과 새로 쓸 때의 버전 `FIELD_KEY_CURRENT`. 사본은 저장소 밖 비밀 저장소에 둠(키를 잃으면 계좌번호를 되살릴 수 없음). 만들고 넣는 명령과 바꾸는 차례는 [앱 README](../../app/README.md) 32·33 | REQ-191, 05 E20, TASK-025·166·167·173 |
@@ -131,9 +131,9 @@ flowchart LR
 | --- | --- | --- |
 | 스킬 응답 4초 | Workers HTTP 요청은 벽시계 제한이 없고, CPU는 유료 플랜에서 요청마다 기본 30초(5분까지) | 맞음. 남은 위험은 서울 데이터베이스까지의 왕복이라 8-1에서 잼 |
 | AI 기한 55초, 콜백 유효 5분 | `waitUntil()`은 응답 뒤 30초까지. 큐 소비자는 벽시계 15분 | `waitUntil`로는 모자라 큐로 함 |
-| 1분마다 도는 일 | Cron `* * * * *`(매분) 지원, UTC. 1시간 미만 간격은 호출마다 CPU 30초, 벽시계 15분. 계정당 250개(유료) | 맞음. 오래 걸리는 지우기는 큐로 나눔 |
-| 1분~6시간 뒤 다시 하기 | 큐 `delaySeconds` 24시간까지 | 맞음 |
-| 트랜잭션과 행 잠금 | Hyperdrive는 트랜잭션 풀링: `BEGIN`~`COMMIT` 동안 한 연결, `SET`은 그 트랜잭션 안에서만, 트랜잭션 단위 advisory lock은 되고 세션 단위는 안 됨 | 우리 스키마는 `SET`·advisory lock·`LISTEN`을 쓰지 않고(05 `db/schema.sql`), 행 잠금은 트랜잭션 안이라 맞음. 8-1에서 시험 |
+| 1분마다 도는 일 | Cron `* * * * *`(매분) 지원, UTC. 1시간 미만 간격은 호출마다 CPU 30초, 벽시계 15분. 계정당 250개(유료) | 맞음. 한 번에 일마다 50행·45초까지 하고 남은 것은 다음 분에(TASK-023). 오래 걸리는 지우기를 나누는 법은 TASK-158 |
+| 1분~6시간 뒤 다시 하기 | 큐 `delaySeconds` 24시간까지. Cron은 매분 | 1분 Cron이 데이터베이스의 때 컬럼으로 함(2026-11-16, 3-2) |
+| 트랜잭션과 행 잠금 | Hyperdrive는 트랜잭션 풀링: `BEGIN`~`COMMIT` 동안 한 연결, `SET`은 그 트랜잭션 안에서만, 트랜잭션 단위 advisory lock은 되고 세션 단위는 안 됨 | 우리 스키마는 `SET`·advisory lock·`LISTEN`을 쓰지 않고(05 `db/schema.sql`), 행 잠금은 트랜잭션 안이라 맞음. 앱은 하루 한 번 일을 하나만 시작하려고 트랜잭션 단위 advisory lock(`pg_advisory_xact_lock`)을 씀(TASK-023). 8-1에서 시험 |
 | 쓴 뒤 바로 읽기 | Hyperdrive는 읽기 결과를 캐시하고, 쓰기가 캐시를 지우지 않음. 캐시를 끈 설정(`--caching-disabled`)을 둘 수 있음 | 캐시를 끈 설정으로만 붙음(주문 상태·결제를 바로 다시 읽음) |
 | 요청마다 쿼리 여러 번 | 요청마다 쿼리를 여러 번 하면 Placement로 Worker를 데이터베이스 가까이 두라고 권함(`mode = "smart"` 또는 `region`) | 서울 가까이 둠. `region`에 Supabase 서울(AWS ap-northeast-2)을 줄 수 있는지는 8-1 |
 | 동시 연결 | Hyperdrive가 데이터베이스로 여는 연결은 유료 약 100개. Supabase Micro는 직결 60·풀러 200 | 동시 상담 20개에는 넉넉함. Hyperdrive가 직결 60을 넘겨 열지 않는지 8-1 |

@@ -19,9 +19,10 @@ describe("기반 시설 경로", () => {
     expect(await res.json()).toEqual({ status: "ok" });
   });
 
-  it("Worker 진입점이 같은 앱을 내보낸다", async () => {
-    const res = await worker.request("/api/healthz");
+  it("Worker 진입점이 같은 앱과 scheduled 처리기를 내보낸다(TASK-023)", async () => {
+    const res = await worker.fetch(new Request("http://localhost/api/healthz"), {});
     expect(res.status).toBe(200);
+    expect(typeof worker.scheduled).toBe("function");
   });
 });
 

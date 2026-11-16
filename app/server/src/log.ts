@@ -15,9 +15,17 @@ export interface LogFields {
   readonly code?: string;
   /** PostgreSQL 오류의 SQLSTATE(다섯 글자). 오류 메시지·detail·제약 이름은 싣지 않는다. */
   readonly dbCode?: string;
+  /** 서버 안의 일의 이름(jobs.ts 등록부, 소문자·숫자·_). TASK-023. */
+  readonly job?: string;
+  /** 서버 안의 일이 다룬 행의 ID(uuid). 행의 내용은 싣지 않는다(tech-stack.md의 '큐 메시지와 로그에는 ID만'). */
+  readonly itemId?: string;
+  /** 건수(0 이상 정수). 실행기의 찾음·끝냄·실패 수 따위. */
+  readonly count?: number;
 }
 
 export type LogSink = (line: string) => void;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const defaultSink: LogSink = (line) => {
   console.log(line);
@@ -34,5 +42,8 @@ export function log(level: LogLevel, fields: LogFields, sink: LogSink = defaultS
   // 이름 꼴이 아닌 값은 싣지 않는다(실수로 넣은 값이 섞이지 않게).
   if (fields.code !== undefined && /^[a-z][a-z0-9_]{0,59}$/.test(fields.code)) line.code = fields.code;
   if (fields.dbCode !== undefined && /^[0-9A-Z]{5}$/.test(fields.dbCode)) line.dbCode = fields.dbCode;
+  if (fields.job !== undefined && /^[a-z][a-z0-9_]{0,59}$/.test(fields.job)) line.job = fields.job;
+  if (fields.itemId !== undefined && UUID.test(fields.itemId)) line.itemId = fields.itemId;
+  if (fields.count !== undefined && Number.isSafeInteger(fields.count) && fields.count >= 0) line.count = fields.count;
   sink(JSON.stringify(line));
 }

@@ -23,6 +23,8 @@ export interface OpsEvent {
   readonly count?: number;
   /** 종류별 숫자(이름은 소문자·숫자·_, 값은 유한한 숫자). 글은 받지 않는다. */
   readonly detail?: Readonly<Record<string, number>>;
+  /** 남긴 시각. 없으면 데이터베이스의 지금. 서버 안의 일(TASK-023)은 그 실행의 기준 시각을 넘긴다. */
+  readonly at?: Date;
 }
 
 const DETAIL_NAME = /^[a-z][a-z0-9_]{0,39}$/;
@@ -43,9 +45,10 @@ export async function recordOpsEvent(q: Queryable, event: OpsEvent): Promise<str
     }
     detail = JSON.stringify(Object.fromEntries(entries));
   }
+  if (event.at !== undefined && Number.isNaN(event.at.getTime())) throw new TypeError("at must be a valid date");
   const r = await q.query<{ id: string }>(
-    "INSERT INTO ops_events (shop_id, kind, count, detail) VALUES ($1, $2, $3, $4::jsonb) RETURNING id",
-    [event.shopId ?? null, event.kind, count, detail],
+    "INSERT INTO ops_events (shop_id, kind, count, detail, created_at) VALUES ($1, $2, $3, $4::jsonb, coalesce($5::timestamptz, now())) RETURNING id",
+    [event.shopId ?? null, event.kind, count, detail, event.at ?? null],
   );
   const row = r.rows[0];
   if (row === undefined) throw new Error("ops event was not inserted");
