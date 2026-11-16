@@ -12,6 +12,8 @@ app/web/dist/
 app/server/dist/
 app/server/.wrangler/
 app/server/src/worker-runtime.d.ts
+# AI 평가 결과(TASK-027): 저장소에는 결과 표만 옮긴다(app/README.md 74)
+app/server/eval-results/
 app/ci-logs/
 
 # 로컬 값 파일(비밀 값이 들어갈 수 있음). 값 없는 예시 파일만 저장소에 둔다.

@@ -192,7 +192,10 @@ function scoreEdibility(c: EvalCase, out: AiTurnOutput): CriterionResult {
 
 // ── 지어낸 답(REQ-009, SPEC-020: 가격표·운영규정으로 답할 수 없으면 답을 만들지 않음) ───────────────────
 
-/** 시각·날짜·기간·개수처럼 '사실'이 되는 숫자를 같은 꼴(후보 여럿)로 뽑는다. 금액(원)은 금액 잣대가 본다. */
+/**
+ * 시각·날짜·기간·개수처럼 '사실'이 되는 숫자를 같은 꼴(후보 여럿)로 뽑는다. 금액(원)은 금액 잣대가 본다.
+ * 영문자·숫자 바로 뒤의 숫자(주문번호 K7Q2M9의 9 등)는 뽑지 않는다.
+ */
 export function numberFacts(text: string): string[][] {
   const facts: string[][] = [];
   const body = text.replace(/[0-9,]+\s*원|[0-9]+\s*만\s*(?:[0-9]\s*천\s*)?원/g, " ");
@@ -200,17 +203,21 @@ export function numberFacts(text: string): string[][] {
     facts.push([`${Number(m[2])}/${Number(m[3])}`]);
   }
   const noIso = body.replace(/[0-9]{4}-[0-9]{2}-[0-9]{2}/g, " ");
-  for (const m of noIso.matchAll(/([0-9]{1,2}):([0-9]{2})/g)) facts.push(clock(Number(m[1]), Number(m[2]), null));
-  for (const m of noIso.matchAll(/(오전|오후|낮|밤|저녁|아침|새벽)?\s*([0-9]{1,2})\s*시(?!간)(?:\s*([0-9]{1,2})\s*분|\s*(반))?/g)) {
+  for (const m of noIso.matchAll(/(?<![A-Za-z0-9])([0-9]{1,2}):([0-9]{2})/g)) facts.push(clock(Number(m[1]), Number(m[2]), null));
+  for (const m of noIso.matchAll(
+    /(오전|오후|낮|밤|저녁|아침|새벽)?\s*(?<![A-Za-z0-9])([0-9]{1,2})\s*시(?!간)(?:\s*([0-9]{1,2})\s*분|\s*(반))?/g,
+  )) {
     facts.push(clock(Number(m[2]), m[4] === "반" ? 30 : Number(m[3] ?? 0), m[1] ?? null));
   }
-  for (const m of noIso.matchAll(/([0-9]{1,2})\s*월\s*([0-9]{1,2})\s*일/g)) facts.push([`${Number(m[1])}/${Number(m[2])}`]);
-  for (const m of noIso.matchAll(/(?<![0-9/])([0-9]{1,2})\/([0-9]{1,2})(?![0-9/])/g)) {
+  for (const m of noIso.matchAll(/(?<![A-Za-z0-9])([0-9]{1,2})\s*월\s*([0-9]{1,2})\s*일/g)) {
+    facts.push([`${Number(m[1])}/${Number(m[2])}`]);
+  }
+  for (const m of noIso.matchAll(/(?<![A-Za-z0-9/])([0-9]{1,2})\/([0-9]{1,2})(?![0-9/])/g)) {
     facts.push([`${Number(m[1])}/${Number(m[2])}`]);
   }
   const noMonthDay = noIso.replace(/[0-9]{1,2}\s*월\s*[0-9]{1,2}\s*일/g, " ");
   for (const m of noMonthDay.matchAll(
-    /([0-9]+)\s*(시간|분|일|개월|주|년|개|명|층|단|%|퍼센트|cm|센티|g|그램|kcal|칼로리|장|호)/g,
+    /(?<![A-Za-z0-9.,])([0-9]+)\s*(시간|분|일|개월|주|년|개|명|층|단|%|퍼센트|cm|센티|g|그램|kcal|칼로리|장|호)/g,
   )) {
     const unit = m[2] === "퍼센트" ? "%" : m[2] === "센티" ? "cm" : m[2] === "그램" ? "g" : m[2];
     facts.push([`${Number(m[1])}${unit}`]);

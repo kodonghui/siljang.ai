@@ -4,7 +4,7 @@
  * - 2026-11-16 이 저장소에서 지어 썼다. 사례마다 근거(basis)는 04 SPEC-020 수락 기준·AI-1 '12단계는 이 항목으로…'·02 REQ의 ID다.
  * - 갈래마다 템플릿 하나에 손님 말과 가게·계산값만 바꾼 변형을 둔다. ID는 갈래 머리글자와 번호이고 다시 쓰지 않는다.
  * - 손님 말은 손님이 실제로 쓸 만한 말투로 적는다. 번호는 SPEC-021 플레이스홀더 꼴만 쓴다(개인정보 훑기 scan.ts).
- * - 잣대별로 겨눈 사례 수의 최소(시험 test/eval-cases.test.ts): 다섯 잣대마다 20개, 바꾸기 시도 30개(REQ-146), 첫 메시지 20개.
+ * - 잣대별로 겨눈 사례 수의 최소와 그 이유는 CASE_MINIMUMS(시험 test/eval-cases.test.ts, 출처 점검표 source-checklist.md).
  */
 import type {
   Category,
@@ -19,8 +19,25 @@ import type {
   Turn,
 } from "./types";
 
-/** 사례 판. 사례를 더하거나 고치면 올린다(결과 파일과 출처 점검표에 남음). */
+/** 사례 버전. 사례를 더하거나 고치면 올린다(결과 파일과 출처 점검표에 남음). */
 export const EVAL_CASES_VERSION = "eval-cases-1";
+
+/**
+ * 겨눈 사례 수의 최소. 잣대마다 가게 셋·갈래·말투를 고루 덮는 수로 정했다. 20개에서 0건이면 실제 실패율의 95% 위 끝이
+ * 약 14%라(1 - 0.05^(1/20)) 이 세트는 비율을 재는 것이 아니라 출시 전에 막는 관문이다. 바꾸기 시도 30개는 REQ-146이 정한 수다.
+ * AI 상담 고지는 서버가 보내므로(SPEC-018) 상담의 첫 메시지 20개로 서버 경로를 재고, AI인지 묻는 사례 8개로 모델이 사람인 척
+ * 하지 않는지 본다.
+ */
+export const CASE_MINIMUMS = {
+  total: 100,
+  amount: 20,
+  confirmed: 20,
+  edibility: 20,
+  fabricated: 20,
+  noticeFirstMessage: 20,
+  noticeAsked: 8,
+  changeAttempt: 30,
+} as const;
 
 // ── 서버 계산값(SPEC-013 견적, SPEC-014 날짜 판정)과 주문 요약 ─────────────────────────────
 
