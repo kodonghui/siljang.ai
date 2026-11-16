@@ -5,7 +5,7 @@ import { ApiError } from "../src/problem";
 import type { RateLimiter } from "../src/rate-limit";
 import { ownerRoute, type RouteDecl } from "../src/routes";
 import { isUuid } from "../src/shop-scope";
-import type { ObjectList, ObjectStore } from "../src/storage";
+import { type ObjectList, type ObjectStore, StorageUnavailableError } from "../src/storage";
 import {
   CONTRACT_UPLOAD_ID,
   checkUploads,
@@ -16,6 +16,7 @@ import {
   permanentKey,
   promoteUpload,
   sniffImage,
+  type TakenUpload,
   tempKey,
   UNUSED_UPLOAD_LIMIT,
   UPLOAD_RULES,
@@ -27,7 +28,7 @@ import { comparableProblem, expectProblem, expectSchema } from "./support/contra
 import { collectLogs, newUuid, testEnv } from "./support/db";
 import * as img from "./support/images";
 import { MemoryLimiter } from "./support/rate-limit";
-import { MemoryStore } from "./support/storage";
+import { brokenS3, MemoryStore } from "./support/storage";
 
 // 사진 올리기(TASK-022; 06 API-007의 응답 201·401·413·422·429·503·default, DEC-09·DEC-16·DEC-02, SPEC-068 [입력], M18).
 // 사장님 세션(TASK-020) 전이라 시험용 해석기(헤더의 사장님 ID)와 메모리 저장소·메모리 한도로 앱을 부른다.
@@ -476,6 +477,21 @@ describe("API-007 503: 사진 저장소가 답하지 않으면 storage_unavailab
       expect(logged).not.toContain("tmp/");
     });
   }
+
+  it("진짜 저장소 구현(S3Store)의 목록 응답이 머리 뒤에 끊겨도 503(500 internal이 아님)", async () => {
+    const { lines, sink } = collectLogs();
+    const app = createApp({
+      logSink: sink,
+      ownerAccount: async () => createOwnerScope(newUuid()),
+      services: { storage: brokenS3(), limiters: { UPLOAD_RATE_LIMITER: new MemoryLimiter(30) }, now: () => T0 },
+    });
+    const fd = new FormData();
+    fd.append("purpose", "license_photo");
+    fd.append("file", photo(img.jpeg()));
+    const res = await app.request("/api/owner/uploads", { method: "POST", body: fd }, testEnv());
+    await expectProblem(res, "storage_unavailable");
+    expect(lines.join("\n")).toContain('"errorName":"StorageUnavailableError"');
+  });
 });
 
 describe("API-007 default(500): 설정이 빠지면 internal이고 이름만 남김", () => {
@@ -650,6 +666,22 @@ describe("명령이 쓰는 올린 파일(06 DEC-02·DEC-09, SPEC-068 [입력], �
     expect(err).toBeInstanceOf(ApiError);
     expect((err as ApiError).extras.errors).toEqual([{ field: "/designs/0/uploadId", code: "upload_not_found" }]);
     expect(() => permanentKey("not-a-shop", "design_image", id)).toThrow(TypeError);
+  });
+
+  it("진짜 저장소 구현(S3Store)에서 응답 머리 뒤에 몸체가 끊기면: 옮기기는 503, 임시 파일 지우기는 명령을 막지 않음", async () => {
+    const owner = createOwnerScope(newUuid());
+    const id = newUploadId("license_photo", T0);
+    const taken: TakenUpload = {
+      field: "/uploads/0/uploadId",
+      uploadId: id,
+      purpose: "license_photo",
+      contentType: "image/jpeg",
+      byteSize: 1024,
+      tempKey: tempKey(owner, id),
+    };
+    const err = await promoteUpload(brokenS3(), taken, newUuid()).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(StorageUnavailableError);
+    await expect(discardUpload(brokenS3(), taken)).resolves.toBeUndefined();
   });
 });
 

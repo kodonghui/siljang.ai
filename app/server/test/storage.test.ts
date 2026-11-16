@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assertStorageKey, parseListObjectsV2, S3Store, StorageUnavailableError } from "../src/storage";
+import { brokenBody } from "./support/storage";
 
 // 사진 저장소 모듈의 S3 구현(TASK-022). 계정이 없어(TASK-170) 진짜 저장소에는 보내지 않고, 보내는 요청의 모양만 가짜 fetch로
 // 본다. Supabase Storage의 S3 호환 주소에서 실제로 도는지는 TASK-171이 확인한다(app/README.md 25).
@@ -170,6 +171,28 @@ describe("S3Store가 보내는 요청(경로 꼴 주소, SigV4, UNSIGNED-PAYLOAD
     expect(err).toBeInstanceOf(StorageUnavailableError);
     expect((err as Error).message).toBe("put: no response");
     expect(calls).toBe(1);
+  });
+
+  it("머리 뒤에 몸체가 끊기면: 몸체를 읽어야 아는 목록·복사는 StorageUnavailableError, 상태 코드로 끝난 동작은 버리는 몸체의 오류를 무시", async () => {
+    const broken = (status: number) => fakeS3(() => brokenBody(status)).store;
+    const to = "shops/2c9e1b52-7a8d-4f3e-9b6a-1d2c3e4f5a6b/license_photo/upl_0123456789abl0123456789abcdefABCDEF";
+    const listErr = await broken(200)
+      .list("tmp/a/", "", 10)
+      .catch((e: unknown) => e);
+    expect(listErr).toBeInstanceOf(StorageUnavailableError);
+    expect((listErr as Error).message).toBe("list: body not read");
+    const copyErr = await broken(200)
+      .copy(KEY, to)
+      .catch((e: unknown) => e);
+    expect(copyErr).toBeInstanceOf(StorageUnavailableError);
+    expect((copyErr as Error).message).toBe("copy: body not read");
+    // 넣기·지우기는 상태 코드로 끝났고, 없는 객체(404)는 없다는 답이 이미 옴
+    await expect(broken(200).put(KEY, new Uint8Array([1]), "image/jpeg")).resolves.toBeUndefined();
+    await expect(broken(200).delete(KEY)).resolves.toBeUndefined();
+    await expect(broken(404).delete(KEY)).resolves.toBeUndefined();
+    await expect(broken(404).get(KEY)).resolves.toBeNull();
+    await expect(broken(404).copy(KEY, to)).resolves.toBe(false);
+    await expect(broken(500).put(KEY, new Uint8Array([1]), "image/jpeg")).rejects.toThrow("put: status 500");
   });
 });
 

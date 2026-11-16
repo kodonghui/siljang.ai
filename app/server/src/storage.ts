@@ -4,7 +4,9 @@
  *   시험은 test/support/storage.ts의 메모리 저장소를 쓴다.
  * - S3를 고른 까닭: Supabase의 publishable·secret 키는 서버·웹 어디에도 쓰지 않으므로(TASK-174) 그 키가 필요한 Storage
  *   REST API 대신 저장소만 다루는 S3 접근 키를 쓴다. 같은 모듈이 S3·R2 같은 다른 저장소에도 맞는다(tech-stack.md 4-2).
- * - 저장소가 답하지 않거나 오류면 StorageUnavailableError(응답은 503 storage_unavailable). 없는 객체는 null이나 false(오류 아님).
+ * - 저장소가 답하지 않거나 오류면 StorageUnavailableError(응답은 503 storage_unavailable). 응답 머리 뒤에 몸체를 읽다
+ *   끊겨도(목록·복사처럼 몸체를 읽어야 결과를 아는 동작) 같다. 상태 코드로 끝난 동작(넣기·지우기, 없는 객체)은 버리는 몸체의
+ *   오류를 무시한다. 없는 객체는 null이나 false(오류 아님).
  * - 키는 우리 코드가 만든 것만 받는다(STORAGE_KEY). 저장 위치는 응답·로그에 싣지 않는다(06 DEC-09, 04 G6).
  */
 import { AwsClient } from "aws4fetch";
@@ -71,6 +73,18 @@ function xmlText(s: string): string {
   return s.replace(/&(amp|lt|gt|quot|apos);/g, (_m, name: string) => XML_ENTITIES[name] ?? "");
 }
 
+/**
+ * 상태 코드로 끝난 응답의 몸체를 버린다. 머리 뒤에 연결이 끊겨 버리기가 거절돼도 동작의 결과는 상태 코드로 이미 왔으므로
+ * 무시한다(그대로 두면 끊긴 연결의 TypeError가 StorageUnavailableError가 아닌 채로 새어 500이 됨).
+ */
+async function discardBody(res: Response): Promise<void> {
+  try {
+    await res.body?.cancel();
+  } catch {
+    // 끊긴 연결: 버릴 몸체가 없는 것과 같다
+  }
+}
+
 /** ListObjectsV2 응답에서 키와 잘림 여부만 읽는다(Contents/Key, IsTruncated). */
 export function parseListObjectsV2(xml: string): ObjectList {
   const keys: string[] = [];
@@ -120,9 +134,18 @@ export class S3Store implements ObjectStore {
     return res;
   }
 
+  /** 몸체를 읽어야 결과를 아는 동작(목록·복사)의 몸체. 머리 뒤에 연결이 끊기면 저장소가 답하지 않은 것과 같다. */
+  async #text(op: string, res: Response): Promise<string> {
+    try {
+      return await res.text();
+    } catch {
+      throw new StorageUnavailableError(`${op}: body not read`);
+    }
+  }
+
   #fail(op: string, res: Response): never {
     // 몸체(오류 XML)는 읽지 않고 버린다. 상태 코드만 남긴다.
-    res.body?.cancel().catch(() => {});
+    void discardBody(res);
     throw new StorageUnavailableError(`${op}: status ${res.status}`);
   }
 
@@ -134,7 +157,7 @@ export class S3Store implements ObjectStore {
       body,
     });
     if (res.status !== 200) this.#fail("put", res);
-    await res.body?.cancel();
+    await discardBody(res);
   }
 
   async head(key: string): Promise<StoredObjectInfo | null> {
@@ -151,10 +174,11 @@ export class S3Store implements ObjectStore {
   async get(key: string): Promise<StoredObject | null> {
     const res = await this.#send("get", this.#url(key), { method: "GET" });
     if (res.status === 404) {
-      await res.body?.cancel();
+      await discardBody(res);
       return null;
     }
     if (res.status !== 200 || res.body === null) this.#fail("get", res);
+    // 몸체는 읽지 않고 흘려보낸다. 도중에 끊기면 받는 쪽(사진을 내는 응답)도 끊긴다(상태 코드는 이미 나감).
     return {
       key,
       size: Number(res.headers.get("content-length") ?? "0"),
@@ -167,12 +191,12 @@ export class S3Store implements ObjectStore {
     const source = `/${encodeURIComponent(this.#bucket)}/${assertStorageKey(from).split("/").map(encodeURIComponent).join("/")}`;
     const res = await this.#send("copy", this.#url(to), { method: "PUT", headers: { "x-amz-copy-source": source } });
     if (res.status === 404) {
-      await res.body?.cancel();
+      await discardBody(res);
       return false;
     }
     if (res.status !== 200) this.#fail("copy", res);
-    // S3는 복사 도중 실패해도 200과 Error 본문을 줄 수 있다(AWS CopyObject 문서).
-    const text = await res.text();
+    // S3는 복사 도중 실패해도 200과 Error 본문을 줄 수 있다(AWS CopyObject 문서). 그래서 몸체를 끝까지 읽는다.
+    const text = await this.#text("copy", res);
     if (!/<CopyObjectResult[\s>]/.test(text) || /<Error>/.test(text)) {
       throw new StorageUnavailableError("copy: error body");
     }
@@ -182,7 +206,7 @@ export class S3Store implements ObjectStore {
   async delete(key: string): Promise<void> {
     const res = await this.#send("delete", this.#url(key), { method: "DELETE" });
     if (res.status !== 204 && res.status !== 200 && res.status !== 404) this.#fail("delete", res);
-    await res.body?.cancel();
+    await discardBody(res);
   }
 
   async list(prefix: string, startAfter: string, max: number): Promise<ObjectList> {
@@ -190,6 +214,6 @@ export class S3Store implements ObjectStore {
     if (startAfter !== "") q.set("start-after", startAfter);
     const res = await this.#send("list", `${this.#url()}?${q.toString()}`, { method: "GET" });
     if (res.status !== 200) this.#fail("list", res);
-    return parseListObjectsV2(await res.text());
+    return parseListObjectsV2(await this.#text("list", res));
   }
 }

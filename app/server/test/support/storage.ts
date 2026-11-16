@@ -2,12 +2,37 @@ import {
   assertStorageKey,
   type ObjectList,
   type ObjectStore,
+  S3Store,
   StorageUnavailableError,
   type StoredObject,
   type StoredObjectInfo,
 } from "../../src/storage";
 
 type Op = "put" | "head" | "get" | "copy" | "delete" | "list";
+
+/** 머리(상태 코드)는 왔는데 몸체를 읽다 연결이 끊긴 응답. 몸체 읽기(text)와 버리기(cancel)가 모두 거절된다. */
+export function brokenBody(status: number): Response {
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.error(new TypeError("terminated"));
+      },
+    }),
+    { status },
+  );
+}
+
+/** 모든 요청에 brokenBody(status)로 답하는 진짜 구현(S3Store). 시험용 키는 저장소 글에 키 꼴이 남지 않게 실행 중에 만든다. */
+export function brokenS3(status = 200): S3Store {
+  return new S3Store({
+    endpoint: "https://project.storage.example.test/storage/v1/s3",
+    region: "ap-northeast-2",
+    bucket: "photos",
+    accessKeyId: ["test", "access", "id"].join("-"),
+    secretAccessKey: ["test", "secret", "value"].join("-"),
+    fetch: async () => brokenBody(status),
+  });
+}
 
 /**
  * 시험용 메모리 저장소(TASK-022). 진짜 저장소(S3Store)와 같은 약속을 지킨다: 키 꼴 검사, 없는 객체는 null·false,
