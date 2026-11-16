@@ -11,7 +11,8 @@
  *     임대가 끝난 뒤 다시 찾힌다. 바깥 호출을 트랜잭션 안에서 하지 않아 연결을 오래 쥐지 않는다.
  * - 같은 일은 한 번만(A33)은 이벤트 키로 지킨다(event-keys.ts의 insertOnce). 실행기는 행을 한 번씩 잡아 줄 뿐이다.
  * - 한도(issue 7): 곳마다 한 번에 찾는 수(batch)와 이 실행의 시간 한도(budgetMs). 넘으면 남은 것은 다음 분에. 일의 순서는
- *   분마다 돌려 한 일이 늘 뒤로 밀리지 않게 한다. 처리가 던져 되돌린 행은 그대로 때가 된 채 남아 다음 찾기의 앞에 다시
+ *   분마다, 한 일 안의 찾는 곳의 순서는 일이 한 바퀴 돌 때마다 돌려 한 일이나 한 곳이 늘 뒤로 밀리지 않게 한다.
+ *   처리가 던져 되돌린 행은 그대로 때가 된 채 남아 다음 찾기의 앞에 다시
  *   나오므로, 같은 실행 안에서는 이미 본 행을 빼고 그 뒤의 행을 더 찾아 채운다(늘 던지는 행이 뒤의 행을 막지 않게).
  * - 하루 한 번 일(지난 기록 지우기 03:00, SPEC-065): 짧은 트랜잭션에서 트랜잭션 잠금(pg_advisory_xact_lock, 트랜잭션 풀링에서도
  *   지켜짐)을 잡고 운영 기록(ops_events)의 표시로 그날 시작했는지 본 뒤, 아니면 표시를 남기고 시작한다. 그날 멈추면 다음 날
@@ -388,7 +389,12 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
   let stoppedByBudget = false;
 
   const jobs = options.jobs;
-  const shift = jobs.length === 0 ? 0 : Math.floor(now.getTime() / 60_000) % jobs.length;
+  // 분마다 일의 차례를 하나씩 돌리고, 일이 한 바퀴 돌 때마다 한 일 안의 찾는 곳의 차례를 하나씩 돌린다(분 = 바퀴 × 일 수 + 차례).
+  // 두 차례를 같은 분 수로 돌리면 일 수가 짝수일 때 한 일이 앞에 올 때마다 늘 같은 곳이 먼저라, 시간 한도를 다 쓰는 동안
+  // 다른 곳이 돌지 않았다(Codex 지적). 이렇게 하면 일 수 × 곳 수 분 안에 일마다 곳마다 한 번씩 먼저 돈다.
+  const minute = Math.floor(now.getTime() / 60_000);
+  const lap = Math.max(jobs.length, 1);
+  const shift = minute % lap;
   const order = [...jobs.slice(shift), ...jobs.slice(0, shift)];
 
   for (const job of order) {
@@ -411,8 +417,8 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
       dailyStarted.push(job.name);
       log("info", { event: "job_daily_started", job: job.name });
     }
-    // 한 일 안의 찾는 곳도 분마다 차례를 돌린다. 앞 곳이 시간 한도를 다 써도 뒤 곳이 굶지 않게.
-    const turn = job.sources.length === 0 ? 0 : Math.floor(now.getTime() / 60_000) % job.sources.length;
+    // 한 일 안의 찾는 곳도 차례를 돌린다(일이 한 바퀴 돌 때마다). 앞 곳이 시간 한도를 다 써도 뒤 곳이 굶지 않게.
+    const turn = job.sources.length === 0 ? 0 : Math.floor(minute / lap) % job.sources.length;
     for (const name of [...job.sources.slice(turn), ...job.sources.slice(0, turn)]) {
       const source = DUE_SOURCES[name];
       const cutoff = job.cutoff?.(name, now) ?? now;

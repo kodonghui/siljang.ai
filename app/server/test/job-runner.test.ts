@@ -611,6 +611,55 @@ describeDb("실행기(데이터베이스)", () => {
     expect([...seen].sort()).toEqual(["owner_alert_check", "owner_alert_send"]);
   });
 
+  it("일 둘이 시간 한도를 다 써도, 찾는 곳의 차례가 일의 차례와 따로 돌아 일마다 모든 곳이 먼저 돎(Codex 지적)", async () => {
+    const now = pastMinute();
+    const send = (await addAlert(db, b.shopId, plus(now, -1000))).id;
+    const r = await db.query<{ id: string }>(
+      "INSERT INTO owner_alerts (shop_id, event_key, kind, status, kakao_task_id, requested_at) VALUES ($1, $2, 'new_task', 'confirming', 'task-test', $3) RETURNING id",
+      [b.shopId, eventKeys.alert("new_task", newUuid()), plus(now, -2 * MIN)],
+    );
+    const check = r.rows[0]?.id as string;
+    const mine = new Set([send, check]);
+    let clock = 0;
+    const seen: string[] = [];
+    const turnJob = (name: string): RunnableJob => ({
+      name,
+      every: "minute",
+      sources: ["owner_alert_send", "owner_alert_check"],
+      handler: {
+        mode: "transaction",
+        async run(_db, item) {
+          if (!mine.has(item.id)) return;
+          seen.push(`${name}:${item.source}`);
+          clock += 2000;
+        },
+      },
+    });
+    const jobs = [turnJob("turn_a"), turnJob("turn_b")];
+    // 한 실행은 처음 잡은 행 하나로 시간 한도를 다 씀. 일 둘·곳 둘이면 네 분 안에 일마다 곳마다 한 번씩 먼저 돌아야 함.
+    for (let m = 0; m < 4; m += 1) {
+      await runDueJobs({
+        db,
+        now: plus(now, m * MIN),
+        jobs,
+        log: quiet,
+        limits: { budgetMs: 1000 },
+        clock: () => clock,
+      });
+    }
+    await scoped(db, b.shopId).run(
+      "UPDATE owner_alerts t SET status = 'failed', fail_code = 'unknown' WHERE t.shop_id = $1 AND t.id = ANY($2::uuid[])",
+      [[send, check]],
+    );
+    expect(seen).toHaveLength(4);
+    expect([...seen].sort()).toEqual([
+      "turn_a:owner_alert_check",
+      "turn_a:owner_alert_send",
+      "turn_b:owner_alert_check",
+      "turn_b:owner_alert_send",
+    ]);
+  });
+
   it("늘 던지는 행이 한 번에 찾는 수만큼 앞을 막아도, 같은 실행에서 그 뒤의 행을 이어 찾아 함(Codex 지적)", async () => {
     const now = pastMinute();
     const ids: string[] = [];
