@@ -156,7 +156,7 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
     | 사용량이 없음, 요금표 밖(53) | failure       | usage_missing·price_tier      | model_error     | unavailable   | 아니요    |
 
 53. 토큰과 금액(REQ-150·163):
-    - 토큰은 LangChain의 `usage_metadata`가 아니라 회사 응답 스트림의 usage에서 읽습니다(`ai-usage.ts`의 `UsageMeter`. 받은 바이트는 바꾸지 않고 SDK에 넘김). `@langchain/anthropic` 1.6.1은 스트림 시작의 출력 토큰과 누적 출력 토큰을 더해 출력을 더 세었습니다(시험에서 150이 151).
+    - 토큰은 LangChain의 `usage_metadata`가 아니라 회사 응답 스트림의 usage에서 읽습니다(`ai-usage.ts`의 `UsageMeter`. 받은 바이트는 바꾸지 않고 SDK에 넘김). `@langchain/anthropic` 1.6.1은 스트림 시작의 출력 토큰과 누적 출력 토큰을 더해 출력을 더 세었습니다(시험에서 150이 151). 끝 사용량(Anthropic은 `output_tokens`가 든 `message_delta`, OpenAI는 `response.completed`·`response.incomplete`·`response.failed`의 usage)이 오기 전에 끝난 스트림은 글이 다 왔어도 사용량 없음(`usage_missing`)으로 두고 금액을 세지 않습니다. Anthropic 스트림 시작의 출력 토큰(보통 1)은 끝 값이 아니기 때문입니다.
     - 네 열은 겹치지 않습니다. Anthropic은 `input_tokens`(캐시를 뺀 입력)·`cache_creation_input_tokens`·`cache_read_input_tokens`·`output_tokens`(`message_delta`의 누적 값)이고, OpenAI는 `input_tokens`에서 `cached_tokens`·`cache_write_tokens`를 뺀 값과 그 둘, `output_tokens`입니다. 첫 토큰 시각은 손님에게 보일 출력의 첫 조각이 온 때입니다(추론 조각은 빼고).
     - 요금표(`ai-prices.ts`, 판 2026-11-16): 백만 토큰당 달러, 행마다 확인 날짜 2026-11-16. 출처는 Anthropic https://platform.claude.com/docs/en/about-claude/pricing 와 OpenAI https://developers.openai.com/api/docs/pricing (Standard)입니다. 캐시 쓰기는 짧은 보관(Anthropic 5분, OpenAI 30분)의 값입니다.
 
@@ -182,11 +182,11 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
     - 키는 `Secret`으로 감싸고 고른 회사의 것(`ANTHROPIC_API_KEY`나 `OPENAI_API_KEY`) 하나만 씁니다. 꺼내는 곳은 채팅 모델을 만드는 한 곳(`reveal()`)입니다. 고르지 않은 회사의 키는 없어도 되고, 고른 회사의 키가 없으면 호출마다 `key_missing` 행을 남기고 부르지 않습니다(06 DEC-07 `ai_key_missing`).
     - CI에는 키가 없고 유료 호출은 0번입니다(모든 시험이 가짜 fetch와 회사 응답 꼴의 모의 스트림). 시험 키는 실행 중에 이어 붙인 가짜 글이라 키 검사(`check:keys`)의 꼴에 맞지 않습니다.
 57. 시험과 넘기는 것(TASK-026)
-    - 서버 시험 522 → 565개(27 → 32파일). `ai-model.test.ts` 13개: 같은 입력을 설정만 바꿔 두 회사(모의 스트림)에 보내 같은 `AiTurnOutput`과 각 회사 값의 `ai_calls` 행(회사·모델·토큰·금액), 요청 꼴(주소·스트리밍·최대 토큰·json_schema·`store: false`·키 머리·브라우저 머리 없음), 첫 토큰 시각, `schema_invalid`, 상태 코드·시간 초과·연결 실패·키 없음의 행, 운영의 추적 요청 0과 켜졌을 때 멈춤, 순번과 05 제약, 행에 글·키 없음. 이 밖에 사용량 읽기 10개(바이트를 어디서 끊어도 같음, 한글·이모지, CRLF, 누적, OpenAI 뺄셈, 긴 보관), AiTurnOutput 5개, 설정·요금표·셈·서비스 12개, 정적 3개.
+    - 서버 시험 522 → 567개(27 → 32파일). `ai-model.test.ts` 14개: 같은 입력을 설정만 바꿔 두 회사(모의 스트림)에 보내 같은 `AiTurnOutput`과 각 회사 값의 `ai_calls` 행(회사·모델·토큰·금액), 요청 꼴(주소·스트리밍·최대 토큰·json_schema·`store: false`·키 머리·브라우저 머리 없음), 첫 토큰 시각, `schema_invalid`, 끝 사용량 전에 끝난 스트림의 `usage_missing`, 상태 코드·시간 초과·연결 실패·키 없음의 행, 운영의 추적 요청 0과 켜졌을 때 멈춤, 순번과 05 제약, 행에 글·키 없음. 이 밖에 사용량 읽기 11개(바이트를 어디서 끊어도 같음, 한글·이모지, CRLF, 누적, 끝 사용량 없음, OpenAI 뺄셈, 긴 보관), AiTurnOutput 5개, 설정·요금표·셈·서비스 12개, 정적 3개.
     - 시험하지 않은 것: 진짜 키로 두 회사 부르기(유료 호출 0), 배포한 Worker에서 부르기(로컬 workerd만), 진짜 응답의 사용량 값(문서의 예를 따른 모의 스트림만).
     - 진짜 키로 처음 부르기와 두 회사의 결과 견주기는 TASK-027(평가 도구), 키와 보관 안 함 허가는 TASK-005·006(동희님)입니다. Workers에 배포해 한 번씩 부르기는 tech-stack.md 8-1(TASK-171), Workers 런타임의 시험 풀(vitest-pool-workers)은 TASK-171·173입니다.
     - 그래프(LangGraph는 이때 더함), 차례마다 8번 상한, 1초 뒤 한 번 다시 하기, 다시 쓰기, 에스컬레이션, A35·A13, `cost_limit`·`call_limit` 행은 TASK-069, 보내는 글의 마스킹은 TASK-066입니다.
-    - 실패·시간 초과 행은 토큰·금액이 비어 있습니다. 끊은 호출도 회사는 받은 입력과 그때까지 만든 출력을 셈할 수 있지만 우리는 그 값을 받지 못합니다. 가게 하루 비용 한도(REQ-163; 설정 TASK-037, 셈 TASK-069)가 이 몫을 어떻게 셀지 정합니다.
+    - 실패·시간 초과 행과 끝 사용량이 오지 않은 행(`usage_missing`)은 토큰·금액이 비어 있습니다. 끊은 호출도 회사는 받은 입력과 그때까지 만든 출력을 셈할 수 있지만 우리는 그 값을 받지 못합니다. 가게 하루 비용 한도(REQ-163; 설정 TASK-037, 셈 TASK-069)가 이 몫을 어떻게 셀지 정합니다.
     - `AI_EFFORT`를 비우면 effort를 보내지 않아 회사의 모델 기본값으로 돕니다(회사·모델마다 다르고 바뀔 수 있음). 모델과 effort는 TASK-162가 평가로 고릅니다.
     - 프롬프트 캐시를 쓰게 되면 짧은 보관만 쓰거나 요금표에 긴 보관 값을 더합니다(지금은 막음, 53).
 

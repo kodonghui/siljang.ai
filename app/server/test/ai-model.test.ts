@@ -257,6 +257,24 @@ describeDb("모델 호출 모듈(TASK-026)", () => {
     }
   });
 
+  it("끝 사용량이 오기 전에 스트림이 끝나면 금액을 세지 않고 usage_missing(Anthropic 시작의 output_tokens 1로 세지 않음)", async () => {
+    for (const provider of PROVIDERS) {
+      const text = streamBody(provider, outputText(provider, OUTPUT));
+      const cut = text.indexOf(provider === "anthropic" ? "event: message_delta" : "event: response.completed");
+      expect(cut, provider).toBeGreaterThan(firstTextEvent(provider, text));
+      const { outcome, row } = await run(provider, () => sseResponse(text.slice(0, cut)));
+      expect(outcome, provider).toMatchObject({ ok: false, failure: "unavailable", retryable: false });
+      expect(row, provider).toMatchObject({
+        result: "failure",
+        error_kind: "usage_missing",
+        fallback_reason: "model_error",
+        output_tokens: null,
+        cost_usd: null,
+        cost_krw: null,
+      });
+    }
+  });
+
   it("모델 클라이언트의 자체 다시 하기는 꺼짐: 오류마다 요청 한 번, 실패 종류와 한 행(AI-1)", async () => {
     const cases = [
       { status: 500, result: "failure", failure: "unavailable", retryable: true },

@@ -18,22 +18,26 @@
     - 쟁점 2(회사의 API): Anthropic은 Messages API, OpenAI는 Chat Completions가 아니라 Responses API에 `store: false`입니다. OpenAI가 새 프로젝트에 Responses를 권하고 GPT-5.4부터 Chat Completions는 effort가 none이 아니면 도구 호출을 받지 않기 때문입니다(2026-11-16 확인).
     - 쟁점 3(AiTurnOutput 하나): 06을 손으로 옮기고 06과 견주는 시험을 두었습니다. 받은 뒤 서버가 06 스키마로 다시 확인하고, 어긋나면 `schema_invalid`입니다. 두 회사의 모의 응답이 같은 출력을 냅니다.
     - 쟁점 4(`ai_calls` 한 행): 실패·시간 초과·키 없음도 한 행이고 글은 남기지 않습니다. 순번 도구(`FIRST_ATTEMPT`·`nextAttempt`)를 두고, 차례마다 8번 상한과 다시 하기는 그래프 층(TASK-069)이 합니다.
-    - 쟁점 5(요금표): 판 2026-11-16, 모델 7개(행마다 확인 날짜), 원/달러 환율은 날짜가 있는 설정으로 `cost_basis`에 남기고, 요금표에 없는 모델은 설정에서 막습니다. 토큰은 LangChain이 모은 값이 아니라 응답 스트림에서 읽습니다(LangChain이 Anthropic 출력 토큰을 더 세는 것을 시험에서 봄).
+    - 쟁점 5(요금표): 판 2026-11-16, 모델 7개(행마다 확인 날짜), 원/달러 환율은 날짜가 있는 설정으로 `cost_basis`에 남기고, 요금표에 없는 모델은 설정에서 막습니다. 토큰은 LangChain이 모은 값이 아니라 응답 스트림에서 읽습니다(LangChain이 Anthropic 출력 토큰을 더 세는 것을 시험에서 봄). 끝 사용량이 오기 전에 끝난 스트림은 금액을 세지 않고 `usage_missing`입니다(아래 Codex 지적).
     - 쟁점 6(시간): 연결 3초·전체 20초, LangChain·SDK의 다시 하기는 끄고, 끊으면 result `timeout`입니다.
     - 쟁점 7(추적 도구): 운영에서 켜면 설정 오류로 시작에서 멈추고(닫힌 쪽), 호출 직전에 `process.env`를 한 번 더 봅니다. 가짜 fetch로 추적 주소 요청이 0임을 보고, 같은 시험이 개발에서는 추적 요청을 잡는 것도 봅니다.
     - 쟁점 8(키): `settings.ts`만 `Secret`으로 읽고 고른 회사의 키만 씁니다. CI에는 키가 없고 유료 호출은 0번입니다. 진짜 키로 부르는 것은 시험하지 않았고 TASK-005·006·027에 넘깁니다.
-  - 시험 43개를 더했습니다(서버 시험 522 → 565, 27 → 32파일): `ai-model` 13, `ai-usage` 10, `ai-turn-output` 5, `ai-settings` 12, `ai-model-static` 3.
+  - 시험 45개를 더했습니다(서버 시험 522 → 567, 27 → 32파일): `ai-model` 14, `ai-usage` 11, `ai-turn-output` 5, `ai-settings` 12, `ai-model-static` 3.
+  - Codex 검토(`2d80c98`)의 P2 지적 하나: Anthropic 스트림이 글을 다 보낸 뒤 끝 `message_delta` 없이 끝나면, 시작 이벤트의 `output_tokens`(1)로 금액을 세어 성공 행을 남겼습니다. 실패하는 시험 둘(`ai-usage`의 사용량 읽기, `ai-model`의 두 회사 호출)을 먼저 더해 실패를 확인하고(Anthropic이 `ok: true`, 출력 토큰 1), `ai-usage.ts`가 끝 사용량을 받았을 때만 토큰을 내도록 고친 뒤 스레드를 resolve했습니다(댓글 없음). OpenAI는 끝 이벤트에서만 사용량을 읽어 같은 문제가 없었습니다. 보안 검토는 지적이 없었습니다.
   - 문서: [기술 스택 제안](../10-wbs/tech-stack.md) 3-4에 2026-11-16 줄(LangChain.js 채팅 모델과 판, 로컬 workerd 확인, OpenAI `store: false`)을 더하고 [10-wbs README](../10-wbs/README.md) 10절에 그 행을 적었습니다.
 - 이유: TASK-026은 TASK-018만 기다리고, 바로 뒤 둘(TASK-027 평가 도구, TASK-066 마스킹)을 포함해 62개 작업이 이 모듈을 기다립니다.
 - 결과
-  - 끝난 조건 넷(두 회사에 설정만 바꿔 같은 입력, 호출마다 `ai_calls`에 회사·모델·토큰·금액, 회사와 상관없이 같은 AiTurnOutput, 운영에서 추적 도구 꺼짐)을 서버 시험으로 확인했습니다. GitHub Actions의 결과는 CI가 끝난 뒤 이 단락에 더합니다.
+  - 끝난 조건 넷(두 회사에 설정만 바꿔 같은 입력, 호출마다 `ai_calls`에 회사·모델·토큰·금액, 회사와 상관없이 같은 AiTurnOutput, 운영에서 추적 도구 꺼짐)을 서버 시험으로 확인했습니다.
+  - GitHub Actions: 처음 연 머리 `2d80c98`은 app run 43803126811 실패(`biome ci`가 앱 README 48\~57의 표 정렬이 Biome 꼴과 다르다고 함)·db run 43803126793 성공. 표를 Biome 꼴로 맞춘 `6b984c2`는 app run 43803295370 성공(서버 시험 32파일 565개 통과, 웹 2파일 4개 통과, 빌드 4845.67 KiB·gzip 867.10 KiB, 로그 키 검사 6파일 0건)·db run 43803295372 성공. Codex 지적을 고친 머리부터의 실행은 다음 기록 커밋과 PR 본문에 적습니다.
 - 확인한 것
-  - 로컬(Node 22.23.4, PostgreSQL 16.15, 마이그레이션 0001\~0020): 서버 시험 32파일 565개 통과, `biome ci`, typecheck(src·test), 빌드(`wrangler deploy --dry-run`, 4845.67 KiB·gzip 867.10 KiB), 키 검사(446파일, 키 꼴 0건). 유료 AI 호출은 0번입니다.
+  - 로컬(Node 22.23.4, PostgreSQL 16.15, 마이그레이션 0001\~0020): 서버 시험 32파일 565개 통과, `biome ci`, typecheck(src·test), 빌드(`wrangler deploy --dry-run`, 4845.67 KiB·gzip 867.10 KiB), 키 검사(446파일, 키 꼴 0건). 유료 AI 호출은 0번입니다. Codex 지적을 고친 뒤 서버 시험 32파일 567개 통과, `biome ci`·typecheck 종료 코드 0.
+  - 처음 연 머리의 CI 실패는 로컬에서 `npm run -s lint 2>&1 | tail -1`로 마지막 줄만 보고 종료 코드를 보지 않아, Biome이 본 README 표 정렬 오류를 놓친 것입니다. 그 뒤로 검사는 종료 코드로 봅니다(작업 규칙 (334)).
+  - `bash tools/stage-checks.sh task026`(13:15 시작, 머리 `2d80c98`): 검사 9개 모두 종료 코드 0(prd·flows 문제 0·금지어 0, spec 오류 0, erd 15/15, api 17/17, sitemap 17/17, screens 15/15, mockup 14/14, wbs 검사 18개 · 오류 0).
   - 새로 쓴 글(코드·시험·문서의 더한 줄)에서 01 용어집 금지어와 10단계 검사의 더한 말(`build_wbs.py`의 EXTRA)이 0건입니다.
 - 다음 행동
   - CI와 Codex 검토를 본 뒤 TASK-026을 끝남으로 바꾸고 PR #65를 합칩니다.
   - 넘긴 것: 진짜 키로 처음 부르기(TASK-027, 키와 보관 안 함 허가는 TASK-005·006), 배포한 Worker에서 부르기(tech-stack.md 8-1, TASK-171), 그래프·8번 상한·다시 하기·`cost_limit`·`call_limit`(TASK-069), 마스킹(TASK-066), 모델과 effort 고르기(TASK-162).
-  - 열린 질문: 실패·시간 초과 행은 토큰·금액이 비어 있어, 끊은 호출에 회사가 셈한 몫을 가게 하루 비용 한도에 어떻게 넣을지는 TASK-037·069에서 정합니다. `AI_EFFORT`를 비우면 회사의 모델 기본값으로 돕니다. 동희님께 확인 요청할 것은 새로 생기지 않았습니다.
+  - 열린 질문: 실패·시간 초과·`usage_missing` 행은 토큰·금액이 비어 있어, 끊은 호출에 회사가 셈한 몫을 가게 하루 비용 한도에 어떻게 넣을지는 TASK-037·069에서 정합니다. `AI_EFFORT`를 비우면 회사의 모델 기본값으로 돕니다. 동희님께 확인 요청할 것은 새로 생기지 않았습니다.
 
 ### 2026-11-16 11:10 무렵 KST · TASK-023 서버 안의 일 실행기([PR #64](https://github.com/kodonghui/siljang.ai/pull/64))
 

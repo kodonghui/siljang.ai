@@ -6,6 +6,7 @@
  *   (Anthropic 'Streaming Messages': message_delta의 usage는 누적). 회사 문서의 뜻대로 읽으면 회사와 상관없이 맞다.
  * - Anthropic Messages 스트림: message_start.message.usage(input_tokens는 캐시를 뺀 입력, cache_creation_input_tokens,
  *   cache_read_input_tokens, output_tokens). message_delta.usage는 누적이라 온 값으로 바꾼다. 멈춘 사유는 delta.stop_reason.
+ *   시작의 output_tokens는 1 같은 중간 값이라, output_tokens가 든 message_delta 없이 끝난 스트림은 사용량 없음(null)으로 본다.
  * - OpenAI Responses 스트림: response.completed·response.incomplete·response.failed의 response.usage. input_tokens는
  *   캐시 읽기(input_tokens_details.cached_tokens)·캐시 쓰기(cache_write_tokens)를 포함한 입력이라 둘을 뺀다
  *   (OpenAI 'Prompt caching': 입력 토큰 하나는 보통 입력·캐시 읽기·캐시 쓰기 값 가운데 하나로만 매긴다).
@@ -51,6 +52,8 @@ export class UsageMeter {
   #cacheRead = 0;
   #cacheWrite = 0;
   #longCacheWrite = 0;
+  /** 끝 사용량(Anthropic message_delta, OpenAI 끝 이벤트의 output_tokens)을 받았는지. */
+  #final = false;
   #stopReason: string | null = null;
   #firstOutputAt: number | null = null;
 
@@ -72,9 +75,9 @@ export class UsageMeter {
     });
   }
 
-  /** 네 토큰 수(겹치지 않음). 입력·출력 가운데 하나라도 못 읽었으면 null. */
+  /** 네 토큰 수(겹치지 않음). 끝 사용량이 오지 않았거나 입력·출력 가운데 하나라도 못 읽었으면 null. */
   tokens(): TokenCounts | null {
-    if (this.#input === undefined || this.#output === undefined) return null;
+    if (!this.#final || this.#input === undefined || this.#output === undefined) return null;
     return { input: this.#input, output: this.#output, cacheRead: this.#cacheRead, cacheWrite: this.#cacheWrite };
   }
 
@@ -152,6 +155,7 @@ export class UsageMeter {
       this.#cacheWrite = count(usage.cache_creation_input_tokens) ?? this.#cacheWrite;
       this.#cacheRead = count(usage.cache_read_input_tokens) ?? this.#cacheRead;
       this.#longCacheWrite = count(obj(usage.cache_creation)?.ephemeral_1h_input_tokens) ?? this.#longCacheWrite;
+      if (type === "message_delta" && count(usage.output_tokens) !== undefined) this.#final = true;
     }
     const stop = obj(event.delta)?.stop_reason;
     if (type === "message_delta" && typeof stop === "string") this.#stopReason = stop;
@@ -171,6 +175,8 @@ export class UsageMeter {
       }
       this.#output = count(usage.output_tokens) ?? this.#output;
       this.#longCacheWrite = count(obj(details?.cache_write_tokens_details)?.ttl_12h_tokens) ?? this.#longCacheWrite;
+      // 이 이벤트들은 모두 끝 이벤트라 여기의 usage가 끝 값이다.
+      if (count(usage.output_tokens) !== undefined) this.#final = true;
     }
     const reason = obj(response.incomplete_details)?.reason;
     const status = response.status;

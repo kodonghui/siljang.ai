@@ -110,6 +110,21 @@ describe("UsageMeter", () => {
     expect((await meter("openai", openai.slice(0, done))).m.tokens()).toBeNull();
   });
 
+  it("Anthropic: 끝 사용량(message_delta)이 오기 전에 스트림이 끝나면 시작의 output_tokens를 끝 값으로 쓰지 않고 null", async () => {
+    const text = body("anthropic");
+    const cut = text.indexOf("event: message_delta");
+    expect(cut).toBeGreaterThan(text.indexOf('"type":"text_delta"'));
+    // 글은 다 왔고 시작의 usage(output_tokens 1)만 있음.
+    const { m } = await meter("anthropic", text.slice(0, cut));
+    expect(m.firstOutputAt()).not.toBeNull();
+    expect(m.tokens()).toBeNull();
+    expect(m.stopReason()).toBeNull();
+    // message_delta가 와도 usage가 없으면 끝 값이 아님.
+    const noUsage = text.replace(/,"usage":\{"output_tokens":150\}/, "");
+    expect(noUsage).not.toBe(text);
+    expect((await meter("anthropic", noUsage)).m.tokens()).toBeNull();
+  });
+
   it("긴 보관 캐시 쓰기(Anthropic 1시간, OpenAI 12시간)는 따로 알린다(요금표에 값 없음)", async () => {
     const a = sse([
       [
