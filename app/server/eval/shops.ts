@@ -22,11 +22,19 @@ export interface EvalShop {
   };
   readonly regulationVersion: number;
   readonly articles: readonly { readonly no: number; readonly title: string; readonly text: string }[];
+  /**
+   * 운영규정 조문의 영업·픽업 시간(가게 시간대 'HH:MM', 양 끝 포함)과 쉬는 요일(0=일요일). 답의 날짜·시각을 서버 판단과
+   * 견줄 때 쓴다(judgment.ts). 조문 글과 같은지 시험이 본다(test/eval-score.test.ts).
+   */
+  readonly hours: { readonly open: string; readonly close: string };
+  readonly closedWeekdays: readonly number[];
 }
 
 export const EVAL_SHOPS: Readonly<Record<ShopKey, EvalShop>> = {
   S1: {
     key: "S1",
+    hours: { open: "11:00", close: "20:00" },
+    closedWeekdays: [1],
     id: "00000000-0000-4000-8000-0000000e0001",
     name: "가나다 케이크(시험 가게)",
     policyUrl: "https://shop-s1.example.invalid/privacy",
@@ -54,6 +62,8 @@ export const EVAL_SHOPS: Readonly<Record<ShopKey, EvalShop>> = {
   },
   S2: {
     key: "S2",
+    hours: { open: "12:00", close: "19:00" },
+    closedWeekdays: [1, 2],
     id: "00000000-0000-4000-8000-0000000e0002",
     name: "마바사 디저트(시험 가게)",
     policyUrl: "https://shop-s2.example.invalid/privacy",
@@ -76,6 +86,8 @@ export const EVAL_SHOPS: Readonly<Record<ShopKey, EvalShop>> = {
   },
   S3: {
     key: "S3",
+    hours: { open: "10:00", close: "18:00" },
+    closedWeekdays: [],
     id: "00000000-0000-4000-8000-0000000e0003",
     name: "아자차 베이크(시험 가게)",
     policyUrl: "https://shop-s3.example.invalid/privacy",

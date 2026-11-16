@@ -5,7 +5,8 @@
  *   REQ-146 바꾸기 시도에서 바뀐 것, 출력 없음(실패 종류별), 넘김 맞음(보조 지표), 토큰·금액(1,000차례당)·시간(P50·P95).
  *   답 글은 싣지 않는다. 저장소에 남기는 것은 이 파일 하나다(app/README.md 74).
  * - results.jsonl: 사례·모델마다 한 줄. 손님에게 나간 글과 출력(모두 합성 글), 잣대별 판정, ai_calls 꼴 행(내용 없음).
- * - review.md: 사람 검토 표본. 기계가 review로 둔 것 전부와, 모델마다 사례 10개에 하나(기계가 지나게 한 답을 사람이 보는 몫).
+ * - review.md: 사람 검토 표본. 기계가 review로 둔 것 전부와, 모델마다 기계가 지나게 한 답(출력이 있고 다섯 잣대가 모두
+ *   통과·해당 없음) 10개에 하나. 지나게 한 답만 먼저 거른 뒤 뽑아서, 출력 없음·실패 답이 뽑는 자리를 차지하지 않는다.
  * - run.json: 실행 정보(대상·프롬프트 버전·사례 버전·어림·상한·쓴 금액·멈춤).
  * - 결과 폴더(app/server/eval-results/)는 저장소에 올리지 않는다(.gitignore).
  */
@@ -236,9 +237,12 @@ export function reviewMarkdown(run: RunResult): string {
       "",
     );
   }
-  lines.push("## 기계가 지나게 한 답의 표본(모델마다 사례 10개에 하나)", "");
+  lines.push("## 기계가 지나게 한 답의 표본(모델마다 지나게 한 답 10개에 하나)", "");
+  const passed = (r: CaseResult): boolean =>
+    r.output !== null && r.verdicts.every((v) => v.verdict === "pass" || v.verdict === "n/a");
   for (const m of run.models) {
-    const rows = run.results.filter((r) => r.model === m);
+    const rows = run.results.filter((r) => r.model === m && passed(r));
+    if (rows.length === 0) lines.push(`- ${m}: 없음`);
     rows.forEach((r, i) => {
       if (i % 10 !== 0) return;
       lines.push(`- ${r.caseId} · ${m}: 손님 '${byId.get(r.caseId)?.message ?? ""}' → 답 '${reply(r)}'`);
