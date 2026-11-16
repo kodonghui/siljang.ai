@@ -27,7 +27,7 @@
   - 끝난 조건(SPEC-074 수락 기준 #1\~#3 자동 시험 통과, A24를 보는 서버 시험)을 시험용 경로로 확인했습니다. 실제 사장님·운영자 API는 아직 없어 뒤 작업이 같은 도우미로 봅니다.
   - GitHub Actions의 실행 번호와 결과는 PR 본문에 적습니다.
 - 확인한 것
-  - 로컬(Node 22.23.4, PostgreSQL 16.15, 코드는 `b9a01ee`와 같음): `biome ci`·typecheck 종료 코드 0, 서버 시험 33파일 598개·웹 시험 7파일 116개 통과, 빌드 종료 코드 0(Worker 4856.13 KiB·gzip 869.86 KiB, 웹 첫 CSS 8.39 kB), 키 검사 478파일 0건.
+  - 로컬(Node 22.23.4, PostgreSQL 16.15, 코드는 `b9a01ee`와 같음): `biome ci`·typecheck 종료 코드 0, 서버 시험 33파일 598개·웹 시험 7파일 116개 통과, 빌드 종료 코드 0(Worker 4856.13 KiB·gzip 869.86 KiB, 웹 첫 CSS 8.39 kB), 키 검사 478파일 0건. 옛 용어를 고친 주석 두 줄 뒤(15:47)에 `biome ci`·typecheck 종료 코드 0, 서버 시험 33파일 598개 통과, 키 검사 478파일 0건을 다시 봤습니다.
   - `bash tools/stage-checks.sh task024`(15:40 시작, 머리 `0e6a17e`): 검사 9개 모두 종료 코드 0(prd·flows 문제 0·금지어 0, spec 오류 0, erd 15/15, api 17/17, sitemap 17/17, screens 15/15, mockup 14/14, wbs 검사 18개 · 오류 0). 그 뒤에는 앱 주석 두 줄과 README·기록만 고쳤고, 단계 검사는 이 파일들을 읽지 않습니다.
   - PostgreSQL 권한(임시 역할, 트랜잭션을 되돌려 역할이 남지 않음): `INSERT`만으로 넣기가 됨, `DELETE … WHERE accessed_at <= …`는 `SELECT(accessed_at)`이 있어야 됨(없으면 permission denied), `UPDATE`·`TRUNCATE`는 권한이 없으면 permission denied, 소유자가 아니면 트리거를 끄지 못함(`must be owner`).
   - Cloudflare 문서는 2026-11-16 06:06 UTC 무렵 받은 사본으로 읽었습니다: 'Cloudflare HTTP headers'(2026-11-15 고침), 'Restoring original visitor IPs'(2026-04-23 고침). Miniflare 동작은 `app/node_modules`의 소스(5.20261104.0-beta, wrangler 4.158.0)에서 봤습니다.
