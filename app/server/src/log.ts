@@ -21,6 +21,8 @@ export interface LogFields {
   readonly itemId?: string;
   /** 건수(0 이상 정수). 실행기의 찾음·끝냄·실패 수 따위. */
   readonly count?: number;
+  /** 06 API 번호(API-000 꼴). 접속기록을 남기지 못한 API(TASK-024, access-log.ts). */
+  readonly api?: string;
 }
 
 export type LogSink = (line: string) => void;
@@ -45,5 +47,6 @@ export function log(level: LogLevel, fields: LogFields, sink: LogSink = defaultS
   if (fields.job !== undefined && /^[a-z][a-z0-9_]{0,59}$/.test(fields.job)) line.job = fields.job;
   if (fields.itemId !== undefined && UUID.test(fields.itemId)) line.itemId = fields.itemId;
   if (fields.count !== undefined && Number.isSafeInteger(fields.count) && fields.count >= 0) line.count = fields.count;
+  if (fields.api !== undefined && /^API-[0-9]{3}$/.test(fields.api)) line.api = fields.api;
   sink(JSON.stringify(line));
 }

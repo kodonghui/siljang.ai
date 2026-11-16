@@ -9,8 +9,13 @@
  *   닫혀 있다(401 unauthenticated).
  * - openRoute: 가게 범위도 사장님 범위도 아닌 경로(기반 시설, 로그인, 서명 주소). 왜 그런지 적는다.
  *   가게 테이블을 읽고 쓰지 않는다(정적 시험이 날 연결을 쥔 파일의 SQL을 봄).
+ * - accessRoute: 접속기록을 남기는 가게 범위 경로(TASK-024, 06의 사장님 API-040~066과 운영자 API-074~077, SPEC-074).
+ *   선언에 06 API 번호를 두고, 처리기는 AccessRequest만 받는다. 데이터베이스는 접속기록 한 행과 같은 트랜잭션의 읽기(read)와
+ *   쓰기 명령(command)으로만 쓰고, 성공 응답인데 커밋된 접속기록이 없으면 500으로 닫는다(access-log.ts). 시험이 06의 접속기록
+ *   API는 모두 이 선언으로, API 번호는 06의 (방법, 경로)와 같게 선언됐는지 본다.
  */
 import type { Context, Hono, HonoRequest } from "hono";
+import { ACCESS_LOG_APIS, type AccessEntry, AccessRecorder } from "./access-log";
 import type { HonoEnv, Logger } from "./app";
 import { readJsonBody } from "./body";
 import { isOwnerScope, type OwnerScope } from "./owner-scope";
@@ -70,7 +75,55 @@ export interface ShopRouteDecl {
   readonly path: string;
   /** 가게 범위의 출처. */
   readonly via: ScopeKind;
+  /** 접속기록을 남기지 않는 경로(AccessRouteDecl과 가름). */
+  readonly access?: undefined;
   readonly handler: (r: ShopRequest) => Promise<Response>;
+}
+
+/** 접속기록을 남기는 읽기 하나의 결과: 응답 본문(200)과 그 본문이 담은 손님 ID들. */
+export interface AccessRead {
+  readonly body: unknown;
+  readonly subjects: readonly string[];
+}
+
+/** 접속기록을 남기는 쓰기 명령(요청 키, 06 DEC-04). 명령 이름은 경로의 06 API 번호다. */
+export interface AccessCommandSpec {
+  readonly pathIds: readonly string[];
+  readonly body: unknown;
+  /** 명령의 일과 남길 접속기록(바꿈은 change, 원래 값·보관 기록 열기는 open_*). 접속기록과 한 트랜잭션. */
+  execute(tx: ShopDb): Promise<{ readonly result: CommandResult; readonly access: AccessEntry }>;
+  /**
+   * 같은 키가 다시 왔을 때 처음 결과가 가리킨 기록을 지금 다시 읽은 본문과 남길 접속기록. 접속기록과 한 트랜잭션.
+   * 다시 온 요청은 아무것도 바꾸지 않으므로 change는 받지 않는다(다시 읽으면 read, 다시 열면 open_*, 06 README 625행).
+   */
+  render(db: ShopDb, stored: StoredResult): Promise<{ readonly body: unknown; readonly access: AccessEntry }>;
+}
+
+/** 접속기록을 남기는 경로의 처리기가 받는 것. 데이터베이스는 read·command로만 쓴다(그 안에서 접속기록 한 행). */
+export interface AccessRequest {
+  readonly scope: ShopScope;
+  /** 이 경로의 06 API 번호(접속기록의 api_id, 명령 이름). */
+  readonly api: string;
+  readonly req: HonoRequest;
+  readonly traceId: string;
+  readonly log: Logger;
+  readonly services: Services;
+  pathId(name: string): string;
+  body(): Promise<unknown>;
+  /** 읽기 하나: fn과 접속기록(read) 한 행을 한 트랜잭션에서 하고, 커밋된 뒤 200 응답. */
+  read(fn: (tx: ShopDb) => Promise<AccessRead>): Promise<Response>;
+  /** 요청 키를 지키며 쓰기 명령 하나: 처음 실행과 다시 보냄 모두 접속기록 한 행과 같은 트랜잭션. */
+  command(spec: AccessCommandSpec): Promise<Response>;
+}
+
+export interface AccessRouteDecl {
+  readonly kind: "shop";
+  readonly method: Method;
+  readonly path: string;
+  readonly via: "owner" | "operator";
+  /** 06 API 번호(ACCESS_LOG_APIS 안). */
+  readonly access: string;
+  readonly handler: (r: AccessRequest) => Promise<Response>;
 }
 
 /** 사장님 범위 경로의 처리기가 받는 것. 데이터베이스 연결이 없다(가게 기록은 가게 범위 경로로만). */
@@ -100,7 +153,7 @@ export interface OpenRouteDecl {
   readonly handler: (c: Context<HonoEnv>) => Response | Promise<Response>;
 }
 
-export type RouteDecl = ShopRouteDecl | OwnerRouteDecl | OpenRouteDecl;
+export type RouteDecl = ShopRouteDecl | AccessRouteDecl | OwnerRouteDecl | OpenRouteDecl;
 
 export function shopRoute(
   method: Method,
@@ -109,6 +162,23 @@ export function shopRoute(
   handler: (r: ShopRequest) => Promise<Response>,
 ): ShopRouteDecl {
   return { kind: "shop", method, path, via, handler };
+}
+
+/**
+ * 접속기록을 남기는 가게 범위 경로(TASK-024). api는 06 API 번호로 ACCESS_LOG_APIS 안이어야 하고, via는 그 API를 부르는 쪽
+ * (사장님 API-040~066은 owner, 운영자 API-074~077은 operator)과 같아야 한다. 아니면 선언 때 멈춘다.
+ */
+export function accessRoute(
+  method: Method,
+  path: string,
+  via: "owner" | "operator",
+  api: string,
+  handler: (r: AccessRequest) => Promise<Response>,
+): AccessRouteDecl {
+  const need = ACCESS_LOG_APIS.get(api);
+  if (need === undefined) throw new TypeError(`${api} is not an access-logged API (06 SPEC-074)`);
+  if (via !== need) throw new TypeError(`${api} is called by ${need}, not ${String(via)}`);
+  return { kind: "shop", method, path, via, access: api, handler };
 }
 
 export function ownerRoute(
@@ -178,6 +248,54 @@ function shopRequest(c: Context<HonoEnv>, scope: ShopScope): ShopRequest {
   };
 }
 
+function accessRequest(c: Context<HonoEnv>, scope: ShopScope, api: string, recorder: AccessRecorder): AccessRequest {
+  const db = shopRequestDb(scope, c.get("db"));
+  const headers = { "cache-control": "no-store" };
+  return {
+    scope,
+    api,
+    req: c.req,
+    traceId: c.get("traceId"),
+    log: c.get("log"),
+    services: c.get("services"),
+    pathId: (name) => pathId(c.req.param(name)),
+    body: () => readJsonBody(c),
+    read: async (fn) => {
+      const body = await db.transaction(async (tx) => {
+        const out = await fn(tx);
+        await recorder.record(tx, { action: "read", subjects: out.subjects });
+        return out.body;
+      });
+      recorder.markCommitted();
+      return c.json(body as object, 200, headers);
+    },
+    command: async (spec) => {
+      const res = await runCommand(c, {
+        command: api,
+        actor: actorOf(scope),
+        pathIds: spec.pathIds,
+        body: spec.body,
+        execute: async (tx) => {
+          const scoped = shopDb(scope, tx);
+          const out = await spec.execute(scoped);
+          await recorder.record(scoped, out.access);
+          return out.result;
+        },
+        // 다시 온 요청의 render는 runCommand가 트랜잭션 안에서 부른다(request-key.ts).
+        render: async (q, stored) => {
+          const scoped = shopDb(scope, q);
+          const out = await spec.render(scoped, stored);
+          await recorder.record(scoped, out.access, { replay: true });
+          return out.body;
+        },
+      });
+      // runCommand가 응답을 돌려줬으면 접속기록을 넣은 트랜잭션은 커밋됐다(실패면 던짐).
+      recorder.markCommitted();
+      return res;
+    },
+  };
+}
+
 function ownerRequest(c: Context<HonoEnv>, owner: OwnerScope): OwnerRequest {
   const headers = { "cache-control": "no-store" };
   return {
@@ -216,6 +334,25 @@ export function mountRoutes(
       continue;
     }
     const resolver = resolve[route.via];
+    if (route.access !== undefined) {
+      const decl = route;
+      app.on(decl.method, decl.path, async (c) => {
+        const scope = await resolver(c);
+        if (!isShopScope(scope) || scope.via.kind !== decl.via) {
+          throw new ForgedScopeError("scope did not come from createShopScope for this route");
+        }
+        // 접속지 헤더가 없거나 틀리면 아무것도 읽기 전에 닫힌다(500, access-log.ts).
+        const recorder = AccessRecorder.start(
+          { actor: actorOf(scope), api: decl.access, url: c.req.url, headers: c.req.raw.headers },
+          c.get("log"),
+          c.get("traceId"),
+        );
+        const res = await decl.handler(accessRequest(c, scope, decl.access, recorder));
+        recorder.assertLogged(res.status);
+        return res;
+      });
+      continue;
+    }
     app.on(route.method, route.path, async (c) => {
       const scope = await resolver(c);
       if (!isShopScope(scope) || scope.via.kind !== route.via) {
