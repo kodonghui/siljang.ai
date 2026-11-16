@@ -711,6 +711,70 @@ describeDb("실행기(데이터베이스)", () => {
     expect(calls).toEqual([p0, p1, last]);
   });
 
+  it("하루 한 번 일은 그 실행의 처음에 시작함: 앞의 일이 시간 한도를 거의 다 쓴 뒤에 시작해 표시만 남기고 그날 할 일을 못 하지 않음", async () => {
+    const slot = await freeSlot(db);
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i += 1) ids.push((await addAlert(db, b.shopId, plus(slot, -(3 - i) * 1000))).id);
+    const busy = (await addAlert(db, a.shopId, plus(slot, -500))).id;
+    let clock = 0;
+    const dailyCalls: string[] = [];
+    const daily: RunnableJob = {
+      ...txJob("daily_first_test", new Set(ids), dailyCalls, async () => {
+        clock += 200;
+      }),
+      every: "day",
+      at: "03:00",
+      timeZone: "Asia/Seoul",
+      marker: "purge_run",
+    };
+    const minuteJob = txJob("busy_minute_test", new Set([busy]), [], async () => {
+      clock += 900;
+    });
+    // 슬롯 뒤 2분: 일 둘의 분 차례로는 1분 일이 먼저 오는 분.
+    const r = await runDueJobs({
+      db,
+      now: plus(slot, 2 * MIN),
+      jobs: [minuteJob, daily],
+      log: quiet,
+      limits: { budgetMs: 1000 },
+      clock: () => clock,
+    });
+    await scoped(db, b.shopId).run(
+      "UPDATE owner_alerts t SET status = 'failed', fail_code = 'unknown' WHERE t.shop_id = $1 AND t.id = ANY($2::uuid[])",
+      [ids],
+    );
+    await scoped(db, a.shopId).run(
+      "UPDATE owner_alerts t SET status = 'failed', fail_code = 'unknown' WHERE t.shop_id = $1 AND t.id = $2",
+      [busy],
+    );
+    expect(r.dailyStarted).toEqual(["daily_first_test"]);
+    expect(dailyCalls).toEqual(ids);
+  });
+
+  it("하루 한 번 일은 처리한 행이 빠져 찾은 수가 모자라도, 찾은 새 행을 다 하기 전에는 멈추지 않음(Codex 지적)", async () => {
+    const slot = await freeSlot(db);
+    const ids: string[] = [];
+    for (let i = 0; i < 5; i += 1) ids.push((await addAlert(db, a.shopId, plus(slot, -(5 - i) * 1000))).id);
+    const calls: string[] = [];
+    const daily: RunnableJob = {
+      ...txJob("daily_drain_test", new Set(ids), calls),
+      every: "day",
+      at: "03:00",
+      timeZone: "Asia/Seoul",
+      marker: "purge_run",
+    };
+    // 묶음 2: 찾는 수는 2·4·6이고, 둘째 찾기는 셋(처리한 둘이 빠짐)을 돌려주지만 그중 둘만 함. 셋째 찾기가 남은 하나를 함.
+    const r = await runDueJobs({ db, now: plus(slot, MIN), jobs: [daily], log: quiet, limits: { batch: 2 } });
+    const st = await states(db, ids);
+    await scoped(db, a.shopId).run(
+      "UPDATE owner_alerts t SET status = 'failed', fail_code = 'unknown' WHERE t.shop_id = $1 AND t.id = ANY($2::uuid[])",
+      [ids],
+    );
+    expect(r.dailyStarted).toEqual(["daily_drain_test"]);
+    expect(calls).toEqual(ids);
+    for (const id of ids) expect(st.get(id)?.attempts).toBe(1);
+  });
+
   it("바깥 호출이 실패한 행은 다시 하기 때로 물러나 있어, 그 실행에서 뒤의 행을 더 찾지 않음(바깥에 몰아 부르지 않음)", async () => {
     const t0 = pastMinute();
     const ids: string[] = [];

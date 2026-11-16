@@ -14,7 +14,7 @@
  *   분마다, 한 일 안의 찾는 곳의 순서는 일이 한 바퀴 돌 때마다 돌려 한 일이나 한 곳이 늘 뒤로 밀리지 않게 한다.
  *   처리가 던져 되돌린 행은 그대로 때가 된 채 남아 다음 찾기의 앞에 다시
  *   나오므로, 같은 실행 안에서는 이미 본 행을 빼고 그 뒤의 행을 더 찾아 채운다(늘 던지는 행이 뒤의 행을 막지 않게).
- * - 하루 한 번 일(지난 기록 지우기 03:00, SPEC-065): 짧은 트랜잭션에서 트랜잭션 잠금(pg_advisory_xact_lock, 트랜잭션 풀링에서도
+ * - 하루 한 번 일(지난 기록 지우기 03:00, SPEC-065): 그 실행의 처음에, 짧은 트랜잭션에서 트랜잭션 잠금(pg_advisory_xact_lock, 트랜잭션 풀링에서도
  *   지켜짐)을 잡고 운영 기록(ops_events)의 표시로 그날 시작했는지 본 뒤, 아니면 표시를 남기고 시작한다. 그날 멈추면 다음 날
  *   다시(SPEC-065). 세션 잠금은 Hyperdrive의 트랜잭션 풀링에서 지켜지지 않아 쓰지 않는다.
  * - 실패는 ID만 실은 로그(04 G6, tech-stack.md의 '큐 메시지와 로그에는 ID만'). 운영자 알림은 맡을 작업(TASK-016 바깥 감시)이
@@ -69,7 +69,7 @@ export interface LeasedHandler<P = unknown, O = unknown> {
   readonly mode: "leased";
   /**
    * 잡은 트랜잭션 안. 행의 때를 ctx.leaseUntil로 미루고(시도 수를 셈) 바깥 호출에 넘길 것(ID·정해진 글)을 돌려준다.
-   * 할 일이 없으면 null(그대로 끝).
+   * 할 일이 없으면 null(그대로 끝). 이때도 행이 찾기 조건에서 빠지게(상태를 바꿈) 해 둔다(그대로 두면 매분 다시 찾힘).
    */
   lease(db: ShopDb, item: DueItem, ctx: LeaseContext): Promise<P | null>;
   /** 트랜잭션 밖의 바깥 호출. 데이터베이스 연결을 받지 않는다. 시간 한도(actTimeoutMs)를 넘기면 실패로 친다. */
@@ -388,14 +388,17 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
   const dailyStarted: string[] = [];
   let stoppedByBudget = false;
 
-  const jobs = options.jobs;
-  // 분마다 일의 차례를 하나씩 돌리고, 일이 한 바퀴 돌 때마다 한 일 안의 찾는 곳의 차례를 하나씩 돌린다(분 = 바퀴 × 일 수 + 차례).
-  // 두 차례를 같은 분 수로 돌리면 일 수가 짝수일 때 한 일이 앞에 올 때마다 늘 같은 곳이 먼저라, 시간 한도를 다 쓰는 동안
-  // 다른 곳이 돌지 않았다(Codex 지적). 이렇게 하면 일 수 × 곳 수 분 안에 일마다 곳마다 한 번씩 먼저 돈다.
+  // 하루 한 번 일은 그 실행의 처음에 둔다. 앞의 일이 시간 한도를 거의 다 쓴 뒤에 시작하면 시작 표시만 남기고 그날 할 일을
+  // 거의 못 한 채 다음 날로 밀린다(시작 표시가 있으면 그날 다시 시작하지 않음).
+  const dailyJobs = options.jobs.filter((j) => j.every === "day");
+  const jobs = options.jobs.filter((j) => j.every !== "day");
+  // 1분 일은 분마다 차례를 하나씩 돌리고, 일이 한 바퀴 돌 때마다 한 일 안의 찾는 곳의 차례를 하나씩 돌린다(분 = 바퀴 × 일 수 +
+  // 차례). 두 차례를 같은 분 수로 돌리면 일 수가 짝수일 때 한 일이 앞에 올 때마다 늘 같은 곳이 먼저라, 시간 한도를 다 쓰는
+  // 동안 다른 곳이 돌지 않았다(Codex 지적). 이렇게 하면 일 수 × 곳 수 분 안에 일마다 곳마다 한 번씩 먼저 돈다.
   const minute = Math.floor(now.getTime() / 60_000);
   const lap = Math.max(jobs.length, 1);
   const shift = minute % lap;
-  const order = [...jobs.slice(shift), ...jobs.slice(0, shift)];
+  const order = [...dailyJobs, ...jobs.slice(shift), ...jobs.slice(0, shift)];
 
   for (const job of order) {
     const tally: JobTally = { found: 0, done: 0, skipped: 0, failed: 0 };
@@ -422,16 +425,18 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
     for (const name of [...job.sources.slice(turn), ...job.sources.slice(0, turn)]) {
       const source = DUE_SOURCES[name];
       const cutoff = job.cutoff?.(name, now) ?? now;
-      // 이 실행에서 본 행. 다시 찾을 때는 본 수만큼 더 찾아 빼므로(LIMIT 본 수 + want), 되돌려 그대로 때가 된 행이 앞을
-      // 막아도 그 뒤의 행이 나온다(Codex 지적: 늘 던지는 행 batch개가 매분 같은 묶음을 채워 뒤의 행이 돌지 않았음).
+      // 이 실행에서 본 행. 다시 찾을 때는 다시 나올 수 있는 본 행의 수(carry)만큼 더 찾아 빼므로(LIMIT carry + want), 되돌려
+      // 그대로 때가 된 행이 앞을 막아도 그 뒤의 행이 나온다(Codex 지적: 늘 던지는 행 batch개가 매분 같은 묶음을 채워 뒤의 행이
+      // 돌지 않았음). carry는 지난 찾기에 다시 나온 본 행과 그 뒤에 한 행이다(처리해 빠진 행까지 세면 찾는 수가 자꾸 커짐).
       const seen = new Set<string>();
       let want = limits.batch;
+      let carry = 0;
       for (let round = 0; round < limits.rounds && want > 0; round += 1) {
         if (overBudget()) {
           stoppedByBudget = true;
           break;
         }
-        const limit = seen.size + want;
+        const limit = carry + want;
         let items: DueItem[];
         try {
           items = await findDue(options.db, name, source, cutoff, limit);
@@ -441,7 +446,8 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
           tally.failed += 1;
           break;
         }
-        const fresh = items.filter((i) => !seen.has(i.id)).slice(0, want);
+        const unseen = items.filter((i) => !seen.has(i.id));
+        const fresh = unseen.slice(0, want);
         tally.found += fresh.length;
         let rolledBack = 0;
         for (const item of fresh) {
@@ -458,8 +464,12 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
             tally[result] += 1;
           }
         }
-        if (stoppedByBudget || items.length < limit) break;
-        // 하루 한 번 일은 가득 찬 동안 batch씩 더 하고, 1분 일은 되돌린 행만큼만 그 뒤에서 채운다(한 번에 batch행).
+        // 다 찾았는지: 찾은 수가 모자라고 돌려받은 새 행을 모두 했을 때만. 처리한 행이 찾기에서 빠지면 찾은 수가 모자라도
+        // 남은 새 행이 있을 수 있어 더 돈다(Codex 지적: 151행·묶음 50에서 마지막 한 행을 남기고 멈췄음).
+        const drained = items.length < limit && unseen.length <= fresh.length;
+        if (stoppedByBudget || drained) break;
+        carry = items.length - unseen.length + fresh.length;
+        // 하루 한 번 일은 batch씩 더 하고, 1분 일은 되돌린 행만큼만 그 뒤에서 채운다(한 번에 batch행).
         // 바깥 호출이 실패한 행은 임대·다시 하기 때로 물러나 있어 채우지 않는다(바깥에 몰아 부르지 않게).
         want = job.every === "day" ? limits.batch : rolledBack;
       }
