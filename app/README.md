@@ -1,6 +1,6 @@
 # app: 서버와 웹 (11단계 원본)
 
-TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(요청 키·오류 응답·데이터베이스 연결 층·시각과 확인 카드의 바탕·운영 기록), TASK-019의 가게별 기록 나누기(가게 범위 접근 층·가게 조건 검사·교차 가게 시험 묶음), TASK-022의 사진 올리기(06 API-007, 저장소 모듈, 사장님 범위 경로, 15분 서명 주소, 05 A11 사진 장수)입니다. 계약은 [../api/openapi.yaml](../api/openapi.yaml), 스키마는 [../db/](../db/)에 있고 여기서 고치지 않습니다.
+TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(요청 키·오류 응답·데이터베이스 연결 층·시각과 확인 카드의 바탕·운영 기록), TASK-019의 가게별 기록 나누기(가게 범위 접근 층·가게 조건 검사·교차 가게 시험 묶음), TASK-022의 사진 올리기(06 API-007, 저장소 모듈, 사장님 범위 경로, 15분 서명 주소, 05 A11 사진 장수), TASK-025의 계좌번호·원래 값 암호화(05 A23·E20의 봉투와 키 버전, 05 A15 마스킹한 값 저장)입니다. 계약은 [../api/openapi.yaml](../api/openapi.yaml), 스키마는 [../db/](../db/)에 있고 여기서 고치지 않습니다.
 
 ## 설계 메모
 
@@ -8,7 +8,7 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
 2. 주소: API는 `/api` 아래에 둡니다. 07 사이트맵의 화면 주소(`/owner/orders` 등)와 06 계약의 API 경로가 같은 출처에서 겹치기 때문입니다. `/api/*`만 Worker 코드가 받고(`run_worker_first`), 나머지는 정적 파일이며 없는 화면 주소는 `index.html`입니다. 계약의 `servers` 주소는 TASK-016에서 정합니다.
 3. `GET /api/healthz`는 06 계약에 없는 기반 시설 주소입니다(TASK-016의 1분 감시용). 계약 API가 아닙니다.
 4. 오류: 06의 Problem(`application/problem+json`; `type`·`title`·`status`·`code`·`traceId`, 코드에 따라 `errors`·`confirm`·`retryAfterSeconds`) 꼴입니다. 오류 코드 37개와 필드 오류 사유 24개는 `server/src/problem.ts` 한 곳에 손으로 적었고, `server/test/contract.test.ts`가 06 계약(`components.x-corthex`의 errors·fieldErrors와 `Problem`·`FieldError` 스키마)과 같은지, 코드마다 나가는 응답이 계약의 Problem 스키마에 맞는지(Ajv) 봅니다. 코드마다 붙어야 하는 것(422 `validation_failed`의 `errors`, 409 `confirmation_required`의 `confirm`, 429의 `retryAfterSeconds`와 `Retry-After`, 405의 `Allow`)이 빠지거나 다른 코드에 붙으면 그 응답을 내보내지 않고 500 `internal`로 바꿉니다. 계약에 없는 방법으로 부르면 405와 `Allow`(06 DEC-02), 없는 경로는 404입니다.
-5. 설정과 키: env는 `server/src/settings.ts` 한 곳만 읽습니다. 비밀 값(`ANTHROPIC_API_KEY`·`OPENAI_API_KEY`·`DATABASE_URL`·`REQUEST_HASH_KEY`·`STORAGE_ACCESS_KEY_ID`·`STORAGE_SECRET_ACCESS_KEY`·`FILE_URL_KEY`)은 Worker 비밀 값이나 환경 변수에만 두고, 글·JSON·로그로 바꾸면 가립니다. `DATABASE_URL`은 `postgres://`나 `postgresql://`로 시작하고 `REQUEST_HASH_KEY`(요청 지문의 HMAC 키)와 `FILE_URL_KEY`(사진 서명 주소의 키, 27)는 32자 이상이어야 하며, 아니면 값을 싣지 않은 설정 오류(500)로 멈춥니다. 모델은 서버만 부르고 `VITE_*`에는 비밀 값을 넣지 않습니다. `APP_ENV`가 없으면 production입니다.
+5. 설정과 키: env는 `server/src/settings.ts` 한 곳만 읽습니다. 비밀 값(`ANTHROPIC_API_KEY`·`OPENAI_API_KEY`·`DATABASE_URL`·`REQUEST_HASH_KEY`·`STORAGE_ACCESS_KEY_ID`·`STORAGE_SECRET_ACCESS_KEY`·`FILE_URL_KEY`)은 Worker 비밀 값이나 환경 변수에만 두고, 글·JSON·로그로 바꾸면 가립니다. `DATABASE_URL`은 `postgres://`나 `postgresql://`로 시작하고 `REQUEST_HASH_KEY`(요청 지문의 HMAC 키)와 `FILE_URL_KEY`(사진 서명 주소의 키, 27)는 32자 이상이어야 하며, 아니면 값을 싣지 않은 설정 오류(500)로 멈춥니다. 계좌번호·원래 값 암호화의 키(`FIELD_KEY_CURRENT`·`FIELD_KEY_V<버전>`)도 이 모듈이 읽습니다(31\~33). 모델은 서버만 부르고 `VITE_*`에는 비밀 값을 넣지 않습니다. `APP_ENV`가 없으면 production입니다.
 6. 로컬 값은 `server/.dev.vars`에 둡니다(저장소에 넣지 않음, 값 없는 예시는 `server/.dev.vars.example`). 시험은 키 없이 지납니다.
 7. 로그: `server/src/log.ts`의 JSON 한 줄이고 event·traceId·errorName·names·status·code(06 오류 코드)·dbCode(SQLSTATE 5자)만 싣습니다. 각 값은 그 꼴에 맞을 때만 씁니다. 오류 메시지·스택·SQL·넣은 값·요청 본문·헤더·설정 값은 응답에도 로그에도 싣지 않습니다(04 G6). 예상하지 못한 오류의 응답은 일반 500 `internal`과 `traceId`뿐입니다.
 8. 서버 코드는 Node 형식을 쓰지 않습니다. 타입은 `wrangler types`가 만드는 Workers 런타임 형식만 보고(`npm run typecheck`가 만듦), 시험만 Node 형식을 씁니다.
@@ -43,6 +43,53 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
     - 명령에서 쓰기: 가게 등록의 신고증(TASK-032, API-008), 가격표의 도안(TASK-038, API-017), 완성 사진(TASK-135, API-052). 서명 주소를 내주는 쪽: 가게 조회(TASK-032, API-009)와 사진을 보이는 다른 API 작업.
     - 감싼 앱(Capacitor, TASK-179)에서 사진 주소를 다른 origin으로 부르면 `cross-origin-resource-policy: same-origin`을 다시 봅니다.
     - 열린 질문: 사진의 EXIF(찍은 곳의 위치 정보 등) 지우기 규칙은 02·04·05·06에 없어 이번에 하지 않았습니다. 사장님 사진(신고증·도안·완성)은 이 경로로, 손님 사진(참고·신고·후기)은 카카오로 받으므로 어디서 다룰지(04 공통 규칙이나 SPEC-019·053) 동희님께 확인 요청할 거리입니다.
+31. 계좌번호와 원래 값의 암호화(TASK-025; 05 A23·5절 E20, REQ-191): `server/src/field-crypto.ts`의 `FieldCrypto`가 가게 계좌번호(`payment_accounts.account_number_enc`)·환불 계좌번호(`refunds.refund_account_enc`)·대화 속 전화번호와 계좌번호의 원래 값(`masked_values.original_enc`)을 저장하기 전에 암호화합니다. 데이터베이스는 봉투 모양만 봅니다.
+    - 봉투: AES-256-GCM, 값마다 `crypto.getRandomValues`로 새 12바이트 nonce, 16바이트 태그, `v<키 버전>:base64url(nonce‖암호문‖태그)`(채움 없음). 05의 봉투 CHECK 셋과 같은 글(`ENVELOPE_PATTERN`)이고 시험이 05와 견줍니다. 1바이트 값이 가장 짧은 봉투(39자)라 빈 값은 만들지 않고, 평문은 256바이트까지입니다. Web Crypto만 써서 새 의존성은 없습니다.
+    - 키: 버전마다 32바이트 비밀 값 하나에서 HKDF-SHA256으로 암호화 키와 같은 값 찾기 HMAC 키를 따로 뽑습니다(`file-url.ts`와 같은 방식). 05 E20의 '다른 비밀 키'를 비밀 값 하나로 지키는 까닭: 뽑은 두 키는 서로 다른 키라 하나가 새어도 다른 키나 비밀 값을 알 수 없고, 버전마다 비밀 값 하나만 넣고 간수하면 됩니다.
+    - 묶는 값(AAD): 쓰는 곳(테이블.컬럼, 마스킹 원본은 `masked_values.original`), 가게 ID, 키 버전. 05에 없는 것을 더했습니다. 데이터베이스에 쓸 수 있는 사람이 봉투를 다른 가게·다른 컬럼으로 옮겨도 풀리지 않게 하려는 것이고(GCM이 거절) 봉투 모양은 그대로입니다. 정당하게 옮길 때(대화 속 계좌번호를 환불 계좌로, TASK-125)는 풀고 다시 암호화합니다.
+    - 실패: 꼴이 틀림·없는 키 버전·바뀐 암호문·다른 가게·다른 쓰는 곳은 모두 `FieldCryptoError` 하나이고 메시지에 평문·키·봉투가 없습니다. 응답은 500 `internal`, 로그에는 오류 이름만입니다(06 G6, 시험으로 확인).
+32. 키를 받는 법과 넣는 법: `settings.ts`가 비밀 값 `FIELD_KEY_V<버전>`(버전 1\~999, 무작위 32바이트의 base64url 43자)과 새로 쓸 때의 버전 `FIELD_KEY_CURRENT`를 읽습니다.
+    - 버전마다 따로 넣는 까닭: Workers 비밀 값은 넣은 뒤 다시 읽을 수 없어서, 값 하나에 키 목록을 두면 키를 바꿀 때 앞 키를 다시 적어야 합니다.
+    - 둘 다 없으면 암호화가 필요한 요청만 500 `internal`(`MissingSettingError`)입니다. 하나만 있거나, 꼴이 틀리거나, 지금 버전의 키가 없거나, `FIELD_KEY_`로 시작하는 다른 이름(`FIELD_KEY_V01` 같은 오타)이 있으면 값을 싣지 않은 설정 오류로 멈춥니다.
+    - `FIELD_KEY_CURRENT`는 비밀 값이 아니지만 환경마다 다르고 wrangler 설정을 로컬 개발과 함께 쓰므로 키와 같이 `wrangler secret put`으로 넣습니다. 로컬은 `server/.dev.vars`에 같은 이름으로 두고 개발용 키는 스테이징·운영 키와 다르게 만듭니다.
+    - 키를 잃으면 계좌번호를 되살릴 수 없습니다(05 E20 반론). 그래서 키는 권한을 좁힌 파일로 만들어 Worker에 넣고, 그 값을 저장소 밖 비밀 저장소(비밀번호 관리자 등)에 사본으로 둔 뒤 파일을 지웁니다. 키는 화면·대화·저장소·기록에 남기지 않습니다. 스테이징은 TASK-173, 운영은 TASK-167에서 합니다.
+
+    ```bash
+    (umask 077 && node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('base64url'))" > ~/field-key-v1.txt)
+    ```
+
+    ```bash
+    npx wrangler secret put FIELD_KEY_V1 < ~/field-key-v1.txt
+    ```
+
+    ```bash
+    printf 1 | npx wrangler secret put FIELD_KEY_CURRENT
+    ```
+
+    사본을 비밀 저장소에 옮긴 뒤 `rm ~/field-key-v1.txt`로 파일을 지웁니다.
+33. 키 바꾸기 차례(05 E20 '키 버전을 봉투에 적어 바꿀 수 있게'):
+    1. 새 키 `FIELD_KEY_V2`를 넣습니다(지금 버전은 그대로 1). 모든 Worker가 v2 봉투를 읽을 수 있게 된 뒤에
+    2. `FIELD_KEY_CURRENT`를 2로 바꿉니다. 이제 새로 쓰는 봉투는 v2이고 v1 봉투도 읽힙니다. 둘로 나누는 까닭은 한 번에 바꾸면 아직 v2 키가 없는 Worker가 v2 봉투를 만나 읽지 못하기 때문입니다.
+    3. 앞 버전 봉투를 지금 버전으로 다시 감쌉니다. 값은 그대로이고 `masked_values.value_hmac`도 지금 버전으로 다시 셉니다. 그 사이에 사장님이 계좌를 바꿨으면 덮지 않도록 앞 봉투가 그대로일 때만 씁니다. 이 도구는 TASK-166으로 넘겼습니다(끝난 조건에 더함).
+    4. 세 컬럼에 `v1:`로 시작하는 봉투가 0건인지 봅니다.
+    5. Worker의 `FIELD_KEY_V1`을 지웁니다. 비밀 저장소의 사본은 다시 감싸기 전의 백업(운영은 매일 백업 7일, TASK-175)이 모두 지난 뒤에 지웁니다. 그 전에 백업을 되살리면 v1 봉투가 다시 생기기 때문입니다.
+    - 같은 값 찾기는 `valueHashes`가 가진 모든 버전의 HMAC으로 찾고 `valueHash`(지금 버전)로 써서, 2와 3 사이에도 같은 번호가 같은 플레이스홀더를 받습니다(시험).
+34. 05 A15 마스킹한 값(`server/src/masked-values.ts`, TBL-019): `maskValue(tx, fc, 상담 ID, 종류, 숫자)`가 플레이스홀더(예: `[전화번호1]`)를 돌려줍니다. 가게 범위 연결의 트랜잭션 안에서 부르고, 다른 가게의 상담·없는 상담은 404 `not_found`이며 아무것도 쓰지 않습니다.
+    - 전화번호·계좌번호는 원래 값의 봉투·같은 값 찾기 HMAC·끝 4자리를 두고, 같은 상담의 같은 값은 같은 플레이스홀더(행 하나)입니다. 카드번호는 끝 4자리만 두고 같은 번호도 나올 때마다 새 번호, 긴 숫자는 아무것도 두지 않습니다(끝 4자리도 없음, REQ-192).
+    - 번호는 상담 안에서 종류마다 1부터 매깁니다. 상담 행을 잠가(`FOR UPDATE`) 같은 상담에 동시에 온 값을 차례로 매깁니다(잠금을 빼면 동시 시험이 실패하는 것을 확인함). 999를 넘으면 `MaskingFailedError`이고, 부르는 쪽(TASK-066)은 AI를 부르지 않고 에스컬레이션합니다(SPEC-021 [외부]).
+    - HMAC은 원래 값만이 아니라 가게·상담·종류와 함께 셉니다. 같은 상담 안의 같은 값 찾기에만 쓰므로, 데이터베이스를 읽은 사람이 다른 상담·다른 가게의 같은 번호를 해시로 잇지 못하게 했습니다.
+    - 받는 값은 숫자만입니다. 자릿수는 계좌번호 10\~16(06·SPEC-021), 카드번호 13\~19(SPEC-021), 긴 숫자 9 이상(SPEC-021 '8자리 넘는')이고, 전화번호는 원본에 자릿수가 없어 끝 4자리를 둘 수 있는 4\~20자리만 봅니다. 띄어쓰기·하이픈·한글 숫자를 숫자로 바꾸고 무엇을 무엇으로 볼지 나누는 일은 TASK-066입니다.
+    - `openMaskedValue`는 플레이스홀더의 원래 값(카드번호는 끝 4자리만, 긴 숫자는 없음)을 돌려줍니다. 볼 수 있는 사람인지는 부르는 작업이 먼저 봅니다(그 가게 사장님 화면, 사유를 적고 연 운영자 TASK-159와 접속기록 TASK-024).
+35. 계좌번호 도구(`server/src/account-number.ts`): 06 `accountNumber`(숫자와 '-', 숫자만 10\~16자리, 10\~40자)와 같은 글의 검사(시험이 06의 해당 스키마 모두와 견줌), 봉투와 끝 4자리(숫자만 셈)를 함께 만드는 `sealAccountNumber`, 푸는 `openAccountNumber`. 평문은 받은 그대로(숫자와 '-') 암호화해 사장님이 넣은 꼴 그대로 보입니다(06 응답 예시와 같음). 형식이 틀린 값의 422는 경로가 먼저 냅니다(TASK-040·125).
+36. 시험(TASK-025)
+    - 평문으로 남지 않음: 도구로 가게 계좌·환불 계좌·대화 속 전화번호·계좌번호·카드번호·긴 숫자를 쓴 뒤, 데이터베이스의 모든 기본 테이블의 모든 행을 글로 바꿔(`t::text`) 숫자만인 꼴과 '-'를 넣은 꼴이 0건인지 봅니다. 일부러 남긴 표시 숫자를 찾는지 먼저 봐서 검사가 헛돌지 않게 했습니다.
+    - 키를 바꿔도 읽힘: v1로 쓴 값을 v2가 지금일 때 읽고, 새로 쓰면 v2이고, 바꾸는 중간(v2 키만 더함)에도 둘 다 읽히고, v1 키를 빼면 일반 오류입니다. 마스킹한 값은 바꾼 뒤에도 같은 번호가 같은 플레이스홀더입니다.
+    - 이 밖에: 05 CHECK와 같은 봉투, 바이트 하나를 바꾼 봉투·다른 가게·다른 쓰는 곳의 거절, 오류의 글·inspect·JSON과 500 응답·로그에 평문·키·봉투 없음, 설정의 키 꼴, A15의 종류별 저장·번호·동시 쓰기·다른 가게 404, 데이터베이스가 평문 계좌번호와 끝 4자리 없는 환불 계좌 봉투를 거절(23514).
+37. 넘기는 것(TASK-025)
+    - 앞 버전 봉투를 다시 감싸는 도구와 키 바꾸기를 스테이징에서 한 번 해 보기: TASK-166(출시 전 보안 점검, 끝난 조건에 더함). 여러 가게를 도는 한 번짜리 도구라 가게 범위 밖 접근의 까닭을 함께 적습니다.
+    - 진짜 키 만들기와 사본: 스테이징은 TASK-173, 운영은 TASK-167(끝난 조건에 더함).
+    - 쓰는 곳: 가게 계좌 등록·보기(TASK-040, API-024·025), 결제 안내를 보일 때 계좌번호 채우기(TASK-093, 결제 안내 글 `notifications.body`에는 계좌번호를 넣지 않음), 대화 마스킹(TASK-066), 환불 계좌 받기(TASK-125, 대화 속 계좌번호를 풀고 환불 계좌로 다시 암호화), 운영자의 원래 값 열기(TASK-159, 접속기록 TASK-024).
+    - 데이터베이스 서버의 로그: PostgreSQL은 제약을 어긴 문장의 행 값을 로그에 적습니다(`DETAIL: Failing row contains (…)`). CI의 서비스 컨테이너 로그에서 이 PR의 시험이 일부러 봉투 컬럼에 넣은 평문 시험 계좌번호가 보였습니다. 이 도구들은 평문을 봉투 컬럼에 보내지 않지만, 다른 개인정보(손님 이름·연락처 등)는 제약 오류와 함께 운영 데이터베이스의 로그에 남을 수 있어 TASK-166 점검표의 로그 항목에서 그 로그의 설정과 보관을 봅니다.
 
 ## 명령 (`app/`에서)
 
