@@ -133,7 +133,7 @@ describe("06 오류 코드 37개", () => {
 });
 
 describe("08 화면 정의의 응답과 상태", () => {
-  // 08이 그 화면에서만 다르게 정한 것(표의 기본값과 다른 행). 08이 바뀌면 이 목록도 함께 고친다.
+  // 08이 그 화면에서만 다르게 둔 행(표의 기본값과 다름). 08이 바뀌면 이 목록도 함께 고친다.
   const EXCEPTIONS: Record<string, readonly string[]> = {
     // 사진 올리기(API-007)의 한도는 사진 필드 옆 오류로 보이고 Retry-After 뒤 다시 올림(06 DEC-16)
     "rate_limited→error": ["SCR-015", "SCR-030", "SCR-035", "SCR-036"],

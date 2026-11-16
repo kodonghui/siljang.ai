@@ -51,7 +51,7 @@ describe("손으로 쓴 CSS", () => {
     expect(raw).toEqual([]);
   });
 
-  it.each(HAND_CSS)("%s: 쓰는 변수는 토큰이거나 그 파일이 정한 것", (path) => {
+  it.each(HAND_CSS)("%s: 쓰는 변수는 토큰이거나 그 파일이 둔 것", (path) => {
     const css = uncomment(read(path));
     const local = new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
     const used = [...css.matchAll(/var\((--[a-z0-9-]+)\)/g)].map((m) => m[1] ?? "");
