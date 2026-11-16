@@ -348,4 +348,73 @@ describe("send와 처음으로", () => {
     await clock.advance(10_000);
     expect(calls).toHaveLength(1);
   });
+
+  /** 결과를 시험이 정할 때 돌려주는 send */
+  function pending() {
+    const calls: Call[] = [];
+    let resolve: (result: ApiResult<unknown>) => void = () => {};
+    const send: Send<object, unknown> = (input, key) => {
+      calls.push({ input, key });
+      return new Promise((res) => {
+        resolve = res;
+      });
+    };
+    return { send, calls, resolve: (result: ApiResult<unknown>) => resolve(result) };
+  }
+
+  it.each([
+    ["rate_limited", fail("rate_limited", {}, 30)],
+    ["request_in_progress", fail("request_in_progress")],
+  ])("보내는 중에 화면이 사라지면(stopTimers) 뒤에 온 %s로 다시 보내지 않는다", async (_code, late) => {
+    const { send, calls, resolve } = pending();
+    const { r, clock } = runner(send);
+    r.submit({});
+    r.stopTimers(); // 아직 타이머가 없을 때 사라짐
+    resolve(late);
+    await settle();
+    expect(clock.pending).toBe(0);
+    await clock.advance(IN_PROGRESS_LIMIT_MS + 60_000);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("보내는 중에 멈춘 뒤 다시 쓰면(StrictMode·숨겼다 보임) 결과를 모르는 실패로 두고 '다시 시도'는 같은 키다", async () => {
+    const { send, calls, resolve } = pending();
+    const { r } = runner(send);
+    r.submit({ name: "달빛" });
+    r.stopTimers();
+    expect(r.getState()).toMatchObject({
+      kind: "failed",
+      blockedUntil: null,
+      failure: { outcome: "server", status: 0, retry: "same" },
+    });
+    resolve(ok("late"));
+    await settle();
+    expect(r.getState().kind).toBe("failed");
+    expect(r.retry()).toBe(true);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]?.key).toBe(calls[0]?.key);
+  });
+
+  it("한도(429)로 막힌 동안 멈추면 스스로 다시 보내지 않고, 막힘을 풀어 다시 쓸 때 누를 수 있다", async () => {
+    const { send, calls } = script(fail("rate_limited", {}, 30), ok(null));
+    const { r, clock } = runner(send);
+    r.submit({});
+    await settle();
+    r.stopTimers();
+    expect(clock.pending).toBe(0);
+    expect(r.getState()).toMatchObject({ kind: "failed", blockedUntil: null });
+    await clock.advance(60_000);
+    expect(calls).toHaveLength(1);
+    expect(r.retry()).toBe(true);
+    expect(calls[1]?.key).toBe(calls[0]?.key);
+  });
+
+  it("아무것도 보내지 않을 때 멈추면 상태를 바꾸지 않는다(StrictMode의 두 번 붙임)", () => {
+    const { send } = script(ok(null));
+    const { r, states } = runner(send);
+    r.stopTimers();
+    expect(r.getState().kind).toBe("idle");
+    expect(states).toEqual([]);
+    expect(r.submit({})).toBe(true);
+  });
 });

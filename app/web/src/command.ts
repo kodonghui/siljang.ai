@@ -173,9 +173,22 @@ export class CommandRunner<I, O> {
     this.#set(IDLE);
   };
 
-  /** 화면이 사라질 때 기다리는 타이머를 멈춤(다시 쓸 수 있음) */
+  /**
+   * 화면이 사라질 때(useCommand의 effect 정리): 기다리는 타이머를 멈추고 아직 오지 않은 응답도 버린다.
+   * 사라진 화면이 뒤늦게 온 429 rate_limited·409 request_in_progress로 스스로 다시 보내지 않게 하려는 것.
+   * 다시 쓸 수 있다(StrictMode의 두 번 붙임, 숨겼다 다시 보임): 보내는 중이었으면 결과를 모르는 연결 실패로 두어
+   * '다시 시도'가 같은 요청 키로 보내고(G2), 한도로 막혀 있었으면 풀어 둔다(막힘을 풀 타이머가 없으므로).
+   */
   stopTimers = (): void => {
+    this.#generation++;
     this.#stopTimer();
+    this.#inProgressSince = null;
+    const s = this.#state;
+    if (s.kind === "submitting") {
+      this.#set({ kind: "failed", failure: classify(0, null, null), blockedUntil: null });
+    } else if (s.kind === "failed" && s.blockedUntil !== null) {
+      this.#set({ ...s, blockedUntil: null });
+    }
   };
 
   #blocked(): boolean {
