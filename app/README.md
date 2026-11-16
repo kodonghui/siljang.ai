@@ -142,34 +142,33 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
     - 순번: `FIRST_ATTEMPT`(1, `first`)와 `nextAttempt(앞, "after_tool" | "retry" | "regenerate")`입니다. 같은 차례(`trace_id`)·순번을 두 번 쓰면 05 `ai_calls_attempt_uq`(23505), `first`와 순번 1이 어긋나면 `ai_calls_kind_chk`(23514)가 막습니다. 성공 행은 토큰과 금액이 있어야 합니다(`ai_calls_success_chk`).
     - 실패는 회사 SDK의 오류 꼴이 아니라 우리가 본 것(끊은 까닭, 받은 상태 코드)으로 나눠 회사와 상관없이 같습니다. `retryable`은 AI-1의 '1초 뒤 한 번만 다시 하기'를 할 수 있는 실패입니다.
 
-    | 본 것 | result | error_kind | fallback_reason | failure | retryable |
-    | --- | --- | --- | --- | --- | --- |
-    | 연결 3초·전체 20초 넘김 | timeout | connect_timeout·total_timeout | timeout | timeout | 예 |
-    | 429 | limit_reached | http_429 | model_error | limit_reached | 예 |
-    | 401·403 | failure | http_401·http_403 | model_error | key_missing | 아니요 |
-    | 5xx | failure | http_5xx | model_error | unavailable | 예 |
-    | 그 밖의 4xx | failure | http_4xx | model_error | unavailable | 아니요 |
-    | 머리를 받기 전 연결 실패 | failure | network | model_error | unavailable | 예 |
-    | 머리를 받은 뒤 끊김 | failure | stream_error | model_error | unavailable | 예 |
-    | 고른 회사가 아닌 주소 | failure | blocked_host | model_error | unavailable | 아니요 |
-    | 키 없음(부르지 않음) | failure | key_missing | model_error | key_missing | 아니요 |
-    | 사용량이 없음, 요금표 밖(53) | failure | usage_missing·price_tier | model_error | unavailable | 아니요 |
+    | 본 것                        | result        | error_kind                    | fallback_reason | failure       | retryable |
+    | ---------------------------- | ------------- | ----------------------------- | --------------- | ------------- | --------- |
+    | 연결 3초·전체 20초 넘김      | timeout       | connect_timeout·total_timeout | timeout         | timeout       | 예        |
+    | 429                          | limit_reached | http_429                      | model_error     | limit_reached | 예        |
+    | 401·403                      | failure       | http_401·http_403             | model_error     | key_missing   | 아니요    |
+    | 5xx                          | failure       | http_5xx                      | model_error     | unavailable   | 예        |
+    | 그 밖의 4xx                  | failure       | http_4xx                      | model_error     | unavailable   | 아니요    |
+    | 머리를 받기 전 연결 실패     | failure       | network                       | model_error     | unavailable   | 예        |
+    | 머리를 받은 뒤 끊김          | failure       | stream_error                  | model_error     | unavailable   | 예        |
+    | 고른 회사가 아닌 주소        | failure       | blocked_host                  | model_error     | unavailable   | 아니요    |
+    | 키 없음(부르지 않음)         | failure       | key_missing                   | model_error     | key_missing   | 아니요    |
+    | 사용량이 없음, 요금표 밖(53) | failure       | usage_missing·price_tier      | model_error     | unavailable   | 아니요    |
 
 53. 토큰과 금액(REQ-150·163):
     - 토큰은 LangChain의 `usage_metadata`가 아니라 회사 응답 스트림의 usage에서 읽습니다(`ai-usage.ts`의 `UsageMeter`. 받은 바이트는 바꾸지 않고 SDK에 넘김). `@langchain/anthropic` 1.6.1은 스트림 시작의 출력 토큰과 누적 출력 토큰을 더해 출력을 더 세었습니다(시험에서 150이 151).
     - 네 열은 겹치지 않습니다. Anthropic은 `input_tokens`(캐시를 뺀 입력)·`cache_creation_input_tokens`·`cache_read_input_tokens`·`output_tokens`(`message_delta`의 누적 값)이고, OpenAI는 `input_tokens`에서 `cached_tokens`·`cache_write_tokens`를 뺀 값과 그 둘, `output_tokens`입니다. 첫 토큰 시각은 손님에게 보일 출력의 첫 조각이 온 때입니다(추론 조각은 빼고).
     - 요금표(`ai-prices.ts`, 판 2026-11-16): 백만 토큰당 달러, 행마다 확인 날짜 2026-11-16. 출처는 Anthropic https://platform.claude.com/docs/en/about-claude/pricing 와 OpenAI https://developers.openai.com/api/docs/pricing (Standard)입니다. 캐시 쓰기는 짧은 보관(Anthropic 5분, OpenAI 30분)의 값입니다.
 
-    | 모델 | 입력 | 캐시 쓰기 | 캐시 읽기 | 출력 | 이 값의 입력 한도 |
-    | --- | --- | --- | --- | --- | --- |
-    | claude-opus-5-5 | 4 | 5 | 0.20 | 20 | |
-    | claude-sonnet-5-5 | 2 | 2.50 | 0.10 | 10 | |
-    | claude-haiku-5-5 | 0.10 | 0.125 | 0.01 | 0.50 | 10만 토큰 |
-    | gpt-6-astra | 10 | 12.50 | 1 | 50 | 27만 2천 토큰 |
-    | gpt-6.1-sol | 2 | 2.50 | 0.10 | 10 | 27만 2천 토큰 |
-    | gpt-6.1-terra | 1 | 1.25 | 0.05 | 5 | 27만 2천 토큰 |
-    | gpt-6-luna | 0.10 | 0.125 | 0.01 | 0.50 | 27만 2천 토큰 |
-
+    | 모델              | 입력 | 캐시 쓰기 | 캐시 읽기 | 출력 | 이 값의 입력 한도 |
+    | ----------------- | ---- | --------- | --------- | ---- | ----------------- |
+    | claude-opus-5-5   | 4    | 5         | 0.20      | 20   |                   |
+    | claude-sonnet-5-5 | 2    | 2.50      | 0.10      | 10   |                   |
+    | claude-haiku-5-5  | 0.10 | 0.125     | 0.01      | 0.50 | 10만 토큰         |
+    | gpt-6-astra       | 10   | 12.50     | 1         | 50   | 27만 2천 토큰     |
+    | gpt-6.1-sol       | 2    | 2.50      | 0.10      | 10   | 27만 2천 토큰     |
+    | gpt-6.1-terra     | 1    | 1.25      | 0.05      | 5    | 27만 2천 토큰     |
+    | gpt-6-luna        | 0.10 | 0.125     | 0.01      | 0.50 | 27만 2천 토큰     |
     - 원 환산: 설정 `AI_USD_KRW`(원/달러)와 `AI_USD_KRW_DATE`를 금액 근거(`cost_basis`, 예 `prices 2026-11-16 (gpt-6.1-terra checked 2026-11-16); usd-krw 1450.00 (2026-11-14)`)에 남깁니다. 환율을 바꿀 때는 설정만 바꿉니다.
     - 셈은 정수로 하고 올림합니다(달러는 백만분의 1, 원은 100분의 1). 가게 하루 한도(REQ-163)의 셈이 실제보다 작게 나오지 않게 하기 위해서입니다. 예: 입력 1,000·출력 150·캐시 읽기 800·캐시 쓰기 100토큰은 claude-sonnet-5-5가 0.003830달러·5.56원, gpt-6.1-terra가 0.001915달러·2.78원입니다(1,450원/달러).
     - 막는 것: 요금표에 없는 모델은 설정 검사가 시작에서 막습니다. 긴 문맥(위 표의 입력 한도를 넘음)과 긴 보관 캐시 쓰기(Anthropic 1시간, OpenAI 12시간)는 값이 달라 금액을 세지 않고 실패 행(`price_tier`)으로 둡니다. Anthropic `inference_geo`, OpenAI Batch·Fast·Ultrafast 처리는 쓰지 않아 값을 적지 않았습니다. 요금을 바꾸면 판(`AI_PRICE_TABLE_VERSION`)과 행의 확인 날짜를 함께 바꿉니다.
