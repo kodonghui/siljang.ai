@@ -161,6 +161,16 @@
   gap: var(--space-sm);
 }
 
+/* 추적 ID 같은 덧붙임이 있는 배너: 글 너비가 size.aside보다 좁아지면(360) 버튼을 다음 줄로 내려
+   글이 줄 너비를 다 씀(긴 ID가 줄 끝에서 잘리지 않게). 넓은 화면은 목업처럼 한 줄 */
+.ui-banner--detail {
+  flex-wrap: wrap;
+}
+
+.ui-banner--detail .ui-banner__body {
+  flex: 1 1 var(--size-aside);
+}
+
 .ui-banner__actions .ui-button {
   padding-inline: var(--space-md);
 }

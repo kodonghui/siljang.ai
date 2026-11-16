@@ -32,13 +32,18 @@ export function sampleFailure(code: ErrorCode, extra: Record<string, unknown> = 
   return classify(r.status, r.problem, r.retryAfterSeconds);
 }
 
-/** n번째 부름(0부터)에 script가 정한 결과를 delayMs 뒤에 돌려주는 send */
+/**
+ * 이 send의 n번째 부름(0부터)에 script가 정한 결과를 delayMs 뒤에 돌려주는 send.
+ * 보낸 키와 본문은 페이지 하나에 하나인 window.__sampleRequests에 쌓는다(그릴 때마다 send를 새로 만들어도 이어짐).
+ */
 export function fakeSend<I, O>(script: (input: I, call: number) => ApiResult<O>, delayMs = 400): Send<I, O> {
-  const log: SampleRequest[] = [];
-  if (typeof window !== "undefined") window.__sampleRequests = log;
+  let calls = 0;
   return (input, key) => {
-    const call = log.length;
-    log.push({ key, body: input });
+    const call = calls++;
+    if (typeof window !== "undefined") {
+      window.__sampleRequests ??= [];
+      window.__sampleRequests.push({ key, body: input });
+    }
     return new Promise((resolve) => setTimeout(() => resolve(script(input, call)), delayMs));
   };
 }

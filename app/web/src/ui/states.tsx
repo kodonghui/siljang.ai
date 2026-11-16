@@ -18,7 +18,7 @@ export function Banner({
   readonly actions?: ReactNode;
 }) {
   return (
-    <div className={`ui-banner ui-banner--${tone}`} data-tone={tone}>
+    <div className={`ui-banner ui-banner--${tone}${detail === undefined ? "" : " ui-banner--detail"}`} data-tone={tone}>
       <div className="ui-banner__body">
         <span className="ui-banner__text">{children}</span>
         {detail === undefined ? null : <span className="ui-banner__detail">{detail}</span>}

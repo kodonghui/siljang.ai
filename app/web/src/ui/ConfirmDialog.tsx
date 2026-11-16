@@ -23,6 +23,7 @@ export interface ConfirmDialogProps {
 export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
+  const closingByUs = useRef(false);
   const titleId = useId();
   const bodyId = useId();
 
@@ -33,6 +34,7 @@ export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, 
       returnTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       dialog.showModal();
     } else if (!open && dialog.open) {
+      closingByUs.current = true;
       dialog.close();
     }
   }, [open]);
@@ -47,10 +49,15 @@ export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, 
     [],
   );
 
-  const restoreFocus = () => {
+  const handleClose = () => {
+    const byUs = closingByUs.current;
+    closingByUs.current = false;
+    if (ref.current?.open) return; // 닫힌 사이에 다시 열림
     const back = returnTo.current;
     returnTo.current = null;
     if (back?.isConnected) back.focus();
+    // 브라우저가 스스로 닫았으면(예: 잇달아 누른 Esc라 cancel을 막지 못함) 화면 상태도 '돌아가기'로 맞춤
+    if (!byUs) onCancel();
   };
 
   const cancelByEscape = (e: SyntheticEvent<HTMLDialogElement>) => {
@@ -82,7 +89,7 @@ export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, 
       aria-labelledby={titleId}
       aria-describedby={bodyId}
       onCancel={cancelByEscape}
-      onClose={restoreFocus}
+      onClose={handleClose}
       onKeyDown={keepFocusInside}
     >
       <h2 id={titleId} className="ui-dialog__title">

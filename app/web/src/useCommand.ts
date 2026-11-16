@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { type CommandOptions, CommandRunner, type CommandState, type Send } from "./command";
 
 export interface Command<I, O> {
@@ -13,11 +13,17 @@ export interface Command<I, O> {
 }
 
 /**
- * 화면의 명령 하나(command.ts의 CommandRunner)를 React 상태로. send는 처음 것을 계속 쓴다
- * (요청을 바꾸려면 send 안에서 최신 값을 읽거나 key를 바꿔 다시 그림).
+ * 화면의 명령 하나(command.ts의 CommandRunner)를 React 상태로. send는 그린 때마다 새로 넘겨도 된다:
+ * 누를 때의 send로 보내고, 그 명령의 '다시 시도'·처리 중 다시 보내기·확인도 같은 send를 쓴다
+ * (예: (input, key) => request(`/orders/${orderId}/accept`, { method: "POST", body: input, key })).
+ * options는 처음 것만 쓴다.
  */
 export function useCommand<I, O>(send: Send<I, O>, options?: CommandOptions): Command<I, O> {
   const [runner] = useState(() => new CommandRunner(send, options));
+  // 그린 뒤 바로(눌림보다 먼저) 최신 send를 넘김
+  useLayoutEffect(() => {
+    runner.setSend(send);
+  });
   const state = useSyncExternalStore(runner.subscribe, runner.getState, runner.getState);
   useEffect(() => runner.stopTimers, [runner]);
   return {

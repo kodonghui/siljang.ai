@@ -82,13 +82,14 @@ export function withConfirm<I>(input: I, kinds: readonly ConfirmationKind[]): I 
 }
 
 export class CommandRunner<I, O> {
-  readonly #send: Send<I, O>;
+  #send: Send<I, O>;
   readonly #clock: Clock;
   readonly #newKey: () => string;
   readonly #onClientBug: (bug: ClientBug) => void;
   readonly #listeners = new Set<() => void>();
   #state: CommandState<O> = IDLE;
-  #current: { readonly input: I; readonly key: string } | null = null;
+  /** 지금 명령: 본문, 요청 키, 누른 때의 send(다시 보낼 때도 같은 send라 같은 키면 같은 요청) */
+  #current: { readonly input: I; readonly key: string; readonly send: Send<I, O> } | null = null;
   #timer: unknown = null;
   #generation = 0;
   #inProgressSince: number | null = null;
@@ -114,10 +115,18 @@ export class CommandRunner<I, O> {
     return this.#current?.key ?? null;
   }
 
+  /**
+   * 다음 submit부터 쓸 send(화면이 다시 그려져 send가 붙잡은 값이 바뀌었을 때, useCommand가 부름).
+   * 이미 누른 명령의 다시 보내기·확인은 누른 때의 send를 그대로 씀.
+   */
+  setSend = (send: Send<I, O>): void => {
+    this.#send = send;
+  };
+
   /** 새 명령. 보내는 중이거나 한도로 막힌 동안에는 무시하고 false */
   submit = (input: I): boolean => {
     if (this.#state.kind === "submitting" || this.#blocked()) return false;
-    this.#current = { input, key: this.#newKey() };
+    this.#current = { input, key: this.#newKey(), send: this.#send };
     this.#start();
     return true;
   };
@@ -126,7 +135,7 @@ export class CommandRunner<I, O> {
   retry = (): boolean => {
     const s = this.#state;
     if (s.kind !== "failed" || this.#current === null || s.failure.retry === "none" || this.#blocked()) return false;
-    if (s.failure.retry === "new") this.#current = { input: this.#current.input, key: this.#newKey() };
+    if (s.failure.retry === "new") this.#current = { ...this.#current, key: this.#newKey() };
     this.#start();
     return true;
   };
@@ -141,6 +150,7 @@ export class CommandRunner<I, O> {
         s.items.map((i) => i.kind),
       ),
       key: this.#newKey(),
+      send: this.#current.send,
     };
     this.#start();
     return true;
@@ -206,7 +216,7 @@ export class CommandRunner<I, O> {
     if (this.#state.kind !== "submitting") this.#set(SUBMITTING);
     let result: ApiResult<O>;
     try {
-      result = await this.#send(current.input, current.key);
+      result = await current.send(current.input, current.key);
     } catch {
       result = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
     }
