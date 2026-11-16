@@ -11,7 +11,7 @@
  *   옮겨도 풀리지 않는다(GCM이 거절). 정당하게 옮길 때(대화 속 계좌번호를 환불 계좌로 등)는 풀고 다시 암호화한다.
  * - 실패(꼴이 틀림·없는 버전·바뀐 암호문·다른 가게·다른 쓰는 곳)는 모두 FieldCryptoError 하나이고, 메시지에 평문·키·봉투를
  *   싣지 않는다(응답은 500 internal, 로그에는 이름만, 06 G6).
- * - 키 바꾸기 차례는 app/README.md 31. 앞 버전 봉투를 지금 버전으로 다시 감싸는 도구는 TASK-166.
+ * - 키를 넣는 법은 app/README.md 32, 키 바꾸기 차례는 33. 앞 버전 봉투를 지금 버전으로 다시 감싸는 도구는 TASK-166.
  */
 import { fromBase64Url, toBase64Url, toHex } from "./encoding";
 import type { FieldKeySettings } from "./settings";
