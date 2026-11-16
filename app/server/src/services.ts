@@ -1,10 +1,12 @@
 /**
  * 요청마다 쓰는 바깥 서비스(TASK-022): 지금 시각, 사진 저장소, 요청 빈도 한도, 사진 서명 주소.
+ * TASK-025: 계좌번호·원래 값 암호화(field-crypto.ts).
  * 업무 코드는 Workers 바인딩과 설정 값을 직접 읽지 않고 이것을 받는다(tech-stack.md 4-3의 1). 시험은 AppOptions.services로
  * 메모리 저장소·메모리 한도·정한 시각을 넣는다.
  * 설정이 빠졌으면 그것을 쓰는 요청만 500 internal(MissingSettingError, 로그에는 이름만).
  */
 import type { Bindings } from "./app";
+import { type FieldCrypto, fieldCrypto } from "./field-crypto";
 import { type FileUrls, fileUrlSigner } from "./file-url";
 import { bindingLimiter, type RateLimiter, type RateLimitRule } from "./rate-limit";
 import { MissingSettingError } from "./request-key";
@@ -19,6 +21,8 @@ export interface Services {
   limiter(rule: RateLimitRule): RateLimiter;
   /** 사진 서명 주소. FILE_URL_KEY가 없으면 MissingSettingError. */
   fileUrls(): FileUrls;
+  /** 계좌번호·원래 값 암호화. FIELD_KEY_CURRENT·FIELD_KEY_V<n>이 없으면 MissingSettingError. */
+  fieldCrypto(): FieldCrypto;
 }
 
 /** 시험이 바꾸는 것. */
@@ -26,11 +30,13 @@ export interface ServiceOverrides {
   readonly now?: () => Date;
   readonly storage?: ObjectStore;
   readonly limiters?: { readonly [B in RateLimitRule["binding"]]?: RateLimiter };
+  readonly fieldCrypto?: FieldCrypto;
 }
 
 export function createServices(env: Bindings, settings: Settings, overrides: ServiceOverrides = {}): Services {
   let store: ObjectStore | undefined = overrides.storage;
   let urls: FileUrls | undefined;
+  let fields: FieldCrypto | undefined = overrides.fieldCrypto;
   return {
     now: overrides.now ?? (() => new Date()),
     storage() {
@@ -55,6 +61,13 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
       if (key === null) throw new MissingSettingError("FILE_URL_KEY is not set");
       urls = fileUrlSigner(key);
       return urls;
+    },
+    fieldCrypto() {
+      if (fields !== undefined) return fields;
+      if (settings.fieldKeys === null)
+        throw new MissingSettingError("FIELD_KEY_CURRENT and FIELD_KEY_V<n> are not set");
+      fields = fieldCrypto(settings.fieldKeys);
+      return fields;
     },
   };
 }

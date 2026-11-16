@@ -24,6 +24,9 @@ export type Bindings = {
   readonly STORAGE_ENDPOINT?: string;
   readonly STORAGE_REGION?: string;
   readonly STORAGE_BUCKET?: string;
+  /** 계좌번호·원래 값 암호화(TASK-025, settings.ts의 FieldKeySettings): 지금 버전과 버전마다의 키. */
+  readonly FIELD_KEY_CURRENT?: string;
+  readonly [fieldKey: `FIELD_KEY_V${number}`]: string | undefined;
   /** 사진 올리기의 1분 30번(wrangler.jsonc의 ratelimits, rate-limit.ts의 UPLOAD_RATE). */
   readonly UPLOAD_RATE_LIMITER?: RateLimitBinding;
 };

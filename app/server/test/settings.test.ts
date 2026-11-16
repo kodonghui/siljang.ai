@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readSettings, SECRET_NAMES, Secret, SettingsError } from "../src/settings";
+import { newFieldKey } from "./support/field-keys";
 
 // 시험용 가짜 키는 실행 중에 만든다. 저장소 글에 키 꼴의 값이 남지 않게(tools/check-no-keys.mjs).
 const fakeKey = (prefix: string) => `${prefix}${"Zq7".repeat(16)}`;
@@ -138,5 +139,56 @@ describe("readSettings", () => {
     expect(s.secrets.STORAGE_SECRET_ACCESS_KEY?.reveal()).toBe(secret);
     expect(JSON.stringify(s)).not.toContain(secret);
     expect(JSON.stringify(s)).not.toContain("key-id-Zq7");
+  });
+
+  it("계좌번호 암호화 키(TASK-025): 하나도 없으면 null, 빈 값은 없는 것", () => {
+    expect(readSettings({}).fieldKeys).toBeNull();
+    expect(readSettings({ FIELD_KEY_CURRENT: " ", FIELD_KEY_V1: "" }).fieldKeys).toBeNull();
+  });
+
+  it("계좌번호 암호화 키: 지금 버전과 버전마다의 키를 Secret으로 받고 글·JSON에서 가린다", () => {
+    const k1 = newFieldKey();
+    const k2 = newFieldKey();
+    const s = readSettings({ FIELD_KEY_CURRENT: "2", FIELD_KEY_V1: k1, FIELD_KEY_V2: ` ${k2} ` });
+    expect(s.fieldKeys?.current).toBe(2);
+    expect([...(s.fieldKeys?.keys.keys() ?? [])].sort()).toEqual([1, 2]);
+    expect(s.fieldKeys?.keys.get(1)).toBeInstanceOf(Secret);
+    expect(s.fieldKeys?.keys.get(2)?.reveal()).toBe(k2);
+    expect(JSON.stringify(s)).not.toContain(k1);
+    expect(JSON.stringify(s)).not.toContain(k2);
+    expect(String(s.fieldKeys?.keys.get(1))).not.toContain(k1);
+    // 999까지의 버전
+    expect(readSettings({ FIELD_KEY_CURRENT: "999", FIELD_KEY_V999: k1 }).fieldKeys?.current).toBe(999);
+  });
+
+  it("계좌번호 암호화 키: 지금 버전이 없거나 그 버전의 키가 없거나 꼴이 틀리면 값을 싣지 않고 멈춘다", () => {
+    const k = newFieldKey();
+    const wrong: Record<string, string>[] = [
+      { FIELD_KEY_V1: k },
+      { FIELD_KEY_CURRENT: "1" },
+      { FIELD_KEY_CURRENT: "2", FIELD_KEY_V1: k },
+      { FIELD_KEY_CURRENT: "0", FIELD_KEY_V1: k },
+      { FIELD_KEY_CURRENT: "1000", FIELD_KEY_V1: k },
+      { FIELD_KEY_CURRENT: "v1", FIELD_KEY_V1: k },
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: k.slice(0, 42) },
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: `${k}A` },
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: `${k.slice(0, 42)}+` },
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: `${k.slice(0, 42)}B` },
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: `${k}=` },
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: k, FIELD_KEY_V0: k },
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: k, FIELD_KEY_V01: k },
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: k, FIELD_KEY_V1000: k },
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: k, FIELD_KEY_NEXT: k },
+    ];
+    for (const env of wrong) {
+      let caught: unknown;
+      try {
+        readSettings(env);
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught, JSON.stringify(Object.keys(env))).toBeInstanceOf(SettingsError);
+      expect((caught as Error).message).not.toContain(k.slice(0, 20));
+    }
   });
 });

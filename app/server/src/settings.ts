@@ -69,6 +69,24 @@ export interface StorageSettings {
 /** 사진 저장소 주소를 담는 변수의 이름. */
 export const STORAGE_VAR_NAMES = ["STORAGE_ENDPOINT", "STORAGE_REGION", "STORAGE_BUCKET"] as const;
 
+/**
+ * 계좌번호·원래 값 암호화의 키(TASK-025; 05 A23·E20, REQ-191·135). field-crypto.ts가 쓴다.
+ * - FIELD_KEY_V<버전>(비밀 값, 버전 1~999): 버전마다 무작위 32바이트의 base64url(채움 없이 43자). 암호화 키와 같은 값 찾기
+ *   HMAC 키를 이 값에서 HKDF-SHA256으로 따로 뽑는다.
+ * - FIELD_KEY_CURRENT(비밀 값 아님, 숫자): 새로 쓰는 봉투의 버전. 앞 버전의 키는 읽기만 하려고 남겨 둔다.
+ * Workers의 비밀 값은 넣은 뒤 다시 읽을 수 없어서, 버전마다 따로 넣고(앞 키를 다시 적지 않음) 지금 버전은 따로 고른다.
+ */
+export interface FieldKeySettings {
+  readonly current: number;
+  /** 버전 → 키. current의 키는 꼭 있다. */
+  readonly keys: ReadonlyMap<number, Secret>;
+}
+
+/** FIELD_KEY_V<버전>의 이름 꼴. 버전은 05의 봉투 CHECK(`v[1-9][0-9]{0,2}`)와 같은 1~999. */
+const FIELD_KEY_NAME = /^FIELD_KEY_V([1-9][0-9]{0,2})$/;
+/** 키 값: 32바이트의 base64url(채움 없이 43자, 마지막 글자는 남는 비트가 0인 것). */
+const FIELD_KEY_VALUE = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
+
 export interface Settings {
   readonly appEnv: AppEnv;
   readonly secrets: Readonly<Record<SecretName, Secret | null>>;
@@ -76,6 +94,8 @@ export interface Settings {
   readonly missingSecrets: readonly SecretName[];
   /** 사진 저장소의 주소. 세 변수가 모두 없으면 null(저장소가 필요한 요청만 500 internal). */
   readonly storage: StorageSettings | null;
+  /** 계좌번호·원래 값 암호화의 키. 하나도 없으면 null(암호화가 필요한 요청만 500 internal). */
+  readonly fieldKeys: FieldKeySettings | null;
 }
 
 export class SettingsError extends Error {
@@ -118,7 +138,40 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
       throw new SettingsError(`${name} must be at least ${MIN_HASH_KEY_LENGTH} characters`);
     }
   }
-  return { appEnv, secrets, missingSecrets, storage: readStorage(env, appEnv) };
+  return { appEnv, secrets, missingSecrets, storage: readStorage(env, appEnv), fieldKeys: readFieldKeys(env) };
+}
+
+function readFieldKeys(env: Readonly<Record<string, unknown>>): FieldKeySettings | null {
+  const keys = new Map<number, Secret>();
+  let currentRaw: unknown;
+  for (const name of Object.keys(env)) {
+    if (!name.startsWith("FIELD_KEY_")) continue;
+    if (name === "FIELD_KEY_CURRENT") {
+      currentRaw = env[name];
+      continue;
+    }
+    const m = FIELD_KEY_NAME.exec(name);
+    // 버전 꼴이 아닌 이름(V0·V01·V1000·오타)은 조용히 넘기지 않는다(키를 넣었는데 쓰이지 않는 일을 막음).
+    if (m === null)
+      throw new SettingsError("FIELD_KEY_ names must be FIELD_KEY_CURRENT or FIELD_KEY_V1 ~ FIELD_KEY_V999");
+    const raw = env[name];
+    const value = typeof raw === "string" ? raw.trim() : "";
+    if (value === "") continue;
+    // 값은 메시지에 싣지 않는다(이름과 조건만).
+    if (!FIELD_KEY_VALUE.test(value)) {
+      throw new SettingsError(`${name} must be 32 random bytes in base64url (43 characters)`);
+    }
+    keys.set(Number(m[1]), new Secret(value));
+  }
+  const current = typeof currentRaw === "string" ? currentRaw.trim() : "";
+  if (current === "" && keys.size === 0) return null;
+  if (!/^[1-9][0-9]{0,2}$/.test(current)) {
+    throw new SettingsError("FIELD_KEY_CURRENT must be set to a version from 1 to 999 when FIELD_KEY_V<n> is set");
+  }
+  const version = Number(current);
+  if (!keys.has(version))
+    throw new SettingsError(`FIELD_KEY_CURRENT is ${version} but FIELD_KEY_V${version} is not set`);
+  return { current: version, keys };
 }
 
 function readStorage(env: Readonly<Record<string, unknown>>, appEnv: AppEnv): StorageSettings | null {
