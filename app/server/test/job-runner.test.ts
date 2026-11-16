@@ -38,6 +38,22 @@ function pastMinute(): Date {
   return new Date(start + Math.floor((Math.random() * span) / MIN) * MIN);
 }
 
+/**
+ * 하루 한 번 일 시험의 때(03:00 Asia/Seoul): 그때부터 days일 안에 시작 표시(purge_run)가 없는 날을 고른다. 시작 표시는
+ * 지우지 않고 쌓이므로(로컬 시험 데이터베이스는 실행을 거듭함) 앞 실행이 남긴 표시와 같은 날을 고르면 시작하지 않는다.
+ */
+async function freeSlot(q: Queryable, days = 1): Promise<Date> {
+  for (let i = 0; i < 50; i += 1) {
+    const slot = dailySlot(pastMinute(), "03:00", "Asia/Seoul");
+    const r = await q.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM ops_events WHERE kind = 'purge_run' AND shop_id IS NULL AND created_at >= $1 AND created_at < $2",
+      [slot, plus(slot, days * 24 * 60 * MIN)],
+    );
+    if (r.rows[0]?.n === 0) return slot;
+  }
+  throw new Error("no free daily slot");
+}
+
 function scoped(q: Queryable, shopId: string): ShopDb {
   return shopDb(createShopScope(shopId, { kind: "job", job: "runner_test" }), q);
 }
@@ -439,12 +455,14 @@ describeDb("실행기(데이터베이스)", () => {
     expect(acts).toHaveLength(1);
     // 임대가 끝난 뒤 다시 띄운 서버의 실행기가 이어서 함.
     await runDueJobs({ db: other, now: plus(t0, 3 * MIN), jobs: [job], log: quiet });
+    const after = (await states(db, [id])).get(id);
+    // 끝난 행으로 둔다(발송 결과 조회 곳을 찾는 다른 시험에 걸리지 않게).
+    await scoped(db, a.shopId).run(
+      "UPDATE owner_alerts t SET status = 'failed', fail_code = 'unknown' WHERE t.shop_id = $1 AND t.id = $2",
+      [id],
+    );
     expect(acts).toEqual([id, id]);
-    expect((await states(db, [id])).get(id)).toMatchObject({
-      attempts: 2,
-      status: "confirming",
-      kakao_task_id: "task-ok",
-    });
+    expect(after).toMatchObject({ attempts: 2, status: "confirming", kakao_task_id: "task-ok" });
   });
 
   it("한 번에 찾는 수와 시간 한도를 넘으면 남은 것은 다음 실행에", async () => {
@@ -477,7 +495,7 @@ describeDb("실행기(데이터베이스)", () => {
   });
 
   it("하루 한 번 일: 같은 분의 두 실행기 중 하나만 시작하고, 그날 다시 시작하지 않으며, 다음 날 다시", async () => {
-    const slot = dailySlot(pastMinute(), "03:00", "Asia/Seoul");
+    const slot = await freeSlot(db, 3);
     const ids: string[] = [];
     for (let i = 0; i < 3; i += 1) ids.push((await addAlert(db, a.shopId, plus(slot, -i * 1000))).id);
     const calls: string[] = [];
@@ -512,7 +530,7 @@ describeDb("실행기(데이터베이스)", () => {
   });
 
   it("하루 한 번 일: 앞 분의 실행기가 늦게 도착해도, 그날 이미 시작했으면 다시 시작하지 않음(Codex 지적)", async () => {
-    const slot = dailySlot(pastMinute(), "03:00", "Asia/Seoul");
+    const slot = await freeSlot(db);
     const daily: RunnableJob = {
       ...txJob("daily_order_test", new Set(), []),
       every: "day",
@@ -591,5 +609,76 @@ describeDb("실행기(데이터베이스)", () => {
       [[send, check]],
     );
     expect([...seen].sort()).toEqual(["owner_alert_check", "owner_alert_send"]);
+  });
+
+  it("늘 던지는 행이 한 번에 찾는 수만큼 앞을 막아도, 같은 실행에서 그 뒤의 행을 이어 찾아 함(Codex 지적)", async () => {
+    const now = pastMinute();
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i += 1) ids.push((await addAlert(db, a.shopId, plus(now, -(3 - i) * 1000))).id);
+    const [p0, p1, last] = ids as [string, string, string];
+    const calls: string[] = [];
+    const job = txJob("poison_test", new Set(ids), calls, async (item) => {
+      if (item.id !== last) throw new Error("always fails");
+    });
+    for (let m = 0; m < 3; m += 1) {
+      await runDueJobs({ db, now: plus(now, m * MIN), jobs: [job], log: quiet, limits: { batch: 2 } });
+    }
+    const st = await states(db, ids);
+    // 끝난 행으로 둔다(다른 시험의 찾기에 걸리지 않게).
+    await scoped(db, a.shopId).run(
+      "UPDATE owner_alerts t SET status = 'failed', fail_code = 'unknown' WHERE t.shop_id = $1 AND t.id = ANY($2::uuid[])",
+      [ids],
+    );
+    // 앞의 둘은 실행마다 한 번씩 던져 되돌려지고(그 실행에서 다시 잡지 않음), 뒤의 행은 첫 실행에서 한 번.
+    expect(calls.slice(0, 3)).toEqual([p0, p1, last]);
+    expect(calls.filter((c) => c === last)).toHaveLength(1);
+    expect(calls.filter((c) => c === p0)).toHaveLength(3);
+    expect(calls.filter((c) => c === p1)).toHaveLength(3);
+    expect(st.get(last)).toMatchObject({ attempts: 1, status: "failed" });
+    expect(st.get(p0)).toMatchObject({ attempts: 0, status: "pending" });
+  });
+
+  it("하루 한 번 일도 늘 던지는 행 뒤의 행을 그 실행에서 이어 찾아 함(Codex 지적)", async () => {
+    const slot = await freeSlot(db);
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i += 1) ids.push((await addAlert(db, b.shopId, plus(slot, -(3 - i) * 1000))).id);
+    const [p0, p1, last] = ids as [string, string, string];
+    const calls: string[] = [];
+    const daily: RunnableJob = {
+      ...txJob("daily_poison_test", new Set(ids), calls, async (item) => {
+        if (item.id !== last) throw new Error("always fails");
+      }),
+      every: "day",
+      at: "03:00",
+      timeZone: "Asia/Seoul",
+      marker: "purge_run",
+    };
+    const r = await runDueJobs({ db, now: plus(slot, MIN), jobs: [daily], log: quiet, limits: { batch: 2 } });
+    await scoped(db, b.shopId).run(
+      "UPDATE owner_alerts t SET status = 'failed', fail_code = 'unknown' WHERE t.shop_id = $1 AND t.id = ANY($2::uuid[])",
+      [ids],
+    );
+    expect(r.dailyStarted).toEqual(["daily_poison_test"]);
+    expect(calls).toEqual([p0, p1, last]);
+  });
+
+  it("바깥 호출이 실패한 행은 다시 하기 때로 물러나 있어, 그 실행에서 뒤의 행을 더 찾지 않음(바깥에 몰아 부르지 않음)", async () => {
+    const t0 = pastMinute();
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i += 1) ids.push((await addAlert(db, a.shopId, plus(t0, -(3 - i) * 1000))).id);
+    const acts: string[] = [];
+    const job = leasedJob("act_down_test", new Set(ids), acts, async () => {
+      throw new Error("kakao down");
+    });
+    await runDueJobs({ db, now: t0, jobs: [job], log: quiet, limits: { batch: 2 } });
+    const st = await states(db, ids);
+    await scoped(db, a.shopId).run(
+      "UPDATE owner_alerts t SET status = 'failed', fail_code = 'unknown' WHERE t.shop_id = $1 AND t.id = ANY($2::uuid[])",
+      [ids],
+    );
+    expect(acts).toEqual(ids.slice(0, 2));
+    // 실패한 둘은 G4대로 1분 뒤에 다시. 남은 하나는 그대로라 다음 분에 앞의 둘보다 먼저 찾힘.
+    expect(st.get(ids[0] as string)).toMatchObject({ attempts: 1, next_attempt_at: plus(t0, MIN) });
+    expect(st.get(ids[2] as string)).toMatchObject({ attempts: 0, next_attempt_at: plus(t0, -1000) });
   });
 });

@@ -11,7 +11,8 @@
  *     임대가 끝난 뒤 다시 찾힌다. 바깥 호출을 트랜잭션 안에서 하지 않아 연결을 오래 쥐지 않는다.
  * - 같은 일은 한 번만(A33)은 이벤트 키로 지킨다(event-keys.ts의 insertOnce). 실행기는 행을 한 번씩 잡아 줄 뿐이다.
  * - 한도(issue 7): 곳마다 한 번에 찾는 수(batch)와 이 실행의 시간 한도(budgetMs). 넘으면 남은 것은 다음 분에. 일의 순서는
- *   분마다 돌려 한 일이 늘 뒤로 밀리지 않게 한다.
+ *   분마다 돌려 한 일이 늘 뒤로 밀리지 않게 한다. 처리가 던져 되돌린 행은 그대로 때가 된 채 남아 다음 찾기의 앞에 다시
+ *   나오므로, 같은 실행 안에서는 이미 본 행을 빼고 그 뒤의 행을 더 찾아 채운다(늘 던지는 행이 뒤의 행을 막지 않게).
  * - 하루 한 번 일(지난 기록 지우기 03:00, SPEC-065): 짧은 트랜잭션에서 트랜잭션 잠금(pg_advisory_xact_lock, 트랜잭션 풀링에서도
  *   지켜짐)을 잡고 운영 기록(ops_events)의 표시로 그날 시작했는지 본 뒤, 아니면 표시를 남기고 시작한다. 그날 멈추면 다음 날
  *   다시(SPEC-065). 세션 잠금은 Hyperdrive의 트랜잭션 풀링에서 지켜지지 않아 쓰지 않는다.
@@ -48,7 +49,10 @@ export interface LeaseContext extends JobContext {
   readonly leaseUntil: Date;
 }
 
-/** 데이터베이스 안의 일만 하는 처리. 잡은 트랜잭션 안에서 하고, 던지면 되돌린다(다음 실행에서 다시). */
+/**
+ * 데이터베이스 안의 일만 하는 처리. 잡은 트랜잭션 안에서 하고, 던지면 되돌린다(다음 실행에서 다시). 끝나면 행이 찾기 조건에서
+ * 빠지게(상태를 바꾸거나 때를 미룸) 한다. 다시 해도 안 될 실패는 던지지 말고 행의 상태로 적는다(던진 행은 매분 다시 집힘).
+ */
 export interface TransactionHandler {
   readonly mode: "transaction";
   run(db: ShopDb, item: DueItem, ctx: JobContext): Promise<void>;
@@ -109,8 +113,11 @@ export interface RunLimits {
   readonly batch: number;
   /** 이 실행에서 새 행을 잡기 시작하는 시간 한도(ms). 넘으면 남은 것은 다음 실행에. Cron 한 번은 CPU 30초(tech-stack.md 134행). */
   readonly budgetMs: number;
-  /** 하루 한 번 일이 곳마다 찾기를 되풀이하는 수(한 번에 batch씩). */
-  readonly dailyRounds: number;
+  /**
+   * 곳마다 한 실행에서 찾기를 되풀이하는 수의 한도. 하루 한 번 일은 찾은 수가 가득 찬 동안 batch씩 더 하고, 1분 일은 처리가
+   * 던져 되돌린 행이 있을 때만 그 수만큼 뒤의 행을 더 찾는다.
+   */
+  readonly rounds: number;
   /** 하루 한 번 일을 그날 시작할 수 있는 때(at부터). 놓치면 다음 날. */
   readonly dailyWindowMs: number;
   /** leased 처리의 임대 길이. 바깥 호출 시간 한도보다 길어야 한다. */
@@ -122,7 +129,7 @@ export interface RunLimits {
 export const DEFAULT_LIMITS: RunLimits = {
   batch: 50,
   budgetMs: 45_000,
-  dailyRounds: 20,
+  rounds: 20,
   dailyWindowMs: 3 * 3_600_000,
   leaseMs: 120_000,
   actTimeoutMs: 20_000,
@@ -146,7 +153,7 @@ export interface JobTally {
   done: number;
   /** 잡지 못함(다른 실행기가 잡고 있거나 그 사이 처리됨). */
   skipped: number;
-  /** 실패(되돌렸거나 바깥 호출이 실패함). 행은 다음 실행에서 다시 찾힌다. */
+  /** 실패(되돌렸거나 바깥 호출이 실패함). 행은 다음 실행에서 다시 찾힌다(같은 실행에서는 다시 잡지 않음). */
   failed: number;
 }
 
@@ -294,7 +301,8 @@ async function startDaily(db: RequestDb, job: DailyJob, now: Date, windowMs: num
   });
 }
 
-type ItemResult = "done" | "skipped" | "failed";
+/** rolled_back: 잡은 트랜잭션이 되돌려져 행이 그대로 때가 된 채 남음(실패로 셈). failed: 바깥 호출·결과 쓰기의 실패(행은 임대 끝이나 다시 하기 때까지 물러나 있음). */
+type ItemResult = "done" | "skipped" | "failed" | "rolled_back";
 
 async function processItem(
   db: RequestDb,
@@ -322,7 +330,7 @@ async function processItem(
       return claimed ? "done" : "skipped";
     } catch (err) {
       logFailure(log, "job_item_failed", job.name, err, item.id);
-      return "failed";
+      return "rolled_back";
     }
   }
 
@@ -339,7 +347,7 @@ async function processItem(
     });
   } catch (err) {
     logFailure(log, "job_item_failed", job.name, err, item.id);
-    return "failed";
+    return "rolled_back";
   }
   if (held === null) return "skipped";
   const prepared = held.value;
@@ -403,29 +411,33 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
       dailyStarted.push(job.name);
       log("info", { event: "job_daily_started", job: job.name });
     }
-    const rounds = job.every === "day" ? limits.dailyRounds : 1;
     // 한 일 안의 찾는 곳도 분마다 차례를 돌린다. 앞 곳이 시간 한도를 다 써도 뒤 곳이 굶지 않게.
     const turn = job.sources.length === 0 ? 0 : Math.floor(now.getTime() / 60_000) % job.sources.length;
     for (const name of [...job.sources.slice(turn), ...job.sources.slice(0, turn)]) {
       const source = DUE_SOURCES[name];
       const cutoff = job.cutoff?.(name, now) ?? now;
+      // 이 실행에서 본 행. 다시 찾을 때는 본 수만큼 더 찾아 빼므로(LIMIT 본 수 + want), 되돌려 그대로 때가 된 행이 앞을
+      // 막아도 그 뒤의 행이 나온다(Codex 지적: 늘 던지는 행 batch개가 매분 같은 묶음을 채워 뒤의 행이 돌지 않았음).
       const seen = new Set<string>();
-      for (let round = 0; round < rounds; round += 1) {
+      let want = limits.batch;
+      for (let round = 0; round < limits.rounds && want > 0; round += 1) {
         if (overBudget()) {
           stoppedByBudget = true;
           break;
         }
+        const limit = seen.size + want;
         let items: DueItem[];
         try {
-          items = await findDue(options.db, name, source, cutoff, limits.batch);
+          items = await findDue(options.db, name, source, cutoff, limit);
         } catch (err) {
           if (err instanceof JobConfigError) throw err;
           logFailure(log, "job_find_failed", job.name, err);
           tally.failed += 1;
           break;
         }
-        const fresh = items.filter((i) => !seen.has(i.id));
+        const fresh = items.filter((i) => !seen.has(i.id)).slice(0, want);
         tally.found += fresh.length;
+        let rolledBack = 0;
         for (const item of fresh) {
           if (overBudget()) {
             stoppedByBudget = true;
@@ -433,9 +445,17 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
           }
           seen.add(item.id);
           const result = await processItem(options.db, job, source, item, cutoff, now, limits, log, clock);
-          tally[result] += 1;
+          if (result === "rolled_back") {
+            rolledBack += 1;
+            tally.failed += 1;
+          } else {
+            tally[result] += 1;
+          }
         }
-        if (stoppedByBudget || items.length < limits.batch || fresh.length === 0) break;
+        if (stoppedByBudget || items.length < limit) break;
+        // 하루 한 번 일은 가득 찬 동안 batch씩 더 하고, 1분 일은 되돌린 행만큼만 그 뒤에서 채운다(한 번에 batch행).
+        // 바깥 호출이 실패한 행은 임대·다시 하기 때로 물러나 있어 채우지 않는다(바깥에 몰아 부르지 않게).
+        want = job.every === "day" ? limits.batch : rolledBack;
       }
     }
     if (tally.found > 0 || tally.failed > 0) {

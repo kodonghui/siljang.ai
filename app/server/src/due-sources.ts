@@ -19,7 +19,7 @@
 export const FIND_SHAPE =
   /^SELECT t\.shop_id, t\.id, t\.([a-z_]+) AS due_at FROM ([a-z_]+) t WHERE (.+) AND t\.\1 <= \$1 ORDER BY t\.\1, t\.id LIMIT \$2$/;
 
-/** 하루 한 번 일이 그날 시작했는지 보는 SQL의 꼴: 운영 기록에서 가게와 무관한 그 종류의 마지막 시각($2 기준 시각까지). */
+/** 하루 한 번 일이 그날 시작했는지 보는 SQL의 꼴: 운영 기록에서 가게와 무관한 그 종류의 마지막 시각($2 그날의 때부터 $3 다음 날의 때 전까지). */
 export const LAST_RUN_SHAPE =
   /^SELECT max\(t\.created_at\) AS last_at FROM ops_events t WHERE t\.kind = \$1 AND t\.shop_id IS NULL AND t\.created_at >= \$2 AND t\.created_at < \$3$/;
 
