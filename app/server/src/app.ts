@@ -1,10 +1,15 @@
 import { type Context, Hono } from "hono";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
+import { FILE_ROUTE, serveFile } from "./file-url";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import { ApiError, problemResponse } from "./problem";
-import { mountRoutes, openRoute, type RouteDecl, type ScopeResolvers } from "./routes";
+import type { RateLimitBinding } from "./rate-limit";
+import { mountRoutes, type OwnerResolver, openRoute, ownerRoute, type RouteDecl, type ScopeResolvers } from "./routes";
+import { createServices, type ServiceOverrides, type Services } from "./services";
 import { readSettings, type Settings } from "./settings";
+import { StorageUnavailableError } from "./storage";
 import { newTraceId } from "./trace";
+import { createUpload } from "./uploads";
 
 /** Worker의 env. 업무 코드는 이것을 직접 읽지 않고 settings.ts의 readSettings()를 거친다. */
 export type Bindings = {
@@ -13,6 +18,14 @@ export type Bindings = {
   readonly OPENAI_API_KEY?: string;
   readonly DATABASE_URL?: string;
   readonly REQUEST_HASH_KEY?: string;
+  readonly STORAGE_ACCESS_KEY_ID?: string;
+  readonly STORAGE_SECRET_ACCESS_KEY?: string;
+  readonly FILE_URL_KEY?: string;
+  readonly STORAGE_ENDPOINT?: string;
+  readonly STORAGE_REGION?: string;
+  readonly STORAGE_BUCKET?: string;
+  /** 사진 올리기의 1분 30번(wrangler.jsonc의 ratelimits, rate-limit.ts의 UPLOAD_RATE). */
+  readonly UPLOAD_RATE_LIMITER?: RateLimitBinding;
 };
 
 export type Logger = (level: LogLevel, fields: LogFields) => void;
@@ -24,6 +37,8 @@ interface Variables {
   db: RequestDb;
   /** 이 앱의 로그(createApp의 logSink로 감). 업무 코드는 console을 쓰지 않는다. */
   log: Logger;
+  /** 지금 시각·사진 저장소·한도·서명 주소(services.ts). */
+  services: Services;
 }
 
 export type HonoEnv = { Bindings: Bindings; Variables: Variables };
@@ -36,6 +51,10 @@ export interface AppOptions {
   readonly routes?: readonly RouteDecl[];
   /** 가게 범위 해석기. 없는 출처의 가게 범위 경로는 닫혀 있다(routes.ts). 사장님 세션은 TASK-020부터. */
   readonly scopes?: Partial<ScopeResolvers>;
+  /** 사장님 범위 해석기. 없으면 사장님 범위 경로는 닫혀 있다(401, routes.ts). 사장님 세션은 TASK-020부터. */
+  readonly ownerAccount?: OwnerResolver;
+  /** 바깥 서비스를 바꾼다(시험만: 메모리 저장소·메모리 한도·정한 시각). */
+  readonly services?: ServiceOverrides;
 }
 
 /**
@@ -46,6 +65,14 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   // 기반 시설용 확인 주소(06 계약 밖). 1분 외부 감시(TASK-016)가 부른다. 데이터베이스는 보지 않는다.
   openRoute("GET", "/healthz", "기반 시설 확인 주소(06 계약 밖, TASK-016 감시). 데이터베이스를 보지 않음", (c) =>
     c.json({ status: "ok" }, 200, { "cache-control": "no-store" }),
+  ),
+  // 06 API-007 사진 올리기(TASK-022). 가게가 정해지기 전에도 쓰므로(가게 등록의 신고증) 사장님 범위 경로다.
+  ownerRoute("POST", "/owner/uploads", createUpload),
+  openRoute(
+    "GET",
+    FILE_ROUTE,
+    "사진의 15분 서명 주소(06 DEC-09, 계약 밖, TASK-022). 주소의 서명이 권한이라 세션·가게를 보지 않음. 저장소만 읽고 데이터베이스는 보지 않음",
+    serveFile,
   ),
 ];
 
@@ -81,6 +108,8 @@ function routePattern(path: string): RegExp {
  * 공통 처리(TASK-018): 추적 ID, 설정, 요청마다 데이터베이스 연결, 06 Problem 오류 응답(04 G6: 내부 내용 없음),
  * 계약에 없는 방법은 405와 Allow(06 DEC-02). 요청 키는 쓰기 명령이 request-key.ts의 runCommand로 지킨다.
  * 가게별 기록 나누기(TASK-019): 경로는 routes.ts의 선언으로만 붙고, 가게 범위 경로의 처리기는 가게 범위 연결(shop-scope.ts)만 받는다.
+ * 사진 올리기(TASK-022): 가게가 정해지기 전에도 여는 사장님 범위 경로(ownerRoute, 해석기 ownerAccount가 없으면 401)와,
+ * 요청마다 쓰는 바깥 서비스(services.ts의 시계·저장소·한도·서명 주소. 시험은 options.services로 바꿈)를 둔다.
  */
 export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   const sink = options.logSink;
@@ -94,6 +123,7 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
     c.set("log", appLog);
     const settings = readSettings(c.env ?? {});
     c.set("settings", settings);
+    c.set("services", createServices(c.env ?? {}, settings, options.services));
     if (!startLogged) {
       // Worker에는 따로 시작 단계가 없어, 이 앱의 첫 요청에서 한 번 남긴다. 빠진 비밀 값은 이름만.
       startLogged = true;
@@ -109,7 +139,7 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   });
 
   // 경로는 모두 선언으로 붙인다(가게 범위 경로는 가게 범위 연결만 받음, TASK-019).
-  mountRoutes(app, options.routes ?? APP_ROUTES, options.scopes);
+  mountRoutes(app, options.routes ?? APP_ROUTES, options.scopes, options.ownerAccount);
 
   app.notFound((c) => {
     const traceId = c.get("traceId") ?? newTraceId();
@@ -145,6 +175,11 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
         appLog("error", { event: "unhandled_error", traceId, errorName: name, status: 500, code: err.code });
         return problemResponse("internal", traceId, instance);
       }
+    }
+    if (err instanceof StorageUnavailableError) {
+      // 사진 저장소가 답하지 않거나 오류(06 storage_unavailable). 저장 위치·응답 내용은 싣지 않고 이름만.
+      appLog("error", { event: "api_error", traceId, errorName: err.name, status: 503, code: "storage_unavailable" });
+      return problemResponse("storage_unavailable", traceId, instance);
     }
     // 예상하지 못한 오류: 내용(메시지·스택·SQL·넣은 값)은 응답에도 로그에도 싣지 않는다(04 G6). 이름과 SQLSTATE만.
     const dbCode = sqlStateOf(err);

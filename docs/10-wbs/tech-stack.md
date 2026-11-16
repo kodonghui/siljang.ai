@@ -279,6 +279,7 @@ Python을 남길 곳: 저장소의 생성·검사 도구(01~10단계)는 Python 
 | 카카오 시험 채널에서 스킬 응답 시간(TASK-009와 함께) | 4초 안 | 응답 경로를 줄이거나 컨테이너로 |
 | Cron Trigger 1분, 큐 `delaySeconds`, 큐 소비자 | 한 번씩 돎 | |
 | 두 AI 회사 TypeScript SDK를 Workers에서 | 모델 호출 한 번씩 | HTTP로 직접 부름 |
+| Supabase Storage(서울) 비공개 버킷의 S3 호환 주소에서 사진 저장소 모듈(`app/server/src/storage.ts`의 `S3Store`, TASK-022에서 더함) | 넣기·보기·읽기·복사·지우기·목록(접두어·start-after)이 한 번씩 되고, 보기와 읽기에 넣을 때의 종류(Content-Type)가 남음 | 맞지 않는 동작을 고치고, 안 되면 Storage REST API(키 범위는 TASK-174와 다시 봄)나 다른 저장소를 동희님께 확인 요청 |
 
 ### 8-2. 법률 확인에 더할 질문(TASK-013)
 

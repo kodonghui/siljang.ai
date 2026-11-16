@@ -10,16 +10,24 @@ import type { Context } from "hono";
 import type { HonoEnv } from "./app";
 import { fieldError } from "./problem";
 
-/** 본문의 가장 큰 크기(바이트). 사장님·운영자 명령의 본문은 작다. 사진은 따로 올린다(API-007). */
+/** 본문의 가장 큰 크기(바이트). 사장님·운영자 명령의 본문은 작다. 사진은 따로 올린다(API-007, uploads.ts의 한도). */
 export const MAX_JSON_BYTES = 256 * 1024;
 
 const DIGITS = /^\d+$/;
 
-/** 한도까지만 읽는다. 넘으면 읽기를 멈추고(cancel) too_long. UTF-8이 아니면 bad_json. */
-async function readLimited(req: Request, limit: number): Promise<string> {
+/** 선언한 길이(Content-Length)가 한도를 넘는지. 길이가 없거나 꼴이 틀리면 false(읽으면서 센다). */
+export function declaredOver(req: Request, limit: number): boolean {
   const declared = req.headers.get("content-length");
-  if (declared !== null && DIGITS.test(declared) && Number(declared) > limit) throw fieldError("/", "too_long");
-  if (req.body === null) return "";
+  return declared !== null && DIGITS.test(declared) && Number(declared) > limit;
+}
+
+/**
+ * 본문을 한도까지만 바이트로 읽는다. 선언한 길이가 넘거나 읽다가 넘으면 읽기를 멈추고(cancel) tooLarge()가 만든 오류를 던진다.
+ * JSON 본문(아래 readJsonBody)과 사진 올리기(uploads.ts, 한도와 오류가 다름)가 함께 쓴다.
+ */
+export async function readBytesLimited(req: Request, limit: number, tooLarge: () => Error): Promise<Uint8Array> {
+  if (declaredOver(req, limit)) throw tooLarge();
+  if (req.body === null) return new Uint8Array(0);
   const reader = req.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -29,7 +37,7 @@ async function readLimited(req: Request, limit: number): Promise<string> {
     size += value.byteLength;
     if (size > limit) {
       await reader.cancel().catch(() => {});
-      throw fieldError("/", "too_long");
+      throw tooLarge();
     }
     chunks.push(value);
   }
@@ -39,6 +47,13 @@ async function readLimited(req: Request, limit: number): Promise<string> {
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  return bytes;
+}
+
+/** 한도까지만 읽는다. 넘으면 too_long. UTF-8이 아니면 bad_json. */
+async function readLimited(req: Request, limit: number): Promise<string> {
+  const bytes = await readBytesLimited(req, limit, () => fieldError("/", "too_long"));
+  if (bytes.byteLength === 0) return "";
   try {
     return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes);
   } catch {

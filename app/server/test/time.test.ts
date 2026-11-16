@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addAllDay, addWithinReplyHours, isTimeZone, shopLocalToUtc, toShopLocal } from "../src/time";
+import { addAllDay, addWithinReplyHours, isTimeZone, shopLocalToUtc, toShopIso, toShopLocal } from "../src/time";
 
 // 04 G8: 가게 시간대로 계산하고 UTC로 저장. 답하는 시간 안에서만 세는 기다림(REQ-259)과 하루 내내 세는 기한.
 const SEOUL = "Asia/Seoul";
@@ -126,5 +126,36 @@ describe("답하는 시간 안에서만 세는 기다림(REQ-259, 기본 09:00~2
       RangeError,
     );
     expect(() => addWithinReplyHours(new Date(), -5, kst)).toThrow(RangeError);
+  });
+});
+
+describe("가게 시간대의 ISO 시각(응답의 expiresAt 등, TASK-022)", () => {
+  it("06 예시 꼴: 가게 시간대의 벽시계와 그때의 시차, 초 아래는 버림", () => {
+    const t = new Date("2026-11-12T02:03:00.999Z");
+    expect(toShopIso(t, SEOUL)).toBe("2026-11-12T11:03:00+09:00");
+    expect(toShopIso(t, "UTC")).toBe("2026-11-12T02:03:00+00:00");
+    expect(toShopIso(new Date("2026-11-15T15:00:00Z"), SEOUL)).toBe("2026-11-16T00:00:00+09:00");
+  });
+
+  it("서머타임과 30분 단위 시차(뉴욕 겨울·여름, 콜카타, 세인트존스)", () => {
+    expect(toShopIso(new Date("2026-01-15T17:00:00Z"), "America/New_York")).toBe("2026-01-15T12:00:00-05:00");
+    expect(toShopIso(new Date("2026-07-15T17:00:00Z"), "America/New_York")).toBe("2026-07-15T13:00:00-04:00");
+    expect(toShopIso(new Date("2026-11-12T02:03:00Z"), "Asia/Kolkata")).toBe("2026-11-12T07:33:00+05:30");
+    expect(toShopIso(new Date("2026-11-12T02:03:00Z"), "America/St_Johns")).toBe("2026-11-11T22:33:00-03:30");
+  });
+
+  it("다시 읽으면 같은 순간(초 단위)", () => {
+    for (const tz of [SEOUL, "UTC", "America/New_York", "Asia/Kolkata", "America/St_Johns", "Australia/Lord_Howe"]) {
+      for (const at of [
+        "2026-03-08T07:30:00Z",
+        "2026-11-01T05:30:00Z",
+        "2026-04-04T15:15:00Z",
+        "2026-12-31T23:59:59Z",
+      ]) {
+        const text = toShopIso(new Date(at), tz);
+        expect(text).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
+        expect(new Date(text).toISOString(), `${tz} ${at}`).toBe(new Date(at).toISOString());
+      }
+    }
   });
 });

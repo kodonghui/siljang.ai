@@ -43,6 +43,17 @@ const SCOPE_MAKERS: Record<string, string> = {
 /** 가게 범위를 만드는 표시: createShopScope를 부르거나 가져오거나 이름 글자로 꺼냄(주석·오류 글의 언급은 치지 않음). */
 const MAKES_SCOPE = /\bcreateShopScope\s*\(|import[^;]*\bcreateShopScope\b|["'`]createShopScope["'`]/;
 
+/**
+ * 사장님 범위(가게가 정해지기 전에도 여는 경로의 사장님, TASK-022)를 만들 수 있는 파일과 까닭. 사장님 세션 해석기
+ * (TASK-020)가 더한다.
+ */
+const OWNER_SCOPE_MAKERS: Record<string, string> = {
+  "owner-scope.ts": "정의",
+};
+
+/** 사장님 범위를 만드는 표시(MAKES_SCOPE와 같은 꼴). */
+const MAKES_OWNER_SCOPE = /\bcreateOwnerScope\s*\(|import[^;]*\bcreateOwnerScope\b|["'`]createOwnerScope["'`]/;
+
 /** SQL 테이블 이름 자리에 값을 끼워 넣어도 되는 파일(테이블 이름이 SHOP_TABLES 형식으로만 들어옴). */
 const TABLE_INTERPOLATION_ALLOWED = new Set(["shop-scope.ts"]);
 
@@ -133,6 +144,23 @@ describe("서버 코드의 SQL(정적 검사)", () => {
     expect(MAKES_SCOPE.test('import { createShopScope as make } from "./shop-scope";')).toBe(true);
     expect(MAKES_SCOPE.test('const make = m["createShopScope"];')).toBe(true);
     expect(MAKES_SCOPE.test("/** createShopScope로 만든 것만 받는다. */")).toBe(false);
+  });
+
+  it("사장님 범위도 정한 파일(해석기)만 만듦(TASK-022)", () => {
+    const found = sources
+      .filter((s) => MAKES_OWNER_SCOPE.test(s.text) && !Object.hasOwn(OWNER_SCOPE_MAKERS, s.name))
+      .map((s) => s.name);
+    expect(found).toEqual([]);
+    const casts = sources.filter((s) => /\bas\s+OwnerScope\b/.test(s.text)).map((s) => s.name);
+    expect(casts).toEqual([]);
+    for (const name of Object.keys(OWNER_SCOPE_MAKERS)) {
+      expect(
+        sources.some((s) => s.name === name && MAKES_OWNER_SCOPE.test(s.text)),
+        name,
+      ).toBe(true);
+    }
+    expect(MAKES_OWNER_SCOPE.test("const o = createOwnerScope(id);")).toBe(true);
+    expect(MAKES_OWNER_SCOPE.test("/** createOwnerScope로 만든 것만 받는다. */")).toBe(false);
   });
 });
 

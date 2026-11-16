@@ -38,7 +38,7 @@ describe("readSettings", () => {
     const anthropic = fakeKey("sk-ant-api03-");
     const openai = fakeKey("sk-proj-");
     const s = readSettings({ ANTHROPIC_API_KEY: anthropic, OPENAI_API_KEY: openai });
-    expect(s.missingSecrets).toEqual(["DATABASE_URL", "REQUEST_HASH_KEY"]);
+    expect(s.missingSecrets).toEqual(SECRET_NAMES.filter((n) => !n.endsWith("_API_KEY")));
     const a = s.secrets.ANTHROPIC_API_KEY;
     expect(a).toBeInstanceOf(Secret);
     expect(a?.reveal()).toBe(anthropic);
@@ -80,5 +80,63 @@ describe("readSettings", () => {
       expect(caught).toBeInstanceOf(SettingsError);
       expect(String((caught as Error).message)).not.toContain(pw);
     }
+  });
+
+  // 사진 저장소와 서명 주소(TASK-022)
+  it("FILE_URL_KEY는 32자 이상만 받고 값은 메시지에 싣지 않는다", () => {
+    const short = "Fk-Zq7-short";
+    let caught: unknown;
+    try {
+      readSettings({ FILE_URL_KEY: short });
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(SettingsError);
+    expect(String((caught as Error).message)).not.toContain(short);
+    expect(readSettings({ FILE_URL_KEY: "f".repeat(32) }).secrets.FILE_URL_KEY?.reveal()).toBe("f".repeat(32));
+  });
+
+  it("저장소 주소는 세 값이 모두 있거나 모두 없어야 하고, https만(development의 localhost는 http도) 받는다", () => {
+    expect(readSettings({}).storage).toBeNull();
+    const ok = readSettings({
+      STORAGE_ENDPOINT: "https://storage.example.test/storage/v1/s3/",
+      STORAGE_REGION: "ap-northeast-2",
+      STORAGE_BUCKET: "photos",
+    });
+    expect(ok.storage).toEqual({
+      endpoint: "https://storage.example.test/storage/v1/s3",
+      region: "ap-northeast-2",
+      bucket: "photos",
+    });
+    const local = { STORAGE_ENDPOINT: "http://127.0.0.1:9000", STORAGE_REGION: "local", STORAGE_BUCKET: "photos" };
+    expect(readSettings({ ...local, APP_ENV: "development" }).storage?.endpoint).toBe("http://127.0.0.1:9000");
+    const bad: Record<string, string>[] = [
+      { STORAGE_ENDPOINT: "https://storage.example.test" },
+      { ...local },
+      { ...local, APP_ENV: "staging" },
+      { ...local, APP_ENV: "development", STORAGE_ENDPOINT: "http://storage.example.test" },
+      { ...local, APP_ENV: "development", STORAGE_ENDPOINT: "not a url" },
+      { ...local, APP_ENV: "development", STORAGE_ENDPOINT: "https://u:Pw-Zq7@storage.example.test" },
+      { ...local, APP_ENV: "development", STORAGE_REGION: "AP NORTH" },
+      { ...local, APP_ENV: "development", STORAGE_BUCKET: "a/b" },
+    ];
+    for (const env of bad) {
+      let caught: unknown;
+      try {
+        readSettings(env);
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught, JSON.stringify(Object.keys(env))).toBeInstanceOf(SettingsError);
+      expect(String((caught as Error).message)).not.toContain("Pw-Zq7");
+    }
+  });
+
+  it("저장소 접근 키는 Secret으로 감싸 글·JSON에서 가린다", () => {
+    const secret = fakeKey("sb-s3-");
+    const s = readSettings({ STORAGE_ACCESS_KEY_ID: "key-id-Zq7", STORAGE_SECRET_ACCESS_KEY: secret });
+    expect(s.secrets.STORAGE_SECRET_ACCESS_KEY?.reveal()).toBe(secret);
+    expect(JSON.stringify(s)).not.toContain(secret);
+    expect(JSON.stringify(s)).not.toContain("key-id-Zq7");
   });
 });

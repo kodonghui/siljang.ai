@@ -516,6 +516,22 @@ describe("06 계약과 가게 범위 경로", () => {
     }
   });
 
+  it("구현한 사장님 범위 계약 API(가게가 정해지기 전에도 여는 것)는 사장님 범위 경로로 선언됨(TASK-022부터)", () => {
+    const declared: string[] = [];
+    for (const decl of APP_ROUTES) {
+      const hit = operations.find(
+        (o) => o.method === decl.method && o.path.replace(/\{([A-Za-z]+)\}/g, ":$1") === decl.path,
+      );
+      const id = hit?.op["x-corthex"]?.id ?? "";
+      if (hit === undefined || !OWNER_LEVEL.has(id)) continue;
+      const schemes = (hit.op.security ?? []).flatMap((s) => Object.keys(s));
+      if (!schemes.includes("ownerSession")) continue;
+      expect(decl.kind, routeKey(decl.method, decl.path)).toBe("owner");
+      declared.push(id);
+    }
+    expect(declared).toContain("API-007");
+  });
+
   it("G1·06 DEC-02: 403 코드가 없음(다른 가게 ID는 404, 남의 기록 ID는 422)", () => {
     expect(Object.values(ERRORS).map((e): number => e.status)).not.toContain(403);
   });

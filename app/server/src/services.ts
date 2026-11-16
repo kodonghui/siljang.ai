@@ -1,0 +1,60 @@
+/**
+ * 요청마다 쓰는 바깥 서비스(TASK-022): 지금 시각, 사진 저장소, 요청 빈도 한도, 사진 서명 주소.
+ * 업무 코드는 Workers 바인딩과 설정 값을 직접 읽지 않고 이것을 받는다(tech-stack.md 4-3의 1). 시험은 AppOptions.services로
+ * 메모리 저장소·메모리 한도·정한 시각을 넣는다.
+ * 설정이 빠졌으면 그것을 쓰는 요청만 500 internal(MissingSettingError, 로그에는 이름만).
+ */
+import type { Bindings } from "./app";
+import { type FileUrls, fileUrlSigner } from "./file-url";
+import { bindingLimiter, type RateLimiter, type RateLimitRule } from "./rate-limit";
+import { MissingSettingError } from "./request-key";
+import type { Settings } from "./settings";
+import { type ObjectStore, S3Store } from "./storage";
+
+export interface Services {
+  now(): Date;
+  /** 사진 저장소. 설정(STORAGE_*)이 없으면 MissingSettingError. */
+  storage(): ObjectStore;
+  /** rule의 한도. Workers 바인딩이 없으면 MissingSettingError. */
+  limiter(rule: RateLimitRule): RateLimiter;
+  /** 사진 서명 주소. FILE_URL_KEY가 없으면 MissingSettingError. */
+  fileUrls(): FileUrls;
+}
+
+/** 시험이 바꾸는 것. */
+export interface ServiceOverrides {
+  readonly now?: () => Date;
+  readonly storage?: ObjectStore;
+  readonly limiters?: { readonly [B in RateLimitRule["binding"]]?: RateLimiter };
+}
+
+export function createServices(env: Bindings, settings: Settings, overrides: ServiceOverrides = {}): Services {
+  let store: ObjectStore | undefined = overrides.storage;
+  let urls: FileUrls | undefined;
+  return {
+    now: overrides.now ?? (() => new Date()),
+    storage() {
+      if (store !== undefined) return store;
+      const s = settings.storage;
+      const id = settings.secrets.STORAGE_ACCESS_KEY_ID;
+      const secret = settings.secrets.STORAGE_SECRET_ACCESS_KEY;
+      if (s === null || id === null || secret === null) throw new MissingSettingError("storage is not set");
+      store = new S3Store({ ...s, accessKeyId: id.reveal(), secretAccessKey: secret.reveal() });
+      return store;
+    },
+    limiter(rule) {
+      const override = overrides.limiters?.[rule.binding];
+      if (override !== undefined) return override;
+      const binding = env[rule.binding];
+      if (binding === undefined) throw new MissingSettingError(`${rule.binding} is not bound`);
+      return bindingLimiter(binding);
+    },
+    fileUrls() {
+      if (urls !== undefined) return urls;
+      const key = settings.secrets.FILE_URL_KEY;
+      if (key === null) throw new MissingSettingError("FILE_URL_KEY is not set");
+      urls = fileUrlSigner(key);
+      return urls;
+    },
+  };
+}

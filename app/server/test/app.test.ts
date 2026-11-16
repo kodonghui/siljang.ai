@@ -90,7 +90,14 @@ describe("오류 응답(06 Problem)", () => {
     expect(JSON.parse(starts[0] ?? "{}")).toEqual({
       level: "info",
       event: "settings_loaded",
-      names: ["ANTHROPIC_API_KEY", "DATABASE_URL", "REQUEST_HASH_KEY"],
+      names: [
+        "ANTHROPIC_API_KEY",
+        "DATABASE_URL",
+        "REQUEST_HASH_KEY",
+        "STORAGE_ACCESS_KEY_ID",
+        "STORAGE_SECRET_ACCESS_KEY",
+        "FILE_URL_KEY",
+      ],
     });
     expect(lines.join("\n")).not.toContain(key);
   });

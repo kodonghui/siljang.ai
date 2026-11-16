@@ -10,7 +10,7 @@
  * - 경로의 ID: 형식이 틀리거나(uuid가 아님, 100자 넘는 것 포함) 없거나 다른 가게 것이면 모두 같은 404 not_found
  *   (06 DEC-02, G1). 가게 조건 때문에 다른 가게 행은 없는 행과 똑같이 0행이라 응답이 같다.
  * - 본문·쿼리의 ID: 없거나 다른 가게 것이면 같은 422 validation_failed와 그 필드의 reference_not_found(06 DEC-02).
- *   uuid 꼴이 아니면 bad_format(형식은 다른 가게와 무관). 올린 파일 ID(upload_not_found)는 TASK-022.
+ *   uuid 꼴이 아니면 bad_format(형식은 다른 가게와 무관). 올린 파일 ID(upload_not_found)는 uploads.ts의 checkUploads가 본다.
  * - 데이터베이스가 막는 것: 가게가 섞인 행(복합 외래 키, 05 E1, 쓰면 23503). 막지 않는 것: 다른 가게 행 읽기(05 A9).
  */
 import type { Queryable, RequestDb, Rows } from "./db";
