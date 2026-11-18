@@ -41,10 +41,10 @@ npm run e2e:local
 
 ## 4. 배포(TASK-170 뒤, Claude)
 
-1. 환경 변수(반복 0 안내서 3절): `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KAKAO_TEST_SKILL_KEY`. 있으면 `KAKAO_TEST_REST_API_KEY`(K-10·K-11), `KAKAO_TEST_CLIENT_SECRET`(K-11).
+1. 환경 변수(반복 0 안내서 3절): `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KAKAO_TEST_SKILL_KEY`. 하위 도메인 배포에는 `KAKAO_TEST_DOMAIN`에 스킴·경로를 뺀 이름을 넣습니다. 있으면 `KAKAO_TEST_REST_API_KEY`(K-10·K-11), `KAKAO_TEST_CLIENT_SECRET`(K-11)도 넣습니다.
 2. `bash research/kakao-test-2026-11/deploy.sh`
    - 처음 한 번: KV 이름공간 `siljang-kakao-test-records`와 큐 `siljang-kakao-test-callbacks`를 만들고, KV ID를 넣은 `worker/wrangler.local.jsonc`를 씁니다.
-   - 단위 시험을 돌린 뒤 Worker `siljang-kakao-test`를 workers.dev 주소로 올립니다. 비밀 값이 들어가기 전에는 `/skill`이 503이라(실패하면 닫힘) 먼저 올려도 됩니다.
+   - 단위 시험을 돌린 뒤 Worker `siljang-kakao-test`를 올립니다. `KAKAO_TEST_DOMAIN`을 주면 Cloudflare 사용자 지정 도메인에, 비워 두면 workers.dev에 연결합니다. 비밀 값이 들어가기 전에는 `/skill`이 503으로 요청을 거절합니다.
    - 비밀 값은 표준 입력으로만 넣습니다: `SKILL_KEY`, 마스킹 HMAC 키 `HASH_KEY`(처음 한 번 `openssl rand`로 만들고 Cloudflare 밖에 남기지 않음. 바꾸면 전에 남긴 기록과 사용자 표시를 견줄 수 없음), 있으면 `KAKAO_REST_API_KEY`·`KAKAO_CLIENT_SECRET`.
    - 끝에 `/health`와 키 없는 `/skill`(401이어야 함)을 보고 시험 주소를 화면에만 찍습니다. 주소는 채팅으로 동희님께 드리고 저장소·기록에는 적지 않습니다.
 3. 동희님이 대본 1절대로 봇과 앱에 주소를 넣으면, Claude가 첫 스킬 요청을 `read-records.sh`로 보고 시작을 알려 드립니다.
@@ -86,7 +86,7 @@ npx wrangler delete -c wrangler.local.jsonc
 
 ## 7. 확인 못 한 것
 
-- Cloudflare에 올려서 해 본 것은 아직 없습니다: 큐의 지연 보내기(`delaySeconds`), waitUntil로 25초까지 기다린 콜백, 사진 주소 받기는 로컬(wrangler dev)에서만 됐습니다.
+- 2026-11-19 Cloudflare에서 HTTPS `/health` 200, 키 없는 `/skill` 401, 합성 K-01 응답의 바로가기 10개, KV 기록에서 가짜 사용자 ID가 가려진 것을 확인했습니다. 실제 카카오 스킬 키의 Aside Vault 보관과 봇 연결이 남았습니다. 큐의 지연 보내기(`delaySeconds`), waitUntil로 25초까지 기다린 콜백, 사진 주소 받기는 로컬에서 확인했습니다.
 - 새 계정의 workers.dev 하위 도메인, Queues 토큰 권한의 이름(4절).
 - 보통 사진 메시지의 주소가 어느 호스트로 오는지(5절의 목록은 카카오 쪽 도메인으로 잡은 Claude 판단입니다).
 - 카카오 쪽의 확인 못 한 것은 대본 5절에 있습니다.

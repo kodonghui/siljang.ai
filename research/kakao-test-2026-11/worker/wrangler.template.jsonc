@@ -6,7 +6,6 @@
   "name": "siljang-kakao-test",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
-  "workers_dev": true,
   "preview_urls": false,
   // 요청 본문이 로그에 남지 않게 Workers Logs를 끔. 기록은 마스킹한 KV 기록만
   "observability": { "enabled": false },
