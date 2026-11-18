@@ -1,5 +1,5 @@
 # 05 스키마(db/)를 PostgreSQL 16에서 검사한다(TASK-017, 04 공통 규칙 G3).
-# 1) db/migrations/0001~0020을 빈 데이터베이스에 파일 이름 차례로 하나씩 적용(파일마다 한 트랜잭션, 실패하면 멈춤)
+# 1) db/migrations/의 마이그레이션 전부를 빈 데이터베이스에 파일 이름 차례로 하나씩 적용(파일마다 한 트랜잭션, 실패하면 멈춤)
 # 2) 그 데이터베이스에서 05 규칙 테스트(research/cake-erd-2026-11/rule_tests.sql)
 # 3) 05 검사 전부(check_erd.py: 정적 검사 S1~S9, schema.sql과 마이그레이션의 카탈로그 비교 D1~D3,
 #    규칙 테스트 D4, 두 세션 동시 쓰기 D5, ERD Editor 파일 E1)
@@ -56,7 +56,7 @@ jobs:
           mkdir -p ci-logs
           { python3 --version; psql --version; psql -X -A -t -c "SELECT version()" "$PG dbname=postgres"; } 2>&1 | tee ci-logs/versions.log
 
-      - name: 마이그레이션 0001~0020을 차례로(파일마다 한 트랜잭션, 실패하면 멈춤)
+      - name: 마이그레이션 전부를 파일 이름 차례로(파일마다 한 트랜잭션, 실패하면 멈춤)
         run: |
           psql -X -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE migrated TEMPLATE template0" "$PG dbname=postgres"
           bash tools/db-migrate.sh "$PG dbname=migrated" 2>&1 | tee ci-logs/migrate.log
