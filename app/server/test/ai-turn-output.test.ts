@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AI_TURN_OUTPUT_SCHEMA, checkTurnOutput, providerOutputSchema, withoutNulls } from "../src/ai-turn-output";
+import {
+  AI_TURN_OUTPUT_SCHEMA,
+  checkTurnOutput,
+  normalizeProviderOutput,
+  providerOutputSchema,
+} from "../src/ai-turn-output";
 import { contract, contractSchema } from "./support/contract";
 
 // AI 출력 하나의 모양(TASK-026; 06 DEC-17 AiTurnOutput, 04 AI-1 '서버가 확인함'). 손으로 옮긴 스키마가 06과 같은지,
@@ -110,11 +115,61 @@ describe("AiTurnOutput(06 DEC-17)", () => {
     // 06에서 필수인 필드는 null을 받지 않는다.
     const props = strict.properties as Record<string, Json>;
     expect(props.reply).toEqual({ type: "string" });
-    // Anthropic에는 계약 스키마 그대로.
-    expect(providerOutputSchema("anthropic")).toBe(AI_TURN_OUTPUT_SCHEMA);
   });
 
-  it("OpenAI가 null로 채운 '없음'은 지운 뒤 확인하면 같은 출력, 다른 회사의 null은 그대로(그래서 어긋남)", () => {
+  it("Anthropic의 구조화 출력은 선택 필드 24개·유니언 16개 한도를 지키고 같은 필드를 보낸다", () => {
+    let optional = 0;
+    let unions = 0;
+    const walk = (wire: Json, contractNode: Json) => {
+      if (Array.isArray(wire.anyOf)) {
+        unions += 1;
+        expect(wire.anyOf[1]).toEqual({ type: "null" });
+        walk(wire.anyOf[0] as Json, contractNode);
+        return;
+      }
+      expect(wire.type).toBe(contractNode.type);
+      if (wire.type !== "object") return;
+      const props = wire.properties as Record<string, Json>;
+      const originalProps = contractNode.properties as Record<string, Json>;
+      const required = (wire.required ?? []) as string[];
+      expect(Object.keys(props)).toEqual(Object.keys(originalProps));
+      expect(wire.additionalProperties).toBe(false);
+      expect(required).toEqual(expect.arrayContaining((contractNode.required ?? []) as string[]));
+      optional += Object.keys(props).length - required.length;
+      for (const [name, prop] of Object.entries(props)) walk(prop, originalProps[name] as Json);
+    };
+    walk(providerOutputSchema("anthropic"), AI_TURN_OUTPUT_SCHEMA);
+    expect(optional).toBeLessThanOrEqual(24);
+    expect(unions).toBeLessThanOrEqual(16);
+  });
+
+  it("Anthropic이 채운 빈 문자열과 null을 지우고, 계약에서 허용한 빈 값과 실제 수정 내용은 남긴다", () => {
+    const output = {
+      reply: "",
+      draft_patch: { size: "1호", flavor: "", pickup_day: null, pickup_time: "", lettering: "" },
+      quote_request: { size: "", pickup_day: null },
+      handoff: { reason: "customer_request", requested_day: null },
+      issue_patch: { order_no: "", health_concern: false, photo_positions: [] },
+      card: { kind: "change_request", order_no: "A1B2C3", changes: { design: "", pickupAt: null } },
+    };
+    const cleaned = normalizeProviderOutput("anthropic", output);
+    expect(cleaned).toEqual({
+      reply: "",
+      draft_patch: { size: "1호", lettering: "" },
+      handoff: { reason: "customer_request" },
+      issue_patch: { health_concern: false, photo_positions: [] },
+      card: { kind: "change_request", order_no: "A1B2C3" },
+    });
+    expect(checkTurnOutput(cleaned).ok).toBe(true);
+    expect(
+      checkTurnOutput(normalizeProviderOutput("anthropic", { reply: "", issue_patch: { photo_positions: [0] } })).ok,
+    ).toBe(false);
+    expect(
+      checkTurnOutput(normalizeProviderOutput("anthropic", { reply: "", draft_patch: { lettering: null } })).ok,
+    ).toBe(false);
+  });
+
+  it("OpenAI가 null로 채운 '없음'은 지운 뒤 확인하면 같은 출력", () => {
     const filled = {
       reply: VALID.reply,
       draft_patch: { size: "1호", flavor: null, extras: ["초"], pickup_day: null },
@@ -124,10 +179,8 @@ describe("AiTurnOutput(06 DEC-17)", () => {
       refund_account_patch: null,
       card: null,
     };
-    const cleaned = withoutNulls("openai", filled);
+    const cleaned = normalizeProviderOutput("openai", filled);
     expect(cleaned).toEqual({ reply: VALID.reply, draft_patch: { size: "1호", extras: ["초"] } });
     expect(checkTurnOutput(cleaned).ok).toBe(true);
-    expect(withoutNulls("anthropic", filled)).toBe(filled);
-    expect(checkTurnOutput(withoutNulls("anthropic", filled)).ok).toBe(false);
   });
 });

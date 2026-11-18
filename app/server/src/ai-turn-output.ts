@@ -3,8 +3,7 @@
  *
  * - AI_TURN_OUTPUT_SCHEMA는 06 계약의 AiTurnOutput을 손으로 옮긴 것이다. card.changes는 06의 ChangeSet을 그 자리에 풀어 넣었다.
  *   설명(description)·예시·x-corthex 표시만 빼고 06과 같은지 시험(test/ai-turn-output.test.ts)이 본다. 06이 바뀌면 시험이 실패한다.
- * - 회사마다 받는 방법은 다르다. Anthropic은 계약 스키마를 그대로 주고(LangChain이 공식 SDK의 변환으로 보냄),
- *   OpenAI는 strict 구조화 출력의 규칙(모든 필드가 required, 없을 수 있는 필드는 null, 지원하지 않는 낱말 뺌)에 맞춘 꼴을 준다.
+ * - 회사마다 구조화 출력의 제약에 맞춘 스키마를 보낸다. Anthropic은 선택 필드 수를 줄이고, OpenAI는 모든 필드를 필수로 둔다.
  * - 받은 뒤에는 회사와 상관없이 같은 계약 스키마로 서버가 다시 확인한다(Workers에서 eval 없이 도는 @cfworker/json-schema).
  *   맞지 않으면 AI-1의 `schema_invalid`(ai_calls.fallback_reason).
  */
@@ -194,22 +193,75 @@ function openaiStrict(schema: Json): Json {
 
 const OPENAI_SCHEMA = openaiStrict(AI_TURN_OUTPUT_SCHEMA);
 
-/** 회사에 보낼 출력 스키마. 받은 뒤의 확인은 언제나 계약 스키마(checkTurnOutput)다. */
-export function providerOutputSchema(provider: AiProvider): Json {
-  return provider === "openai" ? OPENAI_SCHEMA : AI_TURN_OUTPUT_SCHEMA;
+/** Anthropic은 선택 필드 24개·유니언 16개까지 받는다. 계약에서 비어 있으면 틀리는 문자열은 빈 문자열을 '없음'으로 쓴다. */
+function anthropicAbsence(field: Json): "" | null | undefined {
+  if (typeof field.format === "string") return null;
+  if (typeof field.minLength === "number" && field.minLength > 0) return "";
+  return undefined;
 }
 
-/** OpenAI가 '없음'으로 채운 null을 지운다(객체 안 필드만, 배열의 값은 그대로). 다른 회사의 출력은 그대로. */
-export function withoutNulls(provider: AiProvider, value: unknown): unknown {
-  if (provider !== "openai") return value;
-  const strip = (v: unknown): unknown => {
-    if (Array.isArray(v)) return v.map(strip);
-    if (typeof v !== "object" || v === null) return v;
-    const out: Record<string, unknown> = {};
-    for (const [k, inner] of Object.entries(v)) {
-      if (inner !== null) out[k] = strip(inner);
+function anthropicSchema(schema: Json): Json {
+  if (schema.type !== "object") return schema;
+  const required = [...((schema.required ?? []) as string[])];
+  const properties: Record<string, Json> = {};
+  for (const [name, field] of Object.entries(schema.properties as Record<string, Json>)) {
+    const absence = required.includes(name) ? undefined : anthropicAbsence(field);
+    if (absence === undefined) {
+      properties[name] = anthropicSchema(field);
+      continue;
     }
-    return out;
-  };
-  return strip(value);
+    required.push(name);
+    properties[name] =
+      absence === null
+        ? { anyOf: [field, { type: "null" }], description: "Return null when this field is absent." }
+        : {
+            ...field,
+            description: "Return an empty string when absent. The constraints below apply to nonempty values.",
+          };
+  }
+  return { ...schema, properties, required };
+}
+
+const ANTHROPIC_SCHEMA = anthropicSchema(AI_TURN_OUTPUT_SCHEMA);
+
+/** 회사에 보낼 출력 스키마. 받은 뒤의 확인은 언제나 계약 스키마(checkTurnOutput)다. */
+export function providerOutputSchema(provider: AiProvider): Json {
+  return provider === "openai" ? OPENAI_SCHEMA : ANTHROPIC_SCHEMA;
+}
+
+function stripOpenaiNulls(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripOpenaiNulls);
+  if (typeof value !== "object" || value === null) return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, entry]) => entry !== null)
+      .map(([name, entry]) => [name, stripOpenaiNulls(entry)]),
+  );
+}
+
+function stripAnthropicPlaceholders(schema: Json, value: unknown): unknown {
+  if (schema.type !== "object" || typeof value !== "object" || value === null || Array.isArray(value)) return value;
+  const properties = schema.properties as Record<string, Json>;
+  const required = (schema.required ?? []) as string[];
+  const normalized: [string, unknown][] = [];
+  const entries = Object.entries(value);
+  for (const [name, entry] of entries) {
+    if (!Object.hasOwn(properties, name)) {
+      normalized.push([name, entry]);
+      continue;
+    }
+    const field = properties[name] as Json;
+    const absence = required.includes(name) ? undefined : anthropicAbsence(field);
+    if (absence !== undefined && entry === absence) continue;
+    const clean = stripAnthropicPlaceholders(field, entry);
+    if (clean !== undefined) normalized.push([name, clean]);
+  }
+  // 자리표만 있던 선택 수정 항목은 생략한다. 실제 빈 객체와 틀린 값은 계약 검사에서 거른다.
+  if (schema.minProperties === 1 && normalized.length === 0 && entries.length > 0) return undefined;
+  return Object.fromEntries(normalized);
+}
+
+/** 회사 스키마에서 '없음'을 나타내는 값을 없앤 후 계약 스키마로 검증한다. */
+export function normalizeProviderOutput(provider: AiProvider, value: unknown): unknown {
+  return provider === "openai" ? stripOpenaiNulls(value) : stripAnthropicPlaceholders(AI_TURN_OUTPUT_SCHEMA, value);
 }
