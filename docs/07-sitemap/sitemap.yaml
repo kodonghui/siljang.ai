@@ -534,7 +534,7 @@
   terms: [CTX-007, TERM-074]
   specs: [SPEC-001]
   apis: [API-004]
-  note: "이메일·비밀번호·2단계 인증. 인증 서비스는 개발 전에 고름(OPEN-6)"
+  note: "이메일·비밀번호·2단계 인증. Supabase Auth의 TOTP 2단계 인증(06단계 DEC-27)"
   children:
     - id: SCR-047
       name: 영업 신고 확인 목록

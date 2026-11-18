@@ -1,6 +1,6 @@
 /**
  * 오류 응답(06 계약의 Problem: RFC 9457에 code·traceId를 더함, application/problem+json). TASK-018.
- * - 오류 코드 37개(ERRORS)와 필드 오류 사유 24개(FIELD_REASONS)는 api/openapi.yaml의
+ * - 오류 코드 38개(ERRORS)와 필드 오류 사유 24개(FIELD_REASONS)는 api/openapi.yaml의
  *   components.x-corthex.errors·fieldErrors를 옮긴 것이다. test/contract.test.ts가 계약과 같은지
  *   (빠짐·더함 없이 코드·상태·말이 같은지) 보고, 코드마다 응답 본문을 계약의 Problem 스키마로 검사한다.
  * - 업무 코드는 ApiError를 던지고, app.ts의 onError가 이 모듈로 응답을 만든다.
@@ -52,6 +52,7 @@ export const ERRORS = {
   kakao_unavailable: { status: 503, title: "카카오에 연결하지 못했어요. 잠시 뒤 다시 해 주세요" },
   google_unavailable: { status: 503, title: "구글에 연결하지 못했어요. 잠시 뒤 다시 해 주세요" },
   storage_unavailable: { status: 503, title: "사진을 저장하지 못했어요. 다시 올려 주세요" },
+  auth_unavailable: { status: 503, title: "로그인 서비스에 연결하지 못했어요. 잠시 뒤 다시 해 주세요" },
 } as const satisfies Record<string, { readonly status: number; readonly title: string }>;
 
 export type ErrorCode = keyof typeof ERRORS;

@@ -744,6 +744,25 @@ SELECT pg_temp.expect_fail('REQ-141 국외 이전 항목 빈 처리방침', 'pri
   INSERT INTO privacy_policies (shop_id, version, body, overseas_transfers) VALUES ('a2000000-0000-0000-0000-000000000001', 2, '글', '[]')$$]);
 SELECT pg_temp.expect_fail('R2 대소문자만 다른 운영자 이메일', 'operators_email_uq', ARRAY[$$
   INSERT INTO operators (email, display_name) VALUES ('OPS@example.com', '다른 운영자')$$]);
+SELECT pg_temp.expect_ok('DEC-26 운영자 세션은 로그인한 때부터 12시간', ARRAY[$$
+  INSERT INTO operator_sessions (operator_id, token_hash, created_at, expires_at)
+  VALUES ('a1000000-0000-0000-0000-000000000001', repeat('a', 64), '2026-11-18 10:00+09', '2026-11-18 22:00+09')$$]);
+SELECT pg_temp.expect_fail('DEC-26 운영자 세션을 12시간 넘게 늘림', 'operator_sessions_fixed_chk', ARRAY[$$
+  INSERT INTO operator_sessions (operator_id, token_hash, created_at, expires_at)
+  VALUES ('a1000000-0000-0000-0000-000000000001', repeat('b', 64), '2026-11-18 10:00+09', '2026-11-19 10:00+09')$$]);
+SELECT pg_temp.expect_fail('REQ-135 운영자 세션에 쿠키 값을 그대로 둠', 'operator_sessions_token_hash_check', ARRAY[$$
+  INSERT INTO operator_sessions (operator_id, token_hash, created_at, expires_at)
+  VALUES ('a1000000-0000-0000-0000-000000000001', 'example-session-not-real', '2026-11-18 10:00+09', '2026-11-18 22:00+09')$$]);
+SELECT pg_temp.expect_fail('운영자 세션 쿠키 하나에 세션 둘', 'operator_sessions_token_uq', ARRAY[$$
+  INSERT INTO operator_sessions (operator_id, token_hash, created_at, expires_at)
+  VALUES ('a1000000-0000-0000-0000-000000000001', repeat('c', 64), '2026-11-18 10:00+09', '2026-11-18 22:00+09')$$, $$
+  INSERT INTO operator_sessions (operator_id, token_hash, created_at, expires_at)
+  VALUES ('a1000000-0000-0000-0000-000000000001', repeat('c', 64), '2026-11-18 11:00+09', '2026-11-18 23:00+09')$$]);
+SELECT pg_temp.expect_fail('운영자 세션을 로그인 전에 끝냄', 'operator_sessions_ended_chk', ARRAY[$$
+  INSERT INTO operator_sessions (operator_id, token_hash, created_at, expires_at, ended_at)
+  VALUES ('a1000000-0000-0000-0000-000000000001', repeat('d', 64), '2026-11-18 10:00+09', '2026-11-18 22:00+09', '2026-11-18 09:00+09')$$]);
+SELECT pg_temp.expect_fail('운영자 로그인 실패에 이메일 글을 그대로 둠', 'operator_login_failures_email_hash_check', ARRAY[$$
+  INSERT INTO operator_login_failures (email_hash, attempted_at) VALUES ('ops@example.com', now())$$]);
 
 -- 가게 규칙 (CTX-002)
 SELECT pg_temp.expect_fail('SPEC-004 가게마다 지금 가격표 둘', 'price_lists_one_current', ARRAY[$$

@@ -2,9 +2,20 @@ import { type Context, Hono } from "hono";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FILE_ROUTE, serveFile } from "./file-url";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
+import { AuthUnavailableError } from "./operator-auth";
+import { createOperatorSession, deleteOperatorSession, getOperatorMe, resolveOperatorSession } from "./operator-login";
 import { ApiError, problemResponse } from "./problem";
 import type { RateLimitBinding } from "./rate-limit";
-import { mountRoutes, type OwnerResolver, openRoute, ownerRoute, type RouteDecl, type ScopeResolvers } from "./routes";
+import {
+  mountRoutes,
+  type OperatorResolver,
+  type OwnerResolver,
+  openRoute,
+  operatorRoute,
+  ownerRoute,
+  type RouteDecl,
+  type ScopeResolvers,
+} from "./routes";
 import { createServices, type ServiceOverrides, type Services } from "./services";
 import { readSettings, type Settings } from "./settings";
 import { StorageUnavailableError } from "./storage";
@@ -27,6 +38,9 @@ export type Bindings = {
   /** 계좌번호·원래 값 암호화(TASK-025, settings.ts의 FieldKeySettings): 지금 버전과 버전마다의 키. */
   readonly FIELD_KEY_CURRENT?: string;
   readonly [fieldKey: `FIELD_KEY_V${number}`]: string | undefined;
+  /** 운영자 인증 서비스(TASK-021, settings.ts의 OperatorAuthSettings): Supabase 프로젝트 주소와 publishable 키. */
+  readonly SUPABASE_URL?: string;
+  readonly SUPABASE_PUBLISHABLE_KEY?: string;
   /** 사진 올리기의 1분 30번(wrangler.jsonc의 ratelimits, rate-limit.ts의 UPLOAD_RATE). */
   readonly UPLOAD_RATE_LIMITER?: RateLimitBinding;
 };
@@ -56,6 +70,8 @@ export interface AppOptions {
   readonly scopes?: Partial<ScopeResolvers>;
   /** 사장님 범위 해석기. 없으면 사장님 범위 경로는 닫혀 있다(401, routes.ts). 사장님 세션은 TASK-020부터. */
   readonly ownerAccount?: OwnerResolver;
+  /** 운영자 범위 해석기. 기본은 운영자 세션(operator-login.ts의 resolveOperatorSession, TASK-021). 시험만 바꾼다. */
+  readonly operatorAccount?: OperatorResolver;
   /** 바깥 서비스를 바꾼다(시험만: 메모리 저장소·메모리 한도·정한 시각). */
   readonly services?: ServiceOverrides;
 }
@@ -69,6 +85,20 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   openRoute("GET", "/healthz", "기반 시설 확인 주소(06 계약 밖, TASK-016 감시). 데이터베이스를 보지 않음", (c) =>
     c.json({ status: "ok" }, 200, { "cache-control": "no-store" }),
   ),
+  // 06 API-004·005·006 운영자 로그인·로그인한 운영자·로그아웃(TASK-021, operator-login.ts).
+  openRoute(
+    "POST",
+    "/operator/session",
+    "운영자 로그인(06 API-004): 세션이 생기기 전. 운영자 표·세션 표·로그인 실패 표만 쓰고 가게 테이블은 보지 않음",
+    createOperatorSession,
+  ),
+  openRoute(
+    "DELETE",
+    "/operator/session",
+    "운영자 로그아웃(06 API-006): 세션이 없어도 204. 세션 표만 쓰고 가게 테이블은 보지 않음",
+    deleteOperatorSession,
+  ),
+  operatorRoute("GET", "/operator/me", getOperatorMe),
   // 06 API-007 사진 올리기(TASK-022). 가게가 정해지기 전에도 쓰므로(가게 등록의 신고증) 사장님 범위 경로다.
   ownerRoute("POST", "/owner/uploads", createUpload),
   openRoute(
@@ -113,6 +143,7 @@ function routePattern(path: string): RegExp {
  * 가게별 기록 나누기(TASK-019): 경로는 routes.ts의 선언으로만 붙고, 가게 범위 경로의 처리기는 가게 범위 연결(shop-scope.ts)만 받는다.
  * 사진 올리기(TASK-022): 가게가 정해지기 전에도 여는 사장님 범위 경로(ownerRoute, 해석기 ownerAccount가 없으면 401)와,
  * 요청마다 쓰는 바깥 서비스(services.ts의 시계·저장소·한도·서명 주소. 시험은 options.services로 바꿈)를 둔다.
+ * 운영자 로그인(TASK-021): 운영자 범위 경로(operatorRoute)의 해석기는 운영자 세션(operator-login.ts). 시험은 operatorAccount로 바꿈.
  */
 export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   const sink = options.logSink;
@@ -142,7 +173,13 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   });
 
   // 경로는 모두 선언으로 붙인다(가게 범위 경로는 가게 범위 연결만 받음, TASK-019).
-  mountRoutes(app, options.routes ?? APP_ROUTES, options.scopes, options.ownerAccount);
+  mountRoutes(
+    app,
+    options.routes ?? APP_ROUTES,
+    options.scopes,
+    options.ownerAccount,
+    options.operatorAccount ?? resolveOperatorSession,
+  );
 
   app.notFound((c) => {
     const traceId = c.get("traceId") ?? newTraceId();
@@ -178,6 +215,11 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
         appLog("error", { event: "unhandled_error", traceId, errorName: name, status: 500, code: err.code });
         return problemResponse("internal", traceId, instance);
       }
+    }
+    if (err instanceof AuthUnavailableError) {
+      // 운영자 인증 서비스가 답하지 않음(06 auth_unavailable). 주소·응답 내용은 싣지 않고 이유와 상태 코드만.
+      appLog("error", { event: "api_error", traceId, errorName: err.name, status: 503, code: "auth_unavailable" });
+      return problemResponse("auth_unavailable", traceId, instance);
     }
     if (err instanceof StorageUnavailableError) {
       // 사진 저장소가 답하지 않거나 오류(06 storage_unavailable). 저장 위치·응답 내용은 싣지 않고 이름만.

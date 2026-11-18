@@ -2,6 +2,8 @@
  * 요청마다 쓰는 바깥 서비스(TASK-022): 지금 시각, 사진 저장소, 요청 빈도 한도, 사진 서명 주소.
  * TASK-025: 계좌번호·원래 값 암호화(field-crypto.ts).
  * TASK-026: 모델 호출 모듈(ai-model.ts). 설정(AI_PROVIDER 등)이 없으면 MissingSettingError.
+ * TASK-021: 운영자 인증 서비스(operator-auth.ts). 설정(SUPABASE_URL·SUPABASE_PUBLISHABLE_KEY)이 없으면 MissingSettingError.
+ *   로그인 실패 응답을 늦추는 기다림(wait)도 여기서 받는다(시험은 기다리지 않고 기록만).
  * 업무 코드는 Workers 바인딩과 설정 값을 직접 읽지 않고 이것을 받는다(tech-stack.md 4-3의 1). 시험은 AppOptions.services로
  * 메모리 저장소·메모리 한도·정한 시각을 넣는다.
  * 설정이 빠졌으면 그것을 쓰는 요청만 500 internal(MissingSettingError, 로그에는 이름만).
@@ -10,6 +12,7 @@ import { type AiModel, createAiModel } from "./ai-model";
 import type { Bindings } from "./app";
 import { type FieldCrypto, fieldCrypto } from "./field-crypto";
 import { type FileUrls, fileUrlSigner } from "./file-url";
+import { type OperatorAuth, supabaseAuth } from "./operator-auth";
 import { bindingLimiter, type RateLimiter, type RateLimitRule } from "./rate-limit";
 import { MissingSettingError } from "./request-key";
 import type { Settings } from "./settings";
@@ -27,6 +30,10 @@ export interface Services {
   fieldCrypto(): FieldCrypto;
   /** 배포 설정으로 고른 회사·모델의 호출 모듈. AI_PROVIDER 등이 없으면 MissingSettingError. */
   aiModel(): AiModel;
+  /** 운영자 인증 서비스(Supabase Auth). SUPABASE_URL·SUPABASE_PUBLISHABLE_KEY가 없으면 MissingSettingError. */
+  operatorAuth(): OperatorAuth;
+  /** ms 밀리초 기다린다(운영자 로그인 실패 응답의 최소 시간, operator-login.ts). */
+  wait(ms: number): Promise<void>;
 }
 
 /** 시험이 바꾸는 것. */
@@ -36,6 +43,8 @@ export interface ServiceOverrides {
   readonly limiters?: { readonly [B in RateLimitRule["binding"]]?: RateLimiter };
   readonly fieldCrypto?: FieldCrypto;
   readonly aiModel?: AiModel;
+  readonly operatorAuth?: OperatorAuth;
+  readonly wait?: (ms: number) => Promise<void>;
 }
 
 export function createServices(env: Bindings, settings: Settings, overrides: ServiceOverrides = {}): Services {
@@ -43,6 +52,7 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
   let urls: FileUrls | undefined;
   let fields: FieldCrypto | undefined = overrides.fieldCrypto;
   let ai: AiModel | undefined = overrides.aiModel;
+  let auth: OperatorAuth | undefined = overrides.operatorAuth;
   return {
     now: overrides.now ?? (() => new Date()),
     storage() {
@@ -81,5 +91,14 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
       ai = createAiModel(settings.appEnv, settings.ai, overrides.now ? { now: overrides.now } : {});
       return ai;
     },
+    operatorAuth() {
+      if (auth !== undefined) return auth;
+      if (settings.operatorAuth === null) {
+        throw new MissingSettingError("SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are not set");
+      }
+      auth = supabaseAuth(settings.operatorAuth);
+      return auth;
+    },
+    wait: overrides.wait ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
   };
 }
