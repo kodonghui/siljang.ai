@@ -6,6 +6,13 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 05:40 무렵 KST · TASK-174 PostgreSQL 17 검사 추가
+
+- main `74420fb`에서 CI app 44388043094와 db 44388043109가 성공한 것을 확인했습니다. TASK-170의 Supabase 서울 프로젝트를 기다리는 동안 데이터베이스 검사에 PostgreSQL 17을 추가했습니다.
+- GitHub Actions의 db 작업을 PostgreSQL 16.15와 17.11에서 각각 실행합니다. 두 이미지 모두 다이제스트로 고정했고, 한 버전에서 실패해도 다른 버전의 결과를 확인할 수 있습니다.
+- 두 버전의 새 로컬 PostgreSQL에서 마이그레이션 22개, 규칙 테스트 338개, 05 검사 15개가 모두 통과했습니다. 앱 검사는 기존 PostgreSQL 16.15에서 계속 실행합니다.
+- TASK-174 완료 조건 가운데 Supabase 스테이징 마이그레이션, Data API 끄기, 서버 전용 역할과 `access_logs` 권한 확인은 TASK-170 이후 진행합니다.
+
 ### 2026-11-19 05:10 무렵 KST · 역할 바꿈: Codex가 진짜 환경 확인까지 개발을 끝까지(인계 문서 codex-finish.md)
 
 - 때: main `f447aa1`(PR #79까지). 그 main에서 돈 run 44385189904(app)·44385190071(db) 성공(조정 세션이 GitHub MCP로 읽음).
