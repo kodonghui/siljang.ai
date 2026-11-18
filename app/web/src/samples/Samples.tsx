@@ -17,6 +17,7 @@ import {
 } from "../ui";
 import { useCommand } from "../useCommand";
 import { fakeSend, problemResult, sampleFailure } from "./fake";
+import { LAYOUT_STATES, LayoutSample, type LayoutState } from "./LayoutSamples";
 
 export const SAMPLE_STATES = {
   loading: "불러오는 중",
@@ -37,6 +38,7 @@ export const SAMPLE_STATES = {
   "confirm-notify": "확인 창(손님에게 안내가 감)",
   flow: "흐름: 확인 창 → 새 키로 다시 보냄",
   "flow-retry": "흐름: 서버 실패 → 같은 키로 다시 시도",
+  ...LAYOUT_STATES,
 } as const;
 
 export type SampleState = keyof typeof SAMPLE_STATES;
@@ -224,7 +226,7 @@ function StaticConfirm() {
   );
 }
 
-function Body({ state }: { readonly state: SampleState }) {
+function Body({ state }: { readonly state: Exclude<SampleState, LayoutState> }) {
   switch (state) {
     case "loading":
       return (
@@ -352,7 +354,11 @@ function Body({ state }: { readonly state: SampleState }) {
   }
 }
 
+const isLayoutState = (state: SampleState): state is LayoutState => Object.hasOwn(LAYOUT_STATES, state);
+
 export function Samples({ state }: { readonly state: SampleState }) {
+  // 레이아웃 견본은 화면 하나를 통째로 그림(견본 레이아웃 없이)
+  if (isLayoutState(state)) return <LayoutSample state={state} />;
   return (
     <Frame state={state}>
       <Body state={state} />
