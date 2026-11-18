@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 06:12 무렵 KST · TASK-183 WebP 코덱 후보 검사
+
+- Node 22.23.4에서 `@jsquash/webp` 1.5.0으로 알파 127과 255가 함께 든 합성 정적 WebP를 디코딩하고 90° 회전한 뒤 무손실 WebP로 인코딩했습니다. 다시 디코딩한 RGBA가 원래 회전 결과와 같았습니다.
+- 인코딩까지의 최대 프로세스 메모리를 `process.resourceUsage()`의 `maxRSS`로 측정한 값은 2,048×1,536에서 208MiB, 4,000×3,000에서 586MiB였습니다. 시작 메모리는 47MiB였고 각 입력은 1,272바이트·4,278바이트였습니다. 두 프레임 합성 애니메이션은 디코딩 오류가 났습니다.
+- Workers 메모리 한도는 128MB입니다. 이 후보 채택을 보류하고 TASK-183은 진행 중으로 둡니다. Workers의 CPU·메모리, 투명도·애니메이션과 두 수신 경로 검증이 남았습니다. [Workers 한도](https://developers.cloudflare.com/workers/platform/limits/)
+
 ### 2026-11-19 06:08 무렵 KST · TASK-016 스테이징 방문자 IP 검증
 
 - OVH에서 보낸 정상 HTTPS 요청의 `CF-Connecting-IP`가 Cloudflare의 출처 확인 값과 같았습니다. 같은 헤더를 직접 넣은 요청은 403을 받았고 Wrangler tail에 기록이 없었습니다. 정상 요청은 200이었습니다.
