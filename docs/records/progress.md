@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 05:54 무렵 KST · TASK-008 카카오 시험 서버 배포
+
+- CORTHEX의 카카오 시험용 하위 도메인에 시험 Worker를 올렸습니다. Wrangler로 KV 이름공간과 큐를 만들고, 상태 주소의 200과 키 없는 스킬 요청의 401을 확인했습니다.
+- 합성 K-01은 HTTP 200, 카카오 응답 버전 2.0, 바로가기 10개였습니다. 같은 응답의 기록 키로 KV를 읽어 합성 사용자 ID 원문이 없고 마스킹된 표시가 있는 것을 확인했습니다. 이 결과와 기존 대본으로 TASK-008 완료 조건을 채웠습니다. [실제 환경 기록](hands-on.md#2026-11-19--task-008-카카오-시험-worker)
+- 로컬에서 형 검사와 단위 시험 41개, 종단 간 시험 50개가 통과했습니다. 실채널을 연결할 때 시험 스킬 키를 새로 만들어 Aside Vault와 Worker 비밀 값에 둡니다. 실제 채널·봇·앱 연결과 K-01~K-11은 TASK-007·009에서 진행합니다.
+
 ### 2026-11-19 05:49 무렵 KST · TASK-016 스테이징 주소와 배포 작업
 
 - 동희님이 쓰도록 정한 CORTHEX 도메인의 하위 주소를 `siljang-staging` Worker에 연결했습니다. OVH 두 곳에서 HTTPS `/api/healthz` 200과 `{"status":"ok"}`, 홈·로그인·매니페스트·서비스 워커 200, 세션 없는 `/api/operator/me` 401을 확인했습니다. [스테이징 상태 확인](https://staging.siljang.ai.corthex-hq.com/api/healthz)

@@ -5,7 +5,7 @@
 - 06 API 계약의 열린 질문 8개(OPEN-1·2·3·4·8·9·11·12)를 실제 카카오 요청으로 확인하려고 만든 버리는 서버입니다. 제품 코드가 아니고, TASK-011이 끝나면 지웁니다(6절).
 - 무엇을 보내고 누를지는 대본 [`docs/10-wbs/kakao-test-script.md`](../../docs/10-wbs/kakao-test-script.md)에 있습니다. 대본의 항목 K-01~K-11마다 이 서버가 필요한 답(바로 답, 4.5초·6초 뒤 답, 빈 응답 네 가지, 콜백, 사진 받기, 후기 버튼의 extra, 봇 ID, Event API, 카카오 로그인 PKCE)을 보냅니다.
 - 받은 스킬 요청은 손님 값을 마스킹해 Cloudflare KV에 14일 동안 남깁니다(5절). 기록을 공개로 읽는 경로는 없고, Claude가 wrangler와 API 토큰으로만 읽습니다.
-- 배포는 TASK-170(Cloudflare 계정·API 토큰) 뒤에 Claude가 합니다. TASK-008의 끝난 조건은 '시험 주소에서 돎'이라 배포 전까지 TASK-008은 끝나지 않은 작업입니다.
+- Cloudflare 계정·API 토큰으로 배포합니다. 2026-11-19 시험 주소에서 합성 요청과 마스킹 기록을 확인해 TASK-008의 끝난 조건을 채웠습니다. [실제 환경 확인](../../docs/records/hands-on.md)
 
 ## 2. 폴더
 
@@ -39,7 +39,7 @@ npm run e2e:local
 - 로컬 시험은 포트 8791(wrangler dev)과 8792(가짜 카카오 서버)가 비어 있어야 합니다. 이미 무언가 답하면 옛 서버에 붙지 않도록 바로 멈춥니다. 끝나면 wrangler dev의 자식 프로세스(workerd)까지 멈춥니다.
 - 2026-11-15 결과(Node 22.23.4, wrangler 4.156.0, TypeScript 5.9.3): 형 검사 오류 0, 단위 시험 41개 통과, 로컬 시험 50개 통과(1분 40초). npm 레지스트리에서 받는 데 막힘은 없었습니다. 로컬 시험에서 큐의 27초 지연 보내기와 waitUntil 2초 콜백이 가짜 카카오 서버에 닿았고, 허용 호스트 밖의 사진 주소와 밖으로 가는 리다이렉트는 받지 않고 건너뛰었으며, 표가 없거나 틀리거나 지난 로그인 시험은 403, 서버가 만들지 않은 state는 기록 없이 400이었고, 기록 30건에 견본의 가짜 손님 값·시험 키가 그대로 남지 않았습니다.
 
-## 4. 배포(TASK-170 뒤, Claude)
+## 4. 배포
 
 1. 환경 변수(반복 0 안내서 3절): `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KAKAO_TEST_SKILL_KEY`. 하위 도메인 배포에는 `KAKAO_TEST_DOMAIN`에 스킴·경로를 뺀 이름을 넣습니다. 있으면 `KAKAO_TEST_REST_API_KEY`(K-10·K-11), `KAKAO_TEST_CLIENT_SECRET`(K-11)도 넣습니다.
 2. `bash research/kakao-test-2026-11/deploy.sh`
@@ -86,7 +86,7 @@ npx wrangler delete -c wrangler.local.jsonc
 
 ## 7. 확인 못 한 것
 
-- 2026-11-19 Cloudflare에서 HTTPS `/health` 200, 키 없는 `/skill` 401, 합성 K-01 응답의 바로가기 10개, KV 기록에서 가짜 사용자 ID가 가려진 것을 확인했습니다. 실제 카카오 스킬 키의 Aside Vault 보관과 봇 연결이 남았습니다. 큐의 지연 보내기(`delaySeconds`), waitUntil로 25초까지 기다린 콜백, 사진 주소 받기는 로컬에서 확인했습니다.
+- 2026-11-19 Cloudflare에서 HTTPS `/health` 200, 키 없는 `/skill` 401, 합성 K-01 응답의 바로가기 10개, KV 기록의 가짜 사용자 ID 마스킹을 확인했습니다. 실제 카카오 스킬 키의 Aside Vault 보관과 봇 연결이 남았습니다. 큐의 지연 보내기(`delaySeconds`), waitUntil로 25초까지 기다린 콜백, 사진 주소 받기는 로컬에서 확인했습니다.
 - 새 계정의 workers.dev 하위 도메인, Queues 토큰 권한의 이름(4절).
 - 보통 사진 메시지의 주소가 어느 호스트로 오는지(5절의 목록은 카카오 쪽 도메인으로 잡은 Claude 판단입니다).
 - 카카오 쪽의 확인 못 한 것은 대본 5절에 있습니다.

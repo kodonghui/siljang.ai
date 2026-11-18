@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# 카카오 시험 서버 배포(TASK-008). TASK-170(Cloudflare 계정·API 토큰) 뒤에 Claude가 돌린다.
-# 만드는 것(처음 한 번): KV 이름공간 siljang-kakao-test-records, 큐 siljang-kakao-test-callbacks, Worker siljang-kakao-test(workers.dev 주소)
+# 카카오 시험 서버 배포(TASK-008). Cloudflare 계정과 API 토큰이 필요하다.
+# KV siljang-kakao-test-records, 큐 siljang-kakao-test-callbacks, Worker siljang-kakao-test를 만든다.
 # 남기는 파일: worker/wrangler.local.jsonc(KV ID가 든 설정, .gitignore로 저장소에 넣지 않음)
 # 시험 주소·계정 ID·KV ID는 화면에만 나오고 저장소·기록에는 적지 않는다.
 # 필요한 환경 변수(반복 0 안내서 3절): CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, KAKAO_TEST_SKILL_KEY
 #   있으면 더 넣음: KAKAO_TEST_DOMAIN(하위 도메인), KAKAO_TEST_REST_API_KEY(K-10·K-11), KAKAO_TEST_CLIENT_SECRET(K-11)
 # 지우는 법: README.md 6절
 set -euo pipefail
+umask 077
 here=$(cd "$(dirname "$0")" && pwd)
 cd "$here/worker"
 mkdir -p "$here/local"
@@ -75,8 +76,11 @@ fi
 if [ -n "$url" ]; then
   health=$(curl --max-time 10 --retry 4 --retry-all-errors -fsS "$url/health")
   nokey=$(curl --max-time 10 -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "$url/skill")
-  printf '확인: /health 성공 %s, 키 없는 /skill HTTP %s\n' "$([ "$health" = ok ] && echo yes || echo no)" "$nokey"
-  [ "$health" = ok ] && [ "$nokey" = 401 ] || exit 1
+  if [ "$health" != ok ] || [ "$nokey" != 401 ]; then
+    printf '배포 확인 실패. 키 없는 /skill HTTP %s\n' "$nokey" >&2
+    exit 1
+  fi
+  echo '배포 확인 성공. /health 200과 키 없는 /skill 401.'
   echo "시험 주소(저장소·기록에 적지 않음): $url"
   echo "  스킬 URL·Test URL: $url/skill, 헤더 이름: Siljang-Skill-Key"
   echo "  카카오 로그인 리다이렉트 URI: $url/login/callback"
