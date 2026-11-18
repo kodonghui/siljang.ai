@@ -445,7 +445,7 @@ paths:
       operationId: createOperatorSession
       summary: 운영자 로그인(이메일·비밀번호·2단계 인증)
       description: |-
-        운영자 계정으로만 운영자 화면에 들어온다(R2). 맞지 않는 것이 어느 필드인지 알리지 않는다. 15분에 5번 실패하면 429(DEC-16). 세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_operator`. 비밀번호는 인증 서비스로만 보내고 어디에도 남기지 않음(REQ-135). Open: 운영자 인증 서비스는 개발 전에 고름. 고른 서비스가 자기 로그인 화면을 쓰면 이 API를 그 플로우로 바꾸고, 그 서비스가 답하지 않을 때의 503을 더함(OPEN-6). 세션은 로그인한 때부터 12시간이 지나면 끝나고 쓴다고 늘지 않는다(DEC-26).
+        운영자 계정으로만 운영자 화면에 들어온다(R2). 맞지 않는 것이 어느 필드인지 알리지 않는다. 15분에 5번 실패하면 429(DEC-16). 세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_operator`. 비밀번호는 인증 서비스로만 보내고 어디에도 남기지 않음(REQ-135). 서버가 Supabase Auth에 이메일·비밀번호 로그인과 TOTP 2단계 인증을 하고, 운영자 표에 막히지 않고 2단계 인증을 켠 운영자일 때만 세션을 줌(DEC-27). Origin 헤더가 우리 화면 주소가 아니면 인증 서비스에 묻지 않고 401. Supabase가 답하지 않으면 503 `auth_unavailable`(비밀번호 단계부터 답이 없었으면 실패로 세지 않음). 세션은 로그인한 때부터 12시간이 지나면 끝나고 쓴다고 늘지 않는다(DEC-26).
 
         SPEC: SPEC-001
       tags:
@@ -547,6 +547,25 @@ paths:
                     code: too_many_attempts
                     traceId: 85b3c6d75369fb8670a94b522698cbf9
                     retryAfterSeconds: 30
+        "503":
+          description: |-
+            외부 서비스가 답하지 않아 아무것도 바꾸지 않음
+
+            - `auth_unavailable`: 운영자 인증 서비스(Supabase Auth)가 답하지 않음(DEC-27)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                auth_unavailable:
+                  value:
+                    type: /problems/auth_unavailable
+                    title: 로그인 서비스에 연결하지 못했어요. 잠시 뒤 다시 해 주세요
+                    status: 503
+                    detail: 운영자 인증 서비스(Supabase Auth)가 답하지 않음(DEC-27)
+                    instance: /operator/session
+                    code: auth_unavailable
+                    traceId: 23104f814db78f213df71569bb2c1d77
         default:
           description: 예상하지 못한 서버 오류(500). 내용은 로그에만
           content:
@@ -578,6 +597,8 @@ paths:
           - 422:validation_failed
           한도:
           - 429:too_many_attempts
+          외부:
+          - 503:auth_unavailable
           노출:
           - closed
           화면:
@@ -24612,6 +24633,7 @@ components:
           - kakao_unavailable
           - google_unavailable
           - storage_unavailable
+          - auth_unavailable
         traceId:
           type: string
           minLength: 32
@@ -24876,7 +24898,7 @@ components:
           type: string
           minLength: 1
           maxLength: 256
-          description: 운영자 비밀번호. 인증 서비스로만 보내고 어디에도 남기지 않음(REQ-135, OPEN-6)
+          description: 운영자 비밀번호. 인증 서비스(Supabase Auth)로만 보내고 어디에도 남기지 않음(REQ-135, DEC-27)
         otp:
           type: string
           minLength: 6
@@ -33739,6 +33761,14 @@ components:
         - API-007
         - API-008
         - API-080
+      auth_unavailable:
+        status: 503
+        meaning: 운영자 인증 서비스(Supabase Auth)가 답하지 않음(DEC-27)
+        message: 로그인 서비스에 연결하지 못했어요. 잠시 뒤 다시 해 주세요
+        client: 다시 시도 버튼
+        spec: SPEC-001
+        operations:
+        - API-004
     fieldErrors:
       required: 꼭 넣어야 함
       too_short: 글자 수나 개수가 모자람
@@ -34295,6 +34325,12 @@ components:
       why: 사장님은 휴대폰 카카오톡의 알림 링크로 자주 들어오므로 쓸 때마다 늘려 다시 로그인하는 일을 줄이고, 30일 동안 쓰지 않으면 끝낸다. 운영자는 여러 가게의 손님 개인정보와 원래 값(API-074~077)을 보므로 쓰더라도 하루 안에 끊는다. 06단계 OPEN-5가 첫 값으로 제안한 길이
       alt: '사장님도 로그인한 때부터 정한 날수에 끝냄: 할 일 알림 링크를 열 때 다시 로그인하는 일이 잦아짐. 운영자도 쓰면 늘어남: 켜 둔 운영자 화면이 날을 넘겨 열려 있게 됨'
       decided: 확정(2026-11-15 17시 무렵 동희님 결정 카드 '제안대로 (추천)', 06단계 OPEN-5를 닫음)
+    - id: DEC-27
+      title: 운영자 인증은 Supabase Auth(이메일·비밀번호와 TOTP 2단계 인증)
+      choice: 운영자 로그인(API-004)은 서버가 한 요청 안에서 Supabase Auth에 이메일·비밀번호 로그인과 TOTP 2단계 인증(challenge·verify, aal2)을 하고, 모두 맞고 운영자 표(05단계 operators)에 막히지 않고 2단계 인증을 켠 운영자로 있을 때만 우리 세션 쿠키 `siljang_operator`를 줌. Supabase가 준 토큰은 우리 세션에 쓰지 않고 확인한 뒤 끝냄. 세션은 05단계 operator_sessions(TBL-059)에 쿠키 값의 SHA-256만 두고 로그아웃(API-006)·계정 막기로 끝냄. 로그인 실패는 05단계 operator_login_failures(TBL-060)에 이메일의 HMAC으로 세어 15분에 5번(DEC-16). Origin 헤더가 우리 화면 주소가 아니면 인증 서비스에 묻지 않고 401 `operator_login_failed`(DEC-10의 M18과 같은 이유). Supabase가 답하지 않으면(연결 실패·시간 초과·5xx·429) 503 `auth_unavailable`이고, 비밀번호 단계부터 답이 없었으면 실패로 세지 않음. 가입은 Supabase 대시보드에서 막고, 운영자 사용자는 대시보드에서 만들며 TOTP 등록과 운영자 표 맞추기는 등록 도구(11단계 app/server의 `operator:enroll`)로 함
+      why: 운영자는 몇 명뿐이고 비밀번호·2단계 인증 키를 우리 데이터베이스에 두지 않음(REQ-135). Supabase Auth는 이메일·비밀번호와 TOTP를 HTTP API로 주어 서버가 부를 수 있고 우리 로그인 화면(SCR-046)을 그대로 씀(Supabase 문서 'Multi-Factor Authentication (TOTP)'·'Understanding API keys'와 Auth OpenAPI, 2026-11-18 확인). 세션을 우리 표에 두면 로그아웃·계정 막기 때 서버가 바로 끊음(OWASP Session Management Cheat Sheet, 2026-11-18 확인)
+      alt: 'Cloudflare Access: 반복 0 안내서 4-3의 반론이었고 고르지 않음. Supabase 토큰을 세션으로 씀: 12시간 고정(DEC-26)을 토큰 갱신과 따로 지켜야 하고 로그아웃·막기를 Supabase에 맡김. 서명한 쿠키만 씀(표 없음): 로그아웃한 쿠키도 12시간까지 쓰임'
+      decided: 확정(2026-11-16 17:01 무렵 동희님 Claude Code 채팅 답 '추천 모두 승인', 10단계 TASK-003, 06단계 OPEN-6을 닫음)
     open:
     - id: OPEN-1
       where: API-070
@@ -34308,9 +34344,6 @@ components:
     - id: OPEN-4
       where: API-070
       text: 빈 응답(답을 보내지 않기)이 되는지 문서에 없음. 될 때까지 같은 메시지 반복과 한도 넘은 메시지에는 정해진 짧은 말을 다시 보냄
-    - id: OPEN-6
-      where: API-004
-      text: 운영자 인증 서비스(비밀번호·2단계 인증 키를 맡길 곳)는 개발 전에 고름. 고른 서비스가 자기 로그인 화면을 쓰면 이 API를 그 플로우로 바꿈(운영자 화면만 씀)
     - id: OPEN-8
       where: API-031
       text: 사장님이 오픈빌더 봇 ID를 찾는 곳(봇 설정 화면이나 주소)을 07·08단계 연결 안내에서 정함. 봇 ID 형식은 첫 연결 문구 메시지에서 확인

@@ -75,9 +75,9 @@ const BANNED = [
   "판매자",
 ];
 
-describe("06 오류 코드 37개", () => {
+describe("06 오류 코드 38개", () => {
   it("표의 코드가 06 errors·Problem.code enum과 같다", () => {
-    expect(codes).toHaveLength(37);
+    expect(codes).toHaveLength(38);
     expect(sorted(codes)).toEqual(sorted(Object.keys(x.errors)));
     expect(sorted(codes)).toEqual(sorted(prop("Problem", "code").enum as string[]));
   });

@@ -1,5 +1,5 @@
 // 06 계약(api/openapi.yaml)의 오류 꼴과 04 G7의 결과를 화면이 한 곳에서 읽는 표.
-// - 오류 코드 37개(components.x-corthex.errors): 상태 코드·화면에 보이는 말(06)·G7 결과·08 화면 상태·다시 보내는 법.
+// - 오류 코드 38개(components.x-corthex.errors): 상태 코드·화면에 보이는 말(06)·G7 결과·08 화면 상태·다시 보내는 법.
 // - 필드 오류 사유 24개(components.x-corthex.fieldErrors): 필드 옆에 보이는 한국어 글(화면이 더 맞는 글을 주면 그것).
 // - 확인할 것 8개(components.x-corthex.confirmations): 확인 창의 글(06 6절 = 08 README 5절).
 // 손으로 적었고, problems.test.ts가 06(코드·상태·말)과 08 화면 정의(화면 상태)와 견준다. 06에 코드가 늘면 시험이 실패한다.
@@ -274,6 +274,14 @@ export const ERROR_CODES = {
     state: "error",
     retry: "none",
     message: "사진을 저장하지 못했어요. 다시 올려 주세요",
+  },
+  // 운영자 로그인(API-004)에서 인증 서비스가 답하지 않음(06 DEC-27, TASK-021). 다시 시도 버튼(로그인은 요청 키를 쓰지 않음).
+  auth_unavailable: {
+    status: 503,
+    outcome: "server",
+    state: "error",
+    retry: "same",
+    message: "로그인 서비스에 연결하지 못했어요. 잠시 뒤 다시 해 주세요",
   },
 } as const satisfies Record<string, CodeInfo>;
 

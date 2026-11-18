@@ -15,6 +15,12 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("운영자 계정", "operators.email"),
         ("운영자 2단계 인증", "operators.mfa_enrolled_at"),
         ("막은 운영자 계정", "operators.disabled_at"),
+        ("운영자 세션(쿠키 값의 해시, 로그인한 때부터 12시간, 06 DEC-26)", "operator_sessions.token_hash"),
+        ("운영자 세션의 운영자", "operator_sessions.operator_id"),
+        ("운영자 세션이 끝나는 시각", "operator_sessions.expires_at"),
+        ("운영자 로그아웃", "operator_sessions.ended_at"),
+        ("운영자 로그인 실패(이메일마다 15분에 5번, 06 DEC-16)", "operator_login_failures.email_hash"),
+        ("운영자 로그인 실패 시각", "operator_login_failures.attempted_at"),
     ],
     "SPEC-002": [
         ("가게 이름", "shops.name"),

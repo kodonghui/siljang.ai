@@ -5,7 +5,7 @@
 ## 1. 한눈에
 
 <!-- BEGIN generated:counts -->
-작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 58개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 10개 · 끝난 작업 15개.
+작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 60개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 9개 · 끝난 작업 15개.
 <!-- END generated:counts -->
 
 - 작업 표는 [`wbs.md`](wbs.md)입니다. 작업마다 출처(SPEC·REQ·OPEN·DEC·규칙), 닿는 것(API·테이블·화면), 앞선 작업, 맡은 이, 크기, 끝난 조건이 있고, 끝에 SPEC·API·화면·테이블·규칙에서 작업을 찾는 부록 A~E가 있습니다.
@@ -26,10 +26,10 @@
 | 02 | `docs/02-prd/requirements.md` | 요구사항 269개(제외 31개), SPEC 행에 없는 유효 요구사항 8개(REQ-139, REQ-145, REQ-147, REQ-148, REQ-149, REQ-267, REQ-268, REQ-269) |
 | 03 | `docs/03-user-flow/FL-*.md` | 플로우 14개(출처 ID) |
 | 04 | `research/cake-spec-2026-11/spec_rows.py`, `docs/04-functional-spec/spec.md` | SPEC 79개, 수락 기준 328개, 공통 규칙 10개 |
-| 05 | `db/schema.sql`, `docs/05-erd/README.md`, `research/cake-erd-2026-11/erd_map.py` | 테이블 58개, 앱 규칙 40개, SPEC마다 닿는 테이블 |
-| 06 | `api/openapi.yaml`, `research/cake-api-2026-11/api_ops.py`·`api_catalog.py` | API 83개(응답 417개), 카카오 스킬 API 넷의 결과 코드 57개, 열린 질문 10개, 결정 사항 26개 |
+| 05 | `db/schema.sql`, `docs/05-erd/README.md`, `research/cake-erd-2026-11/erd_map.py` | 테이블 60개, 앱 규칙 40개, SPEC마다 닿는 테이블 |
+| 06 | `api/openapi.yaml`, `research/cake-api-2026-11/api_ops.py`·`api_catalog.py` | API 83개(응답 418개), 카카오 스킬 API 넷의 결과 코드 57개, 열린 질문 9개, 결정 사항 27개 |
 | 07 | `docs/07-sitemap/sitemap.yaml` | 화면 50개와 화면마다 부르는 API |
-| 08 | `research/cake-screens-2026-11/screens_*.py`, `docs/08-screens/SCR-*.md` | 상태 367개, 응답 행 974개 |
+| 08 | `research/cake-screens-2026-11/screens_*.py`, `docs/08-screens/SCR-*.md` | 상태 367개, 응답 행 975개 |
 | 09 | `research/cake-mockup-2026-11/gen_screens.py` | 그리는 상태 이름 12개(empty·error·confirm-notify·confirm·expired·not-sent·deferred·allergy·orderer·amount-confirm·depositor·photo-consent), 그린 상태 161개 |
 <!-- END generated:inputs -->
 
@@ -97,7 +97,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | TASK-001 | 기술 스택·배포 환경 후보 비교(공식 문서로 확인) | Claude | 1일 | REQ-130, REQ-135, REQ-141, REQ-148, REQ-149 | 없음 | 끝남: 2026-11-15, docs/10-wbs/tech-stack.md(기술 스택 제안)<br/>tech-stack.md에 스택을 정하는 요구사항(ID)과 후보마다 서버·웹·PostgreSQL 운영·서울 리전·자동으로 하는 일·사진 저장·월 비용 범위(공식 가격표)·두 AI 회사 공식 SDK를 공식 문서 주소와 확인 날짜로 적고, 추천과 반론을 둠. 카카오 스킬 응답 시간은 서버가 없어 재지 못해 TASK-171(개발 전 시험)과 TASK-164(부하 시험)로 넘김 |
 | TASK-002 | 기술 스택·배포 환경 고르기 | 동희님 | 0.5일 | REQ-130, REQ-141 | TASK-001 | 끝남: 2026-11-15 18:31 무렵 동희님 결정 카드 '추천안대로 (추천)', docs/records/progress.md<br/>결정 카드에서 고른 답을 말 그대로 docs/records/progress.md에 남김 |
-| TASK-003 | 운영자 인증 서비스 고르기(비밀번호·2단계 인증을 맡길 곳) | 동희님 | 0.5일 | OPEN-6 | TASK-001 | 끝남: 2026-11-16, Supabase Auth의 TOTP 2단계 인증(동희님 Claude Code 채팅 답 17:01 무렵, 결정 카드가 아니라 채팅 답이었고 원문은 docs/records/progress.md의 2026-11-18 결정 반영 단락)<br/>고른 서비스를 결정 카드 답 그대로 기록에 남김 |
+| TASK-003 | 운영자 인증 서비스 고르기(비밀번호·2단계 인증을 맡길 곳) | 동희님 | 0.5일 | DEC-27 | TASK-001 | 끝남: 2026-11-16, Supabase Auth의 TOTP 2단계 인증(동희님 Claude Code 채팅 답 17:01 무렵, 결정 카드가 아니라 채팅 답이었고 원문은 docs/records/progress.md의 2026-11-18 결정 반영 단락)<br/>고른 서비스를 결정 카드 답 그대로 기록에 남김 |
 | TASK-004 | 세션 길이 정하기(사장님 30일·운영자 12시간 제안) | 동희님 | 0.5일 | DEC-26 | 없음 | 끝남: 2026-11-15 17시 무렵 동희님 결정 카드 '제안대로 (추천)', 06 DEC-26<br/>정한 길이를 결정 카드 답 그대로 기록에 남김 |
 | TASK-005 | Anthropic에 보관 안 함(Zero Data Retention) 신청 | 동희님 | 0.5일 | DEC-25, REQ-266 | 없음 | 신청한 날과 회사의 답(허가·거절·기다림)을 기록에 남김. 허가 전에는 처리방침에 30일 보관(04 AI-1) |
 | TASK-006 | OpenAI에 보관 안 함(Zero Data Retention) 신청 | 동희님 | 0.5일 | DEC-25, REQ-266 | 없음 | 신청한 날과 회사의 답(허가·거절·기다림)을 기록에 남김. 허가 전에는 처리방침에 30일 보관(04 AI-1) |
@@ -105,7 +105,7 @@
 | TASK-008 | 카카오 시험 서버와 시험 대본(받은 요청을 그대로 남기는 버리는 서버) | Claude | 1일 | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-12 | 없음 | 시험 대본(보낼 말·누를 버튼·볼 값)이 있고, 받은 스킬 요청 본문을 손님 값은 가린 채 남기는 서버가 시험 주소에서 돎 |
 | TASK-009 | 시험 채널에서 대본대로 보내고 누르기(메시지 ID·콜백·사진·빈 응답·봇 ID·먼저 보내기 권한·후기 extra·PKCE) | 동희님 | 1일 | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-8, OPEN-9, OPEN-11, OPEN-12 | TASK-007, TASK-008 | 대본의 항목마다 해 본 날과 화면 사진이 남고, 시험 서버에 그 요청이 남음 |
 | TASK-010 | 카카오에 스킬 요청의 출처 IP·서명 문의 | 동희님 | 0.5일 | OPEN-10 | 없음 | 문의한 날과 받은 답(없으면 '답 기다림')을 기록에 남김 |
-| TASK-011 | 시험 결과로 04·05·06의 확인 전 가정 고치기와 열린 질문 닫기 | Claude | 2일 | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-6, OPEN-8, OPEN-9, OPEN-10, OPEN-11, OPEN-12 | TASK-009, TASK-010, TASK-003, TASK-004 | 가정마다 시험 결과를 적고, 맞지 않은 것은 SPEC·스키마·계약을 고치는 PR이 단계 검사를 모두 지나 합쳐짐. 06 열린 질문 표에서 답을 얻은 것을 닫음 |
+| TASK-011 | 시험 결과로 04·05·06의 확인 전 가정 고치기와 열린 질문 닫기 | Claude | 2일 | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-8, OPEN-9, OPEN-10, OPEN-11, OPEN-12 | TASK-009, TASK-010, TASK-003, TASK-004 | 가정마다 시험 결과를 적고, 맞지 않은 것은 SPEC·스키마·계약을 고치는 PR이 단계 검사를 모두 지나 합쳐짐. 06 열린 질문 표에서 답을 얻은 것을 닫음 |
 | TASK-012 | 법령 원문 다시 확인(02 4-2 법 표의 조문) | Claude | 1일 | REQ-239, REQ-240, REQ-141 | 없음 | 끝남: 2026-11-15, docs/02-prd/requirements.md 13절(조문 36개 대조, 원문과 어긋난 인용 없음, 빠진 조건 2곳 고침)<br/>02 4-2 법 표의 조문마다 국가법령정보센터 원문을 다시 열어 조문 번호·시행일을 대조하고, 바뀐 것을 고치는 PR이 합쳐짐 |
 | TASK-013 | 법률 질문 목록을 전문가에게 확인(02 5-2와 tech-stack.md 8-2) | 동희님 | 1일 | REQ-208 | TASK-012 | 02 5-2 질문 10개와 tech-stack.md 8-2의 호스팅 질문마다 전문가의 답과 날짜를 기록에 남기고, 답으로 바뀌는 요구사항 목록을 Claude에게 넘김 |
 | TASK-014 | 구글 클라우드 프로젝트와 OAuth 동의 화면(장부 연결) 만들기와 검증이 필요한지 확인 | 동희님 | 0.5일 | TBL-045 | 없음 | 동의 화면의 범위와 검증 상태(필요 없음·신청함·허가)를 기록에 남김 |

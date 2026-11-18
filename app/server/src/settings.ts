@@ -90,6 +90,21 @@ const FIELD_KEY_NAME = /^FIELD_KEY_V([1-9][0-9]{0,2})$/;
 const FIELD_KEY_VALUE = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 
 /**
+ * 운영자 인증 서비스(TASK-021; 06 DEC-27, TASK-003): Supabase Auth의 이메일·비밀번호와 TOTP 2단계 인증. operator-auth.ts가 쓴다.
+ * - SUPABASE_URL: 프로젝트 주소(https://<프로젝트>.supabase.co). development에서만 http://localhost·127.0.0.1을 받는다.
+ * - SUPABASE_PUBLISHABLE_KEY: publishable 키(sb_publishable_…). 서버만 쓰고 화면에 주지 않는다. secret 키(sb_secret_…)는
+ *   모든 데이터를 여는 키라 받지 않는다(Supabase 문서 'Understanding API keys', 2026-11-18 확인: 두 키 모두 apikey 헤더로 보냄).
+ * 둘 다 없으면 null(운영자 로그인만 500 internal). 하나만 있으면 시작에서 멈춘다.
+ */
+export const OPERATOR_AUTH_VAR_NAMES = ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"] as const;
+
+export interface OperatorAuthSettings {
+  /** 프로젝트 주소(끝의 / 없음). 인증 API는 이 뒤의 /auth/v1. */
+  readonly url: string;
+  readonly publishableKey: Secret;
+}
+
+/**
  * 모델 호출 설정(TASK-026; REQ-266, 06 DEC-25, 04 AI-1). 회사 하나와 그 모델을 배포 설정으로 고른다(ai-model.ts).
  * - AI_PROVIDER: anthropic | openai. AI_MODEL: 요금표(ai-prices.ts)에 있는 그 회사의 모델 ID. 없는 모델은 시작에서 막는다.
  * - AI_EFFORT(고르지 않아도 됨): low | medium | high. 비우면 회사의 기본값.
@@ -136,6 +151,8 @@ export interface Settings {
   readonly fieldKeys: FieldKeySettings | null;
   /** 모델 호출 설정. 다섯 AI_ 변수가 모두 없으면 null. */
   readonly ai: AiSettings | null;
+  /** 운영자 인증 서비스(Supabase Auth). 두 변수가 모두 없으면 null. */
+  readonly operatorAuth: OperatorAuthSettings | null;
 }
 
 export class SettingsError extends Error {
@@ -186,7 +203,44 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
     storage: readStorage(env, appEnv),
     fieldKeys: readFieldKeys(env),
     ai: readAi(env, secrets),
+    operatorAuth: readOperatorAuth(env, appEnv),
   };
+}
+
+function readOperatorAuth(env: Readonly<Record<string, unknown>>, appEnv: AppEnv): OperatorAuthSettings | null {
+  const read = (name: (typeof OPERATOR_AUTH_VAR_NAMES)[number]): string | null => {
+    const raw = env[name];
+    return typeof raw === "string" && raw.trim() !== "" ? raw.trim() : null;
+  };
+  const rawUrl = read("SUPABASE_URL");
+  const rawKey = read("SUPABASE_PUBLISHABLE_KEY");
+  if (rawUrl === null && rawKey === null) return null;
+  // 값은 메시지에 싣지 않는다(이름과 조건만).
+  if (rawUrl === null || rawKey === null) {
+    throw new SettingsError("SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY must be set together");
+  }
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new SettingsError("SUPABASE_URL must be a URL");
+  }
+  const local = url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+  if (url.protocol !== "https:" && !(local && appEnv === "development")) {
+    throw new SettingsError("SUPABASE_URL must use https (http only for localhost in development)");
+  }
+  if (url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "" || url.pathname !== "/") {
+    throw new SettingsError(
+      "SUPABASE_URL must be the project origin without a path, credentials, a query or a fragment",
+    );
+  }
+  if (rawKey.startsWith("sb_secret_")) {
+    throw new SettingsError("SUPABASE_PUBLISHABLE_KEY must be the publishable key, not a secret key");
+  }
+  if (!/^sb_publishable_[A-Za-z0-9_-]{8,200}$/.test(rawKey)) {
+    throw new SettingsError("SUPABASE_PUBLISHABLE_KEY must look like sb_publishable_...");
+  }
+  return { url: url.origin, publishableKey: new Secret(rawKey) };
 }
 
 /** 켜진 추적 변수의 이름(없으면 null). 비었거나 false(대소문자 무관)만 꺼짐으로 본다. */

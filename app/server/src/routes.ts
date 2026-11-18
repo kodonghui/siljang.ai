@@ -7,7 +7,11 @@
  * - ownerRoute: 사장님 범위 경로(TASK-022). 사장님 세션은 있지만 가게가 정해지기 전이거나 가게 기록이 아닌 API(사진 올리기
  *   API-007 등). 처리기는 OwnerRequest만 받고 데이터베이스 연결이 없다. 사장님은 사장님 해석기(TASK-020)가 정하고, 없으면
  *   닫혀 있다(401 unauthenticated).
- * - openRoute: 가게 범위도 사장님 범위도 아닌 경로(기반 시설, 로그인, 서명 주소). 왜 그런지 적는다.
+ * - operatorRoute: 운영자 범위 경로(TASK-021). 운영자 세션(쿠키 siljang_operator)은 있지만 가게 기록이 아닌 API(로그인한
+ *   운영자 API-005 등). 처리기는 OperatorRequest만 받고 데이터베이스 연결이 없다. 운영자는 운영자 해석기(operator-login.ts의
+ *   resolveOperatorSession)가 정하고, 운영자 세션이 아니면(사장님 세션 포함) 401 unauthenticated로 운영자 기록을 하나도
+ *   보이지 않는다(04 SPEC-001 수락 기준 5, 06 DEC-11). 운영자가 여는 가게 기록은 가게 범위 경로(출처 operator, TASK-159).
+ * - openRoute: 가게 범위도 사장님·운영자 범위도 아닌 경로(기반 시설, 로그인, 서명 주소). 왜 그런지 적는다.
  *   가게 테이블을 읽고 쓰지 않는다(정적 시험이 날 연결을 쥔 파일의 SQL을 봄).
  * - accessRoute: 접속기록을 남기는 가게 범위 경로(TASK-024, 06의 사장님 API-040~066과 운영자 API-074~077, SPEC-074).
  *   선언에 06 API 번호를 두고, 처리기는 AccessRequest만 받는다. 데이터베이스는 접속기록 한 행과 같은 트랜잭션의 읽기(read)와
@@ -18,6 +22,7 @@ import type { Context, Hono, HonoRequest } from "hono";
 import { ACCESS_LOG_APIS, type AccessEntry, AccessRecorder } from "./access-log";
 import type { HonoEnv, Logger } from "./app";
 import { readJsonBody } from "./body";
+import { isOperatorScope, type OperatorScope } from "./operator-scope";
 import { isOwnerScope, type OwnerScope } from "./owner-scope";
 import { ApiError } from "./problem";
 import { type CommandResult, runCommand, type StoredResult } from "./request-key";
@@ -144,6 +149,23 @@ export interface OwnerRouteDecl {
   readonly handler: (r: OwnerRequest) => Promise<Response>;
 }
 
+/** 운영자 범위 경로의 처리기가 받는 것. 데이터베이스 연결이 없다(가게 기록은 가게 범위 경로로만). */
+export interface OperatorRequest {
+  readonly operator: OperatorScope;
+  readonly req: HonoRequest;
+  readonly traceId: string;
+  readonly log: Logger;
+  readonly services: Services;
+  json(body: unknown, status?: 200 | 201 | 202): Response;
+}
+
+export interface OperatorRouteDecl {
+  readonly kind: "operator";
+  readonly method: Method;
+  readonly path: string;
+  readonly handler: (r: OperatorRequest) => Promise<Response>;
+}
+
 export interface OpenRouteDecl {
   readonly kind: "open";
   readonly method: Method;
@@ -153,7 +175,7 @@ export interface OpenRouteDecl {
   readonly handler: (c: Context<HonoEnv>) => Response | Promise<Response>;
 }
 
-export type RouteDecl = ShopRouteDecl | AccessRouteDecl | OwnerRouteDecl | OpenRouteDecl;
+export type RouteDecl = ShopRouteDecl | AccessRouteDecl | OwnerRouteDecl | OperatorRouteDecl | OpenRouteDecl;
 
 export function shopRoute(
   method: Method,
@@ -189,6 +211,14 @@ export function ownerRoute(
   return { kind: "owner", method, path, handler };
 }
 
+export function operatorRoute(
+  method: Method,
+  path: string,
+  handler: (r: OperatorRequest) => Promise<Response>,
+): OperatorRouteDecl {
+  return { kind: "operator", method, path, handler };
+}
+
 export function openRoute(
   method: Method,
   path: string,
@@ -214,7 +244,16 @@ export type OwnerResolver = (c: Context<HonoEnv>) => Promise<OwnerScope>;
 /** 사장님 세션 해석기가 아직 없음(TASK-020): 사장님 범위 경로는 닫혀 있다. */
 const CLOSED_OWNER: OwnerResolver = () => Promise.reject(new ApiError("unauthenticated"));
 
-/** 해석기가 아직 없는 출처: 닫혀 있다. 사장님 세션은 TASK-020, 운영자 세션은 TASK-021, 카카오 스킬은 TASK-028, 예약 링크는 TASK-044·045. */
+/** 요청에서 로그인한 운영자를 찾는다. 찾지 못하면 401 unauthenticated(ApiError). createOperatorScope로 만든 것만 받는다. */
+export type OperatorResolver = (c: Context<HonoEnv>) => Promise<OperatorScope>;
+
+/** 운영자 해석기를 주지 않으면 운영자 범위 경로는 닫혀 있다(앱은 operator-login.ts의 resolveOperatorSession을 줌). */
+const CLOSED_OPERATOR: OperatorResolver = () => Promise.reject(new ApiError("unauthenticated"));
+
+/**
+ * 해석기가 아직 없는 출처: 닫혀 있다. 사장님 세션은 TASK-020, 카카오 스킬은 TASK-028, 예약 링크는 TASK-044·045. 운영자 세션은
+ * TASK-021이 만들었지만 운영자가 여는 가게(가게 범위의 출처 operator)는 TASK-159가 정한다.
+ */
 const CLOSED: ScopeResolvers = {
   owner: () => Promise.reject(new ApiError("unauthenticated")),
   operator: () => Promise.reject(new ApiError("unauthenticated")),
@@ -296,6 +335,18 @@ function accessRequest(c: Context<HonoEnv>, scope: ShopScope, api: string, recor
   };
 }
 
+function operatorRequest(c: Context<HonoEnv>, operator: OperatorScope): OperatorRequest {
+  const headers = { "cache-control": "no-store" };
+  return {
+    operator,
+    req: c.req,
+    traceId: c.get("traceId"),
+    log: c.get("log"),
+    services: c.get("services"),
+    json: (body, status = 200) => c.json(body as object, status, headers),
+  };
+}
+
 function ownerRequest(c: Context<HonoEnv>, owner: OwnerScope): OwnerRequest {
   const headers = { "cache-control": "no-store" };
   return {
@@ -314,6 +365,7 @@ export function mountRoutes(
   routes: readonly RouteDecl[],
   resolvers: Partial<ScopeResolvers> = {},
   ownerResolver: OwnerResolver = CLOSED_OWNER,
+  operatorResolver: OperatorResolver = CLOSED_OPERATOR,
 ): void {
   const resolve: ScopeResolvers = { ...CLOSED, ...resolvers };
   const seen = new Set<string>();
@@ -330,6 +382,16 @@ export function mountRoutes(
         const owner = await ownerResolver(c);
         if (!isOwnerScope(owner)) throw new ForgedScopeError("owner scope did not come from createOwnerScope");
         return route.handler(ownerRequest(c, owner));
+      });
+      continue;
+    }
+    if (route.kind === "operator") {
+      app.on(route.method, route.path, async (c) => {
+        const operator = await operatorResolver(c);
+        if (!isOperatorScope(operator)) {
+          throw new ForgedScopeError("operator scope did not come from createOperatorScope");
+        }
+        return route.handler(operatorRequest(c, operator));
       });
       continue;
     }

@@ -202,7 +202,7 @@ S["Me"] = all_required({
 
 S["OperatorSessionInput"] = obj({
     "email": string(3, 254, r"^[^@\s]+@[^@\s]+$", col="operators.email"),
-    "password": string(1, 256, desc="운영자 비밀번호. 인증 서비스로만 보내고 어디에도 남기지 않음(REQ-135, OPEN-6)"),
+    "password": string(1, 256, desc="운영자 비밀번호. 인증 서비스(Supabase Auth)로만 보내고 어디에도 남기지 않음(REQ-135, DEC-27)"),
     "otp": string(6, 6, r"^[0-9]{6}$", desc="2단계 인증 번호"),
 }, ["email", "password", "otp"])
 

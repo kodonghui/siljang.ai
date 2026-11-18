@@ -146,16 +146,17 @@ op(id="API-004", method="post", path="/operator/session", op="createOperatorSess
    summary="운영자 로그인(이메일·비밀번호·2단계 인증)", spec=["SPEC-001"], auth="public",
    desc="운영자 계정으로만 운영자 화면에 들어온다(R2). 맞지 않는 것이 어느 필드인지 알리지 않는다. 15분에 5번 실패하면 429(DEC-16). "
         "세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_operator`. 비밀번호는 인증 서비스로만 보내고 어디에도 남기지 않음(REQ-135). "
-        "Open: 운영자 인증 서비스는 개발 전에 고름. 고른 서비스가 자기 로그인 화면을 쓰면 이 API를 그 플로우로 바꾸고, 그 서비스가 답하지 않을 때의 503을 더함(OPEN-6). "
+        "서버가 Supabase Auth에 이메일·비밀번호 로그인과 TOTP 2단계 인증을 하고, 운영자 표에 막히지 않고 2단계 인증을 켠 운영자일 때만 세션을 줌(DEC-27). "
+        "Origin 헤더가 우리 화면 주소가 아니면 인증 서비스에 묻지 않고 401. Supabase가 답하지 않으면 503 `auth_unavailable`(비밀번호 단계부터 답이 없었으면 실패로 세지 않음). "
         "세션은 로그인한 때부터 12시간이 지나면 끝나고 쓴다고 늘지 않는다(DEC-26).",
    body="OperatorSessionInput",
    body_examples={"login": {"email": "ops@siljang.example", "password": "example-password-not-real", "otp": "123456"}},
    ok=[(200, "Operator", {"signed_in": E.OPERATOR}, ["Set-Cookie"])],
-   errors={401: ["operator_login_failed"], 429: ["too_many_attempts"]},
+   errors={401: ["operator_login_failed"], 429: ["too_many_attempts"], 503: ["auth_unavailable"]},
    fields=[("/otp", "bad_format")],
    omit={"403": "누구나 로그인을 시도함", "404": O404_NOPATH, "409": "로그인은 충돌할 상태가 없음"},
    kinds={"접근": ["401:operator_login_failed"], "입력": ["422:validation_failed"], "한도": ["429:too_many_attempts"],
-          "노출": ["closed"], "화면": ["screen"]})
+          "외부": ["503:auth_unavailable"], "노출": ["closed"], "화면": ["screen"]})
 
 op(id="API-005", method="get", path="/operator/me", op="getOperatorMe", tag="로그인",
    summary="로그인한 운영자", spec=["SPEC-001"], auth="operator",

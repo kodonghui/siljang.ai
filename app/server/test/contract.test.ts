@@ -76,8 +76,8 @@ async function expectContractProblem(res: Response, code: ErrorCode) {
 }
 
 describe("06 계약의 목록과 같음", () => {
-  it("오류 코드 37개: 이름·상태·말이 계약의 errors와 같고 Problem.code enum과도 같다", () => {
-    expect(Object.keys(xc.errors)).toHaveLength(37);
+  it("오류 코드 38개: 이름·상태·말이 계약의 errors와 같고 Problem.code enum과도 같다", () => {
+    expect(Object.keys(xc.errors)).toHaveLength(38);
     expect([...ERROR_CODES].sort()).toEqual(Object.keys(xc.errors).sort());
     for (const code of ERROR_CODES) {
       expect(ERRORS[code].status, code).toBe(xc.errors[code]?.status);

@@ -22,7 +22,7 @@
 | 비밀 값 | Workers secrets(`wrangler secret put`), 로컬은 `.dev.vars` | 저장소·로그에 키 0건(REQ-135) |
 | 백업 | Supabase Pro 매일 백업(7일) + 새 프로젝트로 복구 시험 | REQ-149 |
 | 배포 | wrangler로 스테이징·운영 Worker 둘, 개발 데이터베이스는 Supabase 무료 등급 | 출시 때 운영 프로젝트만 Pro로 |
-| 운영자 인증 | Supabase Auth의 TOTP 2단계 인증(TASK-003, 2026-11-16). 반론으로 보였던 Cloudflare Access는 고르지 않음 | 동희님 2026-11-16 17:01 무렵 Claude Code 채팅 답(반복 0 안내서 4-3의 추천안). 06 OPEN-6은 TASK-021에서 닫음 |
+| 운영자 인증 | Supabase Auth의 TOTP 2단계 인증(TASK-003, 2026-11-16). 반론으로 보였던 Cloudflare Access는 고르지 않음 | 동희님 2026-11-16 17:01 무렵 Claude Code 채팅 답(반복 0 안내서 4-3의 추천안). 06 OPEN-6은 TASK-021에서 DEC-27로 닫음(2026-11-18) |
 | OVH 서버 | 손님 개인정보는 두지 않음. 1분 외부 감시, 합성 상담 평가 돌리기, 카카오 시험 서버 | 5절 |
 | 사장님·운영자 앱 | 휴대폰 홈 화면에 추가하는 웹앱(PWA) 먼저, 스토어 앱(iOS·Android)은 웹 다음에 웹을 Capacitor로 감싸 만듦 | 동희님 결정 2026-11-15 17:56 무렵 "웹앱+스토어 앱인데 웹부터 만들어바". 9절 |
 | 월 비용 | 개발 0~5달러, 가게 10곳 약 30~35달러, 가게 100곳 약 35~60달러 | AI 사용료는 따로(상담 하나의 AI 비용 상한 REQ-262). 6절 |
@@ -43,7 +43,7 @@
 | 사진: 한 상담에 10장(장당 20MB까지), 신고증 10MB, 완성·신고·후기 사진 5장. 30일 뒤 지우고 지울 파일 표로 다시 지움 | SPEC-019, SPEC-002, SPEC-053, 05 TBL-054 | 한국 리전의 파일 저장소, 서버를 거쳐서만 읽고 씀 |
 | 구글 시트 장부(OAuth) | REQ-125~129, TBL-045 | 서버에서 Google API를 HTTP로 부름 |
 | 사장님은 카카오 로그인 뒤 우리 세션(30일, 쓰면 늘어남) | SPEC-001, DEC-10, DEC-26 | 쿠키 세션을 서버가 직접 다룸 |
-| 운영자 인증(비밀번호·2단계 인증)을 맡길 곳 | 06 OPEN-6, TASK-003 | Supabase Auth의 TOTP 2단계 인증(TASK-003, 2026-11-16) |
+| 운영자 인증(비밀번호·2단계 인증)을 맡길 곳 | 06 OPEN-6(DEC-27로 닫음), TASK-003 | Supabase Auth의 TOTP 2단계 인증(TASK-003, 2026-11-16) |
 | 운영 서버 월 가동률 99%, 1분마다 외부 감시 | REQ-148 | 운영과 다른 곳에서 도는 감시 |
 | 하루 한 번 백업과 출시 전 복구 시험 | REQ-149 | 매일 백업, 따로 복구해 보는 길 |
 | 비밀 값은 코드·로그·대화 기록에 0건 | REQ-135 | 플랫폼의 비밀 저장소 |
@@ -172,6 +172,7 @@ flowchart LR
 | 연결 | Hyperdrive + `pg` | `pg` 연결 풀 | 연결 모듈 하나 |
 | 자동으로 하는 일 | Cron Trigger → 작업 표 | 클라우드의 정해진 때 실행(Cloud Scheduler·EventBridge Scheduler)이나 컨테이너 안 타이머 → 같은 작업 표 | 깨우는 곳만 |
 | 큐 | Cloudflare Queues | 클라우드 큐나 작업 표만 | 큐 어댑터 하나 |
+| 운영자 인증 | Supabase Auth(이메일·비밀번호와 TOTP, HTTP로 부름) | Supabase Auth 그대로나 TOTP를 주는 다른 인증 서비스 | 인증 어댑터 하나(`operator-auth.ts`). 세션·실패 세기는 우리 표(05 TBL-059·060)라 그대로 |
 | 사진 | Supabase Storage | S3·Cloud Storage | 저장소 모듈 하나와 파일 옮기기 |
 | 비밀 값 | Workers secrets | 클라우드 비밀 저장소 | 환경 변수 이름으로 읽어 그대로 |
 | 웹 | Worker 정적 자산 | 같은 빌드를 다른 CDN에 | 그대로 |
@@ -179,7 +180,7 @@ flowchart LR
 ### 4-3. 옮기기 쉽게 지금 지킬 것
 
 1. 업무 코드는 Workers의 `env`·`ctx`·큐·Cron을 직접 호출하지 않습니다. 요청·큐·Cron·저장소·비밀 값을 다루는 어댑터 층만 Workers를 압니다.
-2. 데이터베이스는 표준 PostgreSQL만 씁니다. Supabase Auth·Data API·pg_cron·Realtime·Edge Functions는 쓰지 않습니다.
+2. 데이터베이스는 표준 PostgreSQL만 씁니다. Supabase Auth는 운영자 로그인(06 DEC-27)에만 데이터베이스 밖의 HTTP 서비스로 부르고(어댑터 `app/server/src/operator-auth.ts` 하나), 데이터베이스의 `auth` 스키마는 읽지 않습니다. Data API·pg_cron·Realtime·Edge Functions는 쓰지 않습니다.
 3. 사진은 저장소 모듈 하나(올리기·읽기·지우기)를 거칩니다.
 4. 스키마는 우리 SQL 마이그레이션(0001~)으로만 바꾸고 대시보드에서 손으로 바꾸지 않습니다.
 5. 큐 메시지와 로그에는 ID만 싣습니다. 옮길 때 남는 손님 데이터가 없고, 국외 이전을 설명할 범위도 좁습니다.
@@ -294,7 +295,7 @@ Python을 남길 곳: 저장소의 생성·검사 도구(01~10단계)는 Python 
 ### 8-3. 확인하지 못한 것
 
 - Cloudflare Zero Trust(Access) 무료 등급의 사용자 수: 검색 요약은 50명이었지만 가격 페이지 글을 직접 대조하지 못했습니다(TASK-003에서 다시 봄). TASK-003에서 Access를 고르지 않아(2026-11-16) 더 보지 않습니다.
-- 운영자 인증의 세부(Cloudflare Access와 Supabase Auth TOTP 가운데 무엇이 06 API-004에 맞는지): TASK-003에서 Supabase Auth의 TOTP 2단계 인증으로 고름(2026-11-16). API-004 계약에 맞추는 세부(인증 서비스가 답하지 않을 때, 운영자 TOTP 등록)는 TASK-021.
+- 운영자 인증의 세부(Cloudflare Access와 Supabase Auth TOTP 가운데 무엇이 06 API-004에 맞는지): TASK-003에서 Supabase Auth의 TOTP 2단계 인증으로 고름(2026-11-16). API-004 계약에 맞추는 세부는 TASK-021에서 정함(2026-11-18, 06 DEC-27): 인증 서비스가 답하지 않으면 503 `auth_unavailable`, 운영자 TOTP 등록은 운영자가 자기 터미널에서 돌리는 등록 도구(`npm run operator:enroll`).
 - 서울과 싱가포르·뭄바이 사이 지연: TASK-172.
 - 1분 외부 감시 도구: TASK-016에서 고름.
 - Fastify가 Workers에서 도는지, 두 AI 회사 Python SDK가 Python Workers에서 도는지: 추천안에서는 쓰지 않아 보지 않았습니다.

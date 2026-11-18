@@ -89,7 +89,9 @@
       "03h8fnq555wh6jkhyb4ogzxmc",
       "03h8fnq5bjh70g2sy7xrnz0vf",
       "03h8fnq5i83oocwxxzm97hh19",
-      "03h8gnpy03k9kj1sl79obce14"
+      "03h8gnpy03k9kj1sl79obce14",
+      "03h9ct9k4zvucdjgd86ko8jy8",
+      "03h9ct9kdnh1w0kz49j9gb81f"
     ],
     "relationshipIds": [
       "03h7y0179y91t3fbncx4e1mp5",
@@ -224,7 +226,8 @@
       "03h8gnq5b1b7t8vvc4nlq48j3",
       "03h8h9o7fmal8i2s5slfxxedx",
       "03h8j8qws1dw85bg330wpceby",
-      "03h8mjf5fciu9k53xihhau3d7"
+      "03h8mjf5fciu9k53xihhau3d7",
+      "03h9ct9qwskzktttmtvnt3yqq"
     ],
     "indexIds": [
       "03h7y017apioxvv0yn8m6arb8",
@@ -312,7 +315,11 @@
       "03h8fnqbxpxoqm824l39mouo5",
       "03h8h9o7frncabk7v0ewen77i",
       "03h8ib0zk5ujpxq905zqe5ljc",
-      "03h8iqu5omb8s93akkr6ef4aq"
+      "03h8iqu5omb8s93akkr6ef4aq",
+      "03h9ct9qwsn4kw7ac5vdhdpc5",
+      "03h9ct9qwsn4kw7ac63ym7g8w",
+      "03h9ct9qwy415hwm1xb0q6ukw",
+      "03h9ct9qx3kc47ea1oaho5ql0"
     ],
     "memoIds": [
       "03h7y0184s9oftzxoejnroyg3"
@@ -1753,6 +1760,39 @@
         "ui": {
           "x": 2440,
           "y": 7416
+        }
+      },
+      "03h9ct9k4zvucdjgd86ko8jy8": {
+        "id": "03h9ct9k4zvucdjgd86ko8jy8",
+        "name": "operator_sessions",
+        "comment": "TBL-059 운영자 세션: 운영자 로그인(API-004)이 만들고 로그아웃(API-006)이 끝냄. 로그인한 때부터 12시간(06 DEC-26, DEC-27)",
+        "columnIds": [
+          "03h9ct9k4zvucdjgd8bmd8u8w",
+          "03h9ct9k55avfrb8rnd2dfo0g",
+          "03h9ct9k5apqlclf4cwjttq39",
+          "03h9ct9k5r895x7x6vj0fwmtz",
+          "03h9ct9k5wpcl9b0n45avccbw",
+          "03h9ct9k622k9usvaibkvr53y"
+        ],
+        "groupId": "03h7y017wkyrgfkkkeykxgwvj",
+        "ui": {
+          "x": 2440,
+          "y": 7842
+        }
+      },
+      "03h9ct9kdnh1w0kz49j9gb81f": {
+        "id": "03h9ct9kdnh1w0kz49j9gb81f",
+        "name": "operator_login_failures",
+        "comment": "TBL-060 운영자 로그인 실패: 이메일마다 15분에 5번을 넘으면 429(06 DEC-16). 15분 지난 행은 로그인 시도 때 지움(DEC-27)",
+        "columnIds": [
+          "03h9ct9kdsyb4lctc3u38strf",
+          "03h9ct9kdsyb4lctc3y0v740y",
+          "03h9ct9kdyemn6eisrfuh6xoz"
+        ],
+        "groupId": "03h7y017wkyrgfkkkeykxgwvj",
+        "ui": {
+          "x": 2440,
+          "y": 8076
         }
       }
     },
@@ -7755,6 +7795,80 @@
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
+      },
+      "03h9ct9k4zvucdjgd8bmd8u8w": {
+        "id": "03h9ct9k4zvucdjgd8bmd8u8w",
+        "tableId": "03h9ct9k4zvucdjgd86ko8jy8",
+        "name": "id",
+        "comment": "세션 ID",
+        "dataType": "uuid",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "03h9ct9k55avfrb8rnd2dfo0g": {
+        "id": "03h9ct9k55avfrb8rnd2dfo0g",
+        "tableId": "03h9ct9k4zvucdjgd86ko8jy8",
+        "name": "operator_id",
+        "comment": "로그인한 운영자",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h9ct9k5apqlclf4cwjttq39": {
+        "id": "03h9ct9k5apqlclf4cwjttq39",
+        "tableId": "03h9ct9k4zvucdjgd86ko8jy8",
+        "name": "token_hash",
+        "comment": "세션 쿠키 siljang_operator 값(무작위 32바이트)의 SHA-256 소문자 16진수. 쿠키 값은 남기지 않음(REQ-135)",
+        "dataType": "text",
+        "options": 12
+      },
+      "03h9ct9k5r895x7x6vj0fwmtz": {
+        "id": "03h9ct9k5r895x7x6vj0fwmtz",
+        "tableId": "03h9ct9k4zvucdjgd86ko8jy8",
+        "name": "created_at",
+        "comment": "로그인한 시각",
+        "dataType": "timestamptz",
+        "options": 8
+      },
+      "03h9ct9k5wpcl9b0n45avccbw": {
+        "id": "03h9ct9k5wpcl9b0n45avccbw",
+        "tableId": "03h9ct9k4zvucdjgd86ko8jy8",
+        "name": "expires_at",
+        "comment": "끝나는 시각. 로그인한 때부터 12시간이고 쓴다고 늘지 않음(06 DEC-26)",
+        "dataType": "timestamptz",
+        "options": 8
+      },
+      "03h9ct9k622k9usvaibkvr53y": {
+        "id": "03h9ct9k622k9usvaibkvr53y",
+        "tableId": "03h9ct9k4zvucdjgd86ko8jy8",
+        "name": "ended_at",
+        "comment": "로그아웃으로 끝낸 시각",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03h9ct9kdsyb4lctc3u38strf": {
+        "id": "03h9ct9kdsyb4lctc3u38strf",
+        "tableId": "03h9ct9kdnh1w0kz49j9gb81f",
+        "name": "id",
+        "comment": "시도 한 번",
+        "dataType": "uuid",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "03h9ct9kdsyb4lctc3y0v740y": {
+        "id": "03h9ct9kdsyb4lctc3y0v740y",
+        "tableId": "03h9ct9kdnh1w0kz49j9gb81f",
+        "name": "email_hash",
+        "comment": "넣은 이메일(앞뒤 공백을 빼고 소문자)의 HMAC-SHA256 소문자 16진수. 이메일 글은 남기지 않음",
+        "dataType": "text",
+        "options": 8
+      },
+      "03h9ct9kdyemn6eisrfuh6xoz": {
+        "id": "03h9ct9kdyemn6eisrfuh6xoz",
+        "tableId": "03h9ct9kdnh1w0kz49j9gb81f",
+        "name": "attempted_at",
+        "comment": "시도를 시작한 시각. 성공하면 그 이메일의 행을 모두 지우고, 인증 서비스가 답하지 않으면 그 행을 지움. 남은 행이 실패(06 DEC-16)",
+        "dataType": "timestamptz",
+        "options": 8
       }
     },
     "relationshipEntities": {
@@ -10413,6 +10527,24 @@
             "03h8mjeykynldewvr1rzcalkz"
           ]
         }
+      },
+      "03h9ct9qwskzktttmtvnt3yqq": {
+        "id": "03h9ct9qwskzktttmtvnt3yqq",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178fic3fnl5v3q4esoj",
+          "columnIds": [
+            "03h7y0178fic3fnl5v5jeofju"
+          ]
+        },
+        "end": {
+          "tableId": "03h9ct9k4zvucdjgd86ko8jy8",
+          "columnIds": [
+            "03h9ct9k55avfrb8rnd2dfo0g"
+          ]
+        }
       }
     },
     "indexEntities": {
@@ -11282,6 +11414,43 @@
         "tableId": "03h7y0179sukl6c8nic8nn7g1",
         "indexColumnIds": [
           "03h8iqu5orxi2t2oxzi8twosg"
+        ],
+        "unique": false
+      },
+      "03h9ct9qwsn4kw7ac5vdhdpc5": {
+        "id": "03h9ct9qwsn4kw7ac5vdhdpc5",
+        "name": "operator_login_failures_attempted_idx",
+        "tableId": "03h9ct9kdnh1w0kz49j9gb81f",
+        "indexColumnIds": [
+          "03h9ct9qwsn4kw7ac5zq1l03r"
+        ],
+        "unique": false
+      },
+      "03h9ct9qwsn4kw7ac63ym7g8w": {
+        "id": "03h9ct9qwsn4kw7ac63ym7g8w",
+        "name": "operator_login_failures_email_idx",
+        "tableId": "03h9ct9kdnh1w0kz49j9gb81f",
+        "indexColumnIds": [
+          "03h9ct9qwy415hwm1x1yvggxy",
+          "03h9ct9qwy415hwm1x5mol89q"
+        ],
+        "unique": false
+      },
+      "03h9ct9qwy415hwm1xb0q6ukw": {
+        "id": "03h9ct9qwy415hwm1xb0q6ukw",
+        "name": "operator_sessions_expires_idx",
+        "tableId": "03h9ct9k4zvucdjgd86ko8jy8",
+        "indexColumnIds": [
+          "03h9ct9qwy415hwm1xf08g9tm"
+        ],
+        "unique": false
+      },
+      "03h9ct9qx3kc47ea1oaho5ql0": {
+        "id": "03h9ct9qx3kc47ea1oaho5ql0",
+        "name": "operator_sessions_operator_idx",
+        "tableId": "03h9ct9k4zvucdjgd86ko8jy8",
+        "indexColumnIds": [
+          "03h9ct9qx3kc47ea1ofr67hlh"
         ],
         "unique": false
       }
@@ -12372,12 +12541,42 @@
         "indexId": "03h8iqu5omb8s93akkr6ef4aq",
         "columnId": "03h7y0179sukl6c8nixns0ubf",
         "orderType": 1
+      },
+      "03h9ct9qwsn4kw7ac5zq1l03r": {
+        "id": "03h9ct9qwsn4kw7ac5zq1l03r",
+        "indexId": "03h9ct9qwsn4kw7ac5vdhdpc5",
+        "columnId": "03h9ct9kdyemn6eisrfuh6xoz",
+        "orderType": 1
+      },
+      "03h9ct9qwy415hwm1x1yvggxy": {
+        "id": "03h9ct9qwy415hwm1x1yvggxy",
+        "indexId": "03h9ct9qwsn4kw7ac63ym7g8w",
+        "columnId": "03h9ct9kdsyb4lctc3y0v740y",
+        "orderType": 1
+      },
+      "03h9ct9qwy415hwm1x5mol89q": {
+        "id": "03h9ct9qwy415hwm1x5mol89q",
+        "indexId": "03h9ct9qwsn4kw7ac63ym7g8w",
+        "columnId": "03h9ct9kdyemn6eisrfuh6xoz",
+        "orderType": 1
+      },
+      "03h9ct9qwy415hwm1xf08g9tm": {
+        "id": "03h9ct9qwy415hwm1xf08g9tm",
+        "indexId": "03h9ct9qwy415hwm1xb0q6ukw",
+        "columnId": "03h9ct9k5wpcl9b0n45avccbw",
+        "orderType": 1
+      },
+      "03h9ct9qx3kc47ea1ofr67hlh": {
+        "id": "03h9ct9qx3kc47ea1ofr67hlh",
+        "indexId": "03h9ct9qx3kc47ea1oaho5ql0",
+        "columnId": "03h9ct9k55avfrb8rnd2dfo0g",
+        "orderType": 1
       }
     },
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 419개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 423개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,

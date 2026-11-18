@@ -75,6 +75,17 @@ const OWNER_SCOPE_MAKERS: Record<string, string> = {
 /** 사장님 범위를 만드는 표시(MAKES_SCOPE와 같은 꼴). */
 const MAKES_OWNER_SCOPE = /\bcreateOwnerScope\s*\(|import[^;]*\bcreateOwnerScope\b|["'`]createOwnerScope["'`]/;
 
+/** 운영자 범위(로그인한 운영자, TASK-021)를 만들 수 있는 파일과 까닭. */
+const OPERATOR_SCOPE_MAKERS: Record<string, string> = {
+  "operator-scope.ts": "정의",
+  "operator-login.ts":
+    "운영자 세션 해석기(resolveOperatorSession): 쿠키의 살아 있는 세션과 막히지 않은 운영자에서만 만든다",
+};
+
+/** 운영자 범위를 만드는 표시(MAKES_SCOPE와 같은 꼴). */
+const MAKES_OPERATOR_SCOPE =
+  /\bcreateOperatorScope\s*\(|import[^;]*\bcreateOperatorScope\b|["'`]createOperatorScope["'`]/;
+
 /** SQL 테이블 이름 자리에 값을 끼워 넣어도 되는 파일(테이블 이름이 SHOP_TABLES 형식으로만 들어옴). */
 const TABLE_INTERPOLATION_ALLOWED = new Set(["shop-scope.ts"]);
 
@@ -87,7 +98,7 @@ function shopSql(text: string): string[] {
 
 describe("05와 같은 가게 테이블 목록", () => {
   it("shop_id 열을 가진 테이블이 SHOP_TABLES와 같음(05 E1)", () => {
-    expect(tables.length).toBe(58);
+    expect(tables.length).toBe(60);
     const withShopId = tables.filter((t) => /^\s+shop_id\s/m.test(t.body)).map((t) => t.name);
     expect([...SHOP_TABLES].sort()).toEqual(withShopId.sort());
   });
@@ -209,6 +220,23 @@ describe("서버 코드의 SQL(정적 검사)", () => {
     }
     expect(MAKES_OWNER_SCOPE.test("const o = createOwnerScope(id);")).toBe(true);
     expect(MAKES_OWNER_SCOPE.test("/** createOwnerScope로 만든 것만 받는다. */")).toBe(false);
+  });
+
+  it("운영자 범위도 정한 파일(정의와 운영자 세션 해석기)만 만듦(TASK-021)", () => {
+    const found = sources
+      .filter((s) => MAKES_OPERATOR_SCOPE.test(s.text) && !Object.hasOwn(OPERATOR_SCOPE_MAKERS, s.name))
+      .map((s) => s.name);
+    expect(found).toEqual([]);
+    const casts = sources.filter((s) => /\bas\s+OperatorScope\b/.test(s.text)).map((s) => s.name);
+    expect(casts).toEqual([]);
+    for (const name of Object.keys(OPERATOR_SCOPE_MAKERS)) {
+      expect(
+        sources.some((s) => s.name === name && MAKES_OPERATOR_SCOPE.test(s.text)),
+        name,
+      ).toBe(true);
+    }
+    expect(MAKES_OPERATOR_SCOPE.test("return createOperatorScope(id, name);")).toBe(true);
+    expect(MAKES_OPERATOR_SCOPE.test("/** createOperatorScope로만 만들고 */")).toBe(false);
   });
 });
 

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "build": "wrangler deploy --dry-run --outdir dist",
     "eval": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs eval/cli.ts",
-    "eval:checklist": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs eval/cli.ts --checklist"
+    "eval:checklist": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs eval/cli.ts --checklist",
+    "operator:enroll": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs tools/operator-enroll-cli.ts"
   },
   "dependencies": {
     "@cfworker/json-schema": "4.1.6",
