@@ -6,6 +6,25 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-18 23:50 무렵 KST · TASK-021 운영자 로그인(06 DEC-27이 OPEN-6을 닫음)
+
+- 때: 앞 PR [#71](https://github.com/kodonghui/siljang.ai/pull/71)을 합친 main `0ed4ad4`에서 시작했습니다. 그 main에서 돈 GitHub Actions run 44318400274(app)와 44318400165(db)는 성공이었습니다(조정 세션이 알려 준 값이고 이 세션에서 다시 읽지 않음). 조정 세션의 지시로 D13 세션이 만들었습니다.
+- 한 일: 06 API-004\~006(로그인·로그인한 운영자·로그아웃)과 운영자 범위 경로(`operatorRoute`), 05 TBL-059 `operator_sessions`·TBL-060 `operator_login_failures`(마이그레이션 0021, 규칙 테스트 324 → 330개), 06 DEC-27(새)·API-004 503 `auth_unavailable`(새)·OPEN-6 닫음, 07 SCR-046 메모·접근 권한 문구, 08 SCR-046 오류 상태, 10 TASK-003·011·021의 출처, 운영자 등록 도구(`npm run operator:enroll`). 설명은 [app/README.md](../../app/README.md) 83\~89, 단계마다 README의 '확정한 뒤 고친 것'.
+- 고른 것과 이유
+  - Supabase Auth 부르는 법(쟁점 1): supabase-js 없이 `fetch`로 일곱 곳만 부르는 어댑터 하나. 한 요청 안에서 비밀번호 로그인 → TOTP challenge·verify(aal2)까지 하고 Supabase 토큰은 확인한 뒤 끝냄. 서버는 publishable 키만 받고 secret 키는 거절. 근거: Supabase 문서 'Multi-Factor Authentication (TOTP)'·'Understanding API keys'와 Auth OpenAPI(2026-11-18 확인).
+  - 세션(쟁점 2): 05에 세션 표(b)를 더함. 12시간 고정을 CHECK가 지키고, 로그아웃·막기가 바로 듣고, 데이터베이스에는 쿠키의 SHA-256만. 서명 쿠키(a)는 로그아웃한 쿠키가 12시간까지 쓰여 고르지 않음(OWASP Session Management Cheat Sheet, 2026-11-18 확인). 사장님 세션(TASK-020)도 같은 방식을 쓸 수 있음.
+  - 실패 세기(쟁점 3): 데이터베이스 표, 이메일(소문자)의 HMAC 하나를 키로. 시도를 먼저 넣고 트랜잭션 잠금 안에서 세어 동시에 보내도 15분에 5번까지만 Supabase에 닿음. 성공하면 지움, `Retry-After`는 다섯째 실패가 15분을 벗어나는 때까지. 접속지 IP는 세지 않음(운영자가 몇 명뿐이고 IP를 남기지 않기 위해, Supabase 자체 한도는 따로 있음).
+  - Supabase가 답하지 않을 때(쟁점 4): 503 `auth_unavailable`을 06에 더함. 비밀번호 단계부터 답이 없으면 세지 않고, 비밀번호가 답한 뒤 끊기면 셈.
+  - 운영자 등록(쟁점 5): 등록 API를 두지 않고 운영자가 자기 터미널에서 돌리는 도구 하나. 비밀 글자는 터미널에 한 번만 보이고 남기지 않음. 대시보드의 사용자 만들기·가입 끄기와 진짜 등록은 B 몫(직접 해보기 남음).
+  - TASK-011의 출처: OPEN-6을 빼고 DEC-27로 바꾸지 않음. OPEN-6은 시험 결과가 아니라 TASK-003의 결정과 이 작업이 닫아 TASK-011에 남은 일이 없음.
+  - 처리방침(API-039)은 바꾸지 않음(Claude 판단, 동희님 확인 요청): 가게가 손님에게 보이는 처리방침이고, Supabase Auth에는 우리 운영자의 계정만 둠. Supabase는 이미 데이터베이스·사진을 맡긴 같은 회사의 같은 프로젝트.
+- 확인한 것: 서버 시험 686 → 720개(36 → 38파일), 웹 116개, 린트·타입 검사·빌드, 키 검사 0건, `bash tools/stage-checks.sh task021`(아래 PR 본문에 결과 줄), `erd_editor_build.py --compare` 차이 0줄. 시험에서 조건을 하나씩 빼 시험이 실패함을 봄(app/README 89).
+- 확인하지 않은 것: 진짜 Supabase 프로젝트로 로그인·등록(진짜 호출 0번), Vite 개발 서버를 거친 Origin, 등록 도구의 숨긴 입력(손으로만).
+- 직접 해보기 남음(TASK-021): 개발용 Supabase 프로젝트에서 가입 끄기, 운영자 사용자 만들기, 등록 도구로 TOTP 등록, 휴대폰 인증 앱으로 한 번 로그인(app/README 88). 그래서 TASK-021은 끝남으로 표시하지 않았습니다.
+- 열린 질문: 처리방침을 그대로 둘지(위), SPEC-001 #5의 '찾을 수 없음'은 서버가 06대로 401을 주고 화면(TASK-031)이 맞춤.
+- 실수와 고친 것: 이 작업은 커밋 없이 길게 가다 턴 한도에 걸려 조정 세션의 지시로 중간 커밋을 먼저 남겼습니다(fix-log (404)).
+- 다음 행동: PR CI 확인 뒤 조정 세션에 보고. 합치기는 조정 세션.
+
 ### 2026-11-18 23:00 무렵 KST · 동희님 결정 반영: TASK-003 운영자 인증(Supabase Auth의 TOTP 2단계 인증), 사진 EXIF 지우기(02 REQ-269, 04 G10, TASK-183), 역할 나눔([PR #71](https://github.com/kodonghui/siljang.ai/pull/71))
 
 - 때: 조정 세션이 [PR #70](https://github.com/kodonghui/siljang.ai/pull/70)을 squash로 합친 뒤(main `4c0dbcc`, 2026-11-18 22:18 무렵 KST), main에서 돈 GitHub Actions run 44312454086(app)와 44312454115(db)도 성공했습니다(이 PR에서 두 실행을 다시 읽어 봄). 조정 세션의 지시로 D12 세션이 main `4c0dbcc`에서 이 PR을 만들었습니다.
