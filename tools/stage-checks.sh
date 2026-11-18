@@ -15,8 +15,9 @@
 #   - 저장소 뿌리의 .venv-api(06 검사의 Python 환경, .gitignore에 있음):
 #       python -m venv .venv-api && .venv-api/bin/pip install -r research/cake-api-2026-11/requirements.txt
 #   - Node와 npx(api 검사가 Prism 목 서버 @stoplight/prism-cli@5.14.2를 127.0.0.1:4010에 띄움).
-#   - CORTHEX 플러그인의 검사 스크립트(corthex-uxui의 page-check.js, corthex-hub의 hub.py·sitemap.py)가
-#     ~/.claude/plugins/synced 아래에 있음. 못 찾으면 그 검사가 실패로 나온다.
+#   - CORTHEX 검사 스크립트(corthex-uxui의 page-check.js, corthex-hub의 hub.py·sitemap.py). 먼저 환경 변수
+#     PAGE_CHECK·CORTHEX_HUB·CORTHEX_HUB_SITEMAP을 보고, 없으면 저장소의 사본 tools/corthex/(README.md)를,
+#     사본도 없으면 ${CORTHEX_PLUGINS:-~/.claude/plugins/synced} 아래의 플러그인을 쓴다. 못 찾으면 그 검사가 실패로 나온다.
 #
 # 2026-11-15까지는 작업 세션의 scratchpad에 있던 checks.sh로 돌렸다. 이 파일이 그 사본이고 결과 줄의 꼴이 같다.
 
@@ -37,10 +38,15 @@ O=${STAGE_CHECKS_OUT:-${TMPDIR:-/tmp}/stage-checks}/$NAME
 mkdir -p "$O" || exit 2
 DB="host=127.0.0.1 port=54329 user=postgres"
 PLUG=${CORTHEX_PLUGINS:-$HOME/.claude/plugins/synced}
+# 찾는 차례: 환경 변수 → 저장소 사본(tools/corthex/) → 플러그인.
 # 플러그인 폴더 이름은 플러그인 버전에 따라 바뀐다(corthex, corthex~g2 등). 그래서 glob으로 찾는다.
-PC=$(ls "$PLUG"/*/corthex*/skills/corthex-uxui/scripts/page-check.js 2>/dev/null | head -1)
-HUB=$(ls "$PLUG"/*/corthex-nexus*/skills/corthex-hub/scripts/hub.py 2>/dev/null | head -1)
-HUBSM=$(ls "$PLUG"/*/corthex-nexus*/skills/corthex-hub/scripts/sitemap.py 2>/dev/null | head -1)
+first() { local p; for p in "$@"; do [ -n "$p" ] && [ -f "$p" ] && { echo "$p"; return; }; done; }
+PC=$(first "${PAGE_CHECK:-}" "$ROOT/tools/corthex/page-check.js" \
+  "$(ls "$PLUG"/*/corthex*/skills/corthex-uxui/scripts/page-check.js 2>/dev/null | head -1)")
+HUB=$(first "${CORTHEX_HUB:-}" "$ROOT/tools/corthex/hub/hub.py" \
+  "$(ls "$PLUG"/*/corthex-nexus*/skills/corthex-hub/scripts/hub.py 2>/dev/null | head -1)")
+HUBSM=$(first "${CORTHEX_HUB_SITEMAP:-}" "$ROOT/tools/corthex/hub/sitemap.py" \
+  "$(ls "$PLUG"/*/corthex-nexus*/skills/corthex-hub/scripts/sitemap.py 2>/dev/null | head -1)")
 
 FAIL=0
 run() {
