@@ -1,7 +1,7 @@
 # 11단계 앱(app/)의 린트·형식 검사·시험·빌드와 키 검사(TASK-015, REQ-135).
 # 데이터베이스가 있어야 하는 서버 시험(TASK-018: 요청 키·연결 층·운영 기록)은 이 작업 안의 PostgreSQL에
 # db/migrations/의 마이그레이션 전부를 적용한 뒤 돌린다. REQUIRE_DATABASE_TESTS=1이라 연결이 없으면 건너뛰지 않고 실패한다.
-# 이 작업에는 비밀 값을 하나도 넘기지 않는다. 시험은 키 없이 지나야 한다(11단계 계약).
+# 검사 작업에는 비밀 값을 하나도 넘기지 않는다. 시험은 키 없이 지나야 한다(11단계 계약).
 # 시험용 PostgreSQL은 이 작업 안에서만 돌고 비밀번호 없이 받는다(trust, 시험용이며 비밀 값이 아님).
 name: app
 
@@ -87,3 +87,50 @@ jobs:
       - name: 로그 키 검사(설치·린트·타입 검사·마이그레이션·시험·빌드 로그)
         if: ${{ !cancelled() }}
         run: node ../tools/check-no-keys.mjs ci-logs/*.log
+
+  deploy-staging:
+    name: 스테이징 배포
+    needs: check
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.SILJANG_STAGING_DOMAIN != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: staging
+      url: https://${{ vars.SILJANG_STAGING_DOMAIN }}
+    env:
+      SILJANG_STAGING_DOMAIN: ${{ vars.SILJANG_STAGING_DOMAIN }}
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: app/.nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: 설치와 웹 빌드
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build -w web
+
+      - name: 스테이징 Worker 배포
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [[ ! "$SILJANG_STAGING_DOMAIN" =~ ^staging\.[a-z0-9-]+(\.[a-z0-9-]+)+$ ]]; then
+            echo 'SILJANG_STAGING_DOMAIN에 스테이징 주소를 넣어 주세요.' >&2
+            exit 1
+          fi
+          : "${CLOUDFLARE_ACCOUNT_ID:?staging 환경의 CLOUDFLARE_ACCOUNT_ID가 필요합니다.}"
+          : "${CLOUDFLARE_API_TOKEN:?staging 환경의 CLOUDFLARE_API_TOKEN이 필요합니다.}"
+          npx --no-install wrangler deploy --config server/wrangler.jsonc \
+            --name siljang-staging --domain "$SILJANG_STAGING_DOMAIN" --strict --keep-vars --tag "$GITHUB_SHA"
+
+      - name: 공개 주소 확인
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 10 --retry 4 --retry-all-errors \
+            "https://$SILJANG_STAGING_DOMAIN/api/healthz" | jq -e '.status == "ok"'
