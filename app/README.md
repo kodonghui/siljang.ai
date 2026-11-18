@@ -439,6 +439,8 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
 
 108. TASK-008 카카오 시험 서버가 CORTHEX의 시험 하위 도메인에서 동작합니다. Wrangler와 OVH의 HTTPS 호출로 상태 200, 키 없는 요청 401, 합성 K-01 응답과 사용자 ID를 가린 KV 기록을 확인했습니다. 배포 입력은 [시험 서버 README 4절](../research/kakao-test-2026-11/README.md#4-배포)에 있습니다. 실제 봇 키의 Aside Vault 보관과 채널 연결은 TASK-007에서 진행합니다.
 
+109. TASK-027 실제 실행에서 Anthropic의 구조화 출력이 선택 필드 41개를 거절했습니다. Anthropic에만 일부 선택 필드의 빈 문자열·`null`을 없음으로 표현하고 서버에서 이를 지운 뒤 06 계약 검사를 합니다. 계약이 허용하는 빈 답·빈 배열·`false`는 유지합니다. OpenAI는 HTTP 429와 응답 스트림 안의 `rate_limit_exceeded`를 한도 초과로 처리합니다. [Anthropic 구조화 출력 한도](https://platform.claude.com/docs/en/build-with-claude/structured-outputs#schema-complexity-limits)
+
 ## 명령 (`app/`에서)
 
 ```bash
