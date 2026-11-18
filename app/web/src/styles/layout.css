@@ -1,0 +1,504 @@
+/* 사장님·운영자 화면 레이아웃과 목록 부품(TASK-182). 09 방향 A 목업(gen_screens.py의 side_menu·topbar·desk·phone·
+   setup_wide·login_frame·tablex·cards, gen.py의 band·block)과 같은 모습이고 tokens.css의 변수만 쓴다.
+
+   넓고 좁음을 가르는 너비는 아래 @media 하나다. CSS의 @media 조건에는 var()를 쓸 수 없어 숫자로 적고,
+   값은 size.menu(220) + size.content(1040) = 1260px(왼쪽 메뉴와 09의 가운데 열이 다 들어가는 너비)다.
+   styles.test.ts가 design/base.tokens.json에서 이 합을 계산해 같은지 보고, 손으로 쓴 CSS의 숫자는 이것만 허용한다.
+   그보다 좁으면(360·768·1024 등) 위쪽 막대와 메뉴 버튼, 목록은 카드다. */
+
+/* ── 한쪽 너비에서만 보임(숨긴 쪽은 display: none이라 화면 읽기 프로그램도 읽지 않음) ── */
+.ui-wide-only {
+  display: none;
+}
+
+/* ── 메뉴 항목·머리(왼쪽 메뉴와 360 열린 메뉴가 함께 씀) ── */
+.ui-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  padding: var(--space-lg) var(--space-sm);
+  background: var(--color-surface);
+}
+
+.ui-menu__brand {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-md) var(--space-lg);
+}
+
+.ui-menu__name {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-line-height-tight);
+}
+
+.ui-menu__who {
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-small);
+}
+
+.ui-menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  padding: 0;
+  list-style: none;
+}
+
+.ui-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: var(--size-target);
+  padding-inline: var(--space-md);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.ui-menu__item:hover {
+  background: var(--color-surface-sunken);
+}
+
+/* 지금 화면이 속한 1뎁스(09: accent-soft 바탕, 왼쪽 강한 선, semibold). 색만으로 가르지 않게 선과 굵기도 바꿈 */
+.ui-menu__item[aria-current] {
+  background: var(--color-accent-soft);
+  box-shadow: inset var(--border-width-strong) 0 0 var(--color-accent);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ui-menu__count {
+  min-width: var(--space-xl);
+  padding-inline: var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+}
+
+.ui-menu__item[aria-current] .ui-menu__count {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.ui-menu__logout {
+  margin-top: auto;
+  min-height: var(--size-target);
+  padding-inline: var(--space-md);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-small);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* ── 레이아웃(좁은 화면이 바탕) ── */
+.ui-layout__side {
+  display: none;
+}
+
+.ui-layout__page {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 360 위쪽 막대(09 topbar): 높이 size.bar, 첫 버튼과 제목, 오른쪽에 가게 이름 */
+.ui-layout__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: var(--size-bar);
+  padding-inline: var(--space-xs) var(--space-lg);
+  border-bottom: var(--border-width-hairline) solid var(--color-line);
+  background: var(--color-surface);
+}
+
+.ui-layout__lead {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-target);
+  height: var(--size-target);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.ui-layout__lead:hover {
+  background: var(--color-surface-sunken);
+}
+
+.ui-layout__titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-block: var(--space-xs);
+}
+
+.ui-layout__title {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ui-layout__meta {
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-small);
+  line-height: var(--font-line-height-tight);
+}
+
+.ui-layout__who {
+  flex: none;
+  margin-left: auto;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-small);
+}
+
+/* 좁은 화면의 본문: 띠가 화면 너비를 채우고, 넓은 태블릿 너비에서는 1280의 좁은 열(size.content − size.aside)로 가운데 */
+.ui-layout__main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: calc(var(--size-content) - var(--size-aside));
+  min-width: 0;
+  margin-inline: auto;
+}
+
+/* ── 본문 한 묶음(360 band: 좌우 여백과 사이 선) ── */
+.ui-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+  padding: var(--space-lg);
+}
+
+.ui-section + .ui-section {
+  border-top: var(--border-width-hairline) solid var(--color-line);
+}
+
+.ui-section__title {
+  font-size: var(--font-size-title);
+}
+
+/* ── 360 열린 메뉴(모달 <dialog>, 09에 그리지 않은 상태) ── */
+.ui-sheet {
+  width: var(--size-menu);
+  max-width: calc(100% - var(--size-target));
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-right: var(--border-width-hairline) solid var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.ui-sheet::backdrop {
+  background: var(--color-scrim);
+}
+
+.ui-sheet__inner {
+  min-height: 100%;
+  overflow-y: auto;
+}
+
+.ui-sheet__close {
+  align-self: flex-end;
+  min-width: var(--size-target);
+  min-height: var(--size-target);
+  padding-inline: var(--space-md);
+  border: var(--border-width-hairline) solid var(--color-line-control);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+/* ── 메뉴 없는 화면: 가게 등록 전(SCR-015) ── */
+.ui-setup__bar {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-bar);
+  padding-inline: var(--space-lg);
+  border-bottom: var(--border-width-hairline) solid var(--color-line);
+  background: var(--color-surface);
+}
+
+.ui-setup__title {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ui-setup__brand {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+}
+
+.ui-setup__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  width: 100%;
+  max-width: calc(var(--size-content) - var(--size-aside));
+  margin-inline: auto;
+  padding: var(--space-lg);
+}
+
+/* ── 메뉴 없는 화면: 로그인(SCR-014·046, 가운데 카드) ── */
+.ui-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: var(--space-lg);
+}
+
+.ui-login__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  width: 100%;
+  max-width: var(--size-aside);
+  margin-block: var(--space-xxl);
+  padding: var(--space-xxl) var(--space-xl);
+  border: var(--border-width-hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.ui-login__service {
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-line-height-tight);
+}
+
+.ui-login__title {
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── 목록: 좁은 화면은 카드(09 cards), 넓은 화면은 표(09 tablex) ── */
+.ui-list {
+  min-width: 0;
+}
+
+.ui-list__table {
+  display: none;
+}
+
+.ui-list__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ui-list__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border: var(--border-width-hairline) solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.ui-list__cardhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: var(--space-xl);
+}
+
+.ui-list__cardtitle {
+  min-width: 0;
+}
+
+.ui-list__tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+}
+
+.ui-list__meta {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-xxs) var(--space-sm);
+  margin: 0;
+  font-size: var(--font-size-small);
+}
+
+.ui-list__metarow {
+  display: contents;
+}
+
+.ui-list__meta dt {
+  color: var(--color-ink-muted);
+}
+
+.ui-list__meta dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.ui-list__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding-top: var(--space-xs);
+}
+
+/* 행에서 상세로 가는 링크(09 rowlink): 본문 크기, 밑줄, 누르는 높이 size.target */
+.ui-list__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-target);
+  color: var(--color-ink);
+  font-weight: var(--font-weight-medium);
+  text-decoration: underline;
+  text-decoration-color: var(--color-line-control);
+  text-underline-offset: var(--space-xs);
+}
+
+.ui-list__link--strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+.ui-list__table th {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-width-hairline) solid var(--color-line);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+  text-align: left;
+}
+
+.ui-list__table td {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-width-hairline) solid var(--color-line);
+  vertical-align: middle;
+}
+
+.ui-list__table td.ui-list__linkcell {
+  padding-block: 0;
+}
+
+.ui-list__col--narrow {
+  width: var(--size-thumb);
+}
+
+.ui-list__col--wide {
+  width: var(--size-aside);
+}
+
+/* ── 넓은 화면(1280): 왼쪽 메뉴와 가운데 열, 목록은 표 ── */
+@media (min-width: 1260px) {
+  .ui-narrow-only {
+    display: none;
+  }
+
+  .ui-wide-only {
+    display: revert;
+  }
+
+  /* 왼쪽 메뉴(09 side_menu): 너비 size.menu, 화면 높이를 채우고 내용이 길면 메뉴 안에서 넘김 */
+  .ui-layout__side {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    display: flex;
+    width: var(--size-menu);
+    padding-block: var(--space-lg);
+    overflow-y: auto;
+    border-right: var(--border-width-hairline) solid var(--color-line);
+  }
+
+  .ui-layout__page {
+    gap: var(--space-lg);
+    margin-inline-start: var(--size-menu);
+    padding: var(--space-xl) var(--space-xxl);
+  }
+
+  /* 1280 제목 줄(09 desk): 막대 없이 '뒤로'(하위 화면)와 큰 제목, 운영자는 오른쪽에 이름 */
+  .ui-layout__head {
+    width: 100%;
+    max-width: var(--size-content);
+    min-height: 0;
+    gap: var(--space-sm);
+    padding: 0;
+    border-bottom: 0;
+    background: transparent;
+  }
+
+  .ui-layout__open {
+    display: none;
+  }
+
+  .ui-layout__lead {
+    margin-left: calc(-1 * var(--space-sm));
+  }
+
+  .ui-layout__titles {
+    gap: var(--space-xxs);
+    padding-block: 0;
+  }
+
+  .ui-layout__title {
+    font-size: var(--font-size-heading);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .ui-layout__main {
+    max-width: var(--size-content);
+    margin-inline: 0;
+  }
+
+  /* 1280 block: 좌우 여백 없이 사이 선과 위 여백 */
+  .ui-section {
+    padding: 0;
+  }
+
+  .ui-section + .ui-section {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-xl);
+  }
+
+  .ui-setup__bar {
+    padding-inline: var(--space-xxl);
+  }
+
+  .ui-setup__main {
+    padding: var(--space-xl) 0 var(--space-xxl);
+  }
+
+  .ui-list__table {
+    display: table;
+    width: 100%;
+    border: var(--border-width-hairline) solid var(--color-line);
+    border-collapse: collapse;
+    background: var(--color-surface);
+    table-layout: fixed;
+  }
+
+  .ui-list__cards {
+    display: none;
+  }
+}

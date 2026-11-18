@@ -8,13 +8,29 @@ const WEB = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, WEB), "utf8");
 
 /** 손으로 쓴 CSS(생성 파일 tokens.css 밖) */
-const HAND_CSS = ["src/styles/base.css", "src/styles/parts.css", "src/samples/samples.css"];
+const HAND_CSS = ["src/styles/base.css", "src/styles/parts.css", "src/styles/layout.css", "src/samples/samples.css"];
 
 const tokens = read("src/styles/tokens.css");
 const defined = new Set([...tokens.matchAll(/^\s+(--[a-z0-9-]+):/gm)].map((m) => m[1]));
 
 /** 주석을 뺀 CSS */
 const uncomment = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, "");
+
+/** 09 토큰의 px 값(예: size.menu → 220) */
+const tokenPx = (path: string): number => {
+  let node: unknown = JSON.parse(readFileSync(new URL("../../design/base.tokens.json", WEB), "utf8"));
+  for (const key of path.split(".")) node = (node as Record<string, unknown>)[key];
+  const value = (node as { $value?: { value?: unknown; unit?: unknown } }).$value;
+  if (typeof value?.value !== "number" || value.unit !== "px") throw new Error(`${path}: px 토큰이 아님`);
+  return value.value;
+};
+
+/**
+ * 넓고 좁음을 가르는 너비(TASK-182): 왼쪽 메뉴(size.menu)와 09의 가운데 열(size.content)이 다 들어가는 너비.
+ * CSS의 @media 조건에는 var()를 쓸 수 없어 손으로 쓴 CSS가 숫자로 적는 유일한 값이다.
+ */
+const BREAKPOINT = tokenPx("size.menu") + tokenPx("size.content");
+const MEDIA = /@media\s*\(min-width:\s*(\d+)px\)/g;
 
 describe("09 토큰(design/base.tokens.json → src/styles/tokens.css)", () => {
   it("생성기로 다시 만든 것과 지금 파일이 같다(손으로 고치지 않음)", () => {
@@ -40,8 +56,8 @@ describe("09 토큰(design/base.tokens.json → src/styles/tokens.css)", () => {
 });
 
 describe("손으로 쓴 CSS", () => {
-  it.each(HAND_CSS)("%s: 숫자 크기·색 값을 직접 쓰지 않는다(토큰 변수만)", (path) => {
-    const css = uncomment(read(path));
+  it.each(HAND_CSS)("%s: 숫자 크기·색 값을 직접 쓰지 않는다(토큰 변수만, @media 너비만 예외)", (path) => {
+    const css = uncomment(read(path)).replace(MEDIA, "@media (min-width: BREAKPOINT)");
     const raw = [
       ...css.matchAll(/(?<![\w-])\d*\.?\d+(px|rem|em|pt|vh|vw|vmin|vmax|ch|ms|s)\b/g),
       ...css.matchAll(/#[0-9a-fA-F]{3,8}\b/g),
@@ -58,6 +74,18 @@ describe("손으로 쓴 CSS", () => {
     const unknown = used.filter((name) => !defined.has(name) && !local.has(name));
     expect(unknown).toEqual([]);
     expect(used.length).toBeGreaterThan(0);
+  });
+
+  it(`@media 너비는 size.menu + size.content(${BREAKPOINT}px) 하나뿐이다`, () => {
+    const widths = HAND_CSS.flatMap((path) => [...uncomment(read(path)).matchAll(MEDIA)].map((m) => Number(m[1])));
+    expect(widths.length).toBeGreaterThan(0);
+    expect(new Set(widths)).toEqual(new Set([BREAKPOINT]));
+    const other = HAND_CSS.flatMap((path) =>
+      [...uncomment(read(path)).matchAll(/@media[^{]*/g)]
+        .map((m) => m[0].trim())
+        .filter((q) => !/^@media\s*\(min-width:\s*\d+px\)$/.test(q)),
+    );
+    expect(other).toEqual([]);
   });
 
   it("한국어 줄바꿈(keep-all·break-word)을 바탕에 둔다(page-check가 없으면 오류로 봄)", () => {

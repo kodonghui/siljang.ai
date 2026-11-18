@@ -2,13 +2,12 @@
 // - 열면 첫 버튼('돌아가기', 아무것도 바꾸지 않는 쪽)에 포커스. Tab·Shift+Tab은 창 안에서 돎(포커스 가둠).
 // - Esc는 '돌아가기'와 같음. 닫히면 열기 전 포커스가 있던 곳(누른 버튼)으로 돌아감.
 // - 버튼은 '돌아가기'와 액션 이름 둘. '취소'만 있는 창은 쓰지 않음(설계 재검토 M19).
-import { type KeyboardEvent, type ReactNode, type SyntheticEvent, useEffect, useId, useRef } from "react";
+import { type ReactNode, type SyntheticEvent, useEffect, useId, useRef } from "react";
 import { type ConfirmationNeeded, confirmText, ERROR_CODES } from "../problems";
 import { Button } from "./Button";
+import { keepFocusInside } from "./focus";
 
 export const BACK_LABEL = "돌아가기";
-
-const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 export interface ConfirmDialogProps {
   readonly open: boolean;
@@ -63,23 +62,6 @@ export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, 
   const cancelByEscape = (e: SyntheticEvent<HTMLDialogElement>) => {
     e.preventDefault();
     onCancel();
-  };
-
-  const keepFocusInside = (e: KeyboardEvent<HTMLDialogElement>) => {
-    if (e.key !== "Tab") return;
-    const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-      (el) => !el.hasAttribute("disabled"),
-    );
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (first === undefined || last === undefined) return;
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
   };
 
   return (

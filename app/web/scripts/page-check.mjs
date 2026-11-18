@@ -2,8 +2,10 @@
 // 1) vite 개발 서버로 samples.html(개발용 견본, 운영 빌드에 없음)을 띄우고
 // 2) 미리 설치된 Playwright Chromium으로 상태마다 360·1280(높이 800, deviceScaleFactor 1)을 열어
 //    corthex-uxui page-check.js(오류 0), 가로 넘침 없음, 콘솔 오류 없음, 실린 글꼴을 보고 스크린샷을 남긴다.
+//    레이아웃 견본(TASK-182)은 LAYOUT_WIDTHS(그 사이 너비와 넓고 좁음을 가르는 너비 양쪽)에서도 연다.
 // 3) 키보드·요청 키 흐름을 누른다: 확인 창(첫 포커스 '돌아가기', Tab 가둠, Esc로 닫고 포커스 돌려줌, 확인하면 새 키와
-//    confirm 값), 서버 실패 뒤 '다시 시도'(같은 키), 두 번 눌러도 요청 하나.
+//    confirm 값), 서버 실패 뒤 '다시 시도'(같은 키), 두 번 눌러도 요청 하나. TASK-182는 너비마다 왼쪽 메뉴·메뉴 열기·
+//    표·카드 중 보이는 것과 좁은 화면의 메뉴 플로우(열기·포커스·Tab 가둠·닫기 넷·넓어지면 닫힘)를 본다.
 // 결과: <out>/report.json과 <out>/<상태>-<너비>.png. 하나라도 어긋나면 끝 상태 1.
 // 쓰임(app/에서): npm run check:pages -w web -- [--out 폴더] [--page-check page-check.js 경로]
 //   page-check.js는 --page-check, PAGE_CHECK, 아니면 tools/stage-checks.sh와 같은 곳
@@ -38,7 +40,25 @@ const STATES = [
   "confirm-notify",
   "flow",
   "flow-retry",
+  "layout-owner",
+  "layout-owner-sub",
+  "layout-owner-list-states",
+  "layout-operator",
+  "layout-operator-sub",
+  "layout-setup",
+  "layout-login",
+  "flow-menu",
 ];
+/**
+ * 레이아웃 견본(TASK-182)은 08·09가 그린 360·1280에 더해 그 사이 너비(768 태블릿 세로, 1024 태블릿 가로)와
+ * 넓고 좁음을 가르는 너비 바로 아래·위(src/styles/layout.css의 @media, size.menu + size.content)에서도 연다.
+ */
+const BREAKPOINT = (() => {
+  const tokens = JSON.parse(readFileSync(join(WEB, "../../design/base.tokens.json"), "utf8"));
+  return tokens.size.menu.$value.value + tokens.size.content.$value.value;
+})();
+const LAYOUT_WIDTHS = [360, 768, 1024, BREAKPOINT - 1, BREAKPOINT, 1280];
+const widthsOf = (state) => (state.startsWith("layout-") || state === "flow-menu" ? LAYOUT_WIDTHS : WIDTHS);
 /** 06 IdempotencyKey */
 const KEY_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
 
@@ -162,9 +182,9 @@ async function shoot(page, name, width) {
   return file;
 }
 
-// ── 1. 상태마다 360·1280 ──
+// ── 1. 상태마다 360·1280(레이아웃 견본은 LAYOUT_WIDTHS) ──
 for (const state of STATES) {
-  for (const width of WIDTHS) {
+  for (const width of widthsOf(state)) {
     const { context, page, consoleErrors } = await open(state, width);
     const m = await measure(page);
     summarize(state, width, m, consoleErrors, await shoot(page, state, width));
@@ -186,8 +206,8 @@ const focused = (page) =>
 const announced = (page, level) =>
   page.evaluate((l) => document.querySelector(`[data-announcer="${l}"]`)?.textContent ?? "", level);
 
-async function flow(name, width, steps) {
-  const { context, page, consoleErrors } = await open(name, width);
+async function flow(name, width, steps, state = name) {
+  const { context, page, consoleErrors } = await open(state, width);
   const seen = [];
   const problems = [];
   const expect = (ok, what) => {
@@ -278,6 +298,116 @@ for (const width of WIDTHS) {
     reqs = await requests(page);
     expect(reqs.length === 2 && reqs[1].key === reqs[0].key, "'다시 시도'는 같은 요청 키");
     await snap("done");
+  });
+}
+
+// ── 3. 레이아웃(TASK-182): 너비마다 보이는 쪽, 360 메뉴 열기·닫기 ──
+/** 화면에 보이는(display가 none이 아닌) 요소인지 */
+const shown = (page, selector) =>
+  page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    return el !== null && el.getClientRects().length > 0;
+  }, selector);
+const menuState = (page) =>
+  page.evaluate(() => {
+    const button = document.querySelector('button[aria-label="메뉴 열기"]');
+    const dialog = document.querySelector("dialog.ui-sheet");
+    const el = document.activeElement;
+    return {
+      expanded: button?.getAttribute("aria-expanded") ?? null,
+      open: dialog?.open ?? false,
+      focus: el?.textContent?.trim() ?? "",
+      focusInSheet: Boolean(el?.closest("dialog.ui-sheet")),
+      focusIsButton: el === button,
+      current: el?.getAttribute?.("aria-current") ?? null,
+      nav: window.__sampleNav ?? [],
+    };
+  });
+
+for (const width of LAYOUT_WIDTHS) {
+  const wide = width >= BREAKPOINT;
+  await flow(
+    "layout-widths",
+    width,
+    async (page, expect) => {
+      expect((await shown(page, "nav.ui-layout__side")) === wide, `왼쪽 메뉴가 ${wide ? "보임" : "안 보임"}`);
+      expect(
+        (await shown(page, 'button[aria-label="메뉴 열기"]')) === !wide,
+        `'메뉴 열기'가 ${wide ? "안 보임" : "보임"}`,
+      );
+      expect((await shown(page, "table.ui-list__table")) === wide, `목록 표가 ${wide ? "보임" : "안 보임"}`);
+      expect((await shown(page, "ul.ui-list__cards")) === !wide, `목록 카드가 ${wide ? "안 보임" : "보임"}`);
+      const names = await page.evaluate(() =>
+        [...document.querySelectorAll("nav[aria-label], dialog[aria-label]")]
+          .filter((el) => el.getClientRects().length > 0)
+          .map((el) => el.getAttribute("aria-label")),
+      );
+      expect(names.length === (wide ? 1 : 0), `보이는 메뉴 ${names.length}개(${names.join("·")})`);
+      const current = await page.evaluate(() =>
+        [...document.querySelectorAll(".ui-menu__item[aria-current]")]
+          .filter((el) => el.getClientRects().length > 0)
+          .map((el) => `${el.textContent?.trim()}=${el.getAttribute("aria-current")}`),
+      );
+      expect(
+        wide ? current.join() === "주문=page" : current.length === 0,
+        `지금 1뎁스 표시(${current.join() || "없음"})`,
+      );
+    },
+    "layout-owner",
+  );
+}
+
+for (const width of LAYOUT_WIDTHS.filter((w) => w < BREAKPOINT)) {
+  // 360 열린 메뉴: 열면 지금 1뎁스 항목에 포커스 → Tab 가둠 → Esc로 닫고 '메뉴 열기'로 → 다시 열어 항목 누르면 닫힘 → 바깥 누르면 닫힘
+  await flow("flow-menu", width, async (page, expect, snap) => {
+    const open = page.getByRole("button", { name: "메뉴 열기" });
+    await open.click();
+    await page.waitForSelector("dialog.ui-sheet[open]");
+    let m = await menuState(page);
+    expect(m.expanded === "true", `열면 aria-expanded=true(${m.expanded})`);
+    expect(m.focusInSheet && m.current === "page", `열면 지금 1뎁스 항목에 포커스(${m.focus})`);
+    await snap("open");
+    const count = await page.evaluate(
+      () => document.querySelectorAll("dialog.ui-sheet [href], dialog.ui-sheet button").length,
+    );
+    for (let i = 0; i < count; i++) await page.keyboard.press("Tab");
+    m = await menuState(page);
+    expect(m.focusInSheet, `Tab이 열린 메뉴 안에서 돎(${m.focus})`);
+    await page.keyboard.press("Shift+Tab");
+    m = await menuState(page);
+    expect(m.focusInSheet, `Shift+Tab도 열린 메뉴 안(${m.focus})`);
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => !document.querySelector("dialog.ui-sheet")?.open, null, { timeout: 2000 });
+    m = await menuState(page);
+    expect(!m.open && m.expanded === "false", "Esc로 닫히고 aria-expanded=false");
+    expect(m.focusIsButton, `닫히면 포커스가 '메뉴 열기'로 돌아옴(${m.focus})`);
+    await page.keyboard.press("Enter");
+    await page.waitForSelector("dialog.ui-sheet[open]");
+    await page.locator("dialog.ui-sheet").getByRole("link", { name: "입금 대조" }).click();
+    await page.waitForFunction(() => !document.querySelector("dialog.ui-sheet")?.open, null, { timeout: 2000 });
+    m = await menuState(page);
+    expect(!m.open && m.nav.at(-1) === "/owner/payment-requests", `항목을 누르면 닫히고 그 주소로(${m.nav.at(-1)})`);
+    await open.click();
+    await page.waitForSelector("dialog.ui-sheet[open]");
+    await page.mouse.click(width - 8, 400);
+    await page.waitForFunction(() => !document.querySelector("dialog.ui-sheet")?.open, null, { timeout: 2000 });
+    m = await menuState(page);
+    expect(!m.open, "바깥(scrim)을 누르면 닫힘");
+    await open.click();
+    await page.waitForSelector("dialog.ui-sheet[open]");
+    await page.locator("dialog.ui-sheet").getByRole("button", { name: "메뉴 닫기" }).click();
+    await page.waitForFunction(() => !document.querySelector("dialog.ui-sheet")?.open, null, { timeout: 2000 });
+    m = await menuState(page);
+    expect(!m.open && m.focusIsButton, `'메뉴 닫기'로 닫히고 포커스가 '메뉴 열기'로(${m.focus})`);
+    // 열린 채 넓은 화면이 되면 닫힘
+    await open.click();
+    await page.waitForSelector("dialog.ui-sheet[open]");
+    await page.setViewportSize({ width: 1280, height: HEIGHT });
+    await page
+      .waitForFunction(() => !document.querySelector("dialog.ui-sheet")?.open, null, { timeout: 2000 })
+      .catch(() => {});
+    m = await menuState(page);
+    expect(!m.open, "열린 채 넓은 화면이 되면 닫힘");
   });
 }
 
