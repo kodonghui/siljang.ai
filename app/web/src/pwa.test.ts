@@ -48,8 +48,8 @@ describe("TASK-176 서비스 워커", () => {
     ["/api/operator/login", "POST"],
     ["/owner", "GET"],
     ["/assets/unknown.js", "GET"],
-    [asset + "?refresh=1", "GET"],
-    ["https://cdn.example.org" + asset, "GET"],
+    [`${asset}?refresh=1`, "GET"],
+    [`https://cdn.example.org${asset}`, "GET"],
     [asset, "POST"],
   ])("%s %s 요청은 서비스 워커가 처리하지 않음", (path, method) => {
     const w = worker();

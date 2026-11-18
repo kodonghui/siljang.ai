@@ -63,6 +63,43 @@ for (const needle of REQUIRED_CSS) {
 if (first.includes("@font-face")) problems.push("첫 CSS에 @font-face가 있음(글꼴 CSS는 src/styles/fonts.ts로 따로)");
 if (!later.includes("IBM Plex Sans KR")) problems.push("따로 싣는 글꼴 CSS가 없음");
 
+// 배포된 HTML·매니페스트·아이콘·서비스 워커를 함께 확인한다(TASK-176).
+try {
+  const manifest = JSON.parse(read("manifest.webmanifest"));
+  if (
+    !html.includes('rel="manifest" href="/manifest.webmanifest"') ||
+    !manifest.name ||
+    !manifest.short_name ||
+    manifest.start_url !== "/owner" ||
+    manifest.display !== "standalone"
+  ) {
+    problems.push("매니페스트 연결이나 설치 필드가 맞지 않음");
+  }
+  for (const size of [192, 512]) {
+    const icon = manifest.icons.find(
+      (candidate) => candidate.sizes === `${size}x${size}` && candidate.type === "image/png",
+    );
+    const bytes = readFileSync(join(dist, icon.src.slice(1)));
+    if (
+      bytes.subarray(1, 4).toString() !== "PNG" ||
+      bytes.readUInt32BE(16) !== size ||
+      bytes.readUInt32BE(20) !== size
+    ) {
+      problems.push("설치 아이콘 크기가 맞지 않음");
+    }
+  }
+  const worker = read("service-worker.js");
+  const allowlist = JSON.parse(worker.match(/const assets = new Set\((\[.*\])\)/)?.[1] ?? "null");
+  const expected = names
+    .filter((name) => name.startsWith("assets/"))
+    .sort()
+    .map((path) => `/${path}`);
+  if (expected.length === 0 || JSON.stringify(allowlist) !== JSON.stringify(expected))
+    problems.push("서비스 워커 정적 파일 목록이 빌드 결과와 다름");
+} catch {
+  problems.push("PWA 빌드 결과를 검증할 수 없음");
+}
+
 if (problems.length > 0) {
   console.error(`check-dist: ${problems.length}건\n- ${problems.join("\n- ")}`);
   process.exit(1);
