@@ -238,7 +238,7 @@ describe("TASK-183: API-007이 G10을 적용한 바이트만 저장", () => {
     await uploaded(await upload(h, newUuid(), "design_image", original));
     const saved = h.store.objects.get(h.store.keys()[0] ?? "")?.body;
     if (!saved) throw new Error("missing stored image");
-    expect(Buffer.from(saved).includes(rotation)).toBe(true);
+    expect(Buffer.from(saved).includes(Buffer.from(rotation))).toBe(true);
     const after = await load(saved.slice().buffer, { expanded: true, async: true });
     expect(after.exif).toBeUndefined();
     expect(after.gps).toBeUndefined();

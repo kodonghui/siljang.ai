@@ -221,20 +221,16 @@ function cleanReferences(bytes: Uint8Array, box: Box, items: ReturnType<typeof i
   return kept.length ? makeBox("iref", numberBytes(fullBox, 4), ...kept) : undefined;
 }
 
-const IMAGE_PROPERTIES = new Set([
-  "hvcC",
-  "ispe",
-  "pixi",
-  "irot",
-  "imir",
-  "clap",
-  "pasp",
-  "rloc",
-  "lsel",
-  "a1lx",
-  "a1op",
-  "mdcv",
-  "clli",
+const FIXED_PROPERTY_SIZES: ReadonlyMap<string, number> = new Map([
+  ["ispe", 12],
+  ["irot", 1],
+  ["imir", 1],
+  ["clap", 32],
+  ["pasp", 8],
+  ["rloc", 12],
+  ["lsel", 2],
+  ["mdcv", 24],
+  ["clli", 4],
 ]);
 const AUX_TYPES = new Set([
   "urn:mpeg:hevc:2015:auxid:1",
@@ -244,15 +240,42 @@ const AUX_TYPES = new Set([
 
 function keepProperty(bytes: Uint8Array, box: Box): boolean {
   const size = box.end - box.data;
+  const view = viewOf(bytes);
   if (box.type === "colr") return size === 11 && fourCC(bytes, box.data) === "nclx";
   if (box.type === "auxC") {
-    if (size < 5 || size > 128 || viewOf(bytes).getUint32(box.data) !== 0 || bytes[box.end - 1] !== 0) return false;
+    if (size < 5 || size > 128 || view.getUint32(box.data) !== 0 || bytes[box.end - 1] !== 0) return false;
     return AUX_TYPES.has(new TextDecoder().decode(bytes.subarray(box.data + 4, box.end - 1)));
   }
-  if (box.type === "irot" || box.type === "imir") {
-    requirePhoto(size === 1 && viewOf(bytes).getUint8(box.data) <= (box.type === "irot" ? 3 : 1));
+  if (box.type === "pixi") {
+    requirePhoto(size >= 6 && view.getUint32(box.data) === 0 && size === 5 + view.getUint8(box.data + 4));
+    return true;
   }
-  return IMAGE_PROPERTIES.has(box.type);
+  if (box.type === "hvcC") {
+    // 배열 뒤에 붙은 임의 데이터를 영상 설정으로 복사하지 않는다.
+    requirePhoto(size >= 23 && view.getUint8(box.data) === 1);
+    const reader = new Reader(bytes, box.data + 22, box.end);
+    const arrays = reader.number(1);
+    for (let i = 0; i < arrays; i += 1) {
+      const type = reader.number(1) & 63;
+      requirePhoto(type === 32 || type === 33 || type === 34);
+      const count = reader.number(2);
+      for (let n = 0; n < count; n += 1) {
+        const length = reader.number(2);
+        requirePhoto(length >= 3 && reader.position + length <= box.end);
+        requirePhoto(((view.getUint8(reader.position) >>> 1) & 63) === type);
+        reader.position += length;
+      }
+    }
+    reader.finished();
+    return true;
+  }
+  const length = FIXED_PROPERTY_SIZES.get(box.type);
+  if (length === undefined) return false;
+  requirePhoto(size === length);
+  if (box.type === "irot" || box.type === "imir") {
+    requirePhoto(view.getUint8(box.data) <= (box.type === "irot" ? 3 : 1));
+  }
+  return true;
 }
 
 function cleanProperties(bytes: Uint8Array, box: Box, items: ReturnType<typeof imageItems>): Uint8Array {
