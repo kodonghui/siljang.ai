@@ -438,9 +438,19 @@ describeDb("틀린 것을 알리지 않음(같은 응답)", () => {
       ],
     ];
     const seen: Record<string, unknown>[] = [];
+    // 묶은 사용자·인증 수단이 아니면 Supabase에 challenge·verify를 부르지도 않음(verify의 실패나 세션 만들기의 다시 보기에 기대지 않음).
+    const unbound = new Set([cases[cases.length - 2]?.[0], cases[cases.length - 1]?.[0]]);
     for (const [name, make] of cases) {
       const before = h.waits.length;
-      const res = await h.login(await make());
+      const body0 = await make();
+      const callsBefore = h.mock.calls.length;
+      const res = await h.login(body0);
+      if (unbound.has(name)) {
+        expect(
+          h.mock.calls.slice(callsBefore).filter((c) => c.path.startsWith("/factors/")),
+          name,
+        ).toEqual([]);
+      }
       const body = await expectProblem(res, "operator_login_failed");
       expect(res.headers.get("set-cookie"), name).toBeNull();
       expect([...res.headers.keys()].sort(), name).toEqual(["cache-control", "content-type"]);
