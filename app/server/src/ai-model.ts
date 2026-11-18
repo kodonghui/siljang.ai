@@ -19,7 +19,7 @@ import { AIMessage, type BaseMessage, HumanMessage, SystemMessage } from "@langc
 import { ChatOpenAI } from "@langchain/openai";
 import { type AiCallRow, type Attempt, recordAiCall } from "./ai-calls";
 import { type AiProvider, type Cost, costOf, type ModelPrice, PriceTierError, priceOf } from "./ai-prices";
-import { type AiTurnOutput, checkTurnOutput, providerOutputSchema, withoutNulls } from "./ai-turn-output";
+import { type AiTurnOutput, checkTurnOutput, normalizeProviderOutput, providerOutputSchema } from "./ai-turn-output";
 import { UsageMeter } from "./ai-usage";
 import { type AiSettings, type AppEnv, SettingsError, tracingSwitchInProcess } from "./settings";
 import type { ShopDb } from "./shop-scope";
@@ -356,7 +356,7 @@ export function createAiModel(appEnv: AppEnv, ai: AiSettings, options: AiModelOp
       throw e;
     }
 
-    const check = checkTurnOutput(withoutNulls(ai.provider, parsed));
+    const check = checkTurnOutput(normalizeProviderOutput(ai.provider, parsed));
     const aiCallId = await recordAiCall(input.db, {
       ...base,
       firstTokenMs,
