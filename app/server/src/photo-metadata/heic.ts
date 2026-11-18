@@ -88,7 +88,7 @@ function numberBytes(n: number, width: 2 | 4): Uint8Array<ArrayBuffer> {
 
 const STILL_ITEMS = new Set(["hvc1", "grid", "iden"]);
 
-function imageItems(bytes: Uint8Array, box: Box): { kept: Set<number>; all: Set<number>; info: Uint8Array } {
+function imageItems(bytes: Uint8Array, box: Box): { kept: Map<number, string>; all: Set<number>; info: Uint8Array } {
   const reader = new Reader(bytes, box.data, box.end);
   const fullBox = reader.number(4);
   requirePhoto(fullBox === 0 || fullBox === 0x01000000);
@@ -96,7 +96,7 @@ function imageItems(bytes: Uint8Array, box: Box): { kept: Set<number>; all: Set<
   const count = reader.number(countWidth);
   const entries = readBoxes(bytes, reader.position, box.end);
   requirePhoto(count === entries.length);
-  const kept = new Set<number>();
+  const kept = new Map<number, string>();
   const all = new Set<number>();
   const cleaned: Uint8Array[] = [];
   for (const entry of entries) {
@@ -113,7 +113,7 @@ function imageItems(bytes: Uint8Array, box: Box): { kept: Set<number>; all: Set<
     requirePhoto(bytes.subarray(item.position, entry.end).includes(0));
     if (!STILL_ITEMS.has(type)) continue;
     requirePhoto(protection === 0);
-    kept.add(id);
+    kept.set(id, type);
     cleaned.push(makeBox("infe", item.segment(entry.data), Uint8Array.of(0)));
   }
   return { kept, all, info: makeBox("iinf", numberBytes(fullBox, 4), numberBytes(kept.size, countWidth), ...cleaned) };
@@ -123,7 +123,7 @@ interface Extent {
   readonly source: Box;
   readonly start: number;
   readonly end: number;
-  readonly kept: boolean;
+  readonly item: number;
 }
 
 function imageLocations(
@@ -170,16 +170,16 @@ function imageLocations(
       const source =
         method === 1 ? itemData : media.find((candidate) => start >= candidate.data && end <= candidate.end);
       requirePhoto(source && start >= source.data && end <= source.end);
-      extents.push({ source, start, end, kept });
+      extents.push({ source, start, end, item: id });
     }
     if (kept) rows.push(reader.segment(at));
   }
   reader.finished();
   requirePhoto(rows.length === items.kept.size);
   // 원본 위치가 겹치면 제거할 항목의 바이트가 영상 복사 범위에 들어갈 수 있다.
-  extents.sort((a, b) => a.start - b.start);
+  const orderedExtents = [...extents].sort((a, b) => a.start - b.start);
   let previousEnd = 0;
-  for (const extent of extents) {
+  for (const extent of orderedExtents) {
     requirePhoto(previousEnd <= extent.start);
     previousEnd = extent.end;
   }
@@ -191,7 +191,7 @@ function imageLocations(
       numberBytes(rows.length, idWidth),
       ...rows,
     ),
-    extents: extents.filter((extent) => extent.kept),
+    extents: extents.filter(({ item }) => items.kept.has(item)),
   };
 }
 
@@ -278,7 +278,14 @@ function keepProperty(bytes: Uint8Array, box: Box): boolean {
   return true;
 }
 
-function cleanProperties(bytes: Uint8Array, box: Box, items: ReturnType<typeof imageItems>): Uint8Array {
+function cleanProperties(
+  bytes: Uint8Array,
+  box: Box,
+  items: ReturnType<typeof imageItems>,
+): {
+  properties: Uint8Array;
+  nalWidths: Map<number, number>;
+} {
   const children = readBoxes(bytes, box.data, box.end);
   const container = requiredBox(children, "ipco");
   const properties = readBoxes(bytes, container.data, container.end);
@@ -291,6 +298,8 @@ function cleanProperties(bytes: Uint8Array, box: Box, items: ReturnType<typeof i
   }
   const associations: Uint8Array[] = [];
   const associated = new Set<number>();
+  const nalWidths = new Map<number, number>();
+  const view = viewOf(bytes);
   for (const entry of children.filter((child) => child.type === "ipma")) {
     const reader = new Reader(bytes, entry.data, entry.end);
     const version = reader.number(1);
@@ -316,13 +325,18 @@ function cleanProperties(bytes: Uint8Array, box: Box, items: ReturnType<typeof i
         const essential = value & essentialMask;
         requirePhoto(index <= properties.length);
         if (!kept || index === 0) continue;
+        const property = properties[index - 1];
         const mappedIndex = mapped.get(index);
         if (mappedIndex === undefined) {
           // ICC는 지운다. 다른 필수 표시 속성을 해석할 수 없으면 파일을 받지 않는다.
-          requirePhoto(!essential || properties[index - 1]?.type === "colr");
+          requirePhoto(!essential || property?.type === "colr");
           continue;
         }
         associated.add(id);
+        if (property?.type === "hvcC") {
+          requirePhoto(items.kept.get(id) === "hvc1" && !nalWidths.has(id));
+          nalWidths.set(id, (view.getUint8(property.data + 21) & 3) + 1);
+        }
         const newValue = mappedIndex | essential;
         if (associationWidth === 2) values.push(newValue >>> 8);
         values.push(newValue & 0xff);
@@ -335,7 +349,60 @@ function cleanProperties(bytes: Uint8Array, box: Box, items: ReturnType<typeof i
       associations.push(makeBox("ipma", numberBytes((version << 24) | flags, 4), numberBytes(rows.length, 4), ...rows));
   }
   requirePhoto(associated.size > 0);
-  return makeBox("iprp", makeBox("ipco", ...filtered), ...associations);
+  return { properties: makeBox("iprp", makeBox("ipco", ...filtered), ...associations), nalWidths };
+}
+
+/** HEVC의 보조 정보(SEI)는 mdat의 영상 데이터 안에도 제작자와 인코더 정보를 담을 수 있다. */
+function clearSupplementalData(data: Uint8Array, nalWidth: number): void {
+  const reader = new Reader(data, 0, data.length);
+  let hasPicture = false;
+  while (reader.position < data.length) {
+    const length = reader.number(nalWidth);
+    const start = reader.position;
+    const end = start + length;
+    requirePhoto(length >= 3 && end <= data.length);
+    const header = reader.number(1);
+    const layerAndTemporal = reader.number(1);
+    const type = (header >>> 1) & 63;
+    requirePhoto((header & 0x80) === 0 && (layerAndTemporal & 7) !== 0 && type <= 40);
+    hasPicture ||= type <= 31;
+    if (type >= 38) {
+      // 같은 길이의 FD_NUT(38) 패딩으로 바꿔 HEIF의 영상 위치와 길이를 유지한다.
+      data[start] = (38 << 1) | (header & 1);
+      data.fill(0xff, start + 2, end - 1);
+      data[end - 1] = 0x80;
+    }
+    reader.position = end;
+  }
+  requirePhoto(hasPicture);
+}
+
+function copyItem(
+  bytes: Uint8Array,
+  output: Uint8Array,
+  extents: readonly Extent[],
+  itemData: Box | undefined,
+  idatOut: number,
+  nalWidth: number | undefined,
+): void {
+  const destination = ({ source, start }: Extent) => (source === itemData ? idatOut + start - source.data : start);
+  const first = extents[0];
+  requirePhoto(first);
+  if (extents.length === 1) {
+    const target = destination(first);
+    output.set(bytes.subarray(first.start, first.end), target);
+    if (nalWidth !== undefined)
+      clearSupplementalData(output.subarray(target, target + first.end - first.start), nalWidth);
+    return;
+  }
+  const stream = joinBytes(extents.map(({ start, end }) => bytes.subarray(start, end)));
+  if (nalWidth !== undefined) clearSupplementalData(stream, nalWidth);
+  let cursor = 0;
+  for (const extent of extents) {
+    const size = extent.end - extent.start;
+    output.set(stream.subarray(cursor, cursor + size), destination(extent));
+    cursor += size;
+  }
 }
 
 function writeCleanMeta(bytes: Uint8Array, output: Uint8Array, meta: Box, media: readonly Box[]): void {
@@ -369,10 +436,10 @@ function writeCleanMeta(bytes: Uint8Array, output: Uint8Array, meta: Box, media:
     [primary, makeBox("pitm", bytes.subarray(primary.data, primary.end))],
     [location, cleanLocation.locations],
     [info, items.info],
-    [properties, cleanProps],
+    [properties, cleanProps.properties],
   ]);
   if (references && cleanRef) parts.set(references, cleanRef);
-  // Opaque payload is not copied wholesale: bytes outside retained item extents stay zero.
+  // 유지하는 영상 항목이 차지하지 않는 영역은 0으로 둔다.
   const itemDataSize = itemData ? 8 + itemData.end - itemData.data : 0;
   const handlerSize = 8 + handler.end - handler.data;
   const available = meta.end - meta.data - 4;
@@ -397,8 +464,16 @@ function writeCleanMeta(bytes: Uint8Array, output: Uint8Array, meta: Box, media:
     }
   }
   if (remaining >= 8) output.set(boxHeader("free", remaining), at);
-  for (const { source, start, end } of cleanLocation.extents) {
-    output.set(bytes.subarray(start, end), source === itemData ? idatOut + start - source.data : start);
+  const byItem = new Map<number, Extent[]>();
+  for (const extent of cleanLocation.extents) {
+    const existing = byItem.get(extent.item);
+    if (existing) existing.push(extent);
+    else byItem.set(extent.item, [extent]);
+  }
+  for (const [id, extents] of byItem) {
+    const nalWidth = cleanProps.nalWidths.get(id);
+    if (items.kept.get(id) === "hvc1") requirePhoto(nalWidth !== undefined);
+    copyItem(bytes, output, extents, itemData, idatOut, nalWidth);
   }
 }
 

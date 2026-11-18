@@ -19,7 +19,7 @@ type Format = "jpg" | "png" | "heic" | "webp";
 
 export function photoFixture(
   format: Format,
-  variant: "clean" | "metadata" | "rotated" = "clean",
+  variant: "clean" | "metadata" | "rotated" | "hevc-sei" = "clean",
 ): Uint8Array<ArrayBuffer> {
   return new Uint8Array(readFileSync(new URL(`../fixtures/photos/${variant}.${format}`, import.meta.url)));
 }

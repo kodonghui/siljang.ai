@@ -245,6 +245,17 @@ describe("TASK-183: API-007이 G10을 적용한 바이트만 저장", () => {
     expect(after.xmp).toBeUndefined();
   });
 
+  it("heic: 영상 스트림 안의 보조 설명도 제거", async () => {
+    const original = img.photoFixture("heic", "hevc-sei");
+    const marker = "My test encoder notes";
+    expect(Buffer.from(original).includes(marker)).toBe(true);
+    const h = harness();
+    await uploaded(await upload(h, newUuid(), "design_image", original));
+    const saved = h.store.objects.get(h.store.keys()[0] ?? "")?.body;
+    if (!saved) throw new Error("missing stored image");
+    expect(Buffer.from(saved).includes(marker)).toBe(false);
+  });
+
   it.each(photos)("%s: 시그니처 뒤가 잘린 파일에는 422, 저장 없음", async (format) => {
     const h = harness();
     const res = await upload(h, newUuid(), "design_image", fixture(format).subarray(0, 40));
