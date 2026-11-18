@@ -7,6 +7,7 @@ import { FAILURE_FLOOR_MS, parseLoginInput } from "../src/operator-login";
 import { createOperatorScope } from "../src/operator-scope";
 import {
   clearedCookie,
+  createSession,
   emailHash,
   LOGIN_FAILURE_WINDOW_SECONDS,
   OPERATOR_SESSION_SECONDS,
@@ -275,26 +276,49 @@ interface Account {
   readonly password: string;
   readonly otp: string;
   readonly id: string | null;
+  /** 모의 Supabase 사용자 ID(운영자 행의 auth_user_id). */
+  readonly userId: string;
+  /** 등록 도구가 묶은 인증 수단 ID(운영자 행의 mfa_factor_id). Supabase에 TOTP가 없으면 아무 데도 없는 ID. */
+  readonly factorId: string;
 }
 
-/** 모의 Supabase 사용자와 운영자 행 하나. */
+/** 모의 Supabase 사용자와 운영자 행 하나(등록 도구가 쓰는 것처럼 Supabase 사용자 ID와 인증 수단 ID를 묶음). */
 async function addOperator(
   h: Harness,
-  o: { mfa?: boolean; disabled?: boolean; code?: string | null; inTable?: boolean } = {},
+  o: { mfa?: boolean; disabled?: boolean; code?: string | null; inTable?: boolean; name?: string } = {},
 ): Promise<Account> {
   const email = `op-${newUuid()}@ops.example`;
   const password = `pw-${newUuid()}`;
   const code = o.code === undefined ? "135790" : o.code;
-  h.mock.addUser(email, password, code);
+  const user = h.mock.addUser(email, password, code);
+  const factorId = user.factors[0]?.id ?? newUuid();
   let id: string | null = null;
   if (o.inTable !== false) {
+    const mfa = o.mfa !== false;
     const r = await db.query<{ id: string }>(
-      "INSERT INTO operators (email, display_name, mfa_enrolled_at, disabled_at) VALUES ($1, $2, $3, $4) RETURNING id",
-      [email, "운영자 시험", o.mfa === false ? null : new Date("2026-11-01T00:00:00Z"), o.disabled ? T0 : null],
+      `INSERT INTO operators (email, display_name, auth_user_id, mfa_factor_id, mfa_enrolled_at, disabled_at)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [
+        email,
+        o.name ?? "운영자 시험",
+        user.id,
+        mfa ? factorId : null,
+        mfa ? new Date("2026-11-01T00:00:00Z") : null,
+        o.disabled ? T0 : null,
+      ],
     );
     id = (r.rows[0] as { id: string }).id;
   }
-  return { email, password, otp: code ?? "135790", id };
+  return { email, password, otp: code ?? "135790", id, userId: user.id, factorId };
+}
+
+/** 그 운영자의 끝나지 않은 세션 수. */
+async function openSessions(operatorId: string | null): Promise<number> {
+  const r = await db.query<{ n: string }>(
+    "SELECT count(*) AS n FROM operator_sessions WHERE operator_id = $1 AND ended_at IS NULL",
+    [operatorId],
+  );
+  return Number((r.rows[0] as { n: string }).n);
 }
 
 const creds = (a: Account) => ({ email: a.email, password: a.password, otp: a.otp });
@@ -337,6 +361,9 @@ describeDb("운영자 로그인 API-004·005·006(06 계약 시험)", () => {
     // Supabase 세션은 남기지 않음.
     expect(h.mock.liveTokens()).toBe(0);
     expect(h.waits).toEqual([]);
+    // challenge·verify는 운영자 행에 묶은 인증 수단으로만.
+    const factorCalls = h.mock.calls.filter((c) => c.path.startsWith("/factors/")).map((c) => c.path);
+    expect(factorCalls).toEqual([`/factors/${a.factorId}/challenge`, `/factors/${a.factorId}/verify`]);
   });
 
   it("API-004 401·422·429·503과 API-005 401이 06 Problem", async () => {
@@ -391,11 +418,39 @@ describeDb("틀린 것을 알리지 않음(같은 응답)", () => {
           return creds(acc);
         },
       ],
+      [
+        "Supabase의 확인된 TOTP가 등록 도구가 묶은 인증 수단이 아님(대시보드에서 지운 뒤 비밀번호를 아는 사람이 직접 등록)",
+        async () => {
+          const acc = await addOperator(h);
+          const first = h.mock.users.get(acc.email)?.factors[0];
+          if (first === undefined) throw new Error("mock user");
+          first.id = newUuid();
+          return creds(acc);
+        },
+      ],
+      [
+        "비밀번호 로그인의 Supabase 사용자가 운영자 행에 묶인 사용자가 아님(같은 이메일로 다시 만든 사용자)",
+        async () => {
+          const acc = await addOperator(h);
+          await db.query("UPDATE operators SET auth_user_id = $2 WHERE id = $1", [acc.id, newUuid()]);
+          return creds(acc);
+        },
+      ],
     ];
     const seen: Record<string, unknown>[] = [];
+    // 묶은 사용자·인증 수단이 아니면 Supabase에 challenge·verify를 부르지도 않음(verify의 실패나 세션 만들기의 다시 보기에 기대지 않음).
+    const unbound = new Set([cases[cases.length - 2]?.[0], cases[cases.length - 1]?.[0]]);
     for (const [name, make] of cases) {
       const before = h.waits.length;
-      const res = await h.login(await make());
+      const body0 = await make();
+      const callsBefore = h.mock.calls.length;
+      const res = await h.login(body0);
+      if (unbound.has(name)) {
+        expect(
+          h.mock.calls.slice(callsBefore).filter((c) => c.path.startsWith("/factors/")),
+          name,
+        ).toEqual([]);
+      }
       const body = await expectProblem(res, "operator_login_failed");
       expect(res.headers.get("set-cookie"), name).toBeNull();
       expect([...res.headers.keys()].sort(), name).toEqual(["cache-control", "content-type"]);
@@ -428,6 +483,31 @@ describeDb("틀린 것을 알리지 않음(같은 응답)", () => {
     }
     expect(h.mock.calls).toEqual([]);
     expect(await failureRows(a.email)).toBe(0);
+  });
+});
+
+describeDb("실패 응답의 바닥 시간(401·429·503 모두 같음)", () => {
+  it("401·429·503은 모두 시작한 때부터 2초까지 기다리고, 성공·422·Origin이 다른 401은 기다리지 않음", async () => {
+    const h = harness();
+    const a = await addOperator(h);
+    const statusAndWait = async (body: unknown, o: Omit<CallOptions, "body"> = {}) => {
+      const before = h.waits.length;
+      const res = await h.login(body, o);
+      const waited = h.waits.length - before;
+      if (waited === 1) {
+        const w = h.waits.at(-1) as number;
+        expect(w > 0 && w <= FAILURE_FLOOR_MS).toBe(true);
+      }
+      return `${res.status}:${waited}`;
+    };
+    expect(await statusAndWait(creds(a))).toBe("200:0");
+    expect(await statusAndWait({ ...creds(a), otp: "12" })).toBe("422:0");
+    expect(await statusAndWait(creds(a), { origin: "https://evil.example" })).toBe("401:0");
+    for (let i = 0; i < 5; i += 1) expect(await statusAndWait({ ...creds(a), otp: "000000" })).toBe("401:1");
+    expect(await statusAndWait(creds(a))).toBe("429:1");
+    const b = await addOperator(h);
+    h.mock.down = "500";
+    expect(await statusAndWait(creds(b))).toBe("503:1");
   });
 });
 
@@ -504,16 +584,84 @@ describeDb("운영자 세션 12시간 고정(06 DEC-26)", () => {
     expect(s.token_hash).not.toBe(token);
   });
 
-  it("로그인한 뒤 막히거나 2단계 인증이 꺼지면 그 세션은 401", async () => {
+  it("막으면 그 운영자의 열린 세션이 모두 끝나 풀어도 옛 쿠키는 401, 다른 운영자의 세션은 그대로(06 DEC-27)", async () => {
     const h = harness();
     const a = await addOperator(h);
-    const cookie = cookieOf(await h.login(creds(a)));
+    const b = await addOperator(h);
+    const first = cookieOf(await h.login(creds(a)));
+    const second = cookieOf(await h.login(creds(a)));
+    const other = cookieOf(await h.login(creds(b)));
+    expect(await openSessions(a.id)).toBe(2);
     await db.query("UPDATE operators SET disabled_at = $2 WHERE id = $1", [a.id, T0]);
-    await expectProblem(await h.me(cookie), "unauthenticated");
-    await db.query("UPDATE operators SET disabled_at = NULL, mfa_enrolled_at = NULL WHERE id = $1", [a.id]);
-    await expectProblem(await h.me(cookie), "unauthenticated");
-    await db.query("UPDATE operators SET mfa_enrolled_at = $2 WHERE id = $1", [a.id, T0]);
+    expect(await openSessions(a.id)).toBe(0);
+    await expectProblem(await h.me(first), "unauthenticated");
+    // 막기 전에 새어 나간 쿠키가 풀린 뒤 다시 살아나지 않음.
+    await db.query("UPDATE operators SET disabled_at = NULL WHERE id = $1", [a.id]);
+    await expectProblem(await h.me(first), "unauthenticated");
+    await expectProblem(await h.me(second), "unauthenticated");
+    expect((await h.me(other)).status).toBe(200);
+    expect(await openSessions(b.id)).toBe(1);
+    // 푼 뒤 새로 로그인하면 됨.
+    expect((await h.login(creds(a))).status).toBe(200);
+  });
+
+  it("2단계 인증을 끄거나 다시 등록하거나 Supabase 사용자를 바꾸면 옛 쿠키는 401이고 되돌려도 살아나지 않음, 이름만 바꾸면 그대로", async () => {
+    const h = harness();
+    // 바꾸는 것마다 새 운영자 하나(되돌리는 문장은 같은 값을 다시 씀).
+    const changes: Array<[string, (a: Account) => [string, unknown[]], (a: Account) => [string, unknown[]]]> = [
+      [
+        "2단계 인증 끔(인증 수단 ID와 켠 시각을 비움)",
+        (a) => ["UPDATE operators SET mfa_factor_id = NULL, mfa_enrolled_at = NULL WHERE id = $1", [a.id]],
+        (a) => ["UPDATE operators SET mfa_factor_id = $2, mfa_enrolled_at = $3 WHERE id = $1", [a.id, a.factorId, T0]],
+      ],
+      [
+        "다시 등록(새 인증 수단 ID와 켠 시각)",
+        (a) => ["UPDATE operators SET mfa_factor_id = $2, mfa_enrolled_at = $3 WHERE id = $1", [a.id, newUuid(), T0]],
+        (a) => [
+          "UPDATE operators SET mfa_factor_id = $2, mfa_enrolled_at = $3 WHERE id = $1",
+          [a.id, a.factorId, new Date("2026-11-01T00:00:00Z")],
+        ],
+      ],
+      [
+        "Supabase 사용자 ID가 바뀜",
+        (a) => ["UPDATE operators SET auth_user_id = $2 WHERE id = $1", [a.id, newUuid()]],
+        (a) => ["UPDATE operators SET auth_user_id = $2 WHERE id = $1", [a.id, a.userId]],
+      ],
+    ];
+    for (const [name, change, revert] of changes) {
+      const a = await addOperator(h);
+      const cookie = cookieOf(await h.login(creds(a)));
+      await db.query(...change(a));
+      await expectProblem(await h.me(cookie), "unauthenticated");
+      expect(await openSessions(a.id), name).toBe(0);
+      await db.query(...revert(a));
+      await expectProblem(await h.me(cookie), "unauthenticated");
+    }
+    const a = await addOperator(h);
+    const cookie = cookieOf(await h.login(creds(a)));
+    await db.query("UPDATE operators SET display_name = '새 이름', email = email WHERE id = $1", [a.id]);
+    const me = await h.me(cookie);
+    expect(me.status).toBe(200);
+    expect(await me.json()).toMatchObject({ displayName: "새 이름" });
+    // 같은 값을 다시 써도(등록 도구가 같은 인증 수단을 다시 확인한 때) 끝내지 않음.
+    await db.query(
+      "UPDATE operators SET mfa_factor_id = mfa_factor_id, mfa_enrolled_at = mfa_enrolled_at WHERE id = $1",
+      [a.id],
+    );
     expect((await h.me(cookie)).status).toBe(200);
+  });
+
+  it("로그인 확인과 세션 만들기 사이에 운영자 행이 바뀌면 세션을 만들지 않음", async () => {
+    const h = harness();
+    const a = await addOperator(h);
+    const binding = { id: a.id as string, mfaFactorId: a.factorId, authUserId: a.userId };
+    expect(await createSession(db, { ...binding, mfaFactorId: newUuid() }, T0)).toBeNull();
+    expect(await createSession(db, { ...binding, authUserId: newUuid() }, T0)).toBeNull();
+    await db.query("UPDATE operators SET disabled_at = $2 WHERE id = $1", [a.id, T0]);
+    expect(await createSession(db, binding, T0)).toBeNull();
+    await db.query("UPDATE operators SET disabled_at = NULL WHERE id = $1", [a.id]);
+    expect(await createSession(db, binding, T0)).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(await openSessions(a.id)).toBe(1);
   });
 
   it("로그아웃은 Origin이 맞을 때만 세션을 끝냄(다른 사이트는 세션이 없는 것과 같음), 쿠키는 늘 지움", async () => {
@@ -590,6 +738,27 @@ describeDb("SPEC-001 수락 기준 5: 사장님 세션으로는 운영자 화면
     expect(screens).toBe(1);
   });
 
+  it("이름 40자는 코드 포인트로 셈(데이터베이스 char_length·06 maxLength와 같음): 이모지 40개 이름도 모든 운영자 경로에서 200", async () => {
+    const name = "🎂".repeat(40);
+    expect(name.length).toBe(80);
+    const screen = operatorRoute("GET", "/test/operator/name", async (r) => r.json({ name: r.operator.displayName }));
+    const h = harness({ routes: [...APP_ROUTES, screen] });
+    const a = await addOperator(h, { name });
+    const res = await h.login(creds(a));
+    expect(res.status).toBe(200);
+    expectSchema("Operator", await res.json());
+    const cookie = cookieOf(res);
+    const me = await h.me(cookie);
+    expect(me.status).toBe(200);
+    expectSchema("Operator", await me.json());
+    const named = await h.call("GET", "/test/operator/name", { cookie });
+    expect(named.status).toBe(200);
+    expect(await named.json()).toEqual({ name });
+    expect(createOperatorScope(newUuid(), "🎂".repeat(21)).displayName).toBe("🎂".repeat(21));
+    expect(() => createOperatorScope(newUuid(), "🎂".repeat(41))).toThrow(TypeError);
+    expect(() => createOperatorScope(newUuid(), `${"가".repeat(40)}🎂`)).toThrow(TypeError);
+  });
+
   it("흉내 낸 운영자 범위는 경로가 받지 않음(500, 운영자 화면 0번)", async () => {
     const h = harness({
       operatorAccount: async () =>
@@ -613,7 +782,9 @@ describeDb("인증 서비스가 답하지 않을 때(06 auth_unavailable)", () =
         await expectProblem(await h.login(creds(a)), "auth_unavailable");
       }
       expect(await failureRows(a.email), mode).toBe(0);
-      expect(h.waits).toEqual([]);
+      // 503도 401과 같은 바닥(2초)까지 기다림(앞의 기대값 waits=[]를 바꿈).
+      expect(h.waits, mode).toHaveLength(6);
+      for (const w of h.waits) expect(w > 0 && w <= FAILURE_FLOOR_MS, mode).toBe(true);
       h.mock.down = null;
       expect((await h.login(creds(a))).status, mode).toBe(200);
     }
@@ -627,6 +798,18 @@ describeDb("인증 서비스가 답하지 않을 때(06 auth_unavailable)", () =
     for (let i = 0; i < 5; i += 1) await expectProblem(await h.login(creds(a)), "auth_unavailable");
     expect(await failureRows(a.email)).toBe(5);
     await expectProblem(await h.login(creds(a)), "too_many_attempts");
+  });
+
+  it("verify가 challenge와 다른 IP라고 거절하면(mfa_ip_address_mismatch) 503이고 로그에 ip_mismatch, 비밀번호 단계 뒤라 셈", async () => {
+    const h = harness();
+    const a = await addOperator(h);
+    h.mock.verifyIpMismatch = true;
+    await expectProblem(await h.login(creds(a)), "auth_unavailable");
+    expect(await failureRows(a.email)).toBe(1);
+    expect(h.logs.lines.join("\n")).toContain('"names":["ip_mismatch","counted"]');
+    expect(h.waits).toHaveLength(1);
+    h.mock.verifyIpMismatch = false;
+    expect((await h.login(creds(a))).status).toBe(200);
   });
 
   it("설정이 없으면 운영자 로그인만 500 internal이고 세지 않음, 로그에는 이름만", async () => {

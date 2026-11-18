@@ -331,6 +331,7 @@ TRIGGER_TEXT = {
     "slot_holds_pair_check": "한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check",
     "refunds_cancelled_check": "취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check",
     "confirmed_payment_live_check": "주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check",
+    "operators_end_sessions": "운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 operators_end_sessions",
 }
 
 

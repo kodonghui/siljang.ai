@@ -21,7 +21,9 @@ const genuine = new WeakSet<object>();
 /** 운영자 범위를 만든다. 해석기만 부른다. operatorId는 해석기가 세션에서 찾은 운영자 ID다. */
 export function createOperatorScope(operatorId: string, displayName: string): OperatorScope {
   if (!isUuid(operatorId)) throw new TypeError("operator id must be a uuid");
-  if (displayName.length < 1 || displayName.length > 40) throw new TypeError("display name must be 1~40 characters");
+  // 05 char_length·06 maxLength처럼 코드 포인트로 센다(UTF-16 단위로 세면 이모지 21개 이름이 모든 운영자 경로에서 500).
+  const length = [...displayName].length;
+  if (length < 1 || length > 40) throw new TypeError("display name must be 1~40 characters");
   const scope: OperatorScope = Object.freeze({
     operatorId: operatorId.toLowerCase(),
     displayName,

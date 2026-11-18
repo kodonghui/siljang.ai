@@ -57,6 +57,11 @@ export class SupabaseMock {
   verifyGivesAal1 = false;
   /** 비밀번호 로그인 답에 factors 목록을 빼게 함(getUser로 다시 읽는지 보는 시험). */
   omitFactorsOnSignIn = false;
+  /**
+   * verify가 challenge와 다른 IP에서 왔다고 거절하게 함(진짜 Supabase Auth의 422 mfa_ip_address_mismatch: 번호를 보기 전에
+   * challenge를 만든 요청의 IP와 견줌. github.com/supabase/auth internal/api/mfa.go validateChallenge, 2026-11-18 확인).
+   */
+  verifyIpMismatch = false;
   readonly #tokens = new Map<string, TokenInfo>();
   readonly #challenges = new Map<string, string>();
   readonly #apiKey: string;
@@ -235,6 +240,12 @@ export class SupabaseMock {
           return Response.json({ error_code: "mfa_challenge_expired" }, { status: 422 });
         }
         this.#challenges.delete(challengeId);
+        if (this.verifyIpMismatch) {
+          return Response.json(
+            { code: 422, error_code: "mfa_ip_address_mismatch", msg: "Challenge and verify IP addresses mismatch." },
+            { status: 422 },
+          );
+        }
         if (body.code !== factor.code) {
           return Response.json({ error_code: "mfa_verification_failed" }, { status: 422 });
         }

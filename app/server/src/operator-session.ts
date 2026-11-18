@@ -1,12 +1,16 @@
 /**
- * 운영자 세션과 로그인 실패 세기(TASK-021; 06 DEC-26·DEC-16·DEC-27, 05 TBL-059·TBL-060).
+ * 운영자 세션과 로그인 실패 세기(TASK-021; 06 DEC-26·DEC-16·DEC-27, 05 TBL-002·TBL-059·TBL-060).
  *
  * 세션(05 operator_sessions)
  * - 쿠키 siljang_operator의 값은 무작위 32바이트(base64url 43자)이고, 데이터베이스에는 그 SHA-256(소문자 16진수)만 둔다.
  *   데이터베이스를 읽은 사람도 살아 있는 쿠키를 만들 수 없다. 서버가 세션을 끝낼 수 있다(로그아웃 API-006).
  * - 로그인한 때부터 12시간이 지나면 끝나고 쓴다고 늘지 않는다(DEC-26). 05의 CHECK가 expires_at = created_at + 12시간을 지킨다.
- * - 요청마다 세션과 운영자 행을 함께 본다: 끝났거나(로그아웃) 지났거나, 운영자가 막혔거나(disabled_at) 2단계 인증을 켜지
- *   않았으면(mfa_enrolled_at 빔, 05 R2) 세션이 없는 것과 같다.
+ * - 운영자를 막거나(disabled_at) 2단계 인증을 끄거나 다시 등록하거나(mfa_enrolled_at·mfa_factor_id) Supabase 사용자가 바뀌면
+ *   (auth_user_id) 05 트리거 operators_end_sessions가 그 운영자의 열린 세션을 같은 트랜잭션에서 끝낸다(DEC-27). 앱 밖(대시보드·SQL)에서
+ *   바꿔도 듣고, 풀거나 되돌려도 옛 쿠키는 살아나지 않는다.
+ * - 그래도 요청마다 세션과 운영자 행을 함께 본다: 끝났거나 지났거나, 운영자가 막혔거나 2단계 인증을 켜지 않았으면(05 R2) 세션이
+ *   없는 것과 같다.
+ * - 세션은 로그인 확인 때 읽은 운영자 행이 그대로일 때만 만든다(그 행을 잠그고 다시 봄). 그 사이에 막거나 다시 등록했으면 만들지 않는다.
  * - 지난 세션 행은 로그인 때 지운다(따로 도는 일 없음).
  *
  * 로그인 실패(05 operator_login_failures)
@@ -102,19 +106,37 @@ export interface SessionOperator {
   readonly displayName: string;
 }
 
-/** 세션을 만들고 쿠키 값을 돌려준다. 지난 세션 행은 이때 지운다. */
-export async function createSession(db: RequestDb, operatorId: string, now: Date): Promise<string> {
+/** 로그인 확인 때 읽은 운영자 행의 묶음(세션을 만들 때 그대로인지 다시 봄). */
+export interface SessionBinding {
+  readonly id: string;
+  readonly mfaFactorId: string;
+  readonly authUserId: string;
+}
+
+/**
+ * 세션을 만들고 쿠키 값을 돌려준다. 지난 세션 행은 이때 지운다. 운영자 행이 막히지 않고 2단계 인증을 켰고 확인 때의 인증 수단·
+ * Supabase 사용자 그대로일 때만 만든다(그 행을 FOR SHARE로 잠가 막기·다시 등록과 차례를 정함). 아니면 null.
+ */
+export async function createSession(db: RequestDb, operator: SessionBinding, now: Date): Promise<string | null> {
   const token = newSessionToken();
   const hash = await tokenHash(token);
-  await db.transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
+    const still = await tx.query(
+      `SELECT 1 FROM operators
+        WHERE id = $1 AND disabled_at IS NULL AND mfa_enrolled_at IS NOT NULL AND mfa_factor_id = $2 AND auth_user_id = $3
+        FOR SHARE`,
+      [operator.id, operator.mfaFactorId, operator.authUserId],
+    );
+    if (still.rows.length === 0) return false;
     await tx.query("DELETE FROM operator_sessions WHERE expires_at <= $1", [now]);
     await tx.query(
       `INSERT INTO operator_sessions (operator_id, token_hash, created_at, expires_at)
        VALUES ($1, $2, $3, $3::timestamptz + interval '12 hours')`,
-      [operatorId, hash, now],
+      [operator.id, hash, now],
     );
+    return true;
   });
-  return token;
+  return created ? token : null;
 }
 
 /** 쿠키 값의 살아 있는 세션과 그 운영자. 끝났거나 지났거나, 운영자가 막혔거나 2단계 인증이 꺼졌으면 null. */
@@ -149,17 +171,36 @@ export interface LoginOperator {
   readonly displayName: string;
   readonly disabled: boolean;
   readonly mfaEnrolled: boolean;
+  /** 등록 도구가 묶은 Supabase 사용자 ID(05 operators.auth_user_id). 없으면 null. */
+  readonly authUserId: string | null;
+  /** 등록 도구가 확인한 TOTP 인증 수단 ID(05 operators.mfa_factor_id). 2단계 인증을 켜지 않았으면 null. */
+  readonly mfaFactorId: string | null;
 }
 
 export async function findOperatorByEmail(db: Queryable, email: string): Promise<LoginOperator | null> {
-  const r = await db.query<{ id: string; display_name: string; disabled: boolean; mfa_enrolled: boolean }>(
-    `SELECT id, display_name, disabled_at IS NOT NULL AS disabled, mfa_enrolled_at IS NOT NULL AS mfa_enrolled
+  const r = await db.query<{
+    id: string;
+    display_name: string;
+    disabled: boolean;
+    mfa_enrolled: boolean;
+    auth_user_id: string | null;
+    mfa_factor_id: string | null;
+  }>(
+    `SELECT id, display_name, disabled_at IS NOT NULL AS disabled, mfa_enrolled_at IS NOT NULL AS mfa_enrolled,
+            auth_user_id, mfa_factor_id
        FROM operators WHERE lower(email) = $1`,
     [normalizeEmail(email)],
   );
   const row = r.rows[0];
   if (row === undefined) return null;
-  return { id: row.id, displayName: row.display_name, disabled: row.disabled, mfaEnrolled: row.mfa_enrolled };
+  return {
+    id: row.id,
+    displayName: row.display_name,
+    disabled: row.disabled,
+    mfaEnrolled: row.mfa_enrolled,
+    authUserId: row.auth_user_id,
+    mfaFactorId: row.mfa_factor_id,
+  };
 }
 
 export type Reservation =

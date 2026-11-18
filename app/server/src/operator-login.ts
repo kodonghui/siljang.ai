@@ -4,6 +4,9 @@
  *
  * 로그인(API-004) 한 번의 요청 안에서 서버가 Supabase Auth에 비밀번호 로그인 → TOTP challenge·verify를 하고, 모두 맞고
  * 우리 운영자 표(05 operators)에 막히지 않고 2단계 인증을 켠 운영자로 있을 때만 우리 세션(operator-session.ts)을 만든다.
+ * 2단계 인증은 등록 도구가 운영자 행에 묶은 것으로만 본다: 비밀번호 로그인이 돌려준 Supabase 사용자가 그 행의 auth_user_id이고,
+ * Supabase의 확인된 TOTP가 그 행의 mfa_factor_id 하나뿐이며, 그 인증 수단으로 challenge·verify한다. 그래서 대시보드에서 인증 수단을
+ * 지운 사이에 비밀번호를 아는 사람이 Supabase에 직접 자기 TOTP를 등록해도 우리 로그인은 되지 않는다.
  * Supabase가 준 토큰은 우리 세션에 쓰지 않고 확인이 끝나면 끝낸다(signOut): 세션 길이(12시간 고정)와 로그아웃·계정 막기를
  * 우리 데이터베이스가 정하고, 화면에는 우리 쿠키 하나만 간다.
  *
@@ -12,11 +15,14 @@
  *    (다른 사이트가 운영자 브라우저로 로그인을 보내는 것을 막음, 06 DEC-10의 M18과 같은 이유). 세지 않는다.
  * 2. Content-Type이 JSON이 아니거나 본문이 06 OperatorSessionInput에 맞지 않으면 422 validation_failed(06 DEC-01). 세지 않는다.
  * 3. 이 이메일의 실패가 15분에 5번이면 429 too_many_attempts와 Retry-After(06 DEC-16). 아니면 시도 하나를 실패로 먼저 넣는다.
- * 4. 이메일·비밀번호·2단계 인증 번호 가운데 맞지 않는 것이 있거나, 운영자 표에 없거나 막혔거나 2단계 인증을 켜지 않았으면
- *    모두 같은 401 operator_login_failed(어느 것인지 알리지 않음). 실패 응답은 시작한 때부터 FAILURE_FLOOR_MS가 지나기 전에는
- *    보내지 않아, 어디서 틀렸는지가 응답 시간으로 드러나는 것을 줄인다.
+ * 4. 이메일·비밀번호·2단계 인증 번호 가운데 맞지 않는 것이 있거나, 운영자 표에 없거나 막혔거나 2단계 인증을 켜지 않았거나 묶은
+ *    사용자·인증 수단이 아니면 모두 같은 401 operator_login_failed(어느 것인지 알리지 않음).
  * 5. 인증 서비스가 답하지 않으면 503 auth_unavailable. 비밀번호 로그인부터 답이 없었으면 그 시도는 세지 않는다(맞는지 알게 된
- *    것이 없음). 비밀번호에 답한 뒤 끊겼으면 센다.
+ *    것이 없음). 비밀번호에 답한 뒤 끊겼으면 센다. 비밀번호가 맞은 뒤의 503은 비밀번호가 맞았음을 드러내지만 401로 바꾸지 않는다:
+ *    Supabase의 /token은 publishable 키로 인터넷에서 바로 부를 수 있어 비밀번호가 맞는지는 거기서도 알 수 있고(app/README 85),
+ *    401로 바꾸면 장애 동안 맞는 운영자가 틀렸다고 여겨 다시 하다 15분 막힌다.
+ * 3·4·5의 실패 응답(429·401·503)은 시작한 때부터 FAILURE_FLOOR_MS가 지나기 전에는 보내지 않아, 어디서 멈췄는지(인증 서비스를 부른
+ * 수)가 응답 시간으로 드러나는 것을 줄인다. 1·2는 아무것도 확인하기 전이라 바로 보낸다.
  * 6. 성공하면 그 이메일의 실패를 지우고 세션 쿠키(Max-Age 43200)와 운영자(06 Operator)를 200으로 준다.
  *
  * 남기지 않는 것: 비밀번호·번호·Supabase 토큰·이메일은 로그·데이터베이스·응답에 싣지 않는다(REQ-135). 로그에는 결과와
@@ -36,10 +42,10 @@ import {
   findOperatorByEmail,
   findSession,
   forgetAttempt,
-  type LoginOperator,
   normalizeEmail,
   readSessionCookie,
   reserveAttempt,
+  type SessionBinding,
   sessionCookie,
 } from "./operator-session";
 import { ApiError, type FieldError, fieldError } from "./problem";
@@ -118,13 +124,18 @@ async function checkOperator(
   db: HonoEnv["Variables"]["db"],
   input: LoginInput,
   answered: () => void,
-): Promise<LoginOperator | null> {
+): Promise<(SessionBinding & { readonly displayName: string }) | null> {
   const signedIn = await auth.signInWithPassword(input.email, input.password);
   answered();
   if (signedIn === null) return null;
   let token = signedIn.accessToken;
   try {
     if (normalizeEmail(signedIn.user.email) !== normalizeEmail(input.email)) return null;
+    // 우리 운영자 행: 막히지 않고, 등록 도구가 묶은 Supabase 사용자가 이 로그인의 사용자여야 한다.
+    const operator = await findOperatorByEmail(db, signedIn.user.email);
+    if (operator === null || operator.disabled || !operator.mfaEnrolled) return null;
+    const factorId = operator.mfaFactorId?.toLowerCase() ?? null;
+    if (factorId === null || operator.authUserId?.toLowerCase() !== signedIn.user.id.toLowerCase()) return null;
     let factors = signedIn.user.factors;
     if (factors === null) {
       const user = await auth.getUser(token);
@@ -132,14 +143,18 @@ async function checkOperator(
       factors = user.factors ?? [];
     }
     const totp = factors.filter((f) => f.type === "totp" && f.status === "verified");
-    // 확인된 TOTP가 꼭 하나(없으면 2단계 인증을 켜지 않은 것, 둘 이상은 등록 도구가 만들지 않음: 닫힘).
-    if (totp.length !== 1) return null;
-    const upgraded = await auth.verifyTotp(token, (totp[0] as { id: string }).id, input.otp);
+    // 확인된 TOTP가 꼭 하나이고 그것이 묶은 인증 수단(없으면 지운 것, 다른 것은 묶지 않은 등록, 둘 이상은 등록 도구가 만들지 않음:
+    // 모두 닫힘).
+    if (totp.length !== 1 || (totp[0] as { id: string }).id.toLowerCase() !== factorId) return null;
+    const upgraded = await auth.verifyTotp(token, factorId, input.otp);
     if (upgraded === null) return null;
     token = upgraded;
-    const operator = await findOperatorByEmail(db, signedIn.user.email);
-    if (operator === null || operator.disabled || !operator.mfaEnrolled) return null;
-    return operator;
+    return {
+      id: operator.id,
+      mfaFactorId: factorId,
+      authUserId: signedIn.user.id.toLowerCase(),
+      displayName: operator.displayName,
+    };
   } finally {
     // Supabase 세션은 우리 세션에 쓰지 않는다. 끝내지 못해도 던지지 않는다(operator-auth.ts).
     await auth.signOut(token);
@@ -162,16 +177,23 @@ export async function createOperatorSession(c: Context<HonoEnv>): Promise<Respon
   const hashKey = c.get("settings").secrets.REQUEST_HASH_KEY;
   if (hashKey === null) throw new MissingSettingError("REQUEST_HASH_KEY is not set");
 
+  /** 실패 응답(429·401·503)은 시작한 때부터 FAILURE_FLOOR_MS가 지난 뒤에 보낸다. */
+  const failAfterFloor = async (error: ApiError): Promise<never> => {
+    const left = FAILURE_FLOOR_MS - (Date.now() - started);
+    if (left > 0) await services.wait(left);
+    throw error;
+  };
+
   const now = services.now();
   const key = await emailHash(hashKey, input.email);
   const reserved = await reserveAttempt(db, key, now);
   if (!reserved.ok) {
     log("info", { event: "operator_login", traceId, code: "too_many_attempts" });
-    throw new ApiError("too_many_attempts", { retryAfterSeconds: reserved.retryAfterSeconds });
+    return failAfterFloor(new ApiError("too_many_attempts", { retryAfterSeconds: reserved.retryAfterSeconds }));
   }
 
   let answered = false;
-  let operator: LoginOperator | null;
+  let operator: (SessionBinding & { readonly displayName: string }) | null;
   try {
     operator = await checkOperator(auth, db, input, () => {
       answered = true;
@@ -188,7 +210,7 @@ export async function createOperatorSession(c: Context<HonoEnv>): Promise<Respon
         names: [e.reason, answered ? "counted" : "not_counted"],
         ...(e.status !== null ? { status: e.status } : {}),
       });
-      throw new ApiError("auth_unavailable");
+      return failAfterFloor(new ApiError("auth_unavailable"));
     }
     // 예상하지 못한 오류(데이터베이스 등)는 사용자의 실패가 아니므로 세지 않는다.
     await forgetAttempt(db, reserved.id).catch(() => {});
@@ -197,13 +219,16 @@ export async function createOperatorSession(c: Context<HonoEnv>): Promise<Respon
 
   if (operator === null) {
     log("info", { event: "operator_login", traceId, code: "operator_login_failed" });
-    const left = FAILURE_FLOOR_MS - (Date.now() - started);
-    if (left > 0) await services.wait(left);
-    throw new ApiError("operator_login_failed");
+    return failAfterFloor(new ApiError("operator_login_failed"));
   }
 
+  // 확인한 뒤 세션을 만들기 전에 막거나 다시 등록했으면 만들지 않는다(실패로 남김).
+  const token = await createSession(db, operator, now);
+  if (token === null) {
+    log("info", { event: "operator_login", traceId, code: "operator_login_failed", names: ["operator_changed"] });
+    return failAfterFloor(new ApiError("operator_login_failed"));
+  }
   await clearFailures(db, key);
-  const token = await createSession(db, operator.id, now);
   log("info", { event: "operator_login", traceId, code: "signed_in", itemId: operator.id });
   return c.json({ operatorId: operator.id, displayName: operator.displayName }, 200, {
     "set-cookie": sessionCookie(token),

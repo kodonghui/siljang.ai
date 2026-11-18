@@ -4,7 +4,7 @@ import { Secret } from "../../src/settings";
 
 /**
  * 데이터베이스가 있어야 하는 시험의 바탕.
- * - TEST_DATABASE_URL: 마이그레이션 0001~0021을 적용한 시험용 데이터베이스(로컬 예: postgresql://postgres@127.0.0.1:54329/app_test).
+ * - TEST_DATABASE_URL: 마이그레이션 0001~0022를 적용한 시험용 데이터베이스(로컬 예: postgresql://postgres@127.0.0.1:54329/app_test).
  * - 연결 문자열이 없으면 로컬에서는 건너뛴다. CI(REQUIRE_DATABASE_TESTS=1)에서는 건너뛰지 않고 실패한다.
  * - 시험마다 새 ID·키를 써서 여러 파일이 같은 데이터베이스를 함께 써도 겹치지 않는다.
  */
