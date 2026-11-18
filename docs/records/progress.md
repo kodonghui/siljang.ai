@@ -6,6 +6,19 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 01:30 무렵 KST · Codex 개발 인계 준비(검사 도구 사본, AGENTS.md, 인계 문서)와 PR #75 합침
+
+- 때: [PR #75](https://github.com/kodonghui/siljang.ai/pull/75)(아래 단락, TASK-021 보안 검토 후속)를 조정 세션이 squash로 합쳤습니다(main `c6b3a85`, 2026-11-19 01:09 무렵 KST). 합치기 전에 PR 머리 `7393ac7`의 CI run 44342282523(app)·44342282695(db) 성공을 확인했고, 합친 뒤 main에서 돈 run 44343886057(app)·44343886134(db)도 성공이었습니다(둘 다 이 세션에서 GitHub MCP로 읽음, 머리 `c6b3a85`). Codex 자동 검토는 이번에도 사용 한도로 돌지 않아 따로 검토를 받지 않았고, 조정 세션이 합치기 전에 마이그레이션 0022를 직접 읽었습니다(트리거 조건, 있는 행을 맞춘 뒤 CHECK를 거는 차례). 이 인계 준비 PR은 main `c6b3a85`에서 시작했습니다.
+- 이유: 동희님이 2026-11-18 23:52 무렵 KST 이 Claude Code 대화에서 "개발은 코덱스한테 맡기자 맥락 상세히 반영해서 프롬프트 존나 구체적이고 자세하게 작성해줘봐"라고 하셨습니다. 조정 세션이 Codex용 프롬프트를 써 드렸고, Codex는 이미 TASK-183([PR #74](https://github.com/kodonghui/siljang.ai/pull/74), main `c1d6675`)을 합쳤습니다. Codex 환경에는 CORTHEX 플러그인이 없어 단계 검사의 sitemap·screens·mockup, 웹 page-check, 용어 검사를 돌릴 수 없었습니다.
+- 한 일
+  - `tools/corthex/`: CORTHEX 검사 스크립트 사본(`page-check.js`·`term-check.py`는 corthex 0.12.1, `hub/*.py` 11개는 corthex-nexus 0.5.0에서 그대로 복사, 내용은 고치지 않음). Apache-2.0 `LICENSE`·`NOTICE`(저작권자 kodonghui), 출처·버전·찾는 차례·'손으로 고치지 않음'을 적은 `README.md`.
+  - `tools/stage-checks.sh`·`app/web/scripts/page-check.mjs`가 도구를 찾는 차례: 환경 변수(`PAGE_CHECK`·`CORTHEX_HUB`·`CORTHEX_HUB_SITEMAP`, page-check는 `--page-check`도) → 저장소 사본 → 플러그인. page-check.mjs의 플러그인 찾기는 폴더 이름 `corthex` 고정에서 '`corthex`로 시작하는 폴더'로 고침(`corthex~g2`, fix-log (407)의 후속).
+  - `docs/handover/codex-development.md`: 동희님께 드린 Codex 프롬프트를 main `c6b3a85` 기준으로 고쳐 넣음(TASK-183 #74·TASK-021 후속 #75 반영, 다음 작업 TASK-176, WebP 방향 후속, 마이그레이션 0022·규칙 테스트 338개·README 97, 함정 11·12). 루트 `AGENTS.md`는 그 요약(12개 항목)이고 다르면 인계 문서가 우선.
+  - `app/README.md` 65·93의 page-check 찾기 설명.
+- 확인한 것: 플러그인이 없는 상태(`CORTHEX_PLUGINS`를 빈 폴더로)에서 `stage-checks.sh prep`(머리 `c6b3a85` + 이 변경)의 검사 9개 prd·flows·spec·erd(15/15)·api(17/17)·sitemap(17/17)·screens(15/15)·mockup(14/14)·wbs(18개 오류 0) 모두 종료 코드 0, 그때 고른 경로가 `tools/corthex/` 사본임(스크립트의 찾기 부분만 따로 돌려 봄). 같은 상태에서 `npm run check:pages -w web` 화면 96개·플로우 14개 통과, `report.json`의 `pageCheck`가 `tools/corthex/page-check.js`. 사본이 없을 때 page-check.mjs가 `corthex~g2` 플러그인을 찾음(찾기 함수만 따로 돌려 봄). `term-check.py` 사본과 플러그인 원본이 같은 바이트(`cmp`). 새 글 셋의 용어 검사: AGENTS.md·tools/corthex/README.md 후보 0, 인계 문서는 '쓰지 않을 말' 목록을 적은 한 줄의 7개뿐(일부러 적은 것). 키 검사 18개 파일 0건, Biome 0건.
+- 확인하지 않은 것: Codex 환경에서 사본으로 검사가 도는지(Codex가 다음 PR에서 보고), Python 3·Node 버전이 다른 환경.
+- 다음 행동: 이 PR이 합쳐지면 Claude 조정 세션은 개발 PR을 내지 않습니다. 개발은 Codex가 인계 문서 4-1 차례(TASK-176 → WebP 방향 후속 docs PR → TASK-031 → TASK-016 …)로 이어 가고, 직접 해보기 세션(B)용 마지막 프롬프트와 Notion 한 번 올리기는 조정 세션 몫으로 남습니다.
+
 ### 2026-11-19 01:00 무렵 KST · TASK-021 독립 보안 검토 후속(막기·다시 등록이 세션을 끝냄, 인증 수단 묶기, 실패 바닥, 이름 길이)
 
 - 때: 앞 PR [#73](https://github.com/kodonghui/siljang.ai/pull/73)(TASK-182)을 합친 main `1f92d3e`에서 시작했습니다. 그 main에서 돈 GitHub Actions run 44335501837(app)와 44335501855(db)는 성공이었습니다(이 세션에서 GitHub MCP로 다시 읽어 봄, 둘 다 머리 `1f92d3e`). 조정 세션의 지시로 D15 세션이 만들었습니다. 이 PR이 Claude 개발 세션의 마지막 코드 PR이고, 다음은 Codex 인계 준비 PR입니다. PR을 연 뒤 main에 [PR #74](https://github.com/kodonghui/siljang.ai/pull/74)(TASK-183, 아래 단락)가 합쳐져(main `c1d6675`) 충돌로 CI가 돌지 않아, 이 가지에 main을 합쳤습니다(충돌은 기록 파일 셋의 맨 끝·맨 위 단락뿐, 작업 규칙 번호는 PR #74의 (411)\~(413)과 겹치지 않게 (414)부터).
