@@ -17,13 +17,20 @@ import type { OperatorAuthSettings } from "./settings";
 /** 부를 때마다의 기본 시간 한도(밀리초). */
 export const AUTH_TIMEOUT_MS = 5000;
 
+/**
+ * 답하지 않은 이유. ip_mismatch는 verify가 challenge와 다른 IP에서 왔다고 거절한 것(Supabase Auth의 422 mfa_ip_address_mismatch,
+ * github.com/supabase/auth internal/api/mfa.go validateChallenge, 2026-11-18 확인): 번호를 보기 전에 거절하므로 운영자의 잘못이 아니고,
+ * Worker의 하위 요청이 다른 IP로 나갈 때 생길 수 있다.
+ */
+export type AuthUnavailableReason = "network" | "timeout" | "status" | "shape" | "ip_mismatch";
+
 /** 인증 서비스가 답하지 않음. 응답은 503 auth_unavailable(app.ts), 로그에는 이유·상태 코드만. */
 export class AuthUnavailableError extends Error {
   override readonly name = "AuthUnavailableError";
-  readonly reason: "network" | "timeout" | "status" | "shape";
+  readonly reason: AuthUnavailableReason;
   readonly status: number | null;
 
-  constructor(reason: "network" | "timeout" | "status" | "shape", status: number | null = null) {
+  constructor(reason: AuthUnavailableReason, status: number | null = null) {
     super(`auth service ${reason}${status === null ? "" : ` ${status}`}`);
     this.reason = reason;
     this.status = status;
@@ -199,6 +206,13 @@ export function supabaseAuth(settings: OperatorAuthSettings, options: OperatorAu
         token: accessToken,
         body: { challenge_id: challengeId, code },
       });
+      if (
+        verified.status === 422 &&
+        isRecord(verified.body) &&
+        verified.body.error_code === "mfa_ip_address_mismatch"
+      ) {
+        throw new AuthUnavailableError("ip_mismatch", 422);
+      }
       if (!ok(verified.status)) return null;
       const token = accessTokenOf(verified.body);
       // 확인했다는 답인데 2단계가 아니면 받지 않는다(닫힘).

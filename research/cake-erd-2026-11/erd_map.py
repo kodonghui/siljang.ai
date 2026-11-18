@@ -14,6 +14,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("계정의 가게(하나)", "shops.owner_id"),
         ("운영자 계정", "operators.email"),
         ("운영자 2단계 인증", "operators.mfa_enrolled_at"),
+        ("운영자 2단계 인증 수단(등록 도구가 확인한 TOTP, DEC-27)", "operators.mfa_factor_id"),
+        ("운영자의 Supabase 사용자(로그인한 사용자와 같아야 함)", "operators.auth_user_id"),
         ("막은 운영자 계정", "operators.disabled_at"),
         ("운영자 세션(쿠키 값의 해시, 로그인한 때부터 12시간, 06 DEC-26)", "operator_sessions.token_hash"),
         ("운영자 세션의 운영자", "operator_sessions.operator_id"),

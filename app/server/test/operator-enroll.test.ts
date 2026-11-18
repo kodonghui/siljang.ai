@@ -157,7 +157,7 @@ describeDb("운영자 등록 도구(모의 Supabase)", () => {
     await db.query(
       `INSERT INTO operator_sessions (operator_id, token_hash, created_at, expires_at)
        VALUES ($1, $2, $3, $3::timestamptz + interval '12 hours')`,
-      [id, "e".repeat(64), new Date(NOW.getTime() - 60_000)],
+      [id, `${newUuid()}${newUuid()}`.replaceAll("-", ""), new Date(NOW.getTime() - 60_000)],
     );
     const t = fakeIo({ password, codes: ["445566"] });
     const result = await enrollOperator({ auth, db, now: () => NOW, io: t.io }, { email, displayName: "운영자" });

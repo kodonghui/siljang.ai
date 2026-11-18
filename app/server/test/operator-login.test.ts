@@ -632,7 +632,7 @@ describeDb("운영자 세션 12시간 고정(06 DEC-26)", () => {
     await db.query("UPDATE operators SET display_name = '새 이름', email = email WHERE id = $1", [a.id]);
     const me = await h.me(cookie);
     expect(me.status).toBe(200);
-    expect((await me.json()).displayName).toBe("새 이름");
+    expect(await me.json()).toMatchObject({ displayName: "새 이름" });
     // 같은 값을 다시 써도(등록 도구가 같은 인증 수단을 다시 확인한 때) 끝내지 않음.
     await db.query(
       "UPDATE operators SET mfa_factor_id = mfa_factor_id, mfa_enrolled_at = mfa_enrolled_at WHERE id = $1",

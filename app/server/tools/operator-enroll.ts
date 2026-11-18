@@ -6,9 +6,10 @@
  * 2. 확인된 TOTP가 이미 있으면 지금 번호로 확인만 하고 3을 건너뛴다(다시 등록하려면 대시보드에서 그 인자를 지운 뒤 돌림).
  * 3. 확인 전 TOTP(지난번에 끝내지 못한 것)를 지우고 새로 등록한다. 비밀 글자와 otpauth 주소를 터미널에 한 번 보이고,
  *    인증 앱이 보여 주는 6자리 번호로 확인한다(challenge → verify).
- * 4. 우리 운영자 표(05 operators)에 그 이메일(소문자)의 행을 넣거나 이름을 고치고 mfa_enrolled_at을 채운다(새로 등록했으면
- *    지금, 이미 있던 TOTP면 비어 있을 때만). 막힌 계정
- *    (disabled_at)은 풀지 않는다.
+ * 4. 우리 운영자 표(05 operators)에 그 이메일(소문자)의 행을 넣거나 이름을 고치고, Supabase 사용자 ID(auth_user_id)와 2·3에서
+ *    확인한 TOTP 인증 수단 ID(mfa_factor_id)를 묶는다. 로그인은 이 사용자의 이 인증 수단으로만 확인한다. mfa_enrolled_at은 행에 묶인
+ *    사용자·인증 수단이 그대로면 두고, 새로 묶었거나 바뀌었으면 지금으로 쓴다. 바뀌면 05 트리거가 그 운영자의 열린 세션을 끝낸다
+ *    (06 DEC-27). 막힌 계정(disabled_at)은 풀지 않는다.
  * 5. Supabase 세션을 끝낸다.
  * 비밀번호·번호·비밀 글자·토큰은 파일·로그·데이터베이스에 남기지 않는다. 비밀 글자는 3의 화면 한 번뿐이다.
  */
@@ -101,9 +102,11 @@ export async function enrollOperator(
       throw new EnrollError("확인된 2단계 인증이 둘 이상이에요. 대시보드에서 하나만 남기고 다시 실행해 주세요");
     }
     let totp: "new" | "existing";
+    let factorId: string;
     if (verified.length === 1) {
+      factorId = (verified[0] as { id: string }).id;
       const code = await askCode(io, "이미 등록한 인증 앱의 6자리 번호: ");
-      const upgraded = await auth.verifyTotp(token, (verified[0] as { id: string }).id, code);
+      const upgraded = await auth.verifyTotp(token, factorId, code);
       if (upgraded === null) throw new EnrollError("번호가 맞지 않아요. 처음부터 다시 실행해 주세요");
       token = upgraded;
       totp = "existing";
@@ -124,16 +127,22 @@ export async function enrollOperator(
         throw new EnrollError("번호가 맞지 않아 등록을 지웠어요. 처음부터 다시 실행해 주세요");
       }
       token = upgraded;
+      factorId = enrollment.factorId;
       totp = "new";
     }
+    // 묶인 사용자·인증 수단이 그대로면 켠 시각을 두고(세션도 그대로), 아니면 지금으로(트리거가 열린 세션을 끝냄).
     const row = await db.query<{ id: string; disabled: boolean }>(
-      `INSERT INTO operators (email, display_name, mfa_enrolled_at) VALUES ($1, $2, $3)
+      `INSERT INTO operators (email, display_name, auth_user_id, mfa_factor_id, mfa_enrolled_at) VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT ((lower(email))) DO UPDATE
          SET display_name = EXCLUDED.display_name,
-             mfa_enrolled_at = CASE WHEN $4 THEN EXCLUDED.mfa_enrolled_at
-                                    ELSE COALESCE(operators.mfa_enrolled_at, EXCLUDED.mfa_enrolled_at) END
+             auth_user_id = EXCLUDED.auth_user_id,
+             mfa_factor_id = EXCLUDED.mfa_factor_id,
+             mfa_enrolled_at = CASE WHEN operators.mfa_enrolled_at IS NOT NULL
+                                     AND operators.mfa_factor_id IS NOT DISTINCT FROM EXCLUDED.mfa_factor_id
+                                     AND operators.auth_user_id IS NOT DISTINCT FROM EXCLUDED.auth_user_id
+                                    THEN operators.mfa_enrolled_at ELSE EXCLUDED.mfa_enrolled_at END
        RETURNING id, disabled_at IS NOT NULL AS disabled`,
-      [args.email, args.displayName, deps.now(), totp === "new"],
+      [args.email, args.displayName, user.id, factorId, deps.now()],
     );
     const saved = row.rows[0] as { id: string; disabled: boolean };
     io.print(`운영자 표에 맞췄어요(운영자 ID ${saved.id}).`);

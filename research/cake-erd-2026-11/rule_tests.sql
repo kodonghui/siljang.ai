@@ -113,8 +113,8 @@ $fn$;
 INSERT INTO owners (id, kakao_account_id, alert_channel_friend, alert_friend_checked_at) VALUES
   ('a0000000-0000-0000-0000-000000000001', 1001, true, now()),
   ('a0000000-0000-0000-0000-000000000002', 1002, false, now());
-INSERT INTO operators (id, email, display_name, mfa_enrolled_at) VALUES
-  ('a1000000-0000-0000-0000-000000000001', 'ops@example.com', '운영자', now());
+INSERT INTO operators (id, email, display_name, auth_user_id, mfa_factor_id, mfa_enrolled_at) VALUES
+  ('a1000000-0000-0000-0000-000000000001', 'ops@example.com', '운영자', 'a1100000-0000-0000-0000-000000000001', 'a1200000-0000-0000-0000-000000000001', now());
 INSERT INTO shops (id, owner_id, name, contact_phone, contact_email, business_address, business_name, representative_name, business_reg_no,
                    mail_order_reg_no, mail_order_authority, food_license_no, food_business_type, license_photo_key, license_status,
                    license_reviewed_by, license_reviewed_at, entrustment_terms_version, entrustment_consented_at,
@@ -763,6 +763,35 @@ SELECT pg_temp.expect_fail('운영자 세션을 로그인 전에 끝냄', 'opera
   VALUES ('a1000000-0000-0000-0000-000000000001', repeat('d', 64), '2026-11-18 10:00+09', '2026-11-18 22:00+09', '2026-11-18 09:00+09')$$]);
 SELECT pg_temp.expect_fail('운영자 로그인 실패에 이메일 글을 그대로 둠', 'operator_login_failures_email_hash_check', ARRAY[$$
   INSERT INTO operator_login_failures (email_hash, attempted_at) VALUES ('ops@example.com', now())$$]);
+SELECT pg_temp.expect_fail('DEC-27 2단계 인증을 켠 시각만 있고 인증 수단 ID가 없음', 'operators_mfa_chk', ARRAY[$$
+  INSERT INTO operators (email, display_name, auth_user_id, mfa_enrolled_at) VALUES ('ops-mfa@example.com', '운영자', 'a1100000-0000-0000-0000-000000000009', now())$$]);
+SELECT pg_temp.expect_fail('DEC-27 인증 수단 ID는 있는데 Supabase 사용자 ID가 없음', 'operators_mfa_chk', ARRAY[$$
+  INSERT INTO operators (email, display_name, mfa_factor_id, mfa_enrolled_at) VALUES ('ops-mfa@example.com', '운영자', 'a1200000-0000-0000-0000-000000000009', now())$$]);
+SELECT pg_temp.expect_fail('DEC-27 Supabase 사용자 하나에 운영자 둘', 'operators_auth_user_uq', ARRAY[$$
+  INSERT INTO operators (email, display_name, auth_user_id) VALUES ('ops-other@example.com', '다른 운영자', 'a1100000-0000-0000-0000-000000000001')$$]);
+
+-- DEC-27 막기·2단계 인증 바꾸기가 그 운영자의 열린 세션을 끝냄(트리거 operators_end_sessions). 운영자 둘(…0002, …0003)과 세션 넷
+INSERT INTO operators (id, email, display_name, auth_user_id, mfa_factor_id, mfa_enrolled_at) VALUES
+  ('a1000000-0000-0000-0000-000000000002', 'ops2@example.com', '운영자 둘', 'a1100000-0000-0000-0000-000000000002', 'a1200000-0000-0000-0000-000000000002', now()),
+  ('a1000000-0000-0000-0000-000000000003', 'ops3@example.com', '운영자 셋', 'a1100000-0000-0000-0000-000000000003', 'a1200000-0000-0000-0000-000000000003', now());
+INSERT INTO operator_sessions (operator_id, token_hash, created_at, expires_at) VALUES
+  ('a1000000-0000-0000-0000-000000000002', repeat('1', 64), now() - interval '1 hour', now() + interval '11 hours'),
+  ('a1000000-0000-0000-0000-000000000002', repeat('2', 64), now() - interval '2 hours', now() + interval '10 hours'),
+  ('a1000000-0000-0000-0000-000000000003', repeat('3', 64), now() - interval '1 hour', now() + interval '11 hours');
+UPDATE operators SET display_name = '운영자 둘 새 이름', mfa_factor_id = mfa_factor_id WHERE id = 'a1000000-0000-0000-0000-000000000002';
+SELECT pg_temp.expect_left('DEC-27 이름만 바꾸거나 같은 인증 수단을 다시 쓰면 세션은 그대로',
+  $$SELECT count(*)::text FROM operator_sessions WHERE operator_id = 'a1000000-0000-0000-0000-000000000002' AND ended_at IS NULL$$, '2');
+UPDATE operators SET disabled_at = now() WHERE id = 'a1000000-0000-0000-0000-000000000002';
+UPDATE operators SET disabled_at = NULL WHERE id = 'a1000000-0000-0000-0000-000000000002';
+SELECT pg_temp.expect_left('DEC-27 막으면 그 운영자의 열린 세션이 모두 끝나고 풀어도 다시 열리지 않음',
+  $$SELECT count(*)::text FROM operator_sessions WHERE operator_id = 'a1000000-0000-0000-0000-000000000002' AND ended_at IS NULL$$, '0');
+SELECT pg_temp.expect_left('DEC-27 다른 운영자를 막아도 이 운영자의 세션은 그대로',
+  $$SELECT count(*)::text FROM operator_sessions WHERE operator_id = 'a1000000-0000-0000-0000-000000000003' AND ended_at IS NULL$$, '1');
+UPDATE operators SET mfa_factor_id = 'a1200000-0000-0000-0000-000000000033', mfa_enrolled_at = now() WHERE id = 'a1000000-0000-0000-0000-000000000003';
+SELECT pg_temp.expect_left('DEC-27 2단계 인증을 다시 등록하면 그 운영자의 열린 세션이 끝남',
+  $$SELECT count(*)::text FROM operator_sessions WHERE operator_id = 'a1000000-0000-0000-0000-000000000003' AND ended_at IS NULL$$, '0');
+SELECT pg_temp.expect_left('DEC-27 트리거가 끝낸 시각은 로그인한 시각보다 앞서지 않음',
+  $$SELECT bool_and(ended_at >= created_at)::text FROM operator_sessions WHERE operator_id IN ('a1000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000003')$$, 'true');
 
 -- 가게 규칙 (CTX-002)
 SELECT pg_temp.expect_fail('SPEC-004 가게마다 지금 가격표 둘', 'price_lists_one_current', ARRAY[$$

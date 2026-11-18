@@ -47,9 +47,13 @@ CREATE TABLE operators (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 운영자 ID
   email            text NOT NULL CHECK (email ~ '^[^@[:space:]]+@[^@[:space:]]+$'), -- 운영자 계정 이메일. 비밀번호·2단계 인증 키는 인증 서비스나 시크릿 저장소에(REQ-135)
   display_name     text NOT NULL CHECK (char_length(display_name) BETWEEN 1 AND 40), -- 화면에 보일 이름
-  mfa_enrolled_at  timestamptz,                        -- 2단계 인증을 켠 시각. 빈 동안 운영자 화면에 못 들어옴(R2)
-  disabled_at      timestamptz,                        -- 계정을 막은 시각
-  created_at       timestamptz NOT NULL DEFAULT now()  -- 만든 시각
+  mfa_enrolled_at  timestamptz,                        -- 2단계 인증을 켠 시각. 빈 동안 운영자 화면에 못 들어옴(R2). 인증 수단 ID와 함께 있거나 함께 비고, 바뀌면 열린 세션이 끝남(DEC-27)
+  disabled_at      timestamptz,                        -- 계정을 막은 시각. 바뀌면 그 운영자의 열린 세션이 끝남(DEC-27)
+  created_at       timestamptz NOT NULL DEFAULT now(), -- 만든 시각
+  auth_user_id     uuid,                               -- Supabase Auth 사용자 ID(등록 도구가 씀). 비밀번호 로그인이 돌려준 사용자가 이것과 같아야 로그인됨. 바뀌면 열린 세션이 끝남
+  mfa_factor_id    uuid,                               -- 등록 도구가 확인한 Supabase TOTP 인증 수단 ID. 로그인은 이 인증 수단으로만 확인하고, 바뀌면 열린 세션이 끝남(DEC-27)
+  CONSTRAINT operators_auth_user_uq UNIQUE (auth_user_id), -- Supabase 사용자 하나에 운영자 하나
+  CONSTRAINT operators_mfa_chk CHECK ((mfa_enrolled_at IS NULL) = (mfa_factor_id IS NULL) AND (mfa_factor_id IS NULL OR auth_user_id IS NOT NULL)) -- 2단계 인증을 켠 시각과 인증 수단은 함께, 인증 수단이 있으면 사용자도
 );
 CREATE UNIQUE INDEX operators_email_uq ON operators (lower(email)); -- 이메일 하나에 운영자 하나
 COMMENT ON TABLE operators IS 'TBL-002 운영자(TERM-074): 우리 서비스 쪽 사람, 영업 신고를 눈으로 확인';
@@ -1718,7 +1722,7 @@ CREATE TABLE operator_sessions (
   token_hash   text NOT NULL CHECK (token_hash ~ '^[0-9a-f]{64}$'), -- 세션 쿠키 siljang_operator 값(무작위 32바이트)의 SHA-256 소문자 16진수. 쿠키 값은 남기지 않음(REQ-135)
   created_at   timestamptz NOT NULL,                  -- 로그인한 시각
   expires_at   timestamptz NOT NULL,                  -- 끝나는 시각. 로그인한 때부터 12시간이고 쓴다고 늘지 않음(06 DEC-26)
-  ended_at     timestamptz,                           -- 로그아웃으로 끝낸 시각
+  ended_at     timestamptz,                           -- 끝낸 시각: 로그아웃, 또는 운영자를 막거나 2단계 인증·Supabase 사용자를 바꿈(트리거 operators_end_sessions)
   CONSTRAINT operator_sessions_token_uq UNIQUE (token_hash), -- 쿠키 하나에 세션 하나
   CONSTRAINT operator_sessions_fixed_chk CHECK (expires_at = created_at + interval '12 hours'), -- 늘리지 않음(06 DEC-26)
   CONSTRAINT operator_sessions_ended_chk CHECK (ended_at IS NULL OR ended_at >= created_at) -- 로그인 뒤에만 끝냄
@@ -1726,6 +1730,25 @@ CREATE TABLE operator_sessions (
 CREATE INDEX operator_sessions_operator_idx ON operator_sessions (operator_id); -- 운영자마다 세션
 CREATE INDEX operator_sessions_expires_idx ON operator_sessions (expires_at); -- 지난 세션 지우기(로그인 때)
 COMMENT ON TABLE operator_sessions IS 'TBL-059 운영자 세션: 운영자 로그인(API-004)이 만들고 로그아웃(API-006)이 끝냄. 로그인한 때부터 12시간(06 DEC-26, DEC-27)';
+
+-- 막기·2단계 인증 바꾸기가 그 운영자의 열린 세션을 끝냄(06 DEC-27 '로그아웃·계정 막기로 끝냄', TASK-021 보안 검토 후속 1). 막은 시각·2단계
+-- 인증을 켠 시각·인증 수단 ID·Supabase 사용자 ID 가운데 하나가 바뀌면 같은 트랜잭션에서 끝냄. 앱 밖(대시보드·SQL)에서 막아도 듣고, 막기
+-- 전에 새어 나간 쿠키가 풀린 뒤 다시 살아나지 않음. 끝낸 시각은 지금과 로그인한 시각 가운데 늦은 쪽(operator_sessions_ended_chk).
+-- 같은 값을 다시 쓰면 끝내지 않음
+CREATE FUNCTION operators_end_sessions() RETURNS trigger
+LANGUAGE plpgsql AS $end_sessions$
+BEGIN
+  IF NEW.disabled_at IS DISTINCT FROM OLD.disabled_at
+     OR NEW.mfa_enrolled_at IS DISTINCT FROM OLD.mfa_enrolled_at
+     OR NEW.mfa_factor_id IS DISTINCT FROM OLD.mfa_factor_id
+     OR NEW.auth_user_id IS DISTINCT FROM OLD.auth_user_id THEN
+    UPDATE operator_sessions SET ended_at = greatest(now(), created_at)
+     WHERE operator_id = NEW.id AND ended_at IS NULL;
+  END IF;
+  RETURN NULL;
+END
+$end_sessions$;
+CREATE TRIGGER operators_end_sessions AFTER UPDATE OF disabled_at, mfa_enrolled_at, mfa_factor_id, auth_user_id ON operators FOR EACH ROW EXECUTE FUNCTION operators_end_sessions();
 
 -- TBL-060 operator_login_failures (CTX-007) ← SPEC-001 | terms: none
 CREATE TABLE operator_login_failures (
@@ -1781,9 +1804,11 @@ COMMENT ON COLUMN owners.created_at IS '처음 들어온 시각';
 COMMENT ON COLUMN operators.id IS '운영자 ID';
 COMMENT ON COLUMN operators.email IS '운영자 계정 이메일. 비밀번호·2단계 인증 키는 인증 서비스나 시크릿 저장소에(REQ-135)';
 COMMENT ON COLUMN operators.display_name IS '화면에 보일 이름';
-COMMENT ON COLUMN operators.mfa_enrolled_at IS '2단계 인증을 켠 시각. 빈 동안 운영자 화면에 못 들어옴(R2)';
-COMMENT ON COLUMN operators.disabled_at IS '계정을 막은 시각';
+COMMENT ON COLUMN operators.mfa_enrolled_at IS '2단계 인증을 켠 시각. 빈 동안 운영자 화면에 못 들어옴(R2). 인증 수단 ID와 함께 있거나 함께 비고, 바뀌면 열린 세션이 끝남(DEC-27)';
+COMMENT ON COLUMN operators.disabled_at IS '계정을 막은 시각. 바뀌면 그 운영자의 열린 세션이 끝남(DEC-27)';
 COMMENT ON COLUMN operators.created_at IS '만든 시각';
+COMMENT ON COLUMN operators.auth_user_id IS 'Supabase Auth 사용자 ID(등록 도구가 씀). 비밀번호 로그인이 돌려준 사용자가 이것과 같아야 로그인됨. 바뀌면 열린 세션이 끝남';
+COMMENT ON COLUMN operators.mfa_factor_id IS '등록 도구가 확인한 Supabase TOTP 인증 수단 ID. 로그인은 이 인증 수단으로만 확인하고, 바뀌면 열린 세션이 끝남(DEC-27)';
 COMMENT ON COLUMN shops.id IS '가게 ID. 모든 기록이 이 값으로 나뉨(SPEC-068)';
 COMMENT ON COLUMN shops.owner_id IS '가게 주인';
 COMMENT ON COLUMN shops.name IS '가게 이름';
@@ -2504,7 +2529,7 @@ COMMENT ON COLUMN operator_sessions.operator_id IS '로그인한 운영자';
 COMMENT ON COLUMN operator_sessions.token_hash IS '세션 쿠키 siljang_operator 값(무작위 32바이트)의 SHA-256 소문자 16진수. 쿠키 값은 남기지 않음(REQ-135)';
 COMMENT ON COLUMN operator_sessions.created_at IS '로그인한 시각';
 COMMENT ON COLUMN operator_sessions.expires_at IS '끝나는 시각. 로그인한 때부터 12시간이고 쓴다고 늘지 않음(06 DEC-26)';
-COMMENT ON COLUMN operator_sessions.ended_at IS '로그아웃으로 끝낸 시각';
+COMMENT ON COLUMN operator_sessions.ended_at IS '끝낸 시각: 로그아웃, 또는 운영자를 막거나 2단계 인증·Supabase 사용자를 바꿈(트리거 operators_end_sessions)';
 COMMENT ON COLUMN operator_login_failures.id IS '시도 한 번';
 COMMENT ON COLUMN operator_login_failures.email_hash IS '넣은 이메일(앞뒤 공백을 빼고 소문자)의 HMAC-SHA256 소문자 16진수. 이메일 글은 남기지 않음';
 COMMENT ON COLUMN operator_login_failures.attempted_at IS '시도를 시작한 시각. 성공하면 그 이메일의 행을 모두 지우고, 인증 서비스가 답하지 않으면 그 행을 지움. 남은 행이 실패(06 DEC-16)';
