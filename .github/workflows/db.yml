@@ -1,4 +1,4 @@
-# 05 스키마(db/)를 PostgreSQL 16에서 검사한다(TASK-017, 04 공통 규칙 G3).
+# 05 스키마(db/)를 PostgreSQL 16과 17에서 검사한다(TASK-017·174, 04 공통 규칙 G3).
 # 1) db/migrations/의 마이그레이션 전부를 빈 데이터베이스에 파일 이름 차례로 하나씩 적용(파일마다 한 트랜잭션, 실패하면 멈춤)
 # 2) 그 데이터베이스에서 05 규칙 테스트(research/cake-erd-2026-11/rule_tests.sql)
 # 3) 05 검사 전부(check_erd.py: 정적 검사 S1~S9, schema.sql과 마이그레이션의 카탈로그 비교 D1~D3,
@@ -27,10 +27,19 @@ jobs:
   check:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - postgres: "16.15"
+            image: postgres:16.15-bookworm@sha256:5264710be20f409750ac6dc4e5706dcef929c87e241605463f0f9aefa932a8d9
+          - postgres: "17.11"
+            image: postgres:17.11-bookworm@sha256:665dc7b37ac52a17e298511414c21d23ffa4e6a6ef6225b3e5d59c7afb35e994
+    name: PostgreSQL ${{ matrix.postgres }}
     services:
       postgres:
-        # 로컬 검사 서버와 같은 16.15. 나온 지 일주일 넘은 이미지(2026-11-05)를 digest로 고정
-        image: postgres:16.15-bookworm@sha256:5264710be20f409750ac6dc4e5706dcef929c87e241605463f0f9aefa932a8d9
+        # 16은 기존 앱 시험과 같은 판이고, 17은 Supabase와 같은 주 버전이다.
+        image: ${{ matrix.image }}
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
