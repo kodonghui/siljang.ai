@@ -434,6 +434,9 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
 
 106. TASK-174의 GitHub Actions `db` 검사는 PostgreSQL 16.15·17.11에서 각각 빈 데이터베이스에 마이그레이션을 적용합니다. 각 버전은 05 규칙 테스트와 카탈로그·동시 쓰기 검사를 수행합니다. 로컬 두 버전에서 마이그레이션 22개·규칙 테스트 338개·05 검사 15개가 통과했습니다. Supabase 스테이징의 마이그레이션·Data API·서버 전용 역할은 TASK-170 뒤 확인합니다.
 
+107. TASK-016의 스테이징 배포는 `main`에 푸시되어 앱 검사가 통과한 뒤 실행합니다. GitHub 저장소의 Actions 변수 `SILJANG_STAGING_DOMAIN`에 주소의 도메인 이름을 넣고 `staging` 환경의 Actions 비밀 값에 `CLOUDFLARE_ACCOUNT_ID`와 `CLOUDFLARE_API_TOKEN`을 둡니다. 배포 작업은 Wrangler로 `siljang-staging`을 갱신하고 `/api/healthz`의 200·`{"status":"ok"}`을 확인합니다. 배포에 쓰는 비밀 값은 검사 작업에 전달되지 않습니다.
+     - 직접 확인: Wrangler 수동 배포, OVH 두 곳의 HTTPS·상태·미인증 401. 남은 확인: Actions 환경 연결과 `main` 자동 배포, 1분 외부 감시와 실행기 실패 알림, 방문자 IP 설정. [실제 환경 기록](../docs/records/hands-on.md)
+
 ## 명령 (`app/`에서)
 
 ```bash

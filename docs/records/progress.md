@@ -6,6 +6,13 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 05:49 무렵 KST · TASK-016 스테이징 주소와 배포 작업
+
+- 동희님이 쓰도록 정한 CORTHEX 도메인의 하위 주소를 `siljang-staging` Worker에 연결했습니다. OVH 두 곳에서 HTTPS `/api/healthz` 200과 `{"status":"ok"}`, 홈·로그인·매니페스트·서비스 워커 200, 세션 없는 `/api/operator/me` 401을 확인했습니다. [스테이징 상태 확인](https://staging.siljang.ai.corthex-hq.com/api/healthz)
+- `app` 검사가 성공한 `main` 푸시에서만 GitHub Actions의 배포 작업을 실행합니다. 배포에는 기존 `server/wrangler.jsonc`와 고정한 Wrangler를 쓰고, 스테이징 도메인에서 상태 확인을 다시 합니다.
+- GitHub 연동 계정에서 Actions 비밀 값과 변수 조회, `staging` 환경 생성이 403이었습니다. 같은 Wrangler 배포 명령을 셸에서 검증했습니다. Actions가 쓸 환경과 값을 등록하고 `main`에서 실제 배포가 돈 기록을 확인하는 일이 남았습니다.
+- 외부 감시의 1분 간격·실행기 실패 알림·Cloudflare 방문자 IP 설정은 아직 확인하지 않았습니다. TASK-016을 진행 중으로 둡니다.
+
 ### 2026-11-19 05:40 무렵 KST · TASK-174 PostgreSQL 17 검사 추가
 
 - main `74420fb`에서 CI app 44388043094와 db 44388043109가 성공한 것을 확인했습니다. TASK-170의 Supabase 서울 프로젝트를 기다리는 동안 데이터베이스 검사에 PostgreSQL 17을 추가했습니다.
