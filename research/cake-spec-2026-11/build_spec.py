@@ -34,6 +34,8 @@ errors, warns = [], []
 TAG = re.compile(r" \(확인: (REQ-\d{3}(?:, REQ-\d{3})*)\)$")
 OLD_TAG = re.compile(r"\(REQ-\d{3}(?:, REQ-\d{3})*\)$")
 spec_md = open(os.path.join(repo, "docs/04-functional-spec/spec.md"), encoding="utf-8").read()
+# 2절 공통 규칙의 번호(G1~G10). 행 본문의 'G…' 참조가 이 안에 있어야 함
+GRULES = set(re.findall(r"^\| (G\d+) \|", spec_md, flags=re.M))
 exempt = {}
 m = re.search(r"<!-- AC-EXEMPT -->\n(.*?)<!-- /AC-EXEMPT -->", spec_md, flags=re.S)
 if not m: errors.append("spec.md에 '수락 기준 없이 두는 필수 요구사항' 표(<!-- AC-EXEMPT -->)가 없음")
@@ -91,7 +93,7 @@ for i, r in enumerate(ROWS, 1):
     for s in ids(body, "SPEC"):
         if s not in spec_ids: errors.append(f"{sid}: 없는 {s} 참조")
     for g in re.findall(r"G(\d+)", body):
-        if not 1 <= int(g) <= 9: errors.append(f"{sid}: 없는 G{g}")
+        if f"G{g}" not in GRULES: errors.append(f"{sid}: 없는 G{g}")
     if r["ai"] and r["ai"] != "AI-1": errors.append(f"{sid}: 없는 AI 항목 {r['ai']}")
 
 live = {k: v for k, v in reqs.items() if not v["status"].startswith("제외")}
