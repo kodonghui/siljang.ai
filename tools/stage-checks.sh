@@ -37,7 +37,8 @@ O=${STAGE_CHECKS_OUT:-${TMPDIR:-/tmp}/stage-checks}/$NAME
 mkdir -p "$O" || exit 2
 DB="host=127.0.0.1 port=54329 user=postgres"
 PLUG=${CORTHEX_PLUGINS:-$HOME/.claude/plugins/synced}
-PC=$(ls "$PLUG"/*/corthex/skills/corthex-uxui/scripts/page-check.js 2>/dev/null | head -1)
+# 플러그인 폴더 이름은 플러그인 버전에 따라 바뀐다(corthex, corthex~g2 등). 그래서 glob으로 찾는다.
+PC=$(ls "$PLUG"/*/corthex*/skills/corthex-uxui/scripts/page-check.js 2>/dev/null | head -1)
 HUB=$(ls "$PLUG"/*/corthex-nexus*/skills/corthex-hub/scripts/hub.py 2>/dev/null | head -1)
 HUBSM=$(ls "$PLUG"/*/corthex-nexus*/skills/corthex-hub/scripts/sitemap.py 2>/dev/null | head -1)
 

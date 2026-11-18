@@ -380,7 +380,7 @@ function readTimings(text: string, s: number, e: number, last: number | null): T
 
 /**
  * 같은 문장의 다른 때로 범위를 자른다: '3일 전까지는 전액, 2일 전까지는 50%'의 둘째는 2일 전만, '2일 전부터는 50%,
- * 전날부터는 안 돼요'의 첫째는 2일 전만이다.
+ * 전날부터는 안 돼요'의 첫째는 2일 전만이다. 답의 말은 같은 일(변경·취소·환불)을 말하는 때만 넘긴다(timedStatements가 고름).
  */
 function cutRanges(marks: readonly TimingMark[]): TimingMark[] {
   const days = marks.flatMap((m) => (m.days === null ? [] : [m.days]));
@@ -491,7 +491,10 @@ function pairs(timings: readonly TimingMark[], ratios: readonly RatioMark[]): Pa
   return timings.map((t) => ({ timing: range(t), percent: null, unclear: true, at: mark(t, []) }));
 }
 
-/** 글의 때 말 모두(빼는 말이 붙은 때는 빼고, 같은 문장의 다른 때로 범위를 자름). 손님 말의 때를 읽을 때 쓴다. */
+/**
+ * 글의 때 말 모두(빼는 말이 붙은 때는 빼고, 같은 문장의 다른 때로 범위를 자름). 손님 말의 때를 읽을 때 쓴다. 손님 말의 때는
+ * 답에 때가 없을 때 짐작하는 데만 쓰고 짐작한 때로는 실패를 세지 않아(timedReasons), 일을 가리지 않고 자른다.
+ */
 export function timingsIn(text: string): DayRange[] {
   let last: number | null = null;
   return sentenceSpans(text).flatMap(([s, e]) => {
@@ -522,37 +525,50 @@ export function timedStatements(text: string): TimedStatement[] {
     // 변경·취소·환불 말이 없으면 '전날은 50%예요'처럼 때와 비율이 함께 있을 때만 환불 말로 본다(할인 말은 뺌).
     const ratioOnly = HAS_RATIO.test(whole) && HAS_TIMING.test(whole) && !DISCOUNT_WORD.test(whole);
     if (actionsOf(whole, false).length === 0 && !ratioOnly) continue;
-    const clauses = clauseSpans(text, s, e).map(([gs, ge]) => {
+    const question = text[e] === "?";
+    // 마디마다 때·비율·극성·일을 읽는다. 극성이 없는 마디의 때는 다음 마디로 넘겨 그 마디의 일로 본다.
+    const said: Said[] = [];
+    let carried: TimingMark[] = [];
+    for (const [gs, ge] of clauseSpans(text, s, e)) {
       const own = withoutExcepted(text, readTimings(text, gs, ge, last), ge);
       last = own.reduce<number | null>((x, m) => m.days ?? x, last);
-      return { gs, ge, own };
-    });
-    const cut = cutRanges(clauses.flatMap((c) => c.own));
-    const question = text[e] === "?";
-    let carried: TimingMark[] = [];
-    for (const { gs, ge, own } of clauses) {
-      const timings = own.map((m) => cut.find((x) => x.at === m.at) ?? m);
-      const seg = text.slice(gs, ge);
       const { ratios, masked } = readRatios(text, gs, ge);
       const here = marks.filter((m) => m.start >= gs && m.start < ge);
       const affirm = here.filter((m) => m.stance === "yes" || m.stance === "unclear");
-      let polarity: TimedStatement["polarity"] | "skip" | null = null;
+      let polarity: Said["polarity"] | null = null;
       if (affirm.length > 0) polarity = affirm.every((m) => m.stance === "yes") ? "yes" : "unclear";
       else if (here.some((m) => m.stance === "open")) polarity = "skip";
       else if (here.some((m) => m.stance === "no") || NEGATION.test(masked)) polarity = "no";
       else if (ratios.some((r) => r.value !== 0)) polarity = question ? "unclear" : "yes";
       else if (ratios.length > 0) polarity = "no";
       if (polarity === null) {
-        carried = [...carried, ...timings];
+        carried = [...carried, ...own];
         continue;
       }
-      const all = [...carried, ...timings];
-      carried = [];
-      if (polarity === "skip") continue;
-      const actions = actionsOf(seg, ratios.length > 0);
+      const actions = actionsOf(text.slice(gs, ge), ratios.length > 0);
       const chosen = actions.length > 0 ? actions : actionsOf(whole, false);
-      for (const action of chosen) {
-        for (const p of pairs(all, action === "refund" ? ratios : [])) {
+      said.push({ timings: [...carried, ...own], ratios, polarity, actions: chosen });
+      carried = [];
+    }
+    // 서술어가 없어 넘기지 못한 끝의 때도 범위를 자르는 데는 쓴다(문장의 일로).
+    if (carried.length > 0)
+      said.push({ timings: carried, ratios: [], polarity: "skip", actions: actionsOf(whole, false) });
+    // 같은 일을 말하는 때끼리만 범위를 자른다(여덟째 지적 21: '2일 전부터는 50% 환불 가능하고, 전날부터는 변경이 안 돼요'의
+    // 변경 기한이 환불 범위를 2일 전만으로 줄여 전날·당일의 50% 환불이 지나감).
+    const cut = new Map<TimedAction, TimingMark[]>();
+    const cutFor = (action: TimedAction): TimingMark[] => {
+      const got =
+        cut.get(action) ?? cutRanges(said.filter((x) => x.actions.includes(action)).flatMap((x) => x.timings));
+      cut.set(action, got);
+      return got;
+    };
+    for (const x of said) {
+      if (x.polarity === "skip") continue;
+      const polarity = x.polarity;
+      for (const action of x.actions) {
+        const ranges = cutFor(action);
+        const all = x.timings.map((m) => ranges.find((r) => r.at === m.at) ?? m);
+        for (const p of pairs(all, action === "refund" ? x.ratios : [])) {
           // 0% 환불('환불이 0%예요', '0% 환불이에요')은 환불하지 않는다는 말이다.
           const zero = p.percent === 0 && polarity !== "no";
           out.push({
@@ -568,6 +584,14 @@ export function timedStatements(text: string): TimedStatement[] {
     }
   }
   return out;
+}
+
+/** 마디 하나(앞 마디에서 넘겨받은 때 포함)의 변경·취소·환불 말. skip은 묻거나 미루는 꼴이라 말로 싣지 않는다. */
+interface Said {
+  readonly timings: readonly TimingMark[];
+  readonly ratios: readonly RatioMark[];
+  readonly polarity: TimedStatement["polarity"] | "skip";
+  readonly actions: readonly TimedAction[];
 }
 
 export type Verdict = "fail" | "review" | "ok";
