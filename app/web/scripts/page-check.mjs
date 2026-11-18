@@ -2,8 +2,10 @@
 // 1) vite 개발 서버로 samples.html(개발용 견본, 운영 빌드에 없음)을 띄우고
 // 2) 미리 설치된 Playwright Chromium으로 상태마다 360·1280(높이 800, deviceScaleFactor 1)을 열어
 //    corthex-uxui page-check.js(오류 0), 가로 넘침 없음, 콘솔 오류 없음, 실린 글꼴을 보고 스크린샷을 남긴다.
+//    레이아웃 견본(TASK-182)은 LAYOUT_WIDTHS(그 사이 너비와 넓고 좁음을 가르는 너비 양쪽)에서도 연다.
 // 3) 키보드·요청 키 흐름을 누른다: 확인 창(첫 포커스 '돌아가기', Tab 가둠, Esc로 닫고 포커스 돌려줌, 확인하면 새 키와
-//    confirm 값), 서버 실패 뒤 '다시 시도'(같은 키), 두 번 눌러도 요청 하나.
+//    confirm 값), 서버 실패 뒤 '다시 시도'(같은 키), 두 번 눌러도 요청 하나. TASK-182는 너비마다 왼쪽 메뉴·메뉴 열기·
+//    표·카드 중 보이는 것과 좁은 화면의 메뉴 플로우(열기·포커스·Tab 가둠·닫기 넷·넓어지면 닫힘)를 본다.
 // 결과: <out>/report.json과 <out>/<상태>-<너비>.png. 하나라도 어긋나면 끝 상태 1.
 // 쓰임(app/에서): npm run check:pages -w web -- [--out 폴더] [--page-check page-check.js 경로]
 //   page-check.js는 --page-check, PAGE_CHECK, 아니면 tools/stage-checks.sh와 같은 곳
