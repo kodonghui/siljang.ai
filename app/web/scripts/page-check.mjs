@@ -8,9 +8,10 @@
 //    표·카드 중 보이는 것과 좁은 화면의 메뉴 플로우(열기·포커스·Tab 가둠·닫기 넷·넓어지면 닫힘)를 본다.
 // 결과: <out>/report.json과 <out>/<상태>-<너비>.png. 하나라도 어긋나면 끝 상태 1.
 // 쓰임(app/에서): npm run check:pages -w web -- [--out 폴더] [--page-check page-check.js 경로]
-//   page-check.js는 --page-check, PAGE_CHECK, 아니면 tools/stage-checks.sh와 같은 곳
-//   (${CORTHEX_PLUGINS:-~/.claude/plugins/synced}/*/corthex/skills/corthex-uxui/scripts/page-check.js)에서 찾는다.
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+//   page-check.js는 --page-check, PAGE_CHECK, 저장소 사본 tools/corthex/page-check.js(tools/corthex/README.md),
+//   아니면 ${CORTHEX_PLUGINS:-~/.claude/plugins/synced}/*/corthex*/skills/corthex-uxui/scripts/page-check.js 차례로 찾는다
+//   (tools/stage-checks.sh와 같은 차례).
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -70,11 +71,19 @@ function arg(name) {
 function findPageCheck() {
   const given = arg("--page-check") ?? process.env.PAGE_CHECK;
   if (given) return given;
+  const copy = join(WEB, "../../tools/corthex/page-check.js");
+  if (existsSync(copy)) return copy;
   const plugins = process.env.CORTHEX_PLUGINS ?? join(homedir(), ".claude/plugins/synced");
   if (!existsSync(plugins)) return null;
+  // 플러그인 폴더 이름은 버전에 따라 바뀐다(corthex, corthex~g2 등): 'corthex'로 시작하는 폴더를 모두 본다.
   for (const dir of readdirSync(plugins).sort()) {
-    const path = join(plugins, dir, "corthex/skills/corthex-uxui/scripts/page-check.js");
-    if (existsSync(path)) return path;
+    const base = join(plugins, dir);
+    if (!statSync(base, { throwIfNoEntry: false })?.isDirectory()) continue;
+    for (const sub of readdirSync(base).sort()) {
+      if (!sub.startsWith("corthex")) continue;
+      const path = join(base, sub, "skills/corthex-uxui/scripts/page-check.js");
+      if (existsSync(path)) return path;
+    }
   }
   return null;
 }
