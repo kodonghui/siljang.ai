@@ -6,6 +6,23 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 01:00 무렵 KST · TASK-021 독립 보안 검토 후속(막기·다시 등록이 세션을 끝냄, 인증 수단 묶기, 실패 바닥, 이름 길이)
+
+- 때: 앞 PR [#73](https://github.com/kodonghui/siljang.ai/pull/73)(TASK-182)을 합친 main `1f92d3e`에서 시작했습니다. 그 main에서 돈 GitHub Actions run 44335501837(app)와 44335501855(db)는 성공이었습니다(이 세션에서 GitHub MCP로 다시 읽어 봄, 둘 다 머리 `1f92d3e`). 조정 세션의 지시로 D15 세션이 만들었습니다. 이 PR이 Claude 개발 세션의 마지막 코드 PR이고, 다음은 Codex 인계 준비 PR입니다.
+- 이유: [PR #72](https://github.com/kodonghui/siljang.ai/pull/72)(TASK-021)는 Codex 자동 검토가 사용 한도로 돌지 않아 조정 세션이 독립 보안 검토를 따로 돌렸고, 지적 6건(중간 3, 낮음 3) 가운데 1·4·5번은 확인 시험으로 재현됐습니다.
+- 한 일과 고른 것(자세히는 [app/README.md](../../app/README.md) 84·85·87·88·89, [05 README](../05-erd/README.md) 11절)
+  - 1 막기·다시 등록이 세션을 끝내지 않음: 데이터베이스 트리거 `operators_end_sessions`(마이그레이션 0022). 운영자 행의 막은 시각·2단계 인증을 켠 시각·인증 수단 ID·Supabase 사용자 ID 가운데 하나가 바뀌면 그 운영자의 열린 세션을 같은 트랜잭션에서 끝냄. 앱만으로 하면 대시보드·SQL로 막을 때를 놓쳐서(막기 도구가 아직 없음). 막기를 풀 때도 끝내게 해 0021까지 남은 세션도 정리됨. 로그인 확인과 세션 만들기 사이에 행이 바뀌면 세션을 만들지 않음(`FOR SHARE`로 다시 봄). 06 DEC-27의 '계정 막기로 끝냄'과 05 TBL-059 설명(로그아웃만 적음)을 원문으로 확인함. 첫 PR의 시험이 '다시 켠 뒤 200'을 기대값으로 고정했던 것을 401로 바꿈(그것이 이 지적의 문제 그 자체라서).
+  - 2 2단계 인증이 등록한 인증 수단·사용자에 묶이지 않음: `operators.auth_user_id`(UNIQUE)·`mfa_factor_id`와 CHECK `operators_mfa_chk`. 등록 도구가 쓰고, 로그인은 그 사용자의 그 인증 수단으로만 challenge·verify. 있는 행은 인증 수단 ID가 없어 `mfa_enrolled_at`을 비움(등록 도구를 다시 돌림). 06은 바뀌지 않음. 인증 수단 ID 형식은 UUID(Supabase Auth OpenAPI와 MFA 문서, 2026-11-18 확인).
+  - 3 Supabase에 직접 하는 무차별 대입: 코드는 그대로, 문서와 작업으로. `/auth/v1/token`은 IP마다 기본 5분에 150번(바꿀 수 있음), MFA challenge·verify는 IP마다 1분에 15번(바꿀 수 없음), 계정마다 시도를 막는 훅은 Teams·Enterprise 요금제(Supabase 문서 'Rate limits'·'Auth Hooks', 2026-11-18 확인). app/README 85에 위험과 줄이는 법, TASK-166 끝난 조건에 'Supabase Auth 한도와 검증 시도 훅 설정 확인'(10 README 10절), README 88에 대시보드 한도 읽기 단계.
+  - 4 2초 바닥이 401에만 걸림: 401·429·503 모두 같은 바닥. 비밀번호가 맞은 뒤 Supabase가 답하지 않으면 503을 그대로 둠(비밀번호가 맞는지는 Supabase `/token`에서도 알 수 있고, 401로 바꾸면 장애 동안 맞는 운영자가 다시 하다 15분 막힘). Supabase가 느릴 때 남는 시간 차이는 README 85에 남은 위험으로.
+  - 5 이름 40자를 UTF-16 단위로 셈: 코드 포인트로 셈(데이터베이스 `char_length`·06 `maxLength`·등록 도구와 같은 단위). 같은 종류의 `.length` 검사를 찾아 바꿀 곳이 이것 하나임을 README 89에 적음.
+  - 6 IP가 달라 생긴 실패: Supabase 소스에 `mfa_ip_address_mismatch`(422, challenge와 verify의 IP가 다르면 번호를 보기 전에 거절)가 있음을 확인함(supabase/auth `internal/api/mfa.go`, 2026-11-18). 어댑터가 이를 503 `auth_unavailable`(로그 이유 `ip_mismatch`)로 바꾸고, 비밀번호가 답한 뒤라 실패로 셈(세지 않으면 이 실패가 이어지는 동안 비밀번호를 끝없이 맞춰 볼 수 있어서). 모의 서버에 같은 응답을 더하고 README 88에 '스테이징 Worker를 거쳐 한 번 로그인(TASK-016·173 뒤)'을 더함.
+- 확인한 것: 서버 시험 720 → 727개(38파일, 시험용 데이터베이스로 두 번), 웹 161개 그대로, 린트·타입 검사·빌드, 05 규칙 테스트 330 → 338개, `check_erd.py` 15개 통과(2026-11-19 00:45), `erd_editor_build.py --compare` 차이 0줄, `erd_editor_sync.py` 쓰기 없는 실행 편집 0개, `build_wbs.py` 검사 18개 오류 0. 조건을 하나씩 빼 시험이 실패함을 봄(인증 수단·사용자 비교, 503·429 바닥, 이름 길이, 세션 만들기의 다시 보기, `ip_mismatch`, 트리거: app/README 89). 단계 검사·키 검사 결과 줄은 PR 본문에 있습니다.
+- 확인하지 않은 것: 진짜 Supabase(진짜 호출 0번), Worker의 출구 IP와 Supabase IP 한도(모의 서버는 IP를 보지 않음), Supabase가 느릴 때 남는 시간 차이.
+- 직접 해보기 남음에 더한 것(TASK-021, app/README 88): 대시보드 Authentication > Rate Limits의 토큰 요청 한도와 IP 넘겨주기 설정 읽기, 막았다 풀면 옛 쿠키가 401인지, TASK-016·173 뒤 스테이징 Worker를 거친 로그인 한 번. 마이그레이션 0022 뒤에는 등록 도구를 다시 돌려야 로그인됩니다(README 87).
+- 열린 질문(동희님 확인 요청): Supabase의 MFA·비밀번호 검증 시도 훅을 쓰려면 Teams 요금제 이상이 필요합니다. 지금은 쓰지 않고(긴 비밀번호, TOTP, 대시보드 한도로 줄임) TASK-166에서 다시 볼지, 출시 전에 요금제를 올릴지입니다. Claude 추천은 지금 쓰지 않고 TASK-166에서 운영자 수와 시도 기록을 보고 정하는 것입니다(운영자가 몇 명뿐이고 비밀번호가 맞아도 TOTP 번호가 있어야 해서).
+- 다음 행동: PR CI 확인 뒤 조정 세션에 보고. 합치기는 조정 세션.
+
 ### 2026-11-19 00:20 무렵 KST · TASK-182 사장님·운영자 화면 레이아웃
 
 - 때: 앞 PR [#72](https://github.com/kodonghui/siljang.ai/pull/72)(TASK-021)를 합친 main `84d21e4`에서 시작했습니다. 그 main에서 돈 GitHub Actions run 44328867624(app)와 44328867499(db)는 성공이었습니다(이 세션에서 GitHub MCP로 다시 읽어 봄, 둘 다 머리 `84d21e4`, 2026-11-18 23:53 KST까지 끝남). 조정 세션의 지시로 D14 세션이 만들었습니다.
