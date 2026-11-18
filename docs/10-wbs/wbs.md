@@ -2,7 +2,7 @@
 
 <!-- build_wbs.py가 research/cake-wbs-2026-11/wbs_rows.py에서 생성. 손으로 고치지 않음 -->
 
-작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 58개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 10개 · 끝난 작업 15개.
+작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 60개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 9개 · 끝난 작업 15개.
 
 읽는 법과 나눈 방식은 [README](README.md)에 있습니다. '닿는 것'은 만드는 API, 쓰고 읽는 테이블, 만드는 화면입니다. '끝난 조건'의 첫 줄은 손으로 쓴 조건이고, 수락 기준·응답 코드·스킬 결과·화면 상태·응답 행·규칙 줄은 원본에서 생성합니다. 화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다. 끝난 작업은 끝난 조건 맨 앞에 '끝남'과 끝난 날·증거가 붙습니다.
 
@@ -29,7 +29,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TASK-001 | 기술 스택·배포 환경 후보 비교(공식 문서로 확인) | REQ-130, REQ-135, REQ-141, REQ-148, REQ-149 | 없음 | 없음 | Claude | 1일 | 끝남: 2026-11-15, docs/10-wbs/tech-stack.md(기술 스택 제안)<br/>tech-stack.md에 스택을 정하는 요구사항(ID)과 후보마다 서버·웹·PostgreSQL 운영·서울 리전·자동으로 하는 일·사진 저장·월 비용 범위(공식 가격표)·두 AI 회사 공식 SDK를 공식 문서 주소와 확인 날짜로 적고, 추천과 반론을 둠. 카카오 스킬 응답 시간은 서버가 없어 재지 못해 TASK-171(개발 전 시험)과 TASK-164(부하 시험)로 넘김 |
 | TASK-002 | 기술 스택·배포 환경 고르기 | REQ-130, REQ-141 | 없음 | TASK-001 | 동희님 | 0.5일 | 끝남: 2026-11-15 18:31 무렵 동희님 결정 카드 '추천안대로 (추천)', docs/records/progress.md<br/>결정 카드에서 고른 답을 말 그대로 docs/records/progress.md에 남김 |
-| TASK-003 | 운영자 인증 서비스 고르기(비밀번호·2단계 인증을 맡길 곳) | OPEN-6 | 없음 | TASK-001 | 동희님 | 0.5일 | 끝남: 2026-11-16, Supabase Auth의 TOTP 2단계 인증(동희님 Claude Code 채팅 답 17:01 무렵, 결정 카드가 아니라 채팅 답이었고 원문은 docs/records/progress.md의 2026-11-18 결정 반영 단락)<br/>고른 서비스를 결정 카드 답 그대로 기록에 남김 |
+| TASK-003 | 운영자 인증 서비스 고르기(비밀번호·2단계 인증을 맡길 곳) | DEC-27 | 없음 | TASK-001 | 동희님 | 0.5일 | 끝남: 2026-11-16, Supabase Auth의 TOTP 2단계 인증(동희님 Claude Code 채팅 답 17:01 무렵, 결정 카드가 아니라 채팅 답이었고 원문은 docs/records/progress.md의 2026-11-18 결정 반영 단락)<br/>고른 서비스를 결정 카드 답 그대로 기록에 남김 |
 | TASK-004 | 세션 길이 정하기(사장님 30일·운영자 12시간 제안) | DEC-26 | 없음 | 없음 | 동희님 | 0.5일 | 끝남: 2026-11-15 17시 무렵 동희님 결정 카드 '제안대로 (추천)', 06 DEC-26<br/>정한 길이를 결정 카드 답 그대로 기록에 남김 |
 | TASK-005 | Anthropic에 보관 안 함(Zero Data Retention) 신청 | DEC-25, REQ-266 | 없음 | 없음 | 동희님 | 0.5일 | 신청한 날과 회사의 답(허가·거절·기다림)을 기록에 남김. 허가 전에는 처리방침에 30일 보관(04 AI-1) |
 | TASK-006 | OpenAI에 보관 안 함(Zero Data Retention) 신청 | DEC-25, REQ-266 | 없음 | 없음 | 동희님 | 0.5일 | 신청한 날과 회사의 답(허가·거절·기다림)을 기록에 남김. 허가 전에는 처리방침에 30일 보관(04 AI-1) |
@@ -37,7 +37,7 @@
 | TASK-008 | 카카오 시험 서버와 시험 대본(받은 요청을 그대로 남기는 버리는 서버) | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-12 | 없음 | 없음 | Claude | 1일 | 시험 대본(보낼 말·누를 버튼·볼 값)이 있고, 받은 스킬 요청 본문을 손님 값은 가린 채 남기는 서버가 시험 주소에서 돎 |
 | TASK-009 | 시험 채널에서 대본대로 보내고 누르기(메시지 ID·콜백·사진·빈 응답·봇 ID·먼저 보내기 권한·후기 extra·PKCE) | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-8, OPEN-9, OPEN-11, OPEN-12 | 없음 | TASK-007, TASK-008 | 동희님 | 1일 | 대본의 항목마다 해 본 날과 화면 사진이 남고, 시험 서버에 그 요청이 남음 |
 | TASK-010 | 카카오에 스킬 요청의 출처 IP·서명 문의 | OPEN-10 | 없음 | 없음 | 동희님 | 0.5일 | 문의한 날과 받은 답(없으면 '답 기다림')을 기록에 남김 |
-| TASK-011 | 시험 결과로 04·05·06의 확인 전 가정 고치기와 열린 질문 닫기 | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-6, OPEN-8, OPEN-9, OPEN-10, OPEN-11, OPEN-12 | 없음 | TASK-009, TASK-010, TASK-003, TASK-004 | Claude | 2일 | 가정마다 시험 결과를 적고, 맞지 않은 것은 SPEC·스키마·계약을 고치는 PR이 단계 검사를 모두 지나 합쳐짐. 06 열린 질문 표에서 답을 얻은 것을 닫음 |
+| TASK-011 | 시험 결과로 04·05·06의 확인 전 가정 고치기와 열린 질문 닫기 | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-8, OPEN-9, OPEN-10, OPEN-11, OPEN-12 | 없음 | TASK-009, TASK-010, TASK-003, TASK-004 | Claude | 2일 | 가정마다 시험 결과를 적고, 맞지 않은 것은 SPEC·스키마·계약을 고치는 PR이 단계 검사를 모두 지나 합쳐짐. 06 열린 질문 표에서 답을 얻은 것을 닫음 |
 | TASK-012 | 법령 원문 다시 확인(02 4-2 법 표의 조문) | REQ-239, REQ-240, REQ-141 | 없음 | 없음 | Claude | 1일 | 끝남: 2026-11-15, docs/02-prd/requirements.md 13절(조문 36개 대조, 원문과 어긋난 인용 없음, 빠진 조건 2곳 고침)<br/>02 4-2 법 표의 조문마다 국가법령정보센터 원문을 다시 열어 조문 번호·시행일을 대조하고, 바뀐 것을 고치는 PR이 합쳐짐 |
 | TASK-013 | 법률 질문 목록을 전문가에게 확인(02 5-2와 tech-stack.md 8-2) | REQ-208 | 없음 | TASK-012 | 동희님 | 1일 | 02 5-2 질문 10개와 tech-stack.md 8-2의 호스팅 질문마다 전문가의 답과 날짜를 기록에 남기고, 답으로 바뀌는 요구사항 목록을 Claude에게 넘김 |
 | TASK-014 | 구글 클라우드 프로젝트와 OAuth 동의 화면(장부 연결) 만들기와 검증이 필요한지 확인 | TBL-045 | 없음 | 없음 | 동희님 | 0.5일 | 동의 화면의 범위와 검증 상태(필요 없음·신청함·허가)를 기록에 남김 |
@@ -56,8 +56,8 @@
 | TASK-017 | 마이그레이션 0001~0020 적용과 규칙 테스트를 CI에서 | G3 | TBL-001, TBL-002, TBL-003, TBL-004, TBL-005, TBL-006, TBL-007, TBL-008, TBL-009, TBL-010, TBL-011, TBL-012, TBL-013, TBL-014, TBL-015, TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-023, TBL-024, TBL-025, TBL-026, TBL-027, TBL-028, TBL-029, TBL-030, TBL-031, TBL-032, TBL-033, TBL-034, TBL-035, TBL-036, TBL-037, TBL-038, TBL-039, TBL-040, TBL-041, TBL-042, TBL-043, TBL-044, TBL-045, TBL-046, TBL-047, TBL-048, TBL-049, TBL-050, TBL-051, TBL-052, TBL-053, TBL-054, TBL-055, TBL-056, TBL-057, TBL-058 | TASK-015 | Claude | 1일 | 끝남: 2026-11-15, .github/workflows/db.yml(PR #59, GitHub Actions의 PostgreSQL 16.15에서 마이그레이션 20개를 차례로 적용하고 규칙 테스트 324개와 05 검사 15개 통과)<br/>CI에서 PostgreSQL 16에 마이그레이션 20개를 차례로 적용하고 05 규칙 테스트가 모두 통과<br/>04 공통 규칙(G3)을 지키는지 보는 시험 |
 | TASK-018 | 공통 요청 처리: 요청 키로 같은 요청 한 번, 오류 응답 꼴, 내부 오류를 응답에 싣지 않음 | G2, G6, G8, G9 | TBL-050, TBL-051 | TASK-017 | Claude | 2일 | 끝남: 2026-11-16, app/server(PR #60, GitHub Actions의 app 작업이 PostgreSQL 16.15에 마이그레이션 20개를 적용하고 06 오류 코드 37개·필드 오류 사유 24개의 계약 모양 시험, 요청 키 시험, G2·G6·G8·G9 시험 등 서버 시험 155개 통과)<br/>06 오류 코드 37개와 필드 오류 사유 24개가 계약의 모양으로 나가는 시험, 같은 요청 키를 두 번 보내면 처음 결과를 돌려주는 시험<br/>04 공통 규칙(G2·G6·G8·G9)을 지키는지 보는 시험 |
 | TASK-019 | 가게별 기록 나누기 공통 계층(모든 읽기·쓰기에 가게 조건) | SPEC-068, REQ-134, A9, G1 | TBL-003, TBL-004, TBL-016, TBL-017, TBL-019, TBL-023, TBL-031, TBL-048 | TASK-018 | Claude | 1일 | 끝남: 2026-11-16, app/server(PR #61, GitHub Actions의 app 작업이 PostgreSQL 16.15에 마이그레이션 20개를 적용하고 교차 가게 시험 묶음(다른 가게 ID·없는 ID·형식이 틀린 ID가 같은 404·422, 두 가게의 기록 그대로)과 등록 완결 시험, SPEC-068 수락 기준 1·2, 05 A9·E1, 04 G1, 가게 조건 정적 시험 등 서버 시험 312개 통과)<br/>다른 가게의 ID로 부른 요청이 404이고 남는 기록이 0인 교차 가게 시험 묶음이 있고, 새 API가 생길 때마다 이 묶음에 들어감<br/>SPEC-068 수락 기준 #1~#2: 자동 시험 통과<br/>05 앱 규칙(A9)을 지키는지 보는 서버 시험<br/>04 공통 규칙(G1)을 지키는지 보는 시험 |
-| TASK-020 | 사장님 카카오 로그인·로그아웃·내 정보 | SPEC-001, DEC-26 | API-078, API-001, API-002, API-003, TBL-001, TBL-002, TBL-003 | TASK-018, TASK-011 | Claude | 2일 | 세션은 마지막으로 쓴 때부터 30일 동안 유지하고 쓸 때마다 다시 30일로 늘림(DEC-26). 늘리는 방법(같은 쿠키를 다시 보내는 때)을 정하고 시험함<br/>SPEC-001 수락 기준 #1~#4: 자동 시험 통과<br/>API-078 응답(200·422·429·default)마다 통과하는 시험<br/>API-001 응답(200·401·422·429·503·default)마다 통과하는 시험<br/>API-002 응답(200·401·default)마다 통과하는 시험<br/>API-003 응답(204·default)마다 통과하는 시험 |
-| TASK-021 | 운영자 로그인(이메일·비밀번호·2단계 인증) | SPEC-001, DEC-26, OPEN-6 | API-004, API-005, API-006, TBL-001, TBL-002, TBL-003 | TASK-018, TASK-003 | Claude | 1일 | 세션은 로그인한 때부터 12시간이 지나면 끝나고 쓴다고 늘지 않음(DEC-26). 06 OPEN-6을 닫음: TASK-003의 답(Supabase Auth의 TOTP 2단계 인증)을 06 결정 사항으로 옮기고, API-004 설명·password 설명, 08 SCR-046의 외부 서비스, 07 사이트맵 메모의 고를 인증 서비스 문구를 그 답으로 고침(인증 서비스가 답하지 않을 때의 응답과 운영자 계정의 TOTP 등록 방법 포함). OPEN-6을 출처로 쓴 작업(TASK-003·011·021)의 출처도 새 결정 사항으로 바꿈<br/>SPEC-001 수락 기준 #5: 자동 시험 통과<br/>API-004 응답(200·401·422·429·default)마다 통과하는 시험<br/>API-005 응답(200·401·default)마다 통과하는 시험<br/>API-006 응답(204·default)마다 통과하는 시험 |
+| TASK-020 | 사장님 카카오 로그인·로그아웃·내 정보 | SPEC-001, DEC-26 | API-078, API-001, API-002, API-003, TBL-001, TBL-002, TBL-003, TBL-059, TBL-060 | TASK-018, TASK-011 | Claude | 2일 | 세션은 마지막으로 쓴 때부터 30일 동안 유지하고 쓸 때마다 다시 30일로 늘림(DEC-26). 늘리는 방법(같은 쿠키를 다시 보내는 때)을 정하고 시험함<br/>SPEC-001 수락 기준 #1~#4: 자동 시험 통과<br/>API-078 응답(200·422·429·default)마다 통과하는 시험<br/>API-001 응답(200·401·422·429·503·default)마다 통과하는 시험<br/>API-002 응답(200·401·default)마다 통과하는 시험<br/>API-003 응답(204·default)마다 통과하는 시험 |
+| TASK-021 | 운영자 로그인(이메일·비밀번호·2단계 인증) | SPEC-001, DEC-26, DEC-27 | API-004, API-005, API-006, TBL-001, TBL-002, TBL-003, TBL-059, TBL-060 | TASK-018, TASK-003 | Claude | 1일 | 세션은 로그인한 때부터 12시간이 지나면 끝나고 쓴다고 늘지 않음(DEC-26). 06 OPEN-6을 닫음: TASK-003의 답(Supabase Auth의 TOTP 2단계 인증)을 06 결정 사항으로 옮기고, API-004 설명·password 설명, 08 SCR-046의 외부 서비스, 07 사이트맵 메모의 고를 인증 서비스 문구를 그 답으로 고침(인증 서비스가 답하지 않을 때의 응답과 운영자 계정의 TOTP 등록 방법 포함). OPEN-6을 출처로 쓴 작업(TASK-003·011·021)의 출처도 새 결정 사항으로 바꿈<br/>SPEC-001 수락 기준 #5: 자동 시험 통과<br/>API-004 응답(200·401·422·429·503·default)마다 통과하는 시험<br/>API-005 응답(200·401·default)마다 통과하는 시험<br/>API-006 응답(204·default)마다 통과하는 시험 |
 | TASK-022 | 사진 올리기(신고증·도안·완성 사진): 크기·형식·장수 | SPEC-002, SPEC-004, SPEC-053, A11 | API-007, TBL-003, TBL-006, TBL-007, TBL-008, TBL-009, TBL-024, TBL-027, TBL-035, TBL-037, TBL-040, TBL-044, TBL-050, TBL-054 | TASK-018 | Claude | 1일 | 끝남: 2026-11-16, app/server(PR #62, GitHub Actions의 app 작업이 PostgreSQL 16.15에 마이그레이션 20개를 적용하고 API-007 응답(201·401·413·422·429·503·default)마다의 계약 시험, 05 A11 사진 장수 시험(신고·완성·후기 사진의 5장과 순서 겹침은 데이터베이스가 막고 참고 사진의 상담마다 10장은 앱이 셈), 다른 사장님의 uploadId가 없는 ID와 같은 upload_not_found인 시험, 저장소 모듈·15분 서명 주소 시험 등 서버 시험 391개 통과)<br/>API-007 응답(201·401·413·422·429·503·default)마다 통과하는 시험<br/>05 앱 규칙(A11)을 지키는지 보는 서버 시험 |
 | TASK-023 | 자동으로 하는 일 실행기: 정한 시각·다시 하기·이벤트 키로 한 번만 | A33 | TBL-051 | TASK-018 | Claude | 2일 | 끝남: 2026-11-16, app/server(PR #64, GitHub Actions의 app 작업이 PostgreSQL 16.15에 마이그레이션 20개를 적용하고 같은 이벤트 키를 일곱 테이블마다 차례로·동시에 두 번 넣어 한 행인 시험, 키로 넣은 일이 실행기 두 번·연결 둘에서 한 번만 돌고 겹친 실행기 둘이 행마다 한 번씩 처리하는 시험, 던진 행·연결이 끊긴 행·임대한 채 멈춘 행을 새 실행기가 한 번씩 잇는 시험, 06 서버 안의 일 13개와 등록부를 견주는 시험과 05 부분 인덱스와 찾기를 견주는 시험 등 서버 시험 522개 통과)<br/>06 서버 안의 일 13개가 쓸 실행기에서 같은 이벤트 키를 두 번 넣어도 한 번만 돌고, 서버를 다시 띄워도 기다리던 일이 이어지는 시험<br/>05 앱 규칙(A33)을 지키는지 보는 서버 시험 |
 | TASK-024 | 접속기록 남기기 공통(손님 개인정보를 읽고 쓸 때) | SPEC-074, A24 | TBL-053 | TASK-018 | Claude | 1일 | 끝남: 2026-11-16, app/server(PR #67, GitHub Actions의 app 작업이 PostgreSQL 16.15에 마이그레이션 20개를 적용하고 시험용 경로로 SPEC-074 #1(사장님이 주문 상세를 열면 그 사장님·시각·IP·손님·API 번호의 읽음 1행이 응답과 같은 트랜잭션)·#2(1년 전 행을 앱의 연결로 고치기·지우기·비우기 하면 데이터베이스가 막아 바뀐 행 0건)·#3(가격표를 읽거나 바꾸면 0행)을 보는 시험, A24 시험(읽기·쓰기 명령·같은 요청 키의 다시 보냄에서 넣기가 실패하면 500이고 개인정보를 돌려주지 않으며 바꾼 것을 되돌림), 06의 SPEC-074 범위(API-040~066·074~077)와 남기는 API 목록·앱 선언을 견주는 시험과 CF-Connecting-IP만 믿는 시험 등 서버 시험 598개 통과)<br/>SPEC-074 수락 기준 #1~#3: 자동 시험 통과<br/>05 앱 규칙(A24)을 지키는지 보는 서버 시험 |
@@ -67,7 +67,7 @@
 | TASK-028 | 카카오 스킬 받기 공통: 스킬 키 확인, 요청 키, 4초 안 응답과 콜백, 카카오 응답 꼴 | SPEC-017, G4, G5 | API-070, API-071, API-072, API-073, TBL-003, TBL-004, TBL-016, TBL-017, TBL-018, TBL-027, TBL-048, TBL-051 | TASK-018, TASK-011 | Claude | 2일 | SPEC-017 수락 기준 #1~#2·#6: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 callback_pending·ai_unavailable·ai_timeout·ai_key_missing·ai_limit_reached·ai_cost_limit_reached·unsupported_message·rate_limited·duplicate·not_accepting·server_error<br/>API-071 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 not_accepting·server_error<br/>API-072 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 duplicate·not_accepting·server_error<br/>API-073 응답(200·401·422·default)마다 통과하는 시험<br/>04 공통 규칙(G4·G5)을 지키는지 보는 시험 |
 | TASK-029 | 사장님·운영자 웹 바탕: 09 토큰, 공통 상태, 확인 창, 필드 옆 오류 | REQ-147, G7 | 없음 | TASK-015 | Claude | 2일 | 끝남: 2026-11-16, app/web(PR #66, GitHub Actions의 app 작업이 09 design/base.tokens.json을 다시 만들어 tokens.css와 같은지 보는 시험, 06 오류 코드 37개·필드 이유 24개·확인 8가지와 08 SCR 응답 표 509행을 G7 표와 견주는 시험, 요청 키(명령마다 새 키, 다시 시도는 같은 키, 확인 뒤 새 키)와 공통 상태·확인 창·필드 오류 부품 시험 등 웹 시험 116개 통과. 360·1280 page-check(개발용 견본 18 상태와 플로우 4개, page-check 오류·가로 넘침·콘솔 오류 0)는 브라우저가 있는 로컬에서 돌림)<br/>09 design/base.tokens.json을 그대로 쓰고, 공통 상태(불러오는 중·빈·오류·권한·오래됨·보내는 중·됨)와 확인 창·필드 오류 부품이 360·1280에서 page-check 통과, 360px에서 가로 스크롤 없음<br/>04 공통 규칙(G7)을 지키는지 보는 시험 |
 | TASK-030 | SCR-014 사장님 로그인 화면 | SPEC-001 | SCR-014 | TASK-029, TASK-020 | Claude | 1일 | SCR-014 상태 4개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 2개(normal·error)와 그리지 않은 2개(loading·rate-limited)는 08 와이어프레임과 09 토큰으로, 08 응답 행 12개마다 정한 상태로 보임 |
-| TASK-031 | SCR-046 운영자 로그인 화면 | SPEC-001 | SCR-046 | TASK-029, TASK-021 | Claude | 1일 | SCR-046 상태 4개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 2개(normal·error)와 그리지 않은 2개(rate-limited·submitting)는 08 와이어프레임과 09 토큰으로, 08 응답 행 5개마다 정한 상태로 보임 |
+| TASK-031 | SCR-046 운영자 로그인 화면 | SPEC-001 | SCR-046 | TASK-029, TASK-021 | Claude | 1일 | SCR-046 상태 4개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 2개(normal·error)와 그리지 않은 2개(rate-limited·submitting)는 08 와이어프레임과 09 토큰으로, 08 응답 행 6개마다 정한 상태로 보임 |
 | TASK-173 | Workers 서버 설정: Hyperdrive(읽기 캐시 끔)·Queues·Cron Trigger·서울 가까이 두기·비밀 값(추천안 기준) | REQ-130, REQ-135 | 없음 | TASK-015, TASK-171 | Claude | 1일 | wrangler 설정에 Hyperdrive 바인딩(캐시 끔)·큐와 소비자·1분 Cron Trigger·서울 리전 배치 힌트를 두고, 사장님·운영자 웹은 같은 Worker의 정적 자산으로 냄. 스테이징에서 요청 하나가 데이터베이스에 쓰고, 큐 메시지(ID만 실음)가 소비되고, Cron이 작업 표를 읽는 시험이 지남. 비밀 값은 wrangler secret으로만 넣고 저장소에는 이름만. 스테이징의 계좌번호 암호화 키(FIELD_KEY_CURRENT·FIELD_KEY_V1, 앱 README 32)를 넣고 사본을 저장소 밖 비밀 저장소에 둠 |
 | TASK-174 | Supabase에 맞추기: CI에 PostgreSQL 17, Data API 끄기, 서버 전용 데이터베이스 역할(추천안 기준) | REQ-134, REQ-135 | 없음 | TASK-017, TASK-170 | Claude | 1일 | CI가 마이그레이션 20개와 규칙 테스트를 PostgreSQL 16과 17에서 돌림. 스테이징 데이터베이스에도 CI와 같은 판의 마이그레이션을 적용하고 적용한 판을 남김(2026-11-15 TASK-017에서 옮김). Supabase 프로젝트의 Data API를 끄고 publishable·secret 키를 서버와 웹 어디에도 쓰지 않으며, 서버는 필요한 표 권한만 가진 역할로 붙는 것을 점검표로 남김. access_logs에는 INSERT와 2년 지난 행 지우기에 드는 DELETE·SELECT(accessed_at)만 주고 UPDATE·TRUNCATE는 주지 않으며, 서버가 붙는 역할이 테이블 소유자가 아님(소유자는 트리거 access_logs_guard를 끌 수 있음, 05 A24·E21, 앱 README 72)도 점검표에 남김(2026-11-16 TASK-024에서 옮김) |
 | TASK-176 | 사장님 웹앱 홈 화면 설치(PWA): 매니페스트·아이콘·서비스 워커 | REQ-267 | 없음 | TASK-029 | Claude | 1일 | 매니페스트(name·short_name, 아이콘 192·512px, start_url, display standalone)가 모든 화면에 걸리고, 서비스 워커는 정적 파일만 저장하고 API 응답은 저장하지 않음. Chromium 설치 조건(tech-stack.md 9-1)을 자동 시험으로 보고, 동희님 휴대폰에서 홈 화면에 추가해 주소창 없이 열리는 화면 사진을 남김 |
@@ -365,7 +365,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | API-001 | `POST /owner/session` | 200·401·422·429·503·default | TASK-020 | 없음 | TASK-030 |
 | API-002 | `GET /owner/me` | 200·401·default | TASK-020 | 없음 | TASK-087 |
 | API-003 | `DELETE /owner/session` | 204·default | TASK-020 | 없음 | TASK-047 |
-| API-004 | `POST /operator/session` | 200·401·422·429·default | TASK-021 | 없음 | TASK-031 |
+| API-004 | `POST /operator/session` | 200·401·422·429·503·default | TASK-021 | 없음 | TASK-031 |
 | API-005 | `GET /operator/me` | 200·401·default | TASK-021 | 없음 | TASK-058 |
 | API-006 | `DELETE /operator/session` | 204·default | TASK-021 | 없음 | TASK-058 |
 | API-007 | `POST /owner/uploads` | 201·401·413·422·429·503·default | TASK-022 | 없음 | TASK-046, TASK-048, TASK-049, TASK-151 |
@@ -495,7 +495,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | SCR-043 | 예약 링크 | 6 | 3 | 3(loading·permission·stale) | 5 | TASK-055 |
 | SCR-044 | 포트폴리오 | 8 | 3 | 5(loading·permission·stale·submitting·done) | 21 | TASK-153 |
 | SCR-045 | 후기 | 6 | 3 | 3(loading·permission·stale) | 6 | TASK-154 |
-| SCR-046 | 운영자 로그인 | 4 | 2 | 2(rate-limited·submitting) | 5 | TASK-031 |
+| SCR-046 | 운영자 로그인 | 4 | 2 | 2(rate-limited·submitting) | 6 | TASK-031 |
 | SCR-047 | 영업 신고 확인 목록 | 6 | 3 | 3(loading·permission·stale) | 15 | TASK-058 |
 | SCR-048 | 영업 신고 확인 | 10 | 4 | 6(loading·on-hold·permission·stale·submitting·done) | 34 | TASK-059 |
 | SCR-049 | 운영자 알림 | 6 | 3 | 3(loading·permission·stale) | 5 | TASK-060 |
@@ -563,6 +563,8 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TBL-056 | `order_draft_extras` | TASK-017, TASK-067, TASK-077, TASK-091, TASK-158 |
 | TBL-057 | `order_detail_extras` | TASK-017, TASK-083, TASK-132 |
 | TBL-058 | `shop_identity_changes` | TASK-017, TASK-036 |
+| TBL-059 | `operator_sessions` | TASK-020, TASK-021 |
+| TBL-060 | `operator_login_failures` | TASK-020, TASK-021 |
 
 ## 부록 E. 규칙·열린 질문·SPEC 밖 요구사항 → 작업
 
@@ -622,7 +624,6 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | OPEN-2 | 06 열린 질문(API-070) | TASK-008, TASK-009, TASK-011 |
 | OPEN-3 | 06 열린 질문(API-070) | TASK-007, TASK-008, TASK-009, TASK-011 |
 | OPEN-4 | 06 열린 질문(API-070) | TASK-008, TASK-009, TASK-011 |
-| OPEN-6 | 06 열린 질문(API-004) | TASK-003, TASK-011, TASK-021 |
 | OPEN-8 | 06 열린 질문(API-031) | TASK-009, TASK-011 |
 | OPEN-9 | 06 열린 질문(API-032, API-073) | TASK-007, TASK-009, TASK-011 |
 | OPEN-10 | 06 열린 질문(API-031, API-032, API-070) | TASK-010, TASK-011 |
