@@ -17,6 +17,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
+import { checkOperatorPage } from "./operator-page-check.mjs";
 
 const WEB = fileURLToPath(new URL("..", import.meta.url));
 const WIDTHS = [360, 1280];
@@ -418,6 +419,20 @@ for (const width of LAYOUT_WIDTHS.filter((w) => w < BREAKPOINT)) {
     m = await menuState(page);
     expect(!m.open, "열린 채 넓은 화면이 되면 닫힘");
   });
+}
+
+for (const width of WIDTHS) {
+  try {
+    await checkOperatorPage(browser, base, width, async (page, state, consoleErrors) => {
+      await page.evaluate(() => document.fonts.ready);
+      const measured = await measure(page);
+      summarize(state, width, measured, consoleErrors, await shoot(page, state, width));
+    });
+    report.flows.push({ name: "operator-login", width, pass: true });
+  } catch (error) {
+    report.flows.push({ name: "operator-login", width, pass: false });
+    failures.push(`운영자 로그인@${width}: ${String(error)}`);
+  }
 }
 
 await browser.close();

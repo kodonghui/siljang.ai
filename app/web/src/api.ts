@@ -65,6 +65,7 @@ export interface RequestOptions {
   /** 명령의 요청 키. 쓰기 명령은 꼭(06은 쓰기 명령마다 Idempotency-Key를 요구함) */
   readonly key?: string;
   readonly signal?: AbortSignal;
+  readonly cache?: RequestCache;
   readonly base?: string;
   readonly fetch?: typeof fetch;
 }
@@ -91,6 +92,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
   if (options.key !== undefined) headers[REQUEST_KEY_HEADER] = options.key;
   if (options.signal !== undefined) init.signal = options.signal;
+  if (options.cache !== undefined) init.cache = options.cache;
   const call = options.fetch ?? globalThis.fetch.bind(globalThis);
   let res: Response;
   let text: string;
