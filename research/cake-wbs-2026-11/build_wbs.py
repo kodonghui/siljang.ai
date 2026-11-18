@@ -90,7 +90,7 @@ for r in SPECS.values():
 REQ_OUTSIDE = sorted(k for k, v in REQS.items() if not v["excluded"] and k not in REQ_IN_SPEC)
 
 spec_md = (REPO / "docs/04-functional-spec/spec.md").read_text(encoding="utf-8")
-GRULES = re.findall(r"^\| (G\d) \|", spec_md, re.M)
+GRULES = re.findall(r"^\| (G\d+) \|", spec_md, re.M)
 
 TBL, TBL_NAME = {}, {}
 for line in (REPO / "db/schema.sql").read_text(encoding="utf-8").splitlines():
