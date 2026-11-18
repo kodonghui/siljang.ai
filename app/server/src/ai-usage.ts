@@ -18,10 +18,10 @@
  */
 import type { AiProvider, TokenCounts } from "./ai-prices";
 
-/** 회사마다 사용량·멈춘 사유가 든 SSE 이벤트. */
+/** 회사마다 사용량·멈춘 사유·오류가 든 SSE 이벤트. */
 const USAGE_EVENTS: Readonly<Record<AiProvider, ReadonlySet<string>>> = {
   anthropic: new Set(["message_start", "message_delta"]),
-  openai: new Set(["response.completed", "response.incomplete", "response.failed"]),
+  openai: new Set(["response.completed", "response.incomplete", "response.failed", "error"]),
 };
 
 /** 출력 조각 이벤트. Anthropic은 조각의 delta.type을 보고 글·도구 입력만 센다. */
@@ -56,6 +56,7 @@ export class UsageMeter {
   #final = false;
   #stopReason: string | null = null;
   #firstOutputAt: number | null = null;
+  #rateLimited = false;
 
   constructor(provider: AiProvider, clock: () => number) {
     this.#provider = provider;
@@ -94,6 +95,11 @@ export class UsageMeter {
   /** 첫 출력 조각이 온 시각(clock 값). 없으면 null. */
   firstOutputAt(): number | null {
     return this.#firstOutputAt;
+  }
+
+  /** OpenAI는 HTTP 200의 SSE 안에서 한도 초과 오류를 보낼 수 있다. */
+  rateLimited(): boolean {
+    return this.#rateLimited;
   }
 
   #feed(text: string): void {
@@ -138,7 +144,7 @@ export class UsageMeter {
     if (wantOutput && output.has(type) && this.#isOutput(event)) this.#firstOutputAt = this.#clock();
     if (!usage.has(type)) return;
     if (this.#provider === "anthropic") this.#anthropic(type, event);
-    else this.#openai(event);
+    else this.#openai(type, event);
   }
 
   #isOutput(event: Json): boolean {
@@ -161,7 +167,11 @@ export class UsageMeter {
     if (type === "message_delta" && typeof stop === "string") this.#stopReason = stop;
   }
 
-  #openai(event: Json): void {
+  #openai(type: string, event: Json): void {
+    if (type === "error") {
+      this.#rateLimited ||= (event.code ?? obj(event.error)?.code) === "rate_limit_exceeded";
+      return;
+    }
     const response = obj(event.response);
     if (response === undefined) return;
     const usage = obj(response.usage);

@@ -300,6 +300,14 @@ describeDb("모델 호출 모듈(TASK-026)", () => {
     }
   });
 
+  it("OpenAI가 HTTP 200의 스트림으로 토큰 한도 오류를 보내면 한도 초과로 기록한다", async () => {
+    const body = 'event: error\ndata: {"type":"error","error":{"type":"tokens","code":"rate_limit_exceeded"}}\n\n';
+    const { outcome, row, seen } = await run("openai", () => sseResponse(body));
+    expect(seen).toHaveLength(1);
+    expect(outcome).toMatchObject({ ok: false, failure: "limit_reached", retryable: true });
+    expect(row).toMatchObject({ result: "limit_reached", error_kind: "stream_rate_limit", cost_krw: null });
+  });
+
   it("연결 3초·전체 20초에서 끊고 result timeout(시험은 짧은 값으로)", async () => {
     for (const provider of PROVIDERS) {
       const connect = await run(provider, (_req, signal) => never(signal), {

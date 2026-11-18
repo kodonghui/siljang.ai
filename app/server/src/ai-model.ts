@@ -225,10 +225,10 @@ function classify(watch: CallWatch): Classified {
     };
   }
   const s = watch.status;
-  if (s === 429) {
+  if (s === 429 || watch.meter.rateLimited()) {
     return {
       result: "limit_reached",
-      errorKind: "http_429",
+      errorKind: s === 429 ? "http_429" : "stream_rate_limit",
       fallbackReason: "model_error",
       failure: "limit_reached",
       retryable: true,
