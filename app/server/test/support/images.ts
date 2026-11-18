@@ -1,7 +1,5 @@
-/**
- * 시험용 사진 바이트(TASK-022). 앞부분 시그니처만 진짜 꼴이고 나머지는 채운 값이다(서버는 시그니처로만 종류를 봄).
- * size는 전체 바이트 수.
- */
+import { readFileSync } from "node:fs";
+
 function filled(head: readonly number[], size: number): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(Math.max(size, head.length));
   bytes.set(head, 0);
@@ -17,12 +15,44 @@ function ftyp(major: string, compatible: readonly string[]): number[] {
   return [0, 0, 0, size, ...ascii("ftyp"), ...ascii(major), 0, 0, 0, 0, ...compatible.flatMap(ascii)];
 }
 
-export const jpeg = (size = 2048) => filled([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, ...ascii("JFIF")], size);
-export const png = (size = 2048) => filled([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], size);
-export const webp = (size = 2048) => filled([...ascii("RIFF"), 0, 0, 0, 0, ...ascii("WEBPVP8 ")], size);
-export const heic = (size = 2048) => filled(ftyp("heic", ["mif1", "heic"]), size);
-/** 주 브랜드가 mif1이고 호환 브랜드에 heic가 있는 HEIC(아이폰이 쓰는 꼴 가운데 하나). */
-export const heifWithHeic = (size = 2048) => filled(ftyp("mif1", ["mif1", "heic"]), size);
+type Format = "jpg" | "png" | "heic" | "webp";
+
+export function photoFixture(
+  format: Format,
+  variant: "clean" | "metadata" | "rotated" = "clean",
+): Uint8Array<ArrayBuffer> {
+  return new Uint8Array(readFileSync(new URL(`../fixtures/photos/${variant}.${format}`, import.meta.url)));
+}
+
+/** 지정 크기까지 내용이 없는 JPEG COM 세그먼트를 더한다. */
+export function jpeg(size = 0): Uint8Array<ArrayBuffer> {
+  const clean = photoFixture("jpg");
+  if (size <= clean.length) return clean;
+  const result = new Uint8Array(size);
+  const view = new DataView(result.buffer);
+  result.set(clean.subarray(0, 2));
+  for (let at = 2; at < size - clean.length + 2; ) {
+    const remaining = size - clean.length + 2 - at;
+    if (remaining < 4) throw new Error("JPEG COM segment needs four bytes");
+    let length = Math.min(remaining, 65537);
+    if (remaining > length && remaining - length < 4) length -= 4;
+    result.set([0xff, 0xfe], at);
+    view.setUint16(at + 2, length - 2);
+    at += length;
+  }
+  result.set(clean.subarray(2), size - clean.length + 2);
+  return result;
+}
+
+export const png = () => photoFixture("png");
+export const webp = () => photoFixture("webp");
+export const heic = () => photoFixture("heic");
+/** 주 브랜드가 mif1이고 호환 브랜드에 heic가 있는 HEIC. */
+export function heifWithHeic(): Uint8Array<ArrayBuffer> {
+  const bytes = heic();
+  bytes.set(ascii("mif1"), 8);
+  return bytes;
+}
 /** 받지 않는 것: AVIF(같은 HEIF 상자 꼴), 담은 것을 말하지 않는 HEIF, GIF, 글. */
 export const avif = (size = 2048) => filled(ftyp("avif", ["mif1", "avif"]), size);
 export const heifOnly = (size = 2048) => filled(ftyp("mif1", ["mif1", "miaf"]), size);

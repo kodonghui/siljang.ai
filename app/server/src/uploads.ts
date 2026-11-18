@@ -20,6 +20,7 @@
 import { declaredOver, readBytesLimited } from "./body";
 import { toBase64Url } from "./encoding";
 import type { OwnerScope } from "./owner-scope";
+import { IMAGE_TYPES, type ImageType, sanitizePhoto } from "./photo-metadata";
 import { ApiError, type FieldError, fieldError } from "./problem";
 import { UPLOAD_RATE } from "./rate-limit";
 import type { OwnerRequest } from "./routes";
@@ -27,9 +28,7 @@ import { isUuid } from "./shop-scope";
 import { type ObjectStore, StorageUnavailableError } from "./storage";
 import { toShopIso } from "./time";
 
-/** 받는 사진 종류(06 Upload.contentType, 05 사진 테이블의 content_type). */
-export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/heic", "image/webp"] as const;
-export type ImageType = (typeof IMAGE_TYPES)[number];
+export { IMAGE_TYPES, type ImageType, sniffImage } from "./photo-metadata";
 
 /** 용도(06 UploadForm.purpose). */
 export const UPLOAD_PURPOSES = ["license_photo", "design_image", "completion_photo"] as const;
@@ -113,35 +112,6 @@ export function permanentKey(shopId: string, purpose: UploadPurpose, uploadId: s
   return `shops/${shopId.toLowerCase()}/${purpose}/${uploadId}`;
 }
 
-const JPEG = [0xff, 0xd8, 0xff];
-const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-/** HEIC(HEVC로 담은 HEIF) 브랜드. */
-const HEIC_BRANDS = new Set(["heic", "heix", "heim", "heis", "hevc", "hevx", "hevm", "hevs"]);
-/** 담은 것을 말하지 않는 HEIF 브랜드. 호환 브랜드에 HEIC 브랜드가 있어야 HEIC로 친다(AVIF 등은 받지 않음). */
-const HEIF_GENERIC = new Set(["mif1", "msf1"]);
-
-/** 내용의 시그니처로 본 사진 종류. 모르는 내용은 null. */
-export function sniffImage(bytes: Uint8Array): ImageType | null {
-  const at = (i: number) => bytes[i] ?? -1;
-  const ascii = (from: number, length: number) =>
-    bytes.byteLength >= from + length ? String.fromCharCode(...bytes.subarray(from, from + length)) : "";
-  if (JPEG.every((v, i) => at(i) === v)) return "image/jpeg";
-  if (PNG.every((v, i) => at(i) === v)) return "image/png";
-  if (ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") return "image/webp";
-  if (ascii(4, 4) === "ftyp") {
-    // ftyp 상자: 크기(4)·'ftyp'(4)·주 브랜드(4)·작은 버전(4)·호환 브랜드(4씩, 상자 끝까지)
-    const size = ((at(0) << 24) | (at(1) << 16) | (at(2) << 8) | at(3)) >>> 0;
-    if (size < 16 || size > 4096) return null;
-    const major = ascii(8, 4);
-    if (HEIC_BRANDS.has(major)) return "image/heic";
-    if (HEIF_GENERIC.has(major)) {
-      const end = Math.min(size, bytes.byteLength);
-      for (let i = 16; i + 4 <= end; i += 4) if (HEIC_BRANDS.has(ascii(i, 4))) return "image/heic";
-    }
-  }
-  return null;
-}
-
 export interface UnusedUploads {
   /** 1시간 안에 올리고 아직 쓰지 않은(임시 위치에 남은) 파일 수. */
   readonly count: number;
@@ -222,7 +192,7 @@ function uploadInput(form: FormData): UploadInput {
 
 /**
  * POST /api/owner/uploads(06 API-007). 차례: 1분 30번(429) → 선언한 길이(413) → 쓰지 않은 파일 50개(429) → 본문을 한도까지
- * 읽고 multipart로(413·422) → UploadForm(422) → 용도별 크기(413) → 내용으로 본 종류(422 /file not_allowed) → 저장(503) → 201.
+ * 읽고 multipart로(413·422) → UploadForm(422) → 용도별 크기(413) → G10 사진 정리와 용도별 종류 확인(422 /file not_allowed) → 저장(503) → 201.
  * 요청 키는 받지 않는다(다시 올리면 새 uploadId가 하나 더 생길 뿐, 06 DEC-04 밖).
  */
 export async function createUpload(r: OwnerRequest): Promise<Response> {
@@ -240,17 +210,17 @@ export async function createUpload(r: OwnerRequest): Promise<Response> {
   const { purpose, file } = uploadInput(await readForm(raw));
   const rule = UPLOAD_RULES[purpose];
   if (file.size > rule.maxBytes) throw new ApiError("file_too_large");
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const type = sniffImage(bytes);
-  if (type === null || !rule.types.includes(type)) throw fieldError("/file", "not_allowed");
+  const photo = sanitizePhoto(new Uint8Array(await file.arrayBuffer()));
+  if (photo === null || !rule.types.includes(photo.contentType)) throw fieldError("/file", "not_allowed");
+  const { bytes, contentType } = photo;
   const now = services.now();
   const uploadId = newUploadId(purpose, now);
-  await store.put(tempKey(owner, uploadId), bytes, type);
+  await store.put(tempKey(owner, uploadId), bytes, contentType);
   return r.json(
     {
       uploadId,
       purpose,
-      contentType: type,
+      contentType,
       byteSize: bytes.byteLength,
       expiresAt: toShopIso(new Date(now.getTime() + UPLOAD_TTL_MS), owner.timeZone),
     },

@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { load } from "exifreader";
 import { describe, expect, it } from "vitest";
 import { APP_ROUTES, createApp } from "../src/app";
@@ -21,7 +20,6 @@ import {
   type TakenUpload,
   tempKey,
   UNUSED_UPLOAD_LIMIT,
-  UPLOAD_RULES,
   UPLOAD_TTL_MS,
   type UploadPurpose,
   unusedUploads,
@@ -171,20 +169,19 @@ describe("API-007 201: 용도마다 받는 종류를 내용으로 보고 uploadI
     const h = harness();
     const owner = newUuid();
     const license = await uploaded(await upload(h, owner, "license_photo", img.jpeg(10 * MIB)));
-    expect(license.byteSize).toBe(UPLOAD_RULES.license_photo.maxBytes);
+    expect(license.byteSize).toBe(img.jpeg().length);
     const completion = await uploaded(await upload(h, owner, "completion_photo", img.jpeg(20 * MIB)));
-    expect(completion.byteSize).toBe(20 * MIB);
+    expect(completion.byteSize).toBe(img.jpeg().length);
   });
 });
 
 describe("TASK-183: API-007이 G10을 적용한 바이트만 저장", () => {
   const photos = ["jpg", "png", "heic", "webp"] as const;
-  const fixture = (format: (typeof photos)[number]) =>
-    readFileSync(new URL(`./fixtures/photos/metadata.${format}`, import.meta.url));
+  const fixture = (format: (typeof photos)[number]) => img.photoFixture(format, "metadata");
 
   it.each(photos)("%s: 위치·기기·촬영 시각과 XMP를 제거한 결과로 201", async (format) => {
     const original = fixture(format);
-    const before = await load(original, { expanded: true, async: true });
+    const before = await load(original.buffer, { expanded: true, async: true });
     expect(before.exif?.Make?.description).toBe("Fictional Camera");
     expect(before.exif?.Model?.description).toBe("Synthetic Device");
     expect(before.exif?.DateTimeOriginal?.description).toBe("2001:02:03 04:05:06");
@@ -204,18 +201,54 @@ describe("TASK-183: API-007이 G10을 적용한 바이트만 저장", () => {
     expect(after.exif).toBeUndefined();
     expect(after.gps).toBeUndefined();
     expect(after.xmp).toBeUndefined();
+    expect(after.pngText).toBeUndefined();
     const savedText = Buffer.from(saved).toString("latin1");
     for (const marker of ["Fictional Camera", "Synthetic Device", "2001:02:03", "Synthetic caption"]) {
       expect(savedText).not.toContain(marker);
     }
   });
 
+  it.each(["jpg", "png", "webp"] as const)("%s: EXIF에 새 방향 값 하나만 기록", async (format) => {
+    const original = img.photoFixture(format, "rotated");
+    const before = await load(original.buffer, { expanded: true, async: true });
+    expect(before.exif?.Orientation?.value).toBe(6);
+    expect(before.exif?.Make?.description).toBe("Fictional Camera");
+
+    const h = harness();
+    const body = await uploaded(await upload(h, newUuid(), "design_image", original));
+    const saved = h.store.objects.get(h.store.keys()[0] ?? "")?.body;
+    if (!saved) throw new Error("missing stored image");
+    const after = await load(saved.slice().buffer, { expanded: true, async: true });
+    expect(Object.keys(after.exif ?? {})).toEqual(["Orientation"]);
+    expect(after.exif?.Orientation?.value).toBe(6);
+    expect(after.gps).toBeUndefined();
+    expect(after.xmp).toBeUndefined();
+    expect(after.pngText).toBeUndefined();
+    expect(body.byteSize).toBe(saved.length);
+  });
+
+  it("heic: 영상의 irot 속성을 보존하고 EXIF의 방향과 촬영 정보는 삭제", async () => {
+    const original = img.photoFixture("heic", "rotated");
+    const position = Buffer.from(original).indexOf("irot");
+    expect(position).toBeGreaterThan(0);
+    // ISOBMFF irot 상자는 4바이트 상자 이름 뒤에 1바이트 회전 값을 담는다.
+    const rotation = original.subarray(position, position + 5);
+    expect(rotation[4]).toBe(3);
+    const h = harness();
+    await uploaded(await upload(h, newUuid(), "design_image", original));
+    const saved = h.store.objects.get(h.store.keys()[0] ?? "")?.body;
+    if (!saved) throw new Error("missing stored image");
+    expect(Buffer.from(saved).includes(rotation)).toBe(true);
+    const after = await load(saved.slice().buffer, { expanded: true, async: true });
+    expect(after.exif).toBeUndefined();
+    expect(after.gps).toBeUndefined();
+    expect(after.xmp).toBeUndefined();
+  });
+
   it.each(photos)("%s: 시그니처 뒤가 잘린 파일에는 422, 저장 없음", async (format) => {
     const h = harness();
     const res = await upload(h, newUuid(), "design_image", fixture(format).subarray(0, 40));
-    expect((await expectProblem(res, "validation_failed")).errors).toEqual([
-      { field: "/file", code: "not_allowed" },
-    ]);
+    expect((await expectProblem(res, "validation_failed")).errors).toEqual([{ field: "/file", code: "not_allowed" }]);
     expect(h.store.keys()).toEqual([]);
   });
 });
@@ -433,15 +466,15 @@ describe("API-007 429: 사장님마다 1분 30번, 쓰지 않은 올린 파일 1
   it("1분에 31번째는 429와 Retry-After(다른 사장님은 따로 셈)", async () => {
     const h = harness();
     const a = newUuid();
-    for (let i = 0; i < 30; i += 1) await uploaded(await upload(h, a, "design_image", img.png(64)));
-    const res = await upload(h, a, "design_image", img.png(64));
+    for (let i = 0; i < 30; i += 1) await uploaded(await upload(h, a, "design_image", img.png()));
+    const res = await upload(h, a, "design_image", img.png());
     expect(res.headers.get("retry-after")).toBe("60");
     const body = await expectProblem(res, "rate_limited");
     expect(body.retryAfterSeconds).toBe(60);
     expect(h.limiter.counts.get(`upload:${a}`)).toBe(31);
     // 한도에 걸린 요청은 저장하지 않음
     expect(h.store.keys(`tmp/${a}/`)).toHaveLength(30);
-    await uploaded(await upload(h, newUuid(), "design_image", img.png(64)));
+    await uploaded(await upload(h, newUuid(), "design_image", img.png()));
   });
 
   it("쓰지 않은 파일이 1시간 안에 50개면 51번째는 429, 가장 오래된 것이 1시간을 넘기면 다시 받음", async () => {
@@ -450,18 +483,18 @@ describe("API-007 429: 사장님마다 1분 30번, 쓰지 않은 올린 파일 1
     // 1분마다 하나씩 50개(10:03~10:52)
     for (let i = 0; i < UNUSED_UPLOAD_LIMIT; i += 1) {
       h.clock.now = new Date(T0.getTime() + i * 60_000);
-      await uploaded(await upload(h, a, "completion_photo", img.jpeg(64)));
+      await uploaded(await upload(h, a, "completion_photo", img.jpeg()));
     }
     h.clock.now = new Date(T0.getTime() + 49 * 60_000 + 30_000);
-    const res = await upload(h, a, "completion_photo", img.jpeg(64));
+    const res = await upload(h, a, "completion_photo", img.jpeg());
     // 가장 오래된 것(10:03)이 11:03에 1시간을 넘김: 10:52:30부터 630초
     expect(res.headers.get("retry-after")).toBe("630");
     expect((await expectProblem(res, "rate_limited")).retryAfterSeconds).toBe(630);
     // 다른 사장님은 따로 셈
-    await uploaded(await upload(h, newUuid(), "completion_photo", img.jpeg(64)));
+    await uploaded(await upload(h, newUuid(), "completion_photo", img.jpeg()));
     // 1시간이 지나 가장 오래된 것은 세지 않음
     h.clock.now = new Date(T0.getTime() + UPLOAD_TTL_MS);
-    await uploaded(await upload(h, a, "completion_photo", img.jpeg(64)));
+    await uploaded(await upload(h, a, "completion_photo", img.jpeg()));
   });
 
   it("명령이 쓴 파일(임시 위치에서 지운 것)은 세지 않음", async () => {
@@ -469,12 +502,12 @@ describe("API-007 429: 사장님마다 1분 30번, 쓰지 않은 올린 파일 1
     const a = newUuid();
     const ids: string[] = [];
     for (let i = 0; i < UNUSED_UPLOAD_LIMIT; i += 1) {
-      ids.push((await uploaded(await upload(h, a, "design_image", img.png(64)))).uploadId);
+      ids.push((await uploaded(await upload(h, a, "design_image", img.png()))).uploadId);
     }
-    await expectProblem(await upload(h, a, "design_image", img.png(64)), "rate_limited");
+    await expectProblem(await upload(h, a, "design_image", img.png()), "rate_limited");
     const used = await use(h, a, newUuid(), [{ id: ids[0], purpose: "design_image" }]);
     expect(used.status).toBe(200);
-    await uploaded(await upload(h, a, "design_image", img.png(64)));
+    await uploaded(await upload(h, a, "design_image", img.png()));
   });
 
   it("셈: 목록이 잘리면(1000개 넘음) 3600초, 지난 파일과 다른 꼴의 키는 세지 않음", async () => {
@@ -488,9 +521,9 @@ describe("API-007 429: 사장님마다 1분 30번, 쓰지 않은 올린 파일 1
     expect(await unusedUploads(truncated, owner, now)).toEqual({ count: 1001, retryAfterSeconds: 3600 });
     const store = new MemoryStore();
     const old = new Date(now.getTime() - UPLOAD_TTL_MS);
-    await store.put(tempKey(owner, newUploadId("design_image", old)), img.png(8), "image/png");
-    await store.put(`${prefix}upl_zzzz-not-ours`, img.png(8), "image/png");
-    await store.put(tempKey(owner, newUploadId("design_image", now)), img.png(8), "image/png");
+    await store.put(tempKey(owner, newUploadId("design_image", old)), img.png(), "image/png");
+    await store.put(`${prefix}upl_zzzz-not-ours`, img.png(), "image/png");
+    await store.put(tempKey(owner, newUploadId("design_image", now)), img.png(), "image/png");
     expect(await unusedUploads(store, owner, now)).toEqual({ count: 1, retryAfterSeconds: null });
   });
 });
@@ -700,7 +733,7 @@ describe("명령이 쓰는 올린 파일(06 DEC-02·DEC-09, SPEC-068 [입력], �
       uploadId: id,
       purpose: "design_image",
       contentType: "image/png",
-      byteSize: 2048,
+      byteSize: img.png().length,
       tempKey: tempKey(owner, id),
     });
     store.failOn.add("delete");
