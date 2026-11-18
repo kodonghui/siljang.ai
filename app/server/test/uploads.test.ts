@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { load } from "exifreader";
 import { describe, expect, it } from "vitest";
 import { APP_ROUTES, createApp } from "../src/app";
 import { createOwnerScope, type OwnerScope } from "../src/owner-scope";
@@ -172,6 +174,49 @@ describe("API-007 201: 용도마다 받는 종류를 내용으로 보고 uploadI
     expect(license.byteSize).toBe(UPLOAD_RULES.license_photo.maxBytes);
     const completion = await uploaded(await upload(h, owner, "completion_photo", img.jpeg(20 * MIB)));
     expect(completion.byteSize).toBe(20 * MIB);
+  });
+});
+
+describe("TASK-183: API-007이 G10을 적용한 바이트만 저장", () => {
+  const photos = ["jpg", "png", "heic", "webp"] as const;
+  const fixture = (format: (typeof photos)[number]) =>
+    readFileSync(new URL(`./fixtures/photos/metadata.${format}`, import.meta.url));
+
+  it.each(photos)("%s: 위치·기기·촬영 시각과 XMP를 제거한 결과로 201", async (format) => {
+    const original = fixture(format);
+    const before = await load(original, { expanded: true, async: true });
+    expect(before.exif?.Make?.description).toBe("Fictional Camera");
+    expect(before.exif?.Model?.description).toBe("Synthetic Device");
+    expect(before.exif?.DateTimeOriginal?.description).toBe("2001:02:03 04:05:06");
+    expect(before.gps).toMatchObject({ Latitude: 1.25, Longitude: 2.5 });
+    expect(before.xmp?._raw).toContain("Synthetic caption");
+
+    const h = harness();
+    const owner = newUuid();
+    const body = await uploaded(await upload(h, owner, "design_image", original));
+    expectSchema("Upload", body);
+    const key = tempKey(createOwnerScope(owner), body.uploadId);
+    const saved = h.store.objects.get(key)?.body;
+    expect(saved).toBeDefined();
+    if (saved === undefined) throw new Error("missing stored image");
+    expect(body.byteSize).toBe(saved.length);
+    const after = await load(saved.slice().buffer, { expanded: true, async: true });
+    expect(after.exif).toBeUndefined();
+    expect(after.gps).toBeUndefined();
+    expect(after.xmp).toBeUndefined();
+    const savedText = Buffer.from(saved).toString("latin1");
+    for (const marker of ["Fictional Camera", "Synthetic Device", "2001:02:03", "Synthetic caption"]) {
+      expect(savedText).not.toContain(marker);
+    }
+  });
+
+  it.each(photos)("%s: 시그니처 뒤가 잘린 파일에는 422, 저장 없음", async (format) => {
+    const h = harness();
+    const res = await upload(h, newUuid(), "design_image", fixture(format).subarray(0, 40));
+    expect((await expectProblem(res, "validation_failed")).errors).toEqual([
+      { field: "/file", code: "not_allowed" },
+    ]);
+    expect(h.store.keys()).toEqual([]);
   });
 });
 
