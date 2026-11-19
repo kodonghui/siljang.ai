@@ -464,6 +464,8 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
 
 120. TASK-009 K-11의 개발 봇 시험 카드 링크에서 카카오 로그인 토큰 요청을 확인했습니다. 정상 PKCE와 PKCE 없는 요청은 HTTP 200이었고, 틀린 verifier는 HTTP 400 `invalid_grant`·`KOE313`으로 거절됐습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-009-카카오-k-11-로그인-시험)
 
+121. TASK-174의 서울 `siljang-dev`에 마이그레이션 0001~0022를 적용했습니다. `siljang_deploy.migrations` 원장 22행, `public` 테이블 60개, `btree_gist` 설치를 확인했습니다. 서버 전용 역할과 실제 앱 연결 시험이 남았습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-174-서울-supabase-마이그레이션)
+
 ## 명령 (`app/`에서)
 
 ```bash
