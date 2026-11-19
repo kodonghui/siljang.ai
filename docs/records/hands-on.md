@@ -2,6 +2,12 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-171 Hyperdrive 경합과 Supabase S3
+
+- Cloudflare 원격 미리보기에서 스테이징과 같은 Hyperdrive를 사용했습니다. 첫 SQL 186ms, PostgreSQL 17.12, `btree_gist`, 서버 전용 역할이 확인됐습니다. SQLSTATE `55P03` 경합 뒤 커밋된 값을 다른 연결에서 읽었고 합성 행만 삭제했습니다.
+- Aside에서 비공개 시험 버킷을 확인했습니다. 기존 앱 S3Store의 업로드·메타데이터 조회·다운로드·복사와 종류 보존·접두어 및 `startAfter` 목록·두 시험 객체 삭제가 통과했습니다. 익명 GET은 HTTP 403이었습니다.
+- Windows 하위 시스템에서 스크립트의 실제 스테이징 HTTP 200을 3회 확인했습니다. 별도 시험 호스트에서는 스테이징 HTTP 200 2회(SIN)와 격리 PostgreSQL에 대한 선택적 SQL 경로를 확인했습니다. [기술 스택 8-1](../10-wbs/tech-stack.md#8-1-개발-전-시험task-171-동희님이-계정을-만든-뒤-task-170)
+
 ## 2026-11-19 · TASK-170 무료 개발 환경 설정 확인
 
 - 기존 Cloudflare 계정은 Workers Free, 서울 Supabase 개발 프로젝트는 Free·Nano(`ap-northeast-2`)입니다. Aside Vault와 Cloudflare·GitHub 비밀 저장소를 사용했습니다.
