@@ -293,6 +293,7 @@ Python을 남길 곳: 저장소의 생성·검사 도구(01~10단계)는 Python 
 | 서울 데이터베이스 직결·캐시 | Wrangler에서 Supabase 직결 주소와 읽기 캐시 OFF를 확인했습니다. Cloudflare 원격 미리보기의 첫 SQL은 186ms였고 PostgreSQL 17.12와 `btree_gist`, 서버 전용 역할을 확인했습니다. |
 | 트랜잭션과 행 잠금 | 스테이징과 같은 Hyperdrive의 두 연결에서 합성 `request_keys` 행을 시험했습니다. 첫 연결이 행을 잠그자 두 번째 연결의 `NOWAIT`이 `55P03`을 반환했습니다. 첫 연결이 한 행을 갱신해 커밋하자 두 번째 연결에서 새 값을 읽었습니다. 시험 행 한 개를 삭제했습니다. |
 | 사진 저장소 | 서울 Supabase Free의 비공개 시험 버킷에서 앱의 `S3Store`로 합성 PNG를 업로드·메타데이터 조회·다운로드·복사·목록 조회·삭제했습니다. 파일 종류와 내용이 보존됐고, 익명 요청은 HTTP 403이었습니다. |
+| Queues 지연 | 실제 카카오 개발 채널의 K-05에서 50초 지연을 설정하고 Cloudflare Queue로 콜백을 발신했습니다. Worker 수신에서 발신까지 56.3초, 카카오 HTTP 200 `SUCCESS`가 확인됐습니다. |
 | 지연 측정 | [측정 스크립트](../../tools/measure-staging-latency.sh)를 TASK-172에 넘깁니다. 스테이징 상태와 Cloudflare 데이터센터·전체 HTTP 시간을 출력합니다. 시험 호스트에 로컬에서 사용할 PostgreSQL 설정이 있으면 읽기 전용 `SELECT 1` 시간도 분리해 출력합니다. |
 
 - Cloudflare 원격 미리보기는 SJC였습니다. 실제 스테이징의 한국 클라이언트 경로와 데이터베이스 지연은 별도 확인이 필요합니다.
