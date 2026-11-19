@@ -2,6 +2,7 @@ import { type Context, Hono } from "hono";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FILE_ROUTE, serveFile } from "./file-url";
 import { kakaoSkillRoutes } from "./kakao-skill";
+import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill-auth";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import { AuthUnavailableError } from "./operator-auth";
 import { createOperatorSession, deleteOperatorSession, getOperatorMe, resolveOperatorSession } from "./operator-login";
@@ -58,6 +59,7 @@ interface Variables {
   log: Logger;
   /** 지금 시각·사진 저장소·한도·서명 주소(services.ts). */
   services: Services;
+  kakaoSkill?: AuthorizedKakaoSkill;
 }
 
 export type HonoEnv = { Bindings: Bindings; Variables: Variables };
@@ -179,7 +181,7 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   mountRoutes(
     app,
     options.routes ?? APP_ROUTES,
-    options.scopes,
+    { customer: resolveKakaoSkillScope, ...options.scopes },
     options.ownerAccount,
     options.operatorAccount ?? resolveOperatorSession,
   );

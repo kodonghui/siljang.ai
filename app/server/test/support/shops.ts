@@ -91,7 +91,7 @@ export async function createShop(db: RequestDb, name: string): Promise<ShopFixtu
     ownerId: newUuid(),
     shopId: newUuid(),
     channelId: newUuid(),
-    botId: `bot-${tag}`,
+    botId: newUuid().replaceAll("-", "").slice(0, 24),
     customerId: newUuid(),
     userKey: `user-${tag}`,
     consultationId: newUuid(),

@@ -2,9 +2,12 @@ import type { Hono } from "hono";
 import { expect } from "vitest";
 import type { HonoEnv } from "../../src/app";
 import type { Queryable } from "../../src/db";
+import { deriveKakaoSkillKey } from "../../src/kakao-skill-auth";
 import { REQUEST_KEY_HEADER } from "../../src/request-key";
 import { type Method, type RouteDecl, routeKey } from "../../src/routes";
-import { newRequestKey, testDb, testEnv } from "./db";
+import { Secret } from "../../src/settings";
+import { comparableProblem, expectProblem } from "./contract";
+import { newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./db";
 import { malformedIds, missingIds, type RecordIds, recordIds, type ShopFixture, snapshotShop } from "./shops";
 
 /**
@@ -30,7 +33,7 @@ export interface CrossShopRequest {
   readonly body?: unknown;
 }
 
-export interface CrossShopCase {
+interface OwnerCrossShopCase {
   readonly method: Method;
   /** 선언의 경로(/api 뒤, :이름). 등록 열쇠다. */
   readonly path: string;
@@ -41,11 +44,19 @@ export interface CrossShopCase {
   readonly ownStatus: number;
 }
 
-/**
- * 앱의 가게 범위 경로 등록 목록. 지금은 실제 API가 없어 비어 있다. TASK-020부터 가게 범위 API를 만들 때마다 여기에 더한다
- * (사장님으로 부르는 방법은 TASK-020의 세션으로 바꾼다).
- */
-export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [];
+interface SkillCrossShopCase {
+  readonly method: "POST";
+  readonly path: string;
+  readonly kind: "channel";
+}
+
+export type CrossShopCase = OwnerCrossShopCase | SkillCrossShopCase;
+
+export const CROSS_SHOP_CASES: readonly CrossShopCase[] = ["message", "card", "review", "event"].map((kind) => ({
+  method: "POST",
+  path: `/kakao/skills/${kind}`,
+  kind: "channel",
+}));
 
 /** 선언된 가게 범위 경로 가운데 등록되지 않은 것(missing)과, 등록됐지만 선언이 없는 것(stale). */
 export function registryGaps(
@@ -126,10 +137,42 @@ async function snapshots(db: Queryable, env: CrossShopEnv): Promise<Record<strin
   return [a, await snapshotShop(db, env.b)];
 }
 
+async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Queryable): Promise<void> {
+  const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), env.a.channelId, 1);
+  async function call(botId: string) {
+    return env.app.request(
+      `/api${c.path}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+        body: JSON.stringify({
+          bot: { id: botId },
+          userRequest: { utterance: "합성 시험", user: { id: env.a.userKey, type: "botUserKey" } },
+          action: { id: "test", params: {} },
+        }),
+      },
+      testEnv(),
+    );
+  }
+
+  const before = await snapshots(db, env);
+  const other = await call(env.b.botId);
+  const unknown = await call(newUuid().replaceAll("-", "").slice(0, 24));
+  const otherBody = await expectProblem(other, "skill_key_invalid");
+  const unknownBody = await expectProblem(unknown, "skill_key_invalid");
+  expect(comparableProblem(otherBody)).toEqual(comparableProblem(unknownBody));
+  expect(await snapshots(db, env)).toEqual(before);
+  expect((await call(env.a.botId)).status).toBe(200);
+}
+
 /** 등록한 경로 하나를 위 규칙대로 부르고 본다. 어기면 expect가 던진다. */
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "channel") {
+      await checkSkillChannel(env, c, db);
+      return;
+    }
     const own = recordIds(env.a);
     const other = recordIds(env.b);
     const variants: [string, RecordIds][] = [

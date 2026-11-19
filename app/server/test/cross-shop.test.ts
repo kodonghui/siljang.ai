@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { APP_ROUTES, createApp, type HonoEnv } from "../src/app";
+import { resolveKakaoSkillScope } from "../src/kakao-skill-auth";
 import { ApiError, ERRORS } from "../src/problem";
 import { REQUEST_KEY_HEADER } from "../src/request-key";
 import { openRoute, type RouteDecl, routeKey, type ScopeResolvers, shopRoute } from "../src/routes";
@@ -241,7 +242,9 @@ function testScopes(shops: readonly ShopFixture[]): Partial<ScopeResolvers> {
       return createShopScope(f.shopId, { kind: "owner", ownerId: f.ownerId });
     },
     customer: async (c: Context<HonoEnv>) => {
-      const f = shops.find((s) => s.botId === c.req.header(BOT_HEADER));
+      const requestedBot = c.req.header(BOT_HEADER);
+      if (requestedBot === undefined) return resolveKakaoSkillScope(c);
+      const f = shops.find((s) => s.botId === requestedBot);
       if (f === undefined) throw new ApiError("skill_key_invalid");
       return createShopScope(f.shopId, { kind: "customer", channelId: f.channelId });
     },
@@ -263,11 +266,8 @@ describeDb("교차 가게 시험 묶음(SPEC-068, G1, 06 DEC-02)", () => {
   });
 
   for (const c of SUITE_CASES) {
-    it(`${routeKey(c.method, c.path)} (${c.kind === "path" ? "경로의 ID" : "본문·쿼리의 ID"})`, async () => {
-      // 묶음은 가게 A 사장님으로 부른다. 다른 출처의 경로는 그 작업이 부르는 쪽과 기대를 더할 때까지 여기서 실패한다
-      expect(viaOf(c), "부르는 쪽은 사장님만(손님 TASK-028, 운영자 TASK-021·159, 예약 링크 TASK-044·045가 더함)").toBe(
-        "owner",
-      );
+    it(`${routeKey(c.method, c.path)} (${c.kind === "channel" ? "연결 키" : c.kind === "path" ? "경로의 ID" : "본문·쿼리의 ID"})`, async () => {
+      expect(viaOf(c)).toBe(c.kind === "channel" ? "customer" : "owner");
       await runCrossShopCase(env, c);
     });
   }
@@ -421,7 +421,7 @@ describeDb("교차 가게 시험 묶음(SPEC-068, G1, 06 DEC-02)", () => {
 });
 
 describe("교차 가게 시험 묶음의 등록(새 가게 범위 API가 빠지면 실패)", () => {
-  it("앱의 가게 범위 경로가 모두 등록됨(지금은 실제 가게 범위 API가 없어 0개)", () => {
+  it("앱의 가게 범위 경로가 모두 등록됨", () => {
     const gaps = registryGaps(APP_ROUTES, CROSS_SHOP_CASES);
     expect(gaps.missing).toEqual([]);
     expect(gaps.stale).toEqual([]);

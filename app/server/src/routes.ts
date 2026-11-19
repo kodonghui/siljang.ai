@@ -22,6 +22,7 @@ import type { Context, Hono, HonoRequest } from "hono";
 import { ACCESS_LOG_APIS, type AccessEntry, AccessRecorder } from "./access-log";
 import type { HonoEnv, Logger } from "./app";
 import { readJsonBody } from "./body";
+import type { AuthorizedKakaoSkill } from "./kakao-skill-auth";
 import { isOperatorScope, type OperatorScope } from "./operator-scope";
 import { isOwnerScope, type OwnerScope } from "./owner-scope";
 import { ApiError } from "./problem";
@@ -55,6 +56,7 @@ export interface ShopCommandSpec {
 /** 가게 범위 경로의 처리기가 받는 것. 데이터베이스는 가게 범위 연결뿐이다. */
 export interface ShopRequest {
   readonly scope: ShopScope;
+  readonly kakaoSkill: AuthorizedKakaoSkill | undefined;
   /** 트랜잭션 밖 읽기와 트랜잭션. 쓰기 명령은 command로. */
   readonly db: ShopRequestDb;
   /** 경로 값·쿼리·헤더(Hono의 요청). 본문은 body()로 읽는다. */
@@ -67,7 +69,7 @@ export interface ShopRequest {
   pathId(name: string): string;
   /** 본문 JSON(body.ts, 한 번만). */
   body(): Promise<unknown>;
-  json(body: unknown, status?: 200 | 201 | 202): Response;
+  json(body: unknown, status?: 200 | 201 | 202, headers?: Record<string, string>): Response;
   noContent(): Response;
   /** 요청 키를 지키며 쓰기 명령 하나(request-key.ts의 runCommand). */
   command(spec: ShopCommandSpec): Promise<Response>;
@@ -266,6 +268,7 @@ function shopRequest(c: Context<HonoEnv>, scope: ShopScope): ShopRequest {
   const headers = { "cache-control": "no-store" };
   return {
     scope,
+    kakaoSkill: c.get("kakaoSkill"),
     db,
     req: c.req,
     traceId: c.get("traceId"),
@@ -273,7 +276,7 @@ function shopRequest(c: Context<HonoEnv>, scope: ShopScope): ShopRequest {
     services: c.get("services"),
     pathId: (name) => pathId(c.req.param(name)),
     body: () => readJsonBody(c),
-    json: (body, status = 200) => c.json(body as object, status, headers),
+    json: (body, status = 200, extra) => c.json(body as object, status, { ...extra, ...headers }),
     noContent: () => c.body(null, 204, headers),
     command: (spec) =>
       runCommand(c, {
