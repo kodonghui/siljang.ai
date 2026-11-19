@@ -14,7 +14,8 @@
 4. **생성 파일.** 각 단계의 생성기로 고친다(codex-development.md 7절).
 5. **진짜 환경.** 웹 화면 일은 Aside(`aside exec`, `aside repl`), 데스크톱 앱(카카오톡 PC)은 agent-desktop, Cloudflare는 wrangler로 한다. 결과는 `docs/records/hands-on.md`에 적고, 끝난 조건이 다 채워지면 `finished`를 표시한다.
 6. **비밀 값.** Aside Vault, `wrangler secret put`, GitHub Actions secrets, `.dev.vars`에 두고, 저장소·기록·PR에는 이름만 적는다. 시험의 가짜 이메일은 `example` 도메인을 쓴다.
-7. **동희님께 확인받는 것.** 결제 직전, 제품 결정, 사람 확인 화면(캡차·인증 번호·신원 확인), 휴대폰에서만 되는 확인, 전문가 답이다(codex-finish.md 8절).
+7. **동희님께 확인받는 것.** 결제 직전, 제품 결정, 사람 확인 화면(캡차·인증 번호·신원 확인), 전문가 답이다(codex-finish.md 8절). 확인 요청은 progress.md의 '동희님 확인 대기' 목록에 모으고 다음 작업을 계속한다.
+   - 카카오톡은 PC 카카오톡에서 agent-desktop으로 한다. PC에서 되지 않는 단계와 휴대폰에서만 되는 확인은 TASK-167(출시 검토)로 옮기고 그 작업을 끝낸다(codex-finish.md 맨 위 '지금 먼저 읽을 것' 3번).
 8. **검사.** 결과 줄을 PR 본문에 그대로 옮긴다.
    - `app/`에서 `npm ci && npm run lint && npm run typecheck && npm test && npm run build`
    - `bash tools/stage-checks.sh <이름>`(설계 문서를 바꾼 PR)
@@ -30,3 +31,4 @@
 10. **합치기.** CI app·db가 성공하면 squash로 합치고, main CI·스테이징 배포·원격 SHA를 확인한다.
 11. **글.** 한국어로 쓰고, 그 분야의 표준 용어를 쓴다(codex-development.md 11절의 표). 동희님께 하는 보고는 존댓말이다.
 12. **확인한 것만 통과로.** 기계나 화면으로 확인한 것만 통과로 적고, 확인 못 한 것은 그렇다고 적는다.
+13. **끝까지 계속.** PR을 합치면 progress.md에 적고 바로 다음 작업을 시작한다. 채팅 보고는 '11단계 개발 끝'에 닿았을 때와 남은 작업이 모두 확인을 기다릴 때 한다(codex-finish.md 9절).
