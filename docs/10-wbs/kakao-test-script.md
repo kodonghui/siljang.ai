@@ -88,6 +88,8 @@
 | --- | --- | --- |
 | 2026-11-19 10:53 무렵 | 개발 봇테스트에서 네 경우 모두 답 말풍선이 없었습니다. 상세 화면에서 1·3은 빈 텍스트가 보였고 2·4는 직전 기록이 남았습니다. Worker 기록은 1~3이 HTTP 200, 4가 HTTP 204였습니다. | 봇테스트 화면 텍스트와 Worker KV 4건 |
 
+후기 블록의 필수 사진 질문이 남아 다른 항목을 시작할 수 없으면 시험 채널의 `시험 나가기`를 보내 종료하고, 대본의 해당 항목을 다시 시작합니다. [카카오 블록 가이드](https://kakaobusiness.gitbook.io/main/tool/chatbot/main_notions/block)
+
 ### K-05 콜백(OPEN-2)
 
 - 보낼 말: `콜백 시험`(1절 3의 블록으로 감). 기다리는 문구가 보이고 3초 뒤 서버의 콜백 답이 옵니다.
@@ -109,7 +111,7 @@
 
 | 날짜·시각(KST) | 결과 | 증거 자리 |
 | --- | --- | --- |
-| 2026-11-19 14:54:07 | PC 카카오톡의 Siljang Test 채팅방에서 합성 PNG를 한 장 보냈습니다. 사진 주소는 `userRequest.utterance`에 왔고, Worker가 HTTP 200으로 `image/png` 101바이트를 읽었습니다. | 마스킹된 Worker KV의 `item=K-06`, 수신 처리 361ms, NRT, 스킬 HTTP 200 |
+| 2026-11-19 14:54:07 | PC 카카오톡의 Siljang Test 대화에서 합성 PNG를 한 장 보냈습니다. 사진 주소는 `userRequest.utterance`에 왔고, Worker가 HTTP 200으로 `image/png` 101바이트를 읽었습니다. | 마스킹된 Worker KV의 `item=K-06`, 수신 처리 361ms, NRT, 스킬 HTTP 200 |
 
 ### K-07 후기 블록(OPEN-3, OPEN-12의 준비)
 
