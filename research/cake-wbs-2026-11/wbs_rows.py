@@ -113,7 +113,7 @@ TASKS = [
     dict(id='TASK-087', it=3, name='SCR-016 할 일 목록 화면', owner='Claude', size=1, src=['SPEC-067', 'SPEC-024', 'SPEC-037'], scr=['SCR-016'], dep=['TASK-182']),
     dict(id='TASK-088', it=3, name='SCR-017 에스컬레이션 건 화면', owner='Claude', size=2, src=['SPEC-022', 'SPEC-023', 'SPEC-056', 'SPEC-079'], scr=['SCR-017'], dep=['TASK-182'], later_api=['API-083']),
     dict(id='TASK-089', it=3, name='SCR-018 상담 대화 화면', owner='Claude', size=1, src=['SPEC-021', 'SPEC-019', 'SPEC-065', 'SPEC-068'], scr=['SCR-018'], dep=['TASK-182']),
-    dict(id='TASK-090', it=3, name='SCR-019 사장님 알림 화면', owner='Claude', size=0.5, src=['SPEC-067', 'SPEC-003', 'SPEC-024', 'SPEC-006'], scr=['SCR-019'], dep=['TASK-029']),
+    dict(id='TASK-090', it=3, name='SCR-019 사장님 알림 화면', owner='Claude', size=0.5, src=['SPEC-067', 'SPEC-003', 'SPEC-024', 'SPEC-006'], scr=['SCR-019'], dep=['TASK-029'], finished='2026-11-19, SCR-019 카카오 응답 4상태의 모의 시험 13개 통과. app/README.md'),
     dict(id='TASK-091', it=4, name='주문 목록과 주문 하나(가게 것만)', owner='Claude', size=1, src=['SPEC-031', 'SPEC-013', 'SPEC-045', 'SPEC-068'], api=['API-044', 'API-045'], dep=['TASK-019', 'TASK-083'], noac=True),
     dict(id='TASK-092', it=4, name='맞춤 주문에 사장님 답하기(수락·금액 바꿔 수락·거절)', owner='Claude', size=2, src=['SPEC-031'], api=['API-046'], rules=['A32'], dep=['TASK-091']),
     dict(id='TASK-093', it=4, name='결제 안내 만들고 전하기', owner='Claude', size=2, src=['SPEC-032'], rules=['A5'], dep=['TASK-092', 'TASK-084', 'TASK-040']),
