@@ -454,6 +454,8 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
 
 115. TASK-014(TBL-045)는 구글 클라우드 `Siljang`의 OAuth 동의 화면을 `External`·`Testing`으로 설정했습니다. 장부 연동에 사용할 비민감 `drive.file` 범위 한 개를 등록했으며, 현재 Testing 상태에서 검증이 필요 없음을 확인했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-014-구글-oauth-시험-설정)
 
+116. TASK-183(REQ-269·G10)의 두 번째 후보인 Cloudflare Images 바인딩을 Wrangler 원격 미리보기에서 확인했습니다. 90도 회전한 합성 WebP 3개가 출력 형식과 투명도를 유지했고, 애니메이션의 2프레임과 지연·반복 값도 유지했습니다. 앱 통합과 전체 방향, 입력 파일 크기 및 Workers CPU·메모리 검증이 남았습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-183-cloudflare-images-webp-회전)
+
 ## 명령 (`app/`에서)
 
 ```bash
