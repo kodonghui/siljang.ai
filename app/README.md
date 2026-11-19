@@ -569,3 +569,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 137. TASK-009에서 PC 카카오톡의 반복 발화, 6초 지연 응답, 네 종류의 빈 응답을 Worker 기록과 대조했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-009-카카오-개발-채널-반복-발화와-빈-응답)
 
 138. TASK-171의 한국 스테이징 요청, Hyperdrive SQL 왕복과 PostgreSQL 연결 수를 확인했습니다. [스택 시험 결과](../docs/10-wbs/tech-stack.md#8-1-시험-결과2026-11-19)
+
+139. TASK-009의 K-02 반복 발화를 대본의 간격으로 보완하고 실제 2초 구간과 후보 키를 대조했습니다. [시험 대본](../docs/10-wbs/kakao-test-script.md#k-02-같은-말open-1)
