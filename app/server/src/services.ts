@@ -12,6 +12,7 @@ import { type AiModel, createAiModel } from "./ai-model";
 import type { Bindings } from "./app";
 import { type FieldCrypto, fieldCrypto } from "./field-crypto";
 import { type FileUrls, fileUrlSigner } from "./file-url";
+import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { type OperatorAuth, supabaseAuth } from "./operator-auth";
 import { bindingLimiter, type RateLimiter, type RateLimitRule } from "./rate-limit";
 import { MissingSettingError } from "./request-key";
@@ -34,6 +35,7 @@ export interface Services {
   operatorAuth(): OperatorAuth;
   /** ms 밀리초 기다린다(운영자 로그인 실패 응답의 최소 시간, operator-login.ts). */
   wait(ms: number): Promise<void>;
+  readonly kakaoCallbackQueue: KakaoCallbackQueue | undefined;
 }
 
 /** 시험이 바꾸는 것. */
@@ -45,6 +47,7 @@ export interface ServiceOverrides {
   readonly aiModel?: AiModel;
   readonly operatorAuth?: OperatorAuth;
   readonly wait?: (ms: number) => Promise<void>;
+  readonly kakaoCallbackQueue?: KakaoCallbackQueue;
 }
 
 export function createServices(env: Bindings, settings: Settings, overrides: ServiceOverrides = {}): Services {
@@ -55,6 +58,7 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
   let auth: OperatorAuth | undefined = overrides.operatorAuth;
   return {
     now: overrides.now ?? (() => new Date()),
+    kakaoCallbackQueue: overrides.kakaoCallbackQueue ?? env.KAKAO_CALLBACK_QUEUE,
     storage() {
       if (store !== undefined) return store;
       const s = settings.storage;

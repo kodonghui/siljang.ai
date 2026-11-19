@@ -1,6 +1,7 @@
 import { type Context, Hono } from "hono";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FILE_ROUTE, serveFile } from "./file-url";
+import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { kakaoSkillRoutes } from "./kakao-skill";
 import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill-auth";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
@@ -46,6 +47,7 @@ export type Bindings = {
   readonly SUPABASE_PUBLISHABLE_KEY?: string;
   /** 사진 올리기의 1분 30번(wrangler.jsonc의 ratelimits, rate-limit.ts의 UPLOAD_RATE). */
   readonly UPLOAD_RATE_LIMITER?: RateLimitBinding;
+  readonly KAKAO_CALLBACK_QUEUE?: KakaoCallbackQueue;
 };
 
 export type Logger = (level: LogLevel, fields: LogFields) => void;

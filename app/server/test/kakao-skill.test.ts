@@ -5,7 +5,7 @@ import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
-import { createShop, type ShopFixture } from "./support/shops";
+import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const SHOP_A = "10000000-0000-4000-8000-000000000001";
 const SHOP_B = "10000000-0000-4000-8000-000000000002";
@@ -122,14 +122,8 @@ describeDb("카카오 메시지 수신 기록과 동시 처리(TASK-028, REQ-132
 
   beforeAll(async () => {
     shop = await createShop(db, "카카오 스킬 시험 가게");
-    bot = newUuid().replaceAll("-", "").slice(0, 24);
-    await db.query(
-      `UPDATE kakao_channels SET status = 'linked', claim_expires_at = NULL, linked_at = now(), bot_id = $2,
-         orderer_block_id = 'orderer', allergy_block_id = 'allergy', depositor_block_id = 'depositor',
-         review_block_id = 'review', verified_blocks = ARRAY['card', 'orderer_info', 'allergy_answer', 'depositor_name', 'review']
-         WHERE id = $1`,
-      [shop.channelId, bot],
-    );
+    bot = shop.botId;
+    await linkTestChannel(db, shop.channelId);
     skillKey = await deriveKakaoSkillKey(SECRET, shop.channelId, 1);
   });
   afterAll(async () => {

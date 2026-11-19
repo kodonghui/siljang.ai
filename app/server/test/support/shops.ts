@@ -84,6 +84,16 @@ function dayAfter(days: number): string {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 }
 
+export async function linkTestChannel(db: Queryable, channelId: string): Promise<void> {
+  await db.query(
+    `UPDATE kakao_channels SET status = 'linked', claim_expires_at = NULL, linked_at = now(),
+       orderer_block_id = 'orderer', allergy_block_id = 'allergy', depositor_block_id = 'depositor',
+       review_block_id = 'review', verified_blocks = ARRAY['card', 'orderer_info', 'allergy_answer', 'depositor_name', 'review']
+       WHERE id = $1`,
+    [channelId],
+  );
+}
+
 /** 가게 하나와 그 기록을 한 트랜잭션으로 만든다. */
 export async function createShop(db: RequestDb, name: string): Promise<ShopFixture> {
   const tag = randomTag();
