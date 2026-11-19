@@ -6,6 +6,11 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 · TASK-173 무료 Cron·Queue와 스테이징 필드 키
+
+- 별도 시험 Worker에 서울 Placement와 1분 Cron을 설정했습니다. 15:21·15:22 KST의 Cron이 스테이징 데이터베이스를 서버 전용 역할로 읽고, ID만 담은 큐 메시지 두 건이 각각 소비됐습니다.
+- Aside에서 암호화 키 사본을 Vault에 보관하고 Wrangler로 두 필드 키를 기존 스테이징 Worker에 함께 적용했습니다. 시험 Worker의 Cron과 큐 연결은 시험 뒤 해제했습니다. 앱 Wrangler의 staging에 1분 Cron과 서울 Placement를 추가합니다.
+
 ### 2026-11-19 · TASK-171 서울 DB 잠금과 비공개 사진 저장소
 
 - Cloudflare 원격 미리보기에서 캐시를 끈 서울 DB에 합성 행을 쓰고, 두 연결로 행 잠금 경합과 커밋 직후 읽기를 확인한 뒤 행을 삭제했습니다.

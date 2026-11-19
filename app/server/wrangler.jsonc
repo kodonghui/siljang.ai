@@ -2,7 +2,7 @@
 // - 계정은 배포할 때 환경 변수 CLOUDFLARE_ACCOUNT_ID·CLOUDFLARE_API_TOKEN으로 고른다(동희님 TASK-170 뒤).
 // - 비밀 값(ANTHROPIC_API_KEY·OPENAI_API_KEY 등)은 `wrangler secret put`, 로컬은 .dev.vars(저장소에 넣지 않음).
 // - /api/* 만 Worker가 받고, 나머지 주소는 웹 빌드(../web/dist)의 정적 파일이다. 없는 화면 주소는 index.html(화면 라우팅은 웹이 함).
-// - TASK-173의 Hyperdrive는 staging 환경에 둔다. Queues·Cron Trigger·Placement는 후속 작업이다.
+// - TASK-173의 Hyperdrive·Cron Trigger·Placement는 staging에 둔다. AI 콜백 큐는 처리기와 함께 붙인다.
 // - nodejs_compat(데이터베이스 드라이버 pg가 씀)은 따로 적지 않는다. 호환 날짜가 2026-08-04 이후면 기본으로 켜진다
 //   (Cloudflare Hyperdrive 문서, 2026-11-15 확인, app/README.md 12).
 {
@@ -31,6 +31,8 @@
   ],
   "env": {
     "staging": {
+      "placement": { "region": "aws:ap-northeast-2" },
+      "triggers": { "crons": ["* * * * *"] },
       "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "822c6fce48714d8498b4e6098f0654db" }],
       "ratelimits": [
         {
