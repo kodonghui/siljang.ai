@@ -2,6 +2,12 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-016 main 자동 배포와 실행기 실패 모니터
+
+- Aside로 배포 토큰을 Vault와 GitHub `staging`의 `CLOUDFLARE_API_TOKEN`에 등록했습니다. GitHub CLI에서 두 비밀 값 이름과 `SILJANG_STAGING_DOMAIN`을 확인했습니다.
+- `main` 커밋 `97e05c7e09bdf8e4c57799cc8253e8341b5a1c77`의 `스테이징 배포`가 성공했습니다. Wrangler로 배포 태그를 대조했고, 공개 주소에서 상태 200과 `status=ok`, 로그인 화면 200, 세션 없는 운영자 조회 401을 확인했습니다. [GitHub Actions 배포 작업](https://github.com/kodonghui/siljang.ai/actions/runs/44436005766/job/135265573044)
+- Cloudflare의 `Siljang staging job failures` 모니터가 활성화 상태입니다. `siljang-staging`의 Workers Logs에서 `job_run_failed` 또는 `job_find_failed`가 한 건 이상이면 계정 소유자 1명에게 이메일을 보내도록 설정했습니다. 실행 주기는 15분이며 메일 수신 시험은 남았습니다. [Cloudflare 모니터 문서](https://developers.cloudflare.com/notifications/monitors/)
+
 ## 2026-11-19 · TASK-183 Cloudflare Images WebP 회전
 
 - Cloudflare Images 대시보드에서 시험 전 무료 포함량 5,000건 중 사용량 0건을 확인했습니다. Wrangler 4.158.0에서 `dev --remote`로 별도의 미리보기 Worker에 Images 바인딩을 연결했습니다. [Images 바인딩 문서](https://developers.cloudflare.com/images/optimization/binding/)

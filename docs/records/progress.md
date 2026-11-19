@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 10:21 무렵 KST · TASK-016 스테이징 자동 배포 확인
+
+- Aside Vault에 스테이징 전용 토큰을 보관하고 GitHub의 `staging` 환경 비밀 값에 등록했습니다. 저장소 Actions 변수 `SILJANG_STAGING_DOMAIN`을 설정했습니다.
+- `97e05c7e09bdf8e4c57799cc8253e8341b5a1c77`의 앱 검사와 배포, 데이터베이스 검사가 성공했습니다. Wrangler에서 실제 스테이징 배포 태그를 같은 SHA로 확인했습니다. [app 44436005766](https://github.com/kodonghui/siljang.ai/actions/runs/44436005766) · [db 44436005745](https://github.com/kodonghui/siljang.ai/actions/runs/44436005745)
+- `ko-family`의 1분 상태 점검에 더해 Cloudflare에서 서버 일 실행기 실패를 감지하는 무료 모니터를 활성화했습니다. 실제 실패 때 운영자에게 메일이 도착하는 시험과 외부 점검 실패의 알림 연결이 남아 TASK-016은 진행 중입니다. [실제 환경 확인 기록](hands-on.md#2026-11-19--task-016-main-자동-배포와-실행기-실패-모니터)
+
 ### 2026-11-19 10:17 무렵 KST · TASK-183 Cloudflare Images WebP 회전 시험
 
 - 기록을 시작한 main은 `97e05c7e09bdf8e4c57799cc8253e8341b5a1c77`([PR #90](https://github.com/kodonghui/siljang.ai/pull/90))입니다.
