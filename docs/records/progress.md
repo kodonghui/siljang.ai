@@ -6,6 +6,11 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 · TASK-170 무료 개발 환경 설정 확인
+
+- 기존 Cloudflare Workers Free와 서울 Supabase Free 개발 프로젝트가 스테이징에 연결됐습니다. 계정·연결 설정은 기존 비밀 저장소를 사용합니다.
+- GitHub Actions 배포 검사에서 상태 HTTP 200과 세션 조회 뒤 HTTP 401을 확인했고 Wrangler에서 Hyperdrive의 읽기 캐시가 꺼진 것을 확인했습니다. TASK-170을 완료로 표시했습니다.
+
 ### 2026-11-19 15:09 KST · TASK-009 개발 채널 탈출 명령
 
 - Aside로 개발 챗봇의 기본 탈출 블록에 `시험 나가기`를 저장하고 재열어 확인했습니다. 사진 필수 질문과 콜백을 별도로 시험할 때 사용합니다.

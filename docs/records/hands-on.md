@@ -2,6 +2,11 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-170 무료 개발 환경 설정 확인
+
+- 기존 Cloudflare 계정은 Workers Free, 서울 Supabase 개발 프로젝트는 Free·Nano(`ap-northeast-2`)입니다. Aside Vault와 Cloudflare·GitHub 비밀 저장소를 사용했습니다.
+- Wrangler의 Hyperdrive 설정은 Supabase 직결 주소와 읽기 캐시 OFF를 확인했습니다. 스테이징 앱의 상태 HTTP 200과 임의 세션을 넣은 실제 DB 조회 HTTP 401을 다시 대조했습니다. [스테이징 배포 검사](https://github.com/kodonghui/siljang.ai/actions/runs/44467448470/job/135369043023)
+
 ## 2026-11-19 · TASK-009 개발 시나리오 탈출 명령
 
 - 15:09 KST Aside로 기본 탈출 블록의 개발 설정에 `시험 나가기`를 저장하고 재열었습니다. 탈출 블록은 카카오가 정한 응답을 표시합니다. [카카오 블록 가이드](https://kakaobusiness.gitbook.io/main/tool/chatbot/main_notions/block)

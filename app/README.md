@@ -553,3 +553,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 129. TASK-009의 PC 카카오톡 시험에서 K-06 사진 다운로드와 K-09 봇 ID 응답을 Worker 기록과 대조했습니다. 후기 보안 이미지와 콜백은 추가 시험 중입니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-009-pc-카카오톡-사진봇-id)
 
 130. TASK-009 개발 채널에 `시험 나가기` 탈출 명령을 저장했습니다. 사진 질문 상태와 콜백 발화를 별개로 확인할 때 사용합니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-009-개발-시나리오-탈출-명령)
+
+131. TASK-170은 기존 Workers Free와 서울 Supabase Free 개발 프로젝트로 설정했습니다. 스테이징 자동 배포 검사에서 상태와 DB 조회를 확인했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-170-무료-개발-환경-설정-확인)
