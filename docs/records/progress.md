@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 10:36 무렵 KST · TASK-009 카카오 K-01 개발 봇 시험
+
+- 기록을 시작한 main은 `f6634fc5c428dbead00cd8cf30e3379abd461038`([PR #93](https://github.com/kodonghui/siljang.ai/pull/93))입니다. [app 44437440100](https://github.com/kodonghui/siljang.ai/actions/runs/44437440100)과 [db 44437440349](https://github.com/kodonghui/siljang.ai/actions/runs/44437440349)가 성공했습니다.
+- Aside로 `Siljang Test`의 개발 봇테스트에서 `시험 시작`을 보냈습니다. 폴백 블록에서 스킬을 통해 K-01 응답과 메뉴 10개를 받았습니다. Wrangler로 해당 시간대 KV 기록 1건을 읽고 `item=K-01`, HTTP 200을 확인했습니다.
+- 친구 추가 여부를 바꾼 카카오톡 시험, 콜백·후기 블록, K-02 이후 항목이 남았습니다. TASK-009는 진행 중입니다. [카카오 시험 대본](../10-wbs/kakao-test-script.md#k-01-시험-시작open-1-8-1)
+
 ### 2026-11-19 10:25 무렵 KST · TASK-170 서울 Supabase 개발 프로젝트
 
 - 기록을 시작한 main은 `3e43812c26d91f1781d389eca15fa13c5b5dec0f`([PR #92](https://github.com/kodonghui/siljang.ai/pull/92))입니다.
