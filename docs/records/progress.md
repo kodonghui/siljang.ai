@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 10:17 무렵 KST · TASK-183 Cloudflare Images WebP 회전 시험
+
+- 기록을 시작한 main은 `97e05c7e09bdf8e4c57799cc8253e8341b5a1c77`([PR #90](https://github.com/kodonghui/siljang.ai/pull/90))입니다.
+- Wrangler 4.158.0 원격 미리보기에서 Cloudflare Images 바인딩으로 합성 WebP 3개를 90도 회전했습니다. 24×16 정적, 4,000×3,000 정적, 24×16 애니메이션에 모두 HTTP 200과 `image/webp`가 돌아왔고, 회전 후 알파 채널을 픽셀마다 비교해 일치했습니다. 애니메이션 2프레임의 지연 80·120ms와 반복 3회 값도 유지됐습니다. [실제 환경 확인 기록](hands-on.md#2026-11-19--task-183-cloudflare-images-webp-회전)
+- 무료 포함 범위에서 합성 데이터만 사용했습니다. 입력 바이트가 큰 사진과 방향 2~8 전체, 앱의 두 수신 경로, Workers CPU와 메모리 측정이 남았습니다. TASK-183은 진행 중입니다.
+
 ### 2026-11-19 10:05 무렵 KST · TASK-014 구글 OAuth 시험 설정 확인
 
 - 기록을 시작한 main은 `f707ccb2f7ee724c6049edab4757d7cbe2d982cc`([PR #89](https://github.com/kodonghui/siljang.ai/pull/89))입니다.
