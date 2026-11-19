@@ -2,6 +2,14 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-173 무료 Cron·Queue와 스테이징 비밀 값
+
+- 공개 경로가 없는 별도 시험 Worker에 서울 Placement `aws:ap-northeast-2`와 Cron `* * * * *`를 적용했습니다. 15:21:43·15:22:43 KST에 Cron이 실행돼 Hyperdrive를 통해 스테이징 데이터베이스의 `request_keys`를 서버 전용 역할로 읽었습니다. `WHERE false`로 조회해 데이터 행은 반환하지 않았습니다.
+- 각 Cron이 ID만 담은 메시지를 지연 5초로 발행했습니다. Wrangler tail에서 같은 메시지의 소비를 확인했으며 발행부터 소비까지 각각 7.7초와 8.1초였습니다. 확인한 실행은 모두 성공이었습니다.
+- 시험 종료 뒤 시험 Worker의 Cron과 큐 연결을 해제했고 공개 경로 없이 종료했습니다. 스테이징용 큐는 발행자 0·소비자 0 상태입니다.
+- Aside에서 필드 키의 사본을 Vault에 보관한 뒤 Wrangler의 일괄 처리로 기존 스테이징에 `FIELD_KEY_CURRENT`와 `FIELD_KEY_V1`을 함께 적용했습니다. 키 이름 두 개와 스테이징 상태 `ok`를 확인했습니다.
+- 앱 Worker의 1분 Cron·큐 연결과 정상 앱 경로의 합성 쓰기 시험은 남았습니다. [Cloudflare Cron](https://developers.cloudflare.com/workers/configuration/cron-triggers/) · [Cloudflare Placement](https://developers.cloudflare.com/workers/configuration/placement/)
+
 ## 2026-11-19 · TASK-171 Hyperdrive 경합과 Supabase S3
 
 - Cloudflare 원격 미리보기에서 스테이징과 같은 Hyperdrive를 사용했습니다. 첫 SQL 186ms, PostgreSQL 17.12, `btree_gist`, 서버 전용 역할이 확인됐습니다. SQLSTATE `55P03` 경합 뒤 커밋된 값을 다른 연결에서 읽었고 합성 행만 삭제했습니다.
