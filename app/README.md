@@ -470,6 +470,8 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
 
 123. TASK-174에서 `siljang-dev`의 서버 전용 PostgreSQL 역할 `siljang_runtime`을 준비했습니다. `access_logs`의 추가·보존 기간에 따른 삭제에 필요한 권한과 전체 조회·수정·비우기 제한을 대조했습니다. 스테이징 앱에서 역할로 접속하는 확인이 남았습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-174-supabase-서버-전용-역할)
 
+124. TASK-173 스테이징 Worker는 Wrangler의 `staging` 환경과 `HYPERDRIVE` 바인딩으로 서울 개발 DB에 연결합니다. `settings.ts`에서 연결 문자열을 보관하며, 로컬·CI에서 바인딩이 없으면 `DATABASE_URL`을 사용합니다. 배포 검사는 임의 세션 쿠키로 `/api/operator/me`를 호출해 DB 조회 뒤 HTTP 401 `unauthenticated`를 확인합니다. 기존 `/api/healthz`는 DB 없이 응답합니다. [Wrangler 환경](https://developers.cloudflare.com/workers/wrangler/environments/)
+
 ## 명령 (`app/`에서)
 
 ```bash

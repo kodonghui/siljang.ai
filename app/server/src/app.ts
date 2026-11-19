@@ -28,6 +28,7 @@ export type Bindings = {
   readonly ANTHROPIC_API_KEY?: string;
   readonly OPENAI_API_KEY?: string;
   readonly DATABASE_URL?: string;
+  readonly HYPERDRIVE?: { readonly connectionString: string };
   readonly REQUEST_HASH_KEY?: string;
   readonly STORAGE_ACCESS_KEY_ID?: string;
   readonly STORAGE_SECRET_ACCESS_KEY?: string;

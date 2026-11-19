@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 12:40 무렵 KST · TASK-173 스테이징 앱 DB 연결
+
+- 동희님 요청으로 기존 Workers Free의 Hyperdrive를 `siljang-staging`에 연결합니다. 설정 모듈이 바인딩의 연결을 사용하며, 바인딩이 없는 환경은 `DATABASE_URL`을 사용합니다.
+- 변경 전 스테이징 `/api/operator/me`에 형식이 맞는 임의 세션 쿠키를 주었을 때 HTTP 500 `internal`을 확인했습니다. 배포 검사는 같은 실제 운영자 조회 경로의 세션 SELECT와 HTTP 401 `unauthenticated`를 확인합니다.
+- 스테이징 바인딩의 빌드와 기존 업로드 한도를 Wrangler 모의 배포에서 확인했습니다. Queues·Cron Trigger·배치 설정과 실행 확인은 TASK-173에 남았습니다.
+
 ### 2026-11-19 11:09 무렵 KST · TASK-174 Supabase 서버 전용 역할
 
 - 실제 `siljang-dev`에 `siljang_runtime`을 만들고, LOGIN·NOINHERIT와 `access_logs`의 허용·제한 권한을 확인했습니다.

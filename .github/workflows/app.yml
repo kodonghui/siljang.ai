@@ -127,10 +127,24 @@ jobs:
           fi
           : "${CLOUDFLARE_ACCOUNT_ID:?staging 환경의 CLOUDFLARE_ACCOUNT_ID가 필요합니다.}"
           : "${CLOUDFLARE_API_TOKEN:?staging 환경의 CLOUDFLARE_API_TOKEN이 필요합니다.}"
-          npx --no-install wrangler deploy --config server/wrangler.jsonc \
-            --name siljang-staging --domain "$SILJANG_STAGING_DOMAIN" --strict --keep-vars --tag "$GITHUB_SHA"
+          npx --no-install wrangler deploy --config server/wrangler.jsonc --env staging \
+            --domain "$SILJANG_STAGING_DOMAIN" --strict --keep-vars --tag "$GITHUB_SHA"
 
       - name: 공개 주소 확인
         run: |
           curl --fail-with-body --silent --show-error --max-time 10 --retry 4 --retry-all-errors \
             "https://$SILJANG_STAGING_DOMAIN/api/healthz" | jq -e '.status == "ok"'
+
+      - name: 스테이징 데이터베이스 조회 확인
+        run: |
+          # 임의의 쿠키는 실제 세션을 찾는 SELECT를 거쳐 401을 돌려받아야 한다.
+          synthetic=$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))')
+          body=$(mktemp)
+          trap 'rm -f "$body"' EXIT
+          status=$(curl --silent --show-error --max-time 15 --output "$body" --write-out '%{http_code}' \
+            --header "Cookie: siljang_operator=$synthetic" "https://$SILJANG_STAGING_DOMAIN/api/operator/me")
+          if [[ "$status" != 401 ]] || ! jq -e '.code == "unauthenticated"' "$body" > /dev/null; then
+            printf '스테이징 DB 조회 확인 실패 (HTTP %s)\n' "$status" >&2
+            exit 1
+          fi
+          printf '스테이징 DB 조회 확인: HTTP 401 unauthenticated\n'

@@ -3,7 +3,7 @@
  * (tech-stack.md 4-3의 1: 어댑터 층만 실행 환경을 안다).
  * - 드라이버는 node-postgres(pg). Cloudflare Hyperdrive 안내가 권하는 드라이버이고 tech-stack.md가 고른 것(app/README.md 14).
  * - 요청마다 Client 하나를 처음 쿼리 때 맺고 요청이 끝나면 닫는다(Hyperdrive 안내: 연결 풀은 Hyperdrive가 맡고
- *   요청마다 새 Client를 만든다). 연결 문자열은 settings.ts가 읽은 DATABASE_URL. Hyperdrive 바인딩은 TASK-173.
+ *   요청마다 새 Client를 만든다). 연결 문자열은 settings.ts가 Hyperdrive 바인딩 또는 DATABASE_URL에서 읽는다.
  * - 트랜잭션은 BEGIN~COMMIT 한 번(Hyperdrive의 트랜잭션 풀링과 맞음). SET·세션 advisory lock·LISTEN은 쓰지 않는다.
  * - 시각은 timestamptz로만 저장하고 JS Date(절대 시각)로 받는다. date와 시간대 없는 timestamp는 글 그대로 받는다
  *   (pg 기본은 date를 서버 프로세스 시간대의 자정 Date로 바꿔 하루가 밀릴 수 있음, 04 G8).

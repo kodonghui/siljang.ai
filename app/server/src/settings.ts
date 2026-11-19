@@ -40,7 +40,7 @@ export type AppEnv = (typeof APP_ENVS)[number];
 /**
  * 서버가 읽는 비밀 값의 이름.
  * - ANTHROPIC_API_KEY·OPENAI_API_KEY: 공급사 SDK가 읽는 이름 그대로.
- * - DATABASE_URL: PostgreSQL 연결 문자열(로컬·CI). Workers에서는 TASK-173이 Hyperdrive 바인딩으로 바꾼다.
+ * - DATABASE_URL: PostgreSQL 연결 문자열(로컬·CI). Hyperdrive 바인딩이 있으면 그 연결 문자열을 사용한다(TASK-173).
  * - REQUEST_HASH_KEY: 요청 지문(request_keys.request_hash, 06 DEC-04)을 만드는 HMAC-SHA256 키. 32자 이상.
  * - STORAGE_ACCESS_KEY_ID·STORAGE_SECRET_ACCESS_KEY: 사진 저장소(Supabase Storage의 S3 호환 주소)의 S3 접근 키(TASK-022,
  *   storage.ts). Supabase의 publishable·secret 키가 아니다(TASK-174).
@@ -170,13 +170,29 @@ function readAppEnv(raw: unknown): AppEnv {
   throw new SettingsError("APP_ENV must be one of development, staging, production");
 }
 
+const POSTGRES_URL = /^postgres(ql)?:\/\//;
+
+function readDatabaseUrl(env: Readonly<Record<string, unknown>>): unknown {
+  const binding = env.HYPERDRIVE;
+  if (binding === undefined) return env.DATABASE_URL;
+
+  const url =
+    typeof binding === "object" && binding !== null && "connectionString" in binding
+      ? binding.connectionString
+      : undefined;
+  if (typeof url !== "string" || !POSTGRES_URL.test(url.trim())) {
+    throw new SettingsError("HYPERDRIVE.connectionString must start with postgres:// or postgresql://");
+  }
+  return url;
+}
+
 /** Worker의 env(바인딩·변수·비밀 값)에서 설정을 읽는다. */
 export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
   const appEnv = readAppEnv(env.APP_ENV);
   const secrets = {} as Record<SecretName, Secret | null>;
   const missingSecrets: SecretName[] = [];
   for (const name of SECRET_NAMES) {
-    const raw = env[name];
+    const raw = name === "DATABASE_URL" ? readDatabaseUrl(env) : env[name];
     if (typeof raw === "string" && raw.trim() !== "") {
       secrets[name] = new Secret(raw.trim());
     } else {
@@ -186,7 +202,7 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
   }
   // 값은 메시지에 싣지 않는다(이름과 조건만).
   const db = secrets.DATABASE_URL?.reveal();
-  if (db !== undefined && !/^postgres(ql)?:\/\//.test(db)) {
+  if (db !== undefined && !POSTGRES_URL.test(db)) {
     throw new SettingsError("DATABASE_URL must start with postgres:// or postgresql://");
   }
   for (const name of ["REQUEST_HASH_KEY", "FILE_URL_KEY"] as const) {
