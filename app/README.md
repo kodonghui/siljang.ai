@@ -456,6 +456,8 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
 
 116. TASK-183(REQ-269·G10)의 두 번째 후보인 Cloudflare Images 바인딩을 Wrangler 원격 미리보기에서 확인했습니다. 90도 회전한 합성 WebP 3개가 출력 형식과 투명도를 유지했고, 애니메이션의 2프레임과 지연·반복 값도 유지했습니다. 앱 통합과 전체 방향, 입력 파일 크기 및 Workers CPU·메모리 검증이 남았습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-183-cloudflare-images-webp-회전)
 
+117. TASK-016의 GitHub Actions `staging` 배포를 main `97e05c7`에서 확인했습니다. 실제 Worker의 배포 태그와 공개 상태를 대조했습니다. Cloudflare의 실행기 실패 모니터는 스테이징의 `job_run_failed`·`job_find_failed`를 15분마다 확인합니다. 장애 알림 수신 시험과 외부 상태 점검 실패의 알림 연결이 남았습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-016-main-자동-배포와-실행기-실패-모니터)
+
 ## 명령 (`app/`에서)
 
 ```bash
