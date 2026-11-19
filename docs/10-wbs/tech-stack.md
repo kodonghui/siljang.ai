@@ -216,6 +216,8 @@ flowchart LR
 
 ### 6-1. 가격표에서 쓴 값(2026-11-15)
 
+2026-11-19 Codex 채팅에서 동희님은 추가 비용 없는 MVP와 Workers Free 유지를 선택했습니다. 개발·스테이징은 Workers Free와 Supabase Free를 쓰며, 아래 유료 비용은 출시 검토용입니다. TASK-171에서 HTTP 요청과 Cron의 CPU 시간(각 10ms) 및 Hyperdrive 쿼리 한도(하루 10만)를 고려해 시험합니다. [Workers 한도](https://developers.cloudflare.com/workers/platform/limits/) · [Hyperdrive 요금](https://developers.cloudflare.com/hyperdrive/platform/pricing/)
+
 | 항목 | 값 | 출처 |
 | --- | --- | --- |
 | Workers 유료 플랜 | 계정당 월 5달러부터. 요청 월 1,000만 포함 뒤 100만당 0.30달러, CPU 월 3,000만 ms 포함 뒤 100만 ms당 0.02달러. 정적 자산 요청은 무료, 나가는 데이터 요금 없음, Worker가 부르는 요청은 셈하지 않음 | 10절 W2 |
