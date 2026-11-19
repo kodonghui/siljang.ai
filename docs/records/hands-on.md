@@ -2,6 +2,12 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-009 카카오 개발 채널 콜백
+
+- PC 카카오톡 Siljang Test에서 초기 콜백과 20·50·280·320초 버튼을 한 번씩 실행했습니다. 3.0·20.0·56.3·290.5초에 발신한 응답은 PC 대화에 표시됐고 카카오 결과는 모두 HTTP 200 `SUCCESS`였습니다.
+- 320초 설정의 실제 Worker 발신은 321.1초였습니다. 카카오 HTTP 200 `SUCCESS`와 PC 말풍선을 확인했습니다. 공식 문서의 5분과 다른 개발 채널 결과입니다. [카카오 콜백 가이드](https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/ai_chatbot_callback_guide)
+- 3·20초는 `waitUntil`, 50·280·320초는 Cloudflare Queue를 사용했습니다. [카카오 시험 대본](../10-wbs/kakao-test-script.md#k-05-콜백open-2)
+
 ## 2026-11-19 · TASK-173 무료 Cron·Queue와 스테이징 비밀 값
 
 - 공개 경로가 없는 별도 시험 Worker에 서울 Placement `aws:ap-northeast-2`와 Cron `* * * * *`를 적용했습니다. 15:21:43·15:22:43 KST에 Cron이 실행돼 Hyperdrive를 통해 스테이징 데이터베이스의 `request_keys`를 서버 전용 역할로 읽었습니다. `WHERE false`로 조회해 데이터 행은 반환하지 않았습니다.

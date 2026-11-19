@@ -559,3 +559,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 132. TASK-171의 실제 Hyperdrive에서 행 잠금 경합과 커밋 직후 읽기를 확인했습니다. 서울 Supabase Free의 비공개 저장소에서 앱 S3Store를 검증했고 TASK-172용 측정 스크립트를 추가했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-171-hyperdrive-경합과-supabase-s3)
 
 133. TASK-173의 스테이징 필드 암호화 키를 Wrangler로 설정하고 사본을 Aside Vault에 저장했습니다. 별도 비공개 Worker에서 서울 Placement, 1분 Cron의 스테이징 데이터베이스 조회와 ID만 넣은 큐의 지연·소비를 확인했습니다. 앱 Wrangler의 staging 환경에는 서울 Placement와 1분 Cron을 두고, AI 콜백 큐는 처리기를 구현한 뒤 연결합니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-173-무료-cronqueue와-스테이징-비밀-값)
+
+134. TASK-009의 개발 채널 콜백은 Worker 발신 3.0·20.0·56.3·290.5·321.1초에 카카오 HTTP 200과 SUCCESS를 반환했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-009-카카오-개발-채널-콜백)
