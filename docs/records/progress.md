@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 10:05 무렵 KST · TASK-010 카카오 스킬 발신 검증 문의
+
+- 시작한 main은 `7e6693b38279a7e276035538ad16ad358466acd7`([PR #88](https://github.com/kodonghui/siljang.ai/pull/88))입니다.
+- Aside로 카카오 공식 지원에 스킬 요청 서명, 출처 IP 목록, 헤더 이외 검증 방법을 묻는 문의 1건을 접수했습니다. [접수 확인과 원문](hands-on.md#2026-11-19--task-010-카카오-스킬-발신-검증-문의)
+- 접수를 확인하고 TASK-010을 완료로 표시했습니다. 답 기다림 상태이며, 받으면 TASK-011에서 06 OPEN-10에 반영합니다.
+
 ### 2026-11-19 10:01 무렵 KST · TASK-170 무료 MVP 개발 환경
 
 - 시작한 main은 `f74dd510664bd5a86f7f8a34844c8416325f5836`([PR #87](https://github.com/kodonghui/siljang.ai/pull/87))입니다.
