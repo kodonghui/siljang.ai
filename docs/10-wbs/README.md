@@ -5,7 +5,7 @@
 ## 1. 한눈에
 
 <!-- BEGIN generated:counts -->
-작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 60개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 9개 · 끝난 작업 21개.
+작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 60개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 9개 · 끝난 작업 22개.
 <!-- END generated:counts -->
 
 - 작업 표는 [`wbs.md`](wbs.md)입니다. 작업마다 출처(SPEC·REQ·OPEN·DEC·규칙), 닿는 것(API·테이블·화면), 앞선 작업, 맡은 이, 크기, 끝난 조건이 있고, 끝에 SPEC·API·화면·테이블·규칙에서 작업을 찾는 부록 A~E가 있습니다.
@@ -109,7 +109,7 @@
 | TASK-012 | 법령 원문 다시 확인(02 4-2 법 표의 조문) | Claude | 1일 | REQ-239, REQ-240, REQ-141 | 없음 | 끝남: 2026-11-15, docs/02-prd/requirements.md 13절(조문 36개 대조, 원문과 어긋난 인용 없음, 빠진 조건 2곳 고침)<br/>02 4-2 법 표의 조문마다 국가법령정보센터 원문을 다시 열어 조문 번호·시행일을 대조하고, 바뀐 것을 고치는 PR이 합쳐짐 |
 | TASK-013 | 법률 질문 목록을 전문가에게 확인(02 5-2와 tech-stack.md 8-2) | 동희님 | 1일 | REQ-208 | TASK-012 | 02 5-2 질문 10개와 tech-stack.md 8-2의 호스팅 질문마다 전문가의 답과 날짜를 기록에 남기고, 답으로 바뀌는 요구사항 목록을 Claude에게 넘김 |
 | TASK-014 | 구글 클라우드 프로젝트와 OAuth 동의 화면(장부 연결) 만들기와 검증이 필요한지 확인 | 동희님 | 0.5일 | TBL-045 | 없음 | 끝남: 2026-11-19, Siljang OAuth External·Testing, drive.file 한 범위, Testing에서 검증 필요 없음. docs/records/hands-on.md<br/>동의 화면의 범위와 검증 상태(필요 없음·신청함·허가)를 기록에 남김 |
-| TASK-170 | Cloudflare·Supabase 개발 환경 설정(추천안 기준) | 동희님 | 0.5일 | REQ-135, REQ-141 | TASK-002 | 기존 Cloudflare 계정의 Workers Free 플랜으로 개발·스테이징을 설정하고, Supabase 조직에 서울(ap-northeast-2) 개발 프로젝트를 무료 등급으로 준비함. 연결 문자열과 키는 저장소 밖 비밀 저장소에만 두고 기록에는 만든 날·리전·플랜 이름만 남김. 스택을 다르게 고르면 이 작업은 없앰 |
+| TASK-170 | Cloudflare·Supabase 개발 환경 설정(추천안 기준) | 동희님 | 0.5일 | REQ-135, REQ-141 | TASK-002 | 끝남: 2026-11-19, 기존 Cloudflare Workers Free와 서울 ap-northeast-2 Supabase Free 개발 프로젝트 및 스테이징 연결 확인. docs/records/hands-on.md<br/>기존 Cloudflare 계정의 Workers Free 플랜으로 개발·스테이징을 설정하고, Supabase 조직에 서울(ap-northeast-2) 개발 프로젝트를 무료 등급으로 준비함. 연결 문자열과 키는 저장소 밖 비밀 저장소에만 두고 기록에는 만든 날·리전·플랜 이름만 남김. 스택을 다르게 고르면 이 작업은 없앰 |
 | TASK-171 | 추천 플랫폼 시험: Workers에서 Hyperdrive로 Supabase 서울에 붙여 보기(추천안 기준) | Claude | 1일 | REQ-130, REQ-131 | TASK-170 | tech-stack.md 8-1의 시험 항목(직결 연결 문자열로 연결, 트랜잭션과 행 잠금, btree_gist와 마이그레이션 0001~0020·규칙 테스트, 읽기 캐시 끔, 한국에서 보낸 요청을 처리한 데이터센터와 왕복 시간, Cron Trigger와 Queues 한 번씩, Supabase Storage 비공개 버킷의 S3 호환 주소에서 사진 저장소 모듈(app/server의 S3Store)의 넣기·보기·읽기·복사·지우기·목록 한 번씩)마다 결과와 확인 날짜를 남기고, 실패한 항목은 다른 후보로 바꿀지 동희님께 확인 요청으로 올림. 지연 측정 스크립트를 TASK-172에 넘김 |
 | TASK-172 | OVH 서버(뭄바이·싱가포르)에서 지연 측정 스크립트 돌리기(추천안 기준) | 동희님 | 0.5일 | REQ-148 | TASK-171 | Claude가 준 스크립트의 출력(서울의 Supabase와 Cloudflare까지 왕복 시간)을 기록에 붙임. 서버 주소와 계정은 적지 않음. 이 결과로 1분 외부 감시(TASK-016)를 OVH 서버에 둘지 고름 |
 <!-- END generated:before-dev -->
