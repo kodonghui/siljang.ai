@@ -6,6 +6,11 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 10:45 무렵 KST · TASK-009 카카오 K-11 로그인 시험
+
+- Aside에서 개발 봇 카드가 만든 실제 링크로 세 모드를 시험했습니다. PKCE와 PKCE 없는 모드는 HTTP 200을 받았고, 틀린 verifier는 HTTP 400 `KOE313`으로 거절됐습니다. Wrangler로 Worker KV의 세 모드 결과를 대조했습니다.
+- 카카오톡 앱에서 여는 동작과 대본의 나머지 시험이 남아 TASK-009는 진행 중입니다. [실제 환경 확인 기록](hands-on.md#2026-11-19--task-009-카카오-k-11-로그인-시험)
+
 ### 2026-11-19 10:36 무렵 KST · TASK-009 카카오 K-01 개발 봇 시험
 
 - 기록을 시작한 main은 `f6634fc5c428dbead00cd8cf30e3379abd461038`([PR #93](https://github.com/kodonghui/siljang.ai/pull/93))입니다. [app 44437440100](https://github.com/kodonghui/siljang.ai/actions/runs/44437440100)과 [db 44437440349](https://github.com/kodonghui/siljang.ai/actions/runs/44437440349)가 성공했습니다.
