@@ -561,3 +561,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 133. TASK-173의 스테이징 필드 암호화 키를 Wrangler로 설정하고 사본을 Aside Vault에 저장했습니다. 별도 비공개 Worker에서 서울 Placement, 1분 Cron의 스테이징 데이터베이스 조회와 ID만 넣은 큐의 지연·소비를 확인했습니다. 앱 Wrangler의 staging 환경에는 서울 Placement와 1분 Cron을 두고, AI 콜백 큐는 처리기를 구현한 뒤 연결합니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-173-무료-cronqueue와-스테이징-비밀-값)
 
 134. TASK-009의 개발 채널 콜백은 Worker 발신 3.0·20.0·56.3·290.5·321.1초에 카카오 HTTP 200과 SUCCESS를 반환했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-009-카카오-개발-채널-콜백)
+
+135. TASK-174에서 서울 프로젝트의 Data API OFF와 원장 22행을 확인했습니다. 스테이징과 같은 Hyperdrive 연결로 전용 PostgreSQL 역할과 접속기록 권한을 대조했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-174-스테이징-supabase-권한-대조)

@@ -2,6 +2,12 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-174 스테이징 Supabase 권한 대조
+
+- Aside에서 Data API 비활성, 마이그레이션 원장 22행을 확인했습니다. 저장소의 0001~0022는 원장 적용에 사용한 버전과 차이 0입니다. CI의 PostgreSQL 16.15·17.11이 통과했습니다.
+- 스테이징과 같은 Hyperdrive에서 PostgreSQL 17.12와 `siljang_runtime` 로그인 및 `NOINHERIT`를 확인했습니다. `access_logs`의 `INSERT`, `DELETE`, `SELECT(accessed_at)`는 허용됐습니다. 테이블 전체 `SELECT`, `UPDATE`, `TRUNCATE`, 테이블 소유 권한은 없었습니다.
+- 스테이징의 현재 비밀 설정에는 Supabase publishable·secret 키가 없었습니다. 데이터 경로는 Hyperdrive와 PostgreSQL 역할을 사용합니다. 운영자 인증의 Supabase Auth 연결은 TASK-021에서 다룹니다. [스테이징 조회 검사](https://github.com/kodonghui/siljang.ai/actions/runs/44472883249/job/135387113916)
+
 ## 2026-11-19 · TASK-009 카카오 개발 채널 콜백
 
 - PC 카카오톡 Siljang Test에서 초기 콜백과 20·50·280·320초 버튼을 한 번씩 실행했습니다. 3.0·20.0·56.3·290.5초에 발신한 응답은 PC 대화에 표시됐고 카카오 결과는 모두 HTTP 200 `SUCCESS`였습니다.
