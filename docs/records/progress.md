@@ -6,6 +6,11 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 13:04 무렵 KST · TASK-009 PC 카카오톡 실앱 시험
+
+- Aside에서 PC 카카오톡의 `Siljang Test`와 대화했습니다. `시험 시작`과 `늦게 4`를 한 번씩 보냈고 마스킹된 Worker KV의 K-01과 K-03a 각 1건을 대조했습니다. 4.5초 응답은 PC 앱에도 표시됐습니다.
+- 실앱의 친구 추가 전후 비교와 나머지 항목은 남아 TASK-009는 진행 중입니다. [실제 환경 확인 기록](hands-on.md#2026-11-19--task-009-pc-카카오톡-실앱-시험)
+
 ### 2026-11-19 12:40 무렵 KST · TASK-173 스테이징 앱 DB 연결
 
 - 동희님 요청으로 기존 Workers Free의 Hyperdrive를 `siljang-staging`에 연결합니다. 설정 모듈이 바인딩의 연결을 사용하며, 바인딩이 없는 환경은 `DATABASE_URL`을 사용합니다.
