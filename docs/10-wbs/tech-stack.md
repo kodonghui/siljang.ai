@@ -266,7 +266,7 @@ Python을 남길 곳: 저장소의 생성·검사 도구(01~10단계)는 Python 
 - Workers 대신 처음부터 컨테이너(Cloud Run·Fargate): 한도 걱정과 옮길 일이 없습니다. 다만 동희님이 Cloudflare를 이미 쓰시고, 첫 버전 규모에서는 Workers가 월 비용과 운영 부담이 작습니다. 4-3을 지키면 나중에 옮기는 값이 작습니다.
 - Supabase 대신 Cloudflare D1: 한 회사로 모이지만 SQLite라 05의 트리거·EXCLUDE·규칙 테스트를 다시 써야 해 맞지 않습니다.
 - Hyperdrive 없이 Supabase 풀러에 바로: 됩니다. 다만 Hyperdrive가 연결을 미리 맺어 두고 풀링을 맡으므로, 요청마다 새 연결을 맺는 것보다 빠를 것으로 봅니다(재지 않음, 8-1에서 견줌).
-- 한국에서 보낸 스테이징 요청은 로스앤젤레스 엣지에 들어가 인천에서 실행됐습니다. 데이터베이스 조회를 하는 요청의 전체 시간과 별도 SQL 왕복을 8-1에 기록했습니다. 카카오 정상 응답이 4초를 넘으면 4-1의 컨테이너를 다시 검토합니다.
+- 한국에서 보낸 스테이징 요청은 로스앤젤레스 엣지에 들어가 서울 리전(ICN)에서 실행됐습니다. 데이터베이스 조회를 하는 요청의 전체 시간과 별도 SQL 왕복을 8-1에 기록했습니다. 카카오 정상 응답이 4초를 넘으면 4-1의 컨테이너를 다시 검토합니다.
 
 ## 8. 확인하지 못한 것과 개발 전 시험
 
@@ -296,7 +296,7 @@ Python을 남길 곳: 저장소의 생성·검사 도구(01~10단계)는 Python 
 | Queues 지연 | 실제 카카오 개발 채널의 K-05에서 50초 지연을 설정하고 Cloudflare Queue로 콜백을 발신했습니다. Worker 수신에서 발신까지 56.3초, 카카오 HTTP 200 `SUCCESS`가 확인됐습니다. |
 | 지연 측정 | [측정 스크립트](../../tools/measure-staging-latency.sh)를 TASK-172에 넘깁니다. 스테이징 상태와 Cloudflare 데이터센터·전체 HTTP 시간을 출력합니다. 시험 호스트에 로컬에서 사용할 PostgreSQL 설정이 있으면 읽기 전용 `SELECT 1` 시간도 분리해 출력합니다. |
 
-| 한국에서 보낸 요청 | 스테이징 `/cdn-cgi/trace`는 `loc=KR`, `colo=LAX`, `warp=off`였습니다. 실제 스테이징 HTTP 응답 헤더는 `CF-Ray`가 LAX, `CF-Placement`가 `remote-ICN`이었습니다. 상태 200 다섯 건은 604~918ms, 데이터베이스 조회를 거친 합성 세션 401 다섯 건은 613~921ms였습니다. |
+| 한국에서 보낸 요청 | 스테이징 `/cdn-cgi/trace`는 `loc=KR`, `colo=LAX`, `warp=off`였습니다. 실제 스테이징 HTTP 응답 헤더는 `CF-Ray`가 LAX, `CF-Placement`가 `remote-ICN`(서울)이었습니다. 상태 200 다섯 건은 604~918ms, 데이터베이스 조회를 거친 합성 세션 401 다섯 건은 613~921ms였습니다. [Placement 헤더](https://developers.cloudflare.com/workers/configuration/placement/#cf-placement-header-1) · [ICN 위치](https://developers.cloudflare.com/network-interconnect/locations/) |
 | 데이터베이스 왕복과 동시 연결 | 같은 Hyperdrive를 읽는 미리보기에서 첫 `SELECT 1`은 두 번 모두 147ms, 트랜잭션에서 첫 표본 뒤의 SQL 22건은 142~146ms였습니다. 실제 스테이징에 합성 세션 조회 20건을 동시에 보내 모두 HTTP 401(609~826ms)을 받았습니다. 별도 PostgreSQL 관측의 전체·서버 역할 연결은 최대 4개였고 서버 설정 상한은 60개였습니다. |
 | 카카오 정상 응답과 Cron | K-01에서 시험 Worker 처리 0ms와 실제 카카오 응답을 확인했습니다. 별도 시험 Worker의 1분 Cron이 서울 데이터베이스를 읽었고 문서에 등록한 실제 스테이징 Cron도 15:44:29 KST에 실행됐습니다. [실제 환경 확인 기록](../records/hands-on.md#2026-11-19--task-173-스테이징-앱의-데이터베이스-쓰기) |
 
