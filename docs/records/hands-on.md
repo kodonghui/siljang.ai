@@ -2,6 +2,11 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-170 서울 Supabase 개발 프로젝트
+
+- Aside에서 `siljang-dev`를 `Free`·`Nano`로 생성했습니다. 대시보드의 리전은 `Northeast Asia (Seoul)`(`ap-northeast-2`)이고 상태는 `Active`입니다. 프로젝트의 Data API가 비활성화된 상태도 다시 확인했습니다.
+- 데이터베이스 비밀번호를 Aside Vault에 보관했습니다. `SUPABASE_DEV_DB_URL`·`SUPABASE_DEV_POOLER_URL`은 Vault의 연결 템플릿 이름입니다. 비밀번호를 적용한 실제 연결은 TASK-171에서 확인합니다.
+
 ## 2026-11-19 · TASK-016 main 자동 배포와 실행기 실패 모니터
 
 - Aside로 배포 토큰을 Vault와 GitHub `staging`의 `CLOUDFLARE_API_TOKEN`에 등록했습니다. GitHub CLI에서 두 비밀 값 이름과 `SILJANG_STAGING_DOMAIN`을 확인했습니다.

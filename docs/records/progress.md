@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 10:25 무렵 KST · TASK-170 서울 Supabase 개발 프로젝트
+
+- 기록을 시작한 main은 `3e43812c26d91f1781d389eca15fa13c5b5dec0f`([PR #92](https://github.com/kodonghui/siljang.ai/pull/92))입니다.
+- Aside와 Vault로 `siljang-dev`를 생성했습니다. 대시보드에서 `Free`·`Nano`, `Northeast Asia (Seoul)`(`ap-northeast-2`), `Active`를 확인했습니다. 이 개발 프로젝트의 Data API를 비활성화하고 저장 상태를 확인했습니다.
+- 데이터베이스 비밀번호와 직결·세션 풀러 연결 템플릿은 Vault에 보관했습니다. 비밀번호를 적용한 연결 문자열과 실제 연결 확인이 남아 TASK-170은 진행 중입니다. [실제 환경 확인 기록](hands-on.md#2026-11-19--task-170-서울-supabase-개발-프로젝트)
+
 ### 2026-11-19 10:21 무렵 KST · TASK-016 스테이징 자동 배포 확인
 
 - Aside Vault에 스테이징 전용 토큰을 보관하고 GitHub의 `staging` 환경 비밀 값에 등록했습니다. 저장소 Actions 변수 `SILJANG_STAGING_DOMAIN`을 설정했습니다.

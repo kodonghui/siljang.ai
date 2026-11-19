@@ -458,6 +458,8 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
 
 117. TASK-016의 GitHub Actions `staging` 배포를 main `97e05c7`에서 확인했습니다. 실제 Worker의 배포 태그와 공개 상태를 대조했습니다. Cloudflare의 실행기 실패 모니터는 스테이징의 `job_run_failed`·`job_find_failed`를 15분마다 확인합니다. 장애 알림 수신 시험과 외부 상태 점검 실패의 알림 연결이 남았습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-016-main-자동-배포와-실행기-실패-모니터)
 
+118. TASK-170의 Supabase 개발 프로젝트 `siljang-dev`는 서울 `ap-northeast-2`, `Free`·`Nano`, `Active`입니다. Data API가 비활성화됐고 비밀번호와 개발용 연결 템플릿을 Vault에 저장했습니다. 실제 데이터베이스 연결과 서버 역할 검증이 남았습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-170-서울-supabase-개발-프로젝트)
+
 ## 명령 (`app/`에서)
 
 ```bash
