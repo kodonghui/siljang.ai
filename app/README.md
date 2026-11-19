@@ -563,3 +563,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 134. TASK-009의 개발 채널 콜백은 Worker 발신 3.0·20.0·56.3·290.5·321.1초에 카카오 HTTP 200과 SUCCESS를 반환했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-009-카카오-개발-채널-콜백)
 
 135. TASK-174에서 서울 프로젝트의 Data API OFF와 원장 22행을 확인했습니다. 스테이징과 같은 Hyperdrive 연결로 전용 PostgreSQL 역할과 접속기록 권한을 대조했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-174-스테이징-supabase-권한-대조)
+
+136. TASK-173의 스테이징 로그아웃 API가 합성 세션의 종료 시각을 기록했습니다. 별도 Hyperdrive 읽기로 실제 데이터베이스 쓰기를 대조했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-173-스테이징-앱의-데이터베이스-쓰기)
