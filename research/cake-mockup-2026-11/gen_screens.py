@@ -1394,7 +1394,7 @@ def scr041_empty(cx, frame):
         + '; font-size: var(--font-size-small); font-weight: var(--font-weight-semibold)">' + str(i + 1) + '</span><span>' + sep_wrap(x) + '</span></li>'
         for i, x in enumerate(steps)) + '</ol>')
     fid = T.uid("f")
-    how = T.disclosure("봇 ID 찾는 법", True, '<p style="margin: 0">' + e("오픈빌더에서 봇을 열었을 때 주소의 /bot/ 다음 값이에요") + '</p>')
+    how = T.disclosure("봇 ID 찾는 법", True, '<p style="margin: 0">' + e("오픈빌더 설정 → 기본 정보에서 확인해요") + '</p>')
     fields = ('<div style="display: flex; flex-direction: column; gap: var(--space-lg)">\n'
               + '<div style="display: flex; flex-direction: column; gap: var(--space-xs)">' + T.field(fid + "-0", "봇 ID", "text", {}) + how + '</div>\n'
               + T.field(fid + "-1", "채널 공개 ID", "text", {}) + '\n</div>')

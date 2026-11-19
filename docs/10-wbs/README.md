@@ -5,7 +5,7 @@
 ## 1. 한눈에
 
 <!-- BEGIN generated:counts -->
-작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 60개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 9개 · 끝난 작업 25개.
+작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 60개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 26개.
 <!-- END generated:counts -->
 
 - 작업 표는 [`wbs.md`](wbs.md)입니다. 작업마다 출처(SPEC·REQ·OPEN·DEC·규칙), 닿는 것(API·테이블·화면), 앞선 작업, 맡은 이, 크기, 끝난 조건이 있고, 끝에 SPEC·API·화면·테이블·규칙에서 작업을 찾는 부록 A~E가 있습니다.
@@ -27,7 +27,7 @@
 | 03 | `docs/03-user-flow/FL-*.md` | 플로우 14개(출처 ID) |
 | 04 | `research/cake-spec-2026-11/spec_rows.py`, `docs/04-functional-spec/spec.md` | SPEC 79개, 수락 기준 328개, 공통 규칙 10개 |
 | 05 | `db/schema.sql`, `docs/05-erd/README.md`, `research/cake-erd-2026-11/erd_map.py` | 테이블 60개, 앱 규칙 40개, SPEC마다 닿는 테이블 |
-| 06 | `api/openapi.yaml`, `research/cake-api-2026-11/api_ops.py`·`api_catalog.py` | API 83개(응답 418개), 카카오 스킬 API 넷의 결과 코드 57개, 열린 질문 9개, 결정 사항 27개 |
+| 06 | `api/openapi.yaml`, `research/cake-api-2026-11/api_ops.py`·`api_catalog.py` | API 83개(응답 418개), 카카오 스킬 API 넷의 결과 코드 57개, 열린 질문 1개, 결정 사항 30개 |
 | 07 | `docs/07-sitemap/sitemap.yaml` | 화면 50개와 화면마다 부르는 API |
 | 08 | `research/cake-screens-2026-11/screens_*.py`, `docs/08-screens/SCR-*.md` | 상태 367개, 응답 행 975개 |
 | 09 | `research/cake-mockup-2026-11/gen_screens.py` | 그리는 상태 이름 12개(empty·error·confirm-notify·confirm·expired·not-sent·deferred·allergy·orderer·amount-confirm·depositor·photo-consent), 그린 상태 161개 |
@@ -101,11 +101,11 @@
 | TASK-004 | 세션 길이 정하기(사장님 30일·운영자 12시간 제안) | 동희님 | 0.5일 | DEC-26 | 없음 | 끝남: 2026-11-15 17시 무렵 동희님 결정 카드 '제안대로 (추천)', 06 DEC-26<br/>정한 길이를 결정 카드 답 그대로 기록에 남김 |
 | TASK-005 | Anthropic에 보관 안 함(Zero Data Retention) 신청 | 동희님 | 0.5일 | DEC-25, REQ-266 | 없음 | 신청한 날과 회사의 답(허가·거절·기다림)을 기록에 남김. 허가 전에는 처리방침에 30일 보관(04 AI-1) |
 | TASK-006 | OpenAI에 보관 안 함(Zero Data Retention) 신청 | 동희님 | 0.5일 | DEC-25, REQ-266 | 없음 | 신청한 날과 회사의 답(허가·거절·기다림)을 기록에 남김. 허가 전에는 처리방침에 30일 보관(04 AI-1) |
-| TASK-007 | 카카오 시험 채널·오픈빌더 봇·카카오 디벨로퍼스 시험 앱 만들기 | 동희님 | 1일 | OPEN-1, OPEN-3, OPEN-9, OPEN-11 | 없음 | 끝남: 2026-11-19, Siljang Test 개발 채널·봇·시험 앱, Aside Vault와 Worker 비밀 값, 실제 K-01 스킬 호출 확인. docs/records/hands-on.md<br/>시험 채널·봇·앱이 있고 그 ID와 키는 저장소 밖 비밀 저장소에만 둠(기록에는 만든 날과 이름만). Claude가 시험 서버를 스킬로 붙일 수 있음 |
-| TASK-008 | 카카오 시험 서버와 시험 대본(받은 요청을 그대로 남기는 버리는 서버) | Claude | 1일 | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-12 | 없음 | 끝남: 2026-11-19, research/kakao-test-2026-11(Cloudflare 시험 주소에서 상태 200, 키 없는 요청 401, 합성 K-01 응답과 사용자 ID를 가린 KV 기록 확인. docs/records/hands-on.md)<br/>시험 대본(보낼 말·누를 버튼·볼 값)이 있고, 받은 스킬 요청 본문을 손님 값은 가린 채 남기는 서버가 시험 주소에서 돎 |
-| TASK-009 | 시험 채널에서 대본대로 보내고 누르기(메시지 ID·콜백·사진·빈 응답·봇 ID·후기 extra·PKCE) | 동희님 | 1일 | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-8, OPEN-11, OPEN-12 | TASK-007, TASK-008 | 끝남: 2026-11-19, PC 카카오톡과 Worker 기록에서 채널 추가 전후, 사진 선택인 후기 블록의 orderNo 일치, PC 카드로 연 PKCE 세 결과를 확인. K-10·보안 이미지 사진은 TASK-167. docs/10-wbs/kakao-test-script.md<br/>PC 카카오톡(agent-desktop)으로 대본의 각 항목(K-10과, K-07·K-08에서 PC 카카오톡이 모바일 확인으로 막는 보안 이미지 플러그인 사진 단계 제외)의 시험 일시와 화면 사진을 기록하고, 시험 서버의 요청 또는 콜백 결과와 대조함. K-08은 사진 파라미터가 필수가 아닌 PC용 시험 블록으로 버튼 extra를 확인함 |
+| TASK-007 | 카카오 시험 채널·오픈빌더 봇·카카오 디벨로퍼스 시험 앱 만들기 | 동희님 | 1일 | DEC-28, DEC-20, DEC-10 | 없음 | 끝남: 2026-11-19, Siljang Test 개발 채널·봇·시험 앱, Aside Vault와 Worker 비밀 값, 실제 K-01 스킬 호출 확인. docs/records/hands-on.md<br/>시험 채널·봇·앱이 있고 그 ID와 키는 저장소 밖 비밀 저장소에만 둠(기록에는 만든 날과 이름만). Claude가 시험 서버를 스킬로 붙일 수 있음 |
+| TASK-008 | 카카오 시험 서버와 시험 대본(받은 요청을 그대로 남기는 버리는 서버) | Claude | 1일 | DEC-28, DEC-29, DEC-30 | 없음 | 끝남: 2026-11-19, research/kakao-test-2026-11(Cloudflare 시험 주소에서 상태 200, 키 없는 요청 401, 합성 K-01 응답과 사용자 ID를 가린 KV 기록 확인. docs/records/hands-on.md)<br/>시험 대본(보낼 말·누를 버튼·볼 값)이 있고, 받은 스킬 요청 본문을 손님 값은 가린 채 남기는 서버가 시험 주소에서 돎 |
+| TASK-009 | 시험 채널에서 대본대로 보내고 누르기(메시지 ID·콜백·사진·빈 응답·봇 ID·후기 extra·PKCE) | 동희님 | 1일 | DEC-28, DEC-29, DEC-30, DEC-10 | TASK-007, TASK-008 | 끝남: 2026-11-19, PC 카카오톡과 Worker 기록에서 채널 추가 전후, 사진 선택인 후기 블록의 orderNo 일치, PC 카드로 연 PKCE 세 결과를 확인. K-10·보안 이미지 사진은 TASK-167. docs/10-wbs/kakao-test-script.md<br/>PC 카카오톡(agent-desktop)으로 대본의 각 항목(K-10과, K-07·K-08에서 PC 카카오톡이 모바일 확인으로 막는 보안 이미지 플러그인 사진 단계 제외)의 시험 일시와 화면 사진을 기록하고, 시험 서버의 요청 또는 콜백 결과와 대조함. K-08은 사진 파라미터가 필수가 아닌 PC용 시험 블록으로 버튼 extra를 확인함 |
 | TASK-010 | 카카오에 스킬 요청의 출처 IP·서명 문의 | 동희님 | 0.5일 | OPEN-10 | 없음 | 끝남: 2026-11-19, 10:05 KST 카카오 공식 문의 제출 확인, 답 기다림. docs/records/hands-on.md<br/>문의한 날과 받은 답(없으면 '답 기다림')을 기록에 남김 |
-| TASK-011 | 시험 결과로 04·05·06의 확인 전 가정 고치기와 열린 질문 닫기 | Claude | 2일 | OPEN-1, OPEN-2, OPEN-3, OPEN-4, OPEN-8, OPEN-9, OPEN-10, OPEN-11, OPEN-12 | TASK-009, TASK-010, TASK-003, TASK-004 | 가정마다 시험 결과를 적고, 맞지 않은 것은 SPEC·스키마·계약을 고치는 PR이 단계 검사를 모두 지나 합쳐짐. 06 열린 질문 표에서 답을 얻은 것을 닫음 |
+| TASK-011 | 시험 결과로 04·05·06의 확인 전 가정 고치기와 열린 질문 닫기 | Claude | 2일 | DEC-28, DEC-29, DEC-30, DEC-10, DEC-20, OPEN-10 | TASK-009, TASK-010, TASK-003, TASK-004 | 끝남: 2026-11-19, PR #117. PC 카카오 시험 결과를 SPEC·스키마·계약에 반영. K-10과 휴대폰 보안 이미지는 TASK-167, 공식 답변 대기는 OPEN-10<br/>가정마다 시험 결과를 적고, 맞지 않은 것은 SPEC·스키마·계약을 고치는 PR이 단계 검사를 모두 지나 합쳐짐. 06 열린 질문 표에서 답을 얻은 것을 닫음 |
 | TASK-012 | 법령 원문 다시 확인(02 4-2 법 표의 조문) | Claude | 1일 | REQ-239, REQ-240, REQ-141 | 없음 | 끝남: 2026-11-15, docs/02-prd/requirements.md 13절(조문 36개 대조, 원문과 어긋난 인용 없음, 빠진 조건 2곳 고침)<br/>02 4-2 법 표의 조문마다 국가법령정보센터 원문을 다시 열어 조문 번호·시행일을 대조하고, 바뀐 것을 고치는 PR이 합쳐짐 |
 | TASK-013 | 법률 질문 목록을 전문가에게 확인(02 5-2와 tech-stack.md 8-2) | 동희님 | 1일 | REQ-208 | TASK-012 | 02 5-2 질문 10개와 tech-stack.md 8-2의 호스팅 질문마다 전문가의 답과 날짜를 기록에 남기고, 답으로 바뀌는 요구사항 목록을 Claude에게 넘김 |
 | TASK-014 | 구글 클라우드 프로젝트와 OAuth 동의 화면(장부 연결) 만들기와 검증이 필요한지 확인 | 동희님 | 0.5일 | TBL-045 | 없음 | 끝남: 2026-11-19, Siljang OAuth External·Testing, drive.file 한 범위, Testing에서 검증 필요 없음. docs/records/hands-on.md<br/>동의 화면의 범위와 검증 상태(필요 없음·신청함·허가)를 기록에 남김 |
@@ -226,6 +226,7 @@ Claude Code 채팅의 결정 카드로 9-2의 1·2를 확인 요청드렸고, �
 | --- | --- | --- | --- |
 | 2026-11-19 | K-10의 카카오 Event API 발신 시험을 TASK-009의 완료 조건에서 제외하고 TASK-167의 출시 검토 조건으로 옮김 | 동희님의 ‘현재 Free 유지’ 결정에 따라 월렛 충전이 필요한 시험은 출시 검토에서 확인함 | TASK-009 |
 | 2026-11-19 | TASK-009의 끝난 조건을 PC 카카오톡(agent-desktop) 기준으로 고치고, K-07·K-08에서 PC 카카오톡이 모바일 확인으로 막는 보안 이미지 플러그인 사진 단계를 TASK-167의 출시 검토 조건으로 옮김. K-08의 버튼 extra는 사진 파라미터가 필수가 아닌 PC용 시험 블록으로 확인함. 작업 수·크기·앞선 작업은 그대로 | 동희님 지시(2026-11-19, Claude Code 대화) '컴퓨터 유즈로 할 수 있는 거는 지가 하라고 해'. PC 카카오톡은 `사진 보내기`에서 '모바일에서 확인해 주세요'를 띄움(대본 K-07, 2026-11-19 14:54). 일반 사진이 스킬에 오는 모양은 PC로 확인함(K-06). TASK-009 뒤에 남은 작업 135개가 기다리고 있어 휴대폰 한 단계를 출시 검토로 옮김 | [PR #115](https://github.com/kodonghui/siljang.ai/pull/115) |
+| 2026-11-19 | TASK-007·008·009·011·167의 계약 추적 ID를 DEC-10·20·28~30으로 갱신함. TASK-010·011에 OPEN-10을 유지함 | PC 카카오 시험 결과로 06단계의 관련 질문을 닫거나 TASK-167에서 확인할 것으로 이관함 | TASK-011 |
 | 2026-11-19 | TASK-170을 기존 Cloudflare 계정과 서울 Supabase의 무료 개발 환경 설정으로 조정함 | 동희님은 Codex 채팅에서 Workers 플랜에 ‘현재 Free 유지’를 선택하고 추가 비용 없는 MVP 범위를 확인함. [진행 기록](../records/progress.md) | TASK-170 |
 | 2026-11-15 | TASK-017 끝난 조건의 '스테이징에도 같은 버전'을 TASK-174의 끝난 조건으로 옮김('스테이징 데이터베이스에도 CI와 같은 판의 마이그레이션을 적용하고 적용한 판을 남김'). 작업 수·크기·앞선 작업은 그대로 | 스테이징 데이터베이스는 TASK-170(동희님, 계정과 개발 프로젝트) 뒤에야 생기는데 TASK-017의 앞선 작업은 TASK-015뿐이라 그 부분을 할 수 없음. TASK-174는 TASK-017과 TASK-170을 기다려 그 데이터베이스(Supabase 개발 프로젝트)를 맞추는 작업이고, 적용한 판을 남기는 방법도 그때 정함 | [PR #59](https://github.com/kodonghui/siljang.ai/pull/59) |
 | 2026-11-16 | TASK-171 끝난 조건의 시험 항목에 'Supabase Storage 비공개 버킷의 S3 호환 주소에서 사진 저장소 모듈(app/server의 S3Store)의 넣기·보기·읽기·복사·지우기·목록 한 번씩'을 더하고, [기술 스택 제안](tech-stack.md) 8-1에 같은 행을 더함. 작업 수·크기·앞선 작업은 그대로 | TASK-022가 사진 저장소 모듈을 만들었지만 계정이 없어(TASK-170) 진짜 저장소에서 돌리지 못하고 보내는 요청의 모양만 시험함. TASK-171·173의 끝난 조건에 저장소가 없어 계정이 생긴 뒤 처음 붙여 보는 TASK-171에 둠 | [PR #62](https://github.com/kodonghui/siljang.ai/pull/62) |
