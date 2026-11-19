@@ -1,0 +1,9 @@
+[Unit]
+Description=Check Siljang staging health from outside Cloudflare
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/siljang/staging-health.env
+ExecStart=%h/.local/lib/siljang/staging-monitor/health-check.sh
+TimeoutStartSec=15s
+NoNewPrivileges=true

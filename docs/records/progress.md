@@ -6,6 +6,13 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 09:55 무렵 KST · TASK-016 스테이징 외부 감시
+
+- 시작한 main은 `a038cdfc20e40c17a6ad93fe29309addce572989`입니다. [app 44399768138](https://github.com/kodonghui/siljang.ai/actions/runs/44399768138)과 [db 44399768116](https://github.com/kodonghui/siljang.ai/actions/runs/44399768116)이 성공했습니다.
+- Cloudflare 밖의 기존 `ko-family` 서버에 systemd 사용자 타이머를 등록했습니다. `journalctl --user`에서 09:54와 09:55 KST에 `/api/healthz`의 HTTP 200과 `status=ok` 확인을 보았습니다. 수동 시험에서 HTTP 401과 JSON이 아닌 HTTP 200은 감시 실패로 판정했습니다.
+- Aside의 계정 화면에서 `corthex-hq.com`의 `Remove visitor IP headers`가 꺼져 있는 것을 확인했습니다. GitHub Actions에 `staging` 환경을 만들고 `CLOUDFLARE_ACCOUNT_ID`를 등록했습니다. Wrangler로 현재 배포 태그가 시작 main SHA와 같은 것을 확인했습니다.
+- `CLOUDFLARE_API_TOKEN` 등록, 저장소 변수 `SILJANG_STAGING_DOMAIN` 설정, main 자동 배포, 외부 감시 실패와 서버 일 실행기 실패의 알림 전달 확인이 남았습니다. TASK-016은 진행 중입니다.
+
 ### 2026-11-19 06:12 무렵 KST · TASK-183 WebP 코덱 후보 검사
 
 - Node 22.23.4에서 `@jsquash/webp` 1.5.0으로 알파 127과 255가 함께 든 합성 정적 WebP를 디코딩하고 90° 회전한 뒤 무손실 WebP로 인코딩했습니다. 다시 디코딩한 RGBA가 원래 회전 결과와 같았습니다.

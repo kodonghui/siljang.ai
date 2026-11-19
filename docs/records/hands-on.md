@@ -2,6 +2,13 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-016 외부 감시와 배포 환경
+
+- SSH 별칭 `ko-family`에서 systemd 사용자 서비스와 1분 타이머를 설치했습니다. `systemd-analyze --user verify`가 성공했고, `systemctl --user is-active`와 `is-enabled`가 각각 `active`와 `enabled`였습니다.
+- `journalctl --user -u siljang-staging-health.service`에서 09:54와 09:55 KST의 `Siljang staging health check passed: HTTP 200, status=ok`를 확인했습니다. 스테이징의 비인증 API 응답 401과 시험 서버의 JSON이 아닌 응답 200은 수동 시험에서 실패로 판정했습니다. [스테이징 상태 확인](https://staging.siljang.ai.corthex-hq.com/api/healthz)
+- Aside에서 `Rules` → `Settings` → `Managed Transforms`의 `Remove visitor IP headers` 스위치가 꺼진 상태임을 확인했습니다. Wrangler `versions view`의 스테이징 배포 태그는 `a038cdfc20e40c17a6ad93fe29309addce572989`였습니다.
+- GitHub CLI로 `staging` 환경을 만들고 `CLOUDFLARE_ACCOUNT_ID`가 목록에 있는 것을 확인했습니다. `CLOUDFLARE_API_TOKEN`과 `SILJANG_STAGING_DOMAIN`, main 자동 배포와 장애 알림 전달은 확인이 남았습니다.
+
 ## 2026-11-19 · TASK-027 합성 상담 실제 평가
 
 - Node 22.23.4에서 추적을 끈 평가 도구로 두 회사에 합성 상담 사례를 134개씩 보냈습니다. Anthropic 134개와 OpenAI 7개 응답을 얻었습니다. 비용 도구가 집계한 금액은 142.80원입니다. [평가 결과](ai-eval/2026-11-19-eval-20261118T203404Z-d00cea.md)
