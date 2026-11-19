@@ -83,6 +83,25 @@ describe("readSettings", () => {
     }
   });
 
+  it("Hyperdrive가 있으면 그 연결을 쓰고, 없으면 기존 DATABASE_URL을 쓴다", () => {
+    const direct = "postgres://localhost/direct";
+    const hyperdrive = "postgresql://localhost/through-hyperdrive";
+    const settings = readSettings({ DATABASE_URL: direct, HYPERDRIVE: { connectionString: hyperdrive } });
+    expect(settings.secrets.DATABASE_URL?.reveal()).toBe(hyperdrive);
+    expect(settings.missingSecrets).not.toContain("DATABASE_URL");
+    expect(JSON.stringify(settings)).not.toContain(hyperdrive);
+    expect(readSettings({ DATABASE_URL: direct }).secrets.DATABASE_URL?.reveal()).toBe(direct);
+  });
+
+  it("잘못된 Hyperdrive 연결은 DATABASE_URL이 있어도 설정 오류로 처리한다", () => {
+    const direct = "postgres://localhost/direct";
+    for (const binding of [null, {}, { connectionString: "   " }, { connectionString: "mysql://hidden" }]) {
+      expect(() => readSettings({ DATABASE_URL: direct, HYPERDRIVE: binding })).toThrow(
+        "HYPERDRIVE.connectionString must start with postgres:// or postgresql://",
+      );
+    }
+  });
+
   // 사진 저장소와 서명 주소(TASK-022)
   it("FILE_URL_KEY는 32자 이상만 받고 값은 메시지에 싣지 않는다", () => {
     const short = "Fk-Zq7-short";

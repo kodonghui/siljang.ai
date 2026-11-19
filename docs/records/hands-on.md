@@ -2,6 +2,11 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-173 스테이징 앱 DB 연결 준비
+
+- 배포 전 스테이징의 `/api/operator/me`에 형식이 맞는 임의 세션 쿠키를 넣어 호출하니 HTTP 500 `internal`이었습니다. 쿠키가 없을 때는 세션 조회 없이 바로 HTTP 401이므로 DB 확인에는 형식이 맞는 쿠키를 사용합니다.
+- Wrangler 모의 배포에서 `staging`의 `HYPERDRIVE`와 `UPLOAD_RATE_LIMITER`가 모두 표시됐습니다. 실제 배포 후에는 기존 운영자 조회에서 HTTP 401 `unauthenticated`가 돌아오는지 자동 검사합니다.
+
 ## 2026-11-19 · TASK-174 Supabase 서버 전용 역할
 
 - Aside에서 `siljang-dev`에 `siljang_runtime` PostgreSQL 로그인 역할을 만들고 비밀번호를 Vault에 보관했습니다. Management API를 통해 역할의 멤버십과 권한을 확인한 뒤 `NOINHERIT`와 현재 서버 쿼리에 필요한 테이블 권한을 적용했습니다.
