@@ -8,7 +8,7 @@
 - 각 Cron이 ID만 담은 메시지를 지연 5초로 발행했습니다. Wrangler tail에서 같은 메시지의 소비를 확인했으며 발행부터 소비까지 각각 7.7초와 8.1초였습니다. 확인한 실행은 모두 성공이었습니다.
 - 시험 종료 뒤 시험 Worker의 Cron과 큐 연결을 해제했고 공개 경로 없이 종료했습니다. 스테이징용 큐는 발행자 0·소비자 0 상태입니다.
 - Aside에서 필드 키의 사본을 Vault에 보관한 뒤 Wrangler의 일괄 처리로 기존 스테이징에 `FIELD_KEY_CURRENT`와 `FIELD_KEY_V1`을 함께 적용했습니다. 키 이름 두 개와 스테이징 상태 `ok`를 확인했습니다.
-- 앱 Worker의 1분 Cron·큐 연결과 정상 앱 경로의 합성 쓰기 시험은 남았습니다. [Cloudflare Cron](https://developers.cloudflare.com/workers/configuration/cron-triggers/) · [Cloudflare Placement](https://developers.cloudflare.com/workers/configuration/placement/)
+- 앱 Worker의 staging 설정에 1분 Cron과 서울 Placement를 추가합니다. AI 콜백 소비자 연결과 정상 앱 경로의 합성 쓰기 시험은 남았습니다. [Cloudflare Cron](https://developers.cloudflare.com/workers/configuration/cron-triggers/) · [Cloudflare Placement](https://developers.cloudflare.com/workers/configuration/placement/)
 
 ## 2026-11-19 · TASK-171 Hyperdrive 경합과 Supabase S3
 

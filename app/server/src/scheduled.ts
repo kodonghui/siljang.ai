@@ -2,7 +2,7 @@
  * Workers의 scheduled 처리기(어댑터 층, TASK-023). Cron Trigger가 부르면 설정을 읽고 연결 하나를 맺어 실행기(job-runner.ts)를
  * 한 번 돌린다. 업무 코드는 env·ctx·Cron을 직접 부르지 않는다(tech-stack.md 180행).
  * - 기준 시각은 이벤트의 scheduledTime(그 분의 시각)이다. SQL은 now() 대신 이 시각을 쓴다.
- * - 1분 Cron Trigger(wrangler.jsonc의 triggers.crons)는 TASK-173(Workers 서버 설정)이 더한다. 시험은 가짜 이벤트로 부른다.
+ * - 1분 Cron Trigger는 Wrangler의 staging 환경에서 바인딩한다(TASK-173). 시험은 가짜 이벤트로 부른다.
  * - 실패는 ID만 실은 로그로 남기고 던지지 않는다(다음 분에 다시 돎).
  */
 import type { Bindings } from "./app";
