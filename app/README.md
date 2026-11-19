@@ -567,3 +567,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 136. TASK-173의 스테이징 로그아웃 API가 합성 세션의 종료 시각을 기록했습니다. 별도 Hyperdrive 읽기로 실제 데이터베이스 쓰기를 대조했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-173-스테이징-앱의-데이터베이스-쓰기)
 
 137. TASK-009에서 PC 카카오톡의 반복 발화, 6초 지연 응답, 네 종류의 빈 응답을 Worker 기록과 대조했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-009-카카오-개발-채널-반복-발화와-빈-응답)
+
+138. TASK-171의 한국 스테이징 요청, Hyperdrive SQL 왕복과 PostgreSQL 연결 수를 확인했습니다. [스택 시험 결과](../docs/10-wbs/tech-stack.md#8-1-시험-결과2026-11-19)
