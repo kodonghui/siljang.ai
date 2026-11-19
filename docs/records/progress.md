@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 10:05 무렵 KST · TASK-014 구글 OAuth 시험 설정 확인
+
+- 기록을 시작한 main은 `f707ccb2f7ee724c6049edab4757d7cbe2d982cc`([PR #89](https://github.com/kodonghui/siljang.ai/pull/89))입니다.
+- Aside에서 구글 클라우드 `Siljang` 프로젝트를 만들고 OAuth 동의 화면을 설정했습니다. 프로젝트와 결제 계정의 미연결, `External`·`Testing`, 비민감 `drive.file` 범위 한 개와 현재 검증 필요 없음 표시를 다시 확인했습니다.
+- TASK-014를 완료로 표시했습니다. OAuth 클라이언트와 장부 연동은 TASK-156에서 다룹니다. [실제 환경 확인 기록](hands-on.md#2026-11-19--task-014-구글-oauth-시험-설정)
+
 ### 2026-11-19 10:05 무렵 KST · TASK-010 카카오 스킬 발신 검증 문의
 
 - 시작한 main은 `7e6693b38279a7e276035538ad16ad358466acd7`([PR #88](https://github.com/kodonghui/siljang.ai/pull/88))입니다.

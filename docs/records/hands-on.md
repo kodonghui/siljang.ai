@@ -2,6 +2,12 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-014 구글 OAuth 시험 설정
+
+- Aside에서 구글 클라우드 `Siljang` 프로젝트를 만들었습니다. 같은 프로젝트의 Billing에서 연결된 결제 계정이 없음을 확인했습니다.
+- Google Auth Platform의 앱 이름은 `Siljang`, Audience는 `External`·`Testing`입니다. Data Access에서 `https://www.googleapis.com/auth/drive.file`이 비민감 범위 한 개이고 민감·제한 범위가 비어 있음을 확인했습니다. [Drive API 범위](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
+- Verification Center는 현재 `Testing` 상태에서 검증이 필요 없다고 표시했습니다. OAuth 클라이언트 생성과 파일을 선택하는 실제 시험은 TASK-156에서 진행합니다.
+
 ## 2026-11-19 · TASK-010 카카오 스킬 발신 검증 문의
 
 - Aside에서 `봇 생성하기` → `스킬 등록 및 관리`로 ‘오픈빌더 스킬 요청의 발신 검증 문의’를 보냈습니다. 10:05:48 KST에 ‘문의가 정상적으로 접수되었습니다. 확인후 이메일로 답변드리겠습니다.’ 화면을 확인했습니다. [카카오 문의처](https://cs.kakao.com/requests?service=169)
