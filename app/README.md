@@ -545,3 +545,5 @@ read -r OP_EMAIL && read -rs OP_PASSWORD && read -r OP_OTP && export OP_EMAIL OP
 ```bash
 node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMAIL,password:e.OP_PASSWORD,otp:e.OP_OTP}))' | curl -sS -i -X POST http://127.0.0.1:8787/api/operator/session -H 'Origin: http://127.0.0.1:8787' -H 'Content-Type: application/json' --data-binary @-
 ```
+
+127. TASK-007의 Siljang Test 개발 채널·봇과 카카오 디벨로퍼스 시험 앱을 확인했습니다. 폴백과 Worker가 연결됐고 실제 K-01 요청으로 호출을 검증했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-007-카카오-시험-채널봇앱-확인)
