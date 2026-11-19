@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * 서버 코드(src/)의 글자 값을 꺼내는 작은 읽개(정적 시험용, TASK-019). 주석과 정규식 글을 건너뛰고,
@@ -15,7 +16,7 @@ export interface SourceFile {
 
 /** src/ 아래의 .ts 파일(생성한 형식 파일 .d.ts는 뺌). */
 export function serverSources(srcDir: URL): SourceFile[] {
-  const root = srcDir.pathname;
+  const root = fileURLToPath(srcDir);
   const out: SourceFile[] = [];
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {

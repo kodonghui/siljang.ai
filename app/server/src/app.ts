@@ -1,6 +1,7 @@
 import { type Context, Hono } from "hono";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FILE_ROUTE, serveFile } from "./file-url";
+import { kakaoSkillRoutes } from "./kakao-skill";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import { AuthUnavailableError } from "./operator-auth";
 import { createOperatorSession, deleteOperatorSession, getOperatorMe, resolveOperatorSession } from "./operator-login";
@@ -82,6 +83,7 @@ export interface AppOptions {
  * (test/support/cross-shop.ts의 CROSS_SHOP_CASES)에도 더한다. 빠지면 시험이 실패한다(TASK-019).
  */
 export const APP_ROUTES: readonly RouteDecl[] = [
+  ...kakaoSkillRoutes,
   // 기반 시설용 확인 주소(06 계약 밖). 1분 외부 감시(TASK-016)가 부른다. 데이터베이스는 보지 않는다.
   openRoute("GET", "/healthz", "기반 시설 확인 주소(06 계약 밖, TASK-016 감시). 데이터베이스를 보지 않음", (c) =>
     c.json({ status: "ok" }, 200, { "cache-control": "no-store" }),
