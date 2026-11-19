@@ -2,6 +2,12 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-174 Supabase 서버 전용 역할
+
+- Aside에서 `siljang-dev`에 `siljang_runtime` PostgreSQL 로그인 역할을 만들고 비밀번호를 Vault에 보관했습니다. Management API를 통해 역할의 멤버십과 권한을 확인한 뒤 `NOINHERIT`와 현재 서버 쿼리에 필요한 테이블 권한을 적용했습니다.
+- 실제 Supabase 권한 조회에서 `access_logs`의 `INSERT`·`DELETE`·`SELECT(accessed_at)`는 허용, 테이블 전체 `SELECT`·`UPDATE`·`TRUNCATE`와 테이블 소유는 불가였습니다. 역할의 LOGIN은 켜져 있고 INHERIT는 꺼져 있습니다.
+- 별도 PostgreSQL 16.15에서 역할 전환, 조회용 행 잠금과 접속기록 보존 기간 SQL이 실행됐습니다. 이 테스트에서는 `UPDATE`·`TRUNCATE` 실행을 권한 오류로 확인했습니다. 스테이징 앱의 실제 접속은 확인이 남았습니다.
+
 ## 2026-11-19 · TASK-009 카카오 K-02~K-04 개발 봇테스트
 
 - Aside로 `같은 말` 세 번, `늦게 4`·`늦게 6`, `빈 응답 1`~`4`를 보냈습니다. Wrangler로 기록 9건의 항목과 결과를 대조했습니다.
