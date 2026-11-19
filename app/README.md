@@ -549,3 +549,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 127. TASK-007의 Siljang Test 개발 채널·봇과 카카오 디벨로퍼스 시험 앱을 확인했습니다. 폴백과 Worker가 연결됐고 실제 K-01 요청으로 호출을 검증했습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-007-카카오-시험-채널봇앱-확인)
 
 128. TASK-090의 `server/src/owner-alert-card.ts`는 SCR-019의 정상·미발송·발송 오류·처리된 할 일 상태를 카카오 응답으로 변환합니다. 모의 시험은 브라우저나 Event API 없이 상태별 응답과 링크, 텍스트 카드 한도를 확인합니다. 알림 발송·재시도·발송 결과 조회는 TASK-072에서 연결합니다.
+
+129. TASK-009의 PC 카카오톡 시험에서 K-06 사진 다운로드와 K-09 봇 ID 응답을 Worker 기록과 대조했습니다. 후기 보안 이미지와 콜백은 추가 시험 중입니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-009-pc-카카오톡-사진봇-id)
