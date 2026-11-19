@@ -6,6 +6,11 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 11:09 무렵 KST · TASK-174 Supabase 서버 전용 역할
+
+- 실제 `siljang-dev`에 `siljang_runtime`을 만들고, LOGIN·NOINHERIT와 `access_logs`의 허용·제한 권한을 확인했습니다.
+- 스테이징 Worker가 전용 역할로 접속하는 시험이 남아 TASK-174는 진행 중입니다. [실제 환경 확인 기록](hands-on.md#2026-11-19--task-174-supabase-서버-전용-역할)
+
 ### 2026-11-19 10:54 무렵 KST · TASK-009 카카오 K-02~K-04 개발 봇테스트
 
 - Aside로 같은 발화, 지연 응답과 빈 응답을 개발 미리보기에서 시험했습니다. 화면 결과를 마스킹된 Worker KV 9건과 대조했습니다.

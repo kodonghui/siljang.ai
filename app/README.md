@@ -468,6 +468,8 @@ TASK-015(REQ-135)의 개발 저장소 뼈대, TASK-018의 공통 요청 처리(�
 
 122. TASK-009 K-02~K-04의 개발 봇테스트에서 같은 발화의 후보 키, 4.5초·6초 지연과 빈 응답 네 가지를 Worker KV 9건과 대조했습니다. 카카오톡 앱에서 보이는 결과는 확인이 남았습니다. [카카오 시험 대본](../docs/10-wbs/kakao-test-script.md#k-02-같은-말open-1)
 
+123. TASK-174에서 `siljang-dev`의 서버 전용 PostgreSQL 역할 `siljang_runtime`을 준비했습니다. `access_logs`의 추가·보존 기간에 따른 삭제에 필요한 권한과 전체 조회·수정·비우기 제한을 대조했습니다. 스테이징 앱에서 역할로 접속하는 확인이 남았습니다. [실제 환경 확인 기록](../docs/records/hands-on.md#2026-11-19--task-174-supabase-서버-전용-역할)
+
 ## 명령 (`app/`에서)
 
 ```bash
