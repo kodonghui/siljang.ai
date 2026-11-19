@@ -39,6 +39,7 @@ const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
 /** 가게 범위를 만들 수 있는 파일(해석기)과 까닭. 해석기를 만드는 작업이 더한다. */
 const SCOPE_MAKERS: Record<string, string> = {
   "shop-scope.ts": "정의",
+  "kakao-skill-auth.ts": "정규 봇 ID로 찾은 연결의 스킬 키를 확인한 뒤 그 가게 범위만 만듦(06 DEC-08)",
   "job-runner.ts":
     "서버 안의 일 실행기(TASK-023): 때가 된 행의 가게 ID로 그 행 하나를 잡고 처리하는 범위(출처 job)만 만든다. 가게 ID는 due-sources.ts의 찾기 결과",
 };
@@ -56,6 +57,12 @@ const CROSS_SHOP_SHAPES: readonly RegExp[] = [
 
 /** 가게 범위 밖 읽기로 허락한 SQL인지(그 파일의 그 꼴만). 꼴 안의 조건에 다른 테이블을 끌어오는 하위 질의는 받지 않는다. */
 function allowedCrossShop(file: string, sql: string): boolean {
+  if (file === "kakao-skill-auth.ts") {
+    return (
+      sql.replace(/\s+/g, " ").trim() ===
+      "SELECT id, shop_id, status, skill_key_version, previous_key_until FROM kakao_channels WHERE bot_id = $1 AND status IN ('pending', 'linked')"
+    );
+  }
   if (file !== CROSS_SHOP_FILE) return false;
   if (!CROSS_SHOP_SHAPES.some((re) => re.test(sql))) return false;
   return (sql.match(/\b(from|join)\b/gi) ?? []).length === 1 && !sql.includes(EXPR.trim());
@@ -143,7 +150,7 @@ describe("서버 코드의 SQL(정적 검사)", () => {
     for (const s of sources) {
       if (!RAW_ACCESS.some((re) => re.test(s.text))) continue;
       if (Object.hasOwn(RAW_SHOP_SQL_ALLOWED, s.name)) continue;
-      if (shopSql(s.text).length > 0) found.push(s.name);
+      if (shopSql(s.text).some((sql) => !allowedCrossShop(s.name, sql))) found.push(s.name);
     }
     expect(found).toEqual([]);
     for (const [name, why] of Object.entries(RAW_SHOP_SQL_ALLOWED)) {
