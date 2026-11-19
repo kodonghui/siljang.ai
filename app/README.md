@@ -571,3 +571,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 138. TASK-171의 한국 스테이징 요청, Hyperdrive SQL 왕복과 PostgreSQL 연결 수를 확인했습니다. [스택 시험 결과](../docs/10-wbs/tech-stack.md#8-1-시험-결과2026-11-19)
 
 139. TASK-009의 K-02 반복 발화를 대본의 간격으로 보완하고 실제 2초 구간과 후보 키를 대조했습니다. [시험 대본](../docs/10-wbs/kakao-test-script.md#k-02-같은-말open-1)
+
+140. TASK-009의 PC 카카오톡 K-01·K-08·K-11을 실제 시험하고 Worker 기록과 대조했습니다. [카카오 시험 대본](../docs/10-wbs/kakao-test-script.md)
