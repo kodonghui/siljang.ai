@@ -6,6 +6,11 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 10:48 무렵 KST · TASK-174 서울 Supabase 마이그레이션
+
+- `siljang-dev`에 마이그레이션 0001~0022를 한 트랜잭션으로 적용했습니다. Aside로 실제 원장 22행과 `public` 테이블 60개, `btree_gist` 설치를 확인했습니다.
+- 서버 전용 역할의 접속과 권한 시험이 남아 TASK-174는 진행 중입니다. [실제 환경 확인 기록](hands-on.md#2026-11-19--task-174-서울-supabase-마이그레이션)
+
 ### 2026-11-19 10:45 무렵 KST · TASK-009 카카오 K-11 로그인 시험
 
 - Aside에서 개발 봇 카드가 만든 실제 링크로 세 모드를 시험했습니다. PKCE와 PKCE 없는 모드는 HTTP 200을 받았고, 틀린 verifier는 HTTP 400 `KOE313`으로 거절됐습니다. Wrangler로 Worker KV의 세 모드 결과를 대조했습니다.

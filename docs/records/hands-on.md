@@ -2,6 +2,12 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-174 서울 Supabase 마이그레이션
+
+- `siljang-dev`에 원본 커밋 `97e05c7e09bdf8e4c57799cc8253e8341b5a1c77`의 `db/migrations` 0001~0022를 적용했습니다. 현재 `main`과 이 경로의 차이는 0입니다. Aside가 적용할 SQL 파일의 SHA-256을 확인한 뒤 Supabase Management API로 같은 프로젝트에 한 번 실행했습니다.
+- 빈 `public`을 확인하는 조건과 트랜잭션 잠금을 사용했습니다. 원장 `siljang_deploy.migrations`에는 파일명·원본 커밋·파일별 SHA-256·적용 시간이 있습니다. 적용 후 API 검증 결과는 원장 22행, `public` 테이블 60개, `btree_gist` 설치였습니다. 대시보드에서 Free와 Data API 비활성화를 확인했습니다.
+- PostgreSQL TLS 직결 또는 세션 풀러 접속, 서버 전용 역할과 `access_logs` 권한, Worker를 통한 사용은 확인이 남았습니다.
+
 ## 2026-11-19 · TASK-009 카카오 K-11 로그인 시험
 
 - 개발 봇의 `로그인 시험` 카드가 만든 링크 3개를 Aside에서 순서대로 열었습니다. 결과 화면의 토큰 요청은 ① 정상 PKCE 200, ② 틀린 verifier 400(`invalid_grant`·`KOE313`), ③ PKCE 없이 200이었습니다. Wrangler의 마스킹된 Worker KV에서도 세 모드 결과가 각각 성공·거절·성공이었습니다.
