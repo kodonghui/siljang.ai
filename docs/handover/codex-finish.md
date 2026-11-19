@@ -4,6 +4,8 @@
 
 이 글이 지금 지시다. [codex-development.md](codex-development.md)는 코드 규칙·검사·기록·PR 형식(5~11절)의 참고로 계속 쓴다. 두 글이 다르면 이 글을 따른다.
 
+2026-11-19 Codex 채팅 결정. 현재 범위는 추가 비용 없는 MVP 개발과 검증이다. Workers Free·Supabase Free·카카오 개발 채널과 합성 시험 데이터로 진행한다. 운영 배포, 스토어 제출, 월렛 충전이 필요한 카카오 발신 시험과 과금되는 모델 호출은 출시 검토 때 다룬다.
+
 ## 0. 목표와 끝
 
 - **목표:** `docs/10-wbs/wbs.md`의 작업 183개를 끝까지 진행한다. Claude 몫 166개와, 동희님 몫 17개 가운데 도구로 할 수 있는 것을 네가 한다. 진짜 계정·진짜 카카오·진짜 배포 확인도 네가 직접 해서 끝난 조건을 채운다.
@@ -56,7 +58,7 @@
 차례대로 한다. 각 작업의 자세한 화면 안내는 [반복 0 안내서](../10-wbs/iteration-0-guide.md) 4절에 있다. 그 안내서는 동희님이 직접 누르는 것으로 썼지만, 같은 단계를 Aside에게 맡긴다.
 
 1. **TASK-170 Cloudflare·Supabase 개발 설정**(안내서 4-1)
-   - Cloudflare: 이 프로젝트에 쓸 계정을 고른다(이미 있는 계정 또는 전용 계정, 추천과 이유를 기록). Workers Paid가 켜져 있는지 보고, 꺼져 있으면 켠다(월 5달러, 8절의 결제 확인). `wrangler login`으로 붙인다.
+   - Cloudflare: `siljang-staging`과 카카오 시험 Worker가 있는 기존 계정의 Workers Free 플랜을 사용한다. Wrangler의 기존 로그인으로 계정과 배포를 확인한다.
    - Supabase: 서울(`ap-northeast-2`, specific region) 개발 프로젝트를 무료 등급으로 만든다. 데이터베이스 비밀번호는 Aside Vault에 둔다. 무료 프로젝트 2개가 차 있으면 쓰지 않는 것을 멈추는 추천안을 동희님께 올린다.
    - 기록: 만든 날, 리전, 플랜 이름. 끝나면 `wbs_rows.py`의 TASK-170에 `finished`.
 2. **TASK-171 플랫폼 시험**(tech-stack.md 8-1의 항목 전부)

@@ -2,6 +2,11 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-19 · TASK-170 무료 MVP 개발 환경
+
+- Aside의 Cloudflare `Workers plans`에서 `Free`가 `Current plan`으로 표시됐습니다. 같은 계정에 `siljang-staging`과 기존 스테이징 주소가 있습니다. Wrangler 4.158.0 `whoami`와 `hyperdrive list`가 성공했습니다.
+- Supabase 대시보드 진입에 필요한 GitHub Mobile 확인 요청을 다시 발송했습니다. 서울 `ap-northeast-2` 프로젝트와 무료 할당량 확인이 남았습니다.
+
 ## 2026-11-19 · TASK-016 외부 감시와 배포 환경
 
 - SSH 별칭 `ko-family`에서 systemd 사용자 서비스와 1분 타이머를 설치했습니다. `systemd-analyze --user verify`가 성공했고, `systemctl --user is-active`와 `is-enabled`가 각각 `active`와 `enabled`였습니다.

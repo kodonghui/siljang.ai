@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-19 10:01 무렵 KST · TASK-170 무료 MVP 개발 환경
+
+- 시작한 main은 `f74dd510664bd5a86f7f8a34844c8416325f5836`([PR #87](https://github.com/kodonghui/siljang.ai/pull/87))입니다.
+- 2026-11-19 Codex 채팅에서 동희님은 ‘현재 Free 유지’를 선택했습니다. ‘MVP 만든다고 생각해 당장 서비스하는게 아니자나 우리가 하는게’, ‘뭐 돈 들일 필요가 없어’라고 말씀하셨습니다. 개발·스테이징을 추가 비용 없이 확인하는 범위를 WBS와 인수인계 문서에 반영했습니다.
+- Aside에서 기존 Cloudflare 계정의 Workers Free와 `siljang-staging`을 확인했습니다. Wrangler 로그인과 `hyperdrive list` 조회도 확인했습니다. 서울 Supabase 프로젝트는 GitHub Mobile 확인이 끝난 뒤 무료 할당량을 확인해 준비합니다.
+
 ### 2026-11-19 09:55 무렵 KST · TASK-016 스테이징 외부 감시
 
 - 시작한 main은 `a038cdfc20e40c17a6ad93fe29309addce572989`입니다. [app 44399768138](https://github.com/kodonghui/siljang.ai/actions/runs/44399768138)과 [db 44399768116](https://github.com/kodonghui/siljang.ai/actions/runs/44399768116)이 성공했습니다.

@@ -12,7 +12,7 @@
 
 | 차례 | 작업 | 시작할 수 있는 때 | 동희님 손이 가는 시간(어림) | 기다리는 것 |
 | --- | --- | --- | --- | --- |
-| 1 | TASK-170 Cloudflare·Supabase 계정과 개발 프로젝트 | 지금 | 40분~1시간 | 없음 |
+| 1 | TASK-170 Cloudflare·Supabase 개발 환경 설정 | 지금 | 40분~1시간 | 없음 |
 | 2 | TASK-007 카카오 시험 채널·봇·앱 | 지금 | 약 1시간 | 먼저 보내기까지 시험하면 카카오 심사(영업일 3~5일씩) |
 | 3 | TASK-003 운영자 인증 서비스 고르기 | 끝남(2026-11-16, 5절) | 10분(결정 카드) | 없음 |
 | 4 | TASK-010 카카오에 스킬 요청의 출처 IP·서명 문의 | 지금 | 15분 | 카카오의 답(기간은 공식 문서에 없음) |
@@ -92,17 +92,14 @@ flowchart LR
 
 ## 4. 작업별 안내
 
-### 4-1. TASK-170 Cloudflare·Supabase 계정과 개발 프로젝트 만들기(추천안 기준)
+### 4-1. TASK-170 Cloudflare·Supabase 개발 환경 설정(추천안 기준)
 
-- ① 무엇을·왜: Cloudflare 계정에 Workers 유료 플랜(월 5달러)을 켜고, Supabase에 서울 리전 개발 프로젝트를 무료 등급으로 만듭니다. 결정한 스택([`tech-stack.md`](tech-stack.md))을 실제로 올릴 곳이고, Claude가 여기서 플랫폼 시험(TASK-171)을 하고 카카오 시험 서버(TASK-008)를 올립니다.
+- ① 무엇을·왜: 기존 Cloudflare 계정의 Workers Free와 Supabase 서울 리전의 무료 개발 프로젝트로 MVP를 검증합니다. 플랫폼 시험(TASK-171)은 이 환경의 한도에서 진행합니다.
 - ② 차례: 앞선 작업 TASK-002가 끝나 바로 할 수 있습니다. 끝나면 TASK-171(반복 0)·TASK-174(반복 1)·TASK-175(반복 8)가 풀립니다.
 - ③ 하는 법
-  1. Cloudflare 계정 [C1]. 둘 가운데 하나를 고르세요.
-     - 새로 가입: https://dash.cloudflare.com/sign-up 에서 `Email`과 `Password`를 넣고 `Create Account`. 가입하면 이메일 확인 메일이 옵니다.
-     - 이미 쓰시는 Cloudflare 사용자로 이 프로젝트 전용 계정을 하나 더 만들기: 대시보드 `Accounts` → `Create Account` → 계정 이름 → `Create Account`. 조건은 사용자를 만든 지 7일이 넘었고, 기존 계정에서 `Super Administrator`이고, 더 만드는 무료 계정은 5개까지입니다.
-     - 추천(Claude): 이 프로젝트 전용 계정. Claude에게 드릴 API 토큰이 다른 프로젝트의 Worker에 닿지 않게 계정을 나눕니다. 반론: Workers 유료 플랜은 계정마다 월 최소 5달러라 [C2], 이미 유료인 계정에 함께 두면 월 5달러가 덜 듭니다.
+  1. Cloudflare 대시보드에서 `siljang-staging`과 카카오 시험 Worker가 있는 기존 계정을 선택합니다.
   2. 2단계 인증 [C3]: `My Profile` → `Authentication` → `Mobile App Authentication`이나 `Security Key Authentication` 옆의 `Add`. 이메일 확인을 마친 계정에서만 켜집니다.
-  3. Workers 유료 플랜(Workers Paid, 계정마다 월 최소 5달러) [C2]: 켜는 화면의 차례는 공식 문서에서 찾지 못했습니다(확인 못 함). 결제와 구독은 `Manage Account` → `Billing`에 있고, 켠 구독은 `Manage Account` → `Billing` → `Subscriptions`에서 봅니다 [C4].
+  3. Workers Free는 계정 대시보드의 `Workers plans`에서 `Current plan`으로 확인합니다. 이 프로젝트는 스테이징과 카카오 시험 Worker가 있는 기존 계정을 사용합니다.
   4. Claude가 쓸 API 토큰 [C5]: `My Profile` → `API Tokens` → `Create Token` → 토큰 이름 → 템플릿 `Edit Cloudflare Workers`로 시작 → 권한에 Hyperdrive와 Queues를 더함 → 자원은 이 프로젝트 계정 하나만 → `Continue to summary` → `Create Token`.
      - `Edit Cloudflare Workers` 템플릿에는 Workers 스크립트·KV·R2·Routes 권한은 있지만 Hyperdrive·Queues 권한은 없습니다 [C6]. 두 권한이 목록에서 어떤 이름으로 보이는지는 확인 못 함입니다.
      - 토큰 값은 한 번만 보입니다 [C5]. 바로 3절의 `CLOUDFLARE_API_TOKEN`에 넣으세요. 계정 ID는 `CLOUDFLARE_ACCOUNT_ID`에 넣습니다. 계정 ID를 찾는 화면은 [C5]가 가리키는 문서에 있지만 열지 않았습니다(확인 못 함).
@@ -113,12 +110,10 @@ flowchart LR
      - 프로젝트 만들기 화면의 필드와, 만든 뒤 리전을 바꿀 수 있는지는 확인 못 함입니다. 만들 때 서울을 고르세요.
      - 데이터베이스 비밀번호는 비밀번호 관리 앱에 둡니다.
   7. 연결 문자열 [S5]: 프로젝트 화면 위쪽의 `Connect` → 연결 방식 고르기 → 문자열 복사 → `[YOUR-PASSWORD]`를 데이터베이스 비밀번호로 바꿈(`&`·`#`·`?`·빈칸 같은 글자는 퍼센트 인코딩). 직결은 IPv6이고, 공유 풀러는 IPv4만 됩니다 [S5]. 직결 문자열은 `SUPABASE_DEV_DB_URL`, 세션 풀러 문자열은 `SUPABASE_DEV_POOLER_URL`에 넣으세요.
-- ④ 걸리는 시간: 40분~1시간(카드 결제 포함).
-- ⑤ 넘길 것: 채팅에 "TASK-170 끝", Cloudflare 계정을 어떻게 했는지(새로 가입·더 만든 계정·이미 있던 계정), 3절의 환경 변수 네 개를 넣었는지. 기록에는 만든 날, 리전 `ap-northeast-2`, 플랜 이름(Workers Paid, Supabase Free)만 남깁니다.
+- ④ 걸리는 시간: 40분~1시간.
+- ⑤ 넘길 것: 채팅에 "TASK-170 끝", 사용한 Cloudflare 계정과 3절의 환경 변수 네 개 설정 여부를 알려 주세요. 기록에는 만든 날, 리전 `ap-northeast-2`, 플랜 이름(Workers Free, Supabase Free)만 남깁니다.
 - ⑥ 막히면
-  - `Create Account`가 없거나 막히면 사용자 7일과 `Super Administrator` 조건을 보세요 [C1]. 안 되면 새로 가입하는 길로 갑니다.
-  - Supabase 무료 프로젝트 2개가 이미 차 있으면 쓰지 않는 프로젝트를 멈추거나(멈춘 것은 세지 않음), 그 조직을 Pro(월 25달러부터)로 올립니다 [S3][S4]. 어느 쪽으로 할지 채팅으로 알려 주세요.
-  - Cloudflare 결제가 실패하고 5일 안에 해결하지 않으면 무료 플랜으로 내려갑니다 [C4].
+  - 무료 프로젝트 할당량이 모두 사용 중이면 기존 프로젝트의 용도와 상태를 확인하고, 중지할 후보가 있을 때 동희님께 확인을 요청합니다 [S3][S4].
 
 ### 4-2. TASK-007 카카오 시험 채널·오픈빌더 봇·카카오 디벨로퍼스 시험 앱 만들기
 
