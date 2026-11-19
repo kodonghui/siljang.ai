@@ -85,7 +85,7 @@ paths:
       operationId: createOwnerSession
       summary: 사장님 로그인(카카오 인가 코드)
       description: |-
-        카카오 로그인 화면이 redirectUri로 준 인가 코드와 state를 받는다. state가 로그인 시작(API-078)의 서명·10분과 로그인 시작 쿠키 `siljang_login`의 nonce에 맞을 때만 카카오를 호출하고, 아니면 카카오를 호출하지 않고 401 kakao_login_failed(DEC-10, 설계 재검토 RD-11). 서버가 인가 코드를 nonce로 다시 만든 PKCE code_verifier와 함께 카카오 토큰으로 바꿔 카카오 로그인 사용자 번호만 남기고 토큰은 버린다(DEC-10, REQ-135). 토큰을 버리기 전에 카카오톡 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`, 채널 추가 상태 동의 `plusfriends`)를 한 번 해 사장님이 우리 서비스 채널 친구인지 남긴다(alertChannelFriend). 동의하지 않았거나 조회가 실패하면 로그인은 막지 않고 친구 여부를 바꾸지 않는다. 사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-260). 세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_owner`이고, 로그인 시작 쿠키는 지운다. `next`가 화면이 열 곳(가게 등록·신고증 다시 올리기·할 일 목록). 카카오 로그인이 실패하거나 동의를 거부하면 우리 쪽 기록을 남기지 않음. 세션은 마지막으로 쓴 때부터 30일 동안 유지하고 쓸 때마다 다시 30일로 늘린다(DEC-26). Open: 카카오가 PKCE 매개변수를 받는지 개발 전 시험(OPEN-11).
+        카카오 로그인 화면이 redirectUri로 준 인가 코드와 state를 받는다. state가 로그인 시작(API-078)의 서명·10분과 로그인 시작 쿠키 `siljang_login`의 nonce에 맞을 때만 카카오를 호출하고, 아니면 카카오를 호출하지 않고 401 kakao_login_failed(DEC-10, 설계 재검토 RD-11). 서버가 인가 코드를 nonce로 다시 만든 PKCE code_verifier와 함께 카카오 토큰으로 바꿔 카카오 로그인 사용자 번호만 남기고 토큰은 버린다(DEC-10, REQ-135). 토큰을 버리기 전에 카카오톡 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`, 채널 추가 상태 동의 `plusfriends`)를 한 번 해 사장님이 우리 서비스 채널 친구인지 남긴다(alertChannelFriend). 동의하지 않았거나 조회가 실패하면 로그인은 막지 않고 친구 여부를 바꾸지 않는다. 사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-260). 세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_owner`이고, 로그인 시작 쿠키는 지운다. `next`가 화면이 열 곳(가게 등록·신고증 다시 올리기·할 일 목록). 카카오 로그인이 실패하거나 동의를 거부하면 우리 쪽 기록을 남기지 않음. 세션은 마지막으로 쓴 때부터 30일 동안 유지하고 쓸 때마다 다시 30일로 늘린다(DEC-26). 카카오는 S256 verifier를 검사한다. PKCE 없는 시험 인가는 수락됐어도 제품 로그인은 S256을 사용한다(DEC-10, K-11).
 
         SPEC: SPEC-001, SPEC-068
       tags:
@@ -6202,7 +6202,7 @@ paths:
       operationId: setKakaoChannel
       summary: 연결할 채널(오픈빌더 봇) 설정
       description: |-
-        오픈빌더 봇 ID와 채널 공개 ID, 카드 버튼이 부를 블록 다섯의 블록 ID(blockIds, 아직 없으면 null, REQ-206)를 받아 '연결 확인 중' 연결을 만들고, 오픈빌더에 넣을 스킬 주소 넷(메시지·카드·후기·안내)과 안내 블록의 이벤트 이름을 반환하고, 새 연결이면(created) 헤더 값인 스킬 키를 이 응답에만 한 번 포함한다(skillKey, DEC-08, DEC-20, REQ-237). 같은 요청 키로 다시 온 요청(DEC-04)에는 그 키 버전이 지금 버전이면 같은 키를 다시 보인다. 같은 봇의 블록 ID만 바꾸면 새 연결을 만들지 않고 그 연결을 '연결 확인 중'으로 되돌려 닿은 블록과 먼저 보내기 상태를 비운다(같은 봇의 연결은 하나, 05단계 `kakao_channels_bot_active_uq`). 다시 연결될 때까지 그 채널의 손님 메시지에는 not_accepting으로 답한다(blocks_changed). 그 봇이 다른 가게에 연결됐거나 다른 가게의 '연결 확인 중' 선점이 남았으면 묶지 않고 409 channel_linked_elsewhere, 운영자에게 알림(SPEC-008). '연결 확인 중' 연결은 저장이나 연결 확인 시작에서 30분 동안 그 봇을 잡고, 그 시각이 지나면 다른 가게가 같은 봇을 넣을 때 연결 안 됨이 되어 풀린다(claimExpiresAt, REQ-238, 남이 먼저 넣어 막힌 봇은 OPEN-10). 연결된 채널을 바꾸면 새 채널이 연결될 때 옛 채널 메시지를 그만 받는다. 예약 링크는 내리지 않고 문의 버튼이 새 채널을 연다. Open: 사장님이 봇 ID를 찾는 곳은 07·08단계 연결 안내에서 정하고, 봇 ID 형식은 첫 연결 문구 메시지에서 확인(OPEN-8). Open: 꾸민 스킬 요청과 카카오의 요청을 가를 수단(요청 출처)이 문서에 없어 11단계 전에 카카오에 문의하고, 남이 먼저 넣어 막힌 봇은 운영자가 확인하고 풂(OPEN-10).
+        오픈빌더 봇 ID와 채널 공개 ID, 카드 버튼이 부를 블록 다섯의 블록 ID(blockIds, 아직 없으면 null, REQ-206)를 받아 '연결 확인 중' 연결을 만들고, 오픈빌더에 넣을 스킬 주소 넷(메시지·카드·후기·안내)과 안내 블록의 이벤트 이름을 반환하고, 새 연결이면(created) 헤더 값인 스킬 키를 이 응답에만 한 번 포함한다(skillKey, DEC-08, DEC-20, REQ-237). 같은 요청 키로 다시 온 요청(DEC-04)에는 그 키 버전이 지금 버전이면 같은 키를 다시 보인다. 같은 봇의 블록 ID만 바꾸면 새 연결을 만들지 않고 그 연결을 '연결 확인 중'으로 되돌려 닿은 블록과 먼저 보내기 상태를 비운다(같은 봇의 연결은 하나, 05단계 `kakao_channels_bot_active_uq`). 다시 연결될 때까지 그 채널의 손님 메시지에는 not_accepting으로 답한다(blocks_changed). 그 봇이 다른 가게에 연결됐거나 다른 가게의 '연결 확인 중' 선점이 남았으면 묶지 않고 409 channel_linked_elsewhere, 운영자에게 알림(SPEC-008). '연결 확인 중' 연결은 저장이나 연결 확인 시작에서 30분 동안 그 봇을 잡고, 그 시각이 지나면 다른 가게가 같은 봇을 넣을 때 연결 안 됨이 되어 풀린다(claimExpiresAt, REQ-238, 남이 먼저 넣어 막힌 봇은 OPEN-10). 연결된 채널을 바꾸면 새 채널이 연결될 때 옛 채널 메시지를 그만 받는다. 예약 링크는 내리지 않고 문의 버튼이 새 채널을 연다. 오픈빌더의 설정 → 기본 정보의 봇 ID를 저장한다. 스킬에 붙은 끝 느낌표 하나를 제거해 기본 ID와 비교한다(DEC-28, K-09). Open: 꾸민 스킬 요청과 카카오의 요청을 가를 수단(요청 출처)이 문서에 없어 11단계 전에 카카오에 문의하고, 남이 먼저 넣어 막힌 봇은 운영자가 확인하고 풂(OPEN-10).
 
         SPEC: SPEC-008
       tags:
@@ -6527,7 +6527,7 @@ paths:
       operationId: startKakaoChannelCheck
       summary: 연결 확인 시작(10분)
       description: |-
-        '연결 확인'을 누르면 10분 동안 연결 문구와 시험 버튼을 기다린다. 응답의 연결 문구(proofPhrase, '연결 ' 뒤에 숫자 6자리)는 사장님 화면에만 보이고 저장하지 않는다(서버 시크릿과 연결 ID·연결 확인 시작 시각으로 만듦, DEC-08). 사장님이 그 채널 대화창에서 이 문구를 보내 메시지 스킬(API-070)로 오면 그 사용자를 시험 사용자로 남기고 시험 버튼을 하나씩 답하며(channel_test_card), 다른 말로는 시험이 시작되지 않는다(REQ-238). 버튼이 카드 스킬(API-071)이나 후기 스킬(API-072)에 닿을 때마다 그 블록을 확인됨으로 남긴다(block_verified). 다섯이 모두 닿으면 '연결됨'이 되고(channel_linked) 그 사용자에게 시험 안내를 Event API로 한 번 보내 결과로 먼저 보내기 됨·안 됨을 남긴다(REQ-206, REQ-180, DEC-20). 연결 확인을 시작하면 '연결 확인 중' 선점이 풀리는 시각을 그때부터 30분으로 늘린다(REQ-238). 블록 ID가 하나라도 비면 시작하지 않고 409 channel_setup_incomplete. 여러 번 눌러도 연결은 하나(G2): 확인 중이면 unchanged, 연결 안 됨이면 다시 10분을 센다. 연결됨인데 먼저 보내기가 안 됨이거나 아직 안 봤으면 시험 안내를 다시 보내고(done, eventStatus checking), 됨이거나 시험 중이면 unchanged. Open: 가게가 우리에게 줄 권한(가게 채널을 우리 앱에 연결, 우리 월렛을 가게 봇에 연결)의 절차는 개발 전 시험으로 정함(OPEN-9). Open: 연결 문구는 화면을 본 사장님만 알지만 그 요청이 카카오에서 왔는지는 증명하지 못함. 11단계 전에 카카오에 요청 출처를 문의(OPEN-10).
+        '연결 확인'을 누르면 10분 동안 연결 문구와 시험 버튼을 기다린다. 응답의 연결 문구(proofPhrase, '연결 ' 뒤에 숫자 6자리)는 사장님 화면에만 보이고 저장하지 않는다(서버 시크릿과 연결 ID·연결 확인 시작 시각으로 만듦, DEC-08). 사장님이 그 채널 대화창에서 이 문구를 보내 메시지 스킬(API-070)로 오면 그 사용자를 시험 사용자로 남기고 시험 버튼을 하나씩 답하며(channel_test_card), 다른 말로는 시험이 시작되지 않는다(REQ-238). 버튼이 카드 스킬(API-071)이나 후기 스킬(API-072)에 닿을 때마다 그 블록을 확인됨으로 남긴다(block_verified). 다섯이 모두 닿으면 '연결됨'이 되고(channel_linked) 그 사용자에게 시험 안내를 Event API로 한 번 보내 결과로 먼저 보내기 됨·안 됨을 남긴다(REQ-206, REQ-180, DEC-20). 연결 확인을 시작하면 '연결 확인 중' 선점이 풀리는 시각을 그때부터 30분으로 늘린다(REQ-238). 블록 ID가 하나라도 비면 시작하지 않고 409 channel_setup_incomplete. 여러 번 눌러도 연결은 하나(G2): 확인 중이면 unchanged, 연결 안 됨이면 다시 10분을 센다. 연결됨인데 먼저 보내기가 안 됨이거나 아직 안 봤으면 시험 안내를 다시 보내고(done, eventStatus checking), 됨이거나 시험 중이면 unchanged. 무료 MVP에서는 Event API의 실제 발신을 건너뛴다. 발신 권한과 월렛 연결 시험은 TASK-167에서 진행한다(DEC-20). Open: 연결 문구는 화면을 본 사장님만 알지만 그 요청이 카카오에서 왔는지는 증명하지 못함. 11단계 전에 카카오에 요청 출처를 문의(OPEN-10).
 
         SPEC: SPEC-008
       tags:
@@ -20256,7 +20256,7 @@ paths:
       operationId: receiveCustomerMessage
       summary: 손님 메시지 수신(카카오 오픈빌더 스킬)
       description: |-
-        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 지금 버전 키나, 바꾼 뒤 24시간 안의 앞 버전 키가 아니면 401(DEC-08, REQ-237). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 전체 기한(받은 때부터 55초, AI-1)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도·차례마다 호출 상한(8번)은 모두 에스컬레이션함(R7, AI-1). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). 문의 끊김이나 상담 끝남으로 닫힌 손님에게도 이 안내(결제 안내·사장님 답·전날 안내 등)는 막지 않는다(REQ-212). 이때 보인 결제 안내는 그때를 전해진 시각으로 남겨 결제 기한을 그때부터 세고(REQ-218), 결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드를 보이고(SPEC-076), 손님이 확인하기 전에 입금했다고 하면 입금 알리기 카드 대신 그 카드를 다시 보인다(card_shown, SPEC-033). 손님이 자기 주문을 물으면 그 사용자가 요청한 주문마다 상태·픽업 일시·주문 내용 요약·금액과 결제가 확인된 시각·정한 환불과 보낸 때를 서버가 저장된 값으로 보인다(SPEC-040, REQ-241). 변경·취소·문제 신고는 그 주문을 요청한 같은 카카오 사용자에게서만 받는다(REQ-251). 다른 사용자가 주문번호로 묻거나 바꾸려 하면 없는 주문번호와 같은 답을 주어 주문이 있는지 알리지 않고(REQ-252), 선물로 받았다는 것처럼 사정을 말하면 사유 other_user로 에스컬레이션한다(handed_over, REQ-253). 관련 주문이 있으면 그 말은 다른 열린 건에 덧붙지 않고 상담과 주문마다 따로 건이 되어(SPEC-022) 사장님이 그 건에서 문제 신고로 남길 수 있다(API-083). 신고 기한 뒤의 신고도 막지 않고 손님에게 기한이 지났다거나 권리가 없다고 말하지 않는다(REQ-250). 요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). 연결 확인 중인 채널에 그 연결의 연결 문구(API-032가 사장님 화면에만 보인 '연결 ' 뒤 숫자 6자리)가 오면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008, REQ-238). 다른 말이면 not_accepting과 같은 말로 답하고 시험을 시작하지 않는다. 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). 주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, 버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). 그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). 주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장과 미성년자 취소 고지, REQ-240)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. Open: 카카오 메시지 ID가 문서에 없어 같은 요청 거르기 키를 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각 2초 단위)의 해시로 둠. 개발 전 실제 요청으로 확인(OPEN-1). Open: 콜백 유효 시간은 문서 본문과 오류 표 모두 5분(2026-11-14 다시 확인). 전체 기한 55초는 그보다 짧고, 실제 채널에서 개발 전 시험(OPEN-2). Open: 사진 메시지가 스킬 요청에 어떻게 오는지 문서에 없음(OPEN-3). Open: 빈 응답이 되는지 문서에 없어, 같은 메시지 반복과 한도 넘은 메시지에도 짧은 말을 다시 보냄(OPEN-4). Open: 봇 ID와 스킬 키를 아는 사람이 꾸민 요청과 카카오의 요청을 가를 수단(요청 출처)이 문서에 없어 11단계 전에 카카오에 문의(OPEN-10).
+        카카오가 손님 메시지를 보내는 스킬. bot.id로 가게를 찾고(SPEC-017) 그 가게 상담(사용자 키마다 하나)을 열거나 이어간다. 헤더 Siljang-Skill-Key가 그 연결의 지금 버전 키나, 바꾼 뒤 24시간 안의 앞 버전 키가 아니면 401(DEC-08, REQ-237). 처리한 모든 경우에 200과 스킬 응답을 반환하고 결과는 Siljang-Outcome 헤더와 같은 이름의 예시로 구분한다(DEC-07). 답이 4초 안에 준비되면 바로 답하고(answered), 아니면 useCallback으로 응답한 뒤(callback_pending) AI-1 답을 콜백으로 보낸다(콜백 본문의 결과도 같은 이름으로 로그에 남김). 전체 기한(받은 때부터 55초, AI-1)까지 답이 없으면 에스컬레이션하고(ai_timeout) 그 안내를 콜백으로 보낸다. 콜백이 켜지지 않은 요청(callbackUrl 없음)은 4초 안에 답이 없으면 그 자리에서 에스컬레이션 안내로 답한다(ai_timeout). AI 모델 실패·키 없음·사용 한도·가게 비용 한도·차례마다 호출 상한(8번)은 모두 에스컬레이션함(R7, AI-1). 첫 메시지에 답하기 전에 AI 상담 고지와 처리방침 주소를 먼저 포함하고(SPEC-018), 먼저 보내지 못한 안내(손님이 친구가 아니거나 그 가게의 먼저 보내기가 안 됨, REQ-181)가 있으면 답보다 먼저 포함한다(SPEC-066). 문의 끊김이나 상담 끝남으로 닫힌 손님에게도 이 안내(결제 안내·사장님 답·전날 안내 등)는 막지 않는다(REQ-212). 이때 보인 결제 안내는 그때를 전해진 시각으로 남겨 결제 기한을 그때부터 세고(REQ-218), 결제 기한 상한이 지나 기한 지남이 된 결제 안내는 계좌 대신 '결제 기한이 지나 사장님이 확인하고 있어요'만 보인다(SPEC-037). 새 금액 확인이 필요한 결제 안내는 계좌 대신 새 금액 확인 카드를 보이고(SPEC-076), 손님이 확인하기 전에 입금했다고 하면 입금 알리기 카드 대신 그 카드를 다시 보인다(card_shown, SPEC-033). 손님이 자기 주문을 물으면 그 사용자가 요청한 주문마다 상태·픽업 일시·주문 내용 요약·금액과 결제가 확인된 시각·정한 환불과 보낸 때를 서버가 저장된 값으로 보인다(SPEC-040, REQ-241). 변경·취소·문제 신고는 그 주문을 요청한 같은 카카오 사용자에게서만 받는다(REQ-251). 다른 사용자가 주문번호로 묻거나 바꾸려 하면 없는 주문번호와 같은 답을 주어 주문이 있는지 알리지 않고(REQ-252), 선물로 받았다는 것처럼 사정을 말하면 사유 other_user로 에스컬레이션한다(handed_over, REQ-253). 관련 주문이 있으면 그 말은 다른 열린 건에 덧붙지 않고 상담과 주문마다 따로 건이 되어(SPEC-022) 사장님이 그 건에서 문제 신고로 남길 수 있다(API-083). 신고 기한 뒤의 신고도 막지 않고 손님에게 기한이 지났다거나 권리가 없다고 말하지 않는다(REQ-250). 요청마다 userRequest.user.properties.isFriend로 손님의 채널 친구 여부를 고치고, true가 아니면 친구 아님으로 둔다(REQ-219). 연결 확인 중인 채널에 그 연결의 연결 문구(API-032가 사장님 화면에만 보인 '연결 ' 뒤 숫자 6자리)가 오면 그 사용자를 시험 사용자로 남기고 첫 시험 버튼을 답한다(channel_test_card, SPEC-008, REQ-238). 다른 말이면 not_accepting과 같은 말로 답하고 시험을 시작하지 않는다. 시험 버튼은 그 가게가 넣은 블록 ID를 부른다(설계 재검토 H8). 주문서 초안의 빈 항목과 금액 확인이 끝났는데 알레르기 정보 동의의 답이 없으면 주문 요청 카드 대신 알레르기 정보 카드(쓰는 목적·받는 항목·보는 사람·지우는 때, 동의하지 않을 수 있고 그러면 빼야 할 재료만으로 주문한다는 것, 버튼 '동의하고 알려 주기'·'동의 안 함')를 보낸다(card_shown, SPEC-075, 설계 재검토 H5, 잠정, 5-2 질문 4의 답으로 다시 봄). '동의하고 알려 주기'는 AI를 거치지 않는 '알레르기 답' 블록을 열고, 동의의 답과 알레르기 답은 API-071로 온다. AI는 알레르기를 묻지 않고 손님이 대화에 적은 알레르기 말을 초안에 넣지 않는다(REQ-200, REQ-204). 동의 단계를 끈 배포에서는 동의를 묻지 않고 알레르기 답 블록 버튼만 보낸다(REQ-205). 그다음 주문자 이름·연락처가 없으면 주문 요청 카드 대신 주문자 정보 카드를 보낸다(card_shown). 그 버튼 '이름·연락처 넣기'는 AI를 거치지 않는 '주문자 정보' 블록을 열고 값은 API-071로 온다(SPEC-072, 설계 재검토 H11). 주문 요청 확인 카드는 출력 셋 안에서 그 버전의 취소·환불 규정 글(글 하나나 둘, 조문마다 한 줄, 끝에 청약철회 제한 문장과 미성년자 취소 고지, REQ-240)을 먼저, 요약 카드(요약에 알레르기 답이나 '알레르기 정보 동의 안 함', 버튼 둘)를 끝에 둔다. 사진 게시 동의는 주문 요청 때 묻지 않는다(완성 사진은 API-073, 후기 사진은 API-072, 설계 재검토 H10). 규정 글이 1,000자를 넘으면 조문 사이에서 나눠 둘로 보내고 자르지 않는다(SPEC-028, DEC-22, 설계 재검토 H9). 카드 버튼은 그 가게가 넣은 '확인 카드' 블록 ID를 부른다. 수신한 메시지에 개별 ID가 없어 정규 봇 ID·사용자 키·블록 ID·발화·수신 2초 구간의 HMAC-SHA256을 저장한다(DEC-28, K-02). 콜백 주소는 공식 기준 5분 안에 한 번 사용한다. 개발 채널에서 321.1초 발신이 성공했으나 제품의 전체 기한은 수신 후 55초다(DEC-29, K-05). 일반 사진의 주소는 userRequest.utterance에 왔으며 다운로드하기 전에 허용한 카카오 HTTPS 호스트와 응답 이미지 형식을 확인한다(DEC-28, K-06). 중복과 첫 한도 안내 이후 분당 초과 요청에는 HTTP 200으로 template.outputs 빈 배열을 반환한다(DEC-29, K-04). Open: 봇 ID와 스킬 키를 아는 사람이 꾸민 요청과 카카오의 요청을 가를 수단(요청 출처)이 문서에 없어 11단계 전에 카카오에 문의(OPEN-10).
 
         SPEC: SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-028, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-049, SPEC-056, SPEC-057, SPEC-066, SPEC-068, SPEC-069, SPEC-013, SPEC-014, SPEC-016, SPEC-008, SPEC-072, SPEC-075, SPEC-076
       tags:
@@ -20431,7 +20431,7 @@ paths:
                       - simpleText:
                           text: 사장님 확인 뒤 답드릴게요.
                 ai_timeout:
-                  summary: 전체 기한(받은 때부터 55초, AI-1. 콜백 문서의 유효 시간은 5분, OPEN-2)까지 AI 답이 없어 에스컬레이션함. 콜백으로 감
+                  summary: 전체 기한(받은 때부터 55초, AI-1. 콜백 문서의 유효 시간은 5분, DEC-29)까지 AI 답이 없어 에스컬레이션함. 콜백으로 감
                   value:
                     version: "2.0"
                     template:
@@ -20533,13 +20533,11 @@ paths:
                       - simpleText:
                           text: 잠시 뒤 다시 말씀해 주세요
                 duplicate:
-                  summary: 같은 카카오 요청이 다시 옴. 처음 결과를 다시 보내고 기록·AI 호출·명령을 다시 하지 않음(REQ-132)
+                  summary: 같은 카카오 요청이 다시 옴. API-070은 빈 출력으로 답하고 기록·AI 호출·명령을 다시 하지 않음(REQ-132, DEC-29). 카드·후기 스킬은 기존 응답 계약을 적용
                   value:
                     version: "2.0"
                     template:
-                      outputs:
-                      - simpleText:
-                          text: 1호 생크림 케이크는 35,000원이에요. 이 금액은 11월 15일 12:39까지 유효하고, 견적만으로 그날 자리를 잡아 두지는 않아요.
+                      outputs: []
                 not_accepting:
                   summary: 연결되지 않은 채널이거나 예약 링크를 내기 전 가게, 또는 연결 확인 중인 채널에 연결 문구가 아닌 말이 옴. 상담을 열지 않음
                   value:
@@ -20668,7 +20666,7 @@ paths:
                             - simpleText:
                                 text: 사장님 확인 뒤 답드릴게요.
                       ai_timeout:
-                        summary: 전체 기한(받은 때부터 55초, AI-1. 콜백 문서의 유효 시간은 5분, OPEN-2)까지 AI 답이 없어 에스컬레이션함. 콜백으로 감
+                        summary: 전체 기한(받은 때부터 55초, AI-1. 콜백 문서의 유효 시간은 5분, DEC-29)까지 AI 답이 없어 에스컬레이션함. 콜백으로 감
                         value:
                           version: "2.0"
                           template:
@@ -21551,7 +21549,7 @@ paths:
       operationId: submitReview
       summary: 후기 수신(카카오 오픈빌더 스킬)
       description: |-
-        후기 부탁 안내(SPEC-061)의 버튼이 여는 오픈빌더 '후기' 블록이 보내는 스킬(DEC-18). action.params의 review_text(1~1,000자), review_photos(보안 이미지 플러그인 값: privacyAgreement·imageQuantity·secureUrls·expire, 5장까지), photo_consent(그 사진들을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 후기 하나에 한 번 물은 답. 기본 동의 안 함이고 답을 사진마다 남김, REQ-208, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)와 clientExtra.orderNo. 받은 주문이고 그 주문을 요청한 사용자일 때만 남긴다. 사진은 서명 주소가 사는 10분 안에 내려받고 한 번 다시 받아도 실패하면 photo_download_failed. 같은 주문의 두 번째 후기는 새 버전. 후기 부탁 버튼은 그 가게가 넣은 '후기' 블록 ID를 부른다. 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: review)은 후기를 남기지 않고 그 블록이 닿았다는 것만 남기며, 다섯째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-206). Open: 블록이 파라미터를 다 채운 뒤 부르는 스킬 요청에도 후기 부탁 버튼의 extra(clientExtra.orderNo)가 남는지 카카오 문서에 없어 남는다고 가정하고(확인 전 가정), 남지 않으면 그 사용자에게 가장 최근에 보낸 후기 부탁의 주문에 붙인다(OPEN-12).
+        후기 부탁 안내(SPEC-061)의 버튼이 여는 오픈빌더 '후기' 블록이 보내는 스킬(DEC-18). action.params의 review_text(1~1,000자), review_photos(보안 이미지 플러그인 값: privacyAgreement·imageQuantity·secureUrls·expire, 5장까지), photo_consent(그 사진들을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 후기 하나에 한 번 물은 답. 기본 동의 안 함이고 답을 사진마다 남김, REQ-208, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄)와 clientExtra.orderNo. 받은 주문이고 그 주문을 요청한 사용자일 때만 남긴다. 사진은 서명 주소가 사는 10분 안에 내려받고 한 번 다시 받아도 실패하면 photo_download_failed. 같은 주문의 두 번째 후기는 새 버전. 후기 부탁 버튼은 그 가게가 넣은 '후기' 블록 ID를 부른다. 연결 확인 중에 시험 사용자가 누른 시험 버튼(clientExtra.check: review)은 후기를 남기지 않고 그 블록이 닿았다는 것만 남기며, 다섯째로 닿았으면 채널을 '연결됨'으로 묶는다(block_verified·channel_linked, SPEC-008, REQ-206). 글과 동의를 채운 PC 후기 블록은 최종 요청에서도 clientExtra.orderNo를 전달했다. 번호가 없으면 같은 사용자의 최근 후기 부탁을 사용한다. 보안 이미지 플러그인의 휴대폰 시험은 TASK-167에서 진행한다(DEC-30, K-08).
 
         SPEC: SPEC-062, SPEC-019, SPEC-061, SPEC-008
       tags:
@@ -21689,7 +21687,7 @@ paths:
                       - simpleText:
                           text: 사진을 받지 못했어요. 다시 보내 주세요
                 duplicate:
-                  summary: 같은 카카오 요청이 다시 옴. 처음 결과를 다시 보내고 기록·AI 호출·명령을 다시 하지 않음(REQ-132)
+                  summary: 같은 카카오 요청이 다시 옴. API-070은 빈 출력으로 답하고 기록·AI 호출·명령을 다시 하지 않음(REQ-132, DEC-29). 카드·후기 스킬은 기존 응답 계약을 적용
                   value:
                     version: "2.0"
                     template:
@@ -21844,7 +21842,7 @@ paths:
       operationId: showNotice
       summary: 먼저 보내는 안내 보이기(카카오 Event API가 부르는 스킬)
       description: |-
-        우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). 안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). 확정 안내는 주문 내용·픽업 일시·결제가 확인된 금액·가게의 상호·대표자·사업장 주소·전화번호(주문 확정 때의 확인된 값)를 담은 글과 그 주문의 운영규정 버전의 취소·환불 규정 글을 보인다(SPEC-036, REQ-242). 완성 사진 안내(SPEC-053)는 사진과 함께, 그 사진을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 묻는 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, 누른 답은 카드 스킬로 와서 그 안내의 사진마다 남는다(API-071 photo_consent_saved, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). 손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), 그 안내는 다음 대화 때 먼저 전한다(DEC-20이 정한 DEC-07의 예외). 새 금액 확인이 필요한 결제 안내는 계좌 자리 대신 새 금액 확인 카드(맞춤 주문은 요청한 견적·정한 금액·사유와 '이 금액으로 할게요'·'안 할래요', 변경은 바뀌는 내용·지금 금액과 새 금액·차액·변경 마감과 '바꿀게요'·'그대로 둘래요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, 누른 답은 카드 스킬로 온다(API-071 amount_confirmed·amount_declined, SPEC-076, REQ-232). 결제 안내의 글에는 계좌번호를 넣어 두지 않고 계좌 자리만 두며, 이 스킬이 보일 때 그 결제 안내의 계좌를 복호화해 채운다(SPEC-032, REQ-191). Open: 가게 채널을 우리 앱에 연결하고 우리 월렛을 가게 봇에 연결하는 절차, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양은 개발 전 시험으로 확인(OPEN-9).
+        우리 서버가 우리 카카오 디벨로퍼스 앱의 키로 가게 봇의 Event API(이벤트 이름 siljang_notice, 받는 사람은 손님의 봇 사용자 키)를 부르면, 가게 봇의 '안내' 블록이 이 스킬을 부른다(DEC-20, 설계 재검토 H7). userRequest.params의 noticeKey로 그 가게의 안내를 찾아 저장된 글과 버튼을 보이고(notice_shown), check가 event면 연결 확인의 시험 안내를 보인다(notice_test, SPEC-008). 안내 키가 없거나 그 가게 것이 아니면 짧은 글만 보인다(notice_gone). 안내 글은 서버의 정해진 템플릿이고 AI를 호출하지 않으며 광고를 넣지 않는다(SPEC-066). 확정 안내는 주문 내용·픽업 일시·결제가 확인된 금액·가게의 상호·대표자·사업장 주소·전화번호(주문 확정 때의 확인된 값)를 담은 글과 그 주문의 운영규정 버전의 취소·환불 규정 글을 보인다(SPEC-036, REQ-242). 완성 사진 안내(SPEC-053)는 사진과 함께, 그 사진을 가게 포트폴리오와 예약 링크 페이지에 올려도 되는지와 언제든 철회할 수 있음을 한 문장으로 묻는 사진 게시 동의 카드(버튼 '올려도 돼요'·'안 돼요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, 누른 답은 카드 스킬로 와서 그 안내의 사진마다 남는다(API-071 photo_consent_saved, REQ-207, 설계 재검토 H10, 잠정, 5-2 질문 6의 답으로 다시 봄). 손님에게 닿았는지는 이 호출이 아니라 발송 결과 조회로 본다(REQ-182, 서버 안의 일). 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 그 안내를 보내지 않게 하고(발송 결과 errorType 201), 그 안내는 다음 대화 때 먼저 전한다(DEC-20이 정한 DEC-07의 예외). 새 금액 확인이 필요한 결제 안내는 계좌 자리 대신 새 금액 확인 카드(맞춤 주문은 요청한 견적·정한 금액·사유와 '이 금액으로 할게요'·'안 할래요', 변경은 바뀌는 내용·지금 금액과 새 금액·차액·변경 마감과 '바꿀게요'·'그대로 둘래요', 그 가게의 '확인 카드' 블록, 30분)를 보이고, 누른 답은 카드 스킬로 온다(API-071 amount_confirmed·amount_declined, SPEC-076, REQ-232). 결제 안내의 글에는 계좌번호를 넣어 두지 않고 계좌 자리만 두며, 이 스킬이 보일 때 그 결제 안내의 계좌를 복호화해 채운다(SPEC-032, REQ-191). 가게 채널·우리 앱·월렛의 실제 연결과 Event API 스킬 요청 확인은 출시 검토 TASK-167에서 진행한다(DEC-20).
 
         SPEC: SPEC-066, SPEC-008, SPEC-053, SPEC-076, SPEC-036
       tags:
@@ -22976,7 +22974,7 @@ paths:
       operationId: startOwnerLogin
       summary: 사장님 로그인 시작(state)
       description: |-
-        카카오 로그인 버튼을 누르면 화면이 이 API를 부르고 응답의 authorizationUrl로 이동한다. 서버는 일회용 nonce를 로그인 시작 쿠키 `siljang_login`(HttpOnly·Secure·SameSite=Lax, 10분)에 두고, nonce와 만료 시각을 서버 시크릿으로 서명한 state와 nonce로 만든 PKCE code_verifier의 S256 code_challenge를 카카오 인가 주소에 담는다. nonce·state·code_verifier는 저장하지 않는다(DEC-10). 카카오가 redirectUri로 돌려준 code와 state는 API-001이 받아, state가 서명·10분·쿠키의 nonce와 맞을 때만 카카오를 호출한다(RFC 6749 10.12, SPEC-001, 설계 재검토 RD-11). redirectUri는 서버 설정의 목록에 있는 것만 받는다(아니면 422 /redirectUri not_allowed). 부를 때마다 새 nonce와 state라 앞의 로그인 시작은 쓸 수 없게 된다. Open: 카카오가 PKCE 매개변수를 받는지 개발 전 시험 앱으로 봄. 받지 않으면 code_challenge 없이 state만으로 시작(OPEN-11).
+        카카오 로그인 버튼을 누르면 화면이 이 API를 부르고 응답의 authorizationUrl로 이동한다. 서버는 일회용 nonce를 로그인 시작 쿠키 `siljang_login`(HttpOnly·Secure·SameSite=Lax, 10분)에 두고, nonce와 만료 시각을 서버 시크릿으로 서명한 state와 nonce로 만든 PKCE code_verifier의 S256 code_challenge를 카카오 인가 주소에 담는다. nonce·state·code_verifier는 저장하지 않는다(DEC-10). 카카오가 redirectUri로 돌려준 code와 state는 API-001이 받아, state가 서명·10분·쿠키의 nonce와 맞을 때만 카카오를 호출한다(RFC 6749 10.12, SPEC-001, 설계 재검토 RD-11). redirectUri는 서버 설정의 목록에 있는 것만 받는다(아니면 422 /redirectUri not_allowed). 부를 때마다 새 nonce와 state라 앞의 로그인 시작은 쓸 수 없게 된다. K-11 개발 채널은 S256의 올바른 verifier를 수락하고 틀린 verifier를 invalid_grant로 거절했다. 제품은 state와 PKCE S256을 함께 사용한다(DEC-10).
 
         SPEC: SPEC-001
       tags:
@@ -24781,7 +24779,7 @@ components:
           type: string
           format: uri
           maxLength: 2048
-          description: 카카오 인가 주소. client_id·redirect_uri·response_type=code·state·code_challenge(S256)를 담음. 화면은 이 주소로 이동함(DEC-10, OPEN-11)
+          description: 카카오 인가 주소. client_id·redirect_uri·response_type=code·state·code_challenge(S256)를 담음. 화면은 이 주소로 이동함(DEC-10, DEC-10)
         state:
           type: string
           minLength: 16
@@ -27327,7 +27325,7 @@ components:
           minLength: 1
           maxLength: 64
           pattern: ^\S+$
-          description: 오픈빌더 봇 ID(OPEN-8)
+          description: 오픈빌더 설정의 기본 봇 ID(DEC-28)
           x-corthex-column: kakao_channels.bot_id
         channelPublicId:
           type:
@@ -31460,14 +31458,14 @@ components:
               type: string
               minLength: 0
               maxLength: 100000
-              description: 손님 말. 1,000자를 넘으면 앞 1,000자만 AI에(SPEC-017). 필드 한도 없음(messages.body_masked)
+              description: 손님 말 또는 일반 사진 HTTPS 주소(DEC-28). 말이 1,000자를 넘으면 앞 1,000자만 AI에(SPEC-017). 필드 한도 없음(messages.body_masked)
             callbackUrl:
               type: string
               minLength: 9
               maxLength: 2048
               pattern: ^https://
               format: uri
-              description: 콜백 주소(블록에서 콜백을 켰을 때). 한 번만, 유효 시간 안(OPEN-2)
+              description: 콜백 주소(블록에서 콜백을 켰을 때). 공식 5분 안에 한 번, 제품은 수신 후 55초 기한(DEC-29)
             block:
               type: object
               properties:
@@ -31482,7 +31480,7 @@ components:
               additionalProperties: true
             params:
               type: object
-              description: '카카오가 붙이는 값(예: surface)과 Event API 요청의 params. 사진이 어떻게 오는지는 OPEN-3'
+              description: '카카오가 붙이는 값(예: surface)과 Event API 요청의 params. 일반 사진 주소는 utterance에 전달(DEC-28)'
               properties:
                 noticeKey:
                   type: string
@@ -31540,7 +31538,7 @@ components:
               type: string
               minLength: 1
               maxLength: 64
-              description: 봇 ID. 가게를 찾는 키(SPEC-017)
+              description: 봇 ID. 끝 느낌표 하나를 제거한 기본 ID로 가게를 찾음(SPEC-017, DEC-28)
               x-corthex-column: kakao_channels.bot_id
             name:
               type: string
@@ -31880,10 +31878,159 @@ components:
               maxLength: 1000
           additionalProperties: false
       additionalProperties: false
+    SkillNoOutput:
+      type: object
+      description: 메시지 스킬의 말풍선 없는 정상 응답(DEC-29)
+      required:
+      - version
+      - template
+      properties:
+        version:
+          type: string
+          enum:
+          - "2.0"
+        template:
+          type: object
+          required:
+          - outputs
+          properties:
+            outputs:
+              type: array
+              items:
+                oneOf:
+                - type: object
+                  required:
+                  - simpleText
+                  properties:
+                    simpleText:
+                      type: object
+                      required:
+                      - text
+                      properties:
+                        text:
+                          type: string
+                          minLength: 1
+                          maxLength: 1000
+                      additionalProperties: false
+                  additionalProperties: false
+                - type: object
+                  required:
+                  - textCard
+                  properties:
+                    textCard:
+                      type: object
+                      required:
+                      - title
+                      properties:
+                        title:
+                          type: string
+                          minLength: 1
+                          maxLength: 50
+                        description:
+                          type: string
+                          minLength: 1
+                          maxLength: 400
+                        buttons:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                            - label
+                            - action
+                            properties:
+                              label:
+                                type: string
+                                minLength: 1
+                                maxLength: 14
+                              action:
+                                type: string
+                                enum:
+                                - block
+                                - message
+                                - webLink
+                                - phone
+                              blockId:
+                                type: string
+                                minLength: 1
+                                maxLength: 200
+                              messageText:
+                                type: string
+                                minLength: 1
+                                maxLength: 1000
+                              webLinkUrl:
+                                type: string
+                                format: uri
+                                maxLength: 2048
+                              phoneNumber:
+                                type: string
+                                minLength: 8
+                                maxLength: 14
+                                pattern: ^[0-9-]{8,14}$
+                              extra:
+                                type: object
+                                description: 블록 버튼이 다음 스킬 요청의 clientExtra로 넘기는 값. 내부 ID 없음(G6)
+                                properties:
+                                  cardKey:
+                                    type: string
+                                    minLength: 16
+                                    maxLength: 64
+                                    pattern: ^[A-Za-z0-9_-]+$
+                                    x-corthex-column: confirm_cards.card_key
+                                  choice:
+                                    type: string
+                                    enum:
+                                    - confirm
+                                    - decline
+                                  orderNo:
+                                    type: string
+                                    minLength: 6
+                                    maxLength: 8
+                                    pattern: ^[0-9A-Z]{6,8}$
+                                    description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
+                                  check:
+                                    type: string
+                                    enum:
+                                    - card
+                                    - orderer_info
+                                    - allergy_answer
+                                    - depositor_name
+                                    - review
+                                additionalProperties: false
+                            additionalProperties: false
+                          minItems: 0
+                          maxItems: 3
+                      additionalProperties: false
+                  additionalProperties: false
+                - type: object
+                  required:
+                  - simpleImage
+                  properties:
+                    simpleImage:
+                      type: object
+                      required:
+                      - imageUrl
+                      - altText
+                      properties:
+                        imageUrl:
+                          type: string
+                          format: uri
+                          maxLength: 2048
+                        altText:
+                          type: string
+                          minLength: 1
+                          maxLength: 50
+                          description: 스크린 리더가 읽는 대체 글. 카카오 응답 형식의 최대 50자(설계 재검토 RD-14). 접근성 때문에 꼭 넣는 값으로 둠
+                      additionalProperties: false
+                  additionalProperties: false
+              minItems: 0
+              maxItems: 0
+          additionalProperties: false
+      additionalProperties: false
     SkillResponse:
       oneOf:
       - $ref: '#/components/schemas/SkillTemplateResponse'
       - $ref: '#/components/schemas/SkillCallbackAck'
+      - $ref: '#/components/schemas/SkillNoOutput'
     KakaoCallbackResult:
       type: object
       description: 카카오가 콜백 요청에 반환하는 결과(카카오 문서)
@@ -33879,7 +34026,7 @@ components:
         - API-070
       ai_timeout:
         spec: SPEC-017
-        meaning: 전체 기한(받은 때부터 55초, AI-1. 콜백 문서의 유효 시간은 5분, OPEN-2)까지 AI 답이 없어 에스컬레이션함. 콜백으로 감
+        meaning: 전체 기한(받은 때부터 55초, AI-1. 콜백 문서의 유효 시간은 5분, DEC-29)까지 AI 답이 없어 에스컬레이션함. 콜백으로 감
         message: 사장님 확인 뒤 답드릴게요
         handoff: callback_timeout
         operations:
@@ -33950,8 +34097,8 @@ components:
         - API-070
       duplicate:
         spec: SPEC-017
-        meaning: 같은 카카오 요청이 다시 옴. 처음 결과를 다시 보내고 기록·AI 호출·명령을 다시 하지 않음(REQ-132)
-        message: (처음 결과와 같은 말)
+        meaning: 같은 카카오 요청이 다시 옴. API-070은 빈 출력으로 답하고 기록·AI 호출·명령을 다시 하지 않음(REQ-132, DEC-29). 카드·후기 스킬은 기존 응답 계약을 적용
+        message: (메시지 스킬은 말풍선 없음)
         operations:
         - API-070
         - API-072
@@ -34186,7 +34333,7 @@ components:
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-04
       title: 사장님·운영자 명령은 요청 키를 꼭 가짐
-      choice: '사장님·운영자의 쓰기 명령은 `Idempotency-Key` 헤더(16~64자, 영문·숫자·`_`·`-`)가 꼭 있어야 하고, 빼면 422 `validation_failed`(header:Idempotency-Key, required). 서버는 (누른 사람, 키)마다 명령·경로의 ID·본문으로 만든 요청 지문(HMAC-SHA256)과 처리 상태를 남김(05단계 TBL-050 `request_keys`, 5절 E27). 같은 키에 지문이 다르면 422 `idempotency_key_reused`, 첫 요청을 처리하는 중(받은 뒤 60초 안)이면 409 `request_in_progress`이고, 60초가 지나도 끝나지 않은 요청(서버가 멈춤)은 같은 키·같은 지문의 다음 요청이 이어받아 처음부터 처리함. 끝난 요청에 같은 키가 다시 오면 처음 결과와 같은 상태 코드·결과 종류에, 처음 결과가 가리킨 기록을 지금 다시 읽은 본문을 반환하고 `Idempotency-Replayed: true`를 붙임(처음 본문은 이름·연락처 같은 개인정보가 있어 남기지 않음). 입력 검사 실패(422)와 서버 오류(5xx)는 남기지 않아 같은 키로 다시 보낼 수 있음. 로그인이 필요함(401), 확인이 필요함(409 `confirmation_required`), 요청이 너무 많음(429)도 명령을 처리하지 않은 결과라 남기지 않음. 남기면 로그인한 뒤, 확인을 받은 뒤, 한도가 풀린 뒤에 같은 키로 다시 보내도 처음의 거절만 돌아가기 때문(구현하며 좁힌 해석, 2026-11-15, 10단계 TASK-018). 요청 키는 24시간 뒤 지움(SPEC-065). 결제 안내·환불·가예약·할 일·알림·손님 안내·장부 쓰기처럼 서버가 스스로 하는 일은 요청 키가 아니라 05단계 4절 A33의 이벤트 키(`pay:{대상 ID}:{결제 종류}`, `refund:{대상 ID}:{사유}`, `hold:{주문 ID}:{결제 안내 ID}` 등)로 가게마다 한 번만 남기고, 환불은 대상(취소한 주문·변경 요청·문제 신고·결제 안내)마다 하나(2026-11-14 설계 재검토 M7). 로그인·로그아웃, 사진 올리기(다시 해도 새 uploadId가 하나 더 생길 뿐), 구글 권한 요청 시작(기록을 바꾸지 않음)은 받지 않음. 카카오 스킬은 카카오 요청으로 만든 키(OPEN-1)와 카드 키를 씀'
+      choice: '사장님·운영자의 쓰기 명령은 `Idempotency-Key` 헤더(16~64자, 영문·숫자·`_`·`-`)가 꼭 있어야 하고, 빼면 422 `validation_failed`(header:Idempotency-Key, required). 서버는 (누른 사람, 키)마다 명령·경로의 ID·본문으로 만든 요청 지문(HMAC-SHA256)과 처리 상태를 남김(05단계 TBL-050 `request_keys`, 5절 E27). 같은 키에 지문이 다르면 422 `idempotency_key_reused`, 첫 요청을 처리하는 중(받은 뒤 60초 안)이면 409 `request_in_progress`이고, 60초가 지나도 끝나지 않은 요청(서버가 멈춤)은 같은 키·같은 지문의 다음 요청이 이어받아 처음부터 처리함. 끝난 요청에 같은 키가 다시 오면 처음 결과와 같은 상태 코드·결과 종류에, 처음 결과가 가리킨 기록을 지금 다시 읽은 본문을 반환하고 `Idempotency-Replayed: true`를 붙임(처음 본문은 이름·연락처 같은 개인정보가 있어 남기지 않음). 입력 검사 실패(422)와 서버 오류(5xx)는 남기지 않아 같은 키로 다시 보낼 수 있음. 로그인이 필요함(401), 확인이 필요함(409 `confirmation_required`), 요청이 너무 많음(429)도 명령을 처리하지 않은 결과라 남기지 않음. 남기면 로그인한 뒤, 확인을 받은 뒤, 한도가 풀린 뒤에 같은 키로 다시 보내도 처음의 거절만 돌아가기 때문(구현하며 좁힌 해석, 2026-11-15, 10단계 TASK-018). 요청 키는 24시간 뒤 지움(SPEC-065). 결제 안내·환불·가예약·할 일·알림·손님 안내·장부 쓰기처럼 서버가 스스로 하는 일은 요청 키가 아니라 05단계 4절 A33의 이벤트 키(`pay:{대상 ID}:{결제 종류}`, `refund:{대상 ID}:{사유}`, `hold:{주문 ID}:{결제 안내 ID}` 등)로 가게마다 한 번만 남기고, 환불은 대상(취소한 주문·변경 요청·문제 신고·결제 안내)마다 하나(2026-11-14 설계 재검토 M7). 로그인·로그아웃, 사진 올리기(다시 해도 새 uploadId가 하나 더 생길 뿐), 구글 권한 요청 시작(기록을 바꾸지 않음)은 받지 않음. 카카오 스킬은 카카오 요청으로 만든 키(DEC-28)와 카드 키를 씀'
       why: G2(화면 버튼은 화면이 만든 키)와 TBL-050 request_keys. 요청 지문과 처리 상태가 없으면 같은 키의 다른 내용과 처리 중을 가릴 수 없고, 처음 본문을 남기면 개인정보가 지우기 밖에 남음. 이벤트 키의 형식과 대상이 정해지지 않으면 같은 환불·결제 안내가 다른 키로 두 번 남을 수 있음(설계 재검토 M7, RC-16·RD-05·RC-06)
       alt: '키 없이 버전 비교만: 네트워크가 끊겨 다시 보낸 요청이 두 번 남을 수 있음. 처음 응답 본문을 그대로 남김: 같은 바이트를 돌려주지만 이름·연락처가 요청 키에 남고 지우기 차례가 늘어남'
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
@@ -34222,7 +34369,7 @@ components:
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-10
       title: 사장님 로그인은 인가 코드를 서버가 바꿈
-      choice: '사장님 로그인은 `POST /owner/session/authorization`(API-078)으로 시작함: 서버가 일회용 nonce를 로그인 시작 쿠키 `siljang_login`(HttpOnly·Secure·SameSite=Lax, 10분)에 두고, nonce와 만료 시각을 서버 시크릿으로 서명한 state와 nonce로 만든 PKCE code_verifier의 S256 code_challenge를 담은 카카오 인가 주소를 줌(둘 다 저장하지 않음, PKCE는 OPEN-11). 화면이 카카오 로그인으로 받은 인가 코드와 state를 `POST /owner/session`으로 보내면 서버는 state가 서명·10분·쿠키의 nonce와 맞을 때만 토큰으로 바꿔(아니면 카카오를 호출하지 않고 401 `kakao_login_failed`) 카카오 로그인 사용자 번호만 남기고 토큰은 버림. 세션은 HttpOnly·Secure 쿠키. 세션 쿠키로 쓰는 명령은 Origin 헤더가 우리 화면 주소일 때만 받고, 아니면 세션이 없는 것과 같은 401(2026-11-13 설계 재검토 M18). 운영자는 이메일·비밀번호·6자리 번호로 `POST /operator/session`'
+      choice: '사장님 로그인은 `POST /owner/session/authorization`(API-078)으로 시작함: 서버가 일회용 nonce를 로그인 시작 쿠키 `siljang_login`(HttpOnly·Secure·SameSite=Lax, 10분)에 두고, nonce와 만료 시각을 서버 시크릿으로 서명한 state와 nonce로 만든 PKCE code_verifier의 S256 code_challenge를 담은 카카오 인가 주소를 줌(둘 다 저장하지 않음, PC 카드로 S256 검증 완료, PKCE 없이 토큰이 나오는 경우에도 제품은 S256을 함께 사용). 화면이 카카오 로그인으로 받은 인가 코드와 state를 `POST /owner/session`으로 보내면 서버는 state가 서명·10분·쿠키의 nonce와 맞을 때만 토큰으로 바꿔(아니면 카카오를 호출하지 않고 401 `kakao_login_failed`) 카카오 로그인 사용자 번호만 남기고 토큰은 버림. 세션은 HttpOnly·Secure 쿠키. 세션 쿠키로 쓰는 명령은 Origin 헤더가 우리 화면 주소일 때만 받고, 아니면 세션이 없는 것과 같은 401(2026-11-13 설계 재검토 M18). 운영자는 이메일·비밀번호·6자리 번호로 `POST /operator/session`'
       why: SPEC-001(카카오 토큰을 남기지 않음), R2. 쿠키라 화면 코드가 세션 값을 만지지 않음
       alt: '토큰을 화면에 줌: 화면 저장소가 털리면 세션도 털림'
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
@@ -34285,9 +34432,9 @@ components:
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-20
       title: 손님 안내는 가게 봇의 Event API를 우리 앱 키와 우리 월렛으로
-      choice: 가게 채널을 우리 카카오 디벨로퍼스 앱(비즈니스 인증, 카카오 로그인 활성화)에 연결하고, 가게 봇마다 우리 월렛 하나를 연결함(월렛은 '연결대기'일 때 봇 하나에만 연결됨). 우리 서버가 우리 앱의 REST API 키로 `POST https://bot-api.kakao.com/v2/bots/{botId}/talk`(이벤트 이름 `siljang_notice`, 받는 사람은 손님의 봇 사용자 키, params에는 안내 키만)를 부르고, 가게 봇의 '안내' 블록이 안내 스킬(API-073)을 불러 우리 기록의 글과 버튼을 보임. 카카오가 요청을 받으면(taskId) '확인 중'으로 두고 `GET https://bot-api.kakao.com/v1/tasks/{taskId}`로 1분·5분·30분 뒤 발송 결과를 조회해 닿았을 때만 '보냄'. 메시지 비용(닿은 건당 15원, 부가세 별도)은 우리가 내고 요금에 넣음. 연결한 뒤 시험 안내를 한 번 보내 먼저 보내기 됨·안 됨을 가게마다 남기고, 안 되는 가게의 손님 안내는 다음 대화 때 전함. 안내 스킬이 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 보내지 않게 함(DEC-07의 예외)
+      choice: 가게 채널을 우리 카카오 디벨로퍼스 앱(비즈니스 인증, 카카오 로그인 활성화)에 연결하고, 가게 봇마다 우리 월렛 하나를 연결함(월렛은 '연결대기'일 때 봇 하나에만 연결됨). 우리 서버가 우리 앱의 REST API 키로 `POST https://bot-api.kakao.com/v2/bots/{botId}/talk`(이벤트 이름 `siljang_notice`, 받는 사람은 손님의 봇 사용자 키, params에는 안내 키만)를 부르고, 가게 봇의 '안내' 블록이 안내 스킬(API-073)을 불러 우리 기록의 글과 버튼을 보임. 카카오가 요청을 받으면(taskId) '확인 중'으로 두고 `GET https://bot-api.kakao.com/v1/tasks/{taskId}`로 1분·5분·30분 뒤 발송 결과를 조회해 닿았을 때만 '보냄'. 메시지 비용(닿은 건당 15원, 부가세 별도)은 우리가 내고 요금에 넣음. 연결한 뒤 시험 안내를 한 번 보내 먼저 보내기 됨·안 됨을 가게마다 남기고, 안 되는 가게의 손님 안내는 다음 대화 때 전함. 무료 MVP의 발신은 다음 대화 때 진행하고 권한·월렛과 실제 발신은 출시 검토 TASK-167에서 시험함. 안내 스킬이 안내를 만들지 못하면 200 대신 500을 반환해 카카오가 보내지 않게 함(DEC-07의 예외)
       why: 가게마다 앱과 월렛을 만들게 하면 사장님 일이 크게 늘고 우리가 가게의 키를 맡아야 함(RD-01, RA-10). Event API는 채널 친구에게만 가고 요청 성공은 받았다는 뜻일 뿐이라 결과 조회로만 닿았는지 앎(카카오 비즈니스 도움말 Event API, 2026-11-13 다시 읽음)
-      alt: '가게마다 자기 앱·월렛: 비용은 가게가 내지만 등록이 어렵고 가게의 키를 맡아야 함. 먼저 보내기 없이 다음 대화 때만 전함: 확정 안내와 결제 결과가 늦게 감(먼저 보내기가 안 되는 가게와 OPEN-9가 안 될 때의 대안으로 남김)'
+      alt: '가게마다 자기 앱·월렛: 비용은 가게가 내지만 등록이 어렵고 가게의 키를 맡아야 함. 먼저 보내기 없이 다음 대화 때만 전함: 확정 안내와 결제 결과가 늦게 감(무료 MVP와 먼저 보내기가 안 되는 가게에서 사용)'
       decided: 확정(2026-11-13 20:59 동희님 결정 카드 '추천안대로 (추천)', 설계 재검토 H7)
     - id: DEC-21
       title: 사장님 알림은 우리 서비스 채널 봇이 카카오 로그인 사용자 번호로
@@ -34331,34 +34478,28 @@ components:
       why: 운영자는 몇 명뿐이고 비밀번호·2단계 인증 키를 우리 데이터베이스에 두지 않음(REQ-135). Supabase Auth는 이메일·비밀번호와 TOTP를 HTTP API로 주어 서버가 부를 수 있고 우리 로그인 화면(SCR-046)을 그대로 씀(Supabase 문서 'Multi-Factor Authentication (TOTP)'·'Understanding API keys'와 Auth OpenAPI, 2026-11-18 확인). 세션을 우리 표에 두면 로그아웃·계정 막기 때 서버가 바로 끊음(OWASP Session Management Cheat Sheet, 2026-11-18 확인)
       alt: 'Cloudflare Access: 반복 0 안내서 4-3의 반론이었고 고르지 않음. Supabase 토큰을 세션으로 씀: 12시간 고정(DEC-26)을 토큰 갱신과 따로 지켜야 하고 로그아웃·막기를 Supabase에 맡김. 서명한 쿠키만 씀(표 없음): 로그아웃한 쿠키도 12시간까지 쓰임'
       decided: 확정(2026-11-16 17:01 무렵 동희님 Claude Code 채팅 답 '추천 모두 승인', 10단계 TASK-003, 06단계 OPEN-6을 닫음)
+    - id: DEC-28
+      title: 카카오 스킬의 수신 키·채널 친구·사진·봇 ID
+      choice: 메시지별 ID가 없는 카카오 스킬은 정규화한 봇 ID, userRequest.user.id, userRequest.block.id, 발화, 수신 시각의 고정 2초 구간으로 HMAC-SHA256을 만들어 messages.kakao_message_id에 저장한다. 같은 가게의 같은 키는 한 번만 처리한다. isFriend가 true면 채널 친구, 없거나 false면 친구 아님이다. 일반 사진 주소는 userRequest.utterance에서 받고 안전한 카카오 HTTPS 주소와 이미지 형식을 확인한 뒤 내려받는다. 봇 설정의 기본 정보에서 본 16진수 24자와 스킬 수신 값의 끝 느낌표 하나를 제거한 ID를 대조한다. 보안 이미지 사진은 TASK-167에서 확인한다.
+      why: K-01에서 채널 추가 후에만 isFriend가 왔고, K-02에서 같은 2초 구간의 키가 일치했다. 구간을 넘은 재전송은 같은 키로 판별할 수 없다. K-03b의 단일 요청은 자동 재전송의 부재를 보장하지 않는다. K-06 일반 이미지와 K-09 봇 ID의 PC 시험 결과를 반영했다.
+      alt: 사용자 키만으로 같은 요청을 거르면 사용자의 서로 다른 메시지가 합쳐진다. 스킬의 봇 ID를 그대로 저장하면 설정 화면의 기본 ID와 맞지 않는다.
+      decided: 확정(2026-11-19 개발 채널 TASK-009, 앞의 OPEN-1·3·8을 닫음)
+    - id: DEC-29
+      title: 카카오 콜백 기한과 빈 메시지 응답
+      choice: 콜백을 쓸 때 먼저 4초 안에 콜백 응답을 보내고 AI 응답은 수신 후 55초 안에 처리한다. 콜백 주소의 공식 5분과 한 번 사용을 기준으로 한다. API-070에서 중복 요청과 분당 한도 안내 이후 요청에는 HTTP 200, version 2.0, template.outputs 빈 배열을 반환한다. 분당 한도에 처음 걸린 요청에는 기존 안내를 보낸다.
+      why: K-03a 4.5초 응답 도착, K-03b 6초 응답 미표시, K-04 빈 출력 미표시를 확인했다. K-05 개발 채널에서 321.1초 발신도 성공했지만 제품 기한에 쓰지 않는다.
+      alt: 중복에서 기존 답을 다시 보내면 같은 답이 사용자에게 반복된다. HTTP 204도 PC에서 말풍선이 없었지만 API-070의 JSON 응답을 사용한다.
+      decided: 확정(2026-11-19 개발 채널 TASK-009, 앞의 OPEN-2·4를 닫음)
+    - id: DEC-30
+      title: 후기 버튼의 주문번호
+      choice: 후기 최종 스킬 요청의 clientExtra.orderNo로 해당 주문을 찾고 같은 사용자와 인도 상태를 확인한다. 값이 없으면 그 사용자에게 가장 최근에 보낸 후기 부탁의 주문으로 같은 조건을 확인한다. 보안 이미지 플러그인 사진이 포함된 폰 시험은 TASK-167에서 별도로 확인한다.
+      why: K-08에서 사진이 선택인 PC 블록으로 글·동의를 거친 최종 요청의 번호가 카드에 넣은 번호와 일치했다.
+      alt: 항상 최신 안내로 연결하면 사용자가 예전 후기 카드에 답했을 때 다른 주문에 연결될 수 있다.
+      decided: 확정(2026-11-19 개발 채널 TASK-009, 앞의 OPEN-12를 닫음)
     open:
-    - id: OPEN-1
-      where: API-070
-      text: '카카오 메시지 ID: 스킬 요청 문서(2026-11-12 확인)에 요청·메시지 ID가 없음. 같은 요청 거르기 키는 실제 요청에 쓸 ID가 있으면 그것, 없으면 (봇 ID, 사용자 키, 블록 ID, 발화, 받은 시각을 2초로 내린 값)의 해시로 둠. 카카오가 같은 요청을 다시 보내는지와 함께 개발 전 실제 요청으로 확인'
-    - id: OPEN-2
-      where: API-070
-      text: '콜백 유효 시간: 콜백 문서는 본문과 오류 표 모두 5분(2026-11-14 다시 확인. ''1분''은 문서에 없음, 설계 재검토 RD-15). AI-1의 전체 기한은 받은 때부터 55초라 그보다 짧음. 실제 채널에서 콜백이 받아지는 시간은 개발 전 시험으로 봄'
-    - id: OPEN-3
-      where: API-070
-      text: 사진 메시지가 스킬 요청에 어떻게 오는지(발화에 주소인지, params인지) 문서에 없음. 개발 전 실제 요청으로 확인. 보안 이미지 플러그인(문서 확인)은 후기·신고 사진에 쓸 수 있음
-    - id: OPEN-4
-      where: API-070
-      text: 빈 응답(답을 보내지 않기)이 되는지 문서에 없음. 될 때까지 같은 메시지 반복과 한도 넘은 메시지에는 정해진 짧은 말을 다시 보냄
-    - id: OPEN-8
-      where: API-031
-      text: 사장님이 오픈빌더 봇 ID를 찾는 곳(봇 설정 화면이나 주소)을 07·08단계 연결 안내에서 정함. 봇 ID 형식은 첫 연결 문구 메시지에서 확인
-    - id: OPEN-9
-      where: API-032, API-073
-      text: '먼저 보내기에 가게가 우리에게 줄 권한과 절차: 가게 채널을 우리 카카오 디벨로퍼스 앱에 연결하는 방법(채널은 가게가, 앱은 우리가 가짐), 우리 서비스 계정이 월렛 작업 권한이 있는 봇 작업자로 초대받아 우리 월렛을 가게 봇에 연결할 수 있는지, 다른 사람 채널의 봇에 우리 앱 키로 Event API를 보낼 수 있는지, 이벤트로 부른 스킬 요청의 모양(utterance, userRequest.params). 10단계 WBS의 선행 일로 개발 전에 시험 채널로 확인하고, 안 되면 먼저 보내기 없이 ''다음 대화 때 전함''으로만 시작(REQ-181, 02단계 1-3 가정)'
     - id: OPEN-10
       where: API-031, API-032, API-070
       text: '스킬 요청의 출처: 오픈빌더 문서(2026-11-12 확인)에 요청 서명·출처 IP가 없어, 봇 ID와 스킬 키를 아는 사람이 꾸민 요청과 카카오의 요청을 서버가 가를 수 없음(연결 문구는 화면을 본 사장님만 알지만 채널 대화창에서 왔는지는 증명하지 못함). 11단계 전에 카카오에 스킬 요청의 출처 IP나 서명을 문의함. 남이 봇 ID를 먼저 넣어 막힌 가게(channel_linked_elsewhere)는 운영자가 확인하고 그 ''연결 확인 중'' 연결을 풀고, 키가 샌 가게는 스킬 키를 바로 끊고 바꿈(API-079 revoke_now, 설계 재검토 RD-06)'
-    - id: OPEN-11
-      where: API-078, API-001
-      text: '카카오 로그인의 PKCE: 카카오 로그인 문서(2026-11-14 확인)의 OIDC 설정은 code_challenge_methods_supported S256을 알리지만, 인가 코드 받기·토큰 받기의 매개변수 표에는 code_challenge·code_verifier가 없음. 개발 전 시험 앱으로 보내 보고, 받지 않으면 PKCE 없이 state만으로 시작(state는 매개변수 표에 있음, 설계 재검토 RD-11)'
-    - id: OPEN-12
-      where: API-072
-      text: '후기 블록이 글·사진·게시 동의를 차례로 물은 뒤 부르는 스킬 요청에도 후기 부탁 버튼의 extra(clientExtra.orderNo)가 남는지: 카카오 응답 형식 문서(2026-11-13 설계 재검토 RD-20)는 extra를 ''블록 호출시'' 준다고만 적음. 확인 전 가정: 남음. 개발 전 시험 채널의 실제 후기 블록으로 확인하고, 남지 않으면 그 사용자에게 가장 최근에 보낸 후기 부탁(05단계 notifications의 review_request)의 주문에 붙임'
     jobs:
     - spec: SPEC-024
       job: '사장님 답 기다림 타이머: 기다리는 시간이 지나면 지연 안내 한 번과 다시 알림 한 번(답하는 시간 안에서만 셈, 결제 확인 요청·맞추는 중·환불 결정도, REQ-215). 닫는 때(하루 내내 셈)가 오면 맞춤 주문 요청은 그 픽업 날짜의 주문 마감에 주문을 ''답 없어 닫힘''으로, 변경 요청은 변경 마감에, 에스컬레이션 건은 남긴 지 7일에 ''답 없어 닫힘''으로 닫고 손님에게 한 번 알림(REQ-213, REQ-214, REQ-216). 결제 확인 요청은 결제 기한 상한에 결제 기한 지남으로(SPEC-037). 맞추는 중·환불 결정·문제 신고는 닫지 않음(1-7)'
@@ -34774,7 +34915,7 @@ components:
       decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M16·M18, 검토자의 고치는 방향대로)
       client: 채널 연결 화면(SCR-041)은 사유 후보를 연결 문구 기준으로 보임. 값의 뜻이라 A13은 찾지 않아 여기 적음
     - what: '값의 뜻이 바뀜: API-070 ai_timeout·ai_limit_reached'
-      why: AI 답의 전체 기한은 콜백 유효 시간 - 5초가 아니라 받은 때부터 55초(콜백 문서는 5분, OPEN-2), 한 차례의 모델 호출이 8번에 닿으면 ai_limit_reached로 에스컬레이션(AI-1, 설계 재검토 RD-15·RC-07)
+      why: AI 답의 전체 기한은 콜백 유효 시간 - 5초가 아니라 받은 때부터 55초(콜백 문서는 5분, DEC-29), 한 차례의 모델 호출이 8번에 닿으면 ai_limit_reached로 에스컬레이션(AI-1, 설계 재검토 RD-15·RC-07)
       decided: 2026-11-13 20:59 동희님 결정 카드 '모두 지금 고침 (추천)'(설계 재검토 M16·M18, 검토자의 고치는 방향대로)
       client: 손님에게 보이는 말은 그대로. 결과 이름의 뜻이라 A13은 찾지 않아 여기 적음
     - what: '꼭 넣을 필드 더함: ShopRegistration.businessAddress'

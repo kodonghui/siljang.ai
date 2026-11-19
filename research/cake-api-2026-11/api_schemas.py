@@ -170,7 +170,7 @@ S["OwnerLoginStartInput"] = obj({
 }, ["redirectUri"])
 
 S["OwnerLoginStart"] = all_required({
-    "authorizationUrl": dict(URL, description="카카오 인가 주소. client_id·redirect_uri·response_type=code·state·code_challenge(S256)를 담음. 화면은 이 주소로 이동함(DEC-10, OPEN-11)"),
+    "authorizationUrl": dict(URL, description="카카오 인가 주소. client_id·redirect_uri·response_type=code·state·code_challenge(S256)를 담음. 화면은 이 주소로 이동함(DEC-10, DEC-10)"),
     "state": string(16, 512, r"^[A-Za-z0-9._-]+$", desc="서버가 nonce와 만료 시각을 서명한 값. 저장하지 않음. 카카오가 redirectUri로 돌려주면 API-001에 그대로 보냄(DEC-10)"),
     "expiresAt": dict(DT, description="state와 로그인 시작 쿠키가 지나는 시각(10분 뒤)"),
 }, desc="사장님 로그인 시작: 카카오 인가 주소와 state. nonce는 로그인 시작 쿠키 siljang_login에만 있음")
@@ -650,7 +650,7 @@ S["CalendarDayResult"] = all_required({"outcome": outcome(), "day": ref("Calenda
 BLOCK_NAMES = ["card", "orderer_info", "allergy_answer", "depositor_name", "review"]
 S["KakaoChannelInput"] = obj({
     "baseRevision": nullable(BASE_REVISION),
-    "botId": string(1, 64, r"^\S+$", col="kakao_channels.bot_id", desc="오픈빌더 봇 ID(OPEN-8)"),
+    "botId": string(1, 64, r"^\S+$", col="kakao_channels.bot_id", desc="오픈빌더 설정의 기본 봇 ID(DEC-28)"),
     "channelPublicId": nullable(string(2, 40, r"^_[A-Za-z0-9]+$", col="kakao_channels.channel_public_id", desc="채널 공개 ID(예: _xYzAbC). 예약 링크 페이지의 문의 버튼이 엶")),
     "blockIds": obj({
         "card": nullable(string(1, 100, r"^\S+$", col="kakao_channels.card_block_id", desc="'확인 카드' 블록 ID. 확인 카드 버튼이 부름(SPEC-069)")),
@@ -1335,13 +1335,13 @@ S["SkillPayload"] = obj({
     "userRequest": obj({
         "timezone": string(1, 64),
         "lang": nullable(string(0, 16)),
-        "utterance": string(0, 100000, desc="손님 말. 1,000자를 넘으면 앞 1,000자만 AI에(SPEC-017). 필드 한도 없음(messages.body_masked)"),
-        "callbackUrl": string(9, 2048, r"^https://", fmt="uri", desc="콜백 주소(블록에서 콜백을 켰을 때). 한 번만, 유효 시간 안(OPEN-2)"),
+        "utterance": string(0, 100000, desc="손님 말 또는 일반 사진 HTTPS 주소(DEC-28). 말이 1,000자를 넘으면 앞 1,000자만 AI에(SPEC-017). 필드 한도 없음(messages.body_masked)"),
+        "callbackUrl": string(9, 2048, r"^https://", fmt="uri", desc="콜백 주소(블록에서 콜백을 켰을 때). 공식 5분 안에 한 번, 제품은 수신 후 55초 기한(DEC-29)"),
         "block": obj({"id": string(1, 200), "name": string(0, 200)}, additional=True),
         "params": obj({
             "noticeKey": dict(UUID, description="Event API 요청의 params로 우리가 넘긴 안내 ID(안내 스킬 API-073). 손님에게 보이지 않음(SPEC-066)"),
             "check": enum(["event"], desc="연결 확인의 시험 안내(안내 스킬 API-073, SPEC-008)"),
-        }, desc="카카오가 붙이는 값(예: surface)과 Event API 요청의 params. 사진이 어떻게 오는지는 OPEN-3", additional=True),
+        }, desc="카카오가 붙이는 값(예: surface)과 Event API 요청의 params. 일반 사진 주소는 utterance에 전달(DEC-28)", additional=True),
         "user": obj({
             "id": string(1, 70, col="customers.kakao_user_key", desc="botUserKey(최대 70자). 손님 구분 키(G1)"),
             "type": string(1, 32),
@@ -1351,7 +1351,7 @@ S["SkillPayload"] = obj({
             }, additional=True),
         }, ["id", "type"], additional=True),
     }, ["utterance", "user"], additional=True),
-    "bot": obj({"id": string(1, 64, col="kakao_channels.bot_id", desc="봇 ID. 가게를 찾는 키(SPEC-017)"), "name": string(0, 200)}, ["id"], additional=True),
+    "bot": obj({"id": string(1, 64, col="kakao_channels.bot_id", desc="봇 ID. 끝 느낌표 하나를 제거한 기본 ID로 가게를 찾음(SPEC-017, DEC-28)"), "name": string(0, 200)}, ["id"], additional=True),
     "action": obj({
         "id": string(1, 200), "name": string(0, 200),
         "params": obj({
@@ -1417,7 +1417,11 @@ S["SkillCallbackAck"] = obj({
     "useCallback": {"type": "boolean", "const": True},
     "data": obj({"text": string(1, 1000)}, ["text"]),
 }, ["version", "useCallback"], desc="콜백으로 답한다는 응답(SPEC-017). 답은 userRequest.callbackUrl로 감")
-S["SkillResponse"] = {"oneOf": [ref("SkillTemplateResponse"), ref("SkillCallbackAck")]}
+S["SkillNoOutput"] = obj({
+    "version": enum(["2.0"]),
+    "template": obj({"outputs": arr(OUTPUT, 0, 0)}, ["outputs"]),
+}, ["version", "template"], desc="메시지 스킬의 말풍선 없는 정상 응답(DEC-29)")
+S["SkillResponse"] = {"oneOf": [ref("SkillTemplateResponse"), ref("SkillCallbackAck"), ref("SkillNoOutput")]}
 S["KakaoCallbackResult"] = obj({
     "taskId": string(1, 200), "status": enum(["SUCCESS", "FAIL", "ERROR"]),
     "message": string(0, 1000), "timestamp": {"type": "integer", "minimum": 0, "maximum": 99999999999999},

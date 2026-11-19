@@ -2203,7 +2203,7 @@
         "id": "03h7y0178l0hvzg6dep9xkbd1",
         "tableId": "03h7y0178l0hvzg6deiwnudw3",
         "name": "bot_id",
-        "comment": "오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 키(SPEC-017)",
+        "comment": "오픈빌더 설정의 기본 봇 ID. 수신 값의 끝 느낌표 하나를 제거한 뒤 가게를 찾음(SPEC-017, 06 DEC-28)",
         "dataType": "text",
         "options": 8
       },
@@ -3369,7 +3369,7 @@
         "id": "03h7y0178vyo98xl8niypn96k",
         "tableId": "03h7y0178vyo98xl8n4u42owk",
         "name": "kakao_message_id",
-        "comment": "들어온 카카오 요청의 ID. 같은 요청은 한 번만(REQ-132). 어떤 값을 쓸지는 오픈빌더 문서로 개발 전 확인",
+        "comment": "수신 카카오 메시지의 HMAC-SHA256 중복 확인 키. 정규 봇 ID·사용자 키·블록 ID·발화·수신 2초 구간에서 만듦(REQ-132, 06 DEC-28)",
         "dataType": "text",
         "options": 0
       },

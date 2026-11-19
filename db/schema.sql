@@ -109,7 +109,7 @@ COMMENT ON TABLE shops IS 'TBL-003 가게(TERM-053): 가게 신원 정보·영�
 CREATE TABLE kakao_channels (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 채널 연결 ID
   shop_id            uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 채널을 묶은 가게
-  bot_id             text NOT NULL,                      -- 오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 키(SPEC-017)
+  bot_id             text NOT NULL,                      -- 오픈빌더 설정의 기본 봇 ID. 수신 값의 끝 느낌표 하나를 제거한 뒤 가게를 찾음(SPEC-017, 06 DEC-28)
   channel_public_id  text,                               -- 채널 공개 ID. 예약 링크 페이지의 문의 버튼이 여는 채팅 주소(SPEC-011)
   status             text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'linked', 'failed', 'retired')), -- 연결 확인 중·연결됨·연결 안 됨·바꿔서 그만 받음(SPEC-008)
   check_started_at   timestamptz,                        -- '연결 확인'을 누른 시각(10분 안에 연결 문구와 버튼 블록 다섯이 와야 함)
@@ -384,7 +384,7 @@ CREATE TABLE messages (
   direction         text NOT NULL CHECK (direction IN ('inbound', 'outbound')), -- 수신·발신
   author            text NOT NULL CHECK (author IN ('customer', 'ai', 'system')), -- 손님·AI 상담·서버가 만든 글(고지·정해진 문장). 사장님 답과 먼저 보내는 안내는 notifications
   kind              text NOT NULL DEFAULT 'text' CHECK (kind IN ('text', 'photo', 'card', 'unsupported')), -- 글·사진·확인 카드·받지 않는 것(음성·파일·이모티콘)
-  kakao_message_id  text,                                -- 들어온 카카오 요청의 ID. 같은 요청은 한 번만(REQ-132). 어떤 값을 쓸지는 오픈빌더 문서로 개발 전 확인
+  kakao_message_id  text,                                -- 수신 카카오 메시지의 HMAC-SHA256 중복 확인 키. 정규 봇 ID·사용자 키·블록 ID·발화·수신 2초 구간에서 만듦(REQ-132, 06 DEC-28)
   body_masked       text,                                -- 마스킹한 글: 전화·계좌·카드 번호는 플레이스홀더(SPEC-021). AI·로그는 이것만. 원래 값은 masked_values
   trace_id          text,                                -- 이 메시지를 다룬 차례의 추적 ID(ai_calls와 연결, REQ-131을 잼)
   delivery          text CHECK (delivery IN ('skill_response', 'callback', 'deferred', 'delivered_later', 'failed')), -- 나간 글이 간 길: 바로 답·콜백·다음 대화 때 전할 것·그렇게 전함·실패(SPEC-017)
@@ -1843,7 +1843,7 @@ COMMENT ON COLUMN shops.created_at IS '등록한 시각';
 COMMENT ON COLUMN shops.updated_at IS '마지막으로 고친 시각';
 COMMENT ON COLUMN kakao_channels.id IS '채널 연결 ID';
 COMMENT ON COLUMN kakao_channels.shop_id IS '채널을 묶은 가게';
-COMMENT ON COLUMN kakao_channels.bot_id IS '오픈빌더 봇 ID. 스킬 요청에서 가게를 찾는 키(SPEC-017)';
+COMMENT ON COLUMN kakao_channels.bot_id IS '오픈빌더 설정의 기본 봇 ID. 수신 값의 끝 느낌표 하나를 제거한 뒤 가게를 찾음(SPEC-017, 06 DEC-28)';
 COMMENT ON COLUMN kakao_channels.channel_public_id IS '채널 공개 ID. 예약 링크 페이지의 문의 버튼이 여는 채팅 주소(SPEC-011)';
 COMMENT ON COLUMN kakao_channels.status IS '연결 확인 중·연결됨·연결 안 됨·바꿔서 그만 받음(SPEC-008)';
 COMMENT ON COLUMN kakao_channels.check_started_at IS '''연결 확인''을 누른 시각(10분 안에 연결 문구와 버튼 블록 다섯이 와야 함)';
@@ -1983,7 +1983,7 @@ COMMENT ON COLUMN messages.consultation_id IS '상담';
 COMMENT ON COLUMN messages.direction IS '수신·발신';
 COMMENT ON COLUMN messages.author IS '손님·AI 상담·서버가 만든 글(고지·정해진 문장). 사장님 답과 먼저 보내는 안내는 notifications';
 COMMENT ON COLUMN messages.kind IS '글·사진·확인 카드·받지 않는 것(음성·파일·이모티콘)';
-COMMENT ON COLUMN messages.kakao_message_id IS '들어온 카카오 요청의 ID. 같은 요청은 한 번만(REQ-132). 어떤 값을 쓸지는 오픈빌더 문서로 개발 전 확인';
+COMMENT ON COLUMN messages.kakao_message_id IS '수신 카카오 메시지의 HMAC-SHA256 중복 확인 키. 정규 봇 ID·사용자 키·블록 ID·발화·수신 2초 구간에서 만듦(REQ-132, 06 DEC-28)';
 COMMENT ON COLUMN messages.body_masked IS '마스킹한 글: 전화·계좌·카드 번호는 플레이스홀더(SPEC-021). AI·로그는 이것만. 원래 값은 masked_values';
 COMMENT ON COLUMN messages.trace_id IS '이 메시지를 다룬 차례의 추적 ID(ai_calls와 연결, REQ-131을 잼)';
 COMMENT ON COLUMN messages.delivery IS '나간 글이 간 길: 바로 답·콜백·다음 대화 때 전할 것·그렇게 전함·실패(SPEC-017)';
