@@ -2,7 +2,7 @@ import { sqlStateOf } from "./db";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
 import { publishStoredKakaoCallback, storeKakaoCallback } from "./kakao-callback-store";
 import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
-import { replyKakaoHandoffInTransaction, replyWithKakaoHandoff } from "./kakao-handoff";
+import { replyKakaoHandoffInTransaction } from "./kakao-handoff";
 import { kakaoAiFailureOutcome, kakaoReply } from "./kakao-reply";
 import {
   type InboundReceipt,
@@ -66,13 +66,20 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
       );
       if (prepared instanceof Response) return prepared;
       if (queue === undefined) throw new Error("missing prepared callback queue");
-      if (await publishStoredKakaoCallback(r.db, queue, prepared.receipt.messageId, prepared.envelope, timeLeft))
-        return kakaoReply(r, "callback_pending");
       // 큐 발행 실패의 즉시 안내. 본문 마스킹/AI 업무 처리 전에는 모델을 호출하지 않는다.
       const outcome = kakaoAiFailureOutcome(r.services.aiConfigured ? "unavailable" : "key_missing");
-      return await replyWithKakaoHandoff(r.db, prepared.receipt, r.services.now(), (previous) =>
-        kakaoReply(r, outcome, { previous }),
+      const publication = await publishStoredKakaoCallback(
+        r.db,
+        queue,
+        prepared.receipt,
+        prepared.envelope,
+        timeLeft,
+        (tx) =>
+          replyKakaoHandoffInTransaction(tx, prepared.receipt, r.services.now(), (previous) =>
+            kakaoReply(r, outcome, { previous }),
+          ),
       );
+      return publication.kind === "callback" ? kakaoReply(r, "callback_pending") : publication.value;
     }
     const receipt = await receiveKakaoMessage(r.db, request, messageKind);
     if (receipt.kind === "not_accepting") return kakaoReply(r, receipt.kind, { contactPhone: receipt.contactPhone });

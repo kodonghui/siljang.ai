@@ -59,24 +59,40 @@ export async function storeKakaoCallback(
   return result.rowCount === 0 ? null : envelope;
 }
 
-/** 수신 커밋 뒤에만 큐에 발행한다. */
-export async function publishStoredKakaoCallback(
+interface StoredKakaoCallbackSource {
+  readonly messageId: string;
+  readonly consultationId: string;
+  readonly customerId: string;
+}
+
+/** 수신 커밋 뒤에 발행하고, 거절 때의 봉투 제거와 후속 기록은 함께 커밋한다. */
+export async function publishStoredKakaoCallback<T>(
   db: ShopRequestDb,
   queue: KakaoCallbackQueue,
-  messageId: string,
+  source: StoredKakaoCallbackSource,
   envelope: string,
   timeLeft: () => number,
-): Promise<boolean> {
+  onRejected: (tx: ShopDb) => Promise<T>,
+): Promise<{ readonly kind: "callback" } | { readonly kind: "fallback"; readonly value: T }> {
   const shopId = db.scope.shopId;
-  if (await publishCallback(queue, { shopId, messageId }, timeLeft())) return true;
+  const messageId = source.messageId;
+  if (await publishCallback(queue, { shopId, messageId }, timeLeft())) return { kind: "callback" };
 
-  const cleared = await db.run(
-    `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL
-      WHERE shop_id = $1 AND id = $2 AND kakao_callback_enc = $3 AND kakao_callback_claim_until IS NULL`,
-    [messageId, envelope],
-  );
-  // 제거하지 못했다면 소비자가 선점했거나 끝냈다. 즉시 안내를 겹쳐 만들지 않는다.
-  return cleared.rowCount === 0;
+  return db.transaction(async (tx) => {
+    await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [source.customerId]);
+    await tx.found("SELECT id FROM consultations WHERE shop_id = $1 AND id = $2 AND customer_id = $3 FOR UPDATE", [
+      source.consultationId,
+      source.customerId,
+    ]);
+    const cleared = await tx.run(
+      `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL
+        WHERE shop_id = $1 AND id = $2 AND consultation_id = $3 AND kakao_callback_enc = $4 AND kakao_callback_claim_until IS NULL`,
+      [messageId, source.consultationId, envelope],
+    );
+    // 제거하지 못했다면 소비자가 선점했거나 끝냈다. 즉시 안내를 겹쳐 만들지 않는다.
+    if (cleared.rowCount === 0) return { kind: "callback" };
+    return { kind: "fallback", value: await onRejected(tx) };
+  });
 }
 
 interface Claim {

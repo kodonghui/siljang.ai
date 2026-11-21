@@ -180,8 +180,17 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
       );
       if (envelope === null) throw new Error("시험 콜백 저장 실패");
       expect(
-        await publishStoredKakaoCallback(scoped, { send: async () => {} }, received.messageId, envelope, () => 3000),
-      ).toBe(true);
+        await publishStoredKakaoCallback(
+          scoped,
+          { send: async () => {} },
+          received,
+          envelope,
+          () => 3000,
+          async () => {
+            throw new Error("성공한 큐에서 거절 처리 금지");
+          },
+        ),
+      ).toEqual({ kind: "callback" });
       let text: unknown;
       expect(
         await consumeKakaoCallback({ shopId: shop.shopId, messageId: received.messageId }, env, {
