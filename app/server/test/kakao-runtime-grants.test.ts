@@ -83,17 +83,63 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     expect(logs.lines.join("\n")).not.toContain("합성 제한 역할 질문");
   });
 
+  it("같은 제한 역할로 새 질문을 덧붙이고 중복 요청의 추가 쓰기를 막음", async () => {
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
+    const user = newUuid();
+    const logs = collectLogs();
+    const app = createApp({ services: { now: () => new Date("2026-11-22T10:00:00+09:00") }, logSink: logs.sink });
+    const send = (utterance: string) =>
+      app.request(
+        "/api/kakao/skills/message",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+          body: JSON.stringify({
+            bot: { id: shop.botId },
+            userRequest: {
+              utterance,
+              block: { id: "permissions" },
+              user: { id: user, type: "botUserKey" },
+            },
+            action: { id: "permissions", params: {} },
+          }),
+        },
+        testEnv({ DATABASE_URL: databaseUrl }),
+      );
+    expect((await send("첫 합성 질문")).headers.get("Siljang-Outcome")).toBe("ai_key_missing");
+    expect((await send("다음 합성 질문")).headers.get("Siljang-Outcome")).toBe("ai_key_missing");
+    const duplicate = await send("다음 합성 질문");
+    expect(duplicate.headers.get("Siljang-Outcome")).toBe("duplicate");
+    expect(await duplicate.json()).toEqual({ version: "2.0", template: { outputs: [] } });
+    const { rows } = await db.query(
+      `SELECT h.id, count(q.id)::int AS questions FROM handoffs h
+      JOIN consultations c ON c.id = h.consultation_id JOIN customers u ON u.id = c.customer_id
+      LEFT JOIN handoff_questions q ON q.handoff_id = h.id
+      WHERE h.shop_id = $1 AND u.kakao_user_key = $2 GROUP BY h.id`,
+      [shop.shopId, user],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ questions: 1 });
+    expect(logs.lines.join("\n")).not.toContain("42501");
+  });
+
   it("업무에 필요하지 않은 수정/삭제와 운영 기록/접속기록 권한을 늘리지 않음", async () => {
     const { rows } = await db.query(
       `SELECT
-      has_table_privilege($1, 'public.handoffs', 'UPDATE') AS handoff_update,
+      has_any_column_privilege($1, 'public.handoffs', 'UPDATE') AS handoff_update,
       has_table_privilege($1, 'public.handoffs', 'DELETE') AS handoff_delete,
-      has_table_privilege($1, 'public.owner_tasks', 'UPDATE') AS task_update,
+      has_any_column_privilege($1, 'public.handoff_questions', 'UPDATE') AS question_update,
+      has_table_privilege($1, 'public.handoff_questions', 'DELETE') AS question_delete,
+      has_any_column_privilege($1, 'public.owner_tasks', 'UPDATE') AS task_update,
+      has_table_privilege($1, 'public.owner_tasks', 'DELETE') AS task_delete,
+      has_any_column_privilege($1, 'public.owner_alerts', 'UPDATE') AS alert_update,
       has_table_privilege($1, 'public.owner_alerts', 'DELETE') AS alert_delete,
-      has_table_privilege($1, 'public.ops_events', 'UPDATE') AS ops_update,
+      has_any_column_privilege($1, 'public.business_calendars', 'UPDATE') AS calendar_update,
+      has_table_privilege($1, 'public.business_calendars', 'DELETE') AS calendar_delete,
+      has_any_column_privilege($1, 'public.ops_events', 'UPDATE') AS ops_update,
       has_table_privilege($1, 'public.ops_events', 'DELETE') AS ops_delete,
       has_table_privilege($1, 'public.access_logs', 'SELECT') AS access_full_select,
-      has_table_privilege($1, 'public.access_logs', 'UPDATE') AS access_update,
+      has_any_column_privilege($1, 'public.access_logs', 'UPDATE') AS access_update,
       has_table_privilege($1, 'public.operators', 'INSERT') AS operator_insert`,
       [role],
     );
@@ -101,8 +147,14 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       {
         handoff_update: false,
         handoff_delete: false,
+        question_update: false,
+        question_delete: false,
         task_update: false,
+        task_delete: false,
+        alert_update: false,
         alert_delete: false,
+        calendar_update: false,
+        calendar_delete: false,
         ops_update: false,
         ops_delete: false,
         access_full_select: false,
