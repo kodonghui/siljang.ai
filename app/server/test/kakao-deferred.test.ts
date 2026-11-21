@@ -246,6 +246,79 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
     expect(await noticeState(id)).toEqual({ status: "deferred", sent_at: null });
   });
 
+  it("긴 일반 안내를 콜백으로 전할 때 성공 전에는 표시하지 않고 성공 뒤에만 표시함", async () => {
+    const h = await setup();
+    const text = "가".repeat(1500);
+    const id = await notice(h.shop, text);
+    const ack = await h.call("긴 안내 콜백 질문", "https://bot-api.kakao.com/v1/callback/synthetic_notice_success");
+    expect(ack.headers.get("Siljang-Outcome")).toBe("callback_pending");
+    expect(await noticeState(id)).toEqual({ status: "deferred", sent_at: null });
+    const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const at = new Date(NOW.getTime() + 5000);
+    expect(await consumeKakaoCallback(h.jobs[0], h.env, { now: () => at, fetch: send })).toBe("done");
+    const body = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
+    expectSchema("SkillTemplateResponse", body);
+    expect(body.template.outputs).toHaveLength(3);
+    expect(
+      body.template.outputs
+        .slice(0, 2)
+        .map((o: { simpleText: { text: string } }) => o.simpleText.text)
+        .join(""),
+    ).toBe(text);
+    expect(await noticeState(id)).toEqual({ status: "delivered_on_reply", sent_at: at });
+    expect(await consumeKakaoCallback(h.jobs[0], h.env, { now: () => at, fetch: send })).toBe("done");
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("일반 안내를 콜백으로 전하는 동안 즉시 응답은 같은 안내를 소비하지 않음", async () => {
+    const h = await setup();
+    const id = await notice(h.shop);
+    await h.call("안내 진행 콜백", "https://bot-api.kakao.com/v1/callback/synthetic_notice_active");
+    let entered: () => void = () => {};
+    let release: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const send = vi.fn<typeof fetch>(async () => {
+      entered();
+      await blocked;
+      return Response.json({ status: "SUCCESS" });
+    });
+    const at = new Date(NOW.getTime() + 5000);
+    const first = consumeKakaoCallback(h.jobs[0], h.env, { now: () => at, fetch: send });
+    try {
+      await Promise.race([started, first]);
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(await template(await h.call("안내 진행 즉시 질문")))).not.toContain(OLD_TEXT);
+      expect(await noticeState(id)).toEqual({ status: "deferred", sent_at: null });
+    } finally {
+      release();
+      await first;
+    }
+    expect(await noticeState(id)).toEqual({ status: "delivered_on_reply", sent_at: at });
+  });
+
+  it("지난 상담의 일반 안내도 같은 손님에게 전하고 끝난 상담 상태를 보존함", async () => {
+    const h = await setup();
+    const old = newUuid();
+    await db.query(
+      `INSERT INTO consultations (id, shop_id, customer_id, status, opened_at, ended_at)
+       VALUES ($1, $2, $3, 'ended', $4, $5)`,
+      [old, h.shop.shopId, h.shop.customerId, new Date(NOW.getTime() - 86400000), new Date(NOW.getTime() - 120_000)],
+    );
+    const id = await notice({ ...h.shop, consultationId: old });
+    expect((await template(await h.call("끝난 상담 안내 질문"))).template.outputs[0]).toEqual({
+      simpleText: { text: OLD_TEXT },
+    });
+    expect((await noticeState(id))?.status).toBe("delivered_on_reply");
+    expect((await db.query<{ status: string }>("SELECT status FROM consultations WHERE id = $1", [old])).rows).toEqual([
+      { status: "ended" },
+    ]);
+  });
+
   it("전하지 못한 자기 답을 새 응답보다 먼저 보이고 전달 시각을 한 번 남김", async () => {
     const h = await setup();
     const other = await setup();
