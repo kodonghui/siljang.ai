@@ -219,8 +219,11 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
     }
     const db = connect(settings.secrets.DATABASE_URL);
     c.set("db", db);
-    const skillRequest =
-      c.req.method === "POST" && /^\/api\/kakao\/skills\/(message|card|review|event)\/?$/.test(c.req.path);
+    const skillKind =
+      c.req.method === "POST"
+        ? /^\/api\/kakao\/skills\/(message|card|review|event)\/?$/.exec(c.req.path)?.[1]
+        : undefined;
+    const skillRequest = skillKind !== undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       if (!skillRequest) {
@@ -232,13 +235,14 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
       const deadline = new Promise<void>((resolve) => {
         timer = setTimeout(() => {
           c.set("kakaoSkillTimedOut", true);
-          // 인증 전에는 가게 응답을 주지 않는다. 인증 뒤에는 API의 고정 스킬 오류로 답한다.
-          c.res = c.get("kakaoSkill")
-            ? kakaoReply(
-                { json: (body, status = 200, headers) => c.json(body as object, status, headers) },
-                "server_error",
-              )
-            : problemResponse("internal", c.get("traceId"), pathOf(c.req.url));
+          // 인증 전에는 가게 응답을 주지 않는다. 안내 스킬도500으로 발송을 막는다(DEC-20).
+          c.res =
+            c.get("kakaoSkill") && skillKind !== "event"
+              ? kakaoReply(
+                  { json: (body, status = 200, headers) => c.json(body as object, status, headers) },
+                  "server_error",
+                )
+              : problemResponse("internal", c.get("traceId"), pathOf(c.req.url));
           appLog("error", { event: "kakao_skill_timeout", traceId: c.get("traceId"), status: c.res.status });
           // 중단 표시는 즉시 세우되 연결 닫기를 응답 앞에서 기다리지 않는다.
           // 늦은 처리·거절된 약속은 관찰하며 Worker에서는 waitUntil로 끝까지 정리한다.
