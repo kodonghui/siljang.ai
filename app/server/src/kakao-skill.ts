@@ -53,7 +53,9 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
     }
     // 본문 마스킹/AI 업무 처리기가 연결되기 전에는 모델을 호출하지 않는다.
     const outcome = kakaoAiFailureOutcome(r.services.aiConfigured ? "unavailable" : "key_missing");
-    return replyWithKakaoHandoff(r.db, receipt, r.services.now(), (previous) => kakaoReply(r, outcome, { previous }));
+    return await replyWithKakaoHandoff(r.db, receipt, r.services.now(), (previous) =>
+      kakaoReply(r, outcome, { previous }),
+    );
   } catch (error) {
     const dbCode = sqlStateOf(error);
     r.log("error", {

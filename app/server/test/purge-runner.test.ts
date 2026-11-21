@@ -56,6 +56,8 @@ describeDb("지난 기록 지우기 실행(TASK-158, SPEC-065 #1~#12)", () => {
     const key = `shops/${f.shopId}/reference/${newUuid()}.webp`;
     await store.put(key, new Uint8Array([1, 2, 3]), "image/webp");
     await db.transaction(async (tx) => {
+      // 고정 지우기 시각 뒤에 시험을 실행해도, 31일 전에 끝난 손님은 그 전에 만들어진 자료다.
+      await tx.query("UPDATE customers SET created_at = $2 WHERE id = $1", [f.customerId, ended]);
       await tx.query(
         "UPDATE payment_requests SET status = 'closed', closed_at = $2, close_reason = 'order_cancelled' WHERE order_id = $1",
         [f.orderId, ended],

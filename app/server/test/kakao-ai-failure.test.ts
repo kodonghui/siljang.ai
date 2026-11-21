@@ -1,6 +1,7 @@
 import { afterAll, expect, it, vi } from "vitest";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
+import { type DbConnector, pgConnector } from "../src/db";
 import { replyWithKakaoHandoff } from "../src/kakao-handoff";
 import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
@@ -19,7 +20,7 @@ describeDb("콜백 없는 카카오 요청의 실제 AI 미준비 처리(TASK-02
     await db.close();
   });
 
-  async function setup(services: ServiceOverrides = {}, extraEnv: Record<string, string> = {}) {
+  async function setup(services: ServiceOverrides = {}, extraEnv: Record<string, string> = {}, connect?: DbConnector) {
     const shop = await createShop(db, "AI 실패 안내 시험 가게");
     await issueTestBookingLink(db, shop);
     await linkTestChannel(db, shop.channelId);
@@ -30,7 +31,11 @@ describeDb("콜백 없는 카카오 요청의 실제 AI 미준비 처리(TASK-02
     );
     const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
     const logs = collectLogs();
-    const app = createApp({ services: { now: () => NOW, ...services }, logSink: logs.sink });
+    const app = createApp({
+      ...(connect === undefined ? {} : { connect }),
+      services: { now: () => NOW, ...services },
+      logSink: logs.sink,
+    });
     const user = newUuid();
     const send = (skillKey = key) =>
       app.request(
@@ -214,5 +219,36 @@ describeDb("콜백 없는 카카오 요청의 실제 AI 미준비 처리(TASK-02
       Response.json({ version: "2.0", template: { outputs: [] } }),
     );
     expect((await h.records()).rows).toHaveLength(1);
+  });
+
+  it("실패 안내의 저장 예외는 내부 내용 없는 200/server_error로 처리함", async () => {
+    const detail = "synthetic-private-alert-storage-error";
+    const connect: DbConnector = (secret) => {
+      const conn = pgConnector(secret);
+      return {
+        query: conn.query.bind(conn),
+        abort: conn.abort.bind(conn),
+        close: conn.close.bind(conn),
+        transaction: (work) =>
+          conn.transaction((tx) =>
+            work({
+              query: (sql, params) => {
+                if (/INSERT INTO owner_alerts/.test(sql)) throw new Error(detail);
+                return tx.query(sql, params);
+              },
+            }),
+          ),
+      };
+    };
+    const h = await setup({}, {}, connect);
+    const response = await h.send();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Siljang-Outcome")).toBe("server_error");
+    const text = await response.text();
+    expectSchema("SkillTemplateResponse", JSON.parse(text));
+    expect(text).not.toContain(detail);
+    expect(h.logs.lines.join("\n")).not.toContain(detail);
+    expect(h.logs.lines.join("\n")).toContain("kakao_skill_failed");
+    expect((await h.records()).rows).toEqual([]);
   });
 });
