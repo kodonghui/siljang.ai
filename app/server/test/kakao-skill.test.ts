@@ -117,11 +117,23 @@ describe("카카오 스킬 연결별 인증(TASK-028, REQ-237·256)", () => {
   });
 
   it("다른 연결의 키를 네 스킬에서 거절하고 기록을 쓰지 않음", async () => {
-    const { call, transaction } = harness();
+    const { call, readShop, transaction } = harness();
     const key = await deriveKakaoSkillKey(SECRET, CHANNEL_B, 1);
     for (const kind of ["message", "card", "review", "event"]) {
       await expectProblem(await call(kind, payload(), key), "skill_key_invalid");
     }
+    expect(transaction).not.toHaveBeenCalled();
+    expect(readShop).not.toHaveBeenCalled();
+  });
+
+  it("가게 B의 유효한 요청에는 B 연락처만 보임", async () => {
+    const { call, readShop, transaction } = harness();
+    const key = await deriveKakaoSkillKey(SECRET, CHANNEL_B, 1);
+    const response = await call("message", payload(BOT_B), key);
+    const body = await response.text();
+    expect(body).toContain("02-000-0000");
+    expect(body).not.toContain("010-1234-5678");
+    expect(readShop).toHaveBeenCalledExactlyOnceWith(SHOP_B);
     expect(transaction).not.toHaveBeenCalled();
   });
 
