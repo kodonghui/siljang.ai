@@ -121,7 +121,7 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     await db.close();
   });
 
-  async function receive(queue: KakaoCallbackQueue, raw = VALID) {
+  async function receive(queue: KakaoCallbackQueue, raw = VALID, userKey = newUuid(), utterance = "합성 콜백 메시지") {
     const app = createApp({ services: { now: () => NOW, kakaoCallbackQueue: queue }, logSink: () => {} });
     return app.request(
       "/api/kakao/skills/message",
@@ -131,10 +131,10 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
         body: JSON.stringify({
           bot: { id: shop.botId },
           userRequest: {
-            utterance: "합성 콜백 메시지",
+            utterance,
             callbackUrl: raw,
             block: { id: "conversation" },
-            user: { id: newUuid(), type: "botUserKey" },
+            user: { id: userKey, type: "botUserKey" },
           },
           action: { id: "test", params: {} },
         }),
@@ -223,6 +223,71 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
       [shop.shopId, consultation],
     );
     expect(rows).toEqual([{ delivery: "deferred" }]);
+  });
+
+  it("만료된 질문을 사장님에게 넘기고 할 일·대기 알림·다음 대화 안내를 함께 남김", async () => {
+    const queue = mockQueue();
+    await receive(queue);
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    const consultation = (await stored(job))?.consultation_id;
+    const now = new Date(NOW.getTime() + SKILL_CALLBACK_MS + 1);
+    const send = vi.fn<typeof fetch>();
+    await consumeKakaoCallback(job, env, { now: () => now, fetch: send });
+    const { rows } = await db.query(
+      `SELECT h.reason, h.source_message_id, c.status, t.kind, t.wait_status, a.status AS alert_status,
+        a.kind AS alert_kind, a.sent_at, m.body_masked, m.delivery
+       FROM handoffs h JOIN consultations c ON c.id = h.consultation_id
+       JOIN owner_tasks t ON t.handoff_id = h.id JOIN owner_alerts a ON a.owner_task_id = t.id
+       JOIN messages m ON m.consultation_id = h.consultation_id AND m.direction = 'outbound'
+       WHERE h.shop_id = $1 AND h.consultation_id = $2`,
+      [shop.shopId, consultation],
+    );
+    expect(rows).toEqual([
+      {
+        reason: "callback_timeout",
+        source_message_id: job.messageId,
+        status: "awaiting_owner",
+        kind: "handoff",
+        wait_status: "waiting",
+        alert_status: "pending",
+        alert_kind: "new_task",
+        sent_at: null,
+        body_masked: "사장님 확인 뒤 답드릴게요.",
+        delivery: "deferred",
+      },
+    ]);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("같은 상담의 새 만료 질문은 열린 건에 덧붙이고 새 할 일을 만들지 않음", async () => {
+    const queue = mockQueue();
+    const user = newUuid();
+    await receive(queue, VALID, user, "첫 합성 질문");
+    await receive(queue, VALID, user, "두 번째 합성 질문");
+    const first = queue.jobs[0] as KakaoCallbackJob;
+    const second = queue.jobs[1] as KakaoCallbackJob;
+    const consultation = (await stored(first))?.consultation_id;
+    const now = () => new Date(NOW.getTime() + SKILL_CALLBACK_MS + 1);
+    const send = vi.fn<typeof fetch>();
+    await consumeKakaoCallback(first, env, { now, fetch: send });
+    await consumeKakaoCallback(second, env, { now, fetch: send });
+    const { rows } = await db.query(
+      `SELECT h.source_message_id, q.message_id, q.reason FROM handoffs h
+        JOIN handoff_questions q ON q.handoff_id = h.id WHERE h.shop_id = $1 AND h.consultation_id = $2`,
+      [shop.shopId, consultation],
+    );
+    expect(rows).toEqual([
+      { source_message_id: first.messageId, message_id: second.messageId, reason: "callback_timeout" },
+    ]);
+    expect(
+      (
+        await db.query(
+          "SELECT id FROM owner_tasks WHERE shop_id = $1 AND handoff_id IN (SELECT id FROM handoffs WHERE consultation_id = $2)",
+          [shop.shopId, consultation],
+        )
+      ).rowCount,
+    ).toBe(1);
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("큐가 접수를 거절하면 콜백 예고 없이 바로 답하고 주소 봉투를 지움", async () => {
