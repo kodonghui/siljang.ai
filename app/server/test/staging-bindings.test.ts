@@ -11,7 +11,7 @@ const queue = "siljang-staging-kakao-callbacks";
 const workflow = parse(readFileSync(new URL("../../../.github/workflows/app.yml", import.meta.url), "utf8"));
 
 describe("스테이징 Worker 바인딩(TASK-173)", () => {
-  it("스테이징이 development 기본값으로 돌아가지 않게 환경 이름을 명시", () => {
+  it("스테이징이 production 기본값으로 돌아가지 않게 환경 이름을 명시", () => {
     expect(staging.vars?.APP_ENV).toBe("staging");
   });
   it("앱의 콜백 발행기를 별도 스테이징 큐에 연결", () => {

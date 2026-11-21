@@ -304,3 +304,10 @@
 - `siljang-staging-kakao-callbacks`와 `siljang-staging-kakao-callbacks-dlq`, 빠져 있던 REQUEST_HASH_KEY·FILE_URL_KEY를 생성했습니다. 값은 메모리에서 만들고 wrangler secret put의 표준 입력으로 전달했습니다. 프로세스 인자·저장소·보고에 값은 남기지 않았습니다. 기존 필드 키와 다른 시험 큐는 유지했습니다. 같은 준비를 다시 실행한 결과 queuesCreated·secretsCreated 모두 빈 목록입니다.
 - 공식 Aside 설치 안내의 서명 검사를 적용했습니다. 유효 서명·공식 게시자·타임스탬프를 확인한 설치 파일만 실행했고 CLI 버전은 1.26.1121.1917입니다. 연결된 계정의 실제 브라우저 작업은 다음 확인입니다.
 - 실제 앱 큐 소비·DB 쓰기·Cron은 미확인입니다. WBS 끝남은 아직 표시하지 않습니다.
+
+## 2026-11-21 · TASK-173 실제 쓰기와 누락 스키마·권한
+
+- 같은 Hyperdrive에 연결한 별도 시험 Worker의 기본 응답은 인증 없음 401입니다. Wrangler 4.158과 secret put·재배포 뒤 인증한 메타데이터 조회는 200입니다. owner_sessions는 없고 messages의 kakao_callback_enc·kakao_callback_deadline_at·kakao_callback_claim_until도 없습니다. messages의 INSERT·UPDATE·DELETE 가운데 허용된 것은 없었습니다. 실제 값이나 연결 문자열은 반환하지 않았습니다.
+- ops_events에 합성 행 한 건을 INSERT한 뒤 새 연결에서 커밋된 행 한 건을 확인했습니다. 시험 결과를 기록할 UPDATE와 정리 DELETE는 SQLSTATE 42501이어서 거절됐습니다. 같은 작업을 다시 부르거나 역할 권한을 늘리지 않았습니다. 합성 행 ID `41065619-7ed5-41ea-a8b1-4ab1df712e57`는 관리자 권한으로 정리할 항목입니다. 종류·0건·숫자 표시만 있고 개인정보는 없습니다.
+- 시험용 소비자를 먼저 분리한 뒤 두 시험 Worker 삭제가 성공했습니다. 최초 Worker 삭제의 10064를 무시하지 않고 소비자 분리 후 다시 삭제했습니다. 기존 시험 큐는 비우지 않았습니다. 새 데드 레터 큐의 합성 ID 메시지 유무도 다음 정리에서 대조합니다. 큐·Cron의 결과 기록이 없으므로 앱 처리 성공으로 기록하지 않습니다.
+- 사용자 세션 1의 Aside 로컬 인증은 challenge 500입니다. 설치 키 초기화나 로그아웃은 하지 않았습니다. agent-desktop은 같은 사용자 세션의 새 비공개 상태 경로에서 정상 status와 필요한 권한·표면을 확인했습니다. 기존 상태 경로는 그대로입니다.
