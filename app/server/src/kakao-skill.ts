@@ -1,5 +1,5 @@
 import { sqlStateOf } from "./db";
-import { kakaoCallback, SKILL_ACK_MS } from "./kakao-callback";
+import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
 import { scheduleKakaoCallback } from "./kakao-callback-store";
 import { kakaoReply } from "./kakao-reply";
 import { kakaoContactPhone, receiveKakaoMessage } from "./kakao-skill-store";
@@ -30,7 +30,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
 
     const queue = r.services.kakaoCallbackQueue;
     const callback = kakaoCallback(request.payload.callbackUrl, request.receivedAt);
-    const ackUntil = request.receivedAt.getTime() + SKILL_ACK_MS;
+    const ackUntil = request.receivedAt.getTime() + SKILL_WORK_MS;
     if (queue !== undefined && callback !== null && r.services.now().getTime() < ackUntil) {
       if (
         await scheduleKakaoCallback(

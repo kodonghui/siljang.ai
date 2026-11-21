@@ -1,9 +1,29 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
-import { DbUnavailableError, pgConnector, TransactionMisuseError } from "../src/db";
+import { DbAbortedError, DbUnavailableError, pgConnector, TransactionMisuseError } from "../src/db";
 import { collectLogs, describeDb, testDb, testEnv } from "./support/db";
+import { createShop } from "./support/shops";
+
+function gate() {
+  let release = () => {};
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release };
+}
 
 describe("데이터베이스 연결 없음", () => {
+  it("요청을 중단하면 이후 query·transaction이 연결을 다시 맺지 않음", async () => {
+    const db = pgConnector(null);
+    expect(db.abort).toBeTypeOf("function");
+    await db.abort();
+    await expect(db.query("SELECT 1")).rejects.toMatchObject({ name: "DbAbortedError" });
+    await expect(db.transaction(async () => 1)).rejects.toMatchObject({ name: "DbAbortedError" });
+    await db.close();
+    await db.abort();
+    await expect(db.query("SELECT 1")).rejects.toMatchObject({ name: "DbAbortedError" });
+  });
+
   it("DATABASE_URL이 없으면 쿼리 때 DbUnavailableError, 앱 응답은 500 internal이고 로그에는 이름만", async () => {
     await expect(pgConnector(null).query("SELECT 1")).rejects.toBeInstanceOf(DbUnavailableError);
     const { lines, sink } = collectLogs();
@@ -31,6 +51,54 @@ describe("데이터베이스 연결 없음", () => {
 describeDb("데이터베이스 연결 층(데이터베이스)", () => {
   const db = testDb();
   afterAll(() => db.close());
+
+  it.each(["query", "commit"])("중단 뒤 트랜잭션의 늦은 %s를 막고 앞선 쓰기도 되돌림", async (tail) => {
+    const shop = await createShop(db, "중단 시험 가게");
+    const before = await db.query("SELECT alert_channel_friend FROM owners WHERE id = $1", [shop.ownerId]);
+    const fresh = testDb();
+    const entered = gate();
+    const finish = gate();
+    const outcome = fresh
+      .transaction(async (tx) => {
+        await tx.query("UPDATE owners SET alert_channel_friend = true WHERE id = $1", [shop.ownerId]);
+        entered.release();
+        await finish.promise;
+        if (tail === "query")
+          await tx.query("UPDATE owners SET alert_channel_friend = true WHERE id = $1", [shop.ownerId]);
+        return "completed";
+      })
+      .catch((error: unknown) => error);
+    try {
+      await entered.promise;
+      await fresh.abort();
+      finish.release();
+      expect(await outcome).toBeInstanceOf(DbAbortedError);
+      expect((await db.query("SELECT alert_channel_friend FROM owners WHERE id = $1", [shop.ownerId])).rows).toEqual(
+        before.rows,
+      );
+      await expect(fresh.query("SELECT 1")).rejects.toBeInstanceOf(DbAbortedError);
+    } finally {
+      finish.release();
+      await outcome;
+      await fresh.close();
+    }
+  });
+
+  it.each(["query", "transaction"])("연결을 맺는 도중 중단해도 기다리던 %s가 SQL을 보내지 않음", async (kind) => {
+    const shop = await createShop(db, "연결 중단 시험 가게");
+    const before = await db.query("SELECT alert_channel_friend FROM owners WHERE id = $1", [shop.ownerId]);
+    const fresh = testDb();
+    const sql = "UPDATE owners SET alert_channel_friend = true WHERE id = $1";
+    const pending =
+      kind === "query" ? fresh.query(sql, [shop.ownerId]) : fresh.transaction((tx) => tx.query(sql, [shop.ownerId]));
+    const outcome = pending.catch((error: unknown) => error);
+    await fresh.abort();
+    expect(await outcome).toBeInstanceOf(DbAbortedError);
+    expect((await db.query("SELECT alert_channel_friend FROM owners WHERE id = $1", [shop.ownerId])).rows).toEqual(
+      before.rows,
+    );
+    await fresh.close();
+  });
 
   it("date는 'YYYY-MM-DD' 글 그대로, timestamptz는 같은 절대 시각의 Date(04 G8)", async () => {
     const r = await db.query<{ d: unknown; t: unknown }>(

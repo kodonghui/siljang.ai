@@ -25,6 +25,8 @@ export interface Queryable {
 export interface RequestDb extends Queryable {
   /** fn이 끝나면 COMMIT, 던지면 ROLLBACK하고 다시 던진다. 트랜잭션 안에서는 바깥 query()를 부르지 못한다. */
   transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T>;
+  /** 요청을 영구 중단한다. 진행 중 연결을 닫고 그 뒤 쿼리·트랜잭션·커밋을 막는다. */
+  abort(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -34,6 +36,11 @@ export type DbConnector = (url: Secret | null) => RequestDb;
 /** DATABASE_URL이 없음. 응답은 internal(500)이고 로그에는 이름만 남는다. */
 export class DbUnavailableError extends Error {
   override readonly name = "DbUnavailableError";
+}
+
+/** 응답 기한을 넘겨 요청의 데이터베이스 처리를 중단함. 같은 요청에서는 다시 연결하지 않는다. */
+export class DbAbortedError extends Error {
+  override readonly name = "DbAbortedError";
 }
 
 /** 트랜잭션 안에서 다른 트랜잭션이나 바깥 query()를 부름(코드의 잘못). */
@@ -70,12 +77,18 @@ class PgRequestDb implements RequestDb {
   readonly #url: Secret | null;
   #client: Promise<Client> | null = null;
   #inTransaction = false;
+  #aborted = false;
 
   constructor(url: Secret | null) {
     this.#url = url;
   }
 
+  #checkActive(): void {
+    if (this.#aborted) throw new DbAbortedError("request database aborted");
+  }
+
   #connect(): Promise<Client> {
+    this.#checkActive();
     if (this.#client === null) {
       const url = this.#url;
       this.#client = (async () => {
@@ -100,11 +113,15 @@ class PgRequestDb implements RequestDb {
   }
 
   async query<R = Record<string, unknown>>(sql: string, params?: readonly unknown[]): Promise<Rows<R>> {
+    this.#checkActive();
     if (this.#inTransaction) throw new TransactionMisuseError("query outside the open transaction");
-    return run<R>(await this.#connect(), sql, params);
+    const client = await this.#connect();
+    this.#checkActive();
+    return run<R>(client, sql, params);
   }
 
   async transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T> {
+    this.#checkActive();
     if (this.#inTransaction) throw new TransactionMisuseError("nested transaction");
     // 연결을 기다리기 전에 표시한다. 기다리는 사이에 다른 transaction()·query()가 같은 연결의 같은 트랜잭션에
     // 끼어들지 않게 하고, 연결에 실패하면 표시를 거둔다.
@@ -112,13 +129,15 @@ class PgRequestDb implements RequestDb {
     let client: Client;
     try {
       client = await this.#connect();
+      this.#checkActive();
     } catch (e) {
       this.#inTransaction = false;
       throw e;
     }
     let open = true;
     const tx: Queryable = {
-      query: <R = Record<string, unknown>>(sql: string, params?: readonly unknown[]) => {
+      query: async <R = Record<string, unknown>>(sql: string, params?: readonly unknown[]) => {
+        this.#checkActive();
         if (!open) return Promise.reject(new TransactionMisuseError("transaction already ended"));
         return run<R>(client, sql, params);
       },
@@ -126,6 +145,7 @@ class PgRequestDb implements RequestDb {
     try {
       await run(client, "BEGIN");
       const result = await fn(tx);
+      this.#checkActive();
       await run(client, "COMMIT");
       return result;
     } catch (e) {
@@ -139,6 +159,11 @@ class PgRequestDb implements RequestDb {
       open = false;
       this.#inTransaction = false;
     }
+  }
+
+  async abort(): Promise<void> {
+    this.#aborted = true;
+    await this.close();
   }
 
   async close(): Promise<void> {

@@ -1,4 +1,6 @@
 export const SKILL_ACK_MS = 4_000;
+/** 응답 전송에 250ms를 남긴 내부 처리 기한. 전체 요청과 큐 발행이 같은 기준을 쓴다. */
+export const SKILL_WORK_MS = SKILL_ACK_MS - 250;
 export const SKILL_CALLBACK_MS = 55_000;
 export const KAKAO_CONSULTATION_UNAVAILABLE_TEXT = "아직 상담을 받지 않아요";
 

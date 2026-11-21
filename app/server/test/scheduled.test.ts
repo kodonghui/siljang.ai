@@ -35,6 +35,7 @@ describe("scheduled 처리기(데이터베이스 없이)", () => {
       transaction: async () => {
         throw new Error("no transaction expected");
       },
+      abort: async () => {},
       close: async () => {
         closed += 1;
       },
@@ -70,6 +71,7 @@ describe("scheduled 처리기(데이터베이스 없이)", () => {
       connect: () => ({
         query: async () => ({ rows: [], rowCount: 0 }),
         transaction: async () => undefined as never,
+        abort: async () => {},
         close: async () => {},
       }),
     });

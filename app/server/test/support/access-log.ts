@@ -68,6 +68,7 @@ export function failingAccessInsert(inner: DbConnector = pgConnector): DbConnect
     return {
       query: (sql, params) => db.query(breakSql(sql), params),
       transaction: (fn) => db.transaction((tx) => fn({ query: (sql, params) => tx.query(breakSql(sql), params) })),
+      abort: () => db.abort(),
       close: () => db.close(),
     };
   };

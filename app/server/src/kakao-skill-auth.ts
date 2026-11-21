@@ -134,7 +134,7 @@ export async function kakaoReceiptKey(
 
 /** 연결 전에는 bot_id로 채널의 식별자와 키 버전만 찾는다. 그 뒤 읽기·쓰기는 가게 범위를 사용한다. */
 async function authorizeKakaoSkill(c: Context<HonoEnv>): Promise<AuthorizedKakaoSkill> {
-  const receivedAt = c.get("services").now();
+  const receivedAt = c.get("kakaoSkillReceivedAt") ?? c.get("services").now();
   const supplied = c.req.header("Siljang-Skill-Key");
   if (supplied === undefined || !SKILL_KEY_FORMAT.test(supplied)) throw new ApiError("skill_key_invalid");
   const signature = fromBase64Url(supplied);
