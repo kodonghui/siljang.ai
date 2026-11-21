@@ -221,6 +221,70 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     expect(rows).toEqual([{ delivery: "callback" }]);
   });
 
+  it.each(["sending", "finished", "deferred"] as const)(
+    "큐 발행 실패 전에 소비자가 %s이면 즉시 안내를 겹쳐 만들지 않음",
+    async (mode) => {
+      const jobs: KakaoCallbackJob[] = [];
+      const processing: Promise<"done" | "retry">[] = [];
+      let started: () => void = () => {};
+      let release: () => void = () => {};
+      const entered = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      const inFlight = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const send = vi.fn<typeof fetch>(async () => {
+        started();
+        if (mode === "sending") await inFlight;
+        return mode === "deferred" ? new Response(null, { status: 503 }) : Response.json({ status: "SUCCESS" });
+      });
+      const queue: KakaoCallbackQueue = {
+        send: async (job) => {
+          jobs.push(job);
+          const work = consumeKakaoCallback(job, env, {
+            now: () => new Date(NOW.getTime() + 5000),
+            fetch: send,
+            logSink: () => {},
+          });
+          processing.push(work);
+          await (mode === "sending" ? Promise.race([entered, work]) : work);
+          throw new Error("합성 큐 발행 결과 불명");
+        },
+      };
+      let response: Response;
+      try {
+        response = await receive(queue);
+      } finally {
+        release();
+        await Promise.all(processing);
+      }
+      const job = jobs[0];
+      if (job === undefined) throw new Error("시험 큐 작업 없음");
+      const consultation = (await stored(job))?.consultation_id;
+      expect(
+        (
+          await db.query(
+            "SELECT delivery FROM messages WHERE shop_id = $1 AND consultation_id = $2 AND direction = 'outbound'",
+            [job.shopId, consultation],
+          )
+        ).rows,
+      ).toEqual([{ delivery: mode === "deferred" ? "deferred" : "callback" }]);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Siljang-Outcome")).toBe("callback_pending");
+      expectSchema("SkillCallbackAck", await response.json());
+      expect(
+        (
+          await db.query("SELECT id FROM handoffs WHERE shop_id = $1 AND source_message_id = $2", [
+            job.shopId,
+            job.messageId,
+          ])
+        ).rowCount,
+      ).toBe(1);
+      expect(send).toHaveBeenCalledTimes(mode === "deferred" ? 2 : 1);
+    },
+  );
+
   it("AI 미준비 콜백은 외부 발신 전에 사장님 질문/할 일/대기 알림을 커밋함", async () => {
     const queue = mockQueue();
     await receive(queue);
