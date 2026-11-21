@@ -1,6 +1,6 @@
 -- 생성: tools/build-staging-db-update.py. 이 파일을 직접 고치지 않는다.
--- 원본 SQL 커밋: d00213f68db12a3b38f900d23b07e8f2c999959e
--- 권한 파일 SHA-256: 016790e93dbb978ed365a36f8684b9b50d781ae7f260151eee8806600df38a68
+-- 원본 SQL 커밋: fab4d3dde7dd7207a02baa76cd4673e5caccddf0
+-- 권한 파일 SHA-256: 0f23afddd02bbfbf74b1669b1099337cbc7af7de6f3ad73974117e6fafb40018
 BEGIN;
 SET LOCAL lock_timeout = '10s';
 SET LOCAL statement_timeout = '30s';
@@ -66,7 +66,7 @@ IF NOT EXISTS (SELECT 1 FROM siljang_deploy.migrations WHERE filename = '0023_ka
 COMMENT ON COLUMN messages.kakao_message_id IS '수신 카카오 메시지의 HMAC-SHA256 중복 확인 키. 정규 봇 ID·사용자 키·블록 ID·발화·수신 2초 구간에서 만듦(REQ-132, 06 DEC-28)';
 COMMENT ON COLUMN kakao_channels.bot_id IS '오픈빌더 설정의 기본 봇 ID. 수신 값의 끝 느낌표 하나를 제거한 뒤 가게를 찾음(SPEC-017, 06 DEC-28)';
 
-INSERT INTO siljang_deploy.migrations (filename, source_commit, sha256, applied_at) VALUES ('0023_kakao_trial_contract_comments.sql', 'd00213f68db12a3b38f900d23b07e8f2c999959e', 'cd5cc93dd42f3ee0b716aee9e1fad2d2b7b736bb74278c94d059ad992d4932a5', now());
+INSERT INTO siljang_deploy.migrations (filename, source_commit, sha256, applied_at) VALUES ('0023_kakao_trial_contract_comments.sql', 'fab4d3dde7dd7207a02baa76cd4673e5caccddf0', 'cd5cc93dd42f3ee0b716aee9e1fad2d2b7b736bb74278c94d059ad992d4932a5', now());
 END IF;
 IF NOT EXISTS (SELECT 1 FROM siljang_deploy.migrations WHERE filename = '0024_kakao_callback_delivery.sql') THEN
 -- TASK-028. 수신 행 하나에 암호화한 콜백 주소와 실행 기한을 둡니다.
@@ -89,7 +89,7 @@ COMMENT ON COLUMN messages.kakao_callback_enc IS '수신 메시지에 연결한 
 COMMENT ON COLUMN messages.kakao_callback_deadline_at IS '수신 뒤 최대 55초의 콜백 처리 기한';
 COMMENT ON COLUMN messages.kakao_callback_claim_until IS '같은 콜백을 중복 실행하지 않도록 잡은 끝 시각';
 
-INSERT INTO siljang_deploy.migrations (filename, source_commit, sha256, applied_at) VALUES ('0024_kakao_callback_delivery.sql', 'd00213f68db12a3b38f900d23b07e8f2c999959e', '4125f2bdc26ceb59ebf27a64d49dba18b45a09e4b459ad94ab630ab51e6c6cda', now());
+INSERT INTO siljang_deploy.migrations (filename, source_commit, sha256, applied_at) VALUES ('0024_kakao_callback_delivery.sql', 'fab4d3dde7dd7207a02baa76cd4673e5caccddf0', '4125f2bdc26ceb59ebf27a64d49dba18b45a09e4b459ad94ab630ab51e6c6cda', now());
 END IF;
 IF NOT EXISTS (SELECT 1 FROM siljang_deploy.migrations WHERE filename = '0025_owner_sessions.sql') THEN
 -- TASK-020 · SPEC-001 · DEC-26. 기존 기록은 바꾸지 않음.
@@ -119,7 +119,7 @@ COMMENT ON COLUMN owner_sessions.last_seen_at IS '마지막으로 쓴 시각. �
 COMMENT ON COLUMN owner_sessions.expires_at IS '마지막으로 쓴 때부터 30일(2592000초, DEC-26)';
 COMMENT ON COLUMN owner_sessions.ended_at IS '로그아웃한 시각. 끝난 세션은 다시 늘리지 않음';
 
-INSERT INTO siljang_deploy.migrations (filename, source_commit, sha256, applied_at) VALUES ('0025_owner_sessions.sql', 'd00213f68db12a3b38f900d23b07e8f2c999959e', '8cf014f4ae4ef854a90377ea75d263d77c490cecf580afbd01b41a0309c2a1ec', now());
+INSERT INTO siljang_deploy.migrations (filename, source_commit, sha256, applied_at) VALUES ('0025_owner_sessions.sql', 'fab4d3dde7dd7207a02baa76cd4673e5caccddf0', '8cf014f4ae4ef854a90377ea75d263d77c490cecf580afbd01b41a0309c2a1ec', now());
 END IF;
 -- TASK-173: 사장님 세션과 카카오 수신·콜백에 필요한 서버 역할 권한.
 -- psql -v runtime_role=<기존 서버 역할> -f tools/staging-login-callback-grants.sql
@@ -139,6 +139,8 @@ GRANT SELECT ON business_calendars TO "siljang_runtime";
 GRANT SELECT ON ai_calls TO "siljang_runtime";
 -- TASK-028: 번호를 가린 본문과 원본 최소 정보는 같은 수신 트랜잭션에서 새로 남긴다.
 GRANT SELECT, INSERT ON masked_values TO "siljang_runtime";
+-- TASK-028: 미전달 일반 글은 다음 응답/콜백에 전한 뒤 상태와 시각만 고친다.
+GRANT SELECT, UPDATE (status, sent_at) ON notifications TO "siljang_runtime";
 
 IF to_regclass('public.owner_sessions') IS NULL OR (SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'messages' AND column_name IN ('kakao_callback_enc','kakao_callback_deadline_at','kakao_callback_claim_until')) <> 3 THEN RAISE EXCEPTION 'migration_schema_incomplete'; END IF;
 END;

@@ -1,5 +1,5 @@
 import { eventKeys, insertOnce } from "./event-keys";
-import { deferredKakaoMessages, markDeferredKakaoMessages } from "./kakao-deferred";
+import { deferredKakaoMessages, deferredKakaoTexts, markDeferredKakaoMessages } from "./kakao-deferred";
 import { KAKAO_HANDOFF_TEXT } from "./kakao-reply";
 import type { InboundReceipt } from "./kakao-skill-store";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
@@ -42,7 +42,7 @@ export async function replyKakaoHandoffInTransaction(
     [receipt.customerId, now],
   );
   const previous = active.rowCount === 0 ? await deferredKakaoMessages(tx, receipt.customerId) : [];
-  const response = render(previous.map((row) => row.text));
+  const response = render(deferredKakaoTexts(previous));
   await markDeferredKakaoMessages(tx, receipt.customerId, previous, now);
   await tx.run(
     `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery, sent_at, created_at)

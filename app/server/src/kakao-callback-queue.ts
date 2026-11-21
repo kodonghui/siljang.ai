@@ -12,7 +12,7 @@ import {
   prepareKakaoCallbackHandoff,
   releaseKakaoCallback,
 } from "./kakao-callback-store";
-import { deferredKakaoMessages } from "./kakao-deferred";
+import { deferredKakaoMessages, deferredKakaoTexts } from "./kakao-deferred";
 import { KAKAO_HANDOFF_TEXT, kakaoAiFailureOutcome } from "./kakao-reply";
 import { type LogSink, log } from "./log";
 import { createServices } from "./services";
@@ -145,7 +145,7 @@ export async function consumeKakaoCallback(
       callback !== null &&
       (await deliverKakaoCallback(
         { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
-        [...previous.map((row) => row.text), KAKAO_HANDOFF_TEXT],
+        [...deferredKakaoTexts(previous), KAKAO_HANDOFF_TEXT],
         { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
       )) === "delivered"
         ? now()

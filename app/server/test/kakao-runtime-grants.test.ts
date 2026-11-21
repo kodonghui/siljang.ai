@@ -84,6 +84,60 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     expect(logs.lines.join("\n")).not.toContain("합성 제한 역할 질문");
   });
 
+  it("일반 안내는 조회와 전달 상태/시각만 바꾸는 제한 역할로 다음 응답에 전함", async () => {
+    const target = await createShop(db, "제한 역할 일반 안내");
+    await issueTestBookingLink(db, target);
+    await linkTestChannel(db, target.channelId);
+    const id = newUuid();
+    await db.query(
+      `INSERT INTO notifications (id, shop_id, customer_id, consultation_id, kind, event_key, template_key, body, status)
+       VALUES ($1, $2, $3, $4, 'owner_reply', $5, 'owner_reply', '합성 사장님 답', 'deferred')`,
+      [id, target.shopId, target.customerId, target.consultationId, `notice:${id}:owner_reply`],
+    );
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), target.channelId, 1);
+    const logs = collectLogs();
+    const at = new Date("2026-11-22T12:00:00+09:00");
+    const response = await createApp({ services: { now: () => at }, logSink: logs.sink }).request(
+      "/api/kakao/skills/message",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+        body: JSON.stringify({
+          bot: { id: target.botId },
+          userRequest: {
+            utterance: "합성 사장님 답 뒤 질문",
+            block: { id: "permissions" },
+            user: { id: target.userKey, type: "botUserKey" },
+          },
+          action: { id: "permissions", params: {} },
+        }),
+      },
+      testEnv({ DATABASE_URL: databaseUrl }),
+    );
+    expect(response.headers.get("Siljang-Outcome")).toBe("ai_key_missing");
+    const body = (await response.json()) as { template: { outputs: unknown[] } };
+    expect(body.template.outputs[0]).toEqual({ simpleText: { text: "합성 사장님 답" } });
+    expect((await db.query("SELECT status, sent_at FROM notifications WHERE id = $1", [id])).rows).toEqual([
+      { status: "delivered_on_reply", sent_at: at },
+    ]);
+    expect(
+      (
+        await db.query(
+          `SELECT has_table_privilege($1, 'notifications', 'SELECT') AS can_read,
+        has_column_privilege($1, 'notifications', 'status', 'UPDATE') AS can_status,
+        has_column_privilege($1, 'notifications', 'sent_at', 'UPDATE') AS can_sent,
+        has_column_privilege($1, 'notifications', 'body', 'UPDATE') AS can_body,
+        has_table_privilege($1, 'notifications', 'INSERT') AS can_insert,
+        has_table_privilege($1, 'notifications', 'DELETE') AS can_delete`,
+          [role],
+        )
+      ).rows,
+    ).toEqual([
+      { can_read: true, can_status: true, can_sent: true, can_body: false, can_insert: false, can_delete: false },
+    ]);
+    expect(logs.lines.join("\n")).not.toContain("42501");
+  });
+
   it("같은 제한 역할로 새 질문을 덧붙이고 중복 요청의 추가 쓰기를 막음", async () => {
     const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
     const user = newUuid();

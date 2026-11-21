@@ -16,3 +16,5 @@ GRANT SELECT ON business_calendars TO :"runtime_role";
 GRANT SELECT ON ai_calls TO :"runtime_role";
 -- TASK-028: 번호를 가린 본문과 원본 최소 정보는 같은 수신 트랜잭션에서 새로 남긴다.
 GRANT SELECT, INSERT ON masked_values TO :"runtime_role";
+-- TASK-028: 미전달 일반 글은 다음 응답/콜백에 전한 뒤 상태와 시각만 고친다.
+GRANT SELECT, UPDATE (status, sent_at) ON notifications TO :"runtime_role";
