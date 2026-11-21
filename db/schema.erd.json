@@ -91,7 +91,8 @@
       "03h8fnq5i83oocwxxzm97hh19",
       "03h8gnpy03k9kj1sl79obce14",
       "03h9ct9k4zvucdjgd86ko8jy8",
-      "03h9ct9kdnh1w0kz49j9gb81f"
+      "03h9ct9kdnh1w0kz49j9gb81f",
+      "03h9xkhw9qp2gkzagnsemsnyd"
     ],
     "relationshipIds": [
       "03h7y0179y91t3fbncx4e1mp5",
@@ -227,7 +228,8 @@
       "03h8h9o7fmal8i2s5slfxxedx",
       "03h8j8qws1dw85bg330wpceby",
       "03h8mjf5fciu9k53xihhau3d7",
-      "03h9ct9qwskzktttmtvnt3yqq"
+      "03h9ct9qwskzktttmtvnt3yqq",
+      "03h9xki444h2zwa85yry3ketf"
     ],
     "indexIds": [
       "03h7y017apioxvv0yn8m6arb8",
@@ -319,7 +321,9 @@
       "03h9ct9qwsn4kw7ac5vdhdpc5",
       "03h9ct9qwsn4kw7ac63ym7g8w",
       "03h9ct9qwy415hwm1xb0q6ukw",
-      "03h9ct9qx3kc47ea1oaho5ql0"
+      "03h9ct9qx3kc47ea1oaho5ql0",
+      "03h9xki444e1s04teb5sey6tb",
+      "03h9xki449y1yfviclwbx8sl3"
     ],
     "memoIds": [
       "03h7y0184s9oftzxoejnroyg3"
@@ -1798,6 +1802,25 @@
         "ui": {
           "x": 2440,
           "y": 8076
+        }
+      },
+      "03h9xkhw9qp2gkzagnsemsnyd": {
+        "id": "03h9xkhw9qp2gkzagnsemsnyd",
+        "name": "owner_sessions",
+        "comment": "TBL-061 사장님 세션: 마지막 사용부터 30일로 연장하고 로그아웃 때 끝냄(DEC-26)",
+        "columnIds": [
+          "03h9xkhwa1j2u6ty27sfc8sit",
+          "03h9xkhwahyqokcoem5t56870",
+          "03h9xkhwanjcu0vn7c4vn5ik3",
+          "03h9xkhwaszututl2payjra9x",
+          "03h9xkhwayctyywf2qu274rk9",
+          "03h9xkhwayctyywf2qy3q063y",
+          "03h9xkhwb3vqg83hk0on5smwo"
+        ],
+        "groupId": "03h7y017wkyrgfkkkeykxgwvj",
+        "ui": {
+          "x": 3883,
+          "y": 7848
         }
       }
     },
@@ -7914,6 +7937,63 @@
         "comment": "시도를 시작한 시각. 성공하면 그 이메일의 행을 모두 지우고, 인증 서비스가 답하지 않으면 그 행을 지움. 남은 행이 실패(06 DEC-16)",
         "dataType": "timestamptz",
         "options": 8
+      },
+      "03h9xkhwa1j2u6ty27sfc8sit": {
+        "id": "03h9xkhwa1j2u6ty27sfc8sit",
+        "tableId": "03h9xkhw9qp2gkzagnsemsnyd",
+        "name": "id",
+        "comment": "세션 ID",
+        "dataType": "uuid",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "03h9xkhwahyqokcoem5t56870": {
+        "id": "03h9xkhwahyqokcoem5t56870",
+        "tableId": "03h9xkhw9qp2gkzagnsemsnyd",
+        "name": "owner_id",
+        "comment": "로그인한 사장님",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03h9xkhwanjcu0vn7c4vn5ik3": {
+        "id": "03h9xkhwanjcu0vn7c4vn5ik3",
+        "tableId": "03h9xkhw9qp2gkzagnsemsnyd",
+        "name": "token_hash",
+        "comment": "세션 쿠키 값의 SHA-256. 원래 쿠키 값은 남기지 않음(REQ-135)",
+        "dataType": "text",
+        "options": 12
+      },
+      "03h9xkhwaszututl2payjra9x": {
+        "id": "03h9xkhwaszututl2payjra9x",
+        "tableId": "03h9xkhw9qp2gkzagnsemsnyd",
+        "name": "created_at",
+        "comment": "로그인한 시각",
+        "dataType": "timestamptz",
+        "options": 8
+      },
+      "03h9xkhwayctyywf2qu274rk9": {
+        "id": "03h9xkhwayctyywf2qu274rk9",
+        "tableId": "03h9xkhw9qp2gkzagnsemsnyd",
+        "name": "last_seen_at",
+        "comment": "마지막으로 쓴 시각. 동시에 온 요청에서 뒤로 가지 않음",
+        "dataType": "timestamptz",
+        "options": 8
+      },
+      "03h9xkhwayctyywf2qy3q063y": {
+        "id": "03h9xkhwayctyywf2qy3q063y",
+        "tableId": "03h9xkhw9qp2gkzagnsemsnyd",
+        "name": "expires_at",
+        "comment": "마지막으로 쓴 때부터 30일(2592000초, DEC-26)",
+        "dataType": "timestamptz",
+        "options": 8
+      },
+      "03h9xkhwb3vqg83hk0on5smwo": {
+        "id": "03h9xkhwb3vqg83hk0on5smwo",
+        "tableId": "03h9xkhw9qp2gkzagnsemsnyd",
+        "name": "ended_at",
+        "comment": "로그아웃한 시각. 끝난 세션은 다시 늘리지 않음",
+        "dataType": "timestamptz",
+        "options": 0
       }
     },
     "relationshipEntities": {
@@ -10590,6 +10670,24 @@
             "03h9ct9k55avfrb8rnd2dfo0g"
           ]
         }
+      },
+      "03h9xki444h2zwa85yry3ketf": {
+        "id": "03h9xki444h2zwa85yry3ketf",
+        "relationshipType": 4,
+        "onDelete": 32,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h7y0178fic3fnl5upga2t57",
+          "columnIds": [
+            "03h7y0178fic3fnl5uspyueem"
+          ]
+        },
+        "end": {
+          "tableId": "03h9xkhw9qp2gkzagnsemsnyd",
+          "columnIds": [
+            "03h9xkhwahyqokcoem5t56870"
+          ]
+        }
       }
     },
     "indexEntities": {
@@ -11496,6 +11594,24 @@
         "tableId": "03h9ct9k4zvucdjgd86ko8jy8",
         "indexColumnIds": [
           "03h9ct9qx3kc47ea1ofr67hlh"
+        ],
+        "unique": false
+      },
+      "03h9xki444e1s04teb5sey6tb": {
+        "id": "03h9xki444e1s04teb5sey6tb",
+        "name": "owner_sessions_expires_idx",
+        "tableId": "03h9xkhw9qp2gkzagnsemsnyd",
+        "indexColumnIds": [
+          "03h9xki449y1yfviclsjj1sdt"
+        ],
+        "unique": false
+      },
+      "03h9xki449y1yfviclwbx8sl3": {
+        "id": "03h9xki449y1yfviclwbx8sl3",
+        "name": "owner_sessions_owner_idx",
+        "tableId": "03h9xkhw9qp2gkzagnsemsnyd",
+        "indexColumnIds": [
+          "03h9xki449y1yfvicm1t1rpux"
         ],
         "unique": false
       }
@@ -12616,12 +12732,24 @@
         "indexId": "03h9ct9qx3kc47ea1oaho5ql0",
         "columnId": "03h9ct9k55avfrb8rnd2dfo0g",
         "orderType": 1
+      },
+      "03h9xki449y1yfviclsjj1sdt": {
+        "id": "03h9xki449y1yfviclsjj1sdt",
+        "indexId": "03h9xki444e1s04teb5sey6tb",
+        "columnId": "03h9xkhwayctyywf2qy3q063y",
+        "orderType": 1
+      },
+      "03h9xki449y1yfvicm1t1rpux": {
+        "id": "03h9xki449y1yfvicm1t1rpux",
+        "indexId": "03h9xki449y1yfviclwbx8sl3",
+        "columnId": "03h9xkhwahyqokcoem5t56870",
+        "orderType": 1
       }
     },
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 425개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check, 운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 operators_end_sessions)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 429개와 트리거(접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check, 운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 operators_end_sessions)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,

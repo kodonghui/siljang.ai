@@ -581,3 +581,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 143. TASK-028의 카카오 콜백은 `KAKAO_CALLBACK_QUEUE`가 연결된 환경에서 사용합니다. 콜백 주소는 암호화한 뒤 마이그레이션 0024의 수신 행에 두고, 큐에는 가게와 메시지의 ID를 넣습니다. 55초 기한이 지나거나 전송이 실패하면 다음 대화에서 전할 답을 남깁니다. 연결과 무료 스테이징 검증은 TASK-173입니다.
 
 144. TASK-028 PR #119의 형식 오류 두 건은 `npm run format`으로 고쳤습니다. 콜백 저장·큐 처리와 작업 전체 완료는 구분합니다. AI 실패 다섯 분기, API-070~073 전체 응답, G4·G5는 후속 PR에서 확인합니다. 로컬 시험은 Node 22.23.4와 PostgreSQL 16.15에서 서버 785개·웹 192개가 통과했습니다. 단계 검사 7개는 통과했고, API는 미변경으로 생략, mockup 화면 검사는 브라우저 실행 오류로 미실행입니다. Aside·agent-desktop 부재로 실제 카카오 화면 검사는 미실행입니다.
+
+145. TASK-020은 사장님 카카오 로그인(API-078·001·002·003)과 `owner_sessions`(TBL-061, 마이그레이션 0025)를 추가합니다. `siljang_login`은 10분 nonce 쿠키이며 서명 state와 PKCE S256을 브라우저·허용한 리다이렉트 주소에 묶습니다. `siljang_owner`는 무작위 값의 해시만 저장하며 인증 요청마다 동일 쿠키의 Max-Age와 서버 만료를 30일로 늘립니다. 설정은 `KAKAO_REST_API_KEY`·`KAKAO_CLIENT_SECRET`·`KAKAO_OWNER_REDIRECT_URIS`·`KAKAO_ALERT_CHANNEL_ID`, 1분 친구 재조회에는 `KAKAO_ADMIN_KEY`입니다. 비밀 값은 Worker와 Vault, 로컬 `.dev.vars`에만 둡니다. 실패 시험 세 개가 구현 후 통과했습니다. 전체 응답별 시험과 스테이징 설정·로그인은 진행 중입니다.

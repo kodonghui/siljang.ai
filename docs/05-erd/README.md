@@ -128,6 +128,7 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-058 | `shop_identity_changes` | 사업자 정보 변경 요청 | CTX-007 | 078 | TERM-053 |
 | TBL-059 | `operator_sessions` | 운영자 세션 | CTX-007 | 001 | 없음 |
 | TBL-060 | `operator_login_failures` | 운영자 로그인 실패 | CTX-007 | 001 | 없음 |
+| TBL-061 | `owner_sessions` | 사장님 세션 | CTX-007 | 001 | 없음 |
 <!-- build_erd:tables:end -->
 
 ### 3-3. 컨텍스트별 다이어그램
@@ -145,7 +146,7 @@ flowchart LR
   C3["CTX-004 결제·환불<br/>테이블 4개"]
   C4["CTX-005 제작·전달<br/>테이블 3개"]
   C5["CTX-006 후기·포트폴리오<br/>테이블 4개"]
-  C6["CTX-007 가게 등록·연결<br/>테이블 8개"]
+  C6["CTX-007 가게 등록·연결<br/>테이블 9개"]
   C7["CTX-008 알림<br/>테이블 3개"]
   C8["CTX-009 장부 연결<br/>테이블 3개"]
   C9["공통<br/>테이블 4개"]
@@ -582,7 +583,7 @@ erDiagram
 
 ### CTX-007 가게 등록·연결
 
-테이블: TBL-001 `owners`, TBL-002 `operators`, TBL-003 `shops`, TBL-004 `kakao_channels`, TBL-005 `privacy_policies`, TBL-058 `shop_identity_changes`, TBL-059 `operator_sessions`, TBL-060 `operator_login_failures`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
+테이블: TBL-001 `owners`, TBL-002 `operators`, TBL-003 `shops`, TBL-004 `kakao_channels`, TBL-005 `privacy_policies`, TBL-058 `shop_identity_changes`, TBL-059 `operator_sessions`, TBL-060 `operator_login_failures`, TBL-061 `owner_sessions`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
 
 ```mermaid
 erDiagram
@@ -620,6 +621,10 @@ erDiagram
   operator_login_failures {
     uuid id PK "시도 한 번"
   }
+  owner_sessions {
+    uuid id PK "세션 ID"
+    uuid owner_id FK "로그인한 사장님"
+  }
   owners ||--o| shops : "owner_id"
   operators |o--o{ shops : "license_reviewed_by"
   shops ||--o{ kakao_channels : "shop_id"
@@ -627,6 +632,7 @@ erDiagram
   shops ||--o{ shop_identity_changes : "shop_id"
   operators |o--o{ shop_identity_changes : "reviewed_by"
   operators ||--o{ operator_sessions : "operator_id"
+  owners ||--o{ owner_sessions : "owner_id"
 ```
 
 ### CTX-008 알림

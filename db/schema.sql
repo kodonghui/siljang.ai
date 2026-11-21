@@ -1774,6 +1774,24 @@ CREATE INDEX operator_login_failures_email_idx ON operator_login_failures (email
 CREATE INDEX operator_login_failures_attempted_idx ON operator_login_failures (attempted_at); -- 15분 지난 행 지우기(로그인 시도 때)
 COMMENT ON TABLE operator_login_failures IS 'TBL-060 운영자 로그인 실패: 이메일마다 15분에 5번을 넘으면 429(06 DEC-16). 15분 지난 행은 로그인 시도 때 지움(DEC-27)';
 
+-- TBL-061 owner_sessions (CTX-007) ← SPEC-001 | terms: none
+CREATE TABLE owner_sessions (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 세션 ID
+  owner_id      uuid NOT NULL REFERENCES owners (id) ON DELETE RESTRICT, -- 로그인한 사장님
+  token_hash    text NOT NULL CHECK (token_hash ~ '^[0-9a-f]{64}$'), -- 세션 쿠키 값의 SHA-256. 원래 쿠키 값은 남기지 않음(REQ-135)
+  created_at    timestamptz NOT NULL, -- 로그인한 시각
+  last_seen_at  timestamptz NOT NULL, -- 마지막으로 쓴 시각. 동시에 온 요청에서 뒤로 가지 않음
+  expires_at    timestamptz NOT NULL, -- 마지막으로 쓴 때부터 30일(2592000초, DEC-26)
+  ended_at      timestamptz, -- 로그아웃한 시각. 끝난 세션은 다시 늘리지 않음
+  CONSTRAINT owner_sessions_token_uq UNIQUE (token_hash),
+  CONSTRAINT owner_sessions_seen_chk CHECK (last_seen_at >= created_at),
+  CONSTRAINT owner_sessions_sliding_chk CHECK (expires_at = last_seen_at + interval '2592000 seconds'),
+  CONSTRAINT owner_sessions_ended_chk CHECK (ended_at IS NULL OR ended_at >= created_at)
+);
+CREATE INDEX owner_sessions_owner_idx ON owner_sessions (owner_id);
+CREATE INDEX owner_sessions_expires_idx ON owner_sessions (expires_at);
+COMMENT ON TABLE owner_sessions IS 'TBL-061 사장님 세션: 마지막 사용부터 30일로 연장하고 로그아웃 때 끝냄(DEC-26)';
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- 컨텍스트별 테이블
 -- CTX-001 상담: TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-024, TBL-027, TBL-028, TBL-029, TBL-048, TBL-049, TBL-055, TBL-056
@@ -1782,7 +1800,7 @@ COMMENT ON TABLE operator_login_failures IS 'TBL-060 운영자 로그인 실패:
 -- CTX-004 결제·환불: TBL-015, TBL-031, TBL-032, TBL-033
 -- CTX-005 제작·전달: TBL-035, TBL-036, TBL-037
 -- CTX-006 후기·포트폴리오: TBL-038, TBL-039, TBL-040, TBL-041
--- CTX-007 가게 등록·연결: TBL-001, TBL-002, TBL-003, TBL-004, TBL-005, TBL-058, TBL-059, TBL-060
+-- CTX-007 가게 등록·연결: TBL-001, TBL-002, TBL-003, TBL-004, TBL-005, TBL-058, TBL-059, TBL-060, TBL-061
 -- CTX-008 알림: TBL-042, TBL-043, TBL-044
 -- CTX-009 장부 연결: TBL-045, TBL-046, TBL-047
 -- 공통: TBL-050, TBL-051, TBL-053, TBL-054
@@ -2550,4 +2568,11 @@ COMMENT ON COLUMN operator_sessions.ended_at IS '끝낸 시각: 로그아웃, �
 COMMENT ON COLUMN operator_login_failures.id IS '시도 한 번';
 COMMENT ON COLUMN operator_login_failures.email_hash IS '넣은 이메일(앞뒤 공백을 빼고 소문자)의 HMAC-SHA256 소문자 16진수. 이메일 글은 남기지 않음';
 COMMENT ON COLUMN operator_login_failures.attempted_at IS '시도를 시작한 시각. 성공하면 그 이메일의 행을 모두 지우고, 인증 서비스가 답하지 않으면 그 행을 지움. 남은 행이 실패(06 DEC-16)';
+COMMENT ON COLUMN owner_sessions.id IS '세션 ID';
+COMMENT ON COLUMN owner_sessions.owner_id IS '로그인한 사장님';
+COMMENT ON COLUMN owner_sessions.token_hash IS '세션 쿠키 값의 SHA-256. 원래 쿠키 값은 남기지 않음(REQ-135)';
+COMMENT ON COLUMN owner_sessions.created_at IS '로그인한 시각';
+COMMENT ON COLUMN owner_sessions.last_seen_at IS '마지막으로 쓴 시각. 동시에 온 요청에서 뒤로 가지 않음';
+COMMENT ON COLUMN owner_sessions.expires_at IS '마지막으로 쓴 때부터 30일(2592000초, DEC-26)';
+COMMENT ON COLUMN owner_sessions.ended_at IS '로그아웃한 시각. 끝난 세션은 다시 늘리지 않음';
 -- ▲ 컬럼 설명 끝

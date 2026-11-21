@@ -32,7 +32,7 @@ describe("사장님 로그인 계약(TASK-020, API-078·001·002·003)", () => {
       env,
     );
     expect(response.status).toBe(200);
-    const body = await response.json();
+    const body = (await response.json()) as { authorizationUrl: string; state: string };
     expectSchema("OwnerLoginStart", body);
     const url = new URL(body.authorizationUrl);
     expect(url.origin).toBe("https://kauth.kakao.com");

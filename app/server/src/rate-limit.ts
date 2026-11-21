@@ -14,13 +14,14 @@ export interface RateLimiter {
 
 /** 한도 하나: wrangler.jsonc의 바인딩 이름과 값(시험이 wrangler.jsonc와 같은지 본다). */
 export interface RateLimitRule {
-  readonly binding: "UPLOAD_RATE_LIMITER";
+  readonly binding: "UPLOAD_RATE_LIMITER" | "OWNER_LOGIN_RATE_LIMITER";
   readonly limit: number;
   readonly periodSeconds: 10 | 60;
 }
 
 /** 사진 올리기(API-007): 사장님마다 1분에 30번(06 DEC-16, 설계 재검토 RD-18). 키는 upload:<사장님 ID>. */
 export const UPLOAD_RATE: RateLimitRule = { binding: "UPLOAD_RATE_LIMITER", limit: 30, periodSeconds: 60 };
+export const OWNER_LOGIN_RATE: RateLimitRule = { binding: "OWNER_LOGIN_RATE_LIMITER", limit: 10, periodSeconds: 60 };
 
 /**
  * Workers Rate Limiting 바인딩의 꼴(worker-runtime.d.ts의 RateLimit에서 쓰는 메서드만). 시험의 타입 검사는 Workers 형식을
