@@ -418,3 +418,8 @@
 - 로컬 전체 앱 검사: npm ci141 packages/16s, format239/No fixes, lint241/No fixes, 타입 종료0, 서버65개 파일1037개·웹11개 파일237개 통과, 빌드 종료0입니다. 관련 정규화/업로드 시험78개에는 실패·잘못된 출력·출력 초과·설정 누락 때 저장 부재가 포함됩니다.
 
 - 후속 읽기 검증에서 자기 시험 폴더2개 없음·각 Node0·두 Worker 메타데이터404를 확인했습니다. GraphQL 실제 스키마는 CPU 분위수=마이크로초·메모리 분위수=바이트이며 과거 미리보기 이름 조회는0건입니다. 분위수나0건을 최대 메모리·사진 CPU 측정으로 세지 않았습니다. 공개 자원 시도 보고서에 실패와 정리 결과를 함께 보존했습니다.
+
+## 2026-11-22 TASK-016 외부 알림 사전 확인
+
+- 외부 서버의 상태 점검 service Result=success·ExecMainStatus=0이고 OnFailure는 비어 있습니다. curl·jq는 있고 sendmail·msmtp·mail과 사용자 메일 설정은 없습니다. 같은 계정의 gh auth status와 이 저장소 push 권한은 정상입니다. 인증 값·메일 주소·서버 주소는 읽어 출력하지 않았고 새 비밀 값을 옮기지 않았습니다.
+- 학원컴의 API 읽기에서 기존 Siljang staging job failures 정책은 활성화·custom_analytics·이메일 대상1개·웹훅0개입니다. 조건 job_run_failed/job_find_failed·실행15m·창1m를 확인했고 추가 실패 종류와 공백을 검증할 준비입니다. 첫 SQL 집계는422여서 아직 실패 로그 건수나 실제 메일 전달 증거는 없습니다.
