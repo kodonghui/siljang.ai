@@ -1,0 +1,37 @@
+# 외부 1분 점검의 실제 실패를 서버의 기존 gh 인증으로 받는다.
+# 이 경보 작업의 실패는 의도한 알림이며 app/db CI와 분리된다.
+# 메일 전달은 실행 계정의 GitHub Actions 알림 설정과 실제 수신으로 확인한다.
+name: Siljang 스테이징 상태 경보
+run-name: 외부 상태 점검 실패
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 실패를 관측한 경로
+        required: true
+        type: choice
+        options: [external]
+
+permissions: {}
+
+concurrency:
+  group: siljang-staging-health-alert
+  cancel-in-progress: false
+
+jobs:
+  alert:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: 외부 상태 점검 실패 알림
+        env:
+          ALERT_SOURCE: ${{ inputs.source }}
+        shell: bash
+        run: |
+          if [[ "$ALERT_SOURCE" != external ]]; then
+            printf '알 수 없는 알림 경로입니다.\n' >&2
+            exit 1
+          fi
+          echo '::error title=Siljang 스테이징 상태 점검 실패::외부 1분 상태 점검이 실패했습니다. 외부 서버의 siljang-staging-health.service와 최근 배포를 확인해 주세요.'
+          exit 1

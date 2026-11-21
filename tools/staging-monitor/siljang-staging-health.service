@@ -1,9 +1,13 @@
 [Unit]
 Description=Check Siljang staging health from outside Cloudflare
+OnFailure=siljang-staging-alert.service
 
 [Service]
 Type=oneshot
 EnvironmentFile=%h/.config/siljang/staging-health.env
 ExecStart=%h/.local/lib/siljang/staging-monitor/health-check.sh
+ExecStartPost=%h/.local/lib/siljang/staging-monitor/notify-failure.sh --recovered
+StateDirectory=siljang-staging-health
+StateDirectoryMode=0700
 TimeoutStartSec=15s
 NoNewPrivileges=true

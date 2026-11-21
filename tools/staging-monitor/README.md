@@ -1,0 +1,19 @@
+# 스테이징 외부 상태 점검과 실패 알림
+
+`siljang-staging-health.timer`는 외부 서버에서 1분마다 `health-check.sh`를 실행한다. HTTPS 상태200과 JSON의 `status=ok`를 확인한다. 실제 확인 주소는 기존 `~/.config/siljang/staging-health.env`의 `SILJANG_STAGING_HEALTH_URL`에 두며 저장소에는 값을 적지 않는다.
+
+상태 점검의 systemd `OnFailure`는 `siljang-staging-alert.service`를 시작한다. 알림 스크립트는 같은 서버 계정의 기존 `gh` 인증으로 이 저장소 main의 `staging-health-alert.yml`을 실행한다. 토큰을 읽어 복사하거나 별도 메일 비밀번호를 저장하지 않는다. 공개 저장소의 표준 GitHub Actions 실행을 사용하며 유료 요금제를 켜지 않는다.
+
+이 워크플로는 외부 점검 실패를 경보로 표시하기 위해 의도적으로 실패한다. app·db CI는 별도로 정상 통과해야 한다. 메일은 워크플로 실행 계정의 GitHub Actions 알림 설정을 따른다. 작업 실행 성공만으로 메일 도착을 판단하지 않으며 실제 메일함에서 실행 링크를 대조해야 한다. 현재 실제 수신 확인은 남아 있다.
+
+같은 사건은 최초 알림 뒤 1시간 동안 억제하고, 장애가 계속되면 1시간 뒤 다시 알린다. 정상 점검은 `ExecStartPost`에서 사건 상태를 지운다. 복구 뒤 새 장애는 바로 알릴 수 있다. 파일 잠금으로 동시 실패를 합치며 gh 실행이 실패하면 보낸 시각을 기록하지 않아 다음 실패 때 재시도한다. 상태 디렉터리는 systemd `StateDirectory`로 만들고0700, 파일은0600으로 둔다. 알림에는 요청 본문·주소·인증 값·실제 손님 정보가 없다.
+
+## 설치와 실제 확인
+
+1. 같은 서버 계정에서 `gh auth status`와 이 저장소의 워크플로 실행 권한을 확인한다. 인증 출력이나 토큰 값을 기록으로 옮기지 않는다.
+2. `health-check.sh`와 `notify-failure.sh`를 기존 `~/.local/lib/siljang/staging-monitor/`에 실행 파일로 설치한다. health·alert service와 timer를 `~/.config/systemd/user/`에 설치한다.
+3. `systemctl --user daemon-reload` 뒤 기존 timer를 유지하고 health service를 한 번 시작한다. 정상 종료·실패 연결·복구 처리를 확인한다.
+4. 짧게 쓰는 systemd 시험 단위에서 같은 점검 스크립트와 같은 OnFailure를 사용하되, 기존 스테이징의 없는 경로를 가리켜 실제404를 한 번 만든다. 실제 Worker 설정·DB·업무 행과 원래 timer는 바꾸지 않는다. 시험 단위는 종료 뒤 회수한다.
+5. 서버의 알림 실행 결과·GitHub 경보 작업·실제 메일의 실행 링크를 대조하고 정상 점검이 사건 상태를 지우는지 확인한다. 경보 작업이 의도대로 실패한 것과 app/db CI 실패를 구분해 기록한다.
+
+Cloudflare의 일 실행기 로그 모니터와 이 외부 점검은 별개다. 두 경로의 실제 수신을 각각 확인하기 전에는 TASK-016 완료를 표시하지 않는다.
