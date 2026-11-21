@@ -1,7 +1,7 @@
 import { type Context, Hono } from "hono";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FILE_ROUTE, serveFile } from "./file-url";
-import { SKILL_ACK_MS } from "./kakao-callback";
+import { SKILL_WORK_MS } from "./kakao-callback";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { kakaoReply } from "./kakao-reply";
 import { kakaoSkillRoutes } from "./kakao-skill";
@@ -194,8 +194,8 @@ function routePattern(path: string): RegExp {
  * 운영자 로그인(TASK-021): 운영자 범위 경로(operatorRoute)의 해석기는 운영자 세션(operator-login.ts). 시험은 operatorAccount로 바꿈.
  */
 export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
-  const skillTimeoutMs = options.kakaoSkillTimeoutMs ?? SKILL_ACK_MS - 250;
-  if (!Number.isSafeInteger(skillTimeoutMs) || skillTimeoutMs < 1 || skillTimeoutMs > SKILL_ACK_MS - 250) {
+  const skillTimeoutMs = options.kakaoSkillTimeoutMs ?? SKILL_WORK_MS;
+  if (!Number.isSafeInteger(skillTimeoutMs) || skillTimeoutMs < 1 || skillTimeoutMs > SKILL_WORK_MS) {
     throw new RangeError("kakaoSkillTimeoutMs must be between 1 and 3750");
   }
   const sink = options.logSink;
