@@ -30,6 +30,7 @@ function payload(bot = BOT_A) {
 }
 
 function harness(now = NOW) {
+  const readShop = vi.fn((id: unknown) => ({ contact_phone: id === SHOP_B ? "02-000-0000" : "010-1234-5678" }));
   const choose = vi.fn((id: unknown) => {
     if (id === BOT_A) {
       return {
@@ -52,6 +53,10 @@ function harness(now = NOW) {
     return undefined;
   });
   const query: RequestDb["query"] = async <R>(sql: string, params?: readonly unknown[]): Promise<Rows<R>> => {
+    if (/FROM shops/i.test(sql)) {
+      expect(sql).toMatch(/WHERE id = \$1/i);
+      return { rows: [readShop(params?.[0]) as R], rowCount: 1 };
+    }
     expect(sql).toMatch(/FROM kakao_channels/i);
     const found = choose(params?.[0]);
     return found === undefined ? { rows: [], rowCount: 0 } : { rows: [found as R], rowCount: 1 };
@@ -74,10 +79,37 @@ function harness(now = NOW) {
       { REQUEST_HASH_KEY: TEST_HASH_KEY },
     );
   }
-  return { call, choose, transaction: write };
+  return { call, choose, readShop, transaction: write };
 }
 
 describe("카카오 스킬 연결별 인증(TASK-028, REQ-237·256)", () => {
+  it.each(["message", "card", "review"])(
+    "연결 확인 중인 %s는 상담을 만들지 않고 자기 가게 연락처로 안내함",
+    async (kind) => {
+      const { call, readShop, transaction } = harness();
+      const key = await deriveKakaoSkillKey(SECRET, CHANNEL_A, 2);
+      const response = await call(kind, payload(), key);
+      expect(response.headers.get("Siljang-Outcome")).toBe("not_accepting");
+      const body = await response.json();
+      expectSchema("SkillTemplateResponse", body);
+      expect(JSON.stringify(body)).toContain("010-1234-5678");
+      expect(readShop).toHaveBeenCalledExactlyOnceWith(SHOP_A);
+      expect(transaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it("연락처 조회가 실패하면 내부 내용 없는 서버 오류 응답으로 안내함", async () => {
+    const { call, readShop, transaction } = harness();
+    readShop.mockImplementationOnce(() => {
+      throw new Error("synthetic database details");
+    });
+    const key = await deriveKakaoSkillKey(SECRET, CHANNEL_A, 2);
+    const response = await call("message", payload(), key);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Siljang-Outcome")).toBe("server_error");
+    expect(await response.text()).not.toContain("synthetic database details");
+    expect(transaction).not.toHaveBeenCalled();
+  });
   it.each(["message", "card", "review", "event"])("%s에서 헤더 없는 요청은 DB를 열기 전에 401", async (kind) => {
     const { call, choose } = harness();
     await expectProblem(await call(kind, payload()), "skill_key_invalid");
@@ -85,11 +117,23 @@ describe("카카오 스킬 연결별 인증(TASK-028, REQ-237·256)", () => {
   });
 
   it("다른 연결의 키를 네 스킬에서 거절하고 기록을 쓰지 않음", async () => {
-    const { call, transaction } = harness();
+    const { call, readShop, transaction } = harness();
     const key = await deriveKakaoSkillKey(SECRET, CHANNEL_B, 1);
     for (const kind of ["message", "card", "review", "event"]) {
       await expectProblem(await call(kind, payload(), key), "skill_key_invalid");
     }
+    expect(transaction).not.toHaveBeenCalled();
+    expect(readShop).not.toHaveBeenCalled();
+  });
+
+  it("가게 B의 유효한 요청에는 B 연락처만 보임", async () => {
+    const { call, readShop, transaction } = harness();
+    const key = await deriveKakaoSkillKey(SECRET, CHANNEL_B, 1);
+    const response = await call("message", payload(BOT_B), key);
+    const body = await response.text();
+    expect(body).toContain("02-000-0000");
+    expect(body).not.toContain("010-1234-5678");
+    expect(readShop).toHaveBeenCalledExactlyOnceWith(SHOP_B);
     expect(transaction).not.toHaveBeenCalled();
   });
 
