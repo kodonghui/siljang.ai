@@ -10,7 +10,9 @@ import { type DbConnector, pgConnector } from "./db";
 import { type RunLimits, type RunnableJob, type RunSummary, runDueJobs } from "./job-runner";
 import { runnableJobs } from "./jobs";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
+import { createServices } from "./services";
 import { readSettings, type Settings } from "./settings";
+import type { ObjectStore } from "./storage";
 
 /** Workers ScheduledController에서 쓰는 것. */
 export interface ScheduledEventLike {
@@ -32,6 +34,8 @@ export interface ScheduledOptions {
   readonly limits?: Partial<RunLimits>;
   /** 걸린 시간을 재는 시계(시험만). */
   readonly clock?: () => number;
+  /** 시험용 저장소. 실제 실행은 settings의 S3 연결을 늦게 만든다. */
+  readonly storage?: ObjectStore;
 }
 
 function nameOf(err: unknown): string {
@@ -58,12 +62,14 @@ export async function runScheduled(
     return null;
   }
   const db = (options.connect ?? pgConnector)(settings.secrets.DATABASE_URL);
+  const services = createServices(env as Bindings, settings, options.storage ? { storage: options.storage } : {});
   try {
     return await runDueJobs({
       db,
       now,
       jobs: options.jobs ?? runnableJobs(),
       log: appLog,
+      storage: () => services.storage(),
       ...(options.limits !== undefined ? { limits: options.limits } : {}),
       ...(options.clock !== undefined ? { clock: options.clock } : {}),
     });

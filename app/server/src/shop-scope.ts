@@ -16,7 +16,7 @@
 import type { Queryable, RequestDb, Rows } from "./db";
 import { ApiError, type FieldError } from "./problem";
 import type { Actor } from "./request-key";
-import { type IdShopTable, SHOP_TABLES, SHOP_TABLES_WITHOUT_ID, scopeViolations } from "./sql-scope";
+import { type IdShopTable, namesShopTable, SHOP_TABLES, SHOP_TABLES_WITHOUT_ID, scopeViolations } from "./sql-scope";
 
 /** 가게 범위가 어디서 왔는지. 손님·운영자·예약 링크 쪽은 이 층의 바탕만 있고 경로는 그 작업에서 붙인다. */
 export type ScopeVia =
@@ -155,6 +155,8 @@ function idTable(table: string): string {
   return table;
 }
 
+const ORDER_LINKED = new Set(["payment_requests", "payments", "refunds", "change_requests", "issue_reports"]);
+
 class ScopedDb implements ShopDb {
   readonly scope: ShopScope;
   readonly #q: Queryable;
@@ -167,7 +169,21 @@ class ScopedDb implements ShopDb {
 
   async run<R = Record<string, unknown>>(sql: string, params: readonly unknown[] = []): Promise<Rows<R>> {
     assertScoped(sql);
+    const via = this.scope.via;
+    const canReadKept = via.kind === "operator" || (via.kind === "job" && via.job === "purge");
+    if (!canReadKept && namesShopTable(sql, "kept_records")) throw new ApiError("not_found");
     return this.#q.query<R>(sql, [this.scope.shopId, ...params]);
+  }
+
+  /** 보통 ID 조회와 새 명령의 참조에는 보관 주문을 내주지 않는다(A22). 보관 처리는 명시한 SQL로 한다. */
+  #activeFilter(table: string): string {
+    if (table === "orders") return " AND t.personal_data_purged_at IS NULL";
+    if (ORDER_LINKED.has(table)) {
+      return ` AND NOT EXISTS (SELECT 1 FROM orders retained_order
+        WHERE retained_order.shop_id = $1 AND retained_order.id = t.order_id
+          AND retained_order.personal_data_purged_at IS NOT NULL)`;
+    }
+    return "";
   }
 
   async found<R = Record<string, unknown>>(sql: string, params: readonly unknown[] = []): Promise<R> {
@@ -181,7 +197,10 @@ class ScopedDb implements ShopDb {
     const name = idTable(table);
     const id = pathId(raw);
     const lock = options.lock === true ? " FOR UPDATE" : "";
-    await this.found(`SELECT t.id FROM ${name} t WHERE t.shop_id = $1 AND t.id = $2${lock}`, [id]);
+    await this.found(
+      `SELECT t.id FROM ${name} t WHERE t.shop_id = $1 AND t.id = $2${this.#activeFilter(name)}${lock}`,
+      [id],
+    );
     return id;
   }
 
@@ -193,7 +212,7 @@ class ScopedDb implements ShopDb {
     const present = new Set<string>();
     if (ids.size > 0) {
       const r = await this.run<{ id: string }>(
-        `SELECT t.id FROM ${name} t WHERE t.shop_id = $1 AND t.id = ANY($2::uuid[])`,
+        `SELECT t.id FROM ${name} t WHERE t.shop_id = $1 AND t.id = ANY($2::uuid[])${this.#activeFilter(name)}`,
         [[...ids]],
       );
       for (const row of r.rows) present.add(row.id);

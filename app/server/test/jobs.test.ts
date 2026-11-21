@@ -97,9 +97,9 @@ describe("서버 안의 일 등록부(06 10절과 견줌)", () => {
     for (const j of JOBS) expect(j.note.length, j.name).toBeGreaterThan(10);
   });
 
-  it("처리가 붙은 일만 실행기에 넘기고 요청 안의 일은 넘기지 않음(이번에는 처리가 없음)", () => {
-    expect(Object.keys(JOB_HANDLERS)).toEqual([]);
-    expect(runnableJobs()).toEqual([]);
+  it("처리가 붙은 지우기를 실행기에 넘기고 요청 안의 일은 넘기지 않음", () => {
+    expect(Object.keys(JOB_HANDLERS)).toEqual(["purge"]);
+    expect(runnableJobs()).toMatchObject([{ name: "purge", every: "day", handler: { mode: "sweep" } }]);
     const handler: ItemHandler = { mode: "transaction", run: async () => {} };
     const cutoff = (_s: DueSourceName, now: Date) => new Date(now.getTime() - 7 * 86_400_000);
     const got = runnableJobs(JOBS, {

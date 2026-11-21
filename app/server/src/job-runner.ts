@@ -26,6 +26,7 @@ import { DUE_SOURCES, type DueSource, type DueSourceName, FIND_SHAPE, LAST_DAILY
 import type { LogFields, LogLevel } from "./log";
 import { type OpsEventKind, recordOpsEvent } from "./ops-events";
 import { createShopScope, type ShopDb, shopDb } from "./shop-scope";
+import type { ObjectStore } from "./storage";
 import { isTimeZone, shopLocalToUtc, toShopLocal } from "./time";
 
 export type JobLog = (level: LogLevel, fields: LogFields) => void;
@@ -83,6 +84,21 @@ export interface LeasedHandler<P = unknown, O = unknown> {
 
 export type ItemHandler = TransactionHandler | LeasedHandler;
 
+/** 전역 키·임시 파일도 함께 다루는 하루 한 번 보관 처리. 업무 내용은 자체 가게 범위에서만 읽는다. */
+export interface SweepHandler {
+  readonly mode: "sweep";
+  run(
+    db: RequestDb,
+    ctx: JobContext & {
+      readonly limits: RunLimits;
+      readonly shouldStop: () => boolean;
+      readonly storage: () => ObjectStore;
+      readonly log: JobLog;
+    },
+  ): Promise<JobTally>;
+}
+export type JobHandler = ItemHandler | SweepHandler;
+
 interface JobBase {
   /** 등록부의 이름(소문자·숫자·_). 로그와 가게 범위의 출처에 쓴다. */
   readonly name: string;
@@ -90,7 +106,7 @@ interface JobBase {
   readonly sources: readonly DueSourceName[];
   /** 곳마다 기준 시각(지난 시간으로 세는 곳, 예: 남긴 지 7일이면 지금 − 7일). 없으면 지금. */
   readonly cutoff?: (source: DueSourceName, now: Date) => Date;
-  readonly handler: ItemHandler;
+  readonly handler: JobHandler;
 }
 
 /** 1분마다 찾는 일. */
@@ -145,6 +161,7 @@ export interface RunOptions {
   readonly limits?: Partial<RunLimits>;
   /** 걸린 시간을 재는 시계(ms). 기본 Date.now. 시험만 바꾼다. */
   readonly clock?: () => number;
+  readonly storage?: () => ObjectStore;
 }
 
 export interface JobTally {
@@ -194,6 +211,9 @@ function checkJobs(jobs: readonly RunnableJob[]): void {
   for (const job of jobs) {
     if (!JOB_NAME.test(job.name) || names.has(job.name)) throw new JobConfigError("job names must be unique names");
     names.add(job.name);
+    if (job.handler.mode === "sweep" && (job.every !== "day" || job.sources.length !== 0)) {
+      throw new JobConfigError("sweep needs a daily job without row sources");
+    }
     for (const s of job.sources) {
       if (!Object.hasOwn(DUE_SOURCES, s)) throw new JobConfigError("unknown due source");
     }
@@ -318,6 +338,7 @@ async function processItem(
 ): Promise<ItemResult> {
   const scope = createShopScope(item.shopId, { kind: "job", job: job.name });
   const handler = job.handler;
+  if (handler.mode === "sweep") throw new JobConfigError("sweep does not process row sources");
   if (handler.mode === "transaction") {
     const ctx: JobContext = { job: job.name, now };
     try {
@@ -419,6 +440,29 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
       if (!begun) continue;
       dailyStarted.push(job.name);
       log("info", { event: "job_daily_started", job: job.name });
+    }
+    if (job.handler.mode === "sweep") {
+      try {
+        const result = await job.handler.run(options.db, {
+          job: job.name,
+          now,
+          limits,
+          shouldStop: overBudget,
+          storage:
+            options.storage ??
+            (() => {
+              throw new JobConfigError("storage is not configured");
+            }),
+          log,
+        });
+        Object.assign(tally, result);
+      } catch (err) {
+        tally.failed += 1;
+        logFailure(log, "job_sweep_failed", job.name, err);
+      }
+      if (overBudget()) stoppedByBudget = true;
+      log(tally.failed > 0 ? "warn" : "info", { event: "job_run", job: job.name, count: tally.done });
+      continue;
     }
     // 한 일 안의 찾는 곳도 차례를 돌린다(일이 한 바퀴 돌 때마다). 앞 곳이 시간 한도를 다 써도 뒤 곳이 굶지 않게.
     const turn = job.sources.length === 0 ? 0 : Math.floor(minute / lap) % job.sources.length;

@@ -26,7 +26,7 @@ describe("scheduled 처리기(데이터베이스 없이)", () => {
     ]);
   });
 
-  it("처리가 붙은 일이 없으면(이번 작업의 등록부) 연결을 쓰지 않고 빈 결과, 연결은 닫음", async () => {
+  it("빈 일 목록을 넘기면 연결을 쓰지 않고 빈 결과, 연결은 닫음", async () => {
     let closed = 0;
     const fake: RequestDb = {
       query: async () => {
@@ -41,7 +41,11 @@ describe("scheduled 처리기(데이터베이스 없이)", () => {
       },
     };
     const connect: DbConnector = () => fake;
-    const r = await runScheduled(event(new Date("2026-11-16T00:00:00Z")), { APP_ENV: "development" }, { connect });
+    const r = await runScheduled(
+      event(new Date("2026-11-16T00:00:00Z")),
+      { APP_ENV: "development" },
+      { connect, jobs: [] },
+    );
     expect(r).toEqual({ jobs: {}, stoppedByBudget: false, dailyStarted: [] });
     expect(closed).toBe(1);
   });
@@ -68,6 +72,7 @@ describe("scheduled 처리기(데이터베이스 없이)", () => {
     expect(typeof worker.scheduled).toBe("function");
     const waited: Promise<unknown>[] = [];
     const handler = createScheduledHandler({
+      jobs: [],
       connect: () => ({
         query: async () => ({ rows: [], rowCount: 0 }),
         transaction: async () => undefined as never,
