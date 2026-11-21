@@ -19,8 +19,8 @@ export function deferredKakaoTexts(previous: readonly DeferredKakaoMessage[]): s
 
 /** 손님 행 잠금 또는 그 손님의 콜백 선점을 가진 호출자만 사용한다. */
 export async function deferredKakaoMessages(db: ShopDb, customerId: string): Promise<readonly DeferredKakaoMessage[]> {
-  const result = await db.run<{ id: string; body_masked: string; created_at: Date }>(
-    `SELECT m.id, m.body_masked, m.created_at FROM messages m
+  const result = await db.run<{ id: string; body_masked: string; created_order: string }>(
+    `SELECT m.id, m.body_masked, (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order FROM messages m
       JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
       WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'outbound'
         AND m.delivery = 'deferred' AND m.sent_at IS NULL AND char_length(m.body_masked) BETWEEN 1 AND 1000
@@ -28,8 +28,8 @@ export async function deferredKakaoMessages(db: ShopDb, customerId: string): Pro
     [customerId, DEFERRED_REPLY_BATCH],
   );
   // 결제/버튼/사진 안내는 업무 렌더러가 전해진 시각 등도 함께 기록해야 하므로 이 공통 글 경로에서 소비하지 않는다.
-  const notices = await db.run<{ id: string; body: string; created_at: Date }>(
-    `SELECT n.id, n.body, n.created_at FROM notifications n
+  const notices = await db.run<{ id: string; body: string; created_order: string }>(
+    `SELECT n.id, n.body, (extract(epoch FROM n.created_at) * 1000000)::bigint::text AS created_order FROM notifications n
       WHERE n.shop_id = $1 AND n.customer_id = $2 AND n.status = 'deferred' AND n.sent_at IS NULL
         AND n.kind IN ('owner_reply', 'delay_notice', 'custom_rejected', 'no_answer_closed')
       ORDER BY n.created_at, n.id LIMIT $3 FOR UPDATE OF n`,
@@ -40,10 +40,17 @@ export async function deferredKakaoMessages(db: ShopDb, customerId: string): Pro
       id: row.id,
       text: row.body_masked,
       source: "message" as const,
-      at: row.created_at,
+      at: BigInt(row.created_order),
     })),
-    ...notices.rows.map((row) => ({ id: row.id, text: row.body, source: "notification" as const, at: row.created_at })),
-  ].sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id) || a.source.localeCompare(b.source));
+    ...notices.rows.map((row) => ({
+      id: row.id,
+      text: row.body,
+      source: "notification" as const,
+      at: BigInt(row.created_order),
+    })),
+  ].sort(
+    (a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0) || a.id.localeCompare(b.id) || a.source.localeCompare(b.source),
+  );
   const selected: DeferredKakaoMessage[] = [];
   let remaining = DEFERRED_REPLY_BATCH;
   for (const row of candidates) {

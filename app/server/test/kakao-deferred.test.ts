@@ -148,16 +148,18 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
 
   it("버튼/계좌가 필요한 안내와 미전달이 아닌 행은 업무 렌더러에 남김", async () => {
     const h = await setup();
-    const ids = await Promise.all([
-      notice(h.shop, "미전달 결제 안내", { kind: "payment_request" }),
-      notice(h.shop, "미전달 후기 안내", { kind: "review_request" }),
-      notice(h.shop, "대기 중인 일반 안내", { status: "pending" }),
-      notice(h.shop, "버린 일반 안내", { status: "dropped" }),
-    ]);
+    const ids = [
+      await notice(h.shop, "미전달 결제 안내", { kind: "payment_request" }),
+      await notice(h.shop, "미전달 후기 안내", { kind: "review_request" }),
+      await notice(h.shop, "대기 중인 일반 안내", { status: "pending" }),
+      await notice(h.shop, "버린 일반 안내", { status: "dropped" }),
+    ];
     const response = await template(await h.call("업무 안내 구분 질문"));
     for (const word of ["미전달 결제", "미전달 후기", "대기 중인 일반", "버린 일반"])
       expect(JSON.stringify(response)).not.toContain(word);
-    expect(await Promise.all(ids.map(noticeState))).toEqual([
+    const states = [];
+    for (const id of ids) states.push(await noticeState(id));
+    expect(states).toEqual([
       { status: "deferred", sent_at: null },
       { status: "deferred", sent_at: null },
       { status: "pending", sent_at: null },
@@ -316,6 +318,25 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
     expect((await noticeState(id))?.status).toBe("delivered_on_reply");
     expect((await db.query<{ status: string }>("SELECT status FROM consultations WHERE id = $1", [old])).rows).toEqual([
       { status: "ended" },
+    ]);
+  });
+
+  it("서로 다른 기록의 같은 밀리초 안 생성 순서도 PostgreSQL 정밀도로 지킴", async () => {
+    const h = await setup();
+    const message = await defer(h.shop, "합성 이전 콜백 답");
+    const notification = await notice(h.shop, "합성 이전 일반 안내");
+    const notificationFirst = notification.localeCompare(message) > 0;
+    const earlier = "2026-11-21T11:59:00.000100Z";
+    const later = "2026-11-21T11:59:00.000200Z";
+    await db.query("UPDATE messages SET created_at = $2 WHERE id = $1", [message, notificationFirst ? later : earlier]);
+    await db.query("UPDATE notifications SET created_at = $2 WHERE id = $1", [
+      notification,
+      notificationFirst ? earlier : later,
+    ]);
+    const response = await template(await h.call("같은 밀리초 순서 질문"));
+    expect(response.template.outputs.slice(0, 2)).toEqual([
+      { simpleText: { text: notificationFirst ? "합성 이전 일반 안내" : "합성 이전 콜백 답" } },
+      { simpleText: { text: notificationFirst ? "합성 이전 콜백 답" : "합성 이전 일반 안내" } },
     ]);
   });
 
