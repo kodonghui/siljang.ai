@@ -1,6 +1,7 @@
 import type { FieldCrypto } from "./field-crypto";
 import type { KakaoCallback } from "./kakao-callback";
 import { type DeferredKakaoMessage, markDeferredKakaoMessages } from "./kakao-deferred";
+import { recordKakaoHandoff } from "./kakao-handoff";
 import type { ShopRequestDb } from "./shop-scope";
 
 export interface KakaoCallbackJob {
@@ -156,6 +157,20 @@ export async function deferExpiredKakaoCallback(
   text: string,
 ): Promise<void> {
   await db.transaction(async (tx) => {
+    const target = await tx.run<{ customer_id: string; consultation_id: string }>(
+      `SELECT c.customer_id, c.id AS consultation_id FROM messages m
+        JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
+        WHERE m.shop_id = $1 AND m.id = $2 AND m.direction = 'inbound'
+          AND m.kakao_callback_deadline_at <= $3`,
+      [messageId, now],
+    );
+    const source = target.rows[0];
+    if (source === undefined) return;
+    await tx.run("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [source.customer_id]);
+    const consultation = await tx.found<{ status: string }>(
+      "SELECT status FROM consultations WHERE shop_id = $1 AND id = $2 FOR UPDATE",
+      [source.consultation_id],
+    );
     const expired = await tx.run<{ consultation_id: string }>(
       `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL
         WHERE shop_id = $1 AND id = $2 AND kakao_callback_deadline_at <= $3 RETURNING consultation_id`,
@@ -163,6 +178,8 @@ export async function deferExpiredKakaoCallback(
     );
     const row = expired.rows[0];
     if (row === undefined) return;
+    if (["ended", "deleted", "dropped"].includes(consultation.status)) return;
+    await recordKakaoHandoff(tx, row.consultation_id, messageId, "callback_timeout", now);
     await tx.run(
       `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery)
         VALUES ($1, $2, 'outbound', 'system', 'text', $3, 'deferred')`,

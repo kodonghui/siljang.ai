@@ -11,6 +11,7 @@ import {
   releaseKakaoCallback,
 } from "./kakao-callback-store";
 import { deferredKakaoMessages } from "./kakao-deferred";
+import { KAKAO_HANDOFF_TEXT } from "./kakao-reply";
 import { type LogSink, log } from "./log";
 import { createServices } from "./services";
 import { readSettings } from "./settings";
@@ -56,7 +57,7 @@ export async function consumeKakaoCallback(
     const claim = await claimKakaoCallback(db, job.messageId, now());
     if (claim === "busy") return "retry";
     if (claim === null) {
-      await deferExpiredKakaoCallback(db, job.messageId, now(), KAKAO_CONSULTATION_UNAVAILABLE_TEXT);
+      await deferExpiredKakaoCallback(db, job.messageId, now(), KAKAO_HANDOFF_TEXT);
       return "done";
     }
 
