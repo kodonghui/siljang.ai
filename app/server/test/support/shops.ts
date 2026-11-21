@@ -94,6 +94,26 @@ export async function linkTestChannel(db: Queryable, channelId: string): Promise
   );
 }
 
+/** 상담 수신 시험의 준비. 채널 연결과 예약 링크 발급은 서로 다른 조건이다(SPEC-017). */
+export async function issueTestBookingLink(db: RequestDb, shop: ShopFixture): Promise<void> {
+  await db.transaction(async (tx) => {
+    const reviewer = await tx.query<{ id: string }>(
+      "INSERT INTO operators (email, display_name) VALUES ($1, '시험 운영자') RETURNING id",
+      [`${newUuid()}@operator.example`],
+    );
+    const operator = reviewer.rows[0]?.id;
+    await tx.query("UPDATE payment_accounts SET holder_checked_by = $2, holder_checked_at = now() WHERE shop_id = $1", [
+      shop.shopId,
+      operator,
+    ]);
+    await tx.query(
+      `UPDATE shops SET license_status = 'verified', license_reviewed_by = $2, license_reviewed_at = now(),
+        booking_slug = $3, booking_issued_at = now() WHERE id = $1`,
+      [shop.shopId, operator, `test-${newUuid().replaceAll("-", "")}`],
+    );
+  });
+}
+
 /** 가게 하나와 그 기록을 한 트랜잭션으로 만든다. */
 export async function createShop(db: RequestDb, name: string): Promise<ShopFixture> {
   const tag = randomTag();

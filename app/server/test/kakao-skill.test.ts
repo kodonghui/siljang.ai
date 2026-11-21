@@ -5,7 +5,7 @@ import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
-import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
+import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const SHOP_A = "10000000-0000-4000-8000-000000000001";
 const SHOP_B = "10000000-0000-4000-8000-000000000002";
@@ -122,6 +122,7 @@ describeDb("카카오 메시지 수신 기록과 동시 처리(TASK-028, REQ-132
 
   beforeAll(async () => {
     shop = await createShop(db, "카카오 스킬 시험 가게");
+    await issueTestBookingLink(db, shop);
     bot = shop.botId;
     await linkTestChannel(db, shop.channelId);
     skillKey = await deriveKakaoSkillKey(SECRET, shop.channelId, 1);
