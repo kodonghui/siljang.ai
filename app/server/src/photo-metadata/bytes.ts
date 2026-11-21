@@ -32,6 +32,10 @@ export function hasExifHeader(bytes: Uint8Array): boolean {
 export class ExifOrientation {
   private value: number | undefined;
 
+  get current(): number {
+    return this.value ?? 1;
+  }
+
   read(tiff: Uint8Array): void {
     requirePhoto(tiff.length >= 8);
     const littleEndian = tiff[0] === 0x49 && tiff[1] === 0x49;

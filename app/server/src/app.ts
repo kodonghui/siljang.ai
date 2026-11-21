@@ -18,6 +18,7 @@ import {
   startOwnerLogin,
 } from "./owner-login";
 import type { OwnerScope } from "./owner-scope";
+import type { ImageBinding } from "./photo-normalizer";
 import { ApiError, problemResponse } from "./problem";
 import type { RateLimitBinding } from "./rate-limit";
 import {
@@ -43,6 +44,7 @@ export type Bindings = {
   readonly OPENAI_API_KEY?: string;
   readonly DATABASE_URL?: string;
   readonly HYPERDRIVE?: { readonly connectionString: string };
+  readonly IMAGES?: ImageBinding;
   readonly REQUEST_HASH_KEY?: string;
   readonly STORAGE_ACCESS_KEY_ID?: string;
   readonly STORAGE_SECRET_ACCESS_KEY?: string;

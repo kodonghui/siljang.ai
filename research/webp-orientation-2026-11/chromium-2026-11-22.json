@@ -1,0 +1,166 @@
+{
+  "browser": "151.0.7922.34",
+  "measurement": "HTMLImageElement.decode and canvas first frame; all animation frames checked separately by Pillow",
+  "results": [
+    {
+      "name": "still-1",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "name": "animated-1",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "name": "still-2",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "name": "animated-2",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "name": "still-3",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "name": "animated-3",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "name": "still-4",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "name": "animated-4",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "name": "still-5",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 96,
+      "height": 160
+    },
+    {
+      "name": "animated-5",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 96,
+      "height": 160
+    },
+    {
+      "name": "still-6",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 96,
+      "height": 160
+    },
+    {
+      "name": "animated-6",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 96,
+      "height": 160
+    },
+    {
+      "name": "still-7",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 96,
+      "height": 160
+    },
+    {
+      "name": "animated-7",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 96,
+      "height": 160
+    },
+    {
+      "name": "still-8",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 96,
+      "height": 160
+    },
+    {
+      "name": "animated-8",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 96,
+      "height": 160
+    },
+    {
+      "name": "large-pixels-6",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 3000,
+      "height": 4000
+    },
+    {
+      "name": "input-10mib-7",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 1440,
+      "height": 1792
+    },
+    {
+      "name": "input-20mib-8",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 2048,
+      "height": 2520
+    },
+    {
+      "name": "frames-40-5",
+      "passed": true,
+      "dimensions": true,
+      "corners": true,
+      "width": 192,
+      "height": 320
+    }
+  ]
+}

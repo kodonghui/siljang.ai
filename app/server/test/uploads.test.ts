@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import { load } from "exifreader";
 import { describe, expect, it } from "vitest";
 import { APP_ROUTES, createApp } from "../src/app";
 import { createOwnerScope, type OwnerScope } from "../src/owner-scope";
+import type { ImageBinding } from "../src/photo-normalizer";
 import { ApiError } from "../src/problem";
 import type { RateLimiter } from "../src/rate-limit";
 import { ownerRoute, type RouteDecl } from "../src/routes";
@@ -60,7 +62,7 @@ interface Harness {
   readonly clock: { now: Date };
 }
 
-function harness(options: { timeZone?: string; limit?: number } = {}): Harness {
+function harness(options: { timeZone?: string; limit?: number; images?: ImageBinding } = {}): Harness {
   const store = new MemoryStore();
   const limiter = new MemoryLimiter(options.limit ?? 30);
   const clock = { now: T0 };
@@ -72,7 +74,12 @@ function harness(options: { timeZone?: string; limit?: number } = {}): Harness {
       if (id === undefined || !isUuid(id)) throw new ApiError("unauthenticated");
       return createOwnerScope(id, options.timeZone);
     },
-    services: { storage: store, limiters: { UPLOAD_RATE_LIMITER: limiter }, now: () => clock.now },
+    services: {
+      storage: store,
+      limiters: { UPLOAD_RATE_LIMITER: limiter },
+      now: () => clock.now,
+      ...(options.images ? { images: options.images } : {}),
+    },
   });
   return { app, store, limiter, clock };
 }
@@ -179,6 +186,74 @@ describe("TASK-183: API-007이 G10을 적용한 바이트만 저장", () => {
   const photos = ["jpg", "png", "heic", "webp"] as const;
   const fixture = (format: (typeof photos)[number]) => img.photoFixture(format, "metadata");
 
+  it("WebP 방향6은 촬영 정보를 먼저 지운 뒤 픽셀 회전을 요청하고 그 결과만 저장", async () => {
+    const original = new Uint8Array(readFileSync(new URL("./fixtures/photos/pixel-source.webp", import.meta.url)));
+    const normalized = new Uint8Array(readFileSync(new URL("./fixtures/photos/pixel-result.webp", import.meta.url)));
+    let called = 0;
+    let external: Uint8Array<ArrayBuffer> | undefined;
+    const images: ImageBinding = {
+      input(stream) {
+        const builder = {
+          transform: () => builder,
+          async output() {
+            called += 1;
+            external = new Uint8Array(await new Response(stream).arrayBuffer());
+            return { response: () => new Response(normalized, { headers: { "content-type": "image/webp" } }) };
+          },
+        };
+        return builder;
+      },
+    };
+    const h = harness({ images });
+    const body = await uploaded(await upload(h, newUuid(), "design_image", original));
+    expect(called).toBe(1);
+    if (external === undefined) throw new Error("사진 처리 요청 없음");
+    const sent = await load(external.buffer, { expanded: true, async: true });
+    expect(Object.keys(sent.exif ?? {})).toEqual(["Orientation"]);
+    expect(sent.exif?.Orientation?.value).toBe(6);
+    expect(sent.gps).toBeUndefined();
+    expect(sent.xmp).toBeUndefined();
+    const saved = h.store.objects.get(h.store.keys()[0] ?? "")?.body;
+    expect(saved).toEqual(normalized);
+    expect(body.byteSize).toBe(normalized.byteLength);
+    const after = await load(normalized.buffer, { expanded: true, async: true });
+    expect(after.exif).toBeUndefined();
+  });
+
+  it.each(["실패", "잘못된 출력", "출력 크기 초과"] as const)(
+    "WebP 변환 %s 때 원본과 임시 파일을 저장하지 않음",
+    async (kind) => {
+      const original = new Uint8Array(readFileSync(new URL("./fixtures/photos/pixel-source.webp", import.meta.url)));
+      const images: ImageBinding = {
+        input() {
+          const builder = {
+            transform: () => builder,
+            async output() {
+              if (kind === "실패") throw new Error("provider failure");
+              const bytes = kind === "출력 크기 초과" ? new Uint8Array(20 * MIB + 1) : original;
+              return { response: () => new Response(bytes, { headers: { "content-type": "image/webp" } }) };
+            },
+          };
+          return builder;
+        },
+      };
+      const h = harness({ images });
+      await expectProblem(
+        await upload(h, newUuid(), "design_image", original),
+        kind === "출력 크기 초과" ? "file_too_large" : "storage_unavailable",
+      );
+      expect(h.store.keys()).toEqual([]);
+      expect(h.store.calls).not.toContain("put");
+    },
+  );
+
+  it("회전할 WebP의 IMAGES 설정이 빠지면 500이며 원본을 저장하지 않음", async () => {
+    const h = harness();
+    const original = new Uint8Array(readFileSync(new URL("./fixtures/photos/pixel-source.webp", import.meta.url)));
+    await expectProblem(await upload(h, newUuid(), "design_image", original), "internal");
+    expect(h.store.calls).not.toContain("put");
+  });
+
   it.each(photos)("%s: 위치·기기·촬영 시각과 XMP를 제거한 결과로 201", async (format) => {
     const original = fixture(format);
     const before = await load(original.buffer, { expanded: true, async: true });
@@ -208,7 +283,7 @@ describe("TASK-183: API-007이 G10을 적용한 바이트만 저장", () => {
     }
   });
 
-  it.each(["jpg", "png", "webp"] as const)("%s: EXIF에 새 방향 값 하나만 기록", async (format) => {
+  it.each(["jpg", "png"] as const)("%s: EXIF에 새 방향 값 하나만 기록", async (format) => {
     const original = img.photoFixture(format, "rotated");
     const before = await load(original.buffer, { expanded: true, async: true });
     expect(before.exif?.Orientation?.value).toBe(6);

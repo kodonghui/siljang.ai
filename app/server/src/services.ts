@@ -15,6 +15,7 @@ import { type FileUrls, fileUrlSigner } from "./file-url";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { type OperatorAuth, supabaseAuth } from "./operator-auth";
 import { kakaoOwnerAuth, type OwnerAuth } from "./owner-auth";
+import { type ImageBinding, type PhotoNormalizer, photoNormalizer } from "./photo-normalizer";
 import { bindingLimiter, type RateLimiter, type RateLimitRule } from "./rate-limit";
 import { MissingSettingError } from "./request-key";
 import type { Settings } from "./settings";
@@ -24,6 +25,8 @@ export interface Services {
   now(): Date;
   /** 사진 저장소. 설정(STORAGE_*)이 없으면 MissingSettingError. */
   storage(): ObjectStore;
+  /** G10 사진 정리. 회전할 WebP에만 Images 바인딩을 요구한다. */
+  photos(): PhotoNormalizer;
   /** rule의 한도. Workers 바인딩이 없으면 MissingSettingError. */
   limiter(rule: RateLimitRule): RateLimiter;
   /** 사진 서명 주소. FILE_URL_KEY가 없으면 MissingSettingError. */
@@ -44,6 +47,7 @@ export interface Services {
 export interface ServiceOverrides {
   readonly now?: () => Date;
   readonly storage?: ObjectStore;
+  readonly images?: ImageBinding;
   readonly limiters?: { readonly [B in RateLimitRule["binding"]]?: RateLimiter };
   readonly fieldCrypto?: FieldCrypto;
   readonly aiModel?: AiModel;
@@ -55,6 +59,7 @@ export interface ServiceOverrides {
 
 export function createServices(env: Bindings, settings: Settings, overrides: ServiceOverrides = {}): Services {
   let store: ObjectStore | undefined = overrides.storage;
+  let photos: PhotoNormalizer | undefined;
   let urls: FileUrls | undefined;
   let fields: FieldCrypto | undefined = overrides.fieldCrypto;
   let ai: AiModel | undefined = overrides.aiModel;
@@ -71,6 +76,14 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
       if (s === null || id === null || secret === null) throw new MissingSettingError("storage is not set");
       store = new S3Store({ ...s, accessKeyId: id.reveal(), secretAccessKey: secret.reveal() });
       return store;
+    },
+    photos() {
+      photos ??= photoNormalizer(() => {
+        const images = overrides.images ?? env.IMAGES;
+        if (images === undefined) throw new MissingSettingError("IMAGES is not bound");
+        return images;
+      });
+      return photos;
     },
     limiter(rule) {
       const override = overrides.limiters?.[rule.binding];
