@@ -3,10 +3,16 @@ import { createApp } from "../src/app";
 import { type DbConnector, pgConnector } from "../src/db";
 import { deliverKakaoCallback, kakaoCallback, SKILL_CALLBACK_MS } from "../src/kakao-callback";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
-import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
+import {
+  claimKakaoCallback,
+  type KakaoCallbackJob,
+  type KakaoCallbackQueue,
+  prepareKakaoCallbackHandoff,
+} from "../src/kakao-callback-store";
 import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
@@ -265,6 +271,170 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     expect(send).toHaveBeenCalledTimes(2);
     expect(await consumeKakaoCallback(job, env, { now, fetch: send })).toBe("done");
     expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([false, true])("AI 설정 여부(%s)는 기록 결과 코드만 바꾸고 모델을 호출하지 않음", async (configured) => {
+    const queue = mockQueue();
+    await receive(queue);
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    const lines: string[] = [];
+    const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const runtime = configured
+      ? {
+          ...env,
+          AI_PROVIDER: "anthropic",
+          AI_MODEL: "claude-sonnet-5-5",
+          AI_USD_KRW: "1450.00",
+          AI_USD_KRW_DATE: "2026-11-14",
+          ANTHROPIC_API_KEY: ["synthetic", "key", "x".repeat(24)].join("-"),
+        }
+      : env;
+    await consumeKakaoCallback(job, runtime, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: send,
+      logSink: (line) => lines.push(line),
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(lines.map((line) => JSON.parse(line))).toEqual([
+      { level: "warn", event: "kakao_callback_handoff", code: configured ? "ai_unavailable" : "ai_key_missing" },
+    ]);
+  });
+
+  it.each(["ended", "deleted", "dropped"])("닫힌 상담(%s)은 기한 안에도 발신하거나 다시 열지 않음", async (status) => {
+    const queue = mockQueue();
+    await receive(queue);
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    const consultation = (await stored(job))?.consultation_id;
+    await db.query(
+      `UPDATE consultations SET status = $3, ended_at = $4,
+      deleted_at = CASE WHEN $3 = 'deleted' THEN $4::timestamptz ELSE NULL END,
+      dropped_at = CASE WHEN $3 = 'dropped' THEN $4::timestamptz ELSE NULL END WHERE shop_id = $1 AND id = $2`,
+      [shop.shopId, consultation, status, NOW],
+    );
+    const send = vi.fn<typeof fetch>();
+    const lines: string[] = [];
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: send,
+      logSink: (line) => lines.push(line),
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(lines).toEqual([]);
+    expect((await stored(job))?.kakao_callback_enc).toBeNull();
+    expect(
+      (await db.query("SELECT status FROM consultations WHERE shop_id = $1 AND id = $2", [shop.shopId, consultation]))
+        .rows,
+    ).toEqual([{ status }]);
+    expect(
+      (
+        await db.query("SELECT id FROM handoffs WHERE shop_id = $1 AND consultation_id = $2", [
+          shop.shopId,
+          consultation,
+        ])
+      ).rowCount,
+    ).toBe(0);
+    expect(
+      (
+        await db.query(
+          "SELECT id FROM messages WHERE shop_id = $1 AND consultation_id = $2 AND direction = 'outbound'",
+          [shop.shopId, consultation],
+        )
+      ).rowCount,
+    ).toBe(0);
+  });
+
+  it("선점이 바뀐 소비자는 새 선점과 사장님 기록을 건드리지 않음", async () => {
+    const queue = mockQueue();
+    await receive(queue);
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), db);
+    const now = new Date(NOW.getTime() + 5000);
+    const claim = await claimKakaoCallback(scoped, job.messageId, now);
+    if (claim === null || claim === "busy") throw new Error("시험 콜백 선점 실패");
+    const replaced = new Date(claim.kakao_callback_claim_until.getTime() - 1000);
+    await db.query("UPDATE messages SET kakao_callback_claim_until = $3 WHERE shop_id = $1 AND id = $2", [
+      shop.shopId,
+      job.messageId,
+      replaced,
+    ]);
+    expect(await prepareKakaoCallbackHandoff(scoped, job.messageId, claim, now)).toBe(false);
+    expect(
+      (
+        await db.query("SELECT kakao_callback_claim_until FROM messages WHERE shop_id = $1 AND id = $2", [
+          shop.shopId,
+          job.messageId,
+        ])
+      ).rows,
+    ).toEqual([{ kakao_callback_claim_until: replaced }]);
+    expect(
+      (
+        await db.query("SELECT id FROM handoffs WHERE shop_id = $1 AND source_message_id = $2", [
+          shop.shopId,
+          job.messageId,
+        ])
+      ).rowCount,
+    ).toBe(0);
+  });
+
+  it("기한 안의 알림 저장 실패는 발신 없이 롤백하고 큐 재시도로 한 번만 복구함", async () => {
+    const queue = mockQueue();
+    await receive(queue);
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    const connect: DbConnector = (dsn) => {
+      const conn = pgConnector(dsn);
+      return {
+        query: conn.query.bind(conn),
+        abort: conn.abort.bind(conn),
+        close: conn.close.bind(conn),
+        transaction: (work) =>
+          conn.transaction((tx) =>
+            work({
+              query: (sql, params) => {
+                if (/INSERT INTO owner_alerts/.test(sql)) throw new Error("합성 알림 저장 실패");
+                return tx.query(sql, params);
+              },
+            }),
+          ),
+      };
+    };
+    const now = () => new Date(NOW.getTime() + 5000);
+    const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const lines: string[] = [];
+    await expect(
+      consumeKakaoCallback(job, env, { connect, now, fetch: send, logSink: (line) => lines.push(line) }),
+    ).rejects.toThrow("합성 알림 저장 실패");
+    expect(send).not.toHaveBeenCalled();
+    expect(lines).toEqual([]);
+    expect((await stored(job))?.kakao_callback_enc).not.toBeNull();
+    expect(
+      (
+        await db.query("SELECT kakao_callback_claim_until FROM messages WHERE shop_id = $1 AND id = $2", [
+          shop.shopId,
+          job.messageId,
+        ])
+      ).rows,
+    ).toEqual([{ kakao_callback_claim_until: null }]);
+    expect(
+      (
+        await db.query("SELECT id FROM handoffs WHERE shop_id = $1 AND source_message_id = $2", [
+          shop.shopId,
+          job.messageId,
+        ])
+      ).rowCount,
+    ).toBe(0);
+    await consumeKakaoCallback(job, env, { now, fetch: send, logSink: (line) => lines.push(line) });
+    await consumeKakaoCallback(job, env, { now, fetch: send, logSink: (line) => lines.push(line) });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(lines).toHaveLength(1);
+    expect(
+      (
+        await db.query(
+          `SELECT h.id FROM handoffs h JOIN owner_tasks t ON t.handoff_id = h.id
+      JOIN owner_alerts a ON a.owner_task_id = t.id WHERE h.shop_id = $1 AND h.source_message_id = $2`,
+          [shop.shopId, job.messageId],
+        )
+      ).rowCount,
+    ).toBe(1);
   });
 
   it("기한이 지난 콜백은 발신 없이 다음 대화에 전할 답으로 기록함", async () => {
