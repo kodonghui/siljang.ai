@@ -423,3 +423,5 @@
 
 - 외부 서버의 상태 점검 service Result=success·ExecMainStatus=0이고 OnFailure는 비어 있습니다. curl·jq는 있고 sendmail·msmtp·mail과 사용자 메일 설정은 없습니다. 같은 계정의 gh auth status와 이 저장소 push 권한은 정상입니다. 인증 값·메일 주소·서버 주소는 읽어 출력하지 않았고 새 비밀 값을 옮기지 않았습니다.
 - 학원컴의 API 읽기에서 기존 Siljang staging job failures 정책은 활성화·custom_analytics·이메일 대상1개·웹훅0개입니다. 조건 job_run_failed/job_find_failed·실행15m·창1m를 확인했고 추가 실패 종류와 공백을 검증할 준비입니다. 첫 SQL 집계는422여서 아직 실패 로그 건수나 실제 메일 전달 증거는 없습니다.
+
+- 정책 보완 도구의 학원컴 API 실행은403·10000으로 종료1입니다. 수정 성공·알림 전달로 세지 않으며 같은 인증의 쓰기를 반복하지 않습니다. 실패 종류8개와15분 조회 창·범위/대상 보존은 로컬 도구31개 시험으로 확인했습니다. 실제 화면/정책 재조회와 외부 수신 검증은 남습니다.
