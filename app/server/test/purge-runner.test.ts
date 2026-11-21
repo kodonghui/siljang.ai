@@ -148,4 +148,110 @@ describeDb("지난 기록 지우기 실행(TASK-158, SPEC-065 #1~#12)", () => {
     expect(await personal(f)).toEqual(NOW);
     expect((await db.query("SELECT id FROM kept_records WHERE order_id = $1", [f.orderId])).rows).toHaveLength(1);
   });
+  it("행 하나의 DB 실패는 되돌리고 다른 가게를 처리하며 다음 날 실패한 행부터 이어감", async () => {
+    const bad = await finished("행 실패 가게");
+    const good = await finished("계속 처리할 가게");
+    const failing: RequestDb = {
+      query: db.query.bind(db),
+      abort: db.abort.bind(db),
+      close: async () => {},
+      transaction: (fn) =>
+        db.transaction((tx) =>
+          fn({
+            query: (sql, params) => {
+              if (sql.includes("SELECT draft_id FROM orders") && params?.[1] === bad.f.orderId)
+                throw new Error("합성 개인정보 오류 글");
+              return tx.query(sql, params);
+            },
+          }),
+        ),
+    };
+    const result = await runPurge(failing, {
+      now: NOW,
+      storage: () => store,
+      log: (_level, fields) => {
+        logs.push(fields);
+      },
+    });
+    expect(result.failed).toBe(1);
+    expect(await personal(bad.f)).toBeNull();
+    expect(await personal(good.f)).toEqual(NOW);
+    expect(JSON.stringify(logs)).not.toContain("합성 개인정보 오류 글");
+    await run(new Date(NOW.getTime() + DAY));
+    expect(await personal(bad.f)).not.toBeNull();
+  });
+  it("배치가 한 행이어도 모든 차례를 돌며 새로 지울 수 있게 된 상담을 놓치지 않음", async () => {
+    const a = await finished("한 행 배치 A");
+    const b = await finished("한 행 배치 B");
+    // 주문 순서와 상담 순서를 반대로 만들어 다음 바퀴에서 더 오래된 상담이 새로 후보가 되게 한다.
+    await db.query("UPDATE orders SET finished_at = $2 WHERE id = $1", [
+      a.f.orderId,
+      new Date(NOW.getTime() - 32 * DAY),
+    ]);
+    await db.query("UPDATE consultations SET ended_at = $2 WHERE id = $1", [
+      b.f.consultationId,
+      new Date(NOW.getTime() - 33 * DAY),
+    ]);
+    const result = await runPurge(db, {
+      now: NOW,
+      storage: () => store,
+      log: () => {},
+      limits: { batch: 1, rounds: 10 },
+    });
+    expect(result.failed).toBe(0);
+    for (const f of [a.f, b.f]) {
+      expect(await personal(f)).toEqual(NOW);
+      expect((await db.query("SELECT status FROM consultations WHERE id = $1", [f.consultationId])).rows).toEqual([
+        { status: "deleted" },
+      ]);
+    }
+  });
+  it("시간 예산으로 주문 한 건 뒤 멈춰도 커밋한 변경과 파일 대기를 남기고 다음 날 계속", async () => {
+    const { f, key } = await finished("예산 중단 가게");
+    let halted = false;
+    const limited: RequestDb = {
+      query: db.query.bind(db),
+      abort: db.abort.bind(db),
+      close: async () => {},
+      transaction: async (fn) => {
+        const result = await db.transaction(fn);
+        halted = true;
+        return result;
+      },
+    };
+    expect(
+      (await runPurge(limited, { now: NOW, storage: () => store, log: () => {}, shouldStop: () => halted })).done,
+    ).toBe(1);
+    expect(await personal(f)).toEqual(NOW);
+    expect((await db.query("SELECT status FROM consultations WHERE id = $1", [f.consultationId])).rows).toEqual([
+      { status: "ended" },
+    ]);
+    expect((await db.query("SELECT attempts FROM file_deletions WHERE shop_id = $1", [f.shopId])).rows).toEqual([
+      { attempts: 0 },
+    ]);
+    expect(await store.head(key)).not.toBeNull();
+    await run(new Date(NOW.getTime() + DAY));
+    expect((await db.query("SELECT status FROM consultations WHERE id = $1", [f.consultationId])).rows).toEqual([
+      { status: "deleted" },
+    ]);
+    expect(await store.head(key)).toBeNull();
+  });
+  it("저장소 설정이 없어도 DB 처리는 끝내고 삭제 대기를 버리지 않음", async () => {
+    const { f, key } = await finished("저장소 미설정 가게");
+    const result = await runPurge(db, {
+      now: NOW,
+      storage: () => {
+        throw new Error("합성 저장소 미설정");
+      },
+      log: () => {},
+    });
+    expect(result.failed).toBeGreaterThan(0);
+    expect(await personal(f)).toEqual(NOW);
+    expect((await db.query("SELECT attempts FROM file_deletions WHERE shop_id = $1", [f.shopId])).rows).toEqual([
+      { attempts: 0 },
+    ]);
+    expect(await store.head(key)).not.toBeNull();
+    await run(new Date(NOW.getTime() + DAY));
+    expect(await store.head(key)).toBeNull();
+  });
 });
