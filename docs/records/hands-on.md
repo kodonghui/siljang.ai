@@ -317,3 +317,9 @@
 - 기존 노트북의 사용자 세션 1에서 Aside 연결이 성공했습니다. 정상 관리 경로에서 `siljang-dev`·서울 ap-northeast-2·Free와 관리자 SQL 실행을 확인했습니다. 조회는 읽기 전용 트랜잭션이고 transaction_read_only=on입니다.
 - 원장 열은 filename·source_commit·sha256·applied_at이며 실제 내용 조회는 편집기·실행 버튼 조작 두 번 실패 뒤 중단했습니다. 해당 SQL은 실행되지 않았습니다. 적용 파일·원장 행 수를 확인했다고 기록하지 않습니다. 역할 LOGIN·NOINHERIT와 모든 60개 public 테이블의 소유 아님, 테이블별 네 권한과 접속기록의 열 권한을 확인했습니다.
 - 접속기록은 INSERT·DELETE·SELECT(accessed_at)만 있고 전체 SELECT·나머지 열 SELECT·UPDATE·TRUNCATE는 없습니다. 합성 시험 행 존재와 숫자 표시 일치도 확인했으며 아직 삭제하지 않았습니다. 별도 관리자 권한 변경은 하지 않았습니다.
+
+## 2026-11-21 21:20 KST · TASK-173 실제 원장 갱신·최소 권한·정리
+
+- Aside가 고정된 생성 파일의 SHA-256 일치를 확인한 뒤 기존 서울 Free 프로젝트의 정상 관리자 경로로 원문 전체를 수정 없이 한 번 실행했습니다. COMMIT 뒤 실제 결과는 migration_count=25, owner_sessions_present=true, owner_session_update=true, access_log_full_select=false입니다.
+- 별도 읽기 전용 검증 결과는 migration_count=25, matching_file_hash_count=25, all_file_hashes_match=true, callback_column_count=3, owner_sessions_present=true입니다. messages의 SELECT·INSERT·UPDATE는 각각 true이고 접속기록의 기존 권한 제한은 유지됐습니다.
+- synthetic_row_count=0·synthetic_row_absent=true여서 앞의 합성 운영 기록은 정리됐습니다. 서버 역할에 ops_events 수정·삭제 권한을 주지 않았고 생성 파일 밖의 실제 업무 데이터·요금제·계정·키·소유권은 바꾸지 않았습니다. 큐·Cron의 실제 앱 실행은 별도로 이어갑니다.
