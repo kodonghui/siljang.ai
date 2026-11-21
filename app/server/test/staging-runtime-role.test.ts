@@ -7,9 +7,10 @@ import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import { scheduleKakaoCallback } from "../src/kakao-callback-store";
 import { receiveKakaoMessage } from "../src/kakao-skill-store";
 import { createOwnerSession, endOwnerSession, ownerProfile, renewOwnerSession } from "../src/owner-session";
+import { runScheduled } from "../src/scheduled";
 import { readSettings, Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
-import { describeDb, newUuid, TEST_HASH_KEY, testDb } from "./support/db";
+import { collectLogs, describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
@@ -47,6 +48,8 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     // 기존 접속기록의 제한을 먼저 만들고 새 권한 파일이 넓히지 않는지 확인한다.
     await isolated.db.query(`GRANT INSERT, DELETE ON access_logs TO "${role}"`);
     await isolated.db.query(`GRANT SELECT (accessed_at) ON access_logs TO "${role}"`);
+    // 실제 기존 서버 역할이 가진 운영 기록 조회·추가만 재현한다. 수정·삭제는 허용하지 않는다.
+    await isolated.db.query(`GRANT SELECT, INSERT ON ops_events TO "${role}"`);
     const grants = readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8");
     await isolated.db.query(grants.replaceAll(':"runtime_role"', `"${role}"`));
     shop = await createShop(isolated.db, "서버 역할 시험 가게");
@@ -120,6 +123,20 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
         { connect: () => roleDb(), now: () => now },
       ),
     ).toBe("done");
+  });
+
+  it("제한 역할의 기본 Cron이 실행 시각 밖에도 시작 기록을 읽고 쓰기 없이 완료", async () => {
+    if (isolated === undefined) throw new Error("시험 DB 없음");
+    const before = await isolated.db.query("SELECT count(*)::int AS n FROM ops_events");
+    const logs = collectLogs();
+    const result = await runScheduled({ scheduledTime: now.getTime(), cron: "* * * * *" }, testEnv(), {
+      connect: () => roleDb(),
+      logSink: logs.sink,
+    });
+    expect(result?.dailyStarted).toEqual([]);
+    expect(result?.jobs.purge).toEqual({ found: 0, done: 0, skipped: 0, failed: 0 });
+    expect(logs.lines.map((line) => JSON.parse(line))).toEqual([{ level: "info", event: "job_polled", job: "purge" }]);
+    expect((await isolated.db.query("SELECT count(*)::int AS n FROM ops_events")).rows).toEqual(before.rows);
   });
 
   it("제한 역할로 손님별 선점·이전 답 조회·콜백 성공 뒤 전달 표시까지 실행", async () => {

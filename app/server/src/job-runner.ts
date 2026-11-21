@@ -303,19 +303,18 @@ async function findDue(
 }
 
 /**
- * 하루 한 번 일을 그날 시작할지 정하고, 시작하면 표시를 남긴다(한 트랜잭션). 트랜잭션 잠금으로 두 실행기가 같은 분에
- * 와도 하나만 시작한다.
+ * 매분 시작 표시를 읽어 DB 연결과 실행 여부를 확인한다. 실제 시작은 트랜잭션 잠금 아래 다시 읽고 표시를 남겨
+ * 두 실행기가 같은 미시작 표시를 읽어도 하나만 시작한다. 실행 시간 밖에서는 잠금·쓰기 없이 끝난다.
  */
-async function startDaily(db: RequestDb, job: DailyJob, now: Date, windowMs: number): Promise<boolean> {
+async function startDaily(db: RequestDb, job: DailyJob, now: Date, windowMs: number, log: JobLog): Promise<boolean> {
   const slot = dailySlot(now, job.at, job.timeZone);
-  if (now.getTime() >= slot.getTime() + windowMs) return false;
+  const params = [job.marker, slot, new Date(slot.getTime() + DAY_MS)];
+  const last = await db.query<{ last_at: Date | null }>(LAST_DAILY_RUN, params);
+  log("info", { event: "job_polled", job: job.name });
+  if (!dailyDue(now, last.rows[0]?.last_at ?? null, job.at, job.timeZone, windowMs)) return false;
   return db.transaction(async (tx) => {
     await tx.query("SELECT pg_advisory_xact_lock($1::int, $2::int)", [LOCK_SPACE, lockKey(job.name)]);
-    const r = await tx.query<{ last_at: Date | null }>(LAST_DAILY_RUN, [
-      job.marker,
-      slot,
-      new Date(slot.getTime() + DAY_MS),
-    ]);
+    const r = await tx.query<{ last_at: Date | null }>(LAST_DAILY_RUN, params);
     if (!dailyDue(now, r.rows[0]?.last_at ?? null, job.at, job.timeZone, windowMs)) return false;
     await recordOpsEvent(tx, { kind: job.marker, count: 0, detail: { started: 1 }, at: now });
     return true;
@@ -431,7 +430,7 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
     if (job.every === "day") {
       let begun: boolean;
       try {
-        begun = await startDaily(options.db, job, now, limits.dailyWindowMs);
+        begun = await startDaily(options.db, job, now, limits.dailyWindowMs, log);
       } catch (err) {
         logFailure(log, "job_start_failed", job.name, err);
         tally.failed += 1;
