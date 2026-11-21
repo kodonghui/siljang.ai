@@ -2,9 +2,9 @@ import { sqlStateOf } from "./db";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
 import { scheduleKakaoCallback } from "./kakao-callback-store";
 import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
-import { replyWithKakaoHandoff } from "./kakao-handoff";
+import { replyKakaoHandoffInTransaction, replyWithKakaoHandoff } from "./kakao-handoff";
 import { kakaoAiFailureOutcome, kakaoReply } from "./kakao-reply";
-import { kakaoContactPhone, receiveKakaoMessage } from "./kakao-skill-store";
+import { kakaoContactPhone, receiveAndHandleKakaoMessage, receiveKakaoMessage } from "./kakao-skill-store";
 import { type ShopRequest, shopRoute } from "./routes";
 import { ForgedScopeError } from "./shop-scope";
 
@@ -24,6 +24,20 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
     if (kind !== "message" || request.status !== "linked") {
       return kakaoReply(r, "not_accepting", { contactPhone: await kakaoContactPhone(r.db) });
     }
+    const queue = r.services.kakaoCallbackQueue;
+    const callback = kakaoCallback(request.payload.callbackUrl, request.receivedAt);
+    if (messageKind === "text" && (queue === undefined || callback === null)) {
+      return await receiveAndHandleKakaoMessage(r.db, request, messageKind, async (tx, receipt) => {
+        if (receipt.kind === "not_accepting")
+          return kakaoReply(r, receipt.kind, { contactPhone: receipt.contactPhone });
+        if (receipt.kind === "duplicate") return kakaoReply(r, receipt.kind);
+        if (receipt.limit !== "ok") return kakaoReply(r, "rate_limited", { silent: receipt.limit === "silent" });
+        const outcome = kakaoAiFailureOutcome(r.services.aiConfigured ? "unavailable" : "key_missing");
+        return replyKakaoHandoffInTransaction(tx, receipt, r.services.now(), (previous) =>
+          kakaoReply(r, outcome, { previous }),
+        );
+      });
+    }
     const receipt = await receiveKakaoMessage(r.db, request, messageKind);
     if (receipt.kind === "not_accepting") return kakaoReply(r, receipt.kind, { contactPhone: receipt.contactPhone });
     if (receipt.kind === "duplicate") return kakaoReply(r, receipt.kind);
@@ -34,8 +48,6 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
       );
     if (messageKind === "unsupported") return reply("unsupported_message");
 
-    const queue = r.services.kakaoCallbackQueue;
-    const callback = kakaoCallback(request.payload.callbackUrl, request.receivedAt);
     const ackUntil = request.receivedAt.getTime() + SKILL_WORK_MS;
     if (queue !== undefined && callback !== null && r.services.now().getTime() < ackUntil) {
       if (
