@@ -46,10 +46,16 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
     const callback = kakaoCallback(request.payload.callbackUrl, request.receivedAt);
     const ackUntil = request.receivedAt.getTime() + SKILL_ACK_MS;
     if (queue !== undefined && callback !== null && r.services.now().getTime() < ackUntil) {
-      if (await scheduleKakaoCallback(
-        r.db, r.services.fieldCrypto(), queue, receipt.messageId, callback,
-        () => ackUntil - r.services.now().getTime(),
-      )) {
+      if (
+        await scheduleKakaoCallback(
+          r.db,
+          r.services.fieldCrypto(),
+          queue,
+          receipt.messageId,
+          callback,
+          () => ackUntil - r.services.now().getTime(),
+        )
+      ) {
         return r.json({ version: "2.0", useCallback: true, data: { text: "답을 준비하고 있어요" } }, 200, {
           "Siljang-Outcome": "callback_pending",
         });

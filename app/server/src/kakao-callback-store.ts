@@ -26,8 +26,13 @@ async function publishCallback(
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      queue.send(job, { delaySeconds: 1 }).then(() => true, () => false),
-      new Promise<false>((resolve) => { timer = setTimeout(() => resolve(false), limitMs); }),
+      queue.send(job, { delaySeconds: 1 }).then(
+        () => true,
+        () => false,
+      ),
+      new Promise<false>((resolve) => {
+        timer = setTimeout(() => resolve(false), limitMs);
+      }),
     ]);
   } finally {
     clearTimeout(timer);
