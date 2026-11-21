@@ -201,3 +201,15 @@
 - 결과: OVH 두 곳에서 `/`, `/operator/login`, `/manifest.webmanifest`, `/service-worker.js`는 200, `/api/healthz`는 200과 `{"status":"ok"}`, 세션 없는 `/api/operator/me`는 401입니다. 데이터베이스 연결과 로그인 계정은 TASK-170 이후입니다. [스테이징 상태 확인](https://staging.siljang.ai.corthex-hq.com/api/healthz)
 - OVH에서 보낸 정상 요청에 대해 Wrangler tail의 `CF-Connecting-IP`와 Cloudflare가 알려 준 요청 출처 IP가 같았습니다. 같은 경로에 임의의 `CF-Connecting-IP`를 넣은 요청은 HTTP 403이었고 Wrangler tail에 도착하지 않았습니다. Cloudflare API의 Pseudo IPv4 설정은 `off`였습니다.
 - GitHub 연동 계정은 Actions 변수·비밀 값 조회와 `staging` 환경 생성에 403을 받았습니다. Actions `main` 자동 배포, 1분 외부 감시, 실행기 실패 알림이 남았습니다. Cloudflare API는 방문자 IP 헤더를 제거하는 관리 변환의 설정 조회에 403을 반환했습니다.
+
+## 2026-11-21 · PR #122 합친 뒤 배포 확인
+
+- main `d2a2d766abf6af256ba9ee51d4db0a89e6815821`의 app `44877763219`(스테이징 배포·공개 상태·운영자 DB 조회 포함)·db `44877763209`가 성공했습니다. 연결된 GitHub 도구의 원격 main과 서명 커밋·트리를 대조했습니다.
+- 셸 HTTP·Git·Wrangler의 프록시 503이 남아 독립 배포 태그 조회와 카카오 조작은 미실행입니다. 이 결과를 실제 카카오 상담 성공으로 기록하지 않습니다.
+
+## 2026-11-21 · TASK-030 사장님 로그인 화면의 로컬 브라우저 확인
+
+- Chromium에서 실제 React 화면을 360·1280으로 열고 API만 합성 응답으로 대체했습니다. API-078의 200·422·429·기본 오류, API-001의 새 사장님·기존 가게·신고 보류 200과 401·422·429·503·기본 오류를 대조했습니다. 전체 화면 134개·흐름 18개에서 오류 0, 사장님 흐름 두 너비 모두 통과입니다.
+- 인가 주소·코드 교환 본문, StrictMode에서도 POST 한 번, 콜백 쿼리 제거, 동의 거부 때 API 호출 0건, 안전한 돌아갈 위치, Retry-After 동안 버튼 막힘, 실패 후 로그아웃 재시도와 페이지 복원을 확인했습니다. 사진에서 카드가 가운데 있고 오류 안내와 글이 잘리지 않는 것도 확인했습니다.
+- [검사 JSON](owner-login/2026-11-21-page-check.json) · [1280 기본 화면](owner-login/2026-11-21-normal-1280.png) · [360 오류 화면](owner-login/2026-11-21-error-360.png). 사진은 합성 추적 ID만 담고 있습니다.
+- 실제 카카오 로그인은 미실행입니다. 환경 연결과 TASK-020의 스테이징 설정·마이그레이션, 카카오 공식 버튼 자산 적용 확인이 남았습니다. 업무 본문은 준비 중이므로 이를 업무 화면 완료로 기록하지 않습니다.
