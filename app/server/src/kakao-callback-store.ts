@@ -1,5 +1,6 @@
 import type { FieldCrypto } from "./field-crypto";
 import type { KakaoCallback } from "./kakao-callback";
+import { type DeferredKakaoMessage, markDeferredKakaoMessages } from "./kakao-deferred";
 import type { ShopRequestDb } from "./shop-scope";
 
 export interface KakaoCallbackJob {
@@ -12,7 +13,6 @@ export interface KakaoCallbackQueue {
 }
 
 const PURPOSE = "messages.kakao_callback";
-const CLAIM_MS = 15_000;
 const RESPONSE_RESERVE_MS = 200;
 const QUEUE_PUBLISH_MAX_MS = 500;
 
@@ -67,6 +67,7 @@ export async function scheduleKakaoCallback(
 }
 
 interface Claim {
+  readonly customer_id: string;
   readonly consultation_id: string;
   readonly kakao_callback_enc: string;
   readonly kakao_callback_deadline_at: Date;
@@ -79,23 +80,45 @@ export async function claimKakaoCallback(
   messageId: string,
   now: Date,
 ): Promise<Claim | "busy" | null> {
-  const result = await db.run<Claim>(
-    `UPDATE messages
-        SET kakao_callback_claim_until = LEAST(kakao_callback_deadline_at, $4)
-      WHERE shop_id = $1 AND id = $2 AND direction = 'inbound'
-        AND kakao_callback_enc IS NOT NULL AND kakao_callback_deadline_at > $3
-        AND (kakao_callback_claim_until IS NULL OR kakao_callback_claim_until <= $3)
-      RETURNING consultation_id, kakao_callback_enc, kakao_callback_deadline_at, kakao_callback_claim_until, created_at`,
-    [messageId, now, new Date(now.getTime() + CLAIM_MS)],
-  );
-  const claim = result.rows[0];
-  if (claim !== undefined) return claim;
+  return db.transaction<Claim | "busy" | null>(async (tx) => {
+    const target = await tx.run<{ customer_id: string }>(
+      `SELECT c.customer_id FROM messages m
+        JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
+        WHERE m.shop_id = $1 AND m.id = $2 AND m.direction = 'inbound'
+          AND m.kakao_callback_enc IS NOT NULL AND m.kakao_callback_deadline_at > $3`,
+      [messageId, now],
+    );
+    const customerId = target.rows[0]?.customer_id;
+    if (customerId === undefined) return null;
+    await tx.run("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [customerId]);
+    const active = await tx.run(
+      `SELECT m.id FROM messages m
+        JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
+        WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.kakao_callback_claim_until > $3 LIMIT 1`,
+      [customerId, now],
+    );
+    if (active.rowCount > 0) return "busy";
+    // 바깥 호출 동안 DB 잠금은 잡지 않고 콜백 기한까지 그 손님의 전달을 선점한다.
+    const result = await tx.run<Omit<Claim, "customer_id">>(
+      `UPDATE messages SET kakao_callback_claim_until = kakao_callback_deadline_at
+        WHERE shop_id = $1 AND id = $2 AND direction = 'inbound'
+          AND kakao_callback_enc IS NOT NULL AND kakao_callback_deadline_at > $3
+          AND (kakao_callback_claim_until IS NULL OR kakao_callback_claim_until <= $3)
+        RETURNING consultation_id, kakao_callback_enc, kakao_callback_deadline_at, kakao_callback_claim_until, created_at`,
+      [messageId, now],
+    );
+    const claim = result.rows[0];
+    return claim === undefined ? null : { ...claim, customer_id: customerId };
+  });
+}
 
-  const pending = await db.run(
-    `SELECT id FROM messages WHERE shop_id = $1 AND id = $2 AND kakao_callback_deadline_at > $3`,
-    [messageId, now],
+/** 예외 뒤에는 자기 선점만 풀어 다음 큐 시도가 남은 기한 안에 다시 처리하게 한다. */
+export async function releaseKakaoCallback(db: ShopRequestDb, messageId: string, claim: Claim): Promise<void> {
+  await db.run(
+    `UPDATE messages SET kakao_callback_claim_until = NULL
+      WHERE shop_id = $1 AND id = $2 AND kakao_callback_enc = $3 AND kakao_callback_claim_until = $4`,
+    [messageId, claim.kakao_callback_enc, claim.kakao_callback_claim_until],
   );
-  return pending.rowCount > 0 ? "busy" : null;
 }
 
 export async function openKakaoCallback(db: ShopRequestDb, crypto: FieldCrypto, claim: Claim): Promise<string> {
@@ -108,6 +131,7 @@ export async function finishKakaoCallback(
   claim: Claim,
   text: string,
   sentAt: Date | null,
+  previous: readonly DeferredKakaoMessage[] = [],
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const owned = await tx.run(
@@ -116,6 +140,7 @@ export async function finishKakaoCallback(
       [messageId, claim.kakao_callback_enc, claim.kakao_callback_claim_until],
     );
     if (owned.rowCount === 0) return;
+    if (sentAt !== null) await markDeferredKakaoMessages(tx, claim.customer_id, previous, sentAt);
     await tx.run(
       `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery, sent_at)
         VALUES ($1, $2, 'outbound', 'system', 'text', $3, $4, $5)`,

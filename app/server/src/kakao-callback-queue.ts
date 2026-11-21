@@ -8,7 +8,9 @@ import {
   finishKakaoCallback,
   type KakaoCallbackJob,
   openKakaoCallback,
+  releaseKakaoCallback,
 } from "./kakao-callback-store";
+import { deferredKakaoMessages } from "./kakao-deferred";
 import { type LogSink, log } from "./log";
 import { createServices } from "./services";
 import { readSettings } from "./settings";
@@ -49,6 +51,7 @@ export async function consumeKakaoCallback(
   const conn = (options.connect ?? pgConnector)(settings.secrets.DATABASE_URL);
   const scope = createShopScope(job.shopId, { kind: "job", job: "kakao_callback" });
   const db = shopRequestDb(scope, conn);
+  let owned: Exclude<Awaited<ReturnType<typeof claimKakaoCallback>>, "busy"> = null;
   try {
     const claim = await claimKakaoCallback(db, job.messageId, now());
     if (claim === "busy") return "retry";
@@ -57,6 +60,7 @@ export async function consumeKakaoCallback(
       return "done";
     }
 
+    owned = claim;
     let raw: string | undefined;
     try {
       raw = await openKakaoCallback(db, services.fieldCrypto(), claim);
@@ -65,17 +69,21 @@ export async function consumeKakaoCallback(
     }
 
     const callback = kakaoCallback(raw, claim.created_at);
+    const previous = callback === null ? [] : await deferredKakaoMessages(db, claim.customer_id);
     const deliveredAt =
       callback !== null &&
       (await deliverKakaoCallback(
         { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
-        KAKAO_CONSULTATION_UNAVAILABLE_TEXT,
+        [...previous.map((row) => row.text), KAKAO_CONSULTATION_UNAVAILABLE_TEXT],
         { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
       )) === "delivered"
         ? now()
         : null;
-    await finishKakaoCallback(db, job.messageId, claim, KAKAO_CONSULTATION_UNAVAILABLE_TEXT, deliveredAt);
+    await finishKakaoCallback(db, job.messageId, claim, KAKAO_CONSULTATION_UNAVAILABLE_TEXT, deliveredAt, previous);
     return "done";
+  } catch (error) {
+    if (owned !== null) await releaseKakaoCallback(db, job.messageId, owned).catch(() => {});
+    throw error;
   } finally {
     await conn.close();
   }
