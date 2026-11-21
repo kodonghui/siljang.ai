@@ -20,8 +20,12 @@ const TEXT = {
 type TextOutcome = keyof typeof TEXT;
 type SkillOutcome = TextOutcome | "duplicate";
 
-function reply(r: ShopRequest, outcome: SkillOutcome, silent = false): Response {
-  const outputs = outcome === "duplicate" || silent ? [] : [{ simpleText: { text: TEXT[outcome] } }];
+function reply(r: ShopRequest, outcome: SkillOutcome, silent = false, contactPhone?: string): Response {
+  const text = outcome === "duplicate" ? "" : TEXT[outcome];
+  const outputs =
+    outcome === "duplicate" || silent
+      ? []
+      : [{ simpleText: { text: contactPhone === undefined ? text : `${text}\n${contactPhone}` } }];
   return r.json({ version: "2.0", template: { outputs } }, 200, {
     "Siljang-Outcome": outcome,
   });
@@ -38,7 +42,8 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
   const messageKind = request.payload.utterance.trim() === "" ? "unsupported" : "text";
   try {
     const receipt = await receiveKakaoMessage(r.db, request, messageKind);
-    if (receipt.kind !== "received") return reply(r, receipt.kind);
+    if (receipt.kind === "not_accepting") return reply(r, receipt.kind, false, receipt.contactPhone);
+    if (receipt.kind === "duplicate") return reply(r, receipt.kind);
     if (receipt.limit !== "ok") return reply(r, "rate_limited", receipt.limit === "silent");
     if (messageKind === "unsupported") return reply(r, "unsupported_message");
 

@@ -6,7 +6,7 @@ const MINUTE_MS = 60_000;
 
 export type InboundReceipt =
   | { readonly kind: "duplicate" }
-  | { readonly kind: "not_accepting" }
+  | { readonly kind: "not_accepting"; readonly contactPhone?: string }
   | {
       readonly kind: "received";
       readonly messageId: string;
@@ -27,11 +27,19 @@ export async function receiveKakaoMessage(
   const windowStart = new Date(Math.floor(receivedAt.getTime() / MINUTE_MS) * MINUTE_MS);
 
   return db.transaction(async (tx) => {
+    // 연결만 끝나고 예약 링크를 내지 않은 가게에서는 손님 기록을 만들지 않는다(SPEC-017).
+    // 가게와 채널의 공유 잠금을 수신 트랜잭션까지 유지해 설정을 바꾸는 요청과 차례를 정한다.
+    const shop = await tx.run<{ contact_phone: string; booking_issued_at: Date | null }>(
+      "SELECT contact_phone, booking_issued_at FROM shops WHERE id = $1 FOR SHARE",
+    );
+    const ready = shop.rows[0];
+    if (ready === undefined) return { kind: "not_accepting" };
+    if (ready.booking_issued_at === null) return { kind: "not_accepting", contactPhone: ready.contact_phone };
     const channel = await tx.run<Id>(
       "SELECT id FROM kakao_channels WHERE shop_id = $1 AND id = $2 AND status = 'linked' FOR SHARE",
       [channelId],
     );
-    if (channel.rowCount === 0) return { kind: "not_accepting" };
+    if (channel.rowCount === 0) return { kind: "not_accepting", contactPhone: ready.contact_phone };
 
     await tx.run(
       `INSERT INTO customers (shop_id, kakao_channel_id, kakao_user_key)
@@ -42,6 +50,13 @@ export async function receiveKakaoMessage(
       `SELECT id FROM customers
        WHERE shop_id = $1 AND kakao_channel_id = $2 AND kakao_user_key = $3 FOR UPDATE`,
       [channelId, payload.userId],
+    );
+
+    // 카카오가 값을 주지 않으면 false다. 늦게 끝난 옛 요청이 최신 친구 여부를 되돌리지 않는다(REQ-219, G5).
+    await tx.run(
+      `UPDATE customers SET channel_friend = $3, friend_checked_at = $4
+        WHERE shop_id = $1 AND id = $2 AND (friend_checked_at IS NULL OR friend_checked_at <= $4)`,
+      [customerId, payload.isFriend, receivedAt],
     );
 
     const previous = await tx.run<Id>("SELECT id FROM messages WHERE shop_id = $1 AND kakao_message_id = $2", [
