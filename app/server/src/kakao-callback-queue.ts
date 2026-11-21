@@ -1,17 +1,18 @@
 import type { Bindings } from "./app";
 import { type DbConnector, pgConnector } from "./db";
 import { FieldCryptoError } from "./field-crypto";
-import { deliverKakaoCallback, KAKAO_CONSULTATION_UNAVAILABLE_TEXT, kakaoCallback } from "./kakao-callback";
+import { deliverKakaoCallback, kakaoCallback } from "./kakao-callback";
 import {
   claimKakaoCallback,
   deferExpiredKakaoCallback,
   finishKakaoCallback,
   type KakaoCallbackJob,
   openKakaoCallback,
+  prepareKakaoCallbackHandoff,
   releaseKakaoCallback,
 } from "./kakao-callback-store";
 import { deferredKakaoMessages } from "./kakao-deferred";
-import { KAKAO_HANDOFF_TEXT } from "./kakao-reply";
+import { KAKAO_HANDOFF_TEXT, kakaoAiFailureOutcome } from "./kakao-reply";
 import { type LogSink, log } from "./log";
 import { createServices } from "./services";
 import { readSettings } from "./settings";
@@ -62,6 +63,15 @@ export async function consumeKakaoCallback(
     }
 
     owned = claim;
+    if (!(await prepareKakaoCallbackHandoff(db, job.messageId, claim, now()))) return "done";
+    log(
+      "warn",
+      {
+        event: "kakao_callback_handoff",
+        code: kakaoAiFailureOutcome(services.aiConfigured ? "unavailable" : "key_missing"),
+      },
+      options.logSink,
+    );
     let raw: string | undefined;
     try {
       raw = await openKakaoCallback(db, services.fieldCrypto(), claim);
@@ -75,12 +85,12 @@ export async function consumeKakaoCallback(
       callback !== null &&
       (await deliverKakaoCallback(
         { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
-        [...previous.map((row) => row.text), KAKAO_CONSULTATION_UNAVAILABLE_TEXT],
+        [...previous.map((row) => row.text), KAKAO_HANDOFF_TEXT],
         { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
       )) === "delivered"
         ? now()
         : null;
-    await finishKakaoCallback(db, job.messageId, claim, KAKAO_CONSULTATION_UNAVAILABLE_TEXT, deliveredAt, previous);
+    await finishKakaoCallback(db, job.messageId, claim, KAKAO_HANDOFF_TEXT, deliveredAt, previous);
     return "done";
   } catch (error) {
     if (owned !== null) await releaseKakaoCallback(db, job.messageId, owned).catch(() => {});
