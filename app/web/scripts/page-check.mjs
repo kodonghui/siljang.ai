@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import { checkOperatorPage } from "./operator-page-check.mjs";
+import { checkOwnerPage } from "./owner-page-check.mjs";
 
 const WEB = fileURLToPath(new URL("..", import.meta.url));
 const WIDTHS = [360, 1280];
@@ -432,6 +433,20 @@ for (const width of WIDTHS) {
   } catch (error) {
     report.flows.push({ name: "operator-login", width, pass: false });
     failures.push(`운영자 로그인@${width}: ${String(error)}`);
+  }
+}
+
+for (const width of WIDTHS) {
+  try {
+    await checkOwnerPage(browser, base, width, async (page, state, consoleErrors) => {
+      await page.evaluate(() => document.fonts.ready);
+      const measured = await measure(page);
+      summarize(state, width, measured, consoleErrors, await shoot(page, state, width));
+    });
+    report.flows.push({ name: "owner-login", width, pass: true });
+  } catch (error) {
+    report.flows.push({ name: "owner-login", width, pass: false });
+    failures.push(`사장님 로그인@${width}: ${String(error)}`);
   }
 }
 

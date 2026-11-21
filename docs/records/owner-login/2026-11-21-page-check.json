@@ -1,0 +1,3420 @@
+{
+  "tool": "app/web/scripts/page-check.mjs",
+  "pageCheck": "/workspace/siljang-task030/tools/corthex/page-check.js",
+  "at": "2026-11-21T07:09:53.347Z",
+  "widths": [
+    360,
+    1280
+  ],
+  "height": 800,
+  "deviceScaleFactor": 1,
+  "pages": [
+    {
+      "state": "loading",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "loading-360.png"
+    },
+    {
+      "state": "loading",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "loading-1280.png"
+    },
+    {
+      "state": "empty",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "empty-360.png"
+    },
+    {
+      "state": "empty",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "empty-1280.png"
+    },
+    {
+      "state": "load-failed",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "load-failed-360.png"
+    },
+    {
+      "state": "load-failed",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "load-failed-1280.png"
+    },
+    {
+      "state": "not-found",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "not-found-360.png"
+    },
+    {
+      "state": "not-found",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "not-found-1280.png"
+    },
+    {
+      "state": "permission",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "permission-360.png"
+    },
+    {
+      "state": "permission",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "permission-1280.png"
+    },
+    {
+      "state": "stale",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "stale-360.png"
+    },
+    {
+      "state": "stale",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "stale-1280.png"
+    },
+    {
+      "state": "as-of",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "as-of-360.png"
+    },
+    {
+      "state": "as-of",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "as-of-1280.png"
+    },
+    {
+      "state": "field-error",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "field-error-360.png"
+    },
+    {
+      "state": "field-error",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "field-error-1280.png"
+    },
+    {
+      "state": "save-failed",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "save-failed-360.png"
+    },
+    {
+      "state": "save-failed",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "save-failed-1280.png"
+    },
+    {
+      "state": "submitting",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "submitting-360.png"
+    },
+    {
+      "state": "submitting",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "submitting-1280.png"
+    },
+    {
+      "state": "done",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "done-360.png"
+    },
+    {
+      "state": "done",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "done-1280.png"
+    },
+    {
+      "state": "rate-limited",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "rate-limited-360.png"
+    },
+    {
+      "state": "rate-limited",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "rate-limited-1280.png"
+    },
+    {
+      "state": "already-done",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "already-done-360.png"
+    },
+    {
+      "state": "already-done",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "already-done-1280.png"
+    },
+    {
+      "state": "not-allowed",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "not-allowed-360.png"
+    },
+    {
+      "state": "not-allowed",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "not-allowed-1280.png"
+    },
+    {
+      "state": "confirm",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 4,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 4
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > h1",
+          "text": "부품 견본",
+          "need": 3,
+          "font": "21px 700"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > p.sample__state",
+          "text": "확인 창(서버 확인) · confirm",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > section.sample__section > h2",
+          "text": "11월 20일(금)",
+          "need": 4.5,
+          "font": "17px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > section.sample__section > p",
+          "text": "확정 주문 2건 · 남은 자리 3",
+          "need": 4.5,
+          "font": "15px 400"
+        }
+      ],
+      "screenshot": "confirm-360.png"
+    },
+    {
+      "state": "confirm",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 4,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 4
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > h1",
+          "text": "부품 견본",
+          "need": 3,
+          "font": "21px 700"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > p.sample__state",
+          "text": "확인 창(서버 확인) · confirm",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > section.sample__section > h2",
+          "text": "11월 20일(금)",
+          "need": 4.5,
+          "font": "17px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > section.sample__section > p",
+          "text": "확정 주문 2건 · 남은 자리 3",
+          "need": 4.5,
+          "font": "15px 400"
+        }
+      ],
+      "screenshot": "confirm-1280.png"
+    },
+    {
+      "state": "confirm-notify",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 3,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 3
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > h1",
+          "text": "부품 견본",
+          "need": 3,
+          "font": "21px 700"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > p.sample__state",
+          "text": "확인 창(손님에게 안내가 감) · confirm-notify",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > section.sample__section > h2",
+          "text": "맞춤 주문 요청",
+          "need": 4.5,
+          "font": "17px 600"
+        }
+      ],
+      "screenshot": "confirm-notify-360.png"
+    },
+    {
+      "state": "confirm-notify",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 3,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 3
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > h1",
+          "text": "부품 견본",
+          "need": 3,
+          "font": "21px 700"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > p.sample__state",
+          "text": "확인 창(손님에게 안내가 감) · confirm-notify",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > section.sample__section > h2",
+          "text": "맞춤 주문 요청",
+          "need": 4.5,
+          "font": "17px 600"
+        }
+      ],
+      "screenshot": "confirm-notify-1280.png"
+    },
+    {
+      "state": "flow",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-360.png"
+    },
+    {
+      "state": "flow",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-1280.png"
+    },
+    {
+      "state": "flow-retry",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-retry-360.png"
+    },
+    {
+      "state": "flow-retry",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-retry-1280.png"
+    },
+    {
+      "state": "layout-owner",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-360.png"
+    },
+    {
+      "state": "layout-owner",
+      "width": 768,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-768.png"
+    },
+    {
+      "state": "layout-owner",
+      "width": 1024,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-1024.png"
+    },
+    {
+      "state": "layout-owner",
+      "width": 1259,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-1259.png"
+    },
+    {
+      "state": "layout-owner",
+      "width": 1260,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-1260.png"
+    },
+    {
+      "state": "layout-owner",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-1280.png"
+    },
+    {
+      "state": "layout-owner-sub",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-sub-360.png"
+    },
+    {
+      "state": "layout-owner-sub",
+      "width": 768,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-sub-768.png"
+    },
+    {
+      "state": "layout-owner-sub",
+      "width": 1024,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-sub-1024.png"
+    },
+    {
+      "state": "layout-owner-sub",
+      "width": 1259,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-sub-1259.png"
+    },
+    {
+      "state": "layout-owner-sub",
+      "width": 1260,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-sub-1260.png"
+    },
+    {
+      "state": "layout-owner-sub",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-sub-1280.png"
+    },
+    {
+      "state": "layout-owner-list-states",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-list-states-360.png"
+    },
+    {
+      "state": "layout-owner-list-states",
+      "width": 768,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-list-states-768.png"
+    },
+    {
+      "state": "layout-owner-list-states",
+      "width": 1024,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-list-states-1024.png"
+    },
+    {
+      "state": "layout-owner-list-states",
+      "width": 1259,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-list-states-1259.png"
+    },
+    {
+      "state": "layout-owner-list-states",
+      "width": 1260,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-list-states-1260.png"
+    },
+    {
+      "state": "layout-owner-list-states",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-owner-list-states-1280.png"
+    },
+    {
+      "state": "layout-operator",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 1,
+        "info": 0
+      },
+      "byCheck": {
+        "orphan": 1
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "orphan",
+          "msg": "Heading or short text ends with one short word on its last line (orphan): ·가공업",
+          "where": "li.ui-list__card > dl.ui-list__meta > div.ui-list__metarow:nth-of-type(3) > dd",
+          "text": "2026-0123456 · 즉석판매제조·가공업"
+        }
+      ],
+      "screenshot": "layout-operator-360.png"
+    },
+    {
+      "state": "layout-operator",
+      "width": 768,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-768.png"
+    },
+    {
+      "state": "layout-operator",
+      "width": 1024,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-1024.png"
+    },
+    {
+      "state": "layout-operator",
+      "width": 1259,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-1259.png"
+    },
+    {
+      "state": "layout-operator",
+      "width": 1260,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-1260.png"
+    },
+    {
+      "state": "layout-operator",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-1280.png"
+    },
+    {
+      "state": "layout-operator-sub",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-sub-360.png"
+    },
+    {
+      "state": "layout-operator-sub",
+      "width": 768,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-sub-768.png"
+    },
+    {
+      "state": "layout-operator-sub",
+      "width": 1024,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-sub-1024.png"
+    },
+    {
+      "state": "layout-operator-sub",
+      "width": 1259,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-sub-1259.png"
+    },
+    {
+      "state": "layout-operator-sub",
+      "width": 1260,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-sub-1260.png"
+    },
+    {
+      "state": "layout-operator-sub",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-operator-sub-1280.png"
+    },
+    {
+      "state": "layout-setup",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-setup-360.png"
+    },
+    {
+      "state": "layout-setup",
+      "width": 768,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-setup-768.png"
+    },
+    {
+      "state": "layout-setup",
+      "width": 1024,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-setup-1024.png"
+    },
+    {
+      "state": "layout-setup",
+      "width": 1259,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-setup-1259.png"
+    },
+    {
+      "state": "layout-setup",
+      "width": 1260,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-setup-1260.png"
+    },
+    {
+      "state": "layout-setup",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-setup-1280.png"
+    },
+    {
+      "state": "layout-login",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-login-360.png"
+    },
+    {
+      "state": "layout-login",
+      "width": 768,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-login-768.png"
+    },
+    {
+      "state": "layout-login",
+      "width": 1024,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-login-1024.png"
+    },
+    {
+      "state": "layout-login",
+      "width": 1259,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-login-1259.png"
+    },
+    {
+      "state": "layout-login",
+      "width": 1260,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-login-1260.png"
+    },
+    {
+      "state": "layout-login",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "layout-login-1280.png"
+    },
+    {
+      "state": "flow-menu",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-menu-360.png"
+    },
+    {
+      "state": "flow-menu",
+      "width": 768,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-menu-768.png"
+    },
+    {
+      "state": "flow-menu",
+      "width": 1024,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-menu-1024.png"
+    },
+    {
+      "state": "flow-menu",
+      "width": 1259,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-menu-1259.png"
+    },
+    {
+      "state": "flow-menu",
+      "width": 1260,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-menu-1260.png"
+    },
+    {
+      "state": "flow-menu",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-menu-1280.png"
+    },
+    {
+      "state": "flow-dialog",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 4,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 4
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > h1",
+          "text": "부품 견본",
+          "need": 3,
+          "font": "21px 700"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > p.sample__state",
+          "text": "흐름: 확인 창 → 새 키로 다시 보냄 · flow",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > section.sample__section > h2",
+          "text": "11월 20일(금)",
+          "need": 4.5,
+          "font": "17px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > section.sample__section > p",
+          "text": "확정 주문 2건 · 남은 자리 3",
+          "need": 4.5,
+          "font": "15px 400"
+        }
+      ],
+      "screenshot": "flow-dialog-360.png"
+    },
+    {
+      "state": "flow-done",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-done-360.png"
+    },
+    {
+      "state": "flow-retry-failed",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-retry-failed-360.png"
+    },
+    {
+      "state": "flow-retry-done",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-retry-done-360.png"
+    },
+    {
+      "state": "flow-dialog",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 4,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 4
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > h1",
+          "text": "부품 견본",
+          "need": 3,
+          "font": "21px 700"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > header.sample__head > p.sample__state",
+          "text": "흐름: 확인 창 → 새 키로 다시 보냄 · flow",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > section.sample__section > h2",
+          "text": "11월 20일(금)",
+          "need": 4.5,
+          "font": "17px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div#root > main.sample > section.sample__section > p",
+          "text": "확정 주문 2건 · 남은 자리 3",
+          "need": 4.5,
+          "font": "15px 400"
+        }
+      ],
+      "screenshot": "flow-dialog-1280.png"
+    },
+    {
+      "state": "flow-done",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-done-1280.png"
+    },
+    {
+      "state": "flow-retry-failed",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-retry-failed-1280.png"
+    },
+    {
+      "state": "flow-retry-done",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "flow-retry-done-1280.png"
+    },
+    {
+      "state": "flow-menu-open",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 3,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 3
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > header.ui-layout__head > div.ui-layout__titles > h1.ui-layout__title",
+          "text": "할 일",
+          "need": 4.5,
+          "font": "17px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout.ui-layout--owner > div.ui-layout__page > header.ui-layout__head > span.ui-layout__who.ui-narrow-only",
+          "text": "달빛케이크",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > main.ui-layout__main > section.ui-section:nth-of-type(2) > p.sample__state",
+          "text": "플로우: 360 메뉴 열기 → 항목 → 닫기 · flow-menu",
+          "need": 4.5,
+          "font": "13px 400"
+        }
+      ],
+      "screenshot": "flow-menu-open-360.png"
+    },
+    {
+      "state": "flow-menu-open",
+      "width": 768,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 3,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 3
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > header.ui-layout__head > div.ui-layout__titles > h1.ui-layout__title",
+          "text": "할 일",
+          "need": 4.5,
+          "font": "17px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout.ui-layout--owner > div.ui-layout__page > header.ui-layout__head > span.ui-layout__who.ui-narrow-only",
+          "text": "달빛케이크",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > main.ui-layout__main > section.ui-section:nth-of-type(2) > p.sample__state",
+          "text": "플로우: 360 메뉴 열기 → 항목 → 닫기 · flow-menu",
+          "need": 4.5,
+          "font": "13px 400"
+        }
+      ],
+      "screenshot": "flow-menu-open-768.png"
+    },
+    {
+      "state": "flow-menu-open",
+      "width": 1024,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 3,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 3
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > header.ui-layout__head > div.ui-layout__titles > h1.ui-layout__title",
+          "text": "할 일",
+          "need": 4.5,
+          "font": "17px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout.ui-layout--owner > div.ui-layout__page > header.ui-layout__head > span.ui-layout__who.ui-narrow-only",
+          "text": "달빛케이크",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > main.ui-layout__main > section.ui-section:nth-of-type(2) > p.sample__state",
+          "text": "플로우: 360 메뉴 열기 → 항목 → 닫기 · flow-menu",
+          "need": 4.5,
+          "font": "13px 400"
+        }
+      ],
+      "screenshot": "flow-menu-open-1024.png"
+    },
+    {
+      "state": "flow-menu-open",
+      "width": 1259,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 3,
+        "info": 0
+      },
+      "byCheck": {
+        "contrast-image": 3
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > header.ui-layout__head > div.ui-layout__titles > h1.ui-layout__title",
+          "text": "할 일",
+          "need": 4.5,
+          "font": "17px 600"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout.ui-layout--owner > div.ui-layout__page > header.ui-layout__head > span.ui-layout__who.ui-narrow-only",
+          "text": "달빛케이크",
+          "need": 4.5,
+          "font": "13px 400"
+        },
+        {
+          "level": "warn",
+          "check": "contrast-image",
+          "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+          "where": "div.ui-layout__page > main.ui-layout__main > section.ui-section:nth-of-type(2) > p.sample__state",
+          "text": "플로우: 360 메뉴 열기 → 항목 → 닫기 · flow-menu",
+          "need": 4.5,
+          "font": "13px 400"
+        }
+      ],
+      "screenshot": "flow-menu-open-1259.png"
+    },
+    {
+      "state": "operator-normal",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-normal-360.png"
+    },
+    {
+      "state": "operator-return",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-return-360.png"
+    },
+    {
+      "state": "operator-submitting",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-submitting-360.png"
+    },
+    {
+      "state": "operator-401",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-401-360.png"
+    },
+    {
+      "state": "operator-422",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-422-360.png"
+    },
+    {
+      "state": "operator-429",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-429-360.png"
+    },
+    {
+      "state": "operator-503",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-503-360.png"
+    },
+    {
+      "state": "operator-500",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 1,
+        "info": 0
+      },
+      "byCheck": {
+        "latin-split": 1
+      },
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [
+        {
+          "level": "warn",
+          "check": "latin-split",
+          "msg": "Latin or digit run split at a line end: 6789ab|cdef",
+          "where": "main.ui-login__card > form.ui-stack.operator-login-form > div.ui-statebox.ui-statebox--error:nth-of-type(1) > p.ui-statebox__body:nth-of-type(2)",
+          "text": "추적 ID 0123456789abcdef0123456789abcdef",
+          "at": "6789ab|cdef"
+        }
+      ],
+      "screenshot": "operator-500-360.png"
+    },
+    {
+      "state": "operator-normal",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-normal-1280.png"
+    },
+    {
+      "state": "operator-return",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-return-1280.png"
+    },
+    {
+      "state": "operator-submitting",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-submitting-1280.png"
+    },
+    {
+      "state": "operator-401",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-401-1280.png"
+    },
+    {
+      "state": "operator-422",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-422-1280.png"
+    },
+    {
+      "state": "operator-429",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-429-1280.png"
+    },
+    {
+      "state": "operator-503",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-503-1280.png"
+    },
+    {
+      "state": "operator-500",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "operator-500-1280.png"
+    },
+    {
+      "state": "owner-normal",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-normal-360.png"
+    },
+    {
+      "state": "owner-start-422",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-start-422-360.png"
+    },
+    {
+      "state": "owner-start-rate-limited",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-start-rate-limited-360.png"
+    },
+    {
+      "state": "owner-start-500",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-start-500-360.png"
+    },
+    {
+      "state": "owner-return",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-return-360.png"
+    },
+    {
+      "state": "owner-loading",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-loading-360.png"
+    },
+    {
+      "state": "owner-callback-401",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-callback-401-360.png"
+    },
+    {
+      "state": "owner-callback-422",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-callback-422-360.png"
+    },
+    {
+      "state": "owner-callback-429",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-callback-429-360.png"
+    },
+    {
+      "state": "owner-callback-503",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-callback-503-360.png"
+    },
+    {
+      "state": "owner-callback-500",
+      "width": 360,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-callback-500-360.png"
+    },
+    {
+      "state": "owner-normal",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-normal-1280.png"
+    },
+    {
+      "state": "owner-start-422",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-start-422-1280.png"
+    },
+    {
+      "state": "owner-start-rate-limited",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-start-rate-limited-1280.png"
+    },
+    {
+      "state": "owner-start-500",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-start-500-1280.png"
+    },
+    {
+      "state": "owner-return",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-return-1280.png"
+    },
+    {
+      "state": "owner-loading",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-loading-1280.png"
+    },
+    {
+      "state": "owner-callback-401",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-callback-401-1280.png"
+    },
+    {
+      "state": "owner-callback-422",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-callback-422-1280.png"
+    },
+    {
+      "state": "owner-callback-429",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-callback-429-1280.png"
+    },
+    {
+      "state": "owner-callback-503",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-callback-503-1280.png"
+    },
+    {
+      "state": "owner-callback-500",
+      "width": 1280,
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "overflowX": 0,
+      "consoleErrors": [],
+      "fonts": [
+        "IBM Plex Sans KR 400",
+        "IBM Plex Sans KR 500",
+        "IBM Plex Sans KR 600",
+        "IBM Plex Sans KR 700"
+      ],
+      "errors": [],
+      "warns": [],
+      "screenshot": "owner-callback-500-1280.png"
+    }
+  ],
+  "flows": [
+    {
+      "flow": "flow",
+      "width": 360,
+      "ok": true,
+      "steps": [
+        "맞음: 보내는 동안 버튼이 aria-disabled이고 '처리하고 있어요'",
+        "맞음: 두 번 눌러도 요청 하나(1)",
+        "맞음: 창이 열리면 포커스가 '돌아가기'(돌아가기)",
+        "맞음: Tab → 액션 버튼(휴무로 바꾸기)",
+        "맞음: Tab이 창 안에서 돎(돌아가기)",
+        "맞음: Shift+Tab도 창 안에서 돎(휴무로 바꾸기)",
+        "맞음: Esc로 창이 닫힘",
+        "맞음: 닫히면 포커스가 누른 버튼으로 돌아옴(submit)",
+        "맞음: Esc는 아무것도 보내지 않음(1)",
+        "맞음: 다시 누르면 새 요청 키",
+        "맞음: 확인하면 같은 본문에 confirm 값을 담아 새 요청 키로 보냄",
+        "맞음: 요청 키가 06 꼴(35·35·35자)",
+        "맞음: 확인 뒤에도 포커스가 누른 버튼으로(submit)",
+        "맞음: 됨을 polite로 알림"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "flow-retry",
+      "width": 360,
+      "ok": true,
+      "steps": [
+        "맞음: 두 번 눌러도 요청 하나(1)",
+        "맞음: 실패를 assertive로 알림",
+        "맞음: '다시 시도'는 같은 요청 키"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "flow",
+      "width": 1280,
+      "ok": true,
+      "steps": [
+        "맞음: 보내는 동안 버튼이 aria-disabled이고 '처리하고 있어요'",
+        "맞음: 두 번 눌러도 요청 하나(1)",
+        "맞음: 창이 열리면 포커스가 '돌아가기'(돌아가기)",
+        "맞음: Tab → 액션 버튼(휴무로 바꾸기)",
+        "맞음: Tab이 창 안에서 돎(돌아가기)",
+        "맞음: Shift+Tab도 창 안에서 돎(휴무로 바꾸기)",
+        "맞음: Esc로 창이 닫힘",
+        "맞음: 닫히면 포커스가 누른 버튼으로 돌아옴(submit)",
+        "맞음: Esc는 아무것도 보내지 않음(1)",
+        "맞음: 다시 누르면 새 요청 키",
+        "맞음: 확인하면 같은 본문에 confirm 값을 담아 새 요청 키로 보냄",
+        "맞음: 요청 키가 06 꼴(35·35·35자)",
+        "맞음: 확인 뒤에도 포커스가 누른 버튼으로(submit)",
+        "맞음: 됨을 polite로 알림"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "flow-retry",
+      "width": 1280,
+      "ok": true,
+      "steps": [
+        "맞음: 두 번 눌러도 요청 하나(1)",
+        "맞음: 실패를 assertive로 알림",
+        "맞음: '다시 시도'는 같은 요청 키"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "layout-widths",
+      "width": 360,
+      "ok": true,
+      "steps": [
+        "맞음: 왼쪽 메뉴가 안 보임",
+        "맞음: '메뉴 열기'가 보임",
+        "맞음: 목록 표가 안 보임",
+        "맞음: 목록 카드가 보임",
+        "맞음: 보이는 메뉴 0개()",
+        "맞음: 지금 1뎁스 표시(없음)"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "layout-widths",
+      "width": 768,
+      "ok": true,
+      "steps": [
+        "맞음: 왼쪽 메뉴가 안 보임",
+        "맞음: '메뉴 열기'가 보임",
+        "맞음: 목록 표가 안 보임",
+        "맞음: 목록 카드가 보임",
+        "맞음: 보이는 메뉴 0개()",
+        "맞음: 지금 1뎁스 표시(없음)"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "layout-widths",
+      "width": 1024,
+      "ok": true,
+      "steps": [
+        "맞음: 왼쪽 메뉴가 안 보임",
+        "맞음: '메뉴 열기'가 보임",
+        "맞음: 목록 표가 안 보임",
+        "맞음: 목록 카드가 보임",
+        "맞음: 보이는 메뉴 0개()",
+        "맞음: 지금 1뎁스 표시(없음)"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "layout-widths",
+      "width": 1259,
+      "ok": true,
+      "steps": [
+        "맞음: 왼쪽 메뉴가 안 보임",
+        "맞음: '메뉴 열기'가 보임",
+        "맞음: 목록 표가 안 보임",
+        "맞음: 목록 카드가 보임",
+        "맞음: 보이는 메뉴 0개()",
+        "맞음: 지금 1뎁스 표시(없음)"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "layout-widths",
+      "width": 1260,
+      "ok": true,
+      "steps": [
+        "맞음: 왼쪽 메뉴가 보임",
+        "맞음: '메뉴 열기'가 안 보임",
+        "맞음: 목록 표가 보임",
+        "맞음: 목록 카드가 안 보임",
+        "맞음: 보이는 메뉴 1개(사장님 메뉴)",
+        "맞음: 지금 1뎁스 표시(주문=page)"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "layout-widths",
+      "width": 1280,
+      "ok": true,
+      "steps": [
+        "맞음: 왼쪽 메뉴가 보임",
+        "맞음: '메뉴 열기'가 안 보임",
+        "맞음: 목록 표가 보임",
+        "맞음: 목록 카드가 안 보임",
+        "맞음: 보이는 메뉴 1개(사장님 메뉴)",
+        "맞음: 지금 1뎁스 표시(주문=page)"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "flow-menu",
+      "width": 360,
+      "ok": true,
+      "steps": [
+        "맞음: 열면 aria-expanded=true(true)",
+        "맞음: 열면 지금 1뎁스 항목에 포커스(할 일 3건)",
+        "맞음: Tab이 열린 메뉴 안에서 돎(할 일 3건)",
+        "맞음: Shift+Tab도 열린 메뉴 안(메뉴 닫기)",
+        "맞음: Esc로 닫히고 aria-expanded=false",
+        "맞음: 닫히면 포커스가 '메뉴 열기'로 돌아옴()",
+        "맞음: 항목을 누르면 닫히고 그 주소로(/owner/payment-requests)",
+        "맞음: 바깥(scrim)을 누르면 닫힘",
+        "맞음: '메뉴 닫기'로 닫히고 포커스가 '메뉴 열기'로()",
+        "맞음: 열린 채 넓은 화면이 되면 닫힘"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "flow-menu",
+      "width": 768,
+      "ok": true,
+      "steps": [
+        "맞음: 열면 aria-expanded=true(true)",
+        "맞음: 열면 지금 1뎁스 항목에 포커스(할 일 3건)",
+        "맞음: Tab이 열린 메뉴 안에서 돎(할 일 3건)",
+        "맞음: Shift+Tab도 열린 메뉴 안(메뉴 닫기)",
+        "맞음: Esc로 닫히고 aria-expanded=false",
+        "맞음: 닫히면 포커스가 '메뉴 열기'로 돌아옴()",
+        "맞음: 항목을 누르면 닫히고 그 주소로(/owner/payment-requests)",
+        "맞음: 바깥(scrim)을 누르면 닫힘",
+        "맞음: '메뉴 닫기'로 닫히고 포커스가 '메뉴 열기'로()",
+        "맞음: 열린 채 넓은 화면이 되면 닫힘"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "flow-menu",
+      "width": 1024,
+      "ok": true,
+      "steps": [
+        "맞음: 열면 aria-expanded=true(true)",
+        "맞음: 열면 지금 1뎁스 항목에 포커스(할 일 3건)",
+        "맞음: Tab이 열린 메뉴 안에서 돎(할 일 3건)",
+        "맞음: Shift+Tab도 열린 메뉴 안(메뉴 닫기)",
+        "맞음: Esc로 닫히고 aria-expanded=false",
+        "맞음: 닫히면 포커스가 '메뉴 열기'로 돌아옴()",
+        "맞음: 항목을 누르면 닫히고 그 주소로(/owner/payment-requests)",
+        "맞음: 바깥(scrim)을 누르면 닫힘",
+        "맞음: '메뉴 닫기'로 닫히고 포커스가 '메뉴 열기'로()",
+        "맞음: 열린 채 넓은 화면이 되면 닫힘"
+      ],
+      "problems": []
+    },
+    {
+      "flow": "flow-menu",
+      "width": 1259,
+      "ok": true,
+      "steps": [
+        "맞음: 열면 aria-expanded=true(true)",
+        "맞음: 열면 지금 1뎁스 항목에 포커스(할 일 3건)",
+        "맞음: Tab이 열린 메뉴 안에서 돎(할 일 3건)",
+        "맞음: Shift+Tab도 열린 메뉴 안(메뉴 닫기)",
+        "맞음: Esc로 닫히고 aria-expanded=false",
+        "맞음: 닫히면 포커스가 '메뉴 열기'로 돌아옴()",
+        "맞음: 항목을 누르면 닫히고 그 주소로(/owner/payment-requests)",
+        "맞음: 바깥(scrim)을 누르면 닫힘",
+        "맞음: '메뉴 닫기'로 닫히고 포커스가 '메뉴 열기'로()",
+        "맞음: 열린 채 넓은 화면이 되면 닫힘"
+      ],
+      "problems": []
+    },
+    {
+      "name": "operator-login",
+      "width": 360,
+      "pass": true
+    },
+    {
+      "name": "operator-login",
+      "width": 1280,
+      "pass": true
+    },
+    {
+      "name": "owner-login",
+      "width": 360,
+      "pass": true
+    },
+    {
+      "name": "owner-login",
+      "width": 1280,
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "failures": []
+}

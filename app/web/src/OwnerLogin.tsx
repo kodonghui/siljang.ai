@@ -11,7 +11,7 @@ import {
   startOwnerLogin,
 } from "./owner";
 import type { Failure } from "./problems";
-import { Button, LoginLayout } from "./ui";
+import { Banner, Button, LoginLayout } from "./ui";
 
 function savedReturnTo(): string | null {
   try {
@@ -124,11 +124,17 @@ export function OwnerLogin() {
       {returnTo === null ? null : <p>로그인하면 보던 화면으로 돌아가요</p>}
       <div className="ui-stack owner-login-form" aria-busy={pending}>
         {feedback ? (
-          <div className="ui-statebox ui-statebox--error" role="alert">
-            <p className="ui-statebox__title">{feedback.message}</p>
-            {feedback.traceId && feedback.outcome === "server" && feedback.code !== "kakao_unavailable" ? (
-              <p className="ui-statebox__body">추적 ID {feedback.traceId}</p>
-            ) : null}
+          <div role="alert">
+            <Banner
+              tone="danger"
+              detail={
+                feedback.traceId && feedback.outcome === "server" && feedback.code !== "kakao_unavailable"
+                  ? `추적 ID ${feedback.traceId}`
+                  : undefined
+              }
+            >
+              {feedback.message}
+            </Banner>
           </div>
         ) : null}
         {remaining > 0 ? <p role="timer">다시 로그인하기까지 {remaining}초</p> : null}
@@ -136,7 +142,7 @@ export function OwnerLogin() {
           {pending ? "로그인하고 있어요" : feedback?.outcome === "server" ? "다시 시도" : "카카오 로그인"}
         </Button>
       </div>
-      <p>가게 사장님용</p>
+      <p className="owner-login-hint">가게 사장님용</p>
     </LoginLayout>
   );
 }

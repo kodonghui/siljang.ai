@@ -48,6 +48,8 @@ export function OwnerArea() {
       if (controller.signal.aborted) return;
       if (result.ok) navigate(OWNER_LOGIN, { replace: true });
       else setLogout("failed");
+    } catch {
+      if (!controller.signal.aborted) setLogout("failed");
     } finally {
       logoutRequest.current = null;
     }

@@ -234,6 +234,7 @@ export function ownerLoginFeedback(result: ApiFailure): Failure {
     return {
       ...classify(401, null, null),
       ...ERROR_CODES.kakao_login_failed,
+      status: result.status,
       code: "kakao_login_failed",
       fieldErrors: [],
     };
