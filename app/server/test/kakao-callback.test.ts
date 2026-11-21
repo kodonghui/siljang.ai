@@ -134,8 +134,18 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     await db.close();
   });
 
-  async function receive(queue: KakaoCallbackQueue, raw = VALID, userKey = newUuid(), utterance = "합성 콜백 메시지") {
-    const app = createApp({ services: { now: () => NOW, kakaoCallbackQueue: queue }, logSink: () => {} });
+  async function receive(
+    queue: KakaoCallbackQueue,
+    raw = VALID,
+    userKey = newUuid(),
+    utterance = "합성 콜백 메시지",
+    connect?: DbConnector,
+  ) {
+    const app = createApp({
+      ...(connect === undefined ? {} : { connect }),
+      services: { now: () => NOW, kakaoCallbackQueue: queue },
+      logSink: () => {},
+    });
     return app.request(
       "/api/kakao/skills/message",
       {
@@ -776,6 +786,90 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     ).toBe(1);
     expect(send).not.toHaveBeenCalled();
   });
+
+  it.each(["alert", "reply"] as const)(
+    "큐 거절 뒤 %s 저장 실패는 봉투를 보존하고 소비자 재시도로 한 번 복구함",
+    async (failure) => {
+      let fail = true;
+      const connect: DbConnector = (dsn) => {
+        const conn = pgConnector(dsn);
+        return {
+          query: conn.query.bind(conn),
+          abort: conn.abort.bind(conn),
+          close: conn.close.bind(conn),
+          transaction: (work) =>
+            conn.transaction((tx) =>
+              work({
+                query: (sql, params) => {
+                  if (
+                    fail &&
+                    ((failure === "alert" && /INSERT INTO owner_alerts/.test(sql)) ||
+                      (failure === "reply" && /INSERT INTO messages/.test(sql) && /'outbound'/.test(sql)))
+                  )
+                    throw new Error("합성 큐 거절 후 저장 실패");
+                  return tx.query(sql, params);
+                },
+              }),
+            ),
+        };
+      };
+      const jobs: KakaoCallbackJob[] = [];
+      const queue: KakaoCallbackQueue = {
+        send: async (job) => {
+          jobs.push(job);
+          throw new Error("합성 큐 거절");
+        },
+      };
+      const response = await receive(queue, VALID, newUuid(), "합성 큐 거절 질문", connect);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Siljang-Outcome")).toBe("server_error");
+      const job = jobs[0];
+      if (job === undefined) throw new Error("시험 큐 작업 없음");
+      const source = await stored(job);
+      expect(source?.kakao_callback_enc).not.toBeNull();
+      expect(
+        (
+          await db.query("SELECT id FROM handoffs WHERE shop_id = $1 AND source_message_id = $2", [
+            job.shopId,
+            job.messageId,
+          ])
+        ).rowCount,
+      ).toBe(0);
+      expect(
+        (
+          await db.query(
+            "SELECT id FROM messages WHERE shop_id = $1 AND consultation_id = $2 AND direction = 'outbound'",
+            [job.shopId, source?.consultation_id],
+          )
+        ).rowCount,
+      ).toBe(0);
+      fail = false;
+      const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+      const options = { now: () => new Date(NOW.getTime() + 5000), fetch: send, logSink: () => {} };
+      expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+      expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+      expect(send).toHaveBeenCalledTimes(1);
+      expect((await stored(job))?.kakao_callback_enc).toBeNull();
+      expect(
+        (
+          await db.query(
+            `SELECT h.reason, a.status, a.sent_at FROM handoffs h
+      JOIN owner_tasks t ON t.handoff_id = h.id JOIN owner_alerts a ON a.owner_task_id = t.id
+      WHERE h.shop_id = $1 AND h.source_message_id = $2`,
+            [job.shopId, job.messageId],
+          )
+        ).rows,
+      ).toEqual([{ reason: "ai_failure", status: "pending", sent_at: null }]);
+      expect(
+        (
+          await db.query(
+            "SELECT delivery FROM messages WHERE shop_id = $1 AND consultation_id = $2 AND direction = 'outbound'",
+            [job.shopId, source?.consultation_id],
+          )
+        ).rows,
+      ).toEqual([{ delivery: "callback" }]);
+    },
+  );
 
   it("큐가 접수를 거절하면 콜백 예고 없이 바로 답하고 주소 봉투를 지움", async () => {
     const send = vi.fn<KakaoCallbackQueue["send"]>(async () => {
