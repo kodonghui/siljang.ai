@@ -261,7 +261,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100%;
+  min-height: 100dvh;
   padding: var(--space-lg);
 }
 
@@ -289,8 +289,19 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.operator-login-form > .ui-button {
+.operator-login-form > .ui-button,
+.owner-login-form > .ui-button {
   min-height: var(--size-control-lg);
+}
+
+.owner-login-form > .ui-button {
+  font-size: var(--font-size-title);
+}
+
+.owner-login-hint {
+  text-align: center;
+  font-size: var(--font-size-small);
+  color: var(--color-ink-muted);
 }
 
 /* ── 목록: 좁은 화면은 카드(09 cards), 넓은 화면은 표(09 tablex) ── */
