@@ -2200,6 +2200,16 @@ SELECT pg_temp.expect_left('SPEC-065 운영 기록에는 건수만', $$
 SET CONSTRAINTS ALL IMMEDIATE;  -- 지운 뒤에도 주문 행과 현재 버전 행이 맞는지 여기서 봄
 SET CONSTRAINTS ALL DEFERRED;
 
+-- TASK-020: 사장님 세션은 마지막 사용부터 30일이고 쿠키의 해시만 남김.
+INSERT INTO owners (id, kakao_account_id) VALUES ('00000000-0000-4000-8000-000000000061', 9999900000061);
+INSERT INTO owner_sessions (id, owner_id, token_hash, created_at, last_seen_at, expires_at)
+VALUES ('00000000-0000-4000-8000-000000000062', '00000000-0000-4000-8000-000000000061', repeat('a',64), '2026-11-21T00:00:00Z', '2026-11-21T00:00:00Z', '2026-12-21T00:00:00Z');
+SELECT pg_temp.expect_ok('사장님 세션 30일 연장', ARRAY[$$UPDATE owner_sessions SET last_seen_at = '2026-11-22T00:00:00Z', expires_at = '2026-12-22T00:00:00Z' WHERE id = '00000000-0000-4000-8000-000000000062'$$]);
+SELECT pg_temp.expect_fail('사장님 세션 30일 초과', 'owner_sessions_sliding_chk', ARRAY[$$UPDATE owner_sessions SET expires_at = '2027-01-01T00:00:00Z' WHERE id = '00000000-0000-4000-8000-000000000062'$$]);
+SELECT pg_temp.expect_fail('사장님 세션 과거 사용', 'owner_sessions_seen_chk', ARRAY[$$UPDATE owner_sessions SET last_seen_at = '2026-11-20T00:00:00Z', expires_at = '2026-12-20T00:00:00Z' WHERE id = '00000000-0000-4000-8000-000000000062'$$]);
+SELECT pg_temp.expect_fail('사장님 쿠키 평문 거절', 'owner_sessions_token_hash_check', ARRAY[$$UPDATE owner_sessions SET token_hash = 'synthetic-cookie-value' WHERE id = '00000000-0000-4000-8000-000000000062'$$]);
+SELECT pg_temp.expect_fail('사장님 로그인 전 종료 거절', 'owner_sessions_ended_chk', ARRAY[$$UPDATE owner_sessions SET ended_at = '2026-11-20T00:00:00Z' WHERE id = '00000000-0000-4000-8000-000000000062'$$]);
+
 -- 결과
 SELECT count(*) FILTER (WHERE ok) AS blocked, count(*) FILTER (WHERE NOT ok) AS not_blocked FROM rule_results \gset
 SELECT name, detail FROM rule_results WHERE NOT ok ORDER BY name;

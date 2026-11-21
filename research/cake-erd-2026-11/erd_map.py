@@ -9,6 +9,11 @@ MAP: dict[str, list[tuple[str, str]]] = {
     "SPEC-001": [
         ("카카오 로그인 회원번호", "owners.kakao_account_id"),
         ("마지막 로그인", "owners.last_login_at"),
+        ("사장님 세션의 쿠키 해시", "owner_sessions.token_hash"),
+        ("세션의 사장님", "owner_sessions.owner_id"),
+        ("마지막 세션 사용", "owner_sessions.last_seen_at"),
+        ("마지막 사용부터 30일", "owner_sessions.expires_at"),
+        ("사장님 로그아웃", "owner_sessions.ended_at"),
         ("우리 채널 친구(로그인 때 채널 관계 조회)", "owners.alert_channel_friend"),
         ("친구 여부 본 시각", "owners.alert_friend_checked_at"),
         ("계정의 가게(하나)", "shops.owner_id"),

@@ -11,6 +11,16 @@ import { isTimeZone } from "./time";
 /** 가게가 없을 때 응답 시각을 보일 시간대(05 shops.time_zone의 기본값). */
 export const DEFAULT_TIME_ZONE = "Asia/Seoul";
 
+export interface OwnerProfile {
+  readonly owner: { readonly ownerId: string; readonly alertChannelFriend: boolean; readonly createdAt: string };
+  readonly shop: {
+    readonly shopId: string;
+    readonly name: string;
+    readonly licenseStatus: "pending" | "on_hold" | "verified";
+  } | null;
+  readonly banners: readonly string[];
+}
+
 const ownerBrand: unique symbol = Symbol("OwnerScope");
 
 /** 로그인한 사장님. createOwnerScope로만 만들고, 흉내 낸 객체는 경로가 받지 않는다(ForgedScopeError). */
@@ -18,16 +28,26 @@ export interface OwnerScope {
   readonly ownerId: string;
   /** 응답 시각(06 DEC-15)을 보일 시간대: 가게가 있으면 그 가게 시간대, 없으면 DEFAULT_TIME_ZONE. */
   readonly timeZone: string;
+  readonly profile?: OwnerProfile;
   readonly [ownerBrand]: true;
 }
 
 const genuine = new WeakSet<object>();
 
 /** 사장님 범위를 만든다. 해석기만 부른다. ownerId는 해석기가 세션에서 찾은 사장님 ID다. */
-export function createOwnerScope(ownerId: string, timeZone: string = DEFAULT_TIME_ZONE): OwnerScope {
+export function createOwnerScope(
+  ownerId: string,
+  timeZone: string = DEFAULT_TIME_ZONE,
+  profile?: OwnerProfile,
+): OwnerScope {
   if (!isUuid(ownerId)) throw new TypeError("owner id must be a uuid");
   if (!isTimeZone(timeZone)) throw new TypeError("time zone must be an IANA name");
-  const scope: OwnerScope = Object.freeze({ ownerId: ownerId.toLowerCase(), timeZone, [ownerBrand]: true as const });
+  const scope: OwnerScope = Object.freeze({
+    ownerId: ownerId.toLowerCase(),
+    timeZone,
+    ...(profile === undefined ? {} : { profile }),
+    [ownerBrand]: true as const,
+  });
   genuine.add(scope);
   return scope;
 }

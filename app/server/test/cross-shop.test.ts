@@ -526,6 +526,12 @@ describe("06 계약과 가게 범위 경로", () => {
       if (hit === undefined || !OWNER_LEVEL.has(id)) continue;
       const schemes = (hit.op.security ?? []).flatMap((s) => Object.keys(s));
       if (!schemes.includes("ownerSession")) continue;
+      if (id === "API-003") {
+        // 로그아웃은 세션이 없어도 204이므로 세션 표만 다루는 공개 처리기로 선언한다.
+        expect(decl.kind).toBe("open");
+        expect(hit.op.security).toContainEqual({});
+        continue;
+      }
       expect(decl.kind, routeKey(decl.method, decl.path)).toBe("owner");
       declared.push(id);
     }

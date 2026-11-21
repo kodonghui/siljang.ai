@@ -16,7 +16,7 @@ export const MAX_JSON_BYTES = 256 * 1024;
 const DIGITS = /^\d+$/;
 
 /** 선언한 길이(Content-Length)가 한도를 넘는지. 길이가 없거나 꼴이 틀리면 false(읽으면서 센다). */
-export function declaredOver(req: Request, limit: number): boolean {
+export function declaredOver(req: Pick<Request, "headers">, limit: number): boolean {
   const declared = req.headers.get("content-length");
   return declared !== null && DIGITS.test(declared) && Number(declared) > limit;
 }
@@ -25,7 +25,11 @@ export function declaredOver(req: Request, limit: number): boolean {
  * 본문을 한도까지만 바이트로 읽는다. 선언한 길이가 넘거나 읽다가 넘으면 읽기를 멈추고(cancel) tooLarge()가 만든 오류를 던진다.
  * JSON 본문(아래 readJsonBody)과 사진 올리기(uploads.ts, 한도와 오류가 다름)가 함께 쓴다.
  */
-export async function readBytesLimited(req: Request, limit: number, tooLarge: () => Error): Promise<Uint8Array> {
+export async function readBytesLimited(
+  req: Pick<Request, "headers" | "body">,
+  limit: number,
+  tooLarge: () => Error,
+): Promise<Uint8Array> {
   if (declaredOver(req, limit)) throw tooLarge();
   if (req.body === null) return new Uint8Array(0);
   const reader = req.body.getReader();

@@ -7,6 +7,15 @@ import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import { AuthUnavailableError } from "./operator-auth";
 import { createOperatorSession, deleteOperatorSession, getOperatorMe, resolveOperatorSession } from "./operator-login";
+import {
+  createOwnerLogin,
+  deleteOwnerLogin,
+  getOwnerMe,
+  resolveOwnerSession,
+  resolveOwnerShop,
+  startOwnerLogin,
+} from "./owner-login";
+import type { OwnerScope } from "./owner-scope";
 import { ApiError, problemResponse } from "./problem";
 import type { RateLimitBinding } from "./rate-limit";
 import {
@@ -48,6 +57,12 @@ export type Bindings = {
   /** 사진 올리기의 1분 30번(wrangler.jsonc의 ratelimits, rate-limit.ts의 UPLOAD_RATE). */
   readonly UPLOAD_RATE_LIMITER?: RateLimitBinding;
   readonly KAKAO_CALLBACK_QUEUE?: KakaoCallbackQueue;
+  readonly OWNER_LOGIN_RATE_LIMITER?: RateLimitBinding;
+  readonly KAKAO_REST_API_KEY?: string;
+  readonly KAKAO_CLIENT_SECRET?: string;
+  readonly KAKAO_ADMIN_KEY?: string;
+  readonly KAKAO_OWNER_REDIRECT_URIS?: string;
+  readonly KAKAO_ALERT_CHANNEL_ID?: string;
 };
 
 export type Logger = (level: LogLevel, fields: LogFields) => void;
@@ -62,6 +77,7 @@ interface Variables {
   /** 지금 시각·사진 저장소·한도·서명 주소(services.ts). */
   services: Services;
   kakaoSkill?: AuthorizedKakaoSkill;
+  ownerScope?: OwnerScope;
 }
 
 export type HonoEnv = { Bindings: Bindings; Variables: Variables };
@@ -88,6 +104,25 @@ export interface AppOptions {
  */
 export const APP_ROUTES: readonly RouteDecl[] = [
   ...kakaoSkillRoutes,
+  openRoute(
+    "POST",
+    "/owner/session/authorization",
+    "사장님 로그인 시작(API-078): 세션 전의 state·PKCE와 시작 쿠키만 만들고 기록을 저장하지 않음",
+    startOwnerLogin,
+  ),
+  openRoute(
+    "POST",
+    "/owner/session",
+    "사장님 로그인(API-001): 세션을 만들기 전. 카카오 인증 뒤 계정과 세션을 만들고 그 사장님의 가게 요약만 읽음",
+    createOwnerLogin,
+  ),
+  ownerRoute("GET", "/owner/me", getOwnerMe),
+  openRoute(
+    "DELETE",
+    "/owner/session",
+    "사장님 로그아웃(API-003): 세션이 없어도 204. 자기 세션만 끝내고 쿠키를 지움",
+    deleteOwnerLogin,
+  ),
   // 기반 시설용 확인 주소(06 계약 밖). 1분 외부 감시(TASK-016)가 부른다. 데이터베이스는 보지 않는다.
   openRoute("GET", "/healthz", "기반 시설 확인 주소(06 계약 밖, TASK-016 감시). 데이터베이스를 보지 않음", (c) =>
     c.json({ status: "ok" }, 200, { "cache-control": "no-store" }),
@@ -183,8 +218,8 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   mountRoutes(
     app,
     options.routes ?? APP_ROUTES,
-    { customer: resolveKakaoSkillScope, ...options.scopes },
-    options.ownerAccount,
+    { owner: resolveOwnerShop, customer: resolveKakaoSkillScope, ...options.scopes },
+    options.ownerAccount ?? resolveOwnerSession,
     options.operatorAccount ?? resolveOperatorSession,
   );
 

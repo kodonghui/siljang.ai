@@ -4,7 +4,7 @@
 
 ## 1. 한눈에
 
-- 테이블 60개(TBL-001~060), 컬럼 738개입니다. 외래 키 134개, CHECK 424개, UNIQUE 92개, EXCLUDE 1개로 데이터베이스가 지키는 규칙을 적었고, 제약 밖 인덱스는 70개(그 가운데 부분 인덱스 48개)입니다. 접속기록은 트리거 둘(`access_logs_guard`)이 고치거나 비우는 것을 막고, 주문 상태와 제작 행의 짝은 지연 제약 트리거 둘(`orders_production_sync`)이, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값은 트리거 하나(`refunds_unconfirmed`)가, 재제작 주문이 돈을 낸 원래 주문을 가리키고 결제 안내·환불·장부 행을 두지 않음은 트리거 넷(`orders_remake_root`, `payment_requests_remake` 등)이, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않음은 지연 제약 트리거 하나(`orders_remake_finish`)가, 한 주문에 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐임은 트리거 하나(`slot_holds_pair`)가, 취소 환불의 취소한 주문이 환불을 남기는 주문이나 그 재제작 주문임은 트리거 하나(`refunds_cancelled`)가, 주문 확정 뒤 그 주문을 확정한 결제가 확인을 취소한 것이 아님은 지연 제약 트리거 둘(`orders_confirmed_payment_live`, `payments_confirmed_void`)이 봅니다. 운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 것은 트리거 하나(`operators_end_sessions`)가 합니다.
+- 테이블 61개(TBL-001~061), 컬럼 748개입니다. 외래 키 135개, CHECK 429개, UNIQUE 93개, EXCLUDE 1개로 데이터베이스가 지키는 규칙을 적었고, 제약 밖 인덱스는 72개(그 가운데 부분 인덱스 48개)입니다. 접속기록은 트리거 둘(`access_logs_guard`)이 고치거나 비우는 것을 막고, 주문 상태와 제작 행의 짝은 지연 제약 트리거 둘(`orders_production_sync`)이, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값은 트리거 하나(`refunds_unconfirmed`)가, 재제작 주문이 돈을 낸 원래 주문을 가리키고 결제 안내·환불·장부 행을 두지 않음은 트리거 넷(`orders_remake_root`, `payment_requests_remake` 등)이, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않음은 지연 제약 트리거 하나(`orders_remake_finish`)가, 한 주문에 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐임은 트리거 하나(`slot_holds_pair`)가, 취소 환불의 취소한 주문이 환불을 남기는 주문이나 그 재제작 주문임은 트리거 하나(`refunds_cancelled`)가, 주문 확정 뒤 그 주문을 확정한 결제가 확인을 취소한 것이 아님은 지연 제약 트리거 둘(`orders_confirmed_payment_live`, `payments_confirmed_void`)이 봅니다. 운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 것은 트리거 하나(`operators_end_sessions`)가 합니다.
 - 기능 명세 SPEC-001~079가 읽고 쓰는 데이터 1098건을 테이블.컬럼 508개에 하나씩 이었습니다([`erd_map.py`](../../research/cake-erd-2026-11/erd_map.py)). 모든 SPEC에 대응이 있고, 쓰이지 않는 테이블은 없습니다.
 - 용어집 TERM-001~086이 모두 자리를 가집니다. 애그리거트·읽기 모델 31개는 테이블 헤더 주석(16개)이나 '테이블 없음' 행(15개)에, 상태·값 이름 35개는 컬럼·테이블 설명에 TERM 번호로 있습니다.
 - PostgreSQL 16.15의 빈 데이터베이스에 `db/schema.sql`과 마이그레이션 `0001_init.sql`~`0022_operator_auth_binding.sql`을 각각 만들어 카탈로그가 같음을 봤고, 규칙 테스트 338개가 모두 기대한 결과였습니다(막아야 할 쓰기 277개는 막힘, 늦은 쓰기 3개는 0행, 받아야 할 쓰기 23개는 들어감, 남은 행과 값 35개(지우기 결과 30개, 운영자 세션을 끝낸 결과 5개)는 기대한 값). 지우기(6절)를 31일·32일·3년·5년 뒤 시각으로 돌려, 지운 뒤 개인정보는 0건이고 계약·결제 기록은 그대로 남으며, 저장소가 실패한 사진 파일은 지울 파일로 남아 다음 날 지워짐을 봤고(8절 D4), 두 세션이 같은 주문을 동시에 쓰면 잠금 번호가 늦은 쓰기를 막음도 봤습니다(8절 D5).
@@ -128,6 +128,7 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-058 | `shop_identity_changes` | 사업자 정보 변경 요청 | CTX-007 | 078 | TERM-053 |
 | TBL-059 | `operator_sessions` | 운영자 세션 | CTX-007 | 001 | 없음 |
 | TBL-060 | `operator_login_failures` | 운영자 로그인 실패 | CTX-007 | 001 | 없음 |
+| TBL-061 | `owner_sessions` | 사장님 세션 | CTX-007 | 001 | 없음 |
 <!-- build_erd:tables:end -->
 
 ### 3-3. 컨텍스트별 다이어그램
@@ -145,7 +146,7 @@ flowchart LR
   C3["CTX-004 결제·환불<br/>테이블 4개"]
   C4["CTX-005 제작·전달<br/>테이블 3개"]
   C5["CTX-006 후기·포트폴리오<br/>테이블 4개"]
-  C6["CTX-007 가게 등록·연결<br/>테이블 8개"]
+  C6["CTX-007 가게 등록·연결<br/>테이블 9개"]
   C7["CTX-008 알림<br/>테이블 3개"]
   C8["CTX-009 장부 연결<br/>테이블 3개"]
   C9["공통<br/>테이블 4개"]
@@ -582,7 +583,7 @@ erDiagram
 
 ### CTX-007 가게 등록·연결
 
-테이블: TBL-001 `owners`, TBL-002 `operators`, TBL-003 `shops`, TBL-004 `kakao_channels`, TBL-005 `privacy_policies`, TBL-058 `shop_identity_changes`, TBL-059 `operator_sessions`, TBL-060 `operator_login_failures`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
+테이블: TBL-001 `owners`, TBL-002 `operators`, TBL-003 `shops`, TBL-004 `kakao_channels`, TBL-005 `privacy_policies`, TBL-058 `shop_identity_changes`, TBL-059 `operator_sessions`, TBL-060 `operator_login_failures`, TBL-061 `owner_sessions`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
 
 ```mermaid
 erDiagram
@@ -620,6 +621,10 @@ erDiagram
   operator_login_failures {
     uuid id PK "시도 한 번"
   }
+  owner_sessions {
+    uuid id PK "세션 ID"
+    uuid owner_id FK "로그인한 사장님"
+  }
   owners ||--o| shops : "owner_id"
   operators |o--o{ shops : "license_reviewed_by"
   shops ||--o{ kakao_channels : "shop_id"
@@ -627,6 +632,7 @@ erDiagram
   shops ||--o{ shop_identity_changes : "shop_id"
   operators |o--o{ shop_identity_changes : "reviewed_by"
   operators ||--o{ operator_sessions : "operator_id"
+  owners ||--o{ owner_sessions : "owner_id"
 ```
 
 ### CTX-008 알림
@@ -1320,3 +1326,5 @@ A33의 키 형식입니다. 키는 가게마다 한 번(키마다 `(shop_id, 키
 - 다이어그램: `erd_editor_sync.py --write`로 컬럼 둘(이름·타입·설명·`auth_user_id` UNIQUE 표시), 설명 셋과 메모의 트리거 문장(`TRIGGER_TEXT`에 `operators_end_sessions`를 더함)을 고침. 마지막 쓰기 없는 실행은 편집 0개, `erd_editor_build.py --compare` 차이 0줄(9절).
 - 규칙 테스트 330개 → 338개: 막아야 할 쓰기 셋(인증 수단 없이 켠 시각 → `operators_mfa_chk`, 사용자 없이 인증 수단 → `operators_mfa_chk`, Supabase 사용자 하나에 운영자 둘 → `operators_auth_user_uq`)과 남은 값 다섯(이름만 바꾸거나 같은 인증 수단을 다시 쓰면 세션 그대로, 막았다 풀면 그 운영자의 열린 세션 0, 다른 운영자의 세션은 그대로, 다시 등록하면 열린 세션 0, 끝낸 시각은 로그인한 시각보다 앞서지 않음). 기존 운영자 행(정상 플로우)에 사용자·인증 수단 ID를 더함. 트리거를 뺀 사본에서는 남은 값 셋이 기대와 달라 실패함을 봤습니다(335개 막힘, 3개 안 막힘).
 - 검사: 8절. 15개 모두 통과.
+
+2026-11-21 TASK-020: 사장님 세션 `owner_sessions`(TBL-061, SPEC-001)을 마이그레이션 0025에 추가했습니다. 쿠키 값의 SHA-256, 사장님 ID, 로그인·마지막 사용·만료·종료 시각을 보관합니다. 마지막 사용부터 30일은 2592000초로 고정하며 만료·로그인 전 종료·잘못된 해시 제약을 데이터베이스가 확인합니다. 지난 세션은 그 사장님의 다음 로그인에서 지웁니다. 운영자 세션의 12시간 고정 정책은 유지합니다. PostgreSQL 16.15에서 테이블 61개·컬럼 748개·외래 키 135개·CHECK 429개·UNIQUE 93개·EXCLUDE 1개, 마이그레이션 25개의 카탈로그 일치, 규칙 테스트 343개와 ERD 검사 15개 통과를 확인했습니다. 스테이징 적용은 현재 환경의 소유자 인증 부재로 미확인입니다.

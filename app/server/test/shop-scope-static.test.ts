@@ -32,6 +32,7 @@ const RAW_ACCESS = [
  * 생기면 까닭을 적어 더한다.
  */
 const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
+  "owner-session.ts": "세션의 사장님 ID로 가게 요약 하나만 조회. allowedCrossShop이 정확한 SQL을 별도로 제한함",
   "ops-events.ts":
     "운영 기록(TBL-051)은 가게와 무관한 것(shop_id 빈 값)도 남겨 가게 범위 밖에서 쓴다. 쓰기만 하고 내용 없이 건수만",
 };
@@ -39,6 +40,7 @@ const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
 /** 가게 범위를 만들 수 있는 파일(해석기)과 까닭. 해석기를 만드는 작업이 더한다. */
 const SCOPE_MAKERS: Record<string, string> = {
   "shop-scope.ts": "정의",
+  "owner-login.ts": "살아 있는 사장님 세션과 그 계정의 가게만으로 범위를 만듦(TASK-020)",
   "kakao-skill-auth.ts": "정규 봇 ID로 찾은 연결의 스킬 키를 확인한 뒤 그 가게 범위만 만듦(06 DEC-08)",
   "kakao-callback-queue.ts": "내부 큐의 가게·메시지 ID로 한 수신 행을 처리하는 작업 범위만 만듦",
   "job-runner.ts":
@@ -58,6 +60,11 @@ const CROSS_SHOP_SHAPES: readonly RegExp[] = [
 
 /** 가게 범위 밖 읽기로 허락한 SQL인지(그 파일의 그 꼴만). 꼴 안의 조건에 다른 테이블을 끌어오는 하위 질의는 받지 않는다. */
 function allowedCrossShop(file: string, sql: string): boolean {
+  if (file === "owner-session.ts") {
+    return (
+      sql.replace(/\s+/g, " ").trim() === "SELECT id, name, license_status, time_zone FROM shops WHERE owner_id = $1"
+    );
+  }
   if (file === "kakao-skill-auth.ts") {
     return (
       sql.replace(/\s+/g, " ").trim() ===
@@ -78,6 +85,7 @@ const MAKES_SCOPE = /\bcreateShopScope\s*\(|import[^;]*\bcreateShopScope\b|["'`]
  */
 const OWNER_SCOPE_MAKERS: Record<string, string> = {
   "owner-scope.ts": "정의",
+  "owner-login.ts": "쿠키의 세션에서 찾은 사장님과 가게 요약만 담음(TASK-020)",
 };
 
 /** 사장님 범위를 만드는 표시(MAKES_SCOPE와 같은 꼴). */
@@ -106,7 +114,7 @@ function shopSql(text: string): string[] {
 
 describe("05와 같은 가게 테이블 목록", () => {
   it("shop_id 열을 가진 테이블이 SHOP_TABLES와 같음(05 E1)", () => {
-    expect(tables.length).toBe(60);
+    expect(tables.length).toBe(61);
     const withShopId = tables.filter((t) => /^\s+shop_id\s/m.test(t.body)).map((t) => t.name);
     expect([...SHOP_TABLES].sort()).toEqual(withShopId.sort());
   });

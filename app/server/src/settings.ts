@@ -104,6 +104,15 @@ export interface OperatorAuthSettings {
   readonly publishableKey: Secret;
 }
 
+/** 사장님 카카오 로그인(TASK-020). 키 값은 비밀 저장소에만 둔다. */
+export interface OwnerAuthSettings {
+  readonly clientId: Secret;
+  readonly clientSecret: Secret;
+  readonly adminKey: Secret | null;
+  readonly redirectUris: readonly string[];
+  readonly alertChannelId: string;
+}
+
 /**
  * 모델 호출 설정(TASK-026; REQ-266, 06 DEC-25, 04 AI-1). 회사 하나와 그 모델을 배포 설정으로 고른다(ai-model.ts).
  * - AI_PROVIDER: anthropic | openai. AI_MODEL: 요금표(ai-prices.ts)에 있는 그 회사의 모델 ID. 없는 모델은 시작에서 막는다.
@@ -153,6 +162,7 @@ export interface Settings {
   readonly ai: AiSettings | null;
   /** 운영자 인증 서비스(Supabase Auth). 두 변수가 모두 없으면 null. */
   readonly operatorAuth: OperatorAuthSettings | null;
+  readonly ownerAuth: OwnerAuthSettings | null;
 }
 
 export class SettingsError extends Error {
@@ -220,6 +230,45 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
     fieldKeys: readFieldKeys(env),
     ai: readAi(env, secrets),
     operatorAuth: readOperatorAuth(env, appEnv),
+    ownerAuth: readOwnerAuth(env),
+  };
+}
+
+function readOwnerAuth(env: Readonly<Record<string, unknown>>): OwnerAuthSettings | null {
+  const names = ["KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "KAKAO_OWNER_REDIRECT_URIS", "KAKAO_ALERT_CHANNEL_ID"];
+  const values = names.map((n) => (typeof env[n] === "string" ? (env[n] as string).trim() : ""));
+  const admin = typeof env.KAKAO_ADMIN_KEY === "string" ? env.KAKAO_ADMIN_KEY.trim() : "";
+  if (values.every((v) => v === "") && admin === "") return null;
+  if (values.some((v) => v === "")) throw new SettingsError("KAKAO owner login settings must be set together");
+  const [clientId, clientSecret, uris, alertChannelId] = values as [string, string, string, string];
+  const redirectUris = uris.split(",").map((s) => s.trim());
+  for (const raw of redirectUris) {
+    let uri: URL;
+    try {
+      uri = new URL(raw);
+    } catch {
+      throw new SettingsError("KAKAO_OWNER_REDIRECT_URIS must contain URLs");
+    }
+    if (
+      uri.protocol !== "https:" ||
+      uri.username !== "" ||
+      uri.password !== "" ||
+      uri.hash !== "" ||
+      uri.href !== raw
+    ) {
+      throw new SettingsError(
+        "KAKAO_OWNER_REDIRECT_URIS must contain exact https URLs without credentials or fragments",
+      );
+    }
+  }
+  if (!/^_[A-Za-z0-9_-]{1,100}$/.test(alertChannelId))
+    throw new SettingsError("KAKAO_ALERT_CHANNEL_ID has an unexpected shape");
+  return {
+    clientId: new Secret(clientId),
+    clientSecret: new Secret(clientSecret),
+    adminKey: admin === "" ? null : new Secret(admin),
+    redirectUris,
+    alertChannelId,
   };
 }
 
