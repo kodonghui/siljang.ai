@@ -39,6 +39,13 @@ describe("기본 Cron의 매분 연결 확인", () => {
     expect(closed).toBe(1);
     expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
       { level: "error", event: "job_start_failed", job: "purge", errorName: "DatabaseError", dbCode: "42501" },
+      {
+        level: "error",
+        event: "job_find_failed",
+        job: "kakao_callback_recovery",
+        errorName: "DatabaseError",
+        dbCode: "42501",
+      },
     ]);
   });
 });
@@ -55,10 +62,16 @@ describeDb("시작 표시 조회와 실제 실행의 분리", () => {
   it("03시 직전·실행 창 끝·정오에도 시작 표를 읽고 성공을 남기며 잠금·쓰기는 하지 않음", async () => {
     const base = isolated.connect();
     let reads = 0;
+    let callbackReads = 0;
     const db: RequestDb = {
       query: async (sql, params) => {
-        expect(sql).toMatch(/SELECT.*FROM ops_events/s);
-        reads += 1;
+        if (sql.includes("FROM messages t")) {
+          expect(sql).toMatch(/^SELECT t\.shop_id, t\.id, t\.kakao_callback_deadline_at AS due_at/);
+          callbackReads += 1;
+        } else {
+          expect(sql).toMatch(/SELECT.*FROM ops_events/s);
+          reads += 1;
+        }
         return base.query(sql, params);
       },
       transaction: async () => {
@@ -76,9 +89,11 @@ describeDb("시작 표시 조회와 실제 실행의 분리", () => {
         expect(result?.jobs.purge).toEqual({ found: 0, done: 0, skipped: 0, failed: 0 });
         expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
           { level: "info", event: "job_polled", job: "purge" },
+          { level: "info", event: "kakao_callback_recovery_polled", count: 0 },
         ]);
       }
       expect(reads).toBe(3);
+      expect(callbackReads).toBe(3);
       expect((await base.query("SELECT count(*)::int AS n FROM ops_events")).rows).toEqual(before.rows);
     } finally {
       await base.close();

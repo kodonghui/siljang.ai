@@ -1,7 +1,8 @@
 import type { Bindings } from "./app";
-import { type DbConnector, pgConnector } from "./db";
+import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FieldCryptoError } from "./field-crypto";
 import { deliverKakaoCallback, kakaoCallback } from "./kakao-callback";
+import { EXPIRED_KAKAO_CALLBACKS } from "./kakao-callback-sources";
 import {
   claimKakaoCallback,
   deferExpiredKakaoCallback,
@@ -23,6 +24,61 @@ interface ConsumerOptions {
   readonly now?: () => Date;
   readonly fetch?: typeof fetch;
   readonly logSink?: LogSink;
+}
+
+interface RecoveryOptions {
+  readonly logSink?: LogSink;
+  readonly clock?: () => number;
+  /** 1회 최대25개. 작은 값은 시험에서만 쓴다. */
+  readonly limit?: number;
+  /** 새 행을 시작할 시간 한도. 진행 중 트랜잭션을 도중에 끊지는 않는다. */
+  readonly budgetMs?: number;
+}
+
+function recoveryError(error: unknown) {
+  const dbCode = sqlStateOf(error);
+  return {
+    errorName: dbCode !== undefined ? "DatabaseError" : error instanceof Error ? error.name : "Error",
+    ...(dbCode === undefined ? {} : { dbCode }),
+  };
+}
+
+/** 큐가 유실돼도 만료된 콜백은 기존 1분 실행에서 복구한다. 외부로 발신하지 않는다. */
+export async function recoverExpiredKakaoCallbacks(db: RequestDb, now: Date, options: RecoveryOptions = {}) {
+  const job = "kakao_callback_recovery";
+  const clock = options.clock ?? (() => performance.now());
+  const startedAt = clock();
+  const limit = Math.min(25, Math.max(1, Math.trunc(options.limit ?? 25)));
+  const budgetMs = Math.min(5000, Math.max(0, options.budgetMs ?? 5000));
+  const summary = { found: 0, deferred: 0, discarded: 0, skipped: 0, failed: 0, stoppedByBudget: false };
+  let rows: { shop_id: string; id: string; due_at: Date }[];
+  try {
+    rows = (await db.query<{ shop_id: string; id: string; due_at: Date }>(EXPIRED_KAKAO_CALLBACKS, [now, limit])).rows;
+  } catch (error) {
+    log("error", { event: "job_find_failed", job, ...recoveryError(error) }, options.logSink);
+    return summary;
+  }
+  summary.found = rows.length;
+  log("info", { event: "kakao_callback_recovery_polled", count: rows.length }, options.logSink);
+  for (const row of rows) {
+    if (clock() - startedAt >= budgetMs) {
+      summary.stoppedByBudget = true;
+      log("warn", { event: "job_run_budget_reached", job }, options.logSink);
+      break;
+    }
+    try {
+      const scoped = shopRequestDb(createShopScope(row.shop_id, { kind: "job", job: "kakao_callback" }), db);
+      const result = await deferExpiredKakaoCallback(scoped, row.id, now, KAKAO_HANDOFF_TEXT);
+      summary[result] += 1;
+    } catch (error) {
+      summary.failed += 1;
+      log("warn", { event: "job_act_failed", job, itemId: row.id, ...recoveryError(error) }, options.logSink);
+    }
+  }
+  if (summary.failed > 0) log("error", { event: "job_run_failed", job, count: summary.failed }, options.logSink);
+  const done = summary.deferred + summary.discarded;
+  if (done > 0) log("info", { event: "kakao_callback_recovery", count: done }, options.logSink);
+  return summary;
 }
 
 function callbackJob(body: unknown): KakaoCallbackJob | null {

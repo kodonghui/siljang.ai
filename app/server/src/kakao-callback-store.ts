@@ -215,8 +215,8 @@ export async function deferExpiredKakaoCallback(
   messageId: string,
   now: Date,
   text: string,
-): Promise<void> {
-  await db.transaction(async (tx) => {
+): Promise<"deferred" | "discarded" | "skipped"> {
+  return db.transaction(async (tx) => {
     const target = await tx.run<{ customer_id: string; consultation_id: string }>(
       `SELECT c.customer_id, c.id AS consultation_id FROM messages m
         JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
@@ -225,7 +225,7 @@ export async function deferExpiredKakaoCallback(
       [messageId, now],
     );
     const source = target.rows[0];
-    if (source === undefined) return;
+    if (source === undefined) return "skipped";
     await tx.run("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [source.customer_id]);
     const consultation = await tx.found<{ status: string }>(
       "SELECT status FROM consultations WHERE shop_id = $1 AND id = $2 FOR UPDATE",
@@ -233,17 +233,19 @@ export async function deferExpiredKakaoCallback(
     );
     const expired = await tx.run<{ consultation_id: string }>(
       `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL
-        WHERE shop_id = $1 AND id = $2 AND kakao_callback_deadline_at <= $3 RETURNING consultation_id`,
+        WHERE shop_id = $1 AND id = $2 AND kakao_callback_enc IS NOT NULL
+          AND kakao_callback_deadline_at <= $3 RETURNING consultation_id`,
       [messageId, now],
     );
     const row = expired.rows[0];
-    if (row === undefined) return;
-    if (["ended", "deleted", "dropped"].includes(consultation.status)) return;
+    if (row === undefined) return "skipped";
+    if (["ended", "deleted", "dropped"].includes(consultation.status)) return "discarded";
     await recordKakaoHandoff(tx, row.consultation_id, messageId, "callback_timeout", now);
     await tx.run(
       `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery)
         VALUES ($1, $2, 'outbound', 'system', 'text', $3, 'deferred')`,
       [row.consultation_id, text],
     );
+    return "deferred";
   });
 }
