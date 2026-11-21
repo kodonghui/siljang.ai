@@ -433,3 +433,5 @@
 - main6eda5e4의 app/db·배포·최신 버전/태그·원격 SHA·상태200을 확인했습니다. 외부 서버의 health 스크립트/timer는 예상한 파일이고 health service는 이전 원본, 새 알림 스크립트/service는 없음입니다. 경보 workflow 등록·timer 활성화·flock/systemd-run·기존 gh 인증을 확인했습니다.
 - 공개 파일만 설치했지만 systemd-analyze 검증 종료1로 원본 복구를 실행했습니다. 실제 실패 알림 시험은 아직 실행하지 않았으며 설치 성공이나 메일 수신으로 세지 않습니다. 원본 단위의 실제 진단을 대조합니다.
 - 학원컴 Ego Light의 실제 Cloudflare 문서에서 정상 Sign in 뒤 로그인 입력이 남았고 콘솔 이동은 확인하지 못했습니다. 비밀번호 관리 버튼의 클릭도 ok=false입니다. 비밀번호 값은 읽거나 복사하지 않았고 실제 사람 확인 화면은 아직 나타나지 않았습니다. 정책 API403 뒤 기존 조건/조회 창 유지도 재확인했습니다.
+
+- systemd255의 원본 검증 실패는 SSH 환경의 RuntimeDirectory 조회 실패였습니다. 현재 사용자 소유·0700의 기존 런타임 경로를 확인하고 XDG_RUNTIME_DIR로 전달하니 원본 검증 종료0이었습니다. 같은 바뀐 조건에서 실제 새 단위 검증 종료0·설치 성공·OnFailure 연결·timer 활성화를 확인했습니다. 정상 서비스 startExit0·Resultsuccess·ExecMainStatus0·사건 상태 없음도 확인했습니다. 비밀 값이나 사용자 런타임 디렉터리를 새로 만들지 않았습니다.
