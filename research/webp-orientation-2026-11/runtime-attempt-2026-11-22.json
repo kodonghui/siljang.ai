@@ -1,0 +1,74 @@
+{
+  "date_kst": "2026-11-22",
+  "measurement": "Resource probe did not execute; CPU and peak memory remain unmeasured",
+  "controller": {
+    "worker": "siljang-photo-test-f703b94d1f",
+    "records": [
+      {
+        "event": "photo_runtime_deploy_start",
+        "worker": "siljang-photo-test-f703b94d1f"
+      },
+      {
+        "event": "photo_runtime_cli_failed",
+        "operation": "deploy",
+        "exitCode": 1,
+        "apiCode": "10007"
+      },
+      {
+        "event": "photo_runtime_failed",
+        "code": "cli_failed"
+      },
+      {
+        "event": "photo_runtime_worker_deleted",
+        "worker": "siljang-photo-test-f703b94d1f"
+      },
+      {
+        "event": "photo_runtime_setup_failed"
+      }
+    ],
+    "transportExit": 1
+  },
+  "cleanup": {
+    "results": [
+      {
+        "folderAbsent": true,
+        "worker": "siljang-photo-test-2c6b4268e6",
+        "workerMetadataStatus": 404,
+        "ownNode": 0,
+        "event": "photo_runtime_cleanup_verified"
+      },
+      {
+        "folderAbsent": true,
+        "worker": "siljang-photo-test-f703b94d1f",
+        "workerMetadataStatus": 404,
+        "ownNode": 0,
+        "event": "photo_runtime_cleanup_verified"
+      }
+    ],
+    "transportExit": 0
+  },
+  "metric_schema": {
+    "type": "AccountWorkersInvocationsAdaptiveQuantiles",
+    "fields": [
+      {
+        "description": "CPU time 99th percentile - microseconds",
+        "name": "cpuTimeP99"
+      },
+      {
+        "description": "V8 isolate memory usage 99th percentile across Worker invocations - bytes",
+        "name": "memoryUsageBytesP99"
+      },
+      {
+        "description": "V8 isolate memory usage 99.9th percentile across Worker invocations - bytes",
+        "name": "memoryUsageBytesP999"
+      }
+    ]
+  },
+  "preview_metric_query": {
+    "errors": 0,
+    "groups": 0,
+    "requests": 0,
+    "event": "worker_cpu_metric_read",
+    "rawCpuTimeP99Maximum": null
+  }
+}

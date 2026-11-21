@@ -1,0 +1,10 @@
+// 이름은 실행마다 새로 만들고 끝나면 그 Worker만 지운다. 실제 업무 바인딩은 없다.
+{
+  "name": "siljang-photo-runtime-probe",
+  "main": "runtime-probe.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "images": { "binding": "IMAGES" },
+  "observability": { "enabled": true },
+  "workers_dev": true
+}
