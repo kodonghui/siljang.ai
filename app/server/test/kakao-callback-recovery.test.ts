@@ -25,7 +25,9 @@ describeDb("카카오 수신과 콜백 봉투 저장 실패의 재개(TASK-028)"
     await linkTestChannel(db, shop.channelId);
     const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
     const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
-    const fields = fieldCrypto(readSettings(env).fieldKeys);
+    const fieldKeys = readSettings(env).fieldKeys;
+    if (fieldKeys === null) throw new Error("시험 암호화 키 없음");
+    const fields = fieldCrypto(fieldKeys);
     let fail = true;
     const wrap =
       (query: Queryable["query"]): Queryable["query"] =>
@@ -44,8 +46,17 @@ describeDb("카카오 수신과 콜백 봉투 저장 실패의 재개(TASK-028)"
       };
     };
     const jobs: KakaoCallbackJob[] = [];
+    const committed: number[] = [];
     const send = vi.fn<KakaoCallbackQueue["send"]>(async (job) => {
       jobs.push(job);
+      committed.push(
+        (
+          await db.query("SELECT id FROM messages WHERE shop_id = $1 AND id = $2 AND kakao_callback_enc IS NOT NULL", [
+            job.shopId,
+            job.messageId,
+          ])
+        ).rowCount,
+      );
     });
     const app = createApp({
       connect,
@@ -91,16 +102,40 @@ describeDb("카카오 수신과 콜백 봉투 저장 실패의 재개(TASK-028)"
       (await db.query("SELECT id FROM customers WHERE shop_id = $1 AND kakao_user_key = $2", [shop.shopId, user]))
         .rowCount,
     ).toBe(0);
-    expect((await db.query("SELECT id FROM consultations WHERE shop_id = $1", [shop.shopId])).rowCount).toBe(0);
-    expect((await db.query("SELECT id FROM messages WHERE shop_id = $1", [shop.shopId])).rowCount).toBe(0);
+    expect(
+      (
+        await db.query(
+          `SELECT c.id FROM consultations c JOIN customers u ON u.id = c.customer_id
+      WHERE c.shop_id = $1 AND u.kakao_user_key = $2`,
+          [shop.shopId, user],
+        )
+      ).rowCount,
+    ).toBe(0);
+    expect(
+      (
+        await db.query(
+          `SELECT m.id FROM messages m JOIN consultations c ON c.id = m.consultation_id
+      JOIN customers u ON u.id = c.customer_id WHERE m.shop_id = $1 AND u.kakao_user_key = $2`,
+          [shop.shopId, user],
+        )
+      ).rowCount,
+    ).toBe(0);
 
     fail = false;
     const recovered = await call();
     expect(recovered.headers.get("Siljang-Outcome")).toBe("callback_pending");
     expectSchema("SkillCallbackAck", await recovered.json());
     expect(send).toHaveBeenCalledTimes(1);
+    expect(committed).toEqual([1]);
     const job = jobs[0] as KakaoCallbackJob;
-    const rows = (await db.query("SELECT id, kakao_callback_enc FROM messages WHERE shop_id = $1", [shop.shopId])).rows;
+    const rows = (
+      await db.query(
+        `SELECT m.id, m.kakao_callback_enc FROM messages m
+      JOIN consultations c ON c.id = m.consultation_id JOIN customers u ON u.id = c.customer_id
+      WHERE m.shop_id = $1 AND u.kakao_user_key = $2`,
+        [shop.shopId, user],
+      )
+    ).rows;
     expect(rows).toHaveLength(1);
     expect(rows[0]?.id).toBe(job.messageId);
     expect(rows[0]?.kakao_callback_enc).toMatch(/^v1:/);

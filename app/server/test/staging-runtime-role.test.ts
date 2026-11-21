@@ -4,7 +4,7 @@ import type { Queryable, RequestDb } from "../src/db";
 import { fieldCrypto } from "../src/field-crypto";
 import { kakaoCallback } from "../src/kakao-callback";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
-import { scheduleKakaoCallback } from "../src/kakao-callback-store";
+import { publishStoredKakaoCallback, storeKakaoCallback } from "../src/kakao-callback-store";
 import { receiveKakaoMessage } from "../src/kakao-skill-store";
 import { createOwnerSession, endOwnerSession, ownerProfile, renewOwnerSession } from "../src/owner-session";
 import { runScheduled } from "../src/scheduled";
@@ -175,15 +175,12 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
           VALUES ($1, $2, 'outbound', 'system', 'text', '제한 역할 이전 안내', 'deferred', $3) RETURNING id`,
         [received.consultationId, new Date(now.getTime() - 1000)],
       );
+      const envelope = await scoped.transaction((tx) =>
+        storeKakaoCallback(tx, fieldCrypto(keys), received.messageId, callback, () => 3000),
+      );
+      if (envelope === null) throw new Error("시험 콜백 저장 실패");
       expect(
-        await scheduleKakaoCallback(
-          scoped,
-          fieldCrypto(keys),
-          { send: async () => {} },
-          received.messageId,
-          callback,
-          () => 3000,
-        ),
+        await publishStoredKakaoCallback(scoped, { send: async () => {} }, received.messageId, envelope, () => 3000),
       ).toBe(true);
       let text: unknown;
       expect(

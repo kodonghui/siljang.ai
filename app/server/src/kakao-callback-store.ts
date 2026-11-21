@@ -2,7 +2,7 @@ import type { FieldCrypto } from "./field-crypto";
 import type { KakaoCallback } from "./kakao-callback";
 import { type DeferredKakaoMessage, markDeferredKakaoMessages } from "./kakao-deferred";
 import { recordKakaoHandoff } from "./kakao-handoff";
-import type { ShopRequestDb } from "./shop-scope";
+import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
 export interface KakaoCallbackJob {
   readonly shopId: string;
@@ -40,15 +40,15 @@ async function publishCallback(
   }
 }
 
-export async function scheduleKakaoCallback(
-  db: ShopRequestDb,
+/** 수신 트랜잭션 안에서 콜백 주소를 저장한다. 외부 큐는 여기서 부르지 않는다. */
+export async function storeKakaoCallback(
+  db: ShopDb,
   crypto: FieldCrypto,
-  queue: KakaoCallbackQueue,
   messageId: string,
   callback: KakaoCallback,
   timeLeft: () => number,
-): Promise<boolean> {
-  if (timeLeft() <= RESPONSE_RESERVE_MS) return false;
+): Promise<string | null> {
+  if (timeLeft() <= RESPONSE_RESERVE_MS) return null;
   const shopId = db.scope.shopId;
   const envelope = await crypto.seal(callback.url.toString(), { shopId, purpose: PURPOSE });
   const result = await db.run(
@@ -56,7 +56,18 @@ export async function scheduleKakaoCallback(
       WHERE shop_id = $1 AND id = $2 AND direction = 'inbound' AND kakao_callback_enc IS NULL`,
     [messageId, envelope, new Date(callback.deadline)],
   );
-  if (result.rowCount === 0) return false;
+  return result.rowCount === 0 ? null : envelope;
+}
+
+/** 수신 커밋 뒤에만 큐에 발행한다. */
+export async function publishStoredKakaoCallback(
+  db: ShopRequestDb,
+  queue: KakaoCallbackQueue,
+  messageId: string,
+  envelope: string,
+  timeLeft: () => number,
+): Promise<boolean> {
+  const shopId = db.scope.shopId;
   if (await publishCallback(queue, { shopId, messageId }, timeLeft())) return true;
 
   await db.run(
