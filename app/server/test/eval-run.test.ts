@@ -357,6 +357,72 @@ describe("한 명령(CLI)", () => {
     expect(summaryMarkdown(run)).toContain("모델 호출 실패");
   });
 
+  it("성공이 사이에 있어도 같은 모델의 두 실패를 합산한다", async () => {
+    const target = TARGETS[1] as ModelTarget;
+    const four = EVAL_CASES.slice(0, 4);
+    const success = mockFetch(target, {
+      output: idealOutput(four[1] as (typeof four)[number]),
+      usage: { input: 1000, output: 100, cacheRead: 0, cacheWrite: 0 },
+    });
+    const network = vi
+      .fn(success)
+      .mockImplementationOnce(async () => new Response(null, { status: 429 }))
+      .mockImplementationOnce(success)
+      .mockImplementationOnce(async () => new Response(null, { status: 503 }));
+    const run = await runEval({
+      mode: "real",
+      cases: four,
+      targets: [target],
+      fx: FX,
+      maxKrw: "1000",
+      maxFailures: 2,
+      keys: { openai: fakeKey() },
+      fetch: network,
+    });
+    expect(network).toHaveBeenCalledTimes(3);
+    expect(run.results.map((r) => r.failure === null)).toEqual([false, true, false]);
+    expect(run.stopped?.beforeCase).toBe(four[3]?.id);
+  });
+
+  it("잘못된 금액으로 채점에 실패해도 응답한 모델의 나머지 사례는 계속 평가한다", async () => {
+    const run = await runEval({
+      mode: "mock",
+      cases: EVAL_CASES.slice(0, 4),
+      targets: [TARGETS[1] as ModelTarget],
+      fx: FX,
+      maxKrw: null,
+      maxFailures: 1,
+      responder: (c, target, prompt) => ({
+        ...idealResponder(c, target, prompt),
+        output: { ...idealOutput(c), reply: "견적은 1원이에요." },
+      }),
+    });
+    expect(run.results).toHaveLength(4);
+    expect(run.results.some((r) => r.verdicts.some((v) => v.verdict === "fail"))).toBe(true);
+    expect(run.stopped).toBeNull();
+  });
+
+  it.each(["0", "-1", "1.5", "9007199254740992"])("실패 횟수 %s는 옵션에서 거절한다", (value) => {
+    expect(() => parseArgs(["--max-failures", value])).toThrow(UsageError);
+  });
+
+  it("실행기 직접 호출의 잘못된 실패 한도도 네트워크 전에 거절한다", async () => {
+    const network = vi.fn();
+    await expect(
+      runEval({
+        mode: "real",
+        cases: EVAL_CASES.slice(0, 4),
+        targets: [TARGETS[1] as ModelTarget],
+        fx: FX,
+        maxKrw: "1000",
+        maxFailures: 0,
+        keys: { openai: fakeKey() },
+        fetch: network,
+      }),
+    ).rejects.toMatchObject({ code: "bad_failure_limit" });
+    expect(network).not.toHaveBeenCalled();
+  });
+
   const SERVER = fileURLToPath(new URL("../", import.meta.url));
 
   /** 키·환율·추적 변수를 뺀 환경에서 CLI를 돌린다(이 컴퓨터에 진짜 키가 있어도 쓰지 않게). */
