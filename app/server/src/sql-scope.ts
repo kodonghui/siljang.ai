@@ -137,8 +137,8 @@ const SQL_TEXT_FUNCTIONS = new Set([
 ]);
 
 /** SQL이 가게 테이블을 하나라도 이름으로 드는지(정적 시험이 검사할 글을 고를 때). */
-export function namesShopTable(sql: string): boolean {
-  return tokenize(stripSql(sql)).some((t) => SCOPED.has(t.v));
+export function namesShopTable(sql: string, table?: ShopTable): boolean {
+  return tokenize(stripSql(sql)).some((t) => (table === undefined ? SCOPED.has(t.v) : t.v === table));
 }
 
 /**
