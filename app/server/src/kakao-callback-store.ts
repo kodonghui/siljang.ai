@@ -1,4 +1,5 @@
 import type { FieldCrypto } from "./field-crypto";
+import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import type { KakaoCallback } from "./kakao-callback";
 import { type DeferredKakaoMessage, markDeferredKakaoMessages } from "./kakao-deferred";
 import { recordKakaoHandoff } from "./kakao-handoff";
@@ -160,7 +161,7 @@ export async function prepareKakaoCallbackHandoff(
   messageId: string,
   claim: Claim,
   now: Date,
-): Promise<boolean> {
+): Promise<false | "ai_failure" | "ai_cost_limit"> {
   return db.transaction(async (tx) => {
     await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [claim.customer_id]);
     const consultation = await tx.found<{ status: string }>(
@@ -181,8 +182,9 @@ export async function prepareKakaoCallbackHandoff(
       );
       return false;
     }
-    await recordKakaoHandoff(tx, claim.consultation_id, messageId, "ai_failure", now);
-    return true;
+    const reason = (await kakaoAiCostLimit(tx, claim.consultation_id, now)) === "ok" ? "ai_failure" : "ai_cost_limit";
+    await recordKakaoHandoff(tx, claim.consultation_id, messageId, reason, now);
+    return reason;
   });
 }
 

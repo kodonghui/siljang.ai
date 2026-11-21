@@ -119,12 +119,16 @@ export async function consumeKakaoCallback(
     }
 
     owned = claim;
-    if (!(await prepareKakaoCallbackHandoff(db, job.messageId, claim, now()))) return "done";
+    const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now());
+    if (reason === false) return "done";
     log(
       "warn",
       {
         event: "kakao_callback_handoff",
-        code: kakaoAiFailureOutcome(services.aiConfigured ? "unavailable" : "key_missing"),
+        code:
+          reason === "ai_cost_limit"
+            ? "ai_cost_limit_reached"
+            : kakaoAiFailureOutcome(services.aiConfigured ? "unavailable" : "key_missing"),
       },
       options.logSink,
     );

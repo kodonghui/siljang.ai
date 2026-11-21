@@ -12,3 +12,5 @@ GRANT UPDATE (id) ON shops, kakao_channels TO :"runtime_role";
 GRANT SELECT, INSERT ON handoffs, handoff_questions, owner_tasks, owner_alerts TO :"runtime_role";
 -- 사장님 기다림을 가게의 답하는 시간 안에서 계산한다.
 GRANT SELECT ON business_calendars TO :"runtime_role";
+-- TASK-028: 누적 비용 확인만 한다. 호출 기록의 추가/수정/삭제 권한은 주지 않는다.
+GRANT SELECT ON ai_calls TO :"runtime_role";

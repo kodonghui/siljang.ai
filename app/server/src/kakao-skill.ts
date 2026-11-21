@@ -1,4 +1,5 @@
 import { sqlStateOf } from "./db";
+import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
 import { publishStoredKakaoCallback, storeKakaoCallback } from "./kakao-callback-store";
 import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
@@ -48,6 +49,15 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
             return kakaoReply(r, receipt.kind, { contactPhone: receipt.contactPhone });
           if (receipt.kind === "duplicate") return kakaoReply(r, receipt.kind);
           if (receipt.limit !== "ok") return kakaoReply(r, "rate_limited", { silent: receipt.limit === "silent" });
+          if ((await kakaoAiCostLimit(tx, receipt.consultationId, r.services.now())) !== "ok") {
+            return replyKakaoHandoffInTransaction(
+              tx,
+              receipt,
+              r.services.now(),
+              (previous) => kakaoReply(r, "ai_cost_limit_reached", { previous }),
+              "ai_cost_limit",
+            );
+          }
           if (queue !== undefined && callback !== null && timeLeft() > 0) {
             const envelope = await storeKakaoCallback(
               tx,

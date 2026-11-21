@@ -23,6 +23,7 @@ export async function replyKakaoHandoffInTransaction(
   receipt: Extract<InboundReceipt, { kind: "received" }>,
   now: Date,
   render: (previous: readonly string[]) => Response,
+  reason: FailureReason = "ai_failure",
 ): Promise<Response> {
   await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [receipt.customerId]);
   const consultation = await tx.found<{ status: string }>(
@@ -34,7 +35,7 @@ export async function replyKakaoHandoffInTransaction(
     "SELECT id FROM messages WHERE shop_id = $1 AND id = $2 AND consultation_id = $3 AND direction = 'inbound' FOR UPDATE",
     [receipt.messageId, receipt.consultationId],
   );
-  await recordKakaoHandoff(tx, receipt.consultationId, receipt.messageId, "ai_failure", now);
+  await recordKakaoHandoff(tx, receipt.consultationId, receipt.messageId, reason, now);
   const active = await tx.run(
     `SELECT m.id FROM messages m JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
        WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.kakao_callback_claim_until > $3 LIMIT 1`,
