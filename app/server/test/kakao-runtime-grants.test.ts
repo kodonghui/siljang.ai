@@ -123,6 +123,43 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     expect(logs.lines.join("\n")).not.toContain("42501");
   });
 
+  it("비용 조회만 허용한 같은 제한 역할의 실제 API가 상담 비용 한도를 지킴", async () => {
+    const target = await createShop(db, "제한 역할 비용 한도");
+    await issueTestBookingLink(db, target);
+    await linkTestChannel(db, target.channelId);
+    await db.query(
+      `INSERT INTO ai_calls (shop_id, consultation_id, trace_id, provider, model, prompt_version, sent_at, cost_krw, result)
+      VALUES ($1, $2, $3, 'synthetic', 'synthetic', 'synthetic', $4, 1000, 'failure')`,
+      [target.shopId, target.consultationId, newUuid(), new Date("2026-11-22T10:00:00+09:00")],
+    );
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), target.channelId, 1);
+    const response = await createApp({
+      services: { now: () => new Date("2026-11-22T10:00:00+09:00") },
+      logSink: () => {},
+    }).request(
+      "/api/kakao/skills/message",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+        body: JSON.stringify({
+          bot: { id: target.botId },
+          userRequest: {
+            utterance: "합성 제한 역할 비용 질문",
+            block: { id: "cost" },
+            user: { id: target.userKey, type: "botUserKey" },
+          },
+          action: { id: "cost", params: {} },
+        }),
+      },
+      testEnv({ DATABASE_URL: databaseUrl }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Siljang-Outcome")).toBe("ai_cost_limit_reached");
+    expect((await db.query("SELECT reason FROM handoffs WHERE shop_id = $1", [target.shopId])).rows).toEqual([
+      { reason: "ai_cost_limit" },
+    ]);
+  });
+
   it("업무에 필요하지 않은 수정/삭제와 운영 기록/접속기록 권한을 늘리지 않음", async () => {
     const { rows } = await db.query(
       `SELECT
@@ -136,6 +173,10 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       has_table_privilege($1, 'public.owner_alerts', 'DELETE') AS alert_delete,
       has_any_column_privilege($1, 'public.business_calendars', 'UPDATE') AS calendar_update,
       has_table_privilege($1, 'public.business_calendars', 'DELETE') AS calendar_delete,
+      has_table_privilege($1, 'public.ai_calls', 'SELECT') AS ai_cost_read,
+      has_table_privilege($1, 'public.ai_calls', 'INSERT') AS ai_call_insert,
+      has_any_column_privilege($1, 'public.ai_calls', 'UPDATE') AS ai_call_update,
+      has_table_privilege($1, 'public.ai_calls', 'DELETE') AS ai_call_delete,
       has_any_column_privilege($1, 'public.ops_events', 'UPDATE') AS ops_update,
       has_table_privilege($1, 'public.ops_events', 'DELETE') AS ops_delete,
       has_table_privilege($1, 'public.access_logs', 'SELECT') AS access_full_select,
@@ -155,6 +196,10 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
         alert_delete: false,
         calendar_update: false,
         calendar_delete: false,
+        ai_cost_read: true,
+        ai_call_insert: false,
+        ai_call_update: false,
+        ai_call_delete: false,
         ops_update: false,
         ops_delete: false,
         access_full_select: false,

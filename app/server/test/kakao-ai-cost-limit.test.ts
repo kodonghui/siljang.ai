@@ -1,8 +1,10 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
+import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+import type { KakaoCallbackQueue } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
-import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
+import { collectLogs, describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
@@ -14,7 +16,7 @@ describeDb("카카오 수신의 상담/가게 AI 비용 한도(TASK-028)", () =>
   let shop: ShopFixture;
   let key: string;
   const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
-  const sendJob = vi.fn(async () => {});
+  const sendJob = vi.fn<KakaoCallbackQueue["send"]>(async () => {});
 
   beforeAll(async () => {
     isolated = await isolatedTestDb();
@@ -165,6 +167,42 @@ describeDb("카카오 수신의 상담/가게 AI 비용 한도(TASK-028)", () =>
   it("가게 한도0원이면 비용0원부터 막음", async () => {
     await isolated.db.query("UPDATE shops SET daily_ai_cost_limit_krw = 0 WHERE id = $1", [shop.shopId]);
     await expectBlocked();
+  });
+
+  it("큐 대기 중 상담 비용이 한도에 닿으면 소비자가 다시 확인하고 비용 사유로 넘김", async () => {
+    expect((await send()).headers.get("Siljang-Outcome")).toBe("callback_pending");
+    const job = sendJob.mock.calls[0]?.[0];
+    if (job === undefined) throw new Error("시험 콜백 작업 없음");
+    await cost(shop, shop.consultationId, "1000.00");
+    const delivered = vi.fn(async () => Response.json({ status: "SUCCESS" }));
+    const logs = collectLogs();
+    const options = {
+      connect: () => isolated.connect(),
+      now: () => new Date(NOW.getTime() + 1000),
+      fetch: delivered,
+      logSink: logs.sink,
+    };
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(logs.lines.map((line) => JSON.parse(line))).toContainEqual({
+      level: "warn",
+      event: "kakao_callback_handoff",
+      code: "ai_cost_limit_reached",
+    });
+    expect(await handedOff()).toEqual([
+      {
+        reason: "ai_cost_limit",
+        status: "awaiting_owner",
+        wait_status: "waiting",
+        alert_status: "pending",
+        sent_at: null,
+      },
+    ]);
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(delivered).toHaveBeenCalledOnce();
+    expect(await handedOff()).toHaveLength(1);
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM ai_calls WHERE shop_id = $1", [shop.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
   });
 
   it("한도 뒤의 같은 요청3번은 질문/할 일/대기 알림과 답을 한 번만 남김", async () => {
