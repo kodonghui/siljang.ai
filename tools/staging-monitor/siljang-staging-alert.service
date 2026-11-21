@@ -1,0 +1,10 @@
+[Unit]
+Description=Notify the owner about an external Siljang staging health failure
+
+[Service]
+Type=oneshot
+StateDirectory=siljang-staging-health
+StateDirectoryMode=0700
+ExecStart=%h/.local/lib/siljang/staging-monitor/notify-failure.sh
+TimeoutStartSec=45s
+NoNewPrivileges=true

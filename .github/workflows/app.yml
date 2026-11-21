@@ -82,7 +82,7 @@ jobs:
         run: npm test 2>&1 | tee ci-logs/test.log
 
       - name: 스테이징 설정 도구 시험(비밀 값 없이)
-        run: node --test ../tools/test/staging-runtime.test.mjs ../tools/test/staging-owner-login.test.mjs 2>&1 | tee ci-logs/staging-runtime.log
+        run: node --test ../tools/test/staging-runtime.test.mjs ../tools/test/staging-owner-login.test.mjs ../tools/test/staging-monitor.test.mjs ../tools/test/staging-job-policy.test.mjs 2>&1 | tee ci-logs/staging-runtime.log
 
       - name: 빌드(웹 Vite, 서버 wrangler --dry-run)
         run: npm run build 2>&1 | tee ci-logs/build.log
