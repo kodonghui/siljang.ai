@@ -201,3 +201,8 @@
 - 결과: OVH 두 곳에서 `/`, `/operator/login`, `/manifest.webmanifest`, `/service-worker.js`는 200, `/api/healthz`는 200과 `{"status":"ok"}`, 세션 없는 `/api/operator/me`는 401입니다. 데이터베이스 연결과 로그인 계정은 TASK-170 이후입니다. [스테이징 상태 확인](https://staging.siljang.ai.corthex-hq.com/api/healthz)
 - OVH에서 보낸 정상 요청에 대해 Wrangler tail의 `CF-Connecting-IP`와 Cloudflare가 알려 준 요청 출처 IP가 같았습니다. 같은 경로에 임의의 `CF-Connecting-IP`를 넣은 요청은 HTTP 403이었고 Wrangler tail에 도착하지 않았습니다. Cloudflare API의 Pseudo IPv4 설정은 `off`였습니다.
 - GitHub 연동 계정은 Actions 변수·비밀 값 조회와 `staging` 환경 생성에 403을 받았습니다. Actions `main` 자동 배포, 1분 외부 감시, 실행기 실패 알림이 남았습니다. Cloudflare API는 방문자 IP 헤더를 제거하는 관리 변환의 설정 조회에 403을 반환했습니다.
+
+## 2026-11-21 · PR #122 합친 뒤 배포 확인
+
+- main `d2a2d766abf6af256ba9ee51d4db0a89e6815821`의 app `44877763219`(스테이징 배포·공개 상태·운영자 DB 조회 포함)·db `44877763209`가 성공했습니다. 연결된 GitHub 도구의 원격 main과 서명 커밋·트리를 대조했습니다.
+- 셸 HTTP·Git·Wrangler의 프록시 503이 남아 독립 배포 태그 조회와 카카오 조작은 미실행입니다. 이 결과를 실제 카카오 상담 성공으로 기록하지 않습니다.
