@@ -1,0 +1,60 @@
+{
+  "date_kst": "2026-11-22",
+  "mode": "Windows academy remote Wrangler high-fidelity Images preview",
+  "wrangler": "4.158.0",
+  "input_name": "still-6",
+  "bundle_sha256": "42a45ab41b6dec35ca190ed4c93526fa35afa3b6e73ad1c38eab1d36a2c08f56",
+  "records": [
+    {
+      "event": "webp_preview_input_waiting"
+    },
+    {
+      "event": "webp_preview_input_received"
+    },
+    {
+      "event": "webp_preview_driver_starting"
+    },
+    {
+      "event": "webp_preview_ready",
+      "ready": true,
+      "apiCode": null,
+      "networkLost": false,
+      "paidRequired": false
+    },
+    {
+      "event": "webp_preview_image",
+      "status": 200,
+      "contentType": "image/webp",
+      "elapsedMs": 409,
+      "inputBytes": 602,
+      "outputBytes": 104,
+      "imageSaved": true
+    },
+    {
+      "event": "webp_preview_cleanup_requested",
+      "ownedProcess": true
+    }
+  ],
+  "ssh_exit_code": 0,
+  "independent": {
+    "checks": {
+      "webp": true,
+      "metadata_removed": true,
+      "input_metadata_detected": true,
+      "dimensions_match": true,
+      "alpha_exact": true,
+      "corner_colors_match": true,
+      "frames_match": true,
+      "durations_match": true,
+      "loop_match": true
+    },
+    "passed": true,
+    "output_frames": 1,
+    "output_width": 96,
+    "output_height": 160,
+    "output_bytes": 104
+  },
+  "cpu_ms": null,
+  "peak_worker_memory_bytes": null,
+  "measurement": "elapsedMs is HTTP wall time. CPU and peak Worker memory not measured."
+}
