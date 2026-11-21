@@ -655,3 +655,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 180. TASK-173의 staging 환경 이름·콜백 생산자·소비자 설정 시험을 실패부터 추가했습니다. 실제 바인딩 목록에는 APP_ENV·REQUEST_HASH_KEY·콜백 큐가 없었고 이름과 종류만 확인했습니다. 기존 서울 배치·1분 Cron·Hyperdrive·정적 자산은 유지합니다. 로컬 API 연결 503과 Hyperdrive 설정 API 403을 기록하고 기존 GitHub Actions 환경의 배포 뒤 검증을 준비합니다. 소유자 세션·콜백 스키마와 권한은 미확인입니다.
 
 181. TASK-173 staging에 APP_ENV와 `KAKAO_CALLBACK_QUEUE`의 별도 생산자·소비자를 명시했습니다. 한 건 배치와 재시도 세 번 뒤 데드 레터 큐를 두며 기존 시험 큐는 사용하거나 비우지 않습니다. 설정 시험 4개와 전체 타입·린트가 통과했습니다. 실제 큐 생성·비밀 값 등록·배포 뒤 검증은 같은 PR #131에서 이어갑니다.
+
+182. TASK-173의 `tools/staging-runtime.mjs`는 현재 이름을 읽고 없는 큐·서명용 비밀 값만 생성합니다. 새 값은 secret put의 입력으로만 넘기고 CLI 인자·로그·오류 원문에는 넣지 않습니다. 배포 검증은 최신 시각·활성 버전·정확한 태그 뒤 공개 상태를 검사합니다. 먼저 7개 실패·1개 통과에서 구현 뒤 8개 모두 통과했고 비밀 값 없는 이 도구 시험을 app CI에 추가했습니다. 실제 자원 생성·비밀 값 등록과 검증은 아직 실행하지 않았습니다.
