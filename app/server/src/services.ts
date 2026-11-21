@@ -35,6 +35,8 @@ export interface Services {
   fieldCrypto(): FieldCrypto;
   /** 배포 설정으로 고른 회사·모델의 호출 모듈. AI_PROVIDER 등이 없으면 MissingSettingError. */
   aiModel(): AiModel;
+  /** 회사/모델과 선택 회사 키의 존재. 실제 업무 처리기의 준비 여부나 호출 성공이 아니다. */
+  readonly aiConfigured: boolean;
   /** 운영자 인증 서비스(Supabase Auth). SUPABASE_URL·SUPABASE_PUBLISHABLE_KEY가 없으면 MissingSettingError. */
   operatorAuth(): OperatorAuth;
   ownerAuth(): OwnerAuth;
@@ -67,6 +69,7 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
   let ownerAuth: OwnerAuth | undefined = overrides.ownerAuth;
   return {
     now: overrides.now ?? (() => new Date()),
+    aiConfigured: overrides.aiModel !== undefined || (settings.ai !== null && settings.ai.apiKey !== null),
     kakaoCallbackQueue: overrides.kakaoCallbackQueue ?? env.KAKAO_CALLBACK_QUEUE,
     storage() {
       if (store !== undefined) return store;

@@ -68,7 +68,7 @@ describeDb("콜백 없는 카카오 요청의 실제 AI 미준비 처리(TASK-02
     expect(response.headers.get("Siljang-Outcome")).toBe("ai_key_missing");
     const body = await response.json();
     expectSchema("SkillTemplateResponse", body);
-    expect(body.template.outputs).toEqual([{ simpleText: { text: KAKAO_HANDOFF_TEXT } }]);
+    expect(body).toEqual({ version: "2.0", template: { outputs: [{ simpleText: { text: KAKAO_HANDOFF_TEXT } }] } });
     expect((await h.records()).rows).toEqual([
       {
         reason: "ai_failure",

@@ -1,8 +1,47 @@
 import { eventKeys, insertOnce } from "./event-keys";
-import type { ShopDb } from "./shop-scope";
+import { deferredKakaoMessages, markDeferredKakaoMessages } from "./kakao-deferred";
+import { KAKAO_HANDOFF_TEXT } from "./kakao-reply";
+import type { InboundReceipt } from "./kakao-skill-store";
+import type { ShopDb, ShopRequestDb } from "./shop-scope";
 import { addWithinReplyHours, toShopLocal } from "./time";
 
 type FailureReason = "callback_timeout" | "ai_failure" | "ai_cost_limit";
+
+/** 현재 답의 생성·사장님 할 일·이전 답의 전달 표시를 한 트랜잭션으로 기록한다. */
+export async function replyWithKakaoHandoff(
+  db: ShopRequestDb,
+  receipt: Extract<InboundReceipt, { kind: "received" }>,
+  now: Date,
+  render: (previous: readonly string[]) => Response,
+): Promise<Response> {
+  return db.transaction(async (tx) => {
+    await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [receipt.customerId]);
+    const consultation = await tx.found<{ status: string }>(
+      "SELECT status FROM consultations WHERE shop_id = $1 AND id = $2 AND customer_id = $3 FOR UPDATE",
+      [receipt.consultationId, receipt.customerId],
+    );
+    if (["ended", "deleted", "dropped"].includes(consultation.status)) throw new Error("consultation closed");
+    await tx.found(
+      "SELECT id FROM messages WHERE shop_id = $1 AND id = $2 AND consultation_id = $3 AND direction = 'inbound' FOR UPDATE",
+      [receipt.messageId, receipt.consultationId],
+    );
+    await recordKakaoHandoff(tx, receipt.consultationId, receipt.messageId, "ai_failure", now);
+    const active = await tx.run(
+      `SELECT m.id FROM messages m JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
+       WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.kakao_callback_claim_until > $3 LIMIT 1`,
+      [receipt.customerId, now],
+    );
+    const previous = active.rowCount === 0 ? await deferredKakaoMessages(tx, receipt.customerId) : [];
+    const response = render(previous.map((row) => row.text));
+    await markDeferredKakaoMessages(tx, receipt.customerId, previous, now);
+    await tx.run(
+      `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery, sent_at, created_at)
+       VALUES ($1, $2, 'outbound', 'system', 'text', $3, 'skill_response', $4, $4)`,
+      [receipt.consultationId, KAKAO_HANDOFF_TEXT, now],
+    );
+    return response;
+  });
+}
 
 /** 호출자는 같은 트랜잭션에서 손님·상담 행을 잠근다. 외부 알림은 여기서 보내지 않는다. */
 export async function recordKakaoHandoff(

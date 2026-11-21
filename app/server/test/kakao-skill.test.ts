@@ -194,21 +194,21 @@ describeDb("카카오 메시지 수신 기록과 동시 처리(TASK-028, REQ-132
     const user = newUuid();
     const replies = await Promise.all([send(user, "합성 상담"), send(user, "합성 상담"), send(user, "합성 상담")]);
     expect(replies.map((r) => r.headers.get("Siljang-Outcome")).sort()).toEqual([
+      "ai_key_missing",
       "duplicate",
       "duplicate",
-      "not_accepting",
     ]);
     for (const response of replies.filter((r) => r.headers.get("Siljang-Outcome") === "duplicate")) {
       expect(await response.json()).toEqual({ version: "2.0", template: { outputs: [] } });
     }
     const { rows } = await db.query<{ body_masked: string | null }>(
       `SELECT m.body_masked FROM messages m JOIN consultations c ON c.id = m.consultation_id
-       JOIN customers u ON u.id = c.customer_id WHERE m.shop_id = $1 AND u.kakao_user_key = $2`,
+       JOIN customers u ON u.id = c.customer_id WHERE m.shop_id = $1 AND u.kakao_user_key = $2 AND m.direction = 'inbound'`,
       [shop.shopId, user],
     );
     expect(rows).toEqual([{ body_masked: null }]);
     clock.now = new Date(NOW.getTime() + 2_000);
-    expect((await send(user, "합성 상담")).headers.get("Siljang-Outcome")).toBe("not_accepting");
+    expect((await send(user, "합성 상담")).headers.get("Siljang-Outcome")).toBe("ai_key_missing");
   });
 
   it("분당 초과 첫 요청에만 안내하고 다음 요청도 기록하되 출력은 비움", async () => {
@@ -216,7 +216,7 @@ describeDb("카카오 메시지 수신 기록과 동시 처리(TASK-028, REQ-132
     for (let i = 0; i < 20; i += 1) {
       const response = await send(user, `합성 상담 ${i}`);
       expect(response.status).toBe(200);
-      expect(response.headers.get("Siljang-Outcome")).toBe("not_accepting");
+      expect(response.headers.get("Siljang-Outcome")).toBe("ai_key_missing");
     }
     const first = await send(user, "첫 초과");
     expect(first.headers.get("Siljang-Outcome")).toBe("rate_limited");
