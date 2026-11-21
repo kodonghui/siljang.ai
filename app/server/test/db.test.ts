@@ -1,9 +1,20 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
-import { DbUnavailableError, pgConnector, TransactionMisuseError } from "../src/db";
+import { DbUnavailableError, pgConnector, type RequestDb, TransactionMisuseError } from "../src/db";
 import { collectLogs, describeDb, testDb, testEnv } from "./support/db";
 
 describe("데이터베이스 연결 없음", () => {
+  it("요청을 중단하면 이후 query·transaction이 연결을 다시 맺지 않음", async () => {
+    const db = pgConnector(null) as RequestDb & { abort(): Promise<void> };
+    expect(db.abort).toBeTypeOf("function");
+    await db.abort();
+    await expect(db.query("SELECT 1")).rejects.toMatchObject({ name: "DbAbortedError" });
+    await expect(db.transaction(async () => 1)).rejects.toMatchObject({ name: "DbAbortedError" });
+    await db.close();
+    await db.abort();
+    await expect(db.query("SELECT 1")).rejects.toMatchObject({ name: "DbAbortedError" });
+  });
+
   it("DATABASE_URL이 없으면 쿼리 때 DbUnavailableError, 앱 응답은 500 internal이고 로그에는 이름만", async () => {
     await expect(pgConnector(null).query("SELECT 1")).rejects.toBeInstanceOf(DbUnavailableError);
     const { lines, sink } = collectLogs();
