@@ -47,7 +47,11 @@ export function kakaoAiFailureOutcome(failure: Exclude<AiFailure, "schema_invali
 export function kakaoReply(
   r: Pick<ShopRequest, "json">,
   outcome: Outcome,
-  options: { readonly silent?: boolean; readonly contactPhone?: string | undefined } = {},
+  options: {
+    readonly silent?: boolean;
+    readonly contactPhone?: string | undefined;
+    readonly previous?: readonly string[];
+  } = {},
 ): Response {
   const headers = { "Siljang-Outcome": outcome, "Cache-Control": "no-store" };
   if (outcome === "callback_pending") {
@@ -55,6 +59,10 @@ export function kakaoReply(
   }
   const outputs: { simpleText: { text: string } }[] = [];
   if (outcome !== "duplicate" && !(outcome === "rate_limited" && options.silent)) {
+    const previous = options.previous ?? [];
+    if (previous.length > 2 || previous.some((text) => [...text].length < 1 || [...text].length > 1000))
+      throw new RangeError("invalid deferred Kakao replies");
+    for (const text of previous) outputs.push({ simpleText: { text } });
     const text =
       outcome === "not_accepting" && options.contactPhone !== undefined
         ? `${TEXT.not_accepting}. 가게로 연락해 주세요: ${options.contactPhone}`

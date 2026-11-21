@@ -1,6 +1,7 @@
 import { sqlStateOf } from "./db";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
 import { scheduleKakaoCallback } from "./kakao-callback-store";
+import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
 import { kakaoReply } from "./kakao-reply";
 import { kakaoContactPhone, receiveKakaoMessage } from "./kakao-skill-store";
 import { type ShopRequest, shopRoute } from "./routes";
@@ -26,7 +27,11 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
     if (receipt.kind === "not_accepting") return kakaoReply(r, receipt.kind, { contactPhone: receipt.contactPhone });
     if (receipt.kind === "duplicate") return kakaoReply(r, receipt.kind);
     if (receipt.limit !== "ok") return kakaoReply(r, "rate_limited", { silent: receipt.limit === "silent" });
-    if (messageKind === "unsupported") return kakaoReply(r, "unsupported_message");
+    const reply = (outcome: "unsupported_message" | "not_accepting") =>
+      replyWithDeferredKakaoMessages(r.db, receipt.customerId, r.services.now(), (previous) =>
+        kakaoReply(r, outcome, { previous }),
+      );
+    if (messageKind === "unsupported") return reply("unsupported_message");
 
     const queue = r.services.kakaoCallbackQueue;
     const callback = kakaoCallback(request.payload.callbackUrl, request.receivedAt);
@@ -45,7 +50,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
         return kakaoReply(r, "callback_pending");
       }
     }
-    return kakaoReply(r, "not_accepting");
+    return reply("not_accepting");
   } catch (error) {
     const dbCode = sqlStateOf(error);
     r.log("error", {
