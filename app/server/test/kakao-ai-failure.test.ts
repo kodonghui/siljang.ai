@@ -37,7 +37,7 @@ describeDb("콜백 없는 카카오 요청의 실제 AI 미준비 처리(TASK-02
       logSink: logs.sink,
     });
     const user = newUuid();
-    const send = (skillKey = key) =>
+    const send = (skillKey = key, callbackUrl?: string) =>
       app.request(
         "/api/kakao/skills/message",
         {
@@ -47,6 +47,7 @@ describeDb("콜백 없는 카카오 요청의 실제 AI 미준비 처리(TASK-02
             bot: { id: shop.botId },
             userRequest: {
               utterance: "합성 AI 실패 질문",
+              ...(callbackUrl === undefined ? {} : { callbackUrl }),
               block: { id: "failure" },
               user: { id: user, type: "botUserKey" },
             },
@@ -221,7 +222,16 @@ describeDb("콜백 없는 카카오 요청의 실제 AI 미준비 처리(TASK-02
     expect((await h.records()).rows).toHaveLength(1);
   });
 
-  it("수신 뒤 저장이 실패해도 같은 요청 재시도로 안내/할 일을 한 번만 복구함", async () => {
+  it.each([
+    { name: "큐 없음", queueEnabled: false, callbackUrl: undefined },
+    { name: "큐는 있고 콜백 없음", queueEnabled: true, callbackUrl: undefined },
+    { name: "허용하지 않은 콜백", queueEnabled: true, callbackUrl: "https://example.invalid/v1/callback/synthetic" },
+    {
+      name: "유효 콜백은 있고 큐 없음",
+      queueEnabled: false,
+      callbackUrl: "https://bot-api.kakao.com/v1/callback/synthetic_atomic",
+    },
+  ])("$name: 저장 실패 뒤 같은 요청으로 안내/할 일을 한 번만 복구함", async ({ queueEnabled, callbackUrl }) => {
     let failing = true;
     const connect: DbConnector = (secret) => {
       const conn = pgConnector(secret);
@@ -240,8 +250,9 @@ describeDb("콜백 없는 카카오 요청의 실제 AI 미준비 처리(TASK-02
           ),
       };
     };
-    const h = await setup({}, {}, connect);
-    const failed = await h.send();
+    const publish = vi.fn(async () => {});
+    const h = await setup(queueEnabled ? { kakaoCallbackQueue: { send: publish } } : {}, {}, connect);
+    const failed = await h.send(h.key, callbackUrl);
     expect(failed.headers.get("Siljang-Outcome")).toBe("server_error");
     expect(
       (await db.query("SELECT id FROM customers WHERE shop_id = $1 AND kakao_user_key = $2", [h.shop.shopId, h.user]))
@@ -249,13 +260,14 @@ describeDb("콜백 없는 카카오 요청의 실제 AI 미준비 처리(TASK-02
     ).toBe(0);
     expect((await h.records()).rows).toEqual([]);
     failing = false;
-    expect((await h.send()).headers.get("Siljang-Outcome")).toBe("ai_key_missing");
+    expect((await h.send(h.key, callbackUrl)).headers.get("Siljang-Outcome")).toBe("ai_key_missing");
     expect((await h.records()).rows).toHaveLength(1);
-    const duplicate = await h.send();
+    const duplicate = await h.send(h.key, callbackUrl);
     expect(duplicate.headers.get("Siljang-Outcome")).toBe("duplicate");
     expect(await duplicate.json()).toEqual({ version: "2.0", template: { outputs: [] } });
     expect((await h.records()).rows).toHaveLength(1);
     expect((await db.query("SELECT id FROM ai_calls WHERE shop_id = $1", [h.shop.shopId])).rowCount).toBe(0);
+    expect(publish).not.toHaveBeenCalled();
   });
 
   it("실패 안내의 저장 예외는 내부 내용 없는 200/server_error로 처리함", async () => {
