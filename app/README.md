@@ -697,3 +697,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 201. TASK-173의 매분 조회 수정은 전체 서버1018개·웹237개·Node20개, 형식·타입·빌드·WBS18/오류0·키644/발견0을 통과했습니다. 실제 제한 역할의 기본 Cron도 기존 운영 기록 SELECT로 읽고 쓰기 없이 끝나며 접속기록 제한을 유지합니다. 같은 시작 표시를 동시에 읽은 뒤에도 잠금 아래 재확인해 한 번만 시작합니다. 새 코드의 스테이징 Cron 관측 뒤 끝남을 판단합니다.
 
 202. TASK-173의 기존 앱 Cron에서 job_polled(job=purge)·outcome=ok·예외0을 실제로 확인했습니다. main99047f3의 CI·배포·최신 태그·원격 SHA·공개 상태도 같습니다. 현재 앱의 기존 콜백 큐 소비를 ID만으로 재확인하고 끝난 조건을 대조한 뒤 finished를 판단합니다. 새 Worker·소비자·업무 행·키·요금제 변경은 하지 않습니다.
+
+203. TASK-173의 현재 siljang-staging 큐 소비자1개와 데드 레터 큐 일치를 확인하고 임의 UUID 두 개뿐인 메시지1건을 발행했습니다. 실제 앱의 batchSize1·outcome=ok·예외0·실패 로그0을 관측했습니다. 실제 Cron도 ops_events 조회 뒤 job_polled를 남겼습니다. PR #131의 같은 Hyperdrive 요청 쓰기/커밋 조회·스키마/서버 역할, 보존한 캐시 끔·서울 배치·정적 자산·필드 키/Vault 사본과 대조해 TASK-173 finished를 표시합니다. 실제 모델 호출·손님 콜백·S3 정리 성공을 대신하는 증거는 아닙니다.
