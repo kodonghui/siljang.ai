@@ -126,6 +126,38 @@ export async function openKakaoCallback(db: ShopRequestDb, crypto: FieldCrypto, 
   return crypto.open(claim.kakao_callback_enc, { shopId: db.scope.shopId, purpose: PURPOSE });
 }
 
+/** 외부 발신 전에 자기 선점과 열린 상담을 확인하고 사장님 기록을 확정한다. */
+export async function prepareKakaoCallbackHandoff(
+  db: ShopRequestDb,
+  messageId: string,
+  claim: Claim,
+  now: Date,
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [claim.customer_id]);
+    const consultation = await tx.found<{ status: string }>(
+      "SELECT status FROM consultations WHERE shop_id = $1 AND id = $2 AND customer_id = $3 FOR UPDATE",
+      [claim.consultation_id, claim.customer_id],
+    );
+    const owned = await tx.run(
+      `SELECT id FROM messages WHERE shop_id = $1 AND id = $2 AND consultation_id = $3
+        AND direction = 'inbound' AND kakao_callback_enc = $4 AND kakao_callback_claim_until = $5 FOR UPDATE`,
+      [messageId, claim.consultation_id, claim.kakao_callback_enc, claim.kakao_callback_claim_until],
+    );
+    if (owned.rowCount === 0) return false;
+    if (["ended", "deleted", "dropped"].includes(consultation.status)) {
+      await tx.run(
+        `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL
+          WHERE shop_id = $1 AND id = $2`,
+        [messageId],
+      );
+      return false;
+    }
+    await recordKakaoHandoff(tx, claim.consultation_id, messageId, "ai_failure", now);
+    return true;
+  });
+}
+
 export async function finishKakaoCallback(
   db: ShopRequestDb,
   messageId: string,
