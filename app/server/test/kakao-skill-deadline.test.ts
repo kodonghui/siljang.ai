@@ -218,14 +218,16 @@ describeDb("인증 뒤 시간 초과의 실제 PostgreSQL 중단과 롤백(TASK-
       ],
     });
     const started = performance.now();
-    const pending = app.request(
-      `/api/kakao/skills/${kind}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
-        body: JSON.stringify({ ...body(), bot: { id: shop.botId } }),
-      },
-      testEnv(),
+    const pending = Promise.resolve(
+      app.request(
+        `/api/kakao/skills/${kind}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+          body: JSON.stringify({ ...body(), bot: { id: shop.botId } }),
+        },
+        testEnv(),
+      ),
     );
     await Promise.race([
       entered.promise,
@@ -234,15 +236,18 @@ describeDb("인증 뒤 시간 초과의 실제 PostgreSQL 중단과 롤백(TASK-
       }),
     ]);
     const response = await pending;
-    expect(performance.now() - started).toBeLessThan(1500);
-    expect(response.status).toBe(kind === "event" ? 500 : 200);
-    expect(response.headers.get("Siljang-Outcome")).toBe(kind === "event" ? null : "server_error");
-    if (kind === "event") await expectProblem(response, "internal");
-    else expectSchema("SkillResponse", await response.json());
-    await finished.promise;
-    expect(
-      (await db.query("SELECT id FROM messages WHERE shop_id = $1 AND body_masked = $2", [shop.shopId, marker]))
-        .rowCount,
-    ).toBe(0);
+    try {
+      expect(performance.now() - started).toBeLessThan(1500);
+      expect(response.status).toBe(kind === "event" ? 500 : 200);
+      expect(response.headers.get("Siljang-Outcome")).toBe(kind === "event" ? null : "server_error");
+      if (kind === "event") await expectProblem(response, "internal");
+      else expectSchema("SkillResponse", await response.json());
+      expect(
+        (await db.query("SELECT id FROM messages WHERE shop_id = $1 AND body_masked = $2", [shop.shopId, marker]))
+          .rowCount,
+      ).toBe(0);
+    } finally {
+      await finished.promise;
+    }
   });
 });
