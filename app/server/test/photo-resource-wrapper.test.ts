@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import realProbe from "../../../research/webp-orientation-2026-11/runtime-probe";
 import { PHOTO_PROBE_PREFIX, withPhotoProbe } from "../../../research/webp-orientation-2026-11/wrap-existing-worker";
 import type { ImageBinding } from "../src/photo-normalizer";
 
@@ -26,6 +28,51 @@ function fixture() {
 }
 
 describe("TASK-183 기존 시험 Worker의 별도 측정 경로", () => {
+  it.each(["stream", "multipart"] as const)(
+    "%s는 실제 공통 모듈/처리기와 메모리 저장까지 돌고 DB/S3 설정을 요구하지 않는다",
+    async (mode) => {
+      const original = new Uint8Array(readFileSync(new URL("./fixtures/photos/pixel-source.webp", import.meta.url)));
+      const normalized = new Uint8Array(readFileSync(new URL("./fixtures/photos/pixel-result.webp", import.meta.url)));
+      let conversions = 0;
+      const binding: ImageBinding = {
+        input() {
+          const builder = {
+            transform: () => builder,
+            async output() {
+              conversions += 1;
+              return { response: () => new Response(normalized, { headers: { "content-type": "image/webp" } }) };
+            },
+          };
+          return builder;
+        },
+      };
+      const base = { fetch: vi.fn(async (_request: Request, _env: object, _context: object) => new Response("base")) };
+      const worker = withPhotoProbe(base, realProbe);
+      let body: FormData | Uint8Array<ArrayBuffer>;
+      if (mode === "multipart") {
+        const form = new FormData();
+        form.set("purpose", "completion_photo");
+        form.set("file", new File([original], "synthetic.webp", { type: "image/webp" }));
+        body = form;
+      } else body = original;
+      const response = await worker.fetch(
+        new Request(`https://worker.example.test${PHOTO_PROBE_PREFIX}/${mode}`, {
+          method: "POST",
+          headers: authorized,
+          body,
+        }),
+        { PHOTO_RESOURCE_PROBE_KEY: env.PHOTO_RESOURCE_PROBE_KEY, IMAGES: binding },
+        context,
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/webp");
+      if (mode === "multipart") expect(response.headers.get("x-upload-status")).toBe("201");
+      expect(new Uint8Array(await response.arrayBuffer())).toEqual(normalized);
+      expect(conversions).toBe(1);
+      expect(base.fetch).not.toHaveBeenCalled();
+    },
+  );
+
   it.each(["/health", "/skill", "/login/start", "/__task183_resource-other/stream"])(
     "%s는 같은 요청·환경·문맥으로 기존 기능을 부른다",
     async (path) => {
