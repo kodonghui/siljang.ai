@@ -39,6 +39,8 @@ export interface RunOptions {
   readonly fx: FxRate;
   /** 비용 상한(원, "5000" 꼴). 실제 실행은 꼭 있어야 한다. */
   readonly maxKrw: string | null;
+  /** 같은 모델의 호출 실패가 이 수에 닿으면 다음 사례를 시작하지 않는다. 채점 실패는 세지 않는다. */
+  readonly maxFailures?: number | null;
   /** 실제 실행의 키(고른 회사만). CLI가 환경 변수에서 읽어 넘긴다. */
   readonly keys?: Partial<Record<AiProvider, Secret>>;
   readonly subject?: Subject;
@@ -78,16 +80,28 @@ export interface RunResult {
   readonly models: readonly string[];
   readonly estimate: RunEstimate;
   readonly maxKrw: string | null;
+  readonly maxFailures: number | null;
   /** ai_calls 꼴 행의 cost_krw 합(모의 실행은 어림). */
   readonly spentKrw: string;
-  readonly stopped: { readonly reason: "cost_cap"; readonly beforeCase: string; readonly model: string } | null;
+  readonly stopped: {
+    readonly reason: "cost_cap" | "provider_failures";
+    readonly beforeCase: string;
+    readonly model: string;
+  } | null;
   readonly results: readonly CaseResult[];
 }
 
 /** 실행하지 않은 이유. code는 CLI 출력과 시험이 본다. 메시지에는 키 값을 싣지 않는다. */
 export class EvalRefused extends Error {
   override readonly name = "EvalRefused";
-  readonly code: "tracing_on" | "unknown_model" | "max_krw_required" | "key_missing" | "cost_cap" | "no_cases";
+  readonly code:
+    | "tracing_on"
+    | "unknown_model"
+    | "max_krw_required"
+    | "key_missing"
+    | "cost_cap"
+    | "no_cases"
+    | "bad_failure_limit";
 
   constructor(code: EvalRefused["code"], message: string) {
     super(message);
@@ -112,6 +126,10 @@ export async function runEval(o: RunOptions): Promise<RunResult> {
   const on = tracingSwitchInProcess();
   if (on !== null) throw new EvalRefused("tracing_on", `${on} is on; turn tracing off before an eval run (REQ-138)`);
   if (o.cases.length === 0 || o.targets.length === 0) throw new EvalRefused("no_cases", "no cases or no models to run");
+  const maxFailures = o.maxFailures ?? null;
+  if (maxFailures !== null && (!Number.isSafeInteger(maxFailures) || maxFailures < 1)) {
+    throw new EvalRefused("bad_failure_limit", "maxFailures must be a positive safe integer");
+  }
   for (const t of o.targets) {
     if (priceOf(t.provider, t.model) === undefined) {
       throw new EvalRefused("unknown_model", `${targetName(t)} is not in the price table (src/ai-prices.ts)`);
@@ -142,6 +160,7 @@ export async function runEval(o: RunOptions): Promise<RunResult> {
 
   run: for (const target of o.targets) {
     const name = targetName(target);
+    let failures = 0;
     const key = o.mode === "real" ? (o.keys?.[target.provider] ?? null) : MOCK_KEY;
     const ai: AiSettings = {
       provider: target.provider,
@@ -151,6 +170,10 @@ export async function runEval(o: RunOptions): Promise<RunResult> {
       apiKey: key,
     };
     for (const c of o.cases) {
+      if (maxFailures !== null && failures >= maxFailures) {
+        stopped = { reason: "provider_failures", beforeCase: c.id, model: name };
+        break run;
+      }
       if (cap !== null && spent + upperCallCents(subject, c, target, o.fx) > cap) {
         stopped = { reason: "cost_cap", beforeCase: c.id, model: name };
         break run;
@@ -160,6 +183,7 @@ export async function runEval(o: RunOptions): Promise<RunResult> {
           ? (o.fetch ?? globalThis.fetch.bind(globalThis))
           : mockFetch(target, responder(c, target, subject.requestText(c)));
       const turn = await subject.respond(c, { ai, fetch: fetchFn, runId, now });
+      if (turn.failure !== null) failures += 1;
       for (const call of turn.calls) {
         const krw = call.cost_krw;
         if (typeof krw === "string") spent += krwCents(krw);
@@ -190,6 +214,7 @@ export async function runEval(o: RunOptions): Promise<RunResult> {
     models: o.targets.map(targetName),
     estimate,
     maxKrw: cap === null ? null : formatKrw(cap),
+    maxFailures,
     spentKrw: formatKrw(spent),
     stopped,
     results,

@@ -7,7 +7,7 @@
  * - 모델 목록은 --model로 받고, 없으면 요금표(src/ai-prices.ts)에서 회사마다 가장 싼 모델 하나씩이다. 배포에 쓸 모델을
  *   고르는 일은 TASK-162다.
  * - 평가 도구에서 환경 변수를 읽는 곳은 이 파일 하나다. 값의 검사는 서버 설정 모듈(readSettings)을 그대로 쓴다.
- * - 종료 코드: 0 끝남, 2 시작하지 않음(옵션·키·상한·추적 도구), 3 비용 상한으로 도중에 멈춤, 1 그 밖의 오류.
+ * - 종료 코드: 0 끝남, 2 시작하지 않음(옵션·키·상한·추적 도구), 3 비용 상한, 4 모델 호출 실패 횟수에서 멈춤, 1 그 밖의 오류.
  */
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -36,6 +36,7 @@ export function usage(): string {
     "  --dry-run            토큰·금액 어림만 보이고 호출하지 않음",
     "  --real               실제 실행(유료). 키·환율 환경 변수와 --max-krw가 있어야 함",
     "  --max-krw 원         비용 상한. 위 끝 어림이 넘으면 시작하지 않고, 실행 중 넘으려 하면 멈춤",
+    "  --max-failures n     같은 모델 호출 실패 n번이면 다음 사례 앞에서 멈추고 부분 결과를 보존(채점 실패 제외)",
     "  --checklist          출처 점검표(app/server/eval/source-checklist.md)를 다시 씀",
     "환경 변수(실제 실행): ANTHROPIC_API_KEY·OPENAI_API_KEY(고른 회사의 것), AI_USD_KRW(예 1450.25), AI_USD_KRW_DATE(예 2026-11-16)",
   ].join("\n");
@@ -49,6 +50,7 @@ export interface CliArgs {
   readonly dryRun: boolean;
   readonly real: boolean;
   readonly maxKrw: string | null;
+  readonly maxFailures: number | null;
   readonly checklist: boolean;
   readonly help: boolean;
 }
@@ -63,6 +65,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   let limit: number | null = null;
   let out: string | null = null;
   let maxKrw: string | null = null;
+  let maxFailures: number | null = null;
   const flags = { dryRun: false, real: false, checklist: false, help: false };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -87,13 +90,18 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       const v = value();
       if (!/^[0-9]+(\.[0-9]{1,2})?$/.test(v)) throw new UsageError("--max-krw must be won like 5000 or 5000.50");
       maxKrw = v;
+    } else if (a === "--max-failures") {
+      const v = value();
+      if (!/^[1-9][0-9]*$/.test(v) || !Number.isSafeInteger(Number(v)))
+        throw new UsageError("--max-failures must be a positive safe integer");
+      maxFailures = Number(v);
     } else if (a === "--dry-run") flags.dryRun = true;
     else if (a === "--real") flags.real = true;
     else if (a === "--checklist") flags.checklist = true;
     else if (a === "--help" || a === "-h") flags.help = true;
     else throw new UsageError(`unknown option ${a}`);
   }
-  return { models, effort, limit, out, maxKrw, ...flags };
+  return { models, effort, limit, out, maxKrw, maxFailures, ...flags };
 }
 
 /** 요금표에서 회사마다 가장 싼 모델(입력·출력 값의 합). */
@@ -218,6 +226,7 @@ export async function main(
       targets: r.targets,
       fx: r.fx,
       maxKrw: args.maxKrw,
+      maxFailures: args.maxFailures,
       keys: r.keys,
       runId,
       onProgress: (done, total) => {
@@ -230,8 +239,11 @@ export async function main(
     say(summaryMarkdown(run));
     say(`결과 파일: ${Object.values(paths).join(", ")}`);
     if (run.stopped !== null) {
-      say(`비용 상한으로 도중에 멈춤: ${run.stopped.model}의 ${run.stopped.beforeCase} 앞`);
-      return 3;
+      const providerFailure = run.stopped.reason === "provider_failures";
+      say(
+        `${providerFailure ? "모델 호출 실패" : "비용 상한"}로 도중에 멈춤: ${run.stopped.model}의 ${run.stopped.beforeCase} 앞`,
+      );
+      return providerFailure ? 4 : 3;
     }
     return 0;
   } catch (e) {

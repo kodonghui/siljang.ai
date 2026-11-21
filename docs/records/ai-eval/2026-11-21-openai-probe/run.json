@@ -1,0 +1,45 @@
+{
+  "runId": "eval-20261121T072229Z-139559",
+  "mode": "real",
+  "startedAt": "2026-11-21T07:22:29.123Z",
+  "casesVersion": "eval-cases-1",
+  "subject": {
+    "name": "baseline-v0",
+    "promptVersion": "eval-baseline-v0",
+    "sendsNotice": false
+  },
+  "models": [
+    "openai/gpt-6-luna"
+  ],
+  "estimate": {
+    "fx": {
+      "rate": "1450.00",
+      "date": "2026-11-14"
+    },
+    "cases": 2,
+    "targets": [
+      {
+        "target": "openai/gpt-6-luna",
+        "typical": {
+          "calls": 2,
+          "input": 5504,
+          "output": 1200,
+          "krw": "1.68"
+        },
+        "upper": {
+          "calls": 2,
+          "input": 18541,
+          "output": 8192,
+          "krw": "9.31"
+        }
+      }
+    ],
+    "typicalKrw": "1.68",
+    "upperKrw": "9.31"
+  },
+  "maxKrw": "20.00",
+  "maxFailures": 2,
+  "spentKrw": "0.73",
+  "stopped": null,
+  "resultRows": 2
+}
