@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import type { RequestDb } from "../src/db";
 import { SKILL_CALLBACK_MS } from "../src/kakao-callback";
+import { recoverExpiredKakaoCallbacks } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
 import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
@@ -194,5 +195,90 @@ describeDb("유실된 카카오 큐 작업의 자동 만료 복구(TASK-028)", (
         )
       ).rowCount,
     ).toBe(0);
+  });
+
+  it("미래 기한의 콜백은 큐가 없어도 먼저 만료 처리하지 않음", async () => {
+    const target = await pending("미래 기한 가게", EXPIRED);
+    await cron();
+    expect(await envelope(target.job)).not.toBeNull();
+    expect(await records(target.job)).toEqual([]);
+  });
+
+  it("두 실행이 같은 만료 행을 찾아도 안내/질문을 한 번만 저장함", async () => {
+    const target = await pending();
+    await Promise.all([cron(), cron()]);
+    expect(await envelope(target.job)).toBeNull();
+    expect(await records(target.job)).toHaveLength(1);
+  });
+
+  it("개수 한도 뒤의 가게는 다음 실행에서 처리함", async () => {
+    const first = await pending("첫 만료 가게");
+    const later = await pending("다음 만료 가게", new Date(NOW.getTime() + 1000));
+    const db = connection();
+    try {
+      expect(await recoverExpiredKakaoCallbacks(db, EXPIRED, { limit: 1, logSink: () => {} })).toEqual({
+        found: 1,
+        deferred: 1,
+        discarded: 0,
+        skipped: 0,
+        failed: 0,
+        stoppedByBudget: false,
+      });
+    } finally {
+      await db.close();
+    }
+    expect(await envelope(first.job)).toBeNull();
+    expect(await envelope(later.job)).not.toBeNull();
+    await cron();
+    expect(await records(first.job)).toHaveLength(1);
+    expect(await records(later.job)).toHaveLength(1);
+  });
+
+  it("시작 시간 한도를 채우면 새 트랜잭션 없이 다음 실행에 남김", async () => {
+    const target = await pending();
+    const db = connection();
+    let ticks = 0;
+    try {
+      expect(
+        await recoverExpiredKakaoCallbacks(db, EXPIRED, {
+          clock: () => (ticks++ === 0 ? 0 : 5000),
+          logSink: () => {},
+        }),
+      ).toEqual({ found: 1, deferred: 0, discarded: 0, skipped: 0, failed: 0, stoppedByBudget: true });
+    } finally {
+      await db.close();
+    }
+    expect(await envelope(target.job)).not.toBeNull();
+    expect(await records(target.job)).toEqual([]);
+    await cron();
+    expect(await records(target.job)).toHaveLength(1);
+  });
+
+  it("만료 찾기 실패는 이름만 기록하고 실행 결과/연결 닫기를 보존함", async () => {
+    const target = await pending();
+    const conn = connection();
+    const close = vi.fn(conn.close.bind(conn));
+    const logs = collectLogs();
+    expect(
+      await runScheduled({ scheduledTime: EXPIRED.getTime(), cron: "* * * * *" }, env, {
+        connect: () => ({
+          ...conn,
+          query: async () => {
+            throw new Error(PRIVATE_FAILURE);
+          },
+          close,
+        }),
+        jobs: [],
+        logSink: logs.sink,
+      }),
+    ).toEqual({ jobs: {}, stoppedByBudget: false, dailyStarted: [] });
+    expect(close).toHaveBeenCalledOnce();
+    expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
+      { level: "error", event: "job_find_failed", job: "kakao_callback_recovery", errorName: "Error" },
+    ]);
+    expect(logs.lines.join("\n")).not.toContain(PRIVATE_FAILURE);
+    expect(await envelope(target.job)).not.toBeNull();
+    await cron();
+    expect(await records(target.job)).toHaveLength(1);
   });
 });

@@ -220,6 +220,25 @@ describe("서버 코드의 SQL(정적 검사)", () => {
     ).toBe(false);
   });
 
+  it("콜백 만료 찾기는 전용 파일의 식별자/기한 조회 하나만 허용함", () => {
+    const source = sources.find((s) => s.name === "kakao-callback-sources.ts");
+    expect(source).toBeDefined();
+    const text = (source as { text: string }).text;
+    expect(RAW_ACCESS.some((re) => re.test(text))).toBe(false);
+    const queries = shopSql(text);
+    expect(queries).toHaveLength(1);
+    const sql = queries[0] as string;
+    expect(allowedCrossShop("kakao-callback-sources.ts", sql)).toBe(true);
+    expect(allowedCrossShop("kakao-callback-queue.ts", sql)).toBe(false);
+    expect(allowedCrossShop("kakao-callback-sources.ts", sql.replace("t.id,", "t.id, t.kakao_callback_enc,"))).toBe(
+      false,
+    );
+    expect(allowedCrossShop("kakao-callback-sources.ts", sql.replace("'inbound'", "'outbound'"))).toBe(false);
+    expect(
+      allowedCrossShop("kakao-callback-sources.ts", sql.replace("AND t.kakao_callback_deadline_at <= $1", "")),
+    ).toBe(false);
+  });
+
   it("SQL의 테이블 이름 자리에 값을 끼워 넣지 않음(정적 검사가 테이블을 볼 수 있게)", () => {
     const found: string[] = [];
     for (const s of sources) {
