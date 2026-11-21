@@ -58,6 +58,15 @@ function cleanFrame(data: Uint8Array): Uint8Array {
   return chunkBytes("ANMF", joinBytes(parts));
 }
 
+/** 표시용으로 남긴 방향 값 하나를 읽는다. 픽셀 정규화 전후에도 확인한다. */
+export function webpOrientation(bytes: Uint8Array): number {
+  const orientation = new ExifOrientation();
+  for (const { kind, data } of chunksOf(bytes, 12)) {
+    if (kind === "EXIF") orientation.read(hasExifHeader(data) ? data.subarray(6) : data);
+  }
+  return orientation.current;
+}
+
 export function cleanWebp(bytes: Uint8Array): Uint8Array {
   requirePhoto(bytes.length >= 12 && viewOf(bytes).getUint32(4, true) === bytes.length - 8);
   const orientation = new ExifOrientation();

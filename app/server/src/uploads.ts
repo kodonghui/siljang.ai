@@ -20,7 +20,8 @@
 import { declaredOver, readBytesLimited } from "./body";
 import { toBase64Url } from "./encoding";
 import type { OwnerScope } from "./owner-scope";
-import { IMAGE_TYPES, type ImageType, sanitizePhoto } from "./photo-metadata";
+import { IMAGE_TYPES, type ImageType, sniffImage as sniffPhotoType } from "./photo-metadata";
+import { type NormalizedPhoto, PhotoNormalizationError } from "./photo-normalizer";
 import { ApiError, type FieldError, fieldError } from "./problem";
 import { UPLOAD_RATE } from "./rate-limit";
 import type { OwnerRequest } from "./routes";
@@ -210,8 +211,18 @@ export async function createUpload(r: OwnerRequest): Promise<Response> {
   const { purpose, file } = uploadInput(await readForm(raw));
   const rule = UPLOAD_RULES[purpose];
   if (file.size > rule.maxBytes) throw new ApiError("file_too_large");
-  const photo = sanitizePhoto(new Uint8Array(await file.arrayBuffer()));
-  if (photo === null || !rule.types.includes(photo.contentType)) throw fieldError("/file", "not_allowed");
+  const input = new Uint8Array(await file.arrayBuffer());
+  const inputType = sniffPhotoType(input);
+  if (inputType === null || !rule.types.includes(inputType)) throw fieldError("/file", "not_allowed");
+  let photo: NormalizedPhoto | null;
+  try {
+    photo = await services.photos().fromBytes(input);
+  } catch (error) {
+    if (!(error instanceof PhotoNormalizationError)) throw error;
+    throw new ApiError(error.kind === "too_large" ? "file_too_large" : "storage_unavailable");
+  }
+  if (photo === null) throw fieldError("/file", "not_allowed");
+  if (photo.bytes.byteLength > rule.maxBytes) throw new ApiError("file_too_large");
   const { bytes, contentType } = photo;
   const now = services.now();
   const uploadId = newUploadId(purpose, now);

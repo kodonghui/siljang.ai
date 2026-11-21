@@ -11,6 +11,7 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-11-01",
   "preview_urls": false,
+  "images": { "binding": "IMAGES" },
   "assets": {
     "directory": "../web/dist",
     "not_found_handling": "single-page-application",
@@ -37,6 +38,7 @@
   "env": {
     "staging": {
       "vars": { "APP_ENV": "staging" },
+      "images": { "binding": "IMAGES" },
       "placement": { "region": "aws:ap-northeast-2" },
       "triggers": { "crons": ["* * * * *"] },
       "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "822c6fce48714d8498b4e6098f0654db" }],
