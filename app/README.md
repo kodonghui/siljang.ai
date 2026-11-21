@@ -671,3 +671,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 188. TASK-173 실제 적용 SQL은 `research/staging-runtime-2026-11/update-2026-11-21.sql`로 생성해 원본 커밋·생성 파일 SHA-256·재현 명령을 함께 남깁니다. 기존 원장의 모든 검증을 통과해야 0023~0025와 최소 권한을 적용하고, 검증한 합성 운영 기록 한 건만 정리합니다. 키 검사 발견 0건이며 실제 관리자 실행 전입니다.
 
 189. TASK-173 생성 SQL을 실제 관리자 경로에서 해시 확인 후 원문대로 적용했습니다. COMMIT 뒤 원장 25건·세션 표 존재·세션 UPDATE 허용·접속기록 전체 SELECT 불가를 확인했습니다. 별도 읽기 전용 확인에서도 파일 해시 25개 전부 일치·콜백 열 3개·messages SELECT/INSERT/UPDATE·기존 접속기록 제한 유지·합성 행 없음입니다. 실행 로그만 사용하는 큐·Cron 검증 Worker를 준비했고 실제 실행은 이어갑니다.
+
+190. TASK-173 실제 큐에서 ID 두 개만 보낸 메시지를 앱 기본 콜백 처리기가 처리하고 ack한 실행 로그를 확인했습니다(trigger=queue, outcome=ok, queue_done=1). 원격 스키마·권한도 새로 확인했습니다. 새 Cron 이벤트는 100초 안에 보지 못해 성공으로 쓰지 않고 전파 시간을 반영해 이어갑니다. 시험 소비자와 Worker는 모두 삭제했고 업무 행·결과용 운영 기록·외부 모델 호출은 만들지 않았습니다.

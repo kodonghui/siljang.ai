@@ -28,7 +28,8 @@
 - 원본 SQL 커밋 `62bccdafc8ca61fc91ead6b489bf4e2258d31ba6`에서 실제 적용할 갱신 SQL을 생성했고 SHA-256은 `f8842ca77189e7886ebf3ea0ce81d646f6fd029b7d98dd50d2692ac3d28f0542`입니다. 생성 파일과 재현 명령을 research/staging-runtime-2026-11에 보존했습니다. 파일 키 검사 발견 0건이며 아직 관리자 실행 전입니다.
 - Aside의 정상 관리자 경로에서 생성 파일 SHA-256 일치를 확인한 뒤 수정 없이 한 번 실행했습니다. COMMIT 뒤 migration_count=25·owner_sessions_present=true·owner_session_update=true·access_log_full_select=false입니다. 별도 읽기 전용 조회에서도 파일 해시 25개 전부 일치·콜백 열 3개·messages SELECT/INSERT/UPDATE 각각 true·접속기록 제한 유지·합성 행 0건을 확인했습니다. 합성 운영 기록 한 건은 정리됐고 역할에 운영 기록 UPDATE·DELETE를 추가하지 않았습니다.
 - 큐·Cron 재검증용 별도 Worker는 앱의 기본 콜백 처리기와 실제 실행기의 작업 표 조회를 사용하고 식별자·건수만 실행 로그로 남기도록 준비했습니다. 업무 행과 결과 기록을 만들지 않고 1년 1월 1일 이전 기준으로 조회하며 후보가 있으면 업무 변경 없이 실패하도록 했습니다. dry-run 번들은 통과했고 실제 소비·Cron 실행은 아직 확인 전입니다.
-- 다음: 실제 앱 큐 소비·Cron과 합친 뒤 main 배포의 최신 태그를 확인합니다. 로컬의 같은 503 요청은 반복하지 않습니다. 비밀 값은 기존 저장소를 사용하고 새 값이 필요한 경우 이름이 비어 있음을 확인한 뒤 한 번만 만들어 wrangler secret put으로 전달합니다. 실제 사장님 로그인은 TASK-020에서 이어갑니다.
+- 별도 Worker에서 실제 스테이징 DB의 세션 표·콜백 열 3개·messages SELECT/INSERT/UPDATE와 접속기록 전체 SELECT 불가를 다시 확인했습니다. 실제 큐의 ID 두 개 메시지를 앱 기본 처리기가 처리하고 ack한 로그는 trigger=queue, outcome=ok, queue_done=1입니다. 업무 행과 결과용 운영 기록은 만들지 않았습니다. 새 Worker의 Cron 이벤트는 100초 안에 보지 못했으며 실패 로그도 없어서 Cron 성공으로 쓰지 않습니다. 소비자와 Worker 삭제는 모두 성공했습니다.
+- 다음: main 배포와 실제 바인딩을 확인하고, 새 Cron 등록의 전파 시간을 반영한 별도 검증을 계속합니다. 로컬의 같은 503 요청은 반복하지 않습니다. 비밀 값은 기존 저장소를 사용하고 새 값이 필요한 경우 이름이 비어 있음을 확인한 뒤 한 번만 만들어 wrangler secret put으로 전달합니다. 실제 사장님 로그인은 TASK-020에서 이어갑니다.
 
 ## 동희님 확인 대기
 

@@ -323,3 +323,10 @@
 - Aside가 고정된 생성 파일의 SHA-256 일치를 확인한 뒤 기존 서울 Free 프로젝트의 정상 관리자 경로로 원문 전체를 수정 없이 한 번 실행했습니다. COMMIT 뒤 실제 결과는 migration_count=25, owner_sessions_present=true, owner_session_update=true, access_log_full_select=false입니다.
 - 별도 읽기 전용 검증 결과는 migration_count=25, matching_file_hash_count=25, all_file_hashes_match=true, callback_column_count=3, owner_sessions_present=true입니다. messages의 SELECT·INSERT·UPDATE는 각각 true이고 접속기록의 기존 권한 제한은 유지됐습니다.
 - synthetic_row_count=0·synthetic_row_absent=true여서 앞의 합성 운영 기록은 정리됐습니다. 서버 역할에 ops_events 수정·삭제 권한을 주지 않았고 생성 파일 밖의 실제 업무 데이터·요금제·계정·키·소유권은 바꾸지 않았습니다. 큐·Cron의 실제 앱 실행은 별도로 이어갑니다.
+
+## 2026-11-21 21:31 KST · TASK-173 실제 앱 콜백 소비
+
+- 별도 시험 Worker에서 원격 세션 표 존재·콜백 열 3개와 messages SELECT·INSERT·UPDATE를 각각 확인했습니다. access_logs 전체 SELECT는 false입니다. 인증 없는 요청은 401이었습니다.
+- 실제 큐에 shopId·messageId만 보냈습니다. 이 시험의 두 ID가 맞는 메시지만 앱의 createKakaoCallbackHandler 기본 처리기로 넘겼고 실제 Hyperdrive 연결·콜백 UPDATE/SELECT 경로 뒤 ack가 호출됐습니다. Cloudflare 실행 로그는 trigger=queue, outcome=ok, queue_done=1입니다. 카카오·모델 API를 부르거나 업무 행·운영 결과 행을 만들지 않았습니다.
+- 새로운 Cron 이벤트는 100초 안에 관찰되지 않았습니다. cron_done=false는 관찰 완료가 아니라 시간 안에 증거를 받지 못했다는 뜻이며 실패 이벤트도 없었습니다. 기존 11월 19일의 Cron 직접 확인과 이 미확인을 구분합니다. 실제 앱 실행기의 작업 표 조회는 전파 시간을 반영한 별도 확인에서 이어갑니다.
+- 시험 소비자와 Worker 삭제가 모두 성공했습니다. 기존 큐를 비우거나 키·권한을 다시 만들지 않았습니다.
