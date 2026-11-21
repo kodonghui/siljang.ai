@@ -43,7 +43,7 @@ const SCOPE_MAKERS: Record<string, string> = {
   "shop-scope.ts": "정의",
   "owner-login.ts": "살아 있는 사장님 세션과 그 계정의 가게만으로 범위를 만듦(TASK-020)",
   "kakao-skill-auth.ts": "정규 봇 ID로 찾은 연결의 스킬 키를 확인한 뒤 그 가게 범위만 만듦(06 DEC-08)",
-  "kakao-callback-queue.ts": "내부 큐의 가게·메시지 ID로 한 수신 행을 처리하는 작업 범위만 만듦",
+  "kakao-callback-queue.ts": "내부 큐 또는 만료 찾기의 가게·메시지 ID로 한 수신 행을 처리하는 작업 범위만 만듦",
   "job-runner.ts":
     "서버 안의 일 실행기(TASK-023): 때가 된 행의 가게 ID로 그 행 하나를 잡고 처리하는 범위(출처 job)만 만든다. 가게 ID는 due-sources.ts의 찾기 결과",
   "purge-runner.ts":
@@ -63,6 +63,12 @@ const CROSS_SHOP_SHAPES: readonly RegExp[] = [
 
 /** 가게 범위 밖 읽기로 허락한 SQL인지(그 파일의 그 꼴만). 꼴 안의 조건에 다른 테이블을 끌어오는 하위 질의는 받지 않는다. */
 function allowedCrossShop(file: string, sql: string): boolean {
+  if (file === "kakao-callback-sources.ts") {
+    return (
+      sql.replace(/\s+/g, " ").trim() ===
+      "SELECT t.shop_id, t.id, t.kakao_callback_deadline_at AS due_at FROM messages t WHERE t.direction = 'inbound' AND t.kakao_callback_enc IS NOT NULL AND t.kakao_callback_deadline_at <= $1 ORDER BY t.kakao_callback_deadline_at, t.id LIMIT $2"
+    );
+  }
   if (file === "purge-sources.ts") {
     const text = sql.replace(/\s+/g, " ").trim();
     if (text === "SELECT count(*)::int AS count FROM file_deletions") return true;

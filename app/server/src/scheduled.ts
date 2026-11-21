@@ -9,6 +9,7 @@ import type { Bindings } from "./app";
 import { type DbConnector, pgConnector } from "./db";
 import { type RunLimits, type RunnableJob, type RunSummary, runDueJobs } from "./job-runner";
 import { runnableJobs } from "./jobs";
+import { recoverExpiredKakaoCallbacks } from "./kakao-callback-queue";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import { createServices } from "./services";
 import { readSettings, type Settings } from "./settings";
@@ -77,7 +78,17 @@ export async function runScheduled(
     appLog("error", { event: "job_run_failed", errorName: nameOf(err) });
     return null;
   } finally {
-    await db.close();
+    try {
+      if (settings.secrets.DATABASE_URL !== null) {
+        await recoverExpiredKakaoCallbacks(db, now, {
+          ...(options.logSink === undefined ? {} : { logSink: options.logSink }),
+        });
+      }
+    } catch (err) {
+      appLog("error", { event: "job_run_failed", job: "kakao_callback_recovery", errorName: nameOf(err) });
+    } finally {
+      await db.close();
+    }
   }
 }
 
