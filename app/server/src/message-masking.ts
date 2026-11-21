@@ -19,8 +19,12 @@ const HANGUL_DIGITS: Readonly<Record<string, string>> = {
 };
 const DECIMAL = /^\p{Nd}$/u;
 const NUMBER = /[+＋]?[\p{Nd}공영일이삼사오육륙칠팔구](?:[\s\p{Cf}\-‐‑‒–—−－]*[\p{Nd}공영일이삼사오육륙칠팔구])*/gu;
-const BANK =
-  /계좌|은행|국민|신한|우리|하나|농협|기업|수협|우체국|새마을|신협|카카오뱅크|토스뱅크|케이뱅크|SC제일|씨티|산업|부산|경남|대구|광주|전북|제주/;
+const BANK_FULL =
+  /계좌|(?:KB국민|국민|신한|우리|하나|농협|기업|수협|산업|부산|경남|대구|광주|전북|제주|씨티|제일)은행|카카오뱅크|토스뱅크|케이뱅크|SC제일/;
+const BANK_BEFORE =
+  /(?:^|[^가-힣A-Za-z])(?:국민|신한|우리|하나|농협|기업|수협|우체국|새마을|신협|씨티|산업|부산|경남|대구|광주|전북|제주)[\s:：,()-]*$/;
+const BANK_AFTER =
+  /^[\s:：,()-]*(?:국민|신한|우리|하나|농협|기업|수협|우체국|새마을|신협|씨티|산업|부산|경남|대구|광주|전북|제주)(?:$|[^가-힣A-Za-z])/;
 const DIGIT_CACHE = new Map<string, string>();
 
 function digitOf(char: string): string | undefined {
@@ -40,6 +44,19 @@ function digitOf(char: string): string | undefined {
   const digit = String((point - first) % 10);
   DIGIT_CACHE.set(char, digit);
   return digit;
+}
+
+function digitsOf(text: string): string {
+  return [...text]
+    .map(digitOf)
+    .filter((digit) => digit !== undefined)
+    .join("");
+}
+
+function bankContext(text: string, start: number, end: number): boolean {
+  const before = text.slice(Math.max(0, start - 40), start);
+  const after = text.slice(end, end + 40);
+  return BANK_FULL.test(before) || BANK_FULL.test(after) || BANK_BEFORE.test(before) || BANK_AFTER.test(after);
 }
 
 function luhn(digits: string): boolean {
@@ -66,7 +83,12 @@ function residentNumber(digits: string): boolean {
 
 function phoneDigits(raw: string, digits: string): string | null {
   const local = /^82(?:1[016789]|2|[3-6][1-5]|70)/.test(digits) ? `0${digits.slice(2)}` : digits;
-  if (/^01[016789]\d{7,8}$/.test(local) || /^02\d{7,8}$/.test(local) || /^0(?:[3-6][1-5]|70|80)\d{7,8}$/.test(local))
+  if (
+    /^010\d{8}$/.test(local) ||
+    /^01[16789]\d{7,8}$/.test(local) ||
+    /^02\d{7,8}$/.test(local) ||
+    /^0(?:[3-6][1-5]|70|80)\d{7,8}$/.test(local)
+  )
     return local;
   if (/^01[016789]\d{4,5}$/.test(local) && /[-‐‑‒–—−－\s\p{Cf}공영일이삼사오육륙칠팔구]/u.test(raw)) return local;
   if (/^050[2-8]\d{7,8}$/.test(local)) return local;
@@ -140,20 +162,18 @@ export function messageNumbers(text: string, context: MaskingContext = {}): read
     if (
       /\p{Nd}/u.test(raw) &&
       /[가-힣]/u.test(text[end] ?? "") &&
-      /[공영일이삼사오육륙칠팔구]$/.test(raw) &&
-      !/[공영일이삼사오육륙칠팔구]{2}$/.test(raw)
+      raw.endsWith("이") &&
+      phoneDigits(raw, digitsOf(raw)) === null
     ) {
       raw = raw.slice(0, -1);
       end -= 1;
     }
-    if (/[가-힣]/u.test(text[start - 1] ?? "") && /^[공영일이삼사오육륙칠팔구]\p{Nd}/u.test(raw)) {
-      raw = raw.slice(1);
-      start += 1;
+    const prefix = /^[공영일이삼사오육륙칠팔구][\s\p{Cf}\-‐‑‒–—−－]*(?=\p{Nd})/u.exec(raw)?.[0];
+    if (/[가-힣]/u.test(text[start - 1] ?? "") && prefix !== undefined) {
+      raw = raw.slice(prefix.length);
+      start += prefix.length;
     }
-    const digits = [...raw]
-      .map(digitOf)
-      .filter((digit) => digit !== undefined)
-      .join("");
+    const digits = digitsOf(raw);
     let kind: MaskKind;
     let canonical = digits;
     if (residentNumber(digits)) kind = "long_number";
@@ -170,11 +190,7 @@ export function messageNumbers(text: string, context: MaskingContext = {}): read
       if (phone !== null) {
         kind = "phone";
         canonical = phone;
-      } else if (
-        digits.length >= 10 &&
-        digits.length <= 16 &&
-        (context.refundAccount || BANK.test(text.slice(Math.max(0, start - 40), end + 40)))
-      )
+      } else if (digits.length >= 10 && digits.length <= 16 && (context.refundAccount || bankContext(text, start, end)))
         kind = "account";
       else if (digits.length > 8) kind = "long_number";
       else continue;

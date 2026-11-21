@@ -59,6 +59,30 @@ describe("SPEC-021 메시지 번호 분류", () => {
     expect(messageNumbers("1234567890", { refundAccount: true })[0]?.kind).toBe("account");
     expect(messageNumbers("1234567890")[0]?.kind).toBe("long_number");
   });
+
+  it.each(["우리 가게 123456789012", "하나 더 123456789012", "기업 주문 123456789012", "계123456789012좌"])(
+    "일반 단어를 은행 이름으로 세어 원본을 보관하지 않음(%s)",
+    (text) => {
+      expect(messageNumbers(text).map(({ kind, digits }) => ({ kind, digits }))).toEqual([
+        { kind: "long_number", digits: "123456789012" },
+      ]);
+    },
+  );
+
+  it("은행 이름 끝의 '일'을 계좌 숫자에 붙이지 않음", () => {
+    expect(messageNumbers("SC제일 1234567890").map(({ kind, digits }) => ({ kind, digits }))).toEqual([
+      { kind: "account", digits: "1234567890" },
+    ]);
+  });
+
+  it("번호 끝의 한글 숫자를 조사로 잘라내지 않음", () => {
+    expect(messageNumbers("공일공-1234-567팔로 연락 주세요").map(({ kind, digits }) => ({ kind, digits }))).toEqual([
+      { kind: "phone", digits: "01012345678" },
+    ]);
+    expect(messageNumbers("010-1234-567이로 연락 주세요").map(({ kind, digits }) => ({ kind, digits }))).toEqual([
+      { kind: "phone", digits: "01012345672" },
+    ]);
+  });
 });
 
 describeDb("마스킹한 메시지와 원본 최소 보존(TASK-028)", () => {
