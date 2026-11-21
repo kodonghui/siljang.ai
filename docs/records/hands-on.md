@@ -286,3 +286,54 @@
 - 설계 검사 목업 C11의 SCR-022-1280은 기존 main과 같은 입력에서 실제 1344×1325, 저장 1344×1305였습니다. Playwright Chromium에서 IBM Plex Sans KR 400·500·600·700 로드, page-check 오류/경고/알림 0, 가로 넘침·콘솔 오류 0을 확인했습니다. 측정 높이를 원본에 쓰고 생성한 뒤 해당 화면은 1344×1325로 일치했습니다. 높이 원본·보드 미리보기·캔버스 높이 한 줄씩만 바뀌었습니다.
 
 - 높이 수정 뒤 전체 목업 재검사는 C11이 외부 글꼴 통신에서 실패했습니다. SCR-022의 높이 불일치는 없어졌고 후반 11개 보드의 Google Fonts가 HTTP 503·CORS 오류였습니다. 결과는 14개 중 13개 통과·1개 실패입니다. 저장소에는 동일 글꼴 캐시가 없고 별도 npm 배포 메타데이터도 E503이어서 더 시도하지 않았습니다. 최신 두 번 실패 중단 지시로 외부 확인만 멈췄으며 목업 전체 통과로 적지 않습니다.
+
+## 2026-11-21 · PR #130 배포와 TASK-173 재개
+
+- main `1e6a7698685db1cc7393ccd3576b1aaadcc52ebf`의 app `44896493625`·db `44896493604` 성공과 배포 로그의 현재 버전 `1e607a5e-3b2d-4420-8c7d-4018e664a915`·공개 상태 ok·운영자 DB 조회 401을 확인했습니다. 원격 main ref는 연결 도구로 대조하고 서명 payload의 Git 객체 해시가 같음을 검증해 로컬을 갱신했습니다. 공개 Git 전송과 로컬 배포 태그 조회는 각각 503 두 번 뒤 중단했으므로 직접 태그 조회 성공으로 기록하지 않습니다.
+- 스테이징 바인딩의 이름·종류에는 필드 키 두 개·Hyperdrive·두 요청 한도만 있었습니다. 환경 이름·요청 지문 키·콜백 큐는 없었고 값은 읽거나 기록하지 않았습니다. Hyperdrive 설정 API 403은 추가 시도하지 않습니다. 실제 DB 쓰기·큐 소비·Cron 실행과 소유자 세션/콜백 스키마는 새로운 검증을 받기 전까지 미확인입니다.
+
+- TASK-173 로컬 설정 시험은 먼저 3개 실패·1개 통과, 설정 뒤 4개 모두 통과했습니다. staging 환경 이름과 콜백 생산자·소비자·데드 레터 큐 선언, 기존 서울 배치·1분 Cron·Hyperdrive·정적 자산을 확인했고 전체 타입·린트가 통과했습니다. 실제 큐 생성·소비나 비밀 값 등록의 결과는 아닙니다.
+
+- 스테이징 자원·배포 검증 도구는 외부 연결을 모의해 먼저 7개 실패·1개 통과 후 구현 뒤 8개 모두 통과했습니다. 이름이 있는 자원 유지, 없는 값만 생성, 메타데이터 실패 전 무변경, CLI 입력과 출력 분리, 최신 시각과 정확한 태그·분할 배포·공개 상태 실패를 확인했습니다. 실제 플랫폼 자원 준비나 배포 검증의 결과는 아닙니다.
+
+- 기존 Windows 두 연결은 Node·npm·gh가 있었고 gh 인증 확인은 실패했습니다. 한 연결의 npm 캐시에 Wrangler 4.141이 있었습니다. 캐시 CLI로 실제 태그를 읽는 시도는 시간 초과라 성공으로 기록하지 않고 실행과 임시 자료를 정리합니다. 새로운 플랫폼 자원 생성·비밀 값 등록은 아직 하지 않았습니다.
+
+## 2026-11-21 · TASK-173 실제 큐·서명 키 준비와 최신 태그
+
+- Windows 같은 사용자 세션의 기존 Wrangler 4.141에서 최신 배포 시각 `2026-11-21T10:55:51.819595Z`, 버전 `1e607a5e-3b2d-4420-8c7d-4018e664a915`, 태그 `1e6a7698685db1cc7393ccd3576b1aaadcc52ebf`를 직접 확인했습니다. 공개 상태는 HTTP 200입니다. 앞선 로컬 503을 성공으로 바꾸지 않고 다른 실행 환경의 확인을 구분합니다.
+- `siljang-staging-kakao-callbacks`와 `siljang-staging-kakao-callbacks-dlq`, 빠져 있던 REQUEST_HASH_KEY·FILE_URL_KEY를 생성했습니다. 값은 메모리에서 만들고 wrangler secret put의 표준 입력으로 전달했습니다. 프로세스 인자·저장소·보고에 값은 남기지 않았습니다. 기존 필드 키와 다른 시험 큐는 유지했습니다. 같은 준비를 다시 실행한 결과 queuesCreated·secretsCreated 모두 빈 목록입니다.
+- 공식 Aside 설치 안내의 서명 검사를 적용했습니다. 유효 서명·공식 게시자·타임스탬프를 확인한 설치 파일만 실행했고 CLI 버전은 1.26.1121.1917입니다. 연결된 계정의 실제 브라우저 작업은 다음 확인입니다.
+- 실제 앱 큐 소비·DB 쓰기·Cron은 미확인입니다. WBS 끝남은 아직 표시하지 않습니다.
+
+## 2026-11-21 · TASK-173 실제 쓰기와 누락 스키마·권한
+
+- 같은 Hyperdrive에 연결한 별도 시험 Worker의 기본 응답은 인증 없음 401입니다. Wrangler 4.158과 secret put·재배포 뒤 인증한 메타데이터 조회는 200입니다. owner_sessions는 없고 messages의 kakao_callback_enc·kakao_callback_deadline_at·kakao_callback_claim_until도 없습니다. messages의 INSERT·UPDATE·DELETE 가운데 허용된 것은 없었습니다. 실제 값이나 연결 문자열은 반환하지 않았습니다.
+- ops_events에 합성 행 한 건을 INSERT한 뒤 새 연결에서 커밋된 행 한 건을 확인했습니다. 시험 결과를 기록할 UPDATE와 정리 DELETE는 SQLSTATE 42501이어서 거절됐습니다. 같은 작업을 다시 부르거나 역할 권한을 늘리지 않았습니다. 합성 행 ID `41065619-7ed5-41ea-a8b1-4ab1df712e57`는 관리자 권한으로 정리할 항목입니다. 종류·0건·숫자 표시만 있고 개인정보는 없습니다.
+- 시험용 소비자를 먼저 분리한 뒤 두 시험 Worker 삭제가 성공했습니다. 최초 Worker 삭제의 10064를 무시하지 않고 소비자 분리 후 다시 삭제했습니다. 기존 시험 큐는 비우지 않았습니다. 새 데드 레터 큐의 합성 ID 메시지 유무도 다음 정리에서 대조합니다. 큐·Cron의 결과 기록이 없으므로 앱 처리 성공으로 기록하지 않습니다.
+- 사용자 세션 1의 Aside 로컬 인증은 challenge 500입니다. 설치 키 초기화나 로그아웃은 하지 않았습니다. agent-desktop은 같은 사용자 세션의 새 비공개 상태 경로에서 정상 status와 필요한 권한·표면을 확인했습니다. 기존 상태 경로는 그대로입니다.
+
+## 2026-11-21 · TASK-173 Aside의 실제 관리자 조회
+
+- 기존 노트북의 사용자 세션 1에서 Aside 연결이 성공했습니다. 정상 관리 경로에서 `siljang-dev`·서울 ap-northeast-2·Free와 관리자 SQL 실행을 확인했습니다. 조회는 읽기 전용 트랜잭션이고 transaction_read_only=on입니다.
+- 원장 열은 filename·source_commit·sha256·applied_at이며 실제 내용 조회는 편집기·실행 버튼 조작 두 번 실패 뒤 중단했습니다. 해당 SQL은 실행되지 않았습니다. 적용 파일·원장 행 수를 확인했다고 기록하지 않습니다. 역할 LOGIN·NOINHERIT와 모든 60개 public 테이블의 소유 아님, 테이블별 네 권한과 접속기록의 열 권한을 확인했습니다.
+- 접속기록은 INSERT·DELETE·SELECT(accessed_at)만 있고 전체 SELECT·나머지 열 SELECT·UPDATE·TRUNCATE는 없습니다. 합성 시험 행 존재와 숫자 표시 일치도 확인했으며 아직 삭제하지 않았습니다. 별도 관리자 권한 변경은 하지 않았습니다.
+
+## 2026-11-21 21:20 KST · TASK-173 실제 원장 갱신·최소 권한·정리
+
+- Aside가 고정된 생성 파일의 SHA-256 일치를 확인한 뒤 기존 서울 Free 프로젝트의 정상 관리자 경로로 원문 전체를 수정 없이 한 번 실행했습니다. COMMIT 뒤 실제 결과는 migration_count=25, owner_sessions_present=true, owner_session_update=true, access_log_full_select=false입니다.
+- 별도 읽기 전용 검증 결과는 migration_count=25, matching_file_hash_count=25, all_file_hashes_match=true, callback_column_count=3, owner_sessions_present=true입니다. messages의 SELECT·INSERT·UPDATE는 각각 true이고 접속기록의 기존 권한 제한은 유지됐습니다.
+- synthetic_row_count=0·synthetic_row_absent=true여서 앞의 합성 운영 기록은 정리됐습니다. 서버 역할에 ops_events 수정·삭제 권한을 주지 않았고 생성 파일 밖의 실제 업무 데이터·요금제·계정·키·소유권은 바꾸지 않았습니다. 큐·Cron의 실제 앱 실행은 별도로 이어갑니다.
+
+## 2026-11-21 21:31 KST · TASK-173 실제 앱 콜백 소비
+
+- 별도 시험 Worker에서 원격 세션 표 존재·콜백 열 3개와 messages SELECT·INSERT·UPDATE를 각각 확인했습니다. access_logs 전체 SELECT는 false입니다. 인증 없는 요청은 401이었습니다.
+- 실제 큐에 shopId·messageId만 보냈습니다. 이 시험의 두 ID가 맞는 메시지만 앱의 createKakaoCallbackHandler 기본 처리기로 넘겼고 실제 Hyperdrive 연결·콜백 UPDATE/SELECT 경로 뒤 ack가 호출됐습니다. Cloudflare 실행 로그는 trigger=queue, outcome=ok, queue_done=1입니다. 카카오·모델 API를 부르거나 업무 행·운영 결과 행을 만들지 않았습니다.
+- 새로운 Cron 결과 로그는 100초 안에 수집하지 못했습니다. cron_done=false는 관찰 완료가 아니라 시간 안에 증거를 받지 못했다는 뜻이며 성공·오류 어느 쪽으로도 판정하지 않습니다. 기존 11월 19일의 Cron 직접 확인과 이 미확인을 구분합니다. 실제 앱 실행기의 작업 표 조회는 전파 시간을 반영한 별도 확인에서 이어갑니다.
+- 시험 소비자와 Worker 삭제가 모두 성공했습니다. 기존 큐를 비우거나 키·권한을 다시 만들지 않았습니다.
+
+## 2026-11-21 · TASK-173 새 Cron 검증 경로 중단
+
+- 전파 대기 시간을 늘려 준비한 두 번째 Cron 전용 Worker는 최초 공개 주소의 응답이 404여서 기본 인증 검사에서 중단됐습니다. DB·Cron 실행에 이르지 않았고 Worker 삭제는 성공했습니다. 새 Worker를 이용한 이 검증 경로는 두 번 실패 규칙에 따라 중단합니다.
+- 11월 19일의 기존 Cron 확인과 현재 main 설정은 그대로 보존합니다. 실제 앱 큐 소비의 queue_done=1은 확인했지만 새 Cron의 작업 표 조회는 미확인입니다. TASK-173 끝남을 아직 표시하지 않고 main 배포 확인 뒤 막히지 않은 작업을 이어갑니다.
+
+- 실제 main 읽기 확인: Cron 설정은 * * * * *이며 공개 /api/healthz는 200·ok입니다. 형식이 맞는 임의 세션 쿠키를 보낸 /api/operator/me와 /api/owner/me는 각각 401·unauthenticated입니다. 사장님 세션 경로의 이전 500이 스키마·권한 적용 뒤 401로 바뀌었습니다. 실제 로그인 성공으로 기록하지는 않습니다.

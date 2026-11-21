@@ -5,7 +5,7 @@ import { Secret } from "../../src/settings";
 import { TEST_DATABASE_URL } from "./db";
 
 /** 여러 가게의 실제 지우기 시험은 다른 시험 자료를 건드리지 않는 독립 DB에서 한다. */
-export async function isolatedTestDb(): Promise<{
+export async function isolatedTestDb(options: { readonly lastMigration?: number } = {}): Promise<{
   readonly db: RequestDb;
   readonly connect: () => RequestDb;
   close(): Promise<void>;
@@ -24,7 +24,7 @@ export async function isolatedTestDb(): Promise<{
       await setup.connect();
       const dir = new URL("../../../../db/migrations/", import.meta.url);
       for (const file of readdirSync(dir)
-        .filter((p) => /^\d{4}_.+\.sql$/.test(p))
+        .filter((p) => /^\d{4}_.+\.sql$/.test(p) && Number(p.slice(0, 4)) <= (options.lastMigration ?? Infinity))
         .sort()) {
         await setup.query(readFileSync(new URL(file, dir), "utf8"));
       }

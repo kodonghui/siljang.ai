@@ -36,9 +36,22 @@
   ],
   "env": {
     "staging": {
+      "vars": { "APP_ENV": "staging" },
       "placement": { "region": "aws:ap-northeast-2" },
       "triggers": { "crons": ["* * * * *"] },
       "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "822c6fce48714d8498b4e6098f0654db" }],
+      "queues": {
+        "producers": [{ "binding": "KAKAO_CALLBACK_QUEUE", "queue": "siljang-staging-kakao-callbacks" }],
+        "consumers": [
+          {
+            "queue": "siljang-staging-kakao-callbacks",
+            "max_batch_size": 1,
+            "max_batch_timeout": 1,
+            "max_retries": 3,
+            "dead_letter_queue": "siljang-staging-kakao-callbacks-dlq"
+          }
+        ]
+      },
       "ratelimits": [
         {
           "name": "UPLOAD_RATE_LIMITER",
