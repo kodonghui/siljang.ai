@@ -5,7 +5,7 @@ TASK-183의 서버 회전 후보를 앱에 넣기 전에 검증한다. 사람 �
 - 기존 결과: 작은 정적·큰 해상도의 작은 압축 파일·두 프레임 애니메이션의 90도 회전은 Wrangler 원격 미리보기에서 통과했다. 큰 압축 파일과 방향 전체·CPU·메모리는 확인하지 않았다(앱 README 116).
 - 이번 범위: 방향 2~8, 알파·프레임·시간·반복, 10·20MiB 입력, 큰 해상도와 여러 프레임을 확인한다. 자원 측정의 방법·범위와 한계를 결과에 함께 쓴다.
 - 공식 문서 확인(2026-11-21): Images 바인딩은 `.transform()` 호출 순서로 변환을 적용하고 `.output({format, quality, anim})`으로 내보낸다. 로컬 개발의 바인딩 사용에는 사용 요금을 부과하지 않는다고 안내한다. 원격 고정밀 버전은 `wrangler dev --remote`로 확인한다. 실제 배포의 무료 플랜은 월 고유 변환 5,000건을 넘기면 새 변환을 오류로 막고 초과 과금하지 않는다고 안내한다. 유료 플랜 전환은 하지 않는다.
-- 현재 앱 통합 후보는 공통 photo-normalizer와 API-007 저장 전 호출·카카오 HTTP 스트림 입력까지 구현했다. 실제 픽셀·촬영 정보·알파/애니메이션과 Chromium 검증은 통과했으나 Workers CPU·최대 메모리는 아직 측정하지 못했다. 자원 한도 증거가 남아 TASK-183은 완료로 세지 않는다. 실패가 두 번 반복되면 그 실행만 멈추고 결과와 다음 단계를 보존한다.
+- 현재 앱 통합 후보는 공통 photo-normalizer와 API-007 저장 전 호출·카카오 HTTP 스트림 입력까지 구현했다. 실제 픽셀·촬영 정보·알파/애니메이션과 Chromium40개 검증은 통과했다. 실제 CPU P999 최대459.208ms·메모리 P999 최대124.132MiB이며 무료 CPU10ms를 넘고 최대 메모리는 미확인이다. 요금제/제품 용량 결정이 남아 TASK-183은 완료로 세지 않는다. 실패가 두 번 반복되면 그 실행만 멈추고 결과와 다음 단계를 보존한다.
 
 출처:
 
@@ -69,3 +69,34 @@ Chromium 검사는 위 원격 실행의 출력 폴더를 사용한다. Pillow13�
 python3 research/webp-orientation-2026-11/prepare-browser.py /tmp/siljang-webp-validation/input /tmp/siljang-webp-validation/expected.json
 node research/webp-orientation-2026-11/chromium-check.mjs /tmp/siljang-webp-validation/output /tmp/siljang-webp-validation/expected.json /tmp/siljang-webp-validation/chromium.json
 ```
+
+## 기존 카카오 시험 Worker에서 측정할 후보
+
+새 Worker 배포의10007을 반복하지 않는다. 정상인 기존 `siljang-kakao-test`의 Git 원본 핸들러를 그대로 위임하고 `existing-worker.ts`의 별도 경로만 합성 측정기로 보낸다. 일반 HTTP의 요청/환경/문맥과 큐의 함수 참조를 유지하고, 별도 경로는 `PHOTO_RESOURCE_PROBE_KEY` 확인 뒤에만 처리한다. 키 없음/오류는401, Images 누락은503이며 기존 처리기로 되돌리지 않는다. 스트림과 multipart 전달을 포함한10개 시험·타입 검사·Wrangler 빌드가 통과했지만 실제 자원 실행은 아직 전이다.
+
+`existing-runtime-wrangler.jsonc`는 빌드 틀이다. 실제 KV ID와 기존 큐/변수/도메인/원래 활성 버전을 API 읽기로 대조한 뒤 실행용 구성을 만든다. 이 틀의 placeholder로 기존 Worker를 배포하지 않는다. 기존 비밀 값은 읽어 복사하지 않고, 새 측정 키는 Wrangler의 표준 입력으로만 넣는다. Workers Logs를 켜지 않으며 실제 사진·업무 데이터·새 큐·새 Worker·유료 요금제를 만들지 않는다.
+
+현재 복구 기준은 버전 `448d489b-225f-4ddf-84f7-fa3a525a5a18`·생성 `2026-11-19T01:33:39.395069Z`다. 쓰기 직전에 다시 대조하고 다른 버전이면 멈춘다. 측정 성공/실패와 관계없이 원래 버전으로 rollback하고, 원래 바인딩·변수·큐·공개 상태와 새 측정 경로가 없어졌는지 확인한다. 예시는 이미 확인한4.158의 명령이며 실제 실행에는 대조한 구성과 기록한 버전을 사용한다.
+
+```sh
+npx --no-install wrangler rollback "$SILJANG_BASELINE_VERSION" --config "$SILJANG_PROBE_CONFIG" --yes --message 'TASK-183 합성 자원 검사 종료'
+```
+
+실제 CPU/메모리는 별도 메트릭의 단위·표본·대상/시각과 함께 기록한다. 분위수를 최대 사용량으로 쓰지 않고 HTTP 전체 시간을 CPU 시간으로 바꾸지 않는다. 측정/원상 복구 전에는 TASK-183 완료를 표시하지 않는다.
+
+실행기 `existing-driver.mjs`와 `existing-run.py`도 같은 PR에 보존한다. 공개 소스/합성 입력은 먼저 복사하고 계정/토큰은 작은 표준 입력으로만 학원컴 프로세스에 전달한다. 실행기는 쓰기 전에 기준 버전·바인딩·큐/consumer·공개 상태를 재대조하며, 성공/실패와 관계없이 finally에서 원래 버전을 복구한다. 프로세스가 비정상 종료해 복구 확인을 못 하면 기록한 기준 버전으로 먼저 복구하고 공개 상태/바인딩/큐를 재대조해야 한다. 결과에는 기존 키 값·주소·요청 헤더를 넣지 않는다.
+
+```sh
+python3 research/webp-orientation-2026-11/existing-run.py --bundle /tmp/siljang-183-existing-build/existing-worker.js --input /tmp/siljang-webp-validation/input --source "$SILJANG_SOURCE_SHA" --output /tmp/siljang-183-existing-validation
+```
+
+HTTP 전체 시간과 GraphQL CPU/메모리 분위수는 별도로 보존한다. 독립 디코더는 스트림/실제 업로드 처리기의 출력40개를 대조하며, 메일·DB·S3·실제 카카오 사진을 시험했다는 뜻이 아니다. 추가한 두 단위 시험도 실제 공통 모듈/업로드 처리기는 돌되 외부 코덱 응답만 기록된 결과를 사용한다.
+
+
+## 기존 시험 Worker의 실제 결과(2026-11-22)
+
+[실제40개·독립 검사·Chromium·자원 결과](existing-runtime-2026-11-22.json)는 소스257a604fd39d423ac14ac44a6f60820a05092ab7의 실행이다. 공통 스트림/업로드 경로 각각20개가 모두200/image/webp이며 multipart의 실제 createUpload 결과는201이다. 방향1~8 정적/애니메이션·4,000×3,000·10/20MiB·40프레임이 독립 Pillow13의9개 검사와 Chromium151의 첫 프레임 표시를 모두 통과했다. 인증/저장은 합성 계정과 요청별 메모리 저장이므로 실제 DB/S3/카카오 업무 연결 증거가 아니다.
+
+첫 실행기는 rollback 뒤 /settings의 마지막 업로드 바인딩을 읽어 복구false·종료1을 남겼다. 이 사건을 보존하고 배포 생성 시각으로 고른 활성 버전의 resources.bindings/script_runtime을 별도 조회했다. 원본 버전100%·활성 바인딩8개·큐 동일·상태200/ok·측정 경로404·자기 폴더 제거를 확인했다. 마지막 업로드의 IMAGES/PHOTO_RESOURCE_PROBE_KEY는 버전 기록에 남으며 활성 원본에는 없다. 기존 키 값을 읽어 복구하거나 추가 삭제/재배포하지 않는다. active-version의3개 회귀 시험은 rollback의 오래된 버전 선택·활성 설정 우선·비밀 값 미열람을 확인하며 app CI에도 포함한다.
+
+실제 실행 창의 GraphQL16개 그룹·41요청·오류0·최대 표본 간격1.75에서 CPU P999 최대459.208ms·V8 메모리 P999 최대124.132MiB다. 메모리 분위수는 실제 최대치가 아니며 HTTP 전체 시간도 CPU가 아니다. [공식 한도](https://developers.cloudflare.com/workers/platform/limits/)의 무료 CPU10ms를 넘으므로 기능 성공만으로 한도 통과를 표시하지 않는다. [유료 최소 월US$5](https://developers.cloudflare.com/workers/platform/pricing/) 전환 또는 제품 용량/처리 방식 결정과 실제 메모리 여유 검증을 남겼다. 유료 전환도 메모리128MB를 늘리지 않으며 TASK-183 finished는 보류한다.
