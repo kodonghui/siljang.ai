@@ -333,6 +333,30 @@ describe("실제 실행은 조건이 모두 있어야 시작함", () => {
 });
 
 describe("한 명령(CLI)", () => {
+  it("호출 실패 두 번에서 멈추는 실행 옵션을 받음", () => {
+    expect(parseArgs(["--max-failures", "2"]).maxFailures).toBe(2);
+  });
+
+  it("429가 반복되면 두 번의 호출과 결과를 남기고 다음 사례 앞에서 멈춤", async () => {
+    const target = TARGETS[1] as ModelTarget;
+    const four = EVAL_CASES.slice(0, 4);
+    const network = vi.fn(async () => new Response(null, { status: 429 }));
+    const run = await runEval({
+      mode: "real",
+      cases: four,
+      targets: [target],
+      fx: FX,
+      maxKrw: "1000",
+      maxFailures: 2,
+      keys: { openai: fakeKey() },
+      fetch: network,
+    });
+    expect(network).toHaveBeenCalledTimes(2);
+    expect(run.results).toHaveLength(2);
+    expect(run.stopped).toEqual({ reason: "provider_failures", beforeCase: four[2]?.id, model: "openai/gpt-6-luna" });
+    expect(summaryMarkdown(run)).toContain("모델 호출 실패");
+  });
+
   const SERVER = fileURLToPath(new URL("../", import.meta.url));
 
   /** 키·환율·추적 변수를 뺀 환경에서 CLI를 돌린다(이 컴퓨터에 진짜 키가 있어도 쓰지 않게). */
