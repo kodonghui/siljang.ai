@@ -1,0 +1,205 @@
+[
+  {
+    "name": "still-1",
+    "orientation": 1,
+    "input_bytes": 602,
+    "width": 160,
+    "height": 96,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "animated-1",
+    "orientation": 1,
+    "input_bytes": 1402,
+    "width": 160,
+    "height": 96,
+    "frames": 3,
+    "durations": [80, 120, 200],
+    "loop": 3
+  },
+  {
+    "name": "still-2",
+    "orientation": 2,
+    "input_bytes": 602,
+    "width": 160,
+    "height": 96,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "animated-2",
+    "orientation": 2,
+    "input_bytes": 1402,
+    "width": 160,
+    "height": 96,
+    "frames": 3,
+    "durations": [80, 120, 200],
+    "loop": 3
+  },
+  {
+    "name": "still-3",
+    "orientation": 3,
+    "input_bytes": 602,
+    "width": 160,
+    "height": 96,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "animated-3",
+    "orientation": 3,
+    "input_bytes": 1402,
+    "width": 160,
+    "height": 96,
+    "frames": 3,
+    "durations": [80, 120, 200],
+    "loop": 3
+  },
+  {
+    "name": "still-4",
+    "orientation": 4,
+    "input_bytes": 602,
+    "width": 160,
+    "height": 96,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "animated-4",
+    "orientation": 4,
+    "input_bytes": 1402,
+    "width": 160,
+    "height": 96,
+    "frames": 3,
+    "durations": [80, 120, 200],
+    "loop": 3
+  },
+  {
+    "name": "still-5",
+    "orientation": 5,
+    "input_bytes": 602,
+    "width": 160,
+    "height": 96,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "animated-5",
+    "orientation": 5,
+    "input_bytes": 1402,
+    "width": 160,
+    "height": 96,
+    "frames": 3,
+    "durations": [80, 120, 200],
+    "loop": 3
+  },
+  {
+    "name": "still-6",
+    "orientation": 6,
+    "input_bytes": 602,
+    "width": 160,
+    "height": 96,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "animated-6",
+    "orientation": 6,
+    "input_bytes": 1402,
+    "width": 160,
+    "height": 96,
+    "frames": 3,
+    "durations": [80, 120, 200],
+    "loop": 3
+  },
+  {
+    "name": "still-7",
+    "orientation": 7,
+    "input_bytes": 602,
+    "width": 160,
+    "height": 96,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "animated-7",
+    "orientation": 7,
+    "input_bytes": 1402,
+    "width": 160,
+    "height": 96,
+    "frames": 3,
+    "durations": [80, 120, 200],
+    "loop": 3
+  },
+  {
+    "name": "still-8",
+    "orientation": 8,
+    "input_bytes": 602,
+    "width": 160,
+    "height": 96,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "animated-8",
+    "orientation": 8,
+    "input_bytes": 1402,
+    "width": 160,
+    "height": 96,
+    "frames": 3,
+    "durations": [80, 120, 200],
+    "loop": 3
+  },
+  {
+    "name": "large-pixels-6",
+    "orientation": 6,
+    "input_bytes": 190528,
+    "width": 4000,
+    "height": 3000,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "input-10mib-7",
+    "orientation": 7,
+    "input_bytes": 10485760,
+    "width": 1792,
+    "height": 1440,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "input-20mib-8",
+    "orientation": 8,
+    "input_bytes": 20971520,
+    "width": 2520,
+    "height": 2048,
+    "frames": 1,
+    "durations": null,
+    "loop": null
+  },
+  {
+    "name": "frames-40-5",
+    "orientation": 5,
+    "input_bytes": 45628,
+    "width": 320,
+    "height": 192,
+    "frames": 40,
+    "durations": [
+      80, 90, 100, 110, 120, 80, 90, 100, 110, 120, 80, 90, 100, 110, 120, 80, 90, 100, 110, 120, 80, 90, 100, 110, 120,
+      80, 90, 100, 110, 120, 80, 90, 100, 110, 120, 80, 90, 100, 110, 120
+    ],
+    "loop": 7
+  }
+]

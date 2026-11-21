@@ -243,3 +243,9 @@
 - PR #125의 main `e96ebfa1b5a5b052153ad2dc2caf31b443eead10`: app `44884014953`(스테이징 배포 포함)·db `44884014990` 성공 뒤 Wrangler의 최신 배포 시각 버전 태그와 SHA를 직접 대조했습니다. 공개 `/api/healthz`는 200·ok였습니다.
 - PR #127의 main `4c67291bf98527baa5debbdb3e22f00d47f528f4`: app `44885492241`(배포 포함)·db `44885492284` 성공, Git fetch로 받은 origin/main과 직접 조회한 최신 Worker 태그가 같고 공개 상태 200·ok였습니다.
 - PR #128은 로컬 PostgreSQL 16.15에서 중단된 트랜잭션의 변경이 남지 않는 것, 늦은 쿼리·커밋과 연결 대기 중의 쓰기를 막는 것을 확인했습니다. Hono·가짜 시계의 스킬 전체 기한 시험과 합쳐 17개가 통과했습니다. 실제 카카오 발송·AI 호출·스테이징 동시 20개 부하 시험은 하지 않았습니다.
+
+## 2026-11-21 · PR #128 배포와 TASK-183 원격 검증 중단
+
+- main `564aaba6abce8b09db6c58071d19171941073acd`의 app `44886250079`(배포 포함)·db `44886250074`가 성공했습니다. Git fetch의 origin/main과 Wrangler 최신 배포 시각의 버전 태그가 같은 SHA이고 공개 `/api/healthz` 200·ok를 직접 확인했습니다.
+- TASK-183 합성 입력 20개를 만들고 첫 방향 6의 602바이트 WebP를 Wrangler 원격 미리보기에 보냈으나 HTTP 500·ProxyWorker의 Network connection lost였습니다. 공식 안내의 로컬 실행과 `images.remote=true`로 바꾼 두 번째도 HTTP 500·Images 바인딩의 Network connection lost였습니다. 이후 프로세스를 종료했고 원격 요청을 더 하지 않았습니다.
+- 이미지 출력·CPU·최대 Worker 메모리는 미확인입니다. 로컬 독립 검사기가 원본 촬영 정보 남음을 검출했지만 이는 원격 변환 통과의 증거가 아닙니다. [재현 도구와 결과](../../research/webp-orientation-2026-11/README.md)를 보존했으며 앱 바인딩·수신 경로는 바꾸지 않았습니다.

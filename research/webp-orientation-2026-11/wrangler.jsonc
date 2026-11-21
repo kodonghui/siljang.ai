@@ -1,0 +1,8 @@
+// 개발 미리보기 전용. 앱 설정·저장소·데이터베이스에 연결하지 않는다.
+{
+  "name": "siljang-webp-validation",
+  "main": "probe.ts",
+  "compatibility_date": "2026-11-01",
+  "images": { "binding": "IMAGES", "remote": true },
+  "observability": { "enabled": true }
+}
