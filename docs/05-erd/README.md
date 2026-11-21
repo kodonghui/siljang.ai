@@ -966,6 +966,8 @@ A33의 키 형식입니다. 키는 가게마다 한 번(키마다 `(shop_id, 키
 
 ## 11. 확정한 뒤 고친 것
 
+2026-11-20 TASK-028의 [0024 마이그레이션](../../db/migrations/0024_kakao_callback_delivery.sql)은 수신 메시지에 카카오 콜백 주소의 암호화 봉투, 서비스 기한, 소비자의 임시 처리 권한을 둡니다. 큐 메시지에는 가게 ID와 수신 메시지 ID를 넣습니다. 소비자가 콜백을 처리하거나 기한이 지난 메시지를 받으면 봉투를 지우고, 전할 수 없었던 답은 다음 대화에서 전할 수 있도록 기록합니다(06단계 DEC-29).
+
 2026-11-19 PC 카카오톡 시험(TASK-011, 06단계 DEC-28)으로 `messages.kakao_message_id`에 저장할 가게별 수신 키와 `kakao_channels.bot_id`의 정규화 규칙을 확정했습니다. [0023 마이그레이션](../../db/migrations/0023_kakao_trial_contract_comments.sql)은 두 컬럼의 설명만 갱신합니다. 기존 값, 형식 및 제약은 유지합니다.
 
 2026-11-13 설계 독립 재검토([research/design-review-2026-11](../../research/design-review-2026-11/README.md))의 높음 묶음 H1(RB-01, RC-05, RD-02, RA-15)과 H2(RA-01, RE-02, RE-03, RE-04)를 동희님 2026-11-13 20:59 결정 카드 '추천안대로 (추천)'에 따라 고쳤습니다. 요구사항은 버전 5(REQ-165~174, REQ-086·REQ-151 제외), 기능 명세는 SPEC-070·071을 더하고 환불 길의 행을 고쳤습니다(spec.md 8절). 바꿈은 새 마이그레이션 [`0002_refund_path.sql`](../../db/migrations/0002_refund_path.sql) 하나이고 `0001_init.sql`은 그대로입니다.

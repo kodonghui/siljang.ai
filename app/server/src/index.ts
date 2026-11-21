@@ -1,4 +1,5 @@
 import { createApp } from "./app";
+import { createKakaoCallbackHandler } from "./kakao-callback-queue";
 import { createScheduledHandler } from "./scheduled";
 
 // Worker 진입점. /api/* 만 fetch로 오고(나머지는 정적 자산, wrangler.jsonc의 assets), Cron Trigger는 scheduled로 온다
@@ -8,4 +9,5 @@ const app = createApp();
 export default {
   fetch: app.fetch,
   scheduled: createScheduledHandler(),
+  queue: createKakaoCallbackHandler(),
 };

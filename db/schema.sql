@@ -388,6 +388,9 @@ CREATE TABLE messages (
   body_masked       text,                                -- 마스킹한 글: 전화·계좌·카드 번호는 플레이스홀더(SPEC-021). AI·로그는 이것만. 원래 값은 masked_values
   trace_id          text,                                -- 이 메시지를 다룬 차례의 추적 ID(ai_calls와 연결, REQ-131을 잼)
   delivery          text CHECK (delivery IN ('skill_response', 'callback', 'deferred', 'delivered_later', 'failed')), -- 나간 글이 간 길: 바로 답·콜백·다음 대화 때 전할 것·그렇게 전함·실패(SPEC-017)
+  kakao_callback_enc text,                               -- 수신 메시지에 연결한 콜백 주소의 암호화 봉투(SPEC-017, DEC-29)
+  kakao_callback_deadline_at timestamptz,                 -- 수신 뒤 최대 55초의 콜백 처리 기한
+  kakao_callback_claim_until timestamptz,                 -- 같은 콜백을 중복 실행하지 않도록 잡은 끝 시각
   created_at        timestamptz NOT NULL DEFAULT now(),  -- 받은 시각이나 만든 시각
   sent_at           timestamptz,                         -- 나간 글을 보낸 시각
   CONSTRAINT messages_shop_scope UNIQUE (shop_id, id),
@@ -395,10 +398,21 @@ CREATE TABLE messages (
   CONSTRAINT messages_kakao_id_uq UNIQUE (shop_id, kakao_message_id), -- 같은 카카오 요청은 한 번만(REQ-132)
   CONSTRAINT messages_author_chk CHECK ((direction = 'inbound') = (author = 'customer')),
   CONSTRAINT messages_kakao_id_chk CHECK ((direction = 'inbound') = (kakao_message_id IS NOT NULL)),
-  CONSTRAINT messages_delivery_chk CHECK ((direction = 'outbound') = (delivery IS NOT NULL))
+  CONSTRAINT messages_delivery_chk CHECK ((direction = 'outbound') = (delivery IS NOT NULL)),
+  CONSTRAINT messages_kakao_callback_chk CHECK (
+    (kakao_callback_enc IS NULL AND kakao_callback_deadline_at IS NULL AND kakao_callback_claim_until IS NULL)
+    OR (direction = 'inbound'
+        AND kakao_callback_enc IS NOT NULL
+        AND kakao_callback_enc ~ '^v[1-9][0-9]{0,2}:[A-Za-z0-9_-]{39,}$'
+        AND kakao_callback_deadline_at IS NOT NULL
+        AND kakao_callback_deadline_at > created_at
+        AND kakao_callback_deadline_at <= created_at + interval '55 seconds'
+        AND (kakao_callback_claim_until IS NULL OR kakao_callback_claim_until <= kakao_callback_deadline_at))
+  )
 );
 CREATE INDEX messages_consultation_idx ON messages (consultation_id, created_at); -- 상담의 최근 대화(AI-1의 최근 20차례)
 CREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred'; -- 다음 대화 때 먼저 전할 답(SPEC-017)
+CREATE INDEX messages_kakao_callback_deadline_idx ON messages (kakao_callback_deadline_at) WHERE kakao_callback_enc IS NOT NULL; -- 만료한 콜백 주소의 암호화 봉투를 지우는 데 씀
 COMMENT ON TABLE messages IS 'TBL-018 상담 대화: 들어온 손님 말과 나간 답, 마스킹한 글만 둠';
 
 -- TBL-019 masked_values (CTX-001) ← SPEC-021, SPEC-022, SPEC-049, SPEC-065, SPEC-068, SPEC-073 | terms: none
@@ -1987,6 +2001,9 @@ COMMENT ON COLUMN messages.kakao_message_id IS '수신 카카오 메시지의 HM
 COMMENT ON COLUMN messages.body_masked IS '마스킹한 글: 전화·계좌·카드 번호는 플레이스홀더(SPEC-021). AI·로그는 이것만. 원래 값은 masked_values';
 COMMENT ON COLUMN messages.trace_id IS '이 메시지를 다룬 차례의 추적 ID(ai_calls와 연결, REQ-131을 잼)';
 COMMENT ON COLUMN messages.delivery IS '나간 글이 간 길: 바로 답·콜백·다음 대화 때 전할 것·그렇게 전함·실패(SPEC-017)';
+COMMENT ON COLUMN messages.kakao_callback_enc IS '수신 메시지에 연결한 콜백 주소의 암호화 봉투(SPEC-017, DEC-29)';
+COMMENT ON COLUMN messages.kakao_callback_deadline_at IS '수신 뒤 최대 55초의 콜백 처리 기한';
+COMMENT ON COLUMN messages.kakao_callback_claim_until IS '같은 콜백을 중복 실행하지 않도록 잡은 끝 시각';
 COMMENT ON COLUMN messages.created_at IS '받은 시각이나 만든 시각';
 COMMENT ON COLUMN messages.sent_at IS '나간 글을 보낸 시각';
 COMMENT ON COLUMN masked_values.id IS '마스킹한 값 ID';

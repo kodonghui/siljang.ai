@@ -22,6 +22,7 @@ export const FIELD_PURPOSES = [
   "payment_accounts.account_number",
   "refunds.refund_account",
   "masked_values.original",
+  "messages.kakao_callback",
 ] as const;
 export type FieldPurpose = (typeof FIELD_PURPOSES)[number];
 

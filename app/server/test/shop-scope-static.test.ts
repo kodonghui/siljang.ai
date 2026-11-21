@@ -40,6 +40,7 @@ const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
 const SCOPE_MAKERS: Record<string, string> = {
   "shop-scope.ts": "정의",
   "kakao-skill-auth.ts": "정규 봇 ID로 찾은 연결의 스킬 키를 확인한 뒤 그 가게 범위만 만듦(06 DEC-08)",
+  "kakao-callback-queue.ts": "내부 큐의 가게·메시지 ID로 한 수신 행을 처리하는 작업 범위만 만듦",
   "job-runner.ts":
     "서버 안의 일 실행기(TASK-023): 때가 된 행의 가게 ID로 그 행 하나를 잡고 처리하는 범위(출처 job)만 만든다. 가게 ID는 due-sources.ts의 찾기 결과",
 };
