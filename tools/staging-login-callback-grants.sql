@@ -7,3 +7,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON owner_sessions TO :"runtime_role";
 GRANT SELECT ON shops, kakao_channels TO :"runtime_role";
 -- FOR SHARE에는 열 하나의 UPDATE 권한이 필요하다. 앱의 이 경로는 ID를 바꾸지 않는다.
 GRANT UPDATE (id) ON shops, kakao_channels TO :"runtime_role";
+-- TASK-028: AI 실패/콜백 만료의 질문 참조·할 일·발신 대기 알림.
+-- 이 경로는 새 행만 넣는다. 기존 건의 수정·삭제나 운영 기록/접속기록 권한은 더하지 않는다.
+GRANT SELECT, INSERT ON handoffs, handoff_questions, owner_tasks, owner_alerts TO :"runtime_role";
+-- 사장님 기다림을 가게의 답하는 시간 안에서 계산한다.
+GRANT SELECT ON business_calendars TO :"runtime_role";
