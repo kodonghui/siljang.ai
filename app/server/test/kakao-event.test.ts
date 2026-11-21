@@ -43,7 +43,7 @@ describe("카카오 Event API 공통 전송(TASK-028, G4/G5)", () => {
     const [url, init] = h.send.mock.calls[0] ?? [];
     expect(String(url)).toBe(`https://bot-api.kakao.com/v2/bots/${BOT}${development ? "!" : ""}/talk`);
     expect(init?.redirect).toBe("error");
-    expect(init?.credentials).toBe("omit");
+    expect(new Headers(init?.headers).has("Cookie")).toBe(false);
     expect(init?.signal).toBeInstanceOf(AbortSignal);
     expect(new Headers(init?.headers).get("Authorization")).toBe("KakaoAK synthetic-event-rest-key");
     expect(JSON.parse(String(init?.body))).toEqual({
@@ -137,6 +137,8 @@ describe("카카오 Event API 공통 전송(TASK-028, G4/G5)", () => {
     ],
     ["Request timed out. Please try again.", "kakao_error", true, false, null],
     ["synthetic-private-unknown-error", "kakao_error", true, false, null],
+    ["Invalid appKey. Check your appKey.", "kakao_error", true, false, null],
+    ["Skill server IP must be identical to the one set in the app.", "kakao_error", true, false, null],
   ])(
     "요청 실패를 정한 분류로만 돌려주고 자동 재전송하지 않음: %s",
     async (message, code, retryable, disableChannel, attention) => {
