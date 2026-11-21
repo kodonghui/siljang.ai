@@ -70,12 +70,13 @@ export async function publishStoredKakaoCallback(
   const shopId = db.scope.shopId;
   if (await publishCallback(queue, { shopId, messageId }, timeLeft())) return true;
 
-  await db.run(
+  const cleared = await db.run(
     `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL
       WHERE shop_id = $1 AND id = $2 AND kakao_callback_enc = $3 AND kakao_callback_claim_until IS NULL`,
     [messageId, envelope],
   );
-  return false;
+  // 제거하지 못했다면 소비자가 선점했거나 끝냈다. 즉시 안내를 겹쳐 만들지 않는다.
+  return cleared.rowCount === 0;
 }
 
 interface Claim {
