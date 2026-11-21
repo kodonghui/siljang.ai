@@ -663,3 +663,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 184. TASK-173 실제 자원 준비는 Windows의 기존 Wrangler에서 성공했습니다. 콜백 큐·데드 레터 큐와 없는 REQUEST_HASH_KEY·FILE_URL_KEY만 만들었고 다시 준비할 때 생성은 모두 0건입니다. 값은 입력으로만 전달했습니다. 최신 배포 시각의 태그가 main SHA와 같고 공개 상태 200도 확인했습니다. 전체 서버 989개·웹 237개와 설정 도구 8개, npm ci·format·lint·typecheck·build가 통과했습니다. 실제 DB 쓰기·큐 소비·Cron 확인은 이어갑니다.
 
 185. TASK-173 실제 DB 시험은 합성 운영 기록 한 건의 쓰기·새 연결의 커밋 조회가 성공했습니다. owner_sessions와 콜백 열 세 개가 없고 messages 쓰기 권한도 없어 실제 앱 큐 처리 완료는 보류합니다. 시험 결과 기록의 UPDATE·정리 DELETE도 42501이었습니다. 시험 Worker·소비자는 삭제했고 개인정보 없는 합성 운영 기록 한 건은 관리자 정리 대상입니다. 권한을 늘리거나 없는 열을 있다고 가정하지 않습니다. 자세한 ID와 도구 연결 상태는 hands-on.md에 있습니다.
+
+186. TASK-173의 서버 역할 최소 권한은 `tools/staging-login-callback-grants.sql`에 둡니다. 기존 역할의 소유권·접속기록·운영 기록 권한은 바꾸지 않고 로그인·수신·콜백의 현재 쿼리 권한만 추가합니다. 공유 잠금에는 ID 열 UPDATE 권한이 필요합니다. 제한 역할의 실제 함수 실행 시험은 먼저 3개 실패·1개 통과, SQL 추가 뒤 4개 통과입니다. 기존 접속기록 제한·DDL·사장님 삭제 거절도 보존합니다. 스테이징 적용 전입니다.
