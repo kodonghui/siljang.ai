@@ -2,6 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
+import { activeVersionId, versionConfiguration } from './active-version.mjs';
 const worker='siljang-kakao-test', baseline='448d489b-225f-4ddf-84f7-fa3a525a5a18';
 const queueName='siljang-kakao-test-callbacks', keyName='PHOTO_RESOURCE_PROBE_KEY', prefix='/__task183_resource';
 const folder=process.env.SILJANG_PROBE_FOLDER, cliPath=process.env.SILJANG_WRANGLER_CLI, config=join(folder,'wrangler.json');
@@ -23,11 +25,12 @@ function cli(args,input){
  return r.stdout;
 }
 async function currentVersion(){
- const j=await api('/workers/scripts/'+worker+'/deployments');const list=Array.isArray(j)?j:j.deployments;
- if(!Array.isArray(list)||!list.length)fail('deployments_missing');
- const latest=[...list].sort((a,b)=>Date.parse(b.created_on)-Date.parse(a.created_on))[0];
- if(latest.versions.length!==1||latest.versions[0].percentage!==100)fail('mixed_versions');
- return latest.versions[0].version_id;
+ return activeVersionId(await api('/workers/scripts/'+worker+'/deployments'));
+}
+async function activeConfiguration(){
+ const id=await currentVersion();
+ const [version,settings]=await Promise.all([api('/workers/scripts/'+worker+'/versions/'+id),api('/workers/scripts/'+worker+'/settings')]);
+ return versionConfiguration(version,settings);
 }
 function bindings(settings){return settings.bindings.map(b=>{
  const shape={name:b.name,type:b.type};
@@ -38,7 +41,7 @@ function bindings(settings){return settings.bindings.map(b=>{
  return shape;
 }).sort((a,b)=>a.name.localeCompare(b.name));}
 function queueShape(q){return {settings:q.settings,consumers:(q.consumers??[]).map(c=>({id:c.consumer_id,script:c.script_name??c.script,type:c.type,settings:c.settings})).sort((a,b)=>a.id.localeCompare(b.id))};}
-function equal(a,b){return JSON.stringify(a)===JSON.stringify(b);}
+function equal(a,b){return isDeepStrictEqual(a,b);}
 async function request(path,options={}){
  const r=await fetch(url+path,{...options,redirect:'error',signal:AbortSignal.timeout(60000)});return r;
 }
@@ -53,7 +56,7 @@ async function ready(expected,authenticated=false){
  fail('probe_not_ready');
 }
 try{
- original=await api('/workers/scripts/'+worker+'/settings');
+ original=await activeConfiguration();
  if(await currentVersion()!==baseline)fail('baseline_changed');
  const shape=bindings(original),expected=['CALLBACKS','EVENT_NAME','HASH_KEY','KAKAO_CLIENT_SECRET','KAKAO_REST_API_KEY','RECORDS','RECORD_TTL_SECONDS','SKILL_KEY'].sort();
  if(!equal(shape.map(b=>b.name).sort(),expected)||original.compatibility_date!=='2026-10-01'||original.observability?.enabled===true)fail('baseline_shape_invalid');
@@ -78,7 +81,7 @@ try{
  emit({event:'photo_existing_default_denial',status:401,healthPreserved:true,version:await currentVersion()});
  key=randomBytes(32).toString('base64url');cli(['secret','put',keyName],key+'\n');
  await ready(405,true);
- const deployed=await api('/workers/scripts/'+worker+'/settings');
+ const deployed=await activeConfiguration();
  if(!equal(bindings(deployed).filter(b=>!['IMAGES',keyName].includes(b.name)),shape)||!equal(queueShape(await api('/queues/'+queueId)),queueShape(originalQueue)))fail('deployed_configuration_changed');
  emit({event:'photo_existing_probe_ready',version:await currentVersion(),bindingNamesPreserved:true,queuePreserved:true,secretName:keyName});
  const cases=JSON.parse(readFileSync(join(folder,'input','manifest.json'),'utf8'));const deadline=Date.now()+330000;
@@ -104,7 +107,7 @@ finally{
  if(mutating){
   try{
    cli(['rollback',baseline,'--yes','--message','TASK-183 합성 자원 검사 종료']);
-   const current=await api('/workers/scripts/'+worker+'/settings');const queue=await api('/queues/'+queueId);
+   const current=await activeConfiguration();const queue=await api('/queues/'+queueId);
    const r=await request(prefix+'/stream');const status=r.status;await r.body?.cancel();
    const proof={event:'photo_existing_restored',version:await currentVersion(),bindingsRestored:equal(bindings(current),bindings(original)),queueRestored:equal(queueShape(queue),queueShape(originalQueue)),health:await health(),probeGone:status===404};
    restored=proof.version===baseline&&proof.bindingsRestored&&proof.queueRestored&&proof.health&&proof.probeGone;emit({...proof,passed:restored});

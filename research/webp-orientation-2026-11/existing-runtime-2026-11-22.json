@@ -1,0 +1,2017 @@
+{
+  "task": "TASK-183",
+  "executed_at_kst": "2026-11-22 02:10~02:11",
+  "source_sha": "257a604fd39d423ac14ac44a6f60820a05092ab7",
+  "worker": "siljang-kakao-test",
+  "scope": "학원컴의 기존 시험 Worker. 실제 공통 스트림/업로드 처리기와 원격 Images. 고정 합성 사장님·요청별 메모리 저장. 실제 DB/S3/카카오 다운로드/로그인 검증 아님.",
+  "synthetic_cases_per_path": 20,
+  "http_results": [
+    {
+      "name": "still-1",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 160,
+      "outputBytes": 384
+    },
+    {
+      "name": "animated-1",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 494,
+      "outputBytes": 1178
+    },
+    {
+      "name": "still-2",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 302,
+      "outputBytes": 102
+    },
+    {
+      "name": "animated-2",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 206,
+      "outputBytes": 386
+    },
+    {
+      "name": "still-3",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 198,
+      "outputBytes": 102
+    },
+    {
+      "name": "animated-3",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 183,
+      "outputBytes": 386
+    },
+    {
+      "name": "still-4",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 178,
+      "outputBytes": 102
+    },
+    {
+      "name": "animated-4",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 202,
+      "outputBytes": 386
+    },
+    {
+      "name": "still-5",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 198,
+      "outputBytes": 104
+    },
+    {
+      "name": "animated-5",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 213,
+      "outputBytes": 392
+    },
+    {
+      "name": "still-6",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 218,
+      "outputBytes": 104
+    },
+    {
+      "name": "animated-6",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 209,
+      "outputBytes": 392
+    },
+    {
+      "name": "still-7",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 186,
+      "outputBytes": 104
+    },
+    {
+      "name": "animated-7",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 179,
+      "outputBytes": 392
+    },
+    {
+      "name": "still-8",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 186,
+      "outputBytes": 104
+    },
+    {
+      "name": "animated-8",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 208,
+      "outputBytes": 392
+    },
+    {
+      "name": "large-pixels-6",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 877,
+      "outputBytes": 2158
+    },
+    {
+      "name": "input-10mib-7",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 7803,
+      "outputBytes": 8233346
+    },
+    {
+      "name": "input-20mib-8",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 13120,
+      "outputBytes": 16417506
+    },
+    {
+      "name": "frames-40-5",
+      "mode": "stream",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": null,
+      "elapsedMs": 730,
+      "outputBytes": 5084
+    },
+    {
+      "name": "still-1",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 185,
+      "outputBytes": 384
+    },
+    {
+      "name": "animated-1",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 174,
+      "outputBytes": 1178
+    },
+    {
+      "name": "still-2",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 205,
+      "outputBytes": 102
+    },
+    {
+      "name": "animated-2",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 200,
+      "outputBytes": 386
+    },
+    {
+      "name": "still-3",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 190,
+      "outputBytes": 102
+    },
+    {
+      "name": "animated-3",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 199,
+      "outputBytes": 386
+    },
+    {
+      "name": "still-4",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 229,
+      "outputBytes": 102
+    },
+    {
+      "name": "animated-4",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 204,
+      "outputBytes": 386
+    },
+    {
+      "name": "still-5",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 186,
+      "outputBytes": 104
+    },
+    {
+      "name": "animated-5",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 188,
+      "outputBytes": 392
+    },
+    {
+      "name": "still-6",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 245,
+      "outputBytes": 104
+    },
+    {
+      "name": "animated-6",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 191,
+      "outputBytes": 392
+    },
+    {
+      "name": "still-7",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 178,
+      "outputBytes": 104
+    },
+    {
+      "name": "animated-7",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 199,
+      "outputBytes": 392
+    },
+    {
+      "name": "still-8",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 177,
+      "outputBytes": 104
+    },
+    {
+      "name": "animated-8",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 192,
+      "outputBytes": 392
+    },
+    {
+      "name": "large-pixels-6",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 640,
+      "outputBytes": 2158
+    },
+    {
+      "name": "input-10mib-7",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 6109,
+      "outputBytes": 8233346
+    },
+    {
+      "name": "input-20mib-8",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 10758,
+      "outputBytes": 16417506
+    },
+    {
+      "name": "frames-40-5",
+      "mode": "multipart",
+      "status": 200,
+      "contentType": "image/webp",
+      "uploadStatus": "201",
+      "elapsedMs": 820,
+      "outputBytes": 5084
+    }
+  ],
+  "independent_decoder": {
+    "implementation": "Pillow 13",
+    "results": [
+      {
+        "name": "still-1",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 160,
+        "outputBytes": 384,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 384
+      },
+      {
+        "name": "animated-1",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 494,
+        "outputBytes": 1178,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 1178
+      },
+      {
+        "name": "still-2",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 302,
+        "outputBytes": 102,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 102
+      },
+      {
+        "name": "animated-2",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 206,
+        "outputBytes": 386,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 386
+      },
+      {
+        "name": "still-3",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 198,
+        "outputBytes": 102,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 102
+      },
+      {
+        "name": "animated-3",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 183,
+        "outputBytes": 386,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 386
+      },
+      {
+        "name": "still-4",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 178,
+        "outputBytes": 102,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 102
+      },
+      {
+        "name": "animated-4",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 202,
+        "outputBytes": 386,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 386
+      },
+      {
+        "name": "still-5",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 198,
+        "outputBytes": 104,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 104
+      },
+      {
+        "name": "animated-5",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 213,
+        "outputBytes": 392,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 392
+      },
+      {
+        "name": "still-6",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 218,
+        "outputBytes": 104,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 104
+      },
+      {
+        "name": "animated-6",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 209,
+        "outputBytes": 392,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 392
+      },
+      {
+        "name": "still-7",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 186,
+        "outputBytes": 104,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 104
+      },
+      {
+        "name": "animated-7",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 179,
+        "outputBytes": 392,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 392
+      },
+      {
+        "name": "still-8",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 186,
+        "outputBytes": 104,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 104
+      },
+      {
+        "name": "animated-8",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 208,
+        "outputBytes": 392,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 392
+      },
+      {
+        "name": "large-pixels-6",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 877,
+        "outputBytes": 2158,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 3000,
+        "output_height": 4000,
+        "output_bytes": 2158
+      },
+      {
+        "name": "input-10mib-7",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 7803,
+        "outputBytes": 8233346,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 1440,
+        "output_height": 1792,
+        "output_bytes": 8233346
+      },
+      {
+        "name": "input-20mib-8",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 13120,
+        "outputBytes": 16417506,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 2048,
+        "output_height": 2520,
+        "output_bytes": 16417506
+      },
+      {
+        "name": "frames-40-5",
+        "mode": "stream",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": null,
+        "elapsedMs": 730,
+        "outputBytes": 5084,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 40,
+        "output_width": 192,
+        "output_height": 320,
+        "output_bytes": 5084
+      },
+      {
+        "name": "still-1",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 185,
+        "outputBytes": 384,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 384
+      },
+      {
+        "name": "animated-1",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 174,
+        "outputBytes": 1178,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 1178
+      },
+      {
+        "name": "still-2",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 205,
+        "outputBytes": 102,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 102
+      },
+      {
+        "name": "animated-2",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 200,
+        "outputBytes": 386,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 386
+      },
+      {
+        "name": "still-3",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 190,
+        "outputBytes": 102,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 102
+      },
+      {
+        "name": "animated-3",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 199,
+        "outputBytes": 386,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 386
+      },
+      {
+        "name": "still-4",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 229,
+        "outputBytes": 102,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 102
+      },
+      {
+        "name": "animated-4",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 204,
+        "outputBytes": 386,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 160,
+        "output_height": 96,
+        "output_bytes": 386
+      },
+      {
+        "name": "still-5",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 186,
+        "outputBytes": 104,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 104
+      },
+      {
+        "name": "animated-5",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 188,
+        "outputBytes": 392,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 392
+      },
+      {
+        "name": "still-6",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 245,
+        "outputBytes": 104,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 104
+      },
+      {
+        "name": "animated-6",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 191,
+        "outputBytes": 392,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 392
+      },
+      {
+        "name": "still-7",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 178,
+        "outputBytes": 104,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 104
+      },
+      {
+        "name": "animated-7",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 199,
+        "outputBytes": 392,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 392
+      },
+      {
+        "name": "still-8",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 177,
+        "outputBytes": 104,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 104
+      },
+      {
+        "name": "animated-8",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 192,
+        "outputBytes": 392,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 3,
+        "output_width": 96,
+        "output_height": 160,
+        "output_bytes": 392
+      },
+      {
+        "name": "large-pixels-6",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 640,
+        "outputBytes": 2158,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 3000,
+        "output_height": 4000,
+        "output_bytes": 2158
+      },
+      {
+        "name": "input-10mib-7",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 6109,
+        "outputBytes": 8233346,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 1440,
+        "output_height": 1792,
+        "output_bytes": 8233346
+      },
+      {
+        "name": "input-20mib-8",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 10758,
+        "outputBytes": 16417506,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 1,
+        "output_width": 2048,
+        "output_height": 2520,
+        "output_bytes": 16417506
+      },
+      {
+        "name": "frames-40-5",
+        "mode": "multipart",
+        "status": 200,
+        "contentType": "image/webp",
+        "uploadStatus": "201",
+        "elapsedMs": 820,
+        "outputBytes": 5084,
+        "passed": true,
+        "checks": {
+          "webp": true,
+          "metadata_removed": true,
+          "input_metadata_detected": true,
+          "dimensions_match": true,
+          "alpha_exact": true,
+          "corner_colors_match": true,
+          "frames_match": true,
+          "durations_match": true,
+          "loop_match": true
+        },
+        "output_frames": 40,
+        "output_width": 192,
+        "output_height": 320,
+        "output_bytes": 5084
+      }
+    ]
+  },
+  "chromium": {
+    "browser": "151.0.7922.34",
+    "measurement": "HTMLImageElement.decode and canvas first frame; all animation frames checked separately by Pillow",
+    "results": [
+      {
+        "name": "stream-still-1",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "stream-animated-1",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "stream-still-2",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "stream-animated-2",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "stream-still-3",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "stream-animated-3",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "stream-still-4",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "stream-animated-4",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "stream-still-5",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "stream-animated-5",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "stream-still-6",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "stream-animated-6",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "stream-still-7",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "stream-animated-7",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "stream-still-8",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "stream-animated-8",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "stream-large-pixels-6",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 3000,
+        "height": 4000
+      },
+      {
+        "name": "stream-input-10mib-7",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 1440,
+        "height": 1792
+      },
+      {
+        "name": "stream-input-20mib-8",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 2048,
+        "height": 2520
+      },
+      {
+        "name": "stream-frames-40-5",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 192,
+        "height": 320
+      },
+      {
+        "name": "multipart-still-1",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "multipart-animated-1",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "multipart-still-2",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "multipart-animated-2",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "multipart-still-3",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "multipart-animated-3",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "multipart-still-4",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "multipart-animated-4",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 160,
+        "height": 96
+      },
+      {
+        "name": "multipart-still-5",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "multipart-animated-5",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "multipart-still-6",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "multipart-animated-6",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "multipart-still-7",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "multipart-animated-7",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "multipart-still-8",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "multipart-animated-8",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 96,
+        "height": 160
+      },
+      {
+        "name": "multipart-large-pixels-6",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 3000,
+        "height": 4000
+      },
+      {
+        "name": "multipart-input-10mib-7",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 1440,
+        "height": 1792
+      },
+      {
+        "name": "multipart-input-20mib-8",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 2048,
+        "height": 2520
+      },
+      {
+        "name": "multipart-frames-40-5",
+        "passed": true,
+        "dimensions": true,
+        "corners": true,
+        "width": 192,
+        "height": 320
+      }
+    ]
+  },
+  "original_events": [
+    {
+      "event": "photo_existing_baseline_verified",
+      "baseline": "448d489b-225f-4ddf-84f7-fa3a525a5a18",
+      "health": true,
+      "bindingNames": [
+        "CALLBACKS",
+        "EVENT_NAME",
+        "HASH_KEY",
+        "KAKAO_CLIENT_SECRET",
+        "KAKAO_REST_API_KEY",
+        "RECORD_TTL_SECONDS",
+        "RECORDS",
+        "SKILL_KEY"
+      ],
+      "queueConsumerCount": 1,
+      "queueConfigurationMatched": true
+    },
+    {
+      "event": "photo_existing_default_denial",
+      "status": 401,
+      "healthPreserved": true,
+      "version": "b88ef704-2ac3-4392-8105-aa6d2d66b22a"
+    },
+    {
+      "event": "photo_existing_probe_ready",
+      "version": "6b33140a-2ad2-483c-b5ce-409e88798d34",
+      "bindingNamesPreserved": true,
+      "queuePreserved": true,
+      "secretName": "PHOTO_RESOURCE_PROBE_KEY"
+    },
+    {
+      "event": "photo_existing_http_complete",
+      "cases": 40,
+      "start": "2026-11-21T17:10:28.508Z",
+      "end": "2026-11-21T17:11:18.394Z"
+    },
+    {
+      "event": "photo_existing_restored",
+      "version": "448d489b-225f-4ddf-84f7-fa3a525a5a18",
+      "bindingsRestored": false,
+      "queueRestored": true,
+      "health": true,
+      "probeGone": true,
+      "passed": false
+    }
+  ],
+  "restoration": {
+    "active_version": "448d489b-225f-4ddf-84f7-fa3a525a5a18",
+    "active_percentage": 100,
+    "version_created_on": "2026-11-19T01:33:39.005032Z",
+    "deployment_created_on": "2026-11-21T17:11:19.066138Z",
+    "active_bindings": [
+      {
+        "name": "CALLBACKS",
+        "type": "queue"
+      },
+      {
+        "name": "EVENT_NAME",
+        "type": "plain_text"
+      },
+      {
+        "name": "HASH_KEY",
+        "type": "secret_text"
+      },
+      {
+        "name": "KAKAO_CLIENT_SECRET",
+        "type": "secret_text"
+      },
+      {
+        "name": "KAKAO_REST_API_KEY",
+        "type": "secret_text"
+      },
+      {
+        "name": "RECORDS",
+        "type": "kv_namespace"
+      },
+      {
+        "name": "RECORD_TTL_SECONDS",
+        "type": "plain_text"
+      },
+      {
+        "name": "SKILL_KEY",
+        "type": "secret_text"
+      }
+    ],
+    "queue_preserved": true,
+    "health_status": 200,
+    "health_body_ok": true,
+    "private_probe_status": 404,
+    "academy_folder_removed": true,
+    "first_check_false_reason": "첫 실행기는 rollback 뒤 /settings의 마지막 업로드 바인딩을 활성 버전으로 오판해 bindingsRestored=false/종료1을 남겼다. 원본 복구는 실행됐고, 배포 생성 시각으로 고른 활성 버전의 resources.bindings를 별도 읽어 원본8개를 확인했다. 첫 false 사건은 지우지 않는다.",
+    "latest_upload_binding_names": [
+      "CALLBACKS",
+      "EVENT_NAME",
+      "HASH_KEY",
+      "IMAGES",
+      "KAKAO_CLIENT_SECRET",
+      "KAKAO_REST_API_KEY",
+      "PHOTO_RESOURCE_PROBE_KEY",
+      "RECORDS",
+      "RECORD_TTL_SECONDS",
+      "SKILL_KEY"
+    ],
+    "version_history_note": "마지막 업로드의 IMAGES/PHOTO_RESOURCE_PROBE_KEY는 버전 기록에 남지만 활성 원본에는 없다. 비밀 값은 읽지 않았으며 추가 삭제/재배포를 하지 않았다."
+  },
+  "metrics": {
+    "start": "2026-11-21T17:10:28.508Z",
+    "end": "2026-11-21T17:11:18.394Z",
+    "groups": 16,
+    "requests": 41,
+    "errors": 0,
+    "maximum_sample_interval": 1.75,
+    "cpu_unit": "microseconds",
+    "memory_unit": "bytes",
+    "rows": [
+      {
+        "memoryP99Bytes": 24816756,
+        "memoryP999Bytes": 24816756,
+        "cpuP99Us": 4557,
+        "datetime": "2026-11-21T17:10:59Z",
+        "errors": 0,
+        "requests": 2,
+        "cpuP999Us": 4557,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 64661376,
+        "memoryP999Bytes": 64661376,
+        "cpuP99Us": 145388,
+        "datetime": "2026-11-21T17:10:39Z",
+        "errors": 0,
+        "requests": 1,
+        "cpuP999Us": 145388,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 21368824,
+        "memoryP999Bytes": 21368824,
+        "cpuP99Us": 46934,
+        "datetime": "2026-11-21T17:10:57Z",
+        "errors": 0,
+        "requests": 1,
+        "cpuP999Us": 46934,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 22517052,
+        "memoryP999Bytes": 22517052,
+        "cpuP99Us": 2761,
+        "datetime": "2026-11-21T17:10:29Z",
+        "errors": 0,
+        "requests": 1,
+        "cpuP999Us": 2761,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 24809312,
+        "memoryP999Bytes": 24809312,
+        "cpuP99Us": 7390,
+        "datetime": "2026-11-21T17:10:33Z",
+        "errors": 0,
+        "requests": 2,
+        "cpuP999Us": 7390,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 87058700,
+        "memoryP999Bytes": 87058700,
+        "cpuP99Us": 191897,
+        "datetime": "2026-11-21T17:11:03Z",
+        "errors": 0,
+        "requests": 1,
+        "cpuP999Us": 191897,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 22507856,
+        "memoryP999Bytes": 22507856,
+        "cpuP99Us": 1055,
+        "datetime": "2026-11-21T17:10:28Z",
+        "errors": 0,
+        "requests": 1,
+        "cpuP999Us": 1055,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 23508060,
+        "memoryP999Bytes": 23508060,
+        "cpuP99Us": 5786,
+        "datetime": "2026-11-21T17:10:31Z",
+        "errors": 0,
+        "requests": 6,
+        "cpuP999Us": 5786,
+        "status": "success",
+        "sampleInterval": 1.5
+      },
+      {
+        "memoryP99Bytes": 25861808,
+        "memoryP999Bytes": 25861808,
+        "cpuP99Us": 17794,
+        "datetime": "2026-11-21T17:11:17Z",
+        "errors": 0,
+        "requests": 1,
+        "cpuP999Us": 17794,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 109314090,
+        "memoryP999Bytes": 109314090,
+        "cpuP99Us": 7188,
+        "datetime": "2026-11-21T17:10:56Z",
+        "errors": 0,
+        "requests": 6,
+        "cpuP999Us": 7188,
+        "status": "success",
+        "sampleInterval": 1.2
+      },
+      {
+        "memoryP99Bytes": 24625924,
+        "memoryP999Bytes": 24625924,
+        "cpuP99Us": 4104,
+        "datetime": "2026-11-21T17:10:58Z",
+        "errors": 0,
+        "requests": 7,
+        "cpuP999Us": 4104,
+        "status": "success",
+        "sampleInterval": 1.75
+      },
+      {
+        "memoryP99Bytes": 22881484,
+        "memoryP999Bytes": 22881484,
+        "cpuP99Us": 9593,
+        "datetime": "2026-11-21T17:10:30Z",
+        "errors": 0,
+        "requests": 4,
+        "cpuP999Us": 9593,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 24054718,
+        "memoryP999Bytes": 24054718,
+        "cpuP99Us": 8223,
+        "datetime": "2026-11-21T17:10:32Z",
+        "errors": 0,
+        "requests": 4,
+        "cpuP999Us": 8223,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 130161550,
+        "memoryP999Bytes": 130161550,
+        "cpuP99Us": 459208,
+        "datetime": "2026-11-21T17:11:12Z",
+        "errors": 0,
+        "requests": 1,
+        "cpuP999Us": 459208,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 108684280,
+        "memoryP999Bytes": 108684280,
+        "cpuP99Us": 10920,
+        "datetime": "2026-11-21T17:10:55Z",
+        "errors": 0,
+        "requests": 2,
+        "cpuP999Us": 10920,
+        "status": "success",
+        "sampleInterval": 1
+      },
+      {
+        "memoryP99Bytes": 108673180,
+        "memoryP999Bytes": 108673180,
+        "cpuP99Us": 279213,
+        "datetime": "2026-11-21T17:10:51Z",
+        "errors": 0,
+        "requests": 1,
+        "cpuP999Us": 279213,
+        "status": "success",
+        "sampleInterval": 1
+      }
+    ],
+    "cpu_p999_maximum_us": 459208,
+    "memory_p999_maximum_bytes": 130161550,
+    "memory_p999_maximum_mib": 124.132,
+    "measurement_note": "해당 Worker의 실행 창에 대한 적응 표본/분위수. HTTP 왕복 시간은 CPU가 아니며 메모리 분위수는 최대 메모리가 아니다. 다른 경로의 상태 요청도 포함될 수 있다."
+  },
+  "capacity": {
+    "workers_free_cpu_ms": 10,
+    "workers_memory_documented_mb": 128,
+    "cpu_nominal_limit_passed": false,
+    "memory_peak_verified": false,
+    "finished": false,
+    "reason": "40개 기능 성공·오류0이 엄격한 CPU10ms 준수를 입증하지 않는다. 최대 CPU P999는459.208ms이며 메모리 P999124.132MiB는 최대치가 아니다. 요금제/제품 한도 결정과 메모리 여유 검증을 남긴다.",
+    "limits_source": "https://developers.cloudflare.com/workers/platform/limits/",
+    "pricing_source": "https://developers.cloudflare.com/workers/platform/pricing/"
+  },
+  "changes_not_made": [
+    "유료 요금제 전환",
+    "새 Worker/큐 생성",
+    "Workers Logs 활성화",
+    "기존 키 값 읽기/복사",
+    "실제 사진/업무 행 사용",
+    "AI 호출"
+  ]
+}

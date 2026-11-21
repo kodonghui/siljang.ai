@@ -59,12 +59,13 @@ with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as z:
     z.write(args.input / "manifest.json", "manifest.json")
     for case in cases:
         z.write(args.input / (case["name"] + ".webp"), case["name"] + ".webp")
-for source, name in [(args.bundle, "probe.mjs"), (here / "existing-driver.mjs", "driver.mjs"), (archive, "input.zip")]:
+for source, name in [(args.bundle, "probe.mjs"), (here / "existing-driver.mjs", "driver.mjs"),
+                     (here / "active-version.mjs", "active-version.mjs"), (archive, "input.zip")]:
     r = subprocess.run(["scp", "-q", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
                         str(source), "academy-pc:" + folder + "/" + name], capture_output=True, timeout=120)
     if r.returncode:
         raise SystemExit("public_transfer_failed")
-emit({"event": "photo_existing_public_transfer", "files": 3, "inputs": len(cases)})
+emit({"event": "photo_existing_public_transfer", "files": 4, "inputs": len(cases)})
 script = r'''
 $ErrorActionPreference='Stop';$p=[Console]::In.ReadLine()|ConvertFrom-Json
 $env:CLOUDFLARE_ACCOUNT_ID=$p.account;$env:CLOUDFLARE_API_TOKEN=$p.token
