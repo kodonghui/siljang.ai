@@ -67,7 +67,7 @@ function harness(now = NOW) {
     throw new Error("미연결 시험 채널에서 쓰기를 시도함");
   };
   const app = createApp({
-    connect: () => ({ query, transaction, close: async () => {} }),
+    connect: () => ({ query, transaction, abort: async () => {}, close: async () => {} }),
     services: { now: () => now },
   });
   function call(kind: string, request: unknown, key?: string) {

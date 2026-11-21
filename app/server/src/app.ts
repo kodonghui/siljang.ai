@@ -1,7 +1,9 @@
 import { type Context, Hono } from "hono";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FILE_ROUTE, serveFile } from "./file-url";
+import { SKILL_ACK_MS } from "./kakao-callback";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
+import { kakaoReply } from "./kakao-reply";
 import { kakaoSkillRoutes } from "./kakao-skill";
 import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill-auth";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
@@ -77,6 +79,8 @@ interface Variables {
   /** 지금 시각·사진 저장소·한도·서명 주소(services.ts). */
   services: Services;
   kakaoSkill?: AuthorizedKakaoSkill;
+  kakaoSkillReceivedAt?: Date;
+  kakaoSkillTimedOut?: boolean;
   ownerScope?: OwnerScope;
 }
 
@@ -96,6 +100,8 @@ export interface AppOptions {
   readonly operatorAccount?: OperatorResolver;
   /** 바깥 서비스를 바꾼다(시험만: 메모리 저장소·메모리 한도·정한 시각). */
   readonly services?: ServiceOverrides;
+  /** 시험에서만 짧게 한다. 카카오 전체 응답 기한에서 250ms 여유를 남긴다. */
+  readonly kakaoSkillTimeoutMs?: number;
 }
 
 /**
@@ -188,6 +194,10 @@ function routePattern(path: string): RegExp {
  * 운영자 로그인(TASK-021): 운영자 범위 경로(operatorRoute)의 해석기는 운영자 세션(operator-login.ts). 시험은 operatorAccount로 바꿈.
  */
 export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
+  const skillTimeoutMs = options.kakaoSkillTimeoutMs ?? SKILL_ACK_MS - 250;
+  if (!Number.isSafeInteger(skillTimeoutMs) || skillTimeoutMs < 1 || skillTimeoutMs > SKILL_ACK_MS - 250) {
+    throw new RangeError("kakaoSkillTimeoutMs must be between 1 and 3750");
+  }
   const sink = options.logSink;
   const connect = options.connect ?? pgConnector;
   const appLog: Logger = (level, fields) => log(level, fields, sink);
@@ -207,10 +217,40 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
     }
     const db = connect(settings.secrets.DATABASE_URL);
     c.set("db", db);
+    const skillRequest =
+      c.req.method === "POST" && /^\/api\/kakao\/skills\/(message|card|review|event)\/?$/.test(c.req.path);
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      await next();
+      if (!skillRequest) {
+        await next();
+        return;
+      }
+      c.set("kakaoSkillReceivedAt", c.get("services").now());
+      const running = next();
+      const deadline = new Promise<void>((resolve) => {
+        timer = setTimeout(() => {
+          c.set("kakaoSkillTimedOut", true);
+          // 인증 전에는 가게 응답을 주지 않는다. 인증 뒤에는 API의 고정 스킬 오류로 답한다.
+          c.res = c.get("kakaoSkill")
+            ? kakaoReply(
+                { json: (body, status = 200, headers) => c.json(body as object, status, headers) },
+                "server_error",
+              )
+            : problemResponse("internal", c.get("traceId"), pathOf(c.req.url));
+          appLog("error", { event: "kakao_skill_timeout", traceId: c.get("traceId"), status: c.res.status });
+          // 중단 표시는 즉시 세우되 연결 닫기를 응답 앞에서 기다리지 않는다.
+          // 늦은 처리·거절된 약속은 관찰하며 Worker에서는 waitUntil로 끝까지 정리한다.
+          void afterResponse(
+            c,
+            Promise.allSettled([running, db.abort()]).then(() => {}),
+          );
+          resolve();
+        }, skillTimeoutMs);
+      });
+      await Promise.race([running, deadline]);
     } finally {
-      await afterResponse(c, db.close());
+      clearTimeout(timer);
+      if (!c.get("kakaoSkillTimedOut")) await afterResponse(c, db.close());
     }
   });
 
@@ -239,6 +279,8 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   });
 
   app.onError((err, c) => {
+    // 기한 뒤의 DB 거절·처리 오류가 이미 정한 시간 초과 응답을 덮지 않는다.
+    if (c.get("kakaoSkillTimedOut")) return c.res;
     const traceId = c.get("traceId") ?? newTraceId();
     const instance = pathOf(c.req.url);
     if (err instanceof ApiError) {

@@ -332,6 +332,7 @@ describe("API-002·003 default 응답", () => {
         transaction: async () => {
           throw new Error("synthetic private failure");
         },
+        abort: async () => {},
         close: async () => {},
       }),
     });
