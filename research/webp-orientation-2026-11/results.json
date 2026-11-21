@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-21",
+  "node": "22.23.4",
+  "wrangler": "4.158.0",
+  "pillow": "13.0.0",
+  "synthetic_inputs": 20,
+  "largest_input_bytes": 20971520,
+  "attempts": [
+    {
+      "mode": "wrangler-dev-remote",
+      "result": {
+        "name": "still-6",
+        "orientation": 6,
+        "input_bytes": 602,
+        "width": 160,
+        "height": 96,
+        "frames": 1,
+        "durations": null,
+        "loop": null,
+        "status": 500,
+        "passed": false,
+        "worker_error_code": null
+      },
+      "diagnostic": "ProxyWorker: Network connection lost"
+    },
+    {
+      "mode": "local-dev-remote-images",
+      "result": {
+        "name": "still-6",
+        "orientation": 6,
+        "input_bytes": 602,
+        "width": 160,
+        "height": 96,
+        "frames": 1,
+        "durations": null,
+        "loop": null,
+        "status": 500,
+        "passed": false,
+        "worker_error_code": null
+      },
+      "diagnostic": "Images binding: Network connection lost"
+    }
+  ],
+  "image_output_received": false,
+  "cpu_ms": null,
+  "peak_worker_memory_bytes": null,
+  "app_integrated": false,
+  "stopped_after_failures": 2
+}
