@@ -221,6 +221,43 @@ describeDb("콜백 없는 카카오 요청의 실제 AI 미준비 처리(TASK-02
     expect((await h.records()).rows).toHaveLength(1);
   });
 
+  it("수신 뒤 저장이 실패해도 같은 요청 재시도로 안내/할 일을 한 번만 복구함", async () => {
+    let failing = true;
+    const connect: DbConnector = (secret) => {
+      const conn = pgConnector(secret);
+      return {
+        query: conn.query.bind(conn),
+        abort: conn.abort.bind(conn),
+        close: conn.close.bind(conn),
+        transaction: (work) =>
+          conn.transaction((tx) =>
+            work({
+              query: (sql, params) => {
+                if (failing && /INSERT INTO owner_alerts/.test(sql)) throw new Error("합성 첫 저장 실패");
+                return tx.query(sql, params);
+              },
+            }),
+          ),
+      };
+    };
+    const h = await setup({}, {}, connect);
+    const failed = await h.send();
+    expect(failed.headers.get("Siljang-Outcome")).toBe("server_error");
+    expect(
+      (await db.query("SELECT id FROM customers WHERE shop_id = $1 AND kakao_user_key = $2", [h.shop.shopId, h.user]))
+        .rowCount,
+    ).toBe(0);
+    expect((await h.records()).rows).toEqual([]);
+    failing = false;
+    expect((await h.send()).headers.get("Siljang-Outcome")).toBe("ai_key_missing");
+    expect((await h.records()).rows).toHaveLength(1);
+    const duplicate = await h.send();
+    expect(duplicate.headers.get("Siljang-Outcome")).toBe("duplicate");
+    expect(await duplicate.json()).toEqual({ version: "2.0", template: { outputs: [] } });
+    expect((await h.records()).rows).toHaveLength(1);
+    expect((await db.query("SELECT id FROM ai_calls WHERE shop_id = $1", [h.shop.shopId])).rowCount).toBe(0);
+  });
+
   it("실패 안내의 저장 예외는 내부 내용 없는 200/server_error로 처리함", async () => {
     const detail = "synthetic-private-alert-storage-error";
     const connect: DbConnector = (secret) => {
