@@ -1,5 +1,4 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-import type { Queryable } from "../src/db";
 import { purgeExpiredRequestKeys } from "../src/purge-request-keys";
 import { describeDb, newRequestKey, newUuid, testDb } from "./support/db";
 
@@ -8,12 +7,16 @@ const HOUR = 3_600_000;
 
 describe("요청 키 지우기의 입력 한도", () => {
   it.each([0, -1, 1001, 1.5, Number.NaN])("배치 크기 %s는 쿼리 전에 거절", async (limit) => {
-    const query = vi.fn<Queryable["query"]>();
+    const query = vi.fn(async () => {
+      throw new Error("unexpected query");
+    });
     await expect(purgeExpiredRequestKeys({ query }, NOW, limit)).rejects.toBeInstanceOf(RangeError);
     expect(query).not.toHaveBeenCalled();
   });
   it("올바르지 않은 기준 시각은 쿼리 전에 거절", async () => {
-    const query = vi.fn<Queryable["query"]>();
+    const query = vi.fn(async () => {
+      throw new Error("unexpected query");
+    });
     await expect(purgeExpiredRequestKeys({ query }, new Date(Number.NaN))).rejects.toBeInstanceOf(RangeError);
     expect(query).not.toHaveBeenCalled();
   });
