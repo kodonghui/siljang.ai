@@ -580,4 +580,4 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 
 143. TASK-028의 카카오 콜백은 `KAKAO_CALLBACK_QUEUE`가 연결된 환경에서 사용합니다. 콜백 주소는 암호화한 뒤 마이그레이션 0024의 수신 행에 두고, 큐에는 가게와 메시지의 ID를 넣습니다. 55초 기한이 지나거나 전송이 실패하면 다음 대화에서 전할 답을 남깁니다. 연결과 무료 스테이징 검증은 TASK-173입니다.
 
-144. TASK-028 PR #119의 형식 오류 두 건은 `npm run format`으로 고쳤습니다. 콜백 저장·큐 처리와 작업 전체 완료는 구분합니다. AI 실패 다섯 분기, API-070~073 전체 응답, G4·G5는 후속 PR에서 확인합니다. 로컬 시험은 Node 22.23.4와 PostgreSQL 16.15를 사용하며, Aside·agent-desktop 부재로 실제 카카오 화면 검사는 미실행입니다.
+144. TASK-028 PR #119의 형식 오류 두 건은 `npm run format`으로 고쳤습니다. 콜백 저장·큐 처리와 작업 전체 완료는 구분합니다. AI 실패 다섯 분기, API-070~073 전체 응답, G4·G5는 후속 PR에서 확인합니다. 로컬 시험은 Node 22.23.4와 PostgreSQL 16.15에서 서버 785개·웹 192개가 통과했습니다. 단계 검사 7개는 통과했고, API는 미변경으로 생략, mockup 화면 검사는 브라우저 실행 오류로 미실행입니다. Aside·agent-desktop 부재로 실제 카카오 화면 검사는 미실행입니다.

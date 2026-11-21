@@ -11,6 +11,7 @@
 - 원격 main `58d25a7`과 열린 PR #119의 머리 `325fa2f`를 확인했습니다. main app `44551782306`·db `44551782275` 성공과 PR app `44564006783`의 형식 오류를 GitHub에서 대조했습니다.
 - Biome으로 두 파일의 형식을 고쳤습니다. Node 22.23.4와 PostgreSQL 16.15 시험 컨테이너를 준비해 전체 검사를 이어갑니다. Aside와 agent-desktop은 현재 환경에 설치되지 않았습니다. Wrangler 4.158.0과 GitHub 인증은 사용할 수 있습니다.
 - TASK-028은 끝남으로 표시하지 않습니다. 남은 것은 SPEC-017 #1·#2·#6, API-070~073 응답별 시험과 스킬 결과 11종의 전체 대조, AI 실패 다섯 분기, G4 재시도·다음 대화 안내와 G5 발신 제한입니다. PR #119는 콜백 저장·소비자 부분이며, 나머지는 후속 PR에서 채웁니다.
+- 확인: `npm ci`, format·lint·typecheck·build 성공. Node 22.23.4·PostgreSQL 16.15에서 서버 `41 passed (41)`, `785 passed (785)`와 웹 `10 passed (10)`, `192 passed (192)`를 확인했습니다. 단계 검사에서 prd·flows·spec·erd·sitemap·screens·wbs는 통과했고, API는 변경하지 않아 `--no-api`로 생략했습니다. mockup은 브라우저 실행 오류로 13/14여서 화면 검증은 미실행입니다. WBS 검사 18개 오류 0, 키 검사 파일 570개 0건입니다. 용어 검사의 후보는 기존 기록에만 있어 이전 글은 유지했습니다.
 - 다음: PR #119의 app·db CI 성공 뒤 squash 합치기, main CI·배포·원격 SHA 대조, TASK-020 시작입니다.
 
 ## 동희님 확인 대기
