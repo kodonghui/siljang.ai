@@ -1,0 +1,18 @@
+// 빌드/검사 원본. 실제 배포는 읽기 대조한 기존 KV/큐/변수를 보존해 별도 구성한다.
+// 새 Worker를 만들거나 이 틀의 바인딩으로 기존 Worker를 덮어쓰지 않는다.
+{
+  "name": "siljang-kakao-test",
+  "main": "existing-worker.ts",
+  "compatibility_date": "2026-10-01",
+  "preview_urls": false,
+  "workers_dev": false,
+  "observability": { "enabled": false },
+  "images": { "binding": "IMAGES" },
+  "kv_namespaces": [{ "binding": "RECORDS", "id": "REPLACE_WITH_KV_ID" }],
+  "queues": {
+    "producers": [{ "binding": "CALLBACKS", "queue": "siljang-kakao-test-callbacks" }],
+    "consumers": [
+      { "queue": "siljang-kakao-test-callbacks", "max_batch_size": 1, "max_batch_timeout": 1, "max_retries": 0 }
+    ]
+  }
+}

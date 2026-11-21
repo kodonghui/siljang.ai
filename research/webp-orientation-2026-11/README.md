@@ -69,3 +69,17 @@ Chromium 검사는 위 원격 실행의 출력 폴더를 사용한다. Pillow13�
 python3 research/webp-orientation-2026-11/prepare-browser.py /tmp/siljang-webp-validation/input /tmp/siljang-webp-validation/expected.json
 node research/webp-orientation-2026-11/chromium-check.mjs /tmp/siljang-webp-validation/output /tmp/siljang-webp-validation/expected.json /tmp/siljang-webp-validation/chromium.json
 ```
+
+## 기존 카카오 시험 Worker에서 측정할 후보
+
+새 Worker 배포의10007을 반복하지 않는다. 정상인 기존 `siljang-kakao-test`의 Git 원본 핸들러를 그대로 위임하고 `existing-worker.ts`의 별도 경로만 합성 측정기로 보낸다. 일반 HTTP의 요청/환경/문맥과 큐의 함수 참조를 유지하고, 별도 경로는 `PHOTO_RESOURCE_PROBE_KEY` 확인 뒤에만 처리한다. 키 없음/오류는401, Images 누락은503이며 기존 처리기로 되돌리지 않는다. 스트림과 multipart 전달을 포함한10개 시험·타입 검사·Wrangler 빌드가 통과했지만 실제 자원 실행은 아직 전이다.
+
+`existing-runtime-wrangler.jsonc`는 빌드 틀이다. 실제 KV ID와 기존 큐/변수/도메인/원래 활성 버전을 API 읽기로 대조한 뒤 실행용 구성을 만든다. 이 틀의 placeholder로 기존 Worker를 배포하지 않는다. 기존 비밀 값은 읽어 복사하지 않고, 새 측정 키는 Wrangler의 표준 입력으로만 넣는다. Workers Logs를 켜지 않으며 실제 사진·업무 데이터·새 큐·새 Worker·유료 요금제를 만들지 않는다.
+
+현재 복구 기준은 버전 `448d489b-225f-4ddf-84f7-fa3a525a5a18`·생성 `2026-11-19T01:33:39.395069Z`다. 쓰기 직전에 다시 대조하고 다른 버전이면 멈춘다. 측정 성공/실패와 관계없이 원래 버전으로 rollback하고, 원래 바인딩·변수·큐·공개 상태와 새 측정 경로가 없어졌는지 확인한다. 예시는 이미 확인한4.158의 명령이며 실제 실행에는 대조한 구성과 기록한 버전을 사용한다.
+
+```sh
+npx --no-install wrangler rollback "$SILJANG_BASELINE_VERSION" --config "$SILJANG_PROBE_CONFIG" --yes --message 'TASK-183 합성 자원 검사 종료'
+```
+
+실제 CPU/메모리는 별도 메트릭의 단위·표본·대상/시각과 함께 기록한다. 분위수를 최대 사용량으로 쓰지 않고 HTTP 전체 시간을 CPU 시간으로 바꾸지 않는다. 측정/원상 복구 전에는 TASK-183 완료를 표시하지 않는다.
