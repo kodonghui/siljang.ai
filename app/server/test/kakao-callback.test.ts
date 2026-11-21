@@ -4,6 +4,7 @@ import { type DbConnector, pgConnector } from "../src/db";
 import { deliverKakaoCallback, kakaoCallback, SKILL_CALLBACK_MS } from "../src/kakao-callback";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
+import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { expectSchema } from "./support/contract";
@@ -212,6 +213,58 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
       [shop.shopId, inbound?.consultation_id],
     );
     expect(rows).toEqual([{ delivery: "callback" }]);
+  });
+
+  it("AI 미준비 콜백은 외부 발신 전에 사장님 질문/할 일/대기 알림을 커밋함", async () => {
+    const queue = mockQueue();
+    await receive(queue);
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    const observed: number[] = [];
+    const send = vi.fn<typeof fetch>(async () => {
+      const result = await db.query(
+        `SELECT t.id FROM owner_tasks t JOIN handoffs h ON h.id = t.handoff_id
+        JOIN owner_alerts a ON a.owner_task_id = t.id
+        WHERE h.shop_id = $1 AND h.source_message_id = $2 AND a.status = 'pending'`,
+        [shop.shopId, job.messageId],
+      );
+      observed.push(result.rowCount);
+      return Response.json({ status: "SUCCESS" });
+    });
+    expect(await consumeKakaoCallback(job, env, { now: () => new Date(NOW.getTime() + 5000), fetch: send })).toBe(
+      "done",
+    );
+    expect(observed).toEqual([1]);
+    expect(JSON.parse(String(send.mock.calls[0]?.[1]?.body)).template.outputs).toEqual([
+      { simpleText: { text: KAKAO_HANDOFF_TEXT } },
+    ]);
+    const { rows } = await db.query(
+      `SELECT h.reason, c.status FROM handoffs h
+      JOIN consultations c ON c.id = h.consultation_id WHERE h.shop_id = $1 AND h.source_message_id = $2`,
+      [shop.shopId, job.messageId],
+    );
+    expect(rows).toEqual([{ reason: "ai_failure", status: "awaiting_owner" }]);
+  });
+
+  it("콜백 발신이 두 번 실패해도 사장님 기록과 다음 대화 안내를 보존함", async () => {
+    const queue = mockQueue();
+    await receive(queue);
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    const send = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+    const now = () => new Date(NOW.getTime() + 5000);
+    expect(await consumeKakaoCallback(job, env, { now, fetch: send })).toBe("done");
+    const { rows } = await db.query(
+      `SELECT h.reason, t.wait_status, m.delivery, m.body_masked FROM handoffs h
+      JOIN owner_tasks t ON t.handoff_id = h.id
+      JOIN messages m ON m.consultation_id = h.consultation_id AND m.direction = 'outbound'
+      WHERE h.shop_id = $1 AND h.source_message_id = $2`,
+      [shop.shopId, job.messageId],
+    );
+    expect(rows).toEqual([
+      { reason: "ai_failure", wait_status: "waiting", delivery: "deferred", body_masked: KAKAO_HANDOFF_TEXT },
+    ]);
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(await consumeKakaoCallback(job, env, { now, fetch: send })).toBe("done");
+    expect(send).toHaveBeenCalledTimes(2);
   });
 
   it("기한이 지난 콜백은 발신 없이 다음 대화에 전할 답으로 기록함", async () => {
