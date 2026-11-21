@@ -181,7 +181,7 @@ TASKS = [
     dict(id='TASK-155', it=6, name='SCR-017 에스컬레이션 건 화면: 문제 신고로 남기기', owner='Claude', size=0.5, src=['SPEC-079'], scr=['SCR-017'], dep=['TASK-088'], only_api=['API-083'], done="'문제 신고로 남기기' 액션과 확인 창"),
     dict(id='TASK-156', it=7, name='고를 기능 켜기(장부 연결, 완성 사진 보내기)', owner='Claude', size=2, src=['SPEC-009'], api=['API-033', 'API-034', 'API-035', 'API-036'], dep=['TASK-014', 'TASK-037']),
     dict(id='TASK-157', it=7, name='장부 쓰기와 다시 적기', owner='Claude', size=3, src=['SPEC-064'], rules=['A14'], dep=['TASK-156', 'TASK-023']),
-    dict(id='TASK-158', it=7, name='지난 기록 지우기(하루 한 번 03:00)', owner='Claude', size=3, src=['SPEC-065'], tbl=['TBL-054'], rules=['A16', 'A22'], dep=['TASK-023'], done='올리고 1시간 안에 쓰지 않은 사진 파일(TASK-022가 둔 저장소의 임시 위치 tmp/ 아래)을 저장소에서 지움'),
+    dict(id='TASK-158', it=7, name='지난 기록 지우기(하루 한 번 03:00)', owner='Claude', size=3, src=['SPEC-065'], tbl=['TBL-054'], rules=['A16', 'A22'], dep=['TASK-023'], done='올리고 1시간 안에 쓰지 않은 사진 파일(TASK-022가 둔 저장소의 임시 위치 tmp/ 아래)을 저장소에서 지움', finished='2026-11-21, app/server(PR #130, SPEC-065 수락 기준 #1~#12·A16·A22·한 시간 지난 임시 사진 지우기의 자동 시험, 실제 PostgreSQL 16.15 서버 983개·웹 237개 통과. 여덟 차례·같은 날 한 번·동시 실행·가게 분리·실패/예산 뒤 다음 날 재개·파일 삭제 대기·새 수신을 확인. 실제 S3와 스테이징 Cron 직접 확인은 TASK-173의 연결 확인에서 이어감)'),
     dict(id='TASK-159', it=7, name='운영자의 가게 기록 보기와 원래 값·보관 기록 열기', owner='Claude', size=2, src=['SPEC-073'], api=['API-074', 'API-075', 'API-076', 'API-077'], rules=['A24'], dep=['TASK-021', 'TASK-024', 'TASK-025']),
     dict(id='TASK-160', it=7, name='SCR-042 장부 연결 화면', owner='Claude', size=1, src=['SPEC-009', 'SPEC-064'], scr=['SCR-042'], dep=['TASK-182']),
     dict(id='TASK-161', it=7, name='SCR-050 가게 기록 보기 화면', owner='Claude', size=2, src=['SPEC-073', 'SPEC-074'], scr=['SCR-050'], dep=['TASK-182']),
