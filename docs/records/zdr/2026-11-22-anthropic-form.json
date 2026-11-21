@@ -1,0 +1,31 @@
+{
+  "task": "TASK-005",
+  "checked_at_utc": "2026-11-21T19:51:37Z",
+  "provider": "Anthropic",
+  "host": "academy-pc",
+  "browser": "Ego Light",
+  "method": "agent-desktop, same-user interactive session",
+  "public_form_url": "https://claude.com/contact-sales",
+  "public_document_observed": true,
+  "optional_cookies_rejected": true,
+  "zdr_category_observed": "제로 데이터 보존",
+  "selection_attempts": [
+    {
+      "category_reference_count": 0,
+      "selection_clicked": false
+    },
+    {
+      "selector_opened": true,
+      "category_reference_count": 0,
+      "selection_clicked": false
+    }
+  ],
+  "human_challenge_observed_before_category": false,
+  "submission_count": 0,
+  "result": "같은 선택 목적의 실행 두 번이 실패해 중단. 다음 신청 화면/필수 연락처/신청 접수 결과는 미확인.",
+  "limits": [
+    "사이트 문의 도우미의 Submit은 실제 신청 양식으로 취급하지 않음",
+    "로그인이나 사람 확인이 필요하다고 판단한 결과가 아님",
+    "이름·이메일·조직 ID·비밀 값·화면 원본은 저장하지 않음"
+  ]
+}
