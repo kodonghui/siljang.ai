@@ -135,7 +135,10 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     });
     expect(result?.dailyStarted).toEqual([]);
     expect(result?.jobs.purge).toEqual({ found: 0, done: 0, skipped: 0, failed: 0 });
-    expect(logs.lines.map((line) => JSON.parse(line))).toEqual([{ level: "info", event: "job_polled", job: "purge" }]);
+    expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
+      { level: "info", event: "job_polled", job: "purge" },
+      { level: "info", event: "kakao_callback_recovery_polled", count: 0 },
+    ]);
     expect((await isolated.db.query("SELECT count(*)::int AS n FROM ops_events")).rows).toEqual(before.rows);
   });
 
