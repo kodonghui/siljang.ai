@@ -397,3 +397,5 @@
 
 - 기존 큐의 실제 응답은 소비자 필드가 script였고 문서의 script_name 검사는 발행 전에 멈췄습니다. 정상 읽기 조회로 필드를 확인한 뒤 소비자1개·현재 siljang-staging·기존 데드 레터 큐 일치를 확인했습니다. 기존 큐에 임의 shopId/messageId 두 개만 담은 JSON 메시지1건을 공식 batch API로 보내 HTTP200을 받았습니다. 같은 앱의 tail은 queue=siljang-staging-kakao-callbacks·batchSize1·outcome=ok·예외0·실패 로그0·파서 오류0입니다. 기본 처리 함수의 없는 메시지 경로가 DB 조회·만료 정리 조회를 마치면 ack하며 바깥 카카오/AI는 부르지 않습니다. 새 소비자·Worker·업무 행·키 변경은 없고 큐를 비우지 않았습니다.
 - TASK-173의 끝난 조건 대조: 같은 Hyperdrive 실제 요청 쓰기/커밋 조회·25개 마이그레이션 해시·제한 역할은 PR #131 기록, 현재 앱 큐 소비·Cron 작업 표 조회는 이번 결과, 캐시 끔·서울 배치·같은 Worker 정적 자산·필드 키와 저장소 밖 Vault 사본은 기존 확인과 보존된 설정입니다. 원본 finished를 표시합니다. 실제 AI 상담·실제 손님 콜백·03시 정리의 실제 S3 삭제 성공은 이 관측의 범위가 아닙니다. [공식 큐 발행 API](https://developers.cloudflare.com/api/resources/queues/subresources/messages/methods/bulk_push/)
+
+- 목업의 기존 Linux 프록시503 조건을 바꾸어 학원컴의 정상 SSH 전달 경로로 공식 Google Fonts를 요청해 curl과 실제 Chromium 모두 HTTP200을 확인했습니다. 그 경로를 검사기의 기존 HTTPS_PROXY 설정으로 사용해 설계 검사9개를 실행했고 모두 종료0입니다. 목업113개 아트보드 C11·목업14개 전부 통과했습니다. 검사기·페이지·기댓값은 바꾸지 않았습니다. 앱 자동 검증은 서버1018개·웹237개·Node20개, 타입·빌드·키/용어 검사 통과입니다. 실제 카카오/AI 동작을 대신하는 검사는 아닙니다.
