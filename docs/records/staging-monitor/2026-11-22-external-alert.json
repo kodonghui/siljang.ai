@@ -1,0 +1,154 @@
+{
+  "recorded_at_utc": "2026-11-21T16:38:07.345492+00:00",
+  "release": "6eda5e410f37228e0d6977a0999984c4530e803a",
+  "scope": "자기 systemd 임시 시험 단위의 합성 HTTP404. 기존 스테이징 Worker·데이터베이스·timer는 유지.",
+  "evidence": {
+    "installation": {
+      "results": [
+        {
+          "event": "external_install_file_preflight",
+          "files": [
+            {
+              "name": "health-check.sh",
+              "state": "new"
+            },
+            {
+              "name": "notify-failure.sh",
+              "state": "absent"
+            },
+            {
+              "name": "siljang-staging-health.service",
+              "state": "old"
+            },
+            {
+              "name": "siljang-staging-alert.service",
+              "state": "absent"
+            },
+            {
+              "name": "siljang-staging-health.timer",
+              "state": "new"
+            }
+          ]
+        },
+        {
+          "event": "external_alert_workflow_registered",
+          "registered": true
+        },
+        {
+          "event": "external_monitor_installed",
+          "release": "6eda5e410f37228e0d6977a0999984c4530e803a",
+          "onFailureConnected": true,
+          "timerActive": true,
+          "unitVerifyExit": 0
+        }
+      ],
+      "transportExit": 0
+    },
+    "failure": {
+      "results": [
+        {
+          "event": "external_monitor_failure_observed",
+          "probeExit": 1,
+          "http404": true,
+          "alertStarted": true,
+          "alertResult": "success",
+          "alertExecStatus": "0",
+          "incidentStatePresent": true
+        },
+        {
+          "event": "external_monitor_alert_runs",
+          "runs": [
+            {
+              "conclusion": "",
+              "createdAt": "2026-11-21T16:31:47Z",
+              "databaseId": 44925063752,
+              "headSha": "6eda5e410f37228e0d6977a0999984c4530e803a",
+              "status": "queued"
+            }
+          ]
+        }
+      ],
+      "transportExit": 0
+    },
+    "recovery": {
+      "results": [
+        {
+          "event": "external_monitor_healthy",
+          "startExit": 0,
+          "result": "success",
+          "execStatus": "0",
+          "onFailureConnected": true,
+          "incidentStateAbsent": true
+        }
+      ],
+      "transportExit": 0
+    },
+    "workflow": {
+      "results": [
+        {
+          "event": "external_monitor_alert_status",
+          "runs": [
+            {
+              "conclusion": "failure",
+              "createdAt": "2026-11-21T16:31:47Z",
+              "databaseId": 44925063752,
+              "headSha": "6eda5e410f37228e0d6977a0999984c4530e803a",
+              "status": "completed"
+            }
+          ],
+          "incidentStateAbsent": true,
+          "healthResult": "success"
+        }
+      ],
+      "transportExit": 0
+    },
+    "probe_cleanup": {
+      "results": [
+        {
+          "event": "external_probe_cleanup_detail",
+          "results": [
+            {
+              "active": "failed",
+              "sub": "failed",
+              "transient": "yes",
+              "collect": "inactive-or-failed",
+              "ownTestTime": true,
+              "reset": true
+            }
+          ]
+        },
+        {
+          "event": "external_probe_cleanup_final",
+          "remaining": 0
+        }
+      ],
+      "transportExit": 0
+    },
+    "cloudflare_policy_attempt": {
+      "results": [
+        {
+          "event": "job_monitor_configuration_failed",
+          "code": "monitor_api_failed",
+          "status": 403,
+          "apiCode": 10000
+        }
+      ],
+      "transportExit": 1
+    }
+  },
+  "mail_verification": {
+    "source": "Gmail 연결 도구에서 실행 ID·워크플로 제목·시험 후 저장소 이름으로 두 연결 메일함을 읽기 조회. 스팸/휴지통 포함.",
+    "accounts_queried": 2,
+    "matches": 0,
+    "delivery_confirmed": false,
+    "failure_not_inferred_from_absence": true
+  },
+  "web_notification": {
+    "source": "외부 서버의 기존 gh 인증으로 이 저장소의 시험 이후 알림을 읽기 조회",
+    "read_exit": 0,
+    "matches": 1,
+    "subject_type": "CheckSuite",
+    "reason": "ci_activity",
+    "unread": true
+  }
+}

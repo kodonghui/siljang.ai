@@ -435,3 +435,8 @@
 - 학원컴 Ego Light의 실제 Cloudflare 문서에서 정상 Sign in 뒤 로그인 입력이 남았고 콘솔 이동은 확인하지 못했습니다. 비밀번호 관리 버튼의 클릭도 ok=false입니다. 비밀번호 값은 읽거나 복사하지 않았고 실제 사람 확인 화면은 아직 나타나지 않았습니다. 정책 API403 뒤 기존 조건/조회 창 유지도 재확인했습니다.
 
 - systemd255의 원본 검증 실패는 SSH 환경의 RuntimeDirectory 조회 실패였습니다. 현재 사용자 소유·0700의 기존 런타임 경로를 확인하고 XDG_RUNTIME_DIR로 전달하니 원본 검증 종료0이었습니다. 같은 바뀐 조건에서 실제 새 단위 검증 종료0·설치 성공·OnFailure 연결·timer 활성화를 확인했습니다. 정상 서비스 startExit0·Resultsuccess·ExecMainStatus0·사건 상태 없음도 확인했습니다. 비밀 값이나 사용자 런타임 디렉터리를 새로 만들지 않았습니다.
+
+- 실제 합성404 점검은 종료1·OnFailure 시작·alert Resultsuccess/ExecMainStatus0·사건 상태 생성입니다. 경보 run44925063752(main6eda5e4)·job136909237537은 의도한 failure로 완료했습니다. 정상 점검 startExit0/Resultsuccess와 사건 상태 제거를 확인했고, 시험 시각/접두사/transient가 맞는 자기 단위만 reset-failed해 남은 시험 단위0입니다. 원래 timer·실제 업무 행·Worker 설정은 바꾸지 않았습니다.
+- 두 연결 메일함을 실행 ID·워크플로 제목·시험 이후 저장소 이름으로 조회하고 스팸/휴지통도 포함했지만 일치0건입니다. 발행 계정은 저장소 소유자와 같음을 확인했습니다. 실제 메일 전달 성공/실패를 단정하지 않으며 수신 설정/대상과 실제 도착은 확인 대기로 보존합니다. [실제 단계별 공개 결과](staging-monitor/2026-11-22-external-alert.json)에 설치·실패·복구·정리·정책403을 보존했습니다.
+
+- 같은 저장소 소유자의 GitHub 웹 알림에서 경보 CheckSuite·reason=ci_activity·unread=true1건을 읽기 확인했습니다. 웹 알림 도착과 아직 찾지 못한 이메일 수신을 구분합니다. 메일을 새로 보내거나 기존 알림을 읽음 처리하지 않았습니다.
