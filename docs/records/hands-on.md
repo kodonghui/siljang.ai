@@ -355,3 +355,10 @@
 
 - 후속 재조회에서 staging 도메인·정확한 콜백 저장과 기존 시험 서버 콜백 보존을 확인했습니다. 기존 개발 채널 공개 프로필 ID는 확인했지만 시험 앱에는 채널 연결이 없고 plusfriends 권한도 없었습니다. 비즈 앱 전환·심사·Worker 비밀 등록은 실행하지 않았습니다.
 - Vault 공식 passwordManager.listItems는 요약만, autofillItem은 로그인·카드·신원 자동완성만 지원했습니다. createItem/updateItem은 api-credential 저장 기능이며 기존 비밀 조회 기능이 아닙니다. fs.writeFile은 허용 파일 쓰기를 지원하지만 기존 키를 받을 공식 Vault 메서드가 없어 파일은 미생성입니다. 정상 앱 콘솔의 현재 키 보기와 허용 파일 쓰기의 별도 경로로 확인을 이어갑니다.
+
+## 2026-11-21 22:24 무렵 KST · TASK-020 실제 카카오 설정과 로그인 시작200
+
+- 정상 앱 콘솔의 현재 키 보기와 확인한 개발 채널로 현재 사용자만 접근할 수 있는 app/server/.dev.vars에 네 설정을 준비했습니다. 정확히 네 줄의 NAME=JSON문자열과 사용자 전용 접근을 확인했습니다. 기존 봇 연결·공개 프로필을 대조했고 키를 재발급하지 않았습니다. Vault의 지원하지 않는 기존 비밀 조회는 더 시도하지 않았습니다.
+- Wrangler secret bulk 입력으로 KAKAO_REST_API_KEY·KAKAO_CLIENT_SECRET·KAKAO_OWNER_REDIRECT_URIS·KAKAO_ALERT_CHANNEL_ID를 동시에 등록했습니다. 등록 전 네 이름은 없었고 등록 뒤 네 이름과 다른 기존 설정의 보존을 확인했습니다. 값은 프로세스 입력과 허용된 비공개 저장소에만 두며 명령 인자·출력·저장소에 넣지 않았습니다.
+- 실제 API-078은 HTTP200입니다. 인가 호스트·정확한 콜백·S256·state 존재·10분 로그인 쿠키·HttpOnly/Secure/SameSite=Lax·no-store가 모두 확인됐습니다. 새 배포 확인 도구의 별도 Windows 실행도 staging_owner_start_verified·status200·pkceS256·cookieSeconds600이며 원문 인가 주소·state·쿠키는 출력하지 않았습니다.
+- plusfriends 화면은 앱 아이콘 등록·개인 개발자 본인인증·통합 서비스 약관 동의·비즈니스 정보 심사를 요구했습니다. 실제 인증번호 화면은 아직 보지 않았고 심사 제출·채널의 앱 연결·본앱 로그인 완료는 미확인입니다.
