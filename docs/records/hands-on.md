@@ -2,6 +2,13 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-21 · TASK-176 PWA 설치 조건
+
+- 로컬 운영 빌드: Node 22.23.4·Playwright Chromium에서 `npm run check:pwa -w web` 실행. `check-pwa: Chromium 설치 오류 0 · 정적 캐시 통과 · API 캐시 0건`입니다. 모의 API가 매 요청 새 값을 반환하고 오프라인에서는 API가 실패하며 정적 파일만 열렸습니다.
+- 실제 스테이징 HTTPS: CDP `Page.getInstallabilityErrors`의 목록은 비어 있습니다. 이름 `Siljang 웹앱`, 시작 `/owner`, `standalone`, 아이콘 192·512px, 서비스 워커 준비를 확인했습니다. 확인 결과는 [설치 조건 기록](pwa/2026-11-21-installability.json)에 있습니다.
+- 360·1280 화면 사진을 각각 열어 현재 본문이 '준비 중입니다'인 것도 확인했습니다. PWA 설치 조건이 통과해도 사장님 업무 화면이 끝난 뜻은 아닙니다.
+- 실제 휴대폰 홈 화면 추가·주소창 없는 실행 사진과 출시 아이콘 확인은 TASK-167로 옮겼습니다. 이 기록은 휴대폰 설치나 사진을 대신하지 않습니다.
+
 ## 2026-11-21 · PR #119 배포 확인과 TASK-020 환경 점검
 
 - 도구: GitHub CLI·Wrangler 4.158.0·curl. PR #119의 squash main `e5208e3f8d102e82e553b41c1b4509a4ed47721e`와 `git ls-remote` 원격 SHA, Wrangler의 최신 배포 태그가 같았습니다.

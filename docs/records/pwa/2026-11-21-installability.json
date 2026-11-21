@@ -1,0 +1,11 @@
+{
+  "installabilityErrors": [],
+  "manifestName": "Siljang 웹앱",
+  "startUrl": "/owner",
+  "display": "standalone",
+  "icons": [
+    "192x192",
+    "512x512"
+  ],
+  "serviceWorkerReady": true
+}
