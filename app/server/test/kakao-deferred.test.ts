@@ -1,0 +1,364 @@
+import { afterAll, expect, it, vi } from "vitest";
+import { createApp } from "../src/app";
+import { type DbConnector, pgConnector, type RequestDb } from "../src/db";
+import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+import type { KakaoCallbackJob } from "../src/kakao-callback-store";
+import { replyWithDeferredKakaoMessages } from "../src/kakao-deferred";
+import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { Secret } from "../src/settings";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
+import { expectSchema } from "./support/contract";
+import { collectLogs, describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { newFieldKey } from "./support/field-keys";
+import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
+
+const NOW = new Date("2026-11-21T12:00:00Z");
+const OLD_TEXT = "앞서 전하지 못한 합성 안내";
+
+async function template(response: Response) {
+  const body = await response.json();
+  expectSchema("SkillTemplateResponse", body);
+  return body as { template: { outputs: { simpleText?: { text: string } }[] } };
+}
+
+describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(TASK-028, G4)", () => {
+  const db = testDb();
+  afterAll(async () => {
+    await db.close();
+  });
+
+  async function setup() {
+    const shop = await createShop(db, "미전달 답 시험 가게");
+    await issueTestBookingLink(db, shop);
+    await linkTestChannel(db, shop.channelId);
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
+    const logs = collectLogs();
+    const clock = { now: NOW };
+    const jobs: KakaoCallbackJob[] = [];
+    const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
+    const app = createApp({
+      services: {
+        now: () => clock.now,
+        kakaoCallbackQueue: {
+          send: async (job) => {
+            jobs.push(job);
+          },
+        },
+      },
+      logSink: logs.sink,
+    });
+    const call = (utterance: string, callbackUrl?: string, userId = shop.userKey) =>
+      app.request(
+        "/api/kakao/skills/message",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+          body: JSON.stringify({
+            bot: { id: shop.botId },
+            userRequest: {
+              utterance,
+              ...(callbackUrl === undefined ? {} : { callbackUrl }),
+              block: { id: "conversation" },
+              user: { id: userId, type: "botUserKey" },
+            },
+            action: { id: "synthetic-action", params: {} },
+          }),
+        },
+        env,
+      );
+    return { shop, call, logs, clock, jobs, env };
+  }
+
+  async function defer(shop: ShopFixture, text = OLD_TEXT, at = new Date(NOW.getTime() - 60_000)) {
+    const id = newUuid();
+    await db.query(
+      `INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, body_masked, delivery, created_at)
+      VALUES ($1, $2, $3, 'outbound', 'system', 'text', $4, 'deferred', $5)`,
+      [id, shop.shopId, shop.consultationId, text, at],
+    );
+    return id;
+  }
+
+  it("전하지 못한 자기 답을 새 응답보다 먼저 보이고 전달 시각을 한 번 남김", async () => {
+    const h = await setup();
+    const other = await setup();
+    const id = await defer(h.shop);
+    const otherId = await defer(other.shop, "다른 가게의 합성 안내");
+    const response = await h.call("다음 질문");
+    expect(response.status).toBe(200);
+    const body = await template(response);
+    expect(body.template.outputs[0]).toEqual({ simpleText: { text: OLD_TEXT } });
+    expect(JSON.stringify(body)).not.toContain("다른 가게의 합성 안내");
+    const saved = await db.query<{ delivery: string; sent_at: Date | null }>(
+      "SELECT delivery, sent_at FROM messages WHERE id=$1",
+      [id],
+    );
+    expect(saved.rows).toEqual([{ delivery: "delivered_later", sent_at: NOW }]);
+    const untouched = await db.query<{ delivery: string }>("SELECT delivery FROM messages WHERE id=$1", [otherId]);
+    expect(untouched.rows).toEqual([{ delivery: "deferred" }]);
+    expect(h.logs.lines.join("\n")).not.toContain(OLD_TEXT);
+  });
+
+  it("다음 답이 콜백이면 이전 미전달 답부터 보내고 성공 뒤에만 전달 표시함", async () => {
+    const h = await setup();
+    const id = await defer(h.shop);
+    const ack = await h.call("콜백으로 다음 질문", "https://bot-api.kakao.com/v1/callback/synthetic_next");
+    expect(ack.headers.get("Siljang-Outcome")).toBe("callback_pending");
+    expectSchema("SkillCallbackAck", await ack.json());
+    const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const now = new Date(NOW.getTime() + 5000);
+    expect(await consumeKakaoCallback(h.jobs[0], h.env, { now: () => now, fetch: send })).toBe("done");
+    const request = send.mock.calls[0]?.[1];
+    const body = JSON.parse(String(request?.body));
+    expectSchema("SkillTemplateResponse", body);
+    expect(body.template.outputs[0]).toEqual({ simpleText: { text: OLD_TEXT } });
+    const saved = await db.query<{ delivery: string; sent_at: Date | null }>(
+      "SELECT delivery, sent_at FROM messages WHERE id=$1",
+      [id],
+    );
+    expect(saved.rows).toEqual([{ delivery: "delivered_later", sent_at: now }]);
+  });
+
+  it("같은 손님의 다른 콜백도 진행 중인 전달을 기다려 이전 답을 중복 발신하지 않음", async () => {
+    const h = await setup();
+    await defer(h.shop);
+    await h.call("첫 콜백 질문", "https://bot-api.kakao.com/v1/callback/synthetic_first");
+    await h.call("다음 콜백 질문", "https://bot-api.kakao.com/v1/callback/synthetic_second");
+    let entered: () => void = () => {};
+    let release: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const send = vi.fn<typeof fetch>(async (url) => {
+      if (String(url).endsWith("synthetic_first")) {
+        entered();
+        await blocked;
+      }
+      return Response.json({ status: "SUCCESS" });
+    });
+    const options = { now: () => new Date(NOW.getTime() + 5000), fetch: send };
+    const first = consumeKakaoCallback(h.jobs[0], h.env, options);
+    try {
+      await Promise.race([started, first]);
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(await consumeKakaoCallback(h.jobs[1], h.env, options)).toBe("retry");
+      expect(send).toHaveBeenCalledTimes(1);
+    } finally {
+      release();
+      await first;
+    }
+    expect(await consumeKakaoCallback(h.jobs[1], h.env, options)).toBe("done");
+    const texts = send.mock.calls.flatMap(([, init]) => {
+      const body = JSON.parse(String(init?.body));
+      return body.template.outputs.map((o: { simpleText: { text: string } }) => o.simpleText.text);
+    });
+    expect(texts.filter((text) => text === OLD_TEXT)).toHaveLength(1);
+  });
+
+  it("같은 손님의 서로 다른 동시 요청에서도 이전 답은 한 번만 전함", async () => {
+    const h = await setup();
+    await defer(h.shop);
+    const responses = await Promise.all([h.call("다음 질문 가"), h.call("다음 질문 나")]);
+    const bodies = await Promise.all(responses.map(template));
+    expect(bodies.flatMap((b) => b.template.outputs).filter((o) => o.simpleText?.text === OLD_TEXT)).toHaveLength(1);
+  });
+  it("콜백 발신이 두 번 실패해도 이전 답을 보존하고 다음 즉시 응답에서 먼저 전함", async () => {
+    const h = await setup();
+    const id = await defer(h.shop);
+    await h.call("콜백 실패 질문", "https://bot-api.kakao.com/v1/callback/synthetic_failure");
+    const send = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+    expect(
+      await consumeKakaoCallback(h.jobs[0], h.env, {
+        now: () => new Date(NOW.getTime() + 5000),
+        fetch: send,
+      }),
+    ).toBe("done");
+    expect(send).toHaveBeenCalledTimes(2);
+    const before = await db.query<{ delivery: string; sent_at: null }>(
+      "SELECT delivery, sent_at FROM messages WHERE id=$1",
+      [id],
+    );
+    expect(before.rows).toEqual([{ delivery: "deferred", sent_at: null }]);
+    h.clock.now = new Date(NOW.getTime() + 10_000);
+    const reply = await template(await h.call("실패 뒤 다음 질문"));
+    expect(reply.template.outputs[0]).toEqual({ simpleText: { text: OLD_TEXT } });
+    const after = await db.query<{ delivery: string }>("SELECT delivery FROM messages WHERE id=$1", [id]);
+    expect(after.rows).toEqual([{ delivery: "delivered_later" }]);
+  });
+
+  it("같은 가게의 다른 손님 콜백은 진행 중인 손님을 기다리지 않음", async () => {
+    const h = await setup();
+    await defer(h.shop);
+    await h.call("먼저 답하는 손님", "https://bot-api.kakao.com/v1/callback/synthetic_blocked");
+    await h.call("다른 손님", "https://bot-api.kakao.com/v1/callback/synthetic_independent", newUuid());
+    let entered: () => void = () => {};
+    let release: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const send = vi.fn<typeof fetch>(async (url) => {
+      if (String(url).endsWith("synthetic_blocked")) {
+        entered();
+        await blocked;
+      }
+      return Response.json({ status: "SUCCESS" });
+    });
+    const options = { now: () => new Date(NOW.getTime() + 5000), fetch: send };
+    const first = consumeKakaoCallback(h.jobs[0], h.env, options);
+    try {
+      await Promise.race([started, first]);
+      expect(await consumeKakaoCallback(h.jobs[1], h.env, options)).toBe("done");
+      expect(send).toHaveBeenCalledTimes(2);
+      const secondBody = JSON.parse(String(send.mock.calls[1]?.[1]?.body));
+      expect(JSON.stringify(secondBody)).not.toContain(OLD_TEXT);
+    } finally {
+      release();
+      await first;
+    }
+  });
+
+  it("이전 답 조회 예외 뒤 선점을 해제해 같은 큐 메시지가 기한 안에 다시 처리됨", async () => {
+    const h = await setup();
+    await defer(h.shop);
+    await h.call("조회 실패 질문", "https://bot-api.kakao.com/v1/callback/synthetic_retry");
+    let fail = true;
+    const connect: DbConnector = (url) => {
+      const conn = pgConnector(url);
+      const query: RequestDb["query"] = async <R>(sql: string, params?: readonly unknown[]) => {
+        if (fail && sql.includes("SELECT m.id, m.body_masked")) {
+          fail = false;
+          throw new Error("synthetic deferred read failure");
+        }
+        return conn.query<R>(sql, params);
+      };
+      const transaction: RequestDb["transaction"] = (fn) => conn.transaction(fn);
+      return { query, transaction, abort: () => conn.abort(), close: () => conn.close() };
+    };
+    const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await expect(
+      consumeKakaoCallback(h.jobs[0], h.env, {
+        connect,
+        now: () => new Date(NOW.getTime() + 5000),
+        fetch: send,
+      }),
+    ).rejects.toThrow("synthetic deferred read failure");
+    expect(send).not.toHaveBeenCalled();
+    const saved = await db.query<{ kakao_callback_claim_until: Date | null }>(
+      "SELECT kakao_callback_claim_until FROM messages WHERE id=$1",
+      [h.jobs[0]?.messageId],
+    );
+    expect(saved.rows).toEqual([{ kakao_callback_claim_until: null }]);
+    expect(
+      await consumeKakaoCallback(h.jobs[0], h.env, {
+        now: () => new Date(NOW.getTime() + 6000),
+        fetch: send,
+      }),
+    ).toBe("done");
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("콜백이 이전 답을 전하는 동안 즉시 응답이 그 답을 먼저 소비하지 않음", async () => {
+    const h = await setup();
+    const id = await defer(h.shop);
+    await h.call("진행 중인 질문", "https://bot-api.kakao.com/v1/callback/synthetic_active");
+    let entered: () => void = () => {};
+    let release: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const send = vi.fn<typeof fetch>(async () => {
+      entered();
+      await blocked;
+      return Response.json({ status: "SUCCESS" });
+    });
+    const first = consumeKakaoCallback(h.jobs[0], h.env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: send,
+    });
+    try {
+      await Promise.race([started, first]);
+      const reply = await template(await h.call("기다리는 중 새 메시지"));
+      expect(JSON.stringify(reply)).not.toContain(OLD_TEXT);
+      expect((await db.query<{ delivery: string }>("SELECT delivery FROM messages WHERE id=$1", [id])).rows).toEqual([
+        { delivery: "deferred" },
+      ]);
+    } finally {
+      release();
+      await first;
+    }
+    expect((await db.query<{ delivery: string }>("SELECT delivery FROM messages WHERE id=$1", [id])).rows).toEqual([
+      { delivery: "delivered_later" },
+    ]);
+  });
+
+  it("이전 답 두 개만 먼저 보내고 남은 답과 중복 요청의 빈 응답을 보존함", async () => {
+    const h = await setup();
+    for (let i = 0; i < 3; i++) await defer(h.shop, `이전 안내 ${i}`, new Date(NOW.getTime() - 60_000 + i * 1000));
+    const first = await template(await h.call("첫 새 질문"));
+    expect(first.template.outputs).toHaveLength(3);
+    expect(first.template.outputs.slice(0, 2)).toEqual([
+      { simpleText: { text: "이전 안내 0" } },
+      { simpleText: { text: "이전 안내 1" } },
+    ]);
+    const duplicate = await h.call("첫 새 질문");
+    expect(duplicate.headers.get("Siljang-Outcome")).toBe("duplicate");
+    const duplicateBody = (await duplicate.json()) as { template: { outputs: unknown[] } };
+    expectSchema("SkillNoOutput", duplicateBody);
+    expect(duplicateBody.template.outputs).toEqual([]);
+    expect(
+      (
+        await db.query<{ count: number }>(
+          "SELECT count(*)::integer count FROM messages WHERE shop_id=$1 AND delivery='deferred'",
+          [h.shop.shopId],
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+    const next = await template(await h.call("다른 새 질문"));
+    expect(next.template.outputs[0]).toEqual({ simpleText: { text: "이전 안내 2" } });
+  });
+
+  it("지난 상담의 이전 답도 같은 손님에게만 전하고 끝난 상담은 다시 열지 않음", async () => {
+    const h = await setup();
+    const oldId = newUuid();
+    await db.query(
+      `INSERT INTO consultations (id, shop_id, customer_id, status, opened_at, ended_at)
+      VALUES ($1, $2, $3, 'ended', $4, $5)`,
+      [oldId, h.shop.shopId, h.shop.customerId, new Date(NOW.getTime() - 86400000), new Date(NOW.getTime() - 120_000)],
+    );
+    await defer({ ...h.shop, consultationId: oldId });
+    expect((await template(await h.call("지난 상담 뒤 질문"))).template.outputs[0]).toEqual({
+      simpleText: { text: OLD_TEXT },
+    });
+    expect((await db.query<{ status: string }>("SELECT status FROM consultations WHERE id=$1", [oldId])).rows).toEqual([
+      { status: "ended" },
+    ]);
+  });
+
+  it("응답 생성이 실패하면 이전 답을 전달했다고 기록하지 않음", async () => {
+    const h = await setup();
+    const id = await defer(h.shop);
+    const scoped = shopRequestDb(createShopScope(h.shop.shopId, { kind: "job", job: "kakao_callback" }), db);
+    await expect(
+      replyWithDeferredKakaoMessages(scoped, h.shop.customerId, NOW, () => {
+        throw new Error("synthetic response construction failure");
+      }),
+    ).rejects.toThrow("synthetic response construction failure");
+    expect(
+      (
+        await db.query<{ delivery: string; sent_at: Date | null }>(
+          "SELECT delivery, sent_at FROM messages WHERE id=$1",
+          [id],
+        )
+      ).rows,
+    ).toEqual([{ delivery: "deferred", sent_at: null }]);
+  });
+});
