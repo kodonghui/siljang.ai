@@ -1,12 +1,16 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import type { Queryable, RequestDb } from "../src/db";
+import { fieldCrypto } from "../src/field-crypto";
+import { kakaoCallback } from "../src/kakao-callback";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+import { scheduleKakaoCallback } from "../src/kakao-callback-store";
 import { receiveKakaoMessage } from "../src/kakao-skill-store";
 import { createOwnerSession, endOwnerSession, ownerProfile, renewOwnerSession } from "../src/owner-session";
-import { Secret } from "../src/settings";
+import { readSettings, Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { describeDb, newUuid, TEST_HASH_KEY, testDb } from "./support/db";
+import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
@@ -116,6 +120,76 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
         { connect: () => roleDb(), now: () => now },
       ),
     ).toBe("done");
+  });
+
+  it("제한 역할로 손님별 선점·이전 답 조회·콜백 성공 뒤 전달 표시까지 실행", async () => {
+    const conn = roleDb();
+    const scope = createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" });
+    const scoped = shopRequestDb(scope, conn);
+    const env = { APP_ENV: "development", FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() };
+    const keys = readSettings(env).fieldKeys;
+    const callback = kakaoCallback("https://bot-api.kakao.com/v1/callback/synthetic_role", now);
+    if (keys === null || callback === null) throw new Error("시험 설정 없음");
+    try {
+      const received = await receiveKakaoMessage(
+        scoped,
+        {
+          scope,
+          channelId: shop.channelId,
+          status: "linked",
+          receivedAt: now,
+          requestKeySecret: new Secret(TEST_HASH_KEY),
+          payload: {
+            botId: shop.botId,
+            blockId: "conversation",
+            userId: shop.userKey,
+            utterance: "제한 역할 콜백 시험",
+            callbackUrl: callback.url.href,
+            isFriend: false,
+            params: {},
+            action: { params: {}, clientExtra: {} },
+          },
+        },
+        "text",
+      );
+      if (received.kind !== "received") throw new Error("시험 수신 실패");
+      const previous = await scoped.run<{ id: string }>(
+        `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery, created_at)
+          VALUES ($1, $2, 'outbound', 'system', 'text', '제한 역할 이전 안내', 'deferred', $3) RETURNING id`,
+        [received.consultationId, new Date(now.getTime() - 1000)],
+      );
+      expect(
+        await scheduleKakaoCallback(
+          scoped,
+          fieldCrypto(keys),
+          { send: async () => {} },
+          received.messageId,
+          callback,
+          () => 3000,
+        ),
+      ).toBe(true);
+      let text: unknown;
+      expect(
+        await consumeKakaoCallback({ shopId: shop.shopId, messageId: received.messageId }, env, {
+          connect: () => roleDb(),
+          now: () => new Date(now.getTime() + 5000),
+          fetch: async (_url, init) => {
+            text = JSON.parse(String(init?.body));
+            return Response.json({ status: "SUCCESS" });
+          },
+        }),
+      ).toBe("done");
+      expect(JSON.stringify(text)).toContain("제한 역할 이전 안내");
+      expect(
+        (
+          await scoped.run<{ delivery: string }>("SELECT delivery FROM messages WHERE shop_id=$1 AND id=$2", [
+            previous.rows[0]?.id,
+          ])
+        ).rows,
+      ).toEqual([{ delivery: "delivered_later" }]);
+    } finally {
+      await conn.close();
+    }
   });
 
   it("접속기록 시각 조회만 유지하고 전체 조회·수정·비우기·DDL·사장님 삭제는 거절", async () => {

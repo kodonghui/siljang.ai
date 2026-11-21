@@ -81,6 +81,29 @@ describe("카카오 콜백 주소와 서비스 기한(TASK-028, DEC-29)", () => 
   });
 });
 
+describe("콜백 출력의 개수·글자 수 한도(TASK-028)", () => {
+  it.each([
+    { name: "빈 출력", texts: [] },
+    { name: "출력 네 개", texts: ["첫째", "둘째", "셋째", "넷째"] },
+    { name: "빈 글", texts: [""] },
+    { name: "1001자", texts: ["x".repeat(1001)] },
+  ])("$name 는 외부 호출 없이 거절함", async ({ texts }) => {
+    const send = vi.fn();
+    expect(await deliverKakaoCallback(delivery(), texts, { fetch: send, now: () => NOW.getTime() })).toBe(
+      "unavailable",
+    );
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("세 출력과 유니코드 1000자를 순서대로 보존함", async () => {
+    const send = vi.fn(async (_url: URL, _options: RequestInit) => Response.json({ status: "SUCCESS" }));
+    const texts = ["이전 안내 하나", "이전 안내 둘", "😀".repeat(1000)];
+    expect(await deliverKakaoCallback(delivery(), texts, { fetch: send, now: () => NOW.getTime() })).toBe("delivered");
+    const body = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
+    expectSchema("SkillTemplateResponse", body);
+    expect(body.template.outputs).toEqual(texts.map((text) => ({ simpleText: { text } })));
+  });
+});
+
 describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TASK-028)", () => {
   const db = testDb();
   const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
