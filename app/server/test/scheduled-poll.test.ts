@@ -24,7 +24,7 @@ describe("기본 Cron의 매분 연결 확인", () => {
     let closed = 0;
     const db: RequestDb = {
       query: async () => {
-        throw Object.assign(new DatabaseError("합성 비공개 오류 내용", 0, "error"), { code: "42501" });
+        throw Object.assign(new DatabaseError("합성 비공개 오류 내용"), { code: "42501" });
       },
       transaction: async () => {
         throw new Error("조회 실패 뒤 실행하면 안 됨");
@@ -94,8 +94,8 @@ describeDb("시작 표시 조회와 실제 실행의 분리", () => {
       release = resolve;
     });
     const polling = (base: RequestDb): RequestDb => ({
-      query: async (sql, params) => {
-        const result = await base.query(sql, params);
+      query: async <R>(sql: string, params?: readonly unknown[]) => {
+        const result = await base.query<R>(sql, params);
         if (sql.includes("FROM ops_events")) {
           reads += 1;
           if (reads === 2) release();
