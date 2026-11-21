@@ -239,3 +239,19 @@ export async function maskMessageText(
   output.push(text.slice(offset));
   return output.join("");
 }
+
+/** 수신 행과 마스킹 값은 호출자의 저장점/트랜잭션에서 함께 남긴다. */
+export async function storeMaskedMessageText(
+  db: ShopDb,
+  crypto: () => FieldCrypto,
+  source: { readonly messageId: string; readonly consultationId: string },
+  text: string,
+): Promise<void> {
+  const body = await maskMessageText(db, crypto, source.consultationId, text);
+  const result = await db.run(
+    `UPDATE messages SET body_masked = $3 WHERE shop_id = $1 AND id = $2 AND consultation_id = $4
+      AND direction = 'inbound' AND kind = 'text' AND body_masked IS NULL`,
+    [source.messageId, body, source.consultationId],
+  );
+  if (result.rowCount !== 1) throw new MaskingFailedError("inbound message unavailable");
+}

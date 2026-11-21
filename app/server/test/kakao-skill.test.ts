@@ -206,7 +206,7 @@ describeDb("카카오 메시지 수신 기록과 동시 처리(TASK-028, REQ-132
        JOIN customers u ON u.id = c.customer_id WHERE m.shop_id = $1 AND u.kakao_user_key = $2 AND m.direction = 'inbound'`,
       [shop.shopId, user],
     );
-    expect(rows).toEqual([{ body_masked: null }]);
+    expect(rows).toEqual([{ body_masked: "합성 상담" }]);
     clock.now = new Date(NOW.getTime() + 2_000);
     expect((await send(user, "합성 상담")).headers.get("Siljang-Outcome")).toBe("ai_key_missing");
   });

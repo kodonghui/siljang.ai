@@ -11,8 +11,9 @@ import {
   receiveAndHandleKakaoMessage,
   receiveKakaoMessage,
 } from "./kakao-skill-store";
+import { storeMaskedMessageText } from "./message-masking";
 import { type ShopRequest, shopRoute } from "./routes";
-import { ForgedScopeError } from "./shop-scope";
+import { ForgedScopeError, withShopSavepoint } from "./shop-scope";
 
 type SkillKind = "message" | "card" | "review" | "event";
 
@@ -48,7 +49,37 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
           if (receipt.kind === "not_accepting")
             return kakaoReply(r, receipt.kind, { contactPhone: receipt.contactPhone });
           if (receipt.kind === "duplicate") return kakaoReply(r, receipt.kind);
+          let maskingFailed = false;
+          try {
+            await withShopSavepoint(tx, (part) =>
+              storeMaskedMessageText(part, () => r.services.fieldCrypto(), receipt, request.payload.utterance),
+            );
+          } catch (error) {
+            maskingFailed = true;
+            const dbCode = sqlStateOf(error);
+            r.log("error", {
+              event: "kakao_message_masking_failed",
+              traceId: r.traceId,
+              errorName: dbCode !== undefined ? "DatabaseError" : error instanceof Error ? error.name : "Error",
+              ...(dbCode === undefined ? {} : { dbCode }),
+            });
+            const saved = await tx.run(
+              `UPDATE messages SET body_masked = $3 WHERE shop_id = $1 AND id = $2 AND consultation_id = $4
+                AND direction = 'inbound' AND kind = 'text' AND body_masked IS NULL`,
+              [receipt.messageId, "[보관하지 못한 메시지]", receipt.consultationId],
+            );
+            if (saved.rowCount !== 1) throw new Error("inbound message unavailable after masking failure");
+          }
           if (receipt.limit !== "ok") return kakaoReply(r, "rate_limited", { silent: receipt.limit === "silent" });
+          if (maskingFailed) {
+            return replyKakaoHandoffInTransaction(
+              tx,
+              receipt,
+              r.services.now(),
+              (previous) => kakaoReply(r, "masking_failed", { previous }),
+              "masking_failed",
+            );
+          }
           if ((await kakaoAiCostLimit(tx, receipt.consultationId, r.services.now())) !== "ok") {
             return replyKakaoHandoffInTransaction(
               tx,

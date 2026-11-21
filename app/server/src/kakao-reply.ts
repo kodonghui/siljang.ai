@@ -16,10 +16,11 @@ export const KAKAO_COMMON_OUTCOMES = [
   "not_accepting",
   "server_error",
 ] as const;
-type Outcome = (typeof KAKAO_COMMON_OUTCOMES)[number] | "notice_gone";
+type Outcome = (typeof KAKAO_COMMON_OUTCOMES)[number] | "notice_gone" | "masking_failed";
 type TextOutcome = Exclude<Outcome, "callback_pending" | "duplicate">;
 export const KAKAO_HANDOFF_TEXT = "사장님 확인 뒤 답드릴게요.";
 const TEXT: Readonly<Record<TextOutcome, string>> = {
+  masking_failed: KAKAO_HANDOFF_TEXT,
   ai_unavailable: KAKAO_HANDOFF_TEXT,
   ai_timeout: KAKAO_HANDOFF_TEXT,
   ai_key_missing: KAKAO_HANDOFF_TEXT,
