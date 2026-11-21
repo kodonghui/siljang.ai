@@ -519,7 +519,7 @@ describe("정적 검사: 접속기록을 넣는 곳과 시험용 경로", () => 
     expect(users).toEqual(["routes.ts"]);
     const other = sources.filter((s) => /\b(access_logs)\b/.test(s.text)).map((s) => s.name);
     // TASK-158의 보관 기한 지우기는 전용 모듈에서만 한다. 삽입과 기록 도구의 사용자는 위에서 따로 제한한다.
-    expect(other.sort()).toEqual(["access-log.ts", "purge-access-logs.ts", "sql-scope.ts"]);
+    expect(other.sort()).toEqual(["access-log.ts", "purge-access-logs.ts", "purge-sources.ts", "sql-scope.ts"]);
   });
 
   it("시험용 경로는 운영 빌드에 없음: APP_ROUTES에 /test/ 경로가 없고 서버 코드가 시험 파일을 가져오지 않음", () => {

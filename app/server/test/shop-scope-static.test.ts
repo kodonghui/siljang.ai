@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FIND_SHAPE, LAST_RUN_SHAPE } from "../src/due-sources";
+import { isPurgeFindSql, PURGE_SOURCES } from "../src/purge-sources";
 import { namesShopTable, SHOP_TABLES, SHOP_TABLES_WITHOUT_ID, scopeViolations } from "../src/sql-scope";
 import { EXPR, serverSources, stringLiterals } from "./support/source-scan";
 
@@ -45,6 +46,8 @@ const SCOPE_MAKERS: Record<string, string> = {
   "kakao-callback-queue.ts": "내부 큐의 가게·메시지 ID로 한 수신 행을 처리하는 작업 범위만 만듦",
   "job-runner.ts":
     "서버 안의 일 실행기(TASK-023): 때가 된 행의 가게 ID로 그 행 하나를 잡고 처리하는 범위(출처 job)만 만든다. 가게 ID는 due-sources.ts의 찾기 결과",
+  "purge-runner.ts":
+    "TASK-158: purge-sources.ts에서 찾은 가게·행 ID의 보관 처리 범위만 만든다. 내용은 가게 범위의 짧은 트랜잭션에서 읽고 쓴다",
 };
 
 /**
@@ -60,6 +63,20 @@ const CROSS_SHOP_SHAPES: readonly RegExp[] = [
 
 /** 가게 범위 밖 읽기로 허락한 SQL인지(그 파일의 그 꼴만). 꼴 안의 조건에 다른 테이블을 끌어오는 하위 질의는 받지 않는다. */
 function allowedCrossShop(file: string, sql: string): boolean {
+  if (file === "purge-sources.ts") {
+    const text = sql.replace(/\s+/g, " ").trim();
+    if (text === "SELECT count(*)::int AS count FROM file_deletions") return true;
+    return (
+      /^SELECT t\.shop_id, t\.id, t\.([a-z_]+) AS due_at FROM (orders|consultations|kept_records|customers|access_logs|ai_tool_calls|file_deletions) t WHERE .+ ORDER BY t\.\1, t\.id LIMIT \$2$/.test(
+        text,
+      ) &&
+      !/\b(insert|update|delete|union|intersect|except|returning)\b/i.test(text) &&
+      !text.includes(EXPR.trim()) &&
+      [...text.matchAll(/\bSELECT (.*?) FROM\b/gi)].every(
+        (m, i) => i === 0 || /^(1|[a-z_]+\.(id|order_id|day_used_order_id|limit_used_order_id))$/i.test(m[1] ?? ""),
+      )
+    );
+  }
   if (file === "owner-session.ts") {
     return (
       sql.replace(/\s+/g, " ").trim() === "SELECT id, name, license_status, time_zone FROM shops WHERE owner_id = $1"
@@ -206,6 +223,34 @@ describe("서버 코드의 SQL(정적 검사)", () => {
       }
     }
     expect(found).toEqual([]);
+  });
+
+  it("기간 지우기의 전역 후보는 ID·시각과 존재 여부만 읽고 내용을 돌려주거나 쓰지 않음", () => {
+    const file = sources.find((s) => s.name === "purge-sources.ts");
+    expect(file).toBeDefined();
+    expect(RAW_ACCESS.some((re) => re.test(file?.text ?? ""))).toBe(false);
+    const sqls = shopSql(file?.text ?? "");
+    expect(sqls).toHaveLength(10);
+    for (const sql of sqls) expect(allowedCrossShop("purge-sources.ts", sql), sql).toBe(true);
+    for (const source of Object.values(PURGE_SOURCES)) {
+      expect(isPurgeFindSql(source.sql)).toBe(true);
+      for (const bad of [
+        source.sql.replace("t.shop_id, t.id,", "t.shop_id, t.customer_name, t.id,"),
+        `${source.sql} UNION SELECT * FROM customers`,
+        `${source.sql}; DELETE FROM orders`,
+        source.sql.replace("LIMIT $2", "LIMIT $2 RETURNING customer_name"),
+      ]) {
+        expect(allowedCrossShop("purge-sources.ts", bad)).toBe(false);
+        expect(isPurgeFindSql(bad)).toBe(false);
+      }
+    }
+    const extraContent = PURGE_SOURCES.customers.sql.replace(
+      "SELECT 1 FROM consultations",
+      "select c.customer_name from consultations",
+    );
+    expect(allowedCrossShop("purge-sources.ts", extraContent)).toBe(false);
+    expect(isPurgeFindSql(extraContent)).toBe(false);
+    expect(allowedCrossShop("purge-runner.ts", PURGE_SOURCES.orders.sql)).toBe(false);
   });
 
   it("가게 범위는 정한 파일(해석기)만 만듦", () => {

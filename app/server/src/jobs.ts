@@ -10,7 +10,8 @@
  * - 처리(handler)는 맡는 작업이 JOB_HANDLERS에 더한다. 이번에는 바탕만 두어 처리가 붙은 일이 없다.
  */
 import type { DueSourceName } from "./due-sources";
-import type { ItemHandler, RunnableJob } from "./job-runner";
+import type { JobHandler, RunnableJob } from "./job-runner";
+import { runPurge } from "./purge-runner";
 
 export type JobCadence =
   | { readonly every: "minute" }
@@ -145,12 +146,14 @@ export type JobName = string;
 
 /** 처리. 맡는 작업이 이름으로 더한다(cutoff는 지난 시간으로 세는 곳의 기준 시각). */
 export interface JobHandlerEntry {
-  readonly handler: ItemHandler;
+  readonly handler: JobHandler;
   readonly cutoff?: (source: DueSourceName, now: Date) => Date;
 }
 
-/** 처리가 붙은 일. 이번에는 없다(맡는 작업이 더함). */
-export const JOB_HANDLERS: Readonly<Record<JobName, JobHandlerEntry>> = {};
+/** TASK-158: 하루 한 번 지우기는 전역 키와 임시 파일을 포함한 여덟 차례로 처리한다. */
+export const JOB_HANDLERS: Readonly<Record<JobName, JobHandlerEntry>> = {
+  purge: { handler: { mode: "sweep", run: (db, ctx) => runPurge(db, ctx) } },
+};
 
 /** 등록부와 처리로 실행기에 넘길 일을 만든다. 처리가 없거나 요청 안에서 하는 일은 빠진다. */
 export function runnableJobs(
