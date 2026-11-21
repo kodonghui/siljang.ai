@@ -289,7 +289,8 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.operator-login-form > .ui-button {
+.operator-login-form > .ui-button,
+.owner-login-form > .ui-button {
   min-height: var(--size-control-lg);
 }
 
