@@ -13,7 +13,7 @@
  *   uuid 꼴이 아니면 bad_format(형식은 다른 가게와 무관). 올린 파일 ID(upload_not_found)는 uploads.ts의 checkUploads가 본다.
  * - 데이터베이스가 막는 것: 가게가 섞인 행(복합 외래 키, 05 E1, 쓰면 23503). 막지 않는 것: 다른 가게 행 읽기(05 A9).
  */
-import type { Queryable, RequestDb, Rows } from "./db";
+import { type Queryable, type RequestDb, type Rows, TransactionMisuseError } from "./db";
 import { ApiError, type FieldError } from "./problem";
 import type { Actor } from "./request-key";
 import { type IdShopTable, namesShopTable, SHOP_TABLES, SHOP_TABLES_WITHOUT_ID, scopeViolations } from "./sql-scope";
@@ -160,11 +160,34 @@ const ORDER_LINKED = new Set(["payment_requests", "payments", "refunds", "change
 class ScopedDb implements ShopDb {
   readonly scope: ShopScope;
   readonly #q: Queryable;
+  readonly #inTransaction: boolean;
+  #saving = false;
 
-  constructor(scope: ShopScope, q: Queryable) {
+  constructor(scope: ShopScope, q: Queryable, inTransaction = false) {
     if (!isShopScope(scope)) throw new ForgedScopeError("scope was not made by createShopScope");
     this.scope = scope;
     this.#q = q;
+    this.#inTransaction = inTransaction;
+  }
+
+  async savepoint<T>(work: (tx: ShopDb) => Promise<T>): Promise<T> {
+    if (!this.#inTransaction || this.#saving)
+      throw new TransactionMisuseError("savepoint requires one scoped transaction");
+    this.#saving = true;
+    try {
+      await this.#q.query("SAVEPOINT siljang_scope_part");
+      try {
+        const result = await work(this);
+        await this.#q.query("RELEASE SAVEPOINT siljang_scope_part");
+        return result;
+      } catch (error) {
+        await this.#q.query("ROLLBACK TO SAVEPOINT siljang_scope_part");
+        await this.#q.query("RELEASE SAVEPOINT siljang_scope_part");
+        throw error;
+      }
+    } finally {
+      this.#saving = false;
+    }
   }
 
   async run<R = Record<string, unknown>>(sql: string, params: readonly unknown[] = []): Promise<Rows<R>> {
@@ -231,6 +254,12 @@ export function shopDb(scope: ShopScope, q: Queryable): ShopDb {
   return new ScopedDb(scope, q);
 }
 
+/** ShopRequestDb.transaction의 가게 범위만 부분 롤백한다. 트랜잭션 밖/중첩/위조 객체는 받지 않는다. */
+export function withShopSavepoint<T>(db: ShopDb, work: (tx: ShopDb) => Promise<T>): Promise<T> {
+  if (!(db instanceof ScopedDb)) throw new ForgedScopeError("savepoint requires a scoped database");
+  return db.savepoint(work);
+}
+
 class ScopedRequestDb extends ScopedDb implements ShopRequestDb {
   readonly #db: RequestDb;
 
@@ -240,7 +269,7 @@ class ScopedRequestDb extends ScopedDb implements ShopRequestDb {
   }
 
   transaction<T>(fn: (tx: ShopDb) => Promise<T>): Promise<T> {
-    return this.#db.transaction((tx) => fn(new ScopedDb(this.scope, tx)));
+    return this.#db.transaction((tx) => fn(new ScopedDb(this.scope, tx, true)));
   }
 }
 

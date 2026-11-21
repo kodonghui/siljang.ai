@@ -14,3 +14,5 @@ GRANT SELECT, INSERT ON handoffs, handoff_questions, owner_tasks, owner_alerts T
 GRANT SELECT ON business_calendars TO :"runtime_role";
 -- TASK-028: 누적 비용 확인만 한다. 호출 기록의 추가/수정/삭제 권한은 주지 않는다.
 GRANT SELECT ON ai_calls TO :"runtime_role";
+-- TASK-028: 번호를 가린 본문과 원본 최소 정보는 같은 수신 트랜잭션에서 새로 남긴다.
+GRANT SELECT, INSERT ON masked_values TO :"runtime_role";

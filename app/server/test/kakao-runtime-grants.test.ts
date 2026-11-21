@@ -5,6 +5,7 @@ import type { RequestDb } from "../src/db";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { collectLogs, describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
@@ -160,6 +161,49 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     ]);
   });
 
+  it("같은 제한 역할로 전화번호를 가리고 원본 최소 정보만 남김", async () => {
+    const target = await createShop(db, "제한 역할 본문 마스킹");
+    await issueTestBookingLink(db, target);
+    await linkTestChannel(db, target.channelId);
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), target.channelId, 1);
+    const response = await createApp({
+      services: { now: () => new Date("2026-11-22T10:00:00+09:00") },
+      logSink: () => {},
+    }).request(
+      "/api/kakao/skills/message",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+        body: JSON.stringify({
+          bot: { id: target.botId },
+          userRequest: {
+            utterance: "연락 010-1234-5678",
+            block: { id: "masking" },
+            user: { id: target.userKey, type: "botUserKey" },
+          },
+          action: { id: "masking", params: {} },
+        }),
+      },
+      testEnv({ DATABASE_URL: databaseUrl, FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Siljang-Outcome")).toBe("ai_key_missing");
+    expect(
+      (
+        await db.query("SELECT body_masked FROM messages WHERE shop_id = $1 AND direction = 'inbound' AND id <> $2", [
+          target.shopId,
+          target.messageId,
+        ])
+      ).rows,
+    ).toEqual([{ body_masked: "연락 [전화번호1]" }]);
+    const values = (
+      await db.query("SELECT kind, original_enc, last4 FROM masked_values WHERE shop_id = $1", [target.shopId])
+    ).rows;
+    expect(values).toHaveLength(1);
+    expect(values[0]).toMatchObject({ kind: "phone", last4: "5678" });
+    expect(values[0]?.original_enc).toMatch(/^v1:/);
+  });
+
   it("업무에 필요하지 않은 수정/삭제와 운영 기록/접속기록 권한을 늘리지 않음", async () => {
     const { rows } = await db.query(
       `SELECT
@@ -177,6 +221,8 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       has_table_privilege($1, 'public.ai_calls', 'INSERT') AS ai_call_insert,
       has_any_column_privilege($1, 'public.ai_calls', 'UPDATE') AS ai_call_update,
       has_table_privilege($1, 'public.ai_calls', 'DELETE') AS ai_call_delete,
+      has_any_column_privilege($1, 'public.masked_values', 'UPDATE') AS masked_update,
+      has_table_privilege($1, 'public.masked_values', 'DELETE') AS masked_delete,
       has_any_column_privilege($1, 'public.ops_events', 'UPDATE') AS ops_update,
       has_table_privilege($1, 'public.ops_events', 'DELETE') AS ops_delete,
       has_table_privilege($1, 'public.access_logs', 'SELECT') AS access_full_select,
@@ -200,6 +246,8 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
         ai_call_insert: false,
         ai_call_update: false,
         ai_call_delete: false,
+        masked_update: false,
+        masked_delete: false,
         ops_update: false,
         ops_delete: false,
         access_full_select: false,
