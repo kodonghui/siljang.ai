@@ -1,5 +1,5 @@
 import { type AuthorizedKakaoSkill, kakaoReceiptKey } from "./kakao-skill-auth";
-import type { ShopRequestDb } from "./shop-scope";
+import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
 const MESSAGE_LIMIT = 20;
 const MINUTE_MS = 60_000;
@@ -28,79 +28,100 @@ export async function receiveKakaoMessage(
   request: AuthorizedKakaoSkill,
   kind: "text" | "unsupported",
 ): Promise<InboundReceipt> {
+  return receiveAndHandleKakaoMessage(db, request, kind, async (_tx, receipt) => receipt);
+}
+
+/** 외부 호출이 없는 즉시 처리는 수신과 같은 트랜잭션에 기록한다. */
+export async function receiveAndHandleKakaoMessage<T>(
+  db: ShopRequestDb,
+  request: AuthorizedKakaoSkill,
+  kind: "text" | "unsupported",
+  handle: (tx: ShopDb, receipt: InboundReceipt) => Promise<T>,
+): Promise<T> {
   const { channelId, payload, receivedAt, requestKeySecret } = request;
   const receipt = await kakaoReceiptKey(requestKeySecret, payload, receivedAt, "message");
   const windowStart = new Date(Math.floor(receivedAt.getTime() / MINUTE_MS) * MINUTE_MS);
 
   return db.transaction(async (tx) => {
-    // 연결만 끝나고 예약 링크를 내지 않은 가게에서는 손님 기록을 만들지 않는다(SPEC-017).
-    // 가게와 채널의 공유 잠금을 수신 트랜잭션까지 유지해 설정을 바꾸는 요청과 차례를 정한다.
-    const shop = await tx.run<{ contact_phone: string; booking_issued_at: Date | null }>(
-      "SELECT contact_phone, booking_issued_at FROM shops WHERE id = $1 FOR SHARE",
-    );
-    const ready = shop.rows[0];
-    if (ready === undefined) return { kind: "not_accepting" };
-    if (ready.booking_issued_at === null) return { kind: "not_accepting", contactPhone: ready.contact_phone };
-    const channel = await tx.run<Id>(
-      "SELECT id FROM kakao_channels WHERE shop_id = $1 AND id = $2 AND status = 'linked' FOR SHARE",
-      [channelId],
-    );
-    if (channel.rowCount === 0) return { kind: "not_accepting", contactPhone: ready.contact_phone };
+    const result = await receiveInTransaction(tx, channelId, payload, receivedAt, kind, receipt, windowStart);
+    return handle(tx, result);
+  });
+}
 
-    await tx.run(
-      `INSERT INTO customers (shop_id, kakao_channel_id, kakao_user_key)
+async function receiveInTransaction(
+  tx: ShopDb,
+  channelId: string,
+  payload: AuthorizedKakaoSkill["payload"],
+  receivedAt: Date,
+  kind: "text" | "unsupported",
+  receipt: string,
+  windowStart: Date,
+): Promise<InboundReceipt> {
+  // 연결만 끝나고 예약 링크를 내지 않은 가게에서는 손님 기록을 만들지 않는다(SPEC-017).
+  // 가게와 채널의 공유 잠금을 수신 트랜잭션까지 유지해 설정을 바꾸는 요청과 차례를 정한다.
+  const shop = await tx.run<{ contact_phone: string; booking_issued_at: Date | null }>(
+    "SELECT contact_phone, booking_issued_at FROM shops WHERE id = $1 FOR SHARE",
+  );
+  const ready = shop.rows[0];
+  if (ready === undefined) return { kind: "not_accepting" };
+  if (ready.booking_issued_at === null) return { kind: "not_accepting", contactPhone: ready.contact_phone };
+  const channel = await tx.run<Id>(
+    "SELECT id FROM kakao_channels WHERE shop_id = $1 AND id = $2 AND status = 'linked' FOR SHARE",
+    [channelId],
+  );
+  if (channel.rowCount === 0) return { kind: "not_accepting", contactPhone: ready.contact_phone };
+
+  await tx.run(
+    `INSERT INTO customers (shop_id, kakao_channel_id, kakao_user_key)
        VALUES ($1, $2, $3) ON CONFLICT (kakao_channel_id, kakao_user_key) DO NOTHING`,
-      [channelId, payload.userId],
-    );
-    const { id: customerId } = await tx.found<Id>(
-      `SELECT id FROM customers
+    [channelId, payload.userId],
+  );
+  const { id: customerId } = await tx.found<Id>(
+    `SELECT id FROM customers
        WHERE shop_id = $1 AND kakao_channel_id = $2 AND kakao_user_key = $3 FOR UPDATE`,
-      [channelId, payload.userId],
-    );
+    [channelId, payload.userId],
+  );
 
-    // 카카오가 값을 주지 않으면 false다. 늦게 끝난 옛 요청이 최신 친구 여부를 되돌리지 않는다(REQ-219, G5).
-    await tx.run(
-      `UPDATE customers SET channel_friend = $3, friend_checked_at = $4
+  // 카카오가 값을 주지 않으면 false다. 늦게 끝난 옛 요청이 최신 친구 여부를 되돌리지 않는다(REQ-219, G5).
+  await tx.run(
+    `UPDATE customers SET channel_friend = $3, friend_checked_at = $4
         WHERE shop_id = $1 AND id = $2 AND (friend_checked_at IS NULL OR friend_checked_at <= $4)`,
-      [customerId, payload.isFriend, receivedAt],
-    );
+    [customerId, payload.isFriend, receivedAt],
+  );
 
-    const previous = await tx.run<Id>("SELECT id FROM messages WHERE shop_id = $1 AND kakao_message_id = $2", [
-      receipt,
-    ]);
-    if (previous.rowCount !== 0) return { kind: "duplicate" };
+  const previous = await tx.run<Id>("SELECT id FROM messages WHERE shop_id = $1 AND kakao_message_id = $2", [receipt]);
+  if (previous.rowCount !== 0) return { kind: "duplicate" };
 
-    const active = await tx.run<Id>(
-      `SELECT id FROM consultations
+  const active = await tx.run<Id>(
+    `SELECT id FROM consultations
        WHERE shop_id = $1 AND customer_id = $2 AND status NOT IN ('ended', 'deleted')`,
-      [customerId],
-    );
-    const consultationId =
-      active.rows[0]?.id ??
-      (
-        await tx.found<Id>(
-          `INSERT INTO consultations (shop_id, customer_id, opened_at, last_customer_message_at)
+    [customerId],
+  );
+  const consultationId =
+    active.rows[0]?.id ??
+    (
+      await tx.found<Id>(
+        `INSERT INTO consultations (shop_id, customer_id, opened_at, last_customer_message_at)
            VALUES ($1, $2, $3, $3) RETURNING id`,
-          [customerId, receivedAt],
-        )
-      ).id;
-    const message = await tx.run<Id>(
-      `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, kakao_message_id, created_at)
+        [customerId, receivedAt],
+      )
+    ).id;
+  const message = await tx.run<Id>(
+    `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, kakao_message_id, created_at)
        VALUES ($1, $2, 'inbound', 'customer', $3, $4, $5)
        ON CONFLICT (shop_id, kakao_message_id) DO NOTHING RETURNING id`,
-      [consultationId, kind, receipt, receivedAt],
-    );
-    const messageId = message.rows[0]?.id;
-    if (messageId === undefined) return { kind: "duplicate" };
+    [consultationId, kind, receipt, receivedAt],
+  );
+  const messageId = message.rows[0]?.id;
+  if (messageId === undefined) return { kind: "duplicate" };
 
-    const recent = await tx.run<Id>(
-      `SELECT m.id FROM messages m
+  const recent = await tx.run<Id>(
+    `SELECT m.id FROM messages m
        JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
        WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'inbound' AND m.kind <> 'card'
          AND m.created_at >= $3 AND m.created_at < $4 LIMIT 22`,
-      [customerId, windowStart, new Date(windowStart.getTime() + MINUTE_MS)],
-    );
-    const limit = recent.rowCount <= MESSAGE_LIMIT ? "ok" : recent.rowCount === MESSAGE_LIMIT + 1 ? "first" : "silent";
-    return { kind: "received", messageId, consultationId, customerId, limit };
-  });
+    [customerId, windowStart, new Date(windowStart.getTime() + MINUTE_MS)],
+  );
+  const limit = recent.rowCount <= MESSAGE_LIMIT ? "ok" : recent.rowCount === MESSAGE_LIMIT + 1 ? "first" : "silent";
+  return { kind: "received", messageId, consultationId, customerId, limit };
 }

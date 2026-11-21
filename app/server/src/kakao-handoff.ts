@@ -14,33 +14,41 @@ export async function replyWithKakaoHandoff(
   now: Date,
   render: (previous: readonly string[]) => Response,
 ): Promise<Response> {
-  return db.transaction(async (tx) => {
-    await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [receipt.customerId]);
-    const consultation = await tx.found<{ status: string }>(
-      "SELECT status FROM consultations WHERE shop_id = $1 AND id = $2 AND customer_id = $3 FOR UPDATE",
-      [receipt.consultationId, receipt.customerId],
-    );
-    if (["ended", "deleted", "dropped"].includes(consultation.status)) throw new Error("consultation closed");
-    await tx.found(
-      "SELECT id FROM messages WHERE shop_id = $1 AND id = $2 AND consultation_id = $3 AND direction = 'inbound' FOR UPDATE",
-      [receipt.messageId, receipt.consultationId],
-    );
-    await recordKakaoHandoff(tx, receipt.consultationId, receipt.messageId, "ai_failure", now);
-    const active = await tx.run(
-      `SELECT m.id FROM messages m JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
+  return db.transaction((tx) => replyKakaoHandoffInTransaction(tx, receipt, now, render));
+}
+
+/** 호출자의 수신 트랜잭션을 그대로 사용해 후속 실패 때 수신도 되돌린다. */
+export async function replyKakaoHandoffInTransaction(
+  tx: ShopDb,
+  receipt: Extract<InboundReceipt, { kind: "received" }>,
+  now: Date,
+  render: (previous: readonly string[]) => Response,
+): Promise<Response> {
+  await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [receipt.customerId]);
+  const consultation = await tx.found<{ status: string }>(
+    "SELECT status FROM consultations WHERE shop_id = $1 AND id = $2 AND customer_id = $3 FOR UPDATE",
+    [receipt.consultationId, receipt.customerId],
+  );
+  if (["ended", "deleted", "dropped"].includes(consultation.status)) throw new Error("consultation closed");
+  await tx.found(
+    "SELECT id FROM messages WHERE shop_id = $1 AND id = $2 AND consultation_id = $3 AND direction = 'inbound' FOR UPDATE",
+    [receipt.messageId, receipt.consultationId],
+  );
+  await recordKakaoHandoff(tx, receipt.consultationId, receipt.messageId, "ai_failure", now);
+  const active = await tx.run(
+    `SELECT m.id FROM messages m JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
        WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.kakao_callback_claim_until > $3 LIMIT 1`,
-      [receipt.customerId, now],
-    );
-    const previous = active.rowCount === 0 ? await deferredKakaoMessages(tx, receipt.customerId) : [];
-    const response = render(previous.map((row) => row.text));
-    await markDeferredKakaoMessages(tx, receipt.customerId, previous, now);
-    await tx.run(
-      `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery, sent_at, created_at)
+    [receipt.customerId, now],
+  );
+  const previous = active.rowCount === 0 ? await deferredKakaoMessages(tx, receipt.customerId) : [];
+  const response = render(previous.map((row) => row.text));
+  await markDeferredKakaoMessages(tx, receipt.customerId, previous, now);
+  await tx.run(
+    `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery, sent_at, created_at)
        VALUES ($1, $2, 'outbound', 'system', 'text', $3, 'skill_response', $4, $4)`,
-      [receipt.consultationId, KAKAO_HANDOFF_TEXT, now],
-    );
-    return response;
-  });
+    [receipt.consultationId, KAKAO_HANDOFF_TEXT, now],
+  );
+  return response;
 }
 
 /** 호출자는 같은 트랜잭션에서 손님·상담 행을 잠근다. 외부 알림은 여기서 보내지 않는다. */
