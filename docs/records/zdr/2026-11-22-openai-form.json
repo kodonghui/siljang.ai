@@ -1,0 +1,54 @@
+{
+  "task": "TASK-006",
+  "checked_at_utc": "2026-11-21T20:18:11Z",
+  "provider": "OpenAI",
+  "host": "academy-pc",
+  "browser": "Ego Light",
+  "public_form_url": "https://openai.com/contact-sales/",
+  "public_document_observed": true,
+  "optional_cookies_rejected": true,
+  "email_input": {
+    "source": "connected primary account",
+    "method": "same-user named pipe and agent-desktop set-value --stdin",
+    "first_transport_setup_failed": true,
+    "synthetic_transport_fix_verified": true,
+    "delivery": "delivered_verified"
+  },
+  "marketing_opt_in": false,
+  "continue_clicked": true,
+  "continue_delivery": "delivered_unverified",
+  "second_form_observed": true,
+  "required_second_step_fields": [
+    "last_name",
+    "first_name",
+    "phone",
+    "company_size",
+    "company_name",
+    "interested_product"
+  ],
+  "missing_user_information": [
+    "phone",
+    "company_size"
+  ],
+  "api_selection": {
+    "requested_label": "API",
+    "ok": false,
+    "code": "ELEMENT_NOT_FOUND",
+    "delivery": "not_delivered",
+    "retry": "safe",
+    "menu_observation_error": "WINDOW_NOT_FOUND",
+    "actual_product_choices_verified": false
+  },
+  "human_challenge_observed": false,
+  "final_submit_clicked": false,
+  "receipt_verified": false,
+  "official_sources": [
+    "https://help.openai.com/en/articles/9047878-how-can-i-contact-sales",
+    "https://developers.openai.com/api/docs/guides/your-data"
+  ],
+  "limits": [
+    "이메일 단계의 계속 클릭을 최종 ZDR 접수로 세지 않음",
+    "필수 전화번호/회사 규모와 실제 제품 선택은 아직 미완료",
+    "이름·이메일·연락처·조직 ID·비밀 값·화면 원본은 기록하지 않음"
+  ]
+}
