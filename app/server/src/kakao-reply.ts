@@ -18,13 +18,13 @@ export const KAKAO_COMMON_OUTCOMES = [
 ] as const;
 type Outcome = (typeof KAKAO_COMMON_OUTCOMES)[number] | "notice_gone";
 type TextOutcome = Exclude<Outcome, "callback_pending" | "duplicate">;
-const HANDOFF_TEXT = "사장님 확인 뒤 답드릴게요.";
+export const KAKAO_HANDOFF_TEXT = "사장님 확인 뒤 답드릴게요.";
 const TEXT: Readonly<Record<TextOutcome, string>> = {
-  ai_unavailable: HANDOFF_TEXT,
-  ai_timeout: HANDOFF_TEXT,
-  ai_key_missing: HANDOFF_TEXT,
-  ai_limit_reached: HANDOFF_TEXT,
-  ai_cost_limit_reached: HANDOFF_TEXT,
+  ai_unavailable: KAKAO_HANDOFF_TEXT,
+  ai_timeout: KAKAO_HANDOFF_TEXT,
+  ai_key_missing: KAKAO_HANDOFF_TEXT,
+  ai_limit_reached: KAKAO_HANDOFF_TEXT,
+  ai_cost_limit_reached: KAKAO_HANDOFF_TEXT,
   not_accepting: KAKAO_CONSULTATION_UNAVAILABLE_TEXT,
   unsupported_message: "글이나 사진으로 말씀해 주세요",
   rate_limited: "잠시 뒤 다시 말씀해 주세요",

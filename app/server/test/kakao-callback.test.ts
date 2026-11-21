@@ -112,6 +112,11 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
 
   beforeAll(async () => {
     shop = await createShop(db, "콜백 시험 가게");
+    await db.query(
+      `INSERT INTO business_calendars (shop_id, daily_capacity, order_cutoff_days, order_cutoff_time)
+        VALUES ($1, 10, 2, '18:00')`,
+      [shop.shopId],
+    );
     await issueTestBookingLink(db, shop);
     await linkTestChannel(db, shop.channelId);
     key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
