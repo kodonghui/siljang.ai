@@ -15,7 +15,7 @@ export async function createOwnerSession(
   const ownerId = await db.transaction(async (tx) => {
     const result = await tx.query<{ id: string }>(
       `INSERT INTO owners (kakao_account_id, alert_channel_friend, alert_friend_checked_at, last_login_at, created_at)
-       VALUES ($1, coalesce($2, false), CASE WHEN $2::boolean IS NULL THEN NULL ELSE $3 END, $3, $3)
+       VALUES ($1, coalesce($2, false), CASE WHEN $2::boolean IS NULL THEN NULL ELSE $3::timestamptz END, $3, $3)
        ON CONFLICT (kakao_account_id) DO UPDATE SET
          last_login_at = EXCLUDED.last_login_at,
          alert_channel_friend = coalesce($2, owners.alert_channel_friend),

@@ -71,7 +71,7 @@ export async function verifyLoginState(
   const expires = Number(match[1]);
   if (expires <= now.getTime() || expires > now.getTime() + LOGIN_SECONDS * 1000) return null;
   const signature = fromBase64Url(match[2] as string);
-  if (signature === null) return null;
+  if (signature === null || toBase64Url(signature) !== match[2]) return null;
   const valid = await crypto.subtle.verify(
     "HMAC",
     await macKey(key),

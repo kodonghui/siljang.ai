@@ -5,7 +5,7 @@
 ## 1. 한눈에
 
 <!-- BEGIN generated:counts -->
-작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 60개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 26개.
+작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 26개.
 <!-- END generated:counts -->
 
 - 작업 표는 [`wbs.md`](wbs.md)입니다. 작업마다 출처(SPEC·REQ·OPEN·DEC·규칙), 닿는 것(API·테이블·화면), 앞선 작업, 맡은 이, 크기, 끝난 조건이 있고, 끝에 SPEC·API·화면·테이블·규칙에서 작업을 찾는 부록 A~E가 있습니다.
@@ -26,7 +26,7 @@
 | 02 | `docs/02-prd/requirements.md` | 요구사항 269개(제외 31개), SPEC 행에 없는 유효 요구사항 8개(REQ-139, REQ-145, REQ-147, REQ-148, REQ-149, REQ-267, REQ-268, REQ-269) |
 | 03 | `docs/03-user-flow/FL-*.md` | 플로우 14개(출처 ID) |
 | 04 | `research/cake-spec-2026-11/spec_rows.py`, `docs/04-functional-spec/spec.md` | SPEC 79개, 수락 기준 328개, 공통 규칙 10개 |
-| 05 | `db/schema.sql`, `docs/05-erd/README.md`, `research/cake-erd-2026-11/erd_map.py` | 테이블 60개, 앱 규칙 40개, SPEC마다 닿는 테이블 |
+| 05 | `db/schema.sql`, `docs/05-erd/README.md`, `research/cake-erd-2026-11/erd_map.py` | 테이블 61개, 앱 규칙 40개, SPEC마다 닿는 테이블 |
 | 06 | `api/openapi.yaml`, `research/cake-api-2026-11/api_ops.py`·`api_catalog.py` | API 83개(응답 418개), 카카오 스킬 API 넷의 결과 코드 57개, 열린 질문 1개, 결정 사항 30개 |
 | 07 | `docs/07-sitemap/sitemap.yaml` | 화면 50개와 화면마다 부르는 API |
 | 08 | `research/cake-screens-2026-11/screens_*.py`, `docs/08-screens/SCR-*.md` | 상태 367개, 응답 행 975개 |
