@@ -495,7 +495,7 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
       throw new Error("시험 큐 실패");
     });
     const response = await receive({ send });
-    expect(response.headers.get("Siljang-Outcome")).toBe("not_accepting");
+    expect(response.headers.get("Siljang-Outcome")).toBe("ai_key_missing");
     expectSchema("SkillTemplateResponse", await response.json());
     const job = send.mock.calls[0]?.[0] as KakaoCallbackJob;
     expect((await stored(job))?.kakao_callback_enc).toBeNull();

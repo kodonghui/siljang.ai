@@ -97,6 +97,11 @@ export async function linkTestChannel(db: Queryable, channelId: string): Promise
 /** 상담 수신 시험의 준비. 채널 연결과 예약 링크 발급은 서로 다른 조건이다(SPEC-017). */
 export async function issueTestBookingLink(db: RequestDb, shop: ShopFixture): Promise<void> {
   await db.transaction(async (tx) => {
+    await tx.query(
+      `INSERT INTO business_calendars (shop_id, daily_capacity, order_cutoff_days, order_cutoff_time)
+        VALUES ($1, 10, 2, '18:00') ON CONFLICT (shop_id) DO NOTHING`,
+      [shop.shopId],
+    );
     const reviewer = await tx.query<{ id: string }>(
       "INSERT INTO operators (email, display_name) VALUES ($1, '시험 운영자') RETURNING id",
       [`${newUuid()}@operator.example`],

@@ -2,7 +2,8 @@ import { sqlStateOf } from "./db";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
 import { scheduleKakaoCallback } from "./kakao-callback-store";
 import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
-import { kakaoReply } from "./kakao-reply";
+import { replyWithKakaoHandoff } from "./kakao-handoff";
+import { kakaoAiFailureOutcome, kakaoReply } from "./kakao-reply";
 import { kakaoContactPhone, receiveKakaoMessage } from "./kakao-skill-store";
 import { type ShopRequest, shopRoute } from "./routes";
 import { ForgedScopeError } from "./shop-scope";
@@ -50,7 +51,11 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
         return kakaoReply(r, "callback_pending");
       }
     }
-    return reply("not_accepting");
+    // 본문 마스킹/AI 업무 처리기가 연결되기 전에는 모델을 호출하지 않는다.
+    const outcome = kakaoAiFailureOutcome(r.services.aiConfigured ? "unavailable" : "key_missing");
+    return await replyWithKakaoHandoff(r.db, receipt, r.services.now(), (previous) =>
+      kakaoReply(r, outcome, { previous }),
+    );
   } catch (error) {
     const dbCode = sqlStateOf(error);
     r.log("error", {
