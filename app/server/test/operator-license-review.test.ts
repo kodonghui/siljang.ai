@@ -75,6 +75,19 @@ it("보류 이유200개 이모지와64자 버전을 받고 여러 오류를 함�
 it.each(["0", "101", "-1", "1.2", "NaN", "", "1e2"])("목록 limit %s는422임", (limit) => {
   expect(() => parseReviewList({ limit })).toThrowError(expect.objectContaining({ code: "validation_failed" }));
 });
+it.each([" ", "\t\n", "\u00a0", "\u3000", "\ufeff"])("공백뿐인 보류 이유는too_short임 %#", (holdReason) => {
+  expect(() => parseLicenseReview({ baseRevision: "revision", decision: "on_hold", holdReason })).toThrowError(
+    expect.objectContaining({
+      code: "validation_failed",
+      extras: { errors: [{ field: "/holdReason", code: "too_short" }] },
+    }),
+  );
+});
+it.each(["abc", "1.5", "1e2", ""])("limit 형식 %s는bad_format임", (limit) => {
+  expect(() => parseReviewList({ limit })).toThrowError(
+    expect.objectContaining({ extras: { errors: [{ field: "query:limit", code: "bad_format" }] } }),
+  );
+});
 it.each([
   "bad=cursor",
   "A",
@@ -134,6 +147,86 @@ async function fixture(options: { database?: RequestDb; connect?: DbConnector; s
 
 describeDb("TASK-034 운영자의 영업 신고 확인 API-012/013/014", () => {
   afterAll(async () => db.close());
+  it("같은 이유의 새 요청 키는unchanged이고 보류 할 일/알림을 늘리지 않음", async () => {
+    const h = await fixture();
+    expect((await h.review("on_hold", "합성 이유")).status).toBe(200);
+    const current = await h.current(),
+      again = await h.review("on_hold", "합성 이유");
+    expect(again.status).toBe(200);
+    expect(await again.json()).toMatchObject({ outcome: "unchanged" });
+    expect((await h.current()).revision).toBe(current.revision);
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM owner_tasks WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM owner_alerts WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
+  });
+  it("보류 이유를 바꾸면 옛 할 일/발신 대기만 닫고 승인하면 새 보류도 닫음", async () => {
+    const h = await fixture();
+    await db.query(
+      "INSERT INTO owner_tasks (shop_id,kind,event_key,detail,opened_at) VALUES ($1,'calendar_conflict',$2,'{}',$3)",
+      [h.shop.shopId, `task:calendar_conflict:${h.shop.shopId}`, NOW],
+    );
+    expect((await h.review("on_hold", "첫 합성 이유")).status).toBe(200);
+    expect((await h.review("on_hold", "새 합성 이유")).status).toBe(200);
+    const tasks = (
+      await db.query<{ id: string; detail: { reason: string }; closed_at: Date | null; event_key: string }>(
+        "SELECT id,detail,closed_at,event_key FROM owner_tasks WHERE shop_id=$1 AND kind='license_on_hold' ORDER BY detail->>'reason'",
+        [h.shop.shopId],
+      )
+    ).rows;
+    expect(tasks).toHaveLength(2);
+    expect(tasks.find((t) => t.detail.reason === "첫 합성 이유")?.closed_at).toEqual(NOW);
+    expect(tasks.find((t) => t.detail.reason === "새 합성 이유")?.closed_at).toBeNull();
+    for (const task of tasks)
+      expect(task.event_key).toMatch(new RegExp(`^task:license_on_hold_[a-f0-9]{24}:${h.shop.shopId}$`));
+    expect(
+      (
+        await db.query("SELECT count(*)::int AS n FROM owner_alerts WHERE shop_id=$1 AND next_attempt_at IS NOT NULL", [
+          h.shop.shopId,
+        ])
+      ).rows,
+    ).toEqual([{ n: 1 }]);
+    expect((await h.review()).status).toBe(200);
+    expect(
+      (
+        await db.query(
+          "SELECT count(*)::int AS n FROM owner_tasks WHERE shop_id=$1 AND kind='license_on_hold' AND closed_at IS NULL",
+          [h.shop.shopId],
+        )
+      ).rows,
+    ).toEqual([{ n: 0 }]);
+    expect(
+      (
+        await db.query("SELECT count(*)::int AS n FROM owner_alerts WHERE shop_id=$1 AND next_attempt_at IS NOT NULL", [
+          h.shop.shopId,
+        ])
+      ).rows,
+    ).toEqual([{ n: 0 }]);
+    expect(
+      (
+        await db.query("SELECT closed_at FROM owner_tasks WHERE shop_id=$1 AND kind='calendar_conflict'", [
+          h.shop.shopId,
+        ])
+      ).rows,
+    ).toEqual([{ closed_at: null }]);
+  });
+  it("독립 목록에서 받은 버전으로 바로 확인됨을 남김", async () => {
+    const isolated = await isolatedTestDb();
+    try {
+      const h = await fixture({ database: isolated.db, connect: () => isolated.connect() });
+      const response = await h.call("GET", "/operator/shops"),
+        page = (await response.json()) as ReviewList;
+      const revision = page.items.find((s) => s.shopId === h.shop.shopId)?.revision;
+      if (!revision) throw new Error("목록 버전 없음");
+      const saved = await h.review("verified", undefined, revision);
+      expect(saved.status, await saved.clone().text()).toBe(200);
+      expectSchema("LicenseReviewResult", await saved.json());
+    } finally {
+      await isolated.close();
+    }
+  });
   it("운영자 세션으로 확인 기다림 목록을 읽음", async () => {
     const h = await fixture(),
       response = await h.call("GET", "/operator/shops");

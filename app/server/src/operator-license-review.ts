@@ -1,5 +1,6 @@
 /** API-012~014/SPEC-003. 계좌 원문과 손님·주문 기록은 읽지도 응답하지도 않는다. */
 import { requireJson } from "./body";
+import { toHex } from "./encoding";
 import { eventKeys, insertOnce } from "./event-keys";
 import { parseLicenseReview, parseReviewList, reviewCursor } from "./license-review-input";
 import { type ReviewSummaryRow, reviewRevision } from "./license-review-state";
@@ -236,12 +237,22 @@ export async function reviewLicense(r: ShopRequest): Promise<Response> {
         throw new Error("unexpected license review result");
       }
       if (result === "done" && input.decision === "on_hold") {
-        const event = crypto.randomUUID();
+        // A33: 대상은 실제 가게 ID, 이벤트는 같은 판정 상태/운영자/시각/이유의 지문이다.
+        const decision = JSON.stringify([
+          r.scope.shopId,
+          row.revision_state,
+          operatorId,
+          now.toISOString(),
+          input.holdReason,
+        ]);
+        const event = toHex(
+          new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(decision))),
+        ).slice(0, 24);
         const task = await insertOnce(
           db,
           "owner_tasks",
           "INSERT INTO owner_tasks (shop_id, event_key, kind, detail, opened_at) VALUES ($1, $2, 'license_on_hold', $3, $4) ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id",
-          [eventKeys.task("license_on_hold", event), { reason: input.holdReason }, now],
+          [eventKeys.task(`license_on_hold_${event}`, r.scope.shopId), { reason: input.holdReason }, now],
         );
         await insertOnce(
           db,

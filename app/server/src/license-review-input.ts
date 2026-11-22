@@ -16,14 +16,9 @@ export function reviewCursor(status: string, at: string, id: string): string {
 export function parseReviewList(query: Record<string, string>): ReviewListInput {
   const status = query.status ?? "pending";
   if (!["pending", "on_hold", "verified"].includes(status)) throw fieldError("query:status", "bad_format");
+  if (query.limit !== undefined && !/^-?[0-9]+$/.test(query.limit)) throw fieldError("query:limit", "bad_format");
   const limit = query.limit === undefined ? 20 : Number(query.limit);
-  if (
-    !Number.isInteger(limit) ||
-    limit < 1 ||
-    limit > 100 ||
-    (query.limit !== undefined && !/^[0-9]+$/.test(query.limit))
-  )
-    throw fieldError("query:limit", "out_of_range");
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw fieldError("query:limit", "out_of_range");
   let after: ReviewListInput["after"] = null;
   if (query.cursor !== undefined) {
     try {
@@ -60,7 +55,8 @@ export function parseLicenseReview(body: unknown): LicenseReviewInput {
       return;
     }
     if (typeof value !== "string" || value.includes("\u0000")) errors.push({ field: `/${key}`, code: "bad_format" });
-    else if ([...value].length < min) errors.push({ field: `/${key}`, code: "too_short" });
+    else if ([...value].length < min || (key === "holdReason" && value.trim().length === 0))
+      errors.push({ field: `/${key}`, code: "too_short" });
     else if ([...value].length > max) errors.push({ field: `/${key}`, code: "too_long" });
     else if (pattern && !pattern.test(value)) errors.push({ field: `/${key}`, code: "bad_format" });
   };
