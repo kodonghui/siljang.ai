@@ -30,9 +30,11 @@ import {
   ownerRoute,
   type RouteDecl,
   type ScopeResolvers,
+  shopRoute,
 } from "./routes";
 import { createServices, type ServiceOverrides, type Services } from "./services";
 import { readSettings, type Settings } from "./settings";
+import { getShop, registerShop } from "./shops";
 import { StorageUnavailableError } from "./storage";
 import { newTraceId } from "./trace";
 import { createUpload } from "./uploads";
@@ -151,6 +153,8 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   operatorRoute("GET", "/operator/me", getOperatorMe),
   // 06 API-007 사진 올리기(TASK-022). 가게가 정해지기 전에도 쓰므로(가게 등록의 신고증) 사장님 범위 경로다.
   ownerRoute("POST", "/owner/uploads", createUpload),
+  ownerRoute("POST", "/owner/shop", registerShop),
+  shopRoute("GET", "/owner/shop", "owner", getShop),
   openRoute(
     "GET",
     FILE_ROUTE,

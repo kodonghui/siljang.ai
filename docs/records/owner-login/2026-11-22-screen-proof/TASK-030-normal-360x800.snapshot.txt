@@ -1,0 +1,7 @@
+- title: "수제케이크 주문제작" [url=https://staging.siljang.ai.corthex-hq.com/owner/login]
+- main:
+  - text: "Siljang"
+  - heading "사장님 로그인" [level=1]
+  - button "카카오 로그인" [ref=e1]:
+    - image "카카오 로그인"
+  - text: "가게 사장님용"
