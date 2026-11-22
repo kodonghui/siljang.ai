@@ -56,3 +56,8 @@ GRANT SELECT, INSERT ON price_options, price_option_rules, designs TO :"runtime_
 -- TASK-039: 새 규정·조문·환불 단계를 남기고 이전 내용은 읽기만 한다.
 GRANT SELECT, INSERT, UPDATE (superseded_at) ON operating_rules TO :"runtime_role";
 GRANT SELECT, INSERT ON rule_clauses, refund_tiers TO :"runtime_role";
+
+-- TASK-040: 새 계좌/옛 계좌의 교체 시각만 쓴다. 예금주 확인 이력·일반 승인/삭제는 금지한다.
+GRANT SELECT, UPDATE (retired_at) ON payment_accounts TO :"runtime_role";
+GRANT INSERT (shop_id, bank_name, account_number_enc, account_last4, holder_name,
+  holder_mismatch_confirmed, card_payment_url, created_at) ON payment_accounts TO :"runtime_role";

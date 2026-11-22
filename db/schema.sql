@@ -131,6 +131,7 @@ CREATE TABLE kakao_channels (
   previous_key_until timestamptz,                        -- 바로 앞 버전의 키도 받는 끝 시각: 바꾼 때부터 24시간까지. 바로 끊었거나 바꾼 적이 없으면 비움(REQ-237)
   claim_expires_at   timestamptz,                        -- '연결 확인 중' 선점이 풀리는 시각: 마지막 저장이나 연결 확인 시작에서 30분. 지난 뒤 다른 가게가 같은 봇을 넣으면 이 연결은 '연결 안 됨'(REQ-238)
   created_at         timestamptz NOT NULL DEFAULT now(), -- 만든 시각
+  configuration_order bigint GENERATED ALWAYS AS IDENTITY NOT NULL, -- 마지막으로 고른 연결의 순번. 같은 생성 시각에도 현재 설정 하나를 찾고 스킬 키 교체만으로 선택은 바꾸지 않음(API-030/031)
   CONSTRAINT kakao_channels_shop_scope UNIQUE (shop_id, id),
   CONSTRAINT kakao_channels_linked_chk CHECK (status <> 'linked' OR linked_at IS NOT NULL),
   CONSTRAINT kakao_channels_retired_chk CHECK ((status = 'retired') = (retired_at IS NOT NULL)),
@@ -141,6 +142,22 @@ CREATE TABLE kakao_channels (
 );
 CREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked'); -- 채널 하나는 가게 하나에만('이미 다른 가게', SPEC-008)
 CREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked'; -- 가게마다 받는 채널 하나
+CREATE INDEX kakao_channels_configuration_idx ON kakao_channels (shop_id, configuration_order DESC) WHERE status <> 'retired';
+
+-- 다른 가게의 지난 선점을 풀 수 있는 좁은 기능. ID/내용은 반환하지 않는다.
+-- 모든 채널 설정은 이 잠금 뒤 자기 가게 행을 잠근다. 봇을 맞바꿀 때 잠금 역전을 피한다.
+CREATE FUNCTION claim_kakao_bot(requesting_shop uuid, requested_bot text, requested_at timestamptz) RETURNS boolean
+LANGUAGE plpgsql STRICT SECURITY DEFINER SET search_path = pg_catalog AS $kakao_claim$
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended('siljang:kakao:channel-configuration:v1',0));
+  UPDATE public.kakao_channels SET status='failed',claim_expires_at=NULL
+    WHERE shop_id<>requesting_shop AND bot_id=requested_bot AND status='pending' AND claim_expires_at<=requested_at;
+  RETURN NOT EXISTS (SELECT 1 FROM public.kakao_channels
+    WHERE shop_id<>requesting_shop AND bot_id=requested_bot AND status IN ('pending','linked'));
+END
+$kakao_claim$;
+REVOKE ALL ON FUNCTION claim_kakao_bot(uuid,text,timestamptz) FROM PUBLIC;
+
 COMMENT ON TABLE kakao_channels IS 'TBL-004 카카오톡 채널 연결: 손님 메시지를 받는 가게 채널';
 
 -- TBL-005 privacy_policies (CTX-007) ← SPEC-010, SPEC-011, SPEC-018 | terms: none
@@ -325,6 +342,22 @@ CREATE TABLE payment_accounts (
   CONSTRAINT payment_accounts_holder_checked_chk CHECK ((holder_checked_by IS NULL) = (holder_checked_at IS NULL)) -- 예금주를 확인한 운영자와 시각은 함께
 );
 CREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL; -- 가게마다 지금 쓰는 곳 하나
+-- TASK-040/A25: 새 계좌가 등록되면 보류된 영업 신고만 다시 확인 기다림으로 바꾼다.
+-- 서버 역할에 일반 승인 UPDATE 권한을 주지 않는다. 트리거 함수는 직접 호출할 수 없다.
+CREATE FUNCTION payment_account_license_pending() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $payment_license$
+BEGIN
+  UPDATE public.shops
+    SET license_status = 'pending', license_hold_reason = NULL,
+        license_reviewed_by = NULL, license_reviewed_at = NULL, updated_at = NEW.created_at
+    WHERE id = NEW.shop_id AND license_status = 'on_hold';
+  RETURN NEW;
+END
+$payment_license$;
+REVOKE ALL ON FUNCTION payment_account_license_pending() FROM PUBLIC;
+CREATE TRIGGER payment_account_license_pending AFTER INSERT ON payment_accounts
+  FOR EACH ROW EXECUTE FUNCTION payment_account_license_pending();
+
 COMMENT ON TABLE payment_accounts IS 'TBL-015 결제 수단: 가게 명의 계좌(암호화)와 카드 결제 링크. 우리 회사 계좌는 어디에도 없음(REQ-079)';
 
 -- TBL-016 customers (CTX-001) ← SPEC-017, SPEC-022, SPEC-029, SPEC-040, SPEC-065, SPEC-066, SPEC-068, SPEC-069 | terms: TERM-043
@@ -1897,6 +1930,7 @@ COMMENT ON COLUMN kakao_channels.skill_key_issued_at IS '지금 버전의 스킬
 COMMENT ON COLUMN kakao_channels.previous_key_until IS '바로 앞 버전의 키도 받는 끝 시각: 바꾼 때부터 24시간까지. 바로 끊었거나 바꾼 적이 없으면 비움(REQ-237)';
 COMMENT ON COLUMN kakao_channels.claim_expires_at IS '''연결 확인 중'' 선점이 풀리는 시각: 마지막 저장이나 연결 확인 시작에서 30분. 지난 뒤 다른 가게가 같은 봇을 넣으면 이 연결은 ''연결 안 됨''(REQ-238)';
 COMMENT ON COLUMN kakao_channels.created_at IS '만든 시각';
+COMMENT ON COLUMN kakao_channels.configuration_order IS '마지막으로 고른 연결의 순번. 같은 생성 시각에도 현재 설정 하나를 찾고 스킬 키 교체만으로 선택은 바꾸지 않음(API-030/031)';
 COMMENT ON COLUMN privacy_policies.id IS '처리방침 버전 ID';
 COMMENT ON COLUMN privacy_policies.shop_id IS '처리방침의 가게';
 COMMENT ON COLUMN privacy_policies.version IS '버전. 바뀌면 새 버전';

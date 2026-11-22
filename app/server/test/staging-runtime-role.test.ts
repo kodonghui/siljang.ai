@@ -14,7 +14,7 @@ import { readSettings, Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { newUploadId, tempKey } from "../src/uploads";
 import { collectLogs, describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
-import { newFieldKey } from "./support/field-keys";
+import { newFieldKey, singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 import { MemoryStore } from "./support/storage";
@@ -325,6 +325,89 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
       await expect(conn.query("DELETE FROM refund_tiers WHERE shop_id=$1", [shop.shopId])).rejects.toMatchObject({
         code: "42501",
       });
+    } finally {
+      await conn.close();
+    }
+  });
+
+  it("제한 역할의 계좌 조회/교체·보류 해제는 되고 임의 승인·예금주 확인/삭제는 막음", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const fixture = await createShop(isolated.db, "제한 역할 계좌 가게");
+    const { fc } = singleKeyCrypto();
+    const enc = await fc.seal("123456-01-234567", {
+      shopId: fixture.shopId,
+      purpose: "payment_accounts.account_number",
+    });
+    await isolated.db.query("UPDATE payment_accounts SET account_number_enc=$2 WHERE shop_id=$1", [
+      fixture.shopId,
+      enc,
+    ]);
+    const operator = await isolated.db.query<{ id: string }>(
+      "INSERT INTO operators(email,display_name) VALUES ($1,'합성 운영자') RETURNING id",
+      [`${newUuid()}@operator.example`],
+    );
+    await isolated.db.query(
+      "UPDATE shops SET license_status='on_hold',license_hold_reason='합성 보류',license_reviewed_by=$2,license_reviewed_at=$3 WHERE id=$1",
+      [fixture.shopId, operator.rows[0]?.id, now],
+    );
+    const app = createApp({
+      connect: () => roleDb(),
+      scopes: { owner: async () => createShopScope(fixture.shopId, { kind: "owner", ownerId: fixture.ownerId }) },
+      services: { now: () => now, fieldCrypto: fc },
+      logSink: () => {},
+    });
+    const call = (method: string, body?: unknown, key = newRequestKey()) =>
+      app.request(
+        "https://siljang.example/api/owner/payment-destination",
+        {
+          method,
+          headers: { origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": key },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        },
+        testEnv(),
+      );
+    const get = await call("GET");
+    expect(get.status, await get.clone().text()).toBe(200);
+    const read = (await get.json()) as { revision: string };
+    const body = {
+      baseRevision: read.revision,
+      bankName: "합성은행",
+      accountNumber: "111111-12-345678",
+      holderName: "시험사장",
+      cardPaymentUrl: null,
+    };
+    const key = newRequestKey();
+    const saved = await call("PUT", body, key);
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    const replay = await call("PUT", body, key);
+    expect(replay.status).toBe(200);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT license_status,license_hold_reason,license_reviewed_by FROM shops WHERE id=$1",
+          [fixture.shopId],
+        )
+      ).rows,
+    ).toEqual([{ license_status: "pending", license_hold_reason: null, license_reviewed_by: null }]);
+    expect(
+      (
+        await isolated.db.query("SELECT id FROM owner_alerts WHERE shop_id=$1 AND kind='payment_account_changed'", [
+          fixture.shopId,
+        ])
+      ).rowCount,
+    ).toBe(1);
+    const conn = roleDb();
+    try {
+      await expect(
+        conn.query("UPDATE shops SET license_status='verified' WHERE id=$1", [fixture.shopId]),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        conn.query("UPDATE payment_accounts SET holder_checked_at=now() WHERE shop_id=$1", [fixture.shopId]),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(conn.query("DELETE FROM payment_accounts WHERE shop_id=$1", [fixture.shopId])).rejects.toMatchObject(
+        { code: "42501" },
+      );
     } finally {
       await conn.close();
     }
