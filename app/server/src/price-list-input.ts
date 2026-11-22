@@ -1,5 +1,5 @@
 /** 가격표 전체 입력(API-017). 참조 이름은 요청 안에서만 쓰고 저장하지 않는다. */
-import { ApiError, type FieldError, fieldError } from "./problem";
+import { ApiError, type FieldError } from "./problem";
 import { isUuid } from "./shop-scope";
 
 export interface PriceOptionInput {
@@ -34,18 +34,17 @@ export interface PriceListInput {
 }
 
 type Input = Record<string, unknown>;
-function record(value: unknown, field: string): Input {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw fieldError(field, "bad_format");
-  return value as Input;
-}
-
 export function parsePriceList(body: unknown): PriceListInput {
   const errors: FieldError[] = [];
   const error = (field: string, code: FieldError["code"]) => {
     errors.push({ field, code });
   };
-  const object = (value: unknown, path: string, required: string[], optional: string[] = []): Input => {
-    const item = record(value, path || "/");
+  const object = (value: unknown, path: string, required: string[], optional: string[] = []): Input | undefined => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      error(path || "/", "bad_format");
+      return;
+    }
+    const item = value as Input;
     for (const key of required) if (!Object.hasOwn(item, key)) error(`${path}/${key}`, "required");
     for (const key of Object.keys(item))
       if (![...required, ...optional].includes(key))
@@ -86,13 +85,16 @@ export function parsePriceList(body: unknown): PriceListInput {
     return value;
   };
   const input = object(body, "", ["baseRevision", "options", "rules", "designs"]);
-  if (input.baseRevision !== null) text(input.baseRevision, "/baseRevision", 64, /^[A-Za-z0-9._:-]+$/);
+  if (!input) throw new ApiError("validation_failed", { errors });
+  if (input.baseRevision !== null) text(input.baseRevision, "/baseRevision", 64, /^[A-Za-z0-9._-]+$/);
   const options = list(input.options, "/options", 1, 100);
+  const checkReferences = Array.isArray(input.options) && input.options.length <= 100;
   const byKey = new Map<string, Input>();
   const names = new Set<string>();
   for (const [i, value] of options.entries()) {
     const p = `/options/${i}`,
       o = object(value, p, ["key", "group", "name", "priceKind", "amount", "amountMax", "inStandard", "position"]);
+    if (!o) continue;
     text(o.key, `${p}/key`, 40, /^[A-Za-z0-9_-]+$/);
     text(o.name, `${p}/name`, 30);
     enumeration(o.group, `${p}/group`, ["size", "flavor", "design", "extra"]);
@@ -119,25 +121,29 @@ export function parsePriceList(body: unknown): PriceListInput {
   for (const [i, value] of list(input.rules, "/rules", 0, 500).entries()) {
     const p = `/rules/${i}`,
       rule = object(value, p, ["kind", "optionA", "optionB", "amount"]);
+    if (!rule) continue;
     enumeration(rule.kind, `${p}/kind`, ["exclude", "surcharge"]);
     for (const name of ["optionA", "optionB"]) {
       text(rule[name], `${p}/${name}`, 40, /^[A-Za-z0-9_-]+$/);
-      if (typeof rule[name] === "string" && !byKey.has(rule[name] as string))
+      if (checkReferences && typeof rule[name] === "string" && !byKey.has(rule[name] as string))
         error(`${p}/${name}`, "reference_not_found");
     }
-    if (rule.optionA === rule.optionB) error(`${p}/optionB`, "not_allowed");
+    if (typeof rule.optionA === "string" && rule.optionA === rule.optionB) error(`${p}/optionB`, "not_allowed");
     if (rule.kind === "surcharge") integer(rule.amount, `${p}/amount`, 1, 10000000);
     if (rule.kind === "surcharge" && rule.amount === null) error(`${p}/amount`, "required");
     if (rule.kind === "exclude" && rule.amount !== undefined && rule.amount !== null)
       error(`${p}/amount`, "not_allowed");
-    const pair = JSON.stringify([rule.optionA, rule.optionB].sort());
-    if (pairs.has(pair)) error(p, pairs.get(pair) === rule.kind ? "duplicate" : "conflict");
-    pairs.set(pair, rule.kind);
+    if (typeof rule.optionA === "string" && typeof rule.optionB === "string") {
+      const pair = JSON.stringify([rule.optionA, rule.optionB].sort());
+      if (pairs.has(pair)) error(p, pairs.get(pair) === rule.kind ? "duplicate" : "conflict");
+      pairs.set(pair, rule.kind);
+    }
   }
   const designNames = new Set<string>();
   for (const [i, value] of list(input.designs, "/designs", 0, 50).entries()) {
     const p = `/designs/${i}`,
       d = object(value, p, ["name", "optionKey", "inStandard", "position"], ["uploadId", "sourceDesignId"]);
+    if (!d) continue;
     text(d.name, `${p}/name`, 30);
     integer(d.position, `${p}/position`, 0, 32767);
     boolean(d.inStandard, `${p}/inStandard`);
@@ -148,10 +154,12 @@ export function parsePriceList(body: unknown): PriceListInput {
     if (source && !isUuid(d.sourceDesignId)) error(`${p}/sourceDesignId`, "bad_format");
     if (d.optionKey !== null) {
       text(d.optionKey, `${p}/optionKey`, 40, /^[A-Za-z0-9_-]+$/);
-      const option = byKey.get(String(d.optionKey));
-      if (!option) error(`${p}/optionKey`, "reference_not_found");
-      else if (option.group !== "design") error(`${p}/optionKey`, "not_allowed");
-      else if (d.inStandard === true && option.inStandard !== true) error(`${p}/inStandard`, "not_allowed");
+      if (checkReferences && typeof d.optionKey === "string") {
+        const option = byKey.get(d.optionKey);
+        if (!option) error(`${p}/optionKey`, "reference_not_found");
+        else if (option.group !== "design") error(`${p}/optionKey`, "not_allowed");
+        else if (d.inStandard === true && option.inStandard !== true) error(`${p}/inStandard`, "not_allowed");
+      }
     }
     if (typeof d.name === "string") {
       if (designNames.has(d.name)) error(`${p}/name`, "duplicate");

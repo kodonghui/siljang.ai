@@ -594,4 +594,43 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
       await probe.close();
     }
   });
+
+  it.each([17, 26])("알려진 Free 외부 호출50개 한도: 새 사진%d장의 실패/잔류를 모의로 기록", async (count) => {
+    const h = await fixture();
+    const designs = [];
+    for (let i = 0; i < count; i++)
+      designs.push({ name: `도안${i}`, uploadId: await photo(h), optionKey: null, inStandard: false, position: i });
+    let requests = 0;
+    const spend = () => {
+      if (++requests > 50) throw new StorageUnavailableError("synthetic subrequest limit");
+    };
+    const head = h.store.head.bind(h.store),
+      copy = h.store.copy.bind(h.store),
+      remove = h.store.delete.bind(h.store);
+    h.store.head = async (key) => {
+      spend();
+      return head(key);
+    };
+    h.store.copy = async (from, to) => {
+      spend();
+      return copy(from, to);
+    };
+    h.store.delete = async (key) => {
+      spend();
+      return remove(key);
+    };
+    const response = await h.call("POST", "/owner/price-list/versions", { ...input(), designs });
+    if (count === 17) {
+      expect(response.status, await response.clone().text()).toBe(201);
+      expect([...h.store.objects.keys()].filter((k) => k.startsWith("tmp/"))).toHaveLength(1);
+    } else {
+      await expectProblem(response, "storage_unavailable");
+      expect((await db.query("SELECT count(*)::int AS n FROM price_lists WHERE shop_id=$1", [h.shopId])).rows).toEqual([
+        { n: 0 },
+      ]);
+      expect([...h.store.objects.keys()].filter((k) => k.startsWith("shops/"))).toHaveLength(24);
+      expect([...h.store.objects.keys()].filter((k) => k.startsWith("tmp/"))).toHaveLength(26);
+    }
+    expect(requests).toBeGreaterThan(50);
+  });
 });

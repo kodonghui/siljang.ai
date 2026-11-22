@@ -227,7 +227,7 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
       pathIds: [],
       body: raw,
       async execute(db) {
-        await db.found("SELECT s.id FROM shops s WHERE s.id=$1 FOR UPDATE");
+        await db.found("SELECT s.id FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE");
         const previous = await current(db);
         if (input.baseRevision !== (previous?.revision ?? null)) throw new ApiError("version_conflict");
         const refs = input.designs.flatMap((d, i) =>

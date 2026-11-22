@@ -119,10 +119,12 @@ const MAKES_SCOPE = /\bcreateShopScope\s*\(|import[^;]*\bcreateShopScope\b|["'`]
 const OWNER_SCOPE_MAKERS: Record<string, string> = {
   "owner-scope.ts": "정의",
   "owner-login.ts": "쿠키의 세션에서 찾은 사장님과 가게 요약만 담음(TASK-020)",
+  "price-lists.ts": "실제 인증된 사장님 출처의 가게 범위를 같은 사장님 사진 범위로 변환(TASK-038)",
 };
 
 /** 사장님 범위를 만드는 표시(MAKES_SCOPE와 같은 꼴). */
-const MAKES_OWNER_SCOPE = /\bcreateOwnerScope\s*\(|import[^;]*\bcreateOwnerScope\b|["'`]createOwnerScope["'`]/;
+const MAKES_OWNER_SCOPE =
+  /\b(?:createOwnerScope|ownerOfShopScope)\s*\(|import[^;]*\b(?:createOwnerScope|ownerOfShopScope)\b|["'`](?:createOwnerScope|ownerOfShopScope)["'`]/;
 
 /** 운영자 범위(로그인한 운영자, TASK-021)를 만들 수 있는 파일과 까닭. */
 const OPERATOR_SCOPE_MAKERS: Record<string, string> = {
