@@ -1,0 +1,46 @@
+{
+  "runId": "eval-20261122T134127Z-f04a7c",
+  "mode": "real",
+  "startedAt": "2026-11-22T13:41:27.466Z",
+  "casesVersion": "eval-cases-1",
+  "subject": {
+    "name": "baseline-v0",
+    "promptVersion": "eval-baseline-v0",
+    "sendsNotice": false
+  },
+  "models": [
+    "anthropic/claude-haiku-5-5"
+  ],
+  "estimate": {
+    "fx": {
+      "rate": "1450.00",
+      "date": "2026-11-14"
+    },
+    "cases": 134,
+    "targets": [
+      {
+        "target": "anthropic/claude-haiku-5-5",
+        "typical": {
+          "calls": 134,
+          "input": 429097,
+          "output": 80400,
+          "krw": "121.10"
+        },
+        "upper": {
+          "calls": 134,
+          "input": 1423178,
+          "output": 548864,
+          "krw": "656.55"
+        }
+      }
+    ],
+    "typicalKrw": "121.10",
+    "upperKrw": "656.55"
+  },
+  "maxKrw": "700.00",
+  "maxFailures": 2,
+  "spentKrw": "148.78",
+  "unknownCostReserveKrw": "4.91",
+  "stopped": null,
+  "resultRows": 134
+}

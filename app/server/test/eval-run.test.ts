@@ -476,6 +476,23 @@ describe("한 명령(CLI)", () => {
     }
   }, 60_000);
 
+  it("CLI 재개는 이미 받은 결과와 호출 ID를 바꾸지 않음", () => {
+    const dir = mkdtempSync(join(tmpdir(), "eval-cli-resume-"));
+    try {
+      const first = cli(["--limit", "3", "--out", dir]);
+      expect(first.code).toBe(0);
+      expect(existsSync(join(dir, "checkpoint.json"))).toBe(true);
+      const rows = readFileSync(join(dir, "results.jsonl"), "utf8");
+      const spent = JSON.parse(readFileSync(join(dir, "run.json"), "utf8")).spentKrw;
+      const next = cli(["--limit", "3", "--resume-from", dir]);
+      expect(next.code).toBe(0);
+      expect(readFileSync(join(dir, "results.jsonl"), "utf8")).toBe(rows);
+      expect(JSON.parse(readFileSync(join(dir, "run.json"), "utf8")).spentKrw).toBe(spent);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   it("--real은 키·환율·상한이 없으면 시작하지 않고(종료 2) 키 값을 내지 않음", () => {
     const noKey = cli(["--real", "--max-krw", "100000", "--limit", "2"], {
       AI_USD_KRW: "1450.00",

@@ -168,7 +168,10 @@ export function summaryMarkdown(run: RunResult): string {
     `- 모델: ${run.models.join(", ")}`,
     `- 금액 기준: 환율 ${run.estimate.fx.rate}원(${run.estimate.fx.date}), 요금표 src/ai-prices.ts`,
     `- 어림(시작 전): 전형 ${run.estimate.typicalKrw}원, 위 끝 ${run.estimate.upperKrw}원 · 상한 ${run.maxKrw === null ? "없음" : `${run.maxKrw}원`} · 쓴 금액 ${run.spentKrw}원`,
-    `- 멈춤: ${run.stopped === null ? "없음(모든 사례를 돌림)" : `${run.stopped.reason === "provider_failures" ? `모델 호출 실패 ${run.maxFailures}회` : "비용 상한"}로 ${run.stopped.model}의 ${run.stopped.beforeCase} 앞에서 멈춤`}`,
+    `- 멈춤: ${run.stopped === null ? "없음(모든 사례를 돌림)" : `${run.stopped.reason === "provider_failures" ? `모델 호출 실패 ${run.maxFailures}회` : run.stopped.reason === "retry_after" ? `Retry-After ${run.stopped.retryAt}` : "비용 상한"}로 ${run.stopped.model}의 ${run.stopped.beforeCase} 앞에서 멈춤`}`,
+    ...(run.unknownCostReserveKrw && run.unknownCostReserveKrw !== "0.00"
+      ? [`- 사용량 미확인 호출의 비용 여유 ${run.unknownCostReserveKrw}원은 상한 계산에서 유지함(청구액 아님)`]
+      : []),
     "",
     "## REQ-145 다섯 잣대: 실패 수 / 기계로 매긴 사례 (겨눈 사례의 실패 / 겨눈 사례)",
     "",
@@ -279,6 +282,7 @@ export function writeResultFiles(dir: string, run: RunResult): Readonly<Record<s
     maxKrw: run.maxKrw,
     maxFailures: run.maxFailures,
     spentKrw: run.spentKrw,
+    unknownCostReserveKrw: run.unknownCostReserveKrw,
     stopped: run.stopped,
     resultRows: run.results.length,
   };
