@@ -904,3 +904,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 - 277 전체 확인: 서버82파일/1,479개·웹11파일/237개·타입/lint·빌드910ms와 단계9개가 통과했습니다. [후속 처리 표](../docs/records/calendar/pr-168-review-followup.md)에 실제 권한 대기와 도구 보안 리뷰 미실행도 그대로 적었습니다.
 
 - 277 추가 지적: 빈 날짜도 GET revision을 보내며 null409를 계약 설명에 명시했습니다. 날짜 버전에서도 주문 표시 시각을 빼고 자정의 설정 버전 변화는 재조회로 갱신합니다. 실패1건 뒤 관련123개가 통과했습니다.
+
+- 277 추가 수정 전체: 서버82파일/1,480개·웹237개·타입/lint·빌드763ms/Worker dry-run과 단계9개가 통과했습니다. 실제 권한6문장은 대기이며 새 main 배포 확인을 이어갑니다.
