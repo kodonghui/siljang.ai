@@ -9,7 +9,7 @@
 - 결제·새 토큰/인증정보·다른 서비스 정책 변경은 없습니다. 실제 외부 경보와 Cloudflare 샘플 수신 결과를 아래에 구분합니다.
 - 실제 시험은 [경보 실행 45024045647](https://github.com/kodonghui/siljang.ai/actions/runs/45024045647) 한 번입니다. main `0c1f46e`·source=external·기존 실행자와 일치를 Aside에서 확인했고, Actions API에서도 완료/failure·alert job·정한 실패 단계를 대조했습니다. 로그의 정한 오류 주석과 exit 1이 일치합니다. app/db CI 실패와 구분합니다.
 - Gmail 연결 도구에서 시험 전 같은 경보 알림 0개와 시험 뒤 새 알림 1개를 확인했습니다. 21:47:19 KST 제목 `[kodonghui/siljang.ai] Run failed: Siljang 스테이징 상태 경보 - main (0c1f46e)`와 본문의 같은 공개 실행 링크를 대조했습니다. 메일 주소·본문 전체·메일함 식별자는 공개 기록에 넣지 않았습니다. 외부 경보 route의 실제 수신이며 Cloudflare 일 실행기 정책의 실제 실패 메일 수신은 아직 미확인입니다.
-- Cloudflare 기존 정책의 샘플 발신 요청은 21:54:11 KST 한 번이며 다시 요청하지 않았습니다. UI 확인창은 닫혔지만 접수 성공 안내는 미확인이었습니다. 연결 Gmail에서 21:54:24 KST 새 알림 1개와 제목 `[Alert] Custom Alert 'Siljang staging job failures' triggered`를 확인했습니다. 메일에는 Worker 이름/시험 표시가 없어 정책명·시각 일치만 기록하며 실제 일 실패 로그에 따른 발동으로 세지 않습니다. 직접 최종 전체 snapshot은 기존 정책 Enabled·Email·실행 15분/조회 1분을 확인했습니다.
+- Cloudflare 기존 정책의 샘플 발신 요청은 21:54:11 KST 한 번이며 다시 요청하지 않았습니다. UI 확인창은 닫혔지만 접수 성공 안내는 미확인이었습니다. 연결 Gmail에서 21:54:24 KST 새 알림 1개와 제목 `[Alert] Custom Alert 'Siljang staging job failures' triggered`를 확인했습니다. 메일에는 Worker 이름/시험 표시가 없어 정책명·시각 일치만 기록하며 실제 일 실패 로그에 따른 발동으로 세지 않습니다. 직접 최종 전체 snapshot은 기존 정책 Enabled·Email·실행 15분/조회 1분을 확인했습니다. 이후 같은 정책의 실패 이벤트를 저장소 보완 코드의 8종으로 채우고 평균 15분/실행 15분을 저장했습니다. 다시 연 편집기에서 8종·평균 15m·실행 15m·임계치 >=1·재알림 1h와 기존 대상/수신자/활성화 유지를 확인했습니다. 직접 전체 snapshot도 SQL의 8종과 이 설정들을 대조했습니다. 계정 조건은 UI의 정규화 표시에서 생략되며 Aside가 화면 URL의 원본 조건 보존을 확인했습니다. 목록 설명의 1 minute는 그대로라 설명문과 실제 저장값을 구분합니다.
 
 ## 2026-11-22 · PR #160 main 배포 확인
 
