@@ -19,7 +19,10 @@ export interface ShopRegistration {
   readonly entrustmentConsent: true;
 }
 
-const RULES: Record<string, { min: number; max: number; pattern?: RegExp; nullable?: true }> = {
+const RULES: Record<
+  string,
+  { min: number; max: number; pattern?: RegExp; nullable?: true; allowed?: readonly string[] }
+> = {
   name: { min: 1, max: 40 },
   contactPhone: { min: 8, max: 14, pattern: /^[0-9-]{8,14}$/ },
   businessAddress: { min: 1, max: 200 },
@@ -31,7 +34,7 @@ const RULES: Record<string, { min: number; max: number; pattern?: RegExp; nullab
   mailOrderAuthority: { min: 1, max: 40, nullable: true },
   mailOrderExemption: { min: 1, max: 200, nullable: true },
   foodLicenseNo: { min: 1, max: 30 },
-  foodBusinessType: { min: 1, max: 100 },
+  foodBusinessType: { min: 1, max: 100, allowed: ["instant_sale_manufacturing", "bakery"] },
   licensePhotoUploadId: { min: 24, max: 204, pattern: /^upl_[A-Za-z0-9_-]{20,200}$/ },
   entrustmentTermsVersion: { min: 1, max: 20, pattern: /^[0-9A-Za-z.-]+$/ },
 };
@@ -60,6 +63,7 @@ export function parseShopRegistration(body: unknown): ShopRegistration {
     }
     if (value === undefined) errors.push({ field, code: "required" });
     else if (typeof value !== "string" || value.includes("\0")) errors.push({ field, code: "bad_format" });
+    else if (rule.allowed && !rule.allowed.includes(value)) errors.push({ field, code: "not_allowed" });
     else if ([...value].length < rule.min || value.trim() === "") errors.push({ field, code: "too_short" });
     else if ([...value].length > rule.max) errors.push({ field, code: "too_long" });
     else if (rule.pattern && !rule.pattern.test(value)) errors.push({ field, code: "bad_format" });
@@ -72,11 +76,6 @@ export function parseShopRegistration(body: unknown): ShopRegistration {
       errors.push({ field: /^[A-Za-z0-9_]{1,100}$/.test(name) ? `/${name}` : "/", code: "unknown_field" });
   if (typeof result.businessRegNo === "string" && !businessRegChecksum(result.businessRegNo))
     errors.push({ field: "/businessRegNo", code: "checksum_failed" });
-  if (
-    result.foodBusinessType !== undefined &&
-    !["instant_sale_manufacturing", "bakery"].includes(String(result.foodBusinessType))
-  )
-    errors.push({ field: "/foodBusinessType", code: "not_allowed" });
   if (result.mailOrderRegNo && result.mailOrderAuthority === null)
     errors.push({ field: "/mailOrderAuthority", code: "required" });
   if (result.mailOrderAuthority && result.mailOrderRegNo === null)

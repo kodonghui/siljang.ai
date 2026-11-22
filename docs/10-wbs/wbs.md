@@ -80,7 +80,7 @@
 
 | ID | 작업 | 출처 | 닿는 것 | 앞선 작업 | 맡은 이 | 크기 | 끝난 조건 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TASK-032 | 가게 등록과 내 가게 조회 | SPEC-002 | API-008, API-009, TBL-003, TBL-050, TBL-058 | TASK-019, TASK-022, TASK-020 | Claude | 1일 | 끝남: 2026-11-22, PR #166. SPEC-002 #1~#4와 API-008/009 응답별·중복/동시·사진 실패 보상·가게 범위·제한 역할 자동 시험. docs/records/shop-registration/task-032-acceptance.md<br/>SPEC-002 수락 기준 #1~#4: 자동 시험 통과<br/>API-008 응답(201·401·409·422·503·default)마다 통과하는 시험<br/>API-009 응답(200·401·404·default)마다 통과하는 시험 |
+| TASK-032 | 가게 등록과 내 가게 조회 | SPEC-002 | API-008, API-009, TBL-003, TBL-050, TBL-058 | TASK-019, TASK-022, TASK-020 | Claude | 1일 | 끝남: 2026-11-23, PR #166. SPEC-002 #1~#4와 API-008/009 응답별·중복/동시·사진 실패 보상·가게 범위·제한 역할 자동 시험. docs/records/shop-registration/task-032-acceptance.md<br/>SPEC-002 수락 기준 #1~#4: 자동 시험 통과<br/>API-008 응답(201·401·409·422·503·default)마다 통과하는 시험<br/>API-009 응답(200·401·404·default)마다 통과하는 시험 |
 | TASK-033 | 보류된 영업 신고 다시 올리기 | SPEC-003 | API-011, TBL-002, TBL-003, TBL-015, TBL-042, TBL-043, TBL-050 | TASK-032 | Claude | 0.5일 | API-011 응답(200·401·404·409·422·default)마다 통과하는 시험 |
 | TASK-034 | 운영자의 영업 신고 확인·보류 | SPEC-003 | API-012, API-013, API-014, TBL-002, TBL-003, TBL-015, TBL-042, TBL-043, TBL-050 | TASK-021, TASK-032 | Claude | 2일 | SPEC-003 수락 기준 #1~#3: 자동 시험 통과<br/>API-012 응답(200·401·422·default)마다 통과하는 시험<br/>API-013 응답(200·401·404·default)마다 통과하는 시험<br/>API-014 응답(200·401·404·409·422·default)마다 통과하는 시험 |
 | TASK-035 | 운영자 알림 | SPEC-008, SPEC-010, SPEC-017 | API-015, TBL-003, TBL-004, TBL-005, TBL-006, TBL-010, TBL-013, TBL-015, TBL-016, TBL-017, TBL-018, TBL-027, TBL-048, TBL-051 | TASK-021 | Claude | 0.5일 | API-015 응답(200·401·422·default)마다 통과하는 시험 |

@@ -178,6 +178,8 @@ describeDb("TASK-032 API-008/009와 SPEC-002 수락 기준", () => {
     ["representativeName", "가".repeat(31), "too_long"],
     ["businessRegNo", "1234567890", "checksum_failed"],
     ["foodBusinessType", "unlicensed", "not_allowed"],
+    ["foodBusinessType", "", "not_allowed"],
+    ["foodBusinessType", "unlicensed".repeat(20), "not_allowed"],
     ["foodLicenseNo", "", "too_short"],
     ["entrustmentTermsVersion", "2026/11", "bad_format"],
     ["ownerId", "client-chosen-owner", "unknown_field"],
