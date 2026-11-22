@@ -1,14 +1,10 @@
--- TASK-028 실제 서버 역할의 쓰기/차단 확인. 합성 행만 만들고 전체를 ROLLBACK한다.
+-- TASK-028 실제 서버 역할의 쓰기/차단 확인. 내부 저장점의 합성 쓰기를 되돌리고 결과만 반환한다.
 -- psql -v runtime_role=<기존 서버 역할> -f tools/staging-kakao-runtime-probe.sql
-BEGIN;
-SET LOCAL statement_timeout = '20s';
-SET LOCAL lock_timeout = '3s';
-CREATE TEMP TABLE siljang_runtime_probe_role (name text NOT NULL) ON COMMIT DROP;
-INSERT INTO siljang_runtime_probe_role VALUES (:'runtime_role');
-DO $probe$
+-- pg_temp 함수는 현재 연결에만 있으며 공개 스키마에 남지 않는다. SQL Editor에서도 마지막 SELECT 결과를 볼 수 있다.
+CREATE OR REPLACE FUNCTION pg_temp.siljang_kakao_runtime_probe(target_role text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER AS $probe$
 DECLARE
   original_role text := current_user;
-  target_role text;
   owner_id uuid := gen_random_uuid();
   shop_id uuid := gen_random_uuid();
   channel_id uuid := gen_random_uuid();
@@ -21,8 +17,10 @@ DECLARE
   blocked integer := 0;
   operation text;
   tag text := replace(gen_random_uuid()::text, '-', '');
+  allowed boolean := false;
+  failure_sqlstate text;
 BEGIN
-  SELECT name INTO STRICT target_role FROM siljang_runtime_probe_role;
+  BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = target_role AND NOT rolsuper) THEN
     RAISE EXCEPTION 'runtime_probe_target_invalid';
   END IF;
@@ -83,7 +81,15 @@ BEGIN
   END LOOP;
   IF blocked <> 5 THEN RAISE EXCEPTION 'runtime_probe_block_count_invalid'; END IF;
   EXECUTE format('SET LOCAL ROLE %I', original_role);
-  RAISE NOTICE 'runtime_probe: allowed_writes=true blocked_writes=5 rollback_required=true';
+  allowed := true;
+  -- 예상한 예외가 내부 저장점의 모든 합성 행과 권한 전환을 되돌린다. 지역 변수의 검사 결과만 남는다.
+  RAISE EXCEPTION USING ERRCODE = 'ZP028', MESSAGE = 'runtime_probe_expected_rollback';
+  EXCEPTION WHEN SQLSTATE 'ZP028' THEN NULL;
+  WHEN OTHERS THEN failure_sqlstate := SQLSTATE;
+  END;
+  RETURN jsonb_build_object('allowed_writes', allowed, 'blocked_writes', blocked,
+    'rollback_verified', NOT EXISTS (SELECT 1 FROM shops WHERE id = shop_id),
+    'role_restored', current_user = original_role, 'failure_sqlstate', failure_sqlstate);
 END
 $probe$;
-ROLLBACK;
+SELECT pg_temp.siljang_kakao_runtime_probe(:'runtime_role') AS runtime_probe;

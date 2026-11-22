@@ -138,6 +138,92 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     expect(drafts.rows).toEqual(reject ? [] : [{ lettering: "제한 역할 문구", revision: 1 }]);
   });
 
+  it("제한 역할의 API-072도 같은 후기 세 번을 한 버전만 저장하고 본문 수정/삭제는 못 함", async () => {
+    const target = await createShop(db, "제한 역할의 후기 시험");
+    await issueTestBookingLink(db, target);
+    await linkTestChannel(db, target.channelId);
+    const now = new Date("2026-11-22T03:00:00Z");
+    const payment = newUuid();
+    await db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='paid', arrived_amount=amount, arrived_at=$2, paid_at=$2 WHERE id=$1",
+        [target.paymentRequestId, now],
+      );
+      await tx.query(
+        "INSERT INTO payments (id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES ($1,$2,$3,$4,35000,$5)",
+        [payment, target.shopId, target.orderId, target.paymentRequestId, now],
+      );
+      await tx.query(
+        "UPDATE orders SET status='received',confirmed_at=$2,confirmed_payment_id=$3,finished_at=$2 WHERE id=$1",
+        [target.orderId, now, payment],
+      );
+      await tx.query(
+        "INSERT INTO productions (shop_id,order_id,completed_at,handed_over_at,handover_kind) VALUES ($1,$2,$3,$3,'pickup')",
+        [target.shopId, target.orderId, now],
+      );
+    });
+    const order = (await db.query<{ order_no: string }>("SELECT order_no FROM orders WHERE id=$1", [target.orderId]))
+      .rows[0];
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), target.channelId, 1);
+    const app = createApp({ services: { now: () => now }, logSink: () => {} });
+    const send = () =>
+      app.request(
+        "/api/kakao/skills/review",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+          body: JSON.stringify({
+            bot: { id: target.botId },
+            userRequest: {
+              utterance: "후기 남기기",
+              block: { id: "review" },
+              user: { id: target.userKey, type: "botUserKey" },
+            },
+            action: {
+              id: "review",
+              params: { review_text: "합성 제한 역할 후기" },
+              clientExtra: { orderNo: order?.order_no },
+            },
+          }),
+        },
+        testEnv({ DATABASE_URL: databaseUrl }),
+      );
+    const responses = await Promise.all([send(), send(), send()]);
+    expect(responses.map((r) => r.headers.get("Siljang-Outcome")).sort()).toEqual([
+      "duplicate",
+      "duplicate",
+      "review_saved",
+    ]);
+    expect((await db.query("SELECT body,version FROM reviews WHERE order_id=$1", [target.orderId])).rows).toEqual([
+      { body: "합성 제한 역할 후기", version: 1 },
+    ]);
+    expect(
+      (
+        await db.query(
+          `SELECT
+      has_column_privilege($1,'public.orders','id','SELECT') AS order_id_read,
+      has_column_privilege($1,'public.orders','amount','SELECT') AS order_amount_read,
+      has_column_privilege($1,'public.orders','status','UPDATE') AS order_status_update,
+      has_column_privilege($1,'public.reviews','body','INSERT') AS review_body_insert,
+      has_column_privilege($1,'public.reviews','body','SELECT') AS review_body_read,
+      has_column_privilege($1,'public.reviews','body','UPDATE') AS review_body_update,
+      has_table_privilege($1,'public.reviews','DELETE') AS review_delete`,
+          [role],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        order_id_read: true,
+        order_amount_read: false,
+        order_status_update: false,
+        review_body_insert: true,
+        review_body_read: false,
+        review_body_update: false,
+        review_delete: false,
+      },
+    ]);
+  });
+
   it("별도 권한을 더하지 않고 실제 API가 질문/할 일/대기 알림을 기록함", async () => {
     const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
     const logs = collectLogs();
