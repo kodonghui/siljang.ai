@@ -888,3 +888,11 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 - 274 잠금 선택: 없는 날짜의 첫 생성과 전체 기준 변경도 함께 직렬화하려고 가게별 공유/배타 트랜잭션 advisory lock 뒤 날짜 행 FOR UPDATE를 씁니다. 날짜 행만 잠그는 대안은 아직 없는 날과 설정 전체 변경을 함께 묶지 못합니다. 모든 자리 처리에서 같은 순서를 지켜야 하며 여러 날은 날짜 오름차순으로 잠급니다. PostgreSQL16 [명시적 잠금](https://www.postgresql.org/docs/16/explicit-locking.html#ADVISORY-LOCKS)을2026-11-23 확인했으며 트랜잭션 종료 때 자동 해제되는 방식을 선택했습니다.
 
 - 274 검증: 서버81파일/1,465개·웹11파일/237개·타입/lint·빌드928ms와 단계9개가 통과했습니다. node research/cake-mockup-2026-11/check_local.test.js는 합성5페이지에서 자원1회 재사용과 오류 보존을 확인합니다. [수락 대조](../docs/records/calendar/task-041-acceptance.md)의 예약 날짜/새 자리/발송 연결은 다음 변경에서 이어가며 아직 finished/구현 완료는 아닙니다. Aside 연결2회 실패로 새 권한6문장은 실제 DB에 적용하지 않았습니다.
+
+275. TASK-041 후속 변경은 예약 링크의60일 날짜 상태와 같은 날짜 잠금 안의 새 자리 판정을 제공합니다. 미발송 안내 시각을 바꾼 뒤 시작된 시도의 임대 표는 유지하되 새 예정 시각 전에 찾지 않도록 확인합니다. 아직 없는 함수의 시험2건 실패부터 시작하며 실제 Aside 연결 중단과 미적용 권한은 유지합니다.
+
+- 275 calendarBookingDays는 예약 링크의60일 공개 상태만, lockedCalendarSlotStatus는 같은 트랜잭션의 날짜 잠금 뒤 판정을 반환합니다. 자리 확보/추가 수락의 다른 조건은 TASK-082가 확인합니다. 시각을 바꾼 안내는 notification_send의 찾기/잡기 둘 다 scheduled_for와 next_attempt_at이 지나야 합니다. 합성 실행기에서11시0건/15시반복1건과 기존 시도 표 보존을 확인했으며 관련92개·타입/lint가 통과했습니다.
+
+- 275 전체 확인: 서버82파일/1,469개·웹11파일/237개·타입/lint·빌드1.15초/Worker dry-run이 통과했습니다. 공개 날짜·마감 판정과 예정 시각 찾기를 확인한 모듈이며 전체 예약/실제 발송 성공으로 적지 않습니다. 실제 계정/기존 역할 확인은 Aside 연결 복구 뒤입니다.
+
+- 275 Claude 리뷰 처리: lockedCalendarSlotStatus는 오늘~오늘+59일 밖을 지정 필드의 outside_window로 거절하며 판정만으로 행을 만들지 않습니다. TASK-082의 실제 저장은 같은 트랜잭션에서 lockCalendarDay로 날짜 행을 준비하고 실패하면 롤백합니다. 오류를 잡아 커밋한 경우도 행/설정 버전이 그대로인 시험을 포함해 관련97개·타입/lint가 통과했습니다.
