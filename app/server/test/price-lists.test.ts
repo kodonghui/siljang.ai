@@ -3,7 +3,7 @@ import { type AppOptions, createApp } from "../src/app";
 import { ApiError } from "../src/problem";
 import { createShopScope } from "../src/shop-scope";
 import { expectProblem, expectSchema } from "./support/contract";
-import { describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { collectLogs, describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { MemoryStore } from "./support/storage";
 
 const ORIGIN = "https://siljang.example";
@@ -56,6 +56,7 @@ async function fixture(options: AppOptions = {}) {
     );
   });
   const store = new MemoryStore();
+  const logs = collectLogs();
   const app = createApp({
     scopes: {
       owner: async (c) => {
@@ -64,7 +65,7 @@ async function fixture(options: AppOptions = {}) {
       },
     },
     services: { storage: store, now: () => NOW },
-    logSink: () => {},
+    logSink: logs.sink,
     ...options,
   });
   async function call(method: string, path: string, body?: unknown, authenticated = true, key = newRequestKey()) {
@@ -83,7 +84,7 @@ async function fixture(options: AppOptions = {}) {
       testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
     );
   }
-  return { app, store, ownerId, shopId, call };
+  return { app, store, ownerId, shopId, call, logs };
 }
 
 describeDb("TASK-038 가격표 버전 API-016~019", () => {
@@ -101,7 +102,7 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
   it("첫 저장은201 버전1이고 현재/버전 하나/목록으로 읽힘", async () => {
     const h = await fixture();
     const response = await h.call("POST", "/owner/price-list/versions", input());
-    expect(response.status, await response.clone().text()).toBe(201);
+    expect(response.status, (await response.clone().text()) + JSON.stringify(h.logs.lines)).toBe(201);
     const result = (await response.json()) as { priceList: { revision: string } };
     expectSchema("PriceListResult", result);
     expect(result).toMatchObject({
