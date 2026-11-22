@@ -6,7 +6,9 @@ import { fieldCrypto } from "../src/field-crypto";
 import { kakaoCallback } from "../src/kakao-callback";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import { publishStoredKakaoCallback, storeKakaoCallback } from "../src/kakao-callback-store";
+import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { receiveKakaoMessage } from "../src/kakao-skill-store";
+import { OWNER_COOKIE } from "../src/owner-oauth";
 import { createOwnerScope } from "../src/owner-scope";
 import { createOwnerSession, endOwnerSession, ownerProfile, renewOwnerSession } from "../src/owner-session";
 import { runScheduled } from "../src/scheduled";
@@ -484,6 +486,125 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     }
   });
 
+  it("제한 역할과 실제 사장님 세션으로 연결 문구/시험 버튼 다섯을 처리하고 상담/후기를 만들지 않음", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const target = await createShop(isolated.db, "제한 역할 연결 확인 가게");
+    await isolated.db.query(
+      "UPDATE kakao_channels SET check_started_at=NULL,test_user_key=NULL,verified_blocks='{}',card_block_id='card',orderer_block_id='orderer',allergy_block_id='allergy',depositor_block_id='depositor',review_block_id='review' WHERE shop_id=$1",
+      [target.shopId],
+    );
+    const owner = (
+      await isolated.db.query<{ kakao_account_id: string }>("SELECT kakao_account_id FROM owners WHERE id=$1", [
+        target.ownerId,
+      ])
+    ).rows[0];
+    if (!owner) throw new Error("합성 사장님 없음");
+    const session = await createOwnerSession(
+      isolated.db,
+      { accountId: owner.kakao_account_id, friend: false },
+      now,
+      false,
+    );
+    let eventCalls = 0;
+    const forbiddenEvent = async (): Promise<never> => {
+      eventCalls++;
+      throw new Error("무료 MVP 발신 금지");
+    };
+    const api = createApp({
+      connect: () => roleDb(),
+      services: { now: () => now, kakaoEvents: { requestNotice: forbiddenEvent, checkDelivery: forbiddenEvent } },
+      logSink: () => {},
+    });
+    const startKey = newRequestKey();
+    const startCall = () =>
+      api.request(
+        "https://siljang.example/api/owner/kakao-channel/check",
+        {
+          method: "POST",
+          headers: {
+            origin: "https://siljang.example",
+            cookie: `${OWNER_COOKIE}=${session.token}`,
+            "Idempotency-Key": startKey,
+          },
+        },
+        testEnv(),
+      );
+    try {
+      await isolated.db.query(`REVOKE UPDATE (check_started_at) ON kakao_channels FROM "${role}"`);
+      const failed = await startCall();
+      expect(failed.status).toBe(500);
+      expect(await failed.text()).not.toContain("permission denied");
+      expect(
+        (await isolated.db.query("SELECT check_started_at FROM kakao_channels WHERE shop_id=$1", [target.shopId])).rows,
+      ).toEqual([{ check_started_at: null }]);
+    } finally {
+      await isolated.db.query(`GRANT UPDATE (check_started_at) ON kakao_channels TO "${role}"`);
+    }
+    const start = await startCall();
+    expect(start.status, await start.clone().text()).toBe(200);
+    const started = (await start.json()) as { kakaoChannel: { proofPhrase: string } };
+    const skillKey = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), target.channelId, 1);
+    const skill = (kind: string, utterance: string, blockId: string, extra: Record<string, string> = {}) =>
+      api.request(
+        `/api/kakao/skills/${kind}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "Siljang-Skill-Key": skillKey },
+          body: JSON.stringify({
+            bot: { id: target.botId },
+            userRequest: {
+              utterance,
+              block: { id: blockId },
+              user: { id: "synthetic-role-trial-user", type: "botUserKey" },
+            },
+            action: { id: "synthetic-role-trial", params: {}, clientExtra: extra },
+          }),
+        },
+        testEnv(),
+      );
+    const before = (
+      await isolated.db.query(
+        "SELECT (SELECT count(*) FROM messages WHERE shop_id=$1)::int AS messages,(SELECT count(*) FROM orders WHERE shop_id=$1)::int AS orders,(SELECT count(*) FROM reviews WHERE shop_id=$1)::int AS reviews",
+        [target.shopId],
+      )
+    ).rows;
+    let response = await skill("message", started.kakaoChannel.proofPhrase, "conversation");
+    expect(response.headers.get("Siljang-Outcome")).toBe("channel_test_card");
+    for (let i = 0; i < 5; i++) {
+      const body = (await response.json()) as {
+        template: { outputs: { textCard: { buttons: { blockId: string; extra: { check: string } }[] } }[] };
+      };
+      const button = body.template.outputs[0]?.textCard.buttons[0];
+      if (!button) throw new Error("다음 시험 버튼 없음");
+      response = await skill(button.extra.check === "review" ? "review" : "card", "시험", button.blockId, button.extra);
+      expect(response.headers.get("Siljang-Outcome"), await response.clone().text()).toBe(
+        i === 4 ? "channel_linked" : "block_verified",
+      );
+    }
+    expect(
+      (
+        await isolated.db.query("SELECT status,verified_blocks,event_status FROM kakao_channels WHERE shop_id=$1", [
+          target.shopId,
+        ])
+      ).rows,
+    ).toEqual([
+      {
+        status: "linked",
+        verified_blocks: ["card", "orderer_info", "allergy_answer", "depositor_name", "review"],
+        event_status: "unchecked",
+      },
+    ]);
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT (SELECT count(*) FROM messages WHERE shop_id=$1)::int AS messages,(SELECT count(*) FROM orders WHERE shop_id=$1)::int AS orders,(SELECT count(*) FROM reviews WHERE shop_id=$1)::int AS reviews",
+          [target.shopId],
+        )
+      ).rows,
+    ).toEqual(before);
+    expect(eventCalls).toBe(0);
+  });
+
   it("가게·채널 공유 잠금과 손님·상담·수신 메시지 쓰기를 실제 역할로 실행", async () => {
     const conn = roleDb();
     const scope = createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" });
@@ -710,6 +831,8 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
       for (const sql of [
         "UPDATE shops SET license_status='verified' WHERE id=$1",
         "UPDATE payment_accounts SET holder_checked_at=$2 WHERE shop_id=$1",
+        "UPDATE owner_tasks SET closed_at=$2 WHERE shop_id=$1",
+        "SELECT close_license_on_hold_tasks($1,$2)",
       ])
         await expect(
           connection.query(sql, sql.includes("$2") ? [target.shopId, now] : [target.shopId]),
@@ -775,6 +898,54 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     expect(saved.status, await saved.clone().text()).toBe(200);
     expect(
       (await isolated.db.query("SELECT count(*)::int AS n FROM owner_tasks WHERE shop_id=$1", [target.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
+  });
+
+  it("이전 보류가 있는 새 판정의 알림 실패는 옛 할 일/예약도 되돌림", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const target = await createShop(isolated.db, "이전 보류 되돌림 합성 가게"),
+      session = await seedOperatorSession(isolated.db, now);
+    const app = createApp({ connect: () => roleDb(), services: { now: () => now }, logSink: () => {} }),
+      url = `https://siljang.example/api/operator/shops/${target.shopId}`,
+      env = testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
+      headers = { origin: "https://siljang.example", cookie: session.cookie, "content-type": "application/json" };
+    const review = async (reason: string, key = newRequestKey()) => {
+      const current = (await (await app.request(url, { headers }, env)).json()) as { revision: string };
+      return app.request(
+        `${url}/license-review`,
+        {
+          method: "POST",
+          headers: { ...headers, "Idempotency-Key": key },
+          body: JSON.stringify({ baseRevision: current.revision, decision: "on_hold", holdReason: reason }),
+        },
+        env,
+      );
+    };
+    expect((await review("옛 합성 보류")).status).toBe(200);
+    const before = (await isolated.db.query("SELECT id,closed_at FROM owner_tasks WHERE shop_id=$1", [target.shopId]))
+      .rows;
+    try {
+      await isolated.db.query(`REVOKE INSERT ON owner_alerts FROM "${role}"`);
+      expect((await review("새 합성 보류")).status).toBe(500);
+      expect(
+        (await isolated.db.query("SELECT id,closed_at FROM owner_tasks WHERE shop_id=$1", [target.shopId])).rows,
+      ).toEqual(before);
+      expect(
+        (await isolated.db.query("SELECT next_attempt_at FROM owner_alerts WHERE shop_id=$1", [target.shopId])).rows,
+      ).toEqual([{ next_attempt_at: now }]);
+      expect(
+        (await isolated.db.query("SELECT license_hold_reason FROM shops WHERE id=$1", [target.shopId])).rows,
+      ).toEqual([{ license_hold_reason: "옛 합성 보류" }]);
+    } finally {
+      await isolated.db.query(`GRANT INSERT ON owner_alerts TO "${role}"`);
+    }
+    expect((await review("새 합성 보류")).status).toBe(200);
+    expect(
+      (
+        await isolated.db.query("SELECT count(*)::int AS n FROM owner_tasks WHERE shop_id=$1 AND closed_at IS NULL", [
+          target.shopId,
+        ])
+      ).rows,
     ).toEqual([{ n: 1 }]);
   });
 

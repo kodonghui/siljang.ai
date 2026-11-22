@@ -153,6 +153,65 @@ describeDb("TASK-043 연결 확인 시작과 시험 버튼", () => {
       (await db.query("SELECT check_started_at FROM kakao_channels WHERE shop_id=$1", [h.shop.shopId])).rows,
     ).toEqual([{ check_started_at: null }]);
   });
+  it("설정이 없으면404 not_set", async () => {
+    const h = await fixture();
+    await db.query("UPDATE kakao_channels SET status='retired',retired_at=$2,claim_expires_at=NULL WHERE shop_id=$1", [
+      h.shop.shopId,
+      NOW,
+    ]);
+    await expectProblem(await h.call(), "not_set");
+  });
+  it("사장님 세션만 있고 가게를 등록하지 않았으면404 shop_not_registered", async () => {
+    const session = await createOwnerSession(
+      db,
+      { accountId: BigInt(`0x${newUuid().replaceAll("-", "").slice(0, 14)}`).toString(), friend: false },
+      NOW,
+      false,
+    );
+    const response = await createApp({ services: { now: () => NOW }, logSink: () => {} }).request(
+      `${ORIGIN}/api${PATH}`,
+      {
+        method: "POST",
+        headers: { origin: ORIGIN, cookie: `${OWNER_COOKIE}=${session.token}`, "Idempotency-Key": newRequestKey() },
+      },
+      testEnv(),
+    );
+    await expectProblem(response, "shop_not_registered");
+  });
+  it.each(["", "bad-request-key"])("요청 키 누락/형식 %s는422이고 확인하지 않음", async (key) => {
+    const h = await fixture();
+    await expectProblem(await h.call(key), "validation_failed");
+    expect(
+      (await db.query("SELECT check_started_at FROM kakao_channels WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ check_started_at: null }]);
+  });
+  it.each(["unchecked", "checking", "ready", "unavailable"])(
+    "이미 연결된 %s는 무료 MVP에서unchanged이며 실제 발신/조회0",
+    async (eventStatus) => {
+      const h = await fixture();
+      await db.query(
+        "UPDATE kakao_channels SET status='linked',linked_at=$2::timestamptz,claim_expires_at=NULL,verified_blocks=ARRAY['card','orderer_info','allergy_answer','depositor_name','review'],event_status=$3,event_task_id=CASE WHEN $3='checking' THEN 'synthetic-event-task' ELSE NULL END,event_checked_at=CASE WHEN $3 IN ('ready','unavailable') THEN $2::timestamptz ELSE NULL END,event_fail_reason=CASE WHEN $3='unavailable' THEN 'not_delivered' ELSE NULL END WHERE shop_id=$1",
+        [h.shop.shopId, NOW, eventStatus],
+      );
+      const response = await h.start();
+      expect(response.outcome).toBe("unchanged");
+      expect(response.kakaoChannel.eventStatus).toBe(eventStatus);
+      expect(h.eventCalls()).toBe(0);
+    },
+  );
+  it("지난 선점을 다른 가게가 가져갔으면409이고 자기 설정부터 다시 저장해야 함", async () => {
+    const h = await fixture(),
+      other = await fixture();
+    await db.query("UPDATE kakao_channels SET status='failed',claim_expires_at=NULL WHERE shop_id=$1", [h.shop.shopId]);
+    await db.query("UPDATE kakao_channels SET bot_id=$2 WHERE shop_id=$1", [other.shop.shopId, h.shop.botId]);
+    await expectProblem(await h.call(), "channel_setup_incomplete");
+    expect(
+      (await db.query("SELECT status,check_started_at FROM kakao_channels WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ status: "failed", check_started_at: null }]);
+    expect((await db.query("SELECT status FROM kakao_channels WHERE shop_id=$1", [other.shop.shopId])).rows).toEqual([
+      { status: "pending" },
+    ]);
+  });
   it("다른 요청 키로 여러 번 눌러도 같은 확인이고 같은 키 재전송도 시작 시각을 바꾸지 않음", async () => {
     const h = await fixture(),
       key = newRequestKey(),
@@ -172,6 +231,31 @@ describeDb("TASK-043 연결 확인 시작과 시험 버튼", () => {
     expect(next.outcome).toBe("done");
     expect(new Date(next.kakaoChannel.checkStartedAt as string)).toEqual(h.clock.now);
     expect(next.kakaoChannel.verifiedBlocks).toEqual([]);
+  });
+  it("10분 뒤 같은 요청 키 재전송은 실패한 현재 화면만 읽고 새 확인을 시작하지 않음", async () => {
+    const h = await fixture(),
+      key = newRequestKey();
+    const first = await h.start(key);
+    h.clock.now = new Date(NOW.getTime() + 10 * 60_000);
+    const replay = await h.start(key);
+    expect(replay.kakaoChannel.status).toBe("failed");
+    expect(replay.kakaoChannel.checkStartedAt).toBe(first.kakaoChannel.checkStartedAt);
+    expect((await h.start()).kakaoChannel.status).toBe("pending");
+  });
+  it("같은 사용자의 다른 시험 버튼이 동시에 오면 확인 집합을 잃지 않고 후기를 만들지 않음", async () => {
+    const h = await fixture();
+    await firstButton(h);
+    const responses = await Promise.all([
+      h.skill("card", "시험", "orderer", { check: "orderer_info" }),
+      h.skill("review", "시험", "review", { check: "review" }),
+    ]);
+    expect(responses.map((r) => r.headers.get("Siljang-Outcome"))).toEqual(["block_verified", "block_verified"]);
+    expect(
+      (await db.query("SELECT verified_blocks FROM kakao_channels WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ verified_blocks: ["orderer_info", "review"] }]);
+    expect((await db.query("SELECT count(*)::int AS n FROM reviews WHERE shop_id=$1", [h.shop.shopId])).rows).toEqual([
+      { n: 0 },
+    ]);
   });
   it("연결 문구 아닌 말은 시험 사용자를 남기지 않고 업무 기록도 만들지 않음", async () => {
     const h = await fixture();

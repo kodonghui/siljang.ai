@@ -675,7 +675,7 @@ op(id="API-032", method="post", path="/owner/kakao-channel/check", op="startKaka
         "그 사용자에게 시험 안내를 Event API로 한 번 보내 결과로 먼저 보내기 됨·안 됨을 남긴다(REQ-206, REQ-180, DEC-20). 연결 확인을 시작하면 '연결 확인 중' 선점이 풀리는 시각을 그때부터 30분으로 늘린다(REQ-238). 블록 ID가 하나라도 비면 시작하지 않고 409 channel_setup_incomplete. "
         "여러 번 눌러도 연결은 하나(G2): 확인 중이면 unchanged, 연결 안 됨이면 다시 10분을 센다. 연결됨인데 먼저 보내기가 안 됨이거나 아직 안 봤으면 시험 안내를 다시 보내고(done, eventStatus checking), "
         "됨이거나 시험 중이면 unchanged. "
-        "무료 MVP에서는 Event API의 실제 발신을 건너뛴다. 발신 권한과 월렛 연결 시험은 TASK-167에서 진행한다(DEC-20). "
+        "무료 MVP에서는 Event API의 실제 발신을 건너뛴다. 연결됨이면 먼저 보내기 상태와 관계없이 unchanged이고 시험 안내를 요청하거나 조회하지 않는다. 발신 권한과 월렛 연결 시험은 TASK-167에서 진행한다(DEC-20). "
         "Open: 연결 문구는 화면을 본 사장님만 알지만 그 요청이 카카오에서 왔는지는 증명하지 못함. 11단계 전에 카카오에 요청 출처를 문의(OPEN-10).",
    ok=[(200, "KakaoChannelResult", {"started": {"outcome": "done", "kakaoChannel": E.CHANNEL_CHECKING, "skillKey": None},
                                     "unchanged": {"outcome": "unchanged", "kakaoChannel": E.CHANNEL_LINKED, "skillKey": None},
