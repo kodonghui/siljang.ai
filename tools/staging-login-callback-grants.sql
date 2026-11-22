@@ -61,3 +61,13 @@ GRANT SELECT, INSERT ON rule_clauses, refund_tiers TO :"runtime_role";
 GRANT SELECT, UPDATE (retired_at) ON payment_accounts TO :"runtime_role";
 GRANT INSERT (shop_id, bank_name, account_number_enc, account_last4, holder_name,
   holder_mismatch_confirmed, card_payment_url, created_at) ON payment_accounts TO :"runtime_role";
+
+-- TASK-042: 연결별 설정/키 버전만 쓴다. 기존 봇 ID·가게 ID 변경과 삭제는 허용하지 않는다.
+GRANT EXECUTE ON FUNCTION claim_kakao_bot(uuid,text,timestamptz) TO :"runtime_role";
+GRANT INSERT (shop_id, bot_id, channel_public_id, card_block_id, orderer_block_id, allergy_block_id,
+  depositor_block_id, review_block_id, claim_expires_at, skill_key_issued_at, created_at)
+  ON kakao_channels TO :"runtime_role";
+GRANT UPDATE (channel_public_id, card_block_id, orderer_block_id, allergy_block_id, depositor_block_id,
+  review_block_id, status, claim_expires_at, check_started_at, linked_at, verified_blocks, test_user_key,
+  event_status, event_task_id, event_checked_at, event_fail_reason, configuration_order, retired_at,
+  skill_key_version, skill_key_issued_at, previous_key_until) ON kakao_channels TO :"runtime_role";

@@ -84,6 +84,12 @@ interface PaymentShopCase {
   readonly kind: "payment";
 }
 
+interface ChannelSetupShopCase {
+  readonly method: "GET" | "PUT" | "POST";
+  readonly path: "/owner/kakao-channel" | "/owner/kakao-channel/skill-key";
+  readonly kind: "channel_setup";
+}
+
 export type CrossShopCase =
   | OwnerCrossShopCase
   | SkillCrossShopCase
@@ -91,7 +97,8 @@ export type CrossShopCase =
   | CalendarShopCase
   | PriceShopCase
   | RulesShopCase
-  | PaymentShopCase;
+  | PaymentShopCase
+  | ChannelSetupShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   ...["message", "card", "review", "event"].map(
@@ -103,6 +110,9 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
       }) as const,
   ),
   { method: "GET", path: "/owner/shop", kind: "self" },
+  { method: "GET", path: "/owner/kakao-channel", kind: "channel_setup" },
+  { method: "PUT", path: "/owner/kakao-channel", kind: "channel_setup" },
+  { method: "POST", path: "/owner/kakao-channel/skill-key", kind: "channel_setup" },
   { method: "GET", path: "/owner/payment-destination", kind: "payment" },
   { method: "PUT", path: "/owner/payment-destination", kind: "payment" },
   { method: "GET", path: "/owner/calendar", kind: "calendar" },
@@ -231,6 +241,47 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "channel_setup") {
+      const before = await snapshots(db, env);
+      const current = await send(env, "GET", {
+        url: `/owner/kakao-channel?shopId=${env.b.shopId}&connectionId=${env.b.channelId}`,
+      });
+      expect(current.status, current.text).toBe(200);
+      expect(current.body?.connectionId).toBe(env.a.channelId);
+      expect(current.text).not.toContain(env.b.botId);
+      expect(current.text).not.toContain(env.b.channelId);
+      if (c.method === "GET") {
+        expect(await snapshots(db, env)).toEqual(before);
+        return;
+      }
+      const body =
+        c.method === "PUT"
+          ? {
+              baseRevision: current.body?.revision,
+              botId: env.a.botId,
+              channelPublicId: current.body?.channelPublicId,
+              blockIds: current.body?.blockIds,
+            }
+          : { baseRevision: current.body?.revision, previousKey: "keep_24h" };
+      const wrong = await send(env, c.method, { url: c.path, body: { ...body, connectionId: env.b.channelId } });
+      expect(wrong.status, wrong.text).toBe(422);
+      expect(await snapshots(db, env)).toEqual(before);
+      if (c.method === "PUT") {
+        const other = await send(env, "PUT", { url: c.path, body: { ...body, botId: env.b.botId } });
+        expect(other.status, other.text).toBe(409);
+        expect(other.body?.code).toBe("channel_linked_elsewhere");
+        expect((await snapshots(db, env))[1]).toEqual(before[1]);
+      }
+      const own = await send(env, c.method, {
+        url: `${c.path}?shopId=${env.b.shopId}&connectionId=${env.b.channelId}`,
+        body,
+      });
+      expect(own.status, own.text).toBe(200);
+      expect(own.text).not.toContain(env.b.botId);
+      expect(own.text).not.toContain(env.b.channelId);
+      expect((await snapshots(db, env))[1]).toEqual(before[1]);
+      return;
+    }
     if (c.kind === "rules") {
       await db.query("UPDATE operating_rules SET quote_valid_hours=99 WHERE shop_id=$1", [env.b.shopId]);
       if (c.path.endsWith(":version"))

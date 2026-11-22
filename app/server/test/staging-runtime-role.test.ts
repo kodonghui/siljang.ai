@@ -413,6 +413,76 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     }
   });
 
+  it("제한 역할의 채널 설정/키 교체는 되고 기존 봇 바꾸기·다른 가게 이동/삭제는 막음", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const fixture = await createShop(isolated.db, "제한 역할 채널 가게");
+    const api = createApp({
+      connect: () => roleDb(),
+      scopes: { owner: async () => createShopScope(fixture.shopId, { kind: "owner", ownerId: fixture.ownerId }) },
+      services: { now: () => now },
+      logSink: () => {},
+    });
+    const path = "/owner/kakao-channel";
+    const call = (method: string, url = path, body?: unknown, key = newRequestKey()) =>
+      api.request(
+        `https://siljang.example/api${url}`,
+        {
+          method,
+          headers: { origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": key },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        },
+        testEnv(),
+      );
+    const read = await call("GET");
+    expect(read.status).toBe(200);
+    const current = (await read.json()) as { revision: string };
+    const body = {
+      baseRevision: current.revision,
+      botId: newUuid().replaceAll("-", "").slice(0, 24),
+      channelPublicId: "_synthetic",
+      blockIds: {
+        card: "card",
+        ordererInfo: "orderer",
+        allergyAnswer: "allergy",
+        depositorName: "depositor",
+        review: "review",
+      },
+    };
+    const saved = await call("PUT", path, body);
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    const created = (await saved.json()) as { kakaoChannel: { revision: string } };
+    const key = newRequestKey(),
+      rotate = { baseRevision: created.kakaoChannel.revision, previousKey: "keep_24h" };
+    const response = await call("POST", `${path}/skill-key`, rotate, key);
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(await response.json()).toMatchObject({ skillKey: { keyVersion: 2 } });
+    const replay = await call("POST", `${path}/skill-key`, rotate, key);
+    expect(replay.status).toBe(200);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    const after = await call("GET");
+    const fresh = (await after.json()) as { revision: string };
+    const changed = await call("PUT", path, {
+      ...body,
+      baseRevision: fresh.revision,
+      blockIds: { ...body.blockIds, review: "new-review" },
+    });
+    expect(changed.status, await changed.clone().text()).toBe(200);
+    const conn = roleDb();
+    try {
+      await expect(
+        conn.query("UPDATE kakao_channels SET bot_id='other' WHERE shop_id=$1", [fixture.shopId]),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        conn.query("UPDATE kakao_channels SET shop_id=$2 WHERE shop_id=$1", [fixture.shopId, shop.shopId]),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(conn.query("DELETE FROM kakao_channels WHERE shop_id=$1", [fixture.shopId])).rejects.toMatchObject({
+        code: "42501",
+      });
+    } finally {
+      await conn.close();
+    }
+  });
+
   it("가게·채널 공유 잠금과 손님·상담·수신 메시지 쓰기를 실제 역할로 실행", async () => {
     const conn = roleDb();
     const scope = createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" });

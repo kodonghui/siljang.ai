@@ -73,12 +73,19 @@ async function scenario(
 }
 
 describeDb("기존 DB 원장을 지키는 스테이징 갱신(TASK-173)", () => {
-  it("원장 22건에서 26건으로 진행하고 반복해도 지정한 합성 행만 지움", async () => {
+  it("원장 22건에서 27건으로 진행하고 반복해도 지정한 합성 행만 지움", async () => {
     await scenario(async ({ db, role, cleanup, other }) => {
       const sql = render(role, cleanup);
       await db.query(sql);
       await db.query(sql);
-      expect((await db.query("SELECT count(*)::int AS n FROM siljang_deploy.migrations")).rows).toEqual([{ n: 26 }]);
+      expect((await db.query("SELECT count(*)::int AS n FROM siljang_deploy.migrations")).rows).toEqual([{ n: 27 }]);
+      expect(
+        (
+          await db.query(
+            "SELECT to_regprocedure('public.claim_kakao_bot(uuid,text,timestamptz)') IS NOT NULL AS present",
+          )
+        ).rows,
+      ).toEqual([{ present: true }]);
       expect(
         (await db.query("SELECT to_regprocedure('public.payment_account_license_pending()') IS NOT NULL AS present"))
           .rows,

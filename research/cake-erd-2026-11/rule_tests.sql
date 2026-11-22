@@ -2234,6 +2234,24 @@ SELECT pg_temp.expect_left('A25 보류 해제 함수는 고정 검색 경로와 
     (NOT EXISTS (SELECT 1 FROM aclexplode(coalesce(proacl,acldefault('f',proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE'))::text
   FROM pg_proc WHERE oid='payment_account_license_pending()'::regprocedure$$,'true/true/true');
 
+-- TASK-042/A36: 지난 다른 가게 선점의 해제와 선택 순번.
+INSERT INTO owners (id,kakao_account_id) VALUES ('0e420000-0000-4000-8000-000000000001',900000004201),('0e420000-0000-4000-8000-000000000002',900000004202);
+INSERT INTO shops (id,owner_id,name,contact_phone,contact_email,business_address,business_name,representative_name,business_reg_no,mail_order_exemption,food_license_no,food_business_type,license_photo_key,entrustment_terms_version,entrustment_consented_at)
+VALUES ('0e420000-0000-4000-8000-000000000011','0e420000-0000-4000-8000-000000000001','합성 채널A','010-0000-0000','claim-a@example.com','서울 합성로1','합성 제과A','합성 사장A','1234567890','합성 면제','2026-0001','bakery','license/synthetic-a.jpg','test-v1',now()),
+('0e420000-0000-4000-8000-000000000012','0e420000-0000-4000-8000-000000000002','합성 채널B','010-0000-0000','claim-b@example.com','서울 합성로2','합성 제과B','합성 사장B','1234567891','합성 면제','2026-0002','bakery','license/synthetic-b.jpg','test-v1',now());
+INSERT INTO kakao_channels (id,shop_id,bot_id,claim_expires_at,created_at) VALUES ('0e420000-0000-4000-8000-000000000021','0e420000-0000-4000-8000-000000000011','042000000000000000000001',now()+interval '30 minutes',now());
+SELECT pg_temp.expect_left('A36 30분 전 다른 가게 선점 거절', $$SELECT claim_kakao_bot('0e420000-0000-4000-8000-000000000012','042000000000000000000001',now()+interval '29 minutes')::text$$,'false');
+SELECT pg_temp.expect_left('A36 30분 경계의 지난 선점 해제', $$SELECT claim_kakao_bot('0e420000-0000-4000-8000-000000000012','042000000000000000000001',now()+interval '30 minutes')::text$$,'true');
+SELECT pg_temp.expect_left('A36 풀린 연결은 실패와 빈 선점 시각', $$SELECT status || '/' || coalesce(claim_expires_at::text,'-') FROM kakao_channels WHERE id='0e420000-0000-4000-8000-000000000021'$$,'failed/-');
+INSERT INTO kakao_channels (id,shop_id,bot_id,claim_expires_at,created_at) VALUES ('0e420000-0000-4000-8000-000000000022','0e420000-0000-4000-8000-000000000012','042000000000000000000001',now()+interval '60 minutes',now());
+SELECT pg_temp.expect_fail('A36 저장 실패는 다른 가게 선점 해제도 되돌림','kakao_channels_shop_id_fkey',ARRAY[$$SELECT claim_kakao_bot('0e420000-0000-4000-8000-000000000011','042000000000000000000001',now()+interval '60 minutes')$$,$$INSERT INTO kakao_channels (shop_id,bot_id,claim_expires_at) VALUES ('0e420000-0000-4000-8000-000000000099','042000000000000000000001',now()+interval '90 minutes')$$]);
+SELECT pg_temp.expect_left('A36 실패 뒤 다른 가게의 선점 보존', $$SELECT status FROM kakao_channels WHERE id='0e420000-0000-4000-8000-000000000022'$$,'pending');
+INSERT INTO kakao_channels (id,shop_id,bot_id,claim_expires_at,created_at) VALUES ('0e420000-0000-4000-8000-000000000023','0e420000-0000-4000-8000-000000000011','042000000000000000000002',now()+interval '30 minutes',now());
+SELECT pg_temp.expect_left('A36 같은 생성 시각의 최신 설정', $$SELECT id::text FROM kakao_channels WHERE shop_id='0e420000-0000-4000-8000-000000000011' AND status<>'retired' ORDER BY configuration_order DESC LIMIT 1$$,'0e420000-0000-4000-8000-000000000023');
+UPDATE kakao_channels SET configuration_order=DEFAULT WHERE id='0e420000-0000-4000-8000-000000000021';
+SELECT pg_temp.expect_left('A36 옛 연결을 다시 고르면 그 연결의 순번이 최신', $$SELECT id::text FROM kakao_channels WHERE shop_id='0e420000-0000-4000-8000-000000000011' AND status<>'retired' ORDER BY configuration_order DESC LIMIT 1$$,'0e420000-0000-4000-8000-000000000021');
+SELECT pg_temp.expect_left('A36 선점 함수의 고정 검색 경로와 공개 실행 금지', $$SELECT prosecdef::text || '/' || (proconfig=ARRAY['search_path=pg_catalog'])::text || '/' || (NOT EXISTS(SELECT 1 FROM aclexplode(coalesce(proacl,acldefault('f',proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE'))::text FROM pg_proc WHERE oid='claim_kakao_bot(uuid,text,timestamptz)'::regprocedure$$,'true/true/true');
+
 -- 결과
 SELECT count(*) FILTER (WHERE ok) AS blocked, count(*) FILTER (WHERE NOT ok) AS not_blocked FROM rule_results \gset
 SELECT name, detail FROM rule_results WHERE NOT ok ORDER BY name;
