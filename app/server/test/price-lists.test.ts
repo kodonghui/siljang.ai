@@ -2,6 +2,7 @@ import { afterAll, expect, it } from "vitest";
 import { type AppOptions, createApp } from "../src/app";
 import { pgConnector, type Queryable, type RequestDb } from "../src/db";
 import { createOwnerScope, ownerOfShopScope } from "../src/owner-scope";
+import { createOwnerSession } from "../src/owner-session";
 import { ApiError } from "../src/problem";
 import { createShopScope, type ShopScope } from "../src/shop-scope";
 import { StorageUnavailableError } from "../src/storage";
@@ -14,6 +15,11 @@ const ORIGIN = "https://siljang.example";
 const NOW = new Date("2026-11-22T05:00:00Z");
 const db = testDb();
 const OWNER = "x-test-owner";
+
+function required<T>(value: T | undefined): T {
+  if (value === undefined) throw new Error("합성 시험 항목 없음");
+  return value;
+}
 
 function input(baseRevision: string | null = null) {
   return {
@@ -165,6 +171,137 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
     await expectProblem(await h.call(method, path, body, false), "unauthenticated");
   });
 
+  it("가게 없는 실제 사장님 세션은 4개 경로 모두404 shop_not_registered", async () => {
+    const session = await createOwnerSession(
+      db,
+      { accountId: BigInt(`0x${newUuid().replaceAll("-", "").slice(0, 13)}`).toString(), friend: false },
+      NOW,
+      false,
+    );
+    const app = createApp({ services: { now: () => NOW }, logSink: () => {} });
+    for (const [method, path] of [
+      ["GET", "/owner/price-list"],
+      ["POST", "/owner/price-list/versions"],
+      ["GET", "/owner/price-list/versions"],
+      ["GET", "/owner/price-list/versions/1"],
+    ] as const)
+      await expectProblem(
+        await app.request(
+          `${ORIGIN}/api${path}`,
+          {
+            method,
+            headers: {
+              origin: ORIGIN,
+              cookie: `siljang_owner=${session.token}`,
+              "content-type": "application/json",
+              "Idempotency-Key": newRequestKey(),
+            },
+            ...(method === "POST" ? { body: JSON.stringify(input()) } : {}),
+          },
+          testEnv(),
+        ),
+        "shop_not_registered",
+      );
+  });
+
+  it("DB 장애는4개 경로 모두500이며 내부 오류를 응답에 싣지 않음", async () => {
+    const h = await fixture({
+      connect: () => {
+        throw new Error("synthetic private database failure");
+      },
+    });
+    for (const [method, path] of [
+      ["GET", "/owner/price-list"],
+      ["POST", "/owner/price-list/versions"],
+      ["GET", "/owner/price-list/versions"],
+      ["GET", "/owner/price-list/versions/1"],
+    ] as const) {
+      const problem = await expectProblem(
+        await h.call(method, path, method === "POST" ? input() : undefined),
+        "internal",
+      );
+      expect(JSON.stringify(problem)).not.toContain("private database");
+    }
+  });
+
+  it.each(["0", "-1", "1.5", "not-a-version", "2147483648", "9".repeat(101)])(
+    "잘못되거나 없는 버전 %s는404",
+    async (version) => {
+      const h = await fixture();
+      await expectProblem(await h.call("GET", `/owner/price-list/versions/${version}`), "not_found");
+    },
+  );
+
+  it("본문 형식·요청 키·잘못된 입력은422이고 버전을 남기지 않음", async () => {
+    const h = await fixture();
+    for (const [contentType, key, raw, field, code] of [
+      ["text/plain", newRequestKey(), "{}", "header:Content-Type", "not_allowed"],
+      ["application/json", newRequestKey(), "{", "/", "bad_json"],
+      ["application/json", "", JSON.stringify(input()), "header:Idempotency-Key", "required"],
+      [
+        "application/json",
+        newRequestKey(),
+        JSON.stringify({ ...input(), options: [{ ...input().options[0], priceKind: "from" }] }),
+        "/options/0/inStandard",
+        "not_allowed",
+      ],
+    ] as const) {
+      const response = await h.app.request(
+        `${ORIGIN}/api/owner/price-list/versions`,
+        {
+          method: "POST",
+          headers: { origin: ORIGIN, [OWNER]: h.ownerId, "content-type": contentType, "Idempotency-Key": key },
+          body: raw,
+        },
+        testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
+      );
+      const problem = await expectProblem(response, "validation_failed");
+      expect(problem).toMatchObject({ errors: expect.arrayContaining([{ field, code }]) });
+    }
+    expect((await db.query("SELECT count(*)::int AS n FROM price_lists WHERE shop_id=$1", [h.shopId])).rows).toEqual([
+      { n: 0 },
+    ]);
+  });
+
+  it.each(["missing", "expired", "other_owner", "wrong_purpose", "too_large", "wrong_type"])(
+    "도안 업로드 %s는 저장 전에 거절",
+    async (kind) => {
+      const h = await fixture();
+      const uploadId = await photo(
+        h,
+        kind === "expired" ? new Date(NOW.getTime() - 3_600_000) : NOW,
+        kind === "wrong_purpose" ? "license_photo" : "design_image",
+      );
+      const key = tempKey(createOwnerScope(h.ownerId), uploadId);
+      if (kind === "missing") await h.store.delete(key);
+      if (kind === "other_owner") {
+        await h.store.put(tempKey(createOwnerScope(newUuid()), uploadId), new Uint8Array([1]), "image/png");
+        await h.store.delete(key);
+      }
+      if (kind === "too_large") await h.store.put(key, new Uint8Array(10 * 1024 * 1024 + 1), "image/png");
+      if (kind === "wrong_type") await h.store.put(key, new Uint8Array([1]), "text/plain");
+      const problem = await expectProblem(
+        await h.call("POST", "/owner/price-list/versions", {
+          ...input(),
+          designs: [{ name: "도안", uploadId, optionKey: null, inStandard: false, position: 0 }],
+        }),
+        "validation_failed",
+      );
+      expect(problem).toMatchObject({
+        errors: [
+          {
+            field: "/designs/0/uploadId",
+            code: kind === "wrong_purpose" ? "upload_wrong_purpose" : "upload_not_found",
+          },
+        ],
+      });
+      expect([...h.store.objects.keys()].filter((k) => k.startsWith("shops/"))).toEqual([]);
+      expect((await db.query("SELECT count(*)::int AS n FROM price_lists WHERE shop_id=$1", [h.shopId])).rows).toEqual([
+        { n: 0 },
+      ]);
+    },
+  );
+
   it("도안과 기본 디자인 범위는 새 버전에 함께 남고 이전 버전의 금액/범위/사진은 보존됨", async () => {
     const h = await fixture();
     const uploadId = await photo(h);
@@ -307,6 +444,125 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
     expect([...h.store.objects.keys()].filter((k) => k.startsWith("shops/"))).toEqual(keys);
     expectSchema("PriceListResult", await replay.json());
   });
+
+  it("규칙의 옵션 참조와 도안 범위를 같은 버전에 남기고 참조 이름·입력 순서만 바꾸면 버전 그대로", async () => {
+    const h = await fixture(),
+      uploadId = await photo(h);
+    const body = {
+      ...input(),
+      options: [
+        ...input().options,
+        {
+          key: "flower",
+          group: "design",
+          name: "꽃",
+          priceKind: "fixed",
+          amount: 5000,
+          amountMax: null,
+          inStandard: true,
+          position: 0,
+        },
+      ],
+      rules: [
+        { kind: "exclude", optionA: "size", optionB: "flavor", amount: null },
+        { kind: "surcharge", optionA: "flower", optionB: "flavor", amount: 1000 },
+      ],
+      designs: [{ name: "꽃 도안", uploadId, optionKey: "flower", inStandard: true, position: 0 }],
+    };
+    const response = await h.call("POST", "/owner/price-list/versions", body);
+    expect(response.status, await response.clone().text()).toBe(201);
+    const result = (await response.json()) as {
+      priceList: PriceValue & {
+        rules: { kind: string; optionAId: string; optionBId: string; amount: number | null }[];
+      };
+    };
+    expectSchema("PriceListResult", result);
+    const ids = new Map(result.priceList.options.map((o) => [o.name, o.optionId]));
+    for (const rule of result.priceList.rules) {
+      expect([rule.optionAId, rule.optionBId]).toEqual(
+        (rule.kind === "exclude" ? [ids.get("1호"), ids.get("생크림")] : [ids.get("꽃"), ids.get("생크림")]).sort(),
+      );
+      expect(rule.amount).toBe(rule.kind === "exclude" ? null : 1000);
+    }
+    const renamed = new Map(body.options.map((o, i) => [o.key, `new_${i}`]));
+    const designId = required(result.priceList.designs[0]).designId;
+    const same = await h.call("POST", "/owner/price-list/versions", {
+      ...body,
+      baseRevision: result.priceList.revision,
+      options: body.options.map((o) => ({ ...o, key: renamed.get(o.key) })).reverse(),
+      rules: body.rules
+        .map((r) => ({ ...r, optionA: renamed.get(r.optionB), optionB: renamed.get(r.optionA) }))
+        .reverse(),
+      designs: [
+        {
+          name: "꽃 도안",
+          sourceDesignId: designId.toUpperCase(),
+          optionKey: renamed.get("flower"),
+          inStandard: true,
+          position: 0,
+        },
+      ],
+    });
+    expect(same.status, await same.clone().text()).toBe(200);
+    expect(await same.json()).toMatchObject({ outcome: "unchanged", priceList: { version: 1 } });
+  });
+
+  it.each([false, true])(
+    "사진 복사 뒤 DB 실패의 정리는 다른 저장 성공 사진을 건드리지 않음(동시=%s)",
+    async (concurrent) => {
+      let fail = true;
+      const h = await fixture({
+        connect: (secret) => {
+          const base = pgConnector(secret);
+          return {
+            query: (sql, params) => base.query(sql, params),
+            transaction: (fn) =>
+              base.transaction((tx) =>
+                fn({
+                  query: async (sql, params) => {
+                    if (fail && /^INSERT INTO price_options/.test(sql)) {
+                      fail = false;
+                      throw new Error("synthetic child insert failure");
+                    }
+                    return tx.query(sql, params);
+                  },
+                }),
+              ),
+            abort: () => base.abort(),
+            close: () => base.close(),
+          } satisfies RequestDb;
+        },
+      });
+      const uploadId = await photo(h),
+        key = newRequestKey();
+      const body = {
+        ...input(),
+        designs: [{ name: "같은 원본", uploadId, optionKey: null, inStandard: false, position: 0 }],
+      };
+      if (concurrent) {
+        const responses = await Promise.all([
+          h.call("POST", "/owner/price-list/versions", body),
+          h.call("POST", "/owner/price-list/versions", body),
+        ]);
+        expect(responses.map((r) => r.status).sort()).toEqual([201, 500]);
+      } else {
+        await expectProblem(await h.call("POST", "/owner/price-list/versions", body, true, key), "internal");
+        expect([...h.store.objects.keys()].filter((k) => k.startsWith("shops/"))).toEqual([]);
+        expect(h.store.objects.has(tempKey(createOwnerScope(h.ownerId), uploadId))).toBe(true);
+        expect((await h.call("POST", "/owner/price-list/versions", body, true, key)).status).toBe(201);
+      }
+      expect((await db.query("SELECT count(*)::int AS n FROM price_lists WHERE shop_id=$1", [h.shopId])).rows).toEqual([
+        { n: 1 },
+      ]);
+      const keys = [...h.store.objects.keys()].filter((k) => k.startsWith("shops/"));
+      expect(keys).toHaveLength(1);
+      const current = (await (await h.call("GET", "/owner/price-list")).json()) as PriceValue;
+      const url = required(current.designs[0]).imageUrl;
+      const image = await h.app.request(url, {}, testEnv({ FILE_URL_KEY: TEST_HASH_KEY }));
+      expect(image.status).toBe(200);
+      expect([...new Uint8Array(await image.arrayBuffer())]).toEqual([1, 2, 3]);
+    },
+  );
 
   it("사진 소유자 변환은 인증된 사장님 가게 범위만 허용함", () => {
     const ownerId = newUuid(),

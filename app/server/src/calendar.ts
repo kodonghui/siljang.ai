@@ -12,7 +12,7 @@ import { toHex } from "./encoding";
 import { ApiError, type CalendarConflict, type ConfirmationKind, fieldError } from "./problem";
 import type { ShopRequest } from "./routes";
 import type { ShopDb } from "./shop-scope";
-import { toShopIso, toShopLocal } from "./time";
+import { shopLocalToUtc, toShopIso, toShopLocal } from "./time";
 
 interface CalendarRow {
   closed_weekdays: number[];
@@ -211,8 +211,23 @@ async function readDays(db: ShopDb, from: string, to: string) {
   return { days, holds };
 }
 
-async function renderDay(db: ShopDb, calendar: CalendarRow, day: string, row: DayRow | undefined, holds: HoldRow[]) {
+function dayValues(calendar: CalendarRow, day: string, row: DayRow | undefined, holds: HoldRow[]) {
   const capacity = row?.capacity ?? calendar.daily_capacity;
+  return {
+    day,
+    weekdayClosed: calendar.closed_weekdays.includes(isoWeekday(day)),
+    closed: row?.closed ?? false,
+    capacityOverride: row?.capacity ?? null,
+    capacity,
+    held: holds.length,
+    remaining: Math.max(0, capacity - holds.length),
+    full: holds.length >= capacity,
+    manuallyClosed: row?.manually_closed_at != null,
+    overbooked: holds.some((h) => h.overbooked),
+  };
+}
+
+async function renderDay(db: ShopDb, calendar: CalendarRow, day: string, row: DayRow | undefined, holds: HoldRow[]) {
   const revision = toHex(
     new Uint8Array(
       await crypto.subtle.digest(
@@ -230,18 +245,70 @@ async function renderDay(db: ShopDb, calendar: CalendarRow, day: string, row: Da
     ),
   );
   return {
-    day,
-    weekdayClosed: calendar.closed_weekdays.includes(isoWeekday(day)),
-    closed: row?.closed ?? false,
-    capacityOverride: row?.capacity ?? null,
-    capacity,
-    held: holds.length,
-    remaining: Math.max(0, capacity - holds.length),
-    full: holds.length >= capacity,
-    manuallyClosed: row?.manually_closed_at != null,
-    overbooked: holds.some((h) => h.overbooked),
+    ...dayValues(calendar, day, row, holds),
     revision,
   };
+}
+
+export interface CalendarBookingDay {
+  readonly day: string;
+  readonly status: "open" | "closed" | "day_off";
+}
+
+function bookingStatus(
+  calendar: CalendarRow,
+  value: ReturnType<typeof dayValues>,
+  now: Date,
+  zone: string,
+): CalendarBookingDay {
+  if (value.weekdayClosed || value.closed) return { day: value.day, status: "day_off" };
+  const cutoff = shopLocalToUtc(shiftDate(value.day, -calendar.order_cutoff_days), calendar.order_cutoff_time, zone);
+  const closed = value.full || value.manuallyClosed || value.overbooked || now.getTime() >= cutoff.getTime();
+  return { day: value.day, status: closed ? "closed" : "open" };
+}
+
+/** 예약 링크의60일 날짜 상태(API-038). 수량·내부 식별자는 반환하지 않는다(G6). 트랜잭션 안에서 부른다. */
+export async function calendarBookingDays(db: ShopDb, now: Date): Promise<CalendarBookingDay[]> {
+  await lockSettings(db, false);
+  const calendar = (await calendarRow(db)) as CalendarRow;
+  const zone = await timeZone(db);
+  const from = toShopLocal(now, zone).date;
+  const data = await readDays(db, from, shiftDate(from, 59));
+  return Array.from({ length: 60 }, (_, offset) => {
+    const day = shiftDate(from, offset);
+    return bookingStatus(
+      calendar,
+      dayValues(
+        calendar,
+        day,
+        data.days.find((d) => d.day === day),
+        data.holds.filter((h) => h.day === day),
+      ),
+      now,
+      zone,
+    );
+  });
+}
+
+/**
+ * 기간/형식은 잠금 전에 확인하고, 판정만으로 날짜 행을 만들지 않는다. 요청의 필드 위치는 호출자가 넘긴다.
+ * TASK-082는 다른 업무 조건도 확인하고 open이면 같은 트랜잭션에서 lockCalendarDay로 행을 준비해 자리를 저장한다.
+ * 뒤의 조건/저장이 실패하면 트랜잭션을 롤백한다. 추가 수락은 별도로 확인받는다.
+ */
+export async function lockedCalendarSlotStatus(
+  db: ShopDb,
+  rawDay: string,
+  now: Date,
+  field = "/pickupDay",
+): Promise<CalendarBookingDay> {
+  const day = calendarDate(rawDay, field);
+  const zone = await timeZone(db);
+  const today = toShopLocal(now, zone).date;
+  if (day < today || day > shiftDate(today, 59)) throw fieldError(field, "outside_window");
+  await lockDay(db, day);
+  const calendar = (await calendarRow(db)) as CalendarRow;
+  const data = await readDays(db, day, day);
+  return bookingStatus(calendar, dayValues(calendar, day, data.days[0], data.holds), now, zone);
 }
 
 async function oneDay(db: ShopDb, calendar: CalendarRow, day: string) {

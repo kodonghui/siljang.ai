@@ -121,14 +121,14 @@ export const DUE_SOURCES = {
     claim:
       "SELECT t.id FROM owner_alerts t WHERE t.shop_id = $1 AND t.id = $2 AND t.status = 'confirming' AND t.requested_at + CASE WHEN t.delivery_checked_at IS NULL THEN interval '1 minute' WHEN t.delivery_checked_at < t.requested_at + interval '5 minutes' THEN interval '5 minutes' ELSE interval '30 minutes' END <= $3 AND t.requested_at <= $3 FOR UPDATE SKIP LOCKED",
   },
-  /** 보낼 손님 안내(처음과 다시 보내기, G4). 정해진 시각 안내(전날·후기)는 보낼 시각을 next_attempt_at에도 두면 찾힌다. */
+  /** 보낼 손님 안내(처음과 다시 보내기, G4). 정해진 시각 안내는 scheduled_for와 next_attempt_at 둘 다 지나야 한다. 캘린더 변경 뒤의 임대/재시도 표도 보존한다. */
   notification_send: {
     table: "notifications",
     dueColumn: "next_attempt_at",
     index: "notifications_due_idx",
-    find: "SELECT t.shop_id, t.id, t.next_attempt_at AS due_at FROM notifications t WHERE t.status IN ('pending', 'retrying') AND t.next_attempt_at <= $1 ORDER BY t.next_attempt_at, t.id LIMIT $2",
+    find: "SELECT t.shop_id, t.id, t.next_attempt_at AS due_at FROM notifications t WHERE t.status IN ('pending', 'retrying') AND (t.scheduled_for IS NULL OR t.scheduled_for <= $1) AND t.next_attempt_at <= $1 ORDER BY t.next_attempt_at, t.id LIMIT $2",
     claim:
-      "SELECT t.id FROM notifications t WHERE t.shop_id = $1 AND t.id = $2 AND t.status IN ('pending', 'retrying') AND t.next_attempt_at <= $3 FOR UPDATE SKIP LOCKED",
+      "SELECT t.id FROM notifications t WHERE t.shop_id = $1 AND t.id = $2 AND t.status IN ('pending', 'retrying') AND (t.scheduled_for IS NULL OR t.scheduled_for <= $3) AND t.next_attempt_at <= $3 FOR UPDATE SKIP LOCKED",
   },
   /** 발송 결과를 조회할 손님 안내(요청 뒤 1·5·30분, REQ-182). */
   notification_check: {
