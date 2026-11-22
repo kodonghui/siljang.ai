@@ -1,5 +1,6 @@
 /** API-010: 입력한 필드만 검사하며 통신판매업의 결합 조건은 잠근 현재 값과 합쳐 검사한다. */
 import { ApiError, type FieldError, fieldError } from "./problem";
+import { SHOP_COMMON_TEXT, type ShopTextRule, shopMailOrderErrors } from "./shop-validation";
 
 export const SHOP_SETTING_COLUMNS = {
   name: "name",
@@ -36,15 +37,9 @@ export interface ShopSettingsInput {
   readonly baseRevision: string;
   readonly changes: Partial<ShopSettingsValues>;
 }
-const STRINGS: Partial<Record<ShopSettingKey, { min: number; max: number; nullable?: true; pattern?: RegExp }>> = {
-  name: { min: 1, max: 40 },
-  contactPhone: { min: 8, max: 14, pattern: /^[0-9-]{8,14}$/ },
-  businessAddress: { min: 1, max: 200 },
-  contactEmail: { min: 3, max: 100, pattern: /^[^@\s]+@[^@\s]+$/ },
+const STRINGS: Partial<Record<ShopSettingKey, ShopTextRule>> = {
+  ...SHOP_COMMON_TEXT,
   pickupAddress: { min: 1, max: 200, nullable: true },
-  mailOrderRegNo: { min: 1, max: 40, nullable: true },
-  mailOrderAuthority: { min: 1, max: 40, nullable: true },
-  mailOrderExemption: { min: 1, max: 200, nullable: true },
 };
 const NUMBERS: Partial<Record<ShopSettingKey, readonly [number, number]>> = {
   idleCloseHours: [1, 720],
@@ -92,14 +87,6 @@ export function parseShopSettings(raw: unknown): ShopSettingsInput {
 export function validateShopMailOrder(
   values: Pick<ShopSettingsValues, "mailOrderRegNo" | "mailOrderAuthority" | "mailOrderExemption">,
 ): void {
-  const errors: FieldError[] = [];
-  if (values.mailOrderRegNo && values.mailOrderAuthority === null)
-    errors.push({ field: "/mailOrderAuthority", code: "required" });
-  if (values.mailOrderAuthority && values.mailOrderRegNo === null)
-    errors.push({ field: "/mailOrderRegNo", code: "required" });
-  if (values.mailOrderRegNo === null && values.mailOrderExemption === null)
-    errors.push({ field: "/mailOrderRegNo", code: "required" });
-  if (values.mailOrderRegNo && values.mailOrderExemption)
-    errors.push({ field: "/mailOrderExemption", code: "not_allowed" });
+  const errors = shopMailOrderErrors(values);
   if (errors.length) throw new ApiError("validation_failed", { errors });
 }
