@@ -84,6 +84,116 @@ async function fixture(options: AppOptions = {}) {
 describeDb("TASK-039 운영규정 API-020~023", () => {
   afterAll(async () => db.close());
 
+  it("조문50개/환불 단계20개는 표마다 한 번에 넣고 순서를 보존함", async () => {
+    let clauseWrites = 0,
+      tierWrites = 0;
+    const h = await fixture({
+      connect: (secret) => {
+        const base = pgConnector(secret);
+        return {
+          query: (sql, params) => base.query(sql, params),
+          close: () => base.close(),
+          abort: () => base.abort(),
+          transaction: (fn) =>
+            base.transaction((tx) =>
+              fn({
+                query: (sql, params) => {
+                  if (/^INSERT INTO rule_clauses/.test(sql)) clauseWrites++;
+                  if (/^INSERT INTO refund_tiers/.test(sql)) tierWrites++;
+                  return tx.query(sql, params);
+                },
+              }),
+            ),
+        };
+      },
+    });
+    const clauses: ClauseInput[] = Array.from({ length: 50 }, (_, i) => ({
+      key: i === 0 ? "staged_refund" : "custom",
+      position: i + 1,
+      title: `조문${i + 1}`,
+      conditionText: "조건",
+      effectText: "효과",
+    }));
+    const refundTiers = Array.from({ length: 20 }, (_, i) => ({
+      hoursBeforeMin: i * 10,
+      hoursBeforeMax: i === 19 ? null : (i + 1) * 10,
+      refundPct: 100,
+    }));
+    const response = await h.call("POST", "/owner/operating-rules/versions", { ...input(), clauses, refundTiers });
+    expect(response.status, await response.clone().text()).toBe(201);
+    expect(await response.json()).toMatchObject({ operatingRules: { clauses, refundTiers } });
+    expect({ clauseWrites, tierWrites }).toEqual({ clauseWrites: 1, tierWrites: 1 });
+  });
+
+  it("낮춘 환불이어도 카드 글이 넘치면 위험 확인 전에422로 거절함", async () => {
+    const h = await fixture();
+    const response = await h.call("POST", "/owner/operating-rules/versions", {
+      ...input(),
+      preProductionRefundPct: 50,
+      clauses: [{ ...input().clauses[0], conditionText: "조".repeat(600), effectText: "문".repeat(500) }],
+    });
+    const body = await expectProblem(response, "validation_failed");
+    expect(body).toMatchObject({
+      errors: expect.arrayContaining([{ field: "/clauses/0", code: "exceeds_card_limit" }]),
+    });
+    expect((await db.query("SELECT id FROM operating_rules WHERE shop_id=$1", [h.shopId])).rowCount).toBe(0);
+  });
+
+  it("조문 원문은 그대로 보존하고 카드에서는 각 조문을 한 줄로 표시함", async () => {
+    const h = await fixture();
+    const clause = {
+      ...input().clauses[0],
+      title: "제목\n다음",
+      conditionText: "조건\r\n다음\t말",
+      effectText: "효과\u2028다음",
+    } as ClauseInput;
+    const response = await h.call("POST", "/owner/operating-rules/versions", { ...input(), clauses: [clause] });
+    expect(response.status).toBe(201);
+    const value = (await response.json()) as { operatingRules: { clauses: ClauseInput[] } };
+    expect(value.operatingRules.clauses).toEqual([clause]);
+    const text = operatingRulesCardTexts(value.operatingRules.clauses, 1).join("\n");
+    expect(text).toContain("· 제목 다음: 조건  다음 말 → 효과 다음\n");
+  });
+
+  it("조문 합계가 넘치면 두 글에 들어간 앞의 짧은 조문은 오류로 표시하지 않음", () => {
+    const clauses: ClauseInput[] = [
+      { key: "pre_production_cancel", position: 1, title: "짧은 조문", conditionText: "조건", effectText: "효과" },
+      ...[2, 3, 4].map((position) => ({
+        key: "custom" as const,
+        position,
+        title: `조문${position}`,
+        conditionText: "조건",
+        effectText: "가".repeat(700),
+      })),
+    ];
+    try {
+      operatingRulesCardTexts(clauses, 1);
+      throw new Error("한도 오류 없음");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      const errors = (error as ApiError).extras.errors;
+      expect(errors).not.toContainEqual({ field: "/clauses/0", code: "exceeds_card_limit" });
+      expect(errors).toContainEqual({ field: "/clauses/3", code: "exceeds_card_limit" });
+    }
+  });
+
+  it("실제 시계가 전진해도 이전 교체와 새 버전 생성의 시각은 같음", async () => {
+    let tick = NOW.getTime();
+    const h = await fixture({ services: { now: () => new Date(tick++) } });
+    const first = await h.call("POST", "/owner/operating-rules/versions", input());
+    const value = (await first.json()) as { operatingRules: { revision: string } };
+    const next = await h.call("POST", "/owner/operating-rules/versions", {
+      ...input(value.operatingRules.revision),
+      paymentDueHours: 18,
+    });
+    expect(next.status).toBe(201);
+    const rows = await db.query<{ created_at: Date; superseded_at: Date | null }>(
+      "SELECT created_at,superseded_at FROM operating_rules WHERE shop_id=$1 ORDER BY version",
+      [h.shopId],
+    );
+    expect(rows.rows[0]?.superseded_at).toEqual(rows.rows[1]?.created_at);
+  });
+
   it("새 가게는 기본 전액 환불/72·12·24시간 템플릿과 빈 버전 목록을 읽음", async () => {
     const h = await fixture();
     const response = await h.call("GET", "/owner/operating-rules");
