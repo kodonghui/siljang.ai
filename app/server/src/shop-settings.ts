@@ -12,13 +12,15 @@ import {
 import { renderShop } from "./shops";
 
 export async function updateShopSettings(r: ShopRequest): Promise<Response> {
-  const input = parseShopSettings(await requireJson(r.req.raw)),
+  requireJson(r.req.raw);
+  const raw = await r.body();
+  const input = parseShopSettings(raw),
     now = r.services.now(),
     origin = new URL(r.req.url).origin;
   return r.command({
     command: "API-010",
     pathIds: [],
-    body: input,
+    body: raw,
     async execute(db) {
       const row = await db.found<Record<string, unknown> & { revision: string }>(
         "SELECT s.*,s.xmin::text AS revision FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE",
