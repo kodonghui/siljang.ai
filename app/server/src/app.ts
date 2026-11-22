@@ -8,6 +8,12 @@ import { kakaoReply } from "./kakao-reply";
 import { kakaoSkillRoutes } from "./kakao-skill";
 import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill-auth";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
+import {
+  createOperatingRulesVersion,
+  getCurrentOperatingRules,
+  getOperatingRulesVersion,
+  listOperatingRulesVersions,
+} from "./operating-rules";
 import { AuthUnavailableError } from "./operator-auth";
 import { createOperatorSession, deleteOperatorSession, getOperatorMe, resolveOperatorSession } from "./operator-login";
 import {
@@ -160,6 +166,10 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   shopRoute("PUT", "/owner/calendar", "owner", setCalendarSettings),
   shopRoute("GET", "/owner/calendar/days", "owner", getCalendarDays),
   shopRoute("PATCH", "/owner/calendar/days/:day", "owner", updateCalendarDay),
+  shopRoute("GET", "/owner/operating-rules", "owner", getCurrentOperatingRules),
+  shopRoute("POST", "/owner/operating-rules/versions", "owner", createOperatingRulesVersion),
+  shopRoute("GET", "/owner/operating-rules/versions", "owner", listOperatingRulesVersions),
+  shopRoute("GET", "/owner/operating-rules/versions/:version", "owner", getOperatingRulesVersion),
   openRoute(
     "GET",
     FILE_ROUTE,
