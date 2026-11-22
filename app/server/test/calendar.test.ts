@@ -217,7 +217,7 @@ describeDb("TASK-041 캘린더 API-026~029", () => {
         "confirmation_required",
       );
       expect(result).toMatchObject({
-        confirm: [{ kind: "closed_day_with_orders", count: 1 }],
+        confirm: [{ kind: "closed_day_with_orders", count: 1, day: "2026-11-20" }],
         conflicts: [
           {
             day: "2026-11-20",
@@ -247,6 +247,88 @@ describeDb("TASK-041 캘린더 API-026~029", () => {
       ]);
     },
   );
+
+  it("지난 날짜·주문 내용만 바뀌면 설정 버전과 저장을 막지 않음", async () => {
+    const h = await harness();
+    await heldDay(h);
+    await db.transaction(async (tx) => {
+      await tx.query("INSERT INTO calendar_days (shop_id,day) VALUES ($1,'2026-11-18')", [h.shop.shopId]);
+      await tx.query("UPDATE order_details SET pickup_at='2026-11-18T06:00:00Z' WHERE shop_id=$1", [h.shop.shopId]);
+      await tx.query("UPDATE orders SET pickup_day='2026-11-18',pickup_at='2026-11-18T06:00:00Z' WHERE shop_id=$1", [
+        h.shop.shopId,
+      ]);
+      await tx.query("UPDATE slot_holds SET day='2026-11-18' WHERE shop_id=$1", [h.shop.shopId]);
+    });
+    const before = (await (await h.call("GET", "/owner/calendar")).json()) as { revision: string };
+    await db.transaction(async (tx) => {
+      await tx.query("UPDATE calendar_days SET capacity=3 WHERE shop_id=$1 AND day='2026-11-18'", [h.shop.shopId]);
+      await tx.query("UPDATE order_details SET pickup_at='2026-11-18T07:00:00Z' WHERE shop_id=$1", [h.shop.shopId]);
+      await tx.query("UPDATE orders SET pickup_at='2026-11-18T07:00:00Z' WHERE shop_id=$1", [h.shop.shopId]);
+    });
+    expect(await (await h.call("GET", "/owner/calendar")).json()).toMatchObject({ revision: before.revision });
+    const response = await h.call("PUT", "/owner/calendar", {
+      ...settings(before.revision),
+      reviewRequestTime: "12:00",
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(await response.json()).toMatchObject({ conflicts: [] });
+  });
+
+  it("같은 미래 자리의 픽업 시각만 바뀌면 설정 저장은 가능하고 확인 주문은 최신 시각", async () => {
+    const h = await harness();
+    await heldDay(h);
+    const before = (await (await h.call("GET", "/owner/calendar")).json()) as { revision: string };
+    await db.transaction(async (tx) => {
+      await tx.query("UPDATE order_details SET pickup_at='2026-11-20T07:00:00Z' WHERE shop_id=$1", [h.shop.shopId]);
+      await tx.query("UPDATE orders SET pickup_at='2026-11-20T07:00:00Z' WHERE shop_id=$1", [h.shop.shopId]);
+    });
+    expect(await (await h.call("GET", "/owner/calendar")).json()).toMatchObject({ revision: before.revision });
+    const problem = await expectProblem(
+      await h.call("PUT", "/owner/calendar", { ...settings(before.revision), dailyCapacity: 0 }),
+      "confirmation_required",
+    );
+    expect(problem).toMatchObject({ conflicts: [{ orders: [{ pickupAt: "2026-11-20T16:00:00+09:00" }] }] });
+  });
+
+  it.each([false, true])("빈 날짜도 null로 버전 검사를 건너뛰지 못함(설정 변경=%s)", async (changed) => {
+    const h = await harness();
+    const initial = (await (await h.call("PUT", "/owner/calendar", settings())).json()) as {
+      calendar: { revision: string };
+    };
+    const read = (await (await h.call("GET", "/owner/calendar/days?from=2026-11-20&to=2026-11-20")).json()) as {
+      items: { revision: string }[];
+    };
+    if (changed)
+      expect(
+        (await h.call("PUT", "/owner/calendar", { ...settings(initial.calendar.revision), dailyCapacity: 9 })).status,
+      ).toBe(200);
+    await expectProblem(
+      await h.call("PATCH", "/owner/calendar/days/2026-11-20", { baseRevision: null, manuallyClosed: true }),
+      "version_conflict",
+    );
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM calendar_days WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
+    if (changed)
+      await expectProblem(
+        await h.call("PATCH", "/owner/calendar/days/2026-11-20", {
+          baseRevision: read.items[0]?.revision,
+          manuallyClosed: true,
+        }),
+        "version_conflict",
+      );
+    const fresh = (await (await h.call("GET", "/owner/calendar/days?from=2026-11-20&to=2026-11-20")).json()) as {
+      items: { revision: string }[];
+    };
+    expect(
+      (
+        await h.call("PATCH", "/owner/calendar/days/2026-11-20", {
+          baseRevision: fresh.items[0]?.revision,
+          manuallyClosed: true,
+        })
+      ).status,
+    ).toBe(200);
+  });
 
   it("하루 최대 개수를 예약 수 아래로 낮추기 전에 확인하고 주문과 자리는 보존함", async () => {
     const h = await harness();
