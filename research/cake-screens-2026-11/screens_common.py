@@ -467,7 +467,8 @@ def f_multi(*specs):
 # 06단계 README 6절 '저장하기 전 확인' 표의 문구. check_screens.py가 README와 같은지 봄
 CONFIRM_MSG = {
     "lowered_refund": "제작 전 취소 환불을 전액보다 낮추면 분쟁 때 가게에 불리할 수 있어요(약관법 제8조, 한국소비자원 조정 사례). 그래도 저장할까요?",
-    "closed_day_with_orders": "이날 확정 주문 {count}건은 그대로 남아요. 휴무로 바꿀까요?",
+    "closed_day_with_orders": "잡힌 자리와 확정 주문 {count}건은 그대로 남아요. 휴무로 바꿀까요?",
+    "capacity_below_held": "이미 잡힌 자리 {count}개는 그대로 남아요. 하루 최대 개수를 줄일까요?",
     "overbooking": "그날 남은 자리가 없어요. 추가로 받을까요?",
     "not_pickup_day": "오늘이 픽업 날이 아니에요. 그래도 인도를 기록할까요?",
     "closed_day": "휴무일이에요. 이날로 정할까요?",

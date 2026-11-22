@@ -1,7 +1,14 @@
 /** 영업 캘린더(API-026~029). 가게·날짜의 잠금은 이후 자리 확보 명령과 함께 쓴다(G3). */
-import { calendarDate, isoWeekday, parseCalendarDay, parseCalendarSettings, shiftDate } from "./calendar-input";
+import {
+  type CalendarSettingsInput,
+  calendarDate,
+  isoWeekday,
+  parseCalendarDay,
+  parseCalendarSettings,
+  shiftDate,
+} from "./calendar-input";
 import { toHex } from "./encoding";
-import { ApiError, fieldError } from "./problem";
+import { ApiError, type CalendarConflict, type ConfirmationKind, fieldError } from "./problem";
 import type { ShopRequest } from "./routes";
 import type { ShopDb } from "./shop-scope";
 import { toShopIso, toShopLocal } from "./time";
@@ -45,6 +52,79 @@ const KEYS = [
   "reviewRequestTime",
 ] as const;
 
+async function digest(value: unknown): Promise<string> {
+  return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(value)))));
+}
+
+function candidate(input: CalendarSettingsInput, previous: CalendarRow | undefined, now: Date): CalendarRow {
+  return {
+    closed_weekdays: input.closedWeekdays,
+    daily_capacity: input.dailyCapacity,
+    order_cutoff_days: input.orderCutoffDays,
+    order_cutoff_time: input.orderCutoffTime,
+    reply_start: input.replyStart,
+    reply_end: input.replyEnd,
+    day_before_notice_time: input.dayBeforeNoticeTime,
+    review_request_time: input.reviewRequestTime,
+    updated_at: now,
+    revision: previous?.revision ?? "new",
+  };
+}
+
+function conflict(day: string, capacity: number, holds: HoldRow[]): CalendarConflict {
+  const orders = [...new Map(holds.map((h) => [h.order_id, { orderId: h.order_id, orderNo: h.order_no }])).values()];
+  return { day, capacity, held: holds.length, orders: orders.slice(0, 100) };
+}
+
+/** 409에는 변경 전의 주문만 보낸다. 확인하지 않은 저장은 트랜잭션 전체가 되돌아간다. */
+function requireConfirmation(
+  confirm: string[],
+  items: { kind: ConfirmationKind; count: number }[],
+  conflicts: CalendarConflict[],
+) {
+  const missing = items.filter((item) => !confirm.includes(item.kind));
+  if (missing.length)
+    throw new ApiError("confirmation_required", {
+      confirm: missing.map((item) => (item.count <= 10000 ? item : { kind: item.kind })),
+      conflicts: conflicts.slice(0, 400),
+    });
+}
+
+async function settingConflicts(
+  db: ShopDb,
+  previous: CalendarRow | undefined,
+  next: CalendarRow,
+  today: string,
+  confirm?: string[],
+): Promise<CalendarConflict[]> {
+  const data = await readDays(db, today, "9999-12-31");
+  const conflicts: CalendarConflict[] = [];
+  let closedCount = 0;
+  let capacityCount = 0;
+  for (const day of [...new Set(data.holds.map((h) => h.day))]) {
+    const holds = data.holds.filter((h) => h.day === day);
+    const active = holds.filter((h) => h.status !== "done");
+    const row = data.days.find((d) => d.day === day);
+    const capacity = row?.capacity ?? next.daily_capacity;
+    const oldCapacity = row?.capacity ?? previous?.daily_capacity;
+    const closed = row?.closed || next.closed_weekdays.includes(isoWeekday(day));
+    const oldClosed = row?.closed || previous?.closed_weekdays.includes(isoWeekday(day));
+    if (closed && !oldClosed) closedCount += active.length;
+    if (capacity < holds.length && (oldCapacity === undefined || capacity < oldCapacity)) capacityCount += holds.length;
+    if (capacity < holds.length || (closed && active.length)) conflicts.push(conflict(day, capacity, holds));
+  }
+  if (confirm)
+    requireConfirmation(
+      confirm,
+      [
+        ...(closedCount ? [{ kind: "closed_day_with_orders" as const, count: closedCount }] : []),
+        ...(capacityCount ? [{ kind: "capacity_below_held" as const, count: capacityCount }] : []),
+      ],
+      conflicts,
+    );
+  return conflicts.slice(0, 400);
+}
+
 /** 설정 변경은 배타 잠금, 날짜·자리 변경은 공유 잠금부터 얻는다. 없는 날짜도 설정 변경과 엇갈리지 않는다. */
 async function lockSettings(db: ShopDb, exclusive: boolean): Promise<void> {
   if (exclusive) await db.run("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 41027))");
@@ -82,7 +162,14 @@ async function timeZone(db: ShopDb): Promise<string> {
   return (await db.found<{ time_zone: string }>("SELECT s.time_zone FROM shops s WHERE s.id = $1")).time_zone;
 }
 
-function renderSettings(row: CalendarRow, zone: string) {
+async function renderSettings(db: ShopDb, row: CalendarRow, zone: string) {
+  const inventory = await readDays(db, "0001-01-01", "9999-12-31");
+  const revision = await digest([
+    db.scope.shopId,
+    row.revision,
+    inventory.days.map((d) => [d.day, d.revision]),
+    inventory.holds.map((h) => [h.id, h.status, h.overbooked]),
+  ]);
   return {
     closedWeekdays: row.closed_weekdays,
     dailyCapacity: row.daily_capacity,
@@ -93,7 +180,7 @@ function renderSettings(row: CalendarRow, zone: string) {
     dayBeforeNoticeTime: row.day_before_notice_time.slice(0, 5),
     reviewRequestTime: row.review_request_time.slice(0, 5),
     updatedAt: toShopIso(row.updated_at, zone),
-    revision: row.revision,
+    revision,
   };
 }
 
@@ -156,7 +243,7 @@ export async function getCalendarSettings(r: ShopRequest): Promise<Response> {
     await r.db.transaction(async (db) => {
       await lockSettings(db, false);
       const row = await calendarRow(db);
-      return renderSettings(row as CalendarRow, await timeZone(db));
+      return renderSettings(db, row as CalendarRow, await timeZone(db));
     }),
   );
 }
@@ -196,15 +283,18 @@ export async function setCalendarSettings(r: ShopRequest): Promise<Response> {
     async execute(db) {
       await lockSettings(db, true);
       const previous = await calendarRow(db, false);
-      if (input.baseRevision !== (previous?.revision ?? null)) throw new ApiError("version_conflict");
       const zone = await timeZone(db);
-      const old = previous ? renderSettings(previous, zone) : undefined;
+      const old = previous ? await renderSettings(db, previous, zone) : undefined;
+      if (input.baseRevision !== (old?.revision ?? null)) throw new ApiError("version_conflict");
+      const today = toShopLocal(r.services.now(), zone).date;
+      const next = candidate(input, previous, r.services.now());
+      const conflicts = await settingConflicts(db, previous, next, today, input.confirm);
       if (old && KEYS.every((key) => JSON.stringify(old[key]) === JSON.stringify(input[key])))
         return {
           status: 200,
           code: "unchanged",
           ref: {},
-          body: { outcome: "unchanged", calendar: old, conflicts: [] },
+          body: { outcome: "unchanged", calendar: old, conflicts },
         };
       await db.run(
         `INSERT INTO business_calendars (shop_id, closed_weekdays, daily_capacity, order_cutoff_days, order_cutoff_time, reply_start, reply_end, day_before_notice_time, review_request_time, updated_at)
@@ -227,12 +317,17 @@ export async function setCalendarSettings(r: ShopRequest): Promise<Response> {
         status: 200,
         code: outcome,
         ref: {},
-        body: { outcome, calendar: renderSettings((await calendarRow(db)) as CalendarRow, zone), conflicts: [] },
+        body: { outcome, calendar: await renderSettings(db, (await calendarRow(db)) as CalendarRow, zone), conflicts },
       };
     },
     async render(db, stored) {
       const calendar = (await calendarRow(db)) as CalendarRow;
-      return { outcome: stored.code, calendar: renderSettings(calendar, await timeZone(db)), conflicts: [] };
+      const zone = await timeZone(db);
+      return {
+        outcome: stored.code,
+        calendar: await renderSettings(db, calendar, zone),
+        conflicts: await settingConflicts(db, calendar, calendar, toShopLocal(r.services.now(), zone).date),
+      };
     },
   });
 }
@@ -265,6 +360,20 @@ export async function updateCalendarDay(r: ShopRequest): Promise<Response> {
         next.manual === current.manuallyClosed
       )
         return { status: 200, code: "unchanged", ref: { day }, body: { outcome: "unchanged", day: current } };
+      const active = data.holds.filter((h) => h.status !== "done");
+      const capacity = next.capacity ?? calendar.daily_capacity;
+      requireConfirmation(
+        input.confirm,
+        [
+          ...(next.closed && !current.closed && !current.weekdayClosed && active.length
+            ? [{ kind: "closed_day_with_orders" as const, count: active.length }]
+            : []),
+          ...(capacity < current.capacity && capacity < current.held
+            ? [{ kind: "capacity_below_held" as const, count: current.held }]
+            : []),
+        ],
+        data.holds.length ? [conflict(day, capacity, data.holds)] : [],
+      );
       await ensureDay(db, day);
       await db.run(
         "UPDATE calendar_days SET closed = $3, capacity = $4, manually_closed_at = CASE WHEN $5::boolean THEN COALESCE(manually_closed_at, $6::timestamptz) ELSE NULL END, updated_at = $6 WHERE shop_id = $1 AND day = $2::date",

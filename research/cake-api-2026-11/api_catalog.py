@@ -79,7 +79,8 @@ FIELD_CODES = {
 # ── 확인할 것 (confirmation_required의 confirm[].kind) ───────────────────────────────
 CONFIRMATIONS = {
     "lowered_refund": dict(spec="SPEC-005", meaning="제작 전 취소 환불을 전액보다 낮춤(REQ-032)", message="제작 전 취소 환불을 전액보다 낮추면 분쟁 때 가게에 불리할 수 있어요(약관법 제8조, 한국소비자원 조정 사례). 그래도 저장할까요?"),
-    "closed_day_with_orders": dict(spec="SPEC-007", meaning="확정 주문이 있는 날을 휴무로 바꿈. 주문과 자리는 그대로 남음(REQ-041)", message="이날 확정 주문 {count}건은 그대로 남아요. 휴무로 바꿀까요?"),
+    "closed_day_with_orders": dict(spec="SPEC-007", meaning="잡힌 자리나 확정 주문이 있는 날을 휴무로 바꿈. 주문과 자리는 그대로 남음(REQ-041, REQ-261)", message="잡힌 자리와 확정 주문 {count}건은 그대로 남아요. 휴무로 바꿀까요?"),
+    "capacity_below_held": dict(spec="SPEC-007", meaning="잡힌 자리나 확정 자리보다 하루 최대 개수를 낮춤. 저장 전에 관련 주문을 보이고 확인받음(REQ-261)", message="이미 잡힌 자리 {count}개는 그대로 남아요. 하루 최대 개수를 줄일까요?"),
     "overbooking": dict(spec="SPEC-031", meaning="하루 최대 개수에 닿은 날에 사장님이 고르는 주문(맞춤 주문 수락·날짜 변경 수락·결제 기한 연장·재제작)을 마감 후 추가 수락(R10, REQ-226). 그날은 다른 손님에게 계속 마감", message="그날 남은 자리가 없어요. 추가로 받을까요?"),
     "not_pickup_day": dict(spec="SPEC-054", meaning="픽업 날짜 전에 인도를 기록함", message="오늘이 픽업 날이 아니에요. 그래도 인도를 기록할까요?"),
     "closed_day": dict(spec="SPEC-060", meaning="휴무일에 사장님이 고르는 주문(맞춤 주문 수락·날짜 변경 수락·결제 기한 연장·재제작)의 자리를 잡음. 마감 후 추가 수락으로 남음(REQ-221)", message="휴무일이에요. 이날로 정할까요?"),

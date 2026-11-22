@@ -1,7 +1,7 @@
 // 06 계약(api/openapi.yaml)의 오류 꼴과 04 G7의 결과를 화면이 한 곳에서 읽는 표.
 // - 오류 코드 38개(components.x-corthex.errors): 상태 코드·화면에 보이는 말(06)·G7 결과·08 화면 상태·다시 보내는 법.
 // - 필드 오류 사유 24개(components.x-corthex.fieldErrors): 필드 옆에 보이는 한국어 글(화면이 더 맞는 글을 주면 그것).
-// - 확인할 것 8개(components.x-corthex.confirmations): 확인 창의 글(06 6절 = 08 README 5절).
+// - 확인할 것 9개(components.x-corthex.confirmations): 확인 창의 글(06 6절 = 08 README 5절).
 // 손으로 적었고, problems.test.ts가 06(코드·상태·말)과 08 화면 정의(화면 상태)와 견준다. 06에 코드가 늘면 시험이 실패한다.
 
 /**
@@ -330,11 +330,12 @@ export function isFieldReason(value: unknown): value is FieldReason {
   return typeof value === "string" && Object.hasOwn(FIELD_REASONS, value);
 }
 
-/** 확인할 것 8개의 확인 창 글(06 6절, 08 README 5절). {count}는 관련 주문 수. */
+/** 확인할 것 9개의 확인 창 글(06 6절, 08 README 5절). {count}는 관련 주문 수. */
 export const CONFIRMATIONS = {
   lowered_refund:
     "제작 전 취소 환불을 전액보다 낮추면 분쟁 때 가게에 불리할 수 있어요(약관법 제8조, 한국소비자원 조정 사례). 그래도 저장할까요?",
-  closed_day_with_orders: "이날 확정 주문 {count}건은 그대로 남아요. 휴무로 바꿀까요?",
+  closed_day_with_orders: "잡힌 자리와 확정 주문 {count}건은 그대로 남아요. 휴무로 바꿀까요?",
+  capacity_below_held: "이미 잡힌 자리 {count}개는 그대로 남아요. 하루 최대 개수를 줄일까요?",
   overbooking: "그날 남은 자리가 없어요. 추가로 받을까요?",
   not_pickup_day: "오늘이 픽업 날이 아니에요. 그래도 인도를 기록할까요?",
   closed_day: "휴무일이에요. 이날로 정할까요?",

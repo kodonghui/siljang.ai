@@ -56,7 +56,13 @@ interface OwnShopCase {
   readonly kind: "self";
 }
 
-export type CrossShopCase = OwnerCrossShopCase | SkillCrossShopCase | OwnShopCase;
+interface CalendarShopCase {
+  readonly method: "GET" | "PUT" | "PATCH";
+  readonly path: "/owner/calendar" | "/owner/calendar/days" | "/owner/calendar/days/:day";
+  readonly kind: "calendar";
+}
+
+export type CrossShopCase = OwnerCrossShopCase | SkillCrossShopCase | OwnShopCase | CalendarShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   ...["message", "card", "review", "event"].map(
@@ -68,6 +74,10 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
       }) as const,
   ),
   { method: "GET", path: "/owner/shop", kind: "self" },
+  { method: "GET", path: "/owner/calendar", kind: "calendar" },
+  { method: "PUT", path: "/owner/calendar", kind: "calendar" },
+  { method: "GET", path: "/owner/calendar/days", kind: "calendar" },
+  { method: "PATCH", path: "/owner/calendar/days/:day", kind: "calendar" },
 ];
 
 /** 선언된 가게 범위 경로 가운데 등록되지 않은 것(missing)과, 등록됐지만 선언이 없는 것(stale). */
@@ -181,6 +191,51 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "calendar") {
+      const day = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+      for (const [shop, capacity] of [
+        [env.a, 3],
+        [env.b, 9],
+      ] as const)
+        await db.query(
+          `INSERT INTO business_calendars (shop_id, daily_capacity, order_cutoff_days, order_cutoff_time)
+          VALUES ($1, $2, 2, '18:00') ON CONFLICT (shop_id) DO UPDATE SET daily_capacity = EXCLUDED.daily_capacity`,
+          [shop.shopId, capacity],
+        );
+      const before = await snapshots(db, env);
+      const read = await send(env, "GET", { url: `/owner/calendar?shopId=${env.b.shopId}&ownerId=${env.b.ownerId}` });
+      expect(read.status).toBe(200);
+      expect(read.body?.dailyCapacity).toBe(3);
+      if (!read.body) throw new Error("시험 설정 없음");
+      const { updatedAt: _at, revision, ...settings } = read.body;
+      const url = c.path.includes("/days") ? c.path.replace(":day", day) : c.path;
+      if (c.method === "GET") {
+        const response = await send(env, "GET", { url: `${url}?from=${day}&to=${day}&shopId=${env.b.shopId}` });
+        expect(response.status).toBe(200);
+        if (c.path.endsWith("/days")) expect(response.body).toMatchObject({ items: [{ capacity: 3 }] });
+        else expect(response.body?.dailyCapacity).toBe(3);
+        expect(await snapshots(db, env)).toEqual(before);
+      } else {
+        const body =
+          c.method === "PUT"
+            ? { ...settings, baseRevision: revision, dailyCapacity: 4 }
+            : { baseRevision: null, manuallyClosed: true };
+        for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+          const response = await send(env, c.method, { url, body: { ...body, shopId: target } });
+          expect(response.status).toBe(422);
+          expect(response.body).toMatchObject({ errors: [{ field: "/shopId", code: "unknown_field" }] });
+          expect(JSON.stringify(response.body)).not.toContain(env.b.shopId);
+        }
+        expect(await snapshots(db, env)).toEqual(before);
+        const response = await send(env, c.method, { url, body });
+        expect(response.status, response.text).toBe(200);
+        const after = await snapshots(db, env);
+        expect(after[1]).toEqual(before[1]);
+        if (c.method === "PUT") expect(response.body).toMatchObject({ calendar: { dailyCapacity: 4 } });
+        else expect(response.body).toMatchObject({ day: { capacity: 3, manuallyClosed: true } });
+      }
+      return;
+    }
     if (c.kind === "channel") {
       await checkSkillChannel(env, c, db);
       return;

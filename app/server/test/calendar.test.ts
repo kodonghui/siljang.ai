@@ -123,4 +123,95 @@ describeDb("TASK-041 캘린더 API-026~029", () => {
     const h = await harness();
     await expectProblem(await h.call(method, path, input, false), "unauthenticated");
   });
+
+  async function heldDay(h: Awaited<ReturnType<typeof harness>>, status: "held" | "fixed" = "held") {
+    await h.call("PUT", "/owner/calendar", settings());
+    await db.query("INSERT INTO calendar_days (shop_id, day) VALUES ($1, '2026-11-20')", [h.shop.shopId]);
+    await db.query(
+      `INSERT INTO slot_holds (shop_id, day, order_id, payment_request_id, hold_key, status, fixed_at)
+      VALUES ($1, '2026-11-20', $2, $3, $4, $5, CASE WHEN $5 = 'fixed' THEN now() ELSE NULL END)`,
+      [
+        h.shop.shopId,
+        h.shop.orderId,
+        status === "held" ? h.shop.paymentRequestId : null,
+        `hold:${h.shop.orderId}:calendar`,
+        status,
+      ],
+    );
+    return (
+      (
+        (await (await h.call("GET", "/owner/calendar/days?from=2026-11-20&to=2026-11-20")).json()) as {
+          items: { revision: string }[];
+        }
+      ).items[0]?.revision ?? "missing"
+    );
+  }
+
+  it.each(["held", "fixed"] as const)(
+    "%s 주문이 있는 날을 휴무로 바꾸기 전에 주문을 보이고 확인받음",
+    async (status) => {
+      const h = await harness();
+      const baseRevision = await heldDay(h, status);
+      const input = { baseRevision, closed: true };
+      const result = await expectProblem(
+        await h.call("PATCH", "/owner/calendar/days/2026-11-20", input),
+        "confirmation_required",
+      );
+      expect(result).toMatchObject({
+        confirm: [{ kind: "closed_day_with_orders", count: 1 }],
+        conflicts: [{ day: "2026-11-20", held: 1, orders: [{ orderId: h.shop.orderId }] }],
+      });
+      const closed = await db.query<{ closed: boolean }>("SELECT closed FROM calendar_days WHERE shop_id = $1", [
+        h.shop.shopId,
+      ]);
+      expect(closed.rows[0]?.closed).toBe(false);
+      const confirmed = await h.call("PATCH", "/owner/calendar/days/2026-11-20", {
+        ...input,
+        confirm: ["closed_day_with_orders"],
+      });
+      expect(confirmed.status, await confirmed.clone().text()).toBe(200);
+      expect(await confirmed.json()).toMatchObject({ day: { closed: true, held: 1, remaining: 4 } });
+      expect((await db.query("SELECT status FROM slot_holds WHERE shop_id = $1", [h.shop.shopId])).rows).toEqual([
+        { status },
+      ]);
+    },
+  );
+
+  it("하루 최대 개수를 예약 수 아래로 낮추기 전에 확인하고 주문과 자리는 보존함", async () => {
+    const h = await harness();
+    const baseRevision = await heldDay(h);
+    const before = (await (await h.call("GET", "/owner/calendar")).json()) as { revision: string };
+    const globalInput = { ...settings(before.revision), dailyCapacity: 0 };
+    const problem = await expectProblem(await h.call("PUT", "/owner/calendar", globalInput), "confirmation_required");
+    expect(problem).toMatchObject({
+      confirm: [{ kind: "capacity_below_held", count: 1 }],
+      conflicts: [{ capacity: 0, held: 1, orders: [{ orderId: h.shop.orderId }] }],
+    });
+    const result = await h.call("PUT", "/owner/calendar", { ...globalInput, confirm: ["capacity_below_held"] });
+    expect(result.status, await result.clone().text()).toBe(200);
+    expect(await result.json()).toMatchObject({
+      calendar: { dailyCapacity: 0 },
+      conflicts: [{ capacity: 0, held: 1 }],
+    });
+    await expectProblem(
+      await h.call("PATCH", "/owner/calendar/days/2026-11-20", { baseRevision, manuallyClosed: true }),
+      "version_conflict",
+    );
+    expect((await db.query("SELECT status FROM slot_holds WHERE shop_id = $1", [h.shop.shopId])).rows).toEqual([
+      { status: "held" },
+    ]);
+  });
+
+  it("날짜별 수량도 예약보다 낮추려면 확인이 필요함", async () => {
+    const h = await harness();
+    const baseRevision = await heldDay(h);
+    const input = { baseRevision, capacityOverride: 0 };
+    await expectProblem(await h.call("PATCH", "/owner/calendar/days/2026-11-20", input), "confirmation_required");
+    const response = await h.call("PATCH", "/owner/calendar/days/2026-11-20", {
+      ...input,
+      confirm: ["capacity_below_held"],
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ day: { capacity: 0, held: 1, remaining: 0, full: true } });
+  });
 });

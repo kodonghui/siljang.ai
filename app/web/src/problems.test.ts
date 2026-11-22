@@ -196,10 +196,10 @@ describe("필드 오류 사유 24개", () => {
   });
 });
 
-describe("확인할 것 8개", () => {
+describe("확인할 것 9개", () => {
   it("목록과 글이 06 confirmations·ConfirmationNeeded.kind enum과 같다", () => {
     const kinds = Object.keys(CONFIRMATIONS);
-    expect(kinds).toHaveLength(8);
+    expect(kinds).toHaveLength(9);
     expect(sorted(kinds)).toEqual(sorted(Object.keys(x.confirmations)));
     expect(sorted(kinds)).toEqual(sorted(prop("ConfirmationNeeded", "kind").enum as string[]));
     for (const [kind, text] of Object.entries(CONFIRMATIONS)) expect(text, kind).toBe(x.confirmations[kind]?.message);
@@ -207,10 +207,10 @@ describe("확인할 것 8개", () => {
 
   it("관련 주문 수를 채우고 날짜가 있으면 앞에 붙인다", () => {
     expect(confirmText({ kind: "closed_day_with_orders", count: 1200 })).toBe(
-      "이날 확정 주문 1,200건은 그대로 남아요. 휴무로 바꿀까요?",
+      "잡힌 자리와 확정 주문 1,200건은 그대로 남아요. 휴무로 바꿀까요?",
     );
     expect(confirmText({ kind: "closed_day_with_orders", count: 2, day: "2026-11-20" })).toBe(
-      "11월 20일: 이날 확정 주문 2건은 그대로 남아요. 휴무로 바꿀까요?",
+      "11월 20일: 잡힌 자리와 확정 주문 2건은 그대로 남아요. 휴무로 바꿀까요?",
     );
     expect(confirmText({ kind: "overbooking" })).toBe(CONFIRMATIONS.overbooking);
   });

@@ -580,7 +580,7 @@ op(id="API-026", method="get", path="/owner/calendar", op="getCalendarSettings",
 op(id="API-027", method="put", path="/owner/calendar", op="setCalendarSettings", tag="영업 캘린더",
    summary="영업 캘린더 설정 등록·수정", spec=["SPEC-007", "SPEC-052", "SPEC-061"], auth="owner", idem=True,
    desc="바꾼 기준은 그 뒤 잡는 자리에만 쓴다(R4). 바꾼 기준을 넘는 날과 주문은 그대로 두고 conflicts로 보인다. "
-        "확정 주문이 있는 요일을 휴무로 바꾸면 409 confirmation_required(closed_day_with_orders, 건수). 전날 안내·후기 부탁 시각은 08:00~20:50(SPEC-052, SPEC-061). "
+        "잡힌 자리나 확정 주문이 있는 요일을 휴무로 바꾸거나 하루 최대 개수를 이미 잡힌 자리보다 낮추면 저장 전에 409 confirmation_required와 conflicts의 관련 주문을 보인다(REQ-261). 전날 안내·후기 부탁 시각은 08:00~20:50(SPEC-052, SPEC-061). "
         "바꾼 전날 안내·후기 부탁 시각은 아직 보내지 않은 안내부터 쓰고(보낼 시각을 다시 셈) 이미 보낸 것은 다시 보내지 않는다(REQ-243).",
    body="CalendarSettingsInput", body_examples={"first": E.CALENDAR_INPUT},
    ok=[(200, "CalendarSettingsResult", {
@@ -590,7 +590,7 @@ op(id="API-027", method="put", path="/owner/calendar", op="setCalendarSettings",
        "unchanged": {"outcome": "unchanged", "calendar": E.CALENDAR, "conflicts": []}})],
    errors={404: ["shop_not_registered"], 409: ["version_conflict", "confirmation_required"]},
    fields=[("/replyEnd", "not_after_start"), ("/dayBeforeNoticeTime", "outside_window")],
-   confirm=["closed_day_with_orders"],
+   confirm=["closed_day_with_orders", "capacity_below_held"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:shop_not_registered"],
           "상태": ["409:confirmation_required", "example:updated_with_conflicts"], "반복": ["idem", "example:unchanged"],
@@ -612,7 +612,7 @@ op(id="API-028", method="get", path="/owner/calendar/days", op="listCalendarDays
 op(id="API-029", method="patch", path="/owner/calendar/days/{day}", op="updateCalendarDay", tag="영업 캘린더",
    summary="그날 휴무·하루 최대 개수·주문 마감 수정", spec=["SPEC-007", "SPEC-012", "SPEC-015"], auth="owner", idem=True,
    desc="날짜별 휴무, 그날만 다른 하루 최대 개수, 그날 주문 마감(SPEC-012)을 바꾼다. 이미 잡힌 자리는 그대로이고, 마감을 풀면 다시 잡는다. "
-        "이미 마감된 날을 다시 마감하면 unchanged. 지난 날짜는 422(path:day in_past). 확정 주문이 있는 날을 휴무로 바꾸면 409 confirmation_required.",
+        "이미 마감된 날을 다시 마감하면 unchanged. 지난 날짜는 422(path:day in_past). 잡힌 자리나 확정 주문이 있는 날을 휴무로 바꾸거나 하루 최대 개수를 이미 잡힌 자리보다 낮추면 저장 전에 409 confirmation_required와 conflicts의 관련 주문을 보인다(REQ-261).",
    params=[pday("2026-11-20", "바꿀 날")],
    body="CalendarDayInput",
    body_examples={"close_orders": {"baseRevision": E.calendar_day("2026-11-20", held=5)["revision"], "manuallyClosed": True},
@@ -622,7 +622,7 @@ op(id="API-029", method="patch", path="/owner/calendar/days/{day}", op="updateCa
                                    "unchanged": {"outcome": "unchanged", "day": E.calendar_day("2026-11-21", held=1, manual=True)}})],
    errors={404: ["shop_not_registered", "not_set"], 409: ["version_conflict", "confirmation_required"]},
    fields=[("path:day", "in_past")],
-   confirm=["closed_day_with_orders"],
+   confirm=["closed_day_with_orders", "capacity_below_held"],
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"],
           "대상": ["422:validation_failed", "note:지난 날짜는 path:day in_past"], "상태": ["example:unchanged", "409:confirmation_required"],
