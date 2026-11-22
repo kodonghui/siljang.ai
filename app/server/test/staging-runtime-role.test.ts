@@ -249,6 +249,87 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     }
   });
 
+  it("제한 역할로 운영규정 4개 API를 실행하고 이전 조문/단계 수정·삭제는 막음", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const api = createApp({
+      connect: () => roleDb(),
+      scopes: { owner: async () => createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }) },
+      services: { now: () => now },
+      logSink: () => {},
+    });
+    const key = newRequestKey();
+    const call = (method: string, path: string, body?: unknown) =>
+      api.request(
+        `https://siljang.example/api${path}`,
+        {
+          method,
+          headers: { origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": key },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        },
+        testEnv(),
+      );
+    const current = await call("GET", "/owner/operating-rules");
+    expect(current.status, await current.clone().text()).toBe(200);
+    const first = (await current.json()) as { revision: string };
+    const body = {
+      baseRevision: first.revision,
+      quoteValidHours: 72,
+      paymentDueHours: 24,
+      issueReportHours: 24,
+      changeDeadlineHours: 48,
+      cancellationFeeKrw: 0,
+      preProductionRefundPct: 100,
+      dateChangeRefundBasis: "original_pickup",
+      clauses: [
+        {
+          key: "pre_production_cancel",
+          position: 1,
+          title: "제작 전 취소",
+          conditionText: "제작 전인 경우",
+          effectText: "취소 수수료만 빼고 모두 돌려드립니다.",
+        },
+      ],
+      refundTiers: [],
+    };
+    const save = await call("POST", "/owner/operating-rules/versions", body);
+    expect(save.status, await save.clone().text()).toBe(201);
+    expect(await save.json()).toMatchObject({
+      outcome: "created",
+      operatingRules: { version: 2, paymentDueHours: 24 },
+    });
+    const replay = await call("POST", "/owner/operating-rules/versions", body);
+    expect(replay.status).toBe(201);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    for (const path of [
+      "/owner/operating-rules",
+      "/owner/operating-rules/versions",
+      "/owner/operating-rules/versions/1",
+      "/owner/operating-rules/versions/2",
+    ])
+      expect((await call("GET", path)).status).toBe(200);
+    const flags = await isolated.db.query(
+      `SELECT has_column_privilege($1,'operating_rules','superseded_at','UPDATE') AS supersede,
+      has_column_privilege($1,'operating_rules','version','UPDATE') AS rewrite_version,
+      has_column_privilege($1,'rule_clauses','effect_text','UPDATE') AS rewrite_clause,
+      has_table_privilege($1,'refund_tiers','DELETE') AS remove_tier`,
+      [role],
+    );
+    expect(flags.rows).toEqual([
+      { supersede: true, rewrite_version: false, rewrite_clause: false, remove_tier: false },
+    ]);
+    const conn = roleDb();
+    try {
+      await expect(
+        conn.query("UPDATE rule_clauses SET effect_text='합성 변경' WHERE shop_id=$1", [shop.shopId]),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(conn.query("DELETE FROM refund_tiers WHERE shop_id=$1", [shop.shopId])).rejects.toMatchObject({
+        code: "42501",
+      });
+    } finally {
+      await conn.close();
+    }
+  });
+
   it("제한 역할의 계좌 조회/교체·보류 해제는 되고 임의 승인·예금주 확인/삭제는 막음", async () => {
     if (!isolated) throw new Error("시험 DB 없음");
     const fixture = await createShop(isolated.db, "제한 역할 계좌 가게");

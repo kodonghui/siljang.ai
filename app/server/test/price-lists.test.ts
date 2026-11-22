@@ -117,6 +117,23 @@ async function photo(
 describeDb("TASK-038 가격표 버전 API-016~019", () => {
   afterAll(async () => db.close());
 
+  it("시계가 전진해도 이전 가격표 교체와 새 버전 생성의 시각은 같음", async () => {
+    let tick = NOW.getTime();
+    const h = await fixture({ services: { now: () => new Date(tick++) } });
+    const first = await h.call("POST", "/owner/price-list/versions", input());
+    const value = (await first.json()) as { priceList: { revision: string } };
+    const next = await h.call("POST", "/owner/price-list/versions", {
+      ...input(value.priceList.revision),
+      options: input().options.map((option) => ({ ...option, amount: option.amount + 1 })),
+    });
+    expect(next.status).toBe(201);
+    const rows = await db.query<{ created_at: Date; superseded_at: Date | null }>(
+      "SELECT created_at,superseded_at FROM price_lists WHERE shop_id=$1 ORDER BY version",
+      [h.shopId],
+    );
+    expect(rows.rows[0]?.superseded_at).toEqual(rows.rows[1]?.created_at);
+  });
+
   it("설정 전 현재 가격표는404 not_set, 버전 목록은200 빈 목록", async () => {
     const h = await fixture();
     await expectProblem(await h.call("GET", "/owner/price-list"), "not_set");

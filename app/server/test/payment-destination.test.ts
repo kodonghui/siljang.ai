@@ -288,6 +288,20 @@ describeDb("TASK-040 API-024/025 결제 계좌", () => {
     },
   );
 
+  it("영업 신고 직전에 확인한 예금주는 계좌 교체 뒤에도 운영자 확인 이름으로 허용함", async () => {
+    let current = NOW;
+    const h = await fixture({ services: { now: () => current, fieldCrypto: singleKeyCrypto().fc } });
+    await saved(h);
+    await verified(h, "운영자 확인 이름");
+    await db.query("UPDATE shops SET license_reviewed_at=$2 WHERE id=$1", [h.shopId, new Date(NOW.getTime() + 1000)]);
+    current = new Date(NOW.getTime() + 2000);
+    let previous = await read(h);
+    for (const number of ["7777777777", "8888888888"]) {
+      await saved(h, { ...input(previous.revision), holderName: "운영자 확인 이름", accountNumber: number });
+      previous = await read(h);
+    }
+  });
+
   it("보류된 가게의 교체는 다시 확인 기다림이 되고 다른 신원/확인 상태는 그대로임", async () => {
     const h = await fixture();
     await saved(h);
@@ -462,7 +476,7 @@ describe("결제 계좌 입력 경계", () => {
     ["accountNumber", "12345678901234567"],
     ["accountNumber", "12345a67890"],
     ["accountNumber", null],
-    ["accountNumber", "-".repeat(31) + "1234567890"],
+    ["accountNumber", `${"-".repeat(31)}1234567890`],
     ["baseRevision", "bad:revision"],
     ["baseRevision", "x".repeat(65)],
     ["baseRevision", 42],
@@ -470,7 +484,7 @@ describe("결제 계좌 입력 경계", () => {
     ["cardPaymentUrl", "https://"],
     ["cardPaymentUrl", "https://pay.example/a\nnext"],
     ["cardPaymentUrl", true],
-    ["cardPaymentUrl", "https://pay.example/" + "x".repeat(2048)],
+    ["cardPaymentUrl", `https://pay.example/${"x".repeat(2048)}`],
     ["confirm", ["other"]],
     ["confirm", ["holder_mismatch", "holder_mismatch"]],
     ["confirm", null],
@@ -485,13 +499,13 @@ describe("결제 계좌 입력 경계", () => {
     },
   );
   it("은행·예금주30자/계좌10·16자리/구분자40자/주소2048자와 확인 하나를 받음", () => {
-    for (const accountNumber of ["1234567890", "1234567890123456", "-".repeat(30) + "1234567890"]) {
+    for (const accountNumber of ["1234567890", "1234567890123456", `${"-".repeat(30)}1234567890`]) {
       const value = {
         ...input("r".repeat(64)),
         bankName: "가".repeat(30),
         holderName: "나".repeat(30),
         accountNumber,
-        cardPaymentUrl: "https://pay.example/" + "x".repeat(2048 - 20),
+        cardPaymentUrl: `https://pay.example/${"x".repeat(2048 - 20)}`,
         confirm: ["holder_mismatch"],
       };
       expect([...value.cardPaymentUrl].length).toBe(2048);

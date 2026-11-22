@@ -286,15 +286,13 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
             await promoteUpload(r.services.storage(), design.upload, r.scope.shopId, id);
             consumed.push(design.upload);
           }
+        const now = r.services.now();
         if (previous)
-          await db.run("UPDATE price_lists SET superseded_at=$3 WHERE shop_id=$1 AND id=$2", [
-            previous.id,
-            r.services.now(),
-          ]);
+          await db.run("UPDATE price_lists SET superseded_at=$3 WHERE shop_id=$1 AND id=$2", [previous.id, now]);
         await db.run("INSERT INTO price_lists (shop_id,id,version,created_at) VALUES ($1,$2,$3,$4)", [
           id,
           (previous?.version ?? 0) + 1,
-          r.services.now(),
+          now,
         ]);
         const optionIds = new Map(input.options.map((o) => [o.key, crypto.randomUUID()]));
         for (const o of input.options)

@@ -71,10 +71,7 @@ export async function setPaymentDestination(r: ShopRequest): Promise<Response> {
         business_name: string;
         representative_name: string;
         license_status: string;
-        license_reviewed_at: Date | null;
-      }>(
-        "SELECT s.business_name,s.representative_name,s.license_status,s.license_reviewed_at FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE",
-      );
+      }>("SELECT s.business_name,s.representative_name,s.license_status FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE");
       const previous = await current(db);
       if (input.baseRevision !== (previous?.revision ?? null)) throw new ApiError("version_conflict");
       if (previous) {
@@ -93,13 +90,13 @@ export async function setPaymentDestination(r: ShopRequest): Promise<Response> {
           };
       }
       const matchesIdentity = input.holderName === shop.business_name || input.holderName === shop.representative_name;
-      // 지금 영업 신고의 검토 이후 운영자가 확인한 이름도 허용한다. 서버 역할은 확인 이력을 새로 만들지 않는다.
+      // 운영자가 확인한 같은 가게의 예금주 이름도 허용한다(A25). 서버 역할은 확인 이력을 새로 만들지 않는다.
       const checked =
         shop.license_status === "verified"
           ? (
               await db.run(
-                "SELECT p.id FROM payment_accounts p WHERE p.shop_id=$1 AND p.holder_name=$2 AND p.holder_checked_at >= $3 LIMIT 1",
-                [input.holderName, shop.license_reviewed_at],
+                "SELECT p.id FROM payment_accounts p WHERE p.shop_id=$1 AND p.holder_name=$2 AND p.holder_checked_at IS NOT NULL LIMIT 1",
+                [input.holderName],
               )
             ).rows[0]
           : undefined;
