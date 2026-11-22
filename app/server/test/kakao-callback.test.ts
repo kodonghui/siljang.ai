@@ -13,6 +13,7 @@ import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
+import { anthropicStream, sseResponse } from "./support/ai-mock";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
@@ -181,6 +182,65 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     );
     return rows[0];
   }
+
+  it("정상 모델 답은 같은 수신과 큐 세 번에도 AI 호출·초안 변경·콜백이 한 번임", async () => {
+    const queue = mockQueue();
+    const userKey = newUuid();
+    for (let i = 0; i < 3; i++) {
+      const response = await receive(queue, VALID, userKey, "문구는 생일 축하로 해 주세요");
+      expect(response.headers.get("Siljang-Outcome")).toBe(i === 0 ? "callback_pending" : "duplicate");
+    }
+    expect(queue.jobs).toHaveLength(1);
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    const inbound = await stored(job);
+    const output = { reply: "문구를 생일 축하로 적을게요.", draft_patch: { lettering: "생일 축하" } };
+    const vendor = vi.fn<typeof fetch>(async () =>
+      sseResponse(
+        anthropicStream("claude-haiku-5-5", JSON.stringify(output), {
+          input: 1000,
+          output: 100,
+          cacheRead: 0,
+          cacheWrite: 0,
+        }),
+      ),
+    );
+    const callback = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const runtime = {
+      ...env,
+      AI_PROVIDER: "anthropic",
+      AI_MODEL: "claude-haiku-5-5",
+      AI_USD_KRW: "1450.00",
+      AI_USD_KRW_DATE: "2026-11-14",
+      ANTHROPIC_API_KEY: "fake-provider-key",
+    };
+    vi.stubGlobal("fetch", vendor);
+    try {
+      for (let i = 0; i < 3; i++)
+        expect(
+          await consumeKakaoCallback(job, runtime, {
+            now: () => new Date(NOW.getTime() + 5000),
+            fetch: callback,
+            logSink: () => {},
+          }),
+        ).toBe("done");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(vendor).toHaveBeenCalledTimes(1);
+    expect(callback).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(String(callback.mock.calls[0]?.[1]?.body));
+    expect(body.template.outputs).toEqual([{ simpleText: { text: output.reply } }]);
+    const calls = await db.query<{ n: number }>(
+      "SELECT count(*)::integer n FROM ai_calls WHERE shop_id=$1 AND consultation_id=$2 AND result='success'",
+      [shop.shopId, inbound?.consultation_id],
+    );
+    expect(calls.rows[0]?.n).toBe(1);
+    const drafts = await db.query<{ lettering: string; revision: number }>(
+      "SELECT lettering, revision FROM order_drafts WHERE shop_id=$1 AND consultation_id=$2",
+      [shop.shopId, inbound?.consultation_id],
+    );
+    expect(drafts.rows).toEqual([{ lettering: "생일 축하", revision: 1 }]);
+  });
 
   it("수신 응답은 콜백을 예고하고 큐에는 식별자만 전달함", async () => {
     const queue = mockQueue();
