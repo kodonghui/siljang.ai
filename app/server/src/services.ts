@@ -13,6 +13,7 @@ import type { Bindings } from "./app";
 import { type FieldCrypto, fieldCrypto } from "./field-crypto";
 import { type FileUrls, fileUrlSigner } from "./file-url";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
+import { type KakaoEvents, kakaoEvents } from "./kakao-event";
 import { type OperatorAuth, supabaseAuth } from "./operator-auth";
 import { kakaoOwnerAuth, type OwnerAuth } from "./owner-auth";
 import { type ImageBinding, type PhotoNormalizer, photoNormalizer } from "./photo-normalizer";
@@ -37,6 +38,8 @@ export interface Services {
   aiModel(options?: Pick<AiModelOptions, "totalTimeoutMs">): AiModel;
   /** 회사/모델과 선택 회사 키의 존재. 실제 업무 처리기의 준비 여부나 호출 성공이 아니다. */
   readonly aiConfigured: boolean;
+  /** 카카오 공통 Event API. 가져오는 것만으로 발신하지 않으며 우리 앱의 REST 키를 쓴다. */
+  kakaoEvents(): KakaoEvents;
   /** 운영자 인증 서비스(Supabase Auth). SUPABASE_URL·SUPABASE_PUBLISHABLE_KEY가 없으면 MissingSettingError. */
   operatorAuth(): OperatorAuth;
   ownerAuth(): OwnerAuth;
@@ -53,6 +56,7 @@ export interface ServiceOverrides {
   readonly limiters?: { readonly [B in RateLimitRule["binding"]]?: RateLimiter };
   readonly fieldCrypto?: FieldCrypto;
   readonly aiModel?: AiModel;
+  readonly kakaoEvents?: KakaoEvents;
   readonly operatorAuth?: OperatorAuth;
   readonly ownerAuth?: OwnerAuth;
   readonly wait?: (ms: number) => Promise<void>;
@@ -65,6 +69,7 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
   let urls: FileUrls | undefined;
   let fields: FieldCrypto | undefined = overrides.fieldCrypto;
   let ai: AiModel | undefined = overrides.aiModel;
+  let events: KakaoEvents | undefined = overrides.kakaoEvents;
   let auth: OperatorAuth | undefined = overrides.operatorAuth;
   let ownerAuth: OwnerAuth | undefined = overrides.ownerAuth;
   return {
@@ -117,6 +122,13 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
         ...(overrides.now ? { now: overrides.now } : {}),
       });
       return ai;
+    },
+    kakaoEvents() {
+      if (events !== undefined) return events;
+      const key = settings.ownerAuth?.clientId;
+      if (key === undefined) throw new MissingSettingError("KAKAO_REST_API_KEY is not set");
+      events = kakaoEvents(key);
+      return events;
     },
     operatorAuth() {
       if (auth !== undefined) return auth;
