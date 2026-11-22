@@ -32,6 +32,9 @@ it("한 가게의 운영자 범위로 전체 목록을 열 수 없고 전체 운
     operatorId = newUuid();
   const one = operatorShopDirectory(db, createShopScope(newUuid(), { kind: "operator", operatorId }));
   await expect(one.list({ status: "pending", limit: 20, after: null })).rejects.toThrow(ForgedScopeError);
+  await expect(one.listIdentityChanges({ status: "pending", limit: 20, after: null })).rejects.toThrow(
+    ForgedScopeError,
+  );
   const all = operatorShopDirectory(db, createOperatorScope(operatorId, "합성 운영자"));
   await expect(all.duplicates()).rejects.toThrow(ForgedScopeError);
   expect(calls).toBe(0);

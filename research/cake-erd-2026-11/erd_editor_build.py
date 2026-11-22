@@ -120,7 +120,7 @@ def special_indexes(schema_text: str) -> list[tuple[str, str]]:
     out = []
     for m in INDEX_RE.finditer(schema_text):
         unique, name, table, cols, where = m.groups()
-        if where or "(" in cols:
+        if build_erd.index_needs_script(cols, where):
             out.append((name, f"CREATE {unique or ''}INDEX {name} ON {table} ({cols}){where or ''};"))
     return out
 

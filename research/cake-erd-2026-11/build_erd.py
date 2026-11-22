@@ -166,6 +166,11 @@ def parse(schema_text: str) -> list[Table]:
     return tables
 
 
+def index_needs_script(columns: str, where: str | None) -> bool:
+    """편집 도구가 표현하지 못하는 조건·식·정렬 방향은 원문 DDL로 남긴다."""
+    return bool(where or "(" in columns or re.search(r"\b(?:ASC|DESC)\b", columns, re.I))
+
+
 def cols(text: str) -> list[str]:
     return [c.strip() for c in text.split(",") if c.strip()]
 

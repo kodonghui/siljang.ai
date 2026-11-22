@@ -2308,6 +2308,52 @@ SELECT pg_temp.expect_left('계좌 재제출은 보류/할 일/예약을 함께 
 UPDATE operators SET disabled_at=now() WHERE id='0e340000-0000-4000-8000-000000000002';
 SELECT pg_temp.expect_left('영업 신고 직전에 막힌 운영자 거절', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'verified',NULL)$$,'unauthenticated');
 
+-- TASK-036: 전용 신원 판정의 세션/이전 값/현재 계좌와 끝난 판정 보호.
+INSERT INTO owners(id,kakao_account_id) VALUES ('0e360000-0000-4000-8000-000000000001','936000001');
+INSERT INTO operators(id,email,display_name,auth_user_id,mfa_factor_id,mfa_enrolled_at)
+VALUES ('0e360000-0000-4000-8000-000000000002','identity-review@example.com','합성 신원 확인자','0e360000-0000-4000-8000-000000000003','0e360000-0000-4000-8000-000000000004',now()),
+('0e360000-0000-4000-8000-000000000012','identity-review2@example.com','다른 합성 확인자','0e360000-0000-4000-8000-000000000013','0e360000-0000-4000-8000-000000000014',now());
+INSERT INTO operator_sessions(operator_id,token_hash,created_at,expires_at) VALUES
+('0e360000-0000-4000-8000-000000000002',repeat('c',64),now(),now()+interval '12 hours'),
+('0e360000-0000-4000-8000-000000000012',repeat('d',64),now(),now()+interval '12 hours');
+INSERT INTO shops(id,owner_id,name,contact_phone,contact_email,business_address,business_name,representative_name,business_reg_no,mail_order_exemption,food_license_no,food_business_type,license_photo_key,entrustment_terms_version,entrustment_consented_at)
+VALUES ('0e360000-0000-4000-8000-000000000005','0e360000-0000-4000-8000-000000000001','합성 신원 가게','010-0000-0000','identity@example.com','서울 합성로1','이전 합성 상호','이전 합성 대표','1234567891','합성 면제','2026-0001','bakery','license/synthetic.jpg','test-v1',now());
+INSERT INTO shop_identity_changes(id,shop_id,business_name,representative_name,business_reg_no,prev_business_name,prev_representative_name,prev_business_reg_no,evidence_photo_key)
+VALUES ('0e360000-0000-4000-8000-000000000006','0e360000-0000-4000-8000-000000000005','새 합성 상호','새 합성 대표','1234567891','이전 합성 상호','이전 합성 대표','1234567891','license/new-synthetic.jpg');
+CREATE FUNCTION pg_temp.identity_review_call(target uuid, decision text, reason text) RETURNS text LANGUAGE sql AS $identity_call$
+SELECT review_shop_identity(i.shop_id,i.id,'0e360000-0000-4000-8000-000000000002',repeat('c',64),now(),i.xmin::text,p.id,p.xmin::text,$2,$3)
+FROM shop_identity_changes i LEFT JOIN payment_accounts p ON p.shop_id=i.shop_id AND p.retired_at IS NULL WHERE i.id=$1
+$identity_call$;
+SELECT pg_temp.expect_left('사업자 전용 판정의 고정 검색 경로와 공개 실행 금지',$$SELECT prosecdef::text || '/' || (proconfig=ARRAY['search_path=pg_catalog'])::text || '/' || (NOT EXISTS(SELECT 1 FROM aclexplode(coalesce(proacl,acldefault('f',proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE'))::text FROM pg_proc WHERE oid='review_shop_identity(uuid,uuid,uuid,text,timestamptz,text,uuid,text,text,text)'::regprocedure$$,'true/true/true');
+SELECT pg_temp.expect_left('사업자 판정의 잘못된 세션 지문은 거절',$$SELECT review_shop_identity('0e360000-0000-4000-8000-000000000005','0e360000-0000-4000-8000-000000000006','0e360000-0000-4000-8000-000000000002',repeat('x',64),now(),'stale',NULL,NULL,'applied',NULL)$$,'unauthenticated');
+SELECT pg_temp.expect_left('사업자 판정의 오래된 요청 버전은 거절',$$SELECT review_shop_identity('0e360000-0000-4000-8000-000000000005','0e360000-0000-4000-8000-000000000006','0e360000-0000-4000-8000-000000000002',repeat('c',64),now(),'stale',NULL,NULL,'applied',NULL)$$,'version_conflict');
+UPDATE shops SET business_name='따로 바뀐 현재 상호' WHERE id='0e360000-0000-4000-8000-000000000005';
+SELECT pg_temp.expect_left('사업자 판정은 요청 때 신원과 현재 값이 달라지면 거절',$$SELECT pg_temp.identity_review_call('0e360000-0000-4000-8000-000000000006','applied',NULL)$$,'version_conflict');
+UPDATE shops SET business_name='이전 합성 상호' WHERE id='0e360000-0000-4000-8000-000000000005';
+SELECT pg_temp.expect_fail('사업자 반영 뒤 오류는 신원과 요청을 함께 되돌림','shops_name_check',ARRAY[$$SELECT pg_temp.identity_review_call('0e360000-0000-4000-8000-000000000006','applied',NULL)$$,$$UPDATE shops SET name='' WHERE id='0e360000-0000-4000-8000-000000000005'$$]);
+SELECT pg_temp.expect_left('사업자 실패 뒤 신원과 요청은 그대로',$$SELECT s.business_name || '/' || i.status FROM shops s JOIN shop_identity_changes i ON i.shop_id=s.id WHERE i.id='0e360000-0000-4000-8000-000000000006'$$,'이전 합성 상호/pending');
+SELECT pg_temp.expect_left('사업자 계좌 없이 신원 반영은 허용',$$SELECT pg_temp.identity_review_call('0e360000-0000-4000-8000-000000000006','applied',NULL)$$,'done');
+SELECT pg_temp.expect_left('사업자 신원 세 값과 판정자 시각을 함께 남김',$$SELECT ((s.business_name,s.representative_name,s.business_reg_no)=(i.business_name,i.representative_name,i.business_reg_no))::text || '/' || i.status || '/' || (i.reviewed_by='0e360000-0000-4000-8000-000000000002' AND i.reviewed_at=now())::text FROM shops s JOIN shop_identity_changes i ON i.shop_id=s.id WHERE i.id='0e360000-0000-4000-8000-000000000006'$$,'true/applied/true');
+SELECT pg_temp.expect_left('같은 운영자의 끝난 사업자 판정은 그대로',$$SELECT pg_temp.identity_review_call('0e360000-0000-4000-8000-000000000006','applied',NULL)$$,'unchanged');
+SELECT pg_temp.expect_left('다른 운영자는 끝난 사업자 판정을 바꾸지 못함',$$SELECT review_shop_identity('0e360000-0000-4000-8000-000000000005','0e360000-0000-4000-8000-000000000006','0e360000-0000-4000-8000-000000000012',repeat('d',64),now(),'stale',NULL,NULL,'on_hold','다른 판정')$$,'already_decided');
+INSERT INTO shop_identity_changes(id,shop_id,business_name,representative_name,business_reg_no,prev_business_name,prev_representative_name,prev_business_reg_no,evidence_photo_key)
+VALUES ('0e360000-0000-4000-8000-000000000007','0e360000-0000-4000-8000-000000000005','세 번째 합성 상호','새 합성 대표','1234567891','새 합성 상호','새 합성 대표','1234567891','license/third-synthetic.jpg');
+CREATE FUNCTION pg_temp.reject_blank_identity_reason(reason text) RETURNS boolean LANGUAGE plpgsql AS $blank_identity$
+BEGIN
+  PERFORM pg_temp.identity_review_call('0e360000-0000-4000-8000-000000000007','on_hold',reason);
+  RETURN false;
+EXCEPTION WHEN invalid_parameter_value THEN RETURN true;
+END
+$blank_identity$;
+SELECT pg_temp.expect_left('사업자 보류의 빈 이유는 전용 함수도 거절',$$SELECT bool_and(pg_temp.reject_blank_identity_reason(reason))::text FROM unnest(ARRAY[' ',E'\t\n',U&'\00A0',U&'\3000',U&'\FEFF']) AS reason$$,'true');
+SELECT pg_temp.expect_left('사업자 보류는 이유를 남기고 신원은 유지',$$SELECT pg_temp.identity_review_call('0e360000-0000-4000-8000-000000000007','on_hold','증빙을 다시 확인해 주세요')$$,'done');
+SELECT pg_temp.expect_left('사업자 보류 뒤 현재 신원과 이유/판정자/시각',$$SELECT s.business_name || '/' || (i.hold_reason='증빙을 다시 확인해 주세요' AND i.reviewed_by='0e360000-0000-4000-8000-000000000002' AND i.reviewed_at=now())::text FROM shops s JOIN shop_identity_changes i ON i.shop_id=s.id WHERE i.id='0e360000-0000-4000-8000-000000000007'$$,'새 합성 상호/true');
+SELECT pg_temp.expect_left('사업자 같은 보류 재전송은 그대로',$$SELECT pg_temp.identity_review_call('0e360000-0000-4000-8000-000000000007','on_hold','증빙을 다시 확인해 주세요')$$,'unchanged');
+SELECT pg_temp.expect_left('사업자 끝난 보류를 같은 운영자도 다른 결과로 바꾸지 못함',$$SELECT pg_temp.identity_review_call('0e360000-0000-4000-8000-000000000007','applied',NULL)$$,'version_conflict');
+SELECT pg_temp.expect_left('사업자 같은 시각의 마지막 요청은 내부 순번으로 찾음',$$SELECT id::text FROM shop_identity_changes WHERE shop_id='0e360000-0000-4000-8000-000000000005' ORDER BY requested_order DESC LIMIT 1$$,'0e360000-0000-4000-8000-000000000007');
+UPDATE operators SET disabled_at=now() WHERE id='0e360000-0000-4000-8000-000000000002';
+SELECT pg_temp.expect_left('사업자 판정 직전에 막힌 운영자는 거절',$$SELECT pg_temp.identity_review_call('0e360000-0000-4000-8000-000000000007','on_hold','증빙을 다시 확인해 주세요')$$,'unauthenticated');
+
 -- 결과
 SELECT count(*) FILTER (WHERE ok) AS blocked, count(*) FILTER (WHERE NOT ok) AS not_blocked FROM rule_results \gset
 SELECT name, detail FROM rule_results WHERE NOT ok ORDER BY name;

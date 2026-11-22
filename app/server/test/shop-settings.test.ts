@@ -1,5 +1,6 @@
 import { afterAll, expect, it } from "vitest";
 import { createApp } from "../src/app";
+import type { Queryable } from "../src/db";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { OWNER_COOKIE } from "../src/owner-oauth";
@@ -8,6 +9,7 @@ import { Secret } from "../src/settings";
 import { expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
+import { seedOperatorSession } from "./support/operator";
 import { createShop, issueTestBookingLink, linkTestChannel } from "./support/shops";
 
 const db = testDb(),
@@ -38,7 +40,23 @@ async function fixture() {
     cookie = `${OWNER_COOKIE}=${session.token}`;
   const clock = { now: NOW },
     jobs: KakaoCallbackJob[] = [];
+  const queries: string[] = [];
+  const tracked = (q: Queryable): Queryable => ({
+    query(sql, params) {
+      queries.push(sql);
+      return q.query(sql, params);
+    },
+  });
   const app = createApp({
+    connect: () => {
+      const base = testDb();
+      return {
+        query: tracked(base).query,
+        transaction: (fn) => base.transaction((tx) => fn(tracked(tx))),
+        abort: () => base.abort(),
+        close: () => base.close(),
+      };
+    },
     services: {
       now: () => clock.now,
       fieldCrypto: singleKeyCrypto().fc,
@@ -96,10 +114,67 @@ async function fixture() {
       },
       env,
     );
-  return { shop, cookie, app, get, patch, change, save, question, clock, jobs };
+  return { shop, cookie, app, get, patch, change, save, question, clock, jobs, queries };
 }
 
 describeDb("TASK-037 가게 설정 부분 저장", () => {
+  it("서로 다른 변경 조합도 같은 SQL 하나를 쓰고 안 바뀐 필드를 보존함", async () => {
+    const h = await fixture(),
+      before = await h.get();
+    await h.save({ name: "고정 SQL 시험" });
+    await h.save({ ownerWaitMinutes: 30, awaitingPaymentLimit: 2 });
+    const updates = h.queries.filter((sql) => /^UPDATE shops\b/.test(sql));
+    expect(updates).toHaveLength(2);
+    expect(new Set(updates).size).toBe(1);
+    expect(await h.get()).toMatchObject({
+      name: "고정 SQL 시험",
+      contactEmail: before.contactEmail,
+      ownerWaitMinutes: 30,
+      awaitingPaymentLimit: 2,
+    });
+  });
+  it.each([true, false])("설정 변경 %s는 잠근 가게를 다시 SELECT하지 않음", async (changed) => {
+    const h = await fixture(),
+      before = await h.get();
+    h.queries.length = 0;
+    const response = await h.patch({ baseRevision: before.revision, name: changed ? "한 번 읽기" : before.name });
+    expect(response.status).toBe(200);
+    expect(h.queries.filter((sql) => /^SELECT s\.\*.*FROM shops s WHERE s\.id\s*=\s*\$1/.test(sql))).toHaveLength(1);
+  });
+  it("설정과 운영자 판정은 같은 가게 버전으로 교차 충돌하고 새로 읽은 뒤에만 저장함", async () => {
+    const h = await fixture(),
+      op = await seedOperatorSession(db, NOW);
+    const getReview = async () => {
+      const response = await h.app.request(
+        `${ORIGIN}/api/operator/shops/${h.shop.shopId}`,
+        { headers: { cookie: op.cookie } },
+        env,
+      );
+      expect(response.status).toBe(200);
+      return (await response.json()) as { revision: string };
+    };
+    const review = (revision: string) =>
+      h.app.request(
+        `${ORIGIN}/api/operator/shops/${h.shop.shopId}/license-review`,
+        {
+          method: "POST",
+          headers: {
+            cookie: op.cookie,
+            origin: ORIGIN,
+            "content-type": "application/json",
+            "Idempotency-Key": newRequestKey(),
+          },
+          body: JSON.stringify({ baseRevision: revision, decision: "on_hold", holdReason: "합성 확인 내용" }),
+        },
+        env,
+      );
+    const oldReview = await getReview();
+    const saved = await h.save({ ownerWaitMinutes: 30 });
+    await expectProblem(await review(oldReview.revision), "version_conflict");
+    expect((await review((await getReview()).revision)).status).toBe(200);
+    await expectProblem(await h.patch({ baseRevision: saved.shop.revision, ownerWaitMinutes: 60 }), "version_conflict");
+    expect(await h.get()).toMatchObject({ ownerWaitMinutes: 30, licenseStatus: "on_hold" });
+  });
   afterAll(async () => db.close());
   it("한 필드만 저장하고 나머지 신고/신원/계좌/주문은 보존함", async () => {
     const h = await fixture(),

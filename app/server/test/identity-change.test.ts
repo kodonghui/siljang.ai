@@ -79,8 +79,8 @@ async function fixture(options: { connect?: DbConnector } = {}) {
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 async function operatorFor(h: Fixture) {
   const session = await seedOperatorSession(db, NOW);
-  const list = (query = "") =>
-    h.app.request(`${ORIGIN}/api/operator/identity-changes${query}`, { headers: { cookie: session.cookie } }, env);
+  const list = (query = "", bindings = env) =>
+    h.app.request(`${ORIGIN}/api/operator/identity-changes${query}`, { headers: { cookie: session.cookie } }, bindings);
   const detail = async () => {
     const response = await h.app.request(
       `${ORIGIN}/api/operator/shops/${h.shop.shopId}`,
@@ -454,6 +454,249 @@ describeDb("TASK-036 사장님 사업자 변경 요청", () => {
       );
       await expectProblem(response, "unauthenticated");
     }
+  });
+  it("목록의 시각/ID 커서는 같은 마이크로초 요청을 빠짐/중복 없이 읽음", async () => {
+    const fixtures: Fixture[] = [],
+      ids: string[] = [];
+    for (let i = 0; i < 3; i++) fixtures.push(await fixture());
+    for (let i = 0; i < fixtures.length; i++) {
+      const h = fixtures[i];
+      if (!h) throw new Error("가게 없음");
+      const response = await h.post(await h.input());
+      expect(response.status).toBe(201);
+      const id = ((await response.json()) as { shop: Shop }).shop.identityChange?.changeId;
+      if (!id) throw new Error("요청 없음");
+      ids.push(id);
+      await db.query("UPDATE shop_identity_changes SET requested_at=$2::timestamptz WHERE id=$1", [
+        id,
+        `2000-01-01T00:00:00.00000${i < 2 ? 1 : 2}Z`,
+      ]);
+    }
+    const op = await operatorFor(fixtures[0] as Fixture),
+      seen: string[] = [];
+    let cursor: string | null = null;
+    for (let i = 0; i < 3; i++) {
+      const response = await op.list(`?limit=1${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { items: { changeId: string }[]; nextCursor: string | null };
+      expectSchema("IdentityChangeList", body);
+      seen.push(...body.items.map((x) => x.changeId));
+      cursor = body.nextCursor;
+    }
+    expect(seen).toEqual([...ids.slice(0, 2).sort(), ids[2]]);
+  });
+  it.each(["applied", "on_hold"] as const)("끝난 %s 요청도 판정자/시각과 함께 목록에서 읽음", async (decision) => {
+    const h = await fixture();
+    expect((await h.post(await h.input())).status).toBe(201);
+    const op = await operatorFor(h),
+      item = (await op.detail()).pendingIdentityChange;
+    if (!item) throw new Error("요청 없음");
+    expect(
+      (
+        await op.review(item.changeId, {
+          baseRevision: item.revision,
+          decision,
+          ...(decision === "on_hold" ? { holdReason: "합성 이유" } : {}),
+        })
+      ).status,
+    ).toBe(200);
+    const response = await op.list(`?status=${decision}&limit=100`),
+      body = (await response.json()) as { items: { changeId: string }[] };
+    expectSchema("IdentityChangeList", body);
+    expect(body.items.find((x) => x.changeId === item.changeId)).toMatchObject({
+      status: decision,
+      reviewedAt: expect.any(String),
+      reviewedBy: { operatorId: op.operatorId, displayName: "합성 운영자" },
+    });
+  });
+  it.each(["?status=verified", "?limit=0", "?limit=101", "?limit=1e2", "?cursor=broken"])(
+    "목록%s는422 필드 오류",
+    async (query) => {
+      const h = await fixture(),
+        op = await operatorFor(h);
+      await expectProblem(await op.list(query), "validation_failed");
+    },
+  );
+  it("COMMIT 응답만 잃어도 사용 중인 증빙은 지우지 않고 같은 키로201을 읽음", async () => {
+    let failOnce = true;
+    const h = await fixture({
+      connect: () => {
+        if (!isolated) throw new Error("시험 DB 없음");
+        const base = isolated.connect();
+        return {
+          query: (sql, params) => base.query(sql, params),
+          abort: () => base.abort(),
+          close: () => base.close(),
+          transaction: async (fn) => {
+            let inserted = false;
+            const result = await base.transaction((tx) =>
+              fn({
+                query(sql, params) {
+                  if (sql.startsWith("INSERT INTO shop_identity_changes")) inserted = true;
+                  return tx.query(sql, params);
+                },
+              }),
+            );
+            if (inserted && failOnce) {
+              failOnce = false;
+              throw new Error("synthetic_commit_response_lost");
+            }
+            return result;
+          },
+        };
+      },
+    });
+    const input = await h.input(),
+      key = newRequestKey();
+    expect((await h.post(input, key)).status).toBe(500);
+    const row = (
+      await db.query<{ evidence_photo_key: string }>(
+        "SELECT evidence_photo_key FROM shop_identity_changes WHERE shop_id=$1",
+        [h.shop.shopId],
+      )
+    ).rows[0];
+    if (!row) throw new Error("저장된 요청 없음");
+    expect(h.store.objects.has(row.evidence_photo_key)).toBe(true);
+    const replay = await h.post(input, key);
+    expect(replay.status).toBe(201);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    expect(h.store.calls.filter((x) => x === "copy")).toHaveLength(1);
+  });
+  it("반영 뒤 응답 서명 실패500도 신원/판정/알림을 모두 되돌림", async () => {
+    const h = await fixture(),
+      before = await h.get();
+    expect((await h.post(await h.input())).status).toBe(201);
+    const op = await operatorFor(h),
+      item = (await op.detail()).pendingIdentityChange;
+    if (!item) throw new Error("요청 없음");
+    const body = { baseRevision: item.revision, decision: "applied" },
+      key = newRequestKey();
+    expect((await op.review(item.changeId, body, key, testEnv())).status).toBe(500);
+    expect((await h.get()).businessName).toBe(before.businessName);
+    expect((await db.query("SELECT status FROM shop_identity_changes WHERE shop_id=$1", [h.shop.shopId])).rows).toEqual(
+      [{ status: "pending" }],
+    );
+    expect((await db.query("SELECT id FROM owner_alerts WHERE shop_id=$1", [h.shop.shopId])).rows).toHaveLength(0);
+    expect((await op.review(item.changeId, body, key)).status).toBe(200);
+  });
+  it("운영자 목록의 증빙 서명 설정이 없으면 값 없는500이고 복구하면200", async () => {
+    const h = await fixture();
+    expect((await h.post(await h.input())).status).toBe(201);
+    const op = await operatorFor(h),
+      failed = await op.list("", testEnv());
+    await expectProblem(failed, "internal");
+    expect((await op.list()).status).toBe(200);
+  });
+  it("오래된 사장님 버전은409/복사0이고 가게 없는 실제 세션은404", async () => {
+    const h = await fixture(),
+      input = await h.input();
+    await expectProblem(await h.post({ ...input, baseRevision: "stale" }), "version_conflict");
+    expect(h.store.calls.filter((x) => x === "copy")).toHaveLength(0);
+    const unregistered = await createOwnerSession(
+      db,
+      { accountId: BigInt(`0x${crypto.randomUUID().replaceAll("-", "").slice(0, 14)}`).toString(), friend: false },
+      NOW,
+      false,
+    );
+    const response = await h.app.request(
+      `${ORIGIN}/api/owner/shop/identity-changes`,
+      {
+        method: "POST",
+        headers: {
+          cookie: `${OWNER_COOKIE}=${unregistered.token}`,
+          origin: ORIGIN,
+          "content-type": "application/json",
+          "Idempotency-Key": newRequestKey(),
+        },
+        body: JSON.stringify(input),
+      },
+      env,
+    );
+    await expectProblem(response, "shop_not_registered");
+  });
+  it("사업자 요청/판정의 필수 요청 키와 내용 형식/판정 입력은422", async () => {
+    const h = await fixture(),
+      input = await h.input();
+    const badOwner = await h.app.request(
+      `${ORIGIN}/api/owner/shop/identity-changes`,
+      {
+        method: "POST",
+        headers: { cookie: h.cookie, origin: ORIGIN, "content-type": "application/json" },
+        body: JSON.stringify(input),
+      },
+      env,
+    );
+    expect(await expectProblem(badOwner, "validation_failed")).toMatchObject({
+      errors: [{ field: "header:Idempotency-Key", code: "required" }],
+    });
+    expect((await h.post(input)).status).toBe(201);
+    const op = await operatorFor(h),
+      item = (await op.detail()).pendingIdentityChange;
+    if (!item) throw new Error("요청 없음");
+    for (const body of [
+      { baseRevision: item.revision, decision: "on_hold" },
+      { baseRevision: item.revision, decision: "applied", shopId: crypto.randomUUID() },
+    ])
+      await expectProblem(await op.review(item.changeId, body), "validation_failed");
+    const wrongType = await h.app.request(
+      `${ORIGIN}/api/operator/identity-changes/${item.changeId}/review`,
+      {
+        method: "POST",
+        headers: {
+          cookie: op.cookie,
+          origin: ORIGIN,
+          "content-type": "text/plain",
+          "Idempotency-Key": newRequestKey(),
+        },
+        body: "{}",
+      },
+      env,
+    );
+    await expectProblem(wrongType, "validation_failed");
+  });
+  it("앱 인증 뒤 세션이 끝나면 전용 함수가 다시 거절하고 신원/판정/알림은 그대로", async () => {
+    let revoke: (() => Promise<void>) | undefined;
+    const h = await fixture({
+        connect: () => {
+          if (!isolated) throw new Error("시험 DB 없음");
+          const base = isolated.connect();
+          return {
+            query: (sql, params) => base.query(sql, params),
+            abort: () => base.abort(),
+            close: () => base.close(),
+            transaction: (fn) =>
+              base.transaction((tx) =>
+                fn({
+                  async query(sql, params) {
+                    if (sql.startsWith("SELECT review_shop_identity") && revoke) {
+                      const run = revoke;
+                      revoke = undefined;
+                      await run();
+                    }
+                    return tx.query(sql, params);
+                  },
+                }),
+              ),
+          };
+        },
+      }),
+      before = await h.get();
+    expect((await h.post(await h.input())).status).toBe(201);
+    const op = await operatorFor(h),
+      item = (await op.detail()).pendingIdentityChange;
+    if (!item) throw new Error("요청 없음");
+    revoke = async () => {
+      await db.query("UPDATE operator_sessions SET ended_at=$2 WHERE operator_id=$1", [op.operatorId, NOW]);
+    };
+    await expectProblem(
+      await op.review(item.changeId, { baseRevision: item.revision, decision: "applied" }),
+      "unauthenticated",
+    );
+    expect((await h.get()).businessName).toBe(before.businessName);
+    expect((await db.query("SELECT status FROM shop_identity_changes WHERE shop_id=$1", [h.shop.shopId])).rows).toEqual(
+      [{ status: "pending" }],
+    );
+    expect((await db.query("SELECT id FROM owner_alerts WHERE shop_id=$1", [h.shop.shopId])).rows).toHaveLength(0);
   });
 });
 
