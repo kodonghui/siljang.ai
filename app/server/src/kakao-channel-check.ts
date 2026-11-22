@@ -78,7 +78,12 @@ export async function receiveKakaoChannelCheck(
   if (!request || request.scope !== r.scope) throw new ForgedScopeError("missing authorized Kakao trial scope");
   if (kind === "event") return null;
   const check = request.payload.action.clientExtra.check;
-  if (request.status === "linked" && check === undefined) return null;
+  // 시험 표시/연결 문구 후보가 없는 요청은 기존 상담·미연결 읽기 경로로 보낸다.
+  if (
+    check === undefined &&
+    (request.status === "linked" || kind !== "message" || !/^연결 [0-9]{6}$/.test(request.payload.utterance.trim()))
+  )
+    return null;
   return r.db.transaction(async (db) => {
     await configurationLock(db);
     let channel = (
