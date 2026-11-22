@@ -68,7 +68,22 @@ interface PriceShopCase {
   readonly kind: "prices";
 }
 
-export type CrossShopCase = OwnerCrossShopCase | SkillCrossShopCase | OwnShopCase | CalendarShopCase | PriceShopCase;
+interface RulesShopCase {
+  readonly method: "GET" | "POST";
+  readonly path:
+    | "/owner/operating-rules"
+    | "/owner/operating-rules/versions"
+    | "/owner/operating-rules/versions/:version";
+  readonly kind: "rules";
+}
+
+export type CrossShopCase =
+  | OwnerCrossShopCase
+  | SkillCrossShopCase
+  | OwnShopCase
+  | CalendarShopCase
+  | PriceShopCase
+  | RulesShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   ...["message", "card", "review", "event"].map(
@@ -88,6 +103,10 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "POST", path: "/owner/price-list/versions", kind: "prices" },
   { method: "GET", path: "/owner/price-list/versions", kind: "prices" },
   { method: "GET", path: "/owner/price-list/versions/:version", kind: "prices" },
+  { method: "GET", path: "/owner/operating-rules", kind: "rules" },
+  { method: "POST", path: "/owner/operating-rules/versions", kind: "rules" },
+  { method: "GET", path: "/owner/operating-rules/versions", kind: "rules" },
+  { method: "GET", path: "/owner/operating-rules/versions/:version", kind: "rules" },
 ];
 
 /** 선언된 가게 범위 경로 가운데 등록되지 않은 것(missing)과, 등록됐지만 선언이 없는 것(stale). */
@@ -201,6 +220,79 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "rules") {
+      await db.query("UPDATE operating_rules SET quote_valid_hours=99 WHERE shop_id=$1", [env.b.shopId]);
+      if (c.path.endsWith(":version"))
+        await db.query("UPDATE operating_rules SET version=1000 WHERE shop_id=$1", [env.b.shopId]);
+      const marker = `다른 가게의 합성 규정 ${env.b.shopId}`;
+      await db.query(
+        "INSERT INTO rule_clauses (shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES ($1,$2,'custom',32767,'합성 조문','합성 조건',$3) ON CONFLICT (operating_rules_id,position) DO NOTHING",
+        [env.b.shopId, env.b.operatingRulesId, marker],
+      );
+      const before = await snapshots(db, env);
+      const current = await send(env, "GET", { url: "/owner/operating-rules" });
+      expect(current.status, current.text).toBe(200);
+      expect(current.body).toMatchObject({ quoteValidHours: 72 });
+      const version = current.body?.version;
+      if (typeof version !== "number") throw new Error("합성 규정 버전 없음");
+      const url = c.path.replace(":version", "1");
+      if (c.method === "GET") {
+        for (const shopId of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+          const response = await send(env, "GET", { url: `${url}?shopId=${shopId}&ownerId=${env.b.ownerId}` });
+          expect(response.status, response.text).toBe(200);
+          expect(response.text).not.toContain(marker);
+          expect(response.text).not.toContain(env.b.ownerId);
+          if (c.path.endsWith("/versions"))
+            expect(response.body).toMatchObject({
+              items: Array.from({ length: version }, (_, i) => ({ version: version - i })),
+            });
+          else
+            expect(response.body).toMatchObject({
+              quoteValidHours: 72,
+              version: c.path.endsWith(":version") ? 1 : version,
+            });
+        }
+        if (c.path.endsWith(":version")) {
+          const other = await send(env, "GET", { url: "/owner/operating-rules/versions/1000" });
+          const absent = await send(env, "GET", { url: "/owner/operating-rules/versions/999" });
+          expect(other.status).toBe(404);
+          expect(comparable(other)).toEqual(comparable(absent));
+        }
+        expect(await snapshots(db, env)).toEqual(before);
+      } else {
+        const body = {
+          baseRevision: current.body?.revision,
+          quoteValidHours: 72,
+          paymentDueHours: 12,
+          issueReportHours: 24,
+          changeDeadlineHours: 48,
+          cancellationFeeKrw: 0,
+          preProductionRefundPct: 100,
+          dateChangeRefundBasis: "original_pickup",
+          clauses: [
+            {
+              key: "pre_production_cancel",
+              position: 1,
+              title: "제작 전 취소",
+              conditionText: "제작 전인 경우",
+              effectText: "취소 수수료를 빼고 모두 돌려드립니다.",
+            },
+          ],
+          refundTiers: [],
+        };
+        for (const shopId of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+          const response = await send(env, "POST", { url, body: { ...body, shopId } });
+          expect(response.status, response.text).toBe(422);
+          expect(response.body).toMatchObject({ errors: [{ field: "/shopId", code: "unknown_field" }] });
+        }
+        expect(await snapshots(db, env)).toEqual(before);
+        const own = await send(env, "POST", { url, body });
+        expect(own.status, own.text).toBe(201);
+        expect(own.body).toMatchObject({ outcome: "created", operatingRules: { version: version + 1 } });
+        expect((await snapshots(db, env))[1]).toEqual(before[1]);
+      }
+      return;
+    }
     if (c.kind === "prices") {
       if (c.path.endsWith(":version"))
         await db.query("UPDATE price_lists SET version = 1000 WHERE shop_id = $1", [env.b.shopId]);
