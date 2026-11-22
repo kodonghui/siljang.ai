@@ -1,5 +1,7 @@
 /** 영업 캘린더(API-026~029). 가게·날짜의 잠금은 이후 자리 확보 명령과 함께 쓴다(G3). */
+import { requireJson } from "./body";
 import {
+  CALENDAR_SETTING_KEYS,
   type CalendarSettingsInput,
   calendarDate,
   isoWeekday,
@@ -44,17 +46,6 @@ interface HoldRow {
   pickup_at: Date;
 }
 
-const KEYS = [
-  "closedWeekdays",
-  "dailyCapacity",
-  "orderCutoffDays",
-  "orderCutoffTime",
-  "replyStart",
-  "replyEnd",
-  "dayBeforeNoticeTime",
-  "reviewRequestTime",
-] as const;
-
 async function digest(value: unknown): Promise<string> {
   return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(value)))));
 }
@@ -89,40 +80,48 @@ function conflict(day: string, capacity: number, holds: HoldRow[], zone: string)
 /** 409에는 변경 전의 주문만 보낸다. 확인하지 않은 저장은 트랜잭션 전체가 되돌아간다. */
 function requireConfirmation(
   confirm: string[],
-  items: { kind: ConfirmationKind; count: number }[],
+  items: { kind: ConfirmationKind; count: number; day?: string }[],
   conflicts: CalendarConflict[],
 ) {
   const missing = items.filter((item) => !confirm.includes(item.kind));
   if (missing.length)
     throw new ApiError("confirmation_required", {
-      confirm: missing.map((item) => (item.count <= 10000 ? item : { kind: item.kind })),
+      confirm: missing.map((item) =>
+        item.count <= 10000 ? item : { kind: item.kind, ...(item.day ? { day: item.day } : {}) },
+      ),
       conflicts: conflicts.slice(0, 400),
     });
 }
 
-async function settingConflicts(
-  db: ShopDb,
+type CalendarInventory = Awaited<ReturnType<typeof readDays>>;
+
+function settingConflicts(
   previous: CalendarRow | undefined,
   next: CalendarRow,
-  today: string,
+  data: CalendarInventory,
+  zone: string,
   confirm?: string[],
-): Promise<CalendarConflict[]> {
-  const data = await readDays(db, today, "9999-12-31");
+): CalendarConflict[] {
+  const byDay = new Map<string, HoldRow[]>();
+  for (const hold of data.holds) {
+    const group = byDay.get(hold.day) ?? [];
+    group.push(hold);
+    byDay.set(hold.day, group);
+  }
+  const days = new Map(data.days.map((row) => [row.day, row]));
   const conflicts: CalendarConflict[] = [];
   let closedCount = 0;
   let capacityCount = 0;
-  for (const day of [...new Set(data.holds.map((h) => h.day))]) {
-    const holds = data.holds.filter((h) => h.day === day);
+  for (const [day, holds] of byDay) {
     const active = holds.filter((h) => h.status !== "done");
-    const row = data.days.find((d) => d.day === day);
+    const row = days.get(day);
     const capacity = row?.capacity ?? next.daily_capacity;
     const oldCapacity = row?.capacity ?? previous?.daily_capacity;
     const closed = row?.closed || next.closed_weekdays.includes(isoWeekday(day));
     const oldClosed = row?.closed || previous?.closed_weekdays.includes(isoWeekday(day));
     if (closed && !oldClosed) closedCount += active.length;
     if (capacity < holds.length && (oldCapacity === undefined || capacity < oldCapacity)) capacityCount += holds.length;
-    if (capacity < holds.length || (closed && active.length))
-      conflicts.push(conflict(day, capacity, holds, await timeZone(db)));
+    if (capacity < holds.length || (closed && active.length)) conflicts.push(conflict(day, capacity, holds, zone));
   }
   if (confirm)
     requireConfirmation(
@@ -173,13 +172,12 @@ async function timeZone(db: ShopDb): Promise<string> {
   return (await db.found<{ time_zone: string }>("SELECT s.time_zone FROM shops s WHERE s.id = $1")).time_zone;
 }
 
-async function renderSettings(db: ShopDb, row: CalendarRow, zone: string) {
-  const inventory = await readDays(db, "0001-01-01", "9999-12-31");
+async function renderSettings(db: ShopDb, row: CalendarRow, zone: string, inventory: CalendarInventory) {
   const revision = await digest([
     db.scope.shopId,
     row.revision,
     inventory.days.map((d) => [d.day, d.revision]),
-    inventory.holds.map((h) => [h.id, h.status, h.overbooked, h.order_status, h.pickup_at.toISOString()]),
+    inventory.holds.map((h) => [h.day, h.id, h.status === "done", h.overbooked]),
   ]);
   return {
     closedWeekdays: row.closed_weekdays,
@@ -228,22 +226,13 @@ function dayValues(calendar: CalendarRow, day: string, row: DayRow | undefined, 
 }
 
 async function renderDay(db: ShopDb, calendar: CalendarRow, day: string, row: DayRow | undefined, holds: HoldRow[]) {
-  const revision = toHex(
-    new Uint8Array(
-      await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(
-          JSON.stringify([
-            db.scope.shopId,
-            calendar.revision,
-            day,
-            row?.revision ?? null,
-            holds.map((h) => [h.id, h.status, h.overbooked, h.order_status, h.pickup_at.toISOString()]),
-          ]),
-        ),
-      ),
-    ),
-  );
+  const revision = await digest([
+    db.scope.shopId,
+    calendar.revision,
+    day,
+    row?.revision ?? null,
+    holds.map((h) => [h.id, h.status === "done", h.overbooked]),
+  ]);
   return {
     ...dayValues(calendar, day, row, holds),
     revision,
@@ -321,7 +310,13 @@ export async function getCalendarSettings(r: ShopRequest): Promise<Response> {
     await r.db.transaction(async (db) => {
       await lockSettings(db, false);
       const row = await calendarRow(db);
-      return renderSettings(db, row as CalendarRow, await timeZone(db));
+      const zone = await timeZone(db);
+      return renderSettings(
+        db,
+        row as CalendarRow,
+        zone,
+        await readDays(db, toShopLocal(r.services.now(), zone).date, "9999-12-31"),
+      );
     }),
   );
 }
@@ -352,7 +347,7 @@ export async function getCalendarDays(r: ShopRequest): Promise<Response> {
 }
 
 export async function setCalendarSettings(r: ShopRequest): Promise<Response> {
-  requireJson(r);
+  requireJson(r.req.raw);
   const raw = await r.body();
   const input = parseCalendarSettings(raw);
   return r.command({
@@ -368,11 +363,12 @@ export async function setCalendarSettings(r: ShopRequest): Promise<Response> {
         [today],
       );
       const previous = await calendarRow(db, false);
-      const old = previous ? await renderSettings(db, previous, zone) : undefined;
+      const inventory = await readDays(db, today, "9999-12-31");
+      const old = previous ? await renderSettings(db, previous, zone, inventory) : undefined;
       if (input.baseRevision !== (old?.revision ?? null)) throw new ApiError("version_conflict");
       const next = candidate(input, previous, r.services.now());
-      const conflicts = await settingConflicts(db, previous, next, today, input.confirm);
-      if (old && KEYS.every((key) => JSON.stringify(old[key]) === JSON.stringify(input[key])))
+      const conflicts = settingConflicts(previous, next, inventory, zone, input.confirm);
+      if (old && CALENDAR_SETTING_KEYS.every((key) => JSON.stringify(old[key]) === JSON.stringify(input[key])))
         return {
           status: 200,
           code: "unchanged",
@@ -408,23 +404,29 @@ export async function setCalendarSettings(r: ShopRequest): Promise<Response> {
         status: 200,
         code: outcome,
         ref: {},
-        body: { outcome, calendar: await renderSettings(db, (await calendarRow(db)) as CalendarRow, zone), conflicts },
+        body: {
+          outcome,
+          calendar: await renderSettings(db, (await calendarRow(db)) as CalendarRow, zone, inventory),
+          conflicts,
+        },
       };
     },
     async render(db, stored) {
+      await lockSettings(db, false);
       const calendar = (await calendarRow(db)) as CalendarRow;
       const zone = await timeZone(db);
+      const inventory = await readDays(db, toShopLocal(r.services.now(), zone).date, "9999-12-31");
       return {
         outcome: stored.code,
-        calendar: await renderSettings(db, calendar, zone),
-        conflicts: await settingConflicts(db, calendar, calendar, toShopLocal(r.services.now(), zone).date),
+        calendar: await renderSettings(db, calendar, zone, inventory),
+        conflicts: settingConflicts(calendar, calendar, inventory, zone),
       };
     },
   });
 }
 
 export async function updateCalendarDay(r: ShopRequest): Promise<Response> {
-  requireJson(r);
+  requireJson(r.req.raw);
   const day = calendarDate(r.req.param("day"), "path:day");
   const raw = await r.body();
   const input = parseCalendarDay(raw);
@@ -439,8 +441,7 @@ export async function updateCalendarDay(r: ShopRequest): Promise<Response> {
       const data = await readDays(db, day, day);
       const row = data.days[0];
       const current = await renderDay(db, calendar, day, row, data.holds);
-      if (input.baseRevision !== current.revision && !(input.baseRevision === null && !row))
-        throw new ApiError("version_conflict");
+      if (input.baseRevision !== current.revision) throw new ApiError("version_conflict");
       const next = {
         closed: input.closed ?? current.closed,
         capacity: input.capacityOverride === undefined ? current.capacityOverride : input.capacityOverride,
@@ -458,10 +459,10 @@ export async function updateCalendarDay(r: ShopRequest): Promise<Response> {
         input.confirm,
         [
           ...(next.closed && !current.closed && !current.weekdayClosed && active.length
-            ? [{ kind: "closed_day_with_orders" as const, count: active.length }]
+            ? [{ kind: "closed_day_with_orders" as const, count: active.length, day }]
             : []),
           ...(capacity < current.capacity && capacity < current.held
-            ? [{ kind: "capacity_below_held" as const, count: current.held }]
+            ? [{ kind: "capacity_below_held" as const, count: current.held, day }]
             : []),
         ],
         data.holds.length ? [conflict(day, capacity, data.holds, await timeZone(db))] : [],
@@ -483,9 +484,4 @@ export async function updateCalendarDay(r: ShopRequest): Promise<Response> {
       return { outcome: stored.code, day: await oneDay(db, calendar, String(stored.ref.day)) };
     },
   });
-}
-
-function requireJson(r: ShopRequest): void {
-  if (!/^application\/json\s*(;\s*charset\s*=\s*"?utf-8"?\s*)?$/i.test(r.req.header("content-type") ?? ""))
-    throw fieldError("header:Content-Type", "not_allowed");
 }

@@ -15,6 +15,12 @@ export const MAX_JSON_BYTES = 256 * 1024;
 
 const DIGITS = /^\d+$/;
 
+/** DEC-01: JSON 명령에서 받지 않는 본문 형식은 같은 필드 오류로 거절한다. */
+export function requireJson(req: Pick<Request, "headers">): void {
+  if (!/^application\/json\s*(;\s*charset\s*=\s*"?utf-8"?\s*)?$/i.test(req.headers.get("content-type")?.trim() ?? ""))
+    throw fieldError("header:Content-Type", "not_allowed");
+}
+
 /** 선언한 길이(Content-Length)가 한도를 넘는지. 길이가 없거나 꼴이 틀리면 false(읽으면서 센다). */
 export function declaredOver(req: Pick<Request, "headers">, limit: number): boolean {
   const declared = req.headers.get("content-length");

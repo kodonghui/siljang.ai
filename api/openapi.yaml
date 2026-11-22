@@ -5344,18 +5344,18 @@ paths:
                     confirm:
                     - kind: closed_day_with_orders
                       count: 2
-                      day: '2026-11-20'
                 confirmation_required_capacity_below_held:
                   value:
                     type: /problems/confirmation_required
                     title: 저장하기 전에 확인해 주세요
                     status: 409
-                    detail: 이미 잡힌 자리 개는 그대로 남아요. 하루 최대 개수를 줄일까요?
+                    detail: 이미 잡힌 자리 2개는 그대로 남아요. 하루 최대 개수를 줄일까요?
                     instance: /owner/calendar
                     code: confirmation_required
                     traceId: 188e40b0b70b16a1f833717f92e42765
                     confirm:
                     - kind: capacity_below_held
+                      count: 2
                 request_in_progress:
                   value:
                     type: /problems/request_in_progress
@@ -5831,12 +5831,14 @@ paths:
                     type: /problems/confirmation_required
                     title: 저장하기 전에 확인해 주세요
                     status: 409
-                    detail: 이미 잡힌 자리 개는 그대로 남아요. 하루 최대 개수를 줄일까요?
+                    detail: 이미 잡힌 자리 2개는 그대로 남아요. 하루 최대 개수를 줄일까요?
                     instance: /owner/calendar/days/2026-11-20
                     code: confirmation_required
                     traceId: 4ea82d5713b43d76c31b433bf325b1f5
                     confirm:
                     - kind: capacity_below_held
+                      count: 2
+                      day: '2026-11-20'
                 request_in_progress:
                   value:
                     type: /problems/request_in_progress
@@ -27341,7 +27343,7 @@ components:
           minLength: 1
           maxLength: 64
           pattern: ^[A-Za-z0-9._-]+$
-          description: 화면이 본 기록의 revision. 지금과 다르면 409 version_conflict(DEC-05, G3)
+          description: API-029는 날짜 행이 없어도 API-028 GET의 revision을 그대로 보냄. null은 현재 revision과 달라 409 version_conflict이며 다시 조회해 문자열 값을 보내야 함(DEC-05, G3)
         closed:
           type: boolean
           description: 날짜별 휴무
@@ -34426,7 +34428,7 @@ components:
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')
     - id: DEC-05
       title: 동시 변경은 revision 비교
-      choice: '고칠 수 있는 기록은 응답에 `revision`(서버가 만든 값)을 포함하고, 명령은 `baseRevision`을 보냄. 다르면 409 `version_conflict`이고 아무것도 바꾸지 않음. 409에는 지금 상태를 포함하지 않고 화면이 다시 읽음(GET). 처음 저장(가격표·운영규정·결제 수단·영업 캘린더·채널·장부)은 `baseRevision: null`. 주문·변경 요청의 revision은 쓸 때마다 하나 오르는 잠금 번호(05단계 `lock_version`, 4절 A6·5절 E15)로 만들고, 결제 안내는 `payment_requests.version`으로 만듦(2026-11-13 설계 재검토 H12)'
+      choice: '고칠 수 있는 기록은 응답에 `revision`(서버가 만든 값)을 포함하고, 명령은 `baseRevision`을 보냄. 다르면 409 `version_conflict`이고 아무것도 바꾸지 않음. 409에는 지금 상태를 포함하지 않고 화면이 다시 읽음(GET). 처음 저장(가격표·운영규정·결제 수단·영업 캘린더 공통 설정·채널·장부)은 `baseRevision: null`. 날짜별 API-029는 행이 없어도 API-028 GET의 revision을 그대로 보냄. null은 현재 값과 달라 409이고 다시 조회한 문자열을 보내야 함. 주문·변경 요청의 revision은 쓸 때마다 하나 오르는 잠금 번호(05단계 `lock_version`, 4절 A6·5절 E15)로 만들고, 결제 안내는 `payment_requests.version`으로 만듦(2026-11-13 설계 재검토 H12)'
       why: G3(먼저 온 쓰기가 이기고 뒤는 '이미 바뀜'). 주문 내용 버전(`version`)은 상태만 바꾸는 쓰기(결제 확인·취소·받음)에서 오르지 않아 같은 버전을 읽은 결제 확인과 손님 취소가 둘 다 통과했음(RC-01). 그래서 revision은 쓸 때마다 바뀌는 값으로 둠. 오류 응답을 Problem 한 형식으로 두고, 지금 상태는 늘 같은 읽기 API에서 옴. 버전이 없는 기록(상태만 있는 결제 기한 결정 등)도 같은 방법으로
       alt: 'If-Match 헤더: HTTP 표준이지만 어긋남이 412라 계약서의 409와 다르고, 목록의 행마다 값을 포함할 곳이 없음'
       decided: 확정(2026-11-12 14:01 동희님 '추천대로 굳힘')

@@ -26,7 +26,7 @@ export interface CalendarDayInput {
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const REVISION = /^[A-Za-z0-9._:-]{1,64}$/;
 const CONFIRM = ["closed_day_with_orders", "capacity_below_held"];
-const SETTINGS = [
+export const CALENDAR_SETTING_KEYS = [
   "closedWeekdays",
   "dailyCapacity",
   "orderCutoffDays",
@@ -35,14 +35,19 @@ const SETTINGS = [
   "replyEnd",
   "dayBeforeNoticeTime",
   "reviewRequestTime",
-];
+] as const;
 
 function object(body: unknown): Record<string, unknown> {
   if (!body || typeof body !== "object" || Array.isArray(body)) throw fieldError("/", "bad_format");
   return body as Record<string, unknown>;
 }
 
-function common(input: Record<string, unknown>, names: string[], required: string[], errors: FieldError[]) {
+function common(
+  input: Record<string, unknown>,
+  names: readonly string[],
+  required: readonly string[],
+  errors: FieldError[],
+) {
   for (const name of Object.keys(input))
     if (!["baseRevision", "confirm", ...names].includes(name))
       errors.push({ field: /^[A-Za-z0-9_]{1,100}$/.test(name) ? `/${name}` : "/", code: "unknown_field" });
@@ -76,7 +81,7 @@ function finish(errors: FieldError[]) {
 export function parseCalendarSettings(body: unknown): CalendarSettingsInput {
   const input = object(body);
   const errors: FieldError[] = [];
-  common(input, SETTINGS, SETTINGS, errors);
+  common(input, CALENDAR_SETTING_KEYS, CALENDAR_SETTING_KEYS, errors);
   const days = input.closedWeekdays;
   if (days !== undefined) {
     if (!Array.isArray(days) || days.some((d) => !Number.isInteger(d) || d < 1 || d > 7))

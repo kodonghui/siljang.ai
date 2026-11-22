@@ -67,6 +67,7 @@ def op(**kw):
     kw.setdefault("idem", False)
     kw.setdefault("fields", [])
     kw.setdefault("confirm", [])
+    kw.setdefault("multi_day_confirm", False)
     kw.setdefault("outcomes", [])
     kw.setdefault("body", None)
     kw.setdefault("body_type", "json")
@@ -590,7 +591,7 @@ op(id="API-027", method="put", path="/owner/calendar", op="setCalendarSettings",
        "unchanged": {"outcome": "unchanged", "calendar": E.CALENDAR, "conflicts": []}})],
    errors={404: ["shop_not_registered"], 409: ["version_conflict", "confirmation_required"]},
    fields=[("/replyEnd", "not_after_start"), ("/dayBeforeNoticeTime", "outside_window")],
-   confirm=["closed_day_with_orders", "capacity_below_held"],
+   confirm=["closed_day_with_orders", "capacity_below_held"], multi_day_confirm=True,
    omit={"403": O403},
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:shop_not_registered"],
           "상태": ["409:confirmation_required", "example:updated_with_conflicts"], "반복": ["idem", "example:unchanged"],

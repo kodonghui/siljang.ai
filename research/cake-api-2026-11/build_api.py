@@ -86,6 +86,7 @@ STATUS_TEXT = {
 
 CONFIRM_FACTS = {
     "closed_day_with_orders": {"count": 2, "day": "2026-11-20"},
+    "capacity_below_held": {"count": 2, "day": "2026-11-20"},
     "overbooking": {"day": "2026-11-20"},
     "not_pickup_day": {"day": "2026-11-20"},
     "closed_day": {"day": "2026-11-25"},
@@ -143,6 +144,8 @@ def problem(o, status, code, *, fields=None, detail=None, kinds=None):
         items, words = [], []
         for kind in kinds or o["confirm"]:
             item = {"kind": kind, **CONFIRM_FACTS.get(kind, {})}
+            if o["multi_day_confirm"]:
+                item.pop("day", None)
             items.append(item)
             words.append(C.CONFIRMATIONS[kind]["message"].format(count=item.get("count", "")))
         assert items, o["id"] + ": confirmation_required에 확인할 것이 없음"
