@@ -2210,6 +2210,30 @@ SELECT pg_temp.expect_fail('사장님 세션 과거 사용', 'owner_sessions_see
 SELECT pg_temp.expect_fail('사장님 쿠키 평문 거절', 'owner_sessions_token_hash_check', ARRAY[$$UPDATE owner_sessions SET token_hash = 'synthetic-cookie-value' WHERE id = '00000000-0000-4000-8000-000000000062'$$]);
 SELECT pg_temp.expect_fail('사장님 로그인 전 종료 거절', 'owner_sessions_ended_chk', ARRAY[$$UPDATE owner_sessions SET ended_at = '2026-11-20T00:00:00Z' WHERE id = '00000000-0000-4000-8000-000000000062'$$]);
 
+-- TASK-040/A25: 새 계좌 INSERT만 보류를 되돌리고 일반 승인은 바꾸지 않는다.
+INSERT INTO operators (id,email,display_name) VALUES ('00000000-0000-4000-8000-000000000064','payment-review@example.com','합성 운영자');
+INSERT INTO shops (id,owner_id,name,contact_phone,contact_email,business_address,business_name,representative_name,business_reg_no,mail_order_exemption,food_license_no,food_business_type,license_photo_key,entrustment_terms_version,entrustment_consented_at,license_status,license_hold_reason,license_reviewed_by,license_reviewed_at)
+VALUES ('00000000-0000-4000-8000-000000000063','00000000-0000-4000-8000-000000000061','합성 계좌 가게','010-0000-0000','payment@example.com','서울 합성로1','합성 제과','합성 사장','1234567890','합성 면제','2026-0001','bakery','license/synthetic.jpg','test-v1',now(),'on_hold','합성 보류','00000000-0000-4000-8000-000000000064',now());
+INSERT INTO payment_accounts (shop_id,bank_name,account_number_enc,account_last4,holder_name)
+VALUES ('00000000-0000-4000-8000-000000000063','합성 은행','v1:TESTnonce000000000000ciphertext0001tag16','1234','합성 사장');
+SELECT pg_temp.expect_left('A25 새 계좌는 보류를 확인 기다림으로 되돌리고 사유와 검토를 비움', $$
+  SELECT license_status || '/' || coalesce(license_hold_reason,'-') || '/' || coalesce(license_reviewed_by::text,'-') || '/' || coalesce(license_reviewed_at::text,'-')
+  FROM shops WHERE id='00000000-0000-4000-8000-000000000063'$$,'pending/-/-/-');
+UPDATE shops SET license_status='verified',license_reviewed_by='00000000-0000-4000-8000-000000000064',license_reviewed_at=now() WHERE id='00000000-0000-4000-8000-000000000063';
+UPDATE payment_accounts SET retired_at=now() WHERE shop_id='00000000-0000-4000-8000-000000000063';
+INSERT INTO payment_accounts (shop_id,bank_name,account_number_enc,account_last4,holder_name)
+VALUES ('00000000-0000-4000-8000-000000000063','합성 은행','v1:TESTnonce000000000000ciphertext0001tag16','5678','합성 사장');
+SELECT pg_temp.expect_left('A25 새 계좌가 이미 확인된 영업 신고를 바꾸지 않음', $$SELECT license_status FROM shops WHERE id='00000000-0000-4000-8000-000000000063'$$,'verified');
+UPDATE shops SET license_status='on_hold',license_hold_reason='합성 보류' WHERE id='00000000-0000-4000-8000-000000000063';
+SELECT pg_temp.expect_fail('A25 중복 현재 계좌는 여전히 금지', 'payment_accounts_one_current', ARRAY[$$
+  INSERT INTO payment_accounts (shop_id,bank_name,account_number_enc,account_last4,holder_name)
+  VALUES ('00000000-0000-4000-8000-000000000063','합성 은행','v1:TESTnonce000000000000ciphertext0001tag16','9012','합성 사장')$$]);
+SELECT pg_temp.expect_left('A25 실패한 계좌 INSERT는 보류를 되돌리지 않음', $$SELECT license_status FROM shops WHERE id='00000000-0000-4000-8000-000000000063'$$,'on_hold');
+SELECT pg_temp.expect_left('A25 보류 해제 함수는 고정 검색 경로와 공개 실행 금지', $$
+  SELECT prosecdef::text || '/' || (proconfig=ARRAY['search_path=pg_catalog'])::text || '/' ||
+    (NOT EXISTS (SELECT 1 FROM aclexplode(coalesce(proacl,acldefault('f',proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE'))::text
+  FROM pg_proc WHERE oid='payment_account_license_pending()'::regprocedure$$,'true/true/true');
+
 -- 결과
 SELECT count(*) FILTER (WHERE ok) AS blocked, count(*) FILTER (WHERE NOT ok) AS not_blocked FROM rule_results \gset
 SELECT name, detail FROM rule_results WHERE NOT ok ORDER BY name;

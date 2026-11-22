@@ -325,6 +325,22 @@ CREATE TABLE payment_accounts (
   CONSTRAINT payment_accounts_holder_checked_chk CHECK ((holder_checked_by IS NULL) = (holder_checked_at IS NULL)) -- 예금주를 확인한 운영자와 시각은 함께
 );
 CREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL; -- 가게마다 지금 쓰는 곳 하나
+-- TASK-040/A25: 새 계좌가 등록되면 보류된 영업 신고만 다시 확인 기다림으로 바꾼다.
+-- 서버 역할에 일반 승인 UPDATE 권한을 주지 않는다. 트리거 함수는 직접 호출할 수 없다.
+CREATE FUNCTION payment_account_license_pending() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $payment_license$
+BEGIN
+  UPDATE public.shops
+    SET license_status = 'pending', license_hold_reason = NULL,
+        license_reviewed_by = NULL, license_reviewed_at = NULL, updated_at = NEW.created_at
+    WHERE id = NEW.shop_id AND license_status = 'on_hold';
+  RETURN NEW;
+END
+$payment_license$;
+REVOKE ALL ON FUNCTION payment_account_license_pending() FROM PUBLIC;
+CREATE TRIGGER payment_account_license_pending AFTER INSERT ON payment_accounts
+  FOR EACH ROW EXECUTE FUNCTION payment_account_license_pending();
+
 COMMENT ON TABLE payment_accounts IS 'TBL-015 결제 수단: 가게 명의 계좌(암호화)와 카드 결제 링크. 우리 회사 계좌는 어디에도 없음(REQ-079)';
 
 -- TBL-016 customers (CTX-001) ← SPEC-017, SPEC-022, SPEC-029, SPEC-040, SPEC-065, SPEC-066, SPEC-068, SPEC-069 | terms: TERM-043
