@@ -4,6 +4,8 @@ import type { DbConnector, RequestDb } from "../src/db";
 import { OWNER_COOKIE } from "../src/owner-oauth";
 import { createOwnerScope } from "../src/owner-scope";
 import { createOwnerSession } from "../src/owner-session";
+import { ApiError } from "../src/problem";
+import { shopRoute } from "../src/routes";
 import { newUploadId, tempKey } from "../src/uploads";
 import { expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newRequestKey, TEST_HASH_KEY, testEnv } from "./support/db";
@@ -115,6 +117,52 @@ describeDb("TASK-036 사장님 사업자 변경 요청", () => {
     db = isolated.db;
   }, 30_000);
   afterAll(async () => isolated?.close());
+  it.each([false, true])(
+    "가게 명령의 정리 callback 실패%s여도 원래409를 보존하고 자기 범위만 전달함",
+    async (failCleanup) => {
+      const h = await fixture();
+      let called = false;
+      const logs: string[] = [];
+      const database = isolated;
+      if (!database) throw new Error("시험 DB 없음");
+      const app = createApp({
+        connect: () => database.connect(),
+        logSink: (line) => logs.push(line),
+        services: { now: () => NOW },
+        routes: [
+          shopRoute("POST", "/test/shop-cleanup", "owner", (r) =>
+            r.command({
+              command: "TEST-SHOP-CLEANUP",
+              pathIds: [],
+              body: {},
+              async execute() {
+                throw new ApiError("invalid_state");
+              },
+              async render() {
+                return {};
+              },
+              async cleanup(tx) {
+                called = true;
+                expect(tx.scope.shopId).toBe(h.shop.shopId);
+                expect((await tx.found<{ id: string }>("SELECT s.id FROM shops s WHERE s.id=$1")).id).toBe(
+                  h.shop.shopId,
+                );
+                if (failCleanup) throw new Error("synthetic_cleanup_failed");
+              },
+            }),
+          ),
+        ],
+      });
+      const response = await app.request(
+        `${ORIGIN}/api/test/shop-cleanup`,
+        { method: "POST", headers: { cookie: h.cookie, origin: ORIGIN, "Idempotency-Key": newRequestKey() } },
+        env,
+      );
+      await expectProblem(response, "invalid_state");
+      expect(called).toBe(true);
+      expect(logs.some((x) => x.includes("shop_command_cleanup_failed"))).toBe(failCleanup);
+    },
+  );
   it("사장님 변경 요청201은 지금 값을 보존하고 새 값/증빙/요청 때 값을 남김", async () => {
     const h = await fixture(),
       before = await h.get(),
