@@ -12,8 +12,13 @@ GRANT UPDATE (id) ON shops, kakao_channels TO :"runtime_role";
 GRANT SELECT, INSERT ON handoffs, handoff_questions, owner_tasks, owner_alerts TO :"runtime_role";
 -- 사장님 기다림을 가게의 답하는 시간 안에서 계산한다.
 GRANT SELECT ON business_calendars TO :"runtime_role";
--- TASK-028: 누적 비용 확인만 한다. 호출 기록의 추가/수정/삭제 권한은 주지 않는다.
-GRANT SELECT ON ai_calls TO :"runtime_role";
+-- TASK-028: 누적 비용 확인과 모델 호출 기록. 서버 검증에 따른 미사용 사유만 고친다.
+GRANT SELECT, INSERT, UPDATE (fallback_reason) ON ai_calls TO :"runtime_role";
+-- 정상 모델의 검증된 자유 입력 항목만 초안에 남긴다. 알레르기 답/주문자 정보는 여기서 다루지 않는다.
+GRANT SELECT (id, shop_id, consultation_id, status, revision, lettering, design_notes, colors, excluded_ingredients, courier_pickup),
+  INSERT (shop_id, consultation_id, lettering, design_notes, colors, excluded_ingredients, courier_pickup, created_at, updated_at),
+  UPDATE (lettering, design_notes, colors, excluded_ingredients, courier_pickup, revision, updated_at)
+  ON order_drafts TO :"runtime_role";
 -- TASK-028: 번호를 가린 본문과 원본 최소 정보는 같은 수신 트랜잭션에서 새로 남긴다.
 GRANT SELECT, INSERT ON masked_values TO :"runtime_role";
 -- TASK-028: 미전달 일반 글은 다음 응답/콜백에 전한 뒤 상태와 시각만 고친다.

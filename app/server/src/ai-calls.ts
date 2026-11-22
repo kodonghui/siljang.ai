@@ -98,3 +98,17 @@ export async function recordAiCall(db: ShopDb, row: AiCallRow): Promise<string> 
   if (id === undefined) throw new Error("ai_calls insert returned no row");
   return id;
 }
+
+/** 서버가 성공한 모델 출력을 쓰지 못한 이유만 남긴다. 호출 내용/사용량/비용은 고치지 않는다. */
+export async function markAiCallUnused(
+  db: ShopDb,
+  aiCallId: string,
+  consultationId: string,
+  reason: ModuleFallbackReason,
+): Promise<void> {
+  await db.run(
+    `UPDATE ai_calls SET fallback_reason = $4 WHERE shop_id = $1 AND id = $2 AND consultation_id = $3
+      AND result = 'success' AND fallback_reason IS NULL`,
+    [aiCallId, consultationId, reason],
+  );
+}

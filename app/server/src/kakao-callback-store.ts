@@ -96,7 +96,7 @@ export async function publishStoredKakaoCallback<T>(
   });
 }
 
-interface Claim {
+export interface KakaoCallbackClaim {
   readonly customer_id: string;
   readonly consultation_id: string;
   readonly kakao_callback_enc: string;
@@ -104,6 +104,8 @@ interface Claim {
   readonly kakao_callback_claim_until: Date;
   readonly created_at: Date;
 }
+
+type Claim = KakaoCallbackClaim;
 
 export async function claimKakaoCallback(
   db: ShopRequestDb,
@@ -174,6 +176,10 @@ export async function prepareKakaoCallbackHandoff(
       [messageId, claim.consultation_id, claim.kakao_callback_enc, claim.kakao_callback_claim_until],
     );
     if (owned.rowCount === 0) return false;
+    await tx.run(
+      "UPDATE consultations SET turn_trace_id = NULL, turn_started_at = NULL WHERE shop_id = $1 AND id = $2 AND turn_trace_id = $3",
+      [claim.consultation_id, messageId],
+    );
     if (["ended", "deleted", "dropped"].includes(consultation.status)) {
       await tx.run(
         `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL
@@ -195,6 +201,7 @@ export async function finishKakaoCallback(
   text: string,
   sentAt: Date | null,
   previous: readonly DeferredKakaoMessage[] = [],
+  preparedReplyId?: string,
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const owned = await tx.run(
@@ -204,6 +211,16 @@ export async function finishKakaoCallback(
     );
     if (owned.rowCount === 0) return;
     if (sentAt !== null) await markDeferredKakaoMessages(tx, claim.customer_id, previous, sentAt);
+    if (preparedReplyId !== undefined) {
+      if (sentAt !== null)
+        await tx.run(
+          `UPDATE messages SET delivery = 'callback', sent_at = $4
+            WHERE shop_id = $1 AND id = $2 AND consultation_id = $3
+              AND direction = 'outbound' AND author = 'ai' AND delivery = 'deferred' AND sent_at IS NULL`,
+          [preparedReplyId, claim.consultation_id, sentAt],
+        );
+      return;
+    }
     await tx.run(
       `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery, sent_at)
         VALUES ($1, $2, 'outbound', 'system', 'text', $3, $4, $5)`,
@@ -241,7 +258,18 @@ export async function deferExpiredKakaoCallback(
     );
     const row = expired.rows[0];
     if (row === undefined) return "skipped";
+    await tx.run(
+      "UPDATE consultations SET turn_trace_id = NULL, turn_started_at = NULL WHERE shop_id = $1 AND id = $2 AND turn_trace_id = $3",
+      [row.consultation_id, messageId],
+    );
     if (["ended", "deleted", "dropped"].includes(consultation.status)) return "discarded";
+    const prepared = await tx.run(
+      `SELECT id FROM messages WHERE shop_id = $1 AND consultation_id = $2 AND trace_id = $3
+        AND direction = 'outbound' AND author = 'ai' AND body_masked IS NOT NULL
+        AND delivery IN ('deferred', 'callback', 'delivered_later') LIMIT 1`,
+      [row.consultation_id, messageId],
+    );
+    if (prepared.rowCount > 0) return "deferred";
     await recordKakaoHandoff(tx, row.consultation_id, messageId, "callback_timeout", now);
     await tx.run(
       `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery)
