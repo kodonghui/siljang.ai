@@ -1,4 +1,5 @@
 import { type Context, Hono } from "hono";
+import { getCalendarDays, getCalendarSettings, setCalendarSettings, updateCalendarDay } from "./calendar";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FILE_ROUTE, serveFile } from "./file-url";
 import { SKILL_WORK_MS } from "./kakao-callback";
@@ -155,6 +156,10 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   ownerRoute("POST", "/owner/uploads", createUpload),
   ownerRoute("POST", "/owner/shop", registerShop),
   shopRoute("GET", "/owner/shop", "owner", getShop),
+  shopRoute("GET", "/owner/calendar", "owner", getCalendarSettings),
+  shopRoute("PUT", "/owner/calendar", "owner", setCalendarSettings),
+  shopRoute("GET", "/owner/calendar/days", "owner", getCalendarDays),
+  shopRoute("PATCH", "/owner/calendar/days/:day", "owner", updateCalendarDay),
   openRoute(
     "GET",
     FILE_ROUTE,
