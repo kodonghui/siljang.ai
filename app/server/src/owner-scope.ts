@@ -5,7 +5,7 @@
  * - createOwnerScope를 부를 수 있는 파일은 정적 시험(test/shop-scope-static.test.ts)이 정한 목록뿐이다.
  * - 이 범위로는 가게 기록을 읽고 쓰지 않는다(가게 기록은 가게 범위 ShopScope와 ShopDb로만, shop-scope.ts).
  */
-import { isUuid } from "./shop-scope";
+import { ForgedScopeError, isShopScope, isUuid, type ShopScope } from "./shop-scope";
 import { isTimeZone } from "./time";
 
 /** 가게가 없을 때 응답 시각을 보일 시간대(05 shops.time_zone의 기본값). */
@@ -54,4 +54,10 @@ export function createOwnerScope(
 
 export function isOwnerScope(value: unknown): value is OwnerScope {
   return typeof value === "object" && value !== null && genuine.has(value);
+}
+
+/** 인증된 사장님의 가게 경로에서 사진 소유자를 얻는다. 다른 출처/흉내 낸 범위는 받지 않는다. */
+export function ownerOfShopScope(scope: ShopScope): OwnerScope {
+  if (!isShopScope(scope) || scope.via.kind !== "owner") throw new ForgedScopeError("owner shop scope is required");
+  return createOwnerScope(scope.via.ownerId);
 }
