@@ -5,6 +5,7 @@ import { FILE_ROUTE, serveFile } from "./file-url";
 import { SKILL_WORK_MS } from "./kakao-callback";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { getKakaoChannel, regenerateKakaoSkillKey, setKakaoChannel } from "./kakao-channel";
+import { startKakaoChannelCheck } from "./kakao-channel-check";
 import { kakaoReply } from "./kakao-reply";
 import { kakaoSkillRoutes } from "./kakao-skill";
 import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill-auth";
@@ -125,6 +126,7 @@ export interface AppOptions {
  * (test/support/cross-shop.ts의 CROSS_SHOP_CASES)에도 더한다. 빠지면 시험이 실패한다(TASK-019).
  */
 export const APP_ROUTES: readonly RouteDecl[] = [
+  shopRoute("POST", "/owner/kakao-channel/check", "owner", startKakaoChannelCheck),
   operatorRoute("GET", "/operator/shops", listReviewShops),
   shopRoute("GET", "/operator/shops/:shopId", "operator", getReviewShop),
   shopRoute("POST", "/operator/shops/:shopId/license-review", "operator", reviewLicense),

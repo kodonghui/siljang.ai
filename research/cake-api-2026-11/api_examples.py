@@ -973,7 +973,7 @@ SKILL_OUTCOME_EXAMPLES = {
     # 연결 확인의 시험 버튼(카드·후기 스킬)
     "block_verified": card("연결 확인", "확인 카드 블록이 닿았어요(1/5). 다음 시험 버튼을 눌러 주세요",
                            [check_button("시험: 주문자 정보", "orderer_info", "ordererInfo")]),
-    "channel_linked": text("버튼 블록 5개가 모두 닿아 연결됐어요. 곧 이 채널로 시험 안내를 하나 보내 드려요"),
+    "channel_linked": text("시험 버튼 다섯이 모두 닿아 연결됐어요. 손님 안내는 다음 대화 때 전해요."),
     # 먼저 보내는 안내(안내 스킬)
     "notice_shown": text(CONFIRMED_NOTICE, RULES_TEXT),
     "notice_test": text("시험 안내예요. 이 안내가 보이면 손님에게 안내를 먼저 보낼 수 있어요"),

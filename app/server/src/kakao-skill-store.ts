@@ -18,7 +18,7 @@ export type InboundReceipt =
 type Id = { readonly id: string };
 
 /** 인증한 가게의 연락처만 읽는다. 연결 확인 중에도 상담·손님·메시지는 만들지 않는다. */
-export async function kakaoContactPhone(db: ShopRequestDb): Promise<string | undefined> {
+export async function kakaoContactPhone(db: ShopDb): Promise<string | undefined> {
   const result = await db.run<{ contact_phone: string }>("SELECT contact_phone FROM shops WHERE id = $1");
   return result.rows[0]?.contact_phone;
 }

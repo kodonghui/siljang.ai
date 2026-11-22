@@ -2,6 +2,7 @@ import { sqlStateOf } from "./db";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
 import { publishStoredKakaoCallback, storeKakaoCallback } from "./kakao-callback-store";
+import { receiveKakaoChannelCheck } from "./kakao-channel-check";
 import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
 import { replyKakaoHandoffInTransaction } from "./kakao-handoff";
 import { kakaoAiFailureOutcome, kakaoReply } from "./kakao-reply";
@@ -34,6 +35,8 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
 
   const messageKind = request.payload.utterance.trim() === "" ? "unsupported" : "text";
   try {
+    const trial = await receiveKakaoChannelCheck(r, kind);
+    if (trial !== null) return trial;
     if (kind === "review" && request.status === "linked") {
       const outcome = await receiveKakaoTextReview(r.db, request);
       return kakaoReply(r, outcome, {

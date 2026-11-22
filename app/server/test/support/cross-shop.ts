@@ -98,6 +98,12 @@ interface OperatorReviewShopCase {
   readonly kind: "operator_review";
 }
 
+interface ChannelCheckShopCase {
+  readonly method: "POST";
+  readonly path: "/owner/kakao-channel/check";
+  readonly kind: "channel_check";
+}
+
 export type CrossShopCase =
   | OwnerCrossShopCase
   | SkillCrossShopCase
@@ -107,6 +113,7 @@ export type CrossShopCase =
   | RulesShopCase
   | PaymentShopCase
   | ChannelSetupShopCase
+  | ChannelCheckShopCase
   | OperatorReviewShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
@@ -122,6 +129,7 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "GET", path: "/owner/kakao-channel", kind: "channel_setup" },
   { method: "PUT", path: "/owner/kakao-channel", kind: "channel_setup" },
   { method: "POST", path: "/owner/kakao-channel/skill-key", kind: "channel_setup" },
+  { method: "POST", path: "/owner/kakao-channel/check", kind: "channel_check" },
   { method: "GET", path: "/owner/payment-destination", kind: "payment" },
   { method: "PUT", path: "/owner/payment-destination", kind: "payment" },
   { method: "GET", path: "/owner/calendar", kind: "calendar" },
@@ -252,6 +260,36 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "channel_check") {
+      const current = await send(env, "GET", { url: "/owner/kakao-channel" });
+      expect(current.status).toBe(200);
+      const saved = await send(env, "PUT", {
+        url: "/owner/kakao-channel",
+        body: {
+          baseRevision: current.body?.revision,
+          botId: env.a.botId,
+          channelPublicId: current.body?.channelPublicId,
+          blockIds: {
+            card: "card",
+            ordererInfo: "orderer",
+            allergyAnswer: "allergy",
+            depositorName: "depositor",
+            review: "review",
+          },
+        },
+      });
+      expect(saved.status, saved.text).toBe(200);
+      const before = await snapshotShop(db, env.b);
+      for (const shopId of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+        const response = await send(env, "POST", { url: `${c.path}?shopId=${shopId}&connectionId=${env.b.channelId}` });
+        expect(response.status, response.text).toBe(200);
+        expect(response.body).toMatchObject({ kakaoChannel: { connectionId: env.a.channelId } });
+        expect(response.text).not.toContain(env.b.channelId);
+        expect(response.text).not.toContain(env.b.botId);
+        expect(await snapshotShop(db, env.b)).toEqual(before);
+      }
+      return;
+    }
     if (c.kind === "operator_review") {
       const before = await snapshots(db, env);
       const url = `/operator/shops/${env.b.shopId}${c.method === "POST" ? "/license-review" : ""}`;
