@@ -196,6 +196,161 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     return { job, consultationId: inbound?.consultation_id };
   }
 
+  function failNextWrite(pattern: RegExp): DbConnector {
+    let failed = false;
+    return (dsn) => {
+      const conn = pgConnector(dsn);
+      return {
+        query: conn.query.bind(conn),
+        abort: conn.abort.bind(conn),
+        close: conn.close.bind(conn),
+        transaction: (work) =>
+          conn.transaction((tx) =>
+            work({
+              query: (sql, params) => {
+                if (!failed && pattern.test(sql)) {
+                  failed = true;
+                  throw new Error("합성 결과 저장 중단");
+                }
+                return tx.query(sql, params);
+              },
+            }),
+          ),
+      };
+    };
+  }
+
+  it("모델 응답을 확정하기 전 중단되면 다음 큐는 같은 모델을 부르지 않고 사장님께 넘김", async () => {
+    const { job, consultationId } = await admittedJob();
+    const call = vi.fn<AiModel["call"]>(async () => {
+      throw new Error("합성 모델 응답 중단");
+    });
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const options = {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
+    };
+    await expect(consumeKakaoCallback(job, env, options)).rejects.toThrow("합성 모델 응답 중단");
+    expect(post).not.toHaveBeenCalled();
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(
+      (await db.query("SELECT id FROM handoffs WHERE shop_id=$1 AND consultation_id=$2", [shop.shopId, consultationId]))
+        .rowCount,
+    ).toBe(1);
+  });
+
+  it("정상 답 저장이 실패하면 초안도 롤백하고 모델을 재호출하지 않음", async () => {
+    const { job, consultationId } = await admittedJob();
+    const call = vi.fn<AiModel["call"]>(async () => ({
+      ok: true,
+      output: { reply: "문구를 확인했어요.", draft_patch: { lettering: "생일 축하" } },
+      aiCallId: newUuid(),
+    }));
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const options = {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
+    };
+    await expect(
+      consumeKakaoCallback(job, env, { ...options, connect: failNextWrite(/INSERT INTO messages[\s\S]*'ai'/) }),
+    ).rejects.toThrow("합성 결과 저장 중단");
+    expect(post).not.toHaveBeenCalled();
+    expect(
+      (
+        await db.query("SELECT id FROM order_drafts WHERE shop_id=$1 AND consultation_id=$2", [
+          shop.shopId,
+          consultationId,
+        ])
+      ).rowCount,
+    ).toBe(0);
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it("모델 실패 뒤 사장님 알림 저장이 중단돼도 모델을 다시 부르지 않음", async () => {
+    const { job } = await admittedJob();
+    const call = vi.fn<AiModel["call"]>(async () => ({
+      ok: false,
+      failure: "timeout",
+      retryable: false,
+      aiCallId: newUuid(),
+    }));
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const options = {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
+    };
+    await expect(
+      consumeKakaoCallback(job, env, { ...options, connect: failNextWrite(/INSERT INTO owner_alerts/) }),
+    ).rejects.toThrow("합성 결과 저장 중단");
+    expect(post).not.toHaveBeenCalled();
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it("준비한 답은 발신 기록 중단 뒤 기한이 지나도 모델·초안·넘김을 더 만들지 않고 보존함", async () => {
+    const { job, consultationId } = await admittedJob();
+    const call = vi.fn<AiModel["call"]>(async () => ({
+      ok: true,
+      output: { reply: "문구를 확인했어요.", draft_patch: { lettering: "생일 축하" } },
+      aiCallId: newUuid(),
+    }));
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const options = {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
+    };
+    await expect(
+      consumeKakaoCallback(job, env, {
+        ...options,
+        connect: failNextWrite(/UPDATE messages SET kakao_callback_enc = NULL/),
+      }),
+    ).rejects.toThrow("합성 결과 저장 중단");
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(
+      await consumeKakaoCallback(job, env, {
+        ...options,
+        now: () => new Date(NOW.getTime() + SKILL_CALLBACK_MS + 1),
+      }),
+    ).toBe("done");
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect((await stored(job))?.kakao_callback_enc).toBeNull();
+    expect(
+      (
+        await db.query("SELECT lettering, revision FROM order_drafts WHERE shop_id=$1 AND consultation_id=$2", [
+          shop.shopId,
+          consultationId,
+        ])
+      ).rows,
+    ).toEqual([{ lettering: "생일 축하", revision: 1 }]);
+    expect(
+      (
+        await db.query(
+          "SELECT author, body_masked, delivery FROM messages WHERE shop_id=$1 AND consultation_id=$2 AND direction='outbound'",
+          [shop.shopId, consultationId],
+        )
+      ).rows,
+    ).toEqual([{ author: "ai", body_masked: "문구를 확인했어요.", delivery: "deferred" }]);
+    expect(
+      (await db.query("SELECT id FROM handoffs WHERE shop_id=$1 AND consultation_id=$2", [shop.shopId, consultationId]))
+        .rowCount,
+    ).toBe(0);
+  });
+
   it.each([
     ["timeout", "ai_timeout"],
     ["unavailable", "ai_unavailable"],
