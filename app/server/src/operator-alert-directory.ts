@@ -2,11 +2,12 @@
 import type { Queryable } from "./db";
 import type { ReviewQueueInput } from "./license-review-input";
 import { isOperatorScope, type OperatorScope } from "./operator-scope";
+import type { OperatorAlertKind } from "./ops-events";
 import { ForgedScopeError } from "./shop-scope";
 
 export interface OperatorAlertRow {
   id: string;
-  kind: "channel_already_linked" | "privacy_transfer_missing" | "ai_failure_burst";
+  kind: OperatorAlertKind;
   count: number;
   created_at: Date;
   cursor_at: string;

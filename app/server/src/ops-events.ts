@@ -15,6 +15,13 @@ export const OPS_EVENT_KINDS = [
 ] as const;
 
 export type OpsEventKind = (typeof OPS_EVENT_KINDS)[number];
+export const OPERATOR_ALERT_KINDS = [
+  "channel_already_linked",
+  "privacy_transfer_missing",
+  "ai_failure_burst",
+] as const satisfies readonly OpsEventKind[];
+export type OperatorAlertKind = (typeof OPERATOR_ALERT_KINDS)[number];
+export const OPERATOR_ALERT_COUNT_MAX = 1_000_000;
 
 export interface OpsEvent {
   readonly kind: OpsEventKind;
@@ -34,6 +41,8 @@ export async function recordOpsEvent(q: Queryable, event: OpsEvent): Promise<str
   if (!(OPS_EVENT_KINDS as readonly string[]).includes(event.kind)) throw new TypeError("unknown ops event kind");
   const count = event.count ?? 1;
   if (!Number.isInteger(count) || count < 0 || count > 2_147_483_647) throw new TypeError("count must be an integer");
+  if (OPERATOR_ALERT_KINDS.some((kind) => kind === event.kind) && count > OPERATOR_ALERT_COUNT_MAX)
+    throw new TypeError("operator alert count exceeds its limit");
   let detail: string | null = null;
   if (event.detail !== undefined) {
     const entries = Object.entries(event.detail);
