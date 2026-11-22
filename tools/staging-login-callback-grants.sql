@@ -48,3 +48,7 @@ GRANT SELECT (pickup_day, pickup_at) ON orders TO :"runtime_role";
 GRANT SELECT (shop_id, order_id, handed_over_at) ON productions TO :"runtime_role";
 -- 이미 보낸 안내·시도 횟수·본문은 바꾸지 않는다.
 GRANT UPDATE (scheduled_for, next_attempt_at) ON notifications TO :"runtime_role";
+
+-- TASK-038: 가격표의 새 버전·옵션·규칙·도안을 남기고 이전 내용은 읽기만 한다.
+GRANT SELECT, INSERT, UPDATE (superseded_at) ON price_lists TO :"runtime_role";
+GRANT SELECT, INSERT ON price_options, price_option_rules, designs TO :"runtime_role";

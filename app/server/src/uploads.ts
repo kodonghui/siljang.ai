@@ -108,9 +108,10 @@ export function tempKey(owner: OwnerScope, uploadId: string): string {
 }
 
 /** 가게의 영구 위치(명령이 가게·사진 행의 저장 위치 컬럼에 씀). */
-export function permanentKey(shopId: string, purpose: UploadPurpose, uploadId: string): string {
+export function permanentKey(shopId: string, purpose: UploadPurpose, uploadId: string, versionId?: string): string {
   if (!isUuid(shopId)) throw new TypeError("shop id must be a uuid");
-  return `shops/${shopId.toLowerCase()}/${purpose}/${uploadId}`;
+  if (versionId !== undefined && !isUuid(versionId)) throw new TypeError("version id must be a uuid");
+  return `shops/${shopId.toLowerCase()}/${purpose}/${versionId === undefined ? "" : `${versionId.toLowerCase()}/`}${uploadId}`;
 }
 
 export interface UnusedUploads {
@@ -316,8 +317,13 @@ export async function checkUploads(
  * 그 사이 임시 파일이 없어졌으면 그 필드의 upload_not_found, 저장소가 답하지 않으면 StorageUnavailableError(503).
  * 둘 다 명령이 기록을 쓰기 전이라 아무것도 남지 않는다(06 API-008). 기록을 쓰다 실패하면 명령이 복사본을 지운다.
  */
-export async function promoteUpload(store: ObjectStore, upload: TakenUpload, shopId: string): Promise<string> {
-  const key = permanentKey(shopId, upload.purpose, upload.uploadId);
+export async function promoteUpload(
+  store: ObjectStore,
+  upload: TakenUpload,
+  shopId: string,
+  versionId?: string,
+): Promise<string> {
+  const key = permanentKey(shopId, upload.purpose, upload.uploadId, versionId);
   if (!(await store.copy(upload.tempKey, key))) throw fieldError(upload.field, "upload_not_found");
   return key;
 }

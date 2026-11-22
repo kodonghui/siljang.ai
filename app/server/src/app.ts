@@ -20,6 +20,7 @@ import {
 } from "./owner-login";
 import type { OwnerScope } from "./owner-scope";
 import type { ImageBinding } from "./photo-normalizer";
+import { createPriceListVersion, getCurrentPriceList, getPriceListVersion, listPriceListVersions } from "./price-lists";
 import { ApiError, problemResponse } from "./problem";
 import type { RateLimitBinding } from "./rate-limit";
 import {
@@ -156,6 +157,10 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   ownerRoute("POST", "/owner/uploads", createUpload),
   ownerRoute("POST", "/owner/shop", registerShop),
   shopRoute("GET", "/owner/shop", "owner", getShop),
+  shopRoute("GET", "/owner/price-list", "owner", getCurrentPriceList),
+  shopRoute("POST", "/owner/price-list/versions", "owner", createPriceListVersion),
+  shopRoute("GET", "/owner/price-list/versions", "owner", listPriceListVersions),
+  shopRoute("GET", "/owner/price-list/versions/:version", "owner", getPriceListVersion),
   shopRoute("GET", "/owner/calendar", "owner", getCalendarSettings),
   shopRoute("PUT", "/owner/calendar", "owner", setCalendarSettings),
   shopRoute("GET", "/owner/calendar/days", "owner", getCalendarDays),

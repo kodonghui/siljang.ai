@@ -149,6 +149,106 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     expect(privileges.rows).toEqual([{ approve: false, issue: false, remove: false }]);
   });
 
+  it("제한 역할로 가격표 4개 API를 실행하고 이전 항목 수정·삭제는 막음", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const store = new MemoryStore(),
+      uploadId = newUploadId("design_image", now);
+    await store.put(tempKey(createOwnerScope(shop.ownerId), uploadId), new Uint8Array([1, 2]), "image/png");
+    const api = createApp({
+      connect: () => roleDb(),
+      scopes: { owner: async () => createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }) },
+      services: { storage: store, now: () => now },
+      logSink: () => {},
+    });
+    const key = newRequestKey();
+    const call = (method: string, path: string, body?: unknown) =>
+      api.request(
+        `https://siljang.example/api${path}`,
+        {
+          method,
+          headers: { origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": key },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        },
+        testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
+      );
+    const first = await call("GET", "/owner/price-list");
+    expect(first.status, await first.clone().text()).toBe(200);
+    const previous = (await first.json()) as { revision: string };
+    const body = {
+      baseRevision: previous.revision,
+      options: [
+        {
+          key: "size",
+          group: "size",
+          name: "1호",
+          priceKind: "fixed",
+          amount: 35000,
+          amountMax: null,
+          inStandard: true,
+          position: 0,
+        },
+        {
+          key: "flower",
+          group: "design",
+          name: "꽃",
+          priceKind: "fixed",
+          amount: 5000,
+          amountMax: null,
+          inStandard: true,
+          position: 0,
+        },
+      ],
+      rules: [{ kind: "surcharge", optionA: "size", optionB: "flower", amount: 1000 }],
+      designs: [{ name: "꽃 사진", uploadId, optionKey: "flower", inStandard: true, position: 0 }],
+    };
+    const save = await call("POST", "/owner/price-list/versions", body);
+    expect(save.status, await save.clone().text()).toBe(201);
+    expect(await save.json()).toMatchObject({
+      outcome: "created",
+      priceList: { version: 2, designs: [{ inStandard: true }], rules: [{ amount: 1000 }] },
+    });
+    const replay = await call("POST", "/owner/price-list/versions", body);
+    expect(replay.status).toBe(201);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    for (const path of [
+      "/owner/price-list",
+      "/owner/price-list/versions",
+      "/owner/price-list/versions/1",
+      "/owner/price-list/versions/2",
+    ])
+      expect((await call("GET", path)).status).toBe(200);
+    const permissions = await isolated.db.query(
+      `SELECT has_column_privilege($1,'price_lists','superseded_at','UPDATE') AS supersede,
+        has_column_privilege($1,'price_lists','version','UPDATE') AS rewrite_version,
+        has_table_privilege($1,'price_lists','DELETE') AS remove_list,
+        has_column_privilege($1,'price_options','in_standard','UPDATE') AS rewrite_option,
+        has_column_privilege($1,'designs','in_standard','UPDATE') AS rewrite_design,
+        has_table_privilege($1,'price_option_rules','DELETE') AS remove_rule`,
+      [role],
+    );
+    expect(permissions.rows).toEqual([
+      {
+        supersede: true,
+        rewrite_version: false,
+        remove_list: false,
+        rewrite_option: false,
+        rewrite_design: false,
+        remove_rule: false,
+      },
+    ]);
+    const conn = roleDb();
+    try {
+      await expect(
+        conn.query("UPDATE price_options SET in_standard=false WHERE shop_id=$1", [shop.shopId]),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(conn.query("DELETE FROM designs WHERE shop_id=$1", [shop.shopId])).rejects.toMatchObject({
+        code: "42501",
+      });
+    } finally {
+      await conn.close();
+    }
+  });
+
   it("가게·채널 공유 잠금과 손님·상담·수신 메시지 쓰기를 실제 역할로 실행", async () => {
     const conn = roleDb();
     const scope = createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" });

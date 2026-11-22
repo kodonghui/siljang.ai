@@ -62,7 +62,13 @@ interface CalendarShopCase {
   readonly kind: "calendar";
 }
 
-export type CrossShopCase = OwnerCrossShopCase | SkillCrossShopCase | OwnShopCase | CalendarShopCase;
+interface PriceShopCase {
+  readonly method: "GET" | "POST";
+  readonly path: "/owner/price-list" | "/owner/price-list/versions" | "/owner/price-list/versions/:version";
+  readonly kind: "prices";
+}
+
+export type CrossShopCase = OwnerCrossShopCase | SkillCrossShopCase | OwnShopCase | CalendarShopCase | PriceShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   ...["message", "card", "review", "event"].map(
@@ -78,6 +84,10 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "PUT", path: "/owner/calendar", kind: "calendar" },
   { method: "GET", path: "/owner/calendar/days", kind: "calendar" },
   { method: "PATCH", path: "/owner/calendar/days/:day", kind: "calendar" },
+  { method: "GET", path: "/owner/price-list", kind: "prices" },
+  { method: "POST", path: "/owner/price-list/versions", kind: "prices" },
+  { method: "GET", path: "/owner/price-list/versions", kind: "prices" },
+  { method: "GET", path: "/owner/price-list/versions/:version", kind: "prices" },
 ];
 
 /** 선언된 가게 범위 경로 가운데 등록되지 않은 것(missing)과, 등록됐지만 선언이 없는 것(stale). */
@@ -129,7 +139,7 @@ async function send(env: CrossShopEnv, method: Method, req: CrossShopRequest): P
     headers["content-type"] = "application/json";
     init.body = JSON.stringify(req.body);
   }
-  const res = await env.app.request(`/api${req.url}`, init, testEnv());
+  const res = await env.app.request(`/api${req.url}`, init, testEnv({ FILE_URL_KEY: TEST_HASH_KEY }));
   const text = await res.text();
   const body = text === "" ? null : (JSON.parse(text) as Record<string, unknown>);
   return { status: res.status, headers: res.headers, text, body, requestKey };
@@ -191,6 +201,79 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "prices") {
+      if (c.path.endsWith(":version"))
+        await db.query("UPDATE price_lists SET version = 1000 WHERE shop_id = $1", [env.b.shopId]);
+      const before = await snapshots(db, env);
+      const current = await send(env, "GET", { url: "/owner/price-list" });
+      expect(current.status, current.text).toBe(200);
+      if (c.method === "GET") {
+        const url = c.path.replace(":version", "1");
+        for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+          const response = await send(env, "GET", { url: `${url}?shopId=${target}&ownerId=${env.b.ownerId}` });
+          expect(response.status, response.text).toBe(200);
+          for (const id of [env.b.shopId, env.b.ownerId, env.b.priceListId, env.b.designId, env.b.designOptionId])
+            expect(response.text).not.toContain(id);
+          if (!url.endsWith("/versions")) expect(response.text).toContain(env.a.designId);
+        }
+        if (c.path.endsWith(":version")) {
+          const other = await send(env, "GET", { url: "/owner/price-list/versions/1000" });
+          const absent = await send(env, "GET", { url: "/owner/price-list/versions/999" });
+          expect(other.status).toBe(404);
+          expect(comparable(other)).toEqual(comparable(absent));
+        }
+        expect(await snapshots(db, env)).toEqual(before);
+      } else {
+        const body = {
+          baseRevision: current.body?.revision,
+          options: [
+            {
+              key: "flower",
+              group: "design",
+              name: "꽃",
+              priceKind: "fixed",
+              amount: 5000,
+              amountMax: null,
+              inStandard: true,
+              position: 0,
+            },
+          ],
+          rules: [],
+          designs: [
+            { name: "꽃 도안", sourceDesignId: env.a.designId, optionKey: "flower", inStandard: false, position: 0 },
+          ],
+        };
+        let first: Sent | undefined;
+        for (const sourceDesignId of [env.b.designId, newUuid(), env.b.designId.toUpperCase()]) {
+          const response = await send(env, "POST", {
+            url: c.path,
+            body: { ...body, designs: [{ ...body.designs[0], sourceDesignId }] },
+          });
+          expect(response.status, response.text).toBe(422);
+          expect(response.body).toMatchObject({
+            code: "validation_failed",
+            errors: [{ field: "/designs/0/sourceDesignId", code: "reference_not_found" }],
+          });
+          if (first) expect(comparable(response)).toEqual(comparable(first));
+          else first = response;
+          expect(response.text).not.toContain(env.b.designId);
+        }
+        for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+          const response = await send(env, "POST", { url: c.path, body: { ...body, shopId: target } });
+          expect(response.status).toBe(422);
+          expect(response.body).toMatchObject({ errors: [{ field: "/shopId", code: "unknown_field" }] });
+        }
+        expect(await snapshots(db, env)).toEqual(before);
+        const own = await send(env, "POST", { url: c.path, body });
+        expect(own.status, own.text).toBe(201);
+        expect(own.body).toMatchObject({
+          outcome: "created",
+          priceList: { version: 2, designs: [{ inStandard: false }] },
+        });
+        expect((await snapshots(db, env))[1]).toEqual(before[1]);
+      }
+      return;
+    }
     if (c.kind === "calendar") {
       const day = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
       for (const [shop, capacity] of [
