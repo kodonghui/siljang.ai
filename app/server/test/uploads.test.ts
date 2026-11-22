@@ -220,7 +220,7 @@ describe("TASK-183: API-007이 G10을 적용한 바이트만 저장", () => {
     expect(after.exif).toBeUndefined();
   });
 
-  it.each(["실패", "잘못된 출력", "출력 크기 초과"] as const)(
+  it.each(["실패", "CPU 한도", "잘못된 출력", "출력 크기 초과"] as const)(
     "WebP 변환 %s 때 원본과 임시 파일을 저장하지 않음",
     async (kind) => {
       const original = new Uint8Array(readFileSync(new URL("./fixtures/photos/pixel-source.webp", import.meta.url)));
@@ -230,6 +230,7 @@ describe("TASK-183: API-007이 G10을 적용한 바이트만 저장", () => {
             transform: () => builder,
             async output() {
               if (kind === "실패") throw new Error("provider failure");
+              if (kind === "CPU 한도") throw new Error("Worker exceeded CPU time limit");
               const bytes = kind === "출력 크기 초과" ? new Uint8Array(20 * MIB + 1) : original;
               return { response: () => new Response(bytes, { headers: { "content-type": "image/webp" } }) };
             },
@@ -238,12 +239,47 @@ describe("TASK-183: API-007이 G10을 적용한 바이트만 저장", () => {
         },
       };
       const h = harness({ images });
-      await expectProblem(
+      const problem = await expectProblem(
         await upload(h, newUuid(), "design_image", original),
         kind === "출력 크기 초과" ? "file_too_large" : "storage_unavailable",
       );
+      if (kind !== "출력 크기 초과") expect(problem.title).toBe("사진을 저장하지 못했어요. 다시 올려 주세요");
+      expect(JSON.stringify(problem)).not.toMatch(/provider failure|CPU time limit/);
       expect(h.store.keys()).toEqual([]);
       expect(h.store.calls).not.toContain("put");
+    },
+  );
+
+  it.each(["provider failure", "Worker exceeded CPU time limit"])(
+    "WebP 변환 오류 %s 뒤 같은 사진을 다시 올리면 정규화한 파일 하나만 저장",
+    async (failure) => {
+      const original = new Uint8Array(readFileSync(new URL("./fixtures/photos/pixel-source.webp", import.meta.url)));
+      const normalized = new Uint8Array(readFileSync(new URL("./fixtures/photos/pixel-result.webp", import.meta.url)));
+      let calls = 0;
+      const images: ImageBinding = {
+        input() {
+          const builder = {
+            transform: () => builder,
+            async output() {
+              calls += 1;
+              if (calls === 1) throw new Error(failure);
+              return { response: () => new Response(normalized, { headers: { "content-type": "image/webp" } }) };
+            },
+          };
+          return builder;
+        },
+      };
+      const h = harness({ images });
+      const owner = newUuid();
+      const problem = await expectProblem(await upload(h, owner, "design_image", original), "storage_unavailable");
+      expect(problem.title).toBe("사진을 저장하지 못했어요. 다시 올려 주세요");
+      expect(h.store.keys()).toEqual([]);
+      const body = await uploaded(await upload(h, owner, "design_image", original));
+      expect(body.byteSize).toBe(normalized.byteLength);
+      expect(h.store.keys()).toHaveLength(1);
+      expect(h.store.objects.get(h.store.keys()[0] ?? "")?.body).toEqual(normalized);
+      expect(h.store.calls.filter((call) => call === "put")).toHaveLength(1);
+      expect(calls).toBe(2);
     },
   );
 
