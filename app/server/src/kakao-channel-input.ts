@@ -53,11 +53,15 @@ export function parseChannelInput(raw: unknown): ChannelInput {
   const channelPublicId = text(input, "channelPublicId", 40, true, "", errors);
   if (channelPublicId !== null && !/^_[A-Za-z0-9]+$/.test(channelPublicId))
     errors.push({ field: "/channelPublicId", code: "bad_format" });
-  const blocks = object(input.blockIds, "/blockIds");
-  unknownKeys(blocks, CHANNEL_BLOCKS, "/blockIds", errors);
-  const blockIds = Object.fromEntries(
-    CHANNEL_BLOCKS.map((key) => [key, text(blocks, key, 100, true, "/blockIds", errors)]),
-  ) as Record<ChannelBlock, string | null>;
+  const blockIds = Object.fromEntries(CHANNEL_BLOCKS.map((key) => [key, null])) as Record<ChannelBlock, string | null>;
+  if (input.blockIds === undefined) errors.push({ field: "/blockIds", code: "required" });
+  else if (typeof input.blockIds !== "object" || input.blockIds === null || Array.isArray(input.blockIds))
+    errors.push({ field: "/blockIds", code: "bad_format" });
+  else {
+    const blocks = input.blockIds as Record<string, unknown>;
+    unknownKeys(blocks, CHANNEL_BLOCKS, "/blockIds", errors);
+    for (const key of CHANNEL_BLOCKS) blockIds[key] = text(blocks, key, 100, true, "/blockIds", errors);
+  }
   if (errors.length) throw new ApiError("validation_failed", { errors: errors.slice(0, 50) });
   return { baseRevision, botId, channelPublicId, blockIds };
 }

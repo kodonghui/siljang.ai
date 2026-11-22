@@ -452,7 +452,7 @@ describeDb("TASK-042 채널 설정과 스킬 키 API-030/031/079", () => {
     expect(JSON.stringify(problem)).not.toContain("synthetic private");
   });
 
-  it("없는 블록 묶음은 required임", async () => {
+  it("없는 blockIds 객체은 required임", async () => {
     const h = await fixture();
     const missing = await expectProblem(
       await h.call("PUT", PATH, { ...input(), blockIds: undefined }),
@@ -460,7 +460,7 @@ describeDb("TASK-042 채널 설정과 스킬 키 API-030/031/079", () => {
     );
     expect(missing).toMatchObject({ errors: expect.arrayContaining([{ field: "/blockIds", code: "required" }]) });
   });
-  it("잘못된 블록 묶음이 있어도 다른 입력 오류를 함께 보여 줌", async () => {
+  it("잘못된 blockIds 객체이 있어도 다른 입력 오류를 함께 보여 줌", async () => {
     const h = await fixture();
     const multiple = await expectProblem(
       await h.call("PUT", PATH, { ...input(), botId: "", blockIds: null }),
@@ -473,6 +473,80 @@ describeDb("TASK-042 채널 설정과 스킬 키 API-030/031/079", () => {
       ]),
     });
     expect((await db.query("SELECT id FROM kakao_channels WHERE shop_id=$1", [h.shopId])).rowCount).toBe(0);
+  });
+
+  it("본문 형식·깨진 JSON·요청 키 누락은 두 쓰기 경로 모두422이며 저장0건임", async () => {
+    const h = await fixture();
+    for (const [method, path, body] of [
+      ["PUT", PATH, input()],
+      ["POST", `${PATH}/skill-key`, { baseRevision: "revision", previousKey: "keep_24h" }],
+    ] as const) {
+      for (const [type, data, key] of [
+        ["text/plain", JSON.stringify(body), newRequestKey()],
+        ["application/json", "{", newRequestKey()],
+        ["application/json", JSON.stringify(body), null],
+      ] as const) {
+        const response = await h.app.request(
+          `${ORIGIN}/api${path}`,
+          {
+            method,
+            headers: {
+              origin: ORIGIN,
+              [OWNER]: h.ownerId,
+              "content-type": type,
+              ...(key === null ? {} : { "Idempotency-Key": key }),
+            },
+            body: data,
+          },
+          testEnv(),
+        );
+        expect(response.status, await response.clone().text()).toBe(422);
+        expectSchema("Problem", await response.json());
+      }
+    }
+    expect((await db.query("SELECT id FROM kakao_channels WHERE shop_id=$1", [h.shopId])).rowCount).toBe(0);
+  });
+
+  it("두 명령 모두 같은 요청 키의 다른 본문을422로 거절하고 키 버전/연결을 보존함", async () => {
+    const h = await fixture(),
+      body = input(),
+      creationKey = newRequestKey();
+    const created = await save(h, body, creationKey);
+    await expectProblem(
+      await h.call("PUT", PATH, { ...body, channelPublicId: "_other" }, creationKey),
+      "idempotency_key_reused",
+    );
+    const rotationKey = newRequestKey(),
+      rotation = { baseRevision: created.kakaoChannel.revision, previousKey: "keep_24h" };
+    const response = await h.call("POST", `${PATH}/skill-key`, rotation, rotationKey);
+    expect(response.status).toBe(200);
+    await expectProblem(
+      await h.call("POST", `${PATH}/skill-key`, { ...rotation, previousKey: "revoke_now" }, rotationKey),
+      "idempotency_key_reused",
+    );
+    expect((await read(h)).skill.keyVersion).toBe(2);
+    expect((await db.query("SELECT id FROM kakao_channels WHERE shop_id=$1", [h.shopId])).rowCount).toBe(1);
+  });
+
+  it("24시간 겹침으로 두 번 바꿔도 바로 앞보다 오래된 키는 즉시 거절함", async () => {
+    const h = await fixture(),
+      body = input(),
+      first = await save(h, body);
+    const keys = [first.skillKey?.headerValue ?? ""];
+    let current = first.kakaoChannel;
+    for (let i = 0; i < 2; i++) {
+      const response = await h.call("POST", `${PATH}/skill-key`, {
+        baseRevision: current.revision,
+        previousKey: "keep_24h",
+      });
+      expect(response.status).toBe(200);
+      const value = (await response.json()) as ChannelResult;
+      current = value.kakaoChannel;
+      keys.push(value.skillKey?.headerValue ?? "");
+    }
+    await expectProblem(await skill(h, body.botId, keys[0] ?? ""), "skill_key_invalid");
+    for (const key of keys.slice(1))
+      expect((await skill(h, body.botId, key)).headers.get("Siljang-Outcome")).toBe("not_accepting");
   });
 });
 
