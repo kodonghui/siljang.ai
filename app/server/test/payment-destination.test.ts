@@ -78,7 +78,13 @@ describeDb("TASK-040 API-024/025 결제 계좌", () => {
     expectSchema("PaymentDestinationResult", value);
     expect(value).toMatchObject({
       outcome: "created",
-      paymentDestination: { ...input(), holderMismatchConfirmed: null },
+      paymentDestination: {
+        bankName: input().bankName,
+        accountNumber: input().accountNumber,
+        holderName: input().holderName,
+        cardPaymentUrl: null,
+        holderMismatchConfirmed: null,
+      },
     });
     const rows = await db.query<{ account_number_enc: string; account_last4: string }>(
       "SELECT * FROM payment_accounts WHERE shop_id=$1",
