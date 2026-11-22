@@ -19,10 +19,61 @@ const CONFIG = {
   KAKAO_ADMIN_KEY: "synthetic-admin",
 };
 function authSettings() {
-  const settings = readSettings(CONFIG).ownerAuth;
+  const settings = readSettings({ ...CONFIG, KAKAO_OWNER_LOGIN_SCOPES: "plusfriends" }).ownerAuth;
   if (settings === null) throw new Error("설정 없음");
   return settings;
 }
+
+describe("MVP 사장님 로그인 동의 항목(TASK-020, 2026-11-22 결정)", () => {
+  it("기본 인가는 plusfriends를 요청하지 않고 채널 조회도 하지 않음", async () => {
+    const settings = readSettings(CONFIG).ownerAuth;
+    if (settings === null) throw new Error("설정 없음");
+    const send = vi.fn(async () => Response.json({ access_token: "synthetic-access", id: 123456789 }));
+    const auth = kakaoOwnerAuth(settings, { fetch: send });
+    expect(new URL(auth.authorizeUrl(URI, "synthetic-state", "synthetic-challenge")).searchParams.has("scope")).toBe(
+      false,
+    );
+    expect(await auth.signIn("synthetic-code", URI, "synthetic-verifier")).toEqual({
+      accountId: "123456789",
+      friend: null,
+    });
+    expect(await auth.channelFriend("123456789")).toBeNull();
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("MVP 로그인은 채널 ID와 Admin 키 없이 설정할 수 있음", () => {
+    const settings = readSettings({
+      KAKAO_REST_API_KEY: CONFIG.KAKAO_REST_API_KEY,
+      KAKAO_CLIENT_SECRET: CONFIG.KAKAO_CLIENT_SECRET,
+      KAKAO_OWNER_REDIRECT_URIS: URI,
+    }).ownerAuth;
+    expect(settings).not.toBeNull();
+  });
+
+  it("동의 항목을 명시하면 정확한 scope를 요청하고 채널 친구 조회를 다시 켬", async () => {
+    const settings = readSettings({ ...CONFIG, KAKAO_OWNER_LOGIN_SCOPES: "profile_nickname, plusfriends" }).ownerAuth;
+    if (settings === null) throw new Error("설정 없음");
+    const send = vi.fn(async () =>
+      Response.json({ channels: [{ channel_public_id: "_synthetic", relation: "ADDED" }] }),
+    );
+    const auth = kakaoOwnerAuth(settings, { fetch: send });
+    expect(new URL(auth.authorizeUrl(URI, "state", "challenge")).searchParams.get("scope")).toBe(
+      "profile_nickname,plusfriends",
+    );
+    expect(await auth.channelFriend("123456789")).toBe(true);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["plus friends", "plusfriends,", "PLUSFRIENDS"])("잘못된 동의 항목은 시작에서 막음: %s", (scopes) => {
+    expect(() => readSettings({ ...CONFIG, KAKAO_OWNER_LOGIN_SCOPES: scopes })).toThrow(SettingsError);
+  });
+
+  it("plusfriends를 켜면 채널 ID가 필요함", () => {
+    expect(() =>
+      readSettings({ ...CONFIG, KAKAO_ALERT_CHANNEL_ID: "", KAKAO_OWNER_LOGIN_SCOPES: "plusfriends" }),
+    ).toThrow(SettingsError);
+  });
+});
 
 describe("서명 state와 nonce·PKCE(TASK-020, DEC-10)", () => {
   it("서명은 nonce·만료·URI에 묶고 verifier는 외부에 보이지 않음", async () => {
