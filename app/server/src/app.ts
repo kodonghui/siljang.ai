@@ -18,6 +18,7 @@ import {
   listOperatingRulesVersions,
 } from "./operating-rules";
 import { AuthUnavailableError } from "./operator-auth";
+import { listIdentityChanges, reviewIdentityChange } from "./operator-identity-change";
 import { getReviewShop, listReviewShops, reviewLicense } from "./operator-license-review";
 import { createOperatorSession, deleteOperatorSession, getOperatorMe, resolveOperatorSession } from "./operator-login";
 import { resolveOperatorShop } from "./operator-shop";
@@ -181,6 +182,8 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   shopRoute("GET", "/owner/shop", "owner", getShop),
   shopRoute("PATCH", "/owner/shop", "owner", updateShopSettings),
   shopRoute("POST", "/owner/shop/identity-changes", "owner", requestIdentityChange),
+  operatorRoute("GET", "/operator/identity-changes", listIdentityChanges),
+  shopRoute("POST", "/operator/identity-changes/:changeId/review", "operator", reviewIdentityChange),
   shopRoute("GET", "/owner/price-list", "owner", getCurrentPriceList),
   shopRoute("POST", "/owner/price-list/versions", "owner", createPriceListVersion),
   shopRoute("GET", "/owner/price-list/versions", "owner", listPriceListVersions),

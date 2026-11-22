@@ -1,6 +1,13 @@
 /** API-080 사업자 변경은 확인된 값 셋과 증빙 업로드 하나만 받는다. */
+
+import { parseDecisionReview, parseReviewQueue } from "./license-review-input";
 import { ApiError, type FieldError, fieldError } from "./problem";
 import { businessRegChecksum } from "./shop-input";
+
+export const parseIdentityChangeList = (query: Record<string, string>) =>
+  parseReviewQueue(query, ["pending", "applied", "on_hold"] as const, "not_allowed");
+export const parseIdentityChangeReview = (raw: unknown) => parseDecisionReview(raw, "applied");
+export type IdentityChangeListInput = ReturnType<typeof parseIdentityChangeList>;
 
 export interface IdentityChangeInput {
   readonly baseRevision: string;

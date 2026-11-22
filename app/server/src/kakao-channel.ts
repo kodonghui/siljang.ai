@@ -6,7 +6,7 @@ import type { ShopRequest } from "./routes";
 import type { ShopDb } from "./shop-scope";
 import { toShopIso } from "./time";
 
-interface Channel {
+export interface Channel {
   id: string;
   bot_id: string;
   channel_public_id: string | null;
@@ -131,6 +131,17 @@ export async function getKakaoChannel(r: ShopRequest): Promise<Response> {
     }),
   );
 }
+
+/** 충돌한 명령은 되돌린 뒤 별도 트랜잭션에 운영 기록을 남긴다. 같은 키 재전송은 이 함수를 다시 부르지 않는다. */
+export async function recordKakaoChannelConflict(r: ShopRequest, now = r.services.now()): Promise<void> {
+  try {
+    await r.db.transaction((db) =>
+      db.run("INSERT INTO ops_events (shop_id,kind,count,created_at) VALUES ($1,'channel_already_linked',1,$2)", [now]),
+    );
+  } catch {
+    r.log("warn", { event: "channel_conflict_alert_failed", traceId: r.traceId });
+  }
+}
 export async function setKakaoChannel(r: ShopRequest): Promise<Response> {
   requireJson(r.req.raw);
   const raw = await r.body(),
@@ -235,15 +246,7 @@ export async function setKakaoChannel(r: ShopRequest): Promise<Response> {
     });
   } catch (error) {
     if (error instanceof ApiError && error.code === "channel_linked_elsewhere") {
-      try {
-        await r.db.transaction((db) =>
-          db.run("INSERT INTO ops_events (shop_id,kind,count,created_at) VALUES ($1,'channel_already_linked',1,$2)", [
-            now,
-          ]),
-        );
-      } catch {
-        r.log("warn", { event: "channel_conflict_alert_failed", traceId: r.traceId });
-      }
+      await recordKakaoChannelConflict(r, now);
     }
     throw error;
   }

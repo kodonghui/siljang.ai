@@ -2,6 +2,7 @@
 import { requireJson } from "./body";
 import { toHex } from "./encoding";
 import { eventKeys, insertOnce } from "./event-keys";
+import { readIdentityReview, renderIdentityReview } from "./identity-change-view";
 import { parseLicenseReview, parseReviewList, reviewCursor } from "./license-review-input";
 import { type ReviewSummaryRow, reviewRevision } from "./license-review-state";
 import { readSessionCookie, tokenHash } from "./operator-session";
@@ -31,18 +32,6 @@ interface AccountRow {
   holder_checked_by: string | null;
   holder_checked_at: Date | null;
   created_at: Date;
-}
-interface IdentityRow {
-  id: string;
-  business_name: string;
-  representative_name: string;
-  business_reg_no: string;
-  prev_business_name: string;
-  prev_representative_name: string;
-  prev_business_reg_no: string;
-  evidence_photo_key: string;
-  requested_at: Date;
-  revision: string;
 }
 type Duplicates = readonly { shopId: string; name: string; licenseStatus: string }[];
 
@@ -77,11 +66,7 @@ async function render(db: ShopDb, services: Services, origin: string, row: ShopR
       "SELECT p.bank_name,p.holder_name,p.account_last4,p.holder_mismatch_confirmed,p.holder_checked_by,p.holder_checked_at,p.created_at FROM payment_accounts p WHERE p.shop_id=$1 AND p.retired_at IS NULL",
     )
   ).rows[0];
-  const change = (
-    await db.run<IdentityRow>(
-      "SELECT i.*,i.xmin::text AS revision FROM shop_identity_changes i WHERE i.shop_id=$1 AND i.status='pending'",
-    )
-  ).rows[0];
+  const change = await readIdentityReview(db, null);
   return {
     shopId: row.id,
     name: row.name,
@@ -115,39 +100,7 @@ async function render(db: ShopDb, services: Services, origin: string, row: ShopR
             holderCheckedBy: await operator(db, account.holder_checked_by),
             createdAt: iso(account.created_at),
           },
-    pendingIdentityChange:
-      change === undefined
-        ? null
-        : {
-            changeId: change.id,
-            shop: { shopId: row.id, name: row.name, licenseStatus: row.license_status },
-            status: "pending",
-            businessName: change.business_name,
-            representativeName: change.representative_name,
-            businessRegNo: change.business_reg_no,
-            previous: {
-              businessName: change.prev_business_name,
-              representativeName: change.prev_representative_name,
-              businessRegNo: change.prev_business_reg_no,
-            },
-            evidencePhotoUrl: await urls.sign(change.evidence_photo_key, origin, now),
-            paymentAccount:
-              account === undefined
-                ? null
-                : {
-                    bankName: account.bank_name,
-                    holderName: account.holder_name,
-                    accountLast4: account.account_last4,
-                    holderMatchesNew:
-                      account.holder_name === change.business_name ||
-                      account.holder_name === change.representative_name,
-                  },
-            holdReason: null,
-            requestedAt: iso(change.requested_at),
-            reviewedAt: null,
-            reviewedBy: null,
-            revision: change.revision,
-          },
+    pendingIdentityChange: change === undefined ? null : await renderIdentityReview(change, services, origin),
     createdAt: iso(row.created_at),
     revision: await reviewRevision(row),
   };

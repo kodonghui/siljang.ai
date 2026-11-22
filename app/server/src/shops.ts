@@ -58,7 +58,7 @@ interface IdentityRow {
 export async function renderShop(db: ShopDb, services: Services, origin: string): Promise<Record<string, unknown>> {
   const row = await db.found<ShopRow>("SELECT s.*, s.xmin::text AS revision FROM shops s WHERE s.id = $1");
   const changes = await db.run<IdentityRow>(
-    "SELECT c.* FROM shop_identity_changes c WHERE c.shop_id = $1 ORDER BY c.requested_at DESC, c.id DESC LIMIT 1",
+    "SELECT c.* FROM shop_identity_changes c WHERE c.shop_id = $1 ORDER BY c.requested_order DESC LIMIT 1",
   );
   const change = changes.rows[0];
   const now = services.now();

@@ -1,16 +1,20 @@
-import { afterAll, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it } from "vitest";
 import { createApp } from "../src/app";
+import type { DbConnector, RequestDb } from "../src/db";
 import { OWNER_COOKIE } from "../src/owner-oauth";
 import { createOwnerScope } from "../src/owner-scope";
 import { createOwnerSession } from "../src/owner-session";
 import { newUploadId, tempKey } from "../src/uploads";
 import { expectProblem, expectSchema } from "./support/contract";
-import { describeDb, newRequestKey, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { describeDb, newRequestKey, TEST_HASH_KEY, testEnv } from "./support/db";
+import { isolatedTestDb } from "./support/isolated-db";
+import { seedOperatorSession } from "./support/operator";
 import { createShop } from "./support/shops";
 import { MemoryStore } from "./support/storage";
 
-const db = testDb(),
-  NOW = new Date("2026-11-22T05:00:00Z"),
+let db: RequestDb;
+let isolated: Awaited<ReturnType<typeof isolatedTestDb>> | undefined;
+const NOW = new Date("2026-11-22T05:00:00Z"),
   ORIGIN = "https://siljang.example",
   env = testEnv({ FILE_URL_KEY: TEST_HASH_KEY });
 interface Shop {
@@ -20,7 +24,7 @@ interface Shop {
   businessRegNo: string;
   identityChange: { changeId: string; businessName: string; status: string; previous: { businessName: string } } | null;
 }
-async function fixture() {
+async function fixture(options: { connect?: DbConnector } = {}) {
   const shop = await createShop(db, "사업자 변경 합성 가게");
   await db.query("UPDATE shops SET business_reg_no='1234567891' WHERE id=$1", [shop.shopId]);
   const owner = (
@@ -30,7 +34,14 @@ async function fixture() {
   const session = await createOwnerSession(db, { accountId: owner.kakao_account_id, friend: false }, NOW, false),
     cookie = `${OWNER_COOKIE}=${session.token}`,
     store = new MemoryStore();
-  const app = createApp({ services: { storage: store, now: () => NOW }, logSink: () => {} });
+  const database = isolated;
+  if (!database) throw new Error("시험 DB 없음");
+  const logs: string[] = [];
+  const app = createApp({
+    connect: options.connect ?? (() => database.connect()),
+    services: { storage: store, now: () => NOW },
+    logSink: (line) => logs.push(line),
+  });
   const get = async () => {
     const response = await app.request(`${ORIGIN}/api/owner/shop`, { headers: { cookie } }, env);
     expect(response.status).toBe(200);
@@ -43,7 +54,7 @@ async function fixture() {
     await store.put(tempKey(createOwnerScope(shop.ownerId), id), new Uint8Array([1, 2, 3]), "image/jpeg");
     return id;
   };
-  const post = (body: unknown, key = newRequestKey()) =>
+  const post = (body: unknown, key = newRequestKey(), bindings = env) =>
     app.request(
       `${ORIGIN}/api/owner/shop/identity-changes`,
       {
@@ -51,7 +62,7 @@ async function fixture() {
         headers: { cookie, origin: ORIGIN, "content-type": "application/json", "Idempotency-Key": key },
         body: JSON.stringify(body),
       },
-      env,
+      bindings,
     );
   const input = async () => {
     const current = await get();
@@ -63,11 +74,47 @@ async function fixture() {
       evidencePhotoUploadId: await upload(),
     };
   };
-  return { shop, cookie, store, app, get, upload, post, input };
+  return { shop, cookie, store, app, get, upload, post, input, logs };
+}
+type Fixture = Awaited<ReturnType<typeof fixture>>;
+async function operatorFor(h: Fixture) {
+  const session = await seedOperatorSession(db, NOW);
+  const list = (query = "") =>
+    h.app.request(`${ORIGIN}/api/operator/identity-changes${query}`, { headers: { cookie: session.cookie } }, env);
+  const detail = async () => {
+    const response = await h.app.request(
+      `${ORIGIN}/api/operator/shops/${h.shop.shopId}`,
+      { headers: { cookie: session.cookie } },
+      env,
+    );
+    expect(response.status, JSON.stringify(h.logs)).toBe(200);
+    return (await response.json()) as {
+      pendingIdentityChange: {
+        changeId: string;
+        revision: string;
+        paymentAccount: { holderMatchesNew: boolean } | null;
+      } | null;
+    };
+  };
+  const review = (id: string, body: unknown, key = newRequestKey(), bindings = env) =>
+    h.app.request(
+      `${ORIGIN}/api/operator/identity-changes/${id}/review`,
+      {
+        method: "POST",
+        headers: { cookie: session.cookie, origin: ORIGIN, "content-type": "application/json", "Idempotency-Key": key },
+        body: JSON.stringify(body),
+      },
+      bindings,
+    );
+  return { ...session, list, detail, review };
 }
 
 describeDb("TASK-036 사장님 사업자 변경 요청", () => {
-  afterAll(async () => db.close());
+  beforeAll(async () => {
+    isolated = await isolatedTestDb();
+    db = isolated.db;
+  }, 30_000);
+  afterAll(async () => isolated?.close());
   it("사장님 변경 요청201은 지금 값을 보존하고 새 값/증빙/요청 때 값을 남김", async () => {
     const h = await fixture(),
       before = await h.get(),
@@ -116,6 +163,297 @@ describeDb("TASK-036 사장님 사업자 변경 요청", () => {
     expect(
       (await db.query("SELECT count(*)::int AS n FROM shop_identity_changes WHERE shop_id=$1", [h.shop.shopId])).rows,
     ).toEqual([{ n: 0 }]);
+  });
+  it("운영자 변경 목록은 이전 값/새 값/서명 증빙과 계좌 끝4자리만 보임", async () => {
+    const h = await fixture(),
+      input = await h.input();
+    const created = await h.post(input);
+    expect(created.status).toBe(201);
+    const detail = (await created.json()) as { shop: Shop };
+    const session = await seedOperatorSession(db, NOW);
+    const response = await h.app.request(
+      `${ORIGIN}/api/operator/identity-changes?limit=100`,
+      { headers: { cookie: session.cookie } },
+      env,
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const list = (await response.json()) as { items: Record<string, unknown>[] };
+    expectSchema("IdentityChangeList", list);
+    const item = list.items.find((x) => x.changeId === detail.shop.identityChange?.changeId);
+    expect(item).toMatchObject({
+      businessName: input.businessName,
+      status: "pending",
+      paymentAccount: { holderMatchesNew: true },
+    });
+    expect(JSON.stringify(item)).not.toContain("accountNumber");
+    expect(JSON.stringify(item)).not.toContain("account_number_enc");
+  });
+  it("같은 시각에 보류 뒤 다시 요청해도 새 요청을 내 가게에 보여 줌", async () => {
+    const h = await fixture(),
+      input = await h.input();
+    expect((await h.post(input)).status).toBe(201);
+    const session = await seedOperatorSession(db, NOW);
+    await db.query(
+      "UPDATE shop_identity_changes SET id='ffffffff-ffff-4fff-8fff-ffffffffffff',status='on_hold',hold_reason='다시 확인',reviewed_by=$2,reviewed_at=$3 WHERE shop_id=$1",
+      [h.shop.shopId, session.operatorId, NOW],
+    );
+    const nextInput = { ...(await h.input()), businessName: "다시 신청한 상호" };
+    const response = await h.post(nextInput);
+    expect(response.status).toBe(201);
+    const result = (await response.json()) as { shop: Shop };
+    expect(result.shop.identityChange).toMatchObject({ status: "pending", businessName: nextInput.businessName });
+    expect((await h.get()).identityChange?.businessName).toBe(nextInput.businessName);
+  });
+  it("운영자 반영은 새 신원/운영자/시각과 할 일 없는 알림1건을 같은 처리로 남김", async () => {
+    const h = await fixture(),
+      input = await h.input(),
+      created = await h.post(input);
+    expect(created.status).toBe(201);
+    const body = (await created.json()) as { shop: Shop },
+      id = body.shop.identityChange?.changeId;
+    const session = await seedOperatorSession(db, NOW),
+      headers = {
+        cookie: session.cookie,
+        origin: ORIGIN,
+        "content-type": "application/json",
+        "Idempotency-Key": newRequestKey(),
+      };
+    const listResponse = await h.app.request(`${ORIGIN}/api/operator/identity-changes?limit=100`, { headers }, env);
+    expect(listResponse.status).toBe(200);
+    const list = (await listResponse.json()) as { items: { changeId: string; revision: string }[] },
+      item = list.items.find((x) => x.changeId === id);
+    if (!item) throw new Error("합성 변경 요청 없음");
+    const review = await h.app.request(
+      `${ORIGIN}/api/operator/identity-changes/${id}/review`,
+      { method: "POST", headers, body: JSON.stringify({ baseRevision: item.revision, decision: "applied" }) },
+      env,
+    );
+    expect(review.status, JSON.stringify(h.logs)).toBe(200);
+    const result = await review.json();
+    expectSchema("IdentityChangeReviewResult", result);
+    expect(result).toMatchObject({
+      outcome: "done",
+      change: { status: "applied", reviewedBy: { operatorId: session.operatorId } },
+    });
+    expect((await h.get()).businessName).toBe(input.businessName);
+    expect(
+      (await db.query("SELECT kind,owner_task_id FROM owner_alerts WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ kind: "identity_change_applied", owner_task_id: null }]);
+  });
+  it.each(["pending", "on_hold", "verified"])("영업 신고 %s여도 요청은 현재 신원을 바꾸지 않음", async (status) => {
+    const h = await fixture();
+    const op = await seedOperatorSession(db, NOW);
+    await db.query(
+      "UPDATE shops SET license_status=$2,license_hold_reason=CASE WHEN $2='on_hold' THEN '확인할 내용' ELSE NULL END,license_reviewed_by=CASE WHEN $2='pending' THEN NULL ELSE $3::uuid END,license_reviewed_at=CASE WHEN $2='pending' THEN NULL ELSE $4::timestamptz END WHERE id=$1",
+      [h.shop.shopId, status, op.operatorId, NOW],
+    );
+    const before = await h.get(),
+      response = await h.post(await h.input());
+    expect(response.status, JSON.stringify(h.logs)).toBe(201);
+    expect(((await response.json()) as { shop: Shop }).shop.businessName).toBe(before.businessName);
+  });
+  it.each(["missing", "other_owner", "wrong_purpose", "expired", "oversize", "wrong_type"])(
+    "증빙 %s는 같은 필드 오류이고 요청/영구 복사0",
+    async (kind) => {
+      const h = await fixture(),
+        input = await h.input(),
+        scope = createOwnerScope(h.shop.ownerId);
+      let uploadId = input.evidencePhotoUploadId;
+      const key = tempKey(scope, uploadId);
+      if (kind === "missing") h.store.objects.delete(key);
+      if (kind === "other_owner") {
+        const other = await fixture();
+        uploadId = await other.upload();
+      }
+      if (kind === "wrong_purpose") uploadId = newUploadId("design_image", NOW);
+      if (kind === "expired") uploadId = newUploadId("license_photo", new Date(NOW.getTime() - 3_600_001));
+      if (kind === "oversize")
+        h.store.objects.set(key, { body: new Uint8Array(10 * 1024 * 1024 + 1), contentType: "image/jpeg" });
+      if (kind === "wrong_type") h.store.objects.set(key, { body: new Uint8Array([1]), contentType: "image/webp" });
+      const response = await h.post({ ...input, evidencePhotoUploadId: uploadId });
+      const problem = await expectProblem(response, "validation_failed");
+      expect(problem).toMatchObject({ errors: [{ field: "/evidencePhotoUploadId", code: "upload_not_found" }] });
+      expect(h.store.calls.filter((x) => x === "copy")).toHaveLength(0);
+      expect(
+        (await db.query("SELECT id FROM shop_identity_changes WHERE shop_id=$1", [h.shop.shopId])).rows,
+      ).toHaveLength(0);
+    },
+  );
+  it.each(["head", "copy"] as const)("증빙 저장소 %s 장애503은 행0/임시 보존이고 같은 키로 복구됨", async (op) => {
+    const h = await fixture(),
+      input = await h.input(),
+      key = newRequestKey();
+    h.store.failOn.add(op);
+    await expectProblem(await h.post(input, key), "storage_unavailable");
+    expect(
+      (await db.query("SELECT id FROM shop_identity_changes WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toHaveLength(0);
+    expect(h.store.objects.size).toBe(1);
+    h.store.failOn.delete(op);
+    expect((await h.post(input, key)).status).toBe(201);
+  });
+  it("증빙 복사 뒤 응답 서명500은 요청/영구 복사를 되돌리고 같은 키 재시도201", async () => {
+    const h = await fixture(),
+      input = await h.input(),
+      key = newRequestKey();
+    expect((await h.post(input, key, testEnv())).status).toBe(500);
+    expect(
+      (await db.query("SELECT id FROM shop_identity_changes WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toHaveLength(0);
+    expect([...h.store.objects.keys()]).toEqual([
+      tempKey(createOwnerScope(h.shop.ownerId), input.evidencePhotoUploadId),
+    ]);
+    expect((await h.post(input, key)).status).toBe(201);
+  });
+  it("보류는 현재 신원을 보존하고 이유/판정자/알림1건, 같은 운영자의 새 키는 unchanged", async () => {
+    const h = await fixture(),
+      before = await h.get();
+    expect((await h.post(await h.input())).status).toBe(201);
+    const op = await operatorFor(h),
+      item = (await op.detail()).pendingIdentityChange;
+    if (!item) throw new Error("변경 요청 없음");
+    const body = { baseRevision: item.revision, decision: "on_hold", holdReason: "증빙을 다시 확인해 주세요" },
+      key = newRequestKey();
+    const first = await op.review(item.changeId, body, key);
+    expect(first.status, JSON.stringify(h.logs)).toBe(200);
+    const saved = await first.json();
+    expectSchema("IdentityChangeReviewResult", saved);
+    expect(saved).toMatchObject({
+      outcome: "done",
+      change: { status: "on_hold", holdReason: body.holdReason, reviewedBy: { operatorId: op.operatorId } },
+    });
+    const replay = await op.review(item.changeId, body, key);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    expect(((await replay.json()) as { outcome: string }).outcome).toBe("done");
+    const unchanged = await op.review(item.changeId, body);
+    expect(((await unchanged.json()) as { outcome: string }).outcome).toBe("unchanged");
+    expect((await h.get()).businessName).toBe(before.businessName);
+    expect(
+      (await db.query("SELECT kind,owner_task_id FROM owner_alerts WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ kind: "identity_change_on_hold", owner_task_id: null }]);
+    expect((await db.query("SELECT id FROM owner_tasks WHERE shop_id=$1", [h.shop.shopId])).rows).toHaveLength(0);
+    const other = await operatorFor(h);
+    await expectProblem(await other.review(item.changeId, body), "already_decided");
+    await expectProblem(await op.review(item.changeId, { ...body, holdReason: "바뀐 이유" }), "version_conflict");
+  });
+  it.each(["mismatch", "none"])("계좌 %s는 새 예금주 표시만 바뀌고 반영을 막지 않음", async (account) => {
+    const h = await fixture();
+    if (account === "none")
+      await db.query("UPDATE payment_accounts SET retired_at=$2 WHERE shop_id=$1", [h.shop.shopId, NOW]);
+    else await db.query("UPDATE payment_accounts SET holder_name='다른 합성 예금주' WHERE shop_id=$1", [h.shop.shopId]);
+    expect((await h.post(await h.input())).status).toBe(201);
+    const op = await operatorFor(h),
+      item = (await op.detail()).pendingIdentityChange;
+    if (!item) throw new Error("변경 요청 없음");
+    expect(item.paymentAccount).toEqual(
+      account === "none" ? null : expect.objectContaining({ holderMatchesNew: false }),
+    );
+    const response = await op.review(item.changeId, { baseRevision: item.revision, decision: "applied" });
+    expect(response.status, JSON.stringify(h.logs)).toBe(200);
+    expect(
+      (
+        await db.query("SELECT holder_checked_by,holder_checked_at FROM payment_accounts WHERE shop_id=$1", [
+          h.shop.shopId,
+        ])
+      ).rows,
+    ).toEqual([{ holder_checked_by: null, holder_checked_at: null }]);
+  });
+  it.each(["identity", "shop", "account"])("목록 뒤 %s 버전이 바뀌면409이고 반영/알림0", async (changed) => {
+    const h = await fixture();
+    expect((await h.post(await h.input())).status).toBe(201);
+    const op = await operatorFor(h),
+      item = (await op.detail()).pendingIdentityChange;
+    if (!item) throw new Error("변경 요청 없음");
+    if (changed === "identity")
+      await db.query("UPDATE shop_identity_changes SET business_name='다른 새 상호' WHERE shop_id=$1", [h.shop.shopId]);
+    if (changed === "shop")
+      await db.query("UPDATE shops SET business_name='바뀐 현재 상호' WHERE id=$1", [h.shop.shopId]);
+    if (changed === "account")
+      await db.query("UPDATE payment_accounts SET holder_name='바뀐 예금주' WHERE shop_id=$1", [h.shop.shopId]);
+    await expectProblem(
+      await op.review(item.changeId, { baseRevision: item.revision, decision: "applied" }),
+      "version_conflict",
+    );
+    expect((await db.query("SELECT id FROM owner_alerts WHERE shop_id=$1", [h.shop.shopId])).rows).toHaveLength(0);
+    expect((await db.query("SELECT status FROM shop_identity_changes WHERE shop_id=$1", [h.shop.shopId])).rows).toEqual(
+      [{ status: "pending" }],
+    );
+  });
+  it("같은 현재 버전의 두 운영자는200/409이고 판정/알림이 하나", async () => {
+    const h = await fixture();
+    expect((await h.post(await h.input())).status).toBe(201);
+    const a = await operatorFor(h),
+      b = await operatorFor(h),
+      item = (await a.detail()).pendingIdentityChange;
+    if (!item) throw new Error("변경 요청 없음");
+    const responses = await Promise.all([
+      a.review(item.changeId, { baseRevision: item.revision, decision: "applied" }),
+      b.review(item.changeId, { baseRevision: item.revision, decision: "on_hold", holdReason: "합성 보류" }),
+    ]);
+    expect(responses.map((x) => x.status).sort()).toEqual([200, 409]);
+    expect((await db.query("SELECT id FROM owner_alerts WHERE shop_id=$1", [h.shop.shopId])).rows).toHaveLength(1);
+  });
+  it("동시에 온 두 사장님 요청은201/409이고 복사/요청이 하나", async () => {
+    const h = await fixture(),
+      input = await h.input();
+    const responses = await Promise.all([h.post(input), h.post({ ...input, businessName: "다른 새 이름" })]);
+    expect(responses.map((x) => x.status).sort()).toEqual([201, 409]);
+    expect(h.store.calls.filter((x) => x === "copy")).toHaveLength(1);
+    expect(
+      (await db.query("SELECT id FROM shop_identity_changes WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toHaveLength(1);
+  });
+  it("API-013과081의 같은 요청 버전으로 바로 판정하고 알림 실패는 전부 되돌림", async () => {
+    const h = await fixture(),
+      input = await h.input(),
+      before = await h.get();
+    expect((await h.post(input)).status).toBe(201);
+    const op = await operatorFor(h),
+      item = (await op.detail()).pendingIdentityChange;
+    if (!item) throw new Error("변경 요청 없음");
+    const list = (await (await op.list("?limit=100")).json()) as { items: { changeId: string; revision: string }[] };
+    expect(list.items.find((x) => x.changeId === item.changeId)?.revision).toBe(item.revision);
+    await db.query(
+      `CREATE FUNCTION identity_alert_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.shop_id='${h.shop.shopId}'::uuid THEN RAISE EXCEPTION 'synthetic'; END IF; RETURN NEW; END $$`,
+    );
+    await db.query(
+      "CREATE TRIGGER identity_alert_failure BEFORE INSERT ON owner_alerts FOR EACH ROW EXECUTE FUNCTION identity_alert_failure()",
+    );
+    const key = newRequestKey(),
+      body = { baseRevision: item.revision, decision: "applied" };
+    try {
+      expect((await op.review(item.changeId, body, key)).status).toBe(500);
+      expect((await h.get()).businessName).toBe(before.businessName);
+      expect(
+        (await db.query("SELECT status FROM shop_identity_changes WHERE shop_id=$1", [h.shop.shopId])).rows,
+      ).toEqual([{ status: "pending" }]);
+    } finally {
+      await db.query("DROP TRIGGER identity_alert_failure ON owner_alerts");
+      await db.query("DROP FUNCTION identity_alert_failure()");
+    }
+    expect((await op.review(item.changeId, body, key)).status).toBe(200);
+  });
+  it("다른/없는/형식이 틀린 변경 ID는 사장님 접근401, 운영자는 없는 값에 같은404", async () => {
+    const h = await fixture(),
+      op = await operatorFor(h);
+    for (const id of [crypto.randomUUID(), "not-a-uuid", "x".repeat(101)]) {
+      await expectProblem(await op.review(id, { baseRevision: "revision", decision: "applied" }), "not_found");
+      const response = await h.app.request(
+        `${ORIGIN}/api/operator/identity-changes/${id}/review`,
+        {
+          method: "POST",
+          headers: {
+            cookie: h.cookie,
+            origin: ORIGIN,
+            "content-type": "application/json",
+            "Idempotency-Key": newRequestKey(),
+          },
+          body: "{}",
+        },
+        env,
+      );
+      await expectProblem(response, "unauthenticated");
+    }
   });
 });
 

@@ -3,23 +3,28 @@ import { fromBase64Url, toBase64Url } from "./encoding";
 import { ApiError, type FieldError, fieldError } from "./problem";
 import { isUuid } from "./shop-scope";
 
-export interface ReviewListInput {
-  readonly status: "pending" | "on_hold" | "verified";
+export interface ReviewQueueInput<S extends string> {
+  readonly status: S;
   readonly limit: number;
   readonly after: { readonly at: string; readonly id: string } | null;
 }
+export type ReviewListInput = ReviewQueueInput<"pending" | "on_hold" | "verified">;
 
 export function reviewCursor(status: string, at: string, id: string): string {
   return toBase64Url(new TextEncoder().encode(JSON.stringify([status, at, id])));
 }
 
-export function parseReviewList(query: Record<string, string>): ReviewListInput {
-  const status = query.status ?? "pending";
-  if (!["pending", "on_hold", "verified"].includes(status)) throw fieldError("query:status", "bad_format");
+export function parseReviewQueue<S extends string>(
+  query: Record<string, string>,
+  statuses: readonly S[],
+  invalidStatus: "bad_format" | "not_allowed" = "bad_format",
+): ReviewQueueInput<S> {
+  const status = statuses.find((value) => value === (query.status ?? "pending"));
+  if (status === undefined) throw fieldError("query:status", invalidStatus);
   if (query.limit !== undefined && !/^-?[0-9]+$/.test(query.limit)) throw fieldError("query:limit", "bad_format");
   const limit = query.limit === undefined ? 20 : Number(query.limit);
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw fieldError("query:limit", "out_of_range");
-  let after: ReviewListInput["after"] = null;
+  let after: ReviewQueueInput<S>["after"] = null;
   if (query.cursor !== undefined) {
     try {
       if (query.cursor.length < 1 || query.cursor.length > 200) throw new Error();
@@ -35,16 +40,20 @@ export function parseReviewList(query: Record<string, string>): ReviewListInput 
       throw fieldError("query:cursor", "bad_format");
     }
   }
-  return { status: status as ReviewListInput["status"], limit, after };
+  return { status, limit, after };
+}
+export function parseReviewList(query: Record<string, string>): ReviewListInput {
+  return parseReviewQueue(query, ["pending", "on_hold", "verified"] as const);
 }
 
-export interface LicenseReviewInput {
+export interface DecisionReviewInput<D extends string> {
   readonly baseRevision: string;
-  readonly decision: "verified" | "on_hold";
+  readonly decision: D | "on_hold";
   readonly holdReason?: string;
 }
+export type LicenseReviewInput = DecisionReviewInput<"verified">;
 
-export function parseLicenseReview(body: unknown): LicenseReviewInput {
+export function parseDecisionReview<D extends string>(body: unknown, accepted: D): DecisionReviewInput<D> {
   if (typeof body !== "object" || body === null || Array.isArray(body)) throw fieldError("/", "bad_format");
   const record = body as Record<string, unknown>,
     errors: FieldError[] = [];
@@ -62,7 +71,7 @@ export function parseLicenseReview(body: unknown): LicenseReviewInput {
   };
   text("baseRevision", 1, 64, true, /^[A-Za-z0-9._-]+$/);
   if (record.decision === undefined) errors.push({ field: "/decision", code: "required" });
-  else if (record.decision !== "verified" && record.decision !== "on_hold")
+  else if (record.decision !== accepted && record.decision !== "on_hold")
     errors.push({ field: "/decision", code: "bad_format" });
   text("holdReason", 1, 200, record.decision === "on_hold");
   for (const key of Object.keys(record)) {
@@ -70,5 +79,8 @@ export function parseLicenseReview(body: unknown): LicenseReviewInput {
     errors.push({ field: /^[A-Za-z0-9_]{1,100}$/.test(key) ? `/${key}` : "/", code: "unknown_field" });
   }
   if (errors.length) throw new ApiError("validation_failed", { errors: errors.slice(0, 50) });
-  return record as unknown as LicenseReviewInput;
+  return record as unknown as DecisionReviewInput<D>;
+}
+export function parseLicenseReview(body: unknown): LicenseReviewInput {
+  return parseDecisionReview(body, "verified");
 }
