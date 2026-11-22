@@ -3,7 +3,7 @@
 이 저장소에서 11단계 개발을 맡은 코딩 에이전트(Codex 등)가 먼저 읽는 파일이다.
 
 - **지금 지시:** [docs/handover/codex-finish.md](docs/handover/codex-finish.md)를 처음부터 끝까지 읽는다. WBS의 작업을 끝까지 진행하고, 진짜 계정·카카오·배포 확인도 Aside CLI·agent-desktop·wrangler로 직접 한다(동희님 지시 2026-11-19).
-- **2026-11-22 지시:** codex-finish.md 맨 위의 무료 MVP 운영 배포 범위·구현 완료 기준·코드 오류 재검사 규칙·학원컴 Ego Light·결제 없음 지시를 먼저 따릅니다.
+- **2026-11-22 지시:** codex-finish.md 맨 위의 무료 MVP 운영 배포 범위·구현 완료 기준·코드 오류 재검사 규칙·학원컴 Aside CLI·결제 없음 지시를 먼저 따릅니다. 브라우저 도구는 19:47 KST의 추가 지시를 적용합니다.
 - **코드 규칙·검사·기록·PR 형식:** [docs/handover/codex-development.md](docs/handover/codex-development.md) 5~11절. 두 글이 다르면 codex-finish.md를 따른다.
 - **지금 기록:** [docs/records/progress.md](docs/records/progress.md) 맨 위 단락, [docs/records/fix-log.md](docs/records/fix-log.md) 끝, [app/README.md](app/README.md)의 번호 항목.
 

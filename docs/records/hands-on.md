@@ -4,6 +4,8 @@
 
 ## 2026-11-22 · PR #157 배포와 미사용 시험 Worker 정리
 
+- 19:47 KST의 브라우저 도구 추가 지시에 따라 학원컴 Aside CLI로 전환합니다. SSH에서 Aside 1.26.1121.1917을 확인했고 현재 버전의 사용법과 연결 상태를 확인합니다. Ego Light 로그인 본문 관찰은 아래의 과거 결과이며 새 브라우저 확인은 Aside로 진행합니다.
+
 - PR #157의 최종 head `18412f0`는 app `45012858157`와 db `45012858155` 성공 뒤 squash로 합쳤습니다. main `888260c952bbb62f65402743a49798e66b45c454`의 app `45013054119`(검사/배포)·db `45013054133`와 원격 ref 일치를 확인했습니다.
 - 19:36 KST, Wrangler 4.158.0의 deployments list로 siljang-staging-free-smoke-20261119-1507의 배포 2개를 확인했습니다. 설정의 바인딩, 계정의 사용자 지정 도메인, corthex-hq.com의 Worker 경로는 모두 0개이며 저장소 검색은 정리 지시 문서 한 곳뿐입니다.
 - 동희님이 지시한 이 Worker만 Wrangler delete로 삭제했습니다. 종료 0/Successfully deleted 뒤 설정 조회는 HTTP 404·오류 코드 10007입니다. 연결된 바인딩이 없어 함께 지운 KV/큐는 없습니다.
