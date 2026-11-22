@@ -1,3 +1,4 @@
+import { requireJson } from "./body";
 /** 가게 등록/조회(API-008·009). 등록 전 쓰기는 사장님 전용 기능, 읽기는 가게 범위만 사용한다. */
 import { ApiError, fieldError } from "./problem";
 import type { OwnerRequest, ShopRequest } from "./routes";
@@ -116,8 +117,7 @@ export async function renderShop(db: ShopDb, services: Services, origin: string)
 }
 
 export async function registerShop(r: OwnerRequest): Promise<Response> {
-  if (!/^application\/json\s*(;\s*charset\s*=\s*"?utf-8"?\s*)?$/i.test(r.req.header("content-type") ?? ""))
-    throw fieldError("header:Content-Type", "not_allowed");
+  requireJson(r.req.raw);
   const raw = await r.body();
   const input = parseShopRegistration(raw);
   const origin = new URL(r.req.url).origin;

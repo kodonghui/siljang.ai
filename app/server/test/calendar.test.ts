@@ -1,6 +1,8 @@
 import { afterAll, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import { lockCalendarDay } from "../src/calendar";
+import { rescheduleCalendarNotices } from "../src/calendar-notices";
+import type { RequestDb } from "../src/db";
 import { ApiError } from "../src/problem";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectProblem, expectSchema } from "./support/contract";
@@ -330,6 +332,71 @@ describeDb("TASK-041 캘린더 API-026~029", () => {
     ).toBe(200);
   });
 
+  it("바뀐 종류의 안내만 잠그고 여러 안내를 한 번에 바꾸며 시도 표를 보존함", async () => {
+    const h = await harness();
+    await h.call("PUT", "/owner/calendar", settings());
+    const ids = [newUuid(), newUuid(), newUuid(), newUuid()];
+    for (const [i, id] of ids.entries())
+      await db.query(
+        `INSERT INTO notifications (id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status,scheduled_for,next_attempt_at,attempts)
+        VALUES ($1::uuid,$2,$3,$4,$5,$6,$1::uuid::text,'합성 안내','합성 안내',$7,'2026-11-20T02:00:00Z','2026-11-20T02:00:00Z',$8)`,
+        [
+          id,
+          h.shop.shopId,
+          h.shop.customerId,
+          h.shop.consultationId,
+          h.shop.orderId,
+          i === 3 ? "day_before" : "review_request",
+          i === 1 ? "retrying" : "pending",
+          i === 1 ? 1 : 0,
+        ],
+      );
+    let updates = 0;
+    const watched = {
+      query: (sql, params) => db.query(sql, params),
+      transaction: (fn) =>
+        db.transaction((tx) =>
+          fn({
+            query: (sql, params) => {
+              if (/^UPDATE notifications/.test(sql)) updates++;
+              return tx.query(sql, params);
+            },
+          }),
+        ),
+      abort: () => db.abort(),
+      close: () => db.close(),
+    } satisfies RequestDb;
+    const probe = testDb();
+    try {
+      await shopRequestDb(
+        createShopScope(h.shop.shopId, { kind: "owner", ownerId: h.shop.ownerId }),
+        watched,
+      ).transaction(async (tx) => {
+        await rescheduleCalendarNotices(
+          tx,
+          "Asia/Seoul",
+          { dayBefore: "18:00", review: "11:00" },
+          { dayBefore: "18:00", review: "15:00" },
+        );
+        await probe.transaction((q) => q.query("SELECT id FROM notifications WHERE id=$1 FOR UPDATE NOWAIT", [ids[3]]));
+      });
+    } finally {
+      await probe.close();
+    }
+    expect(updates).toBe(1);
+    const rows = await db.query<{ id: string; scheduled_for: Date; next_attempt_at: Date; attempts: number }>(
+      "SELECT id,scheduled_for,next_attempt_at,attempts FROM notifications WHERE shop_id=$1 ORDER BY id",
+      [h.shop.shopId],
+    );
+    for (const row of rows.rows) {
+      const unchanged = row.id === ids[3];
+      expect(row.scheduled_for.toISOString()).toBe(unchanged ? "2026-11-20T02:00:00.000Z" : "2026-11-20T06:00:00.000Z");
+      expect(row.next_attempt_at.toISOString()).toBe(
+        unchanged || row.attempts > 0 ? "2026-11-20T02:00:00.000Z" : "2026-11-20T06:00:00.000Z",
+      );
+    }
+  });
+
   it("하루 최대 개수를 예약 수 아래로 낮추기 전에 확인하고 주문과 자리는 보존함", async () => {
     const h = await harness();
     const baseRevision = await heldDay(h);
@@ -542,9 +609,10 @@ describeDb("TASK-041 캘린더 API-026~029", () => {
     expect(response.status).toBe(200);
     const list = await h.call("GET", "/owner/calendar/days?from=2026-11-20&to=2027-01-20");
     expect(list.status).toBe(200);
-    expectSchema("CalendarDayList", await list.json());
+    const listed = (await list.json()) as { items: { revision: string }[] };
+    expectSchema("CalendarDayList", listed);
     const unchanged = await h.call("PATCH", "/owner/calendar/days/2026-11-20", {
-      baseRevision: null,
+      baseRevision: listed.items[0]?.revision,
       manuallyClosed: false,
       capacityOverride: null,
     });
@@ -605,8 +673,11 @@ describeDb("TASK-041 캘린더 API-026~029", () => {
   it("날짜 명령의 같은 키는 처음 결과 종류와 지금 날짜 값을 돌려줌", async () => {
     const h = await harness();
     await h.call("PUT", "/owner/calendar", settings());
+    const listed = (await (await h.call("GET", "/owner/calendar/days?from=2026-11-20&to=2026-11-20")).json()) as {
+      items: { revision: string }[];
+    };
     const key = newRequestKey(),
-      input = { baseRevision: null, manuallyClosed: true };
+      input = { baseRevision: listed.items[0]?.revision, manuallyClosed: true };
     const response = await h.call("PATCH", "/owner/calendar/days/2026-11-20", input, true, key);
     const first = (await response.json()) as { day: { revision: string } };
     await h.call("PATCH", "/owner/calendar/days/2026-11-20", {

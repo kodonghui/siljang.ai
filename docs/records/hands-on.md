@@ -731,3 +731,8 @@
 
 - main b6e56330d55328a2ae504d83c341a50fd28ce5b0의 app45042360644·db45042360694가 성공했습니다. 학원컴 CLI의 배포 c7d6e15e-1eee-4d2f-b9f1-a330973fc7bd는01:13:14 KST 생성·태그 동일·상태200·SSH종료0입니다.
 - 01:14:56 KST 인증 없는 GET/PUT /api/owner/calendar, GET /api/owner/calendar/days, PATCH /api/owner/calendar/days/2026-11-20은 모두401 unauthenticated·application/problem+json입니다. 원격 CLI의4경로 응답만 확인했으며 실제 계정/권한 쓰기 성공으로 적지 않습니다. 브라우저 연결의2회 중단은 유지합니다.
+
+### 2026-11-23 02:05 KST · TASK-041 후속 리뷰와 실제 확인 구분
+
+- 앞서 학원컴 CLI에서 확인한 main354868c의 배포 e0bf0309-097e-431c-bb5c-414e04eafe10은01:50:16 KST 생성·태그 동일·상태200/SSH종료0입니다. 후속 수정 브랜치를 실제 배포 성공으로 적지 않습니다.
+- 캘린더 권한6문장·전후9개 불리언과 기존 역할 쓰기는 Aside 연결2회 중단으로 미실행/미확인입니다. 이 목적의 브라우저 실행을 반복하지 않았습니다. 로컬 NOWAIT 잠금·안내 갱신·API 시험과 실제 계정/카카오 발송은 구분합니다.

@@ -56,16 +56,34 @@ describeDb("TASK-041 예약 날짜·새 자리 판정", () => {
       ).status,
     ).toBe(200);
     const db = shopRequestDb(scope, isolated.db);
-    return { shop, db, call };
+    async function revision(day: string) {
+      const list = (await (await call("GET", `/owner/calendar/days?from=${day}&to=${day}`)).json()) as {
+        items: { revision: string }[];
+      };
+      const value = list.items[0]?.revision;
+      if (!value) throw new Error("합성 날짜 버전 없음");
+      return value;
+    }
+    return { shop, db, call, revision };
   }
 
   it("휴무·날짜별 개수·마감 시각은 공개 날짜 상태에 반영되고 남은 자리/식별자는 없음", async () => {
     const h = await fixture();
     expect(
-      (await h.call("PATCH", "/owner/calendar/days/2026-11-20", { baseRevision: null, closed: true })).status,
+      (
+        await h.call("PATCH", "/owner/calendar/days/2026-11-20", {
+          baseRevision: await h.revision("2026-11-20"),
+          closed: true,
+        })
+      ).status,
     ).toBe(200);
     expect(
-      (await h.call("PATCH", "/owner/calendar/days/2026-11-21", { baseRevision: null, capacityOverride: 3 })).status,
+      (
+        await h.call("PATCH", "/owner/calendar/days/2026-11-21", {
+          baseRevision: await h.revision("2026-11-21"),
+          capacityOverride: 3,
+        })
+      ).status,
     ).toBe(200);
     const days = await h.db.transaction((tx) => calendarBookingDays(tx, NOW));
     expect(days).toHaveLength(60);
@@ -82,7 +100,7 @@ describeDb("TASK-041 예약 날짜·새 자리 판정", () => {
   it("수동 마감한 날은 같은 트랜잭션의 새 자리 판정에서 거절하고 풀면 받음", async () => {
     const h = await fixture();
     const response = await h.call("PATCH", "/owner/calendar/days/2026-11-21", {
-      baseRevision: null,
+      baseRevision: await h.revision("2026-11-21"),
       manuallyClosed: true,
     });
     const first = (await response.json()) as { day: { revision: string } };

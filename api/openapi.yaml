@@ -5344,18 +5344,18 @@ paths:
                     confirm:
                     - kind: closed_day_with_orders
                       count: 2
-                      day: '2026-11-20'
                 confirmation_required_capacity_below_held:
                   value:
                     type: /problems/confirmation_required
                     title: 저장하기 전에 확인해 주세요
                     status: 409
-                    detail: 이미 잡힌 자리 개는 그대로 남아요. 하루 최대 개수를 줄일까요?
+                    detail: 이미 잡힌 자리 2개는 그대로 남아요. 하루 최대 개수를 줄일까요?
                     instance: /owner/calendar
                     code: confirmation_required
                     traceId: 188e40b0b70b16a1f833717f92e42765
                     confirm:
                     - kind: capacity_below_held
+                      count: 2
                 request_in_progress:
                   value:
                     type: /problems/request_in_progress
@@ -5831,12 +5831,14 @@ paths:
                     type: /problems/confirmation_required
                     title: 저장하기 전에 확인해 주세요
                     status: 409
-                    detail: 이미 잡힌 자리 개는 그대로 남아요. 하루 최대 개수를 줄일까요?
+                    detail: 이미 잡힌 자리 2개는 그대로 남아요. 하루 최대 개수를 줄일까요?
                     instance: /owner/calendar/days/2026-11-20
                     code: confirmation_required
                     traceId: 4ea82d5713b43d76c31b433bf325b1f5
                     confirm:
                     - kind: capacity_below_held
+                      count: 2
+                      day: '2026-11-20'
                 request_in_progress:
                   value:
                     type: /problems/request_in_progress

@@ -216,10 +216,12 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
         else expect(response.body?.dailyCapacity).toBe(3);
         expect(await snapshots(db, env)).toEqual(before);
       } else {
+        const listed = await send(env, "GET", { url: `/owner/calendar/days?from=${day}&to=${day}` });
+        const items = listed.body?.items as { revision: string }[];
         const body =
           c.method === "PUT"
             ? { ...settings, baseRevision: revision, dailyCapacity: 4 }
-            : { baseRevision: null, manuallyClosed: true };
+            : { baseRevision: items[0]?.revision, manuallyClosed: true };
         for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
           const response = await send(env, c.method, { url, body: { ...body, shopId: target } });
           expect(response.status).toBe(422);
