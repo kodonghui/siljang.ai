@@ -2,6 +2,7 @@ import { type Context, Hono } from "hono";
 import { getCalendarDays, getCalendarSettings, setCalendarSettings, updateCalendarDay } from "./calendar";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FILE_ROUTE, serveFile } from "./file-url";
+import { requestIdentityChange } from "./identity-change-request";
 import { SKILL_WORK_MS } from "./kakao-callback";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { getKakaoChannel, regenerateKakaoSkillKey, setKakaoChannel } from "./kakao-channel";
@@ -179,6 +180,7 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   shopRoute("PUT", "/owner/payment-destination", "owner", setPaymentDestination),
   shopRoute("GET", "/owner/shop", "owner", getShop),
   shopRoute("PATCH", "/owner/shop", "owner", updateShopSettings),
+  shopRoute("POST", "/owner/shop/identity-changes", "owner", requestIdentityChange),
   shopRoute("GET", "/owner/price-list", "owner", getCurrentPriceList),
   shopRoute("POST", "/owner/price-list/versions", "owner", createPriceListVersion),
   shopRoute("GET", "/owner/price-list/versions", "owner", listPriceListVersions),
