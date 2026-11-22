@@ -101,6 +101,51 @@ describeDb("TASK-041 예약 날짜·새 자리 판정", () => {
     });
   });
 
+  it.each([
+    ["2026-11-18", "outside_window"],
+    ["2027-06-01", "outside_window"],
+    ["2027-01-18", "outside_window"],
+    ["2026-13-40", "bad_format"],
+  ])("기간/형식 밖 %s는 호출자가 지정한 필드 오류이고 잡지 않은 날짜를 만들지 않음", async (day, code) => {
+    const h = await fixture();
+    const before = (await (await h.call("GET", "/owner/calendar")).json()) as { revision: string };
+    await h.db.transaction(async (tx) => {
+      try {
+        await lockedCalendarSlotStatus(tx, day, NOW, "/draft/pickupDay");
+        throw new Error("기간 밖 날짜를 받음");
+      } catch (error) {
+        expect(error).toMatchObject({
+          code: "validation_failed",
+          extras: { errors: [{ field: "/draft/pickupDay", code }] },
+        });
+      }
+    });
+    const after = (await (await h.call("GET", "/owner/calendar")).json()) as { revision: string };
+    expect(after.revision).toBe(before.revision);
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM calendar_days WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
+  });
+
+  it("날짜를 잡지 않은 휴무/열린 날 판정은 커밋해도 빈 행을 남기지 않으며 기간 마지막 날도 허용함", async () => {
+    const h = await fixture();
+    const before = (await (await h.call("GET", "/owner/calendar")).json()) as { revision: string };
+    expect(await h.db.transaction((tx) => lockedCalendarSlotStatus(tx, "2026-11-23", NOW))).toEqual({
+      day: "2026-11-23",
+      status: "day_off",
+    });
+    expect(await h.db.transaction((tx) => lockedCalendarSlotStatus(tx, "2027-01-17", NOW))).toEqual({
+      day: "2027-01-17",
+      status: "open",
+    });
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM calendar_days WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
+    expect(((await (await h.call("GET", "/owner/calendar")).json()) as { revision: string }).revision).toBe(
+      before.revision,
+    );
+  });
+
   it("기존 자리 아래로 줄인 개수와 추가 수락은 공개/새 자리 판정에서 모두 마감이며 기존 자리를 보존함", async () => {
     const h = await fixture();
     await isolated.db.query("INSERT INTO calendar_days (shop_id,day) VALUES ($1,'2026-11-21')", [h.shop.shopId]);

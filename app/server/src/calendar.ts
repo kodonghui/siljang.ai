@@ -290,13 +290,23 @@ export async function calendarBookingDays(db: ShopDb, now: Date): Promise<Calend
   });
 }
 
-/** 새 자리를 잡기 직전 같은 트랜잭션에서 잠금 뒤 다시 판정한다. 기본 판정 뒤의 추가 수락은 TASK-082가 확인받는다. */
-export async function lockedCalendarSlotStatus(db: ShopDb, rawDay: string, now: Date): Promise<CalendarBookingDay> {
-  const day = calendarDate(rawDay, "path:day");
-  await lockCalendarDay(db, day);
-  const calendar = (await calendarRow(db)) as CalendarRow;
+/**
+ * 기간/형식은 잠금 전에 확인하고, 판정만으로 날짜 행을 만들지 않는다. 요청의 필드 위치는 호출자가 넘긴다.
+ * TASK-082는 다른 업무 조건도 확인하고 open이면 같은 트랜잭션에서 lockCalendarDay로 행을 준비해 자리를 저장한다.
+ * 뒤의 조건/저장이 실패하면 트랜잭션을 롤백한다. 추가 수락은 별도로 확인받는다.
+ */
+export async function lockedCalendarSlotStatus(
+  db: ShopDb,
+  rawDay: string,
+  now: Date,
+  field = "/pickupDay",
+): Promise<CalendarBookingDay> {
+  const day = calendarDate(rawDay, field);
   const zone = await timeZone(db);
-  if (day < toShopLocal(now, zone).date) return { day, status: "closed" };
+  const today = toShopLocal(now, zone).date;
+  if (day < today || day > shiftDate(today, 59)) throw fieldError(field, "outside_window");
+  await lockDay(db, day);
+  const calendar = (await calendarRow(db)) as CalendarRow;
   const data = await readDays(db, day, day);
   return bookingStatus(calendar, dayValues(calendar, day, data.days[0], data.holds), now, zone);
 }

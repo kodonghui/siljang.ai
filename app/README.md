@@ -894,3 +894,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 - 275 calendarBookingDays는 예약 링크의60일 공개 상태만, lockedCalendarSlotStatus는 같은 트랜잭션의 날짜 잠금 뒤 판정을 반환합니다. 자리 확보/추가 수락의 다른 조건은 TASK-082가 확인합니다. 시각을 바꾼 안내는 notification_send의 찾기/잡기 둘 다 scheduled_for와 next_attempt_at이 지나야 합니다. 합성 실행기에서11시0건/15시반복1건과 기존 시도 표 보존을 확인했으며 관련92개·타입/lint가 통과했습니다.
 
 - 275 전체 확인: 서버82파일/1,469개·웹11파일/237개·타입/lint·빌드1.15초/Worker dry-run이 통과했습니다. 공개 날짜·마감 판정과 예정 시각 찾기를 확인한 모듈이며 전체 예약/실제 발송 성공으로 적지 않습니다. 실제 계정/기존 역할 확인은 Aside 연결 복구 뒤입니다.
+
+- 275 Claude 리뷰 처리: lockedCalendarSlotStatus는 오늘~오늘+59일 밖을 지정 필드의 outside_window로 거절하며 판정만으로 행을 만들지 않습니다. TASK-082의 실제 저장은 같은 트랜잭션에서 lockCalendarDay로 날짜 행을 준비하고 실패하면 롤백합니다. 오류를 잡아 커밋한 경우도 행/설정 버전이 그대로인 시험을 포함해 관련97개·타입/lint가 통과했습니다.
