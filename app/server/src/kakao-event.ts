@@ -214,7 +214,6 @@ export function kakaoEvents(
       const response = await send(`${ORIGIN}${path}`, {
         method: body === undefined ? "GET" : "POST",
         redirect: "error",
-        cache: "no-store",
         headers: { Authorization: `KakaoAK ${apiKey.reveal()}`, "Content-Type": "application/json" },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         signal: controller.signal,

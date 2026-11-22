@@ -1,10 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import type { RequestDb, Rows } from "../src/db";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { shopRoute } from "../src/routes";
 import { Secret } from "../src/settings";
 import { expectProblem, expectSchema } from "./support/contract";
-import { collectLogs, TEST_HASH_KEY } from "./support/db";
+import { collectLogs, describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { createShop, linkTestChannel } from "./support/shops";
 
 const CHANNEL = "20000000-0000-4000-8000-000000000001";
 const SHOP = "10000000-0000-4000-8000-000000000001";
@@ -81,6 +83,51 @@ describe("카카오 스킬 전체 응답 시간(TASK-028, REQ-130)", () => {
     }
   });
 
+  it("인증 뒤 안내 스킬이 멈추면 카카오 전송을 막는500을 반환하고 늦은 응답을 노출하지 않음", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const entered = gate();
+    const finish = gate();
+    const abort = vi.fn(async () => {});
+    const logs = collectLogs();
+    const query: RequestDb["query"] = async <R>(): Promise<Rows<R>> => ({
+      rows: [{ id: CHANNEL, shop_id: SHOP, status: "linked", skill_key_version: 1, previous_key_until: null } as R],
+      rowCount: 1,
+    });
+    const app = createApp({
+      kakaoSkillTimeoutMs: 20,
+      logSink: logs.sink,
+      connect: () => ({ query, abort, transaction: async () => undefined as never, close: async () => {} }),
+      routes: [
+        shopRoute("POST", "/kakao/skills/event", "customer", async (r) => {
+          entered.release();
+          await finish.promise;
+          return r.json(
+            { version: "2.0", template: { outputs: [{ simpleText: { text: "synthetic-private-late-notice" } }] } },
+            200,
+            { "Siljang-Outcome": "notice_shown" },
+          );
+        }),
+      ],
+    });
+    const pending = request(app, "event");
+    try {
+      await entered.promise;
+      await vi.advanceTimersByTimeAsync(20);
+      const response = await pending;
+      expect(response.status).toBe(500);
+      expect(response.headers.get("Siljang-Outcome")).toBeNull();
+      await expectProblem(response, "internal");
+      expect(abort).toHaveBeenCalledOnce();
+      finish.release();
+      await vi.runAllTimersAsync();
+      expect(response.status).toBe(500);
+      expect(logs.lines.join("\n")).not.toContain("synthetic-private-late-notice");
+    } finally {
+      finish.release();
+      await pending;
+    }
+  });
+
   it.each(["message", "card", "review"])(
     "인증 뒤 %s의 조회가 멈추면 200 server_error이고 늦은 결과가 응답을 바꾸지 않음",
     async (kind) => {
@@ -133,4 +180,74 @@ describe("카카오 스킬 전체 응답 시간(TASK-028, REQ-130)", () => {
       }
     },
   );
+});
+
+describeDb("인증 뒤 시간 초과의 실제 PostgreSQL 중단과 롤백(TASK-028)", () => {
+  const db = testDb();
+  afterAll(async () => {
+    await db.close();
+  });
+
+  it.each(["message", "event"])("%s의 느린 질의를 기다리지 않고 응답하며 미완료 쓰기는 남기지 않음", async (kind) => {
+    const shop = await createShop(db, "응답 기한 롤백 가게");
+    await linkTestChannel(db, shop.channelId);
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
+    const entered = gate();
+    const finished = gate();
+    const marker = `synthetic-timeout-${newUuid()}`;
+    const app = createApp({
+      kakaoSkillTimeoutMs: 500,
+      logSink: () => {},
+      routes: [
+        shopRoute("POST", `/kakao/skills/${kind}`, "customer", async (r) => {
+          try {
+            await r.db.transaction(async (tx) => {
+              await tx.run(
+                `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery)
+               VALUES ($1, $2, 'outbound', 'system', 'text', $3, 'deferred')`,
+                [shop.consultationId, marker],
+              );
+              entered.release();
+              await tx.run("SELECT pg_sleep(2) FROM shops WHERE id = $1");
+            });
+            return r.json({ version: "2.0", template: { outputs: [] } });
+          } finally {
+            finished.release();
+          }
+        }),
+      ],
+    });
+    const started = performance.now();
+    const pending = Promise.resolve(
+      app.request(
+        `/api/kakao/skills/${kind}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+          body: JSON.stringify({ ...body(), bot: { id: shop.botId } }),
+        },
+        testEnv(),
+      ),
+    );
+    await Promise.race([
+      entered.promise,
+      pending.then(() => {
+        throw new Error("timeout before test transaction entered");
+      }),
+    ]);
+    const response = await pending;
+    try {
+      expect(performance.now() - started).toBeLessThan(1500);
+      expect(response.status).toBe(kind === "event" ? 500 : 200);
+      expect(response.headers.get("Siljang-Outcome")).toBe(kind === "event" ? null : "server_error");
+      if (kind === "event") await expectProblem(response, "internal");
+      else expectSchema("SkillResponse", await response.json());
+      expect(
+        (await db.query("SELECT id FROM messages WHERE shop_id = $1 AND body_masked = $2", [shop.shopId, marker]))
+          .rowCount,
+      ).toBe(0);
+    } finally {
+      await finished.promise;
+    }
+  });
 });
