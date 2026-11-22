@@ -169,7 +169,7 @@
 | [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 29 |
 | [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 12 |
 | [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 17 |
-| [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 12 |
+| [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 13 |
 | [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 30 |
 | [SCR-018](SCR-018.md) | 상담 대화 | 사장님 | normal · loading · empty · error · permission · stale | - | 7 |
 | [SCR-019](SCR-019.md) | 사장님 알림 | 사장님 | normal · not-sent · error · stale | loading · empty · permission | 0 |
@@ -312,6 +312,8 @@
 - 기록: 이 절, `.corthex/stages.json`의 08단계, Notion 08단계 기록 행(https://app.notion.com/p/416bf16cc3ec81f390afc8e14560e86c).
 
 ## 12. 확정한 뒤 고친 것
+
+2026-11-22: TASK-020의 MVP 로그인 결정에 따라 SCR-016의 API-002 MVP 예시를 normal 상태로 연결했습니다. 기본 설정은 채널 친구 확인/배너를 끄고, not-sent의 채널 추가 안내는 plusfriends 설정을 켠 경우로 한정합니다. 기존 상태/레이아웃은 유지합니다(동희님 15:57 결정 카드, DEC-21).
 
 2026-11-13 설계 독립 재검토의 높음 묶음 H1(RB-01, RC-05, RD-02, RA-15)과 H2(RA-01, RE-02, RE-03, RE-04)를 동희님 2026-11-13 20:59 결정 카드 '추천안대로 (추천)'에 따라 `screens_owner_a.py`·`screens_common.py`에서 고치고 `build_screens.py . --write`로 다시 만들었습니다.
 

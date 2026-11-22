@@ -142,7 +142,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TASK-084 | 기본 디자인 주문의 가예약과 결제 안내로 진행 | SPEC-030, A3 | API-071, TBL-003, TBL-023, TBL-027, TBL-031, TBL-034 | TASK-083 | Claude | 2일 | SPEC-030 수락 기준 #1: 자동 시험 통과<br/>API-071 응답(200·401·422·default)마다 통과하는 시험<br/>05 앱 규칙(A3)을 지키는지 보는 서버 시험 |
 | TASK-085 | SCR-003 가게 채널 상담 카카오 응답 | SPEC-013, SPEC-014, SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-049, SPEC-056, SPEC-057, SPEC-008 | SCR-003 | TASK-028 | Claude | 2일 | SCR-003 상태 10개마다 스킬 응답이 08 정의와 같음(카카오 응답 형식: 출력 3개 이하, 카드 설명 400자 이하), 09에서 그린 3개(normal·empty·error)와 그리지 않은 7개(loading·permission·stale·handed-over·fixed-answer·rate-limited·link-test)는 08 와이어프레임과 09 토큰으로, 08 응답 행 28개마다 정한 상태로 보임 |
 | TASK-086 | SCR-004 주문 요청 카드 카카오 응답 | SPEC-028, SPEC-029, SPEC-030, SPEC-069, SPEC-072, SPEC-075 | SCR-004 | TASK-028 | Claude | 1일 | SCR-004 상태 9개마다 스킬 응답이 08 정의와 같음(카카오 응답 형식: 출력 3개 이하, 카드 설명 400자 이하), 09에서 그린 5개(normal·allergy·orderer·expired·error)와 그리지 않은 4개(done·stale·day-full·permission)는 08 와이어프레임과 09 토큰으로, 08 응답 행 29개마다 정한 상태로 보임 |
-| TASK-087 | SCR-016 할 일 목록 화면 | SPEC-067, SPEC-024, SPEC-037 | SCR-016 | TASK-182, TASK-072, TASK-020 | Claude | 1일 | SCR-016 상태 7개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 4개(normal·empty·error·not-sent)와 그리지 않은 3개(loading·permission·stale)는 08 와이어프레임과 09 토큰으로, 08 응답 행 12개마다 정한 상태로 보임 |
+| TASK-087 | SCR-016 할 일 목록 화면 | SPEC-067, SPEC-024, SPEC-037 | SCR-016 | TASK-182, TASK-072, TASK-020 | Claude | 1일 | SCR-016 상태 7개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 4개(normal·empty·error·not-sent)와 그리지 않은 3개(loading·permission·stale)는 08 와이어프레임과 09 토큰으로, 08 응답 행 13개마다 정한 상태로 보임 |
 | TASK-088 | SCR-017 에스컬레이션 건 화면 | SPEC-022, SPEC-023, SPEC-056, SPEC-079 | SCR-017 | TASK-182, TASK-073, TASK-074 | Claude | 2일 | SCR-017 상태 7개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 2개(normal·error)와 그리지 않은 5개(loading·permission·stale·submitting·done)는 08 와이어프레임과 09 토큰으로, 08 응답 행 20개마다 정한 상태로 보임(API-083의 행은 TASK-155) |
 | TASK-089 | SCR-018 상담 대화 화면 | SPEC-021, SPEC-019, SPEC-065, SPEC-068 | SCR-018 | TASK-182, TASK-077 | Claude | 1일 | SCR-018 상태 6개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 3개(normal·empty·error)와 그리지 않은 3개(loading·permission·stale)는 08 와이어프레임과 09 토큰으로, 08 응답 행 7개마다 정한 상태로 보임 |
 | TASK-090 | SCR-019 사장님 알림 화면 | SPEC-067, SPEC-003, SPEC-024, SPEC-006 | SCR-019 | TASK-029 | Claude | 0.5일 | 끝남: 2026-11-19, SCR-019 카카오 응답 4상태의 모의 시험 13개 통과. app/README.md<br/>SCR-019 상태 4개마다 스킬 응답이 08 정의와 같음(카카오 응답 형식: 출력 3개 이하, 카드 설명 400자 이하), 09에서 그린 3개(normal·not-sent·error)와 그리지 않은 1개(stale)는 08 와이어프레임과 09 토큰으로 |
@@ -465,7 +465,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | SCR-013 | 사진 게시 동의 철회 카드 | 6 | 3 | 3(done·stale·permission) | 29 | TASK-149 |
 | SCR-014 | 사장님 로그인 | 4 | 2 | 2(loading·rate-limited) | 12 | TASK-030 |
 | SCR-015 | 가게 등록 | 5 | 2 | 3(permission·stale·submitting) | 17 | TASK-046 |
-| SCR-016 | 할 일 목록 | 7 | 4 | 3(loading·permission·stale) | 12 | TASK-087 |
+| SCR-016 | 할 일 목록 | 7 | 4 | 3(loading·permission·stale) | 13 | TASK-087 |
 | SCR-017 | 에스컬레이션 건 | 7 | 2 | 5(loading·permission·stale·submitting·done) | 30 | TASK-088, TASK-155 |
 | SCR-018 | 상담 대화 | 6 | 3 | 3(loading·permission·stale) | 7 | TASK-089 |
 | SCR-019 | 사장님 알림 | 4 | 3 | 1(stale) | 0 | TASK-090 |

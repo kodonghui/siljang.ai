@@ -165,4 +165,6 @@ jobs:
           printf '스테이징 DB 조회 확인: HTTP 401 unauthenticated\n'
 
       - name: 스테이징 사장님 로그인 시작 확인
+        env:
+          KAKAO_OWNER_LOGIN_SCOPES: ${{ vars.KAKAO_OWNER_LOGIN_SCOPES }}
         run: node ../tools/staging-owner-login.mjs
