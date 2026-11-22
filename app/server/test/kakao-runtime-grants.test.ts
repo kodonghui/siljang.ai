@@ -438,7 +438,7 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     expect(values[0]?.original_enc).toMatch(/^v1:/);
   });
 
-  it("업무에 필요하지 않은 수정/삭제와 운영 기록/접속기록 권한을 늘리지 않음", async () => {
+  it("캘린더 설정 수정만 허용하고 불필요한 수정/삭제·운영 기록/접속기록 권한은 막음", async () => {
     const { rows } = await db.query(
       `SELECT
       has_any_column_privilege($1, 'public.handoffs', 'UPDATE') AS handoff_update,
@@ -480,7 +480,7 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
         task_delete: false,
         alert_update: false,
         alert_delete: false,
-        calendar_update: false,
+        calendar_update: true, // TASK-041 API-027은 설정을 수정한다. 삭제는 계속 금지한다.
         calendar_delete: false,
         ai_cost_read: true,
         ai_call_insert: true,

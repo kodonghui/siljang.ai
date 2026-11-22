@@ -282,7 +282,7 @@ describe("버튼·확인 창·상태 부품", () => {
       ),
     );
     expect(html).toContain(ERROR_CODES.confirmation_required.message);
-    expect(html).toContain("11월 20일: 이날 확정 주문 2건은 그대로 남아요. 휴무로 바꿀까요?");
+    expect(html).toContain("11월 20일: 잡힌 자리와 확정 주문 2건은 그대로 남아요. 휴무로 바꿀까요?");
     expect(html).toContain(CONFIRMATIONS.overbooking);
   });
 

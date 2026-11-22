@@ -627,15 +627,27 @@ def main():
     else:
         problems, warns = [], []
         with tempfile.TemporaryDirectory() as tmp:
+            pages = []
             for b in boards:
-                w, h = b.preview.get("width"), b.preview.get("height")
                 out = Path(tmp) / (b.name + ".html")
                 subprocess.run([sys.executable, "-B", str(HERE / "dc2html.py"), str(PROJECT / (b.name + ".dc.html")), str(out)], check=True)
-                r = subprocess.run(["node", str(HERE / "check_local.js"), str(pc), str(out), str(w)], capture_output=True, text=True, cwd=HERE)
-                try:
-                    j = json.loads(r.stdout.strip().splitlines()[0])
-                except (IndexError, ValueError):
-                    problems.append("%s: page-check를 돌리지 못함 %s" % (b.name, (r.stderr or r.stdout).strip()[-200:]))
+                pages.append({"file": str(out), "width": b.preview.get("width")})
+            manifest = Path(tmp) / "pages.json"
+            manifest.write_text(json.dumps({"pageCheck": str(pc.resolve()), "pages": pages}), encoding="utf-8")
+            r = subprocess.run(["node", str(HERE / "check_local.js"), "--batch", str(manifest)], capture_output=True, text=True, cwd=HERE)
+            try:
+                reports = [json.loads(line) for line in r.stdout.strip().splitlines()]
+                if [j.get("file") for j in reports] != [b.name + ".html" for b in boards]:
+                    raise ValueError("아트보드와 결과 목록이 다름")
+            except (ValueError, AttributeError) as error:
+                reports = []
+                problems.append("page-check 결과 목록 오류: %s %s" % (error, (r.stderr or r.stdout).strip()[-200:]))
+            if r.returncode:
+                problems.append("page-check 실행 실패: 종료 %s %s" % (r.returncode, r.stderr.strip()[-200:]))
+            for b, j in zip(boards, reports):
+                w, h = b.preview.get("width"), b.preview.get("height")
+                if j.get("failure"):
+                    problems.append("%s: page-check를 돌리지 못함 %s" % (b.name, j["failure"][-200:]))
                     continue
                 if not j["pass"] or j["counts"].get("error"):
                     problems.append("%s: 오류 %s %s" % (b.name, j["counts"].get("error"), j["byCheck"]))

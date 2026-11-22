@@ -285,6 +285,7 @@ export async function getCalendarDays(r: ShopRequest): Promise<Response> {
 }
 
 export async function setCalendarSettings(r: ShopRequest): Promise<Response> {
+  requireJson(r);
   const raw = await r.body();
   const input = parseCalendarSettings(raw);
   return r.command({
@@ -356,6 +357,7 @@ export async function setCalendarSettings(r: ShopRequest): Promise<Response> {
 }
 
 export async function updateCalendarDay(r: ShopRequest): Promise<Response> {
+  requireJson(r);
   const day = calendarDate(r.req.param("day"), "path:day");
   const raw = await r.body();
   const input = parseCalendarDay(raw);
@@ -414,4 +416,9 @@ export async function updateCalendarDay(r: ShopRequest): Promise<Response> {
       return { outcome: stored.code, day: await oneDay(db, calendar, String(stored.ref.day)) };
     },
   });
+}
+
+function requireJson(r: ShopRequest): void {
+  if (!/^application\/json\s*(;\s*charset\s*=\s*"?utf-8"?\s*)?$/i.test(r.req.header("content-type") ?? ""))
+    throw fieldError("header:Content-Type", "not_allowed");
 }
