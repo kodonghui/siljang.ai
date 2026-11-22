@@ -25,6 +25,7 @@ import { readJsonBody } from "./body";
 import type { AuthorizedKakaoSkill } from "./kakao-skill-auth";
 import { isOperatorScope, type OperatorScope } from "./operator-scope";
 import { isOwnerScope, type OwnerScope } from "./owner-scope";
+import { type OwnerShopDb, ownerShopDb } from "./owner-shop-db";
 import { ApiError } from "./problem";
 import { type CommandResult, runCommand, type StoredResult } from "./request-key";
 import type { Services } from "./services";
@@ -141,7 +142,19 @@ export interface OwnerRequest {
   readonly traceId: string;
   readonly log: Logger;
   readonly services: Services;
+  body(): Promise<unknown>;
+  /** 등록 전 사장님도 쓰는 요청 키 명령. SQL 대신 자기 가게의 등록 기능만 받는다. */
+  command(spec: OwnerCommandSpec): Promise<Response>;
   json(body: unknown, status?: 200 | 201 | 202): Response;
+}
+
+export interface OwnerCommandSpec {
+  readonly command: string;
+  readonly body: unknown;
+  execute(db: OwnerShopDb): Promise<CommandResult>;
+  render(db: OwnerShopDb, stored: StoredResult): Promise<unknown>;
+  /** 실패 뒤 자기 가게 조회로 커밋 여부를 확인한 후 외부 복사본을 정리한다. */
+  cleanup?(db: Pick<OwnerShopDb, "find">): Promise<void>;
 }
 
 export interface OwnerRouteDecl {
@@ -358,6 +371,26 @@ function ownerRequest(c: Context<HonoEnv>, owner: OwnerScope): OwnerRequest {
     traceId: c.get("traceId"),
     log: c.get("log"),
     services: c.get("services"),
+    body: () => readJsonBody(c),
+    async command(spec) {
+      try {
+        return await runCommand(c, {
+          actor: { kind: "owner", id: owner.ownerId },
+          command: spec.command,
+          pathIds: [],
+          body: spec.body,
+          execute: (tx) => spec.execute(ownerShopDb(tx, owner)),
+          render: (tx, stored) => spec.render(ownerShopDb(tx, owner), stored),
+        });
+      } catch (error) {
+        try {
+          await spec.cleanup?.(ownerShopDb(c.get("db"), owner));
+        } catch {
+          c.get("log")("warn", { event: "shop_registration_cleanup_failed", traceId: c.get("traceId") });
+        }
+        throw error;
+      }
+    },
     json: (body, status = 200) => c.json(body as object, status, headers),
   };
 }

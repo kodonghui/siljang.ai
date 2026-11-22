@@ -697,6 +697,15 @@
 - 새 역할/키/유료 자원을 만들지 않았고 운영 기록/접속기록 권한도 바꾸지 않았습니다. 실제 역할·서버 이름과 인증 정보는 공개 기록에 넣지 않습니다. SQL 권한 적용과 카탈로그 확인 결과이며 실제 Worker의 쓰기 검증과 구분합니다.
 - 적용 세션이 끝난 뒤 같은 SQL Editor를 Aside의 전체 snapshot으로 직접 대조했습니다. 결과 표 16행에서 역할 1개·콜백 열 3개·AI/문구 권한 허용·비용/연락처/알레르기/삭제 차단과 GRANT 10개 집계 true를 확인했습니다. 확인에 쓴 역할 해시는 공개 기록에 옮기지 않습니다.
 
+### 2026-11-22 23:48:24~23:50:17 KST · TASK-032 스테이징 등록 권한
+
+- 학원컴 Aside CLI로 기존 Free 서울 스테이징/Hyperdrive의 서버 역할을 확인하고 PR #166 head aecedad6의 권한 원본에서 새 GRANT 3문장만 적용했습니다. 카탈로그 전후는 등록 19개 열 INSERT 전체 false→true, shop_identity_changes SELECT false→true, request_keys의 SELECT/INSERT/UPDATE/DELETE 각각 true→true입니다.
+- shops.license_status UPDATE·shops.booking_slug INSERT·shops DELETE는 모두 false→false입니다. 역할/접속 값/계정 식별자는 기록하지 않았고 기존 데이터 쓰기·삭제·SET ROLE·로그인 재시도는 하지 않았습니다. 기존 TASK-028 쓰기 확인의 42501은 풀렸다고 보지 않습니다. 카탈로그와 로컬 제한 역할 자동 시험을 실제 서버 역할의 HTTP 등록 성공으로 세지 않으며 실제 계정의 FL-001은 TASK-020 잠금 해제 뒤 운영 MVP 스모크에서 확인합니다.
+
+### 2026-11-22 23:38 KST · TASK-030 끝남 기록 main 확인
+
+- PR #165 최종 head 7405cb4의 app 45033387935·db 45033387897 성공 뒤 squash main 7977b7a를 확인했습니다. main app 45033663665의 검사/스테이징 배포·db 45033663643과 원격 ref가 성공/일치합니다. 학원컴 CLI의 생성 버전 cca9e613-3d95-431a-af92-472cf34b5a9f는 태그 동일·상태 200/SSH 종료 0입니다. 실제 카카오 계정 인증은 Vault 잠금으로 계속 미확인입니다.
+
 ### 2026-11-22 23:14~23:20 KST · TASK-030 실제 로그인 화면
 
 - 도구: 학원컴 Aside CLI, 스테이징 main 6f0d2ea. 정상/합성 거부를 360×800과 1280×800에서 확인했습니다. 전체 스냅샷과 화면 사진 각 4개를 보존하고 주 에이전트도 직접 열어 대조했습니다. PNG 200·448×92, 버튼 48px, 비율 보존, 가로 넘침/눈에 띄는 화면·콘솔 오류 없음입니다. 거부 안내·재로그인 버튼과 주소 쿼리 제거를 확인했습니다. [증거](owner-login/2026-11-22-screen-proof/README.md).

@@ -50,13 +50,25 @@ interface SkillCrossShopCase {
   readonly kind: "channel";
 }
 
-export type CrossShopCase = OwnerCrossShopCase | SkillCrossShopCase;
+interface OwnShopCase {
+  readonly method: "GET";
+  readonly path: "/owner/shop";
+  readonly kind: "self";
+}
 
-export const CROSS_SHOP_CASES: readonly CrossShopCase[] = ["message", "card", "review", "event"].map((kind) => ({
-  method: "POST",
-  path: `/kakao/skills/${kind}`,
-  kind: "channel",
-}));
+export type CrossShopCase = OwnerCrossShopCase | SkillCrossShopCase | OwnShopCase;
+
+export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
+  ...["message", "card", "review", "event"].map(
+    (kind) =>
+      ({
+        method: "POST",
+        path: `/kakao/skills/${kind}`,
+        kind: "channel",
+      }) as const,
+  ),
+  { method: "GET", path: "/owner/shop", kind: "self" },
+];
 
 /** 선언된 가게 범위 경로 가운데 등록되지 않은 것(missing)과, 등록됐지만 선언이 없는 것(stale). */
 export function registryGaps(
@@ -171,6 +183,25 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
   try {
     if (c.kind === "channel") {
       await checkSkillChannel(env, c, db);
+      return;
+    }
+    if (c.kind === "self") {
+      const before = await snapshots(db, env);
+      for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+        const response = await env.app.request(
+          `/api/owner/shop?shopId=${target}&ownerId=${env.b.ownerId}`,
+          {
+            headers: env.as(env.a),
+          },
+          testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
+        );
+        const body = (await response.json()) as Record<string, unknown>;
+        expect(response.status, JSON.stringify(body)).toBe(200);
+        expect(body.shopId).toBe(env.a.shopId);
+        expect(JSON.stringify(body)).not.toContain(env.b.shopId);
+        expect(JSON.stringify(body)).not.toContain(env.b.ownerId);
+      }
+      expect(await snapshots(db, env)).toEqual(before);
       return;
     }
     const own = recordIds(env.a);

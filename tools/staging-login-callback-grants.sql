@@ -1,4 +1,4 @@
--- TASK-173: 사장님 세션과 카카오 수신·콜백에 필요한 서버 역할 권한.
+-- TASK-173·032: 사장님 세션·카카오 수신/콜백·가게 등록/조회에 필요한 서버 역할 권한.
 -- psql -v runtime_role=<기존 서버 역할> -f tools/staging-login-callback-grants.sql
 -- 실제 역할은 새로 만들지 않는다. 접속기록·운영 기록의 권한은 바꾸지 않는다.
 GRANT SELECT, INSERT, UPDATE ON owners, customers, consultations, messages TO :"runtime_role";
@@ -29,3 +29,12 @@ GRANT SELECT (id, shop_id, order_no, customer_id, consultation_id, status, perso
 -- 글 후기의 버전만 읽고 새 글과 이전 버전의 교체 시각을 남긴다. 기존 본문 수정/삭제는 없다.
 GRANT SELECT (id, shop_id, order_id, version, superseded_at),
   INSERT (shop_id, order_id, version, body, created_at), UPDATE (superseded_at) ON reviews TO :"runtime_role";
+-- TASK-032: 새 가게의 등록 필드만 쓴다. 승인 상태·예약 링크·기존 가게 변경/삭제 권한은 더하지 않는다.
+GRANT INSERT (id, owner_id, name, contact_phone, business_address, contact_email, business_name,
+  representative_name, business_reg_no, mail_order_reg_no, mail_order_authority, mail_order_exemption,
+  food_license_no, food_business_type, license_photo_key, entrustment_terms_version, entrustment_consented_at,
+  created_at, updated_at) ON shops TO :"runtime_role";
+-- API-009는 자기 가게 범위에서 가장 최근의 변경 요청을 보여 준다. 변경 요청 쓰기는 TASK-036이다.
+GRANT SELECT ON shop_identity_changes TO :"runtime_role";
+-- API-008의 선점·완료·오류 시 해제. 내용 대신 요청 지문과 결과 ID만 남긴다(DEC-04).
+GRANT SELECT, INSERT, UPDATE, DELETE ON request_keys TO :"runtime_role";
