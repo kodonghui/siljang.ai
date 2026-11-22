@@ -9,6 +9,7 @@ import { type Method, type RouteDecl, routeKey } from "../../src/routes";
 import { Secret } from "../../src/settings";
 import { comparableProblem, expectProblem } from "./contract";
 import { newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./db";
+import { seedOperatorSession } from "./operator";
 import { malformedIds, missingIds, type RecordIds, recordIds, type ShopFixture, snapshotShop } from "./shops";
 
 /**
@@ -90,6 +91,12 @@ interface ChannelSetupShopCase {
   readonly kind: "channel_setup";
 }
 
+interface OperatorReviewShopCase {
+  readonly method: "GET" | "POST";
+  readonly path: "/operator/shops/:shopId" | "/operator/shops/:shopId/license-review";
+  readonly kind: "operator_review";
+}
+
 export type CrossShopCase =
   | OwnerCrossShopCase
   | SkillCrossShopCase
@@ -98,7 +105,8 @@ export type CrossShopCase =
   | PriceShopCase
   | RulesShopCase
   | PaymentShopCase
-  | ChannelSetupShopCase;
+  | ChannelSetupShopCase
+  | OperatorReviewShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   ...["message", "card", "review", "event"].map(
@@ -127,6 +135,8 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "POST", path: "/owner/operating-rules/versions", kind: "rules" },
   { method: "GET", path: "/owner/operating-rules/versions", kind: "rules" },
   { method: "GET", path: "/owner/operating-rules/versions/:version", kind: "rules" },
+  { method: "GET", path: "/operator/shops/:shopId", kind: "operator_review" },
+  { method: "POST", path: "/operator/shops/:shopId/license-review", kind: "operator_review" },
 ];
 
 /** 선언된 가게 범위 경로 가운데 등록되지 않은 것(missing)과, 등록됐지만 선언이 없는 것(stale). */
@@ -241,6 +251,63 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "operator_review") {
+      const before = await snapshots(db, env);
+      const url = `/operator/shops/${env.b.shopId}${c.method === "POST" ? "/license-review" : ""}`;
+      const owner = await send(env, c.method, {
+        url,
+        ...(c.method === "POST"
+          ? { body: { baseRevision: "stale", decision: "on_hold", holdReason: "합성 보류" } }
+          : {}),
+      });
+      expect(owner.status).toBe(401);
+      expect(await snapshots(db, env)).toEqual(before);
+      const session = await seedOperatorSession(db, new Date());
+      const call = (method: "GET" | "POST", shopId: string, body?: unknown) =>
+        env.app.request(
+          `https://siljang.example/api/operator/shops/${shopId}${method === "POST" ? "/license-review" : ""}`,
+          {
+            method,
+            headers: {
+              origin: "https://siljang.example",
+              cookie: session.cookie,
+              "content-type": "application/json",
+              "Idempotency-Key": newRequestKey(),
+            },
+            ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+          },
+          testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
+        );
+      for (const target of [env.a, env.b]) {
+        const response = await call("GET", target.shopId);
+        expect(response.status).toBe(200);
+        const detail = (await response.json()) as { shopId: string; paymentAccount: { accountLast4: string } };
+        expect(detail.shopId).toBe(target.shopId);
+        const expected = (
+          await db.query<{ account_last4: string }>(
+            "SELECT account_last4 FROM payment_accounts WHERE shop_id=$1 AND retired_at IS NULL",
+            [target.shopId],
+          )
+        ).rows[0];
+        expect(detail.paymentAccount.accountLast4).toBe(expected?.account_last4);
+        expect(JSON.stringify(detail)).not.toContain(target.customerId);
+        expect(JSON.stringify(detail)).not.toContain("accountNumber");
+      }
+      if (c.method === "GET") {
+        expect(await snapshots(db, env)).toEqual(before);
+        return;
+      }
+      const detail = (await (await call("GET", env.a.shopId)).json()) as { revision: string };
+      const response = await call("POST", env.a.shopId, {
+        baseRevision: detail.revision,
+        decision: "on_hold",
+        holdReason: "합성 신고증 확인",
+      });
+      expect(response.status, await response.clone().text()).toBe(200);
+      expect(((await response.json()) as { shop: { shopId: string } }).shop.shopId).toBe(env.a.shopId);
+      expect(await snapshotShop(db, env.b)).toEqual(before[1]);
+      return;
+    }
     if (c.kind === "channel_setup") {
       const before = await snapshots(db, env);
       const current = await send(env, "GET", {

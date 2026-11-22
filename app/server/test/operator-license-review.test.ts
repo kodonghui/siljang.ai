@@ -1,22 +1,98 @@
 import { afterAll, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { DbConnector, RequestDb } from "../src/db";
+import { parseLicenseReview, parseReviewList, reviewCursor } from "../src/license-review-input";
 import { expectProblem, expectSchema } from "./support/contract";
 import { collectLogs, describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { seedOperatorSession } from "./support/operator";
 import { createShop, type ShopFixture } from "./support/shops";
 
+interface ReviewDetail {
+  shopId: string;
+  revision: string;
+  licenseStatus: string;
+  licenseHoldReason: string | null;
+  paymentAccount: {
+    accountLast4: string;
+    holderMatches: boolean;
+    holderMismatchConfirmed: boolean | null;
+    holderCheckedBy: { operatorId: string } | null;
+  } | null;
+  pendingIdentityChange: { changeId: string } | null;
+}
+interface ReviewResult {
+  outcome: string;
+  shop: ReviewDetail;
+}
+interface ReviewList {
+  items: { shopId: string; revision: string }[];
+  nextCursor: string | null;
+}
+
 const ORIGIN = "https://siljang.example";
 const NOW = new Date("2026-11-22T05:00:00Z");
 const db = testDb();
+
+it.each([
+  [null, "/", "bad_format"],
+  [{}, "/baseRevision", "required"],
+  [{ baseRevision: "x", decision: "on_hold" }, "/holdReason", "required"],
+  [{ baseRevision: "x", decision: "on_hold", holdReason: "" }, "/holdReason", "too_short"],
+  [{ baseRevision: "x", decision: "on_hold", holdReason: "가".repeat(201) }, "/holdReason", "too_long"],
+  [{ baseRevision: "x", decision: "on_hold", holdReason: "\u0000" }, "/holdReason", "bad_format"],
+  [{ baseRevision: null, decision: "verified" }, "/baseRevision", "bad_format"],
+  [{ baseRevision: "가", decision: "verified" }, "/baseRevision", "bad_format"],
+  [{ baseRevision: "x".repeat(65), decision: "verified" }, "/baseRevision", "too_long"],
+  [{ baseRevision: "x", decision: "pending" }, "/decision", "bad_format"],
+  [{ baseRevision: "x", decision: "verified", shopId: newUuid() }, "/shopId", "unknown_field"],
+])("영업 신고 입력의 잘못된 필드를 값 없이 거절함 %#", (body, field, code) => {
+  expect(() => parseLicenseReview(body)).toThrowError(
+    expect.objectContaining({
+      code: "validation_failed",
+      extras: { errors: expect.arrayContaining([{ field, code }]) },
+    }),
+  );
+});
+it("보류 이유200개 이모지와64자 버전을 받고 여러 오류를 함께 돌려줌", () => {
+  expect(
+    parseLicenseReview({ baseRevision: "x".repeat(64), decision: "on_hold", holdReason: "🎂".repeat(200) }).holdReason,
+  ).toHaveLength(400);
+  expect(() => parseLicenseReview({ baseRevision: "", decision: "on_hold", holdReason: "", other: true })).toThrowError(
+    expect.objectContaining({
+      extras: {
+        errors: expect.arrayContaining([
+          { field: "/baseRevision", code: "too_short" },
+          { field: "/holdReason", code: "too_short" },
+          { field: "/other", code: "unknown_field" },
+        ]),
+      },
+    }),
+  );
+});
+it.each(["0", "101", "-1", "1.2", "NaN", "", "1e2"])("목록 limit %s는422임", (limit) => {
+  expect(() => parseReviewList({ limit })).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+});
+it.each([
+  "bad=cursor",
+  "A",
+  "x".repeat(201),
+  reviewCursor("verified", "2020-01-01T00:00:00.000123Z", newUuid()),
+  reviewCursor("pending", "2020-02-30T00:00:00.000000Z", newUuid()),
+])("틀리거나 다른 상태의 커서는422임 %#", (cursor) => {
+  expect(() => parseReviewList({ cursor })).toThrowError(expect.objectContaining({ code: "validation_failed" }));
+});
 
 async function fixture(options: { database?: RequestDb; connect?: DbConnector; shop?: ShopFixture } = {}) {
   const fixtureDb = options.database ?? db;
   const shop = options.shop ?? (await createShop(fixtureDb, "신고 확인 합성 가게"));
   const { operatorId, token } = await seedOperatorSession(fixtureDb, NOW);
   const logs = collectLogs();
-  const app = createApp({ connect: options.connect, services: { now: () => NOW }, logSink: logs.sink });
+  const app = createApp({
+    ...(options.connect ? { connect: options.connect } : {}),
+    services: { now: () => NOW },
+    logSink: logs.sink,
+  });
   const call = (method: string, path: string, body?: unknown, authenticated = true, key = newRequestKey()) =>
     app.request(
       `${ORIGIN}/api${path}`,
@@ -36,7 +112,7 @@ async function fixture(options: { database?: RequestDb; connect?: DbConnector; s
   const current = async () => {
     const response = await call("GET", path);
     expect(response.status, await response.clone().text()).toBe(200);
-    return response.json();
+    return response.json() as Promise<ReviewDetail>;
   };
   const review = async (decision = "verified", holdReason?: string, revision?: string, key?: string) =>
     call(
@@ -135,7 +211,7 @@ describeDb("TASK-034 운영자의 영업 신고 확인 API-012/013/014", () => {
       for (let i = 0; i < 4; i++) {
         const response = await h.call("GET", `/operator/shops?limit=1${cursor ? `&cursor=${cursor}` : ""}`);
         expect(response.status).toBe(200);
-        const page = await response.json();
+        const page = (await response.json()) as ReviewList;
         expectSchema("ReviewShopList", page);
         found.push(...page.items.map((s: { shopId: string }) => s.shopId));
         cursor = page.nextCursor;
@@ -181,7 +257,7 @@ describeDb("TASK-034 운영자의 영업 신고 확인 API-012/013/014", () => {
     const before = await h.current();
     const again = await h.review();
     expect(again.status).toBe(200);
-    expect((await again.json()).outcome).toBe("unchanged");
+    expect(((await again.json()) as ReviewResult).outcome).toBe("unchanged");
     expect((await h.current()).revision).toBe(before.revision);
     await expectProblem(await h.review("on_hold", "보류"), "invalid_state");
   });
@@ -217,6 +293,49 @@ describeDb("TASK-034 운영자의 영업 신고 확인 API-012/013/014", () => {
     expect((await h.current()).revision).toBe(revision);
     await db.query("UPDATE shops SET name='내 합성 이름' WHERE id=$1", [h.shop.shopId]);
     await expectProblem(await h.review("verified", undefined, revision), "version_conflict");
+  });
+  it("대기 중인 사업자 변경은 상세에 보이고 먼저 판정하기 전 승인만 막음", async () => {
+    const h = await fixture(),
+      old = (await h.current()).revision;
+    const change = (
+      await db.query<{ id: string }>(
+        `INSERT INTO shop_identity_changes (shop_id,business_name,representative_name,business_reg_no,prev_business_name,prev_representative_name,prev_business_reg_no,evidence_photo_key,requested_at)
+      SELECT id,'합성 새 상호',representative_name,business_reg_no,business_name,representative_name,business_reg_no,license_photo_key,$2 FROM shops WHERE id=$1 RETURNING id`,
+        [h.shop.shopId, NOW],
+      )
+    ).rows[0];
+    const detail = await h.current();
+    expectSchema("ReviewShopDetail", detail);
+    expect(detail.pendingIdentityChange?.changeId).toBe(change?.id);
+    await expectProblem(await h.review("verified", undefined, old), "version_conflict");
+    await expectProblem(await h.review(), "identity_change_pending");
+    expect((await h.review("on_hold", "사업자 변경부터 확인해 주세요")).status).toBe(200);
+    expect((await h.current()).pendingIdentityChange?.changeId).toBe(change?.id);
+  });
+  it("같은 요청 키의 다른 판정은422이고 같은 운영자의 옛 버전은version_conflict임", async () => {
+    const h = await fixture(),
+      revision = (await h.current()).revision,
+      key = newRequestKey();
+    expect((await h.review("on_hold", "보류", revision, key)).status).toBe(200);
+    await expectProblem(await h.review("verified", undefined, revision, key), "idempotency_key_reused");
+    await expectProblem(await h.review("verified", undefined, revision), "version_conflict");
+    expect((await h.review()).status).toBe(200);
+  });
+  it("대표자/상호와 다른 예금주도 운영자가 판정하고 원문 없이 확인자를 남김", async () => {
+    const h = await fixture();
+    await db.query(
+      "UPDATE payment_accounts SET holder_name='다른 합성 예금주',holder_mismatch_confirmed=true WHERE shop_id=$1",
+      [h.shop.shopId],
+    );
+    const before = await h.current();
+    expect(before.paymentAccount?.holderMatches).toBe(false);
+    expect(before.paymentAccount?.holderMismatchConfirmed).toBe(true);
+    const response = await h.review();
+    expect(response.status).toBe(200);
+    const result = (await response.json()) as ReviewResult;
+    expectSchema("LicenseReviewResult", result);
+    expect(result.shop.paymentAccount?.holderCheckedBy?.operatorId).toBe(h.operatorId);
+    expect(JSON.stringify(result)).not.toContain("accountNumber");
   });
   it("현재 계좌가 없으면 확인됨은 막고 보류는 허용함", async () => {
     const h = await fixture();

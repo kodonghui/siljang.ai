@@ -16,6 +16,7 @@ import { newUploadId, tempKey } from "../src/uploads";
 import { collectLogs, describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey, singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
+import { seedOperatorSession } from "./support/operator";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 import { MemoryStore } from "./support/storage";
 
@@ -662,6 +663,70 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
       ).toEqual([{ delivery: "delivered_later" }]);
     } finally {
       await conn.close();
+    }
+  });
+
+  it("제한 역할의 운영자 목록/상세/판정은 전용 함수로만 되고 일반 승인/예금주 확인 UPDATE는42501임", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const target = await createShop(isolated.db, "합성 운영자 권한 가게"),
+      session = await seedOperatorSession(isolated.db, now);
+    const app = createApp({ connect: () => roleDb(), services: { now: () => now }, logSink: () => {} });
+    const call = (method: string, path: string, body?: unknown, key = newRequestKey()) =>
+      app.request(
+        `https://siljang.example/api${path}`,
+        {
+          method,
+          headers: {
+            origin: "https://siljang.example",
+            cookie: session.cookie,
+            "content-type": "application/json",
+            "Idempotency-Key": key,
+          },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        },
+        testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
+      );
+    expect((await call("GET", "/operator/shops")).status).toBe(200);
+    const path = `/operator/shops/${target.shopId}`,
+      detail = await call("GET", path);
+    expect(detail.status).toBe(200);
+    const current = (await detail.json()) as { revision: string },
+      body = { baseRevision: current.revision, decision: "verified" },
+      key = newRequestKey();
+    await isolated.db.query(
+      `REVOKE EXECUTE ON FUNCTION review_shop_license(uuid,uuid,text,timestamptz,text,text,text) FROM "${role}"`,
+    );
+    expect((await call("POST", `${path}/license-review`, body, key)).status).toBe(500);
+    await isolated.db.query(
+      `GRANT EXECUTE ON FUNCTION review_shop_license(uuid,uuid,text,timestamptz,text,text,text) TO "${role}"`,
+    );
+    for (let i = 0; i < 2; i++) {
+      const result = await call("POST", `${path}/license-review`, body, key);
+      expect(result.status, await result.clone().text()).toBe(200);
+      expect(((await result.json()) as { shop: { licenseStatus: string } }).shop.licenseStatus).toBe("verified");
+    }
+    const connection = roleDb();
+    try {
+      for (const sql of [
+        "UPDATE shops SET license_status='verified' WHERE id=$1",
+        "UPDATE payment_accounts SET holder_checked_at=$2 WHERE shop_id=$1",
+      ])
+        await expect(
+          connection.query(sql, sql.includes("$2") ? [target.shopId, now] : [target.shopId]),
+        ).rejects.toMatchObject({ code: "42501" });
+      expect(
+        (
+          await connection.query("SELECT review_shop_license($1,$2,$3,$4,$5,'verified',NULL) AS result", [
+            target.shopId,
+            session.operatorId,
+            "0".repeat(64),
+            now,
+            "stale",
+          ])
+        ).rows,
+      ).toEqual([{ result: "unauthenticated" }]);
+    } finally {
+      await connection.close();
     }
   });
 
