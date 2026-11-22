@@ -1,5 +1,7 @@
 import { afterAll, expect, it } from "vitest";
 import { createApp } from "../src/app";
+import { MINOR_NOTICE, operatingRulesCardTexts, WITHDRAWAL_NOTICE } from "../src/operating-rules-card";
+import type { ClauseInput } from "../src/operating-rules-input";
 import { ApiError } from "../src/problem";
 import { createShopScope } from "../src/shop-scope";
 import { expectProblem, expectSchema } from "./support/contract";
@@ -134,5 +136,207 @@ describeDb("TASK-039 운영규정 API-020~023", () => {
   ])("인증 없는 %s %s는401", async (method, path, body) => {
     const h = await fixture();
     await expectProblem(await h.call(method, path, body, false), "unauthenticated");
+  });
+
+  it("낮춘 환불은 먼저409를 보이고 확인 선택을 새 버전에 남기며 같은 키 재전송은 한 버전", async () => {
+    const h = await fixture(),
+      key = newRequestKey();
+    const body = {
+      ...input(),
+      preProductionRefundPct: 50,
+      clauses: input().clauses.map((c) => ({ ...c, effectText: "취소 수수료를 뺀 금액의50%를 돌려드립니다." })),
+    };
+    const warning = await expectProblem(
+      await h.call("POST", "/owner/operating-rules/versions", body, true, key),
+      "confirmation_required",
+    );
+    expect(warning).toMatchObject({ confirm: [{ kind: "lowered_refund" }] });
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM operating_rules WHERE shop_id=$1", [h.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
+    const confirmed = { ...body, confirm: ["lowered_refund"] };
+    const response = await h.call("POST", "/owner/operating-rules/versions", confirmed, true, key);
+    expect(response.status, await response.clone().text()).toBe(201);
+    const value = (await response.json()) as { operatingRules: { revision: string } };
+    expect(value).toMatchObject({
+      operatingRules: { preProductionRefundPct: 50, preProductionLoweredAck: true, version: 1 },
+    });
+    const replay = await h.call("POST", "/owner/operating-rules/versions", confirmed, true, key);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    expect(await replay.json()).toMatchObject({ outcome: "created", operatingRules: { version: 1 } });
+    const same = await h.call("POST", "/owner/operating-rules/versions", {
+      ...body,
+      baseRevision: value.operatingRules.revision,
+    });
+    expect(same.status).toBe(200);
+    expect(await same.json()).toMatchObject({
+      outcome: "unchanged",
+      operatingRules: { preProductionLoweredAck: true },
+    });
+  });
+
+  it("버전2의 결제 기한을 바꾼 버전3은 조문 원문/조건/효과를 보존하고 이전 버전을 바꾸지 않음", async () => {
+    const h = await fixture();
+    const first = (await (await h.call("POST", "/owner/operating-rules/versions", input())).json()) as {
+      operatingRules: { revision: string };
+    };
+    const body = {
+      ...input(first.operatingRules.revision),
+      paymentDueHours: 18,
+      clauses: [
+        ...input().clauses,
+        {
+          key: "shop_cancel_compensation",
+          position: 2,
+          title: "가게 사정 취소",
+          conditionText: "가게 사정으로 취소하는 경우",
+          effectText: "바탕 금액을 모두 돌려드립니다.",
+        },
+      ],
+    };
+    const second = await h.call("POST", "/owner/operating-rules/versions", body);
+    expect(second.status).toBe(201);
+    const old = ((await second.json()) as { operatingRules: Record<string, unknown> }).operatingRules;
+    const third = await h.call("POST", "/owner/operating-rules/versions", {
+      ...body,
+      baseRevision: old.revision,
+      paymentDueHours: 24,
+    });
+    expect(third.status).toBe(201);
+    expect(await third.json()).toMatchObject({
+      operatingRules: { version: 3, paymentDueHours: 24, clauses: body.clauses },
+    });
+    const read = await (await h.call("GET", "/owner/operating-rules/versions/2")).json();
+    expect(read).toMatchObject({ version: 2, current: false, paymentDueHours: 18, clauses: body.clauses });
+    expectSchema("OperatingRules", read);
+    const versions = await (await h.call("GET", "/owner/operating-rules/versions")).json();
+    expect(versions).toMatchObject({ items: [{ version: 3, supersededAt: null }, { version: 2 }, { version: 1 }] });
+    const replay = await expectProblem(
+      await h.call("POST", "/owner/operating-rules/versions", body),
+      "version_conflict",
+    );
+    expect(replay.code).toBe("version_conflict");
+  });
+
+  it.each([
+    [[{ hoursBeforeMin: 72, hoursBeforeMax: null, refundPct: 50 }], "/refundTiers/0", "gap"],
+    [
+      [
+        { hoursBeforeMin: 0, hoursBeforeMax: 72, refundPct: 0 },
+        { hoursBeforeMin: 48, hoursBeforeMax: null, refundPct: 50 },
+      ],
+      "/refundTiers/1",
+      "overlaps",
+    ],
+    [
+      [
+        { hoursBeforeMin: 0, hoursBeforeMax: 48, refundPct: 0 },
+        { hoursBeforeMin: 72, hoursBeforeMax: null, refundPct: 50 },
+      ],
+      "/refundTiers/1",
+      "gap",
+    ],
+    [[{ hoursBeforeMin: 0, hoursBeforeMax: 72, refundPct: 0 }], "/refundTiers/0", "gap"],
+    [[], "/refundTiers", "required"],
+  ])("잘못된 환불 단계 %j는 저장하지 않고 해당 행을 보임", async (refundTiers, field, code) => {
+    const h = await fixture();
+    const body = {
+      ...input(),
+      clauses: [
+        ...input().clauses,
+        {
+          key: "staged_refund",
+          position: 2,
+          title: "단계별 환불",
+          conditionText: "제작을 시작한 뒤 취소하는 경우",
+          effectText: "남은 시간의 단계별 비율을 적용합니다.",
+        },
+      ],
+      refundTiers,
+    };
+    const problem = await expectProblem(
+      await h.call("POST", "/owner/operating-rules/versions", body),
+      "validation_failed",
+    );
+    expect(problem).toMatchObject({ errors: expect.arrayContaining([{ field, code }]) });
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM operating_rules WHERE shop_id=$1", [h.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
+  });
+
+  it("단계와 조문은 함께 남고 입력 순서만 바뀌면 버전 그대로", async () => {
+    const h = await fixture();
+    const body = {
+      ...input(),
+      clauses: [
+        {
+          key: "staged_refund",
+          position: 2,
+          title: "단계별 환불",
+          conditionText: "제작을 시작한 뒤 취소하는 경우",
+          effectText: "남은 시간의 단계별 비율을 적용합니다.",
+        },
+        ...input().clauses,
+      ],
+      refundTiers: [
+        { hoursBeforeMin: 72, hoursBeforeMax: null, refundPct: 50 },
+        { hoursBeforeMin: 0, hoursBeforeMax: 72, refundPct: 0 },
+      ],
+    };
+    const response = await h.call("POST", "/owner/operating-rules/versions", body);
+    expect(response.status, await response.clone().text()).toBe(201);
+    const result = (await response.json()) as {
+      operatingRules: { revision: string; clauses: unknown[]; refundTiers: unknown[] };
+    };
+    expect(result.operatingRules.clauses).toEqual([...body.clauses].reverse());
+    expect(result.operatingRules.refundTiers).toEqual([...body.refundTiers].reverse());
+    const same = await h.call("POST", "/owner/operating-rules/versions", {
+      ...body,
+      baseRevision: result.operatingRules.revision,
+      clauses: [...body.clauses].reverse(),
+      refundTiers: [...body.refundTiers].reverse(),
+    });
+    expect(same.status).toBe(200);
+    expect(await same.json()).toMatchObject({ outcome: "unchanged", operatingRules: { version: 1 } });
+  });
+
+  it("두 글에 조문을 온전히 담고 끝에 청약철회/미성년 고지를 붙이며 한 조문이 넘치면 저장하지 않음(A21)", async () => {
+    const h = await fixture();
+    const clauses: ClauseInput[] = [
+      {
+        key: "pre_production_cancel",
+        position: 1,
+        title: "첫 조문",
+        conditionText: "합성 조건",
+        effectText: "가".repeat(700),
+      },
+      { key: "custom", position: 2, title: "둘째 조문", conditionText: "합성 조건", effectText: "나".repeat(700) },
+    ];
+    const texts = operatingRulesCardTexts(clauses, 1);
+    expect(texts).toHaveLength(2);
+    expect(texts.every((t) => [...t].length <= 1000)).toBe(true);
+    expect(texts[0]).toContain(clauses[0]?.effectText);
+    expect(texts[1]).toContain(clauses[1]?.effectText);
+    expect(texts[1]).toContain(WITHDRAWAL_NOTICE);
+    expect(texts[1]).toContain(MINOR_NOTICE);
+    expect((await h.call("POST", "/owner/operating-rules/versions", { ...input(), clauses })).status).toBe(201);
+    const current = (await (await h.call("GET", "/owner/operating-rules")).json()) as { revision: string };
+    const tooLong = {
+      ...input(current.revision),
+      clauses: [{ ...input().clauses[0], conditionText: "조".repeat(600), effectText: "문".repeat(500) }],
+    };
+    const error = await expectProblem(
+      await h.call("POST", "/owner/operating-rules/versions", tooLong),
+      "validation_failed",
+    );
+    expect(error).toMatchObject({
+      errors: expect.arrayContaining([
+        { field: "/clauses", code: "exceeds_card_limit" },
+        { field: "/clauses/0", code: "exceeds_card_limit" },
+      ]),
+    });
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM operating_rules WHERE shop_id=$1", [h.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
   });
 });
