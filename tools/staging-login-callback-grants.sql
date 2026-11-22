@@ -71,3 +71,8 @@ GRANT UPDATE (channel_public_id, card_block_id, orderer_block_id, allergy_block_
   review_block_id, status, claim_expires_at, check_started_at, linked_at, verified_blocks, test_user_key,
   event_status, event_task_id, event_checked_at, event_fail_reason, configuration_order, retired_at,
   skill_key_version, skill_key_issued_at, previous_key_until) ON kakao_channels TO :"runtime_role";
+
+-- TASK-034: 운영자 세션·표시 이름 조회와 전용 확인 함수만 허용한다.
+GRANT SELECT (id, display_name, disabled_at, mfa_enrolled_at) ON operators TO :"runtime_role";
+GRANT SELECT (id, operator_id, token_hash, created_at, expires_at, ended_at) ON operator_sessions TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION review_shop_license(uuid,uuid,text,timestamptz,text,text,text) TO :"runtime_role";

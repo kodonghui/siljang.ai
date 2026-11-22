@@ -10,7 +10,7 @@
  * - operatorRoute: 운영자 범위 경로(TASK-021). 운영자 세션(쿠키 siljang_operator)은 있지만 가게 기록이 아닌 API(로그인한
  *   운영자 API-005 등). 처리기는 OperatorRequest만 받고 데이터베이스 연결이 없다. 운영자는 운영자 해석기(operator-login.ts의
  *   resolveOperatorSession)가 정하고, 운영자 세션이 아니면(사장님 세션 포함) 401 unauthenticated로 운영자 기록을 하나도
- *   보이지 않는다(04 SPEC-001 수락 기준 5, 06 DEC-11). 운영자가 여는 가게 기록은 가게 범위 경로(출처 operator, TASK-159).
+ *   보이지 않는다(04 SPEC-001 수락 기준 5, 06 DEC-11). 운영자가 여는 가게 기록은 가게 범위 경로(출처 operator, TASK-034·159).
  * - openRoute: 가게 범위도 사장님·운영자 범위도 아닌 경로(기반 시설, 로그인, 서명 주소). 왜 그런지 적는다.
  *   가게 테이블을 읽고 쓰지 않는다(정적 시험이 날 연결을 쥔 파일의 SQL을 봄).
  * - accessRoute: 접속기록을 남기는 가게 범위 경로(TASK-024, 06의 사장님 API-040~066과 운영자 API-074~077, SPEC-074).
@@ -24,6 +24,7 @@ import type { HonoEnv, Logger } from "./app";
 import { readJsonBody } from "./body";
 import type { AuthorizedKakaoSkill } from "./kakao-skill-auth";
 import { isOperatorScope, type OperatorScope } from "./operator-scope";
+import { type OperatorShopDirectory, operatorShopDirectory } from "./operator-shop-directory";
 import { isOwnerScope, type OwnerScope } from "./owner-scope";
 import { type OwnerShopDb, ownerShopDb } from "./owner-shop-db";
 import { ApiError } from "./problem";
@@ -57,6 +58,8 @@ export interface ShopCommandSpec {
 /** 가게 범위 경로의 처리기가 받는 것. 데이터베이스는 가게 범위 연결뿐이다. */
 export interface ShopRequest {
   readonly scope: ShopScope;
+  /** 운영자가 연 가게의 중복 등록 표시만 읽는 기능. 사장님·손님은 받지 않는다. */
+  readonly operatorShops: OperatorShopDirectory | undefined;
   readonly kakaoSkill: AuthorizedKakaoSkill | undefined;
   /** 트랜잭션 밖 읽기와 트랜잭션. 쓰기 명령은 command로. */
   readonly db: ShopRequestDb;
@@ -167,6 +170,7 @@ export interface OwnerRouteDecl {
 /** 운영자 범위 경로의 처리기가 받는 것. 데이터베이스 연결이 없다(가게 기록은 가게 범위 경로로만). */
 export interface OperatorRequest {
   readonly operator: OperatorScope;
+  readonly shops: OperatorShopDirectory;
   readonly req: HonoRequest;
   readonly traceId: string;
   readonly log: Logger;
@@ -267,7 +271,7 @@ const CLOSED_OPERATOR: OperatorResolver = () => Promise.reject(new ApiError("una
 
 /**
  * 해석기가 아직 없는 출처: 닫혀 있다. 사장님 세션은 TASK-020, 카카오 스킬은 TASK-028, 예약 링크는 TASK-044·045. 운영자 세션은
- * TASK-021이 만들었지만 운영자가 여는 가게(가게 범위의 출처 operator)는 TASK-159가 정한다.
+ * TASK-021이 만들었고 운영자가 여는 가게는 TASK-034의 operator-shop.ts가 실제 세션/경로로 정한다.
  */
 const CLOSED: ScopeResolvers = {
   owner: () => Promise.reject(new ApiError("unauthenticated")),
@@ -281,6 +285,7 @@ function shopRequest(c: Context<HonoEnv>, scope: ShopScope): ShopRequest {
   const headers = { "cache-control": "no-store" };
   return {
     scope,
+    operatorShops: scope.via.kind === "operator" ? operatorShopDirectory(c.get("db"), scope) : undefined,
     kakaoSkill: c.get("kakaoSkill"),
     db,
     req: c.req,
@@ -355,6 +360,7 @@ function operatorRequest(c: Context<HonoEnv>, operator: OperatorScope): Operator
   const headers = { "cache-control": "no-store" };
   return {
     operator,
+    shops: operatorShopDirectory(c.get("db"), operator),
     req: c.req,
     traceId: c.get("traceId"),
     log: c.get("log"),

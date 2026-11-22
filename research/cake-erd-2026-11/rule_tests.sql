@@ -2252,6 +2252,62 @@ UPDATE kakao_channels SET configuration_order=DEFAULT WHERE id='0e420000-0000-40
 SELECT pg_temp.expect_left('A36 옛 연결을 다시 고르면 그 연결의 순번이 최신', $$SELECT id::text FROM kakao_channels WHERE shop_id='0e420000-0000-4000-8000-000000000011' AND status<>'retired' ORDER BY configuration_order DESC LIMIT 1$$,'0e420000-0000-4000-8000-000000000021');
 SELECT pg_temp.expect_left('A36 선점 함수의 고정 검색 경로와 공개 실행 금지', $$SELECT prosecdef::text || '/' || (proconfig=ARRAY['search_path=pg_catalog'])::text || '/' || (NOT EXISTS(SELECT 1 FROM aclexplode(coalesce(proacl,acldefault('f',proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE'))::text FROM pg_proc WHERE oid='claim_kakao_bot(uuid,text,timestamptz)'::regprocedure$$,'true/true/true');
 
+-- TASK-034/SPEC-003: 운영자 전용 확인 함수의 세션/현재 상태와 동시 저장 범위.
+INSERT INTO owners (id,kakao_account_id) VALUES ('0e340000-0000-4000-8000-000000000001',340000000000000001);
+INSERT INTO operators (id,email,display_name,auth_user_id,mfa_factor_id,mfa_enrolled_at)
+VALUES ('0e340000-0000-4000-8000-000000000002','license-review@example.com','합성 검토자','0e340000-0000-4000-8000-000000000005','0e340000-0000-4000-8000-000000000006',now());
+INSERT INTO shops (id,owner_id,name,contact_phone,contact_email,business_address,business_name,representative_name,business_reg_no,mail_order_exemption,food_license_no,food_business_type,license_photo_key,entrustment_terms_version,entrustment_consented_at)
+VALUES ('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000001','합성 영업 신고 가게','010-0000-0000','license@example.com','서울 합성로1','합성 제과','합성 사장','1234567890','합성 면제','2026-0001','bakery','license/synthetic.jpg','test-v1',now());
+INSERT INTO operator_sessions (id,operator_id,token_hash,created_at,expires_at)
+VALUES ('0e340000-0000-4000-8000-000000000004','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),now()+interval '12 hours');
+CREATE FUNCTION pg_temp.license_review_state(target uuid) RETURNS text LANGUAGE sql AS $state$
+SELECT concat(s.id,':',s.xmin::text,':',coalesce((SELECT concat(p.id,':',p.xmin::text) FROM public.payment_accounts p WHERE p.shop_id=s.id AND p.retired_at IS NULL),'-'),':',coalesce((SELECT concat(i.id,':',i.xmin::text) FROM public.shop_identity_changes i WHERE i.shop_id=s.id AND i.status='pending'),'-'))
+FROM public.shops s WHERE s.id=target
+$state$;
+SELECT pg_temp.expect_left('영업 신고 전용 함수의 고정 검색 경로와 공개 실행 금지', $$SELECT prosecdef::text || '/' || (proconfig=ARRAY['search_path=pg_catalog'])::text || '/' || (NOT EXISTS(SELECT 1 FROM aclexplode(coalesce(proacl,acldefault('f',proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE'))::text FROM pg_proc WHERE oid='review_shop_license(uuid,uuid,text,timestamptz,text,text,text)'::regprocedure$$,'true/true/true');
+SELECT pg_temp.expect_left('영업 신고 세션 지문이 틀리면 인증 거절', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('a',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'verified',NULL)$$,'unauthenticated');
+SELECT pg_temp.expect_left('영업 신고 현재 상태가 다르면 거절', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),'stale','verified',NULL)$$,'version_conflict');
+SELECT pg_temp.expect_left('영업 신고 계좌 없이는 확인됨 거절', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'verified',NULL)$$,'payment_account_missing');
+SELECT pg_temp.expect_left('영업 신고 계좌 없이 보류는 허용', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'on_hold','합성 계좌를 기다려요')$$,'done');
+INSERT INTO payment_accounts (id,shop_id,bank_name,account_number_enc,account_last4,holder_name)
+VALUES ('0e340000-0000-4000-8000-000000000007','0e340000-0000-4000-8000-000000000003','합성 은행','v1:'||repeat('A',39),'1234','합성 사장');
+SELECT pg_temp.expect_left('영업 신고와 지금 계좌 함께 확인', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'verified',NULL)$$,'done');
+SELECT pg_temp.expect_left('영업 신고와 계좌의 확인자와 시각이 같음', $$SELECT (s.license_status='verified')::text || '/' || (s.license_reviewed_by=p.holder_checked_by AND s.license_reviewed_by='0e340000-0000-4000-8000-000000000002')::text || '/' || (s.license_reviewed_at=p.holder_checked_at AND s.license_reviewed_at=now())::text FROM shops s JOIN payment_accounts p ON p.shop_id=s.id AND p.retired_at IS NULL WHERE s.id='0e340000-0000-4000-8000-000000000003'$$,'true/true/true');
+SELECT pg_temp.expect_left('영업 신고 다시 확인은 그대로', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'verified',NULL)$$,'unchanged');
+SELECT pg_temp.expect_left('영업 신고 확인됨을 보류로 바꾸지 않음', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'on_hold','합성 보류')$$,'invalid_state');
+UPDATE shops SET license_status='pending',license_reviewed_by=NULL,license_reviewed_at=NULL WHERE id='0e340000-0000-4000-8000-000000000003';
+UPDATE payment_accounts SET holder_checked_by=NULL,holder_checked_at=NULL WHERE id='0e340000-0000-4000-8000-000000000007';
+INSERT INTO shop_identity_changes (id,shop_id,business_name,representative_name,business_reg_no,prev_business_name,prev_representative_name,prev_business_reg_no,evidence_photo_key)
+VALUES ('0e340000-0000-4000-8000-000000000008','0e340000-0000-4000-8000-000000000003','합성 새 상호','합성 사장','1234567890','합성 제과','합성 사장','1234567890','license/synthetic.jpg');
+SELECT pg_temp.expect_left('영업 신고 대기 중인 신원 변경의 확인됨 거절', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'verified',NULL)$$,'identity_change_pending');
+UPDATE shop_identity_changes SET status='on_hold',hold_reason='합성 보류',reviewed_by='0e340000-0000-4000-8000-000000000002',reviewed_at=now() WHERE id='0e340000-0000-4000-8000-000000000008';
+SELECT pg_temp.expect_fail('영업 신고 다음 문장 실패는 판정과 계좌 확인도 되돌림','payment_accounts_bank_name_check',ARRAY[$$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now()+interval '1 minute',pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'verified',NULL)$$,$$INSERT INTO payment_accounts (shop_id,bank_name,account_number_enc,account_last4,holder_name) VALUES ('0e340000-0000-4000-8000-000000000003','','v1:'||repeat('A',39),'1234','합성 사장')$$]);
+SELECT pg_temp.expect_left('영업 신고 실패 뒤 상태와 계좌 확인은 그대로', $$SELECT s.license_status || '/' || (s.license_reviewed_at IS NULL AND s.license_reviewed_by IS NULL)::text || '/' || (p.holder_checked_at IS NULL AND p.holder_checked_by IS NULL)::text FROM shops s JOIN payment_accounts p ON p.shop_id=s.id AND p.retired_at IS NULL WHERE s.id='0e340000-0000-4000-8000-000000000003'$$,'pending/true/true');
+-- TASK-034 리뷰 보완: 내부 정리 권한/공백/같은 보류와 계좌 재제출.
+CREATE FUNCTION pg_temp.reject_blank_license_reason(reason text) RETURNS boolean LANGUAGE plpgsql AS $blank_reason$
+BEGIN
+  PERFORM review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'on_hold',reason);
+  RETURN false;
+EXCEPTION WHEN invalid_parameter_value THEN RETURN true;
+END
+$blank_reason$;
+SELECT pg_temp.expect_left('보류 공백 이유는 DB에서도 거절', $$SELECT bool_and(pg_temp.reject_blank_license_reason(reason))::text FROM unnest(ARRAY[' ',E'\t\n',U&'\00A0',U&'\3000',U&'\FEFF']) AS reason$$,'true');
+SELECT pg_temp.expect_left('보류 정리 내부 함수의 고정 검색 경로와 공개 실행 금지', $$SELECT (NOT prosecdef)::text || '/' || (proconfig=ARRAY['search_path=pg_catalog'])::text || '/' || (NOT EXISTS(SELECT 1 FROM aclexplode(coalesce(proacl,acldefault('f',proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE'))::text FROM pg_proc WHERE oid='close_license_on_hold_tasks(uuid,timestamptz)'::regprocedure$$,'true/true/true');
+SELECT pg_temp.expect_left('보류 새 이유의 판정', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'on_hold','첫 합성 이유')$$,'done');
+INSERT INTO owner_tasks (id,shop_id,kind,event_key,detail,opened_at) VALUES ('0e340000-0000-4000-8000-000000000010','0e340000-0000-4000-8000-000000000003','license_on_hold','task:license_on_hold:0e340000-0000-4000-8000-000000000003','{"reason":"첫 합성 이유"}',now());
+INSERT INTO owner_alerts (shop_id,owner_task_id,kind,event_key,next_attempt_at) VALUES ('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000010','license_on_hold','alert:license_on_hold:0e340000-0000-4000-8000-000000000010',now());
+SELECT pg_temp.expect_left('같은 보류 이유의 새 판정은 그대로', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'on_hold','첫 합성 이유')$$,'unchanged');
+SELECT pg_temp.expect_left('다른 보류 이유의 판정', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'on_hold','새 합성 이유')$$,'done');
+SELECT pg_temp.expect_left('새 보류는 옛 할 일과 pending 예약을 닫음', $$SELECT (t.closed_at=now())::text || '/' || (a.next_attempt_at IS NULL)::text FROM owner_tasks t JOIN owner_alerts a ON a.shop_id=t.shop_id AND a.owner_task_id=t.id WHERE t.id='0e340000-0000-4000-8000-000000000010'$$,'true/true');
+INSERT INTO owner_tasks (id,shop_id,kind,event_key,detail,opened_at) VALUES ('0e340000-0000-4000-8000-000000000011','0e340000-0000-4000-8000-000000000003','license_on_hold','task:license_on_hold_again:0e340000-0000-4000-8000-000000000003','{"reason":"새 합성 이유"}',now());
+INSERT INTO owner_alerts (shop_id,owner_task_id,kind,event_key,next_attempt_at) VALUES ('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000011','license_on_hold','alert:license_on_hold:0e340000-0000-4000-8000-000000000011',now());
+UPDATE payment_accounts SET retired_at=now() WHERE shop_id='0e340000-0000-4000-8000-000000000003' AND retired_at IS NULL;
+INSERT INTO payment_accounts (shop_id,bank_name,account_number_enc,account_last4,holder_name) VALUES ('0e340000-0000-4000-8000-000000000003','합성 새 은행','v1:'||repeat('A',39),'5678','합성 사장');
+SELECT pg_temp.expect_left('계좌 재제출은 보류/할 일/예약을 함께 처리', $$SELECT s.license_status || '/' || (t.closed_at=now())::text || '/' || (a.next_attempt_at IS NULL)::text FROM shops s JOIN owner_tasks t ON t.shop_id=s.id JOIN owner_alerts a ON a.shop_id=t.shop_id AND a.owner_task_id=t.id WHERE t.id='0e340000-0000-4000-8000-000000000011'$$,'pending/true/true');
+
+UPDATE operators SET disabled_at=now() WHERE id='0e340000-0000-4000-8000-000000000002';
+SELECT pg_temp.expect_left('영업 신고 직전에 막힌 운영자 거절', $$SELECT review_shop_license('0e340000-0000-4000-8000-000000000003','0e340000-0000-4000-8000-000000000002',repeat('b',64),now(),pg_temp.license_review_state('0e340000-0000-4000-8000-000000000003'),'verified',NULL)$$,'unauthenticated');
+
 -- 결과
 SELECT count(*) FILTER (WHERE ok) AS blocked, count(*) FILTER (WHERE NOT ok) AS not_blocked FROM rule_results \gset
 SELECT name, detail FROM rule_results WHERE NOT ok ORDER BY name;

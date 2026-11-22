@@ -33,6 +33,9 @@ const RAW_ACCESS = [
  * 생기면 까닭을 적어 더한다.
  */
 const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
+  "operator-shop-directory.ts":
+    "인증된 운영자의 등록 목록/중복 표시 두 읽기만 허용. 정확한 SQL과 반환 열을 별도로 제한함(TASK-034)",
+  "operator-shop.ts": "실제 운영자 세션 인증 뒤 경로의 가게 존재만 확인. 정확한 ID 조회만 허용함(TASK-034)",
   "owner-shop-db.ts": "등록 전 사장님 소유 가게의 ID 조회와 등록만 허용. 정확한 두 SQL을 별도로 제한함(TASK-032)",
   "owner-session.ts": "세션의 사장님 ID로 가게 요약 하나만 조회. allowedCrossShop이 정확한 SQL을 별도로 제한함",
   "ops-events.ts":
@@ -41,6 +44,7 @@ const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
 
 /** 가게 범위를 만들 수 있는 파일(해석기)과 까닭. 해석기를 만드는 작업이 더한다. */
 const SCOPE_MAKERS: Record<string, string> = {
+  "operator-shop.ts": "실제 운영자 세션을 확인하고 경로에서 찾은 가게 하나만 여는 해석기(TASK-034)",
   "owner-shop-db.ts": "인증된 사장님 소유 확인 또는 자기 계정의 새 등록 뒤 가게 범위를 만듦(TASK-032)",
   "shop-scope.ts": "정의",
   "owner-login.ts": "살아 있는 사장님 세션과 그 계정의 가게만으로 범위를 만듦(TASK-020)",
@@ -63,8 +67,15 @@ const CROSS_SHOP_SHAPES: readonly RegExp[] = [
   /^SELECT max\(t\.created_at\) AS last_at FROM ops_events t WHERE t\.kind = \$1 AND t\.shop_id IS NULL AND t\.created_at >= \$2 AND t\.created_at < \$3$/,
 ];
 
+const OPERATOR_DIRECTORY_SQL = [
+  "SELECT s.id,s.name,s.business_name,s.representative_name,s.business_reg_no,s.food_license_no,s.food_business_type,s.license_status,s.created_at,s.time_zone, to_char(s.created_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS cursor_at, EXISTS(SELECT 1 FROM shops d WHERE d.business_reg_no=s.business_reg_no AND d.id<>s.id) AS duplicate, concat(s.id,':',s.xmin::text,':',coalesce((SELECT concat(p.id,':',p.xmin::text) FROM payment_accounts p WHERE p.shop_id=s.id AND p.retired_at IS NULL),'-'),':',coalesce((SELECT concat(i.id,':',i.xmin::text) FROM shop_identity_changes i WHERE i.shop_id=s.id AND i.status='pending'),'-')) AS revision_state, concat(s.license_reviewed_by,':',extract(epoch FROM s.license_reviewed_at)) AS review_marker FROM shops s WHERE s.license_status=$1 AND ($2::timestamptz IS NULL OR (s.created_at,s.id)>($2::timestamptz,$3::uuid)) ORDER BY s.created_at,s.id LIMIT $4",
+  'SELECT d.id AS "shopId",d.name,d.license_status AS "licenseStatus" FROM shops d JOIN shops s ON s.business_reg_no=d.business_reg_no WHERE s.id=$1 AND d.id<>s.id ORDER BY d.created_at,d.id LIMIT 20',
+];
+
 /** 가게 범위 밖 읽기로 허락한 SQL인지(그 파일의 그 꼴만). 꼴 안의 조건에 다른 테이블을 끌어오는 하위 질의는 받지 않는다. */
 function allowedCrossShop(file: string, sql: string): boolean {
+  if (file === "operator-shop-directory.ts") return OPERATOR_DIRECTORY_SQL.includes(sql.replace(/\s+/g, " ").trim());
+  if (file === "operator-shop.ts") return sql.replace(/\s+/g, " ").trim() === "SELECT id FROM shops WHERE id=$1";
   if (file === "owner-shop-db.ts") {
     const text = sql.replace(/\s+/g, " ").trim();
     return (
@@ -183,6 +194,18 @@ describe("서버 코드의 SQL(정적 검사)", () => {
     ])
       expect(allowedCrossShop("owner-shop-db.ts", bad)).toBe(false);
     expect(allowedCrossShop("shops.ts", sqls[0] ?? "")).toBe(false);
+  });
+  it("운영자 목록/중복은 정한 두 읽기뿐이고 다른 파일/추가 열/조건 제거는 막음", () => {
+    const queries = shopSql(sources.find((s) => s.name === "operator-shop-directory.ts")?.text ?? "");
+    expect(queries).toHaveLength(2);
+    for (const sql of queries) {
+      expect(allowedCrossShop("operator-shop-directory.ts", sql)).toBe(true);
+      expect(allowedCrossShop("operator-shop.ts", sql)).toBe(false);
+      expect(allowedCrossShop("operator-shop-directory.ts", sql.replace("SELECT ", "SELECT s.owner_id,"))).toBe(false);
+      expect(allowedCrossShop("operator-shop-directory.ts", sql.replace(/WHERE [^\n]+/, "WHERE true"))).toBe(false);
+    }
+    expect(allowedCrossShop("operator-shop.ts", "SELECT id FROM shops WHERE id=$1")).toBe(true);
+    expect(allowedCrossShop("operator-shop.ts", "SELECT * FROM shops WHERE id=$1")).toBe(false);
   });
   it("서버 코드를 읽음(파일과 SQL이 있음)", () => {
     expect(sources.map((s) => s.name)).toEqual(expect.arrayContaining(["app.ts", "shop-scope.ts", "request-key.ts"]));
