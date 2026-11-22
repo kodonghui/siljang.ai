@@ -5,9 +5,9 @@ import { OWNER_COOKIE } from "../src/owner-oauth";
 import { createOwnerSession } from "../src/owner-session";
 import { Secret } from "../src/settings";
 import { expectProblem, expectSchema } from "./support/contract";
-import { describeDb, newRequestKey, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
-import { createShop, issueTestBookingLink } from "./support/shops";
+import { createShop, issueTestBookingLink, linkTestChannel } from "./support/shops";
 
 const db = testDb(),
   NOW = new Date("2026-11-22T05:00:00Z"),
@@ -71,15 +71,22 @@ async function fixture(complete = true) {
     },
     logSink: () => {},
   });
-  const call = (key = newRequestKey()) =>
+  const ownerCall = (method: string, path: string, body?: unknown, key = newRequestKey()) =>
     app.request(
-      `${ORIGIN}/api${PATH}`,
+      `${ORIGIN}/api${path}`,
       {
-        method: "POST",
-        headers: { origin: ORIGIN, cookie: `${OWNER_COOKIE}=${session.token}`, "Idempotency-Key": key },
+        method,
+        headers: {
+          origin: ORIGIN,
+          cookie: `${OWNER_COOKIE}=${session.token}`,
+          "Idempotency-Key": key,
+          ...(body === undefined ? {} : { "content-type": "application/json" }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       },
       testEnv(),
     );
+  const call = (key = newRequestKey()) => ownerCall("POST", PATH, undefined, key);
   const skillKey = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
   const skill = (
     kind: string,
@@ -87,14 +94,16 @@ async function fixture(complete = true) {
     blockId = "conversation",
     extra: Record<string, unknown> = {},
     userId = "synthetic-trial-user",
+    botId = shop.botId,
+    headerKey = skillKey,
   ) =>
     app.request(
       `${ORIGIN}/api/kakao/skills/${kind}`,
       {
         method: "POST",
-        headers: { "content-type": "application/json", "Siljang-Skill-Key": skillKey },
+        headers: { "content-type": "application/json", "Siljang-Skill-Key": headerKey },
         body: JSON.stringify({
-          bot: { id: shop.botId },
+          bot: { id: botId },
           userRequest: { utterance, block: { id: blockId }, user: { id: userId, type: "botUserKey" } },
           action: { id: "synthetic-action", params: {}, clientExtra: extra },
         }),
@@ -108,7 +117,17 @@ async function fixture(complete = true) {
     expectSchema("KakaoChannelResult", result);
     return result;
   };
-  return { shop, clock, call, start, skill, eventCalls: () => events };
+  return { shop, clock, call, ownerCall, start, skill, eventCalls: () => events };
+}
+
+async function firstButton(h: Awaited<ReturnType<typeof fixture>>, userId = "synthetic-trial-user") {
+  const result = await h.start(),
+    response = await h.skill("message", result.kakaoChannel.proofPhrase as string, "conversation", {}, userId);
+  expect(response.headers.get("Siljang-Outcome")).toBe("channel_test_card");
+  const value = (await response.json()) as TrialReply,
+    button = value.template.outputs[0]?.textCard?.buttons[0];
+  if (!button) throw new Error("첫 시험 버튼 없음");
+  return button;
 }
 
 describeDb("TASK-043 연결 확인 시작과 시험 버튼", () => {
@@ -153,6 +172,151 @@ describeDb("TASK-043 연결 확인 시작과 시험 버튼", () => {
     expect(next.outcome).toBe("done");
     expect(new Date(next.kakaoChannel.checkStartedAt as string)).toEqual(h.clock.now);
     expect(next.kakaoChannel.verifiedBlocks).toEqual([]);
+  });
+  it("연결 문구 아닌 말은 시험 사용자를 남기지 않고 업무 기록도 만들지 않음", async () => {
+    const h = await fixture();
+    await h.start();
+    expect((await h.skill("message", "안녕하세요")).headers.get("Siljang-Outcome")).toBe("not_accepting");
+    expect(
+      (await db.query("SELECT test_user_key,verified_blocks FROM kakao_channels WHERE shop_id=$1", [h.shop.shopId]))
+        .rows,
+    ).toEqual([{ test_user_key: null, verified_blocks: [] }]);
+  });
+  it("연결 문구를 먼저 보낸 사용자를 다른 사용자/그 문구로 덮어쓰지 못함", async () => {
+    const h = await fixture(),
+      started = await h.start();
+    expect(
+      (
+        await h.skill("message", started.kakaoChannel.proofPhrase as string, "conversation", {}, "first-user")
+      ).headers.get("Siljang-Outcome"),
+    ).toBe("channel_test_card");
+    expect(
+      (
+        await h.skill("message", started.kakaoChannel.proofPhrase as string, "conversation", {}, "other-user")
+      ).headers.get("Siljang-Outcome"),
+    ).toBe("not_accepting");
+    expect((await db.query("SELECT test_user_key FROM kakao_channels WHERE shop_id=$1", [h.shop.shopId])).rows).toEqual(
+      [{ test_user_key: "first-user" }],
+    );
+  });
+  it.each(["user", "block", "skill", "unknown"])("다른 %s의 시험 버튼은 확인됨을 남기지 않음", async (wrong) => {
+    const h = await fixture(),
+      button = await firstButton(h);
+    const result = await h.skill(
+      wrong === "skill" ? "review" : "card",
+      "시험",
+      wrong === "block" ? "wrong-block" : button.blockId,
+      wrong === "unknown" ? { check: "unknown" } : button.extra,
+      wrong === "user" ? "other-user" : "synthetic-trial-user",
+    );
+    expect(result.headers.get("Siljang-Outcome")).toBe("not_accepting");
+    expect(
+      (await db.query("SELECT verified_blocks FROM kakao_channels WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ verified_blocks: [] }]);
+  });
+  it("같은 시험 버튼이 다시 와도 확인 블록은 한 번이고 같은 다음 버튼을 줌", async () => {
+    const h = await fixture(),
+      button = await firstButton(h),
+      replies: TrialReply[] = [];
+    for (let i = 0; i < 2; i++) {
+      const response = await h.skill("card", "시험", button.blockId, button.extra);
+      expect(response.headers.get("Siljang-Outcome")).toBe("block_verified");
+      replies.push((await response.json()) as TrialReply);
+    }
+    expect(replies[0]).toEqual(replies[1]);
+    expect(
+      (await db.query("SELECT verified_blocks FROM kakao_channels WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ verified_blocks: ["card"] }]);
+  });
+  it("마이크로초 시작의10분 경계를SQL로 보고 만료 뒤에는 키도 거절함", async () => {
+    const h = await fixture(),
+      started = await h.start();
+    await db.query(
+      "UPDATE kakao_channels SET check_started_at=$2::timestamptz+interval '123 microseconds' WHERE shop_id=$1",
+      [h.shop.shopId, NOW],
+    );
+    h.clock.now = new Date(NOW.getTime() + 10 * 60_000);
+    expect((await h.skill("message", started.kakaoChannel.proofPhrase as string)).headers.get("Siljang-Outcome")).toBe(
+      "channel_test_card",
+    );
+    h.clock.now = new Date(NOW.getTime() + 10 * 60_000 + 1);
+    expect((await h.skill("card", "시험", "card", { check: "card" })).headers.get("Siljang-Outcome")).toBe(
+      "not_accepting",
+    );
+    expect(
+      (await db.query("SELECT status,claim_expires_at FROM kakao_channels WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ status: "failed", claim_expires_at: null }]);
+    await expectProblem(await h.skill("message", started.kakaoChannel.proofPhrase as string), "skill_key_invalid");
+  });
+  it("동시 두 시작은done/unchanged이며 확인 시각은 하나임", async () => {
+    const h = await fixture(),
+      responses = await Promise.all([h.call(), h.call()]);
+    const results = await Promise.all(
+      responses.map(async (r) => {
+        expect(r.status).toBe(200);
+        return (await r.json()) as CheckResult;
+      }),
+    );
+    expect(results.map((r) => r.outcome).sort()).toEqual(["done", "unchanged"]);
+    expect(results[0]?.kakaoChannel.checkStartedAt).toBe(results[1]?.kakaoChannel.checkStartedAt);
+  });
+  it("새 연결을 끝내면 옛 linked를 그만 받고 새 연결만 남김", async () => {
+    const h = await fixture();
+    await linkTestChannel(db, h.shop.channelId);
+    expect((await h.skill("message", "합성 옛 채널")).status).toBe(200);
+    const before = (await (await h.ownerCall("GET", "/owner/kakao-channel")).json()) as { revision: string };
+    const botId = newUuid().replaceAll("-", "").slice(0, 24),
+      saved = await h.ownerCall("PUT", "/owner/kakao-channel", {
+        baseRevision: before.revision,
+        botId,
+        channelPublicId: "_syntheticnew",
+        blockIds: {
+          card: "card",
+          ordererInfo: "orderer",
+          allergyAnswer: "allergy",
+          depositorName: "depositor",
+          review: "review",
+        },
+      });
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    const setup = (await saved.json()) as { kakaoChannel: { connectionId: string }; skillKey: { headerValue: string } },
+      started = await h.start();
+    let response = await h.skill(
+      "message",
+      started.kakaoChannel.proofPhrase as string,
+      "conversation",
+      {},
+      "synthetic-trial-user",
+      botId,
+      setup.skillKey.headerValue,
+    );
+    for (let i = 0; i < 5; i++) {
+      const body = (await response.json()) as TrialReply,
+        button = body.template.outputs[0]?.textCard?.buttons[0];
+      if (!button) throw new Error("다음 시험 버튼 없음");
+      response = await h.skill(
+        button.extra.check === "review" ? "review" : "card",
+        "시험",
+        button.blockId,
+        button.extra,
+        "synthetic-trial-user",
+        botId,
+        setup.skillKey.headerValue,
+      );
+    }
+    expect(response.headers.get("Siljang-Outcome")).toBe("channel_linked");
+    await expectProblem(await h.skill("message", "합성 옛 채널"), "skill_key_invalid");
+    expect(
+      (
+        await db.query("SELECT id,status FROM kakao_channels WHERE shop_id=$1 ORDER BY configuration_order", [
+          h.shop.shopId,
+        ])
+      ).rows,
+    ).toEqual([
+      { id: h.shop.channelId, status: "retired" },
+      { id: setup.kakaoChannel.connectionId, status: "linked" },
+    ]);
+    expect(h.eventCalls()).toBe(0);
   });
   it("연결 문구와 시험 버튼 다섯은 상담/주문/후기를 만들지 않고 연결 뒤 메시지는 상담으로 들어감", async () => {
     const h = await fixture(),
