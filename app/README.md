@@ -908,3 +908,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 - 276 전체 검사: 서버84파일/1,550개·웹11파일/237개·타입/lint·빌드877ms/Worker dry-run이 통과했습니다. [수락 대조](../docs/records/price-list/task-038-acceptance.md)는 API 제공과 이후 실제 견적 계산을 구분합니다. 실제 새 권한2문장은 미적용입니다.
 
 - 276 리뷰 수정: FOR NO KEY UPDATE는 가격표 저장을 줄 세우면서 다른 요청의 외래 키 잠금을 허용합니다. 계약 기준 버전/오류 모으기/범위 생성 검사를 고쳐 관련148개·타입/lint가 통과했습니다. Free 외부 호출50개 모의 한도는17장에 임시1개,26장503에 영구24개·임시26개가 남았습니다. 실제 Worker 측정과 구분하며 README222의 CPU와 함께 정책 확인 대기입니다. 도안50개 계약·기존 응답·무료 요금제를 유지합니다.
+
+- 276 수정 뒤 전체: 서버84파일/1,560개·웹237개·타입/lint·빌드1.05초/Worker dry-run이 통과했습니다. Free 한도는 알려진 제한으로 유지하며 실제 저장소 한도 해결과 finished를 주장하지 않습니다.
