@@ -4,9 +4,12 @@ import type { HonoEnv } from "../../src/app";
 import type { Queryable } from "../../src/db";
 import type { FieldCrypto } from "../../src/field-crypto";
 import { deriveKakaoSkillKey } from "../../src/kakao-skill-auth";
+import { OWNER_COOKIE } from "../../src/owner-oauth";
+import { createOwnerSession } from "../../src/owner-session";
 import { REQUEST_KEY_HEADER } from "../../src/request-key";
 import { type Method, type RouteDecl, routeKey } from "../../src/routes";
 import { Secret } from "../../src/settings";
+import { newUploadId } from "../../src/uploads";
 import { comparableProblem, expectProblem } from "./contract";
 import { newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./db";
 import { seedOperatorSession } from "./operator";
@@ -64,6 +67,11 @@ interface ShopSettingsCase {
   readonly path: "/owner/shop";
   readonly kind: "shop_settings";
 }
+interface LicenseResubmissionCase {
+  readonly method: "PUT";
+  readonly path: "/owner/shop/license";
+  readonly kind: "license_resubmission";
+}
 
 interface CalendarShopCase {
   readonly method: "GET" | "PUT" | "PATCH";
@@ -115,6 +123,7 @@ export type CrossShopCase =
   | SkillCrossShopCase
   | OwnShopCase
   | ShopSettingsCase
+  | LicenseResubmissionCase
   | CalendarShopCase
   | PriceShopCase
   | RulesShopCase
@@ -134,6 +143,7 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   ),
   { method: "GET", path: "/owner/shop", kind: "self" },
   { method: "PATCH", path: "/owner/shop", kind: "shop_settings" },
+  { method: "PUT", path: "/owner/shop/license", kind: "license_resubmission" },
   { method: "GET", path: "/owner/kakao-channel", kind: "channel_setup" },
   { method: "PUT", path: "/owner/kakao-channel", kind: "channel_setup" },
   { method: "POST", path: "/owner/kakao-channel/skill-key", kind: "channel_setup" },
@@ -268,6 +278,44 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "license_resubmission") {
+      const account = (
+        await db.query<{ kakao_account_id: string }>("SELECT kakao_account_id FROM owners WHERE id=$1", [env.a.ownerId])
+      ).rows[0];
+      if (!account) throw new Error("사장님 없음");
+      const session = await createOwnerSession(
+        db,
+        { accountId: account.kakao_account_id, friend: false },
+        new Date(),
+        false,
+      );
+      const authenticated: CrossShopEnv = {
+        ...env,
+        as: (shop) => ({ ...env.as(shop), cookie: `${OWNER_COOKIE}=${session.token}` }),
+      };
+      const before = await snapshots(db, authenticated),
+        current = await send(authenticated, "GET", { url: "/owner/shop" });
+      const body = {
+        baseRevision: current.body?.revision,
+        foodLicenseNo: "2026-합성재업로드",
+        foodBusinessType: "bakery",
+        licensePhotoUploadId: newUploadId("license_photo", new Date()),
+      };
+      const wrong = await send(authenticated, "PUT", { url: c.path, body: { ...body, shopId: env.b.shopId } });
+      expect(wrong.status, wrong.text).toBe(422);
+      for (const shopId of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+        const response = await send(authenticated, "PUT", {
+          url: `${c.path}?shopId=${shopId}&ownerId=${env.b.ownerId}`,
+          body,
+        });
+        expect(response.status, response.text).toBe(409);
+        expect(response.body?.code).toBe("invalid_state");
+        expect(response.text).not.toContain(env.b.shopId);
+        expect(response.text).not.toContain(env.b.ownerId);
+      }
+      expect(await snapshots(db, authenticated)).toEqual(before);
+      return;
+    }
     if (c.kind === "shop_settings") {
       const other = await snapshotShop(db, env.b);
       let current = await send(env, "GET", { url: "/owner/shop" });
