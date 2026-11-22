@@ -132,6 +132,17 @@ export async function checkOwnerPage(browser, base, width, snap) {
     await page.getByRole("heading", { name: "사장님 로그인" }).waitFor();
     assert.equal(await loginButton().count(), 1);
     assert.equal(Math.round((await loginButton().boundingBox()).height), 48);
+    const kakaoImage = loginButton().getByRole("img", { name: "카카오 로그인", exact: true });
+    assert.equal(await kakaoImage.count(), 1, "카카오 공식 버튼 이미지를 표시함");
+    await page.waitForFunction(() => {
+      const image = document.querySelector(".owner-login-form > button img");
+      return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+    });
+    const imageRatio = await kakaoImage.evaluate((image) => {
+      const box = image.getBoundingClientRect();
+      return { original: image.naturalWidth / image.naturalHeight, rendered: box.width / box.height };
+    });
+    assert.ok(Math.abs(imageRatio.original - imageRatio.rendered) < 0.01, "공식 이미지의 비율을 보존함");
     if (width === 1280) assert.equal(Math.round((await page.locator(".ui-login__card").boundingBox()).width), 400);
     await snap(page, "owner-normal", consoleErrors);
 

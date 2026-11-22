@@ -1,0 +1,16 @@
+{
+  "design_guide": "https://developers.kakao.com/docs/ko/kakaologin/design-guide",
+  "resource_page": "https://developers.kakao.com/tool/resource/login",
+  "download_url": "https://developers.kakao.com/tool/download/Kakao%20Login.zip",
+  "zip_bytes": 128783,
+  "zip_sha256": "40cb976cdc6ce5a7a06b83cdc1c9e1e55d201ea94a3f9fa83b7dbfe5b42d37e1",
+  "member": "Kakao Login/PNG @2x/kakao_login_kr_medium.png",
+  "png_bytes": 1433,
+  "png_size": [
+    448,
+    92
+  ],
+  "png_sha256": "42cc0ad6054f399ab985b2b29c1d1730dc0e653912e5ddd3bc7ed7fdd2d8ea25",
+  "modified": false,
+  "source_verified_by": "학원컴 Aside CLI의 공식 다운로드 UI와 SCP 원본 해시"
+}
