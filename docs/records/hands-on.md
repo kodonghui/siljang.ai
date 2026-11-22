@@ -6,6 +6,10 @@
 
 - PR #160에서 로컬로 검증한 공개 SQL을 학원컴 Aside CLI의 같은 기존 역할/프로젝트에 한 번 실행 요청했습니다. 원 실행은 UI 결과가 유실돼 성공 여부·SQLSTATE·차단 5개를 확인하지 못했습니다. 성공으로 세지 않으며 같은 스크립트를 다시 실행하지 않았습니다.
 - 별도 명시적 ROLLBACK과 합성 가게 0개, 기존 권한 기대값 유지는 확인했습니다. 최종 표에서 원 실행의 미확인 값은 NULL로 두었습니다. 실제 서버 역할의 쓰기는 다른 관찰 경로로 확인하고 코드/시험은 계속합니다.
+- 두 번째는 pg_temp 함수의 내부 저장점에서 쓰기를 되돌리고 마지막 SELECT로 결과를 보이는 방식입니다. 로컬에서 모두 기대값을 확인한 공개 원본 `e2283dc8aaebfa917d8f27a54febc146087745a6`을 썼습니다. 긴 표준 입력을 받기 전에 멈춘 자기 PowerShell 1개(자식 0개)만 정리했고, 공개 파일의 SCP/해시 대조 뒤 Aside 세션을 재개했습니다. 이 전달 실패는 DB 쿼리 재실행이 아닙니다.
+- 새 방식의 실제 반환은 allowed_writes=false·blocked_writes=0·rollback_verified=true·role_restored=true·failure_sqlstate=42501입니다. 실제 쓰기 성공을 입증하지 못했으므로 해당 검증을 멈추고 기록합니다. Hyperdrive 연결 조회 API는 기존 토큰에서 403/10000이며 직접 접속 값은 Vault 잠금 해제 뒤 확인합니다.
+- 글 후기 경로의 추가 GRANT 2문장은 실제 커밋/허용을 확인했습니다. 로컬 새 역할의 orders.amount SELECT는 false지만 실제 기존 역할은 true여서 제한 권한 집계는 false입니다. 이 열은 이번 SQL이 추가하지 않은 기존 권한이며 취소하지 않았습니다. 새 최소 권한 파일과 기존 역할의 전체 보유 권한을 구분합니다. 기존 본문 수정/삭제를 새로 허용하지 않았고 실제 값은 조회하지 않았습니다.
+- Aside 세션이 끝난 뒤 같은 SQL Editor의 전체 snapshot에서 JSON 한 행을 직접 읽어 allowed_writes=false·blocked_writes=0·failure_sqlstate=42501·rollback_verified/role_restored=true를 대조했습니다. 실제 쓰기를 성공으로 기록하지 않습니다.
 
 ## 2026-11-22 · TASK-020 MVP 로그인 배포 확인
 
