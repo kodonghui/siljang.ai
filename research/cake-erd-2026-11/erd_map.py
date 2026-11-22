@@ -131,6 +131,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("저장 두 번에 한 번", "request_keys.request_key"),
     ],
     "SPEC-008": [
+        ("현재 채널 설정의 순번", "kakao_channels.configuration_order"),
         ("오픈빌더 봇", "kakao_channels.bot_id"),
         ("채널 공개 ID", "kakao_channels.channel_public_id"),
         ("연결 상태", "kakao_channels.status"),

@@ -14,6 +14,7 @@ import { type FieldCrypto, fieldCrypto } from "./field-crypto";
 import { type FileUrls, fileUrlSigner } from "./file-url";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { type KakaoEvents, kakaoEvents } from "./kakao-event";
+import { deriveKakaoProofPhrase, deriveKakaoSkillKey } from "./kakao-skill-auth";
 import { type OperatorAuth, supabaseAuth } from "./operator-auth";
 import { kakaoOwnerAuth, type OwnerAuth } from "./owner-auth";
 import { type ImageBinding, type PhotoNormalizer, photoNormalizer } from "./photo-normalizer";
@@ -34,6 +35,8 @@ export interface Services {
   fileUrls(): FileUrls;
   /** 계좌번호·원래 값 암호화. FIELD_KEY_CURRENT·FIELD_KEY_V<n>이 없으면 MissingSettingError. */
   fieldCrypto(): FieldCrypto;
+  kakaoSkillKey(connectionId: string, version: number): Promise<string>;
+  kakaoProofPhrase(connectionId: string, startedAt: Date): Promise<string>;
   /** 배포 설정으로 고른 회사·모델의 호출 모듈. AI_PROVIDER 등이 없으면 MissingSettingError. */
   aiModel(options?: Pick<AiModelOptions, "totalTimeoutMs">): AiModel;
   /** 회사/모델과 선택 회사 키의 존재. 실제 업무 처리기의 준비 여부나 호출 성공이 아니다. */
@@ -64,6 +67,11 @@ export interface ServiceOverrides {
 }
 
 export function createServices(env: Bindings, settings: Settings, overrides: ServiceOverrides = {}): Services {
+  function channelSecret() {
+    const secret = settings.secrets.REQUEST_HASH_KEY;
+    if (secret === null) throw new MissingSettingError("REQUEST_HASH_KEY is not set");
+    return secret;
+  }
   let store: ObjectStore | undefined = overrides.storage;
   let photos: PhotoNormalizer | undefined;
   let urls: FileUrls | undefined;
@@ -76,6 +84,8 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
     now: overrides.now ?? (() => new Date()),
     aiConfigured: overrides.aiModel !== undefined || (settings.ai !== null && settings.ai.apiKey !== null),
     kakaoCallbackQueue: overrides.kakaoCallbackQueue ?? env.KAKAO_CALLBACK_QUEUE,
+    kakaoSkillKey: (id, version) => deriveKakaoSkillKey(channelSecret(), id, version),
+    kakaoProofPhrase: (id, at) => deriveKakaoProofPhrase(channelSecret(), id, at),
     storage() {
       if (store !== undefined) return store;
       const s = settings.storage;

@@ -4,6 +4,7 @@ import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db"
 import { FILE_ROUTE, serveFile } from "./file-url";
 import { SKILL_WORK_MS } from "./kakao-callback";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
+import { getKakaoChannel, regenerateKakaoSkillKey, setKakaoChannel } from "./kakao-channel";
 import { kakaoReply } from "./kakao-reply";
 import { kakaoSkillRoutes } from "./kakao-skill";
 import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill-auth";
@@ -163,6 +164,9 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   // 06 API-007 사진 올리기(TASK-022). 가게가 정해지기 전에도 쓰므로(가게 등록의 신고증) 사장님 범위 경로다.
   ownerRoute("POST", "/owner/uploads", createUpload),
   ownerRoute("POST", "/owner/shop", registerShop),
+  shopRoute("GET", "/owner/kakao-channel", "owner", getKakaoChannel),
+  shopRoute("PUT", "/owner/kakao-channel", "owner", setKakaoChannel),
+  shopRoute("POST", "/owner/kakao-channel/skill-key", "owner", regenerateKakaoSkillKey),
   shopRoute("GET", "/owner/payment-destination", "owner", getPaymentDestination),
   shopRoute("PUT", "/owner/payment-destination", "owner", setPaymentDestination),
   shopRoute("GET", "/owner/shop", "owner", getShop),

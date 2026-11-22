@@ -112,6 +112,18 @@ export async function deriveKakaoSkillKey(secret: Secret, channelId: string, ver
   return toBase64Url(new Uint8Array(signature));
 }
 
+/** 연결 문구는 연결과 확인 시작 시각에 묶고 스킬 키와 다른 문맥으로 만든다(A36). */
+export async function deriveKakaoProofPhrase(secret: Secret, channelId: string, startedAt: Date): Promise<string> {
+  const key = await signingKey(secret);
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    utf8.encode(`siljang:kakao:proof:v1:${channelId}:${startedAt.toISOString()}`),
+  );
+  const number = new DataView(signature).getUint32(0, false) % 1_000_000;
+  return `연결 ${String(number).padStart(6, "0")}`;
+}
+
 export async function kakaoReceiptKey(
   secret: Secret,
   payload: Pick<KakaoSkillPayload, "botId" | "blockId" | "userId" | "utterance">,
