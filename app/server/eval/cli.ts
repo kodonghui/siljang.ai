@@ -15,6 +15,7 @@ import { AI_PRICES, AI_PROVIDERS, type AiProvider, type FxRate } from "../src/ai
 import { AI_EFFORTS, type AiEffort, readSettings, type Secret, SettingsError, tracingSwitchOn } from "../src/settings";
 import { EVAL_CASES } from "./cases";
 import { CHECKLIST_PATH, checklistMarkdown } from "./checklist";
+import { type EvalCheckpoint, EvalCheckpointError, loadCheckpoint, saveCheckpoint } from "./checkpoint";
 import { estimateRun } from "./estimate";
 import { summaryMarkdown, writeResultFiles } from "./report";
 import { EvalRefused, newRunId, runEval } from "./run";
@@ -37,6 +38,8 @@ export function usage(): string {
     "  --real               실제 실행(유료). 키·환율 환경 변수와 --max-krw가 있어야 함",
     "  --max-krw 원         비용 상한. 위 끝 어림이 넘으면 시작하지 않고, 실행 중 넘으려 하면 멈춤",
     "  --max-failures n     같은 모델 호출 실패 n번이면 다음 사례 앞에서 멈추고 부분 결과를 보존(채점 실패 제외)",
+    "  --interval-ms n      요청 시작 사이의 간격(0~60000ms, 실제 기본10000·모의 기본0)",
+    "  --resume-from 폴더   중간 저장 또는 이전 run.json/results.jsonl에서 성공 사례를 재사용",
     "  --checklist          출처 점검표(app/server/eval/source-checklist.md)를 다시 씀",
     "환경 변수(실제 실행): ANTHROPIC_API_KEY·OPENAI_API_KEY(고른 회사의 것), AI_USD_KRW(예 1450.25), AI_USD_KRW_DATE(예 2026-11-16)",
   ].join("\n");
@@ -51,6 +54,8 @@ export interface CliArgs {
   readonly real: boolean;
   readonly maxKrw: string | null;
   readonly maxFailures: number | null;
+  readonly intervalMs: number | null;
+  readonly resumeFrom: string | null;
   readonly checklist: boolean;
   readonly help: boolean;
 }
@@ -66,6 +71,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   let out: string | null = null;
   let maxKrw: string | null = null;
   let maxFailures: number | null = null;
+  let intervalMs: number | null = null;
+  let resumeFrom: string | null = null;
   const flags = { dryRun: false, real: false, checklist: false, help: false };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -95,13 +102,19 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       if (!/^[1-9][0-9]*$/.test(v) || !Number.isSafeInteger(Number(v)))
         throw new UsageError("--max-failures must be a positive safe integer");
       maxFailures = Number(v);
-    } else if (a === "--dry-run") flags.dryRun = true;
+    } else if (a === "--interval-ms") {
+      const v = value();
+      if (!/^[0-9]+$/.test(v) || !Number.isSafeInteger(Number(v)) || Number(v) > 60_000)
+        throw new UsageError("--interval-ms must be an integer from 0 to 60000");
+      intervalMs = Number(v);
+    } else if (a === "--resume-from") resumeFrom = value();
+    else if (a === "--dry-run") flags.dryRun = true;
     else if (a === "--real") flags.real = true;
     else if (a === "--checklist") flags.checklist = true;
     else if (a === "--help" || a === "-h") flags.help = true;
     else throw new UsageError(`unknown option ${a}`);
   }
-  return { models, effort, limit, out, maxKrw, maxFailures, ...flags };
+  return { models, effort, limit, out, maxKrw, maxFailures, intervalMs, resumeFrom, ...flags };
 }
 
 /** 요금표에서 회사마다 가장 싼 모델(입력·출력 값의 합). */
@@ -219,6 +232,15 @@ export async function main(
   }
   const started = new Date();
   const runId = newRunId(started);
+  let resume: EvalCheckpoint | undefined;
+  try {
+    if (args.resumeFrom !== null) resume = loadCheckpoint(args.resumeFrom);
+  } catch (e) {
+    if (!(e instanceof EvalCheckpointError)) throw e;
+    say(`시작하지 않음: ${e.message}`);
+    return 2;
+  }
+  const dir = args.out ?? args.resumeFrom ?? fileURLToPath(new URL(`${runId}/`, RESULTS_DIR));
   try {
     const run = await runEval({
       mode,
@@ -229,21 +251,26 @@ export async function main(
       maxFailures: args.maxFailures,
       keys: r.keys,
       runId,
+      ...(resume === undefined ? {} : { resume }),
+      minIntervalMs: args.intervalMs ?? (args.real ? 10_000 : 0),
+      maxWaitMs: 60_000,
+      onCheckpoint: (checkpoint) => saveCheckpoint(dir, checkpoint),
       onProgress: (done, total) => {
         if (done % 20 === 0 || done === total) say(`  진행 ${done}/${total}`);
       },
     });
-    const dir = args.out ?? fileURLToPath(new URL(`${runId}/`, RESULTS_DIR));
     const paths = writeResultFiles(dir, run);
     say("");
     say(summaryMarkdown(run));
     say(`결과 파일: ${Object.values(paths).join(", ")}`);
     if (run.stopped !== null) {
       const providerFailure = run.stopped.reason === "provider_failures";
+      const cooldown = run.stopped.reason === "retry_after";
       say(
-        `${providerFailure ? "모델 호출 실패" : "비용 상한"}로 도중에 멈춤: ${run.stopped.model}의 ${run.stopped.beforeCase} 앞`,
+        `${providerFailure ? "모델 호출 실패" : cooldown ? `Retry-After ${run.stopped.retryAt}` : "비용 상한"}로 도중에 멈춤: ${run.stopped.model}의 ${run.stopped.beforeCase} 앞`,
       );
-      return providerFailure ? 4 : 3;
+      say("같은 모델·환율·사례로 --resume-from을 사용하면 완료된 사례를 다시 부르지 않습니다.");
+      return providerFailure || cooldown ? 4 : 3;
     }
     return 0;
   } catch (e) {

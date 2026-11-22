@@ -15,8 +15,10 @@ import { type AiProvider, type FxRate, priceOf } from "../src/ai-prices";
 import type { AiTurnOutput } from "../src/ai-turn-output";
 import { type AiSettings, Secret, tracingSwitchInProcess } from "../src/settings";
 import { EVAL_CASES_VERSION } from "./cases";
+import type { EvalCheckpoint } from "./checkpoint";
 import { estimateRun, formatKrw, krwCents, type RunEstimate, upperCallCents } from "./estimate";
 import { idealResponder, mockFetch, type Responder } from "./mock";
+import { createEvalPacer, type EvalPacer } from "./pacing";
 import { handoffCheck, scoreTurn } from "./score";
 import { baselineSubject, type Subject } from "./subject";
 import {
@@ -52,6 +54,12 @@ export interface RunOptions {
   readonly now?: () => Date;
   /** 사례 하나가 끝날 때마다(진행 표시). */
   readonly onProgress?: (done: number, total: number) => void;
+  readonly minIntervalMs?: number;
+  readonly maxWaitMs?: number;
+  readonly sleep?: (ms: number) => Promise<void>;
+  readonly resume?: EvalCheckpoint;
+  /** 호출 전 예약과 결과를 다음 호출 전에 보존한다. */
+  readonly onCheckpoint?: (checkpoint: EvalCheckpoint) => void;
 }
 
 export interface CaseResult {
@@ -83,10 +91,13 @@ export interface RunResult {
   readonly maxFailures: number | null;
   /** ai_calls 꼴 행의 cost_krw 합(모의 실행은 어림). */
   readonly spentKrw: string;
+  /** 사용량을 받지 못한 호출은 비용 상한의 여유에서 차감한다. 실제 청구액과 구분한다. */
+  readonly unknownCostReserveKrw?: string;
   readonly stopped: {
-    readonly reason: "cost_cap" | "provider_failures";
+    readonly reason: "cost_cap" | "provider_failures" | "retry_after";
     readonly beforeCase: string;
     readonly model: string;
+    readonly retryAt?: string;
   } | null;
   readonly results: readonly CaseResult[];
 }
@@ -101,7 +112,9 @@ export class EvalRefused extends Error {
     | "key_missing"
     | "cost_cap"
     | "no_cases"
-    | "bad_failure_limit";
+    | "bad_failure_limit"
+    | "resume_mismatch"
+    | "resume_inflight";
 
   constructor(code: EvalRefused["code"], message: string) {
     super(message);
@@ -150,16 +163,111 @@ export async function runEval(o: RunOptions): Promise<RunResult> {
     );
   }
 
-  const startedAt = now();
-  const runId = o.runId ?? newRunId(startedAt);
+  const resume = o.resume;
+  const names = o.targets.map(targetName);
+  const byCase = new Map(o.cases.map((c) => [c.id, c]));
+  const byModel = new Map(o.targets.map((t) => [targetName(t), t]));
+  if (resume !== undefined) {
+    const previous = resume.run;
+    if (
+      resume.version !== 1 ||
+      previous.mode !== o.mode ||
+      previous.casesVersion !== EVAL_CASES_VERSION ||
+      previous.subject.name !== subject.name ||
+      previous.subject.promptVersion !== subject.promptVersion ||
+      previous.subject.sendsNotice !== subject.sendsNotice ||
+      JSON.stringify(previous.models) !== JSON.stringify(names) ||
+      previous.estimate.cases !== o.cases.length ||
+      JSON.stringify(previous.estimate.fx) !== JSON.stringify(o.fx) ||
+      !Array.isArray(previous.results) ||
+      typeof previous.runId !== "string" ||
+      !Number.isFinite(Date.parse(previous.startedAt))
+    )
+      throw new EvalRefused("resume_mismatch", "eval resume metadata does not match");
+    if (resume.pending !== null)
+      throw new EvalRefused("resume_inflight", "eval has an uncertain in-flight call; do not call it again");
+    const seen = new Set<string>();
+    for (const r of previous.results) {
+      const id = `${r.model}:${r.caseId}`;
+      if (!byCase.has(r.caseId) || !byModel.has(r.model) || seen.has(id) || !Array.isArray(r.calls))
+        throw new EvalRefused("resume_mismatch", "eval resume rows do not match");
+      seen.add(id);
+    }
+  }
+  const startedAt = resume === undefined ? now() : new Date(resume.run.startedAt);
+  const runId = resume?.run.runId ?? o.runId ?? newRunId(startedAt);
   const responder = o.responder ?? idealResponder;
   const total = o.cases.length * o.targets.length;
-  const results: CaseResult[] = [];
+  const results: CaseResult[] = resume?.run.results.map((r) => ({ ...r, calls: [...r.calls] })) ?? [];
   let spent = 0n;
+  let unknownReserve = 0n;
   let stopped: RunResult["stopped"] = null;
+  const charge = (calls: readonly AiCallRecord[], c: EvalCase, target: ModelTarget) => {
+    for (const call of calls) {
+      const value = call.cost_krw;
+      if (typeof value === "string" && /^[0-9]+(?:\.[0-9]{1,2})?$/.test(value)) spent += krwCents(value);
+      else if (value == null) unknownReserve += upperCallCents(subject, c, target, o.fx);
+      else throw new EvalRefused("resume_mismatch", "eval call cost is invalid");
+    }
+  };
+  for (const r of results) {
+    const c = byCase.get(r.caseId);
+    const target = byModel.get(r.model);
+    if (c === undefined || target === undefined) throw new EvalRefused("resume_mismatch", "eval rows do not match");
+    charge(r.calls, c, target);
+  }
+  const previousReserve = resume?.run.unknownCostReserveKrw;
+  if (previousReserve !== undefined) {
+    if (!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(previousReserve))
+      throw new EvalRefused("resume_mismatch", "eval unknown cost reserve is invalid");
+    const reserved = krwCents(previousReserve);
+    if (reserved > unknownReserve) unknownReserve = reserved;
+  }
+  if (resume !== undefined && formatKrw(spent) !== resume.run.spentKrw)
+    throw new EvalRefused("resume_mismatch", "eval spent cost does not match its call ledger");
+  const pacers = new Map<string, EvalPacer>();
+  const snapshot = (): RunResult => ({
+    runId,
+    mode: o.mode,
+    startedAt: startedAt.toISOString(),
+    casesVersion: EVAL_CASES_VERSION,
+    subject: { name: subject.name, promptVersion: subject.promptVersion, sendsNotice: subject.sendsNotice },
+    models: names,
+    estimate,
+    maxKrw: cap === null ? null : formatKrw(cap),
+    maxFailures,
+    spentKrw: formatKrw(spent),
+    unknownCostReserveKrw: formatKrw(unknownReserve),
+    stopped,
+    results: results.map((r) => ({ ...r, calls: [...r.calls] })),
+  });
+  const checkpoint = (pending: EvalCheckpoint["pending"]): void => {
+    o.onCheckpoint?.({
+      version: 1,
+      run: snapshot(),
+      pending,
+      pacing: {
+        ...resume?.pacing,
+        ...Object.fromEntries([...pacers].map(([provider, p]) => [provider, p.notBefore()])),
+      },
+    });
+  };
+  checkpoint(null);
 
   run: for (const target of o.targets) {
     const name = targetName(target);
+    let pacer = pacers.get(target.provider);
+    if (pacer === undefined) {
+      const intervalMs = o.minIntervalMs ?? 0;
+      pacer = createEvalPacer({
+        intervalMs,
+        maxWaitMs: o.maxWaitMs ?? Math.max(intervalMs, 60_000),
+        now,
+        sleep: o.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+        notBefore: resume?.pacing[target.provider] ?? null,
+      });
+      pacers.set(target.provider, pacer);
+    }
     let failures = 0;
     const key = o.mode === "real" ? (o.keys?.[target.provider] ?? null) : MOCK_KEY;
     const ai: AiSettings = {
@@ -170,25 +278,36 @@ export async function runEval(o: RunOptions): Promise<RunResult> {
       apiKey: key,
     };
     for (const c of o.cases) {
+      const previousIndex = results.findIndex((r) => r.caseId === c.id && r.model === name);
+      const previous = results[previousIndex];
+      if (previous !== undefined && previous.failure === null) continue;
       if (maxFailures !== null && failures >= maxFailures) {
         stopped = { reason: "provider_failures", beforeCase: c.id, model: name };
         break run;
       }
-      if (cap !== null && spent + upperCallCents(subject, c, target, o.fx) > cap) {
+      if (cap !== null && spent + unknownReserve + upperCallCents(subject, c, target, o.fx) > cap) {
         stopped = { reason: "cost_cap", beforeCase: c.id, model: name };
+        break run;
+      }
+      const deferred = await pacer.beforeCall();
+      if (deferred !== null) {
+        stopped = { reason: "retry_after", beforeCase: c.id, model: name, retryAt: deferred.retryAt };
         break run;
       }
       const fetchFn =
         o.mode === "real"
           ? (o.fetch ?? globalThis.fetch.bind(globalThis))
           : mockFetch(target, responder(c, target, subject.requestText(c)));
-      const turn = await subject.respond(c, { ai, fetch: fetchFn, runId, now });
+      const observedFetch: typeof fetch = async (input, init) => {
+        const response = await fetchFn(input, init);
+        pacer.observe(response);
+        return response;
+      };
+      checkpoint({ caseId: c.id, model: name });
+      const turn = await subject.respond(c, { ai, fetch: observedFetch, runId, now });
       if (turn.failure !== null) failures += 1;
-      for (const call of turn.calls) {
-        const krw = call.cost_krw;
-        if (typeof krw === "string") spent += krwCents(krw);
-      }
-      results.push({
+      charge(turn.calls, c, target);
+      const result: CaseResult = {
         caseId: c.id,
         category: c.category,
         targets: c.targets,
@@ -199,24 +318,15 @@ export async function runEval(o: RunOptions): Promise<RunResult> {
         failure: turn.failure,
         sent: turn.sent,
         output: turn.output,
-        calls: turn.calls,
-      });
+        calls: [...(previous?.calls ?? []), ...turn.calls],
+      };
+      if (previousIndex < 0) results.push(result);
+      else results[previousIndex] = result;
+      checkpoint(null);
       o.onProgress?.(results.length, total);
     }
   }
 
-  return {
-    runId,
-    mode: o.mode,
-    startedAt: startedAt.toISOString(),
-    casesVersion: EVAL_CASES_VERSION,
-    subject: { name: subject.name, promptVersion: subject.promptVersion, sendsNotice: subject.sendsNotice },
-    models: o.targets.map(targetName),
-    estimate,
-    maxKrw: cap === null ? null : formatKrw(cap),
-    maxFailures,
-    spentKrw: formatKrw(spent),
-    stopped,
-    results,
-  };
+  checkpoint(null);
+  return snapshot();
 }
