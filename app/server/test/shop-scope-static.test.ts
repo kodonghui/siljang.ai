@@ -313,6 +313,14 @@ describe("서버 코드의 SQL(정적 검사)", () => {
     expect(MAKES_SCOPE.test("/** createShopScope로 만든 것만 받는다. */")).toBe(false);
   });
 
+  it.each([
+    "ownerOfShopScope(scope)",
+    'import { ownerOfShopScope as own } from "./owner-scope";',
+    'factory["ownerOfShopScope"]',
+  ])("사장님 범위 변환도 생성 검사에 잡힘: %s", (code) => {
+    expect(MAKES_OWNER_SCOPE.test(code)).toBe(true);
+  });
+
   it("사장님 범위도 정한 파일(해석기)만 만듦(TASK-022)", () => {
     const found = sources
       .filter((s) => MAKES_OWNER_SCOPE.test(s.text) && !Object.hasOwn(OWNER_SCOPE_MAKERS, s.name))

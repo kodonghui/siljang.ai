@@ -204,4 +204,43 @@ describe("SPEC-004 가격표 전체 입력과 기본 디자인 범위", () => {
     }));
     expect(parsePriceList(v)).toEqual(v);
   });
+
+  it.each([
+    [
+      "계약 밖 기준 버전",
+      () => ({ ...input(), baseRevision: "abc:1" }),
+      [{ field: "/baseRevision", code: "bad_format" }],
+    ],
+    [
+      "잘못된 항목 앞의 오류 보존",
+      () => ({ ...input(), options: [{ ...input().options[0], amount: -1 }, null], designs: [] }),
+      [
+        { field: "/options/0/amount", code: "out_of_range" },
+        { field: "/options/1", code: "bad_format" },
+      ],
+    ],
+    [
+      "한도 초과 때 거짓 참조 오류 없음",
+      () => ({
+        ...input(),
+        options: Array.from({ length: 101 }, (_, i) => ({ ...input().options[1], key: `o${i}`, name: `옵션${i}` })),
+        rules: [{ kind: "exclude", optionA: "o0", optionB: "o1", amount: null }],
+        designs: [{ ...input().designs[0], optionKey: "o0" }],
+      }),
+      [{ field: "/options", code: "too_many" }],
+    ],
+    [
+      "없는 optionKey의 거짓 참조 오류 없음",
+      () => {
+        const v = input();
+        const { optionKey: _, ...d } = required(v.designs[0]);
+        return { ...v, designs: [d] };
+      },
+      [{ field: "/designs/0/optionKey", code: "required" }],
+    ],
+  ] as const)("리뷰: %s", (_name, make, errors) => {
+    expect(() => parsePriceList(make())).toThrowError(
+      expect.objectContaining({ code: "validation_failed", extras: { errors } }),
+    );
+  });
 });

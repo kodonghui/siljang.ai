@@ -574,4 +574,24 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
     ])
       expect(() => ownerOfShopScope(scope)).toThrow();
   });
+
+  it("가격표 저장 중에도 다른 요청의 가게 외래 키 잠금은 바로 얻음", async () => {
+    const h = await fixture(),
+      uploadId = await photo(h);
+    const probe = testDb();
+    const copy = h.store.copy.bind(h.store);
+    h.store.copy = async (from, to) => {
+      await probe.transaction((tx) => tx.query("SELECT id FROM shops WHERE id=$1 FOR KEY SHARE NOWAIT", [h.shopId]));
+      return copy(from, to);
+    };
+    try {
+      const response = await h.call("POST", "/owner/price-list/versions", {
+        ...input(),
+        designs: [{ name: "잠금 시험", uploadId, optionKey: null, inStandard: false, position: 0 }],
+      });
+      expect(response.status, await response.clone().text()).toBe(201);
+    } finally {
+      await probe.close();
+    }
+  });
 });
