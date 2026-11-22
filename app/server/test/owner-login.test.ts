@@ -39,6 +39,7 @@ describe("사장님 로그인 계약(TASK-020, API-078·001·002·003)", () => {
     expect(url.searchParams.get("state")).toBe(body.state);
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(url.searchParams.has("scope")).toBe(false);
     const cookie = response.headers.get("set-cookie") ?? "";
     expect(cookie).toContain("siljang_login=");
     for (const attr of ["HttpOnly", "Secure", "SameSite=Lax", "Max-Age=600"]) expect(cookie).toContain(attr);

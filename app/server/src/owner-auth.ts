@@ -72,7 +72,16 @@ export function kakaoOwnerAuth(
 
   return {
     authorizeUrl(redirect, state, challenge) {
-      return `https://kauth.kakao.com/oauth/authorize?${new URLSearchParams({ client_id: settings.clientId.reveal(), redirect_uri: redirect, response_type: "code", state, code_challenge: challenge, code_challenge_method: "S256", scope: "plusfriends" })}`;
+      const query = new URLSearchParams({
+        client_id: settings.clientId.reveal(),
+        redirect_uri: redirect,
+        response_type: "code",
+        state,
+        code_challenge: challenge,
+        code_challenge_method: "S256",
+      });
+      if (settings.scopes.length > 0) query.set("scope", settings.scopes.join(","));
+      return `https://kauth.kakao.com/oauth/authorize?${query}`;
     },
     async signIn(code, redirect, verifier) {
       const token = await request("https://kauth.kakao.com/oauth/token", {
@@ -96,10 +105,13 @@ export function kakaoOwnerAuth(
       // 카카오 사용자 번호의 정수 정밀도를 잃은 응답은 다른 계정으로 저장하지 않고 닫는다.
       if (typeof user.id !== "number" || !Number.isSafeInteger(user.id) || user.id <= 0)
         throw new KakaoUnavailableError();
-      return { accountId: String(user.id), friend: await friend(headers) };
+      return {
+        accountId: String(user.id),
+        friend: settings.scopes.includes("plusfriends") ? await friend(headers) : null,
+      };
     },
     channelFriend: (accountId) =>
-      settings.adminKey === null
+      !settings.scopes.includes("plusfriends") || settings.adminKey === null
         ? Promise.resolve(null)
         : friend({ Authorization: `KakaoAK ${settings.adminKey.reveal()}` }, accountId),
   };

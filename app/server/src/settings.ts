@@ -110,6 +110,7 @@ export interface OwnerAuthSettings {
   readonly clientSecret: Secret;
   readonly adminKey: Secret | null;
   readonly redirectUris: readonly string[];
+  readonly scopes: readonly string[];
   readonly alertChannelId: string;
 }
 
@@ -235,12 +236,17 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
 }
 
 function readOwnerAuth(env: Readonly<Record<string, unknown>>): OwnerAuthSettings | null {
-  const names = ["KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "KAKAO_OWNER_REDIRECT_URIS", "KAKAO_ALERT_CHANNEL_ID"];
+  const names = ["KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "KAKAO_OWNER_REDIRECT_URIS"];
   const values = names.map((n) => (typeof env[n] === "string" ? (env[n] as string).trim() : ""));
   const admin = typeof env.KAKAO_ADMIN_KEY === "string" ? env.KAKAO_ADMIN_KEY.trim() : "";
-  if (values.every((v) => v === "") && admin === "") return null;
+  const alertChannelId = typeof env.KAKAO_ALERT_CHANNEL_ID === "string" ? env.KAKAO_ALERT_CHANNEL_ID.trim() : "";
+  const scopeInput = typeof env.KAKAO_OWNER_LOGIN_SCOPES === "string" ? env.KAKAO_OWNER_LOGIN_SCOPES.trim() : "";
+  if (values.every((v) => v === "") && admin === "" && alertChannelId === "" && scopeInput === "") return null;
   if (values.some((v) => v === "")) throw new SettingsError("KAKAO owner login settings must be set together");
-  const [clientId, clientSecret, uris, alertChannelId] = values as [string, string, string, string];
+  const [clientId, clientSecret, uris] = values as [string, string, string];
+  const scopes = scopeInput === "" ? [] : [...new Set(scopeInput.split(",").map((s) => s.trim()))];
+  if (scopes.length > 32 || scopes.some((s) => !/^[a-z][a-z0-9_]{0,63}$/.test(s)))
+    throw new SettingsError("KAKAO_OWNER_LOGIN_SCOPES must contain comma-separated scope names");
   const redirectUris = uris.split(",").map((s) => s.trim());
   for (const raw of redirectUris) {
     let uri: URL;
@@ -261,13 +267,14 @@ function readOwnerAuth(env: Readonly<Record<string, unknown>>): OwnerAuthSetting
       );
     }
   }
-  if (!/^_[A-Za-z0-9_-]{1,100}$/.test(alertChannelId))
+  if ((alertChannelId !== "" || scopes.includes("plusfriends")) && !/^_[A-Za-z0-9_-]{1,100}$/.test(alertChannelId))
     throw new SettingsError("KAKAO_ALERT_CHANNEL_ID has an unexpected shape");
   return {
     clientId: new Secret(clientId),
     clientSecret: new Secret(clientSecret),
     adminKey: admin === "" ? null : new Secret(admin),
     redirectUris,
+    scopes,
     alertChannelId,
   };
 }

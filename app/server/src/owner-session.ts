@@ -9,19 +9,25 @@ export async function createOwnerSession(
   db: RequestDb,
   user: KakaoOwner,
   now: Date,
+  trackChannelFriend: boolean,
 ): Promise<{ token: string; ownerId: string }> {
   const token = newSessionToken();
   const hash = await tokenHash(token);
   const ownerId = await db.transaction(async (tx) => {
     const result = await tx.query<{ id: string }>(
-      `INSERT INTO owners (kakao_account_id, alert_channel_friend, alert_friend_checked_at, last_login_at, created_at)
+      trackChannelFriend
+        ? `INSERT INTO owners (kakao_account_id, alert_channel_friend, alert_friend_checked_at, last_login_at, created_at)
        VALUES ($1, coalesce($2, false), CASE WHEN $2::boolean IS NULL THEN NULL ELSE $3::timestamptz END, $3, $3)
        ON CONFLICT (kakao_account_id) DO UPDATE SET
          last_login_at = EXCLUDED.last_login_at,
          alert_channel_friend = coalesce($2, owners.alert_channel_friend),
          alert_friend_checked_at = CASE WHEN $2::boolean IS NULL THEN owners.alert_friend_checked_at ELSE $3 END
+       RETURNING id`
+        : `INSERT INTO owners (kakao_account_id, last_login_at, created_at)
+       VALUES ($1, $2, $2)
+       ON CONFLICT (kakao_account_id) DO UPDATE SET last_login_at = EXCLUDED.last_login_at
        RETURNING id`,
-      [user.accountId, user.friend, now],
+      trackChannelFriend ? [user.accountId, user.friend, now] : [user.accountId, now],
     );
     const id = (result.rows[0] as { id: string }).id;
     await tx.query("DELETE FROM owner_sessions WHERE owner_id = $1 AND expires_at <= $2", [id, now]);
@@ -82,6 +88,7 @@ export async function refreshOwnerFriend(db: Queryable, auth: OwnerAuth, ownerId
 export async function ownerProfile(
   db: Queryable,
   ownerId: string,
+  showChannelBanner: boolean,
 ): Promise<{ profile: OwnerProfile; timeZone: string }> {
   const { rows } = await db.query<{ id: string; alert_channel_friend: boolean; created_at: Date }>(
     "SELECT id, alert_channel_friend, created_at FROM owners WHERE id = $1",
@@ -107,7 +114,7 @@ export async function ownerProfile(
       },
       shop: shop === undefined ? null : { shopId: shop.id, name: shop.name, licenseStatus: shop.license_status },
       banners: [
-        ...(owner.alert_channel_friend ? [] : ["add_alert_channel"]),
+        ...(!showChannelBanner || owner.alert_channel_friend ? [] : ["add_alert_channel"]),
         ...(shop?.license_status === "pending"
           ? ["license_pending"]
           : shop?.license_status === "on_hold"
