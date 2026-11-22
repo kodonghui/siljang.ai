@@ -33,6 +33,7 @@ export function parseReviewList(query: Record<string, string>): ReviewListInput 
       const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes));
       if (!Array.isArray(value) || value.length !== 3 || value[0] !== status || !isUuid(value[2])) throw new Error();
       if (typeof value[1] !== "string" || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/.test(value[1])) throw new Error();
+      if (value[1].startsWith("0000-")) throw new Error();
       if (new Date(value[1]).toISOString() !== value[1].replace(/(\.\d{3})\d{3}Z$/, "$1Z")) throw new Error();
       after = { at: value[1], id: value[2].toLowerCase() };
     } catch {

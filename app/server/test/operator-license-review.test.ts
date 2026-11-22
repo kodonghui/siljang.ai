@@ -81,6 +81,7 @@ it.each([
   "x".repeat(201),
   reviewCursor("verified", "2020-01-01T00:00:00.000123Z", newUuid()),
   reviewCursor("pending", "2020-02-30T00:00:00.000000Z", newUuid()),
+  reviewCursor("pending", "0000-01-01T00:00:00.000000Z", newUuid()),
 ])("틀리거나 다른 상태의 커서는422임 %#", (cursor) => {
   expect(() => parseReviewList({ cursor })).toThrowError(expect.objectContaining({ code: "validation_failed" }));
 });
