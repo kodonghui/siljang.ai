@@ -4,11 +4,12 @@
 
 ## 2026-11-22 · TASK-016 무료 정책과 Actions 이메일 설정
 
-- 학원컴 Aside CLI에서 기존 Free Monitors 정책 `Siljang staging job failures`의 대상이 siljang-staging 한 개이고 활성화/이메일 연결이 true임을 확인했습니다. 신규 생성/조건 변경은 false입니다. 수신자 UI가 열리지 않아 확인된 계정 메일과 일치하는지는 false(미확인)로 남겼습니다. 대상이 없는 Pages/Health Checks 정책은 적용하지 않았습니다.
+- 학원컴 Aside CLI에서 기존 Free Monitors 정책 `Siljang staging job failures`의 대상이 siljang-staging 한 개이고 활성화/이메일 연결이 true임을 확인했습니다. 처음 수신자 버튼은 열리지 않았으나 별도 Manage destinations 화면에서 기존 수신자 1곳과 계정 메일 일치를 확인했습니다. 대상이 없는 Pages/Health Checks 정책은 적용하지 않았습니다.
 - GitHub Actions 이메일을 켜고 실패한 workflow만 알림을 유지했으며 저장 뒤 같은 선택/요약을 직접 전체 snapshot에서 대조했습니다. 감시 workflow는 workflow_dispatch이고 예약 설정이 없으며 기존 수동 실행자와 로그인 계정이 일치합니다. 기본 알림 메일과 연결된 Gmail의 일치만 확인했고 실제 값은 기록하지 않았습니다. 해당 경보 메일의 최근 1일 검색은 시험 전 0개입니다.
-- 실제 실패 발생/메일 발신/수신은 아직 확인 전입니다. 결제·새 토큰/인증정보·다른 서비스 정책 변경은 없습니다. source=external의 경보 실행 한 번과 Gmail의 실행 링크를 다음으로 확인합니다.
+- 결제·새 토큰/인증정보·다른 서비스 정책 변경은 없습니다. 실제 외부 경보와 Cloudflare 샘플 수신 결과를 아래에 구분합니다.
 - 실제 시험은 [경보 실행 45024045647](https://github.com/kodonghui/siljang.ai/actions/runs/45024045647) 한 번입니다. main `0c1f46e`·source=external·기존 실행자와 일치를 Aside에서 확인했고, Actions API에서도 완료/failure·alert job·정한 실패 단계를 대조했습니다. 로그의 정한 오류 주석과 exit 1이 일치합니다. app/db CI 실패와 구분합니다.
 - Gmail 연결 도구에서 시험 전 같은 경보 알림 0개와 시험 뒤 새 알림 1개를 확인했습니다. 21:47:19 KST 제목 `[kodonghui/siljang.ai] Run failed: Siljang 스테이징 상태 경보 - main (0c1f46e)`와 본문의 같은 공개 실행 링크를 대조했습니다. 메일 주소·본문 전체·메일함 식별자는 공개 기록에 넣지 않았습니다. 외부 경보 route의 실제 수신이며 Cloudflare 일 실행기 정책의 실제 실패 메일 수신은 아직 미확인입니다.
+- Cloudflare 기존 정책의 샘플 발신 요청은 21:54:11 KST 한 번이며 다시 요청하지 않았습니다. UI 확인창은 닫혔지만 접수 성공 안내는 미확인이었습니다. 연결 Gmail에서 21:54:24 KST 새 알림 1개와 제목 `[Alert] Custom Alert 'Siljang staging job failures' triggered`를 확인했습니다. 메일에는 Worker 이름/시험 표시가 없어 정책명·시각 일치만 기록하며 실제 일 실패 로그에 따른 발동으로 세지 않습니다. 직접 최종 전체 snapshot은 기존 정책 Enabled·Email·실행 15분/조회 1분을 확인했습니다.
 
 ## 2026-11-22 · PR #160 main 배포 확인
 

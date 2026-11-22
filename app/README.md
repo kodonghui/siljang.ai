@@ -837,3 +837,4 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 267. TASK-016에서 학원컴 Aside CLI로 기존 Free Monitors 정책의 siljang-staging 대상/활성화/이메일 연결을 확인했고 새 정책은 만들지 않았습니다. 수신자 일치는 미확인입니다. GitHub Actions 실패 이메일을 켜고 실패만 알림을 유지했으며 직접 snapshot으로 저장 상태를 대조했습니다. 기본 알림 메일과 연결 Gmail은 일치하고, 실제 실패 실행/수신 확인은 이어갑니다. 경보 workflow의 source=external 실패는 의도한 시험이며 app/db CI와 별도입니다.
 
 - 267 실제 수신: 경보 실행 45024045647의 main/source=external·정한 오류/exit 1과 21:47:19 KST Gmail 알림의 동일 실행 링크를 확인했습니다. 외부 점검 경보 메일은 실제 수신했지만 Cloudflare 일 실행기 정책의 실제 실패 메일/수신자 일치는 남아 있습니다. 로컬 전체 타입·서버 1,317개·웹 237개·빌드 593ms는 통과했습니다.
+- 267 샘플 확인: Cloudflare 기존 수신자 일치와 21:54:11 KST 요청 1회 뒤 21:54:24 KST 정책명이 같은 샘플 메일을 확인했습니다. 실제 일 실패 로그에 따른 발동은 미확인입니다. 최종 화면의 실행 15분/조회 1분 공백은 기존 무료 정책의 실패 8종·조회 15분 보완을 이어갑니다.
