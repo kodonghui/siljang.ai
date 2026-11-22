@@ -8,6 +8,23 @@ export interface ShopTextRule {
   nullable?: true;
   allowed?: readonly string[];
 }
+export function validateShopText(input: Record<string, unknown>, rules: Record<string, ShopTextRule>) {
+  const values: Record<string, unknown> = {},
+    errors: FieldError[] = [];
+  for (const [name, rule] of Object.entries(rules)) {
+    const value = input[name],
+      field = `/${name}`;
+    if (rule.nullable && (value === undefined || value === null)) values[name] = null;
+    else if (value === undefined) errors.push({ field, code: "required" });
+    else if (typeof value !== "string" || value.includes("\0")) errors.push({ field, code: "bad_format" });
+    else if (rule.allowed && !rule.allowed.includes(value)) errors.push({ field, code: "not_allowed" });
+    else if (value.trim() === "" || [...value].length < rule.min) errors.push({ field, code: "too_short" });
+    else if ([...value].length > rule.max) errors.push({ field, code: "too_long" });
+    else if (rule.pattern && !rule.pattern.test(value)) errors.push({ field, code: "bad_format" });
+    else values[name] = value;
+  }
+  return { values, errors };
+}
 export const SHOP_IDENTITY_TEXT = {
   businessName: { min: 1, max: 60 },
   representativeName: { min: 1, max: 30 },

@@ -6,6 +6,8 @@ import { tokenHash } from "../src/operator-session";
 import { OWNER_COOKIE } from "../src/owner-oauth";
 import { createOwnerScope } from "../src/owner-scope";
 import { createOwnerSession } from "../src/owner-session";
+import { deleteQueuedFile } from "../src/purge-files";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { newUploadId, tempKey } from "../src/uploads";
 import { expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newRequestKey, TEST_HASH_KEY, testEnv } from "./support/db";
@@ -102,6 +104,113 @@ describeDb("TASK-033 보류 영업 신고 재업로드", () => {
     expect(replay.status).toBe(200);
     expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
     expect(h.store.calls.filter((x) => x === "copy")).toHaveLength(1);
+  });
+  it("새 사진 저장과 옛 사진 삭제 예약은 같은 트랜잭션이고 재전송은 한 행, 지우기는 옛 파일만 지움", async () => {
+    const h = await fixture(),
+      oldKey = `shops/${h.f.shopId}/license_photo/old-${crypto.randomUUID()}.jpg`;
+    await db.query("UPDATE shops SET license_photo_key=$2 WHERE id=$1", [h.f.shopId, oldKey]);
+    await h.store.put(oldKey, new Uint8Array([1, 2, 3]), "image/jpeg");
+    const input = await h.input(),
+      key = newRequestKey();
+    expect((await h.put(input, key)).status).toBe(200);
+    expect((await h.put(input, key)).headers.get("Idempotency-Replayed")).toBe("true");
+    const rows = (
+      await db.query<{ id: string; storage_key: string; source: string; queued_at: Date }>(
+        "SELECT id,storage_key,source,queued_at FROM file_deletions WHERE shop_id=$1",
+        [h.f.shopId],
+      )
+    ).rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ storage_key: oldKey, source: "license_photo", queued_at: NOW });
+    const current = (
+      await db.query<{ license_photo_key: string }>("SELECT license_photo_key FROM shops WHERE id=$1", [h.f.shopId])
+    ).rows[0];
+    if (!current || !rows[0]) throw new Error("사진/삭제 예약 없음");
+    expect(h.store.objects.has(oldKey)).toBe(true);
+    expect(
+      await deleteQueuedFile(
+        shopRequestDb(createShopScope(h.f.shopId, { kind: "job", job: "purge" }), db),
+        h.store,
+        rows[0].id,
+        NOW,
+      ),
+    ).toBe("deleted");
+    expect(h.store.objects.has(oldKey)).toBe(false);
+    expect(h.store.objects.has(current.license_photo_key)).toBe(true);
+    expect((await db.query("SELECT id FROM file_deletions WHERE shop_id=$1", [h.f.shopId])).rows).toHaveLength(0);
+  });
+  it("전용 함수가 같은 사진 키를 받으면 삭제를 예약하지 않음", async () => {
+    const h = await fixture(),
+      photo = `shops/${h.f.shopId}/license_photo/same.jpg`;
+    await db.query("UPDATE shops SET license_photo_key=$2 WHERE id=$1", [h.f.shopId, photo]);
+    const input = await h.input();
+    expect(
+      (
+        await db.query("SELECT resubmit_shop_license($1,$2,$3,$4,$5,$6,$7,$8) AS outcome", [
+          h.f.shopId,
+          h.f.ownerId,
+          await tokenHash(h.cookie.slice(OWNER_COOKIE.length + 1)),
+          NOW,
+          input.baseRevision,
+          input.foodLicenseNo,
+          input.foodBusinessType,
+          photo,
+        ])
+      ).rows,
+    ).toEqual([{ outcome: "done" }]);
+    expect((await db.query("SELECT id FROM file_deletions WHERE shop_id=$1", [h.f.shopId])).rows).toHaveLength(0);
+  });
+  it("함수 직전 소유가 어긋나도 계약의 shop_not_registered이고 잘못된 변경은 되돌림", async () => {
+    const h = await fixture(),
+      input = await h.input(),
+      other = crypto.randomUUID();
+    await db.query("INSERT INTO owners(id,kakao_account_id) VALUES ($1,$2)", [
+      other,
+      `-${BigInt(`0x${other.replaceAll("-", "").slice(0, 12)}`).toString()}`,
+    ]);
+    const app = createApp({
+      connect: () => {
+        if (!isolated) throw new Error("시험 DB 없음");
+        const base = isolated.connect();
+        return {
+          query: (sql, params) => base.query(sql, params),
+          abort: () => base.abort(),
+          close: () => base.close(),
+          transaction: (fn) =>
+            base.transaction((tx) =>
+              fn({
+                async query(sql, params) {
+                  if (sql.startsWith("SELECT resubmit_shop_license"))
+                    await tx.query("UPDATE shops SET owner_id=$2 WHERE id=$1", [h.f.shopId, other]);
+                  return tx.query(sql, params);
+                },
+              }),
+            ),
+        };
+      },
+      services: { storage: h.store, now: () => NOW },
+      logSink: () => {},
+    });
+    const response = await app.request(
+      `${ORIGIN}/api/owner/shop/license`,
+      {
+        method: "PUT",
+        headers: {
+          cookie: h.cookie,
+          origin: ORIGIN,
+          "content-type": "application/json",
+          "Idempotency-Key": newRequestKey(),
+        },
+        body: JSON.stringify(input),
+      },
+      env,
+    );
+    await expectProblem(response, "shop_not_registered");
+    expect((await db.query("SELECT owner_id,license_status FROM shops WHERE id=$1", [h.f.shopId])).rows).toEqual([
+      { owner_id: h.f.ownerId, license_status: "on_hold" },
+    ]);
+    expect((await db.query("SELECT id FROM file_deletions WHERE shop_id=$1", [h.f.shopId])).rows).toHaveLength(0);
+    expect([...h.store.objects.keys()]).toEqual([tempKey(createOwnerScope(h.f.ownerId), input.licensePhotoUploadId)]);
   });
   it.each(["pending", "verified"])("보류가 아닌 %s는409이고 증빙 복사0", async (status) => {
     const h = await fixture(status);
@@ -226,6 +335,7 @@ describeDb("TASK-033 보류 영업 신고 재업로드", () => {
       [task, h.f.shopId, `task:license_on_hold:${task}`, NOW],
     );
     expect((await h.put(input, key, testEnv())).status).toBe(500);
+    expect((await db.query("SELECT id FROM file_deletions WHERE shop_id=$1", [h.f.shopId])).rows).toHaveLength(0);
     expect(
       (await db.query("SELECT license_photo_key,license_status FROM shops WHERE id=$1", [h.f.shopId])).rows,
     ).toEqual([{ license_photo_key: oldKey, license_status: "on_hold" }]);

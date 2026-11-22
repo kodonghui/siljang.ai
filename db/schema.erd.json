@@ -1677,7 +1677,7 @@
       "03h8dcdgozyyepdxxnkmbrubi": {
         "id": "03h8dcdgozyyepdxxnkmbrubi",
         "name": "file_deletions",
-        "comment": "TBL-054 지울 파일: 지우기(SPEC-065)가 지운 참고 사진·신고 사진의 저장 위치. 저장소에서 파일을 지운 뒤에만 행을 지우고, 실패하면 남아 다음 날 다시 지움",
+        "comment": "TBL-054 지울 파일: 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진의 저장 위치. 저장소에서 파일을 지운 뒤에만 행을 지우고, 실패하면 남아 다음 날 다시 지움",
         "columnIds": [
           "03h8dcdgp5icbzk7h099kb6x4",
           "03h8dcdgpayfxwfc2zdf85j9t",
@@ -7581,7 +7581,7 @@
         "id": "03h8dcdgpgexpr29y2q81ed9x",
         "tableId": "03h8dcdgozyyepdxxnkmbrubi",
         "name": "storage_key",
-        "comment": "저장소에서 지울 사진 파일의 저장 위치(지운 참고 사진·신고 사진 행의 storage_key). 사진의 내용·손님 정보는 두지 않음",
+        "comment": "저장소에서 지울 사진 파일의 저장 위치. 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진. 사진의 내용·손님 정보는 두지 않음",
         "dataType": "text",
         "options": 12
       },
@@ -7589,7 +7589,7 @@
         "id": "03h8dcdgplutqx36jrlipqvvp",
         "tableId": "03h8dcdgozyyepdxxnkmbrubi",
         "name": "source",
-        "comment": "지운 행: 참고 사진·신고 사진(SPEC-065)",
+        "comment": "지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진(SPEC-065)",
         "dataType": "text",
         "options": 8
       },
@@ -7597,7 +7597,7 @@
         "id": "03h8dcdgpr8hnox9it3a3vis0",
         "tableId": "03h8dcdgozyyepdxxnkmbrubi",
         "name": "queued_at",
-        "comment": "사진 행을 지운 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)",
+        "comment": "사진 행을 지우거나 신고증 사진을 바꾼 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8

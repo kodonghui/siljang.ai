@@ -19,6 +19,8 @@ it.each([
   [{ ...input, foodLicenseNo: "\0" }, "/foodLicenseNo", "bad_format"],
   [{ ...input, foodLicenseNo: "가".repeat(31) }, "/foodLicenseNo", "too_long"],
   [{ ...input, foodBusinessType: "restaurant" }, "/foodBusinessType", "not_allowed"],
+  [{ ...input, foodBusinessType: "" }, "/foodBusinessType", "not_allowed"],
+  [{ ...input, foodBusinessType: "a".repeat(101) }, "/foodBusinessType", "not_allowed"],
   [{ ...input, licensePhotoUploadId: "bad" }, "/licensePhotoUploadId", "too_short"],
   [{ ...input, licensePhotoUploadId: "a".repeat(40) }, "/licensePhotoUploadId", "bad_format"],
   [{ ...input, licenseStatus: "verified" }, "/licenseStatus", "unknown_field"],

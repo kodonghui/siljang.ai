@@ -46,11 +46,12 @@ export async function resubmitLicense(r: ShopRequest): Promise<Response> {
       await promoteUpload(store, upload, r.scope.shopId, version);
       const result = await db.found<{ outcome: string }>(
         "SELECT resubmit_shop_license($1,$2,$3,$4,$5,$6,$7,$8) AS outcome",
-        [ownerId, hash, now, current.revision, input.foodLicenseNo, input.foodBusinessType, key],
+        [ownerId, hash, now, input.baseRevision, input.foodLicenseNo, input.foodBusinessType, key],
       );
       if (result.outcome !== "done") {
-        if (["unauthenticated", "version_conflict", "invalid_state", "not_found"].includes(result.outcome))
-          throw new ApiError(result.outcome as "unauthenticated" | "version_conflict" | "invalid_state" | "not_found");
+        if (result.outcome === "not_found") throw new ApiError("shop_not_registered");
+        if (["unauthenticated", "version_conflict", "invalid_state"].includes(result.outcome))
+          throw new ApiError(result.outcome as "unauthenticated" | "version_conflict" | "invalid_state");
         throw new Error("unexpected license resubmission result");
       }
       consumed = upload;
