@@ -302,9 +302,9 @@
 .owner-login-form > .ui-button[data-kakao="true"] {
   padding: 0;
   border: 0;
-  border-radius: 12px;
-  background: #fee500;
-  color: #000000d9;
+  border-radius: var(--provider-kakao-radius);
+  background: var(--provider-kakao-container);
+  color: var(--provider-kakao-label);
 }
 
 .owner-login-form > .ui-button[data-kakao="true"] > img {

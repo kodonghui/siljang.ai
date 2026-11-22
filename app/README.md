@@ -846,3 +846,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 269. TASK-030의 카카오 공식 로그인 버튼과 360/1280 화면 검사를 이어갑니다. 공식 디자인 가이드의 PNG와 심볼/레이블 비율을 쓰며 기존 인가 주소 확인·콜백 교환·오류/재시도·돌아갈 경로 처리는 유지합니다. 실제 브라우저 확인은 학원컴 Aside CLI이며 실제 계정 로그인 성공은 TASK-020에 남겨 구분합니다.
 
 - 269 공식 버튼: [공식 가이드](https://developers.kakao.com/docs/ko/kakaologin/design-guide)와 [리소스](https://developers.kakao.com/tool/resource/login)의 ZIP에서 `Kakao Login/PNG @2x/kakao_login_kr_medium.png` 원본(448×92·1,433바이트)을 사용했습니다. `?url&no-inline`으로 빌드의 해시 자산에 포함하고 심볼/레이블 비율을 유지한 채 높이 48px, 컨테이너만 좌우로 늘립니다. 배경/모서리는 공식 가이드이며 로딩·한도·일반 오류의 공통 상태는 08을 유지합니다. 이미지 0개 실패 뒤 웹 43개·360/1280 page-check 22개가 통과했습니다. [출처/해시](../docs/records/owner-login/2026-11-22-official-button.json)와 실제 OAuth 성공은 구분합니다.
+
+- 269 토큰: `src/styles/kakao.tokens.json`의 제공자 규격 3개는 같은 CSS 생성기가 읽습니다. 고정한 09 기본 55개는 바꾸지 않고 합계 58개의 변수 일치·직접 크기/색 금지 검사를 유지합니다. 첫 전체 검사의 CSS 직접 값 실패를 이 원본 연결로 고쳤고 관련 웹 66개·page-check 22개가 통과했습니다.

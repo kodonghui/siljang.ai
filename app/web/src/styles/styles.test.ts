@@ -38,7 +38,7 @@ describe("09 토큰(design/base.tokens.json → src/styles/tokens.css)", () => {
     expect(() => execFileSync(process.execPath, [script, "--check"], { stdio: "pipe" })).not.toThrow();
   });
 
-  it("09의 토큰 55개가 모두 변수이고 밝은 화면 하나다(09 8-2절)", () => {
+  it("09의 기본 토큰 55개와 카카오 공식 규격 3개가 모두 변수이고 밝은 화면 하나다", () => {
     const source = JSON.parse(readFileSync(new URL("../../design/base.tokens.json", WEB), "utf8")) as object;
     let count = 0;
     const walk = (node: object) => {
@@ -50,7 +50,13 @@ describe("09 토큰(design/base.tokens.json → src/styles/tokens.css)", () => {
     };
     walk(source);
     expect(count).toBe(55);
-    expect(defined.size).toBe(55);
+    const base = count;
+    walk(JSON.parse(read("src/styles/kakao.tokens.json")));
+    expect(count - base).toBe(3);
+    expect(defined.size).toBe(58);
+    expect(defined.has("--provider-kakao-container")).toBe(true);
+    expect(defined.has("--provider-kakao-label")).toBe(true);
+    expect(defined.has("--provider-kakao-radius")).toBe(true);
     expect(tokens).not.toContain("prefers-color-scheme");
   });
 });
