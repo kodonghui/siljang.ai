@@ -29,10 +29,12 @@ export function operatingRulesCardTexts(clauses: readonly ClauseInput[], version
     const second = `${header}(2/2)\n${lines.slice(split).join("")}${footer}`;
     if (length(first) <= 1000 && length(second) <= 1000) return [first, second];
   }
+  const oversized = selected.filter((_clause, i) => length(`${header}(1/2)\n${lines[i]}`) > 1000);
+  const offenders = oversized.length ? oversized : selected;
   throw new ApiError("validation_failed", {
     errors: [
       { field: "/clauses", code: "exceeds_card_limit" },
-      ...selected.slice(0, 49).map((c) => ({ field: `/clauses/${c.index}`, code: "exceeds_card_limit" as const })),
+      ...offenders.slice(0, 49).map((c) => ({ field: `/clauses/${c.index}`, code: "exceeds_card_limit" as const })),
     ],
   });
 }

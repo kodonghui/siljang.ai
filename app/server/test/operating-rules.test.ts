@@ -1,8 +1,8 @@
-import { afterAll, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { type AppOptions, createApp } from "../src/app";
 import { pgConnector, type RequestDb } from "../src/db";
 import { MINOR_NOTICE, operatingRulesCardTexts, WITHDRAWAL_NOTICE } from "../src/operating-rules-card";
-import type { ClauseInput } from "../src/operating-rules-input";
+import { type ClauseInput, parseOperatingRules } from "../src/operating-rules-input";
 import { createOwnerSession } from "../src/owner-session";
 import { ApiError } from "../src/problem";
 import { createShopScope } from "../src/shop-scope";
@@ -517,5 +517,105 @@ describeDb("TASK-039 운영규정 API-020~023", () => {
     expect(
       (await db.query("SELECT count(*)::int AS n FROM operating_rules WHERE shop_id=$1", [h.shopId])).rows,
     ).toEqual([{ n: 0 }]);
+  });
+});
+
+describe("API-021 입력 경계", () => {
+  const clause = (patch: Record<string, unknown>) => ({ ...input(), clauses: [{ ...input().clauses[0], ...patch }] });
+  const tiers = (refundTiers: unknown[]) => ({
+    ...input(),
+    clauses: [
+      ...input().clauses,
+      { key: "staged_refund", position: 2, title: "단계", conditionText: "제작한 뒤", effectText: "단계 적용" },
+    ],
+    refundTiers,
+  });
+  it.each([
+    ["기한0", () => ({ ...input(), quoteValidHours: 0 }), "/quoteValidHours", "out_of_range"],
+    ["기한721", () => ({ ...input(), issueReportHours: 721 }), "/issueReportHours", "out_of_range"],
+    ["기한 소수", () => ({ ...input(), paymentDueHours: 1.5 }), "/paymentDueHours", "bad_format"],
+    ["수수료 음수", () => ({ ...input(), cancellationFeeKrw: -1 }), "/cancellationFeeKrw", "out_of_range"],
+    ["수수료 상한", () => ({ ...input(), cancellationFeeKrw: 10000001 }), "/cancellationFeeKrw", "out_of_range"],
+    ["환불 상한", () => ({ ...input(), preProductionRefundPct: 101 }), "/preProductionRefundPct", "out_of_range"],
+    ["환불 기준", () => ({ ...input(), dateChangeRefundBasis: "today" }), "/dateChangeRefundBasis", "not_allowed"],
+    ["기준 버전 형식", () => ({ ...input(), baseRevision: "abc:1" }), "/baseRevision", "bad_format"],
+    ["알 수 없는 가게", () => ({ ...input(), shopId: "synthetic" }), "/shopId", "unknown_field"],
+    ["조문 없음", () => ({ ...input(), clauses: [] }), "/clauses", "required"],
+    ["조문 키", () => clause({ key: "other" }), "/clauses/0/key", "not_allowed"],
+    ["조문 순서", () => clause({ position: 0 }), "/clauses/0/position", "out_of_range"],
+    ["제목 길이", () => clause({ title: "가".repeat(61) }), "/clauses/0/title", "too_long"],
+    ["조건 길이", () => clause({ conditionText: "가".repeat(1001) }), "/clauses/0/conditionText", "too_long"],
+    ["효과의 널 문자", () => clause({ effectText: "효과\0" }), "/clauses/0/effectText", "bad_format"],
+    [
+      "중복 조문",
+      () => ({ ...input(), clauses: [...input().clauses, { ...input().clauses[0], position: 2 }] }),
+      "/clauses/1/key",
+      "duplicate",
+    ],
+    [
+      "조문51개",
+      () => ({
+        ...input(),
+        clauses: Array.from({ length: 51 }, (_, i) => ({ ...input().clauses[0], key: "custom", position: i + 1 })),
+      }),
+      "/clauses",
+      "too_many",
+    ],
+    [
+      "단계21개",
+      () => tiers(Array.from({ length: 21 }, (_, i) => ({ hoursBeforeMin: i, hoursBeforeMax: i + 1, refundPct: 50 }))),
+      "/refundTiers",
+      "too_many",
+    ],
+    [
+      "단계 시각 상한",
+      () => tiers([{ hoursBeforeMin: 8761, hoursBeforeMax: null, refundPct: 50 }]),
+      "/refundTiers/0/hoursBeforeMin",
+      "out_of_range",
+    ],
+    [
+      "단계 비율",
+      () => tiers([{ hoursBeforeMin: 0, hoursBeforeMax: null, refundPct: -1 }]),
+      "/refundTiers/0/refundPct",
+      "out_of_range",
+    ],
+    ["낯선 확인 종류", () => ({ ...input(), confirm: ["other"] }), "/confirm/0", "not_allowed"],
+  ] as const)("%s는 필드 오류", (_name, make, field, code) => {
+    expect(() => parseOperatingRules(make())).toThrowError(
+      expect.objectContaining({
+        code: "validation_failed",
+        extras: { errors: expect.arrayContaining([{ field, code }]) },
+      }),
+    );
+  });
+
+  it("기한/금액/비율의 양 끝과 조문50개·환불 단계20개는 허용", () => {
+    const body = {
+      ...input(),
+      quoteValidHours: 1,
+      paymentDueHours: 720,
+      issueReportHours: 1,
+      changeDeadlineHours: 720,
+      cancellationFeeKrw: 10000000,
+      preProductionRefundPct: 0,
+      clauses: Array.from({ length: 50 }, (_, i) => ({
+        key: i === 0 ? "staged_refund" : "custom",
+        position: i + 1,
+        title: `조문${i}`,
+        conditionText: "조건",
+        effectText: "효과",
+      })),
+      refundTiers: Array.from({ length: 20 }, (_, i) => ({
+        hoursBeforeMin: i,
+        hoursBeforeMax: i === 19 ? null : i + 1,
+        refundPct: i === 19 ? 100 : 0,
+      })),
+    };
+    expectSchema("OperatingRulesInput", body);
+    expect(parseOperatingRules(body)).toMatchObject({
+      quoteValidHours: 1,
+      paymentDueHours: 720,
+      preProductionRefundPct: 0,
+    });
   });
 });
