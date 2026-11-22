@@ -67,8 +67,13 @@ export async function setPaymentDestination(r: ShopRequest): Promise<Response> {
     pathIds: [],
     body: raw,
     async execute(db) {
-      const shop = await db.found<{ business_name: string; representative_name: string; license_status: string }>(
-        "SELECT s.business_name,s.representative_name,s.license_status FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE",
+      const shop = await db.found<{
+        business_name: string;
+        representative_name: string;
+        license_status: string;
+        license_reviewed_at: Date | null;
+      }>(
+        "SELECT s.business_name,s.representative_name,s.license_status,s.license_reviewed_at FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE",
       );
       const previous = await current(db);
       if (input.baseRevision !== (previous?.revision ?? null)) throw new ApiError("version_conflict");
@@ -88,8 +93,17 @@ export async function setPaymentDestination(r: ShopRequest): Promise<Response> {
           };
       }
       const matchesIdentity = input.holderName === shop.business_name || input.holderName === shop.representative_name;
-      // 운영자가 확인한 현재 예금주도 허용한다. 같은 이름으로 바꾸면 확인 근거를 새 행에 보존한다.
-      const matchesChecked = previous?.holder_checked_at != null && previous.holder_name === input.holderName;
+      // 지금 영업 신고의 검토 이후 운영자가 확인한 이름도 허용한다. 서버 역할은 확인 이력을 새로 만들지 않는다.
+      const checked =
+        shop.license_status === "verified"
+          ? (
+              await db.run(
+                "SELECT p.id FROM payment_accounts p WHERE p.shop_id=$1 AND p.holder_name=$2 AND p.holder_checked_at >= $3 LIMIT 1",
+                [input.holderName, shop.license_reviewed_at],
+              )
+            ).rows[0]
+          : undefined;
+      const matchesChecked = checked !== undefined;
       if (shop.license_status === "verified" && !matchesIdentity && !matchesChecked)
         throw new ApiError("holder_not_verified");
       if (!matchesIdentity && !matchesChecked && !input.confirm.includes("holder_mismatch"))
@@ -103,31 +117,30 @@ export async function setPaymentDestination(r: ShopRequest): Promise<Response> {
       if (previous)
         await db.run("UPDATE payment_accounts SET retired_at=$3 WHERE shop_id=$1 AND id=$2", [previous.id, now]);
       const row = await db.found<AccountRow>(
-        `INSERT INTO payment_accounts (shop_id,bank_name,account_number_enc,account_last4,holder_name,holder_mismatch_confirmed,card_payment_url,holder_checked_by,holder_checked_at,created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *,xmin::text AS revision`,
+        `INSERT INTO payment_accounts (shop_id,bank_name,account_number_enc,account_last4,holder_name,holder_mismatch_confirmed,card_payment_url,created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *,xmin::text AS revision`,
         [
           input.bankName,
           account.enc,
           account.last4,
           input.holderName,
-          matchesIdentity ? null : true,
+          matchesIdentity
+            ? null
+            : input.confirm.includes("holder_mismatch") ||
+                (previous?.holder_name === input.holderName && previous.holder_mismatch_confirmed === true)
+              ? true
+              : null,
           input.cardPaymentUrl,
-          matchesChecked ? previous?.holder_checked_by : null,
-          matchesChecked ? previous?.holder_checked_at : null,
           now,
         ],
       );
-      if (shop.license_status === "on_hold")
-        await db.run(
-          "UPDATE shops SET license_status='pending',license_hold_reason=NULL,license_reviewed_by=NULL,license_reviewed_at=NULL,updated_at=$2 WHERE id=$1",
-          [now],
-        );
+      // 보류 해제는 새 계좌의 INSERT 트리거가 하며 서버 역할에 일반 승인 권한을 주지 않는다.
       if (previous)
         await insertOnce(
           db,
           "owner_alerts",
-          `INSERT INTO owner_alerts (shop_id,event_key,kind,next_attempt_at,created_at)
-         VALUES ($1,$2,'payment_account_changed',$3,$3) ON CONFLICT (shop_id,event_key) DO NOTHING RETURNING id`,
+          `INSERT INTO owner_alerts (shop_id, event_key, kind, next_attempt_at, created_at)
+         VALUES ($1, $2, 'payment_account_changed', $3, $3) ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id`,
           [eventKeys.alert("payment_account_changed", row.id), now],
         );
       return {

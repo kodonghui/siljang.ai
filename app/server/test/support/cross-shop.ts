@@ -2,6 +2,7 @@ import type { Hono } from "hono";
 import { expect } from "vitest";
 import type { HonoEnv } from "../../src/app";
 import type { Queryable } from "../../src/db";
+import type { FieldCrypto } from "../../src/field-crypto";
 import { deriveKakaoSkillKey } from "../../src/kakao-skill-auth";
 import { REQUEST_KEY_HEADER } from "../../src/request-key";
 import { type Method, type RouteDecl, routeKey } from "../../src/routes";
@@ -68,7 +69,19 @@ interface PriceShopCase {
   readonly kind: "prices";
 }
 
-export type CrossShopCase = OwnerCrossShopCase | SkillCrossShopCase | OwnShopCase | CalendarShopCase | PriceShopCase;
+interface PaymentShopCase {
+  readonly method: "GET" | "PUT";
+  readonly path: "/owner/payment-destination";
+  readonly kind: "payment";
+}
+
+export type CrossShopCase =
+  | OwnerCrossShopCase
+  | SkillCrossShopCase
+  | OwnShopCase
+  | CalendarShopCase
+  | PriceShopCase
+  | PaymentShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   ...["message", "card", "review", "event"].map(
@@ -80,6 +93,8 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
       }) as const,
   ),
   { method: "GET", path: "/owner/shop", kind: "self" },
+  { method: "GET", path: "/owner/payment-destination", kind: "payment" },
+  { method: "PUT", path: "/owner/payment-destination", kind: "payment" },
   { method: "GET", path: "/owner/calendar", kind: "calendar" },
   { method: "PUT", path: "/owner/calendar", kind: "calendar" },
   { method: "GET", path: "/owner/calendar/days", kind: "calendar" },
@@ -113,6 +128,7 @@ export function undeclaredRoutes(app: Hono<HonoEnv>, routes: readonly RouteDecl[
 }
 
 export interface CrossShopEnv {
+  readonly fieldCrypto?: FieldCrypto;
   readonly app: Hono<HonoEnv>;
   /** 부르는 사장님의 가게. */
   readonly a: ShopFixture;
@@ -201,6 +217,50 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "payment") {
+      if (!env.fieldCrypto) throw new Error("계좌 시험 키 없음");
+      const ownNumber = "123456-01-234567",
+        otherNumber = "999999-98-765432";
+      for (const [shop, number] of [
+        [env.a, ownNumber],
+        [env.b, otherNumber],
+      ] as const) {
+        const enc = await env.fieldCrypto.seal(number, {
+          shopId: shop.shopId,
+          purpose: "payment_accounts.account_number",
+        });
+        await db.query("UPDATE payment_accounts SET account_number_enc=$2 WHERE shop_id=$1 AND retired_at IS NULL", [
+          shop.shopId,
+          enc,
+        ]);
+      }
+      const before = await snapshots(db, env);
+      const current = await send(env, "GET", {
+        url: `${c.path}?shopId=${env.b.shopId}&paymentAccountId=${env.b.paymentAccountId}`,
+      });
+      expect(current.status, current.text).toBe(200);
+      expect(current.body?.accountNumber).toBe(ownNumber);
+      expect(current.text).not.toContain(otherNumber);
+      expect(current.text).not.toContain(env.b.paymentAccountId);
+      if (c.method === "PUT") {
+        const body = {
+          baseRevision: current.body?.revision,
+          bankName: "가게A 은행",
+          accountNumber: "222222-01-234567",
+          holderName: "시험사장",
+          cardPaymentUrl: null,
+        };
+        const wrong = await send(env, "PUT", { url: c.path, body: { ...body, shopId: env.b.shopId } });
+        expect(wrong.status, wrong.text).toBe(422);
+        expect(await snapshots(db, env)).toEqual(before);
+        const own = await send(env, "PUT", { url: `${c.path}?shopId=${env.b.shopId}`, body });
+        expect(own.status, own.text).toBe(200);
+        expect(own.text).not.toContain(otherNumber);
+        const after = await snapshots(db, env);
+        expect(after[1]).toEqual(before[1]);
+      } else expect(await snapshots(db, env)).toEqual(before);
+      return;
+    }
     if (c.kind === "prices") {
       if (c.path.endsWith(":version"))
         await db.query("UPDATE price_lists SET version = 1000 WHERE shop_id = $1", [env.b.shopId]);

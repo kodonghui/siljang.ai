@@ -16,7 +16,7 @@ export function parsePaymentDestination(raw: unknown): PaymentDestinationInput {
   const input = raw as Record<string, unknown>;
   const errors: FieldError[] = [];
   const required = ["baseRevision", "bankName", "accountNumber", "holderName", "cardPaymentUrl"];
-  for (const key of required) if (!Object.hasOwn(input, key)) errors.push({ field: `/${key}`, code: "required" });
+  for (const key of required) if (input[key] === undefined) errors.push({ field: `/${key}`, code: "required" });
   for (const key of Object.keys(input)) {
     if (!required.includes(key) && key !== "confirm")
       errors.push({ field: /^[A-Za-z0-9_]{1,100}$/.test(key) ? `/${key}` : "/", code: "unknown_field" });

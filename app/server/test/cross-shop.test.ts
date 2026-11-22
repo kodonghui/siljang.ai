@@ -17,6 +17,7 @@ import {
   undeclaredRoutes,
 } from "./support/cross-shop";
 import { describeDb, newRequestKey, newUuid, testDb, testEnv } from "./support/db";
+import { singleKeyCrypto } from "./support/field-keys";
 import { createShopPair, type ShopFixture, snapshotShop } from "./support/shops";
 
 // 교차 가게 시험 묶음(TASK-019; 04 SPEC-068 수락 기준 1·2, G1; 05 A9; 06 DEC-02).
@@ -257,8 +258,9 @@ describeDb("교차 가게 시험 묶음(SPEC-068, G1, 06 DEC-02)", () => {
 
   beforeAll(async () => {
     const { a, b } = await createShopPair(db);
-    const app = createApp({ routes: SUITE_ROUTES, scopes: testScopes([a, b]) });
-    env = { app, a, b, as: (f) => ({ [OWNER_HEADER]: f.ownerId }) };
+    const { fc } = singleKeyCrypto();
+    const app = createApp({ routes: SUITE_ROUTES, scopes: testScopes([a, b]), services: { fieldCrypto: fc } });
+    env = { app, a, b, fieldCrypto: fc, as: (f) => ({ [OWNER_HEADER]: f.ownerId }) };
   });
 
   afterAll(async () => {
