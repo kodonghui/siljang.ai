@@ -892,3 +892,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 275. TASK-041 후속 변경은 예약 링크의60일 날짜 상태와 같은 날짜 잠금 안의 새 자리 판정을 제공합니다. 미발송 안내 시각을 바꾼 뒤 시작된 시도의 임대 표는 유지하되 새 예정 시각 전에 찾지 않도록 확인합니다. 아직 없는 함수의 시험2건 실패부터 시작하며 실제 Aside 연결 중단과 미적용 권한은 유지합니다.
 
 - 275 calendarBookingDays는 예약 링크의60일 공개 상태만, lockedCalendarSlotStatus는 같은 트랜잭션의 날짜 잠금 뒤 판정을 반환합니다. 자리 확보/추가 수락의 다른 조건은 TASK-082가 확인합니다. 시각을 바꾼 안내는 notification_send의 찾기/잡기 둘 다 scheduled_for와 next_attempt_at이 지나야 합니다. 합성 실행기에서11시0건/15시반복1건과 기존 시도 표 보존을 확인했으며 관련92개·타입/lint가 통과했습니다.
+
+- 275 전체 확인: 서버82파일/1,469개·웹11파일/237개·타입/lint·빌드1.15초/Worker dry-run이 통과했습니다. 공개 날짜·마감 판정과 예정 시각 찾기를 확인한 모듈이며 전체 예약/실제 발송 성공으로 적지 않습니다. 실제 계정/기존 역할 확인은 Aside 연결 복구 뒤입니다.
