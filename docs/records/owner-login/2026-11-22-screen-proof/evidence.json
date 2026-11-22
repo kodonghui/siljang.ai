@@ -1,0 +1,132 @@
+{
+  "checkedAtKst": "2026-11-22T23:20:11+09:00",
+  "site": "https://staging.siljang.ai.corthex-hq.com",
+  "deployedMain": "6f0d2eae32879bf004be434fd6aab6a4965a3c49",
+  "tool": "학원컴 Aside CLI 1.26.1121.1917",
+  "screens": [
+    {
+      "state": "normal",
+      "width": 360,
+      "height": 800,
+      "assetStatus": 200,
+      "imageNaturalWidth": 448,
+      "imageNaturalHeight": 92,
+      "buttonHeight": 48,
+      "ratioPreserved": true,
+      "horizontalOverflow": false,
+      "visibleLayoutError": false,
+      "consoleError": false,
+      "queryRemoved": false
+    },
+    {
+      "state": "normal",
+      "width": 1280,
+      "height": 800,
+      "assetStatus": 200,
+      "imageNaturalWidth": 448,
+      "imageNaturalHeight": 92,
+      "buttonHeight": 48,
+      "ratioPreserved": true,
+      "horizontalOverflow": false,
+      "visibleLayoutError": false,
+      "consoleError": false,
+      "queryRemoved": false
+    },
+    {
+      "state": "denied",
+      "width": 360,
+      "height": 800,
+      "assetStatus": 200,
+      "imageNaturalWidth": 448,
+      "imageNaturalHeight": 92,
+      "buttonHeight": 48,
+      "ratioPreserved": true,
+      "horizontalOverflow": false,
+      "visibleLayoutError": false,
+      "consoleError": false,
+      "queryRemoved": true
+    },
+    {
+      "state": "denied",
+      "width": 1280,
+      "height": 800,
+      "assetStatus": 200,
+      "imageNaturalWidth": 448,
+      "imageNaturalHeight": 92,
+      "buttonHeight": 48,
+      "ratioPreserved": true,
+      "horizontalOverflow": false,
+      "visibleLayoutError": false,
+      "consoleError": false,
+      "queryRemoved": true
+    }
+  ],
+  "authorization": {
+    "buttonClicks": 1,
+    "destinationHost": "accounts.kakao.com",
+    "destinationPath": "/login/",
+    "result": "Vault 잠금으로 중단",
+    "loginSuccessVerified": false,
+    "me200Verified": false,
+    "logoutVerified": false,
+    "me401AfterLogoutVerified": false
+  },
+  "localMockPageCheck": {
+    "pages": 22,
+    "widths": [
+      360,
+      1280
+    ],
+    "pass": true,
+    "errors": 0,
+    "overflow": 0,
+    "consoleErrors": 0
+  },
+  "files": [
+    {
+      "file": "TASK-030-denied-1280x800.png",
+      "bytes": 14718,
+      "sha256": "3188b544c1d88d0f96eab7f95de46d8037058cd887e9ca341073df148fcd524f"
+    },
+    {
+      "file": "TASK-030-denied-1280x800.snapshot.txt",
+      "bytes": 346,
+      "sha256": "3bff1b17196acdadb2b2f646962fffa1719c92b69477ccdbd58a6bc64a5b6712"
+    },
+    {
+      "file": "TASK-030-denied-360x800.png",
+      "bytes": 12119,
+      "sha256": "0df774d8ed12f1bb30cfe8be16357742336e43239046af4e52cd64d2c37c0767"
+    },
+    {
+      "file": "TASK-030-denied-360x800.snapshot.txt",
+      "bytes": 346,
+      "sha256": "3bff1b17196acdadb2b2f646962fffa1719c92b69477ccdbd58a6bc64a5b6712"
+    },
+    {
+      "file": "TASK-030-normal-1280x800.png",
+      "bytes": 12854,
+      "sha256": "b1fd3f47279635ffb4f193c66c4502a5ab68eced605ae8f7bcc67689d478b72a"
+    },
+    {
+      "file": "TASK-030-normal-1280x800.snapshot.txt",
+      "bytes": 280,
+      "sha256": "b71180c0cbd1963d2657da6ffc9a7fce16afd822b3598af51c6cc932a90dba61"
+    },
+    {
+      "file": "TASK-030-normal-360x800.png",
+      "bytes": 10372,
+      "sha256": "3f4a6757077f0533d858855716fe96c5a8cba0ecdaa7547a7b3576fe3a41bb5b"
+    },
+    {
+      "file": "TASK-030-normal-360x800.snapshot.txt",
+      "bytes": 280,
+      "sha256": "b71180c0cbd1963d2657da6ffc9a7fce16afd822b3598af51c6cc932a90dba61"
+    },
+    {
+      "file": "page-check.json",
+      "bytes": 3170,
+      "sha256": "711d69c0a4d5a8eda786d11eacdcbe69936ce2be207eb10374c749fede114bab"
+    }
+  ]
+}
