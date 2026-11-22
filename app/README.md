@@ -932,3 +932,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 - 278 최소 권한: 관련71개가 통과했습니다. 새 규정/조문/단계 SELECT·INSERT와 이전 규정 superseded_at UPDATE만 허용하고 이전 항목 수정·삭제는 금지됩니다. 실제 새2문장은 Aside 연결 복구 뒤 적용/확인합니다.
 
 - 278 전체 확인: 서버85파일/1,620개·웹237개·타입/lint·빌드823ms/Worker dry-run이 통과했습니다. [수락 대조](../docs/records/operating-rules/task-039-acceptance.md)는 API 제공과 입력 화면/카드 발송·실제 계정 확인을 구분합니다. 새 권한2문장은 아직 실제 미적용입니다.
+
+- 278 리뷰 처리: 코드/보안 리뷰2073b406(보안0건) 뒤 실패6건을 보존했습니다. 카드 한도 우선/원문과 한 줄 표시/넘친 조문/두 버전의 동일 시각/표마다 일괄 INSERT를 고쳐 관련144개가 통과했습니다. 최종 전체 앱과 CI는 이어 확인합니다.

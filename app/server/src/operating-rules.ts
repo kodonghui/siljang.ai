@@ -191,16 +191,14 @@ export async function createOperatingRulesVersion(r: ShopRequest): Promise<Respo
           ref: { operatingRulesId: previous.id },
           body: { outcome: "unchanged", operatingRules: await render(db, previous) },
         };
-      if (input.preProductionRefundPct < 100 && !input.confirm.includes("lowered_refund"))
-        throw new ApiError("confirmation_required", { confirm: [{ kind: "lowered_refund" }] });
       if ((previous?.version ?? 0) >= 2147483647) throw fieldError("/", "out_of_range");
       const version = (previous?.version ?? 0) + 1;
       operatingRulesCardTexts(input.clauses, version);
+      if (input.preProductionRefundPct < 100 && !input.confirm.includes("lowered_refund"))
+        throw new ApiError("confirmation_required", { confirm: [{ kind: "lowered_refund" }] });
+      const now = r.services.now();
       if (previous)
-        await db.run("UPDATE operating_rules SET superseded_at=$3 WHERE shop_id=$1 AND id=$2", [
-          previous.id,
-          r.services.now(),
-        ]);
+        await db.run("UPDATE operating_rules SET superseded_at=$3 WHERE shop_id=$1 AND id=$2", [previous.id, now]);
       const head = await db.found<Head>(
         `INSERT INTO operating_rules (shop_id,version,quote_valid_hours,payment_due_hours,issue_report_hours,change_deadline_hours,cancellation_fee_krw,pre_production_refund_pct,pre_production_lowered_ack,date_change_refund_basis,created_at)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *,xmin::text AS revision`,
@@ -214,18 +212,35 @@ export async function createOperatingRulesVersion(r: ShopRequest): Promise<Respo
           input.preProductionRefundPct,
           input.preProductionRefundPct < 100,
           input.dateChangeRefundBasis,
-          r.services.now(),
+          now,
         ],
       );
-      for (const c of input.clauses)
+      if (input.clauses.length)
         await db.run(
-          "INSERT INTO rule_clauses (shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-          [head.id, c.key, c.position, c.title, c.conditionText, c.effectText],
+          `INSERT INTO rule_clauses (shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text)
+            SELECT $1,$2,c.clause_key,c.position,c.title,c.condition_text,c.effect_text
+            FROM unnest($3::text[],$4::smallint[],$5::text[],$6::text[],$7::text[])
+              AS c(clause_key,position,title,condition_text,effect_text)`,
+          [
+            head.id,
+            input.clauses.map((c) => c.key),
+            input.clauses.map((c) => c.position),
+            input.clauses.map((c) => c.title),
+            input.clauses.map((c) => c.conditionText),
+            input.clauses.map((c) => c.effectText),
+          ],
         );
-      for (const t of input.refundTiers)
+      if (input.refundTiers.length)
         await db.run(
-          "INSERT INTO refund_tiers (shop_id,operating_rules_id,hours_before_min,hours_before_max,refund_pct) VALUES ($1,$2,$3,$4,$5)",
-          [head.id, t.hoursBeforeMin, t.hoursBeforeMax, t.refundPct],
+          `INSERT INTO refund_tiers (shop_id,operating_rules_id,hours_before_min,hours_before_max,refund_pct)
+            SELECT $1,$2,t.minimum,t.maximum,t.percentage FROM unnest($3::integer[],$4::integer[],$5::smallint[])
+              AS t(minimum,maximum,percentage)`,
+          [
+            head.id,
+            input.refundTiers.map((t) => t.hoursBeforeMin),
+            input.refundTiers.map((t) => t.hoursBeforeMax),
+            input.refundTiers.map((t) => t.refundPct),
+          ],
         );
       return {
         status: 201,

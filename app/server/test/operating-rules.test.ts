@@ -84,6 +84,20 @@ async function fixture(options: AppOptions = {}) {
 describeDb("TASK-039 운영규정 API-020~023", () => {
   afterAll(async () => db.close());
 
+  it("카드 한도에는 실제 버전 머리 줄이 들어가며 자릿수가 늘면 다시 검사함", () => {
+    const clause: ClauseInput = {
+      key: "custom",
+      position: 1,
+      title: "제목",
+      conditionText: "조건",
+      effectText: "가".repeat(950),
+    };
+    const first = operatingRulesCardTexts([clause], 9)[0] ?? "";
+    clause.effectText += "가".repeat(1000 - [...first].length);
+    expect([...(operatingRulesCardTexts([clause], 9)[0] ?? "")]).toHaveLength(1000);
+    expect(() => operatingRulesCardTexts([clause], 10)).toThrowError(ApiError);
+  });
+
   it("조문50개/환불 단계20개는 표마다 한 번에 넣고 순서를 보존함", async () => {
     let clauseWrites = 0,
       tierWrites = 0;
