@@ -2,7 +2,7 @@
 
 <!-- build_wbs.py가 research/cake-wbs-2026-11/wbs_rows.py에서 생성. 손으로 고치지 않음 -->
 
-작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 31개.
+작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 32개.
 
 읽는 법과 나눈 방식은 [README](README.md)에 있습니다. '닿는 것'은 만드는 API, 쓰고 읽는 테이블, 만드는 화면입니다. '끝난 조건'의 첫 줄은 손으로 쓴 조건이고, 수락 기준·응답 코드·스킬 결과·화면 상태·응답 행·규칙 줄은 원본에서 생성합니다. 화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다. 끝난 작업은 끝난 조건 맨 앞에 '끝남'과 끝난 날·증거가 붙습니다.
 
@@ -80,7 +80,7 @@
 
 | ID | 작업 | 출처 | 닿는 것 | 앞선 작업 | 맡은 이 | 크기 | 끝난 조건 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TASK-032 | 가게 등록과 내 가게 조회 | SPEC-002 | API-008, API-009, TBL-003, TBL-050 | TASK-019, TASK-022, TASK-020 | Claude | 1일 | SPEC-002 수락 기준 #1~#4: 자동 시험 통과<br/>API-008 응답(201·401·409·422·503·default)마다 통과하는 시험<br/>API-009 응답(200·401·404·default)마다 통과하는 시험 |
+| TASK-032 | 가게 등록과 내 가게 조회 | SPEC-002 | API-008, API-009, TBL-003, TBL-050, TBL-058 | TASK-019, TASK-022, TASK-020 | Claude | 1일 | 끝남: 2026-11-22, PR #166. SPEC-002 #1~#4와 API-008/009 응답별·중복/동시·사진 실패 보상·가게 범위·제한 역할 자동 시험. docs/records/shop-registration/task-032-acceptance.md<br/>SPEC-002 수락 기준 #1~#4: 자동 시험 통과<br/>API-008 응답(201·401·409·422·503·default)마다 통과하는 시험<br/>API-009 응답(200·401·404·default)마다 통과하는 시험 |
 | TASK-033 | 보류된 영업 신고 다시 올리기 | SPEC-003 | API-011, TBL-002, TBL-003, TBL-015, TBL-042, TBL-043, TBL-050 | TASK-032 | Claude | 0.5일 | API-011 응답(200·401·404·409·422·default)마다 통과하는 시험 |
 | TASK-034 | 운영자의 영업 신고 확인·보류 | SPEC-003 | API-012, API-013, API-014, TBL-002, TBL-003, TBL-015, TBL-042, TBL-043, TBL-050 | TASK-021, TASK-032 | Claude | 2일 | SPEC-003 수락 기준 #1~#3: 자동 시험 통과<br/>API-012 응답(200·401·422·default)마다 통과하는 시험<br/>API-013 응답(200·401·404·default)마다 통과하는 시험<br/>API-014 응답(200·401·404·409·422·default)마다 통과하는 시험 |
 | TASK-035 | 운영자 알림 | SPEC-008, SPEC-010, SPEC-017 | API-015, TBL-003, TBL-004, TBL-005, TBL-006, TBL-010, TBL-013, TBL-015, TBL-016, TBL-017, TBL-018, TBL-027, TBL-048, TBL-051 | TASK-021 | Claude | 0.5일 | API-015 응답(200·401·422·default)마다 통과하는 시험 |
@@ -562,7 +562,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TBL-055 | `handoff_questions` | TASK-017, TASK-073, TASK-074, TASK-077, TASK-158 |
 | TBL-056 | `order_draft_extras` | TASK-017, TASK-067, TASK-077, TASK-091, TASK-158 |
 | TBL-057 | `order_detail_extras` | TASK-017, TASK-083, TASK-132 |
-| TBL-058 | `shop_identity_changes` | TASK-017, TASK-036 |
+| TBL-058 | `shop_identity_changes` | TASK-017, TASK-032, TASK-036 |
 | TBL-059 | `operator_sessions` | TASK-020, TASK-021 |
 | TBL-060 | `operator_login_failures` | TASK-020, TASK-021 |
 | TBL-061 | `owner_sessions` | TASK-020, TASK-021 |
