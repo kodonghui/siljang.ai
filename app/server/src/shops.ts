@@ -1,5 +1,5 @@
-import { requireJson } from "./body";
 /** 가게 등록/조회(API-008·009). 등록 전 쓰기는 사장님 전용 기능, 읽기는 가게 범위만 사용한다. */
+import { requireJson } from "./body";
 import { ApiError, fieldError } from "./problem";
 import type { OwnerRequest, ShopRequest } from "./routes";
 import type { Services } from "./services";

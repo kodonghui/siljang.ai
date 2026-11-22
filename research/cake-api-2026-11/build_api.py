@@ -144,7 +144,7 @@ def problem(o, status, code, *, fields=None, detail=None, kinds=None):
         items, words = [], []
         for kind in kinds or o["confirm"]:
             item = {"kind": kind, **CONFIRM_FACTS.get(kind, {})}
-            if o["id"] == "API-027":
+            if o["multi_day_confirm"]:
                 item.pop("day", None)
             items.append(item)
             words.append(C.CONFIRMATIONS[kind]["message"].format(count=item.get("count", "")))

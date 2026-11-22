@@ -231,7 +231,7 @@ async function renderDay(db: ShopDb, calendar: CalendarRow, day: string, row: Da
     calendar.revision,
     day,
     row?.revision ?? null,
-    holds.map((h) => [h.id, h.status, h.overbooked, h.order_status, h.pickup_at.toISOString()]),
+    holds.map((h) => [h.id, h.status === "done", h.overbooked]),
   ]);
   return {
     ...dayValues(calendar, day, row, holds),

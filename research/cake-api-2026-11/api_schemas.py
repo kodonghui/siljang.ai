@@ -640,7 +640,7 @@ S["CalendarDay"] = all_required({
 })
 S["CalendarDayList"] = all_required({"items": arr(ref("CalendarDay"), 0, 62)})
 S["CalendarDayInput"] = obj({
-    "baseRevision": nullable(BASE_REVISION),
+    "baseRevision": nullable(dict(BASE_REVISION, description="API-029는 날짜 행이 없어도 API-028 GET의 revision을 그대로 보냄. null은 현재 revision과 달라 409 version_conflict이며 다시 조회해 문자열 값을 보내야 함(DEC-05, G3)")),
     "closed": boolean("날짜별 휴무", col="calendar_days.closed"),
     "capacityOverride": nullable(integer(0, 100, col="calendar_days.capacity")),
     "manuallyClosed": boolean("그날 주문 마감(SPEC-012). 풀면 다시 잡음"),
