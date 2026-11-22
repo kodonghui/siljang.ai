@@ -312,6 +312,24 @@ export async function checkUploads(
   return taken;
 }
 
+/** 영업 신고증/사업자 증빙의 용도·크기·종류를 등록과 변경 요청에서 함께 검사한다. */
+export async function checkLicensePhoto(
+  store: ObjectStore,
+  owner: OwnerScope,
+  id: string,
+  field: string,
+  now: Date,
+): Promise<TakenUpload> {
+  const upload = (await checkUploads(store, owner, [{ id, field, purpose: "license_photo" }], now))[0];
+  if (
+    !upload ||
+    upload.byteSize > UPLOAD_RULES.license_photo.maxBytes ||
+    !UPLOAD_RULES.license_photo.types.includes(upload.contentType)
+  )
+    throw fieldError(field, "upload_not_found");
+  return upload;
+}
+
 /**
  * 올린 파일을 가게의 영구 위치(permanentKey)로 복사하고 그 저장 위치를 돌려준다. 명령은 이 값을 자기 행에 쓴다.
  * 그 사이 임시 파일이 없어졌으면 그 필드의 upload_not_found, 저장소가 답하지 않으면 StorageUnavailableError(503).

@@ -3,6 +3,7 @@
 import { parseDecisionReview, parseReviewQueue } from "./license-review-input";
 import { ApiError, type FieldError, fieldError } from "./problem";
 import { businessRegChecksum } from "./shop-input";
+import { SHOP_IDENTITY_TEXT, SHOP_PHOTO_UPLOAD_RULE } from "./shop-validation";
 
 export const parseIdentityChangeList = (query: Record<string, string>) =>
   parseReviewQueue(query, ["pending", "applied", "on_hold"] as const, "not_allowed");
@@ -22,10 +23,8 @@ export function parseIdentityChange(raw: unknown): IdentityChangeInput {
     errors: FieldError[] = [];
   const rules = {
     baseRevision: { min: 1, max: 64, pattern: /^[A-Za-z0-9._-]+$/ },
-    businessName: { min: 1, max: 60 },
-    representativeName: { min: 1, max: 30 },
-    businessRegNo: { min: 10, max: 10, pattern: /^[0-9]{10}$/ },
-    evidencePhotoUploadId: { min: 24, max: 204, pattern: /^upl_[A-Za-z0-9_-]{20,200}$/ },
+    ...SHOP_IDENTITY_TEXT,
+    evidencePhotoUploadId: SHOP_PHOTO_UPLOAD_RULE,
   };
   for (const [key, rule] of Object.entries(rules)) {
     const value = input[key],

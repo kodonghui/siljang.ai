@@ -8,6 +8,12 @@ export interface ShopTextRule {
   nullable?: true;
   allowed?: readonly string[];
 }
+export const SHOP_IDENTITY_TEXT = {
+  businessName: { min: 1, max: 60 },
+  representativeName: { min: 1, max: 30 },
+  businessRegNo: { min: 10, max: 10, pattern: /^[0-9]{10}$/ },
+} as const satisfies Record<string, ShopTextRule>;
+export const SHOP_PHOTO_UPLOAD_RULE = { min: 24, max: 204, pattern: /^upl_[A-Za-z0-9_-]{20,200}$/ };
 export const SHOP_COMMON_TEXT = {
   name: { min: 1, max: 40 },
   contactPhone: { min: 8, max: 14, pattern: /^[0-9-]{8,14}$/ },

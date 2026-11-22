@@ -257,7 +257,7 @@ describe("06 계약과 운영자 범위 경로(TASK-021)", () => {
         declared.push("API-004");
       }
     }
-    expect(declared.sort()).toEqual(["API-004", "API-005", "API-006", "API-012", "API-081", "API-082"]);
+    expect(declared.sort()).toEqual(["API-004", "API-005", "API-006", "API-012", "API-015", "API-081", "API-082"]);
     // 운영자 범위 경로는 모두 06에 있음(계약 밖 운영자 경로 없음).
     for (const decl of APP_ROUTES.filter((r) => r.kind === "operator")) {
       expect(operations.some((o) => o.method === decl.method && o.path === decl.path)).toBe(true);

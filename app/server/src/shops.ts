@@ -1,12 +1,12 @@
 /** 가게 등록/조회(API-008·009). 등록 전 쓰기는 사장님 전용 기능, 읽기는 가게 범위만 사용한다. */
 import { requireJson } from "./body";
-import { ApiError, fieldError } from "./problem";
+import { ApiError } from "./problem";
 import type { OwnerRequest, ShopRequest } from "./routes";
 import type { Services } from "./services";
 import { parseShopRegistration } from "./shop-input";
 import type { ShopDb } from "./shop-scope";
 import { toShopIso } from "./time";
-import { checkUploads, discardUpload, permanentKey, promoteUpload, type TakenUpload, UPLOAD_RULES } from "./uploads";
+import { checkLicensePhoto, discardUpload, permanentKey, promoteUpload, type TakenUpload } from "./uploads";
 
 export interface ShopRow {
   id: string;
@@ -135,19 +135,7 @@ export async function registerShop(r: OwnerRequest): Promise<Response> {
       await db.lock();
       if (await db.find()) throw new ApiError("already_registered");
       const store = r.services.storage();
-      const uploads = await checkUploads(
-        store,
-        r.owner,
-        [{ id: input.licensePhotoUploadId, field: "/licensePhotoUploadId", purpose: "license_photo" }],
-        now,
-      );
-      const upload = uploads[0];
-      if (
-        !upload ||
-        upload.byteSize > UPLOAD_RULES.license_photo.maxBytes ||
-        !UPLOAD_RULES.license_photo.types.includes(upload.contentType)
-      )
-        throw fieldError("/licensePhotoUploadId", "upload_not_found");
+      const upload = await checkLicensePhoto(store, r.owner, input.licensePhotoUploadId, "/licensePhotoUploadId", now);
       const id = crypto.randomUUID();
       const key = permanentKey(id, "license_photo", upload.uploadId);
       // 복사 응답을 잃어도 실제 객체가 생겼을 수 있어 정리 후보를 먼저 기록한다.
