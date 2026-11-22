@@ -2,6 +2,8 @@ import { afterAll, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { DbConnector, RequestDb } from "../src/db";
 import { parseLicenseReview, parseReviewList, reviewCursor } from "../src/license-review-input";
+import { OWNER_COOKIE } from "../src/owner-oauth";
+import { createOwnerSession } from "../src/owner-session";
 import { expectProblem, expectSchema } from "./support/contract";
 import { collectLogs, describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -194,6 +196,91 @@ describeDb("TASK-034 운영자의 영업 신고 확인 API-012/013/014", () => {
       "unauthenticated",
     );
   });
+  it("실제로 내 정보를 읽는 사장님 세션도 운영자 목록/상세/검토를 열지 못함", async () => {
+    const h = await fixture(),
+      row = (
+        await db.query<{ kakao_account_id: string }>("SELECT kakao_account_id FROM owners WHERE id=$1", [
+          h.shop.ownerId,
+        ])
+      ).rows[0];
+    if (!row) throw new Error("합성 사장님 없음");
+    const session = await createOwnerSession(db, { accountId: row.kakao_account_id, friend: false }, NOW, false),
+      headers = {
+        cookie: `${OWNER_COOKIE}=${session.token}`,
+        origin: ORIGIN,
+        "content-type": "application/json",
+        "Idempotency-Key": newRequestKey(),
+      },
+      env = testEnv();
+    expect((await h.app.request(`${ORIGIN}/api/owner/me`, { headers }, env)).status).toBe(200);
+    for (const [method, path] of [
+      ["GET", "/operator/shops"],
+      ["GET", h.path],
+      ["POST", `${h.path}/license-review`],
+    ] as const)
+      await expectProblem(
+        await h.app.request(
+          `${ORIGIN}/api${path}`,
+          {
+            method,
+            headers,
+            ...(method === "POST" ? { body: JSON.stringify({ baseRevision: "stale", decision: "verified" }) } : {}),
+          },
+          env,
+        ),
+        "unauthenticated",
+      );
+  });
+  it.each(["list", "detail", "review"])("DB가 끊긴 %s는 내부 값을 숨긴500임", async (kind) => {
+    const fail = async (): Promise<never> => {
+      throw new Error("private-database-failure-marker");
+    };
+    const h = await fixture({
+      connect: () => ({ query: fail, transaction: fail, abort: async () => {}, close: async () => {} }),
+    });
+    const path = kind === "list" ? "/operator/shops" : `${h.path}${kind === "review" ? "/license-review" : ""}`;
+    const response = await h.call(
+      kind === "review" ? "POST" : "GET",
+      path,
+      kind === "review" ? { baseRevision: "stale", decision: "verified" } : undefined,
+    );
+    expect(response.status).toBe(500);
+    const body = await response.text();
+    expectSchema("Problem", JSON.parse(body));
+    expect(body).not.toContain("private-database-failure-marker");
+    expect(h.logs.lines.join("")).not.toContain("private-database-failure-marker");
+  });
+  it.each(["?status=wrong", "?limit=0", "?cursor=bad=cursor"])("목록 쿼리 %s는422임", async (query) => {
+    const h = await fixture();
+    await expectProblem(await h.call("GET", `/operator/shops${query}`), "validation_failed");
+  });
+  it.each(["not_json", "wrong_type", "missing_key", "wrong_body"])(
+    "검토 본문/요청 키 %s는422이고 가게를 바꾸지 않음",
+    async (kind) => {
+      const h = await fixture(),
+        before = await h.current(),
+        headers: Record<string, string> = {
+          origin: ORIGIN,
+          cookie: `siljang_operator=${h.token}`,
+          "content-type": kind === "wrong_type" ? "text/plain" : "application/json",
+        };
+      if (kind !== "missing_key") headers["Idempotency-Key"] = newRequestKey();
+      const response = await h.app.request(
+        `${ORIGIN}/api${h.path}/license-review`,
+        {
+          method: "POST",
+          headers,
+          body:
+            kind === "not_json"
+              ? "{"
+              : JSON.stringify(kind === "wrong_body" ? {} : { baseRevision: before.revision, decision: "verified" }),
+        },
+        testEnv(),
+      );
+      await expectProblem(response, "validation_failed");
+      expect((await h.current()).revision).toBe(before.revision);
+    },
+  );
 
   it("마이크로초가 다른 등록 시각과 같은 시각의ID를 빠뜨리거나 되풀이하지 않고 다음 쪽으로 읽음", async () => {
     const isolated = await isolatedTestDb();
@@ -250,6 +337,34 @@ describeDb("TASK-034 운영자의 영업 신고 확인 API-012/013/014", () => {
     expect(
       (await db.query("SELECT detail FROM owner_tasks WHERE shop_id=$1", [h.shop.shopId])).rows[0]?.detail,
     ).toEqual({ reason: "신고증 글자가 안 보여요" });
+  });
+  it("중복 사업자 번호는 목록에 표시하고 상세는 오래된20가게까지만 보임", async () => {
+    const isolated = await isolatedTestDb();
+    try {
+      const h = await fixture({ database: isolated.db, connect: () => isolated.connect() });
+      const duplicates: string[] = [];
+      for (let i = 0; i < 21; i++) {
+        const other = await createShop(isolated.db, `중복 합성 가게${i}`);
+        duplicates.push(other.shopId);
+        await isolated.db.query(
+          "UPDATE shops SET business_reg_no=(SELECT business_reg_no FROM shops WHERE id=$1),created_at=$3 WHERE id=$2",
+          [h.shop.shopId, other.shopId, new Date(NOW.getTime() + i * 1000)],
+        );
+      }
+      const detail = await h.call("GET", h.path),
+        value = (await detail.json()) as { duplicates: { shopId: string }[] };
+      expectSchema("ReviewShopDetail", value);
+      expect(value.duplicates.map((s) => s.shopId)).toEqual(duplicates.slice(0, 20));
+      const list = await h.call("GET", "/operator/shops?limit=100"),
+        page = (await list.json()) as {
+          items: { shopId: string; duplicateBusinessRegNo: boolean; revision: string }[];
+        };
+      expect(page.items).toHaveLength(22);
+      expect(page.items.every((s) => s.duplicateBusinessRegNo)).toBe(true);
+      expect(page.items.find((s) => s.shopId === h.shop.shopId)?.revision).toBe((await h.current()).revision);
+    } finally {
+      await isolated.close();
+    }
   });
   it("이미 확인된 가게를 새 버전으로 다시 확인하면 그대로이고 보류는409임", async () => {
     const h = await fixture();

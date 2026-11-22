@@ -730,6 +730,54 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     }
   });
 
+  it("보류 알림 INSERT가 실패하면 가게 판정/할 일도 되돌리고 같은 요청 키로 다시 처리함", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const target = await createShop(isolated.db, "합성 보류 되돌림 가게"),
+      session = await seedOperatorSession(isolated.db, now);
+    const app = createApp({ connect: () => roleDb(), services: { now: () => now }, logSink: () => {} }),
+      path = `https://siljang.example/api/operator/shops/${target.shopId}`;
+    const headers = {
+        origin: "https://siljang.example",
+        cookie: session.cookie,
+        "content-type": "application/json",
+        "Idempotency-Key": newRequestKey(),
+      },
+      env = testEnv({ FILE_URL_KEY: TEST_HASH_KEY });
+    const detail = (await (await app.request(path, { headers }, env)).json()) as { revision: string };
+    const call = () =>
+      app.request(
+        `${path}/license-review`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            baseRevision: detail.revision,
+            decision: "on_hold",
+            holdReason: "합성 사진을 다시 올려 주세요",
+          }),
+        },
+        env,
+      );
+    try {
+      await isolated.db.query(`REVOKE INSERT ON owner_alerts FROM "${role}"`);
+      expect((await call()).status).toBe(500);
+      expect(
+        (await isolated.db.query("SELECT license_status,license_hold_reason FROM shops WHERE id=$1", [target.shopId]))
+          .rows,
+      ).toEqual([{ license_status: "pending", license_hold_reason: null }]);
+      expect(
+        (await isolated.db.query("SELECT count(*)::int AS n FROM owner_tasks WHERE shop_id=$1", [target.shopId])).rows,
+      ).toEqual([{ n: 0 }]);
+    } finally {
+      await isolated.db.query(`GRANT INSERT ON owner_alerts TO "${role}"`);
+    }
+    const saved = await call();
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM owner_tasks WHERE shop_id=$1", [target.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
+  });
+
   it("접속기록 시각 조회만 유지하고 전체 조회·수정·비우기·DDL·사장님 삭제는 거절", async () => {
     const db = roleDb();
     try {

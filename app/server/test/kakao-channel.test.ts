@@ -367,6 +367,112 @@ describeDb("TASK-042 채널 설정과 스킬 키 API-030/031/079", () => {
     expect((await read(a)).status).toBe("failed");
   });
 
+  it.each(["pending", "failed"])("새 설정이 %s여도 즉시 폐기는 수신 중인 옛 linked 키도 거절함", async (status) => {
+    const h = await fixture(),
+      body = input(),
+      a = await save(h, body);
+    await db.query(
+      "UPDATE kakao_channels SET status='linked',claim_expires_at=NULL,linked_at=$2,verified_blocks=ARRAY['card','orderer_info','allergy_answer','depositor_name','review'] WHERE shop_id=$1",
+      [h.shopId, NOW],
+    );
+    const b = await save(h, input(undefined, (await read(h)).revision));
+    if (status === "failed")
+      await db.query("UPDATE kakao_channels SET status='failed',claim_expires_at=NULL WHERE shop_id=$1 AND id=$2", [
+        h.shopId,
+        b.kakaoChannel.connectionId,
+      ]);
+    expect((await skill(h, body.botId, a.skillKey?.headerValue ?? "")).status).toBe(200);
+    const response = await h.call("POST", `${PATH}/skill-key`, {
+      baseRevision: (await read(h)).revision,
+      previousKey: "revoke_now",
+    });
+    expect(response.status).toBe(200);
+    expectSchema("KakaoChannelResult", await response.json());
+    await expectProblem(await skill(h, body.botId, a.skillKey?.headerValue ?? ""), "skill_key_invalid");
+    expect(
+      (
+        await db.query("SELECT skill_key_version,previous_key_until FROM kakao_channels WHERE shop_id=$1 AND id=$2", [
+          h.shopId,
+          a.kakaoChannel.connectionId,
+        ])
+      ).rows,
+    ).toEqual([{ skill_key_version: 2, previous_key_until: null }]);
+  });
+  it("새 설정과 옛 linked를 함께 교체하면 옛 연결의 키도23시간까지 받고24시간부터 거절함", async () => {
+    const h = await fixture(),
+      body = input(),
+      a = await save(h, body);
+    await db.query(
+      "UPDATE kakao_channels SET status='linked',claim_expires_at=NULL,linked_at=$2,verified_blocks=ARRAY['card','orderer_info','allergy_answer','depositor_name','review'] WHERE shop_id=$1",
+      [h.shopId, NOW],
+    );
+    const b = await save(h, input(undefined, (await read(h)).revision));
+    expect(
+      (await h.call("POST", `${PATH}/skill-key`, { baseRevision: b.kakaoChannel.revision, previousKey: "keep_24h" }))
+        .status,
+    ).toBe(200);
+    h.clock.now = new Date(NOW.getTime() + 23 * 3_600_000);
+    expect((await skill(h, body.botId, a.skillKey?.headerValue ?? "")).status).toBe(200);
+    h.clock.now = new Date(NOW.getTime() + 24 * 3_600_000);
+    await expectProblem(await skill(h, body.botId, a.skillKey?.headerValue ?? ""), "skill_key_invalid");
+  });
+  it("수신 중인 옛 연결이 키 버전 상한이면 지금 설정도 올리지 않고422임", async () => {
+    const h = await fixture(),
+      a = await save(h, input());
+    await db.query(
+      "UPDATE kakao_channels SET status='linked',skill_key_version=10000,claim_expires_at=NULL,linked_at=$2,verified_blocks=ARRAY['card','orderer_info','allergy_answer','depositor_name','review'] WHERE shop_id=$1",
+      [h.shopId, NOW],
+    );
+    const b = await save(h, input(undefined, (await read(h)).revision));
+    await expectProblem(
+      await h.call("POST", `${PATH}/skill-key`, { baseRevision: b.kakaoChannel.revision, previousKey: "revoke_now" }),
+      "validation_failed",
+    );
+    expect(
+      (
+        await db.query(
+          "SELECT id,skill_key_version FROM kakao_channels WHERE shop_id=$1 ORDER BY configuration_order",
+          [h.shopId],
+        )
+      ).rows,
+    ).toEqual([
+      { id: a.kakaoChannel.connectionId, skill_key_version: 10000 },
+      { id: b.kakaoChannel.connectionId, skill_key_version: 1 },
+    ]);
+  });
+  it("마이크로초를 가진 확인 시작은 SQL의10분 경계가 지난 뒤 실패함", async () => {
+    const h = await fixture();
+    await save(h, input());
+    await db.query(
+      "UPDATE kakao_channels SET check_started_at=$2::timestamptz+interval '123 microseconds' WHERE shop_id=$1",
+      [h.shopId, NOW],
+    );
+    h.clock.now = new Date(NOW.getTime() + 10 * 60_000);
+    expect((await read(h)).status).toBe("pending");
+    h.clock.now = new Date(NOW.getTime() + 10 * 60_000 + 1);
+    const expired = await read(h);
+    expect(expired.status).toBe("failed");
+    expect(expired.proofPhrase).toBeNull();
+  });
+  it("GET 없이10분 지난 같은 설정을 다시 저장하면 확인을 새로 시작할pending이 됨", async () => {
+    const h = await fixture(),
+      body = input();
+    await save(h, body);
+    await db.query(
+      "UPDATE kakao_channels SET check_started_at=$2::timestamptz+interval '123 microseconds',test_user_key='synthetic-check',verified_blocks=ARRAY['card'] WHERE shop_id=$1",
+      [h.shopId, NOW],
+    );
+    const current = await read(h);
+    h.clock.now = new Date(NOW.getTime() + 10 * 60_000 + 1);
+    const response = await save(h, { ...body, baseRevision: current.revision });
+    expect(response.outcome).toBe("done");
+    expect(response.kakaoChannel).toMatchObject({ status: "pending", proofPhrase: null, verifiedBlocks: [] });
+    expect(
+      (await db.query("SELECT check_started_at,claim_expires_at FROM kakao_channels WHERE shop_id=$1", [h.shopId]))
+        .rows,
+    ).toEqual([{ check_started_at: null, claim_expires_at: new Date(h.clock.now.getTime() + 30 * 60_000) }]);
+  });
+
   it("키 교체의 동시 저장은200/409이고 두 번 올리지 않음", async () => {
     const h = await fixture(),
       created = await save(h, input());

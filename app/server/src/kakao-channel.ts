@@ -28,6 +28,7 @@ interface Channel {
   skill_key_issued_at: Date;
   previous_key_until: Date | null;
   revision: string;
+  check_expired?: boolean | null;
 }
 const BLOCK_NAMES = ["card", "orderer_info", "allergy_answer", "depositor_name", "review"];
 const FAILURE_HINTS = ["card_block", "orderer_block", "allergy_block", "depositor_block", "review_block"];
@@ -55,14 +56,10 @@ function sameBlocks(a: Channel, b: ChannelInput) {
 /** GET과 재전송의 시간 판정도 행 조건을 함께 검사해 더 새 저장을 보존한다. */
 async function currentAfterExpiry(db: ShopDb, now: Date): Promise<Channel | undefined> {
   let row = await currentKakaoChannel(db);
-  if (
-    row?.status === "pending" &&
-    row.check_started_at !== null &&
-    now.getTime() >= row.check_started_at.getTime() + 10 * 60_000
-  ) {
+  if (row?.status === "pending" && row.check_started_at !== null) {
     await db.run(
-      "UPDATE kakao_channels SET status='failed',claim_expires_at=NULL WHERE shop_id=$1 AND id=$2 AND status='pending' AND check_started_at=$3",
-      [row.id, row.check_started_at],
+      "UPDATE kakao_channels SET status='failed',claim_expires_at=NULL WHERE shop_id=$1 AND id=$2 AND status='pending' AND check_started_at<=$3::timestamptz-interval '10 minutes'",
+      [row.id, now],
     );
     row = await currentKakaoChannel(db);
   }
@@ -154,8 +151,8 @@ export async function setKakaoChannel(r: ShopRequest): Promise<Response> {
         if (!available.available) throw new ApiError("channel_linked_elsewhere");
         let c = (
           await db.run<Channel>(
-            "SELECT c.*,c.xmin::text AS revision FROM kakao_channels c WHERE c.shop_id=$1 AND c.bot_id=$2 AND c.status<>'retired' ORDER BY CASE WHEN c.status IN ('pending','linked') THEN 0 ELSE 1 END,c.configuration_order DESC LIMIT 1",
-            [input.botId],
+            "SELECT c.*,c.xmin::text AS revision,(c.status='pending' AND c.check_started_at<=$3::timestamptz-interval '10 minutes') AS check_expired FROM kakao_channels c WHERE c.shop_id=$1 AND c.bot_id=$2 AND c.status<>'retired' ORDER BY CASE WHEN c.status IN ('pending','linked') THEN 0 ELSE 1 END,c.configuration_order DESC LIMIT 1",
+            [input.botId, now],
           )
         ).rows[0];
         const same =
@@ -163,7 +160,8 @@ export async function setKakaoChannel(r: ShopRequest): Promise<Response> {
           previous?.id === c.id &&
           c.channel_public_id === input.channelPublicId &&
           sameBlocks(c, input) &&
-          c.status !== "failed";
+          c.status !== "failed" &&
+          !c.check_expired;
         let outcome = "done",
           showKey = false;
         if (same && c) {
@@ -187,7 +185,7 @@ export async function setKakaoChannel(r: ShopRequest): Promise<Response> {
           );
           outcome = "created";
           showKey = true;
-        } else if (!sameBlocks(c, input) || c.status === "failed") {
+        } else if (!sameBlocks(c, input) || c.status === "failed" || c.check_expired) {
           c = await db.found<Channel>(
             `UPDATE kakao_channels SET channel_public_id=$3,card_block_id=$4,orderer_block_id=$5,allergy_block_id=$6,depositor_block_id=$7,review_block_id=$8,
           status='pending',claim_expires_at=$9,check_started_at=NULL,linked_at=NULL,verified_blocks='{}',test_user_key=NULL,
@@ -262,11 +260,18 @@ export async function regenerateKakaoSkillKey(r: ShopRequest): Promise<Response>
       const c = await currentKakaoChannel(db);
       if (!c) throw new ApiError("not_set");
       if (c.revision !== input.baseRevision) throw new ApiError("version_conflict");
-      if (c.skill_key_version >= 10000) throw fieldError("/", "out_of_range");
-      const updated = await db.found<Channel>(
-        "UPDATE kakao_channels SET skill_key_version=skill_key_version+1,skill_key_issued_at=$3,previous_key_until=$4 WHERE shop_id=$1 AND id=$2 RETURNING *,xmin::text AS revision",
+      const targets = await db.run<{ skill_key_version: number }>(
+        "SELECT c.skill_key_version FROM kakao_channels c WHERE c.shop_id=$1 AND (c.id=$2 OR c.status='linked') ORDER BY c.id FOR UPDATE",
+        [c.id],
+      );
+      if (targets.rows.some((row) => row.skill_key_version >= 10000)) throw fieldError("/", "out_of_range");
+      // 새 설정과 수신 중인 옛 연결에 같은 폐기 방식을 적용해 유출된 옛 키를 남기지 않는다.
+      const changed = await db.run<Channel>(
+        "UPDATE kakao_channels SET skill_key_version=skill_key_version+1,skill_key_issued_at=$3,previous_key_until=$4 WHERE shop_id=$1 AND (id=$2 OR status='linked') RETURNING *,xmin::text AS revision",
         [c.id, now, input.previousKey === "keep_24h" ? new Date(now.getTime() + 86_400_000) : null],
       );
+      const updated = changed.rows.find((row) => row.id === c.id);
+      if (!updated) throw new Error("channel key result missing");
       return {
         status: 200,
         code: "done",

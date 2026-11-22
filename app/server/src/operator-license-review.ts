@@ -46,16 +46,16 @@ interface IdentityRow {
 type Duplicates = readonly { shopId: string; name: string; licenseStatus: string }[];
 
 async function current(db: ShopDb, lock: boolean): Promise<ShopRow> {
-  const sql = lock
-    ? `SELECT s.*,
+  // 잠금을 기다리는 동안 계좌/변경 요청이 바뀌었어도 뒤의 새 문장이 같은 시점의 버전을 읽는다.
+  await db.found(
+    lock
+      ? "SELECT s.id FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE"
+      : "SELECT s.id FROM shops s WHERE s.id=$1 FOR SHARE",
+  );
+  return db.found<ShopRow>(`SELECT s.*,
       concat(s.id,':',s.xmin::text,':',coalesce((SELECT concat(p.id,':',p.xmin::text) FROM payment_accounts p WHERE p.shop_id=$1 AND p.retired_at IS NULL),'-'),':',coalesce((SELECT concat(i.id,':',i.xmin::text) FROM shop_identity_changes i WHERE i.shop_id=$1 AND i.status='pending'),'-')) AS revision_state,
       concat(s.license_reviewed_by,':',extract(epoch FROM s.license_reviewed_at)) AS review_marker
-      FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE`
-    : `SELECT s.*,
-      concat(s.id,':',s.xmin::text,':',coalesce((SELECT concat(p.id,':',p.xmin::text) FROM payment_accounts p WHERE p.shop_id=$1 AND p.retired_at IS NULL),'-'),':',coalesce((SELECT concat(i.id,':',i.xmin::text) FROM shop_identity_changes i WHERE i.shop_id=$1 AND i.status='pending'),'-')) AS revision_state,
-      concat(s.license_reviewed_by,':',extract(epoch FROM s.license_reviewed_at)) AS review_marker
-      FROM shops s WHERE s.id=$1 FOR SHARE`;
-  return db.found<ShopRow>(sql);
+      FROM shops s WHERE s.id=$1`);
 }
 
 async function operator(db: ShopDb, id: string | null) {
@@ -204,7 +204,9 @@ export async function reviewLicense(r: ShopRequest): Promise<Response> {
       const row = await current(db, true),
         revision = await reviewRevision(row);
       if (input.baseRevision !== revision) {
-        const reviewChanged = input.baseRevision.split(".")[1] !== revision.split(".")[1];
+        const reviewChanged =
+          /^[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{16}$/.test(input.baseRevision) &&
+          input.baseRevision.split(".")[1] !== revision.split(".")[1];
         if (reviewChanged && row.license_reviewed_by !== null && row.license_reviewed_by !== operatorId)
           throw new ApiError("already_decided");
         throw new ApiError("version_conflict");
