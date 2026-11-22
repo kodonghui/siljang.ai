@@ -24,6 +24,7 @@ import type { HonoEnv, Logger } from "./app";
 import { readJsonBody } from "./body";
 import type { AuthorizedKakaoSkill } from "./kakao-skill-auth";
 import { isOperatorScope, type OperatorScope } from "./operator-scope";
+import { type OperatorShopDirectory, operatorShopDirectory } from "./operator-shop-directory";
 import { isOwnerScope, type OwnerScope } from "./owner-scope";
 import { type OwnerShopDb, ownerShopDb } from "./owner-shop-db";
 import { ApiError } from "./problem";
@@ -57,6 +58,8 @@ export interface ShopCommandSpec {
 /** 가게 범위 경로의 처리기가 받는 것. 데이터베이스는 가게 범위 연결뿐이다. */
 export interface ShopRequest {
   readonly scope: ShopScope;
+  /** 운영자가 연 가게의 중복 등록 표시만 읽는 기능. 사장님·손님은 받지 않는다. */
+  readonly operatorShops: OperatorShopDirectory | undefined;
   readonly kakaoSkill: AuthorizedKakaoSkill | undefined;
   /** 트랜잭션 밖 읽기와 트랜잭션. 쓰기 명령은 command로. */
   readonly db: ShopRequestDb;
@@ -167,6 +170,7 @@ export interface OwnerRouteDecl {
 /** 운영자 범위 경로의 처리기가 받는 것. 데이터베이스 연결이 없다(가게 기록은 가게 범위 경로로만). */
 export interface OperatorRequest {
   readonly operator: OperatorScope;
+  readonly shops: OperatorShopDirectory;
   readonly req: HonoRequest;
   readonly traceId: string;
   readonly log: Logger;
@@ -281,6 +285,7 @@ function shopRequest(c: Context<HonoEnv>, scope: ShopScope): ShopRequest {
   const headers = { "cache-control": "no-store" };
   return {
     scope,
+    operatorShops: scope.via.kind === "operator" ? operatorShopDirectory(c.get("db"), scope) : undefined,
     kakaoSkill: c.get("kakaoSkill"),
     db,
     req: c.req,
@@ -355,6 +360,7 @@ function operatorRequest(c: Context<HonoEnv>, operator: OperatorScope): Operator
   const headers = { "cache-control": "no-store" };
   return {
     operator,
+    shops: operatorShopDirectory(c.get("db"), operator),
     req: c.req,
     traceId: c.get("traceId"),
     log: c.get("log"),

@@ -1,30 +1,23 @@
 import { afterAll, expect, it } from "vitest";
 import { createApp } from "../src/app";
-import { newSessionToken, tokenHash } from "../src/operator-session";
+import type { DbConnector, RequestDb } from "../src/db";
 import { expectProblem, expectSchema } from "./support/contract";
-import { describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
-import { createShop } from "./support/shops";
+import { collectLogs, describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { isolatedTestDb } from "./support/isolated-db";
+import { seedOperatorSession } from "./support/operator";
+import { createShop, type ShopFixture } from "./support/shops";
 
 const ORIGIN = "https://siljang.example";
 const NOW = new Date("2026-11-22T05:00:00Z");
 const db = testDb();
 
-async function fixture() {
-  const shop = await createShop(db, "신고 확인 합성 가게");
-  const operatorId = newUuid(),
-    token = newSessionToken();
-  await db.transaction(async (tx) => {
-    await tx.query(
-      "INSERT INTO operators (id,email,display_name,auth_user_id,mfa_factor_id,mfa_enrolled_at) VALUES ($1,$2,'합성 운영자',$3,$4,$5)",
-      [operatorId, `${newUuid()}@operator.example`, newUuid(), newUuid(), NOW],
-    );
-    await tx.query(
-      "INSERT INTO operator_sessions (operator_id,token_hash,created_at,expires_at) VALUES ($1,$2,$3,$4)",
-      [operatorId, await tokenHash(token), NOW, new Date(NOW.getTime() + 12 * 3_600_000)],
-    );
-  });
-  const app = createApp({ services: { now: () => NOW }, logSink: () => {} });
-  const call = (method: string, path: string, body?: unknown, authenticated = true) =>
+async function fixture(options: { database?: RequestDb; connect?: DbConnector; shop?: ShopFixture } = {}) {
+  const fixtureDb = options.database ?? db;
+  const shop = options.shop ?? (await createShop(fixtureDb, "신고 확인 합성 가게"));
+  const { operatorId, token } = await seedOperatorSession(fixtureDb, NOW);
+  const logs = collectLogs();
+  const app = createApp({ connect: options.connect, services: { now: () => NOW }, logSink: logs.sink });
+  const call = (method: string, path: string, body?: unknown, authenticated = true, key = newRequestKey()) =>
     app.request(
       `${ORIGIN}/api${path}`,
       {
@@ -32,14 +25,32 @@ async function fixture() {
         headers: {
           origin: ORIGIN,
           "content-type": "application/json",
-          "Idempotency-Key": newRequestKey(),
+          "Idempotency-Key": key,
           ...(authenticated ? { cookie: `siljang_operator=${token}` } : {}),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       },
       testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
     );
-  return { shop, operatorId, call };
+  const path = `/operator/shops/${shop.shopId}`;
+  const current = async () => {
+    const response = await call("GET", path);
+    expect(response.status, await response.clone().text()).toBe(200);
+    return response.json();
+  };
+  const review = async (decision = "verified", holdReason?: string, revision?: string, key?: string) =>
+    call(
+      "POST",
+      `${path}/license-review`,
+      {
+        baseRevision: revision ?? (await current()).revision,
+        decision,
+        ...(holdReason === undefined ? {} : { holdReason }),
+      },
+      true,
+      key,
+    );
+  return { shop, operatorId, token, call, current, review, path, app, logs };
 }
 
 describeDb("TASK-034 운영자의 영업 신고 확인 API-012/013/014", () => {
@@ -105,6 +116,134 @@ describeDb("TASK-034 운영자의 영업 신고 확인 API-012/013/014", () => {
         false,
       ),
       "unauthenticated",
+    );
+  });
+
+  it("마이크로초가 다른 등록 시각과 같은 시각의ID를 빠뜨리거나 되풀이하지 않고 다음 쪽으로 읽음", async () => {
+    const isolated = await isolatedTestDb();
+    try {
+      const h = await fixture({ database: isolated.db, connect: () => isolated.connect() });
+      const b = await createShop(isolated.db, "합성 둘"),
+        c = await createShop(isolated.db, "합성 셋");
+      await isolated.db.query("UPDATE shops SET created_at='2020-01-01T00:00:00.000123Z' WHERE id=$1", [h.shop.shopId]);
+      await isolated.db.query("UPDATE shops SET created_at='2020-01-01T00:00:00.000124Z' WHERE id=ANY($1::uuid[])", [
+        [b.shopId, c.shopId],
+      ]);
+      const expected = [h.shop.shopId, ...[b.shopId, c.shopId].sort()],
+        found: string[] = [];
+      let cursor: string | null = null;
+      for (let i = 0; i < 4; i++) {
+        const response = await h.call("GET", `/operator/shops?limit=1${cursor ? `&cursor=${cursor}` : ""}`);
+        expect(response.status).toBe(200);
+        const page = await response.json();
+        expectSchema("ReviewShopList", page);
+        found.push(...page.items.map((s: { shopId: string }) => s.shopId));
+        cursor = page.nextCursor;
+        if (cursor === null) break;
+      }
+      expect(found).toEqual(expected);
+      expect(cursor).toBeNull();
+      const empty = await h.call("GET", "/operator/shops?status=on_hold");
+      expect(await empty.json()).toEqual({ items: [], nextCursor: null });
+    } finally {
+      await isolated.close();
+    }
+  });
+  it("보류 이유·할 일·알림을 같은 요청 키의 재전송에도 한 번만 남김", async () => {
+    const h = await fixture(),
+      revision = (await h.current()).revision,
+      key = newRequestKey();
+    for (let i = 0; i < 2; i++) {
+      const response = await h.review("on_hold", "신고증 글자가 안 보여요", revision, key);
+      expect(response.status, await response.clone().text()).toBe(200);
+      expectSchema("LicenseReviewResult", await response.json());
+    }
+    expect((await h.current()).licenseHoldReason).toBe("신고증 글자가 안 보여요");
+    expect(
+      (await db.query("SELECT detail FROM owner_tasks WHERE shop_id=$1 AND kind='license_on_hold'", [h.shop.shopId]))
+        .rows,
+    ).toEqual([{ detail: { reason: "신고증 글자가 안 보여요" } }]);
+    expect(
+      (
+        await db.query("SELECT count(*)::int AS n FROM owner_alerts WHERE shop_id=$1 AND kind='license_on_hold'", [
+          h.shop.shopId,
+        ])
+      ).rows,
+    ).toEqual([{ n: 1 }]);
+    await db.query("UPDATE owner_alerts SET status='failed',fail_code='cannot_send' WHERE shop_id=$1", [h.shop.shopId]);
+    expect(
+      (await db.query("SELECT detail FROM owner_tasks WHERE shop_id=$1", [h.shop.shopId])).rows[0]?.detail,
+    ).toEqual({ reason: "신고증 글자가 안 보여요" });
+  });
+  it("이미 확인된 가게를 새 버전으로 다시 확인하면 그대로이고 보류는409임", async () => {
+    const h = await fixture();
+    expect((await h.review()).status).toBe(200);
+    const before = await h.current();
+    const again = await h.review();
+    expect(again.status).toBe(200);
+    expect((await again.json()).outcome).toBe("unchanged");
+    expect((await h.current()).revision).toBe(before.revision);
+    await expectProblem(await h.review("on_hold", "보류"), "invalid_state");
+  });
+  it("두 운영자가 같은 버전으로 동시에 정하면 한 번 남고 뒤는already_decided임", async () => {
+    const a = await fixture(),
+      b = await fixture({ shop: a.shop }),
+      revision = (await a.current()).revision;
+    const responses = await Promise.all([
+      a.review("on_hold", "A 판정", revision),
+      b.review("on_hold", "B 판정", revision),
+    ]);
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
+    await expectProblem(responses.find((r) => r.status === 409) as Response, "already_decided");
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM owner_tasks WHERE shop_id=$1", [a.shop.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
+  });
+  it("검토 중 계좌만 바뀌어도 이전 화면으로 승인하지 않음", async () => {
+    const h = await fixture(),
+      revision = (await h.current()).revision;
+    await db.query("UPDATE payment_accounts SET holder_name='새 예금주' WHERE shop_id=$1 AND retired_at IS NULL", [
+      h.shop.shopId,
+    ]);
+    await expectProblem(await h.review("verified", undefined, revision), "version_conflict");
+    expect((await h.current()).licenseStatus).toBe("pending");
+    expect((await h.review()).status).toBe(200);
+  });
+  it("다른 가게 수정은 내 버전을 바꾸지 않고 내 가게 변경은version_conflict임", async () => {
+    const h = await fixture(),
+      b = await fixture(),
+      revision = (await h.current()).revision;
+    await db.query("UPDATE shops SET name='다른 합성 이름' WHERE id=$1", [b.shop.shopId]);
+    expect((await h.current()).revision).toBe(revision);
+    await db.query("UPDATE shops SET name='내 합성 이름' WHERE id=$1", [h.shop.shopId]);
+    await expectProblem(await h.review("verified", undefined, revision), "version_conflict");
+  });
+  it("현재 계좌가 없으면 확인됨은 막고 보류는 허용함", async () => {
+    const h = await fixture();
+    await db.query("UPDATE payment_accounts SET retired_at=$2 WHERE shop_id=$1", [h.shop.shopId, NOW]);
+    expect((await h.current()).paymentAccount).toBeNull();
+    await expectProblem(await h.review(), "payment_account_missing");
+    expect((await h.review("on_hold", "계좌 등록을 기다려요")).status).toBe(200);
+  });
+  it.each(["disabled", "ended", "mfa"])("세션의 %s 변경 뒤 목록/상세/승인 모두401임", async (kind) => {
+    const h = await fixture();
+    if (kind === "disabled") await db.query("UPDATE operators SET disabled_at=$2 WHERE id=$1", [h.operatorId, NOW]);
+    if (kind === "mfa") await db.query("UPDATE operators SET mfa_factor_id=$2 WHERE id=$1", [h.operatorId, newUuid()]);
+    if (kind === "ended")
+      await db.query("UPDATE operator_sessions SET ended_at=$2 WHERE operator_id=$1", [h.operatorId, NOW]);
+    for (const [method, path, body] of [
+      ["GET", "/operator/shops", undefined],
+      ["GET", h.path, undefined],
+      ["POST", `${h.path}/license-review`, { baseRevision: "stale", decision: "verified" }],
+    ] as const)
+      await expectProblem(await h.call(method, path, body), "unauthenticated");
+  });
+  it.each(["not-a-uuid", newUuid(), "x".repeat(101)])("인증 뒤 없는/틀린 가게 %s는조회/검토404임", async (id) => {
+    const h = await fixture();
+    await expectProblem(await h.call("GET", `/operator/shops/${id}`), "not_found");
+    await expectProblem(
+      await h.call("POST", `/operator/shops/${id}/license-review`, { baseRevision: "stale", decision: "verified" }),
+      "not_found",
     );
   });
 });

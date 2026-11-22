@@ -16,7 +16,9 @@ import {
   listOperatingRulesVersions,
 } from "./operating-rules";
 import { AuthUnavailableError } from "./operator-auth";
+import { getReviewShop, listReviewShops, reviewLicense } from "./operator-license-review";
 import { createOperatorSession, deleteOperatorSession, getOperatorMe, resolveOperatorSession } from "./operator-login";
+import { resolveOperatorShop } from "./operator-shop";
 import {
   createOwnerLogin,
   deleteOwnerLogin,
@@ -123,6 +125,9 @@ export interface AppOptions {
  * (test/support/cross-shop.ts의 CROSS_SHOP_CASES)에도 더한다. 빠지면 시험이 실패한다(TASK-019).
  */
 export const APP_ROUTES: readonly RouteDecl[] = [
+  operatorRoute("GET", "/operator/shops", listReviewShops),
+  shopRoute("GET", "/operator/shops/:shopId", "operator", getReviewShop),
+  shopRoute("POST", "/operator/shops/:shopId/license-review", "operator", reviewLicense),
   ...kakaoSkillRoutes,
   openRoute(
     "POST",
@@ -295,7 +300,7 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   mountRoutes(
     app,
     options.routes ?? APP_ROUTES,
-    { owner: resolveOwnerShop, customer: resolveKakaoSkillScope, ...options.scopes },
+    { owner: resolveOwnerShop, operator: resolveOperatorShop, customer: resolveKakaoSkillScope, ...options.scopes },
     options.ownerAccount ?? resolveOwnerSession,
     options.operatorAccount ?? resolveOperatorSession,
   );
