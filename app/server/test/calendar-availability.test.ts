@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import { calendarBookingDays, lockedCalendarSlotStatus } from "../src/calendar";
+import { DUE_SOURCES } from "../src/due-sources";
+import { runDueJobs } from "../src/job-runner";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
-import { describeDb, newRequestKey, testEnv } from "./support/db";
+import { describeDb, newRequestKey, newUuid, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop } from "./support/shops";
 
@@ -97,5 +99,111 @@ describeDb("TASK-041 예약 날짜·새 자리 판정", () => {
       day: "2026-11-21",
       status: "open",
     });
+  });
+
+  it("기존 자리 아래로 줄인 개수와 추가 수락은 공개/새 자리 판정에서 모두 마감이며 기존 자리를 보존함", async () => {
+    const h = await fixture();
+    await isolated.db.query("INSERT INTO calendar_days (shop_id,day) VALUES ($1,'2026-11-21')", [h.shop.shopId]);
+    await isolated.db.query(
+      "INSERT INTO slot_holds (shop_id,day,order_id,payment_request_id,hold_key,status,overbooked) VALUES ($1,'2026-11-21',$2,$3,$4,'held',true)",
+      [h.shop.shopId, h.shop.orderId, h.shop.paymentRequestId, `hold:${h.shop.orderId}:availability`],
+    );
+    const held = await h.db.transaction((tx) => lockedCalendarSlotStatus(tx, "2026-11-21", NOW));
+    expect(held.status).toBe("closed");
+    await isolated.db.query("UPDATE slot_holds SET overbooked=false WHERE shop_id=$1", [h.shop.shopId]);
+    expect((await h.db.transaction((tx) => lockedCalendarSlotStatus(tx, "2026-11-21", NOW))).status).toBe("open");
+    const {
+      revision,
+      updatedAt: _updated,
+      ...settings
+    } = (await (await h.call("GET", "/owner/calendar")).json()) as Record<string, unknown>;
+    expect(
+      (
+        await h.call("PUT", "/owner/calendar", {
+          ...settings,
+          baseRevision: revision,
+          dailyCapacity: 0,
+          confirm: ["capacity_below_held"],
+        })
+      ).status,
+    ).toBe(200);
+    const days = await h.db.transaction((tx) => calendarBookingDays(tx, NOW));
+    expect(days.find((d) => d.day === "2026-11-21")).toEqual({ day: "2026-11-21", status: "closed" });
+    expect(await h.db.transaction((tx) => lockedCalendarSlotStatus(tx, "2026-11-21", NOW))).toEqual({
+      day: "2026-11-21",
+      status: "closed",
+    });
+    expect((await isolated.db.query("SELECT status FROM slot_holds WHERE shop_id=$1", [h.shop.shopId])).rows).toEqual([
+      { status: "held" },
+    ]);
+  });
+
+  it("후기 예정 시각을 늦춘 재시도도 새 시각 전에는 찾거나 잡지 않고 한 번만 실행함", async () => {
+    const h = await fixture();
+    const id = newUuid();
+    await isolated.db.query(
+      `INSERT INTO notifications (id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status,attempts,scheduled_for,next_attempt_at)
+      VALUES ($1,$2,$3,$4,$5,'review_request',$6,'합성 후기','합성 후기','retrying',1,'2026-11-21T02:00:00Z','2026-11-21T02:00:00Z')`,
+      [
+        id,
+        h.shop.shopId,
+        h.shop.customerId,
+        h.shop.consultationId,
+        h.shop.orderId,
+        `notice:${h.shop.orderId}:calendar-test`,
+      ],
+    );
+    const {
+      revision,
+      updatedAt: _updated,
+      ...settings
+    } = (await (await h.call("GET", "/owner/calendar")).json()) as Record<string, unknown>;
+    expect(
+      (await h.call("PUT", "/owner/calendar", { ...settings, baseRevision: revision, reviewRequestTime: "15:00" }))
+        .status,
+    ).toBe(200);
+    const eleven = new Date("2026-11-21T02:00:00Z");
+    const fifteen = new Date("2026-11-21T06:00:00Z");
+    expect((await isolated.db.query(DUE_SOURCES.notification_send.find, [eleven, 1000])).rows).toEqual([]);
+    expect((await h.db.transaction((tx) => tx.run(DUE_SOURCES.notification_send.claim, [id, eleven]))).rowCount).toBe(
+      0,
+    );
+    let runs = 0;
+    const run = (now: Date) =>
+      runDueJobs({
+        db: isolated.db,
+        now,
+        log: () => {},
+        jobs: [
+          {
+            name: "calendar_notice_test",
+            every: "minute",
+            sources: ["notification_send"],
+            handler: {
+              mode: "transaction",
+              async run(tx, item, ctx) {
+                runs++;
+                await tx.run(
+                  "UPDATE notifications SET status='delivered_on_reply',sent_at=$3 WHERE shop_id=$1 AND id=$2",
+                  [item.id, ctx.now],
+                );
+              },
+            },
+          },
+        ],
+      });
+    await run(eleven);
+    expect(runs).toBe(0);
+    await run(fifteen);
+    await run(fifteen);
+    expect(runs).toBe(1);
+    const notice = (
+      await isolated.db.query<{ attempts: number; next_attempt_at: Date }>(
+        "SELECT attempts,next_attempt_at FROM notifications WHERE id=$1",
+        [id],
+      )
+    ).rows[0];
+    expect(notice?.attempts).toBe(1);
+    expect(notice?.next_attempt_at.toISOString()).toBe(eleven.toISOString());
   });
 });

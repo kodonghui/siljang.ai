@@ -726,3 +726,8 @@
 
 - 학원컴 기존 Aside CLI 세션에서 Supabase 기존 스테이징/서버 역할을 재확인하려 했지만 Page.enable 연결 시간 초과가2회 발생했습니다. 00:56:49 KST 권한 변경 없이 그 목적만 멈췄습니다. 새 GRANT6문장·전후9개 불리언·실제 서버 역할 쓰기는 모두 미실행/미확인입니다. 로컬 제한 역할 성공과 구분합니다.
 - 브라우저는 학원컴 Aside CLI 지시를 유지합니다. 다른 기기나 Ego Light로 옮기지 않았고 로그인/권한을 다시 시도하지 않습니다. 코드·자동 검사와 다음 작업을 계속합니다.
+
+### 2026-11-23 01:16 KST · PR #168 main 캘린더 배포 확인
+
+- main b6e56330d55328a2ae504d83c341a50fd28ce5b0의 app45042360644·db45042360694가 성공했습니다. 학원컴 CLI의 배포 c7d6e15e-1eee-4d2f-b9f1-a330973fc7bd는01:13:14 KST 생성·태그 동일·상태200·SSH종료0입니다.
+- 01:14:56 KST 인증 없는 GET/PUT /api/owner/calendar, GET /api/owner/calendar/days, PATCH /api/owner/calendar/days/2026-11-20은 모두401 unauthenticated·application/problem+json입니다. 원격 CLI의4경로 응답만 확인했으며 실제 계정/권한 쓰기 성공으로 적지 않습니다. 브라우저 연결의2회 중단은 유지합니다.

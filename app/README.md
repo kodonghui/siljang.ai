@@ -890,3 +890,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 - 274 검증: 서버81파일/1,465개·웹11파일/237개·타입/lint·빌드928ms와 단계9개가 통과했습니다. node research/cake-mockup-2026-11/check_local.test.js는 합성5페이지에서 자원1회 재사용과 오류 보존을 확인합니다. [수락 대조](../docs/records/calendar/task-041-acceptance.md)의 예약 날짜/새 자리/발송 연결은 다음 변경에서 이어가며 아직 finished/구현 완료는 아닙니다. Aside 연결2회 실패로 새 권한6문장은 실제 DB에 적용하지 않았습니다.
 
 275. TASK-041 후속 변경은 예약 링크의60일 날짜 상태와 같은 날짜 잠금 안의 새 자리 판정을 제공합니다. 미발송 안내 시각을 바꾼 뒤 시작된 시도의 임대 표는 유지하되 새 예정 시각 전에 찾지 않도록 확인합니다. 아직 없는 함수의 시험2건 실패부터 시작하며 실제 Aside 연결 중단과 미적용 권한은 유지합니다.
+
+- 275 calendarBookingDays는 예약 링크의60일 공개 상태만, lockedCalendarSlotStatus는 같은 트랜잭션의 날짜 잠금 뒤 판정을 반환합니다. 자리 확보/추가 수락의 다른 조건은 TASK-082가 확인합니다. 시각을 바꾼 안내는 notification_send의 찾기/잡기 둘 다 scheduled_for와 next_attempt_at이 지나야 합니다. 합성 실행기에서11시0건/15시반복1건과 기존 시도 표 보존을 확인했으며 관련92개·타입/lint가 통과했습니다.
