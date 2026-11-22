@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
+import kakaoLoginImage from "./assets/kakao-login.png?url&no-inline";
 import {
   completeOwnerLogin,
   OWNER_CALLBACK,
@@ -119,6 +120,7 @@ export function OwnerLogin() {
     }
   }
 
+  const kakaoButton = !pending && remaining === 0 && feedback?.outcome !== "server";
   return (
     <LoginLayout title="사장님 로그인">
       {returnTo === null ? null : <p>로그인하면 보던 화면으로 돌아가요</p>}
@@ -138,8 +140,22 @@ export function OwnerLogin() {
           </div>
         ) : null}
         {remaining > 0 ? <p role="timer">다시 로그인하기까지 {remaining}초</p> : null}
-        <Button kind="primary" block disabled={pending || remaining > 0} onClick={() => void start()}>
-          {pending ? "로그인하고 있어요" : feedback?.outcome === "server" ? "다시 시도" : "카카오 로그인"}
+        <Button
+          kind="primary"
+          block
+          data-kakao={kakaoButton ? "true" : undefined}
+          disabled={pending || remaining > 0}
+          onClick={() => void start()}
+        >
+          {kakaoButton ? (
+            <img src={kakaoLoginImage} alt="카카오 로그인" width={448} height={92} />
+          ) : pending ? (
+            "로그인하고 있어요"
+          ) : feedback?.outcome === "server" ? (
+            "다시 시도"
+          ) : (
+            "카카오 로그인"
+          )}
         </Button>
       </div>
       <p className="owner-login-hint">가게 사장님용</p>

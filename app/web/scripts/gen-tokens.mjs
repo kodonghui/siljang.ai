@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const SOURCE = new URL("../../../design/base.tokens.json", import.meta.url);
+const KAKAO_SOURCE = new URL("../src/styles/kakao.tokens.json", import.meta.url);
 const TARGET = new URL("../src/styles/tokens.css", import.meta.url);
 
 function* walk(node, path) {
@@ -73,7 +74,7 @@ export function tokensToCss(tokens) {
     lines.push(`  --${path.join("-")}: ${cssValue(path.join("."), token)};`);
   }
   return [
-    "/* 생성 파일: design/base.tokens.json(09단계, 2026-11-13 고정)에서 scripts/gen-tokens.mjs가 만듦. 손으로 고치지 않음 */",
+    "/* 생성 파일: design/base.tokens.json(09 기본)과 src/styles/kakao.tokens.json(제공자 규격)에서 gen-tokens.mjs가 만듦. 손으로 고치지 않음 */",
     ":root {",
     ...lines,
     "}",
@@ -82,7 +83,10 @@ export function tokensToCss(tokens) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const css = tokensToCss(JSON.parse(readFileSync(SOURCE, "utf8")));
+  const css = tokensToCss({
+    ...JSON.parse(readFileSync(SOURCE, "utf8")),
+    provider: { kakao: JSON.parse(readFileSync(KAKAO_SOURCE, "utf8")) },
+  });
   if (process.argv.includes("--check")) {
     let now = null;
     try {

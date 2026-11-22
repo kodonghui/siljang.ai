@@ -298,6 +298,21 @@
   font-size: var(--font-size-title);
 }
 
+/* 09가 지정한 카카오 공식 PNG. 심볼/레이블의 비율을 유지하고 컨테이너만 좌우로 늘린다. */
+.owner-login-form > .ui-button[data-kakao="true"] {
+  padding: 0;
+  border: 0;
+  border-radius: var(--provider-kakao-radius);
+  background: var(--provider-kakao-container);
+  color: var(--provider-kakao-label);
+}
+
+.owner-login-form > .ui-button[data-kakao="true"] > img {
+  display: block;
+  width: auto;
+  height: var(--size-control-lg);
+}
+
 .owner-login-hint {
   text-align: center;
   font-size: var(--font-size-small);

@@ -1,4 +1,4 @@
-/* 생성 파일: design/base.tokens.json(09단계, 2026-11-13 고정)에서 scripts/gen-tokens.mjs가 만듦. 손으로 고치지 않음 */
+/* 생성 파일: design/base.tokens.json(09 기본)과 src/styles/kakao.tokens.json(제공자 규격)에서 gen-tokens.mjs가 만듦. 손으로 고치지 않음 */
 :root {
   --color-paper: #F5F3EE;
   --color-surface: #FFFFFF;
@@ -55,4 +55,7 @@
   --size-icon-sm: 16px;
   --size-icon-md: 20px;
   --size-icon-lg: 24px;
+  --provider-kakao-container: #FEE500;
+  --provider-kakao-label: rgba(0, 0, 0, 0.85);
+  --provider-kakao-radius: 12px;
 }

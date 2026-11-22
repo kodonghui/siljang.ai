@@ -1,0 +1,15 @@
+{
+  "$description": "09의 공식 카카오 버튼 적용을 위한 제공자 규격. https://developers.kakao.com/docs/ko/kakaologin/design-guide (2026-11-22 확인). 기본 디자인 토큰은 바꾸지 않음.",
+  "container": {
+    "$type": "color",
+    "$value": { "colorSpace": "srgb", "components": [0.9961, 0.898, 0], "hex": "#FEE500" }
+  },
+  "label": {
+    "$type": "color",
+    "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "hex": "#000000", "alpha": 0.85 }
+  },
+  "radius": {
+    "$type": "dimension",
+    "$value": { "value": 12, "unit": "px" }
+  }
+}
