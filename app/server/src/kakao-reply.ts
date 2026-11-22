@@ -16,10 +16,19 @@ export const KAKAO_COMMON_OUTCOMES = [
   "not_accepting",
   "server_error",
 ] as const;
-type Outcome = (typeof KAKAO_COMMON_OUTCOMES)[number] | "notice_gone" | "masking_failed";
+type Outcome =
+  | (typeof KAKAO_COMMON_OUTCOMES)[number]
+  | "notice_gone"
+  | "masking_failed"
+  | "review_saved"
+  | "review_not_allowed"
+  | "review_invalid";
 type TextOutcome = Exclude<Outcome, "callback_pending" | "duplicate">;
 export const KAKAO_HANDOFF_TEXT = "사장님 확인 뒤 답드릴게요.";
 const TEXT: Readonly<Record<TextOutcome, string>> = {
+  review_saved: "후기를 남겨 주셔서 고마워요",
+  review_not_allowed: "받으신 주문에만 후기를 남길 수 있어요",
+  review_invalid: "후기는 1,000자, 사진은 5장까지 남길 수 있어요",
   masking_failed: KAKAO_HANDOFF_TEXT,
   ai_unavailable: KAKAO_HANDOFF_TEXT,
   ai_timeout: KAKAO_HANDOFF_TEXT,
@@ -52,6 +61,8 @@ export function kakaoReply(
     readonly silent?: boolean;
     readonly contactPhone?: string | undefined;
     readonly previous?: readonly string[];
+    /** API-072는 반복 요청에도 처음의 감사 답을 보낸다. API-070의 빈 출력과 구분한다. */
+    readonly repeatReview?: boolean;
   } = {},
 ): Response {
   const headers = { "Siljang-Outcome": outcome, "Cache-Control": "no-store" };
@@ -59,6 +70,7 @@ export function kakaoReply(
     return r.json({ version: "2.0", useCallback: true, data: { text: "답을 준비하고 있어요" } }, 200, headers);
   }
   const outputs: { simpleText: { text: string } }[] = [];
+  if (outcome === "duplicate" && options.repeatReview) outputs.push({ simpleText: { text: TEXT.review_saved } });
   if (outcome !== "duplicate" && !(outcome === "rate_limited" && options.silent)) {
     const previous = options.previous ?? [];
     if (previous.length > 2 || previous.some((text) => [...text].length < 1 || [...text].length > 1000))

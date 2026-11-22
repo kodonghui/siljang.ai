@@ -5,6 +5,7 @@ import { publishStoredKakaoCallback, storeKakaoCallback } from "./kakao-callback
 import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
 import { replyKakaoHandoffInTransaction } from "./kakao-handoff";
 import { kakaoAiFailureOutcome, kakaoReply } from "./kakao-reply";
+import { receiveKakaoTextReview } from "./kakao-review";
 import {
   type InboundReceipt,
   kakaoContactPhone,
@@ -33,6 +34,13 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
 
   const messageKind = request.payload.utterance.trim() === "" ? "unsupported" : "text";
   try {
+    if (kind === "review" && request.status === "linked") {
+      const outcome = await receiveKakaoTextReview(r.db, request);
+      return kakaoReply(r, outcome, {
+        repeatReview: true,
+        ...(outcome === "not_accepting" ? { contactPhone: await kakaoContactPhone(r.db) } : {}),
+      });
+    }
     if (kind !== "message" || request.status !== "linked") {
       return kakaoReply(r, "not_accepting", { contactPhone: await kakaoContactPhone(r.db) });
     }

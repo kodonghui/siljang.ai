@@ -23,3 +23,9 @@ GRANT SELECT (id, shop_id, consultation_id, status, revision, lettering, design_
 GRANT SELECT, INSERT ON masked_values TO :"runtime_role";
 -- TASK-028: 미전달 일반 글은 다음 응답/콜백에 전한 뒤 상태와 시각만 고친다.
 GRANT SELECT, UPDATE (status, sent_at) ON notifications TO :"runtime_role";
+-- API-072: 자기 받은 주문의 식별자/상태만 확인한다. 연락처/금액/주문 내용은 읽지 않는다.
+GRANT SELECT (id, shop_id, order_no, customer_id, consultation_id, status, personal_data_purged_at), UPDATE (id)
+  ON orders TO :"runtime_role";
+-- 글 후기의 버전만 읽고 새 글과 이전 버전의 교체 시각을 남긴다. 기존 본문 수정/삭제는 없다.
+GRANT SELECT (id, shop_id, order_id, version, superseded_at),
+  INSERT (shop_id, order_id, version, body, created_at), UPDATE (superseded_at) ON reviews TO :"runtime_role";
