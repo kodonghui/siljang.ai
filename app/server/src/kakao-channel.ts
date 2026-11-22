@@ -120,6 +120,8 @@ async function key(r: ShopRequest, c: Channel) {
 async function result(db: ShopDb, r: ShopRequest, c: Channel, outcome: string, showKey: boolean) {
   return { outcome, kakaoChannel: await render(db, r, c), skillKey: showKey ? await key(r, c) : null };
 }
+
+export { currentAfterExpiry as currentKakaoChannelAfterExpiry, result as kakaoChannelResult };
 export async function getKakaoChannel(r: ShopRequest): Promise<Response> {
   return r.json(
     await r.db.transaction(async (db) => {
