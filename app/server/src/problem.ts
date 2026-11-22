@@ -151,7 +151,12 @@ export interface CalendarConflict {
   readonly day: string;
   readonly capacity: number;
   readonly held: number;
-  readonly orders: readonly { readonly orderId: string; readonly orderNo: string }[];
+  readonly orders: readonly {
+    readonly orderId: string;
+    readonly orderNo: string;
+    readonly status: string;
+    readonly pickupAt: string;
+  }[];
 }
 
 /**
@@ -227,7 +232,19 @@ function checkExtras(code: ErrorCode, extras: ProblemExtras): void {
       for (const order of item.orders)
         if (
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order.orderId) ||
-          !/^[0-9A-HJ-NP-Z]{8}$/.test(order.orderNo)
+          !/^[0-9A-Z]{6,8}$/.test(order.orderNo) ||
+          ![
+            "requested",
+            "awaiting_payment",
+            "payment_overdue",
+            "confirmed",
+            "received",
+            "no_pickup",
+            "rejected",
+            "cancelled",
+          ].includes(order.status) ||
+          !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/.test(order.pickupAt) ||
+          !Number.isFinite(Date.parse(order.pickupAt))
         )
           fail("conflicts order");
     }
@@ -269,7 +286,12 @@ export function problemBody(code: ErrorCode, traceId: string, instance?: string,
             day: item.day,
             capacity: item.capacity,
             held: item.held,
-            orders: item.orders.map((order) => ({ orderId: order.orderId, orderNo: order.orderNo })),
+            orders: item.orders.map((order) => ({
+              orderId: order.orderId,
+              orderNo: order.orderNo,
+              status: order.status,
+              pickupAt: order.pickupAt,
+            })),
           })),
         }
       : {}),

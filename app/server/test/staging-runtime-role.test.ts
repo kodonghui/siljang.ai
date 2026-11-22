@@ -180,6 +180,54 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     }
   });
 
+  it("제한 역할로 캘린더 4개 API와 날짜 잠금을 실행하고 주문·자리 쓰기는 막음", async () => {
+    const api = createApp({
+      connect: () => roleDb(),
+      scopes: { owner: async () => createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }) },
+      services: { now: () => now },
+      logSink: () => {},
+    });
+    const call = (method: string, path: string, body?: unknown) =>
+      api.request(
+        `https://siljang.example/api${path}`,
+        {
+          method,
+          headers: {
+            origin: "https://siljang.example",
+            "content-type": "application/json",
+            "Idempotency-Key": newRequestKey(),
+          },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        },
+        testEnv(),
+      );
+    const current = await call("GET", "/owner/calendar");
+    expect(current.status, await current.clone().text()).toBe(200);
+    const { revision, updatedAt: _updated, ...settings } = (await current.json()) as Record<string, unknown>;
+    const saved = await call("PUT", "/owner/calendar", {
+      ...settings,
+      baseRevision: revision,
+      dailyCapacity: 8,
+      reviewRequestTime: "12:30",
+    });
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    const days = await call("GET", "/owner/calendar/days?from=2026-11-22&to=2026-11-22");
+    expect(days.status, await days.clone().text()).toBe(200);
+    const list = (await days.json()) as { items: { revision: string }[] };
+    const closed = await call("PATCH", "/owner/calendar/days/2026-11-22", {
+      baseRevision: list.items[0]?.revision,
+      manuallyClosed: true,
+    });
+    expect(closed.status, await closed.clone().text()).toBe(200);
+    expect(await closed.json()).toMatchObject({ day: { capacity: 8, manuallyClosed: true } });
+    if (!isolated) throw new Error("시험 DB 없음");
+    const privileges = await isolated.db.query(
+      "SELECT has_table_privilege($1, 'slot_holds', 'INSERT') AS slot_write, has_column_privilege($1, 'orders', 'status', 'UPDATE') AS order_write, has_column_privilege($1, 'notifications', 'body', 'UPDATE') AS notice_body",
+      [role],
+    );
+    expect(privileges.rows).toEqual([{ slot_write: false, order_write: false, notice_body: false }]);
+  });
+
   it("내용 없는 ID 메시지도 콜백의 UPDATE·SELECT·만료 정리 경로를 실행", async () => {
     expect(
       await consumeKakaoCallback(

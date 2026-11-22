@@ -5250,8 +5250,12 @@ paths:
                       orders:
                       - orderId: f8471919-f9c2-5b67-9a89-b047fb281ba4
                         orderNo: K7Q3M9
+                        status: confirmed
+                        pickupAt: '2026-11-20T15:00:00+09:00'
                       - orderId: 68598d4e-7858-598f-aa63-2b51daa7d590
                         orderNo: P4X8N2
+                        status: awaiting_payment
+                        pickupAt: '2026-11-20T16:00:00+09:00'
                 unchanged:
                   summary: 이미 그 상태라 바꾼 것 없음(DEC-03)
                   value:
@@ -27167,6 +27171,39 @@ components:
           pattern: ^[A-Za-z0-9._-]+$
           description: 서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)
       additionalProperties: false
+    CalendarConflictOrder:
+      type: object
+      description: 캘린더 저장 전에 확인할 주문번호·상태·픽업 일시(REQ-261)
+      required:
+      - orderId
+      - orderNo
+      - status
+      - pickupAt
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        orderNo:
+          type: string
+          minLength: 6
+          maxLength: 8
+          pattern: ^[0-9A-Z]{6,8}$
+          description: 주문번호. 손님에게 보이는 유일한 번호로 영문 대문자·숫자 6~8자의 무작위 값(G6, SPEC-029)
+        status:
+          type: string
+          enum:
+          - requested
+          - awaiting_payment
+          - payment_overdue
+          - confirmed
+          - received
+          - no_pickup
+          - rejected
+          - cancelled
+        pickupAt:
+          type: string
+          format: date-time
+      additionalProperties: false
     CalendarConflict:
       type: object
       description: 바꾼 기준을 넘는 날. 주문은 그대로 두고 사장님께 보임(R4)
@@ -27190,7 +27227,7 @@ components:
         orders:
           type: array
           items:
-            $ref: '#/components/schemas/OrderRef'
+            $ref: '#/components/schemas/CalendarConflictOrder'
           minItems: 1
           maxItems: 100
       additionalProperties: false

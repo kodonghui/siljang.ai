@@ -7,6 +7,7 @@ import {
   parseCalendarSettings,
   shiftDate,
 } from "./calendar-input";
+import { rescheduleCalendarNotices } from "./calendar-notices";
 import { toHex } from "./encoding";
 import { ApiError, type CalendarConflict, type ConfirmationKind, fieldError } from "./problem";
 import type { ShopRequest } from "./routes";
@@ -39,6 +40,8 @@ interface HoldRow {
   overbooked: boolean;
   order_id: string;
   order_no: string;
+  order_status: string;
+  pickup_at: Date;
 }
 
 const KEYS = [
@@ -71,8 +74,15 @@ function candidate(input: CalendarSettingsInput, previous: CalendarRow | undefin
   };
 }
 
-function conflict(day: string, capacity: number, holds: HoldRow[]): CalendarConflict {
-  const orders = [...new Map(holds.map((h) => [h.order_id, { orderId: h.order_id, orderNo: h.order_no }])).values()];
+function conflict(day: string, capacity: number, holds: HoldRow[], zone: string): CalendarConflict {
+  const orders = [
+    ...new Map(
+      holds.map((h) => [
+        h.order_id,
+        { orderId: h.order_id, orderNo: h.order_no, status: h.order_status, pickupAt: toShopIso(h.pickup_at, zone) },
+      ]),
+    ).values(),
+  ];
   return { day, capacity, held: holds.length, orders: orders.slice(0, 100) };
 }
 
@@ -111,7 +121,8 @@ async function settingConflicts(
     const oldClosed = row?.closed || previous?.closed_weekdays.includes(isoWeekday(day));
     if (closed && !oldClosed) closedCount += active.length;
     if (capacity < holds.length && (oldCapacity === undefined || capacity < oldCapacity)) capacityCount += holds.length;
-    if (capacity < holds.length || (closed && active.length)) conflicts.push(conflict(day, capacity, holds));
+    if (capacity < holds.length || (closed && active.length))
+      conflicts.push(conflict(day, capacity, holds, await timeZone(db)));
   }
   if (confirm)
     requireConfirmation(
@@ -168,7 +179,7 @@ async function renderSettings(db: ShopDb, row: CalendarRow, zone: string) {
     db.scope.shopId,
     row.revision,
     inventory.days.map((d) => [d.day, d.revision]),
-    inventory.holds.map((h) => [h.id, h.status, h.overbooked]),
+    inventory.holds.map((h) => [h.id, h.status, h.overbooked, h.order_status, h.pickup_at.toISOString()]),
   ]);
   return {
     closedWeekdays: row.closed_weekdays,
@@ -193,7 +204,7 @@ async function readDays(db: ShopDb, from: string, to: string) {
   ).rows;
   const holds = (
     await db.run<HoldRow>(
-      "SELECT h.id, h.day::text, h.status, h.overbooked, h.order_id, o.order_no FROM slot_holds h JOIN orders o ON o.shop_id = $1 AND o.id = h.order_id WHERE h.shop_id = $1 AND h.day BETWEEN $2::date AND $3::date AND h.status IN ('held', 'fixed', 'done') ORDER BY h.day, h.id",
+      "SELECT h.id, h.day::text, h.status, h.overbooked, h.order_id, o.order_no, o.status AS order_status, o.pickup_at FROM slot_holds h JOIN orders o ON o.shop_id = $1 AND o.id = h.order_id WHERE h.shop_id = $1 AND h.day BETWEEN $2::date AND $3::date AND h.status IN ('held', 'fixed', 'done') ORDER BY h.day, h.id",
       [from, to],
     )
   ).rows;
@@ -212,7 +223,7 @@ async function renderDay(db: ShopDb, calendar: CalendarRow, day: string, row: Da
             calendar.revision,
             day,
             row?.revision ?? null,
-            holds.map((h) => [h.id, h.status, h.overbooked]),
+            holds.map((h) => [h.id, h.status, h.overbooked, h.order_status, h.pickup_at.toISOString()]),
           ]),
         ),
       ),
@@ -282,11 +293,15 @@ export async function setCalendarSettings(r: ShopRequest): Promise<Response> {
     body: raw,
     async execute(db) {
       await lockSettings(db, true);
-      const previous = await calendarRow(db, false);
       const zone = await timeZone(db);
+      const today = toShopLocal(r.services.now(), zone).date;
+      await db.run(
+        "SELECT d.day FROM calendar_days d WHERE d.shop_id = $1 AND d.day >= $2::date ORDER BY d.day FOR UPDATE",
+        [today],
+      );
+      const previous = await calendarRow(db, false);
       const old = previous ? await renderSettings(db, previous, zone) : undefined;
       if (input.baseRevision !== (old?.revision ?? null)) throw new ApiError("version_conflict");
-      const today = toShopLocal(r.services.now(), zone).date;
       const next = candidate(input, previous, r.services.now());
       const conflicts = await settingConflicts(db, previous, next, today, input.confirm);
       if (old && KEYS.every((key) => JSON.stringify(old[key]) === JSON.stringify(input[key])))
@@ -311,6 +326,14 @@ export async function setCalendarSettings(r: ShopRequest): Promise<Response> {
           input.reviewRequestTime,
           r.services.now(),
         ],
+      );
+      await rescheduleCalendarNotices(
+        db,
+        zone,
+        previous
+          ? { dayBefore: previous.day_before_notice_time.slice(0, 5), review: previous.review_request_time.slice(0, 5) }
+          : undefined,
+        { dayBefore: input.dayBeforeNoticeTime, review: input.reviewRequestTime },
       );
       const outcome = previous ? "updated" : "created";
       return {
@@ -372,7 +395,7 @@ export async function updateCalendarDay(r: ShopRequest): Promise<Response> {
             ? [{ kind: "capacity_below_held" as const, count: current.held }]
             : []),
         ],
-        data.holds.length ? [conflict(day, capacity, data.holds)] : [],
+        data.holds.length ? [conflict(day, capacity, data.holds, await timeZone(db))] : [],
       );
       await ensureDay(db, day);
       await db.run(

@@ -586,7 +586,7 @@ op(id="API-027", method="put", path="/owner/calendar", op="setCalendarSettings",
    ok=[(200, "CalendarSettingsResult", {
        "created": {"outcome": "created", "calendar": E.CALENDAR, "conflicts": []},
        "updated_with_conflicts": {"outcome": "updated", "calendar": dict(E.CALENDAR, dailyCapacity=4, revision=E.rev("calendar:2")),
-                                  "conflicts": [{"day": "2026-11-20", "capacity": 4, "held": 5, "orders": [E.ORDER_REF, E.CUSTOM_REF]}]},
+                                  "conflicts": [{"day": "2026-11-20", "capacity": 4, "held": 5, "orders": [dict(E.ORDER_REF, status="confirmed", pickupAt=E.t("11-20", "15:00")), dict(E.CUSTOM_REF, status="awaiting_payment", pickupAt=E.t("11-20", "16:00"))]}]},
        "unchanged": {"outcome": "unchanged", "calendar": E.CALENDAR, "conflicts": []}})],
    errors={404: ["shop_not_registered"], 409: ["version_conflict", "confirmation_required"]},
    fields=[("/replyEnd", "not_after_start"), ("/dayBeforeNoticeTime", "outside_window")],

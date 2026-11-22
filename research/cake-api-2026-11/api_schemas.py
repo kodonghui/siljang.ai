@@ -613,11 +613,12 @@ S["CalendarSettings"] = all_required({
     "updatedAt": DT,
     "revision": REVISION,
 })
+S["CalendarConflictOrder"] = all_required({"orderId": UUID, "orderNo": ORDER_NO, "status": enum(ORDER_STATUS), "pickupAt": DT}, desc="캘린더 저장 전에 확인할 주문번호·상태·픽업 일시(REQ-261)")
 S["CalendarConflict"] = all_required({
     "day": DATE,
     "capacity": integer(0, 100),
     "held": integer(0, 10000),
-    "orders": arr(ref("OrderRef"), 1, 100),
+    "orders": arr(ref("CalendarConflictOrder"), 1, 100),
 }, desc="바꾼 기준을 넘는 날. 주문은 그대로 두고 사장님께 보임(R4)")
 S["CalendarSettingsResult"] = all_required({
     "outcome": outcome(("created", "updated", "unchanged"), "created: 처음 정함, updated: 바꿈(그 뒤 잡는 자리에만), unchanged: 같은 값"),

@@ -124,6 +124,7 @@ export function parseCalendarDay(body: unknown): CalendarDayInput {
 }
 
 export function calendarDate(value: unknown, field: string): string {
+  if (value === undefined) throw fieldError(field, "required");
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw fieldError(field, "bad_format");
   try {
     shopLocalToUtc(value, "12:00", "UTC");

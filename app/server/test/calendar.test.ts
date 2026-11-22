@@ -3,7 +3,7 @@ import { createApp } from "../src/app";
 import { ApiError } from "../src/problem";
 import { createShopScope } from "../src/shop-scope";
 import { expectProblem, expectSchema } from "./support/contract";
-import { describeDb, newRequestKey, testDb, testEnv } from "./support/db";
+import { describeDb, newRequestKey, newUuid, testDb, testEnv } from "./support/db";
 import { createShop } from "./support/shops";
 
 const ORIGIN = "https://siljang.example";
@@ -25,7 +25,7 @@ function settings(baseRevision: string | null = null) {
   };
 }
 
-async function harness() {
+async function harness(options: Parameters<typeof createApp>[0] = {}) {
   const shop = await createShop(db, "캘린더 합성 가게");
   const app = createApp({
     scopes: {
@@ -36,6 +36,7 @@ async function harness() {
     },
     services: { now: () => NOW },
     logSink: () => {},
+    ...options,
   });
   function call(method: string, path: string, input?: unknown, authenticated = true, key = newRequestKey()) {
     const init: RequestInit = {
@@ -213,5 +214,262 @@ describeDb("TASK-041 캘린더 API-026~029", () => {
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ day: { capacity: 0, held: 1, remaining: 0, full: true } });
+  });
+
+  it("전날/후기 시각 변경은 미발송 안내만 다시 계산하고 보낸 안내와 진행 중 시도는 보존함", async () => {
+    const h = await harness();
+    const first = await h.call("PUT", "/owner/calendar", settings());
+    const value = (await first.json()) as { calendar: { revision: string } };
+    await db.transaction(async (tx) => {
+      await tx.query("UPDATE order_details SET pickup_at = '2026-11-22T06:00:00Z' WHERE shop_id = $1", [h.shop.shopId]);
+      await tx.query(
+        "UPDATE orders SET pickup_day = '2026-11-22', pickup_at = '2026-11-22T06:00:00Z' WHERE shop_id = $1",
+        [h.shop.shopId],
+      );
+    });
+    await db.transaction(async (tx) => {
+      const payment = newUuid();
+      await tx.query(
+        "UPDATE payment_requests SET status='paid', arrived_amount=amount, arrived_at=$2, paid_at=$2 WHERE id=$1",
+        [h.shop.paymentRequestId, NOW],
+      );
+      await tx.query(
+        "INSERT INTO payments (id, shop_id, order_id, payment_request_id, amount, confirmed_at) VALUES ($1,$2,$3,$4,35000,$5)",
+        [payment, h.shop.shopId, h.shop.orderId, h.shop.paymentRequestId, NOW],
+      );
+      await tx.query(
+        "UPDATE orders SET status='received', confirmed_at=$2, confirmed_payment_id=$3, finished_at=$2 WHERE id=$1",
+        [h.shop.orderId, NOW, payment],
+      );
+      await tx.query(
+        "INSERT INTO productions (shop_id, order_id, handed_over_at, handover_kind) VALUES ($1, $2, '2026-11-18T23:30:00Z', 'pickup')",
+        [h.shop.shopId, h.shop.orderId],
+      );
+    });
+    const insert = async (kind: string, tag: string, status: string, attempts: number, scheduled: string) => {
+      await db.query(
+        `INSERT INTO notifications (shop_id, customer_id, consultation_id, order_id, kind, event_key, template_key, body, status, scheduled_for, next_attempt_at, attempts, sent_at, kakao_task_id, requested_at)
+        VALUES ($1,$2,$3,$4,$5,$6,'합성 안내','합성 안내',$7,$8,$8,$9, CASE WHEN $7 = 'sent' THEN now() END, CASE WHEN $7 IN ('sent','confirming') THEN 'synthetic-task' END, CASE WHEN $7 IN ('sent','confirming') THEN now() END)`,
+        [
+          h.shop.shopId,
+          h.shop.customerId,
+          h.shop.consultationId,
+          h.shop.orderId,
+          kind,
+          tag,
+          status,
+          scheduled,
+          attempts,
+        ],
+      );
+    };
+    await insert("day_before", "pending-before", "pending", 0, "2026-11-21T09:00:00Z");
+    await insert("review_request", "pending-review", "pending", 0, "2026-11-20T02:00:00Z");
+    await insert("review_request", "retry-review", "retrying", 1, "2026-11-20T02:00:00Z");
+    await insert("review_request", "sent-review", "sent", 1, "2026-11-20T02:00:00Z");
+    await insert("review_request", "confirming-review", "confirming", 1, "2026-11-20T02:00:00Z");
+    const response = await h.call("PUT", "/owner/calendar", {
+      ...settings(value.calendar.revision),
+      dayBeforeNoticeTime: "19:30",
+      reviewRequestTime: "12:30",
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    const rows = await db.query<{ event_key: string; scheduled_for: Date; next_attempt_at: Date; attempts: number }>(
+      "SELECT event_key, scheduled_for, next_attempt_at, attempts FROM notifications WHERE shop_id = $1 ORDER BY event_key",
+      [h.shop.shopId],
+    );
+    const result = Object.fromEntries(
+      rows.rows.map((r) => [
+        r.event_key,
+        { scheduled: r.scheduled_for.toISOString(), next: r.next_attempt_at.toISOString(), attempts: r.attempts },
+      ]),
+    );
+    expect(result["pending-before"]).toEqual({
+      scheduled: "2026-11-21T10:30:00.000Z",
+      next: "2026-11-21T10:30:00.000Z",
+      attempts: 0,
+    });
+    expect(result["pending-review"]).toEqual({
+      scheduled: "2026-11-20T03:30:00.000Z",
+      next: "2026-11-20T03:30:00.000Z",
+      attempts: 0,
+    });
+    expect(result["retry-review"]).toEqual({
+      scheduled: "2026-11-20T03:30:00.000Z",
+      next: "2026-11-20T02:00:00.000Z",
+      attempts: 1,
+    });
+    for (const key of ["sent-review", "confirming-review"])
+      expect(result[key]).toEqual({
+        scheduled: "2026-11-20T02:00:00.000Z",
+        next: "2026-11-20T02:00:00.000Z",
+        attempts: 1,
+      });
+  });
+
+  it.each([
+    ["dailyCapacity", -1, "out_of_range"],
+    ["dailyCapacity", 101, "out_of_range"],
+    ["dailyCapacity", 1.5, "bad_format"],
+    ["orderCutoffDays", 31, "out_of_range"],
+    ["closedWeekdays", [0], "out_of_range"],
+    ["closedWeekdays", [8], "out_of_range"],
+    ["closedWeekdays", [1, 1], "duplicate"],
+    ["closedWeekdays", null, "out_of_range"],
+    ["replyEnd", "09:00", "not_after_start"],
+    ["replyEnd", "08:59", "not_after_start"],
+    ["orderCutoffTime", "24:00", "bad_format"],
+    ["orderCutoffTime", "09:00\u0000", "bad_format"],
+    ["dayBeforeNoticeTime", "07:59", "outside_window"],
+    ["dayBeforeNoticeTime", "20:51", "outside_window"],
+    ["reviewRequestTime", "07:59", "outside_window"],
+    ["reviewRequestTime", "20:51", "outside_window"],
+    ["confirm", ["overbooking"], "not_allowed"],
+    ["confirm", ["closed_day_with_orders", "closed_day_with_orders"], "duplicate"],
+    ["unknown", "합성 입력", "unknown_field"],
+  ])("설정 %s=%j의 잘못된 값은 저장하지 않음", async (field, value, code) => {
+    const h = await harness();
+    const problem = await expectProblem(
+      await h.call("PUT", "/owner/calendar", { ...settings(), [field]: value }),
+      "validation_failed",
+    );
+    expect(problem.errors).toContainEqual({ field: `/${field}`, code });
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM business_calendars WHERE shop_id = $1", [h.shop.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
+  });
+
+  it.each([null, [], 5, { ...settings(), baseRevision: "x".repeat(65) }, { ...settings(), baseRevision: 1 }, {}])(
+    "잘못된 본문 %j는 422",
+    async (input) => {
+      const h = await harness();
+      await expectProblem(await h.call("PUT", "/owner/calendar", input), "validation_failed");
+    },
+  );
+
+  it.each([
+    ["", "query:from", "required"],
+    ["?from=2026-02-30&to=2026-03-01", "query:from", "bad_format"],
+    ["?from=2026-11-20&to=2026-11-19", "query:to", "out_of_range"],
+    ["?from=2026-11-20&to=2027-01-21", "query:to", "out_of_range"],
+  ])("조회 기간 %s는 필드 오류", async (query, field, code) => {
+    const h = await harness();
+    const problem = await expectProblem(await h.call("GET", `/owner/calendar/days${query}`), "validation_failed");
+    expect(problem.errors).toEqual([{ field, code }]);
+  });
+
+  it.each([
+    ["2026-11-18", { baseRevision: null, manuallyClosed: true }, "path:day", "in_past"],
+    ["not-a-date", { baseRevision: null, manuallyClosed: true }, "path:day", "bad_format"],
+    ["2026-11-20", { baseRevision: null }, "/", "required"],
+    ["2026-11-20", { baseRevision: null, capacityOverride: 101 }, "/capacityOverride", "out_of_range"],
+    ["2026-11-20", { baseRevision: null, manuallyClosed: "yes" }, "/manuallyClosed", "bad_format"],
+    ["2026-11-20", { baseRevision: null, closed: null }, "/closed", "bad_format"],
+  ])("날짜 변경 %s %j는 저장하지 않음", async (day, input, field, code) => {
+    const h = await harness();
+    await h.call("PUT", "/owner/calendar", settings());
+    const problem = await expectProblem(
+      await h.call("PATCH", `/owner/calendar/days/${day}`, input),
+      "validation_failed",
+    );
+    expect(problem.errors).toContainEqual({ field, code });
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM calendar_days WHERE shop_id = $1", [h.shop.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
+  });
+
+  it("경계 시각·최대 범위 62일·처음 값 없는 날의 변경 없음", async () => {
+    const h = await harness();
+    const response = await h.call("PUT", "/owner/calendar", {
+      ...settings(),
+      dailyCapacity: 100,
+      orderCutoffDays: 30,
+      dayBeforeNoticeTime: "08:00",
+      reviewRequestTime: "20:50",
+    });
+    expect(response.status).toBe(200);
+    const list = await h.call("GET", "/owner/calendar/days?from=2026-11-20&to=2027-01-20");
+    expect(list.status).toBe(200);
+    expectSchema("CalendarDayList", await list.json());
+    const unchanged = await h.call("PATCH", "/owner/calendar/days/2026-11-20", {
+      baseRevision: null,
+      manuallyClosed: false,
+      capacityOverride: null,
+    });
+    expect(unchanged.status).toBe(200);
+    expect(await unchanged.json()).toMatchObject({
+      outcome: "unchanged",
+      day: { capacity: 100, manuallyClosed: false },
+    });
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM calendar_days WHERE shop_id = $1", [h.shop.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
+  });
+
+  it("설정은 같은 값이면 변경 없음, 같은 키는 현재 값을 읽고 처음 결과를 반복함", async () => {
+    const h = await harness();
+    const key = newRequestKey();
+    const first = await h.call("PUT", "/owner/calendar", { ...settings(), closedWeekdays: [1, 5] }, true, key);
+    const result = (await first.json()) as { calendar: { revision: string } };
+    const same = await h.call("PUT", "/owner/calendar", {
+      ...settings(result.calendar.revision),
+      closedWeekdays: [5, 1],
+    });
+    expect(await same.json()).toMatchObject({ outcome: "unchanged", calendar: { revision: result.calendar.revision } });
+    const changed = await h.call("PUT", "/owner/calendar", { ...settings(result.calendar.revision), dailyCapacity: 3 });
+    expect(changed.status).toBe(200);
+    const replay = await h.call("PUT", "/owner/calendar", { ...settings(), closedWeekdays: [1, 5] }, true, key);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    expect(await replay.json()).toMatchObject({ outcome: "created", calendar: { dailyCapacity: 3 } });
+    await expectProblem(
+      await h.call("PUT", "/owner/calendar", { ...settings(), dailyCapacity: 4 }, true, key),
+      "idempotency_key_reused",
+    );
+  });
+
+  it("동시에 처음 설정하면 하나만 저장됨", async () => {
+    const h = await harness();
+    const responses = await Promise.all([
+      h.call("PUT", "/owner/calendar", settings()),
+      h.call("PUT", "/owner/calendar", { ...settings(), dailyCapacity: 3 }),
+    ]);
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
+  });
+
+  it("동시에 날짜를 바꾸면 오래된 버전 하나는 거절함", async () => {
+    const h = await harness();
+    await h.call("PUT", "/owner/calendar", settings());
+    const list = (await (await h.call("GET", "/owner/calendar/days?from=2026-11-20&to=2026-11-20")).json()) as {
+      items: { revision: string }[];
+    };
+    const baseRevision = list.items[0]?.revision;
+    const responses = await Promise.all([
+      h.call("PATCH", "/owner/calendar/days/2026-11-20", { baseRevision, manuallyClosed: true }),
+      h.call("PATCH", "/owner/calendar/days/2026-11-20", { baseRevision, capacityOverride: 3 }),
+    ]);
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
+  });
+
+  it.each([
+    ["GET", "/owner/calendar", undefined],
+    ["PUT", "/owner/calendar", settings()],
+    ["GET", "/owner/calendar/days?from=2026-11-20&to=2026-11-20", undefined],
+    ["PATCH", "/owner/calendar/days/2026-11-20", { baseRevision: null, manuallyClosed: true }],
+  ])("가게가 없는 %s %s는 404, DB 실패는 내부 내용을 빼고 500", async (method, path, input) => {
+    const missing = await harness({
+      scopes: {
+        owner: async () => {
+          throw new ApiError("shop_not_registered");
+        },
+      },
+    });
+    await expectProblem(await missing.call(method, path, input), "shop_not_registered");
+    const fail = () => Promise.reject(new Error("비공개 합성 DB 오류"));
+    const broken = await harness({
+      connect: () => ({ query: fail, transaction: fail, abort: async () => {}, close: async () => {} }),
+    });
+    const response = await broken.call(method, path, input);
+    expect(await response.clone().text()).not.toContain("비공개 합성 DB 오류");
+    await expectProblem(response, "internal");
   });
 });
