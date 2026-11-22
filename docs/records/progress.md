@@ -6,6 +6,14 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-22 16:00 KST · PR #155 공통 전송 모듈의 타입 오류 수정
+
+- 동희님 지시(2026-11-22 15:54 KST, Claude 프로젝트 채팅): "PR: 너가 싹 정리해". Claude가 멈춰 있던 draft PR #155를 정리합니다.
+- 원인: CI app 44957478895의 `src/kakao-event.ts(217,9): error TS2353: Object literal may only specify known properties, and 'cache' does not exist in type 'RequestInit'`입니다. Workers의 fetch 요청 옵션에는 `cache`가 없습니다. 첫 타입 검사(TextDecoder·credentials)와 두 번째 타입 검사(cache)는 서로 다른 오류였으므로 같은 원인이 되풀이된 실패로 보지 않고 고쳤습니다.
+- 한 일: 최신 main `f7206af`를 합쳤습니다. 기록 파일의 번호 충돌은 main 쪽을 그대로 두고 이 PR의 항목을 다음 번호(fix-log 554, app/README 262)로 다시 적었습니다. `cache: "no-store"` 한 줄을 지웠습니다. 전송 모듈은 아직 서비스와 앱 경로에 연결하지 않았습니다(실제 발신과 업무 렌더러는 TASK-104·167).
+- 확인: 로컬 lint 256개 파일 수정 0건, 전체 타입 검사 종료 0, 빌드 종료 0입니다. 로컬 시험은 PostgreSQL 없이 882개 통과, 393개 건너뜀, 1개 실패입니다. 실패한 `scheduled-poll.test.ts`의 권한 실패 시험은 이 PR을 넣지 않은 main에서도 같은 결과여서 이 PR과 관계없고, PostgreSQL이 있는 CI 결과를 기준으로 합니다. `kakao-event.test.ts` 72개는 통과했습니다. 최종 CI 결과는 PR 본문에 적습니다.
+- 다음: CI app·db 성공 뒤 squash로 합치고 main CI와 스테이징 배포를 확인합니다. TASK-028의 남은 것(전송 모듈의 서비스 연결, 정상 AI·초안 변경 한 번, 미연결 모델 결과, API-072 업무 중복, G4/G5 전체, 실제 DB 권한 적용)은 Codex가 이어서 합니다. finished는 바꾸지 않았고 전체 29/183개입니다.
+
 ### 2026-11-22 07:37 KST · TASK-028 안내 스킬의 시간 초과 상태
 
 - main7923a15c36dc78a2ba5a0bcebaceb3e8563ac1f0는 PR #154의 app44956288596·db44956288598 및 main app44956485394(check·배포)·db44956485330 성공 뒤 원격 ref/학원컴 최신 생성 배포2026-11-21T22:25:23.590281Z·태그 동일·상태200/SSH 종료0까지 확인한 기준입니다.
