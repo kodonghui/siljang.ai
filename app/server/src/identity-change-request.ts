@@ -61,7 +61,7 @@ export async function requestIdentityChange(r: ShopRequest): Promise<Response> {
         copied = key;
         await promoteUpload(r.services.storage(), upload, r.scope.shopId, id);
         await db.run(
-          "INSERT INTO shop_identity_changes (id,shop_id,business_name,representative_name,business_reg_no,prev_business_name,prev_representative_name,prev_business_reg_no,evidence_photo_key,requested_at) VALUES ($2,$1,$3,$4,$5,$6,$7,$8,$9,$10)",
+          "INSERT INTO shop_identity_changes (shop_id,id,business_name,representative_name,business_reg_no,prev_business_name,prev_representative_name,prev_business_reg_no,evidence_photo_key,requested_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
           [
             id,
             input.businessName,
