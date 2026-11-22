@@ -212,6 +212,33 @@ describeDb("TASK-034 운영자의 영업 신고 확인 API-012/013/014", () => {
       ).rows,
     ).toEqual([{ closed_at: null }]);
   });
+  it("사장님이 계좌를 다시 등록하면 보류 할 일과 pending 알림의 예약도 닫힘", async () => {
+    const h = await fixture();
+    expect((await h.review("on_hold", "계좌를 다시 올려 주세요")).status).toBe(200);
+    const changed = new Date(NOW.getTime() + 1000);
+    await db.transaction(async (tx) => {
+      await tx.query("UPDATE payment_accounts SET retired_at=$2 WHERE shop_id=$1 AND retired_at IS NULL", [
+        h.shop.shopId,
+        changed,
+      ]);
+      await tx.query(
+        "INSERT INTO payment_accounts (shop_id,bank_name,account_number_enc,account_last4,holder_name,created_at) SELECT shop_id,bank_name,account_number_enc,account_last4,holder_name,$2 FROM payment_accounts WHERE shop_id=$1 ORDER BY created_at DESC LIMIT 1",
+        [h.shop.shopId, changed],
+      );
+    });
+    expect((await h.current()).licenseStatus).toBe("pending");
+    expect(
+      (await db.query("SELECT closed_at FROM owner_tasks WHERE shop_id=$1 AND kind='license_on_hold'", [h.shop.shopId]))
+        .rows,
+    ).toEqual([{ closed_at: changed }]);
+    expect(
+      (
+        await db.query("SELECT next_attempt_at FROM owner_alerts WHERE shop_id=$1 AND kind='license_on_hold'", [
+          h.shop.shopId,
+        ])
+      ).rows,
+    ).toEqual([{ next_attempt_at: null }]);
+  });
   it("독립 목록에서 받은 버전으로 바로 확인됨을 남김", async () => {
     const isolated = await isolatedTestDb();
     try {

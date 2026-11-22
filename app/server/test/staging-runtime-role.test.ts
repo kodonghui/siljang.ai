@@ -710,6 +710,8 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
       for (const sql of [
         "UPDATE shops SET license_status='verified' WHERE id=$1",
         "UPDATE payment_accounts SET holder_checked_at=$2 WHERE shop_id=$1",
+        "UPDATE owner_tasks SET closed_at=$2 WHERE shop_id=$1",
+        "SELECT close_license_on_hold_tasks($1,$2)",
       ])
         await expect(
           connection.query(sql, sql.includes("$2") ? [target.shopId, now] : [target.shopId]),
@@ -775,6 +777,54 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     expect(saved.status, await saved.clone().text()).toBe(200);
     expect(
       (await isolated.db.query("SELECT count(*)::int AS n FROM owner_tasks WHERE shop_id=$1", [target.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
+  });
+
+  it("이전 보류가 있는 새 판정의 알림 실패는 옛 할 일/예약도 되돌림", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const target = await createShop(isolated.db, "이전 보류 되돌림 합성 가게"),
+      session = await seedOperatorSession(isolated.db, now);
+    const app = createApp({ connect: () => roleDb(), services: { now: () => now }, logSink: () => {} }),
+      url = `https://siljang.example/api/operator/shops/${target.shopId}`,
+      env = testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
+      headers = { origin: "https://siljang.example", cookie: session.cookie, "content-type": "application/json" };
+    const review = async (reason: string, key = newRequestKey()) => {
+      const current = (await (await app.request(url, { headers }, env)).json()) as { revision: string };
+      return app.request(
+        `${url}/license-review`,
+        {
+          method: "POST",
+          headers: { ...headers, "Idempotency-Key": key },
+          body: JSON.stringify({ baseRevision: current.revision, decision: "on_hold", holdReason: reason }),
+        },
+        env,
+      );
+    };
+    expect((await review("옛 합성 보류")).status).toBe(200);
+    const before = (await isolated.db.query("SELECT id,closed_at FROM owner_tasks WHERE shop_id=$1", [target.shopId]))
+      .rows;
+    try {
+      await isolated.db.query(`REVOKE INSERT ON owner_alerts FROM "${role}"`);
+      expect((await review("새 합성 보류")).status).toBe(500);
+      expect(
+        (await isolated.db.query("SELECT id,closed_at FROM owner_tasks WHERE shop_id=$1", [target.shopId])).rows,
+      ).toEqual(before);
+      expect(
+        (await isolated.db.query("SELECT next_attempt_at FROM owner_alerts WHERE shop_id=$1", [target.shopId])).rows,
+      ).toEqual([{ next_attempt_at: now }]);
+      expect(
+        (await isolated.db.query("SELECT license_hold_reason FROM shops WHERE id=$1", [target.shopId])).rows,
+      ).toEqual([{ license_hold_reason: "옛 합성 보류" }]);
+    } finally {
+      await isolated.db.query(`GRANT INSERT ON owner_alerts TO "${role}"`);
+    }
+    expect((await review("새 합성 보류")).status).toBe(200);
+    expect(
+      (
+        await isolated.db.query("SELECT count(*)::int AS n FROM owner_tasks WHERE shop_id=$1 AND closed_at IS NULL", [
+          target.shopId,
+        ])
+      ).rows,
     ).toEqual([{ n: 1 }]);
   });
 
