@@ -16,7 +16,7 @@ import {
 import { deferredKakaoMessages, deferredKakaoTexts } from "./kakao-deferred";
 import { KAKAO_HANDOFF_TEXT, kakaoAiFailureOutcome } from "./kakao-reply";
 import { type LogSink, log } from "./log";
-import { createServices } from "./services";
+import { createServices, type ServiceOverrides } from "./services";
 import { readSettings } from "./settings";
 import { createShopScope, isUuid, shopRequestDb } from "./shop-scope";
 
@@ -25,6 +25,7 @@ interface ConsumerOptions {
   readonly now?: () => Date;
   readonly fetch?: typeof fetch;
   readonly logSink?: LogSink;
+  readonly services?: ServiceOverrides;
 }
 
 interface RecoveryOptions {
@@ -104,9 +105,9 @@ export async function consumeKakaoCallback(
   const job = callbackJob(body);
   if (job === null) return "done";
 
-  const now = options.now ?? (() => new Date());
+  const now = options.now ?? options.services?.now ?? (() => new Date());
   const settings = readSettings(env);
-  const services = createServices(env, settings, options.now === undefined ? {} : { now: options.now });
+  const services = createServices(env, settings, { ...options.services, now });
   const conn = (options.connect ?? pgConnector)(settings.secrets.DATABASE_URL);
   const scope = createShopScope(job.shopId, { kind: "job", job: "kakao_callback" });
   const db = shopRequestDb(scope, conn);

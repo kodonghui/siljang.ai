@@ -1,5 +1,5 @@
 /** 콜백 소비자의 모델 한 차례. 원문/연락처 대신 보관된 마스킹 글만 읽고, 결과를 발신 전에 확정한다. */
-import { FIRST_ATTEMPT, nextAttempt } from "./ai-calls";
+import { FIRST_ATTEMPT, markAiCallUnused, nextAttempt } from "./ai-calls";
 import { AI_TOTAL_TIMEOUT_MS, type AiFailure } from "./ai-model";
 import type { AiTurnOutput } from "./ai-turn-output";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
@@ -70,6 +70,13 @@ export async function runKakaoAiTurn(
       return { kind: "failure", failure: "unavailable" } as const;
     const reply = await currentReply(tx, messageId, claim.consultation_id);
     if (reply !== null) return { kind: "reply", reply } as const;
+    const handedOff = await tx.run(
+      `SELECT h.id FROM handoffs h WHERE h.shop_id = $1 AND h.consultation_id = $2
+        AND (h.source_message_id = $3 OR h.id IN (
+          SELECT q.handoff_id FROM handoff_questions q WHERE q.shop_id = $1 AND q.message_id = $3)) LIMIT 1`,
+      [claim.consultation_id, messageId],
+    );
+    if (handedOff.rowCount > 0) return { kind: "failure", failure: "unavailable" } as const;
     if (consultation.turn_trace_id !== null)
       return consultation.turn_trace_id === messageId
         ? ({ kind: "failure", failure: "unavailable" } as const)
@@ -134,15 +141,14 @@ export async function runKakaoAiTurn(
         ? null
         : "schema_invalid";
   if (failure !== null || !result.ok) {
-    await db.run(
-      "UPDATE consultations SET turn_trace_id = NULL, turn_started_at = NULL WHERE shop_id = $1 AND id = $2 AND turn_trace_id = $3",
-      [claim.consultation_id, messageId],
-    );
+    // 실패 안내의 확정과 함께 prepareKakaoCallbackHandoff가 선점을 푼다.
     if (result.ok)
-      await db.run("UPDATE ai_calls SET fallback_reason = $3 WHERE shop_id = $1 AND id = $2", [
+      await markAiCallUnused(
+        db,
         result.aiCallId,
+        claim.consultation_id,
         failure === "timeout" ? "timeout" : "schema_invalid",
-      ]);
+      );
     return { kind: "failure", failure: failure ?? "unavailable" };
   }
 

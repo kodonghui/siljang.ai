@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import { type DbConnector, pgConnector } from "../src/db";
 import { deliverKakaoCallback, kakaoCallback, SKILL_CALLBACK_MS } from "../src/kakao-callback";
@@ -182,6 +183,91 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     );
     return rows[0];
   }
+
+  async function admittedJob() {
+    const queue = mockQueue();
+    await receive(queue);
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    const inbound = await stored(job);
+    await db.query(
+      "UPDATE consultations SET ai_disclosed_at=$3, ai_disclosed_policy_version=1 WHERE shop_id=$1 AND id=$2",
+      [shop.shopId, inbound?.consultation_id, NOW],
+    );
+    return { job, consultationId: inbound?.consultation_id };
+  }
+
+  it.each([
+    ["timeout", "ai_timeout"],
+    ["unavailable", "ai_unavailable"],
+    ["key_missing", "ai_key_missing"],
+    ["limit_reached", "ai_limit_reached"],
+    ["schema_invalid", "ai_output_rejected"],
+  ] as const)("모델 실패 %s를 %s로 구분하고 같은 큐를 다시 처리해도 모델을 반복하지 않음", async (failure, code) => {
+    const { job } = await admittedJob();
+    const call = vi.fn<AiModel["call"]>(async () => ({ ok: false, failure, retryable: false, aiCallId: newUuid() }));
+    const lines: string[] = [];
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const options = {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: (line: string) => lines.push(line),
+      services: { aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
+    };
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(lines.map((line) => JSON.parse(line))).toContainEqual({
+      level: "warn",
+      event: "kakao_callback_handoff",
+      code,
+    });
+    const task = await db.query("SELECT id FROM handoffs WHERE shop_id=$1 AND source_message_id=$2", [
+      shop.shopId,
+      job.messageId,
+    ]);
+    expect(task.rowCount).toBe(1);
+  });
+
+  it("다시 할 수 있는 모델 실패만 1초 뒤 한 번 더 호출함", async () => {
+    const { job } = await admittedJob();
+    const call = vi.fn<AiModel["call"]>(async () => ({
+      ok: false,
+      failure: "unavailable",
+      retryable: true,
+      aiCallId: newUuid(),
+    }));
+    const wait = vi.fn(async (_ms: number) => {});
+    expect(
+      await consumeKakaoCallback(job, env, {
+        now: () => new Date(NOW.getTime() + 5000),
+        fetch: async () => Response.json({ status: "SUCCESS" }),
+        logSink: () => {},
+        services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call }, wait },
+      }),
+    ).toBe("done");
+    expect(wait).toHaveBeenCalledExactlyOnceWith(1000);
+    expect(call).toHaveBeenCalledTimes(2);
+    expect(call.mock.calls.map(([input]) => input.attempt)).toEqual([
+      { attempt: 1, callKind: "first" },
+      { attempt: 2, callKind: "retry" },
+    ]);
+  });
+
+  it("AI 고지 전 상담은 모델이 준비돼 있어도 호출하지 않음", async () => {
+    const queue = mockQueue();
+    await receive(queue);
+    const call = vi.fn<AiModel["call"]>();
+    expect(
+      await consumeKakaoCallback(queue.jobs[0], env, {
+        now: () => new Date(NOW.getTime() + 5000),
+        fetch: async () => Response.json({ status: "SUCCESS" }),
+        logSink: () => {},
+        services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call } },
+      }),
+    ).toBe("done");
+    expect(call).not.toHaveBeenCalled();
+  });
 
   it("정상 모델 답은 같은 수신과 큐 세 번에도 AI 호출·초안 변경·콜백이 한 번임", async () => {
     const queue = mockQueue();

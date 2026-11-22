@@ -1,9 +1,13 @@
 import { readFileSync } from "node:fs";
-import { afterAll, beforeAll, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it, vi } from "vitest";
+import { createAiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import type { RequestDb } from "../src/db";
+import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
+import { anthropicStream, sseResponse } from "./support/ai-mock";
 import { collectLogs, describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -42,6 +46,96 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     } finally {
       await admin.close();
     }
+  });
+
+  it.each([false, true])("제한 역할에서 모델/초안과 서버 검증 거절(%s)까지 실행", async (reject) => {
+    const at = new Date("2026-11-22T08:00:00Z");
+    const target = await createShop(db, "제한 역할 모델 시험");
+    await issueTestBookingLink(db, target);
+    await linkTestChannel(db, target.channelId);
+    const jobs: KakaoCallbackJob[] = [];
+    const env = testEnv({ DATABASE_URL: databaseUrl, FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), target.channelId, 1);
+    const response = await createApp({
+      services: {
+        now: () => at,
+        kakaoCallbackQueue: {
+          send: async (job) => {
+            jobs.push(job);
+          },
+        },
+      },
+      logSink: () => {},
+    }).request(
+      "/api/kakao/skills/message",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+        body: JSON.stringify({
+          bot: { id: target.botId },
+          userRequest: {
+            utterance: "문구를 정해 주세요",
+            callbackUrl: "https://bot-api.kakao.com/v1/callback/fake_role_callback",
+            block: { id: "permissions" },
+            user: { id: newUuid(), type: "botUserKey" },
+          },
+          action: { id: "permissions", params: {} },
+        }),
+      },
+      env,
+    );
+    expect(response.headers.get("Siljang-Outcome")).toBe("callback_pending");
+    const job = jobs[0];
+    if (job === undefined) throw new Error("큐 작업 없음");
+    const source = await db.query<{ consultation_id: string }>("SELECT consultation_id FROM messages WHERE id=$1", [
+      job.messageId,
+    ]);
+    const consultationId = source.rows[0]?.consultation_id;
+    await db.query("UPDATE consultations SET ai_disclosed_at=$2, ai_disclosed_policy_version=1 WHERE id=$1", [
+      consultationId,
+      at,
+    ]);
+    const output = {
+      reply: reject ? "총 50,000원이에요." : "문구를 기록했어요.",
+      draft_patch: { lettering: "제한 역할 문구" },
+    };
+    const vendor = vi.fn<typeof fetch>(async () =>
+      sseResponse(
+        anthropicStream("claude-haiku-5-5", JSON.stringify(output), {
+          input: 1000,
+          output: 100,
+          cacheRead: 0,
+          cacheWrite: 0,
+        }),
+      ),
+    );
+    const model = createAiModel(
+      "development",
+      {
+        provider: "anthropic",
+        model: "claude-haiku-5-5",
+        effort: null,
+        fx: { rate: "1450.00", date: "2026-11-14" },
+        apiKey: new Secret("fake-provider-key"),
+      },
+      { fetch: vendor, now: () => at },
+    );
+    const options = {
+      now: () => new Date(at.getTime() + 5000),
+      fetch: async () => Response.json({ status: "SUCCESS" }),
+      services: { aiModel: model },
+      logSink: () => {},
+    };
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(vendor).toHaveBeenCalledTimes(1);
+    expect(
+      (await db.query("SELECT result, fallback_reason FROM ai_calls WHERE consultation_id=$1", [consultationId])).rows,
+    ).toEqual([{ result: "success", fallback_reason: reject ? "schema_invalid" : null }]);
+    const drafts = await db.query("SELECT lettering, revision FROM order_drafts WHERE consultation_id=$1", [
+      consultationId,
+    ]);
+    expect(drafts.rows).toEqual(reject ? [] : [{ lettering: "제한 역할 문구", revision: 1 }]);
   });
 
   it("별도 권한을 더하지 않고 실제 API가 질문/할 일/대기 알림을 기록함", async () => {
@@ -274,7 +368,13 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       has_table_privilege($1, 'public.ai_calls', 'SELECT') AS ai_cost_read,
       has_table_privilege($1, 'public.ai_calls', 'INSERT') AS ai_call_insert,
       has_any_column_privilege($1, 'public.ai_calls', 'UPDATE') AS ai_call_update,
+      has_column_privilege($1, 'public.ai_calls', 'fallback_reason', 'UPDATE') AS ai_reason_update,
+      has_column_privilege($1, 'public.ai_calls', 'cost_krw', 'UPDATE') AS ai_cost_update,
       has_table_privilege($1, 'public.ai_calls', 'DELETE') AS ai_call_delete,
+      has_column_privilege($1, 'public.order_drafts', 'lettering', 'INSERT') AS draft_text_insert,
+      has_column_privilege($1, 'public.order_drafts', 'lettering', 'UPDATE') AS draft_text_update,
+      has_column_privilege($1, 'public.order_drafts', 'customer_phone', 'UPDATE') AS draft_phone_update,
+      has_column_privilege($1, 'public.order_drafts', 'allergy_answer', 'SELECT') AS draft_allergy_read,
       has_any_column_privilege($1, 'public.masked_values', 'UPDATE') AS masked_update,
       has_table_privilege($1, 'public.masked_values', 'DELETE') AS masked_delete,
       has_any_column_privilege($1, 'public.ops_events', 'UPDATE') AS ops_update,
@@ -297,9 +397,15 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
         calendar_update: false,
         calendar_delete: false,
         ai_cost_read: true,
-        ai_call_insert: false,
-        ai_call_update: false,
+        ai_call_insert: true,
+        ai_call_update: true,
+        ai_reason_update: true,
+        ai_cost_update: false,
         ai_call_delete: false,
+        draft_text_insert: true,
+        draft_text_update: true,
+        draft_phone_update: false,
+        draft_allergy_read: false,
         masked_update: false,
         masked_delete: false,
         ops_update: false,
