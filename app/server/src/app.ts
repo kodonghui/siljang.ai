@@ -10,6 +10,7 @@ import { startKakaoChannelCheck } from "./kakao-channel-check";
 import { kakaoReply } from "./kakao-reply";
 import { kakaoSkillRoutes } from "./kakao-skill";
 import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill-auth";
+import { resubmitLicense } from "./license-resubmission";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import {
   createOperatingRulesVersion,
@@ -180,6 +181,7 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   shopRoute("GET", "/owner/payment-destination", "owner", getPaymentDestination),
   shopRoute("PUT", "/owner/payment-destination", "owner", setPaymentDestination),
   shopRoute("GET", "/owner/shop", "owner", getShop),
+  shopRoute("PUT", "/owner/shop/license", "owner", resubmitLicense),
   shopRoute("PATCH", "/owner/shop", "owner", updateShopSettings),
   shopRoute("POST", "/owner/shop/identity-changes", "owner", requestIdentityChange),
   operatorRoute("GET", "/operator/identity-changes", listIdentityChanges),

@@ -1,11 +1,12 @@
 /** 가게 등록 입력(API-008, SPEC-002). 검사 전의 입력은 저장하거나 로그에 남기지 않는다. */
-import { ApiError, type FieldError, fieldError } from "./problem";
+import { ApiError, fieldError } from "./problem";
 import {
   SHOP_COMMON_TEXT,
   SHOP_IDENTITY_TEXT,
-  SHOP_PHOTO_UPLOAD_RULE,
+  SHOP_LICENSE_TEXT,
   type ShopTextRule,
   shopMailOrderErrors,
+  validateShopText,
 } from "./shop-validation";
 
 export interface ShopRegistration {
@@ -29,9 +30,7 @@ export interface ShopRegistration {
 const RULES: Record<string, ShopTextRule> = {
   ...SHOP_COMMON_TEXT,
   ...SHOP_IDENTITY_TEXT,
-  foodLicenseNo: { min: 1, max: 30 },
-  foodBusinessType: { min: 1, max: 100, allowed: ["instant_sale_manufacturing", "bakery"] },
-  licensePhotoUploadId: SHOP_PHOTO_UPLOAD_RULE,
+  ...SHOP_LICENSE_TEXT,
   entrustmentTermsVersion: { min: 1, max: 20, pattern: /^[0-9A-Za-z.-]+$/ },
 };
 
@@ -48,23 +47,7 @@ export function parseShopRegistration(body: unknown): ShopRegistration {
   if (typeof body !== "object" || body === null || Array.isArray(body)) throw fieldError("/", "bad_format");
   const input = body as Record<string, unknown>;
   if (input.entrustmentConsent === false) throw new ApiError("consent_required");
-  const errors: FieldError[] = [];
-  const result: Record<string, unknown> = {};
-  for (const [name, rule] of Object.entries(RULES)) {
-    const value = input[name];
-    const field = `/${name}`;
-    if (rule.nullable && (value === undefined || value === null)) {
-      result[name] = null;
-      continue;
-    }
-    if (value === undefined) errors.push({ field, code: "required" });
-    else if (typeof value !== "string" || value.includes("\0")) errors.push({ field, code: "bad_format" });
-    else if (rule.allowed && !rule.allowed.includes(value)) errors.push({ field, code: "not_allowed" });
-    else if ([...value].length < rule.min || value.trim() === "") errors.push({ field, code: "too_short" });
-    else if ([...value].length > rule.max) errors.push({ field, code: "too_long" });
-    else if (rule.pattern && !rule.pattern.test(value)) errors.push({ field, code: "bad_format" });
-    else result[name] = value;
-  }
+  const { errors, values: result } = validateShopText(input, RULES);
   if (input.entrustmentConsent === undefined) errors.push({ field: "/entrustmentConsent", code: "required" });
   else if (input.entrustmentConsent !== true) errors.push({ field: "/entrustmentConsent", code: "bad_format" });
   for (const name of Object.keys(input))

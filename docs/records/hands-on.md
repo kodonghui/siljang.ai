@@ -810,3 +810,20 @@
 - 최종 ba88e53eaccbb690be37e96264e4738a17148191의 app45075706055/db45075706082 두 버전 성공·Claude5건 처리·수동 Codex 요청1회/새 사용 한도 뒤 squash main37c162ae924a2e74e59f115b2d76f0d04b13b104를 확인했습니다. main app45076049135 검사/스테이징 배포와 db45076049127(16.15/17.11)이 성공했습니다.
 - 학원컴 CLI 최신 배포b6e17e69-4f3d-4112-b7a5-7c1645f9c626는2026-11-22T22:11:42.804794Z(07:11:42 KST) 생성·동일 태그·상태200/SSH0입니다.07:12:41 KST 인증 없는 PATCH /api/owner/shop는401 unauthenticated/application/problem+json이며 SSH0·stderr_nonempty=true입니다.
 - 실제 기존 역할 UPDATE/사장님 계정 저장으로 세지 않습니다. TASK-037 구현 완료를 추가해 끝남32개·구현 완료12개이며 finished는 유지합니다. 실제 새 권한/계정은 Aside 연결/Vault 대기이고 브라우저는 학원컴 Aside CLI만 사용합니다.
+
+## 2026-11-23 · PR #178 main 배포와 학원컴 확인
+
+- 최종8507ff2fda6aa29808f529605eb122c1addb3f88 app45078947540/db45078947585 두 버전 성공·코드/보안6건 처리·수동 Codex 요청1회/새 사용 한도 뒤 main8fb94178f96705b1474f439a68e2666e64bd3a98를 확인했습니다. main app45079345450 검사/스테이징 배포와 db45079345609 PostgreSQL16.15/17.11도 성공했습니다.
+- 학원컴 CLI 최신 배포6b157b33-a466-48f5-9a5a-9ce9a7dfbf13은2026-11-22T22:46:47.970212Z(07:46:47 KST) 생성·동일 태그·상태200/SSH0입니다.07:47:28 KST 인증 없는 사업자 요청/운영자 변경 목록·판정 세 경로는 모두401 unauthenticated/application/problem+json이며 SSH0·stderr_nonempty=true입니다.
+- 실제0031/0032/기존 역할2문장·계정/알림 성공으로 세지 않습니다.036 구현 완료를 추가해 끝남32개·구현 완료13개이며 finished는 그대로입니다.07:30 무렵 학원컴 Aside CLI 도움말/프로필 조회는 SSH0·connected=true이고 브라우저 복구/로그인 확인과는 구분합니다. Page.enable 실패 목적의 권한 변경은 반복하지 않았습니다.
+
+### 2026-11-23 08:19 KST · 학원컴 Aside 대화형 연결과 Supabase 읽기
+
+- Aside CLI1.26.1121.1917의 guide/repl·내장 스킬 목록/도움말을 읽었습니다. 단발 REPL의 새 탭은 다음 호출에 남지 않아 대화형 SSH/aside repl로 전환했습니다. 새 스테이징 탭과 로그인된 Supabase siljang-dev/SQL Editor를 열었고 읽기 전용 원장 count25개와 postgres 실행/제한 역할의 LOGIN=true·INHERIT/SUPER/BYPASSRLS=false·access_logs 전체 SELECT=false를 확인했습니다.
+- 간이 입력의 fill 오류/정식 편집기의42601은 실제 변경을 실행한 결과가 아닙니다. 키보드 붙여넣기의 단일 읽기는 성공했습니다. main32개 갱신 SQL의 큰 입력은 Input.insertText 시간 초과 뒤 화면 입력 값1001자 제한으로 원본 일치를 확인하지 못해 실행하지 않고 비웠습니다. source main8fb9417/SQL50,057바이트이며 실제 원장은25개 그대로입니다.
+- 전송 SQL의 SHA-256 확인/실행 방식은 로컬 독립 DB에서 잘못된 해시 거절/원장25개 보존·올바른 실행/반복32개·접속기록 제한 보존을 확인했습니다. 이것을 실제 스테이징 적용 성공으로 세지 않습니다. 공개 SQL만 전달했고 비밀번호/토큰은 읽어 출력하지 않았습니다. 카카오 버튼 뒤 실제 계정 입력 화면이며 자동완성은 완료되지 않았습니다. 기존 Vault 대기는 남습니다.
+
+### 2026-11-23 08:29 KST · 실제 스테이징 원장25개에서32개
+
+- 학원컴 Aside 대화형 CLI의 Supabase SQL Editor에서 main8fb94178 갱신 원본50,057바이트를 인코딩하고 본문 SHA-256을 실행 전에 대조했습니다. 최초 배치 입력의42601 뒤 원장은25개 그대로였습니다. 입력 완료 응답을 기다리고 Ctrl+End로 다음 부분을 붙인 전달67,435바이트는 성공했습니다. 실제 결과는 migration_count32·owner_sessions_present=true·owner_session_update=true·access_log_full_select=false입니다. 비밀번호/토큰을 읽어 옮기지 않았고 기존 역할에 원본의 권한만 적용했습니다.0033/0034는 미적용입니다.
+- 해시74069395c1c86e06d8e72d8f4bbdc0ede6f90a8a0891258ef2492cdc4620c1d7은 공개 SQL 본문의 무결성 확인 값입니다. 로컬 독립 DB에서 해시 불일치/원장25개 보존·올바른 실행/반복32개·사장님 세션 허용/접속기록 전체 조회 차단을 먼저 검증했습니다. 실제 합성 쓰기/롤백과 계정 흐름은 아직이며 다음 확인입니다.

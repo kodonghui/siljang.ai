@@ -133,6 +133,7 @@ const MAKES_SCOPE = /\bcreateShopScope\s*\(|import[^;]*\bcreateShopScope\b|["'`]
  * (TASK-020)가 더한다.
  */
 const OWNER_SCOPE_MAKERS: Record<string, string> = {
+  "license-resubmission.ts": "실제 인증된 사장님 가게 범위에서 같은 사장님 증빙 범위로만 변환(TASK-033)",
   "identity-change-request.ts": "실제 인증된 사장님 가게 범위에서 같은 사장님 증빙 범위로만 변환(TASK-036)",
   "owner-scope.ts": "정의",
   "owner-login.ts": "쿠키의 세션에서 찾은 사장님과 가게 요약만 담음(TASK-020)",

@@ -63,6 +63,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("예금주를 확인한 시각", "payment_accounts.holder_checked_at"),
         ("사장님께 보류 알림", "owner_alerts.kind"),
         ("알림이 못 가면 할 일에 보류 이유", "owner_tasks.detail"),
+        ("바꾼 옛 신고증 사진 삭제 예약", "file_deletions.storage_key"),
         ("먼저 남긴 처리가 이김(같은 키)", "request_keys.request_key"),
     ],
     "SPEC-004": [
@@ -1030,8 +1031,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("키 지운 시각", "customers.purged_at"),
         ("2년 지난 접속기록", "access_logs.accessed_at"),
         ("지울 파일(지운 사진의 저장 위치)", "file_deletions.storage_key"),
-        ("참고 사진·신고 사진", "file_deletions.source"),
-        ("사진 행을 지운 시각", "file_deletions.queued_at"),
+        ("참고 사진·신고 사진·바꾼 옛 신고증 사진", "file_deletions.source"),
+        ("사진 행을 지우거나 신고증을 바꾼 시각", "file_deletions.queued_at"),
         ("저장소에서 실패한 횟수", "file_deletions.attempts"),
         ("마지막 실패 시각(다음 날 다시)", "file_deletions.last_tried_at"),
         ("지운 건수와 아직 지우지 못한 파일 수", "ops_events.detail"),

@@ -1677,7 +1677,7 @@
       "03h8dcdgozyyepdxxnkmbrubi": {
         "id": "03h8dcdgozyyepdxxnkmbrubi",
         "name": "file_deletions",
-        "comment": "TBL-054 지울 파일: 지우기(SPEC-065)가 지운 참고 사진·신고 사진의 저장 위치. 저장소에서 파일을 지운 뒤에만 행을 지우고, 실패하면 남아 다음 날 다시 지움",
+        "comment": "TBL-054 지울 파일: 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진의 저장 위치. 저장소에서 파일을 지운 뒤에만 행을 지우고, 실패하면 남아 다음 날 다시 지움",
         "columnIds": [
           "03h8dcdgp5icbzk7h099kb6x4",
           "03h8dcdgpayfxwfc2zdf85j9t",
@@ -7581,7 +7581,7 @@
         "id": "03h8dcdgpgexpr29y2q81ed9x",
         "tableId": "03h8dcdgozyyepdxxnkmbrubi",
         "name": "storage_key",
-        "comment": "저장소에서 지울 사진 파일의 저장 위치(지운 참고 사진·신고 사진 행의 storage_key). 사진의 내용·손님 정보는 두지 않음",
+        "comment": "저장소에서 지울 사진 파일의 저장 위치. 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진. 사진의 내용·손님 정보는 두지 않음",
         "dataType": "text",
         "options": 12
       },
@@ -7589,7 +7589,7 @@
         "id": "03h8dcdgplutqx36jrlipqvvp",
         "tableId": "03h8dcdgozyyepdxxnkmbrubi",
         "name": "source",
-        "comment": "지운 행: 참고 사진·신고 사진(SPEC-065)",
+        "comment": "지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진(SPEC-065)",
         "dataType": "text",
         "options": 8
       },
@@ -7597,7 +7597,7 @@
         "id": "03h8dcdgpr8hnox9it3a3vis0",
         "tableId": "03h8dcdgozyyepdxxnkmbrubi",
         "name": "queued_at",
-        "comment": "사진 행을 지운 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)",
+        "comment": "사진 행을 지우거나 신고증 사진을 바꾼 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)",
         "dataType": "timestamptz",
         "default": "now()",
         "options": 8
@@ -12767,7 +12767,7 @@
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 429개와 트리거(claim_kakao_bot, payment_account_license_pending, 접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check, 운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 operators_end_sessions, close_license_on_hold_tasks, review_shop_license, review_shop_identity)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 429개와 트리거(claim_kakao_bot, payment_account_license_pending, 접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check, 운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 operators_end_sessions, close_license_on_hold_tasks, review_shop_license, review_shop_identity, resubmit_shop_license)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,
