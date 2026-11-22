@@ -1,10 +1,11 @@
 import { afterAll, expect, it } from "vitest";
 import { createApp } from "../src/app";
+import type { DbConnector, Queryable } from "../src/db";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { OWNER_COOKIE } from "../src/owner-oauth";
 import { createOwnerSession } from "../src/owner-session";
 import { Secret } from "../src/settings";
-import { expectProblem, expectSchema } from "./support/contract";
+import { contract, expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
 import { createShop, issueTestBookingLink, linkTestChannel } from "./support/shops";
@@ -34,7 +35,7 @@ interface Button {
 interface TrialReply {
   template: { outputs: { textCard?: { buttons: Button[] }; simpleText?: { text: string } }[] };
 }
-async function fixture(complete = true) {
+async function fixture(complete = true, connect?: DbConnector) {
   const shop = await createShop(db, "연결 확인 합성 가게");
   await db.query(
     "UPDATE kakao_channels SET check_started_at=NULL,test_user_key=NULL,verified_blocks='{}',card_block_id='card',orderer_block_id=$2,allergy_block_id=$3,depositor_block_id=$4,review_block_id=$5,claim_expires_at=$6 WHERE shop_id=$1",
@@ -55,6 +56,7 @@ async function fixture(complete = true) {
     clock = { now: NOW };
   let events = 0;
   const app = createApp({
+    ...(connect ? { connect } : {}),
     services: {
       now: () => clock.now,
       fieldCrypto: singleKeyCrypto().fc,
@@ -204,13 +206,132 @@ describeDb("TASK-043 연결 확인 시작과 시험 버튼", () => {
       other = await fixture();
     await db.query("UPDATE kakao_channels SET status='failed',claim_expires_at=NULL WHERE shop_id=$1", [h.shop.shopId]);
     await db.query("UPDATE kakao_channels SET bot_id=$2 WHERE shop_id=$1", [other.shop.shopId, h.shop.botId]);
-    await expectProblem(await h.call(), "channel_setup_incomplete");
+    const key = newRequestKey();
+    await expectProblem(await h.call(key), "channel_linked_elsewhere");
+    await expectProblem(await h.call(key), "channel_linked_elsewhere");
     expect(
       (await db.query("SELECT status,check_started_at FROM kakao_channels WHERE shop_id=$1", [h.shop.shopId])).rows,
     ).toEqual([{ status: "failed", check_started_at: null }]);
     expect((await db.query("SELECT status FROM kakao_channels WHERE shop_id=$1", [other.shop.shopId])).rows).toEqual([
       { status: "pending" },
     ]);
+    expect((await db.query("SELECT kind,count FROM ops_events WHERE shop_id=$1", [h.shop.shopId])).rows).toEqual([
+      { kind: "channel_already_linked", count: 1 },
+    ]);
+  });
+  it("다른 가게의 전역 설정 잠금이 잡혀도 시험 수신은 기다리지 않음", async () => {
+    const h = await fixture(true, () => {
+      const base = testDb();
+      return {
+        query: <R>(sql: string, params?: readonly unknown[]) => base.query<R>(sql, params),
+        abort: () => base.abort(),
+        close: () => base.close(),
+        transaction: (fn) =>
+          base.transaction(async (tx) => {
+            await tx.query("SET LOCAL lock_timeout='100ms'");
+            return fn(tx);
+          }),
+      };
+    });
+    const started = await h.start();
+    let release: () => void = () => {},
+      locked: () => void = () => {};
+    const lockHeld = new Promise<void>((resolve) => {
+        locked = resolve;
+      }),
+      unlock = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    const holder = db.transaction(async (tx) => {
+      await tx.query("SELECT pg_advisory_xact_lock(hashtextextended('siljang:kakao:channel-configuration:v1',0))");
+      locked();
+      await unlock;
+    });
+    await lockHeld;
+    try {
+      const response = await h.skill("message", started.kakaoChannel.proofPhrase as string);
+      expect(response.headers.get("Siljang-Outcome"), await response.clone().text()).toBe("channel_test_card");
+    } finally {
+      release();
+      await holder;
+    }
+  });
+  it("설정 잠금을 얻은 뒤 시각으로 이미 지난 확인을 새10분으로 시작함", async () => {
+    let clock: { now: Date } | undefined,
+      delayed = false;
+    const connect: DbConnector = () => {
+      const base = testDb();
+      return {
+        query: <R>(sql: string, params?: readonly unknown[]) => base.query<R>(sql, params),
+        abort: () => base.abort(),
+        close: () => base.close(),
+        transaction: (fn) =>
+          base.transaction((tx) => {
+            const query: Queryable["query"] = async <R>(sql: string, params?: readonly unknown[]) => {
+              const result = await tx.query<R>(sql, params);
+              if (delayed && sql.includes("pg_advisory_xact_lock") && clock)
+                clock.now = new Date(NOW.getTime() + 11 * 60_000);
+              return result;
+            };
+            return fn({ query });
+          }),
+      };
+    };
+    const h = await fixture(true, connect);
+    clock = h.clock;
+    await h.start();
+    h.clock.now = new Date(NOW.getTime() + 9 * 60_000);
+    delayed = true;
+    const restarted = await h.start();
+    expect(restarted.outcome).toBe("done");
+    expect(new Date(restarted.kakaoChannel.checkStartedAt as string)).toEqual(new Date(NOW.getTime() + 11 * 60_000));
+    expect(new Date(restarted.kakaoChannel.checkExpiresAt as string)).toEqual(new Date(NOW.getTime() + 21 * 60_000));
+  });
+  it("수신 완료와 다른 가게의 지난 봇 선점이 동시에 와도 한 가게만 받고 교착/서버 오류가 없음", async () => {
+    const a = await fixture(),
+      b = await fixture();
+    let button = await firstButton(a);
+    for (let i = 0; i < 4; i++) {
+      const response = await a.skill("card", "시험", button.blockId, button.extra);
+      expect(response.headers.get("Siljang-Outcome")).toBe("block_verified");
+      const next = ((await response.json()) as TrialReply).template.outputs[0]?.textCard?.buttons[0];
+      if (!next) throw new Error("다음 시험 버튼 없음");
+      button = next;
+    }
+    expect(button.extra.check).toBe("review");
+    a.clock.now = new Date(NOW.getTime() + 9 * 60_000);
+    b.clock.now = new Date(NOW.getTime() + 30 * 60_000);
+    const previous = (await (await b.ownerCall("GET", "/owner/kakao-channel")).json()) as { revision: string };
+    const [receive, save] = await Promise.all([
+      a.skill("review", "시험", button.blockId, button.extra),
+      b.ownerCall("PUT", "/owner/kakao-channel", {
+        baseRevision: previous.revision,
+        botId: a.shop.botId,
+        channelPublicId: "_syntheticRace",
+        blockIds: {
+          card: "card",
+          ordererInfo: "orderer",
+          allergyAnswer: "allergy",
+          depositorName: "depositor",
+          review: "review",
+        },
+      }),
+    ]);
+    expect([200, 409], await save.clone().text()).toContain(save.status);
+    if (receive.status === 401) await expectProblem(receive, "skill_key_invalid");
+    else {
+      expect(receive.status).toBe(200);
+      expect(["channel_linked", "not_accepting"]).toContain(receive.headers.get("Siljang-Outcome"));
+    }
+    const active = (
+      await db.query<{ shop_id: string }>(
+        "SELECT shop_id FROM kakao_channels WHERE bot_id=$1 AND status IN ('pending','linked')",
+        [a.shop.botId],
+      )
+    ).rows;
+    expect(active).toHaveLength(1);
+    expect([a.shop.shopId, b.shop.shopId]).toContain(active[0]?.shop_id);
+    expect(a.eventCalls() + b.eventCalls()).toBe(0);
   });
   it("다른 요청 키로 여러 번 눌러도 같은 확인이고 같은 키 재전송도 시작 시각을 바꾸지 않음", async () => {
     const h = await fixture(),
@@ -485,4 +606,10 @@ it("연결 확인 경로는POST만 받고 GET은405와Allow를 돌려줌", async
     response = await app.request("https://siljang.example/api/owner/kakao-channel/check", {}, testEnv());
   await expectProblem(response, "method_not_allowed");
   expect(response.headers.get("allow")).toBe("POST");
+});
+
+it("무료 MVP의 API-032 계약은 실제 없는 재발신 예시를 약속하지 않고 선점 충돌을 구분함", () => {
+  const description = JSON.stringify(contract.paths["/owner/kakao-channel/check"]?.post);
+  expect(description).not.toContain('"event_recheck"');
+  expect(description).toContain("channel_linked_elsewhere");
 });

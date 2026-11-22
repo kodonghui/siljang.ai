@@ -193,7 +193,7 @@ curl -X POST -H 'Cookie: siljang_owner=example' -H 'Idempotency-Key: ui-01234567
 | `confirmation_required` | 409 | 확인을 받아야 저장하는 일. confirm에 확인할 것 목록. 아무것도 바꾸지 않음 | 저장하기 전에 확인해 주세요 | confirm의 말을 보이고, 사장님이 확인하면 같은 요청에 confirm 값을 담아 새 요청 키로 다시 보냄 | SPEC-005 | 9개 |
 | `already_registered` | 409 | 이 카카오 계정에 이미 가게가 있음(계정 하나에 가게 하나, R2) | 이미 등록한 가게가 있어요 | 내 가게 조회(API-009)를 엶 | SPEC-002 | API-008 |
 | `channel_setup_incomplete` | 409 | 카드 버튼이 부를 블록 ID 다섯 가운데 빈 것이 있어 연결 확인을 시작하지 않음(REQ-206). 아무것도 바꾸지 않음 | 버튼 블록 ID 5개를 모두 넣어 주세요 | 빈 블록 ID 필드를 보이고 채널 연결 입력(API-031)으로 보냄 | SPEC-008 | API-032 |
-| `channel_linked_elsewhere` | 409 | 그 오픈빌더 봇이 이미 다른 가게에 연결됨. 묶지 않고 운영자에게 알림 | 이미 다른 가게에 연결된 채널이에요 | 다른 채널을 고르게 하고 우리 서비스 채널로 문의하게 함(G7 이미 다른 가게) | SPEC-008 | API-031 |
+| `channel_linked_elsewhere` | 409 | 그 오픈빌더 봇이 이미 다른 가게에 연결됨. 묶지 않고 운영자에게 알림 | 이미 다른 가게에 연결된 채널이에요 | 다른 채널을 고르게 하고 우리 서비스 채널로 문의하게 함(G7 이미 다른 가게) | SPEC-008 | API-031, API-032 |
 | `slot_released` | 409 | 결제 기한이 지나 자리가 풀린 결제 안내라 '입금됨'을 받지 않음(R14) | 자리가 풀린 주문이에요. 먼저 '결제 기한 연장'으로 자리를 다시 잡아 주세요 | 결제 기한 지난 주문의 결제 기한 연장 화면으로 보냄 | SPEC-034 | API-059 |
 | `undo_window_passed` | 409 | 표시한 지 5분이 지나 되돌릴 수 없음 | 5분이 지나 되돌릴 수 없어요 | 제작 기록을 다시 읽어 보임 | SPEC-051 | API-053 |
 | `photo_consent_missing` | 409 | 손님이 게시에 동의하지 않았거나 동의를 철회한 사진 | 손님이 게시에 동의한 사진만 올릴 수 있어요 | 그 사진의 동의 상태를 보임 | SPEC-063 | API-068 |
@@ -609,7 +609,7 @@ PC 화면과 Worker 기록은 [카카오 시험 대본](../10-wbs/kakao-test-scr
 | API·스키마 | 고친 것 | 근거 |
 | --- | --- | --- |
 | API-073 안내 스킬(새) | 우리 서버가 우리 앱 키로 가게 봇의 Event API(`siljang_notice`, params에는 안내 키만)를 부르면 가게 봇의 '안내' 블록이 부르는 스킬. 결과 `notice_shown`·`notice_test`·`notice_gone`. 안내를 만들지 못하면 500으로 카카오가 보내지 않게 하고 다음 대화 때 전함(DEC-07의 예외) | REQ-180, REQ-181, SPEC-066, DEC-20, OPEN-9 |
-| API-030·031·032 채널 연결, `KakaoChannelInput`·`KakaoChannel`·`SkillSetup` | 블록 ID 넷(`blockIds`), 시험 버튼으로 닿은 블록(`verifiedBlocks`), 먼저 보내기 상태(`eventStatus`·`eventCheckedAt`·`eventFailReason`), 안내 스킬 주소와 이벤트 이름. 사유 후보에 닿지 않은 블록 넷. 블록 ID가 비면 409 `channel_setup_incomplete`. 같은 봇의 블록 ID만 바꾸면 그 연결을 다시 확인하고, 연결됨에서 누른 '연결 확인'은 시험 안내를 다시 보냄. 예시 `blocks_changed`·`event_recheck`·`event_checking`·`event_unavailable` | REQ-179, REQ-180, SPEC-008, DEC-20 |
+| API-030·031·032 채널 연결, `KakaoChannelInput`·`KakaoChannel`·`SkillSetup` | 블록 ID 넷(`blockIds`), 시험 버튼으로 닿은 블록(`verifiedBlocks`), 먼저 보내기 상태(`eventStatus`·`eventCheckedAt`·`eventFailReason`), 안내 스킬 주소와 이벤트 이름. 사유 후보에 닿지 않은 블록 넷. 블록 ID가 비면 409 `channel_setup_incomplete`. 같은 봇의 블록 ID만 바꾸면 그 연결을 다시 확인하고, 연결됨에서 누른 '연결 확인'은 시험 안내를 다시 보냄(이 표의2026-11-13 설계). 무료 MVP의 연결됨은unchanged이며 event_recheck는 TASK-167 이후 기능으로 미룸. 예시 `blocks_changed`·`event_checking`·`event_unavailable` | REQ-179, REQ-180, SPEC-008, DEC-20 |
 | API-070·071·072 스킬, `SkillPayload`·버튼 | API-070은 테스트 메시지에 첫 시험 버튼(`channel_test_card`). API-071·072는 시험 버튼(`clientExtra.check`)에 `block_verified`, 넷째에 `channel_linked`. 카드·후기 버튼은 가게가 넣은 블록 ID를 부름 | REQ-179, SPEC-008 |
 | 주문 요청 확인 카드(API-070 `card_shown`, API-071 `orderer_saved`·`card_stale`·`card_expired`) | 출력 셋 안에서 그 버전의 취소·환불 규정 글(조문마다 한 줄, 끝에 '주문제작이라 청약철회가 제한될 수 있어요')을 먼저, 요약 카드를 끝에. 1,000자를 넘으면 조문 사이에서 나눠 글 둘 | REQ-184, SPEC-028, DEC-22 |
 | API-021 운영규정 | 규정 글이 글 둘에 들어가지 않으면 422(`/clauses`, `exceeds_card_limit`) | REQ-184, SPEC-005 |
