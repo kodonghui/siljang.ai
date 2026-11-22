@@ -280,6 +280,9 @@ describeDb("TASK-041 캘린더 API-026~029", () => {
     const h = await harness();
     await heldDay(h);
     const before = (await (await h.call("GET", "/owner/calendar")).json()) as { revision: string };
+    const dayBefore = (await (await h.call("GET", "/owner/calendar/days?from=2026-11-20&to=2026-11-20")).json()) as {
+      items: { revision: string }[];
+    };
     await db.transaction(async (tx) => {
       await tx.query("UPDATE order_details SET pickup_at='2026-11-20T07:00:00Z' WHERE shop_id=$1", [h.shop.shopId]);
       await tx.query("UPDATE orders SET pickup_at='2026-11-20T07:00:00Z' WHERE shop_id=$1", [h.shop.shopId]);
@@ -290,6 +293,45 @@ describeDb("TASK-041 캘린더 API-026~029", () => {
       "confirmation_required",
     );
     expect(problem).toMatchObject({ conflicts: [{ orders: [{ pickupAt: "2026-11-20T16:00:00+09:00" }] }] });
+    expect(await (await h.call("GET", "/owner/calendar/days?from=2026-11-20&to=2026-11-20")).json()).toMatchObject({
+      items: [{ revision: dayBefore.items[0]?.revision }],
+    });
+    expect(
+      (
+        await h.call("PATCH", "/owner/calendar/days/2026-11-20", {
+          baseRevision: dayBefore.items[0]?.revision,
+          manuallyClosed: true,
+        })
+      ).status,
+    ).toBe(200);
+  });
+
+  it("가게 자정을 넘으면 설정을 다시 읽고 저장하며 오래된 버전은409", async () => {
+    let clock = new Date("2026-11-19T14:58:00Z");
+    const h = await harness({ services: { now: () => clock } });
+    await heldDay(h);
+    await db.transaction(async (tx) => {
+      await tx.query("INSERT INTO calendar_days (shop_id,day) VALUES ($1,'2026-11-19')", [h.shop.shopId]);
+      await tx.query("UPDATE order_details SET pickup_at='2026-11-19T06:00:00Z' WHERE shop_id=$1", [h.shop.shopId]);
+      await tx.query("UPDATE orders SET pickup_day='2026-11-19',pickup_at='2026-11-19T06:00:00Z' WHERE shop_id=$1", [
+        h.shop.shopId,
+      ]);
+      await tx.query("UPDATE slot_holds SET day='2026-11-19' WHERE shop_id=$1", [h.shop.shopId]);
+    });
+    const before = (await (await h.call("GET", "/owner/calendar")).json()) as { revision: string };
+    clock = new Date("2026-11-19T15:01:00Z");
+    await expectProblem(
+      await h.call("PUT", "/owner/calendar", { ...settings(before.revision), reviewRequestTime: "12:00" }),
+      "version_conflict",
+    );
+    const fresh = (await (await h.call("GET", "/owner/calendar")).json()) as { revision: string };
+    expect(fresh.revision).not.toBe(before.revision);
+    expect(
+      (await h.call("PUT", "/owner/calendar", { ...settings(fresh.revision), reviewRequestTime: "12:00" })).status,
+    ).toBe(200);
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM slot_holds WHERE shop_id=$1", [h.shop.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
   });
 
   it.each([false, true])("빈 날짜도 null로 버전 검사를 건너뛰지 못함(설정 변경=%s)", async (changed) => {
