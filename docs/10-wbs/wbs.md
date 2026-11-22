@@ -81,8 +81,8 @@
 | ID | 작업 | 출처 | 닿는 것 | 앞선 작업 | 맡은 이 | 크기 | 끝난 조건 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TASK-032 | 가게 등록과 내 가게 조회 | SPEC-002 | API-008, API-009, TBL-003, TBL-050, TBL-058 | TASK-019, TASK-022, TASK-020 | Claude | 1일 | 끝남: 2026-11-23, PR #166. SPEC-002 #1~#4와 API-008/009 응답별·중복/동시·사진 실패 보상·가게 범위·제한 역할 자동 시험. docs/records/shop-registration/task-032-acceptance.md<br/>SPEC-002 수락 기준 #1~#4: 자동 시험 통과<br/>API-008 응답(201·401·409·422·503·default)마다 통과하는 시험<br/>API-009 응답(200·401·404·default)마다 통과하는 시험 |
-| TASK-033 | 보류된 영업 신고 다시 올리기 | SPEC-003 | API-011, TBL-002, TBL-003, TBL-015, TBL-042, TBL-043, TBL-050 | TASK-032 | Claude | 0.5일 | API-011 응답(200·401·404·409·422·default)마다 통과하는 시험 |
-| TASK-034 | 운영자의 영업 신고 확인·보류 | SPEC-003 | API-012, API-013, API-014, TBL-002, TBL-003, TBL-015, TBL-042, TBL-043, TBL-050 | TASK-021, TASK-032 | Claude | 2일 | SPEC-003 수락 기준 #1~#3: 자동 시험 통과<br/>API-012 응답(200·401·422·default)마다 통과하는 시험<br/>API-013 응답(200·401·404·default)마다 통과하는 시험<br/>API-014 응답(200·401·404·409·422·default)마다 통과하는 시험 |
+| TASK-033 | 보류된 영업 신고 다시 올리기 | SPEC-003 | API-011, TBL-002, TBL-003, TBL-015, TBL-042, TBL-043, TBL-050, TBL-054 | TASK-032 | Claude | 0.5일 | API-011 응답(200·401·404·409·422·default)마다 통과하는 시험 |
+| TASK-034 | 운영자의 영업 신고 확인·보류 | SPEC-003 | API-012, API-013, API-014, TBL-002, TBL-003, TBL-015, TBL-042, TBL-043, TBL-050, TBL-054 | TASK-021, TASK-032 | Claude | 2일 | SPEC-003 수락 기준 #1~#3: 자동 시험 통과<br/>API-012 응답(200·401·422·default)마다 통과하는 시험<br/>API-013 응답(200·401·404·default)마다 통과하는 시험<br/>API-014 응답(200·401·404·409·422·default)마다 통과하는 시험 |
 | TASK-035 | 운영자 알림 | SPEC-008, SPEC-010, SPEC-017 | API-015, TBL-003, TBL-004, TBL-005, TBL-006, TBL-010, TBL-013, TBL-015, TBL-016, TBL-017, TBL-018, TBL-027, TBL-048, TBL-051 | TASK-021 | Claude | 0.5일 | API-015 응답(200·401·422·default)마다 통과하는 시험 |
 | TASK-036 | 사업자 정보 변경 요청과 운영자 확인 | SPEC-078, A37 | API-080, API-081, API-082, TBL-002, TBL-003, TBL-015, TBL-043, TBL-050, TBL-058 | TASK-034 | Claude | 2일 | SPEC-078 수락 기준 #1~#5: 자동 시험 통과<br/>API-080 응답(201·200·401·404·409·422·503·default)마다 통과하는 시험<br/>API-081 응답(200·401·422·default)마다 통과하는 시험<br/>API-082 응답(200·401·404·409·422·default)마다 통과하는 시험<br/>05 앱 규칙(A37)을 지키는지 보는 서버 시험 |
 | TASK-037 | 가게 정보와 설정 바꾸기(결제 기다림 주문 한도·AI 비용 한도 포함) | SPEC-077 | API-010, TBL-003, TBL-042, TBL-048, TBL-050 | TASK-032 | Claude | 1일 | SPEC-077 수락 기준 #1~#8: 자동 시험 통과<br/>API-010 응답(200·401·404·409·422·default)마다 통과하는 시험 |
@@ -558,7 +558,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TBL-051 | `ops_events` | TASK-017, TASK-018, TASK-023, TASK-028, TASK-035, TASK-042, TASK-043, TASK-044, TASK-063, TASK-077, TASK-083, TASK-158, TASK-164 |
 | TBL-052 | `kept_records` | TASK-017, TASK-077, TASK-158, TASK-159 |
 | TBL-053 | `access_logs` | TASK-017, TASK-024, TASK-077, TASK-158, TASK-159 |
-| TBL-054 | `file_deletions` | TASK-017, TASK-022, TASK-077, TASK-158 |
+| TBL-054 | `file_deletions` | TASK-017, TASK-022, TASK-033, TASK-034, TASK-077, TASK-158 |
 | TBL-055 | `handoff_questions` | TASK-017, TASK-073, TASK-074, TASK-077, TASK-158 |
 | TBL-056 | `order_draft_extras` | TASK-017, TASK-067, TASK-077, TASK-091, TASK-158 |
 | TBL-057 | `order_detail_extras` | TASK-017, TASK-083, TASK-132 |

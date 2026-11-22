@@ -2354,6 +2354,37 @@ SELECT pg_temp.expect_left('사업자 같은 시각의 마지막 요청은 내�
 UPDATE operators SET disabled_at=now() WHERE id='0e360000-0000-4000-8000-000000000002';
 SELECT pg_temp.expect_left('사업자 판정 직전에 막힌 운영자는 거절',$$SELECT pg_temp.identity_review_call('0e360000-0000-4000-8000-000000000007','on_hold','증빙을 다시 확인해 주세요')$$,'unauthenticated');
 
+-- TASK-033: 자기 세션/보류/버전과 재업로드의 판정·할 일 정리.
+INSERT INTO owner_sessions(owner_id,token_hash,created_at,last_seen_at,expires_at)
+VALUES ('0e360000-0000-4000-8000-000000000001',repeat('3',64),now(),now(),now()+interval '2592000 seconds');
+UPDATE shops SET license_status='on_hold',license_hold_reason='증빙을 다시 올려 주세요',license_reviewed_by='0e360000-0000-4000-8000-000000000002',license_reviewed_at=now() WHERE id='0e360000-0000-4000-8000-000000000005';
+CREATE FUNCTION pg_temp.resubmit_license_call(expected text) RETURNS text LANGUAGE sql AS $resubmit_call$
+SELECT resubmit_shop_license(s.id,s.owner_id,repeat('3',64),now(),coalesce($1,s.xmin::text),'2026-다시-001','bakery','shops/'||s.id::text||'/license_photo/upl_'||repeat('a',35)) FROM shops s WHERE s.id='0e360000-0000-4000-8000-000000000005'
+$resubmit_call$;
+SELECT pg_temp.expect_left('재업로드 전용 함수의 고정 검색 경로와 공개 실행 금지',$$SELECT prosecdef::text || '/' || (proconfig=ARRAY['search_path=pg_catalog'])::text || '/' || (NOT EXISTS(SELECT 1 FROM aclexplode(coalesce(proacl,acldefault('f',proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE'))::text FROM pg_proc WHERE oid='resubmit_shop_license(uuid,uuid,text,timestamptz,text,text,text,text)'::regprocedure$$,'true/true/true');
+SELECT pg_temp.expect_left('재업로드의 잘못된 세션 지문은 거절',$$SELECT resubmit_shop_license('0e360000-0000-4000-8000-000000000005','0e360000-0000-4000-8000-000000000001',repeat('4',64),now(),'stale','2026-다시','bakery','shops/0e360000-0000-4000-8000-000000000005/license_photo/synthetic')$$,'unauthenticated');
+SELECT pg_temp.expect_left('재업로드는 다른 사장님의 가게를 찾지 못함',$$SELECT resubmit_shop_license('0e340000-0000-4000-8000-000000000003','0e360000-0000-4000-8000-000000000001',repeat('3',64),now(),'stale','2026-다시','bakery','shops/0e340000-0000-4000-8000-000000000003/license_photo/synthetic')$$,'not_found');
+SELECT pg_temp.expect_left('재업로드의 오래된 가게 버전은 거절',$$SELECT pg_temp.resubmit_license_call('stale')$$,'version_conflict');
+CREATE FUNCTION pg_temp.reject_resubmission_input(license_no text,business_type text,photo_key text) RETURNS boolean LANGUAGE plpgsql AS $reject_resubmit$
+BEGIN
+  PERFORM resubmit_shop_license(s.id,s.owner_id,repeat('3',64),now(),s.xmin::text,license_no,business_type,photo_key) FROM shops s WHERE s.id='0e360000-0000-4000-8000-000000000005';
+  RETURN false;
+EXCEPTION WHEN invalid_parameter_value THEN RETURN true;
+END
+$reject_resubmit$;
+SELECT pg_temp.expect_left('재업로드의 빈 번호/지원하지 않는 종류/다른 사진 경로는 전용 함수도 거절',$$SELECT bool_and(pg_temp.reject_resubmission_input(n,t,k))::text FROM (VALUES ('','bakery','shops/0e360000-0000-4000-8000-000000000005/license_photo/synthetic'),(U&'\3000','bakery','shops/0e360000-0000-4000-8000-000000000005/license_photo/synthetic'),('2026-합성','restaurant','shops/0e360000-0000-4000-8000-000000000005/license_photo/synthetic'),('2026-합성','bakery','shops/0e340000-0000-4000-8000-000000000003/license_photo/synthetic')) v(n,t,k)$$,'true');
+INSERT INTO owner_tasks(id,shop_id,kind,event_key,detail,opened_at) VALUES ('0e330000-0000-4000-8000-000000000001','0e360000-0000-4000-8000-000000000005','license_on_hold','task:license_on_hold:0e330000-0000-4000-8000-000000000001','{}',now());
+INSERT INTO owner_alerts(shop_id,owner_task_id,kind,event_key,next_attempt_at) VALUES ('0e360000-0000-4000-8000-000000000005','0e330000-0000-4000-8000-000000000001','license_on_hold','alert:license_on_hold:0e330000-0000-4000-8000-000000000001',now());
+SELECT pg_temp.expect_fail('재업로드 뒤 오류는 판정과 보류 할 일도 되돌림','shops_name_check',ARRAY[$$SELECT pg_temp.resubmit_license_call(NULL)$$,$$UPDATE shops SET name='' WHERE id='0e360000-0000-4000-8000-000000000005'$$]);
+SELECT pg_temp.expect_left('재업로드 실패 뒤 보류/할 일/예약 보존',$$SELECT s.license_status || '/' || (t.closed_at IS NULL)::text || '/' || (a.next_attempt_at=now())::text FROM shops s JOIN owner_tasks t ON t.shop_id=s.id JOIN owner_alerts a ON a.shop_id=s.id AND a.owner_task_id=t.id WHERE t.id='0e330000-0000-4000-8000-000000000001'$$,'on_hold/true/true');
+SELECT pg_temp.expect_left('재업로드 실패의 옛 사진 예약도 되돌림',$$SELECT count(*)::text FROM file_deletions WHERE shop_id='0e360000-0000-4000-8000-000000000005' AND source='license_photo'$$,'0');
+SELECT pg_temp.expect_left('보류된 자기 가게의 재업로드 허용',$$SELECT pg_temp.resubmit_license_call(NULL)$$,'done');
+SELECT pg_temp.expect_left('재업로드는 새 신고/판정 이력과 할 일/예약을 함께 정리',$$SELECT (s.food_license_no='2026-다시-001' AND s.food_business_type='bakery')::text || '/' || s.license_status || '/' || (s.license_hold_reason IS NULL AND s.license_reviewed_by IS NULL AND s.license_reviewed_at IS NULL)::text || '/' || (t.closed_at=now())::text || '/' || (a.next_attempt_at IS NULL)::text FROM shops s JOIN owner_tasks t ON t.shop_id=s.id JOIN owner_alerts a ON a.shop_id=s.id AND a.owner_task_id=t.id WHERE t.id='0e330000-0000-4000-8000-000000000001'$$,'true/pending/true/true/true');
+SELECT pg_temp.expect_left('재업로드 성공은 옛 사진을 한 번 삭제 예약',$$SELECT count(*)::text FROM file_deletions WHERE shop_id='0e360000-0000-4000-8000-000000000005' AND source='license_photo'$$,'1');
+SELECT pg_temp.expect_left('보류 아닌 가게의 새 재업로드는 거절',$$SELECT pg_temp.resubmit_license_call(NULL)$$,'invalid_state');
+UPDATE owner_sessions SET ended_at=now() WHERE owner_id='0e360000-0000-4000-8000-000000000001' AND token_hash=repeat('3',64);
+SELECT pg_temp.expect_left('직전에 끝난 자기 세션의 재업로드 거절',$$SELECT pg_temp.resubmit_license_call(NULL)$$,'unauthenticated');
+
 -- 결과
 SELECT count(*) FILTER (WHERE ok) AS blocked, count(*) FILTER (WHERE NOT ok) AS not_blocked FROM rule_results \gset
 SELECT name, detail FROM rule_results WHERE NOT ok ORDER BY name;

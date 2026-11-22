@@ -88,3 +88,6 @@ GRANT INSERT (id, shop_id, business_name, representative_name, business_reg_no,
   prev_business_name, prev_representative_name, prev_business_reg_no, evidence_photo_key, requested_at)
   ON shop_identity_changes TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION review_shop_identity(uuid,uuid,uuid,text,timestamptz,text,uuid,text,text,text) TO :"runtime_role";
+
+-- TASK-033: 보류된 자기 가게의 신고 재업로드만 실행한다. 일반 신고/판정 UPDATE는 주지 않는다.
+GRANT EXECUTE ON FUNCTION resubmit_shop_license(uuid,uuid,text,timestamptz,text,text,text,text) TO :"runtime_role";

@@ -1682,19 +1682,19 @@ $confirmed_live$;
 CREATE CONSTRAINT TRIGGER orders_confirmed_payment_live AFTER INSERT OR UPDATE OF status, confirmed_payment_id ON orders DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION confirmed_payment_live_check();
 CREATE CONSTRAINT TRIGGER payments_confirmed_void AFTER UPDATE OF voided_at ON payments DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION confirmed_payment_live_check();
 
--- TBL-054 file_deletions (공통) ← SPEC-065 | terms: none
+-- TBL-054 file_deletions (공통) ← SPEC-003, SPEC-065 | terms: none
 CREATE TABLE file_deletions (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 지울 파일 ID
   shop_id        uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 어느 가게의 사진 파일인지
-  storage_key    text NOT NULL,                            -- 저장소에서 지울 사진 파일의 저장 위치(지운 참고 사진·신고 사진 행의 storage_key). 사진의 내용·손님 정보는 두지 않음
-  source         text NOT NULL CHECK (source IN ('reference_photo', 'issue_photo')), -- 지운 행: 참고 사진·신고 사진(SPEC-065)
-  queued_at      timestamptz NOT NULL DEFAULT now(),       -- 사진 행을 지운 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)
+  storage_key    text NOT NULL,                            -- 저장소에서 지울 사진 파일의 저장 위치. 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진. 사진의 내용·손님 정보는 두지 않음
+  source         text NOT NULL CHECK (source IN ('reference_photo', 'issue_photo', 'license_photo')), -- 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진(SPEC-065)
+  queued_at      timestamptz NOT NULL DEFAULT now(),       -- 사진 행을 지우거나 신고증 사진을 바꾼 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)
   attempts       integer NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 10000), -- 저장소에서 지우려다 실패한 횟수. 지우면 이 행을 지움
   last_tried_at  timestamptz,                              -- 마지막으로 지우려다 실패한 시각. 다음 날 지우기가 다시 지움
   CONSTRAINT file_deletions_key_uq UNIQUE (storage_key), -- 같은 파일은 한 행
   CONSTRAINT file_deletions_tried_chk CHECK ((attempts = 0) = (last_tried_at IS NULL)) -- 실패한 적이 있으면 그 시각
 );
-COMMENT ON TABLE file_deletions IS 'TBL-054 지울 파일: 지우기(SPEC-065)가 지운 참고 사진·신고 사진의 저장 위치. 저장소에서 파일을 지운 뒤에만 행을 지우고, 실패하면 남아 다음 날 다시 지움';
+COMMENT ON TABLE file_deletions IS 'TBL-054 지울 파일: 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진의 저장 위치. 저장소에서 파일을 지운 뒤에만 행을 지우고, 실패하면 남아 다음 날 다시 지움';
 
 -- TBL-055 handoff_questions (CTX-001) ← SPEC-022, SPEC-023, SPEC-065 | terms: TERM-008
 CREATE TABLE handoff_questions (
@@ -1986,6 +1986,51 @@ BEGIN
 END
 $identity_review$;
 REVOKE ALL ON FUNCTION review_shop_identity(uuid,uuid,uuid,text,timestamptz,text,uuid,text,text,text) FROM PUBLIC;
+
+
+-- TASK-033: 사장님의 살아 있는 세션과 자기 가게 보류/버전을 다시 확인한다.
+-- TASK-033: 사장님의 살아 있는 세션과 자기 가게 보류/버전을 다시 확인한다.
+CREATE FUNCTION resubmit_shop_license(
+  requested_shop uuid, requested_owner uuid, session_hash text, requested_time timestamptz,
+  expected_version text, new_license_no text, new_business_type text, new_photo_key text
+) RETURNS text
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $license_resubmission$
+DECLARE
+  current_status text;
+  current_version text;
+  current_photo_key text;
+BEGIN
+  PERFORM 1 FROM public.owners o WHERE o.id=requested_owner FOR SHARE;
+  IF NOT FOUND THEN RETURN 'unauthenticated'; END IF;
+  PERFORM 1 FROM public.owner_sessions ss WHERE ss.owner_id=requested_owner
+    AND ss.token_hash=session_hash AND ss.ended_at IS NULL
+    AND ss.created_at<=requested_time AND ss.expires_at>requested_time FOR SHARE;
+  IF NOT FOUND THEN RETURN 'unauthenticated'; END IF;
+  IF expected_version IS NULL OR requested_time IS NULL
+     OR new_license_no IS NULL OR char_length(new_license_no) NOT BETWEEN 1 AND 30
+     OR btrim(new_license_no, U&'\0009\000A\000B\000C\000D\0020\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000\FEFF')=''
+     OR new_business_type IS NULL OR new_business_type NOT IN ('instant_sale_manufacturing','bakery')
+     OR new_photo_key IS NULL OR NOT starts_with(new_photo_key,'shops/' || requested_shop::text || '/license_photo/') THEN
+    RAISE EXCEPTION 'invalid license resubmission' USING ERRCODE='22023';
+  END IF;
+  SELECT s.license_status,s.xmin::text,s.license_photo_key INTO current_status,current_version,current_photo_key
+    FROM public.shops s WHERE s.id=requested_shop AND s.owner_id=requested_owner FOR NO KEY UPDATE;
+  IF NOT FOUND THEN RETURN 'not_found'; END IF;
+  IF current_version<>expected_version THEN RETURN 'version_conflict'; END IF;
+  IF current_status<>'on_hold' THEN RETURN 'invalid_state'; END IF;
+  IF current_photo_key<>new_photo_key THEN
+    INSERT INTO public.file_deletions(shop_id,storage_key,source,queued_at)
+      VALUES(requested_shop,current_photo_key,'license_photo',requested_time)
+      ON CONFLICT (storage_key) DO NOTHING;
+  END IF;
+  PERFORM public.close_license_on_hold_tasks(requested_shop,requested_time);
+  UPDATE public.shops SET food_license_no=new_license_no,food_business_type=new_business_type,
+    license_photo_key=new_photo_key,license_status='pending',license_hold_reason=NULL,
+    license_reviewed_by=NULL,license_reviewed_at=NULL,updated_at=requested_time WHERE id=requested_shop;
+  RETURN 'done';
+END
+$license_resubmission$;
+REVOKE ALL ON FUNCTION resubmit_shop_license(uuid,uuid,text,timestamptz,text,text,text,text) FROM PUBLIC;
 
 -- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음.
 COMMENT ON COLUMN owners.id IS '사장님 ID';
@@ -2685,9 +2730,9 @@ COMMENT ON COLUMN access_logs.client_ip IS '접속지: 요청한 IP';
 COMMENT ON COLUMN access_logs.accessed_at IS '접속 일시. 2년이 지나면 지우기가 지움(SPEC-065, REQ-196)';
 COMMENT ON COLUMN file_deletions.id IS '지울 파일 ID';
 COMMENT ON COLUMN file_deletions.shop_id IS '어느 가게의 사진 파일인지';
-COMMENT ON COLUMN file_deletions.storage_key IS '저장소에서 지울 사진 파일의 저장 위치(지운 참고 사진·신고 사진 행의 storage_key). 사진의 내용·손님 정보는 두지 않음';
-COMMENT ON COLUMN file_deletions.source IS '지운 행: 참고 사진·신고 사진(SPEC-065)';
-COMMENT ON COLUMN file_deletions.queued_at IS '사진 행을 지운 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)';
+COMMENT ON COLUMN file_deletions.storage_key IS '저장소에서 지울 사진 파일의 저장 위치. 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진. 사진의 내용·손님 정보는 두지 않음';
+COMMENT ON COLUMN file_deletions.source IS '지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진(SPEC-065)';
+COMMENT ON COLUMN file_deletions.queued_at IS '사진 행을 지우거나 신고증 사진을 바꾼 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)';
 COMMENT ON COLUMN file_deletions.attempts IS '저장소에서 지우려다 실패한 횟수. 지우면 이 행을 지움';
 COMMENT ON COLUMN file_deletions.last_tried_at IS '마지막으로 지우려다 실패한 시각. 다음 날 지우기가 다시 지움';
 COMMENT ON COLUMN handoff_questions.id IS '덧붙은 질문 ID';
