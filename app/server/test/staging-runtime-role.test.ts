@@ -69,20 +69,23 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     }
   });
 
-  it("사장님 생성·만료 세션 정리·30일 연장·내 정보·로그아웃을 같은 제한 역할로 실행", async () => {
-    const db = roleDb();
-    try {
-      const accountId = BigInt(`0x${newUuid().replaceAll("-", "").slice(0, 14)}`).toString();
-      const session = await createOwnerSession(db, { accountId, friend: false }, now);
-      const later = new Date(now.getTime() + 1_000);
-      expect(await renewOwnerSession(db, session.token, later)).toBe(session.ownerId);
-      expect((await ownerProfile(db, session.ownerId)).profile.owner.ownerId).toBe(session.ownerId);
-      await endOwnerSession(db, session.token, later);
-      expect(await renewOwnerSession(db, session.token, later)).toBeNull();
-    } finally {
-      await db.close();
-    }
-  });
+  it.each([false, true])(
+    "채널 확인 %s의 사장님 생성·30일 연장·내 정보·로그아웃을 같은 제한 역할로 실행",
+    async (channelEnabled) => {
+      const db = roleDb();
+      try {
+        const accountId = BigInt(`0x${newUuid().replaceAll("-", "").slice(0, 14)}`).toString();
+        const session = await createOwnerSession(db, { accountId, friend: false }, now, channelEnabled);
+        const later = new Date(now.getTime() + 1_000);
+        expect(await renewOwnerSession(db, session.token, later)).toBe(session.ownerId);
+        expect((await ownerProfile(db, session.ownerId, channelEnabled)).profile.owner.ownerId).toBe(session.ownerId);
+        await endOwnerSession(db, session.token, later);
+        expect(await renewOwnerSession(db, session.token, later)).toBeNull();
+      } finally {
+        await db.close();
+      }
+    },
+  );
 
   it("가게·채널 공유 잠금과 손님·상담·수신 메시지 쓰기를 실제 역할로 실행", async () => {
     const conn = roleDb();

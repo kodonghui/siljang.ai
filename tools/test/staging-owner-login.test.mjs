@@ -17,7 +17,6 @@ function response({ status = 200, changeUrl, cookie, cache = "no-store" } = {}) 
     state,
     code_challenge: "c".repeat(43),
     code_challenge_method: "S256",
-    scope: "plusfriends",
   }))
     url.searchParams.set(key, value);
   changeUrl?.(url);
@@ -30,6 +29,28 @@ function response({ status = 200, changeUrl, cookie, cache = "no-store" } = {}) 
   });
 }
 const options = (r) => ({ domain, fetch: async () => r });
+
+test("MVP 기본 로그인 시작은 scope를 생략해야 통과함", async () => {
+  const result = await verifyOwnerLoginStart(options(response({ changeUrl: (u) => u.searchParams.delete("scope") })));
+  assert.deepEqual(result, { status: 200, pkce: "S256", cookieSeconds: 600 });
+});
+
+test("MVP 기본 설정에 plusfriends가 남으면 배포 확인을 통과하지 않음", async () => {
+  await assert.rejects(
+    verifyOwnerLoginStart(options(response({ changeUrl: (u) => u.searchParams.set("scope", "plusfriends") }))),
+    /staging_owner_start_invalid/,
+  );
+});
+
+test("명시한 동의 항목만 배포 확인에서 수락함", async () => {
+  const scopes = ["profile_nickname", "plusfriends"];
+  const r = response({ changeUrl: (u) => u.searchParams.set("scope", scopes.join(",")) });
+  assert.deepEqual(await verifyOwnerLoginStart({ ...options(r), scopes }), {
+    status: 200,
+    pkce: "S256",
+    cookieSeconds: 600,
+  });
+});
 
 test("실제 로그인 시작만 요청하고 결과에는 인가 주소·state·쿠키를 넣지 않음", async () => {
   let calls = 0;

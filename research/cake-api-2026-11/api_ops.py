@@ -81,6 +81,7 @@ op(id="API-078", method="post", path="/owner/session/authorization", op="startOw
    summary="사장님 로그인 시작(state)", spec=["SPEC-001"], auth="public",
    desc="카카오 로그인 버튼을 누르면 화면이 이 API를 부르고 응답의 authorizationUrl로 이동한다. 서버는 일회용 nonce를 로그인 시작 쿠키 `siljang_login`(HttpOnly·Secure·SameSite=Lax, 10분)에 두고, "
         "nonce와 만료 시각을 서버 시크릿으로 서명한 state와 nonce로 만든 PKCE code_verifier의 S256 code_challenge를 카카오 인가 주소에 담는다. nonce·state·code_verifier는 저장하지 않는다(DEC-10). "
+        "MVP의 로그인 동의 항목 설정은 기본 빈 값이라 scope를 생략하며 plusfriends를 요청하지 않는다(DEC-21). "
         "카카오가 redirectUri로 돌려준 code와 state는 API-001이 받아, state가 서명·10분·쿠키의 nonce와 맞을 때만 카카오를 호출한다(RFC 6749 10.12, SPEC-001, 설계 재검토 RD-11). "
         "redirectUri는 서버 설정의 목록에 있는 것만 받는다(아니면 422 /redirectUri not_allowed). 부를 때마다 새 nonce와 state라 앞의 로그인 시작은 쓸 수 없게 된다. "
         "K-11 개발 채널은 S256의 올바른 verifier를 수락하고 틀린 verifier를 invalid_grant로 거절했다. 제품은 state와 PKCE S256을 함께 사용한다(DEC-10).",
@@ -98,8 +99,9 @@ op(id="API-001", method="post", path="/owner/session", op="createOwnerSession", 
    desc="카카오 로그인 화면이 redirectUri로 준 인가 코드와 state를 받는다. state가 로그인 시작(API-078)의 서명·10분과 로그인 시작 쿠키 `siljang_login`의 nonce에 맞을 때만 카카오를 호출하고, "
         "아니면 카카오를 호출하지 않고 401 kakao_login_failed(DEC-10, 설계 재검토 RD-11). 서버가 인가 코드를 nonce로 다시 만든 PKCE code_verifier와 함께 카카오 토큰으로 바꿔 "
         "카카오 로그인 사용자 번호만 남기고 토큰은 버린다(DEC-10, REQ-135). "
-        "토큰을 버리기 전에 카카오톡 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`, 채널 추가 상태 동의 `plusfriends`)를 한 번 해 "
-        "사장님이 우리 서비스 채널 친구인지 남긴다(alertChannelFriend). 동의하지 않았거나 조회가 실패하면 로그인은 막지 않고 친구 여부를 바꾸지 않는다. "
+        "MVP 기본 설정은 plusfriends를 요청하지 않고 채널 관계 조회와 친구 여부 기록을 하지 않는다. 사장님 카카오 알림은 출시 검토로 미룸(동희님 2026-11-22 15:57 결정 카드, DEC-21). "
+        "로그인 동의 항목 설정에 plusfriends를 명시해 켠 경우에만 토큰을 버리기 전에 카카오톡 채널 관계 조회(`GET https://kapi.kakao.com/v2/api/talk/channels`)를 한 번 해 "
+        "사장님이 우리 서비스 채널 친구인지 남긴다(alertChannelFriend). 이 경우에도 동의하지 않았거나 조회가 실패하면 로그인은 막지 않고 친구 여부를 바꾸지 않는다. "
         "사장님 알림은 이 사용자 번호(appUserId)로 간다(DEC-21, REQ-260). "
         "세션은 HttpOnly·Secure·SameSite=Lax 쿠키 `siljang_owner`이고, 로그인 시작 쿠키는 지운다. `next`가 화면이 열 곳(가게 등록·신고증 다시 올리기·할 일 목록). "
         "카카오 로그인이 실패하거나 동의를 거부하면 우리 쪽 기록을 남기지 않음. "
@@ -124,9 +126,11 @@ op(id="API-001", method="post", path="/owner/session", op="createOwnerSession", 
 op(id="API-002", method="get", path="/owner/me", op="getOwnerMe", tag="로그인",
    summary="로그인한 사장님과 가게, 상단 배너", spec=["SPEC-001", "SPEC-067"], auth="owner",
    desc="사장님 화면을 열 때 세션을 확인한다. 세션이 없거나 만료됐으면 401이고 화면은 로그인으로 보낸 뒤 원래 주소로 돌아온다(SPEC-001). "
-        "`banners`의 add_alert_channel은 사장님이 우리 서비스 채널 친구가 아니라 알림이 할 일 목록에만 남는다는 안내(SPEC-067). "
+        "MVP 기본 설정에서는 채널 관계 재조회·친구 여부 기록·채널 추가 배너를 끈다. 기존 alertChannelFriend 보관값은 응답 형식을 위해 유지하며 현재 친구 상태 확인으로 쓰지 않는다(DEC-21). "
+        "로그인 동의 항목 설정에 plusfriends를 명시해 켠 때만 `banners`의 add_alert_channel로 사장님이 우리 서비스 채널 친구가 아니라 알림이 할 일 목록에만 남는다고 안내한다(SPEC-067). "
         "친구가 아니라고 남아 있으면 마지막으로 본 지 1분이 지났을 때 우리 앱의 Admin 키로 채널 관계를 다시 조회해(target_id_type=user_id) 친구가 되었으면 배너를 빼고 보인다(DEC-21, REQ-260).",
    ok=[(200, "Me", {
+       "mvp": {"owner": dict(E.OWNER, alertChannelFriend=False), "shop": E.SHOP_SUMMARY, "banners": []},
        "friend": {"owner": E.OWNER, "shop": E.SHOP_SUMMARY, "banners": []},
        "not_friend": {"owner": dict(E.OWNER, alertChannelFriend=False), "shop": E.SHOP_SUMMARY, "banners": ["add_alert_channel"]},
        "no_shop": {"owner": E.OWNER, "shop": None, "banners": []},

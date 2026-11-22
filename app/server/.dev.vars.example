@@ -48,9 +48,12 @@ FILE_URL_KEY=
 FIELD_KEY_CURRENT=
 FIELD_KEY_V1=
 
-# TASK-020 사장님 카카오 로그인. URI 목록은 쉼표로 구분한 정확한 https 주소. Admin 키는 친구 여부 재조회에만 사용.
+# TASK-020 사장님 카카오 로그인. URI 목록은 쉼표로 구분한 정확한 https 주소.
+# 동의 항목은 쉼표로 구분하며 MVP는 빈 값(scope 생략). plusfriends를 명시한 때만 채널 조회/기록/배너를 켠다.
+# 채널 ID는 plusfriends를 켰을 때 필요하고, Admin 키는 그때 친구 여부 재조회에만 사용한다.
 KAKAO_REST_API_KEY=
 KAKAO_CLIENT_SECRET=
 KAKAO_ADMIN_KEY=
 KAKAO_OWNER_REDIRECT_URIS=
+KAKAO_OWNER_LOGIN_SCOPES=
 KAKAO_ALERT_CHANNEL_ID=

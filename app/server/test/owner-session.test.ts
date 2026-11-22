@@ -18,6 +18,7 @@ const CONFIG = {
   KAKAO_CLIENT_SECRET: "synthetic-secret",
   KAKAO_OWNER_REDIRECT_URIS: `${URI},${URI}2`,
   KAKAO_ALERT_CHANNEL_ID: "_synthetic",
+  KAKAO_OWNER_LOGIN_SCOPES: "plusfriends",
 };
 const cookieOf = (r: Response, name: string): string => {
   const header = r.headers.getSetCookie().find((c) => c.startsWith(`${name}=`));
@@ -31,8 +32,12 @@ describeDb("사장님 세션·가게 범위·로그아웃의 데이터베이스 
     await db.close();
   });
 
-  function harness(accountId = String(8_000_000_000 + Math.floor(Math.random() * 1_000_000_000))) {
-    const settings = readSettings(CONFIG).ownerAuth;
+  function harness(
+    accountId = String(8_000_000_000 + Math.floor(Math.random() * 1_000_000_000)),
+    overrides: Record<string, string> = {},
+  ) {
+    const config = { ...CONFIG, ...overrides };
+    const settings = readSettings(config).ownerAuth;
     if (settings === null) throw new Error("설정 없음");
     const auth: OwnerAuth = {
       authorizeUrl: kakaoOwnerAuth(settings).authorizeUrl,
@@ -55,7 +60,7 @@ describeDb("사장님 세션·가게 범위·로그아웃의 데이터베이스 
       ],
       services: { now: () => clock.now, ownerAuth: auth, limiters: { OWNER_LOGIN_RATE_LIMITER: limiter } },
     });
-    const env = testEnv(CONFIG);
+    const env = testEnv(config);
     const call = (method: string, path: string, cookie?: string, body?: unknown, origin = ORIGIN) =>
       app.request(
         `${ORIGIN}/api${path}`,
@@ -86,6 +91,53 @@ describeDb("사장님 세션·가게 범위·로그아웃의 데이터베이스 
     }
     return { auth, clock, logs, app, env, call, begin, login, accountId, limiter };
   }
+
+  it("MVP는 새 계정의 친구 여부를 조회하거나 기록하지 않고 채널 배너도 보이지 않음", async () => {
+    const h = harness(undefined, { KAKAO_OWNER_LOGIN_SCOPES: "" });
+    const login = await h.login();
+    expect(login.status).toBe(200);
+    const body = (await login.json()) as { owner: { ownerId: string } };
+    const { rows } = await db.query<{ alert_channel_friend: boolean; alert_friend_checked_at: Date | null }>(
+      "SELECT alert_channel_friend, alert_friend_checked_at FROM owners WHERE id=$1",
+      [body.owner.ownerId],
+    );
+    expect(rows[0]).toEqual({ alert_channel_friend: false, alert_friend_checked_at: null });
+    const me = await h.call("GET", "/owner/me", cookieOf(login, "siljang_owner"));
+    expect(me.status).toBe(200);
+    const profile = (await me.json()) as { banners: string[] };
+    expectSchema("Me", profile);
+    expect(profile.banners).toEqual([]);
+    expect(h.auth.channelFriend).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])("MVP 재로그인과 동시 내 정보는 기존 친구 %s와 확인 시각을 바꾸지 않음", async (friend) => {
+    const shop = await createShop(db, "MVP 로그인 시험 가게");
+    const checkedAt = new Date("2026-11-01T00:00:00Z");
+    const { rows } = await db.query<{ kakao_account_id: string }>(
+      "UPDATE owners SET alert_channel_friend=$2, alert_friend_checked_at=$3 WHERE id=$1 RETURNING kakao_account_id",
+      [shop.ownerId, friend, checkedAt],
+    );
+    const h = harness(rows[0]?.kakao_account_id, { KAKAO_OWNER_LOGIN_SCOPES: "" });
+    vi.mocked(h.auth.signIn).mockResolvedValue({ accountId: h.accountId, friend: !friend });
+    vi.mocked(h.auth.channelFriend).mockResolvedValue(!friend);
+    const login = await h.login();
+    expect(login.status).toBe(200);
+    h.clock.now = new Date(NOW.getTime() + 120000);
+    const responses = await Promise.all([
+      h.call("GET", "/owner/me", cookieOf(login, "siljang_owner")),
+      h.call("GET", "/owner/me", cookieOf(login, "siljang_owner")),
+    ]);
+    for (const response of responses) {
+      expect(response.status).toBe(200);
+      expect((await response.json()) as { banners: string[] }).toMatchObject({ banners: ["license_pending"] });
+    }
+    expect(h.auth.channelFriend).not.toHaveBeenCalled();
+    const saved = await db.query<{ alert_channel_friend: boolean; alert_friend_checked_at: Date }>(
+      "SELECT alert_channel_friend, alert_friend_checked_at FROM owners WHERE id=$1",
+      [shop.ownerId],
+    );
+    expect(saved.rows[0]).toEqual({ alert_channel_friend: friend, alert_friend_checked_at: checkedAt });
+  });
 
   it("새 계정은 가게 등록으로, 내 정보는 실제 계정이고 쿠키 원문·토큰을 저장하지 않음", async () => {
     const h = harness();

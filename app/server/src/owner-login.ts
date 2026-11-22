@@ -150,8 +150,9 @@ export async function createOwnerLogin(c: Context<HonoEnv>): Promise<Response> {
   }
   if (user === null) throw new ApiError("kakao_login_failed");
   const db = c.get("db");
-  const session = await createOwnerSession(db, user, services.now());
-  const { profile } = await ownerProfile(db, session.ownerId);
+  const channelEnabled = c.get("settings").ownerAuth?.scopes.includes("plusfriends") ?? false;
+  const session = await createOwnerSession(db, user, services.now(), channelEnabled);
+  const { profile } = await ownerProfile(db, session.ownerId, channelEnabled);
   c.header("set-cookie", cookie(LOGIN_COOKIE, "", 0), { append: true });
   c.header("set-cookie", cookie(OWNER_COOKIE, session.token, OWNER_SESSION_SECONDS), { append: true });
   return c.json(
@@ -186,8 +187,9 @@ export async function resolveOwnerSession(c: Context<HonoEnv>): Promise<OwnerSco
   const services = c.get("services");
   const ownerId = await renewOwnerSession(db, token, services.now());
   if (ownerId === null) throw new ApiError("unauthenticated");
-  if (c.get("settings").ownerAuth !== null) await refreshOwnerFriend(db, services.ownerAuth(), ownerId, services.now());
-  const { profile, timeZone } = await ownerProfile(db, ownerId);
+  const channelEnabled = c.get("settings").ownerAuth?.scopes.includes("plusfriends") ?? false;
+  if (channelEnabled) await refreshOwnerFriend(db, services.ownerAuth(), ownerId, services.now());
+  const { profile, timeZone } = await ownerProfile(db, ownerId, channelEnabled);
   const owner = createOwnerScope(ownerId, timeZone, profile);
   c.set("ownerScope", owner);
   c.header("set-cookie", cookie(OWNER_COOKIE, token, OWNER_SESSION_SECONDS));

@@ -177,7 +177,7 @@ S["OwnerLoginStart"] = all_required({
 
 S["Owner"] = all_required({
     "ownerId": UUID,
-    "alertChannelFriend": boolean("우리 서비스 카카오톡 채널 친구인지. 로그인 때의 채널 관계 조회와 알림 발송 결과로 고침(DEC-21, REQ-260). 아니면 알림은 할 일 목록에만(SPEC-067)"),
+    "alertChannelFriend": boolean("우리 서비스 카카오톡 채널 친구인지의 보관값. MVP는 친구 조회·기록을 끄므로 현재 관계로 판단하지 않음. plusfriends 설정을 켠 경우 로그인/내 정보의 채널 관계 조회와 알림 발송 결과로 고침(DEC-21, REQ-260). MVP 알림은 할 일 목록에만(SPEC-067)"),
     "createdAt": DT,
 })
 

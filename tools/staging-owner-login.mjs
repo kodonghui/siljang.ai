@@ -4,6 +4,14 @@ import { pathToFileURL } from "node:url";
 export async function verifyOwnerLoginStart(options) {
   if (!/^staging\.[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(options.domain ?? ""))
     throw new Error("staging_owner_domain_invalid");
+  const scopes = options.scopes ?? [];
+  if (
+    !Array.isArray(scopes) ||
+    scopes.length > 32 ||
+    scopes.some((s) => typeof s !== "string" || !/^[a-z][a-z0-9_]{0,63}$/.test(s))
+  )
+    throw new Error("staging_owner_scopes_invalid");
+  const expectedScope = [...new Set(scopes)].join(",");
   const origin = `https://${options.domain}`;
   const redirectUri = `${origin}/owner/login/callback`;
   let response;
@@ -39,7 +47,7 @@ export async function verifyOwnerLoginStart(options) {
       url.searchParams.get("state") !== body.state ||
       url.searchParams.get("code_challenge_method") !== "S256" ||
       !/^[A-Za-z0-9_-]{43}$/.test(url.searchParams.get("code_challenge") ?? "") ||
-      url.searchParams.get("scope") !== "plusfriends" ||
+      (expectedScope === "" ? url.searchParams.has("scope") : url.searchParams.get("scope") !== expectedScope) ||
       response.headers.get("cache-control") !== "no-store"
     )
       throw new Error();
@@ -59,7 +67,9 @@ export async function verifyOwnerLoginStart(options) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const result = await verifyOwnerLoginStart({ domain: process.env.SILJANG_STAGING_DOMAIN });
+    const rawScopes = process.env.KAKAO_OWNER_LOGIN_SCOPES?.trim() ?? "";
+    const scopes = rawScopes === "" ? [] : rawScopes.split(",").map((s) => s.trim());
+    const result = await verifyOwnerLoginStart({ domain: process.env.SILJANG_STAGING_DOMAIN, scopes });
     console.log(JSON.stringify({ event: "staging_owner_start_verified", ...result }));
   } catch (error) {
     const code =
