@@ -8,7 +8,7 @@
  * 메모리 저장소·메모리 한도·정한 시각을 넣는다.
  * 설정이 빠졌으면 그것을 쓰는 요청만 500 internal(MissingSettingError, 로그에는 이름만).
  */
-import { type AiModel, createAiModel } from "./ai-model";
+import { type AiModel, type AiModelOptions, createAiModel } from "./ai-model";
 import type { Bindings } from "./app";
 import { type FieldCrypto, fieldCrypto } from "./field-crypto";
 import { type FileUrls, fileUrlSigner } from "./file-url";
@@ -34,7 +34,7 @@ export interface Services {
   /** 계좌번호·원래 값 암호화. FIELD_KEY_CURRENT·FIELD_KEY_V<n>이 없으면 MissingSettingError. */
   fieldCrypto(): FieldCrypto;
   /** 배포 설정으로 고른 회사·모델의 호출 모듈. AI_PROVIDER 등이 없으면 MissingSettingError. */
-  aiModel(): AiModel;
+  aiModel(options?: Pick<AiModelOptions, "totalTimeoutMs">): AiModel;
   /** 회사/모델과 선택 회사 키의 존재. 실제 업무 처리기의 준비 여부나 호출 성공이 아니다. */
   readonly aiConfigured: boolean;
   /** 운영자 인증 서비스(Supabase Auth). SUPABASE_URL·SUPABASE_PUBLISHABLE_KEY가 없으면 MissingSettingError. */
@@ -109,10 +109,13 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
       fields = fieldCrypto(settings.fieldKeys);
       return fields;
     },
-    aiModel() {
+    aiModel(options = {}) {
       if (ai !== undefined) return ai;
       if (settings.ai === null) throw new MissingSettingError("AI_PROVIDER and AI_MODEL are not set");
-      ai = createAiModel(settings.appEnv, settings.ai, overrides.now ? { now: overrides.now } : {});
+      ai = createAiModel(settings.appEnv, settings.ai, {
+        ...options,
+        ...(overrides.now ? { now: overrides.now } : {}),
+      });
       return ai;
     },
     operatorAuth() {

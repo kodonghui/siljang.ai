@@ -193,6 +193,11 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     expect(queue.jobs).toHaveLength(1);
     const job = queue.jobs[0] as KakaoCallbackJob;
     const inbound = await stored(job);
+    // 모델 연결의 전제: 첫 고지/처리방침 전달 자체는 TASK-064가 맡는다.
+    await db.query(
+      "UPDATE consultations SET ai_disclosed_at=$3, ai_disclosed_policy_version=1 WHERE shop_id=$1 AND id=$2",
+      [shop.shopId, inbound?.consultation_id, NOW],
+    );
     const output = { reply: "문구를 생일 축하로 적을게요.", draft_patch: { lettering: "생일 축하" } };
     const vendor = vi.fn<typeof fetch>(async () =>
       sseResponse(

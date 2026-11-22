@@ -1,6 +1,7 @@
 import type { Bindings } from "./app";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FieldCryptoError } from "./field-crypto";
+import { type KakaoAiReply, runKakaoAiTurn } from "./kakao-ai-turn";
 import { deliverKakaoCallback, kakaoCallback } from "./kakao-callback";
 import { EXPIRED_KAKAO_CALLBACKS } from "./kakao-callback-sources";
 import {
@@ -105,7 +106,7 @@ export async function consumeKakaoCallback(
 
   const now = options.now ?? (() => new Date());
   const settings = readSettings(env);
-  const services = createServices(env, settings);
+  const services = createServices(env, settings, options.now === undefined ? {} : { now: options.now });
   const conn = (options.connect ?? pgConnector)(settings.secrets.DATABASE_URL);
   const scope = createShopScope(job.shopId, { kind: "job", job: "kakao_callback" });
   const db = shopRequestDb(scope, conn);
@@ -119,19 +120,35 @@ export async function consumeKakaoCallback(
     }
 
     owned = claim;
-    const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now());
-    if (reason === false) return "done";
-    log(
-      "warn",
-      {
-        event: "kakao_callback_handoff",
-        code:
-          reason === "ai_cost_limit"
-            ? "ai_cost_limit_reached"
-            : kakaoAiFailureOutcome(services.aiConfigured ? "unavailable" : "key_missing"),
-      },
-      options.logSink,
-    );
+    let preparedReply: KakaoAiReply | undefined;
+    let failureCode: string = kakaoAiFailureOutcome(services.aiConfigured ? "unavailable" : "key_missing");
+    if (services.aiConfigured) {
+      const turn = await runKakaoAiTurn(db, job.messageId, claim, services, now);
+      if (turn.kind === "gone") return "done";
+      if (turn.kind === "busy") {
+        await releaseKakaoCallback(db, job.messageId, claim);
+        return "retry";
+      }
+      if (turn.kind === "reply") preparedReply = turn.reply;
+      else if (turn.kind === "failure")
+        failureCode = turn.failure === "schema_invalid" ? "ai_output_rejected" : kakaoAiFailureOutcome(turn.failure);
+    }
+    if (preparedReply?.delivered) {
+      await finishKakaoCallback(db, job.messageId, claim, preparedReply.text, null, [], preparedReply.id);
+      return "done";
+    }
+    if (preparedReply === undefined) {
+      const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now());
+      if (reason === false) return "done";
+      log(
+        "warn",
+        {
+          event: "kakao_callback_handoff",
+          code: reason === "ai_cost_limit" ? "ai_cost_limit_reached" : failureCode,
+        },
+        options.logSink,
+      );
+    }
     let raw: string | undefined;
     try {
       raw = await openKakaoCallback(db, services.fieldCrypto(), claim);
@@ -140,17 +157,23 @@ export async function consumeKakaoCallback(
     }
 
     const callback = kakaoCallback(raw, claim.created_at);
-    const previous = callback === null ? [] : await deferredKakaoMessages(db, claim.customer_id);
+    const previous =
+      callback === null
+        ? []
+        : (await deferredKakaoMessages(db, claim.customer_id)).filter(
+            (row) => preparedReply === undefined || row.source !== "message" || row.id !== preparedReply.id,
+          );
+    const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
     const deliveredAt =
       callback !== null &&
       (await deliverKakaoCallback(
         { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
-        [...deferredKakaoTexts(previous), KAKAO_HANDOFF_TEXT],
+        [...deferredKakaoTexts(previous), text],
         { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
       )) === "delivered"
         ? now()
         : null;
-    await finishKakaoCallback(db, job.messageId, claim, KAKAO_HANDOFF_TEXT, deliveredAt, previous);
+    await finishKakaoCallback(db, job.messageId, claim, text, deliveredAt, previous, preparedReply?.id);
     return "done";
   } catch (error) {
     if (owned !== null) await releaseKakaoCallback(db, job.messageId, owned).catch(() => {});
