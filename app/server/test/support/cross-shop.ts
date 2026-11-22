@@ -277,6 +277,7 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
         body,
       });
       expect(own.status, own.text).toBe(200);
+      if (c.method === "PUT") expect(own.body?.outcome).toBe("unchanged");
       expect(own.text).not.toContain(env.b.botId);
       expect(own.text).not.toContain(env.b.channelId);
       expect((await snapshots(db, env))[1]).toEqual(before[1]);

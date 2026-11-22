@@ -944,3 +944,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 280. TASK-042 채널 설정/API-030·031·079은 저장하지 않는 연결/버전별 스킬 키와24시간 겹침·바로 끊기·30분 선점을 제공합니다. 현재 설정은 내부 순번으로 찾고 옛 linked 수신은 새 연결이 끝날 때까지 보존합니다. [수락 대조](../docs/records/kakao-channel/task-042-acceptance.md)에 TASK-043 연결 확인과 실제 Event API 발신 미룸을 구분했습니다. 관련113개·타입/lint·설계9단계가 통과했고 실제0027/권한3문장·계정/PC 수신은 대기입니다.
 
 - 280 전체 확인: 서버87파일/1,731개·웹237개·타입/lint·빌드800ms/Worker dry-run·설계9단계·DB 규칙356개가 통과했습니다. 계좌 PR #173 병합 뒤 main 결합과 채널 고유 변경을 대조하고 ready PR을 엽니다. 실제0027/권한3문장은 대기입니다.
+
+- 280 부모 main 확인: 계좌 main0c64f0a의 CI/배포·학원컴 태그/상태200과 인증 없는2경로401을 기록했습니다. squash 트리와 로컬 부모가 같음을 대조해 채널 변경만 새 main에 남겼으며 파일 내용은 전체 검사 때와 같습니다.
