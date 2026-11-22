@@ -818,4 +818,4 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 
 262. TASK-028 공통 Event API 전송 모듈 `server/src/kakao-event.ts`는 고정 주소·안내 키·접수와 전달 확인·친구와 발신 상태·예약 시각·재시도와 결과 조회 정책을 시험 72개로 고정합니다. Workers의 fetch에는 `cache` 옵션이 없어 쓰지 않습니다. 서비스와 앱 경로에는 아직 연결하지 않았고, 실제 발신과 업무 렌더러 연결은 TASK-104·167입니다.
 
-263. 2026-11-22 무료 MVP 지시는 docs/handover/codex-finish.md 맨 위가 원본입니다. 끝남/구현 완료를 함께 읽어 다음 작업을 고르고, 코드 오류는 수정해 검사를 계속합니다. 카카오·Supabase·Cloudflare 화면은 학원컴 Ego Light를 사용하고 결제·크레딧 충전·반복 9는 진행하지 않습니다. MVP 운영 환경도 합성 자료와 시험 계정만 사용합니다. 실제 로그인 확인과 후속 구현 상태는 progress.md의 두 목록에서 관리합니다.
+263. 2026-11-22 무료 MVP 지시는 docs/handover/codex-finish.md 맨 위가 원본입니다. 끝남/구현 완료를 함께 읽어 다음 작업을 고르고, 코드 오류는 수정해 검사를 계속합니다. 카카오·Supabase·Cloudflare 화면은 학원컴 Ego Light를 사용하고 결제·크레딧 충전·반복 9는 진행하지 않습니다. MVP 운영 환경도 합성 자료와 시험 계정만 사용합니다. 실제 로그인 확인과 후속 구현 상태는 progress.md의 두 목록에서 관리합니다. 문서 변경의 전체 타입·서버 1,276개·웹 237개·빌드 658ms, 단계 8개와 별도 WBS 18개/오류 0을 확인했습니다.
