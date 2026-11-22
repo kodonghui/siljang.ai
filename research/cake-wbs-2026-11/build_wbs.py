@@ -36,6 +36,7 @@ def load(name, path):
 
 
 W = load("wbs_rows", HERE / "wbs_rows.py")
+task_status = load("task_status", HERE / "task_status.py")
 spec_rows = load("spec_rows", REPO / "research/cake-spec-2026-11/spec_rows.py")
 import api_catalog  # noqa: E402
 import api_ops  # noqa: E402
@@ -459,15 +460,18 @@ if LEGAL.exists():
     banned("legal-questions.md", re.sub(r"https?://\S+|`[^`]*`", " ",
                                         re.sub(r"(?m)^\s*>.*$", " ", LEGAL.read_text(encoding="utf-8"))), LAW_NAMES)
 
-check("끝난 표시(finished): 끝난 날로 시작하고 앞선 작업이 모두 끝남")
+check("끝난 표시(finished): 끝난 날로 시작하고 앞선 작업이 끝남 또는 구현 완료")
+IMPLEMENTED = task_status.implemented_task_ids((REPO / "docs/records/progress.md").read_text(encoding="utf-8"))
+for tid in IMPLEMENTED - ACTIVE.keys():
+    problems.append("구현 완료 표의 작업 %s가 현재 WBS에 없음" % tid)
 for tid, t in ACTIVE.items():
     if t.get("finished") is None:
         continue
     if not re.match(r"20\d\d-\d\d-\d\d", str(t["finished"])):
         problems.append("%s: finished는 끝난 날(YYYY-MM-DD)로 시작" % tid)
     for d in DEPS[tid]:
-        if not ACTIVE.get(d, {}).get("finished"):
-            problems.append("%s: 끝났다고 적었지만 앞선 작업 %s가 끝나지 않음" % (tid, d))
+        if not task_status.dependency_is_complete(d, ACTIVE, IMPLEMENTED):
+            problems.append("%s: 끝났다고 적었지만 앞선 작업 %s가 끝남/구현 완료가 아님" % (tid, d))
 
 check("반복 0 안내서(iteration-0-guide.md): 첫 반복의 남은 동희님 몫마다 4절과 1절 표에 있고 ①~⑥이 있음, "
       "끝난 몫은 5절 표, 첫머리의 수가 원본과 같음, 적힌 ID가 원본에 있음")
