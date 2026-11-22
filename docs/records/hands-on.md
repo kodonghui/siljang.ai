@@ -697,6 +697,11 @@
 - 새 역할/키/유료 자원을 만들지 않았고 운영 기록/접속기록 권한도 바꾸지 않았습니다. 실제 역할·서버 이름과 인증 정보는 공개 기록에 넣지 않습니다. SQL 권한 적용과 카탈로그 확인 결과이며 실제 Worker의 쓰기 검증과 구분합니다.
 - 적용 세션이 끝난 뒤 같은 SQL Editor를 Aside의 전체 snapshot으로 직접 대조했습니다. 결과 표 16행에서 역할 1개·콜백 열 3개·AI/문구 권한 허용·비용/연락처/알레르기/삭제 차단과 GRANT 10개 집계 true를 확인했습니다. 확인에 쓴 역할 해시는 공개 기록에 옮기지 않습니다.
 
+### 2026-11-23 00:13~00:15 KST · TASK-032 main 배포와 인증 없는 경로
+
+- PR #166 최종 cce39e6의 app 45036666354·db 45036666323 성공 뒤 squash main f6022a9입니다. main app 45036873456의 검사/스테이징 배포·db 45036873455 성공과 원격 ref 동일을 확인했습니다. 학원컴 CLI 생성 버전 0910552a-2df1-43cf-be10-069fd839a733는 태그 동일·상태 200/SSH 종료 0입니다.
+- 학원컴 CLI의 00:15:01 KST 인증 없는 GET/POST /api/owner/shop은 모두 401 unauthenticated·application/problem+json입니다. 이 요청은 실제 계정의 등록 성공이나 서버 역할의 쓰기 시험이 아닙니다. TASK-020 Vault 잠금 대기를 유지하며 실제 FL-001은 운영 MVP 스모크에서 확인합니다.
+
 ### 2026-11-22 23:48:24~23:50:17 KST · TASK-032 스테이징 등록 권한
 
 - 학원컴 Aside CLI로 기존 Free 서울 스테이징/Hyperdrive의 서버 역할을 확인하고 PR #166 head aecedad6의 권한 원본에서 새 GRANT 3문장만 적용했습니다. 카탈로그 전후는 등록 19개 열 INSERT 전체 false→true, shop_identity_changes SELECT false→true, request_keys의 SELECT/INSERT/UPDATE/DELETE 각각 true→true입니다.
