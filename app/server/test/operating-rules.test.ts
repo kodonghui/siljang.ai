@@ -1,7 +1,9 @@
 import { afterAll, expect, it } from "vitest";
-import { createApp } from "../src/app";
+import { type AppOptions, createApp } from "../src/app";
+import { pgConnector, type RequestDb } from "../src/db";
 import { MINOR_NOTICE, operatingRulesCardTexts, WITHDRAWAL_NOTICE } from "../src/operating-rules-card";
 import type { ClauseInput } from "../src/operating-rules-input";
+import { createOwnerSession } from "../src/owner-session";
 import { ApiError } from "../src/problem";
 import { createShopScope } from "../src/shop-scope";
 import { expectProblem, expectSchema } from "./support/contract";
@@ -35,7 +37,7 @@ function input(baseRevision: string | null = null) {
   };
 }
 
-async function fixture() {
+async function fixture(options: AppOptions = {}) {
   const ownerId = newUuid(),
     shopId = newUuid();
   await db.transaction(async (tx) => {
@@ -58,6 +60,7 @@ async function fixture() {
     },
     services: { now: () => NOW },
     logSink: () => {},
+    ...options,
   });
   async function call(method: string, path: string, body?: unknown, authenticated = true, key = newRequestKey()) {
     return app.request(
@@ -338,5 +341,181 @@ describeDb("TASK-039 운영규정 API-020~023", () => {
     expect(
       (await db.query("SELECT count(*)::int AS n FROM operating_rules WHERE shop_id=$1", [h.shopId])).rows,
     ).toEqual([{ n: 1 }]);
+  });
+
+  it("가게 없는 실제 세션은4개 API 모두404 shop_not_registered", async () => {
+    const session = await createOwnerSession(
+      db,
+      { accountId: BigInt(`0x${newUuid().replaceAll("-", "").slice(0, 13)}`).toString(), friend: false },
+      NOW,
+      false,
+    );
+    const app = createApp({ services: { now: () => NOW }, logSink: () => {} });
+    for (const [method, path] of [
+      ["GET", "/owner/operating-rules"],
+      ["POST", "/owner/operating-rules/versions"],
+      ["GET", "/owner/operating-rules/versions"],
+      ["GET", "/owner/operating-rules/versions/1"],
+    ] as const)
+      await expectProblem(
+        await app.request(
+          `${ORIGIN}/api${path}`,
+          {
+            method,
+            headers: {
+              origin: ORIGIN,
+              cookie: `siljang_owner=${session.token}`,
+              "content-type": "application/json",
+              "Idempotency-Key": newRequestKey(),
+            },
+            ...(method === "POST" ? { body: JSON.stringify(input()) } : {}),
+          },
+          testEnv(),
+        ),
+        "shop_not_registered",
+      );
+  });
+
+  it("DB 장애는4개 API 모두500이고 내부 오류는 응답에 넣지 않음", async () => {
+    const h = await fixture({
+      connect: () => {
+        throw new Error("synthetic private rules database failure");
+      },
+    });
+    for (const [method, path] of [
+      ["GET", "/owner/operating-rules"],
+      ["POST", "/owner/operating-rules/versions"],
+      ["GET", "/owner/operating-rules/versions"],
+      ["GET", "/owner/operating-rules/versions/1"],
+    ] as const) {
+      const error = await expectProblem(
+        await h.call(method, path, method === "POST" ? input() : undefined),
+        "internal",
+      );
+      expect(JSON.stringify(error)).not.toContain("private rules database");
+    }
+  });
+
+  it.each(["0", "-1", "1.5", "not-a-version", "2147483648", "9".repeat(100)])("잘못된 버전%s는404", async (version) => {
+    const h = await fixture();
+    await expectProblem(await h.call("GET", `/owner/operating-rules/versions/${version}`), "not_found");
+  });
+
+  it("본문 형식·깨진 JSON·요청 키·필드 오류는422이며 버전을 남기지 않음", async () => {
+    const h = await fixture();
+    for (const [contentType, key, body, field, code] of [
+      ["text/plain", newRequestKey(), "{}", "header:Content-Type", "not_allowed"],
+      ["application/json", newRequestKey(), "{", "/", "bad_json"],
+      ["application/json", "", JSON.stringify(input()), "header:Idempotency-Key", "required"],
+      [
+        "application/json",
+        newRequestKey(),
+        JSON.stringify({ ...input(), paymentDueHours: 721 }),
+        "/paymentDueHours",
+        "out_of_range",
+      ],
+    ] as const) {
+      const response = await h.app.request(
+        `${ORIGIN}/api/owner/operating-rules/versions`,
+        {
+          method: "POST",
+          headers: { origin: ORIGIN, [OWNER]: h.ownerId, "content-type": contentType, "Idempotency-Key": key },
+          body,
+        },
+        testEnv(),
+      );
+      expect(await expectProblem(response, "validation_failed")).toMatchObject({
+        errors: expect.arrayContaining([{ field, code }]),
+      });
+    }
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM operating_rules WHERE shop_id=$1", [h.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
+  });
+
+  it("동시 저장은 한 버전만 남기고 같은 키 재전송/다른 본문 재사용을 구분함", async () => {
+    const h = await fixture(),
+      keys = [newRequestKey(), newRequestKey()] as const;
+    const results = await Promise.all(
+      keys.map((key) => h.call("POST", "/owner/operating-rules/versions", input(), true, key)),
+    );
+    expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+    const key = results[0]?.status === 201 ? keys[0] : keys[1];
+    const replay = await h.call("POST", "/owner/operating-rules/versions", input(), true, key);
+    expect(replay.status).toBe(201);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    await expectProblem(
+      await h.call("POST", "/owner/operating-rules/versions", { ...input(), paymentDueHours: 24 }, true, key),
+      "idempotency_key_reused",
+    );
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM operating_rules WHERE shop_id=$1", [h.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
+  });
+
+  it("조문 쓰기 실패는 새 버전/교체 시각을 되돌리고 같은 키로 다시 저장할 수 있음", async () => {
+    let fail = false;
+    const h = await fixture({
+      connect: (secret) => {
+        const base = pgConnector(secret);
+        return {
+          query: (sql, params) => base.query(sql, params),
+          transaction: (fn) =>
+            base.transaction((tx) =>
+              fn({
+                query: (sql, params) => {
+                  if (fail && /^INSERT INTO rule_clauses/.test(sql)) {
+                    fail = false;
+                    throw new Error("synthetic clause write failure");
+                  }
+                  return tx.query(sql, params);
+                },
+              }),
+            ),
+          abort: () => base.abort(),
+          close: () => base.close(),
+        } satisfies RequestDb;
+      },
+    });
+    const first = (
+      (await (await h.call("POST", "/owner/operating-rules/versions", input())).json()) as {
+        operatingRules: { revision: string };
+      }
+    ).operatingRules;
+    const body = { ...input(first.revision), paymentDueHours: 24 },
+      key = newRequestKey();
+    fail = true;
+    await expectProblem(await h.call("POST", "/owner/operating-rules/versions", body, true, key), "internal");
+    expect(await (await h.call("GET", "/owner/operating-rules")).json()).toMatchObject({
+      revision: first.revision,
+      version: 1,
+      current: true,
+      paymentDueHours: 12,
+    });
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM operating_rules WHERE shop_id=$1", [h.shopId])).rows,
+    ).toEqual([{ n: 1 }]);
+    expect((await h.call("POST", "/owner/operating-rules/versions", body, true, key)).status).toBe(201);
+  });
+
+  it("카드 한도를 넘은 마지막50번째 조문을 필드 오류가 가리킴", async () => {
+    const h = await fixture();
+    const clauses = Array.from({ length: 50 }, (_, i) => ({
+      key: "custom",
+      position: i + 1,
+      title: `합성 조문${i}`,
+      conditionText: i === 49 ? "조건".repeat(300) : "조건",
+      effectText: i === 49 ? "효과".repeat(250) : "효과",
+    }));
+    const error = await expectProblem(
+      await h.call("POST", "/owner/operating-rules/versions", { ...input(), clauses }),
+      "validation_failed",
+    );
+    expect(error).toMatchObject({
+      errors: expect.arrayContaining([{ field: "/clauses/49", code: "exceeds_card_limit" }]),
+    });
+    expect(
+      (await db.query("SELECT count(*)::int AS n FROM operating_rules WHERE shop_id=$1", [h.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
   });
 });

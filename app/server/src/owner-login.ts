@@ -1,7 +1,7 @@
 /** API-078·001·002·003와 사장님/가게 범위 해석기(TASK-020). */
 import type { Context } from "hono";
 import type { HonoEnv } from "./app";
-import { readJsonBody } from "./body";
+import { readJsonBody, requireJson } from "./body";
 import { sameOrigin } from "./operator-login";
 import { type KakaoOwner, KakaoUnavailableError } from "./owner-auth";
 import {
@@ -74,8 +74,7 @@ export function parseOwnerInput(body: unknown, login: boolean): LoginInput {
 }
 
 async function input(c: Context<HonoEnv>, login: boolean): Promise<LoginInput> {
-  if (!/^application\/json\s*(;\s*charset\s*=\s*"?utf-8"?\s*)?$/i.test(c.req.header("content-type") ?? ""))
-    throw fieldError("header:Content-Type", "not_allowed");
+  requireJson(c.req.raw);
   return parseOwnerInput(await readJsonBody(c), login);
 }
 

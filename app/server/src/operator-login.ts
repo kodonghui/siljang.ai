@@ -30,7 +30,7 @@
  */
 import type { Context } from "hono";
 import type { HonoEnv } from "./app";
-import { readJsonBody } from "./body";
+import { readJsonBody, requireJson } from "./body";
 import { AuthUnavailableError, type OperatorAuth } from "./operator-auth";
 import { createOperatorScope, type OperatorScope } from "./operator-scope";
 import {
@@ -58,7 +58,6 @@ export const FAILURE_FLOOR_MS = 2000;
 const EMAIL = /^[^@\s]+@[^@\s]+$/;
 const OTP = /^[0-9]{6}$/;
 const FIELD_NAME = /^[A-Za-z0-9_]{1,100}$/;
-const JSON_TYPE = /^application\/json\s*(;\s*charset\s*=\s*"?utf-8"?\s*)?$/i;
 
 interface LoginInput {
   readonly email: string;
@@ -107,12 +106,6 @@ export function parseLoginInput(body: unknown): LoginInput {
 export function sameOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
   return origin !== null && origin === new URL(req.url).origin;
-}
-
-/** 06 DEC-01: 받지 않는 Content-Type은 header:Content-Type·not_allowed. */
-function requireJson(req: Request): void {
-  const type = req.headers.get("content-type");
-  if (type === null || !JSON_TYPE.test(type.trim())) throw fieldError("header:Content-Type", "not_allowed");
 }
 
 /**

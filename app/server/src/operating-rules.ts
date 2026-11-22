@@ -1,4 +1,5 @@
 /** 운영규정 버전(API-020~023). 이전 버전의 조문과 단계 행은 읽기만 한다. */
+import { requireJson } from "./body";
 import { operatingRulesCardTexts } from "./operating-rules-card";
 import {
   type ClauseInput,
@@ -172,8 +173,7 @@ export async function getOperatingRulesVersion(r: ShopRequest): Promise<Response
   );
 }
 export async function createOperatingRulesVersion(r: ShopRequest): Promise<Response> {
-  if (!/^application\/json\s*(;\s*charset\s*=\s*"?utf-8"?\s*)?$/i.test(r.req.header("content-type") ?? ""))
-    throw fieldError("header:Content-Type", "not_allowed");
+  requireJson(r.req.raw);
   const raw = await r.body(),
     input = parseOperatingRules(raw);
   return r.command({
