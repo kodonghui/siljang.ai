@@ -59,6 +59,12 @@ interface OwnShopCase {
   readonly kind: "self";
 }
 
+interface ShopSettingsCase {
+  readonly method: "PATCH";
+  readonly path: "/owner/shop";
+  readonly kind: "shop_settings";
+}
+
 interface CalendarShopCase {
   readonly method: "GET" | "PUT" | "PATCH";
   readonly path: "/owner/calendar" | "/owner/calendar/days" | "/owner/calendar/days/:day";
@@ -108,6 +114,7 @@ export type CrossShopCase =
   | OwnerCrossShopCase
   | SkillCrossShopCase
   | OwnShopCase
+  | ShopSettingsCase
   | CalendarShopCase
   | PriceShopCase
   | RulesShopCase
@@ -126,6 +133,7 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
       }) as const,
   ),
   { method: "GET", path: "/owner/shop", kind: "self" },
+  { method: "PATCH", path: "/owner/shop", kind: "shop_settings" },
   { method: "GET", path: "/owner/kakao-channel", kind: "channel_setup" },
   { method: "PUT", path: "/owner/kakao-channel", kind: "channel_setup" },
   { method: "POST", path: "/owner/kakao-channel/skill-key", kind: "channel_setup" },
@@ -260,6 +268,30 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "shop_settings") {
+      const other = await snapshotShop(db, env.b);
+      let current = await send(env, "GET", { url: "/owner/shop" });
+      const invalid = await send(env, "PATCH", {
+        url: c.path,
+        body: { baseRevision: current.body?.revision, name: "다른 가게 ID 거절", shopId: env.b.shopId },
+      });
+      expect(invalid.status, invalid.text).toBe(422);
+      for (const shopId of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+        current = await send(env, "GET", { url: "/owner/shop" });
+        const response = await send(env, "PATCH", {
+          url: `${c.path}?shopId=${shopId}&ownerId=${env.b.ownerId}`,
+          body: { baseRevision: current.body?.revision, contactEmail: "own-settings@example.com" },
+        });
+        expect(response.status, response.text).toBe(200);
+        expect(response.body).toMatchObject({
+          shop: { shopId: env.a.shopId, contactEmail: "own-settings@example.com" },
+        });
+        expect(response.text).not.toContain(env.b.shopId);
+        expect(response.text).not.toContain(env.b.ownerId);
+        expect(await snapshotShop(db, env.b)).toEqual(other);
+      }
+      return;
+    }
     if (c.kind === "channel_check") {
       const current = await send(env, "GET", { url: "/owner/kakao-channel" });
       expect(current.status).toBe(200);

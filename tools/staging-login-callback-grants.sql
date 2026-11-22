@@ -76,3 +76,9 @@ GRANT UPDATE (channel_public_id, card_block_id, orderer_block_id, allergy_block_
 GRANT SELECT (id, display_name, disabled_at, mfa_enrolled_at) ON operators TO :"runtime_role";
 GRANT SELECT (id, operator_id, token_hash, created_at, expires_at, ended_at) ON operator_sessions TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION review_shop_license(uuid,uuid,text,timestamptz,text,text,text) TO :"runtime_role";
+
+-- TASK-037: 연락처/공개 정보와 운영 설정만 바꾼다. 신원·영업 승인·소유자/삭제는 더하지 않는다.
+GRANT UPDATE (name, contact_phone, business_address, contact_email, pickup_address,
+  mail_order_reg_no, mail_order_authority, mail_order_exemption, completion_photo_enabled,
+  idle_close_hours, owner_wait_minutes, daily_ai_cost_limit_krw, awaiting_payment_limit, updated_at)
+  ON shops TO :"runtime_role";

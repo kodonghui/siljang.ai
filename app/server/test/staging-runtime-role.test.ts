@@ -605,6 +605,73 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     expect(eventCalls).toBe(0);
   });
 
+  it("제한 역할의 가게 설정 변경과 실제 세션은 되고 신원/승인/삭제는 막음", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const target = await createShop(isolated.db, "제한 역할 설정 가게");
+    const owner = (
+      await isolated.db.query<{ kakao_account_id: string }>("SELECT kakao_account_id FROM owners WHERE id=$1", [
+        target.ownerId,
+      ])
+    ).rows[0];
+    if (!owner) throw new Error("합성 사장님 없음");
+    const session = await createOwnerSession(
+      isolated.db,
+      { accountId: owner.kakao_account_id, friend: false },
+      now,
+      false,
+    );
+    const api = createApp({ connect: () => roleDb(), services: { now: () => now }, logSink: () => {} }),
+      url = "https://siljang.example/api/owner/shop",
+      headers = {
+        cookie: `${OWNER_COOKIE}=${session.token}`,
+        origin: "https://siljang.example",
+        "content-type": "application/json",
+        "Idempotency-Key": newRequestKey(),
+      },
+      env = testEnv({ FILE_URL_KEY: TEST_HASH_KEY });
+    const initial = await api.request(url, { headers }, env);
+    expect(initial.status).toBe(200);
+    const before = (await initial.json()) as { revision: string };
+    const changes = {
+      baseRevision: before.revision,
+      name: "제한 역할 설정 변경",
+      contactPhone: "02-000-0000",
+      businessAddress: "서울 합성로 3",
+      contactEmail: "role-settings@example.com",
+      pickupAddress: "합성 픽업",
+      mailOrderRegNo: "합성 신고",
+      mailOrderAuthority: "합성구청",
+      mailOrderExemption: null,
+      completionPhotoEnabled: true,
+      idleCloseHours: 10,
+      ownerWaitMinutes: 30,
+      dailyAiCostLimitKrw: 3000,
+      awaitingPaymentLimit: 1,
+    };
+    const patch = () => api.request(url, { method: "PATCH", headers, body: JSON.stringify(changes) }, env);
+    const saved = await patch();
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    expect(await saved.json()).toMatchObject({
+      outcome: "done",
+      shop: { name: changes.name, ownerWaitMinutes: 30, dailyAiCostLimitKrw: 3000, awaitingPaymentLimit: 1 },
+    });
+    const replay = await patch();
+    expect(replay.status).toBe(200);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    const conn = roleDb();
+    try {
+      for (const statement of [
+        "UPDATE shops SET business_name='forbidden' WHERE id=$1",
+        "UPDATE shops SET representative_name='forbidden' WHERE id=$1",
+        "UPDATE shops SET license_status='verified' WHERE id=$1",
+        "DELETE FROM shops WHERE id=$1",
+      ])
+        await expect(conn.query(statement, [target.shopId])).rejects.toMatchObject({ code: "42501" });
+    } finally {
+      await conn.close();
+    }
+  });
+
   it("가게·채널 공유 잠금과 손님·상담·수신 메시지 쓰기를 실제 역할로 실행", async () => {
     const conn = roleDb();
     const scope = createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" });

@@ -798,3 +798,9 @@
 - 최종e12cfe7290eec426fd7018924db5531afd91c009의 app45067821997·db45067821990(16.15/17.11) 성공, Claude6건 처리와 수동 Codex 요청1회/실제 한도 응답을 기록한 뒤 squash main52c9b2723d78491426d9f3a068592da1e1dd6b8d를 확인했습니다. main app45068270060 검사/스테이징 배포와 db45068270195 두 버전도 성공했습니다.
 - 학원컴 CLI 최신 배포는8d261e9a-d41a-4b11-a03c-684dd71018cc,2026-11-22T20:48:28.048548Z(05:48:28 KST) 생성이며 정확한 main 태그/상태200·SSH0입니다.05:48:57 KST 인증 없는 운영자 목록·상세·판정은 모두401 unauthenticated/application/problem+json이며 SSH0·stderr_nonempty=true입니다.
 - 이 결과를 실제 운영자/TOTP·가게 판정·0029/0030/권한3문장 적용이나 사장님 알림 수신으로 세지 않습니다. TASK-034 구현 완료를 추가해 끝남32개·구현 완료10개이며 finished는 그대로입니다. 브라우저는 학원컴 Aside CLI 지시를 유지하며 연결/Vault 상태 변화가 없어 같은 실패를 반복하지 않았습니다.
+
+## 2026-11-23 · PR #176 main 배포와 학원컴 확인
+
+- 최종d4acc8f05d557f777bd9a6e960909291acfd5b3e app45072543488/db45072543453(16.15/17.11) 성공·Claude7건 처리·수동 Codex 요청1회/실제 사용 한도 뒤 main29eff886d1284a39385e4f6330e9b5dd34916f11을 확인했습니다. main app45072916663 검사/스테이징 배포와 db45072916683 두 버전도 성공입니다.
+- 학원컴 CLI 최신 배포6e4d992b-7f8f-4702-80ba-5659539b64d0는2026-11-22T21:38:17.511866Z(06:38:17 KST) 생성·동일 태그·상태200/SSH0입니다.06:39:35 KST 인증 없는 POST /api/owner/kakao-channel/check는401 unauthenticated/application/problem+json·SSH0·stderr_nonempty=true입니다.
+- 실제 역할/사장님·PC 문구/버튼과 Event API 성공으로 세지 않습니다. TASK-043 구현 완료를 추가해 끝남32개·구현 완료11개이며 finished는 그대로입니다. 실제 발신은 무료 MVP 지시대로 TASK-167 출시 검토입니다.
