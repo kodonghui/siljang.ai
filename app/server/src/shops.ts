@@ -116,6 +116,8 @@ export async function renderShop(db: ShopDb, services: Services, origin: string)
 }
 
 export async function registerShop(r: OwnerRequest): Promise<Response> {
+  if (!/^application\/json\s*(;\s*charset\s*=\s*"?utf-8"?\s*)?$/i.test(r.req.header("content-type") ?? ""))
+    throw fieldError("header:Content-Type", "not_allowed");
   const raw = await r.body();
   const input = parseShopRegistration(raw);
   const origin = new URL(r.req.url).origin;

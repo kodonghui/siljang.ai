@@ -1,19 +1,23 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, expect, it } from "vitest";
+import { createApp } from "../src/app";
 import type { Queryable, RequestDb } from "../src/db";
 import { fieldCrypto } from "../src/field-crypto";
 import { kakaoCallback } from "../src/kakao-callback";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import { publishStoredKakaoCallback, storeKakaoCallback } from "../src/kakao-callback-store";
 import { receiveKakaoMessage } from "../src/kakao-skill-store";
+import { createOwnerScope } from "../src/owner-scope";
 import { createOwnerSession, endOwnerSession, ownerProfile, renewOwnerSession } from "../src/owner-session";
 import { runScheduled } from "../src/scheduled";
 import { readSettings, Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
-import { collectLogs, describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { newUploadId, tempKey } from "../src/uploads";
+import { collectLogs, describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
+import { MemoryStore } from "./support/storage";
 
 describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
   const role = `runtime_test_${crypto.randomUUID().replaceAll("-", "")}`;
@@ -86,6 +90,64 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
       }
     },
   );
+
+  it("제한 역할로 가게 등록·요청 키 재전송·내 가게 조회를 실행하고 임의 승인/삭제는 막음", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const session = await createOwnerSession(
+      isolated.db,
+      { accountId: BigInt(`0x${newUuid().replaceAll("-", "").slice(0, 14)}`).toString(), friend: false },
+      now,
+      false,
+    );
+    const store = new MemoryStore(),
+      upload = newUploadId("license_photo", now);
+    await store.put(tempKey(createOwnerScope(session.ownerId), upload), new Uint8Array([1]), "image/jpeg");
+    const api = createApp({ connect: () => roleDb(), services: { storage: store, now: () => now }, logSink: () => {} });
+    const origin = "https://siljang.example",
+      cookie = `siljang_owner=${session.token}`,
+      key = newRequestKey();
+    const input = {
+      name: "제한 역할 등록",
+      contactPhone: "010-1234-5678",
+      businessAddress: "서울 합성로 1",
+      contactEmail: "runtime@example.com",
+      businessName: "합성 제과",
+      representativeName: "김합성",
+      businessRegNo: "1234567891",
+      mailOrderRegNo: null,
+      mailOrderAuthority: null,
+      mailOrderExemption: "합성 면제 사유",
+      foodLicenseNo: "2026-1234567",
+      foodBusinessType: "bakery",
+      licensePhotoUploadId: upload,
+      entrustmentTermsVersion: "2026.11",
+      entrustmentConsent: true,
+    };
+    const env = testEnv({ FILE_URL_KEY: TEST_HASH_KEY });
+    const post = () =>
+      api.request(
+        `${origin}/api/owner/shop`,
+        {
+          method: "POST",
+          headers: { origin, cookie, "content-type": "application/json", "Idempotency-Key": key },
+          body: JSON.stringify(input),
+        },
+        env,
+      );
+    const first = await post();
+    expect(first.status, await first.clone().text()).toBe(201);
+    const replay = await post();
+    expect(replay.status).toBe(201);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    const read = await api.request(`${origin}/api/owner/shop`, { headers: { cookie } }, env);
+    expect(read.status, await read.clone().text()).toBe(200);
+    expect(await read.json()).toMatchObject({ licenseStatus: "pending", bookingUrl: null });
+    const privileges = await isolated.db.query<{ approve: boolean; issue: boolean; remove: boolean }>(
+      "SELECT has_column_privilege($1,'shops','license_status','UPDATE') AS approve, has_column_privilege($1,'shops','booking_slug','INSERT') AS issue, has_table_privilege($1,'shops','DELETE') AS remove",
+      [role],
+    );
+    expect(privileges.rows).toEqual([{ approve: false, issue: false, remove: false }]);
+  });
 
   it("가게·채널 공유 잠금과 손님·상담·수신 메시지 쓰기를 실제 역할로 실행", async () => {
     const conn = roleDb();
