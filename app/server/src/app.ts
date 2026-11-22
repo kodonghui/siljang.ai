@@ -47,6 +47,7 @@ import {
 } from "./routes";
 import { createServices, type ServiceOverrides, type Services } from "./services";
 import { readSettings, type Settings } from "./settings";
+import { updateShopSettings } from "./shop-settings";
 import { getShop, registerShop } from "./shops";
 import { StorageUnavailableError } from "./storage";
 import { newTraceId } from "./trace";
@@ -177,6 +178,7 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   shopRoute("GET", "/owner/payment-destination", "owner", getPaymentDestination),
   shopRoute("PUT", "/owner/payment-destination", "owner", setPaymentDestination),
   shopRoute("GET", "/owner/shop", "owner", getShop),
+  shopRoute("PATCH", "/owner/shop", "owner", updateShopSettings),
   shopRoute("GET", "/owner/price-list", "owner", getCurrentPriceList),
   shopRoute("POST", "/owner/price-list/versions", "owner", createPriceListVersion),
   shopRoute("GET", "/owner/price-list/versions", "owner", listPriceListVersions),
