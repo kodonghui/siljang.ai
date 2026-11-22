@@ -605,6 +605,105 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     expect(eventCalls).toBe(0);
   });
 
+  it("제한 역할의 사업자 요청/운영자 반영은 되고 직접 판정/신원/삭제는 막음", async () => {
+    if (!isolated) throw new Error("시험 DB 없음");
+    const db = isolated.db,
+      target = await createShop(db, "제한 역할 사업자 변경");
+    await db.query("UPDATE shops SET business_reg_no='1234567891' WHERE id=$1", [target.shopId]);
+    const owner = (
+      await db.query<{ kakao_account_id: string }>("SELECT kakao_account_id FROM owners WHERE id=$1", [target.ownerId])
+    ).rows[0];
+    if (!owner) throw new Error("사장님 없음");
+    const ownerSession = await createOwnerSession(db, { accountId: owner.kakao_account_id, friend: false }, now, false),
+      op = await seedOperatorSession(db, now),
+      store = new MemoryStore(),
+      uploadId = newUploadId("license_photo", now);
+    await store.put(tempKey(createOwnerScope(target.ownerId), uploadId), new Uint8Array([1]), "image/jpeg");
+    const api = createApp({ connect: () => roleDb(), services: { storage: store, now: () => now }, logSink: () => {} }),
+      origin = "https://siljang.example",
+      env = testEnv({ FILE_URL_KEY: TEST_HASH_KEY });
+    const headers = {
+      cookie: `${OWNER_COOKIE}=${ownerSession.token}`,
+      origin,
+      "content-type": "application/json",
+      "Idempotency-Key": newRequestKey(),
+    };
+    const before = (await (await api.request(`${origin}/api/owner/shop`, { headers }, env)).json()) as {
+      revision: string;
+      businessName: string;
+      representativeName: string;
+      businessRegNo: string;
+    };
+    const body = {
+      baseRevision: before.revision,
+      businessName: "제한 역할 새 상호",
+      representativeName: before.representativeName,
+      businessRegNo: before.businessRegNo,
+      evidencePhotoUploadId: uploadId,
+    };
+    const post = () =>
+      api.request(
+        `${origin}/api/owner/shop/identity-changes`,
+        { method: "POST", headers, body: JSON.stringify(body) },
+        env,
+      );
+    const created = await post();
+    expect(created.status, await created.clone().text()).toBe(201);
+    expect((await post()).headers.get("Idempotency-Replayed")).toBe("true");
+    const detail = await api.request(
+      `${origin}/api/operator/shops/${target.shopId}`,
+      { headers: { cookie: op.cookie } },
+      env,
+    );
+    expect(detail.status, await detail.clone().text()).toBe(200);
+    const item = ((await detail.json()) as { pendingIdentityChange: { changeId: string; revision: string } })
+      .pendingIdentityChange;
+    const reviewBody = { baseRevision: item.revision, decision: "applied" },
+      reviewHeaders = { ...headers, cookie: op.cookie, "Idempotency-Key": newRequestKey() };
+    const review = () =>
+      api.request(
+        `${origin}/api/operator/identity-changes/${item.changeId}/review`,
+        { method: "POST", headers: reviewHeaders, body: JSON.stringify(reviewBody) },
+        env,
+      );
+    try {
+      await db.query(
+        `REVOKE EXECUTE ON FUNCTION review_shop_identity(uuid,uuid,uuid,text,timestamptz,text,uuid,text,text,text) FROM "${role}"`,
+      );
+      const failed = await review();
+      expect(failed.status).toBe(500);
+      expect(await failed.text()).not.toContain("permission denied");
+      expect((await db.query("SELECT business_name FROM shops WHERE id=$1", [target.shopId])).rows).toEqual([
+        { business_name: before.businessName },
+      ]);
+      expect((await db.query("SELECT id FROM owner_alerts WHERE shop_id=$1", [target.shopId])).rows).toHaveLength(0);
+    } finally {
+      await db.query(
+        `GRANT EXECUTE ON FUNCTION review_shop_identity(uuid,uuid,uuid,text,timestamptz,text,uuid,text,text,text) TO "${role}"`,
+      );
+    }
+    const done = await review();
+    expect(done.status, await done.clone().text()).toBe(200);
+    const replay = await review();
+    expect(replay.status).toBe(200);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    expect(
+      (await db.query("SELECT kind,owner_task_id FROM owner_alerts WHERE shop_id=$1", [target.shopId])).rows,
+    ).toEqual([{ kind: "identity_change_applied", owner_task_id: null }]);
+    const limited = roleDb();
+    try {
+      for (const [sql, params] of [
+        ["UPDATE shops SET business_name='직접 신원' WHERE id=$1", [target.shopId]],
+        ["UPDATE shop_identity_changes SET status='pending' WHERE shop_id=$1", [target.shopId]],
+        ["DELETE FROM shop_identity_changes WHERE shop_id=$1", [target.shopId]],
+        ["INSERT INTO shop_identity_changes (shop_id,status) VALUES ($1,'applied')", [target.shopId]],
+      ] as const)
+        await expect(limited.query(sql, params)).rejects.toMatchObject({ code: "42501" });
+    } finally {
+      await limited.close();
+    }
+  });
+
   it("제한 역할의 가게 설정 변경과 실제 세션은 되고 신원/승인/삭제는 막음", async () => {
     if (!isolated) throw new Error("시험 DB 없음");
     const target = await createShop(isolated.db, "제한 역할 설정 가게");

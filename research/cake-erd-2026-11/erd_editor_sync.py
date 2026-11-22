@@ -88,7 +88,7 @@ def plain_indexes(schema_text: str, tables: list) -> dict[str, tuple[str, tuple[
     plain = {}
     for m in check_erd.INDEX_RE.finditer(schema_text):
         unique, name, table, cols, where = m.groups()
-        if not (where or "(" in cols):
+        if not build_erd.index_needs_script(cols, where):
             plain[name] = (table, tuple(build_erd.cols(cols)), bool(unique))
     for t in tables:
         body = schema_text.split(f"CREATE TABLE {t.name} (")[1].split("\n);")[0]

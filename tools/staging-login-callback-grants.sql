@@ -82,3 +82,9 @@ GRANT UPDATE (name, contact_phone, business_address, contact_email, pickup_addre
   mail_order_reg_no, mail_order_authority, mail_order_exemption, completion_photo_enabled,
   idle_close_hours, owner_wait_minutes, daily_ai_cost_limit_krw, awaiting_payment_limit, updated_at)
   ON shops TO :"runtime_role";
+
+-- TASK-036: 사장님 요청의 새 행만 허용하고 판정/기존 신원 수정은 전용 함수로 제한한다.
+GRANT INSERT (id, shop_id, business_name, representative_name, business_reg_no,
+  prev_business_name, prev_representative_name, prev_business_reg_no, evidence_photo_key, requested_at)
+  ON shop_identity_changes TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION review_shop_identity(uuid,uuid,uuid,text,timestamptz,text,uuid,text,text,text) TO :"runtime_role";

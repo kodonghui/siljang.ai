@@ -540,7 +540,7 @@ def erd_check(root: Path, rep: Report, tables: list) -> None:
     plain, special = {}, []
     for m in INDEX_RE.finditer(schema_text):
         unique, name, table, cols, where = m.groups()
-        if where or "(" in cols:
+        if build_erd.index_needs_script(cols, where):
             special.append(name)
         else:
             plain[name] = (table, tuple(build_erd.cols(cols)), bool(unique))
