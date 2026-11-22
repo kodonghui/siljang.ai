@@ -93,6 +93,7 @@ export type FieldReason = (typeof FIELD_REASONS)[number];
 export const CONFIRMATION_KINDS = [
   "lowered_refund",
   "closed_day_with_orders",
+  "capacity_below_held",
   "overbooking",
   "not_pickup_day",
   "closed_day",
@@ -124,6 +125,8 @@ export interface ProblemExtras {
   readonly errors?: readonly FieldError[];
   /** confirmation_required에만, 꼭 있음. */
   readonly confirm?: readonly ConfirmationNeeded[];
+  /** 영업 캘린더 저장 전에 확인할 자기 가게의 주문(REQ-261). */
+  readonly conflicts?: readonly CalendarConflict[];
   /** 429(rate_limited·too_many_attempts)에만, 꼭 있음. Retry-After 헤더와 같은 값. */
   readonly retryAfterSeconds?: number;
   /** method_not_allowed에만, 꼭 있음. Allow 헤더. */
@@ -140,7 +143,20 @@ export interface Problem {
   readonly detail?: string;
   readonly errors?: readonly FieldError[];
   readonly confirm?: readonly ConfirmationNeeded[];
+  readonly conflicts?: readonly CalendarConflict[];
   readonly retryAfterSeconds?: number;
+}
+
+export interface CalendarConflict {
+  readonly day: string;
+  readonly capacity: number;
+  readonly held: number;
+  readonly orders: readonly {
+    readonly orderId: string;
+    readonly orderNo: string;
+    readonly status: string;
+    readonly pickupAt: string;
+  }[];
 }
 
 /**
@@ -206,6 +222,33 @@ function checkExtras(code: ErrorCode, extras: ProblemExtras): void {
       if (c.day !== undefined && !DAY_PATTERN.test(c.day)) fail("confirm day");
     }
   }
+  if (extras.conflicts !== undefined) {
+    if (code !== "confirmation_required" || extras.conflicts.length < 1 || extras.conflicts.length > 400)
+      fail("conflicts count/code");
+    for (const item of extras.conflicts) {
+      if (!DAY_PATTERN.test(item.day) || !isInt(item.capacity, 0, 100) || !isInt(item.held, 0, 10000))
+        fail("conflicts day/count");
+      if (item.orders.length < 1 || item.orders.length > 100) fail("conflicts orders count");
+      for (const order of item.orders)
+        if (
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order.orderId) ||
+          !/^[0-9A-Z]{6,8}$/.test(order.orderNo) ||
+          ![
+            "requested",
+            "awaiting_payment",
+            "payment_overdue",
+            "confirmed",
+            "received",
+            "no_pickup",
+            "rejected",
+            "cancelled",
+          ].includes(order.status) ||
+          !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/.test(order.pickupAt) ||
+          !Number.isFinite(Date.parse(order.pickupAt))
+        )
+          fail("conflicts order");
+    }
+  }
   if ((status === 429) !== (extras.retryAfterSeconds !== undefined)) fail("retryAfterSeconds only and always with 429");
   if (extras.retryAfterSeconds !== undefined && !isInt(extras.retryAfterSeconds, 1, 3600))
     fail("retryAfterSeconds range");
@@ -237,6 +280,21 @@ export function problemBody(code: ErrorCode, traceId: string, instance?: string,
         }
       : {}),
     ...(extras.retryAfterSeconds !== undefined ? { retryAfterSeconds: extras.retryAfterSeconds } : {}),
+    ...(extras.conflicts !== undefined
+      ? {
+          conflicts: extras.conflicts.map((item) => ({
+            day: item.day,
+            capacity: item.capacity,
+            held: item.held,
+            orders: item.orders.map((order) => ({
+              orderId: order.orderId,
+              orderNo: order.orderNo,
+              status: order.status,
+              pickupAt: order.pickupAt,
+            })),
+          })),
+        }
+      : {}),
   };
 }
 

@@ -38,3 +38,13 @@ GRANT INSERT (id, owner_id, name, contact_phone, business_address, contact_email
 GRANT SELECT ON shop_identity_changes TO :"runtime_role";
 -- API-008의 선점·완료·오류 시 해제. 내용 대신 요청 지문과 결과 ID만 남긴다(DEC-04).
 GRANT SELECT, INSERT, UPDATE, DELETE ON request_keys TO :"runtime_role";
+
+-- TASK-041: 캘린더의 설정·날짜 잠금/저장. 기존 주문·자리는 조회만 한다.
+GRANT INSERT, UPDATE ON business_calendars TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON calendar_days TO :"runtime_role";
+GRANT SELECT (id, shop_id, day, order_id, status, overbooked) ON slot_holds TO :"runtime_role";
+-- 저장 전 주문 확인과 미발송 안내의 날짜 재계산에 필요한 열만 읽는다.
+GRANT SELECT (pickup_day, pickup_at) ON orders TO :"runtime_role";
+GRANT SELECT (shop_id, order_id, handed_over_at) ON productions TO :"runtime_role";
+-- 이미 보낸 안내·시도 횟수·본문은 바꾸지 않는다.
+GRANT UPDATE (scheduled_for, next_attempt_at) ON notifications TO :"runtime_role";

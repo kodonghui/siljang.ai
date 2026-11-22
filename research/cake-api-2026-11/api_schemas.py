@@ -142,6 +142,7 @@ S["Problem"] = obj({
     "traceId": string(32, 32, r"^[0-9a-f]{32}$", desc="서버 로그의 추적 ID(W3C trace-id)"),
     "errors": arr(ref("FieldError"), 1, 50, desc="validation_failed일 때 필드마다 사유"),
     "confirm": arr(ref("ConfirmationNeeded"), 1, 10, desc="confirmation_required일 때 확인할 것"),
+    "conflicts": arr(ref("CalendarConflict"), 1, 400, desc="영업 캘린더의 confirmation_required일 때 바뀔 날짜와 그 가게의 관련 주문. 저장 전 확인용(REQ-261)"),
     "retryAfterSeconds": integer(1, 3600, desc="429일 때 다시 호출할 수 있을 때까지 초(Retry-After와 같음)"),
 }, ["type", "title", "status", "code", "traceId"],
     desc="RFC 9457 Problem Details에 code와 traceId를 더한 오류 형식. 모든 오류 응답이 이 형식(application/problem+json)")
@@ -154,7 +155,7 @@ S["FieldError"] = obj({
 
 S["ConfirmationNeeded"] = obj({
     "kind": {"type": "string", "description": "확인할 것. components.x-corthex.confirmations에 있는 것만"},  # enum은 build_api.py가 채움
-    "count": integer(0, 10000, desc="관련 주문 수(closed_day_with_orders)"),
+    "count": integer(0, 10000, desc="관련 자리 수(closed_day_with_orders, capacity_below_held)"),
     "day": DATE,
 }, ["kind"], desc="저장하기 전에 사장님이 확인할 것 하나")
 
@@ -597,7 +598,7 @@ S["CalendarSettingsInput"] = obj({
     "replyEnd": string(5, 5, HHMM_RE, col="business_calendars.reply_end", desc="replyStart보다 뒤(필드 오류 not_after_start)"),
     "dayBeforeNoticeTime": string(5, 5, NOTICE_RE, col="business_calendars.day_before_notice_time", desc="08:00~20:50(SPEC-052)"),
     "reviewRequestTime": string(5, 5, NOTICE_RE, col="business_calendars.review_request_time", desc="08:00~20:50(SPEC-061)"),
-    "confirm": confirm_list(["closed_day_with_orders"]),
+    "confirm": confirm_list(["closed_day_with_orders", "capacity_below_held"]),
 }, ["baseRevision", "closedWeekdays", "dailyCapacity", "orderCutoffDays", "orderCutoffTime", "replyStart", "replyEnd",
     "dayBeforeNoticeTime", "reviewRequestTime"])
 S["CalendarSettings"] = all_required({
@@ -612,11 +613,12 @@ S["CalendarSettings"] = all_required({
     "updatedAt": DT,
     "revision": REVISION,
 })
+S["CalendarConflictOrder"] = all_required({"orderId": UUID, "orderNo": ORDER_NO, "status": enum(ORDER_STATUS), "pickupAt": DT}, desc="캘린더 저장 전에 확인할 주문번호·상태·픽업 일시(REQ-261)")
 S["CalendarConflict"] = all_required({
     "day": DATE,
     "capacity": integer(0, 100),
     "held": integer(0, 10000),
-    "orders": arr(ref("OrderRef"), 1, 100),
+    "orders": arr(ref("CalendarConflictOrder"), 1, 100),
 }, desc="바꾼 기준을 넘는 날. 주문은 그대로 두고 사장님께 보임(R4)")
 S["CalendarSettingsResult"] = all_required({
     "outcome": outcome(("created", "updated", "unchanged"), "created: 처음 정함, updated: 바꿈(그 뒤 잡는 자리에만), unchanged: 같은 값"),
@@ -629,7 +631,7 @@ S["CalendarDay"] = all_required({
     "closed": boolean("날짜별 휴무"),
     "capacityOverride": nullable(integer(0, 100, desc="그날만 다른 하루 최대 개수")),
     "capacity": integer(0, 100, desc="그날의 하루 최대 개수(가게 기준이나 그날 값)"),
-    "held": integer(0, 10000, desc="잡힌 자리(잡힘 + 확정 자리)"),
+    "held": integer(0, 10000, desc="잡힌 자리(잡힘 + 확정 자리 + 종료됨, 그날 사용한 자리 포함)"),
     "remaining": integer(0, 100, desc="남은 자리. 사장님 화면에만(손님에게는 보이지 않음, G6)"),
     "full": boolean("하루 최대 개수에 닿아 자동으로 마감됨"),
     "manuallyClosed": boolean("사장님이 누른 그날 주문 마감(SPEC-012)"),
@@ -642,7 +644,7 @@ S["CalendarDayInput"] = obj({
     "closed": boolean("날짜별 휴무", col="calendar_days.closed"),
     "capacityOverride": nullable(integer(0, 100, col="calendar_days.capacity")),
     "manuallyClosed": boolean("그날 주문 마감(SPEC-012). 풀면 다시 잡음"),
-    "confirm": confirm_list(["closed_day_with_orders"]),
+    "confirm": confirm_list(["closed_day_with_orders", "capacity_below_held"]),
 }, ["baseRevision"], desc="바꿀 필드만 보냄", minProperties=2)
 S["CalendarDayResult"] = all_required({"outcome": outcome(), "day": ref("CalendarDay")})
 
