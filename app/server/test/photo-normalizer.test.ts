@@ -107,11 +107,19 @@ describe("사진 정규화 공통 모듈(TASK-183)", () => {
     expect(cancelled).toBe(true);
   });
 
-  it("외부 실패를 원본 반환으로 바꾸거나 오류 내용을 노출하지 않음", async () => {
+  it.each([
+    ["bytes", "처리 실패"],
+    ["bytes", "CPU 한도"],
+    ["stream", "처리 실패"],
+    ["stream", "CPU 한도"],
+  ] as const)("%s 수신의 %s를 원본 반환으로 바꾸거나 오류 내용을 노출하지 않음", async (mode, cause) => {
     const mock = binding(() => {
-      throw new Error("https://example.com/private-image");
+      throw new Error(cause === "CPU 한도" ? "Worker exceeded CPU time limit" : "https://example.com/private-image");
     });
-    await expect(photoNormalizer(() => mock.images).fromBytes(fixture("source"))).rejects.toMatchObject({
+    const processor = photoNormalizer(() => mock.images);
+    const result =
+      mode === "bytes" ? processor.fromBytes(fixture("source")) : processor.fromStream(new Response(fixture("source")));
+    await expect(result).rejects.toMatchObject({
       name: "PhotoNormalizationError",
       kind: "unavailable",
       message: "photo normalization failed",
