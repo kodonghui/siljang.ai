@@ -79,13 +79,6 @@ describeDb("TASK-033 보류 영업 신고 재업로드", () => {
   beforeAll(async () => {
     isolated = await isolatedTestDb();
     db = isolated.db;
-    // WIP: 독립 시험 DB에만 초안을 적용한다. 정식 마이그레이션으로 옮기면 이 구문을 없앤다.
-    await db.query(
-      readFileSync(
-        new URL("../../../research/cake-erd-2026-11/task-033-resubmission-prototype.sql", import.meta.url),
-        "utf8",
-      ),
-    );
   }, 30_000);
   afterAll(async () => isolated?.close());
   it("보류된 영업 신고를 새 증빙/번호/종류로 다시 올리면 pending/이유 없음", async () => {
@@ -325,6 +318,9 @@ describeDb("TASK-033 보류 영업 신고 재업로드", () => {
           },
           env,
         );
+      await db.query(
+        `REVOKE EXECUTE ON FUNCTION resubmit_shop_license(uuid,uuid,text,timestamptz,text,text,text,text) FROM "${role}"`,
+      );
       expect((await put()).status).toBe(500);
       expect((await h.get()).licenseStatus).toBe("on_hold");
       await db.query(

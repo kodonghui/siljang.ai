@@ -4,11 +4,11 @@ import { parseLicenseResubmission } from "./license-resubmission-input";
 import { tokenHash } from "./operator-session";
 import { OWNER_COOKIE, readCookie } from "./owner-oauth";
 import { ownerOfShopScope } from "./owner-scope";
-import { ApiError, fieldError } from "./problem";
+import { ApiError } from "./problem";
 import type { ShopRequest } from "./routes";
 import { ForgedScopeError } from "./shop-scope";
 import { renderShop } from "./shops";
-import { checkUploads, discardUpload, permanentKey, promoteUpload, type TakenUpload, UPLOAD_RULES } from "./uploads";
+import { checkLicensePhoto, discardUpload, permanentKey, promoteUpload, type TakenUpload } from "./uploads";
 
 export async function resubmitLicense(r: ShopRequest): Promise<Response> {
   if (r.scope.via.kind !== "owner") throw new ForgedScopeError("owner required");
@@ -20,73 +20,58 @@ export async function resubmitLicense(r: ShopRequest): Promise<Response> {
     token = readCookie(r.req.header("cookie"), OWNER_COOKIE);
   if (token === null) throw new ApiError("unauthenticated");
   const hash = await tokenHash(token);
-  let copied: string | undefined, consumed: TakenUpload | undefined, response: Response;
-  try {
-    response = await r.command({
-      command: "API-011",
-      pathIds: [],
-      body: raw,
-      async execute(db) {
-        const current = await db.found<{ revision: string; license_status: string }>(
-          "SELECT s.xmin::text AS revision,s.license_status FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE",
-        );
-        if (current.revision !== input.baseRevision) throw new ApiError("version_conflict");
-        if (current.license_status !== "on_hold") throw new ApiError("invalid_state");
-        const now = r.services.now(),
-          store = r.services.storage();
-        const upload = (
-          await checkUploads(
-            store,
-            ownerOfShopScope(r.scope),
-            [{ id: input.licensePhotoUploadId, field: "/licensePhotoUploadId", purpose: "license_photo" }],
-            now,
-          )
-        )[0];
-        if (
-          !upload ||
-          upload.byteSize > UPLOAD_RULES.license_photo.maxBytes ||
-          !UPLOAD_RULES.license_photo.types.includes(upload.contentType)
-        )
-          throw fieldError("/licensePhotoUploadId", "upload_not_found");
-        const version = crypto.randomUUID(),
-          key = permanentKey(r.scope.shopId, "license_photo", upload.uploadId, version);
-        copied = key;
-        await promoteUpload(store, upload, r.scope.shopId, version);
-        const result = await db.found<{ outcome: string }>(
-          "SELECT resubmit_shop_license($1,$2,$3,$4,$5,$6,$7,$8) AS outcome",
-          [ownerId, hash, now, current.revision, input.foodLicenseNo, input.foodBusinessType, key],
-        );
-        if (result.outcome !== "done") {
-          if (["unauthenticated", "version_conflict", "invalid_state", "not_found"].includes(result.outcome))
-            throw new ApiError(
-              result.outcome as "unauthenticated" | "version_conflict" | "invalid_state" | "not_found",
-            );
-          throw new Error("unexpected license resubmission result");
-        }
-        consumed = upload;
-        return {
-          status: 200,
-          code: "done",
-          ref: {},
-          body: { outcome: "done", shop: await renderShop(db, r.services, origin) },
-        };
-      },
-      async render(db, stored) {
-        return { outcome: stored.code, shop: await renderShop(db, r.services, origin) };
-      },
-    });
-  } catch (error) {
-    if (copied)
-      try {
-        const current = await r.db.found<{ license_photo_key: string }>(
-          "SELECT s.license_photo_key FROM shops s WHERE s.id=$1",
-        );
-        if (current.license_photo_key !== copied) await r.services.storage().delete(copied);
-      } catch {
-        r.log("warn", { event: "license_resubmission_cleanup_failed", traceId: r.traceId });
+  let copied: string | undefined, consumed: TakenUpload | undefined;
+  const response = await r.command({
+    command: "API-011",
+    pathIds: [],
+    body: raw,
+    async execute(db) {
+      const current = await db.found<{ revision: string; license_status: string }>(
+        "SELECT s.xmin::text AS revision,s.license_status FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE",
+      );
+      if (current.revision !== input.baseRevision) throw new ApiError("version_conflict");
+      if (current.license_status !== "on_hold") throw new ApiError("invalid_state");
+      const now = r.services.now(),
+        store = r.services.storage();
+      const upload = await checkLicensePhoto(
+        store,
+        ownerOfShopScope(r.scope),
+        input.licensePhotoUploadId,
+        "/licensePhotoUploadId",
+        now,
+      );
+      const version = crypto.randomUUID(),
+        key = permanentKey(r.scope.shopId, "license_photo", upload.uploadId, version);
+      copied = key;
+      await promoteUpload(store, upload, r.scope.shopId, version);
+      const result = await db.found<{ outcome: string }>(
+        "SELECT resubmit_shop_license($1,$2,$3,$4,$5,$6,$7,$8) AS outcome",
+        [ownerId, hash, now, current.revision, input.foodLicenseNo, input.foodBusinessType, key],
+      );
+      if (result.outcome !== "done") {
+        if (["unauthenticated", "version_conflict", "invalid_state", "not_found"].includes(result.outcome))
+          throw new ApiError(result.outcome as "unauthenticated" | "version_conflict" | "invalid_state" | "not_found");
+        throw new Error("unexpected license resubmission result");
       }
-    throw error;
-  }
+      consumed = upload;
+      return {
+        status: 200,
+        code: "done",
+        ref: {},
+        body: { outcome: "done", shop: await renderShop(db, r.services, origin) },
+      };
+    },
+    async render(db, stored) {
+      return { outcome: stored.code, shop: await renderShop(db, r.services, origin) };
+    },
+    async cleanup(db) {
+      if (!copied) return;
+      const current = await db.found<{ license_photo_key: string }>(
+        "SELECT s.license_photo_key FROM shops s WHERE s.id=$1",
+      );
+      if (current.license_photo_key !== copied) await r.services.storage().delete(copied);
+    },
+  });
   if (consumed) await discardUpload(r.services.storage(), consumed);
   return response;
 }

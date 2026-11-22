@@ -804,3 +804,15 @@
 - 최종d4acc8f05d557f777bd9a6e960909291acfd5b3e app45072543488/db45072543453(16.15/17.11) 성공·Claude7건 처리·수동 Codex 요청1회/실제 사용 한도 뒤 main29eff886d1284a39385e4f6330e9b5dd34916f11을 확인했습니다. main app45072916663 검사/스테이징 배포와 db45072916683 두 버전도 성공입니다.
 - 학원컴 CLI 최신 배포6e4d992b-7f8f-4702-80ba-5659539b64d0는2026-11-22T21:38:17.511866Z(06:38:17 KST) 생성·동일 태그·상태200/SSH0입니다.06:39:35 KST 인증 없는 POST /api/owner/kakao-channel/check는401 unauthenticated/application/problem+json·SSH0·stderr_nonempty=true입니다.
 - 실제 역할/사장님·PC 문구/버튼과 Event API 성공으로 세지 않습니다. TASK-043 구현 완료를 추가해 끝남32개·구현 완료11개이며 finished는 그대로입니다. 실제 발신은 무료 MVP 지시대로 TASK-167 출시 검토입니다.
+
+## 2026-11-23 · PR #177 main 배포와 학원컴 확인
+
+- 최종 ba88e53eaccbb690be37e96264e4738a17148191의 app45075706055/db45075706082 두 버전 성공·Claude5건 처리·수동 Codex 요청1회/새 사용 한도 뒤 squash main37c162ae924a2e74e59f115b2d76f0d04b13b104를 확인했습니다. main app45076049135 검사/스테이징 배포와 db45076049127(16.15/17.11)이 성공했습니다.
+- 학원컴 CLI 최신 배포b6e17e69-4f3d-4112-b7a5-7c1645f9c626는2026-11-22T22:11:42.804794Z(07:11:42 KST) 생성·동일 태그·상태200/SSH0입니다.07:12:41 KST 인증 없는 PATCH /api/owner/shop는401 unauthenticated/application/problem+json이며 SSH0·stderr_nonempty=true입니다.
+- 실제 기존 역할 UPDATE/사장님 계정 저장으로 세지 않습니다. TASK-037 구현 완료를 추가해 끝남32개·구현 완료12개이며 finished는 유지합니다. 실제 새 권한/계정은 Aside 연결/Vault 대기이고 브라우저는 학원컴 Aside CLI만 사용합니다.
+
+## 2026-11-23 · PR #178 main 배포와 학원컴 확인
+
+- 최종8507ff2fda6aa29808f529605eb122c1addb3f88 app45078947540/db45078947585 두 버전 성공·코드/보안6건 처리·수동 Codex 요청1회/새 사용 한도 뒤 main8fb94178f96705b1474f439a68e2666e64bd3a98를 확인했습니다. main app45079345450 검사/스테이징 배포와 db45079345609 PostgreSQL16.15/17.11도 성공했습니다.
+- 학원컴 CLI 최신 배포6b157b33-a466-48f5-9a5a-9ce9a7dfbf13은2026-11-22T22:46:47.970212Z(07:46:47 KST) 생성·동일 태그·상태200/SSH0입니다.07:47:28 KST 인증 없는 사업자 요청/운영자 변경 목록·판정 세 경로는 모두401 unauthenticated/application/problem+json이며 SSH0·stderr_nonempty=true입니다.
+- 실제0031/0032/기존 역할2문장·계정/알림 성공으로 세지 않습니다.036 구현 완료를 추가해 끝남32개·구현 완료13개이며 finished는 그대로입니다.07:30 무렵 학원컴 Aside CLI 도움말/프로필 조회는 SSH0·connected=true이고 브라우저 복구/로그인 확인과는 구분합니다. Page.enable 실패 목적의 권한 변경은 반복하지 않았습니다.

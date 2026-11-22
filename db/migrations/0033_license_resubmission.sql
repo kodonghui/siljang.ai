@@ -1,4 +1,3 @@
--- 로컬 실험용 초안. 버전 마이그레이션이 아니며 확정한 번호로 옮긴 뒤 전체 검사를 한다.
 -- TASK-033: 사장님의 살아 있는 세션과 자기 가게 보류/버전을 다시 확인한다.
 CREATE FUNCTION resubmit_shop_license(
   requested_shop uuid, requested_owner uuid, session_hash text, requested_time timestamptz,

@@ -269,7 +269,13 @@ describeDb("교차 가게 시험 묶음(SPEC-068, G1, 06 DEC-02)", () => {
 
   for (const c of SUITE_CASES) {
     it(`${routeKey(c.method, c.path)} (${c.kind === "channel" ? "연결 키" : c.kind === "path" ? "경로의 ID" : "본문·쿼리의 ID"})`, async () => {
-      expect(viaOf(c)).toBe(c.kind === "channel" ? "customer" : c.kind === "operator_review" ? "operator" : "owner");
+      expect(viaOf(c)).toBe(
+        c.kind === "channel"
+          ? "customer"
+          : c.kind === "operator_review" || (c.kind === "identity_change" && c.path.startsWith("/operator/"))
+            ? "operator"
+            : "owner",
+      );
       await runCrossShopCase(env, c);
     });
   }

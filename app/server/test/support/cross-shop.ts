@@ -67,11 +67,6 @@ interface ShopSettingsCase {
   readonly path: "/owner/shop";
   readonly kind: "shop_settings";
 }
-interface LicenseResubmissionCase {
-  readonly method: "PUT";
-  readonly path: "/owner/shop/license";
-  readonly kind: "license_resubmission";
-}
 
 interface CalendarShopCase {
   readonly method: "GET" | "PUT" | "PATCH";
@@ -117,6 +112,17 @@ interface ChannelCheckShopCase {
   readonly path: "/owner/kakao-channel/check";
   readonly kind: "channel_check";
 }
+interface IdentityChangeShopCase {
+  readonly method: "POST";
+  readonly path: "/owner/shop/identity-changes" | "/operator/identity-changes/:changeId/review";
+  readonly kind: "identity_change";
+}
+
+interface LicenseResubmissionCase {
+  readonly method: "PUT";
+  readonly path: "/owner/shop/license";
+  readonly kind: "license_resubmission";
+}
 
 export type CrossShopCase =
   | OwnerCrossShopCase
@@ -130,6 +136,7 @@ export type CrossShopCase =
   | PaymentShopCase
   | ChannelSetupShopCase
   | ChannelCheckShopCase
+  | IdentityChangeShopCase
   | OperatorReviewShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
@@ -144,6 +151,8 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "GET", path: "/owner/shop", kind: "self" },
   { method: "PATCH", path: "/owner/shop", kind: "shop_settings" },
   { method: "PUT", path: "/owner/shop/license", kind: "license_resubmission" },
+  { method: "POST", path: "/owner/shop/identity-changes", kind: "identity_change" },
+  { method: "POST", path: "/operator/identity-changes/:changeId/review", kind: "identity_change" },
   { method: "GET", path: "/owner/kakao-channel", kind: "channel_setup" },
   { method: "PUT", path: "/owner/kakao-channel", kind: "channel_setup" },
   { method: "POST", path: "/owner/kakao-channel/skill-key", kind: "channel_setup" },
@@ -314,6 +323,85 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
         expect(response.text).not.toContain(env.b.ownerId);
       }
       expect(await snapshots(db, authenticated)).toEqual(before);
+      return;
+    }
+    if (c.kind === "identity_change") {
+      if (c.path.startsWith("/owner/")) {
+        await db.query("UPDATE shops SET business_reg_no='1234567891' WHERE id=$1", [env.a.shopId]);
+        const before = await snapshots(db, env),
+          current = await send(env, "GET", { url: "/owner/shop" });
+        const body = {
+          baseRevision: current.body?.revision,
+          businessName: current.body?.businessName,
+          representativeName: current.body?.representativeName,
+          businessRegNo: current.body?.businessRegNo,
+          evidencePhotoUploadId: newUploadId("license_photo", new Date()),
+        };
+        const invalid = await send(env, "POST", { url: c.path, body: { ...body, shopId: env.b.shopId } });
+        expect(invalid.status, invalid.text).toBe(422);
+        for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+          const response = await send(env, "POST", {
+            url: `${c.path}?shopId=${target}&ownerId=${env.b.ownerId}`,
+            body,
+          });
+          expect(response.status, response.text).toBe(200);
+          expect(response.body).toMatchObject({ outcome: "unchanged", shop: { shopId: env.a.shopId } });
+          expect(response.text).not.toContain(env.b.shopId);
+          expect(response.text).not.toContain(env.b.ownerId);
+        }
+        expect(await snapshots(db, env)).toEqual(before);
+        return;
+      }
+      const ids: string[] = [];
+      for (const shop of [env.a, env.b]) {
+        const id = newUuid();
+        ids.push(id);
+        await db.query(
+          "INSERT INTO shop_identity_changes (id,shop_id,business_name,representative_name,business_reg_no,prev_business_name,prev_representative_name,prev_business_reg_no,evidence_photo_key) SELECT $2,s.id,'새 합성 상호',s.representative_name,s.business_reg_no,s.business_name,s.representative_name,s.business_reg_no,s.license_photo_key FROM shops s WHERE s.id=$1",
+          [shop.shopId, id],
+        );
+      }
+      const before = await snapshots(db, env),
+        owner = await send(env, "POST", {
+          url: c.path.replace(":changeId", ids[1] ?? ""),
+          body: { baseRevision: "revision", decision: "applied" },
+        });
+      expect(owner.status).toBe(401);
+      expect(await snapshots(db, env)).toEqual(before);
+      const session = await seedOperatorSession(db, new Date());
+      const call = (id: string, body: unknown) =>
+        env.app.request(
+          `https://siljang.example/api/operator/identity-changes/${id}/review`,
+          {
+            method: "POST",
+            headers: {
+              cookie: session.cookie,
+              origin: "https://siljang.example",
+              "content-type": "application/json",
+              "Idempotency-Key": newRequestKey(),
+            },
+            body: JSON.stringify(body),
+          },
+          testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
+        );
+      const detail = await env.app.request(
+        `https://siljang.example/api/operator/shops/${env.a.shopId}`,
+        { headers: { cookie: session.cookie } },
+        testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
+      );
+      const item = ((await detail.json()) as { pendingIdentityChange: { revision: string } }).pendingIdentityChange;
+      const response = await call(ids[0] ?? "", {
+        baseRevision: item.revision,
+        decision: "on_hold",
+        holdReason: "합성 보류",
+      });
+      expect(response.status, await response.clone().text()).toBe(200);
+      expect(((await response.json()) as { change: { shop: { shopId: string } } }).change.shop.shopId).toBe(
+        env.a.shopId,
+      );
+      expect(await snapshotShop(db, env.b)).toEqual(before[1]);
+      for (const id of [newUuid(), "not-a-uuid", "x".repeat(101)])
+        await expectProblem(await call(id, { baseRevision: "revision", decision: "applied" }), "not_found");
       return;
     }
     if (c.kind === "shop_settings") {

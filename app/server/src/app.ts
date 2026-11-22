@@ -2,6 +2,7 @@ import { type Context, Hono } from "hono";
 import { getCalendarDays, getCalendarSettings, setCalendarSettings, updateCalendarDay } from "./calendar";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FILE_ROUTE, serveFile } from "./file-url";
+import { requestIdentityChange } from "./identity-change-request";
 import { SKILL_WORK_MS } from "./kakao-callback";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { getKakaoChannel, regenerateKakaoSkillKey, setKakaoChannel } from "./kakao-channel";
@@ -18,6 +19,7 @@ import {
   listOperatingRulesVersions,
 } from "./operating-rules";
 import { AuthUnavailableError } from "./operator-auth";
+import { listIdentityChanges, reviewIdentityChange } from "./operator-identity-change";
 import { getReviewShop, listReviewShops, reviewLicense } from "./operator-license-review";
 import { createOperatorSession, deleteOperatorSession, getOperatorMe, resolveOperatorSession } from "./operator-login";
 import { resolveOperatorShop } from "./operator-shop";
@@ -181,6 +183,9 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   shopRoute("GET", "/owner/shop", "owner", getShop),
   shopRoute("PUT", "/owner/shop/license", "owner", resubmitLicense),
   shopRoute("PATCH", "/owner/shop", "owner", updateShopSettings),
+  shopRoute("POST", "/owner/shop/identity-changes", "owner", requestIdentityChange),
+  operatorRoute("GET", "/operator/identity-changes", listIdentityChanges),
+  shopRoute("POST", "/operator/identity-changes/:changeId/review", "operator", reviewIdentityChange),
   shopRoute("GET", "/owner/price-list", "owner", getCurrentPriceList),
   shopRoute("POST", "/owner/price-list/versions", "owner", createPriceListVersion),
   shopRoute("GET", "/owner/price-list/versions", "owner", listPriceListVersions),

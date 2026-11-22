@@ -1,6 +1,12 @@
 /** 가게 등록 입력(API-008, SPEC-002). 검사 전의 입력은 저장하거나 로그에 남기지 않는다. */
 import { ApiError, type FieldError, fieldError } from "./problem";
-import { SHOP_COMMON_TEXT, SHOP_LICENSE_TEXT, type ShopTextRule, shopMailOrderErrors } from "./shop-validation";
+import {
+  SHOP_COMMON_TEXT,
+  SHOP_IDENTITY_TEXT,
+  SHOP_LICENSE_TEXT,
+  type ShopTextRule,
+  shopMailOrderErrors,
+} from "./shop-validation";
 
 export interface ShopRegistration {
   readonly name: string;
@@ -22,10 +28,8 @@ export interface ShopRegistration {
 
 const RULES: Record<string, ShopTextRule> = {
   ...SHOP_COMMON_TEXT,
+  ...SHOP_IDENTITY_TEXT,
   ...SHOP_LICENSE_TEXT,
-  businessName: { min: 1, max: 60 },
-  representativeName: { min: 1, max: 30 },
-  businessRegNo: { min: 10, max: 10, pattern: /^[0-9]{10}$/ },
   entrustmentTermsVersion: { min: 1, max: 20, pattern: /^[0-9A-Za-z.-]+$/ },
 };
 

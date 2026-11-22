@@ -34,8 +34,9 @@ const RAW_ACCESS = [
  */
 const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
   "operator-shop-directory.ts":
-    "인증된 운영자의 등록 목록/중복 표시 두 읽기만 허용. 정확한 SQL과 반환 열을 별도로 제한함(TASK-034)",
-  "operator-shop.ts": "실제 운영자 세션 인증 뒤 경로의 가게 존재만 확인. 정확한 ID 조회만 허용함(TASK-034)",
+    "인증된 운영자의 등록/사업자 변경 목록과 중복 표시 세 읽기만 허용. 정확한 SQL과 반환 열을 별도로 제한함(TASK-034·036)",
+  "operator-shop.ts":
+    "실제 운영자 세션 인증 뒤 가게/변경 요청에서 가게 ID 하나만 찾음. 정확한 두 SQL만 허용(TASK-034·036)",
   "owner-shop-db.ts": "등록 전 사장님 소유 가게의 ID 조회와 등록만 허용. 정확한 두 SQL을 별도로 제한함(TASK-032)",
   "owner-session.ts": "세션의 사장님 ID로 가게 요약 하나만 조회. allowedCrossShop이 정확한 SQL을 별도로 제한함",
   "ops-events.ts":
@@ -68,6 +69,7 @@ const CROSS_SHOP_SHAPES: readonly RegExp[] = [
 ];
 
 const OPERATOR_DIRECTORY_SQL = [
+  "SELECT i.*,i.xmin::text AS identity_version,s.name AS shop_name,s.license_status,s.time_zone, s.business_name AS current_business_name,s.representative_name AS current_representative_name,s.business_reg_no AS current_business_reg_no, p.id AS account_id,p.xmin::text AS account_version,p.bank_name,p.holder_name,p.account_last4,o.display_name AS reviewer_name, to_char(i.requested_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS cursor_at FROM shop_identity_changes i JOIN shops s ON s.id=i.shop_id LEFT JOIN payment_accounts p ON p.shop_id=i.shop_id AND p.retired_at IS NULL LEFT JOIN operators o ON o.id=i.reviewed_by WHERE i.status=$1 AND ($2::timestamptz IS NULL OR (i.requested_at,i.id)>($2::timestamptz,$3::uuid)) ORDER BY i.requested_at,i.id LIMIT $4",
   "SELECT s.id,s.name,s.business_name,s.representative_name,s.business_reg_no,s.food_license_no,s.food_business_type,s.license_status,s.created_at,s.time_zone, to_char(s.created_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS cursor_at, EXISTS(SELECT 1 FROM shops d WHERE d.business_reg_no=s.business_reg_no AND d.id<>s.id) AS duplicate, concat(s.id,':',s.xmin::text,':',coalesce((SELECT concat(p.id,':',p.xmin::text) FROM payment_accounts p WHERE p.shop_id=s.id AND p.retired_at IS NULL),'-'),':',coalesce((SELECT concat(i.id,':',i.xmin::text) FROM shop_identity_changes i WHERE i.shop_id=s.id AND i.status='pending'),'-')) AS revision_state, concat(s.license_reviewed_by,':',extract(epoch FROM s.license_reviewed_at)) AS review_marker FROM shops s WHERE s.license_status=$1 AND ($2::timestamptz IS NULL OR (s.created_at,s.id)>($2::timestamptz,$3::uuid)) ORDER BY s.created_at,s.id LIMIT $4",
   'SELECT d.id AS "shopId",d.name,d.license_status AS "licenseStatus" FROM shops d JOIN shops s ON s.business_reg_no=d.business_reg_no WHERE s.id=$1 AND d.id<>s.id ORDER BY d.created_at,d.id LIMIT 20',
 ];
@@ -75,7 +77,10 @@ const OPERATOR_DIRECTORY_SQL = [
 /** 가게 범위 밖 읽기로 허락한 SQL인지(그 파일의 그 꼴만). 꼴 안의 조건에 다른 테이블을 끌어오는 하위 질의는 받지 않는다. */
 function allowedCrossShop(file: string, sql: string): boolean {
   if (file === "operator-shop-directory.ts") return OPERATOR_DIRECTORY_SQL.includes(sql.replace(/\s+/g, " ").trim());
-  if (file === "operator-shop.ts") return sql.replace(/\s+/g, " ").trim() === "SELECT id FROM shops WHERE id=$1";
+  if (file === "operator-shop.ts")
+    return ["SELECT id FROM shops WHERE id=$1", "SELECT shop_id AS id FROM shop_identity_changes WHERE id=$1"].includes(
+      sql.replace(/\s+/g, " ").trim(),
+    );
   if (file === "owner-shop-db.ts") {
     const text = sql.replace(/\s+/g, " ").trim();
     return (
@@ -129,6 +134,7 @@ const MAKES_SCOPE = /\bcreateShopScope\s*\(|import[^;]*\bcreateShopScope\b|["'`]
  */
 const OWNER_SCOPE_MAKERS: Record<string, string> = {
   "license-resubmission.ts": "실제 인증된 사장님 가게 범위에서 같은 사장님 증빙 범위로만 변환(TASK-033)",
+  "identity-change-request.ts": "실제 인증된 사장님 가게 범위에서 같은 사장님 증빙 범위로만 변환(TASK-036)",
   "owner-scope.ts": "정의",
   "owner-login.ts": "쿠키의 세션에서 찾은 사장님과 가게 요약만 담음(TASK-020)",
   "price-lists.ts": "실제 인증된 사장님 출처의 가게 범위를 같은 사장님 사진 범위로 변환(TASK-038)",
@@ -196,9 +202,9 @@ describe("서버 코드의 SQL(정적 검사)", () => {
       expect(allowedCrossShop("owner-shop-db.ts", bad)).toBe(false);
     expect(allowedCrossShop("shops.ts", sqls[0] ?? "")).toBe(false);
   });
-  it("운영자 목록/중복은 정한 두 읽기뿐이고 다른 파일/추가 열/조건 제거는 막음", () => {
+  it("운영자 목록/중복은 정한 세 읽기뿐이고 다른 파일/추가 열/조건 제거는 막음", () => {
     const queries = shopSql(sources.find((s) => s.name === "operator-shop-directory.ts")?.text ?? "");
-    expect(queries).toHaveLength(2);
+    expect(queries).toHaveLength(3);
     for (const sql of queries) {
       expect(allowedCrossShop("operator-shop-directory.ts", sql)).toBe(true);
       expect(allowedCrossShop("operator-shop.ts", sql)).toBe(false);
@@ -207,6 +213,10 @@ describe("서버 코드의 SQL(정적 검사)", () => {
     }
     expect(allowedCrossShop("operator-shop.ts", "SELECT id FROM shops WHERE id=$1")).toBe(true);
     expect(allowedCrossShop("operator-shop.ts", "SELECT * FROM shops WHERE id=$1")).toBe(false);
+    expect(allowedCrossShop("operator-shop.ts", "SELECT shop_id AS id FROM shop_identity_changes WHERE id=$1")).toBe(
+      true,
+    );
+    expect(allowedCrossShop("operator-shop.ts", "SELECT * FROM shop_identity_changes WHERE id=$1")).toBe(false);
   });
   it("서버 코드를 읽음(파일과 SQL이 있음)", () => {
     expect(sources.map((s) => s.name)).toEqual(expect.arrayContaining(["app.ts", "shop-scope.ts", "request-key.ts"]));
