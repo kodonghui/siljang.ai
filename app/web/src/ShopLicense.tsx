@@ -152,15 +152,13 @@ export function ShopLicense(props: ShopLicenseProps) {
     else if (failure.outcome === "no_shop") callbacks.current.onRegisterShop();
     else if (["version_conflict", "invalid_state", "identity_change_pending"].includes(failure.code ?? ""))
       reload(failure === licenseFailure ? "license" : "identity");
-    if (failure.code === "storage_unavailable" || failure.fieldErrors.some((e) => e.code === "upload_not_found")) {
-      if (failure === licenseFailure) licensePhoto.upload.reset();
-      else evidencePhoto.upload.reset();
-    }
+    if (failure === licenseFailure) licensePhoto.discardIfRejected(failure, "/licensePhotoUploadId");
+    else evidencePhoto.discardIfRejected(failure, "/evidencePhotoUploadId");
     if (failure.outcome === "field")
       (failure === licenseFailure ? licenseForm : identityForm).current
         ?.querySelector<HTMLElement>('input[aria-invalid="true"], [role="radiogroup"][aria-invalid="true"] input')
         ?.focus();
-  }, [licenseFailure, identityFailure, reload, licensePhoto.upload.reset, evidencePhoto.upload.reset]);
+  }, [licenseFailure, identityFailure, reload, licensePhoto.discardIfRejected, evidencePhoto.discardIfRejected]);
 
   function submitLicense(event: FormEvent) {
     event.preventDefault();

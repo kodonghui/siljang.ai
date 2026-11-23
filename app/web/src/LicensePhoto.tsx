@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FieldReason } from "./problems";
+import type { Failure, FieldReason } from "./problems";
 import { LICENSE_PHOTO_MAX_BYTES, type UploadedLicensePhoto, uploadLicensePhoto } from "./registration";
 import { Button, CommandStatus, Field } from "./ui";
 import { useCommand } from "./useCommand";
 
 /** 신고증 재제출과 사업자 증빙은 파일/명령을 각각 보관한다. 저장소·브라우저 영구 저장에는 남기지 않는다. */
-export function useLicensePhoto(onSessionExpired: () => void) {
+export function useLicensePhoto(onSessionExpired: () => void, context: "save" | "registration" = "save") {
   const [file, setFile] = useState<File | null>(null);
   const [problem, setProblem] = useState<string | undefined>();
   const [preview, setPreview] = useState<string | null>(null);
@@ -37,7 +37,11 @@ export function useLicensePhoto(onSessionExpired: () => void) {
     setFile(null);
     setProblem(undefined);
     if (input.size > LICENSE_PHOTO_MAX_BYTES) {
-      setProblem("사진이 너무 커요. 10MB(완성 사진은 20MB)까지 올릴 수 있어요");
+      setProblem(
+        context === "registration"
+          ? "사진이 너무 커요. 10MB까지 올릴 수 있어요"
+          : "사진이 너무 커요. 10MB(완성 사진은 20MB)까지 올릴 수 있어요",
+      );
       return;
     }
     if (input.size === 0) {
@@ -53,10 +57,22 @@ export function useLicensePhoto(onSessionExpired: () => void) {
     setFile(null);
     setProblem(undefined);
   }, [resetUpload]);
+  const discardIfRejected = useCallback(
+    (failure: Failure | null, pointer: string) => {
+      if (
+        failure?.code === "storage_unavailable" ||
+        failure?.fieldErrors.some((error) => error.field === pointer && error.code === "upload_not_found")
+      )
+        resetUpload();
+    },
+    [resetUpload],
+  );
   function needPhoto() {
-    setProblem("사진을 먼저 올려 주세요");
+    setProblem(context === "registration" ? "신고증 사진을 먼저 올려 주세요" : "사진을 먼저 올려 주세요");
   }
   return {
+    context,
+    discardIfRejected,
     upload,
     file,
     problem,
@@ -90,14 +106,21 @@ export function LicensePhoto({
     ...(failure?.fieldErrors.filter((e) => e.field === "/file" || e.field === "/purpose").map((e) => e.code) ?? []),
   ];
   const blocked = photo.upload.state.kind === "failed" && photo.upload.state.blockedUntil !== null;
+  const registering = photo.context === "registration";
   return (
-    <div className="license-photo">
-      <Field pointer={pointer} label={label} errors={reasons} help="JPG·PNG·HEIC, 10MB까지" note={photo.problem}>
+    <div className={registering ? "registration-photo" : "license-photo"}>
+      <Field
+        pointer={pointer}
+        label={label}
+        errors={reasons}
+        help={registering ? "JPG·PNG·HEIC 한 장, 10MB까지. 이 가게 사장님과 운영자만 봐요." : "JPG·PNG·HEIC, 10MB까지"}
+        note={photo.problem}
+      >
         {(ids) => (
           <input
             {...ids}
             type="file"
-            accept="image/jpeg,image/png,image/heic,image/heif,.heic,.heif"
+            accept="image/jpeg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic,.heif"
             disabled={disabled || blocked}
             onChange={(event) => {
               if (disabled || blocked) return;
@@ -108,12 +131,14 @@ export function LicensePhoto({
           />
         )}
       </Field>
-      {photo.file ? <p className="license-photo__filename">선택한 파일: {photo.file.name}</p> : null}
+      {photo.file ? (
+        <p className="license-photo__filename">{registering ? photo.file.name : `선택한 파일: ${photo.file.name}`}</p>
+      ) : null}
       {photo.preview && !photo.previewFailed ? (
         <img
-          className="license-photo__preview"
+          className={registering ? undefined : "license-photo__preview"}
           src={photo.preview}
-          alt={`${label} 미리보기`}
+          alt={registering ? "선택한 신고증 사진 미리보기" : `${label} 미리보기`}
           onError={() => photo.setPreviewFailed(true)}
         />
       ) : null}
@@ -122,9 +147,11 @@ export function LicensePhoto({
       <CommandStatus
         state={photo.upload.state}
         fields={["/file", "/purpose"]}
-        done={() => "사진을 올렸어요. 1시간 안에 저장해 주세요"}
+        done={() =>
+          registering ? "사진을 올렸어요. 1시간 안에 등록해 주세요" : "사진을 올렸어요. 1시간 안에 저장해 주세요"
+        }
       />
-      {photo.file && !photo.uploaded && !photo.upload.busy ? (
+      {photo.file && (registering || !photo.uploaded) && !photo.upload.busy ? (
         <Button
           kind="secondary"
           disabled={disabled || blocked}
