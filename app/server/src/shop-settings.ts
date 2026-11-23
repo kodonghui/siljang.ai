@@ -1,5 +1,6 @@
 /** API-010/SPEC-077. 변경은 가게 설정에만 쓰며 이미 열린 기다림/주문은 바꾸지 않는다. */
 import { requireJson } from "./body";
+import { currentPrivacyPolicy } from "./privacy-policy-current";
 import { ApiError } from "./problem";
 import type { ShopRequest } from "./routes";
 import {
@@ -56,6 +57,12 @@ export async function updateShopSettings(r: ShopRequest): Promise<Response> {
           ],
         );
       }
+      // 연락처 변경은 처리방침과 원자적으로 저장한다. 다른 설정은 국외 이전 설정 부재만으로 막지 않는다.
+      await currentPrivacyPolicy(
+        db,
+        r.services,
+        changed.some((key) => ["name", "contactPhone", "contactEmail"].includes(key)),
+      );
       const outcome = changed.length ? "done" : "unchanged";
       return {
         status: 200,
