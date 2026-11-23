@@ -29,8 +29,10 @@ export function paymentIssues(form: PaymentForm): FieldError[] {
   }
   if (!form.accountNumber.trim()) issues.push({ field: "/accountNumber", code: "required" });
   else if (!isAccountNumber(form.accountNumber)) issues.push({ field: "/accountNumber", code: "bad_format" });
-  if (form.cardPaymentUrl.trim() && !isCardPaymentUrl(form.cardPaymentUrl))
-    issues.push({ field: "/cardPaymentUrl", code: "bad_format" });
+  if (form.cardPaymentUrl.trim()) {
+    if ([...form.cardPaymentUrl].length > 2048) issues.push({ field: "/cardPaymentUrl", code: "too_long" });
+    else if (!isCardPaymentUrl(form.cardPaymentUrl)) issues.push({ field: "/cardPaymentUrl", code: "bad_format" });
+  }
   return issues;
 }
 export function rebasePayment(

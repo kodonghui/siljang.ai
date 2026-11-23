@@ -159,7 +159,7 @@ export function ShopLicense(props: ShopLicenseProps) {
 
   function submitLicense(event: FormEvent) {
     event.preventDefault();
-    if (busy || !shop || shop.licenseStatus !== "on_hold") return;
+    if (busy || license.blocked || !shop || shop.licenseStatus !== "on_hold") return;
     if (!licensePhoto.uploaded) {
       licensePhoto.needPhoto();
       return;
@@ -174,7 +174,7 @@ export function ShopLicense(props: ShopLicenseProps) {
   }
   function submitIdentity(event: FormEvent) {
     event.preventDefault();
-    if (busy || !shop || shop.identityChange?.status === "pending") return;
+    if (busy || identity.blocked || !shop || shop.identityChange?.status === "pending") return;
     if (!evidencePhoto.uploaded) {
       evidencePhoto.needPhoto();
       return;
@@ -342,7 +342,7 @@ export function ShopLicense(props: ShopLicenseProps) {
                     disabled={busy}
                     onSelect={license.reset}
                   />
-                  <Button kind="primary" type="submit" busy={license.busy} disabled={busy}>
+                  <Button kind="primary" type="submit" busy={license.busy} disabled={busy || license.blocked}>
                     신고증 다시 올리기
                   </Button>
                 </fieldset>
@@ -439,7 +439,7 @@ export function ShopLicense(props: ShopLicenseProps) {
                     disabled={busy}
                     onSelect={identity.reset}
                   />
-                  <Button kind="primary" type="submit" busy={identity.busy} disabled={busy}>
+                  <Button kind="primary" type="submit" busy={identity.busy} disabled={busy || identity.blocked}>
                     변경 요청
                   </Button>
                   <Button

@@ -608,3 +608,19 @@ it("사진 누락 안내 뒤 다시 올리기에 성공하면 누락 안내를 �
   await within(screen.getByRole("main")).findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
   await waitFor(() => expect(within(screen.getByRole("main")).queryByText("사진을 먼저 올려 주세요")).toBeNull());
 });
+it.each(["license", "identity"] as const)("%s의429 뒤 편집은 해당 저장 버튼과 제출을 잠근다", async (kind) => {
+  const view = await prepared(kind);
+  sendError = [429, "rate_limited"];
+  view.submit();
+  await within(screen.getByRole("main")).findByText(ERROR_CODES.rate_limited.message);
+  fireEvent.change(screen.getByLabelText(kind === "license" ? "영업 신고 번호" : "새 상호", { exact: true }), {
+    target: { value: "대기 중 합성 값" },
+  });
+  const form = screen.getByRole("form", { name: kind === "license" ? "영업 신고 재제출" : "사업자 정보 변경 요청" });
+  const button = within(form).getByRole("button", {
+    name: kind === "license" ? "신고증 다시 올리기" : "변경 요청",
+  }) as HTMLButtonElement;
+  expect(button.disabled).toBe(true);
+  fireEvent.submit(form);
+  expect(requests).toHaveLength(1);
+});

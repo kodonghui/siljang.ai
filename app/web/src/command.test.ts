@@ -443,3 +443,25 @@ it.each(["rate_limited", "too_many_attempts"] as const)(
     expect(calls[1]?.key).not.toBe(calls[0]?.key);
   },
 );
+it.each(["rate_limited", "too_many_attempts"] as const)(
+  "%s 대기에서 반복 reset은 같은 상태/사유/타이머를 유지한다",
+  async (code) => {
+    const { send, calls } = script(fail(code, {}, 30), ok(null));
+    const { r, clock } = runner(send);
+    r.submit({ value: "old" });
+    await settle();
+    r.reset();
+    const state = r.getState(),
+      changed = vi.fn(),
+      scheduled = vi.spyOn(clock, "setTimeout");
+    r.subscribe(changed);
+    r.reset();
+    r.reset();
+    expect(r.getState()).toBe(state);
+    expect(changed).not.toHaveBeenCalled();
+    expect(scheduled).not.toHaveBeenCalled();
+    await clock.advance(30000);
+    expect(calls).toHaveLength(1);
+    expect(r.submit({ value: "mine" })).toBe(true);
+  },
+);

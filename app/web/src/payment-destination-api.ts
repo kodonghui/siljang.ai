@@ -17,13 +17,14 @@ export interface PaymentDestinationResult {
 export const isAccountNumber = (value: unknown): value is string =>
   typeof value === "string" && value.length >= 10 && value.length <= 40 && /^-*([0-9]-*){10,16}$/.test(value);
 export function isCardPaymentUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const characters = [...value];
   if (
-    typeof value !== "string" ||
-    [...value].length < 9 ||
-    [...value].length > 2048 ||
+    characters.length < 9 ||
+    characters.length > 2048 ||
     !value.startsWith("https://") ||
     /\s/.test(value) ||
-    [...value].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)
+    characters.some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)
   )
     return false;
   try {
