@@ -274,7 +274,9 @@ describeDb("교차 가게 시험 묶음(SPEC-068, G1, 06 DEC-02)", () => {
           ? "customer"
           : c.kind === "operator_review" || (c.kind === "identity_change" && c.path.startsWith("/operator/"))
             ? "operator"
-            : "owner",
+            : c.kind === "booking" && c.path.startsWith("/public/")
+              ? "public"
+              : "owner",
       );
       await runCrossShopCase(env, c);
     });

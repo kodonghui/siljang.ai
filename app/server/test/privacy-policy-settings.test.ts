@@ -51,14 +51,16 @@ describe("TASK-044 처리방침 설정", () => {
       }
     },
   );
-  it.each([
-    null,
-    {},
-    [],
-    Array(21).fill(recipients[0]),
-    [...recipients, { ...recipients[0], provider: "unknown" }],
-    [{ ...recipients[0], personalData: "주문자 이름" }, ...recipients.slice(1)],
-  ])("잘못된 설정 형식이나 입력 개인정보 필드는 받지 않음", (entries) => {
+  it.each(
+    [
+      null,
+      {},
+      [],
+      Array(21).fill(recipients[0]),
+      [...recipients, { ...recipients[0], provider: "unknown" }],
+      [{ ...recipients[0], personalData: "주문자 이름" }, ...recipients.slice(1)],
+    ].map((entries) => [entries]),
+  )("잘못된 설정 형식이나 입력 개인정보 필드는 받지 않음", (entries) => {
     expect(readPrivacyPolicySettings(env(entries), "anthropic")).toBeNull();
   });
 });

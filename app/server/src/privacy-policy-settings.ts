@@ -37,7 +37,11 @@ export function readPrivacyPolicySettings(
   for (const record of records) {
     if (typeof record !== "object" || record === null || Array.isArray(record)) return null;
     const entry = record as Record<string, unknown>;
-    if (!["anthropic", "openai", "supabase", "cloudflare"].includes(String(entry.provider))) return null;
+    if (
+      typeof entry.provider !== "string" ||
+      !["anthropic", "openai", "supabase", "cloudflare"].includes(entry.provider)
+    )
+      return null;
     if (Object.keys(entry).length !== 6) return null;
     const fields = {} as Omit<OverseasTransfer, "personalData">;
     for (const [key, max] of Object.entries(LIMITS)) {
