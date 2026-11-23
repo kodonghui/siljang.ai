@@ -19,6 +19,7 @@ function isVersionList(value: unknown): value is VersionList {
       !isApiObject(row) ||
       !isApiVersion(row.version) ||
       row.version >= previous ||
+      (previous !== Infinity && row.supersededAt === null) ||
       !isApiTimestamp(row.createdAt) ||
       !(row.supersededAt === null || isApiTimestamp(row.supersededAt))
     )

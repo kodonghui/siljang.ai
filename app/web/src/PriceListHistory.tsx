@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { formatSeoulDateTime as date } from "./format-date";
 import type { PriceList } from "./price-list-api";
 import { fetchPriceListVersion, fetchPriceListVersions } from "./price-list-history-api";
 import type { ShopLicenseProps } from "./ShopLicense";
 import { EmptyState, ListView } from "./ui";
-import { historyDate as date, VersionHistory, type VersionHistoryConfig } from "./VersionHistory";
+import { VersionHistory, type VersionHistoryConfig } from "./VersionHistory";
 import "./price-list-history.css";
 
 const config: VersionHistoryConfig<PriceList> = {

@@ -1,5 +1,6 @@
 import { type ComponentType, useCallback, useEffect, useRef, useState } from "react";
 import type { ApiFailure, ApiResult } from "./api";
+import { formatSeoulDateTime } from "./format-date";
 import { classify } from "./problems";
 import type { ShopLicenseProps } from "./ShopLicense";
 import { Banner, Button, EmptyState, LoadFailure, OwnerLayout, Skeleton } from "./ui";
@@ -8,12 +9,6 @@ import "./version-history.css";
 
 type Read<T> = { kind: "loading" } | { kind: "failed"; failure: ApiFailure } | { kind: "ready"; data: T };
 const network: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
-const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
-  timeZone: "Asia/Seoul",
-  dateStyle: "short",
-  timeStyle: "short",
-});
-export const historyDate = (value: string) => dateFormatter.format(new Date(value));
 export interface VersionHistoryConfig<T> {
   readonly path: "/owner/price-list" | "/owner/operating-rules";
   readonly screen: string;
@@ -103,13 +98,13 @@ export function VersionHistory<T>(props: VersionHistoryProps<T>) {
       });
   }, [fetchVersions, report]);
   useEffect(() => {
-    if (props.sessionChecking || props.sessionFailed) {
+    if (props.sessionChecking || props.sessionFailed || (explicit && !wide)) {
       listRequest.current?.abort();
       return;
     }
     if (!listCompleted.current) readList();
     return () => listRequest.current?.abort();
-  }, [readList, props.sessionChecking, props.sessionFailed]);
+  }, [readList, props.sessionChecking, props.sessionFailed, explicit, wide]);
   const readDetail = useCallback(
     (value: string) => {
       if (callbacks.current.sessionChecking || callbacks.current.sessionFailed) return;
@@ -249,9 +244,11 @@ export function VersionHistory<T>(props: VersionHistoryProps<T>) {
                           {item.supersededAt === null ? " · 현재" : ""}
                         </strong>
                         <span>
-                          {config.timestampLabel} 시각 {historyDate(item.createdAt)}
+                          {config.timestampLabel} 시각 {formatSeoulDateTime(item.createdAt)}
                         </span>
-                        {item.supersededAt !== null ? <span>바뀐 시각 {historyDate(item.supersededAt)}</span> : null}
+                        {item.supersededAt !== null ? (
+                          <span>바뀐 시각 {formatSeoulDateTime(item.supersededAt)}</span>
+                        ) : null}
                       </a>
                     </li>
                   ))}

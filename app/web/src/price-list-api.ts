@@ -3,7 +3,6 @@ import {
   isApiTimestamp as date,
   INVALID_API_RESPONSE as INVALID,
   isApiVersion as isPriceVersion,
-  MAX_API_VERSION as MAX_PRICE_VERSION,
   isApiObject as object,
   UUID_PATTERN,
 } from "./api-response";
@@ -55,8 +54,6 @@ const text = (v: unknown): v is string => typeof v === "string";
 const uuid = (v: unknown): v is string => text(v) && UUID_PATTERN.test(v);
 const integer = (v: unknown, min: number, max: number): v is number =>
   typeof v === "number" && Number.isSafeInteger(v) && v >= min && v <= max;
-
-export { date as isPriceTimestamp, isPriceVersion, MAX_PRICE_VERSION };
 
 const name = (v: unknown): v is string => text(v) && v.length > 0 && v.length <= 30;
 const member = (v: unknown, choices: readonly string[]) => text(v) && choices.includes(v);

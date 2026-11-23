@@ -58,7 +58,7 @@ it.each(["빈 목록", "중복 버전", "잘못된 날짜", "문자열 버전", 
     );
   },
 );
-it("순서가 틀리거나 현재 버전이 여럿인 목록을 거절", async () => {
+it("순서가 틀린 목록을 거절", async () => {
   const body = versions();
   body.items.reverse();
   vi.stubGlobal(
@@ -154,4 +154,14 @@ it("목록과 상세 조회의 취소 신호를 공통 요청에 그대로 전�
   await fetchOperatingRulesVersions(controller.signal);
   await fetchOperatingRulesVersion("1", controller.signal);
   expect(signals).toEqual([controller.signal, controller.signal]);
+});
+
+it("순서는 맞지만 두 번째 행도 현재인 목록을 거절", async () => {
+  const body = versions();
+  body.items[1].supersededAt = null;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json(body)),
+  );
+  expect(await fetchOperatingRulesVersions()).toMatchObject({ ok: false, status: 502 });
 });

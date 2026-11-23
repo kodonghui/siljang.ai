@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router";
+import { matchPath, Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import { OperatingRulesHistory } from "./OperatingRulesHistory";
@@ -22,7 +22,17 @@ import { ShopRegistration } from "./ShopRegistration";
 import { ShopSettings } from "./ShopSettings";
 import { Button, LoadFailure, Skeleton } from "./ui";
 
-const isPriceHistoryPath = (path: string | undefined) => /^\/owner\/price-list\/versions(?:\/[^/]+)?$/.test(path ?? "");
+const historyScreens = [
+  { path: "/owner/price-list/versions/:version?", Screen: PriceListHistory },
+  { path: "/owner/operating-rules/versions/:version?", Screen: OperatingRulesHistory },
+] as const;
+function matchHistory(path: string | undefined) {
+  for (const route of historyScreens) {
+    const match = matchPath({ path: route.path, caseSensitive: true, end: true }, path ?? "");
+    if (match) return { Screen: route.Screen, version: match.params.version ?? null };
+  }
+  return null;
+}
 
 /** 첫 세션 확인 전에는 가린다. 이미 검증한 등록 양식은 재확인·로그아웃 중 잠근 채 보존한다. */
 export function OwnerArea() {
@@ -30,9 +40,8 @@ export function OwnerArea() {
   const navigate = useNavigate();
   const requested = ownerReturnTo(location.pathname + location.search + location.hash);
   const shopPath = requested?.split(/[?#]/)[0]?.replace(/\/+$/, "");
-  const priceHistory = isPriceHistoryPath(shopPath);
-  const rulesHistory = /^\/owner\/operating-rules\/versions(?:\/[^/]+)?$/.test(shopPath ?? "");
-  const history = priceHistory || rulesHistory;
+  const historyRoute = matchHistory(shopPath);
+  const history = historyRoute !== null;
   const [revision, setRevision] = useState(0);
   const visit = useMemo(() => ({ key: location.key, revision }), [location.key, revision]);
   const [checked, setChecked] = useState<{ visit: typeof visit; result: ApiResult<OwnerIdentity> } | null>(null);
@@ -122,17 +131,15 @@ export function OwnerArea() {
       const destination = ownerDestination(candidate, requested);
       if (destination !== requested) return <Navigate to={destination} replace />;
     }
-    const ShopScreen = priceHistory
-      ? PriceListHistory
-      : rulesHistory
-        ? OperatingRulesHistory
-        : shopPath === "/owner/operating-rules"
-          ? OperatingRulesEditor
-          : shopPath === "/owner/price-list"
-            ? PriceListEditor
-            : shopPath === "/owner/shop/license"
-              ? ShopLicense
-              : ShopSettings;
+    const ShopScreen =
+      historyRoute?.Screen ??
+      (shopPath === "/owner/operating-rules"
+        ? OperatingRulesEditor
+        : shopPath === "/owner/price-list"
+          ? PriceListEditor
+          : shopPath === "/owner/shop/license"
+            ? ShopLicense
+            : ShopSettings);
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (
@@ -144,7 +151,7 @@ export function OwnerArea() {
           />
         ) : null}
         <ShopScreen
-          {...(history ? { version: shopPath?.split("/")[4] ?? null } : {})}
+          {...(historyRoute ? { version: historyRoute.version } : {})}
           key={`${candidate.owner.ownerId}:${candidate.shop.shopId}`}
           shopName={candidate.shop.name}
           onNavigate={(href) => navigate(href)}

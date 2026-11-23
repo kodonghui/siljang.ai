@@ -1,8 +1,9 @@
+import { formatSeoulDateTime } from "./format-date";
 import { OperatingRulesSummary } from "./OperatingRulesSummary";
 import type { OperatingRules } from "./operating-rules-api";
 import { fetchOperatingRulesVersion, fetchOperatingRulesVersions } from "./operating-rules-history-api";
 import type { ShopLicenseProps } from "./ShopLicense";
-import { historyDate, VersionHistory, type VersionHistoryConfig } from "./VersionHistory";
+import { VersionHistory, type VersionHistoryConfig } from "./VersionHistory";
 
 const config: VersionHistoryConfig<OperatingRules> = {
   path: "/owner/operating-rules",
@@ -25,8 +26,12 @@ function Details({ value }: { readonly value: OperatingRules }) {
     <>
       <h2>버전 {value.version} (고른 버전)</h2>
       <p>
-        확정 시각 {value.createdAt ? historyDate(value.createdAt) : "확인할 수 없음"}
-        {value.current ? " · 현재" : value.supersededAt ? ` · 바뀐 시각 ${historyDate(value.supersededAt)}` : ""}
+        확정 시각 {value.createdAt ? formatSeoulDateTime(value.createdAt) : "확인할 수 없음"}
+        {value.current
+          ? " · 현재"
+          : value.supersededAt
+            ? ` · 바뀐 시각 ${formatSeoulDateTime(value.supersededAt)}`
+            : ""}
       </p>
       <OperatingRulesSummary value={value} showVersion={false} />
     </>

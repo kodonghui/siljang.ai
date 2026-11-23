@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ApiFailure } from "./api";
+import { formatSeoulDateTime } from "./format-date";
 import { OPERATING_RULE_LABELS as LABELS, OperatingRulesSummary } from "./OperatingRulesSummary";
 import {
   fetchOperatingRules,
@@ -34,7 +35,6 @@ import { useCommand } from "./useCommand";
 import "./operating-rules.css";
 
 const NETWORK: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
-const dateFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", dateStyle: "short", timeStyle: "short" });
 function orderedClauses(form: OperatingRulesForm) {
   return form.clauses.filter((c) => c.enabled).sort((a, b) => a.position - b.position);
 }
@@ -329,14 +329,17 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     >
       <div className="rules-editor">
         <div className="rules-actions">
-          <Button
-            disabled={locked || !base}
-            onClick={() => {
-              if (!locked && base) props.onNavigate("/owner/operating-rules/versions");
+          <a
+            href="/owner/operating-rules/versions"
+            aria-disabled={locked}
+            tabIndex={locked ? -1 : undefined}
+            onClick={(event) => {
+              event.preventDefault();
+              if (!locked) props.onNavigate("/owner/operating-rules/versions");
             }}
           >
             버전 이력
-          </Button>
+          </a>
           <Button
             disabled={pending}
             busy={Boolean(props.logoutPending)}
@@ -358,7 +361,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
             ) : (
               <p>
                 운영규정 버전 {base.version}
-                {base.createdAt ? ` · ${dateFormat.format(new Date(base.createdAt))} 확정` : ""}
+                {base.createdAt ? ` · ${formatSeoulDateTime(base.createdAt)} 확정` : ""}
               </p>
             )}
             {stale ? (

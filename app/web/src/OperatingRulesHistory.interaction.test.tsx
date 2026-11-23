@@ -123,6 +123,7 @@ it("상세 세션 만료는 로그인 복귀 경로로 보낸다", async () => {
   await waitFor(() => expect(view.props.onSessionExpired).toHaveBeenCalledOnce());
 });
 it("상세 서버 실패 재시도는 목록을 다시 받지 않는다", async () => {
+  wide();
   detailProblem = { status: 500, code: "internal" };
   area("1");
   await screen.findByText(`추적 ID: ${traceId}`);
@@ -159,6 +160,7 @@ it("목록은 최신 20개부터 펼치며 이미 펼친 개수는 선택 뒤에
   expect(calls.filter((p) => p === listPath)).toHaveLength(1);
 });
 it.each(["checking", "failed"] as const)("첫 세션 %s 중 새 조회를 막고 확인 뒤 시작한다", async (state) => {
+  wide();
   const view = area("1", state === "checking" ? { sessionChecking: true } : { sessionFailed: true });
   await act(async () => {});
   expect(calls).toHaveLength(0);
@@ -202,3 +204,24 @@ it.each(["pending", "verified", "on_hold"] as const)(
     }
   },
 );
+
+it("좁은 직접 상세는 목록을 미루고 넓어지면 한 번만 읽는다", async () => {
+  let change = () => {};
+  const query = {
+    matches: false,
+    addEventListener: (_event: string, callback: () => void) => {
+      change = callback;
+    },
+    removeEventListener: vi.fn(),
+  };
+  vi.stubGlobal("matchMedia", () => query);
+  area("1");
+  await screen.findByRole("heading", { name: /버전 1/ });
+  expect(calls.filter((c) => c === "/api/owner/operating-rules/versions")).toHaveLength(0);
+  act(() => {
+    query.matches = true;
+    change();
+  });
+  await screen.findByRole("link", { name: /버전 1/ });
+  expect(calls.filter((c) => c === "/api/owner/operating-rules/versions")).toHaveLength(1);
+});
