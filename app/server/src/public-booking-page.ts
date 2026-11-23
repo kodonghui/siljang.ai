@@ -31,7 +31,7 @@ export async function getPublicBookingPage(r: ShopRequest): Promise<Response> {
     );
     const head = await current(db);
     if (head === undefined) throw new ApiError("not_found");
-    const price = await contents(db, head.id);
+    const price = await contents(db, head.id, false);
     const photos = (
       await db.run<{ storage_key: string }>(
         `SELECT COALESCE(cp.storage_key,rp.storage_key) AS storage_key FROM portfolio_items p

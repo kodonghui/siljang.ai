@@ -115,11 +115,10 @@ it("저장소 응답 도중 만료되면 사진/공개 캐시를 내지 않음",
     clock = { now: new Date(END.getTime() - 50) };
   const key = objectKey();
   await store.put(key, new Uint8Array([1]), "image/png");
-  const get = store.get.bind(store);
-  vi.spyOn(store, "get").mockImplementation(async (value) => {
-    const result = await get(value);
+  const cancelled = vi.fn();
+  vi.spyOn(store, "get").mockImplementation(async () => {
     clock.now = END;
-    return result;
+    return { key, contentType: "image/png", size: 1, body: new ReadableStream<Uint8Array>({ cancel: cancelled }) };
   });
   const app = createApp({
     logSink: () => {},
@@ -127,5 +126,5 @@ it("저장소 응답 도중 만료되면 사진/공개 캐시를 내지 않음",
   });
   const url = await fileUrlSigner(new Secret(KEY)).signPublic(key, ORIGIN, NOW);
   await expectProblem(await app.request(url, {}, testEnv({ FILE_URL_KEY: KEY })), "not_found");
-  expect(store.calls).toContain("get");
+  expect(cancelled).toHaveBeenCalledOnce();
 });

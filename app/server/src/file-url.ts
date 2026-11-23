@@ -198,7 +198,10 @@ export async function serveFile(c: Context<HonoEnv>, isPublic = false): Promise<
   if (object === null) throw new ApiError("not_found");
   // 저장소 응답을 기다리는 동안 만료되었으면 내지 않는다. 캐시 나이도 실제 응답 시각에서 센다.
   const responseTime = services.now();
-  if (opened.exp * 1000 <= responseTime.getTime()) throw new ApiError("not_found");
+  if (opened.exp * 1000 <= responseTime.getTime()) {
+    await object.body.cancel().catch(() => {});
+    throw new ApiError("not_found");
+  }
   const image = (IMAGE_TYPES as readonly string[]).includes(object.contentType);
   const remaining = Math.max(0, Math.floor((opened.exp * 1000 - responseTime.getTime()) / 1000));
   const headers = new Headers({

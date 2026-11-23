@@ -362,6 +362,28 @@ describeDb("TASK-045 공개 예약 페이지", () => {
       spy.mockRestore();
     }
   });
+  it("공개 예약 조회는 비공개 가격 조합 규칙을 읽지 않음", async () => {
+    let rulesReads = 0;
+    const observe = (base: Queryable): Queryable => ({
+      query: (sql, params) => {
+        if (/\bFROM price_option_rules\b/.test(sql)) rulesReads++;
+        return base.query(sql, params);
+      },
+    });
+    const h = await fixture({
+      connect: () => {
+        const base = testDb();
+        return {
+          query: observe(base).query,
+          transaction: (fn) => base.transaction((tx) => fn(observe(tx))),
+          abort: () => base.abort(),
+          close: () => base.close(),
+        };
+      },
+    });
+    await page(h);
+    expect(rulesReads).toBe(0);
+  });
   it("필수 서명 설정 오류는500이며 응답/로그에 저장 위치·연결 문자열이 없음", async () => {
     const logs = collectLogs(),
       h = await fixture({ logSink: logs.sink });

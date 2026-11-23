@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { APP_ROUTES } from "../src/app";
+import { APP_ROUTES, createApp } from "../src/app";
 import { normalizedClientIp } from "../src/client-ip";
 import { assertPublicShopRateCoverage, publicShopRateRule } from "../src/public-shop";
 import { PUBLIC_BOOKING_RATE, PUBLIC_PRIVACY_RATE } from "../src/rate-limit";
@@ -31,6 +31,7 @@ it("기본 공개 경로의 한도가 모두 선언돼 있고 빠진 새 경로�
   expect(() => assertPublicShopRateCoverage(APP_ROUTES)).not.toThrow();
   const extra = shopRoute("GET", "/public/shops/:slug/undeclared", "public", async () => new Response());
   expect(() => assertPublicShopRateCoverage([...APP_ROUTES, extra])).toThrow("public route rate rule missing");
+  expect(() => createApp({ routes: [...APP_ROUTES, extra] })).toThrow("public route rate rule missing");
 });
 
 it("Hono의 basePath가 바뀌어도 선언한 공개 한도를 찾고 HEAD도 GET 한도를 씀", () => {
