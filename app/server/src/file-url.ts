@@ -195,11 +195,18 @@ export async function serveFile(c: Context<HonoEnv>, isPublic = false): Promise<
     now,
   );
   if (opened === null) throw new ApiError("not_found");
-  const object = await services.storage().get(opened.key);
+  // HEAD는 저장소 메타데이터만 읽어 버릴 본문 스트림을 열지 않는다.
+  const store = services.storage();
+  const headOnly = c.req.method === "HEAD";
+  const content = headOnly ? null : await store.get(opened.key);
+  const object = headOnly ? await store.head(opened.key) : content;
   if (object === null) throw new ApiError("not_found");
   // 저장소 응답을 기다리는 동안 만료되었으면 내지 않는다. 캐시 나이도 실제 응답 시각에서 센다.
   const responseTime = services.now();
-  if (opened.exp * 1000 <= responseTime.getTime()) throw new ApiError("not_found");
+  if (opened.exp * 1000 <= responseTime.getTime()) {
+    if (content !== null) await content.body.cancel().catch(() => {});
+    throw new ApiError("not_found");
+  }
   const image = (IMAGE_TYPES as readonly string[]).includes(object.contentType);
   const remaining = Math.max(0, Math.floor((opened.exp * 1000 - responseTime.getTime()) / 1000));
   const headers = new Headers({
@@ -219,5 +226,5 @@ export async function serveFile(c: Context<HonoEnv>, isPublic = false): Promise<
     headers.set("expires", new Date(opened.exp * 1000).toUTCString());
   }
   if (object.size > 0) headers.set("content-length", String(object.size));
-  return new Response(object.body, { status: 200, headers });
+  return new Response(content?.body ?? null, { status: 200, headers });
 }
