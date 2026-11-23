@@ -23,6 +23,7 @@ import {
 import { classify, type FieldError } from "./problems";
 import type { ShopLicenseProps } from "./ShopLicense";
 import { Banner, Button, CommandStatus, fieldErrorsFor, LoadFailure, OwnerLayout, Skeleton, TextField } from "./ui";
+import { useFocusRequest } from "./ui/useFocusRequest";
 import { useCommand } from "./useCommand";
 import { useVersionedRead } from "./useVersionedRead";
 import "./kakao-channel.css";
@@ -165,15 +166,28 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
   });
   const handled = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null),
-    pendingFocus = useRef<string | null>(null),
     formRef = useRef<HTMLFormElement>(null),
     statusRef = useRef<HTMLElement>(null);
+  const submitOrigin = useRef<Element | null>(null);
   const pending = (!loaded && loading) || command.busy || Boolean(props.sessionChecking || props.logoutPending),
     blocked = pending || Boolean(props.sessionFailed),
     locked = blocked || (!loaded && Boolean(loadFailure));
   const failure = command.state.kind === "failed" ? command.state.failure : null;
+  const { queue: queueFocus, cancel: cancelFocus } = useFocusRequest<string>(
+    (pointer) => {
+      const field = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-pointer]") ?? []).find(
+        (node) => node.dataset.pointer === pointer,
+      );
+      const input = field?.querySelector<HTMLInputElement>("input");
+      return input && !input.disabled ? input : statusRef.current;
+    },
+    blocked,
+    () => statusRef.current,
+  );
+
   const adopt = useCallback(
     (value: KakaoChannel | null, draft?: ChannelForm, reset = false) => {
+      cancelFocus();
       setBase(value);
       setNow(Date.now());
       setForm(draft ?? channelForm(value));
@@ -191,7 +205,7 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
       );
       if (reset) command.reset();
     },
-    [clearFailure, command.reset],
+    [clearFailure, command.reset, cancelFocus],
   );
   useEffect(() => {
     if (command.state.kind !== "done" || handled.current === command.state.data) return;
@@ -215,21 +229,11 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
     if (failure.code === "channel_setup_incomplete") {
       setEditing(true);
       const missing = BLOCK_KEYS.find((key) => !form.blockIds[key].trim());
-      pendingFocus.current = missing ? `/blockIds/${missing}` : null;
+      queueFocus(missing ? `/blockIds/${missing}` : "status", submitOrigin.current);
     }
     if (failure.outcome === "field")
-      pendingFocus.current = failure.fieldErrors.find((e) => fields.includes(e.field))?.field ?? "/botId";
-  }, [failure, adopt, read, form.blockIds]);
-  useEffect(() => {
-    if (!pendingFocus.current || blocked) return;
-    const field = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-pointer]") ?? []).find(
-      (e) => e.dataset.pointer === pendingFocus.current,
-    );
-    const input = field?.querySelector<HTMLInputElement>("input");
-    if (input?.disabled) return;
-    pendingFocus.current = null;
-    (input ?? statusRef.current)?.focus();
-  });
+      queueFocus(failure.fieldErrors.find((e) => fields.includes(e.field))?.field ?? "/botId", submitOrigin.current);
+  }, [failure, adopt, read, form.blockIds, queueFocus]);
   const issues = useMemo(() => channelIssues(form), [form]);
   const missingBlocks: FieldError[] =
     failure?.code === "channel_setup_incomplete"
@@ -252,6 +256,7 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
     if (locked || stale || command.blocked || (editing && input.action !== "save")) return;
     cancelRead();
     lastAction.current = input.action;
+    submitOrigin.current = document.activeElement;
     command.submit(input);
   }
   function submit(event: FormEvent) {
@@ -259,7 +264,7 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
     if (locked || stale || !editing || command.blocked) return;
     if (issues.length) {
       setShowErrors(true);
-      pendingFocus.current = issues[0]?.field ?? null;
+      queueFocus(issues[0]?.field ?? "status");
       return;
     }
     send({ action: "save", body: channelPayload(base, form) });
@@ -462,7 +467,10 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                 disabled={locked}
                 done={done}
                 onRetry={() => {
-                  if (!locked && !stale) command.retry();
+                  if (!locked && !stale) {
+                    submitOrigin.current = document.activeElement;
+                    command.retry();
+                  }
                 }}
                 onReload={() => {
                   if (!locked) {
