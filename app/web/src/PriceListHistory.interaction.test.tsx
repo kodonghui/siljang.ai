@@ -241,3 +241,56 @@ it("실제 상세 경로는 로그인 복귀와 OwnerArea에서 보존", async (
   await screen.findByRole("heading", { name: "가격표 버전 이력" });
   await screen.findByRole("heading", { name: /버전 3/ });
 });
+
+it("도안 그림을 읽지 못해도 버전 내용과 대체 안내를 남긴다", async () => {
+  area("3");
+  const detail = await screen.findByRole("region", { name: "고른 가격표" });
+  await screen.findByRole("heading", { name: /버전 3/ });
+  const image = within(detail).getAllByRole("img")[0];
+  if (!image) throw new Error("합성 도안 그림 없음");
+  fireEvent.error(image);
+  await within(detail).findByText("도안 그림을 불러오지 못했어요.");
+  expect(within(detail).getByRole("heading", { name: "옵션" })).toBeTruthy();
+  expect(calls.every((c) => c.method === "GET")).toBe(true);
+});
+it("목록과 상세가 동시에401이어도 로그인 전환은 한 번만 요청한다", async () => {
+  problem = detailProblem = { status: 401, code: "unauthenticated" };
+  const view = area("3");
+  await waitFor(() => expect(view.props.onSessionExpired).toHaveBeenCalledOnce());
+  await act(async () => {});
+  expect(view.props.onSessionExpired).toHaveBeenCalledOnce();
+});
+it("상세 서버 실패는 같은 버전만 다시 읽고 저장하지 않는다", async () => {
+  detailProblem = { status: 500, code: "internal" };
+  area("3");
+  await screen.findByText(`추적 ID: ${traceId}`);
+  detailProblem = null;
+  fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+  await screen.findByRole("heading", { name: /버전 3/ });
+  expect(calls.filter((c) => c.path.endsWith("/versions/3"))).toHaveLength(2);
+  expect(calls.every((c) => c.method === "GET")).toBe(true);
+});
+it("신고 보류 계정은 버전 API를 읽기 전에 신고 수정으로 간다", async () => {
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown, init?: RequestInit) => {
+      if (String(input) === "/api/owner/me") {
+        const response = await transport(String(input), init),
+          data = await response.json();
+        return json({ ...data, shop: { ...data.shop, licenseStatus: "on_hold" } });
+      }
+      return transport(String(input), init);
+    }),
+  );
+  render(
+    <MemoryRouter initialEntries={["/owner/price-list/versions/3"]}>
+      <Routes>
+        <Route path="/owner/shop/license" element={<p>신고 수정 합성 목적지</p>} />
+        <Route path="/owner/*" element={<OwnerArea />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  await screen.findByText("신고 수정 합성 목적지");
+  expect(calls.some((c) => c.path.includes("price-list"))).toBe(false);
+});

@@ -318,7 +318,7 @@ function VersionDetails({ list }: { readonly list: PriceList }) {
           <ul className="price-history__designs">
             {list.designs.map((design) => (
               <li key={design.designId}>
-                <img src={design.imageUrl} alt={`${design.name} 그림`} loading="lazy" decoding="async" />
+                <HistoryImage design={design} />
                 <strong>{design.name}</strong>
                 <span>{design.optionId === null ? "연결 없음" : option(design.optionId)}</span>
                 <span>{design.inStandard ? "기본 디자인 범위" : "맞춤 주문으로만"}</span>
@@ -328,5 +328,19 @@ function VersionDetails({ list }: { readonly list: PriceList }) {
         )}
       </section>
     </>
+  );
+}
+function HistoryImage({ design }: { readonly design: PriceList["designs"][number] }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  return failed === design.imageUrl ? (
+    <p>도안 그림을 불러오지 못했어요.</p>
+  ) : (
+    <img
+      src={design.imageUrl}
+      alt={`${design.name} 그림`}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(design.imageUrl)}
+    />
   );
 }
