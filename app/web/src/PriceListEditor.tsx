@@ -122,15 +122,21 @@ export function PriceListEditor(props: ShopLicenseProps) {
   const {
     loading,
     failure: loadFailure,
-    result: readResult,
     read,
     retry: retryRead,
   } = useVersionedRead(fetchPriceList, {
     sessionChecking: Boolean(props.sessionChecking || props.logoutPending),
     sessionFailed: Boolean(props.sessionFailed),
     allowNotSet: true,
+    onLoaded: (mode, data) => {
+      if (mode === "stale") setLatest(data);
+      else adopt(data, { resetCommand: true });
+      setLoaded(true);
+    },
+    onNotSet: () => adopt(null, { resetCommand: true }),
+    onSessionExpired: () => callbacks.current.onSessionExpired(),
+    onRegisterShop: () => callbacks.current.onRegisterShop(),
   });
-  const handledRead = useRef<unknown>(null);
   const [group, setGroup] = useState<OptionGroup>("size"),
     [rulePage, setRulePage] = useState(0);
   const [stale, setStale] = useState(false),
@@ -193,21 +199,6 @@ export function PriceListEditor(props: ShopLicenseProps) {
     },
     [command.reset],
   );
-  useEffect(() => {
-    if (!readResult || handledRead.current === readResult) return;
-    handledRead.current = readResult;
-    const result = readResult.response;
-    if (result.ok) {
-      if (readResult.mode === "stale") setLatest(result.data);
-      else adopt(result.data, { resetCommand: true });
-      setLoaded(true);
-    } else if (readResult.mode === "initial" && result.status === 404 && result.problem?.code === "not_set") {
-      adopt(null, { resetCommand: true });
-    } else {
-      if (result.status === 401) callbacks.current.onSessionExpired();
-      if (result.problem?.code === "shop_not_registered") callbacks.current.onRegisterShop();
-    }
-  }, [readResult, adopt]);
   useEffect(() => {
     if (command.state.kind !== "done" || handled.current === command.state.data) return;
     handled.current = command.state.data;
@@ -341,10 +332,10 @@ export function PriceListEditor(props: ShopLicenseProps) {
       title="가격표와 도안"
       shopName={props.shopName}
       back="/owner/shop"
-      busy={locked}
+      busy={requestsBlocked}
       onNavigate={(href, event) => {
         event.preventDefault();
-        if (canEdit()) props.onNavigate(href);
+        if (!requestsBlocked) props.onNavigate(href);
       }}
     >
       <form className="price-editor" ref={formRef} onSubmit={submit} noValidate>
@@ -972,7 +963,12 @@ export function PriceListEditor(props: ShopLicenseProps) {
         {props.logoutFailure ? <Banner tone="danger">{props.logoutFailure.message}</Banner> : null}
         <div className="price-save-bar">
           <span>저장 전 바뀐 셀 {changes}개</span>
-          <Button kind="primary" type="submit" busy={command.busy} disabled={locked || stale || !loaded}>
+          <Button
+            kind="primary"
+            type="submit"
+            busy={command.busy}
+            disabled={locked || stale || !loaded || command.blocked}
+          >
             저장
           </Button>
           <Button

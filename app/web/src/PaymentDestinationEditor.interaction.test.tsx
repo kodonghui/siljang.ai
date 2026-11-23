@@ -7,6 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { OwnerArea } from "./OwnerArea";
 import { PaymentDestinationEditor } from "./PaymentDestinationEditor";
+import { ERROR_CODES } from "./problems";
 
 const api = parse(readFileSync(resolve(process.cwd(), "../../api/openapi.yaml"), "utf8"));
 const fixture = () =>
@@ -103,7 +104,7 @@ it("현재 결제 계좌를 읽고 바꾼 계좌만 새 버전으로 저장한�
     accountNumber: "000000-00-000000",
     cardPaymentUrl: null,
   });
-  expect(view.props.onSaved).toHaveBeenCalledOnce();
+  expect(view.props.onSaved).not.toHaveBeenCalled();
 });
 it("미등록은 빈 필드를 보여 주고 필수 오류 뒤 첫 계좌를 저장한다", async () => {
   empty = true;
@@ -338,4 +339,40 @@ it("계좌와 카드 링크의 잘못된 입력은 전송하지 않는다", asyn
   expect(sends).toHaveLength(0);
   expect(account().value).toBe("１２３４５６７８９０");
   expect(document.activeElement).toBe(account());
+});
+
+it("조회 실패에도 뒤로와 메뉴를 잠그지 않고 가게 설정으로 돌아간다", async () => {
+  readProblem = { status: 500, code: "internal" };
+  const view = area();
+  await within(screen.getByRole("main")).findByText(`추적 ID: ${traceId}`);
+  const back = screen.getAllByRole("link").find((link) => link.getAttribute("href") === "/owner/shop");
+  if (!back) throw new Error("뒤로 링크 없음");
+  fireEvent.click(back);
+  expect(view.props.onNavigate).toHaveBeenCalledWith("/owner/shop");
+});
+it("첫 세션 확인 중에는 내용을 가린 조회 골격을 보인다", () => {
+  area({ sessionChecking: true });
+  expect(screen.getByText("결제 수단을 불러오고 있어요")).toBeTruthy();
+  expect(reads).toBe(0);
+});
+
+it("429 뒤 입력을 바꿔도 저장 대기는 유지하고 옛 계좌를 자동으로 다시 보내지 않는다", async () => {
+  saveProblem = { status: 429, code: "rate_limited" };
+  area();
+  await loaded();
+  const button = screen.getByRole("button", { name: /^저장$/ }) as HTMLButtonElement;
+  save();
+  await within(screen.getByRole("main")).findByText(ERROR_CODES.rate_limited.message);
+  expect(button.disabled).toBe(true);
+  fireEvent.change(account(), { target: { value: "111111111111" } });
+  expect(account().value).toBe("111111111111");
+  expect(button.disabled).toBe(true);
+  save();
+  expect(sends).toHaveLength(1);
+  await waitFor(() => expect(button.disabled).toBe(false), { timeout: 3000 });
+  expect(sends).toHaveLength(1);
+  save();
+  await within(screen.getByRole("main")).findByText("저장했어요. 이제부터 나가는 결제 안내에 이 계좌를 써요");
+  expect(sends[1]?.body.accountNumber).toBe("111111111111");
+  expect(sends[1]?.key).not.toBe(sends[0]?.key);
 });

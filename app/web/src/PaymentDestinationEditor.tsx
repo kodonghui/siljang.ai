@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { CONNECTION_FAILED } from "./api";
+import { formatKoreanDateTime } from "./format-date";
 import {
   fetchPaymentDestination,
   type PaymentDestination,
@@ -55,7 +56,6 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
   const {
     loading,
     failure: loadFailure,
-    result,
     read,
     retry,
     clearFailure,
@@ -63,14 +63,20 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
     sessionChecking: Boolean(props.sessionChecking || props.logoutPending),
     sessionFailed: Boolean(props.sessionFailed),
     allowNotSet: true,
+    onLoaded: (mode, data) => {
+      if (mode === "stale") setLatest(data);
+      else adopt(data, undefined, true);
+    },
+    onNotSet: () => adopt(null, undefined, true),
+    onSessionExpired: () => callbacks.current.onSessionExpired(),
+    onRegisterShop: () => callbacks.current.onRegisterShop(),
   });
   const command = useCommand<Record<string, unknown>, PaymentDestinationResult>((body, key) => {
     if (callbacks.current.sessionChecking || callbacks.current.sessionFailed || callbacks.current.logoutPending)
       return Promise.resolve(CONNECTION_FAILED);
     return savePaymentDestination(body, key);
   });
-  const handledRead = useRef<unknown>(null),
-    handledDone = useRef<unknown>(null),
+  const handledDone = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null),
     focusPending = useRef<string | null>(null),
     formRef = useRef<HTMLFormElement>(null),
@@ -79,7 +85,8 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
   const pending =
       command.busy || (!props.sessionFailed && loading) || Boolean(props.sessionChecking || props.logoutPending),
     requestsBlocked = pending || Boolean(props.sessionFailed),
-    locked = requestsBlocked || command.state.kind === "confirm" || Boolean(loadFailure);
+    navigationLocked = requestsBlocked || command.state.kind === "confirm",
+    locked = navigationLocked || Boolean(loadFailure);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
   const adopt = useCallback(
     (value: PaymentDestination | null, draft?: PaymentForm, reset = false) => {
@@ -95,26 +102,12 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
     [clearFailure, command.reset],
   );
   useEffect(() => {
-    if (!result || handledRead.current === result) return;
-    handledRead.current = result;
-    const response = result.response;
-    if (response.ok) {
-      if (result.mode === "stale") setLatest(response.data);
-      else adopt(response.data, undefined, true);
-    } else if (result.mode === "initial" && response.status === 404 && response.problem?.code === "not_set")
-      adopt(null, undefined, true);
-    else {
-      if (response.status === 401) callbacks.current.onSessionExpired();
-      if (response.problem?.code === "shop_not_registered") callbacks.current.onRegisterShop();
-    }
-  }, [result, adopt]);
-  useEffect(() => {
     if (command.state.kind !== "done" || handledDone.current === command.state.data) return;
     handledDone.current = command.state.data;
     adopt(command.state.data.paymentDestination);
     if (command.state.data.outcome === "created") {
       setLicenseRechecking(callbacks.current.licenseStatus === "on_hold");
-      callbacks.current.onSaved?.();
+      if (callbacks.current.licenseStatus === "on_hold") callbacks.current.onSaved?.();
     }
   }, [command.state, adopt]);
   useEffect(() => {
@@ -150,7 +143,7 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
   ).byField;
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (locked || stale || !loaded) return;
+    if (locked || stale || !loaded || command.blocked) return;
     if (issues.length) {
       setShowErrors(true);
       focusPending.current = issues[0]?.field ?? "status";
@@ -164,10 +157,10 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
       title="결제 수단"
       shopName={props.shopName}
       back="/owner/shop"
-      busy={locked}
+      busy={navigationLocked}
       onNavigate={(href, event) => {
         event.preventDefault();
-        if (!locked) props.onNavigate(href);
+        if (!navigationLocked) props.onNavigate(href);
       }}
     >
       <div className="payment-editor">
@@ -201,16 +194,7 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
             {!base ? <Banner tone="accent">결제 수단을 등록해야 예약 링크가 나와요</Banner> : null}
             <p>결제 안내에는 이 계좌와 링크만 나가요. 우리 회사 계좌는 쓰지 않아요</p>
             <p>이미 나간 결제 안내의 계좌는 그대로예요.</p>
-            {base ? (
-              <p>
-                등록 시각:{" "}
-                {new Intl.DateTimeFormat("ko-KR", {
-                  timeZone: "Asia/Seoul",
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(base.createdAt))}
-              </p>
-            ) : null}
+            {base ? <p>등록 시각: {formatKoreanDateTime(base.createdAt)}</p> : null}
             {base?.holderMismatchConfirmed ? <p>상호·대표자와 다른 가게 명의 계좌임을 확인했어요</p> : null}
             {stale ? (
               <section className="payment-latest" aria-label="지금 결제 수단">
@@ -301,7 +285,7 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
                   list={key === "bankName" ? bankOptions : undefined}
                   inputMode={key === "accountNumber" ? "tel" : key === "cardPaymentUrl" ? "url" : "text"}
                   autoComplete="off"
-                  maxLength={key === "accountNumber" ? 40 : key === "cardPaymentUrl" ? 2048 : undefined}
+                  maxLength={key === "accountNumber" ? 40 : undefined}
                   onChange={(event) => {
                     if (locked) return;
                     const value = event.currentTarget.value;
@@ -315,7 +299,7 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
             </div>
             <datalist id={bankOptions}>{base ? <option value={base.bankName} /> : null}</datalist>
             <footer className="payment-save">
-              <Button type="submit" kind="primary" busy={command.busy} disabled={locked || stale}>
+              <Button type="submit" kind="primary" busy={command.busy} disabled={locked || stale || command.blocked}>
                 저장
               </Button>
             </footer>

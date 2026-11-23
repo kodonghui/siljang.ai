@@ -19,8 +19,8 @@ export const isAccountNumber = (value: unknown): value is string =>
 export function isCardPaymentUrl(value: unknown): value is string {
   if (
     typeof value !== "string" ||
-    value.length < 9 ||
-    value.length > 2048 ||
+    [...value].length < 9 ||
+    [...value].length > 2048 ||
     !value.startsWith("https://") ||
     /\s/.test(value) ||
     [...value].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)

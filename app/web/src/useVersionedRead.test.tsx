@@ -54,7 +54,7 @@ it("재확인 때 진행 중 조회를 취소하고 늦은 실패를 버린 뒤 
   await waitFor(() => expect(load).toHaveBeenCalledOnce());
   view.rerender({ sessionChecking: true, sessionFailed: false });
   expect(signals[0]?.aborted).toBe(true);
-  expect(view.result.current.loading).toBe(false);
+  expect(view.result.current.loading).toBe(true);
   await act(async () => {
     finish?.(notSet);
   });
@@ -81,7 +81,7 @@ it("충돌 조회 실패를 지운 뒤 같은 모드로 재시도하고 기존 �
     view.result.current.retry();
   });
   await waitFor(() => expect(view.result.current.result?.response).toEqual(ok("3")));
-  expect(view.result.current.result?.mode).toBe("stale");
+  await waitFor(() => expect(view.result.current.result?.mode).toBe("stale"));
 });
 it("연결 예외도 원래 값을 포함하지 않는 공통 실패로 끝낸다", async () => {
   const view = renderHook(() =>
@@ -93,3 +93,64 @@ it("연결 예외도 원래 값을 포함하지 않는 공통 실패로 끝낸�
   expect(view.result.current.loading).toBe(false);
   expect(view.result.current.failure?.problem).toBeNull();
 });
+
+it("세션 확인 중 요청한 stale 조회를 확인 뒤 한 번 이어서 읽는다", async () => {
+  const load = vi.fn(async () => ok("latest"));
+  const view = renderHook((props) => useVersionedRead(load, props), { initialProps: { sessionChecking: false } });
+  await waitFor(() => expect(load).toHaveBeenCalledOnce());
+  view.rerender({ sessionChecking: true });
+  act(() => {
+    expect(view.result.current.read("stale")).toBe(false);
+  });
+  view.rerender({ sessionChecking: false });
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(view.result.current.result?.mode).toBe("stale"));
+});
+
+it.each(["loaded", "empty", "expired", "noShop"] as const)(
+  "조회 결과 %s 콜백을 렌더마다 되풀이하지 않고 한 번 전달한다",
+  async (kind) => {
+    const onLoaded = vi.fn(),
+      onNotSet = vi.fn(),
+      onSessionExpired = vi.fn(),
+      onRegisterShop = vi.fn();
+    const response =
+      kind === "loaded"
+        ? ok("value")
+        : kind === "empty"
+          ? notSet
+          : {
+              ok: false as const,
+              status: kind === "expired" ? 401 : 404,
+              problem: parseProblem(
+                { code: kind === "expired" ? "unauthenticated" : "shop_not_registered" },
+                kind === "expired" ? 401 : 404,
+              ),
+              retryAfterSeconds: null,
+            };
+    const view = renderHook(() =>
+      useVersionedRead(async () => response, {
+        allowNotSet: true,
+        onLoaded,
+        onNotSet,
+        onSessionExpired,
+        onRegisterShop,
+      }),
+    );
+    const called =
+      kind === "loaded"
+        ? onLoaded
+        : kind === "empty"
+          ? onNotSet
+          : kind === "expired"
+            ? onSessionExpired
+            : onRegisterShop;
+    await waitFor(() => expect(called).toHaveBeenCalledOnce());
+    view.rerender();
+    await act(async () => {});
+    expect(called).toHaveBeenCalledOnce();
+    for (const callback of [onLoaded, onNotSet, onSessionExpired, onRegisterShop])
+      if (callback !== called) expect(callback).not.toHaveBeenCalled();
+    if (kind === "loaded") expect(onLoaded).toHaveBeenCalledWith("initial", { value: "value" });
+  },
+);

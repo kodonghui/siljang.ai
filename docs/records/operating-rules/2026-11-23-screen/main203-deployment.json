@@ -1,0 +1,71 @@
+{
+  "main": "2dbf603cd8365b3b8c15935824a728022e225513",
+  "pullRequest": 203,
+  "runs": [
+    {
+      "id": 45220581209,
+      "name": "app",
+      "attempt": 1
+    },
+    {
+      "id": 45220581158,
+      "name": "db",
+      "attempt": 1
+    }
+  ],
+  "checks": [
+    {
+      "id": 137855534174,
+      "name": "스테이징 배포",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137853406244,
+      "name": "PostgreSQL 16.15",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137853406126,
+      "name": "Windows PowerShell 평가 인증(모의)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137853405743,
+      "name": "check",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137853405551,
+      "name": "PostgreSQL 17.11",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "native": {
+    "machine": "academy-pc",
+    "tool": "Wrangler CLI",
+    "loggedIn": true,
+    "accountMatches": true,
+    "app": {
+      "tag": "2dbf603cd8365b3b8c15935824a728022e225513",
+      "versionId": "c56e0a28-7d33-4748-a7b5-a8a898c975a1",
+      "createdOn": "2026-11-23T16:52:01.063477Z"
+    },
+    "storage": {
+      "tag": "2dbf603cd8365b3b8c15935824a728022e225513",
+      "versionId": "7c88d365-c613-4568-b4a6-a020fd415fde",
+      "createdOn": "2026-11-23T16:51:50.88914Z",
+      "percentage": 100
+    },
+    "healthStatus": 200,
+    "exitCode": 0
+  },
+  "screenChecks": {
+    "completed": 0,
+    "reason": "학원컴 Aside CDP 문제로 실제 화면은 미확인입니다."
+  }
+}

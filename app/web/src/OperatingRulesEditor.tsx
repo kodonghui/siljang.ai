@@ -1,5 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CONNECTION_FAILED as NETWORK } from "./api";
+import { formatSeoulDateTime } from "./format-date";
+import { OPERATING_RULE_LABELS as LABELS, OperatingRulesSummary } from "./OperatingRulesSummary";
 import {
   fetchOperatingRules,
   type OperatingRules,
@@ -33,15 +35,6 @@ import { useCommand } from "./useCommand";
 import { useVersionedRead } from "./useVersionedRead";
 import "./operating-rules.css";
 
-const LABELS = {
-  quoteValidHours: "견적 유효 기한(시간)",
-  paymentDueHours: "결제 기한(시간)",
-  issueReportHours: "문제 신고 기한(시간)",
-  changeDeadlineHours: "변경 마감(시간)",
-  cancellationFeeKrw: "취소 수수료(원)",
-  preProductionRefundPct: "제작 전 취소 환불(%)",
-} as const;
-const dateFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", dateStyle: "short", timeStyle: "short" });
 function orderedClauses(form: OperatingRulesForm) {
   return form.clauses.filter((c) => c.enabled).sort((a, b) => a.position - b.position);
 }
@@ -99,15 +92,19 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
   const {
     loading,
     failure: loadFailure,
-    result: readResult,
     read,
     retry: retryRead,
     clearFailure,
   } = useVersionedRead(fetchOperatingRules, {
     sessionChecking: Boolean(props.sessionChecking || props.logoutPending),
     sessionFailed: Boolean(props.sessionFailed),
+    onLoaded: (mode, data) => {
+      if (mode === "stale") setLatest(data);
+      else adopt(data, undefined, true);
+    },
+    onSessionExpired: () => callbacks.current.onSessionExpired(),
+    onRegisterShop: () => callbacks.current.onRegisterShop(),
   });
-  const handledRead = useRef<unknown>(null);
   const command = useCommand<Record<string, unknown>, OperatingRulesResult>((body, key) => {
     if (callbacks.current.sessionChecking || callbacks.current.sessionFailed || callbacks.current.logoutPending)
       return Promise.resolve(NETWORK);
@@ -116,6 +113,8 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
   const formRef = useRef<HTMLFormElement>(null),
     statusRef = useRef<HTMLElement>(null),
     focusPending = useRef<string | null>(null),
+    clauseFocus = useRef<{ id: string; enabled: boolean } | null>(null),
+    actionFocus = useRef<{ id: string | null; kind: "clause" | "tier" } | null>(null),
     handledDone = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
@@ -138,18 +137,6 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     },
     [command.reset, clearFailure],
   );
-  useEffect(() => {
-    if (!readResult || handledRead.current === readResult) return;
-    handledRead.current = readResult;
-    const result = readResult.response;
-    if (result.ok) {
-      if (readResult.mode === "stale") setLatest(result.data);
-      else adopt(result.data, undefined, true);
-    } else {
-      if (result.status === 401) callbacks.current.onSessionExpired();
-      if (result.problem?.code === "shop_not_registered") callbacks.current.onRegisterShop();
-    }
-  }, [readResult, adopt]);
   useEffect(() => {
     if (command.state.kind !== "done" || handledDone.current === command.state.data) return;
     handledDone.current = command.state.data;
@@ -177,8 +164,32 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     }
   }, [failure, read, reveal]);
   useEffect(() => {
+    if (requestsBlocked) return;
+    const action = actionFocus.current;
+    if (action) {
+      actionFocus.current = null;
+      const row = Array.from(
+        formRef.current?.querySelectorAll<HTMLElement>(
+          action.kind === "clause" ? "[data-clause-id]" : "[data-tier-id]",
+        ) ?? [],
+      ).find((el) => (action.kind === "clause" ? el.dataset.clauseId : el.dataset.tierId) === action.id);
+      const target =
+        row?.querySelector<HTMLElement>("button") ??
+        formRef.current?.querySelector<HTMLElement>(action.kind === "clause" ? "[data-add-clause]" : "[data-add-tier]");
+      target?.focus();
+      return;
+    }
+    const moved = clauseFocus.current;
+    if (moved) {
+      clauseFocus.current = null;
+      const row = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-clause-id]") ?? []).find(
+        (el) => el.dataset.clauseId === moved.id,
+      );
+      row?.querySelector<HTMLElement>(moved.enabled ? "textarea" : "button")?.focus();
+      return;
+    }
     const pointer = focusPending.current;
-    if (!pointer || requestsBlocked) return;
+    if (!pointer) return;
     const field = Array.from(
       formRef.current?.querySelectorAll<HTMLElement>("[data-pointer],[data-row-pointer]") ?? [],
     ).find((el) => el.dataset.pointer === pointer || el.dataset.rowPointer === pointer);
@@ -241,6 +252,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       <fieldset
         key={row.id}
         className="rules-clause"
+        data-clause-id={row.id}
         data-row-pointer={i === undefined ? undefined : pointer}
         data-invalid={
           i !== undefined && allErrors.some((e) => e.field === pointer || e.field.startsWith(`${pointer}/`))
@@ -253,20 +265,30 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
         {!row.enabled ? (
           <Button
             disabled={locked || active.length >= 50}
-            onClick={() =>
-              clause(row.id, { enabled: true, position: Math.max(0, ...active.map((c) => c.position)) + 1 })
-            }
+            onClick={() => {
+              if (!canEdit()) return;
+              clauseFocus.current = { id: row.id, enabled: true };
+              clause(row.id, { enabled: true, position: Math.max(0, ...active.map((c) => c.position)) + 1 });
+            }}
           >
             이 조문 넣기
           </Button>
         ) : (
           <Button
             disabled={locked}
-            onClick={() =>
-              row.key === "custom"
-                ? mutate((old) => ({ ...old, clauses: old.clauses.filter((c) => c.id !== row.id) }))
-                : clause(row.id, { enabled: false })
-            }
+            onClick={() => {
+              if (!canEdit()) return;
+              if (row.key === "custom") {
+                actionFocus.current = {
+                  kind: "clause",
+                  id: active[active.findIndex((c) => c.id === row.id) + 1]?.id ?? null,
+                };
+                mutate((old) => ({ ...old, clauses: old.clauses.filter((c) => c.id !== row.id) }));
+              } else {
+                clauseFocus.current = { id: row.id, enabled: false };
+                clause(row.id, { enabled: false });
+              }
+            }}
           >
             조문 빼기
           </Button>
@@ -313,6 +335,17 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     >
       <div className="rules-editor">
         <div className="rules-actions">
+          <a
+            href="/owner/operating-rules/versions"
+            aria-disabled={locked}
+            tabIndex={locked ? -1 : undefined}
+            onClick={(event) => {
+              event.preventDefault();
+              if (!locked) props.onNavigate("/owner/operating-rules/versions");
+            }}
+          >
+            버전 이력
+          </a>
           <Button
             disabled={pending}
             busy={Boolean(props.logoutPending)}
@@ -334,7 +367,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
             ) : (
               <p>
                 운영규정 버전 {base.version}
-                {base.createdAt ? ` · ${dateFormat.format(new Date(base.createdAt))} 확정` : ""}
+                {base.createdAt ? ` · ${formatSeoulDateTime(base.createdAt)} 확정` : ""}
               </p>
             )}
             {stale ? (
@@ -342,7 +375,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                 <Banner tone="warning">그 사이 바뀌었어요. 지금 상태를 확인해 주세요</Banner>
                 {latest ? (
                   <>
-                    <ReadRules value={latest} />
+                    <OperatingRulesSummary value={latest} />
                     <p>내 입력은 아래에 남아 있어요. 같은 필드가 바뀌었으면 다시 적용한 내 값이 사용돼요.</p>
                     <Button
                       disabled={locked}
@@ -474,6 +507,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                   <fieldset
                     key={row.id}
                     className="rules-tier"
+                    data-tier-id={row.id}
                     data-row-pointer={pointer}
                     data-invalid={
                       allErrors.some((e) => e.field === pointer || e.field.startsWith(`${pointer}/`)) ? true : undefined
@@ -510,9 +544,11 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                     {notes(pointer) ? <p className="ui-field__error">{notes(pointer)}</p> : null}
                     <Button
                       disabled={locked}
-                      onClick={() =>
-                        mutate((old) => ({ ...old, refundTiers: old.refundTiers.filter((t) => t.id !== row.id) }))
-                      }
+                      onClick={() => {
+                        if (!canEdit()) return;
+                        actionFocus.current = { kind: "tier", id: form.refundTiers[i + 1]?.id ?? null };
+                        mutate((old) => ({ ...old, refundTiers: old.refundTiers.filter((t) => t.id !== row.id) }));
+                      }}
                     >
                       단계 삭제
                     </Button>
@@ -520,6 +556,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                 );
               })}
               <Button
+                data-add-tier
                 disabled={locked || form.refundTiers.length >= 20}
                 onClick={() =>
                   mutate((old) => ({
@@ -540,11 +577,14 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
               {exceeds ? <Banner tone="danger">주문 요청 카드에 다 들어가지 않아요. 조문을 줄여 주세요</Banner> : null}
               {paired ? <Banner tone="danger">단계별 환불 조문과 표를 함께 채워 주세요</Banner> : null}
               {orderedClauses(form).map(renderClause)}
-              <section className="rules-section" aria-label="넣을 수 있는 기본 조문">
-                <h3>기본 조문 선택</h3>
-                {form.clauses.filter((row) => !row.enabled).map(renderClause)}
-              </section>
+              {form.clauses.some((row) => !row.enabled) ? (
+                <section className="rules-section" aria-label="넣을 수 있는 기본 조문">
+                  <h3>기본 조문 선택</h3>
+                  {form.clauses.filter((row) => !row.enabled).map(renderClause)}
+                </section>
+              ) : null}
               <Button
+                data-add-clause
                 disabled={locked || active.length >= 50}
                 onClick={() =>
                   mutate((old) => ({
@@ -569,7 +609,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
               <p>조문 {active.length}/50개</p>
             </section>
             <div className="rules-save">
-              <Button kind="primary" type="submit" disabled={locked || stale} busy={command.busy}>
+              <Button kind="primary" type="submit" disabled={locked || stale || command.blocked} busy={command.busy}>
                 확정
               </Button>
             </div>
@@ -586,45 +626,5 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
         />
       </div>
     </OwnerLayout>
-  );
-}
-function ReadRules({ value }: { readonly value: OperatingRules }) {
-  return (
-    <div className="rules-comparison">
-      <p>{value.isTemplate ? "아직 확정 전이에요" : `운영규정 버전 ${value.version}`}</p>
-      <dl>
-        {(Object.entries(LABELS) as [keyof typeof LABELS, string][]).map(([key, label]) => (
-          <div key={key}>
-            <dt>{label}</dt>
-            <dd>{value[key] ?? "아직 정하지 않음"}</dd>
-          </div>
-        ))}
-        <div>
-          <dt>날짜 변경 환불 기준</dt>
-          <dd>
-            {value.dateChangeRefundBasis === "original_pickup"
-              ? "처음 픽업 일시"
-              : value.dateChangeRefundBasis === "new_pickup"
-                ? "바꾼 픽업 일시"
-                : "아직 정하지 않음"}
-          </dd>
-        </div>
-      </dl>
-      {value.clauses.map((row) => (
-        <details key={row.position}>
-          <summary>{row.title}</summary>
-          <p>{row.conditionText}</p>
-          <p>{row.effectText}</p>
-        </details>
-      ))}
-      <ul>
-        {value.refundTiers.map((row) => (
-          <li key={JSON.stringify([row.hoursBeforeMin, row.hoursBeforeMax])}>
-            {row.hoursBeforeMin}시간 전부터{" "}
-            {row.hoursBeforeMax === null ? "끝없음" : `${row.hoursBeforeMax}시간 전까지`} · {row.refundPct}%
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
