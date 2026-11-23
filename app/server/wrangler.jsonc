@@ -36,7 +36,8 @@
       "simple": { "limit": 10, "period": 60 }
     },
     { "name": "PUBLIC_PRIVACY_RATE_LIMITER", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } },
-    { "name": "PUBLIC_BOOKING_RATE_LIMITER", "namespace_id": "1004", "simple": { "limit": 60, "period": 60 } }
+    { "name": "PUBLIC_BOOKING_RATE_LIMITER", "namespace_id": "1004", "simple": { "limit": 60, "period": 60 } },
+    { "name": "FILE_RATE_LIMITER", "namespace_id": "1005", "simple": { "limit": 600, "period": 60 } }
   ],
   "env": {
     "staging": {
@@ -76,7 +77,8 @@
           "simple": { "limit": 10, "period": 60 }
         },
         { "name": "PUBLIC_PRIVACY_RATE_LIMITER", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } },
-        { "name": "PUBLIC_BOOKING_RATE_LIMITER", "namespace_id": "1004", "simple": { "limit": 60, "period": 60 } }
+        { "name": "PUBLIC_BOOKING_RATE_LIMITER", "namespace_id": "1004", "simple": { "limit": 60, "period": 60 } },
+        { "name": "FILE_RATE_LIMITER", "namespace_id": "1005", "simple": { "limit": 600, "period": 60 } }
       ]
     }
   }

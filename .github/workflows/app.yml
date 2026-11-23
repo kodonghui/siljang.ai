@@ -84,6 +84,9 @@ jobs:
       - name: 스테이징 설정 도구 시험(비밀 값 없이)
         run: node --test ../tools/test/staging-runtime.test.mjs ../tools/test/staging-owner-login.test.mjs ../tools/test/staging-monitor.test.mjs ../tools/test/staging-job-policy.test.mjs ../research/webp-orientation-2026-11/active-version.test.mjs 2>&1 | tee ci-logs/staging-runtime.log
 
+      - name: 학원컴 평가의 키 비전달·실패 정리 시험(모의)
+        run: python3 -I ../research/ai-eval-native-2026-11/test_native_auth.py 2>&1 | tee ci-logs/native-auth.log
+
       - name: 빌드(웹 Vite, 서버 wrangler --dry-run)
         run: npm run build 2>&1 | tee ci-logs/build.log
 
@@ -91,9 +94,33 @@ jobs:
         if: ${{ !cancelled() }}
         run: node ../tools/check-no-keys.mjs ci-logs/*.log
 
+  native-auth-windows:
+    name: Windows PowerShell 평가 인증(모의)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: app/.nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: 공개 평가 코드 설치/생성
+        shell: pwsh
+        run: |
+          npm ci --no-audit --no-fund
+          node ../research/ai-eval-native-2026-11/bundle.mjs "$env:RUNNER_TEMP/siljang-auth-eval.mjs"
+      - name: Windows PowerShell의 인증 분기·결과 반환/거절·정리(외부 모델 요청 없음)
+        shell: pwsh
+        env:
+          SILJANG_NATIVE_TEST_BUNDLE: ${{ runner.temp }}/siljang-auth-eval.mjs
+        run: python -I ../research/ai-eval-native-2026-11/test_native_driver.py
+
   deploy-staging:
     name: 스테이징 배포
-    needs: check
+    needs: [check, native-auth-windows]
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.SILJANG_STAGING_DOMAIN != '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15

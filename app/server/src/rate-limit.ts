@@ -18,7 +18,8 @@ export interface RateLimitRule {
     | "UPLOAD_RATE_LIMITER"
     | "OWNER_LOGIN_RATE_LIMITER"
     | "PUBLIC_PRIVACY_RATE_LIMITER"
-    | "PUBLIC_BOOKING_RATE_LIMITER";
+    | "PUBLIC_BOOKING_RATE_LIMITER"
+    | "FILE_RATE_LIMITER";
   readonly limit: number;
   readonly periodSeconds: 10 | 60;
 }
@@ -53,3 +54,6 @@ export const PUBLIC_BOOKING_RATE: RateLimitRule = {
   limit: 60,
   periodSeconds: 60,
 };
+
+/** 도안50장+포트폴리오100장을 한IP에서 한 분에 네 번 읽을 수 있는 상한. */
+export const FILE_RATE: RateLimitRule = { binding: "FILE_RATE_LIMITER", limit: 600, periodSeconds: 60 };

@@ -21,7 +21,11 @@ async function fixture(options: Parameters<typeof createApp>[0] = {}) {
   if (!row) throw new Error("합성 예약 주소 없음");
   const pageLimit = new MemoryLimiter(60),
     privacyLimit = new MemoryLimiter(60);
-  const limiters = { PUBLIC_BOOKING_RATE_LIMITER: pageLimit, PUBLIC_PRIVACY_RATE_LIMITER: privacyLimit };
+  const limiters = {
+    PUBLIC_BOOKING_RATE_LIMITER: pageLimit,
+    PUBLIC_PRIVACY_RATE_LIMITER: privacyLimit,
+    FILE_RATE_LIMITER: new MemoryLimiter(600),
+  };
   const storage = new MemoryStore();
   const app = createApp({
     ...options,

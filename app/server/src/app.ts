@@ -2,7 +2,7 @@ import { type Context, Hono } from "hono";
 import { getBookingLink } from "./booking-link";
 import { getCalendarDays, getCalendarSettings, setCalendarSettings, updateCalendarDay } from "./calendar";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
-import { FILE_ROUTE, serveFile } from "./file-url";
+import { FILE_ROUTE, PUBLIC_FILE_ROUTE, serveFile } from "./file-url";
 import { requestIdentityChange } from "./identity-change-request";
 import { SKILL_WORK_MS } from "./kakao-callback";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
@@ -92,6 +92,7 @@ export type Bindings = {
   readonly OWNER_LOGIN_RATE_LIMITER?: RateLimitBinding;
   readonly PUBLIC_PRIVACY_RATE_LIMITER?: RateLimitBinding;
   readonly PUBLIC_BOOKING_RATE_LIMITER?: RateLimitBinding;
+  readonly FILE_RATE_LIMITER?: RateLimitBinding;
   readonly KAKAO_REST_API_KEY?: string;
   readonly KAKAO_CLIENT_SECRET?: string;
   readonly KAKAO_ADMIN_KEY?: string;
@@ -217,7 +218,10 @@ export const APP_ROUTES: readonly RouteDecl[] = [
     "GET",
     FILE_ROUTE,
     "사진의 15분 서명 주소(06 DEC-09, 계약 밖, TASK-022). 주소의 서명이 권한이라 세션·가게를 보지 않음. 저장소만 읽고 데이터베이스는 보지 않음",
-    serveFile,
+    (c) => serveFile(c),
+  ),
+  openRoute("GET", PUBLIC_FILE_ROUTE, "공개 포트폴리오5분 구간 주소·공개 캐시/IP 한도(승인7090984075)", (c) =>
+    serveFile(c, true),
   ),
 ];
 

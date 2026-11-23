@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   bindingLimiter,
+  FILE_RATE,
   OWNER_LOGIN_RATE,
   PUBLIC_BOOKING_RATE,
   PUBLIC_PRIVACY_RATE,
@@ -32,6 +33,7 @@ describe("사진 올리기 한도 묶음(Cloudflare Rate Limiting)", () => {
       { name: OWNER_LOGIN_RATE.binding, namespace_id: "1002", simple: { limit: 10, period: 60 } },
       { name: PUBLIC_PRIVACY_RATE.binding, namespace_id: "1003", simple: { limit: 60, period: 60 } },
       { name: PUBLIC_BOOKING_RATE.binding, namespace_id: "1004", simple: { limit: 60, period: 60 } },
+      { name: FILE_RATE.binding, namespace_id: "1005", simple: { limit: 600, period: 60 } },
     ];
     expect(OWNER_LOGIN_RATE).toEqual({ binding: "OWNER_LOGIN_RATE_LIMITER", limit: 10, periodSeconds: 60 });
     expect(wranglerConfig().ratelimits).toEqual(expected);

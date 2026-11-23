@@ -91,7 +91,9 @@ export async function getPublicBookingPage(r: ShopRequest): Promise<Response> {
         ),
       },
       days,
-      portfolio: await Promise.all(photos.map(async (p) => ({ imageUrl: await sign(p.storage_key) }))),
+      portfolio: await Promise.all(
+        photos.map(async (p) => ({ imageUrl: await r.services.fileUrls().signPublic(p.storage_key, origin, now) })),
+      ),
       privacyPolicyUrl: new URL(`/s/${r.req.param("slug")}/privacy`, r.services.publicAppOrigin ?? origin).href,
       inquiryUrl: channel?.channel_public_id
         ? `https://pf.kakao.com/${encodeURIComponent(channel.channel_public_id)}/chat`
