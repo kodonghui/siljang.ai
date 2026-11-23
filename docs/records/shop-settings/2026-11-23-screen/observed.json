@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-23",
+  "environment": "academy-pc Aside CLI",
+  "viewport": {
+    "width": 360,
+    "height": 900
+  },
+  "beforeSave": {
+    "top": 1404.34375,
+    "bottom": 1448.34375
+  },
+  "afterSave": {
+    "top": 844,
+    "bottom": 888,
+    "position": "fixed"
+  },
+  "checkboxLabels": [
+    {
+      "width": 345,
+      "height": 23.25
+    },
+    {
+      "width": 345,
+      "height": 44
+    }
+  ],
+  "identityLink": {
+    "width": 57.0625,
+    "height": 44
+  },
+  "keyboardBeforeFixedStyle": {
+    "from": "가게 이름",
+    "afterTab": "연락처"
+  },
+  "finalStyleSha256": "094db46b8eaf1986188470b483b9f4242e86b8e3cccfec4a59ab67ca70925e5e",
+  "capture": {
+    "beforeFixedNormal360": "before-fixed-save-normal-360.png",
+    "error1280": "not_recovered_after_two_cdp_timeouts",
+    "finalNormal360": "not_recovered_after_cdp_timeout"
+  }
+}

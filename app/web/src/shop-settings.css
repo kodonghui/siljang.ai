@@ -1,0 +1,86 @@
+.shop-settings,
+.settings-form,
+.settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+.settings-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--size-photo)), 1fr));
+  gap: var(--space-md);
+}
+.settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  min-height: var(--size-target);
+  border: var(--border-width-hairline) solid var(--color-line);
+  background: var(--color-surface);
+  text-decoration: none;
+  color: inherit;
+}
+.settings-card strong {
+  font-weight: var(--font-weight-semibold);
+}
+.settings-card[aria-disabled="true"] {
+  cursor: default;
+}
+.settings-identity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--size-menu)), 1fr));
+  gap: var(--space-md);
+}
+.settings-identity dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.settings-fields {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.settings-fields legend {
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-semibold);
+  margin-block-end: var(--space-md);
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--size-aside)), 1fr));
+  gap: var(--space-lg);
+}
+.settings-address {
+  min-height: calc(var(--size-control) * 2);
+  resize: vertical;
+}
+.settings-toggle {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  min-height: var(--size-target);
+}
+.settings-actions {
+  position: var(--layout-action-position);
+  bottom: 0;
+  z-index: 1;
+  inset-inline: var(--layout-action-inset);
+  max-width: calc(var(--size-content) - var(--size-aside));
+  margin-inline: auto;
+  padding: var(--space-md);
+  background: var(--color-paper);
+}
+.settings-actions .ui-button {
+  width: 100%;
+}
+.shop-settings section[aria-labelledby="settings-identity-title"] > a {
+  display: inline-flex;
+  min-height: var(--size-target);
+  align-items: center;
+}
+
+.shop-settings {
+  padding-block-end: var(--layout-action-clearance);
+}

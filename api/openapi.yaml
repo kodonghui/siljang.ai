@@ -1239,6 +1239,14 @@ paths:
                     createdAt: '2026-11-12T10:05:00+09:00'
                     updatedAt: '2026-11-12T15:20:00+09:00'
                     revision: 105995083ca7
+                    settingsSummary:
+                      priceListVersion: 3
+                      operatingRulesVersion: 2
+                      paymentConfigured: true
+                      kakaoChannelStatus: linked
+                      ledgerStatus: null
+                      hasPortfolio: false
+                      hasReviews: false
                 pending:
                   value:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
@@ -1271,6 +1279,14 @@ paths:
                     createdAt: '2026-11-12T10:05:00+09:00'
                     updatedAt: '2026-11-12T10:05:00+09:00'
                     revision: 4841fd716c98
+                    settingsSummary:
+                      priceListVersion: null
+                      operatingRulesVersion: null
+                      paymentConfigured: false
+                      kakaoChannelStatus: null
+                      ledgerStatus: null
+                      hasPortfolio: false
+                      hasReviews: false
                 on_hold:
                   value:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
@@ -1303,6 +1319,14 @@ paths:
                     createdAt: '2026-11-12T10:05:00+09:00'
                     updatedAt: '2026-11-12T13:40:00+09:00'
                     revision: cf360653f1b5
+                    settingsSummary:
+                      priceListVersion: null
+                      operatingRulesVersion: null
+                      paymentConfigured: false
+                      kakaoChannelStatus: null
+                      ledgerStatus: null
+                      hasPortfolio: false
+                      hasReviews: false
                 identity_change_pending:
                   value:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
@@ -1348,6 +1372,14 @@ paths:
                     createdAt: '2026-11-12T10:05:00+09:00'
                     updatedAt: '2026-11-14T10:20:00+09:00'
                     revision: d6d64927f2e9
+                    settingsSummary:
+                      priceListVersion: 3
+                      operatingRulesVersion: 2
+                      paymentConfigured: true
+                      kakaoChannelStatus: linked
+                      ledgerStatus: null
+                      hasPortfolio: false
+                      hasReviews: false
                 identity_change_on_hold:
                   value:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
@@ -1393,6 +1425,14 @@ paths:
                     createdAt: '2026-11-12T10:05:00+09:00'
                     updatedAt: '2026-11-14T11:05:00+09:00'
                     revision: 4654307cbf8d
+                    settingsSummary:
+                      priceListVersion: 3
+                      operatingRulesVersion: 2
+                      paymentConfigured: true
+                      kakaoChannelStatus: linked
+                      ledgerStatus: null
+                      hasPortfolio: false
+                      hasReviews: false
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -1557,6 +1597,14 @@ paths:
                       createdAt: '2026-11-12T10:05:00+09:00'
                       updatedAt: '2026-11-12T15:20:00+09:00'
                       revision: 105995083ca7
+                      settingsSummary:
+                        priceListVersion: 3
+                        operatingRulesVersion: 2
+                        paymentConfigured: true
+                        kakaoChannelStatus: linked
+                        ledgerStatus: null
+                        hasPortfolio: false
+                        hasReviews: false
                 unchanged:
                   summary: 이미 그 상태라 바꾼 것 없음(DEC-03)
                   value:
@@ -1592,6 +1640,14 @@ paths:
                       createdAt: '2026-11-12T10:05:00+09:00'
                       updatedAt: '2026-11-12T15:20:00+09:00'
                       revision: 105995083ca7
+                      settingsSummary:
+                        priceListVersion: 3
+                        operatingRulesVersion: 2
+                        paymentConfigured: true
+                        kakaoChannelStatus: linked
+                        ledgerStatus: null
+                        hasPortfolio: false
+                        hasReviews: false
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -25230,6 +25286,55 @@ components:
           pattern: ^upl_[A-Za-z0-9_-]{20,200}$
           description: 용도 license_photo로 올린 신고증 사진
       additionalProperties: false
+    ShopSettingsSummary:
+      type: object
+      description: 가게 설정 목록의 현재 상태(SCR-034). 계좌·OAuth 참조·사진 주소는 포함하지 않음
+      required:
+      - priceListVersion
+      - operatingRulesVersion
+      - paymentConfigured
+      - kakaoChannelStatus
+      - ledgerStatus
+      - hasPortfolio
+      - hasReviews
+      properties:
+        priceListVersion:
+          type:
+          - integer
+          - "null"
+          minimum: 1
+          maximum: 2147483647
+        operatingRulesVersion:
+          type:
+          - integer
+          - "null"
+          minimum: 1
+          maximum: 2147483647
+        paymentConfigured:
+          type: boolean
+        kakaoChannelStatus:
+          type:
+          - string
+          - "null"
+          enum:
+          - not_started
+          - pending
+          - linked
+          - failed
+          - null
+        ledgerStatus:
+          type:
+          - string
+          - "null"
+          enum:
+          - linked
+          - auth_lost
+          - null
+        hasPortfolio:
+          type: boolean
+        hasReviews:
+          type: boolean
+      additionalProperties: false
     Shop:
       type: object
       description: 사장님이 보는 가게(그 가게 사장님만). 상호·대표자·사업자등록번호는 운영자가 확인한 지금 값이고, 바꾸는 중이면 새 값은 identityChange에만(REQ-245)
@@ -25403,6 +25508,9 @@ components:
           maxLength: 64
           pattern: ^[A-Za-z0-9._-]+$
           description: 서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)
+        settingsSummary:
+          $ref: '#/components/schemas/ShopSettingsSummary'
+          description: API-009/010의 현재 카드 상태. 등록·신고·사업자 정보 변경 응답에는 없음. not_started는 확인 시작 전, pending은 확인 중, failed는 확인 실패
       additionalProperties: false
     ShopResult:
       type: object
