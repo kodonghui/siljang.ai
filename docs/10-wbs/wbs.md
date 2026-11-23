@@ -2,7 +2,7 @@
 
 <!-- build_wbs.py가 research/cake-wbs-2026-11/wbs_rows.py에서 생성. 손으로 고치지 않음 -->
 
-작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 32개.
+작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 33개.
 
 읽는 법과 나눈 방식은 [README](README.md)에 있습니다. '닿는 것'은 만드는 API, 쓰고 읽는 테이블, 만드는 화면입니다. '끝난 조건'의 첫 줄은 손으로 쓴 조건이고, 수락 기준·응답 코드·스킬 결과·화면 상태·응답 행·규칙 줄은 원본에서 생성합니다. 화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다. 끝난 작업은 끝난 조건 맨 앞에 '끝남'과 끝난 날·증거가 붙습니다.
 
@@ -119,7 +119,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 
 | ID | 작업 | 출처 | 닿는 것 | 앞선 작업 | 맡은 이 | 크기 | 끝난 조건 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TASK-063 | 손님 메시지 받기: 상담 열기·이어가기, 채널 친구 여부, 한도, 글 길이 | SPEC-017, REQ-262, A13 | API-070, TBL-003, TBL-004, TBL-016, TBL-017, TBL-018, TBL-027, TBL-048, TBL-051 | TASK-028, TASK-019 | Claude | 2일 | SPEC-017 수락 기준 #3~#4·#7: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 callback_pending·ai_unavailable·ai_timeout·ai_key_missing·ai_limit_reached·ai_cost_limit_reached·unsupported_message·rate_limited·duplicate·not_accepting·server_error<br/>05 앱 규칙(A13)을 지키는지 보는 서버 시험 |
+| TASK-063 | 손님 메시지 받기: 상담 열기·이어가기, 채널 친구 여부, 한도, 글 길이 | SPEC-017, REQ-262, A13 | API-070, TBL-003, TBL-004, TBL-016, TBL-017, TBL-018, TBL-027, TBL-048, TBL-051 | TASK-028, TASK-019 | Claude | 2일 | 끝남: 2026-11-24, docs/records/kakao-messages/2026-11-24/task-063-acceptance.md, 새 빈 PostgreSQL34개 마이그레이션·서버2226개/웹1563개·타입/빌드, SPEC-017 #3·4·7/API-070 네 응답·11결과/A13 자동 시험<br/>SPEC-017 수락 기준 #3~#4·#7: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 callback_pending·ai_unavailable·ai_timeout·ai_key_missing·ai_limit_reached·ai_cost_limit_reached·unsupported_message·rate_limited·duplicate·not_accepting·server_error<br/>05 앱 규칙(A13)을 지키는지 보는 서버 시험 |
 | TASK-064 | AI 상담 고지(처리방침 버전과 함께) | SPEC-018, A39 | API-070, TBL-005, TBL-017, TBL-018 | TASK-063, TASK-044 | Claude | 1일 | SPEC-018 수락 기준 #1~#3: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험<br/>05 앱 규칙(A39)을 지키는지 보는 서버 시험 |
 | TASK-065 | 참고 사진 받기 | SPEC-019, A11, G10 | API-070, API-072, TBL-018, TBL-020, TBL-021 | TASK-063, TASK-183 | Claude | 1일 | 사진은 G10 모듈(TASK-183)로 메타데이터를 지운 뒤 저장<br/>SPEC-019 수락 기준 #1: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 photo_received·photo_rejected<br/>API-072 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 photo_download_failed<br/>05 앱 규칙(A11)을 지키는지 보는 서버 시험<br/>04 공통 규칙(G10)을 지키는지 보는 시험 |
 | TASK-066 | AI 모델로 보내는 대화 마스킹과 줄이기 | SPEC-021, A15 | API-070, TBL-018, TBL-019, TBL-027, TBL-048, TBL-049 | TASK-063, TASK-025, TASK-026 | Claude | 2일 | SPEC-021 수락 기준 #1~#11: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 masking_failed<br/>05 앱 규칙(A15)을 지키는지 보는 서버 시험 |
