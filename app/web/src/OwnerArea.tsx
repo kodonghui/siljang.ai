@@ -3,6 +3,7 @@ import { matchPath, Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
 import { BookingLinkScreen } from "./BookingLinkScreen";
 import { CalendarScreen } from "./CalendarScreen";
+import { CalendarSettingsScreen } from "./CalendarSettingsScreen";
 import { KakaoChannelSettings } from "./KakaoChannelSettings";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import { OperatingRulesHistory } from "./OperatingRulesHistory";
@@ -35,6 +36,7 @@ const shopScreens = [
   { path: "/owner/kakao-channel", Screen: KakaoChannelSettings, checkDestination: true },
   { path: "/owner/booking-link", Screen: BookingLinkScreen, checkDestination: true },
   { path: "/owner/calendar", Screen: CalendarScreen, checkDestination: true },
+  { path: "/owner/calendar/settings", Screen: CalendarSettingsScreen, checkDestination: true },
 ] as const;
 const historyScreens = [
   { path: "/owner/price-list/versions/:version?", Screen: PriceListHistory },

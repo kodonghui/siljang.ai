@@ -1,0 +1,52 @@
+.calendar-settings-screen,
+.calendar-settings-form,
+.calendar-settings-conflicts {
+  display: grid;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+.calendar-settings-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+.calendar-settings-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+.calendar-settings-weekdays {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: grid;
+  gap: var(--space-sm);
+}
+.calendar-settings-weekdays legend {
+  padding: 0;
+  margin-bottom: var(--space-sm);
+  font-weight: var(--font-weight-semibold);
+}
+.calendar-settings-weekdays > div {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(var(--size-target), 1fr));
+}
+.calendar-settings-weekdays button {
+  padding-inline: 0;
+  min-width: var(--size-target);
+}
+.calendar-settings-weekdays [aria-pressed="true"] {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+.calendar-settings-field-error {
+  color: var(--color-danger);
+}
+.calendar-settings-conflicts {
+  overflow-wrap: anywhere;
+}
+.calendar-settings-conflicts ul {
+  padding-inline-start: var(--space-xl);
+}
