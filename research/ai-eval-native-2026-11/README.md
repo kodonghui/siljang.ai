@@ -37,3 +37,5 @@ python3 -I research/ai-eval-native-2026-11/test_native_auth.py
 Windows CI의 `test_native_driver.py`는 공개 평가 코드와 Node22.23.4만 써서 실제 Windows PowerShell로 모의134건/결과5개·표식 가림·파일 거절·Node 부재/버전 오류와 자기 폴더 정리를 실행합니다. Linux에서는 이4개를 건너뛰며 Windows job 성공을 별도로 확인합니다. 이 시험에는 저장소 비밀 값을 전달하지 않습니다.
 
 2026-11-23 12:08~12:11 KST 학원컴의 새 SSH PowerShell은30초 시간 초과,cmd 경로도18초 시간 초과였습니다. 기존 Aside CLI 세션의 SQL 확인은 동작합니다. 원인을 키/요금제로 추정하지 않고 새 SSH 경로만 보류했습니다. 학원컴에서 새 인증 분기의 모의 실행은 아직 통과하지 않았으며 Windows CI 결과와 구분합니다.
+
+2026-11-23 12:37 KST Windows CI137470483614의 실제 PowerShell4개는13.172초/OK입니다. 모의134건/결과5개·표식 가림/파일 거절·Node 부재/버전과 자기 폴더 정리를 확인했습니다. 모의/거절은 실제 키와 실제 모델을 사용하지 않습니다. 실제 학원컴의 새 SSH 경로는 아직 별도 미확인입니다.
