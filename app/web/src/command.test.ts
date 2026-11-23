@@ -418,3 +418,28 @@ describe("send와 처음으로", () => {
     expect(r.submit({})).toBe(true);
   });
 });
+
+it.each(["rate_limited", "too_many_attempts"] as const)(
+  "%s 뒤 편집 reset은 남은 대기를 보존하고 옛 본문 자동 재전송을 버린다",
+  async (code) => {
+    const { send, calls } = script(fail(code, {}, 30), ok({ saved: true }));
+    const { r, clock } = runner(send);
+    r.submit({ account: "old" });
+    await settle();
+    await clock.advance(10_000);
+    r.reset();
+    expect(r.getState()).toMatchObject({ kind: "failed", blockedUntil: 30_000 });
+    expect(r.submit({ account: "mine" })).toBe(false);
+    expect(r.retry()).toBe(false);
+    await clock.advance(19_999);
+    r.reset();
+    expect(r.submit({ account: "mine" })).toBe(false);
+    await clock.advance(1);
+    expect(calls).toHaveLength(1);
+    expect(r.retry()).toBe(false);
+    expect(r.submit({ account: "mine" })).toBe(true);
+    await settle();
+    expect(calls[1]?.input).toEqual({ account: "mine" });
+    expect(calls[1]?.key).not.toBe(calls[0]?.key);
+  },
+);

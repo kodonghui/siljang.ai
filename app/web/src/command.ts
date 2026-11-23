@@ -164,13 +164,22 @@ export class CommandRunner<I, O> {
     }
   };
 
-  /** 처음으로(보내는 중의 결과는 버림) */
+  /** 입력을 바꾸면 옛 본문을 버리되429의 남은 대기 시각은 보존한다. */
   reset = (): void => {
+    const waiting = this.#state.kind === "failed" && this.#blocked() ? this.#state : null;
+    const until = waiting?.blockedUntil ?? null;
     this.#generation++;
     this.#stopTimer();
     this.#current = null;
     this.#inProgressSince = null;
-    this.#set(IDLE);
+    if (waiting && until !== null) {
+      const failure: Failure = { ...waiting.failure, retry: "none" };
+      this.#set({ kind: "failed", failure, blockedUntil: until });
+      this.#later(until - this.#clock.now(), () => {
+        const state = this.#state;
+        if (state.kind === "failed" && state.failure === failure) this.#set({ ...state, blockedUntil: null });
+      });
+    } else this.#set(IDLE);
   };
 
   /**
