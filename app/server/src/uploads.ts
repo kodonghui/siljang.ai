@@ -270,41 +270,45 @@ export async function checkUploads(
   refs: readonly UploadRef[],
   now: Date,
 ): Promise<TakenUpload[]> {
-  // 원래 검사 순서/오류를 유지한다. 실제로 head하던 유효/중복 아닌 ID만 먼저 서비스 배치로 읽는다.
-  let prefetched: Map<string, StoredObjectInfo | null> | undefined;
-  if (store.batch) {
-    const keys: string[] = [];
-    const ids = new Set<string>();
-    for (const ref of refs) {
-      if (typeof ref.id !== "string" || !CONTRACT_UPLOAD_ID.test(ref.id) || ids.has(ref.id)) continue;
-      ids.add(ref.id);
-      const parsed = parseUploadId(ref.id);
-      if (parsed !== null && now.getTime() < parsed.createdAt + UPLOAD_TTL_MS) keys.push(tempKey(owner, parsed.id));
-    }
-    const values = keys.length ? await store.batch.head(keys) : [];
-    if (values.length !== keys.length) throw new StorageUnavailableError("head: invalid batch result");
-    prefetched = new Map(keys.map((key, i) => [key, values[i] ?? null]));
-  }
   const errors: FieldError[] = [];
   const taken: TakenUpload[] = [];
   const seen = new Set<string>();
+  const keys: string[] = [];
+  type Entry =
+    | { readonly error: FieldError }
+    | { readonly ref: UploadRef; readonly parsed: ParsedUploadId; readonly key: string; readonly index: number };
+  const entries: Entry[] = [];
   for (const ref of refs) {
     if (typeof ref.id !== "string" || !CONTRACT_UPLOAD_ID.test(ref.id)) {
-      errors.push({ field: ref.field, code: "bad_format" });
+      entries.push({ error: { field: ref.field, code: "bad_format" } });
       continue;
     }
     if (seen.has(ref.id)) {
-      errors.push({ field: ref.field, code: "duplicate" });
+      entries.push({ error: { field: ref.field, code: "duplicate" } });
       continue;
     }
     seen.add(ref.id);
     const parsed = parseUploadId(ref.id);
     if (parsed === null || now.getTime() >= parsed.createdAt + UPLOAD_TTL_MS) {
-      errors.push({ field: ref.field, code: "upload_not_found" });
+      entries.push({ error: { field: ref.field, code: "upload_not_found" } });
       continue;
     }
     const key = tempKey(owner, parsed.id);
-    const info = prefetched === undefined ? await store.head(key) : (prefetched.get(key) ?? null);
+    entries.push({ ref, parsed, key, index: keys.length });
+    keys.push(key);
+  }
+  const infos: (StoredObjectInfo | null)[] = [];
+  if (store.batch && keys.length > 1) infos.push(...(await store.batch.head(keys)));
+  else for (const key of keys) infos.push(await store.head(key));
+  if (infos.length !== keys.length) throw new StorageUnavailableError("head: invalid batch result");
+  for (const entry of entries) {
+    if ("error" in entry) {
+      errors.push(entry.error);
+      continue;
+    }
+    const { ref, parsed, key } = entry;
+    const info = infos[entry.index];
+    if (info === undefined) throw new StorageUnavailableError("head: invalid batch result");
     const contentType = IMAGE_TYPES.find((t) => t === info?.contentType);
     if (info === null || contentType === undefined || info.size < 1 || info.size > 20 * MIB) {
       errors.push({ field: ref.field, code: "upload_not_found" });

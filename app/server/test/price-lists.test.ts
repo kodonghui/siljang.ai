@@ -709,6 +709,115 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
     ]);
   });
 
+  it("저장된409 재전송도 임시50개를 보존하고 새 버전/새 키로 다시 저장할 수 있음", async () => {
+    const h = await fixture();
+    const first = await h.call("POST", "/owner/price-list/versions", input());
+    const current = ((await first.json()) as { priceList: PriceValue }).priceList;
+    const designs = [];
+    for (let i = 0; i < 50; i++)
+      designs.push({ name: `도안${i}`, uploadId: await photo(h), optionKey: null, inStandard: false, position: i });
+    const { calls } = attachBatches(h.store);
+    const body = { ...input("0"), designs },
+      key = newRequestKey();
+    await expectProblem(await h.call("POST", "/owner/price-list/versions", body, true, key), "version_conflict");
+    const replay = await h.call("POST", "/owner/price-list/versions", body, true, key);
+    await expectProblem(replay, "version_conflict");
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    expect(h.store.keys("tmp/")).toHaveLength(50);
+    expect(calls).toHaveLength(0);
+    const retry = await h.call("POST", "/owner/price-list/versions", { ...body, baseRevision: current.revision });
+    expect(retry.status, await retry.clone().text()).toBe(201);
+    expect(h.store.keys("tmp/")).toHaveLength(0);
+    expect(h.store.keys("shops/")).toHaveLength(50);
+  });
+
+  it("응답만 잃고 아직 COMMIT 중인 거래의 가게 잠금이 끝난 뒤 사용 사진을 확인함", async () => {
+    let observedLock = false;
+    const h = await fixture({
+      connect(secret) {
+        const primary = pgConnector(secret),
+          cleanup = pgConnector(secret),
+          observer = pgConnector(secret);
+        let ready!: () => void;
+        let release!: () => void;
+        const executed = new Promise<void>((resolve) => {
+          ready = resolve;
+        });
+        const mayCommit = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let pending = false,
+          first = true;
+        let committing: Promise<unknown> | undefined;
+        const wrapped = (tx: Queryable): Queryable => ({
+          async query<R>(sql: string, params?: readonly unknown[]) {
+            if (pending && sql.includes("request_keys")) throw new Error("synthetic receipt release unavailable");
+            if (sql.includes("FOR NO KEY UPDATE")) {
+              const pid = (await tx.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]?.pid;
+              const waiting = tx.query<R>(sql, params);
+              for (let i = 0; i < 50; i++) {
+                const state = await observer.query<{ wait_event_type: string | null }>(
+                  "SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1",
+                  [pid],
+                );
+                if (state.rows[0]?.wait_event_type === "Lock") {
+                  observedLock = true;
+                  break;
+                }
+                await new Promise<void>((resolve) => setTimeout(resolve, 2));
+              }
+              release();
+              return waiting;
+            }
+            const result = await tx.query<R>(sql, params);
+            if (sql.startsWith("SELECT d.image_key FROM designs")) {
+              // 잠금 없는 옛 정리는 먼저 빈 결과를 읽고, 그 뒤 원래 거래가 커밋되면 사용 사진을 지운다.
+              release();
+              await committing;
+            }
+            return result;
+          },
+        });
+        return {
+          query: (sql, params) => wrapped(cleanup).query(sql, params),
+          async transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T> {
+            if (!first) return cleanup.transaction((tx) => fn(wrapped(tx)));
+            first = false;
+            committing = primary.transaction(async (tx) => {
+              const value = await fn(tx);
+              ready();
+              await mayCommit;
+              return value;
+            });
+            committing.catch(() => ready());
+            await executed;
+            pending = true;
+            throw new Error("synthetic response lost before server commit");
+          },
+          async abort() {
+            release();
+            await Promise.all([primary.abort(), cleanup.abort(), observer.abort()]);
+          },
+          async close() {
+            release();
+            await committing?.catch(() => {});
+            await Promise.all([primary.close(), cleanup.close(), observer.close()]);
+          },
+        } satisfies RequestDb;
+      },
+    });
+    const designs = [];
+    for (let i = 0; i < 50; i++)
+      designs.push({ name: `도안${i}`, uploadId: await photo(h), optionKey: null, inStandard: false, position: i });
+    attachBatches(h.store);
+    await expectProblem(await h.call("POST", "/owner/price-list/versions", { ...input(), designs }), "internal");
+    expect(h.store.keys("shops/")).toHaveLength(50);
+    expect((await db.query("SELECT count(*)::int AS n FROM designs WHERE shop_id=$1", [h.shopId])).rows).toEqual([
+      { n: 50 },
+    ]);
+    expect(observedLock).toBe(true);
+  });
+
   it.each(["unavailable", "response_lost", "missing"] as const)(
     "50개 서비스 복사 중 %s이면 새 복사본만 정리하고 이전 버전/원본·같은 키 재시도를 보존함",
     async (failure) => {

@@ -1004,3 +1004,11 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 - 서비스 클라이언트/실행기를 함께 쓴17/26/50개 저장과 부분 복사 실패3종·이전 사진 보존·같은 키 복구를 확인했습니다. COMMIT 응답 유실/임시 삭제 실패의 재전송 정리2실패를 고쳐 관련5파일164개가 통과했습니다. 사진 없는 저장과 개발 HTTP 저장소는 기존 설정 약속을 유지합니다. 기술 스택/수락 대조를 고쳐 전체/두 Worker 빌드·설계9단계를 이어갑니다.
 
 - 최종 자동 확인: 새 빈 데이터베이스 서버98파일/2,097개·웹237개·타입·빌드582ms와 두 Worker dry-run이 통과했습니다. 설계9단계09:35:55~09:39:22 KST 종료0·규칙406개/안 막힘0·34개 카탈로그 일치·WBS18/0·목업14/14입니다. API/계약/마이그레이션/권한은 그대로이고 실제50개 경로·최종 head 리뷰/CI/main은 이어갑니다.
+
+- 287 운영 배포 순서: 스테이징은 CI가 보조 Worker부터 배포합니다. 최상위 운영 설정도 먼저 `siljang-storage-batches`를 배포한 뒤 앱을 배포해야 합니다. 이미 승인된 무료 운영 도메인/같은 공개 SHA와 기존 계정 환경 변수를 사용합니다. 보조 Worker에는 비밀 값/도메인을 더하지 않습니다. 배포 뒤 두 Worker의 태그와 앱 상태를 대조합니다.
+
+```sh
+# 저장소 app/에서, SILJANG_SHA와 SILJANG_DOMAIN은 배포할 공개 SHA/승인된 도메인이다.
+npx --no-install wrangler deploy --config server/wrangler.storage-batches.jsonc --env "" --strict --tag "$SILJANG_SHA"
+npx --no-install wrangler deploy --config server/wrangler.jsonc --env "" --strict --keep-vars --domain "$SILJANG_DOMAIN" --tag "$SILJANG_SHA"
+```

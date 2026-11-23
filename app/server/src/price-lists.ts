@@ -341,15 +341,19 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
   } catch (error) {
     if (copied.length)
       try {
-        const used = await r.db.run<{ image_key: string }>(
-          "SELECT d.image_key FROM designs d WHERE d.shop_id=$1 AND d.image_key=ANY($2::text[])",
-          [copied],
-        );
-        const usedKeys = new Set(used.rows.map((row) => row.image_key));
-        await deleteObjects(
-          r.services.storage(),
-          copied.filter((key) => !usedKeys.has(key)),
-        );
+        await r.db.transaction(async (db) => {
+          // 응답을 잃은 원래 COMMIT이 진행 중이면 같은 가게의 잠금이 풀린 뒤 읽는다.
+          await db.found("SELECT s.id FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE");
+          const used = await db.run<{ image_key: string }>(
+            "SELECT d.image_key FROM designs d WHERE d.shop_id=$1 AND d.image_key=ANY($2::text[])",
+            [copied],
+          );
+          const usedKeys = new Set(used.rows.map((row) => row.image_key));
+          await deleteObjects(
+            r.services.storage(),
+            copied.filter((key) => !usedKeys.has(key)),
+          );
+        });
       } catch {
         r.log("warn", { event: "price_copy_cleanup_failed", traceId: r.traceId });
       }
@@ -360,6 +364,6 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
     const upload = parseUploadId(design.uploadId);
     return upload?.purpose === "design_image" ? [{ tempKey: tempKey(ownerOfShopScope(r.scope), upload.id) }] : [];
   });
-  if (consumed.length) await discardUploads(r.services.storage(), consumed);
+  if (response.status === 201 && consumed.length) await discardUploads(r.services.storage(), consumed);
   return response;
 }

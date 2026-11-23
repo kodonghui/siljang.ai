@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createOwnerScope } from "../src/owner-scope";
 import { MissingSettingError } from "../src/request-key";
 import { createServices } from "../src/services";
 import { readSettings } from "../src/settings";
-import { StorageUnavailableError } from "../src/storage";
+import { deleteObjects, StorageUnavailableError } from "../src/storage";
 import {
   executeStorageBatch,
   type StorageBatchBinding,
@@ -12,6 +13,7 @@ import {
   storageBatchClient,
   validateStorageBatch,
 } from "../src/storage-batch";
+import { checkUploads, newUploadId, tempKey } from "../src/uploads";
 import { MemoryStore } from "./support/storage";
 
 const config: StorageBatchConfig = {
@@ -213,5 +215,56 @@ describe("무료 저장소 서비스 배치", () => {
     const services = createServices({ ...env, STORAGE_BATCHES: { run } }, readSettings(env));
     expect(services.storage().batch).toBeUndefined();
     expect(run).not.toHaveBeenCalled();
+  });
+
+  it("공용 정리는121개도 작은 배치로 나누어 메모리/배포 경로가 같이 동작함", async () => {
+    const store = new MemoryStore();
+    const keys = Array.from({ length: 121 }, (_, i) => `tmp/photo${i}`);
+    for (const key of keys) await store.put(key, new Uint8Array([1]), "image/png");
+    let calls = 0;
+    const batch = storageBatchClient(config, {
+      run(value, operations) {
+        calls++;
+        return executeStorageBatch(value, operations, () => store);
+      },
+    });
+    Object.assign(store, { batch });
+    await deleteObjects(store, keys);
+    expect(store.keys()).toEqual([]);
+    expect(calls).toBe(13);
+  });
+
+  it("121개 정리의 첫 RPC가 실패해도 뒤의 다른 키를 모두 시도함", async () => {
+    const store = new MemoryStore();
+    const keys = Array.from({ length: 121 }, (_, i) => `tmp/photo${i}`);
+    for (const key of keys) await store.put(key, new Uint8Array([1]), "image/png");
+    let calls = 0;
+    const batch = storageBatchClient(config, {
+      run(value, operations) {
+        if (++calls === 1) return Promise.reject(new Error("synthetic first service unavailable"));
+        return executeStorageBatch(value, operations, () => store);
+      },
+    });
+    Object.assign(store, { batch });
+    await expect(deleteObjects(store, keys)).rejects.toThrow(StorageUnavailableError);
+    expect(new Set(store.keys())).toEqual(new Set(keys.slice(0, 10)));
+    expect(calls).toBe(13);
+  });
+
+  it("신고증 사진1개는 배치 서비스 없이 직접HEAD 한 번으로 검사함", async () => {
+    const store = new MemoryStore();
+    const owner = createOwnerScope("10000000-0000-4000-8000-000000000001");
+    const now = new Date("2026-11-23T00:00:00Z");
+    const uploadId = newUploadId("license_photo", now);
+    await store.put(tempKey(owner, uploadId), new Uint8Array([1, 2, 3]), "image/png");
+    const run = vi.fn<StorageBatchBinding["run"]>(async () => {
+      throw new Error("synthetic service unavailable");
+    });
+    Object.assign(store, { batch: storageBatchClient(config, { run }) });
+    const result = await checkUploads(store, owner, [{ id: uploadId, field: "/photo", purpose: "license_photo" }], now);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.byteSize).toBe(3);
+    expect(run).not.toHaveBeenCalled();
+    expect(store.calls).toEqual(["put", "head"]);
   });
 });

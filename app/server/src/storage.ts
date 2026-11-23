@@ -37,6 +37,8 @@ export interface ObjectBatch {
   delete(keys: readonly string[]): Promise<void>;
 }
 
+export const STORAGE_BATCH_OBJECT_LIMIT = 50;
+
 export interface ObjectStore {
   /** 배포 환경의 무료 호출 한도 분리. 개발/메모리 구현은 단일 동작으로 대체할 수 있다. */
   readonly batch?: ObjectBatch;
@@ -62,12 +64,13 @@ export class StorageUnavailableError extends Error {
 /** 정리는 일부 실패해도 나머지 키를 시도하며, 마지막에 첫 오류를 알린다. 다시 시도는 하지 않는다. */
 export async function deleteObjects(store: ObjectStore, keys: readonly string[]): Promise<void> {
   if (keys.length === 0) return;
-  if (store.batch) return store.batch.delete(keys);
   let failed = false;
   let firstError: unknown;
-  for (const key of keys)
+  const step = store.batch ? STORAGE_BATCH_OBJECT_LIMIT : 1;
+  for (let start = 0; start < keys.length; start += step)
     try {
-      await store.delete(key);
+      if (store.batch) await store.batch.delete(keys.slice(start, start + step));
+      else await store.delete(keys[start] as string);
     } catch (error) {
       if (!failed) firstError = error;
       failed = true;

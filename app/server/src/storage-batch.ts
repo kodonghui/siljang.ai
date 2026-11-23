@@ -1,10 +1,13 @@
 /** 비공개 저장소 배치의 약속. 비밀 값은 호출 중 메모리에서만 쓰고 로그/응답/새 비밀 저장소에 남기지 않는다. */
+
+import { validateStorageSettings } from "./settings";
 import {
   assertStorageKey,
   type ObjectBatch,
   type ObjectStore,
   type S3Config,
   S3Store,
+  STORAGE_BATCH_OBJECT_LIMIT,
   StorageUnavailableError,
   type StoredObjectInfo,
 } from "./storage";
@@ -26,7 +29,6 @@ export interface StorageBatchBinding {
 
 /** 50개 명령은 단계마다 최대5회, 정리를 포함해도 같은 요청의 Worker 호출32회 아래다. */
 export const STORAGE_BATCH_SIZE = 10;
-const MAX_OBJECTS = 50;
 
 function unavailable(): StorageUnavailableError {
   return new StorageUnavailableError("batch: unavailable");
@@ -39,7 +41,7 @@ export function batchS3Store(config: StorageBatchConfig, binding: StorageBatchBi
 
 export function storageBatchClient(config: StorageBatchConfig, binding: StorageBatchBinding): ObjectBatch {
   async function run(operations: readonly StorageBatchOperation[], bestEffort = false) {
-    if (operations.length > MAX_OBJECTS) throw new TypeError("too many batch objects");
+    if (operations.length > STORAGE_BATCH_OBJECT_LIMIT) throw new TypeError("too many batch objects");
     for (const op of operations) {
       if (op.kind === "copy") {
         assertStorageKey(op.from);
@@ -106,11 +108,11 @@ export function validateStorageBatch(config: StorageBatchConfig, operations: rea
   for (const name of names)
     if (typeof config[name] !== "string" || config[name].length < 1 || config[name].length > 2048)
       throw new TypeError("invalid batch config");
-  const url = new URL(config.endpoint);
-  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash)
-    throw new TypeError("invalid batch endpoint");
-  if (!/^[a-z0-9-]{1,50}$/.test(config.region) || !/^[A-Za-z0-9._-]{1,100}$/.test(config.bucket))
+  try {
+    validateStorageSettings(config, "production");
+  } catch {
     throw new TypeError("invalid batch config");
+  }
   if (!Array.isArray(operations) || operations.length < 1 || operations.length > STORAGE_BATCH_SIZE)
     throw new TypeError("invalid batch size");
   for (const op of operations) {
