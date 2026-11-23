@@ -447,6 +447,53 @@ it("기본 조문을 넣고 빼도 해당 행에 키보드 초점을 남긴다",
 it("기본 조문을 모두 넣으면 빈 기본 조문 선택 영역을 없앤다", async () => {
   area();
   await loaded();
-  for (const add of screen.getAllByRole("button", { name: "이 조문 넣기" })) fireEvent.click(add);
+  let lastTitle = "";
+  for (const add of screen.getAllByRole("button", { name: "이 조문 넣기" })) {
+    const row = add.closest("fieldset");
+    if (!row) throw new Error("기본 조문 없음");
+    lastTitle = (within(row).getByLabelText("조문 이름") as HTMLInputElement).value;
+    add.focus();
+    fireEvent.click(add);
+  }
   expect(screen.queryByRole("region", { name: "넣을 수 있는 기본 조문" })).toBeNull();
+  const last = screen.getAllByRole("group").find((row) => within(row).queryByDisplayValue(lastTitle));
+  if (!last) throw new Error("마지막 넣은 조문 없음");
+  expect(document.activeElement).toBe(within(last).getByLabelText("조건"));
+});
+
+it("직접 쓴 조문을 지우면 다음 빼기 버튼으로, 마지막이면 조문 추가로 초점을 보낸다", async () => {
+  area();
+  await loaded();
+  const add = screen.getByRole("button", { name: "조문 추가" });
+  fireEvent.click(add);
+  fireEvent.click(add);
+  const rows = screen.getAllByRole("group", { name: /^조문 / }).slice(-2);
+  const first = rows[0],
+    next = rows[1];
+  if (!first || !next) throw new Error("직접 쓴 조문 없음");
+  const remove = within(first).getByRole("button", { name: "조문 빼기" });
+  const nextRemove = within(next).getByRole("button", { name: "조문 빼기" });
+  remove.focus();
+  fireEvent.click(remove);
+  expect(document.activeElement).toBe(nextRemove);
+  nextRemove.focus();
+  fireEvent.click(nextRemove);
+  expect(document.activeElement).toBe(add);
+});
+it("환불 단계를 지우면 다음 삭제 버튼으로, 마지막이면 단계 추가로 초점을 보낸다", async () => {
+  area();
+  await loaded();
+  const add = screen.getByRole("button", { name: "환불 단계 추가" });
+  fireEvent.click(add);
+  fireEvent.click(add);
+  const removes = screen.getAllByRole("button", { name: "단계 삭제" }).slice(-2);
+  const first = removes[0],
+    next = removes[1];
+  if (!first || !next) throw new Error("환불 단계 없음");
+  first.focus();
+  fireEvent.click(first);
+  expect(document.activeElement).toBe(next);
+  next.focus();
+  fireEvent.click(next);
+  expect(document.activeElement).toBe(add);
 });

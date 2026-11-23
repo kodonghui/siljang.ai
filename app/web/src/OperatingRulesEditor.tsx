@@ -110,6 +110,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     statusRef = useRef<HTMLElement>(null),
     focusPending = useRef<string | null>(null),
     clauseFocus = useRef<{ id: string; enabled: boolean } | null>(null),
+    actionFocus = useRef<{ id: string | null; kind: "clause" | "tier" } | null>(null),
     handledDone = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
@@ -202,6 +203,20 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
   }, [failure, read, reveal]);
   useEffect(() => {
     if (requestsBlocked) return;
+    const action = actionFocus.current;
+    if (action) {
+      actionFocus.current = null;
+      const row = Array.from(
+        formRef.current?.querySelectorAll<HTMLElement>(
+          action.kind === "clause" ? "[data-clause-id]" : "[data-tier-id]",
+        ) ?? [],
+      ).find((el) => (action.kind === "clause" ? el.dataset.clauseId : el.dataset.tierId) === action.id);
+      const target =
+        row?.querySelector<HTMLElement>("button") ??
+        formRef.current?.querySelector<HTMLElement>(action.kind === "clause" ? "[data-add-clause]" : "[data-add-tier]");
+      target?.focus();
+      return;
+    }
     const moved = clauseFocus.current;
     if (moved) {
       clauseFocus.current = null;
@@ -301,9 +316,13 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
             disabled={locked}
             onClick={() => {
               if (!canEdit()) return;
-              if (row.key === "custom")
+              if (row.key === "custom") {
+                actionFocus.current = {
+                  kind: "clause",
+                  id: active[active.findIndex((c) => c.id === row.id) + 1]?.id ?? null,
+                };
                 mutate((old) => ({ ...old, clauses: old.clauses.filter((c) => c.id !== row.id) }));
-              else {
+              } else {
                 clauseFocus.current = { id: row.id, enabled: false };
                 clause(row.id, { enabled: false });
               }
@@ -515,6 +534,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                   <fieldset
                     key={row.id}
                     className="rules-tier"
+                    data-tier-id={row.id}
                     data-row-pointer={pointer}
                     data-invalid={
                       allErrors.some((e) => e.field === pointer || e.field.startsWith(`${pointer}/`)) ? true : undefined
@@ -551,9 +571,11 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                     {notes(pointer) ? <p className="ui-field__error">{notes(pointer)}</p> : null}
                     <Button
                       disabled={locked}
-                      onClick={() =>
-                        mutate((old) => ({ ...old, refundTiers: old.refundTiers.filter((t) => t.id !== row.id) }))
-                      }
+                      onClick={() => {
+                        if (!canEdit()) return;
+                        actionFocus.current = { kind: "tier", id: form.refundTiers[i + 1]?.id ?? null };
+                        mutate((old) => ({ ...old, refundTiers: old.refundTiers.filter((t) => t.id !== row.id) }));
+                      }}
                     >
                       단계 삭제
                     </Button>
@@ -561,6 +583,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                 );
               })}
               <Button
+                data-add-tier
                 disabled={locked || form.refundTiers.length >= 20}
                 onClick={() =>
                   mutate((old) => ({
@@ -588,6 +611,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                 </section>
               ) : null}
               <Button
+                data-add-clause
                 disabled={locked || active.length >= 50}
                 onClick={() =>
                   mutate((old) => ({
