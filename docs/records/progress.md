@@ -25,7 +25,7 @@
 - 확인한 것:
   - `build_spec.py .`: 오류 0. 수락 기준 328개 → 333개, 요구사항을 가리키는 확인 태그(`(확인: REQ-…)`) 262개 → 264개, 예외 상태 159 → 161·동시 28 → 29(main 스냅숏과 견줌, 리뷰 처리 뒤). (FL, REQ) 짝 326개의 빠짐 0, 본문 인용 빠짐 0.
   - `build_wbs.py .`: 검사 18개 · 오류 0. 작업 183개 → 184개, 크기 합 247.5일 → 248.5일, Claude 166개 → 167개.
-  - 단계 검사: `bash tools/stage-checks.sh policyA --no-api`(ko-family의 임시 PostgreSQL 16.15 127.0.0.1:54329와 Playwright Chromium, 11:32:12~11:34:54 KST, 머리 `32e5fc4`) prd 문제 0·금지어 0, flows 문제 0·금지어 0, spec 오류 0, erd 15/15, api 건너뜀(06 그대로), sitemap 17/17, screens 15/15, mockup 14/14, wbs 검사 18개 · 오류 0, 모두 종료 코드 0. 그 뒤 커밋은 기록(progress.md·fix-log·app/README)뿐이고, 이 기록을 읽는 wbs 검사만 다시 돌려 오류 0.
+  - 단계 검사: `bash tools/stage-checks.sh policyA --no-api`(ko-family의 임시 PostgreSQL 16.15 127.0.0.1:54329와 Playwright Chromium, 11:32:12~11:34:54 KST, 머리 `32e5fc4`) prd 문제 0·금지어 0, flows 문제 0·금지어 0, spec 오류 0, erd 15/15, api 건너뜀(06 그대로), sitemap 17/17, screens 15/15, mockup 14/14, wbs 검사 18개 · 오류 0, 모두 종료 코드 0. 그 뒤 커밋은 기록(progress.md·fix-log·app/README)뿐이고, 이 기록을 읽는 wbs 검사만 다시 돌려 오류 0. 리뷰 처리 커밋 `e3e19e0`(main `ae905b5` 위)에서 다시 돌린 `stage-checks.sh policyB --no-api`(12:17:24~12:20:06 KST)도 같은 결과(prd·flows 0·0, spec 오류 0, erd 15/15, sitemap 17/17, screens 15/15, mockup 14/14, wbs 18/0)이고 모두 종료 코드 0입니다.
   - 개인정보 보호법 제30조②: 2026-11-23 law.go.kr 현행 본문(시행 2026-09-11, 법률 제21445호)에서 "개인정보처리자가 개인정보 처리방침을 수립하거나 변경하는 경우에는 정보주체가 쉽게 확인할 수 있도록 대통령령으로 정하는 방법에 따라 공개하여야 한다."를 확인했습니다.
   - 키 검사와 용어 검사: `node tools/check-no-keys.mjs --repo` 811개 파일·키 모양 값 0. `term-check.py`로 바꾼 줄의 후보를 보고 '꼬리표' 1곳을 '태그'로 고쳤습니다.
 - 확인하지 않은 것: 06 api 검사는 06을 바꾸지 않아 `--no-api`로 건너뛰었습니다. 재발행 동작 자체는 TASK-184 구현에서 시험합니다.
