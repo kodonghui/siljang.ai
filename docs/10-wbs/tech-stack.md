@@ -181,7 +181,7 @@ flowchart LR
 
 1. 업무 코드는 Workers의 `env`·`ctx`·큐·Cron을 직접 호출하지 않습니다. 요청·큐·Cron·저장소·비밀 값을 다루는 어댑터 층만 Workers를 압니다.
 2. 데이터베이스는 표준 PostgreSQL만 씁니다. Supabase Auth는 운영자 로그인(06 DEC-27)에만 데이터베이스 밖의 HTTP 서비스로 부르고(어댑터 `app/server/src/operator-auth.ts` 하나), 데이터베이스의 `auth` 스키마는 읽지 않습니다. Data API·pg_cron·Realtime·Edge Functions는 쓰지 않습니다.
-3. 사진은 저장소 모듈 하나(올리기·읽기·지우기)를 거칩니다.
+3. 사진은 저장소 모듈 하나(올리기·읽기·지우기)를 거칩니다. 여러 도안의 메타데이터 확인·복사·임시 정리는 같은 S3 구현을 비공개 서비스 바인딩으로 호출합니다(2026-11-23, TASK-038). 서비스 호출마다 최대10개·동시 연결3개,50개 정상 저장은 총15호출이며 앱과 같은 무료 계정/서울 저장소를 유지합니다. 앱이 기존 S3 설정을 호출 중 메모리로만 전달하고 보조 Worker에는 DB·별도 비밀 값·공개 주소가 없습니다. 배포는 보조 Worker부터 하고 API 수/응답/사진50개 계약은 바꾸지 않습니다. [공식 한도](https://developers.cloudflare.com/workers/platform/limits/)·[서비스 바인딩](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/)·[실제 무료 한도 시험](../../research/storage-budget-2026-11/README.md)을 대조합니다. 실제 가격표50개 저장과 실패 정리는 별도 수락 확인입니다.
 4. 스키마는 우리 SQL 마이그레이션(0001~)으로만 바꾸고 대시보드에서 손으로 바꾸지 않습니다.
 5. 큐 메시지와 로그에는 ID만 싣습니다. 옮길 때 남는 손님 데이터가 없고, 국외 이전을 설명할 범위도 좁습니다.
 6. 비밀 값과 설정은 환경 변수 이름으로만 읽습니다.

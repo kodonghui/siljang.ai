@@ -94,7 +94,8 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
       const secret = settings.secrets.STORAGE_SECRET_ACCESS_KEY;
       if (s === null || id === null || secret === null) throw new MissingSettingError("storage is not set");
       const config = { ...s, accessKeyId: id.reveal(), secretAccessKey: secret.reveal() };
-      if (env.STORAGE_BATCHES) store = batchS3Store(config, env.STORAGE_BATCHES);
+      if (env.STORAGE_BATCHES && config.endpoint.startsWith("https:"))
+        store = batchS3Store(config, env.STORAGE_BATCHES);
       else if (settings.appEnv === "development") store = new S3Store(config);
       else throw new MissingSettingError("STORAGE_BATCHES is not bound");
       return store;

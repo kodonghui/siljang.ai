@@ -199,4 +199,19 @@ describe("무료 저장소 서비스 배치", () => {
     expect(ready.storage()).toBe(ready.storage());
     expect(run).not.toHaveBeenCalled();
   });
+
+  it("개발에서 허용한 localhost HTTP 저장소는 로컬 구현을 유지함", () => {
+    const env = {
+      APP_ENV: "development",
+      STORAGE_ENDPOINT: "http://localhost:9000/storage",
+      STORAGE_REGION: config.region,
+      STORAGE_BUCKET: config.bucket,
+      STORAGE_ACCESS_KEY_ID: config.accessKeyId,
+      STORAGE_SECRET_ACCESS_KEY: config.secretAccessKey,
+    };
+    const run = vi.fn<StorageBatchBinding["run"]>();
+    const services = createServices({ ...env, STORAGE_BATCHES: { run } }, readSettings(env));
+    expect(services.storage().batch).toBeUndefined();
+    expect(run).not.toHaveBeenCalled();
+  });
 });

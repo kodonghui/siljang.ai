@@ -13,6 +13,7 @@ import {
   permanentKey,
   promoteUploads,
   type TakenUpload,
+  tempKey,
   UPLOAD_RULES,
 } from "./uploads";
 
@@ -219,8 +220,7 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
     throw fieldError("header:Content-Type", "not_allowed");
   const raw = await r.body(),
     input = parsePriceList(raw);
-  const copied: string[] = [],
-    consumed: TakenUpload[] = [];
+  const copied: string[] = [];
   let response: Response;
   try {
     response = await r.command({
@@ -285,7 +285,6 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
         // 응답 유실/일부 복사 실패도 정리할 수 있게 시도할 모든 새 키를 먼저 남긴다.
         copied.push(...designs.filter((design) => design.upload).map((design) => design.imageKey));
         if (promoting.length) await promoteUploads(r.services.storage(), promoting, r.scope.shopId, id);
-        consumed.push(...promoting);
         const now = r.services.now();
         if (previous)
           await db.run("UPDATE price_lists SET superseded_at=$3 WHERE shop_id=$1 AND id=$2", [previous.id, now]);
@@ -356,6 +355,11 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
       }
     throw error;
   }
+  // 성공한 명령의 같은 본문 재전송도 임시 정리를 복구한다. 저장소를 다시 확인하거나 복사하지 않는다.
+  const consumed = input.designs.flatMap((design) => {
+    const upload = parseUploadId(design.uploadId);
+    return upload?.purpose === "design_image" ? [{ tempKey: tempKey(ownerOfShopScope(r.scope), upload.id) }] : [];
+  });
   if (consumed.length) await discardUploads(r.services.storage(), consumed);
   return response;
 }

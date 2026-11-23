@@ -400,7 +400,10 @@ export async function discardUpload(store: ObjectStore, upload: TakenUpload): Pr
 }
 
 /** 저장을 마친 여러 임시 파일도 같은 성공/실패 약속으로 정리한다. */
-export async function discardUploads(store: ObjectStore, uploads: readonly TakenUpload[]): Promise<void> {
+export async function discardUploads(
+  store: ObjectStore,
+  uploads: readonly Pick<TakenUpload, "tempKey">[],
+): Promise<void> {
   try {
     await deleteObjects(
       store,
