@@ -80,6 +80,11 @@ function TextArea(props: {
     </Field>
   );
 }
+function focusReady(target: HTMLElement | null | undefined): boolean {
+  if (!target?.isConnected || target.matches(":disabled")) return false;
+  target.focus();
+  return target.ownerDocument.activeElement === target;
+}
 export function OperatingRulesEditor(props: ShopLicenseProps) {
   const callbacks = useRef(props);
   callbacks.current = props;
@@ -167,7 +172,6 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     if (requestsBlocked) return;
     const action = actionFocus.current;
     if (action) {
-      actionFocus.current = null;
       const row = Array.from(
         formRef.current?.querySelectorAll<HTMLElement>(
           action.kind === "clause" ? "[data-clause-id]" : "[data-tier-id]",
@@ -176,16 +180,16 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       const target =
         row?.querySelector<HTMLElement>("button") ??
         formRef.current?.querySelector<HTMLElement>(action.kind === "clause" ? "[data-add-clause]" : "[data-add-tier]");
-      target?.focus();
+      if (focusReady(target)) actionFocus.current = null;
       return;
     }
     const moved = clauseFocus.current;
     if (moved) {
-      clauseFocus.current = null;
       const row = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-clause-id]") ?? []).find(
         (el) => el.dataset.clauseId === moved.id,
       );
-      row?.querySelector<HTMLElement>(moved.enabled ? "textarea" : "button")?.focus();
+      if (focusReady(row?.querySelector<HTMLElement>(moved.enabled ? "textarea" : "button")))
+        clauseFocus.current = null;
       return;
     }
     const pointer = focusPending.current;
@@ -197,8 +201,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       /^\/clauses\/\d+$/.test(pointer) ? "textarea" : "input,select,textarea,button",
     );
     const target = pointer === "status" || !input || input.matches(":disabled") ? statusRef.current : input;
-    focusPending.current = null;
-    target?.focus();
+    if (focusReady(target)) focusPending.current = null;
   });
   const issues = useMemo(() => (form ? rulesIssues(form) : []), [form]),
     fields = useMemo(() => (form ? pointers(form) : []), [form]);

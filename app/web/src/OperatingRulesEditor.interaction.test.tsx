@@ -455,6 +455,32 @@ it("기본 조문을 넣고 빼도 해당 행에 키보드 초점을 남긴다",
   if (!inactive) throw new Error("뺀 기본 조문 없음");
   expect(document.activeElement).toBe(within(inactive).getByRole("button", { name: "이 조문 넣기" }));
 });
+it("새 조문이 첫 초점을 받지 못해도 다음 렌더에서 복구한다", async () => {
+  const view = area();
+  await loaded();
+  const add = screen.getAllByRole("button", { name: "이 조문 넣기" })[0];
+  if (!add) throw new Error("기본 조문 선택지 없음");
+  const row = add.closest("fieldset");
+  if (!row) throw new Error("기본 조문 없음");
+  const title = (within(row).getByLabelText("조문 이름") as HTMLInputElement).value;
+  add.focus();
+  const original = HTMLElement.prototype.focus;
+  let ignored = false;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (!ignored && this instanceof HTMLTextAreaElement && !this.matches(":disabled")) {
+      ignored = true;
+      return;
+    }
+    original.call(this, options);
+  });
+  fireEvent.click(add);
+  const active = screen.getAllByRole("group").find((item) => within(item).queryByDisplayValue(title));
+  if (!active) throw new Error("넣은 조문 없음");
+  const target = within(active).getByLabelText("조건") as HTMLTextAreaElement;
+  expect(target.disabled).toBe(false);
+  view.rerender(<OperatingRulesEditor {...view.props} shopName="다시 그린 합성 가게" />);
+  expect(document.activeElement).toBe(target);
+});
 it("기본 조문을 모두 넣으면 빈 기본 조문 선택 영역을 없앤다", async () => {
   area();
   await loaded();
