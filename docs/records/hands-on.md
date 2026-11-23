@@ -827,3 +827,18 @@
 
 - 학원컴 Aside 대화형 CLI의 Supabase SQL Editor에서 main8fb94178 갱신 원본50,057바이트를 인코딩하고 본문 SHA-256을 실행 전에 대조했습니다. 최초 배치 입력의42601 뒤 원장은25개 그대로였습니다. 입력 완료 응답을 기다리고 Ctrl+End로 다음 부분을 붙인 전달67,435바이트는 성공했습니다. 실제 결과는 migration_count32·owner_sessions_present=true·owner_session_update=true·access_log_full_select=false입니다. 비밀번호/토큰을 읽어 옮기지 않았고 기존 역할에 원본의 권한만 적용했습니다.0033/0034는 미적용입니다.
 - 해시74069395c1c86e06d8e72d8f4bbdc0ede6f90a8a0891258ef2492cdc4620c1d7은 공개 SQL 본문의 무결성 확인 값입니다. 로컬 독립 DB에서 해시 불일치/원장25개 보존·올바른 실행/반복32개·사장님 세션 허용/접속기록 전체 조회 차단을 먼저 검증했습니다. 실제 합성 쓰기/롤백과 계정 흐름은 아직이며 다음 확인입니다.
+
+### 2026-11-23 08:39 KST · 기존 runtime 역할의 실제 쓰기/차단·롤백
+
+- 학원컴 Aside 대화형 CLI/SQL Editor,실제32개 스테이징에서 공개 tools/staging-kakao-runtime-probe.sql을 실행했습니다. 첫42501의 원인은 postgres의 runtime SET=false였고관리 권한true·INHERIT=false를 읽었습니다. 프로브 서브트랜잭션 안에서만 SET를 허용한 뒤 예외로 멤버십 변경을 되돌렸습니다. 원래 역할/모든 합성 행도 복구됐습니다.
+- 실제 결과: allowed_writes=true,blocked_writes=5,failure_sqlstate=null,rollback_verified=true,role_restored=true,set_permission_restored=true,can_set_after=false입니다. 허용된 메시지/AI 호출/초안 쓰기와 금지된 비용/삭제/개인정보5종을 검사했습니다. 공개 SQL 본문 해시9b2cbca33d5630a16be227378ecb64c638c3e5049c3cbdca0180f9a781b05b91를 실행 전에 대조했습니다. 비밀 값을 읽어 옮기거나 영구 역할/권한을 더하지 않았으며 실제 모델/메시지 발신·큐 처리 성공으로 세지 않습니다.
+
+### 2026-11-23 08:48 KST · TASK-033 main 배포와 실제34개 적용
+
+- mainff5e936의 app45084206014 검사/배포·db45084206066 두 버전 성공 뒤 학원컴 CLI에서 배포866e1a99-7060-446c-a5ee-b44c0a07a374(08:39:38 KST 생성)·정확한 태그/상태200·SSH0을 확인했습니다.08:42:45 무인증 재업로드 PUT는401/application/problem+json·SSH0·stderr_nonempty=true입니다.
+- Aside 대화형 SQL Editor에서 source ff5e936의34개 갱신 SQL57,865바이트를 본문 SHA-256 대조/완료 응답으로 전달77,847바이트로 실행했습니다. 실제 원장은32→34개,세션 존재/UPDATE=true·접속기록 전체 SELECT=false입니다.0033/0034와 기존 역할 실행 권한이 적용됐으며 새 함수의 합성 실행/예약 롤백과 실제 계정 확인은 다음입니다. 옛 운영 파일의 일괄 삭제·비밀 값 출력·모델/실제 메시지 발신은 없습니다.
+
+### 2026-11-23 08:55 KST · 실제34개/기존 역할의 신고증 재업로드 함수
+
+- 학원컴 Aside SQL Editor에서 합성 사장님/운영자·보류 가게·세션·보류 할 일/알림을 같은 프로브 서브트랜잭션에 만들었습니다. 기존 runtime 역할로 새 함수에 받은 버전을 넘겼고 결과는 done·resubmission_verified=true·old_photo_queued1·blocked_writes3·failure_sqlstate=null·rollback_verified/role_restored/set_permission_restored=true입니다. 확인 기다림/새 신고 번호·판정 지움과 보류 할 일/예약 종료·옛 사진 예약을 확인했습니다. 직접 신고/판정 UPDATE·내부 정리 함수 실행3종은42501입니다.
+- 자료와 일시 SET는 같은 예외 경계에서 모두 되돌렸습니다. 로컬 독립 DB/최소 역할에서 같은 프로브를 먼저 확인했으며 본문 해시f5589b0bf0643a85df75322bc3844f3037e6602f70e9e23f932813e3e5bd6611를 대조했습니다. 이것은 저장소의 실제 파일 삭제나 실제 사장님 로그인 성공이 아닙니다. 모델/실제 메시지 발신/유료 변경0입니다.

@@ -18,6 +18,7 @@ import {
   getOperatingRulesVersion,
   listOperatingRulesVersions,
 } from "./operating-rules";
+import { listOperatorAlerts } from "./operator-alerts";
 import { AuthUnavailableError } from "./operator-auth";
 import { listIdentityChanges, reviewIdentityChange } from "./operator-identity-change";
 import { getReviewShop, listReviewShops, reviewLicense } from "./operator-license-review";
@@ -172,6 +173,7 @@ export const APP_ROUTES: readonly RouteDecl[] = [
     deleteOperatorSession,
   ),
   operatorRoute("GET", "/operator/me", getOperatorMe),
+  operatorRoute("GET", "/operator/alerts", listOperatorAlerts),
   // 06 API-007 사진 올리기(TASK-022). 가게가 정해지기 전에도 쓰므로(가게 등록의 신고증) 사장님 범위 경로다.
   ownerRoute("POST", "/owner/uploads", createUpload),
   ownerRoute("POST", "/owner/shop", registerShop),

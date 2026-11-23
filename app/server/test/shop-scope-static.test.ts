@@ -33,6 +33,7 @@ const RAW_ACCESS = [
  * 생기면 까닭을 적어 더한다.
  */
 const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
+  "operator-alert-directory.ts": "실제 운영자 알림 세 종류의 ID/가게 요약/건수/시각만 읽는 정확한 한 SQL(TASK-035)",
   "operator-shop-directory.ts":
     "인증된 운영자의 등록/사업자 변경 목록과 중복 표시 세 읽기만 허용. 정확한 SQL과 반환 열을 별도로 제한함(TASK-034·036)",
   "operator-shop.ts":
@@ -76,6 +77,11 @@ const OPERATOR_DIRECTORY_SQL = [
 
 /** 가게 범위 밖 읽기로 허락한 SQL인지(그 파일의 그 꼴만). 꼴 안의 조건에 다른 테이블을 끌어오는 하위 질의는 받지 않는다. */
 function allowedCrossShop(file: string, sql: string): boolean {
+  if (file === "operator-alert-directory.ts")
+    return (
+      sql.replace(/\s+/g, " ").trim() ===
+      "SELECT e.id,e.kind,e.count,e.created_at,s.id AS shop_id,s.name AS shop_name,s.time_zone, to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS cursor_at FROM ops_events e LEFT JOIN shops s ON s.id=e.shop_id WHERE e.kind IN ('channel_already_linked','privacy_transfer_missing','ai_failure_burst') AND ($1::timestamptz IS NULL OR e.created_at<$1::timestamptz OR (e.created_at=$1::timestamptz AND e.id>$2::uuid)) ORDER BY e.created_at DESC,e.id ASC LIMIT $3"
+    );
   if (file === "operator-shop-directory.ts") return OPERATOR_DIRECTORY_SQL.includes(sql.replace(/\s+/g, " ").trim());
   if (file === "operator-shop.ts")
     return ["SELECT id FROM shops WHERE id=$1", "SELECT shop_id AS id FROM shop_identity_changes WHERE id=$1"].includes(
@@ -276,6 +282,24 @@ describe("서버 코드의 SQL(정적 검사)", () => {
         find.replace("WHERE t.status", "WHERE t.id IN (SELECT o.id FROM orders o) AND t.status"),
       ),
     ).toBe(false);
+  });
+
+  it("운영자 알림은 정확한 한 읽기만 허용하고 상세/다른 종류/가게 조건 우회를 막음", () => {
+    const source = sources.find((s) => s.name === "operator-alert-directory.ts");
+    expect(source).toBeDefined();
+    const queries = shopSql(source?.text ?? "");
+    expect(queries).toHaveLength(1);
+    const sql = queries[0] as string;
+    expect(allowedCrossShop("operator-alert-directory.ts", sql)).toBe(true);
+    expect(allowedCrossShop("operator-alerts.ts", sql)).toBe(false);
+    for (const bad of [
+      sql.replace("e.id,e.kind", "e.id,e.detail,e.kind"),
+      sql.replace("'ai_failure_burst'", "'purge_run'"),
+      sql.replace("ON s.id=e.shop_id", "ON true"),
+      `${sql}; UPDATE ops_events SET count=0`,
+      `${sql} UNION SELECT * FROM shops`,
+    ])
+      expect(allowedCrossShop("operator-alert-directory.ts", bad), bad).toBe(false);
   });
 
   it("콜백 만료 찾기는 전용 파일의 식별자/기한 조회 하나만 허용함", () => {

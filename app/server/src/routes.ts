@@ -18,11 +18,13 @@
  *   쓰기 명령(command)으로만 쓰고, 성공 응답인데 커밋된 접속기록이 없으면 500으로 닫는다(access-log.ts). 시험이 06의 접속기록
  *   API는 모두 이 선언으로, API 번호는 06의 (방법, 경로)와 같게 선언됐는지 본다.
  */
+
 import type { Context, Hono, HonoRequest } from "hono";
 import { ACCESS_LOG_APIS, type AccessEntry, AccessRecorder } from "./access-log";
 import type { HonoEnv, Logger } from "./app";
 import { readJsonBody } from "./body";
 import type { AuthorizedKakaoSkill } from "./kakao-skill-auth";
+import { type OperatorAlertDirectory, operatorAlertDirectory } from "./operator-alert-directory";
 import { isOperatorScope, type OperatorScope } from "./operator-scope";
 import { type OperatorShopDirectory, operatorShopDirectory } from "./operator-shop-directory";
 import { isOwnerScope, type OwnerScope } from "./owner-scope";
@@ -173,6 +175,7 @@ export interface OwnerRouteDecl {
 export interface OperatorRequest {
   readonly operator: OperatorScope;
   readonly shops: OperatorShopDirectory;
+  readonly alerts: OperatorAlertDirectory;
   readonly req: HonoRequest;
   readonly traceId: string;
   readonly log: Logger;
@@ -373,6 +376,7 @@ function operatorRequest(c: Context<HonoEnv>, operator: OperatorScope): Operator
   return {
     operator,
     shops: operatorShopDirectory(c.get("db"), operator),
+    alerts: operatorAlertDirectory(c.get("db"), operator),
     req: c.req,
     traceId: c.get("traceId"),
     log: c.get("log"),
