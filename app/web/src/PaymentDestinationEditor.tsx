@@ -201,6 +201,17 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
             {!base ? <Banner tone="accent">결제 수단을 등록해야 예약 링크가 나와요</Banner> : null}
             <p>결제 안내에는 이 계좌와 링크만 나가요. 우리 회사 계좌는 쓰지 않아요</p>
             <p>이미 나간 결제 안내의 계좌는 그대로예요.</p>
+            {base ? (
+              <p>
+                등록 시각:{" "}
+                {new Intl.DateTimeFormat("ko-KR", {
+                  timeZone: "Asia/Seoul",
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(new Date(base.createdAt))}
+              </p>
+            ) : null}
+            {base?.holderMismatchConfirmed ? <p>상호·대표자와 다른 가게 명의 계좌임을 확인했어요</p> : null}
             {stale ? (
               <section className="payment-latest" aria-label="지금 결제 수단">
                 <Banner tone="warning">그 사이 바뀌었어요. 지금 상태를 확인해 주세요</Banner>

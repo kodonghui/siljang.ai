@@ -135,6 +135,7 @@ it("예금주 불일치는 돌아가기 뒤 입력을 보존하고 새 키/확�
   const again = await screen.findByRole("dialog", { name: "저장하기 전에 확인해 주세요" });
   fireEvent.click(within(again).getByRole("button", { name: "가게 명의가 맞아요" }));
   await within(screen.getByRole("main")).findByText("저장했어요. 이제부터 나가는 결제 안내에 이 계좌를 써요");
+  await within(screen.getByRole("main")).findByText("상호·대표자와 다른 가게 명의 계좌임을 확인했어요");
   expect(sends[2]?.body.confirm).toEqual(["holder_mismatch"]);
   expect(sends[2]?.key).not.toBe(sends[1]?.key);
 });
