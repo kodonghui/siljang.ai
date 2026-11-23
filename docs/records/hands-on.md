@@ -866,3 +866,8 @@
 - 학원컴 Aside CLI에서 Cloudflare 공식 Wrangler의 OAuth 동의를 진행했습니다. user/account 읽기·Worker/스크립트/라우트/로그·Queues·Zone 읽기와 Background Access의9개 범위이며 결제/요금제 변경은 하지 않았습니다. 새 API 키를 만들지 않았고 인증 값/파일을 다른 기기로 보내거나 복사하지 않았습니다.
 - 첫 PowerShell 구문 오류와 keyring 모듈 부재는 실행 준비 오류였습니다. 학원컴에 CLI가 요구한1.3.0을 설치한 뒤 SSH 로그온 세션의 Windows 저장소 접근이 거절됐고, 공식 CLI 기본 로컬 인증 저장 방식으로 성공했습니다. 앞 승인 대기 시간 초과는 미완료이며 최종 로그인/SSH0만 성공으로 셉니다.
 - 학원컴의 기존 로컬 OAuth로 whoami loggedIn=true/authType=OAuth Token/대상 계정 일치true를 확인했습니다. main84fadbf 앱2e29f755-c470-4951-b611-9e66469ffa35(11:08:11 KST)/상태200와 저장소eac523eb-4bed-4dea-bfa0-c637a785f98c(11:08:03)/트래픽100%가 같은 태그·SSH0·stderr_nonempty=true입니다. 공개 소스/계정 ID/기대 SHA만 SSH로 전달했고 키는 호출 기기에서 읽지 않았습니다.
+
+### 2026-11-23 12:11 KST · TASK-045 실제 공개 사진 읽기 권한
+
+- 학원컴 Aside SQL Editor에서 전달 본문 SHA-256 8ba30ce496897c8fadf55567c045222ab5955a0cb003404d0404e814b46c032b를 검사하고 기존 siljang_runtime의 공개 게시/동의/완성·후기 사진 SELECT3문장을 한 번 적용했습니다. 새 역할/마이그레이션/모델 호출/유료 변경은0입니다.
+- 결과는 마이그레이션34,게시/동의/사진의 필요한 모든 열 읽기 true,처리방침 SELECT와 INSERT의 개별 검사를 AND한 값 true,게시/철회 쓰기·사진 삭제를 합친 권한 false,옛 정책 수정/삭제 false입니다. 실제 공개 API 요청200이나 사장님 로그인 성공은 아직 아니며 배포 뒤 대조합니다.
