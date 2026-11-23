@@ -99,7 +99,7 @@ DT = {"type": "string", "format": "date-time"}
 DATE = {"type": "string", "format": "date"}
 URL = {"type": "string", "format": "uri", "maxLength": 2048}
 SIGNED_URL = {"type": "string", "format": "uri", "maxLength": 2048, "description": "15분 사는 서명 주소. 저장 위치는 포함하지 않음(DEC-09)"}
-PUBLIC_SIGNED_URL = {"type": "string", "format": "uri", "maxLength": 2048, "description": "공개 포트폴리오 전용5분 구간 서명 주소. 같은 구간에는 같은 주소이고 구간 끝 만료/공개 캐시도 남은 기한까지만(DEC-09 예외, SPEC-063)"}
+PUBLIC_SIGNED_URL = {"type": "string", "format": "uri", "maxLength": 2048, "description": "공개 포트폴리오 서명 주소. 같은 150초 구간에 같은 주소이고 구간 끝 뒤 150초에 만료(수명 150~300초). 공개 캐시는 남은 기한까지만(DEC-09 예외, SPEC-063)"}
 REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)")
 BASE_REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="화면이 본 기록의 revision. 지금과 다르면 409 version_conflict(DEC-05, G3)")
 ORDER_REVISION = string(1, 64, r"^[A-Za-z0-9._-]+$", desc="주문의 잠금 번호(orders.lock_version)로 만든 revision. 상태·시각·금액을 쓸 때마다 바뀜. 명령의 baseRevision에 그대로 보냄(DEC-05, 설계 재검토 H12)")

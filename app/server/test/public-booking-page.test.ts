@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import type { Queryable, RequestDb } from "../src/db";
+import { PUBLIC_FILE_INTERVAL_SECONDS, PUBLIC_FILE_MAX_TTL_SECONDS } from "../src/file-url";
 import { expectProblem, expectSchema } from "./support/contract";
 import { collectLogs, describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { MemoryLimiter } from "./support/rate-limit";
@@ -270,6 +271,43 @@ describeDb("TASK-045 공개 예약 페이지", () => {
       ]);
     });
     expect((await page(h)).portfolio).toHaveLength(2);
+  });
+
+  it("철회 직전에 발급한 포트폴리오 주소도 300초 안에 만료함(SPEC-063, REQ-209)", async () => {
+    const issuedAt = NOW.getTime() + 50_123;
+    const clock = { now: new Date(issuedAt) };
+    const h = await fixture({ services: { now: () => clock.now } });
+    const photoToWithdraw = await photo(h, await received(h), "completion", 1);
+    const [published] = (await page(h)).portfolio;
+    if (!published) throw new Error("철회할 합성 사진 없음");
+    const url = new URL(published.imageUrl);
+    const expiry = Number(url.searchParams.get("exp")) * 1000;
+    const lifetime = (expiry - issuedAt) / 1000;
+    expect(lifetime).toBeGreaterThanOrEqual(PUBLIC_FILE_INTERVAL_SECONDS);
+    expect(lifetime).toBeLessThanOrEqual(PUBLIC_FILE_MAX_TTL_SECONDS);
+
+    clock.now = new Date(issuedAt + 1);
+    await db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE portfolio_items SET unpublished_at=$2,unpublish_reason='consent_withdrawn',consent_live=NULL WHERE id=$1",
+        [photoToWithdraw.item, clock.now],
+      );
+      await tx.query("UPDATE photo_consents SET withdrawn_at=$2,publishable=false WHERE id=$1", [
+        photoToWithdraw.consent,
+        clock.now,
+      ]);
+    });
+    expect((await page(h)).portfolio).toHaveLength(0);
+    const env = testEnv({ FILE_URL_KEY: TEST_HASH_KEY });
+    const cached = await h.app.request(url.toString(), {}, env);
+    expect(cached.status).toBe(200);
+    const remaining = Math.floor((expiry - clock.now.getTime()) / 1000);
+    expect(cached.headers.get("cache-control")).toBe(
+      `public, max-age=${remaining}, s-maxage=${remaining}, must-revalidate`,
+    );
+
+    clock.now = new Date(issuedAt + PUBLIC_FILE_MAX_TTL_SECONDS * 1000);
+    await expectProblem(await h.app.request(url.toString(), {}, env), "not_found");
   });
 
   it.each(["full", "overbooked", "manual", "day_off"] as const)(

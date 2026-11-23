@@ -84,7 +84,7 @@ TASKS = [
     dict(id='TASK-058', it=2, name='SCR-047 영업 신고 확인 목록 화면', owner='Claude', size=1, src=['SPEC-003', 'SPEC-002', 'SPEC-078'], scr=['SCR-047'], dep=['TASK-182']),
     dict(id='TASK-059', it=2, name='SCR-048 영업 신고 확인 화면', owner='Claude', size=1, src=['SPEC-003', 'SPEC-078'], scr=['SCR-048'], dep=['TASK-182']),
     dict(id='TASK-060', it=2, name='SCR-049 운영자 알림 화면', owner='Claude', size=0.5, src=['SPEC-008', 'SPEC-010', 'SPEC-017'], scr=['SCR-049'], dep=['TASK-182']),
-    dict(id='TASK-061', it=2, name='SCR-001 예약 링크 페이지 화면', owner='Claude', size=2, src=['SPEC-011', 'SPEC-014', 'SPEC-063'], scr=['SCR-001'], dep=['TASK-029']),
+    dict(id='TASK-061', it=2, name='SCR-001 예약 링크 페이지 화면', owner='Claude', size=2, src=['SPEC-011', 'SPEC-014', 'SPEC-063'], scr=['SCR-001'], dep=['TASK-029'], done='사진 주소가 404이면 API-038을 한 번 다시 불러와 포트폴리오 목록 전체를 새 응답으로 바꾸고, 새 주소도 404인 사진 자리는 비움'),
     dict(id='TASK-062', it=2, name='SCR-002 가게 개인정보 처리방침 화면', owner='Claude', size=0.5, src=['SPEC-010', 'SPEC-011', 'SPEC-018'], scr=['SCR-002'], dep=['TASK-029']),
     dict(id='TASK-063', it=3, name='손님 메시지 받기: 상담 열기·이어가기, 채널 친구 여부, 한도, 글 길이', owner='Claude', size=2, src=['SPEC-017', 'REQ-262'], api=['API-070'], rules=['A13'], dep=['TASK-028', 'TASK-019'], ac={'SPEC-017': [3, 4, 7]}),
     dict(id='TASK-064', it=3, name='AI 상담 고지(처리방침 버전과 함께)', owner='Claude', size=1, src=['SPEC-018'], api=['API-070'], rules=['A39'], dep=['TASK-063', 'TASK-044']),
