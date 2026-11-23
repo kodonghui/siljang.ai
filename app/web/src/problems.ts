@@ -1,3 +1,4 @@
+import { type CalendarConflict, parseCalendarConflicts } from "./calendar-conflicts";
 // 06 계약(api/openapi.yaml)의 오류 꼴과 04 G7의 결과를 화면이 한 곳에서 읽는 표.
 // - 오류 코드 38개(components.x-corthex.errors): 상태 코드·화면에 보이는 말(06)·G7 결과·08 화면 상태·다시 보내는 법.
 // - 필드 오류 사유 24개(components.x-corthex.fieldErrors): 필드 옆에 보이는 한국어 글(화면이 더 맞는 글을 주면 그것).
@@ -366,6 +367,7 @@ export interface ConfirmationNeeded {
 
 /** 06 Problem(RFC 9457 + code·traceId). 화면이 쓰는 것만 읽는다. */
 export interface Problem {
+  readonly conflicts?: readonly CalendarConflict[];
   readonly status: number;
   readonly code: ErrorCode;
   readonly title: string;
@@ -391,6 +393,11 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "obj
  */
 export function parseProblem(body: unknown, status: number): Problem | null {
   if (!isRecord(body) || !isErrorCode(body.code)) return null;
+  const conflicts =
+    body.code === "confirmation_required" && body.conflicts !== undefined
+      ? parseCalendarConflicts(body.conflicts)
+      : undefined;
+  if (conflicts === null) return null;
   const errors: FieldError[] = [];
   if (Array.isArray(body.errors)) {
     for (const e of body.errors) {
@@ -413,6 +420,7 @@ export function parseProblem(body: unknown, status: number): Problem | null {
   }
   const retry = body.retryAfterSeconds;
   return {
+    ...(conflicts ? { conflicts } : {}),
     status,
     code: body.code,
     title: typeof body.title === "string" ? body.title : codeInfo(body.code).message,
@@ -427,6 +435,7 @@ export function parseProblem(body: unknown, status: number): Problem | null {
 
 /** 실패한 응답 하나를 화면이 알릴 꼴로(G7). */
 export interface Failure {
+  readonly conflicts?: readonly CalendarConflict[];
   readonly outcome: Outcome;
   /** 06 오류 코드. 연결 실패·계약 밖 응답이면 null */
   readonly code: ErrorCode | null;
@@ -466,6 +475,7 @@ export function classify(status: number, problem: Problem | null, retryAfterSeco
   const info = codeInfo(problem.code);
   return {
     outcome: info.outcome,
+    ...(problem.conflicts ? { conflicts: problem.conflicts } : {}),
     code: problem.code,
     status,
     state: info.state,
