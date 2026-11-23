@@ -402,6 +402,16 @@ it("직접 쓴 조문 뒤 기본 조문을 넣어도 화면과 저장 본문의 
   expect(activeRows.map((row) => row.querySelector("legend")?.textContent)).toEqual(
     activeRows.map((_, i) => `조문 ${i + 1}`),
   );
+  const titles = activeRows.map((row) => (within(row).getByLabelText("조문 이름") as HTMLInputElement).value);
+  const added = activeRows.at(-1);
+  if (!added) throw new Error("넣은 기본 조문 없음");
+  fireEvent.change(within(added).getByLabelText("조건"), { target: { value: "합성 조건" } });
+  fireEvent.change(within(added).getByLabelText("효과"), { target: { value: "합성 효과" } });
+  save();
+  await waitFor(() => expect(sends).toHaveLength(1));
+  const sent = sends[0];
+  if (!sent) throw new Error("저장 요청 없음");
+  expect((sent.body.clauses as { title: string }[]).map((c) => c.title)).toEqual(titles);
 });
 it("세션 확인 실패에는 진행 중 조회 골격을 남기지 않는다", async () => {
   area({ sessionFailed: true });
@@ -412,4 +422,31 @@ it("이력 화면을 연결하는 다음 작업 전에는 준비 중 경로로 �
   area();
   await loaded();
   expect(screen.queryByRole("button", { name: "버전 이력" })).toBeNull();
+});
+
+it("기본 조문을 넣고 빼도 해당 행에 키보드 초점을 남긴다", async () => {
+  area();
+  await loaded();
+  const add = screen.getAllByRole("button", { name: "이 조문 넣기" })[0];
+  if (!add) throw new Error("기본 조문 선택지 없음");
+  const row = add.closest("fieldset");
+  if (!row) throw new Error("기본 조문 없음");
+  const title = (within(row).getByLabelText("조문 이름") as HTMLInputElement).value;
+  add.focus();
+  fireEvent.click(add);
+  const active = screen.getAllByRole("group").find((r) => within(r).queryByDisplayValue(title));
+  if (!active) throw new Error("넣은 조문 없음");
+  expect(document.activeElement).toBe(within(active).getByLabelText("조건"));
+  const remove = within(active).getByRole("button", { name: "조문 빼기" });
+  remove.focus();
+  fireEvent.click(remove);
+  const inactive = screen.getAllByRole("group").find((r) => within(r).queryByDisplayValue(title));
+  if (!inactive) throw new Error("뺀 기본 조문 없음");
+  expect(document.activeElement).toBe(within(inactive).getByRole("button", { name: "이 조문 넣기" }));
+});
+it("기본 조문을 모두 넣으면 빈 기본 조문 선택 영역을 없앤다", async () => {
+  area();
+  await loaded();
+  for (const add of screen.getAllByRole("button", { name: "이 조문 넣기" })) fireEvent.click(add);
+  expect(screen.queryByRole("region", { name: "넣을 수 있는 기본 조문" })).toBeNull();
 });
