@@ -1,0 +1,116 @@
+.shop-license {
+  display: grid;
+  gap: var(--space-xl);
+  min-width: 0;
+}
+.license-section,
+.license-form,
+.license-photo {
+  display: grid;
+  gap: var(--space-md);
+  min-width: 0;
+}
+.license-section__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+.license-section h2 {
+  margin: 0;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+}
+.license-data {
+  margin: 0;
+  border: var(--border-width-hairline) solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.license-data > div {
+  display: grid;
+  grid-template-columns: var(--size-thumb) minmax(0, 1fr);
+  gap: var(--space-md);
+  align-items: baseline;
+  padding: var(--space-sm) var(--space-md);
+}
+.license-data > div + div {
+  border-top: var(--border-width-hairline) solid var(--color-line);
+}
+.license-data dt {
+  color: var(--color-ink-muted);
+}
+.license-data dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.license-document {
+  display: grid;
+  gap: var(--space-sm);
+  color: var(--color-accent);
+  min-height: var(--size-target);
+}
+.license-document img,
+.license-photo__preview {
+  display: block;
+  width: 100%;
+  max-width: var(--size-content);
+  max-height: var(--size-content);
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: var(--color-surface-sunken);
+}
+.license-photo__skeleton {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-md);
+}
+.license-form {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.license-form legend {
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+}
+.license-business-types {
+  display: grid;
+  gap: var(--space-sm);
+}
+.license-business-types label {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-target);
+  gap: var(--space-sm);
+}
+.license-business-types input {
+  flex: none;
+}
+.license-photo input[type="file"] {
+  min-height: var(--size-target);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-block: var(--space-sm);
+  font: inherit;
+}
+.license-photo__filename {
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.license-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-target);
+  color: var(--color-accent);
+}
+.license-document:focus-visible,
+.license-link:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-accent);
+  outline-offset: var(--space-xxs);
+}

@@ -27,6 +27,7 @@ export interface ShopRow {
   license_photo_key: string;
   license_status: string;
   license_hold_reason: string | null;
+  license_reviewed_at: Date | null;
   entrustment_terms_version: string;
   entrustment_consented_at: Date;
   time_zone: string;
@@ -88,6 +89,7 @@ export async function renderShop(
     foodBusinessType: row.food_business_type,
     licenseStatus: row.license_status,
     licenseHoldReason: row.license_hold_reason,
+    licenseReviewedAt: row.license_reviewed_at === null ? null : iso(row.license_reviewed_at),
     licensePhotoUrl: await urls.sign(row.license_photo_key, origin, now),
     entrustmentTermsVersion: row.entrustment_terms_version,
     entrustmentConsentedAt: iso(row.entrustment_consented_at),

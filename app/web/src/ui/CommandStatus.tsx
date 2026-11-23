@@ -16,6 +16,8 @@ export const RELOAD_LABEL = "다시 불러오기";
 
 export interface CommandStatusProps<O> {
   readonly state: CommandState<O>;
+  /** 양식의 전역 잠금은 결과의 재시도·다시 불러오기에도 적용한다. */
+  readonly disabled?: boolean;
   /** 화면이 그린 필드의 포인터. 여기에 없는 위치의 필드 오류는 폼 위에 모아 보임 */
   readonly fields?: readonly string[];
   /** 사유 코드 없이 오는 필드 쪽 오류(06: sheet_not_accessible 등)를 붙인 필드가 있으면 그 코드. 폼 위에는 되풀이하지 않음 */
@@ -112,7 +114,7 @@ function FailureView<O>(props: CommandStatusProps<O> & { readonly failure: Failu
           detail={f.outcome === "not_allowed" && f.detail !== null ? f.detail : undefined}
           actions={
             props.onReload === undefined ? undefined : (
-              <Button kind="warn" onClick={props.onReload}>
+              <Button kind="warn" onClick={props.onReload} disabled={props.disabled}>
                 {RELOAD_LABEL}
               </Button>
             )
@@ -169,7 +171,7 @@ function FailureView<O>(props: CommandStatusProps<O> & { readonly failure: Failu
           detail={traceLine(f)}
           actions={
             f.retry === "none" || props.onRetry === undefined ? undefined : (
-              <Button kind="secondary" onClick={props.onRetry} disabled={props.blocked}>
+              <Button kind="secondary" onClick={props.onRetry} disabled={Boolean(props.blocked || props.disabled)}>
                 {RETRY_LABEL}
               </Button>
             )
@@ -183,6 +185,7 @@ function FailureView<O>(props: CommandStatusProps<O> & { readonly failure: Failu
 
 export interface LoadFailureProps {
   readonly failure: Failure;
+  readonly disabled?: boolean;
   readonly onRetry?: () => void;
   readonly onLogin?: () => void;
   readonly loginLabel?: string;
@@ -196,6 +199,7 @@ export interface LoadFailureProps {
  */
 export function LoadFailure({
   failure: f,
+  disabled = false,
   onRetry,
   onLogin,
   loginLabel,
@@ -250,7 +254,7 @@ export function LoadFailure({
           title={f.message}
           actions={
             f.retry === "none" || onRetry === undefined ? undefined : (
-              <Button kind="primary" onClick={onRetry}>
+              <Button kind="primary" onClick={onRetry} disabled={disabled}>
                 {RETRY_LABEL}
               </Button>
             )

@@ -5,6 +5,15 @@ import { shopFixture } from "./test-fixtures/shop-settings";
 afterEach(() => vi.unstubAllGlobals());
 const json = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
+it.each(["applied", "approved"])("사업자 변경 반영 상태 %s는 API 계약과 일치해야 함", async (status) => {
+  const value = shopFixture("get_identity_change_pending");
+  value.identityChange = { ...(value.identityChange as Record<string, unknown>), status };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json(value)),
+  );
+  expect((await fetchShopSettings()).ok).toBe(status === "applied");
+});
 it.each(["verified", "pending", "on_hold", "identity_change_pending", "identity_change_on_hold"])(
   "가게 조회 계약의 %s 성공 응답을 읽음",
   async (name) => {

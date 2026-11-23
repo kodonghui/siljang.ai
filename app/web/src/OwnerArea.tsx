@@ -13,6 +13,7 @@ import {
 } from "./owner";
 import { classify } from "./problems";
 import { clearRegistrationDraft, pruneRegistrationDraft } from "./registration-draft";
+import { ShopLicense } from "./ShopLicense";
 import { ShopRegistration } from "./ShopRegistration";
 import { ShopSettings } from "./ShopSettings";
 import { Button, LoadFailure, Skeleton } from "./ui";
@@ -98,7 +99,9 @@ export function OwnerArea() {
     );
   const session = checked?.key === location.key && checked.revision === revision ? checked.result : null;
   const candidate = session?.ok ? session.data : verified.current?.key === location.key ? verified.current.data : null;
-  if (requested.split(/[?#]/)[0] === "/owner/shop" && candidate?.shop) {
+  const shopPath = requested.split(/[?#]/)[0];
+  if (["/owner/shop", "/owner/shop/license"].includes(shopPath ?? "") && candidate?.shop) {
+    const ShopScreen = shopPath === "/owner/shop/license" ? ShopLicense : ShopSettings;
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (
@@ -109,7 +112,7 @@ export function OwnerArea() {
             onRetry={() => setRevision((r) => r + 1)}
           />
         ) : null}
-        <ShopSettings
+        <ShopScreen
           key={`${candidate.owner.ownerId}:${candidate.shop.shopId}`}
           shopName={candidate.shop.name}
           onNavigate={(href) => navigate(href)}
@@ -180,6 +183,9 @@ export function OwnerArea() {
       <h1>수제케이크 주문제작</h1>
       {registrationNotice ? <p role="status">가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요</p> : null}
       <p>준비 중입니다.</p>
+      {shopPath === "/owner/payment-destination" ? (
+        <Button onClick={() => navigate("/owner/shop/license")}>영업 신고로 돌아가기</Button>
+      ) : null}
       {logout === "failed" ? <p role="alert">로그아웃하지 못했어요. 다시 시도해 주세요</p> : null}
       <Button onClick={() => void logOut()}>로그아웃</Button>
     </main>

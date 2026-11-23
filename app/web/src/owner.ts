@@ -123,7 +123,10 @@ function identity(value: unknown): value is OwnerIdentity {
 export function ownerDestination(profile: OwnerIdentity, returnTo: unknown): string {
   if (profile.shop === null) return OWNER_REGISTER;
   const safe = ownerReturnTo(returnTo);
-  if (profile.shop.licenseStatus === "on_hold" && safe?.split(/[?#]/)[0] !== "/owner/shop") return OWNER_LICENSE;
+  const repairPath = ["/owner/shop", OWNER_LICENSE, "/owner/payment-destination"].includes(
+    safe?.split(/[?#]/)[0] ?? "",
+  );
+  if (profile.shop.licenseStatus === "on_hold" && !repairPath) return OWNER_LICENSE;
   return safe === OWNER_REGISTER ? OWNER_HOME : (safe ?? OWNER_HOME);
 }
 

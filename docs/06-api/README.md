@@ -559,6 +559,7 @@ D1의 참고: `operators.email`·`kakao_channels.bot_id`·`ledger_links.spreadsh
 
 | 고친 곳 | 고친 것 | 근거 |
 | --- | --- | --- |
+| Shop 응답 licenseReviewedAt | 기존 판정 시각을 선택 필드로 반환하고 확인 중/재제출 뒤는 null | SCR-035 확인됨 시각, TASK-048 |
 | API-078·001·002, Owner.alertChannelFriend, DEC-21 | 기본 로그인은 scope를 생략하고 plusfriends·채널 조회·친구 기록·재조회·채널 배너를 끔. KAKAO_OWNER_LOGIN_SCOPES에 plusfriends를 명시한 경우만 기존 확인을 켬. 기존 친구 값은 보관하며 MVP에서 현재 관계 판단으로 쓰지 않음. API-002에 MVP 예시를 더함 | 동희님 2026-11-22 15:57 결정 카드 'MVP에선 빼기', TASK-020 |
 
 ### 2026-11-19 카카오 개발 채널 시험을 계약에 반영(TASK-011)
@@ -897,3 +898,7 @@ PC 화면과 Worker 기록은 [카카오 시험 대본](../10-wbs/kakao-test-scr
 - 계약 밖 사진 읽기 두 경로는 같은IP의1분600회 한도/429·Retry-After를 사용합니다(150장 페이지 네 번). DEC-16 원래 결정은 보존하고 승인한 예외를 추가했습니다. Worker 위치별 근사 한도인 점은 기존 어댑터와 같습니다.
 - 공개 암호화·서명·IV용 키는 HKDF에서 일반 사진과 다른 용도로 파생합니다. 저장 위치와 만료 시각을 구분해 인코딩한 뒤 HMAC으로 96비트 IV를 만듭니다. 같은 저장 위치와 만료 시각에는 같은 암호문을 사용합니다.
 - 후속 결정에서 같은 150초 구간에 같은 주소를 내고 구간 끝 뒤 150초에 만료하도록 바꿨습니다. 주소 수명은 150~300초이며 캐시는 남은 정수 초까지만 허용합니다. 저장 위치와 만료 시각으로 IV를 파생합니다. [PR #186 병합 후 검토](https://github.com/kodonghui/siljang.ai/pull/186#issuecomment-7092405123)
+
+### 2026-11-23 · SCR-035 영업 신고 확인 시각
+
+사장님 Shop 응답에 선택 필드 licenseReviewedAt을 더했습니다. 기존 shops.license_reviewed_at을 서울 시각으로 보내며 확인 중/재제출 뒤는 null입니다. 가게 전체 updatedAt을 확인 시각으로 대신하지 않습니다. 운영자 ID나 증빙 원문은 더 보내지 않습니다.

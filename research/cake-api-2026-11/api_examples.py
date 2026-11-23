@@ -77,15 +77,15 @@ SHOP = {
     "businessName": "달빛케이크", "representativeName": "김달빛", "businessRegNo": BRN,
     "mailOrderRegNo": "제2026-서울마포-0123호", "mailOrderAuthority": "서울특별시 마포구청", "mailOrderExemption": None,
     "foodLicenseNo": "2026-0123456", "foodBusinessType": "instant_sale_manufacturing",
-    "licenseStatus": "verified", "licenseHoldReason": None, "licensePhotoUrl": surl("license"),
+    "licenseStatus": "verified", "licenseHoldReason": None, "licensePhotoUrl": surl("license"), "licenseReviewedAt": t("11-12", "15:20"),
     "entrustmentTermsVersion": "2026.11", "entrustmentConsentedAt": t("11-12", "10:05"),
     "timeZone": "Asia/Seoul", "completionPhotoEnabled": True, "idleCloseHours": 24, "ownerWaitMinutes": 120,
     "dailyAiCostLimitKrw": 5000, "awaitingPaymentLimit": 2, "bookingUrl": "https://siljang.example/s/moonlight-cake", "identityChange": None,
     "createdAt": t("11-12", "10:05"), "updatedAt": t("11-12", "15:20"), "revision": rev("shop:3"),
 }
-SHOP_PENDING = dict(SHOP, licenseStatus="pending", pickupAddress=None, completionPhotoEnabled=False, bookingUrl=None,
+SHOP_PENDING = dict(SHOP, licenseStatus="pending", licenseReviewedAt=None, pickupAddress=None, completionPhotoEnabled=False, bookingUrl=None,
                     updatedAt=t("11-12", "10:05"), revision=rev("shop:1"))
-SHOP_ON_HOLD = dict(SHOP_PENDING, licenseStatus="on_hold", licenseHoldReason="신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요",
+SHOP_ON_HOLD = dict(SHOP_PENDING, licenseStatus="on_hold", licenseReviewedAt=t("11-12", "13:40"), licenseHoldReason="신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요",
                     updatedAt=t("11-12", "13:40"), revision=rev("shop:2"))
 
 def settings_shop(shop):

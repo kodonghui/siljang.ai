@@ -1,0 +1,1226 @@
+[
+  {
+    "state": "retry_session_failed_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "상태\n보류\n영업 신고 번호\n2026-0123456\n영업 종류\n즉석판매제조·가공업\n신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요\n신고증 사진 크게 보기\n문제가 생겼어요. 다시 시도해 주세요\n추적 ID: 0123456789abcdef0123456789abcdef\n다시 시도\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n\n선택한 파일: synthetic-review.png\n\n사진을 올렸어요. 1시간 안에 저장해 주세요\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n변경 요청\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "2026-0123456",
+          "disabled": true
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": true
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": true
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": true
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 시도",
+          "disabled": true
+        },
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": true
+        },
+        {
+          "label": "변경 요청",
+          "disabled": true
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 1 · 사진 요청 1 · 저장 요청 1\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "retry_other_upload_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "상태\n보류\n영업 신고 번호\n2026-0123456\n영업 종류\n즉석판매제조·가공업\n신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요\n신고증 사진 크게 보기\n문제가 생겼어요. 다시 시도해 주세요\n추적 ID: 0123456789abcdef0123456789abcdef\n다시 시도\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n\n선택한 파일: synthetic-review.png\n\n사진을 올렸어요. 1시간 안에 저장해 주세요\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n사업자 정보 변경 요청\n새 상호\n새 대표자\n새 사업자등록번호\n증빙 사진\nJPG·PNG·HEIC, 10MB까지\n\n선택한 파일: synthetic-review.png\n\n사진을 올리고 있어요\n\n변경 요청\n돌아가기\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "2026-0123456",
+          "disabled": true
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": true
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": true
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": true
+        },
+        {
+          "type": "text",
+          "value": "달빛케이크",
+          "disabled": true
+        },
+        {
+          "type": "text",
+          "value": "김달빛",
+          "disabled": true
+        },
+        {
+          "type": "text",
+          "value": "1234567891",
+          "disabled": true
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": true
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 시도",
+          "disabled": true
+        },
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": true
+        },
+        {
+          "label": "변경 요청",
+          "disabled": true
+        },
+        {
+          "label": "돌아가기",
+          "disabled": true
+        },
+        {
+          "label": "로그아웃",
+          "disabled": true
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 1 · 사진 요청 2 · 저장 요청 1\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "identity_conflict_preserves_license_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      },
+      "byCheck": {
+        "target-goal": 1
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "info",
+          "check": "target-goal",
+          "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+          "where": "",
+          "text": ""
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "상태\n보류\n영업 신고 번호\n서버 최신 신고 번호\n영업 종류\n즉석판매제조·가공업\n신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요\n신고증 사진 크게 보기\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n변경 요청\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n그 사이 바뀌었어요. 지금 상태를 확인해 주세요\n다시 불러오기\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "내 미저장 신고 번호",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": false
+        },
+        {
+          "label": "변경 요청",
+          "disabled": false
+        },
+        {
+          "label": "다시 불러오기",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 2 · 사진 요청 1 · 저장 요청 1\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "license_conflict_preserves_identity_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "상태\n확인됨\n확인 시각\n2026. 11. 23. 오후 8:38\n영업 신고 번호\n서버 최신 신고 번호\n영업 종류\n즉석판매제조·가공업\n신고증 사진 크게 보기\n그 사이 바뀌었어요. 지금 상태를 확인해 주세요\n다시 불러오기\n사업자 정보\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n사업자 정보 변경 요청\n새 상호\n새 대표자\n새 사업자등록번호\n증빙 사진\nJPG·PNG·HEIC, 10MB까지\n\n선택한 파일: synthetic-review.png\n\n사진을 올렸어요. 1시간 안에 저장해 주세요\n변경 요청\n돌아가기\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "내 미저장 사업자 상호",
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "김달빛",
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "1234567891",
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 불러오기",
+          "disabled": false
+        },
+        {
+          "label": "변경 요청",
+          "disabled": false
+        },
+        {
+          "label": "돌아가기",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 2 · 사진 요청 2 · 저장 요청 1\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "reload_failed_locked_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "문제가 생겼어요. 다시 시도해 주세요\n\n추적 ID: 0123456789abcdef0123456789abcdef\n\n다시 시도\n이전 정보를 보고 있어요. 다시 불러온 뒤 저장해 주세요.\n상태\n보류\n영업 신고 번호\n2026-0123456\n영업 종류\n즉석판매제조·가공업\n신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요\n신고증 사진 크게 보기\n그 사이 바뀌었어요. 지금 상태를 확인해 주세요\n다시 불러오기\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n\n선택한 파일: synthetic-review.png\n\n사진을 올렸어요. 1시간 안에 저장해 주세요\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n변경 요청\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "2026-0123456",
+          "disabled": true
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": true
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": true
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": true
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 시도",
+          "disabled": false
+        },
+        {
+          "label": "다시 불러오기",
+          "disabled": true
+        },
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": true
+        },
+        {
+          "label": "변경 요청",
+          "disabled": true
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 2 · 사진 요청 1 · 저장 요청 1\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "reload_recovered_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      },
+      "byCheck": {
+        "target-goal": 1
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "info",
+          "check": "target-goal",
+          "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+          "where": "",
+          "text": ""
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "상태\n보류\n영업 신고 번호\n서버 최신 신고 번호\n영업 종류\n즉석판매제조·가공업\n신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요\n신고증 사진 크게 보기\n그 사이 바뀌었어요. 지금 상태를 확인해 주세요\n다시 불러오기\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n\n선택한 파일: synthetic-review.png\n\n사진을 올렸어요. 1시간 안에 저장해 주세요\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n변경 요청\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "서버 최신 신고 번호",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 불러오기",
+          "disabled": false
+        },
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": false
+        },
+        {
+          "label": "변경 요청",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 3 · 사진 요청 1 · 저장 요청 1\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "photo_retry_clears_missing_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      },
+      "byCheck": {
+        "target-goal": 1
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "info",
+          "check": "target-goal",
+          "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+          "where": "",
+          "text": ""
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "상태\n보류\n영업 신고 번호\n2026-0123456\n영업 종류\n즉석판매제조·가공업\n신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요\n신고증 사진 크게 보기\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n\n선택한 파일: synthetic-review.png\n\n사진을 올렸어요. 1시간 안에 저장해 주세요\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n변경 요청\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "2026-0123456",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": false
+        },
+        {
+          "label": "변경 요청",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 1 · 사진 요청 2 · 저장 요청 0\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "photo_retry_clears_missing_1280",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      },
+      "byCheck": {
+        "target-goal": 1
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "info",
+          "check": "target-goal",
+          "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+          "where": "",
+          "text": ""
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 1280,
+      "text": "상태\n보류\n영업 신고 번호\n2026-0123456\n영업 종류\n즉석판매제조·가공업\n신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요\n신고증 사진 크게 보기\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n\n선택한 파일: synthetic-review.png\n\n사진을 올렸어요. 1시간 안에 저장해 주세요\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n변경 요청\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "2026-0123456",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": false
+        },
+        {
+          "label": "변경 요청",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 1 · 사진 요청 2 · 저장 요청 0\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "retry_session_failed_1280",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 1280,
+      "text": "상태\n보류\n영업 신고 번호\n2026-0123456\n영업 종류\n즉석판매제조·가공업\n신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요\n신고증 사진 크게 보기\n문제가 생겼어요. 다시 시도해 주세요\n추적 ID: 0123456789abcdef0123456789abcdef\n다시 시도\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n\n선택한 파일: synthetic-review.png\n\n사진을 올렸어요. 1시간 안에 저장해 주세요\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n변경 요청\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "2026-0123456",
+          "disabled": true
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": true
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": true
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": true
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 시도",
+          "disabled": true
+        },
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": true
+        },
+        {
+          "label": "변경 요청",
+          "disabled": true
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 1 · 사진 요청 1 · 저장 요청 1\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "license_conflict_preserves_identity_1280",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 1280,
+      "text": "상태\n확인됨\n확인 시각\n2026. 11. 23. 오후 8:41\n영업 신고 번호\n서버 최신 신고 번호\n영업 종류\n즉석판매제조·가공업\n신고증 사진 크게 보기\n그 사이 바뀌었어요. 지금 상태를 확인해 주세요\n다시 불러오기\n사업자 정보\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n사업자 정보 변경 요청\n새 상호\n새 대표자\n새 사업자등록번호\n증빙 사진\nJPG·PNG·HEIC, 10MB까지\n\n선택한 파일: synthetic-review.png\n\n사진을 올렸어요. 1시간 안에 저장해 주세요\n변경 요청\n돌아가기\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "내 미저장 사업자 상호",
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "김달빛",
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "1234567891",
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 불러오기",
+          "disabled": false
+        },
+        {
+          "label": "변경 요청",
+          "disabled": false
+        },
+        {
+          "label": "돌아가기",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 2 · 사진 요청 2 · 저장 요청 1\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "identity_conflict_preserves_license_1280",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      },
+      "byCheck": {
+        "target-goal": 1
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "info",
+          "check": "target-goal",
+          "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+          "where": "",
+          "text": ""
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 1280,
+      "text": "상태\n보류\n영업 신고 번호\n서버 최신 신고 번호\n영업 종류\n즉석판매제조·가공업\n신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요\n신고증 사진 크게 보기\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n변경 요청\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n그 사이 바뀌었어요. 지금 상태를 확인해 주세요\n다시 불러오기\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "내 미저장 신고 번호",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": false
+        },
+        {
+          "label": "변경 요청",
+          "disabled": false
+        },
+        {
+          "label": "다시 불러오기",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 2 · 사진 요청 1 · 저장 요청 1\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "payment_return_available_1280",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 1280,
+      "text": "수제케이크 주문제작\n\n준비 중입니다.\n\n영업 신고로 돌아가기로그아웃",
+      "inputs": [],
+      "buttons": [
+        {
+          "label": "영업 신고로 돌아가기",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 1 · 사진 요청 0 · 저장 요청 0\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "payment_returned_license_1280",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      },
+      "byCheck": {
+        "target-goal": 1
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "info",
+          "check": "target-goal",
+          "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+          "where": "",
+          "text": ""
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 1280,
+      "text": "상태\n보류\n영업 신고 번호\n2026-0123456\n영업 종류\n즉석판매제조·가공업\n합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄\n신고증 사진 크게 보기\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n변경 요청\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "2026-0123456",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": false
+        },
+        {
+          "label": "변경 요청",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 2 · 사진 요청 0 · 저장 요청 0\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "payment_return_available_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "수제케이크 주문제작\n\n준비 중입니다.\n\n영업 신고로 돌아가기로그아웃",
+      "inputs": [],
+      "buttons": [
+        {
+          "label": "영업 신고로 돌아가기",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 2 · 사진 요청 0 · 저장 요청 0\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "payment_returned_license_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:51749/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      },
+      "byCheck": {
+        "target-goal": 1
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "info",
+          "check": "target-goal",
+          "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+          "where": "",
+          "text": ""
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "상태\n보류\n영업 신고 번호\n2026-0123456\n영업 종류\n즉석판매제조·가공업\n합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄이지 않고 모두 확인합니다. 합성 보류 사유를 줄\n신고증 사진 크게 보기\n영업 신고 다시 올리기\n영업 신고 번호\n영업 종류\n즉석판매제조·가공업\n제과점영업\n새 신고증 사진\nJPG·PNG·HEIC, 10MB까지\n신고증 다시 올리기\n예금주 때문에 보류됐나요? 결제 수단에서 계좌를 바꿔 주세요\n사업자 정보\n변경 요청\n\n운영자가 확인한 지금 값입니다. 변경이 반영되기 전까지 이 값을 사용해요.\n\n상호\n달빛케이크\n대표자\n김달빛\n사업자등록번호\n123-45-67891\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "2026-0123456",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "신고증 다시 올리기",
+          "disabled": false
+        },
+        {
+          "label": "변경 요청",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "합성 API로 실제 영업 신고 화면을 확인합니다. 실제 계정이나 S3 저장 시험이 아닙니다.\n\n시험 응답\nnormal\nloading\nerror\npermission\nnoShop\nstale\nsubmitting\nonHold\nresubmitted\nidentityRequested\nidentityUnchanged\nidentityPending\nidentityOnHold\nretryLock\notherUploadLock\nidentityConflict\nlicenseConflict\nreloadFailure\nphotoRetry\n세션 확인 실패로 바꾸기\n세션 확인 복구\n조회 복구 허용\n\n조회 요청 3 · 사진 요청 0 · 저장 요청 0\n\n화면 검사 스크립트"
+    }
+  }
+]

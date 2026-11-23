@@ -1002,6 +1002,7 @@ paths:
                     licenseStatus: pending
                     licenseHoldReason: null
                     licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                    licenseReviewedAt: null
                     entrustmentTermsVersion: "2026.11"
                     entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                     timeZone: Asia/Seoul
@@ -1226,6 +1227,7 @@ paths:
                     licenseStatus: verified
                     licenseHoldReason: null
                     licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                    licenseReviewedAt: '2026-11-12T15:20:00+09:00'
                     entrustmentTermsVersion: "2026.11"
                     entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                     timeZone: Asia/Seoul
@@ -1266,6 +1268,7 @@ paths:
                     licenseStatus: pending
                     licenseHoldReason: null
                     licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                    licenseReviewedAt: null
                     entrustmentTermsVersion: "2026.11"
                     entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                     timeZone: Asia/Seoul
@@ -1306,6 +1309,7 @@ paths:
                     licenseStatus: on_hold
                     licenseHoldReason: 신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요
                     licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                    licenseReviewedAt: '2026-11-12T13:40:00+09:00'
                     entrustmentTermsVersion: "2026.11"
                     entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                     timeZone: Asia/Seoul
@@ -1346,6 +1350,7 @@ paths:
                     licenseStatus: verified
                     licenseHoldReason: null
                     licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                    licenseReviewedAt: '2026-11-12T15:20:00+09:00'
                     entrustmentTermsVersion: "2026.11"
                     entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                     timeZone: Asia/Seoul
@@ -1399,6 +1404,7 @@ paths:
                     licenseStatus: verified
                     licenseHoldReason: null
                     licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                    licenseReviewedAt: '2026-11-12T15:20:00+09:00'
                     entrustmentTermsVersion: "2026.11"
                     entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                     timeZone: Asia/Seoul
@@ -1584,6 +1590,7 @@ paths:
                       licenseStatus: verified
                       licenseHoldReason: null
                       licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                      licenseReviewedAt: '2026-11-12T15:20:00+09:00'
                       entrustmentTermsVersion: "2026.11"
                       entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                       timeZone: Asia/Seoul
@@ -1627,6 +1634,7 @@ paths:
                       licenseStatus: verified
                       licenseHoldReason: null
                       licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                      licenseReviewedAt: '2026-11-12T15:20:00+09:00'
                       entrustmentTermsVersion: "2026.11"
                       entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                       timeZone: Asia/Seoul
@@ -1875,6 +1883,7 @@ paths:
                       licenseStatus: pending
                       licenseHoldReason: null
                       licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                      licenseReviewedAt: null
                       entrustmentTermsVersion: "2026.11"
                       entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                       timeZone: Asia/Seoul
@@ -23515,6 +23524,7 @@ paths:
                       licenseStatus: verified
                       licenseHoldReason: null
                       licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                      licenseReviewedAt: '2026-11-12T15:20:00+09:00'
                       entrustmentTermsVersion: "2026.11"
                       entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                       timeZone: Asia/Seoul
@@ -23573,6 +23583,7 @@ paths:
                       licenseStatus: verified
                       licenseHoldReason: null
                       licensePhotoUrl: https://files.siljang.example/v1/b751149521e82afc8294209d?exp=1763619300&sig=9bda8f6160f346475585c5c7ba17dc6e
+                      licenseReviewedAt: '2026-11-12T15:20:00+09:00'
                       entrustmentTermsVersion: "2026.11"
                       entrustmentConsentedAt: '2026-11-12T10:05:00+09:00'
                       timeZone: Asia/Seoul
@@ -25508,6 +25519,12 @@ components:
           maxLength: 64
           pattern: ^[A-Za-z0-9._-]+$
           description: 서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)
+        licenseReviewedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+          description: 영업 신고를 마지막으로 확인·보류한 시각. 확인 중이면 null. SCR-035의 확인 시각이며 updatedAt으로 대신하지 않음
         settingsSummary:
           $ref: '#/components/schemas/ShopSettingsSummary'
           description: API-009/010의 현재 카드 상태. 등록·신고·사업자 정보 변경 응답에는 없음. not_started는 확인 시작 전, pending은 확인 중, failed는 확인 실패

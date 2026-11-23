@@ -1,0 +1,966 @@
+[
+  {
+    "state": "normal",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "normal",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "on-hold",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 1
+    },
+    "byCheck": {
+      "target-goal": 1
+    },
+    "truncated": false,
+    "issues": [
+      {
+        "level": "info",
+        "check": "target-goal",
+        "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+        "where": "",
+        "text": ""
+      }
+    ],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "on-hold",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 1
+    },
+    "byCheck": {
+      "target-goal": 1
+    },
+    "truncated": false,
+    "issues": [
+      {
+        "level": "info",
+        "check": "target-goal",
+        "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+        "where": "",
+        "text": ""
+      }
+    ],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "loading",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "loading",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "identity_pending",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "identity_pending",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "identity_on_hold",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "identity_on_hold",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "permission",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "permission",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "no_shop",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "no_shop",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "error",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 1
+    },
+    "byCheck": {
+      "target-goal": 1
+    },
+    "truncated": false,
+    "issues": [
+      {
+        "level": "info",
+        "check": "target-goal",
+        "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+        "where": "",
+        "text": ""
+      }
+    ],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "error",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 1
+    },
+    "byCheck": {
+      "target-goal": 1
+    },
+    "truncated": false,
+    "issues": [
+      {
+        "level": "info",
+        "check": "target-goal",
+        "msg": "2 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+        "where": "",
+        "text": ""
+      }
+    ],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "stale",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "stale",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "submitting",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "submitting",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "done_resubmitted",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "done_resubmitted",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "done_identity_requested",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "done_identity_requested",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "done_identity_unchanged",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "done_identity_unchanged",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "http://127.0.0.1:55682/",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "actual_staging_permission_before_pr195",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "https://staging.siljang.ai.corthex-hq.com/owner/login",
+    "viewport": {
+      "width": 360,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  },
+  {
+    "state": "actual_staging_permission_before_pr195",
+    "tool": "corthex-uxui page-check",
+    "version": "1.0",
+    "url": "https://staging.siljang.ai.corthex-hq.com/owner/login",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25
+    },
+    "env": {
+      "reducedMotion": true,
+      "dark": false
+    },
+    "pass": true,
+    "counts": {
+      "error": 0,
+      "warn": 0,
+      "info": 0
+    },
+    "byCheck": {},
+    "truncated": false,
+    "issues": [],
+    "notMeasured": [
+      "Keyboard focus visibility and order (press Tab yourself)",
+      "Line breaks in vertical or turned text, and overflow in turned text",
+      "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+      "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+      "The order and names a screen reader reads",
+      "The real screen with reduced motion turned on",
+      "Content inside Shadow DOM and iframes"
+    ]
+  }
+]
