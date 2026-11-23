@@ -74,10 +74,17 @@ export function useVersionedRead<T>(load: (signal: AbortSignal) => Promise<ApiRe
     needed.current = false;
     setState((old) => (old.loading ? { ...old, loading: false } : old));
   }, []);
+  /** 요청하지 않고 다음 세션 확인 완료 뒤 한 번 읽도록 표시한다. */
+  const deferRead = useCallback((nextMode: ReadMode = "initial") => {
+    mode.current = nextMode;
+    needed.current = true;
+    active.current?.abort();
+    setState((old) => (old.loading ? { ...old, loading: false } : old));
+  }, []);
   const retry = useCallback(() => read(mode.current), [read]);
   const clearFailure = useCallback(
     () => setState((old) => (old.failure === null ? old : { ...old, failure: null })),
     [],
   );
-  return { ...state, read, retry, clearFailure, cancel };
+  return { ...state, read, retry, clearFailure, cancel, deferRead };
 }

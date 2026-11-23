@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { matchPath, Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
+import { BookingLinkScreen } from "./BookingLinkScreen";
 import { KakaoChannelSettings } from "./KakaoChannelSettings";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import { OperatingRulesHistory } from "./OperatingRulesHistory";
@@ -24,6 +25,15 @@ import { ShopRegistration } from "./ShopRegistration";
 import { ShopSettings } from "./ShopSettings";
 import { Button, LoadFailure, Skeleton } from "./ui";
 
+const shopScreens = [
+  { path: "/owner/shop", Screen: ShopSettings, checkDestination: false },
+  { path: "/owner/shop/license", Screen: ShopLicense, checkDestination: false },
+  { path: "/owner/payment-destination", Screen: PaymentDestinationEditor, checkDestination: false },
+  { path: "/owner/price-list", Screen: PriceListEditor, checkDestination: true },
+  { path: "/owner/operating-rules", Screen: OperatingRulesEditor, checkDestination: true },
+  { path: "/owner/kakao-channel", Screen: KakaoChannelSettings, checkDestination: true },
+  { path: "/owner/booking-link", Screen: BookingLinkScreen, checkDestination: true },
+] as const;
 const historyScreens = [
   { path: "/owner/price-list/versions/:version?", Screen: PriceListHistory },
   { path: "/owner/operating-rules/versions/:version?", Screen: OperatingRulesHistory },
@@ -43,6 +53,8 @@ export function OwnerArea() {
   const requested = ownerReturnTo(location.pathname + location.search + location.hash);
   const shopPath = requested?.split(/[?#]/)[0]?.replace(/\/+$/, "");
   const historyRoute = matchHistory(shopPath);
+  const shopRoute = shopScreens.find((route) => route.path === shopPath);
+  const screenRoute = historyRoute ?? shopRoute;
   const history = historyRoute !== null;
   const [revision, setRevision] = useState(0);
   const visit = useMemo(() => ({ key: location.key, revision }), [location.key, revision]);
@@ -124,35 +136,12 @@ export function OwnerArea() {
     : cached && (cached.key === location.key || (history && cached.history))
       ? cached.data
       : null;
-  if (
-    (history ||
-      [
-        "/owner/shop",
-        "/owner/shop/license",
-        "/owner/price-list",
-        "/owner/operating-rules",
-        "/owner/payment-destination",
-        "/owner/kakao-channel",
-      ].includes(shopPath ?? "")) &&
-    candidate?.shop
-  ) {
-    if (["/owner/price-list", "/owner/operating-rules", "/owner/kakao-channel"].includes(shopPath ?? "") || history) {
+  if (screenRoute && candidate?.shop) {
+    if (historyRoute || shopRoute?.checkDestination) {
       const destination = ownerDestination(candidate, requested);
       if (destination !== requested) return <Navigate to={destination} replace />;
     }
-    const ShopScreen =
-      historyRoute?.Screen ??
-      (shopPath === "/owner/kakao-channel"
-        ? KakaoChannelSettings
-        : shopPath === "/owner/payment-destination"
-          ? PaymentDestinationEditor
-          : shopPath === "/owner/operating-rules"
-            ? OperatingRulesEditor
-            : shopPath === "/owner/price-list"
-              ? PriceListEditor
-              : shopPath === "/owner/shop/license"
-                ? ShopLicense
-                : ShopSettings);
+    const ShopScreen = screenRoute.Screen;
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (

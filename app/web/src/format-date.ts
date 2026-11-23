@@ -12,3 +12,11 @@ const koreanDateTime = new Intl.DateTimeFormat("ko-KR", {
   timeStyle: "short",
 });
 export const formatKoreanDateTime = (value: string): string => koreanDateTime.format(new Date(value));
+
+const seoulTime = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+export const formatSeoulTime = (value: string | number): string => seoulTime.format(new Date(value));

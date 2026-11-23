@@ -665,6 +665,74 @@ it("저장 실패 배너에서 다시 읽어도 내 변경을 최신 값에 적�
   fireEvent.click(screen.getByRole("button", { name: "내 변경 다시 적용" }));
   expect((screen.getByLabelText("봇 ID") as HTMLInputElement).value).toBe("synthetic-keep-mine");
 });
+it.each([
+  { reset: false, remaining: 30000, name: "진행 중 확인 유지" },
+  { reset: true, remaining: 30000, name: "브라우저 시계가 느려도 서버 초기화" },
+  { reset: false, remaining: -30000, name: "브라우저 시계가 빨라도 서버 확인 유지" },
+])("서버 확인 시각으로 저장 결과를 안내한다: $name", async ({ reset, remaining }) => {
+  vi.useFakeTimers();
+  pending();
+  current.verifiedBlocks = [];
+  current.checkExpiresAt = new Date(Date.now() + remaining).toISOString();
+  area();
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
+  fireEvent.change(screen.getByLabelText("채널 공개 ID(선택)"), { target: { value: "_syntheticchanged" } });
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "PUT"
+        ? json({
+            outcome: "done",
+            skillKey: null,
+            kakaoChannel: {
+              ...current,
+              channelPublicId: "_syntheticchanged",
+              revision: "synthetic-saved",
+              ...(reset ? { checkStartedAt: null, checkExpiresAt: null, proofPhrase: null } : {}),
+            },
+          })
+        : transport(input, init),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+  await act(async () => {});
+  expect(main().getByText(reset ? "저장했어요. 연결 확인을 다시 해 주세요" : "저장했어요")).toBeTruthy();
+});
+it("두 번째 오류 배너 재조회 중에는 첫 스냅숏 재적용을 숨긴다", async () => {
+  area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
+  fireEvent.change(screen.getByLabelText("봇 ID"), { target: { value: "synthetic-mine" } });
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "PUT" ? json({ code: "channel_linked_elsewhere", traceId }, 409) : transport(input, init),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+  await main().findByText(ERROR_CODES.channel_linked_elsewhere.message);
+  fireEvent.click(screen.getByRole("button", { name: RELOAD_LABEL }));
+  await main().findByRole("button", { name: "내 변경 다시 적용" });
+  let finish: ((response: Response) => void) | undefined;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: RELOAD_LABEL }));
+  expect(main().queryByRole("button", { name: "내 변경 다시 적용" })).toBeNull();
+  await act(async () => {
+    finish?.(json({ ...current, revision: "synthetic-newest" }));
+  });
+  expect(main().getByRole("button", { name: "내 변경 다시 적용" })).toBeTruthy();
+});
 it.each(["failed", "expired"])("%s 저장이 확인을 초기화하면 다시 확인하라고 알린다", async (kind) => {
   vi.useFakeTimers();
   current = getExample("failed");

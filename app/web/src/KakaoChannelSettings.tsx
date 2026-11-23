@@ -157,9 +157,8 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
               input.action === "save" &&
               r.data.kakaoChannel.status === "pending" &&
               base !== null &&
-              (base.status !== "pending" ||
-                (base.checkExpiresAt !== null && Date.parse(base.checkExpiresAt) <= Date.now()) ||
-                (base.verifiedBlocks.length > 0 && r.data.kakaoChannel.verifiedBlocks.length === 0)),
+              (base.status === "failed" ||
+                (base.checkStartedAt !== null && r.data.kakaoChannel.checkStartedAt === null)),
           },
         }
       : r;
@@ -468,6 +467,7 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                 onReload={() => {
                   if (!locked) {
                     setStaleAction(lastAction.current);
+                    setLatest(null);
                     setStale(true);
                     read("stale");
                   }

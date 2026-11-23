@@ -192,3 +192,20 @@ it("명시적으로 취소한 상태 조회는 늦은 응답과 자동 재개를
   });
   await waitFor(() => expect(view.result.current.result?.response).toEqual(ok("new")));
 });
+
+it("재확인 뒤로 미룬 읽기는 표시만 세우고 인증이 끝나면 한 번 실행한다", async () => {
+  const load = vi.fn(async () => ok("current"));
+  const view = renderHook((props) => useVersionedRead(load, props), {
+    initialProps: { sessionChecking: false, sessionFailed: false },
+  });
+  await waitFor(() => expect(load).toHaveBeenCalledOnce());
+  act(() => {
+    view.result.current.deferRead();
+    view.result.current.deferRead();
+  });
+  expect(load).toHaveBeenCalledOnce();
+  view.rerender({ sessionChecking: true, sessionFailed: false });
+  expect(load).toHaveBeenCalledOnce();
+  view.rerender({ sessionChecking: false, sessionFailed: false });
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+});
