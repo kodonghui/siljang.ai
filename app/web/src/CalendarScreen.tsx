@@ -62,7 +62,6 @@ export function CalendarScreen(props: ShopLicenseProps) {
   const [asOf, setAsOf] = useState<number | null>(null);
   const navigationLocked = Boolean(props.sessionChecking || props.logoutPending);
   const blocked = navigationLocked || Boolean(props.sessionFailed);
-  const waitingForSession = useRef(false);
   const {
     loading,
     failure: loadFailure,
@@ -158,7 +157,6 @@ export function CalendarScreen(props: ShopLicenseProps) {
   useEffect(() => {
     const show = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        waitingForSession.current = true;
         setStale(base !== null);
         setLatest(null);
         deferRead(base ? "stale" : "initial");
@@ -167,9 +165,6 @@ export function CalendarScreen(props: ShopLicenseProps) {
     window.addEventListener("pageshow", show);
     return () => window.removeEventListener("pageshow", show);
   }, [base, deferRead]);
-  useEffect(() => {
-    if (!props.sessionChecking && !props.sessionFailed) waitingForSession.current = false;
-  }, [props.sessionChecking, props.sessionFailed]);
   const go = (href: string, event: { preventDefault(): void }) => {
     event.preventDefault();
     if (!navigationLocked && !command.busy) props.onNavigate(href);
@@ -255,8 +250,8 @@ export function CalendarScreen(props: ShopLicenseProps) {
           </Button>
           <a
             href="/owner/calendar/settings"
-            aria-disabled={navigationLocked || undefined}
-            tabIndex={navigationLocked ? -1 : undefined}
+            aria-disabled={navigationLocked || command.busy || undefined}
+            tabIndex={navigationLocked || command.busy ? -1 : undefined}
             onClick={(event) => go("/owner/calendar/settings", event)}
           >
             영업 캘린더 설정
@@ -284,7 +279,25 @@ export function CalendarScreen(props: ShopLicenseProps) {
             {ERROR_CODES.validation_failed.message}
           </Banner>
         ) : null}
-        {loading && !items ? <Skeleton label="영업 캘린더를 불러오고 있어요" rows={6} /> : null}
+        {loading && !items && period ? (
+          <section className="calendar-workspace" aria-label="영업 캘린더를 불러오고 있어요" aria-busy="true">
+            <div className="calendar-months">
+              {[month, shiftCalendarMonth(month, 1)].map((value, index) =>
+                value ? (
+                  <section key={value} className={`calendar-month${index ? " calendar-month--second" : ""}`}>
+                    <h2>{monthLabel(value)}</h2>
+                    <div className="calendar-grid" aria-hidden="true">
+                      {gridDays(value).map((cell) => (
+                        <span className="calendar-day calendar-placeholder" key={cell.key} />
+                      ))}
+                    </div>
+                  </section>
+                ) : null,
+              )}
+            </div>
+            <Skeleton label="날짜 설정을 불러오고 있어요" rows={5} />
+          </section>
+        ) : null}
         {loadFailure && !invalidQuery ? (
           <LoadFailure
             failure={classify(loadFailure.status, loadFailure.problem, loadFailure.retryAfterSeconds)}

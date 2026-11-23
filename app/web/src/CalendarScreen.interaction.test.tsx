@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CalendarScreen } from "./CalendarScreen";
 import type { CalendarDay } from "./calendar-api";
+import { OwnerArea } from "./OwnerArea";
 import { ERROR_CODES } from "./problems";
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
@@ -100,9 +101,134 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   for (const n of document.querySelectorAll("[data-announcer]")) n.remove();
+});
+it("처리 중 첫 요청은1초 뒤 같은 본문/키로 한 번 더 보내고 결과는 한 번 보인다", async () => {
+  area();
+  const form = await select();
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  fireEvent.click(within(form).getByLabelText("그날 주문 마감"));
+  writeProblem = { code: "request_in_progress", status: 409 };
+  fireEvent.submit(form);
+  await act(async () => {});
+  expect(sends).toHaveLength(1);
+  expect((within(form).getByRole("button", { name: "처리하고 있어요" }) as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(sends).toHaveLength(2);
+  expect(sends[1]).toEqual(sends[0]);
+  expect(main().getAllByText("그날 주문을 마감했어요")).toHaveLength(1);
+});
+it("보내는 동안 연속 제출과 날짜 이동/설정 링크를 막는다", async () => {
+  const view = area();
+  const form = await select();
+  fireEvent.click(within(form).getByLabelText("그날 주문 마감"));
+  const transport = fetch;
+  let finish: ((value: Response) => void) | undefined;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        sends.push({
+          day: "2026-11-21",
+          body: JSON.parse(String(init.body)),
+          key: new Headers(init.headers).get("Idempotency-Key"),
+        });
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      }
+      return transport(input, init);
+    }),
+  );
+  fireEvent.submit(form);
+  fireEvent.submit(form);
+  expect(sends).toHaveLength(1);
+  expect((screen.getByRole("button", { name: "다음 달" }) as HTMLButtonElement).disabled).toBe(true);
+  const link = screen.getByRole("link", { name: "영업 캘린더 설정" });
+  expect(link.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(link);
+  expect(view.props.onNavigate).not.toHaveBeenCalled();
+  await act(async () => {
+    finish?.(json({ outcome: "done", day: { ...dayValue("2026-11-21"), manuallyClosed: true } }));
+  });
+});
+it("충돌 후 조회가 실패해도 지금 상태를 다시 읽고 입력을 재적용한다", async () => {
+  area();
+  const form = await select();
+  fireEvent.click(within(form).getByLabelText("그날 주문 마감"));
+  writeProblem = { code: "version_conflict", status: 409 };
+  getProblem = { code: "internal", status: 500 };
+  fireEvent.submit(form);
+  await main().findByText(`추적 ID: ${traceId}`);
+  const retryLatest = await main().findByRole("button", { name: "지금 상태 다시 읽기" });
+  expect((retryLatest as HTMLButtonElement).disabled).toBe(false);
+  getProblem = null;
+  fireEvent.click(retryLatest);
+  fireEvent.click(await main().findByRole("button", { name: "내 변경 다시 적용" }));
+  expect((within(form).getByLabelText("그날 주문 마감") as HTMLInputElement).checked).toBe(true);
+});
+it("잘못 재사용한 키의 다시 시도는 같은 본문과 새 키를 쓴다", async () => {
+  area();
+  const form = await select();
+  fireEvent.click(within(form).getByLabelText("그날 주문 마감"));
+  writeProblem = { code: "idempotency_key_reused", status: 422 };
+  fireEvent.submit(form);
+  await main().findByText(ERROR_CODES.idempotency_key_reused.message);
+  fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+  await main().findByText("그날 주문을 마감했어요");
+  expect(sends[1]?.body).toEqual(sends[0]?.body);
+  expect(sends[1]?.key).not.toBe(sends[0]?.key);
+});
+it("실제 OwnerArea는 bfcache 세션 확인 뒤 한 번 읽고 날짜 초안을 보존한다", async () => {
+  const transport = fetch;
+  let identities = 0,
+    finish: ((value: Response) => void) | undefined;
+  const identity = {
+    owner: {
+      ownerId: "d3898f13-62a2-4e3e-bd60-9797a6dfc506",
+      alertChannelFriend: false,
+      createdAt: "2026-11-15T00:00:00Z",
+    },
+    shop: { shopId: "1dc0769d-8fb3-46da-af01-729ec0ea63db", name: "합성 가게", licenseStatus: "verified" },
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/owner/me") {
+        if (++identities === 2)
+          return new Promise<Response>((resolve) => {
+            finish = resolve;
+          });
+        return json(identity);
+      }
+      return transport(input, init);
+    }),
+  );
+  render(
+    <MemoryRouter initialEntries={["/owner/calendar"]}>
+      <Routes>
+        <Route path="/owner/*" element={<OwnerArea />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  const form = await select();
+  fireEvent.click(within(form).getByLabelText("그날 주문 마감"));
+  const event = new Event("pageshow");
+  Object.defineProperty(event, "persisted", { value: true });
+  fireEvent(window, event);
+  await waitFor(() => expect(identities).toBe(2));
+  expect(reads).toHaveLength(1);
+  await act(async () => {
+    finish?.(json(identity));
+  });
+  await waitFor(() => expect(reads).toHaveLength(2));
+  fireEvent.click(await main().findByRole("button", { name: "내 변경 다시 적용" }));
+  expect((screen.getByLabelText("그날 주문 마감") as HTMLInputElement).checked).toBe(true);
 });
 function area(extra: { sessionChecking?: boolean; sessionFailed?: boolean } = {}, entry = "/owner/calendar") {
   const props = {

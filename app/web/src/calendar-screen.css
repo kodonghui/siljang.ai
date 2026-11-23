@@ -65,6 +65,10 @@
 .calendar-panel {
   align-content: start;
 }
+.calendar-placeholder {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-line);
+}
 .calendar-panel .ui-field:has(input[type="checkbox"]) {
   grid-template-columns: 1fr auto;
   align-items: center;
