@@ -299,5 +299,18 @@ export function rebasePriceList(
     new Set(result.designs.map((d) => d.name)).size !== result.designs.length
   )
     conflicts.push("같은 이름의 항목이 있어요. 이름을 확인해 주세요");
-  return { form: conflicts.length ? null : normalizePriceListForm(result), conflicts };
+  const normalized = normalizePriceListForm(result);
+  for (const own of mine.options) {
+    const original = before.options.find((o) => o.key === own.key);
+    const current = normalized.options.find((o) => o.key === keys.get(own.key));
+    if (own.inStandard && original?.inStandard !== own.inStandard && current && !current.inStandard)
+      conflicts.push(`다른 기기에서 표시 방식이 바뀌어 기본 디자인 범위를 적용하지 못한 옵션: ${own.name}`);
+  }
+  for (const own of mine.designs) {
+    const original = before.designs.find((d) => d.key === designIdentity(own));
+    const current = normalized.designs.find((d) => d.key === own.key);
+    if (own.inStandard && original?.inStandard !== own.inStandard && current && !current.inStandard)
+      conflicts.push(`연결 옵션이 바뀌어 기본 디자인 범위를 적용하지 못한 도안: ${own.name}`);
+  }
+  return { form: conflicts.length ? null : normalized, conflicts };
 }
