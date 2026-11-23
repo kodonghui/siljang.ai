@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CONNECTION_FAILED as NETWORK } from "./api";
 import { DesignImage } from "./DesignImage";
 import {
@@ -36,6 +36,7 @@ import {
   Skeleton,
   TextField,
 } from "./ui";
+import { useFocusRequest } from "./ui/useFocusRequest";
 import { useCommand } from "./useCommand";
 import { photoRejected } from "./usePhotoUpload";
 import { useVersionedRead } from "./useVersionedRead";
@@ -113,14 +114,9 @@ function StandardField(props: {
     </div>
   );
 }
-type FocusRequest =
-  | { readonly kind: "field"; readonly pointer: string; readonly origin: Element | null }
-  | { readonly kind: "group"; readonly group: OptionGroup; readonly origin: Element | null };
-function focusReady(target: HTMLElement | null | undefined): boolean {
-  if (!target?.isConnected || target.matches(":disabled")) return false;
-  target.focus();
-  return target.ownerDocument.activeElement === target;
-}
+type FocusTarget =
+  | { readonly kind: "field"; readonly pointer: string }
+  | { readonly kind: "group"; readonly group: OptionGroup };
 export function PriceListEditor(props: ShopLicenseProps) {
   const callbacks = useRef(props);
   callbacks.current = props;
@@ -166,11 +162,35 @@ export function PriceListEditor(props: ShopLicenseProps) {
     submittedPhotos = useRef<{ key: string; uploadId: string | null }[]>([]);
   const handled = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null);
-  const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
+  const submitOrigin = useRef<Element | null>(null);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
   const pending = loading || command.busy || uploadCount > 0 || Boolean(props.logoutPending || props.sessionChecking);
   const requestsBlocked = pending || Boolean(props.sessionFailed),
     locked = requestsBlocked || loadFailure !== null;
+  const { queue: queueFocus, cancel: cancelFocus } = useFocusRequest<FocusTarget>(
+    (request) => {
+      let target: HTMLElement | null | undefined;
+      if (request.kind === "group") {
+        target =
+          formRef.current?.querySelectorAll<HTMLButtonElement>('button[role="tab"]')[
+            OPTION_GROUPS.indexOf(request.group)
+          ];
+      } else {
+        const pointer = request.pointer;
+        const field = Array.from(
+          formRef.current?.querySelectorAll<HTMLElement>("[data-pointer], [data-row-pointer]") ?? [],
+        ).find((node) => node.dataset.pointer === pointer || node.dataset.rowPointer === pointer);
+        const input =
+          pointer === "/options"
+            ? formRef.current?.querySelector<HTMLElement>("[data-add-option]")
+            : field?.querySelector<HTMLElement>("input, select, textarea, button");
+        target = pointer === STATUS_FOCUS || !input || input.matches(":disabled") ? statusRef.current : input;
+      }
+      return target;
+    },
+    requestsBlocked,
+    () => statusRef.current,
+  );
   const fields = useMemo(() => priceFieldPointers(form), [form]);
   const issues = useMemo(() => priceListIssues(form), [form]);
   const errors = fieldErrorsFor(
@@ -181,25 +201,30 @@ export function PriceListEditor(props: ShopLicenseProps) {
   const changes = useMemo(() => priceListChanges(original, form), [original, form]);
   const canEdit = () => !locked && uploading.current.size === 0;
 
-  const revealField = useCallback((pointer: string) => {
-    const form = formValue.current;
-    setFocusRequest({
-      kind: "field",
-      pointer: pointer === "/options" || priceFieldPointers(form).includes(pointer) ? pointer : STATUS_FOCUS,
-      origin: document.activeElement,
-    });
-    const optionIndex = /^\/options\/(\d+)/.exec(pointer)?.[1];
-    const ruleIndex = /^\/rules\/(\d+)/.exec(pointer)?.[1];
-    if (optionIndex !== undefined) {
-      const row = form.options[Number(optionIndex)];
-      if (row) setGroup(row.group);
-    }
-    if (ruleIndex !== undefined) setRulePage(Math.floor(Number(ruleIndex) / RULE_PAGE_SIZE));
-  }, []);
+  const revealField = useCallback(
+    (pointer: string, origin: Element | null = document.activeElement) => {
+      const form = formValue.current;
+      queueFocus(
+        {
+          kind: "field",
+          pointer: pointer === "/options" || priceFieldPointers(form).includes(pointer) ? pointer : STATUS_FOCUS,
+        },
+        origin,
+      );
+      const optionIndex = /^\/options\/(\d+)/.exec(pointer)?.[1];
+      const ruleIndex = /^\/rules\/(\d+)/.exec(pointer)?.[1];
+      if (optionIndex !== undefined) {
+        const row = form.options[Number(optionIndex)];
+        if (row) setGroup(row.group);
+      }
+      if (ruleIndex !== undefined) setRulePage(Math.floor(Number(ruleIndex) / RULE_PAGE_SIZE));
+    },
+    [queueFocus],
+  );
 
   const adopt = useCallback(
     (list: PriceList | null, options: { draft?: PriceListForm; resetCommand?: boolean } = {}) => {
-      setFocusRequest(null);
+      cancelFocus();
       setBase(list);
       setForm(options.draft ?? priceListForm(list));
       setStale(false);
@@ -209,7 +234,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
       setLoaded(true);
       if (options.resetCommand) command.reset();
     },
-    [command.reset],
+    [command.reset, cancelFocus],
   );
   useEffect(() => {
     if (command.state.kind !== "done" || handled.current === command.state.data) return;
@@ -245,34 +270,8 @@ export function PriceListEditor(props: ShopLicenseProps) {
         ),
       }));
     }
-    if (failure.outcome === "field") revealField(failure.fieldErrors[0]?.field ?? "");
+    if (failure.outcome === "field") revealField(failure.fieldErrors[0]?.field ?? "", submitOrigin.current);
   }, [failure, read, revealField]);
-  useLayoutEffect(() => {
-    if (!focusRequest) return;
-    setFocusRequest(null);
-    if (requestsBlocked) return;
-    const active = document.activeElement;
-    if (active && active !== document.body && active !== focusRequest.origin) return;
-    let target: HTMLElement | null | undefined;
-    if (focusRequest.kind === "group") {
-      target =
-        formRef.current?.querySelectorAll<HTMLButtonElement>('button[role="tab"]')[
-          OPTION_GROUPS.indexOf(focusRequest.group)
-        ];
-    } else {
-      const pointer = focusRequest.pointer;
-      const field = Array.from(
-        formRef.current?.querySelectorAll<HTMLElement>("[data-pointer], [data-row-pointer]") ?? [],
-      ).find((node) => node.dataset.pointer === pointer || node.dataset.rowPointer === pointer);
-      const input =
-        pointer === "/options"
-          ? formRef.current?.querySelector<HTMLElement>("[data-add-option]")
-          : field?.querySelector<HTMLElement>("input, select, textarea, button");
-      target = pointer === STATUS_FOCUS || input?.matches(":disabled") ? statusRef.current : input;
-    }
-    // 이 화면 반영에서만 최대 두 번 시도하고 이후 입력에는 요청을 남기지 않는다.
-    if (!focusReady(target)) focusReady(target);
-  }, [focusRequest, requestsBlocked]);
   useEffect(() => {
     setRulePage((page) => Math.min(page, Math.max(0, Math.ceil(form.rules.length / RULE_PAGE_SIZE) - 1)));
   }, [form.rules.length]);
@@ -330,6 +329,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
       return;
     }
     submittedPhotos.current = form.designs.map((d) => ({ key: d.key, uploadId: d.uploadId }));
+    submitOrigin.current = document.activeElement;
     command.submit(priceListPayload(base, form));
   }
   const optionRows = form.options
@@ -493,7 +493,10 @@ export function PriceListEditor(props: ShopLicenseProps) {
                 fields={fields}
                 disabled={locked}
                 onRetry={() => {
-                  if (canEdit() && !stale) command.retry();
+                  if (canEdit() && !stale) {
+                    submitOrigin.current = document.activeElement;
+                    command.retry();
+                  }
                 }}
                 onReload={() => {
                   if (canEdit()) {
@@ -538,7 +541,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
                         value = OPTION_GROUPS[next];
                       if (value) {
                         setGroup(value);
-                        setFocusRequest({ kind: "group", group: value, origin: document.activeElement });
+                        queueFocus({ kind: "group", group: value });
                       }
                     }}
                   >

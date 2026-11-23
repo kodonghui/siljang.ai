@@ -22,6 +22,7 @@ let sendProblem: { status: number; code: string; errors?: { field: string; code:
 let photoProblem: { status: number; code: string; errors?: { field: string; code: string }[] } | null;
 let unchanged: boolean, uploads: number, holdSave: boolean, holdUpload: boolean;
 let photoProblemAt: number;
+let releaseSave: (response: Response) => void;
 let uploadFiles: string[];
 let ownerStatus: "pending" | "verified" | "on_hold";
 beforeEach(() => {
@@ -35,6 +36,9 @@ beforeEach(() => {
   uploads = 0;
   uploadFiles = [];
   photoProblemAt = 1;
+  releaseSave = () => {
+    throw new Error("대기 중인 저장이 없어요");
+  };
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: unknown, init?: RequestInit) => {
@@ -77,7 +81,10 @@ beforeEach(() => {
       if (String(input) === "/api/owner/price-list/versions") {
         const body = JSON.parse(String(init?.body));
         sends.push({ body, key: new Headers(init?.headers).get("Idempotency-Key") });
-        if (holdSave) return new Promise(() => {});
+        if (holdSave)
+          return new Promise<Response>((resolve) => {
+            releaseSave = resolve;
+          });
         if (sendProblem && sends.length === 1) return json({ ...sendProblem, traceId }, sendProblem.status);
         if (unchanged) return json({ outcome: "unchanged", priceList: current });
         if (conflict && sends.length === 1) {
@@ -805,6 +812,7 @@ it("가격표 초점이 두 번 실패하면 끝내고 뒤 입력의 초점을 �
   });
   save();
   expect(calls).toBe(2);
+  expect(document.activeElement).toBe(screen.getByRole("region", { name: "가격표 저장 결과" }));
   const other = row.getByLabelText("금액");
   other.focus();
   fireEvent.change(other, { target: { value: "35000" } });
@@ -852,6 +860,37 @@ it("가격표 탭의 키보드 이동도 첫 초점 실패 뒤 한 번만 복구
   fireEvent.keyDown(first, { key: "ArrowRight" });
   expect(calls).toBe(2);
   expect(document.activeElement).toBe(target);
+});
+it("그리지 않은 최대 금액의 서버 오류는 저장 결과 영역으로 초점을 보낸다", async () => {
+  sendProblem = {
+    status: 422,
+    code: "validation_failed",
+    errors: [{ field: "/options/0/amountMax", code: "not_allowed" }],
+  };
+  area();
+  await loaded();
+  expect(within(screen.getByRole("group", { name: "크기 옵션 1" })).queryByLabelText("최대 금액")).toBeNull();
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  save();
+  await main().findByText("입력한 내용을 확인해 주세요");
+  expect(document.activeElement).toBe(screen.getByRole("region", { name: "가격표 저장 결과" }));
+});
+it("저장하는 동안 사용자가 버전 이력으로 옮긴 초점을 서버 오류가 가져오지 않는다", async () => {
+  holdSave = true;
+  area();
+  await loaded();
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  save();
+  await waitFor(() => expect(sends).toHaveLength(1));
+  const history = screen.getByRole("link", { name: "버전 이력" });
+  history.focus();
+  await act(async () =>
+    releaseSave(
+      json({ code: "validation_failed", traceId, errors: [{ field: "/options/0/name", code: "not_allowed" }] }, 422),
+    ),
+  );
+  await main().findByText("입력한 내용을 확인해 주세요");
+  expect(document.activeElement).toBe(history);
 });
 it("로컬 저장 오류를 초점 대상인 저장 결과 영역에서도 읽을 수 있다", async () => {
   empty = true;
