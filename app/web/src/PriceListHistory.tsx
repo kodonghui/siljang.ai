@@ -47,6 +47,8 @@ export function PriceListHistory(props: ShopLicenseProps & { readonly version?: 
   const [list, setList] = useState<Read<PriceVersions>>({ kind: "loading" }),
     [detail, setDetail] = useState<{ key: string; read: Read<PriceList> } | null>(null),
     [shown, setShown] = useState(20);
+  const listCompleted = useRef(false),
+    readyVersion = useRef<string | null>(null);
   const listRequest = useRef<AbortController | null>(null),
     detailRequest = useRef<AbortController | null>(null),
     permission = useRef(false),
@@ -69,6 +71,8 @@ export function PriceListHistory(props: ShopLicenseProps & { readonly version?: 
     }
   }, []);
   const readList = useCallback(() => {
+    if (callbacks.current.sessionChecking || callbacks.current.sessionFailed) return;
+    listCompleted.current = false;
     listRequest.current?.abort();
     const controller = new AbortController();
     listRequest.current = controller;
@@ -76,6 +80,7 @@ export function PriceListHistory(props: ShopLicenseProps & { readonly version?: 
     void fetchPriceListVersions(controller.signal)
       .then((result) => {
         if (controller.signal.aborted) return;
+        listCompleted.current = true;
         if (result.ok) {
           setList({ kind: "ready", data: result.data });
           setShown(20);
@@ -85,15 +90,24 @@ export function PriceListHistory(props: ShopLicenseProps & { readonly version?: 
         }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setList({ kind: "failed", failure: network });
+        if (!controller.signal.aborted) {
+          listCompleted.current = true;
+          setList({ kind: "failed", failure: network });
+        }
       });
   }, [report]);
   useEffect(() => {
-    readList();
+    if (props.sessionChecking || props.sessionFailed) {
+      listRequest.current?.abort();
+      return;
+    }
+    if (!listCompleted.current) readList();
     return () => listRequest.current?.abort();
-  }, [readList]);
+  }, [readList, props.sessionChecking, props.sessionFailed]);
   const readDetail = useCallback(
     (value: string) => {
+      if (callbacks.current.sessionChecking || callbacks.current.sessionFailed) return;
+      readyVersion.current = null;
       detailRequest.current?.abort();
       const controller = new AbortController();
       detailRequest.current = controller;
@@ -101,8 +115,10 @@ export function PriceListHistory(props: ShopLicenseProps & { readonly version?: 
       void fetchPriceListVersion(value, controller.signal)
         .then((result) => {
           if (controller.signal.aborted) return;
-          if (result.ok) setDetail({ key: value, read: { kind: "ready", data: result.data } });
-          else {
+          if (result.ok) {
+            readyVersion.current = value;
+            setDetail({ key: value, read: { kind: "ready", data: result.data } });
+          } else {
             setDetail({ key: value, read: { kind: "failed", failure: result } });
             report(result);
           }
@@ -118,8 +134,10 @@ export function PriceListHistory(props: ShopLicenseProps & { readonly version?: 
       detailRequest.current?.abort();
       return;
     }
-    if (selected !== null) readDetail(selected);
-    else {
+    if (selected !== null) {
+      if (readyVersion.current !== selected) readDetail(selected);
+    } else {
+      readyVersion.current = null;
       detailRequest.current?.abort();
       setDetail(null);
     }
