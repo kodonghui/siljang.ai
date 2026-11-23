@@ -40,7 +40,7 @@ import { createPriceListVersion, getCurrentPriceList, getPriceListVersion, listP
 import { getPublicPrivacyPolicy } from "./privacy-policy";
 import { ApiError, problemResponse } from "./problem";
 import { getPublicBookingPage } from "./public-booking-page";
-import { resolvePublicShop } from "./public-shop";
+import { assertPublicShopRateCoverage, resolvePublicShop } from "./public-shop";
 import type { RateLimitBinding } from "./rate-limit";
 import {
   mountRoutes,
@@ -258,6 +258,7 @@ function routePattern(path: string): RegExp {
  * 운영자 로그인(TASK-021): 운영자 범위 경로(operatorRoute)의 해석기는 운영자 세션(operator-login.ts). 시험은 operatorAccount로 바꿈.
  */
 export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
+  assertPublicShopRateCoverage(APP_ROUTES);
   const skillTimeoutMs = options.kakaoSkillTimeoutMs ?? SKILL_WORK_MS;
   if (!Number.isSafeInteger(skillTimeoutMs) || skillTimeoutMs < 1 || skillTimeoutMs > SKILL_WORK_MS) {
     throw new RangeError("kakaoSkillTimeoutMs must be between 1 and 3750");

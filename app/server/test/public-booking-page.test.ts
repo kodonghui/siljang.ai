@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { afterAll, expect, it } from "vitest";
+import { afterAll, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import type { Queryable, RequestDb } from "../src/db";
 import { expectProblem, expectSchema } from "./support/contract";
@@ -312,6 +312,50 @@ describeDb("TASK-045 공개 예약 페이지", () => {
     for (const key of h.pageLimit.counts.keys()) {
       expect(key).toMatch(/^[a-f0-9]{64}$/);
       expect(key).not.toContain("192.0.2.1");
+    }
+  });
+  it("같은 IPv6 /64에서 주소를 바꿔도 공개 한도를 피하지 못함", async () => {
+    const h = await fixture();
+    for (let i = 1; i <= 60; i++)
+      await h.get("missing-slug", { "cf-connecting-ip": `2001:db8:abcd:1234::${i.toString(16)}` });
+    await expectProblem(
+      await h.get("missing-slug", { "cf-connecting-ip": "2001:0db8:abcd:1234::ffff" }),
+      "rate_limited",
+    );
+    await expectProblem(await h.get("missing-slug", { "cf-connecting-ip": "2001:db8:abcd:1235::1" }), "not_found");
+  });
+  it("사진 서명은 달력 공유 잠금의 트랜잭션이 끝난 뒤 실행함", async () => {
+    let active = false;
+    const h = await fixture({
+      connect: () => {
+        const base = testDb();
+        return {
+          query: (sql, params) => base.query(sql, params),
+          transaction: async (fn) => {
+            active = true;
+            try {
+              return await base.transaction(fn);
+            } finally {
+              active = false;
+            }
+          },
+          abort: () => base.abort(),
+          close: () => base.close(),
+        };
+      },
+    });
+    const observations: boolean[] = [];
+    const original = crypto.subtle.encrypt.bind(crypto.subtle);
+    const spy = vi.spyOn(crypto.subtle, "encrypt").mockImplementation((...args) => {
+      observations.push(active);
+      return original(...args);
+    });
+    try {
+      await page(h);
+      expect(observations.length).toBeGreaterThan(0);
+      expect(observations.every((value) => !value)).toBe(true);
+    } finally {
+      spy.mockRestore();
     }
   });
   it("필수 서명 설정 오류는500이며 응답/로그에 저장 위치·연결 문자열이 없음", async () => {
