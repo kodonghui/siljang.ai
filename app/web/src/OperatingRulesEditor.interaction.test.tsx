@@ -64,6 +64,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   for (const node of document.querySelectorAll("[data-announcer]")) node.remove();
   vi.unstubAllGlobals();
 });
