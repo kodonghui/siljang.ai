@@ -98,6 +98,22 @@ export function priceListPayload(base: PriceList | null, form: PriceListForm) {
     })),
   };
 }
+/** 화면 변경과 G3 재적용에 같은 옵션/도안 제약을 적용한다. */
+export function normalizePriceListForm(form: PriceListForm): PriceListForm {
+  const options = form.options.map((o) => ({
+    ...o,
+    inStandard: o.priceKind === "fixed" && o.inStandard,
+    amountMax: o.priceKind === "range" ? o.amountMax : "",
+  }));
+  const standard = new Set(options.filter((o) => o.inStandard).map((o) => o.key));
+  return {
+    ...form,
+    options,
+    designs: form.designs.map((d) =>
+      d.optionKey !== null && !standard.has(d.optionKey) ? { ...d, inStandard: false } : d,
+    ),
+  };
+}
 export function removePriceOption(form: PriceListForm, key: string): PriceListForm {
   return {
     options: form.options.filter((o) => o.key !== key),
@@ -283,5 +299,5 @@ export function rebasePriceList(
     new Set(result.designs.map((d) => d.name)).size !== result.designs.length
   )
     conflicts.push("같은 이름의 항목이 있어요. 이름을 확인해 주세요");
-  return { form: conflicts.length ? null : result, conflicts };
+  return { form: conflicts.length ? null : normalizePriceListForm(result), conflicts };
 }

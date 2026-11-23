@@ -117,7 +117,7 @@ export function DesignImage(props: DesignImageProps) {
               props.onBusy(props.design.key, photo.select(rejectedFile));
             }}
           >
-            거절된 그림 다시 올리기
+            저장 거절된 파일 다시 올리기: {rejectedFile.name}
           </Button>
         </>
       ) : null}
@@ -134,7 +134,7 @@ export function DesignImage(props: DesignImageProps) {
             props.onBusy(props.design.key, started);
           }}
         >
-          다시 올리기
+          선택한 파일 다시 올리기: {photo.file.name}
         </Button>
       ) : null}
     </div>
