@@ -1,0 +1,12 @@
+// 공개 주소/비밀 값/DB가 없는 저장소 배치 Worker. 앱의 비공개 RPC 호출만 받는다.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "siljang-storage-batches",
+  "main": "src/storage-batch-worker.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "env": {
+    "staging": { "workers_dev": false, "preview_urls": false }
+  }
+}

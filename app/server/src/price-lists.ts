@@ -4,14 +4,16 @@ import { type PriceListInput, type PriceOptionInput, type PriceRuleInput, parseP
 import { ApiError, fieldError } from "./problem";
 import type { ShopRequest } from "./routes";
 import type { ShopDb } from "./shop-scope";
+import { deleteObjects } from "./storage";
 import { toShopIso } from "./time";
 import {
   checkUploads,
-  discardUpload,
+  discardUploads,
   parseUploadId,
   permanentKey,
-  promoteUpload,
+  promoteUploads,
   type TakenUpload,
+  tempKey,
   UPLOAD_RULES,
 } from "./uploads";
 
@@ -218,8 +220,7 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
     throw fieldError("header:Content-Type", "not_allowed");
   const raw = await r.body(),
     input = parsePriceList(raw);
-  const copied: string[] = [],
-    consumed: TakenUpload[] = [];
+  const copied: string[] = [];
   let response: Response;
   try {
     response = await r.command({
@@ -280,12 +281,10 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
             body: { outcome: "unchanged", priceList: await render(db, previous, r) },
           };
         if ((previous?.version ?? 0) >= 2147483647) throw fieldError("/", "out_of_range");
-        for (const design of designs)
-          if (design.upload) {
-            copied.push(design.imageKey);
-            await promoteUpload(r.services.storage(), design.upload, r.scope.shopId, id);
-            consumed.push(design.upload);
-          }
+        const promoting = designs.flatMap((design) => (design.upload ? [design.upload] : []));
+        // 응답 유실/일부 복사 실패도 정리할 수 있게 시도할 모든 새 키를 먼저 남긴다.
+        copied.push(...designs.filter((design) => design.upload).map((design) => design.imageKey));
+        if (promoting.length) await promoteUploads(r.services.storage(), promoting, r.scope.shopId, id);
         const now = r.services.now();
         if (previous)
           await db.run("UPDATE price_lists SET superseded_at=$3 WHERE shop_id=$1 AND id=$2", [previous.id, now]);
@@ -340,18 +339,31 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
       },
     });
   } catch (error) {
-    for (const key of copied)
+    if (copied.length)
       try {
-        const used = await r.db.found<{ used: boolean }>(
-          "SELECT EXISTS (SELECT 1 FROM designs d WHERE d.shop_id=$1 AND d.image_key=$2) AS used",
-          [key],
-        );
-        if (!used.used) await r.services.storage().delete(key);
+        await r.db.transaction(async (db) => {
+          // 응답을 잃은 원래 COMMIT이 진행 중이면 같은 가게의 잠금이 풀린 뒤 읽는다.
+          await db.found("SELECT s.id FROM shops s WHERE s.id=$1 FOR NO KEY UPDATE");
+          const used = await db.run<{ image_key: string }>(
+            "SELECT d.image_key FROM designs d WHERE d.shop_id=$1 AND d.image_key=ANY($2::text[])",
+            [copied],
+          );
+          const usedKeys = new Set(used.rows.map((row) => row.image_key));
+          await deleteObjects(
+            r.services.storage(),
+            copied.filter((key) => !usedKeys.has(key)),
+          );
+        });
       } catch {
         r.log("warn", { event: "price_copy_cleanup_failed", traceId: r.traceId });
       }
     throw error;
   }
-  for (const upload of consumed) await discardUpload(r.services.storage(), upload);
+  // 성공한 명령의 같은 본문 재전송도 임시 정리를 복구한다. 저장소를 다시 확인하거나 복사하지 않는다.
+  const consumed = input.designs.flatMap((design) => {
+    const upload = parseUploadId(design.uploadId);
+    return upload?.purpose === "design_image" ? [{ tempKey: tempKey(ownerOfShopScope(r.scope), upload.id) }] : [];
+  });
+  if (response.status === 201 && consumed.length) await discardUploads(r.services.storage(), consumed);
   return response;
 }

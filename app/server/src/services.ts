@@ -22,6 +22,7 @@ import { bindingLimiter, type RateLimiter, type RateLimitRule } from "./rate-lim
 import { MissingSettingError } from "./request-key";
 import type { Settings } from "./settings";
 import { type ObjectStore, S3Store } from "./storage";
+import { batchS3Store } from "./storage-batch";
 
 export interface Services {
   now(): Date;
@@ -92,7 +93,11 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
       const id = settings.secrets.STORAGE_ACCESS_KEY_ID;
       const secret = settings.secrets.STORAGE_SECRET_ACCESS_KEY;
       if (s === null || id === null || secret === null) throw new MissingSettingError("storage is not set");
-      store = new S3Store({ ...s, accessKeyId: id.reveal(), secretAccessKey: secret.reveal() });
+      const config = { ...s, accessKeyId: id.reveal(), secretAccessKey: secret.reveal() };
+      if (env.STORAGE_BATCHES && config.endpoint.startsWith("https:"))
+        store = batchS3Store(config, env.STORAGE_BATCHES);
+      else if (settings.appEnv === "development") store = new S3Store(config);
+      else throw new MissingSettingError("STORAGE_BATCHES is not bound");
       return store;
     },
     photos() {

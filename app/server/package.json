@@ -4,11 +4,11 @@
   "description": "사장님·운영자 API와 카카오 스킬을 받는 Cloudflare Worker(Hono). 웹 빌드(../web/dist)를 같은 Worker의 정적 자산으로 준다.",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --config wrangler.jsonc --config wrangler.storage-batches.jsonc",
     "types": "wrangler types --include-env=false src/worker-runtime.d.ts",
     "typecheck": "npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "test": "vitest run",
-    "build": "wrangler deploy --dry-run --outdir dist",
+    "build": "wrangler deploy --dry-run --outdir dist && wrangler deploy --dry-run --config wrangler.storage-batches.jsonc --outdir dist/storage-batches",
     "eval": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs eval/cli.ts",
     "eval:checklist": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs eval/cli.ts --checklist",
     "operator:enroll": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs tools/operator-enroll-cli.ts"

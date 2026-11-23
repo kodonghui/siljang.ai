@@ -54,6 +54,7 @@ import { readSettings, type Settings } from "./settings";
 import { updateShopSettings } from "./shop-settings";
 import { getShop, registerShop } from "./shops";
 import { StorageUnavailableError } from "./storage";
+import type { StorageBatchBinding } from "./storage-batch";
 import { newTraceId } from "./trace";
 import { createUpload } from "./uploads";
 
@@ -72,6 +73,7 @@ export type Bindings = {
   readonly STORAGE_ENDPOINT?: string;
   readonly STORAGE_REGION?: string;
   readonly STORAGE_BUCKET?: string;
+  readonly STORAGE_BATCHES?: StorageBatchBinding;
   /** 계좌번호·원래 값 암호화(TASK-025, settings.ts의 FieldKeySettings): 지금 버전과 버전마다의 키. */
   readonly FIELD_KEY_CURRENT?: string;
   readonly [fieldKey: `FIELD_KEY_V${number}`]: string | undefined;
