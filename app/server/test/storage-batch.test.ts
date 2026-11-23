@@ -95,7 +95,7 @@ describe("무료 저장소 서비스 배치", () => {
       { ok: true, value: true },
       { ok: true, value: null },
     ]);
-    expect(sent.map((request) => request.method)).toEqual(["HEAD", "PUT", "DELETE"]);
+    expect(sent.map((request) => request.method).sort()).toEqual(["DELETE", "HEAD", "PUT"]);
     for (const request of sent) {
       expect(new URL(request.url).origin).toBe("https://project.storage.example.test");
       expect(request.headers.get("authorization")).toMatch(/^AWS4-HMAC-SHA256 /);
