@@ -475,3 +475,36 @@ it("현재 가격표 재확인을 취소하고 뒤로 돌아와도 확인 전 �
   await screen.findByRole("link", { name: /버전 3/ });
   expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(2);
 });
+
+it("세션 확인이 시작되면 진행 중 목록을 취소하고 확인 뒤 재개하며 늦은 401을 버린다", async () => {
+  const transport = fetch;
+  let finish: ((response: Response) => void) | undefined;
+  let signal: AbortSignal | null | undefined;
+  let initial = true;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/owner/price-list/versions" && initial) {
+        initial = false;
+        calls.push({ path: String(input), method: "GET" });
+        signal = init?.signal;
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      }
+      return transport(input, init);
+    }),
+  );
+  const view = area("3");
+  await screen.findByRole("heading", { name: /버전 3/ });
+  view.rerender(<PriceListHistory {...view.props} version="3" sessionChecking />);
+  expect(signal?.aborted).toBe(true);
+  await act(async () => {
+    finish?.(json({ code: "unauthenticated", traceId }, 401));
+  });
+  expect(view.props.onSessionExpired).not.toHaveBeenCalled();
+  view.rerender(<PriceListHistory {...view.props} version="3" sessionChecking={false} />);
+  await screen.findByRole("link", { name: /버전 3/ });
+  expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(2);
+  expect(calls.filter((c) => c.path === "/api/owner/price-list/versions/3")).toHaveLength(1);
+});
