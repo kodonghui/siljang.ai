@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { matchPath, Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
+import { KakaoChannelSettings } from "./KakaoChannelSettings";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import { OperatingRulesHistory } from "./OperatingRulesHistory";
 import {
@@ -131,24 +132,27 @@ export function OwnerArea() {
         "/owner/price-list",
         "/owner/operating-rules",
         "/owner/payment-destination",
+        "/owner/kakao-channel",
       ].includes(shopPath ?? "")) &&
     candidate?.shop
   ) {
-    if (shopPath === "/owner/price-list" || shopPath === "/owner/operating-rules" || history) {
+    if (["/owner/price-list", "/owner/operating-rules", "/owner/kakao-channel"].includes(shopPath ?? "") || history) {
       const destination = ownerDestination(candidate, requested);
       if (destination !== requested) return <Navigate to={destination} replace />;
     }
     const ShopScreen =
       historyRoute?.Screen ??
-      (shopPath === "/owner/payment-destination"
-        ? PaymentDestinationEditor
-        : shopPath === "/owner/operating-rules"
-          ? OperatingRulesEditor
-          : shopPath === "/owner/price-list"
-            ? PriceListEditor
-            : shopPath === "/owner/shop/license"
-              ? ShopLicense
-              : ShopSettings);
+      (shopPath === "/owner/kakao-channel"
+        ? KakaoChannelSettings
+        : shopPath === "/owner/payment-destination"
+          ? PaymentDestinationEditor
+          : shopPath === "/owner/operating-rules"
+            ? OperatingRulesEditor
+            : shopPath === "/owner/price-list"
+              ? PriceListEditor
+              : shopPath === "/owner/shop/license"
+                ? ShopLicense
+                : ShopSettings);
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (

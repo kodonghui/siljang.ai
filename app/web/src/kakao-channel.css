@@ -30,3 +30,8 @@
 .channel-editor li {
   overflow-wrap: anywhere;
 }
+
+.copy-value input,
+.channel-form [data-pointer] input {
+  font-family: monospace;
+}
