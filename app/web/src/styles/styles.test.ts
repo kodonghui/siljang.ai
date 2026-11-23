@@ -19,6 +19,10 @@ const HAND_CSS = [
   "src/kakao-channel.css",
   "src/booking-link-screen.css",
   "src/calendar-screen.css",
+  "src/calendar-settings-screen.css",
+  "src/calendar-conflicts.css",
+  "src/operator-shops.css",
+  "src/operator-shop-review.css",
   "src/price-list-history.css",
   "src/version-history.css",
 ];

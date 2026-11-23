@@ -49,7 +49,7 @@ function photoUrl(v: unknown): v is string {
     return false;
   }
 }
-function business(v: unknown): v is BusinessIdentity {
+export function isBusinessIdentity(v: unknown): v is BusinessIdentity {
   return (
     isApiObject(v) &&
     text(v.businessName) &&
@@ -61,11 +61,11 @@ function business(v: unknown): v is BusinessIdentity {
 function change(v: unknown): v is IdentityChange {
   return (
     isApiObject(v) &&
-    business(v) &&
+    isBusinessIdentity(v) &&
     text(v.changeId) &&
     UUID_PATTERN.test(v.changeId) &&
     member(v.status, ["pending", "applied", "on_hold"]) &&
-    business(v.previous) &&
+    isBusinessIdentity(v.previous) &&
     photoUrl(v.evidencePhotoUrl) &&
     nullableText(v.holdReason) &&
     date(v.requestedAt) &&
@@ -85,7 +85,7 @@ function summary(v: unknown): v is ShopSettingsSummary {
   );
 }
 export function isShopResponse(v: unknown): v is ShopResponse {
-  if (!isApiObject(v) || !business(v) || !text(v.shopId) || !UUID_PATTERN.test(v.shopId)) return false;
+  if (!isApiObject(v) || !isBusinessIdentity(v) || !text(v.shopId) || !UUID_PATTERN.test(v.shopId)) return false;
   if (["name", "contactPhone", "businessAddress", "contactEmail", "foodLicenseNo"].some((key) => !text(v[key])))
     return false;
   if (!text(v.revision) || !/^[A-Za-z0-9._-]{1,64}$/.test(v.revision)) return false;
