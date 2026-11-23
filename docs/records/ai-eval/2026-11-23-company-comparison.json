@@ -1,0 +1,206 @@
+{
+  "originalRuns": [
+    "eval-20261122T134127Z-f04a7c",
+    "eval-20261121T072427Z-d934a7"
+  ],
+  "subject": {
+    "name": "baseline-v0",
+    "promptVersion": "eval-baseline-v0",
+    "sendsNotice": false
+  },
+  "casesVersion": "eval-cases-1",
+  "models": [
+    {
+      "model": "anthropic/claude-haiku-5-5",
+      "cases": 134,
+      "criteria": [
+        {
+          "criterion": "amount",
+          "fail": 1,
+          "review": 9,
+          "pass": 124,
+          "na": 0,
+          "noOutput": 0,
+          "targeted": 37,
+          "targetedFail": 0,
+          "scored": 134,
+          "notMeasured": {}
+        },
+        {
+          "criterion": "confirmed",
+          "fail": 0,
+          "review": 23,
+          "pass": 111,
+          "na": 0,
+          "noOutput": 0,
+          "targeted": 28,
+          "targetedFail": 0,
+          "scored": 134,
+          "notMeasured": {}
+        },
+        {
+          "criterion": "edibility",
+          "fail": 1,
+          "review": 0,
+          "pass": 133,
+          "na": 0,
+          "noOutput": 0,
+          "targeted": 20,
+          "targetedFail": 1,
+          "scored": 134,
+          "notMeasured": {}
+        },
+        {
+          "criterion": "fabricated",
+          "fail": 6,
+          "review": 3,
+          "pass": 125,
+          "na": 0,
+          "noOutput": 0,
+          "targeted": 30,
+          "targetedFail": 6,
+          "scored": 134,
+          "notMeasured": {}
+        },
+        {
+          "criterion": "notice",
+          "fail": 1,
+          "review": 3,
+          "pass": 130,
+          "na": 0,
+          "noOutput": 0,
+          "targeted": 9,
+          "targetedFail": 1,
+          "scored": 134,
+          "notMeasured": {
+            "server_notice": 129
+          }
+        }
+      ],
+      "changeAttempts": {
+        "total": 30,
+        "changed": 2
+      },
+      "noOutput": {},
+      "handoff": {
+        "ok": 45,
+        "missing": 5,
+        "unexpected": 0
+      },
+      "calls": 135,
+      "tokens": {
+        "input": 688991,
+        "output": 66491,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "krw": "148.78",
+      "krwPer1000Turns": "1110.30",
+      "totalMs": {
+        "p50": 3216,
+        "p95": 5377
+      },
+      "firstTokenMs": {
+        "p50": 2564,
+        "p95": 4715
+      }
+    },
+    {
+      "model": "openai/gpt-6-luna",
+      "cases": 134,
+      "criteria": [
+        {
+          "criterion": "amount",
+          "fail": 0,
+          "review": 0,
+          "pass": 133,
+          "na": 0,
+          "noOutput": 1,
+          "targeted": 37,
+          "targetedFail": 0,
+          "scored": 133,
+          "notMeasured": {}
+        },
+        {
+          "criterion": "confirmed",
+          "fail": 1,
+          "review": 12,
+          "pass": 120,
+          "na": 0,
+          "noOutput": 1,
+          "targeted": 28,
+          "targetedFail": 1,
+          "scored": 133,
+          "notMeasured": {}
+        },
+        {
+          "criterion": "edibility",
+          "fail": 1,
+          "review": 0,
+          "pass": 132,
+          "na": 0,
+          "noOutput": 1,
+          "targeted": 20,
+          "targetedFail": 1,
+          "scored": 133,
+          "notMeasured": {}
+        },
+        {
+          "criterion": "fabricated",
+          "fail": 2,
+          "review": 1,
+          "pass": 130,
+          "na": 0,
+          "noOutput": 1,
+          "targeted": 30,
+          "targetedFail": 2,
+          "scored": 133,
+          "notMeasured": {}
+        },
+        {
+          "criterion": "notice",
+          "fail": 0,
+          "review": 4,
+          "pass": 129,
+          "na": 0,
+          "noOutput": 1,
+          "targeted": 9,
+          "targetedFail": 0,
+          "scored": 133,
+          "notMeasured": {
+            "server_notice": 128
+          }
+        }
+      ],
+      "changeAttempts": {
+        "total": 30,
+        "changed": 0
+      },
+      "noOutput": {
+        "schema_invalid": 1
+      },
+      "handoff": {
+        "ok": 48,
+        "missing": 2,
+        "unexpected": 0
+      },
+      "calls": 142,
+      "tokens": {
+        "input": 402,
+        "output": 27693,
+        "cacheRead": 187553,
+        "cacheWrite": 76817
+      },
+      "krw": "37.39",
+      "krwPer1000Turns": "279.03",
+      "totalMs": {
+        "p50": 2611,
+        "p95": 4852
+      },
+      "firstTokenMs": {
+        "p50": 2168,
+        "p95": 4370
+      }
+    }
+  ]
+}

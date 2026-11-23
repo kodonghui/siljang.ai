@@ -1,0 +1,19 @@
+{
+  "source": "academy-pc guarded recovery checkpoint",
+  "sha256": "bfddc8df734ae8133db4640326d839d5e5e1ce02d7a26f7bd55d507724a77516",
+  "bytes": 202526,
+  "checkpointModifiedAt": "2026-11-23T06:45:49.804Z",
+  "originalCliExitCode": null,
+  "recoveryEvent": "source_removed_keep_partial",
+  "recoveredOriginalFiles": [
+    "checkpoint.json"
+  ],
+  "rebuiltOfflineFiles": [
+    "run.json",
+    "results.jsonl",
+    "summary.md",
+    "review.md"
+  ],
+  "providerRequestsDuringRecovery": 0,
+  "guardedAgainstNativeCredentialValues": true
+}

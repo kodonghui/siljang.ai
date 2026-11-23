@@ -57,7 +57,7 @@ try {
   if($siljangInput.nativeAuthProbe){
     $env:OPENAI_API_KEY='example-native-canary-'+[guid]::NewGuid().ToString('N')
     $siljangArgs+=@('--interval-ms','0')
-  } else {$siljangArgs+=@('--interval-ms','30000','--resume-from',$siljangPrior)}
+  } else {$siljangArgs+=@('--interval-ms','60000','--resume-from',$siljangPrior)}
   if($siljangInput.real -or $siljangInput.nativeAuthProbe){
     $siljangApiKey=$env:OPENAI_API_KEY
     if(!$siljangApiKey){$siljangApiKey=[Environment]::GetEnvironmentVariable('OPENAI_API_KEY','User')}
