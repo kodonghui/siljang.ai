@@ -25,4 +25,8 @@ function Assert-SiljangWranglerLogin {
     Write-Output '{"event":"academy_whoami_failed"}'
     exit 1
   }
+  if ($siljangIdentity.authType -notin @('OAuth Token', 'User API Token', 'Account API Token')) {
+    Write-Output '{"event":"academy_auth_unsupported"}'
+    exit 1
+  }
 }

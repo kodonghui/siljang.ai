@@ -20,7 +20,8 @@ const args = process.argv.slice(2);
 appendFileSync(process.env.SILJANG_TEST_CALLS, args.join(' ') + '\\n');
 if (args[0] === 'whoami') {
   const loggedIn = process.env.SILJANG_TEST_LOGIN === 'true';
-  const authType = process.env.CLOUDFLARE_API_TOKEN ? 'User API Token' : 'OAuth Token';
+  const authType = process.env.SILJANG_TEST_AUTH_TYPE ||
+    (process.env.CLOUDFLARE_API_TOKEN ? 'User API Token' : 'OAuth Token');
   console.log(JSON.stringify({ loggedIn, authType, email: 'owner@example.test' }));
   process.exitCode = loggedIn ? 0 : 1;
 } else if (args[0] === '--version') {
@@ -35,7 +36,7 @@ if (args[0] === 'whoami') {
 
 @unittest.skipUnless(POWERSHELL and shutil.which("node"), "PowerShell and Node are required")
 class AcademyWranglerTests(unittest.TestCase):
-    def run_with_fake_ssh(self, script, args=(), *, logged_in=False, local_token=None):
+    def run_with_fake_ssh(self, script, args=(), *, logged_in=False, local_token=None, auth_type=""):
         real_popen = subprocess.Popen
         calls = []
         with tempfile.TemporaryDirectory() as temp:
@@ -46,6 +47,7 @@ class AcademyWranglerTests(unittest.TestCase):
             env = {
                 "SILJANG_TEST_CALLS": str(log),
                 "SILJANG_TEST_LOGIN": str(logged_in).lower(),
+                "SILJANG_TEST_AUTH_TYPE": auth_type,
                 "CLOUDFLARE_ACCOUNT_ID": "synthetic-account",
                 "CLOUDFLARE_API_TOKEN": "caller-only-credential",  # check-no-keys: allow 합성 시험 값
                 "SILJANG_STORAGE_PROBE_URL": "https://example.test/api/healthz",
@@ -105,6 +107,14 @@ class AcademyWranglerTests(unittest.TestCase):
         self.assertEqual(code, 1)  # The simulated deploy failure is after successful preflight.
         self.assertEqual(commands, ["whoami --json", "--version", "deploy --config peer.json"])
         self.assertNotIn("synthetic-session-secret", output)
+
+    def test_storage_rejects_global_api_key(self):
+        code, output, commands = self.run_with_fake_ssh(
+            HERE / "run-native.py", logged_in=True, auth_type="Global API Key"
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(commands, ["whoami --json"])
+        self.assertEqual(json.loads(output.splitlines()[0])["event"], "academy_auth_unsupported")
 
     def test_unauthenticated_webp_stops_before_upload(self):
         with tempfile.TemporaryDirectory() as temp:
