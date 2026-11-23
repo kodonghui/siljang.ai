@@ -89,6 +89,7 @@ it("상세 경로와 가게 등록 정보만 보여 주고 기준 시각을 새�
   );
   for (const text of [row.businessName, row.representativeName, row.businessRegNo, row.foodLicenseNo])
     expect(table.textContent).toContain(text);
+  expect(within(table).getAllByTitle(row.businessName).length).toBeGreaterThan(0);
   expect(screen.getByText(/\d{2}:\d{2} 기준/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
   await screen.findByRole("table");
@@ -262,13 +263,79 @@ it("로그아웃은 전송 중 중복을 막고 실패한 뒤 다시 시도할 �
   const logout = screen.getByRole("button", { name: "로그아웃" });
   fireEvent.click(logout);
   fireEvent.click(logout);
-  expect(document.body.textContent).not.toContain(shops().items[0].name);
+  expect(screen.getByRole("table").textContent).toContain(shops().items[0].name);
   expect(deletes).toBe(1);
   await act(async () => complete(json(problem(), 500)));
   fireEvent.click(await screen.findByRole("button", { name: "다시 시도" }));
   await waitFor(() => expect(screen.queryByRole("table")).toBeNull());
   await screen.findByText("다시 로그인해 주세요");
   expect(fetch.mock.calls.filter(([, init]) => init.method === "DELETE")).toHaveLength(2);
+});
+it("같은 화면의 변경 상태 이동은 레이아웃과 select 초점을 보존하고 인증을 다시 읽지 않는다", async () => {
+  const fetch = transport(() => json({ items: [], nextCursor: null }));
+  mount("?tab=identity");
+  await screen.findByText("확인할 변경 요청이 없어요");
+  const select = screen.getByRole("combobox", { name: "사업자 정보 변경 상태" });
+  const main = screen.getByRole("main");
+  select.focus();
+  fireEvent.change(select, { target: { value: "on_hold" } });
+  await screen.findByText("보류한 변경 요청이 없어요");
+  expect(screen.getByRole("main")).toBe(main);
+  expect(screen.getByRole("combobox", { name: "사업자 정보 변경 상태" })).toBe(select);
+  expect(document.activeElement).toBe(select);
+  expect(fetch.mock.calls.filter(([url]) => url.endsWith("/me"))).toHaveLength(1);
+});
+it("새로 고침500은 기존 행과 새로 고침 버튼의 초점을 남긴다", async () => {
+  let reads = 0,
+    complete!: (response: Response) => void;
+  transport(() =>
+    ++reads === 1
+      ? json(shops())
+      : new Promise<Response>((resolve) => {
+          complete = resolve;
+        }),
+  );
+  mount();
+  const table = await screen.findByRole("table");
+  const button = screen.getByRole("button", { name: "새로 고침" });
+  button.focus();
+  fireEvent.click(button);
+  expect(screen.getByRole("table")).toBe(table);
+  await act(async () => complete(json(problem(), 500)));
+  expect(screen.getByRole("table")).toBe(table);
+  expect(document.activeElement).toBe(button);
+  expect(screen.getByRole("button", { name: "새로 고침" })).toBe(button);
+});
+it("서버422의 처음부터 보기는 선택한 변경 탭/상태를 유지하고 커서만 지운다", async () => {
+  transport(() => json(value("/operator/identity-changes", "validation_failed", 422), 422));
+  mount("?tab=identity&status=on_hold&cursor=synthetic_old");
+  const first = await screen.findByRole("link", { name: "처음부터 보기" });
+  expect(first.getAttribute("href")).toBe("/operator/shops?tab=identity&status=on_hold");
+});
+it("느린 탭 조회 중에도 다른 탭으로 옮겨 이전 요청을 취소할 수 있다", async () => {
+  let signal: AbortSignal | undefined;
+  transport((url, init) => {
+    if (url.searchParams.get("status") === "pending") {
+      signal = init.signal ?? undefined;
+      return new Promise<Response>(() => {});
+    }
+    return json({ items: [], nextCursor: null });
+  });
+  mount();
+  await screen.findByRole("link", { name: "보류" });
+  fireEvent.click(screen.getByRole("link", { name: "보류" }));
+  await screen.findByText("보류한 가게가 없어요");
+  expect(signal?.aborted).toBe(true);
+});
+it("로그아웃 실패는 작업 이름과 추적ID/재시도로 목록 실패와 구별한다", async () => {
+  transport((_url, init) => (init.method === "DELETE" ? json(problem(), 500) : json(shops())));
+  mount();
+  await screen.findByRole("table");
+  fireEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+  await screen.findByText("로그아웃하지 못했어요");
+  expect(within(screen.getByRole("main")).getByText("문제가 생겼어요. 다시 시도해 주세요")).toBeTruthy();
+  expect(screen.getByRole("main").textContent).toContain(problem().traceId);
+  expect(screen.getByRole("button", { name: "다시 시도" })).toBeTruthy();
 });
 it("변경 요청 상태를 바꾸면 새 URL 필터로 읽고 해당 빈 문구를 보인다", async () => {
   const fetch = transport(() => json({ items: [], nextCursor: null }));

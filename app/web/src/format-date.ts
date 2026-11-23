@@ -20,3 +20,6 @@ const seoulTime = new Intl.DateTimeFormat("ko-KR", {
   hourCycle: "h23",
 });
 export const formatSeoulTime = (value: string | number): string => seoulTime.format(new Date(value));
+
+export const formatKoreanDate = (day: string): string =>
+  `${Number(day.slice(0, 4))}년 ${Number(day.slice(5, 7))}월 ${Number(day.slice(8))}일`;

@@ -14,7 +14,7 @@ import { classify } from "./problems";
 import { Button, LoadFailure, OperatorLayout, PageSection, Skeleton, StateBox } from "./ui";
 
 interface CheckedSession {
-  readonly key: string;
+  readonly path: string;
   readonly revision: number;
   readonly result: ApiResult<OperatorIdentity>;
 }
@@ -46,13 +46,13 @@ export function OperatorArea() {
     const abort = new AbortController();
     void fetchOperator(abort.signal)
       .then((result) => {
-        if (!abort.signal.aborted) setChecked({ key: location.key, revision, result });
+        if (!abort.signal.aborted) setChecked({ path: location.pathname, revision, result });
       })
       .catch((error) => {
         if (!abort.signal.aborted) throw error;
       });
     return () => abort.abort();
-  }, [location.key, revision, screen]);
+  }, [location.pathname, revision, screen]);
 
   useEffect(() => () => logoutRequest.current?.abort(), []);
 
@@ -79,6 +79,10 @@ export function OperatorArea() {
   }
 
   function follow(href: string, event: MouseEvent<HTMLAnchorElement>) {
+    if (logout === "pending") {
+      event.preventDefault();
+      return;
+    }
     if (
       event.defaultPrevented ||
       event.button !== 0 ||
@@ -98,8 +102,8 @@ export function OperatorArea() {
         <p>찾을 수 없어요</p>
       </main>
     );
-  const session = checked?.key === location.key && checked.revision === revision ? checked.result : null;
-  if (session === null || logout === "pending") {
+  const session = checked?.path === location.pathname && checked.revision === revision ? checked.result : null;
+  if (session === null) {
     return (
       <main aria-live="polite">
         <Skeleton label="로그인 상태를 확인하고 있어요" />
@@ -125,20 +129,21 @@ export function OperatorArea() {
       title={screen.title}
       {...(screen.top ? {} : { back })}
       operatorName={session.data.displayName}
+      busy={logout === "pending"}
       onLogout={logOut}
       onNavigate={follow}
     >
       <PageSection>
-        {logout === "failed" && screen.screen === "SCR-047" && logoutFailure ? (
-          <LoadFailure
-            failure={classify(logoutFailure.status, logoutFailure.problem, logoutFailure.retryAfterSeconds)}
-            onRetry={logOut}
-          />
-        ) : logout === "failed" ? (
-          <StateBox tone="error" title="로그아웃하지 못했어요" actions={<Button onClick={logOut}>다시 시도</Button>} />
+        {logout === "failed" && logoutFailure ? (
+          <StateBox tone="error" title="로그아웃하지 못했어요" actions={<Button onClick={logOut}>다시 시도</Button>}>
+            <span>
+              {classify(logoutFailure.status, logoutFailure.problem, logoutFailure.retryAfterSeconds).message}
+            </span>
+            {logoutFailure.problem?.traceId ? <span> 추적 ID: {logoutFailure.problem.traceId}</span> : null}
+          </StateBox>
         ) : null}
         {screen.screen === "SCR-047" ? (
-          <OperatorShopsList onNavigate={follow} onSessionExpired={sessionExpired} />
+          <OperatorShopsList onNavigate={follow} onSessionExpired={sessionExpired} blocked={logout === "pending"} />
         ) : (
           <p>준비 중입니다.</p>
         )}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
+import { CalendarConflictList } from "./CalendarConflictList";
 import { type CalendarDay, type CalendarDayResult, fetchCalendarDays, saveCalendarDay } from "./calendar-api";
-import { CALENDAR_ORDER_STATUSES } from "./calendar-conflicts";
 import {
   type CalendarForm,
   calendarForm,
@@ -12,7 +12,7 @@ import {
   shiftCalendarMonth,
   todayCalendarDate,
 } from "./calendar-form";
-import { formatKoreanDateTime, formatSeoulTime } from "./format-date";
+import { formatKoreanDate as dayLabel, formatSeoulTime } from "./format-date";
 import { classify, ERROR_CODES, type FieldError } from "./problems";
 import type { ShopLicenseProps } from "./ShopLicense";
 import {
@@ -32,7 +32,6 @@ import { useVersionedRead } from "./useVersionedRead";
 import "./calendar-screen.css";
 
 const fields = ["/closed", "/capacityOverride", "/manuallyClosed"];
-const dayLabel = (day: string) => `${Number(day.slice(0, 4))}년 ${Number(day.slice(5, 7))}월 ${Number(day.slice(8))}일`;
 const monthLabel = (month: string) => `${Number(month.slice(0, 4))}년 ${Number(month.slice(5))}월`;
 function gridDays(month: string) {
   const cursor = new Date(`${month}-01T00:00:00Z`);
@@ -523,26 +522,12 @@ export function CalendarScreen(props: ShopLicenseProps) {
         }}
         onCancel={command.cancelConfirm}
       >
-        {command.state.kind === "confirm"
-          ? command.state.conflicts
-              ?.filter((item) => item.day === base?.day)
-              .map((item) => (
-                <section key={item.day} aria-label="관련 주문">
-                  <h3>{dayLabel(item.day)} 관련 주문</h3>
-                  <p>
-                    잡힌 자리 {item.held} · 바꿀 하루 최대 개수 {item.capacity}
-                  </p>
-                  <ul>
-                    {item.orders.map((order) => (
-                      <li key={order.orderId}>
-                        <span>{order.orderNo}</span> · {CALENDAR_ORDER_STATUSES[order.status]} ·{" "}
-                        {formatKoreanDateTime(order.pickupAt)}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))
-          : null}
+        {command.state.kind === "confirm" ? (
+          <CalendarConflictList
+            values={(command.state.conflicts ?? []).filter((item) => item.day === base?.day)}
+            disabled={blocked}
+          />
+        ) : null}
       </ConfirmRequired>
     </OwnerLayout>
   );

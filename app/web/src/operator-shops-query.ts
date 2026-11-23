@@ -1,4 +1,10 @@
-import { CHANGE_STATUSES, type ChangeStatus, REVIEW_STATUSES, type ReviewStatus } from "./operator-shops-api";
+import {
+  CHANGE_STATUSES,
+  type ChangeStatus,
+  REVIEW_CURSOR_PATTERN,
+  REVIEW_STATUSES,
+  type ReviewStatus,
+} from "./operator-shops-api";
 export type OperatorListFilter =
   | { readonly tab: "shops"; readonly status: ReviewStatus; readonly cursor: string | null }
   | { readonly tab: "identity"; readonly status: ChangeStatus; readonly cursor: string | null };
@@ -8,7 +14,7 @@ export function parseOperatorList(search: string): OperatorListFilter | null {
   const tab = params.get("tab") ?? "shops",
     status = params.get("status") ?? "pending",
     cursor = params.get("cursor");
-  if (cursor !== null && !/^[A-Za-z0-9_-]{1,200}$/.test(cursor)) return null;
+  if (cursor !== null && !REVIEW_CURSOR_PATTERN.test(cursor)) return null;
   if (tab === "shops" && REVIEW_STATUSES.some((item) => item === status))
     return { tab, status: status as ReviewStatus, cursor };
   if (tab === "identity" && CHANGE_STATUSES.some((item) => item === status))

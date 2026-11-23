@@ -1,14 +1,11 @@
 import { type ApiResult, request } from "./api";
 import { INVALID_API_RESPONSE, isApiObject, isApiTimestamp, UUID_PATTERN } from "./api-response";
+import { type BusinessIdentity, isBusinessIdentity } from "./shop-response";
+export const REVIEW_CURSOR_PATTERN = /^[A-Za-z0-9_-]{1,200}$/;
 export const REVIEW_STATUSES = ["pending", "on_hold", "verified"] as const;
 export const CHANGE_STATUSES = ["pending", "applied", "on_hold"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 export type ChangeStatus = (typeof CHANGE_STATUSES)[number];
-interface BusinessIdentity {
-  readonly businessName: string;
-  readonly representativeName: string;
-  readonly businessRegNo: string;
-}
 interface ShopHeader {
   readonly shopId: string;
   readonly name: string;
@@ -50,12 +47,7 @@ const member = <T extends readonly string[]>(value: unknown, choices: T): value 
   typeof value === "string" && choices.includes(value);
 const version = (value: unknown): value is string => matches(value, /^[A-Za-z0-9._-]{1,64}$/);
 function business(value: unknown): value is BusinessIdentity {
-  return (
-    isApiObject(value) &&
-    bounded(value.businessName, 60) &&
-    bounded(value.representativeName, 30) &&
-    matches(value.businessRegNo, /^[0-9]{10}$/)
-  );
+  return isBusinessIdentity(value) && bounded(value.businessName, 60) && bounded(value.representativeName, 30);
 }
 const copyBusiness = (value: BusinessIdentity): BusinessIdentity => ({
   businessName: value.businessName,
@@ -152,7 +144,7 @@ async function page<T>(
     !isApiObject(value) ||
     !Array.isArray(value.items) ||
     value.items.length > 20 ||
-    !(value.nextCursor === null || matches(value.nextCursor, /^[A-Za-z0-9_-]{1,200}$/))
+    !(value.nextCursor === null || matches(value.nextCursor, REVIEW_CURSOR_PATTERN))
   )
     return INVALID_API_RESPONSE;
   const items: T[] = [],

@@ -22,7 +22,11 @@ interface LoadedPage {
   readonly at: number;
 }
 const rowKey = (row: Row) => ("changeId" in row ? row.changeId : row.shopId);
-const short = (text: string) => <span className="operator-shops-short">{text}</span>;
+const short = (text: string) => (
+  <span className="operator-shops-short" title={text}>
+    {text}
+  </span>
+);
 const shopColumns: readonly ListColumn<ReviewShop>[] = [
   { label: "가게 이름", card: "title", cell: (row) => short(row.name) },
   { label: "상호", card: "body", cell: (row) => short(row.businessName) },
@@ -75,9 +79,11 @@ const changeColumns: readonly ListColumn<IdentityChangeSummary>[] = [
 export function OperatorShopsList({
   onNavigate,
   onSessionExpired,
+  blocked = false,
 }: {
   readonly onNavigate: Navigate;
   readonly onSessionExpired: () => void;
+  readonly blocked?: boolean;
 }) {
   const { search } = useLocation();
   const navigate = useNavigate();
@@ -88,15 +94,17 @@ export function OperatorShopsList({
   const [expired, setExpired] = useState(false);
   const [revision, setRevision] = useState(0);
   const request = useRef<AbortController | null>(null);
+  const blockedNow = useRef(blocked);
+  blockedNow.current = blocked;
   const current = loaded?.search === search ? loaded : null;
   const read = useCallback(
     async (cursor: string | null, more: boolean) => {
-      if (!filter || request.current) return;
+      if (!filter || request.current || blockedNow.current) return;
       const controller = new AbortController();
       request.current = controller;
       setLoading(true);
       setFailure(null);
-      if (!more) setLoaded(null);
+      if (!more) setLoaded((old) => (old?.search === search ? old : null));
       try {
         const result =
           filter.tab === "shops"
@@ -136,8 +144,9 @@ export function OperatorShopsList({
     };
   }, [read, filter, revision]);
   const refresh = () => setRevision((old) => old + 1);
+  const firstHref = filter ? operatorListHref({ ...filter, cursor: null }) : "/operator/shops";
   const initialLink = (
-    <a href="/operator/shops" onClick={(event) => onNavigate("/operator/shops", event)}>
+    <a href={firstHref} onClick={(event) => onNavigate(firstHref, event)}>
       처음부터 보기
     </a>
   );
@@ -148,7 +157,7 @@ export function OperatorShopsList({
         입력한 내용을 확인해 주세요
       </Banner>
     );
-  const busy = loading || (current === null && failure === null);
+  const busy = blocked || loading || (current === null && failure === null);
   const tabs = [
     { label: "확인 중", tab: "shops", status: "pending" },
     { label: "보류", tab: "shops", status: "on_hold" },
@@ -183,8 +192,8 @@ export function OperatorShopsList({
               aria-current={
                 filter.tab === tab.tab && (tab.tab === "identity" || filter.status === tab.status) ? "page" : undefined
               }
-              aria-disabled={busy || undefined}
-              onClick={(event) => (busy ? event.preventDefault() : onNavigate(href, event))}
+              aria-disabled={blocked || undefined}
+              onClick={(event) => (blocked ? event.preventDefault() : onNavigate(href, event))}
             >
               {tab.label}
             </a>
@@ -197,7 +206,7 @@ export function OperatorShopsList({
           <select
             aria-label="사업자 정보 변경 상태"
             value={filter.status}
-            disabled={busy}
+            disabled={blocked}
             onChange={(event) => {
               // select 변경은 같은 출처의 고정 목록 주소만 사용한다.
               const href = operatorListHref({
@@ -205,7 +214,7 @@ export function OperatorShopsList({
                 status: event.target.value as ChangeStatus,
                 cursor: null,
               });
-              navigate(href);
+              navigate(href, { replace: true });
             }}
           >
             <option value="pending">확인 중</option>
