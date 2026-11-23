@@ -585,6 +585,20 @@
   .price-editor .price-no-maximum {
     display: block;
   }
+  .rules-editor .rules-values,
+  .rules-editor .rules-clause,
+  .rules-editor .rules-tier {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .rules-editor .rules-clause > h3,
+  .rules-editor .rules-clause > .ui-button,
+  .rules-editor .rules-clause > .ui-field__error,
+  .rules-editor .rules-tier > .ui-button,
+  .rules-editor .rules-tier > .ui-field__error {
+    grid-column: 1 / -1;
+  }
+
   .price-history__panes {
     grid-template-columns: var(--size-aside) minmax(0, 1fr);
     align-items: start;

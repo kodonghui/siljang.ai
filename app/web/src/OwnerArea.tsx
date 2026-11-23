@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
+import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import {
   fetchOwner,
   OWNER_HOME,
@@ -111,20 +112,23 @@ export function OwnerArea() {
       ? cached.data
       : null;
   if (
-    (priceHistory || ["/owner/shop", "/owner/shop/license", "/owner/price-list"].includes(shopPath ?? "")) &&
+    (priceHistory ||
+      ["/owner/shop", "/owner/shop/license", "/owner/price-list", "/owner/operating-rules"].includes(shopPath ?? "")) &&
     candidate?.shop
   ) {
-    if (shopPath === "/owner/price-list" || priceHistory) {
+    if (shopPath === "/owner/price-list" || shopPath === "/owner/operating-rules" || priceHistory) {
       const destination = ownerDestination(candidate, requested);
       if (destination !== requested) return <Navigate to={destination} replace />;
     }
     const ShopScreen = priceHistory
       ? PriceListHistory
-      : shopPath === "/owner/price-list"
-        ? PriceListEditor
-        : shopPath === "/owner/shop/license"
-          ? ShopLicense
-          : ShopSettings;
+      : shopPath === "/owner/operating-rules"
+        ? OperatingRulesEditor
+        : shopPath === "/owner/price-list"
+          ? PriceListEditor
+          : shopPath === "/owner/shop/license"
+            ? ShopLicense
+            : ShopSettings;
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (
