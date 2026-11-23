@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
@@ -31,9 +31,9 @@ export function OwnerArea() {
   const shopPath = requested?.split(/[?#]/)[0]?.replace(/\/+$/, "");
   const priceHistory = isPriceHistoryPath(shopPath);
   const [revision, setRevision] = useState(0);
-  const [checked, setChecked] = useState<{ key: string; revision: number; result: ApiResult<OwnerIdentity> } | null>(
-    null,
-  );
+  // 같은 history key로 돌아와도 중간 이동 전의 세션 검사를 재사용하지 않는다.
+  const visit = useMemo(() => ({ key: location.key, revision }), [location.key, revision]);
+  const [checked, setChecked] = useState<{ visit: typeof visit; result: ApiResult<OwnerIdentity> } | null>(null);
   const [logout, setLogout] = useState<"pending" | "failed" | null>(null);
   const [logoutFailure, setLogoutFailure] = useState<ApiFailure | null>(null);
   const logoutRequest = useRef<AbortController | null>(null);
@@ -60,15 +60,15 @@ export function OwnerArea() {
         if (result.ok) {
           if (result.data.shop !== null) clearRegistrationDraft();
           else pruneRegistrationDraft(result.data.owner.ownerId);
-          verified.current = { key: location.key, data: result.data, history: priceHistory };
+          verified.current = { key: visit.key, data: result.data, history: priceHistory };
         }
-        setChecked({ key: location.key, revision, result });
+        setChecked({ visit, result });
       })
       .catch(() => {
         /* 화면을 떠날 때 취소한 요청. */
       });
     return () => controller.abort();
-  }, [location.key, requested, revision, priceHistory]);
+  }, [visit, requested, priceHistory]);
   useEffect(() => () => logoutRequest.current?.abort(), []);
   useEffect(() => {
     if (requested !== OWNER_HOME) setRegistrationNotice(false);
@@ -104,7 +104,7 @@ export function OwnerArea() {
         <p>찾을 수 없어요</p>
       </main>
     );
-  const session = checked?.key === location.key && checked.revision === revision ? checked.result : null;
+  const session = checked?.visit === visit ? checked.result : null;
   const cached = verified.current;
   const candidate = session?.ok
     ? session.data

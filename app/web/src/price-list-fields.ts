@@ -1,3 +1,4 @@
+import { isIntegerText } from "./form-values";
 import { designIdentity, type PriceListForm } from "./price-list-form";
 import type { FieldError, FieldReason } from "./problems";
 
@@ -20,7 +21,7 @@ export function priceListIssues(form: PriceListForm): FieldError[] {
   };
   const cash = (v: string, field: string, min = 0) => {
     if (!v.trim()) add(field, "required");
-    else if (!Number.isSafeInteger(Number(v)) || Number(v) < min || Number(v) > 10000000) add(field, "out_of_range");
+    else if (!isIntegerText(v) || Number(v) < min || Number(v) > 10000000) add(field, "out_of_range");
   };
   if (!form.options.length || form.options.length > 100) add("/options", "out_of_range");
   if (form.rules.length > 500) add("/rules", "out_of_range");

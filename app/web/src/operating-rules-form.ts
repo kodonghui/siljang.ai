@@ -1,3 +1,4 @@
+import { changedFields as changed, isIntegerText, numberOrText } from "./form-values";
 import { CLAUSE_KEYS, type ClauseKey, type OperatingRules } from "./operating-rules-api";
 import type { FieldError } from "./problems";
 
@@ -76,7 +77,6 @@ export function rulesForm(base: OperatingRules): OperatingRulesForm {
     })),
   };
 }
-const numberOrText = (v: string) => (v.trim() !== "" && Number.isSafeInteger(Number(v)) ? Number(v) : v);
 export function rulesPayload(base: OperatingRules, form: OperatingRulesForm) {
   return {
     baseRevision: base.revision,
@@ -112,7 +112,7 @@ export function rulesIssues(form: OperatingRulesForm): FieldError[] {
       add(field, "required");
       return false;
     }
-    if (!Number.isSafeInteger(Number(value)) || Number(value) < min || Number(value) > max) {
+    if (!isIntegerText(value) || Number(value) < min || Number(value) > max) {
       add(field, "out_of_range");
       return false;
     }
@@ -185,11 +185,7 @@ export function rulesIssues(form: OperatingRulesForm): FieldError[] {
   if (!keys.has("staged_refund") && form.refundTiers.length) add("/clauses", "required");
   return errors;
 }
-function changed<T, K extends keyof T>(before: T, after: T, fields: readonly K[]): Partial<Pick<T, K>> {
-  const patch: Partial<Pick<T, K>> = {};
-  for (const k of fields) if (before[k] !== after[k]) patch[k] = after[k];
-  return patch;
-}
+
 const clauseIdentity = (c: ClauseForm) =>
   c.key === "custom" ? JSON.stringify([c.key, c.title, c.conditionText, c.effectText]) : c.key;
 const tierIdentity = (t: TierForm) => JSON.stringify([t.hoursBeforeMin, t.hoursBeforeMax]);
@@ -219,8 +215,10 @@ export function rebaseRules(
     }
     const target = candidates[0];
     if (!target) continue;
-    if (!own?.enabled) target.enabled = false;
-    else Object.assign(target, patch);
+    if (!own?.enabled) {
+      if (original.key === "custom") result.clauses = result.clauses.filter((c) => c.id !== target.id);
+      else target.enabled = false;
+    } else Object.assign(target, patch);
   }
   const oldIds = new Set(before.clauses.filter((c) => c.enabled).map((c) => c.id));
   for (const own of mine.clauses.filter((c) => c.enabled && !oldIds.has(c.id))) {

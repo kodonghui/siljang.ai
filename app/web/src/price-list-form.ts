@@ -1,3 +1,4 @@
+import { numberOrText as integerOrText, changedFields as patch } from "./form-values";
 import type { OptionGroup, PriceKind, PriceList } from "./price-list-api";
 
 export interface OptionForm {
@@ -69,8 +70,7 @@ export function priceListForm(list: PriceList | null): PriceListForm {
       })) ?? [],
   };
 }
-const integerOrText = (value: string) =>
-  value.trim() !== "" && Number.isSafeInteger(Number(value)) ? Number(value) : value;
+
 export function priceListPayload(base: PriceList | null, form: PriceListForm) {
   return {
     baseRevision: base?.revision ?? null,
@@ -121,11 +121,7 @@ export function removePriceOption(form: PriceListForm, key: string): PriceListFo
     designs: form.designs.map((d) => (d.optionKey === key ? { ...d, optionKey: null } : d)),
   };
 }
-function patch<T, K extends keyof T>(base: T, mine: T, keys: readonly K[]): Partial<Pick<T, K>> {
-  const result: Partial<Pick<T, K>> = {};
-  for (const key of keys) if (base[key] !== mine[key]) result[key] = mine[key];
-  return result;
-}
+
 const optionIdentity = (o: OptionForm) => JSON.stringify([o.group, o.name]);
 export const designIdentity = (d: DesignForm) => d.baseDesignId ?? d.key;
 const pair = (r: Pick<RuleForm, "optionA" | "optionB">) => JSON.stringify([r.optionA, r.optionB].sort());
