@@ -1,7 +1,9 @@
+import { Hono } from "hono";
 import { expect, it } from "vitest";
-import { APP_ROUTES } from "../src/app";
+import type { HonoEnv } from "../src/app";
+import { APP_ROUTES, createApp } from "../src/app";
 import { normalizedClientIp } from "../src/client-ip";
-import { assertPublicShopRateCoverage, publicShopRateRule } from "../src/public-shop";
+import { assertPublicShopRateCoverage, publicShopRateRule, resolvePublicShop } from "../src/public-shop";
 import { PUBLIC_BOOKING_RATE, PUBLIC_PRIVACY_RATE } from "../src/rate-limit";
 import { shopRoute } from "../src/routes";
 
@@ -31,6 +33,7 @@ it("기본 공개 경로의 한도가 모두 선언돼 있고 빠진 새 경로�
   expect(() => assertPublicShopRateCoverage(APP_ROUTES)).not.toThrow();
   const extra = shopRoute("GET", "/public/shops/:slug/undeclared", "public", async () => new Response());
   expect(() => assertPublicShopRateCoverage([...APP_ROUTES, extra])).toThrow("public route rate rule missing");
+  expect(() => createApp({ routes: [...APP_ROUTES, extra] })).toThrow("public route rate rule missing");
 });
 
 it("Hono의 basePath가 바뀌어도 선언한 공개 한도를 찾고 HEAD도 GET 한도를 씀", () => {
@@ -40,3 +43,16 @@ it("Hono의 basePath가 바뀌어도 선언한 공개 한도를 찾고 HEAD도 G
   );
   expect(publicShopRateRule("GET", "/v3/public/shops/:slug/new", "/v3")).toBeUndefined();
 });
+
+it.each(["/undeclared", "/undeclared/:slug"])(
+  "공개 해석기는 시작 검사와 별도로 잘못 선언한 %s도 닫음",
+  async (path) => {
+    const app = new Hono<HonoEnv>();
+    app.get(path, async (c) => {
+      await expect(resolvePublicShop(c)).rejects.toMatchObject({ code: "not_found" });
+      return c.text("closed");
+    });
+    const response = await app.request(path.replace(":slug", "synthetic-shop"));
+    expect(await response.text()).toBe("closed");
+  },
+);
