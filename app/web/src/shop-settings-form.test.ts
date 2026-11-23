@@ -85,3 +85,13 @@ it("선택한 픽업 장소를 지우면 null로 보내고 숫자의 표현만 �
   });
   expect(settingsPatch(original, { ...settingsForm(original), idleCloseHours: "024" })).toBeNull();
 });
+
+it("공백 신고번호는 화면처럼 미신고로 판단하고 면제 사유를 보냄", () => {
+  expect(
+    settingsPatch(original, {
+      ...settingsForm(original),
+      mailOrderRegNo: "   ",
+      mailOrderExemption: "새 합성 면제 사유",
+    }),
+  ).toEqual({ baseRevision: original.revision, mailOrderExemption: "새 합성 면제 사유" });
+});

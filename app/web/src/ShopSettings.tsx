@@ -178,7 +178,11 @@ export function ShopSettings(props: ShopSettingsProps) {
               ? "연결됨"
               : summary.kakaoChannelStatus === "pending"
                 ? "확인 중"
-                : "연결 안 됨"
+                : summary.kakaoChannelStatus === "not_started"
+                  ? "확인 시작 전"
+                  : summary.kakaoChannelStatus === "failed"
+                    ? "확인 실패, 다시 확인해 주세요"
+                    : "연결 안 됨"
             : unknown,
         ],
         [

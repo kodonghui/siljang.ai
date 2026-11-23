@@ -1012,14 +1012,6 @@ paths:
                     awaitingPaymentLimit: 2
                     bookingUrl: null
                     identityChange: null
-                    settingsSummary:
-                      priceListVersion: null
-                      operatingRulesVersion: null
-                      paymentConfigured: false
-                      kakaoChannelStatus: null
-                      ledgerStatus: null
-                      hasPortfolio: false
-                      hasReviews: false
                     createdAt: '2026-11-12T10:05:00+09:00'
                     updatedAt: '2026-11-12T10:05:00+09:00'
                     revision: 4841fd716c98
@@ -1244,6 +1236,9 @@ paths:
                     awaitingPaymentLimit: 2
                     bookingUrl: https://siljang.example/s/moonlight-cake
                     identityChange: null
+                    createdAt: '2026-11-12T10:05:00+09:00'
+                    updatedAt: '2026-11-12T15:20:00+09:00'
+                    revision: 105995083ca7
                     settingsSummary:
                       priceListVersion: 3
                       operatingRulesVersion: 2
@@ -1252,9 +1247,6 @@ paths:
                       ledgerStatus: null
                       hasPortfolio: false
                       hasReviews: false
-                    createdAt: '2026-11-12T10:05:00+09:00'
-                    updatedAt: '2026-11-12T15:20:00+09:00'
-                    revision: 105995083ca7
                 pending:
                   value:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
@@ -1284,6 +1276,9 @@ paths:
                     awaitingPaymentLimit: 2
                     bookingUrl: null
                     identityChange: null
+                    createdAt: '2026-11-12T10:05:00+09:00'
+                    updatedAt: '2026-11-12T10:05:00+09:00'
+                    revision: 4841fd716c98
                     settingsSummary:
                       priceListVersion: null
                       operatingRulesVersion: null
@@ -1292,9 +1287,6 @@ paths:
                       ledgerStatus: null
                       hasPortfolio: false
                       hasReviews: false
-                    createdAt: '2026-11-12T10:05:00+09:00'
-                    updatedAt: '2026-11-12T10:05:00+09:00'
-                    revision: 4841fd716c98
                 on_hold:
                   value:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
@@ -1324,6 +1316,9 @@ paths:
                     awaitingPaymentLimit: 2
                     bookingUrl: null
                     identityChange: null
+                    createdAt: '2026-11-12T10:05:00+09:00'
+                    updatedAt: '2026-11-12T13:40:00+09:00'
+                    revision: cf360653f1b5
                     settingsSummary:
                       priceListVersion: null
                       operatingRulesVersion: null
@@ -1332,9 +1327,6 @@ paths:
                       ledgerStatus: null
                       hasPortfolio: false
                       hasReviews: false
-                    createdAt: '2026-11-12T10:05:00+09:00'
-                    updatedAt: '2026-11-12T13:40:00+09:00'
-                    revision: cf360653f1b5
                 identity_change_pending:
                   value:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
@@ -1377,6 +1369,9 @@ paths:
                       holdReason: null
                       requestedAt: '2026-11-14T10:20:00+09:00'
                       reviewedAt: null
+                    createdAt: '2026-11-12T10:05:00+09:00'
+                    updatedAt: '2026-11-14T10:20:00+09:00'
+                    revision: d6d64927f2e9
                     settingsSummary:
                       priceListVersion: 3
                       operatingRulesVersion: 2
@@ -1385,9 +1380,6 @@ paths:
                       ledgerStatus: null
                       hasPortfolio: false
                       hasReviews: false
-                    createdAt: '2026-11-12T10:05:00+09:00'
-                    updatedAt: '2026-11-14T10:20:00+09:00'
-                    revision: d6d64927f2e9
                 identity_change_on_hold:
                   value:
                     shopId: 2dc42524-54e3-5d3d-847f-efdb54aa8706
@@ -1430,6 +1422,9 @@ paths:
                       holdReason: 증빙 사진의 상호가 보이지 않아요. 사업자등록증 전체가 보이게 다시 찍어 올려 주세요
                       requestedAt: '2026-11-14T10:20:00+09:00'
                       reviewedAt: '2026-11-14T11:05:00+09:00'
+                    createdAt: '2026-11-12T10:05:00+09:00'
+                    updatedAt: '2026-11-14T11:05:00+09:00'
+                    revision: 4654307cbf8d
                     settingsSummary:
                       priceListVersion: 3
                       operatingRulesVersion: 2
@@ -1438,9 +1433,6 @@ paths:
                       ledgerStatus: null
                       hasPortfolio: false
                       hasReviews: false
-                    createdAt: '2026-11-12T10:05:00+09:00'
-                    updatedAt: '2026-11-14T11:05:00+09:00'
-                    revision: 4654307cbf8d
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -1602,6 +1594,9 @@ paths:
                       awaitingPaymentLimit: 2
                       bookingUrl: https://siljang.example/s/moonlight-cake
                       identityChange: null
+                      createdAt: '2026-11-12T10:05:00+09:00'
+                      updatedAt: '2026-11-12T15:20:00+09:00'
+                      revision: 105995083ca7
                       settingsSummary:
                         priceListVersion: 3
                         operatingRulesVersion: 2
@@ -1610,9 +1605,6 @@ paths:
                         ledgerStatus: null
                         hasPortfolio: false
                         hasReviews: false
-                      createdAt: '2026-11-12T10:05:00+09:00'
-                      updatedAt: '2026-11-12T15:20:00+09:00'
-                      revision: 105995083ca7
                 unchanged:
                   summary: 이미 그 상태라 바꾼 것 없음(DEC-03)
                   value:
@@ -1645,6 +1637,9 @@ paths:
                       awaitingPaymentLimit: 2
                       bookingUrl: https://siljang.example/s/moonlight-cake
                       identityChange: null
+                      createdAt: '2026-11-12T10:05:00+09:00'
+                      updatedAt: '2026-11-12T15:20:00+09:00'
+                      revision: 105995083ca7
                       settingsSummary:
                         priceListVersion: 3
                         operatingRulesVersion: 2
@@ -1653,9 +1648,6 @@ paths:
                         ledgerStatus: null
                         hasPortfolio: false
                         hasReviews: false
-                      createdAt: '2026-11-12T10:05:00+09:00'
-                      updatedAt: '2026-11-12T15:20:00+09:00'
-                      revision: 105995083ca7
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -1893,14 +1885,6 @@ paths:
                       awaitingPaymentLimit: 2
                       bookingUrl: null
                       identityChange: null
-                      settingsSummary:
-                        priceListVersion: null
-                        operatingRulesVersion: null
-                        paymentConfigured: false
-                        kakaoChannelStatus: null
-                        ledgerStatus: null
-                        hasPortfolio: false
-                        hasReviews: false
                       createdAt: '2026-11-12T10:05:00+09:00'
                       updatedAt: '2026-11-12T10:05:00+09:00'
                       revision: 48bdb6a33d45
@@ -23554,14 +23538,6 @@ paths:
                         holdReason: null
                         requestedAt: '2026-11-14T10:20:00+09:00'
                         reviewedAt: null
-                      settingsSummary:
-                        priceListVersion: 3
-                        operatingRulesVersion: 2
-                        paymentConfigured: true
-                        kakaoChannelStatus: linked
-                        ledgerStatus: null
-                        hasPortfolio: false
-                        hasReviews: false
                       createdAt: '2026-11-12T10:05:00+09:00'
                       updatedAt: '2026-11-14T10:20:00+09:00'
                       revision: d6d64927f2e9
@@ -23607,14 +23583,6 @@ paths:
                       awaitingPaymentLimit: 2
                       bookingUrl: https://siljang.example/s/moonlight-cake
                       identityChange: null
-                      settingsSummary:
-                        priceListVersion: 3
-                        operatingRulesVersion: 2
-                        paymentConfigured: true
-                        kakaoChannelStatus: linked
-                        ledgerStatus: null
-                        hasPortfolio: false
-                        hasReviews: false
                       createdAt: '2026-11-12T10:05:00+09:00'
                       updatedAt: '2026-11-12T15:20:00+09:00'
                       revision: 105995083ca7
@@ -25349,6 +25317,7 @@ components:
           - string
           - "null"
           enum:
+          - not_started
           - pending
           - linked
           - failed
@@ -25541,6 +25510,7 @@ components:
           description: 서버가 만든 버전 표시. 명령의 baseRevision에 그대로 보냄(DEC-05)
         settingsSummary:
           $ref: '#/components/schemas/ShopSettingsSummary'
+          description: API-009/010의 현재 카드 상태. 등록·신고·사업자 정보 변경 응답에는 없음. not_started는 확인 시작 전, pending은 확인 중, failed는 확인 실패
       additionalProperties: false
     ShopResult:
       type: object

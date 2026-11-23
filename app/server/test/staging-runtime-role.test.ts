@@ -766,6 +766,7 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
         "DELETE FROM shops WHERE id=$1",
         "SELECT spreadsheet_id FROM ledger_links WHERE shop_id=$1",
         "SELECT credential_ref FROM ledger_links WHERE shop_id=$1",
+        "SELECT unlinked_at FROM ledger_links WHERE shop_id=$1",
         "UPDATE ledger_links SET status='auth_lost' WHERE shop_id=$1",
       ])
         await expect(conn.query(statement, [target.shopId])).rejects.toMatchObject({ code: "42501" });

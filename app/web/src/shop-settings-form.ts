@@ -39,14 +39,14 @@ export function settingsPatch(original: ShopSettingsSource, form: ShopSettingsFo
   const nullable = (value: string) => (value === "" ? null : value);
   const number = (value: string) =>
     value.trim() !== "" && Number.isSafeInteger(Number(value)) ? Number(value) : value;
-  const registered = form.mailOrderRegNo !== "";
+  const registered = form.mailOrderRegNo.trim() !== "";
   const values = {
     name: form.name,
     contactPhone: form.contactPhone,
     businessAddress: form.businessAddress,
     contactEmail: form.contactEmail,
     pickupAddress: nullable(form.pickupAddress),
-    mailOrderRegNo: nullable(form.mailOrderRegNo),
+    mailOrderRegNo: registered ? form.mailOrderRegNo : null,
     mailOrderAuthority: registered ? nullable(form.mailOrderAuthority) : null,
     mailOrderExemption: registered ? null : nullable(form.mailOrderExemption),
     completionPhotoEnabled: form.completionPhotoEnabled,

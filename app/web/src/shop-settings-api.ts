@@ -6,7 +6,7 @@ export interface ShopSettingsSummary {
   readonly priceListVersion: number | null;
   readonly operatingRulesVersion: number | null;
   readonly paymentConfigured: boolean;
-  readonly kakaoChannelStatus: "pending" | "linked" | "failed" | null;
+  readonly kakaoChannelStatus: "not_started" | "pending" | "linked" | "failed" | null;
   readonly ledgerStatus: "linked" | "auth_lost" | null;
   readonly hasPortfolio: boolean;
   readonly hasReviews: boolean;
@@ -79,7 +79,7 @@ function isShopSettings(value: unknown): value is ShopSettings {
       return false;
     if (
       summary.kakaoChannelStatus !== null &&
-      !["pending", "linked", "failed"].includes(String(summary.kakaoChannelStatus))
+      !["not_started", "pending", "linked", "failed"].includes(String(summary.kakaoChannelStatus))
     )
       return false;
     if (summary.ledgerStatus !== null && !["linked", "auth_lost"].includes(String(summary.ledgerStatus))) return false;

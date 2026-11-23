@@ -21,6 +21,7 @@ let current: Record<string, unknown>;
 let getCode: string | null, gets: number;
 let logoutGate: ReturnType<typeof gate> | null;
 let profileGate: ReturnType<typeof gate> | null;
+let readGate: ReturnType<typeof gate> | null;
 beforeEach(() => {
   requests = [];
   patchGate = null;
@@ -28,7 +29,7 @@ beforeEach(() => {
   current = shopFixture();
   getCode = null;
   gets = 0;
-  logoutGate = profileGate = null;
+  logoutGate = profileGate = readGate = null;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -48,6 +49,7 @@ beforeEach(() => {
         return logoutGate?.promise ?? json({ code: "internal", traceId: "0123456789abcdef0123456789abcdef" }, 500);
       if (init?.method !== "PATCH") {
         gets++;
+        if (readGate) return readGate.promise;
         return getCode
           ? json(
               { code: getCode, traceId: "0123456789abcdef0123456789abcdef" },
@@ -298,4 +300,38 @@ it("재확인이503으로 끝나면 저장은 잠그되 로그아웃을 허용�
 it("완성 사진 설정의 접근 가능한 이름이 한 번만 읽힘", async () => {
   await area();
   expect(screen.getByRole("checkbox", { name: "완성 사진 보내기" })).toBeTruthy();
+});
+
+it.each([
+  ["not_started", "확인 시작 전"],
+  ["failed", "확인 실패, 다시 확인해 주세요"],
+])("채널 %s 상태를 구분함", async (state, message) => {
+  current = {
+    ...current,
+    settingsSummary: { ...(current.settingsSummary as Record<string, unknown>), kakaoChannelStatus: state },
+  };
+  await area();
+  expect(screen.getByText(message)).toBeTruthy();
+});
+
+it("loading에서는SCR-034대로액션을잠그고조회성공뒤풀림", async () => {
+  readGate = gate();
+  const logout = vi.fn();
+  render(
+    <ShopSettings
+      shopName="합성 가게"
+      onNavigate={vi.fn()}
+      onSessionExpired={vi.fn()}
+      onRegisterShop={vi.fn()}
+      onLogout={logout}
+    />,
+  );
+  const out = screen.getByRole("button", { name: "로그아웃" }) as HTMLButtonElement;
+  expect(out.disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "저장" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(out);
+  expect(logout).not.toHaveBeenCalled();
+  await act(async () => readGate?.resolve(json(current)));
+  await screen.findByLabelText("가게 이름");
+  expect(out.disabled).toBe(false);
 });
