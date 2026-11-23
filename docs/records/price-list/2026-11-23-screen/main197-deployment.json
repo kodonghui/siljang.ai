@@ -1,0 +1,37 @@
+{
+  "main": "585ac16b4aa283238193a8d541ead8b00bfe64e9",
+  "appWorkflow": 45186007775,
+  "appAttempt": 2,
+  "appConclusion": "success",
+  "checkJob": 137735080234,
+  "windowsJob": 137735081107,
+  "deployJob": 137735079099,
+  "dbWorkflow": 45186007399,
+  "dbJobs": {
+    "16.15": 137731665161,
+    "17.11": 137731664716
+  },
+  "nativeOAuthLoggedIn": true,
+  "accountMatches": true,
+  "app": {
+    "versionId": "cf4dc8c5-c242-4f00-adc4-f530e1c62800",
+    "createdOn": "2026-11-23T13:45:34.641192Z",
+    "tag": "585ac16b4aa283238193a8d541ead8b00bfe64e9"
+  },
+  "storage": {
+    "versionId": "7425a308-35d9-4114-a7fc-618107785b56",
+    "createdOn": "2026-11-23T13:45:26.237323Z",
+    "tag": "585ac16b4aa283238193a8d541ead8b00bfe64e9",
+    "percentage": 100
+  },
+  "healthStatus": 200,
+  "nativeExit": 0,
+  "firstDeploy": {
+    "jobId": 137733206929,
+    "conclusion": "failure",
+    "error": "staging_tag_mismatch",
+    "independentNativeVerificationExit": 0
+  },
+  "rerunFailedJobs": 1,
+  "screenshotsCaptured": false
+}
