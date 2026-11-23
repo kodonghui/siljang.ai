@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { OwnerArea } from "./OwnerArea";
+import { ERROR_CODES } from "./problems";
 import { ShopSettings } from "./ShopSettings";
 import { shopFixture } from "./test-fixtures/shop-settings";
 
@@ -369,4 +370,30 @@ it.each(["1e2", "-5", "12.0"])("숫자 표기 %s는 실제 서버 형식 오류 
   const field = target.closest("[data-pointer]");
   if (!field) throw new Error("숫자 필드 없음");
   expect(field.textContent).toContain("1~720 사이의 정수로 넣어 주세요");
+});
+it("429 뒤 편집해도 저장 버튼을 잠그고 프로그램 제출도 보내지 않는다", async () => {
+  await area();
+  const transport = fetch;
+  let limited = false;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PATCH" && !limited) {
+        limited = true;
+        requests.push({ body: JSON.parse(String(init.body)), key: new Headers(init.headers).get("Idempotency-Key") });
+        return json({ code: "rate_limited" }, 429);
+      }
+      return transport(input, init);
+    }),
+  );
+  fireEvent.change(input("가게 이름"), { target: { value: "대기 전 합성 가게" } });
+  const button = screen.getByRole("button", { name: "저장" }) as HTMLButtonElement;
+  fireEvent.click(button);
+  await within(screen.getByRole("main")).findByText(ERROR_CODES.rate_limited.message);
+  fireEvent.change(input("가게 이름"), { target: { value: "대기 중 합성 가게" } });
+  expect(button.disabled).toBe(true);
+  const form = button.closest("form");
+  if (!form) throw new Error("저장 양식 없음");
+  fireEvent.submit(form);
+  expect(requests).toHaveLength(1);
 });

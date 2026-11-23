@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { OwnerArea } from "./OwnerArea";
+import { ERROR_CODES } from "./problems";
 import {
   clearRegistrationDraft,
   EMPTY_REGISTRATION,
@@ -346,4 +347,34 @@ it("올리기 성공 뒤에도 등록 전에 같은 파일을 다시 올릴 수 
   expect(field("가게 이름").value).toBe("오래 입력할 합성 가게");
   expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
   expect(registered).toBe(0);
+});
+it("429 뒤 편집한 등록도 대기 중에는 버튼과 제출을 잠근다", async () => {
+  await area();
+  await upload();
+  const transport = fetch;
+  let limited = false;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown, init?: RequestInit) => {
+      if (String(input) === "/api/owner/shop" && init?.method === "POST" && !limited) {
+        limited = true;
+        registered++;
+        registrationBodies.push({
+          body: JSON.parse(String(init.body)),
+          key: new Headers(init.headers).get("Idempotency-Key"),
+        });
+        return json({ code: "rate_limited" }, 429);
+      }
+      return transport(input as RequestInfo | URL, init);
+    }),
+  );
+  const button = screen.getByRole("button", { name: "등록" }) as HTMLButtonElement;
+  fireEvent.click(button);
+  await within(screen.getByRole("main")).findByText(ERROR_CODES.rate_limited.message);
+  fireEvent.change(field("가게 이름"), { target: { value: "대기 중 합성 가게" } });
+  expect(button.disabled).toBe(true);
+  const form = button.closest("form");
+  if (!form) throw new Error("등록 양식 없음");
+  fireEvent.submit(form);
+  expect(registered).toBe(1);
 });

@@ -116,7 +116,7 @@ export function ShopRegistration({
   }
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || registration.blocked) return;
     if (uploaded === null) {
       photo.needPhoto();
       return;
@@ -313,7 +313,9 @@ export function ShopRegistration({
           <Button
             type="submit"
             busy={upload.busy || registration.busy}
-            disabled={Boolean(logoutPending || sessionChecking || sessionFailed || sessionExpired)}
+            disabled={
+              registration.blocked || Boolean(logoutPending || sessionChecking || sessionFailed || sessionExpired)
+            }
           >
             등록
           </Button>

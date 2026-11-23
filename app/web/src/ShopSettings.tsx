@@ -140,7 +140,7 @@ export function ShopSettings(props: ShopSettingsProps) {
   }
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy || !shop || !values) return;
+    if (busy || save.blocked || !shop || !values) return;
     const body = settingsPatch(shop, values);
     if (body === null) {
       save.reset();
@@ -398,7 +398,7 @@ export function ShopSettings(props: ShopSettingsProps) {
                 </div>
               </fieldset>
               <div className="settings-actions">
-                <Button type="submit" disabled={busy}>
+                <Button type="submit" disabled={busy || save.blocked}>
                   {save.busy ? "처리하고 있어요" : "저장"}
                 </Button>
               </div>

@@ -167,13 +167,15 @@ export class CommandRunner<I, O> {
   /** 입력을 바꾸면 옛 본문을 버리되429의 남은 대기 시각은 보존한다. */
   reset = (): void => {
     const waiting = this.#state.kind === "failed" && this.#blocked() ? this.#state : null;
+    if (waiting && waiting.failure.retry === "none" && this.#current === null) return;
     const until = waiting?.blockedUntil ?? null;
     this.#generation++;
     this.#stopTimer();
     this.#current = null;
     this.#inProgressSince = null;
     if (waiting && until !== null) {
-      const failure: Failure = { ...waiting.failure, retry: "none" };
+      const failure: Failure =
+        waiting.failure.retry === "none" ? waiting.failure : { ...waiting.failure, retry: "none" };
       this.#set({ kind: "failed", failure, blockedUntil: until });
       this.#later(until - this.#clock.now(), () => {
         const state = this.#state;

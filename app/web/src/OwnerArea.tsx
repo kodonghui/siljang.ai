@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { matchPath, Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
+import { BookingLinkScreen } from "./BookingLinkScreen";
 import { KakaoChannelSettings } from "./KakaoChannelSettings";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import { OperatingRulesHistory } from "./OperatingRulesHistory";
@@ -133,26 +134,34 @@ export function OwnerArea() {
         "/owner/operating-rules",
         "/owner/payment-destination",
         "/owner/kakao-channel",
+        "/owner/booking-link",
       ].includes(shopPath ?? "")) &&
     candidate?.shop
   ) {
-    if (["/owner/price-list", "/owner/operating-rules", "/owner/kakao-channel"].includes(shopPath ?? "") || history) {
+    if (
+      ["/owner/price-list", "/owner/operating-rules", "/owner/kakao-channel", "/owner/booking-link"].includes(
+        shopPath ?? "",
+      ) ||
+      history
+    ) {
       const destination = ownerDestination(candidate, requested);
       if (destination !== requested) return <Navigate to={destination} replace />;
     }
     const ShopScreen =
       historyRoute?.Screen ??
-      (shopPath === "/owner/kakao-channel"
-        ? KakaoChannelSettings
-        : shopPath === "/owner/payment-destination"
-          ? PaymentDestinationEditor
-          : shopPath === "/owner/operating-rules"
-            ? OperatingRulesEditor
-            : shopPath === "/owner/price-list"
-              ? PriceListEditor
-              : shopPath === "/owner/shop/license"
-                ? ShopLicense
-                : ShopSettings);
+      (shopPath === "/owner/booking-link"
+        ? BookingLinkScreen
+        : shopPath === "/owner/kakao-channel"
+          ? KakaoChannelSettings
+          : shopPath === "/owner/payment-destination"
+            ? PaymentDestinationEditor
+            : shopPath === "/owner/operating-rules"
+              ? OperatingRulesEditor
+              : shopPath === "/owner/price-list"
+                ? PriceListEditor
+                : shopPath === "/owner/shop/license"
+                  ? ShopLicense
+                  : ShopSettings);
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (
