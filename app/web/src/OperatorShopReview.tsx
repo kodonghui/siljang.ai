@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { UUID_PATTERN } from "./api-response";
 import { formatKoreanDateTime } from "./format-date";
 import {
@@ -71,6 +71,8 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
   const [photoFailed, setPhotoFailed] = useState<Target | null>(null);
   const [duplicateLimit, setDuplicateLimit] = useState(5);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
+  const duplicateRef = useRef<HTMLUListElement>(null),
+    pendingDuplicate = useRef<string | null>(null);
   const handled = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null);
   const expire = useCallback(() => {
@@ -104,6 +106,19 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
   useEffect(() => {
     if (holdTarget) reasonRef.current?.focus();
   }, [holdTarget]);
+  useLayoutEffect(() => {
+    void duplicateLimit;
+    const id = pendingDuplicate.current;
+    pendingDuplicate.current = null;
+    if (!id) return;
+    const link = Array.from(duplicateRef.current?.querySelectorAll<HTMLAnchorElement>("a") ?? []).find(
+      (item) => item.dataset.duplicateId === id,
+    );
+    if (link?.isConnected) {
+      link.focus();
+      if (document.activeElement !== link) link.focus();
+    }
+  }, [duplicateLimit]);
   useEffect(() => {
     if (command.state.kind !== "done" || handled.current === command.state.data) return;
     handled.current = command.state.data;
@@ -135,6 +150,12 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
   }, [failure, load.read, expire]);
   function start(target: Target, decision: "verified" | "applied" | "on_hold") {
     if (locked || !shop) return;
+    if (
+      target === "license" &&
+      (shop.licenseStatus === "verified" ||
+        (decision === "verified" && (!shop.paymentAccount || shop.pendingIdentityChange)))
+    )
+      return;
     const change = target === "identity" ? shop.pendingIdentityChange : null;
     if (target === "identity" && !change) return;
     if (decision === "on_hold") {
@@ -173,6 +194,7 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
   });
   const change = shop.pendingIdentityChange;
   const account = shop.paymentAccount;
+  const canSubmitHold = holdTarget === "license" ? availability.canHold : change !== null;
   const reasonErrors = [
     ...(localIssue ? [localIssue] : []),
     ...(failure?.fieldErrors.filter((error) => error.field === "/holdReason").map((error) => error.code) ?? []),
@@ -231,13 +253,14 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
       ) : null}
       {load.loading ? <Skeleton label="최신 영업 신고를 불러오고 있어요" /> : null}
       {shop.duplicates.length ? (
-        <Banner tone="warning">
-          <span>같은 사업자등록번호의 가게가 {shop.duplicates.length}곳 더 있어요</span>
-          <ul>
+        <section aria-label="같은 사업자등록번호의 가게">
+          <Banner tone="warning">같은 사업자등록번호의 가게가 {shop.duplicates.length}곳 더 있어요</Banner>
+          <ul ref={duplicateRef}>
             {shop.duplicates.slice(0, duplicateLimit).map((item) => (
               <li key={item.shopId}>
                 <a
                   href={`/operator/shops/${item.shopId}`}
+                  data-duplicate-id={item.shopId}
                   onClick={(event) =>
                     locked ? event.preventDefault() : props.onNavigate(`/operator/shops/${item.shopId}`, event)
                   }
@@ -249,11 +272,18 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
             ))}
           </ul>
           {shop.duplicates.length > duplicateLimit ? (
-            <Button kind="secondary" disabled={locked} onClick={() => setDuplicateLimit(20)}>
+            <Button
+              kind="secondary"
+              disabled={locked}
+              onClick={() => {
+                pendingDuplicate.current = shop.duplicates[duplicateLimit]?.shopId ?? null;
+                setDuplicateLimit(20);
+              }}
+            >
               더 보기
             </Button>
           ) : null}
-        </Banner>
+        </section>
       ) : null}
       {change ? (
         <section className="operator-review-change" aria-label="사업자 정보 변경 요청">
@@ -326,7 +356,13 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
             ).map(([label, value]) => (
               <div key={label}>
                 <dt>{label}</dt>
-                <dd>{value}</dd>
+                <dd>
+                  {label === "면제 사유" && shop.mailOrderExemption !== null ? (
+                    <ExemptionText value={shop.mailOrderExemption} disabled={locked} />
+                  ) : (
+                    value
+                  )}
+                </dd>
               </div>
             ))}
           </dl>
@@ -371,6 +407,7 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
                 ref={reasonRef}
                 className="ui-field__input"
                 disabled={locked}
+                readOnly={!canSubmitHold}
                 value={reasons[holdTarget]}
                 onChange={(event) => {
                   const value = event.currentTarget.value;
@@ -382,7 +419,7 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
             )}
           </Field>
           <p>남은 글자 {200 - [...reasons[holdTarget]].length}자</p>
-          <Button type="submit" disabled={locked} busy={command.busy}>
+          <Button type="submit" disabled={locked || !canSubmitHold} busy={command.busy}>
             보류로 남기기
           </Button>
         </form>
@@ -424,7 +461,14 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
           ? "예약 링크 페이지와 확정 안내가 새 값을 써요"
           : "첫 버전에서는 확인됨을 보류로 바꿀 수 없어요"}
       </ConfirmDialog>
-      <PhotoViewer url={photoUrl ?? null} onClose={() => setPhoto(null)} onError={() => setPhotoFailed(photo)} />
+      <PhotoViewer
+        url={photoUrl ?? null}
+        failed={photo !== null && photoFailed === photo}
+        loading={load.loading || Boolean(props.blocked)}
+        onReload={() => load.read("stale")}
+        onClose={() => setPhoto(null)}
+        onError={() => setPhotoFailed(photo)}
+      />
     </section>
   );
 }
@@ -432,10 +476,16 @@ function PhotoViewer({
   url,
   onClose,
   onError,
+  failed,
+  loading,
+  onReload,
 }: {
   readonly url: string | null;
   readonly onClose: () => void;
   readonly onError: () => void;
+  readonly failed: boolean;
+  readonly loading: boolean;
+  readonly onReload: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null),
     origin = useRef<HTMLElement | null>(null);
@@ -449,6 +499,12 @@ function PhotoViewer({
       dialog.showModal();
     } else if (!url && dialog.open) dialog.close();
   }, [url]);
+  useLayoutEffect(() => {
+    void failed;
+    const dialog = ref.current;
+    if (url && dialog?.open && !dialog.contains(document.activeElement))
+      dialog.querySelector<HTMLButtonElement>("button")?.focus();
+  }, [url, failed]);
   useEffect(
     () => () => {
       if (origin.current?.isConnected) origin.current.focus();
@@ -477,9 +533,43 @@ function PhotoViewer({
           {zoomed ? "화면에 맞추기" : "확대"}
         </Button>
       </div>
+      {failed ? (
+        <Banner
+          tone="warning"
+          actions={
+            <Button disabled={loading} onClick={onReload}>
+              사진 다시 불러오기
+            </Button>
+          }
+        >
+          사진을 열 수 없어요. 새 주소로 다시 불러와 주세요
+        </Banner>
+      ) : null}
       {url ? (
         <img src={url} alt="크게 보는 신고증 또는 증빙 사진" referrerPolicy="no-referrer" onError={onError} />
       ) : null}
     </dialog>
+  );
+}
+
+function ExemptionText({ value, disabled }: { readonly value: string; readonly disabled: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const id = useId();
+  return (
+    <div>
+      <p id={id} className={expanded ? undefined : "operator-review-exemption"}>
+        {value}
+      </p>
+      <Button
+        kind="secondary"
+        disabled={disabled}
+        aria-controls={id}
+        aria-expanded={expanded}
+        aria-label={expanded ? "면제 사유 접기" : "면제 사유 더 보기"}
+        onClick={() => setExpanded((old) => !old)}
+      >
+        {expanded ? "접기" : "더 보기"}
+      </Button>
+    </div>
   );
 }

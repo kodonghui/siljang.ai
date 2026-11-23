@@ -237,12 +237,13 @@ const copyDetail = (value: ReviewShopDetail): ReviewShopDetail => ({
 });
 export async function fetchReviewShop(shopId: string, signal?: AbortSignal): Promise<ApiResult<ReviewShopDetail>> {
   if (!UUID_PATTERN.test(shopId)) return INVALID_API_RESPONSE;
-  const result = await request<unknown>(`/operator/shops/${shopId}`, {
+  const targetId = shopId.toLowerCase();
+  const result = await request<unknown>(`/operator/shops/${targetId}`, {
     cache: "no-store",
     ...(signal ? { signal } : {}),
   });
   if (!result.ok) return result;
-  return detail(result.data) && result.data.shopId === shopId
+  return detail(result.data) && result.data.shopId === targetId
     ? { ...result, data: copyDetail(result.data) }
     : INVALID_API_RESPONSE;
 }
@@ -253,7 +254,8 @@ export async function reviewLicense(
   signal?: AbortSignal,
 ): Promise<ApiResult<LicenseReviewResult>> {
   if (!UUID_PATTERN.test(shopId)) return INVALID_API_RESPONSE;
-  const result = await request<unknown>(`/operator/shops/${shopId}/license-review`, {
+  const targetId = shopId.toLowerCase();
+  const result = await request<unknown>(`/operator/shops/${targetId}/license-review`, {
     method: "POST",
     cache: "no-store",
     body,
@@ -265,7 +267,7 @@ export async function reviewLicense(
   return isApiObject(value) &&
     (value.outcome === "done" || value.outcome === "unchanged") &&
     detail(value.shop) &&
-    value.shop.shopId === shopId &&
+    value.shop.shopId === targetId &&
     value.shop.licenseStatus === body.decision
     ? { ...result, data: { outcome: value.outcome, shop: copyDetail(value.shop) } }
     : INVALID_API_RESPONSE;
@@ -277,7 +279,8 @@ export async function reviewIdentityChange(
   signal?: AbortSignal,
 ): Promise<ApiResult<IdentityReviewResult>> {
   if (!UUID_PATTERN.test(changeId)) return INVALID_API_RESPONSE;
-  const result = await request<unknown>(`/operator/identity-changes/${changeId}/review`, {
+  const targetId = changeId.toLowerCase();
+  const result = await request<unknown>(`/operator/identity-changes/${targetId}/review`, {
     method: "POST",
     cache: "no-store",
     body,
@@ -289,7 +292,7 @@ export async function reviewIdentityChange(
   return isApiObject(value) &&
     (value.outcome === "done" || value.outcome === "unchanged") &&
     identity(value.change) &&
-    value.change.changeId === changeId &&
+    value.change.changeId === targetId &&
     value.change.status === body.decision
     ? { ...result, data: { outcome: value.outcome, change: copyIdentity(value.change) } }
     : INVALID_API_RESPONSE;

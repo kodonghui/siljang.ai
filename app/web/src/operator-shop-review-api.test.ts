@@ -155,3 +155,23 @@ it("계좌번호 전체와 응답의 내부 값은 DTO에 복사하지 않는다
   expect(JSON.stringify(result.data)).not.toContain("합성 내부 값");
   expect(JSON.stringify(result.data)).not.toContain("합성 비공개");
 });
+it.each(["detail", "license", "identity"] as const)("대문자 UUID로 연 %s도 같은 대상을 읽고 판정한다", async (kind) => {
+  const value =
+    kind === "detail"
+      ? detail()
+      : kind === "license"
+        ? structuredClone(
+            api.paths[licensePath].post.responses[200].content["application/json"].examples.verified.value,
+          )
+        : structuredClone(api.paths[changePath].post.responses[200].content["application/json"].examples.applied.value);
+  const fetch = vi.fn(async () => json(value));
+  vi.stubGlobal("fetch", fetch);
+  const result =
+    kind === "detail"
+      ? await fetchReviewShop(shopId.toUpperCase())
+      : kind === "license"
+        ? await reviewLicense(shopId.toUpperCase(), { baseRevision: "synthetic", decision: "verified" }, key)
+        : await reviewIdentityChange(changeId.toUpperCase(), { baseRevision: "synthetic", decision: "applied" }, key);
+  expect(result.ok).toBe(true);
+  expect((fetch.mock.calls[0] as unknown as [string])[0]).toContain(kind === "identity" ? changeId : shopId);
+});

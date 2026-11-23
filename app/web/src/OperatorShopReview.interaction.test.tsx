@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
@@ -24,6 +24,7 @@ let current: ReturnType<typeof example>, reads: number;
 let readFailure: { status: number; code: string } | null;
 let saveFailure: { status: number; code: string } | null;
 let sends: { path: string; body: Record<string, unknown>; key: string | null }[];
+let holdMe: boolean, releaseMe: (response: Response) => void;
 function Login() {
   const location = useLocation();
   return (
@@ -50,13 +51,19 @@ const confirm = async (label: string) =>
   fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: label }));
 beforeEach(() => {
   current = example(detailPath, "pending");
+  holdMe = false;
   reads = 0;
   sends = [];
   readFailure = saveFailure = null;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init: RequestInit) => {
-      if (url === "/api/operator/me") return json(operator);
+      if (url === "/api/operator/me")
+        return holdMe
+          ? new Promise<Response>((resolve) => {
+              releaseMe = resolve;
+            })
+          : json(operator);
       if (url === `/api/operator/shops/${shopId}`) {
         reads++;
         return readFailure ? json({ ...readFailure, traceId }, readFailure.status) : json(current);
@@ -65,6 +72,7 @@ beforeEach(() => {
       sends.push({ path: url, body, key: new Headers(init.headers).get("Idempotency-Key") });
       if (saveFailure && sends.length === 1) {
         if (saveFailure.code === "version_conflict") current.revision = "synthetic-latest";
+        if (saveFailure.code === "already_decided") current = example(licensePath, "verified", 200, "post").shop;
         return json({ ...saveFailure, traceId }, saveFailure.status);
       }
       const identity = url.includes("identity-changes");
@@ -220,4 +228,121 @@ it("동시 변경 뒤 최신 버전을 다시 읽어도 보류 이유를 버리�
   await main().findByText("보류로 남겼어요. 사장님께 사유를 알렸어요");
   expect(sends[1]?.body.baseRevision).toBe("synthetic-latest");
   expect(sends[1]?.key).not.toBe(sends[0]?.key);
+});
+it("다른 운영자가 확인한 뒤 보류 이유는 보존하되 이전 판정을 다시 보내지 않는다", async () => {
+  saveFailure = { status: 409, code: "already_decided" };
+  mount();
+  await loaded();
+  fireEvent.click(main().getByRole("button", { name: "보류" }));
+  fireEvent.change(reason(), { target: { value: "남길 합성 이유" } });
+  fireEvent.click(main().getByRole("button", { name: "보류로 남기기" }));
+  await waitFor(() => expect(reads).toBe(2));
+  await waitFor(() =>
+    expect((main().getByRole("button", { name: "보류로 남기기" }) as HTMLButtonElement).disabled).toBe(true),
+  );
+  expect((reason() as HTMLTextAreaElement).value).toBe("남길 합성 이유");
+  fireEvent.click(main().getByRole("button", { name: "보류로 남기기" }));
+  expect(sends).toHaveLength(1);
+});
+it("사진 확대 창에서 열기 실패를 복구하면 새 주소로 바꾸고 창 안에 초점을 유지한다", async () => {
+  mount();
+  await loaded();
+  const opener = main().getByRole("button", { name: "신고증 사진 크게 보기" });
+  opener.focus();
+  fireEvent.click(opener);
+  const dialog = await screen.findByRole("dialog");
+  const image = within(dialog).getByRole("img");
+  fireEvent.error(image);
+  const reload = within(dialog).getByRole("button", { name: "사진 다시 불러오기" });
+  const next = `${current.licensePhotoUrl}&synthetic_refresh=1`;
+  current.licensePhotoUrl = next;
+  reload.focus();
+  fireEvent.click(reload);
+  await waitFor(() => expect(within(dialog).getByRole("img").getAttribute("src")).toBe(next));
+  expect(dialog.contains(document.activeElement)).toBe(true);
+});
+it("사진을 확대/축소하고 닫으면 원래 사진 버튼으로 초점을 돌려준다", async () => {
+  mount();
+  await loaded();
+  const opener = main().getByRole("button", { name: "신고증 사진 크게 보기" });
+  opener.focus();
+  fireEvent.click(opener);
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "확대" }));
+  expect(dialog.classList.contains("operator-photo-dialog--zoomed")).toBe(true);
+  fireEvent.click(within(dialog).getByRole("button", { name: "화면에 맞추기" }));
+  const close = within(dialog).getByRole("button", { name: "닫기" });
+  close.focus();
+  fireEvent.click(close);
+  await waitFor(() => expect(document.activeElement).toBe(opener));
+});
+it("중복 가게 더 보기 뒤 새 첫 가게 링크로 초점을 보낸다", async () => {
+  current.duplicates = Array.from({ length: 6 }, (_, index) => ({
+    shopId: `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`,
+    name: `합성 중복 ${index + 1}`,
+    licenseStatus: "pending",
+  }));
+  mount();
+  await loaded();
+  expect(main().queryByRole("link", { name: "합성 중복 6" })).toBeNull();
+  const more = main().getByRole("button", { name: "더 보기" });
+  more.focus();
+  fireEvent.click(more);
+  expect(document.activeElement).toBe(main().getByRole("link", { name: "합성 중복 6" }));
+});
+it("인증 전에는 상세를 요청하지 않고 운영자 기록을 DOM에 남기지 않는다", async () => {
+  holdMe = true;
+  mount();
+  expect(screen.getByText("로그인 상태를 확인하고 있어요")).toBeTruthy();
+  expect(reads).toBe(0);
+  expect(document.querySelector("img")).toBeNull();
+  expect(document.body.textContent).not.toContain(current.contactPhone);
+  expect(document.body.textContent).not.toContain(operator.displayName);
+  await act(async () => releaseMe(json(operator)));
+  await loaded();
+  expect(reads).toBe(1);
+});
+it("bfcache 재확인 중에는 상세/사진을 숨기고 만료되면 로그인으로 보낸다", async () => {
+  mount();
+  await loaded();
+  holdMe = true;
+  const event = new Event("pageshow");
+  Object.defineProperty(event, "persisted", { value: true });
+  fireEvent(window, event);
+  expect(document.body.textContent).not.toContain(current.contactPhone);
+  expect(document.body.textContent).not.toContain(operator.displayName);
+  expect(document.querySelector("img")).toBeNull();
+  await act(async () => releaseMe(json({ code: "unauthenticated", traceId }, 401)));
+  await screen.findByText(`/operator/shops/${shopId}`);
+  expect(reads).toBe(1);
+});
+it.each(["license", "identity"] as const)(
+  "%s 처리 중은1초 뒤 같은 본문/키로 확인하고 전송 중 로그아웃을 막는다",
+  async (target) => {
+    if (target === "identity") current = example(detailPath, "identity_change_pending");
+    saveFailure = { status: 409, code: "request_in_progress" };
+    mount();
+    await loaded();
+    const scope =
+      target === "identity" ? within(screen.getByRole("region", { name: "사업자 정보 변경 요청" })) : main();
+    fireEvent.click(scope.getByRole("button", { name: target === "identity" ? "반영" : "확인됨" }));
+    await confirm(target === "identity" ? "반영하기" : "확인됨으로 남기기");
+    await waitFor(() => expect(sends).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: "로그아웃", hidden: true }));
+    await main().findByText(target === "identity" ? "반영했어요. 사장님께 알렸어요" : "확인됨으로 남겼어요");
+    expect(sends).toHaveLength(2);
+    expect(sends[1]?.key).toBe(sends[0]?.key);
+    expect(sends[1]?.body).toEqual(sends[0]?.body);
+  },
+);
+it("통신판매업 면제 사유는 두 줄에서 펼치고 접을 수 있다", async () => {
+  current.mailOrderRegNo = null;
+  current.mailOrderAuthority = null;
+  current.mailOrderExemption = "합성 면제 사유 ".repeat(15);
+  mount();
+  await loaded();
+  const more = main().getByRole("button", { name: "면제 사유 더 보기" });
+  expect(more.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(more);
+  expect(main().getByRole("button", { name: "면제 사유 접기" }).getAttribute("aria-expanded")).toBe("true");
 });
