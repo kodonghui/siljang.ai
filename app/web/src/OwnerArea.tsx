@@ -33,6 +33,7 @@ export function OwnerArea() {
   useEffect(() => {
     const recheck = (event: PageTransitionEvent) => {
       if (event.persisted) {
+        setRegistrationNotice(false);
         pruneRegistrationDraft();
         setRevision((r) => r + 1);
       }

@@ -227,14 +227,19 @@ it("등록 완료 안내는 새로 고침에 남을 history state에 저장하�
   const router = createMemoryRouter([{ path: "/owner/*", element: <OwnerArea /> }], {
     initialEntries: ["/owner/shop/new"],
   });
-  render(<RouterProvider router={router} />);
+  const active = render(<RouterProvider router={router} />);
   await screen.findByLabelText("가게 이름");
   await upload();
   fireEvent.click(screen.getByRole("checkbox"));
   fireEvent.click(screen.getByRole("button", { name: "등록" }));
   await waitFor(() => expect(router.state.location.pathname).toBe("/owner"));
-  await screen.findAllByText("가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요");
+  await within(active.container).findByText("가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요");
   expect(router.state.location.state).toBeNull();
+  const event = new Event("pageshow");
+  Object.defineProperty(event, "persisted", { value: true });
+  fireEvent(window, event);
+  await within(active.container).findByText("준비 중입니다.");
+  expect(within(active.container).queryByText("가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요")).toBeNull();
   cleanup();
   const reloaded = createMemoryRouter([{ path: "/owner/*", element: <OwnerArea /> }], {
     initialEntries: [{ pathname: "/owner", state: router.state.location.state }],
