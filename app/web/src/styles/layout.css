@@ -414,6 +414,7 @@
   text-underline-offset: var(--space-xs);
 }
 
+.ui-list__title--strong,
 .ui-list__link--strong {
   font-weight: var(--font-weight-semibold);
 }
@@ -583,5 +584,12 @@
   }
   .price-editor .price-no-maximum {
     display: block;
+  }
+  .price-history__panes {
+    grid-template-columns: var(--size-aside) minmax(0, 1fr);
+    align-items: start;
+  }
+  .price-history__designs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

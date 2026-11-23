@@ -25,7 +25,7 @@ export interface ListViewProps<Row> {
   readonly rows: readonly Row[];
   readonly rowKey: (row: Row) => string;
   /** 행의 상세 화면 주소(07 경로) */
-  readonly href: (row: Row) => string;
+  readonly href?: (row: Row) => string;
   readonly onNavigate?: Navigate;
   /** 빈 목록의 글(08 화면 정의의 empty 글) */
   readonly empty: ReactNode;
@@ -38,6 +38,8 @@ export function ListView<Row>({ label, columns, rows, rowKey, href, onNavigate, 
   if (rows.length === 0) return <EmptyState>{empty}</EmptyState>;
 
   const link = (row: Row, strong: boolean) => {
+    if (href === undefined)
+      return <span className={`ui-list__title${strong ? " ui-list__title--strong" : ""}`}>{title.cell(row)}</span>;
     const to = href(row);
     return (
       <a
@@ -74,7 +76,7 @@ export function ListView<Row>({ label, columns, rows, rowKey, href, onNavigate, 
             <tr key={rowKey(row)}>
               {columns.map((c) =>
                 c === title ? (
-                  <td key={c.label} className="ui-list__linkcell">
+                  <td key={c.label} className={href === undefined ? undefined : "ui-list__linkcell"}>
                     {link(row, false)}
                   </td>
                 ) : (
