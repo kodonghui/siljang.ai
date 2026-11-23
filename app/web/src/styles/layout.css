@@ -584,4 +584,11 @@
   .price-editor .price-no-maximum {
     display: block;
   }
+  .price-history__panes {
+    grid-template-columns: var(--size-aside) minmax(0, 1fr);
+    align-items: start;
+  }
+  .price-history__designs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }

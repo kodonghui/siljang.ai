@@ -57,8 +57,13 @@ describe("TASK-030 사장님 로그인 계약과 경로", () => {
       }
       if (typeof value !== "object" || value === null) return;
       const object = value as Record<string, unknown>;
-      if (typeof object.path === "string" && object.path.startsWith("/owner") && object.path !== "/owner/login")
-        paths.push(object.path);
+      for (const path of [object.path, ...(Array.isArray(object.also_paths) ? object.also_paths : [])])
+        if (
+          typeof path === "string" &&
+          path.startsWith("/owner") &&
+          !["/owner/login", OWNER_CALLBACK, "/owner/ledger/callback"].includes(path)
+        )
+          paths.push(path);
       Object.values(object).forEach(walk);
     }
     walk(site);
@@ -69,6 +74,7 @@ describe("TASK-030 사장님 로그인 계약과 경로", () => {
     "https://example.org/owner",
     "/owner/login",
     "/owner/login/callback",
+    "/owner/ledger/callback",
     "/owner/unknown",
     "/owner/../../operator/shops",
     "/owner\\orders",
@@ -80,6 +86,11 @@ describe("TASK-030 사장님 로그인 계약과 경로", () => {
     expect(ownerReturnTo(path)).toBe(path);
     expect(ownerDestination(returning, path)).toBe(path);
     expect(ownerDestination(returning, "https://example.org")).toBe(OWNER_HOME);
+  });
+  it.each(["price-list", "operating-rules"])("%s 보조 상세 경로도 로그인 뒤 복구한다", (name) => {
+    const path = `/owner/${name}/versions/3`;
+    expect(ownerReturnTo(path)).toBe(path);
+    expect(ownerDestination(returning, path)).toBe(path);
   });
   it("가게 없음과 신고 보류는 돌아갈 주소보다 우선한다", () => {
     expect(ownerDestination(examples.new_owner.value, "/owner/orders")).toBe(OWNER_REGISTER);

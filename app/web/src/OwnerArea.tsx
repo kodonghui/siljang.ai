@@ -12,6 +12,7 @@ import {
   signOutOwner,
 } from "./owner";
 import { PriceListEditor } from "./PriceListEditor";
+import { PriceListHistory } from "./PriceListHistory";
 import { classify } from "./problems";
 import { clearRegistrationDraft, pruneRegistrationDraft } from "./registration-draft";
 import { ShopLicense } from "./ShopLicense";
@@ -101,13 +102,19 @@ export function OwnerArea() {
   const session = checked?.key === location.key && checked.revision === revision ? checked.result : null;
   const candidate = session?.ok ? session.data : verified.current?.key === location.key ? verified.current.data : null;
   const shopPath = requested.split(/[?#]/)[0];
-  if (["/owner/shop", "/owner/shop/license", "/owner/price-list"].includes(shopPath ?? "") && candidate?.shop) {
-    if (shopPath === "/owner/price-list") {
+  const priceHistory =
+    shopPath === "/owner/price-list/versions" || /^\/owner\/price-list\/versions\/[^/]+$/.test(shopPath ?? "");
+  if (
+    (priceHistory || ["/owner/shop", "/owner/shop/license", "/owner/price-list"].includes(shopPath ?? "")) &&
+    candidate?.shop
+  ) {
+    if (shopPath === "/owner/price-list" || priceHistory) {
       const destination = ownerDestination(candidate, requested);
       if (destination !== requested) return <Navigate to={destination} replace />;
     }
-    const ShopScreen =
-      shopPath === "/owner/price-list"
+    const ShopScreen = priceHistory
+      ? PriceListHistory
+      : shopPath === "/owner/price-list"
         ? PriceListEditor
         : shopPath === "/owner/shop/license"
           ? ShopLicense
@@ -123,6 +130,7 @@ export function OwnerArea() {
           />
         ) : null}
         <ShopScreen
+          {...(priceHistory ? { version: shopPath?.split("/")[4] ?? null } : {})}
           key={`${candidate.owner.ownerId}:${candidate.shop.shopId}`}
           shopName={candidate.shop.name}
           onNavigate={(href) => navigate(href)}

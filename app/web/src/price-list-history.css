@@ -1,0 +1,66 @@
+.price-history,
+.price-history__panes,
+.price-history__detail,
+.price-history__detail section {
+  display: grid;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+.price-history__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+.price-history__versions ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-sm);
+}
+.price-history__versions a {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  min-height: var(--size-target);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: var(--border-width-hairline) solid var(--color-line);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.price-history__versions a[aria-current="page"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.price-history__versions a span {
+  font-size: var(--font-size-small);
+  color: var(--color-ink-muted);
+}
+.price-history__more {
+  min-height: var(--space-xxs);
+}
+.price-history__designs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: var(--space-md);
+}
+.price-history__designs li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.price-history__designs img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  background: var(--color-surface-sunken);
+}

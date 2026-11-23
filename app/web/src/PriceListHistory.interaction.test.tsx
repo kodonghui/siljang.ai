@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
@@ -59,13 +59,14 @@ afterEach(() => {
   for (const n of document.querySelectorAll("[data-announcer]")) n.remove();
   vi.unstubAllGlobals();
 });
-function area(selected: string | null = null) {
+function area(selected: string | null = null, extra: { sessionChecking?: boolean; sessionFailed?: boolean } = {}) {
   const props = {
     shopName: "합성 가게",
     onNavigate: vi.fn(),
     onSessionExpired: vi.fn(),
     onRegisterShop: vi.fn(),
     onLogout: vi.fn(),
+    ...extra,
   };
   return { ...render(<PriceListHistory {...props} version={selected} />), props };
 }
@@ -79,7 +80,99 @@ it("좁은 화면 목록과 고른 옛 버전은 읽기 전용이며 저장 요�
   await screen.findByRole("heading", { name: /버전 3/ });
   expect(screen.queryByRole("button", { name: "저장" })).toBeNull();
   expect(screen.queryByRole("textbox")).toBeNull();
+  expect(within(screen.getByRole("region", { name: "고른 가격표" })).queryByRole("link")).toBeNull();
   expect(calls.every((c) => c.method === "GET")).toBe(true);
+});
+it("넓은 화면은 최신 상세를 함께 읽고 폭이 좁아지면 목록만 남긴다", async () => {
+  let change = () => {};
+  const query = {
+    matches: true,
+    addEventListener: (_event: string, callback: () => void) => {
+      change = callback;
+    },
+    removeEventListener: vi.fn(),
+  };
+  vi.stubGlobal("matchMedia", () => query);
+  area();
+  await screen.findByRole("heading", { name: `버전 ${items.items[0].version} (고른 버전)` });
+  expect(screen.getByRole("link", { name: /현재/ }).getAttribute("aria-current")).toBe("page");
+  act(() => {
+    query.matches = false;
+    change();
+  });
+  await waitFor(() => expect(screen.queryByRole("region", { name: "고른 가격표" })).toBeNull());
+  expect(screen.getByRole("link", { name: /버전 3/ })).toBeTruthy();
+});
+it("앞자리0 상세도 정규화한 같은 버전을 선택 표시한다", async () => {
+  area("03");
+  await screen.findByRole("heading", { name: /버전 3/ });
+  expect(screen.getByRole("link", { name: /버전 3/ }).getAttribute("aria-current")).toBe("page");
+  expect(calls.some((call) => call.path.endsWith("/03"))).toBe(false);
+});
+it("이전 상세의 늦은 권한 실패는 새 버전과 로그인 상태를 덮지 못한다", async () => {
+  const transport = fetch;
+  let finish!: (response: Response) => void;
+  let oldSignal: AbortSignal | null | undefined;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith("/versions/3")) {
+        oldSignal = init?.signal;
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      }
+      return transport(url, init);
+    }),
+  );
+  const view = area("3");
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  view.rerender(<PriceListHistory {...view.props} version="2" />);
+  await screen.findByRole("heading", { name: /버전 2/ });
+  await act(async () => {
+    finish(json({ code: "unauthenticated", traceId }, 401));
+  });
+  expect(oldSignal?.aborted).toBe(true);
+  expect(view.props.onSessionExpired).not.toHaveBeenCalled();
+  expect(screen.getByRole("heading", { name: /버전 2/ })).toBeTruthy();
+});
+it("세션 재확인 실패는 이동과 재시도를 막되 로그아웃은 허용한다", async () => {
+  problem = { status: 500, code: "internal" };
+  const view = area(null, { sessionFailed: true });
+  await screen.findByText(`추적 ID: ${traceId}`);
+  for (const name of ["현재 가격표로", "다시 시도"])
+    expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+  expect(view.props.onLogout).toHaveBeenCalledOnce();
+  expect(calls).toHaveLength(1);
+});
+it("관측 영역 진입은 다음20개를 추가하고 관측자를 해제한다", async () => {
+  const base = items.items[0];
+  items.items = Array.from({ length: 41 }, (_, i) => ({
+    ...base,
+    version: 41 - i,
+    supersededAt: i ? base.createdAt : null,
+  }));
+  let advance!: (entries: { isIntersecting: boolean }[]) => void;
+  const disconnect = vi.fn();
+  vi.stubGlobal(
+    "IntersectionObserver",
+    class {
+      constructor(callback: typeof advance) {
+        advance = callback;
+      }
+      observe = vi.fn();
+      disconnect = disconnect;
+    },
+  );
+  const view = area();
+  await screen.findByRole("link", { name: /버전 41/ });
+  expect(screen.queryByRole("link", { name: /버전 21\b/ })).toBeNull();
+  act(() => advance([{ isIntersecting: true }]));
+  await screen.findByRole("link", { name: /버전 21\b/ });
+  expect(screen.queryByRole("link", { name: /버전 1\b/ })).toBeNull();
+  view.unmount();
+  expect(disconnect).toHaveBeenCalled();
 });
 it("빈 목록은 가격표 만들기로 돌아가는 동작을 제공", async () => {
   items.items = [];
