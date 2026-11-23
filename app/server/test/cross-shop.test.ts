@@ -18,6 +18,7 @@ import {
 } from "./support/cross-shop";
 import { describeDb, newRequestKey, newUuid, testDb, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
+import { MemoryLimiter } from "./support/rate-limit";
 import { createShopPair, type ShopFixture, snapshotShop } from "./support/shops";
 
 // 교차 가게 시험 묶음(TASK-019; 04 SPEC-068 수락 기준 1·2, G1; 05 A9; 06 DEC-02).
@@ -402,11 +403,23 @@ describeDb("교차 가게 시험 묶음(SPEC-068, G1, 06 DEC-02)", () => {
     ).rejects.toThrow();
   });
 
-  it("G1: 가게 범위 경로는 해석기가 없으면 닫혀 있음(사장님 401, 손님 401, 예약 링크 404)", async () => {
+  it("G1: 인증 없는 업무 경로는401이고 없는 공개 예약 주소는404임", async () => {
     const make = (via: ScopeKind) =>
-      shopRoute("GET", `/test/closed/${via}`, via, async (r) => r.json({ shopId: r.scope.shopId }));
-    const app = createApp({ routes: (["owner", "operator", "customer", "public"] as const).map(make) });
-    const status = async (via: string) => (await app.request(`/api/test/closed/${via}`, {}, testEnv())).status;
+      shopRoute("GET", via === "public" ? "/public/shops/:slug" : `/test/closed/${via}`, via, async (r) =>
+        r.json({ shopId: r.scope.shopId }),
+      );
+    const app = createApp({
+      routes: (["owner", "operator", "customer", "public"] as const).map(make),
+      services: { limiters: { PUBLIC_BOOKING_RATE_LIMITER: new MemoryLimiter(60) } },
+    });
+    const status = async (via: string) =>
+      (
+        await app.request(
+          via === "public" ? "/api/public/shops/missing-slug" : `/api/test/closed/${via}`,
+          { headers: { "cf-connecting-ip": "192.0.2.46" } },
+          testEnv(),
+        )
+      ).status;
     expect(await status("owner")).toBe(401);
     expect(await status("operator")).toBe(401);
     expect(await status("customer")).toBe(401);

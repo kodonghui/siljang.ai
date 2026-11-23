@@ -265,7 +265,8 @@ function routePattern(path: string): RegExp {
  * 운영자 로그인(TASK-021): 운영자 범위 경로(operatorRoute)의 해석기는 운영자 세션(operator-login.ts). 시험은 operatorAccount로 바꿈.
  */
 export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
-  assertPublicShopRateCoverage(APP_ROUTES);
+  const routes = options.routes ?? APP_ROUTES;
+  assertPublicShopRateCoverage(routes);
   const skillTimeoutMs = options.kakaoSkillTimeoutMs ?? SKILL_WORK_MS;
   if (!Number.isSafeInteger(skillTimeoutMs) || skillTimeoutMs < 1 || skillTimeoutMs > SKILL_WORK_MS) {
     throw new RangeError("kakaoSkillTimeoutMs must be between 1 and 3750");
@@ -333,7 +334,7 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   // 경로는 모두 선언으로 붙인다(가게 범위 경로는 가게 범위 연결만 받음, TASK-019).
   mountRoutes(
     app,
-    options.routes ?? APP_ROUTES,
+    routes,
     {
       owner: resolveOwnerShop,
       operator: resolveOperatorShop,
