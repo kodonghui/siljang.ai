@@ -370,6 +370,10 @@ export function ShopSettings(props: ShopSettingsProps) {
                       step={1}
                       value={values[key]}
                       errors={errors.get(`/${key}`)}
+                      messages={{
+                        bad_format: `${min}~${max} 사이의 정수로 넣어 주세요`,
+                        out_of_range: `${min}~${max} 사이의 정수로 넣어 주세요`,
+                      }}
                       help={help}
                       onChange={(event) => change(key, event.target.value)}
                     />

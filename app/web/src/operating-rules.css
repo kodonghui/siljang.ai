@@ -31,12 +31,14 @@
   min-height: var(--size-target);
   resize: vertical;
 }
-.rules-latest summary {
+.rules-latest summary,
+.rules-comparison summary {
   display: flex;
   align-items: center;
   min-height: var(--size-target);
   padding-block: var(--space-sm);
 }
+.rules-comparison summary,
 .rules-comparison p,
 .rules-comparison dd {
   overflow-wrap: anywhere;

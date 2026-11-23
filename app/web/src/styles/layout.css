@@ -599,7 +599,7 @@
     grid-column: 1 / -1;
   }
 
-  .price-history__panes {
+  .version-history__panes {
     grid-template-columns: var(--size-aside) minmax(0, 1fr);
     align-items: start;
   }
