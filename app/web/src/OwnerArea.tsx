@@ -122,7 +122,8 @@ export function OwnerArea() {
               ? classify(logoutFailure.status, logoutFailure.problem, logoutFailure.retryAfterSeconds)
               : null
           }
-          sessionChecking={session === null || !session.ok}
+          sessionChecking={session === null}
+          sessionFailed={session !== null && !session.ok}
         />
       </>
     );

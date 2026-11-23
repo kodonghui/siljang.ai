@@ -31,6 +31,7 @@ export interface ShopSettingsProps {
   readonly logoutPending?: boolean;
   readonly logoutFailure?: Failure | null;
   readonly sessionChecking?: boolean;
+  readonly sessionFailed?: boolean;
 }
 
 const TEXT = [
@@ -75,7 +76,8 @@ export function ShopSettings(props: ShopSettingsProps) {
   const save = useCommand<Record<string, unknown>, SavedShopSettings>((body, key) => saveShopSettings(body, key));
   const handledDone = useRef<SavedShopSettings | null>(null),
     handledConflict = useRef<Failure | null>(null);
-  const busy = loading || save.busy || Boolean(props.logoutPending || props.sessionChecking);
+  const actionPending = loading || save.busy || Boolean(props.logoutPending || props.sessionChecking);
+  const busy = actionPending || Boolean(props.sessionFailed);
   const failure = save.state.kind === "failed" ? save.state.failure : null;
   const errors = fieldErrorsFor(failure?.fieldErrors ?? [], POINTERS).byField;
 
@@ -288,8 +290,12 @@ export function ShopSettings(props: ShopSettingsProps) {
                 state={save.state}
                 fields={POINTERS}
                 done={(data) => (data.outcome === "unchanged" ? "바뀐 것이 없어요" : "저장했어요")}
-                onRetry={() => save.retry()}
-                onReload={reloadShop}
+                onRetry={() => {
+                  if (!busy) save.retry();
+                }}
+                onReload={() => {
+                  if (!busy) reloadShop();
+                }}
                 onLogin={props.onSessionExpired}
                 onRegisterShop={props.onRegisterShop}
               />
@@ -377,7 +383,7 @@ export function ShopSettings(props: ShopSettingsProps) {
                           checked={values.completionPhotoEnabled}
                           onChange={(event) => change("completionPhotoEnabled", event.target.checked)}
                         />
-                        완성 사진 보내기
+                        <span aria-hidden="true">사용</span>
                       </label>
                     )}
                   </Field>
@@ -397,7 +403,7 @@ export function ShopSettings(props: ShopSettingsProps) {
               tone="danger"
               detail={props.logoutFailure.traceId ? `추적 ID: ${props.logoutFailure.traceId}` : undefined}
               actions={
-                <Button kind="secondary" disabled={busy} onClick={props.onLogout}>
+                <Button kind="secondary" disabled={actionPending} onClick={props.onLogout}>
                   다시 시도
                 </Button>
               }
@@ -406,7 +412,7 @@ export function ShopSettings(props: ShopSettingsProps) {
             </Banner>
           </section>
         ) : null}
-        <Button kind="secondary" disabled={busy} onClick={props.onLogout}>
+        <Button kind="secondary" disabled={actionPending} onClick={props.onLogout}>
           로그아웃
         </Button>
       </div>

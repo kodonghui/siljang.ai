@@ -101,3 +101,6 @@ GRANT SELECT (id, shop_id, photo_consent_id, completion_photo_id, review_photo_i
   ON portfolio_items TO :"runtime_role";
 GRANT SELECT (id, shop_id, consented, withdrawn_at, publishable) ON photo_consents TO :"runtime_role";
 GRANT SELECT (id, shop_id, storage_key) ON completion_photos, review_photos TO :"runtime_role";
+
+-- TASK-047: 설정 카드의 연결 여부만 읽는다. 시트 ID/이름과 OAuth 참조는 열지 않는다.
+GRANT SELECT (shop_id, status, unlinked_at) ON ledger_links TO :"runtime_role";

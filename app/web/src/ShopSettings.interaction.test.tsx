@@ -284,3 +284,18 @@ it("bfcache 재확인 중 글을 보존하고401 뒤 즉시 로그인으로 이�
   await screen.findByText("합성 로그인 화면");
   expect(screen.queryByLabelText("가게 이름")).toBeNull();
 });
+it("재확인이503으로 끝나면 저장은 잠그되 로그아웃을 허용함", async () => {
+  await ownerArea();
+  profileGate = gate();
+  const event = new Event("pageshow");
+  Object.defineProperty(event, "persisted", { value: true });
+  fireEvent(window, event);
+  await act(async () => profileGate?.resolve(json({ code: "upstream_unavailable" }, 503)));
+  expect((input("가게 이름").closest("fieldset") as HTMLFieldSetElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "로그아웃" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(screen.queryByText("로그인 상태를 확인하고 있어요")).toBeNull();
+});
+it("완성 사진 설정의 접근 가능한 이름이 한 번만 읽힘", async () => {
+  await area();
+  expect(screen.getByRole("checkbox", { name: "완성 사진 보내기" })).toBeTruthy();
+});

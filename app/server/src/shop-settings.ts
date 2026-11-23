@@ -68,11 +68,11 @@ export async function updateShopSettings(r: ShopRequest): Promise<Response> {
         status: 200,
         code: outcome,
         ref: {},
-        body: { outcome, shop: await renderShop(db, r.services, origin, row) },
+        body: { outcome, shop: await renderShop(db, r.services, origin, row, true) },
       };
     },
     async render(db, stored) {
-      return { outcome: stored.code, shop: await renderShop(db, r.services, origin) };
+      return { outcome: stored.code, shop: await renderShop(db, r.services, origin, undefined, true) };
     },
   });
 }
