@@ -95,3 +95,9 @@ GRANT EXECUTE ON FUNCTION resubmit_shop_license(uuid,uuid,text,timestamptz,text,
 -- TASK-044: 예약 주소/발급 시각과 새 처리방침만 남긴다. 영업 판정·기존 본문 수정/삭제는 허용하지 않는다.
 GRANT UPDATE (booking_slug, booking_issued_at) ON shops TO :"runtime_role";
 GRANT SELECT, INSERT ON privacy_policies TO :"runtime_role";
+
+-- TASK-045: 게시/철회 여부와 공개 사진 위치만 읽는다. 동의·게시·사진의 쓰기/삭제는 열지 않는다.
+GRANT SELECT (id, shop_id, photo_consent_id, completion_photo_id, review_photo_id, published_at, unpublished_at)
+  ON portfolio_items TO :"runtime_role";
+GRANT SELECT (id, shop_id, consented, withdrawn_at, publishable) ON photo_consents TO :"runtime_role";
+GRANT SELECT (id, shop_id, storage_key) ON completion_photos, review_photos TO :"runtime_role";
