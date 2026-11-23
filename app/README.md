@@ -1012,3 +1012,5 @@ node -e 'const e=process.env;process.stdout.write(JSON.stringify({email:e.OP_EMA
 npx --no-install wrangler deploy --config server/wrangler.storage-batches.jsonc --env "" --strict --tag "$SILJANG_SHA"
 npx --no-install wrangler deploy --config server/wrangler.jsonc --env "" --strict --keep-vars --domain "$SILJANG_DOMAIN" --tag "$SILJANG_SHA"
 ```
+
+- 검토 수정 최종 자동 확인: 서버98파일/2,102개·웹237개·타입·빌드625ms/두 Worker dry-run·관련184개가 통과했습니다. 현재7de875e0의 app45092744847 검사와 db45092744777 두 버전도 성공입니다. API/설계/마이그레이션/권한은 그대로이고 마지막 변경은 기록뿐입니다. 최종 head CI/리뷰 처리·Codex 요청1회/main과 실제50개 확인을 이어갑니다.
