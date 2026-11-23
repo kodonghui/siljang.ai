@@ -26,7 +26,7 @@ export type ScopeVia =
   | { readonly kind: "customer"; readonly channelId: string }
   /** 운영자가 연 가게(TASK-021 세션, TASK-159 화면). 손님·주문 기록은 가린 값으로만(SPEC-073). */
   | { readonly kind: "operator"; readonly operatorId: string }
-  /** 예약 링크 주소의 가게(TASK-044·045). 읽기만. */
+  /** 예약 링크 주소의 가게(TASK-044·045). TASK-184의 현재 처리방침 재발행 외에는 공개 읽기. */
   | { readonly kind: "public" }
   /**
    * 서버 안의 일(TASK-023 실행기): 여러 가게에서 때가 된 행을 찾은 뒤 그 행의 가게로 만든 범위. 요청 경로가 아니라

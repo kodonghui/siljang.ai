@@ -357,7 +357,7 @@ describeDb("TASK-044 발급·공개 처리방침", () => {
       (await db.query("SELECT count(*)::int AS n FROM privacy_policies WHERE shop_id=$1", [h.shopId])).rows[0]?.n,
     ).toBe(1);
   });
-  it("새 버전은 최신 공개 글로 읽고 미래 게시 글/옛 버전은 바꾸지 않음", async () => {
+  it("현재 본문을 다음 버전으로 공개하고 미래 게시 글/옛 버전과 고지는 바꾸지 않음", async () => {
     const h = await readyFixture();
     const link = (await (await h.get()).json()) as { url: string };
     const slug = new URL(link.url).pathname.split("/").at(-1) as string;
@@ -387,7 +387,19 @@ describeDb("TASK-044 발급·공개 처리방침", () => {
     expect(response.status).toBe(200);
     const value = await response.json();
     expectSchema("PrivacyPolicy", value);
-    expect(value).toMatchObject({ version: 2, body: "새 합성 처리방침" });
+    expect(value).toMatchObject({ version: 4, shopName: "준비된 합성 가게" });
+    expect((value as { body: string }).body).toContain("준비된 합성 가게 개인정보 처리방침");
+    expect(
+      (
+        await db.query(
+          "SELECT version,body FROM privacy_policies WHERE shop_id=$1 AND version IN (2,3) ORDER BY version",
+          [h.shopId],
+        )
+      ).rows,
+    ).toEqual([
+      { version: 2, body: "새 합성 처리방침" },
+      { version: 3, body: "미래 합성 글" },
+    ]);
     expect(
       (await db.query("SELECT body FROM privacy_policies WHERE shop_id=$1 AND version=1", [h.shopId])).rows[0]?.body,
     ).toBe(first);

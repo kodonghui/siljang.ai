@@ -57,6 +57,7 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
   const [consent, setConsent] = useState(false),
     [file, setFile] = useState<File | null>(null),
     [preview, setPreview] = useState<string | null>(null);
+  const [previewFailed, setPreviewFailed] = useState(false);
   const [photoProblem, setPhotoProblem] = useState<string | undefined>();
   const upload = useCommand<File, UploadedLicensePhoto>((input) => uploadLicensePhoto(input));
   const registration = useCommand<Record<string, unknown>, RegisteredShop>((input, key) => registerShop(input, key));
@@ -78,6 +79,7 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
   const uploadBlocked = upload.state.kind === "failed" && upload.state.blockedUntil !== null;
 
   useEffect(() => {
+    setPreviewFailed(false);
     if (!file || typeof URL.createObjectURL !== "function") {
       setPreview(null);
       return;
@@ -153,28 +155,46 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
       <form ref={formRef} className="registration-form" onSubmit={submit} noValidate>
         <fieldset className="registration-fields" disabled={busy}>
           <legend className="registration-legend">가게와 사업자 정보</legend>
-          {TEXT_FIELDS.map(([key, label, max, type]) => (
-            <TextField
-              key={key}
-              pointer={`/${key}`}
-              label={label}
-              maxLength={max}
-              type={type}
-              value={values[key]}
-              errors={reasons(key)}
-              onChange={(e) => change(key, e.currentTarget.value)}
-              autoComplete="off"
-              help={
-                key === "businessRegNo"
-                  ? "숫자 10자리를 넣어 주세요"
-                  : key === "name"
-                    ? `남은 글자 수 ${Math.max(0, 40 - [...values.name].length)}`
-                    : ["businessName", "representativeName"].includes(key)
-                      ? "등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)"
-                      : undefined
-              }
-            />
-          ))}
+          {TEXT_FIELDS.map(([key, label, max, type]) =>
+            key === "businessAddress" ? (
+              <Field key={key} pointer={`/${key}`} label={label} errors={reasons(key)}>
+                {(ids) => (
+                  <span className={`ui-field__box${ids["aria-invalid"] ? " ui-field__box--invalid" : ""}`}>
+                    <textarea
+                      {...ids}
+                      className="ui-field__input registration-address"
+                      rows={2}
+                      maxLength={max}
+                      value={values[key]}
+                      autoComplete="off"
+                      onChange={(e) => change(key, e.currentTarget.value)}
+                    />
+                  </span>
+                )}
+              </Field>
+            ) : (
+              <TextField
+                key={key}
+                pointer={`/${key}`}
+                label={label}
+                maxLength={max}
+                type={type}
+                value={values[key]}
+                errors={reasons(key)}
+                onChange={(e) => change(key, e.currentTarget.value)}
+                autoComplete="off"
+                help={
+                  key === "businessRegNo"
+                    ? "숫자 10자리를 넣어 주세요. 등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)"
+                    : key === "name"
+                      ? `남은 글자 수 ${Math.max(0, 40 - [...values.name].length)}`
+                      : ["businessName", "representativeName"].includes(key)
+                        ? "등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)"
+                        : undefined
+                }
+              />
+            ),
+          )}
           {values.mailOrderRegNo.trim() ? (
             <TextField
               pointer="/mailOrderAuthority"
@@ -249,13 +269,19 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
                   onChange={(e) => selectPhoto(e.currentTarget.files?.[0])}
                 />
                 {file ? <p>{file.name}</p> : null}
-                {preview ? <img src={preview} alt="선택한 신고증 사진 미리보기" /> : null}
+                {preview && !previewFailed ? (
+                  <img src={preview} alt="선택한 신고증 사진 미리보기" onError={() => setPreviewFailed(true)} />
+                ) : null}
+                {previewFailed ? (
+                  <p>이 브라우저에서는 미리보기를 볼 수 없어요. 사진 업로드 결과를 확인해 주세요.</p>
+                ) : null}
                 {file ? (
                   <Button
                     kind="secondary"
                     disabled={busy || uploadBlocked}
                     onClick={() => {
                       setPhotoProblem(undefined);
+                      registration.reset();
                       upload.submit(file);
                     }}
                   >

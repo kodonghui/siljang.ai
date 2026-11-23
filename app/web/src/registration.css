@@ -22,8 +22,27 @@
   gap: var(--space-sm);
   min-width: 0;
 }
+.registration-address {
+  min-height: calc(var(--size-control) * 2);
+  resize: vertical;
+}
 .registration-photo input {
   max-width: 100%;
+  min-height: var(--size-target);
+}
+.registration-photo input::file-selector-button {
+  min-height: var(--size-target);
+}
+.registration-choices label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--size-target);
+  cursor: pointer;
+}
+.registration-terms summary {
+  min-height: var(--size-target);
+  cursor: pointer;
 }
 .registration-photo img {
   max-width: 100%;
@@ -44,6 +63,8 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-sm);
+  min-height: var(--size-target);
+  cursor: pointer;
 }
 .registration-actions {
   position: sticky;
