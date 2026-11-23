@@ -6,6 +6,7 @@ import type { FieldCrypto } from "../../src/field-crypto";
 import { deriveKakaoSkillKey } from "../../src/kakao-skill-auth";
 import { OWNER_COOKIE } from "../../src/owner-oauth";
 import { createOwnerSession } from "../../src/owner-session";
+import { readPrivacyPolicySettings } from "../../src/privacy-policy-settings";
 import { REQUEST_KEY_HEADER } from "../../src/request-key";
 import { type Method, type RouteDecl, routeKey } from "../../src/routes";
 import { Secret } from "../../src/settings";
@@ -321,8 +322,40 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
       } else {
         const pair = await createShopPair(db);
         const publicEnv = { ...env, ...pair };
-        const app = createApp({ services: { limiters: { PUBLIC_PRIVACY_RATE_LIMITER: new MemoryLimiter(1000) } } });
+        const app = createApp({
+          services: {
+            privacyPolicy: readPrivacyPolicySettings(
+              {
+                PUBLIC_APP_ORIGIN: "https://siljang.example",
+                PRIVACY_TRANSFER_SETTINGS: JSON.stringify(
+                  ["anthropic", "supabase", "cloudflare"].map((provider) => ({
+                    provider,
+                    recipient: `${provider} 합성 회사`,
+                    country: "합성 국가",
+                    whenAndHow: "이용 시 암호화 전송",
+                    purposeAndRetention: "합성 목적과 기간",
+                    howToRefuse: "가게에 거부하면 온라인 상담을 쓰지 않습니다.",
+                  })),
+                ),
+              },
+              "anthropic",
+            ),
+            limiters: { PUBLIC_PRIVACY_RATE_LIMITER: new MemoryLimiter(1000) },
+          },
+        });
         for (const shop of [pair.a, pair.b]) await issueTestBookingLink(db, shop);
+        // 현재 설정으로 발행을 마친 뒤 쿼리의 다른 가게 ID가 상태/본문을 바꾸지 않는지 비교한다.
+        for (const shop of [pair.a, pair.b]) {
+          const row = (
+            await db.query<{ booking_slug: string }>("SELECT booking_slug FROM shops WHERE id=$1", [shop.shopId])
+          ).rows[0];
+          const ready = await app.request(
+            `https://siljang.example/api/public/shops/${row?.booking_slug}/privacy-policy`,
+            {},
+            testEnv(),
+          );
+          expect(ready.status, await ready.clone().text()).toBe(200);
+        }
         const before = await snapshots(db, publicEnv);
         for (const shop of [pair.a, pair.b]) {
           const row = (

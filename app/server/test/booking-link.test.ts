@@ -388,7 +388,7 @@ describeDb("TASK-044 발급·공개 처리방침", () => {
     const value = await response.json();
     expectSchema("PrivacyPolicy", value);
     expect(value).toMatchObject({ version: 4, shopName: "준비된 합성 가게" });
-    expect(value.body).toContain("준비된 합성 가게 개인정보 처리방침");
+    expect((value as { body: string }).body).toContain("준비된 합성 가게 개인정보 처리방침");
     expect(
       (
         await db.query(
