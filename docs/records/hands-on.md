@@ -854,3 +854,22 @@
 - main8bd113d/PR #180 app45087121533 검사/스테이징 배포·db45087121549 두 버전 성공 뒤 학원컴 CLI에서6a20bc36-548d-415a-83eb-4a507f34a99f(09:13:27 생성)/정확한 태그·상태200·SSH0을 확인했습니다. 배포 전 확인은 옛 태그로 실패했으며 배포 성공 뒤 다시 확인했습니다.09:13:59 무인증 GET /api/operator/alerts는401 unauthenticated/application/problem+json·SSH0·stderr_nonempty=true입니다. 실제 운영자/TOTP 성공으로 세지 않습니다.
 - 별도 siljang-storage-budget-peer/harness는 공개 경로·workers.dev 없이 RPC만 배포했습니다. 학원컴 원격 개발은 루프백에서만 결과를 받았고 종료 때 프로세스를 닫았습니다. 지원하지 않는 CLI 인자의 첫 두 실패를 고친 뒤 두 배포/SSH는0입니다. 직접49번 성공·51번 요청은50번에서 한도 오류,서비스30번씩 두 번은60번 모두 성공,서비스51번도50번에서 한도 오류였습니다. 외부 주소는 자신의 스테이징 상태이며 자격 증명·응답 내용은 보내거나 저장하지 않았습니다. 실제 총 외부 성공 호출은209번이고 모델/가게/S3 파일·유료 변경0입니다.
 - [시험 코드/방법](../../research/storage-budget-2026-11/README.md)을 남깁니다. API-017의 실제50개 저장/되돌림/정리를 확인한 것은 아니며 서비스 배치 통합 뒤 확인합니다. 시험 Worker는 그 용도만 있으며 기존 Worker 두 개는 건드리지 않았습니다.
+
+### 2026-11-23 10:45 KST · TASK-038 배포·실제 합성 세션과 업로드 설정
+
+- main5d8c448 app45094380241 검사/스테이징 배포·db45094380242 PostgreSQL16.15/17.11 성공 뒤 학원컴 CLI에서 앱9416ec6f(10:27:24 생성)/상태200와 저장소56dfca6f(10:27:14 생성)/트래픽100%의 같은 태그·SSH0을 확인했습니다.
+- 학원컴 Aside SQL Editor에서 해시 확인한 합성 가게/세션1개를 만들고 실제 내 정보200/자기 가게 일치·첫 사진 업로드500 internal·로그아웃204/재조회401·SSH1을 확인했습니다.50개 저장은 실행되지 않았습니다. 원래 쿠키는 메모리에서만 사용했습니다. 전달 본문 SHA-256은418b2116351d569f779d27d830b8264a33a06901470dd28a260fc4387a66f809입니다.
+- 실제 버전 바인딩/비밀 이름 목록에서 STORAGE_ENDPOINT·STORAGE_REGION·STORAGE_BUCKET·STORAGE_ACCESS_KEY_ID·STORAGE_SECRET_ACCESS_KEY 다섯 항목이 모두 없고 STORAGE_BATCHES/IMAGES/UPLOAD_RATE_LIMITER는 있음을 확인했습니다. 목록 조회SSH0이며 값은 꺼내지 않았습니다. 기존 Vault 값이 풀리면 설정하고 실제 저장을 재개합니다. 카카오 로그인 성공/사진50개 저장/finished로 세지 않으며 모델 호출·유료 변경0입니다.
+
+### 2026-11-23 11:30 KST · 학원컴 내부 Wrangler OAuth와 main182 확인
+
+- 학원컴 Aside CLI에서 Cloudflare 공식 Wrangler의 OAuth 동의를 진행했습니다. user/account 읽기·Worker/스크립트/라우트/로그·Queues·Zone 읽기와 Background Access의9개 범위이며 결제/요금제 변경은 하지 않았습니다. 새 API 키를 만들지 않았고 인증 값/파일을 다른 기기로 보내거나 복사하지 않았습니다.
+- 첫 PowerShell 구문 오류와 keyring 모듈 부재는 실행 준비 오류였습니다. 학원컴에 CLI가 요구한1.3.0을 설치한 뒤 SSH 로그온 세션의 Windows 저장소 접근이 거절됐고, 공식 CLI 기본 로컬 인증 저장 방식으로 성공했습니다. 앞 승인 대기 시간 초과는 미완료이며 최종 로그인/SSH0만 성공으로 셉니다.
+- 학원컴의 기존 로컬 OAuth로 whoami loggedIn=true/authType=OAuth Token/대상 계정 일치true를 확인했습니다. main84fadbf 앱2e29f755-c470-4951-b611-9e66469ffa35(11:08:11 KST)/상태200와 저장소eac523eb-4bed-4dea-bfa0-c637a785f98c(11:08:03)/트래픽100%가 같은 태그·SSH0·stderr_nonempty=true입니다. 공개 소스/계정 ID/기대 SHA만 SSH로 전달했고 키는 호출 기기에서 읽지 않았습니다.
+
+### 2026-11-23 11:55 KST · TASK-044 main과 학원컴 실제 권한
+
+- 학원컴 실제 공개 경계: 11:50:10 KST에 예약 링크 GET401 unauthenticated·없는 공개 처리방침 GET404 not_found와 application/problem+json을 확인했습니다. SSH0이며 실제 사장님 발급 성공은 아닙니다.
+- PR183 squash main ae905b5의 app45101498354 검사/스테이징·db45101498290 PostgreSQL16/17이 성공했습니다. 학원컴 Wrangler 내부 OAuth의 계정 일치 true·앱6f5bf404-67f8-48ec-ba32-eabddb84ee3d(11:43:47 생성)/상태200와 저장소402e8d21-a51b-448c-a217-e762b54a0a95(11:43:40)/트래픽100%가 같은 전체 SHA이며 SSH0입니다. stderr_nonempty=true를 보존하며 다른 기기의 인증 값을 보내지 않았습니다.
+- 학원컴 Aside SQL Editor에서 SHA-256 c981d524a3f4b92489522ceb550be36e6a13ca6db23bb95a7669d76de2a909df 대조/기존 역할 LOGIN·비상속·비슈퍼·비우회 검사를 통과한 두 GRANT 문장을 한 번 실행했습니다. 마이그레이션34·예약 주소/발급 시각 UPDATE true·처리방침 결합 SELECT,INSERT 권한 검사 true·신고 판정 UPDATE/옛 글 UPDATE/DELETE false입니다. 결합 권한 검사는 각각의 실제 업무 요청 성공과 구분합니다.
+- 실제 사장님 발급/공개 최신 글·국외 이전 설정은 미확인입니다. 처리방침 재발행 제품 결정·기존 계정/Vault 대기를 남겨 finished를 표시하지 않습니다. 모델 호출/새 키/요금제·결제 변경0입니다.

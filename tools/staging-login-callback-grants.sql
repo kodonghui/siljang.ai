@@ -91,3 +91,7 @@ GRANT EXECUTE ON FUNCTION review_shop_identity(uuid,uuid,uuid,text,timestamptz,t
 
 -- TASK-033: 보류된 자기 가게의 신고 재업로드만 실행한다. 일반 신고/판정 UPDATE는 주지 않는다.
 GRANT EXECUTE ON FUNCTION resubmit_shop_license(uuid,uuid,text,timestamptz,text,text,text,text) TO :"runtime_role";
+
+-- TASK-044: 예약 주소/발급 시각과 새 처리방침만 남긴다. 영업 판정·기존 본문 수정/삭제는 허용하지 않는다.
+GRANT UPDATE (booking_slug, booking_issued_at) ON shops TO :"runtime_role";
+GRANT SELECT, INSERT ON privacy_policies TO :"runtime_role";
