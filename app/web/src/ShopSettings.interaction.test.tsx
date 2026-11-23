@@ -335,3 +335,38 @@ it("loading에서는SCR-034대로액션을잠그고조회성공뒤풀림", async
   await screen.findByLabelText("가게 이름");
   expect(out.disabled).toBe(false);
 });
+
+it.each(["1e2", "-5", "12.0"])("숫자 표기 %s는 실제 서버 형식 오류 뒤 범위와 정수를 안내한다", async (value) => {
+  await area();
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        const body = JSON.parse(String(init.body));
+        if (typeof body.idleCloseHours === "string") {
+          requests.push({ body, key: new Headers(init.headers).get("Idempotency-Key") });
+          return json(
+            {
+              code: "validation_failed",
+              errors: [{ field: "/idleCloseHours", code: "bad_format" }],
+              traceId: "0123456789abcdef0123456789abcdef",
+            },
+            422,
+          );
+        }
+      }
+      return transport(input, init);
+    }),
+  );
+  const target = screen.getByLabelText(/문의 끊김 시간/) as HTMLInputElement;
+  fireEvent.change(target, { target: { value } });
+  fireEvent.click(screen.getByRole("button", { name: "저장" }));
+  await waitFor(() => expect(target.getAttribute("aria-invalid")).toBe("true"));
+  expect(target.value).toBe(value);
+  expect(requests[0]?.body.idleCloseHours).toBe(value);
+  expect(document.activeElement).toBe(target);
+  const field = target.closest("[data-pointer]");
+  if (!field) throw new Error("숫자 필드 없음");
+  expect(field.textContent).toContain("1~720 사이의 정수로 넣어 주세요");
+});

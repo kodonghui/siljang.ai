@@ -1,3 +1,4 @@
+import { numberOrText } from "./form-values";
 /** SCR-034/API-010의 편집 가능 값. 사업자 신원·영업 신고 값은 저장 본문에 넣지 않는다. */
 export interface ShopEditableSettings {
   name: string;
@@ -37,8 +38,6 @@ export function settingsForm(shop: ShopSettingsSource): ShopSettingsForm {
 }
 export function settingsPatch(original: ShopSettingsSource, form: ShopSettingsForm): Record<string, unknown> | null {
   const nullable = (value: string) => (value === "" ? null : value);
-  const number = (value: string) =>
-    value.trim() !== "" && Number.isSafeInteger(Number(value)) ? Number(value) : value;
   const registered = form.mailOrderRegNo.trim() !== "";
   const values = {
     name: form.name,
@@ -50,10 +49,10 @@ export function settingsPatch(original: ShopSettingsSource, form: ShopSettingsFo
     mailOrderAuthority: registered ? nullable(form.mailOrderAuthority) : null,
     mailOrderExemption: registered ? null : nullable(form.mailOrderExemption),
     completionPhotoEnabled: form.completionPhotoEnabled,
-    idleCloseHours: number(form.idleCloseHours),
-    ownerWaitMinutes: number(form.ownerWaitMinutes),
-    dailyAiCostLimitKrw: number(form.dailyAiCostLimitKrw),
-    awaitingPaymentLimit: number(form.awaitingPaymentLimit),
+    idleCloseHours: numberOrText(form.idleCloseHours),
+    ownerWaitMinutes: numberOrText(form.ownerWaitMinutes),
+    dailyAiCostLimitKrw: numberOrText(form.dailyAiCostLimitKrw),
+    awaitingPaymentLimit: numberOrText(form.awaitingPaymentLimit),
   };
   const changed = Object.entries(values).filter(
     ([key, value]) => value !== original[key as keyof ShopEditableSettings],

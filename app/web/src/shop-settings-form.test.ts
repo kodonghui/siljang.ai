@@ -95,3 +95,15 @@ it("공백 신고번호는 화면처럼 미신고로 판단하고 면제 사유�
     }),
   ).toEqual({ baseRevision: original.revision, mailOrderExemption: "새 합성 면제 사유" });
 });
+
+it.each(["idleCloseHours", "ownerWaitMinutes", "dailyAiCostLimitKrw", "awaitingPaymentLimit"] as const)(
+  "%s는 십진 정수 외의 표기를 다른 정수로 바꾸지 않는다",
+  (key) => {
+    for (const value of ["1e2", "0x1F", "12.0", "+12", "-0"]) {
+      expect(settingsPatch(original, { ...settingsForm(original), [key]: value })).toEqual({
+        baseRevision: original.revision,
+        [key]: value,
+      });
+    }
+  },
+);
