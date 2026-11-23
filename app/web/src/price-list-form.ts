@@ -98,6 +98,22 @@ export function priceListPayload(base: PriceList | null, form: PriceListForm) {
     })),
   };
 }
+/** 화면 변경과 G3 재적용에 같은 옵션/도안 제약을 적용한다. */
+export function normalizePriceListForm(form: PriceListForm): PriceListForm {
+  const options = form.options.map((o) => ({
+    ...o,
+    inStandard: o.priceKind === "fixed" && o.inStandard,
+    amountMax: o.priceKind === "range" ? o.amountMax : "",
+  }));
+  const standard = new Set(options.filter((o) => o.inStandard).map((o) => o.key));
+  return {
+    ...form,
+    options,
+    designs: form.designs.map((d) =>
+      d.optionKey !== null && !standard.has(d.optionKey) ? { ...d, inStandard: false } : d,
+    ),
+  };
+}
 export function removePriceOption(form: PriceListForm, key: string): PriceListForm {
   return {
     options: form.options.filter((o) => o.key !== key),
@@ -283,5 +299,18 @@ export function rebasePriceList(
     new Set(result.designs.map((d) => d.name)).size !== result.designs.length
   )
     conflicts.push("같은 이름의 항목이 있어요. 이름을 확인해 주세요");
-  return { form: conflicts.length ? null : result, conflicts };
+  const normalized = normalizePriceListForm(result);
+  for (const own of mine.options) {
+    const original = before.options.find((o) => o.key === own.key);
+    const current = normalized.options.find((o) => o.key === keys.get(own.key));
+    if (own.inStandard && original?.inStandard !== own.inStandard && current && !current.inStandard)
+      conflicts.push(`다른 기기에서 표시 방식이 바뀌어 기본 디자인 범위를 적용하지 못한 옵션: ${own.name}`);
+  }
+  for (const own of mine.designs) {
+    const original = before.designs.find((d) => d.key === designIdentity(own));
+    const current = normalized.designs.find((d) => d.key === own.key);
+    if (own.inStandard && original?.inStandard !== own.inStandard && current && !current.inStandard)
+      conflicts.push(`연결 옵션이 바뀌어 기본 디자인 범위를 적용하지 못한 도안: ${own.name}`);
+  }
+  return { form: conflicts.length ? null : normalized, conflicts };
 }

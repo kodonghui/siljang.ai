@@ -12,6 +12,7 @@ import {
 import { priceFieldPointers, priceListChanges, priceListIssues } from "./price-list-fields";
 import {
   type DesignForm,
+  normalizePriceListForm,
   OPTION_GROUPS,
   type OptionForm,
   type PriceListForm,
@@ -294,15 +295,14 @@ export function PriceListEditor(props: ShopLicenseProps) {
     setForm(change);
   }
   function changeOption(id: string, patch: Partial<OptionForm>) {
-    mutate((old) => ({
-      ...old,
-      options: old.options.map((o) => (o.key === id ? { ...o, ...patch } : o)),
-      designs:
-        patch.inStandard === false || (patch.priceKind !== undefined && patch.priceKind !== "fixed")
-          ? old.designs.map((d) => (d.optionKey === id ? { ...d, inStandard: false } : d))
-          : old.designs,
-    }));
+    mutate((old) =>
+      normalizePriceListForm({
+        ...old,
+        options: old.options.map((o) => (o.key === id ? { ...o, ...patch } : o)),
+      }),
+    );
   }
+
   function changeRule(id: string, patch: Partial<RuleForm>) {
     mutate((old) => ({ ...old, rules: old.rules.map((r) => (r.key === id ? { ...r, ...patch } : r)) }));
   }
@@ -513,12 +513,16 @@ export function PriceListEditor(props: ShopLicenseProps) {
                     : "바뀐 것이 없어 새 버전을 만들지 않았어요"
                 }
               />
+              {showErrors && issues.length ? (
+                <Banner
+                  tone="danger"
+                  detail={form.options.length === 0 ? "옵션을 한 개 이상 추가해 주세요" : undefined}
+                >
+                  입력한 내용을 확인해 주세요
+                </Banner>
+              ) : null}
             </section>
-            {showErrors && issues.length ? (
-              <Banner tone="danger" detail={form.options.length === 0 ? "옵션을 한 개 이상 추가해 주세요" : undefined}>
-                입력한 내용을 확인해 주세요
-              </Banner>
-            ) : null}
+
             <section className="price-section" aria-label="가격 옵션">
               <div className="price-tabs" role="tablist" aria-label="옵션 그룹">
                 {OPTION_GROUPS.map((value, index) => (
@@ -606,13 +610,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
                         ["from", "부터"],
                         ["range", "범위"],
                       ]}
-                      onChange={(value) =>
-                        changeOption(o.key, {
-                          priceKind: value as PriceKind,
-                          ...(value === "fixed" ? {} : { inStandard: false }),
-                          ...(value === "range" ? {} : { amountMax: "" }),
-                        })
-                      }
+                      onChange={(value) => changeOption(o.key, { priceKind: value as PriceKind })}
                     />
                   </div>
                   <div className={changedOption(o, "amount")}>
