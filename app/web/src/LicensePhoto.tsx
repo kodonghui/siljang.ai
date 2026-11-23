@@ -1,89 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Failure, FieldReason } from "./problems";
-import { LICENSE_PHOTO_MAX_BYTES, type UploadedLicensePhoto, uploadLicensePhoto } from "./registration";
+import type { FieldReason } from "./problems";
+import { LICENSE_PHOTO_MAX_BYTES, uploadLicensePhoto } from "./registration";
 import { Button, CommandStatus, Field } from "./ui";
-import { useCommand } from "./useCommand";
+import { usePhotoUpload } from "./usePhotoUpload";
 
-/** 신고증 재제출과 사업자 증빙은 파일/명령을 각각 보관한다. 저장소·브라우저 영구 저장에는 남기지 않는다. */
+/** 신고증 재제출·증빙·등록은 같은 사진 처리와 서로 다른 명령 상태를 쓴다. */
 export function useLicensePhoto(onSessionExpired: () => void, context: "save" | "registration" = "save") {
-  const [file, setFile] = useState<File | null>(null);
-  const [problem, setProblem] = useState<string | undefined>();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [previewFailed, setPreviewFailed] = useState(false);
-  const callback = useRef(onSessionExpired);
-  callback.current = onSessionExpired;
-  const upload = useCommand<File, UploadedLicensePhoto>((input) => uploadLicensePhoto(input));
-  const failure = upload.state.kind === "failed" ? upload.state.failure : null;
-  useEffect(() => {
-    if (upload.state.kind === "done") setProblem(undefined);
-  }, [upload.state]);
-  useEffect(() => {
-    if (failure?.outcome === "login") callback.current();
-  }, [failure]);
-  useEffect(() => {
-    setPreviewFailed(false);
-    if (!file || typeof URL.createObjectURL !== "function") {
-      setPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  function select(input: File | undefined) {
-    if (!input || upload.busy) return;
-    upload.reset();
-    setFile(null);
-    setProblem(undefined);
-    if (input.size > LICENSE_PHOTO_MAX_BYTES) {
-      setProblem(
-        context === "registration"
-          ? "사진이 너무 커요. 10MB까지 올릴 수 있어요"
-          : "사진이 너무 커요. 10MB(완성 사진은 20MB)까지 올릴 수 있어요",
-      );
-      return;
-    }
-    if (input.size === 0) {
-      setProblem("사진 파일을 확인해 주세요");
-      return;
-    }
-    setFile(input);
-    upload.submit(input);
-  }
-  const resetUpload = upload.reset;
-  const clear = useCallback(() => {
-    resetUpload();
-    setFile(null);
-    setProblem(undefined);
-  }, [resetUpload]);
-  const discardIfRejected = useCallback(
-    (failure: Failure | null, pointer: string) => {
-      if (
-        failure?.code === "storage_unavailable" ||
-        failure?.fieldErrors.some((error) => error.field === pointer && error.code === "upload_not_found")
-      )
-        resetUpload();
-    },
-    [resetUpload],
-  );
-  function needPhoto() {
-    setProblem(context === "registration" ? "신고증 사진을 먼저 올려 주세요" : "사진을 먼저 올려 주세요");
-  }
-  return {
-    context,
-    discardIfRejected,
-    upload,
-    file,
-    problem,
-    preview,
-    previewFailed,
-    setPreviewFailed,
-    select,
-    clear,
-    needPhoto,
-    uploaded: upload.state.kind === "done" ? upload.state.data : null,
-  };
+  const photo = usePhotoUpload(onSessionExpired, uploadLicensePhoto, {
+    maxBytes: LICENSE_PHOTO_MAX_BYTES,
+    tooLargeText:
+      context === "registration"
+        ? "사진이 너무 커요. 10MB까지 올릴 수 있어요"
+        : "사진이 너무 커요. 10MB(완성 사진은 20MB)까지 올릴 수 있어요",
+    missingText: context === "registration" ? "신고증 사진을 먼저 올려 주세요" : "사진을 먼저 올려 주세요",
+  });
+  return { ...photo, context };
 }
 export function LicensePhoto({
   photo,

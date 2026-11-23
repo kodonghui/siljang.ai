@@ -1,0 +1,186 @@
+.price-editor,
+.price-section {
+  display: grid;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+.price-section {
+  padding-block: var(--space-lg);
+  border-top: var(--border-width-hairline) solid var(--color-line);
+}
+.price-section h2,
+.price-latest h2 {
+  margin: 0;
+  font-size: var(--font-size-title);
+}
+.price-summary a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-target);
+  color: var(--color-accent);
+}
+.price-tabs {
+  display: flex;
+  gap: var(--space-xs);
+  border-bottom: var(--border-width-hairline) solid var(--color-line);
+  overflow-x: auto;
+}
+.price-tabs button {
+  min-width: var(--size-target);
+  min-height: var(--size-target);
+  padding: var(--space-sm);
+  border: 0;
+  border-bottom: var(--border-width-strong) solid transparent;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font: inherit;
+  white-space: nowrap;
+}
+.price-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-ink);
+  font-weight: var(--font-weight-semibold);
+}
+.price-tabs button:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-accent);
+  outline-offset: calc(-1 * var(--border-width-strong));
+}
+.price-option,
+.price-rule,
+.price-design {
+  display: grid;
+  gap: var(--space-md);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-md);
+  border: var(--border-width-hairline) solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.price-option legend,
+.price-rule legend,
+.price-design legend {
+  max-width: 100%;
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+.price-changed input,
+.price-changed select,
+.price-changed label {
+  font-weight: var(--font-weight-bold);
+}
+.price-invalid {
+  border: var(--border-width-strong) solid var(--color-danger);
+  font-weight: var(--font-weight-bold);
+}
+.price-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+.price-check .ui-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.price-check .ui-field__label {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-target);
+}
+.price-check .ui-field__error,
+.price-check .ui-field__help {
+  grid-column: 1 / -1;
+}
+.price-check input {
+  margin: var(--space-sm);
+  accent-color: var(--color-accent);
+}
+.price-design-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+.price-design-image {
+  display: grid;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+.price-design-image img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  background: var(--color-surface-sunken);
+}
+.price-design-image input[type="file"] {
+  min-width: 0;
+  width: 100%;
+  min-height: var(--size-target);
+  font: inherit;
+}
+.price-design-image input::file-selector-button {
+  min-height: var(--size-target);
+}
+.price-design-image .ui-banner__text {
+  text-wrap: balance;
+}
+.price-file-name {
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.price-latest {
+  padding: var(--space-md);
+  border: var(--border-width-hairline) solid var(--color-line);
+  background: var(--color-surface-sunken);
+}
+.price-latest li {
+  overflow-wrap: anywhere;
+}
+.price-editor > .ui-banner {
+  flex-wrap: wrap;
+}
+.price-editor > .ui-banner > .ui-banner__body {
+  flex-basis: var(--size-aside);
+}
+.price-editor > .ui-banner > .ui-banner__actions {
+  max-width: 100%;
+  flex-shrink: 1;
+}
+.price-save-bar {
+  position: var(--layout-action-position);
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-paper);
+  border-top: var(--border-width-hairline) solid var(--color-line);
+  z-index: 1;
+}
+.price-option-heading {
+  display: none;
+}
+
+.price-editor {
+  padding-bottom: calc(var(--size-control) * 3 + var(--space-xl));
+}
+.price-save-bar {
+  position: var(--layout-action-position);
+  inset-inline: var(--layout-action-inset);
+  bottom: 0;
+  padding: var(--space-md) var(--space-lg);
+}
+.price-save-bar > span {
+  flex-basis: 100%;
+}
+.price-save-bar .ui-button--primary {
+  flex: 1;
+}
+.price-no-maximum {
+  display: none;
+}

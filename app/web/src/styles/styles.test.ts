@@ -8,7 +8,13 @@ const WEB = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, WEB), "utf8");
 
 /** 손으로 쓴 CSS(생성 파일 tokens.css 밖) */
-const HAND_CSS = ["src/styles/base.css", "src/styles/parts.css", "src/styles/layout.css", "src/samples/samples.css"];
+const HAND_CSS = [
+  "src/styles/base.css",
+  "src/styles/parts.css",
+  "src/styles/layout.css",
+  "src/samples/samples.css",
+  "src/price-list.css",
+];
 
 const tokens = read("src/styles/tokens.css");
 const defined = new Set([...tokens.matchAll(/^\s+(--[a-z0-9-]+):/gm)].map((m) => m[1]));
@@ -75,7 +81,9 @@ describe("손으로 쓴 CSS", () => {
 
   it.each(HAND_CSS)("%s: 쓰는 변수는 토큰이거나 그 파일이 둔 것", (path) => {
     const css = uncomment(read(path));
-    const local = new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+    const local = new Set(
+      [...(css + uncomment(read("src/styles/layout.css"))).matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]),
+    );
     const used = [...css.matchAll(/var\((--[a-z0-9-]+)\)/g)].map((m) => m[1] ?? "");
     const unknown = used.filter((name) => !defined.has(name) && !local.has(name));
     expect(unknown).toEqual([]);

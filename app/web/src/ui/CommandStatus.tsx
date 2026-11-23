@@ -3,7 +3,7 @@
 //   이미 처리됨·이미 바뀜·그 상태에서는 할 수 없음 → 주의 배너와 '다시 불러오기', 찾을 수 없음 → 상자와 돌아가는 길,
 //   서버 실패 → 오류 배너, 추적 ID, (다시 보낼 수 있으면) '다시 시도'. 확인 창은 ConfirmRequired가 그린다.
 // 상태가 바뀌면 화면 읽기 프로그램에 한 문장으로 알린다(announce, aria-live).
-import { type ReactNode, useEffect } from "react";
+import { Fragment, type ReactNode, useEffect } from "react";
 import type { CommandState } from "../command";
 import { ERROR_CODES, type ErrorCode, type Failure, fieldReasonText } from "../problems";
 import { announce } from "./announce";
@@ -51,8 +51,20 @@ export function announcement<O>(
   return null;
 }
 
-function traceLine(f: Failure): string | undefined {
-  return f.traceId === null ? undefined : `추적 ID: ${f.traceId}`;
+function traceLine(f: Failure): ReactNode {
+  const traceId = f.traceId;
+  if (traceId === null) return undefined;
+  return (
+    <>
+      추적 ID:{" "}
+      {[0, 8, 16, 24].map((offset) => (
+        <Fragment key={offset}>
+          {offset > 0 ? <wbr /> : null}
+          {traceId.slice(offset, offset + 8)}
+        </Fragment>
+      ))}
+    </>
+  );
 }
 
 export function CommandStatus<O>(props: CommandStatusProps<O>) {
