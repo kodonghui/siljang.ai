@@ -168,6 +168,23 @@ async function readyFixture(privacyPolicy: PrivacyPolicySettings | null = POLICY
 }
 
 describeDb("TASK-044 발급·공개 처리방침", () => {
+  it("발급 전에 옛 처리방침이 있어도 현재 설정의 새 버전을 만들고 옛 글은 보존함", async () => {
+    const h = await readyFixture();
+    await db.query(
+      "INSERT INTO privacy_policies(shop_id,version,body,overseas_transfers,published_at) VALUES ($1,1,'옛 합성 처리방침','[{\"items\":\"옛 항목\"}]',$2)",
+      [h.shopId, NOW],
+    );
+    const response = await h.get();
+    expect(response.status).toBe(200);
+    const link = (await response.json()) as { url: string };
+    const policyResponse = await h.publicGet(new URL(link.url).pathname.split("/").at(-1) as string);
+    const policy = await policyResponse.json();
+    expect(policy).toMatchObject({ version: 2 });
+    expectSchema("PrivacyPolicy", policy);
+    expect(
+      (await db.query("SELECT body FROM privacy_policies WHERE shop_id=$1 AND version=1", [h.shopId])).rows[0]?.body,
+    ).toBe("옛 합성 처리방침");
+  });
   it("가게가 없는 실제 합성 사장님 세션은404 shop_not_registered", async () => {
     const account = BigInt(`0x${newUuid().replaceAll("-", "").slice(0, 13)}`).toString();
     const session = await createOwnerSession(db, { accountId: account, friend: false }, NOW, false);

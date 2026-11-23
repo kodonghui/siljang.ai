@@ -88,14 +88,15 @@ export async function getBookingLink(r: ShopRequest): Promise<Response> {
     if (missing.length > 0 || settings === null)
       return { status: "not_ready", url: null, issuedAt: null, missing, recommended };
     const now = r.services.now();
-    const policy = await db.run(
+    const policy = await db.run<{ version: number }>(
       "SELECT p.version FROM privacy_policies p WHERE p.shop_id=$1 ORDER BY p.version DESC LIMIT 1",
     );
-    if (policy.rows.length === 0)
-      await db.run(
-        "INSERT INTO privacy_policies (shop_id,version,body,overseas_transfers,published_at) VALUES ($1,1,$2,$3::jsonb,$4)",
-        [privacyPolicyBody(shop, settings.transfers), JSON.stringify(settings.transfers), now],
-      );
+    // 예전 고지가 참조하는 글은 보존하고, 첫 링크는 지금 설정의 새 글을 가리킨다.
+    const version = (policy.rows[0]?.version ?? 0) + 1;
+    await db.run(
+      "INSERT INTO privacy_policies (shop_id,version,body,overseas_transfers,published_at) VALUES ($1,$2,$3,$4::jsonb,$5)",
+      [version, privacyPolicyBody(shop, settings.transfers), JSON.stringify(settings.transfers), now],
+    );
     const slug = crypto.randomUUID().replaceAll("-", "");
     await db.run("UPDATE shops SET booking_slug=$2,booking_issued_at=$3 WHERE id=$1", [slug, now]);
     return {
