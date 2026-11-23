@@ -39,6 +39,7 @@ import type { ImageBinding } from "./photo-normalizer";
 import { createPriceListVersion, getCurrentPriceList, getPriceListVersion, listPriceListVersions } from "./price-lists";
 import { getPublicPrivacyPolicy } from "./privacy-policy";
 import { ApiError, problemResponse } from "./problem";
+import { getPublicBookingPage } from "./public-booking-page";
 import { resolvePublicShop } from "./public-shop";
 import type { RateLimitBinding } from "./rate-limit";
 import {
@@ -90,6 +91,7 @@ export type Bindings = {
   readonly KAKAO_CALLBACK_QUEUE?: KakaoCallbackQueue;
   readonly OWNER_LOGIN_RATE_LIMITER?: RateLimitBinding;
   readonly PUBLIC_PRIVACY_RATE_LIMITER?: RateLimitBinding;
+  readonly PUBLIC_BOOKING_RATE_LIMITER?: RateLimitBinding;
   readonly KAKAO_REST_API_KEY?: string;
   readonly KAKAO_CLIENT_SECRET?: string;
   readonly KAKAO_ADMIN_KEY?: string;
@@ -140,6 +142,7 @@ export interface AppOptions {
  */
 export const APP_ROUTES: readonly RouteDecl[] = [
   shopRoute("GET", "/owner/booking-link", "owner", getBookingLink),
+  shopRoute("GET", "/public/shops/:slug", "public", getPublicBookingPage),
   shopRoute("GET", "/public/shops/:slug/privacy-policy", "public", getPublicPrivacyPolicy),
   shopRoute("POST", "/owner/kakao-channel/check", "owner", startKakaoChannelCheck),
   operatorRoute("GET", "/operator/shops", listReviewShops),
