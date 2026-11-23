@@ -344,8 +344,8 @@ it.each([
   await loaded();
   choose();
   await design().findByText(p.text);
-  expect(design().getByText("synthetic.png")).toBeTruthy();
-  fireEvent.click(design().getByRole("button", { name: "다시 올리기" }));
+  expect(design().getByRole("button", { name: "선택한 파일 다시 올리기: synthetic.png" })).toBeTruthy();
+  fireEvent.click(design().getByRole("button", { name: /^선택한 파일 다시 올리기:/ }));
   await design().findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
   expect(uploads).toBe(2);
 });
@@ -362,7 +362,7 @@ it("그림429는 Retry-After 동안 다시 올리기를 막고 해제 뒤 한 �
   await loaded();
   choose();
   await design().findByText("잠시 뒤 다시 시도해 주세요");
-  const button = design().getByRole("button", { name: "다시 올리기" }) as HTMLButtonElement;
+  const button = design().getByRole("button", { name: /^선택한 파일 다시 올리기:/ }) as HTMLButtonElement;
   expect(button.disabled).toBe(true);
   fireEvent.click(button);
   expect(uploads).toBe(1);
@@ -402,8 +402,8 @@ it.each([
   expect(
     design().getByText("새 그림 저장이 거절돼 기존 그림을 유지해요. 원래 파일을 다시 올릴 수 있어요."),
   ).toBeTruthy();
-  expect(design().getByText("synthetic.png")).toBeTruthy();
-  fireEvent.click(design().getByRole("button", { name: "다시 올리기" }));
+  expect(design().getByRole("button", { name: "선택한 파일 다시 올리기: synthetic.png" })).toBeTruthy();
+  fireEvent.click(design().getByRole("button", { name: /^선택한 파일 다시 올리기:/ }));
   await design().findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
   save();
   await main().findByText("저장했어요. 가격표 버전 5");
@@ -525,7 +525,7 @@ it("새 도안 사진은 미리보기와 다른 입력/사진을 보존한 채 �
   await design().findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
   save();
   fireEvent.click(await screen.findByRole("button", { name: "내 변경 다시 적용" }));
-  expect(design().getByText("synthetic.png")).toBeTruthy();
+  expect(design().getByRole("button", { name: "선택한 파일 다시 올리기: synthetic.png" })).toBeTruthy();
   expect(design().getByRole("img").getAttribute("src")).toBe("blob:synthetic-price049");
   save();
   await main().findByText("저장했어요. 가격표 버전 6");
@@ -576,8 +576,8 @@ it("그림 업로드가 실패해도 기존 도안과 실패한 파일을 충돌
   expect(design().getByRole("img").getAttribute("src")).toBe(fixture().designs[0].imageUrl);
   save();
   fireEvent.click(await screen.findByRole("button", { name: "내 변경 다시 적용" }));
-  expect(design().getByText("synthetic.png")).toBeTruthy();
-  expect(design().getByRole("button", { name: "다시 올리기" })).toBeTruthy();
+  expect(design().getByRole("button", { name: "선택한 파일 다시 올리기: synthetic.png" })).toBeTruthy();
+  expect(design().getByRole("button", { name: /^선택한 파일 다시 올리기:/ })).toBeTruthy();
 });
 it("둘째 페이지 규칙의 입력 오류는 해당 페이지와 첫 필드로 이동", async () => {
   const options = current.options;
@@ -680,7 +680,7 @@ it("새 그림 저장 거절 뒤 다시 올리지 않아도 기존 도안 ID로 
   expect(uploads).toBe(1);
 });
 
-it.each(["upload-failed", "too-large"] as const)(
+it.each(["upload-failed", "too-large", "upload-failed-same-name"] as const)(
   "A 성공 뒤 B %s와 저장 거절이 와도 A 원래 파일로 다시 올린다",
   async (reason) => {
     sendProblem = { status: 503, code: "storage_unavailable" };
@@ -689,13 +689,13 @@ it.each(["upload-failed", "too-large"] as const)(
     const a = new File(["synthetic-a"], "accepted-a.png", { type: "image/png" });
     fireEvent.change(design().getByLabelText("도안 그림"), { target: { files: [a] } });
     await design().findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
-    if (reason === "upload-failed") {
+    if (reason.startsWith("upload-failed")) {
       photoProblem = { status: 503, code: "storage_unavailable" };
       photoProblemAt = 2;
     }
     const b = new File(
       [reason === "too-large" ? new Uint8Array(10 * 1024 * 1024 + 1) : "synthetic-b"],
-      "failed-b.png",
+      reason === "upload-failed-same-name" ? "accepted-a.png" : "failed-b.png",
       { type: "image/png" },
     );
     fireEvent.change(design().getByLabelText("도안 그림"), { target: { files: [b] } });
@@ -706,7 +706,10 @@ it.each(["upload-failed", "too-large"] as const)(
     );
     save();
     await main().findByText("사진을 저장하지 못했어요. 다시 올려 주세요");
-    fireEvent.click(await design().findByRole("button", { name: "거절된 그림 다시 올리기" }));
+    expect(await design().findByRole("button", { name: "저장 거절된 파일 다시 올리기: accepted-a.png" })).toBeTruthy();
+    if (reason.startsWith("upload-failed"))
+      expect(design().getByRole("button", { name: `선택한 파일 다시 올리기: ${b.name}` })).toBeTruthy();
+    fireEvent.click(design().getByRole("button", { name: "저장 거절된 파일 다시 올리기: accepted-a.png" }));
     await design().findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
     expect(uploadFiles.at(-1)).toBe("accepted-a.png");
     save();
@@ -724,13 +727,13 @@ it("저장 거절 뒤 재업로드 실패에는 기존 그림 유지 안내를 �
   await design().findByText("새 그림 저장이 거절돼 기존 그림을 유지해요. 원래 파일을 다시 올릴 수 있어요.");
   photoProblem = { status: 503, code: "storage_unavailable" };
   photoProblemAt = 2;
-  fireEvent.click(design().getByRole("button", { name: "다시 올리기" }));
+  fireEvent.click(design().getByRole("button", { name: /^선택한 파일 다시 올리기:/ }));
   await design().findByText("새 그림을 올리지 못해 기존 그림을 유지해요. 다시 올리면 바꿀 수 있어요.");
   expect(
     design().queryByText("새 그림 저장이 거절돼 기존 그림을 유지해요. 원래 파일을 다시 올릴 수 있어요."),
   ).toBeNull();
 });
-it("재적용 뒤 오류 입력이 비활성이면 결과 안내로 초점을 보내고 나중에도 튀지 않는다", async () => {
+it("두 기기의 표시 방식과 기본 범위 변경을 재적용해도 저장 가능한 조합을 유지한다", async () => {
   current = {
     ...current,
     options: current.options.map((o: { name: string }) => (o.name === "1호" ? { ...o, inStandard: false } : o)),
@@ -757,9 +760,82 @@ it("재적용 뒤 오류 입력이 비활성이면 결과 안내로 초점을 �
   save();
   fireEvent.click(await screen.findByRole("button", { name: "내 변경 다시 적용" }));
   save();
-  await main().findByText("입력한 내용을 확인해 주세요");
-  expect((row().getByLabelText("기본 디자인 범위") as HTMLInputElement).disabled).toBe(true);
-  expect(document.activeElement).toBe(screen.getByRole("region", { name: "가격표 저장 결과" }));
-  fireEvent.change(row().getByLabelText("표시 방식"), { target: { value: "fixed" } });
-  expect(document.activeElement).not.toBe(row().getByLabelText("기본 디자인 범위"));
+  await main().findByText("저장했어요. 가격표 버전 6");
+  expect(sends).toHaveLength(2);
+  const sent = sends[1];
+  if (!sent) throw new Error("두 번째 저장 없음");
+  expect((sent.body.options as Record<string, unknown>[])[0]).toMatchObject({
+    priceKind: "range",
+    inStandard: false,
+    amountMax: 40000,
+  });
+});
+
+it("로컬 저장 오류를 초점 대상인 저장 결과 영역에서도 읽을 수 있다", async () => {
+  empty = true;
+  area();
+  await main().findByText("첫 가격표를 만들어 주세요");
+  save();
+  expect(
+    within(screen.getByRole("region", { name: "가격표 저장 결과" })).getByText("입력한 내용을 확인해 주세요"),
+  ).toBeTruthy();
+  expect(sends).toHaveLength(0);
+});
+
+it("서버 422가 비활성 기본 범위를 가리키면 안내가 있는 결과 영역에 초점을 보낸다", async () => {
+  sendProblem = {
+    status: 422,
+    code: "validation_failed",
+    errors: [{ field: "/options/0/inStandard", code: "not_allowed" }],
+  };
+  area();
+  await loaded();
+  const row = within(screen.getByRole("group", { name: "크기 옵션 1" }));
+  fireEvent.change(row.getByLabelText("표시 방식"), { target: { value: "range" } });
+  fireEvent.change(row.getByLabelText("최대 금액"), { target: { value: "40000" } });
+  expect((row.getByLabelText("기본 디자인 범위") as HTMLInputElement).disabled).toBe(true);
+  save();
+  const region = screen.getByRole("region", { name: "가격표 저장 결과" });
+  await within(region).findByText("입력한 내용을 확인해 주세요");
+  expect(document.activeElement).toBe(region);
+});
+it("사진 파일명은 대상이 명시된 재시도 버튼에서 한 번만 읽는다", async () => {
+  area();
+  await loaded();
+  choose();
+  await design().findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
+  expect(design().getByRole("button", { name: "선택한 파일 다시 올리기: synthetic.png" })).toBeTruthy();
+  expect(design().queryByText("synthetic.png")).toBeNull();
+});
+it("다른 기기의 표시 방식 때문에 내 기본 범위가 사라질 때 입력을 남기고 재적용을 멈춘다", async () => {
+  current = {
+    ...current,
+    options: current.options.map((o: { name: string }) => (o.name === "1호" ? { ...o, inStandard: false } : o)),
+  };
+  conflict = true;
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await transport(input, init);
+      if (String(input) === "/api/owner/price-list/versions" && sends.length === 1)
+        current = {
+          ...current,
+          options: current.options.map((o: { name: string }) =>
+            o.name === "1호" ? { ...o, priceKind: "range", amountMax: 40000, inStandard: false } : o,
+          ),
+        };
+      return response;
+    }),
+  );
+  area();
+  await loaded();
+  const row = within(screen.getByRole("group", { name: "크기 옵션 1" }));
+  fireEvent.click(row.getByLabelText("기본 디자인 범위"));
+  save();
+  fireEvent.click(await screen.findByRole("button", { name: "내 변경 다시 적용" }));
+  expect(main().getByText(/기본 디자인 범위를 적용하지 못한 옵션: 1호/)).toBeTruthy();
+  expect((row.getByLabelText("기본 디자인 범위") as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByRole("button", { name: /^저장$/ }) as HTMLButtonElement).disabled).toBe(true);
+  expect(sends).toHaveLength(1);
 });

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
+import { OperatingRulesHistory } from "./OperatingRulesHistory";
 import {
   fetchOwner,
   OWNER_HOME,
@@ -30,10 +31,11 @@ export function OwnerArea() {
   const requested = ownerReturnTo(location.pathname + location.search + location.hash);
   const shopPath = requested?.split(/[?#]/)[0]?.replace(/\/+$/, "");
   const priceHistory = isPriceHistoryPath(shopPath);
+  const rulesHistory = /^\/owner\/operating-rules\/versions(?:\/[^/]+)?$/.test(shopPath ?? "");
+  const history = priceHistory || rulesHistory;
   const [revision, setRevision] = useState(0);
-  const [checked, setChecked] = useState<{ key: string; revision: number; result: ApiResult<OwnerIdentity> } | null>(
-    null,
-  );
+  const visit = useMemo(() => ({ key: location.key, revision }), [location.key, revision]);
+  const [checked, setChecked] = useState<{ visit: typeof visit; result: ApiResult<OwnerIdentity> } | null>(null);
   const [logout, setLogout] = useState<"pending" | "failed" | null>(null);
   const [logoutFailure, setLogoutFailure] = useState<ApiFailure | null>(null);
   const logoutRequest = useRef<AbortController | null>(null);
@@ -60,15 +62,15 @@ export function OwnerArea() {
         if (result.ok) {
           if (result.data.shop !== null) clearRegistrationDraft();
           else pruneRegistrationDraft(result.data.owner.ownerId);
-          verified.current = { key: location.key, data: result.data, history: priceHistory };
+          verified.current = { key: visit.key, data: result.data, history };
         }
-        setChecked({ key: location.key, revision, result });
+        setChecked({ visit, result });
       })
       .catch(() => {
         /* 화면을 떠날 때 취소한 요청. */
       });
     return () => controller.abort();
-  }, [location.key, requested, revision, priceHistory]);
+  }, [visit, requested, history]);
   useEffect(() => () => logoutRequest.current?.abort(), []);
   useEffect(() => {
     if (requested !== OWNER_HOME) setRegistrationNotice(false);
@@ -104,31 +106,33 @@ export function OwnerArea() {
         <p>찾을 수 없어요</p>
       </main>
     );
-  const session = checked?.key === location.key && checked.revision === revision ? checked.result : null;
+  const session = checked?.visit === visit ? checked.result : null;
   const cached = verified.current;
   const candidate = session?.ok
     ? session.data
-    : cached && (cached.key === location.key || (priceHistory && cached.history))
+    : cached && (cached.key === location.key || (history && cached.history))
       ? cached.data
       : null;
   if (
-    (priceHistory ||
+    (history ||
       ["/owner/shop", "/owner/shop/license", "/owner/price-list", "/owner/operating-rules"].includes(shopPath ?? "")) &&
     candidate?.shop
   ) {
-    if (shopPath === "/owner/price-list" || shopPath === "/owner/operating-rules" || priceHistory) {
+    if (shopPath === "/owner/price-list" || shopPath === "/owner/operating-rules" || history) {
       const destination = ownerDestination(candidate, requested);
       if (destination !== requested) return <Navigate to={destination} replace />;
     }
     const ShopScreen = priceHistory
       ? PriceListHistory
-      : shopPath === "/owner/operating-rules"
-        ? OperatingRulesEditor
-        : shopPath === "/owner/price-list"
-          ? PriceListEditor
-          : shopPath === "/owner/shop/license"
-            ? ShopLicense
-            : ShopSettings;
+      : rulesHistory
+        ? OperatingRulesHistory
+        : shopPath === "/owner/operating-rules"
+          ? OperatingRulesEditor
+          : shopPath === "/owner/price-list"
+            ? PriceListEditor
+            : shopPath === "/owner/shop/license"
+              ? ShopLicense
+              : ShopSettings;
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (
@@ -140,7 +144,7 @@ export function OwnerArea() {
           />
         ) : null}
         <ShopScreen
-          {...(priceHistory ? { version: shopPath?.split("/")[4] ?? null } : {})}
+          {...(history ? { version: shopPath?.split("/")[4] ?? null } : {})}
           key={`${candidate.owner.ownerId}:${candidate.shop.shopId}`}
           shopName={candidate.shop.name}
           onNavigate={(href) => navigate(href)}
