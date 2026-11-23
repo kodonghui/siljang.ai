@@ -1,6 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { bindingLimiter, OWNER_LOGIN_RATE, PUBLIC_PRIVACY_RATE, UPLOAD_RATE } from "../src/rate-limit";
+import {
+  bindingLimiter,
+  FILE_RATE,
+  OWNER_LOGIN_RATE,
+  PUBLIC_BOOKING_RATE,
+  PUBLIC_PRIVACY_RATE,
+  UPLOAD_RATE,
+} from "../src/rate-limit";
 
 // 사진 올리기의 사장님마다 1분 30번(06 DEC-16, TASK-022). 코드의 값과 Worker 설정(wrangler.jsonc)의 묶음 값이 같은지 본다.
 
@@ -25,6 +32,8 @@ describe("사진 올리기 한도 묶음(Cloudflare Rate Limiting)", () => {
       },
       { name: OWNER_LOGIN_RATE.binding, namespace_id: "1002", simple: { limit: 10, period: 60 } },
       { name: PUBLIC_PRIVACY_RATE.binding, namespace_id: "1003", simple: { limit: 60, period: 60 } },
+      { name: PUBLIC_BOOKING_RATE.binding, namespace_id: "1004", simple: { limit: 60, period: 60 } },
+      { name: FILE_RATE.binding, namespace_id: "1005", simple: { limit: 600, period: 60 } },
     ];
     expect(OWNER_LOGIN_RATE).toEqual({ binding: "OWNER_LOGIN_RATE_LIMITER", limit: 10, periodSeconds: 60 });
     expect(wranglerConfig().ratelimits).toEqual(expected);

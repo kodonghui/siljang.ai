@@ -6,6 +6,7 @@ import { createOwnerSession } from "../src/owner-session";
 import { newUploadId, tempKey } from "../src/uploads";
 import { expectProblem, expectSchema } from "./support/contract";
 import { collectLogs, describeDb, newRequestKey, testDb, testEnv } from "./support/db";
+import { MemoryLimiter } from "./support/rate-limit";
 import { MemoryStore } from "./support/storage";
 
 const ORIGIN = "https://siljang.example";
@@ -63,7 +64,11 @@ function harness(options: Pick<AppOptions, "connect"> = {}) {
   const store = new MemoryStore();
   const clock = { now: NOW };
   const logs = collectLogs();
-  const app = createApp({ ...options, services: { storage: store, now: () => clock.now }, logSink: logs.sink });
+  const app = createApp({
+    ...options,
+    services: { storage: store, now: () => clock.now, limiters: { FILE_RATE_LIMITER: new MemoryLimiter(600) } },
+    logSink: logs.sink,
+  });
   const post = (owner: Actor | null, input: unknown, key: string | null = newRequestKey(), bindings = env) =>
     app.request(
       `${ORIGIN}/api/owner/shop`,

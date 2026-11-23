@@ -2,7 +2,7 @@ import { type Context, Hono } from "hono";
 import { getBookingLink } from "./booking-link";
 import { getCalendarDays, getCalendarSettings, setCalendarSettings, updateCalendarDay } from "./calendar";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
-import { FILE_ROUTE, serveFile } from "./file-url";
+import { FILE_ROUTE, PUBLIC_FILE_ROUTE, serveFile } from "./file-url";
 import { requestIdentityChange } from "./identity-change-request";
 import { SKILL_WORK_MS } from "./kakao-callback";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
@@ -39,7 +39,8 @@ import type { ImageBinding } from "./photo-normalizer";
 import { createPriceListVersion, getCurrentPriceList, getPriceListVersion, listPriceListVersions } from "./price-lists";
 import { getPublicPrivacyPolicy } from "./privacy-policy";
 import { ApiError, problemResponse } from "./problem";
-import { resolvePublicShop } from "./public-shop";
+import { getPublicBookingPage } from "./public-booking-page";
+import { assertPublicShopRateCoverage, resolvePublicShop } from "./public-shop";
 import type { RateLimitBinding } from "./rate-limit";
 import {
   mountRoutes,
@@ -90,6 +91,8 @@ export type Bindings = {
   readonly KAKAO_CALLBACK_QUEUE?: KakaoCallbackQueue;
   readonly OWNER_LOGIN_RATE_LIMITER?: RateLimitBinding;
   readonly PUBLIC_PRIVACY_RATE_LIMITER?: RateLimitBinding;
+  readonly PUBLIC_BOOKING_RATE_LIMITER?: RateLimitBinding;
+  readonly FILE_RATE_LIMITER?: RateLimitBinding;
   readonly KAKAO_REST_API_KEY?: string;
   readonly KAKAO_CLIENT_SECRET?: string;
   readonly KAKAO_ADMIN_KEY?: string;
@@ -140,6 +143,7 @@ export interface AppOptions {
  */
 export const APP_ROUTES: readonly RouteDecl[] = [
   shopRoute("GET", "/owner/booking-link", "owner", getBookingLink),
+  shopRoute("GET", "/public/shops/:slug", "public", getPublicBookingPage),
   shopRoute("GET", "/public/shops/:slug/privacy-policy", "public", getPublicPrivacyPolicy),
   shopRoute("POST", "/owner/kakao-channel/check", "owner", startKakaoChannelCheck),
   operatorRoute("GET", "/operator/shops", listReviewShops),
@@ -214,7 +218,10 @@ export const APP_ROUTES: readonly RouteDecl[] = [
     "GET",
     FILE_ROUTE,
     "사진의 15분 서명 주소(06 DEC-09, 계약 밖, TASK-022). 주소의 서명이 권한이라 세션·가게를 보지 않음. 저장소만 읽고 데이터베이스는 보지 않음",
-    serveFile,
+    (c) => serveFile(c),
+  ),
+  openRoute("GET", PUBLIC_FILE_ROUTE, "공개 포트폴리오5분 구간 주소·공개 캐시/IP 한도(승인7090984075)", (c) =>
+    serveFile(c, true),
   ),
 ];
 
@@ -255,6 +262,7 @@ function routePattern(path: string): RegExp {
  * 운영자 로그인(TASK-021): 운영자 범위 경로(operatorRoute)의 해석기는 운영자 세션(operator-login.ts). 시험은 operatorAccount로 바꿈.
  */
 export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
+  assertPublicShopRateCoverage(APP_ROUTES);
   const skillTimeoutMs = options.kakaoSkillTimeoutMs ?? SKILL_WORK_MS;
   if (!Number.isSafeInteger(skillTimeoutMs) || skillTimeoutMs < 1 || skillTimeoutMs > SKILL_WORK_MS) {
     throw new RangeError("kakaoSkillTimeoutMs must be between 1 and 3750");

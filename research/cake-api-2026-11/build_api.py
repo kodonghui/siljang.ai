@@ -472,7 +472,7 @@ def decisions_table():
     rows = ["| ID | 결정 사항 | 선택안 | 사유 | 대안 | 상태 |", "| --- | --- | --- | --- | --- | --- |"]
     for d in C.DECISIONS:
         state = d.get("decided") or ("동희님 판단 필요" if d.get("needs_user") else "추천")
-        rows.append(f"| {d['id']} | {cell(d['title'])} | {cell(d['choice'])} | {cell(d['why'])} | {cell(d['alt'])} | "
+        rows.append(f"| {d['id']} | {cell(d['title'])} | {cell(d['choice'] + (' 예외: ' + d['exception'] if d.get('exception') else ''))} | {cell(d['why'])} | {cell(d['alt'])} | "
                     f"{cell(state)} |")
     return "\n".join(rows)
 

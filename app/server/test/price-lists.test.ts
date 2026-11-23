@@ -15,6 +15,7 @@ import {
 import { newUploadId, tempKey } from "../src/uploads";
 import { expectProblem, expectSchema } from "./support/contract";
 import { collectLogs, describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { MemoryLimiter } from "./support/rate-limit";
 import { MemoryStore } from "./support/storage";
 
 const ORIGIN = "https://siljang.example";
@@ -80,7 +81,7 @@ async function fixture(options: AppOptions = {}) {
         return createShopScope(shopId, { kind: "owner", ownerId });
       },
     },
-    services: { storage: store, now: () => NOW },
+    services: { storage: store, now: () => NOW, limiters: { FILE_RATE_LIMITER: new MemoryLimiter(600) } },
     logSink: logs.sink,
     ...options,
   });
