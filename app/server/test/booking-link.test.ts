@@ -8,7 +8,7 @@ import { readPrivacyPolicySettings } from "../src/privacy-policy-settings";
 import { ApiError } from "../src/problem";
 import { createShopScope } from "../src/shop-scope";
 import { expectProblem, expectSchema } from "./support/contract";
-import { describeDb, newUuid, testDb, testEnv } from "./support/db";
+import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { MemoryLimiter } from "./support/rate-limit";
 
 const NOW = new Date("2026-11-23T01:00:00Z");
@@ -91,6 +91,14 @@ describeDb("TASK-044 예약 링크와 처리방침", () => {
     expect((await db.query("SELECT booking_slug,booking_issued_at FROM shops WHERE id=$1", [shopId])).rows).toEqual([
       { booking_slug: null, booking_issued_at: null },
     ]);
+    expect(
+      (
+        await db.query(
+          "SELECT count(*)::int AS n FROM ops_events WHERE shop_id=$1 AND kind='privacy_transfer_missing'",
+          [shopId],
+        )
+      ).rows[0]?.n,
+    ).toBe(0);
   });
 });
 
@@ -158,7 +166,12 @@ async function readyFixture(privacyPolicy: PrivacyPolicySettings | null = POLICY
         return createShopScope(shopId, { kind: "owner", ownerId });
       },
     },
-    services: { now: () => NOW, privacyPolicy, limiters: { PUBLIC_PRIVACY_RATE_LIMITER: limiter } },
+    services: {
+      now: () => NOW,
+      privacyPolicy,
+      publicAppOrigin: "https://siljang.example",
+      limiters: { PUBLIC_PRIVACY_RATE_LIMITER: limiter },
+    },
   });
   const get = () =>
     app.request("https://siljang.example/api/owner/booking-link", { headers: { "x-test-owner": ownerId } }, testEnv());
@@ -168,6 +181,46 @@ async function readyFixture(privacyPolicy: PrivacyPolicySettings | null = POLICY
 }
 
 describeDb("TASK-044 발급·공개 처리방침", () => {
+  it.each(["origin", "provider"] as const)(
+    "준비된 가게의 %s 설정 오류는500이고 국외 이전 알림으로 기록하지 않음",
+    async (kind) => {
+      const h = await readyFixture();
+      const app = createApp({
+        scopes: { owner: async () => createShopScope(h.shopId, { kind: "owner", ownerId: h.ownerId }) },
+        services: { now: () => NOW, ...(kind === "origin" ? {} : { publicAppOrigin: "https://siljang.example" }) },
+      });
+      await expectProblem(
+        await app.request("https://siljang.example/api/owner/booking-link", {}, testEnv()),
+        "internal",
+      );
+      expect(
+        (
+          await db.query(
+            "SELECT count(*)::int AS n FROM ops_events WHERE shop_id=$1 AND kind='privacy_transfer_missing'",
+            [h.shopId],
+          )
+        ).rows[0]?.n,
+      ).toBe(0);
+      expect(
+        (await db.query("SELECT booking_slug FROM shops WHERE id=$1", [h.shopId])).rows[0]?.booking_slug,
+      ).toBeNull();
+    },
+  );
+  it("가게 조회와 처음/반복 발급은 API 요청 호스트와 달라도 공개 출처의 같은 주소를 줌", async () => {
+    const h = await readyFixture();
+    const first = (await (await h.get()).json()) as { url: string };
+    const response = await h.app.request(
+      "https://api-other.example/api/owner/shop",
+      { headers: { "x-test-owner": h.ownerId } },
+      testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const body = (await response.json()) as { bookingUrl: string; licensePhotoUrl: string };
+    expect(body.bookingUrl).toBe(first.url);
+    expect(body.licensePhotoUrl).toMatch(/^https:\/\/api-other\.example\//);
+    expect(((await (await h.get()).json()) as { url: string }).url).toBe(first.url);
+  });
+
   it("발급 전에 옛 처리방침이 있어도 현재 설정의 새 버전을 만들고 옛 글은 보존함", async () => {
     const h = await readyFixture();
     await db.query(

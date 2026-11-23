@@ -10,7 +10,6 @@ export interface OverseasTransfer {
   howToRefuse: string;
 }
 export interface PrivacyPolicySettings {
-  origin: string;
   transfers: readonly OverseasTransfer[];
 }
 
@@ -50,12 +49,13 @@ export function readPrivacyPolicySettings(
         return null;
       fields[key as keyof typeof LIMITS] = value.trim();
     }
+    if (seen.has(entry.provider)) return null;
+    seen.add(entry.provider);
     if (entry.provider !== provider && entry.provider !== "supabase" && entry.provider !== "cloudflare") continue;
-    seen.add(String(entry.provider));
     transfers.push({ ...fields, personalData: entry.provider === provider ? AI_DATA : SERVER_DATA });
   }
   if (![provider, "supabase", "cloudflare"].every((name) => seen.has(name))) return null;
-  return { origin, transfers };
+  return { transfers };
 }
 
 export function readPublicAppOrigin(raw: unknown): string | null {

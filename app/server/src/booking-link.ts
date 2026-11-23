@@ -78,7 +78,11 @@ export async function getBookingLink(r: ShopRequest): Promise<Response> {
     const missing = Object.entries(conditions)
       .filter(([, ready]) => !ready)
       .map(([name]) => name);
-    if (settings === null) {
+    const otherwiseReady = Object.entries(conditions).every(([name, ready]) => name === "privacy_policy" || ready);
+    if (otherwiseReady && r.services.publicAppOrigin === null)
+      throw new MissingSettingError("PUBLIC_APP_ORIGIN is not set");
+    if (otherwiseReady && !r.services.aiProviderConfigured) throw new MissingSettingError("AI_PROVIDER is not set");
+    if (otherwiseReady && settings === null) {
       await db.run(
         `INSERT INTO ops_events (shop_id,kind,count,created_at)
         SELECT $1,'privacy_transfer_missing',1,$2 WHERE NOT EXISTS(SELECT 1 FROM ops_events e WHERE e.shop_id=$1 AND e.kind='privacy_transfer_missing' AND e.created_at >= $2::timestamptz - interval '1 day')`,
@@ -101,7 +105,7 @@ export async function getBookingLink(r: ShopRequest): Promise<Response> {
     await db.run("UPDATE shops SET booking_slug=$2,booking_issued_at=$3 WHERE id=$1", [slug, now]);
     return {
       status: "issued",
-      url: `${settings.origin}/s/${slug}`,
+      url: `${r.services.publicAppOrigin}/s/${slug}`,
       issuedAt: toShopIso(now, shop.time_zone),
       missing: [],
       recommended,

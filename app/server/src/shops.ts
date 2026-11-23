@@ -95,7 +95,8 @@ export async function renderShop(
     ownerWaitMinutes: row.owner_wait_minutes,
     dailyAiCostLimitKrw: row.daily_ai_cost_limit_krw,
     awaitingPaymentLimit: row.awaiting_payment_limit,
-    bookingUrl: row.booking_slug === null ? null : new URL(`/s/${row.booking_slug}`, origin).href,
+    bookingUrl:
+      row.booking_slug === null ? null : new URL(`/s/${row.booking_slug}`, services.publicAppOrigin ?? origin).href,
     identityChange:
       change === undefined
         ? null

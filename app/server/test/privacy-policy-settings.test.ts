@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readPrivacyPolicySettings } from "../src/privacy-policy-settings";
+import { readPrivacyPolicySettings, readPublicAppOrigin } from "../src/privacy-policy-settings";
 
 const recipients = ["anthropic", "openai", "supabase", "cloudflare"].map((provider) => ({
   provider,
@@ -19,7 +19,7 @@ describe("TASK-044 처리방침 설정", () => {
     "선택한 %s와 서버 두 회사만 공개하고 AI의 개인정보 범위를 고정함",
     (provider) => {
       const settings = readPrivacyPolicySettings(env(), provider);
-      expect(settings?.origin).toBe("https://siljang.example");
+      expect(readPublicAppOrigin(env().PUBLIC_APP_ORIGIN)).toBe("https://siljang.example");
       expect(settings?.transfers.map((x) => x.recipient)).toEqual(
         [provider, "supabase", "cloudflare"].map((x) => `${x} 합성 회사`),
       );
@@ -63,4 +63,11 @@ describe("TASK-044 처리방침 설정", () => {
   )("잘못된 설정 형식이나 입력 개인정보 필드는 받지 않음", (entries) => {
     expect(readPrivacyPolicySettings(env(entries), "anthropic")).toBeNull();
   });
+});
+
+it.each(["anthropic", "openai", "supabase", "cloudflare"])("같은 %s 회사가 두 번이면 설정을 거절함", (provider) => {
+  const entry = recipients.find((x) => x.provider === provider);
+  expect(
+    readPrivacyPolicySettings(env([...recipients, { ...entry, country: "다른 합성 국가" }]), "anthropic"),
+  ).toBeNull();
 });
