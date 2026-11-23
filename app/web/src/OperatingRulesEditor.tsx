@@ -103,6 +103,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       return Promise.resolve(NETWORK);
     return saveOperatingRules(body, key);
   });
+  const readNeeded = useRef(true);
   const activeRead = useRef<AbortController | null>(null),
     lastMode = useRef<"initial" | "stale">("initial"),
     formRef = useRef<HTMLFormElement>(null),
@@ -111,7 +112,8 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     handledDone = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
-  const pending = loading || command.busy || Boolean(props.sessionChecking || props.logoutPending),
+  const pending =
+      (!props.sessionFailed && loading) || command.busy || Boolean(props.sessionChecking || props.logoutPending),
     requestsBlocked = pending || Boolean(props.sessionFailed),
     locked = requestsBlocked || command.state.kind === "confirm";
   const formValue = useRef(form);
@@ -131,6 +133,8 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
   );
   const read = useCallback(
     (mode: "initial" | "stale") => {
+      if (callbacks.current.sessionChecking || callbacks.current.sessionFailed) return;
+      readNeeded.current = true;
       activeRead.current?.abort();
       const controller = new AbortController();
       activeRead.current = controller;
@@ -140,6 +144,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       void fetchOperatingRules(controller.signal)
         .then((result) => {
           if (controller.signal.aborted) return;
+          readNeeded.current = false;
           setLoading(false);
           if (result.ok) {
             if (mode === "stale") setLatest(result.data);
@@ -152,6 +157,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
         })
         .catch(() => {
           if (!controller.signal.aborted) {
+            readNeeded.current = false;
             setLoading(false);
             setLoadFailure(NETWORK);
           }
@@ -160,9 +166,13 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     [adopt],
   );
   useEffect(() => {
-    read("initial");
+    if (props.sessionChecking || props.sessionFailed) {
+      activeRead.current?.abort();
+      return;
+    }
+    if (readNeeded.current) read(lastMode.current);
     return () => activeRead.current?.abort();
-  }, [read]);
+  }, [read, props.sessionChecking, props.sessionFailed]);
   useEffect(() => {
     if (command.state.kind !== "done" || handledDone.current === command.state.data) return;
     handledDone.current = command.state.data;
@@ -514,7 +524,14 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                         이 조문 넣기
                       </Button>
                     ) : (
-                      <Button disabled={locked} onClick={() => clause(row.id, { enabled: false })}>
+                      <Button
+                        disabled={locked}
+                        onClick={() =>
+                          row.key === "custom"
+                            ? mutate((old) => ({ ...old, clauses: old.clauses.filter((c) => c.id !== row.id) }))
+                            : clause(row.id, { enabled: false })
+                        }
+                      >
                         조문 빼기
                       </Button>
                     )}
