@@ -41,7 +41,10 @@ try {
   if(!(Test-Path $siljangNode)){throw 'node22_missing'}
   if((& $siljangNode --version) -ne 'v22.23.4'){throw 'node22_version_mismatch'}
   $siljangBundle=Join-Path $siljangFolder 'eval.mjs'
-  $siljangHash=(Get-FileHash -Algorithm SHA256 -LiteralPath $siljangBundle).Hash.ToLowerInvariant()
+  $siljangHasher=[Security.Cryptography.SHA256]::Create()
+  try {
+    $siljangHash=[BitConverter]::ToString($siljangHasher.ComputeHash([IO.File]::ReadAllBytes($siljangBundle))).Replace('-','').ToLowerInvariant()
+  } finally {$siljangHasher.Dispose()}
   if($siljangHash -ne $siljangInput.bundleSha256){throw 'bundle_hash_mismatch'}
   $siljangPrior=$siljangFolder
   $siljangResults=Join-Path $siljangFolder 'results'
@@ -88,7 +91,7 @@ try {
   @{event='native_eval_finished';cliExit=$siljangExit}|ConvertTo-Json -Compress
 } catch {
   $siljangCode=if($_.Exception.Message -match '^[a-z0-9_]+$'){$_.Exception.Message}else{'native_eval_failed'}
-  @{event='native_eval_failed';code=$siljangCode}|ConvertTo-Json -Compress
+  @{event='native_eval_failed';code=$siljangCode;errorType=$_.Exception.GetType().Name}|ConvertTo-Json -Compress
   $siljangExit=2
 } finally {
   $env:OPENAI_API_KEY=$null

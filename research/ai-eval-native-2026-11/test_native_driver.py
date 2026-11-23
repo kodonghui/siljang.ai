@@ -32,6 +32,10 @@ class NativeDriver(unittest.TestCase):
               @{event='test_native_path';leaf=(Split-Path -Leaf $siljangFolder);parent=(Split-Path -Parent $siljangFolder);temp=$env:TEMP}|ConvertTo-Json -Compress
               throw 'invalid_native_folder'
             }""")
+            source = source.replace('$siljangCode=if', """$siljangTestMessage=$_.Exception.Message
+              if($siljangApiKey){$siljangTestMessage=$siljangTestMessage.Replace($siljangApiKey,'[credential]')}
+              @{event='test_native_error';type=$_.Exception.GetType().Name;message=$siljangTestMessage}|ConvertTo-Json -Compress
+              $siljangCode=if""")
             (trial / 'driver.ps1').write_text(source, encoding='utf-8-sig')
             appdata = root / 'appdata'
             if not node_missing:
