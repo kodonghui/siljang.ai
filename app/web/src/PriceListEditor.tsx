@@ -597,6 +597,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
                       pointer={`/options/${i}/priceKind`}
                       label="표시 방식"
                       value={o.priceKind}
+                      errors={errors.get(`/options/${i}/priceKind`)}
                       disabled={locked}
                       choices={[
                         ["fixed", "확정"],
@@ -749,6 +750,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
                       pointer={`/rules/${i}/kind`}
                       label="규칙 종류"
                       value={r.kind}
+                      errors={errors.get(`/rules/${i}/kind`)}
                       choices={[
                         ["exclude", "함께 못 고름"],
                         ["surcharge", "더하는 값"],

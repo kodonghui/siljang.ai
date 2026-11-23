@@ -7,9 +7,9 @@ export const RULE_FIELDS = ["kind", "optionA", "optionB", "amount"] as const;
 export const DESIGN_FIELDS = ["name", "optionKey", "inStandard", "uploadId", "position"] as const;
 export function priceFieldPointers(form: PriceListForm): string[] {
   return [
-    ...form.options.flatMap((_, i) => OPTION_FIELDS.map((f) => `/options/${i}/${f}`)),
+    ...form.options.flatMap((_, i) => OPTION_FIELDS.filter((f) => f !== "position").map((f) => `/options/${i}/${f}`)),
     ...form.rules.flatMap((_, i) => [`/rules/${i}`, ...RULE_FIELDS.map((f) => `/rules/${i}/${f}`)]),
-    ...form.designs.flatMap((_, i) => DESIGN_FIELDS.map((f) => `/designs/${i}/${f}`)),
+    ...form.designs.flatMap((_, i) => DESIGN_FIELDS.filter((f) => f !== "position").map((f) => `/designs/${i}/${f}`)),
   ];
 }
 export function priceListIssues(form: PriceListForm): FieldError[] {

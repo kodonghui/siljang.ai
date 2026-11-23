@@ -137,6 +137,16 @@
 .price-latest li {
   overflow-wrap: anywhere;
 }
+.price-editor > .ui-banner {
+  flex-wrap: wrap;
+}
+.price-editor > .ui-banner > .ui-banner__body {
+  flex-basis: var(--size-aside);
+}
+.price-editor > .ui-banner > .ui-banner__actions {
+  max-width: 100%;
+  flex-shrink: 1;
+}
 .price-save-bar {
   position: var(--layout-action-position);
   bottom: 0;

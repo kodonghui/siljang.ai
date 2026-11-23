@@ -537,3 +537,15 @@ it("처리 중 재전송 대기에서 세션 재확인이 실패하면 새 요�
   expect(amount().disabled).toBe(true);
   expect((screen.getByRole("button", { name: "로그아웃" }) as HTMLButtonElement).disabled).toBe(false);
 });
+it("직접 고치는 입력이 없는 순서 필드 오류도 폼 위에 사유를 보임", async () => {
+  sendProblem = {
+    status: 422,
+    code: "validation_failed",
+    errors: [{ field: "/options/0/position", code: "out_of_range" }],
+  };
+  area();
+  await loaded();
+  save();
+  await main().findByText("입력한 내용을 확인해 주세요");
+  expect(main().getByText("넣을 수 있는 범위를 벗어났어요")).toBeTruthy();
+});
