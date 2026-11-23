@@ -21,7 +21,7 @@ export interface ShopSettings extends ShopSettingsSource {
   readonly licenseStatus: "pending" | "on_hold" | "verified";
   readonly licenseHoldReason: string | null;
   readonly bookingUrl: string | null;
-  readonly identityChange: { readonly status: "pending" | "approved" | "on_hold" } | null;
+  readonly identityChange: { readonly status: "pending" | "applied" | "on_hold" } | null;
   readonly settingsSummary?: ShopSettingsSummary;
 }
 export interface SavedShopSettings {
@@ -87,7 +87,7 @@ function isShopSettings(value: unknown): value is ShopSettings {
   return (
     value.identityChange === null ||
     (isApiObject(value.identityChange) &&
-      ["pending", "approved", "on_hold"].includes(String(value.identityChange.status)))
+      ["pending", "applied", "on_hold"].includes(String(value.identityChange.status)))
   );
 }
 export async function fetchShopSettings(signal?: AbortSignal): Promise<ApiResult<ShopSettings>> {

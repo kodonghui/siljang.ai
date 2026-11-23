@@ -257,6 +257,7 @@ export function ShopLicense(props: ShopLicenseProps) {
               {shop.licenseStatus === "on_hold" ? <Banner tone="warning">{shop.licenseHoldReason}</Banner> : null}
               <a
                 className="license-document"
+                aria-label="신고증 사진 크게 보기"
                 href={shop.licensePhotoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -282,6 +283,7 @@ export function ShopLicense(props: ShopLicenseProps) {
                 <fieldset className="license-form" disabled={busy}>
                   <legend>영업 신고 다시 올리기</legend>
                   <TextField
+                    disabled={busy}
                     pointer="/foodLicenseNo"
                     label="영업 신고 번호"
                     value={foodLicenseNo}
@@ -302,6 +304,7 @@ export function ShopLicense(props: ShopLicenseProps) {
                           <label key={type}>
                             <input
                               type="radio"
+                              disabled={busy}
                               name="foodBusinessType"
                               value={type}
                               checked={foodBusinessType === type}
@@ -326,7 +329,7 @@ export function ShopLicense(props: ShopLicenseProps) {
                     disabled={busy}
                     onSelect={license.reset}
                   />
-                  <Button type="submit" busy={license.busy} disabled={busy}>
+                  <Button kind="primary" type="submit" busy={license.busy} disabled={busy}>
                     신고증 다시 올리기
                   </Button>
                 </fieldset>
@@ -390,6 +393,7 @@ export function ShopLicense(props: ShopLicenseProps) {
                   <legend>사업자 정보 변경 요청</legend>
                   {BUSINESS_FIELDS.map(([key, label, max]) => (
                     <TextField
+                      disabled={busy}
                       key={key}
                       pointer={`/${key}`}
                       label={label}
@@ -417,7 +421,7 @@ export function ShopLicense(props: ShopLicenseProps) {
                     disabled={busy}
                     onSelect={identity.reset}
                   />
-                  <Button type="submit" busy={identity.busy} disabled={busy}>
+                  <Button kind="primary" type="submit" busy={identity.busy} disabled={busy}>
                     변경 요청
                   </Button>
                   <Button

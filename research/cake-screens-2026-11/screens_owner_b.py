@@ -132,7 +132,7 @@ scr("SCR-034", shell="owner",
 # ── SCR-035 영업 신고 ─────────────────────────────────────────────────────────
 scr("SCR-035", shell="owner",
     purpose="사장님이 운영자의 영업 신고 확인 상태(확인 중·확인됨·보류)와 보류 사유를 보고, 보류면 신고증을 다시 올리거나 결제 계좌를 바꾸며, 상호·대표자·사업자등록번호를 바꿀 때는 증빙 사진과 함께 변경을 요청합니다(운영자가 반영하기 전까지는 확인된 지금 값). (FL-001, FL-002)",
-    data=[("영업 신고 상태와 보류 사유", "API-009 licenseStatus·licenseHoldReason"),
+    data=[("영업 신고 상태·보류 사유·확인 시각", "API-009 licenseStatus·licenseHoldReason·licenseReviewedAt"),
           ("영업 신고 번호·종류·신고증 사진", "API-009 foodLicenseNo·foodBusinessType·licensePhotoUrl"),
           ("다시 올릴 신고증 사진", "API-007 license_photo → API-011 요청 licensePhotoUploadId"),
           ("다시 올린 결과", "API-011 outcome·shop"),

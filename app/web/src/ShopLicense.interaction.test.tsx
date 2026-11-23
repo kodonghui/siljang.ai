@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
@@ -20,6 +20,7 @@ let getError: [number, string] | null, sendError: [number, string] | null, uploa
 let holdRead: Promise<Response> | null, holdSend: Promise<Response> | null;
 let expiredPhoto: boolean;
 let latestOnFailure: Record<string, unknown> | null;
+let identityUnchanged: boolean;
 beforeEach(() => {
   current = fixture();
   reads = uploads = 0;
@@ -28,6 +29,7 @@ beforeEach(() => {
   holdRead = holdSend = null;
   expiredPhoto = false;
   latestOnFailure = null;
+  identityUnchanged = false;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -97,7 +99,7 @@ beforeEach(() => {
           licenseReviewedAt: null,
           revision: "new-license-revision",
         };
-      else
+      else if (!identityUnchanged)
         current = {
           ...current,
           identityChange: {
@@ -108,7 +110,10 @@ beforeEach(() => {
           },
           revision: "new-identity-revision",
         };
-      return json({ outcome: "done", shop: current }, path.endsWith("/license") ? 200 : 201);
+      return json(
+        { outcome: !path.endsWith("/license") && identityUnchanged ? "unchanged" : "done", shop: current },
+        path.endsWith("/license") || identityUnchanged ? 200 : 201,
+      );
     }),
   );
 });
@@ -270,6 +275,8 @@ it.each([
 ] as const)("%s의 %s/%s 응답을 권한·현재 상태·필드·재시도에 연결", async (kind, status, code) => {
   const a = await prepared(kind);
   sendError = [status, code];
+  if (code === "identity_change_pending") latestOnFailure = fixture("identity_change_pending");
+  if (code === "invalid_state") latestOnFailure = fixture("verified");
   a.submit();
   if (status === 401) await waitFor(() => expect(a.login).toHaveBeenCalledTimes(1));
   else if (status === 404) await waitFor(() => expect(a.register).toHaveBeenCalledTimes(1));
@@ -277,6 +284,11 @@ it.each([
     const failure = ERROR_CODES[code];
     await within(screen.getByRole("main")).findByText(failure.message);
     if (status === 409) await waitFor(() => expect(reads).toBe(2));
+    if (code === "identity_change_pending") {
+      await within(screen.getByRole("main")).findByText("변경 확인 기다림");
+      expect((screen.getByRole("button", { name: "변경 요청" }) as HTMLButtonElement).disabled).toBe(true);
+    }
+    if (code === "invalid_state") expect(screen.queryByRole("form", { name: "영업 신고 재제출" })).toBeNull();
     if (code === "storage_unavailable") {
       fireEvent.click(screen.getByRole("button", { name: "다시 올리기" }));
       await within(screen.getByRole("main")).findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
@@ -402,4 +414,90 @@ it("처리 중 같은 키 재전송으로 결과는 한 번 표시", async () =>
   expect(requests[0]?.key).toBe(requests[1]?.key);
   expect(requests[0]?.body).toEqual(requests[1]?.body);
   await within(screen.getByRole("main")).findByText("신고증을 다시 올렸어요. 운영자가 다시 확인해요");
+});
+
+it("사업자 변경 처리 중도 같은 키로 다시 보내고 결과는 한 번만 표시", async () => {
+  const a = await prepared("identity");
+  sendError = [409, "request_in_progress"];
+  a.submit();
+  await screen.findByRole("button", { name: "처리하고 있어요" });
+  await waitFor(() => expect(requests).toHaveLength(2), { timeout: 3000 });
+  expect(requests[1]?.key).toBe(requests[0]?.key);
+  expect(requests[1]?.body).toEqual(requests[0]?.body);
+  await within(screen.getByRole("main")).findByText("변경을 요청했어요. 운영자가 확인하면 바뀌어요");
+  expect(within(screen.getByRole("main")).getAllByText("변경을 요청했어요. 운영자가 확인하면 바뀌어요")).toHaveLength(
+    1,
+  );
+});
+it("사업자 변경 없음200은 요청 대기 상태를 만들지 않고 알림", async () => {
+  const a = await prepared("identity");
+  identityUnchanged = true;
+  a.submit();
+  await within(screen.getByRole("main")).findByText("바뀐 것이 없어요");
+  expect(screen.queryByText("변경 확인 기다림")).toBeNull();
+  expect(requests).toHaveLength(1);
+});
+it("저장 중 입력/메뉴/다른 요청/로그아웃은 잠그고 중복 전송하지 않음", async () => {
+  const a = await prepared("license");
+  const input = screen.getByLabelText("영업 신고 번호") as HTMLInputElement;
+  fireEvent.change(input, { target: { value: "합성 잠금 번호" } });
+  let release!: (response: Response) => void;
+  holdSend = new Promise((resolve) => {
+    release = resolve;
+  });
+  a.submit();
+  await screen.findByRole("button", { name: "처리하고 있어요" });
+  expect(input.matches(":disabled")).toBe(true);
+  expect((screen.getByRole("button", { name: "로그아웃" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByRole("navigation", { name: "사장님 메뉴", hidden: true }).hasAttribute("inert")).toBe(true);
+  fireEvent.change(input, { target: { value: "바뀌면 안 되는 합성 값" } });
+  expect(input.value).toBe("합성 잠금 번호");
+  fireEvent.submit(screen.getByRole("form", { name: "영업 신고 재제출" }));
+  expect(requests).toHaveLength(1);
+  const uploadCall = vi.mocked(globalThis.fetch).mock.calls.find(([path]) => String(path) === "/api/owner/uploads");
+  const uploadBody = uploadCall?.[1]?.body;
+  if (!(uploadBody instanceof FormData)) throw new Error("합성 업로드 본문 없음");
+  expect(uploadBody.get("purpose")).toBe("license_photo");
+  expect(new Headers(uploadCall?.[1]?.headers).has("Idempotency-Key")).toBe(false);
+  await act(async () =>
+    release(
+      json({
+        outcome: "done",
+        shop: { ...current, licenseStatus: "pending", licenseHoldReason: null, licenseReviewedAt: null },
+      }),
+    ),
+  );
+  await within(screen.getByRole("main")).findByText("신고증을 다시 올렸어요. 운영자가 다시 확인해요");
+});
+it("세션 재확인/실패는 같은 입력을 보존해 잠그고 실패 뒤 로그아웃 허용", async () => {
+  const a = await prepared("license");
+  const input = screen.getByLabelText("영업 신고 번호") as HTMLInputElement;
+  fireEvent.change(input, { target: { value: "합성 보존 입력" } });
+  const common = {
+    shopName: "합성 가게",
+    onNavigate: a.navigate,
+    onSessionExpired: a.login,
+    onRegisterShop: a.register,
+    onLogout: a.logout,
+  };
+  a.rerender(<ShopLicense {...common} sessionChecking />);
+  expect(input.value).toBe("합성 보존 입력");
+  expect(input.matches(":disabled")).toBe(true);
+  a.rerender(<ShopLicense {...common} sessionFailed />);
+  expect(input.value).toBe("합성 보존 입력");
+  expect(input.matches(":disabled")).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+  expect(a.logout).toHaveBeenCalledTimes(1);
+  expect(requests).toHaveLength(0);
+});
+it("반영된 사업자 정보는 현재 값과 반영 상태로 표시", async () => {
+  const pending = fixture("identity_change_pending");
+  current = {
+    ...pending,
+    businessName: "합성 반영된 가게",
+    identityChange: { ...(pending.identityChange as object), status: "applied", businessName: "합성 반영된 가게" },
+  };
+  area();
+  await within(screen.getByRole("main")).findByText("변경 반영됨");
+  expect(within(screen.getByRole("region", { name: "사업자 정보" })).getByText("합성 반영된 가게")).toBeTruthy();
 });

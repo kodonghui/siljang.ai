@@ -115,6 +115,7 @@ export function LicensePhoto({
         />
       ) : null}
       {photo.previewFailed ? <p>이 브라우저에서는 미리보기를 볼 수 없어요. 사진 업로드 결과를 확인해 주세요.</p> : null}
+      {photo.upload.busy ? <p role="status">사진을 올리고 있어요</p> : null}
       <CommandStatus
         state={photo.upload.state}
         fields={["/file", "/purpose"]}

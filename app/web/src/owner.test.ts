@@ -92,6 +92,10 @@ describe("TASK-030 사장님 로그인 계약과 경로", () => {
     );
     expect(ownerDestination(examples.license_on_hold.value, "/owner/orders")).toBe(OWNER_LICENSE);
   });
+  it.each(["/owner/shop/license?source=hold", "/owner/payment-destination?tab=account"])(
+    "신고 보류를 고치는 경로 %s는 막지 않고 돌아감",
+    (path) => expect(ownerDestination(examples.license_on_hold.value, path)).toBe(path),
+  );
   it.each([
     "",
     "?error=access_denied",
