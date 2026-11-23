@@ -240,3 +240,58 @@ it("두 번째 충돌에서 원격 도안 순서를 내 키 차이로 되돌리�
     [...v6.designs].sort((a, b) => a.position - b.position).map((d) => d.name),
   );
 });
+
+it.each(["range", "from"] as const)("내 %s 변경과 다른 기기의 기본 범위 선택은 재적용할 때 함께 정리한다", (kind) => {
+  const value = fixture();
+  const base = {
+    ...value,
+    options: value.options.map((o) => ({ ...o, inStandard: o.name === "1호" ? false : o.inStandard })),
+  };
+  const mine = priceListForm(base),
+    latest = newer(base);
+  const own = option(mine, "1호");
+  own.priceKind = kind;
+  own.amountMax = kind === "range" ? "40000" : "";
+  const remote = latest.options.find((o) => o.name === "1호");
+  if (!remote) throw new Error("최신 옵션 없음");
+  remote.inStandard = true;
+  const design = latest.designs[0];
+  if (!design) throw new Error("최신 도안 없음");
+  latest.designs[0] = { ...design, optionId: remote.optionId, inStandard: true };
+  const merged = rebasePriceList(base, mine, latest);
+  expect(merged.conflicts).toEqual([]);
+  if (!merged.form) throw new Error("재적용 실패");
+  expect(option(merged.form, "1호")).toMatchObject({ priceKind: kind, inStandard: false });
+  expect(merged.form.designs[0]?.inStandard).toBe(false);
+});
+
+it.each(["range", "from"] as const)(
+  "다른 기기가 %s로 바꿔 내 기본 범위 선택을 적용할 수 없으면 입력을 보존하고 충돌을 알린다",
+  (kind) => {
+    const value = fixture();
+    const target = value.options.find((o) => o.name === "1호");
+    const design = value.designs[0];
+    if (!target || !design) throw new Error("기준 항목 없음");
+    const base = {
+      ...value,
+      options: value.options.map((o) => ({ ...o, inStandard: o.name === "1호" ? false : o.inStandard })),
+      designs: [{ ...design, optionId: target.optionId, inStandard: false }, ...value.designs.slice(1)],
+    };
+    const mine = priceListForm(base),
+      latest = newer(base);
+    option(mine, "1호").inStandard = true;
+    const ownDesign = mine.designs[0];
+    if (!ownDesign) throw new Error("내 도안 없음");
+    ownDesign.inStandard = true;
+    latest.options = latest.options.map((o) =>
+      o.name === "1호" ? { ...o, priceKind: kind, amountMax: kind === "range" ? 40000 : null, inStandard: false } : o,
+    );
+    const merged = rebasePriceList(base, mine, latest);
+    expect(merged.form).toBeNull();
+    expect(merged.conflicts).toEqual(
+      expect.arrayContaining([expect.stringContaining("옵션: 1호"), expect.stringContaining(`도안: ${design.name}`)]),
+    );
+    expect(option(mine, "1호").inStandard).toBe(true);
+    expect(ownDesign.inStandard).toBe(true);
+  },
+);
