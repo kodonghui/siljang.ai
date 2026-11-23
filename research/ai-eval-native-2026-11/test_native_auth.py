@@ -21,26 +21,31 @@ class KeepInput(io.BytesIO):
 
 
 class NativeAuth(unittest.TestCase):
-    def run_case(self, caller_key, native_missing=False):
+    def run_case(self, caller_key, native_missing=False, transfer_failed=False, console=b''):
         calls = []
         stream = KeepInput()
 
         def run(command, **kwargs):
             calls.append((command, kwargs.get('input')))
+            self.assertNotIn('OPENAI_API_KEY', kwargs.get('env', os.environ))
             if command[0] == 'ssh':
                 return subprocess.CompletedProcess(command, 2 if native_missing else 0,
                     stdout=b'{"event":"native_openai_key_missing"}\n' if native_missing else
                     b'{"folder":"C:/Users/Synthetic/AppData/Local/Temp/siljang-native-eval-11111111111111111111111111111111"}\n', stderr=b'')
             self.assertEqual(command[0], 'scp')
-            return subprocess.CompletedProcess(command, 0, stdout=b'', stderr=b'')
+            return subprocess.CompletedProcess(command, 1 if transfer_failed else 0, stdout=b'', stderr=b'')
 
         class Process:
             stdin = stream
-            stdout = io.BytesIO(b'{"event":"native_eval_finished","cliExit":0}\n')
+            stdout = io.BytesIO(console + b'{"event":"native_eval_finished","cliExit":0}\n')
             stderr = io.BytesIO()
 
             def wait(self):
                 return 0
+
+        def popen(command, **kwargs):
+            self.assertNotIn('OPENAI_API_KEY', kwargs.get('env', os.environ))
+            return Process()
 
         output = io.StringIO()
         with tempfile.TemporaryDirectory() as folder:
@@ -50,7 +55,7 @@ class NativeAuth(unittest.TestCase):
             argv = [str(SCRIPT), '--bundle', str(root / 'eval.mjs'), '--resume-from', str(root), '--out', str(root / 'out'), '--real']
             environment = {} if caller_key is None else {'OPENAI_API_KEY': caller_key}
             with patch.object(sys, 'argv', argv), patch.dict(os.environ, environment, clear=True), \
-                 patch('subprocess.run', side_effect=run), patch('subprocess.Popen', return_value=Process()), \
+                 patch('subprocess.run', side_effect=run), patch('subprocess.Popen', side_effect=popen), \
                  contextlib.redirect_stdout(output):
                 try:
                     runpy.run_path(str(SCRIPT), run_name='__main__')
@@ -82,6 +87,21 @@ class NativeAuth(unittest.TestCase):
         self.assertIn('native_openai_key_missing', output)
         self.assertEqual([command[0] for command, _ in calls], ['ssh'])
         self.assertEqual(payload, b'')
+
+    def test_failed_transfer_cleans_only_owned_native_folder(self):
+        code, output, calls, payload = self.run_case(None, transfer_failed=True)
+        self.assertEqual(code, 2)
+        self.assertIn('native_transfer_failed', output)
+        self.assertEqual([command[0] for command, _ in calls], ['ssh', 'scp', 'ssh'])
+        self.assertEqual(payload, b'')
+        cleanup = json.loads(calls[-1][1])
+        self.assertRegex(cleanup['folder'], r'/siljang-native-eval-[a-f0-9]{32}$')
+
+    def test_actual_stopping_reason_reaches_console(self):
+        reason = '모델 호출 실패로 다음 사례 앞에서 도중에 멈춤'
+        code, output, _, _ = self.run_case(None, console=(reason+'\n').encode('utf-8'))
+        self.assertEqual(code, 0)
+        self.assertIn(reason, output)
 
 
 if __name__ == '__main__':
