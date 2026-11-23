@@ -122,6 +122,7 @@ export async function consumeKakaoCallback(
 
     owned = claim;
     let preparedReply: KakaoAiReply | undefined;
+    let maskingFailed = false;
     let failureCode: string = kakaoAiFailureOutcome(services.aiConfigured ? "unavailable" : "key_missing");
     if (services.aiConfigured) {
       const turn = await runKakaoAiTurn(db, job.messageId, claim, services, now);
@@ -131,7 +132,10 @@ export async function consumeKakaoCallback(
         return "retry";
       }
       if (turn.kind === "reply") preparedReply = turn.reply;
-      else if (turn.kind === "failure")
+      else if (turn.kind === "masking_failure") {
+        maskingFailed = true;
+        failureCode = "masking_failed";
+      } else if (turn.kind === "failure")
         failureCode = turn.failure === "schema_invalid" ? "ai_output_rejected" : kakaoAiFailureOutcome(turn.failure);
     }
     if (preparedReply?.delivered) {
@@ -139,7 +143,13 @@ export async function consumeKakaoCallback(
       return "done";
     }
     if (preparedReply === undefined) {
-      const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now());
+      const reason = await prepareKakaoCallbackHandoff(
+        db,
+        job.messageId,
+        claim,
+        now(),
+        maskingFailed ? "masking_failed" : "ai_failure",
+      );
       if (reason === false) return "done";
       log(
         "warn",

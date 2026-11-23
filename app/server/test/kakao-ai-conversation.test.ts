@@ -2,10 +2,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vite
 import { recordAiCall } from "../src/ai-calls";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
+import { FieldCryptoError, fieldCrypto } from "../src/field-crypto";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
-import { Secret } from "../src/settings";
+import type { ServiceOverrides } from "../src/services";
+import { readSettings, Secret } from "../src/settings";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -93,7 +95,7 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
     });
     return { provider: "anthropic" as const, model: "claude-haiku-5-5", call };
   }
-  async function consume(job: KakaoCallbackJob, aiModel: ReturnType<typeof model>) {
+  async function consume(job: KakaoCallbackJob, aiModel: ReturnType<typeof model>, overrides: ServiceOverrides = {}) {
     // 첫 고지 자체는 TASK-064가 맡는다. 이 시험은 고지를 마친 상담의 입력 경계만 확인한다.
     await isolated.db.query(
       `UPDATE consultations SET ai_disclosed_at = $3, ai_disclosed_policy_version = 1
@@ -105,7 +107,7 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
       connect: () => isolated.connect(),
       now: () => new Date(now.getTime() + 1000),
       fetch: callback,
-      services: { aiModel },
+      services: { aiModel, ...overrides },
       logSink: () => {},
     });
     expect(outcome).toBe("done");
@@ -171,5 +173,79 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
       ])
     ).rows;
     expect(rows).toEqual([{ body_masked: "사장님께 확인해 주세요." }]);
+  });
+
+  it("현재 초안의 필요한 문구만 보내고 전용 주문자·연락처·알레르기 값은 조회하지 않는다", async () => {
+    const ai = model();
+    await send(newUuid(), "초안이 있는 합성 질문");
+    const job = required(jobs[0]);
+    const row = required(
+      (await isolated.db.query("SELECT consultation_id FROM messages WHERE id=$1", [job.messageId])).rows[0],
+    );
+    await isolated.db.query(
+      `INSERT INTO order_drafts (shop_id,consultation_id,lettering,design_notes,customer_name,customer_phone,allergy_consent,allergy_consent_version,allergy_consent_at,allergy_answer) VALUES ($1,$2,'합성 축하 문구','전화 010-0000-5678을 디자인에 쓰고 싶어요','합성이지우','010-0000-1234','agreed','allergy-v1',$3,'땅콩')`,
+      [shop.shopId, row.consultation_id, NOW],
+    );
+    await consume(job, ai);
+    const input = JSON.stringify(required(ai.call.mock.calls[0])[0].messages);
+    expect(input).toContain("합성 축하 문구");
+    expect(input).toContain("[전화번호1]");
+    for (const privateText of ["합성이지우", "010-0000-1234", "010-0000-5678", "땅콩", "allergyAnswer", "customerName"])
+      expect(input).not.toContain(privateText);
+    expect(
+      (
+        await isolated.db.query("SELECT customer_name,allergy_answer FROM order_drafts WHERE consultation_id=$1", [
+          row.consultation_id,
+        ])
+      ).rows[0],
+    ).toMatchObject({ customer_name: "합성이지우", allergy_answer: "땅콩" });
+  });
+  it("주문 요청 시각까지의 대화와 제출한 초안의 알레르기는 다음 주문 입력에서 제외한다", async () => {
+    const ai = model();
+    await isolated.db.query("UPDATE orders SET requested_at=$2 WHERE id=$1", [shop.orderId, NOW]);
+    await isolated.db.query(
+      "UPDATE order_drafts SET allergy_consent='agreed',allergy_consent_version='allergy-v1',allergy_consent_at=$2,allergy_answer='땅콩' WHERE id=$1",
+      [shop.draftId, NOW],
+    );
+    await isolated.db.query("UPDATE messages SET body_masked='땅콩 알레르기가 있어요',created_at=$2 WHERE id=$1", [
+      shop.messageId,
+      NOW,
+    ]);
+    now = new Date(NOW.getTime() + 4000);
+    await send(shop.userKey, "새 케이크의 합성 질문");
+    const job = required(jobs[0]);
+    await consume(job, ai);
+    const input = JSON.stringify(required(ai.call.mock.calls[0])[0].messages);
+    expect(input).toContain("새 케이크의 합성 질문");
+    expect(input).not.toContain("땅콩");
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT count(*)::int AS n FROM order_drafts WHERE consultation_id=$1 AND status='active' AND allergy_answer IS NOT NULL",
+          [shop.consultationId],
+        )
+      ).rows[0]?.n,
+    ).toBe(0);
+  });
+
+  it("입력 초안의 마스킹이 실패하면 모델을 부르지 않고 그 질문을 사장님께 넘긴다", async () => {
+    const ai = model();
+    await send(newUuid(), "마스킹 실패를 확인할 합성 질문");
+    const job = required(jobs[0]);
+    const row = required(
+      (await isolated.db.query("SELECT consultation_id FROM messages WHERE id=$1", [job.messageId])).rows[0],
+    );
+    await isolated.db.query(
+      "INSERT INTO order_drafts (shop_id,consultation_id,design_notes) VALUES ($1,$2,'연락처 010-0000-5678')",
+      [shop.shopId, row.consultation_id],
+    );
+    const fields = fieldCrypto(required(readSettings(env).fieldKeys));
+    vi.spyOn(fields, "seal").mockRejectedValue(new FieldCryptoError("합성 암호화 실패"));
+    const callback = await consume(job, ai, { fieldCrypto: fields });
+    expect(ai.call).not.toHaveBeenCalled();
+    expect(String(callback.mock.calls[0]?.[1]?.body)).not.toContain("010-0000-5678");
+    expect(
+      (await isolated.db.query("SELECT reason FROM handoffs WHERE consultation_id=$1", [row.consultation_id])).rows,
+    ).toEqual([{ reason: "masking_failed" }]);
   });
 });
