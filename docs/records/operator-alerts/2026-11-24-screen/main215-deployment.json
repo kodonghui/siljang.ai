@@ -1,0 +1,22 @@
+{
+  "tag": "ccd23a8e371d0be45687fd369e0fd91841e22c2c",
+  "versionId": "f3c1496c-e362-4995-a5b9-b5804311b6dd",
+  "createdOn": "2026-11-23T22:01:26.734894Z",
+  "healthStatus": 200,
+  "main": "ccd23a8e371d0be45687fd369e0fd91841e22c2c",
+  "appRun": 45274749051,
+  "dbRun": 45274749172,
+  "checks": {
+    "check": 138043505642,
+    "windowsMock": 138043506090,
+    "postgres16": 138043507976,
+    "postgres17": 138043508772,
+    "deploy": 138045874770
+  },
+  "ci": "success",
+  "deployment": "success",
+  "source": "배포 workflow의 실제 Wrangler deployments list/versions view와 공개 health",
+  "activePercentage": 100,
+  "nativeAcademy": "whoami45000ms 시간 초과2회 뒤 보류; 추가 시도 없음",
+  "storageActiveTagReadback": "학원컴 재조회 미확인"
+}
