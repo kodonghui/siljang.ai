@@ -21,9 +21,9 @@ function option(form: PriceListForm, name: string) {
   if (!o) throw new Error(`옵션 없음: ${name}`);
   return o;
 }
-function newer(base: PriceList) {
+function newer(base: PriceList, offset = 0) {
   const ids = new Map(
-    base.options.map((o, i) => [o.optionId, `00000000-0000-4000-8000-${String(i + 100).padStart(12, "0")}`]),
+    base.options.map((o, i) => [o.optionId, `00000000-0000-4000-8000-${String(i + 100 + offset).padStart(12, "0")}`]),
   );
   const id = (value: string) => {
     const next = ids.get(value);
@@ -33,12 +33,12 @@ function newer(base: PriceList) {
   return {
     ...base,
     version: base.version + 1,
-    revision: "synthetic-v5",
+    revision: `synthetic-v${base.version + 1}`,
     options: base.options.map((o) => ({ ...o, optionId: id(o.optionId) })),
     rules: base.rules.map((r) => ({ ...r, optionAId: id(r.optionAId), optionBId: id(r.optionBId) })),
     designs: base.designs.map((d, i) => ({
       ...d,
-      designId: `00000000-0000-4000-8000-${String(i + 500).padStart(12, "0")}`,
+      designId: `00000000-0000-4000-8000-${String(i + 500 + offset).padStart(12, "0")}`,
       optionId: d.optionId === null ? null : id(d.optionId),
     })),
   };
@@ -160,7 +160,7 @@ it("다시 적용하는 새 그림은 파일 상태를 가진 도안의 화면 �
     key: own.key,
     uploadId: own.uploadId,
     sourceDesignId: null,
-    imageUrl: own.imageUrl,
+    imageUrl: latest.designs[0]?.imageUrl,
   });
 });
 
@@ -186,4 +186,57 @@ it("새 그림 없이도 재적용한 기존 도안은 파일 상태의 화면 �
   if (!merged.form) throw new Error("재적용 실패");
   expect(merged.form.designs[0]?.key).toBe(mine.designs[0]?.key);
   expect(merged.form.designs[0]?.sourceDesignId).toBe(latest.designs[0]?.designId);
+});
+it("두 연속 충돌에서도 내 금액과 최신 도안의 범위·연결·그림을 함께 보존", () => {
+  const base = fixture(),
+    mine = priceListForm(base),
+    v5 = newer(base);
+  option(mine, "1호").amount = "38000";
+  const first = rebasePriceList(base, mine, v5);
+  if (!first.form) throw new Error("첫 재적용 실패");
+  const v6 = newer(v5, 1000);
+  const changed = v6.designs[0];
+  if (!changed) throw new Error("도안 없음");
+  v6.designs[0] = { ...changed, inStandard: false, optionId: null, imageUrl: "https://example.org/new-v6.png" };
+  const second = rebasePriceList(v5, first.form, v6);
+  expect(second.conflicts).toEqual([]);
+  if (!second.form) throw new Error("둘째 재적용 실패");
+  expect(option(second.form, "1호").amount).toBe("38000");
+  expect(second.form.designs[0]).toMatchObject({
+    key: mine.designs[0]?.key,
+    baseDesignId: v6.designs[0].designId,
+    sourceDesignId: v6.designs[0].designId,
+    inStandard: false,
+    optionKey: null,
+    imageUrl: v6.designs[0].imageUrl,
+  });
+  expect(priceListPayload(v6, second.form).designs[0]).toMatchObject({
+    sourceDesignId: v6.designs[0].designId,
+    inStandard: false,
+    optionKey: null,
+  });
+});
+
+it("두 번째 충돌에서 원격 도안 순서를 내 키 차이로 되돌리지 않는다", () => {
+  const source = fixture(),
+    firstDesign = source.designs[0];
+  if (!firstDesign) throw new Error("도안 없음");
+  const base = {
+    ...source,
+    designs: [
+      firstDesign,
+      { ...firstDesign, designId: "00000000-0000-4000-8000-000000000970", name: "원형 레터링", position: 2 },
+    ],
+  };
+  const mine = priceListForm(base),
+    v5 = newer(base);
+  const first = rebasePriceList(base, mine, v5);
+  if (!first.form) throw new Error("첫 재적용 실패");
+  const v6 = newer(v5, 1000);
+  v6.designs = v6.designs.map((d, i, rows) => ({ ...d, position: rows.length - i }));
+  const result = rebasePriceList(v5, first.form, v6);
+  if (!result.form) throw new Error("둘째 재적용 실패");
+  expect([...result.form.designs].sort((a, b) => a.position - b.position).map((d) => d.name)).toEqual(
+    [...v6.designs].sort((a, b) => a.position - b.position).map((d) => d.name),
+  );
 });
