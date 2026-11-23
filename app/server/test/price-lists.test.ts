@@ -5,7 +5,13 @@ import { createOwnerScope, ownerOfShopScope } from "../src/owner-scope";
 import { createOwnerSession } from "../src/owner-session";
 import { ApiError } from "../src/problem";
 import { createShopScope, type ShopScope } from "../src/shop-scope";
-import { StorageUnavailableError } from "../src/storage";
+import { type ObjectStore, StorageUnavailableError } from "../src/storage";
+import {
+  executeStorageBatch,
+  type StorageBatchOperation,
+  type StorageBatchOutcome,
+  storageBatchClient,
+} from "../src/storage-batch";
 import { newUploadId, tempKey } from "../src/uploads";
 import { expectProblem, expectSchema } from "./support/contract";
 import { collectLogs, describeDb, newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
@@ -114,6 +120,42 @@ async function photo(
   return id;
 }
 
+function attachBatches(
+  store: MemoryStore,
+  around?: (
+    operations: readonly StorageBatchOperation[],
+    perform: () => Promise<readonly StorageBatchOutcome[]>,
+  ) => Promise<readonly StorageBatchOutcome[]>,
+) {
+  const backend: ObjectStore = {
+    put: store.put.bind(store),
+    head: store.head.bind(store),
+    get: store.get.bind(store),
+    copy: store.copy.bind(store),
+    delete: store.delete.bind(store),
+    list: store.list.bind(store),
+  };
+  const calls: (readonly StorageBatchOperation[])[] = [];
+  const config = {
+    endpoint: "https://project.storage.example.test/storage/v1/s3",
+    region: "ap-northeast-2",
+    bucket: "photos",
+    accessKeyId: ["test", "access", "id"].join("-"),
+    secretAccessKey: ["test", "secret", "value"].join("-"),
+  };
+  Object.assign(store, {
+    batch: storageBatchClient(config, {
+      async run(value, operations) {
+        expect(operations.length).toBeLessThanOrEqual(10);
+        calls.push(operations);
+        const perform = () => executeStorageBatch(value, operations, () => backend);
+        return around ? around(operations, perform) : perform();
+      },
+    }),
+  });
+  return { backend, calls };
+}
+
 describeDb("TASK-038 가격표 버전 API-016~019", () => {
   afterAll(async () => db.close());
 
@@ -121,6 +163,7 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
     let tick = NOW.getTime();
     const h = await fixture({ services: { now: () => new Date(tick++) } });
     const first = await h.call("POST", "/owner/price-list/versions", input());
+    expect(first.status, await first.clone().text()).toBe(201);
     const value = (await first.json()) as { priceList: { revision: string } };
     const next = await h.call("POST", "/owner/price-list/versions", {
       ...input(value.priceList.revision),
@@ -426,7 +469,7 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
     },
   );
 
-  it("커밋 응답 유실이면 실제로 쓰인 도안을 지우지 않고 같은 키가 저장된 결과를 읽음", async () => {
+  it("50개 커밋 응답 유실이면 사용 중 사진을 보존하고 같은 키가 결과/임시 정리를 복구함", async () => {
     let lose = true;
     const h = await fixture({
       connect: (secret) => {
@@ -446,19 +489,25 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
         } satisfies RequestDb;
       },
     });
-    const uploadId = await photo(h),
+    const designs = [];
+    for (let i = 0; i < 50; i++)
+      designs.push({ name: `도안${i}`, uploadId: await photo(h), optionKey: null, inStandard: false, position: i });
+    const { calls } = attachBatches(h.store),
       key = newRequestKey();
     const body = {
       ...input(),
-      designs: [{ name: "커밋된 도안", uploadId, optionKey: null, inStandard: true, position: 0 }],
+      designs,
     };
     await expectProblem(await h.call("POST", "/owner/price-list/versions", body, true, key), "internal");
     const keys = [...h.store.objects.keys()].filter((k) => k.startsWith("shops/"));
-    expect(keys).toHaveLength(1);
+    expect(keys).toHaveLength(50);
+    expect(h.store.keys("tmp/")).toHaveLength(50);
     const replay = await h.call("POST", "/owner/price-list/versions", body, true, key);
     expect(replay.status).toBe(201);
     expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
     expect([...h.store.objects.keys()].filter((k) => k.startsWith("shops/"))).toEqual(keys);
+    expect(h.store.keys("tmp/")).toHaveLength(0);
+    expect(calls.filter((ops) => ops[0]?.kind === "copy")).toHaveLength(5);
     expectSchema("PriceListResult", await replay.json());
   });
 
@@ -612,7 +661,241 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
     }
   });
 
-  it.each([17, 26])("알려진 Free 외부 호출50개 한도: 새 사진%d장의 실패/잔류를 모의로 기록", async (count) => {
+  it.each([17, 26, 50])("무료 호출 한도에서 서비스 배치로 사진%d개 저장·임시 정리와 재전송", async (count) => {
+    const h = await fixture();
+    const designs = [];
+    for (let i = 0; i < count; i++)
+      designs.push({ name: `도안${i}`, uploadId: await photo(h), optionKey: null, inStandard: false, position: i });
+    const { calls } = attachBatches(h.store);
+    let direct = 0;
+    const spend = () => {
+      if (++direct > 50) throw new StorageUnavailableError("synthetic subrequest limit");
+    };
+    const head = h.store.head.bind(h.store),
+      copy = h.store.copy.bind(h.store),
+      remove = h.store.delete.bind(h.store);
+    h.store.head = async (key) => {
+      spend();
+      return head(key);
+    };
+    h.store.copy = async (from, to) => {
+      spend();
+      return copy(from, to);
+    };
+    h.store.delete = async (key) => {
+      spend();
+      return remove(key);
+    };
+    const body = { ...input(), designs },
+      key = newRequestKey();
+    const response = await h.call("POST", "/owner/price-list/versions", body, true, key);
+    expect(response.status, await response.clone().text()).toBe(201);
+    const value = (await response.json()) as { priceList: PriceValue };
+    expect(value.priceList.designs).toHaveLength(count);
+    expect(h.store.keys("shops/")).toHaveLength(count);
+    expect(h.store.keys("tmp/")).toHaveLength(0);
+    expect(direct).toBe(0);
+    const chunks = Math.ceil(count / 10);
+    expect(calls).toHaveLength(3 * chunks);
+    expect(calls.flat().filter((op) => op.kind === "head")).toHaveLength(count);
+    expect(calls.flat().filter((op) => op.kind === "copy")).toHaveLength(count);
+    expect(calls.flat().filter((op) => op.kind === "delete")).toHaveLength(count);
+    const replay = await h.call("POST", "/owner/price-list/versions", body, true, key);
+    expect(replay.status).toBe(201);
+    expect(calls.filter((ops) => ops[0]?.kind === "copy")).toHaveLength(chunks);
+    expect(calls.filter((ops) => ops[0]?.kind === "head")).toHaveLength(chunks);
+    expect((await db.query("SELECT count(*)::int AS n FROM designs WHERE shop_id=$1", [h.shopId])).rows).toEqual([
+      { n: count },
+    ]);
+  });
+
+  it("저장된409 재전송도 임시50개를 보존하고 새 버전/새 키로 다시 저장할 수 있음", async () => {
+    const h = await fixture();
+    const first = await h.call("POST", "/owner/price-list/versions", input());
+    const current = ((await first.json()) as { priceList: PriceValue }).priceList;
+    const designs = [];
+    for (let i = 0; i < 50; i++)
+      designs.push({ name: `도안${i}`, uploadId: await photo(h), optionKey: null, inStandard: false, position: i });
+    const { calls } = attachBatches(h.store);
+    const body = { ...input("0"), designs },
+      key = newRequestKey();
+    await expectProblem(await h.call("POST", "/owner/price-list/versions", body, true, key), "version_conflict");
+    const replay = await h.call("POST", "/owner/price-list/versions", body, true, key);
+    await expectProblem(replay, "version_conflict");
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    expect(h.store.keys("tmp/")).toHaveLength(50);
+    expect(calls).toHaveLength(0);
+    const retry = await h.call("POST", "/owner/price-list/versions", { ...body, baseRevision: current.revision });
+    expect(retry.status, await retry.clone().text()).toBe(201);
+    expect(h.store.keys("tmp/")).toHaveLength(0);
+    expect(h.store.keys("shops/")).toHaveLength(50);
+  });
+
+  it("응답만 잃고 아직 COMMIT 중인 거래의 가게 잠금이 끝난 뒤 사용 사진을 확인함", async () => {
+    let observedLock = false;
+    const h = await fixture({
+      connect(secret) {
+        const primary = pgConnector(secret),
+          cleanup = pgConnector(secret),
+          observer = pgConnector(secret);
+        let ready!: () => void;
+        let release!: () => void;
+        const executed = new Promise<void>((resolve) => {
+          ready = resolve;
+        });
+        const mayCommit = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let pending = false,
+          first = true;
+        let committing: Promise<unknown> | undefined;
+        const wrapped = (tx: Queryable): Queryable => ({
+          async query<R>(sql: string, params?: readonly unknown[]) {
+            if (pending && sql.includes("request_keys")) throw new Error("synthetic receipt release unavailable");
+            if (sql.includes("FOR NO KEY UPDATE")) {
+              const pid = (await tx.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]?.pid;
+              const waiting = tx.query<R>(sql, params);
+              for (let i = 0; i < 50; i++) {
+                const state = await observer.query<{ wait_event_type: string | null }>(
+                  "SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1",
+                  [pid],
+                );
+                if (state.rows[0]?.wait_event_type === "Lock") {
+                  observedLock = true;
+                  break;
+                }
+                await new Promise<void>((resolve) => setTimeout(resolve, 2));
+              }
+              release();
+              return waiting;
+            }
+            const result = await tx.query<R>(sql, params);
+            if (sql.startsWith("SELECT d.image_key FROM designs")) {
+              // 잠금 없는 옛 정리는 먼저 빈 결과를 읽고, 그 뒤 원래 거래가 커밋되면 사용 사진을 지운다.
+              release();
+              await committing;
+            }
+            return result;
+          },
+        });
+        return {
+          query: (sql, params) => wrapped(cleanup).query(sql, params),
+          async transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T> {
+            if (!first) return cleanup.transaction((tx) => fn(wrapped(tx)));
+            first = false;
+            committing = primary.transaction(async (tx) => {
+              const value = await fn(tx);
+              ready();
+              await mayCommit;
+              return value;
+            });
+            committing.catch(() => ready());
+            await executed;
+            pending = true;
+            throw new Error("synthetic response lost before server commit");
+          },
+          async abort() {
+            release();
+            await Promise.all([primary.abort(), cleanup.abort(), observer.abort()]);
+          },
+          async close() {
+            release();
+            await committing?.catch(() => {});
+            await Promise.all([primary.close(), cleanup.close(), observer.close()]);
+          },
+        } satisfies RequestDb;
+      },
+    });
+    const designs = [];
+    for (let i = 0; i < 50; i++)
+      designs.push({ name: `도안${i}`, uploadId: await photo(h), optionKey: null, inStandard: false, position: i });
+    attachBatches(h.store);
+    await expectProblem(await h.call("POST", "/owner/price-list/versions", { ...input(), designs }), "internal");
+    expect(h.store.keys("shops/")).toHaveLength(50);
+    expect((await db.query("SELECT count(*)::int AS n FROM designs WHERE shop_id=$1", [h.shopId])).rows).toEqual([
+      { n: 50 },
+    ]);
+    expect(observedLock).toBe(true);
+  });
+
+  it.each(["unavailable", "response_lost", "missing"] as const)(
+    "50개 서비스 복사 중 %s이면 새 복사본만 정리하고 이전 버전/원본·같은 키 재시도를 보존함",
+    async (failure) => {
+      const h = await fixture();
+      const firstUpload = await photo(h);
+      const firstResponse = await h.call("POST", "/owner/price-list/versions", {
+        ...input(),
+        designs: [{ name: "옛 도안", uploadId: firstUpload, optionKey: null, inStandard: true, position: 0 }],
+      });
+      const first = ((await firstResponse.json()) as { priceList: PriceValue }).priceList;
+      const oldKeys = h.store.keys("shops/");
+      const designs = [];
+      for (let i = 0; i < 50; i++)
+        designs.push({ name: `도안${i}`, uploadId: await photo(h), optionKey: null, inStandard: false, position: i });
+      let copyBatches = 0;
+      const attached = attachBatches(h.store, async (operations, perform) => {
+        const result = await perform();
+        if (operations[0]?.kind === "copy" && ++copyBatches === 2 && failure === "response_lost")
+          throw new Error("synthetic service response lost");
+        return result;
+      });
+      const originalCopy = attached.backend.copy.bind(attached.backend);
+      let copies = 0;
+      attached.backend.copy = async (from, to) => {
+        if (++copies === 13) {
+          if (failure === "unavailable") throw new StorageUnavailableError("synthetic copy failure");
+          if (failure === "missing") return false;
+        }
+        return originalCopy(from, to);
+      };
+      const body = { ...input(first.revision), designs },
+        key = newRequestKey();
+      await expectProblem(
+        await h.call("POST", "/owner/price-list/versions", body, true, key),
+        failure === "missing" ? "validation_failed" : "storage_unavailable",
+      );
+      expect(h.store.keys("shops/")).toEqual(oldKeys);
+      expect(h.store.keys("tmp/")).toHaveLength(50);
+      expect((await db.query("SELECT count(*)::int AS n FROM price_lists WHERE shop_id=$1", [h.shopId])).rows).toEqual([
+        { n: 1 },
+      ]);
+      expect(attached.calls.length).toBeLessThanOrEqual(15);
+      attached.backend.copy = originalCopy;
+      const retry = await h.call("POST", "/owner/price-list/versions", body, true, key);
+      expect(retry.status, await retry.clone().text()).toBe(201);
+      expect(h.store.keys("tmp/")).toHaveLength(0);
+      expect(h.store.keys("shops/")).toHaveLength(51);
+      for (const oldKey of oldKeys) expect(h.store.objects.has(oldKey)).toBe(true);
+    },
+  );
+
+  it("50개 저장 뒤 임시 삭제 일부 실패도201이며 같은 키 재전송이 사진 복사 없이 나머지를 정리함", async () => {
+    const h = await fixture();
+    const designs = [];
+    for (let i = 0; i < 50; i++)
+      designs.push({ name: `도안${i}`, uploadId: await photo(h), optionKey: null, inStandard: false, position: i });
+    let fail = true;
+    const { calls } = attachBatches(h.store, async (operations, perform) => {
+      if (operations[0]?.kind === "delete" && fail) {
+        fail = false;
+        throw new Error("synthetic delete unavailable");
+      }
+      return perform();
+    });
+    const body = { ...input(), designs },
+      key = newRequestKey();
+    const first = await h.call("POST", "/owner/price-list/versions", body, true, key);
+    expect(first.status, await first.clone().text()).toBe(201);
+    expect(h.store.keys("shops/")).toHaveLength(50);
+    expect(h.store.keys("tmp/")).toHaveLength(10);
+    const replay = await h.call("POST", "/owner/price-list/versions", body, true, key);
+    expect(replay.status).toBe(201);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    expect(h.store.keys("tmp/")).toHaveLength(0);
+    expect(calls.filter((ops) => ops[0]?.kind === "copy")).toHaveLength(5);
+  });
+
+  it.each([17, 26])("배치 없는 개발 저장소의 기존 외부50번 한도 대조: 사진%d개", async (count) => {
     const h = await fixture();
     const designs = [];
     for (let i = 0; i < count; i++)

@@ -26,7 +26,7 @@ import { ApiError, type FieldError, fieldError } from "./problem";
 import { UPLOAD_RATE } from "./rate-limit";
 import type { OwnerRequest } from "./routes";
 import { isUuid } from "./shop-scope";
-import { type ObjectStore, StorageUnavailableError } from "./storage";
+import { deleteObjects, type ObjectStore, StorageUnavailableError, type StoredObjectInfo } from "./storage";
 import { toShopIso } from "./time";
 
 export { IMAGE_TYPES, type ImageType, sniffImage } from "./photo-metadata";
@@ -273,23 +273,42 @@ export async function checkUploads(
   const errors: FieldError[] = [];
   const taken: TakenUpload[] = [];
   const seen = new Set<string>();
+  const keys: string[] = [];
+  type Entry =
+    | { readonly error: FieldError }
+    | { readonly ref: UploadRef; readonly parsed: ParsedUploadId; readonly key: string; readonly index: number };
+  const entries: Entry[] = [];
   for (const ref of refs) {
     if (typeof ref.id !== "string" || !CONTRACT_UPLOAD_ID.test(ref.id)) {
-      errors.push({ field: ref.field, code: "bad_format" });
+      entries.push({ error: { field: ref.field, code: "bad_format" } });
       continue;
     }
     if (seen.has(ref.id)) {
-      errors.push({ field: ref.field, code: "duplicate" });
+      entries.push({ error: { field: ref.field, code: "duplicate" } });
       continue;
     }
     seen.add(ref.id);
     const parsed = parseUploadId(ref.id);
     if (parsed === null || now.getTime() >= parsed.createdAt + UPLOAD_TTL_MS) {
-      errors.push({ field: ref.field, code: "upload_not_found" });
+      entries.push({ error: { field: ref.field, code: "upload_not_found" } });
       continue;
     }
     const key = tempKey(owner, parsed.id);
-    const info = await store.head(key);
+    entries.push({ ref, parsed, key, index: keys.length });
+    keys.push(key);
+  }
+  const infos: (StoredObjectInfo | null)[] = [];
+  if (store.batch && keys.length > 1) infos.push(...(await store.batch.head(keys)));
+  else for (const key of keys) infos.push(await store.head(key));
+  if (infos.length !== keys.length) throw new StorageUnavailableError("head: invalid batch result");
+  for (const entry of entries) {
+    if ("error" in entry) {
+      errors.push(entry.error);
+      continue;
+    }
+    const { ref, parsed, key } = entry;
+    const info = infos[entry.index];
+    if (info === undefined) throw new StorageUnavailableError("head: invalid batch result");
     const contentType = IMAGE_TYPES.find((t) => t === info?.contentType);
     if (info === null || contentType === undefined || info.size < 1 || info.size > 20 * MIB) {
       errors.push({ field: ref.field, code: "upload_not_found" });
@@ -346,6 +365,32 @@ export async function promoteUpload(
   return key;
 }
 
+/** 여러 사진도 입력 순서의 첫 복사 오류를 응답한다. 일부 복사본 정리는 부르는 명령이 맡는다. */
+export async function promoteUploads(
+  store: ObjectStore,
+  uploads: readonly TakenUpload[],
+  shopId: string,
+  versionId: string,
+): Promise<void> {
+  if (uploads.length === 0) return;
+  if (!store.batch) {
+    for (const upload of uploads) await promoteUpload(store, upload, shopId, versionId);
+    return;
+  }
+  const results = await store.batch.copy(
+    uploads.map((upload) => ({
+      from: upload.tempKey,
+      to: permanentKey(shopId, upload.purpose, upload.uploadId, versionId),
+    })),
+  );
+  if (results.length !== uploads.length) throw new StorageUnavailableError("copy: invalid batch result");
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (!result?.ok) throw new StorageUnavailableError("copy: unavailable");
+    if (!result.value) throw fieldError(uploads[i]?.field ?? "/", "upload_not_found");
+  }
+}
+
 /**
  * 명령이 기록을 쓴 뒤 임시 파일을 지운다(쓴 파일은 '쓰지 않은 파일'로 세지 않게). 저장소가 답하지 않아도 명령은 성공이다:
  * 남은 임시 파일은 1시간 뒤 세지 않고, 지난 임시 파일은 지난 기록 지우기(TASK-158)가 지운다.
@@ -355,5 +400,20 @@ export async function discardUpload(store: ObjectStore, upload: TakenUpload): Pr
     await store.delete(upload.tempKey);
   } catch (e) {
     if (!(e instanceof StorageUnavailableError)) throw e;
+  }
+}
+
+/** 저장을 마친 여러 임시 파일도 같은 성공/실패 약속으로 정리한다. */
+export async function discardUploads(
+  store: ObjectStore,
+  uploads: readonly Pick<TakenUpload, "tempKey">[],
+): Promise<void> {
+  try {
+    await deleteObjects(
+      store,
+      uploads.map((upload) => upload.tempKey),
+    );
+  } catch (error) {
+    if (!(error instanceof StorageUnavailableError)) throw error;
   }
 }

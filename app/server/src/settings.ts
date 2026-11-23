@@ -433,6 +433,12 @@ function readStorage(env: Readonly<Record<string, unknown>>, appEnv: AppEnv): St
   if (!endpoint || !region || !bucket) {
     throw new SettingsError("STORAGE_ENDPOINT, STORAGE_REGION and STORAGE_BUCKET must be set together");
   }
+  return validateStorageSettings({ endpoint, region, bucket }, appEnv);
+}
+
+/** 저장소 공통 검사. 보조 Worker도 운영과 같은 HTTPS/이름 규칙으로 확인한다. */
+export function validateStorageSettings(storage: StorageSettings, appEnv: AppEnv): StorageSettings {
+  const { endpoint, region, bucket } = storage;
   let url: URL;
   try {
     url = new URL(endpoint);

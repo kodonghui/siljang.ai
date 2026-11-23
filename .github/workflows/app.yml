@@ -136,6 +136,8 @@ jobs:
           fi
           : "${CLOUDFLARE_ACCOUNT_ID:?staging 환경의 CLOUDFLARE_ACCOUNT_ID가 필요합니다.}"
           : "${CLOUDFLARE_API_TOKEN:?staging 환경의 CLOUDFLARE_API_TOKEN이 필요합니다.}"
+          npx --no-install wrangler deploy --config server/wrangler.storage-batches.jsonc --env staging \
+            --strict --tag "$GITHUB_SHA"
           npx --no-install wrangler deploy --config server/wrangler.jsonc --env staging \
             --domain "$SILJANG_STAGING_DOMAIN" --strict --keep-vars --tag "$GITHUB_SHA"
 
