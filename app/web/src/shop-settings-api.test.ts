@@ -28,6 +28,21 @@ it.each(["updated", "unchanged"])("가게 저장 계약의 %s 응답과 요청 �
   expect(new Headers(init.headers).get("Idempotency-Key")).toBe("ui-synthetic-settings-request");
   expect(JSON.parse(String(init.body))).toEqual(body);
 });
+
+it("요약이 없는 이전 계약 응답도 읽고 잘못된 요약은 공통 실패로 처리함", async () => {
+  const legacy = shopFixture();
+  delete legacy.settingsSummary;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json(legacy)),
+  );
+  expect((await fetchShopSettings()).ok).toBe(true);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json({ ...shopFixture(), settingsSummary: { priceListVersion: "3" } })),
+  );
+  expect(await fetchShopSettings()).toMatchObject({ ok: false, status: 502 });
+});
 it.each([
   { shopId: "wrong" },
   { licenseStatus: "unknown" },

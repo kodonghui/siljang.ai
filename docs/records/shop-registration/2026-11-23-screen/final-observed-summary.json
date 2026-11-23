@@ -1,0 +1,96 @@
+{
+  "kind": "Aside CLI 출력에서 관측한 요약. 원본 파일 회수 여부를 별도로 표시함",
+  "uiSourceHead": "1059c724b638cdc8a68228cabf1e5bd6bcb9bd1e",
+  "rawArtifactsRecovered": false,
+  "reason": "브라우저 연결 중단 뒤 예상된 세션 경로에서 해당 산출물을 회수하지 못함",
+  "reports": [
+    {
+      "state": "normal",
+      "width": 360,
+      "height": 900,
+      "dpr": 1,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      }
+    },
+    {
+      "state": "normal",
+      "width": 1280,
+      "height": 900,
+      "dpr": 1,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      }
+    },
+    {
+      "state": "error",
+      "width": 360,
+      "height": 900,
+      "dpr": 1,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      }
+    },
+    {
+      "state": "error",
+      "width": 1280,
+      "height": 900,
+      "dpr": 1,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      }
+    },
+    {
+      "state": "stale",
+      "width": 360,
+      "height": 900,
+      "dpr": 1,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      }
+    },
+    {
+      "state": "stale",
+      "width": 1280,
+      "height": 900,
+      "dpr": 1,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      }
+    }
+  ],
+  "labelTargets360": [
+    {
+      "label": "즉석판매제조·가공업",
+      "width": 313,
+      "height": 44
+    },
+    {
+      "label": "제과점영업",
+      "width": 313,
+      "height": 44
+    },
+    {
+      "label": "위탁 조건 동의",
+      "width": 313,
+      "height": 46.5
+    }
+  ],
+  "businessNumberNormalization": {
+    "entered": "123-45-67890",
+    "observed": "1234567890",
+    "asideFillReportedMismatch": true
+  }
+}

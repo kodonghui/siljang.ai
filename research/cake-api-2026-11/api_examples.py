@@ -81,10 +81,14 @@ SHOP = {
     "entrustmentTermsVersion": "2026.11", "entrustmentConsentedAt": t("11-12", "10:05"),
     "timeZone": "Asia/Seoul", "completionPhotoEnabled": True, "idleCloseHours": 24, "ownerWaitMinutes": 120,
     "dailyAiCostLimitKrw": 5000, "awaitingPaymentLimit": 2, "bookingUrl": "https://siljang.example/s/moonlight-cake", "identityChange": None,
+    "settingsSummary": {"priceListVersion": 3, "operatingRulesVersion": 2, "paymentConfigured": True,
+                        "kakaoChannelStatus": "linked", "ledgerStatus": None, "hasPortfolio": False, "hasReviews": False},
     "createdAt": t("11-12", "10:05"), "updatedAt": t("11-12", "15:20"), "revision": rev("shop:3"),
 }
 SHOP_PENDING = dict(SHOP, licenseStatus="pending", pickupAddress=None, completionPhotoEnabled=False, bookingUrl=None,
-                    updatedAt=t("11-12", "10:05"), revision=rev("shop:1"))
+                    updatedAt=t("11-12", "10:05"), revision=rev("shop:1"),
+                    settingsSummary={"priceListVersion": None, "operatingRulesVersion": None, "paymentConfigured": False,
+                                     "kakaoChannelStatus": None, "ledgerStatus": None, "hasPortfolio": False, "hasReviews": False})
 SHOP_ON_HOLD = dict(SHOP_PENDING, licenseStatus="on_hold", licenseHoldReason="신고증 글자가 잘 보이지 않아요. 밝은 곳에서 다시 찍어 올려 주세요",
                     updatedAt=t("11-12", "13:40"), revision=rev("shop:2"))
 

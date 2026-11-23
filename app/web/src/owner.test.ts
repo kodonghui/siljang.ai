@@ -86,6 +86,12 @@ describe("TASK-030 사장님 로그인 계약과 경로", () => {
     expect(ownerDestination(examples.license_on_hold.value, "/owner/orders")).toBe(OWNER_LICENSE);
     expect(ownerDestination(returning, OWNER_REGISTER)).toBe(OWNER_HOME);
   });
+  it("신고 보류여도 SCR-034 설정으로 돌아가며 다른 업무는 재제출로 보냄", () => {
+    expect(ownerDestination(examples.license_on_hold.value, "/owner/shop?tab=settings")).toBe(
+      "/owner/shop?tab=settings",
+    );
+    expect(ownerDestination(examples.license_on_hold.value, "/owner/orders")).toBe(OWNER_LICENSE);
+  });
   it.each([
     "",
     "?error=access_denied",

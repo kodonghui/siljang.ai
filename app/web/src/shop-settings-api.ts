@@ -2,6 +2,15 @@ import { type ApiResult, request } from "./api";
 import { INVALID_API_RESPONSE, isApiObject, UUID_PATTERN } from "./api-response";
 import type { ShopSettingsSource } from "./shop-settings-form";
 
+export interface ShopSettingsSummary {
+  readonly priceListVersion: number | null;
+  readonly operatingRulesVersion: number | null;
+  readonly paymentConfigured: boolean;
+  readonly kakaoChannelStatus: "pending" | "linked" | "failed" | null;
+  readonly ledgerStatus: "linked" | "auth_lost" | null;
+  readonly hasPortfolio: boolean;
+  readonly hasReviews: boolean;
+}
 export interface ShopSettings extends ShopSettingsSource {
   readonly shopId: string;
   readonly businessName: string;
@@ -13,6 +22,7 @@ export interface ShopSettings extends ShopSettingsSource {
   readonly licenseHoldReason: string | null;
   readonly bookingUrl: string | null;
   readonly identityChange: { readonly status: "pending" | "approved" | "on_hold" } | null;
+  readonly settingsSummary?: ShopSettingsSummary;
 }
 export interface SavedShopSettings {
   readonly outcome: "done" | "unchanged";
@@ -54,6 +64,26 @@ function isShopSettings(value: unknown): value is ShopSettings {
   }
   if (!["instant_sale_manufacturing", "bakery"].includes(String(value.foodBusinessType))) return false;
   if (!["pending", "on_hold", "verified"].includes(String(value.licenseStatus))) return false;
+  if (value.settingsSummary !== undefined) {
+    const summary = value.settingsSummary;
+    if (!isApiObject(summary)) return false;
+    for (const key of ["priceListVersion", "operatingRulesVersion"]) {
+      const version = summary[key];
+      if (
+        version !== null &&
+        (typeof version !== "number" || !Number.isSafeInteger(version) || version < 1 || version > 2147483647)
+      )
+        return false;
+    }
+    if (["paymentConfigured", "hasPortfolio", "hasReviews"].some((key) => typeof summary[key] !== "boolean"))
+      return false;
+    if (
+      summary.kakaoChannelStatus !== null &&
+      !["pending", "linked", "failed"].includes(String(summary.kakaoChannelStatus))
+    )
+      return false;
+    if (summary.ledgerStatus !== null && !["linked", "auth_lost"].includes(String(summary.ledgerStatus))) return false;
+  }
   return (
     value.identityChange === null ||
     (isApiObject(value.identityChange) &&

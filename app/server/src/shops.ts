@@ -5,6 +5,7 @@ import type { OwnerRequest, ShopRequest } from "./routes";
 import type { Services } from "./services";
 import { parseShopRegistration } from "./shop-input";
 import type { ShopDb } from "./shop-scope";
+import { shopSettingsSummary } from "./shop-settings-summary";
 import { toShopIso } from "./time";
 import { checkLicensePhoto, discardUpload, permanentKey, promoteUpload, type TakenUpload } from "./uploads";
 
@@ -116,6 +117,7 @@ export async function renderShop(
             requestedAt: iso(change.requested_at),
             reviewedAt: change.reviewed_at === null ? null : iso(change.reviewed_at),
           },
+    settingsSummary: await shopSettingsSummary(db, now),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
     revision: row.revision,
