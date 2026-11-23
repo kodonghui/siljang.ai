@@ -5,6 +5,7 @@ import type { OwnerRequest, ShopRequest } from "./routes";
 import type { Services } from "./services";
 import { parseShopRegistration } from "./shop-input";
 import type { ShopDb } from "./shop-scope";
+import { shopSettingsSummary } from "./shop-settings-summary";
 import { toShopIso } from "./time";
 import { checkLicensePhoto, discardUpload, permanentKey, promoteUpload, type TakenUpload } from "./uploads";
 
@@ -26,6 +27,7 @@ export interface ShopRow {
   license_photo_key: string;
   license_status: string;
   license_hold_reason: string | null;
+  license_reviewed_at: Date | null;
   entrustment_terms_version: string;
   entrustment_consented_at: Date;
   time_zone: string;
@@ -60,6 +62,7 @@ export async function renderShop(
   services: Services,
   origin: string,
   current?: ShopRow,
+  includeSettingsSummary = false,
 ): Promise<Record<string, unknown>> {
   const row = current ?? (await db.found<ShopRow>("SELECT s.*, s.xmin::text AS revision FROM shops s WHERE s.id = $1"));
   const changes = await db.run<IdentityRow>(
@@ -86,6 +89,7 @@ export async function renderShop(
     foodBusinessType: row.food_business_type,
     licenseStatus: row.license_status,
     licenseHoldReason: row.license_hold_reason,
+    licenseReviewedAt: row.license_reviewed_at === null ? null : iso(row.license_reviewed_at),
     licensePhotoUrl: await urls.sign(row.license_photo_key, origin, now),
     entrustmentTermsVersion: row.entrustment_terms_version,
     entrustmentConsentedAt: iso(row.entrustment_consented_at),
@@ -116,6 +120,7 @@ export async function renderShop(
             requestedAt: iso(change.requested_at),
             reviewedAt: change.reviewed_at === null ? null : iso(change.reviewed_at),
           },
+    ...(includeSettingsSummary ? { settingsSummary: await shopSettingsSummary(db, now) } : {}),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
     revision: row.revision,
@@ -171,6 +176,6 @@ export async function registerShop(r: OwnerRequest): Promise<Response> {
 }
 
 export async function getShop(r: ShopRequest): Promise<Response> {
-  const body = await r.db.transaction((tx) => renderShop(tx, r.services, new URL(r.req.url).origin));
+  const body = await r.db.transaction((tx) => renderShop(tx, r.services, new URL(r.req.url).origin, undefined, true));
   return r.json(body);
 }

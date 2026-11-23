@@ -27,6 +27,7 @@ interface Shop {
   foodBusinessType: string;
   licenseHoldReason: string | null;
   licensePhotoUrl: string;
+  licenseReviewedAt: string | null;
 }
 async function fixture(status = "on_hold") {
   const f = await createShop(db, "영업 신고 다시 올리기");
@@ -83,6 +84,19 @@ describeDb("TASK-033 보류 영업 신고 재업로드", () => {
     db = isolated.db;
   }, 30_000);
   afterAll(async () => isolated?.close());
+  it.each(["pending", "verified", "on_hold"])(
+    "사장님 조회의 %s 신고 확인 시각은 실제 판정 시각이고 재제출 때 비움",
+    async (status) => {
+      const h = await fixture(status);
+      expect((await h.get()).licenseReviewedAt).toBe(status === "pending" ? null : "2026-11-22T15:00:00+09:00");
+      if (status === "on_hold") {
+        const result = await h.put(await h.input());
+        expect(result.status).toBe(200);
+        expect(((await result.json()) as { shop: Shop }).shop.licenseReviewedAt).toBeNull();
+        expect((await h.get()).licenseReviewedAt).toBeNull();
+      }
+    },
+  );
   it("보류된 영업 신고를 새 증빙/번호/종류로 다시 올리면 pending/이유 없음", async () => {
     const h = await fixture(),
       input = await h.input(),

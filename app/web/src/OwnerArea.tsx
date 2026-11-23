@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
-import type { ApiResult } from "./api";
+import type { ApiFailure, ApiResult } from "./api";
 import {
   fetchOwner,
   OWNER_HOME,
@@ -13,7 +13,9 @@ import {
 } from "./owner";
 import { classify } from "./problems";
 import { clearRegistrationDraft, pruneRegistrationDraft } from "./registration-draft";
+import { ShopLicense } from "./ShopLicense";
 import { ShopRegistration } from "./ShopRegistration";
+import { ShopSettings } from "./ShopSettings";
 import { Button, LoadFailure, Skeleton } from "./ui";
 
 /** 첫 세션 확인 전에는 가린다. 이미 검증한 등록 양식은 재확인·로그아웃 중 잠근 채 보존한다. */
@@ -26,6 +28,7 @@ export function OwnerArea() {
     null,
   );
   const [logout, setLogout] = useState<"pending" | "failed" | null>(null);
+  const [logoutFailure, setLogoutFailure] = useState<ApiFailure | null>(null);
   const logoutRequest = useRef<AbortController | null>(null);
   const verified = useRef<{ key: string; data: OwnerIdentity } | null>(null);
   const [registrationNotice, setRegistrationNotice] = useState(false);
@@ -69,13 +72,20 @@ export function OwnerArea() {
     const controller = new AbortController();
     logoutRequest.current = controller;
     setLogout("pending");
+    setLogoutFailure(null);
     try {
       const result = await signOutOwner(controller.signal);
       if (controller.signal.aborted) return;
       if (result.ok) navigate(OWNER_LOGIN, { replace: true });
-      else setLogout("failed");
+      else {
+        setLogout("failed");
+        setLogoutFailure(result);
+      }
     } catch {
-      if (!controller.signal.aborted) setLogout("failed");
+      if (!controller.signal.aborted) {
+        setLogout("failed");
+        setLogoutFailure({ ok: false, status: 0, problem: null, retryAfterSeconds: null });
+      }
     } finally {
       logoutRequest.current = null;
     }
@@ -89,6 +99,38 @@ export function OwnerArea() {
     );
   const session = checked?.key === location.key && checked.revision === revision ? checked.result : null;
   const candidate = session?.ok ? session.data : verified.current?.key === location.key ? verified.current.data : null;
+  const shopPath = requested.split(/[?#]/)[0];
+  if (["/owner/shop", "/owner/shop/license"].includes(shopPath ?? "") && candidate?.shop) {
+    const ShopScreen = shopPath === "/owner/shop/license" ? ShopLicense : ShopSettings;
+    if (session !== null && !session.ok && session.status === 401)
+      return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
+    return (
+      <>
+        {session !== null && !session.ok ? (
+          <LoadFailure
+            failure={classify(session.status, session.problem, session.retryAfterSeconds)}
+            onRetry={() => setRevision((r) => r + 1)}
+          />
+        ) : null}
+        <ShopScreen
+          key={`${candidate.owner.ownerId}:${candidate.shop.shopId}`}
+          shopName={candidate.shop.name}
+          onNavigate={(href) => navigate(href)}
+          onSessionExpired={() => navigate(OWNER_LOGIN, { replace: true, state: { returnTo: requested } })}
+          onRegisterShop={() => navigate(OWNER_REGISTER, { replace: true })}
+          onLogout={() => void logOut()}
+          logoutPending={logout === "pending"}
+          logoutFailure={
+            logoutFailure
+              ? classify(logoutFailure.status, logoutFailure.problem, logoutFailure.retryAfterSeconds)
+              : null
+          }
+          sessionChecking={session === null}
+          sessionFailed={session !== null && !session.ok}
+        />
+      </>
+    );
+  }
   if (requested === OWNER_REGISTER && candidate?.shop === null) {
     return (
       <>
@@ -110,7 +152,8 @@ export function OwnerArea() {
           onLogout={() => void logOut()}
           logoutFailed={logout === "failed"}
           logoutPending={logout === "pending"}
-          sessionChecking={session === null || !session.ok}
+          sessionChecking={session === null}
+          sessionFailed={session !== null && !session.ok}
           sessionExpired={session !== null && !session.ok && session.status === 401}
         />
       </>

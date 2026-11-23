@@ -118,6 +118,50 @@ async function fixture() {
 }
 
 describeDb("TASK-037 가게 설정 부분 저장", () => {
+  it("설정 목록의 현재 버전·연결·게시 상태를 비밀 값 없이 함께 반환함", async () => {
+    const h = await fixture();
+    expect((await h.get()).settingsSummary).toEqual({
+      priceListVersion: 1,
+      operatingRulesVersion: 1,
+      paymentConfigured: true,
+      kakaoChannelStatus: "pending",
+      ledgerStatus: null,
+      hasPortfolio: false,
+      hasReviews: false,
+    });
+  });
+  it("카카오 확인 시작 전·진행 중·10분 경계를 구분함", async () => {
+    const h = await fixture();
+    await db.query("UPDATE kakao_channels SET check_started_at=NULL WHERE shop_id=$1", [h.shop.shopId]);
+    expect((await h.get()).settingsSummary).toMatchObject({ kakaoChannelStatus: "not_started" });
+    await db.query("UPDATE kakao_channels SET check_started_at=$2 WHERE shop_id=$1", [
+      h.shop.shopId,
+      new Date(NOW.getTime() - 5 * 60 * 1000),
+    ]);
+    expect((await h.get()).settingsSummary).toMatchObject({ kakaoChannelStatus: "pending" });
+    await db.query("UPDATE kakao_channels SET check_started_at=$2 WHERE shop_id=$1", [
+      h.shop.shopId,
+      new Date(NOW.getTime() - 10 * 60 * 1000),
+    ]);
+    expect((await h.get()).settingsSummary).toMatchObject({ kakaoChannelStatus: "failed" });
+  });
+  it("다른 가게의 버전과 장부 연결이 이 가게의 설정 카드에 섞이지 않음", async () => {
+    const h = await fixture();
+    const other = await createShop(db, "다른 설정 합성 가게");
+    await db.query("UPDATE price_lists SET superseded_at=now()+interval '1 second' WHERE shop_id=$1", [h.shop.shopId]);
+    await db.query("UPDATE operating_rules SET superseded_at=now()+interval '1 second' WHERE shop_id=$1", [
+      h.shop.shopId,
+    ]);
+    await db.query(
+      "INSERT INTO ledger_links (shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref) VALUES ($1,'synthetic-sheet','합성 장부','{}','synthetic-credential-reference')",
+      [other.shopId],
+    );
+    expect((await h.get()).settingsSummary).toMatchObject({
+      priceListVersion: null,
+      operatingRulesVersion: null,
+      ledgerStatus: null,
+    });
+  });
   it("서로 다른 변경 조합도 같은 SQL 하나를 쓰고 안 바뀐 필드를 보존함", async () => {
     const h = await fixture(),
       before = await h.get();

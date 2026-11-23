@@ -1,0 +1,21 @@
+{
+  "checkedAtKst": "2026-11-23 19:12",
+  "bundleZipSha256": "c532a4826463718ba79b721f59a4e38c2757edb73cd62365838aeeeeb1434588",
+  "bundleZipBytes": 182788,
+  "compiledSourceCommit": "dc7a124e933d1efb4100f6126057ef17ea86b661",
+  "nativeChecks": 8,
+  "syntheticPatch": {
+    "baseRevision": "105995083ca7",
+    "mailOrderRegNo": null,
+    "mailOrderAuthority": null,
+    "mailOrderExemption": "합성 신고 면제 사유"
+  },
+  "saveSucceeded": true,
+  "normal360SaveRect": {
+    "top": 844,
+    "bottom": 888,
+    "height": 44
+  },
+  "photosRecovered": false,
+  "actualOwnerSaveVerified": false
+}

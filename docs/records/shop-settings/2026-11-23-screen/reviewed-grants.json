@@ -1,0 +1,10 @@
+{
+  "checkedAtKst": "2026-11-23 19:01",
+  "transportSha256": "15bceeed06ea02287d82e6a101ec1264b866c6efa05dbac9bf28824007a80912",
+  "migrations": 34,
+  "status_select": true,
+  "unlinked_select": false,
+  "credential_select": false,
+  "spreadsheet_select": false,
+  "ledger_update": false
+}

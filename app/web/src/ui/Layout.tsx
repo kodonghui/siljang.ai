@@ -42,6 +42,7 @@ interface MenuLayoutBase {
   readonly title: string;
   /** 제목 아래 한 줄(08·09의 meta, 예: '확인 필요 3건') */
   readonly meta?: ReactNode;
+  readonly busy?: boolean;
   /** '뒤로'의 목적지: 07 상위 화면의 주소. 메뉴 항목 화면이 아니면 꼭 줌(브라우저 뒤로가 아님) */
   readonly back?: string;
   readonly onNavigate?: Navigate;
@@ -88,6 +89,7 @@ function MenuLayout({
   todoCount,
   onLogout,
   children,
+  busy = false,
 }: MenuLayoutProps) {
   const top = isMenuScreen(shell, screen);
   if (!top && back === undefined) throw new Error(`${screen}: 메뉴 항목 화면이 아니면 '뒤로'의 목적지(back)가 필요함`);
@@ -103,6 +105,10 @@ function MenuLayout({
       todoCount={todoCount}
       onLogout={onLogout}
       onNavigate={(href, e) => {
+        if (busy) {
+          e.preventDefault();
+          return;
+        }
         if (inSheet) setOpen(false);
         onNavigate?.(href, e);
       }}
@@ -116,7 +122,7 @@ function MenuLayout({
     );
   return (
     <div className={`ui-layout ui-layout--${shell}`}>
-      <nav className="ui-layout__side ui-menu" aria-label={MENU_NAME[shell]}>
+      <nav className="ui-layout__side ui-menu" aria-label={MENU_NAME[shell]} inert={busy}>
         {menu(false)}
       </nav>
       <div className="ui-layout__page">
@@ -125,6 +131,7 @@ function MenuLayout({
             <button
               ref={openButton}
               type="button"
+              disabled={busy}
               className="ui-layout__lead ui-layout__open"
               aria-label={OPEN_MENU_LABEL}
               aria-haspopup="dialog"

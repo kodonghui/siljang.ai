@@ -122,8 +122,8 @@ function identity(value: unknown): value is OwnerIdentity {
 
 export function ownerDestination(profile: OwnerIdentity, returnTo: unknown): string {
   if (profile.shop === null) return OWNER_REGISTER;
-  if (profile.shop.licenseStatus === "on_hold") return OWNER_LICENSE;
   const safe = ownerReturnTo(returnTo);
+  if (profile.shop.licenseStatus === "on_hold" && safe?.split(/[?#]/)[0] !== "/owner/shop") return OWNER_LICENSE;
   return safe === OWNER_REGISTER ? OWNER_HOME : (safe ?? OWNER_HOME);
 }
 

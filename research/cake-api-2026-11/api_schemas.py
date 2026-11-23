@@ -276,6 +276,16 @@ S["LicenseResubmission"] = obj({
     "licensePhotoUploadId": _shop_fields["licensePhotoUploadId"],
 }, ["baseRevision", "foodLicenseNo", "foodBusinessType", "licensePhotoUploadId"])
 
+S["ShopSettingsSummary"] = all_required({
+    "priceListVersion": nullable(integer(1, 2147483647)),
+    "operatingRulesVersion": nullable(integer(1, 2147483647)),
+    "paymentConfigured": boolean(),
+    "kakaoChannelStatus": nullable(enum(["not_started", "pending", "linked", "failed"])),
+    "ledgerStatus": nullable(enum(["linked", "auth_lost"])),
+    "hasPortfolio": boolean(),
+    "hasReviews": boolean(),
+}, desc="가게 설정 목록의 현재 상태(SCR-034). 계좌·OAuth 참조·사진 주소는 포함하지 않음")
+
 S["Shop"] = all_required({
     "shopId": UUID,
     "name": string(1, 40),
@@ -309,6 +319,10 @@ S["Shop"] = all_required({
     "revision": REVISION,
 }, desc="사장님이 보는 가게(그 가게 사장님만). 상호·대표자·사업자등록번호는 운영자가 확인한 지금 값이고, 바꾸는 중이면 새 값은 identityChange에만(REQ-245)")
 
+S["Shop"]["properties"]["licenseReviewedAt"] = dict(nullable(DT), description="영업 신고를 마지막으로 확인·보류한 시각. 확인 중이면 null. SCR-035의 확인 시각이며 updatedAt으로 대신하지 않음")
+
+# 요약은 API-009/010만 반환한다. 등록·신고·사업자 정보 변경 응답에는 없으므로 선택 사항이다.
+S["Shop"]["properties"]["settingsSummary"] = dict(ref("ShopSettingsSummary"), description="API-009/010의 현재 카드 상태. 등록·신고·사업자 정보 변경 응답에는 없음. not_started는 확인 시작 전, pending은 확인 중, failed는 확인 실패")
 S["ShopResult"] = all_required({"outcome": outcome(("done", "unchanged")), "shop": ref("Shop")})
 
 # ── 사업자 정보 변경 요청 (설계 재검토 M14, SPEC-078) ─────────────────────────────
