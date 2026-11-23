@@ -1,6 +1,7 @@
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
+import { OperatorAlertsScreen } from "./OperatorAlertsScreen";
 import { OperatorShopsList } from "./OperatorShopsList";
 import {
   fetchOperator,
@@ -144,6 +145,8 @@ export function OperatorArea() {
         ) : null}
         {screen.screen === "SCR-047" ? (
           <OperatorShopsList onNavigate={follow} onSessionExpired={sessionExpired} blocked={logout === "pending"} />
+        ) : screen.screen === "SCR-049" ? (
+          <OperatorAlertsScreen onNavigate={follow} onSessionExpired={sessionExpired} blocked={logout === "pending"} />
         ) : (
           <p>준비 중입니다.</p>
         )}
