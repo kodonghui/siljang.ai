@@ -1,0 +1,30 @@
+{
+  "sourceCommit": "c374b306882dffa0c5ee02388232d9acca33fb56",
+  "bundleBytes": 211480,
+  "bundleSha256": "22ba89bd0b89ad003e6196d8586892daeacf4490f076c49d00ff184af4dffa3c",
+  "bundleVerifiedOnAcademyPC": true,
+  "asideCli": "1.26.1121.1917",
+  "screenSnapshotsCompleted": 0,
+  "pageChecksCompleted": 0,
+  "attempts": [
+    {
+      "action": "open owned history tab",
+      "error": "CDP command timeout: Page.enable",
+      "elapsedMs": 30803
+    },
+    {
+      "action": "open owned history tab after inventory showed none",
+      "error": "CDP command timeout: DOM.enable",
+      "elapsedMs": 30741
+    }
+  ],
+  "ownUrlTabsAfterAttempts": 0,
+  "alternative": {
+    "method": "same academy Aside CLI --incognito repl",
+    "promptObserved": false,
+    "outcome": "cancelled with Ctrl-C after no startup response"
+  },
+  "sameNativeGoalPaused": true,
+  "screenshotsCaptured": false,
+  "fakeDataOnly": true
+}
