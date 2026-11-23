@@ -382,6 +382,8 @@ it.each([
   { status: 503, code: "storage_unavailable" },
   { status: 422, code: "validation_failed", errors: [{ field: "/designs/0/uploadId", code: "upload_not_found" }] },
 ])("저장 $code는 사진 성공 안내를 지우고 같은 파일의 새ID/새키로 저장", async (p) => {
+  vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:synthetic-rejected");
+  vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
   sendProblem = p;
   area();
   await loaded();
@@ -392,6 +394,10 @@ it.each([
     p.code === "validation_failed" ? "입력한 내용을 확인해 주세요" : "사진을 저장하지 못했어요. 다시 올려 주세요",
   );
   await waitFor(() => expect(design().queryByText("사진을 올렸어요. 1시간 안에 저장해 주세요")).toBeNull());
+  expect(design().getByRole("img").getAttribute("src")).toBe(current.designs[0].imageUrl);
+  expect(
+    design().getByText("새 그림 저장이 거절돼 기존 그림을 유지해요. 원래 파일을 다시 올릴 수 있어요."),
+  ).toBeTruthy();
   expect(design().getByText("synthetic.png")).toBeTruthy();
   fireEvent.click(design().getByRole("button", { name: "다시 올리기" }));
   await design().findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
@@ -553,6 +559,7 @@ it("직접 고치는 입력이 없는 순서 필드 오류도 폼 위에 사유�
   save();
   await main().findByText("입력한 내용을 확인해 주세요");
   expect(main().getByText("넣을 수 있는 범위를 벗어났어요")).toBeTruthy();
+  expect(document.activeElement).toBe(screen.getByRole("region", { name: "가격표 저장 결과" }));
 });
 
 it("그림 업로드가 실패해도 기존 도안과 실패한 파일을 충돌 재적용 뒤 보존", async () => {
@@ -636,4 +643,35 @@ it("두 번째 그림 업로드가 실패해도 마지막 성공 그림의 미�
   expect(design().getByText("새 그림을 올리지 못해 기존 그림을 유지해요. 다시 올리면 바꿀 수 있어요.")).toBeTruthy();
   view.unmount();
   expect(revoke).toHaveBeenCalledWith(src);
+});
+it("업로드 성공 뒤 같은 파일의 미리보기 URL은 하나만 소유하고 한 번 해제", async () => {
+  const create = vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:synthetic-shared");
+  const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  const view = area();
+  await loaded();
+  choose();
+  await design().findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
+  expect(create).toHaveBeenCalledTimes(1);
+  view.unmount();
+  expect(revoke).toHaveBeenCalledExactlyOnceWith("blob:synthetic-shared");
+});
+
+it("새 그림 저장 거절 뒤 다시 올리지 않아도 기존 도안 ID로 새 요청을 저장할 수 있다", async () => {
+  sendProblem = { status: 503, code: "storage_unavailable" };
+  area();
+  await loaded();
+  const previousId = current.designs[0].designId;
+  choose();
+  await design().findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
+  save();
+  await design().findByText("새 그림 저장이 거절돼 기존 그림을 유지해요. 원래 파일을 다시 올릴 수 있어요.");
+  save();
+  await main().findByText("저장했어요. 가격표 버전 5");
+  const sent = sends[1];
+  if (!sent) throw new Error("두 번째 저장 없음");
+  const bodyDesign = (sent.body.designs as Record<string, unknown>[])[0];
+  expect(bodyDesign).toMatchObject({ sourceDesignId: previousId });
+  expect(bodyDesign).not.toHaveProperty("uploadId");
+  expect(sends[1]?.key).not.toBe(sends[0]?.key);
+  expect(uploads).toBe(1);
 });

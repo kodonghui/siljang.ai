@@ -111,6 +111,7 @@ function patch<T, K extends keyof T>(base: T, mine: T, keys: readonly K[]): Part
   return result;
 }
 const optionIdentity = (o: OptionForm) => JSON.stringify([o.group, o.name]);
+const designIdentity = (d: DesignForm) => d.baseDesignId ?? d.key;
 const pair = (r: Pick<RuleForm, "optionA" | "optionB">) => JSON.stringify([r.optionA, r.optionB].sort());
 const ordered = <T extends { position: number }>(rows: readonly T[]) =>
   [...rows].sort((a, b) => a.position - b.position);
@@ -205,7 +206,7 @@ export function rebasePriceList(
   const designKeys = new Map<string, string>(),
     baseDesigns = new Set(before.designs.map((d) => d.key));
   for (const original of before.designs) {
-    const own = mine.designs.find((d) => d.key === original.key),
+    const own = mine.designs.find((d) => designIdentity(d) === original.key),
       current = result.designs.find((d) => d.name === original.name);
     if (current) designKeys.set(original.key, current.key);
     if (!own) {
@@ -234,10 +235,9 @@ export function rebasePriceList(
     if (imageChanged) {
       current.uploadId = own.uploadId;
       current.sourceDesignId = own.sourceDesignId;
-      current.imageUrl = own.imageUrl;
     }
   }
-  for (const own of mine.designs.filter((d) => !baseDesigns.has(d.key))) {
+  for (const own of mine.designs.filter((d) => !baseDesigns.has(designIdentity(d)))) {
     if (result.designs.some((d) => d.name === own.name)) {
       conflicts.push(`다른 기기에서 같은 이름을 추가한 도안: ${own.name}`);
       continue;
@@ -267,7 +267,7 @@ export function rebasePriceList(
     result.options = [...result.options.filter((o) => o.group !== group), ...reordered];
   }
   const oldDesignOrder = ordered(before.designs).map((d) => d.key),
-    myDesignOrder = ordered(mine.designs).map((d) => d.key);
+    myDesignOrder = ordered(mine.designs).map(designIdentity);
   if (JSON.stringify(oldDesignOrder) !== JSON.stringify(myDesignOrder))
     result.designs = applyOrder(
       result.designs,

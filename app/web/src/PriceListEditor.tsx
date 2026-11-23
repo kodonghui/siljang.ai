@@ -42,6 +42,8 @@ import "./price-list.css";
 const GROUPS: Record<OptionGroup, string> = { size: "크기", flavor: "맛", design: "디자인", extra: "추가" };
 const NETWORK: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
 const key = () => crypto.randomUUID();
+const RULE_PAGE_SIZE = 20;
+const STATUS_FOCUS = "status";
 type LoadMode = "initial" | "stale";
 function move<T extends { key: string; position: number }>(rows: T[], from: string, to: string): T[] {
   const sorted = [...rows].sort((a, b) => a.position - b.position),
@@ -135,6 +137,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
   const activeRead = useRef<AbortController | null>(null),
     lastMode = useRef<LoadMode>("initial");
   const formRef = useRef<HTMLFormElement>(null),
+    statusRef = useRef<HTMLElement>(null),
     formValue = useRef(form);
   formValue.current = form;
   const uploading = useRef(new Set<string>()),
@@ -155,6 +158,19 @@ export function PriceListEditor(props: ShopLicenseProps) {
   const original = useMemo(() => priceListForm(base), [base]);
   const changes = useMemo(() => priceListChanges(original, form), [original, form]);
   const canEdit = () => !locked && uploading.current.size === 0;
+
+  const revealField = useCallback((pointer: string) => {
+    const form = formValue.current;
+    focusPending.current =
+      pointer === "/options" || priceFieldPointers(form).includes(pointer) ? pointer : STATUS_FOCUS;
+    const optionIndex = /^\/options\/(\d+)/.exec(pointer)?.[1];
+    const ruleIndex = /^\/rules\/(\d+)/.exec(pointer)?.[1];
+    if (optionIndex !== undefined) {
+      const row = form.options[Number(optionIndex)];
+      if (row) setGroup(row.group);
+    }
+    if (ruleIndex !== undefined) setRulePage(Math.floor(Number(ruleIndex) / RULE_PAGE_SIZE));
+  }, []);
 
   const adopt = useCallback(
     (list: PriceList | null, options: { draft?: PriceListForm; resetCommand?: boolean } = {}) => {
@@ -235,40 +251,35 @@ export function PriceListEditor(props: ShopLicenseProps) {
         ...old,
         designs: old.designs.map((d) =>
           invalid.some((item) => item.key === d.key && item.uploadId === d.uploadId)
-            ? { ...d, uploadId: null, sourceDesignId: null }
+            ? { ...d, uploadId: null, sourceDesignId: d.baseDesignId }
             : d,
         ),
       }));
     }
-    if (failure.outcome === "field") {
-      focusPending.current = failure.fieldErrors[0]?.field ?? null;
-      const field = failure.fieldErrors[0]?.field ?? "",
-        optionIndex = /^\/options\/(\d+)/.exec(field)?.[1],
-        ruleIndex = /^\/rules\/(\d+)/.exec(field)?.[1];
-      if (optionIndex !== undefined) {
-        const row = formValue.current.options[Number(optionIndex)];
-        if (row) setGroup(row.group);
-      }
-      if (ruleIndex !== undefined) setRulePage(Math.floor(Number(ruleIndex) / 20));
-    }
-  }, [failure, read]);
+    if (failure.outcome === "field") revealField(failure.fieldErrors[0]?.field ?? "");
+  }, [failure, read, revealField]);
   useEffect(() => {
     const pointer = focusPending.current;
     if (!pointer) return;
-    const field = Array.from(
-      formRef.current?.querySelectorAll<HTMLElement>("[data-pointer], [data-row-pointer]") ?? [],
-    ).find((node) => node.dataset.pointer === pointer || node.dataset.rowPointer === pointer);
+    const field =
+      pointer === STATUS_FOCUS
+        ? null
+        : Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-pointer], [data-row-pointer]") ?? []).find(
+            (node) => node.dataset.pointer === pointer || node.dataset.rowPointer === pointer,
+          );
     const target =
-      pointer === "/options"
-        ? formRef.current?.querySelector<HTMLElement>("[data-add-option]")
-        : field?.querySelector<HTMLElement>("input, select, textarea, button");
+      pointer === STATUS_FOCUS
+        ? statusRef.current
+        : pointer === "/options"
+          ? formRef.current?.querySelector<HTMLElement>("[data-add-option]")
+          : field?.querySelector<HTMLElement>("input, select, textarea, button");
     if (target && !target.matches(":disabled")) {
       focusPending.current = null;
       target.focus();
     }
   });
   useEffect(() => {
-    setRulePage((page) => Math.min(page, Math.max(0, Math.ceil(form.rules.length / 20) - 1)));
+    setRulePage((page) => Math.min(page, Math.max(0, Math.ceil(form.rules.length / RULE_PAGE_SIZE) - 1)));
   }, [form.rules.length]);
   const photoBusy = useCallback((id: string, busy: boolean) => {
     if (busy) uploading.current.add(id);
@@ -321,15 +332,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
     if (!canEdit() || stale || !loaded) return;
     if (issues.length) {
       setShowErrors(true);
-      focusPending.current = issues[0]?.field ?? null;
-      const first = issues[0]?.field ?? "",
-        i = /^\/options\/(\d+)/.exec(first)?.[1];
-      if (i !== undefined) {
-        const row = form.options[Number(i)];
-        if (row) setGroup(row.group);
-      }
-      const ruleIndex = /^\/rules\/(\d+)/.exec(first)?.[1];
-      if (ruleIndex !== undefined) setRulePage(Math.floor(Number(ruleIndex) / 20));
+      revealField(issues[0]?.field ?? "");
       return;
     }
     submittedPhotos.current = form.designs.map((d) => ({ key: d.key, uploadId: d.uploadId }));
@@ -490,25 +493,27 @@ export function PriceListEditor(props: ShopLicenseProps) {
                 대응할 수 없는 변경이 있어요. 남긴 입력과 지금 값을 비교해 주세요.
               </Banner>
             ) : null}
-            <CommandStatus
-              state={command.state}
-              fields={fields}
-              disabled={locked}
-              onRetry={() => {
-                if (canEdit() && !stale) command.retry();
-              }}
-              onReload={() => {
-                if (canEdit()) {
-                  setStale(true);
-                  read("stale");
+            <section ref={statusRef} aria-label="가격표 저장 결과" tabIndex={-1}>
+              <CommandStatus
+                state={command.state}
+                fields={fields}
+                disabled={locked}
+                onRetry={() => {
+                  if (canEdit() && !stale) command.retry();
+                }}
+                onReload={() => {
+                  if (canEdit()) {
+                    setStale(true);
+                    read("stale");
+                  }
+                }}
+                done={(data) =>
+                  data.outcome === "created"
+                    ? `저장했어요. 가격표 버전 ${data.priceList.version}`
+                    : "바뀐 것이 없어 새 버전을 만들지 않았어요"
                 }
-              }}
-              done={(data) =>
-                data.outcome === "created"
-                  ? `저장했어요. 가격표 버전 ${data.priceList.version}`
-                  : "바뀐 것이 없어 새 버전을 만들지 않았어요"
-              }
-            />
+              />
+            </section>
             {showErrors && issues.length ? (
               <Banner tone="danger" detail={form.options.length === 0 ? "옵션을 한 개 이상 추가해 주세요" : undefined}>
                 입력한 내용을 확인해 주세요
@@ -713,79 +718,85 @@ export function PriceListEditor(props: ShopLicenseProps) {
             </section>
             <section className="price-section" aria-label="옵션 규칙">
               <h2>옵션 규칙</h2>
-              {form.rules.slice(rulePage * 20, rulePage * 20 + 20).map((r, offset) => {
-                const i = rulePage * 20 + offset,
-                  rowErrors = errors.get(`/rules/${i}`);
-                return (
-                  <fieldset
-                    key={r.key}
-                    data-row-pointer={`/rules/${i}`}
-                    aria-label={`옵션 규칙 ${i + 1}`}
-                    className={`price-rule ${rowErrors?.length ? "price-invalid" : ""}`}
-                    disabled={locked}
-                  >
-                    <legend>규칙 {i + 1}</legend>
-                    <SelectField
-                      pointer={`/rules/${i}/optionA`}
-                      label="옵션 A"
-                      value={r.optionA}
-                      choices={[["", "옵션 선택"], ...choices]}
+              {form.rules
+                .slice(rulePage * RULE_PAGE_SIZE, rulePage * RULE_PAGE_SIZE + RULE_PAGE_SIZE)
+                .map((r, offset) => {
+                  const i = rulePage * RULE_PAGE_SIZE + offset,
+                    rowErrors = errors.get(`/rules/${i}`);
+                  return (
+                    <fieldset
+                      key={r.key}
+                      data-row-pointer={`/rules/${i}`}
+                      aria-label={`옵션 규칙 ${i + 1}`}
+                      className={`price-rule ${rowErrors?.length ? "price-invalid" : ""}`}
                       disabled={locked}
-                      errors={errors.get(`/rules/${i}/optionA`)}
-                      onChange={(value) => changeRule(r.key, { optionA: value })}
-                    />
-                    <SelectField
-                      pointer={`/rules/${i}/optionB`}
-                      label="옵션 B"
-                      value={r.optionB}
-                      choices={[["", "옵션 선택"], ...choices]}
-                      disabled={locked}
-                      errors={errors.get(`/rules/${i}/optionB`)}
-                      onChange={(value) => changeRule(r.key, { optionB: value })}
-                    />
-                    <SelectField
-                      pointer={`/rules/${i}/kind`}
-                      label="규칙 종류"
-                      value={r.kind}
-                      errors={errors.get(`/rules/${i}/kind`)}
-                      choices={[
-                        ["exclude", "함께 못 고름"],
-                        ["surcharge", "더하는 값"],
-                      ]}
-                      disabled={locked}
-                      onChange={(value) =>
-                        changeRule(r.key, {
-                          kind: value as RuleForm["kind"],
-                          ...(value === "exclude" ? { amount: "" } : {}),
-                        })
-                      }
-                    />
-                    {r.kind === "surcharge" ? (
-                      <TextField
-                        pointer={`/rules/${i}/amount`}
-                        label="더하는 금액"
-                        value={r.amount}
-                        inputMode="numeric"
-                        disabled={locked}
-                        errors={errors.get(`/rules/${i}/amount`)}
-                        onChange={(event) => changeRule(r.key, { amount: event.currentTarget.value })}
-                      />
-                    ) : null}
-                    {rowErrors?.length ? (
-                      <Banner tone="warning">
-                        {rowErrors.includes("conflict") ? "같은 조합이 허용이자 금지예요" : "같은 조합의 규칙이 겹쳐요"}
-                      </Banner>
-                    ) : null}
-                    <Button
-                      kind="danger"
-                      disabled={locked}
-                      onClick={() => mutate((old) => ({ ...old, rules: old.rules.filter((row) => row.key !== r.key) }))}
                     >
-                      규칙 삭제
-                    </Button>
-                  </fieldset>
-                );
-              })}
+                      <legend>규칙 {i + 1}</legend>
+                      <SelectField
+                        pointer={`/rules/${i}/optionA`}
+                        label="옵션 A"
+                        value={r.optionA}
+                        choices={[["", "옵션 선택"], ...choices]}
+                        disabled={locked}
+                        errors={errors.get(`/rules/${i}/optionA`)}
+                        onChange={(value) => changeRule(r.key, { optionA: value })}
+                      />
+                      <SelectField
+                        pointer={`/rules/${i}/optionB`}
+                        label="옵션 B"
+                        value={r.optionB}
+                        choices={[["", "옵션 선택"], ...choices]}
+                        disabled={locked}
+                        errors={errors.get(`/rules/${i}/optionB`)}
+                        onChange={(value) => changeRule(r.key, { optionB: value })}
+                      />
+                      <SelectField
+                        pointer={`/rules/${i}/kind`}
+                        label="규칙 종류"
+                        value={r.kind}
+                        errors={errors.get(`/rules/${i}/kind`)}
+                        choices={[
+                          ["exclude", "함께 못 고름"],
+                          ["surcharge", "더하는 값"],
+                        ]}
+                        disabled={locked}
+                        onChange={(value) =>
+                          changeRule(r.key, {
+                            kind: value as RuleForm["kind"],
+                            ...(value === "exclude" ? { amount: "" } : {}),
+                          })
+                        }
+                      />
+                      {r.kind === "surcharge" ? (
+                        <TextField
+                          pointer={`/rules/${i}/amount`}
+                          label="더하는 금액"
+                          value={r.amount}
+                          inputMode="numeric"
+                          disabled={locked}
+                          errors={errors.get(`/rules/${i}/amount`)}
+                          onChange={(event) => changeRule(r.key, { amount: event.currentTarget.value })}
+                        />
+                      ) : null}
+                      {rowErrors?.length ? (
+                        <Banner tone="warning">
+                          {rowErrors.includes("conflict")
+                            ? "같은 조합이 허용이자 금지예요"
+                            : "같은 조합의 규칙이 겹쳐요"}
+                        </Banner>
+                      ) : null}
+                      <Button
+                        kind="danger"
+                        disabled={locked}
+                        onClick={() =>
+                          mutate((old) => ({ ...old, rules: old.rules.filter((row) => row.key !== r.key) }))
+                        }
+                      >
+                        규칙 삭제
+                      </Button>
+                    </fieldset>
+                  );
+                })}
               {form.rules.length > 20 ? (
                 <div className="price-row-actions">
                   <Button
@@ -797,10 +808,11 @@ export function PriceListEditor(props: ShopLicenseProps) {
                     이전 규칙
                   </Button>
                   <span>
-                    {rulePage * 20 + 1}~{Math.min(form.rules.length, rulePage * 20 + 20)}/{form.rules.length}
+                    {rulePage * RULE_PAGE_SIZE + 1}~
+                    {Math.min(form.rules.length, rulePage * RULE_PAGE_SIZE + RULE_PAGE_SIZE)}/{form.rules.length}
                   </span>
                   <Button
-                    disabled={locked || (rulePage + 1) * 20 >= form.rules.length}
+                    disabled={locked || (rulePage + 1) * RULE_PAGE_SIZE >= form.rules.length}
                     onClick={() => {
                       if (canEdit()) setRulePage((n) => n + 1);
                     }}
@@ -816,7 +828,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
                   const first = form.options[0],
                     second = form.options[1];
                   if (!first || !second) return;
-                  const nextPage = Math.floor(form.rules.length / 20);
+                  const nextPage = Math.floor(form.rules.length / RULE_PAGE_SIZE);
                   mutate((old) => ({
                     ...old,
                     rules: [

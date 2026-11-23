@@ -3,6 +3,7 @@ import { type UploadedDesign, uploadDesignImage } from "./price-list-api";
 import type { DesignForm } from "./price-list-form";
 import type { FieldReason } from "./problems";
 import { Button, CommandStatus, Field } from "./ui";
+import { useObjectUrl } from "./useObjectUrl";
 import { usePhotoUpload } from "./usePhotoUpload";
 
 export interface DesignImageProps {
@@ -23,18 +24,10 @@ export function DesignImage(props: DesignImageProps) {
   const handled = useRef<UploadedDesign | null>(null),
     previousEpoch = useRef(props.discardEpoch);
   const [acceptedFile, setAcceptedFile] = useState<File | null>(null),
-    [acceptedPreview, setAcceptedPreview] = useState<string | null>(null),
+    [rejectedFile, setRejectedFile] = useState<File | null>(null),
     [failedSrc, setFailedSrc] = useState<string | null>(null);
   // 마지막으로 올린 그림은 다음 파일 선택이 실패해도 유지한다. 현재 선택의 미리보기와 수명이 다르다.
-  useEffect(() => {
-    if (!acceptedFile || typeof URL.createObjectURL !== "function") {
-      setAcceptedPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(acceptedFile);
-    setAcceptedPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [acceptedFile]);
+  const acceptedPreview = useObjectUrl(acceptedFile);
   const failure = photo.upload.state.kind === "failed" ? photo.upload.state.failure : null;
   const blocked = photo.upload.state.kind === "failed" && photo.upload.state.blockedUntil !== null;
   useLayoutEffect(() => {
@@ -45,15 +38,19 @@ export function DesignImage(props: DesignImageProps) {
     if (photo.upload.state.kind !== "done" || handled.current === photo.upload.state.data) return;
     handled.current = photo.upload.state.data;
     setAcceptedFile(photo.file);
+    setRejectedFile(null);
     callbacks.current.onUploaded(callbacks.current.design.key, photo.upload.state.data);
   }, [photo.upload.state, photo.file]);
   useEffect(() => {
     if (previousEpoch.current === props.discardEpoch) return;
     previousEpoch.current = props.discardEpoch;
+    setRejectedFile(photo.file);
+    setAcceptedFile(null);
     photo.upload.reset();
-  }, [props.discardEpoch, photo.upload.reset]);
+  }, [props.discardEpoch, photo.file, photo.upload.reset]);
   const previous = acceptedPreview ?? (props.design.imageUrl || null);
-  const src = failure || photo.problem ? previous : (photo.preview ?? previous);
+  const rejected = rejectedFile !== null && rejectedFile === photo.file;
+  const src = failure || photo.problem || rejected ? previous : (photo.preview ?? previous);
   const previewFailed = src !== null && src === failedSrc;
   const errors = [
     ...(props.errors ?? []),
@@ -100,6 +97,13 @@ export function DesignImage(props: DesignImageProps) {
         fields={["/file", "/purpose"]}
         done={() => "사진을 올렸어요. 1시간 안에 저장해 주세요"}
       />
+      {rejected ? (
+        <p>
+          {props.design.sourceDesignId
+            ? "새 그림 저장이 거절돼 기존 그림을 유지해요. 원래 파일을 다시 올릴 수 있어요."
+            : "새 그림 저장이 거절됐어요. 원래 파일을 다시 올려 주세요."}
+        </p>
+      ) : null}
       {(failure || photo.problem) && (props.design.sourceDesignId || props.design.uploadId) ? (
         <p>새 그림을 올리지 못해 기존 그림을 유지해요. 다시 올리면 바꿀 수 있어요.</p>
       ) : null}
