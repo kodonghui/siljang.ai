@@ -53,6 +53,7 @@ it.each(rows)("$method $path $status $name 응답의 화면 처리", async (row)
   const writes: { body: unknown; key: string | null }[] = [];
   const initial = example(row.path.endsWith("/check") ? "failed" : "linked");
   initial.eventStatus = "unchecked";
+  if (row.name === "blocks_changed") initial.blockIds.review = "synthetic-before-review";
   const props = {
     shopName: "합성 계약 가게",
     onNavigate: vi.fn(),
@@ -83,6 +84,10 @@ it.each(rows)("$method $path $status $name 응답의 화면 처리", async (row)
     if (row.method === "put") {
       if (row.name !== "created") fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
       fireEvent.change(screen.getByLabelText("봇 ID"), { target: { value: "synthetic-contract-bot" } });
+      if (row.name === "blocks_changed")
+        fireEvent.change(screen.getByLabelText("후기"), {
+          target: { value: (row.value.kakaoChannel as typeof initial).blockIds.review },
+        });
       fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
     } else if (row.path.endsWith("/check")) fireEvent.click(screen.getByRole("button", { name: "다시 확인" }));
     else {
@@ -104,15 +109,17 @@ it.each(rows)("$method $path $status $name 응답의 화면 처리", async (row)
       if (row.name === "event_unavailable") expect(main().getByText(/먼저 보내기 안 됨:/)).toBeTruthy();
     } else {
       const message =
-        row.name === "unchanged"
-          ? "바뀐 것이 없어요"
-          : row.method === "put"
-            ? row.name === "created"
-              ? "저장했어요. 아래 스킬 설정 값을 오픈빌더에 넣어 주세요"
-              : "블록 ID를 바꿨어요. 연결 확인을 다시 해 주세요"
-            : row.path.endsWith("/check")
-              ? "연결 확인을 시작했어요"
-              : "스킬 키를 바꿨어요. 새 키를 오픈빌더 헤더 값에 넣고 배포해 주세요";
+        row.path.endsWith("/check") && row.name === "unchanged"
+          ? "이미 확인 중이거나 연결됐어요"
+          : row.name === "unchanged"
+            ? "바뀐 것이 없어요"
+            : row.method === "put"
+              ? row.name === "created"
+                ? "저장했어요. 아래 스킬 설정 값을 오픈빌더에 넣어 주세요"
+                : "블록 ID를 바꿨어요. 연결 확인을 다시 해 주세요"
+              : row.path.endsWith("/check")
+                ? "연결 확인을 시작했어요"
+                : "스킬 키를 바꿨어요. 새 키를 오픈빌더 헤더 값에 넣고 배포해 주세요";
       expect(main().getByText(message)).toBeTruthy();
       if (row.value.skillKey)
         expect((screen.getByLabelText("스킬 키(지금만 보임)") as HTMLInputElement).value).toHaveLength(43);

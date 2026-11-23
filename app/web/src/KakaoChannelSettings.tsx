@@ -31,7 +31,15 @@ type Action =
   | { action: "save"; body: Record<string, unknown> }
   | { action: "check" }
   | { action: "rotate"; body: { baseRevision: string; previousKey: "keep_24h" | "revoke_now" } };
-type Result = KakaoChannelResult & { action: Action["action"] };
+type Result = KakaoChannelResult & { action: Action["action"]; blocksChanged: boolean };
+const AFTER_DEADLINE_DELAYS = [2000, 5000, 10000] as const;
+function pollingDeadline(value: KakaoChannel, legacy: number | null): number | null {
+  return value.status === "pending" && value.checkExpiresAt
+    ? Date.parse(value.checkExpiresAt)
+    : value.status === "linked" && value.eventStatus === "checking"
+      ? legacy
+      : null;
+}
 const verifiedNames = {
   card: "card",
   ordererInfo: "orderer_info",
@@ -83,12 +91,14 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
     [editing, setEditing] = useState(false),
     [latest, setLatest] = useState<KakaoChannel | null>(null),
     [stale, setStale] = useState(false),
+    [staleAction, setStaleAction] = useState<Action["action"] | null>(null),
     [showErrors, setShowErrors] = useState(false),
     [policy, setPolicy] = useState<"keep_24h" | "revoke_now">("keep_24h"),
     [secret, setSecret] = useState<{ connectionId: string; key: SkillKey } | null>(null);
   const [now, setNow] = useState(Date.now),
     [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
-  const expiredRead = useRef<string | null>(null),
+  const expiryReads = useRef<{ key: string; count: number } | null>(null),
+    lastAction = useRef<Action["action"] | null>(null),
     legacyDeadline = useRef<number | null>(null);
   const policyName = useId();
   const {
@@ -104,7 +114,18 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
     allowNotSet: true,
     onLoaded: (mode, data) => {
       if (mode === "stale") setLatest(data);
-      else adopt(data, undefined, true);
+      else {
+        const deadline = pollingDeadline(data, legacyDeadline.current);
+        if (deadline !== null && Date.now() >= deadline) {
+          const key = `${data.connectionId}:${deadline}`;
+          expiryReads.current = { key, count: expiryReads.current?.key === key ? expiryReads.current.count + 1 : 1 };
+        } else expiryReads.current = null;
+        adopt(
+          data,
+          undefined,
+          Boolean(base && (base.connectionId !== data.connectionId || base.skill.keyVersion !== data.skill.keyVersion)),
+        );
+      }
     },
     onNotSet: () => adopt(null, undefined, true),
     onSessionExpired: () => callbacks.current.onSessionExpired(),
@@ -119,7 +140,19 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
         : input.action === "check"
           ? await startKakaoChannelCheck(key)
           : await rotateKakaoSkillKey(input.body, key);
-    return r.ok ? { ...r, data: { ...r.data, action: input.action } } : r;
+    return r.ok
+      ? {
+          ...r,
+          data: {
+            ...r.data,
+            action: input.action,
+            blocksChanged:
+              input.action === "save" &&
+              base !== null &&
+              BLOCK_KEYS.some((key) => base.blockIds[key] !== r.data.kakaoChannel.blockIds[key]),
+          },
+        }
+      : r;
   });
   const handled = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null),
@@ -133,11 +166,13 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
   const adopt = useCallback(
     (value: KakaoChannel | null, draft?: ChannelForm, reset = false) => {
       setBase(value);
+      setNow(Date.now());
       setForm(draft ?? channelForm(value));
       setLoaded(true);
       setEditing(value === null || Boolean(draft));
       setLatest(null);
       setStale(false);
+      setStaleAction(null);
       setShowErrors(false);
       clearFailure();
       setSecret((old) =>
@@ -163,6 +198,7 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
     if (failure.outcome === "no_shop") callbacks.current.onRegisterShop();
     if (failure.code === "not_set") adopt(null);
     if (failure.code === "version_conflict") {
+      setStaleAction(lastAction.current);
       setStale(true);
       setLatest(null);
       read("stale");
@@ -204,8 +240,9 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
     setForm(change);
   }
   function send(input: Action) {
-    if (locked || command.blocked || (editing && input.action !== "save")) return;
+    if (locked || stale || command.blocked || (editing && input.action !== "save")) return;
     cancelRead();
+    lastAction.current = input.action;
     command.submit(input);
   }
   function submit(event: FormEvent) {
@@ -233,10 +270,17 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
     return () => document.removeEventListener("visibilitychange", update);
   }, [cancelRead, loaded, stale]);
   useEffect(() => {
-    if (!checking || !visible) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    if (!checking || !visible || !base?.checkExpiresAt) return;
+    const deadline = Date.parse(base.checkExpiresAt);
+    setNow(Date.now());
+    if (Date.now() >= deadline) return;
+    const timer = setInterval(() => {
+      const time = Date.now();
+      setNow(time);
+      if (time >= deadline) clearInterval(timer);
+    }, 1000);
     return () => clearInterval(timer);
-  }, [checking, visible]);
+  }, [checking, visible, base?.checkExpiresAt]);
   useEffect(() => {
     if (!legacyChecking) legacyDeadline.current = null;
     if (!base || (!checking && !legacyChecking) || editing || stale || blocked || loading || loadFailure || !visible)
@@ -245,23 +289,27 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
     const deadline = checking && base.checkExpiresAt ? Date.parse(base.checkExpiresAt) : legacyDeadline.current;
     if (deadline === null) return;
     const key = `${base.connectionId}:${deadline}`;
-    if (Date.now() >= deadline && expiredRead.current === key) return;
-    const timer = setTimeout(
-      () => {
-        if (Date.now() >= deadline) expiredRead.current = key;
-        read();
-      },
-      Math.min(5000, Math.max(0, deadline - Date.now())),
-    );
+    const completed = expiryReads.current?.key === key ? expiryReads.current.count : 0;
+    if (Date.now() >= deadline && completed > AFTER_DEADLINE_DELAYS.length) return;
+    const delay =
+      Date.now() >= deadline
+        ? completed === 0
+          ? 0
+          : AFTER_DEADLINE_DELAYS[completed - 1]
+        : Math.min(5000, deadline - Date.now());
+    const timer = setTimeout(() => read(), delay);
     return () => clearTimeout(timer);
   }, [base, checking, legacyChecking, editing, stale, blocked, loading, loadFailure, visible, read]);
   function done(result: Result) {
+    if (result.action === "check" && result.outcome === "unchanged") return "이미 확인 중이거나 연결됐어요";
     if (result.action === "rotate") return "스킬 키를 바꿨어요. 새 키를 오픈빌더 헤더 값에 넣고 배포해 주세요";
     if (result.outcome === "unchanged") return "바뀐 것이 없어요";
     if (result.action === "check") return "연결 확인을 시작했어요";
     return result.outcome === "created"
       ? "저장했어요. 아래 스킬 설정 값을 오픈빌더에 넣어 주세요"
-      : "블록 ID를 바꿨어요. 연결 확인을 다시 해 주세요";
+      : result.blocksChanged
+        ? "블록 ID를 바꿨어요. 연결 확인을 다시 해 주세요"
+        : "저장했어요";
   }
   return (
     <OwnerLayout
@@ -337,6 +385,11 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                     남은 시간 {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}
                   </p>
                 ) : null}
+                {expiryReads.current &&
+                expiryReads.current.count > AFTER_DEADLINE_DELAYS.length &&
+                (checking || legacyChecking) ? (
+                  <Banner tone="warning">확인 결과가 늦어지고 있어요. 연결 상태 다시 보기로 확인해 주세요</Banner>
+                ) : null}
                 <ul aria-label="블록 확인 상태">
                   {BLOCK_KEYS.map((key) => (
                     <li key={key}>
@@ -366,9 +419,9 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                 ) : null}
                 <div className="channel-actions">
                   <Button
-                    disabled={locked}
+                    disabled={locked || stale || editing}
                     onClick={() => {
-                      if (!locked) {
+                      if (!locked && !stale && !editing) {
                         cancelRead();
                         command.reset();
                         clearFailure();
@@ -379,10 +432,10 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                     채널 바꾸기
                   </Button>
                   <Button
-                    disabled={blocked || editing || loading}
+                    disabled={blocked || editing || loading || stale}
                     busy={loading}
                     onClick={() => {
-                      if (!blocked && !editing && !loading) read();
+                      if (!blocked && !editing && !loading && !stale) read();
                     }}
                   >
                     연결 상태 다시 보기
@@ -414,14 +467,16 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                 {latest ? (
                   <>
                     <p>지금 봇 ID: {latest.botId}</p>
-                    <Button
-                      disabled={locked}
-                      onClick={() => {
-                        if (!locked) adopt(latest, rebaseChannel(base, form, latest), true);
-                      }}
-                    >
-                      내 변경 다시 적용
-                    </Button>
+                    {staleAction === "save" ? (
+                      <Button
+                        disabled={locked}
+                        onClick={() => {
+                          if (!locked) adopt(latest, rebaseChannel(base, form, latest), true);
+                        }}
+                      >
+                        내 변경 다시 적용
+                      </Button>
+                    ) : null}
                     <Button
                       disabled={locked}
                       onClick={() => {
@@ -431,6 +486,16 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                       지금 값으로 다시 시작
                     </Button>
                   </>
+                ) : null}
+                {!latest && !loading ? (
+                  <Button
+                    disabled={locked}
+                    onClick={() => {
+                      if (!locked) read("stale");
+                    }}
+                  >
+                    지금 상태 다시 읽기
+                  </Button>
                 ) : null}
               </section>
             ) : null}
@@ -493,6 +558,17 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                 <Button kind="primary" type="submit" disabled={locked || stale || command.blocked} busy={command.busy}>
                   저장
                 </Button>
+                {base ? (
+                  <Button
+                    kind="secondary"
+                    disabled={locked || stale}
+                    onClick={() => {
+                      if (!locked && !stale) adopt(base, undefined, true);
+                    }}
+                  >
+                    취소
+                  </Button>
+                ) : null}
               </div>
             ) : null}
             {base ? (
@@ -518,7 +594,7 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                   ) : command.state.kind === "done" && command.state.data.action === "rotate" ? (
                     <p>옛 키는 바로 끊었어요. 배포할 때까지 손님 메시지를 받지 않아요</p>
                   ) : null}
-                  <fieldset disabled={locked}>
+                  <fieldset disabled={locked || editing || stale}>
                     <legend>옛 키</legend>
                     {(
                       [
@@ -533,7 +609,7 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                           value={value}
                           checked={policy === value}
                           onChange={() => {
-                            if (!locked) setPolicy(value);
+                            if (!locked && !editing && !stale) setPolicy(value);
                           }}
                         />
                         {label}
@@ -541,9 +617,9 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                     ))}
                   </fieldset>
                   <Button
-                    disabled={locked || command.blocked || editing}
+                    disabled={locked || command.blocked || editing || stale}
                     onClick={() => {
-                      if (!locked && !editing)
+                      if (!locked && !editing && !stale)
                         send({
                           action: "rotate",
                           body: { baseRevision: base.revision, previousKey: policy },
@@ -555,7 +631,7 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                 </details>
                 {base.status !== "linked" ? (
                   <Button
-                    disabled={locked || command.blocked || editing}
+                    disabled={locked || command.blocked || editing || stale}
                     onClick={() => {
                       if (!locked && !editing) send({ action: "check" });
                     }}
