@@ -5,6 +5,8 @@ export interface Command<I, O> {
   readonly state: CommandState<O>;
   /** 보내는 중(버튼은 '처리하고 있어요', 이 화면의 다른 액션도 막음, 08 submitting) */
   readonly busy: boolean;
+  /**429의 대기 시간이 지나면 자동으로 풀린다.*/
+  readonly blocked: boolean;
   readonly submit: (input: I) => boolean;
   readonly retry: () => boolean;
   readonly confirm: () => boolean;
@@ -29,6 +31,7 @@ export function useCommand<I, O>(send: Send<I, O>, options?: CommandOptions): Co
   return {
     state,
     busy: state.kind === "submitting",
+    blocked: state.kind === "failed" && state.blockedUntil !== null,
     submit: runner.submit,
     retry: runner.retry,
     confirm: runner.confirm,

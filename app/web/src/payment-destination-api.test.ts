@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
-import { fetchPaymentDestination, savePaymentDestination } from "./payment-destination-api";
+import { fetchPaymentDestination, isCardPaymentUrl, savePaymentDestination } from "./payment-destination-api";
 
 const api = parse(readFileSync(resolve(process.cwd(), "../../api/openapi.yaml"), "utf8"));
 const path = "/owner/payment-destination";
@@ -110,3 +110,11 @@ for (const method of ["get", "put"] as const) {
     expect(result).toMatchObject({ ok: false, status: p.status });
   });
 }
+
+it("카드 링크 한도는 서버와 같은 코드 포인트2048자를 받는다", async () => {
+  const prefix = "https://pay.example.test/";
+  const value = prefix + "😀".repeat(2048 - [...prefix].length);
+  expect([...value]).toHaveLength(2048);
+  expect(isCardPaymentUrl(value)).toBe(true);
+  expect(isCardPaymentUrl(`${value}a`)).toBe(false);
+});
