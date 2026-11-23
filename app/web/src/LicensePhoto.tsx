@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FieldReason } from "./problems";
+import type { Failure, FieldReason } from "./problems";
 import { LICENSE_PHOTO_MAX_BYTES, type UploadedLicensePhoto, uploadLicensePhoto } from "./registration";
 import { Button, CommandStatus, Field } from "./ui";
 import { useCommand } from "./useCommand";
@@ -57,11 +57,22 @@ export function useLicensePhoto(onSessionExpired: () => void, context: "save" | 
     setFile(null);
     setProblem(undefined);
   }, [resetUpload]);
+  const discardIfRejected = useCallback(
+    (failure: Failure | null, pointer: string) => {
+      if (
+        failure?.code === "storage_unavailable" ||
+        failure?.fieldErrors.some((error) => error.field === pointer && error.code === "upload_not_found")
+      )
+        resetUpload();
+    },
+    [resetUpload],
+  );
   function needPhoto() {
     setProblem(context === "registration" ? "신고증 사진을 먼저 올려 주세요" : "사진을 먼저 올려 주세요");
   }
   return {
     context,
+    discardIfRejected,
     upload,
     file,
     problem,
@@ -140,7 +151,7 @@ export function LicensePhoto({
           registering ? "사진을 올렸어요. 1시간 안에 등록해 주세요" : "사진을 올렸어요. 1시간 안에 저장해 주세요"
         }
       />
-      {photo.file && !photo.uploaded && !photo.upload.busy ? (
+      {photo.file && (registering || !photo.uploaded) && !photo.upload.busy ? (
         <Button
           kind="secondary"
           disabled={disabled || blocked}

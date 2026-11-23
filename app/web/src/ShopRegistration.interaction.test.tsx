@@ -334,3 +334,16 @@ it("등록500 뒤 세션 재확인 실패는 남은 등록 재시도도 잠금",
   fireEvent.click(retry);
   expect(registered).toBe(1);
 });
+
+it("올리기 성공 뒤에도 등록 전에 같은 파일을 다시 올릴 수 있음", async () => {
+  await area();
+  fireEvent.change(field("가게 이름"), { target: { value: "오래 입력할 합성 가게" } });
+  await upload();
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("button", { name: "다시 올리기" }));
+  await waitFor(() => expect(uploadCount).toBe(2));
+  await within(screen.getByRole("main")).findByText("사진을 올렸어요. 1시간 안에 등록해 주세요");
+  expect(field("가게 이름").value).toBe("오래 입력할 합성 가게");
+  expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
+  expect(registered).toBe(0);
+});

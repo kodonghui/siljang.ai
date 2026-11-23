@@ -85,12 +85,8 @@ export function ShopRegistration({
   const photoErrors = errors.get("/licensePhotoUploadId") ?? [];
 
   useEffect(() => {
-    if (
-      failure?.code === "storage_unavailable" ||
-      failure?.fieldErrors.some((error) => error.field === "/licensePhotoUploadId" && error.code === "upload_not_found")
-    )
-      upload.reset();
-  }, [failure, upload.reset]);
+    photo.discardIfRejected(failure, "/licensePhotoUploadId");
+  }, [failure, photo.discardIfRejected]);
   useEffect(() => {
     if (sessionExpired || failure?.outcome === "login") handleSessionExpired();
   }, [failure, sessionExpired, handleSessionExpired]);
