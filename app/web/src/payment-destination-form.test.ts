@@ -65,3 +65,8 @@ it("같은 필드를 양쪽에서 바꾼 재적용은 내 입력을 사용하고
   expect(rebasePayment(previous, mine, latest)).toEqual(mine);
   expect(paymentPayload(latest, mine).cardPaymentUrl).toBeNull();
 });
+it("길이 한도를 넘은 카드 링크는 일반 형식 대신 길이 초과 사유를 준다", () => {
+  expect(
+    paymentIssues({ ...paymentForm(base), cardPaymentUrl: `https://pay.example.test/${"a".repeat(2048)}` }),
+  ).toContainEqual({ field: "/cardPaymentUrl", code: "too_long" });
+});

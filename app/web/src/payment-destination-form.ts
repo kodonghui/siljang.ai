@@ -1,4 +1,4 @@
-import { isAccountNumber, isCardPaymentUrl, type PaymentDestination } from "./payment-destination-api";
+import { cardPaymentUrlReason, isAccountNumber, type PaymentDestination } from "./payment-destination-api";
 import type { FieldError } from "./problems";
 export const PAYMENT_FIELDS = ["bankName", "accountNumber", "holderName", "cardPaymentUrl"] as const;
 export type PaymentForm = Record<(typeof PAYMENT_FIELDS)[number], string>;
@@ -29,8 +29,10 @@ export function paymentIssues(form: PaymentForm): FieldError[] {
   }
   if (!form.accountNumber.trim()) issues.push({ field: "/accountNumber", code: "required" });
   else if (!isAccountNumber(form.accountNumber)) issues.push({ field: "/accountNumber", code: "bad_format" });
-  if (form.cardPaymentUrl.trim() && !isCardPaymentUrl(form.cardPaymentUrl))
-    issues.push({ field: "/cardPaymentUrl", code: "bad_format" });
+  if (form.cardPaymentUrl.trim()) {
+    const reason = cardPaymentUrlReason(form.cardPaymentUrl);
+    if (reason) issues.push({ field: "/cardPaymentUrl", code: reason });
+  }
   return issues;
 }
 export function rebasePayment(
