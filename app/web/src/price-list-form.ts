@@ -22,6 +22,7 @@ export interface DesignForm {
   name: string;
   imageUrl: string;
   sourceDesignId: string | null;
+  baseDesignId: string | null;
   uploadId: string | null;
   optionKey: string | null;
   inStandard: boolean;
@@ -47,8 +48,8 @@ export function priceListForm(list: PriceList | null): PriceListForm {
         position: o.position,
       })) ?? [],
     rules:
-      list?.rules.map((r, i) => ({
-        key: `rule-${i}`,
+      list?.rules.map((r) => ({
+        key: JSON.stringify([r.optionAId, r.optionBId].sort()),
         kind: r.kind,
         optionA: r.optionAId,
         optionB: r.optionBId,
@@ -60,6 +61,7 @@ export function priceListForm(list: PriceList | null): PriceListForm {
         name: d.name,
         imageUrl: d.imageUrl,
         sourceDesignId: d.designId,
+        baseDesignId: d.designId,
         uploadId: null,
         optionKey: d.optionId,
         inStandard: d.inStandard,
@@ -180,7 +182,7 @@ export function rebasePriceList(
   }
   const basePairs = new Set(before.rules.map(pair));
   function putRule(rule: RuleForm) {
-    result.rules = [...result.rules.filter((r) => pair(r) !== pair(rule)), rule];
+    result.rules = [...result.rules.filter((r) => pair(r) !== pair(rule)), { ...rule, key: pair(rule) }];
   }
   for (const original of before.rules) {
     const own = mine.rules.find((r) => pair(r) === pair(original));
@@ -225,6 +227,9 @@ export function rebasePriceList(
       else current.optionKey = key;
     }
     if (imageChanged) {
+      // 이 키로 남아 있는 파일/미리보기 부품을 다시 만들지 않는다.
+      current.key = own.key;
+      designKeys.set(original.key, current.key);
       current.uploadId = own.uploadId;
       current.sourceDesignId = own.sourceDesignId;
       current.imageUrl = own.imageUrl;

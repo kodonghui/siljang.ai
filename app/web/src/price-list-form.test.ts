@@ -144,3 +144,36 @@ it("새로 들어온 원격 옵션의 자리를 남기고 내 순서 변경을 �
       .map((o) => o.name),
   ).toEqual(["2호", "중간 크기", "1호"]);
 });
+
+it("다시 적용하는 새 그림은 파일 상태를 가진 도안의 화면 키를 유지", () => {
+  const base = fixture(),
+    mine = priceListForm(base),
+    latest = newer(base);
+  const own = mine.designs[0];
+  if (!own) throw new Error("도안 없음");
+  own.uploadId = "upl_synthetic000000000000000049";
+  own.sourceDesignId = null;
+  own.imageUrl = "blob:synthetic-preview";
+  const merged = rebasePriceList(base, mine, latest);
+  if (!merged.form) throw new Error("재적용 실패");
+  expect(merged.form.designs.find((d) => d.name === own.name)).toMatchObject({
+    key: own.key,
+    uploadId: own.uploadId,
+    sourceDesignId: null,
+    imageUrl: own.imageUrl,
+  });
+});
+
+it("다른 기기의 규칙 순서가 달라져도 재적용한 규칙의 화면 키가 겹치지 않음", () => {
+  const base = fixture(),
+    mine = priceListForm(base),
+    latest = newer(base);
+  latest.rules.reverse();
+  const rule = mine.rules[0];
+  if (!rule) throw new Error("규칙 없음");
+  rule.amount = "6000";
+  const merged = rebasePriceList(base, mine, latest);
+  if (!merged.form) throw new Error("재적용 실패");
+  expect(merged.form.rules).toHaveLength(base.rules.length);
+  expect(new Set(merged.form.rules.map((r) => r.key)).size).toBe(merged.form.rules.length);
+});

@@ -35,13 +35,18 @@ function gate<T>() {
 let profile: unknown,
   logoutGate: ReturnType<typeof gate<Response>> | null,
   profileGate: ReturnType<typeof gate<Response>> | null;
-let registerCode: "success" | "already_registered" | "upload_expired", registered: number, uploadStatus: number;
+let registerCode: "success" | "already_registered" | "upload_expired" | "storage_unavailable" | "internal",
+  registered: number,
+  uploadStatus: number;
+let uploadCount: number;
+let registrationBodies: { body: Record<string, unknown>; key: string | null }[];
 beforeEach(() => {
   sessionStorage.clear();
   profile = initial;
   logoutGate = profileGate = null;
   registerCode = "success";
-  registered = 0;
+  registered = uploadCount = 0;
+  registrationBodies = [];
   uploadStatus = 201;
   vi.stubGlobal(
     "fetch",
@@ -49,10 +54,20 @@ beforeEach(() => {
       if (String(input) === "/api/owner/me") return profileGate?.promise ?? json(profile);
       if (String(input) === "/api/owner/session" && init?.method === "DELETE")
         return logoutGate?.promise ?? json({ code: "internal" }, 500);
-      if (String(input) === "/api/owner/uploads")
-        return uploadStatus === 401 ? json({ code: "unauthenticated" }, 401) : json(photo, 201);
+      if (String(input) === "/api/owner/uploads") {
+        uploadCount++;
+        return uploadStatus === 401
+          ? json({ code: "unauthenticated" }, 401)
+          : json({ ...photo, uploadId: `${photo.uploadId}_${uploadCount}` }, 201);
+      }
       if (String(input) === "/api/owner/shop") {
         registered++;
+        registrationBodies.push({
+          body: JSON.parse(String(init?.body)),
+          key: new Headers(init?.headers).get("Idempotency-Key"),
+        });
+        if (registerCode === "storage_unavailable") return json({ code: "storage_unavailable" }, 503);
+        if (registerCode === "internal") return json({ code: "internal" }, 500);
         if (registerCode === "already_registered") return json({ code: registerCode }, 409);
         if (registerCode === "upload_expired")
           return json(
@@ -279,4 +294,56 @@ it("서버가 업로드 만료를 알리면 옛 성공 표시를 지우고 같�
   expect(screen.getByText("synthetic.png")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "다시 올리기" }));
   await within(form).findByText("사진을 올렸어요. 1시간 안에 등록해 주세요");
+});
+
+it("등록 저장소503은 옛 사진 성공을 지우고 같은 파일을 다시 올린 새 ID와 키로 등록", async () => {
+  await area();
+  await upload();
+  fireEvent.change(field("가게 이름"), { target: { value: "사진 복구를 확인할 합성 가게" } });
+  fireEvent.click(screen.getByRole("checkbox"));
+  registerCode = "storage_unavailable";
+  fireEvent.click(screen.getByRole("button", { name: /^등록$/ }));
+  await within(screen.getByRole("main")).findByText("사진을 저장하지 못했어요. 다시 올려 주세요");
+  expect(within(screen.getByRole("main")).queryByText("사진을 올렸어요. 1시간 안에 등록해 주세요")).toBeNull();
+  expect(screen.getByText("synthetic.png")).toBeTruthy();
+  expect(field("가게 이름").value).toBe("사진 복구를 확인할 합성 가게");
+  expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
+  registerCode = "success";
+  fireEvent.click(screen.getByRole("button", { name: /^다시 올리기$/ }));
+  await within(screen.getByRole("main")).findByText("사진을 올렸어요. 1시간 안에 등록해 주세요");
+  fireEvent.click(screen.getByRole("button", { name: /^등록$/ }));
+  await screen.findByText("준비 중입니다.");
+  expect(uploadCount).toBe(2);
+  expect(registrationBodies).toHaveLength(2);
+  expect(registrationBodies[1]?.body.licensePhotoUploadId).not.toBe(registrationBodies[0]?.body.licensePhotoUploadId);
+  expect(registrationBodies[1]?.key).not.toBe(registrationBodies[0]?.key);
+});
+
+it("등록500 뒤 세션 재확인 실패는 남은 등록 재시도도 잠금", async () => {
+  await area();
+  await upload();
+  registerCode = "internal";
+  fireEvent.click(screen.getByRole("button", { name: /^등록$/ }));
+  const retry = await within(screen.getByRole("main")).findByRole("button", { name: "다시 시도" });
+  profileGate = gate<Response>();
+  const event = new Event("pageshow");
+  Object.defineProperty(event, "persisted", { value: true });
+  fireEvent(window, event);
+  await act(async () => profileGate?.resolve(json({ code: "upstream_unavailable" }, 503)));
+  expect((retry as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(retry);
+  expect(registered).toBe(1);
+});
+
+it("올리기 성공 뒤에도 등록 전에 같은 파일을 다시 올릴 수 있음", async () => {
+  await area();
+  fireEvent.change(field("가게 이름"), { target: { value: "오래 입력할 합성 가게" } });
+  await upload();
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("button", { name: "다시 올리기" }));
+  await waitFor(() => expect(uploadCount).toBe(2));
+  await within(screen.getByRole("main")).findByText("사진을 올렸어요. 1시간 안에 등록해 주세요");
+  expect(field("가게 이름").value).toBe("오래 입력할 합성 가게");
+  expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
+  expect(registered).toBe(0);
 });

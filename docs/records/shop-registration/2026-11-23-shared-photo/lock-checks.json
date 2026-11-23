@@ -1,0 +1,578 @@
+[
+  {
+    "state": "registration500_retry_available_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:50175/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      },
+      "byCheck": {
+        "target-goal": 1
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "info",
+          "check": "target-goal",
+          "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+          "where": "",
+          "text": ""
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "가게 정보와 영업 신고증을 등록해 주세요. 운영자가 영업 신고를 확인해요.\n\n가게와 사업자 정보\n가게 이름\n남은 글자 수 29\n연락처\n사업장 주소\n전자우편주소\n상호\n등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n대표자\n등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n사업자등록번호\n숫자 10자리를 넣어 주세요. 등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n통신판매업 신고번호\n영업 신고 번호\n통신판매업 신고 면제 사유\n영업 종류\n즉석판매제조·가공업\n제과점영업\n첫 버전은 영업 신고한 가게만 받아요\n신고증 사진\nJPG·PNG·HEIC 한 장, 10MB까지. 이 가게 사장님과 운영자만 봐요.\n\nsynthetic-lock.png\n\n사진을 올렸어요. 1시간 안에 등록해 주세요\n개인정보 처리 위탁·재위탁 조건\n조건 펼쳐 읽기 · MVP-2026.11.v1\n위탁 조건 동의\n개인정보 처리 위탁·재위탁 조건을 읽고 동의합니다.\n문제가 생겼어요. 다시 시도해 주세요\n다시 시도\n등록\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "합성 사진 잠금 가게",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "tel",
+          "value": "01012345678",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "textarea",
+          "value": "합성 서울시 시험로 46",
+          "disabled": false
+        },
+        {
+          "type": "email",
+          "value": "owner@example.com",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 사진 잠금 가게",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 대표",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "1234567891",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 신고-046",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 소규모 거래",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "checked": true,
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "checkbox",
+          "value": "on",
+          "checked": true,
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 시도",
+          "disabled": false
+        },
+        {
+          "label": "등록",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "실제 OwnerArea/등록 컴포넌트와 합성 API의 병합 뒤 회귀 확인입니다.\n\n시험 응답\nnormal\nuploadExpired\nsessionFailed\nstorageFailure\nretryLock\n세션 확인 실패 재현\n\n사진 요청 1 · 등록 요청 1 · 사진 ID 교체 아니오 · 요청 키 교체 아니오\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "session_failed_retry_locked_360",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:50175/",
+      "viewport": {
+        "width": 360,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 360,
+      "text": "가게 정보와 영업 신고증을 등록해 주세요. 운영자가 영업 신고를 확인해요.\n\n가게와 사업자 정보\n가게 이름\n남은 글자 수 29\n연락처\n사업장 주소\n전자우편주소\n상호\n등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n대표자\n등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n사업자등록번호\n숫자 10자리를 넣어 주세요. 등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n통신판매업 신고번호\n영업 신고 번호\n통신판매업 신고 면제 사유\n영업 종류\n즉석판매제조·가공업\n제과점영업\n첫 버전은 영업 신고한 가게만 받아요\n신고증 사진\nJPG·PNG·HEIC 한 장, 10MB까지. 이 가게 사장님과 운영자만 봐요.\n\nsynthetic-lock.png\n\n사진을 올렸어요. 1시간 안에 등록해 주세요\n개인정보 처리 위탁·재위탁 조건\n조건 펼쳐 읽기 · MVP-2026.11.v1\n위탁 조건 동의\n개인정보 처리 위탁·재위탁 조건을 읽고 동의합니다.\n문제가 생겼어요. 다시 시도해 주세요\n다시 시도\n등록\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "합성 사진 잠금 가게",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "tel",
+          "value": "01012345678",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "textarea",
+          "value": "합성 서울시 시험로 46",
+          "disabled": false
+        },
+        {
+          "type": "email",
+          "value": "owner@example.com",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 사진 잠금 가게",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 대표",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "1234567891",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 신고-046",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 소규모 거래",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "checked": true,
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "checked": false,
+          "disabled": true
+        },
+        {
+          "type": "checkbox",
+          "value": "on",
+          "checked": true,
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 시도",
+          "disabled": true
+        },
+        {
+          "label": "등록",
+          "disabled": true
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "실제 OwnerArea/등록 컴포넌트와 합성 API의 병합 뒤 회귀 확인입니다.\n\n시험 응답\nnormal\nuploadExpired\nsessionFailed\nstorageFailure\nretryLock\n세션 확인 실패 재현\n\n사진 요청 1 · 등록 요청 1 · 사진 ID 교체 아니오 · 요청 키 교체 아니오\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "registration500_retry_available_1280",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:50175/",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 1
+      },
+      "byCheck": {
+        "target-goal": 1
+      },
+      "truncated": false,
+      "issues": [
+        {
+          "level": "info",
+          "check": "target-goal",
+          "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+          "where": "",
+          "text": ""
+        }
+      ],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 1280,
+      "text": "가게 등록\n\n가게 정보와 영업 신고증을 등록해 주세요. 운영자가 영업 신고를 확인해요.\n\n가게와 사업자 정보\n가게 이름\n남은 글자 수 29\n연락처\n사업장 주소\n전자우편주소\n상호\n등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n대표자\n등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n사업자등록번호\n숫자 10자리를 넣어 주세요. 등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n통신판매업 신고번호\n영업 신고 번호\n통신판매업 신고 면제 사유\n영업 종류\n즉석판매제조·가공업\n제과점영업\n첫 버전은 영업 신고한 가게만 받아요\n신고증 사진\nJPG·PNG·HEIC 한 장, 10MB까지. 이 가게 사장님과 운영자만 봐요.\n\nsynthetic-lock.png\n\n사진을 올렸어요. 1시간 안에 등록해 주세요\n개인정보 처리 위탁·재위탁 조건\n조건 펼쳐 읽기 · MVP-2026.11.v1\n위탁 조건 동의\n개인정보 처리 위탁·재위탁 조건을 읽고 동의합니다.\n문제가 생겼어요. 다시 시도해 주세요\n다시 시도\n등록\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "합성 사진 잠금 가게",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "tel",
+          "value": "01012345678",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "textarea",
+          "value": "합성 서울시 시험로 46",
+          "disabled": false
+        },
+        {
+          "type": "email",
+          "value": "owner@example.com",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 사진 잠금 가게",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 대표",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "1234567891",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 신고-046",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 소규모 거래",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "checked": true,
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "checkbox",
+          "value": "on",
+          "checked": true,
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 시도",
+          "disabled": false
+        },
+        {
+          "label": "등록",
+          "disabled": false
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "실제 OwnerArea/등록 컴포넌트와 합성 API의 병합 뒤 회귀 확인입니다.\n\n시험 응답\nnormal\nuploadExpired\nsessionFailed\nstorageFailure\nretryLock\n세션 확인 실패 재현\n\n사진 요청 1 · 등록 요청 1 · 사진 ID 교체 아니오 · 요청 키 교체 아니오\n\n화면 검사 스크립트"
+    }
+  },
+  {
+    "state": "session_failed_retry_locked_1280",
+    "check": {
+      "tool": "corthex-uxui page-check",
+      "version": "1.0",
+      "url": "http://127.0.0.1:50175/",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "env": {
+        "reducedMotion": true,
+        "dark": false
+      },
+      "pass": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "info": 0
+      },
+      "byCheck": {},
+      "truncated": false,
+      "issues": [],
+      "notMeasured": [
+        "Keyboard focus visibility and order (press Tab yourself)",
+        "Line breaks in vertical or turned text, and overflow in turned text",
+        "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+        "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+        "The order and names a screen reader reads",
+        "The real screen with reduced motion turned on",
+        "Content inside Shadow DOM and iframes"
+      ]
+    },
+    "observed": {
+      "width": 1280,
+      "text": "가게 등록\n\n가게 정보와 영업 신고증을 등록해 주세요. 운영자가 영업 신고를 확인해요.\n\n가게와 사업자 정보\n가게 이름\n남은 글자 수 29\n연락처\n사업장 주소\n전자우편주소\n상호\n등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n대표자\n등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n사업자등록번호\n숫자 10자리를 넣어 주세요. 등록 뒤에 바꾸려면 증빙 사진과 함께 변경을 요청해요(운영자가 확인한 뒤 바뀜)\n통신판매업 신고번호\n영업 신고 번호\n통신판매업 신고 면제 사유\n영업 종류\n즉석판매제조·가공업\n제과점영업\n첫 버전은 영업 신고한 가게만 받아요\n신고증 사진\nJPG·PNG·HEIC 한 장, 10MB까지. 이 가게 사장님과 운영자만 봐요.\n\nsynthetic-lock.png\n\n사진을 올렸어요. 1시간 안에 등록해 주세요\n개인정보 처리 위탁·재위탁 조건\n조건 펼쳐 읽기 · MVP-2026.11.v1\n위탁 조건 동의\n개인정보 처리 위탁·재위탁 조건을 읽고 동의합니다.\n문제가 생겼어요. 다시 시도해 주세요\n다시 시도\n등록\n로그아웃",
+      "inputs": [
+        {
+          "type": "text",
+          "value": "합성 사진 잠금 가게",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "tel",
+          "value": "01012345678",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "textarea",
+          "value": "합성 서울시 시험로 46",
+          "disabled": false
+        },
+        {
+          "type": "email",
+          "value": "owner@example.com",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 사진 잠금 가게",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 대표",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "1234567891",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 신고-046",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "text",
+          "value": "합성 소규모 거래",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "instant_sale_manufacturing",
+          "checked": false,
+          "disabled": false
+        },
+        {
+          "type": "radio",
+          "value": "bakery",
+          "checked": true,
+          "disabled": false
+        },
+        {
+          "type": "file",
+          "value": [],
+          "checked": false,
+          "disabled": true
+        },
+        {
+          "type": "checkbox",
+          "value": "on",
+          "checked": true,
+          "disabled": false
+        }
+      ],
+      "buttons": [
+        {
+          "label": "다시 시도",
+          "disabled": true
+        },
+        {
+          "label": "등록",
+          "disabled": true
+        },
+        {
+          "label": "로그아웃",
+          "disabled": false
+        }
+      ],
+      "counts": "실제 OwnerArea/등록 컴포넌트와 합성 API의 병합 뒤 회귀 확인입니다.\n\n시험 응답\nnormal\nuploadExpired\nsessionFailed\nstorageFailure\nretryLock\n세션 확인 실패 재현\n\n사진 요청 1 · 등록 요청 1 · 사진 ID 교체 아니오 · 요청 키 교체 아니오\n\n화면 검사 스크립트"
+    }
+  }
+]

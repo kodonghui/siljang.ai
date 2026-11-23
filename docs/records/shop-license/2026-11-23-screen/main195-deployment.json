@@ -1,0 +1,22 @@
+{
+  "main": "dca88a8b135de1dd81cd6fc79bd56440722e5e8a",
+  "nativeOAuthLoggedIn": true,
+  "accountMatches": true,
+  "app": {
+    "versionId": "c8cd0715-d39d-4384-993a-2905b80fc487",
+    "createdOn": "2026-11-23T11:50:26.261575Z",
+    "tag": "dca88a8b135de1dd81cd6fc79bd56440722e5e8a"
+  },
+  "storage": {
+    "versionId": "6e95a5e4-98c0-40c7-a4ca-cb715ec54b3c",
+    "createdOn": "2026-11-23T11:50:16.413501Z",
+    "tag": "dca88a8b135de1dd81cd6fc79bd56440722e5e8a",
+    "percentage": 100
+  },
+  "healthStatus": 200,
+  "firstAttempt": {
+    "exit": 1,
+    "apiCode": "100146"
+  },
+  "retryExit": 0
+}
