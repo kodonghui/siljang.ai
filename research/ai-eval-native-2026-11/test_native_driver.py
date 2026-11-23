@@ -41,7 +41,13 @@ class NativeDriver(unittest.TestCase):
                                     input=(json.dumps(payload)+'\n').encode('utf-8'), capture_output=True, env=env, timeout=60)
             output = result.stdout.decode('utf-8-sig', errors='replace')
             events = [json.loads(line) for line in output.splitlines() if line.startswith('{')]
-            self.assertFalse(trial.exists(), '자기 시험 폴더는 성공/실패 모두 정리해야 함')
+            diagnostic = {
+                'exit': result.returncode,
+                'events': [x for x in events if x['event'] != 'artifact'],
+                'remaining': sorted(x.name for x in trial.iterdir()) if trial.exists() else [],
+                'stderr': result.stderr.decode('utf-8-sig', errors='replace')[:900],
+            }
+            self.assertFalse(trial.exists(), json.dumps(diagnostic, ensure_ascii=True))
             self.assertNotIn('example-native-canary-', output)
             return result.returncode, output, events
 
