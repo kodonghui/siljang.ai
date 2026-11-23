@@ -6,7 +6,7 @@ export const REVIEW_STATUSES = ["pending", "on_hold", "verified"] as const;
 export const CHANGE_STATUSES = ["pending", "applied", "on_hold"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 export type ChangeStatus = (typeof CHANGE_STATUSES)[number];
-interface ShopHeader {
+export interface ShopHeader {
   readonly shopId: string;
   readonly name: string;
   readonly licenseStatus: ReviewStatus;
@@ -40,8 +40,8 @@ export interface ReviewQuery<S> {
   readonly status: S;
   readonly cursor?: string | null;
 }
-const bounded = (value: unknown, max: number): value is string =>
-  typeof value === "string" && [...value].length >= 1 && [...value].length <= max;
+const bounded = (value: unknown, max: number, min = 1): value is string =>
+  typeof value === "string" && [...value].length >= min && [...value].length <= max;
 const matches = (value: unknown, pattern: RegExp): value is string => typeof value === "string" && pattern.test(value);
 const member = <T extends readonly string[]>(value: unknown, choices: T): value is T[number] =>
   typeof value === "string" && choices.includes(value);
@@ -62,6 +62,20 @@ function shopHeader(value: unknown): value is ShopHeader {
     member(value.licenseStatus, REVIEW_STATUSES)
   );
 }
+export const copyReviewShopHeader = (value: ShopHeader): ShopHeader => ({
+  shopId: value.shopId,
+  name: value.name,
+  licenseStatus: value.licenseStatus,
+});
+export {
+  bounded as isReviewText,
+  business as isReviewBusinessIdentity,
+  copyBusiness as copyReviewBusinessIdentity,
+  matches as matchesReviewValue,
+  shopHeader as isReviewShopHeader,
+  version as isReviewRevision,
+};
+
 function reviewShop(value: unknown): ReviewShop | null {
   if (
     !isApiObject(value) ||
@@ -111,7 +125,7 @@ function identityChange(value: unknown): IdentityChangeSummary | null {
   return {
     ...copyBusiness(value),
     changeId: value.changeId,
-    shop: { shopId: value.shop.shopId, name: value.shop.name, licenseStatus: value.shop.licenseStatus },
+    shop: copyReviewShopHeader(value.shop),
     status: value.status,
     previous: copyBusiness(value.previous),
     paymentAccount:

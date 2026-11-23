@@ -2,6 +2,7 @@ import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react
 import { Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiFailure, ApiResult } from "./api";
 import { OperatorAlertsScreen } from "./OperatorAlertsScreen";
+import { OperatorShopReview } from "./OperatorShopReview";
 import { OperatorShopsList } from "./OperatorShopsList";
 import {
   fetchOperator,
@@ -29,6 +30,7 @@ export function OperatorArea() {
   const [logout, setLogout] = useState<"pending" | "failed" | null>(null);
   const [logoutFailure, setLogoutFailure] = useState<ApiFailure | null>(null);
   const logoutRequest = useRef<AbortController | null>(null);
+  const [contentBusy, setContentBusy] = useState(false);
   const returnTo = location.pathname + location.search + location.hash;
   const sessionExpired = useCallback(() => {
     navigate(OPERATOR_LOGIN, { replace: true, state: { returnTo } });
@@ -58,7 +60,7 @@ export function OperatorArea() {
   useEffect(() => () => logoutRequest.current?.abort(), []);
 
   async function logOut() {
-    if (logoutRequest.current) return;
+    if (logoutRequest.current || contentBusy) return;
     const controller = new AbortController();
     logoutRequest.current = controller;
     setLogout("pending");
@@ -80,7 +82,7 @@ export function OperatorArea() {
   }
 
   function follow(href: string, event: MouseEvent<HTMLAnchorElement>) {
-    if (logout === "pending") {
+    if (contentBusy || logout === "pending") {
       event.preventDefault();
       return;
     }
@@ -130,9 +132,9 @@ export function OperatorArea() {
       title={screen.title}
       {...(screen.top ? {} : { back })}
       operatorName={session.data.displayName}
-      busy={logout === "pending"}
       onLogout={logOut}
       onNavigate={follow}
+      busy={contentBusy || logout === "pending"}
     >
       <PageSection>
         {logout === "failed" && logoutFailure ? (
@@ -147,6 +149,15 @@ export function OperatorArea() {
           <OperatorShopsList onNavigate={follow} onSessionExpired={sessionExpired} blocked={logout === "pending"} />
         ) : screen.screen === "SCR-049" ? (
           <OperatorAlertsScreen onNavigate={follow} onSessionExpired={sessionExpired} blocked={logout === "pending"} />
+        ) : screen.screen === "SCR-048" ? (
+          <OperatorShopReview
+            key={location.pathname}
+            shopId={location.pathname.split("/")[3] ?? ""}
+            onNavigate={follow}
+            onSessionExpired={sessionExpired}
+            onBusyChange={setContentBusy}
+            blocked={logout === "pending"}
+          />
         ) : (
           <p>준비 중입니다.</p>
         )}
