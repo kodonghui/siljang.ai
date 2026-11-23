@@ -335,3 +335,35 @@ it("loading에서는SCR-034대로액션을잠그고조회성공뒤풀림", async
   await screen.findByLabelText("가게 이름");
   expect(out.disabled).toBe(false);
 });
+
+it("지수 표기 숫자는 다른 정수로 저장하지 않고 서버 필드 오류와 원문을 보존한다", async () => {
+  await area();
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        const body = JSON.parse(String(init.body));
+        if (typeof body.idleCloseHours === "string") {
+          requests.push({ body, key: new Headers(init.headers).get("Idempotency-Key") });
+          return json(
+            {
+              code: "validation_failed",
+              errors: [{ field: "/idleCloseHours", code: "out_of_range" }],
+              traceId: "0123456789abcdef0123456789abcdef",
+            },
+            422,
+          );
+        }
+      }
+      return transport(input, init);
+    }),
+  );
+  const target = screen.getByLabelText(/문의 끊김 시간/) as HTMLInputElement;
+  fireEvent.change(target, { target: { value: "1e2" } });
+  fireEvent.click(screen.getByRole("button", { name: "저장" }));
+  await waitFor(() => expect(target.getAttribute("aria-invalid")).toBe("true"));
+  expect(target.value).toBe("1e2");
+  expect(requests[0]?.body.idleCloseHours).toBe("1e2");
+  expect(document.activeElement).toBe(target);
+});
