@@ -87,8 +87,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const headers: Record<string, string> = { accept: "application/json, application/problem+json" };
   const init: RequestInit = { method, headers, credentials: "same-origin" };
   if (options.body !== undefined) {
-    headers["content-type"] = "application/json";
-    init.body = JSON.stringify(options.body);
+    if (typeof FormData !== "undefined" && options.body instanceof FormData) init.body = options.body;
+    else {
+      headers["content-type"] = "application/json";
+      init.body = JSON.stringify(options.body);
+    }
   }
   if (options.key !== undefined) headers[REQUEST_KEY_HEADER] = options.key;
   if (options.signal !== undefined) init.signal = options.signal;

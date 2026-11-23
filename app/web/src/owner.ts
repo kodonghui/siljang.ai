@@ -1,6 +1,7 @@
 import { matchPath } from "react-router";
 import { type ApiFailure, type ApiResult, request } from "./api";
 import { classify, ERROR_CODES, type Failure } from "./problems";
+import { clearRegistrationDraft } from "./registration-draft";
 
 export const OWNER_LOGIN = "/owner/login";
 export const OWNER_CALLBACK = "/owner/login/callback";
@@ -225,8 +226,10 @@ export async function fetchOwner(signal: AbortSignal): Promise<ApiResult<OwnerId
       ? { ...result, data: { owner: result.data.owner, shop: result.data.shop } }
       : INVALID;
 }
-export function signOutOwner(signal: AbortSignal) {
-  return request<null>(OWNER_SESSION_API, { method: "DELETE", cache: "no-store", signal });
+export async function signOutOwner(signal: AbortSignal) {
+  const result = await request<null>(OWNER_SESSION_API, { method: "DELETE", cache: "no-store", signal });
+  if (result.ok) clearRegistrationDraft();
+  return result;
 }
 
 export function ownerLoginFeedback(result: ApiFailure): Failure {

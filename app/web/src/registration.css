@@ -1,0 +1,72 @@
+.registration-form,
+.registration-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+.registration-fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.registration-legend {
+  margin-block-end: var(--space-md);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+}
+.registration-choices,
+.registration-photo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+.registration-photo input {
+  max-width: 100%;
+}
+.registration-photo img {
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  align-self: flex-start;
+}
+.registration-terms {
+  padding: var(--space-md);
+  border: var(--border-width-hairline) solid var(--color-line);
+  background: var(--color-surface);
+  overflow-wrap: anywhere;
+}
+.registration-terms p {
+  margin-block-start: var(--space-md);
+}
+.registration-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+.registration-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: var(--space-sm);
+  padding-block: var(--space-md);
+  background: var(--color-paper);
+}
+.registration-actions > .ui-button:first-child {
+  flex: 1;
+}
+
+@media (max-width: 1259px) {
+  .registration-form {
+    padding-bottom: calc(var(--size-control) + var(--space-lg) * 2);
+  }
+  .registration-actions {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 1;
+    padding: var(--space-md) var(--space-lg);
+    border-top: var(--border-width-hairline) solid var(--color-line);
+  }
+}

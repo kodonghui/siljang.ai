@@ -1,8 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import type { ApiResult } from "./api";
-import { fetchOwner, OWNER_LOGIN, type OwnerIdentity, ownerDestination, ownerReturnTo, signOutOwner } from "./owner";
+import {
+  fetchOwner,
+  OWNER_HOME,
+  OWNER_LOGIN,
+  OWNER_REGISTER,
+  type OwnerIdentity,
+  ownerDestination,
+  ownerReturnTo,
+  signOutOwner,
+} from "./owner";
 import { classify } from "./problems";
+import { ShopRegistration } from "./ShopRegistration";
 import { Button, LoadFailure, Skeleton } from "./ui";
 
 /** 업무 화면은 각 WBS 작업에서 붙인다. 세션을 확인하기 전에는 보호된 내용을 표시하지 않는다. */
@@ -81,9 +91,24 @@ export function OwnerArea() {
   }
   const destination = ownerDestination(session.data, requested);
   if (destination !== requested) return <Navigate to={destination} replace />;
+  if (requested === OWNER_REGISTER)
+    return (
+      <ShopRegistration
+        key={session.data.owner.ownerId}
+        ownerId={session.data.owner.ownerId}
+        onRegistered={() => navigate(OWNER_HOME, { replace: true, state: { registered: true } })}
+        onSessionExpired={() => navigate(OWNER_LOGIN, { replace: true, state: { returnTo: requested } })}
+        onHome={() => navigate(OWNER_HOME, { replace: true })}
+        onLogout={() => void logOut()}
+        logoutFailed={logout === "failed"}
+      />
+    );
   return (
     <main>
       <h1>수제케이크 주문제작</h1>
+      {location.state?.registered === true ? (
+        <p role="status">가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요</p>
+      ) : null}
       <p>준비 중입니다.</p>
       {logout === "failed" ? <p role="alert">로그아웃하지 못했어요. 다시 시도해 주세요</p> : null}
       <Button onClick={() => void logOut()}>로그아웃</Button>
