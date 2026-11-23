@@ -771,6 +771,88 @@ it("두 기기의 표시 방식과 기본 범위 변경을 재적용해도 저�
   });
 });
 
+it("가격표 필드의 첫 초점이 실패해도 같은 화면 반영에서 한 번 복구한다", async () => {
+  area();
+  await loaded();
+  const input = within(screen.getByRole("group", { name: "크기 옵션 1" })).getByLabelText("옵션 이름");
+  fireEvent.change(input, { target: { value: "" } });
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  const original = HTMLElement.prototype.focus;
+  let calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === input && ++calls === 1) {
+      expect(document.activeElement).not.toBe(input);
+      return;
+    }
+    original.call(this, options);
+  });
+  save();
+  expect(calls).toBe(2);
+  expect(document.activeElement).toBe(input);
+});
+it("가격표 초점이 두 번 실패하면 끝내고 뒤 입력의 초점을 가져오지 않는다", async () => {
+  const view = area();
+  await loaded();
+  const row = within(screen.getByRole("group", { name: "크기 옵션 1" }));
+  const input = row.getByLabelText("옵션 이름");
+  fireEvent.change(input, { target: { value: "" } });
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  const original = HTMLElement.prototype.focus;
+  let calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === input && ++calls <= 2) return;
+    original.call(this, options);
+  });
+  save();
+  expect(calls).toBe(2);
+  const other = row.getByLabelText("금액");
+  other.focus();
+  fireEvent.change(other, { target: { value: "35000" } });
+  view.rerender(<PriceListEditor {...view.props} shopName="다시 그린 합성 가게" />);
+  expect(document.activeElement).toBe(other);
+  expect(calls).toBe(2);
+});
+it("서버 오류의 저장 결과 영역도 첫 초점 실패 뒤 한 번 복구한다", async () => {
+  sendProblem = { status: 422, code: "validation_failed", errors: [{ field: "/unknown", code: "not_allowed" }] };
+  area();
+  await loaded();
+  const target = screen.getByRole("region", { name: "가격표 저장 결과" });
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  const original = HTMLElement.prototype.focus;
+  let calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === target && ++calls === 1) {
+      expect(document.activeElement).not.toBe(target);
+      return;
+    }
+    original.call(this, options);
+  });
+  save();
+  await waitFor(() => expect(sends).toHaveLength(1));
+  await waitFor(() => expect(calls).toBe(2));
+  expect(document.activeElement).toBe(target);
+});
+it("가격표 탭의 키보드 이동도 첫 초점 실패 뒤 한 번만 복구한다", async () => {
+  area();
+  await loaded();
+  const tabs = within(screen.getByRole("tablist", { name: "옵션 그룹" })).getAllByRole("tab");
+  const first = tabs[0],
+    target = tabs[1];
+  if (!first || !target) throw new Error("옵션 그룹 탭이 없어요");
+  first.focus();
+  const original = HTMLElement.prototype.focus;
+  let calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === target && ++calls === 1) {
+      expect(document.activeElement).not.toBe(target);
+      return;
+    }
+    original.call(this, options);
+  });
+  fireEvent.keyDown(first, { key: "ArrowRight" });
+  expect(calls).toBe(2);
+  expect(document.activeElement).toBe(target);
+});
 it("로컬 저장 오류를 초점 대상인 저장 결과 영역에서도 읽을 수 있다", async () => {
   empty = true;
   area();
