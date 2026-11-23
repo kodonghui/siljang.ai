@@ -104,6 +104,7 @@ it("넓은 화면은 최신 상세를 함께 읽고 폭이 좁아지면 목록�
   expect(screen.getByRole("link", { name: /버전 3/ })).toBeTruthy();
 });
 it("앞자리0 상세도 정규화한 같은 버전을 선택 표시한다", async () => {
+  wideScreen();
   area("03");
   await screen.findByRole("heading", { name: /버전 3/ });
   expect(screen.getByRole("link", { name: /버전 3/ }).getAttribute("aria-current")).toBe("page");
@@ -256,6 +257,7 @@ it("도안 그림을 읽지 못해도 버전 내용과 대체 안내를 남긴�
   expect(calls.every((c) => c.method === "GET")).toBe(true);
 });
 it("목록과 상세가 동시에401이어도 로그인 전환은 한 번만 요청한다", async () => {
+  wideScreen();
   problem = detailProblem = { status: 401, code: "unauthenticated" };
   const view = area("3");
   await waitFor(() => expect(view.props.onSessionExpired).toHaveBeenCalledOnce());
@@ -429,6 +431,7 @@ it.each(["route", "bfcache"] as const)("같은 버전의 %s 세션 재확인은 
 it.each(["checking", "failed"] as const)(
   "초기 세션 %s 중 목록과 상세를 요청하지 않고 확인 뒤 한 번만 시작한다",
   async (state) => {
+    wideScreen();
     const view = area("3", state === "checking" ? { sessionChecking: true } : { sessionFailed: true });
     await act(async () => {});
     expect(calls).toHaveLength(0);
@@ -477,6 +480,7 @@ it("현재 가격표 재확인을 취소하고 뒤로 돌아와도 확인 전 �
 });
 
 it("세션 확인이 시작되면 진행 중 목록을 취소하고 확인 뒤 재개하며 늦은 401을 버린다", async () => {
+  wideScreen();
   const transport = fetch;
   let finish: ((response: Response) => void) | undefined;
   let signal: AbortSignal | null | undefined;
@@ -507,4 +511,25 @@ it("세션 확인이 시작되면 진행 중 목록을 취소하고 확인 뒤 �
   await screen.findByRole("link", { name: /버전 3/ });
   expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(2);
   expect(calls.filter((c) => c.path === "/api/owner/price-list/versions/3")).toHaveLength(1);
+});
+
+it("좁은 직접 상세는 목록을 미루고 넓어지면 한 번만 읽는다", async () => {
+  let change = () => {};
+  const query = {
+    matches: false,
+    addEventListener: (_event: string, callback: () => void) => {
+      change = callback;
+    },
+    removeEventListener: vi.fn(),
+  };
+  vi.stubGlobal("matchMedia", () => query);
+  area("3");
+  await screen.findByRole("heading", { name: /버전 3/ });
+  expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(0);
+  act(() => {
+    query.matches = true;
+    change();
+  });
+  await screen.findByRole("link", { name: /버전 3/ });
+  expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(1);
 });
