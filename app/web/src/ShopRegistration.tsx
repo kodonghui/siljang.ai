@@ -50,6 +50,7 @@ interface Props {
   readonly logoutFailed?: boolean;
   readonly logoutPending?: boolean;
   readonly sessionChecking?: boolean;
+  readonly sessionFailed?: boolean;
   readonly sessionExpired?: boolean;
 }
 
@@ -62,6 +63,7 @@ export function ShopRegistration({
   logoutFailed,
   logoutPending,
   sessionChecking,
+  sessionFailed,
   sessionExpired,
 }: Props) {
   const [values, setValues] = useState<RegistrationValues>(
@@ -74,7 +76,8 @@ export function ShopRegistration({
   const [photoProblem, setPhotoProblem] = useState<string | undefined>();
   const upload = useCommand<File, UploadedLicensePhoto>((input) => uploadLicensePhoto(input));
   const registration = useCommand<Record<string, unknown>, RegisteredShop>((input, key) => registerShop(input, key));
-  const busy = upload.busy || registration.busy || Boolean(logoutPending || sessionChecking || sessionExpired);
+  const busy =
+    upload.busy || registration.busy || Boolean(logoutPending || sessionChecking || sessionFailed || sessionExpired);
   const formRef = useRef<HTMLFormElement>(null);
   const valuesRef = useRef(values);
   valuesRef.current = values;
@@ -90,6 +93,13 @@ export function ShopRegistration({
       []),
   ];
   const uploadBlocked = upload.state.kind === "failed" && upload.state.blockedUntil !== null;
+
+  useEffect(() => {
+    if (
+      failure?.fieldErrors.some((error) => error.field === "/licensePhotoUploadId" && error.code === "upload_not_found")
+    )
+      upload.reset();
+  }, [failure, upload.reset]);
 
   useEffect(() => {
     setPreviewFailed(false);
@@ -384,7 +394,7 @@ export function ShopRegistration({
           <Button
             type="submit"
             busy={upload.busy || registration.busy}
-            disabled={Boolean(logoutPending || sessionChecking || sessionExpired)}
+            disabled={Boolean(logoutPending || sessionChecking || sessionFailed || sessionExpired)}
           >
             등록
           </Button>
