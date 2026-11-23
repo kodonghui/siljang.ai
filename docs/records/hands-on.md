@@ -842,3 +842,9 @@
 
 - 학원컴 Aside SQL Editor에서 합성 사장님/운영자·보류 가게·세션·보류 할 일/알림을 같은 프로브 서브트랜잭션에 만들었습니다. 기존 runtime 역할로 새 함수에 받은 버전을 넘겼고 결과는 done·resubmission_verified=true·old_photo_queued1·blocked_writes3·failure_sqlstate=null·rollback_verified/role_restored/set_permission_restored=true입니다. 확인 기다림/새 신고 번호·판정 지움과 보류 할 일/예약 종료·옛 사진 예약을 확인했습니다. 직접 신고/판정 UPDATE·내부 정리 함수 실행3종은42501입니다.
 - 자료와 일시 SET는 같은 예외 경계에서 모두 되돌렸습니다. 로컬 독립 DB/최소 역할에서 같은 프로브를 먼저 확인했으며 본문 해시f5589b0bf0643a85df75322bc3844f3037e6602f70e9e23f932813e3e5bd6611를 대조했습니다. 이것은 저장소의 실제 파일 삭제나 실제 사장님 로그인 성공이 아닙니다. 모델/실제 메시지 발신/유료 변경0입니다.
+
+### 2026-11-23 09:14 KST · 운영자 알림 main과 무료 저장소 호출 한도
+
+- main8bd113d/PR #180 app45087121533 검사/스테이징 배포·db45087121549 두 버전 성공 뒤 학원컴 CLI에서6a20bc36-548d-415a-83eb-4a507f34a99f(09:13:27 생성)/정확한 태그·상태200·SSH0을 확인했습니다. 배포 전 확인은 옛 태그로 실패했으며 배포 성공 뒤 다시 확인했습니다.09:13:59 무인증 GET /api/operator/alerts는401 unauthenticated/application/problem+json·SSH0·stderr_nonempty=true입니다. 실제 운영자/TOTP 성공으로 세지 않습니다.
+- 별도 siljang-storage-budget-peer/harness는 공개 경로·workers.dev 없이 RPC만 배포했습니다. 학원컴 원격 개발은 루프백에서만 결과를 받았고 종료 때 프로세스를 닫았습니다. 지원하지 않는 CLI 인자의 첫 두 실패를 고친 뒤 두 배포/SSH는0입니다. 직접49번 성공·51번 요청은50번에서 한도 오류,서비스30번씩 두 번은60번 모두 성공,서비스51번도50번에서 한도 오류였습니다. 외부 주소는 자신의 스테이징 상태이며 자격 증명·응답 내용은 보내거나 저장하지 않았습니다. 실제 총 외부 성공 호출은209번이고 모델/가게/S3 파일·유료 변경0입니다.
+- [시험 코드/방법](../../research/storage-budget-2026-11/README.md)을 남깁니다. API-017의 실제50개 저장/되돌림/정리를 확인한 것은 아니며 서비스 배치 통합 뒤 확인합니다. 시험 Worker는 그 용도만 있으며 기존 Worker 두 개는 건드리지 않았습니다.
