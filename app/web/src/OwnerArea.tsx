@@ -20,11 +20,15 @@ import { ShopRegistration } from "./ShopRegistration";
 import { ShopSettings } from "./ShopSettings";
 import { Button, LoadFailure, Skeleton } from "./ui";
 
+const isPriceHistoryPath = (path: string | undefined) => /^\/owner\/price-list\/versions(?:\/[^/]+)?$/.test(path ?? "");
+
 /** 첫 세션 확인 전에는 가린다. 이미 검증한 등록 양식은 재확인·로그아웃 중 잠근 채 보존한다. */
 export function OwnerArea() {
   const location = useLocation();
   const navigate = useNavigate();
   const requested = ownerReturnTo(location.pathname + location.search + location.hash);
+  const shopPath = requested?.split(/[?#]/)[0]?.replace(/\/+$/, "");
+  const priceHistory = isPriceHistoryPath(shopPath);
   const [revision, setRevision] = useState(0);
   const [checked, setChecked] = useState<{ key: string; revision: number; result: ApiResult<OwnerIdentity> } | null>(
     null,
@@ -32,7 +36,7 @@ export function OwnerArea() {
   const [logout, setLogout] = useState<"pending" | "failed" | null>(null);
   const [logoutFailure, setLogoutFailure] = useState<ApiFailure | null>(null);
   const logoutRequest = useRef<AbortController | null>(null);
-  const verified = useRef<{ key: string; data: OwnerIdentity } | null>(null);
+  const verified = useRef<{ key: string; data: OwnerIdentity; history: boolean } | null>(null);
   const [registrationNotice, setRegistrationNotice] = useState(false);
 
   useEffect(() => {
@@ -55,7 +59,7 @@ export function OwnerArea() {
         if (result.ok) {
           if (result.data.shop !== null) clearRegistrationDraft();
           else pruneRegistrationDraft(result.data.owner.ownerId);
-          verified.current = { key: location.key, data: result.data };
+          verified.current = { key: location.key, data: result.data, history: priceHistory };
         }
         setChecked({ key: location.key, revision, result });
       })
@@ -63,7 +67,7 @@ export function OwnerArea() {
         /* 화면을 떠날 때 취소한 요청. */
       });
     return () => controller.abort();
-  }, [location.key, requested, revision]);
+  }, [location.key, requested, revision, priceHistory]);
   useEffect(() => () => logoutRequest.current?.abort(), []);
   useEffect(() => {
     if (requested !== OWNER_HOME) setRegistrationNotice(false);
@@ -100,10 +104,12 @@ export function OwnerArea() {
       </main>
     );
   const session = checked?.key === location.key && checked.revision === revision ? checked.result : null;
-  const candidate = session?.ok ? session.data : verified.current?.key === location.key ? verified.current.data : null;
-  const shopPath = requested.split(/[?#]/)[0];
-  const priceHistory =
-    shopPath === "/owner/price-list/versions" || /^\/owner\/price-list\/versions\/[^/]+$/.test(shopPath ?? "");
+  const cached = verified.current;
+  const candidate = session?.ok
+    ? session.data
+    : cached && (cached.key === location.key || (priceHistory && cached.history))
+      ? cached.data
+      : null;
   if (
     (priceHistory || ["/owner/shop", "/owner/shop/license", "/owner/price-list"].includes(shopPath ?? "")) &&
     candidate?.shop
@@ -203,9 +209,6 @@ export function OwnerArea() {
       <p>준비 중입니다.</p>
       {shopPath === "/owner/payment-destination" ? (
         <Button onClick={() => navigate("/owner/shop/license")}>영업 신고로 돌아가기</Button>
-      ) : null}
-      {shopPath === "/owner/price-list/versions" ? (
-        <Button onClick={() => navigate("/owner/price-list")}>현재 가격표로 돌아가기</Button>
       ) : null}
       {logout === "failed" ? <p role="alert">로그아웃하지 못했어요. 다시 시도해 주세요</p> : null}
       <Button onClick={() => void logOut()}>로그아웃</Button>

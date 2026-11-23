@@ -1,7 +1,13 @@
 /** API018/019는 읽기 전용이며 화면의 버전 번호만 경로로 만든다. */
 import { type ApiResult, request } from "./api";
 import { INVALID_API_RESPONSE, isApiObject } from "./api-response";
-import { isPriceList, type PriceList } from "./price-list-api";
+import {
+  isPriceList,
+  MAX_PRICE_VERSION,
+  type PriceList,
+  isPriceTimestamp as timestamp,
+  isPriceVersion as version,
+} from "./price-list-api";
 import { parseProblem } from "./problems";
 export interface PriceVersion {
   readonly version: number;
@@ -11,15 +17,12 @@ export interface PriceVersion {
 export interface PriceVersions {
   readonly items: readonly PriceVersion[];
 }
-const timestamp = (v: unknown): v is string => typeof v === "string" && Number.isFinite(Date.parse(v));
-const version = (v: unknown): v is number =>
-  typeof v === "number" && Number.isSafeInteger(v) && v >= 1 && v <= 2147483647;
 export async function fetchPriceListVersions(signal?: AbortSignal): Promise<ApiResult<PriceVersions>> {
   const result = await request<unknown>("/owner/price-list/versions", { ...(signal ? { signal } : {}) });
   if (!result.ok) return result;
   const data = result.data;
   if (!isApiObject(data) || !Array.isArray(data.items) || data.items.length > 1000) return INVALID_API_RESPONSE;
-  let previous = 2147483648;
+  let previous = MAX_PRICE_VERSION + 1;
   const rows: PriceVersion[] = [];
   for (const [i, row] of data.items.entries()) {
     if (

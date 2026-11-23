@@ -14,10 +14,12 @@ import "./price-list-history.css";
 
 type Read<T> = { kind: "loading" } | { kind: "failed"; failure: ApiFailure } | { kind: "ready"; data: T };
 const network: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
-const date = (value: string) =>
-  new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", dateStyle: "short", timeStyle: "short" }).format(
-    new Date(value),
-  );
+const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Asia/Seoul",
+  dateStyle: "short",
+  timeStyle: "short",
+});
+const date = (value: string) => dateFormatter.format(new Date(value));
 const groups = { size: "크기", flavor: "맛", design: "디자인", extra: "추가" };
 const money = (list: PriceList["options"][number]) =>
   list.priceKind === "from"
@@ -112,17 +114,22 @@ export function PriceListHistory(props: ShopLicenseProps & { readonly version?: 
     [report],
   );
   useEffect(() => {
+    if (props.sessionChecking || props.sessionFailed) {
+      detailRequest.current?.abort();
+      return;
+    }
     if (selected !== null) readDetail(selected);
     else {
       detailRequest.current?.abort();
       setDetail(null);
     }
     return () => detailRequest.current?.abort();
-  }, [selected, readDetail]);
+  }, [selected, readDetail, props.sessionChecking, props.sessionFailed]);
   const currentDetail = detail?.key === selected ? detail.read : null;
   const pending =
-      list.kind === "loading" ||
-      (selected !== null && (currentDetail === null || currentDetail.kind === "loading")) ||
+      (!props.sessionFailed &&
+        (((!explicit || wide) && list.kind === "loading") ||
+          (selected !== null && (currentDetail === null || currentDetail.kind === "loading")))) ||
       Boolean(props.logoutPending || props.sessionChecking),
     locked = pending || Boolean(props.sessionFailed);
   const total = list.kind === "ready" ? list.data.items.length : 0;
@@ -206,7 +213,7 @@ export function PriceListHistory(props: ShopLicenseProps & { readonly version?: 
                     <li key={item.version}>
                       <a
                         href={`/owner/price-list/versions/${item.version}`}
-                        aria-current={selected === String(item.version) ? "page" : undefined}
+                        aria-current={selected === String(item.version) ? (explicit ? "page" : "true") : undefined}
                         aria-disabled={locked}
                         onClick={(event) => {
                           event.preventDefault();

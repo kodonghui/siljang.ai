@@ -49,6 +49,10 @@ const uuid = (v: unknown): v is string => text(v) && UUID_PATTERN.test(v);
 const date = (v: unknown): v is string => text(v) && Number.isFinite(Date.parse(v));
 const integer = (v: unknown, min: number, max: number): v is number =>
   typeof v === "number" && Number.isSafeInteger(v) && v >= min && v <= max;
+export const MAX_PRICE_VERSION = 2147483647;
+export const isPriceVersion = (value: unknown): value is number => integer(value, 1, MAX_PRICE_VERSION);
+export { date as isPriceTimestamp };
+
 const name = (v: unknown): v is string => text(v) && v.length > 0 && v.length <= 30;
 const member = (v: unknown, choices: readonly string[]) => text(v) && choices.includes(v);
 const list = (v: unknown, max: number): v is unknown[] => Array.isArray(v) && v.length <= max;
@@ -78,7 +82,7 @@ function option(v: unknown): v is PriceOption {
 export function isPriceList(v: unknown): v is PriceList {
   if (
     !object(v) ||
-    !integer(v.version, 1, 2147483647) ||
+    !isPriceVersion(v.version) ||
     typeof v.current !== "boolean" ||
     !date(v.createdAt) ||
     !(v.supersededAt === null || date(v.supersededAt)) ||

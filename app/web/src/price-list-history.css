@@ -31,7 +31,7 @@
   text-decoration: none;
   overflow-wrap: anywhere;
 }
-.price-history__versions a[aria-current="page"] {
+.price-history__versions a[aria-current] {
   border-color: var(--color-accent);
   background: var(--color-accent-soft);
 }

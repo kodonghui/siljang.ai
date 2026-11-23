@@ -20,6 +20,14 @@ const version = () =>
   );
 const traceId = "0123456789abcdef0123456789abcdef";
 const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status });
+const profile = () => ({
+  owner: {
+    ownerId: "00000000-0000-4000-8000-000000000050",
+    alertChannelFriend: false,
+    createdAt: "2026-11-23T08:00:00Z",
+  },
+  shop: { shopId: "00000000-0000-4000-8000-000000000051", name: "합성 가게", licenseStatus: "verified" },
+});
 let items: ReturnType<typeof fixture>,
   problem: { status: number; code: string } | null,
   detailProblem: { status: number; code: string } | null,
@@ -35,15 +43,7 @@ beforeEach(() => {
     vi.fn(async (input: unknown, init?: RequestInit) => {
       const path = String(input);
       calls.push({ path, method: init?.method ?? "GET" });
-      if (path === "/api/owner/me")
-        return json({
-          owner: {
-            ownerId: "00000000-0000-4000-8000-000000000050",
-            alertChannelFriend: false,
-            createdAt: "2026-11-23T08:00:00Z",
-          },
-          shop: { shopId: "00000000-0000-4000-8000-000000000051", name: "합성 가게", licenseStatus: "verified" },
-        });
+      if (path === "/api/owner/me") return json(profile());
       if (path === "/api/owner/price-list/versions") {
         if (hold) return new Promise(() => {});
         return problem ? json({ ...problem, traceId }, problem.status) : json(items);
@@ -95,7 +95,7 @@ it("넓은 화면은 최신 상세를 함께 읽고 폭이 좁아지면 목록�
   vi.stubGlobal("matchMedia", () => query);
   area();
   await screen.findByRole("heading", { name: `버전 ${items.items[0].version} (고른 버전)` });
-  expect(screen.getByRole("link", { name: /현재/ }).getAttribute("aria-current")).toBe("page");
+  expect(screen.getByRole("link", { name: /현재/ }).getAttribute("aria-current")).toBe("true");
   act(() => {
     query.matches = false;
     change();
@@ -168,6 +168,7 @@ it("관측 영역 진입은 다음20개를 추가하고 관측자를 해제한�
   const view = area();
   await screen.findByRole("link", { name: /버전 41/ });
   expect(screen.queryByRole("link", { name: /버전 21\b/ })).toBeNull();
+  await waitFor(() => expect(advance).toBeTypeOf("function"));
   act(() => advance([{ isIntersecting: true }]));
   await screen.findByRole("link", { name: /버전 21\b/ });
   expect(screen.queryByRole("link", { name: /버전 1\b/ })).toBeNull();
@@ -294,3 +295,105 @@ it("신고 보류 계정은 버전 API를 읽기 전에 신고 수정으로 간�
   await screen.findByText("신고 수정 합성 목적지");
   expect(calls.some((c) => c.path.includes("price-list"))).toBe(false);
 });
+
+function wideScreen() {
+  vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+}
+function ownerView(path = "/owner/price-list/versions") {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route path="/owner/login" element={<p>로그인 합성 목적지</p>} />
+        <Route path="/owner/*" element={<OwnerArea />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+it("실제 넓은 경로에서60개를 펼친 뒤 버전을 골라도 목록은 한 번만 읽고60개를 유지한다", async () => {
+  wideScreen();
+  const base = items.items[0];
+  items.items = Array.from({ length: 1000 }, (_, i) => ({
+    ...base,
+    version: 1000 - i,
+    supersededAt: i ? base.createdAt : null,
+  }));
+  ownerView();
+  await screen.findByRole("heading", { name: /버전 1000/ });
+  fireEvent.click(screen.getByRole("button", { name: "버전 더 보기" }));
+  fireEvent.click(screen.getByRole("button", { name: "버전 더 보기" }));
+  fireEvent.click(screen.getByRole("link", { name: /버전 945\b/ }));
+  await screen.findByRole("heading", { name: /버전 945/ });
+  expect(screen.getByRole("link", { name: /버전 941\b/ })).toBeTruthy();
+  expect(screen.getByRole("link", { name: /버전 945\b/ }).getAttribute("aria-current")).toBe("page");
+  expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(1);
+});
+it("좁은 직접 상세는 숨은 목록이 느려도 복귀와 로그아웃을 잠그지 않는다", async () => {
+  hold = true;
+  area("3");
+  await screen.findByRole("heading", { name: /버전 3/ });
+  for (const name of ["현재 가격표로", "버전 목록으로", "로그아웃"])
+    expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(false);
+});
+it.each(["/owner/price-list/versions/", "/owner/price-list/versions/3/"])(
+  "끝 슬래시 %s도 실제 이력 경로로 연다",
+  async (path) => {
+    ownerView(path);
+    await screen.findByRole("heading", { name: "가격표 버전 이력" });
+    if (path.includes("/3/")) await screen.findByRole("heading", { name: /버전 3/ });
+    else await screen.findByRole("link", { name: /버전 3/ });
+  },
+);
+it.each(["expired", "failed", "switched"] as const)(
+  "경로 변경의 세션 재확인 %s 중 상세 요청을 막고 계정/만료/실패를 구분한다",
+  async (outcome) => {
+    wideScreen();
+    const transport = fetch;
+    let ownerReads = 0,
+      finish!: (response: Response) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input) === "/api/owner/me" && ++ownerReads === 2) {
+          calls.push({ path: String(input), method: init?.method ?? "GET" });
+          return new Promise<Response>((resolve) => {
+            finish = resolve;
+          });
+        }
+        return transport(input, init);
+      }),
+    );
+    ownerView();
+    await screen.findByRole("heading", { name: /버전 4/ });
+    fireEvent.click(screen.getByRole("link", { name: /버전 3\b/ }));
+    await waitFor(() => expect(finish).toBeTypeOf("function"));
+    expect((screen.getByRole("button", { name: "현재 가격표로" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(calls.some((c) => c.path.endsWith("/versions/3"))).toBe(false);
+    if (outcome === "switched") {
+      const next = profile();
+      next.owner.ownerId = "00000000-0000-4000-8000-000000000052";
+      next.shop.shopId = "00000000-0000-4000-8000-000000000053";
+      next.shop.name = "다른 합성 가게";
+      items.items = [];
+      detailProblem = { status: 404, code: "not_found" };
+      await act(async () => finish(json(next)));
+      await screen.findByText("아직 저장한 가격표가 없어요");
+      expect(screen.queryByRole("link", { name: /버전 4/ })).toBeNull();
+      expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(2);
+    } else {
+      await act(async () =>
+        finish(
+          json(
+            { code: outcome === "expired" ? "unauthenticated" : "internal", traceId },
+            outcome === "expired" ? 401 : 500,
+          ),
+        ),
+      );
+      if (outcome === "expired") await screen.findByText("로그인 합성 목적지");
+      else {
+        await screen.findByRole("heading", { name: "문제가 생겼어요. 다시 시도해 주세요" });
+        expect((screen.getByRole("button", { name: "로그아웃" }) as HTMLButtonElement).disabled).toBe(false);
+      }
+      expect(calls.some((c) => c.path.endsWith("/versions/3"))).toBe(false);
+    }
+  },
+);

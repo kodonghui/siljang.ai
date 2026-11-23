@@ -39,7 +39,7 @@ export function ListView<Row>({ label, columns, rows, rowKey, href, onNavigate, 
 
   const link = (row: Row, strong: boolean) => {
     if (href === undefined)
-      return <span className={`ui-list__link${strong ? " ui-list__link--strong" : ""}`}>{title.cell(row)}</span>;
+      return <span className={`ui-list__title${strong ? " ui-list__title--strong" : ""}`}>{title.cell(row)}</span>;
     const to = href(row);
     return (
       <a
@@ -76,7 +76,7 @@ export function ListView<Row>({ label, columns, rows, rowKey, href, onNavigate, 
             <tr key={rowKey(row)}>
               {columns.map((c) =>
                 c === title ? (
-                  <td key={c.label} className="ui-list__linkcell">
+                  <td key={c.label} className={href === undefined ? undefined : "ui-list__linkcell"}>
                     {link(row, false)}
                   </td>
                 ) : (
