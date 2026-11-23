@@ -191,14 +191,17 @@ it.each([
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(data, 201)));
   expect((await saveOperatingRules({}, "synthetic-key")).ok).toBe(false);
 });
-const failures = Object.entries(post.responses).flatMap(([status, response]) =>
-  ["200", "201"].includes(status)
-    ? []
-    : Object.entries(
-        (response as { content: Record<string, { examples: Record<string, { value: Record<string, unknown> }> }> })
-          .content["application/json"].examples,
-      ).map(([name, entry]) => ({ status: status === "default" ? 500 : Number(status), name, data: entry.value })),
-);
+type ProblemExamples = { examples: Record<string, { value: Record<string, unknown> }> };
+const failures = Object.entries(post.responses).flatMap(([status, response]) => {
+  if (["200", "201"].includes(status)) return [];
+  const data = (response as { content: Record<string, ProblemExamples> }).content["application/problem+json"];
+  if (!data) throw new Error(`실패 응답 매체 없음: ${status}`);
+  return Object.entries(data.examples).map(([name, entry]) => ({
+    status: status === "default" ? 500 : Number(status),
+    name,
+    data: entry.value,
+  }));
+});
 it.each(failures)("API021 $status $name 실패를 보존", async (row) => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(row.data, row.status)));
   const result = await saveOperatingRules({}, "synthetic-key");
