@@ -7,6 +7,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { KakaoChannelSettings } from "./KakaoChannelSettings";
 import { OwnerArea } from "./OwnerArea";
+import { ERROR_CODES } from "./problems";
+import { RELOAD_LABEL } from "./ui/CommandStatus";
 
 const api = parse(readFileSync(resolve(process.cwd(), "../../api/openapi.yaml"), "utf8"));
 const getExample = (name: string) =>
@@ -642,4 +644,207 @@ it("취소된 기한 조회는 탭으로 돌아오면 다시 시도한다", asyn
     await vi.advanceTimersByTimeAsync(2000);
   });
   expect(calls.length).toBeGreaterThan(2);
+});
+
+it("저장 실패 배너에서 다시 읽어도 내 변경을 최신 값에 적용할 수 있다", async () => {
+  area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
+  fireEvent.change(screen.getByLabelText("봇 ID"), { target: { value: "synthetic-keep-mine" } });
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "PUT" ? json({ code: "channel_linked_elsewhere", traceId }, 409) : transport(input, init),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+  await main().findByText(ERROR_CODES.channel_linked_elsewhere.message);
+  fireEvent.click(screen.getByRole("button", { name: RELOAD_LABEL }));
+  await main().findByText(`지금 봇 ID: ${current.botId}`);
+  fireEvent.click(screen.getByRole("button", { name: "내 변경 다시 적용" }));
+  expect((screen.getByLabelText("봇 ID") as HTMLInputElement).value).toBe("synthetic-keep-mine");
+});
+it.each([
+  { reset: false, remaining: 30000, name: "진행 중 확인 유지" },
+  { reset: true, remaining: 30000, name: "브라우저 시계가 느려도 서버 초기화" },
+  { reset: false, remaining: -30000, name: "브라우저 시계가 빨라도 서버 확인 유지" },
+])("서버 확인 시각으로 저장 결과를 안내한다: $name", async ({ reset, remaining }) => {
+  vi.useFakeTimers();
+  pending();
+  current.verifiedBlocks = [];
+  current.checkExpiresAt = new Date(Date.now() + remaining).toISOString();
+  area();
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
+  fireEvent.change(screen.getByLabelText("채널 공개 ID(선택)"), { target: { value: "_syntheticchanged" } });
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "PUT"
+        ? json({
+            outcome: "done",
+            skillKey: null,
+            kakaoChannel: {
+              ...current,
+              channelPublicId: "_syntheticchanged",
+              revision: "synthetic-saved",
+              ...(reset ? { checkStartedAt: null, checkExpiresAt: null, proofPhrase: null } : {}),
+            },
+          })
+        : transport(input, init),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+  await act(async () => {});
+  expect(main().getByText(reset ? "저장했어요. 연결 확인을 다시 해 주세요" : "저장했어요")).toBeTruthy();
+});
+it("두 번째 오류 배너 재조회 중에는 첫 스냅숏 재적용을 숨긴다", async () => {
+  area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
+  fireEvent.change(screen.getByLabelText("봇 ID"), { target: { value: "synthetic-mine" } });
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "PUT" ? json({ code: "channel_linked_elsewhere", traceId }, 409) : transport(input, init),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+  await main().findByText(ERROR_CODES.channel_linked_elsewhere.message);
+  fireEvent.click(screen.getByRole("button", { name: RELOAD_LABEL }));
+  await main().findByRole("button", { name: "내 변경 다시 적용" });
+  let finish: ((response: Response) => void) | undefined;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: RELOAD_LABEL }));
+  expect(main().queryByRole("button", { name: "내 변경 다시 적용" })).toBeNull();
+  await act(async () => {
+    finish?.(json({ ...current, revision: "synthetic-newest" }));
+  });
+  expect(main().getByRole("button", { name: "내 변경 다시 적용" })).toBeTruthy();
+});
+it.each(["failed", "expired"])("%s 저장이 확인을 초기화하면 다시 확인하라고 알린다", async (kind) => {
+  vi.useFakeTimers();
+  current = getExample("failed");
+  if (kind === "expired") {
+    pending();
+    current.checkStartedAt = new Date(Date.now() - 660000).toISOString();
+    current.checkExpiresAt = new Date(Date.now() - 60000).toISOString();
+  }
+  area();
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "PUT"
+        ? json({
+            outcome: "done",
+            skillKey: null,
+            kakaoChannel: {
+              ...current,
+              status: "pending",
+              verifiedBlocks: [],
+              checkStartedAt: null,
+              checkExpiresAt: null,
+              proofPhrase: null,
+              linkedAt: null,
+              failureHints: [],
+              revision: "synthetic-restarted",
+            },
+          })
+        : transport(input, init),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+  await act(async () => {});
+  expect(main().getByText("저장했어요. 연결 확인을 다시 해 주세요")).toBeTruthy();
+});
+it.each(["linked", "failed"])("확인 결과가 %s로 바뀌면 지난 시작 안내를 지운다", async (status) => {
+  vi.useFakeTimers();
+  pending();
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await transport(input, init);
+      return init?.method === "POST" ? json(keepCheckWindow(await response.json())) : response;
+    }),
+  );
+  area();
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "연결 확인" }));
+  await act(async () => {});
+  expect(main().getByText("연결 확인을 시작했어요")).toBeTruthy();
+  current = getExample(status);
+  current.eventStatus = "unchecked";
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5000);
+  });
+  expect(main().queryByText("연결 확인을 시작했어요")).toBeNull();
+  expect(main().getByRole("heading", { name: status === "linked" ? "연결됨" : "연결 안 됨" })).toBeTruthy();
+});
+it("늦음 안내는 기한 조회를 마친 창에만 보이고 새 확인 창에서는 지운다", async () => {
+  vi.useFakeTimers();
+  pending();
+  current.checkExpiresAt = new Date(Date.now() + 2000).toISOString();
+  area();
+  await act(async () => {});
+  for (const delay of [2000, 2000, 5000, 10000])
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(delay);
+    });
+  expect(main().getByText("확인 결과가 늦어지고 있어요. 연결 상태 다시 보기로 확인해 주세요")).toBeTruthy();
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await transport(input, init);
+      return init?.method === "POST" ? json(keepCheckWindow(await response.json())) : response;
+    }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "연결 확인" }));
+  await act(async () => {});
+  expect(main().queryByText("확인 결과가 늦어지고 있어요. 연결 상태 다시 보기로 확인해 주세요")).toBeNull();
+  expect(main().getByText("남은 시간 10:00")).toBeTruthy();
+});
+it("키 교체 실패 뒤 상태 revision이 바뀌어도 재시도는 같은 본문과 키를 보존한다", async () => {
+  vi.useFakeTimers();
+  pending();
+  const transport = fetch;
+  const writes: { body: unknown; key: string | null }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        writes.push({ body: JSON.parse(String(init.body)), key: new Headers(init.headers).get("Idempotency-Key") });
+        if (writes.length === 1) return json({ code: "internal", traceId }, 500);
+      }
+      return transport(input, init);
+    }),
+  );
+  area();
+  await act(async () => {});
+  fireEvent.click(screen.getByText("스킬 설정 값"));
+  fireEvent.click(screen.getByRole("button", { name: "스킬 키 바꾸기" }));
+  await act(async () => {});
+  current = { ...current, revision: "synthetic-polled-revision" };
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5000);
+  });
+  fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+  await act(async () => {});
+  expect(writes).toHaveLength(2);
+  expect(writes[1]).toEqual(writes[0]);
 });

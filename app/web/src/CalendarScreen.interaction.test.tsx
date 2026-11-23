@@ -46,7 +46,29 @@ beforeEach(() => {
         sends.push({ day, body, key: new Headers(init.headers).get("Idempotency-Key") });
         if (writeProblem && sends.length === 1) return json({ ...writeProblem, traceId }, writeProblem.status);
         if (confirmKind && !body.confirm?.includes(confirmKind))
-          return json({ code: "confirmation_required", traceId, confirm: [{ kind: confirmKind, count: 2, day }] }, 409);
+          return json(
+            {
+              code: "confirmation_required",
+              traceId,
+              confirm: [{ kind: confirmKind, count: 2, day }],
+              conflicts: [
+                {
+                  day,
+                  capacity: 1,
+                  held: 2,
+                  orders: [
+                    {
+                      orderId: "11111111-1111-4111-8111-111111111111",
+                      orderNo: "SYN001",
+                      status: "confirmed",
+                      pickupAt: "2026-11-21T14:00:00+09:00",
+                    },
+                  ],
+                },
+              ],
+            },
+            409,
+          );
         const prior = days.get(day) ?? dayValue(day);
         const capacity = body.capacityOverride === undefined ? prior.capacity : (body.capacityOverride ?? 5);
         const next = {
@@ -176,4 +198,82 @@ it("잘못된 월은 오류/처음부터 보기를 보이고 날짜 요청을 �
   expect(reads).toHaveLength(0);
   fireEvent.click(screen.getByRole("button", { name: "처음부터 보기" }));
   expect(view.props.onNavigate).toHaveBeenCalledWith("/owner/calendar");
+});
+it.each(["closed_day_with_orders", "capacity_below_held"] as const)(
+  "%s 확인은 본문을 유지하고 새 키로 저장한다",
+  async (kind) => {
+    confirmKind = kind;
+    area();
+    const form = await select();
+    if (kind === "closed_day_with_orders") fireEvent.click(within(form).getByLabelText("그날 휴무"));
+    else fireEvent.change(within(form).getByLabelText("그날 하루 최대 개수"), { target: { value: "1" } });
+    fireEvent.submit(form);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("2");
+    expect(within(dialog).getByText("SYN001")).toBeTruthy();
+    expect(dialog.textContent).toContain("주문 확정");
+    expect(days.get("2026-11-21")?.revision).toBe("synthetic-2026-11-21");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: kind === "closed_day_with_orders" ? "휴무로 바꾸기" : "개수 줄이기" }),
+    );
+    await main().findByText("저장했어요");
+    expect(sends[1]?.body).toEqual({ ...sends[0]?.body, confirm: [kind] });
+    expect(sends[1]?.key).not.toBe(sends[0]?.key);
+    expect(days.get("2026-11-21")?.held).toBe(2);
+  },
+);
+it("확인에서 돌아가면 서버 값은 유지하고 입력을 보존한다", async () => {
+  confirmKind = "capacity_below_held";
+  area();
+  const form = await select();
+  fireEvent.change(within(form).getByLabelText("그날 하루 최대 개수"), { target: { value: "1" } });
+  fireEvent.submit(form);
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "돌아가기" }));
+  expect(sends).toHaveLength(1);
+  expect(days.get("2026-11-21")?.capacity).toBe(5);
+  expect((within(form).getByLabelText("그날 하루 최대 개수") as HTMLInputElement).value).toBe("1");
+});
+it("409 뒤 바뀐 필드만 최신 설정에 다시 적용하고 새 키/revision을 쓴다", async () => {
+  area();
+  const form = await select();
+  fireEvent.click(within(form).getByLabelText("그날 주문 마감"));
+  days.set("2026-11-21", {
+    ...dayValue("2026-11-21"),
+    capacityOverride: 8,
+    capacity: 8,
+    remaining: 6,
+    revision: "synthetic-latest",
+  });
+  writeProblem = { code: "version_conflict", status: 409 };
+  fireEvent.submit(form);
+  await main().findByText("지금 하루 최대 개수: 8");
+  expect((within(form).getByRole("button", { name: "저장" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "내 변경 다시 적용" }));
+  expect((within(form).getByLabelText("그날 하루 최대 개수") as HTMLInputElement).value).toBe("8");
+  fireEvent.submit(form);
+  await main().findByText("그날 주문을 마감했어요");
+  expect(sends[1]?.body).toEqual({ baseRevision: "synthetic-latest", manuallyClosed: true });
+  expect(sends[1]?.key).not.toBe(sends[0]?.key);
+});
+it("서버500의 다시 시도는 같은 본문과 요청 키를 쓴다", async () => {
+  area();
+  const form = await select();
+  fireEvent.click(within(form).getByLabelText("그날 주문 마감"));
+  writeProblem = { code: "internal", status: 500 };
+  fireEvent.submit(form);
+  await main().findByText(`추적 ID: ${traceId}`);
+  fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+  await main().findByText("그날 주문을 마감했어요");
+  expect(sends[1]).toEqual(sends[0]);
+});
+it.each(["101", "-1", "1.5", "Infinity", "1e2"])("잘못된 개수 %s는 원문을 보존하고 보내지 않는다", async (value) => {
+  area();
+  const form = await select();
+  const input = within(form).getByLabelText("그날 하루 최대 개수") as HTMLInputElement;
+  fireEvent.change(input, { target: { value } });
+  fireEvent.submit(form);
+  expect(input.value).toBe(value);
+  expect(input.getAttribute("aria-invalid")).toBe("true");
+  expect(sends).toHaveLength(0);
 });

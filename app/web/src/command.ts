@@ -8,6 +8,7 @@
 // - 확인 창(409 confirmation_required)에서 확인하면 같은 본문에 confirm 값을 담아 새 키로 보냄(본문이 바뀌어 같은 키면
 //   06이 422 idempotency_key_reused를 줌). 422 idempotency_key_reused의 '다시 시도'도 새 키(06, 화면의 잘못이라 알림).
 import { type ApiResult, newRequestKey } from "./api";
+import type { CalendarConflict } from "./calendar-conflicts";
 import {
   type ConfirmationKind,
   type ConfirmationNeeded,
@@ -20,7 +21,11 @@ import {
 export type CommandState<O> =
   | { readonly kind: "idle" }
   | { readonly kind: "submitting" }
-  | { readonly kind: "confirm"; readonly items: readonly ConfirmationNeeded[] }
+  | {
+      readonly kind: "confirm";
+      readonly items: readonly ConfirmationNeeded[];
+      readonly conflicts?: readonly CalendarConflict[];
+    }
   | { readonly kind: "done"; readonly data: O; readonly replayed: boolean }
   | {
       readonly kind: "failed";
@@ -274,7 +279,11 @@ export class CommandRunner<I, O> {
     }
     this.#inProgressSince = null;
     if (failure.outcome === "confirm" && failure.confirm.length > 0) {
-      this.#set({ kind: "confirm", items: failure.confirm });
+      this.#set({
+        kind: "confirm",
+        items: failure.confirm,
+        ...(failure.conflicts ? { conflicts: failure.conflicts } : {}),
+      });
       return;
     }
     if (failure.outcome === "confirm") {

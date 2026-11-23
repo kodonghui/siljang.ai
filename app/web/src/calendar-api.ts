@@ -1,5 +1,8 @@
 import { type ApiResult, request } from "./api";
 import { INVALID_API_RESPONSE, isApiObject } from "./api-response";
+import { isCalendarDate } from "./calendar-date";
+
+export { isCalendarDate } from "./calendar-date";
 export interface CalendarDay {
   readonly day: string;
   readonly weekdayClosed: boolean;
@@ -19,11 +22,6 @@ export interface CalendarDays {
 export interface CalendarDayResult {
   readonly outcome: "done" | "unchanged";
   readonly day: CalendarDay;
-}
-export function isCalendarDate(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith("0000-")) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 const integer = (value: unknown, max: number): value is number =>
   typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max;
