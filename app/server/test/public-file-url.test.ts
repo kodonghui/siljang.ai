@@ -169,7 +169,8 @@ it("저장소 응답 도중 만료되면 사진/공개 캐시를 내지 않음",
   const key = objectKey();
   await store.put(key, new Uint8Array([1]), "image/png");
   const cancelled = vi.fn();
-  vi.spyOn(store, "get").mockImplementation(async () => {
+  vi.spyOn(store, "get").mockImplementation(async (requestedKey) => {
+    expect(requestedKey).toBe(key);
     clock.now = EXPIRY;
     return { key, contentType: "image/png", size: 1, body: new ReadableStream<Uint8Array>({ cancel: cancelled }) };
   });
@@ -180,4 +181,55 @@ it("저장소 응답 도중 만료되면 사진/공개 캐시를 내지 않음",
   const url = await fileUrlSigner(new Secret(KEY)).signPublic(key, ORIGIN, NOW);
   await expectProblem(await app.request(url, {}, testEnv({ FILE_URL_KEY: KEY })), "not_found");
   expect(cancelled).toHaveBeenCalledOnce();
+});
+
+it.each([false, true])("HEAD는 사진 본문을 열지 않고 같은 메타데이터를 반환함(공개=%s)", async (isPublic) => {
+  const store = new MemoryStore();
+  const key = objectKey();
+  await store.put(key, new Uint8Array([1, 2, 3]), "image/png");
+  const head = vi.spyOn(store, "head");
+  const get = vi.spyOn(store, "get");
+  const app = createApp({
+    logSink: () => {},
+    services: { storage: store, now: () => NOW, limiters: { FILE_RATE_LIMITER: new MemoryLimiter(600) } },
+  });
+  const urls = fileUrlSigner(new Secret(KEY));
+  const url = await (isPublic ? urls.signPublic : urls.sign)(key, ORIGIN, NOW);
+  const response = await app.request(url, { method: "HEAD" }, testEnv({ FILE_URL_KEY: KEY }));
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toBe("image/png");
+  expect(response.headers.get("content-length")).toBe("3");
+  expect(await response.text()).toBe("");
+  expect(head).toHaveBeenCalledWith(key);
+  expect(get).not.toHaveBeenCalled();
+});
+
+it("만료 전 GET은 본문을 취소하지 않고 정상 사진을 전달함", async () => {
+  const store = new MemoryStore();
+  const key = objectKey();
+  const cancelled = vi.fn();
+  vi.spyOn(store, "get").mockImplementation(async (requestedKey) => {
+    expect(requestedKey).toBe(key);
+    return {
+      key,
+      contentType: "image/png",
+      size: 1,
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array([9]));
+          controller.close();
+        },
+        cancel: cancelled,
+      }),
+    };
+  });
+  const app = createApp({
+    logSink: () => {},
+    services: { storage: store, now: () => NOW, limiters: { FILE_RATE_LIMITER: new MemoryLimiter(600) } },
+  });
+  const url = await fileUrlSigner(new Secret(KEY)).signPublic(key, ORIGIN, NOW);
+  const response = await app.request(url, {}, testEnv({ FILE_URL_KEY: KEY }));
+  expect(response.status).toBe(200);
+  expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([9]));
+  expect(cancelled).not.toHaveBeenCalled();
 });

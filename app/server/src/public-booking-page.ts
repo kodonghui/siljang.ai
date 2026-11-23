@@ -1,6 +1,6 @@
 /** API-038. 발급한 예약 주소의 공개 필드만 읽는다. */
 import { calendarBookingDays } from "./calendar";
-import { contents, current } from "./price-lists";
+import { current, publicContents } from "./price-lists";
 import { ApiError } from "./problem";
 import type { ShopRequest } from "./routes";
 import type { ShopRow } from "./shops";
@@ -31,7 +31,7 @@ export async function getPublicBookingPage(r: ShopRequest): Promise<Response> {
     );
     const head = await current(db);
     if (head === undefined) throw new ApiError("not_found");
-    const price = await contents(db, head.id, false);
+    const price = await publicContents(db, head.id);
     const photos = (
       await db.run<{ storage_key: string }>(
         `SELECT COALESCE(cp.storage_key,rp.storage_key) AS storage_key FROM portfolio_items p

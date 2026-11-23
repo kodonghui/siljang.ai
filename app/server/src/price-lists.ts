@@ -64,7 +64,8 @@ export async function current(db: ShopDb): Promise<Head | undefined> {
     )
   ).rows[0];
 }
-export async function contents(db: ShopDb, id: string, includeRules = true) {
+/** 공개 예약 응답의 선택지·도안만 읽는다. 조합 규칙은 반환 타입에도 포함하지 않는다. */
+export async function publicContents(db: ShopDb, id: string) {
   const options = (
     await db.run<OptionRow>(
       `SELECT o.id,o.option_group,o.name,o.price_kind,o.amount,o.amount_max,o.in_standard,o.position FROM price_options o WHERE o.shop_id=$1 AND o.price_list_id=$2
@@ -72,21 +73,24 @@ export async function contents(db: ShopDb, id: string, includeRules = true) {
       [id],
     )
   ).rows;
-  const rules = includeRules
-    ? (
-        await db.run<RuleRow>(
-          "SELECT r.rule_kind,r.option_a_id,r.option_b_id,r.amount FROM price_option_rules r WHERE r.shop_id=$1 AND r.price_list_id=$2 ORDER BY r.option_a_id,r.option_b_id",
-          [id],
-        )
-      ).rows
-    : [];
   const designs = (
     await db.run<DesignRow>(
       "SELECT d.id,d.name,d.image_key,d.price_option_id,d.in_standard,d.position FROM designs d WHERE d.shop_id=$1 AND d.price_list_id=$2 ORDER BY d.position,d.name,d.id",
       [id],
     )
   ).rows;
-  return { options, rules, designs };
+  return { options, designs };
+}
+
+export async function contents(db: ShopDb, id: string) {
+  const data = await publicContents(db, id);
+  const rules = (
+    await db.run<RuleRow>(
+      "SELECT r.rule_kind,r.option_a_id,r.option_b_id,r.amount FROM price_option_rules r WHERE r.shop_id=$1 AND r.price_list_id=$2 ORDER BY r.option_a_id,r.option_b_id",
+      [id],
+    )
+  ).rows;
+  return { ...data, rules };
 }
 
 async function render(db: ShopDb, head: Head, r: ShopRequest) {

@@ -400,7 +400,7 @@ describeDb("TASK-045 공개 예약 페이지", () => {
       spy.mockRestore();
     }
   });
-  it("공개 예약 조회는 비공개 가격 조합 규칙을 읽지 않음", async () => {
+  it("공개 예약 조회는 공개 응답에 없는 가격 조합 규칙을 읽지 않음", async () => {
     let rulesReads = 0;
     const observe = (base: Queryable): Queryable => ({
       query: (sql, params) => {
