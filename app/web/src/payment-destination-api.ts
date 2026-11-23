@@ -16,23 +16,27 @@ export interface PaymentDestinationResult {
 }
 export const isAccountNumber = (value: unknown): value is string =>
   typeof value === "string" && value.length >= 10 && value.length <= 40 && /^-*([0-9]-*){10,16}$/.test(value);
-export function isCardPaymentUrl(value: unknown): value is string {
-  if (typeof value !== "string") return false;
+export const CARD_PAYMENT_URL_MAX = 2048;
+export function cardPaymentUrlReason(value: unknown): "too_long" | "bad_format" | null {
+  if (typeof value !== "string") return "bad_format";
   const characters = [...value];
+  if (characters.length > CARD_PAYMENT_URL_MAX) return "too_long";
   if (
     characters.length < 9 ||
-    characters.length > 2048 ||
     !value.startsWith("https://") ||
     /\s/.test(value) ||
     characters.some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)
   )
-    return false;
+    return "bad_format";
   try {
-    return new URL(value).protocol === "https:";
+    return new URL(value).protocol === "https:" ? null : "bad_format";
   } catch {
-    return false;
+    return "bad_format";
   }
 }
+export const isCardPaymentUrl = (value: unknown): value is string =>
+  typeof value === "string" && cardPaymentUrlReason(value) === null;
+
 const name = (value: unknown): value is string =>
   typeof value === "string" && value.trim() !== "" && !value.includes("\0") && [...value].length <= 30;
 export function isPaymentDestination(value: unknown): value is PaymentDestination {

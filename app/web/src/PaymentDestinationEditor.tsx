@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useStat
 import { CONNECTION_FAILED } from "./api";
 import { formatKoreanDateTime } from "./format-date";
 import {
+  CARD_PAYMENT_URL_MAX,
   fetchPaymentDestination,
   type PaymentDestination,
   type PaymentDestinationResult,
@@ -279,13 +280,15 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
                     key === "accountNumber"
                       ? "숫자와 '-'만, 숫자는 10~16자리로 적어 주세요"
                       : key === "cardPaymentUrl"
-                        ? "https 주소를 2,048자까지 등록할 수 있어요"
+                        ? `https 주소를 ${CARD_PAYMENT_URL_MAX.toLocaleString("ko-KR")}자까지 등록할 수 있어요`
                         : "30자까지 적을 수 있어요"
                   }
                   list={key === "bankName" ? bankOptions : undefined}
                   inputMode={key === "accountNumber" ? "tel" : key === "cardPaymentUrl" ? "url" : "text"}
                   autoComplete="off"
-                  maxLength={key === "accountNumber" ? 40 : key === "cardPaymentUrl" ? 4096 : undefined}
+                  maxLength={
+                    key === "accountNumber" ? 40 : key === "cardPaymentUrl" ? CARD_PAYMENT_URL_MAX * 2 : undefined
+                  }
                   onChange={(event) => {
                     if (locked) return;
                     const value = event.currentTarget.value;

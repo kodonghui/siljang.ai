@@ -76,7 +76,10 @@ export function ShopLicense(props: ShopLicenseProps) {
     identityForm = useRef<HTMLFormElement>(null);
   const handledLicense = useRef<LicenseResult | null>(null),
     handledIdentity = useRef<IdentityResult | null>(null);
-  const handledFailure = useRef<Failure | null>(null);
+  const handledFailures = useRef<{ license: Failure | null; identity: Failure | null }>({
+    license: null,
+    identity: null,
+  });
   const licenseFailure = license.state.kind === "failed" ? license.state.failure : null;
   const identityFailure = identity.state.kind === "failed" ? identity.state.failure : null;
   const licenseErrors = fieldErrorsFor(licenseFailure?.fieldErrors ?? [], LICENSE_FIELDS).byField;
@@ -142,19 +145,23 @@ export function ShopLicense(props: ShopLicenseProps) {
     evidencePhoto.clear();
   }, [identity.state, evidencePhoto.clear]);
   useEffect(() => {
-    const failure = licenseFailure ?? identityFailure;
-    if (!failure || handledFailure.current === failure) return;
-    handledFailure.current = failure;
-    if (failure.outcome === "login") callbacks.current.onSessionExpired();
-    else if (failure.outcome === "no_shop") callbacks.current.onRegisterShop();
-    else if (["version_conflict", "invalid_state", "identity_change_pending"].includes(failure.code ?? ""))
-      reload(failure === licenseFailure ? "license" : "identity");
-    if (failure === licenseFailure) licensePhoto.discardIfRejected(failure, "/licensePhotoUploadId");
-    else evidencePhoto.discardIfRejected(failure, "/evidencePhotoUploadId");
-    if (failure.outcome === "field")
-      (failure === licenseFailure ? licenseForm : identityForm).current
-        ?.querySelector<HTMLElement>('input[aria-invalid="true"], [role="radiogroup"][aria-invalid="true"] input')
-        ?.focus();
+    for (const [kind, failure] of [
+      ["license", licenseFailure],
+      ["identity", identityFailure],
+    ] as const) {
+      if (!failure || handledFailures.current[kind] === failure) continue;
+      handledFailures.current[kind] = failure;
+      if (failure.outcome === "login") callbacks.current.onSessionExpired();
+      else if (failure.outcome === "no_shop") callbacks.current.onRegisterShop();
+      else if (["version_conflict", "invalid_state", "identity_change_pending"].includes(failure.code ?? ""))
+        reload(kind);
+      if (kind === "license") licensePhoto.discardIfRejected(failure, "/licensePhotoUploadId");
+      else evidencePhoto.discardIfRejected(failure, "/evidencePhotoUploadId");
+      if (failure.outcome === "field")
+        (kind === "license" ? licenseForm : identityForm).current
+          ?.querySelector<HTMLElement>('input[aria-invalid="true"], [role="radiogroup"][aria-invalid="true"] input')
+          ?.focus();
+    }
   }, [licenseFailure, identityFailure, reload, licensePhoto.discardIfRejected, evidencePhoto.discardIfRejected]);
 
   function submitLicense(event: FormEvent) {

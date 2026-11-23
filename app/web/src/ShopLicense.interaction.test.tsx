@@ -624,3 +624,29 @@ it.each(["license", "identity"] as const)("%s의429 뒤 편집은 해당 저장 
   fireEvent.submit(form);
   expect(requests).toHaveLength(1);
 });
+
+it.each(["unauthenticated", "version_conflict"] as const)(
+  "신고증429가 남아 있어도 사업자 변경의 %s을 별도로 처리한다",
+  async (code) => {
+    const view = await prepared("license");
+    sendError = [429, "rate_limited"];
+    view.submit();
+    await within(screen.getByRole("main")).findByText(ERROR_CODES.rate_limited.message);
+    fireEvent.click(screen.getByRole("button", { name: "변경 요청" }));
+    await photo("증빙 사진");
+    const transport = fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith("/identity-changes") && init?.method === "POST")
+          return json({ code, traceId }, code === "unauthenticated" ? 401 : 409);
+        return transport(input, init);
+      }),
+    );
+    const form = screen.getByRole("form", { name: "사업자 정보 변경 요청" });
+    fireEvent.submit(form);
+    await within(screen.getByRole("main")).findByText(ERROR_CODES[code].message);
+    if (code === "unauthenticated") await waitFor(() => expect(view.login).toHaveBeenCalledOnce());
+    else await waitFor(() => expect(reads).toBe(2));
+  },
+);

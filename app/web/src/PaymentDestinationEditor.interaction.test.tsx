@@ -384,4 +384,5 @@ it("카드 링크 도움말과 길이 초과 사유가 코드 포인트 한도�
   const field = link.closest("[data-pointer]");
   if (!field) throw new Error("카드 링크 필드 없음");
   expect(field.textContent).toContain("https 주소를 2,048자까지 등록할 수 있어요");
+  expect(field.textContent).toContain("글자 수가 너무 많아요");
 });
