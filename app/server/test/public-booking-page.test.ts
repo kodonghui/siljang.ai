@@ -272,6 +272,36 @@ describeDb("TASK-045 공개 예약 페이지", () => {
     expect((await page(h)).portfolio).toHaveLength(2);
   });
 
+  it("철회 직전에 발급한 포트폴리오 주소도 300초 안에 만료함(SPEC-063, REQ-209)", async () => {
+    const clock = { now: NOW };
+    const h = await fixture({ services: { now: () => clock.now } });
+    const photoToWithdraw = await photo(h, await received(h), "completion", 1);
+    const [published] = (await page(h)).portfolio;
+    if (!published) throw new Error("철회할 합성 사진 없음");
+    const url = new URL(published.imageUrl);
+    expect(Number(url.searchParams.get("exp")) * 1000 - NOW.getTime()).toBe(300_000);
+
+    clock.now = new Date(NOW.getTime() + 1);
+    await db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE portfolio_items SET unpublished_at=$2,unpublish_reason='consent_withdrawn',consent_live=NULL WHERE id=$1",
+        [photoToWithdraw.item, clock.now],
+      );
+      await tx.query("UPDATE photo_consents SET withdrawn_at=$2,publishable=false WHERE id=$1", [
+        photoToWithdraw.consent,
+        clock.now,
+      ]);
+    });
+    expect((await page(h)).portfolio).toHaveLength(0);
+    const env = testEnv({ FILE_URL_KEY: TEST_HASH_KEY });
+    const cached = await h.app.request(url.toString(), {}, env);
+    expect(cached.status).toBe(200);
+    expect(cached.headers.get("cache-control")).toBe("public, max-age=299, s-maxage=299, must-revalidate");
+
+    clock.now = new Date(NOW.getTime() + 300_000);
+    await expectProblem(await h.app.request(url.toString(), {}, env), "not_found");
+  });
+
   it.each(["full", "overbooked", "manual", "day_off"] as const)(
     "%s 날짜는 숫자 없이 마감/휴무로만 보임",
     async (kind) => {
