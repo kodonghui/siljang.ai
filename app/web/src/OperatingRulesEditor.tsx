@@ -1,5 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ApiFailure } from "./api";
+import { formatSeoulDateTime } from "./format-date";
+import { OPERATING_RULE_LABELS as LABELS, OperatingRulesSummary } from "./OperatingRulesSummary";
 import {
   fetchOperatingRules,
   type OperatingRules,
@@ -32,16 +34,7 @@ import {
 import { useCommand } from "./useCommand";
 import "./operating-rules.css";
 
-const LABELS = {
-  quoteValidHours: "견적 유효 기한(시간)",
-  paymentDueHours: "결제 기한(시간)",
-  issueReportHours: "문제 신고 기한(시간)",
-  changeDeadlineHours: "변경 마감(시간)",
-  cancellationFeeKrw: "취소 수수료(원)",
-  preProductionRefundPct: "제작 전 취소 환불(%)",
-} as const;
 const NETWORK: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
-const dateFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", dateStyle: "short", timeStyle: "short" });
 function orderedClauses(form: OperatingRulesForm) {
   return form.clauses.filter((c) => c.enabled).sort((a, b) => a.position - b.position);
 }
@@ -336,6 +329,17 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     >
       <div className="rules-editor">
         <div className="rules-actions">
+          <a
+            href="/owner/operating-rules/versions"
+            aria-disabled={locked}
+            tabIndex={locked ? -1 : undefined}
+            onClick={(event) => {
+              event.preventDefault();
+              if (!locked) props.onNavigate("/owner/operating-rules/versions");
+            }}
+          >
+            버전 이력
+          </a>
           <Button
             disabled={pending}
             busy={Boolean(props.logoutPending)}
@@ -357,7 +361,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
             ) : (
               <p>
                 운영규정 버전 {base.version}
-                {base.createdAt ? ` · ${dateFormat.format(new Date(base.createdAt))} 확정` : ""}
+                {base.createdAt ? ` · ${formatSeoulDateTime(base.createdAt)} 확정` : ""}
               </p>
             )}
             {stale ? (
@@ -365,7 +369,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                 <Banner tone="warning">그 사이 바뀌었어요. 지금 상태를 확인해 주세요</Banner>
                 {latest ? (
                   <>
-                    <ReadRules value={latest} />
+                    <OperatingRulesSummary value={latest} />
                     <p>내 입력은 아래에 남아 있어요. 같은 필드가 바뀌었으면 다시 적용한 내 값이 사용돼요.</p>
                     <Button
                       disabled={locked}
@@ -609,45 +613,5 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
         />
       </div>
     </OwnerLayout>
-  );
-}
-function ReadRules({ value }: { readonly value: OperatingRules }) {
-  return (
-    <div className="rules-comparison">
-      <p>{value.isTemplate ? "아직 확정 전이에요" : `운영규정 버전 ${value.version}`}</p>
-      <dl>
-        {(Object.entries(LABELS) as [keyof typeof LABELS, string][]).map(([key, label]) => (
-          <div key={key}>
-            <dt>{label}</dt>
-            <dd>{value[key] ?? "아직 정하지 않음"}</dd>
-          </div>
-        ))}
-        <div>
-          <dt>날짜 변경 환불 기준</dt>
-          <dd>
-            {value.dateChangeRefundBasis === "original_pickup"
-              ? "처음 픽업 일시"
-              : value.dateChangeRefundBasis === "new_pickup"
-                ? "바꾼 픽업 일시"
-                : "아직 정하지 않음"}
-          </dd>
-        </div>
-      </dl>
-      {value.clauses.map((row) => (
-        <details key={row.position}>
-          <summary>{row.title}</summary>
-          <p>{row.conditionText}</p>
-          <p>{row.effectText}</p>
-        </details>
-      ))}
-      <ul>
-        {value.refundTiers.map((row) => (
-          <li key={JSON.stringify([row.hoursBeforeMin, row.hoursBeforeMax])}>
-            {row.hoursBeforeMin}시간 전부터{" "}
-            {row.hoursBeforeMax === null ? "끝없음" : `${row.hoursBeforeMax}시간 전까지`} · {row.refundPct}%
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }

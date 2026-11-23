@@ -16,6 +16,7 @@ const HAND_CSS = [
   "src/price-list.css",
   "src/operating-rules.css",
   "src/price-list-history.css",
+  "src/version-history.css",
 ];
 
 const tokens = read("src/styles/tokens.css");

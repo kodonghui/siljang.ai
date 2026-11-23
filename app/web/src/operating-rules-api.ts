@@ -1,5 +1,5 @@
 import { type ApiResult, request } from "./api";
-import { INVALID_API_RESPONSE, isApiObject } from "./api-response";
+import { isApiTimestamp as date, INVALID_API_RESPONSE, isApiObject, isApiVersion } from "./api-response";
 
 export const CLAUSE_KEYS = [
   "pre_production_cancel",
@@ -53,7 +53,6 @@ const integer = (value: unknown, min: number, max: number): value is number =>
   typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
 const text = (value: unknown, max: number): value is string =>
   typeof value === "string" && value.trim().length > 0 && !value.includes("\0") && [...value].length <= max;
-const date = (value: unknown): value is string => typeof value === "string" && Number.isFinite(Date.parse(value));
 function clause(value: unknown): value is RuleClause {
   return (
     isApiObject(value) &&
@@ -110,7 +109,7 @@ export function isOperatingRules(value: unknown): value is OperatingRules {
       value.supersededAt === null
     );
   return (
-    integer(value.version, 1, 2147483647) &&
+    isApiVersion(value.version) &&
     text(value.revision, 64) &&
     /^[A-Za-z0-9._-]+$/.test(value.revision) &&
     date(value.createdAt) &&

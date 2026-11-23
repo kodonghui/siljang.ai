@@ -408,8 +408,19 @@ it("세션 확인 실패에는 진행 중 조회 골격을 남기지 않는다",
   await act(async () => {});
   expect(screen.queryByText("운영규정을 불러오고 있어요")).toBeNull();
 });
-it("이력 화면을 연결하는 다음 작업 전에는 준비 중 경로로 가는 버튼을 보이지 않는다", async () => {
-  area();
+it("연결된 이력 화면으로 가는 버튼은 운영규정 이력 경로를 연다", async () => {
+  const view = area();
   await loaded();
-  expect(screen.queryByRole("button", { name: "버전 이력" })).toBeNull();
+  fireEvent.click(screen.getByRole("link", { name: "버전 이력" }));
+  expect(view.props.onNavigate).toHaveBeenCalledWith("/owner/operating-rules/versions");
+});
+
+it("현재 규정 조회가 실패해도 독립된 버전 이력 링크를 연다", async () => {
+  loadProblem = { status: 500, code: "internal" };
+  const view = area();
+  await main().findByText(`추적 ID: ${traceId}`);
+  const link = screen.getByRole("link", { name: "버전 이력" });
+  expect(link.getAttribute("href")).toBe("/owner/operating-rules/versions");
+  fireEvent.click(link);
+  expect(view.props.onNavigate).toHaveBeenCalledWith("/owner/operating-rules/versions");
 });

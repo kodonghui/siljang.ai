@@ -52,7 +52,7 @@ it.each(["빈 목록", "중복 버전", "잘못된 날짜", "문자열 버전", 
     );
   },
 );
-it("순서가 틀리거나 현재 버전이 여럿인 목록을 거절", async () => {
+it("순서가 틀린 목록을 거절", async () => {
   const body = versions();
   body.items.reverse();
   vi.stubGlobal(
@@ -115,4 +115,14 @@ it("서버가 받는 앞자리0 버전은 숫자 경로로 정규화", async () 
   );
   expect(await fetchPriceListVersion("03")).toMatchObject({ ok: true, data: { version: 3 } });
   expect(calls).toEqual(["/api/owner/price-list/versions/3"]);
+});
+
+it("순서는 맞지만 두 번째 행도 현재인 목록을 거절", async () => {
+  const body = versions();
+  body.items[1].supersededAt = null;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json(body)),
+  );
+  expect(await fetchPriceListVersions()).toMatchObject({ ok: false, status: 502 });
 });
