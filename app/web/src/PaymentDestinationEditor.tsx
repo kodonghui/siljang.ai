@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { CONNECTION_FAILED } from "./api";
 import { formatKoreanDateTime } from "./format-date";
 import {
@@ -29,6 +29,7 @@ import {
   Skeleton,
   TextField,
 } from "./ui";
+import { useFocusRequest } from "./ui/useFocusRequest";
 import { useCommand } from "./useCommand";
 import { useVersionedRead } from "./useVersionedRead";
 import "./payment-destination.css";
@@ -81,13 +82,7 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
     handledFailure = useRef<unknown>(null),
     formRef = useRef<HTMLFormElement>(null),
     statusRef = useRef<HTMLElement>(null);
-  const [focusRequest, setFocusRequest] = useState<{
-    readonly pointer: string;
-    readonly origin: Element | null;
-  } | null>(null);
-  const queueFocus = useCallback((pointer: string) => {
-    setFocusRequest({ pointer, origin: document.activeElement });
-  }, []);
+  const submitOrigin = useRef<Element | null>(null);
   const bankOptions = useId();
   const pending =
       command.busy || (!props.sessionFailed && loading) || Boolean(props.sessionChecking || props.logoutPending),
@@ -95,9 +90,21 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
     navigationLocked = requestsBlocked || command.state.kind === "confirm",
     locked = navigationLocked || Boolean(loadFailure);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
+  const { queue: queueFocus, cancel: cancelFocus } = useFocusRequest<string>(
+    (pointer) => {
+      const field = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-pointer]") ?? []).find(
+        (el) => el.dataset.pointer === pointer,
+      );
+      const input = field?.querySelector<HTMLInputElement>("input");
+      return input && !input.disabled ? input : statusRef.current;
+    },
+    requestsBlocked,
+    () => statusRef.current,
+  );
+
   const adopt = useCallback(
     (value: PaymentDestination | null, draft?: PaymentForm, reset = false) => {
-      setFocusRequest(null);
+      cancelFocus();
       setBase(value);
       setForm(draft ?? paymentForm(value));
       setLoaded(true);
@@ -107,7 +114,7 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
       clearFailure();
       if (reset) command.reset();
     },
-    [clearFailure, command.reset],
+    [clearFailure, command.reset, cancelFocus],
   );
   useEffect(() => {
     if (command.state.kind !== "done" || handledDone.current === command.state.data) return;
@@ -133,24 +140,9 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
         failure.code === "holder_not_verified"
           ? "/holderName"
           : (failure.fieldErrors.find((e) => fields.includes(e.field))?.field ?? "status"),
+        submitOrigin.current,
       );
   }, [failure, read, queueFocus]);
-  useLayoutEffect(() => {
-    if (!focusRequest) return;
-    setFocusRequest(null);
-    if (requestsBlocked) return;
-    const active = document.activeElement;
-    if (active && active !== document.body && active !== focusRequest.origin) return;
-    const pointer = focusRequest.pointer;
-    const field = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-pointer]") ?? []).find(
-      (el) => el.dataset.pointer === pointer,
-    );
-    const input = field?.querySelector<HTMLInputElement>("input");
-    const target = input && !input.disabled ? input : statusRef.current;
-    if (!target?.isConnected || target.matches(":disabled")) return;
-    target.focus();
-    if (target.ownerDocument.activeElement !== target) target.focus();
-  }, [focusRequest, requestsBlocked]);
   const issues = useMemo(() => paymentIssues(form), [form]);
   const errors = fieldErrorsFor(
     [...(failure?.fieldErrors ?? []), ...issues.filter((e) => showErrors || e.code !== "required")],
@@ -164,6 +156,7 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
       queueFocus(issues[0]?.field ?? "status");
       return;
     }
+    submitOrigin.current = document.activeElement;
     command.submit(paymentPayload(base, form));
   }
   return (
@@ -262,7 +255,10 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
                 fieldCodes={["holder_not_verified"]}
                 disabled={locked}
                 onRetry={() => {
-                  if (!locked && !stale) command.retry();
+                  if (!locked && !stale) {
+                    submitOrigin.current = document.activeElement;
+                    command.retry();
+                  }
                 }}
                 onReload={() => {
                   if (!locked) {

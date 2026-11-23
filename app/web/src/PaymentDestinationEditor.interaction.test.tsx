@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
@@ -21,12 +21,16 @@ let current: ReturnType<typeof fixture>, reads: number, sends: { body: Record<st
 let readProblem: { status: number; code: string } | null,
   saveProblem: { status: number; code: string; errors?: { field: string; code: string }[] } | null;
 let empty: boolean, confirm: boolean, unchanged: boolean, inProgress: boolean, holdSave: boolean, holdRead: boolean;
+let releaseSave: (response: Response) => void;
 beforeEach(() => {
   current = fixture();
   reads = 0;
   sends = [];
   readProblem = saveProblem = null;
   empty = confirm = unchanged = inProgress = holdSave = holdRead = false;
+  releaseSave = () => {
+    throw new Error("대기 중인 결제 저장이 없어요");
+  };
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: unknown, init?: RequestInit) => {
@@ -34,7 +38,10 @@ beforeEach(() => {
       if (init?.method === "PUT") {
         const body = JSON.parse(String(init.body));
         sends.push({ body, key: new Headers(init.headers).get("Idempotency-Key") });
-        if (holdSave) return new Promise<Response>(() => {});
+        if (holdSave)
+          return new Promise<Response>((resolve) => {
+            releaseSave = resolve;
+          });
         if (saveProblem && sends.length === 1) {
           if (saveProblem.code === "version_conflict")
             current = {
@@ -126,6 +133,7 @@ it("두 번 실패한 결제 초점은 끝내고 다음 입력의 초점을 가�
   });
   save();
   expect(calls).toBe(2);
+  expect(document.activeElement).toBe(screen.getByRole("region", { name: "결제 수단 저장 결과" }));
   const other = account();
   other.focus();
   fireEvent.change(other, { target: { value: "000000000000" } });
@@ -160,6 +168,60 @@ it.each(["holder", "status"] as const)("결제 %s 서버 오류도 첫 초점 �
   await waitFor(() => expect(sends).toHaveLength(1));
   await waitFor(() => expect(calls).toBe(2));
   expect(document.activeElement).toBe(target);
+});
+it("결제 저장을 기다리며 뒤로 링크로 옮긴 초점을 예금주 오류가 가져오지 않는다", async () => {
+  holdSave = true;
+  area();
+  await loaded();
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  save();
+  await waitFor(() => expect(sends).toHaveLength(1));
+  const back = screen.getByRole("link", { name: "뒤로" });
+  back.focus();
+  await act(async () => releaseSave(json({ code: "holder_not_verified", traceId }, 409)));
+  await within(screen.getByRole("main")).findByText(ERROR_CODES.holder_not_verified.message);
+  expect(document.activeElement).toBe(back);
+});
+it("예금주 확인 창 뒤 저장에서도 그 사이 옮긴 초점을 지킨다", async () => {
+  confirm = true;
+  area();
+  await loaded();
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  save();
+  const dialog = await screen.findByRole("dialog", { name: "저장하기 전에 확인해 주세요" });
+  holdSave = true;
+  fireEvent.click(within(dialog).getByRole("button", { name: "가게 명의가 맞아요" }));
+  await waitFor(() => expect(sends).toHaveLength(2));
+  const back = screen.getByRole("link", { name: "뒤로" });
+  back.focus();
+  await act(async () => releaseSave(json({ code: "holder_not_verified", traceId }, 409)));
+  await within(screen.getByRole("main")).findByText(ERROR_CODES.holder_not_verified.message);
+  expect(document.activeElement).toBe(back);
+});
+it("결제 오류 뒤 로그아웃 잠금 중인 초점 요청은 버리고 잠금이 풀려도 다시 쓰지 않는다", async () => {
+  holdSave = true;
+  const view = area();
+  await loaded();
+  const target = screen.getByRole("region", { name: "결제 수단 저장 결과" });
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  save();
+  await waitFor(() => expect(sends).toHaveLength(1));
+  const original = HTMLElement.prototype.focus;
+  let calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === target) calls++;
+    original.call(this, options);
+  });
+  view.rerender(<PaymentDestinationEditor {...view.props} logoutPending />);
+  await act(async () =>
+    releaseSave(
+      json({ code: "validation_failed", traceId, errors: [{ field: "/unknown", code: "not_allowed" }] }, 422),
+    ),
+  );
+  expect(calls).toBe(0);
+  view.rerender(<PaymentDestinationEditor {...view.props} logoutPending={false} />);
+  await act(async () => {});
+  expect(calls).toBe(0);
 });
 it("현재 결제 계좌를 읽고 바꾼 계좌만 새 버전으로 저장한다", async () => {
   const view = area();

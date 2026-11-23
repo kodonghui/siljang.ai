@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CONNECTION_FAILED as NETWORK } from "./api";
 import { formatSeoulDateTime } from "./format-date";
 import { OPERATING_RULE_LABELS as LABELS, OperatingRulesSummary } from "./OperatingRulesSummary";
@@ -31,6 +31,7 @@ import {
   Skeleton,
   TextField,
 } from "./ui";
+import { useFocusRequest } from "./ui/useFocusRequest";
 import { useCommand } from "./useCommand";
 import { useVersionedRead } from "./useVersionedRead";
 import "./operating-rules.css";
@@ -84,15 +85,6 @@ type FocusTarget =
   | { readonly kind: "field"; readonly pointer: string }
   | { readonly kind: "clause"; readonly id: string; readonly enabled: boolean }
   | { readonly kind: "action"; readonly rowKind: "clause" | "tier"; readonly id: string | null };
-interface FocusRequest {
-  readonly target: FocusTarget;
-  readonly origin: Element | null;
-}
-function focusReady(target: HTMLElement | null | undefined): boolean {
-  if (!target?.isConnected || target.matches(":disabled")) return false;
-  target.focus();
-  return target.ownerDocument.activeElement === target;
-}
 export function OperatingRulesEditor(props: ShopLicenseProps) {
   const callbacks = useRef(props);
   callbacks.current = props;
@@ -127,20 +119,50 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     statusRef = useRef<HTMLElement>(null),
     handledDone = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null);
-  const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
-  const queueFocus = useCallback((target: FocusTarget) => {
-    setFocusRequest({ target, origin: document.activeElement });
-  }, []);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
   const pending =
       (!props.sessionFailed && loading) || command.busy || Boolean(props.sessionChecking || props.logoutPending),
     requestsBlocked = pending || Boolean(props.sessionFailed),
     locked = requestsBlocked || command.state.kind === "confirm";
+  const { queue: queueFocus, cancel: cancelFocus } = useFocusRequest<FocusTarget>(
+    (request) => {
+      let target: HTMLElement | null | undefined;
+      if (request.kind === "action") {
+        const row = Array.from(
+          formRef.current?.querySelectorAll<HTMLElement>(
+            request.rowKind === "clause" ? "[data-clause-id]" : "[data-tier-id]",
+          ) ?? [],
+        ).find((el) => (request.rowKind === "clause" ? el.dataset.clauseId : el.dataset.tierId) === request.id);
+        target =
+          row?.querySelector<HTMLElement>("button") ??
+          formRef.current?.querySelector<HTMLElement>(
+            request.rowKind === "clause" ? "[data-add-clause]" : "[data-add-tier]",
+          );
+      } else if (request.kind === "clause") {
+        const row = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-clause-id]") ?? []).find(
+          (el) => el.dataset.clauseId === request.id,
+        );
+        target = row?.querySelector<HTMLElement>(request.enabled ? "textarea" : "button");
+      } else {
+        const field = Array.from(
+          formRef.current?.querySelectorAll<HTMLElement>("[data-pointer],[data-row-pointer]") ?? [],
+        ).find((el) => el.dataset.pointer === request.pointer || el.dataset.rowPointer === request.pointer);
+        const input = field?.querySelector<HTMLElement>(
+          /^\/clauses\/\d+$/.test(request.pointer) ? "textarea" : "input,select,textarea,button",
+        );
+        target = request.pointer === "status" || !input || input.matches(":disabled") ? statusRef.current : input;
+      }
+      return target;
+    },
+    requestsBlocked,
+    () => statusRef.current,
+  );
+  const submitOrigin = useRef<Element | null>(null);
   const formValue = useRef(form);
   formValue.current = form;
   const adopt = useCallback(
     (value: OperatingRules, draft?: OperatingRulesForm, reset = false) => {
-      setFocusRequest(null);
+      cancelFocus();
       setBase(value);
       setForm(draft ?? rulesForm(value));
       setLatest(null);
@@ -150,7 +172,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       clearFailure();
       if (reset) command.reset();
     },
-    [command.reset, clearFailure],
+    [command.reset, clearFailure, cancelFocus],
   );
   useEffect(() => {
     if (command.state.kind !== "done" || handledDone.current === command.state.data) return;
@@ -158,12 +180,15 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     adopt(command.state.data.operatingRules);
   }, [command.state, adopt]);
   const reveal = useCallback(
-    (pointer: string | undefined) => {
+    (pointer: string | undefined, origin: Element | null = document.activeElement) => {
       const current = formValue.current;
-      queueFocus({
-        kind: "field",
-        pointer: current && pointer && pointers(current).includes(pointer) ? pointer : "status",
-      });
+      queueFocus(
+        {
+          kind: "field",
+          pointer: current && pointer && pointers(current).includes(pointer) ? pointer : "status",
+        },
+        origin,
+      );
     },
     [queueFocus],
   );
@@ -181,46 +206,9 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     if (failure.outcome === "field") {
       const current = formValue.current;
       const field = failure.fieldErrors.find((e) => current && pointers(current).includes(e.field))?.field;
-      reveal(field ?? failure.fieldErrors[0]?.field);
+      reveal(field ?? failure.fieldErrors[0]?.field, submitOrigin.current);
     }
   }, [failure, read, reveal]);
-  useLayoutEffect(() => {
-    if (!focusRequest) return;
-    // 요청은 이 commit에서만 소비한다. 실패한 초점이 다음 입력/서버 값에 남지 않는다.
-    setFocusRequest(null);
-    if (requestsBlocked) return;
-    const active = document.activeElement;
-    if (active && active !== document.body && active !== focusRequest.origin) return;
-    const request = focusRequest.target;
-    let target: HTMLElement | null | undefined;
-    if (request.kind === "action") {
-      const row = Array.from(
-        formRef.current?.querySelectorAll<HTMLElement>(
-          request.rowKind === "clause" ? "[data-clause-id]" : "[data-tier-id]",
-        ) ?? [],
-      ).find((el) => (request.rowKind === "clause" ? el.dataset.clauseId : el.dataset.tierId) === request.id);
-      target =
-        row?.querySelector<HTMLElement>("button") ??
-        formRef.current?.querySelector<HTMLElement>(
-          request.rowKind === "clause" ? "[data-add-clause]" : "[data-add-tier]",
-        );
-    } else if (request.kind === "clause") {
-      const row = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-clause-id]") ?? []).find(
-        (el) => el.dataset.clauseId === request.id,
-      );
-      target = row?.querySelector<HTMLElement>(request.enabled ? "textarea" : "button");
-    } else {
-      const field = Array.from(
-        formRef.current?.querySelectorAll<HTMLElement>("[data-pointer],[data-row-pointer]") ?? [],
-      ).find((el) => el.dataset.pointer === request.pointer || el.dataset.rowPointer === request.pointer);
-      const input = field?.querySelector<HTMLElement>(
-        /^\/clauses\/\d+$/.test(request.pointer) ? "textarea" : "input,select,textarea,button",
-      );
-      target = request.pointer === "status" || !input || input.matches(":disabled") ? statusRef.current : input;
-    }
-    // 일시적 실패도 최대 두 번이다. 뒤 렌더에서 사용자 초점을 다시 가져오지 않는다.
-    if (!focusReady(target)) focusReady(target);
-  }, [focusRequest, requestsBlocked]);
   const issues = useMemo(() => (form ? rulesIssues(form) : []), [form]),
     fields = useMemo(() => (form ? pointers(form) : []), [form]);
   const allErrors = [...(failure?.fieldErrors ?? []), ...issues.filter((e) => showErrors || e.code !== "required")];
@@ -246,6 +234,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       reveal(issues[0]?.field);
       return;
     }
+    submitOrigin.current = document.activeElement;
     command.submit(rulesPayload(base, form));
   }
   function clause(id: string, patch: Partial<ClauseForm>) {
@@ -452,7 +441,10 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                 fields={fields}
                 disabled={locked}
                 onRetry={() => {
-                  if (canEdit() && !stale) command.retry();
+                  if (canEdit() && !stale) {
+                    submitOrigin.current = document.activeElement;
+                    command.retry();
+                  }
                 }}
                 onReload={() => {
                   if (canEdit()) {
