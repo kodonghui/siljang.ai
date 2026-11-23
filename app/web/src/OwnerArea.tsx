@@ -11,6 +11,7 @@ import {
   ownerReturnTo,
   signOutOwner,
 } from "./owner";
+import { PriceListEditor } from "./PriceListEditor";
 import { classify } from "./problems";
 import { clearRegistrationDraft, pruneRegistrationDraft } from "./registration-draft";
 import { ShopLicense } from "./ShopLicense";
@@ -100,8 +101,17 @@ export function OwnerArea() {
   const session = checked?.key === location.key && checked.revision === revision ? checked.result : null;
   const candidate = session?.ok ? session.data : verified.current?.key === location.key ? verified.current.data : null;
   const shopPath = requested.split(/[?#]/)[0];
-  if (["/owner/shop", "/owner/shop/license"].includes(shopPath ?? "") && candidate?.shop) {
-    const ShopScreen = shopPath === "/owner/shop/license" ? ShopLicense : ShopSettings;
+  if (["/owner/shop", "/owner/shop/license", "/owner/price-list"].includes(shopPath ?? "") && candidate?.shop) {
+    if (shopPath === "/owner/price-list") {
+      const destination = ownerDestination(candidate, requested);
+      if (destination !== requested) return <Navigate to={destination} replace />;
+    }
+    const ShopScreen =
+      shopPath === "/owner/price-list"
+        ? PriceListEditor
+        : shopPath === "/owner/shop/license"
+          ? ShopLicense
+          : ShopSettings;
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (
@@ -185,6 +195,9 @@ export function OwnerArea() {
       <p>준비 중입니다.</p>
       {shopPath === "/owner/payment-destination" ? (
         <Button onClick={() => navigate("/owner/shop/license")}>영업 신고로 돌아가기</Button>
+      ) : null}
+      {shopPath === "/owner/price-list/versions" ? (
+        <Button onClick={() => navigate("/owner/price-list")}>현재 가격표로 돌아가기</Button>
       ) : null}
       {logout === "failed" ? <p role="alert">로그아웃하지 못했어요. 다시 시도해 주세요</p> : null}
       <Button onClick={() => void logOut()}>로그아웃</Button>

@@ -127,9 +127,11 @@ export function PriceListEditor(props: ShopLicenseProps) {
   const [showErrors, setShowErrors] = useState(false),
     [uploadCount, setUploadCount] = useState(0),
     [discard, setDiscard] = useState<Record<string, number>>({});
-  const command = useCommand<Record<string, unknown>, PriceListResult>((body, requestKey) =>
-    savePriceList(body, requestKey),
-  );
+  const command = useCommand<Record<string, unknown>, PriceListResult>((body, requestKey) => {
+    const current = callbacks.current;
+    if (current.sessionChecking || current.sessionFailed || current.logoutPending) return Promise.resolve(NETWORK);
+    return savePriceList(body, requestKey);
+  });
   const activeRead = useRef<AbortController | null>(null),
     lastMode = useRef<LoadMode>("initial");
   const formRef = useRef<HTMLFormElement>(null),
@@ -354,6 +356,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
       <form className="price-editor" ref={formRef} onSubmit={submit} noValidate>
         {!loaded && loading ? <Skeleton rows={4} label="가격표를 불러오고 있어요" /> : null}
         {loaded && loading ? <p role="status">현재 가격표를 다시 불러오고 있어요</p> : null}
+        {command.busy ? <p role="status">처리하고 있어요. 잠시 뒤 다시 확인해 주세요</p> : null}
         {loadFailure ? (
           <LoadFailure
             failure={classify(loadFailure.status, loadFailure.problem, loadFailure.retryAfterSeconds)}
@@ -374,7 +377,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
               {base ? (
                 <p>
                   가격표 버전 {base.version} ·{" "}
-                  {new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "medium" }).format(
+                  {new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", dateStyle: "short" }).format(
                     new Date(base.createdAt),
                   )}{" "}
                   저장
@@ -448,6 +451,28 @@ export function PriceListEditor(props: ShopLicenseProps) {
                         : o.priceKind === "range"
                           ? ` ~ ${o.amountMax?.toLocaleString("ko-KR")}원`
                           : ""}
+                    </li>
+                  ))}
+                </ul>
+                <h3>지금 옵션 규칙</h3>
+                <ul>
+                  {latest.rules.map((rule) => (
+                    <li key={JSON.stringify([rule.optionAId, rule.optionBId].sort())}>
+                      {latest.options.find((o) => o.optionId === rule.optionAId)?.name} ·{" "}
+                      {latest.options.find((o) => o.optionId === rule.optionBId)?.name}:{" "}
+                      {rule.kind === "exclude" ? "함께 못 고름" : `${rule.amount?.toLocaleString("ko-KR")}원 더함`}
+                    </li>
+                  ))}
+                </ul>
+                <h3>지금 도안</h3>
+                <ul>
+                  {latest.designs.map((design) => (
+                    <li key={design.designId}>
+                      {design.name} ·{" "}
+                      {design.optionId === null
+                        ? "연결 없음"
+                        : latest.options.find((o) => o.optionId === design.optionId)?.name}{" "}
+                      · {design.inStandard ? "기본 디자인 범위" : "맞춤 주문으로만"}
                     </li>
                   ))}
                 </ul>
