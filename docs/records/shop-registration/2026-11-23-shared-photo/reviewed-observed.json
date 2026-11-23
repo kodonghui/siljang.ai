@@ -1,0 +1,102 @@
+[
+  {
+    "state": "reviewed_1280",
+    "width": 1280,
+    "fonts": "loaded",
+    "targets": [
+      {
+        "text": "즉석판매제조·가공업",
+        "height": 44
+      },
+      {
+        "text": "제과점영업",
+        "height": 44
+      },
+      {
+        "text": "file",
+        "height": 44
+      },
+      {
+        "text": "다시 올리기",
+        "height": 44
+      }
+    ],
+    "photoOrder": [
+      {
+        "tag": "DIV",
+        "className": "ui-field",
+        "text": "신고증 사진JPG·PNG·HEIC 한 장, 10MB까지. 이 가게 사장님과 운영자만 봐요."
+      },
+      {
+        "tag": "P",
+        "className": "license-photo__filename",
+        "text": "synthetic-reviewed.png"
+      },
+      {
+        "tag": "IMG",
+        "className": "",
+        "text": ""
+      },
+      {
+        "tag": "DIV",
+        "className": "ui-banner ui-banner--success",
+        "text": "사진을 올렸어요. 1시간 안에 등록해 주세요"
+      },
+      {
+        "tag": "BUTTON",
+        "className": "ui-button ui-button--secondary",
+        "text": "다시 올리기"
+      }
+    ]
+  },
+  {
+    "state": "reviewed_360",
+    "width": 360,
+    "fonts": "loaded",
+    "targets": [
+      {
+        "text": "즉석판매제조·가공업",
+        "height": 44
+      },
+      {
+        "text": "제과점영업",
+        "height": 44
+      },
+      {
+        "text": "file",
+        "height": 44
+      },
+      {
+        "text": "다시 올리기",
+        "height": 44
+      }
+    ],
+    "photoOrder": [
+      {
+        "tag": "DIV",
+        "className": "ui-field",
+        "text": "신고증 사진JPG·PNG·HEIC 한 장, 10MB까지. 이 가게 사장님과 운영자만 봐요."
+      },
+      {
+        "tag": "P",
+        "className": "license-photo__filename",
+        "text": "synthetic-reviewed.png"
+      },
+      {
+        "tag": "IMG",
+        "className": "",
+        "text": ""
+      },
+      {
+        "tag": "DIV",
+        "className": "ui-banner ui-banner--success",
+        "text": "사진을 올렸어요. 1시간 안에 등록해 주세요"
+      },
+      {
+        "tag": "BUTTON",
+        "className": "ui-button ui-button--secondary",
+        "text": "다시 올리기"
+      }
+    ]
+  }
+]
