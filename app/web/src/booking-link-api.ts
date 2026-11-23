@@ -1,5 +1,6 @@
 import { type ApiResult, request } from "./api";
 import { INVALID_API_RESPONSE, isApiObject, isApiTimestamp } from "./api-response";
+import { isHttpsUrl } from "./api-url";
 export const BOOKING_CONDITIONS = [
   "license_verified",
   "price_list",
@@ -16,21 +17,6 @@ export interface BookingLink {
   readonly issuedAt: string | null;
   readonly missing: readonly BookingCondition[];
   readonly recommended: readonly "pickup_address"[];
-}
-function url(value: unknown): value is string {
-  if (
-    typeof value !== "string" ||
-    [...value].length > 2048 ||
-    /\s/.test(value) ||
-    [...value].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)
-  )
-    return false;
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "https:" && parsed.username === "" && parsed.password === "";
-  } catch {
-    return false;
-  }
 }
 function timestamp(value: unknown): value is string {
   if (
@@ -58,7 +44,7 @@ function valid(value: unknown): value is BookingLink {
   )
     return false;
   return value.status === "issued"
-    ? url(value.url) && timestamp(value.issuedAt) && value.missing.length === 0
+    ? isHttpsUrl(value.url, { rejectUserInfo: true }) && timestamp(value.issuedAt) && value.missing.length === 0
     : value.status === "not_ready" && value.url === null && value.issuedAt === null && value.missing.length > 0;
 }
 export async function fetchBookingLink(signal?: AbortSignal): Promise<ApiResult<BookingLink>> {

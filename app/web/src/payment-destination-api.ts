@@ -1,5 +1,6 @@
 import { type ApiResult, request } from "./api";
 import { INVALID_API_RESPONSE, isApiObject } from "./api-response";
+import { HTTPS_URL_MAX, httpsUrlReason, isHttpsUrl } from "./api-url";
 
 export interface PaymentDestination {
   readonly bankName: string;
@@ -16,26 +17,9 @@ export interface PaymentDestinationResult {
 }
 export const isAccountNumber = (value: unknown): value is string =>
   typeof value === "string" && value.length >= 10 && value.length <= 40 && /^-*([0-9]-*){10,16}$/.test(value);
-export const CARD_PAYMENT_URL_MAX = 2048;
-export function cardPaymentUrlReason(value: unknown): "too_long" | "bad_format" | null {
-  if (typeof value !== "string") return "bad_format";
-  const characters = [...value];
-  if (characters.length > CARD_PAYMENT_URL_MAX) return "too_long";
-  if (
-    characters.length < 9 ||
-    !value.startsWith("https://") ||
-    /\s/.test(value) ||
-    characters.some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)
-  )
-    return "bad_format";
-  try {
-    return new URL(value).protocol === "https:" ? null : "bad_format";
-  } catch {
-    return "bad_format";
-  }
-}
-export const isCardPaymentUrl = (value: unknown): value is string =>
-  typeof value === "string" && cardPaymentUrlReason(value) === null;
+export const CARD_PAYMENT_URL_MAX = HTTPS_URL_MAX;
+export const cardPaymentUrlReason = (value: unknown) => httpsUrlReason(value, { requirePrefix: true });
+export const isCardPaymentUrl = (value: unknown): value is string => isHttpsUrl(value, { requirePrefix: true });
 
 const name = (value: unknown): value is string =>
   typeof value === "string" && value.trim() !== "" && !value.includes("\0") && [...value].length <= 30;
