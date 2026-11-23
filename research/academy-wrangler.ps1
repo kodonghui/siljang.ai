@@ -14,9 +14,21 @@ function Assert-SiljangWranglerLogin {
   }
 
   $ErrorActionPreference = 'Continue'
-  $siljangWhoami = & node $env:SILJANG_WRANGLER_CLI whoami --json 2>$null
+  $siljangWhoami = & node $env:SILJANG_WRANGLER_CLI whoami --json 2>&1
   $siljangWhoamiExit = $LASTEXITCODE
-  $siljangIdentity = ($siljangWhoami -join "`n") | ConvertFrom-Json -ErrorAction SilentlyContinue
+  $siljangIdentity = $null
+  # Wrangler가 stderr로 돌려주는 미인증 JSON도 스트림별로 해석합니다.
+  foreach ($siljangStream in ($siljangWhoami | Group-Object { $_ -is [System.Management.Automation.ErrorRecord] })) {
+    try {
+      $siljangCandidate = ($siljangStream.Group -join "`n") | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+      continue
+    }
+    if ($siljangCandidate.loggedIn -is [bool]) {
+      $siljangIdentity = $siljangCandidate
+      break
+    }
+  }
   if ($siljangIdentity.loggedIn -eq $false) {
     @{ event='academy_auth_missing'; message='학원컴에 Cloudflare 로그인이 없음' } | ConvertTo-Json -Compress
     exit 1

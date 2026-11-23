@@ -86,6 +86,11 @@ npx --no-install wrangler rollback "$SILJANG_BASELINE_VERSION" --config "$SILJAN
 
 다른 기기에서 `existing-run.py`로 학원컴의 `existing-driver.mjs`를 실행한다. 표준 입력으로는 `CLOUDFLARE_ACCOUNT_ID`와 소스 SHA만 전달한다. 공개 소스와 합성 입력을 복사하기 전에 학원컴의 캐시된 Wrangler로 `whoami --json`을 확인한다. REST와 GraphQL 호출은 학원컴 사용자 환경의 `CLOUDFLARE_API_TOKEN` 또는 Wrangler가 제공하는 기존 OAuth 토큰을 같은 기기의 프로세스 메모리에서만 사용한다. 실행기는 쓰기 전에 기준 버전·바인딩·큐/consumer·공개 상태를 재대조하며, 성공/실패와 관계없이 finally에서 원래 버전을 복구한다. 프로세스가 비정상 종료해 복구 확인을 못 하면 기록한 기준 버전으로 먼저 복구하고 공개 상태/바인딩/큐를 재대조해야 한다. 결과에는 기존 키 값·주소·요청 헤더를 넣지 않는다.
 
+실제 측정 전에 다음 두 가지를 확인한다.
+
+- Wrangler OAuth를 쓸 때는 학원컴 프로세스 안에서 `auth token --json`의 `type`이 `oauth`이고 `token` 필드가 비어 있지 않은 문자열인지 확인한다. 값은 화면·로그·파일에 출력하지 않는다. 인증된 학원컴에서의 실제 출력 형식은 확인이 남아 있다.
+- GraphQL CPU·메모리 지표 조회에는 Account Analytics 읽기 권한이 필요하다. OAuth로 `photo_existing_metrics_rejected`가 나오면 학원컴 사용자 환경에 이미 있는 대상 계정 한정 API 토큰 중 Workers 편집과 Account Analytics 읽기 권한을 가진 토큰을 사용한다. 이 OAuth 지표 조회는 학원컴에서 아직 확인하지 않았다.
+
 ```sh
 python3 research/webp-orientation-2026-11/existing-run.py --bundle /tmp/siljang-183-existing-build/existing-worker.js --input /tmp/siljang-webp-validation/input --source "$SILJANG_SOURCE_SHA" --output /tmp/siljang-183-existing-validation
 ```

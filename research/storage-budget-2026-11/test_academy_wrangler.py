@@ -22,8 +22,12 @@ if (args[0] === 'whoami') {
   const loggedIn = process.env.SILJANG_TEST_LOGIN === 'true';
   const authType = process.env.SILJANG_TEST_AUTH_TYPE ||
     (process.env.CLOUDFLARE_API_TOKEN ? 'User API Token' : 'OAuth Token');
-  console.log(JSON.stringify({ loggedIn, authType, email: 'owner@example.test' }));
-  process.exitCode = loggedIn ? 0 : 1;
+  if (loggedIn) {
+    console.log(JSON.stringify({ loggedIn, authType, email: 'owner@example.test' }, null, 2));
+  } else {
+    console.error(JSON.stringify({ loggedIn }, null, 2));
+    process.exitCode = 1;
+  }
 } else if (args[0] === '--version') {
   console.log('4.158.0');
 } else if (args[0] === 'deploy') {

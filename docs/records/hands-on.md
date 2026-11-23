@@ -5,6 +5,7 @@
 ## 2026-11-23 · 학원컴 Wrangler 인증 확인
 
 - 학원컴에서 캐시된 Wrangler 4.158.0의 `whoami --json`을 조회했습니다. `loggedIn: false`와 종료 1을 확인했고 프로세스·사용자 환경에 기존 Cloudflare API 토큰이 없었습니다.
+- 캐시된 CLI를 쓰는 PowerShell 사전 확인을 학원컴에서 단독 실행했습니다. `academy_auth_missing`과 “학원컴에 Cloudflare 로그인이 없음”을 출력하고 종료 1이었습니다. stderr에 미인증 JSON이 오는 경로는 모의 시험으로 확인했습니다.
 - [측정 스크립트 시험](../../research/storage-budget-2026-11/test_academy_wrangler.py)은 SSH를 대체하고 학원컴 PowerShell과 모의 Wrangler로 미인증 중단 및 진단 마스킹을 검증했습니다. 실제 측정, 인증 등록, 요금제 변경 및 결제는 미실행입니다.
 
 ## 2026-11-22 · TASK-027 실제 평가와 사례별 재개
