@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { OwnerArea } from "./OwnerArea";
@@ -138,8 +138,9 @@ it("이전 상세의 늦은 권한 실패는 새 버전과 로그인 상태를 �
 });
 it("세션 재확인 실패는 이동과 재시도를 막되 로그아웃은 허용한다", async () => {
   problem = { status: 500, code: "internal" };
-  const view = area(null, { sessionFailed: true });
+  const view = area();
   await screen.findByText(`추적 ID: ${traceId}`);
+  view.rerender(<PriceListHistory {...view.props} sessionFailed />);
   for (const name of ["현재 가격표로", "다시 시도"])
     expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "로그아웃" }));
@@ -299,6 +300,14 @@ it("신고 보류 계정은 버전 API를 읽기 전에 신고 수정으로 간�
 function wideScreen() {
   vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
 }
+function Back() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(-1)}>
+      시험에서 뒤로
+    </button>
+  );
+}
 function ownerView(path = "/owner/price-list/versions") {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -397,3 +406,105 @@ it.each(["expired", "failed", "switched"] as const)(
     }
   },
 );
+
+it.each(["route", "bfcache"] as const)("같은 버전의 %s 세션 재확인은 준비된 상세를 다시 받지 않는다", async (mode) => {
+  wideScreen();
+  ownerView();
+  await screen.findByRole("heading", { name: /버전 4/ });
+  const detail = screen.getByRole("region", { name: "고른 가격표" });
+  if (mode === "route") fireEvent.click(screen.getByRole("link", { name: /버전 4/ }));
+  else
+    act(() => {
+      const event = new Event("pageshow");
+      Object.defineProperty(event, "persisted", { value: true });
+      window.dispatchEvent(event);
+    });
+  await waitFor(() => expect(calls.filter((c) => c.path === "/api/owner/me")).toHaveLength(2));
+  await waitFor(() =>
+    expect((screen.getByRole("button", { name: "현재 가격표로" }) as HTMLButtonElement).disabled).toBe(false),
+  );
+  expect(calls.filter((c) => c.path === "/api/owner/price-list/versions/4")).toHaveLength(1);
+  expect(screen.getByRole("region", { name: "고른 가격표" })).toBe(detail);
+});
+it.each(["checking", "failed"] as const)(
+  "초기 세션 %s 중 목록과 상세를 요청하지 않고 확인 뒤 한 번만 시작한다",
+  async (state) => {
+    const view = area("3", state === "checking" ? { sessionChecking: true } : { sessionFailed: true });
+    await act(async () => {});
+    expect(calls).toHaveLength(0);
+    view.rerender(<PriceListHistory {...view.props} sessionChecking={false} sessionFailed={false} version="3" />);
+    await screen.findByRole("heading", { name: /버전 3/ });
+    expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(1);
+    expect(calls.filter((c) => c.path === "/api/owner/price-list/versions/3")).toHaveLength(1);
+  },
+);
+
+it("현재 가격표 재확인을 취소하고 뒤로 돌아와도 확인 전 새 목록을 읽지 않는다", async () => {
+  const transport = fetch;
+  let ownerReads = 0;
+  const finishes: ((response: Response) => void)[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/owner/me" && ++ownerReads > 1) {
+        calls.push({ path: String(input), method: "GET" });
+        return new Promise<Response>((resolve) => finishes.push(resolve));
+      }
+      return transport(input, init);
+    }),
+  );
+
+  render(
+    <MemoryRouter initialEntries={["/owner/price-list/versions"]}>
+      <Back />
+      <Routes>
+        <Route path="/owner/*" element={<OwnerArea />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  await screen.findByRole("link", { name: /버전 3/ });
+  fireEvent.click(screen.getByRole("button", { name: "현재 가격표로" }));
+  await waitFor(() => expect(finishes).toHaveLength(1));
+  fireEvent.click(screen.getByRole("button", { name: "시험에서 뒤로" }));
+  await waitFor(() => expect(finishes).toHaveLength(2));
+  expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(1);
+  expect((screen.getByRole("button", { name: "현재 가격표로" }) as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => {
+    finishes[1]?.(json(profile()));
+  });
+  await screen.findByRole("link", { name: /버전 3/ });
+  expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(2);
+});
+
+it("세션 확인이 시작되면 진행 중 목록을 취소하고 확인 뒤 재개하며 늦은 401을 버린다", async () => {
+  const transport = fetch;
+  let finish: ((response: Response) => void) | undefined;
+  let signal: AbortSignal | null | undefined;
+  let initial = true;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/owner/price-list/versions" && initial) {
+        initial = false;
+        calls.push({ path: String(input), method: "GET" });
+        signal = init?.signal;
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      }
+      return transport(input, init);
+    }),
+  );
+  const view = area("3");
+  await screen.findByRole("heading", { name: /버전 3/ });
+  view.rerender(<PriceListHistory {...view.props} version="3" sessionChecking />);
+  expect(signal?.aborted).toBe(true);
+  await act(async () => {
+    finish?.(json({ code: "unauthenticated", traceId }, 401));
+  });
+  expect(view.props.onSessionExpired).not.toHaveBeenCalled();
+  view.rerender(<PriceListHistory {...view.props} version="3" sessionChecking={false} />);
+  await screen.findByRole("link", { name: /버전 3/ });
+  expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(2);
+  expect(calls.filter((c) => c.path === "/api/owner/price-list/versions/3")).toHaveLength(1);
+});

@@ -15,11 +15,20 @@ export interface ConfirmDialogProps {
   readonly children: ReactNode;
   /** 액션 이름(예: '휴무로 바꾸기', '거절하기') */
   readonly confirmLabel: string;
+  readonly confirmDisabled?: boolean;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
 }
 
-export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  open,
+  title,
+  children,
+  confirmLabel,
+  confirmDisabled = false,
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
   const closingByUs = useRef(false);
@@ -84,7 +93,7 @@ export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, 
         <Button kind="secondary" onClick={onCancel}>
           {BACK_LABEL}
         </Button>
-        <Button kind="primary" onClick={onConfirm}>
+        <Button kind="primary" disabled={confirmDisabled} onClick={onConfirm}>
           {confirmLabel}
         </Button>
       </div>
@@ -99,11 +108,13 @@ export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, 
 export function ConfirmRequired({
   items,
   confirmLabel,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: {
   readonly items: readonly ConfirmationNeeded[] | null;
   readonly confirmLabel: string;
+  readonly confirmDisabled?: boolean;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
 }) {
@@ -112,6 +123,7 @@ export function ConfirmRequired({
       open={items !== null && items.length > 0}
       title={ERROR_CODES.confirmation_required.message}
       confirmLabel={confirmLabel}
+      confirmDisabled={confirmDisabled}
       onConfirm={onConfirm}
       onCancel={onCancel}
     >

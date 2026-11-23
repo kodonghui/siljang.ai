@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { expect, it } from "vitest";
 import { parse } from "yaml";
 import type { PriceList } from "./price-list-api";
+import { priceListIssues } from "./price-list-fields";
 import {
   type PriceListForm,
   priceListForm,
@@ -295,3 +296,11 @@ it.each(["range", "from"] as const)(
     expect(ownDesign.inStandard).toBe(true);
   },
 );
+
+it.each(["1e2", "0x1F", "12.0"])("가격표 숫자 %s도 다른 정수로 저장하지 않는다", (value) => {
+  const base = fixture(),
+    form = priceListForm(base);
+  option(form, "1호").amount = value;
+  expect(priceListIssues(form)).toContainEqual({ field: "/options/0/amount", code: "out_of_range" });
+  expect(priceListPayload(base, form).options[0]?.amount).toBe(value);
+});
