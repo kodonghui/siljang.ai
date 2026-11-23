@@ -74,7 +74,7 @@ it.each([
   };
   expect(await requestIdentityChange(body, "ui-synthetic-identity-request")).toMatchObject({
     ok: true,
-    data: { outcome: name },
+    data: { outcome: name === "unchanged" ? "unchanged" : "done" },
   });
   expect(fetch.mock.calls[0]?.[0]).toBe("/api/owner/shop/identity-changes");
   expect(fetch.mock.calls[0]?.[1]?.method).toBe("POST");
