@@ -48,9 +48,22 @@ interface Props {
   readonly onHome: () => void;
   readonly onLogout: () => void;
   readonly logoutFailed?: boolean;
+  readonly logoutPending?: boolean;
+  readonly sessionChecking?: boolean;
+  readonly sessionExpired?: boolean;
 }
 
-export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHome, onLogout, logoutFailed }: Props) {
+export function ShopRegistration({
+  ownerId,
+  onRegistered,
+  onSessionExpired,
+  onHome,
+  onLogout,
+  logoutFailed,
+  logoutPending,
+  sessionChecking,
+  sessionExpired,
+}: Props) {
   const [values, setValues] = useState<RegistrationValues>(
     () => readRegistrationDraft(ownerId) ?? { ...EMPTY_REGISTRATION },
   );
@@ -61,7 +74,7 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
   const [photoProblem, setPhotoProblem] = useState<string | undefined>();
   const upload = useCommand<File, UploadedLicensePhoto>((input) => uploadLicensePhoto(input));
   const registration = useCommand<Record<string, unknown>, RegisteredShop>((input, key) => registerShop(input, key));
-  const busy = upload.busy || registration.busy;
+  const busy = upload.busy || registration.busy || Boolean(logoutPending || sessionChecking || sessionExpired);
   const formRef = useRef<HTMLFormElement>(null);
   const valuesRef = useRef(values);
   valuesRef.current = values;
@@ -89,11 +102,12 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
     return () => URL.revokeObjectURL(url);
   }, [file]);
   useEffect(() => {
-    if (expiredHandled.current || ![uploadFailure, failure].some((f) => f?.outcome === "login")) return;
+    if (expiredHandled.current || !(sessionExpired || [uploadFailure, failure].some((f) => f?.outcome === "login")))
+      return;
     expiredHandled.current = true;
     saveRegistrationDraft(ownerId, valuesRef.current);
     onSessionExpired();
-  }, [uploadFailure, failure, ownerId, onSessionExpired]);
+  }, [uploadFailure, failure, ownerId, onSessionExpired, sessionExpired]);
   useEffect(() => {
     if (registration.state.kind !== "done" || successHandled.current) return;
     successHandled.current = true;
@@ -112,7 +126,10 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
 
   function change(key: RegistrationField, value: string) {
     if (busy) return;
-    setValues((previous) => ({ ...previous, [key]: value }));
+    setValues((previous) => ({
+      ...previous,
+      [key]: key === "businessRegNo" ? value.replace(/\D/g, "").slice(0, 10) : value,
+    }));
     registration.reset();
   }
   function selectPhoto(input: File | undefined) {
@@ -139,15 +156,10 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
       setPhotoProblem("신고증 사진을 먼저 올려 주세요");
       return;
     }
-    if (Date.parse(uploaded.expiresAt) <= Date.now()) {
-      setPhotoProblem("사진의 사용 기한이 지났어요. 다시 올려 주세요");
-      upload.reset();
-      return;
-    }
     setPhotoProblem(undefined);
     registration.submit(registrationPayload(values, uploaded.uploadId, consent));
   }
-  const photoNote = photoProblem ?? (uploadFailure ? uploadFailure.message : undefined);
+  const photoNote = photoProblem;
   const reasons = (key: string) => errors.get(`/${key}`);
   return (
     <SetupLayout title="가게 등록">
@@ -177,7 +189,8 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
                 key={key}
                 pointer={`/${key}`}
                 label={label}
-                maxLength={max}
+                maxLength={key === "businessRegNo" ? 13 : max}
+                inputMode={key === "businessRegNo" ? "numeric" : undefined}
                 type={type}
                 value={values[key]}
                 errors={reasons(key)}
@@ -288,6 +301,12 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
                     다시 올리기
                   </Button>
                 ) : null}
+                <CommandStatus
+                  state={upload.state}
+                  fields={["/file", "/purpose"]}
+                  done={() => "사진을 올렸어요. 1시간 안에 등록해 주세요"}
+                  onRetry={() => upload.retry()}
+                />
               </div>
             )}
           </Field>
@@ -348,12 +367,6 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
             )}
           </Field>
         </fieldset>
-        <CommandStatus
-          state={upload.state}
-          fields={["/file", "/purpose"]}
-          done={() => "사진을 올렸어요. 1시간 안에 등록해 주세요"}
-          onRetry={() => upload.retry()}
-        />
         {failure?.code === "already_registered" ? (
           <Banner tone="warning" actions={<Button onClick={onHome}>할 일 목록으로 이동</Button>}>
             이미 등록한 가게가 있어요
@@ -368,14 +381,24 @@ export function ShopRegistration({ ownerId, onRegistered, onSessionExpired, onHo
           />
         )}
         <div className="registration-actions">
-          <Button type="submit" busy={busy}>
+          <Button
+            type="submit"
+            busy={upload.busy || registration.busy}
+            disabled={Boolean(logoutPending || sessionChecking || sessionExpired)}
+          >
             등록
           </Button>
-          <Button kind="secondary" disabled={busy} onClick={onLogout}>
+          <Button
+            kind="secondary"
+            busy={Boolean(logoutPending)}
+            disabled={upload.busy || registration.busy || Boolean(sessionChecking || sessionExpired)}
+            onClick={onLogout}
+          >
             로그아웃
           </Button>
         </div>
       </form>
+      {sessionChecking ? <p role="status">로그인 상태를 확인하고 있어요</p> : null}
       {logoutFailed ? <p role="alert">로그아웃하지 못했어요. 다시 시도해 주세요</p> : null}
     </SetupLayout>
   );

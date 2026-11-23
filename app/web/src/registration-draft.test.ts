@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   clearRegistrationDraft,
   EMPTY_REGISTRATION,
+  pruneRegistrationDraft,
   REGISTRATION_DRAFT_KEY,
   REGISTRATION_DRAFT_TTL_MS,
   readRegistrationDraft,
@@ -84,7 +85,7 @@ afterEach(() => {
   vi.clearAllTimers();
   vi.useRealTimers();
 });
-it("로그인 화면에 머물러도1시간 뒤 저장한 글을 지우고 새 저장의기한은따로지킴", () => {
+it("앱이 열린 동안1시간 뒤 저장한 글을 지우고 새 저장의기한은따로지킴", () => {
   const s = storage();
   saveRegistrationDraft("owner-a", values, Date.now(), s);
   vi.advanceTimersByTime(30 * 60 * 1000);
@@ -92,5 +93,23 @@ it("로그인 화면에 머물러도1시간 뒤 저장한 글을 지우고 새 �
   vi.advanceTimersByTime(30 * 60 * 1000);
   expect(s.getItem(REGISTRATION_DRAFT_KEY)).not.toBeNull();
   vi.advanceTimersByTime(30 * 60 * 1000);
+  expect(s.getItem(REGISTRATION_DRAFT_KEY)).toBeNull();
+});
+it("다른 페이지에서 돌아와도 만료된 글을 지우고 남은 기한의 타이머를 다시 검", () => {
+  const s = storage(),
+    now = Date.now();
+  s.setItem(
+    REGISTRATION_DRAFT_KEY,
+    JSON.stringify({ ownerId: "owner-a", savedAt: now - REGISTRATION_DRAFT_TTL_MS, values }),
+  );
+  pruneRegistrationDraft(undefined, now, s);
+  expect(s.getItem(REGISTRATION_DRAFT_KEY)).toBeNull();
+  s.setItem(
+    REGISTRATION_DRAFT_KEY,
+    JSON.stringify({ ownerId: "owner-a", savedAt: now - REGISTRATION_DRAFT_TTL_MS + 1000, values }),
+  );
+  pruneRegistrationDraft(undefined, now, s);
+  expect(s.getItem(REGISTRATION_DRAFT_KEY)).not.toBeNull();
+  vi.advanceTimersByTime(1000);
   expect(s.getItem(REGISTRATION_DRAFT_KEY)).toBeNull();
 });

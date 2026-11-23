@@ -1,5 +1,6 @@
 import { matchPath } from "react-router";
 import { type ApiFailure, type ApiResult, request } from "./api";
+import { INVALID_API_RESPONSE as INVALID, isApiObject as object, UUID_PATTERN as UUID } from "./api-response";
 import { classify, ERROR_CODES, type Failure } from "./problems";
 import { clearRegistrationDraft } from "./registration-draft";
 
@@ -91,12 +92,8 @@ interface Authorization {
   readonly state: string;
   readonly expiresAt: string;
 }
-const INVALID: ApiFailure = { ok: false, status: 502, problem: null, retryAfterSeconds: null };
-const UUID = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 const STATE = /^[A-Za-z0-9._-]{16,512}$/;
 const CODE = /^[A-Za-z0-9_-]{1,512}$/;
-const object = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 function identity(value: unknown): value is OwnerIdentity {
   if (!object(value) || !object(value.owner)) return false;

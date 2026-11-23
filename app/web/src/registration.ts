@@ -1,5 +1,6 @@
 /** SCR-015의 API007·008. 전송은 api.ts만 거치고 본문/사진을 로그에 남기지 않는다. */
-import { type ApiFailure, type ApiResult, request } from "./api";
+import { type ApiResult, request } from "./api";
+import { INVALID_API_RESPONSE as INVALID, isApiObject as object, UUID_PATTERN } from "./api-response";
 import type { RegistrationValues } from "./registration-draft";
 export const ENTRUSTMENT_TERMS_VERSION = "MVP-2026.11.v1";
 export const LICENSE_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
@@ -12,8 +13,6 @@ export interface RegisteredShop {
   readonly shopId: string;
   readonly licenseStatus: "pending" | "on_hold" | "verified";
 }
-const INVALID: ApiFailure = { ok: false, status: 502, problem: null, retryAfterSeconds: null };
-const object = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 export function registrationPayload(
   values: RegistrationValues,
   uploadId: string,
@@ -55,7 +54,7 @@ export async function registerShop(body: Record<string, unknown>, key: string): 
   if (
     !object(value) ||
     typeof value.shopId !== "string" ||
-    !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value.shopId) ||
+    !UUID_PATTERN.test(value.shopId) ||
     !["pending", "on_hold", "verified"].includes(String(value.licenseStatus))
   )
     return INVALID;

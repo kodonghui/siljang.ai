@@ -12,10 +12,11 @@ import {
   signOutOwner,
 } from "./owner";
 import { classify } from "./problems";
+import { clearRegistrationDraft, pruneRegistrationDraft } from "./registration-draft";
 import { ShopRegistration } from "./ShopRegistration";
 import { Button, LoadFailure, Skeleton } from "./ui";
 
-/** 업무 화면은 각 WBS 작업에서 붙인다. 세션을 확인하기 전에는 보호된 내용을 표시하지 않는다. */
+/** 첫 세션 확인 전에는 가린다. 이미 검증한 등록 양식은 재확인·로그아웃 중 잠근 채 보존한다. */
 export function OwnerArea() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,10 +27,15 @@ export function OwnerArea() {
   );
   const [logout, setLogout] = useState<"pending" | "failed" | null>(null);
   const logoutRequest = useRef<AbortController | null>(null);
+  const verified = useRef<{ key: string; data: OwnerIdentity } | null>(null);
+  const [registrationNotice, setRegistrationNotice] = useState(false);
 
   useEffect(() => {
     const recheck = (event: PageTransitionEvent) => {
-      if (event.persisted) setRevision((r) => r + 1);
+      if (event.persisted) {
+        pruneRegistrationDraft();
+        setRevision((r) => r + 1);
+      }
     };
     window.addEventListener("pageshow", recheck);
     return () => window.removeEventListener("pageshow", recheck);
@@ -39,7 +45,13 @@ export function OwnerArea() {
     const controller = new AbortController();
     void fetchOwner(controller.signal)
       .then((result) => {
-        if (!controller.signal.aborted) setChecked({ key: location.key, revision, result });
+        if (controller.signal.aborted) return;
+        if (result.ok) {
+          if (result.data.shop !== null) clearRegistrationDraft();
+          else pruneRegistrationDraft(result.data.owner.ownerId);
+          verified.current = { key: location.key, data: result.data };
+        }
+        setChecked({ key: location.key, revision, result });
       })
       .catch(() => {
         /* 화면을 떠날 때 취소한 요청. */
@@ -47,6 +59,9 @@ export function OwnerArea() {
     return () => controller.abort();
   }, [location.key, requested, revision]);
   useEffect(() => () => logoutRequest.current?.abort(), []);
+  useEffect(() => {
+    if (requested !== OWNER_HOME) setRegistrationNotice(false);
+  }, [requested]);
 
   async function logOut() {
     if (logoutRequest.current) return;
@@ -72,6 +87,34 @@ export function OwnerArea() {
       </main>
     );
   const session = checked?.key === location.key && checked.revision === revision ? checked.result : null;
+  const candidate = session?.ok ? session.data : verified.current?.key === location.key ? verified.current.data : null;
+  if (requested === OWNER_REGISTER && candidate?.shop === null) {
+    return (
+      <>
+        {session !== null && !session.ok && session.status !== 401 ? (
+          <LoadFailure
+            failure={classify(session.status, session.problem, session.retryAfterSeconds)}
+            onRetry={() => setRevision((r) => r + 1)}
+          />
+        ) : null}
+        <ShopRegistration
+          key={candidate.owner.ownerId}
+          ownerId={candidate.owner.ownerId}
+          onRegistered={() => {
+            setRegistrationNotice(true);
+            navigate(OWNER_HOME, { replace: true, state: null });
+          }}
+          onSessionExpired={() => navigate(OWNER_LOGIN, { replace: true, state: { returnTo: requested } })}
+          onHome={() => navigate(OWNER_HOME, { replace: true })}
+          onLogout={() => void logOut()}
+          logoutFailed={logout === "failed"}
+          logoutPending={logout === "pending"}
+          sessionChecking={session === null || !session.ok}
+          sessionExpired={session !== null && !session.ok && session.status === 401}
+        />
+      </>
+    );
+  }
   if (session === null || logout === "pending")
     return (
       <main aria-live="polite">
@@ -91,24 +134,10 @@ export function OwnerArea() {
   }
   const destination = ownerDestination(session.data, requested);
   if (destination !== requested) return <Navigate to={destination} replace />;
-  if (requested === OWNER_REGISTER)
-    return (
-      <ShopRegistration
-        key={session.data.owner.ownerId}
-        ownerId={session.data.owner.ownerId}
-        onRegistered={() => navigate(OWNER_HOME, { replace: true, state: { registered: true } })}
-        onSessionExpired={() => navigate(OWNER_LOGIN, { replace: true, state: { returnTo: requested } })}
-        onHome={() => navigate(OWNER_HOME, { replace: true })}
-        onLogout={() => void logOut()}
-        logoutFailed={logout === "failed"}
-      />
-    );
   return (
     <main>
       <h1>수제케이크 주문제작</h1>
-      {location.state?.registered === true ? (
-        <p role="status">가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요</p>
-      ) : null}
+      {registrationNotice ? <p role="status">가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요</p> : null}
       <p>준비 중입니다.</p>
       {logout === "failed" ? <p role="alert">로그아웃하지 못했어요. 다시 시도해 주세요</p> : null}
       <Button onClick={() => void logOut()}>로그아웃</Button>
