@@ -64,6 +64,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   for (const node of document.querySelectorAll("[data-announcer]")) node.remove();
   vi.unstubAllGlobals();
 });
@@ -454,6 +455,110 @@ it("기본 조문을 넣고 빼도 해당 행에 키보드 초점을 남긴다",
   const inactive = screen.getAllByRole("group").find((r) => within(r).queryByDisplayValue(title));
   if (!inactive) throw new Error("뺀 기본 조문 없음");
   expect(document.activeElement).toBe(within(inactive).getByRole("button", { name: "이 조문 넣기" }));
+});
+it("새 조문의 첫 focus 실패를 같은 commit에서 한 번만 복구한다", async () => {
+  area();
+  await loaded();
+  const add = screen.getAllByRole("button", { name: "이 조문 넣기" })[0];
+  if (!add) throw new Error("기본 조문 없음");
+  const clauseId = add.closest("fieldset")?.dataset.clauseId;
+  add.focus();
+  const original = HTMLElement.prototype.focus;
+  let skipped: HTMLElement | null = null,
+    calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (
+      this instanceof HTMLTextAreaElement &&
+      this.closest("[data-clause-id]")?.getAttribute("data-clause-id") === clauseId &&
+      this.closest("[data-pointer]")?.getAttribute("data-pointer")?.endsWith("/conditionText")
+    ) {
+      calls++;
+      if (!skipped) {
+        skipped = this;
+        expect(document.activeElement).not.toBe(this);
+        return;
+      }
+    }
+    original.call(this, options);
+  });
+  fireEvent.click(add);
+  expect(skipped).not.toBeNull();
+  expect(calls).toBe(2);
+  expect(document.activeElement).toBe(skipped);
+});
+it("두 번 초점을 받지 못한 요청은 끝내고 다른 필드 입력의 초점을 빼앗지 않는다", async () => {
+  const view = area();
+  await loaded();
+  const add = screen.getAllByRole("button", { name: "이 조문 넣기" })[0];
+  if (!add) throw new Error("기본 조문 없음");
+  const clauseId = add.closest("fieldset")?.dataset.clauseId;
+  add.focus();
+  const original = HTMLElement.prototype.focus;
+  let ignored = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (
+      ignored < 2 &&
+      this instanceof HTMLTextAreaElement &&
+      this.closest("[data-clause-id]")?.getAttribute("data-clause-id") === clauseId
+    ) {
+      ignored++;
+      return;
+    }
+    original.call(this, options);
+  });
+  fireEvent.click(add);
+  const input = screen.getByLabelText("견적 유효 기한(시간)");
+  input.focus();
+  fireEvent.change(input, { target: { value: "30" } });
+  view.rerender(<OperatingRulesEditor {...view.props} shopName="다시 그린 합성 가게" />);
+  expect(document.activeElement).toBe(input);
+  expect(ignored).toBe(2);
+  fireEvent.change(input, { target: { value: "" } });
+  save();
+  expect(document.activeElement).toBe(input);
+});
+it("행 제거의 대상 버튼도 같은 commit에서 한 번만 다시 시도한다", async () => {
+  area();
+  await loaded();
+  const add = screen.getByRole("button", { name: "환불 단계 추가" });
+  fireEvent.click(add);
+  fireEvent.click(add);
+  const buttons = screen.getAllByRole("button", { name: "단계 삭제" }).slice(-2);
+  const first = buttons[0],
+    target = buttons[1];
+  if (!first || !target) throw new Error("환불 단계 없음");
+  first.focus();
+  const original = HTMLElement.prototype.focus;
+  let calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === target && ++calls === 1) {
+      expect(document.activeElement).not.toBe(target);
+      return;
+    }
+    original.call(this, options);
+  });
+  fireEvent.click(first);
+  expect(calls).toBe(2);
+  expect(document.activeElement).toBe(target);
+});
+it("필드 오류의 대상 입력도 첫 실패 뒤 같은 commit에서 복구한다", async () => {
+  area();
+  await loaded();
+  const input = screen.getByLabelText("견적 유효 기한(시간)");
+  fireEvent.change(input, { target: { value: "" } });
+  screen.getByRole("button", { name: "확정" }).focus();
+  const original = HTMLElement.prototype.focus;
+  let calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === input && ++calls === 1) {
+      expect(document.activeElement).not.toBe(input);
+      return;
+    }
+    original.call(this, options);
+  });
+  save();
+  expect(calls).toBe(2);
+  expect(document.activeElement).toBe(input);
 });
 it("기본 조문을 모두 넣으면 빈 기본 조문 선택 영역을 없앤다", async () => {
   area();
