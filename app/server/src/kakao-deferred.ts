@@ -1,3 +1,9 @@
+import {
+  inlineKakaoDisclosure,
+  type KakaoDisclosurePolicy,
+  markKakaoAiDisclosure,
+  prependKakaoDisclosure,
+} from "./kakao-ai-disclosure";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
 /** 새 답 하나의 자리를 남기고 카카오 outputs 세 개 한도 안에서 이전 답을 먼저 전한다. */
@@ -21,16 +27,18 @@ export function deferredKakaoTexts(previous: readonly DeferredKakaoMessage[]): s
 export async function deferredKakaoMessages(
   db: ShopDb,
   customerId: string,
-  options: { readonly allowUndisclosedAi?: boolean } = {},
+  options: { readonly disclosureConsultationId?: string | undefined } = {},
 ): Promise<readonly DeferredKakaoMessage[]> {
-  const result = await db.run<{ id: string; body_masked: string; created_order: string }>(
-    `SELECT m.id, m.body_masked, (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order FROM messages m
+  const result = await db.run<{ id: string; body_masked: string; created_order: string; blocked: boolean }>(
+    `SELECT m.id, m.body_masked, (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order,
+      (m.author='ai' AND c.ai_disclosed_at IS NULL AND c.id IS DISTINCT FROM $4::uuid) AS blocked FROM messages m
       JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
       WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'outbound'
         AND m.delivery = 'deferred' AND m.sent_at IS NULL AND char_length(m.body_masked) BETWEEN 1 AND 1000
-        AND (m.author <> 'ai' OR c.ai_disclosed_at IS NOT NULL OR $4::boolean)
+        AND (m.trace_id IS NULL OR m.trace_id NOT LIKE 'ai-disclosure:%')
+        AND NOT (m.author='ai' AND c.ai_disclosed_at IS NULL AND c.status IN ('ended','deleted'))
       ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
-    [customerId, DEFERRED_REPLY_BATCH, options.allowUndisclosedAi === true],
+    [customerId, DEFERRED_REPLY_BATCH, options.disclosureConsultationId ?? null],
   );
   // 결제/버튼/사진 안내는 업무 렌더러가 전해진 시각 등도 함께 기록해야 하므로 이 공통 글 경로에서 소비하지 않는다.
   const notices = await db.run<{ id: string; body: string; created_order: string }>(
@@ -46,12 +54,14 @@ export async function deferredKakaoMessages(
       text: row.body_masked,
       source: "message" as const,
       at: BigInt(row.created_order),
+      blocked: row.blocked,
     })),
     ...notices.rows.map((row) => ({
       id: row.id,
       text: row.body,
       source: "notification" as const,
       at: BigInt(row.created_order),
+      blocked: false,
     })),
   ].sort(
     (a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0) || a.id.localeCompare(b.id) || a.source.localeCompare(b.source),
@@ -59,6 +69,7 @@ export async function deferredKakaoMessages(
   const selected: DeferredKakaoMessage[] = [];
   let remaining = DEFERRED_REPLY_BATCH;
   for (const row of candidates) {
+    if (row.blocked) break;
     const slots = Math.ceil([...row.text].length / 1000);
     if (slots > remaining) break;
     selected.push({ id: row.id, text: row.text, source: row.source });
@@ -102,6 +113,8 @@ export async function replyWithDeferredKakaoMessages(
   customerId: string,
   now: Date,
   render: (previous: readonly string[]) => Response,
+  consultationId?: string,
+  policy?: KakaoDisclosurePolicy,
 ): Promise<Response> {
   return db.transaction(async (tx) => {
     const customer = await tx.run("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [customerId]);
@@ -113,8 +126,20 @@ export async function replyWithDeferredKakaoMessages(
       [customerId, now],
     );
     if (active.rowCount > 0) return render([]);
-    const pending = await deferredKakaoMessages(tx, customerId);
-    const response = render(deferredKakaoTexts(pending));
+    const disclosure =
+      consultationId === undefined ? undefined : await inlineKakaoDisclosure(tx, consultationId, customerId, policy);
+    const pending = await deferredKakaoMessages(tx, customerId, {
+      disclosureConsultationId: disclosure?.consultationId,
+    });
+    const { response } = await prependKakaoDisclosure(render(deferredKakaoTexts(pending)), disclosure);
+    if (disclosure !== undefined)
+      await markKakaoAiDisclosure(
+        tx,
+        { consultation_id: disclosure.consultationId, customer_id: customerId },
+        disclosure,
+        now,
+        "skill_response",
+      );
     await markDeferredKakaoMessages(tx, customerId, pending, now);
     return response;
   });

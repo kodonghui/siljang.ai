@@ -162,10 +162,20 @@ export async function consumeKakaoCallback(
     const callback = kakaoCallback(raw, claim.created_at);
     // 모델을 기다리는 동안 설정이 바뀌었으면 실제 발신 직전에 새 게시 버전을 고른다.
     if (disclosure !== null && callback !== null) {
+      const firstPreparedAt = disclosure?.at;
       disclosure = services.aiConfigured ? await prepareKakaoAiDisclosure(db, claim, services) : undefined;
+      if (disclosure !== null && disclosure !== undefined && firstPreparedAt !== undefined)
+        disclosure = { ...disclosure, at: firstPreparedAt };
       if (preparedReply !== undefined && disclosure === undefined) {
-        await releaseKakaoCallback(db, job.messageId, claim);
-        return "retry";
+        const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now());
+        if (reason === false) return "done";
+        preparedReply = undefined;
+        failureCode = kakaoAiFailureOutcome("unavailable");
+        log(
+          "warn",
+          { event: "kakao_callback_handoff", code: reason === "ai_cost_limit" ? "ai_cost_limit_reached" : failureCode },
+          options.logSink,
+        );
       }
     }
     const previous =
@@ -173,7 +183,7 @@ export async function consumeKakaoCallback(
         ? []
         : (
             await deferredKakaoMessages(db, claim.customer_id, {
-              allowUndisclosedAi: disclosure !== null && disclosure !== undefined,
+              disclosureConsultationId: disclosure?.consultationId,
             })
           ).filter((row) => preparedReply === undefined || row.source !== "message" || row.id !== preparedReply.id);
     const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;

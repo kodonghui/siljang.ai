@@ -114,8 +114,17 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     if (value === null || value === undefined) throw new Error("필요한 합성 시험 자료가 없어요");
     return value;
   }
-  async function consume(job: KakaoCallbackJob, aiModel: ReturnType<typeof model>, success = true, policy = POLICY) {
-    const callback = vi.fn<typeof fetch>(async () => Response.json({ status: success ? "SUCCESS" : "FAIL" }));
+  async function consume(
+    job: KakaoCallbackJob,
+    aiModel: ReturnType<typeof model>,
+    success = true,
+    policy = POLICY,
+    onSend: () => void = () => {},
+  ) {
+    const callback = vi.fn<typeof fetch>(async () => {
+      onSend();
+      return Response.json({ status: success ? "SUCCESS" : "FAIL" });
+    });
     expect(
       await consumeKakaoCallback(job, env, {
         connect: () => isolated.connect(),
@@ -323,4 +332,198 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     const next = texts(await consume(required(jobs[1]), ai));
     expect(next).toEqual(["합성 질문을 확인했어요.", "합성 질문을 확인했어요."]);
   });
+
+  it("고지 실패 뒤 스티커 응답도 고지·미전달 AI·뒤 안내 순서로 즉시 전한다", async () => {
+    const user = newUuid(),
+      ai = model();
+    await send(user, "스티커 전에 실패할 합성 질문");
+    const firstJob = required(jobs[0]);
+    await consume(firstJob, ai, false);
+    const row = required(
+      (
+        await isolated.db.query(
+          "SELECT id,customer_id FROM consultations WHERE id=(SELECT consultation_id FROM messages WHERE id=$1)",
+          [firstJob.messageId],
+        )
+      ).rows[0],
+    );
+    const id = newUuid();
+    await isolated.db.query(
+      `INSERT INTO notifications (id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,created_at) VALUES ($1,$2,$3,$4,'owner_reply',$5,'owner_reply','뒤에 온 합성 사장님 답','deferred',$6)`,
+      [id, shop.shopId, row.customer_id, row.id, `notice:${id}`, new Date(NOW.getTime() + 2000)],
+    );
+    now = new Date(NOW.getTime() + 4000);
+    const app = createApp({
+      connect: () => isolated.connect(),
+      services: { now: () => now, privacyPolicy: POLICY, publicAppOrigin: ORIGIN },
+      logSink: () => {},
+    });
+    const response = await app.request(
+      "/api/kakao/skills/message",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+        body: JSON.stringify({
+          bot: { id: shop.botId },
+          userRequest: { utterance: "", user: { id: user, type: "botUserKey" } },
+          action: { id: "input", params: {} },
+        }),
+      },
+      env,
+    );
+    const body = (await response.json()) as { template: { outputs: { simpleText: { text: string } }[] } };
+    const out = body.template.outputs.map((x) => x.simpleText.text);
+    expect(out[0]).toContain("AI가 상담합니다");
+    expect(out.slice(1)).toEqual(["합성 질문을 확인했어요.", "뒤에 온 합성 사장님 답"]);
+    expect((await record(user))[0]?.ai_disclosed_at).toEqual(now);
+    now = new Date(NOW.getTime() + 8000);
+    await send(user, "스티커 뒤 합성 질문");
+    const next = texts(await consume(required(jobs[1]), ai));
+    expect(next).not.toContain("뒤에 온 합성 사장님 답");
+    expect(next.join(" ")).not.toContain("AI가 상담합니다");
+  });
+  it("게시된 정책이 없으면 모델 없이 바로 사장님 안내를 보낸다", async () => {
+    await isolated.db.query("UPDATE privacy_policies SET published_at=$2 WHERE shop_id=$1", [
+      shop.shopId,
+      new Date(NOW.getTime() + 60000),
+    ]);
+    const ai = model();
+    await send(newUuid(), "정책이 미래에 게시된 합성 질문");
+    const callback = await consume(required(jobs[0]), ai);
+    expect(ai.call).not.toHaveBeenCalled();
+    expect(texts(callback)).toEqual(["사장님 확인 뒤 답드릴게요."]);
+  });
+  it("고지 완료는 실제 발신 성공 시각이고 고지 기록은 AI 생성보다 먼저 놓인다", async () => {
+    const user = newUuid(),
+      ai = model(),
+      invoke = required(ai.call.getMockImplementation());
+    ai.call.mockImplementationOnce(async (input) => {
+      const answer = await invoke(input);
+      now = new Date(NOW.getTime() + 5000);
+      return answer;
+    });
+    await send(user, "시각을 확인할 합성 질문");
+    await consume(required(jobs[0]), ai, true, POLICY, () => {
+      now = new Date(NOW.getTime() + 10000);
+    });
+    expect((await record(user))[0]?.ai_disclosed_at).toEqual(new Date(NOW.getTime() + 11000));
+    const rows = (
+      await isolated.db.query<{ author: string; created_at: Date }>(
+        "SELECT author,created_at FROM messages WHERE consultation_id=$1 AND direction='outbound' ORDER BY created_at,id",
+        [required((await record(user))[0]).id],
+      )
+    ).rows;
+    expect(rows[0]?.author).toBe("system");
+    expect(required(rows[0]).created_at.getTime()).toBeLessThan(
+      required(rows.find((x) => x.author === "ai")).created_at.getTime(),
+    );
+  });
+  it("새 상담의 고지로 끝난 다른 상담의 고지 전 AI 답을 풀지 않는다", async () => {
+    const user = newUuid(),
+      ai = model(),
+      invoke = required(ai.call.getMockImplementation());
+    ai.call.mockImplementationOnce(async (input) => {
+      const result = await invoke(input);
+      if (!result.ok) throw new Error("합성 실패");
+      return { ...result, output: { reply: "옛 상담에 남아야 할 합성 답" } };
+    });
+    await send(user, "이전 합성 상담");
+    await consume(required(jobs[0]), ai, false);
+    const first = required((await record(user))[0]);
+    await isolated.db.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [first.id, NOW]);
+    now = new Date(NOW.getTime() + 4000);
+    await send(user, "새 합성 상담");
+    expect(texts(await consume(required(jobs[1]), ai))).not.toContain("옛 상담에 남아야 할 합성 답");
+    expect((await record(user)).find((x) => x.id === first.id)?.ai_disclosed_at).toBeNull();
+  });
+  it("모델 대기 중 예약 링크가 사라지면 재시도 없이 즉시 사장님에게 넘긴다", async () => {
+    const ai = model(),
+      invoke = required(ai.call.getMockImplementation());
+    ai.call.mockImplementationOnce(async (input) => {
+      const answer = await invoke(input);
+      await isolated.db.query("UPDATE shops SET booking_slug=NULL,booking_issued_at=NULL WHERE id=$1", [shop.shopId]);
+      return answer;
+    });
+    await send(newUuid(), "링크가 사라질 합성 질문");
+    expect(texts(await consume(required(jobs[0]), ai))).toEqual(["사장님 확인 뒤 답드릴게요."]);
+  });
+
+  it.each(["no_callback", "cost_limit", "queue_failure"])(
+    "즉시 넘김 %s도 고지·이전 답 순서를 지키고 생략한 새 안내는 미전달로 남긴다",
+    async (mode) => {
+      const user = newUuid(),
+        ai = model();
+      await send(user, "즉시 넘김 전에 실패할 합성 질문");
+      const job = required(jobs[0]);
+      await consume(job, ai, false);
+      const row = required(
+        (
+          await isolated.db.query(
+            "SELECT id,customer_id FROM consultations WHERE id=(SELECT consultation_id FROM messages WHERE id=$1)",
+            [job.messageId],
+          )
+        ).rows[0],
+      );
+      const id = newUuid();
+      await isolated.db.query(
+        `INSERT INTO notifications (id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,created_at) VALUES ($1,$2,$3,$4,'owner_reply',$5,'owner_reply','뒤에 온 합성 안내','deferred',$6)`,
+        [id, shop.shopId, row.customer_id, row.id, `notice:${id}`, new Date(NOW.getTime() + 2000)],
+      );
+      if (mode === "cost_limit")
+        await isolated.db.query("UPDATE ai_calls SET cost_krw=1000 WHERE shop_id=$1 AND consultation_id=$2", [
+          shop.shopId,
+          row.id,
+        ]);
+      now = new Date(NOW.getTime() + 4000);
+      const app = createApp({
+        connect: () => isolated.connect(),
+        services: {
+          now: () => now,
+          privacyPolicy: POLICY,
+          publicAppOrigin: ORIGIN,
+          ...(mode === "queue_failure"
+            ? {
+                kakaoCallbackQueue: {
+                  send: async () => {
+                    throw new Error("합성 큐 실패");
+                  },
+                },
+              }
+            : {}),
+        },
+        logSink: () => {},
+      });
+      const response = await app.request(
+        "/api/kakao/skills/message",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+          body: JSON.stringify({
+            bot: { id: shop.botId },
+            userRequest: {
+              utterance: "즉시 넘김 합성 질문",
+              ...(mode === "no_callback"
+                ? {}
+                : { callbackUrl: "https://bot-api.kakao.com/v1/callback/synthetic_inline" }),
+              user: { id: user, type: "botUserKey" },
+            },
+            action: { id: "input", params: {} },
+          }),
+        },
+        env,
+      );
+      const body = (await response.json()) as { template: { outputs: { simpleText: { text: string } }[] } };
+      const out = body.template.outputs.map((x) => x.simpleText.text);
+      expect(out[0]).toContain("AI가 상담합니다");
+      expect(out.slice(1)).toEqual(["합성 질문을 확인했어요.", "뒤에 온 합성 안내"]);
+      expect(
+        (
+          await isolated.db.query(
+            "SELECT delivery,sent_at FROM messages WHERE consultation_id=$1 AND body_masked='사장님 확인 뒤 답드릴게요.'",
+            [row.id],
+          )
+        ).rows,
+      ).toEqual([{ delivery: "deferred", sent_at: null }]);
+    },
+  );
 });

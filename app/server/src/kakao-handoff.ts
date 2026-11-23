@@ -1,4 +1,10 @@
 import { eventKeys, insertOnce } from "./event-keys";
+import {
+  inlineKakaoDisclosure,
+  type KakaoDisclosurePolicy,
+  markKakaoAiDisclosure,
+  prependKakaoDisclosure,
+} from "./kakao-ai-disclosure";
 import { deferredKakaoMessages, deferredKakaoTexts, markDeferredKakaoMessages } from "./kakao-deferred";
 import { KAKAO_HANDOFF_TEXT } from "./kakao-reply";
 import type { InboundReceipt } from "./kakao-skill-store";
@@ -24,6 +30,7 @@ export async function replyKakaoHandoffInTransaction(
   now: Date,
   render: (previous: readonly string[]) => Response,
   reason: FailureReason = "ai_failure",
+  policy?: KakaoDisclosurePolicy,
 ): Promise<Response> {
   await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [receipt.customerId]);
   const consultation = await tx.found<{ status: string }>(
@@ -41,13 +48,34 @@ export async function replyKakaoHandoffInTransaction(
        WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.kakao_callback_claim_until > $3 LIMIT 1`,
     [receipt.customerId, now],
   );
-  const previous = active.rowCount === 0 ? await deferredKakaoMessages(tx, receipt.customerId) : [];
-  const response = render(deferredKakaoTexts(previous));
+  const disclosure =
+    active.rowCount === 0
+      ? await inlineKakaoDisclosure(tx, receipt.consultationId, receipt.customerId, policy)
+      : undefined;
+  const previous =
+    active.rowCount === 0
+      ? await deferredKakaoMessages(tx, receipt.customerId, { disclosureConsultationId: disclosure?.consultationId })
+      : [];
+  const { response, currentIncluded } = await prependKakaoDisclosure(render(deferredKakaoTexts(previous)), disclosure);
+  if (disclosure !== undefined)
+    await markKakaoAiDisclosure(
+      tx,
+      { consultation_id: receipt.consultationId, customer_id: receipt.customerId },
+      disclosure,
+      now,
+      "skill_response",
+    );
   await markDeferredKakaoMessages(tx, receipt.customerId, previous, now);
   await tx.run(
     `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery, sent_at, created_at)
-       VALUES ($1, $2, 'outbound', 'system', 'text', $3, 'skill_response', $4, $4)`,
-    [receipt.consultationId, KAKAO_HANDOFF_TEXT, now],
+       VALUES ($1, $2, 'outbound', 'system', 'text', $3, $4, $5, $6)`,
+    [
+      receipt.consultationId,
+      KAKAO_HANDOFF_TEXT,
+      currentIncluded ? "skill_response" : "deferred",
+      currentIncluded ? now : null,
+      now,
+    ],
   );
   return response;
 }
