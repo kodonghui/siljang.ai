@@ -68,6 +68,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   for (const node of document.querySelectorAll("[data-announcer]")) node.remove();
 });
@@ -92,6 +93,74 @@ function area(
 const account = () => screen.getByLabelText("계좌번호") as HTMLInputElement;
 const loaded = () => screen.findByLabelText("계좌번호");
 const save = () => fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+it("결제 수단 필드의 첫 초점이 실패해도 같은 화면 반영에서 복구한다", async () => {
+  area();
+  await loaded();
+  const target = screen.getByLabelText("은행");
+  fireEvent.change(target, { target: { value: "" } });
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  const original = HTMLElement.prototype.focus;
+  let calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === target && ++calls === 1) {
+      expect(document.activeElement).not.toBe(target);
+      return;
+    }
+    original.call(this, options);
+  });
+  save();
+  expect(calls).toBe(2);
+  expect(document.activeElement).toBe(target);
+});
+it("두 번 실패한 결제 초점은 끝내고 다음 입력의 초점을 가져오지 않는다", async () => {
+  const view = area();
+  await loaded();
+  const target = screen.getByLabelText("은행");
+  fireEvent.change(target, { target: { value: "" } });
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  const original = HTMLElement.prototype.focus;
+  let calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === target && ++calls <= 2) return;
+    original.call(this, options);
+  });
+  save();
+  expect(calls).toBe(2);
+  const other = account();
+  other.focus();
+  fireEvent.change(other, { target: { value: "000000000000" } });
+  view.rerender(<PaymentDestinationEditor {...view.props} shopName="다시 그린 합성 가게" />);
+  expect(document.activeElement).toBe(other);
+  expect(calls).toBe(2);
+});
+it.each(["holder", "status"] as const)("결제 %s 서버 오류도 첫 초점 실패 뒤 복구한다", async (kind) => {
+  saveProblem =
+    kind === "holder"
+      ? { status: 409, code: "holder_not_verified" }
+      : {
+          status: 422,
+          code: "validation_failed",
+          errors: [{ field: "/unknown", code: "not_allowed" }],
+        };
+  area();
+  await loaded();
+  const target =
+    kind === "holder" ? screen.getByLabelText("예금주") : screen.getByRole("region", { name: "결제 수단 저장 결과" });
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  const original = HTMLElement.prototype.focus;
+  let calls = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === target && ++calls === 1) {
+      expect(document.activeElement).not.toBe(target);
+      return;
+    }
+    original.call(this, options);
+  });
+  save();
+  await waitFor(() => expect(sends).toHaveLength(1));
+  await waitFor(() => expect(calls).toBe(2));
+  expect(document.activeElement).toBe(target);
+});
 it("현재 결제 계좌를 읽고 바꾼 계좌만 새 버전으로 저장한다", async () => {
   const view = area();
   await loaded();
