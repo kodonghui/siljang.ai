@@ -8,7 +8,6 @@ import os
 import re
 import selectors
 import subprocess
-import sys
 import time
 import uuid
 import zipfile
@@ -23,15 +22,15 @@ args = parser.parse_args()
 if len(args.source) != 40 or any(c not in "0123456789abcdef" for c in args.source):
     raise SystemExit("source_sha_invalid")
 here = Path(__file__).resolve().parent
+wrangler_setup = (here.parent / "academy-wrangler.ps1").read_text(encoding="utf-8")
 args.output.mkdir(parents=True, exist_ok=True)
 folder = "siljang-photo-existing-" + uuid.uuid4().hex[:10]
-cases = json.loads((args.input / "manifest.json").read_text())
+cases = json.loads((args.input / "manifest.json").read_text(encoding="utf-8"))
 if len(cases) != 20 or any(not c["name"].replace("-", "").isalnum() for c in cases):
     raise SystemExit("synthetic_manifest_invalid")
-credentials = {"account": os.environ.get("CLOUDFLARE_ACCOUNT_ID"),
-               "token": os.environ.get("CLOUDFLARE_API_TOKEN"), "source": args.source}
-if not credentials["account"] or not credentials["token"]:
-    raise SystemExit("credentials_absent")
+payload = {"account": os.environ.get("CLOUDFLARE_ACCOUNT_ID"), "source": args.source}
+if not payload["account"]:
+    raise SystemExit("cloudflare_account_missing")
 
 
 def command(script):
@@ -40,13 +39,27 @@ def command(script):
             base64.b64encode(script.encode("utf-16le")).decode()]
 
 
-def remote(script, timeout=30):
-    return subprocess.run(command(script), capture_output=True, timeout=timeout)
+def remote(script, timeout=30, input=None):
+    return subprocess.run(command(script), input=input, capture_output=True, timeout=timeout)
 
 
 def emit(row):
     print(json.dumps(row, ensure_ascii=False), flush=True)
 
+
+preflight = remote(wrangler_setup + r"""
+$ErrorActionPreference='Stop'
+[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
+$env:CLOUDFLARE_ACCOUNT_ID=([Console]::In.ReadLine() | ConvertFrom-Json).account
+Set-SiljangWranglerEnvironment
+Assert-SiljangWranglerLogin
+""", input=(json.dumps({"account": payload["account"]}) + "\n").encode())
+if preflight.returncode:
+    if b"academy_auth_missing" in preflight.stdout:
+        emit({"event": "academy_auth_missing", "message": "학원컴에 Cloudflare 로그인이 없음"})
+    else:
+        emit({"event": "photo_existing_preflight_failed"})
+    raise SystemExit(1)
 
 metadata = {"worker": "siljang-kakao-test", "baseline": "448d489b-225f-4ddf-84f7-fa3a525a5a18",
             "folder": folder, "host": "academy-pc", "source": args.source}
@@ -66,15 +79,15 @@ for source, name in [(args.bundle, "probe.mjs"), (here / "existing-driver.mjs", 
     if r.returncode:
         raise SystemExit("public_transfer_failed")
 emit({"event": "photo_existing_public_transfer", "files": 4, "inputs": len(cases)})
-script = r'''
+script = wrangler_setup + r'''
 $ErrorActionPreference='Stop';$p=[Console]::In.ReadLine()|ConvertFrom-Json
-$env:CLOUDFLARE_ACCOUNT_ID=$p.account;$env:CLOUDFLARE_API_TOKEN=$p.token
-$env:SILJANG_SOURCE_SHA=$p.source;$env:WRANGLER_SEND_METRICS='false';$env:CI='1';$env:NO_UPDATE_NOTIFIER='1'
+$env:CLOUDFLARE_ACCOUNT_ID=$p.account
+$env:SILJANG_SOURCE_SHA=$p.source;$env:NO_UPDATE_NOTIFIER='1'
+Set-SiljangWranglerEnvironment
 $folder=Join-Path $env:USERPROFILE 'FOLDER'
 try {
  Expand-Archive -LiteralPath (Join-Path $folder 'input.zip') -DestinationPath (Join-Path $folder 'input')
  $env:SILJANG_PROBE_FOLDER=$folder
- $env:SILJANG_WRANGLER_CLI=Join-Path $env:LOCALAPPDATA 'siljang-tools\node_modules\wrangler\wrangler-dist\cli.js'
  & node (Join-Path $folder 'driver.mjs') 2>$null
  $siljangExit=$LASTEXITCODE
  Compress-Archive -Path (Join-Path $folder 'output'),(Join-Path $folder 'report.json') -DestinationPath (Join-Path $folder 'result.zip')
@@ -82,7 +95,7 @@ try {
 } catch {@{event='photo_existing_transport_setup_failed'}|ConvertTo-Json -Compress;exit 1}
 '''.replace("'FOLDER'", "'" + folder + "'")
 p = subprocess.Popen(command(script), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-p.stdin.write((json.dumps(credentials) + "\n").encode())
+p.stdin.write((json.dumps(payload) + "\n").encode())
 p.stdin.close()
 selector = selectors.DefaultSelector()
 selector.register(p.stdout, selectors.EVENT_READ)

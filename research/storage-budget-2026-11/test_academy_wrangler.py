@@ -20,7 +20,8 @@ const args = process.argv.slice(2);
 appendFileSync(process.env.SILJANG_TEST_CALLS, args.join(' ') + '\\n');
 if (args[0] === 'whoami') {
   const loggedIn = process.env.SILJANG_TEST_LOGIN === 'true';
-  console.log(JSON.stringify({ loggedIn, authType: 'OAuth Token', email: 'owner@example.test' }));
+  const authType = process.env.CLOUDFLARE_API_TOKEN ? 'User API Token' : 'OAuth Token';
+  console.log(JSON.stringify({ loggedIn, authType, email: 'owner@example.test' }));
   process.exitCode = loggedIn ? 0 : 1;
 } else if (args[0] === '--version') {
   console.log('4.158.0');
@@ -98,6 +99,12 @@ class AcademyWranglerTests(unittest.TestCase):
         self.assertEqual(result["apiCode"], "1000")
         for secret in ("academy-only-credential", "synthetic-session-secret", "example.test", "synthetic-account"):
             self.assertNotIn(secret, output)
+
+    def test_storage_accepts_academy_oauth_without_an_environment_token(self):
+        code, output, commands = self.run_with_fake_ssh(HERE / "run-native.py", logged_in=True)
+        self.assertEqual(code, 1)  # The simulated deploy failure is after successful preflight.
+        self.assertEqual(commands, ["whoami --json", "--version", "deploy --config peer.json"])
+        self.assertNotIn("synthetic-session-secret", output)
 
     def test_unauthenticated_webp_stops_before_upload(self):
         with tempfile.TemporaryDirectory() as temp:

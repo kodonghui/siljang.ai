@@ -84,7 +84,7 @@ npx --no-install wrangler rollback "$SILJANG_BASELINE_VERSION" --config "$SILJAN
 
 실제 CPU/메모리는 별도 메트릭의 단위·표본·대상/시각과 함께 기록한다. 분위수를 최대 사용량으로 쓰지 않고 HTTP 전체 시간을 CPU 시간으로 바꾸지 않는다. 측정/원상 복구 전에는 TASK-183 완료를 표시하지 않는다.
 
-실행기 `existing-driver.mjs`와 `existing-run.py`도 같은 PR에 보존한다. 공개 소스/합성 입력은 먼저 복사하고 계정/토큰은 작은 표준 입력으로만 학원컴 프로세스에 전달한다. 실행기는 쓰기 전에 기준 버전·바인딩·큐/consumer·공개 상태를 재대조하며, 성공/실패와 관계없이 finally에서 원래 버전을 복구한다. 프로세스가 비정상 종료해 복구 확인을 못 하면 기록한 기준 버전으로 먼저 복구하고 공개 상태/바인딩/큐를 재대조해야 한다. 결과에는 기존 키 값·주소·요청 헤더를 넣지 않는다.
+다른 기기에서 `existing-run.py`로 학원컴의 `existing-driver.mjs`를 실행한다. 표준 입력으로는 `CLOUDFLARE_ACCOUNT_ID`와 소스 SHA만 전달한다. 공개 소스와 합성 입력을 복사하기 전에 학원컴의 캐시된 Wrangler로 `whoami --json`을 확인한다. REST와 GraphQL 호출은 학원컴 사용자 환경의 `CLOUDFLARE_API_TOKEN` 또는 Wrangler가 제공하는 기존 OAuth 토큰을 같은 기기의 프로세스 메모리에서만 사용한다. 실행기는 쓰기 전에 기준 버전·바인딩·큐/consumer·공개 상태를 재대조하며, 성공/실패와 관계없이 finally에서 원래 버전을 복구한다. 프로세스가 비정상 종료해 복구 확인을 못 하면 기록한 기준 버전으로 먼저 복구하고 공개 상태/바인딩/큐를 재대조해야 한다. 결과에는 기존 키 값·주소·요청 헤더를 넣지 않는다.
 
 ```sh
 python3 research/webp-orientation-2026-11/existing-run.py --bundle /tmp/siljang-183-existing-build/existing-worker.js --input /tmp/siljang-webp-validation/input --source "$SILJANG_SOURCE_SHA" --output /tmp/siljang-183-existing-validation
