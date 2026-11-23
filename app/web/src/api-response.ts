@@ -11,3 +11,5 @@ export const isApiVersion = (value: unknown): value is number =>
   typeof value === "number" && Number.isSafeInteger(value) && value >= 1 && value <= MAX_API_VERSION;
 export const isApiTimestamp = (value: unknown): value is string =>
   typeof value === "string" && Number.isFinite(Date.parse(value));
+export const isApiInteger = (value: unknown, max: number): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max;

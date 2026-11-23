@@ -1,4 +1,4 @@
-import { isApiObject, isApiTimestamp, UUID_PATTERN } from "./api-response";
+import { isApiInteger as integer, isApiObject, isApiTimestamp, UUID_PATTERN } from "./api-response";
 import { isCalendarDate } from "./calendar-date";
 export const CALENDAR_ORDER_STATUSES = {
   requested: "주문 요청",
@@ -22,8 +22,6 @@ export interface CalendarConflict {
   readonly held: number;
   readonly orders: readonly CalendarConflictOrder[];
 }
-const integer = (value: unknown, max: number): value is number =>
-  typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max;
 /** API의 확인 자료만 읽고 연락처 등 계약 밖 속성은 복사하지 않는다. */
 export function parseCalendarConflicts(value: unknown): readonly CalendarConflict[] | null {
   if (!Array.isArray(value) || value.length < 1 || value.length > 400) return null;

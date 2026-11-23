@@ -72,13 +72,21 @@ it.each(rows)("API 화면 응답: $method $status $name", async (row) => {
     onRegisterShop: vi.fn(),
     onLogout: vi.fn(),
   };
+  let wrote = false;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (init?.method === "PATCH") return json(row.value, row.status);
+      if (init?.method === "PATCH") {
+        wrote = true;
+        return json(row.value, row.status);
+      }
       return row.method === "get" && row.status !== 200
         ? json(row.value, row.status)
-        : json(completeDays(String(input)));
+        : json({
+            items: completeDays(String(input)).items.map((item) =>
+              wrote && row.value.code === "version_conflict" ? { ...item, revision: "synthetic-latest" } : item,
+            ),
+          });
     }),
   );
   render(

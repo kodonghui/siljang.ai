@@ -64,7 +64,7 @@ export function OwnerArea() {
   const [logout, setLogout] = useState<"pending" | "failed" | null>(null);
   const [logoutFailure, setLogoutFailure] = useState<ApiFailure | null>(null);
   const logoutRequest = useRef<AbortController | null>(null);
-  const verified = useRef<{ key: string; data: OwnerIdentity; history: boolean } | null>(null);
+  const verified = useRef<{ key: string; path: string; data: OwnerIdentity; history: boolean } | null>(null);
   const [registrationNotice, setRegistrationNotice] = useState(false);
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export function OwnerArea() {
         if (result.ok) {
           if (result.data.shop !== null) clearRegistrationDraft();
           else pruneRegistrationDraft(result.data.owner.ownerId);
-          verified.current = { key: visit.key, data: result.data, history };
+          verified.current = { key: visit.key, path: location.pathname, data: result.data, history };
         }
         setChecked({ visit, result });
       })
@@ -95,7 +95,7 @@ export function OwnerArea() {
         /* 화면을 떠날 때 취소한 요청. */
       });
     return () => controller.abort();
-  }, [visit, requested, history]);
+  }, [visit, requested, history, location.pathname]);
   useEffect(() => () => logoutRequest.current?.abort(), []);
   useEffect(() => {
     if (requested !== OWNER_HOME) setRegistrationNotice(false);
@@ -135,7 +135,7 @@ export function OwnerArea() {
   const cached = verified.current;
   const candidate = session?.ok
     ? session.data
-    : cached && (cached.key === location.key || (history && cached.history))
+    : cached && (cached.key === location.key || cached.path === location.pathname || (history && cached.history))
       ? cached.data
       : null;
   if (screenRoute && candidate?.shop) {
