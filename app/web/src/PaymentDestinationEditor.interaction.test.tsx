@@ -376,3 +376,13 @@ it("429 뒤 입력을 바꿔도 저장 대기는 유지하고 옛 계좌를 자�
   expect(sends[1]?.body.accountNumber).toBe("111111111111");
   expect(sends[1]?.key).not.toBe(sends[0]?.key);
 });
+it("카드 링크 도움말과 길이 초과 사유가 코드 포인트 한도를 알린다", async () => {
+  area();
+  await loaded();
+  const link = screen.getByLabelText("카드 결제 링크(선택)") as HTMLInputElement;
+  fireEvent.change(link, { target: { value: `https://pay.example.test/${"a".repeat(2048)}` } });
+  const field = link.closest("[data-pointer]");
+  if (!field) throw new Error("카드 링크 필드 없음");
+  expect(field.textContent).toContain("https 주소를 2,048자까지 등록할 수 있어요");
+  expect(field.textContent).toContain("글자 수가 너무 많아요");
+});
