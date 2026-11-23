@@ -192,13 +192,12 @@ it("연결 확인의 누락 블록도 첫 초점 실패 뒤 같은 화면 반영
   );
   area();
   await loaded();
-  const target = screen.getByLabelText("확인 카드");
   screen.getByRole("button", { name: "다시 확인" }).focus();
   const original = HTMLElement.prototype.focus;
   let n = 0;
   vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
-    if (this === target && ++n === 1) {
-      expect(document.activeElement).not.toBe(target);
+    if (this.closest("[data-pointer]")?.getAttribute("data-pointer") === "/blockIds/card" && ++n === 1) {
+      expect(document.activeElement).not.toBe(this);
       return;
     }
     original.call(this, options);
@@ -206,7 +205,7 @@ it("연결 확인의 누락 블록도 첫 초점 실패 뒤 같은 화면 반영
   fireEvent.click(screen.getByRole("button", { name: "다시 확인" }));
   await main().findByText("버튼 블록 ID 5개를 모두 넣어 주세요");
   expect(n).toBe(2);
-  expect(document.activeElement).toBe(target);
+  expect(document.activeElement).toBe(screen.getByLabelText("확인 카드"));
 });
 it("무료 MVP 연결됨은 다음 대화 안내와 설정을 보이고 실제 발신을 부르지 않는다", async () => {
   area();

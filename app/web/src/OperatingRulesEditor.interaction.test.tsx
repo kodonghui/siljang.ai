@@ -19,12 +19,16 @@ let current: typeof examples.current.value,
 let loadProblem: { status: number; code: string } | null,
   saveProblem: { status: number; code: string; errors?: { field: string; code: string }[] } | null;
 let inProgress: boolean, hold: boolean;
+let releaseSave: (response: Response) => void;
 beforeEach(() => {
   current = structuredClone(examples.current.value);
   loads = 0;
   sends = [];
   loadProblem = saveProblem = null;
   inProgress = hold = unchanged = false;
+  releaseSave = () => {
+    throw new Error("대기 중인 운영규정 저장이 없어요");
+  };
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: unknown, init?: RequestInit) => {
@@ -35,7 +39,10 @@ beforeEach(() => {
       if (String(input) === "/api/owner/operating-rules/versions") {
         const body = JSON.parse(String(init?.body));
         sends.push({ body, key: new Headers(init?.headers).get("Idempotency-Key") });
-        if (hold) return new Promise(() => {});
+        if (hold)
+          return new Promise<Response>((resolve) => {
+            releaseSave = resolve;
+          });
         if (saveProblem && sends.length === 1) {
           if (saveProblem.code === "version_conflict")
             current = { ...current, version: 3, revision: "synthetic-v3", paymentDueHours: 24 };
@@ -82,6 +89,23 @@ function area(extra: { sessionChecking?: boolean; sessionFailed?: boolean } = {}
 }
 const loaded = () => main().findByText(/운영규정 버전 2/);
 const save = () => fireEvent.click(screen.getByRole("button", { name: "확정" }));
+it("운영규정도 저장을 기다리는 동안 뒤로 링크로 옮긴 초점을 지킨다", async () => {
+  hold = true;
+  area();
+  await loaded();
+  screen.getByRole("button", { name: "확정" }).focus();
+  save();
+  await waitFor(() => expect(sends).toHaveLength(1));
+  const back = screen.getByRole("link", { name: "뒤로" });
+  back.focus();
+  await act(async () =>
+    releaseSave(
+      json({ code: "validation_failed", traceId, errors: [{ field: "/quoteValidHours", code: "not_allowed" }] }, 422),
+    ),
+  );
+  await main().findByText("입력한 내용을 확인해 주세요");
+  expect(document.activeElement).toBe(back);
+});
 it("현재 기한과 조문 원문을 읽고 새 버전으로 확정한다", async () => {
   area();
   await loaded();
