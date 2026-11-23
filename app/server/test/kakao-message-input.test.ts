@@ -141,6 +141,48 @@ describeDb("손님 메시지 수신의 친구 여부·글 길이·상담 경계(
     ).toEqual([{ channel_friend: false, friend_checked_at: latest }]);
     expect(await consultation(user)).toHaveLength(1);
   });
+  it("친구 여부 누락 뒤 남은 안내는 같은 손님의 다음 콜백에서 먼저 한 번 전한다", async () => {
+    const user = newUuid(),
+      ai = model();
+    await send(user, "친구였을 때 합성 질문", true);
+    now = new Date(NOW.getTime() + 4000);
+    await send(user, "친구 값이 빠진 합성 질문");
+    const row = (
+      await isolated.db.query<{ id: string; customer_id: string }>(
+        `SELECT c.id,c.customer_id FROM consultations c JOIN customers u ON u.shop_id=c.shop_id AND u.id=c.customer_id WHERE c.shop_id=$1 AND u.kakao_user_key=$2`,
+        [shop.shopId, user],
+      )
+    ).rows[0];
+    if (!row) throw new Error("합성 상담이 없어요");
+    const noticeId = newUuid(),
+      text = "친구가 아닌 동안 남긴 합성 안내";
+    await isolated.db.query(
+      `INSERT INTO notifications (id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,created_at)
+      VALUES ($1,$2,$3,$4,'owner_reply',$5,'owner_reply',$6,'deferred',$7)`,
+      [noticeId, shop.shopId, row.customer_id, row.id, `notice:${noticeId}`, text, NOW],
+    );
+    expect(
+      (await isolated.db.query("SELECT channel_friend FROM customers WHERE id=$1", [row.customer_id])).rows[0]
+        ?.channel_friend,
+    ).toBe(false);
+    const job = jobs[1];
+    if (!job) throw new Error("합성 큐 작업이 없어요");
+    const callback = await consume(job, ai);
+    const body = JSON.parse(String(callback.mock.calls[0]?.[1]?.body));
+    expect(body.template.outputs.map((x: { simpleText: { text: string } }) => x.simpleText.text)).toEqual([
+      text,
+      "합성 질문을 확인했어요.",
+    ]);
+    expect((await isolated.db.query("SELECT status FROM notifications WHERE id=$1", [noticeId])).rows[0]?.status).toBe(
+      "delivered_on_reply",
+    );
+    now = new Date(NOW.getTime() + 8000);
+    await send(user, "다음 합성 질문");
+    const nextJob = jobs[2];
+    if (!nextJob) throw new Error("다음 합성 큐 작업이 없어요");
+    const next = await consume(nextJob, ai);
+    expect(String(next.mock.calls[0]?.[1]?.body)).not.toContain(text);
+  });
   it("열린 상담은 이어가고 끝난 상담은 새로 열어 지난 상담을 다시 열지 않는다", async () => {
     const user = newUuid();
     await send(user, "합성 첫 상담");

@@ -7,7 +7,7 @@ WBS의 TASK-063은 SPEC-017 수락 기준3·4·7, API-070의 네 HTTP 응답과1
 | 끝난 조건 | 검사와 확인할 결과 |
 | --- | --- |
 | SPEC-017 수락 기준3 | kakao-callback.test.ts와 kakao-callback-expiry-recovery.test.ts: 기한이 지난 질문을 사장님에게 넘기고 질문·할 일·대기 알림·다음 대화 안내를 함께 남김. 중단/반복 뒤에도 한 번만 저장함 |
-| SPEC-017 수락 기준4 | kakao-message-input.test.ts: 친구였던 손님의 다음 요청에 isFriend가 없으면 false, 뒤늦은 옛 true는 최신 값을 되돌리지 않음 |
+| SPEC-017 수락 기준4 | kakao-message-input.test.ts: 친구였던 손님의 다음 요청에 isFriend가 없으면 false, 뒤늦은 옛 true는 최신 값을 되돌리지 않음. 그 뒤 남은 안내는 같은 손님의 다음 콜백에서 AI 답보다 먼저 한 번 전달됨 |
 | SPEC-017 수락 기준7·REQ-262 | kakao-message-input.test.ts와 kakao-ai-cost-limit.test.ts: 상담 비용1000원부터 해당 질문은 ai_cost_limit로 넘기고 AI를 호출하지 않음. 같은 가게의 다른 상담에는 모의 모델이 한 번 답함 |
 | A13 | kakao-ai-cost-limit.test.ts: 하루 합계·가게 시간대 자정/서머타임·0원 설정·다른 가게 제외·큐 소비 전 재확인과 중복 차단 |
 | API-070 HTTP200·401·422·default | kakao-http-contract.test.ts: 계약 본문/헤더·쓰기 차단·내부 오류 미노출. 처리 도중 실패의200/server_error도 대조 |
@@ -16,7 +16,7 @@ WBS의 TASK-063은 SPEC-017 수락 기준3·4·7, API-070의 네 HTTP 응답과1
 | 교차 가게 | kakao-message-input.test.ts: 다른 가게 키는401이며 두 가게 기록의 수·내용 해시와 큐가 바뀌지 않음 |
 | 같은 요청·분당 한도 | kakao-skill.test.ts: 세 번 동시 수신의 한 번 저장/빈 반복 출력과20개 뒤 첫 초과만 안내·이후 무음·다음 분 복구 |
 
-신규 실제 PostgreSQL 시험5개는 첫 실행부터 통과했습니다. 기존 구현을 대조하는 회귀 시험이며 제품 코드를 바꾸지 않았습니다. 모델과 카카오 발신은 모의 응답이고 실제 API 호출은0건입니다. 모델 입력 시험의 고지 완료 값은 시험 자료로 넣으며 첫 고지를 구현했다고 주장하지 않습니다.
+신규 실제 PostgreSQL 시험5개와 추가 안내 전달1개는 각각 첫 실행부터 통과했습니다. 기존 구현을 대조하는 회귀 시험이며 제품 코드를 바꾸지 않았습니다. 모델과 카카오 발신은 모의 응답이고 실제 API 호출은0건입니다. 모델 입력 시험의 고지 완료 값은 시험 자료로 넣으며 첫 고지를 구현했다고 주장하지 않습니다.
 
 ## 스킬 결과11개
 
