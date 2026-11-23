@@ -175,10 +175,46 @@ it("채널의 잠금 중 초점 요청은 버려 잠금 뒤에 다시 실행하�
   await act(async () =>
     held.release(json({ code: "validation_failed", traceId, errors: [{ field: "/botId", code: "not_allowed" }] }, 422)),
   );
+  await main().findByText("입력한 내용을 확인해 주세요");
   expect(n).toBe(0);
   view.rerender(<KakaoChannelSettings {...view.props} logoutPending={false} />);
   await act(async () => {});
   expect(n).toBe(0);
+});
+it.each([false, true])("채널 재시도는 새 초점 기준을 쓰고 대기 중 이동을 보존한다: %s", async (moved) => {
+  const transport = fetch;
+  let attempts = 0;
+  let release: (response: Response) => void = () => {
+    throw new Error("재시도 요청이 아직 없어요");
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method !== "PUT") return transport(input, init);
+      if (++attempts === 1) throw new TypeError("합성 연결 실패");
+      return new Promise<Response>((resolve) => {
+        release = resolve;
+      });
+    }),
+  );
+  area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
+  const save = screen.getByRole("button", { name: /^저장$/ });
+  save.focus();
+  fireEvent.click(save);
+  const retry = await main().findByRole("button", { name: "다시 시도" });
+  const back = screen.getByRole("link", { name: "뒤로" });
+  if (moved) retry.focus();
+  else back.focus();
+  fireEvent.click(retry);
+  await waitFor(() => expect(attempts).toBe(2));
+  if (moved) back.focus();
+  await act(async () =>
+    release(json({ code: "validation_failed", traceId, errors: [{ field: "/botId", code: "not_allowed" }] }, 422)),
+  );
+  await main().findByText("입력한 내용을 확인해 주세요");
+  expect(document.activeElement).toBe(moved ? back : screen.getByLabelText("봇 ID"));
 });
 it("연결 확인의 누락 블록도 첫 초점 실패 뒤 같은 화면 반영에서 복구한다", async () => {
   current = getExample("failed");

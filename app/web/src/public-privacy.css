@@ -1,0 +1,27 @@
+.public-privacy {
+  max-width: var(--size-content);
+  margin-inline: auto;
+  padding: var(--space-lg);
+  display: grid;
+  gap: var(--space-lg);
+  overflow-wrap: anywhere;
+}
+.public-privacy header,
+.public-privacy section {
+  min-width: 0;
+}
+.public-privacy nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+.public-privacy-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-target);
+}
+.public-privacy-body p,
+.public-privacy .ui-list td,
+.public-privacy .ui-list dd {
+  white-space: pre-wrap;
+}
