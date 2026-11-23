@@ -48,9 +48,12 @@ export function settingsPayload(base: CalendarSettings | null, form: CalendarSet
 export function settingsIssues(form: CalendarSettingsForm): FieldError[] {
   const issues: FieldError[] = [];
   const add = (field: string, code: FieldError["code"]) => issues.push({ field: `/${field}`, code });
-  if (new Set(form.closedWeekdays).size !== form.closedWeekdays.length) add("closedWeekdays", "duplicate");
-  if (form.closedWeekdays.length > 7 || form.closedWeekdays.some((day) => !Number.isInteger(day) || day < 1 || day > 7))
-    add("closedWeekdays", "out_of_range");
+  if (form.closedWeekdays.length > 7) add("closedWeekdays", "too_many");
+  else {
+    if (new Set(form.closedWeekdays).size !== form.closedWeekdays.length) add("closedWeekdays", "duplicate");
+    if (form.closedWeekdays.some((day) => !Number.isInteger(day) || day < 1 || day > 7))
+      add("closedWeekdays", "out_of_range");
+  }
   for (const key of SETTING_NUMBERS) {
     const value = form[key];
     if (!value.trim()) add(key, "required");
@@ -62,7 +65,7 @@ export function settingsIssues(form: CalendarSettingsForm): FieldError[] {
     if (!value.trim()) add(key, "required");
     else if (!CALENDAR_TIME.test(value)) add(key, "bad_format");
     else if ((key === "dayBeforeNoticeTime" || key === "reviewRequestTime") && !NOTICE_TIME.test(value))
-      add(key, "out_of_range");
+      add(key, "outside_window");
   }
   if (CALENDAR_TIME.test(form.replyStart) && CALENDAR_TIME.test(form.replyEnd) && form.replyEnd <= form.replyStart)
     add("replyEnd", "not_after_start");
@@ -81,8 +84,13 @@ export function rebaseSettings(
 ): CalendarSettingsForm {
   const before = settingsForm(base),
     result = settingsForm(latest);
-  if (JSON.stringify(weekdays(before.closedWeekdays)) !== JSON.stringify(weekdays(mine.closedWeekdays)))
-    result.closedWeekdays = [...mine.closedWeekdays];
+  const merged = new Set(latest.closedWeekdays);
+  for (let day = 1; day <= 7; day++) {
+    if (before.closedWeekdays.includes(day) === mine.closedWeekdays.includes(day)) continue;
+    if (mine.closedWeekdays.includes(day)) merged.add(day);
+    else merged.delete(day);
+  }
+  result.closedWeekdays = weekdays([...merged]);
   for (const key of SETTING_NUMBERS) if (numberOrText(before[key]) !== numberOrText(mine[key])) result[key] = mine[key];
   for (const key of SETTING_TIMES) if (before[key] !== mine[key]) result[key] = mine[key];
   return result;

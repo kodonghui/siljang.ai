@@ -44,7 +44,7 @@ beforeEach(() => {
               code: "confirmation_required",
               traceId,
               confirm: [{ kind: confirmation, count: 2, day: "2026-11-20" }],
-              conflicts: conflictExample(),
+              conflicts: conflicts.length ? conflicts : conflictExample(),
             },
             409,
           );
@@ -69,6 +69,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
   for (const node of document.querySelectorAll("[data-announcer]")) node.remove();
 });
+function conflictDays(count: number) {
+  return Array.from({ length: count }, (_, index) => {
+    const day = `2026-12-${String(index + 1).padStart(2, "0")}`;
+    return {
+      ...conflictExample()[0],
+      day,
+      orders: [
+        {
+          ...conflictExample()[0].orders[0],
+          orderId: `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`,
+          orderNo: `SYN${String(index).padStart(3, "0")}`,
+          pickupAt: `${day}T15:00:00+09:00`,
+        },
+      ],
+    };
+  });
+}
 function area(extra: { sessionChecking?: boolean; sessionFailed?: boolean } = {}) {
   const props = {
     shopName: "합성 캘린더 가게",
@@ -139,6 +156,16 @@ it("설정 초안이 없으면 다른 기기의 새 revision을 조용히 반영
   await waitFor(() => expect((screen.getByLabelText("하루 최대 개수") as HTMLInputElement).value).toBe("8"));
   expect(main().queryByText("그 사이 바뀌었어요. 지금 상태를 확인해 주세요")).toBeNull();
 });
+it("조용히 바뀐 새 값에는 지난 변경 없음 안내를 지운다", async () => {
+  area();
+  await loaded();
+  fireEvent.submit(form());
+  await main().findByText("바뀐 것이 없어요");
+  current = { ...current, dailyCapacity: 8, revision: "synthetic-latest" };
+  fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
+  await waitFor(() => expect((screen.getByLabelText("하루 최대 개수") as HTMLInputElement).value).toBe("8"));
+  expect(main().queryByText("바뀐 것이 없어요")).toBeNull();
+});
 it("처음 정하는 중 다시 읽어도 미저장 초안은 남긴다", async () => {
   empty = true;
   area();
@@ -158,8 +185,24 @@ it("처음 정하는 동안 다른 기기가 저장하면 최신 값과 내 초�
   empty = false;
   fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
   await main().findByText("지금 하루 최대 개수: 5");
+  expect(main().queryByText("처음 정해요. 기본값을 확인하고 저장해 주세요")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "내 변경 다시 적용" }));
   expect((screen.getByLabelText("하루 최대 개수") as HTMLInputElement).value).toBe("4");
+});
+it("요일 충돌은 다른 기기의 화요일과 내 일요일을 함께 남긴다", async () => {
+  area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "일요일" }));
+  current = { ...current, closedWeekdays: [1, 2], revision: "synthetic-latest" };
+  saveProblem = { code: "version_conflict", status: 409 };
+  fireEvent.submit(form());
+  await main().findByText("지금 쉬는 요일: 월요일 · 화요일");
+  fireEvent.click(screen.getByRole("button", { name: "내 변경 다시 적용" }));
+  expect(screen.getByRole("button", { name: "화요일" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByRole("button", { name: "일요일" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.submit(form());
+  await main().findByText("저장했어요");
+  expect(writes[1]?.body.closedWeekdays).toEqual([1, 2, 7]);
 });
 it("범위/시각 오류는 입력을 보존하고 첫 오류로 초점을 옮긴다", async () => {
   area();
@@ -223,21 +266,7 @@ it.each(["closed_day_with_orders", "capacity_below_held"] as const)(
   },
 );
 it("저장 후 새 기준을 넘는 날짜/주문은10일씩 더 본다", async () => {
-  conflicts = Array.from({ length: 11 }, (_, index) => {
-    const day = `2026-12-${String(index + 1).padStart(2, "0")}`;
-    return {
-      ...conflictExample()[0],
-      day,
-      orders: [
-        {
-          ...conflictExample()[0].orders[0],
-          orderId: `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`,
-          orderNo: `SYN${String(index).padStart(3, "0")}`,
-          pickupAt: `${day}T15:00:00+09:00`,
-        },
-      ],
-    };
-  });
+  conflicts = conflictDays(11);
   area();
   await loaded();
   fireEvent.change(screen.getByLabelText("하루 최대 개수"), { target: { value: "4" } });
@@ -246,6 +275,7 @@ it("저장 후 새 기준을 넘는 날짜/주문은10일씩 더 본다", async 
   expect(main().queryByText("SYN010")).toBeNull();
   fireEvent.click(main().getByRole("button", { name: "더 보기" }));
   expect(main().getByText("SYN010")).toBeTruthy();
+  expect(main().getByRole("heading", { name: "2026년 12월 11일 관련 주문" })).toBeTruthy();
 });
 it("확인에서 돌아가면 서버와 주문은 그대로 두고 초안을 남긴다", async () => {
   confirmation = "capacity_below_held";
@@ -409,4 +439,21 @@ it("신고 보류 가게는 실제 경로에서 설정을 읽기 전에 영업 �
   );
   await screen.findByText("영업 신고 경로");
   expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("확인 창에서 마지막 더 보기 뒤 새 날짜로 초점을 옮긴다", async () => {
+  confirmation = "capacity_below_held";
+  conflicts = conflictDays(11);
+  area();
+  await loaded();
+  fireEvent.change(screen.getByLabelText("하루 최대 개수"), { target: { value: "4" } });
+  fireEvent.submit(form());
+  const dialog = await screen.findByRole("dialog"),
+    more = within(dialog).getByRole("button", { name: "더 보기" });
+  more.focus();
+  fireEvent.click(more);
+  const headings = within(dialog).getAllByRole("heading", { level: 3 });
+  expect(headings).toHaveLength(11);
+  expect(document.activeElement).toBe(headings[10]);
+  expect(dialog.contains(document.activeElement)).toBe(true);
 });

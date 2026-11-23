@@ -55,8 +55,8 @@ it.each([
   { field: "orderCutoffTime", value: "24:00", code: "bad_format" },
   { field: "replyStart", value: "9:00", code: "bad_format" },
   { field: "replyEnd", value: "09:00", code: "not_after_start" },
-  { field: "dayBeforeNoticeTime", value: "07:59", code: "out_of_range" },
-  { field: "reviewRequestTime", value: "20:51", code: "out_of_range" },
+  { field: "dayBeforeNoticeTime", value: "07:59", code: "outside_window" },
+  { field: "reviewRequestTime", value: "20:51", code: "outside_window" },
   { field: "closedWeekdays", value: [1, 1], code: "duplicate" },
   { field: "closedWeekdays", value: [0], code: "out_of_range" },
 ])("$field의 $value는 필드 옆 오류로 보존한다", ({ field, value, code }) => {
@@ -85,4 +85,24 @@ it("G3 재적용은 내 의미상 변경만 최신 필드 위에 옮긴다", () 
     closedWeekdays: [2],
   });
   expect(settingsPayload(latest, rebased).baseRevision).toBe("synthetic-latest");
+});
+it.each([
+  { before: [1], mine: [1, 7], latest: [1, 2], expected: [1, 2, 7] },
+  { before: [1, 7], mine: [7], latest: [1, 2, 7], expected: [2, 7] },
+  { before: [1], mine: [1, 7], latest: [], expected: [7] },
+])("G3는 다른 기기의 요일을 남기고 내 추가/제거만 적용한다 %#", (row) => {
+  const prior = { ...base, closedWeekdays: row.before },
+    latest = { ...base, closedWeekdays: row.latest };
+  expect(rebaseSettings(prior, { ...settingsForm(prior), closedWeekdays: row.mine }, latest).closedWeekdays).toEqual(
+    row.expected,
+  );
+});
+it("안내 창 밖과 요일 개수 초과는 서버와 같은 오류 코드를 쓴다", () => {
+  expect(settingsIssues({ ...settingsForm(base), dayBeforeNoticeTime: "07:30" })).toContainEqual({
+    field: "/dayBeforeNoticeTime",
+    code: "outside_window",
+  });
+  expect(settingsIssues({ ...settingsForm(base), closedWeekdays: [1, 2, 3, 4, 5, 6, 7, 1] })).toEqual([
+    { field: "/closedWeekdays", code: "too_many" },
+  ]);
 });
