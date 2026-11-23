@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 import { formatSeoulDate } from "./format-date";
 import { classify } from "./problems";
 import { fetchPublicPrivacy, type OverseasTransfer } from "./public-privacy-api";
-import { type ListColumn, ListView, LoadFailure, Skeleton, StateBox } from "./ui";
+import { announce, Button, type ListColumn, ListView, LoadFailure, Skeleton, StateBox } from "./ui";
 import { useVersionedRead } from "./useVersionedRead";
 import "./public-privacy.css";
 
@@ -37,10 +37,23 @@ export function PublicPrivacyScreen() {
   return <PrivacyDetails key={slug} slug={slug} />;
 }
 function PrivacyDetails({ slug }: { readonly slug: string }) {
-  const load = useVersionedRead((signal) => fetchPublicPrivacy(slug, signal), {});
+  const location = useLocation();
+  const pending = useRef(true);
+  const load = useVersionedRead(async (signal) => {
+    const response = await fetchPublicPrivacy(slug, signal);
+    if (!signal.aborted) pending.current = false;
+    return response;
+  }, {});
   const handled = useRef<unknown>(null),
     deadline = useRef<number | null>(null);
   const [cooldown, setCooldown] = useState<{ until: number; remaining: number } | null>(null);
+  const reload = useCallback(() => {
+    if (pending.current || (deadline.current !== null && deadline.current > performance.now())) return;
+    deadline.current = null;
+    setCooldown(null);
+    pending.current = true;
+    if (!load.read("stale")) pending.current = false;
+  }, [load.read]);
   useEffect(() => {
     if (!load.result || handled.current === load.result) return;
     handled.current = load.result;
@@ -50,7 +63,10 @@ function PrivacyDetails({ slug }: { readonly slug: string }) {
       const until = performance.now() + seconds * 1000;
       deadline.current = until;
       setCooldown({ until, remaining: seconds });
+      announce("잠시 뒤 다시 시도해 주세요. 안내한 시간이 지나면 자동으로 다시 불러와요");
     } else {
+      if (!response.ok && response.status === 404)
+        announce("찾을 수 없어요. 가게 주소를 다시 확인해 주세요", "assertive");
       deadline.current = null;
       setCooldown(null);
     }
@@ -63,9 +79,7 @@ function PrivacyDetails({ slug }: { readonly slug: string }) {
       if (deadline.current !== until) return;
       const milliseconds = until - performance.now();
       if (milliseconds <= 0) {
-        deadline.current = null;
-        setCooldown(null);
-        load.read("stale");
+        reload();
         return;
       }
       setCooldown({ until, remaining: Math.ceil(milliseconds / 1000) });
@@ -81,11 +95,7 @@ function PrivacyDetails({ slug }: { readonly slug: string }) {
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", wake);
     };
-  }, [cooldown?.until, load.read]);
-  const reload = useCallback(() => {
-    if (deadline.current !== null && deadline.current > performance.now()) return;
-    load.read("stale");
-  }, [load.read]);
+  }, [cooldown?.until, reload]);
   useEffect(() => {
     const restore = (event: PageTransitionEvent) => {
       if (event.persisted) reload();
@@ -96,18 +106,22 @@ function PrivacyDetails({ slug }: { readonly slug: string }) {
   const failure = load.failure;
   const response = load.result?.response;
   const policy = response?.ok ? response.data : null;
+  useEffect(() => {
+    if (!load.loading && policy && ["#privacy-body", "#privacy-transfers"].includes(location.hash))
+      jump(location.hash.slice(1));
+  }, [load.loading, policy, location.hash]);
   return (
     <main className="public-privacy">
       <h1>개인정보 처리방침</h1>
       {load.loading ? (
-        <Skeleton label="개인정보 처리방침을 불러오고 있어요" />
+        <PrivacyLoading />
       ) : failure?.status === 404 ? (
         <StateBox tone="error" title="찾을 수 없어요">
           가게 주소를 다시 확인해 주세요
         </StateBox>
       ) : failure?.status === 429 ? (
         <StateBox title="잠시 뒤 다시 시도해 주세요">
-          <span role="status">
+          <span aria-live="off">
             {cooldown?.remaining ?? failure.retryAfterSeconds ?? 60}초 뒤 자동으로 다시 불러와요
           </span>
         </StateBox>
@@ -126,10 +140,10 @@ function PrivacyDetails({ slug }: { readonly slug: string }) {
             </Link>
           </header>
           <nav aria-label="처리방침 목차">
-            <Link className="public-privacy-link" to="#privacy-body" onClick={() => jump("privacy-body")}>
+            <Link className="public-privacy-link" to="#privacy-body" replace>
               처리방침 본문
             </Link>
-            <Link className="public-privacy-link" to="#privacy-transfers" onClick={() => jump("privacy-transfers")}>
+            <Link className="public-privacy-link" to="#privacy-transfers" replace>
               국외 이전
             </Link>
           </nav>
@@ -157,5 +171,32 @@ function PrivacyDetails({ slug }: { readonly slug: string }) {
         </>
       ) : null}
     </main>
+  );
+}
+
+function PrivacyLoading() {
+  return (
+    <>
+      <header>
+        <Skeleton label="가게 이름과 게시 정보를 불러오고 있어요" rows={2} />
+        <Button disabled kind="secondary">
+          예약 링크 페이지로
+        </Button>
+      </header>
+      <nav aria-label="처리방침 목차">
+        <Button disabled kind="secondary">
+          처리방침 본문
+        </Button>
+        <Button disabled kind="secondary">
+          국외 이전
+        </Button>
+      </nav>
+      <section aria-label="처리방침 본문을 불러오는 자리">
+        <Skeleton label="개인정보 처리방침을 불러오고 있어요" rows={8} />
+      </section>
+      <section aria-label="국외 이전을 불러오는 자리">
+        <Skeleton rows={5} />
+      </section>
+    </>
   );
 }

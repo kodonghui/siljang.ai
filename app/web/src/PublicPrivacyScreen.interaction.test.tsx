@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { App } from "./App";
@@ -53,6 +53,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  for (const node of document.querySelectorAll("[data-announcer]")) node.remove();
 });
 
 it("로그인 없이 공개 처리방침과 게시 버전·서울 날짜를 읽는다", async () => {
@@ -71,6 +72,9 @@ it("아직 읽는 동안 본문을 꾸며 내지 않고 요청을 취소한다",
   const view = mount();
   await screen.findByText("개인정보 처리방침을 불러오고 있어요");
   expect(main().queryByText(value.shopName)).toBeNull();
+  expect(main().getByRole("navigation", { name: "처리방침 목차" })).toBeTruthy();
+  for (const label of ["예약 링크 페이지로", "처리방침 본문", "국외 이전"])
+    expect((main().getByRole("button", { name: label }) as HTMLButtonElement).disabled).toBe(true);
   view.unmount();
   expect(calls[0]?.init.signal?.aborted).toBe(true);
 });
@@ -123,6 +127,9 @@ it("404는 주소 재확인만 안내하고 없는 목록으로 보내지 않는
   mount();
   await main().findByText("찾을 수 없어요");
   expect(main().getByText("가게 주소를 다시 확인해 주세요")).toBeTruthy();
+  expect(document.querySelector('[data-announcer="assertive"]')?.textContent).toContain(
+    "가게 주소를 다시 확인해 주세요",
+  );
   expect(main().queryByRole("link")).toBeNull();
 });
 it("틀린 slug는 API를 요청하지 않고 같은404 안내를 보인다", async () => {
@@ -175,6 +182,80 @@ it("429는 컴퓨터 시각이 바뀌어도 Retry-After만큼 기다린 뒤 한 
   });
   expect(main().getByRole("region", { name: "처리방침 본문" })).toBeTruthy();
   expect(calls).toHaveLength(2);
+});
+it.each(["pageshow-first", "visibility-first"])(
+  "429 기한 뒤 복원 두 이벤트가 겹쳐도 한 번만 읽는다 %s",
+  async (order) => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    let now = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    result = async () => json(problem("rate_limited"), 429, 30);
+    mount();
+    await act(async () => {});
+    expect(calls).toHaveLength(1);
+    now = 40000;
+    result = async () => json(value);
+    const restore = new Event("pageshow");
+    Object.defineProperty(restore, "persisted", { value: true });
+    const visibility = new Event("visibilitychange");
+    await act(async () => {
+      if (order === "pageshow-first") {
+        window.dispatchEvent(restore);
+        document.dispatchEvent(visibility);
+      } else {
+        document.dispatchEvent(visibility);
+        window.dispatchEvent(restore);
+      }
+    });
+    expect(calls).toHaveLength(2);
+  },
+);
+it("429는 시작 안내를 한 번 알리고 매초 남은 시간을 읽어 주지 않는다", async () => {
+  vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout", "performance"] });
+  result = async () => json(problem("rate_limited"), 429);
+  mount();
+  await act(async () => {});
+  const region = document.querySelector('[data-announcer="polite"]');
+  expect(region?.textContent).toContain("잠시 뒤 다시 시도해 주세요");
+  const line = region?.firstElementChild;
+  expect(main().queryByRole("status")).toBeNull();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(main().getByText("1초 뒤 자동으로 다시 불러와요")).toBeTruthy();
+  expect(region?.firstElementChild).toBe(line);
+});
+it("국외 이전 해시로 처음 열어도 본문을 받은 뒤 그 제목으로 이동한다", async () => {
+  mount(`${path}#privacy-transfers`);
+  await loaded();
+  await act(async () => {});
+  expect(document.activeElement).toBe(main().getByRole("heading", { name: "국외 이전" }));
+});
+function BackProbe() {
+  const navigate = useNavigate(),
+    location = useLocation();
+  return (
+    <>
+      <button type="button" onClick={() => navigate(-1)}>
+        시험 뒤로
+      </button>
+      <output aria-label="시험 경로">{location.pathname}</output>
+    </>
+  );
+}
+it("목차 이동 뒤 뒤로 가기는 목차 전 주소를 쌓지 않고 앞 페이지로 간다", async () => {
+  render(
+    <MemoryRouter initialEntries={["/previous", path]}>
+      <App />
+      <BackProbe />
+    </MemoryRouter>,
+  );
+  await loaded();
+  fireEvent.click(
+    within(screen.getByRole("navigation", { name: "처리방침 목차" })).getByRole("link", { name: "국외 이전" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "시험 뒤로" }));
+  expect(screen.getByLabelText("시험 경로").textContent).toBe("/previous");
 });
 it("429 화면을 닫으면 남은 자동 재시도를 취소한다", async () => {
   vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout", "performance"] });
