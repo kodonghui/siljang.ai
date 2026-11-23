@@ -28,6 +28,10 @@ class NativeDriver(unittest.TestCase):
             trial.mkdir()
             (trial / 'eval.mjs').write_bytes(bundle)
             source = DRIVER.replace("-ne 'v22.23.4'", "-ne 'v0.0.0'") if version_mismatch else DRIVER
+            source = source.replace("if(!$siljangOwned){throw 'invalid_native_folder'}", """if(!$siljangOwned){
+              @{event='test_native_path';leaf=(Split-Path -Leaf $siljangFolder);parent=(Split-Path -Parent $siljangFolder);temp=$env:TEMP}|ConvertTo-Json -Compress
+              throw 'invalid_native_folder'
+            }""")
             (trial / 'driver.ps1').write_text(source, encoding='utf-8-sig')
             appdata = root / 'appdata'
             if not node_missing:

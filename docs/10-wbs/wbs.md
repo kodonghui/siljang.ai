@@ -2,7 +2,7 @@
 
 <!-- build_wbs.py가 research/cake-wbs-2026-11/wbs_rows.py에서 생성. 손으로 고치지 않음 -->
 
-작업 183개 · 크기 합 247.5일 · 반복 10개 · 동희님 17개 · Claude 166개 · SPEC 79개 · 수락 기준 328개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 32개.
+작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 32개.
 
 읽는 법과 나눈 방식은 [README](README.md)에 있습니다. '닿는 것'은 만드는 API, 쓰고 읽는 테이블, 만드는 화면입니다. '끝난 조건'의 첫 줄은 손으로 쓴 조건이고, 수락 기준·응답 코드·스킬 결과·화면 상태·응답 행·규칙 줄은 원본에서 생성합니다. 화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다. 끝난 작업은 끝난 조건 맨 앞에 '끝남'과 끝난 날·증거가 붙습니다.
 
@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 0 | 개발 전 확인 | 17 | 13.5 | 12 | 5 |
 | 1 | 뼈대 | 22 | 31 | 0 | 22 |
-| 2 | 가게 준비 | 31 | 43 | 0 | 31 |
+| 2 | 가게 준비 | 32 | 44 | 0 | 32 |
 | 3 | AI 상담과 주문 요청 | 28 | 44.5 | 0 | 28 |
 | 4 | 결제와 주문 확정 | 25 | 35.5 | 0 | 25 |
 | 5 | 변경·취소·환불 | 16 | 22 | 0 | 16 |
@@ -111,6 +111,7 @@
 | TASK-060 | SCR-049 운영자 알림 화면 | SPEC-008, SPEC-010, SPEC-017 | SCR-049 | TASK-182, TASK-035 | Claude | 0.5일 | SCR-049 상태 6개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 3개(normal·empty·error)와 그리지 않은 3개(loading·permission·stale)는 08 와이어프레임과 09 토큰으로, 08 응답 행 5개마다 정한 상태로 보임 |
 | TASK-061 | SCR-001 예약 링크 페이지 화면 | SPEC-011, SPEC-014, SPEC-063 | SCR-001 | TASK-029, TASK-045 | Claude | 2일 | SCR-001 상태 6개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 3개(normal·empty·error)와 그리지 않은 3개(loading·rate-limited·stale)는 08 와이어프레임과 09 토큰으로, 08 응답 행 5개마다 정한 상태로 보임 |
 | TASK-062 | SCR-002 가게 개인정보 처리방침 화면 | SPEC-010, SPEC-011, SPEC-018 | SCR-002 | TASK-029, TASK-044 | Claude | 0.5일 | SCR-002 상태 4개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 2개(normal·error)와 그리지 않은 2개(loading·rate-limited)는 08 와이어프레임과 09 토큰으로, 08 응답 행 4개마다 정한 상태로 보임 |
+| TASK-184 | 개인정보 처리방침 재발행(지금 만들면 나올 글이 최신 버전과 다르면 새 버전) | SPEC-010, A39 | TBL-003, TBL-004, TBL-005, TBL-006, TBL-010, TBL-013, TBL-015, TBL-051 | TASK-044, TASK-037 | Claude | 1일 | 지금 만들면 나올 처리방침 글과 국외 이전 다섯 항목을 최신 버전과 견주는 함수 하나를 두고, 다르면 새 버전을 만듦(값 목록이 아니라 글 비교라 전자우편주소나 고정 문장이 바뀌어도 잡음). 가게 정보 바꾸기(TASK-037, API-010)는 저장할 때 이 함수를 부르고, 모델 회사·서버 회사 설정이나 고정 문장이 바뀐 배포 뒤에는 처리방침 주소(API-039)와 AI 상담 고지가 새 값이 든 버전을 쓰게 함. 방법(쓰기 전에 가게 잠금 안에서 견주기, 배포 단계 일괄 재발행 등)은 고른 것과 이유를 app/README에 적음. 이전 버전과 상담에 남은 고지 버전(05 A39)은 고치지 않음(04 SPEC-010, 개인정보 보호법 제30조②)<br/>SPEC-010 수락 기준 #5~#9: 자동 시험 통과<br/>05 앱 규칙(A39)을 지키는지 보는 서버 시험 |
 
 ## 반복 3. AI 상담과 주문 요청
 
@@ -257,9 +258,9 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TASK-164 | 스테이징 부하 시험: 동시 상담 20개에서 스킬 응답 P99 4초 | REQ-130, SPEC-017 | TBL-003, TBL-004, TBL-016, TBL-017, TBL-018, TBL-027, TBL-048, TBL-051 | TASK-016, TASK-069, TASK-063 | Claude | 1일 | SPEC-017 수락 기준 #5: 자동 시험 통과 |
 | TASK-165 | 하루 한 번 백업과 복구 시험 | REQ-149 | 없음 | TASK-016, TASK-175 | Claude | 1일 | 주문·동의·결제 기록의 백업이 하루 한 번 남고, 복구 시험 한 번의 결과(걸린 시간·잃은 기록 0)를 기록에 남김. 추천안으로 가면 Pro로 올린 운영 프로젝트(TASK-175)의 백업을 새 프로젝트로 복구해 봄. 스택을 다르게 고르면 TASK-175 대신 그 스택의 백업 작업을 기다림 |
 | TASK-166 | 출시 전 보안 점검: 비밀 값·암호화·가게 나누기·접속기록 | REQ-134, REQ-135 | 없음 | TASK-019, TASK-025, TASK-024, TASK-159 | Claude | 1일 | 점검표(키가 저장소·로그·대화 기록에 없음, 교차 가게 시험, 암호화, 접속기록)의 항목마다 결과를 남기고 고칠 것은 작업으로 올림. 앞 키 버전의 봉투를 지금 버전으로 다시 감싸는 도구(값은 그대로, masked_values.value_hmac도 지금 버전으로 다시 셈, 앞 봉투가 그대로일 때만 씀)를 두고 앱 README 33의 키 바꾸기 차례를 스테이징에서 한 번 해 봄(2026-11-16 TASK-025에서 옮김). 접속기록의 점검 주기와 방법(누가 얼마마다 무엇을 보는지)을 내부 관리계획 초안에 적고 동희님 확인을 받음(「개인정보의 안전성 확보조치 기준」 제8조②, 05 A24, 2026-11-16 TASK-024에서 옮김). Supabase Auth 한도와 검증 시도 훅 설정 확인: 운영 프로젝트의 Authentication > Rate Limits에서 토큰 요청(/auth/v1/token) 한도를 낮출지 보고 결과를 남기고, MFA·비밀번호 검증 시도 훅(Teams·Enterprise 요금제)을 쓸지는 동희님 확인 결과대로 함. 스테이징 Worker를 거친 운영자 로그인 한 번(앱 README 85·88, 2026-11-19 TASK-021 독립 보안 검토 후속에서 더함) |
-| TASK-167 | 운영 계정과 키 만들기: 우리 서비스 채널(사장님 알림), 디벨로퍼스 운영 앱, AI 회사·구글 운영 키 | DEC-21, DEC-20, DEC-30, REQ-267 | 없음 | TASK-002 | 동희님 | 1일 | 휴대폰(Android Chrome·iOS Safari)에서 PWA를 홈 화면에 추가하고 설치 아이콘으로 다시 열어 주소창 없이 열리는 화면 사진을 기기·브라우저 버전과 함께 남김(TASK-176에서 이관). 임시 케이크 설치 아이콘을 출시 전에 확인함. 출시 검토에서 K-10의 카카오 Event API 발신 권한과 실제 발신을 확인하고 스킬 요청 형식을 기록함. 휴대폰 카카오톡에서 K-07·K-08의 보안 이미지 플러그인 사진 단계를 해 보고 보안 이미지 값의 모양과 받기 결과를 기록함. 운영 키는 배포 환경의 비밀 저장소에만 두고, 만든 것 목록과 날짜를 기록에 남김(키 값은 적지 않음). 계좌번호 암호화 키(FIELD_KEY_CURRENT·FIELD_KEY_V1, 앱 README 32)는 운영 Worker의 비밀 값으로 넣고 사본을 저장소 밖 비밀 저장소에 둠(키를 잃으면 계좌번호를 되살릴 수 없음, 05 E20) |
+| TASK-167 | 운영 계정과 키 만들기: 우리 서비스 채널(사장님 알림), 디벨로퍼스 운영 앱, AI 회사·구글 운영 키 | DEC-21, DEC-20, DEC-30, REQ-267 | 없음 | TASK-002, TASK-184 | 동희님 | 1일 | 휴대폰(Android Chrome·iOS Safari)에서 PWA를 홈 화면에 추가하고 설치 아이콘으로 다시 열어 주소창 없이 열리는 화면 사진을 기기·브라우저 버전과 함께 남김(TASK-176에서 이관). 임시 케이크 설치 아이콘을 출시 전에 확인함. 출시 검토에서 K-10의 카카오 Event API 발신 권한과 실제 발신을 확인하고 스킬 요청 형식을 기록함. 휴대폰 카카오톡에서 K-07·K-08의 보안 이미지 플러그인 사진 단계를 해 보고 보안 이미지 값의 모양과 받기 결과를 기록함. 운영 키는 배포 환경의 비밀 저장소에만 두고, 만든 것 목록과 날짜를 기록에 남김(키 값은 적지 않음). 계좌번호 암호화 키(FIELD_KEY_CURRENT·FIELD_KEY_V1, 앱 README 32)는 운영 Worker의 비밀 값으로 넣고 사본을 저장소 밖 비밀 저장소에 둠(키를 잃으면 계좌번호를 되살릴 수 없음, 05 E20) |
 | TASK-168 | 운영 배포와 되돌리기 절차 | REQ-148 | 없음 | TASK-167, TASK-165, TASK-164, TASK-163, TASK-166 | Claude | 1일 | 운영 주소에서 스모크 시험이 지나고 되돌리기를 한 번 해 봄 |
-| TASK-169 | 12단계 시험 계획(TC ID)과 브라우저 에이전트가 걸을 플로우 | FL-001, FL-002, FL-003, FL-004, FL-005, FL-006, FL-007, FL-008, FL-009, FL-010, FL-011, FL-012, FL-013, FL-014 | 없음 | TASK-168 | Claude | 2일 | 플로우 14개와 수락 기준 328개에서 TC를 만들고, 브라우저 에이전트가 걸을 플로우와 보는 곳을 12단계 문서 초안에 둠 |
+| TASK-169 | 12단계 시험 계획(TC ID)과 브라우저 에이전트가 걸을 플로우 | FL-001, FL-002, FL-003, FL-004, FL-005, FL-006, FL-007, FL-008, FL-009, FL-010, FL-011, FL-012, FL-013, FL-014 | 없음 | TASK-168 | Claude | 2일 | 플로우 14개와 수락 기준 333개에서 TC를 만들고, 브라우저 에이전트가 걸을 플로우와 보는 곳을 12단계 문서 초안에 둠 |
 | TASK-175 | 운영 Supabase 프로젝트를 Pro로 올리기(매일 백업 7일, 추천안 기준) | REQ-149 | 없음 | TASK-170 | 동희님 | 0.5일 | 운영 프로젝트(서울)가 Pro이고 대시보드의 백업 목록에 매일 백업이 보이는 화면 사진을 기록에 남김. 복구 시험(TASK-165)은 이 프로젝트를 새 프로젝트로 복구해 봄(유료 플랜과 물리 백업이 있어야 됨) |
 
 ## 반복 9. 스토어 앱
@@ -287,7 +288,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | SPEC-007 | 영업 캘린더 정하기와 바꾸기 | 4 | TASK-041(#1~#4), TASK-056, TASK-057 |
 | SPEC-008 | 가게 카카오톡 채널 연결 | 6 | TASK-035, TASK-042(#5~#6), TASK-043(#1~#4), TASK-054, TASK-060, TASK-085 |
 | SPEC-009 | 고를 기능 켜기(장부 연결, 완성 사진 보내기) | 2 | TASK-047, TASK-156(#1~#2), TASK-160 |
-| SPEC-010 | 예약 링크 발급과 개인정보 처리방침 만들기 | 4 | TASK-035, TASK-044(#1~#4), TASK-055, TASK-060, TASK-062 |
+| SPEC-010 | 예약 링크 발급과 개인정보 처리방침 만들기 | 9 | TASK-035, TASK-044(#1~#4), TASK-055, TASK-060, TASK-062, TASK-184(#5~#9) |
 | SPEC-011 | 예약 링크 페이지 보이기와 문의 열기 | 5 | TASK-045(#1~#5), TASK-061, TASK-062 |
 | SPEC-012 | 그날 주문 마감 누르기 | 1 | TASK-041(#1), TASK-056 |
 | SPEC-013 | 견적 계산(가게 규칙) | 6 | TASK-050, TASK-067(#1~#6), TASK-085, TASK-091 |
@@ -507,19 +508,19 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | --- | --- | --- |
 | TBL-001 | `owners` | TASK-017, TASK-020, TASK-021, TASK-072 |
 | TBL-002 | `operators` | TASK-017, TASK-020, TASK-021, TASK-033, TASK-034, TASK-036 |
-| TBL-003 | `shops` | TASK-017, TASK-019, TASK-020, TASK-021, TASK-022, TASK-028, TASK-032, TASK-033, TASK-034, TASK-035, TASK-036, TASK-037, TASK-040, TASK-044, TASK-045, TASK-063, TASK-075, TASK-076, TASK-083, TASK-084, TASK-091, TASK-097, TASK-134, TASK-135, TASK-156, TASK-159, TASK-164 |
-| TBL-004 | `kakao_channels` | TASK-017, TASK-019, TASK-028, TASK-035, TASK-042, TASK-043, TASK-044, TASK-045, TASK-063, TASK-079, TASK-091, TASK-104, TASK-164 |
-| TBL-005 | `privacy_policies` | TASK-017, TASK-035, TASK-044, TASK-045, TASK-064 |
-| TBL-006 | `price_lists` | TASK-017, TASK-022, TASK-035, TASK-038, TASK-044, TASK-045, TASK-067, TASK-071, TASK-091 |
+| TBL-003 | `shops` | TASK-017, TASK-019, TASK-020, TASK-021, TASK-022, TASK-028, TASK-032, TASK-033, TASK-034, TASK-035, TASK-036, TASK-037, TASK-040, TASK-044, TASK-045, TASK-063, TASK-075, TASK-076, TASK-083, TASK-084, TASK-091, TASK-097, TASK-134, TASK-135, TASK-156, TASK-159, TASK-164, TASK-184 |
+| TBL-004 | `kakao_channels` | TASK-017, TASK-019, TASK-028, TASK-035, TASK-042, TASK-043, TASK-044, TASK-045, TASK-063, TASK-079, TASK-091, TASK-104, TASK-164, TASK-184 |
+| TBL-005 | `privacy_policies` | TASK-017, TASK-035, TASK-044, TASK-045, TASK-064, TASK-184 |
+| TBL-006 | `price_lists` | TASK-017, TASK-022, TASK-035, TASK-038, TASK-044, TASK-045, TASK-067, TASK-071, TASK-091, TASK-184 |
 | TBL-007 | `price_options` | TASK-017, TASK-022, TASK-038, TASK-045, TASK-067, TASK-091 |
 | TBL-008 | `price_option_rules` | TASK-017, TASK-022, TASK-038, TASK-067, TASK-091 |
 | TBL-009 | `designs` | TASK-017, TASK-022, TASK-038, TASK-045, TASK-067, TASK-091 |
-| TBL-010 | `operating_rules` | TASK-017, TASK-035, TASK-039, TASK-044, TASK-067, TASK-083, TASK-091, TASK-093, TASK-105, TASK-116, TASK-117, TASK-118, TASK-121, TASK-140, TASK-143 |
+| TBL-010 | `operating_rules` | TASK-017, TASK-035, TASK-039, TASK-044, TASK-067, TASK-083, TASK-091, TASK-093, TASK-105, TASK-116, TASK-117, TASK-118, TASK-121, TASK-140, TASK-143, TASK-184 |
 | TBL-011 | `rule_clauses` | TASK-017, TASK-039, TASK-070, TASK-078, TASK-116, TASK-121, TASK-122, TASK-123, TASK-124 |
 | TBL-012 | `refund_tiers` | TASK-017, TASK-039, TASK-105, TASK-121 |
-| TBL-013 | `business_calendars` | TASK-017, TASK-035, TASK-041, TASK-044, TASK-045, TASK-068, TASK-075, TASK-134, TASK-144 |
+| TBL-013 | `business_calendars` | TASK-017, TASK-035, TASK-041, TASK-044, TASK-045, TASK-068, TASK-075, TASK-134, TASK-144, TASK-184 |
 | TBL-014 | `calendar_days` | TASK-017, TASK-041, TASK-045, TASK-068, TASK-082 |
-| TBL-015 | `payment_accounts` | TASK-017, TASK-025, TASK-033, TASK-034, TASK-035, TASK-036, TASK-040, TASK-044, TASK-093 |
+| TBL-015 | `payment_accounts` | TASK-017, TASK-025, TASK-033, TASK-034, TASK-035, TASK-036, TASK-040, TASK-044, TASK-093, TASK-184 |
 | TBL-016 | `customers` | TASK-017, TASK-019, TASK-028, TASK-035, TASK-063, TASK-073, TASK-077, TASK-081, TASK-083, TASK-091, TASK-104, TASK-105, TASK-158, TASK-164 |
 | TBL-017 | `consultations` | TASK-017, TASK-019, TASK-028, TASK-035, TASK-063, TASK-064, TASK-073, TASK-074, TASK-076, TASK-077, TASK-083, TASK-091, TASK-158, TASK-159, TASK-164 |
 | TBL-018 | `messages` | TASK-017, TASK-028, TASK-035, TASK-063, TASK-064, TASK-065, TASK-066, TASK-069, TASK-073, TASK-077, TASK-104, TASK-158, TASK-159, TASK-164 |
@@ -555,7 +556,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TBL-048 | `ai_calls` | TASK-017, TASK-019, TASK-026, TASK-028, TASK-035, TASK-037, TASK-063, TASK-066, TASK-069, TASK-077, TASK-091, TASK-164 |
 | TBL-049 | `ai_tool_calls` | TASK-017, TASK-066, TASK-067, TASK-068, TASK-069, TASK-070, TASK-077, TASK-091, TASK-105, TASK-158 |
 | TBL-050 | `request_keys` | TASK-017, TASK-018, TASK-022, TASK-032, TASK-033, TASK-034, TASK-036, TASK-037, TASK-038, TASK-039, TASK-041, TASK-077, TASK-091, TASK-092, TASK-095, TASK-099, TASK-100, TASK-101, TASK-102, TASK-117, TASK-123, TASK-124, TASK-133, TASK-136, TASK-141, TASK-143, TASK-158 |
-| TBL-051 | `ops_events` | TASK-017, TASK-018, TASK-023, TASK-028, TASK-035, TASK-042, TASK-043, TASK-044, TASK-063, TASK-077, TASK-083, TASK-158, TASK-164 |
+| TBL-051 | `ops_events` | TASK-017, TASK-018, TASK-023, TASK-028, TASK-035, TASK-042, TASK-043, TASK-044, TASK-063, TASK-077, TASK-083, TASK-158, TASK-164, TASK-184 |
 | TBL-052 | `kept_records` | TASK-017, TASK-077, TASK-158, TASK-159 |
 | TBL-053 | `access_logs` | TASK-017, TASK-024, TASK-077, TASK-158, TASK-159 |
 | TBL-054 | `file_deletions` | TASK-017, TASK-022, TASK-033, TASK-034, TASK-077, TASK-158 |
@@ -609,7 +610,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | A36 | 05 앱 규칙: 스킬 키와 연결 문구, '연결 확인 중' 선점 | TASK-042 |
 | A37 | 05 앱 규칙: 사업자 정보 변경 요청의 반영과 가게가 정하는 값을 쓰는 때 | TASK-036 |
 | A38 | 05 앱 규칙: 문제 종류와 보상 없음의 사유, 그 밖의 보상, 에스컬레이션 건에서 남기는 문제 신고 | TASK-140, TASK-141 |
-| A39 | 05 앱 규칙: 상담 고지 때의 처리방침 버전 | TASK-044, TASK-064 |
+| A39 | 05 앱 규칙: 상담 고지 때의 처리방침 버전 | TASK-044, TASK-064, TASK-184 |
 | A40 | 05 앱 규칙: 결제 기다림 주문 한도 | TASK-083 |
 | G1 | 04 공통 규칙 | TASK-019 |
 | G2 | 04 공통 규칙 | TASK-018 |

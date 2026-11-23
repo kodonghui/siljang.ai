@@ -26,13 +26,15 @@ transport_env = {key: value for key, value in os.environ.items()
 ps = r'''
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
-$siljangFolder=$PSScriptRoot
+$siljangFolder=[IO.Path]::GetFullPath($PSScriptRoot)
 $siljangOwned=$false
 $siljangExit=2
 $siljangApiKey=$null
 try {
   $siljangOwned=(Split-Path -Leaf $siljangFolder) -match '^siljang-native-eval-[a-f0-9]{32}$'
-  $siljangOwned=$siljangOwned -and ((Split-Path -Parent $siljangFolder).TrimEnd('\') -eq $env:TEMP.TrimEnd('\'))
+  $siljangParent=[IO.Path]::GetFullPath((Split-Path -Parent $siljangFolder)).TrimEnd('\','/')
+  $siljangTemp=[IO.Path]::GetFullPath($env:TEMP).TrimEnd('\','/')
+  $siljangOwned=$siljangOwned -and ($siljangParent -eq $siljangTemp)
   if(!$siljangOwned){throw 'invalid_native_folder'}
   $siljangInput=[Console]::In.ReadLine() | ConvertFrom-Json
   $siljangNode=Join-Path $env:LOCALAPPDATA 'siljang-tools\node-v22.23.4-win-x64\node.exe'
