@@ -21,6 +21,7 @@ let holdRead: Promise<Response> | null, holdSend: Promise<Response> | null;
 let expiredPhoto: boolean;
 let latestOnFailure: Record<string, unknown> | null;
 let identityUnchanged: boolean;
+let holdUpload: Promise<Response> | null;
 beforeEach(() => {
   current = fixture();
   reads = uploads = 0;
@@ -30,6 +31,7 @@ beforeEach(() => {
   expiredPhoto = false;
   latestOnFailure = null;
   identityUnchanged = false;
+  holdUpload = null;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -45,6 +47,7 @@ beforeEach(() => {
         });
       if (path === "/api/owner/uploads") {
         uploads++;
+        if (holdUpload) return holdUpload;
         if (uploadError) return json({ code: uploadError[1], traceId }, uploadError[0]);
         return json(
           {
@@ -500,4 +503,108 @@ it("반영된 사업자 정보는 현재 값과 반영 상태로 표시", async 
   area();
   await within(screen.getByRole("main")).findByText("변경 반영됨");
   expect(within(screen.getByRole("region", { name: "사업자 정보" })).getByText("합성 반영된 가게")).toBeTruthy();
+});
+
+it("세션 실패 뒤 남은 저장 재시도는 요청을 보내지 않음", async () => {
+  const a = await prepared("license");
+  sendError = [500, "internal"];
+  a.submit();
+  const retry = await screen.findByRole("button", { name: "다시 시도" });
+  a.rerender(
+    <ShopLicense
+      shopName="합성 가게"
+      onNavigate={a.navigate}
+      onSessionExpired={a.login}
+      onRegisterShop={a.register}
+      onLogout={a.logout}
+      sessionFailed
+    />,
+  );
+  expect((retry as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(retry);
+  expect(requests).toHaveLength(1);
+});
+it("다른 증빙 사진을 올리는 동안 남은 신고 재시도는 잠금", async () => {
+  const a = await prepared("license");
+  fireEvent.click(screen.getByRole("button", { name: "변경 요청" }));
+  sendError = [500, "internal"];
+  a.submit();
+  const retry = await screen.findByRole("button", { name: "다시 시도" });
+  holdUpload = new Promise(() => {});
+  fireEvent.change(screen.getByLabelText("증빙 사진"), {
+    target: { files: [new File(["synthetic"], "evidence.png", { type: "image/png" })] },
+  });
+  expect((retry as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(retry);
+  expect(requests).toHaveLength(1);
+});
+it("사업자 변경 충돌은 신고 양식의 아직 저장하지 않은 입력을 보존", async () => {
+  await prepared("license");
+  fireEvent.change(screen.getByLabelText("영업 신고 번호"), { target: { value: "내 미저장 신고 번호" } });
+  fireEvent.click(screen.getByRole("button", { name: "변경 요청" }));
+  await photo("증빙 사진");
+  latestOnFailure = { ...fixture("on_hold"), foodLicenseNo: "서버 최신 신고 번호", revision: "latest-review-048" };
+  sendError = [409, "version_conflict"];
+  fireEvent.submit(screen.getByRole("form", { name: "사업자 정보 변경 요청" }));
+  await within(screen.getByRole("main")).findByText("서버 최신 신고 번호");
+  expect((screen.getByLabelText("영업 신고 번호") as HTMLInputElement).value).toBe("내 미저장 신고 번호");
+});
+it("신고 충돌은 열린 사업자 변경 양식과 이미 올린 증빙을 보존", async () => {
+  const a = await prepared("license");
+  fireEvent.click(screen.getByRole("button", { name: "변경 요청" }));
+  fireEvent.change(screen.getByLabelText("새 상호"), { target: { value: "내 미저장 사업자 상호" } });
+  await photo("증빙 사진");
+  latestOnFailure = { ...fixture(), foodLicenseNo: "서버 확인 번호", revision: "latest-review-048" };
+  sendError = [409, "version_conflict"];
+  a.submit();
+  await within(screen.getByRole("main")).findByText("서버 확인 번호");
+  expect((screen.getByLabelText("새 상호") as HTMLInputElement).value).toBe("내 미저장 사업자 상호");
+  expect(
+    within(screen.getByRole("form", { name: "사업자 정보 변경 요청" })).getByText(
+      "사진을 올렸어요. 1시간 안에 저장해 주세요",
+    ),
+  ).toBeTruthy();
+});
+it("충돌 재조회 실패는 예전 양식을 잠그며 세션 실패 때 재조회도 막음", async () => {
+  const a = await prepared("license");
+  sendError = [409, "version_conflict"];
+  getError = [500, "internal"];
+  a.submit();
+  const retry = await screen.findByRole("button", { name: "다시 시도" });
+  await waitFor(() => expect(reads).toBe(2));
+  expect((screen.getByLabelText("영업 신고 번호") as HTMLInputElement).disabled).toBe(true);
+  fireEvent.submit(screen.getByRole("form", { name: "영업 신고 재제출" }));
+  expect(requests).toHaveLength(1);
+  const common = {
+    shopName: "합성 가게",
+    onNavigate: a.navigate,
+    onSessionExpired: a.login,
+    onRegisterShop: a.register,
+    onLogout: a.logout,
+  };
+  a.rerender(<ShopLicense {...common} sessionFailed />);
+  expect((retry as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(retry);
+  expect(reads).toBe(2);
+  a.rerender(<ShopLicense {...common} />);
+  getError = null;
+  fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+  await waitFor(() => expect((screen.getByLabelText("영업 신고 번호") as HTMLInputElement).disabled).toBe(false));
+  expect(reads).toBe(3);
+});
+it("사진 누락 안내 뒤 다시 올리기에 성공하면 누락 안내를 지움", async () => {
+  current = fixture("on_hold");
+  uploadError = [500, "internal"];
+  area();
+  await within(screen.getByRole("main")).findByText("보류");
+  fireEvent.change(screen.getByLabelText("새 신고증 사진"), {
+    target: { files: [new File(["synthetic"], "synthetic.png", { type: "image/png" })] },
+  });
+  await within(screen.getByRole("main")).findByText(ERROR_CODES.internal.message);
+  fireEvent.submit(screen.getByRole("form", { name: "영업 신고 재제출" }));
+  await within(screen.getByRole("main")).findByText("사진을 먼저 올려 주세요");
+  uploadError = null;
+  fireEvent.click(screen.getByRole("button", { name: "다시 올리기" }));
+  await within(screen.getByRole("main")).findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
+  await waitFor(() => expect(within(screen.getByRole("main")).queryByText("사진을 먼저 올려 주세요")).toBeNull());
 });

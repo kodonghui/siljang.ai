@@ -183,6 +183,9 @@ export function OwnerArea() {
       <h1>수제케이크 주문제작</h1>
       {registrationNotice ? <p role="status">가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요</p> : null}
       <p>준비 중입니다.</p>
+      {shopPath === "/owner/payment-destination" ? (
+        <Button onClick={() => navigate("/owner/shop/license")}>영업 신고로 돌아가기</Button>
+      ) : null}
       {logout === "failed" ? <p role="alert">로그아웃하지 못했어요. 다시 시도해 주세요</p> : null}
       <Button onClick={() => void logOut()}>로그아웃</Button>
     </main>

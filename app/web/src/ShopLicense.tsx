@@ -38,6 +38,7 @@ export interface ShopLicenseProps {
 }
 const LICENSE_FIELDS = ["/foodLicenseNo", "/foodBusinessType", "/licensePhotoUploadId"];
 const IDENTITY_FIELDS = ["/businessName", "/representativeName", "/businessRegNo", "/evidencePhotoUploadId"];
+type ReloadTarget = "all" | "license" | "identity";
 const NETWORK: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
 const BUSINESS_TYPES = [
   ["instant_sale_manufacturing", "즉석판매제조·가공업"],
@@ -73,6 +74,7 @@ export function ShopLicense(props: ShopLicenseProps) {
   const license = useCommand<Record<string, unknown>, LicenseResult>((body, key) => resubmitLicense(body, key));
   const identity = useCommand<Record<string, unknown>, IdentityResult>((body, key) => requestIdentityChange(body, key));
   const activeLoad = useRef<AbortController | null>(null);
+  const reloadTarget = useRef<ReloadTarget>("all");
   const licenseForm = useRef<HTMLFormElement>(null),
     identityForm = useRef<HTMLFormElement>(null);
   const handledLicense = useRef<LicenseResult | null>(null),
@@ -89,9 +91,11 @@ export function ShopLicense(props: ShopLicenseProps) {
     licensePhoto.upload.busy ||
     evidencePhoto.upload.busy ||
     Boolean(props.logoutPending || props.sessionChecking);
-  const busy = actionPending || Boolean(props.sessionFailed);
+  const requestsBlocked = actionPending || Boolean(props.sessionFailed);
+  const busy = requestsBlocked || loadFailure !== null;
 
-  const reload = useCallback(() => {
+  const reload = useCallback((target: ReloadTarget = "all") => {
+    reloadTarget.current = target;
     activeLoad.current?.abort();
     const controller = new AbortController();
     activeLoad.current = controller;
@@ -102,9 +106,11 @@ export function ShopLicense(props: ShopLicenseProps) {
         if (controller.signal.aborted) return;
         if (result.ok) {
           setShop(result.data);
-          setFoodLicenseNo(result.data.foodLicenseNo);
-          setFoodBusinessType(result.data.foodBusinessType);
-          setIdentityOpen(false);
+          if (target !== "identity") {
+            setFoodLicenseNo(result.data.foodLicenseNo);
+            setFoodBusinessType(result.data.foodBusinessType);
+          }
+          if (target !== "license") setIdentityOpen(false);
         } else {
           setLoadFailure(result);
           if (result.status === 401) callbacks.current.onSessionExpired();
@@ -144,7 +150,8 @@ export function ShopLicense(props: ShopLicenseProps) {
     handledFailure.current = failure;
     if (failure.outcome === "login") callbacks.current.onSessionExpired();
     else if (failure.outcome === "no_shop") callbacks.current.onRegisterShop();
-    else if (["version_conflict", "invalid_state", "identity_change_pending"].includes(failure.code ?? "")) reload();
+    else if (["version_conflict", "invalid_state", "identity_change_pending"].includes(failure.code ?? ""))
+      reload(failure === licenseFailure ? "license" : "identity");
     if (failure.code === "storage_unavailable" || failure.fieldErrors.some((e) => e.code === "upload_not_found")) {
       if (failure === licenseFailure) licensePhoto.upload.reset();
       else evidencePhoto.upload.reset();
@@ -221,10 +228,16 @@ export function ShopLicense(props: ShopLicenseProps) {
         {loadFailure ? (
           <LoadFailure
             failure={classify(loadFailure.status, loadFailure.problem, loadFailure.retryAfterSeconds)}
-            onRetry={reload}
+            disabled={requestsBlocked}
+            onRetry={() => {
+              if (!requestsBlocked) reload(reloadTarget.current);
+            }}
             onLogin={props.onSessionExpired}
             onRegisterShop={props.onRegisterShop}
           />
+        ) : null}
+        {loadFailure && shop ? (
+          <Banner tone="warning">이전 정보를 보고 있어요. 다시 불러온 뒤 저장해 주세요.</Banner>
         ) : null}
         {!loading && shop ? (
           <>
@@ -275,8 +288,13 @@ export function ShopLicense(props: ShopLicenseProps) {
               state={license.state}
               fields={LICENSE_FIELDS}
               done={() => "신고증을 다시 올렸어요. 운영자가 다시 확인해요"}
-              onRetry={license.retry}
-              onReload={reload}
+              disabled={busy}
+              onRetry={() => {
+                if (!busy) license.retry();
+              }}
+              onReload={() => {
+                if (!requestsBlocked) reload("license");
+              }}
             />
             {shop.licenseStatus === "on_hold" ? (
               <form aria-label="영업 신고 재제출" ref={licenseForm} onSubmit={submitLicense} noValidate>
@@ -384,8 +402,13 @@ export function ShopLicense(props: ShopLicenseProps) {
               done={(data) =>
                 data.outcome === "unchanged" ? "바뀐 것이 없어요" : "변경을 요청했어요. 운영자가 확인하면 바뀌어요"
               }
-              onRetry={identity.retry}
-              onReload={reload}
+              disabled={busy}
+              onRetry={() => {
+                if (!busy) identity.retry();
+              }}
+              onReload={() => {
+                if (!requestsBlocked) reload("identity");
+              }}
             />
             {identityOpen ? (
               <form aria-label="사업자 정보 변경 요청" ref={identityForm} onSubmit={submitIdentity} noValidate>

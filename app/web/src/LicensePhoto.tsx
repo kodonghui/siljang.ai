@@ -15,6 +15,9 @@ export function useLicensePhoto(onSessionExpired: () => void) {
   const upload = useCommand<File, UploadedLicensePhoto>((input) => uploadLicensePhoto(input));
   const failure = upload.state.kind === "failed" ? upload.state.failure : null;
   useEffect(() => {
+    if (upload.state.kind === "done") setProblem(undefined);
+  }, [upload.state]);
+  useEffect(() => {
     if (failure?.outcome === "login") callback.current();
   }, [failure]);
   useEffect(() => {
