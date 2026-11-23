@@ -3,17 +3,18 @@ import { INVALID_API_RESPONSE, isApiObject, isApiTimestamp, UUID_PATTERN } from 
 import { isHttpsUrl } from "./api-url";
 import type { OperatorIdentity } from "./operator";
 
-type LicenseStatus = "pending" | "on_hold" | "verified";
-interface BusinessIdentity {
-  readonly businessName: string;
-  readonly representativeName: string;
-  readonly businessRegNo: string;
-}
-interface ShopHeader {
-  readonly shopId: string;
-  readonly name: string;
-  readonly licenseStatus: LicenseStatus;
-}
+import {
+  isReviewBusinessIdentity as business,
+  copyReviewBusinessIdentity as copyBusiness,
+  copyReviewShopHeader as copyHeader,
+  isReviewShopHeader as header,
+  matchesReviewValue as matches,
+  type ShopHeader,
+  isReviewText as text,
+  isReviewRevision as version,
+} from "./operator-shops-api";
+import type { BusinessIdentity } from "./shop-response";
+
 interface AccountSummary {
   readonly bankName: string;
   readonly holderName: string;
@@ -67,12 +68,6 @@ export interface IdentityReviewResult {
   readonly outcome: "done" | "unchanged";
   readonly change: ReviewedIdentityChange;
 }
-const text = (value: unknown, max: number, min = 1): value is string =>
-  typeof value === "string" && [...value].length >= min && [...value].length <= max;
-const matches = (value: unknown, pattern: RegExp): value is string => typeof value === "string" && pattern.test(value);
-const version = (value: unknown): value is string => matches(value, /^[A-Za-z0-9._-]{1,64}$/);
-const status = (value: unknown): value is LicenseStatus =>
-  value === "pending" || value === "on_hold" || value === "verified";
 const nullableText = (value: unknown, max: number): value is string | null => value === null || text(value, max);
 const nullableTime = (value: unknown): value is string | null => value === null || isApiTimestamp(value);
 const photo = (value: unknown): value is string => isHttpsUrl(value, { rejectUserInfo: true });
@@ -83,29 +78,6 @@ function operator(value: unknown): value is OperatorIdentity | null {
 }
 const copyOperator = (value: OperatorIdentity | null): OperatorIdentity | null =>
   value === null ? null : { operatorId: value.operatorId, displayName: value.displayName };
-function business(value: unknown): value is BusinessIdentity {
-  return (
-    isApiObject(value) &&
-    text(value.businessName, 60) &&
-    text(value.representativeName, 30) &&
-    matches(value.businessRegNo, /^[0-9]{10}$/)
-  );
-}
-const copyBusiness = (value: BusinessIdentity): BusinessIdentity => ({
-  businessName: value.businessName,
-  representativeName: value.representativeName,
-  businessRegNo: value.businessRegNo,
-});
-function header(value: unknown): value is ShopHeader {
-  return (
-    isApiObject(value) && matches(value.shopId, UUID_PATTERN) && text(value.name, 40) && status(value.licenseStatus)
-  );
-}
-const copyHeader = (value: ShopHeader): ShopHeader => ({
-  shopId: value.shopId,
-  name: value.name,
-  licenseStatus: value.licenseStatus,
-});
 function account(value: unknown): value is AccountSummary {
   return (
     isApiObject(value) &&
@@ -247,53 +219,62 @@ export async function fetchReviewShop(shopId: string, signal?: AbortSignal): Pro
     ? { ...result, data: copyDetail(result.data) }
     : INVALID_API_RESPONSE;
 }
-export async function reviewLicense(
+async function postDecision<T>(
+  id: string,
+  path: (id: string) => string,
+  body: Record<string, unknown>,
+  key: string,
+  decode: (value: Record<string, unknown>, outcome: "done" | "unchanged", id: string) => T | null,
+  signal?: AbortSignal,
+): Promise<ApiResult<T>> {
+  if (!UUID_PATTERN.test(id)) return INVALID_API_RESPONSE;
+  const targetId = id.toLowerCase();
+  const result = await request<unknown>(path(targetId), {
+    method: "POST",
+    cache: "no-store",
+    body,
+    key,
+    ...(signal ? { signal } : {}),
+  });
+  if (!result.ok) return result;
+  const value = result.data;
+  if (!isApiObject(value) || (value.outcome !== "done" && value.outcome !== "unchanged")) return INVALID_API_RESPONSE;
+  const data = decode(value, value.outcome, targetId);
+  return data === null ? INVALID_API_RESPONSE : { ...result, data };
+}
+export function reviewLicense(
   shopId: string,
   body: Record<string, unknown>,
   key: string,
   signal?: AbortSignal,
 ): Promise<ApiResult<LicenseReviewResult>> {
-  if (!UUID_PATTERN.test(shopId)) return INVALID_API_RESPONSE;
-  const targetId = shopId.toLowerCase();
-  const result = await request<unknown>(`/operator/shops/${targetId}/license-review`, {
-    method: "POST",
-    cache: "no-store",
+  return postDecision(
+    shopId,
+    (id) => `/operator/shops/${id}/license-review`,
     body,
     key,
-    ...(signal ? { signal } : {}),
-  });
-  if (!result.ok) return result;
-  const value = result.data;
-  return isApiObject(value) &&
-    (value.outcome === "done" || value.outcome === "unchanged") &&
-    detail(value.shop) &&
-    value.shop.shopId === targetId &&
-    value.shop.licenseStatus === body.decision
-    ? { ...result, data: { outcome: value.outcome, shop: copyDetail(value.shop) } }
-    : INVALID_API_RESPONSE;
+    (value, outcome, id) =>
+      detail(value.shop) && value.shop.shopId === id && value.shop.licenseStatus === body.decision
+        ? { outcome, shop: copyDetail(value.shop) }
+        : null,
+    signal,
+  );
 }
-export async function reviewIdentityChange(
+export function reviewIdentityChange(
   changeId: string,
   body: Record<string, unknown>,
   key: string,
   signal?: AbortSignal,
 ): Promise<ApiResult<IdentityReviewResult>> {
-  if (!UUID_PATTERN.test(changeId)) return INVALID_API_RESPONSE;
-  const targetId = changeId.toLowerCase();
-  const result = await request<unknown>(`/operator/identity-changes/${targetId}/review`, {
-    method: "POST",
-    cache: "no-store",
+  return postDecision(
+    changeId,
+    (id) => `/operator/identity-changes/${id}/review`,
     body,
     key,
-    ...(signal ? { signal } : {}),
-  });
-  if (!result.ok) return result;
-  const value = result.data;
-  return isApiObject(value) &&
-    (value.outcome === "done" || value.outcome === "unchanged") &&
-    identity(value.change) &&
-    value.change.changeId === targetId &&
-    value.change.status === body.decision
-    ? { ...result, data: { outcome: value.outcome, change: copyIdentity(value.change) } }
-    : INVALID_API_RESPONSE;
+    (value, outcome, id) =>
+      identity(value.change) && value.change.changeId === id && value.change.status === body.decision
+        ? { outcome, change: copyIdentity(value.change) }
+        : null,
+    signal,
+  );
 }

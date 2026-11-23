@@ -36,7 +36,9 @@ interface Props {
 const doneText = (value: Output): string =>
   value.target === "license"
     ? value.result.outcome === "unchanged"
-      ? "이미 확인된 가게예요"
+      ? value.result.shop.licenseStatus === "verified"
+        ? "이미 확인된 가게예요"
+        : "이미 같은 사유로 보류된 가게예요"
       : value.result.shop.licenseStatus === "verified"
         ? "확인됨으로 남겼어요"
         : "보류로 남겼어요. 사장님께 사유를 알렸어요"
@@ -68,7 +70,7 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
   const [confirmation, setConfirmation] = useState<Input | null>(null);
   const [needsLatest, setNeedsLatest] = useState(false);
   const [photo, setPhoto] = useState<Target | null>(null);
-  const [photoFailed, setPhotoFailed] = useState<Target | null>(null);
+  const [photoFailed, setPhotoFailed] = useState({ license: false, identity: false });
   const [duplicateLimit, setDuplicateLimit] = useState(5);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const duplicateRef = useRef<HTMLUListElement>(null),
@@ -84,7 +86,7 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
     onLoaded: (_mode, data) => {
       setShop(data);
       setNeedsLatest(false);
-      setPhotoFailed(null);
+      setPhotoFailed({ license: false, identity: false });
     },
     onSessionExpired: expire,
   });
@@ -97,12 +99,13 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
     return result.ok ? { ...result, data: { target: "identity", result: result.data } as const } : result;
   });
   const failure = command.state.kind === "failed" ? command.state.failure : null;
-  const busy = load.loading || command.busy || confirmation !== null;
+  const shellBusy = command.busy || confirmation !== null;
+  const busy = load.loading || shellBusy;
   const locked = busy || command.blocked || needsLatest || Boolean(props.blocked);
   useLayoutEffect(() => {
-    props.onBusyChange(busy);
+    props.onBusyChange(shellBusy);
     return () => props.onBusyChange(false);
-  }, [busy, props.onBusyChange]);
+  }, [shellBusy, props.onBusyChange]);
   useEffect(() => {
     if (holdTarget) reasonRef.current?.focus();
   }, [holdTarget]);
@@ -122,8 +125,10 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
   useEffect(() => {
     if (command.state.kind !== "done" || handled.current === command.state.data) return;
     handled.current = command.state.data;
-    if (command.state.data.target === "license") setShop(command.state.data.result.shop);
-    else {
+    if (command.state.data.target === "license") {
+      setShop(command.state.data.result.shop);
+      setPhotoFailed({ license: false, identity: false });
+    } else {
       setNeedsLatest(true);
       load.read("stale");
     }
@@ -177,6 +182,8 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
   if (expired || failure?.outcome === "login" || load.failure?.status === 401)
     return <Skeleton label="다시 로그인해 주세요" />;
   if (failure?.outcome === "not_found") return <LoadFailure failure={failure} notFoundAction={props.back} />;
+  if (load.failure?.status === 404)
+    return <LoadFailure failure={classify(404, load.failure.problem, null)} notFoundAction={props.back} />;
   if (!shop)
     return load.failure ? (
       <LoadFailure
@@ -203,9 +210,14 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
   const photoButton = (target: Target, url: string, label: string) => (
     <div className="operator-review-photo">
       <button type="button" disabled={locked} onClick={() => setPhoto(target)} aria-label={`${label} 크게 보기`}>
-        <img src={url} alt={label} referrerPolicy="no-referrer" onError={() => setPhotoFailed(target)} />
+        <img
+          src={url}
+          alt={label}
+          referrerPolicy="no-referrer"
+          onError={() => setPhotoFailed((old) => ({ ...old, [target]: true }))}
+        />
       </button>
-      {photoFailed === target ? (
+      {photoFailed[target] ? (
         <Banner
           tone="warning"
           actions={
@@ -422,6 +434,16 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
           <Button type="submit" disabled={locked || !canSubmitHold} busy={command.busy}>
             보류로 남기기
           </Button>
+          <Button
+            kind="secondary"
+            disabled={busy || props.blocked}
+            onClick={() => {
+              setHoldTarget(null);
+              setLocalIssue(null);
+            }}
+          >
+            보류 폼 닫기
+          </Button>
         </form>
       ) : null}
       {availability.canHold ? (
@@ -463,11 +485,13 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
       </ConfirmDialog>
       <PhotoViewer
         url={photoUrl ?? null}
-        failed={photo !== null && photoFailed === photo}
+        failed={photo !== null && photoFailed[photo]}
         loading={load.loading || Boolean(props.blocked)}
         onReload={() => load.read("stale")}
         onClose={() => setPhoto(null)}
-        onError={() => setPhotoFailed(photo)}
+        onError={() => {
+          if (photo) setPhotoFailed((old) => ({ ...old, [photo]: true }));
+        }}
       />
     </section>
   );

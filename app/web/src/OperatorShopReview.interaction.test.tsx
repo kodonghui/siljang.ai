@@ -25,6 +25,7 @@ let readFailure: { status: number; code: string } | null;
 let saveFailure: { status: number; code: string } | null;
 let sends: { path: string; body: Record<string, unknown>; key: string | null }[];
 let holdMe: boolean, releaseMe: (response: Response) => void;
+let holdRead: boolean, readSignal: AbortSignal | null, nextOutcome: "done" | "unchanged";
 function Login() {
   const location = useLocation();
   return (
@@ -52,6 +53,9 @@ const confirm = async (label: string) =>
 beforeEach(() => {
   current = example(detailPath, "pending");
   holdMe = false;
+  holdRead = false;
+  readSignal = null;
+  nextOutcome = "done";
   reads = 0;
   sends = [];
   readFailure = saveFailure = null;
@@ -66,6 +70,8 @@ beforeEach(() => {
           : json(operator);
       if (url === `/api/operator/shops/${shopId}`) {
         reads++;
+        readSignal = init.signal ?? null;
+        if (holdRead) return new Promise<Response>(() => {});
         return readFailure ? json({ ...readFailure, traceId }, readFailure.status) : json(current);
       }
       const body = JSON.parse(String(init.body));
@@ -82,6 +88,7 @@ beforeEach(() => {
         200,
         "post",
       );
+      result.outcome = nextOutcome;
       if (identity) {
         current.pendingIdentityChange = null;
         if (body.decision === "applied") current.businessName = result.change.businessName;
@@ -97,6 +104,69 @@ afterEach(() => {
   for (const node of document.querySelectorAll("[data-announcer]")) node.remove();
 });
 
+it("같은 사유로 다시 보류하면 확인됨으로 잘못 안내하지 않는다", async () => {
+  mount();
+  await loaded();
+  fireEvent.click(main().getByRole("button", { name: "보류" }));
+  fireEvent.change(reason(), { target: { value: "합성 보류 사유" } });
+  fireEvent.click(main().getByRole("button", { name: "보류로 남기기" }));
+  await main().findByText("보류로 남겼어요. 사장님께 사유를 알렸어요");
+  nextOutcome = "unchanged";
+  fireEvent.click(main().getByRole("button", { name: "보류" }));
+  fireEvent.click(main().getByRole("button", { name: "보류로 남기기" }));
+  await main().findByText("이미 같은 사유로 보류된 가게예요");
+  expect(main().queryByText("이미 확인된 가게예요")).toBeNull();
+});
+it("끝나지 않는 상세 읽기 중에도 목록으로 이동하고 이전 요청을 취소한다", async () => {
+  holdRead = true;
+  mount();
+  await waitFor(() => expect(reads).toBe(1));
+  expect((screen.getByRole("button", { name: "로그아웃" }) as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByRole("link", { name: "영업 신고 확인" }));
+  await screen.findByText("영업 신고 확인 목록으로 돌아왔어요");
+  expect(readSignal?.aborted).toBe(true);
+});
+it("이미 읽은 상세를 다시 읽다가404가 나면 모든 상세와 사진을 숨긴다", async () => {
+  mount();
+  await loaded();
+  const privateValues = [current.contactPhone, current.businessAddress, current.contactEmail];
+  readFailure = { status: 404, code: "not_found" };
+  fireEvent.click(main().getByRole("button", { name: "새로 고침" }));
+  await main().findByText("찾을 수 없어요");
+  for (const value of privateValues) expect(screen.getByRole("main").textContent).not.toContain(value);
+  expect(document.querySelector("img")).toBeNull();
+  expect(main().queryByRole("button", { name: "확인됨" })).toBeNull();
+});
+it.each(["license", "identity"] as const)("%s 보류 대상이 사라져도 남은 사유의 폼을 닫을 수 있다", async (target) => {
+  if (target === "identity") current = example(detailPath, "identity_change_pending");
+  saveFailure = { status: 409, code: "already_decided" };
+  mount();
+  await loaded();
+  const scope = target === "identity" ? within(screen.getByRole("region", { name: "사업자 정보 변경 요청" })) : main();
+  fireEvent.click(scope.getByRole("button", { name: "보류" }));
+  fireEvent.change(reason(), { target: { value: "없어진 대상의 합성 사유" } });
+  fireEvent.click(main().getByRole("button", { name: "보류로 남기기" }));
+  await waitFor(() => expect(reads).toBe(2));
+  await waitFor(() => expect((reason() as HTMLTextAreaElement).readOnly).toBe(true));
+  expect((reason() as HTMLTextAreaElement).value).toBe("없어진 대상의 합성 사유");
+  fireEvent.click(main().getByRole("button", { name: "보류 폼 닫기" }));
+  expect(main().queryByLabelText("보류 사유")).toBeNull();
+  expect(sends).toHaveLength(1);
+});
+it("두 사진의 실패를 각각 안내하고 판정 결과의 새 주소를 받으면 안내를 지운다", async () => {
+  current = example(detailPath, "identity_change_pending");
+  mount();
+  await loaded();
+  for (const image of main().getAllByRole("img")) fireEvent.error(image);
+  expect(main().getAllByText("사진을 열 수 없어요. 새 주소로 다시 불러와 주세요")).toHaveLength(2);
+  const holdButton = main().getAllByRole("button", { name: "보류" }).at(-1);
+  if (!holdButton) throw new Error("영업 신고 보류 버튼이 없어요");
+  fireEvent.click(holdButton);
+  fireEvent.change(reason(), { target: { value: "합성 보류 사유" } });
+  fireEvent.click(main().getByRole("button", { name: "보류로 남기기" }));
+  await main().findByText("보류로 남겼어요. 사장님께 사유를 알렸어요");
+  expect(main().queryByText("사진을 열 수 없어요. 새 주소로 다시 불러와 주세요")).toBeNull();
+});
 it("등록 정보와 부분 계좌만 보여 주고 기록 화면으로 연결한다", async () => {
   mount();
   await loaded();
