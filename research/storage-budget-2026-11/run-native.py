@@ -24,6 +24,17 @@ writeFileSync('harness.json', JSON.stringify({ ...base, name: harness, main: 'ha
   services: [{ binding: 'PEER', service: peer, entrypoint: 'StorageBudgetPeer' }] }));
 writeFileSync('preview.json', JSON.stringify({ ...base, name: 'siljang-storage-budget-preview', main: 'preview.mjs',
   services: [{ binding: 'HARNESS', service: harness, entrypoint: 'StorageBudgetHarness' }] }));
+function diagnostic(raw) {
+  let lines = raw.split('\n').filter(line => /ERROR|Error:|error:/.test(line)).slice(0, 3).join(' ');
+  const token = process.env.CLOUDFLARE_API_TOKEN;
+  if (token) lines = lines.replaceAll(token, '[credential]');
+  return lines.replace(/\bBearer\s+[^\s"',;]+/gi, 'Bearer [credential]')
+    .replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/g, '[credential]')
+    .replaceAll(process.env.CLOUDFLARE_ACCOUNT_ID, '[account]')
+    .replace(/https?:\/\/\S+/g, '[url]')
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z0-9.-]+/g, '[email]')
+    .slice(0, 450);
+}
 for (const name of ['peer', 'harness']) {
   emit({ event: 'deploy_start', target: name });
   const result = spawnSync(process.execPath, [cli, 'deploy', '--config', `${name}.json`],
@@ -31,7 +42,7 @@ for (const name of ['peer', 'harness']) {
   const raw = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
   emit({ event: 'deploy_result', target: name, exit: result.status,
     apiCode: /\[code:\s*(\d+)\]/.exec(raw)?.[1] ?? null,
-    diagnostic: raw.split('\n').filter(line => /ERROR|Error:|error:/.test(line)).slice(0, 3).join(' ').replaceAll(process.env.CLOUDFLARE_API_TOKEN, '[credential]').replaceAll(process.env.CLOUDFLARE_ACCOUNT_ID, '[account]').replace(/https?:\/\/\S+/g, '[url]').replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+/g, '[email]').slice(0, 450) });
+    diagnostic: diagnostic(raw) });
   if (result.error || result.status !== 0) process.exit(1);
 }
 let previewOutput = '';
@@ -67,19 +78,18 @@ try {
   emit({ event: 'preview_stopped', exit: stopped.status });
 }
 '''
-ps = r'''
+wrangler_setup = (folder.parent / 'academy-wrangler.ps1').read_text(encoding='utf-8')
+ps = wrangler_setup + r'''
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
 $siljangInput=[Console]::In.ReadLine() | ConvertFrom-Json
 $env:CLOUDFLARE_ACCOUNT_ID=$siljangInput.account
-$env:CLOUDFLARE_API_TOKEN=$siljangInput.token
-$env:WRANGLER_SEND_METRICS='false'
-$env:WRANGLER_LOG='error'
 $env:SILJANG_PROBE_URL=$siljangInput.probeUrl
-$env:SILJANG_WRANGLER_CLI=Join-Path $env:LOCALAPPDATA 'siljang-tools\node_modules\wrangler\wrangler-dist\cli.js'
+Set-SiljangWranglerEnvironment
+Assert-SiljangWranglerLogin
+$env:WRANGLER_LOG='error'
 $siljangFolder=Join-Path $env:TEMP ('siljang-storage-budget-'+[guid]::NewGuid().ToString('N'))
 try {
-  if(!(Test-Path $env:SILJANG_WRANGLER_CLI)){throw 'cached_cli_missing'}
   New-Item -ItemType Directory -Path $siljangFolder | Out-Null
   $siljangUtf8=New-Object System.Text.UTF8Encoding($false)
   foreach($siljangFile in $siljangInput.files.PSObject.Properties){
@@ -100,13 +110,12 @@ try {
 '''
 payload = {
     'account': os.environ.get('CLOUDFLARE_ACCOUNT_ID'),
-    'token': os.environ.get('CLOUDFLARE_API_TOKEN'),
     'probeUrl': os.environ.get('SILJANG_STORAGE_PROBE_URL'),
-    'files': {name: (folder / name).read_text() for name in ['measure.mjs', 'peer.mjs', 'harness.mjs', 'preview.mjs']},
+    'files': {name: (folder / name).read_text(encoding='utf-8') for name in ['measure.mjs', 'peer.mjs', 'harness.mjs', 'preview.mjs']},
 }
 payload['files']['driver.mjs'] = driver
-if not payload['account'] or not payload['token'] or not payload['probeUrl']:
-    print(json.dumps({'event': 'credentials_absent'}))
+if not payload['account'] or not payload['probeUrl']:
+    print(json.dumps({'event': 'measurement_config_missing'}))
     raise SystemExit(1)
 encoded = base64.b64encode(ps.encode('utf-16le')).decode()
 try:
@@ -119,7 +128,7 @@ try:
         try:
             value = json.loads(line.decode('utf-8-sig'))
             if isinstance(value, dict) and value.get('event'):
-                print(json.dumps(value), flush=True)
+                print(json.dumps(value, ensure_ascii=False), flush=True)
         except (ValueError, UnicodeDecodeError):
             pass
     code = result.wait(timeout=15)

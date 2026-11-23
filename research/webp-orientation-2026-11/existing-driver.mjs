@@ -8,13 +8,21 @@ const worker='siljang-kakao-test', baseline='448d489b-225f-4ddf-84f7-fa3a525a5a1
 const queueName='siljang-kakao-test-callbacks', keyName='PHOTO_RESOURCE_PROBE_KEY', prefix='/__task183_resource';
 const folder=process.env.SILJANG_PROBE_FOLDER, cliPath=process.env.SILJANG_WRANGLER_CLI, config=join(folder,'wrangler.json');
 const apiBase='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID;
-const records=[],results=[];let metrics=null,original,originalQueue,queueId,url,key,mutating=false,restored=false,start,end;
+const records=[],results=[];let metrics=null,original,originalQueue,queueId,url,key,apiToken,mutating=false,restored=false,start,end;
 mkdirSync(join(folder,'output'),{recursive:true});
 function save(){writeFileSync(join(folder,'report.json'),JSON.stringify({worker,baseline,source:process.env.SILJANG_SOURCE_SHA,records,results,metrics},null,2));}
 function emit(row){records.push(row);save();console.log(JSON.stringify(row));}
 function fail(code){throw new Error(code);}
+function localApiToken(){
+ if(process.env.CLOUDFLARE_API_TOKEN)return process.env.CLOUDFLARE_API_TOKEN;
+ const r=spawnSync(process.execPath,[cliPath,'auth','token','--json'],{encoding:'utf8',timeout:15000});
+ if(r.error||r.status!==0)fail('academy_oauth_token_unavailable');
+ const credential=JSON.parse(r.stdout);
+ if(credential.type!=='oauth'||typeof credential.token!=='string'||!credential.token)fail('academy_oauth_token_unavailable');
+ return credential.token;
+}
 async function api(path,options={}){
- const r=await fetch(apiBase+path,{...options,headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},redirect:'error',signal:AbortSignal.timeout(25000)});
+ const r=await fetch(apiBase+path,{...options,headers:{Authorization:'Bearer '+apiToken,'Content-Type':'application/json'},redirect:'error',signal:AbortSignal.timeout(25000)});
  let j;try{j=await r.json();}catch{fail('api_response_invalid');}
  if(!r.ok||!j.success){emit({event:'photo_existing_api_failed',status:r.status,codes:(j.errors??[]).map(e=>e.code).filter(Number.isSafeInteger)});fail('api_failed');}
  return j.result;
@@ -56,6 +64,7 @@ async function ready(expected,authenticated=false){
  fail('probe_not_ready');
 }
 try{
+ apiToken=localApiToken();
  original=await activeConfiguration();
  if(await currentVersion()!==baseline)fail('baseline_changed');
  const shape=bindings(original),expected=['CALLBACKS','EVENT_NAME','HASH_KEY','KAKAO_CLIENT_SECRET','KAKAO_REST_API_KEY','RECORDS','RECORD_TTL_SECONDS','SKILL_KEY'].sort();
@@ -120,7 +129,7 @@ if(start&&restored){
  try{
   const query='query Metric($account: string, $start: string, $end: string, $script: string) { viewer { accounts(filter: {accountTag: $account}) { workersInvocationsAdaptive(limit: 1000, filter: {scriptName: $script, datetime_geq: $start, datetime_leq: $end}) { sum { requests errors } quantiles { cpuTimeP99 cpuTimeP999 memoryUsageBytesP99 memoryUsageBytesP999 } avg { sampleInterval } dimensions { datetime status } } } } }';
   for(let i=0;i<4;i++){
-   const r=await fetch('https://api.cloudflare.com/client/v4/graphql',{method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,variables:{account:process.env.CLOUDFLARE_ACCOUNT_ID,start,end,script:worker}}),signal:AbortSignal.timeout(25000)});
+   const r=await fetch('https://api.cloudflare.com/client/v4/graphql',{method:'POST',headers:{Authorization:'Bearer '+apiToken,'Content-Type':'application/json'},body:JSON.stringify({query,variables:{account:process.env.CLOUDFLARE_ACCOUNT_ID,start,end,script:worker}}),signal:AbortSignal.timeout(25000)});
    const j=await r.json();if(!r.ok||j.errors){emit({event:'photo_existing_metrics_rejected',status:r.status,schemaError:(j.errors??[]).some(e=>/Cannot query field|unknown field|Unknown type/.test(e.message))});break;}
    const rows=j.data.viewer.accounts.flatMap(a=>a.workersInvocationsAdaptive);metrics={start,end,measurement:'GraphQL invocation quantiles; CPU microseconds, V8 isolate memory bytes; quantiles are not peak memory',rows};save();
    if(rows.length){
