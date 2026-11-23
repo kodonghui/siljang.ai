@@ -125,6 +125,9 @@
 .price-design-image input::file-selector-button {
   min-height: var(--size-target);
 }
+.price-design-image .ui-banner__text {
+  text-wrap: balance;
+}
 .price-file-name {
   overflow-wrap: anywhere;
   margin: 0;
