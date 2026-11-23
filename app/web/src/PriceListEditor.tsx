@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ApiFailure } from "./api";
+import { CONNECTION_FAILED as NETWORK } from "./api";
 import { DesignImage } from "./DesignImage";
 import {
   fetchPriceList,
@@ -38,14 +38,13 @@ import {
 } from "./ui";
 import { useCommand } from "./useCommand";
 import { photoRejected } from "./usePhotoUpload";
+import { useVersionedRead } from "./useVersionedRead";
 import "./price-list.css";
 
 const GROUPS: Record<OptionGroup, string> = { size: "크기", flavor: "맛", design: "디자인", extra: "추가" };
-const NETWORK: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
 const key = () => crypto.randomUUID();
 const RULE_PAGE_SIZE = 20;
 const STATUS_FOCUS = "status";
-type LoadMode = "initial" | "stale";
 function move<T extends { key: string; position: number }>(rows: T[], from: string, to: string): T[] {
   const sorted = [...rows].sort((a, b) => a.position - b.position),
     source = sorted.find((r) => r.key === from);
@@ -119,9 +118,25 @@ export function PriceListEditor(props: ShopLicenseProps) {
   callbacks.current = props;
   const [base, setBase] = useState<PriceList | null>(null),
     [form, setForm] = useState<PriceListForm>(() => priceListForm(null));
-  const [loaded, setLoaded] = useState(false),
-    [loading, setLoading] = useState(true),
-    [loadFailure, setLoadFailure] = useState<ApiFailure | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const {
+    loading,
+    failure: loadFailure,
+    read,
+    retry: retryRead,
+  } = useVersionedRead(fetchPriceList, {
+    sessionChecking: Boolean(props.sessionChecking || props.logoutPending),
+    sessionFailed: Boolean(props.sessionFailed),
+    allowNotSet: true,
+    onLoaded: (mode, data) => {
+      if (mode === "stale") setLatest(data);
+      else adopt(data, { resetCommand: true });
+      setLoaded(true);
+    },
+    onNotSet: () => adopt(null, { resetCommand: true }),
+    onSessionExpired: () => callbacks.current.onSessionExpired(),
+    onRegisterShop: () => callbacks.current.onRegisterShop(),
+  });
   const [group, setGroup] = useState<OptionGroup>("size"),
     [rulePage, setRulePage] = useState(0);
   const [stale, setStale] = useState(false),
@@ -135,8 +150,6 @@ export function PriceListEditor(props: ShopLicenseProps) {
     if (current.sessionChecking || current.sessionFailed || current.logoutPending) return Promise.resolve(NETWORK);
     return savePriceList(body, requestKey);
   });
-  const activeRead = useRef<AbortController | null>(null),
-    lastMode = useRef<LoadMode>("initial");
   const formRef = useRef<HTMLFormElement>(null),
     statusRef = useRef<HTMLElement>(null),
     formValue = useRef(form);
@@ -186,43 +199,6 @@ export function PriceListEditor(props: ShopLicenseProps) {
     },
     [command.reset],
   );
-  const read = useCallback(
-    (mode: LoadMode = "initial") => {
-      lastMode.current = mode;
-      activeRead.current?.abort();
-      const controller = new AbortController();
-      activeRead.current = controller;
-      setLoading(true);
-      setLoadFailure(null);
-      void fetchPriceList(controller.signal)
-        .then((result) => {
-          if (controller.signal.aborted) return;
-          if (result.ok) {
-            if (mode === "stale") setLatest(result.data);
-            else adopt(result.data, { resetCommand: true });
-            setLoaded(true);
-          } else if (mode === "initial" && result.status === 404 && result.problem?.code === "not_set") {
-            adopt(null, { resetCommand: true });
-          } else {
-            setLoadFailure(result);
-            if (result.status === 401) callbacks.current.onSessionExpired();
-            if (result.problem?.code === "shop_not_registered") callbacks.current.onRegisterShop();
-          }
-          setLoading(false);
-        })
-        .catch(() => {
-          if (!controller.signal.aborted) {
-            setLoadFailure(NETWORK);
-            setLoading(false);
-          }
-        });
-    },
-    [adopt],
-  );
-  useEffect(() => {
-    read();
-    return () => activeRead.current?.abort();
-  }, [read]);
   useEffect(() => {
     if (command.state.kind !== "done" || handled.current === command.state.data) return;
     handled.current = command.state.data;
@@ -356,10 +332,10 @@ export function PriceListEditor(props: ShopLicenseProps) {
       title="가격표와 도안"
       shopName={props.shopName}
       back="/owner/shop"
-      busy={locked}
+      busy={requestsBlocked}
       onNavigate={(href, event) => {
         event.preventDefault();
-        if (canEdit()) props.onNavigate(href);
+        if (!requestsBlocked) props.onNavigate(href);
       }}
     >
       <form className="price-editor" ref={formRef} onSubmit={submit} noValidate>
@@ -371,7 +347,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
             failure={classify(loadFailure.status, loadFailure.problem, loadFailure.retryAfterSeconds)}
             disabled={requestsBlocked}
             onRetry={() => {
-              if (!requestsBlocked) read(lastMode.current);
+              if (!requestsBlocked) retryRead();
             }}
             onLogin={props.onSessionExpired}
             onRegisterShop={props.onRegisterShop}
@@ -987,7 +963,12 @@ export function PriceListEditor(props: ShopLicenseProps) {
         {props.logoutFailure ? <Banner tone="danger">{props.logoutFailure.message}</Banner> : null}
         <div className="price-save-bar">
           <span>저장 전 바뀐 셀 {changes}개</span>
-          <Button kind="primary" type="submit" busy={command.busy} disabled={locked || stale || !loaded}>
+          <Button
+            kind="primary"
+            type="submit"
+            busy={command.busy}
+            disabled={locked || stale || !loaded || command.blocked}
+          >
             저장
           </Button>
           <Button

@@ -839,3 +839,15 @@ it("다른 기기의 표시 방식 때문에 내 기본 범위가 사라질 때 
   expect((screen.getByRole("button", { name: /^저장$/ }) as HTMLButtonElement).disabled).toBe(true);
   expect(sends).toHaveLength(1);
 });
+
+it.each(["checking", "failed"] as const)(
+  "가격표도 첫 세션 %s 중 조회하지 않고 확인 뒤 한 번만 읽는다",
+  async (state) => {
+    const view = area(state === "checking" ? { sessionChecking: true } : { sessionFailed: true });
+    await act(async () => {});
+    expect(reads).toBe(0);
+    view.rerender(<PriceListEditor {...view.props} sessionChecking={false} sessionFailed={false} />);
+    await loaded();
+    expect(reads).toBe(1);
+  },
+);

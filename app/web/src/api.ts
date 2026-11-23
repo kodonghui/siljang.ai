@@ -76,7 +76,7 @@ function retryAfter(header: string | null): number | null {
   return seconds >= 1 ? Math.min(seconds, 3600) : null;
 }
 
-const CONNECTION_FAILED: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
+export const CONNECTION_FAILED: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
 
 /**
  * API 하나를 부른다. 던지지 않고 결과를 돌려준다(연결 실패도 status 0의 실패).

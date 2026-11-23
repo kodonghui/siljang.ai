@@ -13,6 +13,7 @@ import {
   ownerReturnTo,
   signOutOwner,
 } from "./owner";
+import { PaymentDestinationEditor } from "./PaymentDestinationEditor";
 import { PriceListEditor } from "./PriceListEditor";
 import { PriceListHistory } from "./PriceListHistory";
 import { classify } from "./problems";
@@ -124,7 +125,13 @@ export function OwnerArea() {
       : null;
   if (
     (history ||
-      ["/owner/shop", "/owner/shop/license", "/owner/price-list", "/owner/operating-rules"].includes(shopPath ?? "")) &&
+      [
+        "/owner/shop",
+        "/owner/shop/license",
+        "/owner/price-list",
+        "/owner/operating-rules",
+        "/owner/payment-destination",
+      ].includes(shopPath ?? "")) &&
     candidate?.shop
   ) {
     if (shopPath === "/owner/price-list" || shopPath === "/owner/operating-rules" || history) {
@@ -133,13 +140,15 @@ export function OwnerArea() {
     }
     const ShopScreen =
       historyRoute?.Screen ??
-      (shopPath === "/owner/operating-rules"
-        ? OperatingRulesEditor
-        : shopPath === "/owner/price-list"
-          ? PriceListEditor
-          : shopPath === "/owner/shop/license"
-            ? ShopLicense
-            : ShopSettings);
+      (shopPath === "/owner/payment-destination"
+        ? PaymentDestinationEditor
+        : shopPath === "/owner/operating-rules"
+          ? OperatingRulesEditor
+          : shopPath === "/owner/price-list"
+            ? PriceListEditor
+            : shopPath === "/owner/shop/license"
+              ? ShopLicense
+              : ShopSettings);
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (
@@ -152,6 +161,9 @@ export function OwnerArea() {
         ) : null}
         <ShopScreen
           {...(historyRoute ? { version: historyRoute.version } : {})}
+          {...(shopPath === "/owner/payment-destination"
+            ? { licenseStatus: candidate.shop.licenseStatus, onSaved: () => setRevision((r) => r + 1) }
+            : {})}
           key={`${candidate.owner.ownerId}:${candidate.shop.shopId}`}
           shopName={candidate.shop.name}
           onNavigate={(href) => navigate(href)}
@@ -222,9 +234,6 @@ export function OwnerArea() {
       <h1>수제케이크 주문제작</h1>
       {registrationNotice ? <p role="status">가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요</p> : null}
       <p>준비 중입니다.</p>
-      {shopPath === "/owner/payment-destination" ? (
-        <Button onClick={() => navigate("/owner/shop/license")}>영업 신고로 돌아가기</Button>
-      ) : null}
       {logout === "failed" ? <p role="alert">로그아웃하지 못했어요. 다시 시도해 주세요</p> : null}
       <Button onClick={() => void logOut()}>로그아웃</Button>
     </main>

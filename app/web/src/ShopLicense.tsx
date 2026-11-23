@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { ApiFailure } from "./api";
+import { formatKoreanDateTime as clock } from "./format-date";
 import { LicensePhoto, useLicensePhoto } from "./LicensePhoto";
 import { classify, type Failure } from "./problems";
 import {
@@ -49,10 +50,6 @@ const BUSINESS_FIELDS = [
   ["representativeName", "새 대표자", 30],
   ["businessRegNo", "새 사업자등록번호", 10],
 ] as const;
-const clock = (value: string) =>
-  new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "short" }).format(
-    new Date(value),
-  );
 
 export function ShopLicense(props: ShopLicenseProps) {
   const callbacks = useRef(props);
