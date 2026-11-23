@@ -1,4 +1,5 @@
 import { type Context, Hono } from "hono";
+import { getBookingLink } from "./booking-link";
 import { getCalendarDays, getCalendarSettings, setCalendarSettings, updateCalendarDay } from "./calendar";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FILE_ROUTE, serveFile } from "./file-url";
@@ -61,6 +62,8 @@ import { createUpload } from "./uploads";
 /** Worker의 env. 업무 코드는 이것을 직접 읽지 않고 settings.ts의 readSettings()를 거친다. */
 export type Bindings = {
   readonly APP_ENV?: string;
+  readonly PUBLIC_APP_ORIGIN?: string;
+  readonly PRIVACY_TRANSFER_SETTINGS?: string;
   readonly ANTHROPIC_API_KEY?: string;
   readonly OPENAI_API_KEY?: string;
   readonly DATABASE_URL?: string;
@@ -133,6 +136,7 @@ export interface AppOptions {
  * (test/support/cross-shop.ts의 CROSS_SHOP_CASES)에도 더한다. 빠지면 시험이 실패한다(TASK-019).
  */
 export const APP_ROUTES: readonly RouteDecl[] = [
+  shopRoute("GET", "/owner/booking-link", "owner", getBookingLink),
   shopRoute("POST", "/owner/kakao-channel/check", "owner", startKakaoChannelCheck),
   operatorRoute("GET", "/operator/shops", listReviewShops),
   shopRoute("GET", "/operator/shops/:shopId", "operator", getReviewShop),

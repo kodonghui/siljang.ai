@@ -18,6 +18,7 @@ import { deriveKakaoProofPhrase, deriveKakaoSkillKey } from "./kakao-skill-auth"
 import { type OperatorAuth, supabaseAuth } from "./operator-auth";
 import { kakaoOwnerAuth, type OwnerAuth } from "./owner-auth";
 import { type ImageBinding, type PhotoNormalizer, photoNormalizer } from "./photo-normalizer";
+import type { PrivacyPolicySettings } from "./privacy-policy-settings";
 import { bindingLimiter, type RateLimiter, type RateLimitRule } from "./rate-limit";
 import { MissingSettingError } from "./request-key";
 import type { Settings } from "./settings";
@@ -26,6 +27,7 @@ import { batchS3Store } from "./storage-batch";
 
 export interface Services {
   now(): Date;
+  readonly privacyPolicy: PrivacyPolicySettings | null;
   /** 사진 저장소. 설정(STORAGE_*)이 없으면 MissingSettingError. */
   storage(): ObjectStore;
   /** G10 사진 정리. 회전할 WebP에만 Images 바인딩을 요구한다. */
@@ -55,6 +57,7 @@ export interface Services {
 /** 시험이 바꾸는 것. */
 export interface ServiceOverrides {
   readonly now?: () => Date;
+  readonly privacyPolicy?: PrivacyPolicySettings | null;
   readonly storage?: ObjectStore;
   readonly images?: ImageBinding;
   readonly limiters?: { readonly [B in RateLimitRule["binding"]]?: RateLimiter };
@@ -83,6 +86,7 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
   let ownerAuth: OwnerAuth | undefined = overrides.ownerAuth;
   return {
     now: overrides.now ?? (() => new Date()),
+    privacyPolicy: overrides.privacyPolicy === undefined ? settings.privacyPolicy : overrides.privacyPolicy,
     aiConfigured: overrides.aiModel !== undefined || (settings.ai !== null && settings.ai.apiKey !== null),
     kakaoCallbackQueue: overrides.kakaoCallbackQueue ?? env.KAKAO_CALLBACK_QUEUE,
     kakaoSkillKey: (id, version) => deriveKakaoSkillKey(channelSecret(), id, version),

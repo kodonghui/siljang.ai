@@ -6,6 +6,7 @@
  */
 
 import { AI_PROVIDERS, type AiProvider, type FxRate, priceOf } from "./ai-prices";
+import { type PrivacyPolicySettings, readPrivacyPolicySettings } from "./privacy-policy-settings";
 
 const MASK = "**********";
 
@@ -164,6 +165,7 @@ export interface Settings {
   /** 운영자 인증 서비스(Supabase Auth). 두 변수가 모두 없으면 null. */
   readonly operatorAuth: OperatorAuthSettings | null;
   readonly ownerAuth: OwnerAuthSettings | null;
+  readonly privacyPolicy: PrivacyPolicySettings | null;
 }
 
 export class SettingsError extends Error {
@@ -223,15 +225,17 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
     }
   }
   checkTracing(env, appEnv);
+  const ai = readAi(env, secrets);
   return {
     appEnv,
     secrets,
     missingSecrets,
     storage: readStorage(env, appEnv),
     fieldKeys: readFieldKeys(env),
-    ai: readAi(env, secrets),
+    ai,
     operatorAuth: readOperatorAuth(env, appEnv),
     ownerAuth: readOwnerAuth(env),
+    privacyPolicy: readPrivacyPolicySettings(env, ai?.provider),
   };
 }
 
