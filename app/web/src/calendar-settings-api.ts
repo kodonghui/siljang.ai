@@ -1,5 +1,5 @@
 import { type ApiResult, request } from "./api";
-import { INVALID_API_RESPONSE, isApiObject, isApiTimestamp } from "./api-response";
+import { INVALID_API_RESPONSE, isApiInteger as integer, isApiObject, isApiTimestamp } from "./api-response";
 import { type CalendarConflict, parseCalendarConflicts } from "./calendar-conflicts";
 export const CALENDAR_TIME = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 export const NOTICE_TIME = /^((0[89]|1[0-9]):[0-5][0-9]|20:([0-4][0-9]|50))$/;
@@ -20,8 +20,6 @@ export interface CalendarSettingsResult {
   readonly calendar: CalendarSettings;
   readonly conflicts: readonly CalendarConflict[];
 }
-const integer = (value: unknown, max: number): value is number =>
-  typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max;
 function valid(value: unknown): value is CalendarSettings {
   return (
     isApiObject(value) &&

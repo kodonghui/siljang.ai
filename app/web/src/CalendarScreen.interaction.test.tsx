@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CalendarScreen } from "./CalendarScreen";
 import type { CalendarDay } from "./calendar-api";
@@ -161,6 +161,7 @@ it("충돌 후 조회가 실패해도 지금 상태를 다시 읽고 입력을 �
   area();
   const form = await select();
   fireEvent.click(within(form).getByLabelText("그날 주문 마감"));
+  days.set("2026-11-21", { ...dayValue("2026-11-21"), revision: "synthetic-latest" });
   writeProblem = { code: "version_conflict", status: 409 };
   getProblem = { code: "internal", status: 500 };
   fireEvent.submit(form);
@@ -227,9 +228,24 @@ it("실제 OwnerArea는 bfcache 세션 확인 뒤 한 번 읽고 날짜 초안�
     finish?.(json(identity));
   });
   await waitFor(() => expect(reads).toHaveLength(2));
-  fireEvent.click(await main().findByRole("button", { name: "내 변경 다시 적용" }));
+  await waitFor(() => expect((screen.getByLabelText("그날 주문 마감") as HTMLInputElement).disabled).toBe(false));
   expect((screen.getByLabelText("그날 주문 마감") as HTMLInputElement).checked).toBe(true);
 });
+function OwnerHistoryControls() {
+  const navigate = useNavigate();
+  return (
+    <>
+      <button type="button" onClick={() => navigate(-1)}>
+        시험 뒤로
+      </button>
+      <button type="button" onClick={() => navigate(1)}>
+        시험 앞으로
+      </button>
+      <OwnerArea />
+    </>
+  );
+}
+
 function area(extra: { sessionChecking?: boolean; sessionFailed?: boolean } = {}, entry = "/owner/calendar") {
   const props = {
     shopName: "합성 달력 가게",
@@ -310,13 +326,13 @@ it("미설정은 설정하기 경로를 보이고 실패는 추적 ID와 재시�
 });
 it("조회500 뒤 재시도하고 월 이동은 새 기간을 읽는다", async () => {
   getProblem = { code: "internal", status: 500 };
-  area();
+  const view = area();
   await main().findByText(`추적 ID: ${traceId}`);
   getProblem = null;
   fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
   await loaded();
   fireEvent.click(screen.getByRole("button", { name: "다음 달" }));
-  await waitFor(() => expect(reads.at(-1)?.url).toBe("/api/owner/calendar/days?from=2026-12-01&to=2027-01-31"));
+  expect(view.props.onNavigate).toHaveBeenCalledWith("/owner/calendar?month=2026-12");
 });
 it("잘못된 월은 오류/처음부터 보기를 보이고 날짜 요청을 보내지 않는다", async () => {
   const view = area({}, "/owner/calendar?month=bad");
@@ -324,6 +340,110 @@ it("잘못된 월은 오류/처음부터 보기를 보이고 날짜 요청을 �
   expect(reads).toHaveLength(0);
   fireEvent.click(screen.getByRole("button", { name: "처음부터 보기" }));
   expect(view.props.onNavigate).toHaveBeenCalledWith("/owner/calendar");
+});
+it("실제 월 query 이동/뒤로/앞으로도 화면과 겹치는 날짜 초안을 보존한다", async () => {
+  const transport = fetch;
+  let identities = 0,
+    finish: ((value: Response) => void) | undefined;
+  const identity = {
+    owner: {
+      ownerId: "d3898f13-62a2-4e3e-bd60-9797a6dfc506",
+      alertChannelFriend: false,
+      createdAt: "2026-11-15T00:00:00Z",
+    },
+    shop: { shopId: "1dc0769d-8fb3-46da-af01-729ec0ea63db", name: "합성 가게", licenseStatus: "verified" },
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/owner/me") {
+        if (++identities === 2)
+          return new Promise<Response>((resolve) => {
+            finish = resolve;
+          });
+        return json(identity);
+      }
+      return transport(input, init);
+    }),
+  );
+  render(
+    <MemoryRouter initialEntries={["/owner/calendar"]}>
+      <OwnerHistoryControls />
+    </MemoryRouter>,
+  );
+  const panel = await select("2026년 12월 21일");
+  fireEvent.click(within(panel).getByLabelText("그날 주문 마감"));
+  fireEvent.click(screen.getByRole("button", { name: "다음 달" }));
+  await waitFor(() => expect(identities).toBe(2));
+  expect(screen.getByRole("heading", { name: "영업 캘린더", level: 1 })).toBeTruthy();
+  expect(reads).toHaveLength(1);
+  await act(async () => {
+    finish?.(json(identity));
+  });
+  await waitFor(() => expect(reads.at(-1)?.url).toContain("from=2026-12-01"));
+  await waitFor(() => expect((screen.getByLabelText("그날 주문 마감") as HTMLInputElement).checked).toBe(true));
+  fireEvent.click(screen.getByRole("button", { name: "시험 뒤로" }));
+  await waitFor(() => expect(reads.at(-1)?.url).toContain("from=2026-11-01"));
+  await waitFor(() => expect((screen.getByLabelText("그날 주문 마감") as HTMLInputElement).checked).toBe(true));
+  fireEvent.click(screen.getByRole("button", { name: "시험 앞으로" }));
+  await waitFor(() => expect(reads.at(-1)?.url).toContain("from=2026-12-01"));
+  await waitFor(() => expect((screen.getByLabelText("그날 주문 마감") as HTMLInputElement).checked).toBe(true));
+  fireEvent.click(screen.getByRole("button", { name: "다음 달" }));
+  await waitFor(() => expect(reads.at(-1)?.url).toContain("from=2027-01-01"));
+  const returnDay = await screen.findByRole("button", { name: "선택한 날짜로 돌아가기" });
+  expect((screen.getByLabelText("그날 주문 마감") as HTMLInputElement).disabled).toBe(true);
+  fireEvent.click(returnDay);
+  await waitFor(() => expect(reads.at(-1)?.url).toContain("from=2026-12-01"));
+  await waitFor(() => expect((screen.getByLabelText("그날 주문 마감") as HTMLInputElement).disabled).toBe(false));
+  expect((screen.getByLabelText("그날 주문 마감") as HTMLInputElement).checked).toBe(true);
+});
+it.each([false, true])("같은 revision의 새로 고침은 초안 %s를 보존하고 충돌을 만들지 않는다", async (dirty) => {
+  area();
+  const panel = await select();
+  if (dirty) fireEvent.click(within(panel).getByLabelText("그날 주문 마감"));
+  fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
+  await waitFor(() => expect(reads).toHaveLength(2));
+  await act(async () => {});
+  expect(main().queryByRole("region", { name: "지금 날짜 설정" })).toBeNull();
+  expect(main().queryByText("그 사이 바뀌었어요. 지금 상태를 확인해 주세요")).toBeNull();
+  expect((within(panel).getByLabelText("그날 주문 마감") as HTMLInputElement).disabled).toBe(false);
+  expect((within(panel).getByLabelText("그날 주문 마감") as HTMLInputElement).checked).toBe(dirty);
+});
+it("초안이 없으면 바뀐 revision도 조용히 새 날짜 값으로 바꾼다", async () => {
+  area();
+  const panel = await select();
+  days.set("2026-11-21", { ...dayValue("2026-11-21"), closed: true, revision: "synthetic-latest" });
+  fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
+  await waitFor(() => expect((within(panel).getByLabelText("그날 휴무") as HTMLInputElement).checked).toBe(true));
+  expect(main().queryByText("그 사이 바뀌었어요. 지금 상태를 확인해 주세요")).toBeNull();
+});
+it("충돌 패널은 지금 휴무/마감/잡힌 자리/남은 자리까지 보여 준다", async () => {
+  area();
+  const panel = await select();
+  fireEvent.change(within(panel).getByLabelText("그날 하루 최대 개수"), { target: { value: "3" } });
+  days.set("2026-11-21", {
+    ...dayValue("2026-11-21"),
+    closed: true,
+    manuallyClosed: true,
+    held: 4,
+    remaining: 1,
+    revision: "synthetic-latest",
+  });
+  writeProblem = { code: "version_conflict", status: 409 };
+  fireEvent.submit(panel);
+  await main().findByText("지금 휴무: 휴무");
+  expect(main().getByText("지금 주문 마감: 마감")).toBeTruthy();
+  expect(main().getByText("지금 잡힌 자리: 4 · 남은 자리: 1")).toBeTruthy();
+});
+it("휴무를 켜면서 주문 마감을 풀면 다시 받는다고 알리지 않는다", async () => {
+  days.set("2026-11-21", { ...dayValue("2026-11-21"), manuallyClosed: true });
+  area();
+  const panel = await select();
+  fireEvent.click(within(panel).getByLabelText("그날 휴무"));
+  fireEvent.click(within(panel).getByLabelText("그날 주문 마감"));
+  fireEvent.submit(panel);
+  await main().findByText("저장했어요");
+  expect(main().queryByText("다시 받아요")).toBeNull();
 });
 it.each(["closed_day_with_orders", "capacity_below_held"] as const)(
   "%s 확인은 본문을 유지하고 새 키로 저장한다",

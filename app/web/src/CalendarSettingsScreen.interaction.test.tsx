@@ -120,6 +120,47 @@ it("그대로 저장하면 전송 없이 바뀐 것이 없다고 알린다", asy
   await main().findByText("바뀐 것이 없어요");
   expect(writes).toHaveLength(0);
 });
+it.each([false, true])("같은 revision의 설정 새로 고침은 초안 %s를 조용히 보존한다", async (dirty) => {
+  area();
+  await loaded();
+  if (dirty) fireEvent.change(screen.getByLabelText("후기 부탁 시각"), { target: { value: "12:00" } });
+  fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
+  await waitFor(() => expect(reads).toBe(2));
+  await act(async () => {});
+  expect(main().queryByText("그 사이 바뀌었어요. 지금 상태를 확인해 주세요")).toBeNull();
+  expect((screen.getByLabelText("후기 부탁 시각") as HTMLInputElement).disabled).toBe(false);
+  expect((screen.getByLabelText("후기 부탁 시각") as HTMLInputElement).value).toBe(dirty ? "12:00" : "11:00");
+});
+it("설정 초안이 없으면 다른 기기의 새 revision을 조용히 반영한다", async () => {
+  area();
+  await loaded();
+  current = { ...current, dailyCapacity: 8, revision: "synthetic-latest" };
+  fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
+  await waitFor(() => expect((screen.getByLabelText("하루 최대 개수") as HTMLInputElement).value).toBe("8"));
+  expect(main().queryByText("그 사이 바뀌었어요. 지금 상태를 확인해 주세요")).toBeNull();
+});
+it("처음 정하는 중 다시 읽어도 미저장 초안은 남긴다", async () => {
+  empty = true;
+  area();
+  await loaded();
+  fireEvent.change(screen.getByLabelText("하루 최대 개수"), { target: { value: "4" } });
+  fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
+  await waitFor(() => expect(reads).toBe(2));
+  await act(async () => {});
+  expect((screen.getByLabelText("하루 최대 개수") as HTMLInputElement).value).toBe("4");
+  expect(writes).toHaveLength(0);
+});
+it("처음 정하는 동안 다른 기기가 저장하면 최신 값과 내 초안을 대조한다", async () => {
+  empty = true;
+  area();
+  await loaded();
+  fireEvent.change(screen.getByLabelText("하루 최대 개수"), { target: { value: "4" } });
+  empty = false;
+  fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
+  await main().findByText("지금 하루 최대 개수: 5");
+  fireEvent.click(screen.getByRole("button", { name: "내 변경 다시 적용" }));
+  expect((screen.getByLabelText("하루 최대 개수") as HTMLInputElement).value).toBe("4");
+});
 it("범위/시각 오류는 입력을 보존하고 첫 오류로 초점을 옮긴다", async () => {
   area();
   const input = (await loaded()) as HTMLInputElement;
@@ -236,6 +277,10 @@ it("다른 기기의 필드는 남기고 내 변경만 최신 revision으로 다
   saveProblem = { code: "version_conflict", status: 409 };
   fireEvent.submit(form());
   await main().findByText("지금 하루 최대 개수: 8");
+  expect(main().getByText("지금 쉬는 요일: 월요일")).toBeTruthy();
+  expect(main().getByText("지금 주문 마감: 픽업일 2일 전 18:00")).toBeTruthy();
+  expect(main().getByText("지금 전날 안내 시각: 18:00")).toBeTruthy();
+  expect(main().getByText("지금 후기 부탁 시각: 11:00")).toBeTruthy();
   expect((screen.getByLabelText("후기 부탁 시각") as HTMLInputElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "내 변경 다시 적용" }));
   expect((screen.getByLabelText("하루 최대 개수") as HTMLInputElement).value).toBe("8");
@@ -254,6 +299,7 @@ it("충돌 조회가 실패해도 다시 읽고 초안을 재적용한다", asyn
   area();
   await loaded();
   fireEvent.change(screen.getByLabelText("하루 최대 개수"), { target: { value: "4" } });
+  current = { ...current, revision: "synthetic-latest" };
   saveProblem = { code: "version_conflict", status: 409 };
   getProblem = { code: "internal", status: 500 };
   fireEvent.submit(form());
@@ -336,7 +382,7 @@ it("실제 OwnerArea의 bfcache 재확인 뒤 한 번 읽고 설정 초안을 �
     finish?.(json(identity));
   });
   await waitFor(() => expect(reads).toBe(2));
-  fireEvent.click(await screen.findByRole("button", { name: "내 변경 다시 적용" }));
+  await waitFor(() => expect((screen.getByLabelText("후기 부탁 시각") as HTMLInputElement).disabled).toBe(false));
   expect((screen.getByLabelText("후기 부탁 시각") as HTMLInputElement).value).toBe("12:00");
 });
 it("신고 보류 가게는 실제 경로에서 설정을 읽기 전에 영업 신고로 간다", async () => {

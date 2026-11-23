@@ -48,8 +48,7 @@ interface Saved extends CalendarDayResult {
 }
 export function CalendarScreen(props: ShopLicenseProps) {
   const location = useLocation();
-  const requestedMonth = new URLSearchParams(location.search).get("month") ?? todayCalendarDate().slice(0, 7);
-  const [month, setMonth] = useState(requestedMonth);
+  const month = new URLSearchParams(location.search).get("month") ?? todayCalendarDate().slice(0, 7);
   const period = calendarPeriod(month);
   const [items, setItems] = useState<readonly CalendarDay[] | null>(null);
   const [empty, setEmpty] = useState(false),
@@ -72,15 +71,23 @@ export function CalendarScreen(props: ShopLicenseProps) {
     sessionChecking: navigationLocked,
     sessionFailed: Boolean(props.sessionFailed) || period === null,
     allowNotSet: true,
-    onLoaded: (mode, value) => {
+    onLoaded: (_mode, value) => {
       setEmpty(false);
       setItems(value.items);
       setAsOf(Date.now());
       const selected = value.items.find((item) => item.day === base?.day);
-      if (mode === "stale") setLatest(selected ?? null);
-      else if (selected) {
-        setBase(selected);
-        setForm(calendarForm(selected));
+      if (selected && base && form) {
+        const dirty = calendarPatch(base, form) !== null;
+        if (!dirty || selected.revision === base.revision) {
+          setBase(selected);
+          if (!dirty) setForm(calendarForm(selected));
+          setLatest(null);
+          setStale(false);
+          if (command.state.kind === "failed" && command.state.failure.code === "version_conflict") command.reset();
+        } else {
+          setLatest(selected);
+          setStale(true);
+        }
       }
     },
     onNotSet: () => {
@@ -95,12 +102,14 @@ export function CalendarScreen(props: ShopLicenseProps) {
   const command = useCommand<Record<string, unknown>, Saved>(async (body, key) => {
     const response = await saveCalendarDay(base?.day ?? "", body, key);
     if (!response.ok) return response;
+    const manualOnly =
+      !response.data.day.closed && Object.keys(body).filter((key) => fields.includes(`/${key}`)).length === 1;
     const notice =
       response.data.outcome === "unchanged"
         ? "이미 그렇게 되어 있어요"
-        : body.manuallyClosed === true
+        : manualOnly && body.manuallyClosed === true
           ? "그날 주문을 마감했어요"
-          : body.manuallyClosed === false
+          : manualOnly && body.manuallyClosed === false
             ? "다시 받아요"
             : "저장했어요";
     return { ...response, data: { ...response.data, notice } };
@@ -109,19 +118,15 @@ export function CalendarScreen(props: ShopLicenseProps) {
     handledFailure = useRef<unknown>(null);
   const locked = blocked || loading || command.busy || command.blocked || command.state.kind === "confirm";
   const past = base !== null && base.day < todayCalendarDate();
+  const outside = base !== null && items !== null && !items.some((item) => item.day === base.day);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
   const fieldErrors = fieldErrorsFor([...localErrors, ...(failure?.fieldErrors ?? [])], fields).byField;
-  useEffect(() => {
-    setMonth(requestedMonth);
-  }, [requestedMonth]);
   const loadedMonth = useRef(month);
   useEffect(() => {
     if (loadedMonth.current === month) return;
     loadedMonth.current = month;
     setItems(null);
     setEmpty(false);
-    setBase(null);
-    setForm(null);
     setStale(false);
     setLatest(null);
     if (period) read();
@@ -180,7 +185,7 @@ export function CalendarScreen(props: ShopLicenseProps) {
     command.reset();
   };
   const edit = (patch: Partial<CalendarForm>) => {
-    if (locked || stale || past || !form) return;
+    if (locked || stale || past || outside || !form) return;
     setForm({ ...form, ...patch });
     setUnchanged(false);
     setLocalErrors([]);
@@ -188,7 +193,7 @@ export function CalendarScreen(props: ShopLicenseProps) {
   };
   const submit = (event: { preventDefault(): void }) => {
     event.preventDefault();
-    if (locked || stale || !base || !form || base.day < todayCalendarDate()) return;
+    if (locked || stale || outside || !base || !form || base.day < todayCalendarDate()) return;
     const cap = form.capacityOverride.trim();
     const errors: FieldError[] =
       cap && (!/^\d+$/.test(cap) || Number(cap) > 100)
@@ -210,7 +215,6 @@ export function CalendarScreen(props: ShopLicenseProps) {
     const next = shiftCalendarMonth(month, offset);
     if (!next || !calendarPeriod(next)) return;
     command.reset();
-    setMonth(next);
     props.onNavigate(`/owner/calendar?month=${next}`);
   };
   const reset = (keep: boolean) => {
@@ -413,6 +417,11 @@ export function CalendarScreen(props: ShopLicenseProps) {
                         {latest ? (
                           <>
                             <p>지금 하루 최대 개수: {latest.capacity}</p>
+                            <p>지금 휴무: {latest.closed ? "휴무" : "영업일"}</p>
+                            <p>지금 주문 마감: {latest.manuallyClosed ? "마감" : "받음"}</p>
+                            <p>
+                              지금 잡힌 자리: {latest.held} · 남은 자리: {latest.remaining}
+                            </p>
                             <Button disabled={locked} onClick={() => reset(true)}>
                               내 변경 다시 적용
                             </Button>
@@ -427,6 +436,21 @@ export function CalendarScreen(props: ShopLicenseProps) {
                         ) : null}
                       </section>
                     ) : null}
+                    {outside && base ? (
+                      <Banner
+                        tone="warning"
+                        actions={
+                          <Button
+                            disabled={locked}
+                            onClick={() => props.onNavigate(`/owner/calendar?month=${base.day.slice(0, 7)}`)}
+                          >
+                            선택한 날짜로 돌아가기
+                          </Button>
+                        }
+                      >
+                        선택한 날짜는 지금 보는 기간 밖이에요. 그 날짜의 달로 돌아가 주세요.
+                      </Banner>
+                    ) : null}
                     <form aria-label="그날 설정" noValidate onSubmit={submit}>
                       {past ? <p>지난 날짜는 보기만 할 수 있어요</p> : null}
                       <Field pointer="/closed" label="그날 휴무" errors={fieldErrors.get("/closed")}>
@@ -435,7 +459,7 @@ export function CalendarScreen(props: ShopLicenseProps) {
                             {...ids}
                             type="checkbox"
                             checked={form.closed}
-                            disabled={locked || stale || past}
+                            disabled={locked || stale || past || outside}
                             onChange={(event) => edit({ closed: event.target.checked })}
                           />
                         )}
@@ -446,7 +470,7 @@ export function CalendarScreen(props: ShopLicenseProps) {
                         help="0~100개, 비우면 주간 기준을 써요"
                         inputMode="numeric"
                         value={form.capacityOverride}
-                        disabled={locked || stale || past}
+                        disabled={locked || stale || past || outside}
                         errors={fieldErrors.get("/capacityOverride")}
                         onChange={(event) => edit({ capacityOverride: event.target.value })}
                       />
@@ -460,13 +484,18 @@ export function CalendarScreen(props: ShopLicenseProps) {
                             {...ids}
                             type="checkbox"
                             checked={form.manuallyClosed}
-                            disabled={locked || stale || past}
+                            disabled={locked || stale || past || outside}
                             onChange={(event) => edit({ manuallyClosed: event.target.checked })}
                           />
                         )}
                       </Field>
                       {localErrors.length ? <Banner tone="danger">입력한 내용을 확인해 주세요</Banner> : null}
-                      <Button type="submit" kind="primary" disabled={locked || stale || past} busy={command.busy}>
+                      <Button
+                        type="submit"
+                        kind="primary"
+                        disabled={locked || stale || past || outside}
+                        busy={command.busy}
+                      >
                         저장
                       </Button>
                     </form>

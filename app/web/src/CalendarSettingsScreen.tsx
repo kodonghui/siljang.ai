@@ -36,6 +36,7 @@ import "./calendar-settings-screen.css";
 
 type SettingKey = (typeof SETTING_NUMBERS)[number] | (typeof SETTING_TIMES)[number];
 const fields = ["closedWeekdays", ...SETTING_NUMBERS, ...SETTING_TIMES].map((key) => `/${key}`);
+const weekdays = ["월", "화", "수", "목", "금", "토", "일"] as const;
 const controls: Record<SettingKey, { label: string; help: string }> = {
   dailyCapacity: { label: "하루 최대 개수", help: "0~100개. 바꾼 기준은 그 뒤 잡는 자리에만 써요" },
   orderCutoffDays: { label: "주문 마감(픽업일 며칠 전)", help: "0~30일 전. 0이면 픽업일 당일이에요" },
@@ -110,18 +111,27 @@ export function CalendarSettingsScreen(props: ShopLicenseProps) {
     sessionChecking: navigationLocked,
     sessionFailed: Boolean(props.sessionFailed),
     allowNotSet: true,
-    onLoaded: (mode, value) => {
-      if (mode === "stale") setLatest(value);
-      else {
+    onLoaded: (_mode, value) => {
+      if (!loaded) {
         setBase(value);
         setForm(settingsForm(value));
         setLoaded(true);
         setEmpty(false);
+      } else if (base && (!settingsChanged(base, form) || value.revision === base.revision)) {
+        if (!settingsChanged(base, form)) setForm(settingsForm(value));
+        setBase(value);
+        setEmpty(false);
+        setLatest(null);
+        setStale(false);
+        if (command.state.kind === "failed" && command.state.failure.code === "version_conflict") command.reset();
+      } else {
+        setLatest(value);
+        setStale(true);
       }
     },
     onNotSet: () => {
       setBase(null);
-      setForm(settingsForm(null));
+      if (!loaded) setForm(settingsForm(null));
       setLoaded(true);
       setEmpty(true);
     },
@@ -302,6 +312,15 @@ export function CalendarSettingsScreen(props: ShopLicenseProps) {
                   <>
                     <p>지금 하루 최대 개수: {latest.dailyCapacity}</p>
                     <p>
+                      지금 쉬는 요일:{" "}
+                      {latest.closedWeekdays.map((day) => `${weekdays[day - 1]}요일`).join(" · ") || "없음"}
+                    </p>
+                    <p>
+                      지금 주문 마감: 픽업일 {latest.orderCutoffDays}일 전 {latest.orderCutoffTime}
+                    </p>
+                    <p>지금 전날 안내 시각: {latest.dayBeforeNoticeTime}</p>
+                    <p>지금 후기 부탁 시각: {latest.reviewRequestTime}</p>
+                    <p>
                       지금 답하는 시간: {latest.replyStart}~{latest.replyEnd}
                     </p>
                     <Button disabled={locked} onClick={() => adopt(true)}>
@@ -335,7 +354,7 @@ export function CalendarSettingsScreen(props: ShopLicenseProps) {
               >
                 <legend>쉬는 요일</legend>
                 <div>
-                  {["월", "화", "수", "목", "금", "토", "일"].map((label, index) => {
+                  {weekdays.map((label, index) => {
                     const day = index + 1;
                     return (
                       <Button

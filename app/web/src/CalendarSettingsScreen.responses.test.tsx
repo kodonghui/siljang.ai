@@ -40,11 +40,18 @@ it.each(rows)("API 화면 응답: $method $status $name", async (row) => {
     onRegisterShop: vi.fn(),
     onLogout: vi.fn(),
   };
+  let wrote = false;
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) =>
-      init?.method === "PUT" || row.method === "get" ? json(row.value, row.status) : json(example),
-    ),
+    vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PUT") {
+        wrote = true;
+        return json(row.value, row.status);
+      }
+      return row.method === "get"
+        ? json(row.value, row.status)
+        : json(wrote && row.value.code === "version_conflict" ? { ...example, revision: "synthetic-latest" } : example);
+    }),
   );
   render(
     <MemoryRouter>

@@ -1,5 +1,5 @@
 import { type ApiResult, request } from "./api";
-import { INVALID_API_RESPONSE, isApiObject } from "./api-response";
+import { INVALID_API_RESPONSE, isApiInteger as integer, isApiObject } from "./api-response";
 import { isCalendarDate } from "./calendar-date";
 
 export { isCalendarDate } from "./calendar-date";
@@ -23,8 +23,6 @@ export interface CalendarDayResult {
   readonly outcome: "done" | "unchanged";
   readonly day: CalendarDay;
 }
-const integer = (value: unknown, max: number): value is number =>
-  typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max;
 function valid(value: unknown): value is CalendarDay {
   return (
     isApiObject(value) &&
