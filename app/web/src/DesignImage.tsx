@@ -90,7 +90,6 @@ export function DesignImage(props: DesignImageProps) {
         />
       ) : null}
       {previewFailed ? <p>이 브라우저에서는 미리보기를 볼 수 없어요. 사진 업로드 결과를 확인해 주세요.</p> : null}
-      {photo.file ? <p className="price-file-name">{photo.file.name}</p> : null}
       {photo.upload.busy ? <p role="status">사진을 올리고 있어요</p> : null}
       <CommandStatus
         state={photo.upload.state}
@@ -108,18 +107,15 @@ export function DesignImage(props: DesignImageProps) {
         <p>새 그림을 올리지 못해 기존 그림을 유지해요. 다시 올리면 바꿀 수 있어요.</p>
       ) : null}
       {rejectedFile && rejectedFile !== photo.file ? (
-        <>
-          <p className="price-file-name">저장에 거절된 파일: {rejectedFile.name}</p>
-          <Button
-            disabled={props.disabled || blocked || photo.upload.busy}
-            onClick={() => {
-              if (props.disabled || blocked || photo.upload.busy || !props.onStart(props.design.key)) return;
-              props.onBusy(props.design.key, photo.select(rejectedFile));
-            }}
-          >
-            거절된 그림 다시 올리기
-          </Button>
-        </>
+        <Button
+          disabled={props.disabled || blocked || photo.upload.busy}
+          onClick={() => {
+            if (props.disabled || blocked || photo.upload.busy || !props.onStart(props.design.key)) return;
+            props.onBusy(props.design.key, photo.select(rejectedFile));
+          }}
+        >
+          저장 거절된 파일 다시 올리기: {rejectedFile.name}
+        </Button>
       ) : null}
       {photo.file ? (
         <Button
@@ -134,7 +130,7 @@ export function DesignImage(props: DesignImageProps) {
             props.onBusy(props.design.key, started);
           }}
         >
-          다시 올리기
+          선택한 파일 다시 올리기: {photo.file.name}
         </Button>
       ) : null}
     </div>

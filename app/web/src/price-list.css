@@ -109,6 +109,10 @@
   gap: var(--space-sm);
   min-width: 0;
 }
+.price-design-image > .ui-button {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
 .price-design-image img {
   display: block;
   width: 100%;

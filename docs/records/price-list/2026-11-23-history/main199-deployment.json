@@ -1,0 +1,43 @@
+{
+  "main": "e7b7f8b18be9859ce050619de492849897129c66",
+  "pullRequest": 199,
+  "ci": {
+    "app": {
+      "runId": 45201877440,
+      "attempt": 1,
+      "check": 137787221898,
+      "windows": 137787221840,
+      "deployment": 137791056472,
+      "conclusion": "success"
+    },
+    "db": {
+      "runId": 45201877264,
+      "postgres16": 137787219954,
+      "postgres17": 137787220369,
+      "conclusion": "success"
+    }
+  },
+  "native": {
+    "machine": "academy-pc",
+    "tool": "Wrangler CLI",
+    "loggedIn": true,
+    "accountMatches": true,
+    "app": {
+      "versionId": "c5aa0526-13e8-4f2c-adab-d236b93a944a",
+      "createdOn": "2026-11-23T15:18:10.566984Z",
+      "tag": "e7b7f8b18be9859ce050619de492849897129c66"
+    },
+    "storage": {
+      "versionId": "b35e6dfb-4897-4fc4-9fea-5cbd63b2cb70",
+      "createdOn": "2026-11-23T15:17:55.582123Z",
+      "tag": "e7b7f8b18be9859ce050619de492849897129c66",
+      "percentage": 100
+    },
+    "healthStatus": 200,
+    "exitCode": 0
+  },
+  "screenChecks": {
+    "completed": 0,
+    "reason": "학원컴 Aside CDP 두 번 시간 초과와 별도 창 시작 무응답으로 보류. 실제 화면 통과를 뜻하지 않음."
+  }
+}
