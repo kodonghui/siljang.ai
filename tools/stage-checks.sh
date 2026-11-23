@@ -1,10 +1,11 @@
 #!/bin/bash
 # 01~10단계의 검사 9개를 돌리고 검사마다 한 줄로 요약한다.
 #
-# 사용: bash tools/stage-checks.sh [이름] [--no-api]
+# 사용: bash tools/stage-checks.sh [이름] [--no-api] [--no-browser]
 #   이름     출력 폴더 이름(기본 now). 검사마다 <검사>.txt가
 #            ${STAGE_CHECKS_OUT:-${TMPDIR:-/tmp}/stage-checks}/<이름>/ 아래에 남는다.
 #   --no-api 06 계약 검사(api)를 건너뛴다. api는 Prism 목 서버를 다시 띄우고 오래 걸린다.
+#   --no-browser 정적 목업 검사만 한다. 실제 브라우저 page-check는 미확인으로 남긴다.
 # 끝 상태: 검사 하나라도 종료 코드가 0이 아니면 1. prd·flows는 종료 코드가 늘 0이라
 #   출력의 PROBLEMS·AVOIDED WORDS 수가 0이 아니어도 실패로 치고, 그 줄에 '실패'를 붙인다.
 #
@@ -26,9 +27,12 @@ cd "$ROOT" || exit 2
 
 NAME=now
 NO_API=0
+# --no-browser: 정적 목업 검사는 하되 브라우저 page-check를 실행하지 않는다.
+NO_BROWSER=0
 for a in "$@"; do
   case "$a" in
     --no-api) NO_API=1 ;;
+    --no-browser) NO_BROWSER=1 ;;
     -*) echo "모르는 옵션: $a" >&2; exit 2 ;;
     *) NAME=$a ;;
   esac
@@ -84,7 +88,12 @@ else
 fi
 run sitemap python3 -B research/cake-sitemap-2026-11/check_sitemap.py . --hub "$HUBSM"
 run screens python3 -B research/cake-screens-2026-11/check_screens.py . --hub "$HUB"
-run mockup python3 -B research/cake-mockup-2026-11/check_mockup.py . --page-check "$PC"
+if [ $NO_BROWSER -eq 0 ]; then
+  run mockup python3 -B research/cake-mockup-2026-11/check_mockup.py . --page-check "$PC"
+else
+  echo "mockup browser skipped (--no-browser); page-check remains unverified"
+  run mockup python3 -B research/cake-mockup-2026-11/check_mockup.py .
+fi
 run wbs python3 -I research/cake-wbs-2026-11/build_wbs.py .
 echo "$(TZ=Asia/Seoul date '+%H:%M:%S KST') end"
 exit $FAIL
