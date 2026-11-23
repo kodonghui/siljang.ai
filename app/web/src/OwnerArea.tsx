@@ -149,7 +149,8 @@ export function OwnerArea() {
           onLogout={() => void logOut()}
           logoutFailed={logout === "failed"}
           logoutPending={logout === "pending"}
-          sessionChecking={session === null || !session.ok}
+          sessionChecking={session === null}
+          sessionFailed={session !== null && !session.ok}
           sessionExpired={session !== null && !session.ok && session.status === 401}
         />
       </>

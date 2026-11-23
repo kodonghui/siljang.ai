@@ -35,7 +35,7 @@ function gate<T>() {
 let profile: unknown,
   logoutGate: ReturnType<typeof gate<Response>> | null,
   profileGate: ReturnType<typeof gate<Response>> | null;
-let registerCode: "success" | "already_registered", registered: number, uploadStatus: number;
+let registerCode: "success" | "already_registered" | "upload_expired", registered: number, uploadStatus: number;
 beforeEach(() => {
   sessionStorage.clear();
   profile = initial;
@@ -54,6 +54,11 @@ beforeEach(() => {
       if (String(input) === "/api/owner/shop") {
         registered++;
         if (registerCode === "already_registered") return json({ code: registerCode }, 409);
+        if (registerCode === "upload_expired")
+          return json(
+            { code: "validation_failed", errors: [{ field: "/licensePhotoUploadId", code: "upload_not_found" }] },
+            422,
+          );
         profile = { ...initial, shop: { shopId: SHOP, name: "합성 가게", licenseStatus: "pending" } };
         return json({ shopId: SHOP, licenseStatus: "pending" }, 201);
       }
@@ -247,4 +252,31 @@ it("등록 완료 안내는 새로 고침에 남을 history state에 저장하�
   const next = render(<RouterProvider router={reloaded} />);
   await within(next.container).findByText("준비 중입니다.");
   expect(within(next.container).queryByText("가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요")).toBeNull();
+});
+
+it("재확인이503으로 끝나면 글/사진을 보존하고 등록은 잠그되 로그아웃은 허용함", async () => {
+  await area();
+  await upload();
+  profileGate = gate<Response>();
+  const event = new Event("pageshow");
+  Object.defineProperty(event, "persisted", { value: true });
+  fireEvent(window, event);
+  await act(async () => profileGate?.resolve(json({ code: "upstream_unavailable" }, 503)));
+  expect(screen.queryByText("로그인 상태를 확인하고 있어요")).toBeNull();
+  expect((screen.getByRole("button", { name: "등록" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "로그아웃" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(screen.getByText("synthetic.png")).toBeTruthy();
+});
+it("서버가 업로드 만료를 알리면 옛 성공 표시를 지우고 같은 파일로 다시 올릴 수 있음", async () => {
+  await area();
+  await upload();
+  registerCode = "upload_expired";
+  fireEvent.click(screen.getByRole("button", { name: "등록" }));
+  await screen.findAllByText("올린 파일을 찾을 수 없어요. 다시 올려 주세요");
+  const form = screen.getByRole("button", { name: "등록" }).closest("form");
+  if (!form) throw new Error("등록 양식 없음");
+  expect(within(form).queryByText("사진을 올렸어요. 1시간 안에 등록해 주세요")).toBeNull();
+  expect(screen.getByText("synthetic.png")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "다시 올리기" }));
+  await within(form).findByText("사진을 올렸어요. 1시간 안에 등록해 주세요");
 });
