@@ -131,7 +131,7 @@ interface IdentityChangeShopCase {
 
 interface BookingCase {
   readonly method: "GET";
-  readonly path: "/owner/booking-link" | "/public/shops/:slug/privacy-policy";
+  readonly path: "/owner/booking-link" | "/public/shops/:slug/privacy-policy" | "/public/shops/:slug";
   readonly kind: "booking";
 }
 
@@ -160,6 +160,7 @@ export type CrossShopCase =
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "GET", path: "/owner/booking-link", kind: "booking" },
   { method: "GET", path: "/public/shops/:slug/privacy-policy", kind: "booking" },
+  { method: "GET", path: "/public/shops/:slug", kind: "booking" },
   ...["message", "card", "review", "event"].map(
     (kind) =>
       ({
@@ -340,9 +341,13 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
               },
               "anthropic",
             ),
-            limiters: { PUBLIC_PRIVACY_RATE_LIMITER: new MemoryLimiter(1000) },
+            limiters: {
+              PUBLIC_PRIVACY_RATE_LIMITER: new MemoryLimiter(1000),
+              PUBLIC_BOOKING_RATE_LIMITER: new MemoryLimiter(1000),
+            },
           },
         });
+        const suffix = c.path.endsWith("privacy-policy") ? "/privacy-policy" : "";
         for (const shop of [pair.a, pair.b]) await issueTestBookingLink(db, shop);
         // 현재 설정으로 발행을 마친 뒤 쿼리의 다른 가게 ID가 상태/본문을 바꾸지 않는지 비교한다.
         for (const shop of [pair.a, pair.b]) {
@@ -365,13 +370,13 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
           ).rows[0];
           expect(row).toBeDefined();
           const response = await app.request(
-            `https://siljang.example/api/public/shops/${row?.booking_slug}/privacy-policy?shopId=${shop === pair.a ? pair.b.shopId : pair.a.shopId}`,
+            `https://siljang.example/api/public/shops/${row?.booking_slug}${suffix}?shopId=${shop === pair.a ? pair.b.shopId : pair.a.shopId}`,
             {},
-            testEnv(),
+            testEnv({ FILE_URL_KEY: TEST_HASH_KEY }),
           );
           expect(response.status, await response.clone().text()).toBe(200);
-          const body = (await response.json()) as { shopName: string; body: string };
-          expect(body.shopName).toBe(row?.name);
+          const body = (await response.json()) as { shopName?: string; shop?: { name: string } };
+          expect(suffix ? body.shopName : body.shop?.name).toBe(row?.name);
           for (const id of [
             pair.a.ownerId,
             pair.b.ownerId,
@@ -383,7 +388,7 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
             expect(JSON.stringify(body)).not.toContain(id);
         }
         await expectProblem(
-          await app.request("https://siljang.example/api/public/shops/missing-slug/privacy-policy", {}, testEnv()),
+          await app.request(`https://siljang.example/api/public/shops/missing-slug${suffix}`, {}, testEnv()),
           "not_found",
         );
         expect(await snapshots(db, publicEnv)).toEqual(before);

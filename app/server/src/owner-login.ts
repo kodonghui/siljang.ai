@@ -2,6 +2,7 @@
 import type { Context } from "hono";
 import type { HonoEnv } from "./app";
 import { readJsonBody, requireJson } from "./body";
+import { clientIp } from "./client-ip";
 import { sameOrigin } from "./operator-login";
 import { type KakaoOwner, KakaoUnavailableError } from "./owner-auth";
 import {
@@ -93,9 +94,7 @@ function allowedRedirect(c: Context<HonoEnv>, uri: string): OwnerAuthSettings {
 
 async function rateLimit(c: Context<HonoEnv>): Promise<void> {
   // 운영에서는 Cloudflare가 덮어쓴 접속지 헤더만 사용한다. 브라우저가 보낸 다른 전달 헤더는 보지 않는다.
-  const ip = c.req.header("cf-connecting-ip") ?? (c.get("settings").appEnv === "development" ? "local" : null);
-  if (ip === null || ip.length > 64 || !/^[A-Za-z0-9:.]+$/.test(ip))
-    throw new MissingSettingError("CF-Connecting-IP is not available");
+  const ip = clientIp(c);
   if (
     !(await c
       .get("services")
