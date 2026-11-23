@@ -10,7 +10,7 @@ import {
   reviewLicense,
 } from "./operator-shop-review-api";
 import { reviewAvailability, reviewPayload, reviewReasonIssue } from "./operator-shop-review-form";
-import { classify } from "./problems";
+import { classify, ERROR_CODES } from "./problems";
 import { Banner, Button, CommandStatus, ConfirmDialog, Field, LoadFailure, type Navigate, Skeleton } from "./ui";
 import { keepFocusInside } from "./ui/focus";
 import { useCommand } from "./useCommand";
@@ -153,7 +153,9 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
     if (decision === "on_hold") command.submit(input);
     else setConfirmation(input);
   }
-  if (expired) return <Skeleton label="다시 로그인해 주세요" />;
+  if (expired || failure?.outcome === "login" || load.failure?.status === 401)
+    return <Skeleton label="다시 로그인해 주세요" />;
+  if (failure?.outcome === "not_found") return <LoadFailure failure={failure} notFoundAction={props.back} />;
   if (!shop)
     return load.failure ? (
       <LoadFailure
@@ -197,6 +199,7 @@ function ReviewDetails(props: Props & { readonly back: ReactNode }) {
   );
   return (
     <section className="operator-review" aria-label="가게 영업 신고 상세">
+      {command.busy ? <p role="status">{ERROR_CODES.request_in_progress.message}</p> : null}
       <div className="operator-review-toolbar">
         <a
           href={`/operator/shops/${props.shopId}/records`}
