@@ -404,3 +404,29 @@ it.each(["version", "connection"])("상태 조회에서 %s이 바뀌면 이전 �
   fireEvent.click(screen.getByRole("button", { name: "연결 상태 다시 보기" }));
   await waitFor(() => expect(screen.queryByLabelText("스킬 키(지금만 보임)")).toBeNull());
 });
+
+it("채널 편집 중에는 키 교체도 잠겨 별도 명령이 입력을 버리지 않는다", async () => {
+  area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
+  fireEvent.click(screen.getByText("스킬 설정 값"));
+  expect((screen.getByRole("button", { name: "스킬 키 바꾸기" }) as HTMLButtonElement).disabled).toBe(true);
+});
+it("블록 누락으로 확인을 시작하지 못하면 빈 필드와 초점을 보인다", async () => {
+  current = getExample("failed");
+  current.blockIds.card = null;
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "POST" ? json({ code: "channel_setup_incomplete", traceId }, 409) : transport(input, init),
+    ),
+  );
+  area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "다시 확인" }));
+  await main().findByText("버튼 블록 ID 5개를 모두 넣어 주세요");
+  const input = screen.getByLabelText("확인 카드");
+  expect(input.getAttribute("aria-invalid")).toBe("true");
+  await waitFor(() => expect(document.activeElement).toBe(input));
+});

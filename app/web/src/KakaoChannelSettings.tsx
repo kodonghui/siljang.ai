@@ -20,7 +20,7 @@ import {
   channelPayload,
   rebaseChannel,
 } from "./kakao-channel-form";
-import { classify } from "./problems";
+import { classify, type FieldError } from "./problems";
 import type { ShopLicenseProps } from "./ShopLicense";
 import { Banner, Button, CommandStatus, fieldErrorsFor, LoadFailure, OwnerLayout, Skeleton, TextField } from "./ui";
 import { useCommand } from "./useCommand";
@@ -167,22 +167,34 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
       setLatest(null);
       read("stale");
     }
-    if (failure.code === "channel_setup_incomplete") setEditing(true);
+    if (failure.code === "channel_setup_incomplete") {
+      setEditing(true);
+      const missing = BLOCK_KEYS.find((key) => !form.blockIds[key].trim());
+      pendingFocus.current = missing ? `/blockIds/${missing}` : null;
+    }
     if (failure.outcome === "field")
       pendingFocus.current = failure.fieldErrors.find((e) => fields.includes(e.field))?.field ?? "/botId";
-  }, [failure, adopt, read]);
+  }, [failure, adopt, read, form.blockIds]);
   useEffect(() => {
     if (!pendingFocus.current || blocked) return;
     const field = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-pointer]") ?? []).find(
       (e) => e.dataset.pointer === pendingFocus.current,
     );
     const input = field?.querySelector<HTMLInputElement>("input");
+    if (input?.disabled) return;
     pendingFocus.current = null;
-    (input && !input.disabled ? input : statusRef.current)?.focus();
+    (input ?? statusRef.current)?.focus();
   });
   const issues = useMemo(() => channelIssues(form), [form]);
+  const missingBlocks: FieldError[] =
+    failure?.code === "channel_setup_incomplete"
+      ? BLOCK_KEYS.filter((key) => !form.blockIds[key].trim()).map((key) => ({
+          field: `/blockIds/${key}`,
+          code: "required",
+        }))
+      : [];
   const errors = fieldErrorsFor(
-    [...(failure?.fieldErrors ?? []), ...issues.filter((e) => showErrors || e.code !== "required")],
+    [...(failure?.fieldErrors ?? []), ...missingBlocks, ...issues.filter((e) => showErrors || e.code !== "required")],
     fields,
   ).byField;
   function mutate(change: (old: ChannelForm) => ChannelForm) {
@@ -288,6 +300,7 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
             onRegisterShop={props.onRegisterShop}
           />
         ) : null}
+        {command.busy ? <p role="status">처리하고 있어요. 잠시 뒤 다시 확인해 주세요</p> : null}
         {loaded ? (
           <form ref={formRef} noValidate onSubmit={submit} className="channel-form">
             {!base ? (
@@ -308,6 +321,10 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                 </h2>
                 {base.status === "linked" ? <p>손님 안내는 다음 대화 때 전해요</p> : null}
                 {base.linkedAt ? <p>연결된 시각 {formatKoreanDateTime(base.linkedAt)}</p> : null}
+                {base.eventCheckedAt ? <p>먼저 보내기 확인 시각 {formatKoreanDateTime(base.eventCheckedAt)}</p> : null}
+                {base.claimExpiresAt && base.status === "pending" ? (
+                  <p>연결 선점이 풀리는 시각 {formatKoreanDateTime(base.claimExpiresAt)}</p>
+                ) : null}
                 {base.proofPhrase && base.status === "pending" ? (
                   <>
                     <CopyValue label="연결 문구" value={base.proofPhrase} disabled={blocked} />
@@ -524,9 +541,9 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                     ))}
                   </fieldset>
                   <Button
-                    disabled={locked || command.blocked}
+                    disabled={locked || command.blocked || editing}
                     onClick={() => {
-                      if (!locked)
+                      if (!locked && !editing)
                         send({
                           action: "rotate",
                           body: { baseRevision: base.revision, previousKey: policy },

@@ -44,7 +44,7 @@ const cases = routes.flatMap((route) =>
   }),
 );
 afterEach(() => vi.unstubAllGlobals());
-it.each(cases)("$method $path $status $name의 계약 응답과 요청 경계", async (row) => {
+it.each(cases)("$method $path $status $name 응답의 계약 응답과 요청 경계", async (row) => {
   const transport = vi.fn(async () => new Response(JSON.stringify(row.value), { status: row.status }));
   vi.stubGlobal("fetch", transport);
   const result = await row.call();
