@@ -196,8 +196,11 @@ export async function serveFile(c: Context<HonoEnv>, isPublic = false): Promise<
   if (opened === null) throw new ApiError("not_found");
   const object = await services.storage().get(opened.key);
   if (object === null) throw new ApiError("not_found");
+  // 저장소 응답을 기다리는 동안 만료되었으면 내지 않는다. 캐시 나이도 실제 응답 시각에서 센다.
+  const responseTime = services.now();
+  if (opened.exp * 1000 <= responseTime.getTime()) throw new ApiError("not_found");
   const image = (IMAGE_TYPES as readonly string[]).includes(object.contentType);
-  const remaining = Math.max(0, Math.floor((opened.exp * 1000 - now.getTime()) / 1000));
+  const remaining = Math.max(0, Math.floor((opened.exp * 1000 - responseTime.getTime()) / 1000));
   const headers = new Headers({
     "content-type": image ? object.contentType : "application/octet-stream",
     "content-disposition": image ? "inline" : "attachment",
@@ -210,6 +213,10 @@ export async function serveFile(c: Context<HonoEnv>, isPublic = false): Promise<
     "cross-origin-resource-policy": "same-origin",
     "referrer-policy": "no-referrer",
   });
+  if (isPublic) {
+    headers.set("date", responseTime.toUTCString());
+    headers.set("expires", new Date(opened.exp * 1000).toUTCString());
+  }
   if (object.size > 0) headers.set("content-length", String(object.size));
   return new Response(object.body, { status: 200, headers });
 }

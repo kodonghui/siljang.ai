@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { fromBase64Url } from "../src/encoding";
 import { fileUrlSigner } from "../src/file-url";
@@ -108,4 +108,24 @@ it("파일 한도 바인딩이 없으면 저장소를 읽기 전에 실패함", 
     "internal",
   );
   expect(store.calls).not.toContain("get");
+});
+
+it("저장소 응답 도중 만료되면 사진/공개 캐시를 내지 않음", async () => {
+  const store = new MemoryStore(),
+    clock = { now: new Date(END.getTime() - 50) };
+  const key = objectKey();
+  await store.put(key, new Uint8Array([1]), "image/png");
+  const get = store.get.bind(store);
+  vi.spyOn(store, "get").mockImplementation(async (value) => {
+    const result = await get(value);
+    clock.now = END;
+    return result;
+  });
+  const app = createApp({
+    logSink: () => {},
+    services: { storage: store, now: () => clock.now, limiters: { FILE_RATE_LIMITER: new MemoryLimiter(600) } },
+  });
+  const url = await fileUrlSigner(new Secret(KEY)).signPublic(key, ORIGIN, NOW);
+  await expectProblem(await app.request(url, {}, testEnv({ FILE_URL_KEY: KEY })), "not_found");
+  expect(store.calls).toContain("get");
 });
