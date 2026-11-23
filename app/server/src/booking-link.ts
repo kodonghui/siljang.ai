@@ -1,6 +1,7 @@
 /** API-037: 가게 잠금 안에서 준비 조건/처리방침/영구 예약 주소를 한 번 만든다. */
 
 import type { OverseasTransfer } from "./privacy-policy-settings";
+import { MissingSettingError } from "./request-key";
 import type { ShopRequest } from "./routes";
 import { toShopIso } from "./time";
 
@@ -42,11 +43,11 @@ export async function getBookingLink(r: ShopRequest): Promise<Response> {
     const recommended = shop.pickup_address?.trim() ? [] : ["pickup_address"];
     // 이미 낸 주소는 뒤의 설정/판정 변경으로 새로 발급하지 않는다.
     if (shop.booking_slug !== null) {
-      if (settings === null)
-        return { status: "not_ready", url: null, issuedAt: null, missing: ["privacy_policy"], recommended };
+      const origin = r.services.publicAppOrigin;
+      if (origin === null) throw new MissingSettingError("PUBLIC_APP_ORIGIN is not set");
       return {
         status: "issued",
-        url: `${settings.origin}/s/${shop.booking_slug}`,
+        url: `${origin}/s/${shop.booking_slug}`,
         issuedAt: toShopIso(shop.booking_issued_at as Date, shop.time_zone),
         missing: [],
         recommended,

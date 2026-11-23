@@ -37,7 +37,9 @@ import type { OwnerScope } from "./owner-scope";
 import { getPaymentDestination, setPaymentDestination } from "./payment-destination";
 import type { ImageBinding } from "./photo-normalizer";
 import { createPriceListVersion, getCurrentPriceList, getPriceListVersion, listPriceListVersions } from "./price-lists";
+import { getPublicPrivacyPolicy } from "./privacy-policy";
 import { ApiError, problemResponse } from "./problem";
+import { resolvePublicShop } from "./public-shop";
 import type { RateLimitBinding } from "./rate-limit";
 import {
   mountRoutes,
@@ -87,6 +89,7 @@ export type Bindings = {
   readonly UPLOAD_RATE_LIMITER?: RateLimitBinding;
   readonly KAKAO_CALLBACK_QUEUE?: KakaoCallbackQueue;
   readonly OWNER_LOGIN_RATE_LIMITER?: RateLimitBinding;
+  readonly PUBLIC_PRIVACY_RATE_LIMITER?: RateLimitBinding;
   readonly KAKAO_REST_API_KEY?: string;
   readonly KAKAO_CLIENT_SECRET?: string;
   readonly KAKAO_ADMIN_KEY?: string;
@@ -137,6 +140,7 @@ export interface AppOptions {
  */
 export const APP_ROUTES: readonly RouteDecl[] = [
   shopRoute("GET", "/owner/booking-link", "owner", getBookingLink),
+  shopRoute("GET", "/public/shops/:slug/privacy-policy", "public", getPublicPrivacyPolicy),
   shopRoute("POST", "/owner/kakao-channel/check", "owner", startKakaoChannelCheck),
   operatorRoute("GET", "/operator/shops", listReviewShops),
   shopRoute("GET", "/operator/shops/:shopId", "operator", getReviewShop),
@@ -319,7 +323,13 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
   mountRoutes(
     app,
     options.routes ?? APP_ROUTES,
-    { owner: resolveOwnerShop, operator: resolveOperatorShop, customer: resolveKakaoSkillScope, ...options.scopes },
+    {
+      owner: resolveOwnerShop,
+      operator: resolveOperatorShop,
+      customer: resolveKakaoSkillScope,
+      public: resolvePublicShop,
+      ...options.scopes,
+    },
     options.ownerAccount ?? resolveOwnerSession,
     options.operatorAccount ?? resolveOperatorSession,
   );

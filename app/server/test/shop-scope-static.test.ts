@@ -33,6 +33,7 @@ const RAW_ACCESS = [
  * 생기면 까닭을 적어 더한다.
  */
 const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
+  "public-shop.ts": "공개 예약 주소로 발급된 가게 ID 하나만 찾는 정확한 SQL(TASK-044)",
   "operator-alert-directory.ts": "실제 운영자 알림 세 종류의 ID/가게 요약/건수/시각만 읽는 정확한 한 SQL(TASK-035)",
   "operator-shop-directory.ts":
     "인증된 운영자의 등록/사업자 변경 목록과 중복 표시 세 읽기만 허용. 정확한 SQL과 반환 열을 별도로 제한함(TASK-034·036)",
@@ -46,6 +47,7 @@ const RAW_SHOP_SQL_ALLOWED: Record<string, string> = {
 
 /** 가게 범위를 만들 수 있는 파일(해석기)과 까닭. 해석기를 만드는 작업이 더한다. */
 const SCOPE_MAKERS: Record<string, string> = {
+  "public-shop.ts": "공개 예약 주소의 발급된 가게에 읽기 범위만 만듦(TASK-044)",
   "operator-shop.ts": "실제 운영자 세션을 확인하고 경로에서 찾은 가게 하나만 여는 해석기(TASK-034)",
   "owner-shop-db.ts": "인증된 사장님 소유 확인 또는 자기 계정의 새 등록 뒤 가게 범위를 만듦(TASK-032)",
   "shop-scope.ts": "정의",
@@ -77,6 +79,10 @@ const OPERATOR_DIRECTORY_SQL = [
 
 /** 가게 범위 밖 읽기로 허락한 SQL인지(그 파일의 그 꼴만). 꼴 안의 조건에 다른 테이블을 끌어오는 하위 질의는 받지 않는다. */
 function allowedCrossShop(file: string, sql: string): boolean {
+  if (file === "public-shop.ts")
+    return (
+      sql.replace(/\s+/g, " ").trim() === "SELECT id FROM shops WHERE booking_slug=$1 AND booking_issued_at IS NOT NULL"
+    );
   if (file === "operator-alert-directory.ts")
     return (
       sql.replace(/\s+/g, " ").trim() ===

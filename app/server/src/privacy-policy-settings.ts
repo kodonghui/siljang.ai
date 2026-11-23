@@ -15,7 +15,7 @@ export interface PrivacyPolicySettings {
 }
 
 const LIMITS = { recipient: 200, country: 100, whenAndHow: 500, purposeAndRetention: 500, howToRefuse: 1000 } as const;
-const AI_DATA = "상담 대화와 도안 사진. 주문자 이름·연락처·입금자 이름·알레르기 정보는 제외합니다.";
+const AI_DATA = "개인정보를 가린 상담 대화와 도안 사진";
 const SERVER_DATA = "상담 대화·도안 사진·주문 기록, 주문자 이름·연락처·입금자 이름과 따로 동의한 알레르기 정보";
 
 /** 빠진/잘못된 설정은 이 기능만 미충족으로 둔다. 다른 API나 상태 확인을 막지 않는다. */
@@ -23,27 +23,8 @@ export function readPrivacyPolicySettings(
   env: Readonly<Record<string, unknown>>,
   provider: AiProvider | undefined,
 ): PrivacyPolicySettings | null {
-  if (
-    provider === undefined ||
-    typeof env.PUBLIC_APP_ORIGIN !== "string" ||
-    typeof env.PRIVACY_TRANSFER_SETTINGS !== "string"
-  )
-    return null;
-  let origin: URL;
-  try {
-    origin = new URL(env.PUBLIC_APP_ORIGIN);
-  } catch {
-    return null;
-  }
-  if (
-    origin.protocol !== "https:" ||
-    origin.username ||
-    origin.password ||
-    origin.pathname !== "/" ||
-    origin.search ||
-    origin.hash
-  )
-    return null;
+  const origin = readPublicAppOrigin(env.PUBLIC_APP_ORIGIN);
+  if (provider === undefined || origin === null || typeof env.PRIVACY_TRANSFER_SETTINGS !== "string") return null;
   let records: unknown;
   try {
     records = JSON.parse(env.PRIVACY_TRANSFER_SETTINGS);
@@ -70,5 +51,17 @@ export function readPrivacyPolicySettings(
     transfers.push({ ...fields, personalData: entry.provider === provider ? AI_DATA : SERVER_DATA });
   }
   if (![provider, "supabase", "cloudflare"].every((name) => seen.has(name))) return null;
-  return { origin: origin.origin, transfers };
+  return { origin, transfers };
+}
+
+export function readPublicAppOrigin(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash)
+      return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
 }

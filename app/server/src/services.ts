@@ -28,6 +28,7 @@ import { batchS3Store } from "./storage-batch";
 export interface Services {
   now(): Date;
   readonly privacyPolicy: PrivacyPolicySettings | null;
+  readonly publicAppOrigin: string | null;
   /** 사진 저장소. 설정(STORAGE_*)이 없으면 MissingSettingError. */
   storage(): ObjectStore;
   /** G10 사진 정리. 회전할 WebP에만 Images 바인딩을 요구한다. */
@@ -58,6 +59,7 @@ export interface Services {
 export interface ServiceOverrides {
   readonly now?: () => Date;
   readonly privacyPolicy?: PrivacyPolicySettings | null;
+  readonly publicAppOrigin?: string | null;
   readonly storage?: ObjectStore;
   readonly images?: ImageBinding;
   readonly limiters?: { readonly [B in RateLimitRule["binding"]]?: RateLimiter };
@@ -86,6 +88,10 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
   let ownerAuth: OwnerAuth | undefined = overrides.ownerAuth;
   return {
     now: overrides.now ?? (() => new Date()),
+    publicAppOrigin:
+      overrides.publicAppOrigin === undefined
+        ? (overrides.privacyPolicy?.origin ?? settings.publicAppOrigin)
+        : overrides.publicAppOrigin,
     privacyPolicy: overrides.privacyPolicy === undefined ? settings.privacyPolicy : overrides.privacyPolicy,
     aiConfigured: overrides.aiModel !== undefined || (settings.ai !== null && settings.ai.apiKey !== null),
     kakaoCallbackQueue: overrides.kakaoCallbackQueue ?? env.KAKAO_CALLBACK_QUEUE,

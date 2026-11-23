@@ -6,7 +6,7 @@
  */
 
 import { AI_PROVIDERS, type AiProvider, type FxRate, priceOf } from "./ai-prices";
-import { type PrivacyPolicySettings, readPrivacyPolicySettings } from "./privacy-policy-settings";
+import { type PrivacyPolicySettings, readPrivacyPolicySettings, readPublicAppOrigin } from "./privacy-policy-settings";
 
 const MASK = "**********";
 
@@ -166,6 +166,7 @@ export interface Settings {
   readonly operatorAuth: OperatorAuthSettings | null;
   readonly ownerAuth: OwnerAuthSettings | null;
   readonly privacyPolicy: PrivacyPolicySettings | null;
+  readonly publicAppOrigin: string | null;
 }
 
 export class SettingsError extends Error {
@@ -236,6 +237,7 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
     operatorAuth: readOperatorAuth(env, appEnv),
     ownerAuth: readOwnerAuth(env),
     privacyPolicy: readPrivacyPolicySettings(env, ai?.provider),
+    publicAppOrigin: readPublicAppOrigin(env.PUBLIC_APP_ORIGIN),
   };
 }
 
