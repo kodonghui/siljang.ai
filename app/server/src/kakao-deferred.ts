@@ -18,14 +18,19 @@ export function deferredKakaoTexts(previous: readonly DeferredKakaoMessage[]): s
 }
 
 /** 손님 행 잠금 또는 그 손님의 콜백 선점을 가진 호출자만 사용한다. */
-export async function deferredKakaoMessages(db: ShopDb, customerId: string): Promise<readonly DeferredKakaoMessage[]> {
+export async function deferredKakaoMessages(
+  db: ShopDb,
+  customerId: string,
+  options: { readonly allowUndisclosedAi?: boolean } = {},
+): Promise<readonly DeferredKakaoMessage[]> {
   const result = await db.run<{ id: string; body_masked: string; created_order: string }>(
     `SELECT m.id, m.body_masked, (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order FROM messages m
       JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
       WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'outbound'
         AND m.delivery = 'deferred' AND m.sent_at IS NULL AND char_length(m.body_masked) BETWEEN 1 AND 1000
+        AND (m.author <> 'ai' OR c.ai_disclosed_at IS NOT NULL OR $4::boolean)
       ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
-    [customerId, DEFERRED_REPLY_BATCH],
+    [customerId, DEFERRED_REPLY_BATCH, options.allowUndisclosedAi === true],
   );
   // 결제/버튼/사진 안내는 업무 렌더러가 전해진 시각 등도 함께 기록해야 하므로 이 공통 글 경로에서 소비하지 않는다.
   const notices = await db.run<{ id: string; body: string; created_order: string }>(
