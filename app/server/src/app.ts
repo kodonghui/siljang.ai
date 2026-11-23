@@ -220,8 +220,11 @@ export const APP_ROUTES: readonly RouteDecl[] = [
     "사진의 15분 서명 주소(06 DEC-09, 계약 밖, TASK-022). 주소의 서명이 권한이라 세션·가게를 보지 않음. 저장소만 읽고 데이터베이스는 보지 않음",
     (c) => serveFile(c),
   ),
-  openRoute("GET", PUBLIC_FILE_ROUTE, "공개 포트폴리오 서명 주소·공개 캐시·IP 한도(06 DEC-09·DEC-16)", (c) =>
-    serveFile(c, true),
+  openRoute(
+    "GET",
+    PUBLIC_FILE_ROUTE,
+    "공개 포트폴리오 서명 주소·공개 캐시·IP 한도(06 DEC-09·DEC-16 예외, docs/records/progress.md의 TASK-045)",
+    (c) => serveFile(c, true),
   ),
 ];
 

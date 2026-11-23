@@ -1094,4 +1094,4 @@ npx --no-install wrangler deploy --config server/wrangler.jsonc --env "" --stric
 295. TASK-045 후속에서 공개 포트폴리오 사진은 저장 위치별로 같은 150초 구간에 같은 주소를 사용합니다. 기한은 구간 끝 뒤 150초이며 발급 수명은 최대 300초입니다. 동희님의 2026-11-23 01시대 KST 위임과 실장님 봇의 확인 요청 `msg_844ba4f4203d`에 대한 오랑이의 답을 진행 기록에 남겼습니다. [PR #186 검토](https://github.com/kodonghui/siljang.ai/pull/186#issuecomment-7092405123)
 
 - `server/src/file-url.ts`에서 기한의 150초 정렬과 남은 시간 300초 상한을 검증하며 어긋난 주소는 404입니다. 공개 캐시는 남은 정수 초까지만 허용합니다. 공개 포트폴리오 IV는 `FILE_URL_KEY`에서 파생한 전용 HMAC 키로 저장 위치와 기한을 서명해 얻습니다. 사장님·운영자 사진과 공개 도안 주소에는 15분이 적용되며 파일 읽기 한도는 IP당 1분 600회입니다.
-- `public-file-url.test.ts`와 `public-booking-page.test.ts`에서 발급 구간, 캐시, 철회와 IV를 확인합니다. 만료 주소의 API-038 재조회와 재실패 시 사진 자리를 비우는 동작은 TASK-061의 화면 완료 조건입니다.
+- `public-file-url.test.ts`와 `public-booking-page.test.ts`에서 발급 구간, 캐시, 철회와 IV를 확인합니다. TASK-061의 화면 완료 조건은 사진 주소가 404일 때 API-038을 한 번 재조회해 포트폴리오 목록을 교체하고, 새 주소도 404인 사진 자리를 비우는 것입니다.

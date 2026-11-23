@@ -107,7 +107,7 @@ it("공개 사진은 남은 정수 초까지만 캐시하고 기한에는 404를
   await expectProblem(await app.request(url, {}, env), "not_found");
 });
 
-it("300초가 넘거나 150초의 배수가 아닌 기한은 404를 반환함", async () => {
+it("남은 기한이 300초를 1ms라도 넘거나 기한이 150초의 배수가 아니면 404를 반환함", async () => {
   const store = new MemoryStore();
   const clock = { now: new Date(START.getTime() - 1) };
   const key = objectKey();

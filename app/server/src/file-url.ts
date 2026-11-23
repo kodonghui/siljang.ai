@@ -29,7 +29,7 @@ export const FILE_ROUTE = "/files/v1/:token";
 /** 공개 포트폴리오 전용 주소. 일반 사진의15분 키/캐시와 분리한다. */
 export const PUBLIC_FILE_ROUTE = "/files/public/v1/:token";
 export const PUBLIC_FILE_INTERVAL_SECONDS = 150;
-const PUBLIC_FILE_MAX_TTL_SECONDS = 2 * PUBLIC_FILE_INTERVAL_SECONDS;
+export const PUBLIC_FILE_MAX_TTL_SECONDS = 2 * PUBLIC_FILE_INTERVAL_SECONDS;
 
 const VERSION = "v1";
 const IV_BYTES = 12;
@@ -117,7 +117,7 @@ export function fileUrlSigner(secret: Secret): FileUrls {
     const { aes, mac, nonce } = await getKeys(isPublic);
     const seconds = Math.floor(now.getTime() / 1000);
     const exp = isPublic
-      ? (Math.floor(seconds / PUBLIC_FILE_INTERVAL_SECONDS) + 2) * PUBLIC_FILE_INTERVAL_SECONDS
+      ? Math.floor(seconds / PUBLIC_FILE_INTERVAL_SECONDS) * PUBLIC_FILE_INTERVAL_SECONDS + PUBLIC_FILE_MAX_TTL_SECONDS
       : seconds + FILE_URL_TTL_SECONDS;
     // 공개 전용 AES/서명/IV 키는 일반 사진 키와 분리한다. IV 입력은 내용과 기한의 모호하지 않은 짝이다.
     // 같은 저장 위치와 기한은 같은 암호문이다(다른 입력끼리 96비트 IV가 충돌할 확률은 남는다).
