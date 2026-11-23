@@ -15,6 +15,7 @@ const HAND_CSS = [
   "src/samples/samples.css",
   "src/price-list.css",
   "src/operating-rules.css",
+  "src/payment-destination.css",
   "src/price-list-history.css",
 ];
 

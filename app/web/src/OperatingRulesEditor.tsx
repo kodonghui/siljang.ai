@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ApiFailure } from "./api";
+import { CONNECTION_FAILED as NETWORK } from "./api";
 import {
   fetchOperatingRules,
   type OperatingRules,
@@ -30,6 +30,7 @@ import {
   TextField,
 } from "./ui";
 import { useCommand } from "./useCommand";
+import { useVersionedRead } from "./useVersionedRead";
 import "./operating-rules.css";
 
 const LABELS = {
@@ -40,7 +41,6 @@ const LABELS = {
   cancellationFeeKrw: "취소 수수료(원)",
   preProductionRefundPct: "제작 전 취소 환불(%)",
 } as const;
-const NETWORK: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
 const dateFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", dateStyle: "short", timeStyle: "short" });
 function orderedClauses(form: OperatingRulesForm) {
   return form.clauses.filter((c) => c.enabled).sort((a, b) => a.position - b.position);
@@ -92,21 +92,28 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
   callbacks.current = props;
   const [base, setBase] = useState<OperatingRules | null>(null),
     [form, setForm] = useState<OperatingRulesForm | null>(null),
-    [loading, setLoading] = useState(true),
-    [loadFailure, setLoadFailure] = useState<ApiFailure | null>(null),
     [stale, setStale] = useState(false),
     [latest, setLatest] = useState<OperatingRules | null>(null),
     [conflicts, setConflicts] = useState<string[]>([]),
     [showErrors, setShowErrors] = useState(false);
+  const {
+    loading,
+    failure: loadFailure,
+    result: readResult,
+    read,
+    retry: retryRead,
+    clearFailure,
+  } = useVersionedRead(fetchOperatingRules, {
+    sessionChecking: Boolean(props.sessionChecking || props.logoutPending),
+    sessionFailed: Boolean(props.sessionFailed),
+  });
+  const handledRead = useRef<unknown>(null);
   const command = useCommand<Record<string, unknown>, OperatingRulesResult>((body, key) => {
     if (callbacks.current.sessionChecking || callbacks.current.sessionFailed || callbacks.current.logoutPending)
       return Promise.resolve(NETWORK);
     return saveOperatingRules(body, key);
   });
-  const readNeeded = useRef(true);
-  const activeRead = useRef<AbortController | null>(null),
-    lastMode = useRef<"initial" | "stale">("initial"),
-    formRef = useRef<HTMLFormElement>(null),
+  const formRef = useRef<HTMLFormElement>(null),
     statusRef = useRef<HTMLElement>(null),
     focusPending = useRef<string | null>(null),
     handledDone = useRef<unknown>(null),
@@ -126,53 +133,23 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       setStale(false);
       setConflicts([]);
       setShowErrors(false);
-      setLoadFailure(null);
+      clearFailure();
       if (reset) command.reset();
     },
-    [command.reset],
-  );
-  const read = useCallback(
-    (mode: "initial" | "stale") => {
-      if (callbacks.current.sessionChecking || callbacks.current.sessionFailed) return;
-      readNeeded.current = true;
-      activeRead.current?.abort();
-      const controller = new AbortController();
-      activeRead.current = controller;
-      lastMode.current = mode;
-      setLoading(true);
-      setLoadFailure(null);
-      void fetchOperatingRules(controller.signal)
-        .then((result) => {
-          if (controller.signal.aborted) return;
-          readNeeded.current = false;
-          setLoading(false);
-          if (result.ok) {
-            if (mode === "stale") setLatest(result.data);
-            else adopt(result.data, undefined, true);
-          } else {
-            setLoadFailure(result);
-            if (result.status === 401) callbacks.current.onSessionExpired();
-            if (result.problem?.code === "shop_not_registered") callbacks.current.onRegisterShop();
-          }
-        })
-        .catch(() => {
-          if (!controller.signal.aborted) {
-            readNeeded.current = false;
-            setLoading(false);
-            setLoadFailure(NETWORK);
-          }
-        });
-    },
-    [adopt],
+    [command.reset, clearFailure],
   );
   useEffect(() => {
-    if (props.sessionChecking || props.sessionFailed) {
-      activeRead.current?.abort();
-      return;
+    if (!readResult || handledRead.current === readResult) return;
+    handledRead.current = readResult;
+    const result = readResult.response;
+    if (result.ok) {
+      if (readResult.mode === "stale") setLatest(result.data);
+      else adopt(result.data, undefined, true);
+    } else {
+      if (result.status === 401) callbacks.current.onSessionExpired();
+      if (result.problem?.code === "shop_not_registered") callbacks.current.onRegisterShop();
     }
-    if (readNeeded.current) read(lastMode.current);
-    return () => activeRead.current?.abort();
-  }, [read, props.sessionChecking, props.sessionFailed]);
+  }, [readResult, adopt]);
   useEffect(() => {
     if (command.state.kind !== "done" || handledDone.current === command.state.data) return;
     handledDone.current = command.state.data;
@@ -251,7 +228,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       failure={classify(loadFailure.status, loadFailure.problem, loadFailure.retryAfterSeconds)}
       disabled={requestsBlocked}
       onRetry={() => {
-        if (!requestsBlocked) read(lastMode.current);
+        if (!requestsBlocked) retryRead();
       }}
       onLogin={props.onSessionExpired}
       onRegisterShop={props.onRegisterShop}
