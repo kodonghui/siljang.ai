@@ -69,10 +69,15 @@ export function useVersionedRead<T>(load: (signal: AbortSignal) => Promise<ApiRe
     if (needed.current) read(mode.current);
     return () => active.current?.abort();
   }, [read, options.sessionChecking, options.sessionFailed]);
+  const cancel = useCallback(() => {
+    active.current?.abort();
+    needed.current = false;
+    setState((old) => (old.loading ? { ...old, loading: false } : old));
+  }, []);
   const retry = useCallback(() => read(mode.current), [read]);
   const clearFailure = useCallback(
     () => setState((old) => (old.failure === null ? old : { ...old, failure: null })),
     [],
   );
-  return { ...state, read, retry, clearFailure };
+  return { ...state, read, retry, clearFailure, cancel };
 }

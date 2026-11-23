@@ -1,0 +1,89 @@
+{
+  "main": "76d7dd9038fa732640e2f756e9a1a6407f1b40b6",
+  "pullRequest": 204,
+  "runs": [
+    {
+      "id": 45222781365,
+      "name": "db",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 45222781261,
+      "name": "app",
+      "attempt": 2,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "checks": [
+    {
+      "id": 137865255736,
+      "name": "Windows PowerShell 평가 인증(모의)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137865168351,
+      "name": "check",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137865166057,
+      "name": "스테이징 배포",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137861219242,
+      "name": "PostgreSQL 17.11",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137861218711,
+      "name": "PostgreSQL 16.15",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "firstAttempt": {
+    "job": 137863223547,
+    "appUploaded": true,
+    "shaVerified": true,
+    "healthStatus": 200,
+    "databaseProbe": "15초 시간 초과",
+    "exitCode": 28
+  },
+  "databaseProbe": {
+    "attempt": 2,
+    "status": 401,
+    "code": "unauthenticated"
+  },
+  "native": {
+    "machine": "academy-pc",
+    "tool": "Wrangler CLI",
+    "loggedIn": true,
+    "accountMatches": true,
+    "app": {
+      "tag": "76d7dd9038fa732640e2f756e9a1a6407f1b40b6",
+      "versionId": "0268eb9a-c967-4396-8c8e-19b0443a8327",
+      "createdOn": "2026-11-23T17:06:45.746121Z"
+    },
+    "storage": {
+      "tag": "76d7dd9038fa732640e2f756e9a1a6407f1b40b6",
+      "versionId": "4f1deca7-cf8e-483a-9d32-4c1a3707c13e",
+      "createdOn": "2026-11-23T17:06:37.391095Z",
+      "percentage": 100
+    },
+    "ciVersionMatches": true,
+    "healthStatus": 200,
+    "exitCode": 0
+  },
+  "screenChecks": {
+    "completed": 0,
+    "reason": "학원컴 Aside CDP 문제로 실제 화면은 미확인입니다."
+  }
+}

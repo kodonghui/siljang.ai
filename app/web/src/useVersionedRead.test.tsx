@@ -154,3 +154,41 @@ it.each(["loaded", "empty", "expired", "noShop"] as const)(
     if (kind === "loaded") expect(onLoaded).toHaveBeenCalledWith("initial", { value: "value" });
   },
 );
+it("명시적으로 취소한 상태 조회는 늦은 응답과 자동 재개를 버리고 다음 수동 조회만 받는다", async () => {
+  let finish: ((value: ApiResult<{ value: string }>) => void) | undefined;
+  const signals: AbortSignal[] = [],
+    onSessionExpired = vi.fn();
+  const load = vi.fn((signal: AbortSignal) => {
+    signals.push(signal);
+    return signals.length === 1
+      ? new Promise<ApiResult<{ value: string }>>((resolve) => {
+          finish = resolve;
+        })
+      : Promise.resolve(ok("new"));
+  });
+  const view = renderHook((props) => useVersionedRead(load, { ...props, onSessionExpired }), {
+    initialProps: { sessionChecking: false },
+  });
+  await waitFor(() => expect(load).toHaveBeenCalledOnce());
+  act(() => {
+    view.result.current.cancel();
+  });
+  expect(signals[0]?.aborted).toBe(true);
+  await act(async () => {
+    finish?.({
+      ok: false,
+      status: 401,
+      problem: parseProblem({ code: "unauthenticated" }, 401),
+      retryAfterSeconds: null,
+    });
+  });
+  expect(onSessionExpired).not.toHaveBeenCalled();
+  expect(view.result.current.loading).toBe(false);
+  view.rerender({ sessionChecking: true });
+  view.rerender({ sessionChecking: false });
+  expect(load).toHaveBeenCalledOnce();
+  act(() => {
+    view.result.current.read();
+  });
+  await waitFor(() => expect(view.result.current.result?.response).toEqual(ok("new")));
+});
