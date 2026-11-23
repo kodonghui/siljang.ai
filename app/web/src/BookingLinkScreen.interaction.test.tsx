@@ -149,12 +149,16 @@ it("세션 재확인은 조회를 취소하고 늦은401을 무시한 뒤 다시
 });
 it("뒤로 돌아온 페이지는 조건을 다시 읽어 새 발급 주소를 보인다", async () => {
   current = example("not_ready");
-  area();
+  const view = area();
   await main().findByText("예약 링크를 만들려면 아래를 마쳐 주세요");
   current = example("issued");
   const event = new Event("pageshow");
   Object.defineProperty(event, "persisted", { value: true });
   fireEvent(window, event);
+  await act(async () => {});
+  expect(reads).toHaveLength(1);
+  view.rerender(<BookingLinkScreen {...view.props} sessionChecking />);
+  view.rerender(<BookingLinkScreen {...view.props} sessionChecking={false} />);
   await issued();
   expect(reads).toHaveLength(2);
 });
@@ -209,4 +213,79 @@ it("보류 가게는 예약 링크 조회 전에 영업 신고로 간다", async
   );
   await screen.findByText("영업 신고 경로");
   expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("발급 주소는 백그라운드 조회 동안에도 복사하고 열 수 있다", async () => {
+  area();
+  await issued();
+  hold = new Promise(() => {});
+  fireEvent.click(main().getByRole("button", { name: "새로 고침" }));
+  await waitFor(() => expect(reads).toHaveLength(2));
+  expect((screen.getByLabelText("예약 링크") as HTMLInputElement).disabled).toBe(false);
+  expect((main().getByRole("button", { name: "예약 링크 복사" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(main().getByRole("link", { name: "예약 링크 페이지 열기" }).getAttribute("aria-disabled")).toBeNull();
+});
+it("영업 신고 조건은 대기 문구와 현재 신고를 확인하는 경로를 함께 보인다", async () => {
+  current = example("not_ready");
+  area();
+  await main().findByText("예약 링크를 만들려면 아래를 마쳐 주세요");
+  expect(main().getByText("운영자가 확인하고 있어요")).toBeTruthy();
+  expect(main().getByRole("link", { name: "영업 신고 확인하기" }).getAttribute("href")).toBe("/owner/shop/license");
+});
+it("픽업 장소 링크는 세션 확인 중 비활성과 탭 순서를 알린다", async () => {
+  current = example("not_ready");
+  const view = area();
+  await main().findByText("예약 링크를 만들려면 아래를 마쳐 주세요");
+  view.rerender(<BookingLinkScreen {...view.props} sessionChecking />);
+  const link = main().getByRole("link", { name: "픽업 장소 넣기" });
+  expect(link.getAttribute("aria-disabled")).toBe("true");
+  expect(link.getAttribute("tabindex")).toBe("-1");
+});
+it("실제 bfcache 복귀는 세션 재확인 뒤 예약 링크를 한 번만 읽는다", async () => {
+  current = example("not_ready");
+  const transport = fetch;
+  let identities = 0,
+    finish: ((response: Response) => void) | undefined;
+  const identity = {
+    owner: {
+      ownerId: "d3898f13-62a2-4e3e-bd60-9797a6dfc506",
+      alertChannelFriend: false,
+      createdAt: "2026-11-15T00:00:00Z",
+    },
+    shop: { shopId: "1dc0769d-8fb3-46da-af01-729ec0ea63db", name: "합성 가게", licenseStatus: "verified" },
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/owner/me") {
+        identities++;
+        if (identities === 2)
+          return new Promise<Response>((resolve) => {
+            finish = resolve;
+          });
+        return json(identity);
+      }
+      return transport(input, init);
+    }),
+  );
+  render(
+    <MemoryRouter initialEntries={["/owner/booking-link"]}>
+      <Routes>
+        <Route path="/owner/*" element={<OwnerArea />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  await screen.findByText("예약 링크를 만들려면 아래를 마쳐 주세요");
+  const event = new Event("pageshow");
+  Object.defineProperty(event, "persisted", { value: true });
+  fireEvent(window, event);
+  fireEvent(document, new Event("visibilitychange"));
+  await waitFor(() => expect(identities).toBe(2));
+  expect(reads).toHaveLength(1);
+  current = example("issued");
+  await act(async () => {
+    finish?.(json(identity));
+  });
+  await issued();
+  expect(reads).toHaveLength(2);
 });

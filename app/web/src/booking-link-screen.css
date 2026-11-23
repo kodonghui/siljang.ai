@@ -54,3 +54,10 @@
 .booking-issued .copy-value button {
   min-height: var(--size-control-lg);
 }
+
+.booking-condition-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
