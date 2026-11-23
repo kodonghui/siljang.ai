@@ -544,4 +544,44 @@
   .ui-list__cards {
     display: none;
   }
+
+  .price-editor .price-option,
+  .price-editor .price-option-heading {
+    grid-template-columns: minmax(0, 2fr) repeat(5, minmax(0, 1fr));
+    align-items: start;
+  }
+  .price-editor .price-option-heading {
+    display: grid;
+    gap: var(--space-md);
+    padding-inline: var(--space-md);
+    color: var(--color-ink-muted);
+    font-size: var(--font-size-small);
+  }
+  .price-editor .price-option legend {
+    grid-column: 1 / -1;
+  }
+  .price-editor .price-rule {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .price-editor .price-rule .ui-banner {
+    grid-column: 1 / -1;
+  }
+  .price-editor .price-design-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .price-editor.price-editor {
+    padding-bottom: 0;
+  }
+  .price-editor .price-save-bar {
+    padding: var(--space-md);
+  }
+  .price-editor .price-save-bar > span {
+    flex-basis: auto;
+  }
+  .price-editor .price-save-bar .ui-button--primary {
+    flex: none;
+  }
+  .price-editor .price-no-maximum {
+    display: block;
+  }
 }

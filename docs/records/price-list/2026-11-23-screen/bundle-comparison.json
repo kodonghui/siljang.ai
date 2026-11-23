@@ -1,0 +1,6 @@
+{
+  "js_unchanged": true,
+  "css_only_delta": true,
+  "style": ".price-design-image .ui-banner__text { text-wrap: balance; }",
+  "final_css_sha256": "dcd57b8ac2e1746c18b2345cf6f9f13adc884c0c1893f199345162f9806976e0"
+}

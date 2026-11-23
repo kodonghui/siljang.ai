@@ -34,6 +34,7 @@ const failed = (code: ErrorCode, extra: Record<string, unknown> = {}, blockedUnt
 /** 태그를 뺀 글(화면에 보이는 것) */
 const text = (html: string) =>
   html
+    .replace(/<!--[\s\S]*?-->|<wbr\s*\/?>/g, "")
     .replace(/<[^>]+>/g, " ")
     .replace(/&#x27;/g, "'")
     .replace(/\s+/g, " ")

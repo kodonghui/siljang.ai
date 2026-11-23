@@ -61,7 +61,7 @@ it("순서가 틀리거나 현재 버전이 여럿인 목록을 거절", async (
   );
   expect(await fetchPriceListVersions()).toMatchObject({ ok: false, status: 502 });
 });
-it.each(["../../operator/me", "3/other", "3?x=1", "0", "03", "1.5", "2147483648"])(
+it.each(["../../operator/me", "3/other", "3?x=1", "0", "1.5", "2147483648"])(
   "버전 %s는 다른 경로를 부르지 않고 없는 버전",
   async (value) => {
     const fetch = vi.fn();
@@ -102,4 +102,17 @@ it.each([
     vi.fn(async () => json({ code }, Number(status))),
   );
   expect(await fetchPriceListVersion("3")).toMatchObject({ ok: false, status, problem: { code } });
+});
+
+it("서버가 받는 앞자리0 버전은 숫자 경로로 정규화", async () => {
+  const calls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (p: unknown) => {
+      calls.push(String(p));
+      return json(old());
+    }),
+  );
+  expect(await fetchPriceListVersion("03")).toMatchObject({ ok: true, data: { version: 3 } });
+  expect(calls).toEqual(["/api/owner/price-list/versions/3"]);
 });
