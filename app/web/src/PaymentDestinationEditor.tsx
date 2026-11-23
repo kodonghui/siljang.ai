@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CONNECTION_FAILED } from "./api";
 import { formatKoreanDateTime } from "./format-date";
 import {
@@ -79,9 +79,15 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
   });
   const handledDone = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null),
-    focusPending = useRef<string | null>(null),
     formRef = useRef<HTMLFormElement>(null),
     statusRef = useRef<HTMLElement>(null);
+  const [focusRequest, setFocusRequest] = useState<{
+    readonly pointer: string;
+    readonly origin: Element | null;
+  } | null>(null);
+  const queueFocus = useCallback((pointer: string) => {
+    setFocusRequest({ pointer, origin: document.activeElement });
+  }, []);
   const bankOptions = useId();
   const pending =
       command.busy || (!props.sessionFailed && loading) || Boolean(props.sessionChecking || props.logoutPending),
@@ -91,6 +97,7 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
   const failure = command.state.kind === "failed" ? command.state.failure : null;
   const adopt = useCallback(
     (value: PaymentDestination | null, draft?: PaymentForm, reset = false) => {
+      setFocusRequest(null);
       setBase(value);
       setForm(draft ?? paymentForm(value));
       setLoaded(true);
@@ -122,21 +129,28 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
       read("stale");
     }
     if (failure.outcome === "field")
-      focusPending.current =
+      queueFocus(
         failure.code === "holder_not_verified"
           ? "/holderName"
-          : (failure.fieldErrors.find((e) => fields.includes(e.field))?.field ?? "status");
-  }, [failure, read]);
-  useEffect(() => {
-    const pointer = focusPending.current;
-    if (!pointer || requestsBlocked) return;
+          : (failure.fieldErrors.find((e) => fields.includes(e.field))?.field ?? "status"),
+      );
+  }, [failure, read, queueFocus]);
+  useLayoutEffect(() => {
+    if (!focusRequest) return;
+    setFocusRequest(null);
+    if (requestsBlocked) return;
+    const active = document.activeElement;
+    if (active && active !== document.body && active !== focusRequest.origin) return;
+    const pointer = focusRequest.pointer;
     const field = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-pointer]") ?? []).find(
       (el) => el.dataset.pointer === pointer,
     );
     const input = field?.querySelector<HTMLInputElement>("input");
-    focusPending.current = null;
-    (input && !input.disabled ? input : statusRef.current)?.focus();
-  });
+    const target = input && !input.disabled ? input : statusRef.current;
+    if (!target?.isConnected || target.matches(":disabled")) return;
+    target.focus();
+    if (target.ownerDocument.activeElement !== target) target.focus();
+  }, [focusRequest, requestsBlocked]);
   const issues = useMemo(() => paymentIssues(form), [form]);
   const errors = fieldErrorsFor(
     [...(failure?.fieldErrors ?? []), ...issues.filter((e) => showErrors || e.code !== "required")],
@@ -147,7 +161,7 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
     if (locked || stale || !loaded || command.blocked) return;
     if (issues.length) {
       setShowErrors(true);
-      focusPending.current = issues[0]?.field ?? "status";
+      queueFocus(issues[0]?.field ?? "status");
       return;
     }
     command.submit(paymentPayload(base, form));
