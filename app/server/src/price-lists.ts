@@ -57,14 +57,14 @@ interface PreparedDesign {
   upload?: TakenUpload;
 }
 
-async function current(db: ShopDb): Promise<Head | undefined> {
+export async function current(db: ShopDb): Promise<Head | undefined> {
   return (
     await db.run<Head>(
       "SELECT p.id,p.version,p.created_at,p.superseded_at,p.xmin::text AS revision FROM price_lists p WHERE p.shop_id=$1 AND p.superseded_at IS NULL",
     )
   ).rows[0];
 }
-async function contents(db: ShopDb, id: string) {
+export async function contents(db: ShopDb, id: string) {
   const options = (
     await db.run<OptionRow>(
       `SELECT o.id,o.option_group,o.name,o.price_kind,o.amount,o.amount_max,o.in_standard,o.position FROM price_options o WHERE o.shop_id=$1 AND o.price_list_id=$2

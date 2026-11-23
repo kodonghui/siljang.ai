@@ -5,6 +5,7 @@ import { Secret } from "../src/settings";
 import { comparableProblem, expectProblem } from "./support/contract";
 import { newUuid, testEnv } from "./support/db";
 import * as img from "./support/images";
+import { MemoryLimiter } from "./support/rate-limit";
 import { MemoryStore } from "./support/storage";
 
 // 사진의 15분 서명 주소(TASK-022; 06 DEC-09 '저장 위치는 포함하지 않음', licensePhotoUrl 등 format uri·2048자).
@@ -79,7 +80,10 @@ describe("GET /api/files/v1/:token(서명 주소로 사진 내기)", () => {
   function setup() {
     const store = new MemoryStore();
     const clock = { now: T0 };
-    const app = createApp({ logSink: () => {}, services: { storage: store, now: () => clock.now } });
+    const app = createApp({
+      logSink: () => {},
+      services: { storage: store, now: () => clock.now, limiters: { FILE_RATE_LIMITER: new MemoryLimiter(600) } },
+    });
     const env = testEnv({ FILE_URL_KEY: KEY });
     const urls = fileUrlSigner(new Secret(KEY));
     const get = (url: string) => app.request(new URL(url).pathname + new URL(url).search, {}, env);

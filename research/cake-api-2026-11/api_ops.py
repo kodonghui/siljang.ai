@@ -767,7 +767,7 @@ op(id="API-037", method="get", path="/owner/booking-link", op="getBookingLink", 
 op(id="API-038", method="get", path="/public/shops/{slug}", op="getBookingPage", tag="예약 링크",
    summary="예약 링크 페이지", spec=["SPEC-011", "SPEC-014", "SPEC-063"], auth="public",
    desc="누구나 연다. 포트폴리오(손님이 게시에 동의하고 철회하지 않은 완성 사진·후기 사진만, REQ-209), 현재 버전의 가격표(가게가 도안으로 올린 견본 사진은 손님 동의 없이 보임, REQ-210), 오늘부터 60일의 날(받음·마감·휴무, 남은 자리 수 없음), 가게 신원 정보, 처리방침 주소, 문의 주소. "
-        "같은 주소에서 1분에 60번을 넘으면 429(DEC-16). 응답은 최대 60초 캐시되어 내린 사진은 5분 안에 사라진다(SPEC-063). "
+        "같은 주소에서 1분에 60번을 넘으면 429(DEC-16). 응답은 최대 60초 캐시되어 내린 사진은 예약 링크 페이지에서 5분 안에 사라진다(SPEC-063). "
         "채널을 열 수 없으면 화면이 inquiryUrl을 글로 보인다.",
    params=[PSLUG],
    ok=[(200, "BookingPage", {"page": E.BOOKING_PAGE, "no_photos": E.BOOKING_PAGE_NO_PHOTOS}, ["Cache-Control"])],

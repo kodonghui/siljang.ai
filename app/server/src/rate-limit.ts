@@ -14,7 +14,12 @@ export interface RateLimiter {
 
 /** 한도 하나: wrangler.jsonc의 바인딩 이름과 값(시험이 wrangler.jsonc와 같은지 본다). */
 export interface RateLimitRule {
-  readonly binding: "UPLOAD_RATE_LIMITER" | "OWNER_LOGIN_RATE_LIMITER" | "PUBLIC_PRIVACY_RATE_LIMITER";
+  readonly binding:
+    | "UPLOAD_RATE_LIMITER"
+    | "OWNER_LOGIN_RATE_LIMITER"
+    | "PUBLIC_PRIVACY_RATE_LIMITER"
+    | "PUBLIC_BOOKING_RATE_LIMITER"
+    | "FILE_RATE_LIMITER";
   readonly limit: number;
   readonly periodSeconds: 10 | 60;
 }
@@ -43,3 +48,12 @@ export function bindingLimiter(binding: RateLimitBinding): RateLimiter {
     limit: async (key) => (await binding.limit({ key })).success,
   };
 }
+
+export const PUBLIC_BOOKING_RATE: RateLimitRule = {
+  binding: "PUBLIC_BOOKING_RATE_LIMITER",
+  limit: 60,
+  periodSeconds: 60,
+};
+
+/** 도안50장+포트폴리오100장을 한IP에서 한 분에 네 번 읽을 수 있는 상한. */
+export const FILE_RATE: RateLimitRule = { binding: "FILE_RATE_LIMITER", limit: 600, periodSeconds: 60 };
