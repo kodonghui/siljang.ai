@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CONNECTION_FAILED as NETWORK } from "./api";
 import { DesignImage } from "./DesignImage";
 import {
@@ -113,6 +113,14 @@ function StandardField(props: {
     </div>
   );
 }
+type FocusRequest =
+  | { readonly kind: "field"; readonly pointer: string; readonly origin: Element | null }
+  | { readonly kind: "group"; readonly group: OptionGroup; readonly origin: Element | null };
+function focusReady(target: HTMLElement | null | undefined): boolean {
+  if (!target?.isConnected || target.matches(":disabled")) return false;
+  target.focus();
+  return target.ownerDocument.activeElement === target;
+}
 export function PriceListEditor(props: ShopLicenseProps) {
   const callbacks = useRef(props);
   callbacks.current = props;
@@ -157,8 +165,8 @@ export function PriceListEditor(props: ShopLicenseProps) {
   const uploading = useRef(new Set<string>()),
     submittedPhotos = useRef<{ key: string; uploadId: string | null }[]>([]);
   const handled = useRef<unknown>(null),
-    handledFailure = useRef<unknown>(null),
-    focusPending = useRef<string | null>(null);
+    handledFailure = useRef<unknown>(null);
+  const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
   const pending = loading || command.busy || uploadCount > 0 || Boolean(props.logoutPending || props.sessionChecking);
   const requestsBlocked = pending || Boolean(props.sessionFailed),
@@ -175,8 +183,11 @@ export function PriceListEditor(props: ShopLicenseProps) {
 
   const revealField = useCallback((pointer: string) => {
     const form = formValue.current;
-    focusPending.current =
-      pointer === "/options" || priceFieldPointers(form).includes(pointer) ? pointer : STATUS_FOCUS;
+    setFocusRequest({
+      kind: "field",
+      pointer: pointer === "/options" || priceFieldPointers(form).includes(pointer) ? pointer : STATUS_FOCUS,
+      origin: document.activeElement,
+    });
     const optionIndex = /^\/options\/(\d+)/.exec(pointer)?.[1];
     const ruleIndex = /^\/rules\/(\d+)/.exec(pointer)?.[1];
     if (optionIndex !== undefined) {
@@ -188,6 +199,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
 
   const adopt = useCallback(
     (list: PriceList | null, options: { draft?: PriceListForm; resetCommand?: boolean } = {}) => {
+      setFocusRequest(null);
       setBase(list);
       setForm(options.draft ?? priceListForm(list));
       setStale(false);
@@ -235,26 +247,32 @@ export function PriceListEditor(props: ShopLicenseProps) {
     }
     if (failure.outcome === "field") revealField(failure.fieldErrors[0]?.field ?? "");
   }, [failure, read, revealField]);
-  useEffect(() => {
-    const pointer = focusPending.current;
-    if (!pointer) return;
-    const field =
-      pointer === STATUS_FOCUS
-        ? null
-        : Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-pointer], [data-row-pointer]") ?? []).find(
-            (node) => node.dataset.pointer === pointer || node.dataset.rowPointer === pointer,
-          );
-    const target =
-      pointer === STATUS_FOCUS
-        ? statusRef.current
-        : pointer === "/options"
+  useLayoutEffect(() => {
+    if (!focusRequest) return;
+    setFocusRequest(null);
+    if (requestsBlocked) return;
+    const active = document.activeElement;
+    if (active && active !== document.body && active !== focusRequest.origin) return;
+    let target: HTMLElement | null | undefined;
+    if (focusRequest.kind === "group") {
+      target =
+        formRef.current?.querySelectorAll<HTMLButtonElement>('button[role="tab"]')[
+          OPTION_GROUPS.indexOf(focusRequest.group)
+        ];
+    } else {
+      const pointer = focusRequest.pointer;
+      const field = Array.from(
+        formRef.current?.querySelectorAll<HTMLElement>("[data-pointer], [data-row-pointer]") ?? [],
+      ).find((node) => node.dataset.pointer === pointer || node.dataset.rowPointer === pointer);
+      const input =
+        pointer === "/options"
           ? formRef.current?.querySelector<HTMLElement>("[data-add-option]")
           : field?.querySelector<HTMLElement>("input, select, textarea, button");
-    if (target && !requestsBlocked) {
-      focusPending.current = null;
-      (target.matches(":disabled") ? statusRef.current : target)?.focus();
+      target = pointer === STATUS_FOCUS || input?.matches(":disabled") ? statusRef.current : input;
     }
-  });
+    // 이 화면 반영에서만 최대 두 번 시도하고 이후 입력에는 요청을 남기지 않는다.
+    if (!focusReady(target)) focusReady(target);
+  }, [focusRequest, requestsBlocked]);
   useEffect(() => {
     setRulePage((page) => Math.min(page, Math.max(0, Math.ceil(form.rules.length / RULE_PAGE_SIZE) - 1)));
   }, [form.rules.length]);
@@ -518,10 +536,10 @@ export function PriceListEditor(props: ShopLicenseProps) {
                       event.preventDefault();
                       const next = (index + direction + OPTION_GROUPS.length) % OPTION_GROUPS.length,
                         value = OPTION_GROUPS[next];
-                      if (value) setGroup(value);
-                      event.currentTarget.parentElement
-                        ?.querySelectorAll<HTMLButtonElement>('button[role="tab"]')
-                        [next]?.focus();
+                      if (value) {
+                        setGroup(value);
+                        setFocusRequest({ kind: "group", group: value, origin: document.activeElement });
+                      }
                     }}
                   >
                     {GROUPS[value]}
