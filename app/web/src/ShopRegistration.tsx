@@ -1,14 +1,6 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
-import type { FieldReason } from "./problems";
-import {
-  ENTRUSTMENT_TERMS_VERSION,
-  LICENSE_PHOTO_MAX_BYTES,
-  type RegisteredShop,
-  registerShop,
-  registrationPayload,
-  type UploadedLicensePhoto,
-  uploadLicensePhoto,
-} from "./registration";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { LicensePhoto, useLicensePhoto } from "./LicensePhoto";
+import { ENTRUSTMENT_TERMS_VERSION, type RegisteredShop, registerShop, registrationPayload } from "./registration";
 import {
   clearRegistrationDraft,
   EMPTY_REGISTRATION,
@@ -69,55 +61,39 @@ export function ShopRegistration({
   const [values, setValues] = useState<RegistrationValues>(
     () => readRegistrationDraft(ownerId) ?? { ...EMPTY_REGISTRATION },
   );
-  const [consent, setConsent] = useState(false),
-    [file, setFile] = useState<File | null>(null),
-    [preview, setPreview] = useState<string | null>(null);
-  const [previewFailed, setPreviewFailed] = useState(false);
-  const [photoProblem, setPhotoProblem] = useState<string | undefined>();
-  const upload = useCommand<File, UploadedLicensePhoto>((input) => uploadLicensePhoto(input));
-  const registration = useCommand<Record<string, unknown>, RegisteredShop>((input, key) => registerShop(input, key));
-  const busy =
-    upload.busy || registration.busy || Boolean(logoutPending || sessionChecking || sessionFailed || sessionExpired);
+  const [consent, setConsent] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const valuesRef = useRef(values);
   valuesRef.current = values;
   const expiredHandled = useRef(false),
     successHandled = useRef(false);
-  const uploadFailure = upload.state.kind === "failed" ? upload.state.failure : null;
+  const handleSessionExpired = useCallback(() => {
+    if (expiredHandled.current) return;
+    expiredHandled.current = true;
+    saveRegistrationDraft(ownerId, valuesRef.current);
+    onSessionExpired();
+  }, [ownerId, onSessionExpired]);
+  const photo = useLicensePhoto(handleSessionExpired, "registration");
+  const upload = photo.upload;
+  const registration = useCommand<Record<string, unknown>, RegisteredShop>((input, key) => registerShop(input, key));
+  const busy =
+    upload.busy || registration.busy || Boolean(logoutPending || sessionChecking || sessionFailed || sessionExpired);
+  const photoProblem = photo.problem;
   const failure = registration.state.kind === "failed" ? registration.state.failure : null;
   const errors = fieldErrorsFor(failure?.fieldErrors ?? [], POINTERS).byField;
-  const uploaded = upload.state.kind === "done" ? upload.state.data : null;
-  const photoErrors: FieldReason[] = [
-    ...(errors.get("/licensePhotoUploadId") ?? []),
-    ...(uploadFailure?.fieldErrors.filter((e) => e.field === "/file" || e.field === "/purpose").map((e) => e.code) ??
-      []),
-  ];
-  const uploadBlocked = upload.state.kind === "failed" && upload.state.blockedUntil !== null;
+  const uploaded = photo.uploaded;
+  const photoErrors = errors.get("/licensePhotoUploadId") ?? [];
 
   useEffect(() => {
     if (
+      failure?.code === "storage_unavailable" ||
       failure?.fieldErrors.some((error) => error.field === "/licensePhotoUploadId" && error.code === "upload_not_found")
     )
       upload.reset();
   }, [failure, upload.reset]);
-
   useEffect(() => {
-    setPreviewFailed(false);
-    if (!file || typeof URL.createObjectURL !== "function") {
-      setPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-  useEffect(() => {
-    if (expiredHandled.current || !(sessionExpired || [uploadFailure, failure].some((f) => f?.outcome === "login")))
-      return;
-    expiredHandled.current = true;
-    saveRegistrationDraft(ownerId, valuesRef.current);
-    onSessionExpired();
-  }, [uploadFailure, failure, ownerId, onSessionExpired, sessionExpired]);
+    if (sessionExpired || failure?.outcome === "login") handleSessionExpired();
+  }, [failure, sessionExpired, handleSessionExpired]);
   useEffect(() => {
     if (registration.state.kind !== "done" || successHandled.current) return;
     successHandled.current = true;
@@ -142,34 +118,15 @@ export function ShopRegistration({
     }));
     registration.reset();
   }
-  function selectPhoto(input: File | undefined) {
-    if (busy || uploadBlocked || !input) return;
-    registration.reset();
-    upload.reset();
-    setPhotoProblem(undefined);
-    setFile(null);
-    if (input.size > LICENSE_PHOTO_MAX_BYTES) {
-      setPhotoProblem("사진이 너무 커요. 10MB까지 올릴 수 있어요");
-      return;
-    }
-    if (input.size === 0) {
-      setPhotoProblem("사진 파일을 확인해 주세요");
-      return;
-    }
-    setFile(input);
-    upload.submit(input);
-  }
   function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
     if (uploaded === null) {
-      setPhotoProblem("신고증 사진을 먼저 올려 주세요");
+      photo.needPhoto();
       return;
     }
-    setPhotoProblem(undefined);
     registration.submit(registrationPayload(values, uploaded.uploadId, consent));
   }
-  const photoNote = photoProblem;
   const reasons = (key: string) => errors.get(`/${key}`);
   return (
     <SetupLayout title="가게 등록">
@@ -275,51 +232,14 @@ export function ShopRegistration({
               </div>
             )}
           </Field>
-          <Field
-            pointer="/licensePhotoUploadId"
+          <LicensePhoto
+            photo={photo}
             label="신고증 사진"
+            pointer="/licensePhotoUploadId"
             errors={photoErrors}
-            note={photoNote}
-            help="JPG·PNG·HEIC 한 장, 10MB까지. 이 가게 사장님과 운영자만 봐요."
-          >
-            {(ids) => (
-              <div className="registration-photo">
-                <input
-                  {...ids}
-                  type="file"
-                  accept="image/jpeg,image/png,image/heic,.jpg,.jpeg,.png,.heic"
-                  disabled={busy || uploadBlocked}
-                  onChange={(e) => selectPhoto(e.currentTarget.files?.[0])}
-                />
-                {file ? <p>{file.name}</p> : null}
-                {preview && !previewFailed ? (
-                  <img src={preview} alt="선택한 신고증 사진 미리보기" onError={() => setPreviewFailed(true)} />
-                ) : null}
-                {previewFailed ? (
-                  <p>이 브라우저에서는 미리보기를 볼 수 없어요. 사진 업로드 결과를 확인해 주세요.</p>
-                ) : null}
-                {file ? (
-                  <Button
-                    kind="secondary"
-                    disabled={busy || uploadBlocked}
-                    onClick={() => {
-                      setPhotoProblem(undefined);
-                      registration.reset();
-                      upload.submit(file);
-                    }}
-                  >
-                    다시 올리기
-                  </Button>
-                ) : null}
-                <CommandStatus
-                  state={upload.state}
-                  fields={["/file", "/purpose"]}
-                  done={() => "사진을 올렸어요. 1시간 안에 등록해 주세요"}
-                  onRetry={() => upload.retry()}
-                />
-              </div>
-            )}
-          </Field>
+            disabled={busy}
+            onSelect={registration.reset}
+          />
           <Field
             pointer="/entrustmentTermsVersion"
             label="개인정보 처리 위탁·재위탁 조건"
