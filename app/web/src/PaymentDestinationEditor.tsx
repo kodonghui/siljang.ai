@@ -29,6 +29,7 @@ import {
   Skeleton,
   TextField,
 } from "./ui";
+import { useFocusRequest } from "./ui/useFocusRequest";
 import { useCommand } from "./useCommand";
 import { useVersionedRead } from "./useVersionedRead";
 import "./payment-destination.css";
@@ -79,9 +80,9 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
   });
   const handledDone = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null),
-    focusPending = useRef<string | null>(null),
     formRef = useRef<HTMLFormElement>(null),
     statusRef = useRef<HTMLElement>(null);
+  const submitOrigin = useRef<Element | null>(null);
   const bankOptions = useId();
   const pending =
       command.busy || (!props.sessionFailed && loading) || Boolean(props.sessionChecking || props.logoutPending),
@@ -89,8 +90,21 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
     navigationLocked = requestsBlocked || command.state.kind === "confirm",
     locked = navigationLocked || Boolean(loadFailure);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
+  const { queue: queueFocus, cancel: cancelFocus } = useFocusRequest<string>(
+    (pointer) => {
+      const field = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-pointer]") ?? []).find(
+        (el) => el.dataset.pointer === pointer,
+      );
+      const input = field?.querySelector<HTMLInputElement>("input");
+      return input && !input.disabled ? input : statusRef.current;
+    },
+    requestsBlocked,
+    () => statusRef.current,
+  );
+
   const adopt = useCallback(
     (value: PaymentDestination | null, draft?: PaymentForm, reset = false) => {
+      cancelFocus();
       setBase(value);
       setForm(draft ?? paymentForm(value));
       setLoaded(true);
@@ -100,7 +114,7 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
       clearFailure();
       if (reset) command.reset();
     },
-    [clearFailure, command.reset],
+    [clearFailure, command.reset, cancelFocus],
   );
   useEffect(() => {
     if (command.state.kind !== "done" || handledDone.current === command.state.data) return;
@@ -122,21 +136,13 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
       read("stale");
     }
     if (failure.outcome === "field")
-      focusPending.current =
+      queueFocus(
         failure.code === "holder_not_verified"
           ? "/holderName"
-          : (failure.fieldErrors.find((e) => fields.includes(e.field))?.field ?? "status");
-  }, [failure, read]);
-  useEffect(() => {
-    const pointer = focusPending.current;
-    if (!pointer || requestsBlocked) return;
-    const field = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-pointer]") ?? []).find(
-      (el) => el.dataset.pointer === pointer,
-    );
-    const input = field?.querySelector<HTMLInputElement>("input");
-    focusPending.current = null;
-    (input && !input.disabled ? input : statusRef.current)?.focus();
-  });
+          : (failure.fieldErrors.find((e) => fields.includes(e.field))?.field ?? "status"),
+        submitOrigin.current,
+      );
+  }, [failure, read, queueFocus]);
   const issues = useMemo(() => paymentIssues(form), [form]);
   const errors = fieldErrorsFor(
     [...(failure?.fieldErrors ?? []), ...issues.filter((e) => showErrors || e.code !== "required")],
@@ -147,9 +153,10 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
     if (locked || stale || !loaded || command.blocked) return;
     if (issues.length) {
       setShowErrors(true);
-      focusPending.current = issues[0]?.field ?? "status";
+      queueFocus(issues[0]?.field ?? "status");
       return;
     }
+    submitOrigin.current = document.activeElement;
     command.submit(paymentPayload(base, form));
   }
   return (
@@ -248,7 +255,10 @@ export function PaymentDestinationEditor(props: PaymentDestinationEditorProps) {
                 fieldCodes={["holder_not_verified"]}
                 disabled={locked}
                 onRetry={() => {
-                  if (!locked && !stale) command.retry();
+                  if (!locked && !stale) {
+                    submitOrigin.current = document.activeElement;
+                    command.retry();
+                  }
                 }}
                 onReload={() => {
                   if (!locked) {

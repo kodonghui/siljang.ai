@@ -157,6 +157,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     requestsBlocked,
     () => statusRef.current,
   );
+  const submitOrigin = useRef<Element | null>(null);
   const formValue = useRef(form);
   formValue.current = form;
   const adopt = useCallback(
@@ -179,12 +180,15 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     adopt(command.state.data.operatingRules);
   }, [command.state, adopt]);
   const reveal = useCallback(
-    (pointer: string | undefined) => {
+    (pointer: string | undefined, origin: Element | null = document.activeElement) => {
       const current = formValue.current;
-      queueFocus({
-        kind: "field",
-        pointer: current && pointer && pointers(current).includes(pointer) ? pointer : "status",
-      });
+      queueFocus(
+        {
+          kind: "field",
+          pointer: current && pointer && pointers(current).includes(pointer) ? pointer : "status",
+        },
+        origin,
+      );
     },
     [queueFocus],
   );
@@ -202,7 +206,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     if (failure.outcome === "field") {
       const current = formValue.current;
       const field = failure.fieldErrors.find((e) => current && pointers(current).includes(e.field))?.field;
-      reveal(field ?? failure.fieldErrors[0]?.field);
+      reveal(field ?? failure.fieldErrors[0]?.field, submitOrigin.current);
     }
   }, [failure, read, reveal]);
   const issues = useMemo(() => (form ? rulesIssues(form) : []), [form]),
@@ -230,6 +234,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       reveal(issues[0]?.field);
       return;
     }
+    submitOrigin.current = document.activeElement;
     command.submit(rulesPayload(base, form));
   }
   function clause(id: string, patch: Partial<ClauseForm>) {
@@ -436,7 +441,10 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                 fields={fields}
                 disabled={locked}
                 onRetry={() => {
-                  if (canEdit() && !stale) command.retry();
+                  if (canEdit() && !stale) {
+                    submitOrigin.current = document.activeElement;
+                    command.retry();
+                  }
                 }}
                 onReload={() => {
                   if (canEdit()) {
