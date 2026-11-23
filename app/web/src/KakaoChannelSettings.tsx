@@ -31,7 +31,7 @@ type Action =
   | { action: "save"; body: Record<string, unknown> }
   | { action: "check" }
   | { action: "rotate"; body: { baseRevision: string; previousKey: "keep_24h" | "revoke_now" } };
-type Result = KakaoChannelResult & { action: Action["action"]; blocksChanged: boolean };
+type Result = KakaoChannelResult & { action: Action["action"]; blocksChanged: boolean; requiresCheck: boolean };
 const AFTER_DEADLINE_DELAYS = [2000, 5000, 10000] as const;
 function pollingDeadline(value: KakaoChannel, legacy: number | null): number | null {
   return value.status === "pending" && value.checkExpiresAt
@@ -123,7 +123,10 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
         adopt(
           data,
           undefined,
-          Boolean(base && (base.connectionId !== data.connectionId || base.skill.keyVersion !== data.skill.keyVersion)),
+          Boolean(
+            base && (base.connectionId !== data.connectionId || base.skill.keyVersion !== data.skill.keyVersion),
+          ) ||
+            (command.state.kind === "done" && command.state.data.action === "check" && data.status !== "pending"),
         );
       }
     },
@@ -150,6 +153,12 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
               input.action === "save" &&
               base !== null &&
               BLOCK_KEYS.some((key) => base.blockIds[key] !== r.data.kakaoChannel.blockIds[key]),
+            requiresCheck:
+              input.action === "save" &&
+              r.data.kakaoChannel.status === "pending" &&
+              base !== null &&
+              (base.status === "failed" ||
+                (base.checkStartedAt !== null && r.data.kakaoChannel.checkStartedAt === null)),
           },
         }
       : r;
@@ -309,7 +318,9 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
       ? "저장했어요. 아래 스킬 설정 값을 오픈빌더에 넣어 주세요"
       : result.blocksChanged
         ? "블록 ID를 바꿨어요. 연결 확인을 다시 해 주세요"
-        : "저장했어요";
+        : result.requiresCheck
+          ? "저장했어요. 연결 확인을 다시 해 주세요"
+          : "저장했어요";
   }
   return (
     <OwnerLayout
@@ -386,6 +397,7 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                   </p>
                 ) : null}
                 {expiryReads.current &&
+                expiryReads.current.key === `${base.connectionId}:${pollingDeadline(base, legacyDeadline.current)}` &&
                 expiryReads.current.count > AFTER_DEADLINE_DELAYS.length &&
                 (checking || legacyChecking) ? (
                   <Banner tone="warning">확인 결과가 늦어지고 있어요. 연결 상태 다시 보기로 확인해 주세요</Banner>
@@ -454,6 +466,8 @@ export function KakaoChannelSettings(props: ShopLicenseProps) {
                 }}
                 onReload={() => {
                   if (!locked) {
+                    setStaleAction(lastAction.current);
+                    setLatest(null);
                     setStale(true);
                     read("stale");
                   }
