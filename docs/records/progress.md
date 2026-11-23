@@ -6,6 +6,14 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-23 13:25 KST · TASK-027 학원컴 내부 인증 접근과 무료 보호 시험 완료
+
+- 학원컴 기존 프로세스/사용자 환경의 OPENAI_API_KEY로 GET /v1/models 한 번이 HTTP200이고 대상 gpt-6-luna 사용 가능=true였습니다. 생성 요청/추정 비용0원이며 키·응답 원문·계정 목록은 내보내지 않았습니다. 다른 기기의 키로 난 옛401 원문과 비용은 보존하고, 지금 API 접근 사람 대기만 해제합니다. 실제 생성 성공이나134건 완료를 뜻하지 않습니다.
+- 기존 SSH 셸의 CLI/OAuth 성공과 새 SFTP 성공 뒤 전체 SSH/SFTP 실행 경로도 회복됐습니다. 학원컴 Node22.23.4·공개 번들 SHA-256 834ba8a8a40f32988eadd16c5c0c2f9d0faba07008bec2fc732b59d32cc59fea로 clean 모의134건/결과5개·CLI0/SSH0을 확인했습니다. 같은 인증 읽기 분기에서 학원컴 안에서 만든 합성 표식이 출력에서 가려졌습니다. 실제 회사 키는 이 모의 시험에 쓰지 않았습니다.
+- artifact-rejection은 합성 표식을 첫 결과에 넣자 credential_in_artifact_refused·SSH2로 거절했고 평가 결과 다섯 종류 중 반환0개입니다. 호출 기기의 driver/native 상태/안전한 로그는 결과 파일 수에 포함하지 않습니다. 두 실행의 PowerShell 진행 CLIXML stderr는 비어 있지 않아 그대로 구분합니다. 의도한 거절을 바깥 장애로 세지 않습니다.
+- Windows PowerShell4개/13.172초·로컬 전송 경계5개와 실제 학원컴 두 무료 시험을 함께 확인해 Claude6건의 미확인 인증 분기를 닫습니다. 학원컴 사용자 환경의 STORAGE_* 다섯 항목은 모두 없으므로 기존 S3/Vault 대기는 해제하지 않습니다. 브라우저는 학원컴 Aside CLI를 계속 사용합니다.
+- 실제 평가 누적11회·요금표1.09원/미확인 여유37.31원과 앞선 Anthropic 비용/옛44건 원문 미확인은 보존합니다. 다음은185 최종 CI·발견6건 처리·병합 직전 Codex 요청 한 번/main·두 Worker 같은 SHA 확인 뒤 새 비용/간격/중간 저장을 기록하고 학원컴 기존 키로 실제 평가를 재개하는 것입니다. 모든 작업이 확인 대기가 아닙니다.
+
 ### 2026-11-23 12:57 KST · TASK-027 학원컴 내부 키의 무료 접근 확인 준비
 
 - 기존 학원컴 SSH 셸에서 CLI를 직접 실행하니 Aside 프로필 connected=true와 Wrangler 기존 로컬 OAuth loggedIn/대상 계정 일치/종료0을 확인했습니다. 새로운 SSH의 시간 초과와 별개인 실행 경로이며 다른 기기의 Cloudflare 인증을 보내지 않았습니다. OPENAI_API_KEY는 학원컴 프로세스/사용자 환경에 이미 있음을 이름/존재 여부로만 확인했습니다. 값은 읽어 옮기거나 출력하지 않습니다.
@@ -1009,7 +1017,7 @@ Supabase와 Cloudflare는 학원컴 Aside CLI에서도 로그인된 본문을 �
 | TASK-005 | [Anthropic 보관 안 함 문의](https://claude.com/contact-sales) | 출시 전에 ZDR 신청을 제출합니다. |
 | TASK-013 | [법률 질문 13개](../10-wbs/legal-questions.md) | 법률 전문가 답을 전달합니다. |
 | TASK-167 | [출시 검토 절차](../10-wbs/iteration-0-guide.md) | 출시 전에 휴대폰 설치/카카오 보안 사진 등 휴대폰에서만 되는 확인을 합니다. |
-| TASK-027 | 기존 OpenAI API 키/프로젝트 접근 | 학원컴 직접 API가 기존 키로 HTTP401 두 번이어서 API 접근 확인이 남습니다. 비밀 값은 Vault에서 다룹니다. 모델 요청은 멈췄습니다. |
+| TASK-027 | [AI 평가 판정](ai-eval/2026-11-22-anthropic-paced/judged.md) | 출시 전에 Codex 판정의 표본을 선택해 살펴봅니다(선택). 학원컴 내부 기존 키의 접근은 HTTP200으로 확인해 사람 대기에서 해제했고 실제 평가는 개발에서 재개합니다. |
 
 ### 출시 검토 때 확인하거나 정할 것
 
