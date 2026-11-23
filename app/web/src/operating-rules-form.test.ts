@@ -143,3 +143,32 @@ it("같은 직접 쓴 조문 둘은 재적용 대상을 추측하지 않고 원�
   expect(result.conflicts.length).toBeGreaterThan(0);
   expect(mine).toEqual(copy);
 });
+
+it("삭제한 직접 쓴 조문은 충돌 재적용 뒤 선택지 카드로 돌아오지 않는다", () => {
+  const value = fixture();
+  const base = {
+    ...value,
+    clauses: [
+      ...value.clauses,
+      {
+        key: "custom" as const,
+        position: 99,
+        title: "직접 쓴 합성 조문",
+        conditionText: "합성 조건",
+        effectText: "합성 효과",
+      },
+    ],
+  };
+  const mine = rulesForm(base);
+  mine.clauses = mine.clauses.filter((c) => c.key !== "custom");
+  const merged = rebaseRules(base, mine, { ...base, version: 3, revision: "synthetic-v3" });
+  expect(merged.conflicts).toEqual([]);
+  expect(merged.form?.clauses.some((c) => c.key === "custom")).toBe(false);
+});
+it.each(["1e2", "0x1F", "12.0"])("숫자 %s를 다른 정수로 바꾸지 않고 오류로 남긴다", (value) => {
+  const base = fixture(),
+    form = rulesForm(base);
+  form.cancellationFeeKrw = value;
+  expect(rulesIssues(form)).toContainEqual({ field: "/cancellationFeeKrw", code: "out_of_range" });
+  expect(rulesPayload(base, form).cancellationFeeKrw).toBe(value);
+});

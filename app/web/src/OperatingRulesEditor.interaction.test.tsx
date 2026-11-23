@@ -207,11 +207,14 @@ it("변경 없는 200 응답은 새 버전 없이 결과를 알린다", async ()
   expect(sends).toHaveLength(1);
   expect(main().getByText(/운영규정 버전 2/)).toBeTruthy();
 });
-it("카드 길이 422는 조문과 입력을 남기고 해당 효과에 초점을 보낸다", async () => {
+it("서버의 카드 길이 422는 조문과 입력을 남기고 해당 조문 글에 초점을 보낸다", async () => {
   saveProblem = {
     status: 422,
     code: "validation_failed",
-    errors: [{ field: "/clauses/0/effectText", code: "exceeds_card_limit" }],
+    errors: [
+      { field: "/clauses", code: "exceeds_card_limit" },
+      { field: "/clauses/0", code: "exceeds_card_limit" },
+    ],
   };
   area();
   await loaded();
@@ -221,8 +224,8 @@ it("카드 길이 422는 조문과 입력을 남기고 해당 효과에 초점�
   save();
   await main().findByText("주문 요청 카드에 다 들어가지 않아요. 조문을 줄여 주세요");
   expect(effect.value).toBe("합성 조문을 보존합니다");
-  expect(effect.getAttribute("aria-invalid")).toBe("true");
-  expect(document.activeElement).toBe(effect);
+  expect(screen.getByRole("group", { name: "조문 1" }).getAttribute("data-invalid")).toBe("true");
+  expect(document.activeElement).toBe(clause.getByLabelText("조건"));
 });
 it("처리 중 409는 같은 본문과 키로 자동 재시도해 확정한다", async () => {
   inProgress = true;
@@ -363,4 +366,51 @@ it("충돌 뒤 최신 규정 조회가 실패해도 입력을 남기고 복구�
   fireEvent.click(await main().findByRole("button", { name: "내 변경 다시 적용" }));
   expect((screen.getByLabelText("결제 기한(시간)") as HTMLInputElement).value).toBe("24");
   expect((screen.getByLabelText("견적 유효 기한(시간)") as HTMLInputElement).value).toBe("120");
+});
+
+it("조문을 모두 빼면 확정하지 않고 하나 이상 넣으라는 이유를 알린다", async () => {
+  area();
+  await loaded();
+  for (const button of screen.getAllByRole("button", { name: "조문 빼기" })) fireEvent.click(button);
+  save();
+  await within(screen.getByRole("region", { name: "운영규정 확정 결과" })).findByText("조문을 하나 이상 넣어 주세요");
+  expect(sends).toHaveLength(0);
+});
+it("직접 쓴 조문 뒤 기본 조문을 넣어도 화면과 저장 본문의 순서가 같다", async () => {
+  area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "조문 추가" }));
+  const rows = screen.getAllByRole("group", { name: /^조문 / });
+  const last = rows.at(-1);
+  if (!last) throw new Error("직접 쓴 조문 없음");
+  const custom = within(last);
+  fireEvent.change(custom.getByLabelText("조문 이름"), { target: { value: "직접 쓴 합성 조문" } });
+  fireEvent.change(custom.getByLabelText("조건"), { target: { value: "합성 조건" } });
+  fireEvent.change(custom.getByLabelText("효과"), { target: { value: "합성 효과" } });
+  const add = screen.getAllByRole("button", { name: "이 조문 넣기" })[0];
+  if (!add) throw new Error("기본 조문 선택지 없음");
+  const fieldset = add.closest("fieldset");
+  if (!fieldset) throw new Error("기본 조문 없음");
+  const title = (within(fieldset).getByLabelText("조문 이름") as HTMLInputElement).value;
+  fireEvent.click(add);
+  const activeRows = screen
+    .getAllByRole("group", { name: /^조문 / })
+    .filter((row) => within(row).queryByRole("button", { name: "조문 빼기" }));
+  expect(
+    activeRows.map((row) => (within(row).getByLabelText("조문 이름") as HTMLInputElement).value).slice(-2),
+  ).toEqual(["직접 쓴 합성 조문", title]);
+  expect(activeRows.map((row) => row.querySelector("legend")?.textContent)).toEqual(
+    activeRows.map((_, i) => `조문 ${i + 1}`),
+  );
+});
+it("세션 확인 실패에는 진행 중 조회 골격을 남기지 않는다", async () => {
+  area({ sessionFailed: true });
+  await act(async () => {});
+  expect(screen.queryByText("운영규정을 불러오고 있어요")).toBeNull();
+});
+it("연결된 이력 화면으로 가는 버튼은 운영규정 이력 경로를 연다", async () => {
+  const view = area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "버전 이력" }));
+  expect(view.props.onNavigate).toHaveBeenCalledWith("/owner/operating-rules/versions");
 });
