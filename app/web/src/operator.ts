@@ -1,5 +1,6 @@
 import { matchPath } from "react-router";
 import { type ApiFailure, type ApiResult, request } from "./api";
+import { INVALID_API_RESPONSE, UUID_PATTERN } from "./api-response";
 import { classify, ERROR_CODES, type Failure } from "./problems";
 
 export const OPERATOR_LOGIN = "/operator/login";
@@ -58,7 +59,7 @@ async function verifiedOperator(result: Promise<ApiResult<unknown>>): Promise<Ap
     data !== null &&
     "operatorId" in data &&
     typeof data.operatorId === "string" &&
-    /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(data.operatorId) &&
+    UUID_PATTERN.test(data.operatorId) &&
     "displayName" in data &&
     typeof data.displayName === "string" &&
     [...data.displayName].length >= 1 &&
@@ -66,7 +67,7 @@ async function verifiedOperator(result: Promise<ApiResult<unknown>>): Promise<Ap
   ) {
     return { ...resolved, data: { operatorId: data.operatorId, displayName: data.displayName } };
   }
-  return { ok: false, status: 502, problem: null, retryAfterSeconds: null };
+  return INVALID_API_RESPONSE;
 }
 
 export function signIn(body: OperatorCredentials, signal: AbortSignal) {
