@@ -1,6 +1,8 @@
 import { type ApiResult, request } from "./api";
 import { INVALID_API_RESPONSE as INVALID, isApiObject as object, UUID_PATTERN } from "./api-response";
 
+import { type UploadedPhoto, uploadPhoto } from "./photo-upload-api";
+
 export type OptionGroup = "size" | "flavor" | "design" | "extra";
 export type PriceKind = "fixed" | "from" | "range";
 export interface PriceOption {
@@ -41,11 +43,7 @@ export interface PriceListResult {
   readonly outcome: "created" | "unchanged";
   readonly priceList: PriceList;
 }
-export interface UploadedDesign {
-  readonly uploadId: string;
-  readonly purpose: "design_image";
-  readonly expiresAt: string;
-}
+export type UploadedDesign = UploadedPhoto<"design_image">;
 const text = (v: unknown): v is string => typeof v === "string";
 const uuid = (v: unknown): v is string => text(v) && UUID_PATTERN.test(v);
 const date = (v: unknown): v is string => text(v) && Number.isFinite(Date.parse(v));
@@ -135,18 +133,6 @@ export async function savePriceList(body: Record<string, unknown>, key: string):
     ? { ...result, data: { outcome: value.outcome, priceList: value.priceList } }
     : INVALID;
 }
-export async function uploadDesignImage(file: File): Promise<ApiResult<UploadedDesign>> {
-  const body = new FormData();
-  body.set("purpose", "design_image");
-  body.set("file", file);
-  const result = await request<unknown>("/owner/uploads", { method: "POST", body });
-  if (!result.ok) return result;
-  const value = result.data;
-  return object(value) &&
-    text(value.uploadId) &&
-    /^upl_[A-Za-z0-9_-]{20,200}$/.test(value.uploadId) &&
-    value.purpose === "design_image" &&
-    date(value.expiresAt)
-    ? { ...result, data: { uploadId: value.uploadId, purpose: value.purpose, expiresAt: value.expiresAt } }
-    : INVALID;
+export function uploadDesignImage(file: File, signal?: AbortSignal): Promise<ApiResult<UploadedDesign>> {
+  return uploadPhoto("design_image", file, signal);
 }

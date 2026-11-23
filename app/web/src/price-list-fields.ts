@@ -1,5 +1,4 @@
-import type { PriceList } from "./price-list-api";
-import { type PriceListForm, priceListForm } from "./price-list-form";
+import type { PriceListForm } from "./price-list-form";
 import type { FieldError, FieldReason } from "./problems";
 
 export const OPTION_FIELDS = ["name", "priceKind", "amount", "amountMax", "inStandard", "position"] as const;
@@ -39,6 +38,7 @@ export function priceListIssues(form: PriceListForm): FieldError[] {
       if (o.amountMax.trim() && Number(o.amountMax) < Number(o.amount)) add(`${p}/amountMax`, "out_of_range");
     }
     if (o.priceKind !== "fixed" && o.inStandard) add(`${p}/inStandard`, "not_allowed");
+    if (!o.name.trim()) continue;
     const identity = JSON.stringify([o.group, o.name]),
       previous = names.get(identity);
     if (previous !== undefined) {
@@ -69,6 +69,7 @@ export function priceListIssues(form: PriceListForm): FieldError[] {
     if (d.optionKey !== null && !linked) add(`${p}/optionKey`, "reference_not_found");
     if (linked && linked.group !== "design") add(`${p}/optionKey`, "not_allowed");
     if (linked && d.inStandard && !linked.inStandard) add(`${p}/inStandard`, "not_allowed");
+    if (!d.name.trim()) continue;
     const previous = designNames.get(d.name);
     if (previous !== undefined) {
       add(`${p}/name`, "duplicate");
@@ -78,8 +79,7 @@ export function priceListIssues(form: PriceListForm): FieldError[] {
   }
   return errors;
 }
-export function priceListChanges(base: PriceList | null, form: PriceListForm): number {
-  const original = priceListForm(base);
+export function priceListChanges(original: PriceListForm, form: PriceListForm): number {
   function count<T extends { key: string }>(
     before: T[],
     after: T[],

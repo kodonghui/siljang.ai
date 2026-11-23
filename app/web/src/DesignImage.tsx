@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type UploadedDesign, uploadDesignImage } from "./price-list-api";
 import type { DesignForm } from "./price-list-form";
 import type { FieldReason } from "./problems";
@@ -15,7 +15,6 @@ export interface DesignImageProps {
   readonly onStart: (key: string) => boolean;
   readonly onBusy: (key: string, busy: boolean) => void;
   readonly onUploaded: (key: string, value: UploadedDesign) => void;
-  readonly onPreview: (key: string, url: string) => void;
 }
 export function DesignImage(props: DesignImageProps) {
   const photo = usePhotoUpload(props.onSessionExpired, uploadDesignImage),
@@ -23,6 +22,19 @@ export function DesignImage(props: DesignImageProps) {
   callbacks.current = props;
   const handled = useRef<UploadedDesign | null>(null),
     previousEpoch = useRef(props.discardEpoch);
+  const [acceptedFile, setAcceptedFile] = useState<File | null>(null),
+    [acceptedPreview, setAcceptedPreview] = useState<string | null>(null),
+    [failedSrc, setFailedSrc] = useState<string | null>(null);
+  // 마지막으로 올린 그림은 다음 파일 선택이 실패해도 유지한다. 현재 선택의 미리보기와 수명이 다르다.
+  useEffect(() => {
+    if (!acceptedFile || typeof URL.createObjectURL !== "function") {
+      setAcceptedPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(acceptedFile);
+    setAcceptedPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [acceptedFile]);
   const failure = photo.upload.state.kind === "failed" ? photo.upload.state.failure : null;
   const blocked = photo.upload.state.kind === "failed" && photo.upload.state.blockedUntil !== null;
   useLayoutEffect(() => {
@@ -32,17 +44,17 @@ export function DesignImage(props: DesignImageProps) {
   useEffect(() => {
     if (photo.upload.state.kind !== "done" || handled.current === photo.upload.state.data) return;
     handled.current = photo.upload.state.data;
+    setAcceptedFile(photo.file);
     callbacks.current.onUploaded(callbacks.current.design.key, photo.upload.state.data);
-  }, [photo.upload.state]);
-  useEffect(() => {
-    if (photo.preview) callbacks.current.onPreview(callbacks.current.design.key, photo.preview);
-  }, [photo.preview]);
+  }, [photo.upload.state, photo.file]);
   useEffect(() => {
     if (previousEpoch.current === props.discardEpoch) return;
     previousEpoch.current = props.discardEpoch;
     photo.upload.reset();
   }, [props.discardEpoch, photo.upload.reset]);
-  const src = photo.preview ?? (photo.file ? null : props.design.imageUrl || null);
+  const previous = acceptedPreview ?? (props.design.imageUrl || null);
+  const src = failure || photo.problem ? previous : (photo.preview ?? previous);
+  const previewFailed = src !== null && src === failedSrc;
   const errors = [
     ...(props.errors ?? []),
     ...(failure?.fieldErrors.filter((e) => ["/file", "/purpose"].includes(e.field)).map((e) => e.code) ?? []),
@@ -71,16 +83,16 @@ export function DesignImage(props: DesignImageProps) {
           />
         )}
       </Field>
-      {src && !photo.previewFailed ? (
+      {src && !previewFailed ? (
         <img
           src={src}
           alt={`${props.design.name || "새 도안"} 그림`}
           loading="lazy"
           decoding="async"
-          onError={() => photo.setPreviewFailed(true)}
+          onError={() => setFailedSrc(src)}
         />
       ) : null}
-      {photo.previewFailed ? <p>이 브라우저에서는 미리보기를 볼 수 없어요. 사진 업로드 결과를 확인해 주세요.</p> : null}
+      {previewFailed ? <p>이 브라우저에서는 미리보기를 볼 수 없어요. 사진 업로드 결과를 확인해 주세요.</p> : null}
       {photo.file ? <p className="price-file-name">{photo.file.name}</p> : null}
       {photo.upload.busy ? <p role="status">사진을 올리고 있어요</p> : null}
       <CommandStatus
@@ -88,6 +100,9 @@ export function DesignImage(props: DesignImageProps) {
         fields={["/file", "/purpose"]}
         done={() => "사진을 올렸어요. 1시간 안에 저장해 주세요"}
       />
+      {(failure || photo.problem) && (props.design.sourceDesignId || props.design.uploadId) ? (
+        <p>새 그림을 올리지 못해 기존 그림을 유지해요. 다시 올리면 바꿀 수 있어요.</p>
+      ) : null}
       {photo.file ? (
         <Button
           disabled={props.disabled || blocked || photo.upload.busy}

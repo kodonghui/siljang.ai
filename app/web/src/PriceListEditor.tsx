@@ -153,46 +153,55 @@ export function PriceListEditor(props: ShopLicenseProps) {
     fields,
   ).byField;
   const original = useMemo(() => priceListForm(base), [base]);
-  const changes = priceListChanges(base, form);
+  const changes = useMemo(() => priceListChanges(original, form), [original, form]);
   const canEdit = () => !locked && uploading.current.size === 0;
 
-  const read = useCallback((mode: LoadMode = "initial") => {
-    lastMode.current = mode;
-    activeRead.current?.abort();
-    const controller = new AbortController();
-    activeRead.current = controller;
-    setLoading(true);
-    setLoadFailure(null);
-    void fetchPriceList(controller.signal)
-      .then((result) => {
-        if (controller.signal.aborted) return;
-        if (result.ok) {
-          if (mode === "stale") setLatest(result.data);
-          else {
-            setBase(result.data);
-            setForm(priceListForm(result.data));
-            setStale(false);
-            setLatest(null);
+  const adopt = useCallback(
+    (list: PriceList | null, options: { draft?: PriceListForm; resetCommand?: boolean } = {}) => {
+      setBase(list);
+      setForm(options.draft ?? priceListForm(list));
+      setStale(false);
+      setLatest(null);
+      setConflicts([]);
+      setShowErrors(false);
+      setLoaded(true);
+      if (options.resetCommand) command.reset();
+    },
+    [command.reset],
+  );
+  const read = useCallback(
+    (mode: LoadMode = "initial") => {
+      lastMode.current = mode;
+      activeRead.current?.abort();
+      const controller = new AbortController();
+      activeRead.current = controller;
+      setLoading(true);
+      setLoadFailure(null);
+      void fetchPriceList(controller.signal)
+        .then((result) => {
+          if (controller.signal.aborted) return;
+          if (result.ok) {
+            if (mode === "stale") setLatest(result.data);
+            else adopt(result.data, { resetCommand: true });
+            setLoaded(true);
+          } else if (mode === "initial" && result.status === 404 && result.problem?.code === "not_set") {
+            adopt(null, { resetCommand: true });
+          } else {
+            setLoadFailure(result);
+            if (result.status === 401) callbacks.current.onSessionExpired();
+            if (result.problem?.code === "shop_not_registered") callbacks.current.onRegisterShop();
           }
-          setLoaded(true);
-        } else if (mode === "initial" && result.status === 404 && result.problem?.code === "not_set") {
-          setBase(null);
-          setForm(priceListForm(null));
-          setLoaded(true);
-        } else {
-          setLoadFailure(result);
-          if (result.status === 401) callbacks.current.onSessionExpired();
-          if (result.problem?.code === "shop_not_registered") callbacks.current.onRegisterShop();
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setLoadFailure(NETWORK);
           setLoading(false);
-        }
-      });
-  }, []);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setLoadFailure(NETWORK);
+            setLoading(false);
+          }
+        });
+    },
+    [adopt],
+  );
   useEffect(() => {
     read();
     return () => activeRead.current?.abort();
@@ -200,13 +209,8 @@ export function PriceListEditor(props: ShopLicenseProps) {
   useEffect(() => {
     if (command.state.kind !== "done" || handled.current === command.state.data) return;
     handled.current = command.state.data;
-    setBase(command.state.data.priceList);
-    setForm(priceListForm(command.state.data.priceList));
-    setStale(false);
-    setLatest(null);
-    setConflicts([]);
-    setShowErrors(false);
-  }, [command.state]);
+    adopt(command.state.data.priceList);
+  }, [command.state, adopt]);
   useEffect(() => {
     if (!failure || handledFailure.current === failure) return;
     handledFailure.current = failure;
@@ -324,6 +328,8 @@ export function PriceListEditor(props: ShopLicenseProps) {
         const row = form.options[Number(i)];
         if (row) setGroup(row.group);
       }
+      const ruleIndex = /^\/rules\/(\d+)/.exec(first)?.[1];
+      if (ruleIndex !== undefined) setRulePage(Math.floor(Number(ruleIndex) / 20));
       return;
     }
     submittedPhotos.current = form.designs.map((d) => ({ key: d.key, uploadId: d.uploadId }));
@@ -408,11 +414,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
                         const merged = rebasePriceList(base, form, latest);
                         setConflicts(merged.conflicts);
                         if (merged.form) {
-                          setBase(latest);
-                          setForm(merged.form);
-                          setStale(false);
-                          setLatest(null);
-                          command.reset();
+                          adopt(latest, { draft: merged.form, resetCommand: true });
                         }
                       }}
                     >
@@ -422,12 +424,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
                       disabled={locked}
                       onClick={() => {
                         if (canEdit()) {
-                          setBase(latest);
-                          setForm(priceListForm(latest));
-                          setStale(false);
-                          setLatest(null);
-                          setConflicts([]);
-                          command.reset();
+                          adopt(latest, { resetCommand: true });
                         }
                       }}
                     >
@@ -867,15 +864,9 @@ export function PriceListEditor(props: ShopLicenseProps) {
                           discardEpoch={discard[d.key] ?? 0}
                           onSessionExpired={props.onSessionExpired}
                           onBusy={photoBusy}
-                          onStart={(id) => {
+                          onStart={() => {
                             if (!canEdit()) return false;
                             command.reset();
-                            setForm((old) => ({
-                              ...old,
-                              designs: old.designs.map((row) =>
-                                row.key === id ? { ...row, uploadId: null, sourceDesignId: null, imageUrl: "" } : row,
-                              ),
-                            }));
                             return true;
                           }}
                           onUploaded={(id, upload) =>
@@ -885,19 +876,6 @@ export function PriceListEditor(props: ShopLicenseProps) {
                                 row.key === id ? { ...row, uploadId: upload.uploadId, sourceDesignId: null } : row,
                               ),
                             }))
-                          }
-                          onPreview={(id, url) =>
-                            setForm((old) => {
-                              const found = old.designs.find((row) => row.key === id);
-                              return !found || found.imageUrl === url
-                                ? old
-                                : {
-                                    ...old,
-                                    designs: old.designs.map((row) =>
-                                      row.key === id ? { ...row, imageUrl: url } : row,
-                                    ),
-                                  };
-                            })
                           }
                         />
                         <SelectField

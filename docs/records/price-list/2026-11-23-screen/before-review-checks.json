@@ -1,0 +1,1651 @@
+{
+  "source": "bd69d11b079acfab2906e3f8cbb987227b8e2993",
+  "archive": {
+    "bytes": 209362,
+    "sha256": "585b90cde44e443ce6fe926a82d7e3862e1d4b145c2b62d9ee74e52304e0a6d5"
+  },
+  "checks": [
+    {
+      "state": "normal",
+      "width": 360,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 360,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "loading",
+      "width": 360,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 360,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "byCheck": {},
+        "truncated": false,
+        "issues": [],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "empty",
+      "width": 360,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 360,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "byCheck": {},
+        "truncated": false,
+        "issues": [],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "load-failed",
+      "width": 360,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 360,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "byCheck": {},
+        "truncated": false,
+        "issues": [],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "permission",
+      "width": 360,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 360,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "byCheck": {},
+        "truncated": false,
+        "issues": [],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "error",
+      "width": 360,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 360,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "stale",
+      "width": 360,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 360,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "submitting",
+      "width": 360,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 360,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "byCheck": {},
+        "truncated": false,
+        "issues": [],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "done",
+      "width": 360,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 360,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "normal",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "loading",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "byCheck": {},
+        "truncated": false,
+        "issues": [],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "empty",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "byCheck": {},
+        "truncated": false,
+        "issues": [],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "load-failed",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "byCheck": {},
+        "truncated": false,
+        "issues": [],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "permission",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "byCheck": {},
+        "truncated": false,
+        "issues": [],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "error",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "stale",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "submitting",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "byCheck": {},
+        "truncated": false,
+        "issues": [],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "done",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "uploaded-before503",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "save503-file-kept",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    },
+    {
+      "state": "save503-reuploaded-done",
+      "width": 1280,
+      "report": {
+        "tool": "corthex-uxui page-check",
+        "version": "1.0",
+        "url": "http://127.0.0.1:63042/",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        },
+        "env": {
+          "reducedMotion": true,
+          "dark": false
+        },
+        "pass": true,
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 1
+        },
+        "byCheck": {
+          "target-goal": 1
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "info",
+            "check": "target-goal",
+            "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+            "where": "",
+            "text": ""
+          }
+        ],
+        "notMeasured": [
+          "Keyboard focus visibility and order (press Tab yourself)",
+          "Line breaks in vertical or turned text, and overflow in turned text",
+          "Contrast of text over images, gradients or other boxes (the places flagged contrast-image)",
+          "3:1 contrast of control borders and state indicators (WCAG 1.4.11)",
+          "The order and names a screen reader reads",
+          "The real screen with reduced motion turned on",
+          "Content inside Shadow DOM and iframes"
+        ]
+      }
+    }
+  ],
+  "observed": [
+    {
+      "state": "normal",
+      "width": 360,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 4 · 2026-11-12 저장버전 이력크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 286.20001220703125
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 286.20001220703125
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 107.80000305175781
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 107.80000305175781
+        }
+      ],
+      "designColumns": "166.4px 166.4px"
+    },
+    {
+      "state": "loading",
+      "width": 360,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표를 불러오고 있어요저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": true,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": true,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [],
+      "designColumns": null
+    },
+    {
+      "state": "empty",
+      "width": 360,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "첫 가격표를 만들어 주세요버전 이력크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제크기 옵션 추가옵션 0/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 추가규칙 0/500개도안도안 추가도안 0/50장 · 한 장 10MB까지저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [],
+      "designColumns": "166.4px 166.4px"
+    },
+    {
+      "state": "load-failed",
+      "width": 360,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "문제가 생겼어요. 다시 시도해 주세요추적 ID: 0123456789abcdef0123456789abcdef다시 시도저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": true,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [],
+      "designColumns": null
+    },
+    {
+      "state": "permission",
+      "width": 360,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "합성 로그인 화면다시 로그인해 주세요",
+      "save": [],
+      "labels": [],
+      "designColumns": null
+    },
+    {
+      "state": "error",
+      "width": 360,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 4 · 2026-11-12 저장버전 이력입력한 내용을 확인해 주세요크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액같은 조합이 허용이자 금지예요규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값같은 조합이 허용이자 금지예요규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 2개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 286.20001220703125
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 286.20001220703125
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 107.80000305175781
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 107.80000305175781
+        }
+      ],
+      "designColumns": "166.4px 166.4px"
+    },
+    {
+      "state": "stale",
+      "width": 360,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 4 · 2026-11-12 저장버전 이력그 사이 바뀌었어요. 지금 상태를 확인해 주세요내 변경 다시 적용내 변경을 버리고 지금 값 사용다시 읽은 가격표 버전 5크기 · 1호: 35,000원크기 · 2호: 45,000원맛 · 생크림: 0원맛 · 초코: 4,000원디자인 · 기본 레터링: 0원디자인 · 캐릭터 그림: 20,000원부터추가 · 초 추가: 1,000원추가 · 2단: 40,000원 ~ 60,000원지금 옵션 규칙2호 · 캐릭터 그림: 5,000원 더함2단 · 1호: 함께 못 고름지금 도안하트 레터링 · 기본 레터링 · 기본 디자인 범위곰돌이 · 캐릭터 그림 · 맞춤 주문으로만내 입력은 아래 양식에 남아 있어요. 같은 필드가 바뀌었으면 다시 적용한 내 값이 사용돼요.그 사이 바뀌었어요. 지금 상태를 확인해 주세요다시 불러오기크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 1개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": true,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 286.20001220703125
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 286.20001220703125
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 107.80000305175781
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 107.80000305175781
+        }
+      ],
+      "designColumns": "166.4px 166.4px"
+    },
+    {
+      "state": "submitting",
+      "width": 360,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "처리하고 있어요. 잠시 뒤 다시 확인해 주세요가격표 버전 4 · 2026-11-12 저장버전 이력크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 0개처리하고 있어요로그아웃",
+      "save": [
+        {
+          "text": "처리하고 있어요",
+          "disabled": true,
+          "ariaDisabled": "true",
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": true,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 286.20001220703125
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 286.20001220703125
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 107.80000305175781
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 107.80000305175781
+        }
+      ],
+      "designColumns": "166.4px 166.4px"
+    },
+    {
+      "state": "done",
+      "width": 360,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 5 · 2026-11-12 저장버전 이력저장했어요. 가격표 버전 5크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 286.20001220703125
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 286.20001220703125
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 107.80000305175781
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 107.80000305175781
+        }
+      ],
+      "designColumns": "166.4px 166.4px"
+    },
+    {
+      "state": "normal",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 4 · 2026-11-12 저장버전 이력크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        }
+      ],
+      "designColumns": "236.2px 236.2px 236.2px 236.2px"
+    },
+    {
+      "state": "loading",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표를 불러오고 있어요저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": true,
+          "ariaDisabled": null,
+          "y": 549.7000122070312,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": true,
+          "ariaDisabled": null,
+          "y": 549.7000122070312,
+          "height": 44
+        }
+      ],
+      "labels": [],
+      "designColumns": null
+    },
+    {
+      "state": "empty",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "첫 가격표를 만들어 주세요버전 이력크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제크기 옵션 추가옵션 0/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 추가규칙 0/500개도안도안 추가도안 0/50장 · 한 장 10MB까지저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [],
+      "designColumns": "236.2px 236.2px 236.2px 236.2px"
+    },
+    {
+      "state": "load-failed",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "문제가 생겼어요. 다시 시도해 주세요추적 ID: 0123456789abcdef0123456789abcdef다시 시도저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": true,
+          "ariaDisabled": null,
+          "y": 502.25,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 502.25,
+          "height": 44
+        }
+      ],
+      "labels": [],
+      "designColumns": null
+    },
+    {
+      "state": "permission",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "합성 로그인 화면다시 로그인해 주세요",
+      "save": [],
+      "labels": [],
+      "designColumns": null
+    },
+    {
+      "state": "error",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 4 · 2026-11-12 저장버전 이력입력한 내용을 확인해 주세요크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액같은 조합이 허용이자 금지예요규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값같은 조합이 허용이자 금지예요규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 2개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        }
+      ],
+      "designColumns": "236.2px 236.2px 236.2px 236.2px"
+    },
+    {
+      "state": "stale",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 4 · 2026-11-12 저장버전 이력그 사이 바뀌었어요. 지금 상태를 확인해 주세요내 변경 다시 적용내 변경을 버리고 지금 값 사용다시 읽은 가격표 버전 5크기 · 1호: 35,000원크기 · 2호: 45,000원맛 · 생크림: 0원맛 · 초코: 4,000원디자인 · 기본 레터링: 0원디자인 · 캐릭터 그림: 20,000원부터추가 · 초 추가: 1,000원추가 · 2단: 40,000원 ~ 60,000원지금 옵션 규칙2호 · 캐릭터 그림: 5,000원 더함2단 · 1호: 함께 못 고름지금 도안하트 레터링 · 기본 레터링 · 기본 디자인 범위곰돌이 · 캐릭터 그림 · 맞춤 주문으로만내 입력은 아래 양식에 남아 있어요. 같은 필드가 바뀌었으면 다시 적용한 내 값이 사용돼요.그 사이 바뀌었어요. 지금 상태를 확인해 주세요다시 불러오기크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 1개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": true,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        }
+      ],
+      "designColumns": "236.2px 236.2px 236.2px 236.2px"
+    },
+    {
+      "state": "submitting",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "처리하고 있어요. 잠시 뒤 다시 확인해 주세요가격표 버전 4 · 2026-11-12 저장버전 이력크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 0개처리하고 있어요로그아웃",
+      "save": [
+        {
+          "text": "처리하고 있어요",
+          "disabled": true,
+          "ariaDisabled": "true",
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": true,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        }
+      ],
+      "designColumns": "236.2px 236.2px 236.2px 236.2px"
+    },
+    {
+      "state": "done",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 5 · 2026-11-12 저장버전 이력저장했어요. 가격표 버전 5크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        }
+      ],
+      "designColumns": "236.2px 236.2px 236.2px 236.2px"
+    },
+    {
+      "state": "uploaded-before503",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 4 · 2026-11-12 저장버전 이력크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지synthetic-price.png사진을 올렸어요. 1시간 안에 저장해 주세요다시 올리기연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 1개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        }
+      ],
+      "designColumns": "236.2px 236.2px 236.2px 236.2px"
+    },
+    {
+      "state": "save503-file-kept",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 4 · 2026-11-12 저장버전 이력사진을 저장하지 못했어요. 다시 올려 주세요추적 ID: 0123456789abcdef0123456789abcdef크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지synthetic-price.png다시 올리기연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 844,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        }
+      ],
+      "designColumns": "236.2px 236.2px 236.2px 236.2px"
+    },
+    {
+      "state": "save503-reuploaded-done",
+      "width": 1280,
+      "fonts": "loaded",
+      "overflow": false,
+      "text": "가격표 버전 5 · 2026-11-12 저장버전 이력저장했어요. 가격표 버전 5크기맛디자인추가옵션 이름표시 방식금액최대 금액기본 디자인 범위순서·삭제1호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제2호옵션 이름표시 방식확정부터범위금액—기본 디자인 범위위로아래로옵션 삭제크기 옵션 추가옵션 8/100개 · 삭제하면 연결 규칙도 지워지고 도안 연결은 해제돼요. 순서는 끌거나 위로·아래로 바꿔요.옵션 규칙규칙 1옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값더하는 금액규칙 삭제규칙 2옵션 A옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단옵션 B옵션 선택크기 · 1호크기 · 2호맛 · 생크림맛 · 초코디자인 · 기본 레터링디자인 · 캐릭터 그림추가 · 초 추가추가 · 2단규칙 종류함께 못 고름더하는 값규칙 삭제규칙 추가규칙 2/500개도안하트 레터링도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위위로아래로도안 삭제곰돌이도안 이름도안 그림JPG·PNG·HEIC 한 장, 10MB까지연결 옵션연결 없음디자인 · 기본 레터링디자인 · 캐릭터 그림기본 디자인 범위맞춤 주문으로만위로아래로도안 삭제도안 추가도안 2/50장 · 한 장 10MB까지저장 전 바뀐 셀 0개저장로그아웃",
+      "save": [
+        {
+          "text": "저장",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 827.9500122070312,
+          "height": 44
+        },
+        {
+          "text": "로그아웃",
+          "disabled": false,
+          "ariaDisabled": null,
+          "y": 827.9500122070312,
+          "height": 44
+        }
+      ],
+      "labels": [
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 46.5,
+          "width": 94.88750457763672
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        },
+        {
+          "text": "기본 디자인 범위",
+          "height": 44,
+          "width": 177.60000610351562
+        }
+      ],
+      "designColumns": "236.2px 236.2px 236.2px 236.2px"
+    },
+    {
+      "state": "save503-request-counts",
+      "width": 1280,
+      "requests": "실제 가격표 화면과 합성 응답입니다. 실제 사장님·사진·쿠키를 쓰지 않습니다.시험 상태normalloadingemptyerrorload-failedpermissionstalesubmittingdonestorageFailureuploadExpiredsave-failed세션 확인 실패 재현가격표 조회 1 · 저장 2 · 사진 2 · 키 교체 예"
+    }
+  ],
+  "note": "Claude 검토 수정 전.9상태 두 폭18건과1280 사진503 복구3건."
+}

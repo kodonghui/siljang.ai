@@ -177,3 +177,13 @@ it("다른 기기의 규칙 순서가 달라져도 재적용한 규칙의 화면
   expect(merged.form.rules).toHaveLength(base.rules.length);
   expect(new Set(merged.form.rules.map((r) => r.key)).size).toBe(merged.form.rules.length);
 });
+
+it("새 그림 없이도 재적용한 기존 도안은 파일 상태의 화면 키를 유지", () => {
+  const base = fixture(),
+    mine = priceListForm(base),
+    latest = newer(base),
+    merged = rebasePriceList(base, mine, latest);
+  if (!merged.form) throw new Error("재적용 실패");
+  expect(merged.form.designs[0]?.key).toBe(mine.designs[0]?.key);
+  expect(merged.form.designs[0]?.sourceDesignId).toBe(latest.designs[0]?.designId);
+});

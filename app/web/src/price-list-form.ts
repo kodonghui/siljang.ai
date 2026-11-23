@@ -212,6 +212,11 @@ export function rebasePriceList(
       if (current) result.designs = result.designs.filter((d) => d.key !== current.key);
       continue;
     }
+    if (current) {
+      // 업로드 성공 여부와 무관하게 이 행의 파일/미리보기 부품은 유지한다.
+      current.key = own.key;
+      designKeys.set(original.key, current.key);
+    }
     const change = patch(original, own, ["name", "inStandard"]);
     const linkChanged = own.optionKey !== original.optionKey,
       imageChanged = own.uploadId !== original.uploadId;
@@ -227,9 +232,6 @@ export function rebasePriceList(
       else current.optionKey = key;
     }
     if (imageChanged) {
-      // 이 키로 남아 있는 파일/미리보기 부품을 다시 만들지 않는다.
-      current.key = own.key;
-      designKeys.set(original.key, current.key);
       current.uploadId = own.uploadId;
       current.sourceDesignId = own.sourceDesignId;
       current.imageUrl = own.imageUrl;

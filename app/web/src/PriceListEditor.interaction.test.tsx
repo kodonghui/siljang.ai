@@ -21,6 +21,7 @@ let readProblem: { status: number; code: string } | null;
 let sendProblem: { status: number; code: string; errors?: { field: string; code: string }[] } | null;
 let photoProblem: { status: number; code: string; errors?: { field: string; code: string }[] } | null;
 let unchanged: boolean, uploads: number, holdSave: boolean, holdUpload: boolean;
+let photoProblemAt: number;
 let ownerStatus: "pending" | "verified" | "on_hold";
 beforeEach(() => {
   current = fixture();
@@ -31,6 +32,7 @@ beforeEach(() => {
   readProblem = sendProblem = photoProblem = null;
   unchanged = holdSave = holdUpload = false;
   uploads = 0;
+  photoProblemAt = 1;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: unknown, init?: RequestInit) => {
@@ -46,7 +48,7 @@ beforeEach(() => {
       if (String(input) === "/api/owner/uploads") {
         uploads++;
         if (holdUpload) return new Promise(() => {});
-        if (photoProblem && uploads === 1)
+        if (photoProblem && uploads === photoProblemAt)
           return new Response(JSON.stringify({ ...photoProblem, traceId }), {
             status: photoProblem.status,
             headers: { "Retry-After": "1" },
@@ -498,7 +500,10 @@ it("큰 사진은 전송하지 않고 잘못된 파일 안내를 보임", async 
   await design().findByText("사진이 너무 커요. 10MB(완성 사진은 20MB)까지 올릴 수 있어요");
   expect(uploads).toBe(0);
   save();
-  expect(sends).toHaveLength(0);
+  await main().findByText("저장했어요. 가격표 버전 5");
+  expect(sends[0]?.body.designs).toEqual(
+    expect.arrayContaining([expect.objectContaining({ sourceDesignId: fixture().designs[0].designId })]),
+  );
 });
 it("새 도안 사진은 미리보기와 다른 입력/사진을 보존한 채 충돌 재적용", async () => {
   conflict = true;
@@ -548,4 +553,87 @@ it("직접 고치는 입력이 없는 순서 필드 오류도 폼 위에 사유�
   save();
   await main().findByText("입력한 내용을 확인해 주세요");
   expect(main().getByText("넣을 수 있는 범위를 벗어났어요")).toBeTruthy();
+});
+
+it("그림 업로드가 실패해도 기존 도안과 실패한 파일을 충돌 재적용 뒤 보존", async () => {
+  photoProblem = { status: 503, code: "storage_unavailable" };
+  conflict = true;
+  area();
+  await loaded();
+  choose();
+  await design().findByText("사진을 저장하지 못했어요. 다시 올려 주세요");
+  expect(design().getByRole("img").getAttribute("src")).toBe(fixture().designs[0].imageUrl);
+  save();
+  fireEvent.click(await screen.findByRole("button", { name: "내 변경 다시 적용" }));
+  expect(design().getByText("synthetic.png")).toBeTruthy();
+  expect(design().getByRole("button", { name: "다시 올리기" })).toBeTruthy();
+});
+it("둘째 페이지 규칙의 입력 오류는 해당 페이지와 첫 필드로 이동", async () => {
+  const options = current.options;
+  current.rules = [];
+  for (let a = 0; a < options.length; a++)
+    for (let b = a + 1; b < options.length; b++)
+      if (current.rules.length < 21)
+        current.rules.push({
+          kind: "exclude",
+          optionAId: options[a].optionId,
+          optionBId: options[b].optionId,
+          amount: null,
+        });
+  area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "다음 규칙" }));
+  const last = within(screen.getByRole("group", { name: "옵션 규칙 21" }));
+  fireEvent.change(last.getByLabelText("옵션 B"), {
+    target: { value: (last.getByLabelText("옵션 A") as HTMLSelectElement).value },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "이전 규칙" }));
+  save();
+  const error = within(screen.getByRole("group", { name: "옵션 규칙 21" }));
+  expect(document.activeElement).toBe(error.getByLabelText("옵션 B"));
+  expect(sends).toHaveLength(0);
+});
+it("이름을 아직 넣지 않은 옵션 두 개는 중복 오류를 먼저 보이지 않음", async () => {
+  empty = true;
+  area();
+  await main().findByText("첫 가격표를 만들어 주세요");
+  fireEvent.click(screen.getByRole("button", { name: "크기 옵션 추가" }));
+  fireEvent.click(screen.getByRole("button", { name: "크기 옵션 추가" }));
+  for (const row of screen.getAllByRole("group", { name: /크기 옵션/ }))
+    expect(within(row).getByLabelText("옵션 이름").getAttribute("aria-invalid")).toBeNull();
+});
+
+it.each([
+  { field: "/options/0/priceKind", label: "표시 방식", group: "크기 옵션 1" },
+  { field: "/rules/0/kind", label: "규칙 종류", group: "옵션 규칙 1" },
+])("서버 $field 오류는 선택 필드에 표시", async (p) => {
+  sendProblem = { status: 422, code: "validation_failed", errors: [{ field: p.field, code: "not_allowed" }] };
+  area();
+  await loaded();
+  save();
+  await main().findByText("입력한 내용을 확인해 주세요");
+  expect(
+    within(screen.getByRole("group", { name: p.group }))
+      .getByLabelText(p.label)
+      .getAttribute("aria-invalid"),
+  ).toBe("true");
+});
+it("두 번째 그림 업로드가 실패해도 마지막 성공 그림의 미리보기 주소를 유지", async () => {
+  let id = 0;
+  vi.spyOn(URL, "createObjectURL").mockImplementation(() => `blob:synthetic-saved-${++id}`);
+  const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  const view = area();
+  await loaded();
+  choose();
+  await design().findByText("사진을 올렸어요. 1시간 안에 저장해 주세요");
+  photoProblem = { status: 503, code: "storage_unavailable" };
+  photoProblemAt = 2;
+  choose();
+  await design().findByText("사진을 저장하지 못했어요. 다시 올려 주세요");
+  const src = design().getByRole("img").getAttribute("src");
+  expect(src).toMatch(/^blob:synthetic-saved-/);
+  expect(revoke).not.toHaveBeenCalledWith(src);
+  expect(design().getByText("새 그림을 올리지 못해 기존 그림을 유지해요. 다시 올리면 바꿀 수 있어요.")).toBeTruthy();
+  view.unmount();
+  expect(revoke).toHaveBeenCalledWith(src);
 });
