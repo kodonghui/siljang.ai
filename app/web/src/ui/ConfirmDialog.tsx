@@ -107,12 +107,14 @@ export function ConfirmDialog({
  */
 export function ConfirmRequired({
   items,
+  children,
   confirmLabel,
   confirmDisabled = false,
   onConfirm,
   onCancel,
 }: {
   readonly items: readonly ConfirmationNeeded[] | null;
+  readonly children?: ReactNode;
   readonly confirmLabel: string;
   readonly confirmDisabled?: boolean;
   readonly onConfirm: () => void;
@@ -130,6 +132,7 @@ export function ConfirmRequired({
       {(items ?? []).map((item) => (
         <p key={`${item.kind}:${item.day ?? ""}`}>{confirmText(item)}</p>
       ))}
+      {children}
     </ConfirmDialog>
   );
 }

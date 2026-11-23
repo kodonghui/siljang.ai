@@ -1,0 +1,31 @@
+{
+  "main": "0c0f9cf6e3537e72b89f987870feea3fee1cbca7",
+  "appRun": 45244919830,
+  "dbRun": 45244919926,
+  "checks": {
+    "check": 137939046362,
+    "windowsMock": 137939047409,
+    "postgres16": 137939046903,
+    "postgres17": 137939047370,
+    "deploy": 137940669775
+  },
+  "ci": "success",
+  "deployment": "success",
+  "remoteVerification": {
+    "source": "GitHub Actions deploy job: tools/staging-runtime.mjs verify (Wrangler deployments list + versions view)",
+    "tag": "0c0f9cf6e3537e72b89f987870feea3fee1cbca7",
+    "versionId": "cef3e3ea-aebd-43d1-889e-01a95375e508",
+    "createdOn": "2026-11-23T19:07:04.035348Z",
+    "healthStatus": 200,
+    "activePercentage": 100
+  },
+  "nativeAcademy": {
+    "verified": false,
+    "blocker": "Wrangler whoami timed out at 45000ms in two attempts; no browser used",
+    "retry": "pause until network or native authentication state changes"
+  },
+  "storage": {
+    "deployment": "success",
+    "activeTagReadback": "not verified in academy after this merge"
+  }
+}
