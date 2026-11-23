@@ -82,6 +82,132 @@ function area(extra: { sessionChecking?: boolean; sessionFailed?: boolean } = {}
 }
 const main = () => within(screen.getByRole("main"));
 const loaded = () => screen.findByLabelText("봇 ID");
+it("채널 필드의 첫 초점 실패는 같은 화면 반영에서 한 번 복구한다", async () => {
+  empty = true;
+  area();
+  await loaded();
+  const target = screen.getByLabelText("봇 ID");
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  const original = HTMLElement.prototype.focus;
+  let n = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === target && ++n === 1) {
+      expect(document.activeElement).not.toBe(target);
+      return;
+    }
+    original.call(this, options);
+  });
+  fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+  expect(n).toBe(2);
+  expect(document.activeElement).toBe(target);
+});
+it("채널 필드가 두 번 초점을 받지 못하면 결과 영역으로 한 번 대체한다", async () => {
+  empty = true;
+  const view = area();
+  await loaded();
+  const target = screen.getByLabelText("봇 ID");
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  const original = HTMLElement.prototype.focus;
+  let n = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === target && ++n <= 2) return;
+    original.call(this, options);
+  });
+  fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+  expect(n).toBe(2);
+  expect(document.activeElement).toBe(screen.getByRole("region", { name: "채널 설정 결과" }));
+  view.rerender(<KakaoChannelSettings {...view.props} shopName="다시 그린 합성 가게" />);
+  expect(n).toBe(2);
+});
+function heldSave() {
+  const transport = fetch;
+  let sent = false,
+    release: (response: Response) => void = () => {
+      throw new Error("대기 중인 채널 저장이 없어요");
+    };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PUT") {
+        sent = true;
+        return new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      }
+      return transport(input, init);
+    }),
+  );
+  return { sent: () => sent, release: (response: Response) => release(response) };
+}
+it("채널 저장을 기다리는 동안 뒤로 링크로 옮긴 초점을 보존한다", async () => {
+  const held = heldSave();
+  area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+  await waitFor(() => expect(held.sent()).toBe(true));
+  const back = screen.getByRole("link", { name: "뒤로" });
+  back.focus();
+  await act(async () =>
+    held.release(json({ code: "validation_failed", traceId, errors: [{ field: "/botId", code: "not_allowed" }] }, 422)),
+  );
+  await main().findByText("입력한 내용을 확인해 주세요");
+  expect(document.activeElement).toBe(back);
+});
+it("채널의 잠금 중 초점 요청은 버려 잠금 뒤에 다시 실행하지 않는다", async () => {
+  const held = heldSave();
+  const view = area();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "채널 바꾸기" }));
+  const input = screen.getByLabelText("봇 ID"),
+    result = screen.getByRole("region", { name: "채널 설정 결과" });
+  screen.getByRole("button", { name: /^저장$/ }).focus();
+  fireEvent.click(screen.getByRole("button", { name: /^저장$/ }));
+  await waitFor(() => expect(held.sent()).toBe(true));
+  const original = HTMLElement.prototype.focus;
+  let n = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === input || this === result) n++;
+    original.call(this, options);
+  });
+  view.rerender(<KakaoChannelSettings {...view.props} logoutPending />);
+  await act(async () =>
+    held.release(json({ code: "validation_failed", traceId, errors: [{ field: "/botId", code: "not_allowed" }] }, 422)),
+  );
+  expect(n).toBe(0);
+  view.rerender(<KakaoChannelSettings {...view.props} logoutPending={false} />);
+  await act(async () => {});
+  expect(n).toBe(0);
+});
+it("연결 확인의 누락 블록도 첫 초점 실패 뒤 같은 화면 반영에서 복구한다", async () => {
+  current = getExample("failed");
+  current.blockIds.card = null;
+  const transport = fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "POST" ? json({ code: "channel_setup_incomplete", traceId }, 409) : transport(input, init),
+    ),
+  );
+  area();
+  await loaded();
+  const target = screen.getByLabelText("확인 카드");
+  screen.getByRole("button", { name: "다시 확인" }).focus();
+  const original = HTMLElement.prototype.focus;
+  let n = 0;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+    if (this === target && ++n === 1) {
+      expect(document.activeElement).not.toBe(target);
+      return;
+    }
+    original.call(this, options);
+  });
+  fireEvent.click(screen.getByRole("button", { name: "다시 확인" }));
+  await main().findByText("버튼 블록 ID 5개를 모두 넣어 주세요");
+  expect(n).toBe(2);
+  expect(document.activeElement).toBe(target);
+});
 it("무료 MVP 연결됨은 다음 대화 안내와 설정을 보이고 실제 발신을 부르지 않는다", async () => {
   area();
   await loaded();
