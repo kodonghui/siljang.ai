@@ -1,4 +1,4 @@
-import type { PriceListForm } from "./price-list-form";
+import { designIdentity, type PriceListForm } from "./price-list-form";
 import type { FieldError, FieldReason } from "./problems";
 
 export const OPTION_FIELDS = ["name", "priceKind", "amount", "amountMax", "inStandard", "position"] as const;
@@ -98,6 +98,6 @@ export function priceListChanges(original: PriceListForm, form: PriceListForm): 
   return (
     count(original.options, form.options, OPTION_FIELDS) +
     count(original.rules, form.rules, RULE_FIELDS) +
-    count(original.designs, form.designs, DESIGN_FIELDS, (d) => d.baseDesignId ?? d.key)
+    count(original.designs, form.designs, DESIGN_FIELDS, designIdentity)
   );
 }

@@ -1,0 +1,27 @@
+{
+  "sourceCommit": "9d45179d26f530a5d595fce4c317dce68a5f8ecf",
+  "bundleBytes": 209447,
+  "bundleSha256": "34542adda736b002bacad28b24bee5ee5dbf75f496a099ef1864bd249028bc34",
+  "bundleVerifiedOnAcademyPC": true,
+  "asideCli": "1.26.1121.1917",
+  "nativeInitialSnapshot": true,
+  "viewport360Snapshot": true,
+  "pageChecksCompleted": 0,
+  "attempts": [
+    {
+      "action": "normal page-check after resize",
+      "error": "CDP command timeout: Runtime.callFunctionOn",
+      "elapsedMs": 88377
+    },
+    {
+      "action": "select doubleStale scenario and snapshot",
+      "error": "CDP command timeout: Runtime.callFunctionOn",
+      "elapsedMs": 30111
+    }
+  ],
+  "sameNativeGoalPaused": true,
+  "ownedTabClosed": true,
+  "ownedTabCloseMs": 25627,
+  "screenShotsCaptured": false,
+  "fakeDataOnly": true
+}
