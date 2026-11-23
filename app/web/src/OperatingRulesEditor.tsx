@@ -102,6 +102,8 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     formRef = useRef<HTMLFormElement>(null),
     statusRef = useRef<HTMLElement>(null),
     focusPending = useRef<string | null>(null),
+    clauseFocus = useRef<{ id: string; enabled: boolean } | null>(null),
+    actionFocus = useRef<{ id: string | null; kind: "clause" | "tier" } | null>(null),
     handledDone = useRef<unknown>(null),
     handledFailure = useRef<unknown>(null);
   const failure = command.state.kind === "failed" ? command.state.failure : null;
@@ -193,8 +195,32 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
     }
   }, [failure, read, reveal]);
   useEffect(() => {
+    if (requestsBlocked) return;
+    const action = actionFocus.current;
+    if (action) {
+      actionFocus.current = null;
+      const row = Array.from(
+        formRef.current?.querySelectorAll<HTMLElement>(
+          action.kind === "clause" ? "[data-clause-id]" : "[data-tier-id]",
+        ) ?? [],
+      ).find((el) => (action.kind === "clause" ? el.dataset.clauseId : el.dataset.tierId) === action.id);
+      const target =
+        row?.querySelector<HTMLElement>("button") ??
+        formRef.current?.querySelector<HTMLElement>(action.kind === "clause" ? "[data-add-clause]" : "[data-add-tier]");
+      target?.focus();
+      return;
+    }
+    const moved = clauseFocus.current;
+    if (moved) {
+      clauseFocus.current = null;
+      const row = Array.from(formRef.current?.querySelectorAll<HTMLElement>("[data-clause-id]") ?? []).find(
+        (el) => el.dataset.clauseId === moved.id,
+      );
+      row?.querySelector<HTMLElement>(moved.enabled ? "textarea" : "button")?.focus();
+      return;
+    }
     const pointer = focusPending.current;
-    if (!pointer || requestsBlocked) return;
+    if (!pointer) return;
     const field = Array.from(
       formRef.current?.querySelectorAll<HTMLElement>("[data-pointer],[data-row-pointer]") ?? [],
     ).find((el) => el.dataset.pointer === pointer || el.dataset.rowPointer === pointer);
@@ -257,6 +283,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
       <fieldset
         key={row.id}
         className="rules-clause"
+        data-clause-id={row.id}
         data-row-pointer={i === undefined ? undefined : pointer}
         data-invalid={
           i !== undefined && allErrors.some((e) => e.field === pointer || e.field.startsWith(`${pointer}/`))
@@ -269,20 +296,30 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
         {!row.enabled ? (
           <Button
             disabled={locked || active.length >= 50}
-            onClick={() =>
-              clause(row.id, { enabled: true, position: Math.max(0, ...active.map((c) => c.position)) + 1 })
-            }
+            onClick={() => {
+              if (!canEdit()) return;
+              clauseFocus.current = { id: row.id, enabled: true };
+              clause(row.id, { enabled: true, position: Math.max(0, ...active.map((c) => c.position)) + 1 });
+            }}
           >
             이 조문 넣기
           </Button>
         ) : (
           <Button
             disabled={locked}
-            onClick={() =>
-              row.key === "custom"
-                ? mutate((old) => ({ ...old, clauses: old.clauses.filter((c) => c.id !== row.id) }))
-                : clause(row.id, { enabled: false })
-            }
+            onClick={() => {
+              if (!canEdit()) return;
+              if (row.key === "custom") {
+                actionFocus.current = {
+                  kind: "clause",
+                  id: active[active.findIndex((c) => c.id === row.id) + 1]?.id ?? null,
+                };
+                mutate((old) => ({ ...old, clauses: old.clauses.filter((c) => c.id !== row.id) }));
+              } else {
+                clauseFocus.current = { id: row.id, enabled: false };
+                clause(row.id, { enabled: false });
+              }
+            }}
           >
             조문 빼기
           </Button>
@@ -501,6 +538,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                   <fieldset
                     key={row.id}
                     className="rules-tier"
+                    data-tier-id={row.id}
                     data-row-pointer={pointer}
                     data-invalid={
                       allErrors.some((e) => e.field === pointer || e.field.startsWith(`${pointer}/`)) ? true : undefined
@@ -537,9 +575,11 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                     {notes(pointer) ? <p className="ui-field__error">{notes(pointer)}</p> : null}
                     <Button
                       disabled={locked}
-                      onClick={() =>
-                        mutate((old) => ({ ...old, refundTiers: old.refundTiers.filter((t) => t.id !== row.id) }))
-                      }
+                      onClick={() => {
+                        if (!canEdit()) return;
+                        actionFocus.current = { kind: "tier", id: form.refundTiers[i + 1]?.id ?? null };
+                        mutate((old) => ({ ...old, refundTiers: old.refundTiers.filter((t) => t.id !== row.id) }));
+                      }}
                     >
                       단계 삭제
                     </Button>
@@ -547,6 +587,7 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
                 );
               })}
               <Button
+                data-add-tier
                 disabled={locked || form.refundTiers.length >= 20}
                 onClick={() =>
                   mutate((old) => ({
@@ -567,11 +608,14 @@ export function OperatingRulesEditor(props: ShopLicenseProps) {
               {exceeds ? <Banner tone="danger">주문 요청 카드에 다 들어가지 않아요. 조문을 줄여 주세요</Banner> : null}
               {paired ? <Banner tone="danger">단계별 환불 조문과 표를 함께 채워 주세요</Banner> : null}
               {orderedClauses(form).map(renderClause)}
-              <section className="rules-section" aria-label="넣을 수 있는 기본 조문">
-                <h3>기본 조문 선택</h3>
-                {form.clauses.filter((row) => !row.enabled).map(renderClause)}
-              </section>
+              {form.clauses.some((row) => !row.enabled) ? (
+                <section className="rules-section" aria-label="넣을 수 있는 기본 조문">
+                  <h3>기본 조문 선택</h3>
+                  {form.clauses.filter((row) => !row.enabled).map(renderClause)}
+                </section>
+              ) : null}
               <Button
+                data-add-clause
                 disabled={locked || active.length >= 50}
                 onClick={() =>
                   mutate((old) => ({
