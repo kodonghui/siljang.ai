@@ -111,7 +111,7 @@ function patch<T, K extends keyof T>(base: T, mine: T, keys: readonly K[]): Part
   return result;
 }
 const optionIdentity = (o: OptionForm) => JSON.stringify([o.group, o.name]);
-const designIdentity = (d: DesignForm) => d.baseDesignId ?? d.key;
+export const designIdentity = (d: DesignForm) => d.baseDesignId ?? d.key;
 const pair = (r: Pick<RuleForm, "optionA" | "optionB">) => JSON.stringify([r.optionA, r.optionB].sort());
 const ordered = <T extends { position: number }>(rows: readonly T[]) =>
   [...rows].sort((a, b) => a.position - b.position);

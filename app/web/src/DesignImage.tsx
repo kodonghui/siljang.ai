@@ -44,12 +44,12 @@ export function DesignImage(props: DesignImageProps) {
   useEffect(() => {
     if (previousEpoch.current === props.discardEpoch) return;
     previousEpoch.current = props.discardEpoch;
-    setRejectedFile(photo.file);
+    setRejectedFile(acceptedFile);
     setAcceptedFile(null);
     photo.upload.reset();
-  }, [props.discardEpoch, photo.file, photo.upload.reset]);
+  }, [props.discardEpoch, acceptedFile, photo.upload.reset]);
   const previous = acceptedPreview ?? (props.design.imageUrl || null);
-  const rejected = rejectedFile !== null && rejectedFile === photo.file;
+  const rejected = rejectedFile !== null && photo.upload.state.kind === "idle";
   const src = failure || photo.problem || rejected ? previous : (photo.preview ?? previous);
   const previewFailed = src !== null && src === failedSrc;
   const errors = [
@@ -97,7 +97,7 @@ export function DesignImage(props: DesignImageProps) {
         fields={["/file", "/purpose"]}
         done={() => "사진을 올렸어요. 1시간 안에 저장해 주세요"}
       />
-      {rejected ? (
+      {rejected && !failure && !photo.problem ? (
         <p>
           {props.design.sourceDesignId
             ? "새 그림 저장이 거절돼 기존 그림을 유지해요. 원래 파일을 다시 올릴 수 있어요."
@@ -106,6 +106,20 @@ export function DesignImage(props: DesignImageProps) {
       ) : null}
       {(failure || photo.problem) && (props.design.sourceDesignId || props.design.uploadId) ? (
         <p>새 그림을 올리지 못해 기존 그림을 유지해요. 다시 올리면 바꿀 수 있어요.</p>
+      ) : null}
+      {rejectedFile && rejectedFile !== photo.file ? (
+        <>
+          <p className="price-file-name">저장에 거절된 파일: {rejectedFile.name}</p>
+          <Button
+            disabled={props.disabled || blocked || photo.upload.busy}
+            onClick={() => {
+              if (props.disabled || blocked || photo.upload.busy || !props.onStart(props.design.key)) return;
+              props.onBusy(props.design.key, photo.select(rejectedFile));
+            }}
+          >
+            거절된 그림 다시 올리기
+          </Button>
+        </>
       ) : null}
       {photo.file ? (
         <Button

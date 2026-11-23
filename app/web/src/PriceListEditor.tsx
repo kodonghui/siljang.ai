@@ -273,9 +273,9 @@ export function PriceListEditor(props: ShopLicenseProps) {
         : pointer === "/options"
           ? formRef.current?.querySelector<HTMLElement>("[data-add-option]")
           : field?.querySelector<HTMLElement>("input, select, textarea, button");
-    if (target && !target.matches(":disabled")) {
+    if (target && !requestsBlocked) {
       focusPending.current = null;
-      target.focus();
+      (target.matches(":disabled") ? statusRef.current : target)?.focus();
     }
   });
   useEffect(() => {
@@ -797,7 +797,7 @@ export function PriceListEditor(props: ShopLicenseProps) {
                     </fieldset>
                   );
                 })}
-              {form.rules.length > 20 ? (
+              {form.rules.length > RULE_PAGE_SIZE ? (
                 <div className="price-row-actions">
                   <Button
                     disabled={locked || rulePage === 0}
