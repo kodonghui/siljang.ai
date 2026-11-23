@@ -1,6 +1,7 @@
-import { type MouseEvent, useEffect, useRef, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
-import type { ApiResult } from "./api";
+import type { ApiFailure, ApiResult } from "./api";
+import { OperatorShopsList } from "./OperatorShopsList";
 import {
   fetchOperator,
   OPERATOR_HOME,
@@ -25,7 +26,12 @@ export function OperatorArea() {
   const [revision, setRevision] = useState(0);
   const [checked, setChecked] = useState<CheckedSession | null>(null);
   const [logout, setLogout] = useState<"pending" | "failed" | null>(null);
+  const [logoutFailure, setLogoutFailure] = useState<ApiFailure | null>(null);
   const logoutRequest = useRef<AbortController | null>(null);
+  const returnTo = location.pathname + location.search + location.hash;
+  const sessionExpired = useCallback(() => {
+    navigate(OPERATOR_LOGIN, { replace: true, state: { returnTo } });
+  }, [navigate, returnTo]);
 
   useEffect(() => {
     const recheck = (event: PageTransitionEvent) => {
@@ -55,12 +61,14 @@ export function OperatorArea() {
     const controller = new AbortController();
     logoutRequest.current = controller;
     setLogout("pending");
+    setLogoutFailure(null);
     try {
       const response = await signOut(controller.signal);
       if (controller.signal.aborted) return;
       if (response.ok || response.status === 401) {
         navigate(OPERATOR_LOGIN, { replace: true });
       } else {
+        setLogoutFailure(response);
         setLogout("failed");
       }
     } catch (error) {
@@ -100,7 +108,6 @@ export function OperatorArea() {
   }
   if (!session.ok) {
     if (session.status === 401) {
-      const returnTo = location.pathname + location.search + location.hash;
       return <Navigate to={OPERATOR_LOGIN} replace state={{ returnTo }} />;
     }
     const failure = classify(session.status, session.problem, session.retryAfterSeconds);
@@ -122,10 +129,19 @@ export function OperatorArea() {
       onNavigate={follow}
     >
       <PageSection>
-        {logout === "failed" ? (
+        {logout === "failed" && screen.screen === "SCR-047" && logoutFailure ? (
+          <LoadFailure
+            failure={classify(logoutFailure.status, logoutFailure.problem, logoutFailure.retryAfterSeconds)}
+            onRetry={logOut}
+          />
+        ) : logout === "failed" ? (
           <StateBox tone="error" title="로그아웃하지 못했어요" actions={<Button onClick={logOut}>다시 시도</Button>} />
         ) : null}
-        <p>준비 중입니다.</p>
+        {screen.screen === "SCR-047" ? (
+          <OperatorShopsList onNavigate={follow} onSessionExpired={sessionExpired} />
+        ) : (
+          <p>준비 중입니다.</p>
+        )}
       </PageSection>
     </OperatorLayout>
   );
