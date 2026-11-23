@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 import { expect } from "vitest";
-import type { HonoEnv } from "../../src/app";
+import { createApp, type HonoEnv } from "../../src/app";
 import type { Queryable } from "../../src/db";
 import type { FieldCrypto } from "../../src/field-crypto";
 import { deriveKakaoSkillKey } from "../../src/kakao-skill-auth";
@@ -13,7 +13,17 @@ import { newUploadId } from "../../src/uploads";
 import { comparableProblem, expectProblem } from "./contract";
 import { newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./db";
 import { seedOperatorSession } from "./operator";
-import { malformedIds, missingIds, type RecordIds, recordIds, type ShopFixture, snapshotShop } from "./shops";
+import { MemoryLimiter } from "./rate-limit";
+import {
+  createShopPair,
+  issueTestBookingLink,
+  malformedIds,
+  missingIds,
+  type RecordIds,
+  recordIds,
+  type ShopFixture,
+  snapshotShop,
+} from "./shops";
 
 /**
  * 교차 가게 시험 묶음(TASK-019; 04 SPEC-068 수락 기준 1·2, G1; 06 DEC-02).
@@ -118,6 +128,12 @@ interface IdentityChangeShopCase {
   readonly kind: "identity_change";
 }
 
+interface BookingCase {
+  readonly method: "GET";
+  readonly path: "/owner/booking-link" | "/public/shops/:slug/privacy-policy";
+  readonly kind: "booking";
+}
+
 interface LicenseResubmissionCase {
   readonly method: "PUT";
   readonly path: "/owner/shop/license";
@@ -125,6 +141,7 @@ interface LicenseResubmissionCase {
 }
 
 export type CrossShopCase =
+  | BookingCase
   | OwnerCrossShopCase
   | SkillCrossShopCase
   | OwnShopCase
@@ -140,6 +157,8 @@ export type CrossShopCase =
   | OperatorReviewShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
+  { method: "GET", path: "/owner/booking-link", kind: "booking" },
+  { method: "GET", path: "/public/shops/:slug/privacy-policy", kind: "booking" },
   ...["message", "card", "review", "event"].map(
     (kind) =>
       ({
@@ -287,6 +306,57 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "booking") {
+      if (c.path === "/owner/booking-link") {
+        await send(env, "GET", { url: c.path });
+        const before = await snapshots(db, env);
+        for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+          const response = await send(env, "GET", { url: `${c.path}?shopId=${target}&ownerId=${env.b.ownerId}` });
+          expect(response.status, response.text).toBe(200);
+          expect(response.body).toMatchObject({ status: "not_ready", url: null });
+          expect(response.text).not.toContain(env.b.shopId);
+          expect(response.text).not.toContain(env.b.ownerId);
+        }
+        expect(await snapshots(db, env)).toEqual(before);
+      } else {
+        const pair = await createShopPair(db);
+        const publicEnv = { ...env, ...pair };
+        const app = createApp({ services: { limiters: { PUBLIC_PRIVACY_RATE_LIMITER: new MemoryLimiter(1000) } } });
+        for (const shop of [pair.a, pair.b]) await issueTestBookingLink(db, shop);
+        const before = await snapshots(db, publicEnv);
+        for (const shop of [pair.a, pair.b]) {
+          const row = (
+            await db.query<{ booking_slug: string; name: string }>("SELECT booking_slug,name FROM shops WHERE id=$1", [
+              shop.shopId,
+            ])
+          ).rows[0];
+          expect(row).toBeDefined();
+          const response = await app.request(
+            `https://siljang.example/api/public/shops/${row?.booking_slug}/privacy-policy?shopId=${shop === pair.a ? pair.b.shopId : pair.a.shopId}`,
+            {},
+            testEnv(),
+          );
+          expect(response.status, await response.clone().text()).toBe(200);
+          const body = (await response.json()) as { shopName: string; body: string };
+          expect(body.shopName).toBe(row?.name);
+          for (const id of [
+            pair.a.ownerId,
+            pair.b.ownerId,
+            pair.a.shopId,
+            pair.b.shopId,
+            pair.a.paymentAccountId,
+            pair.b.paymentAccountId,
+          ])
+            expect(JSON.stringify(body)).not.toContain(id);
+        }
+        await expectProblem(
+          await app.request("https://siljang.example/api/public/shops/missing-slug/privacy-policy", {}, testEnv()),
+          "not_found",
+        );
+        expect(await snapshots(db, publicEnv)).toEqual(before);
+      }
+      return;
+    }
     if (c.kind === "license_resubmission") {
       const account = (
         await db.query<{ kakao_account_id: string }>("SELECT kakao_account_id FROM owners WHERE id=$1", [env.a.ownerId])

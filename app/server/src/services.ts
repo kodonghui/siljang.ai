@@ -18,6 +18,7 @@ import { deriveKakaoProofPhrase, deriveKakaoSkillKey } from "./kakao-skill-auth"
 import { type OperatorAuth, supabaseAuth } from "./operator-auth";
 import { kakaoOwnerAuth, type OwnerAuth } from "./owner-auth";
 import { type ImageBinding, type PhotoNormalizer, photoNormalizer } from "./photo-normalizer";
+import type { PrivacyPolicySettings } from "./privacy-policy-settings";
 import { bindingLimiter, type RateLimiter, type RateLimitRule } from "./rate-limit";
 import { MissingSettingError } from "./request-key";
 import type { Settings } from "./settings";
@@ -26,6 +27,8 @@ import { batchS3Store } from "./storage-batch";
 
 export interface Services {
   now(): Date;
+  readonly privacyPolicy: PrivacyPolicySettings | null;
+  readonly publicAppOrigin: string | null;
   /** 사진 저장소. 설정(STORAGE_*)이 없으면 MissingSettingError. */
   storage(): ObjectStore;
   /** G10 사진 정리. 회전할 WebP에만 Images 바인딩을 요구한다. */
@@ -42,6 +45,7 @@ export interface Services {
   aiModel(options?: Pick<AiModelOptions, "totalTimeoutMs">): AiModel;
   /** 회사/모델과 선택 회사 키의 존재. 실제 업무 처리기의 준비 여부나 호출 성공이 아니다. */
   readonly aiConfigured: boolean;
+  readonly aiProviderConfigured: boolean;
   /** 카카오 공통 Event API. 가져오는 것만으로 발신하지 않으며 우리 앱의 REST 키를 쓴다. */
   kakaoEvents(): KakaoEvents;
   /** 운영자 인증 서비스(Supabase Auth). SUPABASE_URL·SUPABASE_PUBLISHABLE_KEY가 없으면 MissingSettingError. */
@@ -55,6 +59,8 @@ export interface Services {
 /** 시험이 바꾸는 것. */
 export interface ServiceOverrides {
   readonly now?: () => Date;
+  readonly privacyPolicy?: PrivacyPolicySettings | null;
+  readonly publicAppOrigin?: string | null;
   readonly storage?: ObjectStore;
   readonly images?: ImageBinding;
   readonly limiters?: { readonly [B in RateLimitRule["binding"]]?: RateLimiter };
@@ -83,6 +89,9 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
   let ownerAuth: OwnerAuth | undefined = overrides.ownerAuth;
   return {
     now: overrides.now ?? (() => new Date()),
+    publicAppOrigin: overrides.publicAppOrigin === undefined ? settings.publicAppOrigin : overrides.publicAppOrigin,
+    privacyPolicy: overrides.privacyPolicy === undefined ? settings.privacyPolicy : overrides.privacyPolicy,
+    aiProviderConfigured: overrides.privacyPolicy !== undefined || settings.ai !== null,
     aiConfigured: overrides.aiModel !== undefined || (settings.ai !== null && settings.ai.apiKey !== null),
     kakaoCallbackQueue: overrides.kakaoCallbackQueue ?? env.KAKAO_CALLBACK_QUEUE,
     kakaoSkillKey: (id, version) => deriveKakaoSkillKey(channelSecret(), id, version),
