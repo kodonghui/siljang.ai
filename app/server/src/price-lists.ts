@@ -4,13 +4,14 @@ import { type PriceListInput, type PriceOptionInput, type PriceRuleInput, parseP
 import { ApiError, fieldError } from "./problem";
 import type { ShopRequest } from "./routes";
 import type { ShopDb } from "./shop-scope";
+import { deleteObjects } from "./storage";
 import { toShopIso } from "./time";
 import {
   checkUploads,
-  discardUpload,
+  discardUploads,
   parseUploadId,
   permanentKey,
-  promoteUpload,
+  promoteUploads,
   type TakenUpload,
   UPLOAD_RULES,
 } from "./uploads";
@@ -280,12 +281,11 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
             body: { outcome: "unchanged", priceList: await render(db, previous, r) },
           };
         if ((previous?.version ?? 0) >= 2147483647) throw fieldError("/", "out_of_range");
-        for (const design of designs)
-          if (design.upload) {
-            copied.push(design.imageKey);
-            await promoteUpload(r.services.storage(), design.upload, r.scope.shopId, id);
-            consumed.push(design.upload);
-          }
+        const promoting = designs.flatMap((design) => (design.upload ? [design.upload] : []));
+        // 응답 유실/일부 복사 실패도 정리할 수 있게 시도할 모든 새 키를 먼저 남긴다.
+        copied.push(...designs.filter((design) => design.upload).map((design) => design.imageKey));
+        if (promoting.length) await promoteUploads(r.services.storage(), promoting, r.scope.shopId, id);
+        consumed.push(...promoting);
         const now = r.services.now();
         if (previous)
           await db.run("UPDATE price_lists SET superseded_at=$3 WHERE shop_id=$1 AND id=$2", [previous.id, now]);
@@ -340,18 +340,22 @@ export async function createPriceListVersion(r: ShopRequest): Promise<Response> 
       },
     });
   } catch (error) {
-    for (const key of copied)
+    if (copied.length)
       try {
-        const used = await r.db.found<{ used: boolean }>(
-          "SELECT EXISTS (SELECT 1 FROM designs d WHERE d.shop_id=$1 AND d.image_key=$2) AS used",
-          [key],
+        const used = await r.db.run<{ image_key: string }>(
+          "SELECT d.image_key FROM designs d WHERE d.shop_id=$1 AND d.image_key=ANY($2::text[])",
+          [copied],
         );
-        if (!used.used) await r.services.storage().delete(key);
+        const usedKeys = new Set(used.rows.map((row) => row.image_key));
+        await deleteObjects(
+          r.services.storage(),
+          copied.filter((key) => !usedKeys.has(key)),
+        );
       } catch {
         r.log("warn", { event: "price_copy_cleanup_failed", traceId: r.traceId });
       }
     throw error;
   }
-  for (const upload of consumed) await discardUpload(r.services.storage(), upload);
+  if (consumed.length) await discardUploads(r.services.storage(), consumed);
   return response;
 }

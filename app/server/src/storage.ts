@@ -28,7 +28,18 @@ export interface ObjectList {
   readonly truncated: boolean;
 }
 
+export type StorageCopyResult = { readonly ok: true; readonly value: boolean } | { readonly ok: false };
+
+/** 여러 사진의 메타데이터·복사·정리를 비공개 서비스 호출로 나눈다. 읽기/업로드 본문은 받지 않는다. */
+export interface ObjectBatch {
+  head(keys: readonly string[]): Promise<readonly (StoredObjectInfo | null)[]>;
+  copy(pairs: readonly { readonly from: string; readonly to: string }[]): Promise<readonly StorageCopyResult[]>;
+  delete(keys: readonly string[]): Promise<void>;
+}
+
 export interface ObjectStore {
+  /** 배포 환경의 무료 호출 한도 분리. 개발/메모리 구현은 단일 동작으로 대체할 수 있다. */
+  readonly batch?: ObjectBatch;
   /** 객체 하나를 넣는다(같은 키면 바꿈). */
   put(key: string, body: Uint8Array, contentType: string): Promise<void>;
   /** 크기와 종류. 없으면 null. */
@@ -48,11 +59,28 @@ export class StorageUnavailableError extends Error {
   override readonly name = "StorageUnavailableError";
 }
 
+/** 정리는 일부 실패해도 나머지 키를 시도하며, 마지막에 첫 오류를 알린다. 다시 시도는 하지 않는다. */
+export async function deleteObjects(store: ObjectStore, keys: readonly string[]): Promise<void> {
+  if (keys.length === 0) return;
+  if (store.batch) return store.batch.delete(keys);
+  let failed = false;
+  let firstError: unknown;
+  for (const key of keys)
+    try {
+      await store.delete(key);
+    } catch (error) {
+      if (!failed) firstError = error;
+      failed = true;
+    }
+  if (failed) throw firstError;
+}
+
 /** 우리 코드가 만드는 키의 꼴: 영문·숫자·`_`·`-`·`.`과 `/`로 나눈 마디(빈 마디·`.`·`..` 없음). */
 export const STORAGE_KEY = /^(?!.*\/\/)(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/;
 
 export function assertStorageKey(key: string): string {
-  if (key.length > 512 || !STORAGE_KEY.test(key)) throw new TypeError("storage key has an unexpected shape");
+  if (typeof key !== "string" || key.length > 512 || !STORAGE_KEY.test(key))
+    throw new TypeError("storage key has an unexpected shape");
   return key;
 }
 

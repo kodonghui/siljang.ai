@@ -121,6 +121,7 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
     let tick = NOW.getTime();
     const h = await fixture({ services: { now: () => new Date(tick++) } });
     const first = await h.call("POST", "/owner/price-list/versions", input());
+    expect(first.status, await first.clone().text()).toBe(201);
     const value = (await first.json()) as { priceList: { revision: string } };
     const next = await h.call("POST", "/owner/price-list/versions", {
       ...input(value.priceList.revision),
@@ -612,7 +613,70 @@ describeDb("TASK-038 가격표 버전 API-016~019", () => {
     }
   });
 
-  it.each([17, 26])("알려진 Free 외부 호출50개 한도: 새 사진%d장의 실패/잔류를 모의로 기록", async (count) => {
+  it.each([17, 26, 50])("무료 호출 한도에서 서비스 배치로 사진%d개 저장·임시 정리와 재전송", async (count) => {
+    const h = await fixture();
+    const designs = [];
+    for (let i = 0; i < count; i++)
+      designs.push({ name: `도안${i}`, uploadId: await photo(h), optionKey: null, inStandard: false, position: i });
+    let direct = 0;
+    const spend = () => {
+      if (++direct > 50) throw new StorageUnavailableError("synthetic subrequest limit");
+    };
+    const head = h.store.head.bind(h.store),
+      copy = h.store.copy.bind(h.store),
+      remove = h.store.delete.bind(h.store);
+    h.store.head = async (key) => {
+      spend();
+      return head(key);
+    };
+    h.store.copy = async (from, to) => {
+      spend();
+      return copy(from, to);
+    };
+    h.store.delete = async (key) => {
+      spend();
+      return remove(key);
+    };
+    const calls: { op: string; count: number }[] = [];
+    Object.assign(h.store, {
+      batch: {
+        async head(keys: readonly string[]) {
+          calls.push({ op: "head", count: keys.length });
+          return Promise.all(keys.map((key) => head(key)));
+        },
+        async copy(pairs: readonly { from: string; to: string }[]) {
+          calls.push({ op: "copy", count: pairs.length });
+          return Promise.all(pairs.map(async ({ from, to }) => ({ ok: true as const, value: await copy(from, to) })));
+        },
+        async delete(keys: readonly string[]) {
+          calls.push({ op: "delete", count: keys.length });
+          await Promise.all(keys.map((key) => remove(key)));
+        },
+      },
+    });
+    const body = { ...input(), designs },
+      key = newRequestKey();
+    const response = await h.call("POST", "/owner/price-list/versions", body, true, key);
+    expect(response.status, await response.clone().text()).toBe(201);
+    const value = (await response.json()) as { priceList: PriceValue };
+    expect(value.priceList.designs).toHaveLength(count);
+    expect(h.store.keys("shops/")).toHaveLength(count);
+    expect(h.store.keys("tmp/")).toHaveLength(0);
+    expect(direct).toBe(0);
+    expect(calls).toEqual([
+      { op: "head", count },
+      { op: "copy", count },
+      { op: "delete", count },
+    ]);
+    const replay = await h.call("POST", "/owner/price-list/versions", body, true, key);
+    expect(replay.status).toBe(201);
+    expect(calls).toHaveLength(3);
+    expect((await db.query("SELECT count(*)::int AS n FROM designs WHERE shop_id=$1", [h.shopId])).rows).toEqual([
+      { n: count },
+    ]);
+  });
+
+  it.each([17, 26])("배치 없는 개발 저장소의 기존 외부50번 한도 대조: 사진%d개", async (count) => {
     const h = await fixture();
     const designs = [];
     for (let i = 0; i < count; i++)
