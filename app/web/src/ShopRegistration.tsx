@@ -307,7 +307,10 @@ export function ShopRegistration({
             fields={POINTERS}
             fieldCodes={["consent_required"]}
             done={() => "가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요"}
-            onRetry={() => registration.retry()}
+            disabled={busy}
+            onRetry={() => {
+              if (!busy) registration.retry();
+            }}
           />
         )}
         <div className="registration-actions">

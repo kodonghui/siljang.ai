@@ -35,7 +35,7 @@ function gate<T>() {
 let profile: unknown,
   logoutGate: ReturnType<typeof gate<Response>> | null,
   profileGate: ReturnType<typeof gate<Response>> | null;
-let registerCode: "success" | "already_registered" | "upload_expired" | "storage_unavailable",
+let registerCode: "success" | "already_registered" | "upload_expired" | "storage_unavailable" | "internal",
   registered: number,
   uploadStatus: number;
 let uploadCount: number;
@@ -67,6 +67,7 @@ beforeEach(() => {
           key: new Headers(init?.headers).get("Idempotency-Key"),
         });
         if (registerCode === "storage_unavailable") return json({ code: "storage_unavailable" }, 503);
+        if (registerCode === "internal") return json({ code: "internal" }, 500);
         if (registerCode === "already_registered") return json({ code: registerCode }, 409);
         if (registerCode === "upload_expired")
           return json(
@@ -316,4 +317,20 @@ it("등록 저장소503은 옛 사진 성공을 지우고 같은 파일을 다�
   expect(registrationBodies).toHaveLength(2);
   expect(registrationBodies[1]?.body.licensePhotoUploadId).not.toBe(registrationBodies[0]?.body.licensePhotoUploadId);
   expect(registrationBodies[1]?.key).not.toBe(registrationBodies[0]?.key);
+});
+
+it("등록500 뒤 세션 재확인 실패는 남은 등록 재시도도 잠금", async () => {
+  await area();
+  await upload();
+  registerCode = "internal";
+  fireEvent.click(screen.getByRole("button", { name: /^등록$/ }));
+  const retry = await within(screen.getByRole("main")).findByRole("button", { name: "다시 시도" });
+  profileGate = gate<Response>();
+  const event = new Event("pageshow");
+  Object.defineProperty(event, "persisted", { value: true });
+  fireEvent(window, event);
+  await act(async () => profileGate?.resolve(json({ code: "upstream_unavailable" }, 503)));
+  expect((retry as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(retry);
+  expect(registered).toBe(1);
 });
