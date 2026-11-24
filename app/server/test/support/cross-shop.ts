@@ -165,6 +165,13 @@ export type CrossShopCase =
   | OperatorReviewShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
+  {
+    method: "GET",
+    path: "/owner/consultations/:consultationId/messages",
+    kind: "path",
+    ownStatus: 200,
+    request: (_own, target) => ({ url: `/owner/consultations/${target.consultationId}/messages` }),
+  },
   { method: "GET", path: "/owner/booking-link", kind: "booking" },
   { method: "GET", path: "/public/shops/:slug/privacy-policy", kind: "booking" },
   { method: "GET", path: "/public/shops/:slug", kind: "booking" },

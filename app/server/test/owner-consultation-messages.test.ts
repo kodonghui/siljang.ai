@@ -6,7 +6,7 @@ import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { failingAccessInsert } from "./support/access-log";
 import { expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newUuid, testEnv } from "./support/db";
-import { singleKeyCrypto } from "./support/field-keys";
+import { newFieldKey, singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, type ShopFixture } from "./support/shops";
 
@@ -30,6 +30,7 @@ interface Page {
 describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture;
   const { fc } = singleKeyCrypto();
+  const fileUrlKey = newFieldKey();
   beforeAll(async () => {
     isolated = await isolatedTestDb();
   }, 30000);
@@ -56,7 +57,7 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     return app.request(
       `${ORIGIN}/api/owner/consultations/${id}/messages${query}`,
       { headers: { "x-test-owner": authenticated ? shop.ownerId : "", "CF-Connecting-IP": "203.0.113.77" } },
-      testEnv(),
+      testEnv({ FILE_URL_KEY: fileUrlKey }),
     );
   }
   async function page(response: Response): Promise<Page> {
@@ -152,5 +153,73 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
   });
   it("접속기록을 남기지 못하면 내용 없이500", async () => {
     await expectProblem(await call("", shop.consultationId, true, true), "internal");
+  });
+  it("같은 시각의 메시지·안내를 저장 순서로 한 개씩 빠짐없이 넘김", async () => {
+    const noticeId = newUuid(),
+      messageId = newUuid();
+    await isolated.db.query("UPDATE messages SET created_at=$2 WHERE id=$1", [shop.messageId, NOW]);
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,created_at) VALUES($1,$2,$3,$4,'owner_reply',$5,'synthetic','두 번째',$6)",
+      [noticeId, shop.shopId, shop.customerId, shop.consultationId, `notice:${noticeId}:owner_reply`, NOW],
+    );
+    await isolated.db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','text','세 번째','skill_response',$4)",
+      [messageId, shop.shopId, shop.consultationId, NOW],
+    );
+    const first = await page(await call("?limit=1"));
+    expect(first.nextCursor).not.toBeNull();
+    const second = await page(await call(`?limit=1&cursor=${first.nextCursor}`));
+    expect(second.nextCursor).not.toBeNull();
+    const third = await page(await call(`?limit=1&cursor=${second.nextCursor}`));
+    expect(third.nextCursor).toBeNull();
+    expect([...first.items, ...second.items, ...third.items].map((x) => x.messageId)).toEqual([
+      shop.messageId,
+      noticeId,
+      messageId,
+    ]);
+    const ownOther = newUuid();
+    await isolated.db.query(
+      "INSERT INTO consultations(id,shop_id,customer_id,status,ended_at) VALUES($1,$2,$3,'ended',$4)",
+      [ownOther, shop.shopId, shop.customerId, NOW],
+    );
+    await expectProblem(await call(`?cursor=${first.nextCursor}`, ownOther), "validation_failed");
+  });
+  it("참고 사진은 저장 위치를 감춘15분 서명 주소만 보임", async () => {
+    const key = `shops/${shop.shopId}/reference/${newUuid()}.webp`;
+    await isolated.db.query("UPDATE messages SET kind='photo' WHERE id=$1", [shop.messageId]);
+    await isolated.db.query(
+      "INSERT INTO reference_photos(shop_id,draft_id,message_id,storage_key,content_type,byte_size) VALUES($1,$2,$3,$4,'image/webp',32)",
+      [shop.shopId, shop.draftId, shop.messageId, key],
+    );
+    const body = await page(await call()),
+      url = new URL(body.items[0]?.photos[0]?.url ?? "");
+    expect(url.pathname).toMatch(/^\/api\/files\/v1\//);
+    expect(Number(url.searchParams.get("exp"))).toBe(NOW.getTime() / 1000 + 900);
+    expect(JSON.stringify(body)).not.toContain(key);
+    expect(JSON.stringify(body)).not.toContain("storage_key");
+  });
+  it("개인정보를 지운 주문의 안내를 대화에 다시 섞지 않음", async () => {
+    const id = newUuid();
+    await isolated.db.query(
+      "INSERT INTO notifications(shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body) VALUES($1,$2,$3,$4,'payment_request',$5,'synthetic','지운 주문의 안내')",
+      [shop.shopId, shop.customerId, shop.consultationId, shop.orderId, `notice:${id}:payment_request`],
+    );
+    await isolated.db.query(
+      "UPDATE orders SET status='cancelled',cancelled_at=$2,cancel_kind='customer',finished_at=$3,personal_data_purged_at=$2,lock_version=lock_version+1 WHERE id=$1",
+      [shop.orderId, NOW, new Date(NOW.getTime() - 31 * 86400000)],
+    );
+    const body = await page(await call());
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]?.messageId).toBe(shop.messageId);
+    expect(JSON.stringify(body)).not.toContain("지운 주문의 안내");
+  });
+  it("끝난 상담은 내용을 지우기 전까지 ended로 그대로 보임", async () => {
+    await isolated.db.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [
+      shop.consultationId,
+      NOW,
+    ]);
+    const body = await page(await call());
+    expect(body.status).toBe("ended");
+    expect(body.items).toHaveLength(1);
   });
 });

@@ -112,6 +112,25 @@ export interface MaskedOriginal {
   readonly last4: string | null;
 }
 
+export interface StoredMaskedValue {
+  readonly kind: MaskKind;
+  readonly original_enc: string | null;
+  readonly last4: string | null;
+}
+
+/** 볼 사람과 상담 범위를 확인한 호출자만 쓴다. 여러 표시 값을 읽을 때 같은 행을 다시 조회하지 않는다. */
+export async function openStoredMaskedValue(
+  row: StoredMaskedValue,
+  shopId: string,
+  getCrypto: () => FieldCrypto,
+): Promise<MaskedOriginal> {
+  if (row.kind === "card" || row.kind === "long_number" || row.original_enc === null)
+    return { kind: row.kind, original: null, last4: row.last4 };
+  const original = await getCrypto().open(row.original_enc, { purpose: "masked_values.original", shopId });
+  if (!DIGITS[row.kind].test(original)) throw new FieldCryptoError("masked value does not hold digits");
+  return { kind: row.kind, original, last4: row.last4 };
+}
+
 /**
  * 상담의 플레이스홀더를 원래 값으로. 볼 수 있는 사람인지(그 가게 사장님 화면, 사유를 적고 연 운영자와 접속기록)는 부르는
  * 작업이 먼저 본다. 다른 가게의 상담·없는 플레이스홀더는 404 not_found. 봉투를 풀지 못하면 FieldCryptoError.
@@ -123,13 +142,10 @@ export async function openMaskedValue(
   placeholder: string,
 ): Promise<MaskedOriginal> {
   const consultationId = await tx.owned("consultations", consultationIdRaw);
-  const row = await tx.found<{ kind: MaskKind; original_enc: string | null; last4: string | null }>(
+  const row = await tx.found<StoredMaskedValue>(
     `SELECT kind, original_enc, last4 FROM masked_values
       WHERE shop_id = $1 AND consultation_id = $2 AND placeholder = $3`,
     [consultationId, placeholder],
   );
-  if (row.original_enc === null) return { kind: row.kind, original: null, last4: row.last4 };
-  const original = await fc.open(row.original_enc, { purpose: "masked_values.original", shopId: tx.scope.shopId });
-  if (!DIGITS[row.kind].test(original)) throw new FieldCryptoError("masked value does not hold digits");
-  return { kind: row.kind, original, last4: row.last4 };
+  return openStoredMaskedValue(row, tx.scope.shopId, () => fc);
 }
