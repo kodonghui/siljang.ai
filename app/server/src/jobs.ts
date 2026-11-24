@@ -9,6 +9,7 @@
  * - sources: 찾을 곳(due-sources.ts). 빈 것은 맡는 작업이 05의 인덱스를 보고 정한다(note에 적음).
  * - 처리(handler)는 맡는 작업이 JOB_HANDLERS에 더한다. 이번에는 바탕만 두어 처리가 붙은 일이 없다.
  */
+import { consultationIdleHandler } from "./consultation-idle";
 import type { DueSourceName } from "./due-sources";
 import type { JobHandler, RunnableJob } from "./job-runner";
 import { runPurge } from "./purge-runner";
@@ -49,8 +50,8 @@ export const JOBS: readonly JobEntry[] = [
     name: "consultation_idle",
     task: "TASK-076",
     runs: MINUTE,
-    sources: [],
-    note: "문의 끊김·상담 끝남. 가게마다 끊김 시간이 달라(API-010) TASK-076이 consultations_idle_idx·consultations_ordered_idx로 찾는 꼴을 정함",
+    sources: ["consultation_open", "consultation_ordered", "consultation_waiting"],
+    note: "현재 가게의 끊김 시간과 마지막 수신 시각으로 열린/주문/답 기다림 상담을 찾음. 잠금 안에서 열린 에스컬레이션 건·다룬 주문의 끝남을 다시 확인하며 문의 끊김은 초안 보존·안내 없음",
   },
   {
     spec: "SPEC-037",
@@ -152,6 +153,7 @@ export interface JobHandlerEntry {
 
 /** TASK-158: 하루 한 번 지우기는 전역 키와 임시 파일을 포함한 여덟 차례로 처리한다. */
 export const JOB_HANDLERS: Readonly<Record<JobName, JobHandlerEntry>> = {
+  consultation_idle: { handler: consultationIdleHandler },
   purge: { handler: { mode: "sweep", run: (db, ctx) => runPurge(db, ctx) } },
 };
 

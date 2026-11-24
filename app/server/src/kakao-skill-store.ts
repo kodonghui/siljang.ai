@@ -104,7 +104,7 @@ async function receiveInTransaction(
 
   const active = await tx.run<Id>(
     `SELECT id FROM consultations
-       WHERE shop_id = $1 AND customer_id = $2 AND status NOT IN ('ended', 'deleted')`,
+       WHERE shop_id = $1 AND customer_id = $2 AND status NOT IN ('ended', 'deleted') FOR UPDATE`,
     [customerId],
   );
   const consultationId =
@@ -124,6 +124,16 @@ async function receiveInTransaction(
   );
   const messageId = message.rows[0]?.id;
   if (messageId === undefined) return { kind: "duplicate" };
+
+  // 닫는 일과 같은 상담 잠금 안에서 이어 간다. 늦은 수신은 최신 시각을 되돌리지 않는다.
+  await tx.run(
+    `UPDATE consultations SET
+       last_customer_message_at=greatest(last_customer_message_at,$3::timestamptz),
+       dropped_at=CASE WHEN status='dropped' THEN NULL ELSE dropped_at END,
+       status=CASE WHEN status='dropped' THEN 'open' ELSE status END
+     WHERE shop_id=$1 AND id=$2`,
+    [consultationId, receivedAt],
+  );
 
   const recent = await recentKakaoInboundCount(tx, customerId, receivedAt);
   const limit = recent <= KAKAO_MESSAGE_LIMIT ? "ok" : recent === KAKAO_MESSAGE_LIMIT + 1 ? "first" : "silent";
