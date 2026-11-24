@@ -160,7 +160,7 @@ export function OwnerArea() {
           />
         ) : null}
         <ShopScreen
-          {...(shopPath === OWNER_HOME ? { banners: candidate.banners ?? [] } : {})}
+          {...(shopPath === OWNER_HOME ? { banners: candidate.banners ?? [], registrationNotice } : {})}
           {...(historyRoute ? { version: historyRoute.version } : {})}
           {...(shopPath === "/owner/payment-destination"
             ? { licenseStatus: candidate.shop.licenseStatus, onSaved: () => setRevision((r) => r + 1) }

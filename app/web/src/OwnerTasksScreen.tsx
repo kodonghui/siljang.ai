@@ -43,7 +43,9 @@ const isLate = (row: OwnerTask, at: number) =>
     (row.waitStatus === "waiting" && row.waitDueAt !== null && Date.parse(row.waitDueAt) <= at));
 const WAIT_LABELS = { waiting: "기다림", late: "지연", answered: "답함", closed_no_answer: "답 없어 닫힘" } as const;
 
-export function OwnerTasksScreen(props: ShopLicenseProps & { readonly banners?: readonly OwnerBanner[] }) {
+export function OwnerTasksScreen(
+  props: ShopLicenseProps & { readonly banners?: readonly OwnerBanner[]; readonly registrationNotice?: boolean },
+) {
   const { search } = useLocation();
   const query = useMemo(() => parseOwnerTasksSearch(search), [search]);
   const callbacks = useRef(props);
@@ -175,6 +177,7 @@ export function OwnerTasksScreen(props: ShopLicenseProps & { readonly banners?: 
   return (
     <OwnerLayout screen="SCR-016" title="할 일" shopName={props.shopName} onNavigate={navigate} busy={busy}>
       <section className="owner-tasks" aria-label="사장님 할 일">
+        {props.registrationNotice ? <p role="status">가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요</p> : null}
         <section className="owner-task-banners" aria-label="가게 설정 안내" inert={busy}>
           {(expanded ? banners : banners.slice(0, 3)).map((name) => {
             const banner = BANNERS[name];
