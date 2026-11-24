@@ -157,7 +157,18 @@ describe("카카오 토큰 교환·사용자·채널 어댑터(외부 호출 없
     const form = new URLSearchParams(String(send.mock.calls[0]?.[1].body));
     expect(form.get("code_verifier")).toBe("synthetic-verifier");
     expect(form.get("client_secret")).toBe("synthetic-secret");
-    expect(send.mock.calls.every(([, init]) => init.redirect === "error" && init.signal !== undefined)).toBe(true);
+    expect(send.mock.calls.every(([, init]) => init.redirect === "manual" && init.signal !== undefined)).toBe(true);
+  });
+  it("307 응답의 다른 주소로 인가 코드·시크릿을 전달하지 않음", async () => {
+    const { send, auth } = mock([
+      new Response(null, { status: 307, headers: { Location: "https://other.example/token" } }),
+    ]);
+    await expect(auth.signIn("synthetic-code", URI, "synthetic-verifier")).rejects.toBeInstanceOf(
+      KakaoUnavailableError,
+    );
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0]).toBe("https://kauth.kakao.com/oauth/token");
+    expect(send.mock.calls[0]?.[1].redirect).toBe("manual");
   });
   it.each([400, 401, 403])("인가 코드 거절 %i은 로그인 실패", async (status) => {
     const { auth } = mock([new Response(null, { status })]);
