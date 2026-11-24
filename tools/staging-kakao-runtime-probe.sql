@@ -1,6 +1,7 @@
 -- TASK-028 실제 서버 역할의 쓰기/차단 확인. 내부 저장점의 합성 쓰기를 되돌리고 결과만 반환한다.
 -- psql -v runtime_role=<기존 서버 역할> -f tools/staging-kakao-runtime-probe.sql
 -- pg_temp 함수는 현재 연결에만 있으며 공개 스키마에 남지 않는다. SQL Editor에서도 마지막 SELECT 결과를 볼 수 있다.
+-- 직접 관리자 옵션만 있고 SET이 없으면 현재 접속자를 grantor로 하는 임시 행도 저장점에서 되돌린다.
 CREATE OR REPLACE FUNCTION pg_temp.siljang_kakao_runtime_probe(target_role text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER AS $probe$
 DECLARE
@@ -19,11 +20,23 @@ DECLARE
   tag text := replace(gen_random_uuid()::text, '-', '');
   allowed boolean := false;
   failure_sqlstate text;
+  original_can_set boolean;
+  step text := 'validate_target';
+  failure_step text;
+  temporary_grant_applied boolean := false;
 BEGIN
   BEGIN
+  step := 'check_session';
+  IF session_user <> current_user THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'runtime_probe_session_mismatch';
+  END IF;
+  step := 'validate_target';
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = target_role AND NOT rolsuper) THEN
     RAISE EXCEPTION 'runtime_probe_target_invalid';
   END IF;
+  step := 'check_membership';
+  original_can_set := pg_has_role(original_role, target_role, 'SET');
+  step := 'create_fixture';
   INSERT INTO owners (id, kakao_account_id) VALUES (owner_id, -abs(('x' || left(tag, 12))::bit(48)::bigint));
   INSERT INTO shops (id, owner_id, name, contact_phone, contact_email, business_address, business_name,
     representative_name, business_reg_no, mail_order_exemption, food_license_no, food_business_type,
@@ -36,35 +49,55 @@ BEGIN
   INSERT INTO customers (id, shop_id, kakao_channel_id, kakao_user_key)
     VALUES (customer_id, shop_id, channel_id, 'synthetic-' || tag);
   INSERT INTO consultations (id, shop_id, customer_id) VALUES (consultation_id, shop_id, customer_id);
+  IF NOT original_can_set AND EXISTS (
+    SELECT 1 FROM pg_catalog.pg_auth_members m
+    JOIN pg_catalog.pg_roles target ON target.oid = m.roleid
+    JOIN pg_catalog.pg_roles actor ON actor.oid = m.member
+    WHERE target.rolname = target_role AND actor.rolname = original_role AND m.admin_option
+  ) THEN
+    step := 'grant_set_option';
+    EXECUTE format('GRANT %I TO %I WITH INHERIT FALSE, SET TRUE', target_role, original_role);
+    temporary_grant_applied := true;
+  END IF;
+  step := 'set_runtime_role';
   EXECUTE format('SET LOCAL ROLE %I', target_role);
 
+  step := 'insert_message';
   INSERT INTO messages (id, shop_id, consultation_id, direction, author, kind, kakao_message_id, body_masked,
     kakao_callback_enc, kakao_callback_deadline_at, kakao_callback_claim_until)
     VALUES (message_id, shop_id, consultation_id, 'inbound', 'customer', 'text', tag, '합성 문구',
       'v1:' || repeat('A', 43), now() + interval '55 seconds', now() + interval '55 seconds');
+  step := 'update_turn';
   UPDATE consultations SET turn_trace_id = tag, turn_started_at = now() WHERE id = consultation_id;
   GET DIAGNOSTICS changed = ROW_COUNT;
   IF changed <> 1 THEN RAISE EXCEPTION 'runtime_probe_turn_missing'; END IF;
+  step := 'insert_ai_call';
   INSERT INTO ai_calls (id, shop_id, consultation_id, trace_id, provider, model, prompt_version, sent_at,
     input_tokens, output_tokens, cost_usd, cost_krw, result)
     VALUES (call_id, shop_id, consultation_id, tag, 'openai', 'gpt-6-luna', 'synthetic-permission-probe', now(),
       1, 1, 0, 0, 'success');
+  step := 'update_ai_call';
   UPDATE ai_calls SET fallback_reason = 'schema_invalid' WHERE id = call_id;
   GET DIAGNOSTICS changed = ROW_COUNT;
   IF changed <> 1 THEN RAISE EXCEPTION 'runtime_probe_ai_call_missing'; END IF;
+  step := 'insert_draft';
   INSERT INTO order_drafts (shop_id, consultation_id, lettering) VALUES (shop_id, consultation_id, '합성 문구')
     RETURNING id INTO draft_id;
+  step := 'update_draft';
   UPDATE order_drafts SET lettering = '합성 문구 확인', revision = revision + 1, updated_at = now() WHERE id = draft_id;
   GET DIAGNOSTICS changed = ROW_COUNT;
   IF changed <> 1 THEN RAISE EXCEPTION 'runtime_probe_draft_missing'; END IF;
+  step := 'read_draft';
   IF NOT EXISTS (SELECT 1 FROM order_drafts WHERE id = draft_id AND lettering = '합성 문구 확인' AND revision = 2) THEN
     RAISE EXCEPTION 'runtime_probe_draft_result_invalid';
   END IF;
+  step := 'clear_callback';
   UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL
     WHERE id = message_id;
   GET DIAGNOSTICS changed = ROW_COUNT;
   IF changed <> 1 THEN RAISE EXCEPTION 'runtime_probe_callback_missing'; END IF;
 
+  step := 'blocked_operations';
   FOREACH operation IN ARRAY ARRAY[
     format('UPDATE ai_calls SET cost_krw = 1 WHERE id = %L', call_id),
     format('DELETE FROM ai_calls WHERE id = %L', call_id),
@@ -80,16 +113,21 @@ BEGIN
     END;
   END LOOP;
   IF blocked <> 5 THEN RAISE EXCEPTION 'runtime_probe_block_count_invalid'; END IF;
+  step := 'restore_role';
   EXECUTE format('SET LOCAL ROLE %I', original_role);
   allowed := true;
   -- 예상한 예외가 내부 저장점의 모든 합성 행과 권한 전환을 되돌린다. 지역 변수의 검사 결과만 남는다.
   RAISE EXCEPTION USING ERRCODE = 'ZP028', MESSAGE = 'runtime_probe_expected_rollback';
   EXCEPTION WHEN SQLSTATE 'ZP028' THEN NULL;
-  WHEN OTHERS THEN failure_sqlstate := SQLSTATE;
+  WHEN OTHERS THEN failure_sqlstate := SQLSTATE; failure_step := step;
   END;
   RETURN jsonb_build_object('allowed_writes', allowed, 'blocked_writes', blocked,
     'rollback_verified', NOT EXISTS (SELECT 1 FROM shops WHERE id = shop_id),
-    'role_restored', current_user = original_role, 'failure_sqlstate', failure_sqlstate);
+    'role_restored', current_user = original_role,
+    'membership_restored', CASE WHEN original_can_set IS NULL THEN true
+      ELSE original_can_set = pg_has_role(original_role, target_role, 'SET') END,
+    'temporary_grant_applied', temporary_grant_applied,
+    'failure_sqlstate', failure_sqlstate, 'failure_step', failure_step);
 END
 $probe$;
 SELECT pg_temp.siljang_kakao_runtime_probe(:'runtime_role') AS runtime_probe;

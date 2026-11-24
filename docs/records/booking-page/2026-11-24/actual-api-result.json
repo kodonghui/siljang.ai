@@ -1,0 +1,32 @@
+{
+  "method": "academy-pc Aside CLI same-origin GET",
+  "knownSyntheticFixture": true,
+  "knownFixtureStatus": 200,
+  "missingSyntheticStatus": 404,
+  "missingCode": "not_found",
+  "noStore": true,
+  "days": 60,
+  "priceListVersion": 1,
+  "portfolioCount": 0,
+  "designCount": null,
+  "privacyPolicyUrlPresent": true,
+  "inquiryUrlPresent": true,
+  "rateObservation": {
+    "fromKst": "2026-11-24 21:02:05 KST",
+    "toKst": "2026-11-24 21:02:30 KST",
+    "maximumRequests": 61,
+    "requests": 61,
+    "status200": 61,
+    "status429": 0,
+    "errors": 0,
+    "result": "429_not_observed_within_bound_no_retry"
+  },
+  "photoStorageVerified": false,
+  "realOwnerLinkIssuanceVerified": false,
+  "privateValuesRecorded": false,
+  "modelMessagePaymentCalls": 0,
+  "repositoryBase": "215108ba3086a32c851a96f321889b9e7408bf3b",
+  "inferredActiveMain": "c40c0429777c01ac3699e8a914051075aee0f744",
+  "inferenceDeploymentProof": "main242-deployment.json",
+  "inferenceBasis": "관측 시각이 main242 배포와 main243 배포 사이임. 응답/학원컴 CLI에서 버전을 재조회하지 않았음"
+}
