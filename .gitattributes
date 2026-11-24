@@ -24,3 +24,5 @@ docs/records/public-booking/2026-11-24/qa-after-review-before-focus-fix.json -te
 docs/records/public-booking/2026-11-24/qa-before-synchronous-focus-fix.json -text whitespace=cr-at-eol
 docs/records/public-booking/2026-11-24/qa-after-synchronous-focus-fix.json -text whitespace=cr-at-eol
 docs/records/license-review/2026-11-24-finished/runtime-permissions.json -text whitespace=cr-at-eol
+# TASK-034 검증 SQL은 Windows에서도 기록한 LF 바이트를 유지한다.
+docs/records/license-review/2026-11-24-finished/runtime-permissions-template.sql text eol=lf

@@ -48,3 +48,7 @@ operator-license-review.test.ts의 'DB가 끊긴 %s는 내부 값을 숨긴500�
 [단계 결과 줄](stage-check-lines.txt)은04:48:56~04:49:24KST의수정중작업트리에서9단계명령종료0입니다. PRD/흐름문제0·SPEC오류0·ERD15/사이트맵17/화면15·목업13통과1미확인·WBS18/오류0입니다. API와브라우저단계는명시적으로건너뛰었고통과로세지않습니다. 생성WBS는184작업/끝남36이고시작가능33/전체의존충족37입니다.
 
 [부모main253관찰](main253-deployment.json)의main63787317cba58f14ad490507570be2b0622be528·app45473486358/db45473486557/배포138729632256가성공했습니다. 실제CI Wrangler조회에서활성100%버전ec4b9aad-af22-466a-b35d-a6c2ddbc6baf·생성2026-11-24T19:49:14.018748Z/태그일치·상태점검200·원격SHA를확인했습니다. 별도학원컴활성버전재조회는미확인입니다. 실제권한SELECT는19:47:43UTC로이배포보다앞서며이새버전을그때직접봤다고넓히지않습니다. 현재PR head CI와병합후main은이어확인합니다.
+
+## 검토7142828117의 Windows 줄바꿈 고침
+
+P3에따라검증SQL의정확한경로에`.gitattributes`의`text eol=lf`를지정했습니다. 원본SQL1781바이트/SHA-25620844bd6b046b51b7e15ceb1dff36858344ca319fe77c6d2f9cab10431acbfc9과실제권한관찰JSON은바꾸지않습니다. [학원컴Windows결과](windows-eol-check.json)는별도최소Git저장소에현재속성파일/같은경로의SQL을복사해core.autocrlf=true로인덱스에추가하고SQL을다시checkout-index한뒤실제1781바이트/기대해시일치를확인했습니다. 저장소전체원격체크아웃이나배포확인으로넓히지않습니다. 실제서비스/권한/키/업무행과finished제안36/29는그대로입니다.

@@ -6,6 +6,10 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-25 05:00 KST · TASK-034 검토의 Windows SQL 해시 보존
+
+실장님Codex검토7142828117의P3에따라검증SQL경로를text eol=lf로고정했습니다. [별도최소Git저장소의학원컴Windows실측](license-review/2026-11-24-finished/finished-checks.md)에서core.autocrlf=true/checkout-index뒤1781바이트·원본해시일치를확인했고SQL/실제권한JSON은불변입니다. 첫head CI에서서버2676개/웹1615개·Vite585ms/두Worker와app/db가성공했으며수동요청7142884895는한번만남겼습니다. 현재head CI/처리대조와수동결과를기다려제안36/29·시작가능33/전체의존37을유지하며다음은병합/main확인입니다.
+
 ### 2026-11-25 04:50 KST · TASK-034 단계18/0과 앞선 예약 화면 main 배포 확인
 
 [단계원문과부모main253](license-review/2026-11-24-finished/finished-checks.md)을보존했습니다. 9단계명령종료0/WBS18오류0·목업13통과1미확인이고API/브라우저건너뛴것은통과로세지않습니다. main6378731의app45473486358/db45473486557·배포138729632256활성100%버전ec4b9aad-af22-466a-b35d-a6c2ddbc6baf/전체태그·상태점검200·원격SHA를확인했고별도학원컴재조회는미확인입니다. 034권한읽기시각은이배포전으로구분합니다. main35/30·이PR제안36/29·시작가능33/전체의존37이며다음은현재head CI/첫코드·보안검토/커넥터한번과main확인입니다.
