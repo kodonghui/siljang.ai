@@ -1,0 +1,41 @@
+{
+  "scope": "개인 새 설치/고정 소스의 새 빈39개 이행·전체 서버/웹·두 Worker. 실제 배포/학원컴 결과가 아님",
+  "localSourceCommit": "89e7b2e55ea90f1bb092490cd4b7b9256dcfbb57",
+  "redSourceCommit": "2c192a80ce6611b6fb5dbc1d75557d3f5c7be519",
+  "newInstall": "added 161 packages in 9s",
+  "typecheckExit": 0,
+  "lint": [
+    "Checked 536 files in 1051ms. No fixes applied."
+  ],
+  "full": [
+    " Test Files  134 passed (134)",
+    "      Tests  2680 passed (2680)",
+    " Test Files  71 passed (71)",
+    "      Tests  1715 passed (1715)"
+  ],
+  "build": [
+    "✓ built in 763ms",
+    "Total Upload: 5337.81 KiB / gzip: 984.59 KiB",
+    "--dry-run: exiting now.",
+    "Total Upload: 20.87 KiB / gzip: 6.47 KiB",
+    "--dry-run: exiting now."
+  ],
+  "freshState": "completed",
+  "freshDatabaseDropped": true,
+  "redGreenBaseDropped": true,
+  "nodeContracts": {
+    "channel": 3,
+    "sourceGuard": 4,
+    "pass": 7,
+    "fail": 0
+  },
+  "currentMockCompile": {
+    "source": "89e7b2e55ea90f1bb092490cd4b7b9256dcfbb57",
+    "out": "/tmp/siljang-qa087-shop-binding-v4-20261124",
+    "primaryStates": 7,
+    "responseRows": 13,
+    "browserRun": false
+  },
+  "browserRun": false,
+  "nativeTransfer": false
+}

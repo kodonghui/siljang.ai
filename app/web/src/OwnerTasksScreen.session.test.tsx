@@ -59,6 +59,123 @@ function restore() {
   Object.defineProperty(e, "persisted", { value: true });
   fireEvent(window, e);
 }
+it("가시성 재확인에서 가게가 바뀌면 새 가게 목록 전에 옛 커서를 지우고 필터를 보존한다", async () => {
+  const before = structuredClone(profile);
+  const next = structuredClone(profile);
+  next.owner.ownerId = "00000000-0000-4000-8000-000000009901";
+  next.shop.shopId = "00000000-0000-4000-8000-000000009902";
+  next.shop.name = "복귀 뒤 새 합성 가게";
+  const closed = { ...tasks.items[0], closedAt: "2026-11-24T12:00:00+09:00", waitStatus: "answered" };
+  const oldPage = { ...tasks, items: [closed], nextCursor: null };
+  const newPage = {
+    ...tasks,
+    items: [{ ...closed, taskId: "00000000-0000-4000-8000-000000009903", summary: "복귀 뒤 새 가게 할 일" }],
+    nextCursor: null,
+  };
+  let reads = 0;
+  const requests: { path: string; shop: string | null }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown, init?: RequestInit) => {
+      const path = String(input);
+      if (path === "/api/owner/me") return json(++reads === 1 ? before : next);
+      if (path.startsWith("/api/owner/tasks?")) {
+        const shop = new Headers(init?.headers).get("X-Expected-Shop-Id");
+        requests.push({ path, shop });
+        if (shop === before.shop.shopId) return json(oldPage);
+        if (new URL(path, "https://siljang.example").searchParams.has("cursor"))
+          return json(
+            {
+              code: "validation_failed",
+              traceId: "0123456789abcdef0123456789abcdef",
+              errors: [{ field: "query:cursor", code: "bad_format" }],
+            },
+            422,
+          );
+        return json(newPage);
+      }
+      return json({ code: "internal" }, 500);
+    }),
+  );
+  mount("/owner?status=closed&limit=19&cursor=previous-page");
+  await screen.findAllByText(closed.summary);
+  fireEvent(document, new Event("visibilitychange"));
+  await screen.findAllByText(newPage.items[0].summary);
+  expect(screen.queryAllByText(before.shop.name)).toHaveLength(0);
+  const newRequests = requests.filter((r) => r.shop === next.shop.shopId);
+  expect(newRequests).toHaveLength(1);
+  const firstNewRequest = newRequests[0];
+  if (!firstNewRequest) throw new Error("새 가게 목록 요청이 없음");
+  const query = new URL(firstNewRequest.path, "https://siljang.example").searchParams;
+  expect(query.get("status")).toBe("closed");
+  expect(query.get("limit")).toBe("19");
+  expect(query.has("cursor")).toBe(false);
+});
+it.each([
+  { more: false, entry: "/owner" },
+  { more: true, entry: "/owner" },
+  { more: false, entry: "/owner?cursor=previous-page" },
+])("$entry / 추가 조회 $more: 계정 전환 뒤 새 신원과 첫 목록만 표시한다", async ({ more, entry }) => {
+  const oldProfile = structuredClone(profile);
+  const nextProfile = structuredClone(profile);
+  nextProfile.owner.ownerId = "00000000-0000-4000-8000-000000009901";
+  nextProfile.shop.shopId = "00000000-0000-4000-8000-000000009902";
+  nextProfile.shop.name = "새 계정 합성 가게";
+  const nextTasks = {
+    ...structuredClone(tasks),
+    items: [{ ...tasks.items[0], taskId: "00000000-0000-4000-8000-000000009903", summary: "새 계정의 비공개 할 일" }],
+    nextCursor: null,
+  };
+  const firstTasks = { ...structuredClone(tasks), nextCursor: "next-page" };
+  let meCount = 0,
+    taskCount = 0;
+  let settle: ((r: Response) => void) | undefined;
+  const expected: (string | null)[] = [];
+  const taskPaths: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown, init?: RequestInit) => {
+      const path = String(input);
+      if (path === "/api/owner/me") {
+        meCount++;
+        if (meCount === 1) return json(oldProfile);
+        return new Promise<Response>((resolve) => {
+          settle = resolve;
+        });
+      }
+      if (path.startsWith("/api/owner/tasks?")) {
+        taskCount++;
+        taskPaths.push(path);
+        const boundShop = new Headers(init?.headers).get("X-Expected-Shop-Id");
+        expected.push(boundShop);
+        if (more && taskCount === 1) return json(firstTasks);
+        // 조건 없는 옛 클라이언트는 현재 세션의 다른 가게 목록을 받는다.
+        if (boundShop !== null && boundShop !== nextProfile.shop.shopId)
+          return json({ code: "unauthenticated", traceId: "0123456789abcdef0123456789abcdef" }, 401);
+        return json(nextTasks);
+      }
+      return json({ code: "internal" }, 500);
+    }),
+  );
+  mount(entry);
+  if (more) {
+    await screen.findAllByText(firstTasks.items[0].summary);
+    fireEvent.click(screen.getByRole("button", { name: "더 보기" }));
+  }
+  await vi.waitFor(() => expect(meCount).toBe(2));
+  expect(screen.queryAllByText(oldProfile.shop.name)).toHaveLength(0);
+  expect(screen.queryAllByText(nextTasks.items[0].summary)).toHaveLength(0);
+  await act(async () => settle?.(json(nextProfile)));
+  await screen.findAllByText(nextTasks.items[0].summary);
+  expect(screen.getAllByText(nextProfile.shop.name).length).toBeGreaterThan(0);
+  expect(screen.queryAllByText(oldProfile.shop.name)).toHaveLength(0);
+  expect(expected).toEqual(
+    more
+      ? [oldProfile.shop.shopId, oldProfile.shop.shopId, nextProfile.shop.shopId]
+      : [oldProfile.shop.shopId, nextProfile.shop.shopId],
+  );
+  expect(taskPaths.at(-1)).not.toContain("cursor=");
+});
 it("홈 신원 재확인 중에는 이전 가게 이름·주문번호·요약을 숨긴다", async () => {
   mount();
   const summary = tasks.items[0].summary,

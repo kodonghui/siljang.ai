@@ -100,6 +100,9 @@ function subject(row: TaskRow, shopId: string): { type: string; id: string | nul
 export async function listOwnerTasks(r: AccessRequest): Promise<Response> {
   const via = r.scope.via;
   if (via.kind !== "owner") throw new ApiError("not_found");
+  const expectedShop = r.req.header("X-Expected-Shop-Id");
+  if (expectedShop !== undefined && (!isUuid(expectedShop) || expectedShop.toLowerCase() !== r.scope.shopId))
+    throw new ApiError("unauthenticated");
   const filter = input(r.req.query(), r.scope.shopId);
   return r.read(async (db) => {
     const owner = await db.found<{ alert_channel_friend: boolean; time_zone: string }>(

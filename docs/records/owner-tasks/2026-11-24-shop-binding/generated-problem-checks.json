@@ -1,0 +1,35 @@
+{
+  "scope": "실제 생성한 모의 fetch 부분을 Node VM으로 실행. 브라우저/실제 서비스가 아님",
+  "redSource": "6701513458cbbd08c38da39b115ab5c6dde5e5aa",
+  "redLog": "/tmp/siljang-task087-problem-red-20261124.log",
+  "red": {
+    "tests": 2,
+    "pass": 0,
+    "fail": 2,
+    "reason": "application/json과 불완전 Problem"
+  },
+  "firstGreenAttempt": {
+    "source": "30a4c17214095340da07286b55827fc1cde34eea",
+    "pass": 11,
+    "fail": 1,
+    "reason": "session-race 시험에 필수 이전 가게 헤더가 빠진 시험 준비 오류. 성공으로 세지 않음"
+  },
+  "greenSource": "def72d6ca0e6a08ccd5c9c81a241fc4cc5e35b8f",
+  "greenLog": "/tmp/siljang-task087-problem-final-green-20261124.log",
+  "green": {
+    "channel": 3,
+    "source": 7,
+    "ownerProblem": 2,
+    "tests": 12,
+    "pass": 12,
+    "fail": 0
+  },
+  "checks": [
+    "API002 internal/unauthenticated",
+    "API040 internal/unauthenticated/shop_not_registered/validation_failed/session-race",
+    "전체 OpenAPI 예시 본문·application/problem+json·Cache-Control no-store"
+  ],
+  "runtimeChanges": false,
+  "nativeRun": false,
+  "outsideServices": 0
+}
