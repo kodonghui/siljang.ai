@@ -12,14 +12,17 @@ docs/records/operator-login/2026-11-24-finished/runtime-grants-applied.json -tex
 docs/records/operator-login/2026-11-24-finished/actual-operator-result.json -text whitespace=cr-at-eol
 docs/records/operator-login/2026-11-24-finished/config-before-otp-recovery.json -text whitespace=cr-at-eol
 docs/records/operator-login/2026-11-24-finished/config-final-otp-route-blocked.json -text whitespace=cr-at-eol
-
 docs/records/operator-alerts/2026-11-24-finished/actual-synthetic-alerts.json -text whitespace=cr-at-eol
 docs/records/operator-alerts/2026-11-24-finished/synthetic-fixture-seed.sql -text whitespace=cr-at-eol
 docs/records/operator-alerts/2026-11-24-finished/synthetic-fixture-cleanup.sql -text whitespace=cr-at-eol
+# TASK-034 실제 관찰 JSON 바이트/해시를 보존한다.
+docs/records/license-review/2026-11-24-finished/actual-operator-result.json -text whitespace=cr-at-eol
+docs/records/license-review/2026-11-24-finished/actual-reason-result.json -text whitespace=cr-at-eol
 # TASK-061의 실제 합성 관찰 원문도 바이트와 해시를 보존한다.
 docs/records/public-booking/2026-11-24/qa-before-review-fixes.json -text whitespace=cr-at-eol
 docs/records/public-booking/2026-11-24/qa-after-review-before-focus-fix.json -text whitespace=cr-at-eol
-
 docs/records/public-booking/2026-11-24/qa-before-synchronous-focus-fix.json -text whitespace=cr-at-eol
-
 docs/records/public-booking/2026-11-24/qa-after-synchronous-focus-fix.json -text whitespace=cr-at-eol
+docs/records/license-review/2026-11-24-finished/runtime-permissions.json -text whitespace=cr-at-eol
+# TASK-034 검증 SQL은 Windows에서도 기록한 LF 바이트를 유지한다.
+docs/records/license-review/2026-11-24-finished/runtime-permissions-template.sql text eol=lf
