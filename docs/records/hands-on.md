@@ -2,6 +2,16 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-24 10:02 KST · main223 실제 태그·활성100% 확인
+
+- main1cbf9a2051ec3f6ce70162eba8e513e9c19f8934의 app45300601716/db45300601686·배포138133239615가 성공했습니다. 실제 Wrangler deployments list/versions view 검증은 전체 태그 일치·앱4c7b01be-3df5-48bd-9ed3-7146242c9479(2026-11-24T00:55:43.635464Z) 활성100%·health200이며 원격 main ref도 같았습니다. [보존한 결과](ai-disclosure/2026-11-24/main223-deployment.json)를 남깁니다.
+- 학원컴 whoami/저장소 활성 태그 재조회는 기존 보류를 유지합니다. 이번 조회는 기존 CI 배포 workflow의 실제 Wrangler 검증이며 학원컴 조회로 바꾸지 않습니다.
+
+## 2026-11-24 09:33 KST · TASK-064 후속의 기준 main222 배포
+
+- 기준 main83b795a7edb2d691c240797dae6a3314558256e9는 app45293266692/db45293266654·배포138108633604 성공, 실제 Wrangler verify의 전체 태그 일치·앱2e1e3897-2068-4f4c-8ef5-5dfdf3a941e9 활성100%·health200입니다. [보존한 조회 결과](ai-disclosure/2026-11-24/main222-deployment.json)를 남깁니다.
+- 이번 후속 수정은 로컬 새 빈 PostgreSQL·모의 모델/카카오 검사를 마쳤으며 이 수정의 스테이징 배포 결과로 세지 않습니다. 학원컴 Aside CLI의 기존 CDP/추가 Wrangler 인증 조회 보류를 유지했고 실제 카카오/외부 모델 호출과 새 브라우저 제어는 하지 않았습니다.
+
 ## 2026-11-24 09:23 KST · TASK-184의 기준 main222 배포 확인
 
 - main83b795a7edb2d691c240797dae6a3314558256e9의 app45293266692/db45293266654·검사/Windows/PostgreSQL16.15·17.11·배포138108633604가 모두 성공했습니다. 기존 CI의 실제 Wrangler verify가 전체 태그 일치·앱2e1e3897-2068-4f4c-8ef5-5dfdf3a941e9(2026-11-24T00:02:04.723868Z) 활성100%·health200을 확인했습니다. [보존한 결과](privacy-policy/2026-11-24-disclosure/main222-deployment.json)를 남깁니다.
