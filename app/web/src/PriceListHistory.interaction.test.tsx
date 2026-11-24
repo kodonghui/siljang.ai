@@ -577,3 +577,57 @@ it("목록 복귀의 재확인 중 사용자가 옮긴 초점을 응답 뒤에�
   );
   expect(document.activeElement).toBe(moved);
 });
+
+function browserBackView() {
+  return render(
+    <MemoryRouter initialEntries={["/owner/price-list/versions"]}>
+      <Back />
+      <Routes>
+        <Route path="/owner/*" element={<OwnerArea />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+it("브라우저 뒤로 목록 복귀도 고른 버전에 초점을 돌린다", async () => {
+  browserBackView();
+  const chosen = await screen.findByRole("link", { name: /버전 3\b/ });
+  chosen.focus();
+  fireEvent.click(chosen);
+  await screen.findByRole("heading", { name: "버전 3 (고른 버전)" });
+  const back = screen.getByRole("button", { name: "시험에서 뒤로" });
+  back.focus();
+  fireEvent.click(back);
+  await waitFor(() => expect(document.activeElement).toBe(chosen));
+  expect(calls.filter((call) => call.path === "/api/owner/price-list/versions")).toHaveLength(1);
+});
+it("브라우저 목록 복귀 재확인 중 옮긴 초점은 보존한다", async () => {
+  const transport = fetch;
+  let ownerReads = 0;
+  let finish!: (response: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/owner/me" && ++ownerReads === 3) {
+        calls.push({ path: String(input), method: "GET" });
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      }
+      return transport(input, init);
+    }),
+  );
+  browserBackView();
+  fireEvent.click(await screen.findByRole("link", { name: /버전 3\b/ }));
+  await screen.findByRole("heading", { name: "버전 3 (고른 버전)" });
+  const back = screen.getByRole("button", { name: "시험에서 뒤로" });
+  back.focus();
+  fireEvent.click(back);
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  const moved = screen.getByRole("link", { name: "뒤로" });
+  moved.focus();
+  await act(async () => finish(json(profile())));
+  await waitFor(() =>
+    expect((screen.getByRole("button", { name: "현재 가격표로" }) as HTMLButtonElement).disabled).toBe(false),
+  );
+  expect(document.activeElement).toBe(moved);
+});

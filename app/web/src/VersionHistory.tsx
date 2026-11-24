@@ -50,6 +50,7 @@ export function VersionHistory<T>(props: VersionHistoryProps<T>) {
     [detail, setDetail] = useState<{ key: string; read: Read<T> } | null>(null),
     [shown, setShown] = useState(20);
   const listCompleted = useRef(false),
+    previousVersion = useRef<string | null>(null),
     readyVersion = useRef<string | null>(null);
   const listRequest = useRef<AbortController | null>(null),
     detailRequest = useRef<AbortController | null>(null),
@@ -164,6 +165,16 @@ export function VersionHistory<T>(props: VersionHistoryProps<T>) {
     observer.observe(element);
     return () => observer.disconnect();
   }, [locked, shown, total]);
+  useLayoutEffect(() => {
+    const previous = previousVersion.current;
+    previousVersion.current = explicit ? selected : null;
+    if (explicit || wide) {
+      returnFocus.current = null;
+      return;
+    }
+    if (previous !== null && returnFocus.current === null)
+      returnFocus.current = { version: previous, origin: document.activeElement };
+  }, [explicit, selected, wide]);
   useLayoutEffect(() => {
     const request = returnFocus.current;
     if (!request) return;
