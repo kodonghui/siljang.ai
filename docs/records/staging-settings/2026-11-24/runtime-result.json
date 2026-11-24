@@ -88,10 +88,19 @@
     "licensePending": true,
     "reservationLinkUnissued": true,
     "postHttpStatusObserved": false,
-    "privatePhotoReadbackVerified": false,
+    "privatePhotoReadbackVerified": true,
     "ownerDashboardUiVerified": false,
     "inferredActiveMain": "08313f30a06be6c9da67c4af7354d3bb47776ac5",
-    "responseVersionReadback": false
+    "responseVersionReadback": false,
+    "photoReadbackEvidence": {
+      "result": "photo-readback-result.json",
+      "sourceSha256": "0d9e8cfc1fb4cd6307f3da13dfa1915d114a18afe5542c334a878b99145c49fd",
+      "http": 200,
+      "imageMime": true,
+      "bodyBytesPositive": true,
+      "naturalExpiryRejectionVerified": false
+    },
+    "registrationResultScope": "등록 시점 원본 JSON의 사진 읽기 미확인은 당시 관찰. 별도22:50 KST 읽기200 증거를 덧붙임."
   },
   "existingAccessIdentifierInAsideToolOutput": true,
   "identifierRepublished": false,
