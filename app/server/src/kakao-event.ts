@@ -232,11 +232,16 @@ function createEvents(
     const work = async () => {
       const response = await send(`${ORIGIN}${path}`, {
         method: body === undefined ? "GET" : "POST",
-        redirect: "error",
+        redirect: "manual",
         headers: { Authorization: `KakaoAK ${apiKey.reveal()}`, "Content-Type": "application/json" },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         signal: controller.signal,
       });
+      // Workers는 manual을 지원한다. 300대의 실패 본문도 설정/월렛 오류로 분류하지 않는다.
+      if (response.status >= 300 && response.status < 400) {
+        await response.body?.cancel();
+        return null;
+      }
       return { status: response.status, body: await json(response, controller.signal) };
     };
     try {
