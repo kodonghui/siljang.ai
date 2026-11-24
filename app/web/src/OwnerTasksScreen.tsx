@@ -306,7 +306,12 @@ export function OwnerTasksScreen(
         {props.logoutFailure ? (
           <LoadFailure failure={props.logoutFailure} disabled={busy} onRetry={props.onLogout} />
         ) : null}
-        <Button kind="secondary" disabled={busy} busy={Boolean(props.logoutPending)} onClick={props.onLogout}>
+        <Button
+          kind="secondary"
+          disabled={Boolean(props.sessionChecking || props.logoutPending || (loading && !props.sessionFailed))}
+          busy={Boolean(props.logoutPending)}
+          onClick={props.onLogout}
+        >
           로그아웃
         </Button>
       </section>
