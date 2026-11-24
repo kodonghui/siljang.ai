@@ -12,3 +12,7 @@ docs/records/operator-login/2026-11-24-finished/runtime-grants-applied.json -tex
 docs/records/operator-login/2026-11-24-finished/actual-operator-result.json -text whitespace=cr-at-eol
 docs/records/operator-login/2026-11-24-finished/config-before-otp-recovery.json -text whitespace=cr-at-eol
 docs/records/operator-login/2026-11-24-finished/config-final-otp-route-blocked.json -text whitespace=cr-at-eol
+
+docs/records/operator-alerts/2026-11-24-finished/actual-synthetic-alerts.json -text whitespace=cr-at-eol
+docs/records/operator-alerts/2026-11-24-finished/synthetic-fixture-seed.sql -text whitespace=cr-at-eol
+docs/records/operator-alerts/2026-11-24-finished/synthetic-fixture-cleanup.sql -text whitespace=cr-at-eol
