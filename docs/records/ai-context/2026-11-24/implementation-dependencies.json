@@ -1,0 +1,1 @@
+{"finished": 37, "implemented": 21, "allReadyBefore": 41, "allReadyAfter": 41, "mvpReadyBefore": 37, "mvpReadyAfter": 37, "newlyReady": ["TASK-077"], "noLongerReady": ["TASK-066"], "old38ScopeExempt": ["TASK-005", "TASK-006", "TASK-013"], "mvpAlsoDeferred": ["TASK-175"], "TASK-077-deps": ["TASK-024", "TASK-066"], "TASK-078-deps": ["TASK-039", "TASK-071"]}
