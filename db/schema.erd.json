@@ -6731,7 +6731,7 @@
         "id": "03ham58sjfkqyl1qdel5smabg",
         "tableId": "03h7y0179n9e4e4gq4qs0he2r",
         "name": "delivery_txid",
-        "comment": "전달 상태를 마지막으로 바꾼 최상위 트랜잭션 ID. API-043 첫 조회의 가시성으로 전달 시각을 정한다",
+        "comment": "전달 성공 시각을 정한 최상위 트랜잭션 ID. 성공 전에는 마지막 상태 변경 ID이며 API-043 첫 조회 가시성에 쓴다",
         "dataType": "bigint",
         "default": "txid_current()",
         "options": 8

@@ -6,12 +6,11 @@ import {
   sealConsultationCursor,
 } from "./consultation-cursor";
 import { FieldCryptoError } from "./field-crypto";
-import { openStoredMaskedValue, type StoredMaskedValue } from "./masked-values";
+import { maskedValuePlaceholderPattern, openStoredMaskedValue, type StoredMaskedValue } from "./masked-values";
 import { ApiError, fieldError } from "./problem";
 import type { AccessRequest } from "./routes";
 import { toShopIso } from "./time";
 
-const PLACEHOLDER = /\[(?:전화번호|계좌번호|카드번호|긴숫자)[0-9]{1,3}\]/g;
 interface PageInput {
   limit: number;
   token: string | null;
@@ -40,7 +39,7 @@ function input(query: Record<string, string>): PageInput {
 
 function displayText(body: string | null, replacements: ReadonlyMap<string, string>): string | null {
   if (body === null) return null;
-  const text = body.replace(PLACEHOLDER, (key) => replacements.get(key) ?? key);
+  const text = body.replace(maskedValuePlaceholderPattern(), (key) => replacements.get(key) ?? key);
   return text.length <= 100000 ? text : Array.from(text).slice(0, 100000).join("");
 }
 const ENTRIES = `WITH entries AS (
@@ -112,7 +111,11 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
     ).rows;
     const rows = found.slice(0, filter.limit),
       tokens = [
-        ...new Set(rows.filter((x) => x.source === "message").flatMap((x) => x.body?.match(PLACEHOLDER) ?? [])),
+        ...new Set(
+          rows
+            .filter((x) => x.source === "message")
+            .flatMap((x) => x.body?.match(maskedValuePlaceholderPattern()) ?? []),
+        ),
       ];
     const values = tokens.length
       ? (

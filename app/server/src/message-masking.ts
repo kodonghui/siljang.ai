@@ -1,6 +1,12 @@
 /** SPEC-021 번호 검출과 마스킹. 입력/정규화한 숫자는 로그나 오류에 넣지 않는다. */
 import type { FieldCrypto } from "./field-crypto";
-import { MAX_PLACEHOLDER_NUMBER, MaskingFailedError, type MaskKind, maskValue } from "./masked-values";
+import {
+  MAX_PLACEHOLDER_NUMBER,
+  MaskingFailedError,
+  type MaskKind,
+  maskedValuePlaceholderPattern,
+  maskValue,
+} from "./masked-values";
 import type { ShopDb } from "./shop-scope";
 
 const HANGUL_DIGITS: Readonly<Record<string, string>> = {
@@ -210,9 +216,7 @@ export async function maskMessageText(
   text: string,
   context: MaskingContext = {},
 ): Promise<string> {
-  const quoted = context.storedMessage
-    ? text
-    : text.replace(/\[(전화번호|계좌번호|카드번호|긴숫자)([0-9]{1,3})\]/g, "［$1$2］");
+  const quoted = context.storedMessage ? text : text.replace(maskedValuePlaceholderPattern(), "［$1$2］");
   const numbers = messageNumbers(quoted, context);
   if (numbers.length === 0) return quoted;
   const counts = new Map<MaskKind, number>();
