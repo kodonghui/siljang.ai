@@ -2,7 +2,7 @@
 // - 열면 첫 버튼('돌아가기', 아무것도 바꾸지 않는 쪽)에 포커스. Tab·Shift+Tab은 창 안에서 돎(포커스 가둠).
 // - Esc는 '돌아가기'와 같음. 닫히면 열기 전 포커스가 있던 곳(누른 버튼)으로 돌아감.
 // - 버튼은 '돌아가기'와 액션 이름 둘. '취소'만 있는 창은 쓰지 않음(설계 재검토 M19).
-import { type ReactNode, type RefObject, type SyntheticEvent, useEffect, useId, useRef } from "react";
+import { type ReactNode, type RefObject, type SyntheticEvent, useCallback, useEffect, useId, useRef } from "react";
 import { type ConfirmationNeeded, confirmText, ERROR_CODES } from "../problems";
 import { Button } from "./Button";
 import { keepFocusInside } from "./focus";
@@ -39,6 +39,13 @@ export function ConfirmDialog({
   const closingByUs = useRef(false);
   const titleId = useId();
   const bodyId = useId();
+  const restoreFocus = useCallback(() => {
+    const back = returnTo.current;
+    if (back === null) return;
+    returnTo.current = null;
+    if (back.isConnected) back.focus();
+    else if (fallback.current?.current?.isConnected) fallback.current.current.focus();
+  }, []);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -49,28 +56,19 @@ export function ConfirmDialog({
     } else if (!open && dialog.open) {
       closingByUs.current = true;
       dialog.close();
+      // close 이벤트가 늦어져도 닫힌 직후 돌려주고, 나중 이벤트는 새 초점을 건드리지 않는다.
+      restoreFocus();
     }
-  }, [open]);
+  }, [open, restoreFocus]);
 
   // 창이 열린 채 화면에서 사라지면 포커스를 돌려줌
-  useEffect(
-    () => () => {
-      const back = returnTo.current;
-      returnTo.current = null;
-      if (back?.isConnected) back.focus();
-      else if (fallback.current?.current?.isConnected) fallback.current.current.focus();
-    },
-    [],
-  );
+  useEffect(() => () => restoreFocus(), [restoreFocus]);
 
   const handleClose = () => {
     const byUs = closingByUs.current;
     closingByUs.current = false;
     if (ref.current?.open) return; // 닫힌 사이에 다시 열림
-    const back = returnTo.current;
-    returnTo.current = null;
-    if (back?.isConnected) back.focus();
-    else if (fallback.current?.current?.isConnected) fallback.current.current.focus();
+    restoreFocus();
     // 브라우저가 스스로 닫았으면(예: 잇달아 누른 Esc라 cancel을 막지 못함) 화면 상태도 '돌아가기'로 맞춤
     if (!byUs) onCancel();
   };

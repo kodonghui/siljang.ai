@@ -308,3 +308,25 @@ it("수동으로 사진 창을 마치면 그대로 남은 열기 버튼으로 �
   await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(document.activeElement).toBe(opener);
 });
+it("close 이벤트가 늦어도 철회 직후 초점을 복귀하고 뒤늦은 이벤트가 새 초점을 빼앗지 않는다", async () => {
+  useRefreshClock();
+  mount();
+  await act(async () => {});
+  const opener = screen.getByRole("button", { name: "포트폴리오 사진 1 크게 보기" });
+  opener.focus();
+  fireEvent.click(opener);
+  const dialog = screen.getByRole("dialog") as HTMLDialogElement;
+  vi.spyOn(dialog, "close").mockImplementation(() => {
+    dialog.open = false;
+  });
+  value.portfolio = [];
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(dialog.open).toBe(false);
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: value.shop.name }));
+  const moved = screen.getByRole("button", { name: "다시 불러오기" });
+  moved.focus();
+  fireEvent(dialog, new Event("close"));
+  expect(document.activeElement).toBe(moved);
+});
