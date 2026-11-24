@@ -2,7 +2,7 @@
 
 <!-- build_wbs.py가 research/cake-wbs-2026-11/wbs_rows.py에서 생성. 손으로 고치지 않음 -->
 
-작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 37개.
+작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 38개.
 
 읽는 법과 나눈 방식은 [README](README.md)에 있습니다. '닿는 것'은 만드는 API, 쓰고 읽는 테이블, 만드는 화면입니다. '끝난 조건'의 첫 줄은 손으로 쓴 조건이고, 수락 기준·응답 코드·스킬 결과·화면 상태·응답 행·규칙 줄은 원본에서 생성합니다. 화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다. 끝난 작업은 끝난 조건 맨 앞에 '끝남'과 끝난 날·증거가 붙습니다.
 
@@ -138,7 +138,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TASK-079 | 알레르기 정보 동의와 알레르기 답 받기 | SPEC-075, A26 | API-070, API-071, TBL-004, TBL-020, TBL-024 | TASK-078 | Claude | 1일 | SPEC-075 수락 기준 #1~#5: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험<br/>API-071 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 allergy_saved·allergy_declined<br/>05 앱 규칙(A26)을 지키는지 보는 서버 시험 |
 | TASK-080 | 주문자 이름·연락처 받기 | SPEC-072 | API-070, API-071, TBL-020, TBL-024 | TASK-078 | Claude | 1일 | SPEC-072 수락 기준 #1~#3: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험<br/>API-071 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 orderer_saved·input_invalid |
 | TASK-081 | 손님 명령 확인 버튼(카드 키·30분·받은 사람만) | SPEC-069, A7, A8 | API-070, API-071, TBL-016, TBL-024 | TASK-028 | Claude | 1일 | SPEC-069 수락 기준 #1~#2: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 card_shown<br/>API-071 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 declined·card_stale·card_expired·card_not_yours·card_used<br/>05 앱 규칙(A7·A8)을 지키는지 보는 서버 시험 |
-| TASK-082 | 가예약·해제·옮기기 | SPEC-015, A3, A6 | TBL-014, TBL-027, TBL-031, TBL-034 | TASK-041 | Claude | 2일 | SPEC-015 수락 기준 #1~#8: 자동 시험 통과<br/>05 앱 규칙(A3·A6)을 지키는지 보는 서버 시험 |
+| TASK-082 | 가예약·해제·옮기기 | SPEC-015, A3, A6 | TBL-014, TBL-027, TBL-031, TBL-034 | TASK-041 | Claude | 2일 | 끝남: 2026-11-24, PR #235: SPEC-015 수락 #1~#8·A3·A6 자동 시험 통과(가예약42개·관련151개, 새 빈 PostgreSQL 마이그레이션36개·서버2476개·웹1570개·두 Worker 빌드). main220d1f2 app·db CI와 실제 Actions Wrangler 전체 태그 일치·활성100%·health200·원격 SHA 확인. 업무 API·기한 일 연결은 각 후속 작업 범위.<br/>SPEC-015 수락 기준 #1~#8: 자동 시험 통과<br/>05 앱 규칙(A3·A6)을 지키는지 보는 서버 시험 |
 | TASK-083 | 주문 요청하기(한 트랜잭션, 결제 기다림 주문 한도) | SPEC-029, A40, A6 | API-071, API-042, TBL-003, TBL-010, TBL-016, TBL-017, TBL-020, TBL-023, TBL-024, TBL-026, TBL-027, TBL-031, TBL-034, TBL-042, TBL-044, TBL-051, TBL-057 | TASK-079, TASK-080, TASK-081, TASK-082, TASK-074 | Claude | 3일 | SPEC-029 수락 기준 #1~#6: 자동 시험 통과<br/>API-071 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 order_requested·day_full·order_limit_reached·retry_needed<br/>API-042 응답(200·401·404·409·422·default)마다 통과하는 시험<br/>05 앱 규칙(A40·A6)을 지키는지 보는 서버 시험 |
 | TASK-084 | 기본 디자인 주문의 가예약과 결제 안내로 진행 | SPEC-030, A3 | API-071, TBL-003, TBL-023, TBL-027, TBL-031, TBL-034 | TASK-083 | Claude | 2일 | SPEC-030 수락 기준 #1: 자동 시험 통과<br/>API-071 응답(200·401·422·default)마다 통과하는 시험<br/>05 앱 규칙(A3)을 지키는지 보는 서버 시험 |
 | TASK-085 | SCR-003 가게 채널 상담 카카오 응답 | SPEC-013, SPEC-014, SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-049, SPEC-056, SPEC-057, SPEC-008 | SCR-003 | TASK-028 | Claude | 2일 | SCR-003 상태 10개마다 스킬 응답이 08 정의와 같음(카카오 응답 형식: 출력 3개 이하, 카드 설명 400자 이하), 09에서 그린 3개(normal·empty·error)와 그리지 않은 7개(loading·permission·stale·handed-over·fixed-answer·rate-limited·link-test)는 08 와이어프레임과 09 토큰으로, 08 응답 행 28개마다 정한 상태로 보임 |
