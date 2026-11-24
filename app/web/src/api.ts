@@ -24,6 +24,7 @@ export function apiUrl(path: string, base: string = API_BASE): string {
 /** 04 G2·06 DEC-04의 요청 키 헤더와 같은 키로 다시 온 요청에 서버가 붙이는 헤더 */
 export const REQUEST_KEY_HEADER = "Idempotency-Key";
 export const REPLAYED_HEADER = "Idempotency-Replayed";
+export const EXPECTED_SHOP_HEADER = "X-Expected-Shop-Id";
 
 /**
  * 명령 하나의 요청 키. 06 IdempotencyKey(16~64자, 영문·숫자·_·-)에 맞는 'ui-' + 무작위 16바이트의 16진수(35자).
@@ -66,6 +67,8 @@ export interface RequestOptions {
   readonly key?: string;
   readonly signal?: AbortSignal;
   readonly cache?: RequestCache;
+  /** 이미 확인한 가게에 조회를 묶는 조건. 권한이나 조회 대상을 선택하지 않는다. */
+  readonly expectedShopId?: string;
   readonly base?: string;
   readonly fetch?: typeof fetch;
 }
@@ -94,6 +97,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
   }
   if (options.key !== undefined) headers[REQUEST_KEY_HEADER] = options.key;
+  if (options.expectedShopId !== undefined) headers[EXPECTED_SHOP_HEADER] = options.expectedShopId;
   if (options.signal !== undefined) init.signal = options.signal;
   if (options.cache !== undefined) init.cache = options.cache;
   const call = options.fetch ?? globalThis.fetch.bind(globalThis);

@@ -1,0 +1,41 @@
+{
+  "scope": "로컬 전용 주소 커서 회귀/전체 웹·타입/빌드. 실제 브라우저가 아님",
+  "redLocal": "e8396aeac80b8ea72d285f9cea2f03f9801358b1",
+  "greenLocal": "40c3c5f218d9cd9c9cb04a03c901c44f4567f2ff",
+  "serverAndApiDiffFromFresh89e": 0,
+  "typecheckExit": 0,
+  "webExit": 0,
+  "buildExit": 0,
+  "results": {
+    "red": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 13 passed (14)"
+    ],
+    "green": [
+      " Test Files  1 passed (1)",
+      "      Tests  14 passed (14)"
+    ],
+    "web": [
+      " Test Files  71 passed (71)",
+      "      Tests  1716 passed (1716)"
+    ],
+    "lint": [
+      "Checked 536 files in 774ms. No fixes applied."
+    ],
+    "build": [
+      "✓ built in 663ms",
+      "Total Upload: 5337.81 KiB / gzip: 984.59 KiB",
+      "--dry-run: exiting now.",
+      "Total Upload: 20.87 KiB / gzip: 6.47 KiB",
+      "--dry-run: exiting now."
+    ]
+  },
+  "currentFixtureCompile": {
+    "source": "40c3c5f218d9cd9c9cb04a03c901c44f4567f2ff",
+    "out": "/tmp/siljang-qa087-shop-binding-v4-cursor-20261124",
+    "primaryStates": 7,
+    "responseRows": 13,
+    "browserRun": false
+  },
+  "browserRun": false
+}

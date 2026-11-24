@@ -96,6 +96,25 @@ describeDb("사장님 할 일 목록 API-040(TASK-072)", () => {
   it("로그인이 없으면401이다", async () => {
     await expectProblem(await call("", { "x-test-owner": "" }), "unauthenticated");
   });
+  it("화면이 확인한 가게가 현재 세션과 다르면 목록·접속기록을 만들지 않는다", async () => {
+    const other = await createShop(isolated.db, "이전에 확인한 합성 가게");
+    const task = await custom();
+    const response = await call("", { "X-Expected-Shop-Id": other.shopId });
+    await expectProblem(response, "unauthenticated");
+    expect((await isolated.db.query("SELECT id FROM access_logs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(
+      0,
+    );
+    expect((await isolated.db.query("SELECT id FROM owner_tasks WHERE id=$1", [task.id])).rows).toHaveLength(1);
+  });
+  it.each(["", "not-a-shop-id"])("잘못된 가게 확인 헤더도 목록을 읽지 않는다(%s)", async (expectedShop) => {
+    await expectProblem(await call("", { "X-Expected-Shop-Id": expectedShop }), "unauthenticated");
+    expect((await isolated.db.query("SELECT id FROM access_logs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(
+      0,
+    );
+  });
+  it("확인한 가게의 UUID 대소문자는 같은 가게로 읽는다", async () => {
+    expect((await call("", { "X-Expected-Shop-Id": shop.shopId.toUpperCase() })).status).toBe(200);
+  });
   it("자기 가게가 없으면404다", async () => {
     await expectProblem(await call("", { "x-test-no-shop": "true" }), "not_found");
   });

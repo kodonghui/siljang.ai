@@ -793,7 +793,9 @@ op(id="API-040", method="get", path="/owner/tasks", op="listOwnerTasks", tag="�
         "기다림 상태(waitStatus)는 에스컬레이션 건·맞춤 주문·변경 요청·문제 신고·결제 확인 요청·맞추는 중·환불 결정에만(SPEC-024, REQ-215): 기다림·지연·답함·답 없어 닫힘. "
         "답 없어 닫힘은 에스컬레이션 건(7일)·맞춤 주문(그 픽업 날짜의 주문 마감)·변경 요청(변경 마감)·결제 확인 요청(결제 기한 상한)만이고, 맞추는 중·환불 결정·문제 신고는 지연 뒤에도 할 일 목록에 남는다(1-7). subject가 열 화면. "
         "알림은 우리 서비스 채널로 가고, 사장님이 채널 친구가 아니면 alertChannelFriend false(SPEC-067). 순서: 열린 할 일은 지연(waitStatus late)이 앞, 그다음 기다림 기한(waitDueAt)이 이른 것, 기다림 기한이 없는 할 일은 그 뒤에 연 시각(openedAt) 순. 닫힌 할 일은 닫힌 시각(closedAt)이 늦은 것이 앞. 같으면 할 일 ID 순(DEC-14, 설계 재검토 RD-13).",
-   params=[q("status", {"type": "string", "enum": ["open", "closed"]}, "열림·닫힘. 없으면 open", "open"), CURSOR, LIMIT],
+   params=[q("status", {"type": "string", "enum": ["open", "closed"]}, "열림·닫힘. 없으면 open", "open"), CURSOR, LIMIT,
+           {"name": "X-Expected-Shop-Id", "in": "header", "required": False, "schema": {"type": "string", "format": "uuid"},
+            "description": "API-002로 확인한 가게. 사장님 웹은 첫 조회·새로 고침·추가 조회에 항상 보낸다. 현재 세션의 가게와 다르거나 형식이 틀리면 목록을 읽기 전에 401 unauthenticated이고 웹은 내 정보를 다시 확인한다. 권한이나 조회 대상을 고르는 값이 아니며 가게는 세션으로만 정한다. 헤더가 없는 기존 호출도 허용한다."}],
    ok=[(200, "OwnerTaskList", {"open_tasks": E.TASKS, "not_friend": E.TASKS_NOT_FRIEND, "empty": E.TASKS_EMPTY})],
    errors={404: ["shop_not_registered"]},
    fields=[("query:status", "not_allowed")],

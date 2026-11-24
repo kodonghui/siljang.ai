@@ -1,0 +1,38 @@
+{
+  "scope": "로컬 전용 실제 OwnerArea/어댑터·개별 빈39개 DB의API040·실제 Git 임시 사본/생성기. 학원컴 브라우저 결과가 아님",
+  "redLocal": "2c192a80ce6611b6fb5dbc1d75557d3f5c7be519",
+  "parentMain": "fb2edaea6a1d82ef7a631dad36ad428f0c3e133d",
+  "install": "added 161 packages in 9s; new private node_modules; shared install untouched",
+  "typecheckExit": 0,
+  "strictLint": "Checked 536 files in 940ms. No fixes applied.",
+  "results": {
+    "web-red": [
+      " Test Files  2 failed (2)",
+      "      Tests  3 failed | 58 passed (61)"
+    ],
+    "server-red": [
+      " Test Files  1 failed (1)",
+      "      Tests  3 failed | 15 passed (18)"
+    ],
+    "source-red": [
+      "# tests 4",
+      "# pass 2",
+      "# fail 2"
+    ],
+    "web-green": [
+      " Test Files  4 passed (4)",
+      "      Tests  87 passed (87)"
+    ],
+    "server-green": [
+      " Test Files  1 passed (1)",
+      "      Tests  18 passed (18)"
+    ],
+    "source-green": [
+      "# tests 4",
+      "# pass 4",
+      "# fail 0"
+    ]
+  },
+  "nativeTransfer": false,
+  "browserRun": false
+}
