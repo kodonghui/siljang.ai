@@ -245,7 +245,7 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
     ai,
     operatorAuth: readOperatorAuth(env, appEnv),
     ownerAuth,
-    ownerAlerts: readOwnerAlerts(env, ownerAuth),
+    ownerAlerts: readOwnerAlerts(env, ownerAuth, appEnv),
     privacyPolicy: readPrivacyPolicySettings(env, ai?.provider),
     publicAppOrigin: readPublicAppOrigin(env.PUBLIC_APP_ORIGIN),
   };
@@ -254,6 +254,7 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
 function readOwnerAlerts(
   env: Readonly<Record<string, unknown>>,
   ownerAuth: OwnerAuthSettings | null,
+  appEnv: AppEnv,
 ): OwnerAlertSettings {
   const flag = (name: string) => {
     const value = env[name];
@@ -263,6 +264,8 @@ function readOwnerAlerts(
   };
   const enabled = flag("KAKAO_OWNER_ALERTS_ENABLED"),
     development = flag("KAKAO_OWNER_BOT_DEVELOPMENT");
+  if (development && appEnv === "production")
+    throw new SettingsError("KAKAO_OWNER_BOT_DEVELOPMENT must be false in production");
   const raw = env.KAKAO_OWNER_BOT_ID;
   if (raw !== undefined && raw !== "" && (typeof raw !== "string" || !/^[0-9a-f]{24}$/i.test(raw)))
     throw new SettingsError("KAKAO_OWNER_BOT_ID must be a bot ID");

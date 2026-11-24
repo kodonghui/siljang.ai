@@ -48,7 +48,7 @@ describeDb("사장님 알림 실행기(TASK-072)", () => {
   afterAll(async () => {
     await isolated?.close();
   });
-  const run = (enabled = true, db = isolated.db) =>
+  const run = (db = isolated.db) =>
     runDueJobs({
       db,
       now,
@@ -58,7 +58,6 @@ describeDb("사장님 알림 실행기(TASK-072)", () => {
           every: "minute",
           sources: ["owner_alert_send", "owner_alert_check"],
           handler: createOwnerAlertHandler({
-            enabled,
             botId: BOT,
             origin: "https://app.example",
             events: factory,
@@ -180,6 +179,70 @@ describeDb("사장님 알림 실행기(TASK-072)", () => {
       [{ closed_at: null }],
     );
   });
+  it("접수 뒤 재로그인으로 확인한 친구 상태는 늦은101 결과로 덮어쓰지 않는다", async () => {
+    await alert("payment_account_changed");
+    now = new Date(NOW.getTime() + 60000);
+    await run();
+    await isolated.db.query("UPDATE owners SET alert_channel_friend=true,alert_friend_checked_at=$2 WHERE id=$1", [
+      shop.ownerId,
+      new Date(now.getTime() + 1000),
+    ]);
+    check.mockResolvedValueOnce({
+      kind: "failed",
+      code: "not_friend",
+      retryable: false,
+      disableChannel: false,
+      attention: null,
+    });
+    now = new Date(now.getTime() + 60000);
+    await run();
+    expect(
+      (await isolated.db.query("SELECT alert_channel_friend FROM owners WHERE id=$1", [shop.ownerId])).rows,
+    ).toEqual([{ alert_channel_friend: true }]);
+  });
+  it("친구 아님 기록 뒤에도 이미 접수한 알림의 배달 결과는 조회한다", async () => {
+    const id = await alert("payment_account_changed");
+    now = new Date(NOW.getTime() + 60000);
+    await run();
+    await isolated.db.query("UPDATE owners SET alert_channel_friend=false WHERE id=$1", [shop.ownerId]);
+    now = new Date(now.getTime() + 60000);
+    await run();
+    expect(check).toHaveBeenCalledOnce();
+    expect((await isolated.db.query("SELECT status FROM owner_alerts WHERE id=$1", [id])).rows).toEqual([
+      { status: "sent" },
+    ]);
+  });
+  it("대표 알림의 대상이 없으면 함께 묶인 유효 알림은 다음 시각에 따로 보낸다", async () => {
+    const head = await alert("change_not_applied");
+    await isolated.db.query("UPDATE owner_alerts SET event_key=$2 WHERE id=$1", [
+      head,
+      `alert:change_not_applied:${newUuid()}`,
+    ]);
+    const peer = await alert("change_not_applied", null, new Date(NOW.getTime() + 30000));
+    now = new Date(NOW.getTime() + 60000);
+    await run();
+    expect(
+      (await isolated.db.query("SELECT status,batched_into_id FROM owner_alerts WHERE id=$1", [peer])).rows,
+    ).toEqual([{ status: "pending", batched_into_id: null }]);
+    now = new Date(NOW.getTime() + 90000);
+    await run();
+    expect(request).toHaveBeenCalledOnce();
+    expect(request.mock.calls[0]?.[0].alertKey).toBe(peer);
+  });
+  it("영업 신고 보류 할 일이 닫혔으면 오래된 보류 알림을 보내지 않는다", async () => {
+    const task = newUuid();
+    await isolated.db.query(
+      "INSERT INTO owner_tasks(id,shop_id,kind,event_key,opened_at,closed_at) VALUES($1,$2,'license_on_hold',$3,$4,$5)",
+      [task, shop.shopId, `task:license_on_hold:${task}`, NOW, new Date(NOW.getTime() + 1)],
+    );
+    const id = await alert("license_on_hold", task);
+    now = new Date(NOW.getTime() + 60000);
+    await run();
+    expect(request).not.toHaveBeenCalled();
+    expect((await isolated.db.query("SELECT status,fail_code FROM owner_alerts WHERE id=$1", [id])).rows).toEqual([
+      { status: "failed", fail_code: "cannot_send" },
+    ]);
+  });
   it("1분 안 같은 종류의 새 할 일은 하나로 묶고 다른 창의 것은 다음 발신으로 남긴다", async () => {
     for (const offset of [0, 30000, 61000]) {
       const taskId = newUuid(),
@@ -206,19 +269,6 @@ describeDb("사장님 알림 실행기(TASK-072)", () => {
       { status: "confirming", n: 1 },
       { status: "pending", n: 1 },
     ]);
-  });
-  it("비활성 처리기를 직접 돌려도 전송기를 만들지 않고 목록의 할 일을 유지한다", async () => {
-    await custom();
-    await run(false);
-    expect(request).not.toHaveBeenCalled();
-    expect(check).not.toHaveBeenCalled();
-    expect(factory).not.toHaveBeenCalled();
-    expect(
-      (await isolated.db.query("SELECT status,fail_code FROM owner_alerts WHERE shop_id=$1", [shop.shopId])).rows,
-    ).toEqual([{ status: "failed", fail_code: "cannot_send" }]);
-    expect((await isolated.db.query("SELECT closed_at FROM owner_tasks WHERE shop_id=$1", [shop.shopId])).rows).toEqual(
-      [{ closed_at: null }],
-    );
   });
   it("MVP 기본 scheduled는 꺼둔 알림을 조회하거나 수정하지 않는다", async () => {
     const id = await alert("change_not_applied");
@@ -365,7 +415,7 @@ describeDb("사장님 알림 실행기(TASK-072)", () => {
     const one = isolated.connect(),
       two = isolated.connect();
     try {
-      const results = await Promise.all([run(true, one), run(true, two)]);
+      const results = await Promise.all([run(one), run(two)]);
       expect(results.every((result) => result.jobs.owner_alert?.failed === 0)).toBe(true);
     } finally {
       await one.close();
@@ -395,7 +445,6 @@ describeDb("사장님 알림 실행기(TASK-072)", () => {
     const id = await alert("payment_account_changed");
     now = new Date(NOW.getTime() + 60000);
     const handler = createOwnerAlertHandler({
-      enabled: true,
       botId: BOT,
       origin: "https://app.example",
       events: factory,
@@ -459,12 +508,12 @@ describeDb("사장님 알림 실행기(TASK-072)", () => {
       url.password = "";
       runtime = pgConnector(new Secret(url.toString()));
       now = new Date(NOW.getTime() + 60000);
-      expect((await run(true, runtime)).jobs.owner_alert?.failed).toBe(0);
+      expect((await run(runtime)).jobs.owner_alert?.failed).toBe(0);
       expect((await isolated.db.query("SELECT status FROM owner_alerts WHERE id=$1", [id])).rows).toEqual([
         { status: "confirming" },
       ]);
       now = new Date(now.getTime() + 60000);
-      expect((await run(true, runtime)).jobs.owner_alert?.failed).toBe(0);
+      expect((await run(runtime)).jobs.owner_alert?.failed).toBe(0);
       expect((await isolated.db.query("SELECT status FROM owner_alerts WHERE id=$1", [id])).rows).toEqual([
         { status: "sent" },
       ]);

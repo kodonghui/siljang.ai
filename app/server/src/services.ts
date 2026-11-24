@@ -81,6 +81,11 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
     if (secret === null) throw new MissingSettingError("REQUEST_HASH_KEY is not set");
     return secret;
   }
+  function kakaoRestKey() {
+    const key = settings.ownerAuth?.clientId;
+    if (key === undefined) throw new MissingSettingError("KAKAO_REST_API_KEY is not set");
+    return key;
+  }
   let store: ObjectStore | undefined = overrides.storage;
   let photos: PhotoNormalizer | undefined;
   let urls: FileUrls | undefined;
@@ -152,16 +157,12 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
     },
     kakaoEvents() {
       if (events !== undefined) return events;
-      const key = settings.ownerAuth?.clientId;
-      if (key === undefined) throw new MissingSettingError("KAKAO_REST_API_KEY is not set");
-      events = kakaoEvents(key);
+      events = kakaoEvents(kakaoRestKey());
       return events;
     },
     kakaoOwnerEvents() {
       if (ownerEvents !== undefined) return ownerEvents;
-      const key = settings.ownerAuth?.clientId;
-      if (key === undefined) throw new MissingSettingError("KAKAO_REST_API_KEY is not set");
-      ownerEvents = kakaoOwnerEvents(key);
+      ownerEvents = kakaoOwnerEvents(kakaoRestKey());
       return ownerEvents;
     },
     operatorAuth() {

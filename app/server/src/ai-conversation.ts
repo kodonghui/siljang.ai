@@ -1,5 +1,6 @@
 /** AI 입력은 이 상담의 마스킹 글·허용한 초안·유효 견적만 읽는다. 원래 값/알레르기/주문자 정보는 조회하지 않는다. */
 import type { AiMessage } from "./ai-model";
+import { handoffSourceMatch } from "./handoff-source";
 import { maskMessageText } from "./message-masking";
 import type { Services } from "./services";
 import type { ShopDb } from "./shop-scope";
@@ -38,8 +39,7 @@ export async function readAiConversation(
       AND m.direction='inbound' AND m.kind='text' AND m.body_masked IS NOT NULL
       AND (m.id=$3 OR m.created_at<$4 OR (m.created_at=$4 AND m.id<$3))
       AND ($5::timestamptz IS NULL OR m.created_at>$5)
-      AND NOT EXISTS (SELECT h.id FROM handoffs h WHERE h.shop_id=$1 AND h.source_message_id=m.id)
-      AND NOT EXISTS (SELECT q.id FROM handoff_questions q WHERE q.shop_id=$1 AND q.message_id=m.id)
+      AND NOT EXISTS (SELECT h.id FROM handoffs h WHERE h.shop_id=$1 AND h.consultation_id=$2 AND ${handoffSourceMatch("m.id")})
       ORDER BY (m.id=$3) DESC,m.created_at DESC,m.id DESC LIMIT $6`,
     [source.consultationId, source.messageId, anchor.created_at, requested.at, MAX_TURNS],
   );

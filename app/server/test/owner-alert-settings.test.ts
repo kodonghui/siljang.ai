@@ -11,6 +11,15 @@ const auth = {
 };
 afterEach(() => vi.restoreAllMocks());
 
+it("production에서는 꺼둔 발신 설정이어도 개발 봇 선택을 거절한다", () => {
+  expect(() => readSettings({ ...auth, APP_ENV: "production", KAKAO_OWNER_BOT_DEVELOPMENT: "true" })).toThrow(
+    SettingsError,
+  );
+  expect(
+    readSettings({ ...auth, APP_ENV: "staging", KAKAO_OWNER_BOT_DEVELOPMENT: "true" }).ownerAlerts.development,
+  ).toBe(true);
+});
+
 it("MVP는 사장님 알림을 기본으로 끄고 키와 전송기를 요구하지 않는다", () => {
   expect(readSettings({}).ownerAlerts).toEqual({ enabled: false, botId: null, development: false });
   const fetcher = vi.spyOn(globalThis, "fetch");

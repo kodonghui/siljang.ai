@@ -41,9 +41,8 @@ interface Observed {
   at: Date;
 }
 export interface OwnerAlertOptions {
-  readonly enabled: boolean;
-  readonly botId?: string;
-  readonly origin?: string;
+  readonly botId: string;
+  readonly origin: string;
   readonly development?: boolean;
   readonly events: () => KakaoOwnerEvents;
   readonly now?: () => Date;
@@ -58,17 +57,9 @@ async function stop(db: ShopDb, id: string, code: "not_friend" | "cannot_send" |
 }
 
 export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandler<Prepared, Observed> {
-  if (options.enabled && !/^[0-9a-f]{24}$/i.test(options.botId ?? "")) throw new TypeError("invalid owner alert bot");
-  const origin = options.origin ? new URL(options.origin) : null;
-  if (
-    options.enabled &&
-    (origin === null ||
-      origin.protocol !== "https:" ||
-      origin.username ||
-      origin.password ||
-      origin.search ||
-      origin.hash)
-  )
+  if (!/^[0-9a-f]{24}$/i.test(options.botId)) throw new TypeError("invalid owner alert bot");
+  const origin = new URL(options.origin);
+  if (origin.protocol !== "https:" || origin.username || origin.password || origin.search || origin.hash)
     throw new TypeError("invalid owner alert origin");
   const at = (ctx: LeaseContext) => new Date(Math.max(ctx.now.getTime(), (options.now?.() ?? new Date()).getTime()));
   return {
@@ -85,17 +76,16 @@ export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandl
         )
       ).rows[0];
       if (!row) return null;
-      if (!options.enabled) {
-        await stop(db, row.id, "cannot_send");
-        return null;
-      }
-      if (!row.alert_channel_friend) {
-        await stop(db, row.id, "not_friend");
-        return null;
-      }
       if (item.source === "owner_alert_send") {
         if (row.status !== "pending" || row.next_attempt_at === null || row.next_attempt_at > ctx.now) return null;
-        if (TASK_ALERTS.has(row.kind) && (row.owner_task_id === null || row.task_closed_at !== null)) {
+        if (!row.alert_channel_friend) {
+          await stop(db, row.id, "not_friend");
+          return null;
+        }
+        if (
+          (TASK_ALERTS.has(row.kind) && row.owner_task_id === null) ||
+          (row.owner_task_id !== null && (row.task_kind === null || row.task_closed_at !== null))
+        ) {
           await stop(db, row.id, "cannot_send");
           return null;
         }
@@ -126,9 +116,13 @@ export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandl
               [row.id, peers.map((peer) => peer.id)],
             );
         }
-        const content = origin === null ? null : await ownerAlertContent(db, row, origin);
+        const content = await ownerAlertContent(db, row, origin);
         if (content === null) {
           await stop(db, row.id, "cannot_send");
+          await db.run(
+            "UPDATE owner_alerts SET status='pending',batched_into_id=NULL,next_attempt_at=GREATEST(created_at+interval '1 minute',$3::timestamptz) WHERE shop_id=$1 AND batched_into_id=$2 AND status='batched'",
+            [row.id, ctx.now],
+          );
           return null;
         }
         await db.run("UPDATE owner_alerts SET attempts=attempts+1,next_attempt_at=$3 WHERE shop_id=$1 AND id=$2", [
@@ -158,13 +152,13 @@ export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandl
         if (prepared.content === null) throw new Error("owner alert content unavailable");
         const result = await client.requestAlert(
           {
-            botId: options.botId ?? "",
+            botId: options.botId,
             development: options.development ?? false,
             appUserId: prepared.row.app_user_id,
             alertKey: prepared.row.id,
             ...prepared.content,
             isFriend: prepared.row.alert_channel_friend,
-            eventAvailable: options.enabled,
+            eventAvailable: true,
             status: "pending",
             attemptsDone: prepared.attempts - 1,
             nextAttemptAt: prepared.row.next_attempt_at,
@@ -237,7 +231,7 @@ export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandl
       if (code === "not_friend")
         await db.run(
           "UPDATE owners o SET alert_channel_friend=false,alert_friend_checked_at=$3 FROM shops s WHERE s.id=$1 AND s.owner_id=o.id AND o.id=$2 AND (o.alert_friend_checked_at IS NULL OR o.alert_friend_checked_at<=$4)",
-          [prepared.row.owner_id, observed, ctx.now],
+          [prepared.row.owner_id, observed, prepared.mode === "check" ? prepared.row.requested_at : ctx.now],
         );
     },
   };

@@ -68,6 +68,13 @@ export interface KakaoOwnerEvents {
   requestAlert(input: OwnerAlertEventInput, now: Date): Promise<KakaoEventRequestResult>;
   checkDelivery(taskId: string, appUserId: string): Promise<KakaoDeliveryResult>;
 }
+interface InternalKakaoEvents extends KakaoEvents {
+  requestNotice(
+    input: NoticeEventInput,
+    now: Date,
+    content?: Pick<OwnerAlertEventInput, "text" | "url">,
+  ): Promise<KakaoEventRequestResult>;
+}
 
 function failed(
   code: KakaoEventFailure["code"],
@@ -215,8 +222,7 @@ function createEvents(
   apiKey: Secret,
   options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number },
   owner: boolean,
-  content?: Pick<OwnerAlertEventInput, "text" | "url">,
-): KakaoEvents {
+): InternalKakaoEvents {
   const timeoutMs = options.timeoutMs ?? 6000;
   if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) throw new RangeError(INVALID);
   const send = options.fetch ?? fetch;
@@ -250,7 +256,7 @@ function createEvents(
     }
   }
   return {
-    async requestNotice(input, now) {
+    async requestNotice(input, now, content) {
       const recipientType = owner ? "appUserId" : "botUserKey";
       const skipped = notRequested(input, now, recipientType);
       if (skipped !== null) return skipped;
@@ -331,10 +337,10 @@ export function kakaoOwnerEvents(
   const client = createEvents(apiKey, options, true);
   return {
     requestAlert({ appUserId, alertKey, text, url, ...rest }, now) {
-      return createEvents(apiKey, options, true, { text, url }).requestNotice(
-        { ...rest, userKey: appUserId, noticeKey: alertKey, scheduledFor: null },
-        now,
-      );
+      return client.requestNotice({ ...rest, userKey: appUserId, noticeKey: alertKey, scheduledFor: null }, now, {
+        text,
+        url,
+      });
     },
     checkDelivery(taskId, appUserId) {
       return client.checkDelivery(taskId, { type: "appUserId", id: appUserId });

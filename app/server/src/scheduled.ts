@@ -79,10 +79,9 @@ export async function runScheduled(
             ? {
                 owner_alert: {
                   handler: createOwnerAlertHandler({
-                    enabled: settings.ownerAlerts.enabled,
                     development: settings.ownerAlerts.development,
-                    ...(settings.publicAppOrigin === null ? {} : { origin: settings.publicAppOrigin }),
-                    ...(settings.ownerAlerts.botId === null ? {} : { botId: settings.ownerAlerts.botId }),
+                    origin: settings.publicAppOrigin ?? "",
+                    botId: settings.ownerAlerts.botId ?? "",
                     events: () => services.kakaoOwnerEvents(),
                   }),
                 },
