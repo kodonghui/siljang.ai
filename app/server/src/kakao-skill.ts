@@ -4,6 +4,7 @@ import { readKakaoInboundDisclosurePolicy } from "./kakao-ai-disclosure";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
 import { publishStoredKakaoCallback, storeKakaoCallback } from "./kakao-callback-store";
 import { receiveKakaoChannelCheck } from "./kakao-channel-check";
+import { parseKakaoCardPress, receiveKakaoConfirmCard } from "./kakao-confirm-card";
 import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
 import { replyKakaoHandoffInTransaction } from "./kakao-handoff";
 import { kakaoAiFailureOutcome, kakaoReply } from "./kakao-reply";
@@ -35,9 +36,14 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
   if (kind === "event") return kakaoReply(r, "notice_gone");
 
   const messageKind = request.payload.utterance.trim() === "" ? "unsupported" : "text";
+  const cardPress =
+    kind === "card" && request.status === "linked" && request.payload.action.clientExtra.check === undefined
+      ? parseKakaoCardPress(request.payload)
+      : null;
   try {
     const trial = await receiveKakaoChannelCheck(r, kind);
     if (trial !== null) return trial;
+    if (cardPress !== null) return receiveKakaoConfirmCard(r, cardPress);
     if (kind === "review" && request.status === "linked") {
       const outcome = await receiveKakaoTextReview(r.db, request);
       return kakaoReply(r, outcome, {

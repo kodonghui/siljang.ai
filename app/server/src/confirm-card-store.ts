@@ -66,6 +66,7 @@ interface CardRow {
   expires_at: Date;
   used_at: Date | null;
   payload: { presentation?: ConfirmCardView; result?: ConfirmCardCommandResult };
+  outcome: "done" | "stale" | "expired" | null;
 }
 const LABELS: Record<CustomerCommandKind, string> = {
   order_request: "주문 요청",
@@ -76,6 +77,35 @@ const LABELS: Record<CustomerCommandKind, string> = {
   consent_withdrawal: "동의 철회",
 };
 const NOT_YOURS = { outcome: "card_not_yours", text: "받으신 카드에서 눌러 주세요" } as const;
+function usedAnswer(card: CardRow): ConfirmCardAnswer {
+  const result = card.payload.result,
+    view = card.payload.presentation;
+  return {
+    outcome: "card_used",
+    text: "이미 처리했어요",
+    ...(result === undefined ? {} : { firstResult: { outcome: result.outcome, text: result.text } }),
+    ...(card.outcome === "done" || view === undefined
+      ? {}
+      : {
+          card: {
+            cardKey: view.cardKey,
+            title: view.title,
+            description: view.description,
+            confirmLabel: view.confirmLabel,
+            blockId: view.blockId,
+          },
+        }),
+  };
+}
+const SUCCESS_OUTCOMES: Record<CustomerCommandKind, string> = {
+  order_request: "order_requested",
+  payment_claim: "payment_claimed",
+  change_request: "change_requested",
+  cancel: "order_cancelled",
+  issue_report: "issue_reported",
+  consent_withdrawal: "consent_withdrawn",
+};
+
 function validNow(now: Date) {
   if (!Number.isFinite(now.getTime())) throw new RangeError("invalid card time");
 }
@@ -169,88 +199,97 @@ export async function showConfirmCardInTransaction(db: ShopDb, input: ShowConfir
 export function showConfirmCard(db: ShopRequestDb, input: ShowConfirmCard): Promise<ConfirmCardView> {
   return db.transaction((tx) => showConfirmCardInTransaction(tx, input));
 }
+export interface PressConfirmCard extends Identity {
+  readonly cardKey: string;
+  readonly choice: "confirm" | "decline";
+  readonly now: Date;
+}
 export function pressConfirmCard(
   db: ShopRequestDb,
-  input: Identity & { readonly cardKey: string; readonly choice: "confirm" | "decline"; readonly now: Date },
+  input: PressConfirmCard,
+  execute?: ConfirmCardCommand,
+): Promise<ConfirmCardAnswer> {
+  return db.transaction((tx) => pressConfirmCardInTransaction(tx, input, execute));
+}
+export async function pressConfirmCardInTransaction(
+  tx: ShopDb,
+  input: PressConfirmCard,
   execute?: ConfirmCardCommand,
 ): Promise<ConfirmCardAnswer> {
   validNow(input.now);
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(input.cardKey)) throw fieldError("/action/clientExtra/cardKey", "bad_format");
   if (!["confirm", "decline"].includes(input.choice)) throw fieldError("/action/clientExtra/choice", "bad_format");
-  return db.transaction(async (tx) => {
-    if (!(await identityAvailable(tx, input))) return NOT_YOURS;
-    const initial = (
-      await tx.run<CardRow>(
-        "SELECT * FROM confirm_cards WHERE shop_id=$1 AND card_key=$2 AND customer_id=$3 AND consultation_id=$4",
-        [input.cardKey, input.customerId, input.consultationId],
-      )
-    ).rows[0];
-    if (!initial || initial.created_at > input.now) return NOT_YOURS;
-    if (!CUSTOMER_COMMAND_KINDS.includes(initial.kind))
-      return { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" };
-    const target: ShowConfirmCard = {
-      ...input,
-      kind: initial.kind,
-      ...(initial.order_id === null ? {} : { orderId: initial.order_id }),
-      ...(initial.draft_id === null ? {} : { draftId: initial.draft_id }),
-    };
-    const source = await readSource(tx, target);
-    if (source === null) return NOT_YOURS;
-    const card = await tx.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
-      initial.id,
-    ]);
-    const verdict = judgeCardPress(
-      {
-        customerId: card.customer_id,
-        consultationId: card.consultation_id,
-        orderId: card.order_id,
-        orderVersion: card.order_version,
-        draftId: card.draft_id,
-        draftRevision: card.draft_revision,
-        expiresAt: card.expires_at,
-        usedAt: card.used_at,
-      },
-      { ...input, currentOrderVersion: source.orderVersion, currentDraftRevision: source.draftRevision },
-    );
-    if (verdict === "not_recipient") return NOT_YOURS;
-    if (verdict === "used")
-      return {
-        outcome: "card_used",
-        text: "이미 처리했어요",
-        ...(card.payload.result === undefined ? {} : { firstResult: card.payload.result }),
-        ...(card.payload.presentation === undefined ? {} : { card: card.payload.presentation }),
-      };
-    if (verdict === "stale" || verdict === "expired") {
-      const replacement = await insertCard(tx, target, source);
-      const result = {
-        outcome: `card_${verdict}`,
-        text:
-          verdict === "stale"
-            ? "내용이 바뀌었어요. 새 카드에서 눌러 주세요"
-            : "시간이 지났어요. 새 카드에서 눌러 주세요",
-      };
-      await tx.run(
-        "UPDATE confirm_cards SET used_at=$3,outcome=$4,payload=jsonb_set(jsonb_set(payload,'{result}',$5::jsonb),'{presentation}',$6::jsonb) WHERE shop_id=$1 AND id=$2",
-        [card.id, input.now, verdict, JSON.stringify(result), JSON.stringify(replacement)],
-      );
-      return { ...result, card: replacement };
-    }
-    if (input.choice === "decline")
-      return { outcome: "declined", text: "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요" };
-    if (execute === undefined) return { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" };
-    const result = await execute(tx, {
-      ...input,
-      id: card.id,
-      kind: card.kind,
+  if (!(await identityAvailable(tx, input))) return NOT_YOURS;
+  const initial = (
+    await tx.run<CardRow>(
+      "SELECT * FROM confirm_cards WHERE shop_id=$1 AND card_key=$2 AND customer_id=$3 AND consultation_id=$4",
+      [input.cardKey, input.customerId, input.consultationId],
+    )
+  ).rows[0];
+  if (!initial || initial.created_at > input.now) return NOT_YOURS;
+  if (!CUSTOMER_COMMAND_KINDS.includes(initial.kind))
+    return { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" };
+  if (initial.used_at !== null) return usedAnswer(initial);
+  const target: ShowConfirmCard = {
+    ...input,
+    kind: initial.kind,
+    ...(initial.order_id === null ? {} : { orderId: initial.order_id }),
+    ...(initial.draft_id === null ? {} : { draftId: initial.draft_id }),
+  };
+  const source = await readSource(tx, target);
+  if (source === null) return NOT_YOURS;
+  const card = await tx.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
+    initial.id,
+  ]);
+  const verdict = judgeCardPress(
+    {
+      customerId: card.customer_id,
+      consultationId: card.consultation_id,
       orderId: card.order_id,
+      orderVersion: card.order_version,
       draftId: card.draft_id,
-    });
-    if (!/^[a-z][a-z0-9_]{0,63}$/.test(result.outcome) || !result.text || [...result.text].length > 1000)
-      throw new Error("invalid card command result");
+      draftRevision: card.draft_revision,
+      expiresAt: card.expires_at,
+      usedAt: card.used_at,
+    },
+    { ...input, currentOrderVersion: source.orderVersion, currentDraftRevision: source.draftRevision },
+  );
+  if (verdict === "not_recipient") return NOT_YOURS;
+  if (verdict === "used") return usedAnswer(card);
+  if (verdict === "stale" || verdict === "expired") {
+    const replacement = await insertCard(tx, target, source);
+    const result = {
+      outcome: `card_${verdict}`,
+      text:
+        verdict === "stale" ? "내용이 바뀌었어요. 새 카드에서 눌러 주세요" : "시간이 지났어요. 새 카드에서 눌러 주세요",
+    };
     await tx.run(
-      "UPDATE confirm_cards SET used_at=$3,outcome='done',payload=jsonb_set(payload,'{result}',$4::jsonb) WHERE shop_id=$1 AND id=$2",
-      [card.id, input.now, JSON.stringify({ outcome: result.outcome, text: result.text })],
+      "UPDATE confirm_cards SET used_at=$3,outcome=$4,payload=jsonb_set(jsonb_set(payload,'{result}',$5::jsonb),'{presentation}',$6::jsonb) WHERE shop_id=$1 AND id=$2",
+      [card.id, input.now, verdict, JSON.stringify(result), JSON.stringify(replacement)],
     );
-    return { outcome: result.outcome, text: result.text };
+    return { ...result, card: replacement };
+  }
+  if (input.choice === "decline") return { outcome: "declined", text: "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요" };
+  if (execute === undefined) return { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" };
+  const result = await execute(tx, {
+    customerId: input.customerId,
+    consultationId: input.consultationId,
+    id: card.id,
+    kind: card.kind,
+    orderId: card.order_id,
+    draftId: card.draft_id,
   });
+  if (
+    (result.outcome !== SUCCESS_OUTCOMES[card.kind] &&
+      !(card.kind === "order_request" && ["day_full", "order_limit_reached"].includes(result.outcome))) ||
+    !result.text ||
+    result.text.includes("\0") ||
+    [...result.text].length > 1000
+  )
+    throw new Error("invalid card command result");
+  await tx.run(
+    "UPDATE confirm_cards SET used_at=$3,outcome='done',payload=jsonb_set(payload,'{result}',$4::jsonb) WHERE shop_id=$1 AND id=$2",
+    [card.id, input.now, JSON.stringify({ outcome: result.outcome, text: result.text })],
+  );
+  return { outcome: result.outcome, text: result.text };
 }

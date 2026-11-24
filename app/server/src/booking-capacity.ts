@@ -1,7 +1,7 @@
 /** TASK-068. 날짜 판정은 자리를 만들지 않는다. 안내 전달 확정 뒤 마감 질문만 기록한다. */
 import { calendarBookingDays } from "./calendar";
 import { calendarDate } from "./calendar-input";
-import { handoffSourceMatch } from "./handoff-source";
+import { HANDOFF_OWNER_TASK_JOIN, handoffSourceMatch } from "./handoff-source";
 import { createHandoffTask } from "./handoff-task";
 import { ApiError } from "./problem";
 import { pathId, type ShopDb, type ShopRequestDb } from "./shop-scope";
@@ -73,6 +73,7 @@ interface ClosedPickupInput {
   readonly now: Date;
 }
 type ClosedPickupResult = {
+  /** handed_off면 같은 날짜 건의 첫 판정값입니다. 손님에게 다시 권하지 않고 실제 전달 안내와 현재 판정을 씁니다. */
   readonly availability: PickupAvailability;
   readonly kind: "not_requested" | "waiting_for_notice" | "handed_off" | "already_handed_off";
   readonly handoffId?: string;
@@ -92,7 +93,7 @@ async function previousRequest(
   const row = (
     await tx.run<{ id: string; reason: string; requested_day: string | null; availability: PickupAvailability | null }>(
       `SELECT h.id,h.reason,h.requested_day::text,t.detail->'closedDayAvailability' AS availability
-     FROM handoffs h LEFT JOIN owner_tasks t ON t.shop_id=$1 AND t.handoff_id=h.id
+     FROM handoffs h ${HANDOFF_OWNER_TASK_JOIN}
      WHERE h.shop_id=$1 AND h.consultation_id=$3 AND ${handoffSourceMatch("$2")}
      ORDER BY (h.reason='closed_day' AND h.requested_day=$4::date) DESC,h.created_at,h.id LIMIT 1`,
       [sourceId, consultationId, day],
@@ -147,7 +148,7 @@ export async function recordClosedPickupDayInTransaction(
   const opened = (
     await tx.run<{ id: string; availability: PickupAvailability | null }>(
       `SELECT h.id,t.detail->'closedDayAvailability' AS availability FROM handoffs h
-      LEFT JOIN owner_tasks t ON t.shop_id=$1 AND t.handoff_id=h.id
+      ${HANDOFF_OWNER_TASK_JOIN}
       WHERE h.shop_id=$1 AND h.consultation_id=$2 AND h.reason='closed_day' AND h.requested_day=$3::date AND h.status='open'`,
       [consultationId, availability.day],
     )

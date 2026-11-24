@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { type ConfirmCardCommand, pressConfirmCard, showConfirmCard } from "../src/confirm-card-store";
+import { kakaoConfirmCardReply } from "../src/kakao-confirm-card";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
+import { expectSchema } from "./support/contract";
 import { describeDb } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
@@ -172,5 +174,109 @@ describeDb("손님 확인 카드 저장과 한 번 실행(TASK-081)", () => {
       (await pressConfirmCard(scoped(), { ...identity(), cardKey: card.cardKey, choice: "confirm", now: NOW })).outcome,
     ).toBe("retry_needed");
     expect((await press(card.cardKey)).outcome).toBe("order_cancelled");
+  });
+  it("사용한 카드의 초안이 제출된 뒤에도 처음 결과로 답하고 다시 실행하지 않음", async () => {
+    await isolated.db.query("UPDATE order_drafts SET status='active' WHERE id=$1", [shop.draftId]);
+    const card = await showConfirmCard(scoped(), {
+      ...identity(),
+      kind: "order_request",
+      draftId: shop.draftId,
+      now: NOW,
+    });
+    const execute = vi.fn<ConfirmCardCommand>(async (tx) => {
+      await tx.run("UPDATE order_drafts SET status='submitted' WHERE shop_id=$1 AND id=$2", [shop.draftId]);
+      return { outcome: "order_requested", text: "주문을 요청했어요" };
+    });
+    expect((await press(card.cardKey, "confirm", execute)).outcome).toBe("order_requested");
+    const second = await press(card.cardKey, "confirm", execute);
+    expect(second.outcome).toBe("card_used");
+    expect(second.firstResult).toEqual({ outcome: "order_requested", text: "주문을 요청했어요" });
+    expect(second.card).toBeUndefined();
+    expect(execute).toHaveBeenCalledOnce();
+  });
+  it("재시도 결과를 성공으로 소비하지 않고 명령의 앞선 쓰기도 되돌림", async () => {
+    const card = await show();
+    const before = (
+      await isolated.db.query("SELECT last_customer_message_at FROM consultations WHERE id=$1", [shop.consultationId])
+    ).rows[0];
+    await expect(
+      press(card.cardKey, "confirm", async (tx) => {
+        await tx.run("UPDATE consultations SET last_customer_message_at=$3 WHERE shop_id=$1 AND id=$2", [
+          shop.consultationId,
+          NOW,
+        ]);
+        return { outcome: "retry_needed", text: "다시 눌러 주세요" };
+      }),
+    ).rejects.toThrow();
+    expect(
+      (await isolated.db.query("SELECT last_customer_message_at FROM consultations WHERE id=$1", [shop.consultationId]))
+        .rows[0],
+    ).toEqual(before);
+    expect((await press(card.cardKey)).outcome).toBe("order_cancelled");
+  });
+
+  it("주문 버전2로 만든 카드를 버전3에서 누르면 실행0건과 새 카드", async () => {
+    const nextVersion = async (version: number) =>
+      isolated.db.transaction(async (tx) => {
+        await tx.query(
+          "INSERT INTO order_details SELECT (jsonb_populate_record(NULL::order_details,to_jsonb(d)||jsonb_build_object('version',$2::int,'id',gen_random_uuid(),'source','owner_amount_change','amount_change_reason','합성 버전 확인'))).* FROM order_details d WHERE d.order_id=$1 AND d.version=1",
+          [shop.orderId, version],
+        );
+        await tx.query("UPDATE orders SET version=$2 WHERE id=$1", [shop.orderId, version]);
+      });
+    await nextVersion(2);
+    const card = await show();
+    await nextVersion(3);
+    const execute = vi.fn<ConfirmCardCommand>();
+    const result = await press(card.cardKey, "confirm", execute);
+    expect(result.outcome).toBe("card_stale");
+    expect(result.card?.cardKey).not.toBe(card.cardKey);
+    expect(execute).not.toHaveBeenCalled();
+    expect(
+      (
+        await isolated.db.query("SELECT order_version FROM confirm_cards WHERE shop_id=$1 AND card_key=$2", [
+          shop.shopId,
+          result.card?.cardKey,
+        ])
+      ).rows,
+    ).toEqual([{ order_version: 3 }]);
+  });
+  it("API-070 공통 card_shown 응답은 저장된 요약과 불투명 카드 키만 보냄", async () => {
+    const card = await show();
+    const response = kakaoConfirmCardReply(
+      {
+        json: (body, status, headers) =>
+          new Response(JSON.stringify(body), { status: status ?? 200, headers: headers ?? {} }),
+      },
+      { outcome: "card_shown", text: "주문 내용을 확인해 주세요", card },
+    );
+    expect(response.headers.get("Siljang-Outcome")).toBe("card_shown");
+    const body = await response.json();
+    expectSchema("SkillTemplateResponse", body);
+    const text = JSON.stringify(body);
+    expect(text).toContain(card.cardKey);
+    expect(text).not.toContain(shop.customerId);
+    expect(text).not.toContain(shop.orderId);
+    expect((await isolated.db.query("SELECT status FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual([
+      { status: "awaiting_payment" },
+    ]);
+  });
+  it("합성 취소 실행기가 연결됐을 때 누르기 전0건·두 번 눌러도 상태 변경1건", async () => {
+    const card = await show();
+    const execute = vi.fn<ConfirmCardCommand>(async (tx, input) => {
+      const written = await tx.run(
+        "UPDATE orders SET status='cancelled',cancelled_at=$3,cancel_kind='customer' WHERE shop_id=$1 AND id=$2 AND customer_id=$4 AND status='awaiting_payment'",
+        [input.orderId, NOW, input.customerId],
+      );
+      expect(written.rowCount).toBe(1);
+      return { outcome: "order_cancelled", text: "주문을 취소했어요" };
+    });
+    expect(execute).not.toHaveBeenCalled();
+    expect((await press(card.cardKey, "confirm", execute)).outcome).toBe("order_cancelled");
+    expect((await press(card.cardKey, "confirm", execute)).outcome).toBe("card_used");
+    expect(execute).toHaveBeenCalledOnce();
+    expect((await isolated.db.query("SELECT status,cancel_kind FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual(
+      [{ status: "cancelled", cancel_kind: "customer" }],
+    );
   });
 });

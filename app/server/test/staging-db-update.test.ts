@@ -9,6 +9,9 @@ import { isolatedTestDb } from "./support/isolated-db";
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const source = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const generator = fileURLToPath(new URL("../../../tools/build-staging-db-update.py", import.meta.url));
+const migrations = readdirSync(new URL("../../../db/migrations/", import.meta.url))
+  .filter((f) => /^\d{4}_.+\.sql$/.test(f))
+  .sort();
 
 function render(role: string, cleanup: string): string {
   return execFileSync(
@@ -40,9 +43,7 @@ async function scenario(
     await isolated.db.query(`CREATE SCHEMA siljang_deploy; CREATE TABLE siljang_deploy.migrations (
       filename text PRIMARY KEY, source_commit text NOT NULL, sha256 text NOT NULL, applied_at timestamptz NOT NULL)`);
     const dir = new URL("../../../db/migrations/", import.meta.url);
-    for (const file of readdirSync(dir)
-      .filter((f) => /^\d{4}_.+\.sql$/.test(f) && Number(f.slice(0, 4)) <= 22)
-      .sort()) {
+    for (const file of migrations.filter((f) => Number(f.slice(0, 4)) <= 22)) {
       const sha = createHash("sha256")
         .update(readFileSync(new URL(file, dir)))
         .digest("hex");
@@ -73,12 +74,14 @@ async function scenario(
 }
 
 describeDb("기존 DB 원장을 지키는 스테이징 갱신(TASK-173)", () => {
-  it("원장 22건에서 35건으로 진행하고 반복해도 지정한 합성 행만 지움", async () => {
+  it("원장 22건에서 현재 파일 수까지 진행하고 반복해도 지정한 합성 행만 지움", async () => {
     await scenario(async ({ db, role, cleanup, other }) => {
       const sql = render(role, cleanup);
       await db.query(sql);
       await db.query(sql);
-      expect((await db.query("SELECT count(*)::int AS n FROM siljang_deploy.migrations")).rows).toEqual([{ n: 35 }]);
+      expect((await db.query("SELECT count(*)::int AS n FROM siljang_deploy.migrations")).rows).toEqual([
+        { n: migrations.length },
+      ]);
       expect(
         (
           await db.query(

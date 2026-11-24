@@ -3,6 +3,7 @@ import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { createAiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import { assessPickupDay, closedDayNoticeTrace, requestClosedPickupDay } from "../src/booking-capacity";
+import { pressConfirmCard, showConfirmCard } from "../src/confirm-card-store";
 import { pgConnector, type RequestDb } from "../src/db";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
@@ -53,6 +54,59 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     }
   });
 
+  it("제한 역할에서 카드 생성·기한 갱신을 하되 키·받는 사람·버전과 삭제는 막힘", async () => {
+    const target = await createShop(db, "제한 역할 확인 카드 가게");
+    await issueTestBookingLink(db, target);
+    await linkTestChannel(db, target.channelId);
+    const runtime = pgConnector(new Secret(databaseUrl)),
+      now = new Date("2026-11-24T01:00:00Z");
+    try {
+      const scoped = shopRequestDb(createShopScope(target.shopId, { kind: "job", job: "kakao_callback" }), runtime);
+      const input = { customerId: target.customerId, consultationId: target.consultationId };
+      const card = await showConfirmCard(scoped, { ...input, kind: "cancel", orderId: target.orderId, now });
+      const result = await pressConfirmCard(scoped, {
+        ...input,
+        cardKey: card.cardKey,
+        choice: "confirm",
+        now: new Date(now.getTime() + 30 * 60000),
+      });
+      expect(result.outcome).toBe("card_expired");
+      expect(result.card?.cardKey).not.toBe(card.cardKey);
+      for (const column of [
+        "card_key",
+        "customer_id",
+        "consultation_id",
+        "shop_id",
+        "kind",
+        "order_id",
+        "order_version",
+        "draft_id",
+        "draft_revision",
+        "expires_at",
+        "created_at",
+      ]) {
+        expect(
+          (
+            await db.query("SELECT has_column_privilege($1,'public.confirm_cards',$2,'UPDATE') AS allowed", [
+              role,
+              column,
+            ])
+          ).rows[0],
+        ).toEqual({ allowed: false });
+      }
+      expect(
+        (await db.query("SELECT has_table_privilege($1,'public.confirm_cards','DELETE') AS allowed", [role])).rows[0],
+      ).toEqual({ allowed: false });
+      await expect(
+        runtime.query("UPDATE confirm_cards SET card_key='forged_card_key_12345' WHERE card_key=$1", [card.cardKey]),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(runtime.query("DELETE FROM confirm_cards WHERE card_key=$1", [card.cardKey])).rejects.toMatchObject({
+        code: "42501",
+      });
+    } finally {
+      await runtime.close();
+    }
+  });
   it("제한 역할에서도 요약·장부는 알레르기를 빼고 사장님 제작 자료만 포함한다", async () => {
     const target = await createShop(db, "제한 역할 출력 가게");
     await issueTestBookingLink(db, target);
@@ -573,6 +627,10 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       has_column_privilege($1, 'public.owner_tasks', 'closed_at', 'UPDATE') AS task_close_update,
       has_table_privilege($1, 'public.owner_tasks', 'DELETE') AS task_delete,
       has_any_column_privilege($1, 'public.owner_alerts', 'UPDATE') AS alert_update,
+      has_column_privilege($1, 'public.owner_alerts', 'shop_id', 'UPDATE') AS alert_shop_update,
+      has_column_privilege($1, 'public.owner_alerts', 'kind', 'UPDATE') AS alert_kind_update,
+      has_column_privilege($1, 'public.owner_alerts', 'owner_task_id', 'UPDATE') AS alert_task_update,
+      has_column_privilege($1, 'public.owner_alerts', 'event_key', 'UPDATE') AS alert_key_update,
       has_table_privilege($1, 'public.owner_alerts', 'DELETE') AS alert_delete,
       has_any_column_privilege($1, 'public.business_calendars', 'UPDATE') AS calendar_update,
       has_table_privilege($1, 'public.business_calendars', 'DELETE') AS calendar_delete,
@@ -606,7 +664,11 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
         task_state_update: false,
         task_close_update: false,
         task_delete: false,
-        alert_update: false,
+        alert_update: true,
+        alert_shop_update: false,
+        alert_kind_update: false,
+        alert_task_update: false,
+        alert_key_update: false,
         alert_delete: false,
         calendar_update: true, // TASK-041 API-027은 설정을 수정한다. 삭제는 계속 금지한다.
         calendar_delete: false,
