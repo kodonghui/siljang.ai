@@ -1,0 +1,40 @@
+{
+  "scope": "헤더10199b5 뒤의 자체 상태행/기록/CI 생성 검사를 포함한 작업 트리. 앱 제품/서버·DB/의존성 변경0",
+  "localHeaderHead": "10199b5a5397a1007b0ece18ee991f69c4b8f55f",
+  "label": "task051-current-runtime-20261124",
+  "startKst": "2026-11-25 07:09:32 KST",
+  "endKst": "2026-11-25 07:09:59 KST",
+  "commandExit": 0,
+  "wbs": {
+    "checks": 18,
+    "errors": 0
+  },
+  "erd": {
+    "pass": 15,
+    "fail": 0,
+    "unverified": 0
+  },
+  "sitemap": {
+    "pass": 17,
+    "fail": 0,
+    "unverified": 0
+  },
+  "screens": {
+    "pass": 15,
+    "fail": 0,
+    "unverified": 0
+  },
+  "mockup": {
+    "pass": 13,
+    "fail": 0,
+    "unverified": 1
+  },
+  "api": "skipped --no-api; not a pass",
+  "browser": "skipped --no-browser; not a pass",
+  "proposedCounts": {
+    "finished": 36,
+    "implemented": 33,
+    "eligible": 29,
+    "allDependencyReady": 33
+  }
+}

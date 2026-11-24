@@ -29,3 +29,14 @@ node /tmp/siljang-qa087-owner-tasks/server.mjs
 할 일 생성기는 실행한 생성기와 입력 root가 같은 작업 트리인지 realpath로 확인하고 보조 파일도 그 root에서 읽습니다. 출력은 저장소 밖 폴더를 사용합니다. 임시 형제 폴더에 전체를 만든 뒤 원본 검사까지 성공하면 교체하고, 기존 결과는 previousOutput 폴더로 보존합니다. 입력 변경으로 실패하면 이전 번들/manifest는 바뀌지 않습니다. V3/V4는 이 추가 고침 전 준비 자료이며 새 V5를 사용합니다.
 
 할 일 합성 오류는 API002/040의 전체 Problem 예시와 application/problem+json/캐시 금지를 사용합니다. 생성한 응답 코드를 Node VM에서 검사하며 브라우저/실제 서비스 확인과 구분합니다.
+
+운영규정 화면은 다음 명령으로 생성합니다. 실제 OwnerArea/편집기와10상태·15응답을 묶습니다. empty는 미확정 템플릿이고 confirm/submitting/done은 정상 입력/확정 버튼으로 해당 상태에 도달합니다. 이미 학원컴에서 진행하던 V4와 새 로컬 재현 자료 V5를 구분하며, 기존 진행/정지ACK를 읽기 전에 중복 전송하거나 실행하지 않습니다.
+
+```sh
+node research/screen-checks-2026-11/build-operating-rules.mjs . /tmp/siljang-qa051-operating-rules
+node /tmp/siljang-qa051-operating-rules/server.mjs
+```
+
+운영규정 생성물의 저장 결과는 제출한 값으로 결정합니다. 현재 값 그대로면200/unchanged,유효한 변경이면201/created이며 done/unchanged 선택 이름으로 결과를 강제하지 않습니다. 오류의 Problem 본문/미디어 유형은 OpenAPI 예시를 사용하고 응답에는 입력 전용 필드를 넣지 않습니다. operating-rules-fixture.test.mjs는 실제 웹 양식의 요청과 생성된 응답 코드를 Node VM에서 대조하며 브라우저를 실행하지 않습니다.
+
+운영규정 생성기도 fixture-source의 동일 작업 트리/깨끗한 입력/임시 완성 후 교체를 사용합니다. 기존 출력은 previousOutput으로 보관하며 새 V7의 로컬 컴파일/계약 검사는 실제 학원컴 화면 성공과 구분합니다.

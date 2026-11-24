@@ -1,0 +1,49 @@
+{
+  "scope": "로컬 관련95개/기존 설치 재사용. 새 npm ci/서버 전체/브라우저 실행을 주장하지 않음",
+  "initialParent": "99765b3b275c9720437d0e598b038e81298c91bd",
+  "currentLocalSource": "10199b5a5397a1007b0ece18ee991f69c4b8f55f",
+  "parentMain": "fb2edaea6a1d82ef7a631dad36ad428f0c3e133d",
+  "ownRuntimeServerDatabaseDependenciesDiff": 0,
+  "operatingRulesRuntimeDiffAfterParentMerge": 0,
+  "initialRelated": [
+    " Test Files  3 passed (3)",
+    "      Tests  95 passed (95)"
+  ],
+  "postMain257Related": [
+    " Test Files  3 passed (3)",
+    "      Tests  95 passed (95)"
+  ],
+  "initialLint": [
+    "Checked 529 files in 900ms. No fixes applied."
+  ],
+  "initialBuild": [
+    "✓ built in 645ms",
+    "Total Upload: 5378.11 KiB / gzip: 985.99 KiB",
+    "--dry-run: exiting now.",
+    "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+    "--dry-run: exiting now."
+  ],
+  "initialTypecheckExit": 0,
+  "initialBuildExit": 0,
+  "currentPortableCompile": {
+    "source": "10199b5a5397a1007b0ece18ee991f69c4b8f55f",
+    "out": "/tmp/siljang-qa051-main257-portable-20261124",
+    "primaryStates": 10,
+    "responseRows": 15,
+    "browserRun": false
+  },
+  "browserRun": false,
+  "newNativeTransfer": false,
+  "postMain257Lint": [
+    "Checked 536 files in 806ms. No fixes applied."
+  ],
+  "postMain257Build": [
+    "✓ built in 648ms",
+    "Total Upload: 5378.11 KiB / gzip: 985.99 KiB",
+    "--dry-run: exiting now.",
+    "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+    "--dry-run: exiting now."
+  ],
+  "postMain257TypecheckExit": 0,
+  "postMain257BuildExit": 0
+}
