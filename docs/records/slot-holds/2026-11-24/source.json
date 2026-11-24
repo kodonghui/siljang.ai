@@ -1,0 +1,29 @@
+{
+  "localSourceCommit": "3839a35f390a1cf290deabb63b4c7e231fe4bb8b",
+  "publicSourceCommit": "37b7d4d530a155f2136f1c22f1fc571582f0755e",
+  "sourceTree": "536379fd8b4d4216a1a36dc2b72021f1658530c9",
+  "runLabel": "siljang-task082-final-0636",
+  "freshDatabase": true,
+  "migrations": 36,
+  "testsExit": 0,
+  "buildExit": 0,
+  "server": {
+    "files": 121,
+    "tests": 2466
+  },
+  "web": {
+    "files": 65,
+    "tests": 1570
+  },
+  "viteBuild": "774ms",
+  "workersDryRun": 2,
+  "firstFullRun": {
+    "label": "siljang-task082-core-0631",
+    "localSourceCommit": "e57ff6a00a955f7dc716e088a733e7e235c8b4d7",
+    "failed": 1,
+    "passed": 2465,
+    "reason": "기존 주문 상태 권한 기대와 TASK-082 기한 처리의 차이. 수정 뒤 전체 재검사 통과."
+  },
+  "actualBusinessConsumers": "TASK-083·084·결제·변경·취소·재제작 담당 작업에서 연결",
+  "stagingRuntimeGrants": "기존 Vault/DB 연결 장애로 미확인"
+}
