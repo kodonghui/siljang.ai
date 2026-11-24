@@ -3,6 +3,7 @@ import { requireJson } from "./body";
 import {
   CALENDAR_SETTING_KEYS,
   type CalendarSettingsInput,
+  calendarBookingDate,
   calendarDate,
   isoWeekday,
   parseCalendarDay,
@@ -147,6 +148,16 @@ async function lockDay(db: ShopDb, day: string): Promise<void> {
   await db.run("SELECT d.day FROM calendar_days d WHERE d.shop_id = $1 AND d.day = $2::date FOR UPDATE", [day]);
 }
 
+/** 여러 날의 자리 이동은 날짜순으로 한 번씩 잠근다. 거절 전에는 새 날짜 행을 만들지 않는다. */
+export function lockCalendarDate(db: ShopDb, day: string): Promise<void> {
+  return lockDay(db, day);
+}
+
+/** 날짜 잠금을 잡은 호출자가 자리 저장 직전에만 날짜 행을 준비한다. */
+export function ensureLockedCalendarDay(db: ShopDb, day: string): Promise<void> {
+  return ensureDay(db, day);
+}
+
 /** 자리 확보·해제도 이 순서로 날짜 행을 잠근 뒤 수량을 다시 센다(G3). 트랜잭션 안에서만 부른다. */
 export async function lockCalendarDay(db: ShopDb, day: string): Promise<void> {
   await lockDay(db, day);
@@ -281,7 +292,7 @@ export async function calendarBookingDays(db: ShopDb, now: Date): Promise<Calend
 
 /**
  * 기간/형식은 잠금 전에 확인하고, 판정만으로 날짜 행을 만들지 않는다. 요청의 필드 위치는 호출자가 넘긴다.
- * TASK-082는 다른 업무 조건도 확인하고 open이면 같은 트랜잭션에서 lockCalendarDay로 행을 준비해 자리를 저장한다.
+ * TASK-082는 필요한 날을 날짜순으로 잠그고 calendarSlotStatusAfterLock으로 읽은 뒤, 저장 직전에 ensureLockedCalendarDay를 부른다.
  * 뒤의 조건/저장이 실패하면 트랜잭션을 롤백한다. 추가 수락은 별도로 확인받는다.
  */
 export async function lockedCalendarSlotStatus(
@@ -290,11 +301,25 @@ export async function lockedCalendarSlotStatus(
   now: Date,
   field = "/pickupDay",
 ): Promise<CalendarBookingDay> {
-  const day = calendarDate(rawDay, field);
   const zone = await timeZone(db);
-  const today = toShopLocal(now, zone).date;
-  if (day < today || day > shiftDate(today, 59)) throw fieldError(field, "outside_window");
+  const day = calendarBookingDate(rawDay, toShopLocal(now, zone).date, field);
   await lockDay(db, day);
+  return readSlotStatus(db, day, now, zone);
+}
+
+/** 날짜 잠금을 이미 잡은 자리 처리 전용이다. 잠금을 다시 잡지 않고 최신 개수를 읽는다. */
+export async function calendarSlotStatusAfterLock(
+  db: ShopDb,
+  rawDay: string,
+  now: Date,
+  field = "/pickupDay",
+): Promise<CalendarBookingDay> {
+  const zone = await timeZone(db);
+  const day = calendarBookingDate(rawDay, toShopLocal(now, zone).date, field);
+  return readSlotStatus(db, day, now, zone);
+}
+
+async function readSlotStatus(db: ShopDb, day: string, now: Date, zone: string): Promise<CalendarBookingDay> {
   const calendar = (await calendarRow(db)) as CalendarRow;
   const data = await readDays(db, day, day);
   return bookingStatus(calendar, dayValues(calendar, day, data.days[0], data.holds), now, zone);
