@@ -6,6 +6,7 @@ import {
   requestClosedPickupDay,
 } from "../src/booking-capacity";
 import { eventKeys } from "../src/event-keys";
+import { recordKakaoHandoff } from "../src/kakao-handoff";
 import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
 import { describeDb, newUuid } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -239,6 +240,57 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
     expect(await ask("2026-12-07")).toMatchObject({ status: "open" });
     expect(await ask(DAY)).toMatchObject({ status: "day_off", alternatives: [] });
   });
+  it("끝난 상담도 쓰기 없는 판정은 허용하되 새 확인 건을 요청하면 거절한다", async () => {
+    await fullDay();
+    await isolated.db.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [
+      shop.consultationId,
+      NOW,
+    ]);
+    expect(await request(newUuid(), false)).toMatchObject({
+      kind: "not_requested",
+      availability: { status: "closed" },
+    });
+    await expect(request(newUuid(), true)).rejects.toMatchObject({ code: "not_found" });
+    expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(0);
+  });
+  it("이미 기록한 결과는 상담이 끝난 뒤에도 첫 결과를 반환하고 새 건은 만들지 않는다", async () => {
+    await fullDay();
+    const id = await notice(true),
+      first = await request(id);
+    await isolated.db.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [
+      shop.consultationId,
+      NOW,
+    ]);
+    expect(await request(id, false)).toEqual(first);
+    expect(await request(id, true)).toEqual(first);
+    expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(1);
+  });
+  it.each([
+    [DAY, "day_off", "그날은 휴무예요."],
+    ["2027-03-01", "outside_window", "오늘부터 60일 안의 날짜를 골라 주세요."],
+  ])("%s의 대안이 없으면 다른 날짜를 묻고 사장님 확인을 제안하지 않는다", async (day, status, text) => {
+    await isolated.db.query(
+      "INSERT INTO calendar_days(shop_id,day,closed) SELECT $1,d::date,true FROM generate_series('2026-11-18'::date,'2026-11-18'::date+59,'1 day'::interval) d ON CONFLICT(shop_id,day) DO UPDATE SET closed=true",
+      [shop.shopId],
+    );
+    expect(await ask(day)).toEqual({
+      day,
+      status,
+      alternatives: [],
+      message: `${text} 가까운 날에 자리가 없어요. 다른 날짜를 말씀해 주세요.`,
+    });
+    expect(
+      await requestClosedPickupDay(scoped(), {
+        consultationId: shop.consultationId,
+        sourceMessageId: shop.messageId,
+        day,
+        noticeMessageId: newUuid(),
+        insist: true,
+        now: NOW,
+      }),
+    ).toMatchObject({ kind: "not_requested" });
+    expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(0);
+  });
 
   it("이미 넘긴 같은 요청은 날짜가 다시 열리거나 기간 밖이 되어도 첫 결과를 반환한다", async () => {
     await fullDay();
@@ -264,6 +316,10 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
     const first = await request(await notice(true)),
       sourceId = newUuid();
     await isolated.db.query(
+      "INSERT INTO calendar_days(shop_id,day,closed) SELECT $1,d::date,d::date<>$2::date FROM generate_series('2026-11-18'::date,'2026-11-18'::date+59,'1 day'::interval) d ON CONFLICT(shop_id,day) DO UPDATE SET closed=EXCLUDED.closed",
+      [shop.shopId, DAY],
+    );
+    await isolated.db.query(
       "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES($1,$2,$3,'inbound','customer','text',$4,'같은 날짜 합성 재요청',$5)",
       [sourceId, shop.shopId, shop.consultationId, `synthetic-closed:${sourceId}`, NOW],
     );
@@ -277,6 +333,17 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
     };
     const reused = await requestClosedPickupDay(scoped(), input);
     expect(reused.handoffId).toBe(first.handoffId);
+    expect(reused.availability).toEqual(first.availability);
+    await isolated.db.transaction((tx) =>
+      recordKakaoHandoff(
+        shopDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), tx),
+        shop.consultationId,
+        sourceId,
+        "callback_timeout",
+        NOW,
+      ),
+    );
+    expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(1);
     await isolated.db.query("UPDATE handoffs SET status='closed_no_answer',closed_at=$2 WHERE id=$1", [
       first.handoffId,
       NOW,
@@ -290,6 +357,34 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
     expect((await isolated.db.query("SELECT id FROM owner_alerts WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(
       1,
     );
+  });
+  it("같은 글이 옛 일반 건과 같은 날짜 마감 건에 함께 묶였으면 마감 건을 먼저 반환한다", async () => {
+    await fullDay();
+    const first = await request(await notice(true)),
+      source = newUuid();
+    await isolated.db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked) VALUES($1,$2,$3,'inbound','customer','text',$4,'이전 중복 연결 합성 글')",
+      [source, shop.shopId, shop.consultationId, `synthetic-legacy:${source}`],
+    );
+    await isolated.db.query(
+      "UPDATE owner_tasks SET detail=jsonb_set(detail,'{closedDaySourceIds}',coalesce(detail->'closedDaySourceIds','[]'::jsonb)||jsonb_build_array($3::text)) WHERE shop_id=$1 AND handoff_id=$2",
+      [shop.shopId, first.handoffId, source],
+    );
+    await isolated.db.query(
+      "INSERT INTO handoffs(shop_id,consultation_id,source_message_id,reason,created_at) VALUES($1,$2,$3,'cannot_answer',$4)",
+      [shop.shopId, shop.consultationId, source, new Date(NOW.getTime() - 1000)],
+    );
+    expect(
+      await requestClosedPickupDay(scoped(), {
+        consultationId: shop.consultationId,
+        sourceMessageId: source,
+        day: DAY,
+        noticeMessageId: newUuid(),
+        insist: true,
+        now: NOW,
+      }),
+    ).toMatchObject({ kind: "handed_off", handoffId: first.handoffId });
+    expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(2);
   });
 
   it("다른 사유로 이미 넘긴 수신 글은 결과로 알리고 같은 트랜잭션의 안내 전달 표시를 되돌리지 않는다", async () => {

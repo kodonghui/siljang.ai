@@ -1,12 +1,14 @@
 /** TASK-068. 날짜 판정은 자리를 만들지 않는다. 안내 전달 확정 뒤 마감 질문만 기록한다. */
 import { calendarBookingDays } from "./calendar";
 import { calendarDate } from "./calendar-input";
+import { handoffSourceMatch } from "./handoff-source";
 import { createHandoffTask } from "./handoff-task";
 import { ApiError } from "./problem";
 import { pathId, type ShopDb, type ShopRequestDb } from "./shop-scope";
 
 const CLOSED_TEXT = "그날은 마감됐어요.";
 const NO_ALTERNATIVE = "가까운 날에 자리가 없어요. 사장님께 확인을 요청할 수 있어요.";
+const OTHER_DAY = "가까운 날에 자리가 없어요. 다른 날짜를 말씀해 주세요.";
 export interface PickupAvailability {
   readonly day: string;
   readonly status: "open" | "closed" | "day_off" | "outside_window";
@@ -14,28 +16,42 @@ export interface PickupAvailability {
   readonly message: string;
 }
 
+function availabilityMessage(status: PickupAvailability["status"], alternatives: readonly string[]): string {
+  const text = {
+    open: "그날 주문을 받을 수 있어요.",
+    closed: CLOSED_TEXT,
+    day_off: "그날은 휴무예요.",
+    outside_window: "오늘부터 60일 안의 날짜를 골라 주세요.",
+  }[status];
+  return status === "open" || alternatives.length
+    ? text
+    : `${text} ${status === "closed" ? NO_ALTERNATIVE : OTHER_DAY}`;
+}
+
+function storedAvailability(stored: PickupAvailability | null, day: string): PickupAvailability | null {
+  if (stored?.day !== day || stored.status !== "closed" || !Array.isArray(stored.alternatives)) return null;
+  const alternatives = stored.alternatives.slice(0, 3).map((value) => calendarDate(value, "/pickupDay"));
+  return { day, status: "closed", alternatives, message: availabilityMessage("closed", alternatives) };
+}
+
 async function readAvailability(db: ShopDb, rawDay: string, now: Date): Promise<PickupAvailability> {
   const day = calendarDate(rawDay, "/pickupDay");
   const days = await calendarBookingDays(db, now);
   const desired = days.find((row) => row.day === day);
   if (desired?.status === "open")
-    return { day, status: "open", alternatives: [], message: "그날 주문을 받을 수 있어요." };
+    return { day, status: "open", alternatives: [], message: availabilityMessage("open", []) };
   const distance = (candidate: string) => Math.abs(Date.parse(candidate) - Date.parse(day)) / 86400000;
   const alternatives = days
     .filter((row) => row.status === "open" && distance(row.day) <= 14)
     .sort((a, b) => distance(a.day) - distance(b.day) || a.day.localeCompare(b.day))
     .slice(0, 3)
     .map((row) => row.day);
-  const message = !desired
-    ? "오늘부터 60일 안의 날짜를 골라 주세요."
-    : desired.status === "day_off"
-      ? "그날은 휴무예요."
-      : CLOSED_TEXT;
+  const status = desired?.status ?? "outside_window";
   return {
     day,
-    status: desired?.status ?? "outside_window",
+    status,
     alternatives,
-    message: alternatives.length ? message : `${message} ${NO_ALTERNATIVE}`,
+    message: availabilityMessage(status, alternatives),
   };
 }
 
@@ -77,25 +93,15 @@ async function previousRequest(
     await tx.run<{ id: string; reason: string; requested_day: string | null; availability: PickupAvailability | null }>(
       `SELECT h.id,h.reason,h.requested_day::text,t.detail->'closedDayAvailability' AS availability
      FROM handoffs h LEFT JOIN owner_tasks t ON t.shop_id=$1 AND t.handoff_id=h.id
-     WHERE h.shop_id=$1 AND h.consultation_id=$3 AND (h.source_message_id=$2
-       OR coalesce(t.detail->'closedDaySourceIds','[]'::jsonb) ? $2::text
-       OR h.id IN (SELECT q.handoff_id FROM handoff_questions q WHERE q.shop_id=$1 AND q.message_id=$2)) LIMIT 1`,
-      [sourceId, consultationId],
+     WHERE h.shop_id=$1 AND h.consultation_id=$3 AND ${handoffSourceMatch("$2")}
+     ORDER BY (h.reason='closed_day' AND h.requested_day=$4::date) DESC,h.created_at,h.id LIMIT 1`,
+      [sourceId, consultationId, day],
     )
   ).rows[0];
   if (!row) return null;
   if (row.reason !== "closed_day" || row.requested_day !== day)
     return { kind: "already_handed_off", handoffId: row.id, availability: await readAvailability(tx, day, now) };
-  const stored = row.availability;
-  const availability =
-    stored?.day === day && stored.status === "closed" && Array.isArray(stored.alternatives)
-      ? {
-          day,
-          status: "closed" as const,
-          alternatives: stored.alternatives.slice(0, 3).map((value) => calendarDate(value, "/pickupDay")),
-          message: stored.alternatives.length ? CLOSED_TEXT : `${CLOSED_TEXT} ${NO_ALTERNATIVE}`,
-        }
-      : await readAvailability(tx, day, now);
+  const availability = storedAvailability(row.availability, day) ?? (await readAvailability(tx, day, now));
   return { kind: "handed_off", handoffId: row.id, availability };
 }
 
@@ -124,8 +130,8 @@ export async function recordClosedPickupDayInTransaction(
   const previous = await previousRequest(tx, sourceId, consultationId, day, input.now);
   if (previous) return previous;
   if (["ended", "deleted", "dropped"].includes(consultation.status)) throw new ApiError("not_found");
-  const availability = await readAvailability(tx, input.day, input.now);
-  if (availability.status !== "closed" || !input.insist) return { availability, kind: "not_requested" };
+  const availability = await readAvailability(tx, day, input.now);
+  if (availability.status !== "closed") return { availability, kind: "not_requested" };
   const notice = await tx.found<{ delivery: string; sent_at: Date | null; body_masked: string }>(
     `SELECT delivery,sent_at,body_masked FROM messages WHERE shop_id=$1 AND id=$2 AND consultation_id=$3
      AND direction='outbound' AND author='system' AND kind='text' AND trace_id=$4`,
@@ -139,14 +145,18 @@ export async function recordClosedPickupDayInTransaction(
   )
     return { availability, kind: "waiting_for_notice" };
   const opened = (
-    await tx.run<{ id: string }>(
-      "SELECT id FROM handoffs WHERE shop_id=$1 AND consultation_id=$2 AND reason='closed_day' AND requested_day=$3::date AND status='open'",
+    await tx.run<{ id: string; availability: PickupAvailability | null }>(
+      `SELECT h.id,t.detail->'closedDayAvailability' AS availability FROM handoffs h
+      LEFT JOIN owner_tasks t ON t.shop_id=$1 AND t.handoff_id=h.id
+      WHERE h.shop_id=$1 AND h.consultation_id=$2 AND h.reason='closed_day' AND h.requested_day=$3::date AND h.status='open'`,
       [consultationId, availability.day],
     )
   ).rows[0];
   let handoffId: string;
+  let resultAvailability = availability;
   if (opened) {
     handoffId = opened.id;
+    resultAvailability = storedAvailability(opened.availability, day) ?? availability;
     // 마감 날짜 건에는 일반 추가 질문을 붙이지 않는다. 같은 열린 날짜 건을 쓴다(SPEC-014).
     await tx.run(
       `UPDATE owner_tasks SET detail=jsonb_set(coalesce(detail,'{}'::jsonb),'{closedDaySourceIds}',
@@ -169,7 +179,5 @@ export async function recordClosedPickupDayInTransaction(
     });
   }
   await tx.run("UPDATE consultations SET status='awaiting_owner' WHERE shop_id=$1 AND id=$2", [consultationId]);
-  const result = await previousRequest(tx, sourceId, consultationId, day, input.now);
-  if (result === null) throw new Error("closed day request was not recorded");
-  return result;
+  return { kind: "handed_off", handoffId, availability: resultAvailability };
 }

@@ -4,6 +4,7 @@ import * as conversation from "../src/ai-conversation";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import { FieldCryptoError, fieldCrypto } from "../src/field-crypto";
+import { createHandoffTask } from "../src/handoff-task";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
@@ -476,10 +477,15 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
     ).consultation_id;
     const first = newUuid(),
       second = newUuid(),
+      third = newUuid(),
+      fourth = newUuid(),
+      closed = newUuid(),
       handoff = newUuid();
     for (const [id, text] of [
       [first, "땅콩 알레르기 확인 질문"],
       [second, "우유 알레르기 추가 질문"],
+      [third, "처음 마감 확인 질문"],
+      [fourth, "마감 건을 재사용한 비공개 질문"],
     ])
       await isolated.db.query(
         "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES($1,$2,$3,'inbound','customer','text',$4,$5,$6)",
@@ -493,10 +499,68 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
       "INSERT INTO handoff_questions(shop_id,handoff_id,message_id,reason) VALUES($1,$2,$3,'edibility')",
       [shop.shopId, handoff, second],
     );
+    await isolated.db.query(
+      "INSERT INTO handoffs(id,shop_id,consultation_id,source_message_id,reason,requested_day) VALUES($1,$2,$3,$4,'closed_day','2026-11-28')",
+      [closed, shop.shopId, consultationId, third],
+    );
+    await shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), isolated.db).transaction(
+      (tx) => createHandoffTask(tx, closed, NOW, { closedDaySourceIds: [third, fourth] }),
+    );
     await consume(job, ai);
     const input = JSON.stringify(required(ai.call.mock.calls[0])[0].messages);
     expect(input).toContain("현재 안전한 합성 질문");
     expect(input).not.toContain("땅콩");
     expect(input).not.toContain("우유");
+    expect(input).not.toContain("처음 마감 확인");
+    expect(input).not.toContain("재사용한 비공개");
+  });
+  it("기존 마감 건에 재사용으로 묶인 수신 콜백은 모델을 다시 부르지 않는다", async () => {
+    const ai = model();
+    await send(newUuid(), "이미 마감 건에 묶인 합성 질문");
+    const job = required(jobs[0]);
+    const row = required(
+      (await isolated.db.query("SELECT consultation_id FROM messages WHERE id=$1", [job.messageId])).rows[0],
+    );
+    const first = newUuid(),
+      handoff = newUuid();
+    await isolated.db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked) VALUES($1,$2,$3,'inbound','customer','text',$4,'처음 마감 요청')",
+      [first, shop.shopId, row.consultation_id, `synthetic-closed:${first}`],
+    );
+    await isolated.db.query(
+      "INSERT INTO handoffs(id,shop_id,consultation_id,source_message_id,reason,requested_day) VALUES($1,$2,$3,$4,'closed_day','2026-11-28')",
+      [handoff, shop.shopId, row.consultation_id, first],
+    );
+    await shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), isolated.db).transaction(
+      (tx) => createHandoffTask(tx, handoff, NOW, { closedDaySourceIds: [first, job.messageId] }),
+    );
+    await consume(job, ai);
+    expect(ai.call).not.toHaveBeenCalled();
+    expect(
+      (
+        await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1 AND consultation_id=$2", [
+          shop.shopId,
+          row.consultation_id,
+        ])
+      ).rows,
+    ).toEqual([{ id: handoff }]);
+  });
+  it("다른 가게의 내부 연결 목록은 내 수신 글을 AI 문맥에서 빼지 못한다", async () => {
+    const ai = model();
+    await send(newUuid(), "내 가게의 정상 합성 질문");
+    const job = required(jobs[0]),
+      other = await createShop(isolated.db, "합성 외부 연결 가게"),
+      handoff = newUuid();
+    await issueTestBookingLink(isolated.db, other);
+    await isolated.db.query(
+      "INSERT INTO handoffs(id,shop_id,consultation_id,source_message_id,reason,requested_day) VALUES($1,$2,$3,$4,'closed_day','2026-11-28')",
+      [handoff, other.shopId, other.consultationId, other.messageId],
+    );
+    await shopRequestDb(createShopScope(other.shopId, { kind: "job", job: "kakao_callback" }), isolated.db).transaction(
+      (tx) => createHandoffTask(tx, handoff, NOW, { closedDaySourceIds: [job.messageId] }),
+    );
+    await consume(job, ai);
+    expect(ai.call).toHaveBeenCalledOnce();
+    expect(JSON.stringify(required(ai.call.mock.calls[0])[0].messages)).toContain("내 가게의 정상 합성 질문");
   });
 });
