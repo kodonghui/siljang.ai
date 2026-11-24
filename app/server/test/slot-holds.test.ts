@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { calendarBookingDays } from "../src/calendar";
 import { shiftDate } from "../src/calendar-input";
+import { pgConnector } from "../src/db";
+import { Secret } from "../src/settings";
 import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
 import {
   applyDifferenceSlotInTransaction,
@@ -8,12 +11,13 @@ import {
   finishOrderSlot,
   fixPaidOrderSlot,
   holdOrderSlot,
+  holdOrderSlotInTransaction,
   moveOrderSlotInTransaction,
   releaseCancelledOrderSlots,
   reserveRemakeSlot,
 } from "../src/slot-holds";
 import { shopLocalToUtc, toShopLocal } from "../src/time";
-import { describeDb, newUuid } from "./support/db";
+import { describeDb, newUuid, TEST_DATABASE_URL, testDb } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, type ShopFixture } from "./support/shops";
 
@@ -23,8 +27,19 @@ interface Order {
 }
 describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture, now: Date, day: string;
+  const role = `slot082_${newUuid().replaceAll("-", "")}`;
+  let runtimeUrl: string;
   beforeAll(async () => {
     isolated = await isolatedTestDb();
+    await isolated.db.query(`CREATE ROLE "${role}" LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+    const grants = readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8");
+    await isolated.db.query(grants.replaceAll(':"runtime_role"', `"${role}"`));
+    const name = (await isolated.db.query<{ name: string }>("SELECT current_database() AS name")).rows[0]?.name;
+    const url = new URL(TEST_DATABASE_URL);
+    url.pathname = `/${name}`;
+    url.username = role;
+    url.password = "";
+    runtimeUrl = url.toString();
   }, 30000);
   beforeEach(async () => {
     shop = await createShop(isolated.db, "합성 자리 가게");
@@ -53,6 +68,12 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
   });
   afterAll(async () => {
     await isolated?.close();
+    const admin = testDb();
+    try {
+      await admin.query(`DROP ROLE IF EXISTS "${role}"`);
+    } finally {
+      await admin.close();
+    }
   });
   const scope = (db = isolated.db, owner = false) =>
     shopRequestDb(
@@ -215,6 +236,107 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
   async function held() {
     return holdOrderSlot(scope(), { orderId: shop.orderId, paymentRequestId: shop.paymentRequestId, now });
   }
+  it("제한 역할에서도 첫 자리 확보와 기한 해제가 한 트랜잭션으로 됨", async () => {
+    const runtime = pgConnector(new Secret(runtimeUrl));
+    try {
+      expect((await holdOrderSlot(scope(runtime), { ...shop, now })).kind).toBe("held");
+      expect((await expireOrderSlot(scope(runtime), { ...shop, now: new Date(now.getTime() + 7200000) })).kind).toBe(
+        "expired",
+      );
+    } finally {
+      await runtime.close();
+    }
+  });
+  it("제한 역할에서도 차액 자리만 잡고 기한에 풀 수 있음", async () => {
+    const change = await differenceDate(),
+      runtime = pgConnector(new Secret(runtimeUrl));
+    try {
+      const input = { orderId: shop.orderId, paymentRequestId: change.paymentRequestId, now };
+      expect((await holdOrderSlot(scope(runtime), input)).kind).toBe("held");
+      expect((await expireOrderSlot(scope(runtime), { ...input, now: new Date(now.getTime() + 7200000) })).kind).toBe(
+        "expired",
+      );
+    } finally {
+      await runtime.close();
+    }
+  });
+  it("제한 역할에서도 확정·종료와 저장된 추가 수락 사용이 됨", async () => {
+    await isolated.db.query("UPDATE calendar_days SET closed=true WHERE shop_id=$1 AND day=$2", [shop.shopId, day]);
+    await dayApproval();
+    const runtime = pgConnector(new Secret(runtimeUrl));
+    try {
+      expect((await holdOrderSlot(scope(runtime), { ...shop, now })).kind).toBe("held");
+      await markPaid();
+      expect((await fixPaidOrderSlot(scope(runtime), { ...shop, now })).kind).toBe("fixed");
+      expect(
+        (
+          await finishOrderSlot(scope(runtime), {
+            orderId: shop.orderId,
+            now: shopLocalToUtc(day, "15:00", "Asia/Seoul"),
+          })
+        ).kind,
+      ).toBe("done");
+    } finally {
+      await runtime.close();
+    }
+  });
+  it("자리·주문·결제·변경·추가 수락의 식별자·기한·삭제 권한을 열지 않음", async () => {
+    const checks = [
+      ["slot_holds", "shop_id"],
+      ["slot_holds", "day"],
+      ["slot_holds", "order_id"],
+      ["slot_holds", "hold_key"],
+      ["payment_requests", "order_id"],
+      ["payment_requests", "due_at"],
+      ["payment_requests", "amount"],
+      ["orders", "amount"],
+      ["orders", "version"],
+      ["change_requests", "changes"],
+      ["handoffs", "day_decision"],
+      ["handoffs", "day_accept_expires_at"],
+    ];
+    for (const [table, column] of checks)
+      expect(
+        (
+          await isolated.db.query<{ allowed: boolean }>("SELECT has_column_privilege($1,$2,$3,'UPDATE') AS allowed", [
+            role,
+            `public.${table}`,
+            column,
+          ])
+        ).rows,
+      ).toEqual([{ allowed: false }]);
+    for (const table of ["slot_holds", "payment_requests", "orders", "change_requests", "handoffs"])
+      expect(
+        (
+          await isolated.db.query<{ allowed: boolean }>("SELECT has_table_privilege($1,$2,'DELETE') AS allowed", [
+            role,
+            `public.${table}`,
+          ])
+        ).rows,
+      ).toEqual([{ allowed: false }]);
+  });
+  it("결제 안내 대기를 남기기 전에 같은 트랜잭션 안에서 자리부터 잡힘", async () => {
+    await isolated.db.transaction(async (raw) => {
+      const tx = shopDb(scope().scope, raw);
+      expect((await holdOrderSlotInTransaction(tx, { ...shop, now })).kind).toBe("held");
+      expect(
+        (await tx.run("SELECT status FROM slot_holds WHERE shop_id=$1 AND order_id=$2", [shop.orderId])).rows,
+      ).toEqual([{ status: "held" }]);
+      await raw.query(
+        "INSERT INTO notifications(shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body) VALUES($1,$2,$3,$4,'payment_request',$5,'synthetic_payment','합성 결제 안내')",
+        [
+          shop.shopId,
+          shop.customerId,
+          shop.consultationId,
+          shop.orderId,
+          `notice:${shop.paymentRequestId}:payment_request`,
+        ],
+      );
+    });
+    expect((await isolated.db.query("SELECT status FROM notifications WHERE shop_id=$1", [shop.shopId])).rows).toEqual([
+      { status: "pending" },
+    ]);
+  });
   async function expire(at: Date) {
     return expireOrderSlot(scope(), { orderId: shop.orderId, paymentRequestId: shop.paymentRequestId, now: at });
   }

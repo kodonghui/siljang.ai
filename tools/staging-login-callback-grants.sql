@@ -77,6 +77,21 @@ GRANT SELECT, INSERT, UPDATE ON calendar_days TO :"runtime_role";
 GRANT SELECT (id, shop_id, day, order_id, status, overbooked) ON slot_holds TO :"runtime_role";
 -- 저장 전 주문 확인과 미발송 안내의 날짜 재계산에 필요한 열만 읽는다.
 GRANT SELECT (pickup_day, pickup_at) ON orders TO :"runtime_role";
+-- TASK-082: 자리 처리의 잠금 번호·수락·재제작 관계와 결제 기한만 읽는다.
+GRANT SELECT (accepted_at, lock_version, remake_of_order_id), UPDATE (status, lock_version) ON orders TO :"runtime_role";
+GRANT SELECT (kind, status, due_at, due_cap_at, claimed_at, version, change_request_id),
+  UPDATE (status, expired_at, version) ON payment_requests TO :"runtime_role";
+GRANT SELECT (base_version, lock_version, new_pickup_at, amount_delta, status),
+  UPDATE (status, closed_at, lock_version) ON change_requests TO :"runtime_role";
+GRANT SELECT (payment_request_id, hold_key),
+  INSERT (shop_id, day, order_id, payment_request_id, hold_key, status, overbooked, fixed_at, created_at),
+  UPDATE (status, fixed_at, released_at, release_reason, done_at) ON slot_holds TO :"runtime_role";
+-- 추가 수락을 쓴 주문 연결만 남긴다. 수락 판정·기한 변경·행 삭제는 열지 않는다.
+GRANT UPDATE (day_used_order_id) ON handoffs TO :"runtime_role";
+-- 주문 상태를 쓸 때 커밋의 기존 제약 트리거가 제작 시각과 확인된 결제를 읽는다.
+GRANT SELECT (confirmed_payment_id) ON orders TO :"runtime_role";
+GRANT SELECT (no_pickup_at) ON productions TO :"runtime_role";
+GRANT SELECT (id, voided_at) ON payments TO :"runtime_role";
 GRANT SELECT (shop_id, order_id, handed_over_at) ON productions TO :"runtime_role";
 -- 이미 보낸 안내·시도 횟수·본문은 바꾸지 않는다.
 GRANT UPDATE (scheduled_for, next_attempt_at) ON notifications TO :"runtime_role";
