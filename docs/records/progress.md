@@ -6,6 +6,10 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-24 20:09 KST · TASK-028 전송 고침 전체2536개와 빌드 통과
+
+TASK-028 전송 고침의 새 빈 PostgreSQL38개 이행·서버125파일2536개·웹65파일1570개·Vite698ms·두 Worker 빌드가 모두 통과했습니다. [검사 원본과 런타임 비교](kakao-worker-fetch/2026-11-24/checks.md)에 근거를 모았고 Workers의 지원되는 정책을 인계 문서에 적었습니다. 실제 SQL 원장/권한 적용은 학원컴 Aside에서 진행 중이고 실제 카카오·AI·큐 흐름은 아직 미확인입니다. 다음은 현재 head CI·검토·병합·main 검증입니다.
+
 ### 2026-11-24 20:01 KST · TASK-028 Workers 전송 고침과140개 통과
 
 TASK-028 콜백·이벤트 전송을 Workers가 지원하는 manual로 고쳤습니다. 관련5파일140개·타입·형식 다음 lint가 통과했고307의 외부 주소로 답/키를 보내지 않는 동작을 확인했습니다. [고침과 검사](kakao-worker-fetch/2026-11-24/checks.md)에 근거를 모았으며 다음은 새 빈 PostgreSQL 전체 시험·빌드·CI·검토·main 배포입니다. 실제 유료 Event API 발신은 하지 않았습니다.

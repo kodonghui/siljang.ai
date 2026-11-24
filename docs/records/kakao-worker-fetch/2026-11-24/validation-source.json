@@ -1,0 +1,35 @@
+{
+  "base": "f6edb6d8745ce28df35fefc66d090961064ea3dc",
+  "sourceCommit": "b9afbf3658a108ea617106ce843a9e22f7e7c029",
+  "sourceCommitKind": "local_commit",
+  "publicSource": "05b6bd156ec2c6a203223e5a7d2929cdc0642c67",
+  "tree": "567b21dfc96a259cfabd12f71349d6d6b30fee8b",
+  "freshDatabase": true,
+  "migrations": 38,
+  "server": {
+    "files": 125,
+    "tests": 2536
+  },
+  "web": {
+    "files": 65,
+    "tests": 1570
+  },
+  "build": {
+    "vite": "698ms",
+    "workers": 2
+  },
+  "exit": {
+    "tests": 0,
+    "build": 0,
+    "typecheck": 0,
+    "lint": 0
+  },
+  "targeted": {
+    "files": 5,
+    "tests": 140
+  },
+  "runtimeUnverified": [
+    "actual_kakao_callback_model_queue_flow"
+  ],
+  "externalProviderCalls": 0
+}
