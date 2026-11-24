@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-24T13:52:52.035Z",
+  "photoObservedAtKst": "2026-11-24T22:50:42+09:00",
+  "source": {
+    "ownerShopHttp": 200,
+    "syntheticShopConfirmed": true,
+    "actualSignedAddressProvided": true,
+    "addressReusedFromEarlierMemory": false
+  },
+  "photoGet": {
+    "http": 200,
+    "imageMime": true,
+    "bodyBytesPositive": true,
+    "noStore": false
+  },
+  "expiration": {
+    "known": true,
+    "expiresAtKst": "2026-11-24T23:05:41+09:00",
+    "nextCheckAtKst": "2026-11-24T23:05:51+09:00",
+    "expiredAtObservation": false,
+    "expiryRejectionVerified": false,
+    "waitedForExpiry": false
+  },
+  "screens": [
+    {
+      "path": "/owner/shop",
+      "title": "가게 설정",
+      "sectionTitles": [
+        "사업자 정보"
+      ],
+      "licensePendingUiConfirmed": null
+    },
+    {
+      "path": "/owner/price-list",
+      "title": "가격표와 도안",
+      "sectionTitles": [
+        "옵션 규칙",
+        "도안"
+      ],
+      "priceListUnsetUiConfirmed": null
+    }
+  ],
+  "stateCheck": {
+    "observedAtKst": "2026-11-24T22:52:16+09:00",
+    "ownerShopHttp": 200,
+    "syntheticShopConfirmed": true,
+    "licensePending": true
+  },
+  "verificationScope": {
+    "readOnly": true,
+    "onlyOwnSyntheticPhoto": true,
+    "signedAddressRetainedOnlyInRepl": true,
+    "addressOrQueryRecorded": false,
+    "photoContentRecorded": false,
+    "settingsSaved": false,
+    "uploadPerformed": false,
+    "newKeyCreated": false,
+    "existingSecretReadOrRotated": false,
+    "expiryTestStillPending": true
+  }
+}
