@@ -1,8 +1,10 @@
 /** TASK-082: 자리 수를 다시 센 날짜 잠금 안에서 같은 주문·결제 안내의 자리를 한 번만 잡습니다. */
 import { lockCalendarDay, lockedCalendarSlotStatus } from "./calendar";
+import { shiftDate } from "./calendar-input";
 import { eventKeys } from "./event-keys";
 import { fieldError } from "./problem";
 import { pathId, type ShopDb, type ShopRequestDb } from "./shop-scope";
+import { toShopLocal } from "./time";
 
 export interface OrderSlotInput {
   readonly orderId: string;
@@ -28,6 +30,7 @@ interface Order {
   pickup_day: string;
   pickup_at: Date;
   lock_version: number;
+  version: number;
 }
 interface Payment {
   version: number;
@@ -102,7 +105,7 @@ async function lockedSlotOrder(db: ShopDb, input: OrderSlotInput): Promise<Order
   )
     throw fieldError("/baseRevision", "bad_format");
   const order = await db.found<Order>(
-    "SELECT id,kind,status,accepted_at,pickup_day::text,pickup_at,lock_version FROM orders WHERE shop_id=$1 AND id=$2 AND personal_data_purged_at IS NULL FOR UPDATE",
+    "SELECT id,kind,status,accepted_at,pickup_day::text,pickup_at,lock_version,version FROM orders WHERE shop_id=$1 AND id=$2 AND personal_data_purged_at IS NULL FOR UPDATE",
     [id],
   );
   return input.expectedOrderRevision !== undefined && order.lock_version !== input.expectedOrderRevision ? null : order;
@@ -244,4 +247,93 @@ export async function releaseCancelledOrderSlotsInTransaction(
   );
   if (updated.rowCount !== slots.length) throw new Error("slot changed after order lock");
   return { kind: "released" };
+}
+
+export interface ChangeSlotInput extends OrderSlotInput {
+  readonly changeRequestId: string;
+  readonly expectedChangeRevision?: number;
+  readonly ownerConfirmed?: boolean;
+}
+export interface ChangeSlotResult {
+  readonly kind: "fixed" | "existing" | "day_full" | "confirmation_required" | "stale" | "not_applicable";
+  readonly holdId?: string;
+  readonly day?: string;
+  readonly reason?: "closed" | "day_off";
+}
+interface Change {
+  id: string;
+  base_version: number;
+  lock_version: number;
+  new_pickup_at: Date | null;
+  amount_delta: number | null;
+  status: string;
+}
+async function lockedChange(db: ShopDb, orderId: string, changeId: string, expected?: number): Promise<Change | null> {
+  if (db.scope.via.kind === "owner" && expected === undefined) throw fieldError("/baseRevision", "required");
+  if (expected !== undefined && (!Number.isSafeInteger(expected) || expected < 1))
+    throw fieldError("/baseRevision", "bad_format");
+  const change = await db.found<Change>(
+    "SELECT id,base_version,lock_version,new_pickup_at,amount_delta,status FROM change_requests WHERE shop_id=$1 AND id=$2 AND order_id=$3 FOR UPDATE",
+    [pathId(changeId), orderId],
+  );
+  return expected !== undefined && change.lock_version !== expected ? null : change;
+}
+async function pickupDay(db: ShopDb, pickup: Date, now: Date): Promise<string> {
+  const zone = (await db.found<{ time_zone: string }>("SELECT time_zone FROM shops WHERE id=$1")).time_zone;
+  const day = toShopLocal(pickup, zone).date,
+    today = toShopLocal(now, zone).date;
+  if (pickup <= now || day < today || day > shiftDate(today, 59)) throw fieldError("/pickupDay", "out_of_range");
+  return day;
+}
+async function lockSlotDays(db: ShopDb, days: readonly string[]): Promise<void> {
+  for (const day of [...new Set(days)].sort()) await lockCalendarDay(db, day);
+}
+/** 호출자는 변경 반영·주문 내용·버전을 같은 트랜잭션에서 저장합니다. 이 함수만 따로 커밋하지 않습니다. */
+export async function moveOrderSlotInTransaction(db: ShopDb, input: ChangeSlotInput): Promise<ChangeSlotResult> {
+  const order = await lockedSlotOrder(db, input);
+  if (order === null) return { kind: "stale" };
+  const change = await lockedChange(db, order.id, input.changeRequestId, input.expectedChangeRevision);
+  if (change === null || change.base_version !== order.version) return { kind: "stale" };
+  if (
+    order.status !== "confirmed" ||
+    change.status !== "requested" ||
+    change.amount_delta === null ||
+    change.amount_delta > 0 ||
+    change.new_pickup_at === null
+  )
+    return { kind: "not_applicable" };
+  const key = eventKeys.hold(order.id, change.id);
+  const existing = (
+    await db.run<{ id: string; day: string }>("SELECT id,day::text FROM slot_holds WHERE shop_id=$1 AND hold_key=$2", [
+      key,
+    ])
+  ).rows[0];
+  if (existing) return { kind: "existing", holdId: existing.id, day: existing.day };
+  const old = (
+    await db.run<{ id: string; day: string }>(
+      "SELECT id,day::text FROM slot_holds WHERE shop_id=$1 AND order_id=$2 AND status='fixed'",
+      [order.id],
+    )
+  ).rows[0];
+  if (!old || old.day !== order.pickup_day) return { kind: "not_applicable" };
+  const day = await pickupDay(db, change.new_pickup_at, input.now);
+  if (day === old.day) return { kind: "existing", holdId: old.id, day };
+  await lockSlotDays(db, [old.day, day]);
+  const availability = await lockedCalendarSlotStatus(db, day, input.now);
+  const overbooked = availability.status !== "open";
+  if (overbooked) {
+    if (db.scope.via.kind !== "owner") return { kind: "day_full", day };
+    if (input.ownerConfirmed !== true)
+      return { kind: "confirmation_required", day, reason: availability.status as "closed" | "day_off" };
+  }
+  const released = await db.run(
+    "UPDATE slot_holds SET status='released',released_at=$3,release_reason='date_changed' WHERE shop_id=$1 AND id=$2 AND status='fixed'",
+    [old.id, input.now],
+  );
+  if (released.rowCount !== 1) throw new Error("slot changed after order lock");
+  const saved = await db.found<{ id: string }>(
+    "INSERT INTO slot_holds(shop_id,day,order_id,hold_key,status,overbooked,fixed_at,created_at) VALUES($1,$2,$3,$4,'fixed',$5,$6,$6) RETURNING id",
+    [day, order.id, key, overbooked, input.now],
+  );
+  return { kind: "fixed", holdId: saved.id, day };
 }
