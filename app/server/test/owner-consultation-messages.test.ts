@@ -342,7 +342,7 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     expect(JSON.stringify(logs)).not.toContain(sealed);
   });
   it("계약의100000자를 지킬 때 마지막 이모지까지 보존함", async () => {
-    const text = "가".repeat(99999) + "🙂";
+    const text = `${"가".repeat(99999)}🙂`;
     await isolated.db.query("UPDATE messages SET body_masked=$2 WHERE id=$1", [shop.messageId, text]);
     const body = await page(await call());
     expect(body.items[0]?.text).toBe(text);

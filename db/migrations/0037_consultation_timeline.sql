@@ -19,8 +19,12 @@ WITH prior AS (
   SELECT id, source, row_number() OVER (ORDER BY created_at, source, id) AS seq FROM prior
 )
 UPDATE notifications n SET timeline_seq = r.seq FROM ranked r WHERE r.source = 1 AND r.id = n.id;
-SELECT setval('consultation_timeline_seq', coalesce(max(n), 1), max(n) IS NOT NULL)
-FROM (SELECT max(timeline_seq) AS n FROM messages UNION ALL SELECT max(timeline_seq) AS n FROM notifications) all_sequences;
+DO $timeline$
+BEGIN
+  PERFORM setval('consultation_timeline_seq', coalesce(max(n), 1), max(n) IS NOT NULL)
+  FROM (SELECT max(timeline_seq) AS n FROM messages UNION ALL SELECT max(timeline_seq) AS n FROM notifications) all_sequences;
+END;
+$timeline$;
 ALTER TABLE messages ALTER COLUMN timeline_seq SET DEFAULT nextval('consultation_timeline_seq'), ALTER COLUMN timeline_seq SET NOT NULL;
 ALTER TABLE notifications ALTER COLUMN timeline_seq SET DEFAULT nextval('consultation_timeline_seq'), ALTER COLUMN timeline_seq SET NOT NULL;
 ALTER TABLE messages ADD CONSTRAINT messages_timeline_seq_check CHECK (timeline_seq >= 1);

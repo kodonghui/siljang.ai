@@ -253,7 +253,7 @@ interface Sent {
 }
 
 async function send(env: CrossShopEnv, method: Method, req: CrossShopRequest): Promise<Sent> {
-  const headers: Record<string, string> = { ...env.as(env.a) };
+  const headers: Record<string, string> = { ...env.as(env.a), "cf-connecting-ip": "203.0.113.24" };
   const requestKey = method === "GET" ? null : newRequestKey();
   if (requestKey !== null) headers[REQUEST_KEY_HEADER] = requestKey;
   const init: RequestInit = { method, headers };
