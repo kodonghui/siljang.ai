@@ -252,6 +252,17 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
       code: "not_found",
     });
   });
+  it("직접 친 표시자와 실제 번호를 함께 받아도 AI에는 인용과 마스킹을 구별해 보낸다", async () => {
+    const ai = model();
+    await send(newUuid(), "직접 쓴 [전화번호1] 연락처 010-1234-5678");
+    const job = required(jobs[0]);
+    await consume(job, ai);
+    const messages = required(ai.call.mock.calls[0])[0].messages;
+    expect(messages.find((message) => message.role === "user")?.content).toBe(
+      "직접 쓴 ［전화번호1］ 연락처 [전화번호1]",
+    );
+    expect(JSON.stringify(messages)).not.toContain("010-1234-5678");
+  });
   it("수신한 카드번호와 주민번호는 모델에서 가리고 원본을 보관하지 않는다", async () => {
     const ai = model();
     await send(newUuid(), "합성 카드 4111-1111-1111-1111 주민번호 900101-1234567");

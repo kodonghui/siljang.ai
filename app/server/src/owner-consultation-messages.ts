@@ -1,20 +1,21 @@
 /** API-043: 사장님에게만 전화·계좌를 복원하고 대화·손님 안내를 같은 페이지로 읽는다. */
-import { fromBase64Url, toBase64Url } from "./encoding";
-import { openStoredMaskedValue, type StoredMaskedValue } from "./masked-values";
+import {
+  type ConsultationCursor,
+  ConsultationCursorError,
+  openConsultationCursor,
+  sealConsultationCursor,
+} from "./consultation-cursor";
+import { FieldCryptoError } from "./field-crypto";
+import { maskedValuePlaceholderPattern, openStoredMaskedValue, type StoredMaskedValue } from "./masked-values";
 import { ApiError, fieldError } from "./problem";
 import type { AccessRequest } from "./routes";
 import { toShopIso } from "./time";
 
-const PLACEHOLDER = /\[(?:전화번호|계좌번호|카드번호|긴숫자)[0-9]{1,3}\]/g;
-const MAX_I64 = 9223372036854775807n;
-interface PageSnapshot {
-  at: string;
-  ceiling: string;
-}
 interface PageInput {
   limit: number;
-  after: { at: string; sequence: string; snapshot: PageSnapshot } | null;
+  token: string | null;
 }
+
 interface Entry {
   id: string;
   at: Date;
@@ -27,69 +28,28 @@ interface Entry {
   delivery: string | null;
   source: string;
 }
-function input(query: Record<string, string>, consultationId: string): PageInput {
+function input(query: Record<string, string>): PageInput {
   if (query.limit !== undefined && !/^-?[0-9]+$/.test(query.limit)) throw fieldError("query:limit", "bad_format");
   const limit = query.limit === undefined ? 20 : Number(query.limit);
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw fieldError("query:limit", "out_of_range");
-  let after: PageInput["after"] = null;
-  if (query.cursor !== undefined) {
-    try {
-      if (query.cursor.length < 1 || query.cursor.length > 200) throw new Error();
-      const raw = fromBase64Url(query.cursor);
-      if (raw === null || toBase64Url(raw) !== query.cursor) throw new Error();
-      const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(raw));
-      if (!Array.isArray(value) || value.length !== 6 || value[0] !== 2 || value[1] !== consultationId)
-        throw new Error();
-      const [, , at, sequence, snapshotAt, ceiling] = value;
-      if (
-        typeof at !== "string" ||
-        typeof sequence !== "string" ||
-        typeof snapshotAt !== "string" ||
-        typeof ceiling !== "string" ||
-        !/^-?[0-9]{1,19}$/.test(at) ||
-        !/^-?[0-9]{1,19}$/.test(snapshotAt) ||
-        !/^[1-9][0-9]{0,18}$/.test(sequence) ||
-        !/^[1-9][0-9]{0,18}$/.test(ceiling)
-      )
-        throw new Error();
-      if (
-        BigInt(at) < -MAX_I64 - 1n ||
-        BigInt(at) > MAX_I64 ||
-        BigInt(snapshotAt) < -MAX_I64 - 1n ||
-        BigInt(snapshotAt) > MAX_I64 ||
-        BigInt(sequence) > MAX_I64 ||
-        BigInt(ceiling) > MAX_I64 ||
-        BigInt(sequence) > BigInt(ceiling)
-      )
-        throw new Error();
-      after = { at, sequence, snapshot: { at: snapshotAt, ceiling } };
-    } catch {
-      throw fieldError("query:cursor", "bad_format");
-    }
-  }
-  return { limit, after };
-}
-function cursor(consultationId: string, row: Entry, snapshot: PageSnapshot): string {
-  return toBase64Url(
-    new TextEncoder().encode(
-      JSON.stringify([2, consultationId, row.cursor_at, row.timeline_seq, snapshot.at, snapshot.ceiling]),
-    ),
-  );
+  if (query.cursor !== undefined && (query.cursor.length < 1 || query.cursor.length > 200))
+    throw fieldError("query:cursor", "bad_format");
+  return { limit, token: query.cursor ?? null };
 }
 
 function displayText(body: string | null, replacements: ReadonlyMap<string, string>): string | null {
   if (body === null) return null;
-  const text = body.replace(PLACEHOLDER, (key) => replacements.get(key) ?? key);
+  const text = body.replace(maskedValuePlaceholderPattern(), (key) => replacements.get(key) ?? key);
   return text.length <= 100000 ? text : Array.from(text).slice(0, 100000).join("");
 }
 const ENTRIES = `WITH entries AS (
   SELECT m.id,m.created_at AS at,m.timeline_seq,m.direction,m.author,m.kind,m.body_masked AS body,m.delivery,'message'::text AS source
   FROM messages m WHERE m.shop_id=$1 AND m.consultation_id=$2 AND m.timeline_seq <= $7::bigint
   UNION ALL
-  SELECT n.id,CASE WHEN (extract(epoch FROM n.sent_at)*1000000)::bigint <= $6::bigint THEN n.sent_at ELSE n.created_at END AS at,n.timeline_seq,'outbound'::text,
+  SELECT n.id,CASE WHEN txid_visible_in_snapshot(n.delivery_txid,$6::txid_snapshot) THEN coalesce(n.sent_at,n.created_at) ELSE n.created_at END AS at,n.timeline_seq,'outbound'::text,
     CASE WHEN n.kind='owner_reply' THEN 'owner' ELSE 'notice' END,'text'::text,n.body,
-    CASE WHEN (extract(epoch FROM n.sent_at)*1000000)::bigint > $6::bigint AND n.status='delivered_on_reply' THEN 'deferred'
-      WHEN (extract(epoch FROM n.sent_at)*1000000)::bigint > $6::bigint AND n.status='sent' THEN 'sending'
+    CASE WHEN NOT txid_visible_in_snapshot(n.delivery_txid,$6::txid_snapshot) AND n.status='delivered_on_reply' THEN 'deferred'
+      WHEN NOT txid_visible_in_snapshot(n.delivery_txid,$6::txid_snapshot) AND n.status='sent' THEN 'sending'
       ELSE CASE n.status WHEN 'sent' THEN 'event_api' WHEN 'deferred' THEN 'deferred'
       WHEN 'delivered_on_reply' THEN 'delivered_later' WHEN 'dropped' THEN 'failed' ELSE 'sending' END END,'notice'::text
   FROM notifications n WHERE n.shop_id=$1 AND n.consultation_id=$2 AND n.timeline_seq <= $7::bigint
@@ -104,9 +64,20 @@ ORDER BY p.at,p.timeline_seq LIMIT $5`;
 export async function listConsultationMessages(r: AccessRequest): Promise<Response> {
   if (r.scope.via.kind !== "owner") throw new ApiError("not_found");
   const consultationId = r.pathId("consultationId"),
-    filter = input(r.req.query(), consultationId);
+    filter = input(r.req.query());
   const ownerId = r.scope.via.ownerId,
     now = r.services.now();
+  let after: ConsultationCursor | null = null;
+  if (filter.token !== null) {
+    const fields = r.services.fieldCrypto();
+    try {
+      after = await openConsultationCursor(fields, r.scope.shopId, consultationId, filter.token);
+    } catch (error) {
+      if (error instanceof ConsultationCursorError || error instanceof FieldCryptoError)
+        throw fieldError("query:cursor", "bad_format");
+      throw error;
+    }
+  }
   return r.read(async (db) => {
     const shop = await db.found<{ time_zone: string }>("SELECT time_zone FROM shops WHERE id=$1 AND owner_id=$2", [
       ownerId,
@@ -118,11 +89,11 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
     const base = { consultationId, status: consultation.status, customerChannelFriend: consultation.channel_friend };
     if (consultation.status === "deleted")
       return { body: { ...base, items: [], nextCursor: null }, subjects: [consultation.customer_id] };
-    // 페이지 중 전달된 안내의 정렬 키가 바뀌지 않도록 첫 시각과 삽입 상한을 커서에 둔다.
+    // 페이지 중 전달된 안내의 정렬 키가 바뀌지 않도록 첫 가시성과 삽입 상한을 커서에 둔다.
     const snapshot =
-      filter.after?.snapshot ??
-      (await db.found<PageSnapshot>(
-        `SELECT (extract(epoch FROM transaction_timestamp())*1000000)::bigint::text AS at,
+      after?.snapshot ??
+      (await db.found<{ transaction: string; ceiling: string }>(
+        `SELECT txid_current_snapshot()::text AS transaction,
          coalesce(max(timeline_seq),0)::text AS ceiling FROM (
          SELECT m.timeline_seq FROM messages m WHERE m.shop_id=$1 AND m.consultation_id=$2
          UNION ALL SELECT n.timeline_seq FROM notifications n WHERE n.shop_id=$1 AND n.consultation_id=$2) initial_entries`,
@@ -131,16 +102,20 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
     const found = (
       await db.run<Entry>(ENTRIES, [
         consultationId,
-        filter.after?.at ?? null,
-        filter.after?.sequence ?? null,
+        after?.at ?? null,
+        after?.sequence ?? null,
         filter.limit + 1,
-        snapshot.at,
+        snapshot.transaction,
         snapshot.ceiling,
       ])
     ).rows;
     const rows = found.slice(0, filter.limit),
       tokens = [
-        ...new Set(rows.filter((x) => x.source === "message").flatMap((x) => x.body?.match(PLACEHOLDER) ?? [])),
+        ...new Set(
+          rows
+            .filter((x) => x.source === "message")
+            .flatMap((x) => x.body?.match(maskedValuePlaceholderPattern()) ?? []),
+        ),
       ];
     const values = tokens.length
       ? (
@@ -192,7 +167,16 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
       body: {
         ...base,
         items,
-        nextCursor: found.length > filter.limit && last ? cursor(consultationId, last, snapshot) : null,
+        nextCursor:
+          found.length > filter.limit && last
+            ? await sealConsultationCursor(
+                r.services.fieldCrypto(),
+                r.scope.shopId,
+                consultationId,
+                { at: last.cursor_at, sequence: last.timeline_seq },
+                snapshot,
+              )
+            : null,
       },
       subjects: [consultation.customer_id],
     };

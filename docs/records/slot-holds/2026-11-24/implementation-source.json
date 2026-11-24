@@ -1,0 +1,58 @@
+{
+  "base": "ec9b3222b651f39c8203e5f3b0ab813774b7a2d6",
+  "review": {
+    "pr": 236,
+    "comment": 7126848739
+  },
+  "status": "implemented_runtime_verification_pending",
+  "productDiff": 0,
+  "historicalProof": "finished-source.json",
+  "main236Proof": "main236-deployment.json",
+  "runtimeUnverified": [
+    "staging_runtime_column_grants",
+    "staging_role_allow_deny",
+    "native_academy_active_tag",
+    "storage_active_tag_readback"
+  ],
+  "consumerTests": [
+    "TASK-083",
+    "TASK-093",
+    "TASK-098",
+    "TASK-119"
+  ],
+  "checkpointApproval": {
+    "pr": 238,
+    "comment": 7126844232,
+    "scope": "records_and_wbs_only"
+  },
+  "alsoReclassified": [
+    "TASK-032",
+    "TASK-063",
+    "TASK-064",
+    "TASK-067",
+    "TASK-068",
+    "TASK-158",
+    "TASK-184"
+  ],
+  "counts": {
+    "finished": 30,
+    "implemented": 30,
+    "all_dependency_ready_count": 40,
+    "mvp_deferred": [
+      "TASK-005",
+      "TASK-006",
+      "TASK-013",
+      "TASK-175"
+    ],
+    "eligible_count": 36
+  },
+  "checks": {
+    "lintFiles": 507,
+    "stage": "task082-runtime-audit",
+    "wbsChecks": 18,
+    "wbsErrors": 0,
+    "browser": "unverified_aside_page_timeout",
+    "productDiffFromBase": 0,
+    "fullChecks": "reuse_main237_successful_CI_no_product_change"
+  }
+}
