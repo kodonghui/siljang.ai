@@ -237,8 +237,8 @@
     ]
   },
   "after": {
-    "finished": 39,
-    "implemented": 22,
+    "finished": 38,
+    "implemented": 23,
     "all_dependency_ready_count": 40,
     "mvp_deferred": [
       "TASK-005",
@@ -473,9 +473,17 @@
     "TASK-089"
   ],
   "runtimeUnverified": [
-    "실제 스테이징0037·열/시퀀스 권한 적용",
-    "실계정 조회와 사진 주소 열기",
+    "0037과 시퀀스 USAGE·조회 열 권한을 같은 작업에서 적용",
+    "카카오 수신 messages·notifications INSERT 확인",
+    "실계정 API-043 조회와 사진 서명 주소/15분 만료",
     "학원컴·저장소 활성 태그의 별도 직접 재조회"
   ],
-  "productCheck": "main237의 앱·데이터베이스·도구와 차이0, 전체 검사는 검증된 동일 제품의 원본을 재사용"
+  "productCheck": "main237의 앱·데이터베이스·도구와 차이0, 전체 검사는 검증된 동일 제품의 원본을 재사용",
+  "status": "구현 완료, finished 없음",
+  "review": {
+    "comment": 7126792620,
+    "findings": 2,
+    "statusFinding": "반영: 실제 적용과 실계정 확인을 TASK-077 자체 목록에 보존",
+    "numberFinding": "미반영: AGENTS.md9번의 예약 번호 유지와 원본 번호순 삽입을 따름"
+  }
 }
