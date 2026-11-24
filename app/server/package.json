@@ -11,7 +11,8 @@
     "build": "wrangler deploy --dry-run --outdir dist && wrangler deploy --dry-run --config wrangler.storage-batches.jsonc --outdir dist/storage-batches",
     "eval": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs eval/cli.ts",
     "eval:checklist": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs eval/cli.ts --checklist",
-    "operator:enroll": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs tools/operator-enroll-cli.ts"
+    "operator:enroll": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs tools/operator-enroll-cli.ts",
+    "operator:enroll:synthetic": "node --disable-warning=ExperimentalWarning --import ./eval/register.mjs tools/operator-enroll-file-cli.ts"
   },
   "dependencies": {
     "@cfworker/json-schema": "4.1.6",

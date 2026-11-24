@@ -106,7 +106,7 @@ export function tokenAal(token: string): string | null {
   }
 }
 
-function parseUser(v: unknown): AuthUser {
+function parseUser(v: unknown, authoritative = false): AuthUser {
   if (!isRecord(v)) throw new AuthUnavailableError("shape");
   const id = str(v.id);
   const email = str(v.email);
@@ -122,6 +122,10 @@ function parseUser(v: unknown): AuthUser {
       if (fid === null || type === null || status === null) throw new AuthUnavailableError("shape");
       factors.push({ id: fid, type, status });
     }
+  }
+  if (authoritative && factors === null) {
+    if (Object.hasOwn(v, "factors")) throw new AuthUnavailableError("shape");
+    factors = [];
   }
   return { id, email, factors };
 }
@@ -192,7 +196,7 @@ export function supabaseAuth(settings: OperatorAuthSettings, options: OperatorAu
     async getUser(accessToken) {
       const r = await call("GET", "/user", { token: accessToken });
       if (!ok(r.status)) return null;
-      return parseUser(r.body);
+      return parseUser(r.body, true);
     },
 
     async verifyTotp(accessToken, factorId, code) {
