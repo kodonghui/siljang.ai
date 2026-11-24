@@ -107,6 +107,8 @@ export interface MessageNumber {
 
 export interface MaskingContext {
   readonly refundAccount?: boolean;
+  /** 저장된 메시지의 시스템 표시자는 보존한다. 새 입력에는 쓰지 않는다. */
+  readonly storedMessage?: boolean;
 }
 
 /** 공백으로 이어 적은 전화번호를 긴 숫자 하나로 합치지 않는다. 후보마다 최대20자리만 살핀다. */
@@ -208,8 +210,11 @@ export async function maskMessageText(
   text: string,
   context: MaskingContext = {},
 ): Promise<string> {
-  const numbers = messageNumbers(text, context);
-  if (numbers.length === 0) return text;
+  const quoted = context.storedMessage
+    ? text
+    : text.replace(/\[(전화번호|계좌번호|카드번호|긴숫자)([0-9]{1,3})\]/g, "［$1$2］");
+  const numbers = messageNumbers(quoted, context);
+  if (numbers.length === 0) return quoted;
   const counts = new Map<MaskKind, number>();
   const unique = new Set<string>();
   for (const number of numbers) {
@@ -233,10 +238,10 @@ export async function maskMessageText(
       placeholder = await maskValue(db, fields, consultationId, number.kind, number.digits);
       if (identity !== null) reused.set(identity, placeholder);
     }
-    output.push(text.slice(offset, number.start), placeholder);
+    output.push(quoted.slice(offset, number.start), placeholder);
     offset = number.end;
   }
-  output.push(text.slice(offset));
+  output.push(quoted.slice(offset));
   return output.join("");
 }
 

@@ -1266,6 +1266,7 @@ COMMENT ON TABLE owner_alerts IS 'TBL-043 사장님 알림(TERM-035): 우리 서
 -- TBL-044 notifications (CTX-008) ← SPEC-021, SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-032, SPEC-035, SPEC-036, SPEC-039, SPEC-042, SPEC-044, SPEC-045, SPEC-047, SPEC-048, SPEC-052, SPEC-053, SPEC-059, SPEC-061, SPEC-065, SPEC-066, SPEC-070 | terms: TERM-054
 CREATE TABLE notifications (
   timeline_seq      bigint NOT NULL DEFAULT nextval('consultation_timeline_seq') CHECK (timeline_seq >= 1), -- 같은 시각의 메시지·손님 안내를 함께 정렬하는 삽입 순번(API-043, DEC-14)
+  delivery_txid   bigint NOT NULL DEFAULT txid_current(), -- 전달 상태를 마지막으로 바꾼 최상위 트랜잭션 ID. API-043 첫 조회의 가시성으로 전달 시각을 정한다
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 알림 ID
   shop_id          uuid NOT NULL,                        -- 가게
   customer_id      uuid NOT NULL,                        -- 받을 손님
@@ -1293,7 +1294,24 @@ CREATE TABLE notifications (
   CONSTRAINT notifications_kakao_task_chk CHECK (status NOT IN ('confirming', 'sent') OR (kakao_task_id IS NOT NULL AND requested_at IS NOT NULL)) -- 확인 중·보냄은 카카오가 받은 요청이 있음(REQ-182)
 );
 CREATE UNIQUE INDEX notifications_timeline_seq_uq ON notifications (timeline_seq); -- 공통 표시 순번의 중복 방지
-CREATE INDEX notifications_timeline_page_idx ON notifications (shop_id, consultation_id, (coalesce(sent_at, created_at)), timeline_seq); -- 상담 대화의 시각·표시 순번 페이지(API-043)
+CREATE INDEX notifications_timeline_page_idx ON notifications (shop_id, consultation_id, created_at, timeline_seq);
+CREATE FUNCTION notification_delivery_revision() RETURNS trigger LANGUAGE plpgsql AS $notification_delivery$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.sent_at IS NOT NULL AND NEW.sent_at IS DISTINCT FROM OLD.sent_at THEN
+      RAISE EXCEPTION 'notification delivery time is immutable' USING ERRCODE = 'check_violation';
+    END IF;
+    IF NEW.status IS NOT DISTINCT FROM OLD.status AND NEW.sent_at IS NOT DISTINCT FROM OLD.sent_at THEN
+      NEW.delivery_txid := OLD.delivery_txid;
+      RETURN NEW;
+    END IF;
+  END IF;
+  NEW.delivery_txid := txid_current();
+  RETURN NEW;
+END
+$notification_delivery$;
+CREATE TRIGGER notification_delivery_revision BEFORE INSERT OR UPDATE OF status,sent_at,delivery_txid ON notifications FOR EACH ROW EXECUTE FUNCTION notification_delivery_revision();
+ -- 상담 대화의 시각·표시 순번 페이지(API-043)
 CREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying'); -- 보낼 것
 CREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred'; -- 그 손님이 말을 걸면 먼저 전함(REQ-122)
 CREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming'; -- 발송 결과를 조회할 안내(REQ-182)
@@ -2618,6 +2636,7 @@ COMMENT ON COLUMN owner_alerts.delivery_checked_at IS '발송 결과를 마지�
 COMMENT ON COLUMN owner_alerts.fail_code IS '카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-067)';
 COMMENT ON COLUMN owner_alerts.created_at IS '만든 시각';
 COMMENT ON COLUMN notifications.timeline_seq IS '같은 시각의 메시지·손님 안내를 함께 정렬하는 삽입 순번(API-043, DEC-14)';
+COMMENT ON COLUMN notifications.delivery_txid IS '전달 상태를 마지막으로 바꾼 최상위 트랜잭션 ID. API-043 첫 조회의 가시성으로 전달 시각을 정한다';
 COMMENT ON COLUMN notifications.id IS '알림 ID';
 COMMENT ON COLUMN notifications.shop_id IS '가게';
 COMMENT ON COLUMN notifications.customer_id IS '받을 손님';
