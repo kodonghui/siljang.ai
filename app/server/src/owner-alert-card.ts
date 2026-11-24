@@ -1,5 +1,5 @@
 // SCR-019. 발송 실행기가 전달한 알림과 상태를 카카오 스킬 응답으로 변환한다.
-const TASK_LABELS = {
+export const TASK_LABELS = {
   handoff: "에스컬레이션 건",
   custom_order: "맞춤 주문",
   change_request: "변경 요청",

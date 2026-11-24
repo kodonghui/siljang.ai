@@ -12,7 +12,7 @@ import { ownerWaitDue } from "./owner-wait";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 import { toShopLocal } from "./time";
 
-type FailureReason = "callback_timeout" | "ai_failure" | "ai_cost_limit" | "masking_failed";
+type FailureReason = "callback_timeout" | "ai_failure" | "ai_cost_limit" | "masking_failed" | "cannot_answer";
 
 /** 현재 답의 생성·사장님 할 일·이전 답의 전달 표시를 한 트랜잭션으로 기록한다. */
 export async function replyWithKakaoHandoff(

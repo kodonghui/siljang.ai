@@ -1,11 +1,13 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
+import { type DbConnector, pgConnector } from "../src/db";
 import { createCustomOrderTask } from "../src/order-output";
 import { ApiError } from "../src/problem";
+import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { failingAccessInsert } from "./support/access-log";
 import { expectProblem, expectSchema } from "./support/contract";
-import { describeDb, newUuid, testEnv } from "./support/db";
+import { describeDb, newUuid, TEST_DATABASE_URL, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, type ShopFixture } from "./support/shops";
 
@@ -23,9 +25,9 @@ describeDb("사장님 할 일 목록 API-040(TASK-072)", () => {
   afterAll(async () => {
     await isolated?.close();
   });
-  function app(failLog = false) {
+  function app(failLog = false, connect: DbConnector = () => isolated.connect()) {
     return createApp({
-      connect: failLog ? failingAccessInsert(() => isolated.connect()) : () => isolated.connect(),
+      connect: failLog ? failingAccessInsert(connect) : connect,
       scopes: {
         owner: async (c) => {
           if (c.req.header("x-test-owner") !== shop.ownerId) throw new ApiError("unauthenticated");
@@ -64,7 +66,7 @@ describeDb("사장님 할 일 목록 API-040(TASK-072)", () => {
     expect(body).toEqual({ items: [], nextCursor: null, alertChannelFriend: false });
     expect(
       (await isolated.db.query("SELECT api_id,request_path FROM access_logs WHERE shop_id=$1", [shop.shopId])).rows,
-    ).toEqual([{ api_id: "API-040", request_path: "/owner/tasks" }]);
+    ).toEqual([{ api_id: "API-040", request_path: "/api/owner/tasks" }]);
   });
   it("맞춤 주문 한 건과 새 알림은 한 건이고 요약에 연락처·계좌·알레르기가 없다", async () => {
     const task = await custom();
@@ -125,4 +127,91 @@ describeDb("사장님 할 일 목록 API-040(TASK-072)", () => {
     expect(response.status).toBe(200);
     expect((await listBody(response)).items).toHaveLength(0);
   });
+  it("지연·기다림 기한·기한 없는 순서를 커서로 이어 읽고 다른 상태의 커서는 거절한다", async () => {
+    const late = await custom(),
+      waiting = newUuid(),
+      plain = newUuid(),
+      handoff = newUuid();
+    await isolated.db.query("UPDATE owner_tasks SET wait_status='late',late_notice_at=$2,wait_due_at=$2 WHERE id=$1", [
+      late.id,
+      new Date(NOW.getTime() - 1000),
+    ]);
+    await isolated.db.query(
+      "INSERT INTO handoffs(id,shop_id,consultation_id,source_message_id,reason) VALUES($1,$2,$3,$4,'edibility')",
+      [handoff, shop.shopId, shop.consultationId, shop.messageId],
+    );
+    await isolated.db.query(
+      "INSERT INTO owner_tasks(id,shop_id,kind,event_key,handoff_id,wait_status,wait_due_at,opened_at) VALUES($1,$2,'handoff',$3,$4,'waiting',$5,$6)",
+      [waiting, shop.shopId, `task:handoff:${handoff}`, handoff, new Date(NOW.getTime() + 1000), NOW],
+    );
+    await isolated.db.query(
+      "INSERT INTO owner_tasks(id,shop_id,kind,event_key,opened_at) VALUES($1,$2,'ledger_relink',$3,$4)",
+      [plain, shop.shopId, `task:ledger_relink:${plain}`, new Date(NOW.getTime() - 10000)],
+    );
+    const ids: string[] = [];
+    let next: string | null = null,
+      firstCursor: string | null = null;
+    for (let i = 0; i < 3; i++) {
+      const response = await call(`?limit=1${next === null ? "" : `&cursor=${next}`}`);
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { items: { taskId: string }[]; nextCursor: string | null };
+      expectSchema("OwnerTaskList", body);
+      ids.push(...body.items.map((row) => row.taskId));
+      next = body.nextCursor;
+      if (i === 0) firstCursor = next;
+      if (next !== null) expect(next.length).toBeLessThanOrEqual(200);
+    }
+    expect(ids).toEqual([late.id, waiting, plain]);
+    expect(next).toBeNull();
+    expect(firstCursor).not.toBeNull();
+    await expectProblem(await call(`?status=closed&cursor=${firstCursor}`), "validation_failed");
+  });
+  it("같은 밀리초 안의 두 할 일도 PostgreSQL 마이크로초 순서로 빠짐없이 읽는다", async () => {
+    const ids = [newUuid(), newUuid()];
+    for (const [i, id] of ids.entries())
+      await isolated.db.query(
+        "INSERT INTO owner_tasks(id,shop_id,kind,event_key,opened_at) VALUES($1,$2,'ledger_relink',$3,$4::timestamptz+$5::integer*interval '1 microsecond')",
+        [id, shop.shopId, `task:ledger_relink:${id}`, NOW, i + 1],
+      );
+    const first = (await (await call("?limit=1")).json()) as { items: { taskId: string }[]; nextCursor: string };
+    expect(first.items.map((row) => row.taskId)).toEqual([ids[0]]);
+    const second = (await (await call(`?limit=1&cursor=${first.nextCursor}`)).json()) as {
+      items: { taskId: string }[];
+      nextCursor: string | null;
+    };
+    expect(second.items.map((row) => row.taskId)).toEqual([ids[1]]);
+    expect(second.nextCursor).toBeNull();
+  });
+  it("저장소 권한 파일의 제한 역할로 목록과 같은 트랜잭션의 접속기록을 처리한다", async () => {
+    await custom();
+    const role = `task072_${newUuid().replaceAll("-", "")}`;
+    await isolated.db.query(`CREATE ROLE "${role}" LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+    const grants = readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8");
+    const name = (await isolated.db.query<{ name: string }>("SELECT current_database() AS name")).rows[0]?.name;
+    if (!name) throw new Error("합성 시험 데이터베이스가 없어요");
+    const url = new URL(TEST_DATABASE_URL);
+    url.pathname = `/${name}`;
+    url.username = role;
+    url.password = "";
+    const runtime = pgConnector(new Secret(url.toString()));
+    try {
+      await isolated.db.query(grants.replaceAll(':"runtime_role"', `"${role}"`));
+      const response = await app(false, () => runtime).request(
+        `${ORIGIN}/api/owner/tasks`,
+        { headers: { "x-test-owner": shop.ownerId, "cf-connecting-ip": "203.0.113.24" } },
+        testEnv(),
+      );
+      expect(response.status).toBe(200);
+      expect((await listBody(response)).items).toHaveLength(1);
+      expect((await isolated.db.query("SELECT api_id FROM access_logs WHERE shop_id=$1", [shop.shopId])).rows).toEqual([
+        { api_id: "API-040" },
+      ]);
+    } finally {
+      await runtime.close();
+      await isolated.db.query(`DROP OWNED BY "${role}"`);
+      await isolated.db.query(`DROP ROLE "${role}"`);
+    }
+  });
 });
+
+import { readFileSync } from "node:fs";
