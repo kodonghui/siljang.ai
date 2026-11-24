@@ -95,5 +95,9 @@
     "postgres16": 138310444962,
     "postgres17": 138310445360,
     "status": "success"
-  }
+  },
+  "mergedMain": "463728b3d48e0ae2900e74908c4238eda3962a03",
+  "productUnchangedFromFullSource": true,
+  "main236Proof": "main236-deployment.json",
+  "main236Verified": true
 }

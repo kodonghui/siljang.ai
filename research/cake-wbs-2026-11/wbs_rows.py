@@ -105,7 +105,7 @@ TASKS = [
     dict(id='TASK-079', it=3, name='알레르기 정보 동의와 알레르기 답 받기', owner='Claude', size=1, src=['SPEC-075'], api=['API-070', 'API-071'], rules=['A26'], dep=['TASK-078']),
     dict(id='TASK-080', it=3, name='주문자 이름·연락처 받기', owner='Claude', size=1, src=['SPEC-072'], api=['API-070', 'API-071'], dep=['TASK-078']),
     dict(id='TASK-081', it=3, name='손님 명령 확인 버튼(카드 키·30분·받은 사람만)', owner='Claude', size=1, src=['SPEC-069'], api=['API-070', 'API-071'], rules=['A7', 'A8'], dep=['TASK-028']),
-    dict(id='TASK-082', it=3, name='가예약·해제·옮기기', owner='Claude', size=2, src=['SPEC-015'], rules=['A3', 'A6'], dep=['TASK-041']),
+    dict(id='TASK-082', it=3, name='가예약·해제·옮기기', owner='Claude', size=2, src=['SPEC-015'], rules=['A3', 'A6'], dep=['TASK-041'], finished='2026-11-24, PR #235: SPEC-015 수락 #1~#8·A3·A6 자동 시험 통과(가예약42개·관련151개, 새 빈 PostgreSQL 마이그레이션36개·서버2476개·웹1570개·두 Worker 빌드). main220d1f2 app·db CI와 실제 Actions Wrangler 전체 태그 일치·활성100%·health200·원격 SHA 확인. 업무 API·기한 일 연결은 각 후속 작업 범위.'),
     dict(id='TASK-083', it=3, name='주문 요청하기(한 트랜잭션, 결제 기다림 주문 한도)', owner='Claude', size=3, src=['SPEC-029'], api=['API-071', 'API-042'], rules=['A40', 'A6'], dep=['TASK-079', 'TASK-080', 'TASK-081', 'TASK-082', 'TASK-074']),
     dict(id='TASK-084', it=3, name='기본 디자인 주문의 가예약과 결제 안내로 진행', owner='Claude', size=2, src=['SPEC-030'], api=['API-071'], rules=['A3'], dep=['TASK-083']),
     dict(id='TASK-085', it=3, name='SCR-003 가게 채널 상담 카카오 응답', owner='Claude', size=2, src=['SPEC-013', 'SPEC-014', 'SPEC-017', 'SPEC-018', 'SPEC-019', 'SPEC-020', 'SPEC-022', 'SPEC-025', 'SPEC-026', 'SPEC-027', 'SPEC-049', 'SPEC-056', 'SPEC-057', 'SPEC-008'], scr=['SCR-003'], dep=['TASK-028']),
