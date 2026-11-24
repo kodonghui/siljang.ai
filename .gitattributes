@@ -17,5 +17,9 @@ docs/records/price-list/2026-11-24-history/qa-before-focus-fix.json -text whites
 docs/records/operator-alerts/2026-11-24-finished/actual-synthetic-alerts.json -text whitespace=cr-at-eol
 docs/records/operator-alerts/2026-11-24-finished/synthetic-fixture-seed.sql -text whitespace=cr-at-eol
 docs/records/operator-alerts/2026-11-24-finished/synthetic-fixture-cleanup.sql -text whitespace=cr-at-eol
-
 docs/records/price-list/2026-11-24-history/qa-after-focus-fix-v3.json -text whitespace=cr-at-eol
+# TASK-061의 실제 합성 관찰 원문도 바이트와 해시를 보존한다.
+docs/records/public-booking/2026-11-24/qa-before-review-fixes.json -text whitespace=cr-at-eol
+docs/records/public-booking/2026-11-24/qa-after-review-before-focus-fix.json -text whitespace=cr-at-eol
+docs/records/public-booking/2026-11-24/qa-before-synchronous-focus-fix.json -text whitespace=cr-at-eol
+docs/records/public-booking/2026-11-24/qa-after-synchronous-focus-fix.json -text whitespace=cr-at-eol

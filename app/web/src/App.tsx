@@ -5,6 +5,7 @@ import { OwnerArea } from "./OwnerArea";
 import { OwnerLogin } from "./OwnerLogin";
 import { OPERATOR_LOGIN } from "./operator";
 import { OWNER_CALLBACK, OWNER_LOGIN } from "./owner";
+import { PublicBookingScreen } from "./PublicBookingScreen";
 import { PublicPrivacyScreen } from "./PublicPrivacyScreen";
 
 // 뼈대(TASK-015)의 빈 화면. 화면은 07 사이트맵·08 화면 정의·09 시안을 따라 뒤 작업에서 만든다.
@@ -26,6 +27,7 @@ export function App() {
       <Route path={OPERATOR_LOGIN} element={<OperatorLogin />} />
       <Route path="/operator/*" element={<OperatorArea />} />
       <Route path="/s/:slug/privacy" element={<PublicPrivacyScreen />} />
+      <Route path="/s/:slug" element={<PublicBookingScreen />} />
       <Route path="*" element={<Home />} />
     </Routes>
   );

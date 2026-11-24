@@ -1,0 +1,938 @@
+{
+  "원본": {
+    "제품": "4a4f863389bfe097a22fb22213f1b0bc55bd3e0b",
+    "ZIP": "qa061-v4-20261124.zip",
+    "바이트": 9079859,
+    "파일수": 764,
+    "SHA256": "d996338b559671bf6d897d29b8fa3d5cb2103bf2574c59d6ab63a5d4e4d5201d",
+    "해제대조": true
+  },
+  "V3원문대조": {
+    "JSON_SHA256": "e9243057f79b0246e2aeef5fad5ef0d8fc9e00381e55d5e38a4c9a74fd8b6b5b",
+    "사진4유지": true,
+    "제품실패2유지": true,
+    "예상외Resource14유지": true,
+    "최초서버소멸원인미확인유지": true
+  },
+  "자체시험": {
+    "관측": {
+      "consoleErrors": 1,
+      "pageErrors": 1,
+      "unhandledRejections": 1,
+      "expectedImageErrors": 1,
+      "unexpectedResourceErrors": 0
+    },
+    "제품합산제외": true,
+    "전체DevTools구독아님": true
+  },
+  "정상모달": [
+    {
+      "너비": 360,
+      "상태": "normal",
+      "시각": "2026-11-24T18:28:21.219Z",
+      "API": 2,
+      "관찰기전": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "pageCheck": {
+        "counts": {
+          "error": 0,
+          "warn": 25,
+          "info": 0
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div#root > aside.qa-control > label",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div#root > aside.qa-control > p",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div#root > main.public-booking > header > h1",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div#root > main.public-booking > header > p",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "h2#booking-portfolio",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "h2#booking-prices",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div.public-booking-columns > div.public-booking-content > section:nth-of-type(1) > p",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div.public-booking-content > section:nth-of-type(1) > details.public-booking-options:nth-of-type(1) > summary",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(1) > dl > div:nth-of-type(1) > dt",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "dl > div:nth-of-type(1) > dt > span",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(1) > dl > div:nth-of-type(1) > dd",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(1) > dl > div:nth-of-type(2) > dt",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "dl > div:nth-of-type(2) > dt > span",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(1) > dl > div:nth-of-type(2) > dd",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div.public-booking-content > section:nth-of-type(1) > details.public-booking-options:nth-of-type(2) > summary",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(2) > dl > div:nth-of-type(1) > dt",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "dl > div:nth-of-type(1) > dt > span",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(2) > dl > div:nth-of-type(1) > dd",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(2) > dl > div:nth-of-type(2) > dt",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "dl > div:nth-of-type(2) > dt > span",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(2) > dl > div:nth-of-type(2) > dd",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div.public-booking-content > section:nth-of-type(1) > details.public-booking-options:nth-of-type(3) > summary",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(3) > dl > div:nth-of-type(1) > dt",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "dl > div:nth-of-type(1) > dt > span",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(3) > dl > div:nth-of-type(1) > dd",
+            "dialog내": false,
+            "selector일치": true
+          }
+        ]
+      },
+      "경고원문수": 25,
+      "dialog경고": 0,
+      "밖경고": 25,
+      "열림": true,
+      "modal": true,
+      "초점포함": true,
+      "활성글자버튼": [
+        {
+          "태그": "H2",
+          "이름": "포트폴리오 사진 1",
+          "글자색": "rgb(29, 28, 26)",
+          "요소배경": "rgba(0, 0, 0, 0)",
+          "실효배경": [
+            255,
+            255,
+            255
+          ],
+          "대비": 17.028039946894204,
+          "폭": 279,
+          "높이": 27.296875,
+          "불투명도": "1"
+        },
+        {
+          "태그": "BUTTON",
+          "이름": "돌아가기",
+          "글자색": "rgb(29, 28, 26)",
+          "요소배경": "rgb(255, 255, 255)",
+          "실효배경": [
+            255,
+            255,
+            255
+          ],
+          "대비": 17.028039946894204,
+          "폭": 135.5,
+          "높이": 44,
+          "불투명도": "1"
+        },
+        {
+          "태그": "BUTTON",
+          "이름": "사진 보기 마치기",
+          "글자색": "rgb(255, 255, 255)",
+          "요소배경": "rgb(43, 75, 166)",
+          "실효배경": [
+            43,
+            75,
+            166
+          ],
+          "대비": 7.895378497367599,
+          "폭": 135.5,
+          "높이": 44,
+          "불투명도": "1"
+        }
+      ],
+      "가로넘침": false,
+      "배경": "rgb(255, 255, 255)",
+      "backdrop": "rgba(29, 28, 26, 0.48)",
+      "키보드": [
+        {
+          "키": "Tab",
+          "포함": true
+        },
+        {
+          "키": "Tab",
+          "포함": true
+        },
+        {
+          "키": "Shift+Tab",
+          "포함": true
+        }
+      ],
+      "Escape닫힘": true,
+      "Escape원래버튼복귀": true,
+      "마치기닫힘": true,
+      "마치기원래버튼복귀": true,
+      "관찰기누적": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      }
+    },
+    {
+      "너비": 1280,
+      "상태": "normal",
+      "시각": "2026-11-24T18:28:24.393Z",
+      "API": 2,
+      "관찰기전": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "pageCheck": {
+        "counts": {
+          "error": 0,
+          "warn": 28,
+          "info": 0
+        },
+        "truncated": false,
+        "issues": [
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div#root > aside.qa-control > label",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div#root > aside.qa-control > p",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div#root > main.public-booking > header > h1",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div#root > main.public-booking > header > p",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "h2#booking-portfolio",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "h2#booking-prices",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div.public-booking-columns > div.public-booking-content > section:nth-of-type(1) > p",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div.public-booking-content > section:nth-of-type(1) > details.public-booking-options:nth-of-type(1) > summary",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(1) > dl > div:nth-of-type(1) > dt",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "dl > div:nth-of-type(1) > dt > span",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(1) > dl > div:nth-of-type(1) > dd",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(1) > dl > div:nth-of-type(2) > dt",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "dl > div:nth-of-type(2) > dt > span",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(1) > dl > div:nth-of-type(2) > dd",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div.public-booking-content > section:nth-of-type(1) > details.public-booking-options:nth-of-type(2) > summary",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(2) > dl > div:nth-of-type(1) > dt",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "dl > div:nth-of-type(1) > dt > span",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(2) > dl > div:nth-of-type(1) > dd",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(2) > dl > div:nth-of-type(2) > dt",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "dl > div:nth-of-type(2) > dt > span",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-options:nth-of-type(2) > dl > div:nth-of-type(2) > dd",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div.public-booking-content > section:nth-of-type(1) > details.public-booking-options:nth-of-type(3) > summary",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "main.public-booking > div.public-booking-columns > aside.public-booking-aside > p:nth-of-type(1)",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "main.public-booking > div.public-booking-columns > aside.public-booking-aside > p.public-booking-channel:nth-of-type(2)",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "div.public-booking-columns > aside.public-booking-aside > details.public-booking-identity > summary",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-identity > dl > div:nth-of-type(1) > dt",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-identity > dl > div:nth-of-type(1) > dd",
+            "dialog내": false,
+            "selector일치": true
+          },
+          {
+            "level": "warn",
+            "check": "contrast-image",
+            "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
+            "where": "details.public-booking-identity > dl > div:nth-of-type(2) > dt",
+            "dialog내": false,
+            "selector일치": true
+          }
+        ]
+      },
+      "경고원문수": 28,
+      "dialog경고": 0,
+      "밖경고": 28,
+      "열림": true,
+      "modal": true,
+      "초점포함": true,
+      "활성글자버튼": [
+        {
+          "태그": "H2",
+          "이름": "포트폴리오 사진 1",
+          "글자색": "rgb(29, 28, 26)",
+          "요소배경": "rgba(0, 0, 0, 0)",
+          "실효배경": [
+            255,
+            255,
+            255
+          ],
+          "대비": 17.028039946894204,
+          "폭": 302,
+          "높이": 27.296875,
+          "불투명도": "1"
+        },
+        {
+          "태그": "BUTTON",
+          "이름": "돌아가기",
+          "글자색": "rgb(29, 28, 26)",
+          "요소배경": "rgb(255, 255, 255)",
+          "실효배경": [
+            255,
+            255,
+            255
+          ],
+          "대비": 17.028039946894204,
+          "폭": 147,
+          "높이": 44,
+          "불투명도": "1"
+        },
+        {
+          "태그": "BUTTON",
+          "이름": "사진 보기 마치기",
+          "글자색": "rgb(255, 255, 255)",
+          "요소배경": "rgb(43, 75, 166)",
+          "실효배경": [
+            43,
+            75,
+            166
+          ],
+          "대비": 7.895378497367599,
+          "폭": 147,
+          "높이": 44,
+          "불투명도": "1"
+        }
+      ],
+      "가로넘침": false,
+      "배경": "rgb(255, 255, 255)",
+      "backdrop": "rgba(29, 28, 26, 0.48)",
+      "키보드": [
+        {
+          "키": "Tab",
+          "포함": true
+        },
+        {
+          "키": "Tab",
+          "포함": true
+        },
+        {
+          "키": "Shift+Tab",
+          "포함": true
+        }
+      ],
+      "Escape닫힘": true,
+      "Escape원래버튼복귀": true,
+      "마치기닫힘": true,
+      "마치기원래버튼복귀": true,
+      "관찰기누적": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      }
+    }
+  ],
+  "철회": [
+    {
+      "상태": "withdrawn",
+      "너비": 360,
+      "실제폭": 360,
+      "상태선택시각": "2026-11-24T18:31:25.907Z",
+      "시작시각": "2026-11-24T18:31:27.343Z",
+      "API전": 1,
+      "사진창시작": {
+        "열림": true,
+        "modal": true,
+        "초점포함": true
+      },
+      "관찰기전": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "촉발": "수정하지 않은 자연60초 정기조회",
+      "타이머상태focus주입없음": true,
+      "철회관측시각": "2026-11-24T18:32:26.622Z",
+      "API후": 2,
+      "사진창닫힘": true,
+      "빈포트폴리오": {
+        "문구": "포트폴리오아직 사진이 없어요",
+        "사진수": 0,
+        "버튼수": 0
+      },
+      "현재h1동일DOM초점": false,
+      "BODY아님": false,
+      "초점": {
+        "태그": "BODY",
+        "qa": false,
+        "제품안": false,
+        "이름": null
+      },
+      "관찰기누적": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "후속관측시각": "2026-11-24T18:37:19.772Z",
+      "후속h1동일": true,
+      "후속BODY아님": true,
+      "다음Tab시각": "2026-11-24T18:37:19.828Z",
+      "다음Tab": {
+        "태그": "SUMMARY",
+        "qa": false,
+        "제품안": true,
+        "이름": "크기"
+      },
+      "다음Tab현재Main포함": true,
+      "다음Tab조건": "후속h1 정착 뒤 실제Tab, 초기500ms 직후Tab은 미측정",
+      "완료페이지검사": {
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "truncated": false,
+        "issues": []
+      }
+    },
+    {
+      "상태": "withdrawn",
+      "너비": 1280,
+      "실제폭": 1280,
+      "상태선택시각": "2026-11-24T18:31:27.356Z",
+      "시작시각": "2026-11-24T18:31:28.223Z",
+      "API전": 1,
+      "사진창시작": {
+        "열림": true,
+        "modal": true,
+        "초점포함": true
+      },
+      "관찰기전": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "촉발": "수정하지 않은 자연60초 정기조회",
+      "타이머상태focus주입없음": true,
+      "철회관측시각": "2026-11-24T18:32:28.09Z",
+      "API후": 2,
+      "사진창닫힘": true,
+      "빈포트폴리오": {
+        "문구": "포트폴리오아직 사진이 없어요",
+        "사진수": 0,
+        "버튼수": 0
+      },
+      "현재h1동일DOM초점": false,
+      "BODY아님": false,
+      "초점": {
+        "태그": "BODY",
+        "qa": false,
+        "제품안": false,
+        "이름": null
+      },
+      "관찰기누적": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "후속관측시각": "2026-11-24T18:37:20.022Z",
+      "후속h1동일": true,
+      "후속BODY아님": true,
+      "다음Tab시각": "2026-11-24T18:37:20.077Z",
+      "다음Tab": {
+        "태그": "SUMMARY",
+        "qa": false,
+        "제품안": true,
+        "이름": "크기"
+      },
+      "다음Tab현재Main포함": true,
+      "다음Tab조건": "후속h1 정착 뒤 실제Tab, 초기500ms 직후Tab은 미측정",
+      "완료페이지검사": {
+        "counts": {
+          "error": 0,
+          "warn": 0,
+          "info": 0
+        },
+        "truncated": false,
+        "issues": []
+      }
+    }
+  ],
+  "사진": [
+    {
+      "파일명": "qa061-v4-withdrawn-360.png",
+      "상대파일": "task061-v4-preserved/qa061-v4-withdrawn-360.png",
+      "너비": 360,
+      "PNG폭": 360,
+      "PNG높이": 900,
+      "바이트": 23454,
+      "촬영시각": "2026-11-24T18:37:27.875Z",
+      "시도": 1,
+      "클립": null,
+      "직접확인": true,
+      "복사시각": "2026-11-25T03:44:00.1025659+09:00",
+      "복사해시일치": true,
+      "SHA256": "d6b30e1e534cfbdf89efd524383199afb062c07a81dfb2ef104e734cf216b910",
+      "사진시점": "후속h1정착 후 실제Tab 크기 summary 초점",
+      "사진표시API": 5,
+      "CLI생존중Parent복사ACK": true,
+      "CLI종료후크기SHA재검증": true
+    },
+    {
+      "파일명": "qa061-v4-withdrawn-1280.png",
+      "상대파일": "task061-v4-preserved/qa061-v4-withdrawn-1280.png",
+      "너비": 1280,
+      "PNG폭": 1280,
+      "PNG높이": 900,
+      "바이트": 39883,
+      "촬영시각": "2026-11-24T18:42:29.44Z",
+      "시도": 1,
+      "클립": null,
+      "직접확인": true,
+      "복사시각": "2026-11-25T03:44:00.1612969+09:00",
+      "복사해시일치": true,
+      "SHA256": "049f6eacbfab6ea92d91da903c04eb5fc4911c83a130eed071163ae68d51e8ba",
+      "사진시점": "후속h1정착 후 실제Tab 크기 summary 초점",
+      "사진표시API": 7,
+      "CLI생존중Parent복사ACK": true,
+      "CLI종료후크기SHA재검증": true
+    }
+  ],
+  "실패": [
+    {
+      "상태": "withdrawn",
+      "너비": 360,
+      "selector": "body",
+      "원문": "after close +500ms: activeElement=BODY, current h1 identity=false",
+      "관측시각": "2026-11-24T18:32:26.622Z",
+      "분류": "기존V3와같은500ms조건",
+      "후속h1복귀와분리": true
+    },
+    {
+      "상태": "withdrawn",
+      "너비": 1280,
+      "selector": "body",
+      "원문": "after close +500ms: activeElement=BODY, current h1 identity=false",
+      "관측시각": "2026-11-24T18:32:28.09Z",
+      "분류": "기존V3와같은500ms조건",
+      "후속h1복귀와분리": true
+    }
+  ],
+  "미확인": [
+    {
+      "항목": "철회 초기500ms BODY에서 후속h1으로 바뀐 정확한 전환시점",
+      "사유": "최초값과 후속값은 보존. 그 사이 전환시각 및 최초500ms 직후Tab은 미포착",
+      "상태": "[blocked]"
+    }
+  ],
+  "시작시각": "2026-11-24T18:28:19.073Z",
+  "관찰한계": [],
+  "구현포함확인": {
+    "fallbackFocus식별2": true,
+    "가게h1tabindexMinus1존재": true,
+    "읽기검사만수행": true
+  },
+  "문서별최종관찰": [
+    {
+      "너비": 360,
+      "시각": "2026-11-24T18:45:23.41Z",
+      "API": 8,
+      "관찰기": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      }
+    },
+    {
+      "너비": 1280,
+      "시각": "2026-11-24T18:45:23.495Z",
+      "API": 8,
+      "관찰기": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      }
+    }
+  ],
+  "최종관찰합계": {
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "unhandledRejections": 0,
+    "expectedImageErrors": 0,
+    "unexpectedResourceErrors": 0
+  },
+  "요약": {
+    "정상모달2폭통과": true,
+    "원문경고수": [
+      25,
+      28
+    ],
+    "dialog내경고": 0,
+    "selector미일치": 0,
+    "철회500msBODY관측2유지": true,
+    "후속h1두폭": true,
+    "후속Tab제품Summary두폭": true,
+    "초기500ms직후Tab미측정": true,
+    "사진2직접확인": true,
+    "실패": 2,
+    "미확인": 1
+  },
+  "부작용": {
+    "실제서비스쓰기": 0,
+    "카카오": 0,
+    "모델": 0,
+    "메일": 0,
+    "결제": 0,
+    "제품DOMReact타이머focus주입": 0,
+    "관찰기초기화": 0
+  },
+  "기록시각": "2026-11-24T18:45:23.515Z",
+  "종료검증": {
+    "이번PID12860포트59573정상사진200확인후종료": true,
+    "CLI종료코드": 0,
+    "PNG2종료후검증": true,
+    "다른서버변경0": true,
+    "V3JSON사진4Resource14불변": true,
+    "V4ZIP해제764불변": true,
+    "시각": "2026-11-24T18:46:18.0589126+00:00"
+  }
+}
