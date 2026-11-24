@@ -29,3 +29,5 @@ node /tmp/siljang-qa087-owner-tasks/server.mjs
 할 일 생성기는 실행한 생성기와 입력 root가 같은 작업 트리인지 realpath로 확인하고 보조 파일도 그 root에서 읽습니다. 출력은 저장소 밖 폴더를 사용합니다. 임시 형제 폴더에 전체를 만든 뒤 원본 검사까지 성공하면 교체하고, 기존 결과는 previousOutput 폴더로 보존합니다. 입력 변경으로 실패하면 이전 번들/manifest는 바뀌지 않습니다. V3/V4는 이 추가 고침 전 준비 자료이며 새 V5를 사용합니다.
 
 할 일 합성 오류는 API002/040의 전체 Problem 예시와 application/problem+json/캐시 금지를 사용합니다. 생성한 응답 코드를 Node VM에서 검사하며 브라우저/실제 서비스 확인과 구분합니다.
+
+운영규정 이력은 `node research/screen-checks-2026-11/build-operating-rules-history.mjs . /tmp/siljang-qa052-rules-history`로 생성합니다. 실제 OwnerArea/VersionHistory와 현재 API022/023의9응답·5상태를 묶습니다. 같은 원본/깨끗한 입력/임시 완성 후 교체와 이전 출력 보관을 사용합니다. 실제 브라우저·초점·사진 성공은 별도이며 새 V7은 기존 학원컴 V6의 원문/지시 수신/정지ACK를 수집하기 전 중복 전달하지 않습니다.
