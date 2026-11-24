@@ -1,0 +1,31 @@
+{
+  "sourceCommit": "c6c54de03c63bbc06499dce5aff847597ddb3229",
+  "sourceSha256": "6e51c24239905f7434340983fcda054f80c0b47b269c7d518c3b4071e01453f2",
+  "recordedAt": "2026-11-24T14:19:45.088Z",
+  "sourceMatched": true,
+  "editorMatched": true,
+  "executeAttempts": 1,
+  "migrationCount": 39,
+  "indexPresent": true,
+  "ownerSessionsPresent": true,
+  "ownerSessionUpdate": true,
+  "accessLogsFullSelect": false,
+  "threeReadGrants": {
+    "refunds": true,
+    "issue_details": true,
+    "issue_reports": true
+  },
+  "forbiddenReadOrWriteGranted": true,
+  "checkedForbiddenColumns": [
+    "issue_details.description",
+    "refunds.refund_account_enc"
+  ],
+  "failureSqlstate": null,
+  "failureClassification": "unexpected_requested_metadata_privileges",
+  "forbiddenPrivilegeChecks": {
+    "issue_details.description.SELECT": false,
+    "issue_details.description.UPDATE": false,
+    "refunds.refund_account_enc.SELECT": true,
+    "refunds.refund_account_enc.UPDATE": false
+  }
+}

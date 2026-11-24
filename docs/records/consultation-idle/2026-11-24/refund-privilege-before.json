@@ -1,0 +1,127 @@
+{
+  "table_acl": [
+    {
+      "grantee": "owner",
+      "grantor": "owner",
+      "select_granted": true,
+      "update_granted": true,
+      "select_available_without_set": false,
+      "update_available_without_set": false
+    },
+    {
+      "grantee": "runtime_direct",
+      "grantor": "owner",
+      "select_granted": true,
+      "update_granted": false,
+      "select_available_without_set": true,
+      "update_available_without_set": false
+    }
+  ],
+  "column_acl": {
+    "id": [
+      {
+        "grantee": "runtime_direct",
+        "grantor": "owner",
+        "select_granted": true,
+        "update_granted": false,
+        "select_available_without_set": true,
+        "update_available_without_set": false
+      }
+    ],
+    "amount": [
+      {
+        "grantee": "runtime_direct",
+        "grantor": "owner",
+        "select_granted": true,
+        "update_granted": false,
+        "select_available_without_set": true,
+        "update_available_without_set": false
+      }
+    ],
+    "sent_at": [
+      {
+        "grantee": "runtime_direct",
+        "grantor": "owner",
+        "select_granted": true,
+        "update_granted": false,
+        "select_available_without_set": true,
+        "update_available_without_set": false
+      }
+    ],
+    "refund_account_enc": []
+  },
+  "owner_path": {
+    "runtime_is_owner": false,
+    "owner_set_allowed": false,
+    "owner_role_table_select": true,
+    "owner_role_table_update": true,
+    "owner_membership_reachable": false,
+    "owner_privileges_available_without_set": false
+  },
+  "classification": "catalog_acl_diagnosis",
+  "business_rows_read": false,
+  "diagnosis_complete": true,
+  "runtime_attributes": {
+    "superuser": false,
+    "inherit_attribute": false
+  },
+  "role_argument_check": {
+    "runtime_role_exists": true,
+    "current_user_is_runtime": false,
+    "session_user_is_current_user": true,
+    "named_and_oid_privileges_agree": true,
+    "explicit_runtime_argument_resolves_to_target": true
+  },
+  "grant_or_role_changed": false,
+  "table_privilege_sources": {
+    "owner": {
+      "select": false,
+      "update": false
+    },
+    "public": {
+      "select": false,
+      "update": false
+    },
+    "inherited_role": {
+      "select": false,
+      "update": false
+    },
+    "runtime_direct": {
+      "select": true,
+      "update": false
+    }
+  },
+  "table_acl_default_applied": false,
+  "effective_table_privileges": {
+    "select": true,
+    "update": false
+  },
+  "effective_column_privileges": {
+    "id": {
+      "select": true,
+      "update": false,
+      "explicit_column_acl_present": true
+    },
+    "amount": {
+      "select": true,
+      "update": false,
+      "explicit_column_acl_present": true
+    },
+    "sent_at": {
+      "select": true,
+      "update": false,
+      "explicit_column_acl_present": true
+    },
+    "refund_account_enc": {
+      "select": true,
+      "update": false,
+      "explicit_column_acl_present": false
+    }
+  },
+  "sensitive_column_direct_acl": {
+    "public_select": false,
+    "runtime_select": false,
+    "runtime_update": false,
+    "inherited_select": false
+  }
+}

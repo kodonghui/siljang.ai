@@ -251,6 +251,26 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
       ]);
     },
   );
+  it("기존의 넓은 환불 읽기를 닫고 필요한 열 권한은 보존", async () => {
+    const result = await db.transaction(async (tx) => {
+      await tx.query(`GRANT SELECT ON refunds TO "${runtimeRole}"`);
+      await tx.query(
+        readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8").replaceAll(
+          ':"runtime_role"',
+          `"${runtimeRole}"`,
+        ),
+      );
+      return (
+        await tx.query(
+          "SELECT has_table_privilege($1,'refunds','SELECT') AS full_read, has_column_privilege($1,'refunds','refund_account_enc','SELECT') AS account_read, has_column_privilege($1,'refunds','amount','SELECT') AS amount_read, has_column_privilege($1,'refunds','sent_at','SELECT') AS sent_read, has_column_privilege($1,'refunds','id','SELECT') AS id_read",
+          [runtimeRole],
+        )
+      ).rows;
+    });
+    expect(result).toEqual([
+      { full_read: false, account_read: false, amount_read: true, sent_read: true, id_read: true },
+    ]);
+  });
   it.each([
     "SELECT description FROM issue_details LIMIT 1",
     "SELECT refund_account_enc FROM refunds LIMIT 1",

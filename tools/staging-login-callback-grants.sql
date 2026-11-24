@@ -7,6 +7,9 @@ GRANT USAGE ON SEQUENCE consultation_timeline_seq TO :"runtime_role";
 -- 로그인할 때 기한 지난 세션을 정리하므로 DELETE도 필요하다(owner-session.ts).
 GRANT SELECT, INSERT, UPDATE, DELETE ON owner_sessions TO :"runtime_role";
 GRANT SELECT ON shops, kakao_channels TO :"runtime_role";
+-- TASK-076: 기존 스테이징의 refunds 전체 SELECT를 회수한다. 기존 열 권한은 보존하고
+-- 아래 현재 필요한 열만 허용하여 환불 계좌 암호문을 상담 종료 경로에 열지 않는다.
+REVOKE SELECT ON refunds FROM :"runtime_role";
 -- TASK-072: 할 일의 연결 대상과 손님 ID를 같은 가게에서 찾는 관계 열만 읽는다.
 GRANT SELECT (id, shop_id, order_id) ON change_requests, issue_reports, payment_requests, refunds TO :"runtime_role";
 -- TASK-076: 상담이 다룬 주문과 아직 열린 처리만 판단한다. 신고 본문·환불 계좌와 쓰기 권한은 열지 않는다.
