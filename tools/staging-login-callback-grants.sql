@@ -11,9 +11,17 @@ GRANT SELECT (shop_id, consultation_id, requested_at, kind, amount, version) ON 
 -- 손님·일 실행기에는 order-output 함수를 허용하지 않는다. 역할 자체가 행위자를 구분하지는 않는다.
 GRANT SELECT (shop_id, order_id, version, customer_name, customer_phone, allergy_answer)
   ON order_details TO :"runtime_role";
--- TASK-066: 현재 견적은 공개 계산값만 읽고 근거의 자유 입력은 읽지 않는다.
+-- TASK-066: 모델 문맥 코드는 공개 계산값만 읽고 근거의 자유 입력은 읽지 않는다.
 GRANT SELECT (id, shop_id, draft_id, draft_revision, price_list_id, amount, amount_max, display_kind, order_kind, valid_until, quoted_at)
   ON quotes TO :"runtime_role";
+-- TASK-067: 견적과 요청 당시 운영규정의 계산에 필요한 열만 읽는다.
+GRANT SELECT (draft_id, price_list_id, operating_rules_id) ON orders TO :"runtime_role";
+GRANT SELECT (size_option_id, flavor_option_id, design_option_id, design_id) ON order_drafts TO :"runtime_role";
+GRANT SELECT (shop_id, draft_id, price_list_id, option_id) ON order_draft_extras TO :"runtime_role";
+GRANT SELECT (id, shop_id, draft_id) ON reference_photos TO :"runtime_role";
+GRANT SELECT, INSERT ON quotes TO :"runtime_role";
+GRANT SELECT (shop_id, order_id, version, pickup_at) ON order_details TO :"runtime_role";
+GRANT SELECT (custom_material_ordered_at, production_started_at) ON productions TO :"runtime_role";
 -- FOR SHARE에는 열 하나의 UPDATE 권한이 필요하다. 앱의 이 경로는 ID를 바꾸지 않는다.
 GRANT UPDATE (id) ON shops, kakao_channels TO :"runtime_role";
 -- TASK-028: AI 실패/콜백 만료의 질문 참조·할 일·발신 대기 알림.
