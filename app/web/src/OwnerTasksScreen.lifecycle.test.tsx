@@ -160,3 +160,17 @@ it("서버의 지연 우선 순서를 화면이 연 시각으로 다시 섞지 �
   expect(rows[0]?.textContent).toContain(value.items[0].summary);
   expect(rows[1]?.textContent).toContain(value.items[1].summary);
 });
+
+it("잘못된 필터도 로그아웃을 막지 않고 목록 요청은 보내지 않는다", async () => {
+  render(
+    <MemoryRouter initialEntries={["/owner?status=bad"]}>
+      <OwnerTasksScreen {...callbacks} />
+    </MemoryRouter>,
+  );
+  await screen.findByText("입력한 내용을 확인해 주세요");
+  const logout = screen.getByRole("button", { name: "로그아웃" }) as HTMLButtonElement;
+  expect(logout.disabled).toBe(false);
+  fireEvent.click(logout);
+  expect(callbacks.onLogout).toHaveBeenCalledOnce();
+  expect(fetch).not.toHaveBeenCalled();
+});

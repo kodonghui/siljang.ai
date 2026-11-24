@@ -73,16 +73,25 @@ export function OwnerArea() {
   const [registrationNotice, setRegistrationNotice] = useState(false);
 
   useEffect(() => {
-    const recheck = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        setRegistrationNotice(false);
-        pruneRegistrationDraft();
-        setRevision((r) => r + 1);
-      }
+    const recheck = () => {
+      setRegistrationNotice(false);
+      pruneRegistrationDraft();
+      setRevision((value) => value + 1);
     };
-    window.addEventListener("pageshow", recheck);
-    return () => window.removeEventListener("pageshow", recheck);
-  }, []);
+    const restore = (event: PageTransitionEvent) => {
+      if (event.persisted) recheck();
+    };
+    const visible = () => {
+      // 홈의 목록보다 신원을 먼저 확인해 다른 계정의 가게와 섞이지 않게 한다.
+      if (shopPath === OWNER_HOME && document.visibilityState === "visible") recheck();
+    };
+    window.addEventListener("pageshow", restore);
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      window.removeEventListener("pageshow", restore);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [shopPath]);
   useEffect(() => {
     if (!requested) return;
     const controller = new AbortController();
@@ -140,9 +149,11 @@ export function OwnerArea() {
   const cached = verified.current;
   const candidate = session?.ok
     ? session.data
-    : cached && (cached.key === location.key || cached.path === location.pathname || (history && cached.history))
-      ? cached.data
-      : null;
+    : shopPath === OWNER_HOME
+      ? null
+      : cached && (cached.key === location.key || cached.path === location.pathname || (history && cached.history))
+        ? cached.data
+        : null;
   if (screenRoute && candidate?.shop) {
     if (historyRoute || shopRoute?.checkDestination) {
       const destination = ownerDestination(candidate, requested);
@@ -225,6 +236,17 @@ export function OwnerArea() {
           failure={classify(session.status, session.problem, session.retryAfterSeconds)}
           onRetry={() => setRevision((r) => r + 1)}
         />
+        {shopPath === OWNER_HOME ? (
+          <>
+            {logoutFailure ? (
+              <LoadFailure
+                failure={classify(logoutFailure.status, logoutFailure.problem, logoutFailure.retryAfterSeconds)}
+                onRetry={() => void logOut()}
+              />
+            ) : null}
+            <Button onClick={() => void logOut()}>로그아웃</Button>
+          </>
+        ) : null}
       </main>
     );
   }

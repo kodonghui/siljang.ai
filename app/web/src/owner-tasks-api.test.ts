@@ -33,7 +33,7 @@ it.each([
   "?limit=NaN",
   "?cursor=",
   "?cursor=%2Fprivate",
-  "?cursor=" + "a".repeat(201),
+  `?cursor=${"a".repeat(201)}`,
   "?status=open&status=closed",
   "?limit=1&limit=2",
   "?cursor=a&cursor=b",
@@ -89,7 +89,7 @@ it.each([
   [
     "틀린 주문번호",
     (v: typeof value) => {
-      v.items[0].order.orderNo = "1234567";
+      v.items[0].order.orderNo = "123456789";
     },
   ],
   [
@@ -188,4 +188,11 @@ it("홈이 아닌 신원 확인은 배너 없는 이전 소비자의 계약을 �
   );
   expect((await fetchOwner(new AbortController().signal)).ok).toBe(true);
   expect((await fetchOwner(new AbortController().signal, true)).ok).toBe(false);
+});
+
+it.each(["A1B2C3D", "A1B2C3D4"])("계약이 허용하는 %s 주문번호도 정상 목록으로 읽는다", async (orderNo) => {
+  value.items[0].order.orderNo = orderNo;
+  const r = await fetchOwnerTasks(query);
+  expect(r.ok).toBe(true);
+  if (r.ok) expect(r.data.items[0]?.order?.orderNo).toBe(orderNo);
 });

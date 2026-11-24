@@ -80,7 +80,7 @@ function task(value: unknown): value is OwnerTask {
     (!isApiObject(value.order) ||
       !uuid(value.order.orderId) ||
       typeof value.order.orderNo !== "string" ||
-      !/^[A-Z0-9]{6}$/.test(value.order.orderNo))
+      !/^[A-Z0-9]{6,8}$/.test(value.order.orderNo))
   )
     return false;
   if (

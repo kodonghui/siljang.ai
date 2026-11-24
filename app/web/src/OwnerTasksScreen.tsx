@@ -65,8 +65,11 @@ export function OwnerTasksScreen(
   const focusOrigin = useRef<Element | null>(null);
   const pendingFocus = useRef(false);
   const id = useId();
-  const current = loaded?.search === search ? loaded : null;
-  const banners = (props.banners ?? []).filter((name): name is keyof typeof BANNERS => name !== "add_alert_channel");
+  const identityReady = !props.sessionChecking && !props.sessionFailed;
+  const current = identityReady && loaded?.search === search ? loaded : null;
+  const banners = (identityReady ? (props.banners ?? []) : []).filter(
+    (name): name is keyof typeof BANNERS => name !== "add_alert_channel",
+  );
   const read = useCallback(
     async (cursor: string | null, more: boolean) => {
       if (!query || request.current || blockedNow.current) return;
@@ -114,20 +117,17 @@ export function OwnerTasksScreen(
   );
   useEffect(() => {
     void revision;
-    if (!blocked) void read(query?.cursor ?? null, false);
+    if (blocked) {
+      setLoaded(null);
+      setFailure(null);
+      setMessage("");
+    } else void read(query?.cursor ?? null, false);
     return () => {
       request.current?.abort();
       request.current = null;
       pendingFocus.current = false;
     };
   }, [read, query, revision, blocked]);
-  useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState === "visible") setRevision((old) => old + 1);
-    };
-    document.addEventListener("visibilitychange", refresh);
-    return () => document.removeEventListener("visibilitychange", refresh);
-  }, []);
   useLayoutEffect(() => {
     if (!message || !pendingFocus.current) return;
     pendingFocus.current = false;
@@ -175,9 +175,17 @@ export function OwnerTasksScreen(
     },
   ];
   return (
-    <OwnerLayout screen="SCR-016" title="할 일" shopName={props.shopName} onNavigate={navigate} busy={busy}>
+    <OwnerLayout
+      screen="SCR-016"
+      title="할 일"
+      shopName={identityReady ? props.shopName : ""}
+      onNavigate={navigate}
+      busy={busy}
+    >
       <section className="owner-tasks" aria-label="사장님 할 일">
-        {props.registrationNotice ? <p role="status">가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요</p> : null}
+        {identityReady && props.registrationNotice ? (
+          <p role="status">가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요</p>
+        ) : null}
         <section className="owner-task-banners" aria-label="가게 설정 안내" inert={busy}>
           {(expanded ? banners : banners.slice(0, 3)).map((name) => {
             const banner = BANNERS[name];
@@ -308,7 +316,9 @@ export function OwnerTasksScreen(
         ) : null}
         <Button
           kind="secondary"
-          disabled={Boolean(props.sessionChecking || props.logoutPending || (loading && !props.sessionFailed))}
+          disabled={Boolean(
+            props.sessionChecking || props.logoutPending || (query !== null && loading && !props.sessionFailed),
+          )}
           busy={Boolean(props.logoutPending)}
           onClick={props.onLogout}
         >
