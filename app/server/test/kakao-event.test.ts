@@ -37,12 +37,45 @@ function harness(response: unknown, status = 200) {
 }
 
 describe("카카오 Event API 공통 전송(TASK-028, G4/G5)", () => {
+  it.each([301, 302, 303, 307, 308])("%s의 실패 본문을 설정 오류로 분류하거나 재전송하지 않음", async (status) => {
+    const response = Response.json(
+      { status: "FAIL", message: "Invalid bot ID. Check your Bot ID." },
+      { status, headers: { Location: "https://other.example/event" } },
+    );
+    if (response.body === null) throw new Error("시험 본문 없음");
+    const cancel = vi.spyOn(response.body, "cancel");
+    const send = vi.fn<typeof fetch>(async () => response);
+    const client = kakaoEvents(key(), { fetch: send });
+    expect(await client.requestNotice(input(), NOW)).toMatchObject({
+      kind: "failed",
+      code: "kakao_error",
+      retryable: true,
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(String(send.mock.calls[0]?.[0])).toBe(`https://bot-api.kakao.com/v2/bots/${BOT}/talk`);
+    expect(send.mock.calls[0]?.[1]?.redirect).toBe("manual");
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([301, 302, 303, 307, 308])("%s 전달 확인을 pending으로 두고 본문을 읽지 않음", async (status) => {
+    const response = Response.json(delivered(), { status, headers: { Location: "https://other.example/task" } });
+    if (response.body === null) throw new Error("시험 본문 없음");
+    const cancel = vi.spyOn(response.body, "cancel");
+    const send = vi.fn<typeof fetch>(async () => response);
+    const client = kakaoEvents(key(), { fetch: send });
+    expect(await client.checkDelivery(TASK, recipient)).toEqual({ kind: "pending" });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(String(send.mock.calls[0]?.[0])).toBe(`https://bot-api.kakao.com/v1/tasks/${TASK}`);
+    expect(send.mock.calls[0]?.[1]?.redirect).toBe("manual");
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
   it.each([false, true])("개발 채널 %s의 고정 주소/정한 이벤트/안내 키만 보내고 접수만 표시함", async (development) => {
     const h = harness({ status: "SUCCESS", taskId: TASK });
     expect(await h.client.requestNotice(input({ development }), NOW)).toEqual({ kind: "accepted", taskId: TASK });
     const [url, init] = h.send.mock.calls[0] ?? [];
     expect(String(url)).toBe(`https://bot-api.kakao.com/v2/bots/${BOT}${development ? "!" : ""}/talk`);
-    expect(init?.redirect).toBe("error");
+    expect(init?.redirect).toBe("manual");
     expect(new Headers(init?.headers).has("Cookie")).toBe(false);
     expect(init?.signal).toBeInstanceOf(AbortSignal);
     expect(new Headers(init?.headers).get("Authorization")).toBe("KakaoAK synthetic-event-rest-key");
