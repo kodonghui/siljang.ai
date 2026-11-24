@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createCustomOrderTask, ownerProductionOrder, writeOrderLedgerData } from "../src/order-output";
-import { createShopScope, shopRequestDb } from "../src/shop-scope";
+import { createShopScope, type ScopeVia, shopRequestDb } from "../src/shop-scope";
 import { describeDb } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, type ShopFixture } from "./support/shops";
@@ -62,15 +62,25 @@ describeDb("요약·알림·장부에서 알레르기 제외(TASK-066)", () => {
     await expect(ownerProductionOrder(owner(other), shop.orderId)).rejects.toMatchObject({ code: "not_found" });
     expect(write).not.toHaveBeenCalled();
   });
-  it("손님 범위로 장부/알레르기 자료를 읽거나 새 할 일을 만들지 못한다", async () => {
-    const customer = shopRequestDb(
-        createShopScope(shop.shopId, { kind: "customer", channelId: shop.channelId }),
-        isolated.db,
-      ),
-      write = vi.fn(async () => {});
-    await expect(createCustomOrderTask(customer, shop.orderId, NOW)).rejects.toMatchObject({ code: "not_found" });
-    await expect(writeOrderLedgerData(customer, shop.orderId, write)).rejects.toMatchObject({ code: "not_found" });
-    await expect(ownerProductionOrder(customer, shop.orderId)).rejects.toMatchObject({ code: "not_found" });
-    expect(write).not.toHaveBeenCalled();
-  });
+  it.each(["customer", "job", "operator"] as const)(
+    "사장님 외 범위에서는 장부·알레르기 조회 SQL을 실행하지 않는다(%s)",
+    async (kind) => {
+      const via: ScopeVia =
+        kind === "customer"
+          ? { kind, channelId: shop.channelId }
+          : kind === "job"
+            ? { kind, job: "output_privacy" }
+            : { kind, operatorId: shop.ownerId };
+      const customer = shopRequestDb(createShopScope(shop.shopId, via), isolated.db),
+        write = vi.fn(async () => {});
+      await expect(createCustomOrderTask(customer, shop.orderId, NOW)).rejects.toMatchObject({ code: "not_found" });
+      const found = vi.spyOn(customer, "found"),
+        run = vi.spyOn(customer, "run");
+      await expect(writeOrderLedgerData(customer, shop.orderId, write)).rejects.toMatchObject({ code: "not_found" });
+      await expect(ownerProductionOrder(customer, shop.orderId)).rejects.toMatchObject({ code: "not_found" });
+      expect(found).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+      expect(write).not.toHaveBeenCalled();
+    },
+  );
 });

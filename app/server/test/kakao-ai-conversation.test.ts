@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { recordAiCall } from "../src/ai-calls";
+import * as conversation from "../src/ai-conversation";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import { FieldCryptoError, fieldCrypto } from "../src/field-crypto";
@@ -399,5 +400,103 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
     expect(
       (await isolated.db.query("SELECT reason FROM handoffs WHERE consultation_id=$1", [row.consultation_id])).rows,
     ).toEqual([{ reason: "masking_failed" }]);
+  });
+
+  it.each(["permission denied", "not_found"])(
+    "문맥 조회 오류는 마스킹 실패로 넘기지 않고 재시도한다(%s)",
+    async (message) => {
+      const ai = model();
+      await send(newUuid(), "조회 오류의 합성 질문");
+      const job = required(jobs[0]);
+      await isolated.db.query(
+        "UPDATE consultations SET ai_disclosed_at=$2,ai_disclosed_policy_version=1 WHERE id=(SELECT consultation_id FROM messages WHERE id=$1)",
+        [job.messageId, NOW],
+      );
+      const failure = new Error(message),
+        callback = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+      vi.spyOn(conversation, "readAiConversation").mockRejectedValueOnce(failure);
+      await expect(
+        consumeKakaoCallback(job, env, {
+          connect: () => isolated.connect(),
+          now: () => new Date(NOW.getTime() + 1000),
+          fetch: callback,
+          services: { aiModel: ai },
+          logSink: () => {},
+        }),
+      ).rejects.toBe(failure);
+      expect(ai.call).not.toHaveBeenCalled();
+      expect(callback).not.toHaveBeenCalled();
+      expect(
+        (await isolated.db.query("SELECT kakao_callback_claim_until FROM messages WHERE id=$1", [job.messageId])).rows,
+      ).toEqual([{ kakao_callback_claim_until: null }]);
+      expect(
+        (await isolated.db.query("SELECT id FROM handoffs WHERE source_message_id=$1", [job.messageId])).rows,
+      ).toHaveLength(0);
+      await consume(job, ai);
+      expect(ai.call).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each(["[전화번호1]", "010-0000-5678", "１２３４５６７８９０"])(
+    "모델 초안에 번호나 플레이스홀더를 저장하지 않는다(%s)",
+    async (value) => {
+      const ai = model(),
+        invoke = required(ai.call.getMockImplementation());
+      ai.call.mockImplementationOnce(async (input) => {
+        const result = await invoke(input);
+        if (!result.ok) throw new Error("합성 답 실패");
+        return { ...result, output: { reply: "합성 문구를 확인했어요.", draft_patch: { lettering: value } } };
+      });
+      await send(newUuid(), "초안 저장의 합성 질문");
+      const job = required(jobs[0]);
+      await consume(job, ai);
+      expect(
+        (
+          await isolated.db.query(
+            "SELECT id FROM order_drafts WHERE consultation_id=(SELECT consultation_id FROM messages WHERE id=$1)",
+            [job.messageId],
+          )
+        ).rows,
+      ).toHaveLength(0);
+      expect(
+        (await isolated.db.query("SELECT id FROM messages WHERE trace_id=$1 AND author='ai'", [job.messageId])).rows,
+      ).toHaveLength(0);
+      expect(
+        (await isolated.db.query("SELECT fallback_reason FROM ai_calls WHERE trace_id=$1", [job.messageId])).rows,
+      ).toEqual([{ fallback_reason: "schema_invalid" }]);
+    },
+  );
+
+  it("사장님께 넘긴 질문과 덧붙인 질문은 다음 모델 문맥에 넣지 않는다", async () => {
+    const ai = model();
+    await send(newUuid(), "현재 안전한 합성 질문");
+    const job = required(jobs[0]);
+    const consultationId = required(
+      (await isolated.db.query("SELECT consultation_id FROM messages WHERE id=$1", [job.messageId])).rows[0],
+    ).consultation_id;
+    const first = newUuid(),
+      second = newUuid(),
+      handoff = newUuid();
+    for (const [id, text] of [
+      [first, "땅콩 알레르기 확인 질문"],
+      [second, "우유 알레르기 추가 질문"],
+    ])
+      await isolated.db.query(
+        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES($1,$2,$3,'inbound','customer','text',$4,$5,$6)",
+        [id, shop.shopId, consultationId, `synthetic-handoff:${id}`, text, new Date(NOW.getTime() - 2000)],
+      );
+    await isolated.db.query(
+      "INSERT INTO handoffs(id,shop_id,consultation_id,source_message_id,reason) VALUES($1,$2,$3,$4,'edibility')",
+      [handoff, shop.shopId, consultationId, first],
+    );
+    await isolated.db.query(
+      "INSERT INTO handoff_questions(shop_id,handoff_id,message_id,reason) VALUES($1,$2,$3,'edibility')",
+      [shop.shopId, handoff, second],
+    );
+    await consume(job, ai);
+    const input = JSON.stringify(required(ai.call.mock.calls[0])[0].messages);
+    expect(input).toContain("현재 안전한 합성 질문");
+    expect(input).not.toContain("땅콩");
+    expect(input).not.toContain("우유");
   });
 });

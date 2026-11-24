@@ -7,6 +7,10 @@ import type { ShopDb } from "./shop-scope";
 const MAX_TURNS = 20;
 const inputText = (text: string) => [...text].slice(0, 1000).join("");
 
+export function hasAiPlaceholders(text: string): boolean {
+  return /\[(?:전화번호|계좌번호|카드번호|긴숫자)[0-9]{1,3}\]/.test(text);
+}
+
 /** 번호를 복원하지 않는다. 빈 답이 되면 호출자의 출력 검사에서 거절한다. */
 export function stripAiPlaceholders(text: string): string {
   return text
@@ -30,11 +34,13 @@ export async function readAiConversation(
     [source.consultationId, anchor.created_at],
   );
   const turns = await db.run<{ id: string; body_masked: string; created_at: Date }>(
-    `SELECT id,body_masked,created_at FROM messages WHERE shop_id=$1 AND consultation_id=$2
-      AND direction='inbound' AND kind='text' AND body_masked IS NOT NULL
-      AND (id=$3 OR created_at<$4 OR (created_at=$4 AND id<$3))
-      AND ($5::timestamptz IS NULL OR created_at>$5)
-      ORDER BY (id=$3) DESC,created_at DESC,id DESC LIMIT $6`,
+    `SELECT m.id,m.body_masked,m.created_at FROM messages m WHERE m.shop_id=$1 AND m.consultation_id=$2
+      AND m.direction='inbound' AND m.kind='text' AND m.body_masked IS NOT NULL
+      AND (m.id=$3 OR m.created_at<$4 OR (m.created_at=$4 AND m.id<$3))
+      AND ($5::timestamptz IS NULL OR m.created_at>$5)
+      AND NOT EXISTS (SELECT h.id FROM handoffs h WHERE h.shop_id=$1 AND h.source_message_id=m.id)
+      AND NOT EXISTS (SELECT q.id FROM handoff_questions q WHERE q.shop_id=$1 AND q.message_id=m.id)
+      ORDER BY (m.id=$3) DESC,m.created_at DESC,m.id DESC LIMIT $6`,
     [source.consultationId, source.messageId, anchor.created_at, requested.at, MAX_TURNS],
   );
   const mask = async (text: string) =>

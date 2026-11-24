@@ -5,9 +5,10 @@ GRANT SELECT, INSERT, UPDATE ON owners, customers, consultations, messages TO :"
 -- 로그인할 때 기한 지난 세션을 정리하므로 DELETE도 필요하다(owner-session.ts).
 GRANT SELECT, INSERT, UPDATE, DELETE ON owner_sessions TO :"runtime_role";
 GRANT SELECT ON shops, kakao_channels TO :"runtime_role";
--- TASK-066: 같은 상담의 주문 요청 이전 대화를 AI 입력에서 제외할 때만 읽는다.
+-- TASK-066: 요청 시각은 AI 문맥 경계, kind/amount/version은 사장님 전용 출력에서 읽는다.
 GRANT SELECT (shop_id, consultation_id, requested_at, kind, amount, version) ON orders TO :"runtime_role";
--- TASK-066: 사장님 상세/제작 자료의 알레르기와 장부의 주문자 정보는 목적별 함수로 나누어 읽는다.
+-- TASK-066: 공용 역할의 열 권한이다. 앱의 requireOwner가 상세/제작 자료와 장부의 사장님 범위를 확인한다.
+-- 손님·일 실행기에는 order-output 함수를 허용하지 않는다. 역할 자체가 행위자를 구분하지는 않는다.
 GRANT SELECT (shop_id, order_id, version, customer_name, customer_phone, allergy_answer)
   ON order_details TO :"runtime_role";
 -- TASK-066: 현재 견적은 공개 계산값만 읽고 근거의 자유 입력은 읽지 않는다.
@@ -31,7 +32,7 @@ GRANT SELECT (id, shop_id, consultation_id, status, revision, lettering, design_
 GRANT SELECT, INSERT ON masked_values TO :"runtime_role";
 -- TASK-028: 미전달 일반 글은 다음 응답/콜백에 전한 뒤 상태와 시각만 고친다.
 GRANT SELECT, UPDATE (status, sent_at) ON notifications TO :"runtime_role";
--- API-072: 자기 받은 주문의 식별자/상태만 확인한다. 연락처/금액/주문 내용은 읽지 않는다.
+-- API-072 자체는 자기 받은 주문의 식별자/상태만 읽는다. 위 사장님 출력의 추가 열 권한과는 별개다.
 GRANT SELECT (id, shop_id, order_no, customer_id, consultation_id, status, personal_data_purged_at), UPDATE (id)
   ON orders TO :"runtime_role";
 -- 글 후기의 버전만 읽고 새 글과 이전 버전의 교체 시각을 남긴다. 기존 본문 수정/삭제는 없다.

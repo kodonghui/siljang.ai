@@ -1,11 +1,14 @@
 /** 콜백 소비자의 모델 한 차례. 원문/연락처 대신 보관된 마스킹 글만 읽고, 결과를 발신 전에 확정한다. */
 import { FIRST_ATTEMPT, markAiCallUnused, nextAttempt } from "./ai-calls";
-import { readAiConversation, stripAiPlaceholders } from "./ai-conversation";
+import { hasAiPlaceholders, readAiConversation, stripAiPlaceholders } from "./ai-conversation";
 import { AI_TOTAL_TIMEOUT_MS, type AiFailure, type AiMessage } from "./ai-model";
 import type { AiTurnOutput } from "./ai-turn-output";
+import { FieldCryptoError } from "./field-crypto";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import type { KakaoAiDisclosure } from "./kakao-ai-disclosure";
 import type { KakaoCallbackClaim } from "./kakao-callback-store";
+import { MaskingFailedError } from "./masked-values";
+import { messageNumbers } from "./message-masking";
 import type { Services } from "./services";
 import { type ShopDb, type ShopRequestDb, withShopSavepoint } from "./shop-scope";
 
@@ -101,7 +104,8 @@ export async function runKakaoAiTurn(
           services,
         ),
       );
-    } catch {
+    } catch (error) {
+      if (!(error instanceof MaskingFailedError) && !(error instanceof FieldCryptoError)) throw error;
       return { kind: "masking_failure" } as const;
     }
     if (!messages.some((message) => message.role === "user"))
@@ -131,7 +135,7 @@ export async function runKakaoAiTurn(
       {
         role: "system",
         content:
-          "가게 상담의 마스킹된 글입니다. 가격·자리·법률 판단을 만들지 마세요. 일반 답과 명시된 문구·색·디자인 설명만 채우고, 그 밖의 요청은 사장님 확인으로 넘기세요.",
+          "가게 상담의 마스킹된 글입니다. 플레이스홀더나 번호를 답과 초안에 쓰지 마세요. 가격·자리·법률 판단을 만들지 마세요. 일반 답과 명시된 문구·색·디자인 설명만 채우고, 그 밖의 요청은 사장님 확인으로 넘기세요.",
       },
       ...prepared.messages,
     ],
@@ -149,17 +153,18 @@ export async function runKakaoAiTurn(
         {
           role: "system",
           content:
-            "가게 상담의 마스킹된 글입니다. 가격·자리·법률 판단을 만들지 마세요. 일반 답과 명시된 문구·색·디자인 설명만 채우고, 그 밖의 요청은 사장님 확인으로 넘기세요.",
+            "가게 상담의 마스킹된 글입니다. 플레이스홀더나 번호를 답과 초안에 쓰지 마세요. 가격·자리·법률 판단을 만들지 마세요. 일반 답과 명시된 문구·색·디자인 설명만 채우고, 그 밖의 요청은 사장님 확인으로 넘기세요.",
         },
         ...prepared.messages,
       ],
     });
   }
+  const output = result.ok ? { ...result.output, reply: stripAiPlaceholders(result.output.reply) } : null;
   const failure = !result.ok
     ? result.failure
     : left() <= 0
       ? "timeout"
-      : safeReply({ ...result.output, reply: stripAiPlaceholders(result.output.reply) })
+      : output !== null && safeReply(output)
         ? null
         : "schema_invalid";
   if (failure !== null || !result.ok) {
@@ -174,7 +179,7 @@ export async function runKakaoAiTurn(
     return { kind: "failure", failure: failure ?? "unavailable" };
   }
 
-  const output = { ...result.output, reply: stripAiPlaceholders(result.output.reply) };
+  if (output === null) throw new Error("AI output was not prepared");
   return db.transaction(async (tx) => {
     await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [claim.customer_id]);
     const c = await tx.found<{ status: string; turn_trace_id: string | null }>(
@@ -212,7 +217,11 @@ function safeReply(output: AiTurnOutput): boolean {
   )
     return false;
   if (/\d[\d,]*\s*원|\d\s*%|\d{7,}/.test(output.reply)) return false;
-  return Object.keys(output.draft_patch ?? {}).every((key) => Object.hasOwn(FREE_FIELDS, key));
+  return Object.entries(output.draft_patch ?? {}).every(
+    ([key, value]) =>
+      Object.hasOwn(FREE_FIELDS, key) &&
+      (typeof value !== "string" || (!hasAiPlaceholders(value) && messageNumbers(value).length === 0)),
+  );
 }
 
 async function saveDraft(
