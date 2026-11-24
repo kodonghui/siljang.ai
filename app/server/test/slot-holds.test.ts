@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
+import { calendarBookingDays } from "../src/calendar";
 import { shiftDate } from "../src/calendar-input";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
-import { holdOrderSlot } from "../src/slot-holds";
+import { expireOrderSlot, holdOrderSlot } from "../src/slot-holds";
 import { shopLocalToUtc, toShopLocal } from "../src/time";
 import { describeDb, newUuid } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -201,5 +202,101 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
     expect(
       (await isolated.db.query("SELECT count(*)::int AS n FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows,
     ).toEqual([{ n: 0 }]);
+  });
+  async function held() {
+    return holdOrderSlot(scope(), { orderId: shop.orderId, paymentRequestId: shop.paymentRequestId, now });
+  }
+  async function expire(at: Date) {
+    return expireOrderSlot(scope(), { orderId: shop.orderId, paymentRequestId: shop.paymentRequestId, now: at });
+  }
+  const bookingStatus = async (at: Date) =>
+    scope().transaction(async (tx) => (await calendarBookingDays(tx, at)).find((x) => x.day === day)?.status);
+  it("기한 정각에 잡힌 자리를 풀고 주문을 기한 지남으로 두며 마감이 다시 열림", async () => {
+    await isolated.db.query("UPDATE business_calendars SET daily_capacity=1 WHERE shop_id=$1", [shop.shopId]);
+    await held();
+    expect(await bookingStatus(now)).toBe("closed");
+    const at = new Date(now.getTime() + 2 * 3600000);
+    expect((await expire(at)).kind).toBe("expired");
+    expect(
+      (await isolated.db.query("SELECT status,release_reason FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows,
+    ).toEqual([{ status: "released", release_reason: "payment_overdue" }]);
+    expect((await isolated.db.query("SELECT status FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual([
+      { status: "payment_overdue" },
+    ]);
+    expect(
+      (await isolated.db.query("SELECT status FROM payment_requests WHERE id=$1", [shop.paymentRequestId])).rows,
+    ).toEqual([{ status: "expired" }]);
+    expect(await bookingStatus(at)).toBe("open");
+    const revision = (await isolated.db.query("SELECT lock_version FROM orders WHERE id=$1", [shop.orderId])).rows;
+    expect((await expire(at)).kind).toBe("unchanged");
+    expect((await isolated.db.query("SELECT lock_version FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual(
+      revision,
+    );
+  });
+  it("자리 기한이 지나도 사장님이 누른 마감은 그대로", async () => {
+    await held();
+    await isolated.db.query("UPDATE calendar_days SET manually_closed_at=$3 WHERE shop_id=$1 AND day=$2", [
+      shop.shopId,
+      day,
+      now,
+    ]);
+    const at = new Date(now.getTime() + 2 * 3600000);
+    expect((await expire(at)).kind).toBe("expired");
+    expect(await bookingStatus(at)).toBe("closed");
+  });
+  it("기한 전에 입금을 알렸으면 상한 전에는 지키고 상한 정각에는 풂", async () => {
+    await held();
+    await isolated.db.query(
+      "UPDATE payment_requests SET status='claimed',claimed_at=$2,version=version+1 WHERE id=$1",
+      [shop.paymentRequestId, new Date(now.getTime() + 60000)],
+    );
+    expect((await expire(new Date(now.getTime() + 2 * 3600000))).kind).toBe("protected");
+    expect((await isolated.db.query("SELECT status FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows).toEqual([
+      { status: "held" },
+    ]);
+    const cap = (
+      await isolated.db.query<{ due_cap_at: Date }>("SELECT due_cap_at FROM payment_requests WHERE id=$1", [
+        shop.paymentRequestId,
+      ])
+    ).rows[0];
+    if (!cap) throw new Error("synthetic payment missing");
+    expect((await expire(cap.due_cap_at)).kind).toBe("expired");
+    expect((await isolated.db.query("SELECT status FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual([
+      { status: "payment_overdue" },
+    ]);
+  });
+  it("맞추는 중은 상한이 지나도 기한으로 풀지 않음", async () => {
+    await held();
+    await isolated.db.query(
+      "UPDATE payment_requests SET status='mismatch',mismatch_amount=35001,mismatch_at=$2,arrived_amount=35001,arrived_at=$2,version=version+1 WHERE id=$1",
+      [shop.paymentRequestId, now],
+    );
+    expect((await expire(shopLocalToUtc(shiftDate(day, 1), "16:00", "Asia/Seoul"))).kind).toBe("protected");
+    expect((await isolated.db.query("SELECT status FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows).toEqual([
+      { status: "held" },
+    ]);
+  });
+  it("확정된 자리는 결제 기한으로 풀리지 않음", async () => {
+    await held();
+    const paymentId = newUuid();
+    await isolated.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2,version=version+1 WHERE id=$1",
+        [shop.paymentRequestId, now],
+      );
+      await tx.query(
+        "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+        [paymentId, shop.shopId, shop.orderId, shop.paymentRequestId, now],
+      );
+      await tx.query(
+        "UPDATE orders SET status='confirmed',confirmed_at=$2,confirmed_payment_id=$3,lock_version=lock_version+1 WHERE id=$1",
+        [shop.orderId, now, paymentId],
+      );
+      await tx.query("UPDATE slot_holds SET status='fixed',fixed_at=$2 WHERE shop_id=$1", [shop.shopId, now]);
+    });
+    expect((await expire(new Date(now.getTime() + 3 * 3600000))).kind).toBe("protected");
+    expect((await isolated.db.query("SELECT status FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows).toEqual([
+      { status: "fixed" },
+    ]);
   });
 });

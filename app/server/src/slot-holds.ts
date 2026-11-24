@@ -28,6 +28,7 @@ interface Order {
   lock_version: number;
 }
 interface Payment {
+  version: number;
   id: string;
   kind: string;
   status: string;
@@ -39,29 +40,12 @@ export function holdOrderSlot(db: ShopRequestDb, input: HoldOrderSlotInput): Pro
   return db.transaction((tx) => holdOrderSlotInTransaction(tx, input));
 }
 export async function holdOrderSlotInTransaction(db: ShopDb, input: HoldOrderSlotInput): Promise<SlotResult> {
-  if (!Number.isFinite(input.now.getTime())) throw new RangeError("invalid slot time");
-  const orderId = pathId(input.orderId),
+  const order = await lockedSlotOrder(db, input);
+  if (order === null) return { kind: "stale" };
+  const orderId = order.id,
     paymentId = pathId(input.paymentRequestId),
     via = db.scope.via;
-  if (via.kind === "owner") {
-    await db.found("SELECT id FROM shops WHERE id=$1 AND owner_id=$2", [via.ownerId]);
-    if (input.expectedOrderRevision === undefined) throw fieldError("/baseRevision", "required");
-  }
-  if (
-    input.expectedOrderRevision !== undefined &&
-    (!Number.isSafeInteger(input.expectedOrderRevision) || input.expectedOrderRevision < 1)
-  )
-    throw fieldError("/baseRevision", "bad_format");
-  const order = await db.found<Order>(
-    "SELECT id,kind,status,accepted_at,pickup_day::text,pickup_at,lock_version FROM orders WHERE shop_id=$1 AND id=$2 AND personal_data_purged_at IS NULL FOR UPDATE",
-    [orderId],
-  );
-  if (input.expectedOrderRevision !== undefined && order.lock_version !== input.expectedOrderRevision)
-    return { kind: "stale" };
-  const payment = await db.found<Payment>(
-    "SELECT id,kind,status,due_at,due_cap_at,claimed_at FROM payment_requests WHERE shop_id=$1 AND id=$2 AND order_id=$3 FOR UPDATE",
-    [paymentId, orderId],
-  );
+  const payment = await lockedPayment(db, orderId, paymentId);
   const key = eventKeys.hold(orderId, paymentId);
   const existing = (
     await db.run<{ id: string; status: string; day: string }>(
@@ -100,4 +84,79 @@ export async function holdOrderSlotInTransaction(db: ShopDb, input: HoldOrderSlo
     [order.pickup_day, orderId, paymentId, key, overbooked, input.now],
   );
   return { kind: "held", holdId: saved.id, status: "held", day: order.pickup_day };
+}
+
+async function lockedSlotOrder(db: ShopDb, input: HoldOrderSlotInput): Promise<Order | null> {
+  if (!Number.isFinite(input.now.getTime())) throw new RangeError("invalid slot time");
+  const id = pathId(input.orderId),
+    via = db.scope.via;
+  if (via.kind === "owner") {
+    await db.found("SELECT id FROM shops WHERE id=$1 AND owner_id=$2", [via.ownerId]);
+    if (input.expectedOrderRevision === undefined) throw fieldError("/baseRevision", "required");
+  }
+  if (
+    input.expectedOrderRevision !== undefined &&
+    (!Number.isSafeInteger(input.expectedOrderRevision) || input.expectedOrderRevision < 1)
+  )
+    throw fieldError("/baseRevision", "bad_format");
+  const order = await db.found<Order>(
+    "SELECT id,kind,status,accepted_at,pickup_day::text,pickup_at,lock_version FROM orders WHERE shop_id=$1 AND id=$2 AND personal_data_purged_at IS NULL FOR UPDATE",
+    [id],
+  );
+  return input.expectedOrderRevision !== undefined && order.lock_version !== input.expectedOrderRevision ? null : order;
+}
+async function lockedPayment(db: ShopDb, orderId: string, paymentId: string): Promise<Payment> {
+  return db.found<Payment>(
+    "SELECT id,kind,status,due_at,due_cap_at,claimed_at,version FROM payment_requests WHERE shop_id=$1 AND id=$2 AND order_id=$3 FOR UPDATE",
+    [paymentId, orderId],
+  );
+}
+export interface SlotExpiryResult {
+  readonly kind: "expired" | "protected" | "unchanged" | "stale";
+  readonly holdId?: string;
+}
+export function expireOrderSlot(db: ShopRequestDb, input: HoldOrderSlotInput): Promise<SlotExpiryResult> {
+  return db.transaction((tx) => expireOrderSlotInTransaction(tx, input));
+}
+/** 결제·주문·자리의 기한 상태만 바꿉니다. 안내·장부는 담당 실행기가 이 트랜잭션 안에서 함께 남깁니다. */
+export async function expireOrderSlotInTransaction(db: ShopDb, input: HoldOrderSlotInput): Promise<SlotExpiryResult> {
+  const order = await lockedSlotOrder(db, input);
+  if (order === null) return { kind: "stale" };
+  const payment = await lockedPayment(db, order.id, pathId(input.paymentRequestId));
+  if (payment.status === "paid" || payment.status === "mismatch") return { kind: "protected" };
+  if (
+    !["open", "claimed"].includes(payment.status) ||
+    payment.kind === "difference" ||
+    !["awaiting_payment", "payment_overdue"].includes(order.status)
+  )
+    return { kind: "unchanged" };
+  const deadline =
+    payment.status === "claimed" && payment.claimed_at !== null && payment.claimed_at < payment.due_at
+      ? payment.due_cap_at
+      : payment.due_at;
+  if (input.now < deadline) return { kind: "protected" };
+  const held = (
+    await db.run<{ id: string; day: string }>(
+      "SELECT id,day::text FROM slot_holds WHERE shop_id=$1 AND order_id=$2 AND payment_request_id=$3 AND status='held'",
+      [order.id, payment.id],
+    )
+  ).rows[0];
+  if (!held) return { kind: "protected" };
+  await lockCalendarDay(db, held.day);
+  const slot = await db.run(
+    "UPDATE slot_holds SET status='released',released_at=$3,release_reason='payment_overdue' WHERE shop_id=$1 AND id=$2 AND status='held'",
+    [held.id, input.now],
+  );
+  if (slot.rowCount !== 1) throw new Error("slot changed after order lock");
+  const pay = await db.run(
+    "UPDATE payment_requests SET status='expired',expired_at=$3,version=version+1 WHERE shop_id=$1 AND id=$2 AND version=$4 AND status IN('open','claimed')",
+    [payment.id, input.now, payment.version],
+  );
+  if (pay.rowCount !== 1) throw new Error("payment changed after order lock");
+  const updated = await db.run(
+    "UPDATE orders SET status='payment_overdue',lock_version=lock_version+1 WHERE shop_id=$1 AND id=$2 AND lock_version=$3 AND status IN('awaiting_payment','payment_overdue')",
+    [order.id, order.lock_version],
+  );
+  if (updated.rowCount !== 1) throw new Error("order changed after slot lock");
+  return { kind: "expired", holdId: held.id };
 }
