@@ -161,3 +161,77 @@ it("없는 문의 주소는 버튼을 잠그고 실패 화면에서 가게 신�
   await screen.findByText("찾을 수 없어요");
   expect(screen.queryByRole("heading", { name: value.shop.name })).toBeNull();
 });
+
+function useRefreshClock() {
+  vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval", "setTimeout", "clearTimeout", "performance"] });
+}
+it("같은 사진을 돌려주는60초 정기 조회는 열어 둔 사진 창을 닫지 않는다", async () => {
+  useRefreshClock();
+  mount();
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "포트폴리오 사진 1 크게 보기" }));
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(calls).toHaveLength(2);
+  expect(screen.getByRole("dialog")).toBeTruthy();
+});
+it("늦은 정기 조회 동안과 완료 뒤에도 고른 달과 접어 둔 그룹을 보존한다", async () => {
+  useRefreshClock();
+  mount();
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "다음 달" }));
+  const group = screen.getByText("크기", { selector: "summary" }).closest("details");
+  fireEvent.click(screen.getByText("크기", { selector: "summary" }));
+  expect(group?.open).toBe(false);
+  let settle: ((response: Response) => void) | undefined;
+  result = () =>
+    new Promise<Response>((resolve) => {
+      settle = resolve;
+    });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(screen.getByRole("table").textContent).toContain("2026년 12월");
+  expect(group?.open).toBe(false);
+  await act(async () => {
+    settle?.(json(value));
+  });
+  expect(screen.getByRole("table").textContent).toContain("2026년 12월");
+  expect(group?.open).toBe(false);
+});
+it("사진 복구 응답의 실패는 멈추되 다음 정기 조회의 새 주소에는 한 번 복구를 허용한다", async () => {
+  useRefreshClock();
+  mount();
+  await act(async () => {});
+  const generation = (tag: string) => {
+    value = original();
+    value.portfolio = value.portfolio.map((p: { imageUrl: string }) => ({
+      imageUrl: `${p.imageUrl}&generation=${tag}`,
+    }));
+    value.priceList.designs = value.priceList.designs.map((d: { imageUrl: string }) => ({
+      ...d,
+      imageUrl: `${d.imageUrl}&generation=${tag}`,
+    }));
+  };
+  generation("photo");
+  await act(async () => {
+    fireEvent.error(screen.getAllByRole("img")[0] as HTMLElement);
+  });
+  expect(calls).toHaveLength(2);
+  await act(async () => {
+    fireEvent.error(screen.getAllByRole("img")[0] as HTMLElement);
+  });
+  expect(calls).toHaveLength(2);
+  generation("periodic");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(calls).toHaveLength(3);
+  generation("second-photo");
+  await act(async () => {
+    fireEvent.error(screen.getAllByRole("img")[0] as HTMLElement);
+  });
+  expect(calls).toHaveLength(4);
+});

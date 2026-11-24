@@ -159,7 +159,7 @@ function BookingDetails({ slug }: { readonly slug: string }) {
         {page?.shop.pickupAddress ? <p>픽업 장소 · {page.shop.pickupAddress}</p> : null}
       </header>
       {load.loading ? (
-        <BookingLoading />
+        <BookingLoading wide={wide} />
       ) : failure?.status === 404 ? (
         <StateBox tone="error" title="찾을 수 없어요">
           가게 주소를 다시 확인해 주세요
@@ -316,7 +316,7 @@ function BookingDetails({ slug }: { readonly slug: string }) {
     </main>
   );
 }
-function BookingLoading() {
+function BookingLoading({ wide }: { readonly wide: boolean }) {
   return (
     <div className="public-booking-loading" aria-busy="true">
       <span className="ui-sr-only">예약 링크 페이지를 불러오고 있어요</span>
@@ -336,9 +336,13 @@ function BookingLoading() {
           </section>
           <section aria-labelledby="booking-loading-calendar">
             <h2 id="booking-loading-calendar">빈 날짜</h2>
-            <div className="public-booking-loading-calendar" aria-hidden="true">
-              {Array.from({ length: 42 }, (_, i) => `날짜 ${i + 1}`).map((day) => (
-                <span key={day} />
+            <div className="public-booking-months" aria-hidden="true">
+              {(wide ? ["첫 달", "다음 달"] : ["첫 달"]).map((month) => (
+                <div className="public-booking-loading-calendar" key={month}>
+                  {Array.from({ length: 42 }, (_, i) => `날짜 ${i + 1}`).map((day) => (
+                    <span key={day} />
+                  ))}
+                </div>
               ))}
             </div>
           </section>
