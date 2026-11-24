@@ -1,7 +1,12 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
-import { assessPickupDay, closedDayNoticeTrace, requestClosedPickupDay } from "../src/booking-capacity";
+import {
+  assessPickupDay,
+  closedDayNoticeTrace,
+  recordClosedPickupDayInTransaction,
+  requestClosedPickupDay,
+} from "../src/booking-capacity";
 import { eventKeys } from "../src/event-keys";
-import { createShopScope, shopRequestDb } from "../src/shop-scope";
+import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
 import { describeDb, newUuid } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, type ShopFixture } from "./support/shops";
@@ -128,8 +133,11 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
     expect(await request(await notice(true), false)).toMatchObject({ kind: "not_requested" });
     expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(0);
   });
-  it.each(["2026-11-17", "2027-01-17"])("기간 밖 날짜는 받을 수 없고 다른 날/수량을 내지 않는다(%s)", async (day) => {
-    expect(await ask(day)).toMatchObject({ status: "outside_window", alternatives: [] });
+  it.each([
+    ["2026-11-17", ["2026-11-18", "2026-11-19", "2026-11-20"]],
+    ["2027-01-17", ["2027-01-16", "2027-01-15", "2027-01-14"]],
+  ] as const)("기간 밖 날짜는 받지 않고 14일 안의 유효한 대안만 낸다(%s)", async (day, alternatives) => {
+    expect(await ask(day)).toMatchObject({ status: "outside_window", alternatives });
   });
   it("가까운 날이 없으면 빈 목록과 사장님 확인을 요청할 수 있다는 안내를 낸다", async () => {
     await isolated.db.query("UPDATE business_calendars SET closed_weekdays=ARRAY[1,2,3,4,5,6,7] WHERE shop_id=$1", [
@@ -230,5 +238,110 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
     );
     expect(await ask("2026-12-07")).toMatchObject({ status: "open" });
     expect(await ask(DAY)).toMatchObject({ status: "day_off", alternatives: [] });
+  });
+
+  it("이미 넘긴 같은 요청은 날짜가 다시 열리거나 기간 밖이 되어도 첫 결과를 반환한다", async () => {
+    await fullDay();
+    const id = await notice(true),
+      first = await request(id);
+    await isolated.db.query("DELETE FROM slot_holds WHERE shop_id=$1", [shop.shopId]);
+    expect(await ask(DAY)).toMatchObject({ status: "open" });
+    expect(await request(id)).toEqual(first);
+    expect(
+      await requestClosedPickupDay(scoped(), {
+        consultationId: shop.consultationId,
+        sourceMessageId: shop.messageId,
+        day: DAY,
+        noticeMessageId: id,
+        insist: true,
+        now: new Date("2027-01-01T00:00:00Z"),
+      }),
+    ).toEqual(first);
+  });
+
+  it("같은 열린 날짜 건을 재사용한 새 수신 글도 건이 닫힌 뒤 재처리하면 새 건을 만들지 않는다", async () => {
+    await fullDay();
+    const first = await request(await notice(true)),
+      sourceId = newUuid();
+    await isolated.db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES($1,$2,$3,'inbound','customer','text',$4,'같은 날짜 합성 재요청',$5)",
+      [sourceId, shop.shopId, shop.consultationId, `synthetic-closed:${sourceId}`, NOW],
+    );
+    const input = {
+      consultationId: shop.consultationId,
+      sourceMessageId: sourceId,
+      day: DAY,
+      noticeMessageId: await notice(true, sourceId),
+      insist: true,
+      now: NOW,
+    };
+    const reused = await requestClosedPickupDay(scoped(), input);
+    expect(reused.handoffId).toBe(first.handoffId);
+    await isolated.db.query("UPDATE handoffs SET status='closed_no_answer',closed_at=$2 WHERE id=$1", [
+      first.handoffId,
+      NOW,
+    ]);
+    await isolated.db.query("UPDATE owner_tasks SET wait_status='closed_no_answer',closed_at=$2 WHERE handoff_id=$1", [
+      first.handoffId,
+      NOW,
+    ]);
+    expect(await requestClosedPickupDay(scoped(), input)).toEqual(reused);
+    expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(1);
+    expect((await isolated.db.query("SELECT id FROM owner_alerts WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(
+      1,
+    );
+  });
+
+  it("다른 사유로 이미 넘긴 수신 글은 결과로 알리고 같은 트랜잭션의 안내 전달 표시를 되돌리지 않는다", async () => {
+    await fullDay();
+    const id = await notice();
+    await isolated.db.query(
+      "INSERT INTO handoffs(shop_id,consultation_id,source_message_id,reason) VALUES($1,$2,$3,'cannot_answer')",
+      [shop.shopId, shop.consultationId, shop.messageId],
+    );
+    const result = await scoped().transaction(async (tx) => {
+      await tx.run("UPDATE messages SET delivery='callback',sent_at=$3 WHERE shop_id=$1 AND id=$2", [id, NOW]);
+      return recordClosedPickupDayInTransaction(tx, {
+        consultationId: shop.consultationId,
+        sourceMessageId: shop.messageId,
+        day: DAY,
+        noticeMessageId: id,
+        insist: true,
+        now: NOW,
+      });
+    });
+    expect(result.kind).toBe("already_handed_off");
+    expect((await isolated.db.query("SELECT delivery FROM messages WHERE id=$1", [id])).rows).toEqual([
+      { delivery: "callback" },
+    ]);
+  });
+
+  it("재요청하지 않는 조회는 다른 연결의 손님 잠금을 기다리지 않는다", async () => {
+    await fullDay();
+    const id = await notice(true),
+      holder = isolated.connect(),
+      reader = isolated.connect();
+    try {
+      await holder.transaction(async (held) => {
+        await held.query("SELECT id FROM customers WHERE id=$1 FOR UPDATE", [shop.customerId]);
+        const result = await reader.transaction(async (raw) => {
+          await raw.query("SET LOCAL lock_timeout='250ms'");
+          return recordClosedPickupDayInTransaction(
+            shopDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), raw),
+            {
+              consultationId: shop.consultationId,
+              sourceMessageId: shop.messageId,
+              day: DAY,
+              noticeMessageId: id,
+              insist: false,
+              now: NOW,
+            },
+          );
+        });
+        expect(result.kind).toBe("not_requested");
+      });
+    } finally {
+      await Promise.all([holder.close(), reader.close()]);
+    }
   });
 });

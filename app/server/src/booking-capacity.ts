@@ -1,8 +1,7 @@
 /** TASK-068. 날짜 판정은 자리를 만들지 않는다. 안내 전달 확정 뒤 마감 질문만 기록한다. */
 import { calendarBookingDays } from "./calendar";
 import { calendarDate } from "./calendar-input";
-import { eventKeys, insertOnce } from "./event-keys";
-import { ownerWaitDue } from "./owner-wait";
+import { createHandoffTask } from "./handoff-task";
 import { ApiError } from "./problem";
 import { pathId, type ShopDb, type ShopRequestDb } from "./shop-scope";
 
@@ -19,9 +18,7 @@ async function readAvailability(db: ShopDb, rawDay: string, now: Date): Promise<
   const day = calendarDate(rawDay, "/pickupDay");
   const days = await calendarBookingDays(db, now);
   const desired = days.find((row) => row.day === day);
-  if (!desired)
-    return { day, status: "outside_window", alternatives: [], message: "오늘부터 60일 안의 날짜를 골라 주세요." };
-  if (desired.status === "open")
+  if (desired?.status === "open")
     return { day, status: "open", alternatives: [], message: "그날 주문을 받을 수 있어요." };
   const distance = (candidate: string) => Math.abs(Date.parse(candidate) - Date.parse(day)) / 86400000;
   const alternatives = days
@@ -29,10 +26,14 @@ async function readAvailability(db: ShopDb, rawDay: string, now: Date): Promise<
     .sort((a, b) => distance(a.day) - distance(b.day) || a.day.localeCompare(b.day))
     .slice(0, 3)
     .map((row) => row.day);
-  const message = desired.status === "day_off" ? "그날은 휴무예요." : CLOSED_TEXT;
+  const message = !desired
+    ? "오늘부터 60일 안의 날짜를 골라 주세요."
+    : desired.status === "day_off"
+      ? "그날은 휴무예요."
+      : CLOSED_TEXT;
   return {
     day,
-    status: desired.status,
+    status: desired?.status ?? "outside_window",
     alternatives,
     message: alternatives.length ? message : `${message} ${NO_ALTERNATIVE}`,
   };
@@ -57,12 +58,45 @@ interface ClosedPickupInput {
 }
 type ClosedPickupResult = {
   readonly availability: PickupAvailability;
-  readonly kind: "not_requested" | "waiting_for_notice" | "handed_off";
+  readonly kind: "not_requested" | "waiting_for_notice" | "handed_off" | "already_handed_off";
   readonly handoffId?: string;
 };
 
 export function requestClosedPickupDay(db: ShopRequestDb, input: ClosedPickupInput): Promise<ClosedPickupResult> {
   return db.transaction((tx) => recordClosedPickupDayInTransaction(tx, input));
+}
+
+async function previousRequest(
+  tx: ShopDb,
+  sourceId: string,
+  consultationId: string,
+  day: string,
+  now: Date,
+): Promise<ClosedPickupResult | null> {
+  const row = (
+    await tx.run<{ id: string; reason: string; requested_day: string | null; availability: PickupAvailability | null }>(
+      `SELECT h.id,h.reason,h.requested_day::text,t.detail->'closedDayAvailability' AS availability
+     FROM handoffs h LEFT JOIN owner_tasks t ON t.shop_id=$1 AND t.handoff_id=h.id
+     WHERE h.shop_id=$1 AND h.consultation_id=$3 AND (h.source_message_id=$2
+       OR coalesce(t.detail->'closedDaySourceIds','[]'::jsonb) ? $2::text
+       OR h.id IN (SELECT q.handoff_id FROM handoff_questions q WHERE q.shop_id=$1 AND q.message_id=$2)) LIMIT 1`,
+      [sourceId, consultationId],
+    )
+  ).rows[0];
+  if (!row) return null;
+  if (row.reason !== "closed_day" || row.requested_day !== day)
+    return { kind: "already_handed_off", handoffId: row.id, availability: await readAvailability(tx, day, now) };
+  const stored = row.availability;
+  const availability =
+    stored?.day === day && stored.status === "closed" && Array.isArray(stored.alternatives)
+      ? {
+          day,
+          status: "closed" as const,
+          alternatives: stored.alternatives.slice(0, 3).map((value) => calendarDate(value, "/pickupDay")),
+          message: stored.alternatives.length ? CLOSED_TEXT : `${CLOSED_TEXT} ${NO_ALTERNATIVE}`,
+        }
+      : await readAvailability(tx, day, now);
+  return { kind: "handed_off", handoffId: row.id, availability };
 }
 
 /** 호출자는 안내 전달 표시와 같은 트랜잭션에서 부를 수 있다. 외부 발신은 하지 않는다. */
@@ -71,17 +105,24 @@ export async function recordClosedPickupDayInTransaction(
   input: ClosedPickupInput,
 ): Promise<ClosedPickupResult> {
   const sourceId = pathId(input.sourceMessageId),
-    consultationId = pathId(input.consultationId);
+    consultationId = pathId(input.consultationId),
+    day = calendarDate(input.day, "/pickupDay");
   const source = await tx.found<{ customer_id: string }>(
     `SELECT c.customer_id FROM messages m JOIN consultations c ON c.shop_id=$1 AND c.id=m.consultation_id
      WHERE m.shop_id=$1 AND m.id=$2 AND m.consultation_id=$3 AND m.direction='inbound'`,
     [sourceId, consultationId],
   );
+  if (!input.insist) {
+    const previous = await previousRequest(tx, sourceId, consultationId, day, input.now);
+    return previous ?? { kind: "not_requested", availability: await readAvailability(tx, day, input.now) };
+  }
   await tx.found("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [source.customer_id]);
   const consultation = await tx.found<{ status: string }>(
     "SELECT status FROM consultations WHERE shop_id=$1 AND id=$2 AND customer_id=$3 FOR UPDATE",
     [consultationId, source.customer_id],
   );
+  const previous = await previousRequest(tx, sourceId, consultationId, day, input.now);
+  if (previous) return previous;
   if (["ended", "deleted", "dropped"].includes(consultation.status)) throw new ApiError("not_found");
   const availability = await readAvailability(tx, input.day, input.now);
   if (availability.status !== "closed" || !input.insist) return { availability, kind: "not_requested" };
@@ -97,18 +138,6 @@ export async function recordClosedPickupDayInTransaction(
     !["skill_response", "callback", "delivered_later"].includes(notice.delivery)
   )
     return { availability, kind: "waiting_for_notice" };
-  const previous = (
-    await tx.run<{ id: string; reason: string; requested_day: string | null }>(
-      `SELECT h.id,h.reason,h.requested_day::text FROM handoffs h WHERE h.shop_id=$1
-     AND (h.source_message_id=$2 OR h.id IN (SELECT q.handoff_id FROM handoff_questions q WHERE q.shop_id=$1 AND q.message_id=$2))`,
-      [sourceId],
-    )
-  ).rows[0];
-  if (previous) {
-    if (previous.reason !== "closed_day" || previous.requested_day !== availability.day)
-      throw new ApiError("not_found");
-    return { availability, kind: "handed_off", handoffId: previous.id };
-  }
   const opened = (
     await tx.run<{ id: string }>(
       "SELECT id FROM handoffs WHERE shop_id=$1 AND consultation_id=$2 AND reason='closed_day' AND requested_day=$3::date AND status='open'",
@@ -119,6 +148,12 @@ export async function recordClosedPickupDayInTransaction(
   if (opened) {
     handoffId = opened.id;
     // 마감 날짜 건에는 일반 추가 질문을 붙이지 않는다. 같은 열린 날짜 건을 쓴다(SPEC-014).
+    await tx.run(
+      `UPDATE owner_tasks SET detail=jsonb_set(coalesce(detail,'{}'::jsonb),'{closedDaySourceIds}',
+       coalesce(detail->'closedDaySourceIds','[]'::jsonb)||jsonb_build_array($3::text))
+       WHERE shop_id=$1 AND handoff_id=$2 AND NOT coalesce(detail->'closedDaySourceIds','[]'::jsonb) ? $3`,
+      [handoffId, sourceId],
+    );
   } else {
     handoffId = (
       await tx.found<{ id: string }>(
@@ -126,27 +161,15 @@ export async function recordClosedPickupDayInTransaction(
         [consultationId, sourceId, availability.day, input.now],
       )
     ).id;
-    const task = await insertOnce(
-      tx,
-      "owner_tasks",
-      `INSERT INTO owner_tasks (shop_id, event_key, handoff_id, kind, wait_status, wait_due_at, opened_at, detail)
-       VALUES ($1, $2, $3, 'handoff', 'waiting', $4, $5, $6::jsonb) ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id`,
-      [
-        eventKeys.task("handoff", handoffId),
-        handoffId,
-        await ownerWaitDue(tx, input.now),
-        input.now,
-        JSON.stringify({ requestedDay: availability.day, reason: "closed_day" }),
-      ],
-    );
-    await insertOnce(
-      tx,
-      "owner_alerts",
-      `INSERT INTO owner_alerts (shop_id, event_key, owner_task_id, kind, next_attempt_at, created_at)
-       VALUES ($1, $2, $3, 'new_task', $4, $4) ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id`,
-      [eventKeys.alert("new_task", task.id), task.id, input.now],
-    );
+    await createHandoffTask(tx, handoffId, input.now, {
+      requestedDay: availability.day,
+      reason: "closed_day",
+      closedDaySourceIds: [sourceId],
+      closedDayAvailability: availability,
+    });
   }
   await tx.run("UPDATE consultations SET status='awaiting_owner' WHERE shop_id=$1 AND id=$2", [consultationId]);
-  return { availability, kind: "handed_off", handoffId };
+  const result = await previousRequest(tx, sourceId, consultationId, day, input.now);
+  if (result === null) throw new Error("closed day request was not recorded");
+  return result;
 }
