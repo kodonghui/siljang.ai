@@ -1,7 +1,7 @@
 import { type AuthorizedKakaoSkill, kakaoReceiptKey } from "./kakao-skill-auth";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
-const MESSAGE_LIMIT = 20;
+export const KAKAO_MESSAGE_LIMIT = 20;
 const MINUTE_MS = 60_000;
 
 export type InboundReceipt =
@@ -122,6 +122,7 @@ async function receiveInTransaction(
          AND m.created_at >= $3 AND m.created_at < $4 LIMIT 22`,
     [customerId, windowStart, new Date(windowStart.getTime() + MINUTE_MS)],
   );
-  const limit = recent.rowCount <= MESSAGE_LIMIT ? "ok" : recent.rowCount === MESSAGE_LIMIT + 1 ? "first" : "silent";
+  const limit =
+    recent.rowCount <= KAKAO_MESSAGE_LIMIT ? "ok" : recent.rowCount === KAKAO_MESSAGE_LIMIT + 1 ? "first" : "silent";
   return { kind: "received", messageId, consultationId, customerId, limit };
 }

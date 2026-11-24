@@ -164,6 +164,7 @@ export async function prepareKakaoCallbackHandoff(
   messageId: string,
   claim: Claim,
   now: Date,
+  discardReplyId?: string,
 ): Promise<false | "ai_failure" | "ai_cost_limit"> {
   return db.transaction(async (tx) => {
     await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [claim.customer_id]);
@@ -177,6 +178,12 @@ export async function prepareKakaoCallbackHandoff(
       [messageId, claim.consultation_id, claim.kakao_callback_enc, claim.kakao_callback_claim_until],
     );
     if (owned.rowCount === 0) return false;
+    if (discardReplyId !== undefined)
+      await tx.run(
+        `UPDATE messages SET delivery='failed' WHERE shop_id=$1 AND id=$2 AND consultation_id=$3
+         AND trace_id=$4 AND direction='outbound' AND author='ai' AND delivery='deferred' AND sent_at IS NULL`,
+        [discardReplyId, claim.consultation_id, messageId],
+      );
     await tx.run(
       "UPDATE consultations SET turn_trace_id = NULL, turn_started_at = NULL WHERE shop_id = $1 AND id = $2 AND turn_trace_id = $3",
       [claim.consultation_id, messageId],

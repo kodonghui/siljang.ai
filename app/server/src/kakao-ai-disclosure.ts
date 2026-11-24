@@ -1,7 +1,8 @@
 /** 첫 AI 답의 맨 앞에 붙일 고지. 외부 전송 성공 전에는 고지 완료를 기록하지 않는다. */
 import type { KakaoCallbackClaim } from "./kakao-callback-store";
+import { type AuthorizedKakaoSkill, kakaoReceiptKey } from "./kakao-skill-auth";
+import { KAKAO_MESSAGE_LIMIT } from "./kakao-skill-store";
 import { currentPrivacyPolicy } from "./privacy-policy-current";
-import { ApiError } from "./problem";
 import type { Services } from "./services";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
@@ -46,7 +47,7 @@ export async function readKakaoDisclosurePolicy(
   db: ShopRequestDb,
   services: Services,
 ): Promise<KakaoDisclosurePolicy | undefined> {
-  if (services.privacyPolicy === null || services.publicAppOrigin === null) return undefined;
+  if (!services.aiConfigured || services.privacyPolicy === null || services.publicAppOrigin === null) return undefined;
   try {
     return await db.transaction(async (tx) => {
       const policy = await currentPrivacyPolicy(tx, services);
@@ -59,9 +60,44 @@ export async function readKakaoDisclosurePolicy(
         at: services.now(),
       };
     });
-  } catch (error) {
-    if (error instanceof ApiError && error.code === "not_found") return undefined;
-    throw error;
+  } catch {
+    // 정책을 확인할 수 없으면 AI 답을 열지 않고 기존 수신/사장님 안내를 유지한다.
+    return undefined;
+  }
+}
+
+/** 가게 잠금 전의 빠른 읽기다. 이미 고지한 상담·중복 수신은 정책을 다시 만들지 않는다. */
+export async function readKakaoInboundDisclosurePolicy(
+  db: ShopRequestDb,
+  request: AuthorizedKakaoSkill,
+  services: Services,
+): Promise<KakaoDisclosurePolicy | undefined> {
+  if (!services.aiConfigured) return undefined;
+  try {
+    const receipt = await kakaoReceiptKey(request.requestKeySecret, request.payload, request.receivedAt, "message");
+    const duplicate = await db.run("SELECT id FROM messages WHERE shop_id=$1 AND kakao_message_id=$2", [receipt]);
+    if (duplicate.rowCount !== 0) return undefined;
+    const known = await db.run<{ ai_disclosed_at: Date | null; status: string; customer_id: string }>(
+      `SELECT c.ai_disclosed_at,c.status,c.customer_id FROM consultations c
+       JOIN customers u ON u.shop_id=$1 AND u.id=c.customer_id
+       WHERE c.shop_id=$1 AND u.kakao_channel_id=$2 AND u.kakao_user_key=$3
+       AND c.status NOT IN ('ended','deleted') LIMIT 1`,
+      [request.channelId, request.payload.userId],
+    );
+    const current = known.rows[0];
+    if (current && (current.ai_disclosed_at !== null || current.status === "dropped")) return undefined;
+    if (current) {
+      const start = new Date(Math.floor(request.receivedAt.getTime() / 60000) * 60000);
+      const recent = await db.found<{ n: number }>(
+        `SELECT count(*)::int AS n FROM messages m JOIN consultations c ON c.shop_id=$1 AND c.id=m.consultation_id
+         WHERE m.shop_id=$1 AND c.customer_id=$2 AND m.direction='inbound' AND m.created_at >= $3 AND m.created_at < $4`,
+        [current.customer_id, start, new Date(start.getTime() + 60000)],
+      );
+      if (recent.n >= KAKAO_MESSAGE_LIMIT) return undefined;
+    }
+    return await readKakaoDisclosurePolicy(db, services);
+  } catch {
+    return undefined;
   }
 }
 
