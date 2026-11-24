@@ -51,7 +51,7 @@ export const JOBS: readonly JobEntry[] = [
     task: "TASK-076",
     runs: MINUTE,
     sources: ["consultation_open", "consultation_ordered", "consultation_waiting"],
-    note: "문의 끊김·상담 끝남. 가게마다 끊김 시간이 달라(API-010) TASK-076이 consultations_idle_idx·consultations_ordered_idx로 찾는 꼴을 정함",
+    note: "현재 가게의 끊김 시간과 마지막 수신 시각으로 열린/주문/답 기다림 상담을 찾음. 잠금 안에서 열린 에스컬레이션 건·다룬 주문의 끝남을 다시 확인하며 문의 끊김은 초안 보존·안내 없음",
   },
   {
     spec: "SPEC-037",
