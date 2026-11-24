@@ -14,6 +14,7 @@ import {
   holdOrderSlotInTransaction,
   moveOrderSlotInTransaction,
   releaseCancelledOrderSlots,
+  releaseClosedChangeSlot,
   reserveRemakeSlot,
 } from "../src/slot-holds";
 import { shopLocalToUtc, toShopLocal } from "../src/time";
@@ -464,6 +465,101 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
     expect((await expireOrderSlot(scope(), { ...input, now: new Date(now.getTime() + 14400000) })).kind).toBe(
       "unchanged",
     );
+  });
+  it("변경 닫기는 차액 안내가 닫힌 뒤 새날 잡힌 자리만 풀며 반복은 그대로", async () => {
+    const change = await differenceDate(),
+      input = {
+        orderId: shop.orderId,
+        changeRequestId: change.changeId,
+        paymentRequestId: change.paymentRequestId,
+        now,
+      };
+    await holdOrderSlot(scope(), input);
+    expect((await releaseClosedChangeSlot(scope(), input)).kind).toBe("not_applicable");
+    await isolated.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='closed',closed_at=$2,close_reason='change_closed',version=version+1 WHERE id=$1",
+        [change.paymentRequestId, now],
+      );
+      await tx.query(
+        "UPDATE change_requests SET status='closed_no_difference',closed_at=$2,lock_version=lock_version+1 WHERE id=$1",
+        [change.changeId, now],
+      );
+    });
+    const runtime = pgConnector(new Secret(runtimeUrl));
+    try {
+      expect((await releaseClosedChangeSlot(scope(runtime), input)).kind).toBe("released");
+      expect((await releaseClosedChangeSlot(scope(runtime), input)).kind).toBe("unchanged");
+    } finally {
+      await runtime.close();
+    }
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT day::text,status,release_reason FROM slot_holds WHERE shop_id=$1 ORDER BY day",
+          [shop.shopId],
+        )
+      ).rows,
+    ).toEqual([
+      { day, status: "fixed", release_reason: null },
+      { day: change.newDay, status: "released", release_reason: "change_closed" },
+    ]);
+  });
+  it("차액을 기다리던 주문을 취소하면 옛 확정 자리와 새 잡힌 자리를 함께 풂", async () => {
+    const change = await differenceDate();
+    await holdOrderSlot(scope(), { orderId: shop.orderId, paymentRequestId: change.paymentRequestId, now });
+    await isolated.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE orders SET status='cancelled',cancelled_at=$2,cancel_kind='customer',lock_version=lock_version+1 WHERE id=$1",
+        [shop.orderId, now],
+      );
+      await tx.query(
+        "UPDATE payment_requests SET status='closed',closed_at=$2,close_reason='order_cancelled',version=version+1 WHERE id=$1",
+        [change.paymentRequestId, now],
+      );
+      await tx.query(
+        "UPDATE change_requests SET status='closed_by_cancel',closed_at=$2,lock_version=lock_version+1 WHERE id=$1",
+        [change.changeId, now],
+      );
+    });
+    const runtime = pgConnector(new Secret(runtimeUrl));
+    try {
+      expect((await releaseCancelledOrderSlots(scope(runtime), { orderId: shop.orderId, now })).kind).toBe("released");
+    } finally {
+      await runtime.close();
+    }
+    expect(
+      (
+        await isolated.db.query("SELECT status,release_reason FROM slot_holds WHERE shop_id=$1 ORDER BY day", [
+          shop.shopId,
+        ])
+      ).rows,
+    ).toEqual([
+      { status: "released", release_reason: "order_cancelled" },
+      { status: "released", release_reason: "order_cancelled" },
+    ]);
+  });
+  it("변경 요청의 오래된 잠금 번호로는 자리를 옮기지 않음", async () => {
+    await held();
+    await markPaid();
+    await fixPaidOrderSlot(scope(), { ...shop, now });
+    const change = await changedDate();
+    await isolated.db.query("UPDATE change_requests SET lock_version=lock_version+1 WHERE id=$1", [change.changeId]);
+    expect(
+      (
+        await scope().transaction((tx) =>
+          moveOrderSlotInTransaction(tx, {
+            orderId: shop.orderId,
+            changeRequestId: change.changeId,
+            expectedChangeRevision: 1,
+            now,
+          }),
+        )
+      ).kind,
+    ).toBe("stale");
+    expect(
+      (await isolated.db.query("SELECT day::text,status FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows,
+    ).toEqual([{ day, status: "fixed" }]);
   });
   async function moveDate(
     change: Awaited<ReturnType<typeof changedDate>> & { paymentRequestId?: string },

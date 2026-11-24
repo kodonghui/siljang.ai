@@ -481,3 +481,43 @@ export async function reserveRemakeSlotInTransaction(db: ShopDb, input: RemakeSl
   );
   return { kind: "fixed", holdId: saved.id, day: order.pickup_day };
 }
+
+export function releaseClosedChangeSlot(
+  db: ShopRequestDb,
+  input: ChangeSlotInput & { readonly paymentRequestId: string },
+): Promise<SlotTransitionResult> {
+  return db.transaction((tx) => releaseClosedChangeSlotInTransaction(tx, input));
+}
+/** 변경 닫기 담당 실행기는 변경·차액 안내를 먼저 닫고 같은 트랜잭션에서 새날 자리만 풉니다. */
+export async function releaseClosedChangeSlotInTransaction(
+  db: ShopDb,
+  input: ChangeSlotInput & { readonly paymentRequestId: string },
+): Promise<SlotTransitionResult> {
+  const order = await lockedSlotOrder(db, input);
+  if (order === null) return { kind: "stale" };
+  const payment = await lockedPayment(db, order.id, pathId(input.paymentRequestId));
+  if (
+    payment.kind !== "difference" ||
+    payment.change_request_id !== pathId(input.changeRequestId) ||
+    !["expired", "closed"].includes(payment.status)
+  )
+    return { kind: "not_applicable" };
+  const change = await lockedChange(db, order.id, input.changeRequestId, input.expectedChangeRevision);
+  if (change === null) return { kind: "stale" };
+  if (!["closed_no_difference", "closed_by_cancel", "closed_no_answer", "rejected"].includes(change.status))
+    return { kind: "not_applicable" };
+  const held = (
+    await db.run<{ id: string; day: string }>(
+      "SELECT id,day::text FROM slot_holds WHERE shop_id=$1 AND order_id=$2 AND payment_request_id=$3 AND hold_key=$4 AND status='held'",
+      [order.id, payment.id, eventKeys.hold(order.id, change.id)],
+    )
+  ).rows[0];
+  if (!held) return { kind: "unchanged" };
+  await lockCalendarDay(db, held.day);
+  const updated = await db.run(
+    "UPDATE slot_holds SET status='released',released_at=$3,release_reason='change_closed' WHERE shop_id=$1 AND id=$2 AND status='held'",
+    [held.id, input.now],
+  );
+  if (updated.rowCount !== 1) throw new Error("slot changed after order lock");
+  return { kind: "released", holdId: held.id };
+}
