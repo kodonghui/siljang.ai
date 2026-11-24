@@ -405,6 +405,7 @@ CREATE TABLE consultations (
 );
 CREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status NOT IN ('ended', 'deleted'); -- 손님마다 끝나지도 지워지지도 않은 상담 하나(SPEC-017, REQ-189)
 CREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open'; -- 문의 끊김으로 닫을 상담 찾기(SPEC-025)
+CREATE INDEX consultations_waiting_idle_idx ON consultations (last_customer_message_at) WHERE status = 'awaiting_owner'; -- 열린 건이 닫힌 답 기다림 상담의 문의 끊김(SPEC-025)
 CREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped'; -- 30일 지난 상담 찾기(SPEC-065)
 CREATE INDEX consultations_ordered_idx ON consultations (last_customer_message_at) WHERE status = 'ordered'; -- 다룬 주문이 모두 끝나 상담 끝남으로 닫을 상담 찾기(SPEC-025)
 CREATE INDEX consultations_ended_idx ON consultations (ended_at) WHERE status = 'ended'; -- 상담 끝남 뒤 30일 지난 상담 찾기(SPEC-065)

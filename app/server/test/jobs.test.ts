@@ -98,8 +98,16 @@ describe("서버 안의 일 등록부(06 10절과 견줌)", () => {
   });
 
   it("처리가 붙은 지우기를 실행기에 넘기고 요청 안의 일은 넘기지 않음", () => {
-    expect(Object.keys(JOB_HANDLERS)).toEqual(["purge"]);
-    expect(runnableJobs()).toMatchObject([{ name: "purge", every: "day", handler: { mode: "sweep" } }]);
+    expect(Object.keys(JOB_HANDLERS)).toEqual(["consultation_idle", "purge"]);
+    expect(runnableJobs()).toMatchObject([
+      {
+        name: "consultation_idle",
+        every: "minute",
+        sources: ["consultation_open", "consultation_ordered", "consultation_waiting"],
+        handler: { mode: "transaction" },
+      },
+      { name: "purge", every: "day", handler: { mode: "sweep" } },
+    ]);
     const handler: ItemHandler = { mode: "transaction", run: async () => {} };
     const cutoff = (_s: DueSourceName, now: Date) => new Date(now.getTime() - 7 * 86_400_000);
     const got = runnableJobs(JOBS, {
