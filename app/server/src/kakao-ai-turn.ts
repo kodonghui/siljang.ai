@@ -4,6 +4,7 @@ import { readAiConversation, stripAiPlaceholders } from "./ai-conversation";
 import { AI_TOTAL_TIMEOUT_MS, type AiFailure, type AiMessage } from "./ai-model";
 import type { AiTurnOutput } from "./ai-turn-output";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
+import type { KakaoAiDisclosure } from "./kakao-ai-disclosure";
 import type { KakaoCallbackClaim } from "./kakao-callback-store";
 import type { Services } from "./services";
 import { type ShopDb, type ShopRequestDb, withShopSavepoint } from "./shop-scope";
@@ -49,6 +50,7 @@ export async function runKakaoAiTurn(
   claim: KakaoCallbackClaim,
   services: Services,
   now: () => Date,
+  disclosure?: KakaoAiDisclosure,
 ): Promise<KakaoAiTurnResult> {
   const left = () => claim.kakao_callback_deadline_at.getTime() - now().getTime();
   const prepared = await db.transaction(async (tx) => {
@@ -68,7 +70,10 @@ export async function runKakaoAiTurn(
       [messageId, claim.consultation_id, claim.kakao_callback_enc, claim.kakao_callback_claim_until],
     );
     if (source.rowCount === 0) return { kind: "gone" } as const;
-    if (["ended", "deleted", "dropped"].includes(consultation.status) || consultation.ai_disclosed_at === null)
+    if (
+      ["ended", "deleted", "dropped"].includes(consultation.status) ||
+      (consultation.ai_disclosed_at === null && disclosure?.consultationId !== claim.consultation_id)
+    )
       return { kind: "failure", failure: "unavailable" } as const;
     const reply = await currentReply(tx, messageId, claim.consultation_id);
     if (reply !== null) return { kind: "reply", reply } as const;

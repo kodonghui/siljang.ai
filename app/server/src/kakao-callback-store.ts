@@ -1,5 +1,6 @@
 import type { FieldCrypto } from "./field-crypto";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
+import { type KakaoAiDisclosure, markKakaoAiDisclosure } from "./kakao-ai-disclosure";
 import type { KakaoCallback } from "./kakao-callback";
 import { type DeferredKakaoMessage, markDeferredKakaoMessages } from "./kakao-deferred";
 import { recordKakaoHandoff } from "./kakao-handoff";
@@ -203,6 +204,7 @@ export async function finishKakaoCallback(
   sentAt: Date | null,
   previous: readonly DeferredKakaoMessage[] = [],
   preparedReplyId?: string,
+  delivery: { readonly disclosure?: KakaoAiDisclosure; readonly replyIncluded?: boolean } = {},
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const owned = await tx.run(
@@ -211,9 +213,12 @@ export async function finishKakaoCallback(
       [messageId, claim.kakao_callback_enc, claim.kakao_callback_claim_until],
     );
     if (owned.rowCount === 0) return;
-    if (sentAt !== null) await markDeferredKakaoMessages(tx, claim.customer_id, previous, sentAt);
+    if (sentAt !== null) {
+      if (delivery.disclosure !== undefined) await markKakaoAiDisclosure(tx, claim, delivery.disclosure, sentAt);
+      await markDeferredKakaoMessages(tx, claim.customer_id, previous, sentAt);
+    }
     if (preparedReplyId !== undefined) {
-      if (sentAt !== null)
+      if (sentAt !== null && delivery.replyIncluded !== false)
         await tx.run(
           `UPDATE messages SET delivery = 'callback', sent_at = $4
             WHERE shop_id = $1 AND id = $2 AND consultation_id = $3
@@ -222,10 +227,11 @@ export async function finishKakaoCallback(
         );
       return;
     }
+    const replySentAt = delivery.replyIncluded === false ? null : sentAt;
     await tx.run(
       `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery, sent_at)
         VALUES ($1, $2, 'outbound', 'system', 'text', $3, $4, $5)`,
-      [claim.consultation_id, text, sentAt === null ? "deferred" : "callback", sentAt],
+      [claim.consultation_id, text, replySentAt === null ? "deferred" : "callback", replySentAt],
     );
   });
 }
