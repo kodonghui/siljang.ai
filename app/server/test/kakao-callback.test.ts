@@ -65,7 +65,7 @@ describe("카카오 콜백 주소와 서비스 기한(TASK-028, DEC-29)", () => 
     });
   });
 
-  it("307의 다른 주소로 답과 콜백 토큰을 전달하지 않고 재시도하지 않음", async () => {
+  it("307을 장애로 분류하고 콜백 재시도 없이 manual 정책으로 한 번 호출함", async () => {
     const send = vi.fn(
       async (_url: URL, _options: RequestInit) =>
         new Response(null, { status: 307, headers: { Location: "https://other.example/callback" } }),
