@@ -864,7 +864,7 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     ).toBe("done");
   });
 
-  it("제한 역할의 기본 Cron은 예약 시각 밖에서 보관 기록을 쓰지 않고 알림도 오류 없이 점검", async () => {
+  it("제한 역할의 기본 Cron이 실행 시각 밖에도 시작 기록을 읽고 쓰기 없이 완료", async () => {
     if (isolated === undefined) throw new Error("시험 DB 없음");
     const before = await isolated.db.query("SELECT count(*)::int AS n FROM ops_events");
     const logs = collectLogs();
@@ -874,11 +874,7 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     });
     expect(result?.dailyStarted).toEqual([]);
     expect(result?.jobs.purge).toEqual({ found: 0, done: 0, skipped: 0, failed: 0 });
-    expect(result?.jobs.owner_alert?.failed).toBe(0);
-    const entries = logs.lines.map((line) => JSON.parse(line));
-    expect(entries.some((entry) => entry.job === "owner_alert" && entry.level === "info")).toBe(true);
-    expect(entries.filter((entry) => entry.level === "error")).toEqual([]);
-    expect(entries.filter((entry) => entry.job !== "owner_alert")).toEqual([
+    expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
       { level: "info", event: "job_polled", job: "purge" },
       { level: "info", event: "kakao_callback_recovery_polled", count: 0 },
     ]);

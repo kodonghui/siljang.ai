@@ -13,6 +13,6 @@ API-040은 실제 사장님 가게를 확인하고 같은 가게의 할 일만 �
 
 추가로 오류 재시도1·5·30분과 최대4회, 접수 뒤 배달 조회1·5·30분, 별도 연결의 동시 실행, 임대 만료 뒤 이어 처리와 오래된 결과 무시, 새로운 친구 확인 보존을 확인합니다. 할 일의 종류가 다른 것은 합치지 않으며 같은 종류의 1분 경계와 묶인 건수 문구를 PostgreSQL 시험으로 확인합니다. 알림 본문은 기존 SCR-019 변환기를 재사용하고 내부 detail·손님 연락처·계좌·알레르기는 읽지 않습니다. 다른 가게 주문을 가리키는 알림은 전송하지 않습니다.
 
-KAKAO_OWNER_ALERTS_ENABLED의 기본값은 false입니다. 켤 때 KAKAO_OWNER_BOT_ID, 로그인 앱 설정, PUBLIC_APP_ORIGIN을 요구하고 KAKAO_OWNER_BOT_DEVELOPMENT는 기본 false입니다. 전송기를 얻는 것만으로 HTTP 요청하지 않습니다. scheduled 기본 등록과 켠 상태의 주입 전송을 시험합니다. 제한 역할은 알림 상태 열만 UPDATE할 수 있고 가게·종류·할 일 연결·이벤트 키 수정과 삭제는 막힙니다.
+KAKAO_OWNER_ALERTS_ENABLED의 기본값은 false입니다. 기본 scheduled는 알림 작업을 등록하지 않아 알림 조회·수정·발신을 하지 않습니다. 켤 때 KAKAO_OWNER_BOT_ID, 로그인 앱 설정, PUBLIC_APP_ORIGIN을 요구하고 KAKAO_OWNER_BOT_DEVELOPMENT는 기본 false입니다. 전송기를 얻는 것만으로 HTTP 요청하지 않습니다. 기본 중단과 켠 상태의 주입 전송을 시험합니다. 제한 역할은 알림 상태 열만 UPDATE할 수 있고 가게·종류·할 일 연결·이벤트 키 수정과 삭제는 막힙니다. 실제 최소 권한을 적용한 뒤에만 발신 설정을 켭니다.
 
 실제 서비스 채널·plusfriends·친구 확인·월렛·카카오 발신은 codex-finish.md의 MVP 결정에 따라 TASK-167 출시 검토에 남습니다. 실제 스테이징 권한 적용과 학원컴 Aside 화면 확인은 기존 외부 원인 보류이며 통과로 세지 않습니다. 아직 main 반영·CI·실제 배포 확인 전이므로 finished나 구현 완료 목록에 올리지 않습니다.

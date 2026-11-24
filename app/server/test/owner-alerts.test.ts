@@ -207,7 +207,7 @@ describeDb("사장님 알림 실행기(TASK-072)", () => {
       { status: "pending", n: 1 },
     ]);
   });
-  it("MVP 발신 중단은 전송기를 만들지 않고 목록의 할 일을 유지한다", async () => {
+  it("비활성 처리기를 직접 돌려도 전송기를 만들지 않고 목록의 할 일을 유지한다", async () => {
     await custom();
     await run(false);
     expect(request).not.toHaveBeenCalled();
@@ -220,16 +220,16 @@ describeDb("사장님 알림 실행기(TASK-072)", () => {
       [{ closed_at: null }],
     );
   });
-  it("기본 scheduled 등록이 MVP 알림을 처리하고 실제 발신은 하지 않는다", async () => {
+  it("MVP 기본 scheduled는 꺼둔 알림을 조회하거나 수정하지 않는다", async () => {
     const id = await alert("change_not_applied");
     const result = await runScheduled(
       { scheduledTime: NOW.getTime(), cron: "* * * * *" },
       { APP_ENV: "development" },
       { connect: () => isolated.connect(), logSink: () => {} },
     );
-    expect(result?.jobs.owner_alert?.found).toBe(1);
+    expect(result?.jobs.owner_alert).toBeUndefined();
     expect((await isolated.db.query("SELECT status,fail_code FROM owner_alerts WHERE id=$1", [id])).rows).toEqual([
-      { status: "failed", fail_code: "cannot_send" },
+      { status: "pending", fail_code: null },
     ]);
   });
   it("켜진 scheduled 등록은 주입한 사장님 전송기로 우리 봇의 알림을 접수한다", async () => {

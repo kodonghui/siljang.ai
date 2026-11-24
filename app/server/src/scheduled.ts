@@ -75,15 +75,19 @@ export async function runScheduled(
         options.jobs ??
         runnableJobs(undefined, {
           ...JOB_HANDLERS,
-          owner_alert: {
-            handler: createOwnerAlertHandler({
-              enabled: settings.ownerAlerts.enabled,
-              development: settings.ownerAlerts.development,
-              ...(settings.publicAppOrigin === null ? {} : { origin: settings.publicAppOrigin }),
-              ...(settings.ownerAlerts.botId === null ? {} : { botId: settings.ownerAlerts.botId }),
-              events: () => services.kakaoOwnerEvents(),
-            }),
-          },
+          ...(settings.ownerAlerts.enabled
+            ? {
+                owner_alert: {
+                  handler: createOwnerAlertHandler({
+                    enabled: settings.ownerAlerts.enabled,
+                    development: settings.ownerAlerts.development,
+                    ...(settings.publicAppOrigin === null ? {} : { origin: settings.publicAppOrigin }),
+                    ...(settings.ownerAlerts.botId === null ? {} : { botId: settings.ownerAlerts.botId }),
+                    events: () => services.kakaoOwnerEvents(),
+                  }),
+                },
+              }
+            : {}),
         }),
       log: appLog,
       storage: () => services.storage(),
