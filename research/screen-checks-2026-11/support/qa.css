@@ -1,0 +1,1 @@
+.qa-control{padding:var(--space-md);background:var(--color-surface-sunken);display:grid;gap:var(--space-sm)}.qa-control label{display:flex;flex-wrap:wrap;gap:var(--space-sm);align-items:center}.qa-control select{min-height:var(--size-target);font:inherit}.qa-control p{margin:0}@media(min-width:1260px){.qa-control{margin-left:var(--size-menu)}}

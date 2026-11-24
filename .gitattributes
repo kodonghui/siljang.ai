@@ -36,3 +36,4 @@ docs/records/payments/2026-11-24-finished/actual-replacement.json -text whitespa
 docs/records/payments/2026-11-24-finished/response-outcome-unavailable.json -text whitespace=cr-at-eol
 docs/records/payments/2026-11-24-finished/browser-pause-ack.json -text whitespace=cr-at-eol
 docs/records/price-list/2026-11-24-history/qa-after-focus-fix-v5.json -text whitespace=cr-at-eol
+docs/records/kakao-channel/2026-11-24-runtime/main255-deployment.json -text whitespace=cr-at-eol

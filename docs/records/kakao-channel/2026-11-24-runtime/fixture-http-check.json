@@ -1,0 +1,37 @@
+{
+  "scope": "로컬 HTTP 서버 응답만 확인. 브라우저/JS 실행/page-check/학원컴 전달이 아님",
+  "checks": [
+    {
+      "path": "/owner/kakao-channel",
+      "status": 200,
+      "bytes": 506,
+      "sha256": "5a108a3c85098e00c4e5aa3c1648e69115b1b57433c9b4003c9e879abce748f8",
+      "connectSrcNone": true
+    },
+    {
+      "path": "/main.js",
+      "status": 200,
+      "bytes": 547513,
+      "sha256": "79771fbe55bd815784dcefd2b910f6438a259cd719598a04288bfbb6cbf5bffb",
+      "connectSrcNone": true
+    },
+    {
+      "path": "/observer-selftest.html",
+      "status": 200,
+      "bytes": 603,
+      "sha256": "a52d687b0b30a738efb6ee8cf8ee4bd8ebbb24085f930ff5854a05de28a65e5b",
+      "connectSrcNone": true
+    },
+    {
+      "path": "/manifest.json",
+      "status": 404,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "connectSrcNone": false
+    }
+  ],
+  "serverExitAfterTermination": -15,
+  "browserRun": false,
+  "nativeTransfer": false,
+  "outsideServices": 0
+}
