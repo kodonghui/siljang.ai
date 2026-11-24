@@ -10,6 +10,7 @@ import {
   holdOrderSlot,
   moveOrderSlotInTransaction,
   releaseCancelledOrderSlots,
+  reserveRemakeSlot,
 } from "../src/slot-holds";
 import { shopLocalToUtc, toShopLocal } from "../src/time";
 import { describeDb, newUuid } from "./support/db";
@@ -480,6 +481,117 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
       (await isolated.db.query("SELECT overbooked FROM slot_holds WHERE shop_id=$1 AND status='fixed'", [shop.shopId]))
         .rows,
     ).toEqual([{ overbooked: true }]);
+  });
+  async function remake() {
+    const orderId = newUuid(),
+      newDay = shiftDate(day, 1),
+      pickup = shopLocalToUtc(newDay, "15:00", "Asia/Seoul");
+    await isolated.db.transaction(async (tx) => {
+      await tx.query(
+        "INSERT INTO orders SELECT(jsonb_populate_record(NULL::orders,to_jsonb(o)||$2::jsonb)).* FROM orders o WHERE o.id=$1",
+        [
+          shop.orderId,
+          JSON.stringify({
+            id: orderId,
+            order_no: orderId.replaceAll("-", "").slice(0, 8).toUpperCase(),
+            draft_id: null,
+            remake_of_order_id: shop.orderId,
+            status: "confirmed",
+            confirmed_at: now.toISOString(),
+            confirmed_payment_id: null,
+            amount: 0,
+            pickup_day: newDay,
+            pickup_at: pickup.toISOString(),
+          }),
+        ],
+      );
+      await tx.query(
+        "INSERT INTO order_details SELECT(jsonb_populate_record(NULL::order_details,to_jsonb(d)||$2::jsonb)).* FROM order_details d WHERE d.order_id=$1 AND d.version=1",
+        [
+          shop.orderId,
+          JSON.stringify({
+            id: newUuid(),
+            order_id: orderId,
+            source: "remake",
+            quote_id: null,
+            amount: 0,
+            pickup_at: pickup.toISOString(),
+          }),
+        ],
+      );
+    });
+    return { orderId, newDay };
+  }
+  it("재제작은 새날의 확정 자리만 한 번 만들고 결제 안내를 만들지 않음", async () => {
+    const order = await remake();
+    const input = { orderId: order.orderId, now };
+    const result = await reserveRemakeSlot(scope(), input);
+    expect(result.kind).toBe("fixed");
+    expect((await reserveRemakeSlot(scope(), input)).holdId).toBe(result.holdId);
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT day::text,status,payment_request_id,hold_key FROM slot_holds WHERE shop_id=$1",
+          [shop.shopId],
+        )
+      ).rows,
+    ).toEqual([
+      { day: order.newDay, status: "fixed", payment_request_id: null, hold_key: `hold:${order.orderId}:remake` },
+    ]);
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM payment_requests WHERE order_id=$1", [order.orderId]))
+        .rows,
+    ).toEqual([{ n: 0 }]);
+  });
+  it("휴무일 재제작도 실제 사장님의 명시 확인 뒤에만 추가 수락", async () => {
+    const order = await remake();
+    await isolated.db.query("INSERT INTO calendar_days(shop_id,day,closed) VALUES($1,$2,true)", [
+      shop.shopId,
+      order.newDay,
+    ]);
+    const input = { orderId: order.orderId, now, expectedOrderRevision: 1 };
+    expect((await reserveRemakeSlot(scope(), { ...input, ownerConfirmed: true })).kind).toBe("day_full");
+    expect((await reserveRemakeSlot(scope(isolated.db, true), input)).kind).toBe("confirmation_required");
+    expect((await reserveRemakeSlot(scope(isolated.db, true), { ...input, ownerConfirmed: true })).kind).toBe("fixed");
+    expect((await isolated.db.query("SELECT overbooked FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows).toEqual(
+      [{ overbooked: true }],
+    );
+  });
+  async function dayApproval(expires = new Date(now.getTime() + 86400000)) {
+    return (
+      await isolated.db.query<{ id: string }>(
+        "INSERT INTO handoffs(shop_id,consultation_id,source_message_id,reason,requested_day,status,day_decision,day_accept_expires_at,answered_at) VALUES($1,$2,$3,'closed_day',$4,'answered','accepted',$5,$6) RETURNING id",
+        [shop.shopId, shop.consultationId, shop.messageId, day, expires, now],
+      )
+    ).rows[0]?.id;
+  }
+  it("같은 상담·날짜의 저장된 추가 수락은 두 주문 중 하나만 사용함", async () => {
+    const next = await sibling();
+    await isolated.db.query("UPDATE calendar_days SET closed=true WHERE shop_id=$1 AND day=$2", [shop.shopId, day]);
+    const approval = await dayApproval();
+    const a = isolated.connect(),
+      b = isolated.connect();
+    try {
+      const results = await Promise.all(
+        [a, b].map((db, i) => holdOrderSlot(scope(db), { ...(i === 0 ? shop : next), now })),
+      );
+      expect(results.map((x) => x.kind).sort()).toEqual(["day_full", "held"]);
+      const saved = (await isolated.db.query("SELECT day_used_order_id FROM handoffs WHERE id=$1", [approval])).rows[0];
+      expect([shop.orderId, next.orderId]).toContain(saved?.day_used_order_id);
+      expect(
+        (await isolated.db.query("SELECT overbooked FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows,
+      ).toEqual([{ overbooked: true }]);
+    } finally {
+      await Promise.all([a.close(), b.close()]);
+    }
+  });
+  it("기한 지난 추가 수락은 손님 값으로 되살리지 못함", async () => {
+    await isolated.db.query("UPDATE calendar_days SET closed=true WHERE shop_id=$1 AND day=$2", [shop.shopId, day]);
+    await dayApproval(now);
+    expect((await holdOrderSlot(scope(), { ...shop, now, ownerConfirmed: true })).kind).toBe("day_full");
+    expect(
+      (await isolated.db.query("SELECT day_used_order_id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows,
+    ).toEqual([{ day_used_order_id: null }]);
   });
   it("확정된 결제의 잡힌 자리를 한 번만 확정하며 개수를 유지함", async () => {
     await held();

@@ -32,6 +32,8 @@ interface Order {
   pickup_at: Date;
   lock_version: number;
   version: number;
+  consultation_id: string;
+  remake_of_order_id: string | null;
 }
 interface Payment {
   version: number;
@@ -91,14 +93,23 @@ export async function holdOrderSlotInTransaction(db: ShopDb, input: HoldOrderSlo
       payment.claimed_at < payment.due_at &&
       payment.due_cap_at > input.now);
   if (!valid) return { kind: "not_applicable" };
+  const approval =
+    !difference && order.kind === "standard" && payment.kind === "first"
+      ? (
+          await db.run<{ id: string }>(
+            "SELECT id FROM handoffs WHERE shop_id=$1 AND consultation_id=$2 AND requested_day=$3 AND reason='closed_day' AND status='answered' AND day_decision='accepted' AND day_accept_expires_at>$4 AND day_used_order_id IS NULL ORDER BY answered_at DESC,id LIMIT 1 FOR UPDATE",
+            [order.consultation_id, targetDay, input.now],
+          )
+        ).rows[0]
+      : undefined;
   if (oldDay !== undefined) await lockSlotDays(db, [oldDay, targetDay]);
   const availability = await lockedCalendarSlotStatus(db, targetDay, input.now);
   let overbooked = false;
   if (availability.status !== "open") {
     const ownerMayChoose =
       via.kind === "owner" && (difference || order.kind === "custom" || payment.kind === "reissue");
-    if (!ownerMayChoose) return { kind: "day_full", day: availability.day };
-    if (input.ownerConfirmed !== true)
+    if (!ownerMayChoose && !approval) return { kind: "day_full", day: availability.day };
+    if (!approval && input.ownerConfirmed !== true)
       return { kind: "confirmation_required", day: availability.day, reason: availability.status };
     overbooked = true;
   }
@@ -107,6 +118,13 @@ export async function holdOrderSlotInTransaction(db: ShopDb, input: HoldOrderSlo
     "INSERT INTO slot_holds(shop_id,day,order_id,payment_request_id,hold_key,status,overbooked,created_at) VALUES($1,$2,$3,$4,$5,'held',$6,$7) RETURNING id",
     [targetDay, orderId, paymentId, key, overbooked, input.now],
   );
+  if (overbooked && approval) {
+    const consumed = await db.run(
+      "UPDATE handoffs SET day_used_order_id=$3 WHERE shop_id=$1 AND id=$2 AND day_used_order_id IS NULL",
+      [approval.id, orderId],
+    );
+    if (consumed.rowCount !== 1) throw new Error("day approval changed after lock");
+  }
   return { kind: "held", holdId: saved.id, status: "held", day: targetDay };
 }
 
@@ -124,7 +142,7 @@ async function lockedSlotOrder(db: ShopDb, input: OrderSlotInput): Promise<Order
   )
     throw fieldError("/baseRevision", "bad_format");
   const order = await db.found<Order>(
-    "SELECT id,kind,status,accepted_at,pickup_day::text,pickup_at,lock_version,version FROM orders WHERE shop_id=$1 AND id=$2 AND personal_data_purged_at IS NULL FOR UPDATE",
+    "SELECT id,kind,status,accepted_at,pickup_day::text,pickup_at,lock_version,version,consultation_id,remake_of_order_id FROM orders WHERE shop_id=$1 AND id=$2 AND personal_data_purged_at IS NULL FOR UPDATE",
     [id],
   );
   return input.expectedOrderRevision !== undefined && order.lock_version !== input.expectedOrderRevision ? null : order;
@@ -423,4 +441,43 @@ export async function applyDifferenceSlotInTransaction(
   );
   if (fixed.rowCount !== 1) throw new Error("slot changed after order lock");
   return { kind: "fixed", holdId: held.id, day };
+}
+
+export interface RemakeSlotInput extends OrderSlotInput {
+  readonly ownerConfirmed?: boolean;
+}
+export function reserveRemakeSlot(db: ShopRequestDb, input: RemakeSlotInput): Promise<ChangeSlotResult> {
+  return db.transaction((tx) => reserveRemakeSlotInTransaction(tx, input));
+}
+/** 재제작 담당 실행기는 새 주문·첫 주문 내용과 이 확정 자리를 같은 트랜잭션에서 만듭니다. */
+export async function reserveRemakeSlotInTransaction(db: ShopDb, input: RemakeSlotInput): Promise<ChangeSlotResult> {
+  const order = await lockedSlotOrder(db, input);
+  if (order === null) return { kind: "stale" };
+  if (order.remake_of_order_id === null || order.status !== "confirmed" || order.pickup_at <= input.now)
+    return { kind: "not_applicable" };
+  const key = eventKeys.holdRemake(order.id);
+  const existing = (
+    await db.run<{ id: string; day: string; status: string }>(
+      "SELECT id,day::text,status FROM slot_holds WHERE shop_id=$1 AND hold_key=$2",
+      [key],
+    )
+  ).rows[0];
+  if (existing) return { kind: "existing", holdId: existing.id, day: existing.day };
+  const availability = await lockedCalendarSlotStatus(db, order.pickup_day, input.now);
+  const overbooked = availability.status !== "open";
+  if (overbooked) {
+    if (db.scope.via.kind !== "owner") return { kind: "day_full", day: availability.day };
+    if (input.ownerConfirmed !== true)
+      return {
+        kind: "confirmation_required",
+        day: availability.day,
+        reason: availability.status as "closed" | "day_off",
+      };
+  }
+  await lockCalendarDay(db, order.pickup_day);
+  const saved = await db.found<{ id: string }>(
+    "INSERT INTO slot_holds(shop_id,day,order_id,hold_key,status,overbooked,fixed_at,created_at) VALUES($1,$2,$3,$4,'fixed',$5,$6,$6) RETURNING id",
+    [order.pickup_day, order.id, key, overbooked, input.now],
+  );
+  return { kind: "fixed", holdId: saved.id, day: order.pickup_day };
 }
