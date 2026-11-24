@@ -7,9 +7,13 @@ import { toShopIso } from "./time";
 
 const PLACEHOLDER = /\[(?:전화번호|계좌번호|카드번호|긴숫자)[0-9]{1,3}\]/g;
 const MAX_I64 = 9223372036854775807n;
+interface PageSnapshot {
+  at: string;
+  ceiling: string;
+}
 interface PageInput {
   limit: number;
-  after: { at: string; sequence: string } | null;
+  after: { at: string; sequence: string; snapshot: PageSnapshot } | null;
 }
 interface Entry {
   id: string;
@@ -34,28 +38,43 @@ function input(query: Record<string, string>, consultationId: string): PageInput
       const raw = fromBase64Url(query.cursor);
       if (raw === null || toBase64Url(raw) !== query.cursor) throw new Error();
       const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(raw));
+      if (!Array.isArray(value) || value.length !== 6 || value[0] !== 2 || value[1] !== consultationId)
+        throw new Error();
+      const [, , at, sequence, snapshotAt, ceiling] = value;
       if (
-        !Array.isArray(value) ||
-        value.length !== 4 ||
-        value[0] !== 1 ||
-        value[1] !== consultationId ||
-        typeof value[2] !== "string" ||
-        typeof value[3] !== "string" ||
-        !/^-?[0-9]{1,19}$/.test(value[2]) ||
-        !/^[1-9][0-9]{0,18}$/.test(value[3])
+        typeof at !== "string" ||
+        typeof sequence !== "string" ||
+        typeof snapshotAt !== "string" ||
+        typeof ceiling !== "string" ||
+        !/^-?[0-9]{1,19}$/.test(at) ||
+        !/^-?[0-9]{1,19}$/.test(snapshotAt) ||
+        !/^[1-9][0-9]{0,18}$/.test(sequence) ||
+        !/^[1-9][0-9]{0,18}$/.test(ceiling)
       )
         throw new Error();
-      if (BigInt(value[2]) < -MAX_I64 - 1n || BigInt(value[2]) > MAX_I64 || BigInt(value[3]) > MAX_I64)
+      if (
+        BigInt(at) < -MAX_I64 - 1n ||
+        BigInt(at) > MAX_I64 ||
+        BigInt(snapshotAt) < -MAX_I64 - 1n ||
+        BigInt(snapshotAt) > MAX_I64 ||
+        BigInt(sequence) > MAX_I64 ||
+        BigInt(ceiling) > MAX_I64 ||
+        BigInt(sequence) > BigInt(ceiling)
+      )
         throw new Error();
-      after = { at: value[2], sequence: value[3] };
+      after = { at, sequence, snapshot: { at: snapshotAt, ceiling } };
     } catch {
       throw fieldError("query:cursor", "bad_format");
     }
   }
   return { limit, after };
 }
-function cursor(consultationId: string, row: Entry): string {
-  return toBase64Url(new TextEncoder().encode(JSON.stringify([1, consultationId, row.cursor_at, row.timeline_seq])));
+function cursor(consultationId: string, row: Entry, snapshot: PageSnapshot): string {
+  return toBase64Url(
+    new TextEncoder().encode(
+      JSON.stringify([2, consultationId, row.cursor_at, row.timeline_seq, snapshot.at, snapshot.ceiling]),
+    ),
+  );
 }
 
 function displayText(body: string | null, replacements: ReadonlyMap<string, string>): string | null {
@@ -65,13 +84,15 @@ function displayText(body: string | null, replacements: ReadonlyMap<string, stri
 }
 const ENTRIES = `WITH entries AS (
   SELECT m.id,m.created_at AS at,m.timeline_seq,m.direction,m.author,m.kind,m.body_masked AS body,m.delivery,'message'::text AS source
-  FROM messages m WHERE m.shop_id=$1 AND m.consultation_id=$2
+  FROM messages m WHERE m.shop_id=$1 AND m.consultation_id=$2 AND m.timeline_seq <= $7::bigint
   UNION ALL
-  SELECT n.id,coalesce(n.sent_at,n.created_at) AS at,n.timeline_seq,'outbound'::text,
+  SELECT n.id,CASE WHEN (extract(epoch FROM n.sent_at)*1000000)::bigint <= $6::bigint THEN n.sent_at ELSE n.created_at END AS at,n.timeline_seq,'outbound'::text,
     CASE WHEN n.kind='owner_reply' THEN 'owner' ELSE 'notice' END,'text'::text,n.body,
-    CASE n.status WHEN 'sent' THEN 'event_api' WHEN 'deferred' THEN 'deferred'
-      WHEN 'delivered_on_reply' THEN 'delivered_later' WHEN 'dropped' THEN 'failed' ELSE 'sending' END,'notice'::text
-  FROM notifications n WHERE n.shop_id=$1 AND n.consultation_id=$2
+    CASE WHEN (extract(epoch FROM n.sent_at)*1000000)::bigint > $6::bigint AND n.status='delivered_on_reply' THEN 'deferred'
+      WHEN (extract(epoch FROM n.sent_at)*1000000)::bigint > $6::bigint AND n.status='sent' THEN 'sending'
+      ELSE CASE n.status WHEN 'sent' THEN 'event_api' WHEN 'deferred' THEN 'deferred'
+      WHEN 'delivered_on_reply' THEN 'delivered_later' WHEN 'dropped' THEN 'failed' ELSE 'sending' END END,'notice'::text
+  FROM notifications n WHERE n.shop_id=$1 AND n.consultation_id=$2 AND n.timeline_seq <= $7::bigint
     AND NOT EXISTS(SELECT 1 FROM orders o WHERE o.shop_id=$1 AND o.id=n.order_id AND o.personal_data_purged_at IS NOT NULL)
 ), positioned AS (
   SELECT e.*,(extract(epoch FROM e.at)*1000000)::bigint AS at_us FROM entries e
@@ -97,12 +118,24 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
     const base = { consultationId, status: consultation.status, customerChannelFriend: consultation.channel_friend };
     if (consultation.status === "deleted")
       return { body: { ...base, items: [], nextCursor: null }, subjects: [consultation.customer_id] };
+    // 페이지 중 전달된 안내의 정렬 키가 바뀌지 않도록 첫 시각과 삽입 상한을 커서에 둔다.
+    const snapshot =
+      filter.after?.snapshot ??
+      (await db.found<PageSnapshot>(
+        `SELECT (extract(epoch FROM transaction_timestamp())*1000000)::bigint::text AS at,
+         coalesce(max(timeline_seq),0)::text AS ceiling FROM (
+         SELECT m.timeline_seq FROM messages m WHERE m.shop_id=$1 AND m.consultation_id=$2
+         UNION ALL SELECT n.timeline_seq FROM notifications n WHERE n.shop_id=$1 AND n.consultation_id=$2) initial_entries`,
+        [consultationId],
+      ));
     const found = (
       await db.run<Entry>(ENTRIES, [
         consultationId,
         filter.after?.at ?? null,
         filter.after?.sequence ?? null,
         filter.limit + 1,
+        snapshot.at,
+        snapshot.ceiling,
       ])
     ).rows;
     const rows = found.slice(0, filter.limit),
@@ -156,7 +189,11 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
     }));
     const last = rows.at(-1);
     return {
-      body: { ...base, items, nextCursor: found.length > filter.limit && last ? cursor(consultationId, last) : null },
+      body: {
+        ...base,
+        items,
+        nextCursor: found.length > filter.limit && last ? cursor(consultationId, last, snapshot) : null,
+      },
       subjects: [consultation.customer_id],
     };
   });

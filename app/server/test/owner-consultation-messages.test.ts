@@ -218,6 +218,65 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     );
     await expectProblem(await call(`?cursor=${first.nextCursor}`, ownOther), "validation_failed");
   });
+  async function pendingNotice(at: Date) {
+    const id = newUuid();
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,created_at) VALUES($1,$2,$3,$4,'owner_reply',$5,'synthetic','합성 대기 답','deferred',$6)",
+      [id, shop.shopId, shop.customerId, shop.consultationId, `notice:${id}:owner_reply`, at],
+    );
+    return id;
+  }
+  async function laterDelivery(id: string) {
+    await isolated.db.query(
+      "UPDATE notifications SET status='delivered_on_reply',sent_at=clock_timestamp()+interval '1 minute' WHERE id=$1",
+      [id],
+    );
+  }
+  it("이미 읽은 대기 안내가 전달돼도 뒤 페이지에 다시 나오지 않음", async () => {
+    const id = await pendingNotice(new Date(NOW.getTime() - 2000));
+    await isolated.db.query("UPDATE messages SET created_at=$2 WHERE id=$1", [
+      shop.messageId,
+      new Date(NOW.getTime() - 1000),
+    ]);
+    const first = await page(await call("?limit=1"));
+    expect(first.items.map((x) => x.messageId)).toEqual([id]);
+    await laterDelivery(id);
+    const second = await page(await call(`?limit=1&cursor=${first.nextCursor}`));
+    expect(second.items.map((x) => x.messageId)).toEqual([shop.messageId]);
+    expect(second.nextCursor).toBeNull();
+  });
+  it("아직 읽지 않은 대기 안내도 첫 페이지 기준의 시각·전달 상태로 한 번 보임", async () => {
+    await isolated.db.query("UPDATE messages SET created_at=$2 WHERE id=$1", [
+      shop.messageId,
+      new Date(NOW.getTime() - 2000),
+    ]);
+    const at = new Date(NOW.getTime() - 1000),
+      id = await pendingNotice(at);
+    const first = await page(await call("?limit=1"));
+    await laterDelivery(id);
+    const second = await page(await call(`?limit=1&cursor=${first.nextCursor}`));
+    expect(second.items).toHaveLength(1);
+    expect(second.items[0]).toMatchObject({ messageId: id, delivery: "deferred" });
+    expect(new Date(second.items[0]?.at ?? "")).toEqual(at);
+    expect(second.nextCursor).toBeNull();
+  });
+  it("첫 페이지 뒤 삽입된 메시지는 그 순회에서 빼고 새 조회에서 보임", async () => {
+    await isolated.db.query("UPDATE messages SET created_at=$2 WHERE id=$1", [
+      shop.messageId,
+      new Date(NOW.getTime() - 2000),
+    ]);
+    const id = await pendingNotice(new Date(NOW.getTime() - 1000));
+    const first = await page(await call("?limit=1"));
+    const added = newUuid();
+    await isolated.db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,created_at,kakao_message_id) VALUES($1,$2,$3,'inbound','customer','text','새 합성 글',$4,$5)",
+      [added, shop.shopId, shop.consultationId, NOW, `synthetic-${added}`],
+    );
+    const second = await page(await call(`?limit=1&cursor=${first.nextCursor}`));
+    expect(second.items.map((x) => x.messageId)).toEqual([id]);
+    expect(second.nextCursor).toBeNull();
+    expect((await page(await call())).items.map((x) => x.messageId)).toContain(added);
+  });
   it("참고 사진은 저장 위치를 감춘15분 서명 주소만 보임", async () => {
     const key = `shops/${shop.shopId}/reference/${newUuid()}.webp`;
     await isolated.db.query("UPDATE messages SET kind='photo' WHERE id=$1", [shop.messageId]);
@@ -379,9 +438,14 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     for (const value of [
       null,
       [],
-      [1, shop.consultationId, "9223372036854775808", "1"],
-      [1, shop.consultationId, "0", "0"],
-      [1, shop.shopId, "0", "1"],
+      [1, shop.consultationId, "0", "1"],
+      [2, shop.consultationId, "9223372036854775808", "1", "0", "1"],
+      [2, shop.consultationId, "0", "0", "0", "1"],
+      [2, shop.shopId, "0", "1", "0", "1"],
+      [2, shop.consultationId, "0", "1", "9223372036854775808", "1"],
+      [2, shop.consultationId, "0", "1", "0", "9223372036854775808"],
+      [2, shop.consultationId, "0", "2", "0", "1"],
+      [2, shop.consultationId, "0", "1", "bad-time", "1"],
     ]) {
       const token = toBase64Url(new TextEncoder().encode(JSON.stringify(value)));
       await expectProblem(await call(`?cursor=${token}`), "validation_failed");
