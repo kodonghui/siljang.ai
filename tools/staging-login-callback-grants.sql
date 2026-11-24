@@ -5,6 +5,14 @@ GRANT SELECT, INSERT, UPDATE ON owners, customers, consultations, messages TO :"
 -- 로그인할 때 기한 지난 세션을 정리하므로 DELETE도 필요하다(owner-session.ts).
 GRANT SELECT, INSERT, UPDATE, DELETE ON owner_sessions TO :"runtime_role";
 GRANT SELECT ON shops, kakao_channels TO :"runtime_role";
+-- TASK-067: 견적과 요청 당시 운영규정의 계산에 필요한 열만 읽는다.
+GRANT SELECT (draft_id, price_list_id, operating_rules_id) ON orders TO :"runtime_role";
+GRANT SELECT (price_list_id, size_option_id, flavor_option_id, design_option_id, design_id) ON order_drafts TO :"runtime_role";
+GRANT SELECT (shop_id, draft_id, price_list_id, option_id) ON order_draft_extras TO :"runtime_role";
+GRANT SELECT (id, shop_id, draft_id) ON reference_photos TO :"runtime_role";
+GRANT SELECT, INSERT ON quotes TO :"runtime_role";
+GRANT SELECT (shop_id, order_id, version, pickup_at) ON order_details TO :"runtime_role";
+GRANT SELECT (custom_material_ordered_at, production_started_at) ON productions TO :"runtime_role";
 -- FOR SHARE에는 열 하나의 UPDATE 권한이 필요하다. 앱의 이 경로는 ID를 바꾸지 않는다.
 GRANT UPDATE (id) ON shops, kakao_channels TO :"runtime_role";
 -- TASK-028: AI 실패/콜백 만료의 질문 참조·할 일·발신 대기 알림.

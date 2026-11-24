@@ -2,11 +2,14 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { createAiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
-import type { RequestDb } from "../src/db";
+import { pgConnector, type RequestDb } from "../src/db";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { quoteOrderCancellation } from "../src/order-refund-quote";
+import { quoteDraft } from "../src/quotes";
 import { Secret } from "../src/settings";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { anthropicStream, sseResponse } from "./support/ai-mock";
 import { collectLogs, describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
@@ -45,6 +48,40 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       await admin.query(`DROP ROLE IF EXISTS "${role}"`);
     } finally {
       await admin.close();
+    }
+  });
+
+  it("제한 역할에서 견적·요청 당시 규정 계산과 계산 불가 넘김을 실행한다", async () => {
+    const target = await createShop(db, "제한 역할 견적 가게");
+    await issueTestBookingLink(db, target);
+    const runtime = pgConnector(new Secret(databaseUrl));
+    try {
+      const scoped = shopRequestDb(createShopScope(target.shopId, { kind: "job", job: "kakao_callback" }), runtime);
+      expect(
+        await quoteDraft(scoped, {
+          draftId: target.draftId,
+          sourceMessageId: target.messageId,
+          now: new Date("2026-11-24T00:00:00Z"),
+        }),
+      ).toMatchObject({ kind: "quoted", quote: { amount: 35000, priceListVersion: 1 } });
+      expect(
+        await quoteOrderCancellation(scoped, {
+          orderId: target.orderId,
+          cancelledAt: new Date("2026-11-24T00:00:00Z"),
+          funds: { received: 35000, decided: 0, reserved: 0 },
+          reason: "customer",
+        }),
+      ).toMatchObject({ amount: 35000, operatingRulesVersion: 1 });
+      expect(
+        await quoteDraft(scoped, {
+          draftId: target.draftId,
+          sourceMessageId: target.messageId,
+          now: new Date("2026-11-24T00:00:00Z"),
+          selection: { size: "3단" },
+        }),
+      ).toMatchObject({ kind: "cannot_calculate" });
+    } finally {
+      await runtime.close();
     }
   });
 

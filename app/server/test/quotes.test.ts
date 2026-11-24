@@ -67,6 +67,7 @@ describeDb("가게 가격표로 계산하는 견적(TASK-067)", () => {
     ).toEqual([{ reason: "cannot_answer" }]);
   });
   it("35000원 기본과 범위 밖50000원부터 디자인은85000원부터 맞춤이다", async () => {
+    await isolated.db.query("UPDATE price_lists SET version=5 WHERE id=$1", [shop.priceListId]);
     await isolated.db.query("UPDATE price_options SET price_kind='from',amount=50000,in_standard=false WHERE id=$1", [
       shop.designOptionId,
     ]);
@@ -76,7 +77,7 @@ describeDb("가게 가격표로 계산하는 견적(TASK-067)", () => {
     ]);
     expect(await quote()).toMatchObject({
       kind: "quoted",
-      quote: { amount: 85000, displayKind: "from", orderKind: "custom" },
+      quote: { amount: 85000, displayKind: "from", orderKind: "custom", priceListVersion: 5 },
     });
   });
   it("기본 옵션뿐이어도 참고 사진이 있으면 확정 금액의 맞춤이다", async () => {
