@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-24 11:18 KST · TASK-067 main 결합 검사와 웹 재실행 결과
+
+main225 결합 원본 `7c7373cf3d41d7f5b6e727bcee60176e1c71ecd8`의 새 빈 PostgreSQL 마이그레이션34개·서버 `Test Files 111 passed (111)`·`Tests 2323 passed (2323)`가 통과했습니다. 이어진 웹 전체에서는 기존 PublicPrivacyScreen.interaction의 알림 영역 확인 한 건이 실패해 `Tests 1 failed | 1569 passed (1570)`였고 빌드는 실행하지 않았습니다. 웹 원본을 바꾸지 않고 실패한 파일을 단독 재검사해18건 통과, 웹 전체 재실행은 `Test Files 65 passed (65)`·`Tests 1570 passed (1570)`입니다. 그 뒤 웹 `built in 751ms`와 두 Worker `--dry-run: exiting now.`가 종료0으로 끝났습니다. 첫 전체 명령의 실패를 성공으로 덮어쓰지 않습니다.
+
+타입과 format 뒤 lint는 종료0이며 최종 키·WBS·용어 검사와 차이를 확인합니다. 현재 원본의 코드·시험 변경은 Claude 발견5건 처리와 main 반영뿐입니다. 실제 스테이징 새 열 권한 적용, AI 도구 연결과 실제 결제·환불 송금은 미확인입니다. TASK-067은 SPEC-013 #1~6 자동 조건의 finished 제안을 유지하며 현재 main 완료35개를36개로 제안합니다. 별도 TASK-068과 함께 합칠 때 생성기로 다시 셉니다.
+
 ### 2026-11-24 11:08 KST · TASK-067 main225 결합과 배포 증거 보존
 
 PR #225를 squash한 main `ee3ce8bfea7d32d6b417f82060afac83bc40042f`를 반영했습니다. 견적·환불 runtime 시험과 main의 목적별 개인정보 출력 시험을 모두 보존했고, 두 작업의 필요한 열 권한을 합쳤습니다. API-072의 금액 비조회 설명과 공용 역할의 사장님 출력 권한은 구분했습니다. 기록 번호 622·README330과 main의 621·README329는 원래 번호대로 보존했습니다. 이전 hands-on의 앞·뒤 추가 기록도 모두 보존했습니다.
