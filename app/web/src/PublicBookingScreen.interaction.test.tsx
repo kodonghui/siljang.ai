@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
@@ -38,6 +38,8 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
+  for (const node of document.querySelectorAll("[data-announcer]")) node.remove();
 });
 
 it("공개 주소에서 로그인 없이 현재 가격표·60일·가게 신원과 문의 주소를 보인다", async () => {
@@ -91,6 +93,71 @@ it("사진 실패가 동시에 와도 한 번만 새로 읽고 모든 사진 주
     expect(screen.getAllByRole("img").every((image) => image.getAttribute("src")?.includes("refreshed=1"))).toBe(true),
   );
   fireEvent.error(screen.getAllByRole("img")[0] as HTMLElement);
-  await vi.waitFor(() => expect(screen.getByText("사진을 불러오지 못했어요")).toBeTruthy());
+  await vi.waitFor(() =>
+    expect(within(screen.getByRole("region", { name: "포트폴리오" })).getByRole("status").textContent).toBe(
+      "사진을 불러오지 못했어요",
+    ),
+  );
   expect(calls).toHaveLength(2);
+});
+it("월 이동은 받은 날짜 안에서만 하며 API를 다시 읽지 않는다", async () => {
+  mount();
+  await screen.findByRole("heading", { name: value.shop.name });
+  expect((screen.getByRole("button", { name: "이전 달" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "다음 달" }));
+  fireEvent.click(screen.getByRole("button", { name: "다음 달" }));
+  expect((screen.getByRole("button", { name: "다음 달" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByRole("table").textContent).toContain("2027년 1월");
+  expect(calls).toHaveLength(1);
+});
+it("두 달 화면에서도 마지막 달 밖으로 이동하지 않는다", async () => {
+  vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  mount();
+  await screen.findByRole("heading", { name: value.shop.name });
+  expect(screen.getAllByRole("table")).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button", { name: "다음 달" }));
+  expect((screen.getByRole("button", { name: "다음 달" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(calls).toHaveLength(1);
+});
+it("429는 Retry-After 전에 다시 요청하지 않고 기한 뒤 한 번 자동으로 읽는다", async () => {
+  vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval", "setTimeout", "clearTimeout", "performance"] });
+  result = async () =>
+    new Response(JSON.stringify({ code: "rate_limited" }), { status: 429, headers: { "Retry-After": "2" } });
+  mount();
+  await act(async () => {});
+  expect(screen.getByText("2초 뒤 자동으로 다시 불러와요")).toBeTruthy();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(calls).toHaveLength(1);
+  result = async () => json(value);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(calls).toHaveLength(2);
+  expect(screen.getByRole("heading", { name: value.shop.name })).toBeTruthy();
+});
+it("열어 둔 페이지도60초마다 공개 사진 철회를 반영한다", async () => {
+  vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval", "setTimeout", "clearTimeout", "performance"] });
+  mount();
+  await act(async () => {});
+  expect(screen.getAllByRole("img")).toHaveLength(4);
+  value.portfolio = [];
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(calls).toHaveLength(2);
+  expect(screen.getByText("아직 사진이 없어요")).toBeTruthy();
+  expect(screen.getAllByRole("img")).toHaveLength(2);
+});
+it("없는 문의 주소는 버튼을 잠그고 실패 화면에서 가게 신원을 남기지 않는다", async () => {
+  value.inquiryUrl = null;
+  mount();
+  await screen.findByRole("heading", { name: value.shop.name });
+  expect((screen.getByRole("button", { name: "문의하기" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.queryByRole("link", { name: "문의하기" })).toBeNull();
+  result = async () => json({ code: "not_found" }, 404);
+  fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+  await screen.findByText("찾을 수 없어요");
+  expect(screen.queryByRole("heading", { name: value.shop.name })).toBeNull();
 });
