@@ -57,6 +57,12 @@ function input(query: Record<string, string>, consultationId: string): PageInput
 function cursor(consultationId: string, row: Entry): string {
   return toBase64Url(new TextEncoder().encode(JSON.stringify([1, consultationId, row.cursor_at, row.timeline_seq])));
 }
+
+function displayText(body: string | null, replacements: ReadonlyMap<string, string>): string | null {
+  if (body === null) return null;
+  const text = body.replace(PLACEHOLDER, (key) => replacements.get(key) ?? key);
+  return text.length <= 100000 ? text : Array.from(text).slice(0, 100000).join("");
+}
 const ENTRIES = `WITH entries AS (
   SELECT m.id,m.created_at AS at,m.timeline_seq,m.direction,m.author,m.kind,m.body_masked AS body,m.delivery,'message'::text AS source
   FROM messages m WHERE m.shop_id=$1 AND m.consultation_id=$2
@@ -144,11 +150,8 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
       direction: row.direction,
       author: row.author,
       kind: row.kind,
-      text:
-        row.source === "message"
-          ? (row.body?.replace(PLACEHOLDER, (key) => replacements.get(key) ?? key).slice(0, 100000) ?? null)
-          : row.body,
-      photos: photoUrls.get(row.id) ?? [],
+      text: row.source === "message" ? displayText(row.body, replacements) : row.body,
+      photos: row.source === "message" ? (photoUrls.get(row.id) ?? []) : [],
       delivery: row.delivery,
     }));
     const last = rows.at(-1);

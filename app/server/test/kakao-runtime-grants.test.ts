@@ -391,7 +391,7 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
         order_id_read: true,
         // 같은 앱 역할의 사장님 요약·장부 출력에 금액 읽기가 필요하다(TASK-066).
         order_amount_read: true,
-        order_status_update: false,
+        order_status_update: true, // TASK-082의 결제 기한 처리가 상태와 잠금 번호만 바꾼다.
         review_body_insert: true,
         review_body_read: false,
         review_body_update: false,
@@ -618,6 +618,9 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     const { rows } = await db.query(
       `SELECT
       has_any_column_privilege($1, 'public.handoffs', 'UPDATE') AS handoff_update,
+      has_column_privilege($1, 'public.handoffs', 'day_used_order_id', 'UPDATE') AS handoff_day_use_update,
+      has_column_privilege($1, 'public.handoffs', 'day_decision', 'UPDATE') AS handoff_day_decision_update,
+      has_column_privilege($1, 'public.handoffs', 'answer_text', 'UPDATE') AS handoff_answer_update,
       has_table_privilege($1, 'public.handoffs', 'DELETE') AS handoff_delete,
       has_any_column_privilege($1, 'public.handoff_questions', 'UPDATE') AS question_update,
       has_table_privilege($1, 'public.handoff_questions', 'DELETE') AS question_delete,
@@ -658,7 +661,10 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     );
     expect(rows).toEqual([
       {
-        handoff_update: false,
+        handoff_update: true,
+        handoff_day_use_update: true,
+        handoff_day_decision_update: false,
+        handoff_answer_update: false,
         handoff_delete: false,
         question_update: false,
         question_delete: false,

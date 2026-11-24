@@ -1,11 +1,15 @@
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
+import { type DbConnector, pgConnector } from "../src/db";
+import { toBase64Url } from "../src/encoding";
 import { maskValue } from "../src/masked-values";
 import { ApiError } from "../src/problem";
+import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { failingAccessInsert } from "./support/access-log";
 import { expectProblem, expectSchema } from "./support/contract";
-import { describeDb, newUuid, testEnv } from "./support/db";
+import { describeDb, newUuid, TEST_DATABASE_URL, testDb, testEnv } from "./support/db";
 import { newFieldKey, singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, type ShopFixture } from "./support/shops";
@@ -31,18 +35,46 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture;
   const { fc } = singleKeyCrypto();
   const fileUrlKey = newFieldKey();
+  const role = `owner077_${newUuid().replaceAll("-", "")}`;
+  let runtimeUrl: string;
+  const logs: unknown[] = [];
   beforeAll(async () => {
     isolated = await isolatedTestDb();
+    await isolated.db.query(`CREATE ROLE "${role}" LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+    await isolated.db.query(
+      readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8").replaceAll(
+        ':"runtime_role"',
+        `"${role}"`,
+      ),
+    );
+    const name = (await isolated.db.query<{ name: string }>("SELECT current_database() AS name")).rows[0]?.name;
+    const url = new URL(TEST_DATABASE_URL);
+    url.pathname = `/${name}`;
+    url.username = role;
+    url.password = "";
+    runtimeUrl = url.toString();
   }, 30000);
   beforeEach(async () => {
+    logs.length = 0;
     shop = await createShop(isolated.db, "합성 상담 조회 가게");
     await issueTestBookingLink(isolated.db, shop);
   });
   afterAll(async () => {
     await isolated?.close();
+    const admin = testDb();
+    try {
+      await admin.query(`DROP ROLE IF EXISTS "${role}"`);
+    } finally {
+      await admin.close();
+    }
   });
-  function call(query = "", id = shop.consultationId, authenticated = true, failLog = false) {
-    const connect = () => isolated.connect();
+  function call(
+    query = "",
+    id = shop.consultationId,
+    authenticated = true,
+    failLog = false,
+    connect: DbConnector = () => isolated.connect(),
+  ) {
     const app = createApp({
       connect: failLog ? failingAccessInsert(connect) : connect,
       scopes: {
@@ -52,7 +84,9 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
         },
       },
       services: { now: () => NOW, fieldCrypto: fc },
-      logSink: () => {},
+      logSink: (line) => {
+        logs.push(line);
+      },
     });
     return app.request(
       `${ORIGIN}/api/owner/consultations/${id}/messages${query}`,
@@ -221,5 +255,136 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     const body = await page(await call());
     expect(body.status).toBe("ended");
     expect(body.items).toHaveLength(1);
+  });
+  it("최소 역할로 복원·안내·사진을 조회하고 민감한 값은 로그에 없음", async () => {
+    const phone = "01000005678",
+      notice = newUuid(),
+      key = `shops/${shop.shopId}/reference/${newUuid()}.webp`;
+    const masked = await shopRequestDb(
+      createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }),
+      isolated.db,
+    ).transaction((tx) => maskValue(tx, fc, shop.consultationId, "phone", phone));
+    await isolated.db.query("UPDATE messages SET body_masked=$2,kind='photo' WHERE id=$1", [shop.messageId, masked]);
+    await isolated.db.query(
+      "INSERT INTO reference_photos(shop_id,draft_id,message_id,storage_key,content_type,byte_size) VALUES($1,$2,$3,$4,'image/webp',32)",
+      [shop.shopId, shop.draftId, shop.messageId, key],
+    );
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body) VALUES($1,$2,$3,$4,'owner_reply',$5,'synthetic','제한 역할 답')",
+      [notice, shop.shopId, shop.customerId, shop.consultationId, `notice:${notice}:owner_reply`],
+    );
+    const body = await page(
+      await call("", shop.consultationId, true, false, () => pgConnector(new Secret(runtimeUrl))),
+    );
+    expect(body.items.find((x) => x.messageId === shop.messageId)).toMatchObject({
+      text: phone,
+      photos: [{ url: expect.any(String) }],
+    });
+    expect(body.items.find((x) => x.messageId === notice)).toMatchObject({
+      author: "owner",
+      delivery: "sending",
+      photos: [],
+    });
+    expect(JSON.stringify(logs)).not.toContain(phone);
+    expect(JSON.stringify(logs)).not.toContain(key);
+  });
+  it.each([
+    ["pending", "sending"],
+    ["retrying", "sending"],
+    ["confirming", "sending"],
+    ["sent", "event_api"],
+    ["deferred", "deferred"],
+    ["delivered_on_reply", "delivered_later"],
+    ["dropped", "failed"],
+  ])("안내 전달 상태 %s는 %s", async (status, delivery) => {
+    const id = newUuid(),
+      sent = status === "sent" || status === "delivered_on_reply",
+      task = status === "sent" || status === "confirming",
+      created = new Date(NOW.getTime() - 60000);
+    await isolated.db.query("UPDATE messages SET created_at=$2 WHERE id=$1", [
+      shop.messageId,
+      new Date(NOW.getTime() - 120000),
+    ]);
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,created_at,sent_at,kakao_task_id,requested_at) VALUES($1,$2,$3,$4,'payment_request',$5,'synthetic','합성 안내 [계좌번호1]',$6,$7,$8,$9,$10)",
+      [
+        id,
+        shop.shopId,
+        shop.customerId,
+        shop.consultationId,
+        `notice:${id}:payment_request`,
+        status,
+        created,
+        sent ? NOW : null,
+        task ? "synthetic-task" : null,
+        task ? NOW : null,
+      ],
+    );
+    const body = await page(await call()),
+      item = body.items.find((x) => x.messageId === id);
+    expect(item).toMatchObject({ author: "notice", delivery, text: "합성 안내 [계좌번호1]", photos: [] });
+    expect(Date.parse(item?.at ?? "")).toBe((sent ? NOW : created).getTime());
+  });
+  it("다른 가게에 묶어 암호화한 값은 내용 없이500이고 로그에 원문 없음", async () => {
+    const phone = "01000005678",
+      scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+    const token = await scoped.transaction((tx) => maskValue(tx, fc, shop.consultationId, "phone", phone));
+    const sealed = await fc.seal(phone, { purpose: "masked_values.original", shopId: newUuid() });
+    await isolated.db.query("UPDATE masked_values SET original_enc=$3 WHERE shop_id=$1 AND consultation_id=$2", [
+      shop.shopId,
+      shop.consultationId,
+      sealed,
+    ]);
+    await isolated.db.query("UPDATE messages SET body_masked=$2 WHERE id=$1", [shop.messageId, token]);
+    const response = await call();
+    await expectProblem(response, "internal");
+    expect(JSON.stringify(logs)).not.toContain(phone);
+    expect(JSON.stringify(logs)).not.toContain(sealed);
+  });
+  it("계약의100000자를 지킬 때 마지막 이모지까지 보존함", async () => {
+    const text = "가".repeat(99999) + "🙂";
+    await isolated.db.query("UPDATE messages SET body_masked=$2 WHERE id=$1", [shop.messageId, text]);
+    const body = await page(await call());
+    expect(body.items[0]?.text).toBe(text);
+  });
+  it("복원으로100000자를 넘으면 표시만 한도로 줄이고 저장된 글은 그대로", async () => {
+    const token = await shopRequestDb(
+      createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }),
+      isolated.db,
+    ).transaction((tx) => maskValue(tx, fc, shop.consultationId, "phone", "01012345678901234567"));
+    const original = token.repeat(14000);
+    await isolated.db.query("UPDATE messages SET body_masked=$2 WHERE id=$1", [shop.messageId, original]);
+    const body = await page(await call());
+    expect(Array.from(body.items[0]?.text ?? "")).toHaveLength(100000);
+    expect((await isolated.db.query("SELECT body_masked FROM messages WHERE id=$1", [shop.messageId])).rows).toEqual([
+      { body_masked: original },
+    ]);
+  });
+  it("메시지와 같은 ID인 안내에는 메시지 사진을 붙이지 않음", async () => {
+    const key = `shops/${shop.shopId}/reference/${newUuid()}.webp`;
+    await isolated.db.query("UPDATE messages SET kind='photo' WHERE id=$1", [shop.messageId]);
+    await isolated.db.query(
+      "INSERT INTO reference_photos(shop_id,draft_id,message_id,storage_key,content_type,byte_size) VALUES($1,$2,$3,$4,'image/webp',32)",
+      [shop.shopId, shop.draftId, shop.messageId, key],
+    );
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body) VALUES($1,$2,$3,$4,'owner_reply',$5,'synthetic','같은 ID의 안내')",
+      [shop.messageId, shop.shopId, shop.customerId, shop.consultationId, `notice:${shop.messageId}:owner_reply`],
+    );
+    const body = await page(await call());
+    expect(body.items.find((x) => x.author === "owner")?.photos).toEqual([]);
+    expect(body.items.find((x) => x.author === "customer")?.photos).toHaveLength(1);
+  });
+  it("유효한 base64여도 잘못된 커서 내용·범위·상담은422", async () => {
+    for (const value of [
+      null,
+      [],
+      [1, shop.consultationId, "9223372036854775808", "1"],
+      [1, shop.consultationId, "0", "0"],
+      [1, shop.shopId, "0", "1"],
+    ]) {
+      const token = toBase64Url(new TextEncoder().encode(JSON.stringify(value)));
+      await expectProblem(await call(`?cursor=${token}`), "validation_failed");
+    }
   });
 });

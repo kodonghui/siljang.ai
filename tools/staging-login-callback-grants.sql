@@ -57,6 +57,10 @@ GRANT SELECT (id, shop_id, consultation_id, status, revision, lettering, design_
 GRANT SELECT, INSERT ON masked_values TO :"runtime_role";
 -- TASK-028: 미전달 일반 글은 다음 응답/콜백에 전한 뒤 상태와 시각만 고친다.
 GRANT SELECT, UPDATE (status, sent_at) ON notifications TO :"runtime_role";
+-- TASK-077: 사장님 상담 조회에서 안내와 참고 사진의 표시 필드만 읽는다. 수정·삭제는 열지 않는다.
+GRANT SELECT (id, shop_id, customer_id, consultation_id, order_id, kind, body, created_at, timeline_seq)
+  ON notifications TO :"runtime_role";
+GRANT SELECT (message_id, position, storage_key) ON reference_photos TO :"runtime_role";
 -- API-072 자체는 자기 받은 주문의 식별자/상태만 읽는다. 위 사장님 출력의 추가 열 권한과는 별개다.
 GRANT SELECT (id, shop_id, order_no, customer_id, consultation_id, status, personal_data_purged_at), UPDATE (id)
   ON orders TO :"runtime_role";
@@ -79,6 +83,23 @@ GRANT SELECT, INSERT, UPDATE ON calendar_days TO :"runtime_role";
 GRANT SELECT (id, shop_id, day, order_id, status, overbooked) ON slot_holds TO :"runtime_role";
 -- 저장 전 주문 확인과 미발송 안내의 날짜 재계산에 필요한 열만 읽는다.
 GRANT SELECT (pickup_day, pickup_at) ON orders TO :"runtime_role";
+-- TASK-082: 자리 처리의 잠금 번호·수락·재제작 관계와 결제 기한만 읽는다.
+-- 공용 역할의 열 권한은 상태 값별 전이를 제한하지 않는다. 앱의 잠금·현재 상태/잠금 번호 조건이 이를 지킨다.
+-- 다른 SQL의 결함이 상태를 되돌릴 수 있는 위험은 남으며, 각 업무 API 연결 때 A6 회귀를 확인한다.
+GRANT SELECT (accepted_at, lock_version, remake_of_order_id), UPDATE (status, lock_version) ON orders TO :"runtime_role";
+GRANT SELECT (kind, status, due_at, due_cap_at, claimed_at, version, change_request_id),
+  UPDATE (status, expired_at, version) ON payment_requests TO :"runtime_role";
+GRANT SELECT (base_version, lock_version, new_pickup_at, amount_delta, status),
+  UPDATE (status, closed_at, lock_version) ON change_requests TO :"runtime_role";
+GRANT SELECT (payment_request_id, hold_key),
+  INSERT (shop_id, day, order_id, payment_request_id, hold_key, status, overbooked, fixed_at, created_at),
+  UPDATE (status, fixed_at, released_at, release_reason, done_at) ON slot_holds TO :"runtime_role";
+-- 추가 수락을 쓴 주문 연결만 남긴다. 수락 판정·기한 변경·행 삭제는 열지 않는다.
+GRANT UPDATE (day_used_order_id) ON handoffs TO :"runtime_role";
+-- 주문 상태를 쓸 때 커밋의 기존 제약 트리거가 제작 시각과 확인된 결제를 읽는다.
+GRANT SELECT (confirmed_payment_id) ON orders TO :"runtime_role";
+GRANT SELECT (no_pickup_at) ON productions TO :"runtime_role";
+GRANT SELECT (id, voided_at) ON payments TO :"runtime_role";
 GRANT SELECT (shop_id, order_id, handed_over_at) ON productions TO :"runtime_role";
 -- 이미 보낸 안내·시도 횟수·본문은 바꾸지 않는다.
 GRANT UPDATE (scheduled_for, next_attempt_at) ON notifications TO :"runtime_role";
