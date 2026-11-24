@@ -1,8 +1,9 @@
 /** 첫 AI 답의 맨 앞에 붙일 고지. 외부 전송 성공 전에는 고지 완료를 기록하지 않는다. */
 import type { KakaoCallbackClaim } from "./kakao-callback-store";
 import { type AuthorizedKakaoSkill, kakaoReceiptKey } from "./kakao-skill-auth";
-import { KAKAO_MESSAGE_LIMIT } from "./kakao-skill-store";
+import { KAKAO_MESSAGE_LIMIT, recentKakaoInboundCount } from "./kakao-skill-store";
 import { currentPrivacyPolicy } from "./privacy-policy-current";
+import { ApiError } from "./problem";
 import type { Services } from "./services";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
@@ -60,9 +61,9 @@ export async function readKakaoDisclosurePolicy(
         at: services.now(),
       };
     });
-  } catch {
-    // 정책을 확인할 수 없으면 AI 답을 열지 않고 기존 수신/사장님 안내를 유지한다.
-    return undefined;
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "not_found") return undefined;
+    throw error;
   }
 }
 
@@ -71,6 +72,7 @@ export async function readKakaoInboundDisclosurePolicy(
   db: ShopRequestDb,
   request: AuthorizedKakaoSkill,
   services: Services,
+  onFailure: (error: unknown) => void,
 ): Promise<KakaoDisclosurePolicy | undefined> {
   if (!services.aiConfigured) return undefined;
   try {
@@ -87,16 +89,12 @@ export async function readKakaoInboundDisclosurePolicy(
     const current = known.rows[0];
     if (current && (current.ai_disclosed_at !== null || current.status === "dropped")) return undefined;
     if (current) {
-      const start = new Date(Math.floor(request.receivedAt.getTime() / 60000) * 60000);
-      const recent = await db.found<{ n: number }>(
-        `SELECT count(*)::int AS n FROM messages m JOIN consultations c ON c.shop_id=$1 AND c.id=m.consultation_id
-         WHERE m.shop_id=$1 AND c.customer_id=$2 AND m.direction='inbound' AND m.created_at >= $3 AND m.created_at < $4`,
-        [current.customer_id, start, new Date(start.getTime() + 60000)],
-      );
-      if (recent.n >= KAKAO_MESSAGE_LIMIT) return undefined;
+      const recent = await recentKakaoInboundCount(db, current.customer_id, request.receivedAt);
+      if (recent >= KAKAO_MESSAGE_LIMIT) return undefined;
     }
     return await readKakaoDisclosurePolicy(db, services);
-  } catch {
+  } catch (error) {
+    onFailure(error);
     return undefined;
   }
 }

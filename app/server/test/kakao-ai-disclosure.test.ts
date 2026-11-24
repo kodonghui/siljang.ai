@@ -1,3 +1,4 @@
+import { DatabaseError } from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { recordAiCall } from "../src/ai-calls";
 import type { AiModel } from "../src/ai-model";
@@ -8,7 +9,7 @@ import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import * as policyCurrent from "../src/privacy-policy-current";
 import { readSettings, Secret } from "../src/settings";
-import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
+import { collectLogs, describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
@@ -30,6 +31,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
   let now = NOW;
   const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
   const jobs: KakaoCallbackJob[] = [];
+  const policyLogs = collectLogs();
   const enqueue = vi.fn<KakaoCallbackQueue["send"]>(async (job) => {
     jobs.push(job);
   });
@@ -39,6 +41,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
   beforeEach(async () => {
     now = NOW;
     jobs.length = 0;
+    policyLogs.lines.length = 0;
     enqueue.mockClear();
     shop = await createShop(isolated.db, "합성 수신 가게");
     await issueTestBookingLink(isolated.db, shop);
@@ -164,7 +167,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
         ...(enabled ? { aiModel: model() } : {}),
         ...(fields ? { fieldCrypto: fields } : {}),
       },
-      logSink: () => {},
+      logSink: policyLogs.sink,
     }).request(
       "/api/kakao/skills/message",
       {
@@ -269,10 +272,23 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     expect(policy).not.toHaveBeenCalled();
   });
   it("정책 읽기가 실패해도 새 스티커 수신은 고지 없는 기존 안내를 지킨다", async () => {
-    vi.spyOn(policyCurrent, "currentPrivacyPolicy").mockRejectedValue(new Error("합성 정책 읽기 실패"));
+    vi.spyOn(policyCurrent, "currentPrivacyPolicy").mockRejectedValue(
+      Object.assign(new DatabaseError("합성 정책 읽기 실패"), { code: "40001", name: "error" }),
+    );
     const response = await immediate(newUuid(), "");
     expect(response.headers.get("Siljang-Outcome")).not.toBe("server_error");
     expect(await response.text()).not.toContain("AI가 상담합니다");
+    expect(policyLogs.lines.map((line) => JSON.parse(line))).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "kakao_disclosure_policy_failed",
+          code: "policy_unavailable",
+          errorName: "error",
+          dbCode: "40001",
+        }),
+      ]),
+    );
+    expect(policyLogs.lines.join("\n")).not.toContain("합성 정책 읽기 실패");
   });
   it("AI 설정이 있으면 마스킹 실패의 첫 넘김 안내에도 고지를 붙인다", async () => {
     const user = newUuid(),
@@ -296,6 +312,61 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     const response = await send(user, "수신 한도 뒤 합성 질문");
     expect(response.headers.get("Siljang-Outcome")).not.toBe("server_error");
     expect(policy).not.toHaveBeenCalled();
+  });
+  it("두 번째 고지 준비의 일시 DB 오류는 답을 폐기하거나 넘기지 않고 재시도한다", async () => {
+    const user = newUuid(),
+      ai = model(),
+      invoke = required(ai.call.getMockImplementation());
+    ai.call.mockImplementationOnce(async (input) => {
+      const result = await invoke(input);
+      vi.spyOn(policyCurrent, "currentPrivacyPolicy").mockRejectedValueOnce(
+        Object.assign(new DatabaseError("합성 직렬화 실패"), { code: "40001", name: "error" }),
+      );
+      return result;
+    });
+    await send(user, "일시 DB 오류 합성 질문");
+    const job = required(jobs[0]),
+      callback = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await expect(
+      consumeKakaoCallback(job, env, {
+        connect: () => isolated.connect(),
+        now: () => new Date(now.getTime() + 1000),
+        fetch: callback,
+        services: { aiModel: ai, privacyPolicy: POLICY, publicAppOrigin: ORIGIN },
+        logSink: () => {},
+      }),
+    ).rejects.toMatchObject({ code: "40001" });
+    expect(callback).not.toHaveBeenCalled();
+    expect(
+      (
+        await isolated.db.query("SELECT id FROM handoffs WHERE consultation_id=$1", [
+          required((await record(user))[0]).id,
+        ])
+      ).rows,
+    ).toHaveLength(0);
+    expect(
+      (
+        await isolated.db.query("SELECT delivery,sent_at FROM messages WHERE consultation_id=$1 AND author='ai'", [
+          required((await record(user))[0]).id,
+        ])
+      ).rows,
+    ).toEqual([{ delivery: "deferred", sent_at: null }]);
+    expect(texts(await consume(job, ai))[0]).toContain("AI가 상담합니다");
+    expect(ai.call).toHaveBeenCalledOnce();
+  });
+  it("글19개와 후기 카드1개 뒤20번째 글도 첫 고지를 전한다", async () => {
+    const user = newUuid();
+    for (let i = 0; i < 19; i++) await send(user, `후기 카드 전 합성 질문 ${i}`);
+    const consultation = required((await record(user))[0]),
+      id = newUuid();
+    await isolated.db.query(
+      "INSERT INTO messages (id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES ($1,$2,$3,'inbound','customer','card',$4,'합성 후기',$5)",
+      [id, shop.shopId, consultation.id, `synthetic-review:${id}`, NOW],
+    );
+    const policy = vi.spyOn(policyCurrent, "currentPrivacyPolicy");
+    const response = await immediate(user, "후기 카드 뒤20번째 합성 글");
+    expect(await response.text()).toContain("AI가 상담합니다");
+    expect(policy).toHaveBeenCalledOnce();
   });
   it("새 손님의 첫 답은 고지·처리방침 링크·AI 답 순서이며 성공 뒤 게시 버전을 남긴다", async () => {
     const user = newUuid(),
