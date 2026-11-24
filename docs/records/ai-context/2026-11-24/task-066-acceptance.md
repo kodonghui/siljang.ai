@@ -24,3 +24,7 @@
 검토 수정 원본 `bd2959e8906bfe43ef17b425ae29c09bba262447`의 새 빈 PostgreSQL 전체 검사를 완료했습니다. 마이그레이션 34개, 서버 `Test Files 109 passed (109)`·`Tests 2287 passed (2287)`, 웹 `Test Files 65 passed (65)`·`Tests 1570 passed (1570)`, 웹 `built in 1.21s`, 두 Worker `--dry-run: exiting now.`이며 시험·빌드 종료는 모두 0입니다. 타입 검사 종료 0, `Checked 480 files in 793ms. No fixes applied.`입니다. 환경 재시작으로 중단된 앞 로그는 성공으로 세지 않고 새 실행 `siljang-task066-review-restart-0150`의 완료 상태와 원본을 확인했습니다.
 
 PR #224 병합 뒤 Claude 재검토 댓글 `7118971639`의 경고 로그 이름·요청 추적 ID 보완 한 건은 별도 TASK-064 브랜치 `codex/task-064-warning-log`에서 이어갑니다. TASK-066에 다른 작업 코드를 섞지 않습니다. 실제 스테이징 권한·로그·모델 설정 전환 확인은 여전히 남아 있으며 끝남/구현 완료 표시는 바꾸지 않았습니다.
+
+후속 상태 대조: PR #225는 main ee3ce8bfea7d32d6b417f82060afac83bc40042f에 합쳐졌고 app45309196170·db45309196156·배포138162230801이 성공했습니다. 실제 앱3dc38ed7-d384-4f0c-bb42-41b910f7cadb의 전체 태그·활성100%·health200과 원격 main 일치를 확인했습니다. 위11개 조건의 코드·시험은 채웠고 남은 실제 설정·키·로그·권한 확인은 학원컴 Aside/Vault 인증 때문에 보류돼 있습니다. codex-finish.md 3-2의 세 조건에 따라 progress.md의 구현 완료 목록에 등록합니다. finished는 표시하지 않으며 실제 확인을 통과로 바꾸지 않습니다. 목적별 출력의 실제 알림·장부·화면 연결은 각 담당 작업에서 이어갑니다.
+
+TASK-064 경고 보완도 PR #228 main d330fccdcb3ca293a64f8d3b5ee10ce4f9092c1c의 CI·배포·원격 SHA 확인까지 끝났습니다. 이 후속은 실제 모델 호출이나 개인정보를 추가로 읽지 않는 상태 기록입니다. 기존 증거는 main225-deployment.json과 main228-deployment.json에 보존합니다.
