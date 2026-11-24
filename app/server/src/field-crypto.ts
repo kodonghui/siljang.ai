@@ -17,12 +17,13 @@ import { fromBase64Url, toBase64Url, toHex } from "./encoding";
 import type { FieldKeySettings } from "./settings";
 import { isUuid } from "./shop-scope";
 
-/** 봉투를 쓰는 곳(테이블.컬럼, 마스킹 원본은 masked_values.original). AAD에 들어간다. */
+/** 저장 필드와 상담 커서의 용도. AAD에 들어간다. */
 export const FIELD_PURPOSES = [
   "payment_accounts.account_number",
   "refunds.refund_account",
   "masked_values.original",
   "messages.kakao_callback",
+  "consultations.message_cursor",
 ] as const;
 export type FieldPurpose = (typeof FIELD_PURPOSES)[number];
 
@@ -30,6 +31,8 @@ export type FieldPurpose = (typeof FIELD_PURPOSES)[number];
 export interface FieldContext {
   readonly purpose: FieldPurpose;
   readonly shopId: string;
+  /** 상담 커서만 상담 ID를 추가로 묶는다. 기존 저장 봉투의 AAD는 그대로다. */
+  readonly recordId?: string;
 }
 
 /** 05의 봉투 CHECK와 같은 글(payment_accounts_account_number_enc_check 등 셋). */
@@ -38,7 +41,7 @@ const ENVELOPE = /^v([1-9][0-9]{0,2}):([A-Za-z0-9_-]{39,})$/;
 
 const NONCE_BYTES = 12;
 const TAG_BYTES = 16;
-/** 평문의 가장 긴 길이(UTF-8 바이트). 계좌번호·전화번호는 40자를 넘지 않는다(06 accountNumber maxLength 40). */
+/** 평문 UTF-8 상한. 계좌번호·전화번호는40자까지이며 상담 커서는120바이트를 쓴다. */
 export const MAX_FIELD_BYTES = 256;
 
 /** 봉투를 만들거나 풀지 못함. 메시지는 정해 둔 글뿐이다(평문·키·봉투 없음). */
@@ -85,7 +88,12 @@ function aad(version: number, context: FieldContext): Uint8Array {
   if (!(FIELD_PURPOSES as readonly string[]).includes(context.purpose) || !isUuid(context.shopId)) {
     throw new FieldCryptoError("field context is not valid");
   }
-  return framed("siljang-field-aad", [`v${version}`, context.purpose, context.shopId.toLowerCase()]);
+  const parts = [`v${version}`, context.purpose, context.shopId.toLowerCase()];
+  if (context.purpose === "consultations.message_cursor") {
+    if (!isUuid(context.recordId)) throw new FieldCryptoError("cursor binding is not valid");
+    parts.push(context.recordId.toLowerCase());
+  } else if (context.recordId !== undefined) throw new FieldCryptoError("field binding is not valid");
+  return framed("siljang-field-aad", parts);
 }
 
 async function deriveVersionKeys(version: number, secret: string): Promise<VersionKeys> {

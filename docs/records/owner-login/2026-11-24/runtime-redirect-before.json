@@ -1,0 +1,16 @@
+[
+  {
+    "mode": "error",
+    "errorName": "TypeError",
+    "redirectMentioned": true,
+    "policyMentioned": false
+  },
+  {
+    "mode": "manual",
+    "status": 400
+  },
+  {
+    "mode": "follow",
+    "status": 400
+  }
+]
