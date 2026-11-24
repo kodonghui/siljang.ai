@@ -225,3 +225,14 @@ it("좁은 직접 상세는 목록을 미루고 넓어지면 한 번만 읽는�
   await screen.findByRole("link", { name: /버전 1/ });
   expect(calls.filter((c) => c === "/api/owner/operating-rules/versions")).toHaveLength(1);
 });
+
+it("규정 상세의 목록 복귀도 같은 버전 링크로 초점을 돌린다", async () => {
+  const view = area("1");
+  await screen.findByRole("heading", { name: "버전 1 (고른 버전)" });
+  const back = screen.getByRole("button", { name: "버전 목록으로" });
+  back.focus();
+  fireEvent.click(back);
+  view.rerender(<OperatingRulesHistory {...view.props} version={null} />);
+  const chosen = await screen.findByRole("link", { name: /버전 1\b/ });
+  await waitFor(() => expect(document.activeElement).toBe(chosen));
+});
