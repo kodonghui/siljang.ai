@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { createAiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
+import { assessPickupDay, closedDayNoticeTrace, requestClosedPickupDay } from "../src/booking-capacity";
 import { pgConnector, type RequestDb } from "../src/db";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
@@ -107,6 +108,64 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       ).toMatchObject({ kind: "cannot_calculate" });
     } finally {
       await runtime.close();
+    }
+  });
+
+  it("제한 역할로 날짜 판정과 전달 뒤 마감 날짜 건을 기록하고 재사용한다", async () => {
+    const target = await createShop(db, "제한 역할의 날짜 가게");
+    await issueTestBookingLink(db, target);
+    const at = new Date("2026-11-24T01:00:00Z"),
+      day = "2026-11-26",
+      noticeId = newUuid();
+    await db.query(
+      "UPDATE business_calendars SET closed_weekdays='{}',order_cutoff_days=2,order_cutoff_time='09:00' WHERE shop_id=$1",
+      [target.shopId],
+    );
+    await db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,sent_at,created_at) VALUES($1,$2,$3,'outbound','system','text',$4,'그날은 마감됐어요.','callback',$5,$5)",
+      [noticeId, target.shopId, target.consultationId, closedDayNoticeTrace(target.messageId, day), at],
+    );
+    const connection = pgConnector(new Secret(databaseUrl));
+    try {
+      const scoped = shopRequestDb(createShopScope(target.shopId, { kind: "job", job: "kakao_callback" }), connection);
+      expect(await assessPickupDay(scoped, day, at)).toMatchObject({ status: "closed" });
+      const input = {
+        consultationId: target.consultationId,
+        sourceMessageId: target.messageId,
+        day,
+        noticeMessageId: noticeId,
+        insist: true,
+        now: at,
+      };
+      const first = await requestClosedPickupDay(scoped, input);
+      expect(first).toMatchObject({ kind: "handed_off" });
+      expect(await requestClosedPickupDay(scoped, input)).toEqual(first);
+      const repeatSource = newUuid(),
+        repeatNotice = newUuid();
+      await db.query(
+        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES($1,$2,$3,'inbound','customer','text',$4,'같은 날짜 합성 요청',$5)",
+        [repeatSource, target.shopId, target.consultationId, `synthetic-role-repeat:${repeatSource}`, at],
+      );
+      await db.query(
+        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,sent_at,created_at) VALUES($1,$2,$3,'outbound','system','text',$4,'그날은 마감됐어요.','callback',$5,$5)",
+        [repeatNotice, target.shopId, target.consultationId, closedDayNoticeTrace(repeatSource, day), at],
+      );
+      expect(
+        await requestClosedPickupDay(scoped, {
+          ...input,
+          sourceMessageId: repeatSource,
+          noticeMessageId: repeatNotice,
+        }),
+      ).toEqual(first);
+      expect((await db.query("SELECT kind FROM owner_tasks WHERE shop_id=$1", [target.shopId])).rows).toEqual([
+        { kind: "handoff" },
+      ]);
+      expect((await db.query("SELECT kind FROM owner_alerts WHERE shop_id=$1", [target.shopId])).rows).toEqual([
+        { kind: "new_task" },
+      ]);
+      expect((await db.query("SELECT id FROM slot_holds WHERE shop_id=$1", [target.shopId])).rows).toHaveLength(0);
+    } finally {
+      await connection.close();
     }
   });
 
@@ -509,6 +568,9 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       has_any_column_privilege($1, 'public.handoff_questions', 'UPDATE') AS question_update,
       has_table_privilege($1, 'public.handoff_questions', 'DELETE') AS question_delete,
       has_any_column_privilege($1, 'public.owner_tasks', 'UPDATE') AS task_update,
+      has_column_privilege($1, 'public.owner_tasks', 'detail', 'UPDATE') AS task_detail_update,
+      has_column_privilege($1, 'public.owner_tasks', 'wait_status', 'UPDATE') AS task_state_update,
+      has_column_privilege($1, 'public.owner_tasks', 'closed_at', 'UPDATE') AS task_close_update,
       has_table_privilege($1, 'public.owner_tasks', 'DELETE') AS task_delete,
       has_any_column_privilege($1, 'public.owner_alerts', 'UPDATE') AS alert_update,
       has_table_privilege($1, 'public.owner_alerts', 'DELETE') AS alert_delete,
@@ -539,7 +601,10 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
         handoff_delete: false,
         question_update: false,
         question_delete: false,
-        task_update: false,
+        task_update: true,
+        task_detail_update: true,
+        task_state_update: false,
+        task_close_update: false,
         task_delete: false,
         alert_update: false,
         alert_delete: false,

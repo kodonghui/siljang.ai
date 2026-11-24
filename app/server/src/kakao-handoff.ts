@@ -1,4 +1,5 @@
 import { eventKeys, insertOnce } from "./event-keys";
+import { createHandoffTask } from "./handoff-task";
 import {
   inlineKakaoDisclosure,
   type KakaoDisclosurePolicy,
@@ -8,7 +9,6 @@ import {
 import { deferredKakaoMessages, deferredKakaoTexts, markDeferredKakaoMessages } from "./kakao-deferred";
 import { KAKAO_HANDOFF_TEXT } from "./kakao-reply";
 import type { InboundReceipt } from "./kakao-skill-store";
-import { ownerWaitDue } from "./owner-wait";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 import { toShopLocal } from "./time";
 
@@ -125,28 +125,12 @@ export async function recordKakaoHandoff(
       [eventKeys.alert("handoff_appended", existing.id, day), task.id, now],
     );
   } else {
-    const due = await ownerWaitDue(db, now);
     const handoff = await db.found<{ id: string }>(
       `INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, created_at)
         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [consultationId, messageId, reason, now],
     );
-    const task = await insertOnce(
-      db,
-      "owner_tasks",
-      `INSERT INTO owner_tasks (shop_id, event_key, handoff_id, kind, wait_status, wait_due_at, opened_at)
-        VALUES ($1, $2, $3, 'handoff', 'waiting', $4, $5)
-        ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id`,
-      [eventKeys.task("handoff", handoff.id), handoff.id, due, now],
-    );
-    await insertOnce(
-      db,
-      "owner_alerts",
-      `INSERT INTO owner_alerts (shop_id, event_key, owner_task_id, kind, next_attempt_at, created_at)
-        VALUES ($1, $2, $3, 'new_task', $4, $4)
-        ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id`,
-      [eventKeys.alert("new_task", task.id), task.id, now],
-    );
+    await createHandoffTask(db, handoff.id, now);
   }
   await db.run("UPDATE consultations SET status = 'awaiting_owner' WHERE shop_id = $1 AND id = $2", [consultationId]);
 }
