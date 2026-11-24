@@ -2251,6 +2251,12 @@ TASK-077 Claude 검토 고침 뒤 새 빈 PostgreSQL 마이그레이션38개·�
 
 끝남30개·구현 완료30개·MVP 시작 가능36개·전체 의존 충족40개입니다. [판정과 검토 처리](../docs/records/slot-holds/2026-11-24/implementation-checks.md)·[끝남 재대조](../docs/records/slot-holds/2026-11-24/finished-audit.md)에 근거를 모았습니다.
 
+### 349. TASK-020 실제 카카오 콜백 진단
+
+PR241 Claude 검토7129590544의5건을 처리했습니다. TASK-028의 같은 문제는 별도 브랜치에서 고침·140개를 통과했고, 이 PR에는300대 거절 명시·토큰/사용자 조회의301·302·303·307·308 행렬 시험·기록 시점과 공개 원본을 반영했습니다. 관련2파일55개·타입·lint가 통과했습니다. [처리 근거](../docs/records/owner-login/2026-11-24/runtime-fetch-checks.md)에 보존하고 현재 head CI 뒤 병합 직전 Codex 리뷰를 한 번 요청합니다. 실제 로그인 확인은 main 배포 뒤입니다.
+
 ### 350. TASK-028 Workers 콜백·이벤트 전송
 
 TASK-028 전송 고침의 새 빈 PostgreSQL38개 이행·서버125파일2536개·웹65파일1570개·Vite698ms·두 Worker 빌드가 모두 통과했습니다. [검사 원본과 런타임 비교](../docs/records/kakao-worker-fetch/2026-11-24/checks.md)에 근거를 모았고 Workers의 지원되는 정책을 인계 문서에 적었습니다. 실제 SQL 원장/권한 적용은 학원컴 Aside에서 진행 중이고 실제 카카오·AI·큐 흐름은 아직 미확인입니다. 다음은 현재 head CI·검토·병합·main 검증입니다.
+
+학원컴 Aside에서 main239 생성 SQL의 해시·원본 일치를 확인해 스테이징38개 이행과 권한 파일을 적용했습니다. 새 열/인덱스·시퀀스 USAGE true/UPDATE false는 확인했습니다. 실제 합성 쓰기 프로브는42501·allowed_writes false였고 합성 행/역할은 모두 되돌려졌습니다. [실제 결과](../docs/records/kakao-worker-fetch/2026-11-24/checks.md)를 실패 그대로 기록하고 읽기 전용 진단으로 원인을 좁힙니다. 전송 코드의 전체2536개·빌드 통과와 구분하며 TASK-028 끝남은 표시하지 않습니다.

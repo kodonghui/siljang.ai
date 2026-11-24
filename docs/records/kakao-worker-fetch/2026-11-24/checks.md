@@ -17,3 +17,9 @@ callback·event의 정책을 manual로 바꿨고300대 응답은 기존 실패 �
 원본b9afbf3658a108ea617106ce843a9e22f7e7c029(로컬)·공개05b6bd156ec2c6a203223e5a7d2929cdc0642c67·동일 트리567b21dfc96a259cfabd12f71349d6d6b30fee8b의 새 빈 PostgreSQL에 마이그레이션38개를 적용했습니다. 서버125파일2536개·웹65파일1570개·Vite698ms·두 Worker 빌드가 모두 종료0입니다. npm ci는161개11초이며 타입과 형식 다음 lint510파일 오류0을 확인했습니다. validation-source.json에 원본과 결과를 연결했습니다. 이후 문서 변경에서 전체 시험을 재실행한 것으로 적지 않습니다.
 
 같은 실수를 막도록 codex-development.md14절에 Workers의 지원되는 redirect 값·300대 응답 거절·Node 모의 시험과 실제 런타임의 차이를 기록했습니다. 제품의 새 API나 의존성을 더한 것은 아닙니다. 현재 main의 SQL 원장/권한 적용은 복구된 학원컴 Aside에서 원본 해시를 대조해 진행 중이며 아직 성공으로 기록하지 않습니다.
+
+## 실제 스테이징 갱신과 쓰기 점검 실패
+
+학원컴 Aside에서 두 파일의 원격 해시와 편집기 원본을 대조해 각각 한 번 실행했습니다.2026-11-24 20:04:08 KST 갱신은 migration_count38·owner_sessions_present true·owner_session_update true·access_log_full_select false였습니다.20:06:25에 새 순번·두 열·전달 ID·할 일 인덱스 존재, 시퀀스 USAGE true/UPDATE false도 확인했습니다. 역할·계정·키·업무 행은 기록하지 않았습니다.
+
+20:05:21의 합성 실제 역할 쓰기 점검은 allowed_writes false·blocked_writes0·failure_sqlstate42501이었습니다. rollback_verified와 role_restored는 true여서 합성 행과 역할 전환은 모두 되돌려졌습니다. 통과로 세지 않고 읽기 전용 권한·역할 전환 메타데이터로 원인을 좁히고 있습니다. 같은 쓰기 점검이나 임의 GRANT는 반복하지 않았습니다. 결과는 staging-update-result.json에 연결했습니다. 첫 긴 SSH 입력 전달은 시간초과로 실패했고 SFTP로 전환한 뒤 원격 SHA를 확인했습니다.
