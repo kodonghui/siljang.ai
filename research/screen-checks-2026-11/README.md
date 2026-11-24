@@ -25,3 +25,5 @@ node /tmp/siljang-qa087-owner-tasks/server.mjs
 두 생성기의 Windows 경로는 직렬화해 import에 넣습니다. 할 일 홈의 생성도 Linux/Windows CI에서 확인하며 브라우저는 실행하지 않습니다. 실제 학원컴 전달/화면 결과는 작업별 기록을 따릅니다.
 
 할 일 생성기는 app/web·앱 package/lock·OpenAPI·page-check·이 자료 폴더의 소스 입력이 HEAD와 같은지 생성 전/후에 검사합니다. 변경한 입력이나 아직 커밋하지 않은 입력이 있으면 FIXTURE_SOURCE_CHANGED로 중단하므로 먼저 입력을 커밋합니다. docs/records만 바뀐 상태는 허용합니다. 의존성 설치는 lock을 따릅니다. session-race는 첫 내 정보 뒤 목록 세션이 바뀌는 추가 합성 조건이며 기대 가게 헤더의 거절/재확인을 실제 UI로 확인합니다. 기존 V3는 이 고침 전 자료로 새 확인에 재사용하지 않습니다.
+
+할 일 생성기는 실행한 생성기와 입력 root가 같은 작업 트리인지 realpath로 확인하고 보조 파일도 그 root에서 읽습니다. 출력은 저장소 밖 폴더를 사용합니다. 임시 형제 폴더에 전체를 만든 뒤 원본 검사까지 성공하면 교체하고, 기존 결과는 previousOutput 폴더로 보존합니다. 입력 변경으로 실패하면 이전 번들/manifest는 바뀌지 않습니다. V3/V4는 이 추가 고침 전 준비 자료이며 새 V5를 사용합니다.

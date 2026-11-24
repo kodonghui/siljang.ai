@@ -1,0 +1,43 @@
+{
+  "scope": "검토7146781770의 실제 OwnerArea 재확인/임시Git CLI/생성 중 실제 새번들 뒤 실패. 로컬 자동이며 실제 브라우저 아님",
+  "review": 7146781770,
+  "visibilityRed": "1ce7e3fda0e9b671f6f507f1e92e8cf7d52bfd10",
+  "sourceRed": "b102249bc7b786576bd18e668a173e160aa8125e",
+  "greenLocal": "b0c3c0833e8ec38ad2ed08ea7e8a3ce98dd2a8f7",
+  "typecheckExit": 0,
+  "buildExit": 0,
+  "serverApiDiffFromFull89e": 0,
+  "results": {
+    "visibilityRed": [
+      " Test Files  1 failed (1)",
+      "      Tests  1 failed | 14 passed (15)"
+    ],
+    "visibilityGreen": [
+      " Test Files  1 passed (1)",
+      "      Tests  15 passed (15)"
+    ],
+    "sourceRed": [
+      "# tests 7",
+      "# pass 4",
+      "# fail 3"
+    ],
+    "sourceGreen": [
+      "# tests 7",
+      "# pass 7",
+      "# fail 0"
+    ],
+    "web": [
+      " Test Files  71 passed (71)",
+      "      Tests  1717 passed (1717)"
+    ],
+    "build": [
+      "✓ built in 664ms",
+      "Total Upload: 5337.81 KiB / gzip: 984.59 KiB",
+      "--dry-run: exiting now.",
+      "Total Upload: 20.87 KiB / gzip: 6.47 KiB",
+      "--dry-run: exiting now."
+    ]
+  },
+  "browserRun": false,
+  "nativeTransfer": false
+}

@@ -60,6 +60,13 @@ interface HomeTabFocus {
   readonly identityKey: string;
 }
 const ownerIdentityKey = (identity: OwnerIdentity) => `${identity.owner.ownerId}:${identity.shop?.shopId ?? ""}`;
+function homeWithoutCursor(search: string): string | null {
+  const query = new URLSearchParams(search);
+  if (!query.has("cursor")) return null;
+  query.delete("cursor");
+  const suffix = query.toString();
+  return `${OWNER_HOME}${suffix ? `?${suffix}` : ""}`;
+}
 
 /** 첫 세션 확인 전에는 가린다. 이미 검증한 등록 양식은 재확인·로그아웃 중 잠근 채 보존한다. */
 export function OwnerArea() {
@@ -109,6 +116,18 @@ export function OwnerArea() {
       .then((result) => {
         if (controller.signal.aborted) return;
         if (result.ok) {
+          const previous = verified.current?.data;
+          const withoutCursor = homeWithoutCursor(location.search);
+          if (
+            shopPath === OWNER_HOME &&
+            previous &&
+            ownerIdentityKey(previous) !== ownerIdentityKey(result.data) &&
+            withoutCursor !== null
+          ) {
+            setHomeTabFocus(null);
+            navigate(withoutCursor, { replace: true });
+            return;
+          }
           if (result.data.shop !== null) clearRegistrationDraft();
           else pruneRegistrationDraft(result.data.owner.ownerId);
           verified.current = { key: visit.key, path: location.pathname, data: result.data, history };
@@ -119,7 +138,7 @@ export function OwnerArea() {
         /* 화면을 떠날 때 취소한 요청. */
       });
     return () => controller.abort();
-  }, [visit, requested, history, location.pathname, shopPath]);
+  }, [visit, requested, history, location.pathname, location.search, navigate, shopPath]);
   useEffect(() => () => logoutRequest.current?.abort(), []);
   useEffect(() => {
     if (requested !== OWNER_HOME) setRegistrationNotice(false);
@@ -226,12 +245,9 @@ export function OwnerArea() {
               // 두 조회 사이 계정이 바뀌었을 수 있다. 이전 목록을 숨긴 채 한 번만 신원을 다시 읽는다.
               rejectedHomeIdentity.current = identityKey;
               setHomeTabFocus(null);
-              const query = new URLSearchParams(location.search);
-              if (query.has("cursor")) {
-                query.delete("cursor");
-                const search = query.toString();
-                navigate(`${OWNER_HOME}${search ? `?${search}` : ""}`, { replace: true });
-              } else setRevision((value) => value + 1);
+              const withoutCursor = homeWithoutCursor(location.search);
+              if (withoutCursor !== null) navigate(withoutCursor, { replace: true });
+              else setRevision((value) => value + 1);
             } else navigate(OWNER_LOGIN, { replace: true, state: { returnTo: requested } });
           }}
           onRegisterShop={() => navigate(OWNER_REGISTER, { replace: true })}

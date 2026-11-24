@@ -59,6 +59,58 @@ function restore() {
   Object.defineProperty(e, "persisted", { value: true });
   fireEvent(window, e);
 }
+it("가시성 재확인에서 가게가 바뀌면 새 가게 목록 전에 옛 커서를 지우고 필터를 보존한다", async () => {
+  const before = structuredClone(profile);
+  const next = structuredClone(profile);
+  next.owner.ownerId = "00000000-0000-4000-8000-000000009901";
+  next.shop.shopId = "00000000-0000-4000-8000-000000009902";
+  next.shop.name = "복귀 뒤 새 합성 가게";
+  const closed = { ...tasks.items[0], closedAt: "2026-11-24T12:00:00+09:00", waitStatus: "answered" };
+  const oldPage = { ...tasks, items: [closed], nextCursor: null };
+  const newPage = {
+    ...tasks,
+    items: [{ ...closed, taskId: "00000000-0000-4000-8000-000000009903", summary: "복귀 뒤 새 가게 할 일" }],
+    nextCursor: null,
+  };
+  let reads = 0;
+  const requests: { path: string; shop: string | null }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown, init?: RequestInit) => {
+      const path = String(input);
+      if (path === "/api/owner/me") return json(++reads === 1 ? before : next);
+      if (path.startsWith("/api/owner/tasks?")) {
+        const shop = new Headers(init?.headers).get("X-Expected-Shop-Id");
+        requests.push({ path, shop });
+        if (shop === before.shop.shopId) return json(oldPage);
+        if (new URL(path, "https://siljang.example").searchParams.has("cursor"))
+          return json(
+            {
+              code: "validation_failed",
+              traceId: "0123456789abcdef0123456789abcdef",
+              errors: [{ field: "query:cursor", code: "bad_format" }],
+            },
+            422,
+          );
+        return json(newPage);
+      }
+      return json({ code: "internal" }, 500);
+    }),
+  );
+  mount("/owner?status=closed&limit=19&cursor=previous-page");
+  await screen.findAllByText(closed.summary);
+  fireEvent(document, new Event("visibilitychange"));
+  await screen.findAllByText(newPage.items[0].summary);
+  expect(screen.queryAllByText(before.shop.name)).toHaveLength(0);
+  const newRequests = requests.filter((r) => r.shop === next.shop.shopId);
+  expect(newRequests).toHaveLength(1);
+  const firstNewRequest = newRequests[0];
+  if (!firstNewRequest) throw new Error("새 가게 목록 요청이 없음");
+  const query = new URL(firstNewRequest.path, "https://siljang.example").searchParams;
+  expect(query.get("status")).toBe("closed");
+  expect(query.get("limit")).toBe("19");
+  expect(query.has("cursor")).toBe(false);
+});
 it.each([
   { more: false, entry: "/owner" },
   { more: true, entry: "/owner" },
