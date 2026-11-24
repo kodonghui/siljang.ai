@@ -43,7 +43,7 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
       );
     });
   }
-  async function notice(delivered = false) {
+  async function notice(delivered = false, sourceMessageId = shop.messageId) {
     const id = newUuid();
     await isolated.db.query(
       "INSERT INTO messages (id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,sent_at,created_at) VALUES ($1,$2,$3,'outbound','system','text',$4,'그날은 마감됐어요.',$5,$6,$7)",
@@ -51,7 +51,7 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
         id,
         shop.shopId,
         shop.consultationId,
-        closedDayNoticeTrace(shop.messageId, DAY),
+        closedDayNoticeTrace(sourceMessageId, DAY),
         delivered ? "callback" : "deferred",
         delivered ? NOW : null,
         NOW,
@@ -68,6 +68,25 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
       insist,
       now: NOW,
     });
+  async function twice(input: Parameters<typeof requestClosedPickupDay>[1]) {
+    const connections = [isolated.connect(), isolated.connect()];
+    try {
+      const results = await Promise.allSettled(
+        connections.map((connection) =>
+          requestClosedPickupDay(
+            shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), connection),
+            input,
+          ),
+        ),
+      );
+      return results.map((result) => {
+        if (result.status === "rejected") throw result.reason;
+        return result.value;
+      });
+    } finally {
+      await Promise.all(connections.map((connection) => connection.close()));
+    }
+  }
   it("휴무20일에는19/21일을 포함해 가까운 세 날만 권하고 자리/질문을 만들지 않는다", async () => {
     await isolated.db.query("INSERT INTO calendar_days (shop_id,day,closed) VALUES ($1,'2026-11-20',true)", [
       shop.shopId,
@@ -142,5 +161,74 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
         now: NOW,
       }),
     ).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  it("휴무일은 다시 원해도 질문이나 새 자리를 만들지 않는다", async () => {
+    await isolated.db.query("INSERT INTO calendar_days(shop_id,day,closed) VALUES($1,$2::date,true)", [
+      shop.shopId,
+      DAY,
+    ]);
+    expect(await request(await notice(true))).toMatchObject({
+      kind: "not_requested",
+      availability: { status: "day_off" },
+    });
+    expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(0);
+  });
+
+  it("동시 중복과 같은 날짜의 추가 질문은 열린 질문과 할 일을 한 건만 만든다", async () => {
+    await fullDay();
+    const id = await notice(true);
+    const duplicate = await twice({
+      consultationId: shop.consultationId,
+      sourceMessageId: shop.messageId,
+      day: DAY,
+      noticeMessageId: id,
+      insist: true,
+      now: NOW,
+    });
+    expect(duplicate[0]).toEqual(duplicate[1]);
+    const sourceId = newUuid();
+    await isolated.db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES($1,$2,$3,'inbound','customer','text',$4,'그날 꼭 부탁드려요',$5)",
+      [sourceId, shop.shopId, shop.consultationId, `synthetic-repeat:${sourceId}`, NOW],
+    );
+    const extraNotice = await notice(true, sourceId);
+    const input = {
+      consultationId: shop.consultationId,
+      sourceMessageId: sourceId,
+      day: DAY,
+      noticeMessageId: extraNotice,
+      insist: true,
+      now: NOW,
+    };
+    const results = await twice(input);
+    expect(results[0]?.handoffId).toBe(duplicate[0]?.handoffId);
+    expect(results[1]).toEqual(results[0]);
+    expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(1);
+    expect((await isolated.db.query("SELECT id FROM owner_tasks WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(
+      1,
+    );
+    expect(
+      (await isolated.db.query("SELECT message_id FROM handoff_questions WHERE shop_id=$1", [shop.shopId])).rows,
+    ).toHaveLength(0);
+    expect(
+      (await isolated.db.query("SELECT kind FROM owner_alerts WHERE shop_id=$1 ORDER BY kind", [shop.shopId])).rows,
+    ).toEqual([{ kind: "new_task" }]);
+  });
+
+  it("다른 수신 글에 묶인 안내를 전달 증거로 쓰지 못한다", async () => {
+    await fullDay();
+    const id = await notice(true);
+    await isolated.db.query("UPDATE messages SET trace_id=$2 WHERE id=$1", [id, closedDayNoticeTrace(newUuid(), DAY)]);
+    await expect(request(id)).rejects.toMatchObject({ code: "not_found" });
+    expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(0);
+  });
+  it("15일 뒤만 가능하면 14일 밖 날짜를 권하지 않는다", async () => {
+    await isolated.db.query(
+      "INSERT INTO calendar_days(shop_id,day,closed) SELECT $1,d::date,true FROM generate_series('2026-11-18'::date,'2026-12-06'::date,'1 day'::interval) d",
+      [shop.shopId],
+    );
+    expect(await ask("2026-12-07")).toMatchObject({ status: "open" });
+    expect(await ask(DAY)).toMatchObject({ status: "day_off", alternatives: [] });
   });
 });

@@ -365,6 +365,41 @@ describeDb("모델 호출 모듈(TASK-026)", () => {
     }
   });
 
+  it("운영 설정의 합성 대화100개는 두 회사 설정을 따르고 추적 도구로 보내지 않는다(TASK-066)", async () => {
+    vi.stubEnv("LANGSMITH_TRACING", "false");
+    const traces: string[] = [];
+    const expectedModels: string[] = [];
+    const requests: string[] = [];
+    for (let i = 0; i < 100; i++) {
+      const provider = i < 50 ? "anthropic" : "openai";
+      const rec = recordingFetch(streamReply(provider, outputText(provider, OUTPUT)));
+      vi.stubGlobal("fetch", rec.fetch);
+      const traceId = `masking-${newUuid()}`;
+      traces.push(traceId);
+      expectedModels.push(MODELS[provider]);
+      const outcome = await createAiModel("production", settings(provider)).call({
+        db: shopDb,
+        consultationId: f.consultationId,
+        traceId,
+        attempt: FIRST_ATTEMPT,
+        promptVersion: "masking-100-test",
+        messages: [{ role: "user", content: `합성 대화 ${i}: [전화번호1]` }],
+      });
+      expect(outcome.ok).toBe(true);
+      expect(rec.seen.map((request) => new URL(request.url).origin)).toEqual([AI_ORIGINS[provider]]);
+      requests.push(...rec.seen.map((request) => request.url));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(requests).toHaveLength(100);
+    expect(requests.filter((url) => /langchain|langsmith|smith\./.test(url))).toEqual([]);
+    const recorded = await db.query<{ trace_id: string; model: string }>(
+      "SELECT trace_id,model FROM ai_calls WHERE shop_id=$1 AND consultation_id=$2 AND trace_id=ANY($3::text[])",
+      [f.shopId, f.consultationId, traces],
+    );
+    const models = new Map(recorded.rows.map((row) => [row.trace_id, row.model]));
+    expect(traces.map((trace) => models.get(trace))).toEqual(expectedModels);
+  });
+
   it("운영에서 프로세스 환경에 추적이 켜져 있으면 부르지 않음(요청 0건, 행 0건)", async () => {
     vi.stubEnv("LANGSMITH_TRACING", "true");
     const rec = recordingFetch(streamReply("anthropic", outputText("anthropic", OUTPUT)));

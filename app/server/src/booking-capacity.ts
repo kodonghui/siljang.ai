@@ -5,7 +5,6 @@ import { eventKeys, insertOnce } from "./event-keys";
 import { ownerWaitDue } from "./owner-wait";
 import { ApiError } from "./problem";
 import { pathId, type ShopDb, type ShopRequestDb } from "./shop-scope";
-import { toShopLocal } from "./time";
 
 const CLOSED_TEXT = "그날은 마감됐어요.";
 const NO_ALTERNATIVE = "가까운 날에 자리가 없어요. 사장님께 확인을 요청할 수 있어요.";
@@ -112,29 +111,14 @@ export async function recordClosedPickupDayInTransaction(
   }
   const opened = (
     await tx.run<{ id: string }>(
-      "SELECT id FROM handoffs WHERE shop_id=$1 AND consultation_id=$2 AND reason='closed_day' AND requested_day=$3::date AND status='open' FOR UPDATE",
+      "SELECT id FROM handoffs WHERE shop_id=$1 AND consultation_id=$2 AND reason='closed_day' AND requested_day=$3::date AND status='open'",
       [consultationId, availability.day],
     )
   ).rows[0];
   let handoffId: string;
   if (opened) {
     handoffId = opened.id;
-    await tx.run(
-      "INSERT INTO handoff_questions (shop_id,handoff_id,message_id,reason,created_at) VALUES ($1,$2,$3,'closed_day',$4) ON CONFLICT (message_id) DO NOTHING",
-      [handoffId, sourceId, input.now],
-    );
-    const task = await tx.found<{ id: string }>(
-      "SELECT id FROM owner_tasks WHERE shop_id=$1 AND handoff_id=$2 AND closed_at IS NULL",
-      [handoffId],
-    );
-    const shop = await tx.found<{ time_zone: string }>("SELECT time_zone FROM shops WHERE id=$1");
-    await insertOnce(
-      tx,
-      "owner_alerts",
-      `INSERT INTO owner_alerts (shop_id, event_key, owner_task_id, kind, next_attempt_at, created_at)
-       VALUES ($1, $2, $3, 'handoff_appended', $4, $4) ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id`,
-      [eventKeys.alert("handoff_appended", handoffId, toShopLocal(input.now, shop.time_zone).date), task.id, input.now],
-    );
+    // 마감 날짜 건에는 일반 추가 질문을 붙이지 않는다. 같은 열린 날짜 건을 쓴다(SPEC-014).
   } else {
     handoffId = (
       await tx.found<{ id: string }>(

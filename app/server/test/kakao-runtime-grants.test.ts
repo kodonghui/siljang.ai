@@ -2,11 +2,14 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { createAiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
-import type { RequestDb } from "../src/db";
+import { assessPickupDay, closedDayNoticeTrace, requestClosedPickupDay } from "../src/booking-capacity";
+import { pgConnector, type RequestDb } from "../src/db";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { createCustomOrderTask, ownerProductionOrder, writeOrderLedgerData } from "../src/order-output";
 import { Secret } from "../src/settings";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { anthropicStream, sseResponse } from "./support/ai-mock";
 import { collectLogs, describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
@@ -45,6 +48,71 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       await admin.query(`DROP ROLE IF EXISTS "${role}"`);
     } finally {
       await admin.close();
+    }
+  });
+
+  it("제한 역할에서도 요약·장부는 알레르기를 빼고 사장님 제작 자료만 포함한다", async () => {
+    const target = await createShop(db, "제한 역할 출력 가게");
+    await issueTestBookingLink(db, target);
+    await db.query("UPDATE orders SET kind='custom',status='requested' WHERE id=$1", [target.orderId]);
+    await db.query(
+      "UPDATE order_details SET allergy_consent='agreed',allergy_consent_version='allergy-v1',allergy_answer='땅콩' WHERE order_id=$1",
+      [target.orderId],
+    );
+    const runtime = pgConnector(new Secret(databaseUrl));
+    try {
+      const scoped = shopRequestDb(createShopScope(target.shopId, { kind: "owner", ownerId: target.ownerId }), runtime);
+      const task = await createCustomOrderTask(scoped, target.orderId, new Date("2026-11-24T00:00:00Z"));
+      const write = vi.fn(async (_row: Readonly<Record<string, unknown>>) => {});
+      await writeOrderLedgerData(scoped, target.orderId, write);
+      expect(write).toHaveBeenCalledOnce();
+      expect(JSON.stringify(write.mock.calls)).not.toContain("땅콩");
+      expect(await ownerProductionOrder(scoped, target.orderId)).toMatchObject({ allergyAnswer: "땅콩" });
+      const rows = (await db.query("SELECT detail FROM owner_tasks WHERE id=$1", [task.id])).rows;
+      expect(JSON.stringify(rows)).not.toContain("땅콩");
+    } finally {
+      await runtime.close();
+    }
+  });
+
+  it("제한 역할로 날짜 판정과 전달 뒤 마감 날짜 건을 기록하고 재사용한다", async () => {
+    const target = await createShop(db, "제한 역할의 날짜 가게");
+    await issueTestBookingLink(db, target);
+    const at = new Date("2026-11-24T01:00:00Z"),
+      day = "2026-11-26",
+      noticeId = newUuid();
+    await db.query(
+      "UPDATE business_calendars SET closed_weekdays='{}',order_cutoff_days=2,order_cutoff_time='09:00' WHERE shop_id=$1",
+      [target.shopId],
+    );
+    await db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,sent_at,created_at) VALUES($1,$2,$3,'outbound','system','text',$4,'그날은 마감됐어요.','callback',$5,$5)",
+      [noticeId, target.shopId, target.consultationId, closedDayNoticeTrace(target.messageId, day), at],
+    );
+    const connection = pgConnector(new Secret(databaseUrl));
+    try {
+      const scoped = shopRequestDb(createShopScope(target.shopId, { kind: "job", job: "kakao_callback" }), connection);
+      expect(await assessPickupDay(scoped, day, at)).toMatchObject({ status: "closed" });
+      const input = {
+        consultationId: target.consultationId,
+        sourceMessageId: target.messageId,
+        day,
+        noticeMessageId: noticeId,
+        insist: true,
+        now: at,
+      };
+      const first = await requestClosedPickupDay(scoped, input);
+      expect(first).toMatchObject({ kind: "handed_off" });
+      expect(await requestClosedPickupDay(scoped, input)).toEqual(first);
+      expect((await db.query("SELECT kind FROM owner_tasks WHERE shop_id=$1", [target.shopId])).rows).toEqual([
+        { kind: "handoff" },
+      ]);
+      expect((await db.query("SELECT kind FROM owner_alerts WHERE shop_id=$1", [target.shopId])).rows).toEqual([
+        { kind: "new_task" },
+      ]);
+      expect((await db.query("SELECT id FROM slot_holds WHERE shop_id=$1", [target.shopId])).rows).toHaveLength(0);
+    } finally {
+      await connection.close();
     }
   });
 
@@ -214,7 +282,8 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     ).toEqual([
       {
         order_id_read: true,
-        order_amount_read: false,
+        // 같은 앱 역할의 사장님 요약·장부 출력에 금액 읽기가 필요하다(TASK-066).
+        order_amount_read: true,
         order_status_update: false,
         review_body_insert: true,
         review_body_read: false,
