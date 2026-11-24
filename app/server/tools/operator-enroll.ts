@@ -46,6 +46,18 @@ const EMAIL = /^[^@\s]+@[^@\s]+$/;
 const OTP = /^[0-9]{6}$/;
 const FACTOR_NAME = "siljang-operator";
 
+/** 등록 도구와 비출력 전달 도구가 같은 단일 쓰기를 사용한다. */
+export const OPERATOR_ENROLLMENT_SQL = `INSERT INTO operators (email, display_name, auth_user_id, mfa_factor_id, mfa_enrolled_at) VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT ((lower(email))) DO UPDATE
+         SET display_name = EXCLUDED.display_name,
+             auth_user_id = EXCLUDED.auth_user_id,
+             mfa_factor_id = EXCLUDED.mfa_factor_id,
+             mfa_enrolled_at = CASE WHEN operators.mfa_enrolled_at IS NOT NULL
+                                     AND operators.mfa_factor_id IS NOT DISTINCT FROM EXCLUDED.mfa_factor_id
+                                     AND operators.auth_user_id IS NOT DISTINCT FROM EXCLUDED.auth_user_id
+                                    THEN operators.mfa_enrolled_at ELSE EXCLUDED.mfa_enrolled_at END
+       RETURNING id, disabled_at IS NOT NULL AS disabled`;
+
 export function checkArgs(args: EnrollArgs): EnrollArgs {
   const email = args.email.trim().toLowerCase();
   const displayName = args.displayName.trim();
@@ -131,19 +143,13 @@ export async function enrollOperator(
       totp = "new";
     }
     // 묶인 사용자·인증 수단이 그대로면 켠 시각을 두고(세션도 그대로), 아니면 지금으로(트리거가 열린 세션을 끝냄).
-    const row = await db.query<{ id: string; disabled: boolean }>(
-      `INSERT INTO operators (email, display_name, auth_user_id, mfa_factor_id, mfa_enrolled_at) VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT ((lower(email))) DO UPDATE
-         SET display_name = EXCLUDED.display_name,
-             auth_user_id = EXCLUDED.auth_user_id,
-             mfa_factor_id = EXCLUDED.mfa_factor_id,
-             mfa_enrolled_at = CASE WHEN operators.mfa_enrolled_at IS NOT NULL
-                                     AND operators.mfa_factor_id IS NOT DISTINCT FROM EXCLUDED.mfa_factor_id
-                                     AND operators.auth_user_id IS NOT DISTINCT FROM EXCLUDED.auth_user_id
-                                    THEN operators.mfa_enrolled_at ELSE EXCLUDED.mfa_enrolled_at END
-       RETURNING id, disabled_at IS NOT NULL AS disabled`,
-      [args.email, args.displayName, user.id, factorId, deps.now()],
-    );
+    const row = await db.query<{ id: string; disabled: boolean }>(OPERATOR_ENROLLMENT_SQL, [
+      args.email,
+      args.displayName,
+      user.id,
+      factorId,
+      deps.now(),
+    ]);
     const saved = row.rows[0] as { id: string; disabled: boolean };
     io.print(`운영자 표에 맞췄어요(운영자 ID ${saved.id}).`);
     if (saved.disabled) io.print("이 운영자는 막혀 있어요(disabled_at). 이 도구는 풀지 않아요.");
