@@ -1,7 +1,7 @@
 -- TASK-028 실제 서버 역할의 쓰기/차단 확인. 내부 저장점의 합성 쓰기를 되돌리고 결과만 반환한다.
 -- psql -v runtime_role=<기존 서버 역할> -f tools/staging-kakao-runtime-probe.sql
 -- pg_temp 함수는 현재 연결에만 있으며 공개 스키마에 남지 않는다. SQL Editor에서도 마지막 SELECT 결과를 볼 수 있다.
--- 관리자 옵션만 있고 SET이 없는 기존 멤버십은 내부 저장점에서만 SET을 허용한 뒤 반드시 되돌린다.
+-- 직접 관리자 옵션만 있고 SET이 없으면 현재 접속자를 grantor로 하는 임시 행도 저장점에서 되돌린다.
 CREATE OR REPLACE FUNCTION pg_temp.siljang_kakao_runtime_probe(target_role text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER AS $probe$
 DECLARE
@@ -23,11 +23,18 @@ DECLARE
   original_can_set boolean;
   step text := 'validate_target';
   failure_step text;
+  temporary_grant_applied boolean := false;
 BEGIN
   BEGIN
+  step := 'check_session';
+  IF session_user <> current_user THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'runtime_probe_session_mismatch';
+  END IF;
+  step := 'validate_target';
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = target_role AND NOT rolsuper) THEN
     RAISE EXCEPTION 'runtime_probe_target_invalid';
   END IF;
+  step := 'check_membership';
   original_can_set := pg_has_role(original_role, target_role, 'SET');
   step := 'create_fixture';
   INSERT INTO owners (id, kakao_account_id) VALUES (owner_id, -abs(('x' || left(tag, 12))::bit(48)::bigint));
@@ -42,15 +49,17 @@ BEGIN
   INSERT INTO customers (id, shop_id, kakao_channel_id, kakao_user_key)
     VALUES (customer_id, shop_id, channel_id, 'synthetic-' || tag);
   INSERT INTO consultations (id, shop_id, customer_id) VALUES (consultation_id, shop_id, customer_id);
-  step := 'set_runtime_role';
   IF NOT original_can_set AND EXISTS (
     SELECT 1 FROM pg_catalog.pg_auth_members m
     JOIN pg_catalog.pg_roles target ON target.oid = m.roleid
     JOIN pg_catalog.pg_roles actor ON actor.oid = m.member
     WHERE target.rolname = target_role AND actor.rolname = original_role AND m.admin_option
   ) THEN
-    EXECUTE format('GRANT %I TO %I WITH SET TRUE', target_role, original_role);
+    step := 'grant_set_option';
+    EXECUTE format('GRANT %I TO %I WITH INHERIT FALSE, SET TRUE', target_role, original_role);
+    temporary_grant_applied := true;
   END IF;
+  step := 'set_runtime_role';
   EXECUTE format('SET LOCAL ROLE %I', target_role);
 
   step := 'insert_message';
@@ -117,6 +126,7 @@ BEGIN
     'role_restored', current_user = original_role,
     'membership_restored', CASE WHEN original_can_set IS NULL THEN true
       ELSE original_can_set = pg_has_role(original_role, target_role, 'SET') END,
+    'temporary_grant_applied', temporary_grant_applied,
     'failure_sqlstate', failure_sqlstate, 'failure_step', failure_step);
 END
 $probe$;

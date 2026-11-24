@@ -8,7 +8,7 @@ const probe = readFileSync(new URL("../../../tools/staging-kakao-runtime-probe.s
 const definition = probe.slice(0, probe.lastIndexOf("\nSELECT pg_temp.siljang_kakao_runtime_probe("));
 const grants = readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8");
 
-async function scenario(adminOption: boolean, allowedInsert: boolean, canSet = false) {
+async function scenario(adminOption: boolean, allowedInsert: boolean, canSet = false, switchedRole = false) {
   const isolated = await isolatedTestDb();
   const admin = testDb();
   const suffix = newUuid().replaceAll("-", "");
@@ -44,8 +44,10 @@ async function scenario(adminOption: boolean, allowedInsert: boolean, canSet = f
       WHERE roleid = (SELECT oid FROM pg_roles WHERE rolname = $1)
       AND member = (SELECT oid FROM pg_roles WHERE rolname = current_user)`;
     const membershipBefore = await client.query(membershipSql, [runtime]);
+    if (switchedRole) await client.query(`SET ROLE "${runtime}"`);
     const result = (await client.query("SELECT pg_temp.siljang_kakao_runtime_probe($1) AS result", [runtime])).rows[0]
       ?.result;
+    if (switchedRole) await client.query("RESET ROLE");
     const after = await client.query("SELECT pg_has_role(current_user, $1, 'SET') AS can_set", [runtime]);
     expect(after.rows).toEqual([{ can_set: canSet }]);
     expect((await client.query(membershipSql, [runtime])).rows).toEqual(membershipBefore.rows);
@@ -74,6 +76,7 @@ describeDb("실제 역할 쓰기 점검의 임시 역할 전환(TASK-028)", () =
       blocked_writes: 5,
       failure_sqlstate: null,
       membership_restored: true,
+      temporary_grant_applied: true,
     });
   });
 
@@ -83,6 +86,7 @@ describeDb("실제 역할 쓰기 점검의 임시 역할 전환(TASK-028)", () =
       failure_sqlstate: "42501",
       failure_step: "set_runtime_role",
       membership_restored: true,
+      temporary_grant_applied: false,
     });
   });
 
@@ -92,6 +96,7 @@ describeDb("실제 역할 쓰기 점검의 임시 역할 전환(TASK-028)", () =
       failure_sqlstate: "42501",
       failure_step: "insert_message",
       membership_restored: true,
+      temporary_grant_applied: true,
     });
   });
 
@@ -101,6 +106,17 @@ describeDb("실제 역할 쓰기 점검의 임시 역할 전환(TASK-028)", () =
       blocked_writes: 5,
       failure_sqlstate: null,
       membership_restored: true,
+      temporary_grant_applied: false,
+    });
+  });
+
+  it("앞서 SET ROLE을 한 연결은 합성 쓰기 전에 고정 분류로 거절함", async () => {
+    expect(await scenario(false, true, true, true)).toMatchObject({
+      allowed_writes: false,
+      failure_sqlstate: "42501",
+      failure_step: "check_session",
+      membership_restored: true,
+      temporary_grant_applied: false,
     });
   });
 
