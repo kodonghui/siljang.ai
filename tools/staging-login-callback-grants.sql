@@ -10,6 +10,9 @@ GRANT SELECT (shop_id, consultation_id, requested_at, kind, amount, version) ON 
 -- TASK-066: 사장님 상세/제작 자료의 알레르기와 장부의 주문자 정보는 목적별 함수로 나누어 읽는다.
 GRANT SELECT (shop_id, order_id, version, customer_name, customer_phone, allergy_answer)
   ON order_details TO :"runtime_role";
+-- TASK-066: 현재 견적은 공개 계산값만 읽고 근거의 자유 입력은 읽지 않는다.
+GRANT SELECT (id, shop_id, draft_id, draft_revision, price_list_id, amount, amount_max, display_kind, order_kind, valid_until, quoted_at)
+  ON quotes TO :"runtime_role";
 -- FOR SHARE에는 열 하나의 UPDATE 권한이 필요하다. 앱의 이 경로는 ID를 바꾸지 않는다.
 GRANT UPDATE (id) ON shops, kakao_channels TO :"runtime_role";
 -- TASK-028: AI 실패/콜백 만료의 질문 참조·할 일·발신 대기 알림.

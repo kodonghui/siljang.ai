@@ -1,4 +1,4 @@
-/** AI 입력은 이 상담의 마스킹 글과 허용한 초안 필드만 읽는다. 원래 값/알레르기/주문자 정보는 조회하지 않는다. */
+/** AI 입력은 이 상담의 마스킹 글·허용한 초안·유효 견적만 읽는다. 원래 값/알레르기/주문자 정보는 조회하지 않는다. */
 import type { AiMessage } from "./ai-model";
 import { maskMessageText } from "./message-masking";
 import type { Services } from "./services";
@@ -18,7 +18,7 @@ export function stripAiPlaceholders(text: string): string {
 export async function readAiConversation(
   db: ShopDb,
   source: { readonly messageId: string; readonly consultationId: string; readonly customerId: string },
-  services: Pick<Services, "fieldCrypto">,
+  services: Pick<Services, "fieldCrypto" | "now">,
 ): Promise<readonly AiMessage[]> {
   const anchor = await db.found<{ created_at: Date }>(
     `SELECT m.created_at FROM messages m JOIN consultations c ON c.shop_id=$1 AND c.id=m.consultation_id
@@ -41,13 +41,15 @@ export async function readAiConversation(
     inputText(await maskMessageText(db, () => services.fieldCrypto(), source.consultationId, text));
   const messages: AiMessage[] = [];
   const draft = await db.run<{
+    id: string;
+    revision: number;
     lettering: string | null;
     design_notes: string | null;
     colors: string | null;
     excluded_ingredients: string | null;
     courier_pickup: boolean;
   }>(
-    `SELECT lettering,design_notes,colors,excluded_ingredients,courier_pickup FROM order_drafts
+    `SELECT id,revision,lettering,design_notes,colors,excluded_ingredients,courier_pickup FROM order_drafts
       WHERE shop_id=$1 AND consultation_id=$2 AND status='active' ORDER BY created_at DESC,id DESC LIMIT 1`,
     [source.consultationId],
   );
@@ -61,10 +63,37 @@ export async function readAiConversation(
       courierPickup: fields.courier_pickup,
     };
     messages.push({ role: "system", content: `서버가 고른 현재 초안: ${JSON.stringify(safe)}` });
+    const quote = (
+      await db.run<{
+        amount: number;
+        amount_max: number | null;
+        display_kind: "fixed" | "from" | "range";
+        order_kind: "standard" | "custom";
+        valid_until: Date;
+      }>(
+        `SELECT q.amount,q.amount_max,q.display_kind,q.order_kind,q.valid_until FROM quotes q
+       JOIN price_lists p ON p.shop_id=$1 AND p.id=q.price_list_id AND p.superseded_at IS NULL
+         WHERE q.shop_id=$1 AND q.draft_id=$2 AND q.draft_revision=$3
+         AND q.quoted_at<=$4 AND q.valid_until>$4 ORDER BY q.quoted_at DESC,q.id DESC LIMIT 1`,
+        [fields.id, fields.revision, services.now()],
+      )
+    ).rows[0];
+    if (quote)
+      messages.push({
+        role: "system",
+        content: `서버가 계산한 현재 견적: ${JSON.stringify({
+          amount: quote.amount,
+          amountMax: quote.amount_max,
+          displayKind: quote.display_kind,
+          orderKind: quote.order_kind,
+          validUntil: quote.valid_until.toISOString(),
+        })}`,
+      });
   }
   const replies = await db.run<{ trace_id: string; body_masked: string }>(
     `SELECT DISTINCT ON (trace_id) trace_id,body_masked FROM messages WHERE shop_id=$1 AND consultation_id=$2
       AND direction='outbound' AND author='ai' AND trace_id=ANY($3::text[]) AND body_masked IS NOT NULL
+      AND delivery IN ('deferred','callback','delivered_later')
       ORDER BY trace_id,created_at,id`,
     [source.consultationId, turns.rows.filter((turn) => turn.id !== source.messageId).map((turn) => turn.id)],
   );

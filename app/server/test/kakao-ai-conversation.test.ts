@@ -121,6 +121,104 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
     if (value === null || value === undefined) throw new Error("합성 시험 자료가 없어요");
     return value;
   }
+  async function withQuote(mode = "valid") {
+    const ai = model();
+    await send(newUuid(), "현재 견적의 합성 질문");
+    const job = required(jobs[0]);
+    const consultation = required(
+      (
+        await isolated.db.query<{ consultation_id: string }>("SELECT consultation_id FROM messages WHERE id=$1", [
+          job.messageId,
+        ])
+      ).rows[0],
+    );
+    const draftId = newUuid();
+    await isolated.db.query(
+      "INSERT INTO order_drafts (id,shop_id,consultation_id,price_list_id,revision,created_at) VALUES ($1,$2,$3,$4,$5,$6)",
+      [draftId, shop.shopId, consultation.consultation_id, shop.priceListId, mode === "stale" ? 2 : 1, NOW],
+    );
+    let quotePriceId = shop.priceListId;
+    if (mode === "current_price") {
+      quotePriceId = newUuid();
+      await isolated.db.query("UPDATE price_lists SET superseded_at=$2 WHERE id=$1", [shop.priceListId, NOW]);
+      await isolated.db.query("INSERT INTO price_lists (id,shop_id,version) VALUES ($1,$2,2)", [
+        quotePriceId,
+        shop.shopId,
+      ]);
+    }
+    await isolated.db.query(
+      "INSERT INTO quotes (shop_id,draft_id,draft_revision,price_list_id,operating_rules_id,order_kind,display_kind,amount,basis,quoted_at,valid_until) VALUES ($1,$2,1,$3,$4,'standard','fixed',45678,$5::jsonb,$6,$7)",
+      [
+        shop.shopId,
+        draftId,
+        quotePriceId,
+        shop.operatingRulesId,
+        JSON.stringify({ allergyAnswer: "땅콩", customerPhone: "010-7777-8888" }),
+        new Date(NOW.getTime() - 7200000),
+        mode === "expired" ? new Date(NOW.getTime() - 1) : new Date(NOW.getTime() + 72 * 3600000),
+      ],
+    );
+    if (mode === "old_price") {
+      await isolated.db.query("UPDATE price_lists SET superseded_at=$2 WHERE id=$1", [shop.priceListId, NOW]);
+      await isolated.db.query("INSERT INTO price_lists (shop_id,version) VALUES ($1,2)", [shop.shopId]);
+    }
+    await consume(job, ai);
+    return required(ai.call.mock.calls[0])[0].messages;
+  }
+  it.each(["valid", "current_price"])(
+    "현재 유효 견적의 공개 계산값만 모델에 주고 근거의 개인정보는 읽지 않는다(%s)",
+    async (mode) => {
+      const messages = await withQuote(mode);
+      const quote = required(
+        messages.find((m) => m.role === "system" && m.content.startsWith("서버가 계산한 현재 견적: ")),
+      );
+      expect(JSON.parse(quote.content.slice("서버가 계산한 현재 견적: ".length))).toEqual({
+        amount: 45678,
+        amountMax: null,
+        displayKind: "fixed",
+        orderKind: "standard",
+        validUntil: new Date(NOW.getTime() + 72 * 3600000).toISOString(),
+      });
+      expect(JSON.stringify(messages)).not.toContain("땅콩");
+      expect(JSON.stringify(messages)).not.toContain("010-7777-8888");
+    },
+  );
+  it.each(["expired", "stale", "old_price"])("유효하지 않은 견적은 모델 문맥에 넣지 않는다(%s)", async (mode) => {
+    const messages = await withQuote(mode);
+    expect(messages.some((m) => m.content.startsWith("서버가 계산한 현재 견적: "))).toBe(false);
+    expect(JSON.stringify(messages)).not.toContain("45678");
+  });
+  it("사장님 넘김으로 폐기한 AI 답은 다음 모델 문맥에서 제외한다", async () => {
+    const ai = model();
+    await send(newUuid(), "폐기 뒤 현재 합성 질문");
+    const job = required(jobs[0]),
+      previousId = newUuid();
+    const consultation = required(
+      (
+        await isolated.db.query<{ consultation_id: string }>("SELECT consultation_id FROM messages WHERE id=$1", [
+          job.messageId,
+        ])
+      ).rows[0],
+    );
+    await isolated.db.query(
+      "INSERT INTO messages (id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES ($1,$2,$3,'inbound','customer','text',$4,'이전 합성 질문',$5)",
+      [
+        previousId,
+        shop.shopId,
+        consultation.consultation_id,
+        `synthetic-previous:${previousId}`,
+        new Date(NOW.getTime() - 2000),
+      ],
+    );
+    await isolated.db.query(
+      "INSERT INTO messages (shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES ($1,$2,'outbound','ai','text',$3,'폐기한 합성 AI 답','failed',$4)",
+      [shop.shopId, consultation.consultation_id, previousId, new Date(NOW.getTime() - 1000)],
+    );
+    await consume(job, ai);
+    const input = JSON.stringify(required(ai.call.mock.calls[0])[0].messages);
+    expect(input).toContain("이전 합성 질문");
+    expect(input).not.toContain("폐기한 합성 AI 답");
+  });
   it("실제 수신부터 모델 입력까지 전화만 가리고 주문번호는 유지하며 같은 가게 사장님 범위에서 원본을 푼다", async () => {
     const user = newUuid(),
       ai = model();
