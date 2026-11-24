@@ -1,0 +1,16 @@
+{
+  "localSource": "74e115c8ae83719e21a57a02e935e555d6b8928c",
+  "publicSource": "d50a2248927c30cadcc88874e837295b4d64f9f2",
+  "tree": "8c717b4ff78c35fa33c7268999e86fc4a01936c9",
+  "freshDatabase": true,
+  "migrationCount": 38,
+  "serverFiles": 126,
+  "serverTests": 2550,
+  "webFiles": 65,
+  "webTests": 1570,
+  "viteSeconds": 1.13,
+  "workerBuilds": 2,
+  "testsExit": 0,
+  "buildExit": 0,
+  "actualStagingProbe": "not_run"
+}
