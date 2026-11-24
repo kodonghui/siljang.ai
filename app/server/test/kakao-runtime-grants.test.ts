@@ -3,6 +3,7 @@ import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { createAiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import { assessPickupDay, closedDayNoticeTrace, requestClosedPickupDay } from "../src/booking-capacity";
+import { pressConfirmCard, showConfirmCard } from "../src/confirm-card-store";
 import { pgConnector, type RequestDb } from "../src/db";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
@@ -53,6 +54,59 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     }
   });
 
+  it("제한 역할에서 카드 생성·기한 지난 카드의 결과 기록을 하되 키·받는 사람·버전과 삭제는 막힘", async () => {
+    const target = await createShop(db, "제한 역할 확인 카드 가게");
+    await issueTestBookingLink(db, target);
+    await linkTestChannel(db, target.channelId);
+    const runtime = pgConnector(new Secret(databaseUrl)),
+      now = new Date("2026-11-24T01:00:00Z");
+    try {
+      const scoped = shopRequestDb(createShopScope(target.shopId, { kind: "job", job: "kakao_callback" }), runtime);
+      const input = { customerId: target.customerId, consultationId: target.consultationId };
+      const card = await showConfirmCard(scoped, { ...input, kind: "cancel", orderId: target.orderId, now });
+      const result = await pressConfirmCard(scoped, {
+        ...input,
+        cardKey: card.cardKey,
+        choice: "confirm",
+        now: new Date(now.getTime() + 30 * 60000),
+      });
+      expect(result.outcome).toBe("card_expired");
+      expect(result.card?.cardKey).not.toBe(card.cardKey);
+      for (const column of [
+        "card_key",
+        "customer_id",
+        "consultation_id",
+        "shop_id",
+        "kind",
+        "order_id",
+        "order_version",
+        "draft_id",
+        "draft_revision",
+        "expires_at",
+        "created_at",
+      ]) {
+        expect(
+          (
+            await db.query("SELECT has_column_privilege($1,'public.confirm_cards',$2,'UPDATE') AS allowed", [
+              role,
+              column,
+            ])
+          ).rows[0],
+        ).toEqual({ allowed: false });
+      }
+      expect(
+        (await db.query("SELECT has_table_privilege($1,'public.confirm_cards','DELETE') AS allowed", [role])).rows[0],
+      ).toEqual({ allowed: false });
+      await expect(
+        runtime.query("UPDATE confirm_cards SET card_key='forged_card_key_12345' WHERE card_key=$1", [card.cardKey]),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(runtime.query("DELETE FROM confirm_cards WHERE card_key=$1", [card.cardKey])).rejects.toMatchObject({
+        code: "42501",
+      });
+    } finally {
+      await runtime.close();
+    }
+  });
   it("제한 역할에서도 요약·장부는 알레르기를 빼고 사장님 제작 자료만 포함한다", async () => {
     const target = await createShop(db, "제한 역할 출력 가게");
     await issueTestBookingLink(db, target);

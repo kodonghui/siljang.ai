@@ -10,6 +10,7 @@
  */
 import { type AiModel, type AiModelOptions, createAiModel } from "./ai-model";
 import type { Bindings } from "./app";
+import type { ConfirmCardCommand } from "./confirm-card-store";
 import { type FieldCrypto, fieldCrypto } from "./field-crypto";
 import { type FileUrls, fileUrlSigner } from "./file-url";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
@@ -26,6 +27,7 @@ import { type ObjectStore, S3Store } from "./storage";
 import { batchS3Store } from "./storage-batch";
 
 export interface Services {
+  readonly confirmCardCommand: ConfirmCardCommand | undefined;
   now(): Date;
   readonly privacyPolicy: PrivacyPolicySettings | null;
   readonly publicAppOrigin: string | null;
@@ -59,6 +61,7 @@ export interface Services {
 
 /** 시험이 바꾸는 것. */
 export interface ServiceOverrides {
+  readonly confirmCardCommand?: ConfirmCardCommand | undefined;
   readonly now?: () => Date;
   readonly privacyPolicy?: PrivacyPolicySettings | null;
   readonly publicAppOrigin?: string | null;
@@ -102,6 +105,7 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
     aiProviderConfigured: overrides.privacyPolicy !== undefined || settings.ai !== null,
     aiConfigured: overrides.aiModel !== undefined || (settings.ai !== null && settings.ai.apiKey !== null),
     kakaoCallbackQueue: overrides.kakaoCallbackQueue ?? env.KAKAO_CALLBACK_QUEUE,
+    confirmCardCommand: overrides.confirmCardCommand,
     kakaoSkillKey: (id, version) => deriveKakaoSkillKey(channelSecret(), id, version),
     kakaoProofPhrase: (id, at) => deriveKakaoProofPhrase(channelSecret(), id, at),
     storage() {

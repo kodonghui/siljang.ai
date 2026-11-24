@@ -14,6 +14,7 @@ export interface OrderSlotInput {
 export interface HoldOrderSlotInput extends OrderSlotInput {
   readonly paymentRequestId: string;
   readonly ownerConfirmed?: boolean;
+  readonly expectedChangeRevision?: number;
 }
 export interface SlotResult {
   readonly kind: "held" | "existing" | "day_full" | "confirmation_required" | "stale" | "not_applicable";
@@ -40,6 +41,7 @@ interface Payment {
   due_at: Date;
   due_cap_at: Date;
   claimed_at: Date | null;
+  change_request_id: string | null;
 }
 export function holdOrderSlot(db: ShopRequestDb, input: HoldOrderSlotInput): Promise<SlotResult> {
   return db.transaction((tx) => holdOrderSlotInTransaction(tx, input));
@@ -51,7 +53,7 @@ export async function holdOrderSlotInTransaction(db: ShopDb, input: HoldOrderSlo
     paymentId = pathId(input.paymentRequestId),
     via = db.scope.via;
   const payment = await lockedPayment(db, orderId, paymentId);
-  const key = eventKeys.hold(orderId, paymentId);
+  const key = eventKeys.hold(orderId, payment.change_request_id ?? paymentId);
   const existing = (
     await db.run<{ id: string; status: string; day: string }>(
       "SELECT id,status,day::text FROM slot_holds WHERE shop_id=$1 AND hold_key=$2",
@@ -59,8 +61,23 @@ export async function holdOrderSlotInTransaction(db: ShopDb, input: HoldOrderSlo
     )
   ).rows[0];
   if (existing) return { kind: "existing", holdId: existing.id, status: existing.status, day: existing.day };
-  if (
-    payment.kind === "difference" ||
+  const difference = payment.kind === "difference";
+  const change = difference ? await differenceChange(db, order, payment, input.expectedChangeRevision) : null;
+  let targetDay = order.pickup_day;
+  let oldDay: string | undefined;
+  if (difference) {
+    if (!change || change.new_pickup_at === null) return { kind: "not_applicable" };
+    targetDay = await pickupDay(db, change.new_pickup_at, input.now);
+    if (targetDay === order.pickup_day) return { kind: "not_applicable" };
+    const old = (
+      await db.run<{ day: string }>(
+        "SELECT day::text FROM slot_holds WHERE shop_id=$1 AND order_id=$2 AND status='fixed'",
+        [order.id],
+      )
+    ).rows[0];
+    if (!old || old.day !== order.pickup_day) return { kind: "not_applicable" };
+    oldDay = old.day;
+  } else if (
     !["awaiting_payment", "payment_overdue"].includes(order.status) ||
     order.pickup_at <= input.now ||
     (order.kind === "custom" && order.accepted_at === null)
@@ -74,21 +91,23 @@ export async function holdOrderSlotInTransaction(db: ShopDb, input: HoldOrderSlo
       payment.claimed_at < payment.due_at &&
       payment.due_cap_at > input.now);
   if (!valid) return { kind: "not_applicable" };
-  const availability = await lockedCalendarSlotStatus(db, order.pickup_day, input.now);
+  if (oldDay !== undefined) await lockSlotDays(db, [oldDay, targetDay]);
+  const availability = await lockedCalendarSlotStatus(db, targetDay, input.now);
   let overbooked = false;
   if (availability.status !== "open") {
-    const ownerMayChoose = via.kind === "owner" && (order.kind === "custom" || payment.kind === "reissue");
+    const ownerMayChoose =
+      via.kind === "owner" && (difference || order.kind === "custom" || payment.kind === "reissue");
     if (!ownerMayChoose) return { kind: "day_full", day: availability.day };
     if (input.ownerConfirmed !== true)
       return { kind: "confirmation_required", day: availability.day, reason: availability.status };
     overbooked = true;
   }
-  await lockCalendarDay(db, order.pickup_day);
+  await lockCalendarDay(db, targetDay);
   const saved = await db.found<{ id: string }>(
     "INSERT INTO slot_holds(shop_id,day,order_id,payment_request_id,hold_key,status,overbooked,created_at) VALUES($1,$2,$3,$4,$5,'held',$6,$7) RETURNING id",
-    [order.pickup_day, orderId, paymentId, key, overbooked, input.now],
+    [targetDay, orderId, paymentId, key, overbooked, input.now],
   );
-  return { kind: "held", holdId: saved.id, status: "held", day: order.pickup_day };
+  return { kind: "held", holdId: saved.id, status: "held", day: targetDay };
 }
 
 async function lockedSlotOrder(db: ShopDb, input: OrderSlotInput): Promise<Order | null> {
@@ -112,7 +131,7 @@ async function lockedSlotOrder(db: ShopDb, input: OrderSlotInput): Promise<Order
 }
 async function lockedPayment(db: ShopDb, orderId: string, paymentId: string): Promise<Payment> {
   return db.found<Payment>(
-    "SELECT id,kind,status,due_at,due_cap_at,claimed_at,version FROM payment_requests WHERE shop_id=$1 AND id=$2 AND order_id=$3 FOR UPDATE",
+    "SELECT id,kind,status,due_at,due_cap_at,claimed_at,version,change_request_id FROM payment_requests WHERE shop_id=$1 AND id=$2 AND order_id=$3 FOR UPDATE",
     [paymentId, orderId],
   );
 }
@@ -129,11 +148,10 @@ export async function expireOrderSlotInTransaction(db: ShopDb, input: HoldOrderS
   if (order === null) return { kind: "stale" };
   const payment = await lockedPayment(db, order.id, pathId(input.paymentRequestId));
   if (payment.status === "paid" || payment.status === "mismatch") return { kind: "protected" };
-  if (
-    !["open", "claimed"].includes(payment.status) ||
-    payment.kind === "difference" ||
-    !["awaiting_payment", "payment_overdue"].includes(order.status)
-  )
+  if (!["open", "claimed"].includes(payment.status)) return { kind: "unchanged" };
+  const difference = payment.kind === "difference";
+  const change = difference ? await differenceChange(db, order, payment, input.expectedChangeRevision) : null;
+  if (difference ? change === null : !["awaiting_payment", "payment_overdue"].includes(order.status))
     return { kind: "unchanged" };
   const deadline =
     payment.status === "claimed" && payment.claimed_at !== null && payment.claimed_at < payment.due_at
@@ -146,24 +164,34 @@ export async function expireOrderSlotInTransaction(db: ShopDb, input: HoldOrderS
       [order.id, payment.id],
     )
   ).rows[0];
-  if (!held) return { kind: "protected" };
-  await lockCalendarDay(db, held.day);
-  const slot = await db.run(
-    "UPDATE slot_holds SET status='released',released_at=$3,release_reason='payment_overdue' WHERE shop_id=$1 AND id=$2 AND status='held'",
-    [held.id, input.now],
-  );
-  if (slot.rowCount !== 1) throw new Error("slot changed after order lock");
+  if (!held && !difference) return { kind: "protected" };
+  if (held) {
+    await lockCalendarDay(db, held.day);
+    const slot = await db.run(
+      "UPDATE slot_holds SET status='released',released_at=$3,release_reason=$4 WHERE shop_id=$1 AND id=$2 AND status='held'",
+      [held.id, input.now, difference ? "change_closed" : "payment_overdue"],
+    );
+    if (slot.rowCount !== 1) throw new Error("slot changed after order lock");
+  }
   const pay = await db.run(
     "UPDATE payment_requests SET status='expired',expired_at=$3,version=version+1 WHERE shop_id=$1 AND id=$2 AND version=$4 AND status IN('open','claimed')",
     [payment.id, input.now, payment.version],
   );
   if (pay.rowCount !== 1) throw new Error("payment changed after order lock");
-  const updated = await db.run(
-    "UPDATE orders SET status='payment_overdue',lock_version=lock_version+1 WHERE shop_id=$1 AND id=$2 AND lock_version=$3 AND status IN('awaiting_payment','payment_overdue')",
-    [order.id, order.lock_version],
-  );
-  if (updated.rowCount !== 1) throw new Error("order changed after slot lock");
-  return { kind: "expired", holdId: held.id };
+  if (change) {
+    const updated = await db.run(
+      "UPDATE change_requests SET status='closed_no_difference',closed_at=$3,lock_version=lock_version+1 WHERE shop_id=$1 AND id=$2 AND lock_version=$4 AND status='awaiting_difference'",
+      [change.id, input.now, change.lock_version],
+    );
+    if (updated.rowCount !== 1) throw new Error("change changed after order lock");
+  } else {
+    const updated = await db.run(
+      "UPDATE orders SET status='payment_overdue',lock_version=lock_version+1 WHERE shop_id=$1 AND id=$2 AND lock_version=$3 AND status IN('awaiting_payment','payment_overdue')",
+      [order.id, order.lock_version],
+    );
+    if (updated.rowCount !== 1) throw new Error("order changed after slot lock");
+  }
+  return held ? { kind: "expired", holdId: held.id } : { kind: "expired" };
 }
 
 export interface SlotTransitionResult {
@@ -336,4 +364,17 @@ export async function moveOrderSlotInTransaction(db: ShopDb, input: ChangeSlotIn
     [day, order.id, key, overbooked, input.now],
   );
   return { kind: "fixed", holdId: saved.id, day };
+}
+
+async function differenceChange(db: ShopDb, order: Order, payment: Payment, expected?: number): Promise<Change | null> {
+  if (payment.change_request_id === null) return null;
+  const change = await lockedChange(db, order.id, payment.change_request_id, expected);
+  return change &&
+    order.status === "confirmed" &&
+    change.base_version === order.version &&
+    change.status === "awaiting_difference" &&
+    change.amount_delta !== null &&
+    change.amount_delta > 0
+    ? change
+    : null;
 }

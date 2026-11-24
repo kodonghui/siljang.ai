@@ -32,6 +32,11 @@ GRANT UPDATE (id) ON shops, kakao_channels TO :"runtime_role";
 -- TASK-028: AI 실패/콜백 만료의 질문 참조·할 일·발신 대기 알림.
 -- 이 경로는 새 행만 넣는다. 기존 건의 수정·삭제나 운영 기록/접속기록 권한은 더하지 않는다.
 GRANT SELECT, INSERT ON handoffs, handoff_questions, owner_tasks, owner_alerts TO :"runtime_role";
+-- TASK-081: 확인 카드는 새로 만들고 처리 결과만 고친다. 키·받는 사람·묶인 버전·기한·삭제는 열지 않는다.
+GRANT SELECT ON confirm_cards TO :"runtime_role";
+GRANT INSERT (shop_id, consultation_id, customer_id, card_key, kind, order_id, order_version,
+  draft_id, draft_revision, payload, created_at, expires_at) ON confirm_cards TO :"runtime_role";
+GRANT UPDATE (used_at, outcome, payload) ON confirm_cards TO :"runtime_role";
 -- TASK-072: 알림 임대·묶음·발송 상태의 열만 바꾼다. 가게·종류·이벤트·할 일 연결과 삭제는 열지 않는다.
 GRANT UPDATE (status, batched_into_id, attempts, next_attempt_at, kakao_task_id,
   requested_at, delivery_checked_at, sent_at, fail_code) ON owner_alerts TO :"runtime_role";

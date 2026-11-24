@@ -259,6 +259,88 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
     );
     return { changeId, newDay, pickup };
   }
+  async function differenceDate() {
+    await held();
+    await markPaid();
+    await fixPaidOrderSlot(scope(), { ...shop, now });
+    const change = await changedDate(1000),
+      paymentRequestId = newUuid();
+    await isolated.db.query(
+      "UPDATE change_requests SET status='awaiting_difference',lock_version=lock_version+1 WHERE id=$1",
+      [change.changeId],
+    );
+    await isolated.db.query(
+      "INSERT INTO payment_requests SELECT(jsonb_populate_record(NULL::payment_requests,to_jsonb(p)||$2::jsonb)).* FROM payment_requests p WHERE p.id=$1",
+      [
+        shop.paymentRequestId,
+        JSON.stringify({
+          id: paymentRequestId,
+          kind: "difference",
+          change_request_id: change.changeId,
+          event_key: `pay:${change.changeId}:difference`,
+          status: "open",
+          version: 1,
+          amount: 1000,
+          requested_amount: null,
+          needs_amount_confirm: true,
+          amount_confirmed_at: now.toISOString(),
+          delivered_at: now.toISOString(),
+          due_at: new Date(now.getTime() + 7200000).toISOString(),
+          due_cap_at: new Date(now.getTime() + 14400000).toISOString(),
+          paid_at: null,
+          arrived_at: null,
+          arrived_amount: null,
+        }),
+      ],
+    );
+    return { ...change, paymentRequestId };
+  }
+  it("차액을 기다리는 새날은 잡힘이고 옛날 확정 자리와 주문 내용은 그대로", async () => {
+    const change = await differenceDate();
+    const input = { orderId: shop.orderId, paymentRequestId: change.paymentRequestId, now };
+    const result = await holdOrderSlot(scope(), input);
+    expect(result.kind).toBe("held");
+    expect((await holdOrderSlot(scope(), input)).holdId).toBe(result.holdId);
+    expect(
+      (
+        await isolated.db.query("SELECT day::text,status,hold_key FROM slot_holds WHERE shop_id=$1 ORDER BY day", [
+          shop.shopId,
+        ])
+      ).rows,
+    ).toEqual([
+      { day, status: "fixed", hold_key: `hold:${shop.orderId}:${shop.paymentRequestId}` },
+      { day: change.newDay, status: "held", hold_key: `hold:${shop.orderId}:${change.changeId}` },
+    ]);
+    expect(
+      (await isolated.db.query("SELECT version,pickup_day::text,status FROM orders WHERE id=$1", [shop.orderId])).rows,
+    ).toEqual([{ version: 1, pickup_day: day, status: "confirmed" }]);
+  });
+  it("차액 결제 기한에는 새날만 풀고 원래 주문·확정 자리는 유지함", async () => {
+    const change = await differenceDate();
+    const input = { orderId: shop.orderId, paymentRequestId: change.paymentRequestId, now };
+    expect((await holdOrderSlot(scope(), input)).kind).toBe("held");
+    expect((await expireOrderSlot(scope(), { ...input, now: new Date(now.getTime() + 7200000) })).kind).toBe("expired");
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT day::text,status,release_reason FROM slot_holds WHERE shop_id=$1 ORDER BY day",
+          [shop.shopId],
+        )
+      ).rows,
+    ).toEqual([
+      { day, status: "fixed", release_reason: null },
+      { day: change.newDay, status: "released", release_reason: "change_closed" },
+    ]);
+    expect(
+      (await isolated.db.query("SELECT status,version,pickup_day::text FROM orders WHERE id=$1", [shop.orderId])).rows,
+    ).toEqual([{ status: "confirmed", version: 1, pickup_day: day }]);
+    expect(
+      (await isolated.db.query("SELECT status,closed_at FROM change_requests WHERE id=$1", [change.changeId])).rows,
+    ).toEqual([{ status: "closed_no_difference", closed_at: new Date(now.getTime() + 7200000) }]);
+    expect((await expireOrderSlot(scope(), { ...input, now: new Date(now.getTime() + 14400000) })).kind).toBe(
+      "unchanged",
+    );
+  });
   async function moveDate(change: Awaited<ReturnType<typeof changedDate>>, ownerConfirmed = false) {
     return isolated.db.transaction(async (raw) => {
       const tx = shopDb(scope(isolated.db, true).scope, raw);
