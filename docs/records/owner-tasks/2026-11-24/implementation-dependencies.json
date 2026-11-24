@@ -476,5 +476,25 @@
   ],
   "removed": [
     "TASK-072"
-  ]
+  ],
+  "TASK-087-deps": [
+    "TASK-182",
+    "TASK-072",
+    "TASK-020"
+  ],
+  "dependencyStates": {
+    "TASK-182": {
+      "before": "finished",
+      "after": "finished"
+    },
+    "TASK-072": {
+      "before": "pending",
+      "after": "implemented"
+    },
+    "TASK-020": {
+      "before": "implemented",
+      "after": "implemented"
+    }
+  },
+  "dependencySource": "공식 build_wbs.py ACTIVE·DEPS(원본의 앞선 작업과 기반 작업 의존을 합친 값), task_status.implemented_task_ids()"
 }

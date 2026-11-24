@@ -1,0 +1,72 @@
+{
+  "reason": "GitHub API 발행은 부모와 작성 정보가 달라 로컬 커밋과 공개 커밋 SHA가 다릅니다. 제품 경로의 Git 트리 해시를 각각 직접 대조했습니다.",
+  "pairs": [
+    {
+      "localTestCommit": "812b68d02a5fc4a759a911a466e5862647e52c08",
+      "publishedHead": "b8070a6d77ae16e6715736fd77ed0881b3ae5716",
+      "productPaths": {
+        "app/server": {
+          "localTree": "4c653d62a4350bc7a7ed22d1ab2aebf0951e93aa",
+          "publishedTree": "4c653d62a4350bc7a7ed22d1ab2aebf0951e93aa"
+        },
+        "app/web": {
+          "localTree": "35e42debcedfe1ba1f473631cf5b4e5e71c729f2",
+          "publishedTree": "35e42debcedfe1ba1f473631cf5b4e5e71c729f2"
+        },
+        "db": {
+          "localTree": "bd2bfedb4385e0a405322b54678af9fbbead0122",
+          "publishedTree": "bd2bfedb4385e0a405322b54678af9fbbead0122"
+        },
+        "tools": {
+          "localTree": "f544f9f6d29a5632e4e44bb72200cb959a1497a9",
+          "publishedTree": "f544f9f6d29a5632e4e44bb72200cb959a1497a9"
+        },
+        "research": {
+          "localTree": "0eebbacbaeb3020280e07078631f9bd80c61b49c",
+          "publishedTree": "0eebbacbaeb3020280e07078631f9bd80c61b49c"
+        }
+      },
+      "productEqual": true,
+      "localRecordCommit": "23bde05774e49cdf926b1539024454d024d9892b",
+      "localRecordTree": "6b76f935510b20361354bdcee33d5da70e6dd25c",
+      "publishedTree": "6b76f935510b20361354bdcee33d5da70e6dd25c",
+      "recordWholeTreeEqual": true
+    },
+    {
+      "localTestCommit": "c230c44b3828ae59a7c194a3e317fe1692eda01d",
+      "publishedHead": "6232c51b013fd0ed0ad74c86b1ea840dccca3c61",
+      "productPaths": {
+        "app/server": {
+          "localTree": "6494610a5fdadb2def8e3449cee1c05fad3d2b11",
+          "publishedTree": "6494610a5fdadb2def8e3449cee1c05fad3d2b11"
+        },
+        "app/web": {
+          "localTree": "35e42debcedfe1ba1f473631cf5b4e5e71c729f2",
+          "publishedTree": "35e42debcedfe1ba1f473631cf5b4e5e71c729f2"
+        },
+        "db": {
+          "localTree": "bd2bfedb4385e0a405322b54678af9fbbead0122",
+          "publishedTree": "bd2bfedb4385e0a405322b54678af9fbbead0122"
+        },
+        "tools": {
+          "localTree": "f544f9f6d29a5632e4e44bb72200cb959a1497a9",
+          "publishedTree": "f544f9f6d29a5632e4e44bb72200cb959a1497a9"
+        },
+        "research": {
+          "localTree": "0eebbacbaeb3020280e07078631f9bd80c61b49c",
+          "publishedTree": "0eebbacbaeb3020280e07078631f9bd80c61b49c"
+        }
+      },
+      "productEqual": true,
+      "localRecordCommit": "eb05b90a4dbf250f65164590a8337bf882000c07",
+      "localRecordTree": "79b2d332c6a5b49d3ee17d95db84f928e163c159",
+      "publishedTree": "79b2d332c6a5b49d3ee17d95db84f928e163c159",
+      "recordWholeTreeEqual": true
+    }
+  ],
+  "verifiedMain": "1f4f96b3bec634419c88ac69a44d07dae90df733",
+  "publicCiEvidence": "main229-deployment.json",
+  "unverified": [
+    "실제 스테이징0036 적용"
+  ]
+}
