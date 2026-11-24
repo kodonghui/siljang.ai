@@ -30,3 +30,6 @@ PR #227의 Claude 코드·보안 검토(`86788f6`, 댓글 `7120014767`) 발견7�
 7. insist=false 조회는 수신 글의 가게 범위와 기존 기록만 확인하고 손님·상담 FOR UPDATE 없이 판정합니다. 별도 연결이 손님 행을 잠근 상태와 250ms lock_timeout으로 차이를 확인했습니다.
 
 새 시험은 처음 `Tests 6 failed | 10 passed (16)`였고 닫힘 시험 자료의 answered 제약 오류 한 건을 고쳤습니다. 보정한 시험을 이전 제품 코드로 다시 실행해 같은6실패/10통과를 확인했습니다. 수정 과정의 jsonb/uuid 연산자 오류와 열 권한 기대값도 고쳤습니다. 현재 날짜·runtime·AI 실패·고지·SQL 정적 검사 다섯 파일은 `Test Files 5 passed (5)`, `Tests 90 passed (90)`이며 타입과 format 뒤 lint는 종료0입니다. 새 전체 검사와 main226 반영은 다음입니다. 실제 카카오·AI·결제 호출은0회이며 새 스테이징 열 권한 적용은 미확인입니다.
+검토 수정과 main226 결합 원본 `4d25f9aeff1a3126fc70541dbb13456fcb0df277`의 새 빈 PostgreSQL 전체 검사가 완료됐습니다. 마이그레이션34개, 서버 `Test Files 112 passed (112)`·`Tests 2340 passed (2340)`, 웹 `Test Files 65 passed (65)`·`Tests 1570 passed (1570)`, 웹 `built in 905ms`, 두 Worker `--dry-run: exiting now.`이고 시험·빌드 종료가 모두0입니다. 타입 종료0, `Checked 487 files in 1030ms. No fixes applied.`입니다. 현재 기록의 키 검사는1120파일0건입니다.
+
+수락 조건 표와 WBS 원본을 최종 검사 결과로 갱신합니다. TASK-069의 지연 안내 영속 보존·다음 대화 전달 뒤 같은 트랜잭션의 closed_day 한 건이라는 연결 조건은 아직 미실행이며 해당 작업에 남습니다. 실제 main은 TASK-067 반영 뒤 완료36개이고 이 PR의 TASK-068 제안은37개입니다. 직접 스테이징 SQL 권한 적용과 학원컴 인증/저장소 태그 재조회는 미확인입니다. 검토7건 처리 댓글7120369433에 이어 최종 head와 재검토 요청을 남기고 수동 Codex 검토를 한 번 요청합니다.

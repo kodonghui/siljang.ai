@@ -2,6 +2,12 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-24 11:43 KST · TASK-068 검토 수정 전체 검사 결과
+
+검토 수정과 main226 결합 원본 `4d25f9aeff1a3126fc70541dbb13456fcb0df277`의 새 빈 PostgreSQL 전체 검사가 완료됐습니다. 마이그레이션34개, 서버 `Test Files 112 passed (112)`·`Tests 2340 passed (2340)`, 웹 `Test Files 65 passed (65)`·`Tests 1570 passed (1570)`, 웹 `built in 905ms`, 두 Worker `--dry-run: exiting now.`이고 시험·빌드 종료가 모두0입니다. 타입 종료0, `Checked 487 files in 1030ms. No fixes applied.`입니다. 현재 기록의 키 검사는1120파일0건입니다.
+
+수락 조건 표와 WBS 원본을 최종 검사 결과로 갱신합니다. TASK-069의 지연 안내 영속 보존·다음 대화 전달 뒤 같은 트랜잭션의 closed_day 한 건이라는 연결 조건은 아직 미실행이며 해당 작업에 남습니다. 실제 main은 TASK-067 반영 뒤 완료36개이고 이 PR의 TASK-068 제안은37개입니다. 직접 스테이징 SQL 권한 적용과 학원컴 인증/저장소 태그 재조회는 미확인입니다. 검토7건 처리 댓글7120369433에 이어 최종 head와 재검토 요청을 남기고 수동 Codex 검토를 한 번 요청합니다.
+
 ## 2026-11-24 11:35 KST · TASK-068 기준 main226 실제 배포 확인
 
 PR #226을 squash한 main `85c1c5ccae9b4de92ea7c5cec2a6b74fcf08191c`를 반영했습니다. TASK-067과 TASK-068의 완료 원본을 합쳐 생성기로 다시 계산한 이 브랜치 제안은37개이며, 현재 실제 main은36개입니다. TASK-069의 지연 전달 전체 경로 완료 조건과 TASK-068의 재처리 보존을 유지했습니다. 견적·환불 시험과 날짜·runtime·고지·AI 실패·SQL 정적 검사 일곱 파일은 `Test Files 7 passed (7)`, `Tests 126 passed (126)`입니다. 타입과 format 뒤 lint도 종료0입니다.
