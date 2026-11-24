@@ -21,3 +21,5 @@ docs/records/public-booking/2026-11-24/qa-before-review-fixes.json -text whitesp
 docs/records/public-booking/2026-11-24/qa-after-review-before-focus-fix.json -text whitespace=cr-at-eol
 
 docs/records/public-booking/2026-11-24/qa-before-synchronous-focus-fix.json -text whitespace=cr-at-eol
+
+docs/records/public-booking/2026-11-24/qa-after-synchronous-focus-fix.json -text whitespace=cr-at-eol
