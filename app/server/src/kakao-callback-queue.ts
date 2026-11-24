@@ -1,5 +1,6 @@
 import type { Bindings } from "./app";
-import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
+import { type DbConnector, pgConnector, type RequestDb } from "./db";
+import { errorFields } from "./error-name";
 import { FieldCryptoError } from "./field-crypto";
 import { prepareKakaoAiDisclosure } from "./kakao-ai-disclosure";
 import { type KakaoAiReply, runKakaoAiTurn } from "./kakao-ai-turn";
@@ -38,14 +39,6 @@ interface RecoveryOptions {
   readonly budgetMs?: number;
 }
 
-function recoveryError(error: unknown) {
-  const dbCode = sqlStateOf(error);
-  return {
-    errorName: dbCode !== undefined ? "DatabaseError" : error instanceof Error ? error.name : "Error",
-    ...(dbCode === undefined ? {} : { dbCode }),
-  };
-}
-
 /** 큐가 유실돼도 만료된 콜백은 기존 1분 실행에서 복구한다. 외부로 발신하지 않는다. */
 export async function recoverExpiredKakaoCallbacks(db: RequestDb, now: Date, options: RecoveryOptions = {}) {
   const job = "kakao_callback_recovery";
@@ -58,7 +51,7 @@ export async function recoverExpiredKakaoCallbacks(db: RequestDb, now: Date, opt
   try {
     rows = (await db.query<{ shop_id: string; id: string; due_at: Date }>(EXPIRED_KAKAO_CALLBACKS, [now, limit])).rows;
   } catch (error) {
-    log("error", { event: "job_find_failed", job, ...recoveryError(error) }, options.logSink);
+    log("error", { event: "job_find_failed", job, ...errorFields(error) }, options.logSink);
     return summary;
   }
   summary.found = rows.length;
@@ -75,7 +68,7 @@ export async function recoverExpiredKakaoCallbacks(db: RequestDb, now: Date, opt
       summary[result] += 1;
     } catch (error) {
       summary.failed += 1;
-      log("warn", { event: "job_act_failed", job, itemId: row.id, ...recoveryError(error) }, options.logSink);
+      log("warn", { event: "job_act_failed", job, itemId: row.id, ...errorFields(error) }, options.logSink);
     }
   }
   if (summary.failed > 0) log("error", { event: "job_run_failed", job, count: summary.failed }, options.logSink);
@@ -240,7 +233,7 @@ export function createKakaoCallbackHandler(options: ConsumerOptions = {}) {
           "error",
           {
             event: "kakao_callback_failed",
-            ...(error instanceof Error ? { errorName: error.name } : {}),
+            ...errorFields(error),
           },
           options.logSink,
         );

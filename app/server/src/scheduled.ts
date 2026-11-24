@@ -7,6 +7,7 @@
  */
 import type { Bindings } from "./app";
 import { type DbConnector, pgConnector } from "./db";
+import { errorFields } from "./error-name";
 import { type RunLimits, type RunnableJob, type RunSummary, runDueJobs } from "./job-runner";
 import { runnableJobs } from "./jobs";
 import { recoverExpiredKakaoCallbacks } from "./kakao-callback-queue";
@@ -39,10 +40,6 @@ export interface ScheduledOptions {
   readonly storage?: ObjectStore;
 }
 
-function nameOf(err: unknown): string {
-  return err instanceof Error ? err.name : "Error";
-}
-
 /** 실행기를 한 번 돈다. 설정이 틀렸거나 실행기가 던지면 로그를 남기고 null. */
 export async function runScheduled(
   event: ScheduledEventLike,
@@ -59,7 +56,7 @@ export async function runScheduled(
   try {
     settings = readSettings(env);
   } catch (err) {
-    appLog("error", { event: "job_run_failed", errorName: nameOf(err) });
+    appLog("error", { event: "job_run_failed", ...errorFields(err) });
     return null;
   }
   const db = (options.connect ?? pgConnector)(settings.secrets.DATABASE_URL);
@@ -75,7 +72,7 @@ export async function runScheduled(
       ...(options.clock !== undefined ? { clock: options.clock } : {}),
     });
   } catch (err) {
-    appLog("error", { event: "job_run_failed", errorName: nameOf(err) });
+    appLog("error", { event: "job_run_failed", ...errorFields(err) });
     return null;
   } finally {
     try {
@@ -85,7 +82,7 @@ export async function runScheduled(
         });
       }
     } catch (err) {
-      appLog("error", { event: "job_run_failed", job: "kakao_callback_recovery", errorName: nameOf(err) });
+      appLog("error", { event: "job_run_failed", job: "kakao_callback_recovery", ...errorFields(err) });
     } finally {
       await db.close();
     }

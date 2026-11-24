@@ -1,4 +1,5 @@
-import { type RequestDb, sqlStateOf } from "./db";
+import type { RequestDb } from "./db";
+import { errorFields } from "./error-name";
 import { DEFAULT_LIMITS, type JobLog, type JobTally, type RunLimits } from "./job-runner";
 import { recordOpsEvent } from "./ops-events";
 import { purgeExpiredAccessLogs } from "./purge-access-logs";
@@ -69,13 +70,11 @@ export async function runPurge(db: RequestDb, options: PurgeOptions): Promise<Jo
   const seen = new Map<PurgeSourceName, Set<string>>();
   let uploadsDone = false;
   const failure = (err: unknown, code: string, id?: string) => {
-    const dbCode = sqlStateOf(err);
     options.log("error", {
       event: "purge_failed",
       job: "purge",
       code,
-      errorName: dbCode !== undefined ? "DatabaseError" : err instanceof Error ? err.name : "Error",
-      ...(dbCode !== undefined ? { dbCode } : {}),
+      ...errorFields(err),
       ...(id !== undefined ? { itemId: id } : {}),
     });
   };

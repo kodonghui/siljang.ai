@@ -21,8 +21,9 @@
  *   이 로그로 한다.
  * - 업무 코드는 env·ctx·Cron을 직접 부르지 않는다(tech-stack.md 180행). Workers와 잇는 것은 scheduled.ts.
  */
-import { type Queryable, type RequestDb, sqlStateOf } from "./db";
+import type { Queryable, RequestDb } from "./db";
 import { DUE_SOURCES, type DueSource, type DueSourceName, FIND_SHAPE, LAST_DAILY_RUN } from "./due-sources";
+import { errorFields, errorNameOf } from "./error-name";
 import type { LogFields, LogLevel } from "./log";
 import { type OpsEventKind, recordOpsEvent } from "./ops-events";
 import { createShopScope, type ShopDb, shopDb } from "./shop-scope";
@@ -263,19 +264,12 @@ function lockKey(name: string): number {
   return h | 0;
 }
 
-function errorNameOf(err: unknown): string {
-  if (sqlStateOf(err) !== undefined) return "DatabaseError";
-  return err instanceof Error ? err.name : "Error";
-}
-
 function logFailure(log: JobLog, event: string, job: string, err: unknown, itemId?: string): void {
-  const dbCode = sqlStateOf(err);
   log("error", {
     event,
     job,
-    errorName: errorNameOf(err),
+    ...errorFields(err),
     ...(itemId !== undefined ? { itemId } : {}),
-    ...(dbCode !== undefined ? { dbCode } : {}),
   });
 }
 
