@@ -93,7 +93,7 @@ export async function deliverKakaoCallback(
     try {
       response = await send(callback.url, {
         method: "POST",
-        redirect: "error",
+        redirect: "manual",
         headers: { "Content-Type": "application/json" },
         body,
         signal: AbortSignal.timeout(Math.min(MAX_ATTEMPT_MS, left)),

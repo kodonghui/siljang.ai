@@ -17,7 +17,7 @@ POST 로그인·DELETE 로그아웃 요청 자체의 HTTP 상태는 관찰하지
 | DEC-26 30일 연장 | owner-session.test.ts의 같은 쿠키·서버 expires_at 매 요청30일, 정확한 기한 경계401·동시 연장 시각 보존·끝난 세션 부활 없음 |
 | 제한 역할 | staging-runtime-role.test.ts의 실제 제한 역할 사장님 생성·30일 연장·내 정보·로그아웃. 실제 스테이징 owner_sessions CRUD 권한 파일 적용은 TASK-028의38개 갱신에서 확인 |
 
-제품은 이 상태 기록 PR과 검증한 main241 사이에 차이0입니다. main241 app45382967174/check138406466644/Windows138406466734·db45382967089/PG16 138406465641/PG17 138406465136·배포138408316361이 성공했습니다. 실제 Actions Wrangler 버전00de31c1-992e-4a71-abab-4d1647fee9dc(2026-11-24T11:22:29.606745Z), 전체 태그 일치·활성100%·health200·원격 main 일치를 main241-deployment.json에 보존했습니다. 별도 학원컴 CLI의 활성 태그 재조회나 저장소 활성 태그 직접 조회를 확인했다고 적지 않습니다.
+TASK-020 제품 파일은 검증한 main241과 같습니다. 이후 main242의 콜백 고침을 결합했고 현재 이 상태 기록 PR의 app/server·app/web·db·tools는 origin/main과 차이0입니다. 콜백 결합 뒤 전체 통합 검사는 현재 head CI에서 확인합니다. main241 app45382967174/check138406466644/Windows138406466734·db45382967089/PG16 138406465641/PG17 138406465136·배포138408316361이 성공했습니다. 실제 Actions Wrangler 버전00de31c1-992e-4a71-abab-4d1647fee9dc(2026-11-24T11:22:29.606745Z), 전체 태그 일치·활성100%·health200·원격 main 일치를 main241-deployment.json에 보존했습니다. 별도 학원컴 CLI의 활성 태그 재조회나 저장소 활성 태그 직접 조회를 확인했다고 적지 않습니다.
 
 ```text
 main241 check 작업의 실제 결과:
