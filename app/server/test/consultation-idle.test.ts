@@ -1,7 +1,11 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
+import { closeIdleConsultation } from "../src/consultation-idle";
 import type { RequestDb } from "../src/db";
+import { DUE_SOURCES } from "../src/due-sources";
 import { runDueJobs } from "../src/job-runner";
 import { runnableJobs } from "../src/jobs";
+import { createShopScope, shopDb } from "../src/shop-scope";
+import { scopeViolations } from "../src/sql-scope";
 import { describeDb, newUuid } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, type ShopFixture } from "./support/shops";
@@ -43,7 +47,22 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
   async function tick(at = NOW) {
     const jobs = runnableJobs().filter((j) => j.name === "consultation_idle");
     expect(jobs).toHaveLength(1);
-    return runDueJobs({ db, now: at, jobs, log: () => {} });
+    for (const job of jobs)
+      for (const source of job.sources) expect(scopeViolations(DUE_SOURCES[source].claim), source).toEqual([]);
+    const logs: { event?: string }[] = [];
+    const result = await runDueJobs({
+      db,
+      now: at,
+      jobs,
+      log: (_level, fields) => {
+        logs.push(fields);
+      },
+    });
+    expect(
+      logs.filter((x) => x.event?.endsWith("_failed")),
+      JSON.stringify(logs),
+    ).toEqual([]);
+    return result;
   }
   async function state() {
     return (
@@ -53,6 +72,25 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
       )
     ).rows[0];
   }
+  it("공통 닫기는 가게 범위 안에서만 처리", async () => {
+    const other = await createShop(db, "합성 다른 가게");
+    await db.transaction((tx) =>
+      closeIdleConsultation(
+        shopDb(createShopScope(other.shopId, { kind: "job", job: "consultation_idle" }), tx),
+        consultationId,
+        NOW,
+      ),
+    );
+    expect((await state())?.status).toBe("open");
+    await db.transaction((tx) =>
+      closeIdleConsultation(
+        shopDb(createShopScope(shop.shopId, { kind: "job", job: "consultation_idle" }), tx),
+        consultationId,
+        NOW,
+      ),
+    );
+    expect((await state())?.status).toBe("dropped");
+  });
   it("24시간 직전에는 열려 있고 정각에 한 번 닫으며 초안·안내 없음 유지", async () => {
     await tick(new Date(NOW.getTime() - 1));
     expect((await state())?.status).toBe("open");

@@ -49,6 +49,33 @@ export interface DueSource {
  * 손으로 쓴 SQL 글이다(정적 검사가 테이블 이름을 볼 수 있게 끼워 넣지 않음). claim이 find와 같은 조건인지는 시험이 본다.
  */
 export const DUE_SOURCES = {
+  /** TASK-076: 현재 가게 설정의 끊김 시간이 지난 open 상담. */
+  consultation_open: {
+    table: "consultations",
+    dueColumn: "last_customer_message_at",
+    index: "consultations_idle_idx",
+    find: "SELECT t.shop_id, t.id, t.last_customer_message_at AS due_at FROM consultations t WHERE t.status = 'open' AND EXISTS (SELECT 1 FROM shops s WHERE s.id = t.shop_id AND t.last_customer_message_at <= $1::timestamptz - s.idle_close_hours * interval '1 hour') AND NOT EXISTS (SELECT 1 FROM handoffs h WHERE h.shop_id = t.shop_id AND h.consultation_id = t.id AND h.status = 'open') AND t.last_customer_message_at <= $1 ORDER BY t.last_customer_message_at, t.id LIMIT $2",
+    claim:
+      "SELECT t.id FROM consultations t WHERE t.shop_id = $1 AND t.id = $2 AND t.status = 'open' AND EXISTS (SELECT 1 FROM shops s WHERE s.id = t.shop_id AND t.last_customer_message_at <= $3::timestamptz - s.idle_close_hours * interval '1 hour') AND NOT EXISTS (SELECT 1 FROM handoffs h WHERE h.shop_id = t.shop_id AND h.consultation_id = t.id AND h.status = 'open') AND t.last_customer_message_at <= $3 FOR UPDATE SKIP LOCKED",
+  },
+  /** TASK-076: 현재 가게 설정의 끊김 시간이 지난 ordered 상담. */
+  consultation_ordered: {
+    table: "consultations",
+    dueColumn: "last_customer_message_at",
+    index: "consultations_ordered_idx",
+    find: "SELECT t.shop_id, t.id, t.last_customer_message_at AS due_at FROM consultations t WHERE t.status = 'ordered' AND EXISTS (SELECT 1 FROM shops s WHERE s.id = t.shop_id AND t.last_customer_message_at <= $1::timestamptz - s.idle_close_hours * interval '1 hour') AND NOT EXISTS (SELECT 1 FROM handoffs h WHERE h.shop_id = t.shop_id AND h.consultation_id = t.id AND h.status = 'open') AND t.last_customer_message_at <= $1 ORDER BY t.last_customer_message_at, t.id LIMIT $2",
+    claim:
+      "SELECT t.id FROM consultations t WHERE t.shop_id = $1 AND t.id = $2 AND t.status = 'ordered' AND EXISTS (SELECT 1 FROM shops s WHERE s.id = t.shop_id AND t.last_customer_message_at <= $3::timestamptz - s.idle_close_hours * interval '1 hour') AND NOT EXISTS (SELECT 1 FROM handoffs h WHERE h.shop_id = t.shop_id AND h.consultation_id = t.id AND h.status = 'open') AND t.last_customer_message_at <= $3 FOR UPDATE SKIP LOCKED",
+  },
+  /** TASK-076: 현재 가게 설정의 끊김 시간이 지난 awaiting_owner 상담. */
+  consultation_waiting: {
+    table: "consultations",
+    dueColumn: "last_customer_message_at",
+    index: "consultations_waiting_idle_idx",
+    find: "SELECT t.shop_id, t.id, t.last_customer_message_at AS due_at FROM consultations t WHERE t.status = 'awaiting_owner' AND EXISTS (SELECT 1 FROM shops s WHERE s.id = t.shop_id AND t.last_customer_message_at <= $1::timestamptz - s.idle_close_hours * interval '1 hour') AND NOT EXISTS (SELECT 1 FROM handoffs h WHERE h.shop_id = t.shop_id AND h.consultation_id = t.id AND h.status = 'open') AND t.last_customer_message_at <= $1 ORDER BY t.last_customer_message_at, t.id LIMIT $2",
+    claim:
+      "SELECT t.id FROM consultations t WHERE t.shop_id = $1 AND t.id = $2 AND t.status = 'awaiting_owner' AND EXISTS (SELECT 1 FROM shops s WHERE s.id = t.shop_id AND t.last_customer_message_at <= $3::timestamptz - s.idle_close_hours * interval '1 hour') AND NOT EXISTS (SELECT 1 FROM handoffs h WHERE h.shop_id = t.shop_id AND h.consultation_id = t.id AND h.status = 'open') AND t.last_customer_message_at <= $3 FOR UPDATE SKIP LOCKED",
+  },
   /** 사장님 답 기다림의 지연 안내 때(답하는 시간 안에서 셈, REQ-259). */
   owner_task_wait: {
     table: "owner_tasks",
