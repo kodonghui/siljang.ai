@@ -806,7 +806,7 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     }
   });
 
-  it("제한 역할로 캘린더 4개 API와 날짜 잠금을 실행하고 주문·자리 쓰기는 막음", async () => {
+  it("제한 역할로 캘린더 4개 API를 실행하고 주문·자리의 필요한 열만 허용", async () => {
     const api = createApp({
       connect: () => roleDb(),
       scopes: { owner: async () => createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }) },
@@ -848,10 +848,26 @@ describeDb("실제 서버 역할의 로그인·콜백 권한(TASK-173)", () => {
     expect(await closed.json()).toMatchObject({ day: { capacity: 8, manuallyClosed: true } });
     if (!isolated) throw new Error("시험 DB 없음");
     const privileges = await isolated.db.query(
-      "SELECT has_table_privilege($1, 'slot_holds', 'INSERT') AS slot_write, has_column_privilege($1, 'orders', 'status', 'UPDATE') AS order_write, has_column_privilege($1, 'notifications', 'body', 'UPDATE') AS notice_body",
+      `SELECT has_table_privilege($1, 'slot_holds', 'INSERT') AS slot_write,
+      has_column_privilege($1, 'slot_holds', 'status', 'INSERT') AS slot_status_insert,
+      has_column_privilege($1, 'orders', 'status', 'UPDATE') AS order_write,
+      has_column_privilege($1, 'orders', 'amount', 'UPDATE') AS order_amount_update,
+      has_column_privilege($1, 'orders', 'version', 'UPDATE') AS order_content_update,
+      has_table_privilege($1, 'orders', 'DELETE') AS order_delete,
+      has_column_privilege($1, 'notifications', 'body', 'UPDATE') AS notice_body`,
       [role],
     );
-    expect(privileges.rows).toEqual([{ slot_write: false, order_write: false, notice_body: false }]);
+    expect(privileges.rows).toEqual([
+      {
+        slot_write: false,
+        slot_status_insert: true,
+        order_write: true,
+        order_amount_update: false,
+        order_content_update: false,
+        order_delete: false,
+        notice_body: false,
+      },
+    ]);
   });
 
   it("내용 없는 ID 메시지도 콜백의 UPDATE·SELECT·만료 정리 경로를 실행", async () => {

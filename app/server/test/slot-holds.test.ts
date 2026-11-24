@@ -896,9 +896,14 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
   });
   it("기한 전에 입금을 알렸으면 상한 전에는 지키고 상한 정각에는 풂", async () => {
     await held();
+    const cutoff = shopLocalToUtc(shiftDate(day, -1), "18:00", "Asia/Seoul");
     await isolated.db.query(
-      "UPDATE payment_requests SET status='claimed',claimed_at=$2,version=version+1 WHERE id=$1",
-      [shop.paymentRequestId, new Date(now.getTime() + 60000)],
+      "UPDATE business_calendars SET order_cutoff_days=1,order_cutoff_time='18:00' WHERE shop_id=$1",
+      [shop.shopId],
+    );
+    await isolated.db.query(
+      "UPDATE payment_requests SET status='claimed',claimed_at=$2,due_cap_at=$3,version=version+1 WHERE id=$1",
+      [shop.paymentRequestId, new Date(now.getTime() + 60000), cutoff],
     );
     expect((await expire(new Date(now.getTime() + 2 * 3600000))).kind).toBe("protected");
     expect((await isolated.db.query("SELECT status FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows).toEqual([
@@ -910,6 +915,7 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
       ])
     ).rows[0];
     if (!cap) throw new Error("synthetic payment missing");
+    expect(cap.due_cap_at).toEqual(cutoff);
     expect((await expire(cap.due_cap_at)).kind).toBe("expired");
     expect((await isolated.db.query("SELECT status FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual([
       { status: "payment_overdue" },
