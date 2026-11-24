@@ -62,7 +62,7 @@ TASKS = [
     dict(id='TASK-036', it=2, name='사업자 정보 변경 요청과 운영자 확인', owner='Claude', size=2, src=['SPEC-078'], api=['API-080', 'API-081', 'API-082'], rules=['A37'], dep=['TASK-034']),
     dict(id='TASK-037', it=2, name='가게 정보와 설정 바꾸기(결제 기다림 주문 한도·AI 비용 한도 포함)', owner='Claude', size=1, src=['SPEC-077'], api=['API-010'], dep=['TASK-032']),
     dict(id='TASK-038', it=2, name='가격표와 도안 올리기(버전)', owner='Claude', size=2, src=['SPEC-004'], api=['API-016', 'API-017', 'API-018', 'API-019'], dep=['TASK-032']),
-    dict(id='TASK-039', it=2, name='운영규정 만들기와 버전', owner='Claude', size=2, src=['SPEC-005'], api=['API-020', 'API-021', 'API-022', 'API-023'], rules=['A21'], dep=['TASK-032']),
+    dict(id='TASK-039', finished='2026-11-25 실제 합성 규정 두 버전201·같은값200/이전값 보존·최소 권한 확인', it=2, name='운영규정 만들기와 버전', owner='Claude', size=2, src=['SPEC-005'], api=['API-020', 'API-021', 'API-022', 'API-023'], rules=['A21'], dep=['TASK-032']),
     dict(id='TASK-040', it=2, name='결제 수단(계좌) 등록과 예금주 확인', owner='Claude', size=1, src=['SPEC-006'], api=['API-024', 'API-025'], rules=['A25'], dep=['TASK-032', 'TASK-025']),
     dict(id='TASK-041', it=2, name='영업 캘린더 정하기와 그날 주문 마감', owner='Claude', size=2, src=['SPEC-007', 'SPEC-012'], api=['API-026', 'API-027', 'API-028', 'API-029'], dep=['TASK-032'], ac={'SPEC-007': [1, 2, 3, 4], 'SPEC-012': [1]}),
     dict(id='TASK-042', it=2, name='채널 연결 설정과 스킬 키 바꾸기', owner='Claude', size=2, src=['SPEC-008'], api=['API-030', 'API-031', 'API-079'], rules=['A36'], dep=['TASK-032', 'TASK-028'], ac={'SPEC-008': [5, 6]}),
