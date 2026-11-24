@@ -1,0 +1,481 @@
+{
+  "base": "ec9b3222b651f39c8203e5f3b0ab813774b7a2d6",
+  "verifiedPr": 237,
+  "fullSource": "ceac8f4dbe522a5ecaf7982ce98f89334bc47dc0",
+  "publicSource": "6665f163e83fb8d718260551a21549921a1954e0",
+  "fullTree": "2138fa82ac348145d0fd78790bd595ff2740069e",
+  "proof": "main237-deployment.json",
+  "ownCondition": "API-043 응답200·401·404·422·default마다 통과하는 시험",
+  "before": {
+    "finished": 38,
+    "implemented": 22,
+    "all_dependency_ready_count": 40,
+    "mvp_deferred": [
+      "TASK-005",
+      "TASK-006",
+      "TASK-013",
+      "TASK-175"
+    ],
+    "eligible_count": 36,
+    "eligible": [
+      {
+        "id": "TASK-172",
+        "it": 0,
+        "name": "OVH 서버(뭄바이·싱가포르)에서 지연 측정 스크립트 돌리기(추천안 기준)",
+        "followers": 0
+      },
+      {
+        "id": "TASK-027",
+        "it": 1,
+        "name": "AI 평가 세트(합성 상담 100개 이상)와 채점·두 회사로 돌리는 도구",
+        "followers": 76
+      },
+      {
+        "id": "TASK-045",
+        "it": 2,
+        "name": "예약 링크 페이지 보이기와 문의 열기",
+        "followers": 3
+      },
+      {
+        "id": "TASK-049",
+        "it": 2,
+        "name": "SCR-036 가격표와 도안 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-050",
+        "it": 2,
+        "name": "SCR-037 가격표 버전 이력 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-051",
+        "it": 2,
+        "name": "SCR-038 운영규정 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-052",
+        "it": 2,
+        "name": "SCR-039 운영규정 버전 이력 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-053",
+        "it": 2,
+        "name": "SCR-040 결제 수단 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-054",
+        "it": 2,
+        "name": "SCR-041 카카오톡 채널 연결 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-055",
+        "it": 2,
+        "name": "SCR-043 예약 링크 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-056",
+        "it": 2,
+        "name": "SCR-032 영업 캘린더 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-057",
+        "it": 2,
+        "name": "SCR-033 영업 캘린더 설정 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-058",
+        "it": 2,
+        "name": "SCR-047 영업 신고 확인 목록 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-059",
+        "it": 2,
+        "name": "SCR-048 영업 신고 확인 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-060",
+        "it": 2,
+        "name": "SCR-049 운영자 알림 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-062",
+        "it": 2,
+        "name": "SCR-002 가게 개인정보 처리방침 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-081",
+        "it": 3,
+        "name": "손님 명령 확인 버튼(카드 키·30분·받은 사람만)",
+        "followers": 55
+      },
+      {
+        "id": "TASK-077",
+        "it": 3,
+        "name": "상담 대화 조회(가린 값)",
+        "followers": 1
+      },
+      {
+        "id": "TASK-065",
+        "it": 3,
+        "name": "참고 사진 받기",
+        "followers": 0
+      },
+      {
+        "id": "TASK-076",
+        "it": 3,
+        "name": "문의 끊김으로 닫기와 이어가기",
+        "followers": 0
+      },
+      {
+        "id": "TASK-085",
+        "it": 3,
+        "name": "SCR-003 가게 채널 상담 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-086",
+        "it": 3,
+        "name": "SCR-004 주문 요청 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-087",
+        "it": 3,
+        "name": "SCR-016 할 일 목록 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-104",
+        "it": 4,
+        "name": "손님에게 먼저 보내는 안내와 다음 대화 때 전하기",
+        "followers": 7
+      },
+      {
+        "id": "TASK-106",
+        "it": 4,
+        "name": "SCR-005 결제 안내 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-107",
+        "it": 4,
+        "name": "SCR-006 결제 확인 요청 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-108",
+        "it": 4,
+        "name": "SCR-007 내 주문 보기 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-109",
+        "it": 4,
+        "name": "SCR-011 손님 알림 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-126",
+        "it": 5,
+        "name": "SCR-008 변경 요청 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-127",
+        "it": 5,
+        "name": "SCR-009 취소 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-147",
+        "it": 6,
+        "name": "SCR-010 문제 신고 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-148",
+        "it": 6,
+        "name": "SCR-012 후기 남기기 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-149",
+        "it": 6,
+        "name": "SCR-013 사진 게시 동의 철회 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-159",
+        "it": 7,
+        "name": "운영자의 가게 기록 보기와 원래 값·보관 기록 열기",
+        "followers": 9
+      },
+      {
+        "id": "TASK-156",
+        "it": 7,
+        "name": "고를 기능 켜기(장부 연결, 완성 사진 보내기)",
+        "followers": 2
+      },
+      {
+        "id": "TASK-167",
+        "it": 8,
+        "name": "운영 계정과 키 만들기: 우리 서비스 채널(사장님 알림), 디벨로퍼스 운영 앱, AI 회사·구글 운영 키",
+        "followers": 7
+      }
+    ]
+  },
+  "after": {
+    "finished": 39,
+    "implemented": 22,
+    "all_dependency_ready_count": 40,
+    "mvp_deferred": [
+      "TASK-005",
+      "TASK-006",
+      "TASK-013",
+      "TASK-175"
+    ],
+    "eligible_count": 36,
+    "eligible": [
+      {
+        "id": "TASK-172",
+        "it": 0,
+        "name": "OVH 서버(뭄바이·싱가포르)에서 지연 측정 스크립트 돌리기(추천안 기준)",
+        "followers": 0
+      },
+      {
+        "id": "TASK-027",
+        "it": 1,
+        "name": "AI 평가 세트(합성 상담 100개 이상)와 채점·두 회사로 돌리는 도구",
+        "followers": 76
+      },
+      {
+        "id": "TASK-045",
+        "it": 2,
+        "name": "예약 링크 페이지 보이기와 문의 열기",
+        "followers": 3
+      },
+      {
+        "id": "TASK-049",
+        "it": 2,
+        "name": "SCR-036 가격표와 도안 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-050",
+        "it": 2,
+        "name": "SCR-037 가격표 버전 이력 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-051",
+        "it": 2,
+        "name": "SCR-038 운영규정 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-052",
+        "it": 2,
+        "name": "SCR-039 운영규정 버전 이력 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-053",
+        "it": 2,
+        "name": "SCR-040 결제 수단 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-054",
+        "it": 2,
+        "name": "SCR-041 카카오톡 채널 연결 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-055",
+        "it": 2,
+        "name": "SCR-043 예약 링크 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-056",
+        "it": 2,
+        "name": "SCR-032 영업 캘린더 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-057",
+        "it": 2,
+        "name": "SCR-033 영업 캘린더 설정 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-058",
+        "it": 2,
+        "name": "SCR-047 영업 신고 확인 목록 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-059",
+        "it": 2,
+        "name": "SCR-048 영업 신고 확인 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-060",
+        "it": 2,
+        "name": "SCR-049 운영자 알림 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-062",
+        "it": 2,
+        "name": "SCR-002 가게 개인정보 처리방침 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-081",
+        "it": 3,
+        "name": "손님 명령 확인 버튼(카드 키·30분·받은 사람만)",
+        "followers": 55
+      },
+      {
+        "id": "TASK-065",
+        "it": 3,
+        "name": "참고 사진 받기",
+        "followers": 0
+      },
+      {
+        "id": "TASK-076",
+        "it": 3,
+        "name": "문의 끊김으로 닫기와 이어가기",
+        "followers": 0
+      },
+      {
+        "id": "TASK-085",
+        "it": 3,
+        "name": "SCR-003 가게 채널 상담 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-086",
+        "it": 3,
+        "name": "SCR-004 주문 요청 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-087",
+        "it": 3,
+        "name": "SCR-016 할 일 목록 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-089",
+        "it": 3,
+        "name": "SCR-018 상담 대화 화면",
+        "followers": 0
+      },
+      {
+        "id": "TASK-104",
+        "it": 4,
+        "name": "손님에게 먼저 보내는 안내와 다음 대화 때 전하기",
+        "followers": 7
+      },
+      {
+        "id": "TASK-106",
+        "it": 4,
+        "name": "SCR-005 결제 안내 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-107",
+        "it": 4,
+        "name": "SCR-006 결제 확인 요청 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-108",
+        "it": 4,
+        "name": "SCR-007 내 주문 보기 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-109",
+        "it": 4,
+        "name": "SCR-011 손님 알림 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-126",
+        "it": 5,
+        "name": "SCR-008 변경 요청 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-127",
+        "it": 5,
+        "name": "SCR-009 취소 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-147",
+        "it": 6,
+        "name": "SCR-010 문제 신고 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-148",
+        "it": 6,
+        "name": "SCR-012 후기 남기기 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-149",
+        "it": 6,
+        "name": "SCR-013 사진 게시 동의 철회 카드 카카오 응답",
+        "followers": 0
+      },
+      {
+        "id": "TASK-159",
+        "it": 7,
+        "name": "운영자의 가게 기록 보기와 원래 값·보관 기록 열기",
+        "followers": 9
+      },
+      {
+        "id": "TASK-156",
+        "it": 7,
+        "name": "고를 기능 켜기(장부 연결, 완성 사진 보내기)",
+        "followers": 2
+      },
+      {
+        "id": "TASK-167",
+        "it": 8,
+        "name": "운영 계정과 키 만들기: 우리 서비스 채널(사장님 알림), 디벨로퍼스 운영 앱, AI 회사·구글 운영 키",
+        "followers": 7
+      }
+    ]
+  },
+  "removed": [
+    "TASK-077"
+  ],
+  "added": [
+    "TASK-089"
+  ],
+  "runtimeUnverified": [
+    "실제 스테이징0037·열/시퀀스 권한 적용",
+    "실계정 조회와 사진 주소 열기",
+    "학원컴·저장소 활성 태그의 별도 직접 재조회"
+  ],
+  "productCheck": "main237의 앱·데이터베이스·도구와 차이0, 전체 검사는 검증된 동일 제품의 원본을 재사용"
+}

@@ -100,7 +100,7 @@ TASKS = [
     dict(id='TASK-074', it=3, name='에스컬레이션 건에 사장님 답 전하기(한도 넘겨 받기 포함)', owner='Claude', size=2, src=['SPEC-023'], api=['API-041', 'API-042'], dep=['TASK-073']),
     dict(id='TASK-075', it=3, name='사장님 답 기다림: 지연 안내·다시 알림·답 없어 닫힘', owner='Claude', size=2, src=['SPEC-024'], rules=['A28'], dep=['TASK-073', 'TASK-023', 'TASK-037']),
     dict(id='TASK-076', it=3, name='문의 끊김으로 닫기와 이어가기', owner='Claude', size=1, src=['SPEC-025'], rules=['A22'], dep=['TASK-063', 'TASK-023', 'TASK-037']),
-    dict(id='TASK-077', it=3, name='상담 대화 조회(가린 값)', owner='Claude', size=1, src=['SPEC-021', 'SPEC-019', 'SPEC-065'], api=['API-043'], dep=['TASK-066', 'TASK-024'], noac=True),
+    dict(id='TASK-077', it=3, name='상담 대화 조회(가린 값)', owner='Claude', size=1, src=['SPEC-021', 'SPEC-019', 'SPEC-065'], api=['API-043'], dep=['TASK-066', 'TASK-024'], noac=True, finished='2026-11-24, PR #237: API-043 응답200·401·404·422·default 시험과 관련55개·새 빈 PostgreSQL 37마이그레이션·서버2509개·웹1570개·두 Worker 빌드 통과. main ec9b322 app·db CI·실제 Actions Wrangler 전체 태그 일치·활성100%·health200·원격 SHA 확인. 실제 스테이징0037·권한·실계정 조회는 별도 미확인.'),
     dict(id='TASK-078', it=3, name='주문 내용 요약과 취소·환불 규정 따로 알리기', owner='Claude', size=2, src=['SPEC-028', 'REQ-240'], api=['API-070'], rules=['A21'], dep=['TASK-071', 'TASK-039']),
     dict(id='TASK-079', it=3, name='알레르기 정보 동의와 알레르기 답 받기', owner='Claude', size=1, src=['SPEC-075'], api=['API-070', 'API-071'], rules=['A26'], dep=['TASK-078']),
     dict(id='TASK-080', it=3, name='주문자 이름·연락처 받기', owner='Claude', size=1, src=['SPEC-072'], api=['API-070', 'API-071'], dep=['TASK-078']),
