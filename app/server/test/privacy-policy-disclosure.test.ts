@@ -7,6 +7,7 @@ import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import * as template from "../src/privacy-policy-body";
 import type { PrivacyPolicySettings } from "../src/privacy-policy-settings";
+import { readPrivacyPolicySettings } from "../src/privacy-policy-settings";
 import { Secret } from "../src/settings";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
@@ -16,16 +17,22 @@ import { createShop, issueTestBookingLink, linkTestChannel } from "./support/sho
 
 const NOW = new Date("2026-11-24T00:00:00Z"),
   ORIGIN = "https://siljang.example";
-const POLICY: PrivacyPolicySettings = {
-  transfers: ["anthropic", "supabase", "cloudflare"].map((recipient) => ({
-    recipient: `${recipient} 합성 회사`,
-    country: "합성 국가",
-    personalData: "마스킹한 상담 대화",
-    whenAndHow: "상담 때 암호화 전송",
-    purposeAndRetention: "합성 상담 목적과 기간",
-    howToRefuse: "가게에 거부하면 온라인 상담을 쓰지 않습니다.",
-  })),
-};
+const POLICY = readPrivacyPolicySettings(
+  {
+    PUBLIC_APP_ORIGIN: ORIGIN,
+    PRIVACY_TRANSFER_SETTINGS: JSON.stringify(
+      ["anthropic", "supabase", "cloudflare"].map((provider) => ({
+        provider,
+        recipient: `${provider} 합성 회사`,
+        country: "합성 국가",
+        whenAndHow: "상담 때 암호화 전송",
+        purposeAndRetention: "합성 상담 목적과 기간",
+        howToRefuse: "가게에 거부하면 온라인 상담을 쓰지 않습니다.",
+      })),
+    ),
+  },
+  "anthropic",
+) as PrivacyPolicySettings;
 describeDb("TASK-184 새 배포의 첫 AI 고지와 공개 정책 버전", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>,
     now = NOW;
@@ -38,8 +45,11 @@ describeDb("TASK-184 새 배포의 첫 AI 고지와 공개 정책 버전", () =>
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("합성 정책 시험에서 실제 외부 호출 금지"));
   });
   afterEach(() => {
-    expect(fetch).not.toHaveBeenCalled();
-    vi.restoreAllMocks();
+    try {
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
   afterAll(async () => {
     await isolated?.close();
@@ -84,8 +94,8 @@ describeDb("TASK-184 새 배포의 첫 AI 고지와 공개 정책 버전", () =>
         [shop.shopId],
       );
     const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
-    async function firstAi(policy: PrivacyPolicySettings) {
-      const user = newUuid();
+    async function firstAi(policy: PrivacyPolicySettings, user = newUuid(), expectDisclosure = true) {
+      now = new Date(now.getTime() + 4000);
       const response = await app(policy).request(
         `${ORIGIN}/api/kakao/skills/message`,
         {
@@ -128,7 +138,7 @@ describeDb("TASK-184 새 배포의 첫 AI 고지와 공개 정책 버전", () =>
         return { ok: true, aiCallId, output: { reply: "합성 첫 질문을 확인했어요." } };
       };
       const callback = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
-      now = new Date(NOW.getTime() + 1000);
+      now = new Date(now.getTime() + 1000);
       expect(
         await consumeKakaoCallback(job, env, {
           connect: () => isolated.connect(),
@@ -144,8 +154,10 @@ describeDb("TASK-184 새 배포의 첫 AI 고지와 공개 정책 버전", () =>
       ).toBe("done");
       expect(callback).toHaveBeenCalledOnce();
       const body = JSON.parse(String(callback.mock.calls[0]?.[1]?.body));
-      expect(body.template.outputs[0].simpleText.text).toContain("AI가 상담합니다");
-      expect(body.template.outputs[0].simpleText.text).toContain(`${ORIGIN}/s/${slug}/privacy`);
+      if (expectDisclosure) {
+        expect(body.template.outputs[0].simpleText.text).toContain("AI가 상담합니다");
+        expect(body.template.outputs[0].simpleText.text).toContain(`${ORIGIN}/s/${slug}/privacy`);
+      } else expect(JSON.stringify(body)).not.toContain("AI가 상담합니다");
       const result = (
         await isolated.db.query<{ ai_disclosed_policy_version: number }>(
           "SELECT ai_disclosed_policy_version FROM consultations WHERE id=(SELECT consultation_id FROM messages WHERE id=$1)",
@@ -175,6 +187,7 @@ describeDb("TASK-184 새 배포의 첫 AI 고지와 공개 정책 버전", () =>
     expect(current.version).toBe(disclosed);
     expect(current.version).toBe(h.before.version + 1);
     expect(current.body).toContain("바뀐 합성 회사");
+    expect(current.overseasTransfers).toHaveLength(3);
     for (const row of current.overseasTransfers) expect(JSON.stringify(row)).toContain("바뀐");
     expect((await h.versions()).rows.slice(0, old.length)).toEqual(old);
     expect((await h.versions()).rows).toHaveLength(old.length + 1);
@@ -187,6 +200,28 @@ describeDb("TASK-184 새 배포의 첫 AI 고지와 공개 정책 버전", () =>
         ])
       ).rows[0]?.ai_disclosed_policy_version,
     ).toBe(1);
+  });
+  it("이미 버전1로 고지한 상담에 새 배포 뒤 두 번 말을 걸어도 재고지하거나 버전을 덮지 않는다", async () => {
+    const h = await fixture();
+    const before = (
+      await isolated.db.query("SELECT ai_disclosed_at,ai_disclosed_policy_version FROM consultations WHERE id=$1", [
+        h.shop.consultationId,
+      ])
+    ).rows;
+    const old = (await h.versions()).rows;
+    const changed = { transfers: POLICY.transfers.map((x) => ({ ...x, recipient: `${x.recipient} 바뀐 회사` })) };
+    const latest = await h.firstAi(changed);
+    expect(latest).toBe(h.before.version + 1);
+    for (let i = 0; i < 2; i++) expect(await h.firstAi(changed, h.shop.userKey, false)).toBe(1);
+    expect(
+      (
+        await isolated.db.query("SELECT ai_disclosed_at,ai_disclosed_policy_version FROM consultations WHERE id=$1", [
+          h.shop.consultationId,
+        ])
+      ).rows,
+    ).toEqual(before);
+    expect((await h.publicGet(changed)).version).toBe(latest);
+    expect((await h.versions()).rows).toHaveLength(old.length + 1);
   });
   it("고정 문장만 바뀐 배포도 첫 고지에서 새 버전을 만들고 공개 읽기가 그대로 잇는다", async () => {
     const h = await fixture(),

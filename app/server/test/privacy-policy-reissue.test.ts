@@ -158,13 +158,13 @@ describeDb("TASK-184 처리방침 본문 비교와 재발행", () => {
   });
   it("새 배포를 여러 발급 가게가 읽어도 각자 한 버전만 만들고 미발급 가게에는 만들지 않음", async () => {
     const issued = [await fixture(), await fixture(), await fixture()],
-      unissued = await createShop(db, "미발급 합성 가게"),
+      unissued = await fixture(),
       changed = { transfers: POLICY.transfers.map((t) => ({ ...t, recipient: `${t.recipient} 새 배포` })) };
-    await db.query("UPDATE shops SET booking_slug=NULL,booking_issued_at=NULL WHERE id=$1", [unissued.shopId]);
+    await db.query("UPDATE shops SET booking_slug=NULL,booking_issued_at=NULL WHERE id=$1", [unissued.shop.shopId]);
     await db.query("UPDATE consultations SET ai_disclosed_at=NULL,ai_disclosed_policy_version=NULL WHERE shop_id=$1", [
-      unissued.shopId,
+      unissued.shop.shopId,
     ]);
-    await db.query("DELETE FROM privacy_policies WHERE shop_id=$1", [unissued.shopId]);
+    await db.query("DELETE FROM privacy_policies WHERE shop_id=$1", [unissued.shop.shopId]);
     const deployed = issued[0]?.app(changed);
     if (!deployed) throw new Error("발급 가게가 없어요");
     for (const h of issued) {
@@ -180,8 +180,12 @@ describeDb("TASK-184 처리방침 본문 비교와 재발행", () => {
       expect(after).toHaveLength(before.length + 1);
       expect(after.slice(0, -1)).toEqual(before);
     }
+    expect((await unissued.patch({ contactEmail: "unissued-reissue@example.com" }, unissued.app(changed))).status).toBe(
+      200,
+    );
     expect(
-      (await db.query("SELECT count(*)::int n FROM privacy_policies WHERE shop_id=$1", [unissued.shopId])).rows[0]?.n,
+      (await db.query("SELECT count(*)::int n FROM privacy_policies WHERE shop_id=$1", [unissued.shop.shopId])).rows[0]
+        ?.n,
     ).toBe(0);
   });
   it("동시 저장 충돌 뒤 다시 저장하면 처리방침 번호가 빠지거나 겹치지 않음", async () => {
