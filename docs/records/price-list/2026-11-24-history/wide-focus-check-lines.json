@@ -1,0 +1,35 @@
+{
+  "localFixCommit": "8484b0b",
+  "localIntegratedCommit": "bf3ac32ea29f2798d6c30576e9b82e2271370346",
+  "commitScope": "로컬 전용 빌드/시험 식별자. 공개 검증 근거는 PR의 현재 head CI에 연결함",
+  "runtimeAndTestBlobs": {
+    "app/web/src/VersionHistory.tsx": "f1efbb1673f642cf6328ac8be2fc1eceffe48dca",
+    "app/web/src/PriceListHistory.interaction.test.tsx": "86d06a2586543b92f33b55aaad427ebe19a2aa63",
+    "app/web/src/OperatingRulesHistory.interaction.test.tsx": "a8b8aaa88140f46ecc5ac736a18edb65077c5b34"
+  },
+  "confirmedRed": [
+    " Test Files  2 failed (2)",
+    "      Tests  4 failed | 58 passed (62)"
+  ],
+  "related": [
+    " Test Files  2 passed (2)",
+    "      Tests  62 passed (62)"
+  ],
+  "fullWeb": [
+    " Test Files  67 passed (67)",
+    "      Tests  1626 passed (1626)"
+  ],
+  "build": [
+    "✓ built in 612ms",
+    "Total Upload: 5378.11 KiB / gzip: 985.99 KiB",
+    "--dry-run: exiting now.",
+    "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+    "--dry-run: exiting now."
+  ],
+  "typecheckExit": 0,
+  "strictLint": [
+    "Checked 529 files in 746ms. No fixes applied."
+  ],
+  "interruptedFullRun": "실행환경 재시작으로 최초 전체 시험/빌드 완료를 관측하지 못함. 위 recovery 실행은 새 실행의 종료0 결과",
+  "serverDbDependencyChanges": 0
+}
