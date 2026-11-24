@@ -1,18 +1,18 @@
 {
-  "base": "5a31a5605457cec5e056e3ed912cebadcfc1bc3d",
-  "verifiedPr": 244,
+  "base": "70cbaaa5c857962074cc05fe7f0a0ea8ef03ba28",
+  "verifiedPr": 245,
   "fullSource": "38608492c4b56dd3f14c6a2ab4cecc9f0954ddf0",
   "publicSource": "28f4f2027d80069108957593df59dfee3d2fc3b1",
   "fullTree": "2138fa82ac348145d0fd78790bd595ff2740069e",
-  "proof": "main244-deployment.json",
+  "proof": "main245-deployment.json",
   "ownCondition": "API-043 응답200·401·404·422·default마다 통과하는 시험",
   "before": {
     "finished": 31,
-    "implemented": 29
+    "implemented": 30
   },
   "after": {
     "finished": 31,
-    "implemented": 30
+    "implemented": 31
   },
   "removed": [
     "TASK-077"
@@ -24,7 +24,7 @@
     "actual_owner_api043",
     "signed_photo_url_open_and_expiry"
   ],
-  "productCheck": "현재 main244의 앱·데이터베이스·도구와 차이0. TASK-077 원래 제품 파일의 전체 검사와 최신 main244 통합 CI를 재사용",
+  "productCheck": "현재 검증한 main245의 앱·데이터베이스·도구와 차이0. TASK-077 원래 제품 파일의 전체 검사와 main245 통합 CI를 재사용",
   "status": "구현 완료, finished 없음",
   "review": {
     "comment": 7126792620,
@@ -46,5 +46,6 @@
     "failureSqlstate": null,
     "checkedAtKst": "2026-11-24 21:11:48.079 KST"
   },
-  "runtimeProbeResult": "../../kakao-runtime-probe/2026-11-24/actual-result.json"
+  "runtimeProbeResult": "../../kakao-runtime-probe/2026-11-24/actual-result.json",
+  "statusBasePr": 245
 }
