@@ -73,7 +73,17 @@ export function ownerReturnTo(value: unknown): string | null {
   }
 }
 
+export const OWNER_BANNERS = [
+  "add_alert_channel",
+  "license_pending",
+  "license_on_hold",
+  "booking_link_not_ready",
+  "ledger_relink",
+] as const;
+export type OwnerBanner = (typeof OWNER_BANNERS)[number];
+
 export interface OwnerIdentity {
+  readonly banners?: readonly OwnerBanner[];
   readonly owner: { readonly ownerId: string; readonly alertChannelFriend: boolean; readonly createdAt: string };
   readonly shop: {
     readonly shopId: string;
@@ -220,13 +230,34 @@ export function completeOwnerLogin(input: OwnerCallbackInput): Promise<ApiResult
   return pending;
 }
 
-export async function fetchOwner(signal: AbortSignal): Promise<ApiResult<OwnerIdentity>> {
+export async function fetchOwner(signal: AbortSignal, includeBanners = false): Promise<ApiResult<OwnerIdentity>> {
   const result = await request<unknown>(OWNER_ME_API, { cache: "no-store", signal });
-  return !result.ok
-    ? result
-    : identity(result.data)
-      ? { ...result, data: { owner: result.data.owner, shop: result.data.shop } }
-      : INVALID;
+  if (!result.ok) return result;
+  if (!identity(result.data) || !object(result.data)) return INVALID;
+  const banners = result.data.banners;
+  let projectedBanners: readonly OwnerBanner[] | undefined;
+  // 다른 화면은 신원만 쓰고 홈은 같은 응답의 안내도 검증한다.
+  if (includeBanners) {
+    if (
+      !Array.isArray(banners) ||
+      banners.length > 5 ||
+      !banners.every(
+        (value: unknown): value is OwnerBanner =>
+          typeof value === "string" && OWNER_BANNERS.some((name) => name === value),
+      ) ||
+      new Set(banners).size !== banners.length
+    )
+      return INVALID;
+    projectedBanners = [...banners] as OwnerBanner[];
+  }
+  return {
+    ...result,
+    data: {
+      owner: result.data.owner,
+      shop: result.data.shop,
+      ...(projectedBanners ? { banners: projectedBanners } : {}),
+    },
+  };
 }
 export async function signOutOwner(signal: AbortSignal) {
   const result = await request<null>(OWNER_SESSION_API, { method: "DELETE", cache: "no-store", signal });

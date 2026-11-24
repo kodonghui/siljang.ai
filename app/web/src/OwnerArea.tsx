@@ -7,6 +7,7 @@ import { CalendarSettingsScreen } from "./CalendarSettingsScreen";
 import { KakaoChannelSettings } from "./KakaoChannelSettings";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import { OperatingRulesHistory } from "./OperatingRulesHistory";
+import { OwnerTasksScreen } from "./OwnerTasksScreen";
 import {
   fetchOwner,
   OWNER_HOME,
@@ -28,6 +29,8 @@ import { ShopSettings } from "./ShopSettings";
 import { Button, LoadFailure, Skeleton } from "./ui";
 
 const shopScreens = [
+  // 보류 중에도 사유와 수정 경로를 찾는 읽기 전용 목록은 연다. 로그인 기본 착지는 그대로다.
+  { path: OWNER_HOME, Screen: OwnerTasksScreen, checkDestination: false },
   { path: "/owner/shop", Screen: ShopSettings, checkDestination: false },
   { path: "/owner/shop/license", Screen: ShopLicense, checkDestination: false },
   { path: "/owner/payment-destination", Screen: PaymentDestinationEditor, checkDestination: false },
@@ -83,7 +86,7 @@ export function OwnerArea() {
   useEffect(() => {
     if (!requested) return;
     const controller = new AbortController();
-    void fetchOwner(controller.signal)
+    void fetchOwner(controller.signal, shopPath === OWNER_HOME)
       .then((result) => {
         if (controller.signal.aborted) return;
         if (result.ok) {
@@ -97,7 +100,7 @@ export function OwnerArea() {
         /* 화면을 떠날 때 취소한 요청. */
       });
     return () => controller.abort();
-  }, [visit, requested, history, location.pathname]);
+  }, [visit, requested, history, location.pathname, shopPath]);
   useEffect(() => () => logoutRequest.current?.abort(), []);
   useEffect(() => {
     if (requested !== OWNER_HOME) setRegistrationNotice(false);
@@ -157,6 +160,7 @@ export function OwnerArea() {
           />
         ) : null}
         <ShopScreen
+          {...(shopPath === OWNER_HOME ? { banners: candidate.banners ?? [] } : {})}
           {...(historyRoute ? { version: historyRoute.version } : {})}
           {...(shopPath === "/owner/payment-destination"
             ? { licenseStatus: candidate.shop.licenseStatus, onSaved: () => setRevision((r) => r + 1) }
