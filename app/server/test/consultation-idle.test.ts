@@ -211,6 +211,47 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
     await tick();
     expect((await state())?.status).toBe("ended");
   });
+  it("주문 ID 없이 결제 안내만 참조한 열린 할 일도 상담 끝남을 막음", async () => {
+    await cancelledWithoutPayment();
+    const task = newUuid();
+    await db.query(
+      "INSERT INTO owner_tasks(id,shop_id,kind,event_key,payment_request_id,wait_status,wait_due_at) VALUES($1,$2,'payment_claim',$3,$4,'waiting',$5)",
+      [task, shop.shopId, `task:payment_claim:${shop.paymentRequestId}`, shop.paymentRequestId, NOW],
+    );
+    await tick();
+    expect((await state())?.status).toBe("ordered");
+    await db.query("UPDATE owner_tasks SET wait_status='answered',closed_at=$2 WHERE id=$1", [task, NOW]);
+    await tick();
+    expect((await state())?.status).toBe("ended");
+  });
+  it("결제 안내로 참조한 오래된 할 일이 한 건 배치의 다음 상담을 막지 않음", async () => {
+    await cancelledWithoutPayment();
+    await db.query("UPDATE consultations SET status='ordered',last_customer_message_at=$2 WHERE id=$1", [
+      consultationId,
+      new Date(NOW.getTime() - 72 * HOUR),
+    ]);
+    await db.query(
+      "INSERT INTO owner_tasks(shop_id,kind,event_key,payment_request_id,wait_status,wait_due_at) VALUES($1,'payment_claim',$2,$3,'waiting',$4)",
+      [shop.shopId, `task:payment_claim:${shop.paymentRequestId}`, shop.paymentRequestId, NOW],
+    );
+    const ready = await createShop(db, "합성 뒤에 끝낼 상담 가게");
+    await db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='closed',closed_at=$2,close_reason='order_cancelled' WHERE id=$1",
+        [ready.paymentRequestId, NOW],
+      );
+      await tx.query(
+        "UPDATE orders SET status='cancelled',cancelled_at=$2,cancel_kind='no_payment',finished_at=NULL WHERE id=$1",
+        [ready.orderId, NOW],
+      );
+      await tx.query("UPDATE consultations SET status='ordered',last_customer_message_at=$2 WHERE id=$1", [
+        ready.consultationId,
+        new Date(NOW.getTime() - 48 * HOUR),
+      ]);
+    });
+    const found = await db.query<{ id: string }>(DUE_SOURCES.consultation_ordered.find, [NOW, 1]);
+    expect(found.rows.map((row) => row.id)).toEqual([ready.consultationId]);
+  });
   async function incoming(at: Date, text = "합성 이어가기") {
     const connection = isolated.connect();
     const scope = createShopScope(shop.shopId, { kind: "customer", channelId: shop.channelId });

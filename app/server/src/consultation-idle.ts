@@ -43,7 +43,8 @@ export async function closeIdleConsultation(db: ShopDb, consultationId: string, 
         OR EXISTS(SELECT 1 FROM change_requests c WHERE c.shop_id=$1 AND c.order_id=o.id AND c.status IN ('requested','awaiting_difference'))
         OR EXISTS(SELECT 1 FROM issue_reports i WHERE i.shop_id=$1 AND i.order_id=o.id AND i.status<>'closed')
         OR EXISTS(SELECT 1 FROM refunds r WHERE r.shop_id=$1 AND r.order_id=o.id AND r.amount>0 AND r.sent_at IS NULL)
-        OR EXISTS(SELECT 1 FROM owner_tasks t WHERE t.shop_id=$1 AND t.order_id=o.id AND t.closed_at IS NULL)
+        OR EXISTS(SELECT 1 FROM owner_tasks t WHERE t.shop_id=$1 AND t.closed_at IS NULL AND (
+          t.order_id=o.id OR EXISTS(SELECT 1 FROM payment_requests tp WHERE tp.shop_id=$1 AND tp.id=t.payment_request_id AND tp.order_id=o.id)))
         OR EXISTS(SELECT 1 FROM handoffs h WHERE h.shop_id=$1 AND h.status='open' AND (h.order_id=o.id OR h.day_used_order_id=o.id OR h.limit_used_order_id=o.id))
       ) LIMIT 1`,
       [ids],
