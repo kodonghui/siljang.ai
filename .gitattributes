@@ -3,5 +3,19 @@
 docs/records/price-list/2026-11-24-finished/qa-result.json -text whitespace=cr-at-eol
 docs/records/price-list/2026-11-24-finished/screenshot-result.json -text whitespace=cr-at-eol
 
+# TASK-039 실제 저장/권한 원문의 바이트와 해시를 보존한다.
+docs/records/operating-rules/2026-11-24-finished/actual-rules-result.json -text whitespace=cr-at-eol
+docs/records/operating-rules/2026-11-24-finished/runtime-permissions.json -text whitespace=cr-at-eol
+# TASK-021 실제 네이티브 원문 세 파일의 바이트/해시를 보존한다.
+docs/records/operator-login/2026-11-24-finished/preparation-blocked.json -text whitespace=cr-at-eol
+docs/records/operator-login/2026-11-24-finished/runtime-grants-applied.json -text whitespace=cr-at-eol
+docs/records/operator-login/2026-11-24-finished/actual-operator-result.json -text whitespace=cr-at-eol
+docs/records/operator-login/2026-11-24-finished/config-before-otp-recovery.json -text whitespace=cr-at-eol
+docs/records/operator-login/2026-11-24-finished/config-final-otp-route-blocked.json -text whitespace=cr-at-eol
 # TASK-050 고침 전 합성 화면 원문의 바이트/해시를 보존한다.
 docs/records/price-list/2026-11-24-history/qa-before-focus-fix.json -text whitespace=cr-at-eol
+docs/records/operator-alerts/2026-11-24-finished/actual-synthetic-alerts.json -text whitespace=cr-at-eol
+docs/records/operator-alerts/2026-11-24-finished/synthetic-fixture-seed.sql -text whitespace=cr-at-eol
+docs/records/operator-alerts/2026-11-24-finished/synthetic-fixture-cleanup.sql -text whitespace=cr-at-eol
+
+docs/records/price-list/2026-11-24-history/qa-after-focus-fix-v3.json -text whitespace=cr-at-eol
