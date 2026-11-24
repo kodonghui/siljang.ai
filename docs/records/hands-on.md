@@ -2,6 +2,10 @@
 
 실제 배포와 계정 연결에서 확인한 결과를 날짜, 도구, 결과 순서로 남깁니다.
 
+## 2026-11-25 02:54 KST · TASK-039 관찰 결과의 해시 범위
+
+- 검토7139640140의 P3를 처리해 [첨부 관찰/권한 확인 결과](operating-rules/2026-11-24-finished/finished-checks.md)의 SHA-256은 추린 JSON 바이트를 검증한다고 명시했습니다. 실제 HTTP/SQL 전문 해시로 주장하지 않으며 결과 JSON/해시·업무 상태 변경0입니다.
+
 ## 2026-11-25 02:32 KST · TASK-039 실제 버전과 역할 확인
 
 - 학원컴 Aside CLI 정상 UI의 [원문 두 저장201/같은값200·현재/이전GET200](operating-rules/2026-11-24-finished/finished-checks.md)과 두폭 새로고침·기존가격표 보존을 확인했습니다. 실제권한은 PUBLIC/상속 포함 전체열의규정superseded_at만UPDATE·조문/단계UPDATE/DELETE/TRUNCATE금지이고원장39개/권한변경0입니다.
