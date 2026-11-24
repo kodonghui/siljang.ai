@@ -8,10 +8,20 @@ async function versionRow<T>(
   frozenId: string | undefined,
   version: number | undefined,
 ): Promise<T | undefined> {
-  const columns = table === "price_lists" ? "id,version" : "id,version,quote_valid_hours";
-  const condition = frozenId !== undefined ? "id=$2" : version === undefined ? "superseded_at IS NULL" : "version=$2";
+  const sql =
+    table === "price_lists"
+      ? frozenId !== undefined
+        ? "SELECT id,version FROM price_lists WHERE shop_id=$1 AND id=$2"
+        : version === undefined
+          ? "SELECT id,version FROM price_lists WHERE shop_id=$1 AND superseded_at IS NULL"
+          : "SELECT id,version FROM price_lists WHERE shop_id=$1 AND version=$2"
+      : frozenId !== undefined
+        ? "SELECT id,version,quote_valid_hours FROM operating_rules WHERE shop_id=$1 AND id=$2"
+        : version === undefined
+          ? "SELECT id,version,quote_valid_hours FROM operating_rules WHERE shop_id=$1 AND superseded_at IS NULL"
+          : "SELECT id,version,quote_valid_hours FROM operating_rules WHERE shop_id=$1 AND version=$2";
   const params = frozenId !== undefined ? [frozenId] : version === undefined ? [] : [version];
-  return (await db.run<T>(`SELECT ${columns} FROM ${table} WHERE shop_id=$1 AND ${condition}`, params)).rows[0];
+  return (await db.run<T>(sql, params)).rows[0];
 }
 
 interface Option {
