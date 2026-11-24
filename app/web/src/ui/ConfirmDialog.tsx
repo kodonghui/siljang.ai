@@ -2,7 +2,7 @@
 // - 열면 첫 버튼('돌아가기', 아무것도 바꾸지 않는 쪽)에 포커스. Tab·Shift+Tab은 창 안에서 돎(포커스 가둠).
 // - Esc는 '돌아가기'와 같음. 닫히면 열기 전 포커스가 있던 곳(누른 버튼)으로 돌아감.
 // - 버튼은 '돌아가기'와 액션 이름 둘. '취소'만 있는 창은 쓰지 않음(설계 재검토 M19).
-import { type ReactNode, type SyntheticEvent, useEffect, useId, useRef } from "react";
+import { type ReactNode, type RefObject, type SyntheticEvent, useEffect, useId, useRef } from "react";
 import { type ConfirmationNeeded, confirmText, ERROR_CODES } from "../problems";
 import { Button } from "./Button";
 import { keepFocusInside } from "./focus";
@@ -18,6 +18,8 @@ export interface ConfirmDialogProps {
   readonly confirmDisabled?: boolean;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
+  /** 사진 갱신으로 열기 버튼이 사라지면 화면 안에 남아 있는 곳으로 돌아간다. */
+  readonly fallbackFocus?: RefObject<HTMLElement | null>;
 }
 
 export function ConfirmDialog({
@@ -28,9 +30,12 @@ export function ConfirmDialog({
   confirmDisabled = false,
   onConfirm,
   onCancel,
+  fallbackFocus,
 }: ConfirmDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
+  const fallback = useRef(fallbackFocus);
+  fallback.current = fallbackFocus;
   const closingByUs = useRef(false);
   const titleId = useId();
   const bodyId = useId();
@@ -53,6 +58,7 @@ export function ConfirmDialog({
       const back = returnTo.current;
       returnTo.current = null;
       if (back?.isConnected) back.focus();
+      else if (fallback.current?.current?.isConnected) fallback.current.current.focus();
     },
     [],
   );
@@ -64,6 +70,7 @@ export function ConfirmDialog({
     const back = returnTo.current;
     returnTo.current = null;
     if (back?.isConnected) back.focus();
+    else if (fallback.current?.current?.isConnected) fallback.current.current.focus();
     // 브라우저가 스스로 닫았으면(예: 잇달아 누른 Esc라 cancel을 막지 못함) 화면 상태도 '돌아가기'로 맞춤
     if (!byUs) onCancel();
   };

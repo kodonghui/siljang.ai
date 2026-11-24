@@ -40,6 +40,7 @@ export function PublicBookingScreen() {
 }
 function BookingDetails({ slug }: { readonly slug: string }) {
   const wide = useWide();
+  const title = useRef<HTMLHeadingElement>(null);
   const pending = useRef(true),
     photoRetried = useRef(false),
     cooldownUntil = useRef(0),
@@ -184,7 +185,9 @@ function BookingDetails({ slug }: { readonly slug: string }) {
   return (
     <main className="public-booking">
       <header>
-        <h1>{page?.shop.name ?? "예약 링크 페이지"}</h1>
+        <h1 ref={title} tabIndex={-1}>
+          {page?.shop.name ?? "예약 링크 페이지"}
+        </h1>
         {page?.shop.pickupAddress ? <p>픽업 장소 · {page.shop.pickupAddress}</p> : null}
       </header>
       {load.loading && page === null ? (
@@ -332,6 +335,7 @@ function BookingDetails({ slug }: { readonly slug: string }) {
         confirmLabel="사진 보기 마치기"
         onCancel={() => setSelected(null)}
         onConfirm={() => setSelected(null)}
+        fallbackFocus={title}
       >
         {selected ? (
           <img

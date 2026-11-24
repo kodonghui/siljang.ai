@@ -1,0 +1,58 @@
+{
+  "확인시각": "2026-11-24T17:18:52.732Z",
+  "단계": "정상SQL편집기읽기전용유효권한확인완료",
+  "읽기전용": true,
+  "PUBLIC와상속포함유효검사": true,
+  "모든실제열pg_attribute대조": true,
+  "테이블": [
+    {
+      "DELETE": false,
+      "INSERT": true,
+      "SELECT": true,
+      "TRUNCATE": false,
+      "테이블": "public.operating_rules",
+      "실제열수": 13,
+      "UPDATE테이블": false,
+      "UPDATE어느실제열": true,
+      "모든실제열INSERT": true,
+      "모든실제열SELECT": true,
+      "유효UPDATE허용열": [
+        "superseded_at"
+      ]
+    },
+    {
+      "DELETE": false,
+      "INSERT": true,
+      "SELECT": true,
+      "TRUNCATE": false,
+      "테이블": "public.refund_tiers",
+      "실제열수": 6,
+      "UPDATE테이블": false,
+      "UPDATE어느실제열": false,
+      "모든실제열INSERT": true,
+      "모든실제열SELECT": true,
+      "유효UPDATE허용열": []
+    },
+    {
+      "DELETE": false,
+      "INSERT": true,
+      "SELECT": true,
+      "TRUNCATE": false,
+      "테이블": "public.rule_clauses",
+      "실제열수": 8,
+      "UPDATE테이블": false,
+      "UPDATE어느실제열": false,
+      "모든실제열INSERT": true,
+      "모든실제열SELECT": true,
+      "유효UPDATE허용열": []
+    }
+  ],
+  "원장등록수": 39,
+  "원장39변경없음": true,
+  "필수SELECT_INSERT모두있음": true,
+  "허용열과금지권한모두기대일치": true,
+  "권한변경수": 0,
+  "업무행조회수": 0,
+  "업무행변경수": 0,
+  "모델메일카카오결제실행수": 0
+}

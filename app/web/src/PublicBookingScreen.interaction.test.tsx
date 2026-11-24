@@ -268,3 +268,43 @@ it("같은 가격표의 도안은 새 서명 주소로 창을 유지하고 가�
   });
   expect(screen.queryByRole("dialog")).toBeNull();
 });
+it("정기 조회로 포트폴리오가 철회되어 사진 창이 닫히면 가게 제목으로 초점을 돌린다", async () => {
+  useRefreshClock();
+  mount();
+  await act(async () => {});
+  const opener = screen.getByRole("button", { name: "포트폴리오 사진 1 크게 보기" });
+  opener.focus();
+  fireEvent.click(opener);
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  value.portfolio = [];
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(opener.isConnected).toBe(false);
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: value.shop.name }));
+});
+it("사진 오류로 열기 버튼이 사라져도 창을 닫은 뒤 가게 제목에 초점을 둔다", async () => {
+  mount();
+  await screen.findByRole("heading", { name: value.shop.name });
+  const opener = screen.getByRole("button", { name: "포트폴리오 사진 1 크게 보기" });
+  opener.focus();
+  fireEvent.click(opener);
+  result = () => new Promise(() => {});
+  await act(async () => {
+    fireEvent.error(within(screen.getByRole("dialog")).getByRole("img"));
+  });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(opener.isConnected).toBe(false);
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: value.shop.name }));
+});
+it("수동으로 사진 창을 마치면 그대로 남은 열기 버튼으로 초점을 돌린다", async () => {
+  mount();
+  await screen.findByRole("heading", { name: value.shop.name });
+  const opener = screen.getByRole("button", { name: "포트폴리오 사진 1 크게 보기" });
+  opener.focus();
+  fireEvent.click(opener);
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "사진 보기 마치기" }));
+  await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(document.activeElement).toBe(opener);
+});
