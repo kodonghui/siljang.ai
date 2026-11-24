@@ -271,10 +271,17 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     expect(response.headers.get("Siljang-Outcome")).not.toBe("server_error");
     expect(policy).not.toHaveBeenCalled();
   });
-  it("정책 읽기가 실패해도 새 스티커 수신은 고지 없는 기존 안내를 지킨다", async () => {
-    vi.spyOn(policyCurrent, "currentPrivacyPolicy").mockRejectedValue(
-      Object.assign(new DatabaseError("합성 정책 읽기 실패"), { code: "40001", name: "error" }),
-    );
+  it.each([
+    {
+      label: "PostgreSQL",
+      error: Object.assign(new DatabaseError("합성 정책 읽기 실패"), { code: "40001", name: "error" }),
+      errorName: "DatabaseError",
+      dbCode: "40001",
+    },
+    { label: "일반 오류", error: new RangeError("합성 정책 읽기 실패"), errorName: "RangeError", dbCode: undefined },
+    { label: "오류 객체 외", error: "합성 정책 읽기 실패", errorName: "Error", dbCode: undefined },
+  ])("정책 읽기 실패 경고에 표준 오류 이름과 요청 ID만 남긴다($label)", async ({ error, errorName, dbCode }) => {
+    vi.spyOn(policyCurrent, "currentPrivacyPolicy").mockRejectedValue(error);
     const response = await immediate(newUuid(), "");
     expect(response.headers.get("Siljang-Outcome")).not.toBe("server_error");
     expect(await response.text()).not.toContain("AI가 상담합니다");
@@ -283,11 +290,16 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
         expect.objectContaining({
           event: "kakao_disclosure_policy_failed",
           code: "policy_unavailable",
-          errorName: "error",
-          dbCode: "40001",
+          errorName,
+          traceId: expect.stringMatching(/^[0-9a-f]{32}$/),
+          ...(dbCode === undefined ? {} : { dbCode }),
         }),
       ]),
     );
+    const warning = policyLogs.lines
+      .map((line) => JSON.parse(line))
+      .find((line) => line.event === "kakao_disclosure_policy_failed");
+    expect(warning?.dbCode).toBe(dbCode);
     expect(policyLogs.lines.join("\n")).not.toContain("합성 정책 읽기 실패");
   });
   it("AI 설정이 있으면 마스킹 실패의 첫 넘김 안내에도 고지를 붙인다", async () => {

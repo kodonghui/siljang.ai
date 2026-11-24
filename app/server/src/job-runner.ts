@@ -23,6 +23,7 @@
  */
 import { type Queryable, type RequestDb, sqlStateOf } from "./db";
 import { DUE_SOURCES, type DueSource, type DueSourceName, FIND_SHAPE, LAST_DAILY_RUN } from "./due-sources";
+import { errorNameOf } from "./error-name";
 import type { LogFields, LogLevel } from "./log";
 import { type OpsEventKind, recordOpsEvent } from "./ops-events";
 import { createShopScope, type ShopDb, shopDb } from "./shop-scope";
@@ -261,11 +262,6 @@ function lockKey(name: string): number {
     h = Math.imul(h, 0x01000193);
   }
   return h | 0;
-}
-
-function errorNameOf(err: unknown): string {
-  if (sqlStateOf(err) !== undefined) return "DatabaseError";
-  return err instanceof Error ? err.name : "Error";
 }
 
 function logFailure(log: JobLog, event: string, job: string, err: unknown, itemId?: string): void {

@@ -1,4 +1,5 @@
 import { sqlStateOf } from "./db";
+import { errorNameOf } from "./error-name";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import { readKakaoInboundDisclosurePolicy } from "./kakao-ai-disclosure";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
@@ -53,8 +54,9 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
       const dbCode = sqlStateOf(error);
       r.log("warn", {
         event: "kakao_disclosure_policy_failed",
+        traceId: r.traceId,
         code: "policy_unavailable",
-        errorName: error instanceof Error ? error.name : "UnknownError",
+        errorName: errorNameOf(error),
         ...(dbCode === undefined ? {} : { dbCode }),
       });
     });
