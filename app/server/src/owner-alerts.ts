@@ -56,6 +56,13 @@ async function stop(db: ShopDb, id: string, code: "not_friend" | "cannot_send" |
   ]);
 }
 
+async function releaseBatch(db: ShopDb, id: string, now: Date) {
+  await db.run(
+    "UPDATE owner_alerts SET status='pending',batched_into_id=NULL,next_attempt_at=GREATEST(created_at+interval '1 minute',$3::timestamptz) WHERE shop_id=$1 AND batched_into_id=$2 AND status='batched'",
+    [id, now],
+  );
+}
+
 export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandler<Prepared, Observed> {
   if (!/^[0-9a-f]{24}$/i.test(options.botId)) throw new TypeError("invalid owner alert bot");
   const origin = new URL(options.origin);
@@ -87,6 +94,7 @@ export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandl
           (row.owner_task_id !== null && (row.task_kind === null || row.task_closed_at !== null))
         ) {
           await stop(db, row.id, "cannot_send");
+          await releaseBatch(db, row.id, ctx.now);
           return null;
         }
         if (row.attempts >= 4) {
@@ -119,10 +127,7 @@ export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandl
         const content = await ownerAlertContent(db, row, origin);
         if (content === null) {
           await stop(db, row.id, "cannot_send");
-          await db.run(
-            "UPDATE owner_alerts SET status='pending',batched_into_id=NULL,next_attempt_at=GREATEST(created_at+interval '1 minute',$3::timestamptz) WHERE shop_id=$1 AND batched_into_id=$2 AND status='batched'",
-            [row.id, ctx.now],
-          );
+          await releaseBatch(db, row.id, ctx.now);
           return null;
         }
         await db.run("UPDATE owner_alerts SET attempts=attempts+1,next_attempt_at=$3 WHERE shop_id=$1 AND id=$2", [

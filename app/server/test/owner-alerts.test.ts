@@ -212,6 +212,50 @@ describeDb("사장님 알림 실행기(TASK-072)", () => {
       { status: "sent" },
     ]);
   });
+  it("재시도 전에 대표 할 일만 닫혀도 묶인 열린 할 일의 알림은 다시 보낸다", async () => {
+    const headTask = newUuid(),
+      peerTask = newUuid();
+    for (const [id, offset] of [
+      [headTask, 0],
+      [peerTask, 30000],
+    ] as const) {
+      const at = new Date(NOW.getTime() + offset);
+      await isolated.db.query(
+        "INSERT INTO owner_tasks(id,shop_id,kind,event_key,opened_at) VALUES($1,$2,'ledger_relink',$3,$4)",
+        [id, shop.shopId, `task:ledger_relink:${id}`, at],
+      );
+    }
+    const head = await alert("new_task", headTask),
+      peer = await alert("new_task", peerTask, new Date(NOW.getTime() + 30000));
+    request.mockResolvedValueOnce({
+      kind: "failed",
+      code: "kakao_error",
+      retryable: true,
+      disableChannel: false,
+      attention: null,
+    });
+    now = new Date(NOW.getTime() + 60000);
+    await run();
+    expect(request).toHaveBeenCalledOnce();
+    expect(
+      (await isolated.db.query("SELECT status,batched_into_id FROM owner_alerts WHERE id=$1", [peer])).rows,
+    ).toEqual([{ status: "batched", batched_into_id: head }]);
+    await isolated.db.query("UPDATE owner_tasks SET closed_at=$2 WHERE id=$1", [
+      headTask,
+      new Date(NOW.getTime() + 90000),
+    ]);
+    now = new Date(NOW.getTime() + 120000);
+    await run();
+    await run();
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request.mock.calls[1]?.[0].alertKey).toBe(peer);
+    expect(
+      (await isolated.db.query("SELECT status,batched_into_id FROM owner_alerts WHERE id=$1", [peer])).rows,
+    ).toEqual([{ status: "confirming", batched_into_id: null }]);
+    expect((await isolated.db.query("SELECT closed_at FROM owner_tasks WHERE id=$1", [peerTask])).rows).toEqual([
+      { closed_at: null },
+    ]);
+  });
   it("대표 알림의 대상이 없으면 함께 묶인 유효 알림은 다음 시각에 따로 보낸다", async () => {
     const head = await alert("change_not_applied");
     await isolated.db.query("UPDATE owner_alerts SET event_key=$2 WHERE id=$1", [
