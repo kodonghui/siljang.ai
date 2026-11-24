@@ -31,15 +31,35 @@ export async function buildOwnerTasks(repositoryRoot, destination) {
 		const tasks =
 			api.paths["/owner/tasks"].get.responses[200].content["application/json"]
 				.examples;
+		const operations = {
+			me: api.paths["/owner/me"].get,
+			tasks: api.paths["/owner/tasks"].get,
+			fallback: api.paths["/owner/operating-rules/versions/{version}"].get,
+		};
+		const problemSamples = {};
+		for (const [name, operation] of Object.entries(operations)) {
+			const samples = {};
+			for (const response of Object.values(operation.responses)) {
+				for (const example of Object.values(
+					response.content?.["application/problem+json"]?.examples ?? {},
+				)) samples[example.value.code] ??= example.value;
+			}
+			problemSamples[name] = samples;
+		}
 		const entry = `import ${JSON.stringify(root + "/app/web/src/styles")};import ${JSON.stringify(root + "/app/web/src/styles/fonts")};
 import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {MemoryRouter,useNavigate} from 'react-router';import {App} from ${JSON.stringify(root + "/app/web/src/App")};
 const meExamples=${JSON.stringify(me)},taskExamples=${JSON.stringify(tasks)};
+const problemSamples=${JSON.stringify(problemSamples)};
 let state='normal',count={me:0,tasks:0,more:0,logout:0,rejected:0},refresh=()=>{},shopGone=false,sessionGone=false;
-const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
-const problem=(code,status)=>json({code,traceId:'0123456789abcdef0123456789abcdef'},status);
+const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+const problem=(code,status,operation='tasks')=>{
+ const sample=problemSamples[operation][code];
+ if(!sample||sample.status!==status)throw new Error('Unknown synthetic problem');
+ return new Response(JSON.stringify(structuredClone(sample)),{status,headers:{'Content-Type':'application/problem+json','Cache-Control':'no-store'}});
+};
 globalThis.fetch=async(input,init)=>{const path=String(input),q=new URL(path,'http://example.org').searchParams,current=state;
  if(path==='/api/owner/session'&&init?.method==='DELETE'){count.logout++;sessionGone=true;refresh();return new Response(null,{status:204});}
- if(path==='/api/owner/me'){count.me++;refresh();if(count.me>1&&current==='tab-slow')await new Promise(r=>setTimeout(r,4500));if(count.me>1&&current==='recheck-pending')return new Promise(()=>{});if(count.me>1&&current==='recheck-error')return problem('internal',500);if(count.me>1&&['account-switch','session-race'].includes(current))await new Promise(r=>setTimeout(r,1500));if(sessionGone||current==='me-permission')return problem('unauthenticated',401);if(current==='me-error')return problem('internal',500);let v=structuredClone(meExamples[current==='not-sent'?'not_friend':current==='friend'?'friend':'mvp'].value);v.shop.name='합성 할 일 가게';if(['account-switch','session-race'].includes(current)&&count.me>1){v.owner.ownerId='00000000-0000-4000-8000-000000009901';v.shop.shopId='00000000-0000-4000-8000-000000009902';v.shop.name='새 합성 가게';}if(shopGone||current==='no-shop')v=structuredClone(meExamples.no_shop.value);if(current==='hold'){v.shop.licenseStatus='on_hold';v.banners=['license_on_hold'];}if(current==='banners')v.banners=['license_pending','license_on_hold','booking_link_not_ready','ledger_relink'];return json(v);}
+ if(path==='/api/owner/me'){count.me++;refresh();if(count.me>1&&current==='tab-slow')await new Promise(r=>setTimeout(r,4500));if(count.me>1&&current==='recheck-pending')return new Promise(()=>{});if(count.me>1&&current==='recheck-error')return problem('internal',500,'me');if(count.me>1&&['account-switch','session-race'].includes(current))await new Promise(r=>setTimeout(r,1500));if(sessionGone||current==='me-permission')return problem('unauthenticated',401,'me');if(current==='me-error')return problem('internal',500,'me');let v=structuredClone(meExamples[current==='not-sent'?'not_friend':current==='friend'?'friend':'mvp'].value);v.shop.name='합성 할 일 가게';if(['account-switch','session-race'].includes(current)&&count.me>1){v.owner.ownerId='00000000-0000-4000-8000-000000009901';v.shop.shopId='00000000-0000-4000-8000-000000009902';v.shop.name='새 합성 가게';}if(shopGone||current==='no-shop')v=structuredClone(meExamples.no_shop.value);if(current==='hold'){v.shop.licenseStatus='on_hold';v.banners=['license_on_hold'];}if(current==='banners')v.banners=['license_pending','license_on_hold','booking_link_not_ready','ledger_relink'];return json(v);}
  if(path.startsWith('/api/owner/tasks?')){count.tasks++;if(q.has('cursor'))count.more++;refresh();if(current==='session-race'){const expected=new Headers(init?.headers).get('X-Expected-Shop-Id');if(expected!==null&&expected!=='00000000-0000-4000-8000-000000009902'){count.rejected++;refresh();return problem('unauthenticated',401);}}if(current==='loading')return new Promise(()=>{});if(current==='slow-more'&&q.has('cursor'))await new Promise(r=>setTimeout(r,4000));if(init?.signal?.aborted)throw new DOMException('Aborted','AbortError');
   if(current==='permission'){sessionGone=true;return problem('unauthenticated',401);}if(current==='task-no-shop'){shopGone=true;return problem('shop_not_registered',404);}if(current==='validation')return problem('validation_failed',422);if(current==='error'||(current==='more-error'&&q.has('cursor')&&count.more===1))return problem('internal',500);
   let v=structuredClone(taskExamples[current==='not-sent'?'not_friend':'open_tasks'].value);if(current==='empty')v.items=[];if((current==='account-switch'&&count.me>1)||current==='session-race')v.items=[{...v.items[0],taskId:'00000000-0000-4000-8000-000000009903',summary:'새 가게 할 일'}];if(current==='order-numbers')v.items=v.items.slice(0,2).map((t,i)=>({...t,order:{...(t.order??v.items[0].order),orderNo:i===0?'A1B2C3D':'A1B2C3D4'}}));
@@ -51,7 +71,7 @@ globalThis.fetch=async(input,init)=>{const path=String(input),q=new URL(path,'ht
   if(current==='maximum')v.items=Array.from({length:100},(_,i)=>({...structuredClone(v.items[i%v.items.length]),taskId:'00000000-0000-4000-8000-'+String(i+1).padStart(12,'0'),summary:'합성 할 일 '+(i+1)}));
   return json(v);
  }
- return problem('not_found',404);
+ return problem('not_found',404,'fallback');
 };
 function IdentityProbe(){const navigate=useNavigate();return <button className='ui-button ui-button--secondary' type='button' onClick={()=>navigate('/owner?limit=19')}>합성 신원 재확인 경로로 이동</button>;}
 function Fixture(){const[g,next]=useState(0),[,tick]=useState(0);refresh=()=>tick(v=>v+1);const path=state==='invalid'?'/owner?status=unknown':state==='maximum'?'/owner?limit=100':state==='closed'?'/owner?status=closed':'/owner';return <><aside className='qa-control'><label>시험 상태<select value={state} onChange={e=>{state=e.target.value;count={me:0,tasks:0,more:0,logout:0,rejected:0};shopGone=sessionGone=false;next(v=>v+1)}}>{['normal','loading','empty','error','not-sent','permission','stale','friend','me-error','me-permission','no-shop','task-no-shop','validation','invalid','closed','more','more-error','slow-more','banners','hold','long','maximum','no-target','order-numbers','recheck-pending','recheck-error','account-switch','tab-slow','session-race'].map(v=><option key={v}>{v}</option>)}</select></label><button className='ui-button ui-button--secondary' type='button'>합성 다른 초점</button><p>공개 합성 응답 · 내 정보 {count.me} · 할 일 {count.tasks} · 추가 {count.more} · 가게 불일치 거절 {count.rejected} · 실제 서비스 쓰기 없음</p></aside><MemoryRouter key={g} initialEntries={[path]}>{['recheck-pending','recheck-error','account-switch'].includes(state)?<IdentityProbe/>:null}<App/></MemoryRouter></>};createRoot(document.getElementById('root')).render(<Fixture/>);`;
