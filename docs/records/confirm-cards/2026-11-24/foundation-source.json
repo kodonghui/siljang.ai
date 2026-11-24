@@ -1,0 +1,32 @@
+{
+  "localTestCommit": "e69fcdd59d595b0c9809d0ca9f961a8c97754bc1",
+  "publishedWipHead": "b73fa81c2447f5d86dad82a5cda78ad50d3c32d1",
+  "wholeTree": "919157baeadf792ffd288bb9adf0d4c514913023",
+  "wholeTreeEqual": true,
+  "localFull": {
+    "migrations": 36,
+    "serverFiles": 120,
+    "serverTests": 2427,
+    "webFiles": 65,
+    "webTests": 1570,
+    "webBuild": "1.26s",
+    "testExit": 0,
+    "buildExit": 0,
+    "install": "added 161 packages in 13s",
+    "typecheckExit": 0,
+    "lint": "Checked 502 files in 871ms. No fixes applied.",
+    "workerDryRun": [
+      {
+        "config": "wrangler.jsonc",
+        "exit": 0,
+        "output": "--dry-run: exiting now."
+      },
+      {
+        "config": "wrangler.storage-batches.jsonc",
+        "exit": 0,
+        "output": "--dry-run: exiting now."
+      }
+    ]
+  },
+  "scope": "공통 카드 기반의 합성 시험. 실제 API-070 상담·콜백의 card_shown과 업무 명령은 미연결이며 TASK-081 완료를 표시하지 않습니다."
+}

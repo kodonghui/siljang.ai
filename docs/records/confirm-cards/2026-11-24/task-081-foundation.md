@@ -15,3 +15,9 @@ API-070 공통 card_shown 렌더러는 SkillTemplateResponse 스키마와 저장
 | API-071 | declined·card_stale·card_expired·card_not_yours·card_used와401·422·default500 | 실제 업무 명령 등록 |
 | 결과 원자성 | 쓰기 뒤 실패·실행하지 못한 결과는 되돌림, 사용 뒤 초안 제출에도 첫 결과 보존, 별도 연결 동시 누름1건 | 실제 계정 시험 |
 | 최소 권한 | 카드 INSERT와 결과3열 UPDATE 허용, 키·사용자·버전·기한·연결·DELETE 차단 | 실제 스테이징 적용 |
+
+TASK-081 공통 기반의 로컬 원본e69fcdd59d595b0c9809d0ca9f961a8c97754bc1과 공개 WIP b73fa81c2447f5d86dad82a5cda78ad50d3c32d1은 전체 Git 트리919157baeadf792ffd288bb9adf0d4c514913023으로 같습니다. 새 빈 PostgreSQL 마이그레이션36개, 서버 Test Files 120 passed (120)·Tests 2427 passed (2427), 웹 Test Files 65 passed (65)·Tests 1570 passed (1570), 웹 built in 1.26s, 두 Worker --dry-run: exiting now.이며 시험·빌드 종료는 모두0입니다. 설치 added 161 packages in 13s, 타입 종료0, lint502파일871ms·진단0입니다.
+
+실제 명령이 없는 API-071은 retry_needed이고 카드를 쓰지 않습니다. 카드의 공통 card_shown 응답은 렌더러·스키마 시험이며 실제 API-070 상담·콜백의 전달 성공으로 세지 않습니다. 이 방어를 유지한 공통 기반 PR을 검토받고, TASK-069 소비자와 각 업무 명령을 연결한 뒤 TASK-081 전체 수락 조건을 다시 대조합니다. finished나 구현 완료를 표시하지 않습니다.
+
+최신 main43ba212d56286fafe386f5742703a7188f26dabe의 문서·상태표를 반영했고 제품 다섯 경로는 검사 원본과 같습니다. 현재 끝남37개·구현 완료22개이며 TASK-081은 포함하지 않습니다. main233의 CI·배포 확인은 진행 중입니다. main231·232의 실제 Actions Wrangler 증거를 보존하되 학원컴·저장소 활성 태그의 별도 직접 재조회, 카드 새 권한의 스테이징 적용은 미확인입니다. 실제 모델·카카오·구글·결제0회입니다.

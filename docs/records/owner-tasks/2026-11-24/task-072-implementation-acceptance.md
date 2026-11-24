@@ -1,0 +1,13 @@
+# TASK-072 구현 완료 등록 대조
+
+TASK-072의 WBS 조건과 SPEC-067 #1~#6, API-040 응답별 시험을 기존 수락 대조와 main 증거로 확인해 구현 완료 표의 마지막에 등록합니다. PR #231의 로컬 전체 검사 원본9c8b9b97fcd3e2e498bad3ffab085487b9f9601b·공개 head6354c25c035bd94eccd88a00f55c54e60a8e455c·squash main4732b667712b232848af67359aa9095d1977575a는 전체 Git 트리가 f79ae9cec985075aa367c2d00aadc3dbefc194f4로 같습니다. 로컬 커밋은 공개 커밋이 아니며 implementation-source.json에서 대응을 보존합니다.
+
+코드 조건은 API-040의200·401·404·422·default, 같은 가게·소유자 재확인·허용 필드·접속기록과 커서, 여섯 종류의 공통 알림 처리, 기본 중단·최소 권한·동시 실행·임대·오래된 결과와 대표 종료 재처리로 대조했습니다. 상위 취소·변경 업무 자체는 담당 작업에 남으며 이 PR이 그것을 구현했다고 세지 않습니다. main4732b66의 app45330983441·db45330983662·배포138233681269 성공과 실제 버전9d626247-b2b6-4240-b3e7-1189311ac319의 전체 태그·활성100%·health200·원격 SHA를 확인했습니다. GitHub Actions의 실제 Wrangler 조회 기준입니다. 학원컴의 별도 재조회와 저장소 Worker 활성 태그의 직접 재조회는 기존 도구 시간초과로 미확인입니다. PR #230 main6e86814의 CI·배포·health200 증거는 docs/records/owner-tasks/2026-11-24/main230-deployment.json에 보존했습니다.
+
+설치 added 161 packages in 25s, 타입 종료0, lint497파일719ms, 새 빈 DB35마이그레이션·서버117파일2400개·웹65파일1570개·웹 빌드774ms·두 Worker가 모두 종료0인 기존 동일 제품의 검사 결과를 적용합니다. 이 상태 PR은 앱·권한·스키마를 바꾸지 않고 최종 head CI에서 같은 검사를 다시 확인합니다.
+
+실제 스테이징의 새 최소 권한 적용과 사장님 API·배너는 학원컴 Aside 페이지 제어와 Vault 접근의 기존 시간초과가 풀린 뒤 확인합니다. 우리 서비스 채널·plusfriends·친구 확인·월렛·실제 발신과 오래된 대기 알림 점검은 MVP 결정대로 TASK-167 출시 검토입니다. 확인하지 않은 것을 통과로 세지 않고 발신 기본값 false를 유지하며 finished37개를 바꾸지 않습니다.
+
+구현 완료는21개에서22개가 됩니다. 공식 WBS·task_status 기준의 전체 의존 충족은 등록 전후41개, MVP에서 미룬005·006·013·175를 뺀 시작 가능 작업은 등록 전후37개입니다. TASK-072가 빠지고 TASK-087이 열립니다. 계산 전후와 ID 차이를 implementation-dependencies.json에 남겼습니다. 다음은 이 상태 등록의 검토·CI·병합 직전 한 번의 Codex 요청과 main 확인이며, 그동안 TASK-068 후속과 TASK-081 개발을 계속합니다.
+
+코드 수락 대조의 항목별 근거는 [자동 수락 확인](task-072-acceptance.md)과 서버 owner-tasks·owner-alerts·owner-alert-settings·kakao-owner-event·kakao-runtime-grants 시험입니다. 실제 DB 권한 적용과 채널 발신은 미확인으로 남습니다.
