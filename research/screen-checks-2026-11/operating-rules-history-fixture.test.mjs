@@ -114,3 +114,16 @@ test("추가 최대 목록에서도 현재 버전은 첫 행 하나이고 목록
 			.examples.old_version.value.clauses,
 	);
 });
+
+test("현재 규정으로 돌아가기와 빈 이력의 규정 정하기는 각각 현재/초안을 읽는다", async () => {
+	const examples =
+		api.paths["/owner/operating-rules"].get.responses[200].content[
+			"application/json"
+		].examples;
+	await check("normal", "/owner/operating-rules", examples.current.value);
+	await check("empty", "/owner/operating-rules", examples.template.value);
+});
+
+test("빈 이력의 직접 옛 상세도 같은 빈 데이터에서404로 거절한다", async () => {
+	await check("empty", listPath + "/1", example(detailPath, "not_found"), 404);
+});

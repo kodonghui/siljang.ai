@@ -1,0 +1,11 @@
+{
+  "archive": "siljang-qa051-rules-v4-20261124.zip",
+  "bytes": 9059106,
+  "sha256": "0b622e65efd1d8b1c1170ceebe64898ca61c58c35bc4992a7175c8142e7e2b16",
+  "scope": "이미 전달한 V4 준비 자료의 로컬 원본 해시. 실제 최종 화면 결과/원문 수집이나 현재 접속 성공이 아님",
+  "nativeFinalResultCollected": false,
+  "nativeState": "마지막 성공 조회에서 기존 D4가051 진행 중. 현재 SSH 인증 전 시간 초과로 지시/진행/최종 정지ACK 수집 보류",
+  "newPortableV5Transfer": false,
+  "newPortableV5BrowserRun": false,
+  "guard": "기존 D4 진행/대기열·정지ACK부터 읽고 중복 전송/실행하지 않음. 학원컴 Aside CLI만/새agent 금지"
+}

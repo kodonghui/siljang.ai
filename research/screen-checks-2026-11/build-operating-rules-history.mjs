@@ -36,6 +36,10 @@ export async function buildOperatingRulesHistory(repositoryRoot, destination) {
 			api.paths["/owner/operating-rules"].get.responses[200].content[
 				"application/json"
 			].examples.current.value;
+		const template =
+			api.paths["/owner/operating-rules"].get.responses[200].content[
+				"application/json"
+			].examples.template.value;
 		const me =
 			api.paths["/owner/me"].get.responses[200].content["application/json"]
 				.examples.mvp.value;
@@ -55,16 +59,17 @@ export async function buildOperatingRulesHistory(repositoryRoot, destination) {
 			problemSamples[name] = samples;
 		}
 		const entry = `import ${JSON.stringify(root + "/app/web/src/styles")};import ${JSON.stringify(root + "/app/web/src/styles/fonts")};import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {BrowserRouter,Routes,Route} from 'react-router';import {OwnerArea} from ${JSON.stringify(root + "/app/web/src/OwnerArea")};
-const listExamples=${JSON.stringify(listExamples)},old=${JSON.stringify(old)},current=${JSON.stringify(current)},profile=${JSON.stringify(me)},problemSamples=${JSON.stringify(problemSamples)};
+const listExamples=${JSON.stringify(listExamples)},old=${JSON.stringify(old)},current=${JSON.stringify(current)},template=${JSON.stringify(template)},profile=${JSON.stringify(me)},problemSamples=${JSON.stringify(problemSamples)};
 let scenario=sessionStorage.getItem('qa052-scenario')||'normal',lists=0,details=0,meReads=0,refresh=()=>{},shopGone=false;
 profile.shop.name='합성 운영규정 가게';
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 const problem=(operation,code,status)=>{const sample=problemSamples[operation][code];if(!sample||sample.status!==status)throw new Error('Unknown synthetic problem');return new Response(JSON.stringify(structuredClone(sample)),{status,headers:{'Content-Type':'application/problem+json','Cache-Control':'no-store'}});};
-function items(){if(['maximum','maximum-slow'].includes(scenario))return {items:Array.from({length:1000},(_,i)=>({version:1000-i,createdAt:new Date(Date.UTC(2026,10,24)-i*60000).toISOString(),supersededAt:i===0?null:new Date(Date.UTC(2026,10,24)-(i-1)*60000).toISOString()}))};return structuredClone(listExamples.versions.value);}
+function items(){if(scenario==='empty')return structuredClone(listExamples.empty.value);if(['maximum','maximum-slow'].includes(scenario))return {items:Array.from({length:1000},(_,i)=>({version:1000-i,createdAt:new Date(Date.UTC(2026,10,24)-i*60000).toISOString(),supersededAt:i===0?null:new Date(Date.UTC(2026,10,24)-(i-1)*60000).toISOString()}))};return structuredClone(listExamples.versions.value);}
 globalThis.fetch=async(input,init)=>{const path=String(input);
  if(path==='/api/owner/me'){meReads++;refresh();if(scenario==='maximum-slow'&&meReads>1)await new Promise(r=>setTimeout(r,4500));if(init?.signal?.aborted)throw new DOMException('Aborted','AbortError');return json({...profile,shop:shopGone?null:profile.shop});}
  if(path==='/api/owner/session'&&init?.method==='DELETE')return new Response(null,{status:204});
- if(path==='/api/owner/operating-rules/versions'){lists++;refresh();if(scenario==='loading')return new Promise(()=>{});if(scenario==='empty')return json(listExamples.empty.value);if(scenario==='permission')return problem('list','unauthenticated',401);if(scenario==='not-registered'){shopGone=true;return problem('list','shop_not_registered',404);}if(scenario==='error')return problem('list','internal',500);return json(items());}
+ if(path==='/api/owner/operating-rules')return json(scenario==='empty'?template:current);
+ if(path==='/api/owner/operating-rules/versions'){lists++;refresh();if(scenario==='loading')return new Promise(()=>{});if(scenario==='permission')return problem('list','unauthenticated',401);if(scenario==='not-registered'){shopGone=true;return problem('list','shop_not_registered',404);}if(scenario==='error')return problem('list','internal',500);return json(items());}
  if(path.startsWith('/api/owner/operating-rules/versions/')){details++;refresh();if(scenario==='detail-loading')return new Promise(()=>{});if(scenario==='detail-error')return problem('detail','internal',500);if(scenario==='detail-permission')return problem('detail','unauthenticated',401);if(scenario==='not-found')return problem('detail','not_found',404);const version=Number(path.split('/').at(-1)),row=items().items.find(item=>item.version===version);if(!row)return problem('detail','not_found',404);const value=structuredClone(row.supersededAt===null?current:old);Object.assign(value,{version,current:row.supersededAt===null,createdAt:row.createdAt,supersededAt:row.supersededAt});if(['maximum','maximum-slow'].includes(scenario))value.revision='synthetic-v'+version;return json(value);}
  return problem('detail','not_found',404);
 };
@@ -112,7 +117,7 @@ function Fixture(){const[g,next]=useState(0),[,tick]=useState(0);refresh=()=>tic
 			out + "/server.mjs",
 			(await fs.readFile(support + "/server.mjs", "utf8")).replace(
 				"QA054_READY_",
-				"QA052_V7_READY_",
+				"QA052_V8_READY_",
 			),
 		);
 		await fs.appendFile(

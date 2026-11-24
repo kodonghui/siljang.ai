@@ -1,0 +1,21 @@
+{
+  "scope": "실제 생성된 모의 응답 코드의 Node VM 실행. 브라우저/React/실제 서비스 아님. 요청 본문은 실제 웹 rulesForm/rulesPayload를 번들해 생성",
+  "review": 7146083937,
+  "redLocal": "9341e6d922322014586e10faae054700bfa57c47",
+  "redMockResponseCodeUnchanged": "2f4a8aefc71dbd9732e51e9d136d58f692051f06b4fe9abfd8f4a2ff472f777e",
+  "results": {
+    "red": [
+      "# tests 4",
+      "# pass 0",
+      "# fail 4"
+    ],
+    "green": [
+      "# tests 4",
+      "# pass 4",
+      "# fail 0"
+    ]
+  },
+  "browserRun": false,
+  "nativeTransfer": false,
+  "commonSourceGuard": "PR263 공통 고침 main 반영 뒤 이 생성기에 적용 예정"
+}
