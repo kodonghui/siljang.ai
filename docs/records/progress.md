@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-24 11:17 KST · TASK-064 경고 로그 수정 전체 검사 통과
+
+main225 결합 원본 `4b4c0c634db0c99d66c8958a8eadaf284429f19a`의 새 빈 PostgreSQL 전체 검사가 완료됐습니다. 마이그레이션34개, 서버 `Test Files 109 passed (109)`·`Tests 2289 passed (2289)`, 웹 `Test Files 65 passed (65)`·`Tests 1570 passed (1570)`, 웹 `built in 2.01s`, 두 Worker `--dry-run: exiting now.`이며 시험·빌드 종료는 모두 0입니다. 타입과 format 뒤 lint도 종료 0입니다.
+
+PR #224 병합 뒤 발견의 경고 오류 분류·요청 추적 ID만 바꾸고 고지 전달·마스킹·제품 결정은 바꾸지 않았습니다. 준비된 PR에서 코드·보안 검토를 받고 한 번의 병합 직전 수동 검토와 CI 성공 뒤 squash·main 배포를 확인하겠습니다. 실제 스테이징 경고 발생의 관측과 기존 학원컴 직접 재조회 보류는 그대로입니다. 현재 main 완료35개이며 수를 바꾸지 않습니다.
+
 ### 2026-11-24 11:08 KST · TASK-064 경고 로그 main225 결합
 
 main225 `ee3ce8bfea7d32d6b417f82060afac83bc40042f`를 반영했습니다. 경고 로그 수정 원본 `618a48b6134259bff84c62b8d30a47c0dbcc7b72`의 새 빈 PostgreSQL 마이그레이션34개·서버107파일2263건·웹65파일1570건·웹 빌드1.02초·두 Worker 빌드가 통과했습니다. 새 main 결합 뒤 고지·실행기·AI 문맥·제한 역할 네 파일은 `Test Files 4 passed (4)`, `Tests 81 passed (81)`이며 타입과 format 뒤 lint는 종료 0입니다. 결합 원본의 새 전체 검사를 실행합니다.
