@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
-import { quoteDraft } from "../src/quotes";
+import { customerQuote, quoteDraft } from "../src/quotes";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { describeDb, newUuid } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -38,7 +38,7 @@ describeDb("가게 가격표로 계산하는 견적(TASK-067)", () => {
     await isolated?.close();
   });
   const scoped = () => shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "quote" }), isolated.db);
-  const quote = (selection?: { size?: string; design?: string }) =>
+  const quote = (selection?: { size?: string; design?: string; extras?: readonly string[] }) =>
     quoteDraft(scoped(), {
       draftId: shop.draftId,
       sourceMessageId: shop.messageId,
@@ -149,5 +149,118 @@ describeDb("가게 가격표로 계산하는 견적(TASK-067)", () => {
     expect(
       (await isolated.db.query("SELECT order_kind FROM quotes WHERE id=$1", [second.quote.id])).rows[0]?.order_kind,
     ).toBe("custom");
+  });
+  it("범위 옵션의 양끝과 조합 추가금을 합산한다", async () => {
+    await isolated.db.query(
+      "UPDATE price_options SET price_kind='range',amount=1000,amount_max=3000,in_standard=false WHERE id=$1",
+      [shop.designOptionId],
+    );
+    await isolated.db.query("UPDATE order_drafts SET design_option_id=$2 WHERE id=$1", [
+      shop.draftId,
+      shop.designOptionId,
+    ]);
+    const size = (
+      await isolated.db.query<{ size_option_id: string }>("SELECT size_option_id FROM order_drafts WHERE id=$1", [
+        shop.draftId,
+      ])
+    ).rows[0];
+    if (!size) throw new Error("합성 크기가 없어요");
+    const [a, b] = [size.size_option_id, shop.designOptionId].sort();
+    await isolated.db.query(
+      "INSERT INTO price_option_rules (shop_id,price_list_id,rule_kind,option_a_id,option_b_id,amount) VALUES ($1,$2,'surcharge',$3,$4,2000)",
+      [shop.shopId, shop.priceListId, a, b],
+    );
+    expect(await quote()).toMatchObject({
+      kind: "quoted",
+      quote: { amount: 38000, amountMax: 40000, displayKind: "range", orderKind: "custom" },
+    });
+  });
+  it("부터 옵션이 하나라도 있으면 범위보다 우선하고 중복 추가 옵션은 한 번만 더한다", async () => {
+    await isolated.db.query(
+      "UPDATE price_options SET price_kind='range',amount=1000,amount_max=3000,in_standard=false WHERE id=$1",
+      [shop.designOptionId],
+    );
+    await isolated.db.query("UPDATE order_drafts SET design_option_id=$2 WHERE id=$1", [
+      shop.draftId,
+      shop.designOptionId,
+    ]);
+    await isolated.db.query(
+      "INSERT INTO price_options (shop_id,price_list_id,option_group,name,price_kind,amount,in_standard) VALUES ($1,$2,'extra','추가 장식','from',500,false)",
+      [shop.shopId, shop.priceListId],
+    );
+    expect(await quote({ extras: ["추가 장식", "추가 장식"] })).toMatchObject({
+      kind: "quoted",
+      quote: { amount: 36500, amountMax: null, displayKind: "from", orderKind: "custom" },
+    });
+  });
+  it("금지 조합은 금액이나 견적을 만들지 않고 넘긴다", async () => {
+    const selected = (
+      await isolated.db.query<{ size_option_id: string; flavor_option_id: string }>(
+        "SELECT size_option_id,flavor_option_id FROM order_drafts WHERE id=$1",
+        [shop.draftId],
+      )
+    ).rows[0];
+    if (!selected) throw new Error("합성 선택이 없어요");
+    const [a, b] = [selected.size_option_id, selected.flavor_option_id].sort();
+    await isolated.db.query(
+      "INSERT INTO price_option_rules (shop_id,price_list_id,rule_kind,option_a_id,option_b_id) VALUES ($1,$2,'exclude',$3,$4)",
+      [shop.shopId, shop.priceListId, a, b],
+    );
+    expect(await quote()).toEqual({ kind: "cannot_calculate", reason: "combination_excluded" });
+    expect((await isolated.db.query("SELECT id FROM quotes WHERE draft_id=$1", [shop.draftId])).rows).toHaveLength(0);
+  });
+  it("손님에게는 근거·내부 식별자·버전을 주지 않는다", async () => {
+    const result = await quote();
+    if (result.kind !== "quoted") throw new Error("합성 견적이 없어요");
+    expect(customerQuote(result.quote)).toEqual({
+      amount: 35000,
+      amountMax: null,
+      displayKind: "fixed",
+      validUntil: new Date(NOW.getTime() + 72 * 3600000).toISOString(),
+    });
+    expect(Object.keys(customerQuote(result.quote)).sort()).toEqual([
+      "amount",
+      "amountMax",
+      "displayKind",
+      "validUntil",
+    ]);
+  });
+  it("다른 가게의 초안이나 수신 메시지는404이고 견적을 만들지 않는다", async () => {
+    const other = await createShop(isolated.db, "다른 견적 가게");
+    await expect(
+      quoteDraft(scoped(), { draftId: other.draftId, sourceMessageId: shop.messageId, now: NOW }),
+    ).rejects.toMatchObject({ code: "not_found" });
+    await expect(
+      quoteDraft(scoped(), { draftId: shop.draftId, sourceMessageId: other.messageId, now: NOW }),
+    ).rejects.toMatchObject({ code: "not_found" });
+    expect((await isolated.db.query("SELECT id FROM quotes WHERE draft_id=$1", [shop.draftId])).rows).toHaveLength(0);
+  });
+  it("없는 가격표나 운영규정 버전은404이며 견적을 남기지 않는다", async () => {
+    for (const version of [{ priceListVersion: 99 }, { operatingRulesVersion: 99 }])
+      await expect(
+        quoteDraft(scoped(), { draftId: shop.draftId, sourceMessageId: shop.messageId, now: NOW, ...version }),
+      ).rejects.toMatchObject({ code: "not_found" });
+    expect((await isolated.db.query("SELECT id FROM quotes WHERE draft_id=$1", [shop.draftId])).rows).toHaveLength(0);
+  });
+  it("같은 유효 견적은 재사용하고 만료 시각에는 새 견적을 만든다", async () => {
+    const first = await quote(),
+      second = await quote();
+    if (first.kind !== "quoted" || second.kind !== "quoted") throw new Error("합성 견적이 없어요");
+    expect(second.quote).toEqual(first.quote);
+    const expired = await quoteDraft(scoped(), {
+      draftId: shop.draftId,
+      sourceMessageId: shop.messageId,
+      now: new Date(NOW.getTime() + 72 * 3600000),
+    });
+    if (expired.kind !== "quoted") throw new Error("새 합성 견적이 없어요");
+    expect(expired.quote.id).not.toBe(first.quote.id);
+    expect(expired.quote.validUntil).toBe(new Date(NOW.getTime() + 144 * 3600000).toISOString());
+  });
+  it.each([false, true])("알레르기 답은 기본 디자인 판정에서 빼고 제외 재료만 맞춤으로 본다(%s)", async (excluded) => {
+    await isolated.db.query(
+      "UPDATE order_drafts SET allergy_consent='agreed',allergy_consent_version='allergy-v1',allergy_consent_at=$2,allergy_answer='땅콩',excluded_ingredients=$3 WHERE id=$1",
+      [shop.draftId, NOW, excluded ? "호두" : null],
+    );
+    expect(await quote()).toMatchObject({ kind: "quoted", quote: { orderKind: excluded ? "custom" : "standard" } });
   });
 });
