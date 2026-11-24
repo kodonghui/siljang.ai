@@ -1,0 +1,31 @@
+{
+  "sourceCommit": "daf372c6b59645d4da9c05bad5405fbdb160707f",
+  "sourceSha256": "f333d6583c5dfb137b2dafb5f6ca7676f95896f91c489d1ee6e2d9b124313793",
+  "recordedAt": "2026-11-24T15:05:34.622Z",
+  "sourceMatched": true,
+  "editorMatched": true,
+  "executeAttempts": 1,
+  "migrationCount": 39,
+  "indexPresent": true,
+  "refundsFullSelect": false,
+  "refundAccountSelect": false,
+  "refundAccountUpdate": false,
+  "issueDescriptionSelect": false,
+  "issueDescriptionUpdate": false,
+  "requiredColumnReads": {
+    "refunds.id": true,
+    "refunds.amount": true,
+    "refunds.sent_at": true,
+    "refunds.shop_id": true,
+    "issue_details.id": true,
+    "refunds.order_id": true,
+    "issue_reports.status": true,
+    "issue_details.shop_id": true,
+    "issue_details.order_id": true,
+    "issue_details.consultation_id": true
+  },
+  "currentUserIsRuntime": false,
+  "roleArgumentMatched": true,
+  "failureSqlstate": null,
+  "failureClassification": null
+}

@@ -52,3 +52,19 @@ main238의 app45403381126·db45403381035·배포138480504940이 성공했습니�
 같은 넓은 테이블 SELECT를 로컬 역할에 부여한 회귀가1실패/37건너뜀으로 재현됐습니다. 권한 파일에서 refunds의 테이블 전체 SELECT만 회수하고 기존 개별 열 권한과 현재 필요한 id/shop/order/amount/sent_at 읽기는 보존했습니다. 실제 계좌/신고 본문 UPDATE도 열지 않습니다. 고침 뒤 관련4파일169개·타입·형식 다음 엄격lint가 통과했습니다. 새 빈 DB 전체 검사와 고친 권한의 실제 적용/금지 재확인은 아직 남았습니다.0039를 중복 실행하지 않으며 원장/해시를 고치지 않습니다.
 
 main247 CI·실제 배포·전체 태그/활성100%/health200·원격SHA와 이후 앱 네이티브 버전/태그·일곱 이름 확인은 main247-deployment.json에 있습니다. 새 보조 Worker 태그 재조회는 미확인입니다. 이 권한 고침은 앞선 검토 후 추가된 변경이라 공개 head로 Claude 재리뷰를 요청하고 Codex 요청7133401157은 반복하지 않습니다. 실제 Cron/수신 재개와 이전 안내 순서는 자기 구현 완료 행에 남깁니다.
+
+## 고친 권한의 실제 재대조와 전체2607개
+
+공개daf372c6의 생성 SQL73150바이트·SHA256 f333d6583c5dfb137b2dafb5f6ca7676f95896f91c489d1ee6e2d9b124313793를 정상 SQL Editor에 원본/전체 문자열 대조 뒤1회 적용했습니다. 원장39/인덱스는 유지되고 기존0039를 중복 실행하지 않았습니다. 실제 refunds 테이블 전체 SELECT·계좌 열 SELECT/UPDATE·신고 description SELECT/UPDATE가 모두 false이며 필요한10개 열 읽기는 모두 true입니다. 실제 값 없는 결과 actual-refund-narrow.json의 원본 SHA256 321ed22d8dc5df04a03508e8d9ba45c2339cd3cfd6f42b4ba96b84d4dbd17ee1을 대조했습니다. 실행자는runtime이 아니며 명시한 대상 역할을 재확인했습니다. 실패 분류/SQLSTATE는 null입니다.
+
+고정 원본6660db66911fb82a402172c6ae8f07d1bb5d66b2(공개daf372c6·트리ee9c7ada52a054cc4dc1a9a6a202ed911212c839)의 새 빈 PostgreSQL39개 이행에서 다음이 모두 종료0입니다. 이 PR의 설치161패키지13초 이후 의존성/잠금파일은 같아 설치를 반복하지 않았습니다.
+
+```text
+ Test Files  127 passed (127)
+      Tests  2607 passed (2607)
+ Test Files  65 passed (65)
+      Tests  1570 passed (1570)
+✓ built in 824ms
+```
+
+두 Worker 빌드도 종료0입니다. 그 뒤 main248의 운영자 고침/새 리뷰 정책을 결합했습니다. TASK-076 본체/시험/0039/권한 파일은 고정 전체 원본과 같고, 통합한 현재head app/db CI로 추가된 운영자69개와 함께 다시 확인합니다. main248 CI/실제 배포/전체 태그/활성100%/health200/원격SHA는 main248-deployment.json·PR248 댓글7135908971에 있습니다. 그 새 앱의 별도 네이티브 태그 조회는 미확인입니다. 앞선 Claude 재리뷰 요청7134718810은 현행 AGENTS.md8번으로 적용하며 새 head도 실장님에게 전달합니다. 수동 커넥터 요청7133401157은 반복하지 않습니다. 남은 자기 실환경 확인은 실제 Cron 종료·수신 재개/이전 안내 순서이며 finished를 표시하지 않습니다.
