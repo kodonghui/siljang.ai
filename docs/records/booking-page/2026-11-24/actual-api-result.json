@@ -26,6 +26,7 @@
   "privateValuesRecorded": false,
   "modelMessagePaymentCalls": 0,
   "repositoryBase": "215108ba3086a32c851a96f321889b9e7408bf3b",
-  "observedActiveMain": "c40c0429777c01ac3699e8a914051075aee0f744",
-  "observedActiveProof": "main242-deployment.json"
+  "inferredActiveMain": "c40c0429777c01ac3699e8a914051075aee0f744",
+  "inferenceDeploymentProof": "main242-deployment.json",
+  "inferenceBasis": "관측 시각이 main242 배포와 main243 배포 사이임. 응답/학원컴 CLI에서 버전을 재조회하지 않았음"
 }

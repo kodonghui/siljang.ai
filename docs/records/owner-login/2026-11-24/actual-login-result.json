@@ -1,0 +1,16 @@
+{
+  "observedBy": "academy-pc Aside CLI",
+  "main": "1f8af8a285175c38c69590e0c50e46d59b0fb923",
+  "loginObservedAtKst": "2026-11-24 20:24:59 KST",
+  "landingPath": "/owner/shop/new",
+  "landingScreen": "가게 등록 화면",
+  "ownerMeAfterLoginStatus": 200,
+  "logoutObservedAtKst": "2026-11-24 20:25:20 KST",
+  "logoutThroughUi": true,
+  "ownerMeAfterLogoutStatus": 401,
+  "ownerSessionPostStatus": null,
+  "ownerSessionDeleteStatus": null,
+  "unobservedStatuses": "로그인/로그아웃 요청 자체의 HTTP 상태는 관찰하지 않았음",
+  "privateValuesRecorded": false,
+  "appAiMessagePaymentCalls": 0
+}

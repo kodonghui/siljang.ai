@@ -1,6 +1,6 @@
 {
-  "finished": 30,
-  "implemented": 31,
+  "finished": 31,
+  "implemented": 30,
   "all_dependency_ready_count": 40,
   "mvp_deferred": [
     "TASK-005",
@@ -226,5 +226,22 @@
       "name": "운영 계정과 키 만들기: 우리 서비스 채널(사장님 알림), 디벨로퍼스 운영 앱, AI 회사·구글 운영 키",
       "followers": 7
     }
-  ]
+  ],
+  "transition": {
+    "base": "5a31a5605457cec5e056e3ed912cebadcfc1bc3d",
+    "removed": [
+      "TASK-045"
+    ],
+    "added": [
+      "TASK-061"
+    ],
+    "before": {
+      "finished": 31,
+      "implemented": 29
+    },
+    "after": {
+      "finished": 31,
+      "implemented": 30
+    }
+  }
 }
