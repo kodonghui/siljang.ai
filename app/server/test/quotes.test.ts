@@ -264,4 +264,22 @@ describeDb("가게 가격표로 계산하는 견적(TASK-067)", () => {
     );
     expect(await quote()).toMatchObject({ kind: "quoted", quote: { orderKind: excluded ? "custom" : "standard" } });
   });
+  it("요청 전 초안은 현재 가격표를 기본으로 쓰고 버전을 명시하면 그 버전으로 계산한다", async () => {
+    await isolated.db.query("UPDATE price_lists SET superseded_at=$2 WHERE id=$1", [shop.priceListId, NOW]);
+    const priceId = newUuid();
+    await isolated.db.query("INSERT INTO price_lists (id,shop_id,version) VALUES ($1,$2,4)", [priceId, shop.shopId]);
+    await isolated.db.query(
+      "INSERT INTO price_options (shop_id,price_list_id,option_group,name,amount) VALUES ($1,$2,'size','1호',38000),($1,$2,'flavor','생크림',0)",
+      [shop.shopId, priceId],
+    );
+    expect(await quote()).toMatchObject({ kind: "quoted", quote: { amount: 38000, priceListVersion: 4 } });
+    expect(
+      await quoteDraft(scoped(), {
+        draftId: shop.draftId,
+        sourceMessageId: shop.messageId,
+        now: NOW,
+        priceListVersion: 3,
+      }),
+    ).toMatchObject({ kind: "quoted", quote: { amount: 35000, priceListVersion: 3 } });
+  });
 });

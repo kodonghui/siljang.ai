@@ -7,7 +7,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON owner_sessions TO :"runtime_role";
 GRANT SELECT ON shops, kakao_channels TO :"runtime_role";
 -- TASK-067: 견적과 요청 당시 운영규정의 계산에 필요한 열만 읽는다.
 GRANT SELECT (draft_id, price_list_id, operating_rules_id) ON orders TO :"runtime_role";
-GRANT SELECT (price_list_id, size_option_id, flavor_option_id, design_option_id, design_id) ON order_drafts TO :"runtime_role";
+GRANT SELECT (size_option_id, flavor_option_id, design_option_id, design_id) ON order_drafts TO :"runtime_role";
 GRANT SELECT (shop_id, draft_id, price_list_id, option_id) ON order_draft_extras TO :"runtime_role";
 GRANT SELECT (id, shop_id, draft_id) ON reference_photos TO :"runtime_role";
 GRANT SELECT, INSERT ON quotes TO :"runtime_role";

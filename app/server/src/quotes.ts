@@ -56,14 +56,13 @@ export async function quoteDraft(
     const draft = await tx.found<{
       consultation_id: string;
       revision: number;
-      price_list_id: string | null;
       size_option_id: string | null;
       flavor_option_id: string | null;
       design_option_id: string | null;
       design_id: string | null;
       excluded_ingredients: string | null;
     }>(
-      "SELECT consultation_id,revision,price_list_id,size_option_id,flavor_option_id,design_option_id,design_id,excluded_ingredients FROM order_drafts WHERE shop_id=$1 AND id=$2 FOR UPDATE",
+      "SELECT consultation_id,revision,size_option_id,flavor_option_id,design_option_id,design_id,excluded_ingredients FROM order_drafts WHERE shop_id=$1 AND id=$2 FOR UPDATE",
       [draftId],
     );
     await tx.found(
@@ -85,9 +84,9 @@ export async function quoteDraft(
         frozen
           ? "SELECT id,version FROM price_lists WHERE shop_id=$1 AND id=$2"
           : input.priceListVersion === undefined
-            ? "SELECT id,version FROM price_lists WHERE shop_id=$1 AND (id=$2 OR ($2::uuid IS NULL AND superseded_at IS NULL)) LIMIT 1"
+            ? "SELECT id,version FROM price_lists WHERE shop_id=$1 AND superseded_at IS NULL"
             : "SELECT id,version FROM price_lists WHERE shop_id=$1 AND version=$2",
-        [frozen?.price_list_id ?? input.priceListVersion ?? draft.price_list_id],
+        frozen ? [frozen.price_list_id] : input.priceListVersion === undefined ? [] : [input.priceListVersion],
       )
     ).rows[0];
     const rules = (

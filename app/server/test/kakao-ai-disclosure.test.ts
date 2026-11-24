@@ -1,12 +1,15 @@
+import { DatabaseError } from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { recordAiCall } from "../src/ai-calls";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
+import { FieldCryptoError, fieldCrypto } from "../src/field-crypto";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
-import { Secret } from "../src/settings";
-import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
+import * as policyCurrent from "../src/privacy-policy-current";
+import { readSettings, Secret } from "../src/settings";
+import { collectLogs, describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
@@ -28,6 +31,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
   let now = NOW;
   const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
   const jobs: KakaoCallbackJob[] = [];
+  const policyLogs = collectLogs();
   const enqueue = vi.fn<KakaoCallbackQueue["send"]>(async (job) => {
     jobs.push(job);
   });
@@ -37,6 +41,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
   beforeEach(async () => {
     now = NOW;
     jobs.length = 0;
+    policyLogs.lines.length = 0;
     enqueue.mockClear();
     shop = await createShop(isolated.db, "합성 수신 가게");
     await issueTestBookingLink(isolated.db, shop);
@@ -59,6 +64,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
       services: {
         now: () => now,
         kakaoCallbackQueue: { send: enqueue },
+        aiModel: model(),
         privacyPolicy: POLICY,
         publicAppOrigin: ORIGIN,
       },
@@ -151,6 +157,217 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
       )
     ).rows;
   }
+  async function immediate(user: string, utterance: string, enabled = true, fields?: ReturnType<typeof fieldCrypto>) {
+    return createApp({
+      connect: () => isolated.connect(),
+      services: {
+        now: () => now,
+        privacyPolicy: POLICY,
+        publicAppOrigin: ORIGIN,
+        ...(enabled ? { aiModel: model() } : {}),
+        ...(fields ? { fieldCrypto: fields } : {}),
+      },
+      logSink: policyLogs.sink,
+    }).request(
+      "/api/kakao/skills/message",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+        body: JSON.stringify({
+          bot: { id: shop.botId },
+          userRequest: { utterance, user: { id: user, type: "botUserKey" } },
+          action: { id: "input", params: {} },
+        }),
+      },
+      env,
+    );
+  }
+  it("콜백 실패 뒤 문의 끊김이 되면 고지 전 AI를 빼고 뒤 사장님 안내를 전한다", async () => {
+    const user = newUuid();
+    await send(user, "문의 끊김 전 합성 질문");
+    await consume(required(jobs[0]), model(), false);
+    const consultation = required((await record(user))[0]);
+    await isolated.db.query("UPDATE consultations SET status='dropped',dropped_at=$2 WHERE id=$1", [
+      consultation.id,
+      NOW,
+    ]);
+    const noticeId = newUuid();
+    await isolated.db.query(
+      `INSERT INTO notifications (id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,created_at)
+       SELECT $2,shop_id,customer_id,id,'owner_reply',$3,'owner_reply','문의 끊김 뒤 합성 사장님 안내','deferred',$4
+       FROM consultations WHERE id=$1`,
+      [consultation.id, noticeId, `notice:${noticeId}`, new Date(NOW.getTime() + 2000)],
+    );
+    now = new Date(NOW.getTime() + 4000);
+    const response = await immediate(user, "");
+    expect(await response.text()).toContain("문의 끊김 뒤 합성 사장님 안내");
+    expect((await record(user))[0]?.ai_disclosed_at).toBeNull();
+  });
+  it("발신 직전 넘김으로 바꾼 AI 답은 실패 표시하고 다음 답에 다시 보내지 않는다", async () => {
+    const user = newUuid(),
+      ai = model(),
+      invoke = required(ai.call.getMockImplementation());
+    const previous = required(
+      (await isolated.db.query("SELECT booking_slug,booking_issued_at FROM shops WHERE id=$1", [shop.shopId])).rows[0],
+    );
+    ai.call.mockImplementationOnce(async (input) => {
+      const answer = await invoke(input);
+      await isolated.db.query("UPDATE shops SET booking_slug=NULL,booking_issued_at=NULL WHERE id=$1", [shop.shopId]);
+      return { ...answer, output: { reply: "넘김으로 폐기할 합성 AI 답" } };
+    });
+    await send(user, "넘김 전 합성 질문");
+    await consume(required(jobs[0]), ai);
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT delivery,sent_at FROM messages WHERE shop_id=$1 AND body_masked='넘김으로 폐기할 합성 AI 답'",
+          [shop.shopId],
+        )
+      ).rows,
+    ).toEqual([{ delivery: "failed", sent_at: null }]);
+    await isolated.db.query("UPDATE shops SET booking_slug=$2,booking_issued_at=$3 WHERE id=$1", [
+      shop.shopId,
+      previous.booking_slug,
+      previous.booking_issued_at,
+    ]);
+    now = new Date(NOW.getTime() + 4000);
+    await send(user, "다음 합성 질문");
+    expect(texts(await consume(required(jobs[1]), ai))).not.toContain("넘김으로 폐기할 합성 AI 답");
+  });
+  it.each(["키 없는 합성 첫 질문", ""])("AI 설정 없는 첫 응답에는 고지와 완료 기록이 없다(%s)", async (utterance) => {
+    const user = newUuid(),
+      response = await immediate(user, utterance, false);
+    expect(await response.text()).not.toContain("AI가 상담합니다");
+    expect(required((await record(user))[0]).ai_disclosed_at).toBeNull();
+  });
+  it.each(["inline", "callback"])("AI가 나중에 켜지면 첫 활성 응답부터 고지를 한다(%s)", async (mode) => {
+    const user = newUuid();
+    expect(await (await immediate(user, "AI 설정 전 합성 질문", false)).text()).not.toContain("AI가 상담합니다");
+    expect(required((await record(user))[0]).ai_disclosed_at).toBeNull();
+    now = new Date(NOW.getTime() + 4000);
+    if (mode === "inline")
+      expect(await (await immediate(user, "AI 설정 뒤 합성 질문")).text()).toContain("AI가 상담합니다");
+    else {
+      await send(user, "AI 설정 뒤 합성 질문");
+      expect(texts(await consume(required(jobs[0]), model()))[0]).toContain("AI가 상담합니다");
+    }
+    expect(required((await record(user))[0]).ai_disclosed_at).not.toBeNull();
+  });
+  it("고지가 끝난 상담의 스티커는 정책을 다시 잠그거나 읽지 않는다", async () => {
+    const user = newUuid();
+    await send(user, "고지를 끝낼 합성 질문");
+    await consume(required(jobs[0]), model());
+    const policy = vi.spyOn(policyCurrent, "currentPrivacyPolicy").mockRejectedValue(new Error("합성 정책 읽기 실패"));
+    now = new Date(NOW.getTime() + 4000);
+    const response = await immediate(user, "");
+    expect(response.headers.get("Siljang-Outcome")).not.toBe("server_error");
+    expect(policy).not.toHaveBeenCalled();
+  });
+  it("고지 전이라도 중복 요청은 정책 읽기 트랜잭션을 만들지 않는다", async () => {
+    const user = newUuid();
+    await send(user, "중복 합성 질문");
+    const policy = vi.spyOn(policyCurrent, "currentPrivacyPolicy").mockRejectedValue(new Error("합성 정책 읽기 실패"));
+    const response = await send(user, "중복 합성 질문");
+    expect(response.headers.get("Siljang-Outcome")).not.toBe("server_error");
+    expect(policy).not.toHaveBeenCalled();
+  });
+  it("정책 읽기가 실패해도 새 스티커 수신은 고지 없는 기존 안내를 지킨다", async () => {
+    vi.spyOn(policyCurrent, "currentPrivacyPolicy").mockRejectedValue(
+      Object.assign(new DatabaseError("합성 정책 읽기 실패"), { code: "40001", name: "error" }),
+    );
+    const response = await immediate(newUuid(), "");
+    expect(response.headers.get("Siljang-Outcome")).not.toBe("server_error");
+    expect(await response.text()).not.toContain("AI가 상담합니다");
+    expect(policyLogs.lines.map((line) => JSON.parse(line))).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "kakao_disclosure_policy_failed",
+          code: "policy_unavailable",
+          errorName: "error",
+          dbCode: "40001",
+        }),
+      ]),
+    );
+    expect(policyLogs.lines.join("\n")).not.toContain("합성 정책 읽기 실패");
+  });
+  it("AI 설정이 있으면 마스킹 실패의 첫 넘김 안내에도 고지를 붙인다", async () => {
+    const user = newUuid(),
+      fields = fieldCrypto(required(readSettings(env).fieldKeys));
+    vi.spyOn(fields, "seal").mockRejectedValue(new FieldCryptoError("합성 암호화 실패"));
+    const response = await immediate(user, "합성 연락처 010-1234-5678", true, fields);
+    expect(await response.text()).toContain("AI가 상담합니다");
+    expect(required((await record(user))[0]).ai_disclosed_at).not.toBeNull();
+    expect(
+      (
+        await isolated.db.query("SELECT reason FROM handoffs WHERE consultation_id=$1", [
+          required((await record(user))[0]).id,
+        ])
+      ).rows,
+    ).toEqual([{ reason: "masking_failed" }]);
+  });
+  it("고지 전이어도 수신 한도를 넘은 요청은 정책을 다시 잠그지 않는다", async () => {
+    const user = newUuid();
+    for (let i = 0; i < 20; i++) await send(user, `수신 한도 합성 질문 ${i}`);
+    const policy = vi.spyOn(policyCurrent, "currentPrivacyPolicy").mockRejectedValue(new Error("합성 정책 읽기 실패"));
+    const response = await send(user, "수신 한도 뒤 합성 질문");
+    expect(response.headers.get("Siljang-Outcome")).not.toBe("server_error");
+    expect(policy).not.toHaveBeenCalled();
+  });
+  it("두 번째 고지 준비의 일시 DB 오류는 답을 폐기하거나 넘기지 않고 재시도한다", async () => {
+    const user = newUuid(),
+      ai = model(),
+      invoke = required(ai.call.getMockImplementation());
+    ai.call.mockImplementationOnce(async (input) => {
+      const result = await invoke(input);
+      vi.spyOn(policyCurrent, "currentPrivacyPolicy").mockRejectedValueOnce(
+        Object.assign(new DatabaseError("합성 직렬화 실패"), { code: "40001", name: "error" }),
+      );
+      return result;
+    });
+    await send(user, "일시 DB 오류 합성 질문");
+    const job = required(jobs[0]),
+      callback = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await expect(
+      consumeKakaoCallback(job, env, {
+        connect: () => isolated.connect(),
+        now: () => new Date(now.getTime() + 1000),
+        fetch: callback,
+        services: { aiModel: ai, privacyPolicy: POLICY, publicAppOrigin: ORIGIN },
+        logSink: () => {},
+      }),
+    ).rejects.toMatchObject({ code: "40001" });
+    expect(callback).not.toHaveBeenCalled();
+    expect(
+      (
+        await isolated.db.query("SELECT id FROM handoffs WHERE consultation_id=$1", [
+          required((await record(user))[0]).id,
+        ])
+      ).rows,
+    ).toHaveLength(0);
+    expect(
+      (
+        await isolated.db.query("SELECT delivery,sent_at FROM messages WHERE consultation_id=$1 AND author='ai'", [
+          required((await record(user))[0]).id,
+        ])
+      ).rows,
+    ).toEqual([{ delivery: "deferred", sent_at: null }]);
+    expect(texts(await consume(job, ai))[0]).toContain("AI가 상담합니다");
+    expect(ai.call).toHaveBeenCalledOnce();
+  });
+  it("글19개와 후기 카드1개 뒤20번째 글도 첫 고지를 전한다", async () => {
+    const user = newUuid();
+    for (let i = 0; i < 19; i++) await send(user, `후기 카드 전 합성 질문 ${i}`);
+    const consultation = required((await record(user))[0]),
+      id = newUuid();
+    await isolated.db.query(
+      "INSERT INTO messages (id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES ($1,$2,$3,'inbound','customer','card',$4,'합성 후기',$5)",
+      [id, shop.shopId, consultation.id, `synthetic-review:${id}`, NOW],
+    );
+    const policy = vi.spyOn(policyCurrent, "currentPrivacyPolicy");
+    const response = await immediate(user, "후기 카드 뒤20번째 합성 글");
+    expect(await response.text()).toContain("AI가 상담합니다");
+    expect(policy).toHaveBeenCalledOnce();
+  });
   it("새 손님의 첫 답은 고지·처리방침 링크·AI 답 순서이며 성공 뒤 게시 버전을 남긴다", async () => {
     const user = newUuid(),
       ai = model();
@@ -355,7 +572,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     now = new Date(NOW.getTime() + 4000);
     const app = createApp({
       connect: () => isolated.connect(),
-      services: { now: () => now, privacyPolicy: POLICY, publicAppOrigin: ORIGIN },
+      services: { now: () => now, aiModel: model(), privacyPolicy: POLICY, publicAppOrigin: ORIGIN },
       logSink: () => {},
     });
     const response = await app.request(
@@ -479,6 +696,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
         connect: () => isolated.connect(),
         services: {
           now: () => now,
+          aiModel: model(),
           privacyPolicy: POLICY,
           publicAppOrigin: ORIGIN,
           ...(mode === "queue_failure"
