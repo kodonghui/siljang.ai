@@ -112,6 +112,7 @@ describeDb("운영자 로그인 최소 서버 역할(TASK-021)", () => {
         "mfa_enrolled_at",
         "email",
         "display_name",
+        "created_at",
       ]) {
         await expect(
           db.query(`UPDATE operators SET ${column}=${column} WHERE id=$1`, [h.operatorId]),
@@ -120,6 +121,20 @@ describeDb("운영자 로그인 최소 서버 역할(TASK-021)", () => {
       await expect(db.query("DELETE FROM operators WHERE id=$1", [h.operatorId])).rejects.toMatchObject({
         code: "42501",
       });
+      await expect(
+        db.query("INSERT INTO operators (email,display_name) VALUES ('unused@runtime.example','합성')"),
+      ).rejects.toMatchObject({ code: "42501" });
+      await expect(db.query("TRUNCATE operators CASCADE")).rejects.toMatchObject({ code: "42501" });
+      await expect(
+        db.query("UPDATE operator_login_failures SET attempted_at=attempted_at WHERE false"),
+      ).rejects.toMatchObject({ code: "42501" });
+      if (!isolated) throw new Error("시험 DB 없음");
+      const writable = await isolated.db.query<{ column_name: string }>(
+        `SELECT attname AS column_name FROM pg_attribute WHERE attrelid='public.operators'::regclass
+         AND attnum>0 AND NOT attisdropped AND has_column_privilege($1,'public.operators',attname,'UPDATE') ORDER BY attname`,
+        [role],
+      );
+      expect(writable.rows.map((row) => row.column_name)).toEqual(["id"]);
     } finally {
       await db.close();
     }
