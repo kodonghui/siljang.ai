@@ -142,7 +142,7 @@ TASKS = [
     dict(id='TASK-116', it=5, name='변경 요청하기', owner='Claude', size=2, src=['SPEC-041'], api=['API-070', 'API-071', 'API-062'], dep=['TASK-105']),
     dict(id='TASK-117', it=5, name='변경 요청에 사장님 답하기', owner='Claude', size=2, src=['SPEC-042'], api=['API-062', 'API-063'], dep=['TASK-116']),
     dict(id='TASK-118', it=5, name='차액 결제', owner='Claude', size=1, src=['SPEC-043'], api=['API-063'], dep=['TASK-117', 'TASK-093']),
-    dict(id='TASK-119', it=5, name='차액 결제가 기한까지 없을 때', owner='Claude', size=1, src=['SPEC-044'], api=['API-059', 'API-071'], dep=['TASK-118', 'TASK-023'], done='SPEC-015 수락 #7의 실제 연결: difference_due 일 실행기에서 새 날짜의 가예약만 풀고 원래 날짜에 이미 잡힌 자리는 유지하는 시험을 통과함(SPEC-044 수락 #1·#2)'),
+    dict(id='TASK-119', it=5, name='차액 결제가 기한까지 없을 때', owner='Claude', size=1, src=['SPEC-044'], api=['API-059', 'API-071'], dep=['TASK-118', 'TASK-023'], done='SPEC-015 수락 #7의 실제 연결: difference_due 일 실행기에서 새 날짜의 가예약만 풀고 원래 날짜에 이미 잡힌 자리는 유지하는 시험을 통과함(SPEC-044 수락 #1. 같은 자리 결과인 #2의 손님 버튼 경로도 별도 시험)'),
     dict(id='TASK-120', it=5, name='변경 반영', owner='Claude', size=1, src=['SPEC-045'], api=['API-059', 'API-063'], dep=['TASK-118']),
     dict(id='TASK-121', it=5, name='환불 계산(가게 규칙)과 미리보기', owner='Claude', size=2, src=['SPEC-016'], api=['API-049'], rules=['A30'], dep=['TASK-039', 'TASK-091']),
     dict(id='TASK-122', it=5, name='손님이 주문 취소하기', owner='Claude', size=2, src=['SPEC-046'], api=['API-070', 'API-071'], dep=['TASK-121', 'TASK-105']),
