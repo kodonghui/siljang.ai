@@ -166,6 +166,20 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
     await tick(new Date(NOW.getTime() + HOUR));
     expect((await state())?.ended_at).toEqual(NOW);
   });
+  it("오래된 미완료 주문 상담이 한 건 배치에서 끝낼 상담을 막지 않음", async () => {
+    await cancelledWithoutPayment();
+    await db.query("UPDATE consultations SET status='ordered',last_customer_message_at=$2 WHERE id=$1", [
+      consultationId,
+      new Date(NOW.getTime() - 48 * HOUR),
+    ]);
+    const waiting = await createShop(db, "합성 오래 기다린 주문 가게");
+    await db.query("UPDATE consultations SET status='ordered',last_customer_message_at=$2 WHERE id=$1", [
+      waiting.consultationId,
+      new Date(NOW.getTime() - 72 * HOUR),
+    ]);
+    const found = await db.query<{ id: string }>(DUE_SOURCES.consultation_ordered.find, [NOW, 1]);
+    expect(found.rows.map((row) => row.id)).toEqual([consultationId]);
+  });
   it("열린 에스컬레이션 건은 닫지 않고 답 없이 닫힌 뒤에야 문의를 닫음", async () => {
     const message = newUuid(),
       handoff = newUuid();
