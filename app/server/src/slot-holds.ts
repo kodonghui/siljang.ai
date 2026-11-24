@@ -4,12 +4,14 @@ import { eventKeys } from "./event-keys";
 import { fieldError } from "./problem";
 import { pathId, type ShopDb, type ShopRequestDb } from "./shop-scope";
 
-export interface HoldOrderSlotInput {
+export interface OrderSlotInput {
   readonly orderId: string;
-  readonly paymentRequestId: string;
   readonly now: Date;
-  readonly ownerConfirmed?: boolean;
   readonly expectedOrderRevision?: number;
+}
+export interface HoldOrderSlotInput extends OrderSlotInput {
+  readonly paymentRequestId: string;
+  readonly ownerConfirmed?: boolean;
 }
 export interface SlotResult {
   readonly kind: "held" | "existing" | "day_full" | "confirmation_required" | "stale" | "not_applicable";
@@ -86,7 +88,7 @@ export async function holdOrderSlotInTransaction(db: ShopDb, input: HoldOrderSlo
   return { kind: "held", holdId: saved.id, status: "held", day: order.pickup_day };
 }
 
-async function lockedSlotOrder(db: ShopDb, input: HoldOrderSlotInput): Promise<Order | null> {
+async function lockedSlotOrder(db: ShopDb, input: OrderSlotInput): Promise<Order | null> {
   if (!Number.isFinite(input.now.getTime())) throw new RangeError("invalid slot time");
   const id = pathId(input.orderId),
     via = db.scope.via;
@@ -159,4 +161,87 @@ export async function expireOrderSlotInTransaction(db: ShopDb, input: HoldOrderS
   );
   if (updated.rowCount !== 1) throw new Error("order changed after slot lock");
   return { kind: "expired", holdId: held.id };
+}
+
+export interface SlotTransitionResult {
+  readonly kind: "fixed" | "done" | "released" | "unchanged" | "not_applicable" | "stale";
+  readonly holdId?: string;
+}
+export function fixPaidOrderSlot(db: ShopRequestDb, input: HoldOrderSlotInput): Promise<SlotTransitionResult> {
+  return db.transaction((tx) => fixPaidOrderSlotInTransaction(tx, input));
+}
+/** 결제 확인 담당 실행기는 주문·결제·자리 변경을 같은 트랜잭션으로 묶습니다. */
+export async function fixPaidOrderSlotInTransaction(
+  db: ShopDb,
+  input: HoldOrderSlotInput,
+): Promise<SlotTransitionResult> {
+  const order = await lockedSlotOrder(db, input);
+  if (order === null) return { kind: "stale" };
+  const payment = await lockedPayment(db, order.id, pathId(input.paymentRequestId));
+  if (payment.kind === "difference" || payment.status !== "paid" || order.status !== "confirmed")
+    return { kind: "not_applicable" };
+  const slot = (
+    await db.run<{ id: string; day: string; status: string }>(
+      "SELECT id,day::text,status FROM slot_holds WHERE shop_id=$1 AND order_id=$2 AND payment_request_id=$3 AND hold_key=$4",
+      [order.id, payment.id, eventKeys.hold(order.id, payment.id)],
+    )
+  ).rows[0];
+  if (slot?.status !== "held") return { kind: "unchanged" };
+  await lockCalendarDay(db, slot.day);
+  const updated = await db.run(
+    "UPDATE slot_holds SET status='fixed',fixed_at=$3 WHERE shop_id=$1 AND id=$2 AND status='held'",
+    [slot.id, input.now],
+  );
+  if (updated.rowCount !== 1) throw new Error("slot changed after order lock");
+  return { kind: "fixed", holdId: slot.id };
+}
+export function finishOrderSlot(db: ShopRequestDb, input: OrderSlotInput): Promise<SlotTransitionResult> {
+  return db.transaction((tx) => finishOrderSlotInTransaction(tx, input));
+}
+/** 픽업 일시가 지난 확정 자리는 끝난 자리로 바꾸며 그날 개수에서 빼지 않습니다. */
+export async function finishOrderSlotInTransaction(db: ShopDb, input: OrderSlotInput): Promise<SlotTransitionResult> {
+  const order = await lockedSlotOrder(db, input);
+  if (order === null) return { kind: "stale" };
+  if (order.pickup_at > input.now || !["confirmed", "received", "no_pickup"].includes(order.status))
+    return { kind: "not_applicable" };
+  const slot = (
+    await db.run<{ id: string; day: string }>(
+      "SELECT id,day::text FROM slot_holds WHERE shop_id=$1 AND order_id=$2 AND status='fixed'",
+      [order.id],
+    )
+  ).rows[0];
+  if (!slot) return { kind: "unchanged" };
+  await lockCalendarDay(db, slot.day);
+  const updated = await db.run(
+    "UPDATE slot_holds SET status='done',done_at=$3 WHERE shop_id=$1 AND id=$2 AND status='fixed'",
+    [slot.id, input.now],
+  );
+  if (updated.rowCount !== 1) throw new Error("slot changed after order lock");
+  return { kind: "done", holdId: slot.id };
+}
+export function releaseCancelledOrderSlots(db: ShopRequestDb, input: OrderSlotInput): Promise<SlotTransitionResult> {
+  return db.transaction((tx) => releaseCancelledOrderSlotsInTransaction(tx, input));
+}
+/** 취소 담당 실행기가 주문 취소·환불·차액 안내 닫기를 함께 남긴 뒤 같은 트랜잭션에서 부릅니다. */
+export async function releaseCancelledOrderSlotsInTransaction(
+  db: ShopDb,
+  input: OrderSlotInput,
+): Promise<SlotTransitionResult> {
+  const order = await lockedSlotOrder(db, input);
+  if (order === null) return { kind: "stale" };
+  if (order.status !== "cancelled") return { kind: "not_applicable" };
+  const slots = (
+    await db.run<{ id: string; day: string }>(
+      "SELECT id,day::text FROM slot_holds WHERE shop_id=$1 AND order_id=$2 AND status IN('held','fixed') ORDER BY day,id",
+      [order.id],
+    )
+  ).rows;
+  if (slots.length === 0) return { kind: "unchanged" };
+  for (const day of [...new Set(slots.map((x) => x.day))].sort()) await lockCalendarDay(db, day);
+  const updated = await db.run(
+    "UPDATE slot_holds SET status='released',released_at=$3,release_reason='order_cancelled' WHERE shop_id=$1 AND order_id=$2 AND status IN('held','fixed')",
+    [order.id, input.now],
+  );
+  if (updated.rowCount !== slots.length) throw new Error("slot changed after order lock");
+  return { kind: "released" };
 }

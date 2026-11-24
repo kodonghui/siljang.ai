@@ -2,7 +2,13 @@ import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { calendarBookingDays } from "../src/calendar";
 import { shiftDate } from "../src/calendar-input";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
-import { expireOrderSlot, holdOrderSlot } from "../src/slot-holds";
+import {
+  expireOrderSlot,
+  finishOrderSlot,
+  fixPaidOrderSlot,
+  holdOrderSlot,
+  releaseCancelledOrderSlots,
+} from "../src/slot-holds";
 import { shopLocalToUtc, toShopLocal } from "../src/time";
 import { describeDb, newUuid } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -211,6 +217,73 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
   }
   const bookingStatus = async (at: Date) =>
     scope().transaction(async (tx) => (await calendarBookingDays(tx, at)).find((x) => x.day === day)?.status);
+  async function markPaid(order: Order = shop) {
+    const paymentId = newUuid();
+    await isolated.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2,version=version+1 WHERE id=$1",
+        [order.paymentRequestId, now],
+      );
+      await tx.query(
+        "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+        [paymentId, shop.shopId, order.orderId, order.paymentRequestId, now],
+      );
+      await tx.query(
+        "UPDATE orders SET status='confirmed',confirmed_at=$2,confirmed_payment_id=$3,lock_version=lock_version+1 WHERE id=$1",
+        [order.orderId, now, paymentId],
+      );
+    });
+  }
+  it("확정된 결제의 잡힌 자리를 한 번만 확정하며 개수를 유지함", async () => {
+    await held();
+    expect((await fixPaidOrderSlot(scope(), { ...shop, now })).kind).toBe("not_applicable");
+    await markPaid();
+    const result = await fixPaidOrderSlot(scope(), { ...shop, now });
+    expect(result.kind).toBe("fixed");
+    expect((await fixPaidOrderSlot(scope(), { ...shop, now })).kind).toBe("unchanged");
+    expect(
+      (await isolated.db.query("SELECT status,fixed_at FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows,
+    ).toEqual([{ status: "fixed", fixed_at: now }]);
+  });
+  it("픽업 일시가 지나 종료된 자리도 하루 최대 개수에 포함함", async () => {
+    const orders: Order[] = [shop, await sibling(), await sibling(), await sibling()];
+    await isolated.db.query("UPDATE business_calendars SET daily_capacity=3 WHERE shop_id=$1", [shop.shopId]);
+    for (const order of orders.slice(0, 3)) {
+      expect((await holdOrderSlot(scope(), { ...order, now })).kind).toBe("held");
+      await markPaid(order);
+      expect((await fixPaidOrderSlot(scope(), { ...order, now })).kind).toBe("fixed");
+    }
+    expect((await finishOrderSlot(scope(), { orderId: shop.orderId, now })).kind).toBe("not_applicable");
+    const at = shopLocalToUtc(day, "15:00", "Asia/Seoul");
+    expect((await finishOrderSlot(scope(), { orderId: shop.orderId, now: at })).kind).toBe("done");
+    expect((await finishOrderSlot(scope(), { orderId: shop.orderId, now: at })).kind).toBe("unchanged");
+    const next = orders[3] as Order;
+    expect((await holdOrderSlot(scope(), { ...next, now })).kind).toBe("day_full");
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT status,count(*)::int AS n FROM slot_holds WHERE shop_id=$1 GROUP BY status ORDER BY status",
+          [shop.shopId],
+        )
+      ).rows,
+    ).toEqual([
+      { status: "done", n: 1 },
+      { status: "fixed", n: 2 },
+    ]);
+  });
+  it("취소되지 않은 주문의 자리는 풀지 않고 취소 뒤 한 번만 해제함", async () => {
+    await held();
+    expect((await releaseCancelledOrderSlots(scope(), { orderId: shop.orderId, now })).kind).toBe("not_applicable");
+    await isolated.db.query(
+      "UPDATE orders SET status='cancelled',cancelled_at=$2,cancel_kind='customer',lock_version=lock_version+1 WHERE id=$1",
+      [shop.orderId, now],
+    );
+    expect((await releaseCancelledOrderSlots(scope(), { orderId: shop.orderId, now })).kind).toBe("released");
+    expect((await releaseCancelledOrderSlots(scope(), { orderId: shop.orderId, now })).kind).toBe("unchanged");
+    expect(
+      (await isolated.db.query("SELECT status,release_reason FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows,
+    ).toEqual([{ status: "released", release_reason: "order_cancelled" }]);
+  });
   it("기한 정각에 잡힌 자리를 풀고 주문을 기한 지남으로 두며 마감이 다시 열림", async () => {
     await isolated.db.query("UPDATE business_calendars SET daily_capacity=1 WHERE shop_id=$1", [shop.shopId]);
     await held();
