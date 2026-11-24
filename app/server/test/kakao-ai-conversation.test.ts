@@ -6,8 +6,10 @@ import { FieldCryptoError, fieldCrypto } from "../src/field-crypto";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { openMaskedValue } from "../src/masked-values";
 import type { ServiceOverrides } from "../src/services";
 import { readSettings, Secret } from "../src/settings";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -119,6 +121,58 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
     if (value === null || value === undefined) throw new Error("합성 시험 자료가 없어요");
     return value;
   }
+  it("실제 수신부터 모델 입력까지 전화만 가리고 주문번호는 유지하며 같은 가게 사장님 범위에서 원본을 푼다", async () => {
+    const user = newUuid(),
+      ai = model();
+    await send(user, "주문번호 K7Q3M9 연락처 010-1234-5678");
+    const job = required(jobs[0]);
+    await consume(job, ai);
+    const input = JSON.stringify(required(ai.call.mock.calls[0])[0].messages);
+    expect(input).toContain("K7Q3M9");
+    expect(input).toContain("[전화번호1]");
+    expect(input).not.toContain("010-1234-5678");
+    expect(input).not.toContain("01012345678");
+    const source = required(
+      (
+        await isolated.db.query<{ consultation_id: string }>("SELECT consultation_id FROM messages WHERE id=$1", [
+          job.messageId,
+        ])
+      ).rows[0],
+    );
+    const fields = fieldCrypto(required(readSettings(env).fieldKeys));
+    const owner = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+    expect(await openMaskedValue(owner, fields, source.consultation_id, "[전화번호1]")).toEqual({
+      kind: "phone",
+      original: "01012345678",
+      last4: "5678",
+    });
+    const other = await createShop(isolated.db, "다른 원본 가게");
+    const wrong = shopRequestDb(createShopScope(other.shopId, { kind: "owner", ownerId: other.ownerId }), isolated.db);
+    await expect(openMaskedValue(wrong, fields, source.consultation_id, "[전화번호1]")).rejects.toMatchObject({
+      code: "not_found",
+    });
+  });
+  it("수신한 카드번호와 주민번호는 모델에서 가리고 원본을 보관하지 않는다", async () => {
+    const ai = model();
+    await send(newUuid(), "합성 카드 4111-1111-1111-1111 주민번호 900101-1234567");
+    const job = required(jobs[0]);
+    await consume(job, ai);
+    const input = JSON.stringify(required(ai.call.mock.calls[0])[0].messages);
+    expect(input).toContain("[카드번호1]");
+    expect(input).toContain("[긴숫자1]");
+    for (const raw of ["4111-1111-1111-1111", "4111111111111111", "900101-1234567", "9001011234567"])
+      expect(input).not.toContain(raw);
+    const rows = (
+      await isolated.db.query(
+        "SELECT kind,original_enc,value_hmac,last4 FROM masked_values WHERE consultation_id=(SELECT consultation_id FROM messages WHERE id=$1) ORDER BY kind",
+        [job.messageId],
+      )
+    ).rows;
+    expect(rows).toEqual([
+      { kind: "card", original_enc: null, value_hmac: null, last4: "1111" },
+      { kind: "long_number", original_enc: null, value_hmac: null, last4: null },
+    ]);
+  });
   it("같은 상담의 최근20차례만 시간 순서로 보내고 다른 손님 대화는 넣지 않는다", async () => {
     const user = newUuid(),
       ai = model();
