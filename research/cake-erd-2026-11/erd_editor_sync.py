@@ -500,9 +500,10 @@ def main(argv: list[str]) -> int:
             if after != d.doc["settings"].get("ddlScripts", {}).get("after", ""):
                 ops3.append({"tool": "erd_set_ddl_script", "args": {"position": "after", "sql": after}})
             before = d.doc["settings"].get("ddlScripts", {}).get("before", "")
-            if "btree_gist" not in before:
+            wanted_before = build_erd.before_script(schema_text)
+            if before != wanted_before:
                 ops3.append({"tool": "erd_set_ddl_script", "args": {
-                    "position": "before", "sql": "CREATE EXTENSION IF NOT EXISTS btree_gist; -- refund_tiers의 EXCLUDE에 씀"}})
+                    "position": "before", "sql": wanted_before}})
         show("3단계 스크립트·메모", ops3)
         if not write:
             specials = [n for n, _ in eb.special_indexes(schema_text)]

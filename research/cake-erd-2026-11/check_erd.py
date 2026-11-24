@@ -559,8 +559,8 @@ def erd_check(root: Path, rep: Report, tables: list) -> None:
         if not re.search(r"INDEX " + name + r" ON ", after):
             diffs.append(f"인덱스 {name}: after 스크립트에 없음")
     diffs += [f"인덱스 {n}: 스키마에 없음" for n in sorted(set(got["indexes"]) - set(plain))]
-    if "btree_gist" not in got["scripts"].get("before", ""):
-        diffs.append("before 스크립트에 CREATE EXTENSION btree_gist가 없음")
+    if build_erd.before_script(schema_text) != got["scripts"].get("before", ""):
+        diffs.append("before 스크립트의 확장·시퀀스가 원본과 다름")
     if "EXCLUDE" not in after:
         diffs.append("after 스크립트에 EXCLUDE가 없음")
 

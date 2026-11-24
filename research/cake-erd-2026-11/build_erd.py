@@ -41,6 +41,18 @@ CTX_NAMES = {
 }
 
 TYPE_WORDS = ("uuid", "text", "integer", "bigint", "smallint", "boolean", "timestamptz", "date", "time", "jsonb", "numeric")
+
+
+def before_script(schema_text: str) -> str:
+    """기본값이 참조하는 시퀀스는 ERD의 테이블보다 먼저 만든다."""
+    lines = ["CREATE EXTENSION IF NOT EXISTS btree_gist; -- refund_tiers의 EXCLUDE에 씀"]
+    for line in schema_text.splitlines():
+        if line.startswith(("CREATE SEQUENCE ", "COMMENT ON SEQUENCE ")):
+            if not line.endswith(";"):
+                raise ValueError("시퀀스 정의·설명은 한 줄에 세미콜론으로 끝냅니다")
+            lines.append(line)
+    return "\n".join(lines)
+
 HEADER_RE = re.compile(r"^-- (TBL-\d{3}) (\w+) \(([^)]+)\) ← (.*?) \| terms: (.*)$")
 CREATE_RE = re.compile(r"^CREATE TABLE (\w+) \($")
 COL_RE = re.compile(r"^  ([a-z_][a-z0-9_]*)\s+(" + "|".join(TYPE_WORDS) + r")\b(.*)$")

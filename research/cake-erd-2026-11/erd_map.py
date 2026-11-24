@@ -348,6 +348,8 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("초안의 상담", "order_drafts.consultation_id"),
     ],
     "SPEC-021": [
+        ("같은 시각의 상담 글 표시 순번", "messages.timeline_seq"),
+        ("같은 시각의 손님 안내 표시 순번", "notifications.timeline_seq"),
         ("마스킹한 글", "messages.body_masked"),
         ("플레이스홀더", "masked_values.placeholder"),
         ("원래 값(전화번호·계좌번호만, 암호화)", "masked_values.original_enc"),

@@ -2,6 +2,8 @@
 -- psql -v runtime_role=<기존 서버 역할> -f tools/staging-login-callback-grants.sql
 -- 실제 역할은 새로 만들지 않는다. 각 작업에 필요한 열 권한만 더하며 운영 기록의 권한은 바꾸지 않는다.
 GRANT SELECT, INSERT, UPDATE ON owners, customers, consultations, messages TO :"runtime_role";
+-- TASK-077: 공통 표시 순번의 기본값에 필요한 USAGE만 허용한다. setval 권한은 열지 않는다.
+GRANT USAGE ON SEQUENCE consultation_timeline_seq TO :"runtime_role";
 -- 로그인할 때 기한 지난 세션을 정리하므로 DELETE도 필요하다(owner-session.ts).
 GRANT SELECT, INSERT, UPDATE, DELETE ON owner_sessions TO :"runtime_role";
 GRANT SELECT ON shops, kakao_channels TO :"runtime_role";
