@@ -1,6 +1,7 @@
 import type { Bindings } from "./app";
 import { type DbConnector, pgConnector, type RequestDb, sqlStateOf } from "./db";
 import { FieldCryptoError } from "./field-crypto";
+import { prepareKakaoAiDisclosure } from "./kakao-ai-disclosure";
 import { type KakaoAiReply, runKakaoAiTurn } from "./kakao-ai-turn";
 import { deliverKakaoCallback, kakaoCallback } from "./kakao-callback";
 import { EXPIRED_KAKAO_CALLBACKS } from "./kakao-callback-sources";
@@ -121,10 +122,11 @@ export async function consumeKakaoCallback(
     }
 
     owned = claim;
+    let disclosure = services.aiConfigured ? await prepareKakaoAiDisclosure(db, claim, services) : undefined;
     let preparedReply: KakaoAiReply | undefined;
     let failureCode: string = kakaoAiFailureOutcome(services.aiConfigured ? "unavailable" : "key_missing");
     if (services.aiConfigured) {
-      const turn = await runKakaoAiTurn(db, job.messageId, claim, services, now);
+      const turn = await runKakaoAiTurn(db, job.messageId, claim, services, now, disclosure ?? undefined);
       if (turn.kind === "gone") return "done";
       if (turn.kind === "busy") {
         await releaseKakaoCallback(db, job.messageId, claim);
@@ -158,23 +160,50 @@ export async function consumeKakaoCallback(
     }
 
     const callback = kakaoCallback(raw, claim.created_at);
+    // 모델을 기다리는 동안 설정이 바뀌었으면 실제 발신 직전에 새 게시 버전을 고른다.
+    if (disclosure !== null && callback !== null) {
+      const firstPreparedAt = disclosure?.at;
+      disclosure = services.aiConfigured ? await prepareKakaoAiDisclosure(db, claim, services) : undefined;
+      if (disclosure !== null && disclosure !== undefined && firstPreparedAt !== undefined)
+        disclosure = { ...disclosure, at: firstPreparedAt };
+      if (preparedReply !== undefined && disclosure === undefined) {
+        const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now());
+        if (reason === false) return "done";
+        preparedReply = undefined;
+        failureCode = kakaoAiFailureOutcome("unavailable");
+        log(
+          "warn",
+          { event: "kakao_callback_handoff", code: reason === "ai_cost_limit" ? "ai_cost_limit_reached" : failureCode },
+          options.logSink,
+        );
+      }
+    }
     const previous =
       callback === null
         ? []
-        : (await deferredKakaoMessages(db, claim.customer_id)).filter(
-            (row) => preparedReply === undefined || row.source !== "message" || row.id !== preparedReply.id,
-          );
+        : (
+            await deferredKakaoMessages(db, claim.customer_id, {
+              disclosureConsultationId: disclosure?.consultationId,
+            })
+          ).filter((row) => preparedReply === undefined || row.source !== "message" || row.id !== preparedReply.id);
     const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
+    const prefix = disclosure === null || disclosure === undefined ? [] : [disclosure.text];
+    const previousTexts = deferredKakaoTexts(previous);
+    // 고지·이전 안내가 세 칸을 채우면 새 AI 답은 다음 대화에 남긴다. 이전 안내를 앞질러 보내지 않는다.
+    const replyIncluded = prefix.length + previousTexts.length < 3;
     const deliveredAt =
       callback !== null &&
       (await deliverKakaoCallback(
         { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
-        [...deferredKakaoTexts(previous), text],
+        [...prefix, ...previousTexts, ...(replyIncluded ? [text] : [])],
         { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
       )) === "delivered"
         ? now()
         : null;
-    await finishKakaoCallback(db, job.messageId, claim, text, deliveredAt, previous, preparedReply?.id);
+    await finishKakaoCallback(db, job.messageId, claim, text, deliveredAt, previous, preparedReply?.id, {
+      ...(disclosure === null || disclosure === undefined ? {} : { disclosure }),
+      replyIncluded,
+    });
     return "done";
   } catch (error) {
     if (owned !== null) await releaseKakaoCallback(db, job.messageId, owned).catch(() => {});

@@ -1,5 +1,6 @@
 import { sqlStateOf } from "./db";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
+import { readKakaoDisclosurePolicy } from "./kakao-ai-disclosure";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
 import { publishStoredKakaoCallback, storeKakaoCallback } from "./kakao-callback-store";
 import { receiveKakaoChannelCheck } from "./kakao-channel-check";
@@ -48,6 +49,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
       return kakaoReply(r, "not_accepting", { contactPhone: await kakaoContactPhone(r.db) });
     }
     const queue = r.services.kakaoCallbackQueue;
+    const disclosurePolicy = await readKakaoDisclosurePolicy(r.db, r.services);
     const callback = kakaoCallback(request.payload.callbackUrl, request.receivedAt);
     if (messageKind === "text") {
       const ackUntil = request.receivedAt.getTime() + SKILL_WORK_MS;
@@ -89,6 +91,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
               r.services.now(),
               (previous) => kakaoReply(r, "masking_failed", { previous }),
               "masking_failed",
+              disclosurePolicy,
             );
           }
           if ((await kakaoAiCostLimit(tx, receipt.consultationId, r.services.now())) !== "ok") {
@@ -98,6 +101,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
               r.services.now(),
               (previous) => kakaoReply(r, "ai_cost_limit_reached", { previous }),
               "ai_cost_limit",
+              disclosurePolicy,
             );
           }
           if (queue !== undefined && callback !== null && timeLeft() > 0) {
@@ -111,8 +115,13 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
             if (envelope !== null) return { receipt, envelope };
           }
           const outcome = kakaoAiFailureOutcome(r.services.aiConfigured ? "unavailable" : "key_missing");
-          return replyKakaoHandoffInTransaction(tx, receipt, r.services.now(), (previous) =>
-            kakaoReply(r, outcome, { previous }),
+          return replyKakaoHandoffInTransaction(
+            tx,
+            receipt,
+            r.services.now(),
+            (previous) => kakaoReply(r, outcome, { previous }),
+            "ai_failure",
+            disclosurePolicy,
           );
         },
       );
@@ -127,8 +136,13 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
         prepared.envelope,
         timeLeft,
         (tx) =>
-          replyKakaoHandoffInTransaction(tx, prepared.receipt, r.services.now(), (previous) =>
-            kakaoReply(r, outcome, { previous }),
+          replyKakaoHandoffInTransaction(
+            tx,
+            prepared.receipt,
+            r.services.now(),
+            (previous) => kakaoReply(r, outcome, { previous }),
+            "ai_failure",
+            disclosurePolicy,
           ),
       );
       return publication.kind === "callback" ? kakaoReply(r, "callback_pending") : publication.value;
@@ -138,8 +152,13 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
     if (receipt.kind === "duplicate") return kakaoReply(r, receipt.kind);
     if (receipt.limit !== "ok") return kakaoReply(r, "rate_limited", { silent: receipt.limit === "silent" });
     const reply = (outcome: "unsupported_message" | "not_accepting") =>
-      replyWithDeferredKakaoMessages(r.db, receipt.customerId, r.services.now(), (previous) =>
-        kakaoReply(r, outcome, { previous }),
+      replyWithDeferredKakaoMessages(
+        r.db,
+        receipt.customerId,
+        r.services.now(),
+        (previous) => kakaoReply(r, outcome, { previous }),
+        receipt.consultationId,
+        disclosurePolicy,
       );
     return reply("unsupported_message");
   } catch (error) {

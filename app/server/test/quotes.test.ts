@@ -13,6 +13,10 @@ describeDb("가게 가격표로 계산하는 견적(TASK-067)", () => {
   }, 30000);
   beforeEach(async () => {
     const base = await createShop(isolated.db, "합성 견적 가게");
+    await isolated.db.query(
+      "INSERT INTO business_calendars (shop_id,daily_capacity,order_cutoff_days,order_cutoff_time) VALUES ($1,10,2,'18:00')",
+      [base.shopId],
+    );
     const draftId = newUuid();
     const selected = (
       await isolated.db.query<{ size_option_id: string; flavor_option_id: string }>(
@@ -34,7 +38,7 @@ describeDb("가게 가격표로 계산하는 견적(TASK-067)", () => {
     await isolated?.close();
   });
   const scoped = () => shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "quote" }), isolated.db);
-  const quote = (selection?: { size?: string }) =>
+  const quote = (selection?: { size?: string; design?: string }) =>
     quoteDraft(scoped(), {
       draftId: shop.draftId,
       sourceMessageId: shop.messageId,
@@ -129,5 +133,21 @@ describeDb("가게 가격표로 계산하는 견적(TASK-067)", () => {
     expect(
       (await isolated.db.query("SELECT reason FROM handoffs WHERE consultation_id=$1", [shop.consultationId])).rows,
     ).toEqual([{ reason: "cannot_answer" }]);
+  });
+
+  it("같은 금액이어도 다른 선택/주문 종류의 견적을 이전 ID로 재사용하지 않는다", async () => {
+    const first = await quote();
+    if (first.kind !== "quoted") throw new Error("첫 합성 견적이 없어요");
+    await isolated.db.query(
+      "INSERT INTO price_options (shop_id,price_list_id,option_group,name,amount,in_standard) VALUES ($1,$2,'design','무료 맞춤',0,false)",
+      [shop.shopId, shop.priceListId],
+    );
+    const second = await quote({ design: "무료 맞춤" });
+    if (second.kind !== "quoted") throw new Error("둘째 합성 견적이 없어요");
+    expect(second.quote.id).not.toBe(first.quote.id);
+    expect(second.quote).toMatchObject({ amount: 35000, orderKind: "custom" });
+    expect(
+      (await isolated.db.query("SELECT order_kind FROM quotes WHERE id=$1", [second.quote.id])).rows[0]?.order_kind,
+    ).toBe("custom");
   });
 });
