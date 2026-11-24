@@ -10,6 +10,7 @@
 
 - 동희님은 2026-11-24 23:16:30 KST Orca 실장님 항목 114(e2083)에서 “Codex로 전환”이라고 결정하셨습니다. [PR #167](https://github.com/kodonghui/siljang.ai/pull/167)의 첫 리뷰 엔진을 Claude Code에서 실장님 봇의 Codex로 바꿉니다. 병합 직전 GitHub Codex 커넥터 요청 1회와 전환 이전 댓글의 적용 조건은 [PR 리뷰 규칙](../../AGENTS.md#pr-리뷰)에 명시했습니다.
 - 기준 `origin/main`은 `4be0f0b0f96f008414ca4441b274b67ac8f4152a`이며 이 커밋의 app `45412371673`과 db `45412371472` CI 성공을 확인했습니다. 실장님이 자동화 전환을 담당합니다. 이번 문서 변경의 CI와 리뷰 실행 결과는 GitHub PR에 기록합니다.
+- PR #249에는 GitHub 실행 중 표시가 생겼지만 Orca 실행 기록이 없었습니다. 실장님이 직접 리뷰하고 병합·닫힘 이벤트 대기를 등록했습니다. 발견 사항에 따라 PR 링크와 전체 head SHA를 전달하는 절차를 문서에 추가했습니다. [실장님 리뷰](https://github.com/kodonghui/siljang.ai/pull/249#issuecomment-7134735137)
 - CORTHEX 용어 검사에서 추가·수정 문구의 후보 0건을 확인했습니다. `리뷰`는 PR 규칙 이름과 GitHub 댓글 규약에서 사용합니다.
 
 ### 2026-11-24 22:38 KST · TASK-170 일곱 설정 연결과 main238 네이티브 재조회

@@ -356,7 +356,7 @@
   - `docs/records/fix-log.md` 다음 번호
   - `app/README.md` 번호 항목
   - 진짜 환경에서 해 본 결과는 `docs/records/hands-on.md`(새로 만들어 쓴다)에 작업별로 날짜·도구(Aside·agent-desktop·wrangler)·결과·증거 파일을 적는다.
-- **합치기.** `## 실장님 Codex 리뷰` 댓글의 전체 head SHA를 확인한다. 첫 리뷰와 필요한 보안 리뷰, 병합 직전 GitHub Codex 커넥터 요청 1회, 대기와 병합 뒤 리뷰 조건은 [AGENTS.md의 PR 리뷰](../../AGENTS.md#pr-리뷰)를 따른다. 조건을 충족하면 squash로 합치고, main CI와 스테이징 배포 결과를 확인한다.
+- **합치기.** `## 실장님 Codex 리뷰` 댓글의 전체 head SHA를 확인한다. 첫 리뷰와 필요한 보안 리뷰, 자동화 실행이 확인되지 않을 때의 대응, 병합 직전 GitHub Codex 커넥터 요청 1회, 대기와 병합 뒤 리뷰 조건은 [AGENTS.md의 PR 리뷰](../../AGENTS.md#pr-리뷰)를 따른다. 조건을 충족하면 squash로 합치고, main CI와 스테이징 배포 결과를 확인한다.
 - **글쓰기:** 한국어로 쓰고, 그 분야의 표준 용어를 쓴다(codex-development.md 11절의 표). 동희님께는 존댓말로 보고한다.
 
 ## 8. 동희님께 확인받을 때
