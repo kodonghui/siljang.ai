@@ -8,8 +8,9 @@ import {
 import { deferredKakaoMessages, deferredKakaoTexts, markDeferredKakaoMessages } from "./kakao-deferred";
 import { KAKAO_HANDOFF_TEXT } from "./kakao-reply";
 import type { InboundReceipt } from "./kakao-skill-store";
+import { ownerWaitDue } from "./owner-wait";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
-import { addWithinReplyHours, toShopLocal } from "./time";
+import { toShopLocal } from "./time";
 
 type FailureReason = "callback_timeout" | "ai_failure" | "ai_cost_limit" | "masking_failed";
 
@@ -124,21 +125,7 @@ export async function recordKakaoHandoff(
       [eventKeys.alert("handoff_appended", existing.id, day), task.id, now],
     );
   } else {
-    const config = await db.found<{
-      time_zone: string;
-      owner_wait_minutes: number;
-      reply_start: string;
-      reply_end: string;
-    }>(
-      `SELECT s.time_zone, s.owner_wait_minutes,
-        to_char(b.reply_start, 'HH24:MI') AS reply_start, to_char(b.reply_end, 'HH24:MI') AS reply_end
-       FROM shops s JOIN business_calendars b ON b.shop_id = $1 WHERE s.id = $1`,
-    );
-    const due = addWithinReplyHours(now, config.owner_wait_minutes, {
-      timeZone: config.time_zone,
-      start: config.reply_start,
-      end: config.reply_end,
-    });
+    const due = await ownerWaitDue(db, now);
     const handoff = await db.found<{ id: string }>(
       `INSERT INTO handoffs (shop_id, consultation_id, source_message_id, reason, created_at)
         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
