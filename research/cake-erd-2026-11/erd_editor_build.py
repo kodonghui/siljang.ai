@@ -191,7 +191,7 @@ def build(root: Path) -> None:
         if len(after) > 10000:
             raise SystemExit(f"after 스크립트가 {len(after)}자로 10,000자를 넘음")
         mcp.call("erd_set_ddl_script", path=ERD, position="before",
-                 sql="CREATE EXTENSION IF NOT EXISTS btree_gist; -- refund_tiers의 EXCLUDE에 씀")
+                 sql=build_erd.before_script(schema_text))
         mcp.call("erd_set_ddl_script", path=ERD, position="after", sql=after)
 
         ops = []

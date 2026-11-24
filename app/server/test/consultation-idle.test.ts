@@ -4,11 +4,13 @@ import type { RequestDb } from "../src/db";
 import { DUE_SOURCES } from "../src/due-sources";
 import { runDueJobs } from "../src/job-runner";
 import { runnableJobs } from "../src/jobs";
-import { createShopScope, shopDb } from "../src/shop-scope";
+import { receiveKakaoMessage } from "../src/kakao-skill-store";
+import { Secret } from "../src/settings";
+import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
 import { scopeViolations } from "../src/sql-scope";
-import { describeDb, newUuid } from "./support/db";
+import { describeDb, newUuid, TEST_HASH_KEY } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
-import { createShop, type ShopFixture } from "./support/shops";
+import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const NOW = new Date("2026-11-24T06:00:00Z"),
   HOUR = 3600000;
@@ -24,6 +26,8 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
   });
   beforeEach(async () => {
     shop = await createShop(db, "합성 문의 끊김 가게");
+    await issueTestBookingLink(db, shop);
+    await linkTestChannel(db, shop.channelId);
     customerId = newUuid();
     consultationId = newUuid();
     draftId = newUuid();
@@ -192,5 +196,74 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
     await db.query("UPDATE owner_tasks SET wait_status='answered',closed_at=$2 WHERE id=$1", [task, NOW]);
     await tick();
     expect((await state())?.status).toBe("ended");
+  });
+  async function incoming(at: Date, text = "합성 이어가기") {
+    const connection = isolated.connect();
+    const scope = createShopScope(shop.shopId, { kind: "customer", channelId: shop.channelId });
+    try {
+      return await receiveKakaoMessage(
+        shopRequestDb(scope, connection),
+        {
+          scope,
+          channelId: shop.channelId,
+          status: "linked",
+          receivedAt: at,
+          requestKeySecret: new Secret(TEST_HASH_KEY),
+          payload: {
+            botId: shop.botId,
+            blockId: "test",
+            userId: customerId === shop.customerId ? shop.userKey : `idle-${customerId}`,
+            utterance: text,
+            callbackUrl: undefined,
+            isFriend: true,
+            params: {},
+            action: { params: {}, clientExtra: {} },
+          },
+        },
+        "text",
+      );
+    } finally {
+      await connection.close();
+    }
+  }
+  it("문의 끊김 뒤 새 메시지는 같은 상담·초안을 열고 마지막 시각을 갱신", async () => {
+    await tick();
+    expect((await state())?.status).toBe("dropped");
+    const at = new Date(NOW.getTime() + HOUR),
+      receipt = await incoming(at);
+    expect(receipt).toMatchObject({ kind: "received", consultationId });
+    expect(await state()).toMatchObject({ status: "open", dropped_at: null, ended_at: null });
+    expect(
+      (await db.query("SELECT last_customer_message_at FROM consultations WHERE id=$1", [consultationId])).rows,
+    ).toEqual([{ last_customer_message_at: at }]);
+    expect(
+      (
+        await db.query("SELECT id,pickup_day::text,lettering FROM order_drafts WHERE consultation_id=$1", [
+          consultationId,
+        ])
+      ).rows,
+    ).toEqual([{ id: draftId, pickup_day: "2026-12-01", lettering: "생일 축하" }]);
+  });
+  it("열린 상담의 최신 수신 시각은 늘고 늦게 온 옛 수신으로 되돌아가지 않음", async () => {
+    await incoming(NOW, "합성 최신 수신");
+    await incoming(new Date(NOW.getTime() - 60000), "합성 늦게 온 옛 수신");
+    expect(
+      (await db.query("SELECT last_customer_message_at FROM consultations WHERE id=$1", [consultationId])).rows,
+    ).toEqual([{ last_customer_message_at: NOW }]);
+    await tick();
+    expect((await state())?.status).toBe("open");
+  });
+  it("상담 끝남 뒤의 메시지는 새 상담에 저장하고 옛 상담·초안을 열지 않음", async () => {
+    await cancelledWithoutPayment();
+    await tick();
+    expect((await state())?.status).toBe("ended");
+    const receipt = await incoming(new Date(NOW.getTime() + HOUR));
+    expect(receipt.kind).toBe("received");
+    if (receipt.kind !== "received") throw new Error("시험 수신 실패");
+    expect(receipt.consultationId).not.toBe(consultationId);
+    expect((await state())?.status).toBe("ended");
+    expect((await db.query("SELECT consultation_id FROM messages WHERE id=$1", [receipt.messageId])).rows).toEqual([
+      { consultation_id: receipt.consultationId },
+    ]);
   });
 });
