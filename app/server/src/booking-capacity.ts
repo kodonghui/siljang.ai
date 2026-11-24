@@ -7,6 +7,7 @@ import { pathId, type ShopDb, type ShopRequestDb } from "./shop-scope";
 
 const CLOSED_TEXT = "그날은 마감됐어요.";
 const NO_ALTERNATIVE = "가까운 날에 자리가 없어요. 사장님께 확인을 요청할 수 있어요.";
+const OTHER_DAY = "가까운 날에 자리가 없어요. 다른 날짜를 말씀해 주세요.";
 export interface PickupAvailability {
   readonly day: string;
   readonly status: "open" | "closed" | "day_off" | "outside_window";
@@ -35,7 +36,7 @@ async function readAvailability(db: ShopDb, rawDay: string, now: Date): Promise<
     day,
     status: desired?.status ?? "outside_window",
     alternatives,
-    message: alternatives.length ? message : `${message} ${NO_ALTERNATIVE}`,
+    message: alternatives.length ? message : `${message} ${desired?.status === "closed" ? NO_ALTERNATIVE : OTHER_DAY}`,
   };
 }
 
@@ -79,8 +80,9 @@ async function previousRequest(
      FROM handoffs h LEFT JOIN owner_tasks t ON t.shop_id=$1 AND t.handoff_id=h.id
      WHERE h.shop_id=$1 AND h.consultation_id=$3 AND (h.source_message_id=$2
        OR coalesce(t.detail->'closedDaySourceIds','[]'::jsonb) ? $2::text
-       OR h.id IN (SELECT q.handoff_id FROM handoff_questions q WHERE q.shop_id=$1 AND q.message_id=$2)) LIMIT 1`,
-      [sourceId, consultationId],
+       OR h.id IN (SELECT q.handoff_id FROM handoff_questions q WHERE q.shop_id=$1 AND q.message_id=$2))
+     ORDER BY (h.reason='closed_day' AND h.requested_day=$4::date) DESC,h.created_at,h.id LIMIT 1`,
+      [sourceId, consultationId, day],
     )
   ).rows[0];
   if (!row) return null;
