@@ -124,6 +124,7 @@ export async function consumeKakaoCallback(
     owned = claim;
     let disclosure = services.aiConfigured ? await prepareKakaoAiDisclosure(db, claim, services) : undefined;
     let preparedReply: KakaoAiReply | undefined;
+    let maskingFailed = false;
     let failureCode: string = kakaoAiFailureOutcome(services.aiConfigured ? "unavailable" : "key_missing");
     if (services.aiConfigured) {
       const turn = await runKakaoAiTurn(db, job.messageId, claim, services, now, disclosure ?? undefined);
@@ -133,7 +134,10 @@ export async function consumeKakaoCallback(
         return "retry";
       }
       if (turn.kind === "reply") preparedReply = turn.reply;
-      else if (turn.kind === "failure")
+      else if (turn.kind === "masking_failure") {
+        maskingFailed = true;
+        failureCode = "masking_failed";
+      } else if (turn.kind === "failure")
         failureCode = turn.failure === "schema_invalid" ? "ai_output_rejected" : kakaoAiFailureOutcome(turn.failure);
     }
     if (preparedReply?.delivered) {
@@ -141,7 +145,9 @@ export async function consumeKakaoCallback(
       return "done";
     }
     if (preparedReply === undefined) {
-      const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now());
+      const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now(), {
+        failureReason: maskingFailed ? "masking_failed" : "ai_failure",
+      });
       if (reason === false) return "done";
       log(
         "warn",
@@ -164,7 +170,9 @@ export async function consumeKakaoCallback(
     if (disclosure !== null && callback !== null) {
       disclosure = services.aiConfigured ? await prepareKakaoAiDisclosure(db, claim, services) : undefined;
       if (preparedReply !== undefined && disclosure === undefined) {
-        const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now(), preparedReply.id);
+        const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now(), {
+          discardReplyId: preparedReply.id,
+        });
         if (reason === false) return "done";
         preparedReply = undefined;
         failureCode = kakaoAiFailureOutcome("unavailable");
