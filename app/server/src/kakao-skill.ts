@@ -1,5 +1,4 @@
-import { sqlStateOf } from "./db";
-import { errorNameOf } from "./error-name";
+import { errorFields } from "./error-name";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import { readKakaoInboundDisclosurePolicy } from "./kakao-ai-disclosure";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
@@ -51,13 +50,11 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
     }
     const queue = r.services.kakaoCallbackQueue;
     const disclosurePolicy = await readKakaoInboundDisclosurePolicy(r.db, request, r.services, (error) => {
-      const dbCode = sqlStateOf(error);
       r.log("warn", {
         event: "kakao_disclosure_policy_failed",
         traceId: r.traceId,
         code: "policy_unavailable",
-        errorName: errorNameOf(error),
-        ...(dbCode === undefined ? {} : { dbCode }),
+        ...errorFields(error),
       });
     });
     const callback = kakaoCallback(request.payload.callbackUrl, request.receivedAt);
@@ -79,12 +76,10 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
             );
           } catch (error) {
             maskingFailed = true;
-            const dbCode = sqlStateOf(error);
             r.log("error", {
               event: "kakao_message_masking_failed",
               traceId: r.traceId,
-              errorName: dbCode !== undefined ? "DatabaseError" : error instanceof Error ? error.name : "Error",
-              ...(dbCode === undefined ? {} : { dbCode }),
+              ...errorFields(error),
             });
             const saved = await tx.run(
               `UPDATE messages SET body_masked = $3 WHERE shop_id = $1 AND id = $2 AND consultation_id = $4
@@ -172,12 +167,11 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
       );
     return reply("unsupported_message");
   } catch (error) {
-    const dbCode = sqlStateOf(error);
     r.log("error", {
       event: "kakao_skill_failed",
       traceId: r.traceId,
       code: "server_error",
-      ...(dbCode === undefined ? {} : { dbCode }),
+      ...errorFields(error),
     });
     return kakaoReply(r, "server_error");
   }

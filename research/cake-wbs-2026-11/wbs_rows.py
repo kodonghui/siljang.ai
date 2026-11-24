@@ -90,7 +90,7 @@ TASKS = [
     dict(id='TASK-064', it=3, name='AI 상담 고지(처리방침 버전과 함께)', owner='Claude', size=1, src=['SPEC-018'], api=['API-070'], rules=['A39'], dep=['TASK-063', 'TASK-044'], finished='2026-11-24, docs/records/ai-disclosure/2026-11-24/task-064-acceptance.md, SPEC-018 #1~3/A39/API-070 네 응답, 첫 고지16개·새 빈 PostgreSQL 서버2243개/웹1570개·타입/빌드'),
     dict(id='TASK-065', it=3, name='참고 사진 받기', owner='Claude', size=1, src=['SPEC-019'], api=['API-070', 'API-072'], rules=['A11', 'G10'], dep=['TASK-063', 'TASK-183'], done='사진은 G10 모듈(TASK-183)로 메타데이터를 지운 뒤 저장'),
     dict(id='TASK-066', it=3, name='AI 모델로 보내는 대화 마스킹과 줄이기', owner='Claude', size=2, src=['SPEC-021'], api=['API-070'], rules=['A15'], dep=['TASK-063', 'TASK-025', 'TASK-026']),
-    dict(id='TASK-067', it=3, name='견적(가게 규칙)', owner='Claude', size=2, src=['SPEC-013'], api=['API-070'], dep=['TASK-063', 'TASK-038']),
+    dict(id='TASK-067', it=3, name='견적(가게 규칙)', owner='Claude', size=2, src=['SPEC-013'], api=['API-070'], dep=['TASK-063', 'TASK-038'], finished='2026-11-24, docs/records/quotes/2026-11-24/task-067-acceptance.md, SPEC-013 #1~6·범위/조합/버전/만료·제한 역할37개·새 빈 PostgreSQL 서버2289개/웹1570개·타입/빌드'),
     dict(id='TASK-068', it=3, name='그날 받을 수 있는지 판정과 다른 날 권하기', owner='Claude', size=2, src=['SPEC-014'], api=['API-070'], rules=['A3', 'A4'], dep=['TASK-063', 'TASK-041']),
     dict(id='TASK-069', it=3, name='AI 상담 답 만들기(주문서 초안 채우기·견적 알림·에스컬레이션)', owner='Claude', size=3, src=['SPEC-020'], api=['API-070'], rules=['A35', 'A13'], dep=['TASK-066', 'TASK-067', 'TASK-068', 'TASK-027']),
     dict(id='TASK-070', it=3, name='다른 가게 디자인 요청에 조문 인용하기', owner='Claude', size=1, src=['SPEC-026'], api=['API-070'], dep=['TASK-069', 'TASK-039']),
