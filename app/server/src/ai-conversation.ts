@@ -43,8 +43,8 @@ export async function readAiConversation(
       ORDER BY (m.id=$3) DESC,m.created_at DESC,m.id DESC LIMIT $6`,
     [source.consultationId, source.messageId, anchor.created_at, requested.at, MAX_TURNS],
   );
-  const mask = async (text: string) =>
-    inputText(await maskMessageText(db, () => services.fieldCrypto(), source.consultationId, text));
+  const mask = async (text: string, storedMessage = false) =>
+    inputText(await maskMessageText(db, () => services.fieldCrypto(), source.consultationId, text, { storedMessage }));
   const messages: AiMessage[] = [];
   const draft = await db.run<{
     id: string;
@@ -105,10 +105,10 @@ export async function readAiConversation(
   );
   const replyByTurn = new Map(replies.rows.map((row) => [row.trace_id, row.body_masked]));
   for (const turn of [...turns.rows].reverse()) {
-    messages.push({ role: "user", content: await mask(turn.body_masked) });
+    messages.push({ role: "user", content: await mask(turn.body_masked, true) });
     if (turn.id === source.messageId) continue;
     const reply = replyByTurn.get(turn.id);
-    if (reply !== undefined) messages.push({ role: "assistant", content: await mask(reply) });
+    if (reply !== undefined) messages.push({ role: "assistant", content: await mask(reply, true) });
   }
   return messages;
 }

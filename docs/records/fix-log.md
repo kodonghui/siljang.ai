@@ -1994,6 +1994,12 @@ TASK-082의 SPEC-015 수락 기준8개·A3·A6은 task-082.md의 자동 시험�
 
 첫 WBS 생성은 끝남 설명의 금지어 DB 때문에 오류2건이었고 PostgreSQL로 고쳐18개 검사·오류0을 확인했습니다. 실제 모델·카카오·구글·결제 호출0회입니다. 다음은 현재 head CI와 두 검토, 병합 직전 Codex 요청 한 번을 거쳐 squash하고 main 검증을 마치는 일입니다. TASK-077은 별도 브랜치에서 전체 검사 실패2건의 고침을 진행합니다.
 
+### (639) TASK-077 병합 뒤 검토의 페이지·표시자 고침
+
+PR239의 Claude 낮음6건을 고침3건·실제 설정 경로 회귀로 대조1건·근거 있는 보류2건으로 처리했습니다. 관련5파일120개·타입·ERD 차이0줄·단계 검사가 통과했으며 [발견별 처리와 남은 한계](consultation-messages/2026-11-24/review-followup/claude-239.md)에 모았습니다. main240087367e의 실제 CI·배포·전체 태그/활성100%/health200·원격 SHA도 확인했습니다. 끝남30개·구현 완료30개이고 TASK-077 자체 실제 적용·계정 확인은 미확인입니다. 다음은 고친 원본의 새 빈 PostgreSQL 전체 시험·빌드와 현재 head CI·처리 댓글·squash/main 검증입니다.
+
+TASK-077 Claude 검토 고침 뒤 새 빈 PostgreSQL 마이그레이션38개·서버125파일2535개·웹65파일1570개·Vite650ms·두 Worker 빌드가 모두 통과했습니다. [발견별 처리와 최종 원본](consultation-messages/2026-11-24/review-followup/claude-239.md)에 근거를 모았으며 실제 적용·계정·사진 주소 확인은 미확인입니다. 다음은 현재 head CI·처리 댓글·squash/main 검증과 PR238의 상태 기록 갱신입니다.
+
 ### (640) TASK-082 끝남 판정과 확인 범위 정정
 
 끝남30개·구현 완료30개·MVP 시작 가능36개·전체 의존 충족40개입니다. [판정과 검토 처리](slot-holds/2026-11-24/implementation-checks.md)·[끝남 재대조](slot-holds/2026-11-24/finished-audit.md)에 근거를 모았습니다.
