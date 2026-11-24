@@ -1,0 +1,43 @@
+{
+  "sourceCommit": "89e7b2e55ea90f1bb092490cd4b7b9256dcfbb57",
+  "stageStartKst": "2026-11-25 07:34:13 KST",
+  "stageEndKst": "2026-11-25 07:34:47 KST",
+  "stageCommandExit": 0,
+  "stageApi": "skipped --no-api; separate actual full API checker below, not counted as stage pass",
+  "stageBrowser": "skipped --no-browser; not a pass",
+  "stage": {
+    "wbsChecks": 18,
+    "wbsErrors": 0,
+    "erdPass": 15,
+    "sitemapPass": 17,
+    "screensPass": 15,
+    "mockPass": 13,
+    "mockUnverified": 1
+  },
+  "separateApi": {
+    "checkerExit": 0,
+    "pass": 17,
+    "fail": 0,
+    "unverified": 0,
+    "sourceCommit": "89e7b2e55ea90f1bb092490cd4b7b9256dcfbb57",
+    "ownLoopbackPrism": true,
+    "ownPrismStopped": true,
+    "prismTerminationExit": -15,
+    "apiCheckDatabaseDropped": true,
+    "lines": [
+      "통과 D1 테이블.컬럼 106개(108가지 필드 스키마)에 계약이 허용하는 값 5905개를 넣어 봄: 타입·CHECK·varchar 길이에 막힌 값 없음(NUL 글자와 줄바꿈으로 끝나는 값은 뺌). 글자 수 CHECK가 있는 컬럼 42개는 끝값을 바로 견줌",
+      "      참고: operators.email: 가장 긴 값을 만들지 못함(Unsatisfiable). 글자 수 CHECK가 없어 고르게 만든 값으로만 견줌",
+      "      참고: kakao_channels.bot_id: 가장 긴 값을 만들지 못함(Unsatisfiable). 글자 수 CHECK가 없어 고르게 만든 값으로만 견줌",
+      "      참고: ledger_links.spreadsheet_id: 가장 긴 값을 만들지 못함(Unsatisfiable). 글자 수 CHECK가 없어 고르게 만든 값으로만 견줌",
+      "통과 M1 목 서버(http://127.0.0.1:51903)에 요청 965개: 맞는 요청·로그인 없음·틀린 입력·응답 예시마다 계약대로",
+      "검사 17개: 통과 17, 실패 0, 미확인 0"
+    ]
+  },
+  "rationale": "API 검사기를 직접 시작한 전용 PID/임의 loopback 포트에서 실행해 D1/M1까지 확인. 단계의 건너뜀과 별도 실제 API 검사를 구분함",
+  "counts": {
+    "finished": 36,
+    "implemented": 32,
+    "eligible": 30,
+    "allDependencyReady": 34
+  }
+}

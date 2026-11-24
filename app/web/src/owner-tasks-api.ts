@@ -136,12 +136,18 @@ export function ownerTasksHref(query: OwnerTasksQuery): string {
 }
 export async function fetchOwnerTasks(
   query: OwnerTasksQuery,
+  expectedShopId: string,
   signal?: AbortSignal,
 ): Promise<ApiResult<OwnerTasksPage>> {
-  if (!parseOwnerTasksSearch(ownerTasksHref(query).slice("/owner".length))) return INVALID_API_RESPONSE;
+  if (!uuid(expectedShopId) || !parseOwnerTasksSearch(ownerTasksHref(query).slice("/owner".length)))
+    return INVALID_API_RESPONSE;
   const p = new URLSearchParams({ status: query.status, limit: String(query.limit) });
   if (query.cursor !== null) p.set("cursor", query.cursor);
-  const r = await request<unknown>(`/owner/tasks?${p}`, { cache: "no-store", ...(signal ? { signal } : {}) });
+  const r = await request<unknown>(`/owner/tasks?${p}`, {
+    cache: "no-store",
+    expectedShopId,
+    ...(signal ? { signal } : {}),
+  });
   if (!r.ok) return r;
   const v = r.data;
   if (

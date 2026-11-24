@@ -11,6 +11,7 @@ const api = parse(readFileSync(resolve(process.cwd(), "../../api/openapi.yaml"),
 const original = () =>
   structuredClone(api.paths["/owner/tasks"].get.responses[200].content["application/json"].examples.open_tasks.value);
 const callbacks = {
+  shopId: "00000000-0000-4000-8000-000000000087",
   shopName: "합성 가게",
   onNavigate: vi.fn(),
   onSessionExpired: vi.fn(),

@@ -80,6 +80,7 @@ export function OwnerArea() {
   const verified = useRef<{ key: string; path: string; data: OwnerIdentity; history: boolean } | null>(null);
   const [registrationNotice, setRegistrationNotice] = useState(false);
   const [homeTabFocus, setHomeTabFocus] = useState<HomeTabFocus | null>(null);
+  const rejectedHomeIdentity = useRef<string | null>(null);
 
   useEffect(() => {
     const recheck = () => {
@@ -217,9 +218,22 @@ export function OwnerArea() {
             ? { licenseStatus: candidate.shop.licenseStatus, onSaved: () => setRevision((r) => r + 1) }
             : {})}
           key={identityKey}
+          shopId={candidate.shop.shopId}
           shopName={candidate.shop.name}
           onNavigate={(href) => navigate(href)}
-          onSessionExpired={() => navigate(OWNER_LOGIN, { replace: true, state: { returnTo: requested } })}
+          onSessionExpired={() => {
+            if (shopPath === OWNER_HOME && rejectedHomeIdentity.current !== identityKey) {
+              // 두 조회 사이 계정이 바뀌었을 수 있다. 이전 목록을 숨긴 채 한 번만 신원을 다시 읽는다.
+              rejectedHomeIdentity.current = identityKey;
+              setHomeTabFocus(null);
+              const query = new URLSearchParams(location.search);
+              if (query.has("cursor")) {
+                query.delete("cursor");
+                const search = query.toString();
+                navigate(`${OWNER_HOME}${search ? `?${search}` : ""}`, { replace: true });
+              } else setRevision((value) => value + 1);
+            } else navigate(OWNER_LOGIN, { replace: true, state: { returnTo: requested } });
+          }}
           onRegisterShop={() => navigate(OWNER_REGISTER, { replace: true })}
           onLogout={() => void logOut()}
           logoutPending={logout === "pending"}

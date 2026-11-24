@@ -8,6 +8,7 @@ const api = parse(readFileSync(new URL("../../../api/openapi.yaml", import.meta.
 const examples = api.paths["/owner/tasks"].get.responses[200].content["application/json"].examples;
 let value: typeof examples.open_tasks.value;
 const query = { status: "open", limit: 20, cursor: null } as const;
+const SHOP_ID = "00000000-0000-4000-8000-000000000087";
 beforeEach(() => {
   value = structuredClone(examples.open_tasks.value);
   vi.stubGlobal(
@@ -16,9 +17,14 @@ beforeEach(() => {
   );
 });
 afterEach(() => vi.unstubAllGlobals());
+it("내 정보에서 확인한 가게를 목록 요청의 조건으로 보낸다", async () => {
+  await fetchOwnerTasks(query, SHOP_ID);
+  const init = vi.mocked(fetch).mock.calls[0]?.[1];
+  expect(new Headers(init?.headers).get("X-Expected-Shop-Id")).toBe(SHOP_ID);
+});
 it.each(Object.keys(examples))("API040 실제 계약 예시 %s를 읽는다", async (name) => {
   value = structuredClone(examples[name].value);
-  const r = await fetchOwnerTasks(query);
+  const r = await fetchOwnerTasks(query, SHOP_ID);
   expect(r.ok).toBe(true);
   expect(vi.mocked(fetch).mock.calls[0]).toMatchObject([
     "/api/owner/tasks?status=open&limit=20",
@@ -118,11 +124,11 @@ it.each([
   ],
 ] as const)("API040 %s 응답을 화면으로 넘기지 않는다", async (_name, mutate) => {
   mutate(value);
-  expect((await fetchOwnerTasks(query)).ok).toBe(false);
+  expect((await fetchOwnerTasks(query, SHOP_ID)).ok).toBe(false);
 });
 it("같은 커서로 순환하는 다음 페이지는 거절한다", async () => {
   value.nextCursor = "same";
-  expect((await fetchOwnerTasks({ ...query, cursor: "same" })).ok).toBe(false);
+  expect((await fetchOwnerTasks({ ...query, cursor: "same" }, SHOP_ID)).ok).toBe(false);
 });
 it("200자 요약과 닫힘 라벨은 보존하고 계약 밖 개인정보 필드는 버린다", async () => {
   value.items[0].summary = "가".repeat(200);
@@ -130,7 +136,7 @@ it("200자 요약과 닫힘 라벨은 보존하고 계약 밖 개인정보 필�
   value.items[0].phone = "example-phone";
   value.items[0].order.private = "example-private";
   value.private = "example-private";
-  const r = await fetchOwnerTasks(query);
+  const r = await fetchOwnerTasks(query, SHOP_ID);
   expect(r.ok).toBe(true);
   if (!r.ok) return;
   expect(r.data.items[0]?.summary.length).toBe(200);
@@ -192,7 +198,7 @@ it("홈이 아닌 신원 확인은 배너 없는 이전 소비자의 계약을 �
 
 it.each(["A1B2C3D", "A1B2C3D4"])("계약이 허용하는 %s 주문번호도 정상 목록으로 읽는다", async (orderNo) => {
   value.items[0].order.orderNo = orderNo;
-  const r = await fetchOwnerTasks(query);
+  const r = await fetchOwnerTasks(query, SHOP_ID);
   expect(r.ok).toBe(true);
   if (r.ok) expect(r.data.items[0]?.order?.orderNo).toBe(orderNo);
 });

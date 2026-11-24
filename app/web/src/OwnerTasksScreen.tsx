@@ -49,6 +49,7 @@ export interface OwnerTaskTabFocusRequest {
   readonly origin: Element | null;
 }
 interface OwnerTasksProps extends ShopLicenseProps {
+  readonly shopId: string;
   readonly banners?: readonly OwnerBanner[];
   readonly registrationNotice?: boolean;
   readonly tabFocusRequest?: OwnerTaskTabFocusRequest | null;
@@ -90,7 +91,7 @@ export function OwnerTasksScreen(props: OwnerTasksProps) {
       setMessage("");
       if (more) focusOrigin.current = document.activeElement;
       try {
-        const result = await fetchOwnerTasks({ ...query, cursor }, controller.signal);
+        const result = await fetchOwnerTasks({ ...query, cursor }, props.shopId, controller.signal);
         if (controller.signal.aborted) return;
         if (result.ok) {
           setLoaded((old) => ({
@@ -123,7 +124,7 @@ export function OwnerTasksScreen(props: OwnerTasksProps) {
         if (!controller.signal.aborted) setLoading(false);
       }
     },
-    [query, search],
+    [query, search, props.shopId],
   );
   useEffect(() => {
     void revision;
