@@ -1224,6 +1224,7 @@ CREATE TABLE owner_tasks (
 );
 CREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL; -- 할 일 목록(TERM-059)
 CREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting'; -- 지연 안내 보낼 것 찾기(SPEC-024)
+CREATE INDEX owner_tasks_handoff_idx ON owner_tasks (shop_id, handoff_id) WHERE handoff_id IS NOT NULL; -- 수신 글과 사장님 확인 건 연결
 COMMENT ON TABLE owner_tasks IS 'TBL-042 사장님 할 일: 사장님이 정할 일과 사장님 답 기다림(1-7)';
 
 -- TBL-043 owner_alerts (CTX-008) ← SPEC-003, SPEC-006, SPEC-022, SPEC-024, SPEC-044, SPEC-046, SPEC-048, SPEC-050, SPEC-057, SPEC-058, SPEC-064, SPEC-065, SPEC-067, SPEC-076, SPEC-078 | terms: TERM-035

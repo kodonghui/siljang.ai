@@ -157,6 +157,7 @@ export async function recordClosedPickupDayInTransaction(
   if (opened) {
     handoffId = opened.id;
     resultAvailability = storedAvailability(opened.availability, day) ?? availability;
+    // 최초 판정은 재처리 결과 보존용이다. TASK-069는 이를 다시 권하지 않고 실제 전달한 안내를 쓴다.
     // 마감 날짜 건에는 일반 추가 질문을 붙이지 않는다. 같은 열린 날짜 건을 쓴다(SPEC-014).
     await tx.run(
       `UPDATE owner_tasks SET detail=jsonb_set(coalesce(detail,'{}'::jsonb),'{closedDaySourceIds}',
