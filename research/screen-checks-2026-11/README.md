@@ -23,3 +23,10 @@ node /tmp/siljang-qa087-owner-tasks/server.mjs
 ```
 
 두 생성기의 Windows 경로는 직렬화해 import에 넣습니다. 할 일 홈의 생성도 Linux/Windows CI에서 확인하며 브라우저는 실행하지 않습니다. 실제 학원컴 전달/화면 결과는 작업별 기록을 따릅니다.
+
+운영규정 화면은 다음 명령으로 생성합니다. 실제 OwnerArea/편집기와10상태·15응답을 묶습니다. empty는 미확정 템플릿이고 confirm/submitting/done은 정상 입력/확정 버튼으로 해당 상태에 도달합니다. 이미 학원컴에서 진행하던 V4와 새 로컬 재현 자료 V5를 구분하며, 기존 진행/정지ACK를 읽기 전에 중복 전송하거나 실행하지 않습니다.
+
+```sh
+node research/screen-checks-2026-11/build-operating-rules.mjs . /tmp/siljang-qa051-operating-rules
+node /tmp/siljang-qa051-operating-rules/server.mjs
+```
