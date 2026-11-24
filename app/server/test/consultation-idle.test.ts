@@ -252,6 +252,75 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
     const found = await db.query<{ id: string }>(DUE_SOURCES.consultation_ordered.find, [NOW, 1]);
     expect(found.rows.map((row) => row.id)).toEqual([ready.consultationId]);
   });
+  async function indirectTask(kind: "change_request" | "issue_report" | "handoff") {
+    const subject = newUuid(),
+      task = newUuid();
+    if (kind === "change_request") {
+      const card = newUuid();
+      await db.query(
+        "INSERT INTO confirm_cards(id,shop_id,consultation_id,customer_id,card_key,kind,order_id,order_version,payload,expires_at) VALUES($1,$2,$3,$4,$5,'change_request',$6,1,'{}',now()+interval '20 minutes')",
+        [card, shop.shopId, consultationId, customerId, newUuid(), shop.orderId],
+      );
+      await db.query(
+        "INSERT INTO change_requests(id,shop_id,order_id,card_id,base_version,changes,status,closed_at) VALUES($1,$2,$3,$4,1,'{}','closed_by_cancel',$5)",
+        [subject, shop.shopId, shop.orderId, card, NOW],
+      );
+    } else if (kind === "issue_report") {
+      const details = newUuid();
+      await db.query(
+        "INSERT INTO issue_details(id,shop_id,consultation_id,order_id,description,status) VALUES($1,$2,$3,$4,'합성 문제 신고','reported')",
+        [details, shop.shopId, consultationId, shop.orderId],
+      );
+      await db.query(
+        "INSERT INTO issue_reports(id,shop_id,order_id,issue_details_id,late,reported_by,status,compensation,decided_at,closed_at,problem_kind) VALUES($1,$2,$3,$4,false,'owner_from_handoff','closed','none',$5,$5,'other')",
+        [subject, shop.shopId, shop.orderId, details, NOW],
+      );
+    } else {
+      await db.query(
+        "INSERT INTO handoffs(id,shop_id,consultation_id,source_message_id,order_id,reason,status,closed_at) VALUES($1,$2,$3,$4,$5,'cannot_answer','closed_no_answer',$6)",
+        [subject, shop.shopId, consultationId, shop.messageId, shop.orderId, NOW],
+      );
+    }
+    const column = { change_request: "change_request_id", issue_report: "issue_report_id", handoff: "handoff_id" }[
+      kind
+    ];
+    await db.query(
+      `INSERT INTO owner_tasks(id,shop_id,kind,event_key,${column},wait_status,wait_due_at) VALUES($1,$2,$3,$4,$5,'waiting',$6)`,
+      [task, shop.shopId, kind, `task:${kind}:${subject}`, subject, NOW],
+    );
+    return task;
+  }
+  it.each([
+    ["change_request", "handler"],
+    ["issue_report", "handler"],
+    ["handoff", "handler"],
+    ["change_request", "candidate"],
+    ["issue_report", "candidate"],
+    ["handoff", "candidate"],
+  ] as const)("간접 %s 할 일이 열린 동안 %s가 상담을 끝내지 않음", async (kind, path) => {
+    await cancelledWithoutPayment();
+    await db.query("UPDATE consultations SET status='ordered' WHERE id=$1", [consultationId]);
+    const task = await indirectTask(kind);
+    if (path === "candidate") {
+      const found = await db.query<{ id: string }>(DUE_SOURCES.consultation_ordered.find, [NOW, 1000]);
+      expect(found.rows.map((row) => row.id)).not.toContain(consultationId);
+      expect((await db.query(DUE_SOURCES.consultation_ordered.claim, [shop.shopId, consultationId, NOW])).rows).toEqual(
+        [],
+      );
+    } else {
+      await db.transaction((tx) =>
+        closeIdleConsultation(
+          shopDb(createShopScope(shop.shopId, { kind: "job", job: "consultation_idle" }), tx),
+          consultationId,
+          NOW,
+        ),
+      );
+      expect((await state())?.status).toBe("ordered");
+    }
+    await db.query("UPDATE owner_tasks SET wait_status='answered',closed_at=$2 WHERE id=$1", [task, NOW]);
+    await tick();
+    expect((await state())?.status).toBe("ended");
+  });
   async function incoming(at: Date, text = "합성 이어가기") {
     const connection = isolated.connect();
     const scope = createShopScope(shop.shopId, { kind: "customer", channelId: shop.channelId });
