@@ -156,6 +156,50 @@ describeDb("TASK-184 처리방침 본문 비교와 재발행", () => {
     expect(after).toHaveLength(before.length + 1);
     expect(after.slice(0, -1)).toEqual(before);
   });
+  it("새 배포를 여러 발급 가게가 읽어도 각자 한 버전만 만들고 미발급 가게에는 만들지 않음", async () => {
+    const issued = [await fixture(), await fixture(), await fixture()],
+      unissued = await createShop(db, "미발급 합성 가게"),
+      changed = { transfers: POLICY.transfers.map((t) => ({ ...t, recipient: `${t.recipient} 새 배포` })) };
+    await db.query("UPDATE shops SET booking_slug=NULL,booking_issued_at=NULL WHERE id=$1", [unissued.shopId]);
+    await db.query("UPDATE consultations SET ai_disclosed_at=NULL,ai_disclosed_policy_version=NULL WHERE shop_id=$1", [
+      unissued.shopId,
+    ]);
+    await db.query("DELETE FROM privacy_policies WHERE shop_id=$1", [unissued.shopId]);
+    const deployed = issued[0]?.app(changed);
+    if (!deployed) throw new Error("발급 가게가 없어요");
+    for (const h of issued) {
+      const before = (await h.policies()).rows;
+      for (let i = 0; i < 2; i++) {
+        const response = await h.publicGet(deployed);
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as { version: number; body: string };
+        expect(body.version).toBe((before.at(-1)?.version ?? 0) + 1);
+        expect(body.body).toContain("새 배포");
+      }
+      const after = (await h.policies()).rows;
+      expect(after).toHaveLength(before.length + 1);
+      expect(after.slice(0, -1)).toEqual(before);
+    }
+    expect(
+      (await db.query("SELECT count(*)::int n FROM privacy_policies WHERE shop_id=$1", [unissued.shopId])).rows[0]?.n,
+    ).toBe(0);
+  });
+  it("동시 저장 충돌 뒤 다시 저장하면 처리방침 번호가 빠지거나 겹치지 않음", async () => {
+    const h = await fixture(),
+      before = (await h.policies()).rows,
+      baseRevision = (await h.settings()).revision,
+      changes = [{ name: "동시 저장 합성 하나" }, { contactEmail: "concurrent@example.com" }],
+      responses = await Promise.all(changes.map((change) => h.patch({ ...change, baseRevision })));
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
+    const conflict = responses.findIndex((r) => r.status === 409);
+    expect((await h.patch(changes[conflict] ?? {})).status).toBe(200);
+    const after = (await h.policies()).rows;
+    expect(after).toHaveLength(before.length + 2);
+    expect(after.slice(0, before.length)).toEqual(before);
+    expect(after.map((p) => p.version)).toEqual(Array.from({ length: after.length }, (_, i) => i + 1));
+    expect(after.at(-1)?.body).toContain("동시 저장 합성 하나");
+    expect(after.at(-1)?.body).toContain("concurrent@example.com");
+  });
   it("이미 발급한 가게에서 설정이 없으면 옛 글을 내지 않고 연락처 저장도 전부 롤백함", async () => {
     const h = await fixture(),
       before = (await h.policies()).rows;
