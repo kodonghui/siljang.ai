@@ -75,6 +75,7 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     authenticated = true,
     failLog = false,
     connect: DbConnector = () => isolated.connect(),
+    settings: Record<string, unknown> = {},
   ) {
     const app = createApp({
       connect: failLog ? failingAccessInsert(connect) : connect,
@@ -92,7 +93,7 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     return app.request(
       `${ORIGIN}/api/owner/consultations/${id}/messages${query}`,
       { headers: { "x-test-owner": authenticated ? shop.ownerId : "", "CF-Connecting-IP": "203.0.113.77" } },
-      testEnv({ FILE_URL_KEY: fileUrlKey }),
+      testEnv({ FILE_URL_KEY: fileUrlKey, ...settings }),
     );
   }
   async function page(response: Response): Promise<Page> {
@@ -317,11 +318,31 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
   it("손님이 친 표시자는 인용 글로 남고 실제 마스킹한 번호만 복원", async () => {
     const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
     const masked = await scoped.transaction((tx) =>
-      maskMessageText(tx, () => fc, shop.consultationId, "전화 01000005678 그리고 [전화번호1]"),
+      maskMessageText(
+        tx,
+        () => fc,
+        shop.consultationId,
+        "전화 01000005678 그리고 [전화번호1] [계좌번호1] [카드번호1] [긴숫자1]",
+      ),
     );
     await isolated.db.query("UPDATE messages SET body_masked=$2 WHERE id=$1", [shop.messageId, masked]);
     const body = await page(await call());
-    expect(body.items[0]?.text).toBe("전화 01000005678 그리고 ［전화번호1］");
+    expect(body.items[0]?.text).toBe("전화 01000005678 그리고 ［전화번호1］ ［계좌번호1］ ［카드번호1］ ［긴숫자1］");
+  });
+  it("다음 페이지에서도 잘못 설정한 필드 키는 클라이언트 오류가 아닌500", async () => {
+    await pendingNotice(NOW);
+    const first = await page(await call("?limit=1"));
+    expect(first.nextCursor).not.toBeNull();
+    const response = await call(
+      `?cursor=${first.nextCursor}`,
+      shop.consultationId,
+      true,
+      false,
+      () => isolated.connect(),
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: "synthetic-invalid-key-configuration" },
+    );
+    await expectProblem(response, "internal");
+    expect(JSON.stringify(logs)).not.toContain("synthetic-invalid-key-configuration");
   });
   it("커서는200자 안에서 순번·트랜잭션 메타데이터를 평문으로 노출하지 않음", async () => {
     await pendingNotice(NOW);

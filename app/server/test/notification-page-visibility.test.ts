@@ -43,6 +43,20 @@ describeDb("손님 안내 전달 버전 이행(TASK-077)", () => {
       )
     ).rows[0];
     expect(version?.delivery_txid).toBe(delivered?.delivery_txid);
+    const statusOnly = (
+      await db.query<{ delivery_txid: string }>(
+        "UPDATE notifications SET status='sent',kakao_task_id='synthetic-delivery',requested_at=$2 WHERE id=$1 RETURNING delivery_txid",
+        [notice, at],
+      )
+    ).rows[0];
+    expect(statusOnly?.delivery_txid).toBe(delivered?.delivery_txid);
+    const restored = (
+      await db.query<{ delivery_txid: string }>(
+        "UPDATE notifications SET status='delivered_on_reply' WHERE id=$1 RETURNING delivery_txid",
+        [notice],
+      )
+    ).rows[0];
+    expect(restored?.delivery_txid).toBe(delivered?.delivery_txid);
     await db.query("UPDATE notifications SET sent_at=$2 WHERE id=$1", [notice, at]);
     await expect(
       db.query("UPDATE notifications SET sent_at=$2 WHERE id=$1", [notice, new Date(at.getTime() + 1000)]),
