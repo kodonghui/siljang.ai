@@ -14,6 +14,14 @@ import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } f
 
 const NOW = new Date("2026-11-24T06:00:00Z"),
   HOUR = 3600000;
+function latch() {
+  let release!: () => void, fail!: (error: unknown) => void;
+  const promise = new Promise<void>((resolve, reject) => {
+    release = resolve;
+    fail = reject;
+  });
+  return { promise, release, fail };
+}
 describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, db: RequestDb, shop: ShopFixture;
   let customerId: string, consultationId: string, draftId: string;
@@ -224,6 +232,51 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
     await tick();
     expect((await state())?.status).toBe("ended");
   });
+  it("주문 쓰기와 겹친 종료는 기다리거나 오래된 열린 일 판단으로 끝내지 않음", async () => {
+    await cancelledWithoutPayment();
+    await db.query("UPDATE consultations SET status='ordered' WHERE id=$1", [consultationId]);
+    const writer = isolated.connect(),
+      closer = isolated.connect();
+    const locked = latch(),
+      releaseWriter = latch(),
+      task = newUuid();
+    const writing = writer
+      .transaction(async (tx) => {
+        await tx.query("SELECT id FROM orders WHERE id=$1 FOR UPDATE", [shop.orderId]);
+        locked.release();
+        await releaseWriter.promise;
+        await tx.query(
+          "INSERT INTO owner_tasks(id,shop_id,kind,event_key,order_id,wait_status,wait_due_at) VALUES($1,$2,'refund_decision',$3,$4,'waiting',$5)",
+          [task, shop.shopId, `task:refund_decision:${shop.orderId}`, shop.orderId, NOW],
+        );
+      })
+      .catch((error) => {
+        locked.fail(error);
+        throw error;
+      });
+    try {
+      await locked.promise;
+      await closer.transaction(async (tx) => {
+        await tx.query("SELECT set_config('statement_timeout','1000',true)");
+        await closeIdleConsultation(
+          shopDb(createShopScope(shop.shopId, { kind: "job", job: "consultation_idle" }), tx),
+          consultationId,
+          NOW,
+        );
+      });
+      expect((await state())?.status).toBe("ordered");
+    } finally {
+      releaseWriter.release();
+      await Promise.allSettled([writing]);
+      await writer.close();
+      await closer.close();
+    }
+    await tick();
+    expect((await state())?.status).toBe("ordered");
+    await db.query("UPDATE owner_tasks SET wait_status='answered',closed_at=$2 WHERE id=$1", [task, NOW]);
+    await tick();
+    expect((await state())?.status).toBe("ended");
+  });
   it("결제 안내로 참조한 오래된 할 일이 한 건 배치의 다음 상담을 막지 않음", async () => {
     await cancelledWithoutPayment();
     await db.query("UPDATE consultations SET status='ordered',last_customer_message_at=$2 WHERE id=$1", [
@@ -321,8 +374,7 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
     await tick();
     expect((await state())?.status).toBe("ended");
   });
-  async function incoming(at: Date, text = "합성 이어가기") {
-    const connection = isolated.connect();
+  async function incoming(at: Date, text = "합성 이어가기", connection = isolated.connect()) {
     const scope = createShopScope(shop.shopId, { kind: "customer", channelId: shop.channelId });
     try {
       return await receiveKakaoMessage(
@@ -376,6 +428,103 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
     ).toEqual([{ last_customer_message_at: NOW }]);
     await tick();
     expect((await state())?.status).toBe("open");
+  });
+  async function waitForBlockedBy(pid: number) {
+    await expect
+      .poll(
+        async () =>
+          (
+            await db.query<{ blocked: boolean }>(
+              "SELECT EXISTS (SELECT 1 FROM pg_stat_activity a WHERE $1::int=ANY(pg_blocking_pids(a.pid))) AS blocked",
+              [pid],
+            )
+          ).rows[0]?.blocked,
+        { timeout: 3000, interval: 20 },
+      )
+      .toBe(true);
+  }
+  it("종료가 먼저 잠근 실제 두 연결에서도 새 메시지는 같은 문의 상담을 다시 엶", async () => {
+    const closer = isolated.connect(),
+      receiver = isolated.connect();
+    const pid = (await closer.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]!.pid;
+    const closed = latch(),
+      releaseCloser = latch();
+    const closing = closer
+      .transaction(async (tx) => {
+        await closeIdleConsultation(
+          shopDb(createShopScope(shop.shopId, { kind: "job", job: "consultation_idle" }), tx),
+          consultationId,
+          NOW,
+        );
+        closed.release();
+        await releaseCloser.promise;
+      })
+      .catch((error) => {
+        closed.fail(error);
+        throw error;
+      });
+    let receiving: ReturnType<typeof incoming> | undefined;
+    try {
+      await closed.promise;
+      receiving = incoming(NOW, "합성 종료 중 수신", receiver);
+      await waitForBlockedBy(pid);
+      releaseCloser.release();
+      await closing;
+      expect(await receiving).toMatchObject({ kind: "received", consultationId });
+      expect(await state()).toMatchObject({ status: "open", dropped_at: null, ended_at: null });
+    } finally {
+      releaseCloser.release();
+      await Promise.allSettled([closing, ...(receiving ? [receiving] : [])]);
+      await closer.close();
+      await receiver.close();
+    }
+  });
+  it("수신이 먼저 잠근 실제 두 연결에서는 종료가 새 수신 시각을 다시 확인함", async () => {
+    const receiver = isolated.connect(),
+      closer = isolated.connect();
+    const pid = (await receiver.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]!.pid;
+    const saved = latch(),
+      releaseReceiver = latch();
+    const gated: RequestDb = {
+      query: receiver.query.bind(receiver),
+      transaction: (fn) =>
+        receiver.transaction(async (tx) => {
+          const result = await fn(tx);
+          saved.release();
+          await releaseReceiver.promise;
+          return result;
+        }),
+      close: receiver.close.bind(receiver),
+      abort: receiver.abort.bind(receiver),
+    };
+    const receiving = incoming(NOW, "합성 수신 중 종료", gated).catch((error) => {
+      saved.fail(error);
+      throw error;
+    });
+    let closing: Promise<void> | undefined;
+    try {
+      await saved.promise;
+      closing = closer.transaction((tx) =>
+        closeIdleConsultation(
+          shopDb(createShopScope(shop.shopId, { kind: "job", job: "consultation_idle" }), tx),
+          consultationId,
+          NOW,
+        ),
+      );
+      await waitForBlockedBy(pid);
+      releaseReceiver.release();
+      expect(await receiving).toMatchObject({ kind: "received", consultationId });
+      await closing;
+      expect(await state()).toMatchObject({ status: "open", dropped_at: null, ended_at: null });
+      expect(
+        (await db.query("SELECT last_customer_message_at FROM consultations WHERE id=$1", [consultationId])).rows,
+      ).toEqual([{ last_customer_message_at: NOW }]);
+    } finally {
+      releaseReceiver.release();
+      await Promise.allSettled([receiving, ...(closing ? [closing] : [])]);
+      await receiver.close();
+      await closer.close();
+    }
   });
   it("상담 끝남 뒤의 메시지는 새 상담에 저장하고 옛 상담·초안을 열지 않음", async () => {
     await cancelledWithoutPayment();

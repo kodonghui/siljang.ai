@@ -1,6 +1,25 @@
 import type { DueItem, JobContext, TransactionHandler } from "./job-runner";
 import type { ShopDb } from "./shop-scope";
 
+/** 고지 전에 실패한 옛 AI 답은 다시 여는 상담의 사장님 안내를 가로막지 않게 남겨 둔다. */
+async function retireUndisclosedAiReplies(db: ShopDb, consultationId: string): Promise<boolean> {
+  const pending = await db.run<{ id: string }>(
+    `SELECT m.id FROM messages m WHERE m.shop_id=$1 AND m.consultation_id=$2
+       AND m.direction='outbound' AND m.author='ai' AND m.delivery='deferred' AND m.sent_at IS NULL
+       AND EXISTS(SELECT 1 FROM consultations c WHERE c.shop_id=$1 AND c.id=m.consultation_id AND c.ai_disclosed_at IS NULL)`,
+    [consultationId],
+  );
+  if (pending.rowCount === 0) return true;
+  const ids = pending.rows.map((row) => row.id);
+  const locked = await db.run(
+    "SELECT id FROM messages WHERE shop_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR UPDATE SKIP LOCKED",
+    [ids],
+  );
+  if (locked.rowCount !== ids.length) return false;
+  await db.run("UPDATE messages SET delivery='failed' WHERE shop_id=$1 AND id=ANY($2::uuid[])", [ids]);
+  return true;
+}
+
 /** TASK-076: 실행기가 잡은 상담을 현재 가게 설정과 실제 열린 건으로 다시 판단한다. */
 export async function closeIdleConsultation(db: ShopDb, consultationId: string, now: Date): Promise<void> {
   if (Number.isNaN(now.getTime())) throw new RangeError("invalid consultation cutoff");
@@ -30,12 +49,24 @@ export async function closeIdleConsultation(db: ShopDb, consultationId: string, 
   );
   if (orders.rowCount !== 0) {
     const originals = orders.rows.map((row) => row.id);
+    // 주문 쓰기가 상담을 잠그는 경우와 교착하지 않게 기다리지 않고 다음 실행에서 다시 판단한다.
+    // 원래 주문을 먼저 잠가 새 재제작이 이 판단 중간에 붙는 것도 막는다.
+    const lockedOriginals = await db.run(
+      "SELECT id FROM orders WHERE shop_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR UPDATE SKIP LOCKED",
+      [originals],
+    );
+    if (lockedOriginals.rowCount !== originals.length) return;
     const remakes = (
       await db.run<{ id: string }>("SELECT id FROM orders WHERE shop_id=$1 AND remake_of_order_id=ANY($2::uuid[])", [
         originals,
       ])
     ).rows;
     const ids = [...new Set([...originals, ...remakes.map((row) => row.id)])];
+    const lockedFamily = await db.run(
+      "SELECT id FROM orders WHERE shop_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR UPDATE SKIP LOCKED",
+      [ids],
+    );
+    if (lockedFamily.rowCount !== ids.length) return;
     const pending = await db.run(
       `SELECT o.id FROM orders o WHERE o.shop_id=$1 AND o.id=ANY($2::uuid[]) AND (
         o.status NOT IN ('received','no_pickup','rejected','cancelled')
@@ -61,12 +92,14 @@ export async function closeIdleConsultation(db: ShopDb, consultationId: string, 
       ]);
       return;
     }
+    if (!(await retireUndisclosedAiReplies(db, consultationId))) return;
     await db.run("UPDATE consultations SET status='ended',ended_at=$3,dropped_at=NULL WHERE shop_id=$1 AND id=$2", [
       consultationId,
       now,
     ]);
     return;
   }
+  if (!(await retireUndisclosedAiReplies(db, consultationId))) return;
   await db.run("UPDATE consultations SET status='dropped',dropped_at=$3,ended_at=NULL WHERE shop_id=$1 AND id=$2", [
     consultationId,
     now,
