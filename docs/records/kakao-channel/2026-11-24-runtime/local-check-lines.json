@@ -1,0 +1,32 @@
+{
+  "scope": "로컬 고정 원본의 새 설치·빈39개 이행 전체 결과. 후속 main 통합/새 공개head 결과와 구분",
+  "localSourceCommit": "6d6aa7e61493d53c083916a502f1c0d38a7b54c2",
+  "correspondingPublicHead": "3d883e793403f0d7eadab98554c4ef85711cd5fc",
+  "samePublicTree": "6808b266627de3a0f96991733443a23eb143c598",
+  "freshDatabaseMigrations": 39,
+  "testDatabaseDropped": true,
+  "typecheckExit": 0,
+  "testsExit": 0,
+  "buildExit": 0,
+  "results": {
+    "install": [
+      "added 161 packages in 12s"
+    ],
+    "lint": [
+      "Checked 529 files in 799ms. No fixes applied."
+    ],
+    "tests": [
+      " Test Files  134 passed (134)",
+      "      Tests  2676 passed (2676)",
+      " Test Files  67 passed (67)",
+      "      Tests  1615 passed (1615)"
+    ],
+    "build": [
+      "✓ built in 735ms",
+      "Total Upload: 5337.61 KiB / gzip: 984.55 KiB",
+      "--dry-run: exiting now.",
+      "Total Upload: 20.87 KiB / gzip: 6.47 KiB",
+      "--dry-run: exiting now."
+    ]
+  }
+}

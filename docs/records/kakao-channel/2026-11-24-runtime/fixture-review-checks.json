@@ -1,0 +1,62 @@
+{
+  "review": 7144663564,
+  "reviewedPublicHead": "3d883e793403f0d7eadab98554c4ef85711cd5fc",
+  "windowsPathFixLocalCommit": "079f4a9",
+  "redLocalCommit": "36ab2a51077a60777a4b482e48ebb18770bb6533",
+  "redScope": "동일 생성기의 실제 모의 응답 코드를 Node VM에서 실행. 제품 브라우저/페이지 검사가 아님",
+  "red": {
+    "tests": 3,
+    "pass": 0,
+    "fail": 3
+  },
+  "green": {
+    "tests": 3,
+    "pass": 3,
+    "fail": 0
+  },
+  "cases": [
+    "SCR041 done first404→created/pending/no-check-deadline/43char-key",
+    "API032 started newtenminute window/nextread same",
+    "API032 setup-incomplete initialemptyblock then409"
+  ],
+  "localWindowsRun": false,
+  "requiredCi": [
+    "Linux fixture tests",
+    "Windows fixture tests"
+  ],
+  "browserRun": false,
+  "nativeTransfer": false,
+  "greenBuilderBlob": "33c7ad2a545d672e76b31591452b805535f00963",
+  "newFixtureTestBlob": "9c6b801f9c722ad41c6310d9b600361a6078e0b0",
+  "statusStage": {
+    "command": "bash tools/stage-checks.sh task054-current-impl --no-api --no-browser",
+    "startKst": "2026-11-25 06:26:11",
+    "endKst": "2026-11-25 06:26:40",
+    "exit": 0,
+    "scope": "HEAD36ab2a5는실패시험커밋. 단계실행은고침/구현완료행이있는커밋전작업트리이고공개head CI를최종근거로사용",
+    "wbs": {
+      "checks": 18,
+      "errors": 0
+    },
+    "api": "skipped --no-api",
+    "browser": "skipped --no-browser",
+    "mockup": {
+      "pass": 13,
+      "fail": 0,
+      "unverified": 1
+    }
+  },
+  "targetProductDiffVsFresh6d6": "채널컴포넌트/어댑터/양식/CopyValue/OwnerArea/공통UI/스타일의 git diff 종료0",
+  "currentTypecheckExit": 0,
+  "currentStrictLintExit": 0,
+  "currentLintLines": [
+    "Checked 529 files in 938ms. No fixes applied."
+  ],
+  "currentBuildLines": [
+    "✓ built in 821ms",
+    "Total Upload: 5378.11 KiB / gzip: 985.99 KiB",
+    "--dry-run: exiting now.",
+    "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+    "--dry-run: exiting now."
+  ]
+}

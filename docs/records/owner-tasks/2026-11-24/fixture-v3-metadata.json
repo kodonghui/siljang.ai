@@ -1,0 +1,12 @@
+{
+  "archive": "/tmp/siljang-qa087-owner-tasks-v3-20261124.zip",
+  "fileCount": 766,
+  "bytes": 9129287,
+  "sha256": "f3eb61a0657555f50cc26322ed1278c0f2a9937554d7381e9141f28eb92bc8a2",
+  "localSourceCommit": "985ead0b216b13e07281cb242d3a73d4fb616729",
+  "runtimeFixLocal": "841c05aa38ba80752a89c6de4bfe807bbaa98078",
+  "scope": "실제 App/OwnerArea/홈·토큰·폰트·공개 합성 응답. 로컬 컴파일/압축만; 학원컴 전송/브라우저 실행0",
+  "nativeTransfer": false,
+  "browserRun": false,
+  "originalV1V2": "수정 전 자료로 중단; 재전송/실행 금지"
+}

@@ -7,7 +7,7 @@ import { CalendarSettingsScreen } from "./CalendarSettingsScreen";
 import { KakaoChannelSettings } from "./KakaoChannelSettings";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import { OperatingRulesHistory } from "./OperatingRulesHistory";
-import { OwnerTasksScreen } from "./OwnerTasksScreen";
+import { OwnerTasksScreen, type OwnerTaskTabFocusRequest } from "./OwnerTasksScreen";
 import {
   fetchOwner,
   OWNER_HOME,
@@ -52,6 +52,14 @@ function matchHistory(path: string | undefined) {
   }
   return null;
 }
+interface HomeTabFocus {
+  readonly request: OwnerTaskTabFocusRequest;
+  readonly href: string;
+  readonly fromKey: string;
+  readonly visitKey: string | null;
+  readonly identityKey: string;
+}
+const ownerIdentityKey = (identity: OwnerIdentity) => `${identity.owner.ownerId}:${identity.shop?.shopId ?? ""}`;
 
 /** 첫 세션 확인 전에는 가린다. 이미 검증한 등록 양식은 재확인·로그아웃 중 잠근 채 보존한다. */
 export function OwnerArea() {
@@ -71,6 +79,7 @@ export function OwnerArea() {
   const logoutRequest = useRef<AbortController | null>(null);
   const verified = useRef<{ key: string; path: string; data: OwnerIdentity; history: boolean } | null>(null);
   const [registrationNotice, setRegistrationNotice] = useState(false);
+  const [homeTabFocus, setHomeTabFocus] = useState<HomeTabFocus | null>(null);
 
   useEffect(() => {
     const recheck = () => {
@@ -114,6 +123,21 @@ export function OwnerArea() {
   useEffect(() => {
     if (requested !== OWNER_HOME) setRegistrationNotice(false);
   }, [requested]);
+  useEffect(() => {
+    if (!homeTabFocus) return;
+    const discard = () => setHomeTabFocus((old) => (old?.request === homeTabFocus.request ? null : old));
+    const current = checked?.visit === visit ? checked.result : null;
+    if (current && (!current.ok || ownerIdentityKey(current.data) !== homeTabFocus.identityKey)) {
+      discard();
+      return;
+    }
+    if (homeTabFocus.visitKey !== null) {
+      if (location.key !== homeTabFocus.visitKey || requested !== homeTabFocus.href) discard();
+    } else if (location.key !== homeTabFocus.fromKey) {
+      if (requested !== homeTabFocus.href) discard();
+      else setHomeTabFocus((old) => (old?.request === homeTabFocus.request ? { ...old, visitKey: location.key } : old));
+    }
+  }, [homeTabFocus, checked, visit, requested, location.key]);
 
   async function logOut() {
     if (logoutRequest.current) return;
@@ -160,6 +184,7 @@ export function OwnerArea() {
       if (destination !== requested) return <Navigate to={destination} replace />;
     }
     const ShopScreen = screenRoute.Screen;
+    const identityKey = ownerIdentityKey(candidate);
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (
@@ -171,12 +196,27 @@ export function OwnerArea() {
           />
         ) : null}
         <ShopScreen
-          {...(shopPath === OWNER_HOME ? { banners: candidate.banners ?? [], registrationNotice } : {})}
+          {...(shopPath === OWNER_HOME
+            ? {
+                banners: candidate.banners ?? [],
+                registrationNotice,
+                tabFocusRequest:
+                  homeTabFocus?.visitKey === location.key && homeTabFocus.identityKey === identityKey
+                    ? homeTabFocus.request
+                    : null,
+                onTabNavigate: (href: string, request: OwnerTaskTabFocusRequest) => {
+                  setHomeTabFocus({ request, href, fromKey: location.key, visitKey: null, identityKey });
+                  navigate(href);
+                },
+                onTabFocusHandled: (request: OwnerTaskTabFocusRequest) =>
+                  setHomeTabFocus((old) => (old?.request === request ? null : old)),
+              }
+            : {})}
           {...(historyRoute ? { version: historyRoute.version } : {})}
           {...(shopPath === "/owner/payment-destination"
             ? { licenseStatus: candidate.shop.licenseStatus, onSaved: () => setRevision((r) => r + 1) }
             : {})}
-          key={`${candidate.owner.ownerId}:${candidate.shop.shopId}`}
+          key={identityKey}
           shopName={candidate.shop.name}
           onNavigate={(href) => navigate(href)}
           onSessionExpired={() => navigate(OWNER_LOGIN, { replace: true, state: { returnTo: requested } })}

@@ -1,0 +1,40 @@
+{
+  "label": "task087-tab-focus-v3-20261124",
+  "commandExit": 0,
+  "headerLocalHead": "15f444f56880271e5f395c476eb40300d52b6a09",
+  "scope": "헤더 HEAD 뒤의 기록/생성기/CI 추가를 포함한 작업 트리. 탭 제품은841c05a와 차이0. 실제 브라우저/배포 실행이 아님",
+  "startedKst": "2026-11-25 06:58:17 KST",
+  "endedKst": "2026-11-25 06:58:45 KST",
+  "wbs": {
+    "checks": 18,
+    "errors": 0
+  },
+  "erd": {
+    "pass": 15,
+    "fail": 0,
+    "unverified": 0
+  },
+  "sitemap": {
+    "pass": 17,
+    "fail": 0,
+    "unverified": 0
+  },
+  "screens": {
+    "pass": 15,
+    "fail": 0,
+    "unverified": 0
+  },
+  "mockup": {
+    "pass": 13,
+    "fail": 0,
+    "unverified": 1
+  },
+  "api": "skipped --no-api; not a pass",
+  "browser": "skipped --no-browser; not a pass",
+  "proposedCounts": {
+    "finished": 36,
+    "implemented": 32,
+    "eligible": 30,
+    "allDependencyReady": 34
+  }
+}

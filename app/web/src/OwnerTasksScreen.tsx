@@ -16,6 +16,7 @@ import {
 import { classify } from "./problems";
 import type { ShopLicenseProps } from "./ShopLicense";
 import { Banner, Button, type ListColumn, ListView, LoadFailure, type Navigate, OwnerLayout, Skeleton } from "./ui";
+import { useFocusRequest } from "./ui/useFocusRequest";
 import "./owner-tasks.css";
 
 interface Loaded extends OwnerTasksPage {
@@ -43,9 +44,18 @@ const isLate = (row: OwnerTask, at: number) =>
     (row.waitStatus === "waiting" && row.waitDueAt !== null && Date.parse(row.waitDueAt) <= at));
 const WAIT_LABELS = { waiting: "기다림", late: "지연", answered: "답함", closed_no_answer: "답 없어 닫힘" } as const;
 
-export function OwnerTasksScreen(
-  props: ShopLicenseProps & { readonly banners?: readonly OwnerBanner[]; readonly registrationNotice?: boolean },
-) {
+export interface OwnerTaskTabFocusRequest {
+  readonly target: "open" | "closed";
+  readonly origin: Element | null;
+}
+interface OwnerTasksProps extends ShopLicenseProps {
+  readonly banners?: readonly OwnerBanner[];
+  readonly registrationNotice?: boolean;
+  readonly tabFocusRequest?: OwnerTaskTabFocusRequest | null;
+  readonly onTabNavigate?: (href: string, focus: OwnerTaskTabFocusRequest) => void;
+  readonly onTabFocusHandled?: (focus: OwnerTaskTabFocusRequest) => void;
+}
+export function OwnerTasksScreen(props: OwnerTasksProps) {
   const { search } = useLocation();
   const query = useMemo(() => parseOwnerTasksSearch(search), [search]);
   const callbacks = useRef(props);
@@ -136,6 +146,32 @@ export function OwnerTasksScreen(
     status.current?.focus();
   }, [message]);
   const busy = blocked || (query !== null && loading);
+  const handledTabFocus = useRef<OwnerTaskTabFocusRequest | null>(null);
+  const { queue: queueTabFocus } = useFocusRequest<"open" | "closed">(
+    (target) => document.getElementById(`${id}-${target}`),
+    busy,
+    () => null,
+  );
+  useLayoutEffect(() => {
+    const intent = props.tabFocusRequest;
+    if (!intent) {
+      handledTabFocus.current = null;
+      return;
+    }
+    if (busy || query?.status !== intent.target || handledTabFocus.current === intent) return;
+    handledTabFocus.current = intent;
+    if (document.visibilityState === "visible" && document.hasFocus()) queueTabFocus(intent.target, intent.origin);
+    callbacks.current.onTabFocusHandled?.(intent);
+  }, [props.tabFocusRequest, busy, query?.status, queueTabFocus]);
+  function selectTab(target: "open" | "closed") {
+    if (busy) return;
+    const href = ownerTasksHref({ status: target, limit: query?.limit ?? 20, cursor: null });
+    if (props.onTabNavigate) props.onTabNavigate(href, { target, origin: document.activeElement });
+    else {
+      document.getElementById(`${id}-${target}`)?.focus();
+      props.onNavigate(href);
+    }
+  }
   const navigate: Navigate = (href, event) => {
     event.preventDefault();
     if (!busy) props.onNavigate(href);
@@ -229,21 +265,12 @@ export function OwnerTasksScreen(
                   aria-controls={`${id}-panel`}
                   disabled={busy}
                   tabIndex={(query?.status ?? "open") === value ? 0 : -1}
-                  onClick={() =>
-                    props.onNavigate(ownerTasksHref({ status: value, limit: query?.limit ?? 20, cursor: null }))
-                  }
+                  onClick={() => selectTab(value)}
                   onKeyDown={(event) => {
                     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || busy) return;
                     event.preventDefault();
                     const target = event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - index;
-                    document.getElementById(`${id}-${target === 0 ? "open" : "closed"}`)?.focus();
-                    props.onNavigate(
-                      ownerTasksHref({
-                        status: target === 0 ? "open" : "closed",
-                        limit: query?.limit ?? 20,
-                        cursor: null,
-                      }),
-                    );
+                    selectTab(target === 0 ? "open" : "closed");
                   }}
                 >
                   {value === "open" ? "열린 할 일" : "처리한 일"}

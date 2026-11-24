@@ -1,0 +1,1 @@
+console.error('QA expected console error');setTimeout(()=>{throw new Error('QA expected page error')},50);setTimeout(()=>Promise.reject(new Error('QA expected rejection')),100);const img=new Image();img.alt='관찰기 시험';img.src='/expired-photo.svg';document.body.append(img);

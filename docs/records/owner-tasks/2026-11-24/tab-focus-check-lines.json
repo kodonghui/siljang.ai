@@ -1,0 +1,42 @@
+{
+  "scope": "로컬 전용 실제 OwnerArea 재인증 회귀. 학원컴 브라우저 결과가 아님. 최초 별도 설치/서버 전체와 구분",
+  "redLocal": "5034ec1e2d47161b40e46cd670ab64478f3287a2",
+  "greenLocal": "841c05aa38ba80752a89c6de4bfe807bbaa98078",
+  "main261IntegrationLocal": "15f444f56880271e5f395c476eb40300d52b6a09",
+  "parentMain": "99765b3b275c9720437d0e598b038e81298c91bd",
+  "integrationAppRuntimePackageDiff": 0,
+  "typecheckExit": 0,
+  "strictLintExit": 0,
+  "webExit": 0,
+  "buildExit": 0,
+  "results": {
+    "red": [
+      " Test Files  1 failed (1)",
+      "      Tests  4 failed | 7 passed (11)"
+    ],
+    "session": [
+      " Test Files  1 passed (1)",
+      "      Tests  11 passed (11)"
+    ],
+    "web": [
+      " Test Files  71 passed (71)",
+      "      Tests  1712 passed (1712)"
+    ],
+    "lint": [
+      "Checked 536 files in 795ms. No fixes applied."
+    ],
+    "build": [
+      "✓ built in 890ms",
+      "Total Upload: 5378.11 KiB / gzip: 985.99 KiB",
+      "--dry-run: exiting now.",
+      "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+      "--dry-run: exiting now."
+    ]
+  },
+  "manualRequestOnce": 7144977968,
+  "manualInline": 4686829380,
+  "manualSecurityNoFindings": 7145055580,
+  "browserRun": false,
+  "nativeV2": "수정 전 자료: 재전송/실행하지 않음",
+  "nativeV3": "현재 자료 생성기는 컴파일 성공. 압축·해시/전달·실제 화면은 별도 확인"
+}

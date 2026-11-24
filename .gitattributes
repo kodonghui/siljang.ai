@@ -37,3 +37,7 @@ docs/records/payments/2026-11-24-finished/response-outcome-unavailable.json -tex
 docs/records/payments/2026-11-24-finished/browser-pause-ack.json -text whitespace=cr-at-eol
 docs/records/price-list/2026-11-24-history/qa-after-focus-fix-v5.json -text whitespace=cr-at-eol
 docs/records/owner-tasks/2026-11-24/main255-deployment.json -text whitespace=cr-at-eol
+docs/records/kakao-channel/2026-11-24-runtime/main255-deployment.json -text whitespace=cr-at-eol
+docs/records/owner-tasks/2026-11-24/main261-deployment.json -text whitespace=cr-at-eol
+docs/records/owner-tasks/2026-11-24/fixture-v3-metadata.json -text whitespace=cr-at-eol
+docs/records/owner-tasks/2026-11-24/fixture-v3-http-checks.json -text whitespace=cr-at-eol
