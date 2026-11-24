@@ -1,0 +1,34 @@
+{
+  "sourceCommit": "40f5e95fb52e3513870e7d8da71cbc583014596c",
+  "freshInstall": [
+    "added 161 packages in 10s"
+  ],
+  "lint": [
+    "Checked 524 files in 682ms. No fixes applied."
+  ],
+  "typecheckExit": 0,
+  "freshMigrationCount": 39,
+  "full": [
+    " Test Files  134 passed (134)",
+    "      Tests  2676 passed (2676)",
+    " Test Files  65 passed (65)",
+    "      Tests  1570 passed (1570)"
+  ],
+  "build": [
+    "✓ built in 815ms",
+    "Total Upload: 5337.61 KiB / gzip: 984.55 KiB",
+    "--dry-run: exiting now.",
+    "Total Upload: 20.87 KiB / gzip: 6.47 KiB",
+    "--dry-run: exiting now."
+  ],
+  "exitCodes": {
+    "npmCi": 0,
+    "format": 0,
+    "strictLint": 0,
+    "typecheck": 0,
+    "fullTests": 0,
+    "build": 0
+  },
+  "serverOrWebCodeChangesInThisPr": 0,
+  "freshDatabaseDropped": true
+}

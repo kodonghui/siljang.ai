@@ -1,0 +1,27 @@
+{
+  "확인시각": "2026-11-24T19:47:43.333Z",
+  "읽기전용": true,
+  "템플릿SHA256": "20844bd6b046b51b7e15ceb1dff36858344ca319fe77c6d2f9cab10431acbfc9",
+  "템플릿지정해시일치": true,
+  "역할문자열한자리안전치환": true,
+  "전체편집기내용바이트해시일치": true,
+  "같은039040실제runtime역할대상": true,
+  "SELECT실행1회": true,
+  "권한검사": {
+    "operator_required_select": true,
+    "session_required_select": true,
+    "review_function_exists": true,
+    "review_execute": true,
+    "review_security_definer": true,
+    "review_fixed_pg_catalog_search_path": true,
+    "review_public_execute_denied": true,
+    "direct_license_approval_update_allowed": false,
+    "direct_holder_check_update_allowed": false
+  },
+  "권한기대일치": true,
+  "권한변경없음": true,
+  "원장수": 39,
+  "원장39불변": true,
+  "原帳확인경로": "후속040교체전읽기전용기준선",
+  "미확인": []
+}

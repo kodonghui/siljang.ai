@@ -1,0 +1,65 @@
+{
+  "확인시각": "2026-11-24T19:00:49.141Z",
+  "읽기전용": true,
+  "TASK039와동일실제runtime역할대상": true,
+  "PUBLIC상속포함유효권한검사": true,
+  "pg_attribute전체실제열대조": true,
+  "필수권한": {
+    "SELECT": true,
+    "전체열SELECT": true,
+    "INSERT필수열모두": true,
+    "UPDATE필수열모두": true,
+    "INSERT허용집합정확일치": true,
+    "UPDATE허용집합정확일치": true
+  },
+  "금지권한": {
+    "DELETE허용": false,
+    "TRUNCATE허용": false,
+    "테이블전체INSERT허용": false,
+    "테이블전체UPDATE허용": false,
+    "허용집합외INSERT있음": false,
+    "허용집합외UPDATE있음": false
+  },
+  "공개허용열명": {
+    "INSERT": [
+      "shop_id",
+      "bank_name",
+      "holder_name",
+      "holder_mismatch_confirmed",
+      "card_payment_url",
+      "created_at",
+      "account_number_enc",
+      "account_last4"
+    ],
+    "UPDATE": [
+      "retired_at"
+    ]
+  },
+  "공개추가허용열명": {
+    "INSERT": [],
+    "UPDATE": []
+  },
+  "공개누락필수열명": {
+    "INSERT": [],
+    "UPDATE": []
+  },
+  "자기합성현재계좌확인": {
+    "자기정상세션소유자합성verified확인": true,
+    "현재행1개": true,
+    "양수버전암호문형식": true,
+    "합성평문과다름": true,
+    "기대끝4일치": true,
+    "holder_checked_by열존재": true,
+    "holder_checked_at열존재": true,
+    "holder_checked_by값존재": true,
+    "holder_checked_at값존재": true
+  },
+  "원장수": 39,
+  "원장39변경없음": true,
+  "권한변경없음": true,
+  "계좌재저장업무쓰기없음": true,
+  "외부메시지모델메일결제없음": true,
+  "운영자200유지": true,
+  "사장님200유지": true,
+  "미확인": []
+}

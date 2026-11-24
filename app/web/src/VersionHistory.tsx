@@ -168,17 +168,17 @@ export function VersionHistory<T>(props: VersionHistoryProps<T>) {
   useLayoutEffect(() => {
     const previous = previousVersion.current;
     previousVersion.current = explicit ? selected : null;
-    if (explicit || wide) {
+    if (explicit) {
       returnFocus.current = null;
       return;
     }
     if (previous !== null && returnFocus.current === null)
       returnFocus.current = { version: previous, origin: document.activeElement };
-  }, [explicit, selected, wide]);
+  }, [explicit, selected]);
   useLayoutEffect(() => {
     const request = returnFocus.current;
     if (!request) return;
-    if (wide || props.sessionFailed) {
+    if (props.sessionFailed) {
       returnFocus.current = null;
       return;
     }
@@ -190,11 +190,11 @@ export function VersionHistory<T>(props: VersionHistoryProps<T>) {
       (link) => link.getAttribute("href") === `${config.path}/versions/${request.version}`,
     );
     if (!focusReady(target)) focusReady(listRegion.current);
-  }, [wide, explicit, locked, props.sessionFailed, config.path]);
+  }, [explicit, locked, props.sessionFailed, config.path]);
   const navigate = (path: string) => {
     if (locked) return;
     returnFocus.current =
-      !wide && explicit && selected !== null && path === `${config.path}/versions`
+      explicit && selected !== null && path === `${config.path}/versions`
         ? { version: selected, origin: document.activeElement }
         : null;
     props.onNavigate(path);

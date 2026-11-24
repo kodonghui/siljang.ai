@@ -1,0 +1,9 @@
+{
+  "expectedMatch": true,
+  "checkout": "git checkout-index --force",
+  "bytes": 1781,
+  "sha256": "20844bd6b046b51b7e15ceb1dff36858344ca319fe77c6d2f9cab10431acbfc9",
+  "platform": "Windows",
+  "timestampUtc": "2026-11-24T20:00:15.5429812Z",
+  "coreAutocrlf": "true"
+}
