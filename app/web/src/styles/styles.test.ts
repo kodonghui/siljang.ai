@@ -25,6 +25,7 @@ const HAND_CSS = [
   "src/public-privacy.css",
   "src/public-booking.css",
   "src/operator-alerts.css",
+  "src/owner-tasks.css",
   "src/operator-shop-review.css",
   "src/price-list-history.css",
   "src/version-history.css",

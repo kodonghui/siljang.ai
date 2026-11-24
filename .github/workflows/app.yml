@@ -70,8 +70,10 @@ jobs:
       - name: 린트·형식(Biome)
         run: npm run lint 2>&1 | tee ci-logs/lint.log
 
-      - name: 합성 채널 화면 자료 계약(브라우저 실행 없음)
-        run: node --test ../research/screen-checks-2026-11/kakao-channel-fixture.test.mjs 2>&1 | tee ci-logs/channel-fixture.log
+      - name: 합성 화면 자료 생성·계약(브라우저 실행 없음)
+        run: |
+          node --test ../research/screen-checks-2026-11/kakao-channel-fixture.test.mjs 2>&1 | tee ci-logs/channel-fixture.log
+          node ../research/screen-checks-2026-11/build-owner-tasks.mjs .. "$RUNNER_TEMP/siljang-owner-tasks-fixture" 2>&1 | tee ci-logs/owner-tasks-fixture.log
 
       - name: 타입 검사(TypeScript)
         run: npm run typecheck 2>&1 | tee ci-logs/typecheck.log
@@ -121,9 +123,12 @@ jobs:
           SILJANG_NATIVE_TEST_BUNDLE: ${{ runner.temp }}/siljang-auth-eval.mjs
         run: python -I ../research/ai-eval-native-2026-11/test_native_driver.py
 
-      - name: Windows 합성 채널 자료 생성·응답 계약(브라우저 실행 없음)
+      - name: Windows 합성 화면 자료 생성·계약(브라우저 실행 없음)
         shell: pwsh
-        run: node --test ../research/screen-checks-2026-11/kakao-channel-fixture.test.mjs
+        run: |
+          node --test ../research/screen-checks-2026-11/kakao-channel-fixture.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node ../research/screen-checks-2026-11/build-owner-tasks.mjs .. "$env:RUNNER_TEMP/siljang-owner-tasks-fixture"
 
   deploy-staging:
     name: 스테이징 배포

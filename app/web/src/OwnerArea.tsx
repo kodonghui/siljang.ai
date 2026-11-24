@@ -7,6 +7,7 @@ import { CalendarSettingsScreen } from "./CalendarSettingsScreen";
 import { KakaoChannelSettings } from "./KakaoChannelSettings";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import { OperatingRulesHistory } from "./OperatingRulesHistory";
+import { OwnerTasksScreen, type OwnerTaskTabFocusRequest } from "./OwnerTasksScreen";
 import {
   fetchOwner,
   OWNER_HOME,
@@ -28,6 +29,8 @@ import { ShopSettings } from "./ShopSettings";
 import { Button, LoadFailure, Skeleton } from "./ui";
 
 const shopScreens = [
+  // 보류 중에도 사유와 수정 경로를 찾는 읽기 전용 목록은 연다. 로그인 기본 착지는 그대로다.
+  { path: OWNER_HOME, Screen: OwnerTasksScreen, checkDestination: false },
   { path: "/owner/shop", Screen: ShopSettings, checkDestination: false },
   { path: "/owner/shop/license", Screen: ShopLicense, checkDestination: false },
   { path: "/owner/payment-destination", Screen: PaymentDestinationEditor, checkDestination: false },
@@ -49,6 +52,14 @@ function matchHistory(path: string | undefined) {
   }
   return null;
 }
+interface HomeTabFocus {
+  readonly request: OwnerTaskTabFocusRequest;
+  readonly href: string;
+  readonly fromKey: string;
+  readonly visitKey: string | null;
+  readonly identityKey: string;
+}
+const ownerIdentityKey = (identity: OwnerIdentity) => `${identity.owner.ownerId}:${identity.shop?.shopId ?? ""}`;
 
 /** 첫 세션 확인 전에는 가린다. 이미 검증한 등록 양식은 재확인·로그아웃 중 잠근 채 보존한다. */
 export function OwnerArea() {
@@ -68,22 +79,32 @@ export function OwnerArea() {
   const logoutRequest = useRef<AbortController | null>(null);
   const verified = useRef<{ key: string; path: string; data: OwnerIdentity; history: boolean } | null>(null);
   const [registrationNotice, setRegistrationNotice] = useState(false);
+  const [homeTabFocus, setHomeTabFocus] = useState<HomeTabFocus | null>(null);
 
   useEffect(() => {
-    const recheck = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        setRegistrationNotice(false);
-        pruneRegistrationDraft();
-        setRevision((r) => r + 1);
-      }
+    const recheck = () => {
+      setRegistrationNotice(false);
+      pruneRegistrationDraft();
+      setRevision((value) => value + 1);
     };
-    window.addEventListener("pageshow", recheck);
-    return () => window.removeEventListener("pageshow", recheck);
-  }, []);
+    const restore = (event: PageTransitionEvent) => {
+      if (event.persisted) recheck();
+    };
+    const visible = () => {
+      // 홈의 목록보다 신원을 먼저 확인해 다른 계정의 가게와 섞이지 않게 한다.
+      if (shopPath === OWNER_HOME && document.visibilityState === "visible") recheck();
+    };
+    window.addEventListener("pageshow", restore);
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      window.removeEventListener("pageshow", restore);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [shopPath]);
   useEffect(() => {
     if (!requested) return;
     const controller = new AbortController();
-    void fetchOwner(controller.signal)
+    void fetchOwner(controller.signal, shopPath === OWNER_HOME)
       .then((result) => {
         if (controller.signal.aborted) return;
         if (result.ok) {
@@ -97,11 +118,26 @@ export function OwnerArea() {
         /* 화면을 떠날 때 취소한 요청. */
       });
     return () => controller.abort();
-  }, [visit, requested, history, location.pathname]);
+  }, [visit, requested, history, location.pathname, shopPath]);
   useEffect(() => () => logoutRequest.current?.abort(), []);
   useEffect(() => {
     if (requested !== OWNER_HOME) setRegistrationNotice(false);
   }, [requested]);
+  useEffect(() => {
+    if (!homeTabFocus) return;
+    const discard = () => setHomeTabFocus((old) => (old?.request === homeTabFocus.request ? null : old));
+    const current = checked?.visit === visit ? checked.result : null;
+    if (current && (!current.ok || ownerIdentityKey(current.data) !== homeTabFocus.identityKey)) {
+      discard();
+      return;
+    }
+    if (homeTabFocus.visitKey !== null) {
+      if (location.key !== homeTabFocus.visitKey || requested !== homeTabFocus.href) discard();
+    } else if (location.key !== homeTabFocus.fromKey) {
+      if (requested !== homeTabFocus.href) discard();
+      else setHomeTabFocus((old) => (old?.request === homeTabFocus.request ? { ...old, visitKey: location.key } : old));
+    }
+  }, [homeTabFocus, checked, visit, requested, location.key]);
 
   async function logOut() {
     if (logoutRequest.current) return;
@@ -137,15 +173,18 @@ export function OwnerArea() {
   const cached = verified.current;
   const candidate = session?.ok
     ? session.data
-    : cached && (cached.key === location.key || cached.path === location.pathname || (history && cached.history))
-      ? cached.data
-      : null;
+    : shopPath === OWNER_HOME
+      ? null
+      : cached && (cached.key === location.key || cached.path === location.pathname || (history && cached.history))
+        ? cached.data
+        : null;
   if (screenRoute && candidate?.shop) {
     if (historyRoute || shopRoute?.checkDestination) {
       const destination = ownerDestination(candidate, requested);
       if (destination !== requested) return <Navigate to={destination} replace />;
     }
     const ShopScreen = screenRoute.Screen;
+    const identityKey = ownerIdentityKey(candidate);
     if (session !== null && !session.ok && session.status === 401)
       return <Navigate to={OWNER_LOGIN} replace state={{ returnTo: requested }} />;
     return (
@@ -157,11 +196,27 @@ export function OwnerArea() {
           />
         ) : null}
         <ShopScreen
+          {...(shopPath === OWNER_HOME
+            ? {
+                banners: candidate.banners ?? [],
+                registrationNotice,
+                tabFocusRequest:
+                  homeTabFocus?.visitKey === location.key && homeTabFocus.identityKey === identityKey
+                    ? homeTabFocus.request
+                    : null,
+                onTabNavigate: (href: string, request: OwnerTaskTabFocusRequest) => {
+                  setHomeTabFocus({ request, href, fromKey: location.key, visitKey: null, identityKey });
+                  navigate(href);
+                },
+                onTabFocusHandled: (request: OwnerTaskTabFocusRequest) =>
+                  setHomeTabFocus((old) => (old?.request === request ? null : old)),
+              }
+            : {})}
           {...(historyRoute ? { version: historyRoute.version } : {})}
           {...(shopPath === "/owner/payment-destination"
             ? { licenseStatus: candidate.shop.licenseStatus, onSaved: () => setRevision((r) => r + 1) }
             : {})}
-          key={`${candidate.owner.ownerId}:${candidate.shop.shopId}`}
+          key={identityKey}
           shopName={candidate.shop.name}
           onNavigate={(href) => navigate(href)}
           onSessionExpired={() => navigate(OWNER_LOGIN, { replace: true, state: { returnTo: requested } })}
@@ -221,6 +276,17 @@ export function OwnerArea() {
           failure={classify(session.status, session.problem, session.retryAfterSeconds)}
           onRetry={() => setRevision((r) => r + 1)}
         />
+        {shopPath === OWNER_HOME ? (
+          <>
+            {logoutFailure ? (
+              <LoadFailure
+                failure={classify(logoutFailure.status, logoutFailure.problem, logoutFailure.retryAfterSeconds)}
+                onRetry={() => void logOut()}
+              />
+            ) : null}
+            <Button onClick={() => void logOut()}>로그아웃</Button>
+          </>
+        ) : null}
       </main>
     );
   }

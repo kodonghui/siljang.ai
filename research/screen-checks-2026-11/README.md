@@ -14,3 +14,12 @@ node /tmp/siljang-qa054-channel/server.mjs
 관찰기는 console.error/window error/unhandled rejection/리소스 실패의 제한된 계수입니다. 전체DevTools 구독이 아니고 observer-selftest에서 가짜 오류/실패 계수를 따로 확인합니다. selftest의 고의 오류는 제품 오류로 합치지 않습니다. 서버는 loopback 임의 포트만 듣고 CSP의connect-src none을 유지합니다. 실제 운영 계정/키/서비스가 필요하지 않습니다.
 
 현재054 실제 학원컴 전달/실행은 접속 복구 뒤 진행합니다. 화면은360/1280한폭씩활성·가시성을확인하고고유snapshot에서조작합니다. D4/KOE의같은브라우저창에대한예약을먼저확인합니다.
+
+할 일 홈은 다음 명령으로 같은 공통 관찰기/서버를 사용해 생성합니다. 실제 App/OwnerArea와 합성7상태/13응답을 묶고 새탭 신원확인4.5초 대기를 제공합니다. QA의 합성 다른 초점 버튼으로 실제 조작을 하며 DOM 초점/타이머를 주입하지 않습니다. 신원 확인 주소 버튼은 유효한limit=19의 경로 이동이고 실제 가시성 복귀 시험과 구분합니다.
+
+```sh
+node research/screen-checks-2026-11/build-owner-tasks.mjs . /tmp/siljang-qa087-owner-tasks
+node /tmp/siljang-qa087-owner-tasks/server.mjs
+```
+
+두 생성기의 Windows 경로는 직렬화해 import에 넣습니다. 할 일 홈의 생성도 Linux/Windows CI에서 확인하며 브라우저는 실행하지 않습니다. 실제 학원컴 전달/화면 결과는 작업별 기록을 따릅니다.

@@ -16,6 +16,7 @@ const OWNER = "00000000-0000-4000-8000-000000000046";
 const SHOP = "00000000-0000-4000-8000-000000000047";
 const NOW = Date.now();
 const initial = {
+  banners: [],
   owner: { ownerId: OWNER, alertChannelFriend: false, createdAt: new Date(NOW).toISOString() },
   shop: null,
 };
@@ -52,6 +53,8 @@ beforeEach(() => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: unknown, init?: RequestInit) => {
+      if (String(input).startsWith("/api/owner/tasks?"))
+        return json({ items: [], nextCursor: null, alertChannelFriend: false });
       if (String(input) === "/api/owner/me") return profileGate?.promise ?? json(profile);
       if (String(input) === "/api/owner/session" && init?.method === "DELETE")
         return logoutGate?.promise ?? json({ code: "internal" }, 500);
@@ -144,7 +147,7 @@ it("등록 화면을 열지 않아도 다른 계정의 임시 글은 세션 확�
       <OwnerArea />
     </MemoryRouter>,
   );
-  await screen.findByText("준비 중입니다.");
+  await screen.findByText("지금 처리할 일이 없어요");
   expect(sessionStorage.getItem(REGISTRATION_DRAFT_KEY)).toBeNull();
 });
 it("기기 시계가 빨라도 방금 올린 사진은 서버에 등록 검사를 맡김", async () => {
@@ -259,14 +262,14 @@ it("등록 완료 안내는 새로 고침에 남을 history state에 저장하�
   const event = new Event("pageshow");
   Object.defineProperty(event, "persisted", { value: true });
   fireEvent(window, event);
-  await within(active.container).findByText("준비 중입니다.");
+  await within(active.container).findByText("지금 처리할 일이 없어요");
   expect(within(active.container).queryByText("가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요")).toBeNull();
   cleanup();
   const reloaded = createMemoryRouter([{ path: "/owner/*", element: <OwnerArea /> }], {
     initialEntries: [{ pathname: "/owner", state: router.state.location.state }],
   });
   const next = render(<RouterProvider router={reloaded} />);
-  await within(next.container).findByText("준비 중입니다.");
+  await within(next.container).findByText("지금 처리할 일이 없어요");
   expect(within(next.container).queryByText("가게를 등록했어요. 운영자가 영업 신고를 확인하고 있어요")).toBeNull();
 });
 
@@ -313,7 +316,7 @@ it("등록 저장소503은 옛 사진 성공을 지우고 같은 파일을 다�
   fireEvent.click(screen.getByRole("button", { name: /^다시 올리기$/ }));
   await within(screen.getByRole("main")).findByText("사진을 올렸어요. 1시간 안에 등록해 주세요");
   fireEvent.click(screen.getByRole("button", { name: /^등록$/ }));
-  await screen.findByText("준비 중입니다.");
+  await screen.findByText("지금 처리할 일이 없어요");
   expect(uploadCount).toBe(2);
   expect(registrationBodies).toHaveLength(2);
   expect(registrationBodies[1]?.body.licensePhotoUploadId).not.toBe(registrationBodies[0]?.body.licensePhotoUploadId);

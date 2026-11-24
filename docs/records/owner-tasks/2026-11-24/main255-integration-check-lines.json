@@ -1,0 +1,25 @@
+{
+  "scope": "로컬 통합 원본의 웹/타입/엄격lint/빌드. 공개 커밋 조회나 신규 서버 전체 실행으로 주장하지 않음",
+  "localSourceCommit": "7eb2f507e85a04ed56a33a3fc12a5ef4a8e9aa87",
+  "parentMain": "262aadf6e9eadf11b68b405ea21643d29505c225",
+  "homeRuntimeSource": "ab9af5b194e23fe4c0c021b978611599913cc90c",
+  "typecheckExit": 0,
+  "commandExit": 0,
+  "results": {
+    "web": [
+      " Test Files  71 passed (71)",
+      "      Tests  1704 passed (1704)"
+    ],
+    "lint": [
+      "Checked 536 files in 1077ms. No fixes applied."
+    ],
+    "build": [
+      "✓ built in 770ms",
+      "Total Upload: 5378.11 KiB / gzip: 985.99 KiB",
+      "--dry-run: exiting now.",
+      "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+      "--dry-run: exiting now."
+    ]
+  },
+  "actualNativeV2": "unverified; academy SSH handshake timeout; browser paused under D4 lease"
+}
