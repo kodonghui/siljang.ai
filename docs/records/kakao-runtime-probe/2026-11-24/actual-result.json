@@ -1,0 +1,20 @@
+{
+  "observedAtKst": "2026-11-24 21:11:48.079 KST",
+  "method": "academy-pc Aside CLI SQL Editor",
+  "sourceMain": "215108ba3086a32c851a96f321889b9e7408bf3b",
+  "sourceSha256": "c998467c905d91b31841e0d82b45393d0673562da9b124784712719779d79142",
+  "renderedSha256": "4e2acef67d4012890a8cc527343f26b30080541d68badc746399c96f1a6428d5",
+  "argumentSubstitutions": 1,
+  "executions": 1,
+  "allowedWrites": true,
+  "blockedWrites": 5,
+  "rollbackVerified": true,
+  "roleRestored": true,
+  "membershipRestored": true,
+  "temporaryGrantApplied": true,
+  "failureSqlstate": null,
+  "failureStep": null,
+  "actualAiOrKakaoQueueFlowVerified": false,
+  "privateValuesRecorded": false,
+  "membershipCheck": "실제 표시는 SET 가능 여부를 원본과 비교함. 전체 ADMIN/INHERIT/SET 행 비교는 로컬 자동 시험에서 확인"
+}
