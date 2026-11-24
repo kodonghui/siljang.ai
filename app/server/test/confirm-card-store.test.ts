@@ -3,7 +3,7 @@ import { type ConfirmCardCommand, pressConfirmCard, showConfirmCard } from "../s
 import { kakaoConfirmCardReply } from "../src/kakao-confirm-card";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
-import { describeDb } from "./support/db";
+import { describeDb, newUuid } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
 
@@ -277,6 +277,120 @@ describeDb("손님 확인 카드 저장과 한 번 실행(TASK-081)", () => {
     expect(execute).toHaveBeenCalledOnce();
     expect((await isolated.db.query("SELECT status,cancel_kind FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual(
       [{ status: "cancelled", cancel_kind: "customer" }],
+    );
+  });
+  it("새 상담에서도 같은 손님의 지난 주문 신고·동의 철회 카드를 만들 수 있음", async () => {
+    await isolated.db.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [
+      shop.consultationId,
+      NOW,
+    ]);
+    const current = newUuid();
+    await isolated.db.query(
+      "INSERT INTO consultations(id,shop_id,customer_id,opened_at,last_customer_message_at) VALUES($1,$2,$3,$4,$4)",
+      [current, shop.shopId, shop.customerId, NOW],
+    );
+    for (const kind of ["issue_report", "consent_withdrawal"] as const) {
+      const card = await showConfirmCard(scoped(), {
+        ...identity(),
+        consultationId: current,
+        kind,
+        orderId: shop.orderId,
+        now: NOW,
+      });
+      expect(card.cardKey).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
+      const other = await createShop(isolated.db, "다른 지난 주문 가게");
+      await expect(
+        showConfirmCard(scoped(), { ...identity(), consultationId: current, kind, orderId: other.orderId, now: NOW }),
+      ).rejects.toThrow();
+    }
+    await expect(
+      showConfirmCard(scoped(), {
+        ...identity(),
+        consultationId: current,
+        kind: "cancel",
+        orderId: shop.orderId,
+        now: NOW,
+      }),
+    ).rejects.toThrow();
+  });
+  it("기한이 지나도 원래 보인 카드는 보존하고 대체 키를 따로 기록", async () => {
+    const card = await show();
+    const result = await pressConfirmCard(scoped(), {
+      ...identity(),
+      cardKey: card.cardKey,
+      choice: "confirm",
+      now: new Date(NOW.getTime() + 30 * 60000),
+    });
+    const saved = (
+      await isolated.db.query("SELECT payload FROM confirm_cards WHERE shop_id=$1 AND card_key=$2", [
+        shop.shopId,
+        card.cardKey,
+      ])
+    ).rows[0]?.payload;
+    expect(saved).toMatchObject({ presentation: card, replacedBy: { cardKey: result.card?.cardKey } });
+  });
+  it("거절된 옛 카드를 다시 눌러도 기한 지난 대체 버튼을 다시 보내지 않음", async () => {
+    const card = await show();
+    await pressConfirmCard(scoped(), {
+      ...identity(),
+      cardKey: card.cardKey,
+      choice: "confirm",
+      now: new Date(NOW.getTime() + 30 * 60000),
+    });
+    const answer = await pressConfirmCard(scoped(), {
+      ...identity(),
+      cardKey: card.cardKey,
+      choice: "confirm",
+      now: new Date(NOW.getTime() + 90 * 60000),
+    });
+    expect(answer.outcome).toBe("card_used");
+    expect(answer.firstResult?.outcome).toBe("card_expired");
+    expect(answer.card).toBeUndefined();
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows,
+    ).toEqual([{ n: 2 }]);
+  });
+  it("31분 뒤 안 할래요는 사용 처리와 새 카드를 남기지 않음", async () => {
+    const card = await show();
+    const execute = vi.fn<ConfirmCardCommand>();
+    const result = await pressConfirmCard(
+      scoped(),
+      { ...identity(), cardKey: card.cardKey, choice: "decline", now: new Date(NOW.getTime() + 31 * 60000) },
+      execute,
+    );
+    expect(result.outcome).toBe("declined");
+    expect(result.card).toBeUndefined();
+    expect(execute).not.toHaveBeenCalled();
+    expect((await isolated.db.query("SELECT used_at FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows).toEqual(
+      [{ used_at: null }],
+    );
+  });
+  it("초안이 바뀐 뒤 안 할래요도 아무것도 남기지 않음", async () => {
+    await isolated.db.query("UPDATE order_drafts SET status='active' WHERE id=$1", [shop.draftId]);
+    const card = await showConfirmCard(scoped(), {
+      ...identity(),
+      kind: "order_request",
+      draftId: shop.draftId,
+      now: NOW,
+    });
+    await isolated.db.query("UPDATE order_drafts SET revision=revision+1 WHERE id=$1", [shop.draftId]);
+    expect((await press(card.cardKey, "decline")).outcome).toBe("declined");
+    expect((await isolated.db.query("SELECT used_at FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows).toEqual(
+      [{ used_at: null }],
+    );
+  });
+  it("받은 카드의 초안이 이미 제출됐으면 타인 카드로 오인하지 않고 재시도 안내", async () => {
+    await isolated.db.query("UPDATE order_drafts SET status='active' WHERE id=$1", [shop.draftId]);
+    const card = await showConfirmCard(scoped(), {
+      ...identity(),
+      kind: "order_request",
+      draftId: shop.draftId,
+      now: NOW,
+    });
+    await isolated.db.query("UPDATE order_drafts SET status='submitted' WHERE id=$1", [shop.draftId]);
+    expect((await press(card.cardKey)).outcome).toBe("retry_needed");
+    expect((await isolated.db.query("SELECT used_at FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows).toEqual(
+      [{ used_at: null }],
     );
   });
 });

@@ -54,7 +54,7 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
     }
   });
 
-  it("제한 역할에서 카드 생성·기한 갱신을 하되 키·받는 사람·버전과 삭제는 막힘", async () => {
+  it("제한 역할에서 카드 생성·기한 지난 카드의 결과 기록을 하되 키·받는 사람·버전과 삭제는 막힘", async () => {
     const target = await createShop(db, "제한 역할 확인 카드 가게");
     await issueTestBookingLink(db, target);
     await linkTestChannel(db, target.channelId);

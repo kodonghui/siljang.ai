@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { type ConfirmCardCommand, showConfirmCard } from "../src/confirm-card-store";
+import type { Queryable, RequestDb } from "../src/db";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
@@ -173,5 +174,40 @@ describeDb("API-071 확인 카드 수신(TASK-081)", () => {
     );
     expect(response.status).toBe(500);
     expect(response.headers.get("Content-Type")).toContain("application/problem+json");
+  });
+  it("카드 경로는 손님과 상담을 한 번만 잠금", async () => {
+    const card = await show(),
+      queries: string[] = [];
+    const record =
+      (base: Queryable): Queryable["query"] =>
+      async <R>(sql: string, params?: readonly unknown[]) => {
+        queries.push(sql);
+        return base.query<R>(sql, params);
+      };
+    const app = createApp({
+      connect: () => {
+        const db = isolated.connect();
+        const counted: RequestDb = {
+          query: record(db),
+          transaction: (fn) => db.transaction((tx) => fn({ query: record(tx) })),
+          abort: () => db.abort(),
+          close: () => db.close(),
+        };
+        return counted;
+      },
+      services: { now: () => now },
+    });
+    const response = await app.request(
+      "/api/kakao/skills/card",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "Siljang-Skill-Key": key },
+        body: JSON.stringify(payload(card.cardKey, "decline")),
+      },
+      { APP_ENV: "development", REQUEST_HASH_KEY: TEST_HASH_KEY },
+    );
+    expect(response.headers.get("Siljang-Outcome")).toBe("declined");
+    expect(queries.filter((sql) => /FROM customers/.test(sql) && /FOR UPDATE/.test(sql))).toHaveLength(1);
+    expect(queries.filter((sql) => /FROM consultations/.test(sql) && /FOR UPDATE/.test(sql))).toHaveLength(1);
   });
 });

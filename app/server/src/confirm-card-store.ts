@@ -43,7 +43,7 @@ export interface ConfirmCardCommandInput extends Identity {
   readonly orderId: string | null;
   readonly draftId: string | null;
 }
-/** 실패하면 사용 표시를 포함한 같은 트랜잭션 전체가 취소됩니다. 외부 발신은 이 콜백 안에서 하지 않습니다. */
+/** 실행기는 지금 주문 상태와 잠금 번호를 다시 확인하고 조건에 맞는 쓰기만 합니다. 실패하면 사용 표시까지 함께 취소합니다. 외부 발신은 하지 않습니다. 주문 요청의 order_id 연결 권한·시험은 실제 실행기를 등록하는 TASK-083에서 추가합니다. */
 export type ConfirmCardCommand = (db: ShopDb, input: ConfirmCardCommandInput) => Promise<ConfirmCardCommandResult>;
 interface Source {
   orderId: string | null;
@@ -65,7 +65,7 @@ interface CardRow {
   created_at: Date;
   expires_at: Date;
   used_at: Date | null;
-  payload: { presentation?: ConfirmCardView; result?: ConfirmCardCommandResult };
+  payload: { presentation?: ConfirmCardView; result?: ConfirmCardCommandResult; replacedBy?: { cardKey: string } };
   outcome: "done" | "stale" | "expired" | null;
 }
 const LABELS: Record<CustomerCommandKind, string> = {
@@ -76,25 +76,15 @@ const LABELS: Record<CustomerCommandKind, string> = {
   issue_report: "문제 신고",
   consent_withdrawal: "동의 철회",
 };
-const NOT_YOURS = { outcome: "card_not_yours", text: "받으신 카드에서 눌러 주세요" } as const;
+export const NOT_YOURS = { outcome: "card_not_yours", text: "받으신 카드에서 눌러 주세요" } as const;
+const RETRY_NEEDED = { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" } as const;
+const DECLINED = { outcome: "declined", text: "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요" } as const;
 function usedAnswer(card: CardRow): ConfirmCardAnswer {
-  const result = card.payload.result,
-    view = card.payload.presentation;
+  const result = card.payload.result;
   return {
     outcome: "card_used",
     text: "이미 처리했어요",
     ...(result === undefined ? {} : { firstResult: { outcome: result.outcome, text: result.text } }),
-    ...(card.outcome === "done" || view === undefined
-      ? {}
-      : {
-          card: {
-            cardKey: view.cardKey,
-            title: view.title,
-            description: view.description,
-            confirmLabel: view.confirmLabel,
-            blockId: view.blockId,
-          },
-        }),
   };
 }
 const SUCCESS_OUTCOMES: Record<CustomerCommandKind, string> = {
@@ -120,13 +110,16 @@ async function identityAvailable(db: ShopDb, identity: Identity): Promise<boolea
   );
   return consultation.rowCount === 1;
 }
-async function readSource(db: ShopDb, input: ShowConfirmCard): Promise<Source | null> {
+async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: string): Promise<Source | null> {
   if (!CUSTOMER_COMMAND_KINDS.includes(input.kind)) throw new TypeError("unsupported card kind");
-  const channel = await db.run<{ card_block_id: string }>(
-    "SELECT k.card_block_id FROM kakao_channels k JOIN customers c ON c.shop_id=$1 AND c.kakao_channel_id=k.id WHERE k.shop_id=$1 AND c.id=$2 AND k.status='linked'",
-    [input.customerId],
-  );
-  const blockId = channel.rows[0]?.card_block_id;
+  const blockId =
+    knownBlockId ??
+    (
+      await db.run<{ card_block_id: string }>(
+        "SELECT k.card_block_id FROM kakao_channels k JOIN customers c ON c.shop_id=$1 AND c.kakao_channel_id=k.id WHERE k.shop_id=$1 AND c.id=$2 AND k.status='linked'",
+        [input.customerId],
+      )
+    ).rows[0]?.card_block_id;
   if (!blockId) return null;
   if (input.kind === "order_request") {
     if (input.draftId === undefined || input.orderId !== undefined) return null;
@@ -148,8 +141,13 @@ async function readSource(db: ShopDb, input: ShowConfirmCard): Promise<Source | 
   }
   if (input.orderId === undefined || input.draftId !== undefined) return null;
   const order = await db.run<{ id: string; version: number; order_no: string; amount: number; pickup_day: string }>(
-    "SELECT id,version,order_no,amount,pickup_day::text FROM orders WHERE shop_id=$1 AND id=$2 AND customer_id=$3 AND consultation_id=$4 AND personal_data_purged_at IS NULL FOR UPDATE",
-    [pathId(input.orderId), input.customerId, input.consultationId],
+    "SELECT id,version,order_no,amount,pickup_day::text FROM orders WHERE shop_id=$1 AND id=$2 AND customer_id=$3 AND (consultation_id=$4 OR $5::boolean) AND personal_data_purged_at IS NULL FOR UPDATE",
+    [
+      pathId(input.orderId),
+      input.customerId,
+      input.consultationId,
+      ["issue_report", "consent_withdrawal"].includes(input.kind),
+    ],
   );
   const row = order.rows[0];
   return row
@@ -211,15 +209,26 @@ export function pressConfirmCard(
 ): Promise<ConfirmCardAnswer> {
   return db.transaction((tx) => pressConfirmCardInTransaction(tx, input, execute));
 }
+function validatePress(input: Pick<PressConfirmCard, "now" | "cardKey" | "choice">): void {
+  validNow(input.now);
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(input.cardKey)) throw fieldError("/action/clientExtra/cardKey", "bad_format");
+  if (!["confirm", "decline"].includes(input.choice)) throw fieldError("/action/clientExtra/choice", "bad_format");
+}
 export async function pressConfirmCardInTransaction(
   tx: ShopDb,
   input: PressConfirmCard,
   execute?: ConfirmCardCommand,
 ): Promise<ConfirmCardAnswer> {
-  validNow(input.now);
-  if (!/^[A-Za-z0-9_-]{16,64}$/.test(input.cardKey)) throw fieldError("/action/clientExtra/cardKey", "bad_format");
-  if (!["confirm", "decline"].includes(input.choice)) throw fieldError("/action/clientExtra/choice", "bad_format");
+  validatePress(input);
   if (!(await identityAvailable(tx, input))) return NOT_YOURS;
+  return processVerifiedCard(tx, input, execute);
+}
+async function processVerifiedCard(
+  tx: ShopDb,
+  input: PressConfirmCard,
+  execute?: ConfirmCardCommand,
+  knownBlockId?: string,
+): Promise<ConfirmCardAnswer> {
   const initial = (
     await tx.run<CardRow>(
       "SELECT * FROM confirm_cards WHERE shop_id=$1 AND card_key=$2 AND customer_id=$3 AND consultation_id=$4",
@@ -230,14 +239,15 @@ export async function pressConfirmCardInTransaction(
   if (!CUSTOMER_COMMAND_KINDS.includes(initial.kind))
     return { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" };
   if (initial.used_at !== null) return usedAnswer(initial);
+  if (input.choice === "decline") return DECLINED;
   const target: ShowConfirmCard = {
     ...input,
     kind: initial.kind,
     ...(initial.order_id === null ? {} : { orderId: initial.order_id }),
     ...(initial.draft_id === null ? {} : { draftId: initial.draft_id }),
   };
-  const source = await readSource(tx, target);
-  if (source === null) return NOT_YOURS;
+  const source = await readSource(tx, target, knownBlockId);
+  if (source === null) return RETRY_NEEDED;
   const card = await tx.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
   ]);
@@ -264,13 +274,13 @@ export async function pressConfirmCardInTransaction(
         verdict === "stale" ? "내용이 바뀌었어요. 새 카드에서 눌러 주세요" : "시간이 지났어요. 새 카드에서 눌러 주세요",
     };
     await tx.run(
-      "UPDATE confirm_cards SET used_at=$3,outcome=$4,payload=jsonb_set(jsonb_set(payload,'{result}',$5::jsonb),'{presentation}',$6::jsonb) WHERE shop_id=$1 AND id=$2",
-      [card.id, input.now, verdict, JSON.stringify(result), JSON.stringify(replacement)],
+      "UPDATE confirm_cards SET used_at=$3,outcome=$4,payload=jsonb_set(jsonb_set(payload,'{result}',$5::jsonb),'{replacedBy}',$6::jsonb) WHERE shop_id=$1 AND id=$2",
+      [card.id, input.now, verdict, JSON.stringify(result), JSON.stringify({ cardKey: replacement.cardKey })],
     );
     return { ...result, card: replacement };
   }
-  if (input.choice === "decline") return { outcome: "declined", text: "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요" };
-  if (execute === undefined) return { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" };
+
+  if (execute === undefined) return RETRY_NEEDED;
   const result = await execute(tx, {
     customerId: input.customerId,
     consultationId: input.consultationId,
@@ -292,4 +302,52 @@ export async function pressConfirmCardInTransaction(
     [card.id, input.now, JSON.stringify({ outcome: result.outcome, text: result.text })],
   );
   return { outcome: result.outcome, text: result.text };
+}
+
+export interface KakaoCardIdentityInput extends Pick<PressConfirmCard, "cardKey" | "choice" | "now"> {
+  readonly channelId: string;
+  readonly userId: string;
+  readonly blockId: string;
+}
+/** 인증된 채널 사용자와 현재 상담을 같은 트랜잭션에서 한 번만 잠급니다. */
+export async function pressKakaoConfirmCardInTransaction(
+  db: ShopDb,
+  input: KakaoCardIdentityInput,
+  execute?: ConfirmCardCommand,
+): Promise<ConfirmCardAnswer | null> {
+  validatePress(input);
+  const channel = (
+    await db.run<{ card_block_id: string }>(
+      "SELECT card_block_id FROM kakao_channels WHERE shop_id=$1 AND id=$2 AND status='linked' FOR SHARE",
+      [input.channelId],
+    )
+  ).rows[0];
+  if (channel === undefined) return null;
+  if (channel.card_block_id !== input.blockId) return NOT_YOURS;
+  const customer = (
+    await db.run<{ id: string }>(
+      "SELECT id FROM customers WHERE shop_id=$1 AND kakao_channel_id=$2 AND kakao_user_key=$3 FOR UPDATE",
+      [input.channelId, input.userId],
+    )
+  ).rows[0];
+  if (customer === undefined) return NOT_YOURS;
+  const consultation = (
+    await db.run<{ id: string }>(
+      "SELECT id FROM consultations WHERE shop_id=$1 AND customer_id=$2 AND status NOT IN ('ended','deleted','dropped') ORDER BY opened_at DESC,id DESC LIMIT 1 FOR UPDATE",
+      [customer.id],
+    )
+  ).rows[0];
+  if (consultation === undefined) return NOT_YOURS;
+  return processVerifiedCard(
+    db,
+    {
+      cardKey: input.cardKey,
+      choice: input.choice,
+      now: input.now,
+      customerId: customer.id,
+      consultationId: consultation.id,
+    },
+    execute,
+    channel.card_block_id,
+  );
 }

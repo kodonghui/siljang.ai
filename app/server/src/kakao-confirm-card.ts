@@ -1,5 +1,5 @@
 /** API-071. 카드 값과 업무 대상은 저장된 서버 자료에서만 읽습니다. */
-import { type ConfirmCardAnswer, pressConfirmCardInTransaction } from "./confirm-card-store";
+import { type ConfirmCardAnswer, pressKakaoConfirmCardInTransaction } from "./confirm-card-store";
 import { errorFields } from "./error-name";
 import { kakaoReply } from "./kakao-reply";
 import type { KakaoSkillPayload } from "./kakao-skill-auth";
@@ -54,28 +54,15 @@ export async function receiveKakaoConfirmCard(r: ShopRequest, input: KakaoCardPr
         "SELECT booking_issued_at FROM shops WHERE id=$1 FOR SHARE",
       );
       if (shop.rows[0]?.booking_issued_at == null) return null;
-      const channel = await tx.run<{ card_block_id: string }>(
-        "SELECT card_block_id FROM kakao_channels WHERE shop_id=$1 AND id=$2 AND status='linked' FOR SHARE",
-        [request.channelId],
-      );
-      if (channel.rows[0] === undefined) return null;
-      if (channel.rows[0].card_block_id !== request.payload.blockId)
-        return { outcome: "card_not_yours", text: "받으신 카드에서 눌러 주세요" };
-      const customer = await tx.run<{ id: string }>(
-        "SELECT id FROM customers WHERE shop_id=$1 AND kakao_channel_id=$2 AND kakao_user_key=$3 FOR UPDATE",
-        [request.channelId, request.payload.userId],
-      );
-      const customerId = customer.rows[0]?.id;
-      if (customerId === undefined) return { outcome: "card_not_yours", text: "받으신 카드에서 눌러 주세요" };
-      const consultation = await tx.run<{ id: string }>(
-        "SELECT id FROM consultations WHERE shop_id=$1 AND customer_id=$2 AND status NOT IN ('ended','deleted','dropped') ORDER BY opened_at DESC,id DESC LIMIT 1",
-        [customerId],
-      );
-      const consultationId = consultation.rows[0]?.id;
-      if (consultationId === undefined) return { outcome: "card_not_yours", text: "받으신 카드에서 눌러 주세요" };
-      return pressConfirmCardInTransaction(
+      return pressKakaoConfirmCardInTransaction(
         tx,
-        { ...input, customerId, consultationId, now: r.services.now() },
+        {
+          ...input,
+          channelId: request.channelId,
+          userId: request.payload.userId,
+          blockId: request.payload.blockId,
+          now: r.services.now(),
+        },
         r.services.confirmCardCommand,
       );
     });
