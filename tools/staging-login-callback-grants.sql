@@ -57,9 +57,8 @@ GRANT SELECT (id, shop_id, consultation_id, status, revision, lettering, design_
 GRANT SELECT, INSERT ON masked_values TO :"runtime_role";
 -- TASK-028: 미전달 일반 글은 다음 응답/콜백에 전한 뒤 상태와 시각만 고친다.
 GRANT SELECT, UPDATE (status, sent_at) ON notifications TO :"runtime_role";
--- TASK-077: 사장님 상담 조회에서 안내와 참고 사진의 표시 필드만 읽는다. 수정·삭제는 열지 않는다.
-GRANT SELECT (id, shop_id, customer_id, consultation_id, order_id, kind, body, created_at, timeline_seq)
-  ON notifications TO :"runtime_role";
+-- TASK-077: 안내는 위 TASK-028의 기존 전체 SELECT로 status·sent_at·표시 필드·전달 트랜잭션을 읽는다.
+-- 중복 SELECT는 추가하지 않는다. 참고 사진의 연결·위치·저장 키만 추가하며 수정·삭제 권한은 늘리지 않는다.
 GRANT SELECT (message_id, position, storage_key) ON reference_photos TO :"runtime_role";
 -- API-072 자체는 자기 받은 주문의 식별자/상태만 읽는다. 위 사장님 출력의 추가 열 권한과는 별개다.
 GRANT SELECT (id, shop_id, order_no, customer_id, consultation_id, status, personal_data_purged_at), UPDATE (id)

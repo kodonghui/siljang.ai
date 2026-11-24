@@ -4,6 +4,7 @@ import { createApp } from "../src/app";
 import { type DbConnector, pgConnector } from "../src/db";
 import { toBase64Url } from "../src/encoding";
 import { maskValue } from "../src/masked-values";
+import { maskMessageText } from "../src/message-masking";
 import { ApiError } from "../src/problem";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
@@ -74,6 +75,7 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     authenticated = true,
     failLog = false,
     connect: DbConnector = () => isolated.connect(),
+    settings: Record<string, unknown> = {},
   ) {
     const app = createApp({
       connect: failLog ? failingAccessInsert(connect) : connect,
@@ -91,7 +93,7 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     return app.request(
       `${ORIGIN}/api/owner/consultations/${id}/messages${query}`,
       { headers: { "x-test-owner": authenticated ? shop.ownerId : "", "CF-Connecting-IP": "203.0.113.77" } },
-      testEnv({ FILE_URL_KEY: fileUrlKey }),
+      testEnv({ FILE_URL_KEY: fileUrlKey, ...settings }),
     );
   }
   async function page(response: Response): Promise<Page> {
@@ -276,6 +278,86 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     expect(second.items.map((x) => x.messageId)).toEqual([id]);
     expect(second.nextCursor).toBeNull();
     expect((await page(await call())).items.map((x) => x.messageId)).toContain(added);
+  });
+  it("전달 시각을 먼저 잡은 트랜잭션이 첫 페이지 뒤 커밋해도 안내가 반복되지 않음", async () => {
+    const id = await pendingNotice(new Date(NOW.getTime() - 2000));
+    await isolated.db.query("UPDATE messages SET created_at=$2 WHERE id=$1", [
+      shop.messageId,
+      new Date(NOW.getTime() - 1000),
+    ]);
+    const connection = isolated.connect();
+    let unlock = () => {},
+      ready = () => {};
+    const release = new Promise<void>((resolve) => {
+      unlock = resolve;
+    });
+    const updated = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const delivery = connection.transaction(async (tx) => {
+      await tx.query("UPDATE notifications SET status='delivered_on_reply',sent_at=clock_timestamp() WHERE id=$1", [
+        id,
+      ]);
+      ready();
+      await release;
+    });
+    let first: Page;
+    try {
+      await updated;
+      first = await page(await call("?limit=1"));
+      expect(first.items[0]?.messageId).toBe(id);
+    } finally {
+      unlock();
+      await delivery;
+      await connection.close();
+    }
+    const second = await page(await call(`?limit=1&cursor=${first.nextCursor}`));
+    expect(second.items.map((x) => x.messageId)).toEqual([shop.messageId]);
+    expect(second.nextCursor).toBeNull();
+  });
+  it("손님이 친 표시자는 인용 글로 남고 실제 마스킹한 번호만 복원", async () => {
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+    const masked = await scoped.transaction((tx) =>
+      maskMessageText(
+        tx,
+        () => fc,
+        shop.consultationId,
+        "전화 01000005678 그리고 [전화번호1] [계좌번호1] [카드번호1] [긴숫자1]",
+      ),
+    );
+    await isolated.db.query("UPDATE messages SET body_masked=$2 WHERE id=$1", [shop.messageId, masked]);
+    const body = await page(await call());
+    expect(body.items[0]?.text).toBe("전화 01000005678 그리고 ［전화번호1］ ［계좌번호1］ ［카드번호1］ ［긴숫자1］");
+  });
+  it("다음 페이지에서도 잘못 설정한 필드 키는 클라이언트 오류가 아닌500", async () => {
+    await pendingNotice(NOW);
+    const first = await page(await call("?limit=1"));
+    expect(first.nextCursor).not.toBeNull();
+    const response = await call(
+      `?cursor=${first.nextCursor}`,
+      shop.consultationId,
+      true,
+      false,
+      () => isolated.connect(),
+      { FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: "synthetic-invalid-key-configuration" },
+    );
+    await expectProblem(response, "internal");
+    expect(JSON.stringify(logs)).not.toContain("synthetic-invalid-key-configuration");
+  });
+  it("커서는200자 안에서 순번·트랜잭션 메타데이터를 평문으로 노출하지 않음", async () => {
+    await pendingNotice(NOW);
+    const first = await page(await call("?limit=1"));
+    expect(first.nextCursor).not.toBeNull();
+    const raw = first.nextCursor
+      ? new TextDecoder().decode(
+          Uint8Array.from(atob(first.nextCursor.replaceAll("-", "+").replaceAll("_", "/")), (x) => x.charCodeAt(0)),
+        )
+      : "";
+    expect(() => JSON.parse(raw)).toThrow();
+    expect(first.nextCursor?.length).toBeLessThanOrEqual(200);
+    const changed = first.nextCursor?.split("") ?? [];
+    changed[50] = changed[50] === "A" ? "B" : "A";
+    await expectProblem(await call(`?cursor=${changed.join("")}`), "validation_failed");
   });
   it("참고 사진은 저장 위치를 감춘15분 서명 주소만 보임", async () => {
     const key = `shops/${shop.shopId}/reference/${newUuid()}.webp`;

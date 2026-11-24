@@ -42,7 +42,7 @@ describe("카카오 Event API 공통 전송(TASK-028, G4/G5)", () => {
     expect(await h.client.requestNotice(input({ development }), NOW)).toEqual({ kind: "accepted", taskId: TASK });
     const [url, init] = h.send.mock.calls[0] ?? [];
     expect(String(url)).toBe(`https://bot-api.kakao.com/v2/bots/${BOT}${development ? "!" : ""}/talk`);
-    expect(init?.redirect).toBe("error");
+    expect(init?.redirect).toBe("manual");
     expect(new Headers(init?.headers).has("Cookie")).toBe(false);
     expect(init?.signal).toBeInstanceOf(AbortSignal);
     expect(new Headers(init?.headers).get("Authorization")).toBe("KakaoAK synthetic-event-rest-key");

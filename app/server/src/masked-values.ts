@@ -31,6 +31,14 @@ export const PLACEHOLDER_LABELS: Readonly<Record<MaskKind, string>> = {
 /** 플레이스홀더 번호의 끝(05 CHECK `[0-9]{1,3}`). */
 export const MAX_PLACEHOLDER_NUMBER = 999;
 
+/** 새 입력의 인용과 사장님 복원은 같은 표시자 범위를 쓴다. 호출마다 정규식 상태를 분리한다. */
+export function maskedValuePlaceholderPattern(): RegExp {
+  const labels = Object.values(PLACEHOLDER_LABELS)
+    .map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  return new RegExp(`\\[(${labels})([0-9]{1,3})\\]`, "g");
+}
+
 /**
  * 받는 숫자의 자릿수. 계좌번호 10~16(06·SPEC-021), 카드번호 13~19(SPEC-021), 긴 숫자 9자리 이상(SPEC-021 '8자리 넘는').
  * 전화번호의 자릿수는 원본에 없어 끝 4자리를 둘 수 있는 4자리 이상만 본다(20자리까지, 나누는 규칙은 TASK-066).

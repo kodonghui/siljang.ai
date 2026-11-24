@@ -58,13 +58,25 @@ describe("카카오 콜백 주소와 서비스 기한(TASK-028, DEC-29)", () => 
     expect(post).toHaveBeenCalledTimes(1);
     const [url, request] = post.mock.calls[0] ?? [];
     expect(url?.origin).toBe("https://bot-api.kakao.com");
-    expect(request?.redirect).toBe("error");
+    expect(request?.redirect).toBe("manual");
     expect(JSON.parse(String(request?.body))).toEqual({
       version: "2.0",
       template: { outputs: [{ simpleText: { text: "합성 답변" } }] },
     });
   });
 
+  it("307의 다른 주소로 답과 콜백 토큰을 전달하지 않고 재시도하지 않음", async () => {
+    const send = vi.fn(
+      async (_url: URL, _options: RequestInit) =>
+        new Response(null, { status: 307, headers: { Location: "https://other.example/callback" } }),
+    );
+    expect(await deliverKakaoCallback(delivery(), "합성 답변", { fetch: send, now: () => NOW.getTime() })).toBe(
+      "unavailable",
+    );
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0].origin).toBe("https://bot-api.kakao.com");
+    expect(send.mock.calls[0]?.[1].redirect).toBe("manual");
+  });
   it("잠깐 실패하면 한 번만 다시 보내고 카카오 거절은 같은 내용으로 보내지 않음", async () => {
     const send = vi.fn<(_url: URL, _options: RequestInit) => Promise<Response>>();
     send.mockResolvedValueOnce(new Response(null, { status: 503 }));
