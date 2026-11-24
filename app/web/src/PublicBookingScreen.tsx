@@ -318,13 +318,38 @@ function BookingDetails({ slug }: { readonly slug: string }) {
 }
 function BookingLoading() {
   return (
-    <div className="public-booking-loading">
-      <Skeleton label="예약 링크 페이지를 불러오고 있어요" rows={3} />
-      <h2>가격표</h2>
-      <Skeleton rows={4} />
-      <h2>빈 날짜</h2>
-      <Skeleton rows={6} />
-      <Button disabled>문의하기</Button>
+    <div className="public-booking-loading" aria-busy="true">
+      <span className="ui-sr-only">예약 링크 페이지를 불러오고 있어요</span>
+      <section aria-labelledby="booking-loading-portfolio">
+        <h2 id="booking-loading-portfolio">포트폴리오</h2>
+        <div className="public-booking-photos" aria-hidden="true">
+          {["첫 사진", "둘째 사진", "셋째 사진"].map((name) => (
+            <div key={name} className="public-booking-loading-photo" />
+          ))}
+        </div>
+      </section>
+      <div className="public-booking-columns">
+        <div className="public-booking-content">
+          <section aria-labelledby="booking-loading-prices">
+            <h2 id="booking-loading-prices">가격표</h2>
+            <Skeleton rows={8} />
+          </section>
+          <section aria-labelledby="booking-loading-calendar">
+            <h2 id="booking-loading-calendar">빈 날짜</h2>
+            <div className="public-booking-loading-calendar" aria-hidden="true">
+              {Array.from({ length: 42 }, (_, i) => `날짜 ${i + 1}`).map((day) => (
+                <span key={day} />
+              ))}
+            </div>
+          </section>
+        </div>
+        <aside className="public-booking-aside">
+          <div className="public-booking-inquiry">
+            <Button disabled>문의하기</Button>
+          </div>
+          <Skeleton rows={4} />
+        </aside>
+      </div>
     </div>
   );
 }

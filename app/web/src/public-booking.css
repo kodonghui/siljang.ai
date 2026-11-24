@@ -40,6 +40,21 @@
 .public-booking-photos li {
   flex: 0 0 var(--size-photo);
 }
+.public-booking-loading-photo {
+  flex: 0 0 var(--size-photo);
+  aspect-ratio: 4 / 3;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-md);
+}
+.public-booking-loading-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.public-booking-loading-calendar span {
+  height: var(--size-target);
+  background: var(--color-surface-sunken);
+  border: var(--border-width-hairline) solid var(--color-line);
+}
 .public-booking-designs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
