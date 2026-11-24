@@ -17,7 +17,9 @@
       "workers": 2
     },
     "testsExit": 0,
-    "buildExit": 0
+    "buildExit": 0,
+    "sourceCommitKind": "local_commit",
+    "sourceTree": "81a0ea2a4a3e70e285033f6ae03ab74eb61d06d9"
   },
   "mainRebase": {
     "base": "f6edb6d8745ce28df35fefc66d090961064ea3dc",
@@ -28,7 +30,8 @@
     },
     "typecheckExit": 0,
     "sameOwnerProductFilesAsFullSource": true,
-    "integratedFullChecks": "current PR CI required before merge"
+    "integratedFullChecks": "current PR CI required before merge",
+    "commitKind": "local_commit"
   },
   "runtimeProbe": {
     "compatibilityDate": "2026-11-01",
@@ -41,5 +44,22 @@
     "actual_owner_login_200",
     "actual_owner_me_200",
     "actual_logout_then_401"
-  ]
+  ],
+  "reviewedPublicSource": {
+    "head": "4eddcbb3644164481b27557eea7541fd44245804",
+    "tree": "37642d9fd28917bb85c7108c7c537cf7aa55b250",
+    "localTreeVerifiedAtPublication": true,
+    "appRun": 45379732102,
+    "dbRun": 45379731942,
+    "ci": "success"
+  },
+  "reviewFollowup": {
+    "claudeComment": 7129590544,
+    "changes": [
+      "explicit_3xx_guard",
+      "token_and_profile_redirect_matrix",
+      "record_time_and_public_provenance"
+    ],
+    "currentHeadCI": "required_before_merge"
+  }
 }

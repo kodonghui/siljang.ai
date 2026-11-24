@@ -159,16 +159,25 @@ describe("카카오 토큰 교환·사용자·채널 어댑터(외부 호출 없
     expect(form.get("client_secret")).toBe("synthetic-secret");
     expect(send.mock.calls.every(([, init]) => init.redirect === "manual" && init.signal !== undefined)).toBe(true);
   });
-  it("307 응답의 다른 주소로 인가 코드·시크릿을 전달하지 않음", async () => {
-    const { send, auth } = mock([
-      new Response(null, { status: 307, headers: { Location: "https://other.example/token" } }),
-    ]);
+  it.each(
+    [301, 302, 303, 307, 308].flatMap(
+      (status) =>
+        [
+          [status, "token"],
+          [status, "profile"],
+        ] as const,
+    ),
+  )("%i %s 응답의 다른 주소로 자격 증명을 전달하지 않음", async (status, phase) => {
+    const redirect = new Response(null, { status, headers: { Location: "https://other.example/token" } });
+    const { send, auth } = mock(phase === "token" ? [redirect] : [token(), redirect]);
     await expect(auth.signIn("synthetic-code", URI, "synthetic-verifier")).rejects.toBeInstanceOf(
       KakaoUnavailableError,
     );
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(send.mock.calls[0]?.[0]).toBe("https://kauth.kakao.com/oauth/token");
-    expect(send.mock.calls[0]?.[1].redirect).toBe("manual");
+    expect(send).toHaveBeenCalledTimes(phase === "token" ? 1 : 2);
+    expect(send.mock.calls.at(-1)?.[0]).toBe(
+      phase === "token" ? "https://kauth.kakao.com/oauth/token" : "https://kapi.kakao.com/v2/user/me",
+    );
+    expect(send.mock.calls.every(([, init]) => init.redirect === "manual")).toBe(true);
   });
   it.each([400, 401, 403])("인가 코드 거절 %i은 로그인 실패", async (status) => {
     const { auth } = mock([new Response(null, { status })]);
