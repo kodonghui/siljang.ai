@@ -501,7 +501,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     ).toBe(2);
   });
 
-  it("문의 끊김으로 닫힌 상담은 고지 기록을 유지하고 다시 고지하지 않는다", async () => {
+  it("실제 문의 끊김 뒤 재개는 고지 기록을 유지하고 이전 안내를 AI 답 전에 한 번 전한다", async () => {
     const user = newUuid(),
       ai = model();
     await send(user, "고지를 받을 합성 질문");
@@ -515,12 +515,21 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
         now,
       ),
     );
+    const noticeId = newUuid();
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,created_at) SELECT $2,shop_id,customer_id,id,'no_answer_closed',$3,'no_answer_closed','합성 이전 닫힘 안내','deferred',$4 FROM consultations WHERE id=$1",
+      [first.id, noticeId, `notice:${noticeId}`, new Date(now.getTime() + 1000)],
+    );
     now = new Date(now.getTime() + 4000);
     await send(user, "문의 끊김 뒤 다시 온 합성 질문");
     const callback = await consume(required(jobs[1]), ai);
-    expect(texts(callback)).toEqual(["합성 질문을 확인했어요."]);
+    expect(texts(callback)).toEqual(["합성 이전 닫힘 안내", "합성 질문을 확인했어요."]);
     expect((await record(user))[0]).toEqual(first);
     expect(ai.call).toHaveBeenCalledTimes(2);
+    now = new Date(now.getTime() + 4000);
+    await send(user, "합성 재개 뒤 다음 질문");
+    expect(texts(await consume(required(jobs[2]), ai))).toEqual(["합성 질문을 확인했어요."]);
+    expect(ai.call).toHaveBeenCalledTimes(3);
   });
   it("고지 실패로 남은 AI 답은 고지 없는 즉시 안내에서 전하지 않는다", async () => {
     const user = newUuid(),

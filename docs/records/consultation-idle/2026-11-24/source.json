@@ -1,0 +1,48 @@
+{
+  "base": "08313f30a06be6c9da67c4af7354d3bb47776ac5",
+  "fullSource": "3b83beaed15b4b2134edb4f8c421fd802135d819",
+  "priorFailedSource": "4b05a7d84ef4063891e3d1d5af20f519e0b85b58",
+  "priorFull": {
+    "serverFiles": 127,
+    "serverPassed": 2603,
+    "serverFailed": 3,
+    "failure": "scheduled-poll expectations omitted three consultation states"
+  },
+  "passedFull": {
+    "migrations": 39,
+    "serverFiles": 127,
+    "serverTests": 2606,
+    "webFiles": 65,
+    "webTests": 1570,
+    "viteMs": 627,
+    "workers": 2,
+    "testsExit": 0,
+    "buildExit": 0
+  },
+  "installation": {
+    "packages": 161,
+    "seconds": 13
+  },
+  "before": {
+    "finished": 31,
+    "implemented": 31
+  },
+  "after": {
+    "finished": 31,
+    "implemented": 32
+  },
+  "eligible": 35,
+  "allDependencyReady": 39,
+  "removed": [
+    "TASK-076"
+  ],
+  "added": [],
+  "runtimeUnverified": [
+    "staging_migration0039_and_grants",
+    "actual_Cron_close",
+    "actual_receive_resume_and_deferred_order"
+  ],
+  "schemaStageSource": "4b05a7d84ef4063891e3d1d5af20f519e0b85b58",
+  "apiAndBrowserStage": "not run; unchanged contract and UI",
+  "status": "구현 완료, finished 없음"
+}

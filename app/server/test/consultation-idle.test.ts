@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { closeIdleConsultation } from "../src/consultation-idle";
 import type { RequestDb } from "../src/db";
@@ -5,10 +6,11 @@ import { DUE_SOURCES } from "../src/due-sources";
 import { runDueJobs } from "../src/job-runner";
 import { runnableJobs } from "../src/jobs";
 import { receiveKakaoMessage } from "../src/kakao-skill-store";
+import { quoteDraft } from "../src/quotes";
 import { Secret } from "../src/settings";
 import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
 import { scopeViolations } from "../src/sql-scope";
-import { describeDb, newUuid, TEST_HASH_KEY } from "./support/db";
+import { describeDb, newUuid, TEST_HASH_KEY, testDb } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
@@ -25,12 +27,26 @@ function latch() {
 describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, db: RequestDb, shop: ShopFixture;
   let customerId: string, consultationId: string, draftId: string;
+  const runtimeRole = `idle076_${newUuid().replaceAll("-", "")}`;
   beforeAll(async () => {
     isolated = await isolatedTestDb();
     db = isolated.db;
+    await db.query(`CREATE ROLE "${runtimeRole}" NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+    await db.query(
+      readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8").replaceAll(
+        ':"runtime_role"',
+        `"${runtimeRole}"`,
+      ),
+    );
   }, 30000);
   afterAll(async () => {
     await isolated?.close();
+    const admin = testDb();
+    try {
+      await admin.query(`DROP ROLE IF EXISTS "${runtimeRole}"`);
+    } finally {
+      await admin.close();
+    }
   });
   beforeEach(async () => {
     shop = await createShop(db, "합성 문의 끊김 가게");
@@ -155,6 +171,198 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
       );
     });
   }
+  async function receivedOrder(status: "received" | "no_pickup" = "received") {
+    await useOrderConsultation();
+    const payment = newUuid();
+    await db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='paid',arrived_amount=amount,arrived_at=$2,paid_at=$2 WHERE id=$1",
+        [shop.paymentRequestId, NOW],
+      );
+      await tx.query(
+        "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+        [payment, shop.shopId, shop.orderId, shop.paymentRequestId, NOW],
+      );
+      await tx.query("UPDATE orders SET status=$2,confirmed_at=$3,confirmed_payment_id=$4 WHERE id=$1", [
+        shop.orderId,
+        status,
+        NOW,
+        payment,
+      ]);
+      await tx.query(
+        "INSERT INTO productions(shop_id,order_id,completed_at,handed_over_at,handover_kind,no_pickup_at) VALUES($1,$2,$3,$4,$5,$6)",
+        [
+          shop.shopId,
+          shop.orderId,
+          NOW,
+          status === "received" ? NOW : null,
+          status === "received" ? "pickup" : null,
+          status === "no_pickup" ? NOW : null,
+        ],
+      );
+    });
+  }
+  it.each(["received", "no_pickup", "rejected", "cancelled"] as const)(
+    "열린 일이 없는 %s 주문 상담만 끝내며 주문 종료 시각을 대신 쓰지 않음",
+    async (status) => {
+      if (status === "received" || status === "no_pickup") await receivedOrder(status);
+      else {
+        await cancelledWithoutPayment();
+        if (status === "rejected")
+          await db.query(
+            "UPDATE orders SET kind='custom',status='rejected',rejected_at=$2,cancelled_at=NULL,cancel_kind=NULL WHERE id=$1",
+            [shop.orderId, NOW],
+          );
+      }
+      await tick();
+      expect((await state())?.status).toBe("ended");
+      expect((await db.query("SELECT finished_at FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual([
+        { finished_at: null },
+      ]);
+    },
+  );
+  it.each(["dropped", "ended"] as const)(
+    "최소 서버 역할도 상담을 %s으로 닫고 고지 없는 옛 AI 답만 실패로 남김",
+    async (status) => {
+      if (status === "ended") await receivedOrder();
+      await db.query("UPDATE consultations SET ai_disclosed_at=NULL,ai_disclosed_policy_version=NULL WHERE id=$1", [
+        consultationId,
+      ]);
+      const message = newUuid();
+      await db.query(
+        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery) VALUES($1,$2,$3,'outbound','ai','text','합성 미전달 AI 답','deferred')",
+        [message, shop.shopId, consultationId],
+      );
+      await db.transaction(async (tx) => {
+        await tx.query(`SET LOCAL ROLE "${runtimeRole}"`);
+        await closeIdleConsultation(
+          shopDb(createShopScope(shop.shopId, { kind: "job", job: "consultation_idle" }), tx),
+          consultationId,
+          NOW,
+        );
+      });
+      expect((await state())?.status).toBe(status);
+      expect((await db.query("SELECT delivery,body_masked FROM messages WHERE id=$1", [message])).rows).toEqual([
+        { delivery: "failed", body_masked: "합성 미전달 AI 답" },
+      ]);
+    },
+  );
+  it.each([
+    "SELECT description FROM issue_details LIMIT 1",
+    "SELECT refund_account_enc FROM refunds LIMIT 1",
+    "UPDATE issue_details SET description=NULL WHERE false",
+  ])("상담 종료용 읽기 권한이 민감한 본문/계좌와 쓰기를 열지 않음(%s)", async (sql) => {
+    await expect(
+      db.transaction(async (tx) => {
+        await tx.query(`SET LOCAL ROLE "${runtimeRole}"`);
+        await tx.query(sql);
+      }),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+  it.each(["change_request", "issue_report", "refund"] as const)(
+    "인도된 주문도 열린 %s 처리가 끝나기 전에는 상담을 끝내지 않음",
+    async (kind) => {
+      await receivedOrder();
+      const task = await indirectTask(kind === "change_request" ? "change_request" : "issue_report");
+      const subject = (
+        await db.query<{ change_request_id: string; issue_report_id: string }>(
+          "SELECT change_request_id,issue_report_id FROM owner_tasks WHERE id=$1",
+          [task],
+        )
+      ).rows[0]!;
+      await db.query("UPDATE owner_tasks SET wait_status='answered',closed_at=$2 WHERE id=$1", [task, NOW]);
+      let refund: string | undefined;
+      if (kind === "change_request")
+        await db.query("UPDATE change_requests SET status='requested',closed_at=NULL WHERE id=$1", [
+          subject.change_request_id,
+        ]);
+      else if (kind === "issue_report")
+        await db.query(
+          "UPDATE issue_reports SET status='reported',compensation=NULL,decided_at=NULL,closed_at=NULL,problem_kind=NULL WHERE id=$1",
+          [subject.issue_report_id],
+        );
+      else {
+        refund = newUuid();
+        await db.query("UPDATE issue_reports SET compensation='partial_refund' WHERE id=$1", [subject.issue_report_id]);
+        await db.query(
+          "INSERT INTO refunds(id,shop_id,order_id,cause,issue_report_id,event_key,decision,amount,calculated_amount,calc_basis) VALUES($1,$2,$3,'compensation',$4,$5,'partial',500,500,'{}')",
+          [refund, shop.shopId, shop.orderId, subject.issue_report_id, `refund:${refund}`],
+        );
+      }
+      await tick();
+      expect((await state())?.status).toBe("ordered");
+      if (kind === "change_request")
+        await db.query("UPDATE change_requests SET status='closed_no_difference',closed_at=$2 WHERE id=$1", [
+          subject.change_request_id,
+          NOW,
+        ]);
+      else if (kind === "issue_report")
+        await db.query(
+          "UPDATE issue_reports SET status='closed',compensation='none',decided_at=$2,closed_at=$2,problem_kind='other' WHERE id=$1",
+          [subject.issue_report_id, NOW],
+        );
+      else await db.query("UPDATE refunds SET method='bank_transfer',sent_at=$2 WHERE id=$1", [refund, NOW]);
+      await tick();
+      expect((await state())?.status).toBe("ended");
+    },
+  );
+  it("다른 상담에서 만든 주문을 카드로 다뤄도 열린 재제작이 끝나야 상담을 닫음", async () => {
+    await receivedOrder();
+    const originalConsultation = consultationId,
+      followup = newUuid(),
+      remake = newUuid();
+    await db.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [originalConsultation, NOW]);
+    await db.query("INSERT INTO consultations(id,shop_id,customer_id,last_customer_message_at) VALUES($1,$2,$3,$4)", [
+      followup,
+      shop.shopId,
+      customerId,
+      new Date(NOW.getTime() - 24 * HOUR),
+    ]);
+    consultationId = followup;
+    await db.query(
+      "INSERT INTO confirm_cards(shop_id,consultation_id,customer_id,card_key,kind,order_id,order_version,payload,expires_at) VALUES($1,$2,$3,$4,'cancel',$5,1,'{}',now()+interval '20 minutes')",
+      [shop.shopId, followup, customerId, newUuid(), shop.orderId],
+    );
+    await db.transaction(async (tx) => {
+      await tx.query(
+        "INSERT INTO orders SELECT(jsonb_populate_record(NULL::orders,to_jsonb(o)||$2::jsonb)).* FROM orders o WHERE o.id=$1",
+        [
+          shop.orderId,
+          JSON.stringify({
+            id: remake,
+            order_no: remake.replaceAll("-", "").slice(0, 8).toUpperCase(),
+            draft_id: null,
+            amount: 0,
+            remake_of_order_id: shop.orderId,
+            status: "confirmed",
+            confirmed_payment_id: null,
+            finished_at: null,
+          }),
+        ],
+      );
+      await tx.query(
+        "INSERT INTO order_details SELECT(jsonb_populate_record(NULL::order_details,to_jsonb(d)||$2::jsonb)).* FROM order_details d WHERE d.order_id=$1 AND d.version=1",
+        [
+          shop.orderId,
+          JSON.stringify({ id: newUuid(), order_id: remake, amount: 0, source: "remake", quote_id: null }),
+        ],
+      );
+    });
+    await tick();
+    expect((await state())?.status).toBe("ordered");
+    await db.transaction(async (tx) => {
+      await tx.query("UPDATE orders SET status='received',finished_at=$2 WHERE id=$1", [remake, NOW]);
+      await tx.query(
+        "INSERT INTO productions(shop_id,order_id,completed_at,handed_over_at,handover_kind) VALUES($1,$2,$3,$3,'pickup')",
+        [shop.shopId, remake, NOW],
+      );
+    });
+    await tick();
+    expect((await state())?.status).toBe("ended");
+    expect((await db.query("SELECT status FROM consultations WHERE id=$1", [originalConsultation])).rows).toEqual([
+      { status: "ended" },
+    ]);
+  });
   it("결제를 기다리는 다룬 주문은 ordered로 두고 주문과 안내를 바꾸지 않음", async () => {
     await useOrderConsultation();
     const before = (await db.query("SELECT row_to_json(o) AS row FROM orders o WHERE id=$1", [shop.orderId])).rows;
@@ -419,6 +627,37 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
         ])
       ).rows,
     ).toEqual([{ id: draftId, pickup_day: "2026-12-01", lettering: "생일 축하" }]);
+  });
+  it("재개 때 이미 만료된 견적은 쓰지 않고 남은 초안에서 새 금액과 기한을 계산", async () => {
+    const message = newUuid(),
+      beforeIdle = new Date(NOW.getTime() - 24 * HOUR);
+    await db.query(
+      "UPDATE order_drafts d SET price_list_id=s.price_list_id,size_option_id=s.size_option_id,flavor_option_id=s.flavor_option_id FROM order_drafts s WHERE d.id=$1 AND s.id=$2",
+      [draftId, shop.draftId],
+    );
+    await db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES($1,$2,$3,'inbound','customer','text',$4,'합성 견적 질문',$5)",
+      [message, shop.shopId, consultationId, `idle-quote-${message}`, beforeIdle],
+    );
+    const scoped = () => shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "quote" }), db);
+    const first = await quoteDraft(scoped(), { draftId, sourceMessageId: message, now: beforeIdle });
+    if (first.kind !== "quoted") throw new Error("첫 합성 견적이 없어요");
+    await tick();
+    expect((await state())?.status).toBe("dropped");
+    await expect(quoteDraft(scoped(), { draftId, sourceMessageId: message, now: NOW })).rejects.toMatchObject({
+      code: "not_found",
+    });
+    const resumedAt = new Date(new Date(first.quote.validUntil).getTime() + 1);
+    const receipt = await incoming(resumedAt, "합성 만료 견적 뒤 재개");
+    if (receipt.kind !== "received") throw new Error("합성 재개 수신이 없어요");
+    const fresh = await quoteDraft(scoped(), { draftId, sourceMessageId: receipt.messageId, now: resumedAt });
+    if (fresh.kind !== "quoted") throw new Error("새 합성 견적이 없어요");
+    expect(fresh.quote.id).not.toBe(first.quote.id);
+    expect(fresh.quote.amount).toBe(35000);
+    expect(new Date(fresh.quote.validUntil).getTime()).toBe(resumedAt.getTime() + 72 * HOUR);
+    expect((await db.query("SELECT lettering FROM order_drafts WHERE id=$1", [draftId])).rows).toEqual([
+      { lettering: "생일 축하" },
+    ]);
   });
   it("열린 상담의 최신 수신 시각은 늘고 늦게 온 옛 수신으로 되돌아가지 않음", async () => {
     await incoming(NOW, "합성 최신 수신");

@@ -1,0 +1,30 @@
+{
+  "sourceMain": "f6edb6d8745ce28df35fefc66d090961064ea3dc",
+  "generatedUpdateSha256": "a754085f44e42ead4918ecd1e45b8fa58d88d163b626d011c559f719e16e47b6",
+  "runtimeProbeSha256": "f215f05a5d595dec87e9be98cd5e0b24bca9cc44558728a6b1d6f51af97114c4",
+  "method": "academy Aside CLI and existing Supabase SQL Editor",
+  "appliedAt": "2026-11-24T11:04:08Z",
+  "migrationCount": 38,
+  "ownerSessionsPresent": true,
+  "ownerSessionUpdate": true,
+  "accessLogFullSelect": false,
+  "runtimeProbe": {
+    "at": "2026-11-24T11:05:21Z",
+    "allowedWrites": false,
+    "blockedWrites": 0,
+    "rollbackVerified": true,
+    "roleRestored": true,
+    "failureSqlstate": "42501"
+  },
+  "schemaMetadata": {
+    "at": "2026-11-24T11:06:25Z",
+    "timelineSequence": true,
+    "messageTimelineColumn": true,
+    "notificationTimelineColumn": true,
+    "notificationDeliveryTxid": true,
+    "ownerTaskHandoffIndex": true,
+    "sequenceUsage": true,
+    "sequenceUpdate": false
+  },
+  "followup": "read-only privilege diagnostics; no repeated write probe or arbitrary grants"
+}
