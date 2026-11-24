@@ -30,5 +30,11 @@
     "build": 0
   },
   "freshDatabaseDropped": true,
-  "privateInstallCacheReplacedAfterCompletionWithSameLockSharedLink": true
+  "privateInstallCacheReplacedAfterCompletionWithSameLockSharedLink": true,
+  "sourceCommitScope": "로컬 작업트리에만 있는 커밋이며 GitHub 커밋 조회 대상이 아님",
+  "publicVerification": {
+    "headSha": "17a6c389c8f4226bd8969b82fe8b1f2071059158",
+    "record": "ci-check-lines.json",
+    "url": "https://github.com/kodonghui/siljang.ai/actions/runs/45479523160/job/138748596512"
+  }
 }

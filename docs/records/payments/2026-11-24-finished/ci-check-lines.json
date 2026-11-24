@@ -1,0 +1,23 @@
+{
+  "headSha": "17a6c389c8f4226bd8969b82fe8b1f2071059158",
+  "workflowRunId": 45479523160,
+  "checkJobId": 138748596512,
+  "url": "https://github.com/kodonghui/siljang.ai/actions/runs/45479523160/job/138748596512",
+  "freshMigrationCount": 39,
+  "typecheckExit": 0,
+  "lines": [
+    "added 161 packages in 5s",
+    "Checked 529 files in 615ms. No fixes applied.",
+    "Test Files  134 passed (134)",
+    "Tests  2676 passed (2676)",
+    "Test Files  67 passed (67)",
+    "Tests  1615 passed (1615)",
+    "✓ built in 357ms",
+    "Total Upload: 5337.61 KiB / gzip: 984.55 KiB",
+    "--dry-run: exiting now.",
+    "Total Upload: 20.87 KiB / gzip: 6.47 KiB",
+    "--dry-run: exiting now."
+  ],
+  "exitCode": 0,
+  "scope": "GitHub에 공개된 해당 head의 app check. 로컬 전용 커밋의 재현을 주장하지 않음"
+}
