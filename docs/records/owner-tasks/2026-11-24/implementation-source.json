@@ -1,0 +1,17 @@
+{
+  "localTestCommit": "9c8b9b97fcd3e2e498bad3ffab085487b9f9601b",
+  "publicPrHead": "6354c25c035bd94eccd88a00f55c54e60a8e455c",
+  "main": "4732b667712b232848af67359aa9095d1977575a",
+  "wholeTree": "f79ae9cec985075aa367c2d00aadc3dbefc194f4",
+  "wholeTreeEqual": true,
+  "localFull": {
+    "migrations": 35,
+    "serverFiles": 117,
+    "serverTests": 2400,
+    "webFiles": 65,
+    "webTests": 1570,
+    "webBuild": "774ms",
+    "testExit": 0,
+    "buildExit": 0
+  }
+}
