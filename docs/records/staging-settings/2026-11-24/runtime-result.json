@@ -1,0 +1,109 @@
+{
+  "date": "2026-11-24",
+  "targetWorker": "siljang-staging",
+  "before": {
+    "versionId": "5fba4555-2ced-42a5-be09-89907662823a",
+    "tag": "5a31a5605457cec5e056e3ed912cebadcfc1bc3d",
+    "bindingPresence": {
+      "STORAGE_ENDPOINT": false,
+      "STORAGE_REGION": false,
+      "STORAGE_BUCKET": false,
+      "STORAGE_ACCESS_KEY_ID": false,
+      "STORAGE_SECRET_ACCESS_KEY": false,
+      "SUPABASE_URL": false,
+      "SUPABASE_PUBLISHABLE_KEY": false
+    },
+    "source": "학원컴 SSH 네이티브 Wrangler versions view"
+  },
+  "apply": {
+    "versionId": "ca33ad13-1564-4137-91d8-35a98ac5a4a4",
+    "createdOn": "2026-11-24T13:21:57.418655Z",
+    "tag": null,
+    "activePercentage": 100,
+    "bindingPresence": {
+      "STORAGE_ENDPOINT": true,
+      "STORAGE_REGION": true,
+      "STORAGE_BUCKET": true,
+      "STORAGE_ACCESS_KEY_ID": true,
+      "STORAGE_SECRET_ACCESS_KEY": true,
+      "SUPABASE_URL": true,
+      "SUPABASE_PUBLISHABLE_KEY": true
+    },
+    "source": "Aside 정상 UI/네이티브 secret bulk 후 독립 SSH 네이티브 조회"
+  },
+  "postMain": {
+    "main": "08313f30a06be6c9da67c4af7354d3bb47776ac5",
+    "versionId": "1f0c3418-37c6-4bc3-ab0f-86ec67880603",
+    "createdOn": "2026-11-24T13:31:40.929987Z",
+    "tag": "08313f30a06be6c9da67c4af7354d3bb47776ac5",
+    "activePercentage": 100,
+    "healthStatus": 200,
+    "bindingPresence": {
+      "STORAGE_ENDPOINT": true,
+      "STORAGE_REGION": true,
+      "STORAGE_BUCKET": true,
+      "STORAGE_ACCESS_KEY_ID": true,
+      "STORAGE_SECRET_ACCESS_KEY": true,
+      "SUPABASE_URL": true,
+      "SUPABASE_PUBLISHABLE_KEY": true
+    },
+    "keptBindingPresence": {
+      "FIELD_KEY_CURRENT": true,
+      "FIELD_KEY_V1": true,
+      "FILE_URL_KEY": true,
+      "STORAGE_BATCHES": true,
+      "IMAGES": true
+    },
+    "fieldKeyVersionCount": 1,
+    "source": "Actions와 별도 학원컴 SSH 네이티브 deployments list/versions view"
+  },
+  "asideUiObservations": {
+    "free": true,
+    "seoul": true,
+    "existingBucketPrivate": true,
+    "newS3KeySavedToVault": true,
+    "newPublishableKeySavedToVault": true,
+    "temporaryDevVarsRemoved": true
+  },
+  "bulkAllowlist": [
+    "STORAGE_ENDPOINT",
+    "STORAGE_REGION",
+    "STORAGE_BUCKET",
+    "STORAGE_ACCESS_KEY_ID",
+    "STORAGE_SECRET_ACCESS_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_PUBLISHABLE_KEY"
+  ],
+  "fieldKeysIncludedInBulk": false,
+  "oldKeysRevoked": false,
+  "paidChanges": 0,
+  "uploadAndRegistration": {
+    "result": "registration-result.json",
+    "sourceSha256": "a9424466f67cd2c7e1796a633a0c7924d0ce8175bf107ca259e6f75a18cff5e4",
+    "photoUploadAttempts": 1,
+    "shopRegistrationAttempts": 1,
+    "ownerMeHttp": 200,
+    "ownerShopHttp": 200,
+    "shopExists": true,
+    "licensePending": true,
+    "reservationLinkUnissued": true,
+    "postHttpStatusObserved": false,
+    "privatePhotoReadbackVerified": true,
+    "ownerDashboardUiVerified": false,
+    "inferredActiveMain": "08313f30a06be6c9da67c4af7354d3bb47776ac5",
+    "responseVersionReadback": false,
+    "photoReadbackEvidence": {
+      "result": "photo-readback-result.json",
+      "sourceSha256": "0d9e8cfc1fb4cd6307f3da13dfa1915d114a18afe5542c334a878b99145c49fd",
+      "http": 200,
+      "imageMime": true,
+      "bodyBytesPositive": true,
+      "naturalExpiryRejectionVerified": false
+    },
+    "registrationResultScope": "등록 시점 원본 JSON의 사진 읽기 미확인은 당시 관찰. 별도22:50 KST 읽기200 증거를 덧붙임."
+  },
+  "existingAccessIdentifierInAsideToolOutput": true,
+  "identifierRepublished": false,
+  "note": "기존 접근 식별자 요약 출력1회는 재기재하지 않음. 실제 업로드 오류 로그는 아직 미관찰.",
+  "existingSecretAccessKeyUnmasked": false
+}

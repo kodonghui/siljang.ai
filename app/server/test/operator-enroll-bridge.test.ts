@@ -3,7 +3,7 @@ import { OPERATOR_ENROLLMENT_SQL } from "../tools/operator-enroll";
 import { enrollmentDb, enrollmentRequest, renderEnrollmentSql, totpCode } from "../tools/operator-enroll-bridge";
 
 // RFC6238 Appendix B SHA-1의8자리 결과에서 마지막6자리를 대조한다.
-const SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
+const SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"; // check-no-keys: allow RFC6238 공개 시험 벡터이며 실제 자격 증명이 아님
 it.each([
   [59, "287082"],
   [1111111109, "081804"],

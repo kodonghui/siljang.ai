@@ -9,7 +9,7 @@ const email = "mvp-operator-20261124@example.com",
   user = "00000000-0000-4000-8000-000000000001",
   factor = "00000000-0000-4000-8000-000000000002";
 const seed = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
-  password = "synthetic-password-never-output";
+  password = "not-real-synthetic-password-never-output";
 let root: string, privateFile: string, exchangeDir: string;
 let auth: OperatorAuth;
 const config = () => ({

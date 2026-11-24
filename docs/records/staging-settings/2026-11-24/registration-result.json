@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "observedAtKst": "2026-11-24T22:37:13+09:00",
+  "recordedAt": "2026-11-24T13:37:38.204Z",
+  "initial": {
+    "ownerMeHttp": 200,
+    "ownerShopHttp": 404,
+    "shopExists": false,
+    "syntheticFixtureSha256Matches": true,
+    "unexpectedFormContent": false
+  },
+  "attempts": {
+    "photoUpload": 1,
+    "shopRegistration": 1
+  },
+  "ui": {
+    "uploadSuccessObserved": true,
+    "registrationFormAbsent": true,
+    "navigatedToOwner": true,
+    "genericLandingHeadingVisible": true,
+    "ownerDashboardUiVerified": false,
+    "humanVerificationVisible": false
+  },
+  "after": {
+    "ownerMeHttp": 200,
+    "ownerShopHttp": 200,
+    "shopExists": true,
+    "syntheticShopConfirmed": true,
+    "licensePending": true,
+    "reservationLinkUnissued": true,
+    "loginRetained": true
+  },
+  "postHttp": {
+    "upload": null,
+    "registration": null,
+    "uploadStatusObserved": false,
+    "registrationStatusObserved": false
+  },
+  "verificationScope": {
+    "ownSyntheticShopOnly": true,
+    "photoUrlOrProfileRecorded": false,
+    "duplicateSubmission": false,
+    "extraSettingsOrAccountsChanged": false,
+    "messageSent": false,
+    "paymentPerformed": false,
+    "privatePhotoReadbackVerified": false
+  }
+}
