@@ -165,6 +165,13 @@ export type CrossShopCase =
   | OperatorReviewShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
+  {
+    method: "GET",
+    path: "/owner/consultations/:consultationId/messages",
+    kind: "path",
+    ownStatus: 200,
+    request: (_own, target) => ({ url: `/owner/consultations/${target.consultationId}/messages` }),
+  },
   { method: "GET", path: "/owner/booking-link", kind: "booking" },
   { method: "GET", path: "/public/shops/:slug/privacy-policy", kind: "booking" },
   { method: "GET", path: "/public/shops/:slug", kind: "booking" },
@@ -246,7 +253,7 @@ interface Sent {
 }
 
 async function send(env: CrossShopEnv, method: Method, req: CrossShopRequest): Promise<Sent> {
-  const headers: Record<string, string> = { ...env.as(env.a) };
+  const headers: Record<string, string> = { ...env.as(env.a), "cf-connecting-ip": "203.0.113.24" };
   const requestKey = method === "GET" ? null : newRequestKey();
   if (requestKey !== null) headers[REQUEST_KEY_HEADER] = requestKey;
   const init: RequestInit = { method, headers };

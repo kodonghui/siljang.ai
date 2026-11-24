@@ -2,6 +2,8 @@
 -- psql -v runtime_role=<기존 서버 역할> -f tools/staging-login-callback-grants.sql
 -- 실제 역할은 새로 만들지 않는다. 각 작업에 필요한 열 권한만 더하며 운영 기록의 권한은 바꾸지 않는다.
 GRANT SELECT, INSERT, UPDATE ON owners, customers, consultations, messages TO :"runtime_role";
+-- TASK-077: 공통 표시 순번의 기본값에 필요한 USAGE만 허용한다. setval 권한은 열지 않는다.
+GRANT USAGE ON SEQUENCE consultation_timeline_seq TO :"runtime_role";
 -- 로그인할 때 기한 지난 세션을 정리하므로 DELETE도 필요하다(owner-session.ts).
 GRANT SELECT, INSERT, UPDATE, DELETE ON owner_sessions TO :"runtime_role";
 GRANT SELECT ON shops, kakao_channels TO :"runtime_role";
@@ -55,6 +57,10 @@ GRANT SELECT (id, shop_id, consultation_id, status, revision, lettering, design_
 GRANT SELECT, INSERT ON masked_values TO :"runtime_role";
 -- TASK-028: 미전달 일반 글은 다음 응답/콜백에 전한 뒤 상태와 시각만 고친다.
 GRANT SELECT, UPDATE (status, sent_at) ON notifications TO :"runtime_role";
+-- TASK-077: 사장님 상담 조회에서 안내와 참고 사진의 표시 필드만 읽는다. 수정·삭제는 열지 않는다.
+GRANT SELECT (id, shop_id, customer_id, consultation_id, order_id, kind, body, created_at, timeline_seq)
+  ON notifications TO :"runtime_role";
+GRANT SELECT (message_id, position, storage_key) ON reference_photos TO :"runtime_role";
 -- API-072 자체는 자기 받은 주문의 식별자/상태만 읽는다. 위 사장님 출력의 추가 열 권한과는 별개다.
 GRANT SELECT (id, shop_id, order_no, customer_id, consultation_id, status, personal_data_purged_at), UPDATE (id)
   ON orders TO :"runtime_role";

@@ -25,6 +25,7 @@ import { listIdentityChanges, reviewIdentityChange } from "./operator-identity-c
 import { getReviewShop, listReviewShops, reviewLicense } from "./operator-license-review";
 import { createOperatorSession, deleteOperatorSession, getOperatorMe, resolveOperatorSession } from "./operator-login";
 import { resolveOperatorShop } from "./operator-shop";
+import { listConsultationMessages } from "./owner-consultation-messages";
 import {
   createOwnerLogin,
   deleteOwnerLogin,
@@ -144,6 +145,7 @@ export interface AppOptions {
  * (test/support/cross-shop.ts의 CROSS_SHOP_CASES)에도 더한다. 빠지면 시험이 실패한다(TASK-019).
  */
 export const APP_ROUTES: readonly RouteDecl[] = [
+  accessRoute("GET", "/owner/consultations/:consultationId/messages", "owner", "API-043", listConsultationMessages),
   accessRoute("GET", "/owner/tasks", "owner", "API-040", listOwnerTasks),
   shopRoute("GET", "/owner/booking-link", "owner", getBookingLink),
   shopRoute("GET", "/public/shops/:slug", "public", getPublicBookingPage),

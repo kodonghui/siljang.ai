@@ -653,7 +653,10 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       has_table_privilege($1, 'public.ops_events', 'DELETE') AS ops_delete,
       has_table_privilege($1, 'public.access_logs', 'SELECT') AS access_full_select,
       has_any_column_privilege($1, 'public.access_logs', 'UPDATE') AS access_update,
-      has_table_privilege($1, 'public.operators', 'INSERT') AS operator_insert`,
+      has_table_privilege($1, 'public.operators', 'INSERT') AS operator_insert,
+      has_sequence_privilege($1, 'public.consultation_timeline_seq', 'USAGE') AS timeline_use,
+      has_sequence_privilege($1, 'public.consultation_timeline_seq', 'SELECT') AS timeline_read,
+      has_sequence_privilege($1, 'public.consultation_timeline_seq', 'UPDATE') AS timeline_set`,
       [role],
     );
     expect(rows).toEqual([
@@ -695,6 +698,9 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
         access_full_select: false,
         access_update: false,
         operator_insert: false,
+        timeline_use: true,
+        timeline_read: false,
+        timeline_set: false,
       },
     ]);
   });

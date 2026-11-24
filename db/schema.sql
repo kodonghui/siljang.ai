@@ -410,8 +410,13 @@ CREATE INDEX consultations_ordered_idx ON consultations (last_customer_message_a
 CREATE INDEX consultations_ended_idx ON consultations (ended_at) WHERE status = 'ended'; -- 상담 끝남 뒤 30일 지난 상담 찾기(SPEC-065)
 COMMENT ON TABLE consultations IS 'TBL-017 상담(TERM-046): 손님 한 사람과 가게의 대화 하나. 다룬 주문이 모두 끝나면 닫고 다음 말은 새 상담(REQ-189)';
 
+-- API-043에서 같은 시각의 메시지와 손님 안내를 삽입 순서로 섞기 위한 공통 순번.
+CREATE SEQUENCE consultation_timeline_seq AS bigint;
+COMMENT ON SEQUENCE consultation_timeline_seq IS '상담 메시지·손님 안내의 공통 표시 순번';
+
 -- TBL-018 messages (CTX-001) ← SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-021, SPEC-022, SPEC-065, SPEC-066, SPEC-073 | terms: TERM-046
 CREATE TABLE messages (
+  timeline_seq      bigint NOT NULL DEFAULT nextval('consultation_timeline_seq') CHECK (timeline_seq >= 1), -- 같은 시각의 메시지·손님 안내를 함께 정렬하는 삽입 순번(API-043, DEC-14)
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 메시지 ID
   shop_id           uuid NOT NULL,                       -- 가게
   consultation_id   uuid NOT NULL,                       -- 상담
@@ -444,6 +449,8 @@ CREATE TABLE messages (
         AND (kakao_callback_claim_until IS NULL OR kakao_callback_claim_until <= kakao_callback_deadline_at))
   )
 );
+CREATE UNIQUE INDEX messages_timeline_seq_uq ON messages (timeline_seq); -- 공통 표시 순번의 중복 방지
+CREATE INDEX messages_timeline_page_idx ON messages (shop_id, consultation_id, created_at, timeline_seq); -- 상담 대화의 시각·표시 순번 페이지(API-043)
 CREATE INDEX messages_consultation_idx ON messages (consultation_id, created_at); -- 상담의 최근 대화(AI-1의 최근 20차례)
 CREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred'; -- 다음 대화 때 먼저 전할 답(SPEC-017)
 CREATE INDEX messages_kakao_callback_deadline_idx ON messages (kakao_callback_deadline_at) WHERE kakao_callback_enc IS NOT NULL; -- 만료한 콜백 주소의 암호화 봉투를 지우는 데 씀
@@ -1256,8 +1263,9 @@ CREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status
 CREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming'; -- 발송 결과를 조회할 알림(REQ-182)
 COMMENT ON TABLE owner_alerts IS 'TBL-043 사장님 알림(TERM-035): 우리 서비스 채널 봇이 사장님의 카카오 로그인 사용자 번호로 보내는 할 일 종류와 목록 주소';
 
--- TBL-044 notifications (CTX-008) ← SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-032, SPEC-035, SPEC-036, SPEC-039, SPEC-042, SPEC-044, SPEC-045, SPEC-047, SPEC-048, SPEC-052, SPEC-053, SPEC-059, SPEC-061, SPEC-065, SPEC-066, SPEC-070 | terms: TERM-054
+-- TBL-044 notifications (CTX-008) ← SPEC-021, SPEC-022, SPEC-023, SPEC-024, SPEC-029, SPEC-031, SPEC-032, SPEC-035, SPEC-036, SPEC-039, SPEC-042, SPEC-044, SPEC-045, SPEC-047, SPEC-048, SPEC-052, SPEC-053, SPEC-059, SPEC-061, SPEC-065, SPEC-066, SPEC-070 | terms: TERM-054
 CREATE TABLE notifications (
+  timeline_seq      bigint NOT NULL DEFAULT nextval('consultation_timeline_seq') CHECK (timeline_seq >= 1), -- 같은 시각의 메시지·손님 안내를 함께 정렬하는 삽입 순번(API-043, DEC-14)
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 알림 ID
   shop_id          uuid NOT NULL,                        -- 가게
   customer_id      uuid NOT NULL,                        -- 받을 손님
@@ -1284,6 +1292,8 @@ CREATE TABLE notifications (
   CONSTRAINT notifications_sent_chk CHECK ((status IN ('sent', 'delivered_on_reply')) = (sent_at IS NOT NULL)),
   CONSTRAINT notifications_kakao_task_chk CHECK (status NOT IN ('confirming', 'sent') OR (kakao_task_id IS NOT NULL AND requested_at IS NOT NULL)) -- 확인 중·보냄은 카카오가 받은 요청이 있음(REQ-182)
 );
+CREATE UNIQUE INDEX notifications_timeline_seq_uq ON notifications (timeline_seq); -- 공통 표시 순번의 중복 방지
+CREATE INDEX notifications_timeline_page_idx ON notifications (shop_id, consultation_id, (coalesce(sent_at, created_at)), timeline_seq); -- 상담 대화의 시각·표시 순번 페이지(API-043)
 CREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying'); -- 보낼 것
 CREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred'; -- 그 손님이 말을 걸면 먼저 전함(REQ-122)
 CREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming'; -- 발송 결과를 조회할 안내(REQ-182)
@@ -2217,6 +2227,7 @@ COMMENT ON COLUMN consultations.turn_trace_id IS 'AI 답을 만드는 중인 차
 COMMENT ON COLUMN consultations.turn_started_at IS '그 차례를 시작한 시각';
 COMMENT ON COLUMN consultations.opened_at IS '상담을 연 시각';
 COMMENT ON COLUMN consultations.deleted_at IS '대화·사진·주문이 되지 않은 초안을 지운 시각(SPEC-065, REQ-186). 이 행은 내용 없이 남기고 주문·AI 호출 기록(비용)이 참조함';
+COMMENT ON COLUMN messages.timeline_seq IS '같은 시각의 메시지·손님 안내를 함께 정렬하는 삽입 순번(API-043, DEC-14)';
 COMMENT ON COLUMN messages.id IS '메시지 ID';
 COMMENT ON COLUMN messages.shop_id IS '가게';
 COMMENT ON COLUMN messages.consultation_id IS '상담';
@@ -2606,6 +2617,7 @@ COMMENT ON COLUMN owner_alerts.requested_at IS '카카오가 Event API 요청을
 COMMENT ON COLUMN owner_alerts.delivery_checked_at IS '발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)';
 COMMENT ON COLUMN owner_alerts.fail_code IS '카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-067)';
 COMMENT ON COLUMN owner_alerts.created_at IS '만든 시각';
+COMMENT ON COLUMN notifications.timeline_seq IS '같은 시각의 메시지·손님 안내를 함께 정렬하는 삽입 순번(API-043, DEC-14)';
 COMMENT ON COLUMN notifications.id IS '알림 ID';
 COMMENT ON COLUMN notifications.shop_id IS '가게';
 COMMENT ON COLUMN notifications.customer_id IS '받을 손님';
