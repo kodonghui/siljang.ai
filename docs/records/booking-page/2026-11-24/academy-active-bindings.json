@@ -1,0 +1,27 @@
+{
+  "observedDate": "2026-11-24",
+  "source": "학원컴 SSH 네이티브 고정 Wrangler 4.158.0: whoami / deployments list / versions view",
+  "authenticationSucceeded": true,
+  "versionId": "5fba4555-2ced-42a5-be09-89907662823a",
+  "tag": "5a31a5605457cec5e056e3ed912cebadcfc1bc3d",
+  "activePercentage": 100,
+  "bindingPresence": {
+    "STORAGE_ENDPOINT": false,
+    "STORAGE_REGION": false,
+    "STORAGE_BUCKET": false,
+    "STORAGE_ACCESS_KEY_ID": false,
+    "STORAGE_SECRET_ACCESS_KEY": false,
+    "SUPABASE_URL": false,
+    "SUPABASE_PUBLISHABLE_KEY": false,
+    "FIELD_KEY_CURRENT": true,
+    "FIELD_KEY_V1": true,
+    "FILE_URL_KEY": true,
+    "STORAGE_BATCHES": true,
+    "IMAGES": true
+  },
+  "fieldKeyVersionCount": 1,
+  "settingsChanged": false,
+  "actualUploadErrorLogObserved": false,
+  "scope": "현재 버전 메타데이터 확인이며 앞선 공개 API 응답의 당시 버전을 직접 확인한 것은 아님",
+  "next": "기존 무료 저장소와 인증 설정 연결 뒤 합성 업로드 재확인"
+}
