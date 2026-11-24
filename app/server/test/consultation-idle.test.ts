@@ -24,6 +24,10 @@ function latch() {
   });
   return { promise, release, fail };
 }
+function required<T>(value: T | undefined): T {
+  if (value === undefined) throw new Error("필요한 합성 시험 행이 없어요");
+  return value;
+}
 describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, db: RequestDb, shop: ShopFixture;
   let customerId: string, consultationId: string, draftId: string;
@@ -264,12 +268,14 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
     async (kind) => {
       await receivedOrder();
       const task = await indirectTask(kind === "change_request" ? "change_request" : "issue_report");
-      const subject = (
-        await db.query<{ change_request_id: string; issue_report_id: string }>(
-          "SELECT change_request_id,issue_report_id FROM owner_tasks WHERE id=$1",
-          [task],
-        )
-      ).rows[0]!;
+      const subject = required(
+        (
+          await db.query<{ change_request_id: string; issue_report_id: string }>(
+            "SELECT change_request_id,issue_report_id FROM owner_tasks WHERE id=$1",
+            [task],
+          )
+        ).rows[0],
+      );
       await db.query("UPDATE owner_tasks SET wait_status='answered',closed_at=$2 WHERE id=$1", [task, NOW]);
       let refund: string | undefined;
       if (kind === "change_request")
@@ -685,7 +691,7 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
   it("종료가 먼저 잠근 실제 두 연결에서도 새 메시지는 같은 문의 상담을 다시 엶", async () => {
     const closer = isolated.connect(),
       receiver = isolated.connect();
-    const pid = (await closer.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]!.pid;
+    const pid = required((await closer.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]).pid;
     const closed = latch(),
       releaseCloser = latch();
     const closing = closer
@@ -721,7 +727,7 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
   it("수신이 먼저 잠근 실제 두 연결에서는 종료가 새 수신 시각을 다시 확인함", async () => {
     const receiver = isolated.connect(),
       closer = isolated.connect();
-    const pid = (await receiver.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]!.pid;
+    const pid = required((await receiver.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]).pid;
     const saved = latch(),
       releaseReceiver = latch();
     const gated: RequestDb = {

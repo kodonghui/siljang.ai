@@ -44,5 +44,15 @@
   ],
   "schemaStageSource": "4b05a7d84ef4063891e3d1d5af20f519e0b85b58",
   "apiAndBrowserStage": "not run; unchanged contract and UI",
-  "status": "구현 완료, finished 없음"
+  "status": "구현 완료, finished 없음",
+  "postFullCheck": {
+    "sourceCommit": "6dfe421428c91b58031b5c57dc12dc3d84dfc03a",
+    "relatedTests": 37,
+    "strictLintFiles": 513,
+    "errors": 0,
+    "warnings": 0,
+    "typecheckExit": 0
+  },
+  "verifiedParentPr": 238,
+  "parentProof": "main238-deployment.json"
 }
