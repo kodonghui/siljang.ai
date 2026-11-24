@@ -1,20 +1,27 @@
 import { Client } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { OPERATOR_ENROLLMENT_SQL } from "../tools/operator-enroll";
-import { enrollmentDb, renderEnrollmentSql } from "../tools/operator-enroll-bridge";
+import {
+  type EnrollmentRequest,
+  enrollmentDb,
+  enrollmentRequest,
+  renderEnrollmentSql,
+} from "../tools/operator-enroll-bridge";
 import { describeDb, newUuid, TEST_DATABASE_URL } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 
 describeDb("운영자 전달 SQL의 실제 저장과 충돌 보호", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, client: Client;
   let email: string, user: string, factor: string;
+  let connectionUrl: string;
   beforeAll(async () => {
     isolated = await isolatedTestDb();
     const name = (await isolated.db.query<{ name: string }>("SELECT current_database() AS name")).rows[0]?.name;
     if (!name) throw new Error("합성 데이터베이스가 없어요");
     const url = new URL(TEST_DATABASE_URL);
     url.pathname = `/${name}`;
-    client = new Client({ connectionString: url.toString() });
+    connectionUrl = url.toString();
+    client = new Client({ connectionString: connectionUrl });
     await client.connect();
     await client.query(
       "CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz); CREATE TABLE auth.mfa_factors(id uuid PRIMARY KEY,user_id uuid,status text,factor_type text)",
@@ -38,8 +45,9 @@ describeDb("운영자 전달 SQL의 실제 저장과 충돌 보호", () => {
     factor,
     new Date("2026-11-24T00:00:00Z"),
   ];
-  const db = () =>
+  const db = (resumeRequest?: EnrollmentRequest) =>
     enrollmentDb({
+      ...(resumeRequest === undefined ? {} : { resumeRequest }),
       email,
       authUserId: user,
       exchange: async (request) => {
@@ -61,6 +69,16 @@ describeDb("운영자 전달 SQL의 실제 저장과 충돌 보호", () => {
       (await client.query("SELECT display_name FROM public.operators WHERE id=$1", [row.rows[0]?.id])).rows,
     ).toEqual([{ display_name: params()[1] }]);
   });
+  it("응답 유실 재개의 같은 요청은 실제 행 하나와 원래 등록 시각을 유지", async () => {
+    const request = enrollmentRequest(OPERATOR_ENROLLMENT_SQL, params(), { email, authUserId: user });
+    const first = await db(request).query(OPERATOR_ENROLLMENT_SQL, params());
+    const later = params();
+    later[4] = new Date("2026-11-25T00:00:00Z");
+    const second = await db(request).query(OPERATOR_ENROLLMENT_SQL, later);
+    expect(second.rows).toEqual(first.rows);
+    const rows = (await client.query("SELECT mfa_enrolled_at FROM operators WHERE lower(email)=$1", [email])).rows;
+    expect(rows).toEqual([{ mfa_enrolled_at: new Date("2026-11-24T00:00:00Z") }]);
+  });
   it.each(["unverified", "unconfirmed", "foreign-factor"])("%s 인증 행이면 운영자를 만들지 않음", async (kind) => {
     if (kind === "unverified")
       await client.query("UPDATE auth.mfa_factors SET status='unverified' WHERE id=$1", [factor]);
@@ -69,6 +87,45 @@ describeDb("운영자 전달 SQL의 실제 저장과 충돌 보호", () => {
       await client.query("UPDATE auth.mfa_factors SET user_id=$2 WHERE id=$1", [factor, newUuid()]);
     await expect(db().query(OPERATOR_ENROLLMENT_SQL, params())).rejects.toBeDefined();
     expect((await client.query("SELECT id FROM operators WHERE lower(email)=$1", [email])).rowCount).toBe(0);
+  });
+  it.each(["factor", "email"])("잠금 대기 중 %s 확인이 취소되면 최종 UPSERT도 되돌림", async (kind) => {
+    const locker = new Client({ connectionString: connectionUrl });
+    await locker.connect();
+    let outcome: Promise<unknown> | undefined;
+    try {
+      const pid = (await client.query("SELECT pg_backend_pid() AS pid")).rows[0]?.pid;
+      await locker.query("BEGIN; LOCK TABLE public.operators IN SHARE ROW EXCLUSIVE MODE");
+      outcome = db()
+        .query(OPERATOR_ENROLLMENT_SQL, params())
+        .then(
+          (value) => ({ ok: true, value }),
+          (error) => ({ ok: false, error }),
+        );
+      let waiting = false;
+      const until = Date.now() + 3000;
+      while (Date.now() < until) {
+        waiting =
+          (
+            await isolated.db.query<{ waiting: boolean }>(
+              "SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=$1 AND relation='public.operators'::regclass AND NOT granted) AS waiting",
+              [pid],
+            )
+          ).rows[0]?.waiting ?? false;
+        if (waiting) break;
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      expect(waiting).toBe(true);
+      if (kind === "factor")
+        await locker.query("UPDATE auth.mfa_factors SET status='unverified' WHERE id=$1", [factor]);
+      else await locker.query("UPDATE auth.users SET email_confirmed_at=NULL WHERE id=$1", [user]);
+      await locker.query("COMMIT");
+      expect(await outcome).toMatchObject({ ok: false, error: { code: "23514" } });
+      expect((await client.query("SELECT id FROM public.operators WHERE lower(email)=$1", [email])).rowCount).toBe(0);
+    } finally {
+      await locker.query("ROLLBACK");
+      await locker.end();
+      await outcome;
+    }
   });
   it("같은 인증수단의 막힌 합성 계정은 풀지 않으며 등록 시각도 유지", async () => {
     const old = new Date("2026-11-20T00:00:00Z");

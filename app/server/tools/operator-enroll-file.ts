@@ -5,7 +5,12 @@ import { basename, dirname, join, resolve } from "node:path";
 import type { OperatorAuth } from "../src/operator-auth";
 import { supabaseAuth } from "../src/operator-auth";
 import { type OperatorAuthSettings, Secret } from "../src/settings";
-import { enrollmentDb, renderEnrollmentSql } from "./operator-enroll-bridge";
+import {
+  type EnrollmentRequest,
+  enrollmentDb,
+  parseEnrollmentRequest,
+  renderEnrollmentSql,
+} from "./operator-enroll-bridge";
 import { enrollSyntheticOperator, SyntheticEnrollmentError } from "./operator-enroll-synthetic";
 
 type Config = {
@@ -24,6 +29,7 @@ const CONFIG_KEYS = [
   "SYNTHETIC_OPERATOR_PASSWORD",
   "SYNTHETIC_OPERATOR_NAME",
 ] as const;
+const RESUME_KEYS = ["SYNTHETIC_OPERATOR_TOTP_SECRET", "SYNTHETIC_OPERATOR_MFA_FACTOR_ID"] as const;
 const record = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const fail = () => new SyntheticEnrollmentError();
 async function readJson(path: string): Promise<unknown> {
@@ -61,12 +67,12 @@ export async function runFileEnrollment(options: {
     if (!info.isFile() || info.isSymbolicLink() || (process.platform !== "win32" && (info.mode & 0o077) !== 0))
       throw fail();
     const parsed = await readJson(privateFile);
-    if (
-      !record(parsed) ||
-      Object.keys(parsed).length !== CONFIG_KEYS.length ||
-      CONFIG_KEYS.some((k) => typeof parsed[k] !== "string")
-    )
-      throw fail();
+    if (!record(parsed) || CONFIG_KEYS.some((k) => typeof parsed[k] !== "string")) throw fail();
+    const savedSecret = parsed.SYNTHETIC_OPERATOR_TOTP_SECRET,
+      savedFactor = parsed.SYNTHETIC_OPERATOR_MFA_FACTOR_ID;
+    const resuming = typeof savedSecret === "string" && typeof savedFactor === "string";
+    const keys: readonly string[] = resuming ? [...CONFIG_KEYS, ...RESUME_KEYS] : CONFIG_KEYS;
+    if (Object.keys(parsed).length !== keys.length || Object.keys(parsed).some((k) => !keys.includes(k))) throw fail();
     const config = parsed as Config;
     const url = new URL(config.SUPABASE_URL);
     if (
@@ -81,9 +87,42 @@ export async function runFileEnrollment(options: {
     await realpath(privateFile);
     const exchangeDir = resolve(options.exchangeDir);
     await mkdir(exchangeDir, { recursive: true, mode: 0o700 });
-    const directory = await lstat(exchangeDir);
-    if (!directory.isDirectory() || directory.isSymbolicLink() || (await readdir(exchangeDir)).length !== 0)
-      throw fail();
+    const directory = await lstat(exchangeDir),
+      names = await readdir(exchangeDir);
+    if (!directory.isDirectory() || directory.isSymbolicLink()) throw fail();
+    if (!resuming && names.length !== 0) throw fail();
+    const target = {
+      email: config.SYNTHETIC_OPERATOR_EMAIL,
+      authUserId: config.SYNTHETIC_OPERATOR_AUTH_USER_ID,
+      displayName: config.SYNTHETIC_OPERATOR_NAME,
+    };
+    let resumeRequest: EnrollmentRequest | undefined;
+    if (resuming) {
+      if (
+        names.some(
+          (name) =>
+            !/^(?:(?:status|secret-backup-request|secret-backup-confirmed|sql-request|sql-delivery)\.json|sql-request\.sql|sql-response-[0-9a-f]{32}\.json)$/.test(
+              name,
+            ),
+        )
+      )
+        throw fail();
+      const backup = await readJson(join(exchangeDir, "secret-backup-request.json")),
+        confirmed = await readJson(join(exchangeDir, "secret-backup-confirmed.json"));
+      if (
+        !record(backup) ||
+        backup.schemaVersion !== 1 ||
+        typeof backup.nonce !== "string" ||
+        !/^[0-9a-f]{32}$/.test(backup.nonce) ||
+        !record(confirmed) ||
+        confirmed.nonce !== backup.nonce ||
+        confirmed.backedUp !== true
+      )
+        throw fail();
+      resumeRequest = parseEnrollmentRequest(await readJson(join(exchangeDir, "sql-request.json")), target);
+      if (resumeRequest.params[1] !== target.displayName.trim() || resumeRequest.params[3] !== savedFactor)
+        throw fail();
+    }
     statusPath = join(exchangeDir, "status.json");
     const status = async (phase: string) =>
       writeFile(statusPath ?? "", `${JSON.stringify({ schemaVersion: 1, phase })}\n`, { mode: 0o600 });
@@ -93,25 +132,18 @@ export async function runFileEnrollment(options: {
       url: url.origin,
       publishableKey: new Secret(config.SUPABASE_PUBLISHABLE_KEY),
     });
-    const target = {
-      email: config.SYNTHETIC_OPERATOR_EMAIL,
-      authUserId: config.SYNTHETIC_OPERATOR_AUTH_USER_ID,
-      displayName: config.SYNTHETIC_OPERATOR_NAME,
-    };
-    await status("authenticating-new-synthetic-user");
+    await status(resuming ? "authenticating-existing-synthetic-user" : "authenticating-new-synthetic-user");
     const result = await enrollSyntheticOperator({
       auth,
       target,
       password: config.SYNTHETIC_OPERATOR_PASSWORD,
       now: () => new Date(),
+      ...(resuming ? { resume: { factorId: savedFactor, secret: savedSecret } } : {}),
       saveNewTotp: async (value) => {
+        if (resuming) throw fail();
         await writeFile(
           privateFile,
-          `${JSON.stringify({
-            ...config,
-            SYNTHETIC_OPERATOR_TOTP_SECRET: value.secret,
-            SYNTHETIC_OPERATOR_MFA_FACTOR_ID: value.factorId,
-          })}\n`,
+          `${JSON.stringify({ ...config, SYNTHETIC_OPERATOR_TOTP_SECRET: value.secret, SYNTHETIC_OPERATOR_MFA_FACTOR_ID: value.factorId })}\n`,
           { mode: 0o600 },
         );
         const nonce = randomBytes(16).toString("hex");
@@ -122,11 +154,22 @@ export async function runFileEnrollment(options: {
       },
       db: enrollmentDb({
         ...target,
+        ...(resumeRequest === undefined ? {} : { resumeRequest }),
         exchange: async (request) => {
-          await writeNew("sql-request.json", `${JSON.stringify(request)}\n`);
-          await writeNew("sql-request.sql", renderEnrollmentSql(request));
+          if (!resuming) await writeNew("sql-request.json", `${JSON.stringify(request)}\n`);
+          const deliveryNonce = randomBytes(16).toString("hex");
+          await writeFile(join(exchangeDir, "sql-request.sql"), renderEnrollmentSql(request, deliveryNonce), {
+            mode: 0o600,
+          });
+          await writeFile(
+            join(exchangeDir, "sql-delivery.json"),
+            `${JSON.stringify({ schemaVersion: 1, deliveryNonce, responseFile: `sql-response-${deliveryNonce}.json` })}\n`,
+            { mode: 0o600 },
+          );
           await status("awaiting-actual-sql-result");
-          return await waitJson(join(exchangeDir, "sql-response.json"), Date.now() + timeout);
+          const proof = await waitJson(join(exchangeDir, `sql-response-${deliveryNonce}.json`), Date.now() + timeout);
+          if (!record(proof) || proof.deliveryNonce !== deliveryNonce) throw fail();
+          return proof;
         },
       }),
     });

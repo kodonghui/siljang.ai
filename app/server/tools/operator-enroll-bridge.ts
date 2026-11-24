@@ -80,9 +80,30 @@ export function enrollmentRequest(
   const base = { schemaVersion: 1 as const, nonce, email: target.email, sql, params: values };
   return { ...base, digest: requestDigest(base) };
 }
+/** 끊긴 실행의 공개 요청을 원래 대상/정확한 쓰기/해시로 다시 검사한다. */
+export function parseEnrollmentRequest(
+  value: unknown,
+  target: { email: string; authUserId: string },
+): EnrollmentRequest {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new EnrollmentBridgeError();
+  const request = value as Record<string, unknown>;
+  if (
+    request.schemaVersion !== 1 ||
+    request.email !== target.email ||
+    typeof request.sql !== "string" ||
+    typeof request.nonce !== "string" ||
+    typeof request.digest !== "string" ||
+    !Array.isArray(request.params)
+  )
+    throw new EnrollmentBridgeError();
+  const canonical = enrollmentRequest(request.sql, request.params, target, request.nonce);
+  if (request.digest !== canonical.digest) throw new EnrollmentBridgeError();
+  return canonical;
+}
 const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
 /** 정상 SQL Editor에서만 실행한다. 기존 다른 계정/인증수단은 잠금 아래 거절하고 실제 저장 결과를 돌려준다. */
-export function renderEnrollmentSql(request: EnrollmentRequest): string {
+export function renderEnrollmentSql(request: EnrollmentRequest, deliveryNonce?: string): string {
+  if (deliveryNonce !== undefined && !NONCE.test(deliveryNonce)) throw new EnrollmentBridgeError();
   const canonical = enrollmentRequest(
     request.sql,
     request.params,
@@ -115,7 +136,7 @@ BEGIN
   END IF;
   ${sql} INTO saved_id,saved_disabled;
   SELECT jsonb_build_object(
-    'requestNonce',${literal(request.nonce)},'requestDigest',${literal(request.digest)},
+    ${deliveryNonce === undefined ? "" : `'deliveryNonce',${literal(deliveryNonce)},`}'requestNonce',${literal(request.nonce)},'requestDigest',${literal(request.digest)},
     'operatorId',o.id,'disabled',o.disabled_at IS NOT NULL,
     'authUserMatches',o.auth_user_id=$3,'factorMatches',o.mfa_factor_id=$4,
     'factorVerified',f.status='verified' AND f.factor_type='totp',
@@ -125,6 +146,12 @@ BEGIN
   LEFT JOIN auth.users u ON u.id=o.auth_user_id
   LEFT JOIN auth.mfa_factors f ON f.id=o.mfa_factor_id AND f.user_id=o.auth_user_id
   WHERE o.id=saved_id;
+  IF proof IS NULL OR NOT COALESCE((proof->>'authUserMatches')::boolean,false)
+    OR NOT COALESCE((proof->>'factorMatches')::boolean,false)
+    OR NOT COALESCE((proof->>'factorVerified')::boolean,false)
+    OR NOT COALESCE((proof->>'userConfirmed')::boolean,false) THEN
+    RAISE EXCEPTION 'operator_enrollment_final_auth_mismatch' USING ERRCODE='check_violation';
+  END IF;
   RETURN proof;
 END $siljang_enroll$;
 SELECT pg_temp.${functionName}(${request.params.map(literal).join(",")}) AS result;
@@ -133,6 +160,7 @@ SELECT pg_temp.${functionName}(${request.params.map(literal).join(",")}) AS resu
 export function enrollmentDb(options: {
   email: string;
   authUserId: string;
+  resumeRequest?: EnrollmentRequest;
   exchange(request: EnrollmentRequest): Promise<unknown>;
 }): Queryable {
   let used = false;
@@ -140,7 +168,11 @@ export function enrollmentDb(options: {
     query: async <R>(sql: string, params: readonly unknown[] = []) => {
       if (used) throw new EnrollmentBridgeError();
       used = true;
-      const request = enrollmentRequest(sql, params, options);
+      const current = enrollmentRequest(sql, params, options);
+      const request =
+        options.resumeRequest === undefined ? current : parseEnrollmentRequest(options.resumeRequest, options);
+      if (request !== current && request.params.slice(0, 4).some((value, index) => value !== current.params[index]))
+        throw new EnrollmentBridgeError();
       const response = await options.exchange(request);
       if (typeof response !== "object" || response === null || Array.isArray(response))
         throw new EnrollmentBridgeError();

@@ -50,7 +50,7 @@ async function waitRead(name: string): Promise<Record<string, unknown>> {
   }
   throw new Error("합성 교환 파일이 없어요");
 }
-const run = (timeoutMs = 1000) => runFileEnrollment({ privateFile, exchangeDir, auth: () => auth, timeoutMs });
+const run = (timeoutMs = 3000) => runFileEnrollment({ privateFile, exchangeDir, auth: () => auth, timeoutMs });
 it("Vault 보관 확인과 실제 SQL 결과가 모두 와야 성공하며 공개 교환 자료에 비밀 없음", async () => {
   const pending = run();
   const backup = await waitRead("secret-backup-request.json");
@@ -61,10 +61,12 @@ it("Vault 보관 확인과 실제 SQL 결과가 모두 와야 성공하며 공�
     JSON.stringify({ nonce: backup.nonce, backedUp: true }),
   );
   const request = await waitRead("sql-request.json");
-  expect((await waitRead("status.json")).phase).toBe("awaiting-actual-sql-result");
+  await vi.waitFor(async () => expect((await waitRead("status.json")).phase).toBe("awaiting-actual-sql-result"));
+  const delivery = await waitRead("sql-delivery.json");
   await writeFile(
-    join(exchangeDir, "sql-response.json"),
+    join(exchangeDir, `sql-response-${String(delivery.deliveryNonce)}.json`),
     JSON.stringify({
+      deliveryNonce: delivery.deliveryNonce,
       requestNonce: request.nonce,
       requestDigest: request.digest,
       operatorId: user,

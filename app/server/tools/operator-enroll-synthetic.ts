@@ -15,13 +15,14 @@ export interface SyntheticEnrollmentOptions {
   readonly db: Queryable;
   readonly target: { email: string; authUserId: string; displayName: string };
   readonly password: string;
+  readonly resume?: { factorId: string; secret: string };
   readonly now: () => Date;
   readonly saveNewTotp: (value: { factorId: string; secret: string }) => Promise<void>;
 }
 export async function enrollSyntheticOperator(options: SyntheticEnrollmentOptions): Promise<EnrollResult> {
   const { auth, target } = options;
-  let factorId: string | null = null,
-    secret: string | null = null;
+  let factorId: string | null = options.resume?.factorId ?? null,
+    secret: string | null = options.resume?.secret ?? null;
   try {
     const args = checkArgs(target);
     if (
@@ -36,17 +37,25 @@ export async function enrollSyntheticOperator(options: SyntheticEnrollmentOption
       signInWithPassword: (email, password) => auth.signInWithPassword(email, password),
       getUser: async (token) => {
         const user = await auth.getUser(token);
-        if (
-          !user ||
-          user.id !== target.authUserId ||
-          user.email !== target.email ||
-          user.factors === null ||
-          user.factors.length !== 0
-        )
+        if (!user || user.id !== target.authUserId || user.email !== target.email || user.factors === null)
           throw new EnrollmentBridgeError();
+        if (options.resume === undefined) {
+          if (user.factors.length !== 0) throw new EnrollmentBridgeError();
+        } else {
+          totpCode(options.resume.secret, options.now().getTime());
+          const existing = user.factors[0];
+          if (
+            user.factors.length !== 1 ||
+            existing?.id !== options.resume.factorId ||
+            existing.type !== "totp" ||
+            existing.status !== "verified"
+          )
+            throw new EnrollmentBridgeError();
+        }
         return user;
       },
       enrollTotp: async (token, name) => {
+        if (options.resume !== undefined) throw new EnrollmentBridgeError();
         const value = await auth.enrollTotp(token, name);
         if (value === null) return null;
         factorId = value.factorId;
@@ -65,6 +74,7 @@ export async function enrollSyntheticOperator(options: SyntheticEnrollmentOption
         return auth.verifyTotp(token, factor, code);
       },
       unenroll: (token, factor) => {
+        if (options.resume !== undefined) throw new EnrollmentBridgeError();
         if (factorId === null || factor !== factorId) throw new EnrollmentBridgeError();
         return auth.unenroll(token, factor);
       },
