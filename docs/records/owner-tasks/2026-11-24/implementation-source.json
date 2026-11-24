@@ -1,0 +1,42 @@
+{
+  "localTestCommit": "9c8b9b97fcd3e2e498bad3ffab085487b9f9601b",
+  "publicPrHead": "6354c25c035bd94eccd88a00f55c54e60a8e455c",
+  "main": "4732b667712b232848af67359aa9095d1977575a",
+  "wholeTree": "f79ae9cec985075aa367c2d00aadc3dbefc194f4",
+  "wholeTreeEqual": true,
+  "localFull": {
+    "migrations": 35,
+    "serverFiles": 117,
+    "serverTests": 2400,
+    "webFiles": 65,
+    "webTests": 1570,
+    "webBuild": "774ms",
+    "testExit": 0,
+    "buildExit": 0,
+    "install": {
+      "command": "npm ci",
+      "exit": 0,
+      "output": "added 161 packages in 25s"
+    },
+    "typecheckExit": 0,
+    "lint": {
+      "command": "npm run lint",
+      "exit": 0,
+      "output": "Checked 497 files in 719ms. No fixes applied.",
+      "diagnostics": 0
+    },
+    "workerDryRun": [
+      {
+        "config": "wrangler.jsonc",
+        "exit": 0,
+        "output": "--dry-run: exiting now."
+      },
+      {
+        "config": "wrangler.storage-batches.jsonc",
+        "exit": 0,
+        "output": "--dry-run: exiting now."
+      }
+    ],
+    "recordSource": "PR #231 본문과 해당 로컬 원본의 실행 로그. 시험·빌드 완료는 같은 PR 댓글7122633775에서도 확인합니다."
+  }
+}
