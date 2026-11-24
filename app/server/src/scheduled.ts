@@ -9,9 +9,11 @@ import type { Bindings } from "./app";
 import { type DbConnector, pgConnector } from "./db";
 import { errorFields } from "./error-name";
 import { type RunLimits, type RunnableJob, type RunSummary, runDueJobs } from "./job-runner";
-import { runnableJobs } from "./jobs";
+import { JOB_HANDLERS, runnableJobs } from "./jobs";
 import { recoverExpiredKakaoCallbacks } from "./kakao-callback-queue";
+import type { KakaoOwnerEvents } from "./kakao-event";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
+import { createOwnerAlertHandler } from "./owner-alerts";
 import { createServices } from "./services";
 import { readSettings, type Settings } from "./settings";
 import type { ObjectStore } from "./storage";
@@ -38,6 +40,7 @@ export interface ScheduledOptions {
   readonly clock?: () => number;
   /** 시험용 저장소. 실제 실행은 settings의 S3 연결을 늦게 만든다. */
   readonly storage?: ObjectStore;
+  readonly kakaoOwnerEvents?: KakaoOwnerEvents;
 }
 
 /** 실행기를 한 번 돈다. 설정이 틀렸거나 실행기가 던지면 로그를 남기고 null. */
@@ -60,12 +63,31 @@ export async function runScheduled(
     return null;
   }
   const db = (options.connect ?? pgConnector)(settings.secrets.DATABASE_URL);
-  const services = createServices(env as Bindings, settings, options.storage ? { storage: options.storage } : {});
+  const services = createServices(env as Bindings, settings, {
+    ...(options.storage === undefined ? {} : { storage: options.storage }),
+    ...(options.kakaoOwnerEvents === undefined ? {} : { kakaoOwnerEvents: options.kakaoOwnerEvents }),
+  });
   try {
     return await runDueJobs({
       db,
       now,
-      jobs: options.jobs ?? runnableJobs(),
+      jobs:
+        options.jobs ??
+        runnableJobs(undefined, {
+          ...JOB_HANDLERS,
+          ...(settings.ownerAlerts.enabled
+            ? {
+                owner_alert: {
+                  handler: createOwnerAlertHandler({
+                    development: settings.ownerAlerts.development,
+                    origin: settings.publicAppOrigin ?? "",
+                    botId: settings.ownerAlerts.botId ?? "",
+                    events: () => services.kakaoOwnerEvents(),
+                  }),
+                },
+              }
+            : {}),
+        }),
       log: appLog,
       storage: () => services.storage(),
       ...(options.limits !== undefined ? { limits: options.limits } : {}),

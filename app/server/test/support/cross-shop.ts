@@ -73,6 +73,12 @@ interface OwnShopCase {
   readonly kind: "self";
 }
 
+interface OwnerTaskListCase {
+  readonly method: "GET";
+  readonly path: "/owner/tasks";
+  readonly kind: "owner_tasks";
+}
+
 interface ShopSettingsCase {
   readonly method: "PATCH";
   readonly path: "/owner/shop";
@@ -146,6 +152,7 @@ export type CrossShopCase =
   | OwnerCrossShopCase
   | SkillCrossShopCase
   | OwnShopCase
+  | OwnerTaskListCase
   | ShopSettingsCase
   | LicenseResubmissionCase
   | CalendarShopCase
@@ -170,6 +177,7 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
       }) as const,
   ),
   { method: "GET", path: "/owner/shop", kind: "self" },
+  { method: "GET", path: "/owner/tasks", kind: "owner_tasks" },
   { method: "PATCH", path: "/owner/shop", kind: "shop_settings" },
   { method: "PUT", path: "/owner/shop/license", kind: "license_resubmission" },
   { method: "POST", path: "/owner/shop/identity-changes", kind: "identity_change" },
@@ -904,6 +912,35 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
     }
     if (c.kind === "channel") {
       await checkSkillChannel(env, c, db);
+      return;
+    }
+    if (c.kind === "owner_tasks") {
+      const ids = [newUuid(), newUuid()];
+      for (const [i, shop] of [env.a, env.b].entries())
+        await db.query("INSERT INTO owner_tasks(id,shop_id,kind,event_key) VALUES($1,$2,'ledger_relink',$3)", [
+          ids[i],
+          shop.shopId,
+          `task:ledger_relink:${ids[i]}`,
+        ]);
+      const before = await snapshots(db, env);
+      for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+        const response = await env.app.request(
+          `/api/owner/tasks?shopId=${target}&ownerId=${env.b.ownerId}`,
+          { headers: { ...env.as(env.a), "cf-connecting-ip": "203.0.113.24" } },
+          testEnv(),
+        );
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as { items: { taskId: string }[] };
+        expect(body.items.map((row) => row.taskId)).toEqual([ids[0]]);
+        expect(JSON.stringify(body)).not.toContain(ids[1]);
+      }
+      const after = await snapshots(db, env);
+      expect(after[1]).toEqual(before[1]);
+      const clean = (row: Record<string, string> | undefined) => {
+        const { access_logs: _access, ...rest } = row ?? {};
+        return rest;
+      };
+      expect(clean(after[0])).toEqual(clean(before[0]));
       return;
     }
     if (c.kind === "self") {

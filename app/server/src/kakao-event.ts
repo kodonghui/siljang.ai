@@ -58,6 +58,23 @@ export interface KakaoEvents {
   requestNotice(input: NoticeEventInput, now: Date): Promise<KakaoEventRequestResult>;
   checkDelivery(taskId: string, recipient: KakaoEventRecipient): Promise<KakaoDeliveryResult>;
 }
+export interface OwnerAlertEventInput extends Omit<NoticeEventInput, "userKey" | "noticeKey" | "scheduledFor"> {
+  readonly appUserId: string;
+  readonly alertKey: string;
+  readonly text: string;
+  readonly url: string;
+}
+export interface KakaoOwnerEvents {
+  requestAlert(input: OwnerAlertEventInput, now: Date): Promise<KakaoEventRequestResult>;
+  checkDelivery(taskId: string, appUserId: string): Promise<KakaoDeliveryResult>;
+}
+interface InternalKakaoEvents extends KakaoEvents {
+  requestNotice(
+    input: NoticeEventInput,
+    now: Date,
+    content?: Pick<OwnerAlertEventInput, "text" | "url">,
+  ): Promise<KakaoEventRequestResult>;
+}
 
 function failed(
   code: KakaoEventFailure["code"],
@@ -88,6 +105,7 @@ function user(recipient: KakaoEventRecipient) {
 function notRequested(
   input: NoticeEventInput,
   now: Date,
+  recipientType: KakaoEventRecipient["type"] = "botUserKey",
 ): Extract<KakaoEventRequestResult, { kind: "not_requested" }> | null {
   if (
     !/^[0-9a-f]{24}$/i.test(input.botId) ||
@@ -98,7 +116,7 @@ function notRequested(
     !isTimeZone(input.timeZone)
   )
     throw new TypeError(INVALID);
-  user({ type: "botUserKey", id: input.userKey });
+  user({ type: recipientType, id: input.userKey });
   attempts(input.attemptsDone, 0);
   const at = date(now);
   const next = input.nextAttemptAt === null ? null : date(input.nextAttemptAt);
@@ -200,10 +218,11 @@ async function json(response: Response, signal: AbortSignal): Promise<unknown> {
 }
 
 /** HTTP 한 번과 본문 읽기에 같은 전체 기한을 적용한다. 재시도는 호출자의 G4 계획만 수행한다. */
-export function kakaoEvents(
+function createEvents(
   apiKey: Secret,
-  options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {},
-): KakaoEvents {
+  options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number },
+  owner: boolean,
+): InternalKakaoEvents {
   const timeoutMs = options.timeoutMs ?? 6000;
   if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) throw new RangeError(INVALID);
   const send = options.fetch ?? fetch;
@@ -237,13 +256,20 @@ export function kakaoEvents(
     }
   }
   return {
-    async requestNotice(input, now) {
-      const skipped = notRequested(input, now);
+    async requestNotice(input, now, content) {
+      const recipientType = owner ? "appUserId" : "botUserKey";
+      const skipped = notRequested(input, now, recipientType);
       if (skipped !== null) return skipped;
+      if (owner) {
+        if (!content?.text.trim() || content.text.length > 400) throw new TypeError(INVALID);
+        const url = new URL(content.url);
+        if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash)
+          throw new TypeError(INVALID);
+      }
       const response = await call(`/v2/bots/${input.botId.toLowerCase()}${input.development ? "!" : ""}/talk`, {
-        event: { name: "siljang_notice" },
-        user: [{ type: "botUserKey", id: input.userKey }],
-        params: { noticeKey: input.noticeKey },
+        event: { name: owner ? "siljang_owner_alert" : "siljang_notice" },
+        user: [{ type: recipientType, id: input.userKey }],
+        params: owner ? { alertKey: input.noticeKey, ...content } : { noticeKey: input.noticeKey },
       });
       if (response === null) return failed("kakao_error", true);
       if (response.status === 429) return failed("limit", false, false, "operator");
@@ -292,6 +318,32 @@ export function kakaoEvents(
       if (item === null || item.userID !== recipient.id || item.reqUserType !== recipient.type)
         return { kind: "pending" };
       return deliveryFailure(item);
+    },
+  };
+}
+
+export function kakaoEvents(
+  apiKey: Secret,
+  options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {},
+): KakaoEvents {
+  return createEvents(apiKey, options, false);
+}
+
+/** 사장님 발신은 우리 봇과 로그인 사용자 번호를 사용한다. 손님 botUserKey를 받지 않는다. */
+export function kakaoOwnerEvents(
+  apiKey: Secret,
+  options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {},
+): KakaoOwnerEvents {
+  const client = createEvents(apiKey, options, true);
+  return {
+    requestAlert({ appUserId, alertKey, text, url, ...rest }, now) {
+      return client.requestNotice({ ...rest, userKey: appUserId, noticeKey: alertKey, scheduledFor: null }, now, {
+        text,
+        url,
+      });
+    },
+    checkDelivery(taskId, appUserId) {
+      return client.checkDelivery(taskId, { type: "appUserId", id: appUserId });
     },
   };
 }

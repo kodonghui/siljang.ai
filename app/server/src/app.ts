@@ -34,6 +34,7 @@ import {
   startOwnerLogin,
 } from "./owner-login";
 import type { OwnerScope } from "./owner-scope";
+import { listOwnerTasks } from "./owner-tasks";
 import { getPaymentDestination, setPaymentDestination } from "./payment-destination";
 import type { ImageBinding } from "./photo-normalizer";
 import { createPriceListVersion, getCurrentPriceList, getPriceListVersion, listPriceListVersions } from "./price-lists";
@@ -43,6 +44,7 @@ import { getPublicBookingPage } from "./public-booking-page";
 import { assertPublicShopRateCoverage, resolvePublicShop } from "./public-shop";
 import type { RateLimitBinding } from "./rate-limit";
 import {
+  accessRoute,
   mountRoutes,
   type OperatorResolver,
   type OwnerResolver,
@@ -142,6 +144,7 @@ export interface AppOptions {
  * (test/support/cross-shop.ts의 CROSS_SHOP_CASES)에도 더한다. 빠지면 시험이 실패한다(TASK-019).
  */
 export const APP_ROUTES: readonly RouteDecl[] = [
+  accessRoute("GET", "/owner/tasks", "owner", "API-040", listOwnerTasks),
   shopRoute("GET", "/owner/booking-link", "owner", getBookingLink),
   shopRoute("GET", "/public/shops/:slug", "public", getPublicBookingPage),
   shopRoute("GET", "/public/shops/:slug/privacy-policy", "public", getPublicPrivacyPolicy),
