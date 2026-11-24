@@ -91,7 +91,7 @@ TASKS = [
     dict(id='TASK-065', it=3, name='참고 사진 받기', owner='Claude', size=1, src=['SPEC-019'], api=['API-070', 'API-072'], rules=['A11', 'G10'], dep=['TASK-063', 'TASK-183'], done='사진은 G10 모듈(TASK-183)로 메타데이터를 지운 뒤 저장'),
     dict(id='TASK-066', it=3, name='AI 모델로 보내는 대화 마스킹과 줄이기', owner='Claude', size=2, src=['SPEC-021'], api=['API-070'], rules=['A15'], dep=['TASK-063', 'TASK-025', 'TASK-026']),
     dict(id='TASK-067', it=3, name='견적(가게 규칙)', owner='Claude', size=2, src=['SPEC-013'], api=['API-070'], dep=['TASK-063', 'TASK-038']),
-    dict(id='TASK-068', it=3, name='그날 받을 수 있는지 판정과 다른 날 권하기', owner='Claude', size=2, src=['SPEC-014'], api=['API-070'], rules=['A3', 'A4'], dep=['TASK-063', 'TASK-041']),
+    dict(id='TASK-068', it=3, name='그날 받을 수 있는지 판정과 다른 날 권하기', owner='Claude', size=2, src=['SPEC-014'], api=['API-070'], rules=['A3', 'A4'], dep=['TASK-063', 'TASK-041'], finished='2026-11-24, docs/records/capacity/2026-11-24/task-068-acceptance.md, SPEC-014 #1~2·A3·A4·API-070 응답별 자동 시험·동시 중복·전달 뒤 기록·제한 역할·새 빈 PostgreSQL 서버2300개/웹1570개·타입/빌드. 실제 AI 날짜 도구 호출은 TASK-069에서 연결'),
     dict(id='TASK-069', it=3, name='AI 상담 답 만들기(주문서 초안 채우기·견적 알림·에스컬레이션)', owner='Claude', size=3, src=['SPEC-020'], api=['API-070'], rules=['A35', 'A13'], dep=['TASK-066', 'TASK-067', 'TASK-068', 'TASK-027']),
     dict(id='TASK-070', it=3, name='다른 가게 디자인 요청에 조문 인용하기', owner='Claude', size=1, src=['SPEC-026'], api=['API-070'], dep=['TASK-069', 'TASK-039']),
     dict(id='TASK-071', it=3, name='주문 요청 준비: 빈 항목 묻기와 금액 다시 셈', owner='Claude', size=1, src=['SPEC-027'], api=['API-070'], dep=['TASK-069']),
