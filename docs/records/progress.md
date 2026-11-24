@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-24 12:53 KST · TASK-066 상태 대조 전체 검사 완료
+
+TASK-066 상태 대조 원본476cfb68b82db6792a4781cac63db9d541478809의 새 빈 PostgreSQL 검사도 완료됐습니다. 마이그레이션34개, 서버 Test Files 113 passed (113)·Tests 2344 passed (2344), 웹 Test Files 65 passed (65)·Tests 1570 passed (1570), 웹 built in 802ms, 두 Worker --dry-run: exiting now.이며 시험·빌드 종료가 모두0입니다. added 161 packages in 12s, 타입 종료0, Checked 489 files in 1059ms. No fixes applied.입니다. WBS18검사·오류0, 키1127파일·0건이며 새 앱 코드와 새 마이그레이션은 없습니다.
+
+구현 완료21개는 이 PR 목록을 반영한 수이고 현재 main의 구현 완료20개와 구분합니다. finished37개는 유지합니다. PR의 CI·리뷰·squash 뒤 main 배포 확인을 이어가며, 실제 로그·모델 전환·최소 권한 확인을 완료로 바꾸지 않습니다. 원래44건 대조가 남은 TASK-027은 이 상태 정리와 별개입니다.
+
 ### 2026-11-24 12:47 KST · TASK-066 구현 완료 조건과 남은 실제 확인 대조
 
 TASK-066 수락 기록의11개 조건을 다시 대조했습니다. 코드·자동 시험 조건은 PR #225에서 채웠고 main ee3ce8bfea7d32d6b417f82060afac83bc40042f의 app45309196170/db45309196156·배포138162230801이 성공했습니다. 실제 앱3dc38ed7-d384-4f0c-bb42-41b910f7cadb 전체 태그·활성100%·health200·당시 원격 main 일치 증거를 보존했습니다. 고지 경고 보완도 PR #228 main d330fcc의 같은 확인까지 끝났습니다.
