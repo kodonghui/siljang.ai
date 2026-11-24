@@ -2,7 +2,7 @@
 
 <!-- build_wbs.py가 research/cake-wbs-2026-11/wbs_rows.py에서 생성. 손으로 고치지 않음 -->
 
-작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 32개.
+작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 33개.
 
 읽는 법과 나눈 방식은 [README](README.md)에 있습니다. '닿는 것'은 만드는 API, 쓰고 읽는 테이블, 만드는 화면입니다. '끝난 조건'의 첫 줄은 손으로 쓴 조건이고, 수락 기준·응답 코드·스킬 결과·화면 상태·응답 행·규칙 줄은 원본에서 생성합니다. 화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다. 끝난 작업은 끝난 조건 맨 앞에 '끝남'과 끝난 날·증거가 붙습니다.
 
@@ -97,7 +97,7 @@
 | TASK-046 | SCR-015 가게 등록 화면 | SPEC-002, SPEC-068 | SCR-015 | TASK-029, TASK-022, TASK-032 | Claude | 1일 | SCR-015 상태 5개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 2개(normal·error)와 그리지 않은 3개(permission·stale·submitting)는 08 와이어프레임과 09 토큰으로, 08 응답 행 17개마다 정한 상태로 보임 |
 | TASK-047 | SCR-034 가게 설정 화면 | SPEC-009, SPEC-017, SPEC-024, SPEC-025, SPEC-052, SPEC-077 | SCR-034 | TASK-182, TASK-032, TASK-037, TASK-020 | Claude | 1일 | SCR-034 상태 8개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 2개(normal·error)와 그리지 않은 6개(loading·load-failed·permission·stale·submitting·done)는 08 와이어프레임과 09 토큰으로, 08 응답 행 19개마다 정한 상태로 보임 |
 | TASK-048 | SCR-035 영업 신고 화면 | SPEC-003, SPEC-078 | SCR-035 | TASK-182, TASK-032, TASK-033, TASK-022, TASK-036 | Claude | 1일 | SCR-035 상태 8개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 2개(normal·error)와 그리지 않은 6개(loading·permission·stale·submitting·on-hold·done)는 08 와이어프레임과 09 토큰으로, 08 응답 행 36개마다 정한 상태로 보임 |
-| TASK-049 | SCR-036 가격표와 도안 화면 | SPEC-004 | SCR-036 | TASK-182, TASK-038, TASK-022 | Claude | 2일 | SCR-036 상태 9개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 3개(normal·empty·error)와 그리지 않은 6개(loading·load-failed·permission·stale·submitting·done)는 08 와이어프레임과 09 토큰으로, 08 응답 행 23개마다 정한 상태로 보임 |
+| TASK-049 | SCR-036 가격표와 도안 화면 | SPEC-004 | SCR-036 | TASK-182, TASK-038, TASK-022 | Claude | 2일 | 끝남: 2026-11-25, SCR-036 9상태·360/1280 18건과12회귀·36페이지검사 오류/경고/넘침/44px미달0, normal/empty/error 캡처6장 직접 대조·종료 후 원본해시 보존. API23행 시험과 실제 자기 도안50개 저장/조회 대조. docs/records/price-list/2026-11-24-finished/finished-checks.md<br/>SCR-036 상태 9개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 3개(normal·empty·error)와 그리지 않은 6개(loading·load-failed·permission·stale·submitting·done)는 08 와이어프레임과 09 토큰으로, 08 응답 행 23개마다 정한 상태로 보임 |
 | TASK-050 | SCR-037 가격표 버전 이력 화면 | SPEC-004, SPEC-013 | SCR-037 | TASK-182, TASK-038 | Claude | 0.5일 | SCR-037 상태 5개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 3개(normal·empty·error)와 그리지 않은 2개(loading·permission)는 08 와이어프레임과 09 토큰으로, 08 응답 행 9개마다 정한 상태로 보임 |
 | TASK-051 | SCR-038 운영규정 화면 | SPEC-005 | SCR-038 | TASK-182, TASK-039 | Claude | 2일 | SCR-038 상태 10개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 4개(normal·empty·error·confirm)와 그리지 않은 6개(loading·load-failed·permission·stale·submitting·done)는 08 와이어프레임과 09 토큰으로, 08 응답 행 15개마다 정한 상태로 보임 |
 | TASK-052 | SCR-039 운영규정 버전 이력 화면 | SPEC-005, SPEC-016 | SCR-039 | TASK-182, TASK-039 | Claude | 0.5일 | SCR-039 상태 5개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 3개(normal·empty·error)와 그리지 않은 2개(loading·permission)는 08 와이어프레임과 09 토큰으로, 08 응답 행 9개마다 정한 상태로 보임 |
