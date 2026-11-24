@@ -378,3 +378,49 @@ async function differenceChange(db: ShopDb, order: Order, payment: Payment, expe
     ? change
     : null;
 }
+
+/** 차액 결제를 확인한 담당 실행기는 이 자리 변경과 주문 내용·변경 반영을 같은 트랜잭션에서 저장합니다. */
+export async function applyDifferenceSlotInTransaction(
+  db: ShopDb,
+  input: ChangeSlotInput & { readonly paymentRequestId: string },
+): Promise<ChangeSlotResult> {
+  const order = await lockedSlotOrder(db, input);
+  if (order === null) return { kind: "stale" };
+  const payment = await lockedPayment(db, order.id, pathId(input.paymentRequestId));
+  if (
+    payment.kind !== "difference" ||
+    payment.status !== "paid" ||
+    payment.change_request_id !== pathId(input.changeRequestId)
+  )
+    return { kind: "not_applicable" };
+  const change = await differenceChange(db, order, payment, input.expectedChangeRevision);
+  if (!change || change.new_pickup_at === null) return { kind: "not_applicable" };
+  const day = await pickupDay(db, change.new_pickup_at, input.now);
+  const old = (
+    await db.run<{ id: string; day: string }>(
+      "SELECT id,day::text FROM slot_holds WHERE shop_id=$1 AND order_id=$2 AND status='fixed'",
+      [order.id],
+    )
+  ).rows[0];
+  if (!old || old.day !== order.pickup_day) return { kind: "not_applicable" };
+  if (day === old.day) return { kind: "existing", holdId: old.id, day };
+  const held = (
+    await db.run<{ id: string; day: string; status: string }>(
+      "SELECT id,day::text,status FROM slot_holds WHERE shop_id=$1 AND order_id=$2 AND payment_request_id=$3 AND hold_key=$4",
+      [order.id, payment.id, eventKeys.hold(order.id, change.id)],
+    )
+  ).rows[0];
+  if (held?.status !== "held" || held.day !== day) return { kind: "not_applicable" };
+  await lockSlotDays(db, [old.day, day]);
+  const released = await db.run(
+    "UPDATE slot_holds SET status='released',released_at=$3,release_reason='date_changed' WHERE shop_id=$1 AND id=$2 AND status='fixed'",
+    [old.id, input.now],
+  );
+  if (released.rowCount !== 1) throw new Error("slot changed after order lock");
+  const fixed = await db.run(
+    "UPDATE slot_holds SET status='fixed',fixed_at=$3 WHERE shop_id=$1 AND id=$2 AND status='held'",
+    [held.id, input.now],
+  );
+  if (fixed.rowCount !== 1) throw new Error("slot changed after order lock");
+  return { kind: "fixed", holdId: held.id, day };
+}

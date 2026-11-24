@@ -3,6 +3,7 @@ import { calendarBookingDays } from "../src/calendar";
 import { shiftDate } from "../src/calendar-input";
 import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
 import {
+  applyDifferenceSlotInTransaction,
   expireOrderSlot,
   finishOrderSlot,
   fixPaidOrderSlot,
@@ -341,21 +342,27 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
       "unchanged",
     );
   });
-  async function moveDate(change: Awaited<ReturnType<typeof changedDate>>, ownerConfirmed = false) {
+  async function moveDate(
+    change: Awaited<ReturnType<typeof changedDate>> & { paymentRequestId?: string },
+    ownerConfirmed = false,
+  ) {
     return isolated.db.transaction(async (raw) => {
       const tx = shopDb(scope(isolated.db, true).scope, raw);
       const revision = await tx.found<{ lock_version: number }>(
         "SELECT lock_version FROM orders WHERE shop_id=$1 AND id=$2",
         [shop.orderId],
       );
-      const result = await moveOrderSlotInTransaction(tx, {
+      const input = {
         orderId: shop.orderId,
         changeRequestId: change.changeId,
         now,
         expectedOrderRevision: revision.lock_version,
-        expectedChangeRevision: 1,
+        expectedChangeRevision: change.paymentRequestId ? 2 : 1,
         ownerConfirmed,
-      });
+      };
+      const result = change.paymentRequestId
+        ? await applyDifferenceSlotInTransaction(tx, { ...input, paymentRequestId: change.paymentRequestId })
+        : await moveOrderSlotInTransaction(tx, input);
       if (result.kind !== "fixed" && result.kind !== "existing") return result;
       await raw.query(
         "INSERT INTO order_details SELECT(jsonb_populate_record(NULL::order_details,to_jsonb(d)||$3::jsonb)).* FROM order_details d WHERE d.shop_id=$1 AND d.order_id=$2 AND d.version=1",
@@ -367,13 +374,14 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
             version: 2,
             source: "change_request",
             change_request_id: change.changeId,
+            amount: change.paymentRequestId ? 36000 : 35000,
             pickup_at: change.pickup.toISOString(),
           }),
         ],
       );
       await tx.run(
-        "UPDATE orders SET version=2,pickup_at=$3,pickup_day=$4,lock_version=lock_version+1 WHERE shop_id=$1 AND id=$2",
-        [shop.orderId, change.pickup, change.newDay],
+        "UPDATE orders SET version=2,pickup_at=$3,pickup_day=$4,amount=$5,lock_version=lock_version+1 WHERE shop_id=$1 AND id=$2",
+        [shop.orderId, change.pickup, change.newDay, change.paymentRequestId ? 36000 : 35000],
       );
       await tx.run(
         "UPDATE change_requests SET status='applied',applied_version=2,applied_at=$3,lock_version=lock_version+1 WHERE shop_id=$1 AND id=$2",
@@ -382,6 +390,57 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
       return result;
     });
   }
+  it("차액 결제 확인 뒤 옛 자리를 풀고 새 잡힌 자리만 확정함", async () => {
+    const change = await differenceDate();
+    expect(
+      (await holdOrderSlot(scope(), { orderId: shop.orderId, paymentRequestId: change.paymentRequestId, now })).kind,
+    ).toBe("held");
+    await isolated.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2,version=version+1 WHERE id=$1",
+        [change.paymentRequestId, now],
+      );
+      await tx.query(
+        "INSERT INTO payments(shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,1000,$4)",
+        [shop.shopId, shop.orderId, change.paymentRequestId, now],
+      );
+    });
+    expect((await moveDate(change)).kind).toBe("fixed");
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT day::text,status,release_reason FROM slot_holds WHERE shop_id=$1 ORDER BY day",
+          [shop.shopId],
+        )
+      ).rows,
+    ).toEqual([
+      { day, status: "released", release_reason: "date_changed" },
+      { day: change.newDay, status: "fixed", release_reason: null },
+    ]);
+    expect(
+      (await isolated.db.query("SELECT version,amount,pickup_day::text FROM orders WHERE id=$1", [shop.orderId])).rows,
+    ).toEqual([{ version: 2, amount: 36000, pickup_day: change.newDay }]);
+  });
+  it("자리 이동 뒤 주문 내용 저장이 실패하면 옛 자리를 되살리고 새 자리를 없앰", async () => {
+    await held();
+    await markPaid();
+    await fixPaidOrderSlot(scope(), { ...shop, now });
+    const change = await changedDate();
+    await expect(
+      scope().transaction(async (tx) => {
+        expect(
+          (await moveOrderSlotInTransaction(tx, { orderId: shop.orderId, changeRequestId: change.changeId, now })).kind,
+        ).toBe("fixed");
+        throw new Error("synthetic details failure");
+      }),
+    ).rejects.toThrow("synthetic details failure");
+    expect(
+      (await isolated.db.query("SELECT day::text,status FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows,
+    ).toEqual([{ day, status: "fixed" }]);
+    expect((await isolated.db.query("SELECT version FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual([
+      { version: 1 },
+    ]);
+  });
   it("차액 없는 날짜 변경은 옛날을 풀고 새날에 확정 자리를 만듦", async () => {
     await held();
     await markPaid();
