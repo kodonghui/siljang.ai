@@ -131,6 +131,15 @@ GRANT SELECT (id, display_name, disabled_at, mfa_enrolled_at) ON operators TO :"
 GRANT SELECT (id, operator_id, token_hash, created_at, expires_at, ended_at) ON operator_sessions TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION review_shop_license(uuid,uuid,text,timestamptz,text,text,text) TO :"runtime_role";
 
+-- TASK-021: 로그인 검증의 사용자/인증 수단 연결은 읽기만 한다.
+-- FOR SHARE 잠금에는 열 하나의 UPDATE가 필요하다. 앱은 id를 변경하지 않으며 보안 열 수정 권한은 주지 않는다.
+GRANT SELECT (email, auth_user_id, mfa_factor_id), UPDATE (id) ON operators TO :"runtime_role";
+GRANT INSERT (operator_id, token_hash, created_at, expires_at), UPDATE (ended_at), DELETE
+  ON operator_sessions TO :"runtime_role";
+-- 실패 횟수의 예약·성공/시간 만료 정리만 허용한다. 기존 실패 기록의 UPDATE는 열지 않는다.
+GRANT SELECT (id, email_hash, attempted_at), INSERT (email_hash, attempted_at), DELETE
+  ON operator_login_failures TO :"runtime_role";
+
 -- TASK-037: 연락처/공개 정보와 운영 설정만 바꾼다. 신원·영업 승인·소유자/삭제는 더하지 않는다.
 GRANT UPDATE (name, contact_phone, business_address, contact_email, pickup_address,
   mail_order_reg_no, mail_order_authority, mail_order_exemption, completion_photo_enabled,
