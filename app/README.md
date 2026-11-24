@@ -2250,3 +2250,7 @@ TASK-077 Claude 검토 고침 뒤 새 빈 PostgreSQL 마이그레이션38개·�
 ### 348. TASK-082 구현 완료와 실제 권한 확인
 
 끝남30개·구현 완료30개·MVP 시작 가능36개·전체 의존 충족40개입니다. [판정과 검토 처리](../docs/records/slot-holds/2026-11-24/implementation-checks.md)·[끝남 재대조](../docs/records/slot-holds/2026-11-24/finished-audit.md)에 근거를 모았습니다.
+
+### 349. TASK-020 실제 카카오 콜백 진단
+
+PR241 Claude 검토7129590544의5건을 처리했습니다. TASK-028의 같은 문제는 별도 브랜치에서 고침·140개를 통과했고, 이 PR에는300대 거절 명시·토큰/사용자 조회의301·302·303·307·308 행렬 시험·기록 시점과 공개 원본을 반영했습니다. 관련2파일55개·타입·lint가 통과했습니다. [처리 근거](../docs/records/owner-login/2026-11-24/runtime-fetch-checks.md)에 보존하고 현재 head CI 뒤 병합 직전 Codex 리뷰를 한 번 요청합니다. 실제 로그인 확인은 main 배포 뒤입니다.
