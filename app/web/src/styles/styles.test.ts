@@ -23,6 +23,7 @@ const HAND_CSS = [
   "src/calendar-conflicts.css",
   "src/operator-shops.css",
   "src/public-privacy.css",
+  "src/public-booking.css",
   "src/operator-alerts.css",
   "src/operator-shop-review.css",
   "src/price-list-history.css",

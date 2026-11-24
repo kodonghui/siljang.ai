@@ -1,0 +1,635 @@
+{
+  "원본": {
+    "제품": "9e7ca84b722cc8e2a8483f709682c961b330e9f3",
+    "ZIP": "qa061-v5-20261124.zip",
+    "바이트": 9079874,
+    "파일수": 764,
+    "SHA256": "5ea122327267994dbac9f8cbe9832a922b143b987fe582aa49d3569cc3a54186",
+    "해제대조": true,
+    "D4잠금activeV5확인": true,
+    "종료후764파일ZIP불변": true,
+    "이번서버": {
+      "PORT": 56534,
+      "정상사진GET200확인후종료": true,
+      "포트부재": true,
+      "PID": 16084,
+      "다른서버변경0": true
+    }
+  },
+  "V4원문참조": {
+    "SHA256": "bdc81e8cf64eb97b1df602545c61e96a1828f360c2054bd61741f6cf62dcf3b4",
+    "원문경고53": 53,
+    "dialog활성경고": 0,
+    "활성대비": [
+      17.028039946894204,
+      7.895378497367599
+    ],
+    "새대비재검사없음": true,
+    "초기500msBODY2보존": true,
+    "후속5분H1보존": true,
+    "전환시각미확인1보존": true,
+    "V4실제원인단정안함": true,
+    "V3Resource14보존": true
+  },
+  "검증": [
+    {
+      "너비": 360,
+      "활성화시도": [
+        {
+          "시각": "2026-11-24T19:22:39.155Z",
+          "API": 2,
+          "hasFocus": true,
+          "visibilityState": "visible",
+          "dialog열림": false,
+          "빈포트폴리오": false,
+          "포트폴리오사진": 2,
+          "포트폴리오버튼": 2,
+          "현재h1동일": false,
+          "BODY아님": false,
+          "활성태그": "BODY",
+          "활성이름": null,
+          "QA초점": false,
+          "제품Main초점": false,
+          "관찰기": {
+            "consoleErrors": 0,
+            "pageErrors": 0,
+            "unhandledRejections": 0,
+            "expectedImageErrors": 0,
+            "unexpectedResourceErrors": 0
+          }
+        }
+      ],
+      "시작시각": "2026-11-24T19:22:39.15Z",
+      "정상마치기후": {
+        "시각": "2026-11-24T19:22:41.287Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": false,
+        "포트폴리오사진": 2,
+        "포트폴리오버튼": 2,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "BUTTON",
+        "활성이름": "포트폴리오 사진 1 크게 보기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "정상원래버튼동일": true,
+      "시작": {
+        "시각": "2026-11-24T19:22:42.352Z",
+        "API": 1,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": true,
+        "빈포트폴리오": false,
+        "포트폴리오사진": 2,
+        "포트폴리오버튼": 2,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "BUTTON",
+        "활성이름": "돌아가기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "요청전": {
+        "시각": "2026-11-24T19:23:41.211Z",
+        "API": 1,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": true,
+        "빈포트폴리오": false,
+        "포트폴리오사진": 2,
+        "포트폴리오버튼": 2,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "BUTTON",
+        "활성이름": "돌아가기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "철회직후": {
+        "시각": "2026-11-24T19:23:41.325Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": true,
+        "포트폴리오사진": 0,
+        "포트폴리오버튼": 0,
+        "현재h1동일": true,
+        "BODY아님": true,
+        "활성태그": "H1",
+        "활성이름": "합성 예약 페이지",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "최초500ms": {
+        "시각": "2026-11-24T19:23:41.833Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": true,
+        "포트폴리오사진": 0,
+        "포트폴리오버튼": 0,
+        "현재h1동일": true,
+        "BODY아님": true,
+        "활성태그": "H1",
+        "활성이름": "합성 예약 페이지",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "500ms실제간격": 511,
+      "최초500ms직후실제Tab": {
+        "시각": "2026-11-24T19:23:41.848Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": true,
+        "포트폴리오사진": 0,
+        "포트폴리오버튼": 0,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "SUMMARY",
+        "활성이름": "크기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "Tab제품다음조작": true,
+      "Tab1초후": {
+        "시각": "2026-11-24T19:23:42.865Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": true,
+        "포트폴리오사진": 0,
+        "포트폴리오버튼": 0,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "SUMMARY",
+        "활성이름": "크기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "완료시각": "2026-11-24T19:23:42.913Z",
+      "실제Viewport폭": 360,
+      "최종누적관찰": {
+        "시각": "2026-11-24T19:27:33.813Z",
+        "API": 4,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": true,
+        "포트폴리오사진": 0,
+        "포트폴리오버튼": 0,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "SUMMARY",
+        "활성이름": "크기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "판정": {
+        "네시점활성": true,
+        "정상마치기원래버튼": true,
+        "최초500ms동일": true,
+        "즉시Tab제품내": true,
+        "자연API1대2": true,
+        "Tab1초유지": true,
+        "닫힘직후h1동일비BODY": true,
+        "통과": true
+      }
+    },
+    {
+      "너비": 1280,
+      "활성화시도": [
+        {
+          "시각": "2026-11-24T19:28:13.078Z",
+          "API": 3,
+          "hasFocus": true,
+          "visibilityState": "visible",
+          "dialog열림": false,
+          "빈포트폴리오": false,
+          "포트폴리오사진": 2,
+          "포트폴리오버튼": 2,
+          "현재h1동일": false,
+          "BODY아님": false,
+          "활성태그": "BODY",
+          "활성이름": null,
+          "QA초점": false,
+          "제품Main초점": false,
+          "관찰기": {
+            "consoleErrors": 0,
+            "pageErrors": 0,
+            "unhandledRejections": 0,
+            "expectedImageErrors": 0,
+            "unexpectedResourceErrors": 0
+          }
+        }
+      ],
+      "시작시각": "2026-11-24T19:28:13.073Z",
+      "정상마치기후": {
+        "시각": "2026-11-24T19:28:15.278Z",
+        "API": 3,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": false,
+        "포트폴리오사진": 2,
+        "포트폴리오버튼": 2,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "BUTTON",
+        "활성이름": "포트폴리오 사진 1 크게 보기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "정상원래버튼동일": true,
+      "시작": {
+        "시각": "2026-11-24T19:28:16.245Z",
+        "API": 1,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": true,
+        "빈포트폴리오": false,
+        "포트폴리오사진": 2,
+        "포트폴리오버튼": 2,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "BUTTON",
+        "활성이름": "돌아가기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "요청전": {
+        "시각": "2026-11-24T19:29:15.22Z",
+        "API": 1,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": true,
+        "빈포트폴리오": false,
+        "포트폴리오사진": 2,
+        "포트폴리오버튼": 2,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "BUTTON",
+        "활성이름": "돌아가기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "철회직후": {
+        "시각": "2026-11-24T19:29:15.336Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": true,
+        "포트폴리오사진": 0,
+        "포트폴리오버튼": 0,
+        "현재h1동일": true,
+        "BODY아님": true,
+        "활성태그": "H1",
+        "활성이름": "합성 예약 페이지",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "최초500ms": {
+        "시각": "2026-11-24T19:29:15.859Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": true,
+        "포트폴리오사진": 0,
+        "포트폴리오버튼": 0,
+        "현재h1동일": true,
+        "BODY아님": true,
+        "활성태그": "H1",
+        "활성이름": "합성 예약 페이지",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "500ms실제간격": 528,
+      "최초500ms직후실제Tab": {
+        "시각": "2026-11-24T19:29:15.876Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": true,
+        "포트폴리오사진": 0,
+        "포트폴리오버튼": 0,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "SUMMARY",
+        "활성이름": "크기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "Tab제품다음조작": true,
+      "Tab1초후": {
+        "시각": "2026-11-24T19:29:16.909Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": true,
+        "포트폴리오사진": 0,
+        "포트폴리오버튼": 0,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "SUMMARY",
+        "활성이름": "크기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "완료시각": "2026-11-24T19:29:16.966Z",
+      "실제Viewport폭": 1280,
+      "최종누적관찰": {
+        "시각": "2026-11-24T19:32:48.165Z",
+        "API": 4,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "dialog열림": false,
+        "빈포트폴리오": true,
+        "포트폴리오사진": 0,
+        "포트폴리오버튼": 0,
+        "현재h1동일": false,
+        "BODY아님": true,
+        "활성태그": "SUMMARY",
+        "활성이름": "크기",
+        "QA초점": false,
+        "제품Main초점": true,
+        "관찰기": {
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "unhandledRejections": 0,
+          "expectedImageErrors": 0,
+          "unexpectedResourceErrors": 0
+        }
+      },
+      "판정": {
+        "네시점활성": true,
+        "정상마치기원래버튼": true,
+        "최초500ms동일": true,
+        "즉시Tab제품내": true,
+        "자연API1대2": true,
+        "Tab1초유지": true,
+        "닫힘직후h1동일비BODY": true,
+        "통과": true
+      }
+    }
+  ],
+  "사진": [
+    {
+      "파일명": "qa061-v5-withdrawn-360.png",
+      "상대파일": "task061-v5-preserved/qa061-v5-withdrawn-360.png",
+      "너비": 360,
+      "PNG폭": 329,
+      "PNG높이": 365,
+      "바이트": 12204,
+      "시도": 2,
+      "클립": {
+        "x": 8,
+        "y": 107,
+        "width": 329,
+        "height": 365
+      },
+      "촬영전": {
+        "시각": "2026-11-24T19:25:14.971Z",
+        "API": 3,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "활성태그": "SUMMARY",
+        "활성이름": "크기"
+      },
+      "촬영후": {
+        "시각": "2026-11-24T19:25:16.173Z",
+        "API": 3,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "활성태그": "SUMMARY",
+        "활성이름": "크기"
+      },
+      "직접확인": true,
+      "복사시각": "2026-11-25T04:26:32.9199809+09:00",
+      "복사해시일치": true,
+      "SHA256": "913a24056ef63876e559a509429e33f541174d47599076f2b322a8d2c5abb197",
+      "직접확인내용": "가게제목과 빈포트폴리오 확인. 실제Tab대상은 DOM측정으로 별도확인",
+      "CLI생존중Parent복사ACK": true,
+      "CLI종료후크기SHA대조": true
+    },
+    {
+      "파일명": "qa061-v5-withdrawn-1280.png",
+      "상대파일": "task061-v5-preserved/qa061-v5-withdrawn-1280.png",
+      "너비": 1280,
+      "PNG폭": 1280,
+      "PNG높이": 900,
+      "바이트": 39880,
+      "시도": 1,
+      "클립": null,
+      "촬영전": {
+        "시각": "2026-11-24T19:29:17.019Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "활성태그": "SUMMARY",
+        "활성이름": "크기"
+      },
+      "촬영후": {
+        "시각": "2026-11-24T19:29:42.564Z",
+        "API": 2,
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "활성태그": "SUMMARY",
+        "활성이름": "크기"
+      },
+      "직접확인": true,
+      "복사시각": "2026-11-25T04:30:41.4323687+09:00",
+      "SHA256": "4180267727e8762093b514706f2b52942e37a4616d9e622acec0d7ab979f00c9",
+      "복사해시일치": true,
+      "직접확인내용": "제목·빈포트폴리오·제품 크기 summary 초점테두리 확인",
+      "CLI생존중Parent복사ACK": true,
+      "CLI종료후크기SHA대조": true
+    }
+  ],
+  "실패": [],
+  "미확인": [],
+  "관찰한계": [
+    {
+      "항목": "브라우저실행전 CLI구문",
+      "원문": "SyntaxError: invalid number literal at repl.js:1:3067",
+      "제품미실행": true
+    },
+    {
+      "항목": "철회후 capture",
+      "너비": 360,
+      "시도": 1,
+      "시각": "2026-11-24T19:25:14.931Z",
+      "원문": "page.screenshot: browser CDP command timed out while capturing viewport screenshot before the default screenshot timeout completed",
+      "제품실패아님": true
+    },
+    {
+      "항목": "종료기록 CLI구문",
+      "원문": "SyntaxError: invalid number literal at repl.js:1:1616",
+      "브라우저추가조작미실행": true,
+      "제품실패아님": true
+    }
+  ],
+  "시작시각": "2026-11-24T19:22:36.599Z",
+  "관찰기자체시험": {
+    "의도오류": {
+      "consoleErrors": 1,
+      "pageErrors": 1,
+      "unhandledRejections": 1,
+      "expectedImageErrors": 1,
+      "unexpectedResourceErrors": 0
+    },
+    "제품합산제외": true,
+    "전체DevTools구독아님": true
+  },
+  "순차360사진보존완료시각": "2026-11-24T19:27:33.884Z",
+  "관찰기누적합계": {
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "unhandledRejections": 0,
+    "expectedImageErrors": 0,
+    "unexpectedResourceErrors": 0
+  },
+  "순차측정": {
+    "D4대기중다른탭폭문서조작0": true,
+    "좁은폭보존완료후넓은폭시작": true,
+    "동시대기없음": true
+  },
+  "부작용": {
+    "실제서비스쓰기": 0,
+    "카카오": 0,
+    "모델": 0,
+    "메일": 0,
+    "결제": 0,
+    "HTMLElement강제focus": 0,
+    "타이머React상태이벤트주입": 0,
+    "제품관찰기초기화": 0,
+    "전체DevTools구독": false
+  },
+  "브라우저정지ACK": {
+    "정지": true,
+    "이번V5자체공개탭닫힘": true,
+    "시각": "2026-11-24T19:32:48.194Z",
+    "추가브라우저조작안함": true,
+    "Root다음예약재개지시대기": true,
+    "대기큐재개안함": true,
+    "CLI종료코드": 0,
+    "로컬종료후검증시각": "2026-11-24T19:34:44.3214588+00:00"
+  },
+  "기록시각": "2026-11-24T19:32:48.194Z"
+}
