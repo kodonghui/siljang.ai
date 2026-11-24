@@ -72,7 +72,7 @@ TASKS = [
     dict(id='TASK-046', it=2, name='SCR-015 가게 등록 화면', owner='Claude', size=1, src=['SPEC-002', 'SPEC-068'], scr=['SCR-015'], dep=['TASK-029']),
     dict(id='TASK-047', it=2, name='SCR-034 가게 설정 화면', owner='Claude', size=1, src=['SPEC-009', 'SPEC-017', 'SPEC-024', 'SPEC-025', 'SPEC-052', 'SPEC-077'], scr=['SCR-034'], dep=['TASK-182']),
     dict(id='TASK-048', it=2, name='SCR-035 영업 신고 화면', owner='Claude', size=1, src=['SPEC-003', 'SPEC-078'], scr=['SCR-035'], dep=['TASK-182']),
-    dict(id='TASK-049', it=2, name='SCR-036 가격표와 도안 화면', owner='Claude', size=2, src=['SPEC-004'], scr=['SCR-036'], dep=['TASK-182']),
+    dict(id='TASK-049', it=2, name='SCR-036 가격표와 도안 화면', owner='Claude', size=2, src=['SPEC-004'], scr=['SCR-036'], dep=['TASK-182'], finished='2026-11-25, SCR-036 9상태·360/1280 18건과12회귀·36페이지검사 오류/경고/넘침/44px미달0, normal/empty/error 캡처6장 직접 대조·종료 후 원본해시 보존. API23행 시험과 실제 자기 도안50개 저장/조회 대조. docs/records/price-list/2026-11-24-finished/finished-checks.md'),
     dict(id='TASK-050', it=2, name='SCR-037 가격표 버전 이력 화면', owner='Claude', size=0.5, src=['SPEC-004', 'SPEC-013'], scr=['SCR-037'], dep=['TASK-182']),
     dict(id='TASK-051', it=2, name='SCR-038 운영규정 화면', owner='Claude', size=2, src=['SPEC-005'], scr=['SCR-038'], dep=['TASK-182']),
     dict(id='TASK-052', it=2, name='SCR-039 운영규정 버전 이력 화면', owner='Claude', size=0.5, src=['SPEC-005', 'SPEC-016'], scr=['SCR-039'], dep=['TASK-182']),

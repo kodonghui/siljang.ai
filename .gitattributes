@@ -1,0 +1,4 @@
+# 학원컴의 실제 JSON 원문 두 파일은 CRLF 바이트와 SHA-256을 그대로 보존한다.
+# 이 두 파일의 줄 끝 CR만 허용하며 다른 공백/코드의 diff 검사는 바꾸지 않는다.
+docs/records/price-list/2026-11-24-finished/qa-result.json -text whitespace=cr-at-eol
+docs/records/price-list/2026-11-24-finished/screenshot-result.json -text whitespace=cr-at-eol
