@@ -1,6 +1,6 @@
 -- TASK-173·032: 사장님 세션·카카오 수신/콜백·가게 등록/조회에 필요한 서버 역할 권한.
 -- psql -v runtime_role=<기존 서버 역할> -f tools/staging-login-callback-grants.sql
--- 실제 역할은 새로 만들지 않는다. 접속기록·운영 기록의 권한은 바꾸지 않는다.
+-- 실제 역할은 새로 만들지 않는다. 각 작업에 필요한 열 권한만 더하며 운영 기록의 권한은 바꾸지 않는다.
 GRANT SELECT, INSERT, UPDATE ON owners, customers, consultations, messages TO :"runtime_role";
 -- 로그인할 때 기한 지난 세션을 정리하므로 DELETE도 필요하다(owner-session.ts).
 GRANT SELECT, INSERT, UPDATE, DELETE ON owner_sessions TO :"runtime_role";
@@ -32,6 +32,9 @@ GRANT UPDATE (id) ON shops, kakao_channels TO :"runtime_role";
 -- TASK-028: AI 실패/콜백 만료의 질문 참조·할 일·발신 대기 알림.
 -- 이 경로는 새 행만 넣는다. 기존 건의 수정·삭제나 운영 기록/접속기록 권한은 더하지 않는다.
 GRANT SELECT, INSERT ON handoffs, handoff_questions, owner_tasks, owner_alerts TO :"runtime_role";
+-- TASK-072: 알림 임대·묶음·발송 상태의 열만 바꾼다. 가게·종류·이벤트·할 일 연결과 삭제는 열지 않는다.
+GRANT UPDATE (status, batched_into_id, attempts, next_attempt_at, kakao_task_id,
+  requested_at, delivery_checked_at, sent_at, fail_code) ON owner_alerts TO :"runtime_role";
 -- TASK-068: 같은 날짜 건을 재사용한 수신 ID만 기존 할 일의 내부 기록에 묶는다.
 GRANT UPDATE (detail) ON owner_tasks TO :"runtime_role";
 -- 사장님 기다림을 가게의 답하는 시간 안에서 계산한다.

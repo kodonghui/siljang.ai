@@ -6,12 +6,14 @@ import {
   planKakaoDeliveryCheck,
   planKakaoEventRequest,
 } from "./kakao-event";
+import { type OwnerAlertContent, ownerAlertContent } from "./owner-alert-content";
 import { nextDeliveryCheckAt } from "./retry";
 import type { ShopDb } from "./shop-scope";
 
 interface AlertRow {
   id: string;
   kind: string;
+  event_key: string;
   status: string;
   owner_task_id: string | null;
   task_kind: string | null;
@@ -32,6 +34,7 @@ interface Prepared {
   row: AlertRow;
   attempts: number;
   leaseUntil: Date;
+  content: OwnerAlertContent | null;
 }
 interface Observed {
   plan: KakaoEventPlan;
@@ -40,6 +43,7 @@ interface Observed {
 export interface OwnerAlertOptions {
   readonly enabled: boolean;
   readonly botId?: string;
+  readonly origin?: string;
   readonly development?: boolean;
   readonly events: () => KakaoOwnerEvents;
   readonly now?: () => Date;
@@ -55,13 +59,24 @@ async function stop(db: ShopDb, id: string, code: "not_friend" | "cannot_send" |
 
 export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandler<Prepared, Observed> {
   if (options.enabled && !/^[0-9a-f]{24}$/i.test(options.botId ?? "")) throw new TypeError("invalid owner alert bot");
+  const origin = options.origin ? new URL(options.origin) : null;
+  if (
+    options.enabled &&
+    (origin === null ||
+      origin.protocol !== "https:" ||
+      origin.username ||
+      origin.password ||
+      origin.search ||
+      origin.hash)
+  )
+    throw new TypeError("invalid owner alert origin");
   const at = (ctx: LeaseContext) => new Date(Math.max(ctx.now.getTime(), (options.now?.() ?? new Date()).getTime()));
   return {
     mode: "leased",
     async lease(db: ShopDb, item: DueItem, ctx: LeaseContext) {
       const row = (
         await db.run<AlertRow>(
-          `SELECT a.id,a.kind,a.status,a.owner_task_id,t.kind AS task_kind,t.closed_at AS task_closed_at,
+          `SELECT a.id,a.kind,a.event_key,a.status,a.owner_task_id,t.kind AS task_kind,t.closed_at AS task_closed_at,
          a.attempts,a.next_attempt_at,a.created_at,a.kakao_task_id,a.requested_at,a.delivery_checked_at,
          o.id AS owner_id,o.kakao_account_id::text AS app_user_id,o.alert_channel_friend,s.time_zone
          FROM owner_alerts a JOIN shops s ON s.id=$1 JOIN owners o ON o.id=s.owner_id
@@ -111,11 +126,16 @@ export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandl
               [row.id, peers.map((peer) => peer.id)],
             );
         }
+        const content = origin === null ? null : await ownerAlertContent(db, row, origin);
+        if (content === null) {
+          await stop(db, row.id, "cannot_send");
+          return null;
+        }
         await db.run("UPDATE owner_alerts SET attempts=attempts+1,next_attempt_at=$3 WHERE shop_id=$1 AND id=$2", [
           row.id,
           ctx.leaseUntil,
         ]);
-        return { mode: "send", row, attempts: row.attempts + 1, leaseUntil: ctx.leaseUntil };
+        return { mode: "send", row, attempts: row.attempts + 1, leaseUntil: ctx.leaseUntil, content };
       }
       if (
         item.source !== "owner_alert_check" ||
@@ -130,17 +150,19 @@ export function createOwnerAlertHandler(options: OwnerAlertOptions): LeasedHandl
         row.id,
         ctx.leaseUntil,
       ]);
-      return { mode: "check", row, attempts: row.attempts, leaseUntil: ctx.leaseUntil };
+      return { mode: "check", row, attempts: row.attempts, leaseUntil: ctx.leaseUntil, content: null };
     },
     async act(prepared: Prepared, ctx: LeaseContext) {
       const client = options.events();
       if (prepared.mode === "send") {
+        if (prepared.content === null) throw new Error("owner alert content unavailable");
         const result = await client.requestAlert(
           {
             botId: options.botId ?? "",
             development: options.development ?? false,
             appUserId: prepared.row.app_user_id,
             alertKey: prepared.row.id,
+            ...prepared.content,
             isFriend: prepared.row.alert_channel_friend,
             eventAvailable: options.enabled,
             status: "pending",

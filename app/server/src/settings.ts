@@ -115,6 +115,13 @@ export interface OwnerAuthSettings {
   readonly alertChannelId: string;
 }
 
+/** 사장님 채널 발신은 MVP에서 기본 중단한다. 실제 채널 연결은 출시 검토에서 켠다. */
+export interface OwnerAlertSettings {
+  readonly enabled: boolean;
+  readonly botId: string | null;
+  readonly development: boolean;
+}
+
 /**
  * 모델 호출 설정(TASK-026; REQ-266, 06 DEC-25, 04 AI-1). 회사 하나와 그 모델을 배포 설정으로 고른다(ai-model.ts).
  * - AI_PROVIDER: anthropic | openai. AI_MODEL: 요금표(ai-prices.ts)에 있는 그 회사의 모델 ID. 없는 모델은 시작에서 막는다.
@@ -165,6 +172,7 @@ export interface Settings {
   /** 운영자 인증 서비스(Supabase Auth). 두 변수가 모두 없으면 null. */
   readonly operatorAuth: OperatorAuthSettings | null;
   readonly ownerAuth: OwnerAuthSettings | null;
+  readonly ownerAlerts: OwnerAlertSettings;
   readonly privacyPolicy: PrivacyPolicySettings | null;
   readonly publicAppOrigin: string | null;
 }
@@ -227,6 +235,7 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
   }
   checkTracing(env, appEnv);
   const ai = readAi(env, secrets);
+  const ownerAuth = readOwnerAuth(env);
   return {
     appEnv,
     secrets,
@@ -235,10 +244,34 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
     fieldKeys: readFieldKeys(env),
     ai,
     operatorAuth: readOperatorAuth(env, appEnv),
-    ownerAuth: readOwnerAuth(env),
+    ownerAuth,
+    ownerAlerts: readOwnerAlerts(env, ownerAuth),
     privacyPolicy: readPrivacyPolicySettings(env, ai?.provider),
     publicAppOrigin: readPublicAppOrigin(env.PUBLIC_APP_ORIGIN),
   };
+}
+
+function readOwnerAlerts(
+  env: Readonly<Record<string, unknown>>,
+  ownerAuth: OwnerAuthSettings | null,
+): OwnerAlertSettings {
+  const flag = (name: string) => {
+    const value = env[name];
+    if (value === undefined || value === "" || value === "false") return false;
+    if (value === "true") return true;
+    throw new SettingsError(`${name} must be true or false`);
+  };
+  const enabled = flag("KAKAO_OWNER_ALERTS_ENABLED"),
+    development = flag("KAKAO_OWNER_BOT_DEVELOPMENT");
+  const raw = env.KAKAO_OWNER_BOT_ID;
+  if (raw !== undefined && raw !== "" && (typeof raw !== "string" || !/^[0-9a-f]{24}$/i.test(raw)))
+    throw new SettingsError("KAKAO_OWNER_BOT_ID must be a bot ID");
+  const botId = typeof raw === "string" && raw !== "" ? raw : null;
+  if (enabled && (botId === null || ownerAuth === null))
+    throw new SettingsError("owner alerts require owner login and KAKAO_OWNER_BOT_ID");
+  if (enabled && readPublicAppOrigin(env.PUBLIC_APP_ORIGIN) === null)
+    throw new SettingsError("owner alerts require PUBLIC_APP_ORIGIN");
+  return { enabled, botId, development };
 }
 
 function readOwnerAuth(env: Readonly<Record<string, unknown>>): OwnerAuthSettings | null {

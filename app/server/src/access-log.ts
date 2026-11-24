@@ -17,7 +17,7 @@
  * - 고치기·지우기·비우기는 데이터베이스 트리거(access_logs_guard)가 막고, 2년 지난 행 지우기는 지우기 작업(SPEC-065, TASK-158).
  */
 import type { Logger } from "./app";
-import { sqlStateOf } from "./db";
+import { errorFields } from "./error-name";
 import type { Actor } from "./request-key";
 import { isUuid, type ShopDb } from "./shop-scope";
 
@@ -301,14 +301,12 @@ export class AccessRecorder {
   }
 
   static #report(log: Logger, traceId: string, api: string, err: unknown): void {
-    const dbCode = sqlStateOf(err);
     log("error", {
       event: "access_log_failed",
       traceId,
       api,
-      errorName: dbCode !== undefined ? "DatabaseError" : err instanceof Error ? err.name : "Error",
+      ...errorFields(err),
       ...(err instanceof AccessLogError ? { code: err.failure } : {}),
-      ...(dbCode !== undefined ? { dbCode } : {}),
     });
   }
 

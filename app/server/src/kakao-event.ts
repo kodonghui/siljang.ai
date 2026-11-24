@@ -61,6 +61,8 @@ export interface KakaoEvents {
 export interface OwnerAlertEventInput extends Omit<NoticeEventInput, "userKey" | "noticeKey" | "scheduledFor"> {
   readonly appUserId: string;
   readonly alertKey: string;
+  readonly text: string;
+  readonly url: string;
 }
 export interface KakaoOwnerEvents {
   requestAlert(input: OwnerAlertEventInput, now: Date): Promise<KakaoEventRequestResult>;
@@ -213,6 +215,7 @@ function createEvents(
   apiKey: Secret,
   options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number },
   owner: boolean,
+  content?: Pick<OwnerAlertEventInput, "text" | "url">,
 ): KakaoEvents {
   const timeoutMs = options.timeoutMs ?? 6000;
   if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) throw new RangeError(INVALID);
@@ -251,10 +254,16 @@ function createEvents(
       const recipientType = owner ? "appUserId" : "botUserKey";
       const skipped = notRequested(input, now, recipientType);
       if (skipped !== null) return skipped;
+      if (owner) {
+        if (!content?.text.trim() || content.text.length > 400) throw new TypeError(INVALID);
+        const url = new URL(content.url);
+        if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash)
+          throw new TypeError(INVALID);
+      }
       const response = await call(`/v2/bots/${input.botId.toLowerCase()}${input.development ? "!" : ""}/talk`, {
         event: { name: owner ? "siljang_owner_alert" : "siljang_notice" },
         user: [{ type: recipientType, id: input.userKey }],
-        params: owner ? { alertKey: input.noticeKey } : { noticeKey: input.noticeKey },
+        params: owner ? { alertKey: input.noticeKey, ...content } : { noticeKey: input.noticeKey },
       });
       if (response === null) return failed("kakao_error", true);
       if (response.status === 429) return failed("limit", false, false, "operator");
@@ -321,8 +330,11 @@ export function kakaoOwnerEvents(
 ): KakaoOwnerEvents {
   const client = createEvents(apiKey, options, true);
   return {
-    requestAlert({ appUserId, alertKey, ...rest }, now) {
-      return client.requestNotice({ ...rest, userKey: appUserId, noticeKey: alertKey, scheduledFor: null }, now);
+    requestAlert({ appUserId, alertKey, text, url, ...rest }, now) {
+      return createEvents(apiKey, options, true, { text, url }).requestNotice(
+        { ...rest, userKey: appUserId, noticeKey: alertKey, scheduledFor: null },
+        now,
+      );
     },
     checkDelivery(taskId, appUserId) {
       return client.checkDelivery(taskId, { type: "appUserId", id: appUserId });

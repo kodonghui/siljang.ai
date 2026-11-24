@@ -11,6 +11,8 @@ const input = (patch: Partial<OwnerAlertEventInput> = {}): OwnerAlertEventInput 
   botId: BOT,
   appUserId: OWNER,
   alertKey: ALERT,
+  text: "맞춤 주문 할 일이 생겼어요",
+  url: "https://app.example/owner",
   isFriend: true,
   eventAvailable: true,
   status: "pending",
@@ -20,7 +22,7 @@ const input = (patch: Partial<OwnerAlertEventInput> = {}): OwnerAlertEventInput 
   ...patch,
 });
 describe("우리 채널 사장님 Event API 수신자(TASK-072)", () => {
-  it("사장님 appUserId와 알림 키만 우리 서비스 봇에 보내고 접수는 확인 중으로 남긴다", async () => {
+  it("사장님 appUserId와 공개 알림 문구·주소만 우리 서비스 봇에 보내고 접수는 확인 중으로 남긴다", async () => {
     const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS", taskId: TASK }));
     const client = kakaoOwnerEvents(new Secret("synthetic-owner-rest-key"), { fetch: send });
     expect(await client.requestAlert(input(), NOW)).toEqual({ kind: "accepted", taskId: TASK });
@@ -30,7 +32,7 @@ describe("우리 채널 사장님 Event API 수신자(TASK-072)", () => {
     expect(JSON.parse(String(init?.body))).toEqual({
       event: { name: "siljang_owner_alert" },
       user: [{ type: "appUserId", id: OWNER }],
-      params: { alertKey: ALERT },
+      params: { alertKey: ALERT, text: "맞춤 주문 할 일이 생겼어요", url: "https://app.example/owner" },
     });
     expect(new Headers(init?.headers).has("Cookie")).toBe(false);
   });
@@ -60,6 +62,18 @@ describe("우리 채널 사장님 Event API 수신자(TASK-072)", () => {
     const send = vi.fn<typeof fetch>(),
       client = kakaoOwnerEvents(new Secret("synthetic-owner-rest-key"), { fetch: send });
     await expect(client.requestAlert(input({ appUserId: "synthetic-bot-user" }), NOW)).rejects.toThrow();
+    expect(send).not.toHaveBeenCalled();
+  });
+  it.each([
+    { text: "" },
+    { text: "가".repeat(401) },
+    { url: "https://app.example/owner?private=value" },
+    { url: "http://app.example/owner" },
+  ])("잘못된 알림 문구·주소는 HTTP 전에 거절한다: %o", async (patch) => {
+    const send = vi.fn<typeof fetch>();
+    await expect(
+      kakaoOwnerEvents(new Secret("synthetic-owner-rest-key"), { fetch: send }).requestAlert(input(patch), NOW),
+    ).rejects.toThrow();
     expect(send).not.toHaveBeenCalled();
   });
 });
