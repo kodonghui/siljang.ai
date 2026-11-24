@@ -27,6 +27,8 @@ GRANT UPDATE (id) ON shops, kakao_channels TO :"runtime_role";
 -- TASK-028: AI 실패/콜백 만료의 질문 참조·할 일·발신 대기 알림.
 -- 이 경로는 새 행만 넣는다. 기존 건의 수정·삭제나 운영 기록/접속기록 권한은 더하지 않는다.
 GRANT SELECT, INSERT ON handoffs, handoff_questions, owner_tasks, owner_alerts TO :"runtime_role";
+-- TASK-068: 같은 날짜 건을 재사용한 수신 ID만 기존 할 일의 내부 기록에 묶는다.
+GRANT UPDATE (detail) ON owner_tasks TO :"runtime_role";
 -- 사장님 기다림을 가게의 답하는 시간 안에서 계산한다.
 GRANT SELECT ON business_calendars TO :"runtime_role";
 -- TASK-028: 누적 비용 확인과 모델 호출 기록. 서버 검증에 따른 미사용 사유만 고친다.
