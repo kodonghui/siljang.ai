@@ -4,6 +4,7 @@ import { hasAiPlaceholders, readAiConversation, stripAiPlaceholders } from "./ai
 import { AI_TOTAL_TIMEOUT_MS, type AiFailure, type AiMessage } from "./ai-model";
 import type { AiTurnOutput } from "./ai-turn-output";
 import { FieldCryptoError } from "./field-crypto";
+import { handoffSourceMatch } from "./handoff-source";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import type { KakaoAiDisclosure } from "./kakao-ai-disclosure";
 import type { KakaoCallbackClaim } from "./kakao-callback-store";
@@ -82,8 +83,7 @@ export async function runKakaoAiTurn(
     if (reply !== null) return { kind: "reply", reply } as const;
     const handedOff = await tx.run(
       `SELECT h.id FROM handoffs h WHERE h.shop_id = $1 AND h.consultation_id = $2
-        AND (h.source_message_id = $3 OR h.id IN (
-          SELECT q.handoff_id FROM handoff_questions q WHERE q.shop_id = $1 AND q.message_id = $3)) LIMIT 1`,
+        AND ${handoffSourceMatch("$3")} LIMIT 1`,
       [claim.consultation_id, messageId],
     );
     if (handedOff.rowCount > 0) return { kind: "failure", failure: "unavailable" } as const;

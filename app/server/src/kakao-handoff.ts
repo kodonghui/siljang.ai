@@ -1,4 +1,5 @@
 import { eventKeys, insertOnce } from "./event-keys";
+import { handoffSourceMatch } from "./handoff-source";
 import { createHandoffTask } from "./handoff-task";
 import {
   inlineKakaoDisclosure,
@@ -90,10 +91,7 @@ export async function recordKakaoHandoff(
   now: Date,
 ): Promise<void> {
   const previous = await db.run<{ id: string }>(
-    `SELECT h.id FROM handoffs h LEFT JOIN owner_tasks t ON t.shop_id=$1 AND t.handoff_id=h.id
-      WHERE h.shop_id = $1 AND h.consultation_id = $2
-      AND (h.source_message_id = $3 OR coalesce(t.detail->'closedDaySourceIds','[]'::jsonb) ? $3::text OR h.id IN (
-        SELECT q.handoff_id FROM handoff_questions q WHERE q.shop_id = $1 AND q.message_id = $3))`,
+    `SELECT h.id FROM handoffs h WHERE h.shop_id = $1 AND h.consultation_id = $2 AND ${handoffSourceMatch("$3")}`,
     [consultationId, messageId],
   );
   if (previous.rowCount > 0) return;

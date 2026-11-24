@@ -316,6 +316,10 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
     const first = await request(await notice(true)),
       sourceId = newUuid();
     await isolated.db.query(
+      "INSERT INTO calendar_days(shop_id,day,closed) SELECT $1,d::date,d::date<>$2::date FROM generate_series('2026-11-18'::date,'2026-11-18'::date+59,'1 day'::interval) d ON CONFLICT(shop_id,day) DO UPDATE SET closed=EXCLUDED.closed",
+      [shop.shopId, DAY],
+    );
+    await isolated.db.query(
       "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES($1,$2,$3,'inbound','customer','text',$4,'같은 날짜 합성 재요청',$5)",
       [sourceId, shop.shopId, shop.consultationId, `synthetic-closed:${sourceId}`, NOW],
     );
@@ -329,6 +333,7 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
     };
     const reused = await requestClosedPickupDay(scoped(), input);
     expect(reused.handoffId).toBe(first.handoffId);
+    expect(reused.availability).toEqual(first.availability);
     await isolated.db.transaction((tx) =>
       recordKakaoHandoff(
         shopDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), tx),
@@ -352,6 +357,34 @@ describeDb("날짜 판정·가까운 날과 마감 질문(TASK-068)", () => {
     expect((await isolated.db.query("SELECT id FROM owner_alerts WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(
       1,
     );
+  });
+  it("같은 글이 옛 일반 건과 같은 날짜 마감 건에 함께 묶였으면 마감 건을 먼저 반환한다", async () => {
+    await fullDay();
+    const first = await request(await notice(true)),
+      source = newUuid();
+    await isolated.db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked) VALUES($1,$2,$3,'inbound','customer','text',$4,'이전 중복 연결 합성 글')",
+      [source, shop.shopId, shop.consultationId, `synthetic-legacy:${source}`],
+    );
+    await isolated.db.query(
+      "UPDATE owner_tasks SET detail=jsonb_set(detail,'{closedDaySourceIds}',coalesce(detail->'closedDaySourceIds','[]'::jsonb)||jsonb_build_array($3::text)) WHERE shop_id=$1 AND handoff_id=$2",
+      [shop.shopId, first.handoffId, source],
+    );
+    await isolated.db.query(
+      "INSERT INTO handoffs(shop_id,consultation_id,source_message_id,reason,created_at) VALUES($1,$2,$3,'cannot_answer',$4)",
+      [shop.shopId, shop.consultationId, source, new Date(NOW.getTime() - 1000)],
+    );
+    expect(
+      await requestClosedPickupDay(scoped(), {
+        consultationId: shop.consultationId,
+        sourceMessageId: source,
+        day: DAY,
+        noticeMessageId: newUuid(),
+        insist: true,
+        now: NOW,
+      }),
+    ).toMatchObject({ kind: "handed_off", handoffId: first.handoffId });
+    expect((await isolated.db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows).toHaveLength(2);
   });
 
   it("다른 사유로 이미 넘긴 수신 글은 결과로 알리고 같은 트랜잭션의 안내 전달 표시를 되돌리지 않는다", async () => {
