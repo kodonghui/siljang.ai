@@ -32,3 +32,5 @@ node /tmp/siljang-qa051-operating-rules/server.mjs
 ```
 
 운영규정 생성물의 저장 결과는 제출한 값으로 결정합니다. 현재 값 그대로면200/unchanged,유효한 변경이면201/created이며 done/unchanged 선택 이름으로 결과를 강제하지 않습니다. 오류의 Problem 본문/미디어 유형은 OpenAPI 예시를 사용하고 응답에는 입력 전용 필드를 넣지 않습니다. operating-rules-fixture.test.mjs는 실제 웹 양식의 요청과 생성된 응답 코드를 Node VM에서 대조하며 브라우저를 실행하지 않습니다.
+
+운영규정 생성기도 fixture-source의 동일 작업 트리/깨끗한 입력/임시 완성 후 교체를 사용합니다. 기존 출력은 previousOutput으로 보관하며 새 V7의 로컬 컴파일/계약 검사는 실제 학원컴 화면 성공과 구분합니다.

@@ -11,7 +11,7 @@ import { buildOperatingRules } from "./build-operating-rules.mjs";
 const repository = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const directory = await mkdtemp(join(tmpdir(), "siljang-rules-contract-"));
 after(async () => rm(directory, { recursive: true, force: true }));
-const { entry } = await buildOperatingRules(repository, directory);
+const { entry } = await buildOperatingRules(repository, join(directory, "output"));
 const require = createRequire(join(repository, "app/package.json"));
 const { build } = require("esbuild");
 const { parse } = require("yaml");

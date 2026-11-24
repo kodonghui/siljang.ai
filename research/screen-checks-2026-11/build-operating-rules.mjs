@@ -1,22 +1,19 @@
 import { createRequire } from "node:module";
-import { resolve, dirname, join } from "node:path";
+import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
+import { assertFixtureSource, fixtureRepository, publishFixture } from "./fixture-source.mjs";
 export async function buildOperatingRules(repositoryRoot, destination) {
-	const root = resolve(repositoryRoot ?? ".").replaceAll("\\", "/");
-	const out = resolve(
+	const root = fixtureRepository(import.meta.url, repositoryRoot).replaceAll("\\", "/");
+	const target = resolve(
 		destination ?? join(tmpdir(), "siljang-qa051-operating-rules"),
 	);
-	const support = join(dirname(fileURLToPath(import.meta.url)), "support");
+	return publishFixture(root, target, async ({ out, source }) => {
+	const support = join(root, "research/screen-checks-2026-11/support");
 	const require = createRequire(join(root, "app/package.json"));
 	const { build } = require("esbuild"),
 		{ parse } = require("yaml");
-	const source = execFileSync("git", ["rev-parse", "HEAD"], {
-		cwd: root,
-		encoding: "utf8",
-	}).trim();
 	await fs.mkdir(out, { recursive: true });
 	const api = parse(await fs.readFile(join(root, "api/openapi.yaml"), "utf8"));
 	const examples =
@@ -116,6 +113,7 @@ function Fixture(){const[g,next]=useState(0),[,tick]=useState(0);refresh=()=>tic
 		entryNames: "main",
 	});
 	await fs.rm(entryFile, { force: true });
+	assertFixtureSource(root, source);
 	const pageCheck = await fs.readFile(
 		join(root, "tools/corthex/page-check.js"),
 		"utf8",
@@ -142,7 +140,7 @@ function Fixture(){const[g,next]=useState(0),[,tick]=useState(0);refresh=()=>tic
 		join(out, "server.mjs"),
 		(await fs.readFile(join(support, "server.mjs"), "utf8")).replace(
 			"QA054_READY_",
-			"QA051_V6_READY_",
+			"QA051_V7_READY_",
 		),
 	);
 	const head =
@@ -160,7 +158,7 @@ function Fixture(){const[g,next]=useState(0),[,tick]=useState(0);refresh=()=>tic
 	const manifest = {
 		localProductSourceCommit: source,
 		scope:
-			"현재 작업 트리의 실제 OwnerArea/운영규정 편집기·공통 초점/대화창. 로컬 컴파일 자료이며 학원컴 화면 성공이 아님",
+			"HEAD와 같은 원본의 실제 OwnerArea/운영규정 편집기·공통 초점/대화창. 로컬 컴파일 자료이며 학원컴 화면 성공이 아님",
 		primaryStates: 10,
 		responseRows: 15,
 		browserRun: false,
@@ -179,6 +177,7 @@ function Fixture(){const[g,next]=useState(0),[,tick]=useState(0);refresh=()=>tic
 		responseRows: 15,
 		browserRun: false,
 	};
+	});
 }
 if (
 	process.argv[1] &&

@@ -1,0 +1,26 @@
+{
+  "scope": "운영규정 생성기의 실제 다른 작업 트리 거절·Node VM 계약. 학원컴 브라우저가 아님",
+  "redSource": "dcf27cb6a3296ce87a1fcb6eb84273e8b725bf37",
+  "red": {
+    "tests": 1,
+    "pass": 0,
+    "fail": 1,
+    "reason": "서로 다른 깨끗한 입력 저장소를 거절하지 않아 Missing expected rejection"
+  },
+  "greenSource": "8d3376f7c4a55b9f611ceb26fc771e8ac58fa6fd",
+  "green": {
+    "channel": 3,
+    "rulesContract": 4,
+    "rulesSource": 1,
+    "tests": 8,
+    "pass": 8,
+    "fail": 0
+  },
+  "logs": [
+    "/tmp/siljang-task051-source-red-20261124.log",
+    "/tmp/siljang-task051-source-green-20261124.log"
+  ],
+  "sharedSource": "PR263의 fixture-source.mjs와 같은 바이트. 공통 거절/실패 보존7개는 PR263에서 별도 검사",
+  "nativeRun": false,
+  "outsideServices": 0
+}
