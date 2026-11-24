@@ -7,3 +7,4 @@ docs/records/price-list/2026-11-24-finished/screenshot-result.json -text whitesp
 docs/records/operator-login/2026-11-24-finished/preparation-blocked.json -text whitespace=cr-at-eol
 docs/records/operator-login/2026-11-24-finished/runtime-grants-applied.json -text whitespace=cr-at-eol
 docs/records/operator-login/2026-11-24-finished/actual-operator-result.json -text whitespace=cr-at-eol
+docs/records/operator-login/2026-11-24-finished/config-before-otp-recovery.json -text whitespace=cr-at-eol
