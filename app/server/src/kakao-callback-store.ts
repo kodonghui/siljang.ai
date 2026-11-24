@@ -164,8 +164,12 @@ export async function prepareKakaoCallbackHandoff(
   messageId: string,
   claim: Claim,
   now: Date,
-  discardReplyId?: string,
-): Promise<false | "ai_failure" | "ai_cost_limit"> {
+  options: {
+    readonly failureReason?: "ai_failure" | "masking_failed";
+    readonly discardReplyId?: string;
+  } = {},
+): Promise<false | "ai_failure" | "ai_cost_limit" | "masking_failed"> {
+  const { failureReason = "ai_failure", discardReplyId } = options;
   return db.transaction(async (tx) => {
     await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [claim.customer_id]);
     const consultation = await tx.found<{ status: string }>(
@@ -196,7 +200,7 @@ export async function prepareKakaoCallbackHandoff(
       );
       return false;
     }
-    const reason = (await kakaoAiCostLimit(tx, claim.consultation_id, now)) === "ok" ? "ai_failure" : "ai_cost_limit";
+    const reason = (await kakaoAiCostLimit(tx, claim.consultation_id, now)) === "ok" ? failureReason : "ai_cost_limit";
     await recordKakaoHandoff(tx, claim.consultation_id, messageId, reason, now);
     return reason;
   });
