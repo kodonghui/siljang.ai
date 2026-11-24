@@ -14,6 +14,12 @@ function price(option: PublicPriceOption) {
   return `${money(option.amount)}원`;
 }
 const groupNames = { size: "크기", flavor: "맛", design: "디자인", extra: "추가 옵션" } as const;
+type ReadReason = "initial" | "manual" | "periodic" | "photo";
+interface SelectedPhoto {
+  readonly url: string;
+  readonly name: string;
+  readonly priceVersion: number | null;
+}
 function useWide() {
   const [wide, setWide] = useState(
     () => typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1260px)").matches,
@@ -36,12 +42,14 @@ function BookingDetails({ slug }: { readonly slug: string }) {
   const wide = useWide();
   const pending = useRef(true),
     photoRetried = useRef(false),
-    cooldownUntil = useRef(0);
+    cooldownUntil = useRef(0),
+    readReason = useRef<ReadReason>("initial"),
+    photoSignature = useRef("");
   const [cooldown, setCooldown] = useState<number | null>(null);
   const [asOf, setAsOf] = useState<number | null>(null),
     [stale, setStale] = useState(false);
   const [badPhotos, setBadPhotos] = useState<ReadonlySet<string>>(new Set());
-  const [selected, setSelected] = useState<{ url: string; name: string } | null>(null);
+  const [selected, setSelected] = useState<SelectedPhoto | null>(null);
   const [copyResult, setCopyResult] = useState("");
   const load = useVersionedRead(
     async (signal) => {
@@ -52,18 +60,37 @@ function BookingDetails({ slug }: { readonly slug: string }) {
       }
     },
     {
-      onLoaded: () => {
+      onLoaded: (mode, value) => {
+        const reason = readReason.current;
+        const urls = new Set([
+          ...value.portfolio.map((photo) => photo.imageUrl),
+          ...value.priceList.designs.map((design) => design.imageUrl),
+        ]);
+        const signature = JSON.stringify([...urls].sort());
+        if (reason !== "photo" && (reason === "manual" || signature !== photoSignature.current))
+          photoRetried.current = false;
+        photoSignature.current = signature;
         setAsOf(Date.now());
-        setBadPhotos(new Set());
+        setBadPhotos((old) =>
+          reason === "manual" || mode === "initial" ? new Set() : new Set([...old].filter((url) => urls.has(url))),
+        );
+        // 도안은 불변 버전/고유 이름으로 새 주소를 잇는다. ID가 없는 포트폴리오는 주소가 사라지면 닫는다.
+        setSelected((old) => {
+          if (!old) return null;
+          if (old.priceVersion === null) return urls.has(old.url) ? old : null;
+          const design =
+            value.priceList.version === old.priceVersion && value.priceList.designs.find((d) => d.name === old.name);
+          return design ? { ...old, url: design.imageUrl } : null;
+        });
         setStale(false);
       },
     },
   );
   const reload = useCallback(
-    (manual = true) => {
+    (reason: ReadReason = "manual") => {
       if (pending.current || performance.now() < cooldownUntil.current) return;
-      if (manual) photoRetried.current = false;
-      setSelected(null);
+      if (reason === "manual") photoRetried.current = false;
+      readReason.current = reason;
       pending.current = true;
       if (!load.read("stale")) pending.current = false;
     },
@@ -72,14 +99,16 @@ function BookingDetails({ slug }: { readonly slug: string }) {
   useEffect(() => {
     const response = load.result?.response;
     if (!response) return;
+    if (!response.ok) setSelected(null);
     if (!response.ok && response.status === 429) {
+      const reason = readReason.current;
       const until = performance.now() + (response.retryAfterSeconds ?? 60) * 1000;
       cooldownUntil.current = until;
       const tick = () => {
         const remaining = Math.ceil((until - performance.now()) / 1000);
         if (remaining <= 0) {
           setCooldown(null);
-          reload(false);
+          reload(reason);
         } else setCooldown(remaining);
       };
       tick();
@@ -97,12 +126,12 @@ function BookingDetails({ slug }: { readonly slug: string }) {
     // 열어 둔 페이지에도 게시 철회를 반영한다. API의 최대60초 캐시를 포함해5분 안에 갱신한다.
     const timer = setInterval(() => {
       setStale(true);
-      if (document.visibilityState !== "hidden") reload(false);
+      if (document.visibilityState !== "hidden") reload("periodic");
     }, 60_000);
     const restore = () => {
       if (document.visibilityState !== "hidden") {
         setStale(true);
-        reload(false);
+        reload("periodic");
       }
     };
     window.addEventListener("pageshow", restore);
@@ -115,18 +144,18 @@ function BookingDetails({ slug }: { readonly slug: string }) {
   }, [reload]);
   const page = load.result?.response.ok ? load.result.response.data : null;
   const failedPhoto = (url: string) => {
-    if (pending.current) return;
     setSelected(null);
+    setBadPhotos((old) => new Set([...old, url]));
+    if (pending.current) return;
     setStale(true);
     if (!photoRetried.current) {
       photoRetried.current = true;
-      reload(false);
+      reload("photo");
     } else {
-      setBadPhotos((old) => new Set([...old, url]));
       announce("사진을 불러오지 못했어요", "assertive");
     }
   };
-  const photo = (url: string, name: string) =>
+  const photo = (url: string, name: string, priceVersion: number | null = null) =>
     badPhotos.has(url) ? (
       <span className="public-booking-photo-failed" role="status">
         사진을 불러오지 못했어요
@@ -136,7 +165,7 @@ function BookingDetails({ slug }: { readonly slug: string }) {
         type="button"
         className="public-booking-photo"
         aria-label={`${name} 크게 보기`}
-        onClick={() => setSelected({ url, name })}
+        onClick={() => setSelected({ url, name, priceVersion })}
       >
         <img src={url} alt={name} onError={() => failedPhoto(url)} loading="lazy" />
       </button>
@@ -158,7 +187,7 @@ function BookingDetails({ slug }: { readonly slug: string }) {
         <h1>{page?.shop.name ?? "예약 링크 페이지"}</h1>
         {page?.shop.pickupAddress ? <p>픽업 장소 · {page.shop.pickupAddress}</p> : null}
       </header>
-      {load.loading ? (
+      {load.loading && page === null ? (
         <BookingLoading wide={wide} />
       ) : failure?.status === 404 ? (
         <StateBox tone="error" title="찾을 수 없어요">
@@ -216,7 +245,7 @@ function BookingDetails({ slug }: { readonly slug: string }) {
                     <ul className="public-booking-designs">
                       {page.priceList.designs.map((d) => (
                         <li key={d.name}>
-                          {photo(d.imageUrl, d.name)}
+                          {photo(d.imageUrl, d.name, page.priceList.version)}
                           <p>
                             {d.name}
                             {d.inStandard ? " · 기본 디자인" : ""}
@@ -359,18 +388,19 @@ function BookingLoading({ wide }: { readonly wide: boolean }) {
 }
 function BookingCalendar({ days, wide }: { readonly days: PublicBookingPage["days"]; readonly wide: boolean }) {
   const months = [...new Set(days.map((day) => day.day.slice(0, 7)))];
-  const [index, setIndex] = useState(0);
+  const [month, setMonth] = useState(() => days[0]?.day.slice(0, 7) ?? "");
+  const index = Math.max(0, months.indexOf(month));
   const count = wide ? 2 : 1,
     start = Math.min(index, Math.max(0, months.length - count));
   const label = (month: string) => `${Number(month.slice(0, 4))}년 ${Number(month.slice(5))}월`;
   return (
     <>
       <nav aria-label="캘린더 월 이동">
-        <Button disabled={start === 0} onClick={() => setIndex(start - 1)}>
+        <Button disabled={start === 0} onClick={() => setMonth(months[start - 1] ?? month)}>
           이전 달
         </Button>
         <span>{label(months[start] ?? "")}</span>
-        <Button disabled={start + count >= months.length} onClick={() => setIndex(start + 1)}>
+        <Button disabled={start + count >= months.length} onClick={() => setMonth(months[start + 1] ?? month)}>
           다음 달
         </Button>
       </nav>

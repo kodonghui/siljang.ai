@@ -235,3 +235,36 @@ it("사진 복구 응답의 실패는 멈추되 다음 정기 조회의 새 주�
   });
   expect(calls).toHaveLength(4);
 });
+it("조회 기간의 첫 달이 바뀌어도 아직 기간 안인 고른 달을 보존한다", async () => {
+  useRefreshClock();
+  mount();
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "다음 달" }));
+  value.days = value.days.map((day: { day: string; status: string }, i: number) => ({
+    ...day,
+    day: new Date(Date.UTC(2026, 11, i + 1)).toISOString().slice(0, 10),
+  }));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(screen.getByRole("table").textContent).toContain("2026년 12월");
+});
+it("같은 가격표의 도안은 새 서명 주소로 창을 유지하고 가격표가 바뀌면 닫는다", async () => {
+  useRefreshClock();
+  mount();
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: `${value.priceList.designs[0].name} 크게 보기` }));
+  value.priceList.designs = value.priceList.designs.map((d: { imageUrl: string }) => ({
+    ...d,
+    imageUrl: `${d.imageUrl}&renewed=1`,
+  }));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(within(screen.getByRole("dialog")).getByRole("img").getAttribute("src")).toContain("renewed=1");
+  value.priceList.version += 1;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
