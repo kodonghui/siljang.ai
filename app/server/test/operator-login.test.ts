@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { APP_ROUTES, createApp } from "../src/app";
+import type { DbConnector } from "../src/db";
 import { AuthUnavailableError, supabaseAuth, tokenAal } from "../src/operator-auth";
 import { FAILURE_FLOOR_MS, parseLoginInput } from "../src/operator-login";
 import { createOperatorScope } from "../src/operator-scope";
@@ -38,6 +39,7 @@ interface CallOptions {
 }
 
 interface HarnessOptions {
+  readonly connect?: DbConnector;
   readonly ownerAccount?: OwnerResolver;
   readonly operatorAccount?: OperatorResolver;
   readonly routes?: readonly RouteDecl[];
@@ -54,6 +56,7 @@ function harness(options: HarnessOptions = {}) {
   const logs = collectLogs();
   const app = createApp({
     logSink: logs.sink,
+    ...(options.connect !== undefined ? { connect: options.connect } : {}),
     ...(options.ownerAccount !== undefined ? { ownerAccount: options.ownerAccount } : {}),
     ...(options.operatorAccount !== undefined ? { operatorAccount: options.operatorAccount } : {}),
     ...(options.routes !== undefined ? { routes: options.routes } : {}),
@@ -861,5 +864,48 @@ describeDb("비밀 값을 남기지 않음(REQ-135)", () => {
     expect(logs + stored + bodies.join("")).not.toMatch(/eyJ[A-Za-z0-9_-]+\./);
     expect(sessions.rows).toHaveLength(1);
     expect(logs).toContain('"event":"operator_login"');
+  });
+});
+
+describe("운영자 세 API의 default 응답 계약", () => {
+  it.each([
+    { id: "API-004", method: "POST", path: "/operator/session" },
+    { id: "API-005", method: "GET", path: "/operator/me" },
+    { id: "API-006", method: "DELETE", path: "/operator/session" },
+  ])("$id는 DB 실패 때 값 없는500 Problem과 no-store를 반환한다", async ({ method, path }) => {
+    const operation = contract.paths[path]?.[method.toLowerCase()] as unknown as {
+      responses: Record<string, unknown>;
+    };
+    expect(operation.responses.default).toBeDefined();
+    const privateMarker = "synthetic upstream failure content";
+    let attempts = 0;
+    let closes = 0;
+    const fail = async () => {
+      attempts++;
+      throw new Error(privateMarker);
+    };
+    const h = harness({
+      connect: () => ({
+        query: fail,
+        transaction: fail,
+        abort: async () => {},
+        close: async () => {
+          closes++;
+        },
+      }),
+    });
+    const response = await h.call(method, path, {
+      cookie: `siljang_operator=${"A".repeat(43)}`,
+      ...(method === "POST"
+        ? { body: { email: "ops@example.org", password: "synthetic-password", otp: "135790" } }
+        : {}),
+    });
+    const body = await expectProblem(response, "internal");
+    expect(body.instance).toBe(`/api${path}`);
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(attempts).toBeGreaterThan(0);
+    expect(closes).toBe(1);
+    expect(h.mock.calls).toHaveLength(0);
+    expect(JSON.stringify(body) + h.logs.lines.join("\n")).not.toContain(privateMarker);
   });
 });
