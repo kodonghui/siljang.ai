@@ -21,3 +21,6 @@
 원본 bb0cdad641cfa81a610523dcd9109064b0dbfb5e에서 새 빈 PostgreSQL 마이그레이션34개·서버109파일2,279개·웹65파일1,570개·웹 빌드794ms/두 Worker가 통과했습니다. main224 결합 관련5파일108개·타입 종료0·형식/lint480파일799ms 오류/경고0입니다. 실제 외부 호출0건·비용0원입니다.
 
 제한 역할은 저장소의 권한 파일로 새 PostgreSQL 역할을 만들어 검사했습니다. 실제 스테이징에 새 열 권한을 적용한 결과는 미확인이고 TASK-173에서 추적합니다. 학원컴 Aside CLI CDP와 추가 Wrangler 인증 조회는 기존 두 실패 보류를 유지합니다. 이 PR은 finished/구현 완료 표를 바꾸지 않으며, 위 남은 확인을 통과로 세지 않습니다.
+검토 수정 원본 `bd2959e8906bfe43ef17b425ae29c09bba262447`의 새 빈 PostgreSQL 전체 검사를 완료했습니다. 마이그레이션 34개, 서버 `Test Files 109 passed (109)`·`Tests 2287 passed (2287)`, 웹 `Test Files 65 passed (65)`·`Tests 1570 passed (1570)`, 웹 `built in 1.21s`, 두 Worker `--dry-run: exiting now.`이며 시험·빌드 종료는 모두 0입니다. 타입 검사 종료 0, `Checked 480 files in 793ms. No fixes applied.`입니다. 환경 재시작으로 중단된 앞 로그는 성공으로 세지 않고 새 실행 `siljang-task066-review-restart-0150`의 완료 상태와 원본을 확인했습니다.
+
+PR #224 병합 뒤 Claude 재검토 댓글 `7118971639`의 경고 로그 이름·요청 추적 ID 보완 한 건은 별도 TASK-064 브랜치 `codex/task-064-warning-log`에서 이어갑니다. TASK-066에 다른 작업 코드를 섞지 않습니다. 실제 스테이징 권한·로그·모델 설정 전환 확인은 여전히 남아 있으며 끝남/구현 완료 표시는 바꾸지 않았습니다.

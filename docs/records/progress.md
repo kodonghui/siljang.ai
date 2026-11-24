@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-24 10:55 KST · TASK-066 검토 수정 전체 검사 통과
+
+검토 수정 원본 `bd2959e8906bfe43ef17b425ae29c09bba262447`의 새 빈 PostgreSQL 전체 검사를 완료했습니다. 마이그레이션 34개, 서버 `Test Files 109 passed (109)`·`Tests 2287 passed (2287)`, 웹 `Test Files 65 passed (65)`·`Tests 1570 passed (1570)`, 웹 `built in 1.21s`, 두 Worker `--dry-run: exiting now.`이며 시험·빌드 종료는 모두 0입니다. 타입 검사 종료 0, `Checked 480 files in 793ms. No fixes applied.`입니다. 환경 재시작으로 중단된 앞 로그는 성공으로 세지 않고 새 실행 `siljang-task066-review-restart-0150`의 완료 상태와 원본을 확인했습니다.
+
+PR #224 병합 뒤 Claude 재검토 댓글 `7118971639`의 경고 로그 이름·요청 추적 ID 보완 한 건은 별도 TASK-064 브랜치 `codex/task-064-warning-log`에서 이어갑니다. TASK-066에 다른 작업 코드를 섞지 않습니다. 실제 스테이징 권한·로그·모델 설정 전환 확인은 여전히 남아 있으며 끝남/구현 완료 표시는 바꾸지 않았습니다.
+
 ### 2026-11-24 10:47 KST · TASK-066 검토 발견 수정과 회귀 시험
 
 PR #225의 Claude 검토(`8ce65f6`, 댓글 `7119372863`) 발견 7건을 처리합니다. 문맥 조회의 예외 중 `MaskingFailedError`와 `FieldCryptoError`만 마스킹 실패로 분류하고, 권한·조회 등 다른 오류는 선점을 풀어 재시도합니다. 초안 문자열에 번호 검출 결과나 마스킹 플레이스홀더가 있으면 `schema_invalid`로 거절하여 초안과 AI 답을 저장하지 않습니다. 사장님에게 넘긴 원래 질문과 추가 질문은 이후 모델 문맥에서 제외합니다. 출력 정리는 한 번만 계산하고 초기·재시도 프롬프트 모두 플레이스홀더를 답·초안에 쓰지 않도록 명시했습니다.
