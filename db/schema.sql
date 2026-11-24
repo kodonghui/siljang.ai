@@ -1199,7 +1199,7 @@ CREATE TABLE owner_tasks (
   wait_due_at         timestamptz,                       -- 지연 안내를 보낼 시각: 기다리는 시간을 답하는 시간 안에서만 셈(REQ-259). 답 없어 닫는 때(1-7)와 다름
   late_notice_at      timestamptz,                       -- 손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156, REQ-215)
   realerted_at        timestamptz,                       -- 사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117, REQ-215), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)
-  detail              jsonb,                             -- 보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음. 주문이 끝나고 30일 뒤 비움(SPEC-065)
+  detail              jsonb,                             -- 할 일 자료(보류 이유, 기준을 넘는 날과 주문 수 등). 내부 키 closedDaySourceIds·closedDayAvailability는 화면과 API에서 제외하고 허용한 필드만 고름. 손님 연락처·계좌·알레르기 없음. 주문이 끝나고 30일 뒤 비움(SPEC-065)
   opened_at           timestamptz NOT NULL DEFAULT now(), -- 생긴 시각
   closed_at           timestamptz,                       -- 사장님이 처리해 닫히거나 답 없어 닫힌 시각(SPEC-067, 1-7)
   CONSTRAINT owner_tasks_shop_scope UNIQUE (shop_id, id),
@@ -2587,7 +2587,7 @@ COMMENT ON COLUMN owner_tasks.wait_status IS '사장님 답 기다림(1-7): 기�
 COMMENT ON COLUMN owner_tasks.wait_due_at IS '지연 안내를 보낼 시각: 기다리는 시간을 답하는 시간 안에서만 셈(REQ-259). 답 없어 닫는 때(1-7)와 다름';
 COMMENT ON COLUMN owner_tasks.late_notice_at IS '손님에게 지연 안내(TERM-036)를 낸 시각(한 번, REQ-116, REQ-156, REQ-215)';
 COMMENT ON COLUMN owner_tasks.realerted_at IS '사장님께 다시 알린 시각(한 번): 지연 뒤(REQ-117, REQ-215), 환불 보내기는 환불을 정하고 24시간 뒤(REQ-173)';
-COMMENT ON COLUMN owner_tasks.detail IS '보일 글감(보류 이유, 기준을 넘는 날과 주문 수 등). 손님 연락처·계좌·알레르기 없음. 주문이 끝나고 30일 뒤 비움(SPEC-065)';
+COMMENT ON COLUMN owner_tasks.detail IS '할 일 자료(보류 이유, 기준을 넘는 날과 주문 수 등). 내부 키 closedDaySourceIds·closedDayAvailability는 화면과 API에서 제외하고 허용한 필드만 고름. 손님 연락처·계좌·알레르기 없음. 주문이 끝나고 30일 뒤 비움(SPEC-065)';
 COMMENT ON COLUMN owner_tasks.opened_at IS '생긴 시각';
 COMMENT ON COLUMN owner_tasks.closed_at IS '사장님이 처리해 닫히거나 답 없어 닫힌 시각(SPEC-067, 1-7)';
 COMMENT ON COLUMN owner_alerts.id IS '사장님 알림 ID';
