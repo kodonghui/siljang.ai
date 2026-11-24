@@ -232,7 +232,7 @@ function createEvents(
     const work = async () => {
       const response = await send(`${ORIGIN}${path}`, {
         method: body === undefined ? "GET" : "POST",
-        redirect: "error",
+        redirect: "manual",
         headers: { Authorization: `KakaoAK ${apiKey.reveal()}`, "Content-Type": "application/json" },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         signal: controller.signal,

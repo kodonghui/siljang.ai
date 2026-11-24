@@ -2253,4 +2253,4 @@ TASK-077 Claude 검토 고침 뒤 새 빈 PostgreSQL 마이그레이션38개·�
 
 ### 350. TASK-028 Workers 콜백·이벤트 전송
 
-TASK-028 콜백·이벤트에서도 Workers가 지원하지 않는 redirect:error를 확인했습니다. 먼저 성공 정책과307 외부 주소 거절 회귀를 더해2파일4실패·122통과(126개)를 확인했습니다. [런타임 비교와 검사](../docs/records/kakao-worker-fetch/2026-11-24/checks.md)에 근거를 모았으며 다음은 manual 고침과 전체 검사입니다. 실제 유료 Event 발신은 하지 않고 출시 검토로 유지합니다.
+TASK-028 콜백·이벤트 전송을 Workers가 지원하는 manual로 고쳤습니다. 관련5파일140개·타입·형식 다음 lint가 통과했고307의 외부 주소로 답/키를 보내지 않는 동작을 확인했습니다. [고침과 검사](../docs/records/kakao-worker-fetch/2026-11-24/checks.md)에 근거를 모았으며 다음은 새 빈 PostgreSQL 전체 시험·빌드·CI·검토·main 배포입니다. 실제 유료 Event API 발신은 하지 않았습니다.
