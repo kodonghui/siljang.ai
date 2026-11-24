@@ -1,0 +1,51 @@
+{
+  "base": "70cbaaa5c857962074cc05fe7f0a0ea8ef03ba28",
+  "verifiedPr": 245,
+  "fullSource": "38608492c4b56dd3f14c6a2ab4cecc9f0954ddf0",
+  "publicSource": "28f4f2027d80069108957593df59dfee3d2fc3b1",
+  "fullTree": "2138fa82ac348145d0fd78790bd595ff2740069e",
+  "proof": "main245-deployment.json",
+  "ownCondition": "API-043 응답200·401·404·422·default마다 통과하는 시험",
+  "before": {
+    "finished": 31,
+    "implemented": 30
+  },
+  "after": {
+    "finished": 31,
+    "implemented": 31
+  },
+  "removed": [
+    "TASK-077"
+  ],
+  "added": [
+    "TASK-089"
+  ],
+  "runtimeUnverified": [
+    "actual_owner_api043",
+    "signed_photo_url_open_and_expiry"
+  ],
+  "productCheck": "현재 검증한 main245의 앱·데이터베이스·도구와 차이0. TASK-077 원래 제품 파일의 전체 검사와 main245 통합 CI를 재사용",
+  "status": "구현 완료, finished 없음",
+  "review": {
+    "comment": 7126792620,
+    "findings": 2,
+    "statusFinding": "반영: 실제 적용과 실계정 확인을 TASK-077 자체 목록에 보존",
+    "numberFinding": "미반영: AGENTS.md9번의 예약 번호 유지와 원본 번호순 삽입을 따름"
+  },
+  "ownVerifiedPr": 239,
+  "stagingApply": {
+    "result": "staging-apply-result.json",
+    "migrationCount": 38,
+    "initialWriteProbe": {
+      "passed": false,
+      "failureSqlstate": "42501",
+      "diagnosis": "editor_SET_option_false_direct_ADMIN_true"
+    },
+    "writeProbePassed": true,
+    "writeProbeResult": "../../kakao-runtime-probe/2026-11-24/actual-result.json",
+    "failureSqlstate": null,
+    "checkedAtKst": "2026-11-24 21:11:48.079 KST"
+  },
+  "runtimeProbeResult": "../../kakao-runtime-probe/2026-11-24/actual-result.json",
+  "statusBasePr": 245
+}
