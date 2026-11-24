@@ -2,3 +2,7 @@
 # 이 두 파일의 줄 끝 CR만 허용하며 다른 공백/코드의 diff 검사는 바꾸지 않는다.
 docs/records/price-list/2026-11-24-finished/qa-result.json -text whitespace=cr-at-eol
 docs/records/price-list/2026-11-24-finished/screenshot-result.json -text whitespace=cr-at-eol
+
+# TASK-039 실제 저장/권한 원문의 바이트와 해시를 보존한다.
+docs/records/operating-rules/2026-11-24-finished/actual-rules-result.json -text whitespace=cr-at-eol
+docs/records/operating-rules/2026-11-24-finished/runtime-permissions.json -text whitespace=cr-at-eol
