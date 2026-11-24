@@ -143,6 +143,13 @@ export function shiftDate(day: string, by: number): string {
   return new Date(Date.parse(`${day}T12:00:00Z`) + by * 86_400_000).toISOString().slice(0, 10);
 }
 
+/** 예약 가능 기간은 오늘부터59일 뒤까지이며 모든 자리 처리에서 같은 오류를 쓴다. */
+export function calendarBookingDate(value: unknown, today: string, field = "/pickupDay"): string {
+  const day = calendarDate(value, field);
+  if (day < today || day > shiftDate(today, 59)) throw fieldError(field, "outside_window");
+  return day;
+}
+
 export function isoWeekday(day: string): number {
   return new Date(`${day}T12:00:00Z`).getUTCDay() || 7;
 }

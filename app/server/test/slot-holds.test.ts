@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { calendarBookingDays } from "../src/calendar";
 import { shiftDate } from "../src/calendar-input";
-import { pgConnector } from "../src/db";
+import { pgConnector, type RequestDb } from "../src/db";
 import { Secret } from "../src/settings";
 import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
 import {
@@ -262,7 +262,11 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
     }
   });
   it("제한 역할에서도 확정·종료와 저장된 추가 수락 사용이 됨", async () => {
-    await isolated.db.query("UPDATE calendar_days SET closed=true WHERE shop_id=$1 AND day=$2", [shop.shopId, day]);
+    await isolated.db.query("UPDATE calendar_days SET manually_closed_at=$3 WHERE shop_id=$1 AND day=$2", [
+      shop.shopId,
+      day,
+      now,
+    ]);
     await dayApproval();
     const runtime = pgConnector(new Secret(runtimeUrl));
     try {
@@ -785,7 +789,11 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
   }
   it("같은 상담·날짜의 저장된 추가 수락은 두 주문 중 하나만 사용함", async () => {
     const next = await sibling();
-    await isolated.db.query("UPDATE calendar_days SET closed=true WHERE shop_id=$1 AND day=$2", [shop.shopId, day]);
+    await isolated.db.query("UPDATE calendar_days SET manually_closed_at=$3 WHERE shop_id=$1 AND day=$2", [
+      shop.shopId,
+      day,
+      now,
+    ]);
     const approval = await dayApproval();
     const a = isolated.connect(),
       b = isolated.connect();
@@ -804,7 +812,11 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
     }
   });
   it("기한 지난 추가 수락은 손님 값으로 되살리지 못함", async () => {
-    await isolated.db.query("UPDATE calendar_days SET closed=true WHERE shop_id=$1 AND day=$2", [shop.shopId, day]);
+    await isolated.db.query("UPDATE calendar_days SET manually_closed_at=$3 WHERE shop_id=$1 AND day=$2", [
+      shop.shopId,
+      day,
+      now,
+    ]);
     await dayApproval(now);
     expect((await holdOrderSlot(scope(), { ...shop, now, ownerConfirmed: true })).kind).toBe("day_full");
     expect(
@@ -954,5 +966,141 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
     expect((await isolated.db.query("SELECT status FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows).toEqual([
       { status: "fixed" },
     ]);
+  });
+  it("저장된 마감 추가 수락은 휴무일의 기본 디자인 요청에 쓰지 못함", async () => {
+    await isolated.db.query("UPDATE calendar_days SET closed=true WHERE shop_id=$1 AND day=$2", [shop.shopId, day]);
+    await dayApproval();
+    expect((await holdOrderSlot(scope(), { ...shop, now })).kind).toBe("day_full");
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM slot_holds WHERE shop_id=$1", [shop.shopId])).rows,
+    ).toEqual([{ n: 0 }]);
+    expect(
+      (await isolated.db.query("SELECT day_used_order_id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows,
+    ).toEqual([{ day_used_order_id: null }]);
+  });
+  async function paidDifference(paymentRequestId: string, at = now) {
+    await isolated.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2,version=version+1 WHERE id=$1",
+        [paymentRequestId, at],
+      );
+      await tx.query(
+        "INSERT INTO payments(shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,1000,$4)",
+        [shop.shopId, shop.orderId, paymentRequestId, at],
+      );
+    });
+  }
+  it.each(["hold", "expire", "apply"] as const)("차액 %s에서 오래된 변경 잠금 번호는 stale", async (operation) => {
+    const change = await differenceDate();
+    if (operation !== "hold")
+      await holdOrderSlot(scope(), { orderId: shop.orderId, paymentRequestId: change.paymentRequestId, now });
+    if (operation === "apply") await paidDifference(change.paymentRequestId);
+    const order = (
+      await isolated.db.query<{ lock_version: number }>("SELECT lock_version FROM orders WHERE id=$1", [shop.orderId])
+    ).rows[0];
+    if (!order) throw new Error("synthetic order missing");
+    const input = {
+      orderId: shop.orderId,
+      changeRequestId: change.changeId,
+      paymentRequestId: change.paymentRequestId,
+      now: operation === "expire" ? new Date(now.getTime() + 7200000) : now,
+      expectedOrderRevision: order.lock_version,
+      expectedChangeRevision: 1,
+    };
+    const target = scope(isolated.db, true);
+    const result =
+      operation === "hold"
+        ? await holdOrderSlot(target, input)
+        : operation === "expire"
+          ? await expireOrderSlot(target, input)
+          : await target.transaction((tx) => applyDifferenceSlotInTransaction(tx, input));
+    expect(result.kind).toBe("stale");
+    expect((await isolated.db.query("SELECT status FROM change_requests WHERE id=$1", [change.changeId])).rows).toEqual(
+      [{ status: "awaiting_difference" }],
+    );
+  });
+  it.each(["received", "no_pickup"])("주문이 %s인 뒤 늦게 돈 차액 기한 처리도 새날을 풂", async (status) => {
+    const change = await differenceDate(),
+      at = shopLocalToUtc(shiftDate(day, 3), "16:00", "Asia/Seoul");
+    await holdOrderSlot(scope(), { orderId: shop.orderId, paymentRequestId: change.paymentRequestId, now });
+    await isolated.db.transaction(async (tx) => {
+      await tx.query("UPDATE orders SET status=$2,lock_version=lock_version+1 WHERE id=$1", [shop.orderId, status]);
+      await tx.query(
+        "INSERT INTO productions(shop_id,order_id,completed_at,handed_over_at,handover_kind,no_pickup_at) VALUES($1,$2,$3,CASE WHEN $4='received' THEN $3::timestamptz END,CASE WHEN $4='received' THEN 'pickup' END,CASE WHEN $4='no_pickup' THEN $3::timestamptz END)",
+        [shop.shopId, shop.orderId, at, status],
+      );
+    });
+    expect(
+      (await expireOrderSlot(scope(), { orderId: shop.orderId, paymentRequestId: change.paymentRequestId, now: at }))
+        .kind,
+    ).toBe("expired");
+    expect(
+      (await isolated.db.query("SELECT day::text,status FROM slot_holds WHERE shop_id=$1 ORDER BY day", [shop.shopId]))
+        .rows,
+    ).toEqual([
+      { day, status: "fixed" },
+      { day: change.newDay, status: "released" },
+    ]);
+    expect((await isolated.db.query("SELECT status FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual([
+      { status },
+    ]);
+  });
+  it("잡힌 자리가 없어도 첫 결제 기한에는 결제·주문을 만료함", async () => {
+    expect((await expire(new Date(now.getTime() + 7200000))).kind).toBe("expired");
+    expect(
+      (await isolated.db.query("SELECT status FROM payment_requests WHERE id=$1", [shop.paymentRequestId])).rows,
+    ).toEqual([{ status: "expired" }]);
+    expect((await isolated.db.query("SELECT status FROM orders WHERE id=$1", [shop.orderId])).rows).toEqual([
+      { status: "payment_overdue" },
+    ]);
+  });
+  it("차액 확인이 새 픽업 뒤여도 이미 잡힌 새날 자리를 반영함", async () => {
+    const change = await differenceDate();
+    await holdOrderSlot(scope(), { orderId: shop.orderId, paymentRequestId: change.paymentRequestId, now });
+    now = shopLocalToUtc(shiftDate(change.newDay, 1), "16:00", "Asia/Seoul");
+    await paidDifference(change.paymentRequestId);
+    expect((await moveDate(change)).kind).toBe("fixed");
+    expect(
+      (await isolated.db.query("SELECT day::text,status FROM slot_holds WHERE shop_id=$1 ORDER BY day", [shop.shopId]))
+        .rows,
+    ).toEqual([
+      { day, status: "released" },
+      { day: change.newDay, status: "fixed" },
+    ]);
+  });
+  function recordingDb(db: RequestDb, seen: string[]): RequestDb {
+    return {
+      query: <R>(sql: string, params?: readonly unknown[]) => db.query<R>(sql, params),
+      close: () => db.close(),
+      abort: () => db.abort(),
+      transaction: (work) =>
+        db.transaction((tx) =>
+          work({
+            query: <R>(sql: string, params?: readonly unknown[]) => {
+              seen.push(sql);
+              return tx.query<R>(sql, params);
+            },
+          }),
+        ),
+    };
+  }
+  it("첫 자리 확보는 날짜 잠금을 한 번만 잡음", async () => {
+    const seen: string[] = [];
+    expect((await holdOrderSlot(scope(recordingDb(isolated.db, seen)), { ...shop, now })).kind).toBe("held");
+    expect(seen.filter((sql) => sql.includes("41029"))).toHaveLength(1);
+  });
+  it("차액 자리 확보는 옛날·새날 잠금을 한 번씩만 잡음", async () => {
+    const change = await differenceDate(),
+      seen: string[] = [];
+    expect(
+      (
+        await holdOrderSlot(scope(recordingDb(isolated.db, seen)), {
+          orderId: shop.orderId,
+          paymentRequestId: change.paymentRequestId,
+          now,
+        })
+      ).kind,
+    ).toBe("held");
+    expect(seen.filter((sql) => sql.includes("41029"))).toHaveLength(2);
   });
 });

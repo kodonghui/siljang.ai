@@ -78,6 +78,8 @@ GRANT SELECT (id, shop_id, day, order_id, status, overbooked) ON slot_holds TO :
 -- 저장 전 주문 확인과 미발송 안내의 날짜 재계산에 필요한 열만 읽는다.
 GRANT SELECT (pickup_day, pickup_at) ON orders TO :"runtime_role";
 -- TASK-082: 자리 처리의 잠금 번호·수락·재제작 관계와 결제 기한만 읽는다.
+-- 공용 역할의 열 권한은 상태 값별 전이를 제한하지 않는다. 앱의 잠금·현재 상태/잠금 번호 조건이 이를 지킨다.
+-- 다른 SQL의 결함이 상태를 되돌릴 수 있는 위험은 남으며, 각 업무 API 연결 때 A6 회귀를 확인한다.
 GRANT SELECT (accepted_at, lock_version, remake_of_order_id), UPDATE (status, lock_version) ON orders TO :"runtime_role";
 GRANT SELECT (kind, status, due_at, due_cap_at, claimed_at, version, change_request_id),
   UPDATE (status, expired_at, version) ON payment_requests TO :"runtime_role";
