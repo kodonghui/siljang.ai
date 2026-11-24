@@ -3,12 +3,14 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vite
 import { recordAiCall } from "../src/ai-calls";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
+import { closeIdleConsultation } from "../src/consultation-idle";
 import { FieldCryptoError, fieldCrypto } from "../src/field-crypto";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import * as policyCurrent from "../src/privacy-policy-current";
 import { readSettings, Secret } from "../src/settings";
+import { createShopScope, shopDb } from "../src/shop-scope";
 import * as trace from "../src/trace";
 import { collectLogs, describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
@@ -188,21 +190,32 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     await send(user, "문의 끊김 전 합성 질문");
     await consume(required(jobs[0]), model(), false);
     const consultation = required((await record(user))[0]);
-    await isolated.db.query("UPDATE consultations SET status='dropped',dropped_at=$2 WHERE id=$1", [
-      consultation.id,
-      NOW,
-    ]);
+    const closedAt = new Date(NOW.getTime() + 24 * 3600000);
+    await isolated.db.transaction((tx) =>
+      closeIdleConsultation(
+        shopDb(createShopScope(shop.shopId, { kind: "job", job: "consultation_idle" }), tx),
+        consultation.id,
+        closedAt,
+      ),
+    );
     const noticeId = newUuid();
     await isolated.db.query(
       `INSERT INTO notifications (id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,created_at)
        SELECT $2,shop_id,customer_id,id,'owner_reply',$3,'owner_reply','문의 끊김 뒤 합성 사장님 안내','deferred',$4
        FROM consultations WHERE id=$1`,
-      [consultation.id, noticeId, `notice:${noticeId}`, new Date(NOW.getTime() + 2000)],
+      [consultation.id, noticeId, `notice:${noticeId}`, new Date(closedAt.getTime() + 2000)],
     );
-    now = new Date(NOW.getTime() + 4000);
+    now = new Date(closedAt.getTime() + 4000);
     const response = await immediate(user, "");
     expect(await response.text()).toContain("문의 끊김 뒤 합성 사장님 안내");
     expect((await record(user))[0]?.ai_disclosed_at).toBeNull();
+    expect(
+      (
+        await isolated.db.query("SELECT delivery FROM messages WHERE consultation_id=$1 AND author='ai'", [
+          consultation.id,
+        ])
+      ).rows,
+    ).toEqual([{ delivery: "failed" }]);
   });
   it("발신 직전 넘김으로 바꾼 AI 답은 실패 표시하고 다음 답에 다시 보내지 않는다", async () => {
     const user = newUuid(),
@@ -488,19 +501,35 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     ).toBe(2);
   });
 
-  it("문의 끊김으로 닫힌 상담은 고지 기록을 유지하고 다시 고지하지 않는다", async () => {
+  it("실제 문의 끊김 뒤 재개는 고지 기록을 유지하고 이전 안내를 AI 답 전에 한 번 전한다", async () => {
     const user = newUuid(),
       ai = model();
     await send(user, "고지를 받을 합성 질문");
     await consume(required(jobs[0]), ai);
     const first = required((await record(user))[0]);
-    await isolated.db.query("UPDATE consultations SET status='dropped',dropped_at=$2 WHERE id=$1", [first.id, now]);
-    now = new Date(NOW.getTime() + 4000);
+    now = new Date(NOW.getTime() + 24 * 3600000);
+    await isolated.db.transaction((tx) =>
+      closeIdleConsultation(
+        shopDb(createShopScope(shop.shopId, { kind: "job", job: "consultation_idle" }), tx),
+        first.id,
+        now,
+      ),
+    );
+    const noticeId = newUuid();
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,created_at) SELECT $2,shop_id,customer_id,id,'no_answer_closed',$3,'no_answer_closed','합성 이전 닫힘 안내','deferred',$4 FROM consultations WHERE id=$1",
+      [first.id, noticeId, `notice:${noticeId}`, new Date(now.getTime() + 1000)],
+    );
+    now = new Date(now.getTime() + 4000);
     await send(user, "문의 끊김 뒤 다시 온 합성 질문");
     const callback = await consume(required(jobs[1]), ai);
-    expect(callback).not.toHaveBeenCalled();
+    expect(texts(callback)).toEqual(["합성 이전 닫힘 안내", "합성 질문을 확인했어요."]);
     expect((await record(user))[0]).toEqual(first);
-    expect(ai.call).toHaveBeenCalledOnce();
+    expect(ai.call).toHaveBeenCalledTimes(2);
+    now = new Date(now.getTime() + 4000);
+    await send(user, "합성 재개 뒤 다음 질문");
+    expect(texts(await consume(required(jobs[2]), ai))).toEqual(["합성 질문을 확인했어요."]);
+    expect(ai.call).toHaveBeenCalledTimes(3);
   });
   it("고지 실패로 남은 AI 답은 고지 없는 즉시 안내에서 전하지 않는다", async () => {
     const user = newUuid(),
