@@ -36,7 +36,7 @@ export async function deferredKakaoMessages(
       WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'outbound'
         AND m.delivery = 'deferred' AND m.sent_at IS NULL AND char_length(m.body_masked) BETWEEN 1 AND 1000
         AND (m.trace_id IS NULL OR m.trace_id NOT LIKE 'ai-disclosure:%')
-        AND NOT (m.author='ai' AND c.ai_disclosed_at IS NULL AND c.status IN ('ended','deleted'))
+        AND NOT (m.author='ai' AND c.ai_disclosed_at IS NULL AND c.status IN ('ended','deleted','dropped'))
       ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
     [customerId, DEFERRED_REPLY_BATCH, options.disclosureConsultationId ?? null],
   );

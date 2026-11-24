@@ -145,13 +145,9 @@ export async function consumeKakaoCallback(
       return "done";
     }
     if (preparedReply === undefined) {
-      const reason = await prepareKakaoCallbackHandoff(
-        db,
-        job.messageId,
-        claim,
-        now(),
-        maskingFailed ? "masking_failed" : "ai_failure",
-      );
+      const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now(), {
+        failureReason: maskingFailed ? "masking_failed" : "ai_failure",
+      });
       if (reason === false) return "done";
       log(
         "warn",
@@ -172,12 +168,11 @@ export async function consumeKakaoCallback(
     const callback = kakaoCallback(raw, claim.created_at);
     // 모델을 기다리는 동안 설정이 바뀌었으면 실제 발신 직전에 새 게시 버전을 고른다.
     if (disclosure !== null && callback !== null) {
-      const firstPreparedAt = disclosure?.at;
       disclosure = services.aiConfigured ? await prepareKakaoAiDisclosure(db, claim, services) : undefined;
-      if (disclosure !== null && disclosure !== undefined && firstPreparedAt !== undefined)
-        disclosure = { ...disclosure, at: firstPreparedAt };
       if (preparedReply !== undefined && disclosure === undefined) {
-        const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now());
+        const reason = await prepareKakaoCallbackHandoff(db, job.messageId, claim, now(), {
+          discardReplyId: preparedReply.id,
+        });
         if (reason === false) return "done";
         preparedReply = undefined;
         failureCode = kakaoAiFailureOutcome("unavailable");

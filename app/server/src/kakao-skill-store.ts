@@ -1,7 +1,7 @@
 import { type AuthorizedKakaoSkill, kakaoReceiptKey } from "./kakao-skill-auth";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
-const MESSAGE_LIMIT = 20;
+export const KAKAO_MESSAGE_LIMIT = 20;
 const MINUTE_MS = 60_000;
 
 export type InboundReceipt =
@@ -16,6 +16,18 @@ export type InboundReceipt =
     };
 
 type Id = { readonly id: string };
+
+/** 후기 카드를 뺀 같은 손님의 1분 수신 수. 한도 초과 뒤 필요한 두 행까지만 읽는다. */
+export async function recentKakaoInboundCount(db: ShopDb, customerId: string, receivedAt: Date): Promise<number> {
+  const start = new Date(Math.floor(receivedAt.getTime() / MINUTE_MS) * MINUTE_MS);
+  const recent = await db.run<Id>(
+    `SELECT m.id FROM messages m JOIN consultations c ON c.shop_id=$1 AND c.id=m.consultation_id
+     WHERE m.shop_id=$1 AND c.customer_id=$2 AND m.direction='inbound' AND m.kind<>'card'
+     AND m.created_at >= $3 AND m.created_at < $4 LIMIT $5`,
+    [customerId, start, new Date(start.getTime() + MINUTE_MS), KAKAO_MESSAGE_LIMIT + 2],
+  );
+  return recent.rowCount;
+}
 
 /** 인증한 가게의 연락처만 읽는다. 연결 확인 중에도 상담·손님·메시지는 만들지 않는다. */
 export async function kakaoContactPhone(db: ShopDb): Promise<string | undefined> {
@@ -40,10 +52,9 @@ export async function receiveAndHandleKakaoMessage<T>(
 ): Promise<T> {
   const { channelId, payload, receivedAt, requestKeySecret } = request;
   const receipt = await kakaoReceiptKey(requestKeySecret, payload, receivedAt, "message");
-  const windowStart = new Date(Math.floor(receivedAt.getTime() / MINUTE_MS) * MINUTE_MS);
 
   return db.transaction(async (tx) => {
-    const result = await receiveInTransaction(tx, channelId, payload, receivedAt, kind, receipt, windowStart);
+    const result = await receiveInTransaction(tx, channelId, payload, receivedAt, kind, receipt);
     return handle(tx, result);
   });
 }
@@ -55,7 +66,6 @@ async function receiveInTransaction(
   receivedAt: Date,
   kind: "text" | "unsupported",
   receipt: string,
-  windowStart: Date,
 ): Promise<InboundReceipt> {
   // 연결만 끝나고 예약 링크를 내지 않은 가게에서는 손님 기록을 만들지 않는다(SPEC-017).
   // 가게와 채널의 공유 잠금을 수신 트랜잭션까지 유지해 설정을 바꾸는 요청과 차례를 정한다.
@@ -115,13 +125,7 @@ async function receiveInTransaction(
   const messageId = message.rows[0]?.id;
   if (messageId === undefined) return { kind: "duplicate" };
 
-  const recent = await tx.run<Id>(
-    `SELECT m.id FROM messages m
-       JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
-       WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'inbound' AND m.kind <> 'card'
-         AND m.created_at >= $3 AND m.created_at < $4 LIMIT 22`,
-    [customerId, windowStart, new Date(windowStart.getTime() + MINUTE_MS)],
-  );
-  const limit = recent.rowCount <= MESSAGE_LIMIT ? "ok" : recent.rowCount === MESSAGE_LIMIT + 1 ? "first" : "silent";
+  const recent = await recentKakaoInboundCount(tx, customerId, receivedAt);
+  const limit = recent <= KAKAO_MESSAGE_LIMIT ? "ok" : recent === KAKAO_MESSAGE_LIMIT + 1 ? "first" : "silent";
   return { kind: "received", messageId, consultationId, customerId, limit };
 }

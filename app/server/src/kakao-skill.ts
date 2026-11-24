@@ -1,6 +1,6 @@
 import { sqlStateOf } from "./db";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
-import { readKakaoDisclosurePolicy } from "./kakao-ai-disclosure";
+import { readKakaoInboundDisclosurePolicy } from "./kakao-ai-disclosure";
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
 import { publishStoredKakaoCallback, storeKakaoCallback } from "./kakao-callback-store";
 import { receiveKakaoChannelCheck } from "./kakao-channel-check";
@@ -49,7 +49,15 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
       return kakaoReply(r, "not_accepting", { contactPhone: await kakaoContactPhone(r.db) });
     }
     const queue = r.services.kakaoCallbackQueue;
-    const disclosurePolicy = await readKakaoDisclosurePolicy(r.db, r.services);
+    const disclosurePolicy = await readKakaoInboundDisclosurePolicy(r.db, request, r.services, (error) => {
+      const dbCode = sqlStateOf(error);
+      r.log("warn", {
+        event: "kakao_disclosure_policy_failed",
+        code: "policy_unavailable",
+        errorName: error instanceof Error ? error.name : "UnknownError",
+        ...(dbCode === undefined ? {} : { dbCode }),
+      });
+    });
     const callback = kakaoCallback(request.payload.callbackUrl, request.receivedAt);
     if (messageKind === "text") {
       const ackUntil = request.receivedAt.getTime() + SKILL_WORK_MS;
