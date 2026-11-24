@@ -1,10 +1,10 @@
 {
-  "base": "f6edb6d8745ce28df35fefc66d090961064ea3dc",
-  "verifiedPr": 237,
+  "base": "1f8af8a285175c38c69590e0c50e46d59b0fb923",
+  "verifiedPr": 241,
   "fullSource": "38608492c4b56dd3f14c6a2ab4cecc9f0954ddf0",
   "publicSource": "28f4f2027d80069108957593df59dfee3d2fc3b1",
   "fullTree": "2138fa82ac348145d0fd78790bd595ff2740069e",
-  "proof": "main239-deployment.json",
+  "proof": "main241-deployment.json",
   "ownCondition": "API-043 응답200·401·404·422·default마다 통과하는 시험",
   "before": {
     "finished": 30,
@@ -21,16 +21,25 @@
     "TASK-089"
   ],
   "runtimeUnverified": [
-    "staging_migrations_and_grants_apply_result_in_progress",
+    "runtime_write_probe_set_membership_followup",
     "actual_owner_api043",
     "signed_photo_url_open_and_expiry"
   ],
-  "productCheck": "main237의 앱·데이터베이스·도구와 차이0, 전체 검사는 검증된 동일 제품의 원본을 재사용",
+  "productCheck": "현재 main241의 앱·데이터베이스·도구와 차이0. TASK-077 전체 검사 원본은 같은 TASK-077 제품 파일의 검사이며 로그인 결합 뒤 전체 검사는 현재 head CI로 확인",
   "status": "구현 완료, finished 없음",
   "review": {
     "comment": 7126792620,
     "findings": 2,
     "statusFinding": "반영: 실제 적용과 실계정 확인을 TASK-077 자체 목록에 보존",
     "numberFinding": "미반영: AGENTS.md9번의 예약 번호 유지와 원본 번호순 삽입을 따름"
+  },
+  "ownVerifiedPr": 239,
+  "stagingApply": {
+    "result": "staging-apply-result.json",
+    "migrationCount": 38,
+    "writeProbePassed": false,
+    "failureSqlstate": "42501",
+    "diagnosis": "editor_can_set_runtime_false_existing_direct_admin_true_all_required_column_privileges_true",
+    "followup": "TASK-028 runtime role probe"
   }
 }

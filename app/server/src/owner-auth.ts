@@ -28,11 +28,13 @@ export function kakaoOwnerAuth(
     try {
       const response = await send(url, {
         ...init,
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(options.timeoutMs ?? 5000),
       });
       if (!response.ok) {
         await response.body?.cancel().catch(() => {});
+        // manual 응답의 리디렉션은 자격 증명을 다른 주소로 보내지 않고 거절한다.
+        if (response.status >= 300 && response.status < 400) throw new KakaoUnavailableError();
         if (response.status === 400 || response.status === 401 || response.status === 403) return null;
         throw new KakaoUnavailableError();
       }
