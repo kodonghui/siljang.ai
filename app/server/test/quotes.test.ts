@@ -282,4 +282,106 @@ describeDb("가게 가격표로 계산하는 견적(TASK-067)", () => {
       }),
     ).toMatchObject({ kind: "quoted", quote: { amount: 35000, priceListVersion: 3 } });
   });
+
+  it.each(["ended", "deleted", "dropped"])(
+    "닫힌 상담에는 계산 실패의 새 할 일과 알림을 만들지 않는다(%s)",
+    async (status) => {
+      await isolated.db.query(
+        "UPDATE consultations SET status=$2,dropped_at=CASE WHEN $2='dropped' THEN $3::timestamptz ELSE NULL END,deleted_at=CASE WHEN $2='deleted' THEN $3::timestamptz ELSE NULL END,ended_at=CASE WHEN $2='ended' THEN $3::timestamptz ELSE NULL END WHERE id=$1",
+        [shop.consultationId, status, NOW],
+      );
+      await expect(quote({ size: "3단" })).rejects.toMatchObject({ code: "not_found" });
+      expect(
+        (await isolated.db.query("SELECT status FROM consultations WHERE id=$1", [shop.consultationId])).rows,
+      ).toEqual([{ status }]);
+      expect(
+        (await isolated.db.query("SELECT id FROM handoffs WHERE consultation_id=$1", [shop.consultationId])).rows,
+      ).toHaveLength(0);
+    },
+  );
+
+  it("가격표를 바꾼 뒤 도안 이름으로 현재 버전의 도안과 값을 찾는다", async () => {
+    await isolated.db.query("UPDATE order_drafts SET design_id=$2,design_option_id=$3 WHERE id=$1", [
+      shop.draftId,
+      shop.designId,
+      shop.designOptionId,
+    ]);
+    await isolated.db.query("UPDATE price_lists SET superseded_at=$2 WHERE id=$1", [shop.priceListId, NOW]);
+    const priceId = newUuid(),
+      optionId = newUuid(),
+      designId = newUuid();
+    await isolated.db.query("INSERT INTO price_lists(id,shop_id,version) VALUES($1,$2,4)", [priceId, shop.shopId]);
+    await isolated.db.query(
+      "INSERT INTO price_options(shop_id,price_list_id,option_group,name,amount) VALUES($1,$2,'size','1호',38000),($1,$2,'flavor','생크림',0)",
+      [shop.shopId, priceId],
+    );
+    await isolated.db.query(
+      "INSERT INTO price_options(id,shop_id,price_list_id,option_group,name,amount) SELECT $1,$2,$3,'design',name,7000 FROM price_options WHERE id=$4",
+      [optionId, shop.shopId, priceId, shop.designOptionId],
+    );
+    await isolated.db.query(
+      "INSERT INTO designs(id,shop_id,price_list_id,name,price_option_id,in_standard,image_key) SELECT $1,$2,$3,name,$4,in_standard,'synthetic/new.png' FROM designs WHERE id=$5",
+      [designId, shop.shopId, priceId, optionId, shop.designId],
+    );
+    expect(await quote()).toMatchObject({ kind: "quoted", quote: { amount: 45000, priceListVersion: 4 } });
+    await isolated.db.query("UPDATE designs SET name='다른 합성 도안' WHERE id=$1", [designId]);
+    expect(await quote()).toEqual({ kind: "cannot_calculate", reason: "design_missing" });
+  });
+
+  it("초안 디자인 옵션과 도안 옵션이 다르면 고른 도안 옵션을 사용한다", async () => {
+    const conflictingId = "00000000-0000-4000-8000-000000000001";
+    await isolated.db.query(
+      "INSERT INTO price_options(id,shop_id,price_list_id,option_group,name,amount) VALUES($1,$2,$3,'design','다른 합성 옵션',50000)",
+      [conflictingId, shop.shopId, shop.priceListId],
+    );
+    await isolated.db.query("UPDATE price_options SET amount=7000 WHERE id=$1", [shop.designOptionId]);
+    await isolated.db.query("UPDATE order_drafts SET design_id=$2,design_option_id=$3 WHERE id=$1", [
+      shop.draftId,
+      shop.designId,
+      conflictingId,
+    ]);
+    expect(await quote()).toMatchObject({ kind: "quoted", quote: { amount: 42000 } });
+  });
+
+  it("A·B·A 순서의 계산에서 최신이 아닌 A 견적을 재사용하지 않는다", async () => {
+    const first = await quote();
+    if (first.kind !== "quoted") throw new Error("첫 합성 견적이 없어요");
+    await isolated.db.query(
+      "INSERT INTO price_options(shop_id,price_list_id,option_group,name,amount) VALUES($1,$2,'design','다른 합성 디자인',5000)",
+      [shop.shopId, shop.priceListId],
+    );
+    const second = await quoteDraft(scoped(), {
+      draftId: shop.draftId,
+      sourceMessageId: shop.messageId,
+      now: new Date(NOW.getTime() + 1000),
+      selection: { design: "다른 합성 디자인" },
+    });
+    const third = await quoteDraft(scoped(), {
+      draftId: shop.draftId,
+      sourceMessageId: shop.messageId,
+      now: new Date(NOW.getTime() + 2000),
+    });
+    if (second.kind !== "quoted" || third.kind !== "quoted") throw new Error("합성 견적이 없어요");
+    expect(third.quote.id).not.toBe(first.quote.id);
+    expect(
+      (
+        await isolated.db.query("SELECT id FROM quotes WHERE draft_id=$1 ORDER BY quoted_at DESC,id DESC LIMIT 1", [
+          shop.draftId,
+        ])
+      ).rows[0]?.id,
+    ).toBe(third.quote.id);
+  });
+
+  it.each(["price", "rules"])("받은 주문에 다른 버전을 명시하면 오류다(%s)", async (kind) => {
+    await isolated.db.query("UPDATE order_drafts SET status='submitted' WHERE id=$1", [shop.draftId]);
+    await isolated.db.query("UPDATE orders SET draft_id=$2 WHERE id=$1", [shop.orderId, shop.draftId]);
+    await expect(
+      quoteDraft(scoped(), {
+        draftId: shop.draftId,
+        sourceMessageId: shop.messageId,
+        now: NOW,
+        ...(kind === "price" ? { priceListVersion: 999 } : { operatingRulesVersion: 999 }),
+      }),
+    ).rejects.toMatchObject({ code: "not_found" });
+  });
 });

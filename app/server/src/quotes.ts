@@ -1,6 +1,18 @@
 import { recordKakaoHandoff } from "./kakao-handoff";
 import { ApiError } from "./problem";
-import type { ShopRequestDb } from "./shop-scope";
+import type { ShopDb, ShopRequestDb } from "./shop-scope";
+
+async function versionRow<T>(
+  db: ShopDb,
+  table: "price_lists" | "operating_rules",
+  frozenId: string | undefined,
+  version: number | undefined,
+): Promise<T | undefined> {
+  const columns = table === "price_lists" ? "id,version" : "id,version,quote_valid_hours";
+  const condition = frozenId !== undefined ? "id=$2" : version === undefined ? "superseded_at IS NULL" : "version=$2";
+  const params = frozenId !== undefined ? [frozenId] : version === undefined ? [] : [version];
+  return (await db.run<T>(`SELECT ${columns} FROM ${table} WHERE shop_id=$1 AND ${condition}`, params)).rows[0];
+}
 
 interface Option {
   id: string;
@@ -53,6 +65,16 @@ export async function quoteDraft(
 > {
   return db.transaction(async (tx) => {
     const draftId = await tx.owned("order_drafts", input.draftId);
+    const scope = await tx.found<{ consultation_id: string; customer_id: string }>(
+      `SELECT d.consultation_id,c.customer_id FROM order_drafts d JOIN consultations c ON c.shop_id=$1 AND c.id=d.consultation_id WHERE d.shop_id=$1 AND d.id=$2`,
+      [draftId],
+    );
+    await tx.found("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [scope.customer_id]);
+    const consultation = await tx.found<{ status: string }>(
+      "SELECT status FROM consultations WHERE shop_id=$1 AND id=$2 AND customer_id=$3 FOR UPDATE",
+      [scope.consultation_id, scope.customer_id],
+    );
+    if (["ended", "deleted", "dropped"].includes(consultation.status)) throw new ApiError("not_found");
     const draft = await tx.found<{
       consultation_id: string;
       revision: number;
@@ -79,31 +101,25 @@ export async function quoteDraft(
         [draftId],
       )
     ).rows[0];
-    const price = (
-      await tx.run<{ id: string; version: number }>(
-        frozen
-          ? "SELECT id,version FROM price_lists WHERE shop_id=$1 AND id=$2"
-          : input.priceListVersion === undefined
-            ? "SELECT id,version FROM price_lists WHERE shop_id=$1 AND superseded_at IS NULL"
-            : "SELECT id,version FROM price_lists WHERE shop_id=$1 AND version=$2",
-        frozen ? [frozen.price_list_id] : input.priceListVersion === undefined ? [] : [input.priceListVersion],
-      )
-    ).rows[0];
-    const rules = (
-      await tx.run<{ id: string; version: number; quote_valid_hours: number }>(
-        frozen
-          ? "SELECT id,version,quote_valid_hours FROM operating_rules WHERE shop_id=$1 AND id=$2"
-          : input.operatingRulesVersion === undefined
-            ? "SELECT id,version,quote_valid_hours FROM operating_rules WHERE shop_id=$1 AND superseded_at IS NULL"
-            : "SELECT id,version,quote_valid_hours FROM operating_rules WHERE shop_id=$1 AND version=$2",
-        frozen
-          ? [frozen.operating_rules_id]
-          : input.operatingRulesVersion === undefined
-            ? []
-            : [input.operatingRulesVersion],
-      )
-    ).rows[0];
+    const price = await versionRow<{ id: string; version: number }>(
+      tx,
+      "price_lists",
+      frozen?.price_list_id,
+      input.priceListVersion,
+    );
+    const rules = await versionRow<{ id: string; version: number; quote_valid_hours: number }>(
+      tx,
+      "operating_rules",
+      frozen?.operating_rules_id,
+      input.operatingRulesVersion,
+    );
     if (!price || !rules) throw new ApiError("not_found");
+    if (
+      frozen &&
+      ((input.priceListVersion !== undefined && input.priceListVersion !== price.version) ||
+        (input.operatingRulesVersion !== undefined && input.operatingRulesVersion !== rules.version))
+    )
+      throw new ApiError("not_found");
     const options = (
       await tx.run<Option>(
         "SELECT id,option_group,name,price_kind,amount,amount_max,in_standard FROM price_options WHERE shop_id=$1 AND price_list_id=$2",
@@ -122,16 +138,20 @@ export async function quoteDraft(
       ...extras.map((row) => row.option_id),
     ].filter((id): id is string => id !== null);
     let standardDesign = true;
+    let designOptionId = draft.design_option_id;
     if (draft.design_id !== null) {
       const design = (
         await tx.run<{ name: string; price_option_id: string | null; in_standard: boolean }>(
-          "SELECT name,price_option_id,in_standard FROM designs WHERE shop_id=$1 AND id=$2 AND price_list_id=$3",
+          "SELECT d.name,d.price_option_id,d.in_standard FROM designs original JOIN designs d ON d.shop_id=$1 AND d.price_list_id=$3 AND d.name=original.name WHERE original.shop_id=$1 AND original.id=$2",
           [draft.design_id, price.id],
         )
       ).rows[0];
       if (!design) return fail("design_missing");
       standardDesign = design.in_standard;
-      if (design.price_option_id !== null) ids.push(design.price_option_id);
+      if (design.price_option_id !== null) {
+        ids.push(design.price_option_id);
+        designOptionId = design.price_option_id;
+      }
     }
     const old = (
       await tx.run<{ id: string; option_group: string; name: string }>(
@@ -142,7 +162,7 @@ export async function quoteDraft(
     const names = {
       size: input.selection?.size ?? old.find((x) => x.id === draft.size_option_id)?.name,
       flavor: input.selection?.flavor ?? old.find((x) => x.id === draft.flavor_option_id)?.name,
-      design: input.selection?.design ?? old.find((x) => x.option_group === "design")?.name,
+      design: input.selection?.design ?? old.find((x) => x.id === designOptionId)?.name,
       extras: input.selection?.extras ?? old.filter((x) => x.option_group === "extra").map((x) => x.name),
     };
     if (!names.size || !names.flavor) return fail("option_missing");
@@ -200,7 +220,7 @@ export async function quoteDraft(
     const validUntil = new Date(input.now.getTime() + rules.quote_valid_hours * 3600000).toISOString();
     const prior = (
       await tx.run<{ id: string; valid_until: Date }>(
-        "SELECT id,valid_until FROM quotes WHERE shop_id=$1 AND draft_id=$2 AND draft_revision=$3 AND price_list_id=$4 AND operating_rules_id=$5 AND amount=$6 AND quoted_at<=$7 AND valid_until>$7 AND display_kind=$8 AND order_kind=$9 AND amount_max IS NOT DISTINCT FROM $10::integer AND basis=$11::jsonb ORDER BY quoted_at DESC,id LIMIT 1",
+        "SELECT id,valid_until FROM quotes WHERE shop_id=$1 AND draft_id=$2 AND draft_revision=$3 AND price_list_id=$4 AND operating_rules_id=$5 AND amount=$6 AND quoted_at<=$7 AND valid_until>$7 AND display_kind=$8 AND order_kind=$9 AND amount_max IS NOT DISTINCT FROM $10::integer AND basis=$11::jsonb AND id=(SELECT latest.id FROM quotes latest WHERE latest.shop_id=$1 AND latest.draft_id=$2 AND latest.quoted_at<=$7 ORDER BY latest.quoted_at DESC,latest.id DESC LIMIT 1) ORDER BY quoted_at DESC,id DESC LIMIT 1",
         [
           draftId,
           draft.revision,
