@@ -533,3 +533,167 @@ it("좁은 직접 상세는 목록을 미루고 넓어지면 한 번만 읽는�
   await screen.findByRole("link", { name: /버전 3/ });
   expect(calls.filter((c) => c.path === "/api/owner/price-list/versions")).toHaveLength(1);
 });
+
+it.each(["버전 목록으로", "뒤로"])("좁은 상세의 %s로 목록 복귀하면 고른 버전으로 초점을 돌린다", async (action) => {
+  ownerView();
+  const chosen = await screen.findByRole("link", { name: /버전 3\b/ });
+  chosen.focus();
+  fireEvent.click(chosen);
+  await screen.findByRole("heading", { name: "버전 3 (고른 버전)" });
+  const back = screen.getByRole(action === "뒤로" ? "link" : "button", { name: action });
+  back.focus();
+  fireEvent.click(back);
+  await waitFor(() => expect(document.activeElement).toBe(chosen));
+  expect(calls.filter((call) => call.path === "/api/owner/price-list/versions")).toHaveLength(1);
+});
+it("목록 복귀의 재확인 중 사용자가 옮긴 초점을 응답 뒤에도 보존한다", async () => {
+  const transport = fetch;
+  let ownerReads = 0;
+  let finish!: (response: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/owner/me" && ++ownerReads === 3) {
+        calls.push({ path: String(input), method: "GET" });
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      }
+      return transport(input, init);
+    }),
+  );
+  ownerView();
+  fireEvent.click(await screen.findByRole("link", { name: /버전 3\b/ }));
+  await screen.findByRole("heading", { name: "버전 3 (고른 버전)" });
+  const back = screen.getByRole("button", { name: "버전 목록으로" });
+  back.focus();
+  fireEvent.click(back);
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  const moved = screen.getByRole("link", { name: "뒤로" });
+  moved.focus();
+  await act(async () => finish(json(profile())));
+  await waitFor(() =>
+    expect((screen.getByRole("button", { name: "현재 가격표로" }) as HTMLButtonElement).disabled).toBe(false),
+  );
+  expect(document.activeElement).toBe(moved);
+});
+
+function browserBackView() {
+  return render(
+    <MemoryRouter initialEntries={["/owner/price-list/versions"]}>
+      <Back />
+      <Routes>
+        <Route path="/owner/*" element={<OwnerArea />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+it("브라우저 뒤로 목록 복귀도 고른 버전에 초점을 돌린다", async () => {
+  browserBackView();
+  const chosen = await screen.findByRole("link", { name: /버전 3\b/ });
+  chosen.focus();
+  fireEvent.click(chosen);
+  await screen.findByRole("heading", { name: "버전 3 (고른 버전)" });
+  const back = screen.getByRole("button", { name: "시험에서 뒤로" });
+  back.focus();
+  fireEvent.click(back);
+  await waitFor(() => expect(document.activeElement).toBe(chosen));
+  expect(calls.filter((call) => call.path === "/api/owner/price-list/versions")).toHaveLength(1);
+});
+it("브라우저 목록 복귀 재확인 중 옮긴 초점은 보존한다", async () => {
+  const transport = fetch;
+  let ownerReads = 0;
+  let finish!: (response: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/owner/me" && ++ownerReads === 3) {
+        calls.push({ path: String(input), method: "GET" });
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      }
+      return transport(input, init);
+    }),
+  );
+  browserBackView();
+  fireEvent.click(await screen.findByRole("link", { name: /버전 3\b/ }));
+  await screen.findByRole("heading", { name: "버전 3 (고른 버전)" });
+  const back = screen.getByRole("button", { name: "시험에서 뒤로" });
+  back.focus();
+  fireEvent.click(back);
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  const moved = screen.getByRole("link", { name: "뒤로" });
+  moved.focus();
+  await act(async () => finish(json(profile())));
+  await waitFor(() =>
+    expect((screen.getByRole("button", { name: "현재 가격표로" }) as HTMLButtonElement).disabled).toBe(false),
+  );
+  expect(document.activeElement).toBe(moved);
+});
+
+it.each(["버전 목록으로", "뒤로"])("넓은 상세의 %s 복귀도 고른 링크로 초점을 돌린다", async (action) => {
+  wideScreen();
+  ownerView();
+  await screen.findByRole("heading", { name: "버전 4 (고른 버전)" });
+  const chosen = await screen.findByRole("link", { name: /버전 3\b/ });
+  fireEvent.click(chosen);
+  await screen.findByRole("heading", { name: "버전 3 (고른 버전)" });
+  const back = screen.getByRole(action === "뒤로" ? "link" : "button", { name: action });
+  back.focus();
+  fireEvent.click(back);
+  await waitFor(() => expect(document.activeElement).toBe(chosen));
+  expect(calls.filter((call) => call.path === "/api/owner/price-list/versions")).toHaveLength(1);
+});
+it("넓은 직접 옛 버전의 목록 복귀는 첫 목록에 없으면 목록 영역으로 초점을 돌린다", async () => {
+  wideScreen();
+  const base = items.items[0];
+  items.items = Array.from({ length: 1000 }, (_, index) => ({
+    ...base,
+    version: 1000 - index,
+    supersededAt: index ? base.createdAt : null,
+  }));
+  ownerView("/owner/price-list/versions/1");
+  await screen.findByRole("heading", { name: "버전 1 (고른 버전)" });
+  const back = screen.getByRole("button", { name: "버전 목록으로" });
+  back.focus();
+  fireEvent.click(back);
+  await screen.findByRole("heading", { name: "버전 1000 (고른 버전)" });
+  const list = screen.getByRole("region", { name: "가격표 버전 목록" });
+  await waitFor(() => expect(document.activeElement).toBe(list));
+  expect(within(list).queryByRole("link", { name: /버전 1\b/ })).toBeNull();
+  expect(calls.filter((call) => call.path === "/api/owner/price-list/versions")).toHaveLength(1);
+});
+it("넓은 목록 복귀의 신원 재확인 중 옮긴 초점은 보존한다", async () => {
+  wideScreen();
+  const transport = fetch;
+  let ownerReads = 0;
+  let finish!: (response: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/owner/me" && ++ownerReads === 3) {
+        calls.push({ path: String(input), method: "GET" });
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      }
+      return transport(input, init);
+    }),
+  );
+  browserBackView();
+  await screen.findByRole("heading", { name: "버전 4 (고른 버전)" });
+  fireEvent.click(await screen.findByRole("link", { name: /버전 3\b/ }));
+  await screen.findByRole("heading", { name: "버전 3 (고른 버전)" });
+  const back = screen.getByRole("button", { name: "버전 목록으로" });
+  back.focus();
+  fireEvent.click(back);
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  const moved = screen.getByRole("button", { name: "시험에서 뒤로" });
+  moved.focus();
+  await act(async () => finish(json(profile())));
+  await waitFor(() =>
+    expect((screen.getByRole("button", { name: "현재 가격표로" }) as HTMLButtonElement).disabled).toBe(false),
+  );
+  expect(document.activeElement).toBe(moved);
+});

@@ -1,0 +1,666 @@
+{
+  "원본": {
+    "제품": "c6e0639fe92b236125a1c6e9099e5e03c40b44c4",
+    "ZIP": "qa050-history-v5-20261124.zip",
+    "바이트": 9059677,
+    "파일수": 763,
+    "SHA256": "349b36def84a9b5dba2cb3deca73a15034b633109908e5b8a57189b4033f4e49",
+    "파일대조": true
+  },
+  "관찰기자체시험": {
+    "값": {
+      "consoleErrors": 1,
+      "pageErrors": 1,
+      "unhandledRejections": 1,
+      "expectedImageErrors": 1,
+      "unexpectedResourceErrors": 0
+    },
+    "제품합산제외": true,
+    "전체DevTools구독": false
+  },
+  "검증": [
+    {
+      "범위": "normal 실제BrowserBack",
+      "너비": 360,
+      "관측시각": "2026-11-24T20:12:33.565Z",
+      "후속": {
+        "시각": "2026-11-24T20:12:33.569Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "A",
+        "이름": "버전 3저장 시각 2026-11-12 10:40바뀐 시각 2026-11-12 11:10",
+        "QA": false
+      },
+      "선택링크동일": true,
+      "초기측정은CLI대기실패로미수집": true,
+      "검사": {
+        "원문": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "truncated": false,
+          "issues": []
+        },
+        "가로넘침": false,
+        "글꼴상태": "loaded",
+        "실효44추가읽기": []
+      }
+    },
+    {
+      "범위": "maximum 직접old1 UIBack 목록영역",
+      "너비": 360,
+      "시작": {
+        "시각": "2026-11-24T20:12:35.257Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "BODY",
+        "이름": null,
+        "QA": false
+      },
+      "v1표시": true,
+      "직후": {
+        "시각": "2026-11-24T20:12:36.869Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "SECTION",
+        "이름": "가격표 버전 목록",
+        "QA": false
+      },
+      "후속": {
+        "시각": "2026-11-24T20:12:37.377Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "SECTION",
+        "이름": "가격표 버전 목록",
+        "QA": false
+      },
+      "목록영역동일": true,
+      "검사": {
+        "원문": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "truncated": false,
+          "issues": []
+        },
+        "가로넘침": false,
+        "글꼴상태": "loaded",
+        "실효44추가읽기": []
+      }
+    },
+    {
+      "범위": "maximum-slow 4.5초 재확인중 실제키보드 초점보존",
+      "너비": 360,
+      "상세준비": true,
+      "대기시작": {
+        "시각": "2026-11-24T20:13:16.744Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "BODY",
+        "이름": null,
+        "QA": false
+      },
+      "재조회중": true,
+      "키": [
+        "Tab"
+      ],
+      "사용자이동": {
+        "시각": "2026-11-24T20:13:16.814Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "SELECT",
+        "이름": "시험 상태",
+        "QA": true
+      },
+      "완료후": {
+        "시각": "2026-11-24T20:13:21.661Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "SELECT",
+        "이름": "시험 상태",
+        "QA": true
+      },
+      "초점보존": true,
+      "검사": {
+        "원문": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "truncated": false,
+          "issues": []
+        },
+        "가로넘침": false,
+        "글꼴상태": "loaded",
+        "실효44추가읽기": []
+      }
+    },
+    {
+      "범위": "normal 실제BrowserBack",
+      "너비": 1280,
+      "시작": {
+        "시각": "2026-11-24T20:14:18.821Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "SELECT",
+        "이름": "시험 상태",
+        "QA": true
+      },
+      "상세준비": true,
+      "상세방문이력수": 6,
+      "직후": {
+        "시각": "2026-11-24T20:14:49.831Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "SELECT",
+        "이름": "시험 상태",
+        "QA": true
+      },
+      "후속": {
+        "시각": "2026-11-24T20:14:50.336Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "SELECT",
+        "이름": "시험 상태",
+        "QA": true
+      },
+      "선택링크동일": false,
+      "검사": {
+        "원문": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "truncated": false,
+          "issues": []
+        },
+        "가로넘침": false,
+        "글꼴상태": "loaded",
+        "실효44추가읽기": []
+      }
+    },
+    {
+      "범위": "maximum 직접old1 UIBack 목록영역",
+      "너비": 1280,
+      "시작": {
+        "시각": "2026-11-24T20:14:51.381Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "BODY",
+        "이름": null,
+        "QA": false
+      },
+      "v1표시": true,
+      "직후": {
+        "시각": "2026-11-24T20:14:53.074Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "BODY",
+        "이름": null,
+        "QA": false
+      },
+      "후속": {
+        "시각": "2026-11-24T20:14:53.599Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "BODY",
+        "이름": null,
+        "QA": false
+      },
+      "목록영역동일": false,
+      "검사": {
+        "원문": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "truncated": false,
+          "issues": []
+        },
+        "가로넘침": false,
+        "글꼴상태": "loaded",
+        "실효44추가읽기": []
+      }
+    },
+    {
+      "범위": "maximum-slow 4.5초 재확인중 실제키보드 초점보존",
+      "너비": 1280,
+      "상세준비": true,
+      "대기시작": {
+        "시각": "2026-11-24T20:15:33.167Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "BODY",
+        "이름": null,
+        "QA": false
+      },
+      "재조회중": true,
+      "키": [
+        "Tab"
+      ],
+      "사용자이동": {
+        "시각": "2026-11-24T20:15:33.182Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "SELECT",
+        "이름": "시험 상태",
+        "QA": true
+      },
+      "완료후": {
+        "시각": "2026-11-24T20:15:38.018Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "SELECT",
+        "이름": "시험 상태",
+        "QA": true
+      },
+      "초점보존": true,
+      "검사": {
+        "원문": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "truncated": false,
+          "issues": []
+        },
+        "가로넘침": false,
+        "글꼴상태": "loaded",
+        "실효44추가읽기": []
+      }
+    },
+    {
+      "범위": "1280 실제키보드 대조 Back",
+      "너비": 1280,
+      "키로링크도달": true,
+      "이동전초점": {
+        "시각": "2026-11-24T20:17:07.437Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "A",
+        "이름": "버전 3저장 시각 2026-11-12 10:40바뀐 시각 2026-11-12 11:10",
+        "QA": false
+      },
+      "후속": {
+        "시각": "2026-11-24T20:17:08.227Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "A",
+        "이름": "버전 3저장 시각 2026-11-12 10:40바뀐 시각 2026-11-12 11:10",
+        "QA": false
+      },
+      "선택링크동일": true
+    },
+    {
+      "범위": "1280 실제키보드 대조 직접old UIBack",
+      "너비": 1280,
+      "키로old도달": true,
+      "키로UIBack도달": true,
+      "이동전초점": {
+        "시각": "2026-11-24T20:17:09.369Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "BUTTON",
+        "이름": "버전 목록으로",
+        "QA": false
+      },
+      "후속": {
+        "시각": "2026-11-24T20:17:09.945Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "BODY",
+        "이름": null,
+        "QA": false
+      },
+      "목록영역동일": false
+    }
+  ],
+  "사진": [
+    {
+      "파일명": "qa050-v5-focus-360.png",
+      "상대파일": "task050-v5-preserved/qa050-v5-focus-360.png",
+      "너비": 360,
+      "PNG폭": 360,
+      "PNG높이": 420,
+      "바이트": 13460,
+      "직접확인": true,
+      "시도": 2,
+      "직접확인내용": "해당폭 목록/상세 일부. 첫viewport 실패 뒤420px 원본클립 보존",
+      "SHA256": "d795a3f47a0ccb406b1fccaa65806c6ac6e15d0c8fa73c0dc7860b956e4050d7",
+      "복사時刻": "2026-11-25T05:19:21.3169581+09:00",
+      "CLI생존복사ACK": true,
+      "CLI종료후바이트SHA검증": true
+    },
+    {
+      "파일명": "qa050-v5-focus-1280.png",
+      "상대파일": "task050-v5-preserved/qa050-v5-focus-1280.png",
+      "너비": 1280,
+      "PNG폭": 1280,
+      "PNG높이": 420,
+      "바이트": 31270,
+      "직접확인": true,
+      "시도": 2,
+      "직접확인내용": "해당폭 목록/상세 일부. 첫viewport 실패 뒤420px 원본클립 보존",
+      "SHA256": "fc068d36bf323018cd8713a0b59542cb7731d36cac7af3d2ff69dfc485e877f9",
+      "복사時刻": "2026-11-25T05:19:21.3306922+09:00",
+      "CLI생존복사ACK": true,
+      "CLI종료후바이트SHA검증": true
+    }
+  ],
+  "실패": [
+    {
+      "범위": "maximum 직접old1 UIBack",
+      "너비": 1280,
+      "selector": "[role=region] 가격표 버전 목록",
+      "입력": "실제 Tab/Enter",
+      "이동전초점": {
+        "시각": "2026-11-24T20:17:09.369Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "BUTTON",
+        "이름": "버전 목록으로",
+        "QA": false
+      },
+      "후속": {
+        "시각": "2026-11-24T20:17:09.945Z",
+        "hasFocus": true,
+        "visibilityState": "visible",
+        "태그": "BODY",
+        "이름": null,
+        "QA": false
+      },
+      "목록영역동일": false,
+      "조건": "최초목록20밖 v1 직접주소 → UIBack 후500ms",
+      "코드수정없음": true
+    }
+  ],
+  "미확인": [
+    {
+      "항목": "역사적미등록사진",
+      "너비": 360,
+      "원문실패보존": true,
+      "재시도0": true
+    },
+    {
+      "항목": "역사적미등록사진",
+      "너비": 1280,
+      "원문실패보존": true,
+      "재시도0": true
+    },
+    {
+      "항목": "역사적첫capture예외원문미수집",
+      "보존": true
+    }
+  ],
+  "관찰한계": [
+    {
+      "종류": "실제BrowserBack 제어대기",
+      "너비": 360,
+      "원문": "Error: Timed out waiting for navigation",
+      "실제이동은수락됨": true,
+      "재호출안함": true
+    },
+    {
+      "종류": "capture",
+      "너비": 360,
+      "시도": 1,
+      "원문": "page.screenshot: browser CDP command timed out while capturing clipped screenshot before the default screenshot timeout completed"
+    },
+    {
+      "종류": "실제BrowserBack 제어대기",
+      "너비": 1280,
+      "원문": "Timed out waiting for navigation",
+      "실제상태는후속snapshot으로확인": true
+    },
+    {
+      "종류": "capture",
+      "너비": 1280,
+      "시도": 1,
+      "원문": "page.screenshot: browser CDP command timed out while capturing clipped screenshot before the default screenshot timeout completed"
+    }
+  ],
+  "스냅샷API관측": [
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 0,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 2,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 3,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 0,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 0,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 0,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 2,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 2,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 2,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 0,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 0,
+      "신원": 2,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 3,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 2,
+      "신원": 2,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 3,
+      "신원": 3,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 2,
+      "신원": 2,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 2,
+      "신원": 2,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 2,
+      "신원": 2,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 2,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 2,
+      "신원": 3,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 3,
+      "신원": 3,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    },
+    {
+      "목록": 1,
+      "상세": 1,
+      "신원": 1,
+      "개별시각미기록": true
+    }
+  ],
+  "문서별관찰누적": [
+    {
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "unhandledRejections": 0,
+      "expectedImageErrors": 0,
+      "unexpectedResourceErrors": 0
+    },
+    {
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "unhandledRejections": 0,
+      "expectedImageErrors": 0,
+      "unexpectedResourceErrors": 0
+    },
+    {
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "unhandledRejections": 0,
+      "expectedImageErrors": 0,
+      "unexpectedResourceErrors": 0
+    },
+    {
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "unhandledRejections": 0,
+      "expectedImageErrors": 0,
+      "unexpectedResourceErrors": 0
+    }
+  ],
+  "관찰누적합계": {
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "unhandledRejections": 0,
+    "expectedImageErrors": 0,
+    "unexpectedResourceErrors": 0
+  },
+  "마감시각": "2026-11-24T20:19:04.452Z",
+  "부작용": {
+    "실제서비스읽기": 0,
+    "실제서비스쓰기": 0,
+    "카카오": 0,
+    "모델": 0,
+    "메일": 0,
+    "결제": 0,
+    "로그아웃": 0
+  },
+  "종료검증": {
+    "CLI코드": 0,
+    "사진2검증": true,
+    "자기서버포트부재": true,
+    "時刻": "2026-11-24T20:20:25.9670469+00:00",
+    "다른서버변경0": true
+  }
+}
