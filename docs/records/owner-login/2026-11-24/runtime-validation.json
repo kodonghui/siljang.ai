@@ -1,0 +1,45 @@
+{
+  "localFull": {
+    "base": "087367ec6303f27a82514e814ac47bb088b86f5b",
+    "sourceCommit": "51763bd77363924611e8c279d6bed245d4592d2e",
+    "freshDatabase": true,
+    "migrations": 37,
+    "server": {
+      "files": 123,
+      "tests": 2510
+    },
+    "web": {
+      "files": 65,
+      "tests": 1570
+    },
+    "build": {
+      "vite": "759ms",
+      "workers": 2
+    },
+    "testsExit": 0,
+    "buildExit": 0
+  },
+  "mainRebase": {
+    "base": "f6edb6d8745ce28df35fefc66d090961064ea3dc",
+    "commit": "6e5b1f4",
+    "related": {
+      "files": 2,
+      "tests": 46
+    },
+    "typecheckExit": 0,
+    "sameOwnerProductFilesAsFullSource": true,
+    "integratedFullChecks": "current PR CI required before merge"
+  },
+  "runtimeProbe": {
+    "compatibilityDate": "2026-11-01",
+    "wrangler": "4.158.0",
+    "before": "unavailable",
+    "after": "rejected",
+    "externalProviderCalls": 0
+  },
+  "runtimeUnverified": [
+    "actual_owner_login_200",
+    "actual_owner_me_200",
+    "actual_logout_then_401"
+  ]
+}

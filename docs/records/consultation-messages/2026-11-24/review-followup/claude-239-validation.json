@@ -1,0 +1,56 @@
+{
+  "base": "087367ec6303f27a82514e814ac47bb088b86f5b",
+  "claudeReview": 7128535900,
+  "sourceCommit": "38608492c4b56dd3f14c6a2ab4cecc9f0954ddf0",
+  "publicSource": "28f4f2027d80069108957593df59dfee3d2fc3b1",
+  "tree": "ae630992af9941467ed15d7fa3cde73a9c6ca6ff",
+  "freshDatabase": true,
+  "migrations": 38,
+  "server": {
+    "files": 125,
+    "tests": 2535
+  },
+  "web": {
+    "files": 65,
+    "tests": 1570
+  },
+  "build": {
+    "vite": "650ms",
+    "workers": 2
+  },
+  "exit": {
+    "tests": 0,
+    "build": 0,
+    "typecheck": 0,
+    "lint": 0
+  },
+  "targeted": {
+    "files": 5,
+    "tests": 120
+  },
+  "erdCompare": {
+    "ddlChars": 149151,
+    "schemaOnly": 0,
+    "editorOnly": 0
+  },
+  "findings": {
+    "changed": [
+      2,
+      4,
+      5
+    ],
+    "verifiedExistingSettingsGuard": [
+      3
+    ],
+    "retainedLimitations": [
+      1,
+      6
+    ]
+  },
+  "runtimeUnverified": [
+    "staging_migrations_0037_0038",
+    "staging_runtime_grants",
+    "owner_account_api043",
+    "signed_photo_urls"
+  ]
+}

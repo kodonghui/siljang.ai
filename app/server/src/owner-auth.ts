@@ -28,7 +28,7 @@ export function kakaoOwnerAuth(
     try {
       const response = await send(url, {
         ...init,
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(options.timeoutMs ?? 5000),
       });
       if (!response.ok) {

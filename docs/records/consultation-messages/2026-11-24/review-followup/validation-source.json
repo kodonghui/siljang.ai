@@ -1,0 +1,42 @@
+{
+  "base": "ec9b3222b651f39c8203e5f3b0ab813774b7a2d6",
+  "review": {
+    "pr": 237,
+    "comment": 7126797748
+  },
+  "failedFullSource": "68fd5c502d6248495382bfb9a876618635eb5601",
+  "sourceCommit": "7a6a75f4ab7208f7cb1be350d1c16a165e613d06",
+  "publicSource": "7455fd1e74276cc66de5910f0a7f77a48377588a",
+  "tree": "4413a018331946521ab80d0d8cc25a707cb213fd",
+  "freshDatabase": true,
+  "migrations": 38,
+  "server": {
+    "files": 125,
+    "tests": 2534
+  },
+  "web": {
+    "files": 65,
+    "tests": 1570
+  },
+  "build": {
+    "vite": "1.12s",
+    "workers": 2
+  },
+  "exit": {
+    "tests": 0,
+    "build": 0,
+    "typecheck": 0,
+    "lint": 0
+  },
+  "targeted": {
+    "cursorAndMigration": 130,
+    "remask": 98
+  },
+  "runtimeUnverified": [
+    "staging_migrations_0037_0038",
+    "staging_runtime_grants",
+    "owner_account_api043",
+    "signed_photo_urls"
+  ],
+  "externalCalls": 0
+}
