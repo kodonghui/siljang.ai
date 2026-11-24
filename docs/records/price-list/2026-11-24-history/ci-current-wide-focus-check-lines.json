@@ -1,0 +1,65 @@
+{
+  "scope": "직접 공개 PR head CI 결과 줄. 로컬 전용 식별자나 실제 화면 성공의 근거가 아님",
+  "head": "42b622e40605a7f9561dd9a7d0825887aeed525e",
+  "appRun": 45484312446,
+  "dbRun": 45484312482,
+  "checkJob": 138765473203,
+  "windowsJob": 138765473590,
+  "pg16Job": 138765474607,
+  "pg17Job": 138765474191,
+  "results": [
+    "2026-11-24T20:47:13.6699838Z added 161 packages in 5s",
+    "2026-11-24T20:47:14.4361129Z Checked 529 files in 618ms. No fixes applied.",
+    "2026-11-24T20:49:26.0814261Z  Test Files  134 passed (134)",
+    "2026-11-24T20:49:26.0824957Z       Tests  2676 passed (2676)",
+    "2026-11-24T20:49:57.9259522Z  Test Files  67 passed (67)",
+    "2026-11-24T20:49:57.9269918Z       Tests  1626 passed (1626)",
+    "2026-11-24T20:49:59.1916852Z ✓ built in 355ms",
+    "2026-11-24T20:50:00.8477317Z Total Upload: 5337.61 KiB / gzip: 984.55 KiB",
+    "2026-11-24T20:50:00.8920590Z --dry-run: exiting now.",
+    "2026-11-24T20:50:01.7114805Z Total Upload: 20.87 KiB / gzip: 6.47 KiB",
+    "2026-11-24T20:50:01.7131230Z --dry-run: exiting now."
+  ],
+  "statusStage": {
+    "command": "bash tools/stage-checks.sh task050-impl-status --no-api --no-browser",
+    "startKst": "2026-11-25 05:56:19",
+    "endKst": "2026-11-25 05:56:47",
+    "commandExit": 0,
+    "prdProblems": 0,
+    "flowProblems": 0,
+    "specErrors": 0,
+    "erd": {
+      "pass": 15,
+      "fail": 0,
+      "unverified": 0
+    },
+    "api": "skipped --no-api",
+    "sitemap": {
+      "pass": 17,
+      "fail": 0,
+      "unverified": 0
+    },
+    "screens": {
+      "pass": 15,
+      "fail": 0,
+      "unverified": 0
+    },
+    "mockup": {
+      "pass": 13,
+      "fail": 0,
+      "unverified": 1,
+      "browser": "skipped --no-browser; not a page-check pass"
+    },
+    "wbs": {
+      "checks": 18,
+      "errors": 0
+    },
+    "proposalCounts": {
+      "finished": 36,
+      "implemented": 30,
+      "eligible": 32,
+      "allDependencyReady": 36
+    },
+    "sourceScope": "제품은0d06786과같으며이실행은커밋전구현완료행/기록변경을포함한다"
+  }
+}

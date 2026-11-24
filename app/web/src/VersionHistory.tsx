@@ -1,9 +1,10 @@
-import { type ComponentType, useCallback, useEffect, useRef, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ApiFailure, ApiResult } from "./api";
 import { formatSeoulDateTime } from "./format-date";
 import { classify } from "./problems";
 import type { ShopLicenseProps } from "./ShopLicense";
 import { Banner, Button, EmptyState, LoadFailure, OwnerLayout, Skeleton } from "./ui";
+import { focusReady } from "./ui/useFocusRequest";
 import { parseVersion, type VersionList } from "./version-history-api";
 import "./version-history.css";
 
@@ -49,10 +50,13 @@ export function VersionHistory<T>(props: VersionHistoryProps<T>) {
     [detail, setDetail] = useState<{ key: string; read: Read<T> } | null>(null),
     [shown, setShown] = useState(20);
   const listCompleted = useRef(false),
+    previousVersion = useRef<string | null>(null),
     readyVersion = useRef<string | null>(null);
   const listRequest = useRef<AbortController | null>(null),
     detailRequest = useRef<AbortController | null>(null),
     permission = useRef(false),
+    listRegion = useRef<HTMLElement | null>(null),
+    returnFocus = useRef<{ version: string; origin: Element | null } | null>(null),
     more = useRef<HTMLDivElement | null>(null);
   const wide = useWide(),
     explicit = props.version !== null && props.version !== undefined;
@@ -161,8 +165,39 @@ export function VersionHistory<T>(props: VersionHistoryProps<T>) {
     observer.observe(element);
     return () => observer.disconnect();
   }, [locked, shown, total]);
+  useLayoutEffect(() => {
+    const previous = previousVersion.current;
+    previousVersion.current = explicit ? selected : null;
+    if (explicit) {
+      returnFocus.current = null;
+      return;
+    }
+    if (previous !== null && returnFocus.current === null)
+      returnFocus.current = { version: previous, origin: document.activeElement };
+  }, [explicit, selected]);
+  useLayoutEffect(() => {
+    const request = returnFocus.current;
+    if (!request) return;
+    if (props.sessionFailed) {
+      returnFocus.current = null;
+      return;
+    }
+    if (explicit || locked) return;
+    returnFocus.current = null;
+    const active = document.activeElement;
+    if (active && active !== document.body && active !== request.origin) return;
+    const target = Array.from(listRegion.current?.querySelectorAll<HTMLAnchorElement>("a[href]") ?? []).find(
+      (link) => link.getAttribute("href") === `${config.path}/versions/${request.version}`,
+    );
+    if (!focusReady(target)) focusReady(listRegion.current);
+  }, [explicit, locked, props.sessionFailed, config.path]);
   const navigate = (path: string) => {
-    if (!locked) props.onNavigate(path);
+    if (locked) return;
+    returnFocus.current =
+      explicit && selected !== null && path === `${config.path}/versions`
+        ? { version: selected, origin: document.activeElement }
+        : null;
+    props.onNavigate(path);
   };
   const failure = (value: ApiFailure, retry: () => void) => (
     <LoadFailure
@@ -213,6 +248,8 @@ export function VersionHistory<T>(props: VersionHistoryProps<T>) {
           <section
             className={`version-history__versions ${explicit && !wide ? "ui-wide-only" : ""}`}
             aria-label={`${config.name} 버전 목록`}
+            ref={listRegion}
+            tabIndex={-1}
           >
             {list.kind === "loading" ? (
               <Skeleton rows={4} label={`${config.name} 버전 목록을 불러오고 있어요`} />

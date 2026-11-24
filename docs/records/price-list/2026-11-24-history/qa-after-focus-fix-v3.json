@@ -1,0 +1,998 @@
+{
+  "원본": {
+    "제품": "e62bb12d309647aff3efa3ff465195dc2ae92a3c",
+    "ZIP": "siljang-qa050-history-v3-20261124.zip",
+    "ZIP바이트": 9061206,
+    "ZIP파일수": 763,
+    "ZIP_SHA256": "1307ea785a7da3c2f0219359f0df520f5050c06d5798bab43c6cf8b7db9b56cf",
+    "추출대조": true
+  },
+  "원문대조": {
+    "기존JSON_SHA256": "b1a06963d6e98d1c9b406d24c5537985833b871a7828f87a8b381bf40c3239ec",
+    "기존검사30유지": true,
+    "기존사진6유지": true,
+    "기존합성불일치2유지": true,
+    "기존BODY초점1유지": true,
+    "v2미실행": true,
+    "새실제서비스읽기불필요및미실행": true,
+    "변경범위": "공통 VersionHistory 초점 보정, 전체22상태 반복안함"
+  },
+  "관찰기자체시험": {
+    "consoleErrors": 1,
+    "pageErrors": 1,
+    "unhandledRejections": 1,
+    "expectedImageErrors": 1,
+    "unexpectedResourceErrors": 0
+  },
+  "검증": [
+    {
+      "상태": "normal",
+      "너비": 360,
+      "종류": "목록기본",
+      "관측시각": "2026-11-24T18:07:51.972Z",
+      "API": {
+        "목록": 1,
+        "상세": 0
+      },
+      "관찰기": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "측정": {
+        "pageCheck": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "truncated": false,
+          "issues": []
+        },
+        "실제폭": 360,
+        "가로넘침": false,
+        "터치44미달": []
+      }
+    },
+    {
+      "상태": "normal",
+      "너비": 360,
+      "종류": "버전 목록으로",
+      "선택버전": 3,
+      "시작시각": "2026-11-24T18:07:52.177Z",
+      "API전": {
+        "목록": 1,
+        "상세": 0
+      },
+      "상세제목": "버전 3 (고른 버전)",
+      "상세중브라우저history": {
+        "길이": 1,
+        "경로": "/"
+      },
+      "선택링크초점": true,
+      "안정초점": {
+        "태그": "A",
+        "qa제어": false,
+        "초점표시": true
+      },
+      "API후": {
+        "목록": 1,
+        "상세": 1
+      },
+      "관찰기": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "측정": {
+        "pageCheck": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "truncated": false,
+          "issues": []
+        },
+        "실제폭": 360,
+        "가로넘침": false,
+        "터치44미달": []
+      }
+    },
+    {
+      "상태": "normal",
+      "너비": 360,
+      "종류": "뒤로",
+      "선택버전": 3,
+      "시작시각": "2026-11-24T18:08:20.805Z",
+      "API전": {
+        "목록": 1,
+        "상세": 1
+      },
+      "상세제목": "버전 3 (고른 버전)",
+      "상세중브라우저history": {
+        "길이": 1,
+        "경로": "/"
+      },
+      "선택링크초점": true,
+      "안정초점": {
+        "태그": "A",
+        "qa제어": false,
+        "초점표시": true
+      },
+      "API후": {
+        "목록": 1,
+        "상세": 2
+      },
+      "관찰기": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "측정": {
+        "pageCheck": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "truncated": false,
+          "issues": []
+        },
+        "실제폭": 360,
+        "가로넘침": false,
+        "터치44미달": []
+      }
+    },
+    {
+      "상태": "normal",
+      "너비": 360,
+      "종류": "재확인중 QA초점 보존",
+      "시작시각": "2026-11-24T18:11:57.227Z",
+      "API전": {
+        "목록": 1,
+        "상세": 2
+      },
+      "화면pending전": true,
+      "이동직후": {
+        "태그": "SELECT",
+        "qa제어": true,
+        "초점표시": true
+      },
+      "완료시각": "2026-11-24T18:12:00.258Z",
+      "화면pending후": false,
+      "완료초점": {
+        "태그": "SELECT",
+        "qa제어": true,
+        "초점표시": true
+      },
+      "QA초점유지": true,
+      "API후": {
+        "목록": 1,
+        "상세": 3
+      },
+      "실제pending을걸친검증": true,
+      "목록복귀는미실행": true,
+      "분류": "상세 읽기 pending 중 QA초점 보존의 부분 관측",
+      "요청한복귀재확인완전검증아님": true
+    },
+    {
+      "상태": "not-registered",
+      "너비": 360,
+      "관측시각": "2026-11-24T18:12:01.365Z",
+      "제목": [
+        "가게 등록"
+      ],
+      "폼수": 1,
+      "준비중": false,
+      "관찰기": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "측정": {
+        "pageCheck": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 1
+          },
+          "truncated": false,
+          "issues": [
+            {
+              "level": "info",
+              "check": "target-goal",
+              "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+              "where": ""
+            }
+          ]
+        },
+        "실제폭": 360,
+        "가로넘침": false,
+        "터치44미달": [],
+        "첫label만본44측정": [
+          {
+            "요소": "INPUT",
+            "종류": "checkbox"
+          }
+        ],
+        "실효44": [
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 287,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "tel",
+            "영역": [
+              {
+                "폭": 287,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "email",
+            "영역": [
+              {
+                "폭": 287,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 287,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 287,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 287,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 287,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 287,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 287,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "radio",
+            "영역": [
+              {
+                "폭": 13,
+                "높이": 13
+              },
+              {
+                "폭": 313,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "radio",
+            "영역": [
+              {
+                "폭": 13,
+                "높이": 13
+              },
+              {
+                "폭": 313,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "file",
+            "영역": [
+              {
+                "폭": 313,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "SUMMARY",
+            "종류": null,
+            "영역": [
+              {
+                "폭": 287,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "checkbox",
+            "영역": [
+              {
+                "폭": 13,
+                "높이": 13
+              },
+              {
+                "폭": 313,
+                "높이": 23.25
+              },
+              {
+                "폭": 313,
+                "높이": 46.5
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "BUTTON",
+            "종류": "submit",
+            "영역": [
+              {
+                "폭": 217.46875,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "BUTTON",
+            "종류": "button",
+            "영역": [
+              {
+                "폭": 87.53125,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          }
+        ]
+      },
+      "등록폼전환": true,
+      "최초추가측정": {
+        "pageCheck": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 1
+          },
+          "truncated": false,
+          "issues": [
+            {
+              "level": "info",
+              "check": "target-goal",
+              "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+              "where": ""
+            }
+          ]
+        },
+        "실제폭": 360,
+        "가로넘침": false,
+        "터치44미달": [
+          {
+            "요소": "INPUT",
+            "종류": "checkbox"
+          }
+        ]
+      }
+    },
+    {
+      "상태": "normal",
+      "너비": 1280,
+      "종류": "넓은기본",
+      "시각": "2026-11-24T18:16:37.283Z",
+      "API": {
+        "목록": 1,
+        "상세": 1
+      },
+      "관찰기": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "측정": {
+        "pageCheck": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 0
+          },
+          "truncated": false,
+          "issues": []
+        },
+        "실제폭": 1280,
+        "가로넘침": false,
+        "터치44미달": [],
+        "첫label만본44측정": [],
+        "실효44": [
+          {
+            "요소": "A",
+            "종류": null,
+            "영역": [
+              {
+                "폭": 44,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "BUTTON",
+            "종류": "button",
+            "영역": [
+              {
+                "폭": 117.828125,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "BUTTON",
+            "종류": "button",
+            "영역": [
+              {
+                "폭": 87.53125,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "A",
+            "종류": null,
+            "영역": [
+              {
+                "폭": 336,
+                "높이": 73.390625
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "A",
+            "종류": null,
+            "영역": [
+              {
+                "폭": 336,
+                "높이": 97.53125
+              }
+            ],
+            "통과": true
+          }
+        ]
+      }
+    },
+    {
+      "상태": "not-registered",
+      "너비": 1280,
+      "관측시각": "2026-11-24T18:16:38.170Z",
+      "제목": [
+        "가게 등록"
+      ],
+      "폼수": 1,
+      "준비중": false,
+      "관찰기": {
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "unhandledRejections": 0,
+        "expectedImageErrors": 0,
+        "unexpectedResourceErrors": 0
+      },
+      "측정": {
+        "pageCheck": {
+          "counts": {
+            "error": 0,
+            "warn": 0,
+            "info": 1
+          },
+          "truncated": false,
+          "issues": [
+            {
+              "level": "info",
+              "check": "target-goal",
+              "msg": "3 targets smaller than 44px (the iOS 44pt and Android 48dp goals)",
+              "where": ""
+            }
+          ]
+        },
+        "실제폭": 1280,
+        "가로넘침": false,
+        "터치44미달": [],
+        "첫label만본44측정": [
+          {
+            "요소": "INPUT",
+            "종류": "checkbox"
+          }
+        ],
+        "실효44": [
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 678,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "tel",
+            "영역": [
+              {
+                "폭": 678,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "email",
+            "영역": [
+              {
+                "폭": 678,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 678,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 678,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 678,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 678,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 678,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "text",
+            "영역": [
+              {
+                "폭": 678,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "radio",
+            "영역": [
+              {
+                "폭": 13,
+                "높이": 13
+              },
+              {
+                "폭": 704,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "radio",
+            "영역": [
+              {
+                "폭": 13,
+                "높이": 13
+              },
+              {
+                "폭": 704,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "file",
+            "영역": [
+              {
+                "폭": 704,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "SUMMARY",
+            "종류": null,
+            "영역": [
+              {
+                "폭": 678,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "INPUT",
+            "종류": "checkbox",
+            "영역": [
+              {
+                "폭": 13,
+                "높이": 13
+              },
+              {
+                "폭": 704,
+                "높이": 23.25
+              },
+              {
+                "폭": 704,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "BUTTON",
+            "종류": "submit",
+            "영역": [
+              {
+                "폭": 608.46875,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          },
+          {
+            "요소": "BUTTON",
+            "종류": "button",
+            "영역": [
+              {
+                "폭": 87.53125,
+                "높이": 44
+              }
+            ],
+            "통과": true
+          }
+        ]
+      },
+      "등록폼전환": true
+    }
+  ],
+  "사진": [
+    {
+      "파일명": "qa050-v3-selected-focus-360.png",
+      "상대파일": "task050-v3-preserved/qa050-v3-selected-focus-360.png",
+      "너비": 360,
+      "바이트": 16243,
+      "종류": "selected-focus",
+      "촬영시각": "2026-11-24T18:08:20.804Z",
+      "직접확인": true,
+      "PNG폭": 360,
+      "복사시각": "2026-11-24T18:24:27.5076724+00:00",
+      "복사해시일치": true,
+      "SHA256": "41396e43628ac0b42cd8f1c83c8fdb63dff8c3b1673f9c6a4fa8353f038fe421",
+      "지속폴더존재": true,
+      "PNG높이": 900,
+      "CLI생존중Parent복사ACK": true
+    }
+  ],
+  "실패": [],
+  "미확인": [
+    {
+      "항목": "기존 첫 캡처 예외 원문",
+      "종류": "역사적 관찰한계",
+      "원문미수집유지": true,
+      "새사진성공으로0으로바꾸지않음": true
+    },
+    {
+      "항목": "사진 not-registered-360",
+      "사유": "같은 목적2실패 뒤 해당 사진만 중단",
+      "상태": "[blocked]"
+    },
+    {
+      "항목": "사진 not-registered-1280",
+      "사유": "같은 목적2실패 뒤 해당 사진만 중단",
+      "상태": "[blocked]"
+    },
+    {
+      "항목": "실제 BrowserBack 목록복귀",
+      "사유": "[blocked] MemoryRouter fixture: browser history 1, detail route did not create browser entry",
+      "제품실패아님": true
+    },
+    {
+      "항목": "목록복귀 재확인중 사용자초점보존 완전검증",
+      "사유": "[blocked] 실제 목록재조회중 이동의 시간창 미관측",
+      "제품실패아님": true
+    },
+    {
+      "항목": "첫20개밖 직접옛주소 목록영역초점",
+      "사유": "[blocked] 원PID/포트소멸·정상SVG GET연결실패. 정적SPA폴백없음은코드읽기근거이며404실측아님",
+      "서버소멸원인미확인": true,
+      "제품실패아님": true
+    }
+  ],
+  "시작시각": "2026-11-24T18:04:41.903Z",
+  "관찰한계": [
+    {
+      "항목": "360 미등록 첫 캡처 제어",
+      "상태": "not-registered",
+      "너비": 360,
+      "시도": 1,
+      "발생시각": "미기록",
+      "기록시각": "2026-11-24T18:15:02.439Z",
+      "원문": "page.screenshot: browser CDP command timed out while capturing viewport screenshot before the default screenshot timeout completed",
+      "제품실패아님": true
+    },
+    {
+      "항목": "추가44px 판독 보정",
+      "원문": "checkbox input 13x13; labels 313x23.25 and registration-consent 313x46.5/min-height44",
+      "이유": "첫 label이 아닌 연결된 모든 label의 실제 클릭영역을 확인",
+      "pageCheck규칙변경없음": true,
+      "pageCheck원문info3유지": true
+    },
+    {
+      "항목": "캡처 제어",
+      "상태": "not-registered",
+      "너비": 360,
+      "시도": 2,
+      "시각": "2026-11-24T18:16:36.918Z",
+      "원문": "page.screenshot: browser CDP command timed out while capturing viewport screenshot before the default screenshot timeout completed",
+      "제품실패아님": true
+    },
+    {
+      "항목": "캡처 제어",
+      "상태": "not-registered",
+      "너비": 1280,
+      "시도": 1,
+      "시각": "2026-11-24T18:17:08.396Z",
+      "원문": "page.screenshot: browser CDP command timed out while capturing viewport screenshot before the default screenshot timeout completed",
+      "제품실패아님": true
+    },
+    {
+      "항목": "캡처 제어",
+      "상태": "not-registered",
+      "너비": 1280,
+      "시도": 2,
+      "시각": "2026-11-24T18:17:38.424Z",
+      "원문": "page.screenshot: browser CDP command timed out while capturing viewport screenshot before the default screenshot timeout completed",
+      "제품실패아님": true
+    },
+    {
+      "항목": "버전3 선택 role-regex 제어",
+      "원문": "Error: Role selector not found: role:link[name-regex=%5E%EB%B2%84%EC%A0%84%203%20]",
+      "제품실패아님": true,
+      "시각": "2026-11-24T18:53:21.420Z"
+    },
+    {
+      "항목": "직접old주소 진단 Node fetch",
+      "원문": "TypeError: fetch failed",
+      "시각": "2026-11-24T19:05:36.948Z",
+      "제품JS관찰기오류아님": true
+    }
+  ],
+  "중간정지": {
+    "시각": "2026-11-24T18:24:27.014Z",
+    "사유": "사용자 지시 TASK061V4 고침 집중검사 우선",
+    "완료범위": [
+      "360 두 UI 뒤로경로 버전3 링크초점",
+      "normal 두폭",
+      "not-registered 두폭 정상등록폼",
+      "실효44px 및 원문 page-check"
+    ],
+    "남은범위": [
+      "실제BrowserBack",
+      "첫20개 밖 직접옛주소 fallback",
+      "목록복귀 재확인중 사용자초점보존 완전검증"
+    ],
+    "새실제서비스읽기쓰기0": true,
+    "사진복사확인": true
+  },
+  "마지막관찰기": {
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "unhandledRejections": 0,
+    "expectedImageErrors": 0,
+    "unexpectedResourceErrors": 0
+  },
+  "브라우저BackProbe": {
+    "상태": "normal",
+    "너비": 360,
+    "시각": "2026-11-24T18:55:26.581Z",
+    "전": {
+      "이력수": 1,
+      "경로": "/"
+    },
+    "제어오류": [],
+    "goBack호출수락": true,
+    "후": {
+      "이력수": 1,
+      "경로": "/"
+    },
+    "상세잔류": true,
+    "판정": "[blocked] MemoryRouter fixture: browser history 1, detail route did not create browser entry"
+  },
+  "재확인사용자초점완전관측": {
+    "상태": "maximum",
+    "너비": 360,
+    "선택버전": 980,
+    "시작시각": "2026-11-24T19:00:54.981Z",
+    "이동전목록": {
+      "목록링크수": 40,
+      "대상링크존재": true,
+      "로딩문구": false,
+      "busy": null
+    },
+    "실제사용자이동직후QA초점": true,
+    "사용자이동시각": "2026-11-24T19:00:56.340Z",
+    "응답후목록": {
+      "목록링크수": 40,
+      "대상링크존재": true,
+      "로딩문구": false,
+      "busy": null
+    },
+    "완료시각": "2026-11-24T19:00:59.714Z",
+    "완료후QA초점": true,
+    "실제재조회중증거": false,
+    "판정": "[blocked] 실제 목록재조회중 이동의 시간창 미관측"
+  },
+  "최종원본문서관찰기": {
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "unhandledRejections": 0,
+    "expectedImageErrors": 0,
+    "unexpectedResourceErrors": 0
+  },
+  "서버소멸관찰": {
+    "기존PID존재": false,
+    "포트Listen": false,
+    "명령일치": false,
+    "정상SVG파일존재": true,
+    "시각": "2026-11-24T19:05:40.6413577+00:00",
+    "GET실패분류": "HttpRequestException",
+    "정상SVG_HTTP": null,
+    "포트PID일치": false,
+    "기존PID": 27104,
+    "기존포트": 54131,
+    "소멸원인": "미확인",
+    "재시작없음": true
+  },
+  "직접옛주소Probe": {
+    "상태": "maximum",
+    "너비": 360,
+    "옛버전": 980,
+    "첫20개밖": true,
+    "실제목록링크주소수집": true,
+    "주소기록없음": true,
+    "HTTP상태": null,
+    "Nodefetch원문": "TypeError: fetch failed",
+    "실제goto미실행": true,
+    "판정": "[blocked] 원PID/포트소멸·정상SVG GET연결실패. 정적SPA폴백없음은코드읽기근거이며404실측아님"
+  },
+  "최종관찰합계": {
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "unhandledRejections": 0,
+    "expectedImageErrors": 0,
+    "unexpectedResourceErrors": 0
+  },
+  "마감시각": "2026-11-24T19:07:42.822Z",
+  "실제서비스새읽기쓰기0": true
+}
