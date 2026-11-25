@@ -1,0 +1,58 @@
+{
+  "scope": "실제 생성 응답의 예금주/재사용 헤더·보류 조건과 관련 웹. 브라우저/실제 계좌 변경이 아님",
+  "review": {
+    "id": 7148229579,
+    "head": "5cf00a3322b63c09f802f98ab86ccc85eebc6d29",
+    "findings": [
+      "확인된 가게 예금주 제한 유지",
+      "Idempotency-Replayed 헤더",
+      "저장401 설명 범위"
+    ]
+  },
+  "additionalFinding": "같은 값 저장도 ME의 on_hold를 해제하던 합성 조건",
+  "red": {
+    "source": "5a21c25ef9ae4a458ef471ad2394623050c037d6",
+    "pass": 6,
+    "fail": 3,
+    "log": "/tmp/siljang-task053-review-red-20261125.log"
+  },
+  "greenSource": "9b1742a67b8a386a04c955858ec035cd88b38fbb",
+  "results": {
+    "green": {
+      "path": "/tmp/siljang-task053-review-green-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        "# tests 31",
+        "# pass 31",
+        "# fail 0"
+      ]
+    },
+    "related": {
+      "path": "/tmp/siljang-task053-review-related-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        " Test Files  3 passed (3)",
+        "      Tests  73 passed (73)"
+      ]
+    },
+    "type": {
+      "path": "/tmp/siljang-task053-review-type-20261125.log",
+      "exitCode": 0,
+      "lines": []
+    },
+    "build": {
+      "path": "/tmp/siljang-task053-review-build-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        "✓ built in 606ms",
+        "> wrangler deploy --dry-run --outdir dist && wrangler deploy --dry-run --config wrangler.storage-batches.jsonc --outdir dist/storage-batches",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "browserRun": false,
+  "outsideServices": 0
+}

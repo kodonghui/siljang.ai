@@ -11,7 +11,7 @@ SCR-040의 10개 상태와 API-024/025의 16개 응답을 합성 데이터로 �
 | API-024 default internal | 양식 대신 추적 ID와 재조회 동작을 보여 줍니다. |
 | API-025 200 created | 새 계좌 안내를 표시하고 신고 보류 가게의 상태를 재조회합니다. |
 | API-025 200 unchanged | 바뀐 것이 없다고 표시하며 신고 상태 재조회/재확인 알림을 만들지 않습니다. |
-| API-025 401 unauthenticated | 입력을 남기고 로그인 경로를 요청합니다. |
+| API-025 401 unauthenticated | 로그인 경로를 요청하고 복귀 경로를 전달합니다. |
 | API-025 404 shop_not_registered | 가게 등록 경로를 요청합니다. |
 | API-025 409 version_conflict | 내 입력을 보존하고 최신 은행/링크 위에 내 계좌 변경을 적용한 뒤 최신 revision과 새 키로 저장합니다. |
 | API-025 409 confirmation_required | 예금주 확인 창의 돌아가기는 보존하고 확인은 holder_mismatch와 새 키로 저장합니다. |

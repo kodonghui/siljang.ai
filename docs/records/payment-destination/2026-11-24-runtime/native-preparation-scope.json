@@ -1,0 +1,16 @@
+{
+  "zip": "/tmp/siljang-qa053-payment-20261124.zip",
+  "files": 763,
+  "bytes": 9058742,
+  "sha256": "f9f4f8cf62c228d9703ed6cbd85b1d23b33f5d781a10b92af2e2daa8813c26c4",
+  "productSource": "63787317cba58f14ad490507570be2b0622be528",
+  "syntheticOnly": true,
+  "cases": 21,
+  "primaryStates": 10,
+  "contractResponseRows": 16,
+  "scope": "기존 학원컴 큐에 준비한 source63787317 임시 합성 자료의 파일 해시. 실제 완료/지시 수신이 아님",
+  "instructionReceipt": "미확인",
+  "nativeResult": "SSH 인증 전 시간 초과로 최종 원문/사진 미수집",
+  "newPortableV2Transfer": false,
+  "requiredNext": "복구 뒤 기존 D4 진행/받은 지시·대기열·최종 정지ACK부터 읽고 중복 없이 이어감"
+}
