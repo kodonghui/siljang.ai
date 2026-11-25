@@ -7,7 +7,12 @@ import {
   markKakaoAiDisclosure,
   prependKakaoDisclosure,
 } from "./kakao-ai-disclosure";
-import { deferredKakaoMessages, deferredKakaoTexts, markDeferredKakaoMessages } from "./kakao-deferred";
+import {
+  deferredKakaoMessages,
+  deferredKakaoTexts,
+  markDeferredKakaoMessages,
+  renderDeferredKakaoReply,
+} from "./kakao-deferred";
 import type { KakaoMessageContent } from "./kakao-message-content";
 import { KAKAO_HANDOFF_TEXT } from "./kakao-reply";
 import type { InboundReceipt } from "./kakao-skill-store";
@@ -60,9 +65,13 @@ export async function replyKakaoHandoffInTransaction(
       ? await deferredKakaoMessages(tx, receipt.customerId, {
           disclosureConsultationId: disclosure?.consultationId,
           now,
+          allowFullOrderCard: true,
         })
       : [];
-  const { response, currentIncluded } = await prependKakaoDisclosure(render(deferredKakaoTexts(previous)), disclosure);
+  const rendered = renderDeferredKakaoReply(deferredKakaoTexts(previous), render);
+  const disclosed = await prependKakaoDisclosure(rendered.response, disclosure);
+  const response = disclosed.response;
+  const currentIncluded = rendered.currentIncluded && disclosed.currentIncluded;
   if (disclosure !== undefined)
     await markKakaoAiDisclosure(
       tx,

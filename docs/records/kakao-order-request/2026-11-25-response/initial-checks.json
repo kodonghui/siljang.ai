@@ -1,0 +1,19 @@
+{
+  "redSource": "7b794287bfe87eea4f6a6aa7d6b1ffd02bb6536d",
+  "redFailed": 3,
+  "numberRedSource": "6b35ff676a831fe3b13e5edb19172f99d33d9d00",
+  "numberRed": {
+    "failed": 1,
+    "passed": 19
+  },
+  "related": {
+    "files": 7,
+    "passed": 86
+  },
+  "typecheckExit": 0,
+  "strictLintExit": 0,
+  "fullSource": "0358bdf8cc34974852a6b36de099268cd23980ef",
+  "full": "running; not pass",
+  "localInstall": "same-lock reused; no new local npm ci",
+  "native": "unverified"
+}

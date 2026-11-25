@@ -20,7 +20,7 @@ const singleLine = (value: string) =>
     return code < 32 || (code >= 127 && code <= 159) || code === 0x2028 || code === 0x2029 ? " " : char;
   }).join("");
 
-export function operatingRulesCardTexts(clauses: readonly ClauseInput[], version: number): string[] {
+export function operatingRulesCardTexts(clauses: readonly ClauseInput[], version: number, lead?: string): string[] {
   const selected = clauses
     .map((c, index) => ({ ...c, index }))
     .filter((c) => CARD_KEYS.has(c.key))
@@ -30,10 +30,11 @@ export function operatingRulesCardTexts(clauses: readonly ClauseInput[], version
   );
   const header = `취소·환불 규정(운영규정 버전 ${version})\n`,
     footer = `${WITHDRAWAL_NOTICE}\n${MINOR_NOTICE}`;
-  const whole = header + lines.join("") + footer;
+  const prefix = lead === undefined ? "" : `${lead}\n`;
+  const whole = prefix + header + lines.join("") + footer;
   if (length(whole) <= 1000) return [whole];
   for (let split = lines.length; split >= 0; split--) {
-    const first = `${header}(1/2)\n${lines.slice(0, split).join("")}`;
+    const first = `${prefix}${header}(1/2)\n${lines.slice(0, split).join("")}`;
     const second = `${header}(2/2)\n${lines.slice(split).join("")}${footer}`;
     if (length(first) <= 1000 && length(second) <= 1000) return [first, second];
   }
