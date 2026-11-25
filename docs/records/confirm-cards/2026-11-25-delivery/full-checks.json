@@ -1,0 +1,60 @@
+{
+  "source": "20ab5c56075ca17dd4cb3df222d079abe640d06d",
+  "publicSameTree": "9b8eaf1db365ab53a8b560c38a4c005698a8bbe4",
+  "tree": "3159a7ec7dd93343dd6d49930c03250fe3a494ca",
+  "command": "python3 -I /tmp/siljang-full-fresh-v2.py <worktree> siljang-task081-delivery-20261125-2",
+  "freshMigrations": 39,
+  "freshDatabaseCleanup": "completed",
+  "newLocalNpmCi": false,
+  "sameLockDependenciesReused": true,
+  "relatedFiles": 5,
+  "relatedTests": 128,
+  "typeExitCode": 0,
+  "results": {
+    "full": {
+      "source": "20ab5c56075ca17dd4cb3df222d079abe640d06d",
+      "exitCode": 0,
+      "log": "/tmp/siljang-task081-delivery-20261125-2-fresh-full.log",
+      "lines": [
+        " Test Files  134 passed (134)",
+        "      Tests  2690 passed (2690)",
+        " Test Files  71 passed (71)",
+        "      Tests  1727 passed (1727)"
+      ]
+    },
+    "build": {
+      "source": "20ab5c56075ca17dd4cb3df222d079abe640d06d",
+      "exitCode": 0,
+      "log": "/tmp/siljang-task081-delivery-20261125-2-fresh-build.log",
+      "lines": [
+        "✓ built in 957ms",
+        "Total Upload: 5387.16 KiB / gzip: 987.78 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "previousFull": {
+    "source": "b404d12c63459952d0cd92bd613bd6ce0681e51e",
+    "server": 2688,
+    "web": 1727,
+    "buildMilliseconds": 854,
+    "scope": "카드 합계400자 추가 고침 전 역사 범위"
+  },
+  "cardCombinedLimit": {
+    "redSource": "969562578162ca760c0f8abf7108983335a3777d",
+    "red": {
+      "failed": 1,
+      "passed": 1,
+      "skipped": 62,
+      "filter": "제목과 설명 합계400자"
+    },
+    "greenSource": "20ab5c56075ca17dd4cb3df222d079abe640d06d",
+    "combinedLimit": 400,
+    "relatedPass": 128
+  },
+  "browserRun": false,
+  "externalModelCalls": 0,
+  "realKakaoCalls": 0
+}
