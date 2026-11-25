@@ -1,0 +1,12 @@
+
+> test
+> vitest run test/customer-notices-skill.test.ts test/customer-notice-payment-clock.test.ts test/kakao-runtime-grants.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+
+ Test Files  3 passed (3)
+      Tests  35 passed (35)
+   Start at  11:24:39
+   Duration  7.53s (tests 67%, import 27%, transform 5%)

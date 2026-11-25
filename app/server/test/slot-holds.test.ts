@@ -292,7 +292,8 @@ describeDb("가예약의 날짜 잠금·중복·추가 수락(TASK-082)", () => 
       ["slot_holds", "order_id"],
       ["slot_holds", "hold_key"],
       ["payment_requests", "order_id"],
-      ["payment_requests", "due_at"],
+      // TASK-104의 실제 전달 기한 갱신은 허용하며 상한은 바꾸지 못한다.
+      ["payment_requests", "due_cap_at"],
       ["payment_requests", "amount"],
       ["orders", "amount"],
       ["orders", "version"],

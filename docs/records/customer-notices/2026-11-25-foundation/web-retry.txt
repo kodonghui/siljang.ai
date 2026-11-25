@@ -1,0 +1,16 @@
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/web
+
+
+ Test Files  73 passed (73)
+      Tests  1775 passed (1775)
+   Start at  11:44:48
+   Duration  44.50s (tests 55%, import 35%, environment 8%, transform 2%)
+
+     Import  196 modules were evaluated 765 times · 42.66s total, 35% of tracked time
+             ~6.39s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
