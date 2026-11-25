@@ -1,0 +1,11 @@
+RUN  v5.1.0 /workspace/siljang-task127-cancel-card/app/server
+
+
+ Test Files  4 passed (4)
+      Tests  31 passed (31)
+   Start at  23:05:27
+   Duration  5.24s (import 63%, tests 29%, transform 7%)
+
+     Import  162 modules were evaluated 217 times · 3.01s total, 63% of tracked time
+             ~763ms faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

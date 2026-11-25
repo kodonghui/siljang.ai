@@ -1,0 +1,10 @@
+RUN  v5.1.0 /workspace/siljang-task127-cancel-card/app/server
+
+
+ Test Files  3 passed (3)
+      Tests  28 passed (28)
+   Start at  22:56:39
+   Duration  4.64s (import 66%, tests 26%, transform 8%)
+
+    Isolate  3 workers spawned · ~128ms startup each (spawn + environment, per file)
+             at least ~256ms faster with isolate: false — reuses workers across files instead of one per file

@@ -72,7 +72,7 @@ jobs:
 
       - name: 합성 화면 자료 생성·계약(브라우저 실행 없음)
         run: |
-          node --test ../research/screen-checks-2026-11/kakao-channel-fixture.test.mjs ../research/screen-checks-2026-11/kakao-consultation-fixture.test.mjs ../research/screen-checks-2026-11/kakao-change-request-fixture.test.mjs ../research/screen-checks-2026-11/kakao-notice-render.test.mjs ../research/screen-checks-2026-11/kakao-channel-source.test.mjs ../research/screen-checks-2026-11/owner-tasks-source.test.mjs ../research/screen-checks-2026-11/owner-tasks-fixture.test.mjs ../research/screen-checks-2026-11/operating-rules-fixture.test.mjs ../research/screen-checks-2026-11/operating-rules-source.test.mjs ../research/screen-checks-2026-11/operating-rules-history-fixture.test.mjs ../research/screen-checks-2026-11/payment-destination-fixture.test.mjs ../research/screen-checks-2026-11/booking-link-fixture.test.mjs ../research/screen-checks-2026-11/consultation-messages-fixture.test.mjs 2>&1 | tee ci-logs/channel-fixture.log
+          node --test ../research/screen-checks-2026-11/kakao-channel-fixture.test.mjs ../research/screen-checks-2026-11/kakao-consultation-fixture.test.mjs ../research/screen-checks-2026-11/kakao-change-request-fixture.test.mjs ../research/screen-checks-2026-11/kakao-cancellation-fixture.test.mjs ../research/screen-checks-2026-11/kakao-notice-render.test.mjs ../research/screen-checks-2026-11/kakao-channel-source.test.mjs ../research/screen-checks-2026-11/owner-tasks-source.test.mjs ../research/screen-checks-2026-11/owner-tasks-fixture.test.mjs ../research/screen-checks-2026-11/operating-rules-fixture.test.mjs ../research/screen-checks-2026-11/operating-rules-source.test.mjs ../research/screen-checks-2026-11/operating-rules-history-fixture.test.mjs ../research/screen-checks-2026-11/payment-destination-fixture.test.mjs ../research/screen-checks-2026-11/booking-link-fixture.test.mjs ../research/screen-checks-2026-11/consultation-messages-fixture.test.mjs 2>&1 | tee ci-logs/channel-fixture.log
           node ../research/screen-checks-2026-11/build-kakao-channel.mjs .. "$RUNNER_TEMP/siljang-kakao-channel-fixture" 2>&1 | tee ci-logs/kakao-channel-fixture.log
           node ../research/screen-checks-2026-11/build-owner-tasks.mjs .. "$RUNNER_TEMP/siljang-owner-tasks-fixture" 2>&1 | tee ci-logs/owner-tasks-fixture.log
           node ../research/screen-checks-2026-11/build-operating-rules.mjs .. "$RUNNER_TEMP/siljang-operating-rules-fixture" 2>&1 | tee ci-logs/operating-rules-fixture.log
@@ -82,6 +82,7 @@ jobs:
           node ../research/screen-checks-2026-11/build-kakao-consultation.mjs .. "$RUNNER_TEMP/siljang-consultation-fixture" 2>&1 | tee ci-logs/consultation-fixture.log
           node ../research/screen-checks-2026-11/build-kakao-order-request.mjs .. "$RUNNER_TEMP/siljang-order-request-fixture" 2>&1 | tee ci-logs/order-request-fixture.log
           node ../research/screen-checks-2026-11/build-kakao-change-request.mjs .. "$RUNNER_TEMP/siljang-change-request-fixture" 2>&1 | tee ci-logs/change-request-fixture.log
+          node ../research/screen-checks-2026-11/build-kakao-cancellation.mjs .. "$RUNNER_TEMP/siljang-cancellation-fixture" 2>&1 | tee ci-logs/cancellation-fixture.log
           node ../research/screen-checks-2026-11/build-kakao-customer-notice.mjs .. "$RUNNER_TEMP/siljang-customer-notice-fixture" 2>&1 | tee ci-logs/customer-notice-fixture.log
           node ../research/screen-checks-2026-11/build-consultation-messages.mjs .. "$RUNNER_TEMP/siljang-consultation-messages-fixture" 2>&1 | tee ci-logs/consultation-messages-fixture.log
 
@@ -136,7 +137,7 @@ jobs:
       - name: Windows 합성 화면 자료 생성·계약(브라우저 실행 없음)
         shell: pwsh
         run: |
-          node --test ../research/screen-checks-2026-11/kakao-channel-fixture.test.mjs ../research/screen-checks-2026-11/kakao-consultation-fixture.test.mjs ../research/screen-checks-2026-11/kakao-change-request-fixture.test.mjs ../research/screen-checks-2026-11/kakao-notice-render.test.mjs ../research/screen-checks-2026-11/kakao-channel-source.test.mjs ../research/screen-checks-2026-11/owner-tasks-source.test.mjs ../research/screen-checks-2026-11/owner-tasks-fixture.test.mjs ../research/screen-checks-2026-11/operating-rules-fixture.test.mjs ../research/screen-checks-2026-11/operating-rules-source.test.mjs ../research/screen-checks-2026-11/operating-rules-history-fixture.test.mjs ../research/screen-checks-2026-11/payment-destination-fixture.test.mjs ../research/screen-checks-2026-11/booking-link-fixture.test.mjs ../research/screen-checks-2026-11/consultation-messages-fixture.test.mjs
+          node --test ../research/screen-checks-2026-11/kakao-channel-fixture.test.mjs ../research/screen-checks-2026-11/kakao-consultation-fixture.test.mjs ../research/screen-checks-2026-11/kakao-change-request-fixture.test.mjs ../research/screen-checks-2026-11/kakao-cancellation-fixture.test.mjs ../research/screen-checks-2026-11/kakao-notice-render.test.mjs ../research/screen-checks-2026-11/kakao-channel-source.test.mjs ../research/screen-checks-2026-11/owner-tasks-source.test.mjs ../research/screen-checks-2026-11/owner-tasks-fixture.test.mjs ../research/screen-checks-2026-11/operating-rules-fixture.test.mjs ../research/screen-checks-2026-11/operating-rules-source.test.mjs ../research/screen-checks-2026-11/operating-rules-history-fixture.test.mjs ../research/screen-checks-2026-11/payment-destination-fixture.test.mjs ../research/screen-checks-2026-11/booking-link-fixture.test.mjs ../research/screen-checks-2026-11/consultation-messages-fixture.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node ../research/screen-checks-2026-11/build-kakao-channel.mjs .. "$env:RUNNER_TEMP/siljang-kakao-channel-fixture"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -155,6 +156,8 @@ jobs:
           node ../research/screen-checks-2026-11/build-kakao-order-request.mjs .. "$env:RUNNER_TEMP/siljang-order-request-fixture"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node ../research/screen-checks-2026-11/build-kakao-change-request.mjs .. "$env:RUNNER_TEMP/siljang-change-request-fixture"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node ../research/screen-checks-2026-11/build-kakao-cancellation.mjs .. "$env:RUNNER_TEMP/siljang-cancellation-fixture"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node ../research/screen-checks-2026-11/build-kakao-customer-notice.mjs .. "$env:RUNNER_TEMP/siljang-customer-notice-fixture"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

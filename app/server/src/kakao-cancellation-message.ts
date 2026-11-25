@@ -1,5 +1,6 @@
 /** SCR009 표시 전용. 환불 계산·취소·자리 반환은 서버 업무 모듈이 담당한다. */
 import { kakaoChannelIdentifierError } from "./kakao-channel-input";
+import { normalizeLineBreaks } from "./line-breaks";
 import { toShopLocal } from "./time";
 
 export interface KakaoCancellationCard {
@@ -44,9 +45,11 @@ type Output =
       };
     };
 function text(value: string, max: number) {
-  if (typeof value !== "string" || !value.trim() || [...value].length > max || /[\0\r]/.test(value))
+  if (typeof value !== "string") throw new RangeError("invalid cancellation text");
+  const normalized = normalizeLineBreaks(value);
+  if (!normalized.trim() || [...normalized].length > max || normalized.includes("\0"))
     throw new RangeError("invalid cancellation text");
-  return value;
+  return normalized;
 }
 function body(outputs: readonly Output[]) {
   if (outputs.length < 1 || outputs.length > 3) throw new RangeError("invalid cancellation outputs");

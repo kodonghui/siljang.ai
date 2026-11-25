@@ -11,6 +11,14 @@ const normal = {
   cardKey: "synthetic_cancellation_key_01",
   blockId: "synthetic-card",
 } as const;
+it.each(["\r\n", "\r"])("취소 조문 이름의 줄바꿈 %j를 LF와 같은 내용으로 표시한다", (newline) => {
+  const refund = { kind: "calculated", amount: 24000, clauseNames: [`합성${newline}취소 조문`] } as const;
+  const body = kakaoCancellationMessage({ ...normal, refund });
+  expectSchema("SkillTemplateResponse", body);
+  expect(body).toEqual(
+    kakaoCancellationMessage({ ...normal, refund: { ...refund, clauseNames: ["합성\n취소 조문"] } }),
+  );
+});
 it.each(["normal", "stale", "expired"] as const)("취소 카드의 상태·별도 두 행동·카드 한도를 지킨다(%s)", (state) => {
   const body = kakaoCancellationMessage({ ...normal, state });
   expectSchema("SkillTemplateResponse", body);

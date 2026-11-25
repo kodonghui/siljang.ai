@@ -1,0 +1,29 @@
+RUN  v5.1.0 /workspace/siljang-task127-cancel-card/app/server
+
+ ❯ test/kakao-cancellation-message.test.ts (23 tests | 2 failed | 21 skipped) 34ms
+   × 취소 조문 이름의 줄바꿈 "\r\n"를 LF와 같은 내용으로 표시한다 31ms
+   × 취소 조문 이름의 줄바꿈 "\r"를 LF와 같은 내용으로 표시한다 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-cancellation-message.test.ts > 취소 조문 이름의 줄바꿈 "\r\n"를 LF와 같은 내용으로 표시한다
+ FAIL  test/kakao-cancellation-message.test.ts > 취소 조문 이름의 줄바꿈 "\r"를 LF와 같은 내용으로 표시한다
+RangeError: invalid cancellation text
+ ❯ text src/kakao-cancellation-message.ts:48:11
+     46| function text(value: string, max: number) {
+     47|   if (typeof value !== "string" || !value.trim() || [...value].length …
+     48|     throw new RangeError("invalid cancellation text");
+       |           ^
+     49|   return value;
+     50| }
+ ❯ src/kakao-cancellation-message.ts:143:113
+ ❯ kakaoCancellationMessage src/kakao-cancellation-message.ts:143:99
+ ❯ test/kakao-cancellation-message.test.ts:16:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 21 skipped (23)
+   Start at  23:04:01
+   Duration  1.04s (import 88%, transform 8%, tests 4%)
