@@ -1,0 +1,47 @@
+{
+  "source": "4a2d4ee60ccd4a6a68bb380cb6d4d5dde012f6ad",
+  "newLocalNpmCi": false,
+  "relatedTestFiles": [
+    "app/web/src/OperatorAlertsScreen.interaction.test.tsx",
+    "app/web/src/operator-alerts-api.test.ts",
+    "app/web/src/operator-alerts-query.test.ts"
+  ],
+  "results": {
+    "related": {
+      "source": "4a2d4ee60ccd4a6a68bb380cb6d4d5dde012f6ad",
+      "exitCode": 0,
+      "path": "/tmp/siljang-task060-current-related-20261125.log",
+      "workingDirectory": "app",
+      "command": "npm run test -w web -- src/OperatorAlertsScreen.interaction.test.tsx src/operator-alerts-api.test.ts src/operator-alerts-query.test.ts",
+      "lines": [
+        " Test Files  3 passed (3)",
+        "      Tests  49 passed (49)"
+      ]
+    },
+    "type": {
+      "source": "4a2d4ee60ccd4a6a68bb380cb6d4d5dde012f6ad",
+      "exitCode": 0,
+      "path": "/tmp/siljang-task060-current-type-20261125.log",
+      "workingDirectory": "app",
+      "command": "npm run typecheck",
+      "lines": []
+    },
+    "build": {
+      "source": "4a2d4ee60ccd4a6a68bb380cb6d4d5dde012f6ad",
+      "exitCode": 0,
+      "path": "/tmp/siljang-task060-current-build-20261125.log",
+      "workingDirectory": "app",
+      "command": "npm run build",
+      "lines": [
+        "✓ built in 876ms",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "productCodeChanges": 0,
+  "browserRun": false,
+  "outsideServices": 0
+}
