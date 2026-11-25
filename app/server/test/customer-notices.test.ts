@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
-import { createCustomerNoticeHandler } from "../src/customer-notices";
+import { type CustomerNoticeOptions, createCustomerNoticeHandler } from "../src/customer-notices";
+import type { RequestDb } from "../src/db";
 import { runDueJobs } from "../src/job-runner";
 import type { KakaoEvents } from "../src/kakao-event";
 import { runScheduled } from "../src/scheduled";
+import { createShopScope, shopDb } from "../src/shop-scope";
 import { describeDb, newUuid, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
@@ -47,16 +49,26 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
         [id],
       )
     ).rows[0];
-  const run = (factory: () => KakaoEvents, enabled = false) =>
+  const run = (
+    factory: () => KakaoEvents,
+    enabled = false,
+    attention?: CustomerNoticeOptions["attention"],
+    db: RequestDb = isolated.db,
+  ) =>
     runDueJobs({
-      db: isolated.db,
+      db,
       now,
       jobs: [
         {
           name: "customer_notice",
           every: "minute",
           sources: ["notification_send", "notification_check"],
-          handler: createCustomerNoticeHandler({ enabled, events: factory, now: () => now }),
+          handler: createCustomerNoticeHandler({
+            enabled,
+            events: factory,
+            now: () => now,
+            ...(attention === undefined ? {} : { attention }),
+          }),
         },
       ],
       log: () => {},
@@ -108,5 +120,211 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
     });
     expect(events.requestNotice).toHaveBeenCalledTimes(1);
     expect(events.checkDelivery).toHaveBeenCalledWith(TASK, { type: "botUserKey", id: shop.userKey });
+  });
+  it("요청 실패를1·5·30분 간격으로 네 번만 시도한 뒤 다음 대화로 보존한다", async () => {
+    vi.mocked(events.requestNotice).mockResolvedValue({
+      kind: "failed",
+      code: "kakao_error",
+      retryable: true,
+      disableChannel: false,
+      attention: null,
+    });
+    await run(() => events, true);
+    for (const [index, minutes] of [1, 5, 30].entries()) {
+      const row = (
+        await isolated.db.query<{ status: string; attempts: number; next_attempt_at: Date }>(
+          "SELECT status,attempts,next_attempt_at FROM notifications WHERE id=$1",
+          [id],
+        )
+      ).rows[0];
+      expect(row).toEqual({
+        status: "retrying",
+        attempts: index + 1,
+        next_attempt_at: new Date(now.getTime() + minutes * 60000),
+      });
+      now = row?.next_attempt_at ?? NOW;
+      await run(() => events, true);
+    }
+    expect((await state())?.status).toBe("deferred");
+    expect((await state())?.attempts).toBe(4);
+    now = new Date(now.getTime() + 3600000);
+    await run(() => events, true);
+    expect(events.requestNotice).toHaveBeenCalledTimes(4);
+    expect(events.checkDelivery).not.toHaveBeenCalled();
+  });
+  it("접수 뒤1·5·30분에만 확인하고30분 동안 모르면 unknown으로 다음 대화에 남긴다", async () => {
+    vi.mocked(events.checkDelivery).mockResolvedValue({ kind: "pending" });
+    const attention = vi.fn();
+    await run(() => events, true, attention);
+    for (const [minute, calls] of [
+      [1, 1],
+      [2, 1],
+      [5, 2],
+      [29, 2],
+      [30, 3],
+    ] as const) {
+      now = new Date(NOW.getTime() + minute * 60000);
+      await run(() => events, true, attention);
+      expect(events.checkDelivery).toHaveBeenCalledTimes(calls);
+    }
+    expect(
+      (await isolated.db.query("SELECT status,attempts,fail_code,sent_at FROM notifications WHERE id=$1", [id])).rows,
+    ).toEqual([{ status: "deferred", attempts: 1, fail_code: "unknown", sent_at: null }]);
+    expect(attention).toHaveBeenCalledWith({ target: "operator", code: "unknown", shopId: shop.shopId, noticeId: id });
+  });
+  it.each([false, true])("친구 아님 결과는 더 최근의 친구 확인을 덮어쓰지 않는다(새 확인:%s)", async (newer) => {
+    vi.mocked(events.checkDelivery).mockResolvedValue({
+      kind: "failed",
+      code: "not_friend",
+      retryable: false,
+      disableChannel: false,
+      attention: null,
+    });
+    await run(() => events, true);
+    if (newer)
+      await isolated.db.query("UPDATE customers SET channel_friend=true,friend_checked_at=$2 WHERE id=$1", [
+        shop.customerId,
+        new Date(NOW.getTime() + 30000),
+      ]);
+    now = new Date(NOW.getTime() + 60000);
+    await run(() => events, true);
+    expect((await state())?.status).toBe("deferred");
+    expect(
+      (await isolated.db.query("SELECT channel_friend FROM customers WHERE id=$1", [shop.customerId])).rows,
+    ).toEqual([{ channel_friend: newer }]);
+  });
+  it.each([
+    ["event_setup", true, "owner", "kakao_error"],
+    ["wallet", true, "owner", "wallet_missing"],
+    ["wallet", false, "operator", null],
+  ] as const)(
+    "설정/월렛 오류(%s·차단%s)는 채널과 알림 대상을 구분한다",
+    async (code, disableChannel, target, reason) => {
+      vi.mocked(events.requestNotice).mockResolvedValue({
+        kind: "failed",
+        code,
+        retryable: false,
+        disableChannel,
+        attention: target,
+      });
+      const attention = vi.fn();
+      await run(() => events, true, attention);
+      expect((await state())?.status).toBe("deferred");
+      expect(
+        (
+          await isolated.db.query("SELECT event_status,event_fail_reason FROM kakao_channels WHERE id=$1", [
+            shop.channelId,
+          ])
+        ).rows,
+      ).toEqual([{ event_status: disableChannel ? "unavailable" : "ready", event_fail_reason: reason }]);
+      expect(attention).toHaveBeenCalledWith({ target, code, shopId: shop.shopId, noticeId: id });
+    },
+  );
+  it.each(["friend", "channel"])(
+    "친구/먼저 보내기가 안 되는 상태(%s)는 클라이언트도 만들지 않는다",
+    async (blocked) => {
+      if (blocked === "friend")
+        await isolated.db.query("UPDATE customers SET channel_friend=false WHERE id=$1", [shop.customerId]);
+      else
+        await isolated.db.query(
+          "UPDATE kakao_channels SET event_status='unavailable',event_fail_reason='kakao_error' WHERE id=$1",
+          [shop.channelId],
+        );
+      const factory = vi.fn(() => events);
+      await run(factory, true);
+      expect((await state())?.status).toBe("deferred");
+      expect(factory).not.toHaveBeenCalled();
+    },
+  );
+  it("예약 시각이 있는 안내는20:50 뒤 발신하지 않고 다음 날08:00에 다시 잡는다", async () => {
+    await isolated.db.query("UPDATE notifications SET scheduled_for=$2 WHERE id=$1", [id, NOW]);
+    now = new Date(NOW.getTime() + 12 * 3600000);
+    await run(() => events, true);
+    const next = new Date("2026-11-25T23:00:00Z");
+    expect(
+      (await isolated.db.query("SELECT status,attempts,next_attempt_at FROM notifications WHERE id=$1", [id])).rows,
+    ).toEqual([{ status: "pending", attempts: 0, next_attempt_at: next }]);
+    expect(events.requestNotice).not.toHaveBeenCalled();
+    now = next;
+    await run(() => events, true);
+    expect((await state())?.status).toBe("confirming");
+    expect(events.requestNotice).toHaveBeenCalledTimes(1);
+  });
+  it("다른 실행기가 임대를 바꾼 뒤 옛 결과는 새 상태를 덮어쓰지 않는다", async () => {
+    const handler = createCustomerNoticeHandler({ enabled: true, events: () => events, now: () => now }),
+      scope = createShopScope(shop.shopId, { kind: "job", job: "customer_notice" });
+    const item = { source: "notification_send" as const, shopId: shop.shopId, id, dueAt: NOW },
+      ctx = { job: "customer_notice", now: NOW, leaseUntil: new Date(NOW.getTime() + 120000) };
+    const prepared = await isolated.db.transaction((tx) => handler.lease(shopDb(scope, tx), item, ctx));
+    if (prepared === null) throw new Error("missing synthetic lease");
+    const outcome = await handler.act(prepared, ctx),
+      changed = new Date(prepared.leaseUntil.getTime() + 1);
+    await isolated.db.query("UPDATE notifications SET next_attempt_at=$2 WHERE id=$1", [id, changed]);
+    await isolated.db.transaction((tx) =>
+      handler.record(shopDb(scope, tx), item, prepared, { ok: true, value: outcome }, ctx),
+    );
+    expect((await state())?.status).toBe("pending");
+    expect((await state())?.kakao_task_id).toBeNull();
+    expect((await isolated.db.query("SELECT next_attempt_at FROM notifications WHERE id=$1", [id])).rows).toEqual([
+      { next_attempt_at: changed },
+    ]);
+    await isolated.db.query("UPDATE notifications SET status='deferred',next_attempt_at=NULL WHERE id=$1", [id]);
+  });
+  it("두 실행기가 겹쳐도 임대한 안내를 동시에 두 번 발신하지 않는다", async () => {
+    let started: () => void = () => {},
+      release: () => void = () => {};
+    const begun = new Promise<void>((resolve) => {
+        started = resolve;
+      }),
+      gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    vi.mocked(events.requestNotice).mockImplementation(async () => {
+      started();
+      await gate;
+      return { kind: "accepted", taskId: TASK };
+    });
+    const first = run(() => events, true);
+    await begun;
+    const other = isolated.connect();
+    try {
+      await run(() => events, true, undefined, other);
+    } finally {
+      release();
+      await other.close();
+    }
+    await first;
+    expect(events.requestNotice).toHaveBeenCalledTimes(1);
+    expect((await state())?.status).toBe("confirming");
+  });
+  it("결제 안내는 접수 때가 아니라 전달 성공을 관측한 때부터12시간을 센다", async () => {
+    await isolated.db.query("UPDATE notifications SET status='dropped',next_attempt_at=NULL WHERE id=$1", [id]);
+    id = newUuid();
+    await isolated.db.query(
+      "UPDATE payment_requests SET delivered_at=NULL,issued_at=$2,due_at=$3,due_cap_at=$3 WHERE id=$1",
+      [shop.paymentRequestId, new Date(NOW.getTime() - 3600000), new Date(NOW.getTime() + 24 * 3600000)],
+    );
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status,next_attempt_at,created_at) VALUES($1,$2,$3,$4,$5,'payment_request',$6,'payment_request:v1','합성 결제 안내','pending',$7,$7)",
+      [
+        id,
+        shop.shopId,
+        shop.customerId,
+        shop.consultationId,
+        shop.orderId,
+        `notice:${shop.paymentRequestId}:payment_request`,
+        NOW,
+      ],
+    );
+    await run(() => events, true);
+    expect(
+      (await isolated.db.query("SELECT delivered_at FROM payment_requests WHERE id=$1", [shop.paymentRequestId])).rows,
+    ).toEqual([{ delivered_at: null }]);
+    now = new Date(NOW.getTime() + 60000);
+    await run(() => events, true);
+    expect(
+      (await isolated.db.query("SELECT delivered_at,due_at FROM payment_requests WHERE id=$1", [shop.paymentRequestId]))
+        .rows,
+    ).toEqual([{ delivered_at: now, due_at: new Date(now.getTime() + 12 * 3600000) }]);
   });
 });
