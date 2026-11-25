@@ -44,19 +44,27 @@ interface Payment {
   time_zone: string;
   payment_due_hours: number;
 }
-export function customerNoticeTexts(body: string): string[] {
-  const chars = [...body],
-    contents: string[] = [];
-  for (let at = 0; at < chars.length; at += 1000) contents.push(chars.slice(at, at + 1000).join(""));
-  return contents;
-}
 export async function customerNoticeContents(
   db: ShopDb,
   notice: CustomerNoticeView,
   now: Date,
   fields?: () => FieldCrypto,
 ): Promise<readonly KakaoMessageContent[] | null> {
-  if (notice.kind !== "payment_request") return notice.body.trim() ? customerNoticeTexts(notice.body) : null;
+  if (notice.kind !== "payment_request") {
+    if (!notice.body.trim()) return null;
+    return [
+      {
+        kind: "customer_notice",
+        view: {
+          state: "normal",
+          notice:
+            notice.kind === "payment_mismatch"
+              ? { kind: "payment_mismatch" }
+              : { kind: "server_text", text: notice.body },
+        },
+      },
+    ];
+  }
   const payment = (
     await db.run<Payment>(
       `SELECT p.kind,p.status,p.amount,p.requested_amount,p.needs_amount_confirm,p.amount_confirmed_at,p.amount_card_id,
