@@ -4,6 +4,7 @@ import {
   type KakaoCustomerNoticeButton,
   type KakaoCustomerNoticeDisplayView,
   type KakaoCustomerNoticePhotoOutput,
+  type KakaoCustomerNoticeTextCarouselOutput,
   kakaoCustomerNoticeMessage,
 } from "./kakao-customer-notice-message";
 import { type KakaoMyOrderDisplayView, type KakaoMyOrderOutput, kakaoMyOrderMessage } from "./kakao-my-order-message";
@@ -45,7 +46,8 @@ export type KakaoMessageOutput =
         readonly buttons: readonly (KakaoPaymentButton | MyOrderButton | KakaoCustomerNoticeButton)[];
       };
     }
-  | KakaoCustomerNoticePhotoOutput;
+  | KakaoCustomerNoticePhotoOutput
+  | KakaoCustomerNoticeTextCarouselOutput;
 export interface KakaoQuickReply {
   readonly label: string;
   readonly action: "message";

@@ -47,6 +47,12 @@ export type KakaoCustomerNoticePhotoOutput = {
     }[];
   };
 };
+export type KakaoCustomerNoticeTextCarouselOutput = {
+  readonly carousel: {
+    readonly type: "textCard";
+    readonly items: readonly { readonly title: string; readonly description?: string }[];
+  };
+};
 export type KakaoCustomerNoticeOutput =
   | { readonly simpleText: { readonly text: string } }
   | {
@@ -56,7 +62,8 @@ export type KakaoCustomerNoticeOutput =
         readonly buttons: readonly KakaoCustomerNoticeButton[];
       };
     }
-  | KakaoCustomerNoticePhotoOutput;
+  | KakaoCustomerNoticePhotoOutput
+  | KakaoCustomerNoticeTextCarouselOutput;
 export interface KakaoCustomerNoticeMessage {
   readonly version: "2.0";
   readonly template: { readonly outputs: readonly KakaoCustomerNoticeOutput[] };
@@ -115,6 +122,20 @@ function body(outputs: readonly KakaoCustomerNoticeOutput[]): KakaoCustomerNotic
   if (!outputs.length || outputs.length > 3) throw new RangeError("invalid customer notice outputs");
   return { version: "2.0", template: { outputs } };
 }
+/** 최대4002자의 사실/규정을 제목40자·설명128자로 나누어 세 캐러셀 안에 보존한다. */
+function longConfirmedNotice(value: string): KakaoCustomerNoticeMessage {
+  const chars = [...text(value, 4002)];
+  const items: { title: string; description?: string }[] = [];
+  for (let at = 0; at < chars.length; at += 168) {
+    const title = `확정 안내 ${items.length + 1}\n${chars.slice(at, at + 40).join("")}`;
+    const description = chars.slice(at + 40, at + 168).join("");
+    items.push({ title, ...(description.length ? { description } : {}) });
+  }
+  const outputs: KakaoCustomerNoticeTextCarouselOutput[] = [];
+  for (let at = 0; at < items.length; at += 10)
+    outputs.push({ carousel: { type: "textCard", items: items.slice(at, at + 10) } });
+  return body(outputs);
+}
 function noticeBody(notice: Notice): KakaoCustomerNoticeMessage {
   switch (notice.kind) {
     case "owner_reply":
@@ -125,9 +146,9 @@ function noticeBody(notice: Notice): KakaoCustomerNoticeMessage {
       if (!Array.isArray(notice.regulation) || notice.regulation.length < 1 || notice.regulation.length > 2)
         throw new RangeError("invalid saved confirmed terms");
       const outputs = [...fragments(notice.text, 2000), ...notice.regulation.map(simple)];
-      return outputs.length <= 3
-        ? body(outputs)
-        : body(fragments([notice.text, ...notice.regulation].join("\n"), 3000));
+      if (outputs.length <= 3) return body(outputs);
+      const combined = [notice.text, ...notice.regulation].join("\n");
+      return [...combined].length <= 3000 ? body(fragments(combined, 3000)) : longConfirmedNotice(combined);
     }
     case "delay_notice":
       return body([simple("사장님 확인이 늦어지고 있어요. 확인되면 바로 알려 드릴게요")]);

@@ -1433,6 +1433,10 @@ OUTPUT = {"oneOf": [
             }, ["imageUrl", "altText"]),
         }, ["thumbnail"]), 1, 10),
     }, ["type", "items"])}, ["carousel"], desc="사진 기본 카드의 캐러셀. 출력 하나이며 앱은 완성 사진을 5장까지 표시함. 공식 응답 규격 2026-11-26 확인"),
+    obj({"carousel": obj({
+        "type": enum(["textCard"]),
+        "items": arr(obj({"title": string(1, 50), "description": string(1, 128)}, ["title"]), 1, 10),
+    }, ["type", "items"])}, ["carousel"], desc="긴 확정 안내의 텍스트 카드 캐러셀. 제목50자·설명128자, 항목10개. 기존 출력 종류는 유지. 공식 응답 규격 2026-11-26 확인"),
 
 ]}
 S["SkillTemplateResponse"] = obj({

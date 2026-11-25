@@ -32061,6 +32061,41 @@ components:
                           maxItems: 10
                       additionalProperties: false
                   additionalProperties: false
+                - type: object
+                  description: 긴 확정 안내의 텍스트 카드 캐러셀. 제목50자·설명128자, 항목10개. 기존 출력 종류는 유지. 공식 응답 규격 2026-11-26 확인
+                  required:
+                  - carousel
+                  properties:
+                    carousel:
+                      type: object
+                      required:
+                      - type
+                      - items
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                          - textCard
+                        items:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                            - title
+                            properties:
+                              title:
+                                type: string
+                                minLength: 1
+                                maxLength: 50
+                              description:
+                                type: string
+                                minLength: 1
+                                maxLength: 128
+                            additionalProperties: false
+                          minItems: 1
+                          maxItems: 10
+                      additionalProperties: false
+                  additionalProperties: false
               minItems: 1
               maxItems: 3
             quickReplies:
@@ -32336,6 +32371,41 @@ components:
                                   fixedRatio:
                                     type: boolean
                                 additionalProperties: false
+                            additionalProperties: false
+                          minItems: 1
+                          maxItems: 10
+                      additionalProperties: false
+                  additionalProperties: false
+                - type: object
+                  description: 긴 확정 안내의 텍스트 카드 캐러셀. 제목50자·설명128자, 항목10개. 기존 출력 종류는 유지. 공식 응답 규격 2026-11-26 확인
+                  required:
+                  - carousel
+                  properties:
+                    carousel:
+                      type: object
+                      required:
+                      - type
+                      - items
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                          - textCard
+                        items:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                            - title
+                            properties:
+                              title:
+                                type: string
+                                minLength: 1
+                                maxLength: 50
+                              description:
+                                type: string
+                                minLength: 1
+                                maxLength: 128
                             additionalProperties: false
                           minItems: 1
                           maxItems: 10
