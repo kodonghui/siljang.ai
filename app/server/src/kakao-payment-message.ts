@@ -65,8 +65,19 @@ function paymentNormalMessage(view: KakaoPaymentNormalView) {
   const text = `${title} · 주문번호 ${view.orderNo}\n결제할 금액 ${view.amount.toLocaleString("ko-KR")}원\n은행 ${view.account.bankName}\n계좌번호 ${view.account.number}\n예금주 ${view.account.holderName}\n${due.date} ${due.time}까지 보내 주세요`;
   let url: URL | null = null;
   if (view.cardPaymentUrl !== undefined) {
-    url = new URL(view.cardPaymentUrl);
-    if (url.protocol !== "https:" || url.username || url.password) throw new RangeError("invalid payment link display");
+    try {
+      const candidate = new URL(view.cardPaymentUrl);
+      // API025의 정규화 한도. PR280을 main에 반영한 뒤 공통 상수를 사용한다.
+      if (
+        candidate.protocol === "https:" &&
+        !candidate.username &&
+        !candidate.password &&
+        candidate.href.length <= 2048
+      )
+        url = candidate;
+    } catch {
+      // 기존 잘못된 링크가 계좌 안내 전체를 막지 않게 한다.
+    }
   }
   return {
     version: "2.0" as const,

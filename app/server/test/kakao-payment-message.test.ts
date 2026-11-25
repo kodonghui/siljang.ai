@@ -47,3 +47,44 @@ it.each([
   expect(JSON.stringify(body)).not.toContain("계좌번호");
   expect(JSON.stringify(body)).not.toContain("결제했어요");
 });
+
+it.each([
+  `https://payment.example/${"가".repeat(400)}`,
+  "https://",
+  "http://payment.example/unsafe",
+  "https://synthetic-user:synthetic-pass@payment.example/",
+])("기존 긴/잘못된 카드 링크가 있어도 계좌와 바로가기는 전한다(%s)", (cardPaymentUrl) => {
+  const body = kakaoPaymentMessage({
+    state: "normal",
+    kind: "first",
+    orderNo: "AB1234CD",
+    amount: 35000,
+    account: { bankName: "합성은행", number: "123456789012", holderName: "합성가게" },
+    dueAt: "2026-11-25T12:00:00Z",
+    timeZone: "Asia/Seoul",
+    cardPaymentUrl,
+  });
+  expectSchema("SkillTemplateResponse", body);
+  expect(JSON.stringify(body)).toContain("123456789012");
+  expect(JSON.stringify(body)).toContain("결제했어요");
+  expect(JSON.stringify(body)).not.toContain("webLink");
+});
+
+it("정규화한2048자 카드 링크는 버튼으로 전하면서도 계좌를 자르지 않는다", () => {
+  const cardPaymentUrl = `https://pay.example/${"x".repeat(2028)}`;
+  expect(cardPaymentUrl.length).toBe(2048);
+  const body = kakaoPaymentMessage({
+    state: "normal",
+    kind: "first",
+    orderNo: "AB1234CD",
+    amount: 35000,
+    account: { bankName: "합성은행", number: "123456789012", holderName: "합성가게" },
+    dueAt: "2026-11-25T12:00:00Z",
+    timeZone: "Asia/Seoul",
+    cardPaymentUrl,
+  });
+  expectSchema("SkillTemplateResponse", body);
+  expect(JSON.stringify(body)).toContain(cardPaymentUrl);
+  expect(JSON.stringify(body)).toContain("123456789012");
+  expect(body.template.outputs.length).toBeLessThanOrEqual(3);
+});
