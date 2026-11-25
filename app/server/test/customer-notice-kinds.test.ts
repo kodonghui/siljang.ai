@@ -89,8 +89,10 @@ describeDb("업무가 남긴 안내 본문의 공통 전달", () => {
     },
   );
   for (const mode of ["event", "message"] as const)
-    it.each(plain)(`${mode}: 업무가 저장한 %s 본문을 자기 손님에게 전한다`, async (kind) => {
-      const id = newUuid();
+    it.each(plain)(`${mode}: 업무가 저장한 %s 안내를 정의된 표시로 자기 손님에게 전한다`, async (kind) => {
+      const id = newUuid(),
+        stored = kind === "payment_mismatch" ? `${BODY} 12,345원` : BODY,
+        shown = kind === "payment_mismatch" ? "보내신 금액이 안내와 달라 사장님이 연락드릴게요" : BODY;
       await isolated.db.query(
         "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$6,$8,'deferred',$9)",
         [
@@ -101,7 +103,7 @@ describeDb("업무가 남긴 안내 본문의 공통 전달", () => {
           shop.orderId,
           kind,
           `notice:${shop.orderId}:${kind}`,
-          BODY,
+          stored,
           new Date(NOW.getTime() - 1000),
         ],
       );
@@ -129,19 +131,23 @@ describeDb("업무가 남긴 안내 본문의 공통 전달", () => {
       const response = await call("합성 안내 종류 첫 질문"),
         body = await response.json();
       expectSchema("SkillTemplateResponse", body);
-      expect(JSON.stringify(body)).toContain(BODY);
+      expect(JSON.stringify(body)).toContain(shown);
+      if (kind === "payment_mismatch") {
+        expect(JSON.stringify(body)).not.toContain(BODY);
+        expect(JSON.stringify(body)).not.toContain("12,345");
+      }
       if (mode === "event") expect(response.headers.get("Siljang-Outcome")).toBe("notice_shown");
       else {
         const text = JSON.stringify(body);
-        expect(text.indexOf(BODY)).toBeLessThan(text.indexOf(KAKAO_HANDOFF_TEXT));
-        expect(JSON.stringify(await (await call("합성 안내 종류 둘째 질문")).json())).not.toContain(BODY);
+        expect(text.indexOf(shown)).toBeLessThan(text.indexOf(KAKAO_HANDOFF_TEXT));
+        expect(JSON.stringify(await (await call("합성 안내 종류 둘째 질문")).json())).not.toContain(shown);
       }
       expect((await isolated.db.query("SELECT status,sent_at,body FROM notifications WHERE id=$1", [id])).rows).toEqual(
         [
           {
             status: mode === "message" ? "delivered_on_reply" : "deferred",
             sent_at: mode === "message" ? NOW : null,
-            body: BODY,
+            body: stored,
           },
         ],
       );

@@ -1,4 +1,6 @@
 /** SPEC-066: 안내 생성은 업무 명령의 가게 트랜잭션 안에서 호출한다. */
+
+import { readOrderNoticeSummary } from "./customer-notice-presentation";
 import { eventKeys, insertOnce, type Once } from "./event-keys";
 import type { ShopDb } from "./shop-scope";
 import { toShopLocal } from "./time";
@@ -107,6 +109,7 @@ export async function recordPaymentNoticeDelivery(
 }
 
 interface ConfirmedOrder {
+  version: number;
   customer_id: string;
   consultation_id: string;
   order_no: string;
@@ -135,7 +138,7 @@ export async function createOrderConfirmedNotice(
   if (existing) return { id: existing.id, created: false };
   const order = (
     await db.run<ConfirmedOrder>(
-      `SELECT o.customer_id,o.consultation_id,o.order_no,o.pickup_at,p.amount AS paid_amount,
+      `SELECT o.customer_id,o.consultation_id,o.order_no,o.version,o.pickup_at,p.amount AS paid_amount,
       s.business_name,s.representative_name,s.business_address,s.contact_phone,s.time_zone,
       u.channel_friend,ch.status AS channel_status,ch.event_status
       FROM orders o JOIN shops s ON s.id=$1
@@ -149,8 +152,11 @@ export async function createOrderConfirmedNotice(
     )
   ).rows[0];
   if (!order) return null;
+  const summary = await readOrderNoticeSummary(db, orderId, order.version);
+  if (summary === null) return null;
   const pickup = toShopLocal(order.pickup_at, order.time_zone);
-  const body = `주문이 확정됐어요\n주문번호 ${order.order_no}\n결제가 확인된 금액 ${order.paid_amount.toLocaleString("ko-KR")}원\n픽업 ${pickup.date} ${pickup.time}\n상호 ${order.business_name}\n대표자 ${order.representative_name}\n사업장 주소 ${order.business_address}\n전화번호 ${order.contact_phone}`;
+  const body = `주문이 확정됐어요\n주문번호 ${order.order_no}\n결제가 확인된 금액 ${order.paid_amount.toLocaleString("ko-KR")}원\n픽업 ${pickup.date} ${pickup.time}\n상호 ${order.business_name}\n대표자 ${order.representative_name}\n사업장 주소 ${order.business_address}\n전화번호 ${order.contact_phone}\n${summary}`;
+  if ([...body].length > 2000) throw new RangeError("confirmed notice body too long");
   const send =
     options.sendEnabled === true &&
     order.channel_friend &&
@@ -160,7 +166,7 @@ export async function createOrderConfirmedNotice(
     db,
     "notifications",
     `INSERT INTO notifications (shop_id, event_key, customer_id, consultation_id, order_id, kind, template_key, body, status, next_attempt_at, created_at)
-     VALUES ($1, $2, $3, $4, $5, 'order_confirmed', 'order_confirmed:v1', $6, $7, $8, $9)
+     VALUES ($1, $2, $3, $4, $5, 'order_confirmed', 'order_confirmed:v2', $6, $7, $8, $9)
      ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id`,
     [
       key,

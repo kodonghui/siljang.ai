@@ -16,7 +16,7 @@ import {
   releaseKakaoCallback,
 } from "./kakao-callback-store";
 import { readClaimedKakaoCard } from "./kakao-card-delivery";
-import { deferredKakaoMessages, deferredKakaoTexts } from "./kakao-deferred";
+import { deferredKakaoBatch, deferredKakaoMessages, deferredKakaoTexts } from "./kakao-deferred";
 import { expandKakaoMessageContents } from "./kakao-message-content";
 import { runKakaoPhotoTurn } from "./kakao-photo-turn";
 import { KAKAO_HANDOFF_TEXT, kakaoAiFailureOutcome } from "./kakao-reply";
@@ -222,11 +222,11 @@ export async function consumeKakaoCallback(
         );
       }
     }
-    const previous =
+    const previousBatch =
       callback === null
-        ? []
+        ? { messages: [], currentBlocked: false }
         : await db.transaction((tx) =>
-            deferredKakaoMessages(tx, claim.customer_id, {
+            deferredKakaoBatch(tx, claim.customer_id, {
               disclosureConsultationId: disclosure?.consultationId,
               excludeMessageId: preparedReply?.id,
               now: now(),
@@ -234,10 +234,11 @@ export async function consumeKakaoCallback(
               fields: () => services.fieldCrypto(),
             }),
           );
+    const previous = previousBatch.messages;
     const prefix = disclosure === null || disclosure === undefined ? [] : [disclosure.text];
     const previousTexts = deferredKakaoTexts(previous);
     // 고지·이전 안내가 세 칸을 채우면 새 AI 답은 다음 대화에 남긴다. 이전 안내를 앞질러 보내지 않는다.
-    let replyIncluded = prefix.length + previousTexts.length < 3;
+    let replyIncluded = !previousBatch.currentBlocked && prefix.length + previousTexts.length < 3;
     if (callback !== null && replyIncluded && preparedReply?.card !== undefined) {
       const fresh = await readClaimedKakaoCard(db, job.messageId, claim, now);
       if (fresh === null) {

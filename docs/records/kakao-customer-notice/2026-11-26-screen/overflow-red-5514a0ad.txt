@@ -1,0 +1,11 @@
+원본 5514a0ad46d852cf819c70781f52983945de118b · 공개 같은 트리 a14e388dc4d12f606b1ffd85fbba802987fe9c24
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > event: 긴 확정 내용과 두 규정이 후속 안내를 막지 않는다
+AssertionError: expected 500 to be 200 // Object.is equality
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > message: 긴 확정 내용과 두 규정이 후속 안내를 막지 않는다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '"type":"textCard"'
+ FAIL  test/kakao-customer-notice-message.test.ts > 확정 본문과 두 규정이3000자를 넘어도 세 출력에 전부 보존한다
+ FAIL  test/kakao-customer-notice-message.test.ts > 확정 본문과 두 규정이3000자를 넘어도 세 출력에 전부 보존한다
+ Test Files  2 failed (2)
+      Tests  4 failed | 27 passed (31)
+   Duration  4.51s (import 47%, tests 44%, transform 9%)

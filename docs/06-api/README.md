@@ -559,6 +559,8 @@ D1의 참고: `operators.email`·`kakao_channels.bot_id`·`ledger_links.spreadsh
 
 | 고친 곳 | 고친 것 | 근거 |
 | --- | --- | --- |
+| 스킬 응답 OUTPUT의 사진 캐러셀 | 기존 세 출력 종류를 보존하고 basicCard 캐러셀을 추가. 출력1개로 사진을 여럿 표시하며 thumbnail 대체 글50자/URL/비율을 명시. 새 엔드포인트나 요청 필드는 없음 | TASK109·SCR011의 완성 사진5장과 출력3개 한도, 카카오 공식 응답 규격 2026-11-26 확인 |
+| 긴 확정 안내의 텍스트 카드 캐러셀 | 기존 출력 종류를 보존하고 textCard 캐러셀을 추가. 항목10개·제목50자·설명128자 안에서 원문을 순서대로 보존하며 전체 출력은3개 이하. 새 엔드포인트/요청/업무 쓰기는 없음 | TASK109·SCR011의 확정 본문/고정 규정 합산 한도 고침, 카카오 공식 응답 규격 2026-11-26 확인 |
 | Shop 응답 licenseReviewedAt | 기존 판정 시각을 선택 필드로 반환하고 확인 중/재제출 뒤는 null | SCR-035 확인됨 시각, TASK-048 |
 | API-078·001·002, Owner.alertChannelFriend, DEC-21 | 기본 로그인은 scope를 생략하고 plusfriends·채널 조회·친구 기록·재조회·채널 배너를 끔. KAKAO_OWNER_LOGIN_SCOPES에 plusfriends를 명시한 경우만 기존 확인을 켬. 기존 친구 값은 보관하며 MVP에서 현재 관계 판단으로 쓰지 않음. API-002에 MVP 예시를 더함 | 동희님 2026-11-22 15:57 결정 카드 'MVP에선 빼기', TASK-020 |
 

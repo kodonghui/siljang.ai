@@ -208,3 +208,8 @@ GRANT SELECT (id, shop_id, storage_key) ON completion_photos, review_photos TO :
 -- TASK-047: 설정 카드의 연결 여부만 읽는다. 시트 ID/이름과 OAuth 참조는 열지 않는다.
 GRANT SELECT (shop_id, status) ON ledger_links TO :"runtime_role";
 REVOKE SELECT (unlinked_at) ON ledger_links FROM :"runtime_role";
+
+-- TASK-109: 확정 시점의 주문 내용만 읽는다. 주문자·알레르기와 내용 수정/삭제 권한은 더하지 않는다.
+GRANT SELECT (id, shop_id, order_id, version, price_list_id, size_option_id, flavor_option_id,
+  design_option_id, design_id, design_notes, lettering, colors) ON order_details TO :"runtime_role";
+GRANT SELECT (shop_id, order_detail_id, price_list_id, option_id) ON order_detail_extras TO :"runtime_role";

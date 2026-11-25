@@ -1,5 +1,12 @@
 /** 카카오 발신 내용. 확인 카드는 서버가 저장한 표시 값만 받습니다. */
 import type { ConfirmCardView } from "./confirm-card-store";
+import {
+  type KakaoCustomerNoticeButton,
+  type KakaoCustomerNoticeDisplayView,
+  type KakaoCustomerNoticePhotoOutput,
+  type KakaoCustomerNoticeTextCarouselOutput,
+  kakaoCustomerNoticeMessage,
+} from "./kakao-customer-notice-message";
 import { type KakaoMyOrderDisplayView, type KakaoMyOrderOutput, kakaoMyOrderMessage } from "./kakao-my-order-message";
 import { kakaoOrderRequestContents } from "./kakao-order-request-content";
 import { kakaoPaymentClaimMessage } from "./kakao-payment-claim-message";
@@ -17,7 +24,18 @@ export interface KakaoMyOrderContent {
   readonly view: KakaoMyOrderDisplayView;
   readonly part?: number;
 }
-export type KakaoMessageContent = string | ConfirmCardView | KakaoPaymentContent | KakaoMyOrderContent;
+/** 서버가 준비한 손님 안내. 사진과 동의 카드는 같은 세 출력 안에서 전한다. */
+export interface KakaoCustomerNoticeContent {
+  readonly kind: "customer_notice";
+  readonly view: KakaoCustomerNoticeDisplayView;
+  readonly part?: number;
+}
+export type KakaoMessageContent =
+  | string
+  | ConfirmCardView
+  | KakaoPaymentContent
+  | KakaoMyOrderContent
+  | KakaoCustomerNoticeContent;
 type MyOrderButton = Extract<KakaoMyOrderOutput, { readonly textCard: unknown }>["textCard"]["buttons"][number];
 export type KakaoMessageOutput =
   | { readonly simpleText: { readonly text: string } }
@@ -25,9 +43,11 @@ export type KakaoMessageOutput =
       readonly textCard: {
         readonly title: string;
         readonly description: string;
-        readonly buttons: readonly (KakaoPaymentButton | MyOrderButton)[];
+        readonly buttons: readonly (KakaoPaymentButton | MyOrderButton | KakaoCustomerNoticeButton)[];
       };
-    };
+    }
+  | KakaoCustomerNoticePhotoOutput
+  | KakaoCustomerNoticeTextCarouselOutput;
 export interface KakaoQuickReply {
   readonly label: string;
   readonly action: "message";
@@ -43,12 +63,16 @@ interface PresentationBody {
 export function limitKakaoQuickReplies(replies: readonly KakaoQuickReply[]): readonly KakaoQuickReply[] {
   return [...new Map(replies.map((reply) => [reply.messageText, reply])).values()].slice(0, 10);
 }
-type Presentation = KakaoPaymentContent | KakaoMyOrderContent;
+type Presentation = KakaoPaymentContent | KakaoMyOrderContent | KakaoCustomerNoticeContent;
 function isPresentation(content: KakaoMessageContent): content is Presentation {
-  return typeof content !== "string" && (content.kind === "payment_notice" || content.kind === "my_order");
+  return (
+    typeof content !== "string" &&
+    (content.kind === "payment_notice" || content.kind === "my_order" || content.kind === "customer_notice")
+  );
 }
 function presentationBody(content: Presentation): PresentationBody {
   if (content.kind === "payment_notice") return kakaoPaymentMessage(content.view);
+  if (content.kind === "customer_notice") return kakaoCustomerNoticeMessage(content.view);
   if (!["normal", "stale", "empty"].includes(content.view.state))
     throw new RangeError("invalid my order content state");
   const body = kakaoMyOrderMessage(content.view);

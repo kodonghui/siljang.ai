@@ -126,6 +126,19 @@ describeDb("손님 안내 스킬 API-073(TASK-104)", () => {
       { status: "deferred", sent_at: null },
     ]);
   });
+  it("금액 불일치의 실제 스킬도 들어온 금액을 숨기고 전달 기록을 바꾸지 않는다", async () => {
+    const id = await notice("합성 받은 금액 12,345원");
+    await isolated.db.query("UPDATE notifications SET kind='payment_mismatch' WHERE id=$1", [id]);
+    const response = await call(id);
+    expect(response.headers.get("Siljang-Outcome")).toBe("notice_shown");
+    const body = await response.json();
+    expectSchema("SkillTemplateResponse", body);
+    expect(JSON.stringify(body)).toContain("보내신 금액이 안내와 달라 사장님이 연락드릴게요");
+    expect(JSON.stringify(body)).not.toContain("12,345");
+    expect((await isolated.db.query("SELECT status,sent_at FROM notifications WHERE id=$1", [id])).rows).toEqual([
+      { status: "deferred", sent_at: null },
+    ]);
+  });
   it.each(["expired", "closed", "amount_card_missing"] as const)(
     "사용하지 못하는 결제 안내(%s)는 암호화 키 없이 계좌를 숨긴다",
     async (reason) => {
