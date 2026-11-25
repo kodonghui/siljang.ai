@@ -1,0 +1,71 @@
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+ ❯ test/change-card-source.test.ts (20 tests | 5 failed | 15 skipped) 1288ms
+   ❯ 변경 카드의 서버 준비 값과 실제 발급/갱신 API (20)
+     × 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(message/"\r\n") 295ms
+     × 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(message/"\r") 100ms
+     × 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(card/"\r\n") 66ms
+     × 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(card/"\r") 60ms
+     × 줄바꿈 형식만 다른 같은 제안으로 빈 변경 카드를 만들지 않는다 36ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(message/"\r\n")
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(message/"\r")
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 기존 첫 줄\n기존 둘째 줄'
+
+Expected: "합성 기존 첫 줄\n기존 둘째 줄"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"잠시 뒤 다시 말씀해 주세요"}}]}}"
+
+ ❯ test/change-card-source.test.ts:257:24
+    255|       expectSchema("SkillTemplateResponse", body);
+    256|       const rendered = JSON.stringify(body);
+    257|       expect(rendered).toContain("합성 기존 첫 줄\\n기존 둘째 줄");
+       |                        ^
+    258|       expect(rendered).toContain("합성 바꾼 첫 줄\\n바꾼 둘째 줄");
+    259|       expect(rendered).not.toContain("\\r");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(card/"\r\n")
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(card/"\r")
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 기존 첫 줄\n기존 둘째 줄'
+
+Expected: "합성 기존 첫 줄\n기존 둘째 줄"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"다시 눌러 주세요"}}]}}"
+
+ ❯ test/change-card-source.test.ts:257:24
+    255|       expectSchema("SkillTemplateResponse", body);
+    256|       const rendered = JSON.stringify(body);
+    257|       expect(rendered).toContain("합성 기존 첫 줄\\n기존 둘째 줄");
+       |                        ^
+    258|       expect(rendered).toContain("합성 바꾼 첫 줄\\n바꾼 둘째 줄");
+    259|       expect(rendered).not.toContain("\\r");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 줄바꿈 형식만 다른 같은 제안으로 빈 변경 카드를 만들지 않는다
+AssertionError: expected { kind: 'change_request', …(6) } to have property "unavailable" with value true
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ test/change-card-source.test.ts:286:22
+    284|       }),
+    285|     );
+    286|     expect(prepared).toHaveProperty("unavailable", true);
+       |                      ^
+    287|     expect(
+    288|       (await isolated.db.query("SELECT count(*)::int AS n FROM confirm…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 15 skipped (20)
+   Start at  22:09:30
+   Duration  3.06s (tests 44%, import 38%, transform 18%)

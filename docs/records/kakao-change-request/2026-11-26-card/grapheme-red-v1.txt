@@ -1,0 +1,48 @@
+
+> test
+> vitest run --run test/change-card-grapheme.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+ ❯ test/change-card-grapheme.test.ts (3 tests | 3 failed) 61ms
+   × 긴 변경의 1000자 경계에서 결합 이모지를 나누지 않는다 55ms
+   × 긴 변경의 40자 경계에서 결합 이모지를 나누지 않는다 3ms
+   × 긴 변경의 168자 경계에서 결합 이모지를 나누지 않는다 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/change-card-grapheme.test.ts > 긴 변경의 1000자 경계에서 결합 이모지를 나누지 않는다
+ FAIL  test/change-card-grapheme.test.ts > 긴 변경의 40자 경계에서 결합 이모지를 나누지 않는다
+ FAIL  test/change-card-grapheme.test.ts > 긴 변경의 168자 경계에서 결합 이모지를 나누지 않는다
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/change-card-grapheme.test.ts:38:55
+     36|         : [],
+     37|   );
+     38|   expect(fields.some((text) => text.includes(EMOJI))).toBe(true);
+       |                                                       ^
+     39|   expect(fields.some((text) => text.endsWith("\u200d") || text.startsW…
+     40|   expect(body.template.outputs.length).toBeLessThanOrEqual(3);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  21:16:31
+   Duration  1.17s (import 79%, transform 14%, tests 6%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task126-change-card/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task126-change-card/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/change-card-grapheme.test.ts

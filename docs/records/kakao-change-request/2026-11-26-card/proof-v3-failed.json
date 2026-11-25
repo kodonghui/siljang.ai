@@ -1,0 +1,14 @@
+{
+  "source": "52cef6ff75ad3b4c8f34544db2e84ef785408d7d",
+  "publicSameTree": "ae841f18980452f7bf31b40be84c6026368c150a",
+  "label": "siljang-task126-change-card-20261126-v3",
+  "serverPassed": 3222,
+  "serverFailed": 1,
+  "testExit": 1,
+  "web": "미실행",
+  "build": "미실행",
+  "migrations": 41,
+  "databaseRemaining": 0,
+  "failure": "기존 만료 차액 시험의 변경 카드 준비에 필수 서버 제안이 없음",
+  "fixedTarget": 10
+}

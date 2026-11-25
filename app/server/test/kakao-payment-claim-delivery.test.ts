@@ -205,6 +205,7 @@ describeDb("SCR006 저장 카드의 표시 직전 결제 자료(TASK-107)", () =
       ...identity(),
       kind: "change_request",
       orderId: shop.orderId,
+      proposedChanges: { lettering: "합성 변경 문구" },
       now: NOW,
     });
     const cardId = (
