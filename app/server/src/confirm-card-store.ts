@@ -83,8 +83,8 @@ const LABELS: Record<CustomerCommandKind, string> = {
   issue_report: "문제 신고",
   consent_withdrawal: "동의 철회",
 };
-export const NOT_YOURS = { outcome: "card_not_yours", text: "받으신 카드에서 눌러 주세요" } as const;
-const RETRY_NEEDED = { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" } as const;
+export const NOT_YOURS = { outcome: "card_not_yours", text: "이 버튼은 카드를 받은 분만 누를 수 있어요" } as const;
+export const RETRY_NEEDED = { outcome: "retry_needed", text: "다시 눌러 주세요" } as const;
 const DECLINED = { outcome: "declined", text: "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요" } as const;
 function usedAnswer(card: CardRow): ConfirmCardAnswer {
   const result = card.payload.result;
@@ -173,7 +173,7 @@ async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): P
     cardKey: `ck_${crypto.randomUUID().replaceAll("-", "")}`,
     title: `${LABELS[input.kind]} 확인`,
     description: source.description,
-    confirmLabel: LABELS[input.kind],
+    confirmLabel: input.kind === "order_request" ? "규정에 동의하고 주문 요청" : LABELS[input.kind],
     blockId: source.blockId,
   };
   await db.run(

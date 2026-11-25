@@ -1,7 +1,7 @@
 /** API-071. 카드 값과 업무 대상은 저장된 서버 자료에서만 읽습니다. */
-import { type ConfirmCardAnswer, pressKakaoConfirmCardInTransaction } from "./confirm-card-store";
+import { type ConfirmCardAnswer, pressKakaoConfirmCardInTransaction, RETRY_NEEDED } from "./confirm-card-store";
 import { errorFields } from "./error-name";
-import { type KakaoMessageContent, kakaoMessageOutputs } from "./kakao-message-content";
+import { kakaoConfirmAnswerMessage } from "./kakao-order-request-message";
 import { kakaoReply } from "./kakao-reply";
 import type { KakaoSkillPayload } from "./kakao-skill-auth";
 import { kakaoContactPhone } from "./kakao-skill-store";
@@ -21,11 +21,7 @@ export function parseKakaoCardPress(payload: KakaoSkillPayload): KakaoCardPress 
   return { cardKey, choice };
 }
 export function kakaoConfirmCardReply(r: Pick<ShopRequest, "json">, answer: ConfirmCardAnswer): Response {
-  const contents: KakaoMessageContent[] = [answer.text];
-  if (answer.firstResult !== undefined) contents.push(answer.firstResult.text);
-  if (answer.card !== undefined) contents.push(answer.card);
-  const outputs = kakaoMessageOutputs(contents);
-  return r.json({ version: "2.0", template: { outputs } }, 200, {
+  return r.json(kakaoConfirmAnswerMessage(answer), 200, {
     "Siljang-Outcome": answer.outcome,
     "Cache-Control": "no-store",
   });
@@ -56,6 +52,6 @@ export async function receiveKakaoConfirmCard(r: ShopRequest, input: KakaoCardPr
       : kakaoConfirmCardReply(r, answer);
   } catch (error) {
     r.log("error", { event: "kakao_card_command_failed", traceId: r.traceId, ...errorFields(error) });
-    return kakaoConfirmCardReply(r, { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" });
+    return kakaoConfirmCardReply(r, RETRY_NEEDED);
   }
 }

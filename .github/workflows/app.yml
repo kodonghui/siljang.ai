@@ -80,6 +80,7 @@ jobs:
           node ../research/screen-checks-2026-11/build-payment-destination.mjs .. "$RUNNER_TEMP/siljang-payment-fixture" 2>&1 | tee ci-logs/payment-fixture.log
           node ../research/screen-checks-2026-11/build-booking-link.mjs .. "$RUNNER_TEMP/siljang-booking-link-fixture" 2>&1 | tee ci-logs/booking-link-fixture.log
           node ../research/screen-checks-2026-11/build-kakao-consultation.mjs .. "$RUNNER_TEMP/siljang-consultation-fixture" 2>&1 | tee ci-logs/consultation-fixture.log
+          node ../research/screen-checks-2026-11/build-kakao-order-request.mjs .. "$RUNNER_TEMP/siljang-order-request-fixture" 2>&1 | tee ci-logs/order-request-fixture.log
 
       - name: 타입 검사(TypeScript)
         run: npm run typecheck 2>&1 | tee ci-logs/typecheck.log
@@ -147,6 +148,8 @@ jobs:
           node ../research/screen-checks-2026-11/build-booking-link.mjs .. "$env:RUNNER_TEMP/siljang-booking-link-fixture"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node ../research/screen-checks-2026-11/build-kakao-consultation.mjs .. "$env:RUNNER_TEMP/siljang-consultation-fixture"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node ../research/screen-checks-2026-11/build-kakao-order-request.mjs .. "$env:RUNNER_TEMP/siljang-order-request-fixture"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   deploy-staging:
