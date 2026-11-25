@@ -20,3 +20,21 @@
 - 새 종류의 고정 템플릿과 실제 업무 생성 연결·나머지 안내 종류를 이어갑니다. 현재 예약 읽기 수정으로 그 업무 완료를 주장하지 않습니다.
 - TASK106 병합 뒤 최신 main을 반영하고 README/fix 예약 번호와 네 기록·전체 검사·준비 PR의 CI/검토·자기 main 배포까지 마무리합니다.
 - 실제 브라우저는 학원컴 Aside CLI만 사용합니다. 바깥 접속 실패 두 번 뒤 복구 근거가 없어 재시도하지 않았고 실제 PC 카카오·0041/최소 권한 적용·감시 메일은 미확인입니다. 예상 AI 비용0원·실제 모델/카카오 발신/메일/결제0건입니다.
+
+## 고정 전체 검사
+
+고정 원본5ecb8c3c86152cc27926faab87380bc61f9f394a와 공개 같은 트리a085916d612e2ac8bfc6a307004077a85ffcf286의 새 빈41개 이행에서 단일 npm test·빌드가 종료0이고 시험 데이터베이스는0개 남았습니다. Node55개와 WBS18개/오류0입니다. 실제 결과는 다음과 같습니다.
+
+```text
+Test Files  151 passed (151)
+Tests  2944 passed (2944)
+Duration  267.52s (tests 68%, import 31%)
+Test Files  73 passed (73)
+Tests  1775 passed (1775)
+Duration  42.05s (tests 55%, import 35%, environment 8%, transform 2%)
+✓ built in 655ms
+Total Upload: 5479.69 KiB / gzip: 1009.61 KiB
+Total Upload: 21.08 KiB / gzip: 6.55 KiB
+```
+
+이는 PR280 main340dc3c3 기반의 결과입니다. PR281의 표시 변경이 main에 합쳐지면 그 최신 원본을 반영하고 관련 경로·현재 CI의 단일 전체 명령으로 다시 대조합니다. 같은 lock의 설치 재사용이며 새 로컬 npm ci는 아닙니다. TASK104의 나머지 템플릿/업무 생성 코드와 네 기록·준비 PR/검토·CI·자기 main/배포·실제 학원컴 Aside/PC 카카오는 남았습니다. 구현 완료/finished로 세지 않습니다.
