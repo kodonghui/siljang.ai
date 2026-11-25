@@ -1,6 +1,9 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import { prepareConfirmCardInTransaction, showConfirmCard } from "../src/confirm-card-store";
+import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
@@ -72,10 +75,15 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
     };
     return showConfirmCard(scoped(), input);
   };
-  const request = (kind: "message" | "card", cardKey?: string) =>
+  const request = (kind: "message" | "card", cardKey?: string, queue?: KakaoCallbackQueue) =>
     createApp({
       connect: () => isolated.connect(),
-      services: { now: () => clock, fieldCrypto: fc, confirmCardCommand: execute },
+      services: {
+        now: () => clock,
+        fieldCrypto: fc,
+        confirmCardCommand: execute,
+        ...(queue === undefined ? {} : { kakaoCallbackQueue: queue }),
+      },
       logSink: () => {},
     }).request(
       `/api/kakao/skills/${kind}`,
@@ -86,6 +94,9 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
           bot: { id: shop.botId },
           userRequest: {
             utterance: kind === "message" ? "합성 변경 카드 보기" : "변경 요청",
+            ...(queue === undefined
+              ? {}
+              : { callbackUrl: "https://bot-api.kakao.com/v1/callback/synthetic_change_deadline" }),
             block: { id: kind === "card" ? "blk-card" : "conversation" },
             user: { id: shop.userKey, type: "botUserKey" },
           },
@@ -424,7 +435,7 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
       ).toBe(0);
     },
   );
-  it.each(["card", "message"] as const)(
+  it.each(["card", "message", "callback"] as const)(
     "API %s의 변경 마감 정각에는 원래 조문2062자를 모두 보이고 실행·새 카드가 없다",
     async (kind) => {
       const source = newUuid(),
@@ -453,9 +464,50 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
           "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'변경 요청','deferred',$5)",
           [newUuid(), shop.shopId, shop.consultationId, source, NOW],
         );
-      const response = await request(kind, card.cardKey),
+      let body: unknown;
+      if (kind === "callback") {
+        const jobs: KakaoCallbackJob[] = [];
+        const response = await request("message", undefined, {
+          send: async (job) => {
+            jobs.push(job);
+          },
+        });
+        expect(response.headers.get("Siljang-Outcome")).toBe("callback_pending");
+        const job = jobs[0];
+        if (job === undefined) throw new Error("합성 변경 마감 콜백 없음");
+        const replyId = newUuid();
+        await isolated.db.query(
+          "UPDATE confirm_cards SET payload=jsonb_set(payload,'{sourceMessageId}',$2::jsonb) WHERE card_key=$1",
+          [card.cardKey, JSON.stringify(job.messageId)],
+        );
+        await isolated.db.query(
+          "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'변경 요청','deferred',$5)",
+          [replyId, shop.shopId, shop.consultationId, job.messageId, clock],
+        );
+        const call = vi.fn<AiModel["call"]>().mockRejectedValue(new Error("저장된 변경 안내의 모델 재호출 금지"));
+        const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+        const at = new Date(clock.getTime() + 1000);
+        const options = {
+          connect: () => isolated.connect(),
+          now: () => at,
+          fetch: send,
+          logSink: () => {},
+          services: { fieldCrypto: fc, aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
+        };
+        expect(await consumeKakaoCallback(job, testEnv(), options)).toBe("done");
+        expect(send).toHaveBeenCalledTimes(1);
+        body = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
+        expect(await consumeKakaoCallback(job, testEnv(), options)).toBe("done");
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(call).not.toHaveBeenCalled();
+        expect(
+          (await isolated.db.query("SELECT delivery,sent_at FROM messages WHERE id=$1", [replyId])).rows[0],
+        ).toEqual({ delivery: "callback", sent_at: at });
+      } else {
+        const response = await request(kind, card.cardKey);
         body = await response.json();
-      if (kind === "card") expect(response.headers.get("Siljang-Outcome")).toBe("not_allowed_now");
+        if (kind === "card") expect(response.headers.get("Siljang-Outcome")).toBe("not_allowed_now");
+      }
       expectSchema("SkillTemplateResponse", body);
       const text = (
         body as {
