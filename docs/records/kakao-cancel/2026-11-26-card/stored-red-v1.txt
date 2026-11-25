@@ -1,0 +1,81 @@
+
+ RUN  v5.1.0 /workspace/siljang-task127-cancel-card/app/server
+
+ ❯ test/cancellation-first-result.test.ts (2 tests | 2 failed) 866ms
+   ❯ 취소 카드의 실제 저장 첫 결과와 재전달 (2)
+     × API071 재클릭과 카드 재전달은 처음 결과만 보이고 명령은 한 번이다(결제 false) 151ms
+     × API071 재클릭과 카드 재전달은 처음 결과만 보이고 명령은 한 번이다(결제 true) 64ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/cancellation-first-result.test.ts > 취소 카드의 실제 저장 첫 결과와 재전달 > API071 재클릭과 카드 재전달은 처음 결과만 보이고 명령은 한 번이다(결제 false)
+AssertionError: expected { version: '2.0', template: { …(1) } } to deeply equal { version: '2.0', template: { …(1) } }
+
+- Expected
++ Received
+
+@@ -1,10 +1,15 @@
+  {
+    "template": {
+      "outputs": [
+        {
+          "simpleText": {
++           "text": "이미 처리했어요",
++         },
++       },
++       {
++         "simpleText": {
+            "text": "주문을 취소했어요",
+          },
+        },
+      ],
+    },
+
+ ❯ test/cancellation-first-result.test.ts:92:21
+     90|       expectSchema("SkillTemplateResponse", initial);
+     91|       expectSchema("SkillTemplateResponse", again);
+     92|       expect(again).toEqual(initial);
+       |                     ^
+     93|       expect(again).toHaveProperty("template.outputs", [{ simpleText: …
+     94|       expect(execute).toHaveBeenCalledTimes(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/cancellation-first-result.test.ts > 취소 카드의 실제 저장 첫 결과와 재전달 > API071 재클릭과 카드 재전달은 처음 결과만 보이고 명령은 한 번이다(결제 true)
+AssertionError: expected { version: '2.0', template: { …(1) } } to deeply equal { version: '2.0', template: { …(1) } }
+
+- Expected
++ Received
+
+@@ -1,10 +1,15 @@
+  {
+    "template": {
+      "outputs": [
+        {
+          "simpleText": {
++           "text": "이미 처리했어요",
++         },
++       },
++       {
++         "simpleText": {
+            "text": "주문을 취소했어요. 환불은 사장님이 정한 뒤 알려 드려요",
+          },
+        },
+      ],
+    },
+
+ ❯ test/cancellation-first-result.test.ts:92:21
+     90|       expectSchema("SkillTemplateResponse", initial);
+     91|       expectSchema("SkillTemplateResponse", again);
+     92|       expect(again).toEqual(initial);
+       |                     ^
+     93|       expect(again).toHaveProperty("template.outputs", [{ simpleText: …
+     94|       expect(execute).toHaveBeenCalledTimes(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  22:28:18
+   Duration  2.47s (import 51%, tests 37%, transform 12%)
