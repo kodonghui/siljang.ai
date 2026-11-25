@@ -206,26 +206,30 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
     expect(execute).not.toHaveBeenCalled();
   });
 
-  it.each(["press", "prepare", "replay", "deferred", "callback"] as const)(
-    "새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(%s)",
-    async (mode) => {
-      const sourceMessageId = newUuid();
-      const original = await show("payment_claim", sourceMessageId);
-      const amountId = newUuid(),
-        amountKey = `ck_${amountId}`;
-      await isolated.db.query(
-        "INSERT INTO confirm_cards(id,shop_id,consultation_id,customer_id,card_key,kind,order_id,order_version,payload,created_at,expires_at) VALUES($1,$2,$3,$4,$5,'amount_confirm',$6,2,'{}',$7,$8)",
-        [
-          amountId,
-          shop.shopId,
-          shop.consultationId,
-          shop.customerId,
-          amountKey,
-          shop.orderId,
-          NOW,
-          new Date(NOW.getTime() + 1800000),
-        ],
-      );
+  it.each(
+    (["custom", "difference"] as const).flatMap((kind) =>
+      (["press", "prepare", "replay", "deferred", "callback"] as const).map((mode) => [kind, mode] as const),
+    ),
+  )("새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(%s/%s)", async (kind, mode) => {
+    const sourceMessageId = newUuid();
+    const original = await show("payment_claim", sourceMessageId);
+    const amountId = newUuid(),
+      amountKey = `ck_${amountId}`,
+      paymentId = kind === "custom" ? shop.paymentRequestId : newUuid();
+    await isolated.db.query(
+      "INSERT INTO confirm_cards(id,shop_id,consultation_id,customer_id,card_key,kind,order_id,order_version,payload,created_at,expires_at) VALUES($1,$2,$3,$4,$5,'amount_confirm',$6,2,'{}',$7,$8)",
+      [
+        amountId,
+        shop.shopId,
+        shop.consultationId,
+        shop.customerId,
+        amountKey,
+        shop.orderId,
+        NOW,
+        new Date(NOW.getTime() + 1800000),
+      ],
+    );
+    if (kind === "custom") {
       await isolated.db.query(
         "INSERT INTO order_details SELECT(jsonb_populate_record(NULL::order_details,to_jsonb(d)||$2::jsonb)).* FROM order_details d WHERE d.order_id=$1 AND d.version=1",
         [
@@ -247,91 +251,149 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         "UPDATE payment_requests SET amount=55000,requested_amount=35000,needs_amount_confirm=true,amount_confirmed_at=NULL,delivered_at=NULL,due_at=due_cap_at,amount_card_id=$2 WHERE id=$1",
         [shop.paymentRequestId, amountId],
       );
-      const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), isolated.db);
-      const notice = await scoped.transaction((tx) => createPaymentRequestNotice(tx, shop.paymentRequestId, NOW));
-      if (!notice) throw new Error("합성 금액 확인 안내 없음");
-      // 새 안내의 전달과 별개로, 이미 보인 결제 확인 카드 자체를 다시 읽는 경로를 가른다.
-      await isolated.db.query("UPDATE notifications SET status='delivered_on_reply',sent_at=$2 WHERE id=$1", [
-        notice.id,
-        NOW,
-      ]);
-      const beforePayment = (await state()).payments;
-      const execute = vi.fn<ConfirmCardCommand>();
-      let body: unknown;
-      if (mode === "press") {
-        const result = await call(original.cardKey, "", execute, "blk-card");
-        expect(result.response.headers.get("Siljang-Outcome")).toBe("not_allowed_now");
-        body = await result.response.json();
-      } else if (mode === "prepare") {
-        const prepared = await scoped.transaction((tx) =>
-          prepareConfirmCardInTransaction(tx, {
-            customerId: shop.customerId,
-            consultationId: shop.consultationId,
-            orderId: shop.orderId,
-            kind: "payment_claim",
-            sourceMessageId: newUuid(),
-            now: NOW,
+    } else {
+      const payment = newUuid(),
+        change = newUuid(),
+        changeCard = newUuid();
+      await isolated.db.query(
+        "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_at=$2,arrived_amount=amount,issued_at=$3 WHERE id=$1",
+        [shop.paymentRequestId, NOW, new Date(NOW.getTime() - 1000)],
+      );
+      await isolated.db.query(
+        "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+        [payment, shop.shopId, shop.orderId, shop.paymentRequestId, NOW],
+      );
+      await isolated.db.query(
+        "UPDATE orders SET status='confirmed',confirmed_at=$2,confirmed_payment_id=$3 WHERE id=$1",
+        [shop.orderId, NOW, payment],
+      );
+      await isolated.db.query("UPDATE confirm_cards SET order_version=1 WHERE id=$1", [amountId]);
+      await isolated.db.query(
+        "INSERT INTO confirm_cards(id,shop_id,consultation_id,customer_id,card_key,kind,order_id,order_version,payload,created_at,expires_at) VALUES($1,$2,$3,$4,$5,'change_request',$6,1,'{}',$7,$8)",
+        [
+          changeCard,
+          shop.shopId,
+          shop.consultationId,
+          shop.customerId,
+          `ck_${changeCard}`,
+          shop.orderId,
+          NOW,
+          new Date(NOW.getTime() + 1800000),
+        ],
+      );
+      await isolated.db.query(
+        "INSERT INTO change_requests(id,shop_id,order_id,card_id,base_version,changes,status,amount_delta,decided_at) VALUES($1,$2,$3,$4,1,$5::jsonb,'awaiting_difference',20000,$6)",
+        [change, shop.shopId, shop.orderId, changeCard, JSON.stringify({ lettering: "합성 변경 문구" }), NOW],
+      );
+      await isolated.db.query(
+        "INSERT INTO payment_requests SELECT(jsonb_populate_record(NULL::payment_requests,to_jsonb(p)||$2::jsonb)).* FROM payment_requests p WHERE p.id=$1",
+        [
+          shop.paymentRequestId,
+          JSON.stringify({
+            id: paymentId,
+            kind: "difference",
+            change_request_id: change,
+            event_key: `pay:${change}:difference`,
+            status: "open",
+            amount: 20000,
+            requested_amount: null,
+            needs_amount_confirm: true,
+            amount_confirmed_at: null,
+            amount_card_id: amountId,
+            delivered_at: null,
+            issued_at: NOW.toISOString(),
+            due_at: new Date(NOW.getTime() + 86400000).toISOString(),
+            due_cap_at: new Date(NOW.getTime() + 86400000).toISOString(),
+            paid_at: null,
+            arrived_at: null,
+            arrived_amount: null,
           }),
-        );
-        expect(prepared).not.toHaveProperty("unavailable");
-        if ("unavailable" in prepared) throw new Error("새 금액 카드가 필요한데 고정 문구만 반환함");
-        body = kakaoConsultationMessage({ state: "normal", contents: [prepared] });
-      } else if (mode === "deferred") {
-        await isolated.db.query("UPDATE consultations SET ai_disclosed_at=$2 WHERE id=$1", [shop.consultationId, NOW]);
-        await isolated.db.query(
-          "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'결제 확인 요청','deferred',$5)",
-          [newUuid(), shop.shopId, shop.consultationId, sourceMessageId, NOW],
-        );
-        const batch = await scoped.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: NOW }));
-        body = kakaoConsultationMessage({ state: "normal", contents: deferredKakaoTexts(batch.messages) });
-      } else {
-        const delivery = await scoped.transaction((tx) =>
-          readConfirmCardDelivery(tx, {
-            customerId: shop.customerId,
-            consultationId: shop.consultationId,
-            sourceMessageId,
-            now: NOW,
-          }),
-        );
-        const contents = [delivery.card ?? delivery.text];
-        body = kakaoConsultationMessage({ state: "normal", contents });
-        if (mode === "callback") {
-          const expected = body;
-          expect(
-            await deliverKakaoCallback(
-              { url: new URL("https://bot-api.kakao.com/v1/callback/synthetic_amount_redirect"), deadline: 10000 },
-              contents,
-              {
-                now: () => 100,
-                fetch: async (_url, init) => {
-                  body = JSON.parse(String(init?.body));
-                  return Response.json({ status: "SUCCESS" });
-                },
+        ],
+      );
+    }
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), isolated.db);
+    const notice = await scoped.transaction((tx) => createPaymentRequestNotice(tx, paymentId, NOW));
+    if (!notice) throw new Error("합성 금액 확인 안내 없음");
+    // 새 안내의 전달과 별개로, 이미 보인 결제 확인 카드 자체를 다시 읽는 경로를 가른다.
+    await isolated.db.query("UPDATE notifications SET status='delivered_on_reply',sent_at=$2 WHERE id=$1", [
+      notice.id,
+      NOW,
+    ]);
+    const beforePayment = (await state()).payments;
+    const execute = vi.fn<ConfirmCardCommand>();
+    let body: unknown;
+    if (mode === "press") {
+      const result = await call(original.cardKey, "", execute, "blk-card");
+      expect(result.response.headers.get("Siljang-Outcome")).toBe("not_allowed_now");
+      body = await result.response.json();
+    } else if (mode === "prepare") {
+      const prepared = await scoped.transaction((tx) =>
+        prepareConfirmCardInTransaction(tx, {
+          customerId: shop.customerId,
+          consultationId: shop.consultationId,
+          orderId: shop.orderId,
+          kind: "payment_claim",
+          sourceMessageId: newUuid(),
+          now: NOW,
+        }),
+      );
+      expect(prepared).not.toHaveProperty("unavailable");
+      if ("unavailable" in prepared) throw new Error("새 금액 카드가 필요한데 고정 문구만 반환함");
+      body = kakaoConsultationMessage({ state: "normal", contents: [prepared] });
+    } else if (mode === "deferred") {
+      await isolated.db.query("UPDATE consultations SET ai_disclosed_at=$2 WHERE id=$1", [shop.consultationId, NOW]);
+      await isolated.db.query(
+        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'결제 확인 요청','deferred',$5)",
+        [newUuid(), shop.shopId, shop.consultationId, sourceMessageId, NOW],
+      );
+      const batch = await scoped.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: NOW }));
+      body = kakaoConsultationMessage({ state: "normal", contents: deferredKakaoTexts(batch.messages) });
+    } else {
+      const delivery = await scoped.transaction((tx) =>
+        readConfirmCardDelivery(tx, {
+          customerId: shop.customerId,
+          consultationId: shop.consultationId,
+          sourceMessageId,
+          now: NOW,
+        }),
+      );
+      const contents = [delivery.card ?? delivery.text];
+      body = kakaoConsultationMessage({ state: "normal", contents });
+      if (mode === "callback") {
+        const expected = body;
+        expect(
+          await deliverKakaoCallback(
+            { url: new URL("https://bot-api.kakao.com/v1/callback/synthetic_amount_redirect"), deadline: 10000 },
+            contents,
+            {
+              now: () => 100,
+              fetch: async (_url, init) => {
+                body = JSON.parse(String(init?.body));
+                return Response.json({ status: "SUCCESS" });
               },
-            ),
-          ).toBe("delivered");
-          expect(body).toEqual(expected);
-        }
+            },
+          ),
+        ).toBe("delivered");
+        expect(body).toEqual(expected);
       }
-      expectSchema("SkillTemplateResponse", body);
-      const shown = JSON.stringify(body);
-      for (const text of [
-        "새 금액 확인",
-        "요청하신 견적 35,000원",
-        "55,000원",
-        "합성 장식을 추가해요",
-        "이 금액으로 할게요",
-        "안 할래요",
-        amountKey,
-      ])
-        expect(shown).toContain(text);
-      for (const text of ["결제 확인 요청", "입금자 이름이 달라요", "시험손님", "계좌번호", original.cardKey])
-        expect(shown).not.toContain(text);
-      expect((await state()).payments).toEqual(beforePayment);
-      expect(execute).not.toHaveBeenCalled();
-      expect(JSON.stringify((await state()).cards)).not.toContain("시험손님");
-      expect(JSON.stringify((await state()).cards)).not.toContain("amountConfirmation");
-      expect(JSON.stringify((await state()).cards)).not.toContain("합성 장식을 추가해요");
-    },
-  );
+    }
+    expectSchema("SkillTemplateResponse", body);
+    const shown = JSON.stringify(body);
+    for (const text of [
+      "새 금액 확인",
+      "55,000원",
+      amountKey,
+      ...(kind === "custom"
+        ? ["요청하신 견적 35,000원", "합성 장식을 추가해요", "이 금액으로 할게요", "안 할래요"]
+        : ["지금 35,000원", "차액 20,000원", "변경 마감", "합성 변경 문구", "바꿀게요", "그대로 둘래요"]),
+    ])
+      expect(shown).toContain(text);
+    for (const text of ["결제 확인 요청", "입금자 이름이 달라요", "시험손님", "계좌번호", original.cardKey])
+      expect(shown).not.toContain(text);
+    expect((await state()).payments).toEqual(beforePayment);
+    expect(execute).not.toHaveBeenCalled();
+    expect(JSON.stringify((await state()).cards)).not.toContain("시험손님");
+    expect(JSON.stringify((await state()).cards)).not.toContain("amountConfirmation");
+    expect(JSON.stringify((await state()).cards)).not.toContain("합성 장식을 추가해요");
+  });
 });
