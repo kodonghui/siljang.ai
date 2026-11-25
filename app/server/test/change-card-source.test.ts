@@ -137,6 +137,59 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
       await tx.query("UPDATE orders SET version=2 WHERE id=$1", [shop.orderId]);
     });
   }
+  it.each(["message", "card"] as const)(
+    "API %s에서 갱신 표시를 만들지 못하면 재클릭해도 옛 카드와 새 카드 수가 그대로다",
+    async (kind) => {
+      await isolated.db.query(
+        "UPDATE order_details SET design_notes=$2,lettering=$3,colors=$4 WHERE order_id=$1 AND version=1",
+        [shop.orderId, "가".repeat(500), "다".repeat(50), "마".repeat(100)],
+      );
+      const source = newUuid(),
+        card = await show(source, {
+          size: "크".repeat(30),
+          flavor: "맛".repeat(30),
+          design: "도".repeat(30),
+          designNotes: "나".repeat(500),
+          lettering: "라".repeat(50),
+          colors: "바".repeat(100),
+          extras: Array.from({ length: 20 }, (_, index) => `${index}`.padEnd(30, "추")),
+        });
+      await isolated.db.query("UPDATE order_details SET design_notes=$2 WHERE order_id=$1 AND version=1", [
+        shop.orderId,
+        `a${"\u0301".repeat(199)}${"가".repeat(300)}`,
+      ]);
+      clock = new Date(NOW.getTime() + 1800000);
+      if (kind === "message")
+        await isolated.db.query(
+          "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'변경 요청','deferred',$5)",
+          [newUuid(), shop.shopId, shop.consultationId, source, NOW],
+        );
+      const responses = [];
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const response = await request(kind, card.cardKey);
+        responses.push({ outcome: response.headers.get("Siljang-Outcome"), body: await response.json() });
+      }
+      expect(execute).not.toHaveBeenCalled();
+      expect(
+        (
+          await isolated.db.query(
+            "SELECT used_at,payload->'replacedBy' AS replacement FROM confirm_cards WHERE card_key=$1",
+            [card.cardKey],
+          )
+        ).rows[0],
+      ).toEqual({ used_at: null, replacement: null });
+      expect(
+        (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId]))
+          .rows[0]?.n,
+      ).toBe(1);
+      for (const response of responses) {
+        expectSchema("SkillTemplateResponse", response.body);
+        expect(JSON.stringify(response.body)).not.toContain("새 카드를 보내 드려요");
+        expect(JSON.stringify(response.body)).not.toContain("이미 처리했어요");
+      }
+      if (kind === "card") expect(responses.map((r) => r.outcome)).toEqual(["retry_needed", "retry_needed"]);
+    },
+  );
   it("API070은 저장소에서 발급한 카드의 실제 변경 전후·현재 버전·기한을 표시한다", async () => {
     const source = newUuid(),
       card = await show(source);
@@ -371,48 +424,68 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
       ).toBe(0);
     },
   );
-  it("변경 마감 정각에는 원래 조문2062자를 모두 보이고 실행·새 카드가 없다", async () => {
-    const card = await show(),
-      title = "제".repeat(60),
-      condition = "조".repeat(1000),
-      effect = "문".repeat(1000);
-    await isolated.db.query(
-      "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'change_deadline',99,$3,$4,$5)",
-      [shop.shopId, shop.operatingRulesId, title, condition, effect],
-    );
-    clock =
-      (
-        await isolated.db.query<{ deadline: Date }>(
-          "SELECT pickup_at-interval '48 hours' AS deadline FROM orders WHERE id=$1",
-          [shop.orderId],
+  it.each(["card", "message"] as const)(
+    "API %s의 변경 마감 정각에는 원래 조문2062자를 모두 보이고 실행·새 카드가 없다",
+    async (kind) => {
+      const source = newUuid(),
+        card = await show(source),
+        title = "제".repeat(60),
+        condition = "조".repeat(1000),
+        effect = "문".repeat(1000);
+      await isolated.db.query(
+        "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'change_deadline',99,$3,$4,$5)",
+        [shop.shopId, shop.operatingRulesId, title, condition, effect],
+      );
+      clock = new Date(NOW.getTime() + 600000);
+      await isolated.db.transaction(async (tx) => {
+        const pickupAt = new Date(clock.getTime() + 48 * 3600000);
+        await tx.query("UPDATE order_details SET pickup_at=$2 WHERE order_id=$1 AND version=1", [
+          shop.orderId,
+          pickupAt,
+        ]);
+        await tx.query(
+          "UPDATE orders SET pickup_at=$2,pickup_day=($2::timestamptz AT TIME ZONE 'Asia/Seoul')::date WHERE id=$1",
+          [shop.orderId, pickupAt],
+        );
+      });
+      if (kind === "message")
+        await isolated.db.query(
+          "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'변경 요청','deferred',$5)",
+          [newUuid(), shop.shopId, shop.consultationId, source, NOW],
+        );
+      const response = await request(kind, card.cardKey),
+        body = await response.json();
+      if (kind === "card") expect(response.headers.get("Siljang-Outcome")).toBe("not_allowed_now");
+      expectSchema("SkillTemplateResponse", body);
+      const text = (
+        body as {
+          template: {
+            outputs: {
+              simpleText?: { text: string };
+              carousel?: { items: { title: string; description?: string }[] };
+            }[];
+          };
+        }
+      ).template.outputs
+        .map(
+          (output: {
+            simpleText?: { text: string };
+            carousel?: { items: { title: string; description?: string }[] };
+          }) =>
+            output.simpleText?.text ??
+            output.carousel?.items
+              .map((item) => item.title.replace(/^변경 내용 \d+\n/, "") + (item.description ?? ""))
+              .join("") ??
+            "",
         )
-      ).rows[0]?.deadline ?? NOW;
-    const response = await request("card", card.cardKey),
-      body = await response.json();
-    expect(response.headers.get("Siljang-Outcome")).toBe("not_allowed_now");
-    expectSchema("SkillTemplateResponse", body);
-    const text = (
-      body as {
-        template: {
-          outputs: { simpleText?: { text: string }; carousel?: { items: { title: string; description?: string }[] } }[];
-        };
-      }
-    ).template.outputs
-      .map(
-        (output: { simpleText?: { text: string }; carousel?: { items: { title: string; description?: string }[] } }) =>
-          output.simpleText?.text ??
-          output.carousel?.items
-            .map((item) => item.title.replace(/^변경 내용 \d+\n/, "") + (item.description ?? ""))
-            .join("") ??
-          "",
-      )
-      .join("");
-    expect(text).toContain([title, condition, effect].join("\n"));
-    expect(text).toContain("변경 마감이 지나 바꿀 수 없어요");
-    expect(execute).not.toHaveBeenCalled();
-    expect(
-      (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows[0]
-        ?.n,
-    ).toBe(1);
-  });
+        .join("");
+      expect(text).toContain([title, condition, effect].join("\n"));
+      expect(text).toContain("변경 마감이 지나 바꿀 수 없어요");
+      expect(execute).not.toHaveBeenCalled();
+      expect(
+        (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId]))
+          .rows[0]?.n,
+      ).toBe(1);
+    },
+  );
 });
