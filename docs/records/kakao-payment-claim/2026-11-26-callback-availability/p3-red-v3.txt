@@ -1,0 +1,58 @@
+RUN  v5.1.0 /workspace/siljang-task107-callback-availability/app/server
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan)
+TASK107 source lookup plan {"rows":2000,"executionMs":18.28,"buffers":26280,"cardNodes":[{"type":"Seq Scan","alias":"cc","loops":1,"removed":80},{"type":"Index Scan","alias":"a","index":"confirm_cards_shop_scope","loops":2001,"removed":0}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan)
+TASK107 stored card point lookup {"executionMs":0.379,"buffers":211,"nodes":[{"type":"Limit","rows":1},{"type":"Seq Scan","rows":1,"removed":2080}]}
+
+ ❯ test/payment-claim-depositor-input.test.ts (41 tests | 2 failed | 37 skipped) 5143ms
+   ❯ 입금자 전용 블록의 표시와 명령 경계(TASK-107) (41)
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(custom/boundary-24) 1052ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan) 829ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(custom/boundary-24)
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/payment-claim-depositor-input.test.ts:666:40
+    664|           expect(batch.messages.filter((m) => m.source === "message"))…
+    665|           expect(deferredKakaoTexts(batch.messages).length).toBeLessTh…
+    666|           expect(batch.currentBlocked).toBe(replayCount > 24);
+       |                                        ^
+    667|           await scoped.transaction((tx) => markDeferredKakaoMessages(t…
+    668|           expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/payment-claim-depositor-input.test.ts:477:11
+    475|         expect(
+    476|           nodes.some((n) => typeof n["Index Cond"] === "string" && n["…
+    477|         ).toBe(true);
+       |           ^
+    478|         expect(
+    479|           (
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed | 37 skipped (41)
+   Start at  23:00:16
+   Duration  6.79s (tests 77%, import 17%, transform 6%)

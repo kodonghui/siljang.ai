@@ -138,6 +138,11 @@ GRANT SELECT (confirmed_payment_id) ON orders TO :"runtime_role";
 -- TASK-106: 저장된 차액의 변경 내용과 버전·금액 차이만 표시용으로 읽는다.
 GRANT SELECT (changes, base_version, amount_delta) ON change_requests TO :"runtime_role";
 GRANT SELECT (no_pickup_at) ON productions TO :"runtime_role";
+-- TASK-134: 확정된 시각만 전날 안내의 생성 기준으로 읽는다. 주문 쓰기 권한은 늘리지 않는다.
+GRANT SELECT (confirmed_at) ON orders TO :"runtime_role";
+-- TASK-134: 미전달 전날 안내의 공개 표시만 갱신한다. 받는 사람/주문 연결/삭제 권한은 늘리지 않는다.
+-- 공용 역할 자체는 안내 종류·시도/전달 여부를 가르지 못하므로 생성 함수의 현재 조건으로 제한한다.
+GRANT UPDATE (template_key, body) ON notifications TO :"runtime_role";
 GRANT SELECT (id, voided_at) ON payments TO :"runtime_role";
 GRANT SELECT (shop_id, order_id, handed_over_at) ON productions TO :"runtime_role";
 -- 이미 보낸 안내·시도 횟수·본문은 바꾸지 않는다.

@@ -1,0 +1,13 @@
+RUN  v5.1.0 /workspace/siljang-task107-callback-availability/app/server
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan)
+TASK107 source lookup plan {"rows":2000,"executionMs":21.447,"buffers":30309,"cardNodes":[{"type":"Bitmap Heap Scan","alias":"cc","loops":1,"removed":2},{"type":"Index Scan","alias":"a","index":"confirm_cards_shop_scope","loops":2001,"removed":0}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan)
+TASK107 stored card point lookup {"executionMs":0.021,"buffers":3,"nodes":[{"type":"Limit","rows":1},{"type":"Index Scan","index":"confirm_cards_source_message_idx","rows":1,"removed":0}]}
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed | 37 skipped (41)
+   Start at  23:04:54
+   Duration  7.67s (tests 79%, import 17%, transform 4%)

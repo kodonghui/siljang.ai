@@ -2,6 +2,7 @@
 
 import { type ChangeCardSource, type ChangeRequestStatus, readPreparedChangeCard } from "./change-card-presentation";
 import { cardExpiresAt, judgeCardPress } from "./confirm-card";
+import { CustomerNoticeTemporarilyUnavailable } from "./customer-notice-content";
 import type { KakaoChangeRequestCard } from "./kakao-change-request-message";
 import { changeRequestResultText } from "./kakao-change-request-message";
 import type { KakaoOrderCardContext } from "./kakao-order-request-content";
@@ -58,6 +59,8 @@ export interface ConfirmCardView {
 export interface UnavailableConfirmCard {
   readonly unavailable: true;
   readonly text: string;
+  /** 인증된 서버 대상의 참조만 저장했으며 표시 자료는 권한 복구 뒤 읽는다. */
+  readonly deferredCard?: true;
 }
 export interface ConfirmCardCommandResult {
   readonly outcome: string;
@@ -82,6 +85,7 @@ export interface ConfirmCardCommandInput extends Identity {
 /** 실행기는 지금 주문 상태와 잠금 번호를 다시 확인하고 조건에 맞는 쓰기만 합니다. 실패하면 사용 표시까지 함께 취소합니다. 외부 발신은 하지 않습니다. 주문 요청의 order_id 연결 권한·시험은 실제 실행기를 등록하는 TASK-083에서 추가합니다. */
 export type ConfirmCardCommand = (db: ShopDb, input: ConfirmCardCommandInput) => Promise<ConfirmCardCommandResult>;
 interface Source {
+  paymentClaimBlocked?: boolean;
   changeRequest?: ChangeCardSource;
   paymentClaim?: PaymentClaimSource;
   orderRequest?: KakaoOrderCardContext;
@@ -172,7 +176,12 @@ async function identityAvailable(db: ShopDb, identity: Identity): Promise<boolea
   );
   return consultation.rowCount === 1;
 }
-async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: string): Promise<Source | null> {
+async function readSource(
+  db: ShopDb,
+  input: ShowConfirmCard,
+  knownBlockId?: string,
+  deferUnreadablePaymentClaim = false,
+): Promise<Source | null> {
   if (!CUSTOMER_COMMAND_KINDS.includes(input.kind)) throw new TypeError("unsupported card kind");
   const blockId =
     knownBlockId ??
@@ -215,6 +224,16 @@ async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: str
     ],
   );
   const row = order.rows[0];
+  let paymentClaim: PaymentClaimSource | undefined;
+  let paymentClaimBlocked = false;
+  if (row !== undefined && input.kind === "payment_claim") {
+    try {
+      paymentClaim = await readPaymentClaimSource(db, { ...input, orderId: row.id });
+    } catch (error) {
+      if (!deferUnreadablePaymentClaim || !(error instanceof CustomerNoticeTemporarilyUnavailable)) throw error;
+      paymentClaimBlocked = true;
+    }
+  }
   return row
     ? {
         orderId: row.id,
@@ -223,9 +242,8 @@ async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: str
         draftRevision: null,
         description: `주문번호 ${row.order_no}\n픽업 날짜 ${row.pickup_day}\n주문 금액 ${row.amount.toLocaleString("ko-KR")}원`,
         blockId,
-        ...(input.kind === "payment_claim"
-          ? { paymentClaim: await readPaymentClaimSource(db, { ...input, orderId: row.id }) }
-          : {}),
+        ...(paymentClaim === undefined ? {} : { paymentClaim }),
+        ...(paymentClaimBlocked ? { paymentClaimBlocked: true } : {}),
         ...(input.kind === "change_request"
           ? { changeRequest: await readPreparedChangeCard(db, { ...input, orderId: row.id }) }
           : {}),
@@ -412,11 +430,16 @@ async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): P
 export async function prepareConfirmCardInTransaction(
   db: ShopDb,
   input: ShowConfirmCard,
+  options: { readonly deferUnreadablePaymentClaim?: boolean } = {},
 ): Promise<ConfirmCardView | UnavailableConfirmCard> {
   validNow(input.now);
   if (!(await identityAvailable(db, input))) throw new Error("card recipient unavailable");
-  const source = await readSource(db, input);
+  const source = await readSource(db, input, undefined, options.deferUnreadablePaymentClaim);
   if (source === null) throw new Error("card source unavailable");
+  if (source.paymentClaimBlocked) {
+    await insertCard(db, input, source);
+    return { unavailable: true, text: "결제 확인 요청", deferredCard: true };
+  }
   if (source.changeRequest?.available === false) return { unavailable: true, text: source.changeRequest.text };
   if (source.paymentClaim?.available === false && source.paymentClaim.amountConfirmation === undefined)
     return { unavailable: true, text: source.paymentClaim.text };
