@@ -748,7 +748,7 @@ dist/assets/index-C4bs1BzT.js                                 560.37 kB │ gzip
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 664ms
+✓ built in 1.05s
 check-dist: 통과(파일 735개, 견본 없음, 첫 CSS 44KB에 토큰·공통 부품, 글꼴 CSS 301KB는 따로)
 
 > build
@@ -767,7 +767,7 @@ check-dist: 통과(파일 735개, 견본 없음, 첫 CSS 44KB에 토큰·공통 
 
 
 ✨ Read 737 files from the assets directory /workspace/siljang-task106-payment-message/app/web/dist
-Total Upload: 5488.67 KiB / gzip: 1011.29 KiB
+Total Upload: 5488.83 KiB / gzip: 1011.30 KiB
 Your Worker has access to the following bindings:
 Binding                                                                       Resource
 env.STORAGE_BATCHES (siljang-storage-batches#StorageBatches)                  Worker
