@@ -1,9 +1,10 @@
 import { afterAll, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
+import { showConfirmCard } from "../src/confirm-card-store";
 import { type DbConnector, pgConnector, type RequestDb } from "../src/db";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
-import { replyWithDeferredKakaoMessages } from "../src/kakao-deferred";
+import { deferredKakaoMessages, replyWithDeferredKakaoMessages } from "../src/kakao-deferred";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
@@ -633,4 +634,74 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
       ).rows,
     ).toEqual([{ delivery: "deferred", sent_at: null }]);
   });
+  it("콜백과 다음 수신이 같은 대기 카드를 읽어도 실제 행 잠금이 교착되지 않는다", async () => {
+    const h = await setup();
+    const scope = createShopScope(h.shop.shopId, { kind: "job", job: "kakao_callback" });
+    const card = await showConfirmCard(shopRequestDb(scope, db), {
+      customerId: h.shop.customerId,
+      consultationId: h.shop.consultationId,
+      orderId: h.shop.orderId,
+      kind: "cancel",
+      now: NOW,
+      sourceMessageId: h.shop.messageId,
+    });
+    await db.query("UPDATE consultations SET ai_disclosed_at=$2,ai_disclosed_policy_version=1 WHERE id=$1", [
+      h.shop.consultationId,
+      NOW,
+    ]);
+    await db.query(
+      "INSERT INTO messages (shop_id,consultation_id,direction,author,kind,body_masked,trace_id,delivery,created_at) VALUES ($1,$2,'outbound','system','card',$3,$4,'deferred',$5)",
+      [h.shop.shopId, h.shop.consultationId, card.title, h.shop.messageId, NOW],
+    );
+    const incoming = testDb(),
+      callback = testDb();
+    let aPid = 0,
+      bPid = 0,
+      enteredA!: () => void,
+      enteredB!: () => void,
+      readA!: () => void;
+    const held = new Promise<void>((r) => {
+        enteredA = r;
+      }),
+      startedB = new Promise<void>((r) => {
+        enteredB = r;
+      }),
+      readGate = new Promise<void>((r) => {
+        readA = r;
+      });
+    let b: Promise<unknown> | undefined;
+    const a = shopRequestDb(scope, incoming).transaction(async (tx) => {
+      await incoming.query("SET LOCAL lock_timeout='250ms'");
+      aPid = (await incoming.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]?.pid ?? 0;
+      await tx.run("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [h.shop.customerId]);
+      enteredA();
+      await readGate;
+      return deferredKakaoMessages(tx, h.shop.customerId, { now: NOW });
+    });
+    try {
+      await Promise.race([held, a]);
+      b = shopRequestDb(scope, callback).transaction(async (tx) => {
+        bPid = (await callback.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]?.pid ?? 0;
+        enteredB();
+        return deferredKakaoMessages(tx, h.shop.customerId, { now: NOW });
+      });
+      await Promise.race([startedB, b]);
+      await expect
+        .poll(
+          async () =>
+            (await db.query<{ blockers: number[] }>("SELECT pg_blocking_pids($1) AS blockers", [bPid])).rows[0]
+              ?.blockers ?? [],
+          { timeout: 3000, interval: 10 },
+        )
+        .toContain(aPid);
+      readA();
+      const outcomes = await Promise.allSettled([a, b]);
+      expect(outcomes.map((result) => result.status)).toEqual(["fulfilled", "fulfilled"]);
+    } finally {
+      readA();
+      await Promise.allSettled([a, b ?? Promise.resolve()]);
+      await incoming.close();
+      await callback.close();
+    }
+  }, 10000);
 });
