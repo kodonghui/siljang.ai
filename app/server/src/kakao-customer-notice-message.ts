@@ -4,6 +4,7 @@ import { toShopLocal } from "./time";
 
 type Notice =
   | { readonly kind: "owner_reply" | "server_text"; readonly text: string }
+  | { readonly kind: "order_confirmed_saved"; readonly text: string; readonly regulation: readonly string[] }
   | { readonly kind: "delay_notice" | "payment_mismatch" }
   | { readonly kind: "no_answer_closed"; readonly target: "custom" | "change" | "handoff" }
   | {
@@ -103,6 +104,13 @@ function pickup(value: string, zone: string) {
 function simple(value: string): KakaoCustomerNoticeOutput {
   return { simpleText: { text: text(value) } };
 }
+function fragments(value: string, max: number): KakaoCustomerNoticeOutput[] {
+  const chars = [...text(value, max)];
+  const outputs: KakaoCustomerNoticeOutput[] = [];
+  for (let at = 0; at < chars.length; at += 1000)
+    outputs.push({ simpleText: { text: chars.slice(at, at + 1000).join("") } });
+  return outputs;
+}
 function body(outputs: readonly KakaoCustomerNoticeOutput[]): KakaoCustomerNoticeMessage {
   if (!outputs.length || outputs.length > 3) throw new RangeError("invalid customer notice outputs");
   return { version: "2.0", template: { outputs } };
@@ -111,11 +119,15 @@ function noticeBody(notice: Notice): KakaoCustomerNoticeMessage {
   switch (notice.kind) {
     case "owner_reply":
       return body([simple(notice.text)]);
-    case "server_text": {
-      const chars = [...text(notice.text, 2000)];
-      const outputs: KakaoCustomerNoticeOutput[] = [];
-      for (let at = 0; at < chars.length; at += 1000) outputs.push(simple(chars.slice(at, at + 1000).join("")));
-      return body(outputs);
+    case "server_text":
+      return body(fragments(notice.text, 2000));
+    case "order_confirmed_saved": {
+      if (!Array.isArray(notice.regulation) || notice.regulation.length < 1 || notice.regulation.length > 2)
+        throw new RangeError("invalid saved confirmed terms");
+      const outputs = [...fragments(notice.text, 2000), ...notice.regulation.map(simple)];
+      return outputs.length <= 3
+        ? body(outputs)
+        : body(fragments([notice.text, ...notice.regulation].join("\n"), 3000));
     }
     case "delay_notice":
       return body([simple("사장님 확인이 늦어지고 있어요. 확인되면 바로 알려 드릴게요")]);

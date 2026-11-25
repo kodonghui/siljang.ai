@@ -21,6 +21,10 @@ describeDb("손님 안내 생성(TASK-104)", () => {
   }, 30000);
   beforeEach(async () => {
     shop = await createShop(isolated.db, "합성 확정 안내 가게");
+    await isolated.db.query(
+      "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',1,'합성 취소 규정','합성 제작 전 취소','합성 결제 금액을 돌려드려요') ON CONFLICT(operating_rules_id,position) DO NOTHING",
+      [shop.shopId, shop.operatingRulesId],
+    );
     const paymentId = newUuid();
     await isolated.db.transaction(async (db) => {
       await db.query(

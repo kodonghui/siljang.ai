@@ -13,11 +13,13 @@ import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } f
 const NOW = new Date("2026-11-26T00:00:00Z");
 describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture, key: string;
+  let requestCount = 0;
   const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
   beforeAll(async () => {
     isolated = await isolatedTestDb();
   }, 30000);
   beforeEach(async () => {
+    requestCount = 0;
     shop = await createShop(isolated.db, "합성 저장 안내 가게");
     await issueTestBookingLink(isolated.db, shop);
     await linkTestChannel(isolated.db, shop.channelId);
@@ -41,7 +43,7 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
           body: JSON.stringify({
             bot: { id: shop.botId },
             userRequest: {
-              utterance: mode === "event" ? "" : "합성 안내 확인",
+              utterance: mode === "event" ? "" : `합성 안내 확인 ${++requestCount}`,
               params: mode === "event" ? { noticeKey: id } : {},
               block: { id: "conversation" },
               user: { id: shop.userKey, type: "botUserKey" },
@@ -96,7 +98,7 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
   }
   for (const mode of ["event", "message"] as const) {
     it(`${mode}: 공백인 분할 조각 뒤의 안내도 막히지 않는다`, async () => {
-      const original = "가".repeat(1000) + "\n";
+      const original = `${"가".repeat(1000)}\n`;
       const first = await notice("owner_reply", original, new Date(NOW.getTime() - 2000));
       const next = await notice("custom_rejected", "합성 후속 안내", new Date(NOW.getTime() - 1000));
       const response = await call(mode, first);
@@ -124,6 +126,16 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
           "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',1,'합성 규정','합성 조건','합성 원래 주문 규정') ON CONFLICT(operating_rules_id,position) DO UPDATE SET clause_key='custom',effect_text='합성 원래 주문 규정'",
           [shop.shopId, shop.operatingRulesId],
         );
+        if (!legacy) {
+          await isolated.db.query(
+            "UPDATE rule_clauses SET effect_text=$3 WHERE shop_id=$1 AND operating_rules_id=$2 AND position=1",
+            [shop.shopId, shop.operatingRulesId, `합성 원래 주문 규정${"나".repeat(700)}`],
+          );
+          await isolated.db.query(
+            "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',2,'합성 추가 규정','합성 조건',$3)",
+            [shop.shopId, shop.operatingRulesId, `합성 두번째 규정${"다".repeat(700)}`],
+          );
+        }
         const db = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
         const created = await db.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW));
         expect(created?.created).toBe(true);
@@ -160,9 +172,13 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
         });
         const response = await call(mode, id);
         expect(response.status).toBe(200);
-        const body = await response.json();
+        const body = (await response.json()) as { template: { outputs: readonly unknown[] } };
         expectSchema("SkillTemplateResponse", body);
         const text = JSON.stringify(body);
+        if (!legacy) {
+          expect(body.template.outputs).toHaveLength(3);
+          expect(text).toContain("합성 두번째 규정");
+        }
         for (const word of ["합성 처음 디자인", "합성 처음 문구", "합성 원래 주문 규정", "35,000원"])
           expect(text).toContain(word);
         for (const word of ["합성 최신 규정", "합성 바뀐 상호", "합성 바뀐 주소", "합성 바뀐 디자인", "합성 바뀐 문구"])

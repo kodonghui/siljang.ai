@@ -3,7 +3,21 @@ import { type KakaoCustomerNoticeView, kakaoCustomerNoticeMessage } from "../src
 import { expectSchema } from "./support/contract";
 import { customerNoticePhotoAsk as ask, customerNoticePhotos as photos } from "./support/kakao-customer-notice-cases";
 
-it.each(["가".repeat(1000) + "\n", " ".repeat(1000) + "가", "🍰".repeat(1000) + "\u3000"])(
+it.each([
+  { text: "가".repeat(1000), regulation: ["나".repeat(1000), "다".repeat(1000)] },
+  { text: "가".repeat(1250), regulation: ["나".repeat(600), "다".repeat(600)] },
+])("저장된 확정 사실과 두 규정을 자르지 않고 세 출력에 보존한다", (notice) => {
+  const body = kakaoCustomerNoticeMessage({ state: "normal", notice: { kind: "order_confirmed_saved", ...notice } });
+  expectSchema("SkillTemplateResponse", body);
+  expect(body.template.outputs).toHaveLength(3);
+  const whole = body.template.outputs.map((o) => ("simpleText" in o ? o.simpleText.text : "")).join("");
+  for (const char of ["가", "나", "다"])
+    expect([...whole].filter((c) => c === char)).toHaveLength(
+      [...notice.text, ...notice.regulation.join("")].filter((c) => c === char).length,
+    );
+});
+
+it.each([`${"가".repeat(1000)}\n`, `${" ".repeat(1000)}가`, `${"🍰".repeat(1000)}\u3000`])(
   "분할한 공백 조각도 전체 원문의 일부로 보존한다",
   (text) => {
     const body = kakaoCustomerNoticeMessage({ state: "normal", notice: { kind: "server_text", text } });

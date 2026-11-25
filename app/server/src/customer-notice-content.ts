@@ -1,5 +1,6 @@
 /** 안내 키의 업무 자료는 같은 손님·가게에서만 읽고, 계좌는 표시 직전에만 풉니다. */
 import { openAccountNumber } from "./account-number";
+import { confirmedNoticeContents, reviewNoticeContents } from "./customer-notice-presentation";
 import { TEXT_CUSTOMER_NOTICE_KINDS } from "./customer-notice-store";
 import type { FieldCrypto } from "./field-crypto";
 import type { KakaoMessageContent } from "./kakao-message-content";
@@ -50,6 +51,8 @@ export async function customerNoticeContents(
   now: Date,
   fields?: () => FieldCrypto,
 ): Promise<readonly KakaoMessageContent[] | null> {
+  if (notice.kind === "order_confirmed") return confirmedNoticeContents(db, notice);
+  if (notice.kind === "review_request") return reviewNoticeContents(db, notice);
   if (notice.kind !== "payment_request") {
     if (!notice.body.trim()) return null;
     return [
