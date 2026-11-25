@@ -98,3 +98,7 @@ Total Upload: 5427.92 KiB / gzip: 996.56 KiB
 Total Upload: 21.08 KiB / gzip: 6.55 KiB
 --dry-run: exiting now.
 ```
+
+## 미해결 보안 발견
+
+[사진 후기 합산 한도와 과거 사진 정리의 제품 결정](review-storage-policy.md)은 미해결입니다. 수동 코드 리뷰의 추가 주요 문제 없음과 보안 발견1건을 구분합니다. TASK145/166에서 공개 출시 전까지 추적하며 현재 제품 코드/시험은 성공한0bed931과 같습니다.
