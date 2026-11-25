@@ -244,6 +244,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
       (["press", "prepare", "replay", "deferred", "callback", "legacy"] as const).map((mode) => [kind, mode] as const),
     ),
     ["difference", "blocked-deferred"] as const,
+    ["difference", "bounded-unavailable"] as const,
     ["custom", "pending-callback"] as const,
     ["difference", "pending-callback"] as const,
     ["difference", "current-legacy"] as const,
@@ -368,11 +369,11 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         NOW,
       ]);
     const beforePayment = (await state()).payments;
-    if (mode === "blocked-deferred") {
+    if (mode === "blocked-deferred" || mode === "bounded-unavailable") {
       await isolated.db.query("UPDATE consultations SET ai_disclosed_at=$2 WHERE id=$1", [shop.consultationId, NOW]);
       const blocked: string[] = [],
         normal: string[] = [];
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < (mode === "bounded-unavailable" ? 36 : 3); i++) {
         const source = i === 0 ? sourceMessageId : newUuid();
         if (i > 0) {
           const clonedId = newUuid(),
@@ -423,7 +424,14 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         const recovered = await limited.transaction((tx) =>
           deferredKakaoBatch(tx, shop.customerId, { now: NOW, allowFullOrderCard: true }),
         );
-        expect(recovered.messages.map((m) => m.id).sort()).toEqual([...blocked].sort());
+        if (mode === "bounded-unavailable") {
+          expect(recovered.messages.length).toBeLessThanOrEqual(24);
+          await limited.transaction((tx) => markDeferredKakaoMessages(tx, shop.customerId, recovered.messages, NOW));
+          const last = await limited.transaction((tx) =>
+            deferredKakaoBatch(tx, shop.customerId, { now: NOW, allowFullOrderCard: true }),
+          );
+          expect([...recovered.messages, ...last.messages].map((m) => m.id).sort()).toEqual([...blocked].sort());
+        } else expect(recovered.messages.map((m) => m.id).sort()).toEqual([...blocked].sort());
         const shown = JSON.stringify(
           kakaoConsultationMessage({ state: "normal", contents: deferredKakaoTexts(recovered.messages) }),
         );
