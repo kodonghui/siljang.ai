@@ -34,7 +34,7 @@ export function kakaoReviewPhotoUrls(raw: unknown, receivedAt: Date): readonly s
     if (url === null) return "review_invalid";
     urls.push(url.toString());
   }
-  const date = value.expire;
+  const date = value.expire.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})?$/.test(date)) return "review_invalid";
   const expiry = Date.parse(/(?:Z|[+-]\d{2}:\d{2})$/.test(date) ? date : `${date}+09:00`);
   if (!Number.isFinite(expiry)) return "review_invalid";

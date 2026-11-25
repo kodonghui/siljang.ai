@@ -1,7 +1,7 @@
 import type { FieldCrypto } from "./field-crypto";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import { type KakaoAiDisclosure, markKakaoAiDisclosure } from "./kakao-ai-disclosure";
-import type { KakaoCallback } from "./kakao-callback";
+import { type KakaoCallback, SKILL_CALLBACK_MS } from "./kakao-callback";
 import { decodeKakaoCallbackContext, encodeKakaoCallbackContext } from "./kakao-callback-context";
 import { type DeferredKakaoMessage, markDeferredKakaoMessages } from "./kakao-deferred";
 import { recordKakaoHandoff } from "./kakao-handoff";
@@ -118,7 +118,11 @@ export async function claimKakaoCallback(
   db: ShopRequestDb,
   messageId: string,
   now: Date,
+  options: { readonly maxLeaseMs?: number } = {},
 ): Promise<Claim | "busy" | null> {
+  const leaseMs = options.maxLeaseMs ?? SKILL_CALLBACK_MS;
+  if (!Number.isSafeInteger(leaseMs) || leaseMs < 1 || leaseMs > SKILL_CALLBACK_MS)
+    throw new RangeError("invalid callback lease");
   return db.transaction<Claim | "busy" | null>(async (tx) => {
     const target = await tx.run<{ customer_id: string }>(
       `SELECT c.customer_id FROM messages m
@@ -139,12 +143,12 @@ export async function claimKakaoCallback(
     if (active.rowCount > 0) return "busy";
     // 바깥 호출 동안 DB 잠금은 잡지 않고 콜백 기한까지 그 손님의 전달을 선점한다.
     const result = await tx.run<Omit<Claim, "customer_id">>(
-      `UPDATE messages SET kakao_callback_claim_until = kakao_callback_deadline_at
+      `UPDATE messages SET kakao_callback_claim_until = LEAST(kakao_callback_deadline_at,$4)
         WHERE shop_id = $1 AND id = $2 AND direction = 'inbound'
           AND kakao_callback_enc IS NOT NULL AND kakao_callback_deadline_at > $3
           AND (kakao_callback_claim_until IS NULL OR kakao_callback_claim_until <= $3)
         RETURNING consultation_id, kakao_callback_enc, kakao_callback_deadline_at, kakao_callback_claim_until, created_at`,
-      [messageId, now],
+      [messageId, now, new Date(now.getTime() + leaseMs)],
     );
     const claim = result.rows[0];
     return claim === undefined ? null : { ...claim, customer_id: customerId };

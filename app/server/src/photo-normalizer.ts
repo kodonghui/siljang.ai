@@ -25,14 +25,42 @@ export type NormalizedPhoto = NonNullable<ReturnType<typeof sanitizePhoto>>;
 type PhotoBody = Pick<Request, "headers" | "body">;
 
 export interface PhotoNormalizer {
-  fromBytes(bytes: Uint8Array): Promise<NormalizedPhoto | null>;
+  fromBytes(bytes: Uint8Array, options?: { readonly signal?: AbortSignal }): Promise<NormalizedPhoto | null>;
   /** 카카오 다운로드의 HTTP 응답을 넘긴다. URL을 열거나 저장소에 쓰지 않는다. */
   fromStream(response: PhotoBody, limit?: number): Promise<NormalizedPhoto | null>;
 }
 
+/** 취소를 지원하지 않는 Images 결과도 관찰하되 응답이나 저장을 늦추지 않는다. */
+export async function withPhotoSignal<T>(work: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (signal === undefined) return work();
+  if (signal.aborted) throw new PhotoNormalizationError("unavailable");
+  let abort = () => {};
+  const stopped = new Promise<never>((_, reject) => {
+    abort = () => reject(new PhotoNormalizationError("unavailable"));
+    signal.addEventListener("abort", abort, { once: true });
+  });
+  try {
+    const result = await Promise.race([
+      Promise.resolve().then(() => {
+        if (signal.aborted) throw new PhotoNormalizationError("unavailable");
+        return work();
+      }),
+      stopped,
+    ]);
+    if (signal.aborted) throw new PhotoNormalizationError("unavailable");
+    return result;
+  } finally {
+    signal.removeEventListener("abort", abort);
+  }
+}
+
 /** 촬영 정보는 외부 처리에 보내기 전과 받은 뒤 모두 제거한다. 회전 실패 때 원본으로 돌아가지 않는다. */
 export function photoNormalizer(images: () => ImageBinding): PhotoNormalizer {
-  async function fromBytes(bytes: Uint8Array): Promise<NormalizedPhoto | null> {
+  async function fromBytes(
+    bytes: Uint8Array,
+    options: { readonly signal?: AbortSignal } = {},
+  ): Promise<NormalizedPhoto | null> {
+    if (options.signal?.aborted) throw new PhotoNormalizationError("unavailable");
     if (bytes.byteLength > MAX_PHOTO_BYTES) throw new PhotoNormalizationError("too_large");
     const photo = sanitizePhoto(bytes);
     if (photo === null || photo.contentType !== "image/webp" || webpOrientation(photo.bytes) === 1) return photo;
@@ -45,11 +73,15 @@ export function photoNormalizer(images: () => ImageBinding): PhotoNormalizer {
           controller.close();
         },
       });
-      const result = await binding.input(stream).transform({ rotate: 0 }).output({
-        format: "image/webp",
-        quality: 100,
-        anim: true,
-      });
+      const result = await withPhotoSignal(
+        () =>
+          binding.input(stream).transform({ rotate: 0 }).output({
+            format: "image/webp",
+            quality: 100,
+            anim: true,
+          }),
+        options.signal,
+      );
       const response = result.response();
       if (!response.ok || response.headers.get("content-type")?.split(";", 1)[0] !== "image/webp") {
         await response.body?.cancel().catch(() => {});

@@ -1,6 +1,6 @@
 /** SPEC019·DEC28: 허용된 카카오 HTTPS에서만 받고 G10 정리를 마친 사진만 돌려줍니다. */
 import { declaredOver, readBytesLimited } from "./body";
-import { MAX_PHOTO_BYTES, type NormalizedPhoto, type PhotoNormalizer } from "./photo-normalizer";
+import { MAX_PHOTO_BYTES, type NormalizedPhoto, type PhotoNormalizer, withPhotoSignal } from "./photo-normalizer";
 
 export const KAKAO_PHOTO_MAX_BYTES = MAX_PHOTO_BYTES;
 // research/kakao-test-2026-11의 확인용 목록. 운영에서는 HTTPS만 허용하고 추가 호스트 설정은 받지 않습니다.
@@ -21,6 +21,8 @@ export function kakaoPhotoUrl(raw: string): URL | null {
   } catch {
     return null;
   }
+  // 공식 가이드의 보안 이미지 HTTP 표기는 이 호스트만 같은 경로·쿼리의 HTTPS로 바꾼다.
+  if (url.protocol === "http:" && url.hostname === "secure.kakaocdn.net" && url.port === "") url.protocol = "https:";
   return url.toString().length <= 2048 &&
     url.protocol === "https:" &&
     url.username === "" &&
@@ -56,7 +58,10 @@ export async function downloadKakaoPhoto(
     let current = initial;
     try {
       for (let hop = 0; hop <= 3; hop++) {
-        const response = await send(current, { method: "GET", redirect: "manual", signal });
+        const response = await withPhotoSignal(
+          () => send(current, { method: "GET", redirect: "manual", signal }),
+          signal,
+        );
         if (REDIRECTS.includes(response.status)) {
           await cancel(response);
           const location = response.headers.get("Location");
@@ -79,11 +84,14 @@ export async function downloadKakaoPhoto(
           await cancel(response);
           return REJECTED;
         }
-        const bytes = await readBytesLimited(response, KAKAO_PHOTO_MAX_BYTES, () => new TooLarge("photo limit"));
+        const bytes = await withPhotoSignal(
+          () => readBytesLimited(response, KAKAO_PHOTO_MAX_BYTES, () => new TooLarge("photo limit")),
+          signal,
+        );
         if (signal.aborted) throw new Error("photo download expired");
         let photo: NormalizedPhoto | null;
         try {
-          photo = await photos.fromBytes(bytes);
+          photo = await withPhotoSignal(() => photos.fromBytes(bytes, { signal }), signal);
         } catch {
           return UNAVAILABLE;
         }

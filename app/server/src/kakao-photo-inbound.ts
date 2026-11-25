@@ -1,5 +1,10 @@
 import { kakaoCallback, SKILL_WORK_MS } from "./kakao-callback";
-import { claimKakaoCallback, finishKakaoCallback, publishStoredKakaoCallback } from "./kakao-callback-store";
+import {
+  claimKakaoCallback,
+  finishKakaoCallback,
+  publishStoredKakaoCallback,
+  releaseKakaoCallback,
+} from "./kakao-callback-store";
 import { deferredKakaoMessages, deferredKakaoTexts } from "./kakao-deferred";
 import { kakaoPhotoUrl } from "./kakao-photo-download";
 import { runKakaoPhotoTurn, storeKakaoPhotoContext } from "./kakao-photo-turn";
@@ -10,14 +15,19 @@ import type { ShopRequest } from "./routes";
 
 /** DEC28에서 사진으로 오는 주소 하나. 글 안에 있는 일반 링크는 이 입력으로 해석하지 않습니다. */
 export function isKakaoPhotoUtterance(text: string): boolean {
-  return /^https?:\/\/\S+$/i.test(text.trim());
+  const url = kakaoPhotoUrl(text.trim());
+  return (
+    url !== null &&
+    ["kakaocdn.net", "daumcdn.net"].some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`))
+  );
 }
 
 export async function receiveKakaoReferencePhoto(r: ShopRequest): Promise<Response> {
   const request = r.kakaoSkill;
   if (request === undefined) throw new Error("photo request unavailable");
   const started = performance.now();
-  const left = () => Math.max(0, SKILL_WORK_MS - (performance.now() - started));
+  const left = () =>
+    Math.max(0, Math.min(SKILL_WORK_MS - (performance.now() - started), r.kakaoSkillTimeLeft?.() ?? Infinity));
   const url = kakaoPhotoUrl(request.payload.utterance.trim());
   const queue = r.services.kakaoCallbackQueue;
   const callback = queue === undefined ? null : kakaoCallback(request.payload.callbackUrl, request.receivedAt);
@@ -73,7 +83,9 @@ export async function receiveKakaoReferencePhoto(r: ShopRequest): Promise<Respon
     );
     return publication.kind === "callback" ? kakaoReply(r, "callback_pending") : publication.value;
   }
-  const claim = await claimKakaoCallback(r.db, prepared.receipt.messageId, r.services.now());
+  const claim = await claimKakaoCallback(r.db, prepared.receipt.messageId, r.services.now(), {
+    maxLeaseMs: Math.max(1, Math.floor(left() - 100)),
+  });
   if (claim === "busy" || claim === null) {
     await r.db.run(
       `UPDATE messages SET kakao_callback_enc=NULL,kakao_callback_deadline_at=NULL,kakao_callback_claim_until=NULL,kind='photo'
@@ -82,22 +94,26 @@ export async function receiveKakaoReferencePhoto(r: ShopRequest): Promise<Respon
     );
     return kakaoReply(r, "photo_download_failed");
   }
-  const turn = await runKakaoPhotoTurn(r.db, prepared.receipt.messageId, claim, r.services, r.services.now, {
-    budgetMs: Math.max(1, left() - 150),
-  });
-  if (turn.kind !== "reply") return kakaoReply(r, "photo_download_failed");
-  const previous = await r.db.transaction((tx) =>
-    deferredKakaoMessages(tx, claim.customer_id, { now: r.services.now(), excludeMessageId: turn.reply.id }),
-  );
-  const response = kakaoReply(r, turn.reply.outcome, { previous: deferredKakaoTexts(previous) });
-  await finishKakaoCallback(
-    r.db,
-    prepared.receipt.messageId,
-    claim,
-    turn.reply.text,
-    r.services.now(),
-    previous,
-    turn.reply.id,
-  );
-  return response;
+  try {
+    const turn = await runKakaoPhotoTurn(r.db, prepared.receipt.messageId, claim, r.services, r.services.now, {
+      budgetMs: Math.max(1, left() - 150),
+    });
+    if (turn.kind !== "reply") return kakaoReply(r, "photo_download_failed");
+    const previous = await r.db.transaction((tx) =>
+      deferredKakaoMessages(tx, claim.customer_id, { now: r.services.now(), excludeMessageId: turn.reply.id }),
+    );
+    const response = kakaoReply(r, turn.reply.outcome, { previous: deferredKakaoTexts(previous) });
+    await finishKakaoCallback(
+      r.db,
+      prepared.receipt.messageId,
+      claim,
+      turn.reply.text,
+      r.services.now(),
+      previous,
+      turn.reply.id,
+    );
+    return response;
+  } finally {
+    await releaseKakaoCallback(r.db, prepared.receipt.messageId, claim).catch(() => {});
+  }
 }

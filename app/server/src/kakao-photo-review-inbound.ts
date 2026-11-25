@@ -1,5 +1,5 @@
 import { SKILL_WORK_MS } from "./kakao-callback";
-import { claimKakaoCallback, finishKakaoCallback } from "./kakao-callback-store";
+import { claimKakaoCallback, finishKakaoCallback, releaseKakaoCallback } from "./kakao-callback-store";
 import { KAKAO_PHOTO_TEXT } from "./kakao-photo-context";
 import { runKakaoPhotoTurn, storeKakaoPhotoContext } from "./kakao-photo-turn";
 import { kakaoReply } from "./kakao-reply";
@@ -13,7 +13,8 @@ export async function receiveKakaoPhotoReview(r: ShopRequest): Promise<Response>
   const request = r.kakaoSkill;
   if (request === undefined) throw new Error("photo review request unavailable");
   const started = performance.now(),
-    left = () => Math.max(0, SKILL_WORK_MS - (performance.now() - started));
+    left = () =>
+      Math.max(0, Math.min(SKILL_WORK_MS - (performance.now() - started), r.kakaoSkillTimeLeft?.() ?? Infinity));
   const urls = kakaoReviewPhotoUrls(request.payload.action.params.review_photos, request.receivedAt);
   if (typeof urls === "string") return kakaoReply(r, urls);
   const key = await kakaoReceiptKey(request.requestKeySecret, request.payload, request.receivedAt, "review");
@@ -52,7 +53,9 @@ export async function receiveKakaoPhotoReview(r: ShopRequest): Promise<Response>
     return { receipt, envelope };
   });
   if (prepared instanceof Response) return prepared;
-  const claim = await claimKakaoCallback(r.db, prepared.receipt.messageId, r.services.now());
+  const claim = await claimKakaoCallback(r.db, prepared.receipt.messageId, r.services.now(), {
+    maxLeaseMs: Math.max(1, Math.floor(left() - 100)),
+  });
   if (claim === null || claim === "busy") {
     await r.db.transaction(async (tx) => {
       await tx.run("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [prepared.receipt.customerId]);
@@ -75,19 +78,23 @@ export async function receiveKakaoPhotoReview(r: ShopRequest): Promise<Response>
     });
     return kakaoReply(r, "photo_download_failed");
   }
-  const turn = await runKakaoPhotoTurn(r.db, prepared.receipt.messageId, claim, r.services, r.services.now, {
-    budgetMs: Math.max(1, left() - 150),
-  });
-  if (turn.kind !== "reply") return kakaoReply(r, "photo_download_failed");
-  const response = kakaoReply(r, turn.reply.outcome);
-  await finishKakaoCallback(
-    r.db,
-    prepared.receipt.messageId,
-    claim,
-    turn.reply.text,
-    r.services.now(),
-    [],
-    turn.reply.id,
-  );
-  return response;
+  try {
+    const turn = await runKakaoPhotoTurn(r.db, prepared.receipt.messageId, claim, r.services, r.services.now, {
+      budgetMs: Math.max(1, left() - 150),
+    });
+    if (turn.kind !== "reply") return kakaoReply(r, "photo_download_failed");
+    const response = kakaoReply(r, turn.reply.outcome);
+    await finishKakaoCallback(
+      r.db,
+      prepared.receipt.messageId,
+      claim,
+      turn.reply.text,
+      r.services.now(),
+      [],
+      turn.reply.id,
+    );
+    return response;
+  } finally {
+    await releaseKakaoCallback(r.db, prepared.receipt.messageId, claim).catch(() => {});
+  }
 }

@@ -65,6 +65,7 @@ export interface ShopRequest {
   /** 운영자가 연 가게의 중복 등록 표시만 읽는 기능. 사장님·손님은 받지 않는다. */
   readonly operatorShops: OperatorShopDirectory | undefined;
   readonly kakaoSkill: AuthorizedKakaoSkill | undefined;
+  readonly kakaoSkillTimeLeft?: (() => number) | undefined;
   /** 트랜잭션 밖 읽기와 트랜잭션. 쓰기 명령은 command로. */
   readonly db: ShopRequestDb;
   /** 경로 값·쿼리·헤더(Hono의 요청). 본문은 body()로 읽는다. */
@@ -292,6 +293,7 @@ function shopRequest(c: Context<HonoEnv>, scope: ShopScope): ShopRequest {
     scope,
     operatorShops: scope.via.kind === "operator" ? operatorShopDirectory(c.get("db"), scope) : undefined,
     kakaoSkill: c.get("kakaoSkill"),
+    kakaoSkillTimeLeft: c.get("kakaoSkillTimeLeft"),
     db,
     req: c.req,
     traceId: c.get("traceId"),

@@ -1,0 +1,25 @@
+{
+  "publicCommit": "639bf003e8815d7b946124562bf17e1df79df1b9",
+  "publicTree": "d7d346b3e5d2452d9b1927730a0154df095a0490",
+  "startedAt": "2026-11-25T05:10:03.188596+00:00",
+  "exitCode": 0,
+  "workingTreeClean": true,
+  "command": "bash tools/stage-checks.sh <label> --no-browser",
+  "lines": [
+    "2026-11-25 14:10:03 KST start, head 639bf00, out /tmp/stage-checks/pr275-public-api-639bf003e8",
+    "prd exit=0 :: PROBLEMS 0 · AVOIDED WORDS 0",
+    "flows exit=0 :: PROBLEMS 0 · AVOIDED WORDS 0",
+    "spec exit=0 :: 오류 0",
+    "erd exit=0 :: 검사 15개: 통과 15, 실패 0, 미확인 0",
+    "api exit=0 :: 검사 17개: 통과 17, 실패 0, 미확인 0",
+    "sitemap exit=0 :: 검사 17개: 통과 17, 실패 0, 미확인 0",
+    "screens exit=0 :: 검사 15개: 통과 15, 실패 0, 미확인 0",
+    "mockup browser skipped (--no-browser); page-check remains unverified",
+    "mockup exit=0 :: 검사 14개: 통과 13, 실패 0, 미확인 1",
+    "wbs exit=0 :: 검사 18개 · 오류 0",
+    "14:11:10 KST end"
+  ],
+  "api": "executed: inspect api exit and check summary",
+  "browser": "skipped --no-browser, not pass",
+  "source": "exact published Git commit in detached worktree"
+}

@@ -4,12 +4,14 @@ import { createApp } from "../src/app";
 import { type DbConnector, pgConnector } from "../src/db";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { recentKakaoInboundCount } from "../src/kakao-skill-store";
+import type { ImageBinding } from "../src/photo-normalizer";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import type { ObjectStore } from "../src/storage";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
+import { lockPhotoCustomer, photoFailureConnector, photoGate } from "./support/photo-faults";
 import { createShop, issueTestBookingLink, linkTestChannel } from "./support/shops";
 import { MemoryStore } from "./support/storage";
 
@@ -57,11 +59,15 @@ describeDb("API-072 업무 중복과 트랜잭션(TASK-028)", () => {
         photos?: string;
         storage?: ObjectStore;
         omitOrderNo?: boolean;
+        images?: ImageBinding;
+        kakaoSkillTimeoutMs?: number;
       } = {},
     ) =>
       createApp({
         ...(options.connect ? { connect: options.connect } : {}),
+        ...(options.kakaoSkillTimeoutMs === undefined ? {} : { kakaoSkillTimeoutMs: options.kakaoSkillTimeoutMs }),
         services: {
+          ...(options.images === undefined ? {} : { images: options.images }),
           now: () => at,
           fieldCrypto: singleKeyCrypto().fc,
           ...(options.storage === undefined ? {} : { storage: options.storage }),
@@ -108,6 +114,102 @@ describeDb("API-072 업무 중복과 트랜잭션(TASK-028)", () => {
       expire: new Date(NOW.getTime() + 300_000).toISOString(),
     });
   }
+  it.each(["turn", "finish"] as const)(
+    "즉시 후기 사진의 %s 예외는 자기 선점을 풀고 저장한 후기는 보존한다",
+    async (stage) => {
+      const h = await fixture();
+      const image = new Uint8Array(readFileSync(new URL("./fixtures/photos/metadata.png", import.meta.url)));
+      vi.stubGlobal("fetch", async () => new Response(image));
+      try {
+        const response = await h.send({
+          photos: photoPlugin(),
+          storage: new MemoryStore(),
+          connect: photoFailureConnector(stage),
+        });
+        expect(response.headers.get("Siljang-Outcome")).toBe("server_error");
+        expect(
+          (
+            await db.query(
+              "SELECT kakao_callback_claim_until FROM messages WHERE shop_id=$1 AND direction='inbound' AND trace_id LIKE 'kakao%photo:%'",
+              [h.shop.shopId],
+            )
+          ).rows,
+        ).toEqual([{ kakao_callback_claim_until: null }]);
+        expect((await db.query("SELECT id FROM reviews WHERE shop_id=$1", [h.shop.shopId])).rowCount).toBe(
+          stage === "finish" ? 1 : 0,
+        );
+        expect(
+          (
+            await db.query("SELECT id FROM messages WHERE shop_id=$1 AND direction='outbound' AND kind='photo'", [
+              h.shop.shopId,
+            ])
+          ).rowCount,
+        ).toBe(stage === "finish" ? 1 : 0);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    },
+  );
+  it("즉시 후기의 느린 정리는 실패로 답하고 글이나 사진을 나중에 저장하지 않는다", async () => {
+    const h = await fixture(),
+      entered = photoGate(),
+      finish = photoGate();
+    const store = new MemoryStore();
+    const webp = new Uint8Array(readFileSync(new URL("./fixtures/photos/rotated.webp", import.meta.url)));
+    const clean = new Uint8Array(readFileSync(new URL("./fixtures/photos/clean.webp", import.meta.url)));
+    vi.stubGlobal("fetch", async () => new Response(webp));
+    const transformer = {
+      transform: () => transformer,
+      output: async () => {
+        entered.release();
+        await finish.promise;
+        return { response: () => new Response(clean, { headers: { "Content-Type": "image/webp" } }) };
+      },
+    };
+    const pending = h.send({
+      photos: photoPlugin(),
+      storage: store,
+      images: { input: () => transformer },
+      kakaoSkillTimeoutMs: 500,
+    });
+    try {
+      await entered.promise;
+      expect((await pending).headers.get("Siljang-Outcome")).toBe("photo_download_failed");
+    } finally {
+      finish.release();
+      await pending;
+      vi.unstubAllGlobals();
+    }
+    expect((await db.query("SELECT id FROM reviews WHERE shop_id=$1", [h.shop.shopId])).rowCount).toBe(0);
+    expect((await db.query("SELECT id FROM review_photos WHERE shop_id=$1", [h.shop.shopId])).rowCount).toBe(0);
+    expect(store.objects.size).toBe(0);
+  });
+  it("후기 확정의 실제 행 잠금 뒤에도 늦은 저장과 55초 선점이 없다", async () => {
+    const h = await fixture(),
+      store = new MemoryStore();
+    const lock = lockPhotoCustomer(store, testDb(), h.shop.shopId);
+    const image = new Uint8Array(readFileSync(new URL("./fixtures/photos/metadata.png", import.meta.url)));
+    vi.stubGlobal("fetch", async () => new Response(image));
+    const pending = h.send({ photos: photoPlugin(), storage: store, kakaoSkillTimeoutMs: 500 });
+    try {
+      await lock.entered;
+      expect((await pending).headers.get("Siljang-Outcome")).toBe("server_error");
+      const row = (
+        await db.query<{ kakao_callback_claim_until: Date | null }>(
+          "SELECT kakao_callback_claim_until FROM messages WHERE shop_id=$1 AND direction='inbound' AND trace_id LIKE 'kakao%photo:%'",
+          [h.shop.shopId],
+        )
+      ).rows[0];
+      expect(row?.kakao_callback_claim_until?.getTime() ?? NOW.getTime()).toBeLessThanOrEqual(NOW.getTime() + 500);
+    } finally {
+      await lock.release();
+      await pending;
+      vi.unstubAllGlobals();
+    }
+    expect((await db.query("SELECT id FROM reviews WHERE shop_id=$1", [h.shop.shopId])).rowCount).toBe(0);
+    expect((await db.query("SELECT id FROM review_photos WHERE shop_id=$1", [h.shop.shopId])).rowCount).toBe(0);
+    expect((await db.query("SELECT id FROM file_deletions WHERE shop_id=$1", [h.shop.shopId])).rowCount).toBe(1);
+  });
   it("사진을 두 번 내려받아도 실패하면 글 후기 없이 실패 안내를 반복한다", async () => {
     const h = await fixture();
     const fetcher = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));

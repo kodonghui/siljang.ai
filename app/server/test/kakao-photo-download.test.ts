@@ -12,6 +12,57 @@ const photos = () =>
   });
 const response = () => new Response(png.slice(), { headers: { "Content-Type": "image/png" } });
 
+it("공식 보안 이미지의 HTTP 표기도 실제 요청은 HTTPS 한 번만 보낸다", async () => {
+  const send = vi.fn<typeof fetch>(async () => response());
+  const result = await downloadKakaoPhoto(
+    "http://secure.kakaocdn.net/dna/synthetic/photo.png?signature=synthetic",
+    photos(),
+    { fetch: send },
+  );
+  expect(result.ok).toBe(true);
+  expect(send).toHaveBeenCalledOnce();
+  expect(String(send.mock.calls[0]?.[0])).toBe(
+    "https://secure.kakaocdn.net/dna/synthetic/photo.png?signature=synthetic",
+  );
+});
+
+it("정리기가 멈춰도 취소 뒤 결과를 기다리거나 성공으로 돌려주지 않는다", async () => {
+  let enter = () => {},
+    release = () => {};
+  const entered = new Promise<void>((resolve) => {
+    enter = resolve;
+  });
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const controller = new AbortController();
+  let settled = false;
+  const pending = downloadKakaoPhoto(
+    PHOTO_URL,
+    {
+      fromBytes: async () => {
+        enter();
+        await blocked;
+        return { bytes: png, contentType: "image/png" };
+      },
+      fromStream: async () => null,
+    },
+    { fetch: async () => response(), signal: controller.signal },
+  ).then((result) => {
+    settled = true;
+    return result;
+  });
+  try {
+    await entered;
+    controller.abort();
+    await vi.waitFor(() => expect(settled).toBe(true), { timeout: 100 });
+    expect(await pending).toEqual({ ok: false, reason: "unavailable" });
+  } finally {
+    release();
+    await pending;
+  }
+});
+
 it.each([
   "http://cdn.kakaocdn.net/photo.png",
   "https://kakaocdn.net.example/photo.png",

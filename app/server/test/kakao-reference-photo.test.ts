@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AiModel } from "../src/ai-model";
-import { createApp } from "../src/app";
+import { type AppOptions, createApp } from "../src/app";
 import { showConfirmCard } from "../src/confirm-card-store";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import { deferExpiredKakaoCallback, type KakaoCallbackJob, type KakaoCallbackQueue } from "../src/kakao-callback-store";
@@ -13,6 +13,7 @@ import { StorageUnavailableError } from "../src/storage";
 import { expectSchema } from "./support/contract";
 import { describeDb, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
+import { lockPhotoCustomer, photoFailureConnector, photoGate } from "./support/photo-faults";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 import { MemoryStore } from "./support/storage";
 
@@ -49,9 +50,19 @@ describeDb("참고 사진의 실제 메시지 수신(TASK-065)", () => {
   afterEach(() => vi.unstubAllGlobals());
   afterAll(async () => db.close());
 
-  function request(url: string, queue?: KakaoCallbackQueue, callback = false) {
+  function request(
+    url: string,
+    queue?: KakaoCallbackQueue,
+    callback = false,
+    options: Pick<AppOptions, "connect" | "kakaoSkillTimeoutMs"> & {
+      images?: NonNullable<AppOptions["services"]>["images"];
+    } = {},
+  ) {
     const app = createApp({
+      ...(options.connect === undefined ? {} : { connect: options.connect }),
+      ...(options.kakaoSkillTimeoutMs === undefined ? {} : { kakaoSkillTimeoutMs: options.kakaoSkillTimeoutMs }),
       services: {
+        ...(options.images === undefined ? {} : { images: options.images }),
         now: () => at,
         storage: store,
         ...(queue === undefined ? {} : { kakaoCallbackQueue: queue }),
@@ -92,6 +103,95 @@ describeDb("참고 사진의 실제 메시지 수신(TASK-065)", () => {
       )
     ).rows;
   }
+  it.each(["turn", "finish"] as const)(
+    "즉시 참고 사진의 %s 예외는 자기 선점을 풀고 이미 저장한 결과를 보존한다",
+    async (stage) => {
+      const response = await request(PHOTO, undefined, false, { connect: photoFailureConnector(stage) });
+      expect(response.headers.get("Siljang-Outcome")).toBe("server_error");
+      expect(
+        (
+          await db.query(
+            "SELECT kakao_callback_claim_until FROM messages WHERE shop_id=$1 AND direction='inbound' AND trace_id LIKE 'kakao%photo:%'",
+            [shop.shopId],
+          )
+        ).rows,
+      ).toEqual([{ kakao_callback_claim_until: null }]);
+      expect(await rows()).toHaveLength(stage === "finish" ? 1 : 0);
+      expect(
+        (
+          await db.query("SELECT id FROM messages WHERE shop_id=$1 AND direction='outbound' AND kind='photo'", [
+            shop.shopId,
+          ])
+        ).rowCount,
+      ).toBe(stage === "finish" ? 1 : 0);
+    },
+  );
+  it("늦은 이미지 정리를 기다리지 않고 사진 실패로 답하며 뒤늦게 저장하지 않는다", async () => {
+    const entered = photoGate(),
+      finish = photoGate();
+    const webp = new Uint8Array(readFileSync(new URL("./fixtures/photos/rotated.webp", import.meta.url)));
+    const clean = new Uint8Array(readFileSync(new URL("./fixtures/photos/clean.webp", import.meta.url)));
+    download.mockImplementation(async () => new Response(webp));
+    const transformer = {
+      transform: () => transformer,
+      output: async () => {
+        entered.release();
+        await finish.promise;
+        return { response: () => new Response(clean, { headers: { "Content-Type": "image/webp" } }) };
+      },
+    };
+    const pending = request(PHOTO, undefined, false, {
+      kakaoSkillTimeoutMs: 500,
+      images: { input: () => transformer },
+    });
+    try {
+      await entered.promise;
+      const response = await pending;
+      expect(response.headers.get("Siljang-Outcome")).toBe("photo_download_failed");
+    } finally {
+      finish.release();
+      await pending;
+    }
+    expect(await rows()).toHaveLength(0);
+    expect(store.objects.size).toBe(0);
+    expect(call).not.toHaveBeenCalled();
+  });
+  it("사진 확정의 실제 행 잠금은 응답 기한을 넘기거나 55초 선점을 남기지 않는다", async () => {
+    const lock = lockPhotoCustomer(store, testDb(), shop.shopId);
+    const pending = request(PHOTO, undefined, false, { kakaoSkillTimeoutMs: 500 });
+    try {
+      await lock.entered;
+      expect((await pending).headers.get("Siljang-Outcome")).toBe("server_error");
+      const row = (
+        await db.query<{ kakao_callback_claim_until: Date | null }>(
+          "SELECT kakao_callback_claim_until FROM messages WHERE shop_id=$1 AND direction='inbound' AND trace_id LIKE 'kakao%photo:%'",
+          [shop.shopId],
+        )
+      ).rows[0];
+      expect(row?.kakao_callback_claim_until?.getTime() ?? NOW.getTime()).toBeLessThanOrEqual(NOW.getTime() + 500);
+    } finally {
+      await lock.release();
+      await pending;
+    }
+    expect(await rows()).toHaveLength(0);
+    expect((await db.query("SELECT id FROM file_deletions WHERE shop_id=$1", [shop.shopId])).rowCount).toBe(1);
+    expect(call).not.toHaveBeenCalled();
+  });
+  it("단독 디자인 링크의 글은 보존하고 사진을 내려받지 않는다", async () => {
+    const link = "https://example.com/synthetic-design";
+    const response = await request(link);
+    expect(response.headers.get("Siljang-Outcome")).toBe("ai_key_missing");
+    expect(
+      (
+        await db.query("SELECT id FROM messages WHERE shop_id=$1 AND direction='inbound' AND body_masked=$2", [
+          shop.shopId,
+          link,
+        ])
+      ).rowCount,
+    ).toBe(1);
+    expect(await rows()).toHaveLength(0);
+    expect(download).not.toHaveBeenCalled();
+  });
   it("두 수신의 정리한 사진 두 장을 같은 상담 초안에 붙이고 AI에 보내지 않는다", async () => {
     for (const url of [PHOTO, `${PHOTO}?image=2`]) {
       const response = await request(url);

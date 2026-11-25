@@ -125,7 +125,8 @@ export async function runKakaoPhotoTurn(
   const started = performance.now();
   const remaining = () =>
     Math.min(
-      claim.kakao_callback_deadline_at.getTime() - now().getTime(),
+      Math.min(claim.kakao_callback_deadline_at.getTime(), claim.kakao_callback_claim_until.getTime()) -
+        now().getTime(),
       options.budgetMs === undefined ? Infinity : options.budgetMs - (performance.now() - started),
     );
   let context: KakaoPhotoContext | undefined;
