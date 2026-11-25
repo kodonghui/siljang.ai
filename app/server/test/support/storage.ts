@@ -48,7 +48,13 @@ export class MemoryStore implements ObjectStore {
     if (this.failOn.has(op)) throw new StorageUnavailableError(`${op}: no response`);
   }
 
-  async put(key: string, body: Uint8Array, contentType: string): Promise<void> {
+  async put(
+    key: string,
+    body: Uint8Array,
+    contentType: string,
+    options: { readonly signal?: AbortSignal } = {},
+  ): Promise<void> {
+    if (options.signal?.aborted) throw new StorageUnavailableError("put: cancelled");
     this.#touch("put");
     this.objects.set(assertStorageKey(key), { body: body.slice(), contentType });
   }

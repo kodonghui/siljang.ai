@@ -1,0 +1,27 @@
+{
+  "source": "8169a2afc991bac0a3afd8196db2f63ee1900ac5",
+  "scope": "참고 사진 다운로드/G10 전처리 모듈만. 실제 수신/큐/저장소 연결 아님",
+  "initialRed": {
+    "source": "334242e2de6c5c8481bd26f5aa3adb0993d9902f",
+    "public": "a56b18d07307dbe8004bf2d4dba4054227275baa",
+    "tree": "dc84ca57a4267dff8c70a632e0be0d3511a8fbd6",
+    "kind": "모듈 부재로 수집 실패, 실제 동작 시험 수0",
+    "exitCode": 1
+  },
+  "related": {
+    "command": "npm run test -w server -- test/kakao-photo-download.test.ts test/photo-normalizer.test.ts",
+    "workingDirectory": "app",
+    "files": 2,
+    "passed": 38,
+    "downloadTests": 20,
+    "normalizerTests": 18,
+    "exitCode": 0,
+    "log": "/tmp/siljang-task065-download-green-related-20261125.log"
+  },
+  "typeExitCode": 0,
+  "newLocalNpmCi": false,
+  "newSchemaOrDependencies": false,
+  "runtimeApiConnected": false,
+  "externalHttpRequests": 0,
+  "browserRun": false
+}

@@ -17,6 +17,7 @@ import {
 } from "./kakao-callback-store";
 import { readClaimedKakaoCard } from "./kakao-card-delivery";
 import { deferredKakaoMessages, deferredKakaoTexts } from "./kakao-deferred";
+import { runKakaoPhotoTurn } from "./kakao-photo-turn";
 import { KAKAO_HANDOFF_TEXT, kakaoAiFailureOutcome } from "./kakao-reply";
 import { type LogSink, log } from "./log";
 import { createServices, type ServiceOverrides } from "./services";
@@ -116,6 +117,41 @@ export async function consumeKakaoCallback(
     }
 
     owned = claim;
+    const photo = await runKakaoPhotoTurn(db, job.messageId, claim, services, now, {
+      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+    });
+    if (photo.kind === "gone") return "done";
+    if (photo.kind === "reply") {
+      if (photo.reply.delivered) {
+        await finishKakaoCallback(db, job.messageId, claim, photo.reply.text, null, [], photo.reply.id);
+        return "done";
+      }
+      const callback = kakaoCallback(photo.callbackUrl, claim.created_at);
+      const usable =
+        callback !== null && Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) > now().getTime();
+      const previous = !usable
+        ? []
+        : await db.transaction((tx) =>
+            deferredKakaoMessages(tx, claim.customer_id, { now: now(), excludeMessageId: photo.reply.id }),
+          );
+      const sentAt =
+        usable &&
+        callback !== null &&
+        (await deliverKakaoCallback(
+          { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
+          [...deferredKakaoTexts(previous), photo.reply.text],
+          { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
+        )) === "delivered"
+          ? now()
+          : null;
+      await finishKakaoCallback(db, job.messageId, claim, photo.reply.text, sentAt, previous, photo.reply.id);
+      if (sentAt !== null) {
+        log("info", { event: "kakao_callback_result", code: photo.reply.outcome }, options.logSink);
+        if (previous.some((row) => row.card !== undefined))
+          log("info", { event: "kakao_callback_result", code: "card_shown" }, options.logSink);
+      }
+      return "done";
+    }
     let disclosure = services.aiConfigured ? await prepareKakaoAiDisclosure(db, claim, services) : undefined;
     let preparedReply: KakaoAiReply | undefined;
     let maskingFailed = false;

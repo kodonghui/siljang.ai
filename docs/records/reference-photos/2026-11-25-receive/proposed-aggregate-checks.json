@@ -1,0 +1,15 @@
+{
+  "finding": 4690767876,
+  "thread": "PRRT_kwDOVlnI8M67vjoP",
+  "status": "unfixed: product decision required by explicit no-frequency-limit contract",
+  "candidateSourceCommit": "88779ba4b5f31cc614687d0517f1f1889735c019",
+  "failed": 3,
+  "skipped": 34,
+  "patchSha256": "bb6cad39c5f841ed43dac4dc09678345844540c640c7e413308f8ea8636cd353",
+  "candidateInApplicationTests": false,
+  "productRuntimeChanged": false,
+  "followups": [
+    "TASK-145",
+    "TASK-166"
+  ]
+}

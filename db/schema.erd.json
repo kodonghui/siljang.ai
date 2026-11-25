@@ -7623,7 +7623,7 @@
         "id": "03h8dcdgplutqx36jrlipqvvp",
         "tableId": "03h8dcdgozyyepdxxnkmbrubi",
         "name": "source",
-        "comment": "지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진(SPEC-065)",
+        "comment": "지운 참고·신고 사진과 옛 신고증 또는 중단된 후기 사진 올리기(SPEC-065)",
         "dataType": "text",
         "options": 8
       },

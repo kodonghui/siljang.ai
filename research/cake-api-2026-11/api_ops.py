@@ -1386,7 +1386,7 @@ op(id="API-069", method="delete", path="/owner/portfolio/items/{portfolioItemId}
 
 # ═══ 카카오 스킬 ══════════════════════════════════════════════════════════════
 MESSAGE_OUTCOMES = ["answered", "callback_pending", "handed_over", "ai_unavailable", "ai_timeout", "ai_key_missing", "ai_limit_reached",
-                    "ai_cost_limit_reached", "masking_failed", "ai_output_rejected", "card_shown", "photo_received", "photo_rejected",
+                    "ai_cost_limit_reached", "masking_failed", "ai_output_rejected", "card_shown", "photo_received", "photo_rejected", "photo_download_failed",
                     "unsupported_message", "rate_limited", "duplicate", "not_accepting", "channel_test_card", "server_error"]
 CARD_OUTCOMES = ["allergy_saved", "allergy_declined", "orderer_saved", "order_requested", "payment_claimed", "amount_confirmed", "amount_declined", "change_requested", "order_cancelled",
                  "issue_reported", "photo_consent_saved", "consent_withdrawn", "declined", "input_invalid", "card_stale", "card_expired", "card_not_yours", "card_used", "day_full", "order_limit_reached", "retry_needed", "not_allowed_now",
@@ -1439,7 +1439,7 @@ op(id="API-070", method="post", path="/kakao/skills/message", op="receiveCustome
           "대상": ["outcome:not_accepting"], "상태": ["outcome:handed_over", "outcome:card_shown", "outcome:channel_test_card"], "반복": ["outcome:duplicate"],
           "동시": ["outcome:answered", "note:답을 만드는 동안 온 메시지는 다음 차례에 한꺼번에(3-3)"],
           "한도": ["outcome:rate_limited", "outcome:ai_cost_limit_reached", "outcome:photo_rejected", "outcome:ai_limit_reached", "note:한 차례의 모델 호출은 8번까지(AI-1, ai_calls.call_kind)"],
-          "외부": ["outcome:ai_unavailable", "outcome:ai_timeout", "outcome:ai_key_missing", "outcome:ai_limit_reached", "callback"],
+          "외부": ["outcome:ai_unavailable", "outcome:ai_timeout", "outcome:ai_key_missing", "outcome:ai_limit_reached", "outcome:photo_download_failed", "callback"],
           "노출": ["closed", "outcome:server_error", "note:알레르기 답은 AI 모델에 보내지 않음(REQ-204)"], "빈·끊김": ["outcome:callback_pending", "note:빈 AI 답은 다시 묻고 두 번이면 에스컬레이션함(SPEC-020)"],
           "AI": ["outcome:ai_output_rejected", "outcome:handed_over", "outcome:masking_failed"], "화면": ["screen"]})
 

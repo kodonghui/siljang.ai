@@ -73,6 +73,20 @@ GRANT SELECT (id, shop_id, order_no, customer_id, consultation_id, status, perso
 -- 글 후기의 버전만 읽고 새 글과 이전 버전의 교체 시각을 남긴다. 기존 본문 수정/삭제는 없다.
 GRANT SELECT (id, shop_id, order_id, version, superseded_at),
   INSERT (shop_id, order_id, version, body, created_at), UPDATE (superseded_at) ON reviews TO :"runtime_role";
+-- TASK-065: 사진이 늦게 붙어도 최근 후기의 현재 표시를 되돌리지 않는다. 글/삭제 권한은 넓히지 않는다.
+GRANT SELECT (created_at), INSERT (superseded_at) ON reviews TO :"runtime_role";
+GRANT SELECT (id, shop_id, draft_id, message_id, position, storage_key, content_type, byte_size, created_at),
+  INSERT (shop_id, draft_id, message_id, position, storage_key, content_type, byte_size, created_at)
+  ON reference_photos TO :"runtime_role";
+GRANT SELECT (id, shop_id, review_id, position, storage_key, content_type, byte_size, created_at),
+  INSERT (shop_id, review_id, position, storage_key, content_type, byte_size, created_at)
+  ON review_photos TO :"runtime_role";
+GRANT INSERT (shop_id, order_id, scope, review_photo_id, consented, decided_at, publishable)
+  ON photo_consents TO :"runtime_role";
+-- 중단된 올리기 회수만 다룬다. 사진 본문/연결 행의 수정·삭제 권한은 주지 않는다.
+GRANT SELECT (id, shop_id, storage_key, source, queued_at, attempts, last_tried_at),
+  INSERT (shop_id, storage_key, source, queued_at), UPDATE (attempts, last_tried_at), DELETE
+  ON file_deletions TO :"runtime_role";
 -- TASK-032: 새 가게의 등록 필드만 쓴다. 승인 상태·예약 링크·기존 가게 변경/삭제 권한은 더하지 않는다.
 GRANT INSERT (id, owner_id, name, contact_phone, business_address, contact_email, business_name,
   representative_name, business_reg_no, mail_order_reg_no, mail_order_authority, mail_order_exemption,

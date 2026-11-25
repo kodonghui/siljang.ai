@@ -1,0 +1,81 @@
+{
+  "red": {
+    "source": "e87a9e928b701e98b68dc9fa4036843de3fe15f3",
+    "failed": 6,
+    "files": 1,
+    "log": "/tmp/siljang-task065-receive-red2-related-20261125.log",
+    "lintExitCode": 0,
+    "typeExitCode": 0
+  },
+  "initialConnection": {
+    "failed": 1,
+    "passed": 173,
+    "reason": "시험이 이미 제출된 옛 초안 ID를 기대함. 새 손님/현재 초안으로 보완"
+  },
+  "current": {
+    "source": "4054d118d82cb785e6903ca933051a895a70527d",
+    "files": 13,
+    "passed": 246,
+    "log": "/tmp/siljang-task065-migration-green-related-20261125.log",
+    "freshDatabase": false,
+    "migrations": 40,
+    "sameLockDependenciesReused": true,
+    "newLocalNpmCi": false,
+    "typeExitCode": 0,
+    "strictLintExitCode": 0,
+    "migrationStrategy": "기존39이행 시험DB 위에0040만 직접 적용",
+    "fullFresh": "진행 중: siljang-task065-receive-20261125-1",
+    "implementationProposal": true,
+    "nativeMigrationOrGrantApplied": false,
+    "freshFullLabel": "siljang-task065-receive-20261125-2",
+    "freshFullStatus": "새 빈40개·서버2764/웹1727/Vite640ms/두 Worker0·시험DB정리"
+  },
+  "remaining": [
+    "저장소 PUT 취소 전달/중단 회수",
+    "동시 장수/기한/재개/최소 역할",
+    "API072 사진 처리·HTTP별 계약",
+    "새 전체/빌드/단계·ready PR/검토·CI/main"
+  ],
+  "implemented": false,
+  "browserRun": false,
+  "newProviderCalls": 0,
+  "uploadAbortRed": {
+    "source": "b8a89bef396d18cce68d7013b1443861e9a8a206",
+    "failed": 2,
+    "passed": 9,
+    "log": "/tmp/siljang-task065-put-abort-red-related-20261125.log"
+  },
+  "reviewRed": {
+    "source": "4caa3cbaaa8fd2efe45edb10854f093083e529b5",
+    "failed": 3,
+    "passed": 11,
+    "log": "/tmp/siljang-task065-review-red-related-20261125.log"
+  },
+  "roleRed": {
+    "source": "5e1e5ed856b853ee2286b53491ccb1c70b9c6ff7",
+    "failed": 2,
+    "log": "/tmp/siljang-task065-permissions-red-related-20261125.log"
+  },
+  "reviewRateRed": {
+    "source": "0072ff97d55954847b5635baa334c44213df3b71",
+    "failed": 1,
+    "skipped": 13,
+    "log": "/tmp/siljang-task065-review-rate-red-related-20261125.log"
+  },
+  "photoPreviousCardLogRed": {
+    "source": "c48e31b1b7495de81eb49dcd996785b0b929e959",
+    "failed": 1,
+    "skipped": 10,
+    "log": "/tmp/siljang-task065-card-log-red-related-20261125.log"
+  },
+  "freshAttempt1": {
+    "source": "47f2349c7536fe86d9518ce0dd05f008b4666d3d",
+    "migrations": 40,
+    "serverPassed": 2761,
+    "serverFailed": 3,
+    "webRun": false,
+    "buildRun": false,
+    "cause": "0040 바깥 BEGIN/COMMIT과 스테이징 SQL 생성기의 트랜잭션 충돌",
+    "log": "/tmp/siljang-task065-receive-20261125-1-fresh-full.log"
+  }
+}

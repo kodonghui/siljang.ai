@@ -1,6 +1,7 @@
 import type { AiFailure } from "./ai-model";
 import { KAKAO_CONSULTATION_UNAVAILABLE_TEXT } from "./kakao-callback";
 import { type KakaoMessageContent, type KakaoMessageOutput, kakaoMessageOutputs } from "./kakao-message-content";
+import { KAKAO_PHOTO_TEXT, type KakaoPhotoOutcome } from "./kakao-photo-context";
 import type { ShopRequest } from "./routes";
 
 /** TASK-028의 API-070 고정 결과. AI 처리와 에스컬레이션은 각 처리기가 끝낸 뒤 이 응답을 사용한다. */
@@ -19,6 +20,7 @@ export const KAKAO_COMMON_OUTCOMES = [
 ] as const;
 type Outcome =
   | (typeof KAKAO_COMMON_OUTCOMES)[number]
+  | KakaoPhotoOutcome
   | "notice_gone"
   | "masking_failed"
   | "review_saved"
@@ -27,6 +29,7 @@ type Outcome =
 type TextOutcome = Exclude<Outcome, "callback_pending" | "duplicate">;
 export const KAKAO_HANDOFF_TEXT = "사장님 확인 뒤 답드릴게요.";
 const TEXT: Readonly<Record<TextOutcome, string>> = {
+  ...KAKAO_PHOTO_TEXT,
   review_saved: "후기를 남겨 주셔서 고마워요",
   review_not_allowed: "받으신 주문에만 후기를 남길 수 있어요",
   review_invalid: "후기는 1,000자, 사진은 5장까지 남길 수 있어요",
@@ -64,6 +67,8 @@ export function kakaoReply(
     readonly previous?: readonly KakaoMessageContent[];
     /** API-072는 반복 요청에도 처음의 감사 답을 보낸다. API-070의 빈 출력과 구분한다. */
     readonly repeatReview?: boolean;
+    /** 사진 후기의 반복은 저장한 첫 실패도 그대로 전하며, 진행 중에는 저장됐다고 말하지 않는다. */
+    readonly repeatReviewText?: string;
   } = {},
 ): Response {
   const headers = { "Siljang-Outcome": outcome, "Cache-Control": "no-store" };
@@ -71,7 +76,8 @@ export function kakaoReply(
     return r.json({ version: "2.0", useCallback: true, data: { text: "답을 준비하고 있어요" } }, 200, headers);
   }
   const outputs: KakaoMessageOutput[] = [];
-  if (outcome === "duplicate" && options.repeatReview) outputs.push({ simpleText: { text: TEXT.review_saved } });
+  if (outcome === "duplicate" && options.repeatReview)
+    outputs.push({ simpleText: { text: options.repeatReviewText ?? TEXT.review_saved } });
   if (outcome !== "duplicate" && !(outcome === "rate_limited" && options.silent)) {
     const previous = options.previous ?? [];
     if (previous.length > 2) throw new RangeError("invalid deferred Kakao replies");

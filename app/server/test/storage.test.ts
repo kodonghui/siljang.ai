@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { assertStorageKey, parseListObjectsV2, S3Store, StorageUnavailableError } from "../src/storage";
 import { brokenBody } from "./support/storage";
 
@@ -11,6 +11,7 @@ const SECRET_ACCESS_KEY = ["test", "secret", "value"].join("-");
 const ENDPOINT = "https://project.storage.example.test/storage/v1/s3";
 
 interface Sent {
+  readonly signal: AbortSignal;
   readonly method: string;
   readonly url: URL;
   readonly headers: Headers;
@@ -27,6 +28,7 @@ function fakeS3(respond: (req: Sent) => Response | Promise<Response>) {
     secretAccessKey: SECRET_ACCESS_KEY,
     fetch: async (req) => {
       const s: Sent = {
+        signal: req.signal,
         method: req.method,
         url: new URL(req.url),
         headers: req.headers,
@@ -57,6 +59,39 @@ function expectSigned(s: Sent) {
 const KEY = "tmp/0b9a7c6e-1f2d-4e3c-8a9b-0c1d2e3f4a5b/upl_0123456789abl0123456789abcdefABCDEF";
 
 describe("S3Store가 보내는 요청(경로 꼴 주소, SigV4, UNSIGNED-PAYLOAD)", () => {
+  it("사진 수신의 취소 신호를 실제 PUT 요청에 전달한다", async () => {
+    let release: ((response: Response) => void) | undefined;
+    const { store, sent } = fakeS3(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const controller = new AbortController();
+    const work: Promise<void> = Reflect.apply(store.put, store, [
+      KEY,
+      new Uint8Array([1]),
+      "image/png",
+      { signal: controller.signal },
+    ]);
+    try {
+      await vi.waitFor(() => expect(sent).toHaveLength(1));
+      controller.abort();
+      expect(sent[0]?.signal.aborted).toBe(true);
+    } finally {
+      release?.(new Response(null, { status: 200 }));
+      await work;
+    }
+  });
+  it("이미 취소한 사진 올리기는 네트워크를 부르지 않는다", async () => {
+    const { store, sent } = fakeS3(() => new Response(null, { status: 200 }));
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      Reflect.apply(store.put, store, [KEY, new Uint8Array([1]), "image/png", { signal: controller.signal }]),
+    ).rejects.toBeInstanceOf(StorageUnavailableError);
+    expect(sent).toHaveLength(0);
+  });
   it("put: PUT 버킷/키, 종류 헤더와 몸체 그대로, 200만 성공", async () => {
     const { store, sent } = fakeS3(() => new Response(null, { status: 200 }));
     const body = new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]);

@@ -1,0 +1,25 @@
+{
+  "reviewComment": 7153477943,
+  "reviewedHead": "70687d65f1fef40350e5c9ef11683039d43a6b8e",
+  "parserDownloadRed": {
+    "commit": "b739be4",
+    "failed": 7,
+    "passed": 28
+  },
+  "correctedSyncRed": {
+    "commit": "2b2af1fc79c40cb28a31a0d971e6c84ce0650cbd",
+    "failed": 8,
+    "skipped": 25,
+    "immutableWorktree": true
+  },
+  "interimGreen": {
+    "files": 7,
+    "passed": 164,
+    "failed": 0
+  },
+  "currentCode": "3cdf9bbc1e8cf0eb687f5c9c6e38d9a3a0a7f8f7",
+  "newFullChecks": "running",
+  "realSignedPhotoDownload": "unverified",
+  "cdnRootHttpsHeadStatus": 403,
+  "nativeBrowser": "not run"
+}

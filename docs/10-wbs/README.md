@@ -27,9 +27,9 @@
 | 03 | `docs/03-user-flow/FL-*.md` | 플로우 14개(출처 ID) |
 | 04 | `research/cake-spec-2026-11/spec_rows.py`, `docs/04-functional-spec/spec.md` | SPEC 79개, 수락 기준 333개, 공통 규칙 10개 |
 | 05 | `db/schema.sql`, `docs/05-erd/README.md`, `research/cake-erd-2026-11/erd_map.py` | 테이블 61개, 앱 규칙 40개, SPEC마다 닿는 테이블 |
-| 06 | `api/openapi.yaml`, `research/cake-api-2026-11/api_ops.py`·`api_catalog.py` | API 83개(응답 418개), 카카오 스킬 API 넷의 결과 코드 57개, 열린 질문 1개, 결정 사항 30개 |
+| 06 | `api/openapi.yaml`, `research/cake-api-2026-11/api_ops.py`·`api_catalog.py` | API 83개(응답 418개), 카카오 스킬 API 넷의 결과 코드 58개, 열린 질문 1개, 결정 사항 30개 |
 | 07 | `docs/07-sitemap/sitemap.yaml` | 화면 50개와 화면마다 부르는 API |
-| 08 | `research/cake-screens-2026-11/screens_*.py`, `docs/08-screens/SCR-*.md` | 상태 367개, 응답 행 976개 |
+| 08 | `research/cake-screens-2026-11/screens_*.py`, `docs/08-screens/SCR-*.md` | 상태 367개, 응답 행 978개 |
 | 09 | `research/cake-mockup-2026-11/gen_screens.py` | 그리는 상태 이름 12개(empty·error·confirm-notify·confirm·expired·not-sent·deferred·allergy·orderer·amount-confirm·depositor·photo-consent), 그린 상태 161개 |
 <!-- END generated:inputs -->
 

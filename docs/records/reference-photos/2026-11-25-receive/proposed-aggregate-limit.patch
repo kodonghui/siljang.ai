@@ -1,0 +1,131 @@
+diff --git a/app/server/test/kakao-reference-photo.test.ts b/app/server/test/kakao-reference-photo.test.ts
+index 883ca69..abacee6 100644
+--- a/app/server/test/kakao-reference-photo.test.ts
++++ b/app/server/test/kakao-reference-photo.test.ts
+@@ -6,6 +6,7 @@ import { showConfirmCard } from "../src/confirm-card-store";
+ import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+ import { deferExpiredKakaoCallback, type KakaoCallbackJob, type KakaoCallbackQueue } from "../src/kakao-callback-store";
+ import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
++import { kakaoPhotoTrace } from "../src/kakao-photo-context";
+ import { deleteQueuedFile } from "../src/purge-files";
+ import { Secret } from "../src/settings";
+ import { createShopScope, shopRequestDb } from "../src/shop-scope";
+@@ -192,6 +193,28 @@ describeDb("참고 사진의 실제 메시지 수신(TASK-065)", () => {
+     expect(await rows()).toHaveLength(0);
+     expect(download).not.toHaveBeenCalled();
+   });
++  it("후기 사진과 합계20건인 손님은 참고 사진으로 외부 처리 한도를 우회하지 못한다", async () => {
++    expect((await request(PHOTO)).headers.get("Siljang-Outcome")).toBe("photo_received");
++    const source = (await rows())[0];
++    const row = (
++      await db.query<{ consultation_id: string }>("SELECT consultation_id FROM messages WHERE id=$1", [
++        source?.message_id,
++      ])
++    ).rows[0];
++    expect(row).toBeDefined();
++    for (let i = 0; i < 19; i++) {
++      const id = crypto.randomUUID();
++      await db.query(
++        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,trace_id,created_at) VALUES($1,$2,$3,'inbound','customer','card','합성 후기 사진',$4,$5)",
++        [id, shop.shopId, row?.consultation_id, kakaoPhotoTrace(id, "review"), NOW],
++      );
++    }
++    download.mockClear();
++    at = new Date(NOW.getTime() + 2001);
++    expect((await request(`${PHOTO}?limited=1`)).headers.get("Siljang-Outcome")).toBe("rate_limited");
++    expect(download).not.toHaveBeenCalled();
++    expect(await rows()).toHaveLength(1);
++  });
+   it("두 수신의 정리한 사진 두 장을 같은 상담 초안에 붙이고 AI에 보내지 않는다", async () => {
+     for (const url of [PHOTO, `${PHOTO}?image=2`]) {
+       const response = await request(url);
+diff --git a/app/server/test/kakao-review-dedup.test.ts b/app/server/test/kakao-review-dedup.test.ts
+index a7448fb..f71104a 100644
+--- a/app/server/test/kakao-review-dedup.test.ts
++++ b/app/server/test/kakao-review-dedup.test.ts
+@@ -4,6 +4,7 @@ import { createApp } from "../src/app";
+ import { type DbConnector, pgConnector } from "../src/db";
+ import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+ import { recentKakaoInboundCount } from "../src/kakao-skill-store";
++import { kakaoPhotoTrace } from "../src/kakao-photo-context";
+ import type { ImageBinding } from "../src/photo-normalizer";
+ import { Secret } from "../src/settings";
+ import { createShopScope, shopRequestDb } from "../src/shop-scope";
+@@ -100,8 +101,8 @@ describeDb("API-072 업무 중복과 트랜잭션(TASK-028)", () => {
+     return {
+       shop,
+       send,
+-      advance: () => {
+-        at = new Date(at.getTime() + 2001);
++      advance: (ms = 2001) => {
++        at = new Date(at.getTime() + ms);
+       },
+     };
+   }
+@@ -114,6 +115,66 @@ describeDb("API-072 업무 중복과 트랜잭션(TASK-028)", () => {
+       expire: new Date(NOW.getTime() + 300_000).toISOString(),
+     });
+   }
++  async function photoReceipts(shop: { shopId: string; consultationId: string }, count: number) {
++    for (let i = 0; i < count; i++) {
++      const id = newUuid();
++      await db.query(
++        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,trace_id,created_at) VALUES($1,$2,$3,'inbound','customer',$4,'합성 사진 수신',$5,$6)",
++        [
++          id,
++          shop.shopId,
++          shop.consultationId,
++          i % 2 === 0 ? "card" : "photo",
++          kakaoPhotoTrace(id, i % 2 === 0 ? "review" : "reference"),
++          NOW,
++        ],
++      );
++    }
++  }
++  it("참고·후기 사진 합계20건 뒤에는 내려받기와 새 후기 버전 없이 제한하고 다음 분에는 복구한다", async () => {
++    const h = await fixture(),
++      store = new MemoryStore();
++    await photoReceipts(h.shop, 20);
++    const image = new Uint8Array(readFileSync(new URL("./fixtures/photos/metadata.png", import.meta.url)));
++    const fetcher = vi.fn<typeof fetch>(async () => new Response(image));
++    vi.stubGlobal("fetch", fetcher);
++    try {
++      const limited = await h.send({ photos: photoPlugin(), storage: store });
++      expect(limited.headers.get("Siljang-Outcome")).toBe("rate_limited");
++      expect(fetcher).not.toHaveBeenCalled();
++      expect(store.objects.size).toBe(0);
++      expect((await db.query("SELECT id FROM reviews WHERE shop_id=$1", [h.shop.shopId])).rowCount).toBe(0);
++      const repeated = await h.send({ photos: photoPlugin(), storage: store });
++      expect(repeated.headers.get("Siljang-Outcome")).toBe("duplicate");
++      expect(JSON.stringify(await repeated.json())).toContain("잠시 뒤 다시 말씀해 주세요");
++      h.advance(60000);
++      expect((await h.send({ photos: photoPlugin(), storage: store })).headers.get("Siljang-Outcome")).toBe(
++        "review_saved",
++      );
++      expect(fetcher).toHaveBeenCalledOnce();
++    } finally {
++      vi.unstubAllGlobals();
++    }
++  });
++  it("사진 합계19건 뒤 동시 후기 두 건 중 한 건만 외부 처리와 새 버전으로 나아간다", async () => {
++    const h = await fixture(),
++      store = new MemoryStore();
++    await photoReceipts(h.shop, 19);
++    const image = new Uint8Array(readFileSync(new URL("./fixtures/photos/metadata.png", import.meta.url)));
++    const fetcher = vi.fn<typeof fetch>(async () => new Response(image));
++    vi.stubGlobal("fetch", fetcher);
++    try {
++      const replies = await Promise.all([
++        h.send({ photos: photoPlugin(), storage: store, text: "합성 수정 A" }),
++        h.send({ photos: photoPlugin(), storage: store, text: "합성 수정 B" }),
++      ]);
++      expect(replies.map((r) => r.headers.get("Siljang-Outcome")).sort()).toEqual(["rate_limited", "review_saved"]);
++      expect(fetcher).toHaveBeenCalledOnce();
++      expect((await db.query("SELECT id FROM reviews WHERE shop_id=$1", [h.shop.shopId])).rowCount).toBe(1);
++    } finally {
++      vi.unstubAllGlobals();
++    }
++  });
+   it.each(["turn", "finish"] as const)(
+     "즉시 후기 사진의 %s 예외는 자기 선점을 풀고 저장한 후기는 보존한다",
+     async (stage) => {

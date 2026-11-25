@@ -23,6 +23,7 @@ export const FIELD_PURPOSES = [
   "refunds.refund_account",
   "masked_values.original",
   "messages.kakao_callback",
+  "messages.kakao_photo",
   "consultations.message_cursor",
 ] as const;
 export type FieldPurpose = (typeof FIELD_PURPOSES)[number];
@@ -31,7 +32,7 @@ export type FieldPurpose = (typeof FIELD_PURPOSES)[number];
 export interface FieldContext {
   readonly purpose: FieldPurpose;
   readonly shopId: string;
-  /** 상담 커서만 상담 ID를 추가로 묶는다. 기존 저장 봉투의 AAD는 그대로다. */
+  /** 상담 커서는 상담 ID, 사진 수신은 메시지 ID를 추가로 묶는다. 기존 저장 봉투의 AAD는 그대로다. */
   readonly recordId?: string;
 }
 
@@ -43,6 +44,11 @@ const NONCE_BYTES = 12;
 const TAG_BYTES = 16;
 /** 평문 UTF-8 상한. 계좌번호·전화번호는40자까지이며 상담 커서는120바이트를 쓴다. */
 export const MAX_FIELD_BYTES = 256;
+/** 주소 최대5개·후기1000자와 내부 식별자. 이 수신 용도만 별도 한도를 쓴다. */
+export const MAX_KAKAO_PHOTO_CONTEXT_BYTES = 20_480;
+function fieldLimit(context: FieldContext): number {
+  return context.purpose === "messages.kakao_photo" ? MAX_KAKAO_PHOTO_CONTEXT_BYTES : MAX_FIELD_BYTES;
+}
 
 /** 봉투를 만들거나 풀지 못함. 메시지는 정해 둔 글뿐이다(평문·키·봉투 없음). */
 export class FieldCryptoError extends Error {
@@ -52,7 +58,7 @@ export class FieldCryptoError extends Error {
 export interface FieldCrypto {
   /** 새로 쓰는 봉투의 키 버전. */
   readonly currentVersion: number;
-  /** 평문(1~256바이트)을 봉투로. 지금 버전의 키를 쓴다. */
+  /** 일반 평문1~256바이트, 사진 수신 문맥만 별도 상한. 지금 버전의 키를 쓴다. */
   seal(plaintext: string, context: FieldContext): Promise<string>;
   /** 봉투를 평문으로. 봉투에 적힌 버전의 키를 쓴다. 풀지 못하면 FieldCryptoError. */
   open(envelope: string, context: FieldContext): Promise<string>;
@@ -89,7 +95,7 @@ function aad(version: number, context: FieldContext): Uint8Array {
     throw new FieldCryptoError("field context is not valid");
   }
   const parts = [`v${version}`, context.purpose, context.shopId.toLowerCase()];
-  if (context.purpose === "consultations.message_cursor") {
+  if (context.purpose === "consultations.message_cursor" || context.purpose === "messages.kakao_photo") {
     if (!isUuid(context.recordId)) throw new FieldCryptoError("cursor binding is not valid");
     parts.push(context.recordId.toLowerCase());
   } else if (context.recordId !== undefined) throw new FieldCryptoError("field binding is not valid");
@@ -151,7 +157,7 @@ export function fieldCrypto(settings: FieldKeySettings): FieldCrypto {
     async seal(plaintext, context) {
       if (typeof plaintext !== "string" || plaintext === "") throw new FieldCryptoError("field value is empty");
       const bytes = utf8.encode(plaintext);
-      if (bytes.length > MAX_FIELD_BYTES) throw new FieldCryptoError("field value is too long");
+      if (bytes.length > fieldLimit(context)) throw new FieldCryptoError("field value is too long");
       const version = settings.current;
       const additionalData = aad(version, context);
       const { aes } = await keysOf(version);
@@ -172,9 +178,15 @@ export function fieldCrypto(settings: FieldKeySettings): FieldCrypto {
     async open(envelope, context) {
       const m = typeof envelope === "string" ? ENVELOPE.exec(envelope) : null;
       if (m === null) throw new FieldCryptoError("field envelope is not valid");
+      if ((m[2]?.length ?? 0) > Math.ceil(((fieldLimit(context) + NONCE_BYTES + TAG_BYTES) * 4) / 3))
+        throw new FieldCryptoError("field envelope is not valid");
       const version = Number(m[1]);
       const bytes = fromBase64Url(m[2] as string);
-      if (bytes === null || bytes.length <= NONCE_BYTES + TAG_BYTES) {
+      if (
+        bytes === null ||
+        bytes.length <= NONCE_BYTES + TAG_BYTES ||
+        bytes.length > fieldLimit(context) + NONCE_BYTES + TAG_BYTES
+      ) {
         throw new FieldCryptoError("field envelope is not valid");
       }
       const additionalData = aad(version, context);

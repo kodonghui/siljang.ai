@@ -117,6 +117,7 @@ interface Variables {
   kakaoSkill?: AuthorizedKakaoSkill;
   kakaoSkillReceivedAt?: Date;
   kakaoSkillTimedOut?: boolean;
+  kakaoSkillTimeLeft?: () => number;
   ownerScope?: OwnerScope;
 }
 
@@ -307,6 +308,8 @@ export function createApp(options: AppOptions = {}): Hono<HonoEnv> {
         return;
       }
       c.set("kakaoSkillReceivedAt", c.get("services").now());
+      const skillStarted = performance.now();
+      c.set("kakaoSkillTimeLeft", () => Math.max(0, skillTimeoutMs - (performance.now() - skillStarted)));
       const running = next();
       const deadline = new Promise<void>((resolve) => {
         timer = setTimeout(() => {

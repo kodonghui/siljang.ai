@@ -157,11 +157,11 @@
 | --- | --- | --- | --- | --- | --- |
 | [SCR-001](SCR-001.md) | 예약 링크 페이지 | 손님 | normal · loading · empty · error · rate-limited · stale | permission | 5 |
 | [SCR-002](SCR-002.md) | 가게 개인정보 처리방침 | 손님 | normal · loading · error · rate-limited | empty · permission · stale | 4 |
-| [SCR-003](SCR-003.md) | 가게 채널 상담 | 손님 | normal · loading · empty · error · permission · stale · handed-over · fixed-answer · rate-limited · link-test | - | 28 |
+| [SCR-003](SCR-003.md) | 가게 채널 상담 | 손님 | normal · loading · empty · error · permission · stale · handed-over · fixed-answer · rate-limited · link-test | - | 29 |
 | [SCR-004](SCR-004.md) | 주문 요청 카드 | 손님 | normal · allergy · orderer · done · stale · expired · day-full · permission · error | loading · empty | 29 |
 | [SCR-005](SCR-005.md) | 결제 안내 | 손님 | normal · amount-confirm · done · deferred · stale · permission · error | loading · empty | 35 |
 | [SCR-006](SCR-006.md) | 결제 확인 요청 카드 | 손님 | normal · depositor · done · stale · expired · permission · error | loading · empty | 29 |
-| [SCR-007](SCR-007.md) | 내 주문 보기 | 손님 | normal · loading · empty · error · permission · stale · handed-over · rate-limited | - | 22 |
+| [SCR-007](SCR-007.md) | 내 주문 보기 | 손님 | normal · loading · empty · error · permission · stale · handed-over · rate-limited | - | 23 |
 | [SCR-008](SCR-008.md) | 변경 요청 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 29 |
 | [SCR-009](SCR-009.md) | 취소 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 29 |
 | [SCR-010](SCR-010.md) | 문제 신고 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 29 |

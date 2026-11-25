@@ -1,0 +1,43 @@
+{
+  "source": "4054d118d82cb785e6903ca933051a895a70527d",
+  "sourceMeaning": "전체 명령 시작 SHA. 이후 기록/작업표 생성 문서만 바뀌었고 제품/시험·API/DB/권한 파일 차이0",
+  "freshMigrations": 40,
+  "cleanup": "completed",
+  "serverFiles": 139,
+  "serverTests": 2764,
+  "webFiles": 71,
+  "webTests": 1727,
+  "fullExitCode": 0,
+  "buildExitCode": 0,
+  "viteMs": 640,
+  "lines": [
+    "마이그레이션 40개를 차례로 적용함",
+    " Test Files  139 passed (139)",
+    "      Tests  2764 passed (2764)",
+    " Test Files  71 passed (71)",
+    "      Tests  1727 passed (1727)",
+    "✓ built in 640ms",
+    "Total Upload: 5425.44 KiB / gzip: 995.97 KiB",
+    "--dry-run: exiting now.",
+    "Total Upload: 21.08 KiB / gzip: 6.55 KiB",
+    "--dry-run: exiting now."
+  ],
+  "logs": {
+    "migrate": "/tmp/siljang-task065-receive-20261125-2-fresh-migrate.log",
+    "full": "/tmp/siljang-task065-receive-20261125-2-fresh-full.log",
+    "build": "/tmp/siljang-task065-receive-20261125-2-fresh-build.log"
+  },
+  "hashes": {
+    "migrate": "b8c9d1dfe83b64a8e1ccb8e37e3fa3966edce9640675f948d06ba463728f2cf3",
+    "full": "0e75f156538db7cc13943457d9ac0031ad891e3f46ce85e780dadc636e712dfa",
+    "build": "fa22f9441f299a76a1a6a720e8700556655217cb074cbbc800913902baf46c99"
+  },
+  "relatedFiles": 13,
+  "relatedTests": 246,
+  "typeExitCode": 0,
+  "strictLintExitCode": 0,
+  "sameLockDependenciesReused": true,
+  "newLocalNpmCi": false,
+  "nativeMigrationOrGrantApplied": false,
+  "browserRun": false
+}
