@@ -31,8 +31,14 @@ export function deferredKakaoTexts(previous: readonly DeferredKakaoMessage[]): K
 export async function deferredKakaoMessages(
   db: ShopDb,
   customerId: string,
-  options: { readonly disclosureConsultationId?: string | undefined; readonly now?: Date } = {},
+  options: {
+    readonly disclosureConsultationId?: string | undefined;
+    readonly now?: Date;
+    readonly excludeMessageId?: string | undefined;
+  } = {},
 ): Promise<readonly DeferredKakaoMessage[]> {
+  if ((await db.run("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [customerId])).rowCount === 0)
+    return [];
   const result = await db.run<{
     id: string;
     body_masked: string;
@@ -48,9 +54,10 @@ export async function deferredKakaoMessages(
       WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'outbound'
         AND m.delivery = 'deferred' AND m.sent_at IS NULL AND char_length(m.body_masked) BETWEEN 1 AND 1000
         AND (m.trace_id IS NULL OR m.trace_id NOT LIKE 'ai-disclosure:%')
+        AND ($5::uuid IS NULL OR m.id <> $5)
         AND NOT ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.status IN ('ended','deleted','dropped'))
       ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
-    [customerId, DEFERRED_REPLY_BATCH, options.disclosureConsultationId ?? null],
+    [customerId, DEFERRED_REPLY_BATCH, options.disclosureConsultationId ?? null, options.excludeMessageId ?? null],
   );
   const messages: (DeferredKakaoMessage & { readonly at: bigint; readonly blocked: boolean })[] = [];
   for (const row of result.rows) {

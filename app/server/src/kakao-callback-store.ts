@@ -2,8 +2,10 @@ import type { FieldCrypto } from "./field-crypto";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import { type KakaoAiDisclosure, markKakaoAiDisclosure } from "./kakao-ai-disclosure";
 import type { KakaoCallback } from "./kakao-callback";
+import { decodeKakaoCallbackContext, encodeKakaoCallbackContext } from "./kakao-callback-context";
 import { type DeferredKakaoMessage, markDeferredKakaoMessages } from "./kakao-deferred";
 import { recordKakaoHandoff } from "./kakao-handoff";
+import type { KakaoOrderReference } from "./kakao-order-reference";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
 export interface KakaoCallbackJob {
@@ -49,10 +51,13 @@ export async function storeKakaoCallback(
   messageId: string,
   callback: KakaoCallback,
   timeLeft: () => number,
+  reference?: KakaoOrderReference,
 ): Promise<string | null> {
   if (timeLeft() <= RESPONSE_RESERVE_MS) return null;
   const shopId = db.scope.shopId;
-  const envelope = await crypto.seal(callback.url.toString(), { shopId, purpose: PURPOSE });
+  const plain =
+    reference === undefined ? callback.url.toString() : encodeKakaoCallbackContext(callback, messageId, reference);
+  const envelope = await crypto.seal(plain, { shopId, purpose: PURPOSE });
   const result = await db.run(
     `UPDATE messages SET kakao_callback_enc = $3, kakao_callback_deadline_at = $4
       WHERE shop_id = $1 AND id = $2 AND direction = 'inbound' AND kakao_callback_enc IS NULL`,
@@ -154,8 +159,22 @@ export async function releaseKakaoCallback(db: ShopRequestDb, messageId: string,
   );
 }
 
-export async function openKakaoCallback(db: ShopRequestDb, crypto: FieldCrypto, claim: Claim): Promise<string> {
-  return crypto.open(claim.kakao_callback_enc, { shopId: db.scope.shopId, purpose: PURPOSE });
+export async function openKakaoCallbackContext(
+  db: ShopRequestDb,
+  crypto: FieldCrypto,
+  claim: Claim,
+  messageId?: string,
+) {
+  const plain = await crypto.open(claim.kakao_callback_enc, { shopId: db.scope.shopId, purpose: PURPOSE });
+  return decodeKakaoCallbackContext(plain, claim.created_at, messageId);
+}
+export async function openKakaoCallback(
+  db: ShopRequestDb,
+  crypto: FieldCrypto,
+  claim: Claim,
+  messageId?: string,
+): Promise<string> {
+  return (await openKakaoCallbackContext(db, crypto, claim, messageId)).url;
 }
 
 /** 외부 발신 전에 자기 선점과 열린 상담을 확인하고 사장님 기록을 확정한다. */

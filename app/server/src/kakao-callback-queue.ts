@@ -1,4 +1,5 @@
 import type { Bindings } from "./app";
+import { readConfirmCardDelivery } from "./confirm-card-store";
 import { type DbConnector, pgConnector, type RequestDb } from "./db";
 import { errorFields } from "./error-name";
 import { FieldCryptoError } from "./field-crypto";
@@ -153,12 +154,16 @@ export async function consumeKakaoCallback(
     }
     let raw: string | undefined;
     try {
-      raw = await openKakaoCallback(db, services.fieldCrypto(), claim);
+      raw = await openKakaoCallback(db, services.fieldCrypto(), claim, job.messageId);
     } catch (error) {
       if (!(error instanceof FieldCryptoError)) throw error;
     }
 
-    const callback = kakaoCallback(raw, claim.created_at);
+    const candidate = kakaoCallback(raw, claim.created_at);
+    const callback =
+      candidate !== null && Math.min(candidate.deadline, claim.kakao_callback_deadline_at.getTime()) > now().getTime()
+        ? candidate
+        : null;
     // 모델을 기다리는 동안 설정이 바뀌었으면 실제 발신 직전에 새 게시 버전을 고른다.
     if (disclosure !== null && callback !== null) {
       disclosure = services.aiConfigured ? await prepareKakaoAiDisclosure(db, claim, services) : undefined;
@@ -179,19 +184,45 @@ export async function consumeKakaoCallback(
     const previous =
       callback === null
         ? []
-        : (
-            await db.transaction((tx) =>
-              deferredKakaoMessages(tx, claim.customer_id, {
-                disclosureConsultationId: disclosure?.consultationId,
-                now: now(),
-              }),
-            )
-          ).filter((row) => preparedReply === undefined || row.source !== "message" || row.id !== preparedReply.id);
-    const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
+        : await db.transaction((tx) =>
+            deferredKakaoMessages(tx, claim.customer_id, {
+              disclosureConsultationId: disclosure?.consultationId,
+              excludeMessageId: preparedReply?.id,
+              now: now(),
+            }),
+          );
     const prefix = disclosure === null || disclosure === undefined ? [] : [disclosure.text];
     const previousTexts = deferredKakaoTexts(previous);
     // 고지·이전 안내가 세 칸을 채우면 새 AI 답은 다음 대화에 남긴다. 이전 안내를 앞질러 보내지 않는다.
     const replyIncluded = prefix.length + previousTexts.length < 3;
+    if (callback !== null && replyIncluded && preparedReply?.card !== undefined) {
+      const fresh = await db.transaction(async (tx) => {
+        await tx.found("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [claim.customer_id]);
+        await tx.found("SELECT id FROM consultations WHERE shop_id=$1 AND id=$2 AND customer_id=$3 FOR UPDATE", [
+          claim.consultation_id,
+          claim.customer_id,
+        ]);
+        const source = await tx.run(
+          `SELECT id FROM messages WHERE shop_id=$1 AND id=$2 AND consultation_id=$3
+            AND kakao_callback_enc=$4 AND kakao_callback_claim_until=$5 AND kakao_callback_deadline_at>$6 FOR UPDATE`,
+          [job.messageId, claim.consultation_id, claim.kakao_callback_enc, claim.kakao_callback_claim_until, now()],
+        );
+        return source.rowCount === 1
+          ? readConfirmCardDelivery(tx, {
+              customerId: claim.customer_id,
+              consultationId: claim.consultation_id,
+              sourceMessageId: job.messageId,
+              now: now(),
+            })
+          : null;
+      });
+      if (fresh === null) {
+        await releaseKakaoCallback(db, job.messageId, claim);
+        return "done";
+      }
+      preparedReply = { id: preparedReply.id, delivered: preparedReply.delivered, ...fresh };
+    }
+    const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
     const deliveredAt =
       callback !== null &&
       (await deliverKakaoCallback(
@@ -201,6 +232,12 @@ export async function consumeKakaoCallback(
       )) === "delivered"
         ? now()
         : null;
+    if (
+      deliveredAt !== null &&
+      (previous.some((row) => row.card !== undefined) || (replyIncluded && preparedReply?.card !== undefined))
+    ) {
+      log("info", { event: "kakao_callback_result", code: "card_shown" }, options.logSink);
+    }
     await finishKakaoCallback(db, job.messageId, claim, text, deliveredAt, previous, preparedReply?.id, {
       ...(disclosure === null || disclosure === undefined ? {} : { disclosure }),
       replyIncluded,

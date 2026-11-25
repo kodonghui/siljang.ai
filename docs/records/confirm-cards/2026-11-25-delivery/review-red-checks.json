@@ -27,5 +27,39 @@
   "status": "수정 전 WIP. 통과/구현 완료 아님",
   "manualOnce": 7151704008,
   "newModelOrKakaoCalls": 0,
-  "browserRun": false
+  "browserRun": false,
+  "correction": {
+    "initialBehaviorFailures": 7,
+    "initialTestHarnessFailures": 1,
+    "reason": "최초 잠금 시험은 트랜잭션 밖 query 호출 오류. 실제 교착 재현으로 쓴 종전 설명을 정정",
+    "exactCorrectedRedSource": "662a3287dd3e919b3a2c314210c86e815a2aa5ca",
+    "cwd": "/workspace/siljang-task081-lock-red-662a328/app",
+    "command": "npm exec -w server -- vitest run test/kakao-deferred.test.ts test/kakao-callback.test.ts -t '실제 행 잠금|손님은 번호를'",
+    "failed": 2,
+    "skipped": 98,
+    "log": "/tmp/siljang-task081-lock-exact-red-662a328-20261125.log",
+    "logSha256": "d0c803fa7ad1daac11cf8c98bcbe3d6a7eccc6d7b7e70bba4fcafc552943107e"
+  },
+  "idleRed": {
+    "source": "a3497126e34410c8c6808b22609740cfc2b99e5a",
+    "failed": 2,
+    "passed": 2,
+    "skipped": 36,
+    "log": "/tmp/siljang-task081-idle-review-red-20261125.log",
+    "note": "관련 파일의 시험 추가 당시 작업 트리. 원본의 종료 구현은 변경 전이며 다른 미커밋 고침도 있던 범위를 명시"
+  },
+  "current": {
+    "codeSource": "d5df658eeee5c3e1ca3867f415010fa6dcc2a8d9",
+    "relatedPassed": 194,
+    "filesPassed": 7,
+    "contextFinalPassed": 17,
+    "typeExitCode": 0,
+    "lintExitCode": 0,
+    "freshFull": "진행 중",
+    "implementationProposal": false,
+    "logs": [
+      "/tmp/siljang-task081-review-green4-related-20261125.log",
+      "/tmp/siljang-task081-context-final-20261125.log"
+    ]
+  }
 }

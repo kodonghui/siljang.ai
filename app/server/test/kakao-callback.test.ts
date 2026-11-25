@@ -1460,6 +1460,20 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     expect((await db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])).rowCount).toBe(0);
   });
 
+  it("손님은 번호를 말하지 않았는데 모델이 두 주문 중 하나를 골라도 카드를 만들지 않는다", async () => {
+    const { fixture, job, order } = await orderCardJob();
+    await additionalOrder(fixture);
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call: cancelProposal(order.order_no) } },
+    });
+    expect(cardFrom(JSON.parse(String(post.mock.calls[0]?.[1]?.body)))).toBeUndefined();
+    expect((await db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])).rowCount).toBe(0);
+  });
+
   it("카드 전송이 밀린 동안 주문 버전이 바뀌면 새 버전의 카드로 전한다", async () => {
     const { fixture, job, order, message } = await orderCardJob();
     const call = cancelProposal(order.order_no);

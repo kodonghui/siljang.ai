@@ -7,6 +7,7 @@ import { receiveKakaoChannelCheck } from "./kakao-channel-check";
 import { parseKakaoCardPress, receiveKakaoConfirmCard } from "./kakao-confirm-card";
 import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
 import { replyKakaoHandoffInTransaction } from "./kakao-handoff";
+import { kakaoOrderReference } from "./kakao-order-reference";
 import { kakaoAiFailureOutcome, kakaoReply } from "./kakao-reply";
 import { receiveKakaoTextReview } from "./kakao-review";
 import {
@@ -122,6 +123,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
               receipt.messageId,
               callback,
               timeLeft,
+              kakaoOrderReference(request.payload.utterance),
             );
             if (envelope !== null) return { receipt, envelope };
           }

@@ -9,7 +9,8 @@ import { FieldCryptoError } from "./field-crypto";
 import { handoffSourceMatch } from "./handoff-source";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import type { KakaoAiDisclosure } from "./kakao-ai-disclosure";
-import type { KakaoCallbackClaim } from "./kakao-callback-store";
+import { type KakaoCallbackClaim, openKakaoCallbackContext } from "./kakao-callback-store";
+import type { KakaoOrderReference } from "./kakao-order-reference";
 import { MaskingFailedError } from "./masked-values";
 import { messageNumbers } from "./message-masking";
 import type { Services } from "./services";
@@ -136,6 +137,12 @@ export async function runKakaoAiTurn(
     return { kind: "input", messages } as const;
   });
   if (prepared.kind !== "input") return prepared;
+  let reference: KakaoOrderReference | undefined;
+  try {
+    reference = (await openKakaoCallbackContext(db, services.fieldCrypto(), claim, messageId)).reference;
+  } catch (error) {
+    if (!(error instanceof FieldCryptoError)) throw error;
+  }
 
   const model = services.aiModel({
     totalTimeoutMs: Math.min(AI_TOTAL_TIMEOUT_MS, Math.max(1, left() - SEND_RESERVE_MS)),
@@ -209,12 +216,17 @@ export async function runKakaoAiTurn(
     const card =
       output.card === undefined
         ? undefined
-        : await prepareAiConfirmCard(tx, output.card, {
-            customerId: claim.customer_id,
-            consultationId: claim.consultation_id,
-            sourceMessageId: messageId,
-            now: now(),
-          });
+        : await prepareAiConfirmCard(
+            tx,
+            output.card,
+            {
+              customerId: claim.customer_id,
+              consultationId: claim.consultation_id,
+              sourceMessageId: messageId,
+              now: now(),
+            },
+            reference,
+          );
     if (card === null) {
       await markAiCallUnused(tx, result.aiCallId, claim.consultation_id, "schema_invalid");
       return { kind: "failure", failure: "schema_invalid" } as const;

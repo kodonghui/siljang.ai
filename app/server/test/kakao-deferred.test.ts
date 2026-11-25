@@ -7,7 +7,7 @@ import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { deferredKakaoMessages, replyWithDeferredKakaoMessages } from "../src/kakao-deferred";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
-import { createShopScope, shopRequestDb } from "../src/shop-scope";
+import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { collectLogs, describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
@@ -670,9 +670,10 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
         readA = r;
       });
     let b: Promise<unknown> | undefined;
-    const a = shopRequestDb(scope, incoming).transaction(async (tx) => {
-      await incoming.query("SET LOCAL lock_timeout='250ms'");
-      aPid = (await incoming.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]?.pid ?? 0;
+    const a = incoming.transaction(async (raw) => {
+      const tx = shopDb(scope, raw);
+      await raw.query("SET LOCAL lock_timeout='250ms'");
+      aPid = (await raw.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]?.pid ?? 0;
       await tx.run("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [h.shop.customerId]);
       enteredA();
       await readGate;
@@ -680,8 +681,9 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
     });
     try {
       await Promise.race([held, a]);
-      b = shopRequestDb(scope, callback).transaction(async (tx) => {
-        bPid = (await callback.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]?.pid ?? 0;
+      b = callback.transaction(async (raw) => {
+        const tx = shopDb(scope, raw);
+        bPid = (await raw.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")).rows[0]?.pid ?? 0;
         enteredB();
         return deferredKakaoMessages(tx, h.shop.customerId, { now: NOW });
       });
