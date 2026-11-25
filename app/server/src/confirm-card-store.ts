@@ -2,6 +2,7 @@
 import { cardExpiresAt, judgeCardPress } from "./confirm-card";
 import type { KakaoOrderCardContext } from "./kakao-order-request-content";
 import type { KakaoPaymentClaimCard } from "./kakao-payment-claim-message";
+import type { KakaoPaymentAmountView } from "./kakao-payment-message";
 import type { ClauseInput } from "./operating-rules-input";
 import { orderCardDeadline, readPreparedOrderSummary } from "./order-card-presentation";
 import {
@@ -38,6 +39,8 @@ export interface ConfirmCardView {
   readonly orderRequest?: KakaoOrderCardContext;
   /** 전송 직전 자료. 카드 payload/메시지/AI 입력에는 저장하지 않는다. */
   readonly paymentClaim?: KakaoPaymentClaimCard;
+  /** 저장된 금액 카드의 전송 직전 표시. 이 값을 payload에 저장하지 않는다. */
+  readonly amountConfirmation?: KakaoPaymentAmountView;
   readonly cardKey: string;
   readonly title: string;
   readonly description: string;
@@ -328,6 +331,8 @@ async function refreshPaymentClaimClock(db: ShopDb, card: CardRow, source: Sourc
   card.payload.paymentClaimBinding = current;
 }
 function withPaymentClaim(card: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
+  if (source.paymentClaim?.available === false && source.paymentClaim.amountConfirmation !== undefined)
+    return { ...card, amountConfirmation: source.paymentClaim.amountConfirmation };
   return source.paymentClaim?.available === true
     ? {
         ...card,
@@ -383,7 +388,8 @@ export async function prepareConfirmCardInTransaction(
   if (!(await identityAvailable(db, input))) throw new Error("card recipient unavailable");
   const source = await readSource(db, input);
   if (source === null) throw new Error("card source unavailable");
-  if (source.paymentClaim?.available === false) return { unavailable: true, text: source.paymentClaim.text };
+  if (source.paymentClaim?.available === false && source.paymentClaim.amountConfirmation === undefined)
+    return { unavailable: true, text: source.paymentClaim.text };
   return insertCard(db, input, source);
 }
 /** 원본이 준비된 내부 호출자용. AI 제안은 prepare의 예상 가능한 상태 결과를 받는다. */
@@ -462,7 +468,14 @@ async function processVerifiedCard(
   };
   const source = await readSource(tx, target, knownBlockId);
   if (source === null) return initial.kind === "order_request" ? ORDER_NOT_READY : RETRY_NEEDED;
-  if (source.paymentClaim?.available === false) return { outcome: "not_allowed_now", text: source.paymentClaim.text };
+  if (source.paymentClaim?.available === false)
+    return {
+      outcome: "not_allowed_now",
+      text: source.paymentClaim.text,
+      ...(initial.payload.presentation === undefined || source.paymentClaim.amountConfirmation === undefined
+        ? {}
+        : { card: withPaymentClaim(initial.payload.presentation, source, initial.expires_at) }),
+    };
   const card = await tx.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
   ]);
@@ -566,7 +579,13 @@ export async function readConfirmCardDelivery(
   };
   const source = await readSource(db, target);
   if (source === null) return initial.kind === "order_request" ? { text: ORDER_NOT_READY.text } : unavailable;
-  if (source.paymentClaim?.available === false) return { text: source.paymentClaim.text };
+  if (source.paymentClaim?.available === false)
+    return {
+      text: source.paymentClaim.text,
+      ...(initial.payload.presentation === undefined || source.paymentClaim.amountConfirmation === undefined
+        ? {}
+        : { card: withPaymentClaim(initial.payload.presentation, source, initial.expires_at) }),
+    };
   const card = await db.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
   ]);

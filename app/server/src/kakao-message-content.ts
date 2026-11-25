@@ -91,6 +91,8 @@ export function expandKakaoMessageContents(contents: readonly KakaoMessageConten
         throw new RangeError("invalid presentation output part");
       return [content];
     }
+    if (typeof content !== "string" && content.amountConfirmation !== undefined)
+      return expandKakaoMessageContents([{ kind: "payment_notice", view: content.amountConfirmation }]);
     if (typeof content === "string" || content.kind !== "order_request") return [content];
     if (content.orderRequest === undefined) throw new RangeError("order card policy missing");
     return kakaoOrderRequestContents({ card: content, ...content.orderRequest });

@@ -330,6 +330,8 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
       expect((await state()).payments).toEqual(beforePayment);
       expect(execute).not.toHaveBeenCalled();
       expect(JSON.stringify((await state()).cards)).not.toContain("시험손님");
+      expect(JSON.stringify((await state()).cards)).not.toContain("amountConfirmation");
+      expect(JSON.stringify((await state()).cards)).not.toContain("합성 장식을 추가해요");
     },
   );
 });
