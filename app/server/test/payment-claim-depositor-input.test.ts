@@ -12,6 +12,8 @@ import { pgConnector } from "../src/db";
 import { deliverKakaoCallback } from "../src/kakao-callback";
 import { kakaoConsultationMessage } from "../src/kakao-consultation-message";
 import { deferredKakaoBatch, deferredKakaoTexts } from "../src/kakao-deferred";
+import { expandKakaoMessageContents } from "../src/kakao-message-content";
+import { kakaoConfirmAnswerMessage } from "../src/kakao-order-request-message";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
@@ -431,5 +433,63 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
     expect(JSON.stringify((await state()).cards)).not.toContain("시험손님");
     expect(JSON.stringify((await state()).cards)).not.toContain("amountConfirmation");
     expect(JSON.stringify((await state()).cards)).not.toContain("합성 장식을 추가해요");
+  });
+
+  it("결제 확인 카드에 연결한 긴 차액 원문은 세 출력으로 일반/누르기/모의 콜백에서 같다", async () => {
+    const changes = "🎂".repeat(1500);
+    const wrapper = {
+      kind: "payment_claim",
+      cardKey: "synthetic_claim_wrapper_key",
+      title: "결제 확인 요청",
+      description: "서버 참조",
+      confirmLabel: "결제 확인 요청",
+      blockId: "blk-card",
+      amountConfirmation: {
+        state: "amount-confirm",
+        kind: "difference",
+        cardKey: "synthetic_amount_wrapper_key",
+        blockId: "blk-card",
+        expiresAt: "2026-11-26T01:30:00Z",
+        timeZone: "Asia/Seoul",
+        changes,
+        currentAmount: 35000,
+        newAmount: 55000,
+        difference: 20000,
+        changeDeadline: "2026-11-26T12:00:00Z",
+      },
+    } as const;
+    const expanded = expandKakaoMessageContents([wrapper]);
+    expect(expanded).toHaveLength(3);
+    expect(expandKakaoMessageContents(expanded)).toEqual(expanded);
+    const normal = kakaoConsultationMessage({ state: "normal", contents: [wrapper] });
+    const pressed = kakaoConfirmAnswerMessage({
+      outcome: "not_allowed_now",
+      text: "새 금액을 먼저 확인해 주세요",
+      card: wrapper,
+    });
+    expect(pressed).toEqual(normal);
+    expectSchema("SkillTemplateResponse", normal);
+    if (normal.template === undefined) throw new Error("합성 응답의 전송 형식 없음");
+    const shown = normal.template.outputs
+      .map((o) => ("simpleText" in o ? o.simpleText.text : "textCard" in o ? o.textCard.description : ""))
+      .join("");
+    expect(shown).toContain(changes);
+    expect(JSON.stringify(normal)).not.toContain(wrapper.cardKey);
+    expect(JSON.stringify(normal)).toContain(wrapper.amountConfirmation.cardKey);
+    let sent: unknown;
+    expect(
+      await deliverKakaoCallback(
+        { url: new URL("https://bot-api.kakao.com/v1/callback/synthetic_long_amount"), deadline: 10000 },
+        [wrapper],
+        {
+          now: () => 100,
+          fetch: async (_url, init) => {
+            sent = JSON.parse(String(init?.body));
+            return Response.json({ status: "SUCCESS" });
+          },
+        },
+      ),
+    ).toBe("delivered");
+    expect(sent).toEqual(normal);
   });
 });
