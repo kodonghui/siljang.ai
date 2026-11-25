@@ -1,0 +1,143 @@
+
+> test
+> vitest run --run test/kakao-ai-conversation.test.ts test/kakao-payment-claim-delivery.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/server
+
+ ❯ test/kakao-ai-conversation.test.ts (27 tests | 4 failed) 3669ms
+   ❯ AI에 보내는 최근 대화와 출력 마스킹(TASK-066) (27)
+     × API070: 이미 claimed인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음 107ms
+     × API070: 이미 paid인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음 112ms
+     × 저장된 결제 상태 답은 프로세스 재개 때 모델 재호출 없이 전달됨 102ms
+     × 결제 안내와 같은 콜백의 확인 카드는 전달 전 상대 시간만 보이고 실제 전달 뒤 같은 키로 확정 기한을 읽음 166ms
+ ❯ test/kakao-payment-claim-delivery.test.ts (10 tests | 2 failed) 969ms
+   ❯ SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) (10)
+     × 첫 전달 뒤 읽기 없이 눌러도 시계만 같은 카드에 반영하고 명령은 한 번 36ms
+     × 만료로 닫힌 차액 변경은 현재 상태이며 확인 카드의 원본이 아님 33ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-ai-conversation.test.ts > AI에 보내는 최근 대화와 출력 마스킹(TASK-066) > API070: 이미 claimed인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음
+ FAIL  test/kakao-ai-conversation.test.ts > AI에 보내는 최근 대화와 출력 마스킹(TASK-066) > API070: 이미 paid인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음
+Error: card source unavailable
+ ❯ showConfirmCardInTransaction src/confirm-card-store.ts:345:74
+    343|   if (!(await identityAvailable(db, input))) throw new Error("card rec…
+    344|   const source = await readSource(db, input);
+    345|   if (source === null || source.paymentClaim?.available === false) thr…
+       |                                                                          ^
+    346|   return insertCard(db, input, source);
+    347| }
+ ❯ src/kakao-ai-turn.ts:219:11
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ consumeKakaoCallback src/kakao-callback-queue.ts:165:20
+ ❯ consume test/kakao-ai-conversation.test.ts:114:21
+ ❯ test/kakao-ai-conversation.test.ts:190:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/kakao-ai-conversation.test.ts > AI에 보내는 최근 대화와 출력 마스킹(TASK-066) > 저장된 결제 상태 답은 프로세스 재개 때 모델 재호출 없이 전달됨
+Error: card source unavailable
+ ❯ showConfirmCardInTransaction src/confirm-card-store.ts:345:74
+    343|   if (!(await identityAvailable(db, input))) throw new Error("card rec…
+    344|   const source = await readSource(db, input);
+    345|   if (source === null || source.paymentClaim?.available === false) thr…
+       |                                                                          ^
+    346|   return insertCard(db, input, source);
+    347| }
+ ❯ src/kakao-ai-turn.ts:219:11
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ consumeKakaoCallback src/kakao-callback-queue.ts:165:20
+ ❯ consume test/kakao-ai-conversation.test.ts:114:21
+ ❯ test/kakao-ai-conversation.test.ts:216:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/kakao-ai-conversation.test.ts > AI에 보내는 최근 대화와 출력 마스킹(TASK-066) > 결제 안내와 같은 콜백의 확인 카드는 전달 전 상대 시간만 보이고 실제 전달 뒤 같은 키로 확정 기한을 읽음
+AssertionError: expected '주문번호 FFW7PDLY\n금액 35,000원\n결제 기한 2026…' to contain '이 안내가 전달된 때부터 12시간 안'
+
+- Expected
++ Received
+
+- 이 안내가 전달된 때부터 12시간 안
++ 주문번호 FFW7PDLY
++ 금액 35,000원
++ 결제 기한 2026-11-24 10:00
++ 입금자 시험손님(주문자 이름)
++ 10:30까지 눌러 주세요
+
+ ❯ test/kakao-ai-conversation.test.ts:246:30
+    244|       body.template.outputs.find((output) => output.textCard?.title ==…
+    245|     );
+    246|     expect(card.description).toContain("이 안내가 전달된 때부터 12시간 안");
+       |                              ^
+    247|     expect(card.description).not.toContain("결제 기한 2026-11-24 10:00");
+    248|     const state = required(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 첫 전달 뒤 읽기 없이 눌러도 시계만 같은 카드에 반영하고 명령은 한 번
+AssertionError: expected 'card_stale' to be 'payment_claimed' // Object.is equality
+
+Expected: "payment_claimed"
+Received: "card_stale"
+
+ ❯ test/kakao-payment-claim-delivery.test.ts:179:44
+    177|     );
+    178|     const pending = press(card.cardKey);
+    179|     expect((await pending.answer).outcome).toBe("payment_claimed");
+       |                                            ^
+    180|     expect(pending.execute).toHaveBeenCalledOnce();
+    181|     const payload = (
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 만료로 닫힌 차액 변경은 현재 상태이며 확인 카드의 원본이 아님
+AssertionError: expected { available: true, …(2) } to deeply equal { available: false, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "available": false,
+-   "text": "지금은 할 수 없어요: 변경 요청이 닫혀 차액 결제를 요청할 수 없어요",
++   "available": true,
++   "binding": {
++     "amount": 1000,
++     "dueAt": "2026-11-25T00:59:59.000Z",
++     "paymentRequestId": "ee44628d-e325-4a17-a809-3eb2ddd19a14",
++     "version": 1,
++   },
++   "presentation": {
++     "amount": 1000,
++     "depositorBlockId": "depositor",
++     "depositorName": "합성입금표시손님",
++     "dueAt": "2026-11-25T00:59:59.000Z",
++     "orderNo": "EH9BXWTE",
++     "timeZone": "Asia/Seoul",
++   },
+  }
+
+ ❯ test/kakao-payment-claim-delivery.test.ts:247:20
+    245|       readPaymentClaimSource(tx, { ...identity(), orderId: shop.orderI…
+    246|     );
+    247|     expect(source).toEqual({
+       |                    ^
+    248|       available: false,
+    249|       text: "지금은 할 수 없어요: 변경 요청이 닫혀 차액 결제를 요청할 수 없어요",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  6 failed | 31 passed (37)
+   Start at  14:55:00
+   Duration  6.11s (tests 79%, import 14%, transform 7%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task107-payment-claim/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task107-payment-claim/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/kakao-ai-conversation.test.ts test/kakao-payment-claim-delivery.test.ts

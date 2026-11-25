@@ -28,14 +28,17 @@ export interface KakaoMyOrderSummary {
   readonly refundNow: { readonly amount: number; readonly clause: string };
   readonly timeZone: string;
 }
-export type KakaoMyOrderView =
+export type KakaoMyOrderDisplayView =
   | { readonly state: "normal" | "stale"; readonly order: KakaoMyOrderSummary }
   | {
       readonly state: "normal";
       readonly orders: readonly { readonly orderNo: string; readonly pickupAt: string; readonly requestedAt: string }[];
       readonly timeZone: string;
     }
-  | { readonly state: "empty" | "loading" }
+  | { readonly state: "empty" };
+export type KakaoMyOrderView =
+  | KakaoMyOrderDisplayView
+  | { readonly state: "loading" }
   | {
       readonly state: "error";
       readonly reason:
@@ -49,7 +52,7 @@ export type KakaoMyOrderView =
   | { readonly state: "permission"; readonly reason: "not_accepting"; readonly contactPhone: string }
   | { readonly state: "handed-over"; readonly recommendChannel?: boolean }
   | { readonly state: "rate-limited"; readonly silent?: boolean };
-type MyOrderOutput =
+export type KakaoMyOrderOutput =
   | { readonly simpleText: { readonly text: string } }
   | {
       readonly textCard: {
@@ -85,7 +88,24 @@ function date(value: string, zone: string, includeTime = true) {
   const local = toShopLocal(new Date(value), zone);
   return `${Number(local.date.slice(5, 7))}월 ${Number(local.date.slice(8))}일${includeTime ? ` ${local.time}` : ""}`;
 }
-export function kakaoMyOrderMessage(view: KakaoMyOrderView) {
+interface MyOrderTemplate {
+  readonly version: "2.0";
+  readonly template: {
+    readonly outputs: readonly KakaoMyOrderOutput[];
+    readonly quickReplies?: readonly {
+      readonly label: string;
+      readonly action: "message";
+      readonly messageText: string;
+    }[];
+  };
+}
+export function kakaoMyOrderMessage(view: KakaoMyOrderDisplayView): MyOrderTemplate;
+export function kakaoMyOrderMessage(
+  view: KakaoMyOrderView,
+): MyOrderTemplate | ReturnType<typeof kakaoConsultationMessage>;
+export function kakaoMyOrderMessage(
+  view: KakaoMyOrderView,
+): MyOrderTemplate | ReturnType<typeof kakaoConsultationMessage> {
   if (view.state === "loading" || view.state === "handed-over" || view.state === "rate-limited")
     return kakaoConsultationMessage(view);
   if (view.state === "empty") return textMessage("이 대화로 요청한 주문이 없어요");
@@ -170,7 +190,7 @@ export function kakaoMyOrderMessage(view: KakaoMyOrderView) {
     action: "message" as const,
     messageText: `${o.orderNo} ${label}`,
   }));
-  const outputs: MyOrderOutput[] = [];
+  const outputs: KakaoMyOrderOutput[] = [];
   if ([...title, ...description].length > 400) {
     const chars = [...description];
     if (chars.length > 2000) throw new RangeError("too many my order outputs");

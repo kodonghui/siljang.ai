@@ -224,7 +224,7 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     return { job, consultationId: inbound?.consultation_id };
   }
 
-  function failNextWrite(pattern: RegExp): DbConnector {
+  function failNextWrite(pattern: RegExp, boundValue?: string): DbConnector {
     let failed = false;
     return (dsn) => {
       const conn = pgConnector(dsn);
@@ -236,7 +236,7 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
           conn.transaction((tx) =>
             work({
               query: (sql, params) => {
-                if (!failed && pattern.test(sql)) {
+                if (!failed && pattern.test(sql) && (boundValue === undefined || params?.includes(boundValue))) {
                   failed = true;
                   throw new Error("합성 결과 저장 중단");
                 }
@@ -287,7 +287,10 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
       services: { aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
     };
     await expect(
-      consumeKakaoCallback(job, env, { ...options, connect: failNextWrite(/INSERT INTO messages[\s\S]*'ai'/) }),
+      consumeKakaoCallback(job, env, {
+        ...options,
+        connect: failNextWrite(/INSERT INTO messages/, "문구를 확인했어요."),
+      }),
     ).rejects.toThrow("합성 결과 저장 중단");
     expect(post).not.toHaveBeenCalled();
     expect(

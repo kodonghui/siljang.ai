@@ -1,0 +1,57 @@
+
+> test
+> npm run test -w server && npm run test -w web
+
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/server
+
+ ❯ test/kakao-callback.test.ts (71 tests | 1 failed) 5643ms
+   ❯ 카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TASK-028) (52)
+     × 정상 답 저장이 실패하면 초안도 롤백하고 모델을 재호출하지 않음 176ms
+(node:2861685) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-callback.test.ts > 카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TASK-028) > 정상 답 저장이 실패하면 초안도 롤백하고 모델을 재호출하지 않음
+AssertionError: promise resolved "'done'" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+"done"
+
+ ❯ test/kakao-callback.test.ts:291:6
+    289|     await expect(
+    290|       consumeKakaoCallback(job, env, { ...options, connect: failNextWr…
+    291|     ).rejects.toThrow("합성 결과 저장 중단");
+       |      ^
+    292|     expect(post).not.toHaveBeenCalled();
+    293|     expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 157 passed (158)
+      Tests  1 failed | 3053 passed (3054)
+   Start at  14:58:39
+   Duration  299.28s (tests 69%, import 30%)
+
+     Import  380 modules were evaluated 754 times · 84.85s total, 30% of tracked time
+             ~42.09s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task107-payment-claim/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task107-payment-claim/app/server
+npm error command failed
+npm error command sh -c vitest run
