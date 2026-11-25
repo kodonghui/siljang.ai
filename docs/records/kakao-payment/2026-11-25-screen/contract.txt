@@ -1,0 +1,11 @@
+> test
+> vitest run test/kakao-payment-contract.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  12:36:52
+   Duration  1.31s (import 71%, transform 21%, tests 7%, worker 1%)

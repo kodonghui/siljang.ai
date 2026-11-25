@@ -9,7 +9,7 @@ import {
   markKakaoAiDisclosure,
   prependKakaoDisclosure,
 } from "./kakao-ai-disclosure";
-import { expandKakaoMessageContents, type KakaoMessageContent, kakaoMessageOutputs } from "./kakao-message-content";
+import { expandKakaoMessageContents, type KakaoMessageContent, kakaoMessageTemplate } from "./kakao-message-content";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
 /** 새 답 하나의 자리를 남기고 카카오 outputs 세 개 한도 안에서 이전 답을 먼저 전한다. */
@@ -203,7 +203,7 @@ export function renderDeferredKakaoReply(
   if (texts.length !== 3) return { response: render(texts), currentIncluded: true };
   const base = render([]);
   return {
-    response: new Response(JSON.stringify({ version: "2.0", template: { outputs: kakaoMessageOutputs(texts) } }), {
+    response: new Response(JSON.stringify({ version: "2.0", template: kakaoMessageTemplate(texts) }), {
       status: base.status,
       headers: base.headers,
     }),

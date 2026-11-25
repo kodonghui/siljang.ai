@@ -1,0 +1,52 @@
+
+> test
+> vitest run test/kakao-payment-message.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+ ❯ test/kakao-payment-message.test.ts (9 tests | 8 failed) 65ms
+   × 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"done","kind":"custom"}) 4ms
+   × 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"done","kind":"difference"}) 1ms
+   × 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"stale","reason":"notice_gone"}) 1ms
+   × 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"stale","reason":"deadline"}) 0ms
+   × 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"permission","reason":"card_not_yours"}) 0ms
+   × 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"permission","reason":"not_accepting","contactPhone":"02-000-0000"}) 0ms
+   × 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"error","reason":"retry_needed"}) 0ms
+   × 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"error","reason":"server_error"}) 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"done","kind":"custom"})
+ FAIL  test/kakao-payment-message.test.ts > 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"done","kind":"difference"})
+ FAIL  test/kakao-payment-message.test.ts > 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"stale","reason":"notice_gone"})
+ FAIL  test/kakao-payment-message.test.ts > 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"stale","reason":"deadline"})
+ FAIL  test/kakao-payment-message.test.ts > 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"permission","reason":"card_not_yours"})
+ FAIL  test/kakao-payment-message.test.ts > 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"permission","reason":"not_accepting","contactPhone":"02-000-0000"})
+ FAIL  test/kakao-payment-message.test.ts > 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"error","reason":"retry_needed"})
+ FAIL  test/kakao-payment-message.test.ts > 닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다({"state":"error","reason":"server_error"})
+RangeError: invalid payment display
+ ❯ kakaoPaymentMessage src/kakao-payment-message.ts:24:11
+     22|     !isAccountNumber(view.account.number)
+     23|   )
+     24|     throw new RangeError("invalid payment display");
+       |           ^
+     25|   for (const value of [view.account.bankName, view.account.holderName])
+     26|     if (typeof value !== "string" || !value.trim() || [...value].lengt…
+ ❯ test/kakao-payment-message.test.ts:41:14
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 1 passed (9)
+   Start at  12:04:48
+   Duration  1.16s (import 86%, tests 7%, transform 6%, worker 1%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-payment-message/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-payment-message/app/server
+npm error command failed
+npm error command sh -c vitest run test/kakao-payment-message.test.ts
