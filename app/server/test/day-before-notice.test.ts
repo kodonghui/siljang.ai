@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createDayBeforeNotice } from "../src/day-before-notice";
+import { deferredKakaoBatch } from "../src/kakao-deferred";
 import { runScheduled } from "../src/scheduled";
 import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
 import { describeDb, newUuid, testDb, testEnv } from "./support/db";
@@ -165,6 +166,41 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
       expect(notice.body).not.toMatch(/할인|이벤트|다른 상품/u);
       if (empty) expect(notice.body).not.toMatch(/픽업 장소|위치/u);
       else expect(notice.body).toContain("합성 픽업 장소");
+    },
+  );
+  it.each(["pickup", "address", "phone", "time-zone", "notice-time"] as const)(
+    "미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(%s)",
+    async (change) => {
+      const scoped = shopRequestDb(
+        createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }),
+        isolated.db,
+      );
+      expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, NOW))).toBe(true);
+      if (change === "pickup")
+        await isolated.db.transaction(async (tx) => {
+          const at = new Date(PICKUP.getTime() + 3600000);
+          await tx.query("UPDATE order_details SET pickup_at=$2 WHERE order_id=$1 AND version=1", [shop.orderId, at]);
+          await tx.query("UPDATE orders SET pickup_at=$2 WHERE id=$1", [shop.orderId, at]);
+        });
+      else if (change === "address")
+        await isolated.db.query("UPDATE shops SET pickup_address='바뀐 합성 픽업 장소' WHERE id=$1", [shop.shopId]);
+      else if (change === "phone")
+        await isolated.db.query("UPDATE shops SET contact_phone='02-000-0001' WHERE id=$1", [shop.shopId]);
+      else if (change === "time-zone")
+        await isolated.db.query("UPDATE shops SET time_zone='Europe/London' WHERE id=$1", [shop.shopId]);
+      else
+        await isolated.db.query("UPDATE business_calendars SET day_before_notice_time='19:00' WHERE shop_id=$1", [
+          shop.shopId,
+        ]);
+      const batch = await scoped.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: NOW }));
+      expect(batch.messages).toHaveLength(0);
+      expect(
+        (
+          await isolated.db.query("SELECT status FROM notifications WHERE shop_id=$1 AND kind='day_before'", [
+            shop.shopId,
+          ])
+        ).rows[0]?.status,
+      ).toBe("dropped");
     },
   );
 });
