@@ -94,6 +94,7 @@ function meaningless(row: NoticeRow, now: Date) {
         row.scheduled_for === null ||
         row.pickup_at === null ||
         row.pickup_at <= now ||
+        toShopLocal(now, row.time_zone).date > toShopLocal(row.scheduled_for, row.time_zone).date ||
         row.pickup_day !== shiftDate(toShopLocal(row.scheduled_for, row.time_zone).date, 1))) ||
     (row.kind === "review_request" &&
       (row.order_status !== "received" ||

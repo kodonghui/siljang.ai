@@ -291,10 +291,11 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
     await run(() => events, true);
     expect(events.requestNotice).toHaveBeenCalledTimes(1);
   });
-  it.each(["day_changed", "closed_issue", "remake", "review_ok"] as const)(
+  it.each(["day_changed", "day_expired", "day_ok", "day_future", "closed_issue", "remake", "review_ok"] as const)(
     "예약 안내는 현재 주문의 의미(%s)를 다시 확인한다",
     async (kind) => {
       const paid = newUuid();
+      const dayNotice = kind.startsWith("day_");
       await isolated.db.transaction(async (tx) => {
         await tx.query(
           "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2 WHERE id=$1",
@@ -306,22 +307,44 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
         );
         await tx.query("UPDATE orders SET status=$2,confirmed_at=$3,confirmed_payment_id=$4 WHERE id=$1", [
           shop.orderId,
-          kind === "day_changed" ? "confirmed" : "received",
+          dayNotice ? "confirmed" : "received",
           NOW,
           paid,
         ]);
-        if (kind !== "day_changed")
+        if (!dayNotice)
           await tx.query(
             "INSERT INTO productions(shop_id,order_id,handed_over_at,handover_kind) VALUES($1,$2,$3,'pickup')",
             [shop.shopId, shop.orderId, NOW],
           );
         await tx.query("UPDATE notifications SET kind=$2,order_id=$3,scheduled_for=$4 WHERE id=$1", [
           id,
-          kind === "day_changed" ? "day_before" : "review_request",
+          dayNotice ? "day_before" : "review_request",
           shop.orderId,
           NOW,
         ]);
       });
+      if (kind === "day_expired" || kind === "day_ok" || kind === "day_future") {
+        const row = (
+          await isolated.db.query<{ day: string }>("SELECT pickup_day::text AS day FROM orders WHERE id=$1", [
+            shop.orderId,
+          ])
+        ).rows[0];
+        if (!row) throw new Error("합성 픽업 날짜 없음");
+        const midnight = new Date(`${row.day}T00:00:00+09:00`);
+        const scheduled = new Date(midnight.getTime() - 6 * 3600000);
+        now =
+          kind === "day_ok"
+            ? scheduled
+            : kind === "day_future"
+              ? new Date(scheduled.getTime() - 86400000)
+              : new Date(midnight.getTime() + 8 * 3600000);
+        await isolated.db.query("UPDATE notifications SET scheduled_for=$2,next_attempt_at=$2 WHERE id=$1", [
+          id,
+          scheduled,
+        ]);
+        if (kind === "day_future")
+          await isolated.db.query("UPDATE notifications SET next_attempt_at=$2 WHERE id=$1", [id, now]);
+      }
       if (kind === "closed_issue") {
         const detail = newUuid();
         await isolated.db.query(
@@ -354,8 +377,10 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
         });
       }
       await run(() => events, true);
-      expect((await state())?.status).toBe(kind === "review_ok" ? "confirming" : "dropped");
-      expect(events.requestNotice).toHaveBeenCalledTimes(kind === "review_ok" ? 1 : 0);
+      expect((await state())?.status).toBe(
+        kind === "review_ok" || kind === "day_ok" ? "confirming" : kind === "day_future" ? "pending" : "dropped",
+      );
+      expect(events.requestNotice).toHaveBeenCalledTimes(kind === "review_ok" || kind === "day_ok" ? 1 : 0);
     },
   );
   it("다른 실행기가 임대를 바꾼 뒤 옛 결과는 새 상태를 덮어쓰지 않는다", async () => {

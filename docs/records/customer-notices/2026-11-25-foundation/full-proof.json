@@ -41,5 +41,7 @@
   ],
   "stageExit": 0,
   "browser": "not executed; mockup unknown1 remains",
-  "npmCi": "not run locally through shared dependency symlink; require CI clean installation"
+  "npmCi": "not run locally through shared dependency symlink; require CI clean installation",
+  "historicalAtLocalCommit": "b99770d61d458ffb03e58d008d1a21a29e0ff753",
+  "subsequentDateBoundaryFixRequiresNewFull": true
 }
