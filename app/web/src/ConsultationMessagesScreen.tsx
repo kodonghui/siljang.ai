@@ -213,6 +213,16 @@ export function ConsultationMessagesScreen(
       void read(query.current?.cursor ?? null, "initial");
     }
   };
+  const startOver = () => {
+    if (busy) return;
+    setSelection(null);
+    if (location.search) {
+      setLoaded(null);
+      setFailure(null);
+      setFailedPhotos(new Set());
+      props.onNavigate(`/owner/consultations/${consultationId}`);
+    } else void read(null, "initial");
+  };
   const row = selection ? current?.items.find((item) => item.messageId === selection.id) : undefined;
   const photo = row && selection ? row.photos[selection.index] : undefined;
   const photoStale = photo && row ? consultationPhotoExpiry(photo.url, row.receivedAt) <= clock : false;
@@ -238,7 +248,9 @@ export function ConsultationMessagesScreen(
           <StateBox
             title="입력한 내용을 확인해 주세요"
             actions={
-              <Button onClick={() => props.onNavigate(`/owner/consultations/${consultationId}`)}>처음부터 보기</Button>
+              <Button disabled={busy} onClick={startOver}>
+                처음부터 보기
+              </Button>
             }
           />
         ) : blocked || (valid && !current && loading) ? (
@@ -263,7 +275,9 @@ export function ConsultationMessagesScreen(
           <StateBox
             title="입력한 내용을 확인해 주세요"
             actions={
-              <Button onClick={() => props.onNavigate(`/owner/consultations/${consultationId}`)}>처음부터 보기</Button>
+              <Button disabled={busy} onClick={startOver}>
+                처음부터 보기
+              </Button>
             }
           />
         ) : (

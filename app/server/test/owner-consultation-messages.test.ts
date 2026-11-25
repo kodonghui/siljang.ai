@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
-import { type DbConnector, pgConnector } from "../src/db";
+import { type DbConnector, pgConnector, type Queryable } from "../src/db";
 import { toBase64Url } from "../src/encoding";
 import { maskValue } from "../src/masked-values";
 import { maskMessageText } from "../src/message-masking";
@@ -265,6 +265,38 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     expect(same.items.map((item) => item.messageId)).toEqual(ids.slice(10));
     expect((same as Page & { reloadCursor?: string }).reloadCursor).toBe(anchor);
     await expectProblem(await call(`?direction=forward&cursor=${anchor}`), "validation_failed");
+  });
+  it("사진 재조회용 커서 용량을 넘은 한 페이지 상담도 본문을 읽을 수 있다", async () => {
+    const busySnapshot: DbConnector = () => {
+      const db = isolated.connect();
+      const wrap = (tx: Queryable): Queryable => ({
+        async query<R>(sql: string, params?: readonly unknown[]) {
+          const result = await tx.query<R>(sql, params);
+          if (!sql.includes("txid_current_snapshot()::text AS transaction")) return result;
+          return {
+            ...result,
+            rows: result.rows.map((value) => {
+              const row = value as R & { transaction: string };
+              const xmin = BigInt(row.transaction.split(":")[1] ?? "0");
+              return {
+                ...row,
+                transaction: `${xmin}:${xmin + 200n}:${Array.from({ length: 140 }, (_, i) => xmin + BigInt(i)).join(",")}`,
+              };
+            }),
+          };
+        },
+      });
+      return {
+        query: wrap(db).query,
+        transaction: (fn) => db.transaction((tx) => fn(wrap(tx))),
+        abort: () => db.abort(),
+        close: () => db.close(),
+      };
+    };
+    const response = await page(await call("?direction=backward", shop.consultationId, true, false, busySnapshot));
+    expect(response.items.map((item) => item.messageId)).toEqual([shop.messageId]);
+    expect(response.nextCursor).toBeNull();
+    expect((response as Page & { reloadCursor?: string | null }).reloadCursor).toBeNull();
   });
   async function pendingNotice(at: Date) {
     const id = newUuid();

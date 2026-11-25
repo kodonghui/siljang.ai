@@ -101,6 +101,33 @@ it("틀린 페이지 주소는 상담 API를 부르지 않고 처음부터 보�
     false,
   );
 });
+it.each(["", "?limit=1"])("이전 페이지가422로 실패한 뒤 처음부터 보기는 커서 없이 새로 읽는다(%s)", async (search) => {
+  page.items[0].text = "복구 전 합성 메시지";
+  page.nextCursor = "synthetic_expired_cursor";
+  let initialReads = 0;
+  handler = async (path) => {
+    if (new URL(path, "https://siljang.example").searchParams.has("cursor"))
+      return Response.json({ code: "validation_failed", traceId: "0123456789abcdef0123456789abcdef" }, { status: 422 });
+    initialReads++;
+    const data = structuredClone(page);
+    if (initialReads > 1) {
+      data.items[0].text = "복구 후 합성 메시지";
+      data.nextCursor = null;
+    }
+    return Response.json(data);
+  };
+  open(search);
+  await screen.findByText("복구 전 합성 메시지");
+  fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
+  await screen.findByText("입력한 내용을 확인해 주세요");
+  fireEvent.click(screen.getByRole("button", { name: "처음부터 보기" }));
+  expect(await screen.findByText("복구 후 합성 메시지")).toBeTruthy();
+  expect(screen.queryByText("복구 전 합성 메시지")).toBeNull();
+  expect(screen.queryByText("입력한 내용을 확인해 주세요")).toBeNull();
+  expect(initialReads).toBe(2);
+  const calls = vi.mocked(fetch).mock.calls.filter(([path]) => String(path).includes("/messages"));
+  expect(new URL(String(calls.at(-1)?.[0]), "https://siljang.example").searchParams.has("cursor")).toBe(false);
+});
 it("형식이 틀린 상담 ID도 다른 가게/없는 상담과 같은 찾을 수 없음으로 보인다", async () => {
   page.consultationId = "not-a-consultation";
   open();
