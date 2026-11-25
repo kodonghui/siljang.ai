@@ -140,6 +140,7 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
   it("API070은 저장소에서 발급한 카드의 실제 변경 전후·현재 버전·기한을 표시한다", async () => {
     const source = newUuid(),
       card = await show(source);
+    clock = new Date(NOW.getTime() + 600000);
     await isolated.db.query(
       "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'변경 요청','deferred',$5)",
       [newUuid(), shop.shopId, shop.consultationId, source, NOW],

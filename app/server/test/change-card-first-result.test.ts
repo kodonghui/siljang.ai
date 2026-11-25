@@ -4,7 +4,7 @@ import { CHANGE_REQUESTED_TEXT } from "../src/kakao-change-request-message";
 import { kakaoConfirmCardReply } from "../src/kakao-confirm-card";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
-import { describeDb } from "./support/db";
+import { describeDb, newUuid } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
 
@@ -17,6 +17,19 @@ describeDb("변경 카드의 저장된 첫 결과와 공통 응답", () => {
   beforeEach(async () => {
     shop = await createShop(isolated.db, "합성 변경 카드 가게");
     await linkTestChannel(isolated.db, shop.channelId);
+    const payment = newUuid();
+    await isolated.db.query(
+      "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_at=$2,arrived_amount=amount WHERE id=$1",
+      [shop.paymentRequestId, NOW],
+    );
+    await isolated.db.query(
+      "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+      [payment, shop.shopId, shop.orderId, shop.paymentRequestId, NOW],
+    );
+    await isolated.db.query(
+      "UPDATE orders SET status='confirmed',confirmed_at=$2,confirmed_payment_id=$3 WHERE id=$1",
+      [shop.orderId, NOW, payment],
+    );
   });
   afterAll(async () => {
     await isolated?.close();
@@ -40,6 +53,7 @@ describeDb("변경 카드의 저장된 첫 결과와 공통 응답", () => {
       ...identity(),
       kind: "change_request",
       orderId: shop.orderId,
+      proposedChanges: { lettering: "합성 변경 문구" },
       now: NOW,
     });
     const execute = vi.fn(async () => ({ outcome: "change_requested", text: CHANGE_REQUESTED_TEXT }));
@@ -68,6 +82,7 @@ describeDb("변경 카드의 저장된 첫 결과와 공통 응답", () => {
       ...identity(),
       kind: "change_request",
       orderId: shop.orderId,
+      proposedChanges: { lettering: "합성 변경 문구" },
       now: NOW,
     });
     const execute = vi.fn();

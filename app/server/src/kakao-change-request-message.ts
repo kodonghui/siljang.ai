@@ -23,12 +23,28 @@ export type KakaoChangeRequestView =
   | { readonly state: "error"; readonly reason: "retry_needed" | "server_error" };
 export const CHANGE_REQUESTED_TEXT = "변경을 요청했어요. 사장님이 보고 알려 드려요";
 const DECLINED = "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요";
+export function changeRequestResultText(outcome: string | undefined): string | undefined {
+  switch (outcome) {
+    case "change_requested":
+      return CHANGE_REQUESTED_TEXT;
+    case "declined":
+      return DECLINED;
+    case "card_stale":
+      return "내용이 바뀌었어요. 새 카드를 확인해 주세요";
+    case "card_expired":
+      return "시간이 지나 새 카드를 보내 드려요";
+    default:
+      return undefined;
+  }
+}
 const CHANGE_LABELS = [
   "크기",
   "맛",
   "디자인",
   "추가 사항",
+  "더하는 옵션",
   "디자인 요청",
+  "디자인 설명",
   "문구",
   "색",
   "픽업 날짜",
@@ -129,11 +145,11 @@ export function kakaoChangeRequestMessage(view: KakaoChangeRequestView) {
     return body([simple(view.reason === "retry_needed" ? "다시 눌러 주세요" : "잠시 뒤 다시 말씀해 주세요")]);
   }
   if ("currentStatus" in view)
-    return body([
-      simple(
-        `지금은 할 수 없어요: ${text(view.currentStatus, 100)}${view.clause ? `\n${text(view.clause, 800)}` : ""}`,
+    return body(
+      details(
+        `지금은 할 수 없어요: ${text(view.currentStatus, 100)}${view.clause ? `\n${text(view.clause, 2100)}` : ""}`,
       ),
-    ]);
+    );
   if (
     !["normal", "stale", "expired"].includes(view.state) ||
     !/^[0-9A-Z]{6,12}$/.test(view.orderNo) ||

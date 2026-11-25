@@ -1,6 +1,6 @@
 /** SCR004 표시 전용. 동의·주문자 정보 저장과 주문/자리 확보는 서버 업무 처리기가 담당한다. */
 import { type ConfirmCardAnswer, type ConfirmCardView, NOT_YOURS, RETRY_NEEDED } from "./confirm-card-store";
-import { kakaoChangeRequestMessage } from "./kakao-change-request-message";
+import { changeRequestResultText, kakaoChangeRequestMessage } from "./kakao-change-request-message";
 import { kakaoChannelIdentifierError } from "./kakao-channel-input";
 import {
   type KakaoMessageContent,
@@ -93,10 +93,16 @@ function inputCard(
   return { version: "2.0" as const, template: { outputs: [{ textCard: { title, description, buttons } }] } };
 }
 export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
+  if (answer.changeRequestStatus !== undefined)
+    return kakaoChangeRequestMessage({ state: "stale", ...answer.changeRequestStatus });
   if (answer.kind === "change_request") {
     const outcome = answer.outcome === "card_used" ? answer.firstResult?.outcome : answer.outcome;
     if (outcome === "change_requested" || outcome === "declined")
       return kakaoChangeRequestMessage({ state: "done", outcome });
+    if (answer.outcome === "card_used") {
+      const firstText = changeRequestResultText(outcome);
+      if (firstText !== undefined) return template([firstText]);
+    }
   }
   if (answer.card?.kind === "change_request" && answer.card.changeRequest !== undefined)
     return kakaoChangeRequestMessage({
