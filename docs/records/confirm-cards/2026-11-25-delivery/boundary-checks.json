@@ -1,0 +1,19 @@
+{
+  "source": "74c9b9df09fd37f1d2a35e349bb78cbfe85ef590",
+  "files": 5,
+  "passed": 126,
+  "typeExitCode": 0,
+  "command": "npm run test -w server -- test/kakao-callback.test.ts test/confirm-card-store.test.ts test/kakao-confirm-card.test.ts test/confirm-card.test.ts test/kakao-deferred.test.ts",
+  "workingDirectory": "app",
+  "log": "/tmp/siljang-task081-delivery-boundary-related-20261125.log",
+  "cases": [
+    "다른가게 주문번호 카드/정보0",
+    "같은손님 주문둘일때 번호없음 카드0",
+    "다음수신까지 주문버전변경 새카드",
+    "사용한카드 다음수신 버튼0·안내만"
+  ],
+  "runtimeProductCodeChangesAfter126450e": 0,
+  "newBoundaryTestsInitiallyPassed": true,
+  "browserRun": false,
+  "externalModelCalls": 0
+}

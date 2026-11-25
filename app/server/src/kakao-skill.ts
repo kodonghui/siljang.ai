@@ -7,6 +7,8 @@ import { receiveKakaoChannelCheck } from "./kakao-channel-check";
 import { parseKakaoCardPress, receiveKakaoConfirmCard } from "./kakao-confirm-card";
 import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
 import { replyKakaoHandoffInTransaction } from "./kakao-handoff";
+import { kakaoOrderReference } from "./kakao-order-reference";
+import { isKakaoPhotoUtterance, receiveKakaoReferencePhoto } from "./kakao-photo-inbound";
 import { kakaoAiFailureOutcome, kakaoReply } from "./kakao-reply";
 import { receiveKakaoTextReview } from "./kakao-review";
 import {
@@ -54,6 +56,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
     if (kind !== "message" || request.status !== "linked") {
       return kakaoReply(r, "not_accepting", { contactPhone: await kakaoContactPhone(r.db) });
     }
+    if (isKakaoPhotoUtterance(request.payload.utterance)) return await receiveKakaoReferencePhoto(r);
     const queue = r.services.kakaoCallbackQueue;
     const disclosurePolicy = await readKakaoInboundDisclosurePolicy(r.db, request, r.services, (error) => {
       r.log("warn", {
@@ -122,6 +125,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
               receipt.messageId,
               callback,
               timeLeft,
+              kakaoOrderReference(request.payload.utterance),
             );
             if (envelope !== null) return { receipt, envelope };
           }

@@ -13,7 +13,7 @@ export type KakaoPhotoDownload =
   | typeof REJECTED
   | typeof UNAVAILABLE;
 
-function photoUrl(raw: string): URL | null {
+export function kakaoPhotoUrl(raw: string): URL | null {
   if (raw.length > 2048 || [...raw].some((c) => c.charCodeAt(0) <= 0x20)) return null;
   let url: URL;
   try {
@@ -21,7 +21,8 @@ function photoUrl(raw: string): URL | null {
   } catch {
     return null;
   }
-  return url.protocol === "https:" &&
+  return url.toString().length <= 2048 &&
+    url.protocol === "https:" &&
     url.username === "" &&
     url.password === "" &&
     url.port === "" &&
@@ -43,7 +44,7 @@ export async function downloadKakaoPhoto(
   photos: PhotoNormalizer,
   options: { readonly fetch?: typeof fetch; readonly signal?: AbortSignal; readonly timeoutMs?: number } = {},
 ): Promise<KakaoPhotoDownload> {
-  const initial = photoUrl(raw);
+  const initial = kakaoPhotoUrl(raw);
   if (initial === null) return REJECTED;
   const timeout = options.timeoutMs ?? 6000;
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > 6000) throw new RangeError("invalid photo timeout");
@@ -62,7 +63,7 @@ export async function downloadKakaoPhoto(
           if (location === null) throw new Error("photo redirect missing");
           let target: URL | null;
           try {
-            target = photoUrl(new URL(location, current).toString());
+            target = kakaoPhotoUrl(new URL(location, current).toString());
           } catch {
             return REJECTED;
           }

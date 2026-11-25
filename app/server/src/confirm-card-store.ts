@@ -21,6 +21,8 @@ export interface ShowConfirmCard extends Identity {
   readonly orderId?: string;
   readonly draftId?: string;
   readonly now: Date;
+  /** 서버 수신 메시지와 보낼 카드의 연결. AI 출력이나 clientExtra에서는 받지 않습니다. */
+  readonly sourceMessageId?: string;
 }
 export interface ConfirmCardView {
   readonly cardKey: string;
@@ -65,7 +67,12 @@ interface CardRow {
   created_at: Date;
   expires_at: Date;
   used_at: Date | null;
-  payload: { presentation?: ConfirmCardView; result?: ConfirmCardCommandResult; replacedBy?: { cardKey: string } };
+  payload: {
+    presentation?: ConfirmCardView;
+    sourceMessageId?: string;
+    result?: ConfirmCardCommandResult;
+    replacedBy?: { cardKey: string };
+  };
   outcome: "done" | "stale" | "expired" | null;
 }
 const LABELS: Record<CustomerCommandKind, string> = {
@@ -180,7 +187,10 @@ async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): P
       source.orderVersion,
       source.draftId,
       source.draftRevision,
-      JSON.stringify({ presentation: card }),
+      JSON.stringify({
+        presentation: card,
+        ...(input.sourceMessageId === undefined ? {} : { sourceMessageId: pathId(input.sourceMessageId) }),
+      }),
       input.now,
       cardExpiresAt(input.now),
     ],
@@ -245,6 +255,7 @@ async function processVerifiedCard(
     kind: initial.kind,
     ...(initial.order_id === null ? {} : { orderId: initial.order_id }),
     ...(initial.draft_id === null ? {} : { draftId: initial.draft_id }),
+    ...(initial.payload.sourceMessageId === undefined ? {} : { sourceMessageId: initial.payload.sourceMessageId }),
   };
   const source = await readSource(tx, target, knownBlockId);
   if (source === null) return RETRY_NEEDED;
@@ -267,17 +278,7 @@ async function processVerifiedCard(
   if (verdict === "not_recipient") return NOT_YOURS;
   if (verdict === "used") return usedAnswer(card);
   if (verdict === "stale" || verdict === "expired") {
-    const replacement = await insertCard(tx, target, source);
-    const result = {
-      outcome: `card_${verdict}`,
-      text:
-        verdict === "stale" ? "내용이 바뀌었어요. 새 카드에서 눌러 주세요" : "시간이 지났어요. 새 카드에서 눌러 주세요",
-    };
-    await tx.run(
-      "UPDATE confirm_cards SET used_at=$3,outcome=$4,payload=jsonb_set(jsonb_set(payload,'{result}',$5::jsonb),'{replacedBy}',$6::jsonb) WHERE shop_id=$1 AND id=$2",
-      [card.id, input.now, verdict, JSON.stringify(result), JSON.stringify({ cardKey: replacement.cardKey })],
-    );
-    return { ...result, card: replacement };
+    return replaceCard(tx, card, target, source, verdict);
   }
 
   if (execute === undefined) return RETRY_NEEDED;
@@ -302,6 +303,62 @@ async function processVerifiedCard(
     [card.id, input.now, JSON.stringify({ outcome: result.outcome, text: result.text })],
   );
   return { outcome: result.outcome, text: result.text };
+}
+
+async function replaceCard(
+  tx: ShopDb,
+  card: CardRow,
+  target: ShowConfirmCard,
+  source: Source,
+  verdict: "stale" | "expired",
+) {
+  const replacement = await insertCard(tx, target, source);
+  const result = {
+    outcome: `card_${verdict}`,
+    text:
+      verdict === "stale" ? "내용이 바뀌었어요. 새 카드에서 눌러 주세요" : "시간이 지났어요. 새 카드에서 눌러 주세요",
+  };
+  await tx.run(
+    "UPDATE confirm_cards SET used_at=$3,outcome=$4,payload=jsonb_set(jsonb_set(payload,'{result}',$5::jsonb),'{replacedBy}',$6::jsonb) WHERE shop_id=$1 AND id=$2",
+    [card.id, target.now, verdict, JSON.stringify(result), JSON.stringify({ cardKey: replacement.cardKey })],
+  );
+  return { ...result, card: replacement };
+}
+
+/** 저장한 수신의 카드를 재전달합니다. 읽기·갱신뿐이며 업무 명령을 실행하지 않습니다. */
+export async function readConfirmCardDelivery(
+  db: ShopDb,
+  input: Identity & { readonly sourceMessageId: string; readonly now: Date },
+): Promise<{ readonly text: string; readonly card?: ConfirmCardView }> {
+  const unavailable = { text: "내용을 다시 확인해 주세요" };
+  if (!(await identityAvailable(db, input))) return unavailable;
+  const rows = await db.run<CardRow>(
+    `SELECT * FROM confirm_cards WHERE shop_id=$1 AND consultation_id=$2 AND customer_id=$3
+      AND payload->>'sourceMessageId'=$4 AND NOT (payload ? 'replacedBy') LIMIT 2`,
+    [input.consultationId, input.customerId, pathId(input.sourceMessageId)],
+  );
+  const initial = rows.rows[0];
+  if (rows.rows.length !== 1 || initial === undefined || initial.created_at > input.now) return unavailable;
+  if (initial.used_at !== null) return { text: "이미 처리했어요" };
+  const target: ShowConfirmCard = {
+    ...input,
+    kind: initial.kind,
+    ...(initial.order_id === null ? {} : { orderId: initial.order_id }),
+    ...(initial.draft_id === null ? {} : { draftId: initial.draft_id }),
+  };
+  const source = await readSource(db, target);
+  if (source === null) return unavailable;
+  const card = await db.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
+    initial.id,
+  ]);
+  if (card.used_at !== null) return { text: "이미 처리했어요" };
+  const expired = input.now.getTime() >= card.expires_at.getTime();
+  const stale = card.order_version !== source.orderVersion || card.draft_revision !== source.draftRevision;
+  const presentation =
+    expired || stale
+      ? (await replaceCard(db, card, target, source, expired ? "expired" : "stale")).card
+      : card.payload.presentation;
+  return presentation === undefined ? unavailable : { text: presentation.title, card: presentation };
 }
 
 export interface KakaoCardIdentityInput extends Pick<PressConfirmCard, "cardKey" | "choice" | "now"> {

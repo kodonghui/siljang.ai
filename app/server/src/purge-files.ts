@@ -26,7 +26,7 @@ export async function deleteQueuedFile(
   }
   const claim = await db.transaction(async (tx) => {
     const selected = await tx.run<{ storage_key: string }>(
-      `SELECT storage_key FROM file_deletions WHERE shop_id = $1 AND id = $2
+      `SELECT storage_key FROM file_deletions WHERE shop_id = $1 AND id = $2 AND queued_at <= $3
          AND (last_tried_at IS NULL OR (last_tried_at AT TIME ZONE 'Asia/Seoul')::date
               < ($3::timestamptz AT TIME ZONE 'Asia/Seoul')::date)
        FOR UPDATE SKIP LOCKED`,

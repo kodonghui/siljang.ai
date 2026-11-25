@@ -1,3 +1,5 @@
+import { type KakaoMessageContent, kakaoMessageOutputs } from "./kakao-message-content";
+
 export const SKILL_ACK_MS = 4_000;
 /** 응답 전송에 250ms를 남긴 내부 처리 기한. 전체 요청과 큐 발행이 같은 기준을 쓴다. */
 export const SKILL_WORK_MS = SKILL_ACK_MS - 250;
@@ -74,17 +76,22 @@ async function readSuccess(response: Response): Promise<boolean> {
 /** 카카오가 성공을 확인하면 즉시 끝낸다. 다시 보내기는 연결 오류와 다시 받을 수 있는 HTTP 상태에 한 번만 한다. */
 export async function deliverKakaoCallback(
   callback: KakaoCallback,
-  message: string | readonly string[],
+  message: string | readonly KakaoMessageContent[],
   options: { readonly fetch?: Fetch; readonly now?: () => number } = {},
 ): Promise<CallbackResult> {
   const send = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
   const texts = typeof message === "string" ? [message] : message;
-  if (texts.length < 1 || texts.length > 3 || texts.some((text) => [...text].length < 1 || [...text].length > 1000))
+  if (texts.length < 1 || texts.length > 3) return "unavailable";
+  let outputs: ReturnType<typeof kakaoMessageOutputs>;
+  try {
+    outputs = kakaoMessageOutputs(texts);
+  } catch {
     return "unavailable";
+  }
   const body = JSON.stringify({
     version: "2.0",
-    template: { outputs: texts.map((text) => ({ simpleText: { text } })) },
+    template: { outputs },
   });
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const left = callback.deadline - now();

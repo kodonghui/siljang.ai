@@ -1,0 +1,34 @@
+{
+  "red": {
+    "source": "e87a9e928b701e98b68dc9fa4036843de3fe15f3",
+    "failed": 6,
+    "files": 1,
+    "log": "/tmp/siljang-task065-receive-red2-related-20261125.log",
+    "lintExitCode": 0,
+    "typeExitCode": 0
+  },
+  "initialConnection": {
+    "failed": 1,
+    "passed": 173,
+    "reason": "시험이 이미 제출된 옛 초안 ID를 기대함. 새 손님/현재 초안으로 보완"
+  },
+  "current": {
+    "source": "17e9b6857c956ed6cf0e066a5b142dc29db8594b",
+    "files": 7,
+    "passed": 174,
+    "log": "/tmp/siljang-task065-receive-green3-related-20261125.log",
+    "freshDatabase": false,
+    "migrations": 39,
+    "sameLockDependenciesReused": true,
+    "newLocalNpmCi": false
+  },
+  "remaining": [
+    "저장소 PUT 취소 전달/중단 회수",
+    "동시 장수/기한/재개/최소 역할",
+    "API072 사진 처리·HTTP별 계약",
+    "새 전체/빌드/단계·ready PR/검토·CI/main"
+  ],
+  "implemented": false,
+  "browserRun": false,
+  "newProviderCalls": 0
+}

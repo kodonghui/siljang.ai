@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
-import { type DbConnector, pgConnector } from "../src/db";
+import { type ConfirmCardCommand, pressConfirmCard } from "../src/confirm-card-store";
+import { type DbConnector, pgConnector, type Queryable } from "../src/db";
 import { deliverKakaoCallback, kakaoCallback, SKILL_CALLBACK_MS } from "../src/kakao-callback";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import {
@@ -12,7 +13,8 @@ import {
 } from "../src/kakao-callback-store";
 import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
-import { Secret } from "../src/settings";
+import { createServices } from "../src/services";
+import { readSettings, Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { anthropicStream, sseResponse } from "./support/ai-mock";
 import { expectSchema } from "./support/contract";
@@ -31,6 +33,20 @@ function delivery() {
 }
 
 describe("카카오 콜백 주소와 서비스 기한(TASK-028, DEC-29)", () => {
+  it.each([350, 351])("카드 제목과 설명 합계400자를 넘으면 보내지 않는다(설명%i자)", async (length) => {
+    const card = {
+      title: "가".repeat(50),
+      description: "나".repeat(length),
+      cardKey: `ck_${"a".repeat(32)}`,
+      blockId: "blk-card",
+      confirmLabel: "확인",
+    };
+    const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    expect(await deliverKakaoCallback(delivery(), [card], { fetch: send, now: () => NOW.getTime() })).toBe(
+      length === 350 ? "delivered" : "unavailable",
+    );
+    expect(send).toHaveBeenCalledTimes(length === 350 ? 1 : 0);
+  });
   it("콜백 주소의 만료와 서비스 기한 가운데 앞선 시각을 사용함", () => {
     expect(delivery().deadline).toBe(NOW.getTime() + SKILL_CALLBACK_MS);
     const early = NOW.getTime() + 15_000;
@@ -1198,5 +1214,474 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     expectSchema("SkillTemplateResponse", await response.json());
     const job = send.mock.calls[0]?.[0] as KakaoCallbackJob;
     expect((await stored(job))?.kakao_callback_enc).toBeNull();
+  });
+
+  async function orderCardJob(utterance: string | ((orderNo: string) => string) = "주문을 취소해 주세요") {
+    const fixture = await createShop(db, "합성 카드 전달 가게");
+    await issueTestBookingLink(db, fixture);
+    await linkTestChannel(db, fixture.channelId);
+    const skillKey = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), fixture.channelId, 1);
+    const queue = mockQueue();
+    const message = (utterance: string, at = NOW, callback = true) =>
+      createApp({ services: { now: () => at, kakaoCallbackQueue: queue }, logSink: () => {} }).request(
+        "/api/kakao/skills/message",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": skillKey },
+          body: JSON.stringify({
+            bot: { id: fixture.botId },
+            userRequest: {
+              utterance,
+              ...(callback ? { callbackUrl: VALID } : {}),
+              block: { id: "conversation" },
+              user: { id: fixture.userKey, type: "botUserKey" },
+            },
+            action: { id: "test", params: {} },
+          }),
+        },
+        env,
+      );
+    const order = (
+      await db.query<{ order_no: string; amount: number; status: string; version: number }>(
+        "SELECT order_no,amount,status,version FROM orders WHERE id=$1",
+        [fixture.orderId],
+      )
+    ).rows[0];
+    if (!order) throw new Error("합성 주문을 준비하지 못함");
+    expect(
+      (await message(typeof utterance === "function" ? utterance(order.order_no) : utterance)).headers.get(
+        "Siljang-Outcome",
+      ),
+    ).toBe("callback_pending");
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    expect((await stored(job))?.consultation_id).toBe(fixture.consultationId);
+    await db.query("UPDATE consultations SET ai_disclosed_at=$2,ai_disclosed_policy_version=1 WHERE id=$1", [
+      fixture.consultationId,
+      NOW,
+    ]);
+    return { fixture, skillKey, job, order, message };
+  }
+  const cancelProposal = (orderNo: string) =>
+    vi.fn<AiModel["call"]>(async () => ({
+      ok: true,
+      output: { reply: "취소 완료. 1원만 내세요.", card: { kind: "cancel", order_no: orderNo } },
+      aiCallId: newUuid(),
+    }));
+  const cardFrom = (body: unknown) =>
+    (
+      body as {
+        template: {
+          outputs: {
+            textCard?: { title: string; description: string; buttons: { extra: { cardKey: string } }[] };
+          }[];
+        };
+      }
+    ).template.outputs.find((part) => part.textCard)?.textCard;
+
+  it("API-070 카드 제안을 저장 값의 콜백으로 보내고 받은 사람이 눌러야 합성 명령이 한 번 실행된다", async () => {
+    const { fixture, skillKey, job, order } = await orderCardJob();
+    const call = cancelProposal(order.order_no);
+    const lines: string[] = [];
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: (line: string) => lines.push(line),
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call } },
+    });
+    expect(lines.map((line) => JSON.parse(line))).toContainEqual({
+      level: "info",
+      event: "kakao_callback_result",
+      code: "card_shown",
+    });
+    const body = JSON.parse(String(post.mock.calls[0]?.[1]?.body));
+    expectSchema("SkillTemplateResponse", body);
+    const card = cardFrom(body);
+    expect(card).toMatchObject({ title: "주문 취소 확인" });
+    expect(card?.description).toContain(order.order_no);
+    expect(card?.description).toContain(`${order.amount.toLocaleString("ko-KR")}원`);
+    expect(JSON.stringify(body)).not.toContain("취소 완료");
+    expect(JSON.stringify(body)).not.toContain("1원만");
+    expect(JSON.stringify(body)).not.toContain(job.messageId);
+    expect((await db.query("SELECT status,version FROM orders WHERE id=$1", [fixture.orderId])).rows[0]).toEqual({
+      status: order.status,
+      version: order.version,
+    });
+    const execute = vi.fn<ConfirmCardCommand>(async (tx, input) => {
+      const updated = await tx.run(
+        "UPDATE orders SET status='cancelled',cancelled_at=$3,cancel_kind='customer' WHERE shop_id=$1 AND id=$2 AND customer_id=$4 AND status='awaiting_payment'",
+        [input.orderId, NOW, input.customerId],
+      );
+      expect(updated.rowCount).toBe(1);
+      return { outcome: "order_cancelled", text: "합성 명령을 처리했어요" };
+    });
+    const press = (userId: string) =>
+      createApp({ services: { now: () => new Date(NOW.getTime() + 6000), confirmCardCommand: execute } }).request(
+        "/api/kakao/skills/card",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": skillKey },
+          body: JSON.stringify({
+            bot: { id: fixture.botId },
+            userRequest: {
+              utterance: "카드 누름",
+              user: { id: userId, type: "botUserKey" },
+              block: { id: "blk-card" },
+            },
+            action: {
+              id: "test",
+              params: {},
+              clientExtra: { cardKey: card?.buttons[0]?.extra.cardKey, choice: "confirm" },
+            },
+          }),
+        },
+        env,
+      );
+    expect((await press("unknown-synthetic-user")).headers.get("Siljang-Outcome")).toBe("card_not_yours");
+    expect(execute).not.toHaveBeenCalled();
+    expect((await press(fixture.userKey)).headers.get("Siljang-Outcome")).toBe("order_cancelled");
+    expect((await press(fixture.userKey)).headers.get("Siljang-Outcome")).toBe("card_used");
+    expect(execute).toHaveBeenCalledOnce();
+  });
+
+  it("카드 콜백 뒤 전달 표시가 실패해도 같은 수신의 모델·카드 생성은 한 번이다", async () => {
+    const { fixture, job, order } = await orderCardJob();
+    const call = cancelProposal(order.order_no);
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const options = {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
+    };
+    await expect(
+      consumeKakaoCallback(job, env, {
+        ...options,
+        connect: failNextWrite(/UPDATE messages SET kakao_callback_enc = NULL/),
+      }),
+    ).rejects.toThrow("합성 결과 저장 중단");
+    await consumeKakaoCallback(job, env, options);
+    expect(call).toHaveBeenCalledOnce();
+    expect(post).toHaveBeenCalledTimes(2);
+    const cards = post.mock.calls.map(([, init]) => cardFrom(JSON.parse(String(init?.body))));
+    expect(cards[0]).toBeTruthy();
+    expect(cards[1]).toEqual(cards[0]);
+    expect((await db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])).rowCount).toBe(1);
+  });
+
+  it.each([1, 31])("카드 콜백 실패 뒤 %i분의 다음 수신에 버튼을 보존하고 만료된 키는 갱신한다", async (minutes) => {
+    const { fixture, job, order, message } = await orderCardJob();
+    const call = cancelProposal(order.order_no);
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: async () => new Response(null, { status: 503 }),
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call } },
+    });
+    const original = (
+      await db.query<{ card_key: string }>("SELECT card_key FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])
+    ).rows[0];
+    expect(original).toBeTruthy();
+    const response = await message("계속 이야기할게요", new Date(NOW.getTime() + minutes * 60000), false);
+    const body = await response.json();
+    expectSchema("SkillTemplateResponse", body);
+    const card = cardFrom(body);
+    expect(card).toBeTruthy();
+    const key = card?.buttons[0]?.extra.cardKey;
+    if (minutes === 1) expect(key).toBe(original?.card_key);
+    else expect(key).not.toBe(original?.card_key);
+    expect(call).toHaveBeenCalledOnce();
+    expect(
+      (await db.query("SELECT used_at FROM confirm_cards WHERE shop_id=$1 AND card_key=$2", [fixture.shopId, key]))
+        .rows[0],
+    ).toEqual({ used_at: null });
+  });
+
+  it("다른 가게 주문번호의 AI 제안은 카드나 그 주문 정보를 보내지 않는다", async () => {
+    const { fixture, job } = await orderCardJob();
+    const other = await createShop(db, "합성 타인 주문 가게");
+    await db.query("UPDATE orders SET order_no='PRIVATE1' WHERE id=$1", [other.orderId]);
+    const call = cancelProposal("PRIVATE1");
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call } },
+    });
+    const body = JSON.parse(String(post.mock.calls[0]?.[1]?.body));
+    expect(cardFrom(body)).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain("PRIVATE1");
+    expect((await db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])).rowCount).toBe(0);
+  });
+
+  async function additionalOrder(fixture: ShopFixture) {
+    const next = { draft: newUuid(), quote: newUuid(), order: newUuid() };
+    await db.transaction(async (tx) => {
+      await tx.query(
+        "INSERT INTO order_drafts SELECT (jsonb_populate_record(NULL::order_drafts,to_jsonb(d)||jsonb_build_object('id',$2::uuid))).* FROM order_drafts d WHERE d.id=$1",
+        [fixture.draftId, next.draft],
+      );
+      await tx.query(
+        "INSERT INTO quotes SELECT (jsonb_populate_record(NULL::quotes,to_jsonb(q)||jsonb_build_object('id',$2::uuid,'draft_id',$3::uuid))).* FROM quotes q WHERE q.id=$1",
+        [fixture.quoteId, next.quote, next.draft],
+      );
+      await tx.query(
+        "INSERT INTO orders SELECT (jsonb_populate_record(NULL::orders,to_jsonb(o)||jsonb_build_object('id',$2::uuid,'draft_id',$3::uuid,'order_no','SECOND12'))).* FROM orders o WHERE o.id=$1",
+        [fixture.orderId, next.order, next.draft],
+      );
+      await tx.query(
+        "INSERT INTO order_details SELECT (jsonb_populate_record(NULL::order_details,to_jsonb(d)||jsonb_build_object('id',gen_random_uuid(),'order_id',$2::uuid,'quote_id',$3::uuid))).* FROM order_details d WHERE d.order_id=$1",
+        [fixture.orderId, next.order, next.quote],
+      );
+      await tx.query(
+        "INSERT INTO payment_requests SELECT (jsonb_populate_record(NULL::payment_requests,to_jsonb(p)||jsonb_build_object('id',gen_random_uuid(),'order_id',$2::uuid,'event_key','pay:'||$2::text||':first'))).* FROM payment_requests p WHERE p.id=$1",
+        [fixture.paymentRequestId, next.order],
+      );
+    });
+  }
+
+  it("주문번호 없는 제안에서 같은 손님 주문이 둘이면 임의로 하나를 고르지 않는다", async () => {
+    const { fixture, job } = await orderCardJob();
+    await additionalOrder(fixture);
+    const call = vi.fn<AiModel["call"]>(async () => ({
+      ok: true,
+      output: { reply: "취소할게요", card: { kind: "cancel" } },
+      aiCallId: newUuid(),
+    }));
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call } },
+    });
+    expect(cardFrom(JSON.parse(String(post.mock.calls[0]?.[1]?.body)))).toBeUndefined();
+    expect((await db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])).rowCount).toBe(0);
+  });
+
+  it("손님은 번호를 말하지 않았는데 모델이 두 주문 중 하나를 골라도 카드를 만들지 않는다", async () => {
+    const { fixture, job, order } = await orderCardJob();
+    await additionalOrder(fixture);
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call: cancelProposal(order.order_no) } },
+    });
+    expect(cardFrom(JSON.parse(String(post.mock.calls[0]?.[1]?.body)))).toBeUndefined();
+    expect((await db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])).rowCount).toBe(0);
+  });
+
+  it("카드 전송이 밀린 동안 주문 버전이 바뀌면 새 버전의 카드로 전한다", async () => {
+    const { fixture, job, order, message } = await orderCardJob();
+    const call = cancelProposal(order.order_no);
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: async () => new Response(null, { status: 503 }),
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call } },
+    });
+    const original = (
+      await db.query<{ card_key: string }>("SELECT card_key FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])
+    ).rows[0];
+    await db.transaction(async (tx) => {
+      await tx.query(
+        "INSERT INTO order_details SELECT (jsonb_populate_record(NULL::order_details,to_jsonb(d)||jsonb_build_object('version',2,'id',gen_random_uuid(),'source','owner_amount_change','amount_change_reason','합성 재전달 버전'))).* FROM order_details d WHERE d.order_id=$1 AND d.version=1",
+        [fixture.orderId],
+      );
+      await tx.query("UPDATE orders SET version=2 WHERE id=$1", [fixture.orderId]);
+    });
+    const card = cardFrom(
+      await (await message("현재 주문을 다시 확인할게요", new Date(NOW.getTime() + 60000), false)).json(),
+    );
+    const key = card?.buttons[0]?.extra.cardKey;
+    expect(card).toBeTruthy();
+    expect(key).not.toBe(original?.card_key);
+    expect(
+      (
+        await db.query("SELECT order_version FROM confirm_cards WHERE shop_id=$1 AND card_key=$2", [
+          fixture.shopId,
+          key,
+        ])
+      ).rows[0],
+    ).toEqual({ order_version: 2 });
+    expect(call).toHaveBeenCalledOnce();
+  });
+
+  it("이미 사용한 대기 카드는 다음 수신에 버튼 없이 처리 안내만 전한다", async () => {
+    const { fixture, job, order, message } = await orderCardJob();
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: async () => new Response(null, { status: 503 }),
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call: cancelProposal(order.order_no) } },
+    });
+    const original = (
+      await db.query<{ card_key: string }>("SELECT card_key FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])
+    ).rows[0];
+    if (!original) throw new Error("합성 카드를 만들지 못함");
+    const execute = vi.fn<ConfirmCardCommand>(async () => ({ outcome: "order_cancelled", text: "합성 첫 결과" }));
+    await pressConfirmCard(
+      shopRequestDb(createShopScope(fixture.shopId, { kind: "job", job: "kakao_callback" }), db),
+      {
+        customerId: fixture.customerId,
+        consultationId: fixture.consultationId,
+        cardKey: original.card_key,
+        choice: "confirm",
+        now: new Date(NOW.getTime() + 6000),
+      },
+      execute,
+    );
+    const body = await (await message("처리됐나요", new Date(NOW.getTime() + 60000), false)).json();
+    expect(cardFrom(body)).toBeUndefined();
+    expect(JSON.stringify(body)).toContain("이미 처리했어요");
+    expect(execute).toHaveBeenCalledOnce();
+  });
+  function beforeFirstQuery(pattern: RegExp, before: () => Promise<void>): DbConnector {
+    let done = false;
+    return (dsn) => {
+      const conn = pgConnector(dsn);
+      const wrap =
+        (target: Queryable): Queryable["query"] =>
+        async <R>(sql: string, params?: readonly unknown[]) => {
+          if (!done && pattern.test(sql)) {
+            done = true;
+            await before();
+          }
+          return target.query<R>(sql, params);
+        };
+      return {
+        query: wrap(conn),
+        transaction: (work) => conn.transaction((tx) => work({ query: wrap(tx) })),
+        abort: conn.abort.bind(conn),
+        close: conn.close.bind(conn),
+      };
+    };
+  }
+  it("발신 직전 버전 변경은 사용 처리한 옛 키 대신 현재 새 키로 보낸다", async () => {
+    const { fixture, job, order } = await orderCardJob();
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await consumeKakaoCallback(job, env, {
+      connect: beforeFirstQuery(/SELECT m\.id, m\.body_masked/, async () => {
+        await db.transaction(async (tx) => {
+          await tx.query(
+            "INSERT INTO order_details SELECT (jsonb_populate_record(NULL::order_details,to_jsonb(d)||jsonb_build_object('version',2,'id',gen_random_uuid(),'source','owner_amount_change','amount_change_reason','합성 발신 직전 변경'))).* FROM order_details d WHERE d.order_id=$1 AND d.version=1",
+            [fixture.orderId],
+          );
+          await tx.query("UPDATE orders SET version=2 WHERE id=$1", [fixture.orderId]);
+        });
+      }),
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call: cancelProposal(order.order_no) } },
+    });
+    const card = cardFrom(JSON.parse(String(post.mock.calls[0]?.[1]?.body)));
+    expect(card).toBeTruthy();
+    expect(
+      (
+        await db.query("SELECT order_version,used_at FROM confirm_cards WHERE shop_id=$1 AND card_key=$2", [
+          fixture.shopId,
+          card?.buttons[0]?.extra.cardKey,
+        ])
+      ).rows[0],
+    ).toEqual({ order_version: 2, used_at: null });
+  });
+  it.each(["MISSING1", "9999999999"])(
+    "명시한 주문번호%s를 모델이 빼도 다른 주문 하나로 대신하지 않는다",
+    async (reference) => {
+      const { fixture, job } = await orderCardJob(`주문번호 ${reference} 취소해 주세요`);
+      const call = vi.fn<AiModel["call"]>(async () => ({
+        ok: true,
+        output: { reply: "내용을 확인해 주세요", card: { kind: "cancel" } },
+        aiCallId: newUuid(),
+      }));
+      const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+      await consumeKakaoCallback(job, env, {
+        now: () => new Date(NOW.getTime() + 5000),
+        fetch: post,
+        logSink: () => {},
+        services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call } },
+      });
+      expect(cardFrom(JSON.parse(String(post.mock.calls[0]?.[1]?.body)))).toBeUndefined();
+      expect((await db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])).rowCount).toBe(0);
+      if (/^\d+$/.test(reference)) expect(JSON.stringify(call.mock.calls[0]?.[0].messages)).not.toContain(reference);
+    },
+  );
+  it("명시한 주문번호와 모델이 고른 다른 자기 주문이 다르면 카드로 연결하지 않는다", async () => {
+    const { fixture, job } = await orderCardJob((number) => `주문번호 ${number} 취소해 주세요`);
+    await additionalOrder(fixture);
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call: cancelProposal("SECOND12") } },
+    });
+    expect(cardFrom(JSON.parse(String(post.mock.calls[0]?.[1]?.body)))).toBeUndefined();
+  });
+  it("모델이 번호를 빼도 서버가 확인한 명시 번호로만 대상을 정한다", async () => {
+    const { fixture, job, order } = await orderCardJob((number) => `주문번호 ${number} 취소해 주세요`);
+    await additionalOrder(fixture);
+    const call = vi.fn<AiModel["call"]>(async () => ({
+      ok: true,
+      output: { reply: "내용을 확인해 주세요", card: { kind: "cancel" } },
+      aiCallId: newUuid(),
+    }));
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call } },
+    });
+    const card = cardFrom(JSON.parse(String(post.mock.calls[0]?.[1]?.body)));
+    expect(card?.description).toContain(order.order_no);
+    expect(card?.description).not.toContain("SECOND12");
+  });
+  it("발신 기한 뒤에는 대기 카드 조회를 시작하지 않고 다음 대화에 남긴다", async () => {
+    const { fixture, job, order } = await orderCardJob();
+    let at = new Date(NOW.getTime() + 5000),
+      modelReturned = false;
+    const fields = createServices(env, readSettings(env)).fieldCrypto();
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const call = vi.fn<AiModel["call"]>(async () => {
+      modelReturned = true;
+      return {
+        ok: true,
+        output: { reply: "내용을 확인해 주세요", card: { kind: "cancel", order_no: order.order_no } },
+        aiCallId: newUuid(),
+      };
+    });
+    await consumeKakaoCallback(job, env, {
+      connect: beforeFirstQuery(/SELECT m\.id, m\.body_masked/, async () => {
+        throw new Error("기한 뒤 대기 조회 금지");
+      }),
+      now: () => at,
+      fetch: post,
+      logSink: () => {},
+      services: {
+        aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call },
+        fieldCrypto: {
+          ...fields,
+          open: async (envelope, context) => {
+            const plain = await fields.open(envelope, context);
+            if (modelReturned) at = new Date(NOW.getTime() + 60000);
+            return plain;
+          },
+        },
+      },
+    });
+    expect(post).not.toHaveBeenCalled();
+    expect(
+      (
+        await db.query("SELECT delivery FROM messages WHERE shop_id=$1 AND trace_id=$2 AND kind='card'", [
+          fixture.shopId,
+          job.messageId,
+        ])
+      ).rows,
+    ).toEqual([{ delivery: "deferred" }]);
   });
 });

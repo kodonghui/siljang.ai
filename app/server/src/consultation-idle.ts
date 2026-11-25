@@ -5,7 +5,7 @@ import type { ShopDb } from "./shop-scope";
 async function retireUndisclosedAiReplies(db: ShopDb, consultationId: string): Promise<boolean> {
   const pending = await db.run<{ id: string }>(
     `SELECT m.id FROM messages m WHERE m.shop_id=$1 AND m.consultation_id=$2
-       AND m.direction='outbound' AND m.author='ai' AND m.delivery='deferred' AND m.sent_at IS NULL
+       AND m.direction='outbound' AND (m.author='ai' OR (m.author='system' AND m.kind='card')) AND m.delivery='deferred' AND m.sent_at IS NULL
        AND EXISTS(SELECT 1 FROM consultations c WHERE c.shop_id=$1 AND c.id=m.consultation_id AND c.ai_disclosed_at IS NULL)`,
     [consultationId],
   );

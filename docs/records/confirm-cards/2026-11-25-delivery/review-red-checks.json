@@ -1,0 +1,69 @@
+{
+  "orcaReview": 7151683553,
+  "reviewedPublicHead": "0556fb64a5a3f115e68b69484c137a618accdaf3",
+  "source": "1fb017b2afeff13e166e2e213fc175c01deb795b",
+  "earlierRed": {
+    "source": "a150bfce2f686c480387fd9b93c34e8dea2f4510",
+    "failed": 6,
+    "passed": 127
+  },
+  "red": {
+    "filesFailed": 2,
+    "filesPassed": 3,
+    "failed": 8,
+    "passed": 127,
+    "total": 135,
+    "typeExitCode": 0,
+    "lintExitCode": 0,
+    "log": "/tmp/siljang-task081-review-red2-related-20261125.log"
+  },
+  "purposes": [
+    "발신 직전 버전 변경의 실제 전송 키",
+    "실제 두 연결의 행 잠금 역전",
+    "발신 기한 후 조회 금지",
+    "실제 callback card_shown 로그",
+    "명시 번호 누락/다른 모델번호/명시 번호로만 선택"
+  ],
+  "status": "수정 전 WIP. 통과/구현 완료 아님",
+  "manualOnce": 7151704008,
+  "newModelOrKakaoCalls": 0,
+  "browserRun": false,
+  "correction": {
+    "initialBehaviorFailures": 7,
+    "initialTestHarnessFailures": 1,
+    "reason": "최초 잠금 시험은 트랜잭션 밖 query 호출 오류. 실제 교착 재현으로 쓴 종전 설명을 정정",
+    "exactCorrectedRedSource": "662a3287dd3e919b3a2c314210c86e815a2aa5ca",
+    "cwd": "/workspace/siljang-task081-lock-red-662a328/app",
+    "command": "npm exec -w server -- vitest run test/kakao-deferred.test.ts test/kakao-callback.test.ts -t '실제 행 잠금|손님은 번호를'",
+    "failed": 2,
+    "skipped": 98,
+    "log": "/tmp/siljang-task081-lock-exact-red-662a328-20261125.log",
+    "logSha256": "d0c803fa7ad1daac11cf8c98bcbe3d6a7eccc6d7b7e70bba4fcafc552943107e"
+  },
+  "idleRed": {
+    "source": "a3497126e34410c8c6808b22609740cfc2b99e5a",
+    "failed": 2,
+    "passed": 2,
+    "skipped": 36,
+    "log": "/tmp/siljang-task081-idle-review-red-20261125.log",
+    "note": "관련 파일의 시험 추가 당시 작업 트리. 원본의 종료 구현은 변경 전이며 다른 미커밋 고침도 있던 범위를 명시"
+  },
+  "current": {
+    "codeSource": "c9bc2614587c307e6da21b917eacea6fa8f974f9",
+    "relatedPassed": 216,
+    "filesPassed": 8,
+    "contextFinalPassed": 17,
+    "typeExitCode": 0,
+    "lintExitCode": 0,
+    "freshFull": "서버2717/웹1727·빌드0",
+    "implementationProposal": true,
+    "logs": [
+      "/tmp/siljang-task081-review-green4-related-20261125.log",
+      "/tmp/siljang-task081-context-final-20261125.log"
+    ],
+    "handlingComment": 7152239957,
+    "manualReview": 6051338372,
+    "manualSecurity": 7151758096,
+    "manualThreadsResolved": true
+  }
+}

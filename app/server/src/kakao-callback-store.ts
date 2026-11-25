@@ -2,8 +2,11 @@ import type { FieldCrypto } from "./field-crypto";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import { type KakaoAiDisclosure, markKakaoAiDisclosure } from "./kakao-ai-disclosure";
 import type { KakaoCallback } from "./kakao-callback";
+import { decodeKakaoCallbackContext, encodeKakaoCallbackContext } from "./kakao-callback-context";
 import { type DeferredKakaoMessage, markDeferredKakaoMessages } from "./kakao-deferred";
 import { recordKakaoHandoff } from "./kakao-handoff";
+import type { KakaoOrderReference } from "./kakao-order-reference";
+import { KAKAO_PHOTO_TEXT, kakaoPhotoTrace } from "./kakao-photo-context";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
 export interface KakaoCallbackJob {
@@ -49,10 +52,13 @@ export async function storeKakaoCallback(
   messageId: string,
   callback: KakaoCallback,
   timeLeft: () => number,
+  reference?: KakaoOrderReference,
 ): Promise<string | null> {
   if (timeLeft() <= RESPONSE_RESERVE_MS) return null;
   const shopId = db.scope.shopId;
-  const envelope = await crypto.seal(callback.url.toString(), { shopId, purpose: PURPOSE });
+  const plain =
+    reference === undefined ? callback.url.toString() : encodeKakaoCallbackContext(callback, messageId, reference);
+  const envelope = await crypto.seal(plain, { shopId, purpose: PURPOSE });
   const result = await db.run(
     `UPDATE messages SET kakao_callback_enc = $3, kakao_callback_deadline_at = $4
       WHERE shop_id = $1 AND id = $2 AND direction = 'inbound' AND kakao_callback_enc IS NULL`,
@@ -154,8 +160,22 @@ export async function releaseKakaoCallback(db: ShopRequestDb, messageId: string,
   );
 }
 
-export async function openKakaoCallback(db: ShopRequestDb, crypto: FieldCrypto, claim: Claim): Promise<string> {
-  return crypto.open(claim.kakao_callback_enc, { shopId: db.scope.shopId, purpose: PURPOSE });
+export async function openKakaoCallbackContext(
+  db: ShopRequestDb,
+  crypto: FieldCrypto,
+  claim: Claim,
+  messageId?: string,
+) {
+  const plain = await crypto.open(claim.kakao_callback_enc, { shopId: db.scope.shopId, purpose: PURPOSE });
+  return decodeKakaoCallbackContext(plain, claim.created_at, messageId);
+}
+export async function openKakaoCallback(
+  db: ShopRequestDb,
+  crypto: FieldCrypto,
+  claim: Claim,
+  messageId?: string,
+): Promise<string> {
+  return (await openKakaoCallbackContext(db, crypto, claim, messageId)).url;
 }
 
 /** 외부 발신 전에 자기 선점과 열린 상담을 확인하고 사장님 기록을 확정한다. */
@@ -185,7 +205,7 @@ export async function prepareKakaoCallbackHandoff(
     if (discardReplyId !== undefined)
       await tx.run(
         `UPDATE messages SET delivery='failed' WHERE shop_id=$1 AND id=$2 AND consultation_id=$3
-         AND trace_id=$4 AND direction='outbound' AND author='ai' AND delivery='deferred' AND sent_at IS NULL`,
+         AND trace_id=$4 AND direction='outbound' AND (author='ai' OR (author='system' AND kind='card')) AND delivery='deferred' AND sent_at IS NULL`,
         [discardReplyId, claim.consultation_id, messageId],
       );
     await tx.run(
@@ -218,9 +238,10 @@ export async function finishKakaoCallback(
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const owned = await tx.run(
-      `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL
+      `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL,
+        kind=CASE WHEN trace_id=$5 THEN 'photo' ELSE kind END
         WHERE shop_id = $1 AND id = $2 AND kakao_callback_enc = $3 AND kakao_callback_claim_until = $4`,
-      [messageId, claim.kakao_callback_enc, claim.kakao_callback_claim_until],
+      [messageId, claim.kakao_callback_enc, claim.kakao_callback_claim_until, kakaoPhotoTrace(messageId)],
     );
     if (owned.rowCount === 0) return;
     if (sentAt !== null) {
@@ -232,7 +253,7 @@ export async function finishKakaoCallback(
         await tx.run(
           `UPDATE messages SET delivery = 'callback', sent_at = $4
             WHERE shop_id = $1 AND id = $2 AND consultation_id = $3
-              AND direction = 'outbound' AND author = 'ai' AND delivery = 'deferred' AND sent_at IS NULL`,
+              AND direction = 'outbound' AND (author = 'ai' OR (author='system' AND kind IN ('card','photo'))) AND delivery = 'deferred' AND sent_at IS NULL`,
           [preparedReplyId, claim.consultation_id, sentAt],
         );
       return;
@@ -253,8 +274,8 @@ export async function deferExpiredKakaoCallback(
   text: string,
 ): Promise<"deferred" | "discarded" | "skipped"> {
   return db.transaction(async (tx) => {
-    const target = await tx.run<{ customer_id: string; consultation_id: string }>(
-      `SELECT c.customer_id, c.id AS consultation_id FROM messages m
+    const target = await tx.run<{ customer_id: string; consultation_id: string; source_trace: string | null }>(
+      `SELECT c.customer_id, c.id AS consultation_id,m.trace_id AS source_trace FROM messages m
         JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
         WHERE m.shop_id = $1 AND m.id = $2 AND m.direction = 'inbound'
           AND m.kakao_callback_deadline_at <= $3`,
@@ -268,10 +289,11 @@ export async function deferExpiredKakaoCallback(
       [source.consultation_id],
     );
     const expired = await tx.run<{ consultation_id: string }>(
-      `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL
+      `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL,
+        kind=CASE WHEN trace_id=$4 THEN 'photo' ELSE kind END
         WHERE shop_id = $1 AND id = $2 AND kakao_callback_enc IS NOT NULL
           AND kakao_callback_deadline_at <= $3 RETURNING consultation_id`,
-      [messageId, now],
+      [messageId, now, kakaoPhotoTrace(messageId)],
     );
     const row = expired.rows[0];
     if (row === undefined) return "skipped";
@@ -282,11 +304,19 @@ export async function deferExpiredKakaoCallback(
     if (["ended", "deleted", "dropped"].includes(consultation.status)) return "discarded";
     const prepared = await tx.run(
       `SELECT id FROM messages WHERE shop_id = $1 AND consultation_id = $2 AND trace_id = $3
-        AND direction = 'outbound' AND author = 'ai' AND body_masked IS NOT NULL
+        AND direction = 'outbound' AND (author = 'ai' OR (author='system' AND kind IN ('card','photo'))) AND body_masked IS NOT NULL
         AND delivery IN ('deferred', 'callback', 'delivered_later') LIMIT 1`,
       [row.consultation_id, messageId],
     );
     if (prepared.rowCount > 0) return "deferred";
+    if (source.source_trace === kakaoPhotoTrace(messageId)) {
+      await tx.run(
+        `INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,trace_id,delivery)
+        VALUES($1,$2,'outbound','system','photo',$3,$4,'deferred')`,
+        [row.consultation_id, KAKAO_PHOTO_TEXT.photo_download_failed, messageId],
+      );
+      return "deferred";
+    }
     await recordKakaoHandoff(tx, row.consultation_id, messageId, "callback_timeout", now);
     await tx.run(
       `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, delivery)
