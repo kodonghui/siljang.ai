@@ -228,10 +228,10 @@ export function CalendarSettingsScreen(props: ShopLicenseProps) {
             새로 고침
           </Button>
           <Button
-            disabled={navigationLocked || command.busy}
+            disabled={navigationLocked || command.busy || loading}
             busy={Boolean(props.logoutPending)}
             onClick={() => {
-              if (!navigationLocked && !command.busy) props.onLogout();
+              if (!navigationLocked && !command.busy && !loading) props.onLogout();
             }}
           >
             로그아웃

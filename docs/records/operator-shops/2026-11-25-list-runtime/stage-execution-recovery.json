@@ -1,0 +1,11 @@
+{
+  "startedKST": "2026-11-25 10:34:41",
+  "cause": "두 단계 검사를 동시에 실행했으며 ERD 검사기가 고정한 erd_check_schema DB를 서로 지움",
+  "source": "check_erd.py PG.reset and DB_SCHEMA",
+  "publicHead": "ad58db9288d8acdcd60302d3b8489cbef56b22eb",
+  "localOther": "5b1665a",
+  "productAssertionFailure": false,
+  "error": "FATAL: database erd_check_schema does not exist; It seems to have just been dropped or renamed",
+  "attempt1LogsPreserved": true,
+  "recovery": "단계/ERD 검사 전체를 직렬로 다시 실행. 현재 브라우저 SSH 외부 실패와 별개인 실행 순서 오류"
+}

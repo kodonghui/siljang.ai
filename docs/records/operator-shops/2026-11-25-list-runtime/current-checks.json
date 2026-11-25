@@ -29,5 +29,14 @@
   },
   "productCodeChanges": 0,
   "browserRun": false,
-  "outsideServices": 0
+  "outsideServices": 0,
+  "relatedTestFiles": [
+    "app/web/src/OperatorShopsList.interaction.test.tsx",
+    "app/web/src/operator-shops-api.test.ts",
+    "app/web/src/operator-shops-query.test.ts",
+    "app/web/src/operator.test.ts"
+  ],
+  "relatedWorkingDirectory": "app",
+  "relatedCommand": "npm run test -w web -- src/OperatorShopsList.interaction.test.tsx src/operator-shops-api.test.ts src/operator-shops-query.test.ts src/operator.test.ts",
+  "evidencePhotoBoundary": "API081 원본에는 계약대로 서명 evidencePhotoUrl이 포함됨. 웹 목록 변환 DTO가 이 필드를 제외하며 목록 DOM/사진에 사용하지 않음"
 }
