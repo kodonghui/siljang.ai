@@ -1,8 +1,14 @@
 /** TASK-081: 카드 생성·검증·한 번 실행을 같은 가게 트랜잭션에 묶습니다. 업무 명령은 각 담당 모듈이 연결합니다. */
 import { cardExpiresAt, judgeCardPress } from "./confirm-card";
 import type { KakaoOrderCardContext } from "./kakao-order-request-content";
+import type { KakaoPaymentClaimCard } from "./kakao-payment-claim-message";
 import type { ClauseInput } from "./operating-rules-input";
 import { orderCardDeadline, readPreparedOrderSummary } from "./order-card-presentation";
+import {
+  type PaymentClaimBinding,
+  type PaymentClaimSource,
+  readPaymentClaimSource,
+} from "./payment-claim-presentation";
 import { fieldError } from "./problem";
 import { pathId, type ShopDb, type ShopRequestDb } from "./shop-scope";
 
@@ -30,6 +36,8 @@ export interface ShowConfirmCard extends Identity {
 export interface ConfirmCardView {
   readonly kind?: CustomerCommandKind;
   readonly orderRequest?: KakaoOrderCardContext;
+  /** 전송 직전 자료. 카드 payload/메시지/AI 입력에는 저장하지 않는다. */
+  readonly paymentClaim?: KakaoPaymentClaimCard;
   readonly cardKey: string;
   readonly title: string;
   readonly description: string;
@@ -41,6 +49,7 @@ export interface ConfirmCardCommandResult {
   readonly text: string;
 }
 export interface ConfirmCardAnswer extends ConfirmCardCommandResult {
+  readonly kind?: CustomerCommandKind;
   readonly card?: ConfirmCardView;
   readonly firstResult?: ConfirmCardCommandResult;
 }
@@ -53,6 +62,7 @@ export interface ConfirmCardCommandInput extends Identity {
 /** 실행기는 지금 주문 상태와 잠금 번호를 다시 확인하고 조건에 맞는 쓰기만 합니다. 실패하면 사용 표시까지 함께 취소합니다. 외부 발신은 하지 않습니다. 주문 요청의 order_id 연결 권한·시험은 실제 실행기를 등록하는 TASK-083에서 추가합니다. */
 export type ConfirmCardCommand = (db: ShopDb, input: ConfirmCardCommandInput) => Promise<ConfirmCardCommandResult>;
 interface Source {
+  paymentClaim?: PaymentClaimSource;
   orderRequest?: KakaoOrderCardContext;
   orderRequestTimeZone?: string;
   orderId: string | null;
@@ -79,6 +89,7 @@ interface CardRow {
     sourceMessageId?: string;
     result?: ConfirmCardCommandResult;
     replacedBy?: { cardKey: string };
+    paymentClaimBinding?: PaymentClaimBinding;
   };
   outcome: "done" | "stale" | "expired" | null;
 }
@@ -98,7 +109,16 @@ function usedAnswer(card: CardRow): ConfirmCardAnswer {
   return {
     outcome: "card_used",
     text: "이미 처리했어요",
+    ...(card.kind === "payment_claim" ? { kind: card.kind } : {}),
     ...(result === undefined ? {} : { firstResult: { outcome: result.outcome, text: result.text } }),
+  };
+}
+function usedDelivery(card: CardRow) {
+  return {
+    text:
+      card.kind === "payment_claim" && card.payload.result?.outcome === "payment_claimed"
+        ? card.payload.result.text
+        : "이미 처리했어요",
   };
 }
 const SUCCESS_OUTCOMES: Record<CustomerCommandKind, string> = {
@@ -175,6 +195,9 @@ async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: str
         draftRevision: null,
         description: `주문번호 ${row.order_no}\n픽업 날짜 ${row.pickup_day}\n주문 금액 ${row.amount.toLocaleString("ko-KR")}원`,
         blockId,
+        ...(input.kind === "payment_claim"
+          ? { paymentClaim: await readPaymentClaimSource(db, { ...input, orderId: row.id }) }
+          : {}),
       }
     : null;
 }
@@ -256,6 +279,30 @@ function orderCardChanged(card: CardRow, source: Source): boolean {
       card.payload.presentation?.orderRequest?.policy.version !== source.orderRequest?.policy.version)
   );
 }
+function paymentClaimChanged(card: CardRow, source: Source): boolean {
+  if (card.kind !== "payment_claim" || source.paymentClaim?.available !== true) return false;
+  const previous = card.payload.paymentClaimBinding;
+  const current = source.paymentClaim.binding;
+  return (
+    previous?.paymentRequestId !== current.paymentRequestId ||
+    previous.version !== current.version ||
+    previous.amount !== current.amount ||
+    previous.dueAt !== current.dueAt
+  );
+}
+function withPaymentClaim(card: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
+  return source.paymentClaim?.available === true
+    ? {
+        ...card,
+        paymentClaim: {
+          ...source.paymentClaim.presentation,
+          cardKey: card.cardKey,
+          cardBlockId: card.blockId,
+          expiresAt: expiresAt.toISOString(),
+        },
+      }
+    : card;
+}
 async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): Promise<ConfirmCardView> {
   const card: ConfirmCardView = {
     kind: input.kind,
@@ -283,18 +330,19 @@ async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): P
       JSON.stringify({
         presentation: input.kind === "order_request" ? { ...card, description: "주문 요청 확인" } : card,
         ...(input.sourceMessageId === undefined ? {} : { sourceMessageId: pathId(input.sourceMessageId) }),
+        ...(source.paymentClaim?.available === true ? { paymentClaimBinding: source.paymentClaim.binding } : {}),
       }),
       input.now,
       cardExpiresAt(input.now),
     ],
   );
-  return card;
+  return withPaymentClaim(card, source, cardExpiresAt(input.now));
 }
 export async function showConfirmCardInTransaction(db: ShopDb, input: ShowConfirmCard): Promise<ConfirmCardView> {
   validNow(input.now);
   if (!(await identityAvailable(db, input))) throw new Error("card recipient unavailable");
   const source = await readSource(db, input);
-  if (source === null) throw new Error("card source unavailable");
+  if (source === null || source.paymentClaim?.available === false) throw new Error("card source unavailable");
   return insertCard(db, input, source);
 }
 export function showConfirmCard(db: ShopRequestDb, input: ShowConfirmCard): Promise<ConfirmCardView> {
@@ -345,7 +393,8 @@ async function processVerifiedCard(
   if (!initial || initial.created_at > input.now) return NOT_YOURS;
   if (!CUSTOMER_COMMAND_KINDS.includes(initial.kind)) return RETRY_NEEDED;
   if (initial.used_at !== null) return usedAnswer(initial);
-  if (input.choice === "decline") return DECLINED;
+  if (input.choice === "decline")
+    return initial.kind === "payment_claim" ? { ...DECLINED, kind: initial.kind } : DECLINED;
   const target: ShowConfirmCard = {
     ...input,
     kind: initial.kind,
@@ -355,6 +404,7 @@ async function processVerifiedCard(
   };
   const source = await readSource(tx, target, knownBlockId);
   if (source === null) return initial.kind === "order_request" ? ORDER_NOT_READY : RETRY_NEEDED;
+  if (source.paymentClaim?.available === false) return { outcome: "not_allowed_now", text: source.paymentClaim.text };
   const card = await tx.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
   ]);
@@ -373,7 +423,12 @@ async function processVerifiedCard(
   );
   if (verdict === "not_recipient") return NOT_YOURS;
   if (verdict === "used") return usedAnswer(card);
-  if (verdict === "stale" || verdict === "expired" || orderCardChanged(card, source)) {
+  if (
+    verdict === "stale" ||
+    verdict === "expired" ||
+    orderCardChanged(card, source) ||
+    paymentClaimChanged(card, source)
+  ) {
     return replaceCard(tx, card, target, source, verdict === "expired" ? "expired" : "stale");
   }
 
@@ -398,7 +453,7 @@ async function processVerifiedCard(
     "UPDATE confirm_cards SET used_at=$3,outcome='done',payload=jsonb_set(payload,'{result}',$4::jsonb) WHERE shop_id=$1 AND id=$2",
     [card.id, input.now, JSON.stringify({ outcome: result.outcome, text: result.text })],
   );
-  return { outcome: result.outcome, text: result.text };
+  return { outcome: result.outcome, text: result.text, ...(card.kind === "payment_claim" ? { kind: card.kind } : {}) };
 }
 
 async function replaceCard(
@@ -435,7 +490,7 @@ export async function readConfirmCardDelivery(
   );
   const initial = rows.rows[0];
   if (rows.rows.length !== 1 || initial === undefined || initial.created_at > input.now) return unavailable;
-  if (initial.used_at !== null) return { text: "이미 처리했어요" };
+  if (initial.used_at !== null) return usedDelivery(initial);
   const target: ShowConfirmCard = {
     ...input,
     kind: initial.kind,
@@ -444,15 +499,17 @@ export async function readConfirmCardDelivery(
   };
   const source = await readSource(db, target);
   if (source === null) return initial.kind === "order_request" ? { text: ORDER_NOT_READY.text } : unavailable;
+  if (source.paymentClaim?.available === false) return { text: source.paymentClaim.text };
   const card = await db.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
   ]);
-  if (card.used_at !== null) return { text: "이미 처리했어요" };
+  if (card.used_at !== null) return usedDelivery(card);
   const expired = input.now.getTime() >= card.expires_at.getTime();
   const stale =
     card.order_version !== source.orderVersion ||
     card.draft_revision !== source.draftRevision ||
-    orderCardChanged(card, source);
+    orderCardChanged(card, source) ||
+    paymentClaimChanged(card, source);
   const presentation =
     expired || stale
       ? (await replaceCard(db, card, target, source, expired ? "expired" : "stale")).card
@@ -461,14 +518,18 @@ export async function readConfirmCardDelivery(
     ? unavailable
     : {
         text: presentation.title,
-        card: {
-          ...presentation,
-          kind: initial.kind,
-          ...(!expired && !stale && source.orderRequestTimeZone !== undefined
-            ? { description: orderCardDeadline(source.description, source.orderRequestTimeZone, card.expires_at) }
-            : {}),
-          ...(source.orderRequest === undefined ? {} : { orderRequest: source.orderRequest }),
-        },
+        card: withPaymentClaim(
+          {
+            ...presentation,
+            kind: initial.kind,
+            ...(!expired && !stale && source.orderRequestTimeZone !== undefined
+              ? { description: orderCardDeadline(source.description, source.orderRequestTimeZone, card.expires_at) }
+              : {}),
+            ...(source.orderRequest === undefined ? {} : { orderRequest: source.orderRequest }),
+          },
+          source,
+          expired || stale ? cardExpiresAt(input.now) : card.expires_at,
+        ),
       };
 }
 

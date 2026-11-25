@@ -58,6 +58,32 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       await admin.close();
     }
   });
+  it("제한 역할도 결제 확인 카드의 개인 자료를 표시 직전에 읽고 payload에 이름을 저장하지 않음", async () => {
+    const target = await createShop(db, "제한 역할 결제 확인 카드 가게");
+    await linkTestChannel(db, target.channelId);
+    const runtime = pgConnector(new Secret(databaseUrl));
+    try {
+      const scoped = shopRequestDb(createShopScope(target.shopId, { kind: "job", job: "kakao_callback" }), runtime);
+      const card = await showConfirmCard(scoped, {
+        customerId: target.customerId,
+        consultationId: target.consultationId,
+        kind: "payment_claim",
+        orderId: target.orderId,
+        now: new Date("2026-11-25T03:00:00Z"),
+      });
+      expect(card.paymentClaim?.depositorName).toBe("시험손님");
+      const payload = (
+        await db.query("SELECT payload FROM confirm_cards WHERE shop_id=$1 AND card_key=$2", [
+          target.shopId,
+          card.cardKey,
+        ])
+      ).rows[0];
+      expect(JSON.stringify(payload)).not.toContain("시험손님");
+      expect(JSON.stringify(payload)).not.toContain("depositorName");
+    } finally {
+      await runtime.close();
+    }
+  });
   it("제한 역할에서 견적 UPDATE 권한 없이 규정/요약이 있는 주문 카드를 만들고 만료 갱신한다", async () => {
     const target = await createShop(db, "제한 역할 주문 카드 가게");
     await issueTestBookingLink(db, target);

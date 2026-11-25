@@ -1,0 +1,59 @@
+
+> test
+> vitest run --run test/kakao-payment-claim-delivery.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/server
+
+ ❯ test/kakao-payment-claim-delivery.test.ts (6 tests | 1 failed) 1093ms
+   ❯ SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) (6)
+     × 처음 확인 요청과 같은 카드 재누름은 같은 한 문장이며 합성 명령 한 번 50ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 처음 확인 요청과 같은 카드 재누름은 같은 한 문장이며 합성 명령 한 번
+AssertionError: expected { version: '2.0', template: { …(1) } } to deeply equal { version: '2.0', template: { …(1) } }
+
+- Expected
++ Received
+
+@@ -1,10 +1,15 @@
+  {
+    "template": {
+      "outputs": [
+        {
+          "simpleText": {
++           "text": "이미 처리했어요",
++         },
++       },
++       {
++         "simpleText": {
+            "text": "사장님께 알렸어요. 확인되면 알려 드릴게요",
+          },
+        },
+      ],
+    },
+
+ ❯ test/kakao-payment-claim-delivery.test.ts:146:47
+    144|     const second = await pressConfirmCard(scoped(), input, execute);
+    145|     expect(second.outcome).toBe("card_used");
+    146|     expect(kakaoConfirmAnswerMessage(second)).toEqual(kakaoConfirmAnsw…
+       |                                               ^
+    147|     expect(kakaoConfirmAnswerMessage(second).template.outputs).toEqual…
+    148|       { simpleText: { text: "사장님께 알렸어요. 확인되면 알려 드릴게요" } },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  14:04:04
+   Duration  1.45s (tests 84%, transform 10%, import 5%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task107-payment-claim/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task107-payment-claim/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/kakao-payment-claim-delivery.test.ts

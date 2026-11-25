@@ -123,6 +123,29 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
     if (value === null || value === undefined) throw new Error("합성 시험 자료가 없어요");
     return value;
   }
+  it("결제 확인 카드는 모델 출력 뒤 이름을 붙여 전송하고 AI 입력·메시지·카드 저장에는 이름이 없음", async () => {
+    const name = "합성결제표시전용손님";
+    await isolated.db.query("UPDATE order_details SET customer_name=$2 WHERE order_id=$1", [shop.orderId, name]);
+    const ai = model();
+    const original = required(ai.call.getMockImplementation());
+    ai.call.mockImplementationOnce(async (input) => {
+      const result = await original(input);
+      if (!result.ok) return result;
+      return { ...result, output: { reply: "합성 카드 제안", card: { kind: "payment_claim" } } };
+    });
+    await send(shop.userKey, "입금했어요");
+    const callback = await consume(required(jobs[0]), ai);
+    const body = String(required(callback.mock.calls[0])[1]?.body);
+    expect(body).toContain(name);
+    expect(body).toContain("입금자 이름이 달라요");
+    expect(JSON.stringify(required(ai.call.mock.calls[0])[0].messages)).not.toContain(name);
+    const saved = await isolated.db.query(
+      "SELECT payload::text AS value FROM confirm_cards WHERE shop_id=$1 UNION ALL SELECT body_masked FROM messages WHERE shop_id=$1",
+      [shop.shopId],
+    );
+    expect(JSON.stringify(saved.rows)).not.toContain(name);
+    expect(ai.call).toHaveBeenCalledOnce();
+  });
   async function withQuote(mode = "valid") {
     const ai = model();
     await send(newUuid(), "현재 견적의 합성 질문");
