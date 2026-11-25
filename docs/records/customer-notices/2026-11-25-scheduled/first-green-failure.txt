@@ -1,0 +1,116 @@
+> test
+> vitest run test/customer-notice-scheduled.test.ts test/customer-notices-skill.test.ts test/kakao-deferred.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+ ❯ test/customer-notice-scheduled.test.ts (16 tests | 4 failed) 1787ms
+   ❯ 예약 안내의 스킬 읽기와 다음 대화 전달 (16)
+     × day_before/event: valid의 의미와 보낼 시간을 다시 확인한다 134ms
+     × day_before/message: valid의 의미와 보낼 시간을 다시 확인한다 117ms
+     × day_before/message: future의 의미와 보낼 시간을 다시 확인한다 78ms
+     × day_before/message: outside의 의미와 보낼 시간을 다시 확인한다 75ms
+ ❯ test/kakao-deferred.test.ts (30 tests | 1 failed) 3076ms
+   ❯ 카카오 콜백에서 전하지 못한 답의 다음 대화 전달(TASK-028, G4) (30)
+     × 버튼/계좌가 필요한 안내와 미전달이 아닌 행은 업무 렌더러에 남김 100ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/event: valid의 의미와 보낼 시간을 다시 확인한다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 예약 안내를 전해요'
+
+Expected: "합성 예약 안내를 전해요"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"지금은 전할 안내가 없어요"}}]}}"
+
+ ❯ test/customer-notice-scheduled.test.ts:106:67
+    104|           const body = await response.json();
+    105|           expectSchema("SkillTemplateResponse", body);
+    106|           if (condition === "valid") expect(JSON.stringify(body)).toCo…
+       |                                                                   ^
+    107|           else expect(JSON.stringify(body)).not.toContain(BODY);
+    108|           if (mode === "event")
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/message: valid의 의미와 보낼 시간을 다시 확인한다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 예약 안내를 전해요'
+
+Expected: "합성 예약 안내를 전해요"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"사장님 확인 뒤 답드릴게요."}}]}}"
+
+ ❯ test/customer-notice-scheduled.test.ts:106:67
+    104|           const body = await response.json();
+    105|           expectSchema("SkillTemplateResponse", body);
+    106|           if (condition === "valid") expect(JSON.stringify(body)).toCo…
+       |                                                                   ^
+    107|           else expect(JSON.stringify(body)).not.toContain(BODY);
+    108|           if (mode === "event")
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/message: future의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/message: outside의 의미와 보낼 시간을 다시 확인한다
+AssertionError: expected { status: 'dropped', sent_at: null } to deeply equal { status: 'deferred', sent_at: null }
+
+- Expected
++ Received
+
+  {
+    "sent_at": null,
+-   "status": "deferred",
++   "status": "dropped",
+  }
+
+ ❯ test/customer-notice-scheduled.test.ts:113:23
+    111|             );
+    112|           const row = (await isolated.db.query("SELECT status,sent_at …
+    113|           expect(row).toEqual({
+       |                       ^
+    114|             status:
+    115|               mode === "message" && condition === "valid"
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/kakao-deferred.test.ts > 카카오 콜백에서 전하지 못한 답의 다음 대화 전달(TASK-028, G4) > 버튼/계좌가 필요한 안내와 미전달이 아닌 행은 업무 렌더러에 남김
+AssertionError: expected [ { status: 'deferred', …(1) }, …(3) ] to deeply equal [ { status: 'deferred', …(1) }, …(3) ]
+
+- Expected
++ Received
+
+@@ -3,11 +3,11 @@
+      "sent_at": null,
+      "status": "deferred",
+    },
+    {
+      "sent_at": null,
+-     "status": "deferred",
++     "status": "dropped",
+    },
+    {
+      "sent_at": null,
+      "status": "pending",
+    },
+
+ ❯ test/kakao-deferred.test.ts:163:20
+    161|     const states = [];
+    162|     for (const id of ids) states.push(await noticeState(id));
+    163|     expect(states).toEqual([
+       |                    ^
+    164|       { status: "deferred", sent_at: null },
+    165|       { status: "deferred", sent_at: null },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  5 failed | 56 passed (61)
+   Start at  12:53:16
+   Duration  10.98s (tests 62%, import 34%, transform 3%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task104-customer-notices/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task104-customer-notices/app/server
+npm error command failed
+npm error command sh -c vitest run test/customer-notice-scheduled.test.ts test/customer-notices-skill.test.ts test/kakao-deferred.test.ts

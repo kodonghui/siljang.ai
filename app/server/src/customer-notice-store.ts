@@ -9,6 +9,8 @@ export const TEXT_CUSTOMER_NOTICE_KINDS = [
   "custom_rejected",
   "no_answer_closed",
   "order_confirmed",
+  "day_before",
+  "review_request",
 ] as const;
 
 export async function createPaymentRequestNotice(
