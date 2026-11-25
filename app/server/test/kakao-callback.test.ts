@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
+import type { ConfirmCardCommand } from "../src/confirm-card-store";
 import { type DbConnector, pgConnector } from "../src/db";
 import { deliverKakaoCallback, kakaoCallback, SKILL_CALLBACK_MS } from "../src/kakao-callback";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
@@ -1198,5 +1199,175 @@ describeDb("카카오 콜백의 HTTP 응답과 데이터베이스 큐 처리(TAS
     expectSchema("SkillTemplateResponse", await response.json());
     const job = send.mock.calls[0]?.[0] as KakaoCallbackJob;
     expect((await stored(job))?.kakao_callback_enc).toBeNull();
+  });
+
+  async function orderCardJob() {
+    const fixture = await createShop(db, "합성 카드 전달 가게");
+    await issueTestBookingLink(db, fixture);
+    await linkTestChannel(db, fixture.channelId);
+    const skillKey = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), fixture.channelId, 1);
+    const queue = mockQueue();
+    const message = (utterance: string, at = NOW, callback = true) =>
+      createApp({ services: { now: () => at, kakaoCallbackQueue: queue }, logSink: () => {} }).request(
+        "/api/kakao/skills/message",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": skillKey },
+          body: JSON.stringify({
+            bot: { id: fixture.botId },
+            userRequest: {
+              utterance,
+              ...(callback ? { callbackUrl: VALID } : {}),
+              block: { id: "conversation" },
+              user: { id: fixture.userKey, type: "botUserKey" },
+            },
+            action: { id: "test", params: {} },
+          }),
+        },
+        env,
+      );
+    expect((await message("주문을 취소해 주세요")).headers.get("Siljang-Outcome")).toBe("callback_pending");
+    const job = queue.jobs[0] as KakaoCallbackJob;
+    expect((await stored(job))?.consultation_id).toBe(fixture.consultationId);
+    await db.query("UPDATE consultations SET ai_disclosed_at=$2,ai_disclosed_policy_version=1 WHERE id=$1", [
+      fixture.consultationId,
+      NOW,
+    ]);
+    const order = (
+      await db.query<{ order_no: string; amount: number; status: string; version: number }>(
+        "SELECT order_no,amount,status,version FROM orders WHERE id=$1",
+        [fixture.orderId],
+      )
+    ).rows[0];
+    if (!order) throw new Error("합성 주문을 준비하지 못함");
+    return { fixture, skillKey, job, order, message };
+  }
+  const cancelProposal = (orderNo: string) =>
+    vi.fn<AiModel["call"]>(async () => ({
+      ok: true,
+      output: { reply: "취소 완료. 1원만 내세요.", card: { kind: "cancel", order_no: orderNo } },
+      aiCallId: newUuid(),
+    }));
+  const cardFrom = (body: unknown) =>
+    (
+      body as {
+        template: {
+          outputs: {
+            textCard?: { title: string; description: string; buttons: { extra: { cardKey: string } }[] };
+          }[];
+        };
+      }
+    ).template.outputs.find((part) => part.textCard)?.textCard;
+
+  it("API-070 카드 제안을 저장 값의 콜백으로 보내고 받은 사람이 눌러야 합성 명령이 한 번 실행된다", async () => {
+    const { fixture, skillKey, job, order } = await orderCardJob();
+    const call = cancelProposal(order.order_no);
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call } },
+    });
+    const body = JSON.parse(String(post.mock.calls[0]?.[1]?.body));
+    expectSchema("SkillTemplateResponse", body);
+    const card = cardFrom(body);
+    expect(card).toMatchObject({ title: "주문 취소 확인" });
+    expect(card?.description).toContain(order.order_no);
+    expect(card?.description).toContain(`${order.amount.toLocaleString("ko-KR")}원`);
+    expect(JSON.stringify(body)).not.toContain("취소 완료");
+    expect(JSON.stringify(body)).not.toContain("1원만");
+    expect((await db.query("SELECT status,version FROM orders WHERE id=$1", [fixture.orderId])).rows[0]).toEqual({
+      status: order.status,
+      version: order.version,
+    });
+    const execute = vi.fn<ConfirmCardCommand>(async (tx, input) => {
+      const updated = await tx.run(
+        "UPDATE orders SET status='cancelled',cancelled_at=$3,cancel_kind='customer' WHERE shop_id=$1 AND id=$2 AND customer_id=$4 AND status='awaiting_payment'",
+        [input.orderId, NOW, input.customerId],
+      );
+      expect(updated.rowCount).toBe(1);
+      return { outcome: "order_cancelled", text: "합성 명령을 처리했어요" };
+    });
+    const press = (userId: string) =>
+      createApp({ services: { now: () => new Date(NOW.getTime() + 6000), confirmCardCommand: execute } }).request(
+        "/api/kakao/skills/card",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": skillKey },
+          body: JSON.stringify({
+            bot: { id: fixture.botId },
+            userRequest: {
+              utterance: "카드 누름",
+              user: { id: userId, type: "botUserKey" },
+              block: { id: "blk-card" },
+            },
+            action: {
+              id: "test",
+              params: {},
+              clientExtra: { cardKey: card?.buttons[0]?.extra.cardKey, choice: "confirm" },
+            },
+          }),
+        },
+        env,
+      );
+    expect((await press("unknown-synthetic-user")).headers.get("Siljang-Outcome")).toBe("card_not_yours");
+    expect(execute).not.toHaveBeenCalled();
+    expect((await press(fixture.userKey)).headers.get("Siljang-Outcome")).toBe("order_cancelled");
+    expect((await press(fixture.userKey)).headers.get("Siljang-Outcome")).toBe("card_used");
+    expect(execute).toHaveBeenCalledOnce();
+  });
+
+  it("카드 콜백 뒤 전달 표시가 실패해도 같은 수신의 모델·카드 생성은 한 번이다", async () => {
+    const { fixture, job, order } = await orderCardJob();
+    const call = cancelProposal(order.order_no);
+    const post = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    const options = {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: post,
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
+    };
+    await expect(
+      consumeKakaoCallback(job, env, {
+        ...options,
+        connect: failNextWrite(/UPDATE messages SET kakao_callback_enc = NULL/),
+      }),
+    ).rejects.toThrow("합성 결과 저장 중단");
+    await consumeKakaoCallback(job, env, options);
+    expect(call).toHaveBeenCalledOnce();
+    expect(post).toHaveBeenCalledTimes(2);
+    const cards = post.mock.calls.map(([, init]) => cardFrom(JSON.parse(String(init?.body))));
+    expect(cards[0]).toBeTruthy();
+    expect(cards[1]).toEqual(cards[0]);
+    expect((await db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])).rowCount).toBe(1);
+  });
+
+  it.each([1, 31])("카드 콜백 실패 뒤 %i분의 다음 수신에 버튼을 보존하고 만료된 키는 갱신한다", async (minutes) => {
+    const { fixture, job, order, message } = await orderCardJob();
+    const call = cancelProposal(order.order_no);
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 5000),
+      fetch: async () => new Response(null, { status: 503 }),
+      logSink: () => {},
+      services: { aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call } },
+    });
+    const original = (
+      await db.query<{ card_key: string }>("SELECT card_key FROM confirm_cards WHERE shop_id=$1", [fixture.shopId])
+    ).rows[0];
+    expect(original).toBeTruthy();
+    const response = await message("계속 이야기할게요", new Date(NOW.getTime() + minutes * 60000), false);
+    const body = await response.json();
+    expectSchema("SkillTemplateResponse", body);
+    const card = cardFrom(body);
+    expect(card).toBeTruthy();
+    const key = card?.buttons[0]?.extra.cardKey;
+    if (minutes === 1) expect(key).toBe(original?.card_key);
+    else expect(key).not.toBe(original?.card_key);
+    expect(call).toHaveBeenCalledOnce();
+    expect(
+      (await db.query("SELECT used_at FROM confirm_cards WHERE shop_id=$1 AND card_key=$2", [fixture.shopId, key]))
+        .rows[0],
+    ).toEqual({ used_at: null });
   });
 });
