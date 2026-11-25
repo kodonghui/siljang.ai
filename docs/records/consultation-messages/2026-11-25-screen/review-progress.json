@@ -50,6 +50,9 @@
     "cursorBinding": "same200characters, authenticated direction marker and same shop/consultation",
     "expectedShop": "optional expected header checked before body read/access-log write; missing legacy calls retained"
   },
-  "implementedProposal": "withdrawn until new full/public/review/main checks",
-  "native": "unverified; academy Aside CLI only"
+  "implementedProposal": "reinstated conditionally after final public checks and own main",
+  "native": "unverified; academy Aside CLI only",
+  "fixedFullSource": "c9659301f88330e27974300e4c8da4d047041cc2",
+  "freshFullPassed": true,
+  "newFullEvidence": "review-full-checks.json"
 }

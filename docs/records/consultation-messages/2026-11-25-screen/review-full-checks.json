@@ -1,0 +1,40 @@
+{
+  "source": "c9659301f88330e27974300e4c8da4d047041cc2",
+  "freshDatabase": true,
+  "migrations": 40,
+  "serverFiles": 145,
+  "serverPassed": 2854,
+  "webFiles": 73,
+  "webPassed": 1772,
+  "testsExit": 0,
+  "buildExit": 0,
+  "viteMs": 637,
+  "workers": [
+    {
+      "uploadKiB": 5453.39,
+      "gzipKiB": 1003.62
+    },
+    {
+      "uploadKiB": 21.08,
+      "gzipKiB": 6.55
+    }
+  ],
+  "databaseCleanup": "completed; fresh test database dropped",
+  "nodeTests": 55,
+  "nodePassed": 55,
+  "nodeFailed": 0,
+  "fixtureVersion": 3,
+  "cliExit": 0,
+  "relatedServer": 59,
+  "relatedWeb": 45,
+  "relatedOverlap": "서버/웹의 관련 검사는 전체 시험에 포함되며 합산하지 않음",
+  "localInstall": "same lock dependency reuse; no new local npm ci",
+  "supersedes": [
+    "full-checks.json",
+    "fixture-v1-manifest.json",
+    "fixture-v2-manifest.json"
+  ],
+  "publicReviewHead": "2c38204c4ab84b6f7efa5ea6b8d378f3565c076e",
+  "publicChecks": "API17/ERD15/screens15/WBS18 and actual CLI exit0clean; app45583181748/db45583181807 bothOS/PG16/17 success. Final documentation head to be checked separately",
+  "native": "unverified; actual browser not run"
+}

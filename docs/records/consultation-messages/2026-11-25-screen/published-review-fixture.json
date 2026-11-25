@@ -1,0 +1,17 @@
+{
+  "publicCommit": "2c38204c4ab84b6f7efa5ea6b8d378f3565c076e",
+  "publicTree": "0b0e401229adb1feb72f84686bbeec292e2ab10e",
+  "manifestSource": "2c38204c4ab84b6f7efa5ea6b8d378f3565c076e",
+  "exitCode": 0,
+  "workingTreeClean": true,
+  "primaryStatesPrepared": 6,
+  "responseRows": 7,
+  "widthsPrepared": [
+    360,
+    1280
+  ],
+  "bundleFiles": 765,
+  "browserRun": false,
+  "renderedFrames": 0,
+  "realServiceWrites": 0
+}

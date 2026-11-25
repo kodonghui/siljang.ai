@@ -1,5 +1,5 @@
 {
-  "source": "2b739e245fa1b81a4bac506a4b0fc04f12ef7d58",
+  "source": "c9659301f88330e27974300e4c8da4d047041cc2",
   "cliExit": 0,
   "primaryStates": 6,
   "responseRows": 7,
@@ -7,7 +7,7 @@
     360,
     1280
   ],
-  "nodeFixtureTestsPassed": 54,
+  "nodeFixtureTestsPassed": 55,
   "browserRun": false,
   "nativeTransfer": 0,
   "pageCheck": "미확인",
@@ -16,5 +16,7 @@
   "lock": "기존 D4 독점/KOE 정지와 수신 지시·대기열·마지막 정지ACK를 먼저 확인",
   "outsideServiceWrites": 0,
   "providerCalls": 0,
-  "fixtureVersion": 2
+  "fixtureVersion": 3,
+  "publicReviewHead": "2c38204c4ab84b6f7efa5ea6b8d378f3565c076e",
+  "pageAnchor": "same cursor/window snapshot per page; no rendered browser evidence"
 }
