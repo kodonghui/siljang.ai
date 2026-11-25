@@ -39,5 +39,7 @@
   "frames": 14,
   "responseRows": 35,
   "responseFrames": 24,
-  "npmCi": "shared same-lock installation reused locally; CI clean installation still required"
+  "npmCi": "shared same-lock installation reused locally; CI clean installation still required",
+  "publicEquivalentHead": "ea23afddc06157e74040669e44ef339c76e72a8b",
+  "publicScopeGitObjectsMatch": true
 }
