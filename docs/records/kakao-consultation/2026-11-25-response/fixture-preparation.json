@@ -1,0 +1,27 @@
+{
+  "sourceCommit": "9acf9e530097362418d6e217c66a8be8157de3b2",
+  "states": 10,
+  "stateFrames": 20,
+  "responseFrames": 42,
+  "responseRows": 29,
+  "files": 65,
+  "bytes": 304838,
+  "filesDigestSha256": "aff946280da3f2e6bff239f6fdfe6befb420a60cdb6d4f998f680106dd8c7cd0",
+  "scriptFiles": 0,
+  "actualLinuxCliExit": 0,
+  "nodeChecks": {
+    "tests": 48,
+    "passed": 48,
+    "failed": 0
+  },
+  "firstNodeRun": {
+    "failedFiles": 6,
+    "passed": 14,
+    "reason": "ran before committing fixture inputs; source guard rejected dirty input"
+  },
+  "v2Cli": "source guard rejected dirty input; no successful fixture output",
+  "realBrowser": false,
+  "realKakao": false,
+  "newTransfer": false,
+  "newZip": false
+}

@@ -1,0 +1,61 @@
+{
+  "sourceCommit": "ab78ab00523b692ed1cc22f427a1a2cb1ad25f4a",
+  "review": {
+    "orcaComment": 7154479870,
+    "reviewedHead": "221dbbea8e9c4bce6dd16502024ca2ae863de2db",
+    "redSource": "86d09a10bbba97f62efa07818c180d2b22af186c",
+    "idRed": {
+      "failed": 3,
+      "passed": 21
+    },
+    "widthRed": {
+      "failed": 1,
+      "passed": 3
+    },
+    "manualRequest": 7154455703,
+    "manualCode": 7154486783,
+    "manualSecurity": 7154512401
+  },
+  "related": {
+    "files": 6,
+    "passed": 152
+  },
+  "nodeFixtures": {
+    "passed": 49,
+    "failed": 0
+  },
+  "typecheckExit": 0,
+  "strictLintExit": 0,
+  "freshFull": {
+    "migrations": 40,
+    "serverFiles": 142,
+    "serverPassed": 2814,
+    "webFiles": 71,
+    "webPassed": 1727,
+    "testsExit": 0,
+    "buildExit": 0,
+    "vite": "696ms",
+    "appWorker": "5433.71 KiB / gzip: 998.18 KiB",
+    "storageWorker": "21.08 KiB / gzip: 6.55 KiB",
+    "state": "completed; database dropped"
+  },
+  "fixtureV4": {
+    "source": "ab78ab00523b692ed1cc22f427a1a2cb1ad25f4a",
+    "frames": 62,
+    "files": 65,
+    "bytes": 306636,
+    "actualLinuxCliExit": 0,
+    "fixedCssWidths": [
+      360,
+      1280
+    ],
+    "dom": "Happy DOM computed body widths at same window size; unit test only",
+    "oldV3": "preserved; excluded as two-width layout proof: data-width metadata only",
+    "stateFrames": 20,
+    "responseFrames": 42
+  },
+  "localInstall": "same-lock reused; no new local npm ci",
+  "realBrowser": false,
+  "realKakao": false,
+  "finishedIncrement": 0
+}

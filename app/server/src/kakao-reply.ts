@@ -1,6 +1,7 @@
 import type { AiFailure } from "./ai-model";
 import { KAKAO_CONSULTATION_UNAVAILABLE_TEXT } from "./kakao-callback";
-import { type KakaoMessageContent, type KakaoMessageOutput, kakaoMessageOutputs } from "./kakao-message-content";
+import { KAKAO_CONSULTATION_TEXT, kakaoConsultationMessage } from "./kakao-consultation-message";
+import type { KakaoMessageContent } from "./kakao-message-content";
 import { KAKAO_PHOTO_TEXT, type KakaoPhotoOutcome } from "./kakao-photo-context";
 import type { ShopRequest } from "./routes";
 
@@ -27,7 +28,7 @@ type Outcome =
   | "review_not_allowed"
   | "review_invalid";
 type TextOutcome = Exclude<Outcome, "callback_pending" | "duplicate">;
-export const KAKAO_HANDOFF_TEXT = "사장님 확인 뒤 답드릴게요.";
+export const KAKAO_HANDOFF_TEXT = KAKAO_CONSULTATION_TEXT.handoff;
 const TEXT: Readonly<Record<TextOutcome, string>> = {
   ...KAKAO_PHOTO_TEXT,
   review_saved: "후기를 남겨 주셔서 고마워요",
@@ -73,20 +74,19 @@ export function kakaoReply(
 ): Response {
   const headers = { "Siljang-Outcome": outcome, "Cache-Control": "no-store" };
   if (outcome === "callback_pending") {
-    return r.json({ version: "2.0", useCallback: true, data: { text: "답을 준비하고 있어요" } }, 200, headers);
+    return r.json(kakaoConsultationMessage({ state: "loading" }), 200, headers);
   }
-  const outputs: KakaoMessageOutput[] = [];
-  if (outcome === "duplicate" && options.repeatReview)
-    outputs.push({ simpleText: { text: options.repeatReviewText ?? TEXT.review_saved } });
+  const contents: KakaoMessageContent[] = [];
+  if (outcome === "duplicate" && options.repeatReview) contents.push(options.repeatReviewText ?? TEXT.review_saved);
   if (outcome !== "duplicate" && !(outcome === "rate_limited" && options.silent)) {
     const previous = options.previous ?? [];
     if (previous.length > 2) throw new RangeError("invalid deferred Kakao replies");
-    outputs.push(...kakaoMessageOutputs(previous));
+    contents.push(...previous);
     const text =
       outcome === "not_accepting" && options.contactPhone !== undefined
         ? `${TEXT.not_accepting}. 가게로 연락해 주세요: ${options.contactPhone}`
         : TEXT[outcome];
-    outputs.push({ simpleText: { text } });
+    contents.push(text);
   }
-  return r.json({ version: "2.0", template: { outputs } }, 200, headers);
+  return r.json(kakaoConsultationMessage({ state: "normal", contents, silent: contents.length === 0 }), 200, headers);
 }
