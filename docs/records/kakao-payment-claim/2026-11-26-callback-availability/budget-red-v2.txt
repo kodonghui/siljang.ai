@@ -1,0 +1,68 @@
+
+ RUN  v5.1.0 /workspace/siljang-task107-callback-availability/app/server
+
+ ❯ test/payment-claim-depositor-input.test.ts (37 tests | 1 failed | 36 skipped) 1286ms
+   ❯ 입금자 전용 블록의 표시와 명령 경계(TASK-107) (37)
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/bounded-unavailable) 632ms
+ ❯ test/kakao-amount-confirmation-merge.test.ts (5 tests | 1 failed | 4 skipped) 44ms
+   × 빈 대기 출력에서 조회 한도에 닿아도 현재 답을 앞세우거나 빈 SDK 응답을 만들지 않는다 43ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-amount-confirmation-merge.test.ts > 빈 대기 출력에서 조회 한도에 닿아도 현재 답을 앞세우거나 빈 SDK 응답을 만들지 않는다
+AssertionError: SkillTemplateResponse: [{"instancePath":"/template/outputs","schemaPath":"#/properties/template/properties/outputs/minItems","keyword":"minItems","params":{"limit":1},"message":"must NOT have fewer than 1 items"}]: expected [ { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/template/outputs",
++     "keyword": "minItems",
++     "message": "must NOT have fewer than 1 items",
++     "params": {
++       "limit": 1,
++     },
++     "schemaPath": "#/properties/template/properties/outputs/minItems",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ test/kakao-amount-confirmation-merge.test.ts:59:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/bounded-unavailable)
+AssertionError: expected [] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "60d87f91-0cfc-4520-bc36-0f10940109ba",
+-   "3b8c9553-973d-4a5d-b393-d8a1fcb82393",
+- ]
++ []
+
+ ❯ test/payment-claim-depositor-input.test.ts:413:49
+    411|         const limited = shopRequestDb(createShopScope(shop.shopId, { k…
+    412|         const batch = await limited.transaction((tx) => deferredKakaoB…
+    413|         expect(batch.messages.map((m) => m.id)).toEqual(normal.slice(0…
+       |                                                 ^
+    414|         expect(batch.currentBlocked).toBe(true);
+    415|         await limited.transaction((tx) => markDeferredKakaoMessages(tx…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 40 skipped (42)
+   Start at  21:59:35
+   Duration  3.85s (import 52%, tests 37%, transform 11%)
