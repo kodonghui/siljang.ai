@@ -185,3 +185,29 @@ it("의미 없어진 안내와 발송 오류는 손님에게 오류 본문을 �
   expect(render({ state: "stale", reason: "meaningless" })).toBeNull();
   expect(render({ state: "error" })).toBeNull();
 });
+
+it("1000자 경계의 결합 이모지는 한 말풍선에 보존한다", () => {
+  const value = `${"가".repeat(998)}👩‍🍳나`,
+    body = kakaoCustomerNoticeMessage({ state: "normal", notice: { kind: "server_text", text: value } });
+  expectSchema("SkillTemplateResponse", body);
+  const fields = body.template.outputs.map((o) => ("simpleText" in o ? o.simpleText.text : ""));
+  expect(fields.join("")).toBe(value);
+  expect(fields.some((v) => v.includes("👩‍🍳"))).toBe(true);
+});
+it.each([39, 167])("긴 확정 캐러셀의 %i 경계도 그래핌과 전체 원문을 보존한다", (prefix) => {
+  const text = `${"가".repeat(prefix)}👩‍🍳${"나".repeat(1750)}`,
+    regulation = ["다".repeat(1000), "라".repeat(1000)];
+  const body = kakaoCustomerNoticeMessage({
+    state: "normal",
+    notice: { kind: "order_confirmed_saved", text, regulation },
+  });
+  expectSchema("SkillTemplateResponse", body);
+  const result = body as unknown as {
+    template: { outputs: { carousel: { items: { title: string; description?: string }[] } }[] };
+  };
+  const fields = result.template.outputs.flatMap((o) =>
+    o.carousel.items.flatMap((i) => [i.title.replace(/^확정 안내 \d+\n/, ""), i.description ?? ""]),
+  );
+  expect(fields.join("")).toBe([text, ...regulation].join("\n"));
+  expect(fields.some((v) => v.includes("👩‍🍳"))).toBe(true);
+});

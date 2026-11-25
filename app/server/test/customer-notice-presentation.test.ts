@@ -1,15 +1,19 @@
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { createOrderConfirmedNotice } from "../src/customer-notice-store";
+import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
-import { newFieldKey } from "./support/field-keys";
+import { newFieldKey, singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
+import { MemoryStore } from "./support/storage";
 
 const NOW = new Date("2026-11-26T00:00:00Z");
 describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
@@ -134,11 +138,7 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
       ).rows,
     ).toEqual([{ n: 0 }]);
   });
-  it.each(
-    (["event", "message"] as const).flatMap((mode) =>
-      ([false, true] as const).map((legacy) => [mode, legacy] as const),
-    ),
-  )("확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(%s/이전 %s)", async (mode, legacy) => {
+  async function prepareLongConfirmedNotice(legacy: boolean) {
     await confirm();
     const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
     const previous = legacy
@@ -184,6 +184,14 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
     if (!saved) throw new Error("missing stored synthetic notice");
     expect([...saved.body].length).toBeLessThanOrEqual(2000);
     if (!legacy) expect(saved.body).not.toContain("라".repeat(500));
+    return created;
+  }
+  it.each(
+    (["event", "message"] as const).flatMap((mode) =>
+      ([false, true] as const).map((legacy) => [mode, legacy] as const),
+    ),
+  )("확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(%s/이전 %s)", async (mode, legacy) => {
+    const created = await prepareLongConfirmedNotice(legacy);
     const response = await call(mode, created.id);
     expect(response.status).toBe(200);
     const result = await response.json();
@@ -216,6 +224,150 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
     clock = new Date(NOW.getTime() + 1000);
     expect(JSON.stringify(await (await call(mode, next)).json())).toContain("합성 긴 확정 뒤 정상 안내");
   });
+  it("확정 당시 버전2와 신원은 뒤 버전3/현재 신원으로 바뀌지 않는다", async () => {
+    await confirm();
+    await isolated.db.query(
+      "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',1,'합성 확정 규정','합성 조건','합성 확정 당시 규정')",
+      [shop.shopId, shop.operatingRulesId],
+    );
+    const version = async (value: number, note: string) =>
+      isolated.db.transaction(async (tx) => {
+        await tx.query(
+          "INSERT INTO order_details SELECT(jsonb_populate_record(NULL::order_details,to_jsonb(d)||$2::jsonb)).* FROM order_details d WHERE d.order_id=$1 AND d.version=1",
+          [
+            shop.orderId,
+            JSON.stringify({
+              id: newUuid(),
+              version: value,
+              source: "owner_amount_change",
+              amount_change_reason: "합성 확정 내용 고침",
+              design_notes: note,
+            }),
+          ],
+        );
+        await tx.query("UPDATE orders SET version=$2 WHERE id=$1", [shop.orderId, value]);
+      });
+    await version(2, "합성 확정 당시 버전 둘");
+    const db = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+    const created = await db.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW));
+    if (!created) throw new Error("missing synthetic versioned notice");
+    expect(
+      (await isolated.db.query("SELECT template_key FROM notifications WHERE id=$1", [created.id])).rows[0]
+        ?.template_key,
+    ).toBe("order_confirmed:v3:2");
+    await version(3, "합성 나중 버전 셋");
+    await isolated.db.query("UPDATE shops SET business_name='합성 나중 상호' WHERE id=$1", [shop.shopId]);
+    const body = await (await call("event", created.id)).json();
+    expectSchema("SkillTemplateResponse", body);
+    expect(JSON.stringify(body)).toContain("합성 확정 당시 버전 둘");
+    expect(JSON.stringify(body)).not.toContain("합성 나중 버전 셋");
+    expect(JSON.stringify(body)).not.toContain("합성 나중 상호");
+  });
+  it.each(["inline", "callback"] as const)(
+    "사진 %s는 세 출력 확정 안내를 먼저 전하고 사진 답을 한 번 대기로 보존한다",
+    async (mode) => {
+      const created = await prepareLongConfirmedNotice(false),
+        storage = new MemoryStore(),
+        { fc } = singleKeyCrypto(),
+        jobs: KakaoCallbackJob[] = [];
+      const photo = "https://t1.daumcdn.net/synthetic/confirmed-photo.png",
+        callback = "https://bot-api.kakao.com/v1/callback/synthetic_confirmed_photo";
+      const image = new Uint8Array(readFileSync(new URL("./fixtures/photos/metadata.png", import.meta.url)));
+      let sent: unknown;
+      const network = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+        if (String(url) === photo) return new Response(image, { headers: { "Content-Type": "image/png" } });
+        if (String(url) === callback) {
+          sent = JSON.parse(String(init?.body));
+          return Response.json({ status: "SUCCESS" });
+        }
+        throw new Error("합성 확정 사진에서 예상 밖 외부 요청");
+      });
+      try {
+        const response = await createApp({
+          connect: () => isolated.connect(),
+          services: {
+            now: () => clock,
+            storage,
+            fieldCrypto: fc,
+            ...(mode === "callback"
+              ? {
+                  kakaoCallbackQueue: {
+                    send: async (job: KakaoCallbackJob) => {
+                      jobs.push(job);
+                    },
+                  },
+                }
+              : {}),
+          },
+          logSink: () => {},
+        }).request(
+          "/api/kakao/skills/message",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+            body: JSON.stringify({
+              bot: { id: shop.botId },
+              userRequest: {
+                utterance: photo,
+                ...(mode === "callback" ? { callbackUrl: callback } : {}),
+                block: { id: "conversation" },
+                user: { id: shop.userKey, type: "botUserKey" },
+              },
+              action: { id: "synthetic-confirmed-photo", params: {} },
+            }),
+          },
+          env,
+        );
+        expect(response.status).toBe(200);
+        if (mode === "callback") {
+          expect(response.headers.get("Siljang-Outcome")).toBe("callback_pending");
+          expect(jobs).toHaveLength(1);
+          const job = jobs[0];
+          if (!job) throw new Error("missing synthetic photo callback");
+          clock = new Date(NOW.getTime() + 1000);
+          expect(
+            await consumeKakaoCallback(job, env, {
+              connect: () => isolated.connect(),
+              now: () => clock,
+              fetch: network,
+              services: { storage, fieldCrypto: fc },
+            }),
+          ).toBe("done");
+        } else sent = await response.json();
+        expectSchema("SkillTemplateResponse", sent);
+        expect(sent).toHaveProperty("template.outputs.length", 3);
+        expect(JSON.stringify(sent)).toContain("합성 보존 규정1");
+        expect(JSON.stringify(sent)).not.toContain("사진");
+        const reply = (
+          await isolated.db.query(
+            "SELECT id,delivery,sent_at FROM messages WHERE shop_id=$1 AND direction='outbound' AND kind='photo'",
+            [shop.shopId],
+          )
+        ).rows[0];
+        expect(reply).toMatchObject({ delivery: "deferred", sent_at: null });
+        expect(
+          (await isolated.db.query("SELECT status FROM notifications WHERE id=$1", [created.id])).rows[0]?.status,
+        ).toBe("delivered_on_reply");
+        expect(network.mock.calls.filter(([url]) => String(url) === photo)).toHaveLength(1);
+        expect(network.mock.calls.filter(([url]) => String(url) === callback)).toHaveLength(
+          mode === "callback" ? 1 : 0,
+        );
+        network.mockRestore();
+        clock = new Date(NOW.getTime() + 2000);
+        const later = await (await call("message", created.id)).json();
+        expectSchema("SkillTemplateResponse", later);
+        expect(JSON.stringify(later)).toContain("사진");
+        expect(
+          (await isolated.db.query("SELECT delivery FROM messages WHERE id=$1", [reply?.id])).rows[0]?.delivery,
+        ).toBe("delivered_later");
+        expect(
+          (await isolated.db.query("SELECT id FROM reference_photos WHERE shop_id=$1", [shop.shopId])).rows,
+        ).toHaveLength(1);
+      } finally {
+        network.mockRestore();
+      }
+    },
+  );
   for (const mode of ["event", "message"] as const) {
     it(`${mode}: 긴 확정 내용과 두 규정이 후속 안내를 막지 않는다`, async () => {
       await confirm();

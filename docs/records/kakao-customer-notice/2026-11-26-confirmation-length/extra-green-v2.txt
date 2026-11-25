@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task109-confirmation-length/app/server
+
+
+ Test Files  4 passed (4)
+      Tests  53 passed (53)
+   Start at  22:22:36
+   Duration  9.38s (tests 56%, import 39%, transform 4%)
