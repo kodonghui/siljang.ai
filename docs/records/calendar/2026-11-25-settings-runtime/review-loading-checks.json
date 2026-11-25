@@ -1,0 +1,56 @@
+{
+  "review": 7149393390,
+  "source": "8114e61e030944b9b29d52e94bd96eb494fb29b5",
+  "red": {
+    "source": "e05aa8e",
+    "failed": 2,
+    "passed": 28,
+    "log": "/tmp/siljang-task057-loading-red-20261125.log"
+  },
+  "afterProductFixSelectorMismatch": {
+    "source": "d18d904",
+    "failed": 2,
+    "passed": 121,
+    "cause": "공통 busy 버튼 이름이 처리하고 있어요로 바뀌는데 시험이 새로 고침을 찾음",
+    "log": "/tmp/siljang-task057-loading-green-20261125.log"
+  },
+  "results": {
+    "related": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task057-loading-fixed-green-20261125.log",
+      "lines": [
+        " Test Files  5 passed (5)",
+        "      Tests  123 passed (123)"
+      ]
+    },
+    "type": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task057-loading-type-20261125.log",
+      "lines": []
+    },
+    "build": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task057-loading-build-20261125.log",
+      "lines": [
+        "✓ built in 623ms",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "main268Merged": "c059712",
+  "newLocalNpmCi": false,
+  "browserRun": false,
+  "outsideServices": 0,
+  "relatedTestFiles": [
+    "app/web/src/CalendarSettingsScreen.interaction.test.tsx",
+    "app/web/src/CalendarSettingsScreen.responses.test.tsx",
+    "app/web/src/calendar-settings-api.test.ts",
+    "app/web/src/calendar-settings-form.test.ts",
+    "app/web/src/calendar-conflicts.test.ts"
+  ],
+  "relatedCommand": "npm run test -w web -- src/CalendarSettingsScreen.interaction.test.tsx src/CalendarSettingsScreen.responses.test.tsx src/calendar-settings-api.test.ts src/calendar-settings-form.test.ts src/calendar-conflicts.test.ts",
+  "relatedWorkingDirectory": "app"
+}
