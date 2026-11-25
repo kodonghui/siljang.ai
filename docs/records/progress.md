@@ -24,7 +24,7 @@ Total Upload: 21.08 KiB / gzip: 6.55 KiB
 
 SPEC066의 다섯 기준은 친구 아닌 손님의 확정 안내 선행/한 번 전달·같은 사건 한 행·합성 Event 접수/확인 중/성공 관측·연결 불가의 외부 호출0/다음 대화·결제 실제 전달 시계/상한으로 대조했습니다. customer-notice-store·customer-notices·customer-notice-payment-delivery/clock 시험과 kakao-http-contract의 API073 응답별/notice_shown·notice_gone, 예약 시간/의미·18종과 최소 권한 시험을 현재 전체에 포함합니다. 실제 카카오 발신 성공을 확인한 것은 아닙니다. 실제 발신/조회는 무료 MVP에서 꺼져 있습니다.
 
-현재는 준비 PR의 CI/코드·보안 검토·병합 직전 요청1회·자기 main/실제 스테이징/원격 SHA 확인이 남았습니다. 그 뒤 TASK104 제공·수용을 최종 판정합니다. 실제 학원컴 Aside/PC 카카오·0041/최소 권한 적용과 감시 메일은 미확인입니다. 끝남36·구현47을 유지합니다. 예상 AI 비용0원·실제 모델/카카오 발신/메일/결제0건입니다.
+준비 PR은 https://github.com/kodonghui/siljang.ai/pull/282 이며 현재 head의 CI/코드·보안 검토·병합 직전 요청1회·자기 main/실제 스테이징/원격 SHA 확인이 남았습니다. 그 뒤 TASK104 제공·수용을 최종 판정합니다. 실제 학원컴 Aside/PC 카카오·0041/최소 권한 적용과 감시 메일은 미확인입니다. 끝남36·구현47을 유지합니다. 예상 AI 비용0원·실제 모델/카카오 발신/메일/결제0건입니다.
 
 ### 2026-11-25 22:42 KST · TASK-104 최신 main과18종 공통 전달
 
