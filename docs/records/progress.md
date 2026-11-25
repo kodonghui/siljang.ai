@@ -6,6 +6,26 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-25 22:52 KST · TASK-104 18종 공통 전달의 현재 전체 검사
+
+고정 원본002a88f251ba8cb11eb4f45494fdf2992939549f와 공개 같은 트리4049d5e13120dfeff95fcbc2143a6089d30d9e1e의 새 빈41개 이행에서 하나의 npm test와 빌드가 종료0입니다. 시험 데이터베이스0개 남음/state completed, Node55개·WBS18개/오류0을 확인했습니다. 이후 제품/시험/API/데이터베이스·권한 변경은 없고 검증 기록만 더합니다. 같은 lock의 설치 재사용이므로 새 로컬 npm ci가 아니며 현재 PR CI에서 새 설치와 단일 전체를 확인합니다.
+
+```text
+Test Files  155 passed (155)
+Tests  3015 passed (3015)
+Duration  288.08s (tests 68%, import 32%, transform 1%)
+Test Files  73 passed (73)
+Tests  1775 passed (1775)
+Duration  45.53s (tests 54%, import 36%, environment 8%, transform 2%)
+✓ built in 1.06s
+Total Upload: 5490.89 KiB / gzip: 1011.79 KiB
+Total Upload: 21.08 KiB / gzip: 6.55 KiB
+```
+
+SPEC066의 다섯 기준은 친구 아닌 손님의 확정 안내 선행/한 번 전달·같은 사건 한 행·합성 Event 접수/확인 중/성공 관측·연결 불가의 외부 호출0/다음 대화·결제 실제 전달 시계/상한으로 대조했습니다. customer-notice-store·customer-notices·customer-notice-payment-delivery/clock 시험과 kakao-http-contract의 API073 응답별/notice_shown·notice_gone, 예약 시간/의미·18종과 최소 권한 시험을 현재 전체에 포함합니다. 실제 카카오 발신 성공을 확인한 것은 아닙니다. 실제 발신/조회는 무료 MVP에서 꺼져 있습니다.
+
+현재는 준비 PR의 CI/코드·보안 검토·병합 직전 요청1회·자기 main/실제 스테이징/원격 SHA 확인이 남았습니다. 그 뒤 TASK104 제공·수용을 최종 판정합니다. 실제 학원컴 Aside/PC 카카오·0041/최소 권한 적용과 감시 메일은 미확인입니다. 끝남36·구현47을 유지합니다. 예상 AI 비용0원·실제 모델/카카오 발신/메일/결제0건입니다.
+
 ### 2026-11-25 22:42 KST · TASK-104 최신 main과18종 공통 전달
 
 PR281을0781a6a6055bbb2c1ad2fc22112e22d66f65c192로 squash한 뒤 자기 main app45624718583/db45624718708·Linux139241751269/Windows139241751669·PG16 139241752976/17 139241753435·배포139244186199 성공을 확인했습니다. 실제 버전c3aa9102-4198-47ad-87e1-d90fb0976b75(2026-11-25T13:37:34.296899Z)의 전체 태그가 원격 SHA와 같고 활성100%·health200입니다. 학원컴 별도 활성 태그·저장소 Worker 태그와0041/최소 권한 실제 적용은 미확인입니다.

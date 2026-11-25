@@ -64,3 +64,23 @@ PR281을0781a6a6055bbb2c1ad2fc22112e22d66f65c192로 squash한 뒤 자기 main ap
 최신 main을6e6d2354로 합쳤고 예약/18종·기존 계좌/콜백·최소 권한 등8파일165개가 통과했습니다. 엄격lint/타입도 종료0입니다. 앞선21실패/8통과에서 고친18종의 공통 전달은 각 업무가 남긴 본문을 자기 손님에게 먼저 한 번 전합니다. 미래·시간 밖의 유효한 예약은 보존하고 무의미한 예약만 닫습니다. 사진/동의·후기 버튼과 변경/환불 등의 업무 내용은 TASK097/103/109/134/135/144 등의 제공·수용을 따릅니다. WBS 조건은 바꾸지 않았습니다.
 
 main340 기반5ecb8c3c의 전체2944/1775·빌드/Node55/WBS18 근거는 base340 이름으로 보존했습니다. 현재 합친 원본의 새 빈 전체/빌드·Node/WBS와 준비 PR의 CI/검토·자기 main/배포를 다시 확인합니다. 끝남36·구현47을 유지하며 TASK104의 완료 판정은 다섯 기준·HTTP 응답/스킬 결과·A12/A20과 자기 main 검증이 끝난 뒤 기록합니다. 예상 AI 비용0원·실제 모델/카카오 발신/메일/결제0건입니다.
+
+## 최신 원본의 전체 검사
+
+고정 원본002a88f251ba8cb11eb4f45494fdf2992939549f와 공개 같은 트리4049d5e13120dfeff95fcbc2143a6089d30d9e1e의 새 빈41개 이행에서 하나의 npm test와 빌드가 종료0입니다. 시험 데이터베이스0개 남음/state completed, Node55개·WBS18개/오류0을 확인했습니다. 이후 제품/시험/API/데이터베이스·권한 변경은 없고 검증 기록만 더합니다. 같은 lock의 설치 재사용이므로 새 로컬 npm ci가 아니며 현재 PR CI에서 새 설치와 단일 전체를 확인합니다.
+
+```text
+Test Files  155 passed (155)
+Tests  3015 passed (3015)
+Duration  288.08s (tests 68%, import 32%, transform 1%)
+Test Files  73 passed (73)
+Tests  1775 passed (1775)
+Duration  45.53s (tests 54%, import 36%, environment 8%, transform 2%)
+✓ built in 1.06s
+Total Upload: 5490.89 KiB / gzip: 1011.79 KiB
+Total Upload: 21.08 KiB / gzip: 6.55 KiB
+```
+
+SPEC066의 다섯 기준은 친구 아닌 손님의 확정 안내 선행/한 번 전달·같은 사건 한 행·합성 Event 접수/확인 중/성공 관측·연결 불가의 외부 호출0/다음 대화·결제 실제 전달 시계/상한으로 대조했습니다. customer-notice-store·customer-notices·customer-notice-payment-delivery/clock 시험과 kakao-http-contract의 API073 응답별/notice_shown·notice_gone, 예약 시간/의미·18종과 최소 권한 시험을 현재 전체에 포함합니다. 실제 카카오 발신 성공을 확인한 것은 아닙니다. 실제 발신/조회는 무료 MVP에서 꺼져 있습니다.
+
+현재는 준비 PR의 CI/코드·보안 검토·병합 직전 요청1회·자기 main/실제 스테이징/원격 SHA 확인이 남았습니다. 그 뒤 TASK104 제공·수용을 최종 판정합니다. 실제 학원컴 Aside/PC 카카오·0041/최소 권한 적용과 감시 메일은 미확인입니다. 끝남36·구현47을 유지합니다. 예상 AI 비용0원·실제 모델/카카오 발신/메일/결제0건입니다.
