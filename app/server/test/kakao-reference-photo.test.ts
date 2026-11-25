@@ -180,7 +180,7 @@ describeDb("참고 사진의 실제 메시지 수신(TASK-065)", () => {
   it("단독 디자인 링크의 글은 보존하고 사진을 내려받지 않는다", async () => {
     const link = "https://example.com/synthetic-design";
     const response = await request(link);
-    expect(response.headers.get("Siljang-Outcome")).toBe("ai_key_missing");
+    expect(response.headers.get("Siljang-Outcome")).toBe("ai_unavailable");
     expect(
       (
         await db.query("SELECT id FROM messages WHERE shop_id=$1 AND direction='inbound' AND body_masked=$2", [
