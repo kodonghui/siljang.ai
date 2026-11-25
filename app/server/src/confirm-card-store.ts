@@ -56,8 +56,12 @@ export interface ConfirmCardAnswer extends ConfirmCardCommandResult {
   readonly kind?: CustomerCommandKind;
   readonly card?: ConfirmCardView;
   readonly firstResult?: ConfirmCardCommandResult;
+  /** 전용 입력 블록에만 돌려주는 재입력 버튼. 이름 원문을 포함하지 않는다. */
+  readonly depositorInput?: Pick<KakaoPaymentClaimCard, "cardKey" | "depositorBlockId">;
 }
 export interface ConfirmCardCommandInput extends Identity {
+  /** 인증된 입금자 전용 블록에서만 검증한 값. payload/메시지에는 저장하지 않는다. */
+  readonly depositorName?: string;
   readonly id: string;
   readonly kind: CustomerCommandKind;
   readonly orderId: string | null;
@@ -295,7 +299,7 @@ function paymentClaimChanged(card: CardRow, source: Source): boolean {
   );
 }
 /** 첫 실제 전달로 시작된 시계만 같은 카드에 반영한다. 사장님의 버전 변경은 계속 새 카드로 판정한다. */
-async function refreshPaymentClaimClock(db: ShopDb, card: CardRow, source: Source) {
+async function refreshPaymentClaimClock(db: ShopDb, card: CardRow, source: Source, persist = true) {
   if (
     card.kind !== "payment_claim" ||
     card.used_at !== null ||
@@ -314,11 +318,13 @@ async function refreshPaymentClaimClock(db: ShopDb, card: CardRow, source: Sourc
     Date.parse(current.dueAt) > Date.parse(previous.dueAt)
   )
     return;
-  const saved = await db.run(
-    "UPDATE confirm_cards SET payload=jsonb_set(payload,'{paymentClaimBinding}',$4::jsonb) WHERE shop_id=$1 AND id=$2 AND customer_id=$3 AND used_at IS NULL",
-    [card.id, card.customer_id, JSON.stringify(current)],
-  );
-  if (saved.rowCount !== 1) throw new Error("card changed after clock lock");
+  if (persist) {
+    const saved = await db.run(
+      "UPDATE confirm_cards SET payload=jsonb_set(payload,'{paymentClaimBinding}',$4::jsonb) WHERE shop_id=$1 AND id=$2 AND customer_id=$3 AND used_at IS NULL",
+      [card.id, card.customer_id, JSON.stringify(current)],
+    );
+    if (saved.rowCount !== 1) throw new Error("card changed after clock lock");
+  }
   card.payload.paymentClaimBinding = current;
 }
 function withPaymentClaim(card: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
@@ -424,6 +430,7 @@ async function processVerifiedCard(
   input: PressConfirmCard,
   execute?: ConfirmCardCommand,
   knownBlockId?: string,
+  depositor?: { readonly value: unknown; readonly blockId: string },
 ): Promise<ConfirmCardAnswer> {
   const initial = (
     await tx.run<CardRow>(
@@ -433,6 +440,16 @@ async function processVerifiedCard(
   ).rows[0];
   if (!initial || initial.created_at > input.now) return NOT_YOURS;
   if (!CUSTOMER_COMMAND_KINDS.includes(initial.kind)) return RETRY_NEEDED;
+  if (depositor !== undefined && initial.kind !== "payment_claim") return NOT_YOURS;
+  const depositorName =
+    depositor !== undefined &&
+    typeof depositor.value === "string" &&
+    depositor.value.trim() &&
+    [...depositor.value].length <= 30 &&
+    !depositor.value.includes("\0")
+      ? depositor.value
+      : undefined;
+  const invalidDepositor = depositor !== undefined && depositorName === undefined;
   if (initial.used_at !== null) return usedAnswer(initial);
   if (input.choice === "decline")
     return initial.kind === "payment_claim" ? { ...DECLINED, kind: initial.kind } : DECLINED;
@@ -449,7 +466,7 @@ async function processVerifiedCard(
   const card = await tx.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
   ]);
-  await refreshPaymentClaimClock(tx, card, source);
+  await refreshPaymentClaimClock(tx, card, source, !invalidDepositor);
   const verdict = judgeCardPress(
     {
       customerId: card.customer_id,
@@ -474,6 +491,13 @@ async function processVerifiedCard(
     return replaceCard(tx, card, target, source, verdict === "expired" ? "expired" : "stale");
   }
 
+  if (invalidDepositor && depositor !== undefined)
+    return {
+      outcome: "input_invalid",
+      text: "입금자 이름은 1~30자로 넣어 주세요",
+      kind: "payment_claim",
+      depositorInput: { cardKey: input.cardKey, depositorBlockId: depositor.blockId },
+    };
   if (execute === undefined) return RETRY_NEEDED;
   const result = await execute(tx, {
     customerId: input.customerId,
@@ -482,6 +506,7 @@ async function processVerifiedCard(
     kind: card.kind,
     orderId: card.order_id,
     draftId: card.draft_id,
+    ...(depositorName === undefined ? {} : { depositorName }),
   });
   if (
     (result.outcome !== SUCCESS_OUTCOMES[card.kind] &&
@@ -580,6 +605,7 @@ export interface KakaoCardIdentityInput extends Pick<PressConfirmCard, "cardKey"
   readonly channelId: string;
   readonly userId: string;
   readonly blockId: string;
+  readonly depositorName?: unknown;
 }
 /** 인증된 채널 사용자와 현재 상담을 같은 트랜잭션에서 한 번만 잠급니다. */
 export async function pressKakaoConfirmCardInTransaction(
@@ -589,13 +615,14 @@ export async function pressKakaoConfirmCardInTransaction(
 ): Promise<ConfirmCardAnswer | null> {
   validatePress(input);
   const channel = (
-    await db.run<{ card_block_id: string }>(
-      "SELECT card_block_id FROM kakao_channels WHERE shop_id=$1 AND id=$2 AND status='linked' FOR SHARE",
+    await db.run<{ card_block_id: string; depositor_block_id: string | null }>(
+      "SELECT card_block_id,depositor_block_id FROM kakao_channels WHERE shop_id=$1 AND id=$2 AND status='linked' FOR SHARE",
       [input.channelId],
     )
   ).rows[0];
   if (channel === undefined) return null;
-  if (channel.card_block_id !== input.blockId) return NOT_YOURS;
+  const isDepositor = channel.card_block_id !== input.blockId && channel.depositor_block_id === input.blockId;
+  if (channel.card_block_id !== input.blockId && !isDepositor) return NOT_YOURS;
   const customer = (
     await db.run<{ id: string }>(
       "SELECT id FROM customers WHERE shop_id=$1 AND kakao_channel_id=$2 AND kakao_user_key=$3 FOR UPDATE",
@@ -621,5 +648,6 @@ export async function pressKakaoConfirmCardInTransaction(
     },
     execute,
     channel.card_block_id,
+    isDepositor ? { value: input.depositorName, blockId: input.blockId } : undefined,
   );
 }
