@@ -1,0 +1,34 @@
+{
+  "source": "77d70bea90b828327df5691b2cabb0f10576605b",
+  "newLocalNpmCi": false,
+  "dependencies": "같은 lock 설치 읽기 전용 재사용",
+  "results": {
+    "related": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task057-current-related-20261125.log",
+      "lines": [
+        " Test Files  5 passed (5)",
+        "      Tests  121 passed (121)"
+      ]
+    },
+    "type": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task057-current-type-20261125.log",
+      "lines": []
+    },
+    "build": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task057-current-build-20261125.log",
+      "lines": [
+        "✓ built in 541ms",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "productCodeChanges": 0,
+  "browserRun": false,
+  "outsideServices": 0
+}
