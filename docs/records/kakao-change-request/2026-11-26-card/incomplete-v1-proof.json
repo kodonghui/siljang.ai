@@ -1,0 +1,14 @@
+{
+  "state": {
+    "database": "siljang_full_03333611cf28464e8c4a541deb27ba9a",
+    "pid": 3098707,
+    "source_commit": "0e11fa29ff42cb0f1362145ab64ba39eefdda9f4",
+    "stage": "tests"
+  },
+  "originalProcessAlive": false,
+  "testExit": "not written",
+  "build": "not run",
+  "result": "incomplete; no pass/fail verdict available",
+  "cause": "미확인",
+  "remainingDatabase": 0
+}

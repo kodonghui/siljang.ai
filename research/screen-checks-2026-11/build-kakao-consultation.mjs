@@ -25,7 +25,7 @@ export function renderConversationFrame(sample, width, tokens, pageTitle = "가�
       const { type, items } = output.carousel;
       if (type === "textCard") {
         if (!Array.isArray(items) || items.length<1 || items.length>10) throw new Error("invalid conversation text carousel");
-        return `<div class="carousel" aria-label="합성 긴 확정 안내">${items.map((item)=>{
+        return `<div class="carousel" aria-label="합성 긴 안내">${items.map((item)=>{
           if(typeof item.title!=="string" || [...item.title].length>50 || (item.description!==undefined && (typeof item.description!=="string" || [...item.description].length>128))) throw new Error("invalid conversation text card");
           return `<section class="photo"><h2>${escape(item.title)}</h2><p>${escape(item.description??"")}</p></section>`;
         }).join("")}</div>`;

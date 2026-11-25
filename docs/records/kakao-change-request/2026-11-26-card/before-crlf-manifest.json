@@ -1,0 +1,192 @@
+{
+  "source": "490210ad296e6d0a3e051ef145c9f354f3e75bad",
+  "screen": "SCR-008",
+  "responseRows": 29,
+  "frames": [
+    {
+      "state": "normal",
+      "width": 360,
+      "file": "normal-360.html"
+    },
+    {
+      "state": "normal",
+      "width": 1280,
+      "file": "normal-1280.html"
+    },
+    {
+      "state": "done",
+      "width": 360,
+      "file": "done-360.html"
+    },
+    {
+      "state": "done",
+      "width": 1280,
+      "file": "done-1280.html"
+    },
+    {
+      "state": "stale",
+      "width": 360,
+      "file": "stale-360.html"
+    },
+    {
+      "state": "stale",
+      "width": 1280,
+      "file": "stale-1280.html"
+    },
+    {
+      "state": "expired",
+      "width": 360,
+      "file": "expired-360.html"
+    },
+    {
+      "state": "expired",
+      "width": 1280,
+      "file": "expired-1280.html"
+    },
+    {
+      "state": "permission",
+      "width": 360,
+      "file": "permission-360.html"
+    },
+    {
+      "state": "permission",
+      "width": 1280,
+      "file": "permission-1280.html"
+    },
+    {
+      "state": "error",
+      "width": 360,
+      "file": "error-360.html"
+    },
+    {
+      "state": "error",
+      "width": 1280,
+      "file": "error-1280.html"
+    }
+  ],
+  "responseFrames": [
+    {
+      "response": "API-071#200:change_requested",
+      "state": "done",
+      "width": 360,
+      "file": "response-0-360.html"
+    },
+    {
+      "response": "API-071#200:change_requested",
+      "state": "done",
+      "width": 1280,
+      "file": "response-0-1280.html"
+    },
+    {
+      "response": "API-071#200:declined",
+      "state": "done",
+      "width": 360,
+      "file": "response-1-360.html"
+    },
+    {
+      "response": "API-071#200:declined",
+      "state": "done",
+      "width": 1280,
+      "file": "response-1-1280.html"
+    },
+    {
+      "response": "API-071#200:card_stale",
+      "state": "stale",
+      "width": 360,
+      "file": "response-2-360.html"
+    },
+    {
+      "response": "API-071#200:card_stale",
+      "state": "stale",
+      "width": 1280,
+      "file": "response-2-1280.html"
+    },
+    {
+      "response": "API-071#200:card_expired",
+      "state": "expired",
+      "width": 360,
+      "file": "response-3-360.html"
+    },
+    {
+      "response": "API-071#200:card_expired",
+      "state": "expired",
+      "width": 1280,
+      "file": "response-3-1280.html"
+    },
+    {
+      "response": "API-071#200:card_not_yours",
+      "state": "permission",
+      "width": 360,
+      "file": "response-4-360.html"
+    },
+    {
+      "response": "API-071#200:card_not_yours",
+      "state": "permission",
+      "width": 1280,
+      "file": "response-4-1280.html"
+    },
+    {
+      "response": "API-071#200:card_used",
+      "state": "done",
+      "width": 360,
+      "file": "response-5-360.html"
+    },
+    {
+      "response": "API-071#200:card_used",
+      "state": "done",
+      "width": 1280,
+      "file": "response-5-1280.html"
+    },
+    {
+      "response": "API-071#200:retry_needed",
+      "state": "error",
+      "width": 360,
+      "file": "response-6-360.html"
+    },
+    {
+      "response": "API-071#200:retry_needed",
+      "state": "error",
+      "width": 1280,
+      "file": "response-6-1280.html"
+    },
+    {
+      "response": "API-071#200:not_allowed_now",
+      "state": "stale",
+      "width": 360,
+      "file": "response-7-360.html"
+    },
+    {
+      "response": "API-071#200:not_allowed_now",
+      "state": "stale",
+      "width": 1280,
+      "file": "response-7-1280.html"
+    },
+    {
+      "response": "API-071#200:not_accepting",
+      "state": "permission",
+      "width": 360,
+      "file": "response-8-360.html"
+    },
+    {
+      "response": "API-071#200:not_accepting",
+      "state": "permission",
+      "width": 1280,
+      "file": "response-8-1280.html"
+    },
+    {
+      "response": "API-071#200:server_error",
+      "state": "error",
+      "width": 360,
+      "file": "response-9-360.html"
+    },
+    {
+      "response": "API-071#200:server_error",
+      "state": "error",
+      "width": 1280,
+      "file": "response-9-1280.html"
+    }
+  ],
+  "realBrowser": false,
+  "realKakao": false,
+  "sdkOnly": true
+}
