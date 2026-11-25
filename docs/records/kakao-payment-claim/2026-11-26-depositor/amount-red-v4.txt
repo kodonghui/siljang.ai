@@ -1,0 +1,48 @@
+
+> test
+> vitest run test/payment-claim-depositor-input.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-depositor-display/app/server
+
+ ❯ test/payment-claim-depositor-input.test.ts (19 tests | 5 failed) 1785ms
+   ❯ 입금자 전용 블록의 표시와 명령 경계(TASK-107) (19)
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(press) 43ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(prepare) 35ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(replay) 32ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(deferred) 32ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(callback) 30ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(press)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(prepare)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(replay)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(deferred)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(callback)
+error: new row for relation "notifications" violates check constraint "notifications_kakao_task_chk"
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ test/payment-claim-depositor-input.test.ts:254:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 14 passed (19)
+   Start at  19:13:09
+   Duration  3.49s (tests 54%, import 38%, transform 9%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task107-depositor-display/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task107-depositor-display/app/server
+npm error command failed
+npm error command sh -c vitest run test/payment-claim-depositor-input.test.ts
