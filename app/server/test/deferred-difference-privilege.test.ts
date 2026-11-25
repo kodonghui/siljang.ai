@@ -1,20 +1,28 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { sealAccountNumber } from "../src/account-number";
+import { createApp } from "../src/app";
 import { createPaymentRequestNotice } from "../src/customer-notice-store";
 import { pgConnector } from "../src/db";
+import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { kakaoConsultationMessage } from "../src/kakao-consultation-message";
 import { deferredKakaoBatch, deferredKakaoTexts, markDeferredKakaoMessages } from "../src/kakao-deferred";
+import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
-import { describeDb, newUuid, TEST_DATABASE_URL, testDb } from "./support/db";
+import { describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
+import { MemoryStore } from "./support/storage";
 
 const NOW = new Date("2026-11-26T03:00:00Z");
 const AT = new Date(NOW.getTime() + 1000);
+const PHOTO = "https://t1.daumcdn.net/synthetic/queue-photo.png";
+const CALLBACK = "https://bot-api.kakao.com/v1/callback/synthetic_queue_photo";
+const IMAGE = new Uint8Array(readFileSync(new URL("./fixtures/photos/metadata.png", import.meta.url)));
 const { fc } = singleKeyCrypto();
 const grants = readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8");
 
@@ -199,11 +207,13 @@ describeDb("권한이 없는 차액 뒤의 다른 주문 안내(TASK-106)", () =
     ]);
     return { noticeId: notice.id, paymentId: id };
   }
-  it.each(
-    ([1, 3] as const).flatMap((blocked) =>
-      (["cancelled", "first", "reissue"] as const).map((normal) => [blocked, normal] as const),
+  it.each([
+    ...([1, 3] as const).flatMap((blocked) =>
+      (["cancelled", "first", "reissue"] as const).map((normal) => ["batch", blocked, normal] as const),
     ),
-  )("권한 부족 %s건을 보존하고 뒤의 %s 세 건과 현재 답의 순서를 지킨다", async (blockedCount, normalKind) => {
+    ["inline", 1, "cancelled"] as const,
+    ["callback", 1, "cancelled"] as const,
+  ])("%s: 권한 부족 %s건 뒤의 %s 세 건과 현재 답의 순서를 지킨다", async (mode, blockedCount, normalKind) => {
     const network = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("합성 대기열 시험에서 실제 발신 금지"));
     const blocked: { noticeId: string; paymentId: string }[] = [],
       normal: { noticeId: string; orderNo: string }[] = [];
@@ -236,6 +246,117 @@ describeDb("권한이 없는 차액 뒤의 다른 주문 안내(TASK-106)", () =
         }
       }
       const scoped = shopRequestDb(scope(), runtime);
+      if (mode !== "batch") {
+        await isolated.db.query(
+          "INSERT INTO business_calendars(shop_id,daily_capacity,order_cutoff_days,order_cutoff_time) VALUES($1,10,2,'18:00') ON CONFLICT(shop_id) DO NOTHING",
+          [shop.shopId],
+        );
+        const jobs: KakaoCallbackJob[] = [];
+        const storage = new MemoryStore();
+        let photoResponse: unknown;
+        network.mockImplementation(async (url, init) => {
+          if (String(url) === PHOTO) return new Response(IMAGE, { headers: { "Content-Type": "image/png" } });
+          if (String(url) === CALLBACK) {
+            photoResponse = JSON.parse(String(init?.body));
+            return Response.json({ status: "SUCCESS" });
+          }
+          throw new Error("합성 사진 시험에서 예상 밖 외부 요청");
+        });
+        const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
+        const env = testEnv();
+        const response = await createApp({
+          connect: () => pgConnector(new Secret(roleUrl)),
+          services: {
+            now: () => AT,
+            storage,
+            fieldCrypto: fc,
+            ...(mode === "callback"
+              ? {
+                  kakaoCallbackQueue: {
+                    send: async (job: KakaoCallbackJob) => {
+                      jobs.push(job);
+                    },
+                  },
+                }
+              : {}),
+          },
+          logSink: () => {},
+        }).request(
+          "/api/kakao/skills/message",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+            body: JSON.stringify({
+              bot: { id: shop.botId },
+              userRequest: {
+                utterance: PHOTO,
+                ...(mode === "callback" ? { callbackUrl: CALLBACK } : {}),
+                block: { id: "conversation" },
+                user: { id: shop.userKey, type: "botUserKey" },
+              },
+              action: { id: "synthetic-photo-queue", params: {} },
+            }),
+          },
+          env,
+        );
+        expect(response.status).toBe(200);
+        if (mode === "callback") {
+          expect(response.headers.get("Siljang-Outcome")).toBe("callback_pending");
+          expect(jobs).toHaveLength(1);
+          const job = jobs[0];
+          if (!job) throw new Error("합성 사진 큐 작업 없음");
+          expect(
+            await consumeKakaoCallback(job, env, {
+              connect: () => pgConnector(new Secret(roleUrl)),
+              now: () => AT,
+              fetch: network,
+              services: { storage, fieldCrypto: fc },
+            }),
+          ).toBe("done");
+        } else {
+          expect(response.headers.get("Siljang-Outcome")).toBe("photo_received");
+          photoResponse = await response.json();
+        }
+        expectSchema("SkillTemplateResponse", photoResponse);
+        expect((photoResponse as { template: { outputs: unknown[] } }).template.outputs).toHaveLength(2);
+        const shown = JSON.stringify(photoResponse);
+        expect(shown).toContain("합성 다른 주문 취소 0");
+        expect(shown).toContain("합성 다른 주문 취소 1");
+        expect(shown).not.toContain("합성 다른 주문 취소 2");
+        expect(shown).not.toContain("사진");
+        const reply = (
+          await isolated.db.query<{ id: string; delivery: string; sent_at: Date | null }>(
+            "SELECT id,delivery,sent_at FROM messages WHERE shop_id=$1 AND direction='outbound' AND kind='photo'",
+            [shop.shopId],
+          )
+        ).rows[0];
+        expect(reply).toMatchObject({ delivery: "deferred", sent_at: null });
+        if (!reply) throw new Error("합성 사진 응답 없음");
+        const later = await scoped.transaction((tx) =>
+          deferredKakaoBatch(tx, shop.customerId, { now: AT, fields: () => fc }),
+        );
+        expect(later.messages.map((m) => m.id)).toEqual([normal[2]?.noticeId, reply.id]);
+        await scoped.transaction((tx) => markDeferredKakaoMessages(tx, shop.customerId, later.messages, AT));
+        expect((await isolated.db.query("SELECT delivery FROM messages WHERE id=$1", [reply.id])).rows).toEqual([
+          { delivery: "delivered_later" },
+        ]);
+        expect(
+          (await isolated.db.query("SELECT id FROM reference_photos WHERE shop_id=$1", [shop.shopId])).rows,
+        ).toHaveLength(1);
+        expect(
+          (
+            await isolated.db.query("SELECT status,sent_at FROM notifications WHERE id=ANY($1::uuid[])", [
+              blocked.map((n) => n.noticeId),
+            ])
+          ).rows,
+        ).toEqual([{ status: "deferred", sent_at: null }]);
+        expect(network.mock.calls.filter(([url]) => String(url) === PHOTO)).toHaveLength(1);
+        expect(network.mock.calls.filter(([url]) => String(url) === CALLBACK)).toHaveLength(
+          mode === "callback" ? 1 : 0,
+        );
+        return;
+      }
+
       const batch = await scoped.transaction((tx) =>
         deferredKakaoBatch(tx, shop.customerId, { now: AT, fields: () => fc }),
       );
