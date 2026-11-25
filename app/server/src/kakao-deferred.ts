@@ -16,7 +16,7 @@ import {
   prependKakaoDisclosure,
 } from "./kakao-ai-disclosure";
 import {
-  expandKakaoMessageContents,
+  createKakaoAmountConfirmationMerger,
   type KakaoMessageContent,
   kakaoMessageTemplate,
   mergeKakaoAmountConfirmations,
@@ -25,6 +25,8 @@ import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
 /** 새 답 하나의 자리를 남기고 카카오 outputs 세 개 한도 안에서 이전 답을 먼저 전한다. */
 export const DEFERRED_REPLY_BATCH = 2;
+/** 손님 잠금을 가진 한 응답에서 읽는 메시지 수. 나머지는 전달 표시하지 않는다. */
+const MAX_DEFERRED_MESSAGES_SCANNED = 24;
 
 export interface DeferredKakaoMessage {
   readonly id: string;
@@ -36,15 +38,13 @@ export interface DeferredKakaoMessage {
 
 /** 안내 하나는 모두 보낸 뒤에만 전함으로 표시한다. Unicode 글자를 중간에서 자르지 않는다. */
 export function deferredKakaoTexts(previous: readonly DeferredKakaoMessage[]): KakaoMessageContent[] {
-  return mergeKakaoAmountConfirmations(
-    [],
-    previous.flatMap<KakaoMessageContent>(({ text, card, contents }) => {
-      if (contents !== undefined) return expandKakaoMessageContents(contents);
-      if (card !== undefined) return expandKakaoMessageContents([card]);
-      const chars = [...text];
-      return chars.length <= 1000 ? [text] : [chars.slice(0, 1000).join(""), chars.slice(1000).join("")];
-    }),
-  );
+  return mergeKakaoAmountConfirmations([], previous.flatMap(deferredContents));
+}
+function deferredContents({ text, card, contents }: DeferredKakaoMessage): readonly KakaoMessageContent[] {
+  if (contents !== undefined) return contents;
+  if (card !== undefined) return [card];
+  const chars = [...text];
+  return chars.length <= 1000 ? [text] : [chars.slice(0, 1000).join(""), chars.slice(1000).join("")];
 }
 
 /** 손님 행 잠금 또는 그 손님의 콜백 선점을 가진 호출자만 사용한다. */
@@ -80,8 +80,16 @@ export async function deferredKakaoBatch(
   const messages: (DeferredKakaoMessage & { readonly at: bigint; readonly blocked: boolean })[] = [];
   let cursor: { createdAt: string; id: string } | undefined;
   let disclosureBlocked = false;
+  let scanned = 0,
+    scanLimited = false;
+  const merger = createKakaoAmountConfirmationMerger();
   // 권한 부족인 참조만 남기고, 출력 예산 뒤의 셋째 정상 메시지까지 읽는다.
-  while (!disclosureBlocked && deferredKakaoTexts(messages).length < DEFERRED_REPLY_BATCH + 1) {
+  while (
+    !disclosureBlocked &&
+    merger.contents.length < DEFERRED_REPLY_BATCH + 1 &&
+    scanned < MAX_DEFERRED_MESSAGES_SCANNED
+  ) {
+    const limit = Math.min(DEFERRED_REPLY_BATCH + 1, MAX_DEFERRED_MESSAGES_SCANNED - scanned);
     const result = await db.run<MessageRow>(
       `SELECT m.id, m.body_masked, m.kind, m.trace_id, m.consultation_id, m.created_at::text AS cursor_created_at,
         (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order,
@@ -96,7 +104,7 @@ export async function deferredKakaoBatch(
         ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
       [
         customerId,
-        DEFERRED_REPLY_BATCH + 1,
+        limit,
         options.disclosureConsultationId ?? null,
         options.excludeMessageId ?? null,
         cursor?.createdAt ?? null,
@@ -107,6 +115,7 @@ export async function deferredKakaoBatch(
     if (last === undefined) break;
     cursor = { createdAt: last.cursor_created_at, id: last.id };
     for (const row of result.rows) {
+      scanned++;
       let content: Awaited<ReturnType<typeof readConfirmCardDelivery>> | undefined;
       try {
         content =
@@ -136,9 +145,12 @@ export async function deferredKakaoBatch(
         disclosureBlocked = true;
         break;
       }
-      if (deferredKakaoTexts(messages).length >= DEFERRED_REPLY_BATCH + 1) break;
+      const message = messages.at(-1);
+      if (message !== undefined) merger.append(deferredContents(message));
+      if (merger.contents.length >= DEFERRED_REPLY_BATCH + 1) break;
     }
-    if (result.rows.length < DEFERRED_REPLY_BATCH + 1) break;
+    scanLimited = scanned >= MAX_DEFERRED_MESSAGES_SCANNED && result.rows.length === limit;
+    if (result.rows.length < limit) break;
   }
   // 결제 안내는 표시 자료를 늦게 만들고 실제 전달 표시와 같은 트랜잭션에서 시계를 시작한다.
   await db.run(
@@ -217,10 +229,12 @@ export async function deferredKakaoBatch(
     (a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0) || a.id.localeCompare(b.id) || a.source.localeCompare(b.source),
   );
   const selected: DeferredKakaoMessage[] = [];
+  merger.reset();
   let remaining = DEFERRED_REPLY_BATCH;
   for (const row of candidates) {
     if (row.blocked) break;
-    const slots = deferredKakaoTexts([...selected, row]).length - deferredKakaoTexts(selected).length;
+    const before = merger.contents.length;
+    const slots = merger.append(deferredContents(row)) - before;
     if (slots === 3 && selected.length === 0 && options.allowFullOrderCard && !options.disclosureConsultationId)
       remaining = 3;
     if (slots > remaining) break;
@@ -235,7 +249,7 @@ export async function deferredKakaoBatch(
   }
   // 출력 영역을 모두 쓴 뒤에도 앞선 안내가 남았는지 확인해 새 답의 순서 역전을 막는다.
   const next = candidates[selected.length];
-  return { messages: selected, currentBlocked: next !== undefined && !next.blocked };
+  return { messages: selected, currentBlocked: scanLimited || (next !== undefined && !next.blocked) };
 }
 
 /** 기존 조회 호출자는 선택한 메시지 배열만 받는다. 발신 호출자는 batch의 대기 표시도 사용한다. */
