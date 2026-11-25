@@ -69,16 +69,36 @@ function simple(value: string): Output {
 }
 /** 긴 변경 내용도 자르지 않고 행동 카드용 출력 하나를 남긴다. */
 function details(value: string): readonly Output[] {
-  const chars = [...text(value, 3360)];
-  if (chars.length <= 2000) {
-    const outputs: Output[] = [];
-    for (let at = 0; at < chars.length; at += 1000) outputs.push(simple(chars.slice(at, at + 1000).join("")));
-    return outputs;
+  const segments = [...new Intl.Segmenter("ko", { granularity: "grapheme" }).segment(text(value, 3360))].map(
+    ({ segment }) => ({ text: segment, length: [...segment].length }),
+  );
+  let index = 0;
+  const take = (maximum: number) => {
+    let result = "",
+      length = 0;
+    while (index < segments.length) {
+      const segment = segments[index];
+      if (segment === undefined || length + segment.length > maximum) break;
+      result += segment.text;
+      length += segment.length;
+      index++;
+    }
+    return result;
+  };
+  const parts: string[] = [];
+  while (index < segments.length) {
+    const part = take(1000);
+    if (!part) throw new RangeError("change grapheme exceeds text limit");
+    parts.push(part);
   }
+  if (parts.length <= 2) return parts.map(simple);
+  index = 0;
   const items: { title: string; description?: string }[] = [];
-  for (let at = 0; at < chars.length; at += 168) {
-    const title = `변경 내용 ${items.length + 1}\n${chars.slice(at, at + 40).join("")}`;
-    const description = chars.slice(at + 40, at + 168).join("");
+  while (index < segments.length) {
+    const start = index,
+      title = `변경 내용 ${items.length + 1}\n${take(40)}`,
+      description = take(128);
+    if (index === start || items.length >= 20) throw new RangeError("change graphemes exceed carousel limit");
     items.push({ title, ...(description.length ? { description } : {}) });
   }
   const outputs: Output[] = [];
