@@ -2,6 +2,8 @@
 import { isAccountNumber } from "./account-number";
 import { ApiError, type FieldError, fieldError } from "./problem";
 
+export const CARD_PAYMENT_URL_MAX_LENGTH = 2048;
+
 export interface PaymentDestinationInput {
   readonly baseRevision: string | null;
   readonly bankName: string;
@@ -41,13 +43,14 @@ export function parsePaymentDestination(raw: unknown): PaymentDestinationInput {
     let valid =
       typeof url === "string" &&
       [...url].length >= 9 &&
-      [...url].length <= 2048 &&
+      [...url].length <= CARD_PAYMENT_URL_MAX_LENGTH &&
       /^https:\/\//.test(url) &&
       !/\s/.test(url) &&
       [...url].every((char) => char.charCodeAt(0) > 31 && char.charCodeAt(0) !== 127);
     if (valid) {
       try {
-        valid = new URL(url as string).protocol === "https:";
+        const normalized = new URL(url as string);
+        valid = normalized.protocol === "https:" && normalized.href.length <= CARD_PAYMENT_URL_MAX_LENGTH;
       } catch {
         valid = false;
       }

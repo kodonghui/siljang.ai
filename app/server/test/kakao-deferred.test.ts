@@ -322,6 +322,19 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
     ]);
   });
 
+  it("예약 안내는 다음 대화에서도 예약 시각 전에는 꺼내지 않는다", async () => {
+    const h = await setup(),
+      body = "합성 예약 안내",
+      id = await notice(h.shop, body);
+    const due = new Date(NOW.getTime() + 3600000);
+    await db.query("UPDATE notifications SET scheduled_for=$2 WHERE id=$1", [id, due]);
+    expect(JSON.stringify(await template(await h.call("예약 전 합성 질문")))).not.toContain(body);
+    expect(await noticeState(id)).toEqual({ status: "deferred", sent_at: null });
+    h.clock.now = due;
+    expect(JSON.stringify(await template(await h.call("예약 뒤 합성 질문")))).toContain(body);
+    expect(await noticeState(id)).toEqual({ status: "delivered_on_reply", sent_at: due });
+  });
+
   it("서로 다른 기록의 같은 밀리초 안 생성 순서도 PostgreSQL 정밀도로 지킴", async () => {
     const h = await setup();
     const message = await defer(h.shop, "합성 이전 콜백 답");

@@ -1,0 +1,46 @@
+
+> test
+> vitest run test/customer-notices.test.ts -t 현재 주문의 의미
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+ ❯ test/customer-notices.test.ts (23 tests | 3 failed | 19 skipped) 1081ms
+   ❯ 손님 안내 일 실행기(TASK-104) (23)
+     × 예약 안내는 현재 주문의 의미(day_changed)를 다시 확인한다 112ms
+     × 예약 안내는 현재 주문의 의미(closed_issue)를 다시 확인한다 41ms
+     × 예약 안내는 현재 주문의 의미(remake)를 다시 확인한다 33ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notices.test.ts > 손님 안내 일 실행기(TASK-104) > 예약 안내는 현재 주문의 의미(day_changed)를 다시 확인한다
+ FAIL  test/customer-notices.test.ts > 손님 안내 일 실행기(TASK-104) > 예약 안내는 현재 주문의 의미(closed_issue)를 다시 확인한다
+ FAIL  test/customer-notices.test.ts > 손님 안내 일 실행기(TASK-104) > 예약 안내는 현재 주문의 의미(remake)를 다시 확인한다
+AssertionError: expected 'confirming' to be 'dropped' // Object.is equality
+
+Expected: "dropped"
+Received: "confirming"
+
+ ❯ test/customer-notices.test.ts:320:37
+    318|     }
+    319|     await run(()=>events,true);
+    320|     expect((await state())?.status).toBe(kind==='review_ok'?'confirmin…
+       |                                     ^
+    321|     expect(events.requestNotice).toHaveBeenCalledTimes(kind==='review_…
+    322|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 1 passed | 19 skipped (23)
+   Start at  11:28:41
+   Duration  2.25s (tests 51%, import 35%, transform 14%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task104-customer-notices/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task104-customer-notices/app/server
+npm error command failed
+npm error command sh -c vitest run test/customer-notices.test.ts -t '현재 주문의 의미'

@@ -133,7 +133,11 @@ export async function consumeKakaoCallback(
       const previous = !usable
         ? []
         : await db.transaction((tx) =>
-            deferredKakaoMessages(tx, claim.customer_id, { now: now(), excludeMessageId: photo.reply.id }),
+            deferredKakaoMessages(tx, claim.customer_id, {
+              now: now(),
+              excludeMessageId: photo.reply.id,
+              fields: () => services.fieldCrypto(),
+            }),
           );
       const sentAt =
         usable &&
@@ -227,6 +231,7 @@ export async function consumeKakaoCallback(
               excludeMessageId: preparedReply?.id,
               now: now(),
               allowFullOrderCard: true,
+              fields: () => services.fieldCrypto(),
             }),
           );
     const prefix = disclosure === null || disclosure === undefined ? [] : [disclosure.text];

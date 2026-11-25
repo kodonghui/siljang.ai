@@ -1,0 +1,20 @@
+{
+  "localSource": "d01ade783a7f3b758b0e51ee919b9fd7f293011d",
+  "publicSource": "2e19ba3720f8ec51015cbca5595b890d87c4291f",
+  "tree": "877d265027852de3f7fa5294bedfd9cf1bf0fb87",
+  "firstFullServer": {
+    "passed": 2907,
+    "failed": 4,
+    "files": 150
+  },
+  "firstFullWeb": "not started",
+  "firstFullBuild": "not started",
+  "firstStageFailures": [
+    "ERD D2 column comment missing from migration41",
+    "generated WBS trace differs"
+  ],
+  "browserExecuted": false,
+  "liveProviderCalls": 0,
+  "liveKakaoSends": 0,
+  "payment": 0
+}
