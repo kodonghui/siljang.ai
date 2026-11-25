@@ -6,6 +6,26 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-25 21:24 KST · TASK104 리뷰 고침의 최종 전체 검사
+
+실장님 P2 두 건과 전날 안내 날짜 경계까지 고친 최종 고정1fcbe6381638861329eabfb0ddaf688e9858dca8의 새 빈41개 이행에서 하나의 npm test와 별도 빌드가 모두 종료0입니다. 시험DB 정리와 state completed도 확인했습니다. 실제 결과 줄은 다음과 같습니다.
+
+```text
+Test Files  150 passed (150)
+Tests  2928 passed (2928)
+Duration  267.00s (tests 70%, import 30%, transform 1%)
+Test Files  73 passed (73)
+Tests  1775 passed (1775)
+Duration  41.39s (tests 55%, import 36%, environment 7%, transform 2%)
+✓ built in 715ms
+Total Upload: 5477.81 KiB / gzip: 1009.22 KiB
+Total Upload: 21.08 KiB / gzip: 6.55 KiB
+```
+
+같은 원본의 Node55개/실패0과 설계 단계prd/flows/spec·ERD15·API17·사이트맵17·화면15·WBS18이 오류0입니다. mockup의 --no-browser 미확인1을 유지하며 실제 브라우저 검사로 세지 않습니다. 이 뒤 제품/시험·API/DB/권한 SQL 차이0이며 최종 기록의 엄격lint/타입/키/용어를 확인합니다. 같은 lock의 설치 재사용으로 새 로컬 npm ci는 아니며 현재 PR CI에서 실제 새 설치를 확인합니다.
+
+이전d01 전체 서버2907/4실패와039의 서버2911통과·첫 웹1774/1실패·단독25/웹 전체 재실행1775·별도 빌드를 보존합니다. 사진 재조회 실패의 원인은 확정하지 않았고 이번 성공으로 옛 실패를 덮지 않습니다. 039 자료는full-proof-039.json, 고침 전4f 자료는full-proof-4f.json, 현재1fc 자료는full-proof.json입니다. 실장님7161986707의 두 P2를10실패/4통과로 재현해 고쳤고 처리7162248578에 새 원본/관련89개·최소 권한을 기록했습니다. 수동 커넥터 요청은 아직 하지 않았으며 현재 CI 뒤 한 번만 합니다. 전달 기반은 부분 구현이며 종류별 표시/업무 연결과 실환경 확인이 남아36/47을 유지합니다. 다음은 준비 PR의 현재 CI·코드/보안 검토·수동 요청1회/처리와 squash 뒤 자기main/배포/원격SHA입니다.
+
 ### 2026-11-25 21:16 KST · TASK104 리뷰 P2 두 건 고침
 
 PR280의 [실장님 코드/보안 검토7161986707](https://github.com/kodonghui/siljang.ai/pull/280#issuecomment-7161986707)가 현재f5e85df1b47c64cdcbdd9d4cd0d4ed139d99afde에서 P2 두 건을 찾았습니다. 별도 보안 결함은 확인되지 않았고 관리형 스캔의 HEAD 인식 실패 뒤 고정 커밋을 직접 정적으로 검토했습니다. 첫 자동 실행은 확인했으며 수동 요청은 아직 하지 않았습니다.
