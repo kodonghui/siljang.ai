@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task107-callback-availability/app/server
+
+
+ Test Files  4 passed (4)
+      Tests  94 passed (94)
+   Start at  21:46:46
+   Duration  20.18s (tests 77%, import 20%, transform 4%)

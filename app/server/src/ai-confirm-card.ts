@@ -54,6 +54,10 @@ export async function prepareAiConfirmCard(
   return orders.rows.length === 1 &&
     order !== undefined &&
     (card.order_no === undefined || card.order_no === order.order_no)
-    ? prepareConfirmCardInTransaction(db, { ...input, kind, orderId: order.id })
+    ? prepareConfirmCardInTransaction(
+        db,
+        { ...input, kind, orderId: order.id },
+        { deferUnreadablePaymentClaim: kind === "payment_claim" },
+      )
     : null;
 }

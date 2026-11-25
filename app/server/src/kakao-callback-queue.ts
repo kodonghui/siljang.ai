@@ -1,4 +1,5 @@
 import type { Bindings } from "./app";
+import { CustomerNoticeTemporarilyUnavailable } from "./customer-notice-content";
 import { type DbConnector, pgConnector, type RequestDb } from "./db";
 import { errorFields } from "./error-name";
 import { FieldCryptoError } from "./field-crypto";
@@ -247,14 +248,23 @@ export async function consumeKakaoCallback(
     const alreadyIncluded =
       preparedReply?.card?.amountConfirmation !== undefined &&
       mergeKakaoAmountConfirmations(previousTexts, [preparedReply.card]).length === previousTexts.length;
-    let replyIncluded = alreadyIncluded || (!previousBatch.currentBlocked && prefix.length + previousTexts.length < 3);
+    let replyIncluded =
+      preparedReply?.deferredCard !== true &&
+      (alreadyIncluded || (!previousBatch.currentBlocked && prefix.length + previousTexts.length < 3));
     if (callback !== null && replyIncluded && preparedReply?.card !== undefined) {
-      const fresh = await readClaimedKakaoCard(db, job.messageId, claim, now);
+      let fresh: Awaited<ReturnType<typeof readClaimedKakaoCard>> | undefined;
+      try {
+        fresh = await readClaimedKakaoCard(db, job.messageId, claim, now);
+      } catch (error) {
+        if (!(error instanceof CustomerNoticeTemporarilyUnavailable)) throw error;
+        replyIncluded = false;
+        fresh = undefined;
+      }
       if (fresh === null) {
         await releaseKakaoCallback(db, job.messageId, claim);
         return "done";
       }
-      preparedReply = { id: preparedReply.id, delivered: preparedReply.delivered, ...fresh };
+      if (fresh !== undefined) preparedReply = { id: preparedReply.id, delivered: preparedReply.delivered, ...fresh };
     }
     const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
     let transmittedContents = previousTexts;
@@ -269,6 +279,7 @@ export async function consumeKakaoCallback(
     }
     const deliveredAt =
       callback !== null &&
+      prefix.length + transmittedContents.length > 0 &&
       (await deliverKakaoCallback(
         { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
         [...prefix, ...transmittedContents],
