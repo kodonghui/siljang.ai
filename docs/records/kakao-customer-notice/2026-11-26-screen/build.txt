@@ -1,4 +1,4 @@
-✓ built in 671ms
+✓ built in 627ms
 check-dist: 통과(파일 735개, 견본 없음, 첫 CSS 44KB에 토큰·공통 부품, 글꼴 CSS 301KB는 따로)
-Total Upload: 5529.52 KiB / gzip: 1019.43 KiB
+Total Upload: 5530.25 KiB / gzip: 1019.60 KiB
 Total Upload: 21.08 KiB / gzip: 6.55 KiB
