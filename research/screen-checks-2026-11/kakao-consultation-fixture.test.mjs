@@ -1,10 +1,29 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 import { assertConversationSource, buildKakaoConversation, renderConversationFrame } from "./build-kakao-consultation.mjs";
+
+test("같은 DOM 창 폭에서도 두 프레임에 서로 다른 실제 CSS 폭을 적용한다", async () => {
+  const require = createRequire(new URL("../../app/package.json", import.meta.url));
+  const { Window } = await import(pathToFileURL(require.resolve("happy-dom")).href);
+  const sample = { state: "normal", body: { version: "2.0", template: { outputs: [{ simpleText: { text: "합성 대화" } }] } } };
+  const windowWidths = [];
+  for (const width of [360, 1280]) {
+    const window = new Window({ settings: { disableJavaScriptEvaluation: true, disableJavaScriptFileLoading: true, disableCSSFileLoading: true, disableIframePageLoading: true } });
+    try {
+      windowWidths.push(window.innerWidth);
+      window.document.write(renderConversationFrame(sample, width, ""));
+      assert.equal(window.getComputedStyle(window.document.body).width, `${width}px`);
+      assert.equal(window.getComputedStyle(window.document.querySelector(".window")).maxWidth, "480px");
+    } finally { window.close(); }
+  }
+  assert.equal(windowWidths[0], windowWidths[1]);
+});
 
 test("대화 자료는 서버 글을 HTML로 실행하지 않고 09 토큰과 두 폭을 보존한다", () => {
   const sample = { state: "normal", body: { version: "2.0", template: { outputs: [{ simpleText: { text: '<img src=x onerror="fetch(1)">' } }] } } };

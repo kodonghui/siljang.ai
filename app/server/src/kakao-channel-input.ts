@@ -18,6 +18,14 @@ function unknownKeys(input: Record<string, unknown>, keys: readonly string[], pr
     if (!keys.includes(key))
       errors.push({ field: /^[A-Za-z0-9_]{1,100}$/.test(key) ? `${prefix}/${key}` : "/", code: "unknown_field" });
 }
+/** 설정과 시험 응답이 같은 코드 포인트/공백/널 문자 규칙을 쓴다. */
+export function kakaoChannelIdentifierError(value: unknown, max: number): FieldError["code"] | null {
+  if (value === undefined) return "required";
+  if (typeof value !== "string" || value.includes("\0") || /\s/.test(value)) return "bad_format";
+  if (value.length === 0) return "too_short";
+  return [...value].length > max ? "too_long" : null;
+}
+
 function text(
   input: Record<string, unknown>,
   key: string,
@@ -29,12 +37,9 @@ function text(
   const value = input[key],
     field = `${prefix}/${key}`;
   if (nullable && value === null) return null;
-  if (value === undefined) errors.push({ field, code: "required" });
-  else if (typeof value !== "string" || value.includes("\0") || /\s/.test(value))
-    errors.push({ field, code: "bad_format" });
-  else if (value.length === 0) errors.push({ field, code: "too_short" });
-  else if ([...value].length > max) errors.push({ field, code: "too_long" });
-  else return value;
+  const code = kakaoChannelIdentifierError(value, max);
+  if (code !== null) errors.push({ field, code });
+  else if (typeof value === "string") return value;
   return null;
 }
 function revision(input: Record<string, unknown>, nullable: boolean, errors: FieldError[]): string | null {

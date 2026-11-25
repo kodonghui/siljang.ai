@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseChannelInput } from "../src/kakao-channel-input";
 import { kakaoConsultationMessage, kakaoQuoteMessage } from "../src/kakao-consultation-message";
 import { expectSchema } from "./support/contract";
 
@@ -14,6 +15,34 @@ function texts(body: unknown): string {
 }
 
 describe("SCR-003 상담의 카카오 응답(TASK-085)", () => {
+  it.each([51, 100])("설정이 받은 보조 평면 문자 %s자의 블록 ID를 그대로 전한다", (length) => {
+    const id = "🧁".repeat(length);
+    const input = {
+      baseRevision: null,
+      botId: "a".repeat(24),
+      channelPublicId: null,
+      blockIds: { card: id, ordererInfo: null, allergyAnswer: null, depositorName: null, review: null },
+    };
+    expect(parseChannelInput(input).blockIds.card).toBe(id);
+    const body = kakaoConsultationMessage({ state: "link-test", mode: "initial", next: "card", blockId: id });
+    expect(body).toMatchObject({ template: { outputs: [{ textCard: { buttons: [{ blockId: id }] } }] } });
+    expectSchema("SkillTemplateResponse", body);
+  });
+  it.each(["🧁".repeat(101), "", "has space", "has\nnewline", "has\0null"])(
+    "설정과 응답이 잘못된 블록 ID를 함께 거절한다 %s",
+    (id) => {
+      const input = {
+        baseRevision: null,
+        botId: "a".repeat(24),
+        channelPublicId: null,
+        blockIds: { card: id, ordererInfo: null, allergyAnswer: null, depositorName: null, review: null },
+      };
+      expect(() => parseChannelInput(input)).toThrow();
+      expect(() =>
+        kakaoConsultationMessage({ state: "link-test", mode: "initial", next: "card", blockId: id }),
+      ).toThrow();
+    },
+  );
   it.each([
     [{ state: "normal", contents: ["가게 규칙으로 확인한 답"] }, "가게 규칙으로 확인한 답"],
     [{ state: "loading" }, "답을 준비하고 있어요"],

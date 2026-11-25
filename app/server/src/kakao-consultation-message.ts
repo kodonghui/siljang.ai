@@ -1,4 +1,6 @@
 /** SCR003의 응답 표시. 업무 상태·견적·가까운 날은 서버가 확인한 값을 받으며 이 모듈은 DB/AI/HTTP를 호출하지 않는다. */
+
+import { kakaoChannelIdentifierError } from "./kakao-channel-input";
 import { type KakaoMessageContent, kakaoMessageOutputs } from "./kakao-message-content";
 import type { customerQuote } from "./quotes";
 import { toShopLocal } from "./time";
@@ -125,12 +127,7 @@ export function kakaoConsultationMessage(view: KakaoConsultationView) {
         return template(["시험 버튼 다섯이 모두 닿아 연결됐어요. 손님 안내는 다음 대화 때 전해요."]);
       if (view.mode !== "initial" && view.mode !== "verified") throw new RangeError("invalid trial mode");
       const label = Object.hasOwn(KAKAO_TRIAL_LABELS, view.next) ? KAKAO_TRIAL_LABELS[view.next] : undefined;
-      if (
-        label === undefined ||
-        view.blockId.length < 1 ||
-        view.blockId.length > 100 ||
-        [...view.blockId].some((c) => c.charCodeAt(0) < 32)
-      )
+      if (label === undefined || kakaoChannelIdentifierError(view.blockId, 100) !== null)
         throw new RangeError("invalid trial block");
       const completed =
         view.completed !== undefined && Object.hasOwn(KAKAO_TRIAL_LABELS, view.completed)

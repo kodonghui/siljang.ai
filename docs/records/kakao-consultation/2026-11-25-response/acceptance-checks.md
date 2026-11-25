@@ -66,3 +66,27 @@ Total Upload: 21.08 KiB / gzip: 6.55 KiB
 ```
 
 CLI: `node research/screen-checks-2026-11/build-kakao-consultation.mjs . <저장소 밖 폴더>`. 실행/입력 폴더가 같고 관련 입력이 커밋되어 있어야 합니다. 합성 자료만 만들며 브라우저를 열거나 실제 카카오/업무 서버를 호출하지 않습니다.
+
+## 리뷰 뒤 최종 재검사
+
+실장님 코드/보안 리뷰7154479870의 두 낮음 발견을 고쳤습니다. 고침 전86d09a10bbba97f62efa07818c180d2b22af186c에서 블록 ID3실패21통과와 폭1실패3통과를 재현했습니다. 입력 파서와 표시가 같은 코드 포인트/공백/널 검사를 사용하게 하고, 합성 프레임 body에360px·1280px를 실제 CSS 폭으로 적용했습니다. 같은 창 크기의 Happy DOM 계산 스타일에서 두 폭과 최대480px 대화 폭을 확인했습니다. 이는 Node DOM 단위 시험이며 실제 브라우저/카카오 확인이 아닙니다.
+
+이전V1/V3 원본 자료와 공개221dbbea8e9c4bce6dd16502024ca2ae863de2db의 CLI/단계 근거는 보존합니다. V3는 data-width만 달랐으므로 두 폭의 배치/줄바꿈 확인 근거에서 제외합니다. 새V4는 ab78ab00523b692ed1cc22f427a1a2cb1ad25f4a의 실제 Linux CLI 종료0,62프레임/파일65개이며 새 manifest를 따로 보존했습니다. 합성 자료 Node49개/실패0과 관련6파일152개/타입·엄격lint0을 확인했습니다.
+
+같은 최종 코드ab78ab00523b692ed1cc22f427a1a2cb1ad25f4a의 두 번째 새 빈40개 이행에서 서버142파일2814개·웹71파일1727개·Vite696ms와 두 Worker가 모두 종료0이며 시험DB 정리도 마쳤습니다. 같은 lock 설치를 재사용했고 새 로컬 npm ci로 세지 않습니다. 수동 요청7154455703은 한 번 사용했고 코드7154486783·보안7154512401은 이 PR의 추가 발견 없음입니다. 이후 변경은 위 리뷰 처리와 기록뿐이며 새 수동 요청을 달지 않습니다. 다음은 최종 공개 SHA의 단계/CLI·현재 두 OS/app·db CI·발견 처리 댓글과 squash 뒤 자기 main CI/실제 배포·전체태그/활성100%/health200·원격SHA입니다. 실제 학원컴 Aside/PC 카카오·두 폭과 현재 가게 왕복은 미확인이고 finished를 늘리지 않습니다. TASK065의 미해결 보안4690767876/제품 결정 대기도 그대로입니다.
+
+```text
+마이그레이션 40개를 차례로 적용함
+ Test Files  142 passed (142)
+      Tests  2814 passed (2814)
+ Test Files  71 passed (71)
+      Tests  1727 passed (1727)
+✓ built in 696ms
+Total Upload: 5433.71 KiB / gzip: 998.18 KiB
+--dry-run: exiting now.
+Total Upload: 21.08 KiB / gzip: 6.55 KiB
+--dry-run: exiting now.
+# tests 49
+# pass 49
+# fail 0
+```
