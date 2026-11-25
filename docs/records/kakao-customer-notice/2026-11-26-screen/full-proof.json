@@ -1,16 +1,42 @@
 {
-  "sourceCommit": "044982eb4ce123cf310602e5444f608acaa4aecf",
-  "publicEquivalentHead": "8bc7297a663136fece31f9e1a90b174968fabd3a",
-  "combinedNpmTestExit": 1,
+  "sourceCommit": "f48032df9b10f184b68bcf2a23a33ef2725c494f",
+  "publicEquivalentHead": "80331c90a306cd540b777d8894d61f3c9bd19e53",
+  "sourceTree": "f8ff7d0acff8f961f742d4f69f53c0e92f1b1086",
+  "baseMain": "a56b7cc1bc9580195bd35c4d0f40a9c639b7e821",
+  "scopeGitObjects": {
+    "app/server": "6f4a125247b13fc5e37df246b9f4ec7db75cfbd8",
+    "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "597089438985abb37679f5791ff4a64459cf3317",
+    "research/screen-checks-2026-11": "24befc116a48438031a3212c4ea7965c28087c1e",
+    ".github/workflows/app.yml": "56b47e1813912e7793eb8e54f0d8be4eece3c937",
+    "tools/staging-login-callback-grants.sql": "f4dc77a3973adaa05904227984219d8c299833da",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 41,
+  "combinedNpmTestExit": 0,
   "server": {
     "files": 165,
-    "passed": 3110,
-    "failed": 4
+    "passed": 3116
   },
-  "web": "not run",
-  "buildExit": "not run",
-  "freshState": "cleanup after failure",
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "buildExit": 0,
+  "freshState": "completed",
+  "freshDatabaseRemaining": 0,
+  "nodePassed": 56,
+  "nodeSource": "f48032df9b10f184b68bcf2a23a33ef2725c494f",
+  "wbsChecks": 18,
+  "wbsErrors": 0,
   "browserExecuted": false,
   "realKakao": false,
-  "previousPassingFull": "before-review-full-proof.json (34bb2258 3101/1775 before review)"
+  "photoPlaceholders": true,
+  "modelCallsAdded": 0,
+  "npmCi": "동일 lock의 로컬 설치 재사용. CI 새 설치는 별도 확인",
+  "previousFailedFull": "review-full-failed-proof-044982eb.json: 3110통과/4실패, 웹/빌드 미실행",
+  "preReviewPassingFull": "before-review-full-proof.json: 34bb2258 3101/1775",
+  "stagingGrantApplication": "미확인. 로컬 제한 역할 시험만 통과"
 }

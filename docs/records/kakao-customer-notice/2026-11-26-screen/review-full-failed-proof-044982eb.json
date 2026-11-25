@@ -1,0 +1,16 @@
+{
+  "sourceCommit": "044982eb4ce123cf310602e5444f608acaa4aecf",
+  "publicEquivalentHead": "8bc7297a663136fece31f9e1a90b174968fabd3a",
+  "combinedNpmTestExit": 1,
+  "server": {
+    "files": 165,
+    "passed": 3110,
+    "failed": 4
+  },
+  "web": "not run",
+  "buildExit": "not run",
+  "freshState": "cleanup after failure",
+  "browserExecuted": false,
+  "realKakao": false,
+  "previousPassingFull": "before-review-full-proof.json (34bb2258 3101/1775 before review)"
+}
