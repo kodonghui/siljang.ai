@@ -2,7 +2,8 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createCustomerNoticeHandler } from "../src/customer-notices";
 import { runDueJobs } from "../src/job-runner";
 import type { KakaoEvents } from "../src/kakao-event";
-import { describeDb, newUuid } from "./support/db";
+import { runScheduled } from "../src/scheduled";
+import { describeDb, newUuid, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
 
@@ -72,6 +73,18 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
       sent_at: null,
     });
     expect(factory).not.toHaveBeenCalled();
+    expect(events.requestNotice).not.toHaveBeenCalled();
+    expect(events.checkDelivery).not.toHaveBeenCalled();
+  });
+  it("실제 Cron 어댑터의 기본 등록부도 무료 MVP 안내를 처리하며 외부 API를 호출하지 않는다", async () => {
+    const result = await runScheduled({ scheduledTime: NOW.getTime(), cron: "* * * * *" }, testEnv(), {
+      connect: () => isolated.connect(),
+      kakaoEvents: events,
+      now: () => now,
+      logSink: () => {},
+    });
+    expect(result).not.toBeNull();
+    expect((await state())?.status).toBe("deferred");
     expect(events.requestNotice).not.toHaveBeenCalled();
     expect(events.checkDelivery).not.toHaveBeenCalled();
   });
