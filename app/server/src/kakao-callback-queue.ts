@@ -1,5 +1,4 @@
 import type { Bindings } from "./app";
-import { readConfirmCardDelivery } from "./confirm-card-store";
 import { type DbConnector, pgConnector, type RequestDb } from "./db";
 import { errorFields } from "./error-name";
 import { FieldCryptoError } from "./field-crypto";
@@ -16,6 +15,7 @@ import {
   prepareKakaoCallbackHandoff,
   releaseKakaoCallback,
 } from "./kakao-callback-store";
+import { readClaimedKakaoCard } from "./kakao-card-delivery";
 import { deferredKakaoMessages, deferredKakaoTexts } from "./kakao-deferred";
 import { KAKAO_HANDOFF_TEXT, kakaoAiFailureOutcome } from "./kakao-reply";
 import { type LogSink, log } from "./log";
@@ -196,26 +196,7 @@ export async function consumeKakaoCallback(
     // 고지·이전 안내가 세 칸을 채우면 새 AI 답은 다음 대화에 남긴다. 이전 안내를 앞질러 보내지 않는다.
     const replyIncluded = prefix.length + previousTexts.length < 3;
     if (callback !== null && replyIncluded && preparedReply?.card !== undefined) {
-      const fresh = await db.transaction(async (tx) => {
-        await tx.found("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [claim.customer_id]);
-        await tx.found("SELECT id FROM consultations WHERE shop_id=$1 AND id=$2 AND customer_id=$3 FOR UPDATE", [
-          claim.consultation_id,
-          claim.customer_id,
-        ]);
-        const source = await tx.run(
-          `SELECT id FROM messages WHERE shop_id=$1 AND id=$2 AND consultation_id=$3
-            AND kakao_callback_enc=$4 AND kakao_callback_claim_until=$5 AND kakao_callback_deadline_at>$6 FOR UPDATE`,
-          [job.messageId, claim.consultation_id, claim.kakao_callback_enc, claim.kakao_callback_claim_until, now()],
-        );
-        return source.rowCount === 1
-          ? readConfirmCardDelivery(tx, {
-              customerId: claim.customer_id,
-              consultationId: claim.consultation_id,
-              sourceMessageId: job.messageId,
-              now: now(),
-            })
-          : null;
-      });
+      const fresh = await readClaimedKakaoCard(db, job.messageId, claim, now);
       if (fresh === null) {
         await releaseKakaoCallback(db, job.messageId, claim);
         return "done";

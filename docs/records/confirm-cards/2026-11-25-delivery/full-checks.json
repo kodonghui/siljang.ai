@@ -56,5 +56,27 @@
   },
   "browserRun": false,
   "externalModelCalls": 0,
-  "realKakaoCalls": 0
+  "realKakaoCalls": 0,
+  "postReviewAttempts": [
+    {
+      "source": "d5df658eeee5c3e1ca3867f415010fa6dcc2a8d9",
+      "freshMigrations": 39,
+      "serverFailed": 1,
+      "serverPassed": 2716,
+      "webRun": false,
+      "buildRun": false,
+      "log": "/tmp/siljang-task081-review-20261125-3-fresh-full.log",
+      "cleanup": "completed",
+      "failure": "가게 SQL은 날 연결을 쥔 큐 파일에 둘 수 없음. 예외 추가 없이 범위 전용 모듈로 이동"
+    },
+    {
+      "source": "c9bc2614587c307e6da21b917eacea6fa8f974f9",
+      "relatedFiles": 8,
+      "relatedPassed": 216,
+      "typeExitCode": 0,
+      "lintExitCode": 0,
+      "freshFull": "진행 중",
+      "logPrefix": "/tmp/siljang-task081-review-20261125-4-fresh"
+    }
+  ]
 }
