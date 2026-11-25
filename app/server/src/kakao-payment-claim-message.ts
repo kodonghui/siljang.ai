@@ -1,6 +1,6 @@
 /** SCR006 표시 전용. 입금 확인 요청·자리·사장님 알림 저장은 업무 처리기가 담당한다. */
 import { kakaoChannelIdentifierError } from "./kakao-channel-input";
-import type { KakaoMessageOutput } from "./kakao-message-content";
+import type { KakaoPaymentOutput } from "./kakao-payment-message";
 import { toShopLocal } from "./time";
 export interface KakaoPaymentClaimCard {
   readonly orderNo: string;
@@ -30,7 +30,7 @@ export type KakaoPaymentClaimView =
 
 interface ClaimMessage {
   readonly version: "2.0";
-  readonly template: { readonly outputs: readonly KakaoMessageOutput[] };
+  readonly template: { readonly outputs: readonly KakaoPaymentOutput[] };
 }
 export function kakaoPaymentClaimMessage(view: KakaoPaymentClaimView): ClaimMessage {
   switch (view.state) {

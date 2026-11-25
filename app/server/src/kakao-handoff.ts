@@ -9,7 +9,7 @@ import {
   prependKakaoDisclosure,
 } from "./kakao-ai-disclosure";
 import {
-  deferredKakaoMessages,
+  deferredKakaoBatch,
   deferredKakaoTexts,
   markDeferredKakaoMessages,
   renderDeferredKakaoReply,
@@ -65,16 +65,17 @@ export async function replyKakaoHandoffInTransaction(
     active.rowCount === 0
       ? await inlineKakaoDisclosure(tx, receipt.consultationId, receipt.customerId, policy)
       : undefined;
-  const previous =
+  const previousBatch =
     active.rowCount === 0
-      ? await deferredKakaoMessages(tx, receipt.customerId, {
+      ? await deferredKakaoBatch(tx, receipt.customerId, {
           disclosureConsultationId: disclosure?.consultationId,
           now,
           allowFullOrderCard: true,
           fields,
         })
-      : [];
-  const rendered = renderDeferredKakaoReply(deferredKakaoTexts(previous), render);
+      : { messages: [], currentBlocked: false };
+  const previous = previousBatch.messages;
+  const rendered = renderDeferredKakaoReply(deferredKakaoTexts(previous), render, previousBatch.currentBlocked);
   const disclosed = await prependKakaoDisclosure(rendered.response, disclosure);
   const response = disclosed.response;
   const currentIncluded = rendered.currentIncluded && disclosed.currentIncluded;

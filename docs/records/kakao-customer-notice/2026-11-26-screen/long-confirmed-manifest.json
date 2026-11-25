@@ -1,0 +1,30 @@
+{
+  "source": "8df97361e3284547c1c84a07b0cc7cb2a4e43964",
+  "codePoints": 4002,
+  "bodyCodePoints": 2000,
+  "regulationCodePoints": [
+    1000,
+    1000
+  ],
+  "outputs": 3,
+  "items": [
+    10,
+    10,
+    4
+  ],
+  "allOriginalTextPreserved": true,
+  "sdkValidated": true,
+  "frames": [
+    {
+      "width": 360,
+      "file": "long-confirmed-360.html"
+    },
+    {
+      "width": 1280,
+      "file": "long-confirmed-1280.html"
+    }
+  ],
+  "realBrowser": false,
+  "realKakao": false,
+  "networkRequests": 0
+}

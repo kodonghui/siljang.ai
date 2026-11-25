@@ -1,5 +1,6 @@
 /** 안내 키의 업무 자료는 같은 손님·가게에서만 읽고, 계좌는 표시 직전에만 풉니다. */
 import { openAccountNumber } from "./account-number";
+import { confirmedNoticeContents, reviewNoticeContents } from "./customer-notice-presentation";
 import { TEXT_CUSTOMER_NOTICE_KINDS } from "./customer-notice-store";
 import type { FieldCrypto } from "./field-crypto";
 import type { KakaoMessageContent } from "./kakao-message-content";
@@ -44,19 +45,29 @@ interface Payment {
   time_zone: string;
   payment_due_hours: number;
 }
-export function customerNoticeTexts(body: string): string[] {
-  const chars = [...body],
-    contents: string[] = [];
-  for (let at = 0; at < chars.length; at += 1000) contents.push(chars.slice(at, at + 1000).join(""));
-  return contents;
-}
 export async function customerNoticeContents(
   db: ShopDb,
   notice: CustomerNoticeView,
   now: Date,
   fields?: () => FieldCrypto,
 ): Promise<readonly KakaoMessageContent[] | null> {
-  if (notice.kind !== "payment_request") return notice.body.trim() ? customerNoticeTexts(notice.body) : null;
+  if (notice.kind === "order_confirmed") return confirmedNoticeContents(db, notice);
+  if (notice.kind === "review_request") return reviewNoticeContents(db, notice);
+  if (notice.kind !== "payment_request") {
+    if (!notice.body.trim()) return null;
+    return [
+      {
+        kind: "customer_notice",
+        view: {
+          state: "normal",
+          notice:
+            notice.kind === "payment_mismatch"
+              ? { kind: "payment_mismatch" }
+              : { kind: "server_text", text: notice.body },
+        },
+      },
+    ];
+  }
   const payment = (
     await db.run<Payment>(
       `SELECT p.kind,p.status,p.amount,p.requested_amount,p.needs_amount_confirm,p.amount_confirmed_at,p.amount_card_id,

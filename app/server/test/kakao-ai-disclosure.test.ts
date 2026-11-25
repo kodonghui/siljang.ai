@@ -96,7 +96,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
       env,
     );
   }
-  function model() {
+  function model(reply: () => string = () => "합성 질문을 확인했어요.") {
     const call = vi.fn<AiModel["call"]>(async (input) => {
       const aiCallId = await recordAiCall(input.db, {
         consultationId: input.consultationId,
@@ -116,7 +116,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
         errorKind: null,
         fallbackReason: null,
       });
-      return { ok: true, aiCallId, output: { reply: "합성 질문을 확인했어요." } };
+      return { ok: true, aiCallId, output: { reply: reply() } };
     });
     return { provider: "anthropic" as const, model: "claude-haiku-5-5", call };
   }
@@ -502,54 +502,104 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     ).toBe(2);
   });
 
-  it("끝난 상담의 확정 안내는 새 고지 뒤 합성 AI 답보다 먼저 한 번 전한다(TASK-104)", async () => {
-    const paid = newUuid();
-    await isolated.db.transaction(async (tx) => {
-      await tx.query(
-        "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2 WHERE id=$1",
-        [shop.paymentRequestId, now],
-      );
-      await tx.query(
-        "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
-        [paid, shop.shopId, shop.orderId, shop.paymentRequestId, now],
-      );
-      await tx.query("UPDATE orders SET status='confirmed',confirmed_at=$2,confirmed_payment_id=$3 WHERE id=$1", [
-        shop.orderId,
-        now,
-        paid,
-      ]);
-      await tx.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [shop.consultationId, now]);
-    });
-    const notice = required(
-      await isolated.db.transaction((tx) =>
-        createOrderConfirmedNotice(
-          shopDb(createShopScope(shop.shopId, { kind: "job", job: "customer_notice" }), tx),
+  it.each([false, true])(
+    "끝난 상담의 확정 안내와 규정은 새 고지 뒤 AI 답보다 먼저 한 번 전한다(규정 두 출력 %s)",
+    async (twoParts) => {
+      const paid = newUuid();
+      await isolated.db.transaction(async (tx) => {
+        await tx.query(
+          "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2 WHERE id=$1",
+          [shop.paymentRequestId, now],
+        );
+        await tx.query(
+          "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+          [paid, shop.shopId, shop.orderId, shop.paymentRequestId, now],
+        );
+        await tx.query("UPDATE orders SET status='confirmed',confirmed_at=$2,confirmed_payment_id=$3 WHERE id=$1", [
           shop.orderId,
           now,
+          paid,
+        ]);
+        await tx.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [shop.consultationId, now]);
+        await tx.query(
+          "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',1,'합성 규정','합성 조건',$3) ON CONFLICT(operating_rules_id,position) DO UPDATE SET effect_text=EXCLUDED.effect_text",
+          [shop.shopId, shop.operatingRulesId, `합성 원래 규정${twoParts ? "가".repeat(700) : ""}`],
+        );
+        if (twoParts)
+          await tx.query(
+            "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',2,'합성 추가 규정','합성 조건',$3)",
+            [shop.shopId, shop.operatingRulesId, `합성 두번째 규정${"나".repeat(700)}`],
+          );
+      });
+      const notice = required(
+        await isolated.db.transaction((tx) =>
+          createOrderConfirmedNotice(
+            shopDb(createShopScope(shop.shopId, { kind: "job", job: "customer_notice" }), tx),
+            shop.orderId,
+            now,
+          ),
         ),
-      ),
-    );
-    const body = required(
-      (await isolated.db.query<{ body: string }>("SELECT body FROM notifications WHERE id=$1", [notice.id])).rows[0],
-    ).body;
-    now = new Date(now.getTime() + 4000);
-    const ai = model();
-    await send(shop.userKey, "끝난 상담 뒤의 합성 첫 질문");
-    const first = texts(await consume(required(jobs[0]), ai));
-    expect(first).toHaveLength(3);
-    expect(first[0]).toContain("AI가 상담합니다");
-    expect(first.slice(1)).toEqual([body, "합성 질문을 확인했어요."]);
-    expect(
-      (await isolated.db.query("SELECT status FROM consultations WHERE id=$1", [shop.consultationId])).rows,
-    ).toEqual([{ status: "ended" }]);
-    expect((await isolated.db.query("SELECT status FROM notifications WHERE id=$1", [notice.id])).rows).toEqual([
-      { status: "delivered_on_reply" },
-    ]);
-    now = new Date(now.getTime() + 4000);
-    await send(shop.userKey, "합성 둘째 질문");
-    expect(texts(await consume(required(jobs[1]), ai))).toEqual(["합성 질문을 확인했어요."]);
-    expect(ai.call).toHaveBeenCalledTimes(2);
-  });
+      );
+      const body = required(
+        (await isolated.db.query<{ body: string }>("SELECT body FROM notifications WHERE id=$1", [notice.id])).rows[0],
+      ).body;
+      const replies = ["합성 첫 답이에요.", "합성 둘째 답이에요.", "합성 셋째 답이에요.", "합성 넷째 답이에요."];
+      let answered = 0;
+      const ai = model(() => required(replies[answered++]));
+      const pending = async () =>
+        required(
+          (
+            await isolated.db.query<{ n: number }>(
+              "SELECT count(*)::int AS n FROM messages m JOIN consultations c ON c.shop_id=m.shop_id AND c.id=m.consultation_id WHERE m.shop_id=$1 AND c.customer_id=$2 AND m.author='ai' AND m.direction='outbound' AND m.delivery='deferred'",
+              [shop.shopId, shop.customerId],
+            )
+          ).rows[0],
+        ).n;
+      now = new Date(now.getTime() + 4000);
+      await send(shop.userKey, "끝난 상담 뒤의 합성 첫 질문");
+      const first = texts(await consume(required(jobs[0]), ai));
+      expect(first[0]).toContain("AI가 상담합니다");
+      if (twoParts) expect(first).toHaveLength(1);
+      else {
+        expect(first).toHaveLength(3);
+        expect(first[1]).toBe(body);
+        expect(first[2]).toContain("합성 원래 규정");
+      }
+      expect(await pending()).toBe(1);
+      expect(
+        (await isolated.db.query("SELECT status FROM consultations WHERE id=$1", [shop.consultationId])).rows,
+      ).toEqual([{ status: "ended" }]);
+      expect((await isolated.db.query("SELECT status FROM notifications WHERE id=$1", [notice.id])).rows).toEqual([
+        { status: twoParts ? "deferred" : "delivered_on_reply" },
+      ]);
+      now = new Date(now.getTime() + 4000);
+      await send(shop.userKey, "합성 둘째 질문");
+      const second = texts(await consume(required(jobs[1]), ai));
+      if (twoParts) {
+        expect(second).toHaveLength(3);
+        expect(second[0]).toBe(body);
+        expect(second[1]).toContain("합성 원래 규정");
+        expect(second[2]).toContain("합성 두번째 규정");
+        expect(await pending()).toBe(2);
+      } else {
+        expect(second).toEqual(replies.slice(0, 2));
+        expect(await pending()).toBe(0);
+      }
+      expect((await isolated.db.query("SELECT status FROM notifications WHERE id=$1", [notice.id])).rows).toEqual([
+        { status: "delivered_on_reply" },
+      ]);
+      now = new Date(now.getTime() + 4000);
+      await send(shop.userKey, "합성 셋째 질문");
+      expect(texts(await consume(required(jobs[2]), ai))).toEqual(twoParts ? replies.slice(0, 3) : [replies[2]]);
+      expect(await pending()).toBe(0);
+      if (twoParts) {
+        now = new Date(now.getTime() + 4000);
+        await send(shop.userKey, "합성 넷째 질문");
+        expect(texts(await consume(required(jobs[3]), ai))).toEqual([replies[3]]);
+      }
+      expect(ai.call).toHaveBeenCalledTimes(twoParts ? 4 : 3);
+    },
+  );
   it("실제 문의 끊김 뒤 재개는 고지 기록을 유지하고 이전 안내를 AI 답 전에 한 번 전한다", async () => {
     const user = newUuid(),
       ai = model();

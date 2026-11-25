@@ -1,0 +1,65 @@
+[
+  {
+    "response": "API-073#200:notice_shown",
+    "state": "normal",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "주문이 확정됐어요\n주문번호 AB1234CD\n합성 주문 · 1호 초콜릿\n픽업 11월 27일 15:00\n결제가 확인된 금액 36,000원\n상호 합성 케이크 가게\n대표자 합성 대표\n사업장 주소 합성시 시험로 1\n전화번호 02-000-0000"
+            }
+          },
+          {
+            "simpleText": {
+              "text": "합성 주문에 저장한 취소·환불 규정 원문"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-073#200:notice_test",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-073#200:notice_gone",
+    "state": "stale",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "지금은 전할 안내가 없어요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-073#401:skill_key_invalid",
+    "state": "error",
+    "display": "not-delivered",
+    "body": null
+  },
+  {
+    "response": "API-073#422:validation_failed",
+    "state": "error",
+    "display": "not-delivered",
+    "body": null
+  },
+  {
+    "response": "API-073#default:internal",
+    "state": "error",
+    "display": "not-delivered",
+    "body": null
+  }
+]

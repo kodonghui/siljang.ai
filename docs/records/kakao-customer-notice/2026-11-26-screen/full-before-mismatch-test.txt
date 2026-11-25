@@ -1,0 +1,49 @@
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 payment_mismatch 본문을 자기 손님에게 전한다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 사건 안내의 저장된 본문'
+
+Expected: "합성 사건 안내의 저장된 본문"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"보내신 금액이 안내와 달라 사장님이 연락드릴게요"}}]}}"
+
+ ❯ test/customer-notice-kinds.test.ts:132:36
+    130|         body = await response.json();
+    131|       expectSchema("SkillTemplateResponse", body);
+    132|       expect(JSON.stringify(body)).toContain(BODY);
+       |                                    ^
+    133|       if (mode === "event") expect(response.headers.get("Siljang-Outco…
+    134|       else {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 payment_mismatch 본문을 자기 손님에게 전한다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 사건 안내의 저장된 본문'
+
+Expected: "합성 사건 안내의 저장된 본문"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"보내신 금액이 안내와 달라 사장님이 연락드릴게요"}},{"simpleText":{"text":"사장님 확인 뒤 답드릴게요."}}]}}"
+
+ ❯ test/customer-notice-kinds.test.ts:132:36
+    130|         body = await response.json();
+    131|       expectSchema("SkillTemplateResponse", body);
+    132|       expect(JSON.stringify(body)).toContain(BODY);
+       |                                    ^
+    133|       if (mode === "event") expect(response.headers.get("Siljang-Outco…
+    134|       else {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 163 passed (164)
+      Tests  2 failed | 3099 passed (3101)
+   Start at  16:37:34
+   Duration  279.92s (tests 65%, import 33%, transform 1%)
+
+     Import  390 modules were evaluated 734 times · 85.58s total, 33% of tracked time
+             ~40.11s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task109-customer-notice/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task109-customer-notice/app/server
+npm error command failed
+npm error command sh -c vitest run

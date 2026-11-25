@@ -1,0 +1,46 @@
+{
+  "sourceCommit": "8df97361e3284547c1c84a07b0cc7cb2a4e43964",
+  "publicEquivalentHead": "c890eb12cf094c35c67c3a5a4e0e7f14df4247d9",
+  "sourceTree": "4e19b3a7429dc7983d30d02a5503a675ad575fe1",
+  "baseMain": "a56b7cc1bc9580195bd35c4d0f40a9c639b7e821",
+  "scopeGitObjects": {
+    "app/server": "62b8e7088f935c3ae833de22bce8f4d13859ce8c",
+    "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "86592d08ebfb6d4a35136ec71981a4db57256f0f",
+    ".github/workflows/app.yml": "56b47e1813912e7793eb8e54f0d8be4eece3c937",
+    "tools/staging-login-callback-grants.sql": "f4dc77a3973adaa05904227984219d8c299833da",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 41,
+  "combinedNpmTestExit": 0,
+  "server": {
+    "files": 165,
+    "passed": 3122
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "buildExit": 0,
+  "freshState": "completed",
+  "freshDatabaseRemaining": 0,
+  "nodePassed": 57,
+  "nodeSource": "8df97361e3284547c1c84a07b0cc7cb2a4e43964",
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "browserExecuted": false,
+  "realKakao": false,
+  "photoPlaceholders": true,
+  "modelCallsAdded": 0,
+  "npmCi": "동일 lock의 로컬 설치 재사용. CI 새 설치는 별도 확인",
+  "previousFailedFull": "review-full-failed-proof-044982eb.json: 3110통과/4실패, 웹/빌드 미실행",
+  "preOverflowPassingFull": "before-overflow-full-proof.json: f48032df 3116/1775",
+  "reviewFinding": 4698962893,
+  "boundaryFrames": 2,
+  "boundaryCodePoints": 4002,
+  "preReviewPassingFull": "before-review-full-proof.json: 34bb2258 3101/1775",
+  "stagingGrantApplication": "미확인. 로컬 제한 역할 시험만 통과"
+}

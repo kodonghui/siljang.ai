@@ -5,6 +5,7 @@ import { type DbConnector, pgConnector, type RequestDb } from "../src/db";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { deferredKakaoMessages, replyWithDeferredKakaoMessages } from "../src/kakao-deferred";
+import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
@@ -590,8 +591,7 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
     const h = await setup();
     for (let i = 0; i < 3; i++) await defer(h.shop, `이전 안내 ${i}`, new Date(NOW.getTime() - 60_000 + i * 1000));
     const first = await template(await h.call("첫 새 질문"));
-    expect(first.template.outputs).toHaveLength(3);
-    expect(first.template.outputs.slice(0, 2)).toEqual([
+    expect(first.template.outputs).toEqual([
       { simpleText: { text: "이전 안내 0" } },
       { simpleText: { text: "이전 안내 1" } },
     ]);
@@ -607,9 +607,14 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
           [h.shop.shopId],
         )
       ).rows,
-    ).toEqual([{ count: 1 }]);
+    ).toEqual([{ count: 2 }]);
+    h.clock.now = new Date(NOW.getTime() + 1000);
     const next = await template(await h.call("다른 새 질문"));
-    expect(next.template.outputs[0]).toEqual({ simpleText: { text: "이전 안내 2" } });
+    expect(next.template.outputs).toEqual([
+      { simpleText: { text: "이전 안내 2" } },
+      { simpleText: { text: KAKAO_HANDOFF_TEXT } },
+      { simpleText: { text: KAKAO_HANDOFF_TEXT } },
+    ]);
   });
 
   it("지난 상담의 이전 답도 같은 손님에게만 전하고 끝난 상담은 다시 열지 않음", async () => {
