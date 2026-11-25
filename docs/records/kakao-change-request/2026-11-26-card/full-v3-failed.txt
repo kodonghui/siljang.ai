@@ -1,0 +1,50 @@
+
+> test
+> npm run test -w server && npm run test -w web
+
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+(node:3144115) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ test/kakao-payment-claim-delivery.test.ts (10 tests | 1 failed) 1291ms
+   ❯ SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) (10)
+     × 만료로 닫힌 차액 변경은 현재 상태이며 확인 카드의 원본이 아님 30ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 만료로 닫힌 차액 변경은 현재 상태이며 확인 카드의 원본이 아님
+Error: card source unavailable
+ ❯ showConfirmCardInTransaction src/confirm-card-store.ts:428:40
+    426| export async function showConfirmCardInTransaction(db: ShopDb, input: …
+    427|   const prepared = await prepareConfirmCardInTransaction(db, input);
+    428|   if ("unavailable" in prepared) throw new Error("card source unavaila…
+       |                                        ^
+    429|   return prepared;
+    430| }
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ test/kakao-payment-claim-delivery.test.ts:204:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 174 passed (175)
+      Tests  1 failed | 3222 passed (3223)
+   Start at  21:42:08
+   Duration  310.12s (tests 66%, import 34%, transform 1%)
+
+     Import  406 modules were evaluated 865 times · 97.51s total, 34% of tracked time
+             ~51.74s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task126-change-card/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task126-change-card/app/server
+npm error command failed
+npm error command sh -c vitest run
