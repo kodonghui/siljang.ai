@@ -84,6 +84,35 @@ export async function deferredKakaoBatch(
     scanLimited = false;
   const readAt = options.now ?? new Date();
   const merger = createKakaoAmountConfirmationMerger();
+  // 같은 주문의 차액 문맥은 참조 메시지마다 다시 읽지 않는다. 권한·상태·기한은 같은 조회 시점에 대조한다.
+  const unreadableDifferenceOrders = `WITH blocked_difference_orders AS MATERIALIZED (
+        SELECT oo.shop_id,oo.id,oo.customer_id,oo.consultation_id
+        FROM orders oo
+        JOIN payment_requests pp ON pp.shop_id=$1 AND pp.order_id=oo.id
+        JOIN change_requests cr ON cr.shop_id=$1 AND cr.id=pp.change_request_id AND cr.order_id=oo.id AND cr.status='awaiting_difference'
+        JOIN confirm_cards a ON a.shop_id=$1 AND a.id=pp.amount_card_id AND a.order_id=oo.id
+          AND a.customer_id=oo.customer_id AND a.order_version=oo.version AND a.kind='amount_confirm'
+          AND a.created_at<=$8 AND a.expires_at>$8 AND a.used_at IS NULL
+        JOIN customers u ON u.shop_id=$1 AND u.id=oo.customer_id
+        JOIN kakao_channels ch ON ch.shop_id=$1 AND ch.id=u.kakao_channel_id AND ch.status='linked' AND nullif(ch.card_block_id,'') IS NOT NULL
+        WHERE oo.shop_id=$1 AND oo.customer_id=$2 AND oo.personal_data_purged_at IS NULL AND oo.status='confirmed'
+          AND NOT ${DIFFERENCE_NOTICE_SELECT_SQL}
+          AND pp.kind='difference' AND pp.status='open' AND pp.needs_amount_confirm AND pp.amount_confirmed_at IS NULL
+          AND pp.requested_amount IS NULL AND pp.issued_at<=$8 AND pp.due_cap_at>$8
+          AND pp.id=(SELECT latest.id FROM payment_requests latest WHERE latest.shop_id=$1 AND latest.order_id=oo.id
+            ORDER BY latest.issued_at DESC,latest.id DESC LIMIT 1)
+          AND EXISTS(SELECT 1 FROM notifications n
+            WHERE n.shop_id=$1 AND n.order_id=oo.id AND n.customer_id=oo.customer_id
+              AND n.consultation_id=oo.consultation_id AND n.kind='payment_request' AND n.status<>'dropped'
+              AND n.event_key='notice:'||pp.id::text||':payment_request')
+      ), blocked_payment_claims AS MATERIALIZED (
+        SELECT cc.customer_id,cc.consultation_id,cc.payload->>'sourceMessageId' AS source_message_id
+        FROM confirm_cards cc
+        JOIN blocked_difference_orders bo ON bo.shop_id=$1 AND bo.id=cc.order_id
+          AND bo.customer_id=cc.customer_id AND bo.consultation_id=cc.consultation_id
+        WHERE cc.shop_id=$1 AND cc.customer_id=$2 AND cc.kind='payment_claim'
+          AND cc.used_at IS NULL AND cc.created_at<=$8
+      )`;
   // 조회와 한도 뒤 존재 확인이 같은 수신·권한·고지 조건을 쓴다.
   const messageFrom = `FROM messages m
         JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
@@ -95,26 +124,8 @@ export async function deferredKakaoBatch(
           AND NOT ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.status IN ('ended','deleted','dropped'))
           AND (m.kind<>'card' OR c.ai_disclosed_at IS NULL AND c.id IS DISTINCT FROM $4::uuid
             OR ${DIFFERENCE_NOTICE_SELECT_SQL} OR NOT EXISTS (
-              SELECT 1 FROM confirm_cards cc
-              JOIN orders oo ON oo.shop_id=$1 AND oo.id=cc.order_id AND oo.customer_id=cc.customer_id
-                AND oo.consultation_id=cc.consultation_id AND oo.personal_data_purged_at IS NULL AND oo.status='confirmed'
-              JOIN payment_requests pp ON pp.shop_id=$1 AND pp.order_id=oo.id
-              JOIN change_requests cr ON cr.shop_id=$1 AND cr.id=pp.change_request_id AND cr.order_id=oo.id AND cr.status='awaiting_difference'
-              JOIN confirm_cards a ON a.shop_id=$1 AND a.id=pp.amount_card_id AND a.order_id=oo.id
-                AND a.customer_id=cc.customer_id AND a.order_version=oo.version AND a.kind='amount_confirm'
-                AND a.created_at<=$8 AND a.expires_at>$8 AND a.used_at IS NULL
-              JOIN customers u ON u.shop_id=$1 AND u.id=cc.customer_id
-              JOIN kakao_channels ch ON ch.shop_id=$1 AND ch.id=u.kakao_channel_id AND ch.status='linked' AND nullif(ch.card_block_id,'') IS NOT NULL
-              JOIN notifications n ON n.shop_id=$1 AND n.order_id=oo.id AND n.customer_id=cc.customer_id
-                AND n.consultation_id=cc.consultation_id AND n.kind='payment_request' AND n.status<>'dropped'
-                AND n.event_key='notice:'||pp.id::text||':payment_request'
-              WHERE cc.shop_id=$1 AND cc.kind='payment_claim' AND cc.consultation_id=m.consultation_id
-                AND cc.customer_id=c.customer_id AND cc.payload->>'sourceMessageId'=m.trace_id
-                AND cc.used_at IS NULL AND cc.created_at<=$8
-                AND pp.kind='difference' AND pp.status='open' AND pp.needs_amount_confirm AND pp.amount_confirmed_at IS NULL
-                AND pp.requested_amount IS NULL AND pp.issued_at<=$8 AND pp.due_cap_at>$8
-                AND pp.id=(SELECT latest.id FROM payment_requests latest WHERE latest.shop_id=$1 AND latest.order_id=oo.id
-                  ORDER BY latest.issued_at DESC,latest.id DESC LIMIT 1)
+              SELECT 1 FROM blocked_payment_claims br
+              WHERE br.consultation_id=m.consultation_id AND br.customer_id=c.customer_id AND br.source_message_id=m.trace_id
             ))`;
   const messageParams = (limit: number) => [
     customerId,
@@ -133,7 +144,7 @@ export async function deferredKakaoBatch(
   ) {
     const limit = Math.min(DEFERRED_REPLY_BATCH + 1, MAX_DEFERRED_MESSAGES_SCANNED - scanned);
     const result = await db.run<MessageRow>(
-      `SELECT m.id, m.body_masked, m.kind, m.trace_id, m.consultation_id, m.created_at::text AS cursor_created_at,
+      `${unreadableDifferenceOrders} SELECT m.id, m.body_masked, m.kind, m.trace_id, m.consultation_id, m.created_at::text AS cursor_created_at,
         (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order,
         ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.id IS DISTINCT FROM $4::uuid) AS blocked ${messageFrom}
         ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
@@ -190,7 +201,7 @@ export async function deferredKakaoBatch(
   if (scanLimited && !disclosureBlocked && merger.contents.length < DEFERRED_REPLY_BATCH + 1) {
     // 다음 카드의 본문/표시는 읽지 않고 다음 대상 행의 존재만 확인한다.
     const next = await db.run<{ pending: boolean }>(
-      `SELECT EXISTS(SELECT 1 ${messageFrom} LIMIT $3) AS pending`,
+      `${unreadableDifferenceOrders} SELECT EXISTS(SELECT 1 ${messageFrom} LIMIT $3) AS pending`,
       messageParams(1),
     );
     scanLimited = next.rows[0]?.pending === true;

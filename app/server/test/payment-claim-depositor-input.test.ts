@@ -443,6 +443,9 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         expect(amountNodes.length).toBeGreaterThan(0);
         const amountLookups = amountNodes.reduce((sum, n) => sum + Number(n["Actual Loops"] ?? 0), 0);
         expect(amountLookups).toBeLessThanOrEqual(1);
+        const referenceNodes = nodes.filter((n) => n.Alias === "cc");
+        expect(referenceNodes.length).toBeGreaterThan(0);
+        expect(referenceNodes.reduce((sum, n) => sum + Number(n["Actual Loops"] ?? 0), 0)).toBeLessThanOrEqual(1);
         await expect(
           limited.transaction((tx) =>
             readConfirmCardDelivery(observe(tx), {
@@ -477,9 +480,11 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
             })),
           }),
         );
-        expect(
-          nodes.some((n) => typeof n["Index Cond"] === "string" && n["Index Cond"].includes("sourceMessageId")),
-        ).toBe(true);
+        // 작은 테이블은 순차 조회가 더 쌀 수 있다. 기존 큰 대기열의 참조 인덱스 검사를 유지한다.
+        if (backlog === 2000)
+          expect(
+            nodes.some((n) => typeof n["Index Cond"] === "string" && n["Index Cond"].includes("sourceMessageId")),
+          ).toBe(true);
         expect(
           (
             await isolated.db.query(
