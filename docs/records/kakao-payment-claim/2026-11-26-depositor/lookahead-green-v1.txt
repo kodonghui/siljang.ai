@@ -1,0 +1,12 @@
+
+> test
+> vitest run --run test/payment-claim-depositor-input.test.ts test/deferred-difference-privilege.test.ts test/kakao-deferred.test.ts test/kakao-amount-confirmation-merge.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-depositor-display/app/server
+
+
+ Test Files  4 passed (4)
+      Tests  72 passed (72)
+   Start at  20:58:48
+   Duration  14.67s (tests 68%, import 28%, transform 3%)

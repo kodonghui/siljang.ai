@@ -1,0 +1,20 @@
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 잘못된 입금자 값은 아무것도 쓰지 않고 같은 전용 버튼으로 다시 묻는다(undefined)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 잘못된 입금자 값은 아무것도 쓰지 않고 같은 전용 버튼으로 다시 묻는다("")
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 잘못된 입금자 값은 아무것도 쓰지 않고 같은 전용 버튼으로 다시 묻는다("   ")
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 잘못된 입금자 값은 아무것도 쓰지 않고 같은 전용 버튼으로 다시 묻는다("가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가")
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 잘못된 입금자 값은 아무것도 쓰지 않고 같은 전용 버튼으로 다시 묻는다("🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂")
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 잘못된 입금자 값은 아무것도 쓰지 않고 같은 전용 버튼으로 다시 묻는다(null)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 잘못된 입금자 값은 아무것도 쓰지 않고 같은 전용 버튼으로 다시 묻는다(123)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 잘못된 입금자 값은 아무것도 쓰지 않고 같은 전용 버튼으로 다시 묻는다("합성\u0000입금자")
+AssertionError: expected 'card_not_yours' to be 'input_invalid' // Object.is equality
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 유효한 전용 입력만 명령에 전달하고 저장 카드/메시지/로그에는 남기지 않는다(합성 전용 입금자)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 유효한 전용 입력만 명령에 전달하고 저장 카드/메시지/로그에는 남기지 않는다(🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂)
+AssertionError: expected 'card_not_yours' to be 'payment_claimed' // Object.is equality
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 전용 이름 입력도30분 정각이면 새 카드이며 명령을 실행하지 않는다
+AssertionError: expected 'card_not_yours' to be 'card_expired' // Object.is equality
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 전달 뒤 결제 시계가 시작됐어도 잘못된 이름은 카드 결합 자료를 쓰지 않는다
+AssertionError: expected 'card_not_yours' to be 'input_invalid' // Object.is equality
+ Test Files  1 failed (1)
+      Tests  12 failed | 2 passed (14)
+   Duration  4.19s (tests 38%, import 35%, transform 27%)
