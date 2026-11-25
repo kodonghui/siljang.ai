@@ -226,6 +226,7 @@ export async function consumeKakaoCallback(
               disclosureConsultationId: disclosure?.consultationId,
               excludeMessageId: preparedReply?.id,
               now: now(),
+              allowFullOrderCard: true,
             }),
           );
     const prefix = disclosure === null || disclosure === undefined ? [] : [disclosure.text];

@@ -4,7 +4,8 @@ import type { RequestDb } from "../src/db";
 import { DUE_SOURCE_NAMES, DUE_SOURCES, FIND_SHAPE, LAST_DAILY_RUN, LAST_RUN_SHAPE } from "../src/due-sources";
 import { nextDeliveryCheckAt } from "../src/retry";
 import { createShopScope, shopDb } from "../src/shop-scope";
-import { describeDb, newUuid, testDb } from "./support/db";
+import { describeDb, newUuid } from "./support/db";
+import { isolatedTestDb } from "./support/isolated-db";
 import { createShop } from "./support/shops";
 
 // 기다리는 일을 찾는 곳(TASK-023). 찾기가 05의 부분 인덱스와 같은 조건이고 그 인덱스를 쓰는지, 잡기가 찾기와 같은 조건인지,
@@ -66,13 +67,15 @@ describe("찾는 곳과 05 인덱스", () => {
 
 describeDb("찾는 곳(데이터베이스)", () => {
   let db: RequestDb;
+  let isolated: Awaited<ReturnType<typeof isolatedTestDb>>;
 
-  beforeAll(() => {
-    db = testDb();
-  });
+  beforeAll(async () => {
+    isolated = await isolatedTestDb();
+    db = isolated.db;
+  }, 30000);
 
   afterAll(async () => {
-    await db.close();
+    await isolated?.close();
   });
 
   it("찾기마다 실행 계획이 그 05 인덱스를 씀(테이블 전체를 읽지 않음)", async () => {

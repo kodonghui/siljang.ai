@@ -3,7 +3,8 @@ import { createApp } from "../src/app";
 import { pressConfirmCard, readConfirmCardDelivery, showConfirmCard } from "../src/confirm-card-store";
 import { deliverKakaoCallback } from "../src/kakao-callback";
 import { kakaoConfirmCardReply } from "../src/kakao-confirm-card";
-import { replyWithDeferredKakaoMessages } from "../src/kakao-deferred";
+import { deferredKakaoMessages, replyWithDeferredKakaoMessages } from "../src/kakao-deferred";
+import { replyWithKakaoHandoff } from "../src/kakao-handoff";
 import { kakaoMessageOutputs } from "../src/kakao-message-content";
 import { kakaoReply } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
@@ -181,6 +182,47 @@ describeDb("SCR004의 실제 저장 카드와 응답 문구(TASK-086)", () => {
     const legacy = Object.assign({}, card, { kind: "order_request", orderRequest: undefined });
     expect(() => kakaoMessageOutputs([legacy])).toThrow();
   });
+  it("실제 주문 카드에 저장한 요약·견적 금액·기한이 보이고 전화/알레르기 원문을 카드 payload에 복제하지 않는다", async () => {
+    const card = await activeOrderCard();
+    for (const value of ["35,000원", "010-0000-0000", "알레르기 정보 동의 안 함", "까지 눌러 주세요"])
+      expect(card.description).toContain(value);
+    expect(card.description).not.toBe("주문 요청 내용을 확인해 주세요");
+    const stored = (
+      await db.query("SELECT payload FROM confirm_cards WHERE shop_id=$1 AND card_key=$2", [shop.shopId, card.cardKey])
+    ).rows;
+    expect(JSON.stringify(stored)).not.toContain("010-0000-0000");
+  });
+  it("요약 필수 항목이 없으면 유효 견적/규정만으로 동의 버튼을 만들지 않는다", async () => {
+    await activeOrderCard();
+    await db.query("DELETE FROM confirm_cards WHERE shop_id=$1", [shop.shopId]);
+    await db.query("UPDATE order_drafts SET customer_name=NULL WHERE shop_id=$1 AND id=$2", [
+      shop.shopId,
+      shop.draftId,
+    ]);
+    await expect(
+      showConfirmCard(scoped(), {
+        customerId: shop.customerId,
+        consultationId: shop.consultationId,
+        kind: "order_request",
+        draftId: shop.draftId,
+        now: NOW,
+      }),
+    ).rejects.toThrow();
+  });
+  it("견적이 만료된 버튼에는 반복 클릭 대신 채널에서 견적을 다시 확인할 방법을 안내한다", async () => {
+    const card = await activeOrderCard();
+    const answer = await pressConfirmCard(scoped(), {
+      customerId: shop.customerId,
+      consultationId: shop.consultationId,
+      cardKey: card.cardKey,
+      choice: "confirm",
+      now: new Date(NOW.getTime() + 73 * 3600000),
+    });
+    expect(answer.outcome).toBe("not_allowed_now");
+    expect(answer.text).toContain("견적");
+    expect(answer.text).toContain("채널 대화");
+    expect(answer.card).toBeUndefined();
+  });
   it("견적과 규정이 준비되지 않은 초안에는 동의 카드를 저장하지 않는다", async () => {
     const draft = (
       await db.query<{ id: string }>("INSERT INTO order_drafts(shop_id,consultation_id) VALUES($1,$2) RETURNING id", [
@@ -227,6 +269,9 @@ describeDb("SCR004의 실제 저장 카드와 응답 문구(TASK-086)", () => {
         [shop.shopId, shop.consultationId, sourceMessageId, NOW],
       )
     ).rows[0];
+    // 사진 수신처럼 현재 결과 한 칸을 반드시 남기는 호출은 이 세 칸 묶음을 소비하지 않는다.
+    const held = await scoped().transaction((tx) => deferredKakaoMessages(tx, shop.customerId, { now: NOW }));
+    expect(held).toHaveLength(0);
     const response = await replyWithDeferredKakaoMessages(scoped(), shop.customerId, NOW, (previous) =>
       kakaoReply(
         { json: (value, status = 200, headers = {}) => Response.json(value, { status, headers }) },
@@ -245,5 +290,43 @@ describeDb("SCR004의 실제 저장 카드와 응답 문구(TASK-086)", () => {
       (await db.query("SELECT delivery,sent_at FROM messages WHERE shop_id=$1 AND id=$2", [shop.shopId, pending?.id]))
         .rows[0],
     ).toMatchObject({ delivery: "delivered_later", sent_at: NOW });
+    await db.query("UPDATE messages SET delivery='deferred',sent_at=NULL WHERE shop_id=$1 AND id=$2", [
+      shop.shopId,
+      pending?.id,
+    ]);
+    const inbound = (
+      await db.query<{ id: string }>(
+        "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,created_at,kakao_message_id) VALUES($1,$2,'inbound','customer','text','합성 후속 질문',$3,'synthetic-'||gen_random_uuid()::text) RETURNING id",
+        [shop.shopId, shop.consultationId, NOW],
+      )
+    ).rows[0];
+    const handed = await replyWithKakaoHandoff(
+      scoped(),
+      {
+        kind: "received",
+        customerId: shop.customerId,
+        consultationId: shop.consultationId,
+        messageId: inbound?.id ?? "",
+        limit: "ok",
+      },
+      NOW,
+      (previous) =>
+        kakaoReply(
+          { json: (value, status = 200, headers = {}) => Response.json(value, { status, headers }) },
+          "ai_unavailable",
+          { previous },
+        ),
+    );
+    const handedBody = (await handed.json()) as { template: { outputs: unknown[] } };
+    expect(handedBody.template.outputs).toHaveLength(3);
+    expect(handedBody.template.outputs[2]).toHaveProperty("textCard");
+    expect(
+      (
+        await db.query(
+          "SELECT 1 FROM messages WHERE shop_id=$1 AND consultation_id=$2 AND author='system' AND kind='text' AND delivery='deferred' AND sent_at IS NULL",
+          [shop.shopId, shop.consultationId],
+        )
+      ).rowCount,
+    ).toBe(1);
   });
 });

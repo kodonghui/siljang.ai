@@ -35,6 +35,8 @@ export async function deferredKakaoMessages(
     readonly disclosureConsultationId?: string | undefined;
     readonly now?: Date;
     readonly excludeMessageId?: string | undefined;
+    /** 현재 결과를 따로 보존할 수 있는 호출자만 세 칸의 주문 카드를 통째로 소비한다. */
+    readonly allowFullOrderCard?: boolean;
   } = {},
 ): Promise<readonly DeferredKakaoMessage[]> {
   if ((await db.run("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [customerId])).rowCount === 0)
@@ -109,7 +111,8 @@ export async function deferredKakaoMessages(
       "card" in row && row.card !== undefined
         ? expandKakaoMessageContents([row.card]).length
         : Math.ceil([...row.text].length / 1000);
-    if (slots === 3 && selected.length === 0 && !options.disclosureConsultationId) remaining = 3;
+    if (slots === 3 && selected.length === 0 && options.allowFullOrderCard && !options.disclosureConsultationId)
+      remaining = 3;
     if (slots > remaining) break;
     selected.push({
       id: row.id,
@@ -151,6 +154,21 @@ export async function markDeferredKakaoMessages(
   }
 }
 
+/** 세 칸의 규정/카드는 원자적으로 먼저 전하고 현재 안내의 전달 여부를 돌려준다. */
+export function renderDeferredKakaoReply(
+  texts: readonly KakaoMessageContent[],
+  render: (previous: readonly KakaoMessageContent[]) => Response,
+): { response: Response; currentIncluded: boolean } {
+  if (texts.length !== 3) return { response: render(texts), currentIncluded: true };
+  const base = render([]);
+  return {
+    response: new Response(JSON.stringify({ version: "2.0", template: { outputs: kakaoMessageOutputs(texts) } }), {
+      status: base.status,
+      headers: base.headers,
+    }),
+    currentIncluded: false,
+  };
+}
 /** HTTP 응답 생성과 전달 표시를 같은 트랜잭션으로 묶는다. 바깥 서비스는 이 안에서 부르지 않는다. */
 export async function replyWithDeferredKakaoMessages(
   db: ShopRequestDb,
@@ -175,18 +193,11 @@ export async function replyWithDeferredKakaoMessages(
     const pending = await deferredKakaoMessages(tx, customerId, {
       disclosureConsultationId: disclosure?.consultationId,
       now,
+      allowFullOrderCard: true,
     });
     const texts = deferredKakaoTexts(pending);
-    // 규정 두 글과 카드는 한 묶음이다. 세 칸을 모두 쓰면 현재 고정 안내를 덧붙이지 않는다.
-    let rendered: Response;
-    if (texts.length === 3) {
-      const base = render([]);
-      rendered = new Response(JSON.stringify({ version: "2.0", template: { outputs: kakaoMessageOutputs(texts) } }), {
-        status: base.status,
-        headers: base.headers,
-      });
-    } else rendered = render(texts);
-    const { response } = await prependKakaoDisclosure(rendered, disclosure);
+    const rendered = renderDeferredKakaoReply(texts, render);
+    const { response } = await prependKakaoDisclosure(rendered.response, disclosure);
     if (disclosure !== undefined)
       await markKakaoAiDisclosure(
         tx,

@@ -383,7 +383,7 @@ describeDb("손님 확인 카드 저장과 한 번 실행(TASK-081)", () => {
       [{ used_at: null }],
     );
   });
-  it("받은 카드의 초안이 이미 제출됐으면 타인 카드로 오인하지 않고 재시도 안내", async () => {
+  it("받은 카드의 초안이 이미 제출됐으면 타인 카드로 오인하지 않고 내용 확인 방법을 안내", async () => {
     await isolated.db.query("UPDATE order_drafts SET status='active' WHERE id=$1", [shop.draftId]);
     const card = await showConfirmCard(scoped(), {
       ...identity(),
@@ -392,7 +392,7 @@ describeDb("손님 확인 카드 저장과 한 번 실행(TASK-081)", () => {
       now: NOW,
     });
     await isolated.db.query("UPDATE order_drafts SET status='submitted' WHERE id=$1", [shop.draftId]);
-    expect((await press(card.cardKey)).outcome).toBe("retry_needed");
+    expect((await press(card.cardKey)).outcome).toBe("not_allowed_now");
     expect((await isolated.db.query("SELECT used_at FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows).toEqual(
       [{ used_at: null }],
     );
