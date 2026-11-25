@@ -101,6 +101,33 @@ it("틀린 페이지 주소는 상담 API를 부르지 않고 처음부터 보�
     false,
   );
 });
+it.each(["", "?limit=20"])("이전 페이지가422로 실패한 뒤 처음부터 보기는 커서 없이 새로 읽는다(%s)", async (search) => {
+  page.items[0].text = "복구 전 합성 메시지";
+  page.nextCursor = "synthetic_expired_cursor";
+  let initialReads = 0;
+  handler = async (path) => {
+    if (new URL(path, "https://siljang.example").searchParams.has("cursor"))
+      return Response.json({ code: "validation_failed", traceId: "0123456789abcdef0123456789abcdef" }, { status: 422 });
+    initialReads++;
+    const data = structuredClone(page);
+    if (initialReads > 1) {
+      data.items[0].text = "복구 후 합성 메시지";
+      data.nextCursor = null;
+    }
+    return Response.json(data);
+  };
+  open(search);
+  await screen.findByText("복구 전 합성 메시지");
+  fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
+  await screen.findByText("입력한 내용을 확인해 주세요");
+  fireEvent.click(screen.getByRole("button", { name: "처음부터 보기" }));
+  expect(await screen.findByText("복구 후 합성 메시지")).toBeTruthy();
+  expect(screen.queryByText("복구 전 합성 메시지")).toBeNull();
+  expect(screen.queryByText("입력한 내용을 확인해 주세요")).toBeNull();
+  expect(initialReads).toBe(2);
+  const calls = vi.mocked(fetch).mock.calls.filter(([path]) => String(path).includes("/messages"));
+  expect(new URL(String(calls.at(-1)?.[0]), "https://siljang.example").searchParams.has("cursor")).toBe(false);
+});
 it("형식이 틀린 상담 ID도 다른 가게/없는 상담과 같은 찾을 수 없음으로 보인다", async () => {
   page.consultationId = "not-a-consultation";
   open();
@@ -155,6 +182,41 @@ it("같은 시각에는 서버가 준 질문과 답 순서를 유지한다", asy
   await screen.findByText("첫 번째 합성 질문");
   const contents = document.querySelector(".consultation-timeline")?.textContent ?? "";
   expect(contents.indexOf("첫 번째 합성 질문")).toBeLessThan(contents.indexOf("두 번째 합성 답"));
+});
+it("보조 커서 없는 사진 갱신은 새 페이지의 이전 대화 커서도 받아 빠진 기록을 다시 읽는다", async () => {
+  page.reloadCursor = null;
+  page.nextCursor = null;
+  page.items = Array.from({ length: 20 }, (_, index) => ({
+    ...structuredClone(page.items[0]),
+    messageId: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    text: `기존 합성 기록 ${index}`,
+    photos: index === 0 ? [{ url: "https://images.example/synthetic-oldest?exp=1" }] : [],
+  }));
+  const older = { ...structuredClone(page), reloadCursor: "fallback_oldest", items: [page.items[0]] };
+  const newer = {
+    ...structuredClone(page),
+    reloadCursor: "fallback_latest",
+    nextCursor: "fallback_oldest",
+    items: [
+      ...page.items.slice(1),
+      { ...page.items[19], messageId: "00000000-0000-4000-8000-000000000021", text: "새 합성 기록" },
+    ],
+  };
+  let reads = 0;
+  handler = async (path) => {
+    if (path.includes("cursor=fallback_oldest")) return Response.json(older);
+    reads++;
+    return Response.json(reads === 1 ? page : newer);
+  };
+  open();
+  await screen.findByText("기존 합성 기록 0");
+  fireEvent.click(screen.getByRole("button", { name: "참고 사진 1 다시 불러오기" }));
+  await screen.findByText("새 합성 기록");
+  fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
+  expect(await screen.findByText("기존 합성 기록 0")).toBeTruthy();
+  expect(screen.getByText("새 합성 기록")).toBeTruthy();
+  expect(document.querySelectorAll(".consultation-timeline li")).toHaveLength(21);
+  expect(reads).toBe(2);
 });
 it.each([false, true])("추가 페이지의 만료 사진을 같은 페이지에서 갱신한다(사진 창:%s)", async (dialogOpen) => {
   const start = new Date("2026-11-25T07:00:00Z");

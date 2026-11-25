@@ -100,7 +100,11 @@ export async function receiveKakaoReferencePhoto(r: ShopRequest): Promise<Respon
     });
     if (turn.kind !== "reply") return kakaoReply(r, "photo_download_failed");
     const previous = await r.db.transaction((tx) =>
-      deferredKakaoMessages(tx, claim.customer_id, { now: r.services.now(), excludeMessageId: turn.reply.id }),
+      deferredKakaoMessages(tx, claim.customer_id, {
+        now: r.services.now(),
+        excludeMessageId: turn.reply.id,
+        fields: () => r.services.fieldCrypto(),
+      }),
     );
     const response = kakaoReply(r, turn.reply.outcome, { previous: deferredKakaoTexts(previous) });
     await finishKakaoCallback(

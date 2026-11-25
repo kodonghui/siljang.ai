@@ -100,7 +100,7 @@ describeDb("손님 안내 생성(TASK-104)", () => {
         },
         env,
       );
-    const first = await (await call("확정 안내 뒤의 합성 첫 질문")).json();
+    const first = (await (await call("확정 안내 뒤의 합성 첫 질문")).json()) as { template: { outputs: unknown[] } };
     expectSchema("SkillTemplateResponse", first);
     expect(first.template.outputs[0]).toEqual({ simpleText: { text: stored?.body } });
     expect(first.template.outputs.length).toBeGreaterThan(1);

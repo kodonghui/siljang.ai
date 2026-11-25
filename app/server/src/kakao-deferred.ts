@@ -1,5 +1,7 @@
 import { type ConfirmCardView, readConfirmCardDelivery } from "./confirm-card-store";
-import { TEXT_CUSTOMER_NOTICE_KINDS } from "./customer-notice-store";
+import { customerNoticeContents, READABLE_CUSTOMER_NOTICE_KINDS } from "./customer-notice-content";
+import { recordPaymentNoticeDelivery } from "./customer-notice-store";
+import type { FieldCrypto } from "./field-crypto";
 import {
   inlineKakaoDisclosure,
   type KakaoDisclosurePolicy,
@@ -17,11 +19,13 @@ export interface DeferredKakaoMessage {
   readonly text: string;
   readonly source: "message" | "notification";
   readonly card?: ConfirmCardView;
+  readonly contents?: readonly KakaoMessageContent[];
 }
 
 /** 안내 하나는 모두 보낸 뒤에만 전함으로 표시한다. Unicode 글자를 중간에서 자르지 않는다. */
 export function deferredKakaoTexts(previous: readonly DeferredKakaoMessage[]): KakaoMessageContent[] {
-  return previous.flatMap<KakaoMessageContent>(({ text, card }) => {
+  return previous.flatMap<KakaoMessageContent>(({ text, card, contents }) => {
+    if (contents !== undefined) return expandKakaoMessageContents(contents);
     if (card !== undefined) return expandKakaoMessageContents([card]);
     const chars = [...text];
     return chars.length <= 1000 ? [text] : [chars.slice(0, 1000).join(""), chars.slice(1000).join("")];
@@ -38,6 +42,7 @@ export async function deferredKakaoMessages(
     readonly excludeMessageId?: string | undefined;
     /** 현재 결과를 따로 보존할 수 있는 호출자만 세 칸의 주문 카드를 통째로 소비한다. */
     readonly allowFullOrderCard?: boolean;
+    readonly fields?: (() => FieldCrypto) | undefined;
   } = {},
 ): Promise<readonly DeferredKakaoMessage[]> {
   if ((await db.run("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [customerId])).rowCount === 0)
@@ -84,7 +89,7 @@ export async function deferredKakaoMessages(
       blocked: row.blocked,
     });
   }
-  // 결제/버튼/사진 안내는 업무 렌더러가 전해진 시각 등도 함께 기록해야 하므로 이 공통 글 경로에서 소비하지 않는다.
+  // 결제 안내는 표시 자료를 늦게 만들고 실제 전달 표시와 같은 트랜잭션에서 시계를 시작한다.
   await db.run(
     `UPDATE notifications n SET status='dropped',next_attempt_at=NULL FROM orders o
       WHERE n.shop_id=$1 AND n.customer_id=$2 AND n.status='deferred' AND n.kind='order_confirmed'
@@ -92,8 +97,8 @@ export async function deferredKakaoMessages(
         AND (o.status NOT IN ('confirmed','received','no_pickup') OR o.customer_id<>n.customer_id OR o.personal_data_purged_at IS NOT NULL)`,
     [customerId],
   );
-  const notices = await db.run<{ id: string; body: string; created_order: string }>(
-    `SELECT n.id, n.body, (extract(epoch FROM n.created_at) * 1000000)::bigint::text AS created_order FROM notifications n
+  const notices = await db.run<{ id: string; body: string; kind: string; created_order: string }>(
+    `SELECT n.id, n.body,n.kind, (extract(epoch FROM n.created_at) * 1000000)::bigint::text AS created_order FROM notifications n
       JOIN consultations c ON c.shop_id=$1 AND c.id=n.consultation_id AND c.customer_id=n.customer_id
       LEFT JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id
       WHERE n.shop_id = $1 AND n.customer_id = $2 AND n.status = 'deferred' AND n.sent_at IS NULL
@@ -101,18 +106,25 @@ export async function deferredKakaoMessages(
         AND (n.order_id IS NULL OR o.customer_id=n.customer_id)
         AND (n.kind<>'order_confirmed' OR o.status IN ('confirmed','received','no_pickup'))
       ORDER BY n.created_at, n.id LIMIT $3 FOR UPDATE OF n`,
-    [customerId, DEFERRED_REPLY_BATCH, TEXT_CUSTOMER_NOTICE_KINDS],
+    [customerId, DEFERRED_REPLY_BATCH, READABLE_CUSTOMER_NOTICE_KINDS],
   );
-  const candidates = [
-    ...messages,
-    ...notices.rows.map((row) => ({
+  for (const row of notices.rows) {
+    const contents = await customerNoticeContents(
+      db,
+      { id: row.id, customerId, kind: row.kind, body: row.body },
+      options.now ?? new Date(),
+      options.fields,
+    );
+    messages.push({
       id: row.id,
       text: row.body,
-      source: "notification" as const,
+      source: "notification",
       at: BigInt(row.created_order),
-      blocked: false,
-    })),
-  ].sort(
+      blocked: contents === null,
+      ...(contents === null ? {} : { contents }),
+    });
+  }
+  const candidates = messages.sort(
     (a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0) || a.id.localeCompare(b.id) || a.source.localeCompare(b.source),
   );
   const selected: DeferredKakaoMessage[] = [];
@@ -120,9 +132,11 @@ export async function deferredKakaoMessages(
   for (const row of candidates) {
     if (row.blocked) break;
     const slots =
-      "card" in row && row.card !== undefined
-        ? expandKakaoMessageContents([row.card]).length
-        : Math.ceil([...row.text].length / 1000);
+      row.contents !== undefined
+        ? expandKakaoMessageContents(row.contents).length
+        : row.card !== undefined
+          ? expandKakaoMessageContents([row.card]).length
+          : Math.ceil([...row.text].length / 1000);
     if (slots === 3 && selected.length === 0 && options.allowFullOrderCard && !options.disclosureConsultationId)
       remaining = 3;
     if (slots > remaining) break;
@@ -131,6 +145,7 @@ export async function deferredKakaoMessages(
       text: row.text,
       source: row.source,
       ...("card" in row && row.card !== undefined ? { card: row.card } : {}),
+      ...(row.contents === undefined ? {} : { contents: row.contents }),
     });
     remaining -= slots;
     if (remaining === 0) break;
@@ -151,9 +166,10 @@ export async function markDeferredKakaoMessages(
         `UPDATE notifications SET status = 'delivered_on_reply', sent_at = $4
           WHERE shop_id = $1 AND id = $2 AND customer_id = $3 AND status = 'deferred' AND sent_at IS NULL
             AND body = $5 AND kind=ANY($6::text[])`,
-        [row.id, customerId, at, row.text, TEXT_CUSTOMER_NOTICE_KINDS],
+        [row.id, customerId, at, row.text, READABLE_CUSTOMER_NOTICE_KINDS],
       );
       if (marked.rowCount !== 1) throw new Error("deferred notification changed before delivery");
+      await recordPaymentNoticeDelivery(db, row.id, customerId, at);
       continue;
     }
     await db.run(
@@ -189,6 +205,7 @@ export async function replyWithDeferredKakaoMessages(
   render: (previous: readonly KakaoMessageContent[]) => Response,
   consultationId?: string,
   policy?: KakaoDisclosurePolicy,
+  fields?: () => FieldCrypto,
 ): Promise<Response> {
   return db.transaction(async (tx) => {
     const customer = await tx.run("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [customerId]);
@@ -206,6 +223,7 @@ export async function replyWithDeferredKakaoMessages(
       disclosureConsultationId: disclosure?.consultationId,
       now,
       allowFullOrderCard: true,
+      fields,
     });
     const texts = deferredKakaoTexts(pending);
     const rendered = renderDeferredKakaoReply(texts, render);

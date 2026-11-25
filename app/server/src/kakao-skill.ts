@@ -113,6 +113,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
               (previous) => kakaoReply(r, "masking_failed", { previous }),
               "masking_failed",
               disclosurePolicy,
+              () => r.services.fieldCrypto(),
             );
           }
           if ((await kakaoAiCostLimit(tx, receipt.consultationId, r.services.now())) !== "ok") {
@@ -123,6 +124,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
               (previous) => kakaoReply(r, "ai_cost_limit_reached", { previous }),
               "ai_cost_limit",
               disclosurePolicy,
+              () => r.services.fieldCrypto(),
             );
           }
           if (queue !== undefined && callback !== null && timeLeft() > 0) {
@@ -144,6 +146,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
             (previous) => kakaoReply(r, outcome, { previous }),
             "ai_failure",
             disclosurePolicy,
+            () => r.services.fieldCrypto(),
           );
         },
       );
@@ -165,6 +168,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
             (previous) => kakaoReply(r, outcome, { previous }),
             "ai_failure",
             disclosurePolicy,
+            () => r.services.fieldCrypto(),
           ),
       );
       return publication.kind === "callback" ? kakaoReply(r, "callback_pending") : publication.value;
@@ -181,6 +185,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
         (previous) => kakaoReply(r, outcome, { previous }),
         receipt.consultationId,
         disclosurePolicy,
+        () => r.services.fieldCrypto(),
       );
     return reply("unsupported_message");
   } catch (error) {

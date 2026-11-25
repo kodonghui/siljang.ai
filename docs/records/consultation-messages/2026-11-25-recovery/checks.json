@@ -1,0 +1,106 @@
+{
+  "redSource": "70aedd29396ee8dcf1e820d8fc0e4f66f3e114c1",
+  "fixedProductAndTestsSource": "f73978274b6b2bd4e168e88f610d7df336ff3e55",
+  "red": {
+    "web": {
+      "failed": 1,
+      "skipped": 22
+    },
+    "server": {
+      "failed": 1,
+      "skipped": 38
+    }
+  },
+  "firstRelatedGreenSource": "9e1e755db516d456942a4448b27f515fbd097060",
+  "firstRelatedGreen": {
+    "web": 23,
+    "server": 60,
+    "typecheck": 0,
+    "strictLint": 0
+  },
+  "node": {
+    "source": "c21ac21850cfa14044c3f17b0b9e06a59de9bd0a",
+    "pass": 55,
+    "fail": 0
+  },
+  "nativeBrowser": false,
+  "actualCustomers": 0,
+  "modelOrKakaoSends": 0,
+  "payments": 0,
+  "previousFullFreshRun": {
+    "source": "f73978274b6b2bd4e168e88f610d7df336ff3e55",
+    "server": {
+      "files": 145,
+      "passed": 2855
+    },
+    "web": {
+      "filesPassed": 72,
+      "filesFailed": 1,
+      "passed": 1773,
+      "failed": 1
+    },
+    "build": "미시작",
+    "database": "정리 완료",
+    "failure": "추가 시험의 limit=1에 여러 행인 계약 예제를 반환해 최초 읽기가 거절됨. 제품 고침의 실패 재현과 구분함. 시험의 검색 조건을 limit=20으로 고침. 새 전체를 실행함."
+  },
+  "finalTypecheck": 0,
+  "finalStrictLint": 0,
+  "beforePhotoReviewFullFreshRun": {
+    "source": "4ed1dd404a3c282b3a643fc82d5dca72a1a795cc",
+    "migrations": 40,
+    "server": {
+      "files": 145,
+      "passed": 2855
+    },
+    "web": {
+      "files": 73,
+      "passed": 1774
+    },
+    "testsExit": 0,
+    "buildExit": 0,
+    "viteMs": 577,
+    "appWorkerKiB": 5453.92,
+    "appWorkerGzipKiB": 1003.69,
+    "storageWorkerKiB": 21.08,
+    "storageWorkerGzipKiB": 6.55,
+    "database": "정리 완료",
+    "state": "completed",
+    "installation": "동일 package-lock 설치 재사용. 새 로컬 npm ci 아님"
+  },
+  "photoReview": {
+    "comment": 4693412935,
+    "reviewedPublic": "6f61a0fa099be193cbb5c81ab9c40d1b08944f78",
+    "redSource": "24b6c8db7603421742e1f23534573097208b39da",
+    "redWeb": {
+      "failed": 1,
+      "skipped": 24
+    },
+    "relatedGreenWeb": 25,
+    "finding": "보조 커서가 없는 사진 갱신이 새 페이지의 nextCursor를 버림",
+    "fixedProductSource": "c21ac21850cfa14044c3f17b0b9e06a59de9bd0a"
+  },
+  "fullFreshRun": {
+    "source": "c21ac21850cfa14044c3f17b0b9e06a59de9bd0a",
+    "equivalentPublicHead": "beac8abb2bf41482596979e4cd0d365f17a1a47f",
+    "tree": "14fdb5feebb00acf624a66cd313d3b0c946cbe86",
+    "migrations": 40,
+    "server": {
+      "files": 145,
+      "passed": 2855
+    },
+    "web": {
+      "files": 73,
+      "passed": 1775
+    },
+    "testsExit": 0,
+    "buildExit": 0,
+    "viteMs": 648,
+    "appWorkerKiB": 5453.92,
+    "appWorkerGzipKiB": 1003.69,
+    "storageWorkerKiB": 21.08,
+    "storageWorkerGzipKiB": 6.55,
+    "database": "정리 완료",
+    "state": "completed",
+    "installation": "동일 package-lock 설치 재사용. 새 로컬 npm ci 아님"
+  }
+}

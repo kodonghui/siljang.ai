@@ -19,6 +19,12 @@ const MAX_I64 = 9223372036854775807n,
 export class ConsultationCursorError extends Error {
   override readonly name = "ConsultationCursorError";
 }
+export class ConsultationCursorCapacityError extends RangeError {
+  override readonly name = "ConsultationCursorCapacityError";
+  constructor() {
+    super("consultation cursor capacity exceeded");
+  }
+}
 function invalid(): never {
   throw new ConsultationCursorError("invalid consultation cursor");
 }
@@ -97,7 +103,7 @@ export async function sealConsultationCursor(
   }
   const raw = String.fromCharCode(...bytes),
     size = new TextEncoder().encode(raw).length;
-  if (size > PAYLOAD_BYTES) throw new RangeError("consultation cursor capacity exceeded");
+  if (size > PAYLOAD_BYTES) throw new ConsultationCursorCapacityError();
   const envelope = await fc.seal(raw + "\0".repeat(PAYLOAD_BYTES - size), {
     purpose: "consultations.message_cursor",
     shopId,

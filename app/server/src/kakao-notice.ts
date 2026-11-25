@@ -1,5 +1,5 @@
 /** API-073의 일반 안내 읽기. 스킬 응답 생성은 발송 결과 확인과 구분한다. */
-import { TEXT_CUSTOMER_NOTICE_KINDS } from "./customer-notice-store";
+import { customerNoticeContents, READABLE_CUSTOMER_NOTICE_KINDS } from "./customer-notice-content";
 import { kakaoConsultationMessage } from "./kakao-consultation-message";
 import { kakaoReply } from "./kakao-reply";
 import type { ShopRequest } from "./routes";
@@ -12,8 +12,8 @@ export async function receiveKakaoNotice(r: ShopRequest): Promise<Response> {
   const key = request.payload.params.noticeKey;
   if (request.status !== "linked" || !isUuid(key)) return kakaoReply(r, "notice_gone");
   const row = (
-    await r.db.run<{ body: string }>(
-      `SELECT n.body FROM notifications n
+    await r.db.run<{ body: string; kind: string; customer_id: string }>(
+      `SELECT n.body,n.kind,n.customer_id FROM notifications n
       JOIN customers u ON u.shop_id=$1 AND u.id=n.customer_id AND u.kakao_channel_id=$3 AND u.kakao_user_key=$4
       JOIN consultations c ON c.shop_id=$1 AND c.id=n.consultation_id AND c.customer_id=u.id
       LEFT JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id
@@ -21,13 +21,17 @@ export async function receiveKakaoNotice(r: ShopRequest): Promise<Response> {
         AND c.status<>'deleted' AND o.personal_data_purged_at IS NULL
         AND (n.order_id IS NULL OR o.customer_id=n.customer_id)
         AND (n.kind<>'order_confirmed' OR o.status IN ('confirmed','received','no_pickup'))`,
-      [key, request.channelId, request.payload.userId, TEXT_CUSTOMER_NOTICE_KINDS],
+      [key, request.channelId, request.payload.userId, READABLE_CUSTOMER_NOTICE_KINDS],
     )
   ).rows[0];
   if (!row?.body.trim()) return kakaoReply(r, "notice_gone");
-  const chars = [...row.body],
-    contents: string[] = [];
-  for (let at = 0; at < chars.length; at += 1000) contents.push(chars.slice(at, at + 1000).join(""));
+  const contents = await customerNoticeContents(
+    r.db,
+    { id: key, customerId: row.customer_id, kind: row.kind, body: row.body },
+    r.services.now(),
+    () => r.services.fieldCrypto(),
+  );
+  if (!contents?.length) return kakaoReply(r, "notice_gone");
   return r.json(kakaoConsultationMessage({ state: "normal", contents }), 200, {
     "Siljang-Outcome": "notice_shown",
     "Cache-Control": "no-store",

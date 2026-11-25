@@ -1,13 +1,16 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import { sealAccountNumber } from "../src/account-number";
 import { createApp } from "../src/app";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
+import { singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const NOW = new Date("2026-11-25T00:00:00Z");
+const { fc } = singleKeyCrypto();
 describeDb("손님 안내 스킬 API-073(TASK-104)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture, key: string;
   beforeAll(async () => {
@@ -23,7 +26,11 @@ describeDb("손님 안내 스킬 API-073(TASK-104)", () => {
     await isolated?.close();
   });
   const call = (id: string, userId = shop.userKey) =>
-    createApp({ connect: () => isolated.connect(), services: { now: () => NOW }, logSink: () => {} }).request(
+    createApp({
+      connect: () => isolated.connect(),
+      services: { now: () => NOW, fieldCrypto: fc },
+      logSink: () => {},
+    }).request(
       "/api/kakao/skills/event",
       {
         method: "POST",
@@ -110,6 +117,45 @@ describeDb("손님 안내 스킬 API-073(TASK-104)", () => {
     expect(value.template.outputs.map((output) => output.simpleText.text).join("")).toBe(body);
     expect((await isolated.db.query("SELECT status,sent_at FROM notifications WHERE id=$1", [id])).rows).toEqual([
       { status: "deferred", sent_at: null },
+    ]);
+  });
+  it("자기 결제 안내에서만 옛 계좌를 풀어 보여 주며 스킬 읽기만으로 결제 시계를 시작하지 않는다", async () => {
+    const id = newUuid(),
+      account = "123456789012",
+      sealed = await sealAccountNumber(fc, account, "payment_accounts.account_number", shop.shopId),
+      cap = new Date(NOW.getTime() + 24 * 3600000);
+    await isolated.db.query("UPDATE payment_accounts SET account_number_enc=$2,account_last4=$3 WHERE id=$1", [
+      shop.paymentAccountId,
+      sealed.enc,
+      sealed.last4,
+    ]);
+    await isolated.db.query(
+      "UPDATE payment_requests SET delivered_at=NULL,issued_at=$2,due_at=$3,due_cap_at=$3 WHERE id=$1",
+      [shop.paymentRequestId, new Date(NOW.getTime() - 3600000), cap],
+    );
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status) VALUES($1,$2,$3,$4,$5,'payment_request',$6,'payment_request:v1','결제 안내를 확인해 주세요','deferred')",
+      [
+        id,
+        shop.shopId,
+        shop.customerId,
+        shop.consultationId,
+        shop.orderId,
+        `notice:${shop.paymentRequestId}:payment_request`,
+      ],
+    );
+    const response = await call(id);
+    expect(response.headers.get("Siljang-Outcome")).toBe("notice_shown");
+    const value = await response.json();
+    expectSchema("SkillTemplateResponse", value);
+    expect(JSON.stringify(value)).toContain(account);
+    expect(JSON.stringify(value)).toContain("35,000원");
+    expect(
+      (await isolated.db.query("SELECT delivered_at,due_at FROM payment_requests WHERE id=$1", [shop.paymentRequestId]))
+        .rows,
+    ).toEqual([{ delivered_at: null, due_at: cap }]);
+    expect((await isolated.db.query("SELECT body,status,sent_at FROM notifications WHERE id=$1", [id])).rows).toEqual([
+      { body: "결제 안내를 확인해 주세요", status: "deferred", sent_at: null },
     ]);
   });
 });
