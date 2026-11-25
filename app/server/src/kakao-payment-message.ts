@@ -1,5 +1,6 @@
 /** SCR-005 표시 함수. 결제 처리와 전달 시각의 저장은 업무 처리기가 맡습니다. */
 import { isAccountNumber } from "./account-number";
+import { kakaoChannelIdentifierError } from "./kakao-channel-input";
 import { CARD_PAYMENT_URL_MAX_LENGTH } from "./payment-destination-input";
 import { toShopLocal } from "./time";
 
@@ -158,8 +159,11 @@ function paymentNormalMessage(view: KakaoPaymentNormalView): KakaoPaymentMessage
   )
     throw new RangeError("invalid payment display");
   for (const value of [view.account.bankName, view.account.holderName])
-    if (typeof value !== "string" || !value.trim() || [...value].length > 100 || /[\0\r\n]/.test(value))
+    if (typeof value !== "string" || !value.trim() || [...value].length > 100 || value.includes("\0"))
       throw new RangeError("invalid payment account display");
+  // 저장 원문은 보존한다. API025가 허용하는 줄바꿈은 안내의 한 행에서 공백으로 표시한다.
+  const bankName = view.account.bankName.replace(/[\r\n\u0085\u2028\u2029]+/gu, " ");
+  const holderName = view.account.holderName.replace(/[\r\n\u0085\u2028\u2029]+/gu, " ");
   const due = localDate(view.dueAt, view.timeZone);
   const title =
     view.kind === "reissue" ? "결제 기한을 연장했어요" : view.kind === "difference" ? "변경 차액" : "결제 안내";
@@ -173,7 +177,7 @@ function paymentNormalMessage(view: KakaoPaymentNormalView): KakaoPaymentMessage
     ? `이 안내가 전달된 때부터 ${view.deliveryWindow.hours}시간 안(상한 ${due.date} ${due.time})`
     : `${due.date} ${due.time}까지 보내 주세요`;
   const text = checkedText(
-    `${view.amountConfirmed ? "새 금액을 확인했어요\n" : ""}${title} · 주문번호 ${view.orderNo}${adjustment}\n결제할 금액 ${money(view.amount)}원\n은행 ${view.account.bankName}\n계좌번호 ${view.account.number}\n예금주 ${view.account.holderName}\n${deadline}`,
+    `${view.amountConfirmed ? "새 금액을 확인했어요\n" : ""}${title} · 주문번호 ${view.orderNo}${adjustment}\n결제할 금액 ${money(view.amount)}원\n은행 ${bankName}\n계좌번호 ${view.account.number}\n예금주 ${holderName}\n${deadline}`,
     1000,
   );
   let url: URL | null = null;
@@ -214,7 +218,7 @@ function paymentNormalMessage(view: KakaoPaymentNormalView): KakaoPaymentMessage
 }
 
 function paymentAmountMessage(view: KakaoPaymentAmountView): KakaoPaymentMessage {
-  if (!/^[A-Za-z0-9_-]{16,64}$/.test(view.cardKey) || !/^[A-Za-z0-9_-]{1,100}$/.test(view.blockId))
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(view.cardKey) || kakaoChannelIdentifierError(view.blockId, 100) !== null)
     throw new RangeError("invalid payment card action");
   const expires = localDate(view.expiresAt, view.timeZone);
   const refresh =

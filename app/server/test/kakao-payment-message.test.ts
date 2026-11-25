@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { kakaoChannelIdentifierError } from "../src/kakao-channel-input";
 import { kakaoPaymentMessage } from "../src/kakao-payment-message";
 import { expectSchema } from "./support/contract";
 
@@ -16,6 +17,42 @@ const customAmount = {
   amount: 75000,
   reason: "합성 디자인 장식을 추가해요",
 } as const;
+
+it.each(["\n", "\r\n", "\r", String.fromCodePoint(0x2028), String.fromCodePoint(0x2029)])(
+  "기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다(%j)",
+  (separator) => {
+    const body = kakaoPaymentMessage({
+      state: "normal",
+      kind: "first",
+      orderNo: "AB1234CD",
+      amount: 35000,
+      account: { bankName: `합성${separator}은행`, number: "123456789012", holderName: `합성${separator}가게` },
+      dueAt: "2026-11-25T12:00:00Z",
+      timeZone: "Asia/Seoul",
+    });
+    expectSchema("SkillTemplateResponse", body);
+    const texts = body.template.outputs.flatMap((o) => ("simpleText" in o ? [o.simpleText.text] : [])).join("");
+    expect(texts).toContain("은행 합성 은행\n계좌번호 123456789012\n예금주 합성 가게\n");
+  },
+);
+
+it.each(["synthetic.amount:card", "합성-금액-카드"])(
+  "새 금액 카드도 설정에서 허용한 블록 ID를 보존한다(%s)",
+  (blockId) => {
+    expect(kakaoChannelIdentifierError(blockId, 100)).toBeNull();
+    const body = kakaoPaymentMessage({ ...customAmount, blockId });
+    expectSchema("SkillTemplateResponse", body);
+    expect(JSON.stringify(body)).toContain(blockId);
+  },
+);
+
+it.each(["synthetic card", "", "x".repeat(101), "synthetic\0card"])(
+  "새 금액 카드는 설정에서 허용하지 않은 블록 ID를 거부한다(%j)",
+  (blockId) => {
+    expect(kakaoChannelIdentifierError(blockId, 100)).not.toBeNull();
+    expect(() => kakaoPaymentMessage({ ...customAmount, blockId })).toThrow();
+  },
+);
 
 it("요청 견적의0원부터 표시는 실제 결제 금액과 구별해 보존한다", () => {
   const body = kakaoPaymentMessage({

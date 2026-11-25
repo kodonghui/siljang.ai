@@ -4,6 +4,7 @@ import { createApp } from "../src/app";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { parsePaymentDestination } from "../src/payment-destination-input";
 import { Secret } from "../src/settings";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
@@ -91,6 +92,63 @@ describeDb("다음 대화의 결제 안내 전달(TASK-104)", () => {
   const state = async () =>
     (await isolated.db.query("SELECT delivered_at,due_at FROM payment_requests WHERE id=$1", [shop.paymentRequestId]))
       .rows[0];
+  it.each(["event", "message"] as const)(
+    "저장할 수 있는 은행명/예금주의 줄바꿈이 기존 안내를 막지 않는다(%s)",
+    async (mode) => {
+      const bankName = "합성\n은행",
+        holderName = "합성\r\n가게";
+      expect(() =>
+        parsePaymentDestination({
+          baseRevision: null,
+          bankName,
+          holderName,
+          accountNumber: ACCOUNT,
+          cardPaymentUrl: null,
+        }),
+      ).not.toThrow();
+      await isolated.db.query("UPDATE payment_accounts SET bank_name=$2,holder_name=$3 WHERE id=$1", [
+        shop.paymentAccountId,
+        bankName,
+        holderName,
+      ]);
+      const response =
+        mode === "message"
+          ? await call("합성 계좌 표시 질문")
+          : await createApp({
+              connect: () => isolated.connect(),
+              services: { now: () => NOW, fieldCrypto: fc },
+              logSink: () => {},
+            }).request(
+              "/api/kakao/skills/event",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+                body: JSON.stringify({
+                  bot: { id: shop.botId },
+                  userRequest: {
+                    utterance: "",
+                    params: { noticeKey: id },
+                    user: { id: shop.userKey, type: "botUserKey" },
+                  },
+                  action: { id: "synthetic-bank-lines", params: {} },
+                }),
+              },
+              env,
+            );
+      const body = await response.json();
+      expectSchema("SkillTemplateResponse", body);
+      for (const text of ["은행 합성 은행", "예금주 합성 가게", ACCOUNT, "결제했어요"])
+        expect(JSON.stringify(body)).toContain(text);
+      expect(
+        (
+          await isolated.db.query("SELECT bank_name,holder_name FROM payment_accounts WHERE id=$1", [
+            shop.paymentAccountId,
+          ])
+        ).rows,
+      ).toEqual([{ bank_name: bankName, holder_name: holderName }]);
+      expect((await state())?.delivered_at).toEqual(mode === "message" ? NOW : null);
+    },
+  );
   it.each([
     ["event", "unicode"],
     ["message", "unicode"],
