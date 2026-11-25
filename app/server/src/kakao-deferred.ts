@@ -79,8 +79,9 @@ export async function deferredKakaoBatch(
   }
   const messages: (DeferredKakaoMessage & { readonly at: bigint; readonly blocked: boolean })[] = [];
   let cursor: { createdAt: string; id: string } | undefined;
+  let disclosureBlocked = false;
   // 권한 부족인 참조만 남기고, 출력 예산 뒤의 셋째 정상 메시지까지 읽는다.
-  while (messages.length < DEFERRED_REPLY_BATCH + 1) {
+  while (!disclosureBlocked && deferredKakaoTexts(messages).length < DEFERRED_REPLY_BATCH + 1) {
     const result = await db.run<MessageRow>(
       `SELECT m.id, m.body_masked, m.kind, m.trace_id, m.consultation_id, m.created_at::text AS cursor_created_at,
         (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order,
@@ -131,7 +132,11 @@ export async function deferredKakaoBatch(
         at: BigInt(row.created_order),
         blocked: row.blocked,
       });
-      if (messages.length === DEFERRED_REPLY_BATCH + 1) break;
+      if (row.blocked) {
+        disclosureBlocked = true;
+        break;
+      }
+      if (deferredKakaoTexts(messages).length >= DEFERRED_REPLY_BATCH + 1) break;
     }
     if (result.rows.length < DEFERRED_REPLY_BATCH + 1) break;
   }

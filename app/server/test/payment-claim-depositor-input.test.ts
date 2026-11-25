@@ -383,6 +383,10 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
           [id, shop.shopId, shop.consultationId, source, new Date(NOW.getTime() + i)],
         );
       }
+      await isolated.db.query(
+        "UPDATE messages SET created_at=$2::timestamptz + array_position($1::uuid[],id) * INTERVAL '1 microsecond' WHERE id=ANY($1::uuid[])",
+        [blocked, NOW],
+      );
       for (let i = 0; i < 3; i++) {
         const id = newUuid();
         normal.push(id);
