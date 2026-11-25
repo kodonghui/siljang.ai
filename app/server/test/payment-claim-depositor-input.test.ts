@@ -9,11 +9,13 @@ import {
   readConfirmCardDelivery,
   showConfirmCard,
 } from "../src/confirm-card-store";
+import { CustomerNoticeTemporarilyUnavailable } from "../src/customer-notice-content";
 import { createPaymentRequestNotice } from "../src/customer-notice-store";
 import { pgConnector } from "../src/db";
 import { deliverKakaoCallback } from "../src/kakao-callback";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
+import * as cardDelivery from "../src/kakao-card-delivery";
 import { kakaoConsultationMessage } from "../src/kakao-consultation-message";
 import { deferredKakaoBatch, deferredKakaoTexts, markDeferredKakaoMessages } from "../src/kakao-deferred";
 import { expandKakaoMessageContents } from "../src/kakao-message-content";
@@ -247,6 +249,9 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
     ["difference", "current-legacy"] as const,
     ["difference", "prepare-legacy"] as const,
     ["custom", "bounded-duplicates"] as const,
+    ["difference", "current-legacy-empty"] as const,
+    ["difference", "prepare-legacy-empty"] as const,
+    ["difference", "late-legacy"] as const,
   ])("새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(%s/%s)", async (kind, mode) => {
     const sourceMessageId = newUuid();
     const original = await show("payment_claim", sourceMessageId);
@@ -430,7 +435,26 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
       }
       return;
     }
-    if (["pending-callback", "current-legacy", "prepare-legacy", "bounded-duplicates"].includes(mode)) {
+    if (
+      [
+        "pending-callback",
+        "current-legacy",
+        "prepare-legacy",
+        "bounded-duplicates",
+        "current-legacy-empty",
+        "prepare-legacy-empty",
+        "late-legacy",
+      ].includes(mode)
+    ) {
+      const legacy = mode.includes("legacy"),
+        prepareLegacy = mode.startsWith("prepare-legacy"),
+        empty = mode.endsWith("-empty"),
+        late = mode === "late-legacy";
+      const lateRead = late
+        ? vi
+            .spyOn(cardDelivery, "readClaimedKakaoCard")
+            .mockRejectedValueOnce(new CustomerNoticeTemporarilyUnavailable())
+        : undefined;
       const { fc, keys } = singleKeyCrypto(),
         fieldKey = keys.get(1);
       if (fieldKey === undefined) throw new Error("합성 암호화 키 없음");
@@ -473,7 +497,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         const job = jobs[0];
         if (!job) throw new Error("합성 콜백 작업 없음");
         const replayIds: string[] = [];
-        for (let i = 0; i < (mode === "bounded-duplicates" ? 36 : 3); i++) {
+        for (let i = 0; i < (mode === "bounded-duplicates" ? 36 : late ? 0 : 3); i++) {
           const ccId = newUuid(),
             ccKey = `ck_${newUuid()}`,
             source = newUuid(),
@@ -493,10 +517,11 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
           );
         }
         const normalId = newUuid();
-        await isolated.db.query(
-          "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','text','합성 중복 뒤의 정상 안내','deferred',$4)",
-          [normalId, shop.shopId, shop.consultationId, new Date(NOW.getTime() + 100)],
-        );
+        if (!empty)
+          await isolated.db.query(
+            "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','text','합성 중복 뒤의 정상 안내','deferred',$4)",
+            [normalId, shop.shopId, shop.consultationId, new Date(NOW.getTime() + 100)],
+          );
         if (mode === "bounded-duplicates") {
           const render = vi.spyOn(paymentMessages, "kakaoPaymentMessage");
           try {
@@ -521,7 +546,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
           return;
         }
         const replyId = newUuid();
-        if (mode !== "prepare-legacy") {
+        if (!prepareLegacy) {
           await isolated.db.query(
             "UPDATE confirm_cards SET payload=jsonb_set(payload,'{sourceMessageId}',$2::jsonb) WHERE card_key=$1",
             [original.cardKey, JSON.stringify(job.messageId)],
@@ -532,7 +557,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
           );
         }
         const call = vi.fn<AiModel["call"]>().mockRejectedValue(new Error("저장된 답이 있어 모델 호출 금지"));
-        if (mode === "prepare-legacy")
+        if (prepareLegacy)
           call.mockImplementation(async (input) => {
             const aiCallId = await recordAiCall(input.db, {
               consultationId: input.consultationId,
@@ -557,24 +582,24 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
         const at = new Date(NOW.getTime() + 1000);
         const options = {
-          connect: () =>
-            mode === "current-legacy" || mode === "prepare-legacy"
-              ? pgConnector(new Secret(roleUrl))
-              : isolated.connect(),
+          connect: () => (legacy && !late ? pgConnector(new Secret(roleUrl)) : isolated.connect()),
           now: () => at,
           fetch: send,
           logSink: () => {},
           services: { fieldCrypto: fc, aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
         };
         expect(await consumeKakaoCallback(job, env, options)).toBe("done");
-        expect(send).toHaveBeenCalledTimes(1);
-        if (mode === "prepare-legacy") expect(call).toHaveBeenCalledTimes(1);
+        expect(send).toHaveBeenCalledTimes(empty ? 0 : 1);
+        expect(network).not.toHaveBeenCalled();
+        if (prepareLegacy) expect(call).toHaveBeenCalledTimes(1);
         else expect(call).not.toHaveBeenCalled();
-        if (mode === "current-legacy" || mode === "prepare-legacy") {
-          const sent = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
-          expectSchema("SkillTemplateResponse", sent);
-          expect(JSON.stringify(sent)).toContain("합성 중복 뒤의 정상 안내");
-          expect(JSON.stringify(sent)).not.toContain(amountKey);
+        if (legacy) {
+          if (!empty) {
+            const sent = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
+            expectSchema("SkillTemplateResponse", sent);
+            expect(JSON.stringify(sent)).toContain("합성 중복 뒤의 정상 안내");
+            expect(JSON.stringify(sent)).not.toContain(amountKey);
+          }
           expect(
             (await isolated.db.query("SELECT delivery,sent_at FROM messages WHERE id=ANY($1::uuid[])", [replayIds]))
               .rows,
@@ -587,9 +612,10 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
           ).rows;
           expect(pending).toHaveLength(1);
           expect(pending[0]).toMatchObject({ delivery: "deferred", sent_at: null });
-          expect(
-            (await isolated.db.query("SELECT delivery FROM messages WHERE id=$1", [normalId])).rows[0]?.delivery,
-          ).toBe("delivered_later");
+          if (!empty)
+            expect(
+              (await isolated.db.query("SELECT delivery FROM messages WHERE id=$1", [normalId])).rows[0]?.delivery,
+            ).toBe("delivered_later");
           await isolated.db.query(`GRANT SELECT (changes,base_version,amount_delta) ON change_requests TO "${role}"`);
           const runtime = pgConnector(new Secret(roleUrl));
           try {
@@ -610,7 +636,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
             await runtime.close();
           }
           expect(await consumeKakaoCallback(job, env, options)).toBe("done");
-          expect(send).toHaveBeenCalledTimes(1);
+          expect(send).toHaveBeenCalledTimes(empty ? 0 : 1);
           expect((await state()).payments).toEqual(beforePayment);
           return;
         }
@@ -640,6 +666,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         expect(await consumeKakaoCallback(job, env, options)).toBe("done");
         expect(send).toHaveBeenCalledTimes(1);
       } finally {
+        lateRead?.mockRestore();
         network.mockRestore();
       }
       return;
