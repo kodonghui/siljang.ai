@@ -1,5 +1,9 @@
 /** TASK-081: 카드 생성·검증·한 번 실행을 같은 가게 트랜잭션에 묶습니다. 업무 명령은 각 담당 모듈이 연결합니다. */
+
+import { type ChangeCardSource, type ChangeRequestStatus, readPreparedChangeCard } from "./change-card-presentation";
 import { cardExpiresAt, judgeCardPress } from "./confirm-card";
+import type { KakaoChangeRequestCard } from "./kakao-change-request-message";
+import { changeRequestResultText } from "./kakao-change-request-message";
 import type { KakaoOrderCardContext } from "./kakao-order-request-content";
 import type { KakaoPaymentClaimCard } from "./kakao-payment-claim-message";
 import type { KakaoPaymentAmountView } from "./kakao-payment-message";
@@ -33,9 +37,13 @@ export interface ShowConfirmCard extends Identity {
   readonly now: Date;
   /** 서버 수신 메시지와 보낼 카드의 연결. AI 출력이나 clientExtra에서는 받지 않습니다. */
   readonly sourceMessageId?: string;
+  /** 서버에서 준비한 변경 제안. 카카오 params/clientExtra와 AI 출력에서 직접 받지 않는다. */
+  readonly proposedChanges?: Readonly<Record<string, unknown>>;
 }
 export interface ConfirmCardView {
   readonly kind?: CustomerCommandKind;
+  /** 서버에서 준비한 변경 표시. 업무 명령의 입력으로 사용하지 않는다. */
+  readonly changeRequest?: KakaoChangeRequestCard;
   readonly orderRequest?: KakaoOrderCardContext;
   /** 전송 직전 자료. 카드 payload/메시지/AI 입력에는 저장하지 않는다. */
   readonly paymentClaim?: KakaoPaymentClaimCard;
@@ -59,6 +67,7 @@ export interface ConfirmCardAnswer extends ConfirmCardCommandResult {
   readonly kind?: CustomerCommandKind;
   readonly card?: ConfirmCardView;
   readonly firstResult?: ConfirmCardCommandResult;
+  readonly changeRequestStatus?: ChangeRequestStatus;
   /** 전용 입력 블록에만 돌려주는 재입력 버튼. 이름 원문을 포함하지 않는다. */
   readonly depositorInput?: Pick<KakaoPaymentClaimCard, "cardKey" | "depositorBlockId">;
 }
@@ -73,6 +82,7 @@ export interface ConfirmCardCommandInput extends Identity {
 /** 실행기는 지금 주문 상태와 잠금 번호를 다시 확인하고 조건에 맞는 쓰기만 합니다. 실패하면 사용 표시까지 함께 취소합니다. 외부 발신은 하지 않습니다. 주문 요청의 order_id 연결 권한·시험은 실제 실행기를 등록하는 TASK-083에서 추가합니다. */
 export type ConfirmCardCommand = (db: ShopDb, input: ConfirmCardCommandInput) => Promise<ConfirmCardCommandResult>;
 interface Source {
+  changeRequest?: ChangeCardSource;
   paymentClaim?: PaymentClaimSource;
   orderRequest?: KakaoOrderCardContext;
   orderRequestTimeZone?: string;
@@ -101,6 +111,7 @@ interface CardRow {
     result?: ConfirmCardCommandResult;
     replacedBy?: { cardKey: string };
     paymentClaimBinding?: PaymentClaimBinding;
+    proposedChanges?: Readonly<Record<string, unknown>>;
   };
   outcome: "done" | "stale" | "expired" | null;
 }
@@ -120,14 +131,20 @@ function usedAnswer(card: CardRow): ConfirmCardAnswer {
   return {
     outcome: "card_used",
     text: "이미 처리했어요",
-    ...(card.kind === "payment_claim" ? { kind: card.kind } : {}),
+    ...(["payment_claim", "change_request"].includes(card.kind) ? { kind: card.kind } : {}),
     ...(result === undefined ? {} : { firstResult: { outcome: result.outcome, text: result.text } }),
   };
 }
 function usedDelivery(card: CardRow) {
+  if (card.kind === "change_request") {
+    const text = changeRequestResultText(card.payload.result?.outcome);
+    if (text !== undefined) return { text };
+  }
   return {
     text:
-      card.kind === "payment_claim" && card.payload.result?.outcome === "payment_claimed"
+      ((card.kind === "payment_claim" && card.payload.result?.outcome === "payment_claimed") ||
+        (card.kind === "change_request" && card.payload.result?.outcome === "change_requested")) &&
+      card.payload.result !== undefined
         ? card.payload.result.text
         : "이미 처리했어요",
   };
@@ -208,6 +225,9 @@ async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: str
         blockId,
         ...(input.kind === "payment_claim"
           ? { paymentClaim: await readPaymentClaimSource(db, { ...input, orderId: row.id }) }
+          : {}),
+        ...(input.kind === "change_request"
+          ? { changeRequest: await readPreparedChangeCard(db, { ...input, orderId: row.id }) }
           : {}),
       }
     : null;
@@ -330,7 +350,15 @@ async function refreshPaymentClaimClock(db: ShopDb, card: CardRow, source: Sourc
   }
   card.payload.paymentClaimBinding = current;
 }
-function withPaymentClaim(card: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
+function withCardPresentation(card: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
+  if (source.changeRequest?.available === true)
+    return {
+      ...card,
+      changeRequest: {
+        ...source.changeRequest.presentation,
+        expiresAt: new Date(Math.min(expiresAt.getTime(), source.changeRequest.changeDeadline.getTime())).toISOString(),
+      },
+    };
   if (source.paymentClaim?.available === false && source.paymentClaim.amountConfirmation !== undefined)
     return { ...card, amountConfirmation: source.paymentClaim.amountConfirmation };
   return source.paymentClaim?.available === true
@@ -373,12 +401,13 @@ async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): P
         presentation: input.kind === "order_request" ? { ...card, description: "주문 요청 확인" } : card,
         ...(input.sourceMessageId === undefined ? {} : { sourceMessageId: pathId(input.sourceMessageId) }),
         ...(source.paymentClaim?.available === true ? { paymentClaimBinding: source.paymentClaim.binding } : {}),
+        ...(source.changeRequest?.available === true ? { proposedChanges: source.changeRequest.proposal } : {}),
       }),
       input.now,
       cardExpiresAt(input.now),
     ],
   );
-  return withPaymentClaim(card, source, cardExpiresAt(input.now));
+  return withCardPresentation(card, source, cardExpiresAt(input.now));
 }
 export async function prepareConfirmCardInTransaction(
   db: ShopDb,
@@ -388,6 +417,7 @@ export async function prepareConfirmCardInTransaction(
   if (!(await identityAvailable(db, input))) throw new Error("card recipient unavailable");
   const source = await readSource(db, input);
   if (source === null) throw new Error("card source unavailable");
+  if (source.changeRequest?.available === false) return { unavailable: true, text: source.changeRequest.text };
   if (source.paymentClaim?.available === false && source.paymentClaim.amountConfirmation === undefined)
     return { unavailable: true, text: source.paymentClaim.text };
   return insertCard(db, input, source);
@@ -458,23 +488,31 @@ async function processVerifiedCard(
   const invalidDepositor = depositor !== undefined && depositorName === undefined;
   if (initial.used_at !== null) return usedAnswer(initial);
   if (input.choice === "decline")
-    return initial.kind === "payment_claim" ? { ...DECLINED, kind: initial.kind } : DECLINED;
+    return ["payment_claim", "change_request"].includes(initial.kind) ? { ...DECLINED, kind: initial.kind } : DECLINED;
   const target: ShowConfirmCard = {
     ...input,
     kind: initial.kind,
     ...(initial.order_id === null ? {} : { orderId: initial.order_id }),
     ...(initial.draft_id === null ? {} : { draftId: initial.draft_id }),
     ...(initial.payload.sourceMessageId === undefined ? {} : { sourceMessageId: initial.payload.sourceMessageId }),
+    ...(initial.payload.proposedChanges === undefined ? {} : { proposedChanges: initial.payload.proposedChanges }),
   };
   const source = await readSource(tx, target, knownBlockId);
   if (source === null) return initial.kind === "order_request" ? ORDER_NOT_READY : RETRY_NEEDED;
+  if (source.changeRequest?.available === false)
+    return {
+      outcome: "not_allowed_now",
+      text: source.changeRequest.text,
+      kind: "change_request",
+      changeRequestStatus: source.changeRequest.status,
+    };
   if (source.paymentClaim?.available === false)
     return {
       outcome: "not_allowed_now",
       text: source.paymentClaim.text,
       ...(initial.payload.presentation === undefined || source.paymentClaim.amountConfirmation === undefined
         ? {}
-        : { card: withPaymentClaim(initial.payload.presentation, source, initial.expires_at) }),
+        : { card: withCardPresentation(initial.payload.presentation, source, initial.expires_at) }),
     };
   const card = await tx.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
@@ -533,7 +571,11 @@ async function processVerifiedCard(
     "UPDATE confirm_cards SET used_at=$3,outcome='done',payload=jsonb_set(payload,'{result}',$4::jsonb) WHERE shop_id=$1 AND id=$2",
     [card.id, input.now, JSON.stringify({ outcome: result.outcome, text: result.text })],
   );
-  return { outcome: result.outcome, text: result.text, ...(card.kind === "payment_claim" ? { kind: card.kind } : {}) };
+  return {
+    outcome: result.outcome,
+    text: result.text,
+    ...(["payment_claim", "change_request"].includes(card.kind) ? { kind: card.kind } : {}),
+  };
 }
 
 async function replaceCard(
@@ -547,7 +589,11 @@ async function replaceCard(
   const result = {
     outcome: `card_${verdict}`,
     text:
-      verdict === "stale" ? "내용이 바뀌었어요. 새 카드에서 눌러 주세요" : "시간이 지났어요. 새 카드에서 눌러 주세요",
+      card.kind === "change_request"
+        ? (changeRequestResultText(`card_${verdict}`) ?? "내용을 다시 확인해 주세요")
+        : verdict === "stale"
+          ? "내용이 바뀌었어요. 새 카드에서 눌러 주세요"
+          : "시간이 지났어요. 새 카드에서 눌러 주세요",
   };
   await tx.run(
     "UPDATE confirm_cards SET used_at=$3,outcome=$4,payload=jsonb_set(jsonb_set(payload,'{result}',$5::jsonb),'{replacedBy}',$6::jsonb) WHERE shop_id=$1 AND id=$2",
@@ -576,15 +622,17 @@ export async function readConfirmCardDelivery(
     kind: initial.kind,
     ...(initial.order_id === null ? {} : { orderId: initial.order_id }),
     ...(initial.draft_id === null ? {} : { draftId: initial.draft_id }),
+    ...(initial.payload.proposedChanges === undefined ? {} : { proposedChanges: initial.payload.proposedChanges }),
   };
   const source = await readSource(db, target);
   if (source === null) return initial.kind === "order_request" ? { text: ORDER_NOT_READY.text } : unavailable;
+  if (source.changeRequest?.available === false) return { text: source.changeRequest.text };
   if (source.paymentClaim?.available === false)
     return {
       text: source.paymentClaim.text,
       ...(initial.payload.presentation === undefined || source.paymentClaim.amountConfirmation === undefined
         ? {}
-        : { card: withPaymentClaim(initial.payload.presentation, source, initial.expires_at) }),
+        : { card: withCardPresentation(initial.payload.presentation, source, initial.expires_at) }),
     };
   const card = await db.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
@@ -605,7 +653,7 @@ export async function readConfirmCardDelivery(
     ? unavailable
     : {
         text: presentation.title,
-        card: withPaymentClaim(
+        card: withCardPresentation(
           {
             ...presentation,
             kind: initial.kind,

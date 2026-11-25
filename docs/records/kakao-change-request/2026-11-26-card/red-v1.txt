@@ -1,0 +1,118 @@
+
+> test
+> vitest run --run test/kakao-change-request-integration.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+ ❯ test/kakao-change-request-integration.test.ts (4 tests | 4 failed) 36ms
+   × 실제 상담 공통 표시가 변경 전후·현재 버전·마감 날짜 경고와 카드 기한을 보인다 24ms
+   × 카드 기한이 지나 새로 보낼 때 새 카드의 현재 값과 고정 안내를 함께 보인다 3ms
+   × 같은 변경 카드를 다시 누르면 첫 결과만 되돌린다(change_requested) 6ms
+   × 같은 변경 카드를 다시 누르면 첫 결과만 되돌린다(declined) 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-change-request-integration.test.ts > 실제 상담 공통 표시가 변경 전후·현재 버전·마감 날짜 경고와 카드 기한을 보인다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '지금 버전 3'
+
+Expected: "지금 버전 3"
+Received: "{"version":"2.0","template":{"outputs":[{"textCard":{"title":"변경 요청","description":"주문번호 AB1234CD","buttons":[{"label":"변경 요청","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_change_request_key_01","choice":"confirm"}},{"label":"안 할래요","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_change_request_key_01","choice":"decline"}}]}}]}}"
+
+ ❯ test/kakao-change-request-integration.test.ts:39:18
+     37|     "15:30까지 눌러 주세요",
+     38|   ])
+     39|     expect(text).toContain(value);
+       |                  ^
+     40|   expect(text).toContain("안 할래요");
+     41| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/kakao-change-request-integration.test.ts > 카드 기한이 지나 새로 보낼 때 새 카드의 현재 값과 고정 안내를 함께 보인다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '지금 버전 3'
+
+Expected: "지금 버전 3"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"시간이 지나 새 카드를 보내 드려요"}},{"textCard":{"title":"변경 요청","description":"주문번호 AB1234CD","buttons":[{"label":"변경 요청","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_change_request_fresh_01","choice":"confirm"}},{"label":"안 할래요","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_change_request_fresh_01","choice":"decline"}}]}}]}}"
+
+ ❯ test/kakao-change-request-integration.test.ts:52:16
+     50|   const text = JSON.stringify(body);
+     51|   expect(text).toContain("시간이 지나 새 카드를 보내 드려요");
+     52|   expect(text).toContain("지금 버전 3");
+       |                ^
+     53|   expect(text).toContain("생일 축하해 → 졸업 축하해 🎉");
+     54|   expect(text).not.toContain(card.cardKey);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/kakao-change-request-integration.test.ts > 같은 변경 카드를 다시 누르면 첫 결과만 되돌린다(change_requested)
+AssertionError: expected [ …(2) ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    {
+      "simpleText": {
++       "text": "이미 처리했어요",
++     },
++   },
++   {
++     "simpleText": {
+        "text": "변경을 요청했어요. 사장님이 보고 알려 드려요",
+      },
+    },
+  ]
+
+ ❯ test/kakao-change-request-integration.test.ts:68:33
+     66|   });
+     67|   expectSchema("SkillTemplateResponse", body);
+     68|   expect(body.template.outputs).toEqual([{ simpleText: { text } }]);
+       |                                 ^
+     69| });
+     70|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/kakao-change-request-integration.test.ts > 같은 변경 카드를 다시 누르면 첫 결과만 되돌린다(declined)
+AssertionError: expected [ …(2) ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    {
+      "simpleText": {
++       "text": "이미 처리했어요",
++     },
++   },
++   {
++     "simpleText": {
+        "text": "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요",
+      },
+    },
+  ]
+
+ ❯ test/kakao-change-request-integration.test.ts:68:33
+     66|   });
+     67|   expectSchema("SkillTemplateResponse", body);
+     68|   expect(body.template.outputs).toEqual([{ simpleText: { text } }]);
+       |                                 ^
+     69| });
+     70|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+   Start at  20:23:32
+   Duration  1.26s (import 71%, transform 26%, tests 3%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task126-change-card/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task126-change-card/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/kakao-change-request-integration.test.ts

@@ -1,0 +1,90 @@
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+ ❯ test/change-card-source.test.ts (20 tests | 5 failed | 15 skipped) 1176ms
+   ❯ 변경 카드의 서버 준비 값과 실제 발급/갱신 API (20)
+     × 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(message/"\r\n") 244ms
+     × 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(message/"\r") 97ms
+     × 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(card/"\r\n") 55ms
+     × 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(card/"\r") 53ms
+     × 줄바꿈 형식만 다른 같은 제안으로 빈 변경 카드를 만들지 않는다 36ms
+ ❯ test/kakao-change-request-message.test.ts (21 tests | 2 failed | 19 skipped) 36ms
+   × 여러 줄 디자인 설명의 줄바꿈을 정규화해 표시한다("\r\n") 33ms
+   × 여러 줄 디자인 설명의 줄바꿈을 정규화해 표시한다("\r") 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(message/"\r\n")
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(message/"\r")
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 기존 첫 줄\n기존 둘째 줄'
+
+Expected: "합성 기존 첫 줄\n기존 둘째 줄"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"잠시 뒤 다시 말씀해 주세요"}}]}}"
+
+ ❯ test/change-card-source.test.ts:257:24
+    255|       expectSchema("SkillTemplateResponse", body);
+    256|       const rendered = JSON.stringify(body);
+    257|       expect(rendered).toContain("합성 기존 첫 줄\\n기존 둘째 줄");
+       |                        ^
+    258|       expect(rendered).toContain("합성 바꾼 첫 줄\\n바꾼 둘째 줄");
+    259|       expect(rendered).not.toContain("\\r");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(card/"\r\n")
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(card/"\r")
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 기존 첫 줄\n기존 둘째 줄'
+
+Expected: "합성 기존 첫 줄\n기존 둘째 줄"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"다시 눌러 주세요"}}]}}"
+
+ ❯ test/change-card-source.test.ts:257:24
+    255|       expectSchema("SkillTemplateResponse", body);
+    256|       const rendered = JSON.stringify(body);
+    257|       expect(rendered).toContain("합성 기존 첫 줄\\n기존 둘째 줄");
+       |                        ^
+    258|       expect(rendered).toContain("합성 바꾼 첫 줄\\n바꾼 둘째 줄");
+    259|       expect(rendered).not.toContain("\\r");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 줄바꿈 형식만 다른 같은 제안으로 빈 변경 카드를 만들지 않는다
+AssertionError: expected { kind: 'change_request', …(6) } to have property "unavailable" with value true
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ test/change-card-source.test.ts:286:22
+    284|       }),
+    285|     );
+    286|     expect(prepared).toHaveProperty("unavailable", true);
+       |                      ^
+    287|     expect(
+    288|       (await isolated.db.query("SELECT count(*)::int AS n FROM confirm…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  test/kakao-change-request-message.test.ts > 여러 줄 디자인 설명의 줄바꿈을 정규화해 표시한다("\r\n")
+ FAIL  test/kakao-change-request-message.test.ts > 여러 줄 디자인 설명의 줄바꿈을 정규화해 표시한다("\r")
+RangeError: invalid change request text
+ ❯ text src/kakao-change-request-message.ts:76:11
+     74| function text(value: string, max: number, empty = false) {
+     75|   if (typeof value !== "string" || (!empty && !value.trim()) || [...va…
+     76|     throw new RangeError("invalid change request text");
+       |           ^
+     77|   return value;
+     78| }
+ ❯ src/kakao-change-request-message.ts:178:20
+ ❯ kakaoChangeRequestMessage src/kakao-change-request-message.ts:176:32
+ ❯ test/kakao-change-request-message.test.ts:18:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  7 failed | 34 skipped (41)
+   Start at  22:10:26
+   Duration  3.87s (import 55%, tests 35%, transform 9%)
