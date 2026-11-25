@@ -46,7 +46,7 @@ export function paymentChangeSummary(value: unknown, timeZone: string): string |
   if (Object.hasOwn(changes, "pickupAt")) {
     if (
       typeof changes.pickupAt !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(changes.pickupAt)
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(changes.pickupAt)
     )
       return null;
     const instant = new Date(changes.pickupAt);

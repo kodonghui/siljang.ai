@@ -220,7 +220,7 @@ function paymentNormalMessage(view: KakaoPaymentNormalView): KakaoPaymentMessage
 function paymentAmountMessage(view: KakaoPaymentAmountView): KakaoPaymentMessage {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(view.cardKey) || kakaoChannelIdentifierError(view.blockId, 100) !== null)
     throw new RangeError("invalid payment card action");
-  const expires = localDate(view.expiresAt, view.timeZone);
+  let expires = localDate(view.expiresAt, view.timeZone);
   const refresh =
     view.refresh === "expired"
       ? "시간이 지나 새 카드를 보내 드려요\n"
@@ -235,6 +235,7 @@ function paymentAmountMessage(view: KakaoPaymentAmountView): KakaoPaymentMessage
     money(view.newAmount);
     if (view.newAmount - view.currentAmount !== view.difference) throw new RangeError("invalid payment difference");
     const deadline = localDate(view.changeDeadline, view.timeZone);
+    if (Date.parse(view.changeDeadline) < Date.parse(view.expiresAt)) expires = deadline;
     details = `${checkedText(view.changes, 2000)}\n지금 ${money(view.currentAmount, 0)}원 → 새 금액 ${money(view.newAmount)}원\n차액 ${money(view.difference)}원\n변경 마감 ${Number(deadline.date.slice(5, 7))}월 ${Number(deadline.date.slice(8))}일 ${deadline.time}까지`;
   }
   const title = "새 금액 확인";

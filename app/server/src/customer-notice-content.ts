@@ -40,15 +40,41 @@ interface Payment {
   order_version: number;
   order_status: string;
   change_status: string | null;
-  change_set: unknown;
-  change_base_version: number | null;
-  change_delta: number | null;
   order_amount: number;
   bank_name: string;
   holder_name: string;
   account_number_enc: string;
   time_zone: string;
   payment_due_hours: number;
+}
+/** 새 조회 권한이 없으면 원문을 보류하고 권한 추가 뒤 다시 읽는다. */
+export class CustomerNoticeTemporarilyUnavailable extends Error {
+  override readonly name = "CustomerNoticeTemporarilyUnavailable";
+  constructor() {
+    super("customer notice temporarily unavailable");
+  }
+}
+async function differenceDetails(db: ShopDb, notice: CustomerNoticeView) {
+  const permission = (
+    await db.run<{ can_read: boolean }>(
+      `SELECT has_column_privilege(current_user,'public.change_requests','changes','SELECT')
+      AND has_column_privilege(current_user,'public.change_requests','base_version','SELECT')
+      AND has_column_privilege(current_user,'public.change_requests','amount_delta','SELECT') AS can_read
+      FROM shops s WHERE s.id=$1`,
+    )
+  ).rows[0];
+  if (!permission?.can_read) throw new CustomerNoticeTemporarilyUnavailable();
+  return (
+    await db.run<{ change_set: unknown; change_base_version: number; change_delta: number }>(
+      `SELECT cr.changes AS change_set,cr.base_version AS change_base_version,cr.amount_delta AS change_delta
+      FROM notifications n JOIN payment_requests p ON p.shop_id=$1 AND p.order_id=n.order_id
+        AND n.event_key='notice:'||p.id::text||':payment_request'
+      JOIN change_requests cr ON cr.shop_id=$1 AND cr.id=p.change_request_id AND cr.order_id=p.order_id
+      WHERE n.shop_id=$1 AND n.id=$2 AND n.customer_id=$3 AND n.kind='payment_request'
+        AND n.status<>'dropped' AND p.kind='difference' AND cr.status='awaiting_difference'`,
+      [notice.id, notice.customerId],
+    )
+  ).rows[0];
 }
 export async function customerNoticeContents(
   db: ShopDb,
@@ -78,8 +104,7 @@ export async function customerNoticeContents(
       `SELECT p.kind,p.status,p.amount,p.requested_amount,p.needs_amount_confirm,p.amount_confirmed_at,p.amount_card_id,
       p.delivered_at,p.issued_at,p.due_at,p.due_cap_at,p.card_payment_url,o.id AS order_id,o.order_no,o.version AS order_version,
       q.amount AS quote_amount,q.amount_max AS quote_amount_max,q.display_kind AS quote_display,accepted.amount_change_reason,
-      o.status AS order_status,o.amount AS order_amount,cr.status AS change_status,cr.changes AS change_set,
-      cr.base_version AS change_base_version,cr.amount_delta AS change_delta,
+      o.status AS order_status,o.amount AS order_amount,cr.status AS change_status,
       a.bank_name,a.holder_name,a.account_number_enc,s.time_zone,r.payment_due_hours
       FROM notifications n JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id AND o.customer_id=n.customer_id
       JOIN payment_requests p ON p.shop_id=$1 AND p.order_id=o.id AND n.event_key='notice:'||p.id::text||':payment_request'
@@ -140,6 +165,7 @@ export async function customerNoticeContents(
             )
           ).rows[0];
     if (!card?.card_block_id) return ["지금은 새 금액 확인 카드를 사용할 수 없어요"];
+    const expiresAt = new Date(Math.min(card.expires_at.getTime(), payment.due_cap_at.getTime())).toISOString();
     if (payment.kind !== "difference") {
       if (!adjustment) return ["지금은 새 금액 확인 카드를 사용할 수 없어요"];
       return [
@@ -153,17 +179,18 @@ export async function customerNoticeContents(
             reason: adjustment.reason,
             cardKey: card.card_key,
             blockId: card.card_block_id,
-            expiresAt: card.expires_at.toISOString(),
+            expiresAt,
             timeZone: payment.time_zone,
           },
         },
       ];
     }
-    const changes = paymentChangeSummary(payment.change_set, payment.time_zone);
+    const difference = await differenceDetails(db, notice);
+    const changes = paymentChangeSummary(difference?.change_set, payment.time_zone);
     if (
       changes === null ||
-      payment.change_base_version !== payment.order_version ||
-      payment.change_delta !== payment.amount ||
+      difference?.change_base_version !== payment.order_version ||
+      difference?.change_delta !== payment.amount ||
       payment.order_amount + payment.amount > 10000000
     )
       return ["지금은 새 금액 확인 카드를 사용할 수 없어요"];
@@ -180,7 +207,7 @@ export async function customerNoticeContents(
           changeDeadline: payment.due_cap_at.toISOString(),
           cardKey: card.card_key,
           blockId: card.card_block_id,
-          expiresAt: card.expires_at.toISOString(),
+          expiresAt,
           timeZone: payment.time_zone,
         },
       },

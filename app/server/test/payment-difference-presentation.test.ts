@@ -30,7 +30,9 @@ describeDb("저장된 차액의 새 금액 확인 표시(TASK-106)", () => {
     await isolated.db.query(`CREATE ROLE "${role}" LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
     await isolated.db.query(grants.replaceAll(':"runtime_role"', `"${role}"`));
     const url = new URL(TEST_DATABASE_URL);
-    url.pathname = `/${(await isolated.db.query<{ name: string }>("SELECT current_database() AS name")).rows[0].name}`;
+    const database = (await isolated.db.query<{ name: string }>("SELECT current_database() AS name")).rows[0];
+    if (!database) throw new Error("합성 데이터베이스 없음");
+    url.pathname = `/${database.name}`;
     url.username = role;
     url.password = "";
     databaseUrl = url.toString();
@@ -274,7 +276,7 @@ describeDb("저장된 차액의 새 금액 확인 표시(TASK-106)", () => {
         expect(renderedText).not.toContain("09:30까지 눌러 주세요");
         expect(
           (await isolated.db.query("SELECT expires_at FROM confirm_cards WHERE id=$1", [amountCard])).rows[0]
-            .expires_at,
+            ?.expires_at,
         ).toEqual(new Date(NOW.getTime() + 1800000));
       }
       if (length === "lower-date") expect(renderedText).toContain("픽업 2026-11-27 10:00");
