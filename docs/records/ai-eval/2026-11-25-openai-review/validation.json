@@ -1,0 +1,16 @@
+{
+  "source": "16065271ecd44496f45d445bdb7c43c232c5c450",
+  "reviewCases": 17,
+  "reviewDecisions": 17,
+  "coverageMatchesSource": true,
+  "sourceHashesMatch": true,
+  "manualPass": 13,
+  "manualFail": 4,
+  "machineFailuresRetained": 4,
+  "effectiveFailures": 8,
+  "currentUnresolved": 0,
+  "historicalOriginalPending": 44,
+  "appRuntimeTestDbApiGrantsDiff": 0,
+  "finishedAndImplementedTask027": false,
+  "apiCallsAdded": 0
+}
