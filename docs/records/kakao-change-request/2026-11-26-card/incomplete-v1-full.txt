@@ -1,0 +1,10 @@
+
+> test
+> npm run test -w server && npm run test -w web
+
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server

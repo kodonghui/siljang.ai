@@ -1,0 +1,15 @@
+
+> test
+> vitest run --run test/change-card-grapheme.test.ts test/kakao-change-request-message.test.ts test/kakao-change-request-integration.test.ts test/kakao-change-request-contract.test.ts test/change-card-first-result.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+
+ Test Files  5 passed (5)
+      Tests  29 passed (29)
+   Start at  21:19:22
+   Duration  5.29s (import 70%, tests 26%, transform 4%)
+
+    Isolate  5 workers spawned · ~106ms startup each (spawn + environment, per file)
+             at least ~423ms faster with isolate: false — reuses workers across files instead of one per file

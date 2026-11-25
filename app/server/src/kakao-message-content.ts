@@ -1,6 +1,7 @@
 /** 카카오 발신 내용. 확인 카드는 서버가 저장한 표시 값만 받습니다. */
 import type { ConfirmCardView } from "./confirm-card-store";
 import { type KakaoCancellationView, kakaoCancellationMessage } from "./kakao-cancellation-message";
+import { type KakaoChangeRequestView, kakaoChangeRequestMessage } from "./kakao-change-request-message";
 import {
   type KakaoCustomerNoticeButton,
   type KakaoCustomerNoticeDisplayView,
@@ -31,6 +32,11 @@ export interface KakaoCustomerNoticeContent {
   readonly view: KakaoCustomerNoticeDisplayView;
   readonly part?: number;
 }
+export interface KakaoChangeRequestContent {
+  readonly kind: "change_card";
+  readonly view: Extract<KakaoChangeRequestView, { readonly cardKey: string }>;
+  readonly part?: number;
+}
 export type KakaoMessageContent =
   | {
       readonly kind: "cancel_card";
@@ -41,7 +47,8 @@ export type KakaoMessageContent =
   | ConfirmCardView
   | KakaoPaymentContent
   | KakaoMyOrderContent
-  | KakaoCustomerNoticeContent;
+  | KakaoCustomerNoticeContent
+  | KakaoChangeRequestContent;
 type MyOrderButton = Extract<KakaoMyOrderOutput, { readonly textCard: unknown }>["textCard"]["buttons"][number];
 export type KakaoMessageOutput =
   | { readonly simpleText: { readonly text: string } }
@@ -73,6 +80,7 @@ type Presentation =
   | KakaoPaymentContent
   | KakaoMyOrderContent
   | KakaoCustomerNoticeContent
+  | KakaoChangeRequestContent
   | Extract<KakaoMessageContent, { readonly kind: "cancel_card" }>;
 function isPresentation(content: KakaoMessageContent): content is Presentation {
   return (
@@ -80,11 +88,13 @@ function isPresentation(content: KakaoMessageContent): content is Presentation {
     (content.kind === "payment_notice" ||
       content.kind === "my_order" ||
       content.kind === "customer_notice" ||
+      content.kind === "change_card" ||
       content.kind === "cancel_card")
   );
 }
 function presentationBody(content: Presentation): PresentationBody {
   if (content.kind === "cancel_card") return kakaoCancellationMessage(content.view);
+  if (content.kind === "change_card") return kakaoChangeRequestMessage(content.view);
   if (content.kind === "payment_notice") return kakaoPaymentMessage(content.view);
   if (content.kind === "customer_notice") return kakaoCustomerNoticeMessage(content.view);
   if (!["normal", "stale", "empty"].includes(content.view.state))
@@ -103,6 +113,18 @@ export function expandKakaoMessageContents(contents: readonly KakaoMessageConten
         {
           kind: "cancel_card",
           view: { ...content.cancellation, state: "normal", cardKey: content.cardKey, blockId: content.blockId },
+        },
+      ]);
+    if (typeof content !== "string" && content.kind === "change_request" && content.changeRequest !== undefined)
+      return expandKakaoMessageContents([
+        {
+          kind: "change_card",
+          view: {
+            ...content.changeRequest,
+            state: "normal",
+            cardKey: content.cardKey,
+            blockId: content.blockId,
+          },
         },
       ]);
     if (isPresentation(content)) {

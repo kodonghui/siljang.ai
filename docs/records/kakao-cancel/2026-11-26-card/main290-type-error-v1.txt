@@ -1,0 +1,62 @@
+> typecheck
+> npm run typecheck -w web && npm run typecheck -w server
+
+
+> typecheck
+> tsc -p tsconfig.json
+
+
+> typecheck
+> npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json
+
+
+> types
+> wrangler types --include-env=false src/worker-runtime.d.ts
+
+▲ [WARNING] Proxy environment variables detected. We'll use your proxy for fetch requests.
+
+
+
+ ⛅️ wrangler 4.158.0 (update available 4.168.0)
+───────────────────────────────────────────────
+Generating runtime types...
+
+Runtime types generated.
+
+
+✨ Types written to src/worker-runtime.d.ts
+
+📖 Read about runtime types
+https://developers.cloudflare.com/workers/languages/typescript/#generate-types
+📣 Remember to rerun 'wrangler types' after you change your wrangler.jsonc file.
+
+src/kakao-message-content.ts(40,13): error TS2456: Type alias 'KakaoMessageContent' circularly references itself.
+src/kakao-message-content.ts(138,48): error TS2339: Property 'amountConfirmation' does not exist on type 'never'.
+src/kakao-message-content.ts(139,82): error TS2339: Property 'amountConfirmation' does not exist on type 'never'.
+src/kakao-message-content.ts(140,48): error TS2339: Property 'kind' does not exist on type 'never'.
+src/kakao-message-content.ts(141,17): error TS2339: Property 'orderRequest' does not exist on type 'never'.
+src/kakao-message-content.ts(142,66): error TS2339: Property 'orderRequest' does not exist on type 'never'.
+src/kakao-message-content.ts(176,17): error TS2339: Property 'kind' does not exist on type 'never'.
+src/kakao-message-content.ts(176,53): error TS2339: Property 'paymentClaim' does not exist on type 'never'.
+src/kakao-message-content.ts(177,77): error TS2339: Property 'paymentClaim' does not exist on type 'never'.
+src/kakao-message-content.ts(183,21): error TS2339: Property 'title' does not exist on type 'never'.
+src/kakao-message-content.ts(184,21): error TS2339: Property 'description' does not exist on type 'never'.
+src/kakao-message-content.ts(185,19): error TS2339: Property 'title' does not exist on type 'never'.
+src/kakao-message-content.ts(185,47): error TS2339: Property 'description' does not exist on type 'never'.
+src/kakao-message-content.ts(186,21): error TS2339: Property 'confirmLabel' does not exist on type 'never'.
+src/kakao-message-content.ts(187,21): error TS2339: Property 'blockId' does not exist on type 'never'.
+src/kakao-message-content.ts(188,46): error TS2339: Property 'cardKey' does not exist on type 'never'.
+src/kakao-message-content.ts(193,24): error TS2339: Property 'title' does not exist on type 'never'.
+src/kakao-message-content.ts(194,30): error TS2339: Property 'description' does not exist on type 'never'.
+src/kakao-message-content.ts(197,28): error TS2339: Property 'confirmLabel' does not exist on type 'never'.
+src/kakao-message-content.ts(199,30): error TS2339: Property 'blockId' does not exist on type 'never'.
+src/kakao-message-content.ts(200,39): error TS2339: Property 'cardKey' does not exist on type 'never'.
+src/kakao-message-content.ts(205,30): error TS2339: Property 'blockId' does not exist on type 'never'.
+src/kakao-message-content.ts(206,39): error TS2339: Property 'cardKey' does not exist on type 'never'.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task127-cancel-card/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task127-cancel-card/app/server
+npm error command failed
+npm error command sh -c npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json

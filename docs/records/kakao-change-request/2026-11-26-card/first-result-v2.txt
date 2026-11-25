@@ -1,0 +1,12 @@
+
+> test
+> vitest run --run test/change-card-first-result.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  20:34:13
+   Duration  2.14s (tests 53%, import 39%, transform 8%)
