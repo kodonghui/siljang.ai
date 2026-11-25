@@ -37,6 +37,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
@@ -144,6 +145,66 @@ it("이전 페이지를 위에 더하고 같은 메시지는 중복시키지 않
   const contents = document.querySelector(".consultation-timeline")?.textContent ?? "";
   expect(contents.indexOf("이전 합성 메시지")).toBeLessThan(contents.indexOf("현재 합성 메시지"));
 });
+it("같은 시각에는 서버가 준 질문과 답 순서를 유지한다", async () => {
+  page.items = page.items.slice(0, 2).map((item: Record<string, unknown>, index: number) => ({
+    ...item,
+    at: "2026-11-25T09:00:00+09:00",
+    text: index ? "두 번째 합성 답" : "첫 번째 합성 질문",
+  }));
+  open();
+  await screen.findByText("첫 번째 합성 질문");
+  const contents = document.querySelector(".consultation-timeline")?.textContent ?? "";
+  expect(contents.indexOf("첫 번째 합성 질문")).toBeLessThan(contents.indexOf("두 번째 합성 답"));
+});
+it.each([false, true])("추가 페이지의 만료 사진을 같은 페이지에서 갱신한다(사진 창:%s)", async (dialogOpen) => {
+  const start = new Date("2026-11-25T07:00:00Z");
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(start);
+  page.items = [{ ...page.items[0], text: "현재 창 합성 대화", photos: [] }];
+  page.nextCursor = "older_photo_page";
+  const older = {
+    ...structuredClone(page),
+    nextCursor: null,
+    reloadCursor: "older_photo_page",
+    items: [
+      {
+        ...page.items[0],
+        messageId: "00000000-0000-4000-8000-000000000002",
+        at: "2025-01-01T00:00:00+09:00",
+        text: "이전 사진 대화",
+        photos: [{ url: `https://images.example/old-photo?exp=${Math.floor(start.getTime() / 1000) + 900}` }],
+      },
+    ],
+  };
+  let reads = 0;
+  handler = async (path) => {
+    if (!path.includes("cursor=older_photo_page")) return Response.json(page);
+    reads++;
+    const result = structuredClone(older);
+    if (reads > 1)
+      result.items[0].photos = [
+        { url: `https://images.example/fresh-photo?exp=${Math.floor(Date.now() / 1000) + 900}` },
+      ];
+    return Response.json(result);
+  };
+  open();
+  await screen.findByText("현재 창 합성 대화");
+  fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
+  await screen.findByRole("button", { name: "참고 사진 1 크게 보기" });
+  if (dialogOpen) fireEvent.click(screen.getByRole("button", { name: "참고 사진 1 크게 보기" }));
+  vi.setSystemTime(new Date(start.getTime() + 901000));
+  fireEvent(document, new Event("visibilitychange"));
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: dialogOpen ? "다시 불러오기" : "참고 사진 1 다시 불러오기",
+    }),
+  );
+  await waitFor(() => expect(document.querySelector('img[src*="fresh-photo"]')).not.toBeNull());
+  expect(screen.getByText("현재 창 합성 대화")).toBeTruthy();
+  expect(screen.getByText("이전 사진 대화")).toBeTruthy();
+  expect(reads).toBe(2);
+  if (dialogOpen) expect(screen.getByRole("dialog", { name: "참고 사진 크게 보기" })).toBeTruthy();
+});
 it("긴 글의 철자/태그를 그대로 보존하고 펼치며 HTML로 실행하지 않는다", async () => {
   const literal = " <script>synthetic()</script>";
   page.items[0].text = "가".repeat(100000 - literal.length) + literal;
@@ -194,7 +255,20 @@ it("사진 주소 만료 후 같은 버튼으로 다시 불러오며 옛 주소�
   page.items[0].photos = [
     { url: `https://images.example/synthetic?exp=${Math.floor(start.getTime() / 1000) + 900}&sig=synthetic` },
   ];
-  open();
+  // 시계에 따른 같은 버튼의 전환을 화면 단위로 확인한다. 실제 탭의 신원 확인은 별도 시험한다.
+  render(
+    <MemoryRouter>
+      <ConsultationMessagesScreen
+        shopId={profile.shop.shopId}
+        shopName={profile.shop.name}
+        consultationId={page.consultationId}
+        onNavigate={vi.fn()}
+        onSessionExpired={vi.fn()}
+        onRegisterShop={vi.fn()}
+        onLogout={vi.fn()}
+      />
+    </MemoryRouter>,
+  );
   const button = await screen.findByRole("button", { name: "참고 사진 1 크게 보기" });
   button.focus();
   vi.setSystemTime(new Date(start.getTime() + 901000));
@@ -244,6 +318,64 @@ it("세션 재확인 중에는 대화/사진을 가리고 늦은 이전 요청�
     if (finish) (finish as (value: Response) => void)(Response.json(page));
   });
   expect(screen.queryByText("이전 손님 비공개 합성 글")).toBeNull();
+});
+it("실제 상담 탭에 돌아오면 이전 번호를 먼저 가리고 신원을 다시 확인한다", async () => {
+  page.items[0].text = "이전 계정 비공개 합성 번호";
+  let reads = 0,
+    finish: ((value: Response) => void) | null = null;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown) => {
+      const path = String(input);
+      if (path === "/api/owner/me") {
+        reads++;
+        return reads === 1
+          ? Response.json(profile)
+          : new Promise<Response>((resolve) => {
+              finish = resolve;
+            });
+      }
+      return Response.json(page);
+    }),
+  );
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  open();
+  await screen.findByText("이전 계정 비공개 합성 번호");
+  fireEvent(document, new Event("visibilitychange"));
+  await waitFor(() => expect(reads).toBe(2));
+  expect(screen.queryByText("이전 계정 비공개 합성 번호")).toBeNull();
+  await act(async () => {
+    if (finish) (finish as (value: Response) => void)(Response.json({ code: "unauthenticated" }, { status: 401 }));
+  });
+  expect(await screen.findByRole("heading", { name: "합성 로그인 목적지" })).toBeTruthy();
+  expect(screen.queryByText("이전 계정 비공개 합성 번호")).toBeNull();
+});
+it("신원 조회와 대화 조회 사이 계정이 바뀌면 한 번 다시 확인하고 새 가게 헤더를 보낸다", async () => {
+  const changed = structuredClone(profile);
+  changed.owner.ownerId = "00000000-0000-4000-8000-000000000077";
+  changed.shop.shopId = "00000000-0000-4000-8000-000000000078";
+  let meReads = 0;
+  const expected: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown, init?: RequestInit) => {
+      if (String(input) === "/api/owner/me") {
+        meReads++;
+        return Response.json(meReads === 1 ? profile : changed);
+      }
+      expected.push(new Headers(init?.headers).get("X-Expected-Shop-Id") ?? "");
+      return Response.json(
+        { code: expected.length === 1 ? "unauthenticated" : "not_found" },
+        { status: expected.length === 1 ? 401 : 404 },
+      );
+    }),
+  );
+  open();
+  await screen.findByText("찾을 수 없어요");
+  expect(meReads).toBe(2);
+  expect(expected).toEqual([profile.shop.shopId, changed.shop.shopId]);
+  expect(screen.queryByRole("heading", { name: "합성 로그인 목적지" })).toBeNull();
+  expect(document.querySelector(".consultation-timeline")).toBeNull();
 });
 it("사진 주소 수명은 서버 exp와 읽은 뒤15분 중 이른 때로 제한한다", () => {
   const at = 1000000;

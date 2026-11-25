@@ -1,0 +1,100 @@
+diff --git a/app/server/test/owner-consultation-messages.test.ts b/app/server/test/owner-consultation-messages.test.ts
+index 32f2d02e..bc2a848b 100644
+--- a/app/server/test/owner-consultation-messages.test.ts
++++ b/app/server/test/owner-consultation-messages.test.ts
+@@ -220,6 +220,30 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
+     );
+     await expectProblem(await call(`?cursor=${first.nextCursor}`, ownOther), "validation_failed");
+   });
++  it("뒤로 읽기는 최근20개를 시각 순으로 주고 옛 페이지와 사진 재조회 기준을 보존한다", async () => {
++    const ids = [shop.messageId, ...Array.from({ length: 29 }, newUuid)];
++    await isolated.db.query("UPDATE messages SET created_at=$2 WHERE id=$1", [shop.messageId, NOW]);
++    for (let index = 1; index < ids.length; index++)
++      await isolated.db.query(
++        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','text',$4,'skill_response',$5)",
++        [ids[index], shop.shopId, shop.consultationId, `합성 순서 ${index}`, new Date(NOW.getTime() + index * 1000)],
++      );
++    const first = await page(await call("?direction=backward&limit=20"));
++    expect(first.items.map((item) => item.messageId)).toEqual(ids.slice(10));
++    const anchor = (first as Page & { reloadCursor?: string }).reloadCursor;
++    expect(anchor).toHaveLength(200);
++    const older = await page(await call(`?direction=backward&limit=20&cursor=${first.nextCursor}`));
++    expect(older.items.map((item) => item.messageId)).toEqual(ids.slice(0, 10));
++    expect(older.nextCursor).toBeNull();
++    await isolated.db.query(
++      "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,'outbound','system','text','나중에 온 합성 답','skill_response',$3)",
++      [shop.shopId, shop.consultationId, new Date(NOW.getTime() + 60000)],
++    );
++    const same = await page(await call(`?direction=backward&limit=20&cursor=${anchor}`));
++    expect(same.items.map((item) => item.messageId)).toEqual(ids.slice(10));
++    expect((same as Page & { reloadCursor?: string }).reloadCursor).toBe(anchor);
++    await expectProblem(await call(`?direction=forward&cursor=${anchor}`), "validation_failed");
++  });
+   async function pendingNotice(at: Date) {
+     const id = newUuid();
+     await isolated.db.query(
+diff --git a/app/web/src/ConsultationMessagesScreen.interaction.test.tsx b/app/web/src/ConsultationMessagesScreen.interaction.test.tsx
+index 5381612a..3583b28d 100644
+--- a/app/web/src/ConsultationMessagesScreen.interaction.test.tsx
++++ b/app/web/src/ConsultationMessagesScreen.interaction.test.tsx
+@@ -144,6 +144,60 @@ it("이전 페이지를 위에 더하고 같은 메시지는 중복시키지 않
+   const contents = document.querySelector(".consultation-timeline")?.textContent ?? "";
+   expect(contents.indexOf("이전 합성 메시지")).toBeLessThan(contents.indexOf("현재 합성 메시지"));
+ });
++it("같은 시각에는 서버가 준 질문과 답 순서를 유지한다", async () => {
++  page.items = page.items.slice(0, 2).map((item: Record<string, unknown>, index: number) => ({
++    ...item,
++    at: "2026-11-25T09:00:00+09:00",
++    text: index ? "두 번째 합성 답" : "첫 번째 합성 질문",
++  }));
++  open();
++  await screen.findByText("첫 번째 합성 질문");
++  const contents = document.querySelector(".consultation-timeline")?.textContent ?? "";
++  expect(contents.indexOf("첫 번째 합성 질문")).toBeLessThan(contents.indexOf("두 번째 합성 답"));
++});
++it("추가 페이지의 만료 사진만 같은 페이지에서 갱신하고 현재 대화를 보존한다", async () => {
++  const start = new Date("2026-11-25T07:00:00Z");
++  vi.useFakeTimers({ toFake: ["Date"] });
++  vi.setSystemTime(start);
++  page.items = [{ ...page.items[0], text: "현재 창 합성 대화", photos: [] }];
++  page.nextCursor = "older_photo_page";
++  const older = {
++    ...structuredClone(page),
++    nextCursor: null,
++    reloadCursor: "older_photo_page",
++    items: [
++      {
++        ...page.items[0],
++        messageId: "00000000-0000-4000-8000-000000000002",
++        at: "2025-01-01T00:00:00+09:00",
++        text: "이전 사진 대화",
++        photos: [{ url: `https://images.example/old-photo?exp=${Math.floor(start.getTime() / 1000) + 900}` }],
++      },
++    ],
++  };
++  let reads = 0;
++  handler = async (path) => {
++    if (!path.includes("cursor=older_photo_page")) return Response.json(page);
++    reads++;
++    const result = structuredClone(older);
++    if (reads > 1)
++      result.items[0].photos = [
++        { url: `https://images.example/fresh-photo?exp=${Math.floor(Date.now() / 1000) + 900}` },
++      ];
++    return Response.json(result);
++  };
++  open();
++  await screen.findByText("현재 창 합성 대화");
++  fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
++  await screen.findByRole("button", { name: "참고 사진 1 크게 보기" });
++  vi.setSystemTime(new Date(start.getTime() + 901000));
++  fireEvent(document, new Event("visibilitychange"));
++  fireEvent.click(await screen.findByRole("button", { name: "참고 사진 1 다시 불러오기" }));
++  await waitFor(() => expect(document.querySelector('img[src*="fresh-photo"]')).not.toBeNull());
++  expect(screen.getByText("현재 창 합성 대화")).toBeTruthy();
++  expect(screen.getByText("이전 사진 대화")).toBeTruthy();
++  expect(reads).toBe(2);
++});
+ it("긴 글의 철자/태그를 그대로 보존하고 펼치며 HTML로 실행하지 않는다", async () => {
+   const literal = " <script>synthetic()</script>";
+   page.items[0].text = "가".repeat(100000 - literal.length) + literal;

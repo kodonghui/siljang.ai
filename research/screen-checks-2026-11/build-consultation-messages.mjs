@@ -47,7 +47,7 @@ globalThis.fetch=async(input,init)=>{
  if(method!=='GET'){count.rejected++;throw new Error('Synthetic fixture permits no business writes');}
  if(path==='/api/owner/me'){count.me++;refresh();return sessionGone?problem('unauthenticated',401):json(meExamples.mvp.value);}
  if(path==='/api/owner/consultations/'+messageExamples.messages.value.consultationId+'/messages'){
-  count.messages++;if(q.has('cursor'))count.more++;refresh();
+  count.messages++;if(q.get('cursor')==='older_page')count.more++;refresh();
   const expected=new Headers(init?.headers).get('X-Expected-Shop-Id');
   if(expected!==meExamples.mvp.value.shop.shopId){count.rejected++;return problem('unauthenticated',401);}
   if(current==='loading')return new Promise(()=>{});
@@ -55,7 +55,7 @@ globalThis.fetch=async(input,init)=>{
   if(current==='permission'){sessionGone=true;return problem('unauthenticated',401);}
   if(current==='not-found')return problem('not_found',404);
   if(current==='validation')return problem('validation_failed',422);
-  if(current==='error'||(current==='more-error'&&q.has('cursor')&&count.more===1))return problem('internal',500);
+  if(current==='error'||(current==='more-error'&&q.get('cursor')==='older_page'&&count.more===1))return problem('internal',500);
   const example=current==='empty'?'deleted':current==='owner-reply'?'with_owner_reply':'messages';
   const v=structuredClone(messageExamples[example].value);
   if(current==='ended')v.status='ended';
@@ -67,15 +67,17 @@ globalThis.fetch=async(input,init)=>{
   }
   if(['sending','deferred','failed'].includes(current))v.items[0].delivery=current;
   if(current==='privacy')v.items[1].text+=' 계좌 123456789012 [카드번호1] …1111 [긴숫자1]';
-  if(['more','more-error'].includes(current)){
-   v.nextCursor=q.has('cursor')?null:'older_page';
-   if(q.has('cursor'))v.items=[{...v.items[0],messageId:'00000000-0000-4000-8000-000000000089',at:'2026-01-01T00:00:00+09:00',text:'이전 합성 대화'},v.items[0]];
+  if(['more','more-error','more-photos'].includes(current)){
+   v.nextCursor=q.get('cursor')==='older_page'?null:'older_page';
+   if(q.get('cursor')==='older_page')v.items=[{...v.items[0],messageId:'00000000-0000-4000-8000-000000000089',at:'2026-01-01T00:00:00+09:00',text:'이전 합성 대화'},v.items[0]];
   }
+  if(current==='more-photos'&&q.get('cursor')==='older_page'){const expiry=count.more===1?1:Math.floor(Date.now()/1000)+900;v.items[0].kind='photo';v.items[0].text='이전 참고 사진';v.items[0].photos=[{url:new URL('/synthetic-photo.svg',globalThis.location?.href??'http://example.org/').href+'?exp='+expiry}];}
+  if(q.get('direction')==='backward')v.reloadCursor=v.status==='deleted'?null:q.get('cursor')??'latest_page';
   return json(v);
  }
  count.rejected++;throw new Error('Unexpected synthetic request');
 };
-function Fixture(){const[g,next]=useState(0),[,tick]=useState(0);refresh=()=>tick(v=>v+1);const path='/owner/consultations/'+(state==='invalid-id'?'invalid-id':messageExamples.messages.value.consultationId)+(state==='invalid-query'?'?limit=0':'');return <><aside className='qa-control'><label>시험 상태<select value={state} onChange={e=>{state=e.target.value;count={me:0,messages:0,more:0,logout:0,rejected:0};sessionGone=false;next(v=>v+1);}}>{['normal','loading','empty','error','permission','stale','owner-reply','not-found','validation','invalid-id','invalid-query','ended','long','photos','photo-stale','privacy','more','more-error','sending','deferred','failed'].map(v=><option key={v}>{v}</option>)}</select></label><button className='ui-button ui-button--secondary' type='button'>합성 다른 초점</button><p>공개 합성 응답 · 내 정보 {count.me} · 대화 {count.messages} · 추가 {count.more} · 거절 {count.rejected} · 실제 서비스 쓰기 없음</p></aside><MemoryRouter key={g} initialEntries={[path]}><App/></MemoryRouter></>};createRoot(document.getElementById('root')).render(<Fixture/>);`;
+function Fixture(){const[g,next]=useState(0),[,tick]=useState(0);refresh=()=>tick(v=>v+1);const path='/owner/consultations/'+(state==='invalid-id'?'invalid-id':messageExamples.messages.value.consultationId)+(state==='invalid-query'?'?limit=0':'');return <><aside className='qa-control'><label>시험 상태<select value={state} onChange={e=>{state=e.target.value;count={me:0,messages:0,more:0,logout:0,rejected:0};sessionGone=false;next(v=>v+1);}}>{['normal','loading','empty','error','permission','stale','owner-reply','not-found','validation','invalid-id','invalid-query','ended','long','photos','photo-stale','privacy','more','more-error','more-photos','sending','deferred','failed'].map(v=><option key={v}>{v}</option>)}</select></label><button className='ui-button ui-button--secondary' type='button'>합성 다른 초점</button><p>공개 합성 응답 · 내 정보 {count.me} · 대화 {count.messages} · 추가 {count.more} · 거절 {count.rejected} · 실제 서비스 쓰기 없음</p></aside><MemoryRouter key={g} initialEntries={[path]}><App/></MemoryRouter></>};createRoot(document.getElementById('root')).render(<Fixture/>);`;
     const entryFile = join(out, "fixture-source.tsx");
     await fs.writeFile(entryFile, entry);
     await build({

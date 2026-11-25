@@ -2,6 +2,7 @@
 import {
   type ConsultationCursor,
   ConsultationCursorError,
+  type ConsultationReadDirection,
   openConsultationCursor,
   sealConsultationCursor,
 } from "./consultation-cursor";
@@ -9,11 +10,13 @@ import { FieldCryptoError } from "./field-crypto";
 import { maskedValuePlaceholderPattern, openStoredMaskedValue, type StoredMaskedValue } from "./masked-values";
 import { ApiError, fieldError } from "./problem";
 import type { AccessRequest } from "./routes";
+import { isUuid } from "./shop-scope";
 import { toShopIso } from "./time";
 
 interface PageInput {
   limit: number;
   token: string | null;
+  direction: ConsultationReadDirection;
 }
 
 interface Entry {
@@ -34,7 +37,9 @@ function input(query: Record<string, string>): PageInput {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw fieldError("query:limit", "out_of_range");
   if (query.cursor !== undefined && (query.cursor.length < 1 || query.cursor.length > 200))
     throw fieldError("query:cursor", "bad_format");
-  return { limit, token: query.cursor ?? null };
+  const direction = query.direction ?? "forward";
+  if (direction !== "forward" && direction !== "backward") throw fieldError("query:direction", "bad_format");
+  return { limit, token: query.cursor ?? null, direction };
 }
 
 function displayText(body: string | null, replacements: ReadonlyMap<string, string>): string | null {
@@ -42,7 +47,7 @@ function displayText(body: string | null, replacements: ReadonlyMap<string, stri
   const text = body.replace(maskedValuePlaceholderPattern(), (key) => replacements.get(key) ?? key);
   return text.length <= 100000 ? text : Array.from(text).slice(0, 100000).join("");
 }
-const ENTRIES = `WITH entries AS (
+const ENTRY_BASE = `WITH entries AS (
   SELECT m.id,m.created_at AS at,m.timeline_seq,m.direction,m.author,m.kind,m.body_masked AS body,m.delivery,'message'::text AS source
   FROM messages m WHERE m.shop_id=$1 AND m.consultation_id=$2 AND m.timeline_seq <= $7::bigint
   UNION ALL
@@ -58,11 +63,17 @@ const ENTRIES = `WITH entries AS (
   SELECT e.*,(extract(epoch FROM e.at)*1000000)::bigint AS at_us FROM entries e
 )
 SELECT p.id,p.at,p.timeline_seq,p.direction,p.author,p.kind,p.body,p.delivery,p.source,p.at_us::text AS cursor_at
-FROM positioned p WHERE ($3::bigint IS NULL OR (p.at_us,p.timeline_seq)>($3::bigint,$4::bigint))
-ORDER BY p.at,p.timeline_seq LIMIT $5`;
+FROM positioned p `;
+const ENTRIES = {
+  forward: `${ENTRY_BASE}WHERE ($3::bigint IS NULL OR (p.at_us,p.timeline_seq)>($3::bigint,$4::bigint)) ORDER BY p.at,p.timeline_seq LIMIT $5`,
+  backward: `${ENTRY_BASE}WHERE ($3::bigint IS NULL OR (p.at_us,p.timeline_seq)<($3::bigint,$4::bigint)) ORDER BY p.at DESC,p.timeline_seq DESC LIMIT $5`,
+};
 
 export async function listConsultationMessages(r: AccessRequest): Promise<Response> {
   if (r.scope.via.kind !== "owner") throw new ApiError("not_found");
+  const expectedShop = r.req.header("X-Expected-Shop-Id");
+  if (expectedShop !== undefined && (!isUuid(expectedShop) || expectedShop.toLowerCase() !== r.scope.shopId))
+    throw new ApiError("unauthenticated");
   const consultationId = r.pathId("consultationId"),
     filter = input(r.req.query());
   const ownerId = r.scope.via.ownerId,
@@ -71,7 +82,7 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
   if (filter.token !== null) {
     const fields = r.services.fieldCrypto();
     try {
-      after = await openConsultationCursor(fields, r.scope.shopId, consultationId, filter.token);
+      after = await openConsultationCursor(fields, r.scope.shopId, consultationId, filter.token, filter.direction);
     } catch (error) {
       if (error instanceof ConsultationCursorError || error instanceof FieldCryptoError)
         throw fieldError("query:cursor", "bad_format");
@@ -88,7 +99,15 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
     );
     const base = { consultationId, status: consultation.status, customerChannelFriend: consultation.channel_friend };
     if (consultation.status === "deleted")
-      return { body: { ...base, items: [], nextCursor: null }, subjects: [consultation.customer_id] };
+      return {
+        body: {
+          ...base,
+          items: [],
+          nextCursor: null,
+          ...(filter.direction === "backward" ? { reloadCursor: null } : {}),
+        },
+        subjects: [consultation.customer_id],
+      };
     // 페이지 중 전달된 안내의 정렬 키가 바뀌지 않도록 첫 가시성과 삽입 상한을 커서에 둔다.
     const snapshot =
       after?.snapshot ??
@@ -100,7 +119,7 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
         [consultationId],
       ));
     const found = (
-      await db.run<Entry>(ENTRIES, [
+      await db.run<Entry>(ENTRIES[filter.direction], [
         consultationId,
         after?.at ?? null,
         after?.sequence ?? null,
@@ -109,7 +128,8 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
         snapshot.ceiling,
       ])
     ).rows;
-    const rows = found.slice(0, filter.limit),
+    const window = found.slice(0, filter.limit);
+    const rows = filter.direction === "backward" ? [...window].reverse() : window,
       tokens = [
         ...new Set(
           rows
@@ -162,11 +182,27 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
       photos: row.source === "message" ? (photoUrls.get(row.id) ?? []) : [],
       delivery: row.delivery,
     }));
-    const last = rows.at(-1);
+    const last = window.at(-1),
+      newest = window[0];
+    const reloadCursor =
+      filter.direction === "backward"
+        ? newest
+          ? (filter.token ??
+            (await sealConsultationCursor(
+              r.services.fieldCrypto(),
+              r.scope.shopId,
+              consultationId,
+              { at: (BigInt(newest.cursor_at) + 1n).toString(), sequence: "1" },
+              snapshot,
+              "backward",
+            )))
+          : null
+        : undefined;
     return {
       body: {
         ...base,
         items,
+        ...(reloadCursor === undefined ? {} : { reloadCursor }),
         nextCursor:
           found.length > filter.limit && last
             ? await sealConsultationCursor(
@@ -175,6 +211,7 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
                 consultationId,
                 { at: last.cursor_at, sequence: last.timeline_seq },
                 snapshot,
+                filter.direction,
               )
             : null,
       },

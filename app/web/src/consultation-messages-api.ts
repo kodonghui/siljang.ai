@@ -42,10 +42,12 @@ export interface ConsultationMessagesPage {
   readonly customerChannelFriend: boolean;
   readonly items: readonly ConsultationMessage[];
   readonly nextCursor: string | null;
+  readonly reloadCursor?: string | null;
 }
 export interface ConsultationMessagesQuery {
   readonly limit: number;
   readonly cursor: string | null;
+  readonly direction?: "forward" | "backward";
 }
 const CURSOR = /^[A-Za-z0-9_-]{1,200}$/;
 function validQuery(query: ConsultationMessagesQuery) {
@@ -53,7 +55,8 @@ function validQuery(query: ConsultationMessagesQuery) {
     Number.isInteger(query.limit) &&
     query.limit >= 1 &&
     query.limit <= 100 &&
-    (query.cursor === null || (typeof query.cursor === "string" && CURSOR.test(query.cursor)))
+    (query.cursor === null || (typeof query.cursor === "string" && CURSOR.test(query.cursor))) &&
+    (query.direction === undefined || query.direction === "forward" || query.direction === "backward")
   );
 }
 export function parseConsultationMessagesSearch(search: string): ConsultationMessagesQuery | null {
@@ -109,6 +112,7 @@ export async function fetchConsultationMessages(
   if (!validQuery(query)) return { ok: false, status: 422, problem: null, retryAfterSeconds: null };
   const params = new URLSearchParams({ limit: String(query.limit) });
   if (query.cursor !== null) params.set("cursor", query.cursor);
+  if (query.direction !== undefined) params.set("direction", query.direction);
   const result = await request<unknown>(`/owner/consultations/${consultationId}/messages?${params}`, {
     cache: "no-store",
     expectedShopId,
@@ -131,7 +135,10 @@ export async function fetchConsultationMessages(
       v.nextCursor === null ||
       (typeof v.nextCursor === "string" && CURSOR.test(v.nextCursor) && v.nextCursor !== query.cursor)
     ) ||
-    (v.status === "deleted" && (v.items.length !== 0 || v.nextCursor !== null))
+    (v.status === "deleted" && (v.items.length !== 0 || v.nextCursor !== null)) ||
+    (Object.hasOwn(v, "reloadCursor") &&
+      v.reloadCursor !== null &&
+      (typeof v.reloadCursor !== "string" || !CURSOR.test(v.reloadCursor)))
   )
     return INVALID_API_RESPONSE;
   return {
@@ -140,6 +147,7 @@ export async function fetchConsultationMessages(
       consultationId: v.consultationId,
       status: v.status as ConsultationMessagesPage["status"],
       customerChannelFriend: v.customerChannelFriend,
+      ...(Object.hasOwn(v, "reloadCursor") ? { reloadCursor: v.reloadCursor as string | null } : {}),
       items: v.items.map((m) => ({
         messageId: m.messageId,
         at: m.at,

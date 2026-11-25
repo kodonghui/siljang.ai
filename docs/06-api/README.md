@@ -902,3 +902,6 @@ PC 화면과 Worker 기록은 [카카오 시험 대본](../10-wbs/kakao-test-scr
 ### 2026-11-23 · SCR-035 영업 신고 확인 시각
 
 사장님 Shop 응답에 선택 필드 licenseReviewedAt을 더했습니다. 기존 shops.license_reviewed_at을 서울 시각으로 보내며 확인 중/재제출 뒤는 null입니다. 가게 전체 updatedAt을 확인 시각으로 대신하지 않습니다. 운영자 ID나 증빙 원문은 더 보내지 않습니다.
+
+
+2026-11-25 TASK-089 리뷰 고침: API-043에 선택 direction(forward·backward, 기본 forward)과 뒤로 읽기의 선택 reloadCursor를 더했습니다. 기존 정방향 응답/커서는 유지합니다. 뒤로 읽기는 최근20개와 이전 페이지를 읽되 응답 안의 시각/남긴 차례는 오름차순이며, 사진 재조회는 고정 페이지 기준으로 새 주소를 받습니다. 스키마·경로 원본을 고친 뒤 생성기로 반영했습니다.

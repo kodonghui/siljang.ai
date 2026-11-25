@@ -12,6 +12,7 @@ export interface ConsultationPosition {
 export interface ConsultationCursor extends ConsultationPosition {
   snapshot: ConsultationSnapshot;
 }
+export type ConsultationReadDirection = "forward" | "backward";
 const MAX_I64 = 9223372036854775807n,
   MAX_U64 = 18446744073709551615n,
   PAYLOAD_BYTES = 120;
@@ -74,13 +75,15 @@ export async function sealConsultationCursor(
   consultationId: string,
   position: ConsultationPosition,
   snapshot: ConsultationSnapshot,
+  direction: ConsultationReadDirection = "forward",
 ): Promise<string> {
+  if (direction !== "forward" && direction !== "backward") invalid();
   const clock = snapshotParts(snapshot.transaction),
     at = BigInt(position.at),
     sequence = unsigned(position.sequence),
     ceiling = unsigned(snapshot.ceiling);
   if (at < -MAX_I64 - 1n || at > MAX_I64 || sequence < 1n || sequence > ceiling) invalid();
-  const bytes = [3];
+  const bytes = [direction === "forward" ? 3 : 4];
   put(bytes, at >= 0n ? at * 2n : -at * 2n - 1n);
   put(bytes, sequence);
   put(bytes, ceiling);
@@ -115,7 +118,9 @@ export async function openConsultationCursor(
   shopId: string,
   consultationId: string,
   token: string,
+  direction: ConsultationReadDirection = "forward",
 ): Promise<ConsultationCursor> {
+  if (direction !== "forward" && direction !== "backward") invalid();
   const bytes = fromBase64Url(token);
   if (token.length !== 200 || bytes === null || bytes.length !== 150 || toBase64Url(bytes) !== token) invalid();
   const version = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint16(0);
@@ -128,7 +133,7 @@ export async function openConsultationCursor(
   if (new TextEncoder().encode(value).length !== PAYLOAD_BYTES || [...value].some((ch) => ch.charCodeAt(0) > 255))
     invalid();
   const payload = Uint8Array.from(value, (ch) => ch.charCodeAt(0));
-  if (payload[0] !== 3) invalid();
+  if (payload[0] !== (direction === "forward" ? 3 : 4)) invalid();
   const reader = new Reader(payload);
   reader.at = 1;
   const signed = reader.integer(),

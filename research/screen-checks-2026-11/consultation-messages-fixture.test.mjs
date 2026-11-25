@@ -84,3 +84,14 @@ test("합성 자료는 가게 기대값을 확인하고 외부 요청과 업무 
   const first = await fixture("more-error").request(path, options);
   assert.equal((await first.json()).nextCursor, "older_page");
 });
+test("뒤로 읽기의 추가 사진 페이지를 같은 기준으로 갱신한다", async () => {
+  const mock = fixture("more-photos");
+  const first = await (await mock.request(path+"&direction=backward",options)).json();
+  assert.equal(first.reloadCursor,"latest_page");assert.equal(first.nextCursor,"older_page");
+  const address = path+"&direction=backward&cursor=older_page";
+  const older = await (await mock.request(address,options)).json();
+  assert.equal(older.reloadCursor,"older_page");assert.equal(new URL(older.items[0].photos[0].url).searchParams.get("exp"),"1");
+  const fresh = await (await mock.request(address,options)).json();
+  assert.equal(fresh.reloadCursor,"older_page");assert.equal(fresh.items[0].messageId,older.items[0].messageId);
+  assert.ok(Number(new URL(fresh.items[0].photos[0].url).searchParams.get("exp"))>1);
+});

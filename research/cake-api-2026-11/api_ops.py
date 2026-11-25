@@ -867,10 +867,13 @@ op(id="API-043", method="get", path="/owner/consultations/{consultationId}/messa
    summary="상담 대화 조회", spec=["SPEC-021", "SPEC-019", "SPEC-068", "SPEC-065"], auth="owner",
    desc="그 가게 상담만. 사장님 화면에는 마스킹한 전화번호·계좌번호를 원래 값으로 되돌린 글과 참고 사진(서명 주소)이 보인다. 카드번호는 플레이스홀더와 끝 4자리, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 보인다(원래 값을 두지 않음, REQ-192). "
         "그 상담의 손님 안내(05단계 notifications)도 함께 준다: 사장님 답은 author owner, 서버가 보낸 그 밖의 안내(결제 안내·확정 안내·지연 안내 등)는 author notice이고 direction outbound, kind text, 사진 없음. 안내의 at은 전한 시각(아직 못 전했으면 만든 시각), delivery는 보내는 중 sending·먼저 보냄 event_api·다음 대화 때 전할 것 deferred·그렇게 전함 delivered_later·보내지 못함 failed. 결제 안내의 계좌번호 자리는 채우지 않은 글 그대로이고, 주문이 끝나고 30일이 지나 지운 그 주문의 안내는 빠진다(SPEC-065, 설계 재검토 RD-17). "
-        "순서: 시각(at) 순이고 새 메시지가 뒤, 같은 시각이면 남긴 차례(DEC-14). "
+        "순서: 시각(at) 순이고 새 메시지가 뒤, 같은 시각이면 남긴 차례(DEC-14). 기본 direction forward는 처음부터 이후 페이지를 읽는다. direction backward는 최근 limit개를 읽고 nextCursor로 그보다 이전 페이지를 읽는다. 어느 방향도 items는 시각/남긴 차례 오름차순이다. 뒤로 읽기의 reloadCursor로 같은 limit/방향을 요청하면 고정한 첫 가시성/삽입 상한과 페이지 위치에서 사진 주소를 새로 받는다. 새 메시지가 와도 그 페이지가 밀리지 않으며 새로 고침은 커서 없는 뒤로 읽기로 최신 대화를 받는다. 방향이 다른 커서는422이고 이전 정방향 커서는 그대로 쓴다. "
         "다룬 주문이 모두 끝나 상담 끝남으로 닫힌 상담(SPEC-025)은 status ended로 대화가 지우기 전까지 그대로 보이고, 그 손님의 다음 말은 새 상담에 남는다. "
         "지워진 상담(SPEC-065)은 status deleted와 빈 items.",
-   params=[pid("consultationId", "상담", E.CONSULT_ID), CURSOR, LIMIT],
+   params=[pid("consultationId", "상담", E.CONSULT_ID), CURSOR, LIMIT,
+           q("direction", {"type": "string", "enum": ["forward", "backward"], "default": "forward"}, "앞에서 이후 페이지 또는 최근부터 이전 페이지. 응답 안에서는 항상 시각/남긴 차례 오름차순", "backward"),
+           {"name": "X-Expected-Shop-Id", "in": "header", "required": False, "schema": {"type": "string", "format": "uuid"},
+            "description": "API-002로 확인한 가게. 사장님 웹은 첫 조회·추가 조회·사진 재조회에 항상 보낸다. 현재 세션의 가게와 다르거나 형식이 틀리면 본문 조회와 접속기록 쓰기 전에401 unauthenticated. 권한이나 조회 대상을 고르는 값이 아니며 가게는 세션으로 정한다. 헤더가 없는 기존 호출도 허용한다."}],
    ok=[(200, "ConsultationMessagePage", {"messages": E.MESSAGES, "with_owner_reply": E.MESSAGES_WITH_REPLY,
                                          "deleted": dict(E.MESSAGES, status="deleted", items=[], nextCursor=None)})],
    errors={404: ["not_found"]},

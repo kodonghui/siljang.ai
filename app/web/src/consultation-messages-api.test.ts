@@ -53,6 +53,14 @@ it("다른 상담 응답은 원래 값을 UI로 넘기지 않는다", async () =
     retryAfterSeconds: null,
   });
 });
+it("화면은 최근부터 이전 페이지를 요청하고 같은 페이지의 재조회 기준을 보존한다", async () => {
+  value.reloadCursor = "synthetic_page_anchor";
+  const result = await fetchConsultationMessages(value.consultationId, { ...query, direction: "backward" }, SHOP);
+  expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
+    `/api/owner/consultations/${value.consultationId}/messages?limit=20&direction=backward`,
+  );
+  expect(result.ok && result.data.reloadCursor).toBe("synthetic_page_anchor");
+});
 it.each([
   [
     "중복 메시지",

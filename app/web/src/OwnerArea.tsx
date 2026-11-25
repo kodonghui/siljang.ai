@@ -61,12 +61,12 @@ interface HomeTabFocus {
   readonly identityKey: string;
 }
 const ownerIdentityKey = (identity: OwnerIdentity) => `${identity.owner.ownerId}:${identity.shop?.shopId ?? ""}`;
-function homeWithoutCursor(search: string): string | null {
+function pathWithoutCursor(search: string, path = OWNER_HOME): string | null {
   const query = new URLSearchParams(search);
   if (!query.has("cursor")) return null;
   query.delete("cursor");
   const suffix = query.toString();
-  return `${OWNER_HOME}${suffix ? `?${suffix}` : ""}`;
+  return `${path}${suffix ? `?${suffix}` : ""}`;
 }
 
 /** 첫 세션 확인 전에는 가린다. 이미 검증한 등록 양식은 재확인·로그아웃 중 잠근 채 보존한다. */
@@ -82,6 +82,7 @@ export function OwnerArea() {
     shopPath ?? "",
   );
   const screenRoute = consultationRoute ? { Screen: ConsultationMessagesScreen } : (historyRoute ?? shopRoute);
+  const isConsultation = consultationRoute !== null;
   const history = historyRoute !== null;
   const [revision, setRevision] = useState(0);
   const visit = useMemo(() => ({ key: location.key, revision }), [location.key, revision]);
@@ -104,8 +105,8 @@ export function OwnerArea() {
       if (event.persisted) recheck();
     };
     const visible = () => {
-      // 홈의 목록보다 신원을 먼저 확인해 다른 계정의 가게와 섞이지 않게 한다.
-      if (shopPath === OWNER_HOME && document.visibilityState === "visible") recheck();
+      // 목록/상담보다 신원을 먼저 확인해 다른 계정의 가게와 섞이지 않게 한다.
+      if ((shopPath === OWNER_HOME || isConsultation) && document.visibilityState === "visible") recheck();
     };
     window.addEventListener("pageshow", restore);
     document.addEventListener("visibilitychange", visible);
@@ -113,7 +114,7 @@ export function OwnerArea() {
       window.removeEventListener("pageshow", restore);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [shopPath]);
+  }, [shopPath, isConsultation]);
   useEffect(() => {
     if (!requested) return;
     const controller = new AbortController();
@@ -122,9 +123,9 @@ export function OwnerArea() {
         if (controller.signal.aborted) return;
         if (result.ok) {
           const previous = verified.current?.data;
-          const withoutCursor = homeWithoutCursor(location.search);
+          const withoutCursor = pathWithoutCursor(location.search, location.pathname);
           if (
-            shopPath === OWNER_HOME &&
+            (shopPath === OWNER_HOME || isConsultation) &&
             previous &&
             ownerIdentityKey(previous) !== ownerIdentityKey(result.data) &&
             withoutCursor !== null
@@ -143,7 +144,7 @@ export function OwnerArea() {
         /* 화면을 떠날 때 취소한 요청. */
       });
     return () => controller.abort();
-  }, [visit, requested, history, location.pathname, location.search, navigate, shopPath]);
+  }, [visit, requested, history, location.pathname, location.search, navigate, shopPath, isConsultation]);
   useEffect(() => () => logoutRequest.current?.abort(), []);
   useEffect(() => {
     if (requested !== OWNER_HOME) setRegistrationNotice(false);
@@ -247,11 +248,11 @@ export function OwnerArea() {
           shopName={candidate.shop.name}
           onNavigate={(href) => navigate(href)}
           onSessionExpired={() => {
-            if (shopPath === OWNER_HOME && rejectedHomeIdentity.current !== identityKey) {
+            if ((shopPath === OWNER_HOME || isConsultation) && rejectedHomeIdentity.current !== identityKey) {
               // 두 조회 사이 계정이 바뀌었을 수 있다. 이전 목록을 숨긴 채 한 번만 신원을 다시 읽는다.
               rejectedHomeIdentity.current = identityKey;
               setHomeTabFocus(null);
-              const withoutCursor = homeWithoutCursor(location.search);
+              const withoutCursor = pathWithoutCursor(location.search, location.pathname);
               if (withoutCursor !== null) navigate(withoutCursor, { replace: true });
               else setRevision((value) => value + 1);
             } else navigate(OWNER_LOGIN, { replace: true, state: { returnTo: requested } });

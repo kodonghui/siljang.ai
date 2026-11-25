@@ -899,6 +899,7 @@ S["ConsultationMessagePage"] = all_required({
     "items": arr(ref("ConsultationMessage"), 0, 100),
     "nextCursor": nullable(CURSOR),
 })
+S["ConsultationMessagePage"]["properties"]["reloadCursor"] = nullable(dict(CURSOR, description="direction backward일 때 같은 limit/방향으로 이 페이지의 사진 주소를 다시 읽는 고정 기준. 빈 페이지/지운 상담은 null. 기본 정방향 응답은 생략"))
 
 # ── 주문 ────────────────────────────────────────────────────────────────────
 OPTION_REF = all_required({"optionId": UUID, "name": string(1, 30)})

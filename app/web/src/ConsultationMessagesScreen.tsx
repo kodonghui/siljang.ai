@@ -19,11 +19,28 @@ import { keepFocusInside } from "./ui/focus";
 
 interface Received extends ConsultationMessage {
   readonly receivedAt: number;
+  readonly pageCursor: string | null;
 }
+interface ReceivedPage {
+  readonly cursor: string | null;
+  readonly items: readonly Received[];
+}
+type ReadMode = "initial" | "more" | "photo";
 interface Loaded extends Omit<ConsultationMessagesPage, "items"> {
   readonly key: string;
   readonly items: readonly Received[];
+  readonly pages: readonly ReceivedPage[];
   readonly at: number;
+}
+function pageItems(pages: readonly ReceivedPage[]): readonly Received[] {
+  const seen = new Set<string>();
+  return pages.flatMap((page) =>
+    page.items.filter((item) => {
+      if (seen.has(item.messageId)) return false;
+      seen.add(item.messageId);
+      return true;
+    }),
+  );
 }
 const NETWORK: ApiFailure = { ok: false, status: 0, problem: null, retryAfterSeconds: null };
 export function consultationPhotoExpiry(url: string, receivedAt: number) {
@@ -56,9 +73,8 @@ export function ConsultationMessagesScreen(
   callbacks.current = props;
   const [loaded, setLoaded] = useState<Loaded | null>(null),
     [loading, setLoading] = useState(true),
-    [failure, setFailure] = useState<{ result: ApiFailure; more: boolean } | null>(null);
-  const [revision, setRevision] = useState(0),
-    [clock, setClock] = useState(Date.now),
+    [failure, setFailure] = useState<{ result: ApiFailure; mode: ReadMode; cursor: string | null } | null>(null);
+  const [clock, setClock] = useState(Date.now),
     [notice, setNotice] = useState("");
   const [selection, setSelection] = useState<{ id: string; index: number } | null>(null),
     [failedPhotos, setFailedPhotos] = useState<ReadonlySet<string>>(new Set());
@@ -67,8 +83,10 @@ export function ConsultationMessagesScreen(
     focusOrigin = useRef<Element | null>(null),
     heading = useRef<HTMLHeadingElement>(null);
   const current = !blocked && loaded?.key === key ? loaded : null;
+  const loadedRef = useRef(loaded);
+  loadedRef.current = loaded;
   const read = useCallback(
-    async (cursor: string | null, more: boolean) => {
+    async (cursor: string | null, mode: ReadMode) => {
       const parameters = query.current;
       if (!parameters || !UUID_PATTERN.test(consultationId) || request.current || identity.current.blocked) return;
       const controller = new AbortController();
@@ -76,7 +94,7 @@ export function ConsultationMessagesScreen(
       setLoading(true);
       setFailure(null);
       setNotice("");
-      if (more) focusOrigin.current = document.activeElement;
+      if (mode !== "initial") focusOrigin.current = document.activeElement;
       else {
         setLoaded(null);
         setFailedPhotos(new Set());
@@ -84,7 +102,7 @@ export function ConsultationMessagesScreen(
       try {
         const result = await fetchConsultationMessages(
           consultationId,
-          { ...parameters, cursor },
+          { ...parameters, cursor, direction: "backward" },
           props.shopId,
           controller.signal,
         );
@@ -92,37 +110,56 @@ export function ConsultationMessagesScreen(
         if (result.ok) {
           const at = Date.now();
           setClock(at);
+          if (mode === "photo") {
+            const oldUrls = new Set(
+              loadedRef.current?.pages
+                .find((page) => page.cursor === cursor)
+                ?.items.flatMap((item) => item.photos.map((photo) => photo.url)),
+            );
+            setFailedPhotos((old) => new Set([...old].filter((url) => !oldUrls.has(url))));
+          }
           if (result.data.status === "deleted") {
             setSelection(null);
             setFailedPhotos(new Set());
           }
           setLoaded((old) => {
-            const prior = more && result.data.status !== "deleted" && old?.key === key ? old : null;
-            const ids = new Set(prior?.items.map((row) => row.messageId));
+            const prior = mode !== "initial" && result.data.status !== "deleted" && old?.key === key ? old : null;
+            const pageCursor = result.data.reloadCursor ?? cursor;
+            const page = {
+              cursor: pageCursor,
+              items: result.data.items.map((row) => ({ ...row, receivedAt: at, pageCursor })),
+            };
+            const pages =
+              result.data.status === "deleted"
+                ? []
+                : mode === "more" && prior
+                  ? [page, ...prior.pages]
+                  : mode === "photo" && prior
+                    ? prior.pages.map((oldPage) => (oldPage.cursor === cursor ? page : oldPage))
+                    : [page];
             return {
               ...result.data,
               key,
               at: prior?.at ?? at,
-              items: [
-                ...(prior?.items ?? []),
-                ...result.data.items
-                  .filter((row) => !ids.has(row.messageId))
-                  .map((row) => ({ ...row, receivedAt: at })),
-              ],
+              pages,
+              items: pageItems(pages),
+              nextCursor: mode === "photo" && prior ? prior.nextCursor : result.data.nextCursor,
             };
           });
-          if (more) setNotice(result.data.items.length ? `이전 대화를 불러왔어요` : `더 불러올 대화가 없어요`);
+          if (mode === "more")
+            setNotice(result.data.items.length ? `이전 대화를 불러왔어요` : `더 불러올 대화가 없어요`);
+          if (mode === "photo") setNotice("사진을 다시 불러왔어요");
         } else {
           if (result.status === 401 || result.status === 404) {
             setLoaded(null);
             setSelection(null);
           }
-          setFailure({ result, more });
+          setFailure({ result, mode, cursor });
           if (result.status === 401) callbacks.current.onSessionExpired();
         }
       } catch {
         if (!controller.signal.aborted && identity.current.key === key && !identity.current.blocked)
-          setFailure({ result: NETWORK, more });
+          setFailure({ result: NETWORK, mode, cursor });
       } finally {
         if (request.current === controller) request.current = null;
         if (!controller.signal.aborted && identity.current.key === key) setLoading(false);
@@ -131,20 +168,25 @@ export function ConsultationMessagesScreen(
     [consultationId, props.shopId, key],
   );
   useEffect(() => {
-    void revision;
-    if (blocked || !valid) {
+    if (!valid || props.sessionFailed || props.logoutPending) {
       setLoaded(null);
       setFailure(null);
       setSelection(null);
       setFailedPhotos(new Set());
-    } else void read(query.current?.cursor ?? null, false);
+    } else if (!blocked) {
+      if (loadedRef.current?.key !== key) void read(query.current?.cursor ?? null, "initial");
+      else {
+        setLoading(false);
+        setClock(Date.now());
+      }
+    }
     return () => {
       request.current?.abort();
       request.current = null;
     };
-  }, [read, revision, blocked, valid]);
+  }, [read, blocked, valid, key, props.sessionFailed, props.logoutPending]);
   useLayoutEffect(() => {
-    if (!notice || identity.current.blocked) return;
+    if (!notice || identity.current.blocked || document.querySelector("dialog[open]")) return;
     const active = document.activeElement;
     if (active === document.body || active === focusOrigin.current) status.current?.focus();
   }, [notice]);
@@ -168,16 +210,13 @@ export function ConsultationMessagesScreen(
   const refresh = () => {
     if (!busy) {
       setSelection(null);
-      setRevision((old) => old + 1);
+      void read(query.current?.cursor ?? null, "initial");
     }
   };
   const row = selection ? current?.items.find((item) => item.messageId === selection.id) : undefined;
   const photo = row && selection ? row.photos[selection.index] : undefined;
   const photoStale = photo && row ? consultationPhotoExpiry(photo.url, row.receivedAt) <= clock : false;
-  const rows =
-    current?.items
-      .map((item, index) => ({ item, index }))
-      .sort((a, b) => Date.parse(a.item.at) - Date.parse(b.item.at) || b.index - a.index) ?? [];
+  const rows = current?.items ?? [];
   const fail = validId ? failure?.result : { status: 404 };
   return (
     <OwnerLayout
@@ -232,9 +271,7 @@ export function ConsultationMessagesScreen(
             {failure ? (
               <LoadFailure
                 failure={classify(failure.result.status, failure.result.problem, failure.result.retryAfterSeconds)}
-                onRetry={() =>
-                  failure.more ? void read(current?.nextCursor ?? null, true) : setRevision((old) => old + 1)
-                }
+                onRetry={() => void read(failure.cursor, failure.mode)}
               />
             ) : null}
             {current?.status === "deleted" ? (
@@ -246,7 +283,7 @@ export function ConsultationMessagesScreen(
                   {current.customerChannelFriend ? "채널 친구" : "채널 친구 아님"}
                 </p>
                 {current.nextCursor ? (
-                  <Button kind="secondary" disabled={busy} onClick={() => void read(current.nextCursor, true)}>
+                  <Button kind="secondary" disabled={busy} onClick={() => void read(current.nextCursor, "more")}>
                     이전 대화 더 보기
                   </Button>
                 ) : null}
@@ -258,7 +295,7 @@ export function ConsultationMessagesScreen(
                   <p>남아 있는 대화가 없어요</p>
                 ) : (
                   <ol className="consultation-timeline">
-                    {rows.map(({ item }) => (
+                    {rows.map((item) => (
                       <li key={item.messageId} className={`consultation-bubble consultation-bubble--${item.direction}`}>
                         <div className="consultation-bubble__meta">
                           <strong>{MESSAGE_AUTHORS[item.author]}</strong>
@@ -304,7 +341,11 @@ export function ConsultationMessagesScreen(
                                         ? `참고 사진 ${index + 1} 다시 불러오기`
                                         : `참고 사진 ${index + 1} 크게 보기`
                                     }
-                                    onClick={() => (stale ? refresh() : setSelection({ id: item.messageId, index }))}
+                                    onClick={() =>
+                                      stale
+                                        ? void read(item.pageCursor, "photo")
+                                        : setSelection({ id: item.messageId, index })
+                                    }
                                   >
                                     {stale ? (
                                       "다시 불러오기"
@@ -347,7 +388,9 @@ export function ConsultationMessagesScreen(
         failed={Boolean(photoStale || (photo && failedPhotos.has(photo.url)))}
         busy={busy}
         onClose={() => setSelection(null)}
-        onReload={refresh}
+        onReload={() => {
+          if (row) void read(row.pageCursor, "photo");
+        }}
         onError={() => {
           if (photo) setFailedPhotos((old) => new Set([...old, photo.url]));
         }}
@@ -408,7 +451,8 @@ function PhotoDialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null),
     origin = useRef<HTMLElement | null>(null),
-    closing = useRef(false);
+    closing = useRef(false),
+    wasBusy = useRef(false);
   const restore = useCallback(() => {
     const target = origin.current;
     if (!target) return;
@@ -429,6 +473,14 @@ function PhotoDialog({
       restore();
     }
   }, [open, restore]);
+  useEffect(() => {
+    if (open && wasBusy.current && !busy) {
+      const active = document.activeElement;
+      if (active === document.body || !active?.isConnected)
+        ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    }
+    wasBusy.current = busy;
+  }, [open, busy]);
   useEffect(
     () => () => {
       restore();
