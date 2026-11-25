@@ -3,7 +3,8 @@
 import { type ChangeCardSource, type ChangeRequestStatus, readPreparedChangeCard } from "./change-card-presentation";
 import { cardExpiresAt, judgeCardPress } from "./confirm-card";
 import type { KakaoChangeRequestCard } from "./kakao-change-request-message";
-import { changeRequestResultText } from "./kakao-change-request-message";
+import { changeRequestResultText, kakaoChangeRequestMessage } from "./kakao-change-request-message";
+import type { KakaoChangeRequestContent } from "./kakao-message-content";
 import type { KakaoOrderCardContext } from "./kakao-order-request-content";
 import type { KakaoPaymentClaimCard } from "./kakao-payment-claim-message";
 import type { KakaoPaymentAmountView } from "./kakao-payment-message";
@@ -373,7 +374,12 @@ function withCardPresentation(card: ConfirmCardView, source: Source, expiresAt: 
       }
     : card;
 }
-async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): Promise<ConfirmCardView> {
+async function insertCard(
+  db: ShopDb,
+  input: ShowConfirmCard,
+  source: Source,
+  state: "normal" | "stale" | "expired" = "normal",
+): Promise<ConfirmCardView> {
   const card: ConfirmCardView = {
     kind: input.kind,
     ...(source.orderRequest === undefined ? {} : { orderRequest: source.orderRequest }),
@@ -386,6 +392,15 @@ async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): P
     confirmLabel: input.kind === "order_request" ? "규정에 동의하고 주문 요청" : LABELS[input.kind],
     blockId: source.blockId,
   };
+  const presentation = withCardPresentation(card, source, cardExpiresAt(input.now));
+  // API071의 응답 생성은 트랜잭션 뒤다. 표시 실패는 새 행/옛 카드의 사용 표시 전에 확인한다.
+  if (presentation.changeRequest !== undefined)
+    kakaoChangeRequestMessage({
+      ...presentation.changeRequest,
+      state,
+      cardKey: presentation.cardKey,
+      blockId: presentation.blockId,
+    });
   await db.run(
     "INSERT INTO confirm_cards (shop_id,consultation_id,customer_id,card_key,kind,order_id,order_version,draft_id,draft_revision,payload,created_at,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12)",
     [
@@ -407,7 +422,7 @@ async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): P
       cardExpiresAt(input.now),
     ],
   );
-  return withCardPresentation(card, source, cardExpiresAt(input.now));
+  return presentation;
 }
 export async function prepareConfirmCardInTransaction(
   db: ShopDb,
@@ -585,7 +600,7 @@ async function replaceCard(
   source: Source,
   verdict: "stale" | "expired",
 ) {
-  const replacement = await insertCard(tx, target, source);
+  const replacement = await insertCard(tx, target, source, verdict);
   const result = {
     outcome: `card_${verdict}`,
     text:
@@ -606,7 +621,11 @@ async function replaceCard(
 export async function readConfirmCardDelivery(
   db: ShopDb,
   input: Identity & { readonly sourceMessageId: string; readonly now: Date },
-): Promise<{ readonly text: string; readonly card?: ConfirmCardView }> {
+): Promise<{
+  readonly text: string;
+  readonly card?: ConfirmCardView;
+  readonly contents?: readonly KakaoChangeRequestContent[];
+}> {
   const unavailable = { text: "내용을 다시 확인해 주세요" };
   if (!(await identityAvailable(db, input))) return unavailable;
   const rows = await db.run<CardRow>(
@@ -626,7 +645,13 @@ export async function readConfirmCardDelivery(
   };
   const source = await readSource(db, target);
   if (source === null) return initial.kind === "order_request" ? { text: ORDER_NOT_READY.text } : unavailable;
-  if (source.changeRequest?.available === false) return { text: source.changeRequest.text };
+  if (source.changeRequest?.available === false)
+    return {
+      text: source.changeRequest.text,
+      ...(source.changeRequest.status.clause === undefined
+        ? {}
+        : { contents: [{ kind: "change_card", view: { state: "stale", ...source.changeRequest.status } }] as const }),
+    };
   if (source.paymentClaim?.available === false)
     return {
       text: source.paymentClaim.text,

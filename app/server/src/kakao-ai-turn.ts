@@ -10,6 +10,7 @@ import { handoffSourceMatch } from "./handoff-source";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import type { KakaoAiDisclosure } from "./kakao-ai-disclosure";
 import { type KakaoCallbackClaim, openKakaoCallbackContext } from "./kakao-callback-store";
+import type { KakaoMessageContent } from "./kakao-message-content";
 import type { KakaoOrderReference } from "./kakao-order-reference";
 import { MaskingFailedError } from "./masked-values";
 import { messageNumbers } from "./message-masking";
@@ -21,6 +22,7 @@ export interface KakaoAiReply {
   readonly text: string;
   readonly delivered: boolean;
   readonly card?: ConfirmCardView;
+  readonly contents?: readonly KakaoMessageContent[];
 }
 
 export type KakaoAiTurnResult =

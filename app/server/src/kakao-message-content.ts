@@ -33,7 +33,7 @@ export interface KakaoCustomerNoticeContent {
 }
 export interface KakaoChangeRequestContent {
   readonly kind: "change_card";
-  readonly view: Extract<KakaoChangeRequestView, { readonly cardKey: string }>;
+  readonly view: KakaoChangeRequestView;
   readonly part?: number;
 }
 export type KakaoMessageContent =

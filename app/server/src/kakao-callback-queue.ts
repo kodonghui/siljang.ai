@@ -259,7 +259,10 @@ export async function consumeKakaoCallback(
     const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
     let transmittedContents = previousTexts;
     if (replyIncluded) {
-      const combined = mergeKakaoAmountConfirmations(previousTexts, [preparedReply?.card ?? text]);
+      const combined = mergeKakaoAmountConfirmations(
+        previousTexts,
+        preparedReply?.contents ?? [preparedReply?.card ?? text],
+      );
       const added = combined.length - previousTexts.length;
       replyIncluded = (!previousBatch.currentBlocked || added === 0) && prefix.length + combined.length <= 3;
       if (replyIncluded) transmittedContents = combined;
