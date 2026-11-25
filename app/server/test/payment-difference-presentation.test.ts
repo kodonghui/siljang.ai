@@ -143,6 +143,11 @@ describeDb("저장된 차액의 새 금액 확인 표시(TASK-106)", () => {
       const body = await response.json();
       expectSchema("SkillTemplateResponse", body);
       const shown = JSON.stringify(body);
+      const renderedText = (
+        body as { template: { outputs: ({ simpleText: { text: string } } | { textCard: { description: string } })[] } }
+      ).template.outputs
+        .map((output) => ("simpleText" in output ? output.simpleText.text : output.textCard.description))
+        .join("");
       for (const text of [
         "지금 35,000원",
         "새 금액 55,000원",
@@ -156,8 +161,8 @@ describeDb("저장된 차액의 새 금액 확인 표시(TASK-106)", () => {
       ])
         expect(shown).toContain(text);
       if (length === "long") {
-        expect(shown).toContain(changes.designNotes);
-        for (const extra of changes.extras ?? []) expect(shown).toContain(extra);
+        expect(renderedText).toContain(changes.designNotes);
+        for (const extra of changes.extras ?? []) expect(renderedText).toContain(extra);
       }
       for (const text of ["이 금액으로 할게요", "계좌번호", "010-0000-0000", shop.customerId, changeId, paymentId])
         expect(shown).not.toContain(text);

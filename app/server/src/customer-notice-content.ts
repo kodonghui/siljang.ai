@@ -4,6 +4,7 @@ import { TEXT_CUSTOMER_NOTICE_KINDS } from "./customer-notice-store";
 import type { FieldCrypto } from "./field-crypto";
 import type { KakaoMessageContent } from "./kakao-message-content";
 import type { KakaoPaymentNormalView } from "./kakao-payment-message";
+import { paymentChangeSummary } from "./payment-change-presentation";
 import type { ShopDb } from "./shop-scope";
 
 export const READABLE_CUSTOMER_NOTICE_KINDS = [...TEXT_CUSTOMER_NOTICE_KINDS, "payment_request"] as const;
@@ -38,6 +39,10 @@ interface Payment {
   order_version: number;
   order_status: string;
   change_status: string | null;
+  change_set: unknown;
+  change_base_version: number | null;
+  change_delta: number | null;
+  order_amount: number;
   bank_name: string;
   holder_name: string;
   account_number_enc: string;
@@ -62,7 +67,9 @@ export async function customerNoticeContents(
       `SELECT p.kind,p.status,p.amount,p.requested_amount,p.needs_amount_confirm,p.amount_confirmed_at,p.amount_card_id,
       p.delivered_at,p.issued_at,p.due_at,p.due_cap_at,p.card_payment_url,o.id AS order_id,o.order_no,o.version AS order_version,
       q.amount AS quote_amount,q.amount_max AS quote_amount_max,q.display_kind AS quote_display,accepted.amount_change_reason,
-      o.status AS order_status,cr.status AS change_status,a.bank_name,a.holder_name,a.account_number_enc,s.time_zone,r.payment_due_hours
+      o.status AS order_status,o.amount AS order_amount,cr.status AS change_status,cr.changes AS change_set,
+      cr.base_version AS change_base_version,cr.amount_delta AS change_delta,
+      a.bank_name,a.holder_name,a.account_number_enc,s.time_zone,r.payment_due_hours
       FROM notifications n JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id AND o.customer_id=n.customer_id
       JOIN payment_requests p ON p.shop_id=$1 AND p.order_id=o.id AND n.event_key='notice:'||p.id::text||':payment_request'
       JOIN payment_accounts a ON a.shop_id=$1 AND a.id=p.payment_account_id JOIN shops s ON s.id=$1
@@ -85,7 +92,6 @@ export async function customerNoticeContents(
       : payment.order_status !== "awaiting_payment")
   )
     return ["지금은 이 결제 안내를 사용할 수 없어요"];
-  let requested = "";
   let adjustment: KakaoPaymentNormalView["adjustment"];
   if (payment.requested_amount !== null) {
     if (payment.quote_amount !== payment.requested_amount || !payment.quote_display || !payment.amount_change_reason)
@@ -107,7 +113,6 @@ export async function customerNoticeContents(
       requestedQuote: { amount: payment.requested_amount, amountMax: payment.quote_amount_max, displayKind },
       reason: payment.amount_change_reason,
     };
-    requested = `\n요청한 금액 ${display}\n금액 변경 사유 ${payment.amount_change_reason}`;
   }
   if (payment.needs_amount_confirm && payment.amount_confirmed_at === null) {
     const card =
@@ -143,13 +148,30 @@ export async function customerNoticeContents(
         },
       ];
     }
+    const changes = paymentChangeSummary(payment.change_set, payment.time_zone);
+    if (
+      changes === null ||
+      payment.change_base_version !== payment.order_version ||
+      payment.change_delta !== payment.amount ||
+      payment.order_amount + payment.amount > 10000000
+    )
+      return ["지금은 새 금액 확인 카드를 사용할 수 없어요"];
     return [
       {
-        cardKey: card.card_key,
-        title: "새 금액 확인",
-        description: `주문번호 ${payment.order_no}${requested}\n${payment.kind === "difference" ? "추가 결제할 금액" : "새 결제 금액"} ${payment.amount.toLocaleString("ko-KR")}원`,
-        confirmLabel: "이 금액으로 할게요",
-        blockId: card.card_block_id,
+        kind: "payment_notice",
+        view: {
+          state: "amount-confirm",
+          kind: "difference",
+          changes,
+          currentAmount: payment.order_amount,
+          newAmount: payment.order_amount + payment.amount,
+          difference: payment.amount,
+          changeDeadline: payment.due_cap_at.toISOString(),
+          cardKey: card.card_key,
+          blockId: card.card_block_id,
+          expiresAt: card.expires_at.toISOString(),
+          timeZone: payment.time_zone,
+        },
       },
     ];
   }

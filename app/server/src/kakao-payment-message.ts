@@ -231,11 +231,11 @@ function paymentAmountMessage(view: KakaoPaymentAmountView): KakaoPaymentMessage
   if (view.kind === "custom")
     details = `요청하신 견적 ${quoteDisplay(view.requestedQuote)}\n사장님이 정한 금액 ${money(view.amount)}원\n사유: ${checkedText(view.reason, 200)}`;
   else {
-    money(view.currentAmount);
+    money(view.currentAmount, 0);
     money(view.newAmount);
     if (view.newAmount - view.currentAmount !== view.difference) throw new RangeError("invalid payment difference");
     const deadline = localDate(view.changeDeadline, view.timeZone);
-    details = `${checkedText(view.changes, 1000)}\n지금 ${money(view.currentAmount)}원 → 새 금액 ${money(view.newAmount)}원\n차액 ${money(view.difference)}원\n변경 마감 ${Number(deadline.date.slice(5, 7))}월 ${Number(deadline.date.slice(8))}일 ${deadline.time}까지`;
+    details = `${checkedText(view.changes, 2000)}\n지금 ${money(view.currentAmount, 0)}원 → 새 금액 ${money(view.newAmount)}원\n차액 ${money(view.difference)}원\n변경 마감 ${Number(deadline.date.slice(5, 7))}월 ${Number(deadline.date.slice(8))}일 ${deadline.time}까지`;
   }
   const title = "새 금액 확인";
   const description = `${refresh}${details}\n${expires.time}까지 눌러 주세요`;
