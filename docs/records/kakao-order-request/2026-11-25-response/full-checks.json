@@ -1,0 +1,21 @@
+{
+  "sourceCommit": "0358bdf8cc34974852a6b36de099268cd23980ef",
+  "migrations": 40,
+  "server": {
+    "files": 145,
+    "passed": 2841
+  },
+  "web": {
+    "files": 71,
+    "passed": 1727
+  },
+  "testsExit": 0,
+  "buildExit": 0,
+  "vite": "847ms",
+  "appWorker": "5433.97 KiB / gzip: 998.26 KiB",
+  "storageWorker": "21.08 KiB / gzip: 6.55 KiB",
+  "state": "completed; fresh database dropped",
+  "afterSourceProductTestApiDbPermissionsDiff": 0,
+  "localInstall": "same-lock reused; no new local npm ci",
+  "native": "unverified"
+}
