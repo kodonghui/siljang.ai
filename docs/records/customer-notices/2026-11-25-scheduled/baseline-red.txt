@@ -1,0 +1,87 @@
+> test
+> vitest run test/customer-notice-scheduled.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang.ai/app/server
+
+ ❯ test/customer-notice-scheduled.test.ts (16 tests | 6 failed) 2606ms
+   ❯ 예약 안내의 스킬 읽기와 다음 대화 전달 (16)
+     × day_before/event: valid의 의미와 보낼 시간을 다시 확인한다 151ms
+     × day_before/message: valid의 의미와 보낼 시간을 다시 확인한다 120ms
+     × day_before/message: stale의 의미와 보낼 시간을 다시 확인한다 79ms
+     × review_request/event: valid의 의미와 보낼 시간을 다시 확인한다 47ms
+     × review_request/message: valid의 의미와 보낼 시간을 다시 확인한다 68ms
+     × review_request/message: stale의 의미와 보낼 시간을 다시 확인한다 94ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/event: valid의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/event: valid의 의미와 보낼 시간을 다시 확인한다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 예약 안내를 전해요'
+
+Expected: "합성 예약 안내를 전해요"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"지금은 전할 안내가 없어요"}}]}}"
+
+ ❯ test/customer-notice-scheduled.test.ts:106:67
+    104|           const body = await response.json();
+    105|           expectSchema("SkillTemplateResponse", body);
+    106|           if (condition === "valid") expect(JSON.stringify(body)).toCo…
+       |                                                                   ^
+    107|           else expect(JSON.stringify(body)).not.toContain(BODY);
+    108|           if (mode === "event")
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/message: valid의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/message: valid의 의미와 보낼 시간을 다시 확인한다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 예약 안내를 전해요'
+
+Expected: "합성 예약 안내를 전해요"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"사장님 확인 뒤 답드릴게요."}}]}}"
+
+ ❯ test/customer-notice-scheduled.test.ts:106:67
+    104|           const body = await response.json();
+    105|           expectSchema("SkillTemplateResponse", body);
+    106|           if (condition === "valid") expect(JSON.stringify(body)).toCo…
+       |                                                                   ^
+    107|           else expect(JSON.stringify(body)).not.toContain(BODY);
+    108|           if (mode === "event")
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/message: stale의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/message: stale의 의미와 보낼 시간을 다시 확인한다
+AssertionError: expected { status: 'deferred', sent_at: null } to deeply equal { status: 'dropped', sent_at: null }
+
+- Expected
++ Received
+
+  {
+    "sent_at": null,
+-   "status": "dropped",
++   "status": "deferred",
+  }
+
+ ❯ test/customer-notice-scheduled.test.ts:113:23
+    111|             );
+    112|           const row = (await isolated.db.query("SELECT status,sent_at …
+    113|           expect(row).toEqual({
+       |                       ^
+    114|             status:
+    115|               mode === "message" && condition === "valid"
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 10 passed (16)
+   Start at  12:57:29
+   Duration  6.25s (tests 43%, import 38%, transform 20%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang.ai/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang.ai/app/server
+npm error command failed
+npm error command sh -c vitest run test/customer-notice-scheduled.test.ts
