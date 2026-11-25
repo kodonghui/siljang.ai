@@ -64,11 +64,17 @@ interface Observed {
   plan: KakaoEventPlan;
   at: Date;
 }
-async function defer(db: ShopDb, id: string, code: KakaoEventFailure["code"] | null) {
-  await db.run(
-    "UPDATE notifications SET status='deferred',next_attempt_at=NULL,fail_code=$3 WHERE shop_id=$1 AND id=$2",
-    [id, code],
-  );
+async function defer(db: ShopDb, id: string, code: KakaoEventFailure["code"] | null, checkedAt?: Date) {
+  if (checkedAt === undefined)
+    await db.run(
+      "UPDATE notifications SET status='deferred',next_attempt_at=NULL,fail_code=$3 WHERE shop_id=$1 AND id=$2",
+      [id, code],
+    );
+  else
+    await db.run(
+      "UPDATE notifications SET status='deferred',next_attempt_at=NULL,fail_code=$3,delivery_checked_at=$4 WHERE shop_id=$1 AND id=$2",
+      [id, code, checkedAt],
+    );
 }
 function meaningless(row: NoticeRow, now: Date) {
   return (
@@ -258,19 +264,23 @@ export function createCustomerNoticeHandler(options: CustomerNoticeOptions): Lea
       }
       const stopped =
         plan.status === "deferred" ? plan.failure : { ...failure, code: "unknown" as const, retryable: false };
-      await defer(db, item.id, stopped.code);
+      await defer(db, item.id, stopped.code, prepared.mode === "check" ? observed : undefined);
       const cutoff = prepared.row.requested_at ?? prepared.startedAt;
       if (stopped.code === "not_friend")
         await db.run(
           "UPDATE customers SET channel_friend=false,friend_checked_at=$3 WHERE shop_id=$1 AND id=$2 AND (friend_checked_at IS NULL OR friend_checked_at<=$4)",
           [prepared.row.customer_id, observed, cutoff],
         );
+      let channelDisabled = false;
       if (stopped.disableChannel)
-        await db.run(
-          "UPDATE kakao_channels SET event_status='unavailable',event_fail_reason=$3,event_checked_at=$4 WHERE shop_id=$1 AND id=$2 AND status='linked' AND (event_checked_at IS NULL OR event_checked_at<=$5)",
-          [prepared.row.channel_id, stopped.code === "wallet" ? "wallet_missing" : "kakao_error", observed, cutoff],
-        );
-      if (stopped.attention !== null)
+        channelDisabled =
+          (
+            await db.run(
+              "UPDATE kakao_channels SET event_status='unavailable',event_fail_reason=$3,event_checked_at=$4 WHERE shop_id=$1 AND id=$2 AND status='linked' AND (event_checked_at IS NULL OR event_checked_at<=$5)",
+              [prepared.row.channel_id, stopped.code === "wallet" ? "wallet_missing" : "kakao_error", observed, cutoff],
+            )
+          ).rowCount === 1;
+      if (stopped.attention !== null && (stopped.attention !== "owner" || !stopped.disableChannel || channelDisabled))
         options.attention?.({
           target: stopped.attention,
           code: stopped.code,

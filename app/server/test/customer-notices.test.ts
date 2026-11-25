@@ -168,8 +168,13 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
       expect(events.checkDelivery).toHaveBeenCalledTimes(calls);
     }
     expect(
-      (await isolated.db.query("SELECT status,attempts,fail_code,sent_at FROM notifications WHERE id=$1", [id])).rows,
-    ).toEqual([{ status: "deferred", attempts: 1, fail_code: "unknown", sent_at: null }]);
+      (
+        await isolated.db.query(
+          "SELECT status,attempts,fail_code,sent_at,delivery_checked_at FROM notifications WHERE id=$1",
+          [id],
+        )
+      ).rows,
+    ).toEqual([{ status: "deferred", attempts: 1, fail_code: "unknown", sent_at: null, delivery_checked_at: now }]);
     expect(attention).toHaveBeenCalledWith({ target: "operator", code: "unknown", shopId: shop.shopId, noticeId: id });
   });
   it.each([false, true])("친구 아님 결과는 더 최근의 친구 확인을 덮어쓰지 않는다(새 확인:%s)", async (newer) => {
@@ -296,6 +301,27 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
     await first;
     expect(events.requestNotice).toHaveBeenCalledTimes(1);
     expect((await state())?.status).toBe("confirming");
+  });
+  it("채널을 다시 확인한 뒤에는 옛 실패가 설정이나 사장님 알림을 덮어쓰지 않는다", async () => {
+    const checked = new Date(NOW.getTime() + 30000);
+    vi.mocked(events.requestNotice).mockImplementation(async () => {
+      await isolated.db.query(
+        "UPDATE kakao_channels SET event_status='ready',event_fail_reason=NULL,event_checked_at=$2 WHERE id=$1",
+        [shop.channelId, checked],
+      );
+      now = new Date(NOW.getTime() + 60000);
+      return { kind: "failed", code: "wallet", retryable: false, disableChannel: true, attention: "owner" };
+    });
+    const attention = vi.fn();
+    await run(() => events, true, attention);
+    expect(
+      (
+        await isolated.db.query("SELECT event_status,event_checked_at FROM kakao_channels WHERE id=$1", [
+          shop.channelId,
+        ])
+      ).rows,
+    ).toEqual([{ event_status: "ready", event_checked_at: checked }]);
+    expect(attention).not.toHaveBeenCalled();
   });
   it("결제 안내는 접수 때가 아니라 전달 성공을 관측한 때부터12시간을 센다", async () => {
     await isolated.db.query("UPDATE notifications SET status='dropped',next_attempt_at=NULL WHERE id=$1", [id]);
