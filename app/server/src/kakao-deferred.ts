@@ -1,5 +1,10 @@
 import { type ConfirmCardView, readConfirmCardDelivery } from "./confirm-card-store";
-import { customerNoticeContents, READABLE_CUSTOMER_NOTICE_KINDS } from "./customer-notice-content";
+import {
+  CUSTOMER_NOTICE_WHITESPACE,
+  customerNoticeContents,
+  READABLE_CUSTOMER_NOTICE_KINDS,
+} from "./customer-notice-content";
+import { scheduledNoticeMeaningSql, scheduledNoticeReadySql } from "./customer-notice-lifecycle";
 import { recordPaymentNoticeDelivery } from "./customer-notice-store";
 import type { FieldCrypto } from "./field-crypto";
 import {
@@ -97,15 +102,33 @@ export async function deferredKakaoMessages(
         AND (o.status NOT IN ('confirmed','received','no_pickup') OR o.customer_id<>n.customer_id OR o.personal_data_purged_at IS NOT NULL)`,
     [customerId],
   );
+  // 현재 의미가 없어진 예약만 닫는다. 미래 예약이나 보낼 시간 밖의 유효한 예약은 보존한다.
+  await db.run(
+    `UPDATE notifications n SET status='dropped',next_attempt_at=NULL FROM shops s
+      WHERE n.shop_id=$1 AND n.customer_id=$2 AND n.status='deferred' AND n.sent_at IS NULL
+        AND n.kind IN ('day_before','review_request') AND s.id=$1
+        AND NOT EXISTS(SELECT 1 FROM orders o WHERE o.shop_id=$1 AND o.id=n.order_id
+          AND o.personal_data_purged_at IS NULL AND ${scheduledNoticeMeaningSql(3)})`,
+    [customerId, options.now ?? new Date()],
+  );
+  // 표시할 본문이 없는 일반 안내는 닫는다. 결제 안내는 표시 자료를 따로 읽으므로 본문으로 판단하지 않는다.
+  await db.run(
+    `UPDATE notifications SET status='dropped',next_attempt_at=NULL
+      WHERE shop_id=$1 AND customer_id=$2 AND status='deferred' AND sent_at IS NULL
+        AND kind=ANY($3::text[]) AND kind<>'payment_request' AND btrim(body,$4::text)=''`,
+    [customerId, READABLE_CUSTOMER_NOTICE_KINDS, CUSTOMER_NOTICE_WHITESPACE],
+  );
   const notices = await db.run<{ id: string; body: string; kind: string; created_order: string }>(
     `SELECT n.id, n.body,n.kind, (extract(epoch FROM n.created_at) * 1000000)::bigint::text AS created_order FROM notifications n
       JOIN consultations c ON c.shop_id=$1 AND c.id=n.consultation_id AND c.customer_id=n.customer_id
+      JOIN shops s ON s.id=$1
       LEFT JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id
       WHERE n.shop_id = $1 AND n.customer_id = $2 AND n.status = 'deferred' AND n.sent_at IS NULL
         AND n.kind=ANY($4::text[]) AND c.status<>'deleted' AND o.personal_data_purged_at IS NULL
         AND (n.scheduled_for IS NULL OR n.scheduled_for<=$5)
         AND (n.order_id IS NULL OR o.customer_id=n.customer_id)
         AND (n.kind<>'order_confirmed' OR o.status IN ('confirmed','received','no_pickup'))
+        AND ${scheduledNoticeMeaningSql(5)} AND ${scheduledNoticeReadySql(5)}
       ORDER BY n.created_at, n.id LIMIT $3 FOR UPDATE OF n`,
     [customerId, DEFERRED_REPLY_BATCH, READABLE_CUSTOMER_NOTICE_KINDS, options.now ?? new Date()],
   );

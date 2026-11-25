@@ -147,7 +147,7 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
     },
   );
 
-  it("버튼/계좌가 필요한 안내와 미전달이 아닌 행은 업무 렌더러에 남김", async () => {
+  it("결제 안내는 업무 렌더러에 남기고 주문 없는 후기 안내는 무의미해서 닫음", async () => {
     const h = await setup();
     const ids = [
       await notice(h.shop, "미전달 결제 안내", { kind: "payment_request" }),
@@ -162,7 +162,7 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
     for (const id of ids) states.push(await noticeState(id));
     expect(states).toEqual([
       { status: "deferred", sent_at: null },
-      { status: "deferred", sent_at: null },
+      { status: "dropped", sent_at: null },
       { status: "pending", sent_at: null },
       { status: "dropped", sent_at: null },
     ]);

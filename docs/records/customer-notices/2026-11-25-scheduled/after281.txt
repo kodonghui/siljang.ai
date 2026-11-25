@@ -1,0 +1,11 @@
+> test
+> vitest run test/customer-notice-kinds.test.ts test/customer-notice-scheduled.test.ts test/customer-notices-skill.test.ts test/customer-notice-payment-delivery.test.ts test/customer-notice-payment-clock.test.ts test/kakao-payment-message.test.ts test/kakao-runtime-grants.test.ts test/kakao-deferred.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+
+ Test Files  8 passed (8)
+      Tests  165 passed (165)
+   Start at  13:38:52
+   Duration  26.40s (tests 63%, import 33%, transform 4%)

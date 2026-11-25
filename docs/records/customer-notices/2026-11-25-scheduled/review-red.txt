@@ -1,0 +1,77 @@
+
+> test
+> vitest run --run test/customer-notice-scheduled.test.ts test/customer-notice-kinds.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+ ❯ test/customer-notice-kinds.test.ts (32 tests | 3 failed) 3313ms
+   ❯ 업무가 남긴 안내 본문의 공통 전달 (31)
+     × 공백만 든 안내 두 건 "   " 뒤의 정상 안내는 막히지 않음 176ms
+     × 공백만 든 안내 두 건 "\t\n\r" 뒤의 정상 안내는 막히지 않음 74ms
+     × 공백만 든 안내 두 건 " 　﻿" 뒤의 정상 안내는 막히지 않음 108ms
+ ❯ test/customer-notice-scheduled.test.ts (20 tests | 4 failed) 1959ms
+   ❯ 예약 안내의 스킬 읽기와 다음 대화 전달 (20)
+     × day_before/event: rescheduled의 의미와 보낼 시간을 다시 확인한다 38ms
+     × day_before/message: rescheduled의 의미와 보낼 시간을 다시 확인한다 27ms
+     × review_request/event: rescheduled의 의미와 보낼 시간을 다시 확인한다 32ms
+     × review_request/message: rescheduled의 의미와 보낼 시간을 다시 확인한다 23ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > 공백만 든 안내 두 건 "   " 뒤의 정상 안내는 막히지 않음
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > 공백만 든 안내 두 건 "\t\n\r" 뒤의 정상 안내는 막히지 않음
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > 공백만 든 안내 두 건 " 　﻿" 뒤의 정상 안내는 막히지 않음
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 사건 안내의 저장된 본문'
+
+Expected: "합성 사건 안내의 저장된 본문"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"사장님 확인 뒤 답드릴게요."}}]}}"
+
+ ❯ test/customer-notice-kinds.test.ts:78:53
+     76|         testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() …
+     77|       );
+     78|       expect(JSON.stringify(await response.json())).toContain(BODY);
+       |                                                     ^
+     79|       const rows = (
+     80|         await isolated.db.query("SELECT id,status,body,sent_at FROM no…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/event: rescheduled의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/message: rescheduled의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/event: rescheduled의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/message: rescheduled의 의미와 보낼 시간을 다시 확인한다
+AssertionError: expected { …(2) } to deeply equal { …(2) }
+
+- Expected
++ Received
+
+  {
+    "next_attempt_at": null,
+-   "scheduled_for": 2026-11-25T09:00:00.000Z,
++   "scheduled_for": 2026-11-25T00:00:00.000Z,
+  }
+
+ ❯ test/customer-notice-scheduled.test.ts:104:15
+    102|               (await isolated.db.query("SELECT scheduled_for,next_atte…
+    103|                 .rows[0],
+    104|             ).toEqual({
+       |               ^
+    105|               scheduled_for: new Date("2026-11-25T09:00:00Z"),
+    106|               next_attempt_at: null,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  7 failed | 45 passed (52)
+   Start at  14:06:12
+   Duration  8.62s (tests 63%, import 31%, transform 6%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task104-customer-notices/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task104-customer-notices/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/customer-notice-scheduled.test.ts test/customer-notice-kinds.test.ts
