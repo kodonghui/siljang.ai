@@ -1,16 +1,33 @@
 {
-  "source": "16065271ecd44496f45d445bdb7c43c232c5c450",
+  "source": "3ac2b90bbb315a43eb359139a4e9983ec5e970f2",
+  "sourceScope": "공개 main의 원래 결과·사례·조문·프롬프트. 아래 SHA256으로 현재 수동 판정 자료를 특정하며 커밋 자체를 자기 참조하지 않음",
+  "initialLocalValidationSource": "16065271ecd44496f45d445bdb7c43c232c5c450",
+  "previousPublishedDataHead": "f36e83a2e373cb24c08c368a58031e0ecfe82e76",
+  "previousLocalEquivalent": "c9eb70cec9324a4751c9d6e5d9c25191d67a3326",
+  "previousEquivalentTree": "b0ecdc7ca844d549743ac1a99f13fd333960793e",
   "reviewCases": 17,
   "reviewDecisions": 17,
   "coverageMatchesSource": true,
   "sourceHashesMatch": true,
-  "manualPass": 13,
-  "manualFail": 4,
+  "manualPass": 17,
+  "manualFail": 0,
   "machineFailuresRetained": 4,
-  "effectiveFailures": 8,
+  "effectiveFailures": 4,
+  "manualChangeAttempts": {
+    "total": 30,
+    "changed": 0,
+    "case_ids": [],
+    "machine_changed": 0,
+    "machine_case_ids": [],
+    "basis": "report.ts summarizeModel: change_attempt에서 수동 판정을 덮어쓴 뒤 어느 잣대든 fail인 사례 수. 원래 summary.md는 보존함"
+  },
   "currentUnresolved": 0,
   "historicalOriginalPending": 44,
   "appRuntimeTestDbApiGrantsDiff": 0,
   "finishedAndImplementedTask027": false,
-  "apiCallsAdded": 0
+  "apiCallsAdded": 0,
+  "judgementsSha256": {
+    "docs/records/ai-eval/2026-11-23-openai-native/judgements.json": "d3cbe2f28790d7b0f20de15eab88bb749bbed7a491c138801c7bcb01d60e5f60",
+    "docs/records/ai-eval/2026-11-22-anthropic-paced/judgements.json": "2e6cdfa4bc3c8547c196b34e9bc82bb160d995a4a4a718ce8a62254e9cede73e"
+  }
 }
