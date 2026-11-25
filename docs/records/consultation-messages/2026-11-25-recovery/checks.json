@@ -19,7 +19,7 @@
     "strictLint": 0
   },
   "node": {
-    "source": "4ed1dd404a3c282b3a643fc82d5dca72a1a795cc",
+    "source": "c21ac21850cfa14044c3f17b0b9e06a59de9bd0a",
     "pass": 55,
     "fail": 0
   },
@@ -76,7 +76,31 @@
       "skipped": 24
     },
     "relatedGreenWeb": 25,
-    "finding": "보조 커서가 없는 사진 갱신이 새 페이지의 nextCursor를 버림"
+    "finding": "보조 커서가 없는 사진 갱신이 새 페이지의 nextCursor를 버림",
+    "fixedProductSource": "c21ac21850cfa14044c3f17b0b9e06a59de9bd0a"
   },
-  "fullFreshRun": "사진 갱신 고침 뒤 새 고정 전체 대기"
+  "fullFreshRun": {
+    "source": "c21ac21850cfa14044c3f17b0b9e06a59de9bd0a",
+    "equivalentPublicHead": "beac8abb2bf41482596979e4cd0d365f17a1a47f",
+    "tree": "14fdb5feebb00acf624a66cd313d3b0c946cbe86",
+    "migrations": 40,
+    "server": {
+      "files": 145,
+      "passed": 2855
+    },
+    "web": {
+      "files": 73,
+      "passed": 1775
+    },
+    "testsExit": 0,
+    "buildExit": 0,
+    "viteMs": 648,
+    "appWorkerKiB": 5453.92,
+    "appWorkerGzipKiB": 1003.69,
+    "storageWorkerKiB": 21.08,
+    "storageWorkerGzipKiB": 6.55,
+    "database": "정리 완료",
+    "state": "completed",
+    "installation": "동일 package-lock 설치 재사용. 새 로컬 npm ci 아님"
+  }
 }
