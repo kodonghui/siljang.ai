@@ -27,3 +27,23 @@ it("첫 결제 안내는 자기 계좌·기한과 카드 결제 버튼·결제�
   ])
     expect(text).toContain(value);
 });
+
+it.each([
+  [{ state: "done", kind: "custom" }, "알겠어요. 주문을 취소했어요"],
+  [{ state: "done", kind: "difference" }, "알겠어요. 바꾸지 않고 원래 주문대로 할게요"],
+  [{ state: "stale", reason: "notice_gone" }, "지금은 전할 안내가 없어요"],
+  [{ state: "stale", reason: "deadline" }, "결제 기한이 지나 사장님이 확인하고 있어요"],
+  [{ state: "permission", reason: "card_not_yours" }, "이 버튼은 카드를 받은 분만 누를 수 있어요"],
+  [
+    { state: "permission", reason: "not_accepting", contactPhone: "02-000-0000" },
+    "아직 상담을 받지 않아요. 가게로 연락해 주세요: 02-000-0000",
+  ],
+  [{ state: "error", reason: "retry_needed" }, "다시 눌러 주세요"],
+  [{ state: "error", reason: "server_error" }, "잠시 뒤 다시 말씀해 주세요"],
+] as const)("닫힘/권한/오류 표시는 계좌 없이 정해진 말을 보인다(%j)", (view, expected) => {
+  const body = kakaoPaymentMessage(view);
+  expectSchema("SkillTemplateResponse", body);
+  expect(JSON.stringify(body)).toContain(expected);
+  expect(JSON.stringify(body)).not.toContain("계좌번호");
+  expect(JSON.stringify(body)).not.toContain("결제했어요");
+});

@@ -2,7 +2,7 @@
 import { isAccountNumber } from "./account-number";
 import { toShopLocal } from "./time";
 
-export interface KakaoPaymentView {
+export interface KakaoPaymentNormalView {
   readonly state: "normal";
   readonly kind: "first" | "reissue" | "difference";
   readonly orderNo: string;
@@ -13,7 +13,41 @@ export interface KakaoPaymentView {
   readonly cardPaymentUrl?: string;
 }
 
+export type KakaoPaymentView =
+  | KakaoPaymentNormalView
+  | { readonly state: "done"; readonly kind: "custom" | "difference" }
+  | { readonly state: "stale"; readonly reason: "notice_gone" | "deadline" }
+  | { readonly state: "permission"; readonly reason: "card_not_yours" }
+  | { readonly state: "permission"; readonly reason: "not_accepting"; readonly contactPhone: string }
+  | { readonly state: "error"; readonly reason: "retry_needed" | "server_error" };
+
 export function kakaoPaymentMessage(view: KakaoPaymentView) {
+  if (view.state === "normal") return paymentNormalMessage(view);
+  let text: string;
+  switch (view.state) {
+    case "done":
+      text = view.kind === "custom" ? "알겠어요. 주문을 취소했어요" : "알겠어요. 바꾸지 않고 원래 주문대로 할게요";
+      break;
+    case "stale":
+      text = view.reason === "notice_gone" ? "지금은 전할 안내가 없어요" : "결제 기한이 지나 사장님이 확인하고 있어요";
+      break;
+    case "permission":
+      if (view.reason === "card_not_yours") text = "이 버튼은 카드를 받은 분만 누를 수 있어요";
+      else {
+        if (!/^[0-9-]{8,14}$/.test(view.contactPhone)) throw new RangeError("invalid payment contact display");
+        text = `아직 상담을 받지 않아요. 가게로 연락해 주세요: ${view.contactPhone}`;
+      }
+      break;
+    case "error":
+      text = view.reason === "retry_needed" ? "다시 눌러 주세요" : "잠시 뒤 다시 말씀해 주세요";
+      break;
+    default:
+      throw new RangeError("invalid payment state");
+  }
+  return { version: "2.0" as const, template: { outputs: [{ simpleText: { text } }] } };
+}
+
+function paymentNormalMessage(view: KakaoPaymentNormalView) {
   if (
     !/^[A-Z0-9]{6,8}$/.test(view.orderNo) ||
     !Number.isSafeInteger(view.amount) ||
