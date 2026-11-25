@@ -91,5 +91,6 @@
     ],
     "changed": [],
     "scope": "대상 화면/API와 공통 입력 비교. 전체 앱 빌드가 같다고 하지 않으며 다른 화면의 부모 고침은 parent CI로 적용"
-  }
+  },
+  "historicalBeforeReview": true
 }
