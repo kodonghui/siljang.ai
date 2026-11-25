@@ -7,6 +7,7 @@ import { receiveKakaoChannelCheck } from "./kakao-channel-check";
 import { parseKakaoCardPress, receiveKakaoConfirmCard } from "./kakao-confirm-card";
 import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
 import { replyKakaoHandoffInTransaction } from "./kakao-handoff";
+import { receiveKakaoNotice } from "./kakao-notice";
 import { kakaoOrderReference } from "./kakao-order-reference";
 import { isKakaoPhotoUtterance, receiveKakaoReferencePhoto } from "./kakao-photo-inbound";
 import { receiveKakaoPhotoReview } from "./kakao-photo-review-inbound";
@@ -36,7 +37,7 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
   if (request === undefined || request.scope !== r.scope) {
     throw new ForgedScopeError("missing authorized Kakao skill scope");
   }
-  if (kind === "event") return kakaoReply(r, "notice_gone");
+  if (kind === "event") return receiveKakaoNotice(r);
 
   const messageKind = request.payload.utterance.trim() === "" ? "unsupported" : "text";
   const cardPress =
