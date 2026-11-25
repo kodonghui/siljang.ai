@@ -1,10 +1,10 @@
 {
-  "sourceCommit": "990b0f4a974d7b990457e2b40aa12e827df4e3fc",
-  "publicEquivalentHead": "11908d724eb3615595ee58fd1821e76c594713d3",
-  "sourceTree": "7a0d855fc2512fc28d459f5b81c1bb551a5144b5",
+  "sourceCommit": "350a6d257fff6595b5b5e48b79ce5e9e51eecc0c",
+  "publicEquivalentHead": "eeb7308845444fd27cfbebc6a6b7ddb7a1dfd295",
+  "sourceTree": "2ba90a9568c76f6cc5624ffe88bf31a9f667e34b",
   "baseMain": "f00989551f38ea22f2434b35ec5b2265c735b841",
   "scopeGitObjects": {
-    "app/server": "2111b59e840c011e41cac716787c03006c432ae4",
+    "app/server": "a7b750ac97ff3a7f0949635408886ae5a9e629e5",
     "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
     "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
     "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
@@ -16,19 +16,21 @@
   },
   "productCodeChanged": true,
   "migrations": 41,
-  "combinedNpmTestExit": 0,
   "server": {
-    "files": 168,
-    "passed": 3172
+    "files": 169,
+    "passed": 3179
   },
   "web": {
     "files": 73,
     "passed": 1775
   },
+  "combinedNpmTestExit": 0,
   "buildExit": 0,
   "freshDatabaseRemaining": 0,
   "freshState": "completed",
-  "targetNewCases": 27,
+  "targetPassed": 72,
+  "targetFiles": 4,
+  "microCases": 30,
   "nodePassed": 57,
   "wbsChecks": 18,
   "wbsErrors": 0,
@@ -40,10 +42,13 @@
   "realKakao": false,
   "modelCallsAdded": 0,
   "outboundRequestsAdded": 0,
-  "npmCi": "동일 lock의 로컬 설치 재사용. 새 설치는 현재PR CI에서 확인",
+  "npmCi": "동일 lock 설치 재사용. 새 설치는 현재PR CI에서 확인",
   "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
-  "classification": "WIP: ready PR/currentCI/reviews/ownmain pending. TASK106 implemented proposal51; no TASK107 flags",
+  "classification": "WIP: finalrecords/currentCI/rereview/manualonce/ownmain pending. TASK106 proposal51; noTASK107 flags",
   "mainProof": "main288.json",
-  "nativeGrantApplication": "미확인",
-  "priorWhole": "before-queue-followup-proof.json"
+  "priorWhole": "before-review-proof.json",
+  "review": 7174196515,
+  "reviewAck": 7174203431,
+  "codeRereviewRequest": 7174533732,
+  "sourceCiProof": "source-ci-proof.json"
 }

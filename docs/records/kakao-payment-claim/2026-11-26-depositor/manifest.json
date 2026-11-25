@@ -1,5 +1,5 @@
 {
-  "source": "990b0f4a974d7b990457e2b40aa12e827df4e3fc",
+  "source": "350a6d257fff6595b5b5e48b79ce5e9e51eecc0c",
   "screen": "SCR-006",
   "responseRows": 29,
   "frames": [
@@ -211,6 +211,6 @@
   "realBrowser": false,
   "realKakao": false,
   "sdkOnly": true,
-  "out": "/tmp/siljang-task107-main288-fixture",
+  "out": "/tmp/siljang-pr289-v3-fixture",
   "previousOutput": null
 }
