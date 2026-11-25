@@ -467,6 +467,21 @@ it("휴무를 켜면서 주문 마감을 풀면 다시 받는다고 알리지 �
   await main().findByText("저장했어요");
   expect(main().queryByText("다시 받아요")).toBeNull();
 });
+it.each([
+  { reason: "요일 휴무", values: { weekdayClosed: true }, label: "휴무" },
+  { reason: "다 찬 날", values: { held: 5, remaining: 0, full: true }, label: "다 참" },
+])("$reason의 수동 마감만 풀어도 주문을 다시 받는다고 알리지 않는다", async ({ values, label }) => {
+  days.set("2026-11-21", { ...dayValue("2026-11-21"), ...values, manuallyClosed: true });
+  area();
+  const panel = await select();
+  fireEvent.click(within(panel).getByLabelText("그날 주문 마감"));
+  fireEvent.submit(panel);
+  await main().findByText("저장했어요");
+  expect(main().queryByText("다시 받아요")).toBeNull();
+  expect(screen.getByRole("button", { name: /2026년 11월 21일/ }).textContent).toContain(label);
+  expect((within(panel).getByLabelText("그날 주문 마감") as HTMLInputElement).checked).toBe(false);
+  expect(sends[0]?.body).toEqual({ baseRevision: "synthetic-2026-11-21", manuallyClosed: false });
+});
 it.each(["closed_day_with_orders", "capacity_below_held"] as const)(
   "%s 확인은 본문을 유지하고 새 키로 저장한다",
   async (kind) => {

@@ -1,0 +1,65 @@
+{
+  "scope": "예약 링크 자체 응답6개/현재 화면/API/복사45개. 실제 브라우저/클립보드가 아님",
+  "source": "f98771f6ac8f88f42acc126aa2c863d4345c5224",
+  "parentMain": "6465710675313bea46629666ef040990b5f8c257",
+  "newLocalNpmCi": false,
+  "dependencies": "같은 lock 설치를 읽기 전용 재사용",
+  "configWorkingTree": "app/tsconfig.base.json과 web/tsconfig의 HEAD 차이0을 별도 확인. 공통 구조 검사는 PR266 main 반영 뒤 통합 예정",
+  "preparationFailures": [
+    {
+      "cause": "생성 TSX 경로 정규식의 이스케이프 Syntax error를 startsWith/slice로 고침",
+      "log": "/tmp/siljang-task055-current-compile-20261125.log"
+    },
+    {
+      "cause": "설정 조합의 현재 가격표4와 독립 Shop 예시 요약3을 같은 값으로 기대한 시험을 현재 응답 버전에 맞춤",
+      "pass": 5,
+      "fail": 1,
+      "log": "/tmp/siljang-task055-fixture-green-fixed-20261125.log"
+    }
+  ],
+  "results": {
+    "node": {
+      "path": "/tmp/siljang-task055-current-node-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        "# tests 37",
+        "# pass 37",
+        "# fail 0"
+      ]
+    },
+    "related": {
+      "path": "/tmp/siljang-task055-current-related-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        " Test Files  3 passed (3)",
+        "      Tests  45 passed (45)"
+      ]
+    },
+    "type": {
+      "path": "/tmp/siljang-task055-current-type-20261125.log",
+      "exitCode": 0,
+      "lines": []
+    },
+    "build": {
+      "path": "/tmp/siljang-task055-current-build-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        "✓ built in 564ms",
+        "> wrangler deploy --dry-run --outdir dist && wrangler deploy --dry-run --config wrangler.storage-batches.jsonc --outdir dist/storage-batches",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    },
+    "cli": {
+      "path": "/tmp/siljang-task055-current-cli-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        "{\"source\":\"f98771f6ac8f88f42acc126aa2c863d4345c5224\",\"out\":\"/tmp/siljang-qa055-v1-local-20261125\",\"primaryStates\":6,\"responseRows\":5,\"browserRun\":false,\"previousOutput\":null}"
+      ]
+    }
+  },
+  "browserRun": false,
+  "outsideServices": 0
+}

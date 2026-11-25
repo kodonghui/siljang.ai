@@ -102,13 +102,15 @@ export function CalendarScreen(props: ShopLicenseProps) {
     const response = await saveCalendarDay(base?.day ?? "", body, key);
     if (!response.ok) return response;
     const manualOnly =
-      !response.data.day.closed && Object.keys(body).filter((key) => fields.includes(`/${key}`)).length === 1;
+      !response.data.day.weekdayClosed &&
+      !response.data.day.closed &&
+      Object.keys(body).filter((key) => fields.includes(`/${key}`)).length === 1;
     const notice =
       response.data.outcome === "unchanged"
         ? "이미 그렇게 되어 있어요"
         : manualOnly && body.manuallyClosed === true
           ? "그날 주문을 마감했어요"
-          : manualOnly && body.manuallyClosed === false
+          : manualOnly && body.manuallyClosed === false && !response.data.day.full
             ? "다시 받아요"
             : "저장했어요";
     return { ...response, data: { ...response.data, notice } };
