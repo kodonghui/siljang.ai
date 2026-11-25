@@ -105,8 +105,8 @@ export async function fetchConsultationMessages(
   expectedShopId: string,
   signal?: AbortSignal,
 ): Promise<ApiResult<ConsultationMessagesPage>> {
-  if (!UUID_PATTERN.test(consultationId) || !validQuery(query))
-    return { ok: false, status: 422, problem: null, retryAfterSeconds: null };
+  if (!UUID_PATTERN.test(consultationId)) return { ok: false, status: 404, problem: null, retryAfterSeconds: null };
+  if (!validQuery(query)) return { ok: false, status: 422, problem: null, retryAfterSeconds: null };
   const params = new URLSearchParams({ limit: String(query.limit) });
   if (query.cursor !== null) params.set("cursor", query.cursor);
   const result = await request<unknown>(`/owner/consultations/${consultationId}/messages?${params}`, {

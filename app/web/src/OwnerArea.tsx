@@ -4,6 +4,7 @@ import type { ApiFailure, ApiResult } from "./api";
 import { BookingLinkScreen } from "./BookingLinkScreen";
 import { CalendarScreen } from "./CalendarScreen";
 import { CalendarSettingsScreen } from "./CalendarSettingsScreen";
+import { ConsultationMessagesScreen } from "./ConsultationMessagesScreen";
 import { KakaoChannelSettings } from "./KakaoChannelSettings";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import { OperatingRulesHistory } from "./OperatingRulesHistory";
@@ -76,7 +77,11 @@ export function OwnerArea() {
   const shopPath = requested?.split(/[?#]/)[0]?.replace(/\/+$/, "");
   const historyRoute = matchHistory(shopPath);
   const shopRoute = shopScreens.find((route) => route.path === shopPath);
-  const screenRoute = historyRoute ?? shopRoute;
+  const consultationRoute = matchPath(
+    { path: "/owner/consultations/:consultationId", caseSensitive: true, end: true },
+    shopPath ?? "",
+  );
+  const screenRoute = consultationRoute ? { Screen: ConsultationMessagesScreen } : (historyRoute ?? shopRoute);
   const history = historyRoute !== null;
   const [revision, setRevision] = useState(0);
   const visit = useMemo(() => ({ key: location.key, revision }), [location.key, revision]);
@@ -199,7 +204,7 @@ export function OwnerArea() {
         ? cached.data
         : null;
   if (screenRoute && candidate?.shop) {
-    if (historyRoute || shopRoute?.checkDestination) {
+    if (historyRoute || consultationRoute || shopRoute?.checkDestination) {
       const destination = ownerDestination(candidate, requested);
       if (destination !== requested) return <Navigate to={destination} replace />;
     }
@@ -233,6 +238,7 @@ export function OwnerArea() {
               }
             : {})}
           {...(historyRoute ? { version: historyRoute.version } : {})}
+          {...(consultationRoute ? { consultationId: consultationRoute.params.consultationId ?? "" } : {})}
           {...(shopPath === "/owner/payment-destination"
             ? { licenseStatus: candidate.shop.licenseStatus, onSaved: () => setRevision((r) => r + 1) }
             : {})}

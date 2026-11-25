@@ -60,6 +60,10 @@ GRANT SELECT (id, shop_id, consultation_id, status, revision, lettering, design_
   INSERT (shop_id, consultation_id, lettering, design_notes, colors, excluded_ingredients, courier_pickup, created_at, updated_at),
   UPDATE (lettering, design_notes, colors, excluded_ingredients, courier_pickup, revision, updated_at)
   ON order_drafts TO :"runtime_role";
+-- TASK-086: 같은 손님/상담의 준비된 주문 카드만 서버에서 표시한다. AI 문맥에는 이 값을 넣지 않는다.
+-- 견적의 UPDATE와 초안의 개인정보 UPDATE 권한은 열지 않는다.
+GRANT SELECT (price_list_id, pickup_day, pickup_time, customer_name, customer_phone,
+  allergy_consent, allergy_answer, order_kind) ON order_drafts TO :"runtime_role";
 -- TASK-028: 번호를 가린 본문과 원본 최소 정보는 같은 수신 트랜잭션에서 새로 남긴다.
 GRANT SELECT, INSERT ON masked_values TO :"runtime_role";
 -- TASK-028: 미전달 일반 글은 다음 응답/콜백에 전한 뒤 상태와 시각만 고친다.

@@ -17,6 +17,7 @@ import { anthropicStream, sseResponse } from "./support/ai-mock";
 import { collectLogs, describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
+import { prepareOrderCardSource } from "./support/order-card";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const grants = readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8");
@@ -51,6 +52,37 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       await admin.query(`DROP ROLE IF EXISTS "${role}"`);
     } finally {
       await admin.close();
+    }
+  });
+  it("제한 역할에서 견적 UPDATE 권한 없이 규정/요약이 있는 주문 카드를 만들고 만료 갱신한다", async () => {
+    const target = await createShop(db, "제한 역할 주문 카드 가게");
+    await issueTestBookingLink(db, target);
+    await linkTestChannel(db, target.channelId);
+    const now = new Date("2026-11-25T03:00:00Z");
+    await prepareOrderCardSource(db, target, now);
+    await db.query("UPDATE order_drafts SET status='active' WHERE shop_id=$1 AND id=$2", [
+      target.shopId,
+      target.draftId,
+    ]);
+    const runtime = pgConnector(new Secret(databaseUrl));
+    try {
+      const scoped = shopRequestDb(createShopScope(target.shopId, { kind: "job", job: "kakao_callback" }), runtime);
+      const identity = { customerId: target.customerId, consultationId: target.consultationId };
+      const card = await showConfirmCard(scoped, { ...identity, kind: "order_request", draftId: target.draftId, now });
+      expect(card.description).toContain("35,000원");
+      const answer = await pressConfirmCard(scoped, {
+        ...identity,
+        cardKey: card.cardKey,
+        choice: "confirm",
+        now: new Date(now.getTime() + 1800000),
+      });
+      expect(answer.outcome).toBe("card_expired");
+      expect(answer.card?.orderRequest?.policy.version).toBe(1);
+      expect((await db.query("SELECT has_table_privilege($1,'quotes','UPDATE') AS allowed", [role])).rows[0]).toEqual({
+        allowed: false,
+      });
+    } finally {
+      await runtime.close();
     }
   });
 
@@ -690,7 +722,7 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
         draft_text_insert: true,
         draft_text_update: true,
         draft_phone_update: false,
-        draft_allergy_read: false,
+        draft_allergy_read: true,
         masked_update: false,
         masked_delete: false,
         ops_update: false,

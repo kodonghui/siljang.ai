@@ -1,0 +1,101 @@
+.consultation-messages {
+  display: grid;
+  gap: var(--space-md);
+  min-width: 0;
+}
+.consultation-meta,
+.consultation-bubble__meta,
+.consultation-delivery {
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-small);
+}
+.consultation-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+.consultation-bubble {
+  max-width: 80%;
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.consultation-bubble--inbound {
+  align-self: flex-start;
+}
+.consultation-bubble--outbound {
+  align-self: flex-end;
+  background: var(--color-accent-soft);
+}
+.consultation-bubble__meta,
+.consultation-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+.consultation-bubble small {
+  display: block;
+  color: var(--color-ink-muted);
+}
+.consultation-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.consultation-text--expanded {
+  display: block;
+}
+.consultation-photos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+  margin-block: var(--space-sm);
+}
+.consultation-photo {
+  width: 100%;
+  min-height: var(--size-target);
+  padding: 0;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--color-paper);
+}
+.consultation-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+.consultation-photo-dialog {
+  width: min(960px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  padding: var(--space-lg);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.consultation-photo-dialog::backdrop {
+  background: var(--color-scrim, #0008);
+}
+.consultation-photo-dialog img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  margin: var(--space-md) auto;
+}

@@ -1,0 +1,42 @@
+{
+  "manualRequest": 7155106350,
+  "manualFinding": 4691357308,
+  "orcaReview": 7155527519,
+  "orcaReviewedHead": "fd7aa4949dccf5f5a9fbe84982d230cce08c664e",
+  "manualRedSource": "29ffff4aa4bdb27969ddbff256a81f3ef494e8ca",
+  "manualRed": {
+    "failed": 4,
+    "passed": 3
+  },
+  "threeOutputsRedSource": "ac10bdd9f44c72e56e9590caecbf275b43188d51",
+  "threeOutputsRed": {
+    "failed": 1,
+    "passed": 7
+  },
+  "reserveRed": "c622d99f; 1failed7passed",
+  "orcaRedSource": "4e4dcd065351166b0bac8280bcf9ed72c2eca497",
+  "orcaRed": {
+    "productFailed": 4,
+    "fixtureSetupFailed": 1,
+    "passed": 20
+  },
+  "related": {
+    "files": 13,
+    "passed": 324
+  },
+  "typecheckExit": 0,
+  "strictLintExit": 0,
+  "full2": {
+    "source": "edef41def0a2c60c5f24994fb2bb3c013171f3b9",
+    "serverPassed": 2845,
+    "failed": 1,
+    "web": "not run",
+    "build": "not run",
+    "failure": "shared database query planner selected consultations_shop_scope; exact-index test now isolated without relaxing assertions"
+  },
+  "runtimeGrants": "SELECT of 8 draft columns only; no quotes UPDATE; staging application unverified",
+  "implementedProposal": "withdrawn, 36 finished45 implemented",
+  "next": "commit final code and fresh full3/Node/CLI; published checks/review handling/main verification",
+  "realBrowser": false,
+  "realKakao": false
+}

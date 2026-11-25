@@ -1,5 +1,8 @@
 /** TASK-081: 카드 생성·검증·한 번 실행을 같은 가게 트랜잭션에 묶습니다. 업무 명령은 각 담당 모듈이 연결합니다. */
 import { cardExpiresAt, judgeCardPress } from "./confirm-card";
+import type { KakaoOrderCardContext } from "./kakao-order-request-content";
+import type { ClauseInput } from "./operating-rules-input";
+import { orderCardDeadline, readPreparedOrderSummary } from "./order-card-presentation";
 import { fieldError } from "./problem";
 import { pathId, type ShopDb, type ShopRequestDb } from "./shop-scope";
 
@@ -25,6 +28,8 @@ export interface ShowConfirmCard extends Identity {
   readonly sourceMessageId?: string;
 }
 export interface ConfirmCardView {
+  readonly kind?: CustomerCommandKind;
+  readonly orderRequest?: KakaoOrderCardContext;
   readonly cardKey: string;
   readonly title: string;
   readonly description: string;
@@ -48,6 +53,8 @@ export interface ConfirmCardCommandInput extends Identity {
 /** 실행기는 지금 주문 상태와 잠금 번호를 다시 확인하고 조건에 맞는 쓰기만 합니다. 실패하면 사용 표시까지 함께 취소합니다. 외부 발신은 하지 않습니다. 주문 요청의 order_id 연결 권한·시험은 실제 실행기를 등록하는 TASK-083에서 추가합니다. */
 export type ConfirmCardCommand = (db: ShopDb, input: ConfirmCardCommandInput) => Promise<ConfirmCardCommandResult>;
 interface Source {
+  orderRequest?: KakaoOrderCardContext;
+  orderRequestTimeZone?: string;
   orderId: string | null;
   orderVersion: number | null;
   draftId: string | null;
@@ -83,8 +90,8 @@ const LABELS: Record<CustomerCommandKind, string> = {
   issue_report: "문제 신고",
   consent_withdrawal: "동의 철회",
 };
-export const NOT_YOURS = { outcome: "card_not_yours", text: "받으신 카드에서 눌러 주세요" } as const;
-const RETRY_NEEDED = { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" } as const;
+export const NOT_YOURS = { outcome: "card_not_yours", text: "이 버튼은 카드를 받은 분만 누를 수 있어요" } as const;
+export const RETRY_NEEDED = { outcome: "retry_needed", text: "다시 눌러 주세요" } as const;
 const DECLINED = { outcome: "declined", text: "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요" } as const;
 function usedAnswer(card: CardRow): ConfirmCardAnswer {
   const result = card.payload.result;
@@ -135,14 +142,17 @@ async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: str
       [pathId(input.draftId), input.consultationId],
     );
     const row = draft.rows[0];
-    return row
+    const orderRequest = row === undefined ? null : await readOrderCardContext(db, input, row.revision);
+    return row && orderRequest
       ? {
           orderId: null,
           orderVersion: null,
           draftId: row.id,
           draftRevision: row.revision,
-          description: "주문 요청 내용을 확인해 주세요",
+          description: orderRequest.summary.text,
           blockId,
+          orderRequest: orderRequest.context,
+          orderRequestTimeZone: orderRequest.summary.timeZone,
         }
       : null;
   }
@@ -168,12 +178,95 @@ async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: str
       }
     : null;
 }
+async function readOrderCardContext(
+  db: ShopDb,
+  input: ShowConfirmCard,
+  revision: number,
+): Promise<{ context: KakaoOrderCardContext; summary: { text: string; timeZone: string } } | null> {
+  const selected = (
+    await db.run<{
+      quote_id: string;
+      operating_rules_id: string;
+      version: number;
+      channel_friend: boolean;
+      price_list_id: string;
+      amount: number;
+      amount_max: number | null;
+      display_kind: "fixed" | "from" | "range";
+      order_kind: "standard" | "custom";
+    }>(
+      `SELECT q.id AS quote_id,r.id AS operating_rules_id,r.version,c.channel_friend,q.price_list_id,q.amount,q.amount_max,q.display_kind,q.order_kind FROM quotes q
+      JOIN operating_rules r ON r.shop_id=$1 AND r.id=q.operating_rules_id AND r.superseded_at IS NULL
+      JOIN price_lists p ON p.shop_id=$1 AND p.id=q.price_list_id AND p.superseded_at IS NULL
+      JOIN customers c ON c.shop_id=$1 AND c.id=$2
+      WHERE q.shop_id=$1 AND q.draft_id=$3 AND q.draft_revision=$4 AND q.quoted_at<=$5 AND q.valid_until>$5
+      ORDER BY q.quoted_at DESC,q.id DESC LIMIT 1 FOR SHARE OF r,p`,
+      [input.customerId, input.draftId ?? null, revision, input.now],
+    )
+  ).rows[0];
+  if (!selected) return null;
+  const summary = await readPreparedOrderSummary(db, {
+    draftId: input.draftId ?? "",
+    consultationId: input.consultationId,
+    quote: {
+      priceListId: selected.price_list_id,
+      amount: selected.amount,
+      amountMax: selected.amount_max,
+      displayKind: selected.display_kind,
+      orderKind: selected.order_kind,
+    },
+    expiresAt: cardExpiresAt(input.now),
+  });
+  if (!summary) return null;
+  const clauses = (
+    await db.run<{
+      clause_key: ClauseInput["key"];
+      position: number;
+      title: string;
+      condition_text: string;
+      effect_text: string;
+    }>(
+      "SELECT clause_key,position,title,condition_text,effect_text FROM rule_clauses WHERE shop_id=$1 AND operating_rules_id=$2 ORDER BY position",
+      [selected.operating_rules_id],
+    )
+  ).rows;
+  if (clauses.length === 0) return null;
+  return {
+    summary,
+    context: {
+      quoteId: selected.quote_id,
+      isFriend: selected.channel_friend,
+      policy: {
+        version: selected.version,
+        clauses: clauses.map((c) => ({
+          key: c.clause_key,
+          position: c.position,
+          title: c.title,
+          condition: c.condition_text,
+          effect: c.effect_text,
+        })),
+      },
+    },
+  };
+}
+function orderCardChanged(card: CardRow, source: Source): boolean {
+  return (
+    card.kind === "order_request" &&
+    (card.payload.presentation?.orderRequest?.quoteId !== source.orderRequest?.quoteId ||
+      card.payload.presentation?.orderRequest?.policy.version !== source.orderRequest?.policy.version)
+  );
+}
 async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): Promise<ConfirmCardView> {
   const card: ConfirmCardView = {
+    kind: input.kind,
+    ...(source.orderRequest === undefined ? {} : { orderRequest: source.orderRequest }),
     cardKey: `ck_${crypto.randomUUID().replaceAll("-", "")}`,
     title: `${LABELS[input.kind]} 확인`,
-    description: source.description,
-    confirmLabel: LABELS[input.kind],
+    description:
+      source.orderRequestTimeZone === undefined
+        ? source.description
+        : orderCardDeadline(source.description, source.orderRequestTimeZone, cardExpiresAt(input.now)),
+    confirmLabel: input.kind === "order_request" ? "규정에 동의하고 주문 요청" : LABELS[input.kind],
     blockId: source.blockId,
   };
   await db.run(
@@ -188,7 +281,7 @@ async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): P
       source.draftId,
       source.draftRevision,
       JSON.stringify({
-        presentation: card,
+        presentation: input.kind === "order_request" ? { ...card, description: "주문 요청 확인" } : card,
         ...(input.sourceMessageId === undefined ? {} : { sourceMessageId: pathId(input.sourceMessageId) }),
       }),
       input.now,
@@ -233,6 +326,10 @@ export async function pressConfirmCardInTransaction(
   if (!(await identityAvailable(tx, input))) return NOT_YOURS;
   return processVerifiedCard(tx, input, execute);
 }
+const ORDER_NOT_READY = {
+  outcome: "not_allowed_now",
+  text: "지금은 할 수 없어요: 주문 내용과 견적을 다시 확인해야 해요. 채널 대화에서 주문 내용을 다시 말씀해 주세요",
+} as const;
 async function processVerifiedCard(
   tx: ShopDb,
   input: PressConfirmCard,
@@ -246,8 +343,7 @@ async function processVerifiedCard(
     )
   ).rows[0];
   if (!initial || initial.created_at > input.now) return NOT_YOURS;
-  if (!CUSTOMER_COMMAND_KINDS.includes(initial.kind))
-    return { outcome: "retry_needed", text: "잠시 뒤 다시 눌러 주세요" };
+  if (!CUSTOMER_COMMAND_KINDS.includes(initial.kind)) return RETRY_NEEDED;
   if (initial.used_at !== null) return usedAnswer(initial);
   if (input.choice === "decline") return DECLINED;
   const target: ShowConfirmCard = {
@@ -258,7 +354,7 @@ async function processVerifiedCard(
     ...(initial.payload.sourceMessageId === undefined ? {} : { sourceMessageId: initial.payload.sourceMessageId }),
   };
   const source = await readSource(tx, target, knownBlockId);
-  if (source === null) return RETRY_NEEDED;
+  if (source === null) return initial.kind === "order_request" ? ORDER_NOT_READY : RETRY_NEEDED;
   const card = await tx.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
   ]);
@@ -277,8 +373,8 @@ async function processVerifiedCard(
   );
   if (verdict === "not_recipient") return NOT_YOURS;
   if (verdict === "used") return usedAnswer(card);
-  if (verdict === "stale" || verdict === "expired") {
-    return replaceCard(tx, card, target, source, verdict);
+  if (verdict === "stale" || verdict === "expired" || orderCardChanged(card, source)) {
+    return replaceCard(tx, card, target, source, verdict === "expired" ? "expired" : "stale");
   }
 
   if (execute === undefined) return RETRY_NEEDED;
@@ -347,18 +443,33 @@ export async function readConfirmCardDelivery(
     ...(initial.draft_id === null ? {} : { draftId: initial.draft_id }),
   };
   const source = await readSource(db, target);
-  if (source === null) return unavailable;
+  if (source === null) return initial.kind === "order_request" ? { text: ORDER_NOT_READY.text } : unavailable;
   const card = await db.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
   ]);
   if (card.used_at !== null) return { text: "이미 처리했어요" };
   const expired = input.now.getTime() >= card.expires_at.getTime();
-  const stale = card.order_version !== source.orderVersion || card.draft_revision !== source.draftRevision;
+  const stale =
+    card.order_version !== source.orderVersion ||
+    card.draft_revision !== source.draftRevision ||
+    orderCardChanged(card, source);
   const presentation =
     expired || stale
       ? (await replaceCard(db, card, target, source, expired ? "expired" : "stale")).card
       : card.payload.presentation;
-  return presentation === undefined ? unavailable : { text: presentation.title, card: presentation };
+  return presentation === undefined
+    ? unavailable
+    : {
+        text: presentation.title,
+        card: {
+          ...presentation,
+          kind: initial.kind,
+          ...(!expired && !stale && source.orderRequestTimeZone !== undefined
+            ? { description: orderCardDeadline(source.description, source.orderRequestTimeZone, card.expires_at) }
+            : {}),
+          ...(source.orderRequest === undefined ? {} : { orderRequest: source.orderRequest }),
+        },
+      };
 }
 
 export interface KakaoCardIdentityInput extends Pick<PressConfirmCard, "cardKey" | "choice" | "now"> {

@@ -103,6 +103,6 @@ it.each([
 });
 it("틀린 상담 ID는 네트워크 요청을 보내지 않는다", async () => {
   const result = await fetchConsultationMessages("../other", query, SHOP);
-  expect(result.ok).toBe(false);
+  expect(result).toEqual({ ok: false, status: 404, problem: null, retryAfterSeconds: null });
   expect(fetch).not.toHaveBeenCalled();
 });

@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "0358bdf8cc34974852a6b36de099268cd23980ef",
+  "stateFrames": 18,
+  "responseFrames": 32,
+  "responseRows": 29,
+  "files": 53,
+  "bytes": 265789,
+  "nodeChecks": {
+    "passed": 51,
+    "failed": 0
+  },
+  "actualLinuxCliExit": 0,
+  "realBrowser": false,
+  "realKakao": false,
+  "newTransfer": false,
+  "newZip": false
+}

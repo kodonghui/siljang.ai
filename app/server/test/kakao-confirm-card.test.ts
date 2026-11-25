@@ -7,6 +7,7 @@ import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { describeDb, TEST_HASH_KEY } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
+import { prepareOrderCardSource } from "./support/order-card";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const NOW = new Date("2026-11-24T01:00:00Z");
@@ -19,6 +20,7 @@ describeDb("API-071 확인 카드 수신(TASK-081)", () => {
     shop = await createShop(isolated.db, "합성 카드 API 가게");
     await issueTestBookingLink(isolated.db, shop);
     await linkTestChannel(isolated.db, shop.channelId);
+    await prepareOrderCardSource(isolated.db, shop, NOW);
     now = NOW;
     key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
   });
@@ -115,6 +117,7 @@ describeDb("API-071 확인 카드 수신(TASK-081)", () => {
       now: NOW,
     });
     await isolated.db.query("UPDATE order_drafts SET revision=revision+1 WHERE id=$1", [shop.draftId]);
+    await prepareOrderCardSource(isolated.db, shop, NOW);
     expect((await call(payload(card.cardKey))).headers.get("Siljang-Outcome")).toBe("card_stale");
   });
   it("200 card_not_yours: 다른 사용자와 없는 키는 같은 답이며 손님을 새로 만들지 않음", async () => {
