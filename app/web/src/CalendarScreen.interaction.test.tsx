@@ -276,6 +276,28 @@ it("두 달을 조회하고 날짜별 자리/상태와 설정 경로를 보인�
   expect(screen.getByRole("button", { name: /2026년 11월 21일/ }).textContent).toContain("2/5");
   expect(screen.getByRole("link", { name: "영업 캘린더 설정" }).getAttribute("href")).toBe("/owner/calendar/settings");
 });
+it.each([false, true])("요일 휴무는 날짜별 휴무가 없어도 마감 %s보다 먼저 보인다", async (manuallyClosed) => {
+  days.set("2026-11-21", { ...dayValue("2026-11-21"), weekdayClosed: true, manuallyClosed });
+  area();
+  const button = await screen.findByRole("button", { name: /2026년 11월 21일.*휴무/ });
+  expect(button.textContent).toContain("휴무");
+  expect(button.textContent).not.toContain("마감");
+  fireEvent.click(button);
+  expect(main().getByText("주간 기준: 휴무")).toBeTruthy();
+  expect((main().getByLabelText("그날 휴무") as HTMLInputElement).checked).toBe(false);
+  expect(sends).toHaveLength(0);
+});
+it("충돌 뒤 최신 요일 휴무도 지금 휴무로 표시하고 초안을 보존한다", async () => {
+  area();
+  const form = await select();
+  fireEvent.click(within(form).getByLabelText("그날 주문 마감"));
+  days.set("2026-11-21", { ...dayValue("2026-11-21"), weekdayClosed: true, revision: "synthetic-weekday-closed" });
+  writeProblem = { code: "version_conflict", status: 409 };
+  fireEvent.submit(form);
+  await main().findByText("지금 휴무: 휴무");
+  expect((within(form).getByLabelText("그날 주문 마감") as HTMLInputElement).checked).toBe(true);
+  expect(sends).toHaveLength(1);
+});
 it("그날 마감은 바뀐 필드/revision만 보내고 날짜와 결과를 갱신한다", async () => {
   area();
   const form = await select();

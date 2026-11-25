@@ -1,0 +1,39 @@
+{
+  "source": "a5d3682",
+  "parentMain": "77d70bea90b828327df5691b2cabb0f10576605b",
+  "newLocalNpmCi": false,
+  "red": {
+    "source": "74ff33d",
+    "failed": 3,
+    "passed": 32,
+    "log": "/tmp/siljang-task056-weekday-red-20261125.log"
+  },
+  "results": {
+    "related": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task056-current-related-20261125.log",
+      "lines": [
+        " Test Files  5 passed (5)",
+        "      Tests  111 passed (111)"
+      ]
+    },
+    "type": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task056-current-type-20261125.log",
+      "lines": []
+    },
+    "build": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task056-current-build-20261125.log",
+      "lines": [
+        "✓ built in 644ms",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "browserRun": false,
+  "outsideServices": 0
+}

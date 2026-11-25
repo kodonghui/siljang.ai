@@ -351,15 +351,16 @@ export function CalendarScreen(props: ShopLicenseProps) {
                         {gridDays(value).map(({ day, key }) => {
                           const item = items.find((row) => row.day === day);
                           if (!item) return <span key={key} />;
-                          const labels = item.closed
-                            ? "휴무"
-                            : item.manuallyClosed
-                              ? "마감"
-                              : item.overbooked
-                                ? "추가 수락"
-                                : item.full
-                                  ? "다 참"
-                                  : "";
+                          const labels =
+                            item.weekdayClosed || item.closed
+                              ? "휴무"
+                              : item.manuallyClosed
+                                ? "마감"
+                                : item.overbooked
+                                  ? "추가 수락"
+                                  : item.full
+                                    ? "다 참"
+                                    : "";
                           return (
                             <button
                               type="button"
@@ -416,7 +417,7 @@ export function CalendarScreen(props: ShopLicenseProps) {
                         {latest ? (
                           <>
                             <p>지금 하루 최대 개수: {latest.capacity}</p>
-                            <p>지금 휴무: {latest.closed ? "휴무" : "영업일"}</p>
+                            <p>지금 휴무: {latest.weekdayClosed || latest.closed ? "휴무" : "영업일"}</p>
                             <p>지금 주문 마감: {latest.manuallyClosed ? "마감" : "받음"}</p>
                             <p>
                               지금 잡힌 자리: {latest.held} · 남은 자리: {latest.remaining}
