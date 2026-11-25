@@ -23,7 +23,7 @@ import { kakaoConfirmAnswerMessage } from "../src/kakao-order-request-message";
 import * as paymentMessages from "../src/kakao-payment-message";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
-import { createShopScope, shopRequestDb } from "../src/shop-scope";
+import { createShopScope, type ShopDb, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
@@ -253,6 +253,8 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
     ["difference", "current-legacy-empty"] as const,
     ["difference", "prepare-legacy-empty"] as const,
     ["difference", "late-legacy"] as const,
+    ...([23, 24, 25] as const).map((count) => ["custom", `boundary-${count}`] as const),
+    ["difference", "source-query-plan"] as const,
   ])("새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(%s/%s)", async (kind, mode) => {
     const sourceMessageId = newUuid();
     const original = await show("payment_claim", sourceMessageId);
@@ -369,6 +371,123 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         NOW,
       ]);
     const beforePayment = (await state()).payments;
+    if (mode === "source-query-plan") {
+      await isolated.db.query("UPDATE consultations SET ai_disclosed_at=$2 WHERE id=$1", [shop.consultationId, NOW]);
+      await isolated.db.query(
+        `WITH ids AS MATERIALIZED (SELECT gen_random_uuid() AS id,gen_random_uuid() AS source FROM generate_series(1,2000)),
+        cards AS (
+          INSERT INTO confirm_cards
+          SELECT (jsonb_populate_record(NULL::confirm_cards,to_jsonb(c)||jsonb_build_object(
+            'id',ids.id,'card_key','ck_'||ids.id::text,
+            'payload',c.payload||jsonb_build_object('sourceMessageId',ids.source)))).*
+          FROM confirm_cards c CROSS JOIN ids WHERE c.card_key=$1
+          RETURNING payload
+        )
+        INSERT INTO messages(shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at)
+        SELECT $2,$3,'outbound','system','card',payload->>'sourceMessageId','결제 확인 요청','deferred',$4 FROM cards`,
+        [original.cardKey, shop.shopId, shop.consultationId, NOW],
+      );
+      await isolated.db.query("ANALYZE confirm_cards; ANALYZE messages");
+      const runtime = pgConnector(new Secret(roleUrl));
+      try {
+        const queries: { sql: string; params: readonly unknown[] }[] = [];
+        const lookups: { sql: string; params: readonly unknown[] }[] = [];
+        const limited = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), runtime);
+        const observe = (tx: ShopDb): ShopDb => ({
+          ...tx,
+          run: async <R>(sql: string, params?: readonly unknown[]) => {
+            if (sql.includes("FROM messages m") && sql.includes("FOR UPDATE OF m"))
+              queries.push({ sql, params: params ?? [] });
+            if (sql.includes("payload->>'sourceMessageId'=$4")) lookups.push({ sql, params: params ?? [] });
+            return tx.run<R>(sql, params);
+          },
+        });
+        await limited.transaction(async (tx) => {
+          const batch = await deferredKakaoBatch(observe(tx), shop.customerId, { now: NOW });
+          expect(batch.messages).toHaveLength(0);
+        });
+        const query = queries[0];
+        if (query === undefined) throw new Error("합성 제한 역할의 카드 조회 없음");
+        const plan = await runtime.query(`EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) ${query.sql}`, [
+          shop.shopId,
+          ...query.params,
+        ]);
+        const data = plan.rows[0]?.["QUERY PLAN"] as { Plan: Record<string, unknown>; "Execution Time": number }[];
+        const nodes: Record<string, unknown>[] = [];
+        const walk = (node: Record<string, unknown>) => {
+          nodes.push(node);
+          for (const child of (node.Plans ?? []) as Record<string, unknown>[]) walk(child);
+        };
+        const top = data[0];
+        if (top === undefined) throw new Error("합성 실행 계획 없음");
+        walk(top.Plan);
+        console.info(
+          "TASK107 source lookup plan",
+          JSON.stringify({
+            rows: 2000,
+            executionMs: top["Execution Time"],
+            buffers: top.Plan["Shared Hit Blocks"],
+            cardNodes: nodes
+              .filter((n) => n["Relation Name"] === "confirm_cards")
+              .map((n) => ({
+                type: n["Node Type"],
+                alias: n.Alias,
+                index: n["Index Name"],
+                loops: n["Actual Loops"],
+                removed: n["Rows Removed by Filter"],
+              })),
+          }),
+        );
+        await expect(
+          limited.transaction((tx) =>
+            readConfirmCardDelivery(observe(tx), {
+              customerId: shop.customerId,
+              consultationId: shop.consultationId,
+              sourceMessageId,
+              now: NOW,
+            }),
+          ),
+        ).rejects.toBeInstanceOf(CustomerNoticeTemporarilyUnavailable);
+        const lookup = lookups[0];
+        if (lookup === undefined) throw new Error("합성 저장 카드의 수신 참조 조회 없음");
+        const pointPlan = await runtime.query(`EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) ${lookup.sql}`, [
+          shop.shopId,
+          ...lookup.params,
+        ]);
+        const pointData = (pointPlan.rows[0]?.["QUERY PLAN"] ?? []) as typeof data;
+        const point = pointData[0];
+        if (point === undefined) throw new Error("합성 저장 카드의 실행 계획 없음");
+        nodes.length = 0;
+        walk(point.Plan);
+        console.info(
+          "TASK107 stored card point lookup",
+          JSON.stringify({
+            executionMs: point["Execution Time"],
+            buffers: point.Plan["Shared Hit Blocks"],
+            nodes: nodes.map((n) => ({
+              type: n["Node Type"],
+              index: n["Index Name"],
+              rows: n["Actual Rows"],
+              removed: n["Rows Removed by Filter"],
+            })),
+          }),
+        );
+        expect(
+          nodes.some((n) => typeof n["Index Cond"] === "string" && n["Index Cond"].includes("sourceMessageId")),
+        ).toBe(true);
+        expect(
+          (
+            await isolated.db.query(
+              "SELECT count(*)::int AS n FROM messages WHERE shop_id=$1 AND kind='card' AND delivery='deferred'",
+              [shop.shopId],
+            )
+          ).rows[0]?.n,
+        ).toBe(2000);
+      } finally {
+        await runtime.close();
+      }
+      return;
+    }
     if (mode === "blocked-deferred" || mode === "bounded-unavailable") {
       await isolated.db.query("UPDATE consultations SET ai_disclosed_at=$2 WHERE id=$1", [shop.consultationId, NOW]);
       const blocked: string[] = [],
@@ -452,11 +571,14 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         "current-legacy-empty",
         "prepare-legacy-empty",
         "late-legacy",
+        "boundary-23",
+        "boundary-24",
+        "boundary-25",
       ].includes(mode)
     ) {
       const legacy = mode.includes("legacy"),
         prepareLegacy = mode.startsWith("prepare-legacy"),
-        empty = mode.endsWith("-empty"),
+        empty = mode.endsWith("-empty") || mode.startsWith("boundary-"),
         late = mode === "late-legacy";
       const lateRead = late
         ? vi
@@ -505,7 +627,14 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         const job = jobs[0];
         if (!job) throw new Error("합성 콜백 작업 없음");
         const replayIds: string[] = [];
-        for (let i = 0; i < (mode === "bounded-duplicates" ? 36 : late ? 0 : 3); i++) {
+        const replayCount = mode.startsWith("boundary-")
+          ? Number(mode.slice("boundary-".length))
+          : mode === "bounded-duplicates"
+            ? 36
+            : late
+              ? 0
+              : 3;
+        for (let i = 0; i < replayCount; i++) {
           const ccId = newUuid(),
             ccKey = `ck_${newUuid()}`,
             source = newUuid(),
@@ -530,6 +659,22 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
             "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','text','합성 중복 뒤의 정상 안내','deferred',$4)",
             [normalId, shop.shopId, shop.consultationId, new Date(NOW.getTime() + 100)],
           );
+        if (mode.startsWith("boundary-")) {
+          const batch = await scoped.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: NOW }));
+          expect(batch.messages.filter((m) => m.source === "message")).toHaveLength(Math.min(24, replayCount));
+          expect(deferredKakaoTexts(batch.messages).length).toBeLessThan(3);
+          expect(batch.currentBlocked).toBe(replayCount > 24);
+          await scoped.transaction((tx) => markDeferredKakaoMessages(tx, shop.customerId, batch.messages, NOW));
+          expect(
+            (
+              await isolated.db.query(
+                "SELECT count(*)::int AS n FROM messages WHERE id=ANY($1::uuid[]) AND delivery='deferred'",
+                [replayIds],
+              )
+            ).rows[0]?.n,
+          ).toBe(Math.max(0, replayCount - 24));
+          return;
+        }
         if (mode === "bounded-duplicates") {
           const render = vi.spyOn(paymentMessages, "kakaoPaymentMessage");
           try {

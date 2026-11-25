@@ -1,0 +1,33 @@
+> lint
+> biome ci . --error-on-warnings
+
+server/test/payment-claim-depositor-input.test.ts:457:41 ]8;;https://biomejs.dev/linter/rules/no-unsafe-optional-chaining\lint/correctness/noUnsafeOptionalChaining]8;;\ ━━━━━━━━━━
+
+  ✖ Unsafe usage of optional chaining.
+
+    455 │           ...lookup.params,
+    456 │         ]);
+  > 457 │         const point = (pointPlan.rows[0]?.["QUERY PLAN"] as typeof data)[0];
+        │                                         ^^
+    458 │         if (point === undefined) throw new Error("합성 저장 카드의 실행 계획 없음");
+    459 │         nodes.length = 0;
+
+  ℹ If it short-circuits with 'undefined' the evaluation will throw TypeError here:
+
+    455 │           ...lookup.params,
+    456 │         ]);
+  > 457 │         const point = (pointPlan.rows[0]?.["QUERY PLAN"] as typeof data)[0];
+        │                                                                         ^^^
+    458 │         if (point === undefined) throw new Error("합성 저장 카드의 실행 계획 없음");
+    459 │         nodes.length = 0;
+
+  ℹ Optional chaining produces undefined when the value before ?. is null or undefined, and this operation does not accept undefined.
+
+  ℹ Provide a fallback value, for example (a?.b ?? {}), or check that the value is defined before using it.
+
+
+Checked 621 files in 877ms. No fixes applied.
+Found 1 error.
+ci ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✖ Some errors were emitted while running checks.
