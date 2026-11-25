@@ -1,0 +1,34 @@
+{
+  "sourceCommit": "0bed9312df1765e60ed662db3f6ead2d44bce619",
+  "state": {
+    "source_commit": "0bed9312df1765e60ed662db3f6ead2d44bce619",
+    "stage": "completed"
+  },
+  "migrations": 40,
+  "server": {
+    "files": 140,
+    "passed": 2789
+  },
+  "web": {
+    "files": 71,
+    "passed": 1727
+  },
+  "testsExit": 0,
+  "buildExit": 0,
+  "vite": "1.36s",
+  "appWorker": "5427.92 KiB / gzip: 996.56 KiB",
+  "storageWorker": "21.08 KiB / gzip: 6.55 KiB",
+  "related": {
+    "files": 9,
+    "passed": 192
+  },
+  "previousFull": {
+    "sourceCommit": "3cdf9bbc1e8cf0eb687f5c9c6e38d9a3a0a7f8f7",
+    "failed": 1,
+    "passed": 2788,
+    "reason": "mock model configured: expected ai_key_missing, received ai_unavailable; corrected assertion only"
+  },
+  "localInstall": "same-lock dependencies reused; no new local npm ci",
+  "realSignedPhotoDownload": "unverified",
+  "nativeBrowser": "not run"
+}
