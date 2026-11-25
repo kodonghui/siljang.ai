@@ -4,6 +4,32 @@ import { expectSchema } from "./support/contract";
 import { customerNoticePhotoAsk as ask, customerNoticePhotos as photos } from "./support/kakao-customer-notice-cases";
 
 it.each([
+  { text: "가".repeat(1250), regulation: ["나".repeat(900), "다".repeat(900)] },
+  { text: "🎂".repeat(2000), regulation: ["나".repeat(1000), "다".repeat(1000)] },
+])("확정 본문과 두 규정이3000자를 넘어도 세 출력에 전부 보존한다", (notice) => {
+  const body = kakaoCustomerNoticeMessage({ state: "normal", notice: { kind: "order_confirmed_saved", ...notice } });
+  expectSchema("SkillTemplateResponse", body);
+  expect(body.template.outputs.length).toBeLessThanOrEqual(3);
+  const result = body as unknown as {
+    template: { outputs: { carousel: { type: string; items: { title: string; description?: string }[] } }[] };
+  };
+  const whole = result.template.outputs
+    .map(({ carousel }) => {
+      expect(carousel.type).toBe("textCard");
+      expect(carousel.items.length).toBeLessThanOrEqual(10);
+      return carousel.items
+        .map((item) => {
+          expect([...item.title].length).toBeLessThanOrEqual(50);
+          expect([...(item.description ?? "")].length).toBeLessThanOrEqual(128);
+          return item.title.replace(/^확정 안내 \d+\n/, "") + (item.description ?? "");
+        })
+        .join("");
+    })
+    .join("");
+  expect(whole).toBe([notice.text, ...notice.regulation].join("\n"));
+});
+
+it.each([
   { text: "가".repeat(1000), regulation: ["나".repeat(1000), "다".repeat(1000)] },
   { text: "가".repeat(1250), regulation: ["나".repeat(600), "다".repeat(600)] },
 ])("저장된 확정 사실과 두 규정을 자르지 않고 세 출력에 보존한다", (notice) => {

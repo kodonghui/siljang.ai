@@ -135,6 +135,48 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
     ).toEqual([{ n: 0 }]);
   });
   for (const mode of ["event", "message"] as const) {
+    it(`${mode}: 긴 확정 내용과 두 규정이 후속 안내를 막지 않는다`, async () => {
+      await confirm();
+      await isolated.db.query(
+        "UPDATE order_details SET design_notes=$2,lettering=$3,colors=$4 WHERE order_id=$1 AND version=1",
+        [shop.orderId, "가".repeat(500), "나".repeat(50), "다".repeat(100)],
+      );
+      for (let i = 0; i < 20; i++) {
+        const optionId = newUuid();
+        await isolated.db.query(
+          "INSERT INTO price_options(id,shop_id,price_list_id,option_group,name,price_kind,amount,in_standard,position) VALUES($1,$2,$3,'extra',$4,'fixed',1000,true,$5)",
+          [optionId, shop.shopId, shop.priceListId, `합성${i} ${"라".repeat(24)}`, 100 + i],
+        );
+        await isolated.db.query(
+          "INSERT INTO order_detail_extras(shop_id,order_detail_id,price_list_id,option_id) SELECT shop_id,id,price_list_id,$2 FROM order_details WHERE order_id=$1 AND version=1",
+          [shop.orderId, optionId],
+        );
+      }
+      for (let position = 1; position <= 2; position++)
+        await isolated.db.query(
+          "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',$3,$4,'합성 조건',$5) ON CONFLICT(operating_rules_id,position) DO UPDATE SET title=EXCLUDED.title,effect_text=EXCLUDED.effect_text",
+          [shop.shopId, shop.operatingRulesId, position, `합성 긴 규정${position}`, "마".repeat(850)],
+        );
+      const db = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+      const confirmed = await db.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW));
+      if (!confirmed) throw new Error("합성 긴 확정 안내 없음");
+      const saved = (
+        await isolated.db.query<{ body: string }>("SELECT body FROM notifications WHERE id=$1", [confirmed.id])
+      ).rows[0]?.body;
+      expect([...(saved ?? "")].length).toBeGreaterThan(1250);
+      const first = await call(mode, confirmed.id);
+      expect(first.status).toBe(200);
+      const body = await first.json();
+      expectSchema("SkillTemplateResponse", body);
+      const outputs = (body as { template: { outputs: unknown[] } }).template.outputs;
+      expect(outputs.length).toBeLessThanOrEqual(3);
+      expect(JSON.stringify(body)).toContain('"type":"textCard"');
+      const following = await notice("owner_reply", "합성 긴 확정 뒤의 안내", new Date(NOW.getTime() + 500));
+      clock = new Date(NOW.getTime() + 1000);
+      const next = await call(mode, following);
+      expect(next.status).toBe(200);
+      expect(JSON.stringify(await next.json())).toContain("합성 긴 확정 뒤의 안내");
+    });
     it(`${mode}: 공백인 분할 조각 뒤의 안내도 막히지 않는다`, async () => {
       const original = `${"가".repeat(1000)}\n`;
       const first = await notice("owner_reply", original, new Date(NOW.getTime() - 2000));
