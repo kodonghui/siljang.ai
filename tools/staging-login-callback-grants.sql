@@ -134,6 +134,9 @@ GRANT SELECT (payment_request_id, hold_key),
 GRANT UPDATE (day_used_order_id) ON handoffs TO :"runtime_role";
 -- 주문 상태를 쓸 때 커밋의 기존 제약 트리거가 제작 시각과 확인된 결제를 읽는다.
 GRANT SELECT (confirmed_payment_id) ON orders TO :"runtime_role";
+
+-- TASK-106: 저장된 차액의 변경 내용과 버전·금액 차이만 표시용으로 읽는다.
+GRANT SELECT (changes, base_version, amount_delta) ON change_requests TO :"runtime_role";
 GRANT SELECT (no_pickup_at) ON productions TO :"runtime_role";
 GRANT SELECT (id, voided_at) ON payments TO :"runtime_role";
 GRANT SELECT (shop_id, order_id, handed_over_at) ON productions TO :"runtime_role";

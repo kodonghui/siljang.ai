@@ -1,0 +1,173 @@
+
+> test
+> vitest run test/payment-difference-presentation.test.ts test/kakao-payment-message.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-display-audit/app/server
+
+ ❯ test/payment-difference-presentation.test.ts (14 tests | 8 failed) 2068ms
+   ❯ 저장된 차액의 새 금액 확인 표시(TASK-106) (14)
+     × 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(event/cap) 60ms
+     × 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(message/cap) 94ms
+     × 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(event/lower-date) 77ms
+     × 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(message/lower-date) 129ms
+     × 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(legacy-event/short) 70ms
+     × 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(legacy-message/short) 100ms
+     × 추가 열 권한 없이도 기존 first 결제 안내를 두 수신 경로에서 읽는다 52ms
+     × 추가 열 권한 없이도 기존 reissue 결제 안내를 두 수신 경로에서 읽는다 44ms
+ ❯ test/kakao-payment-message.test.ts (36 tests | 1 failed) 62ms
+   × 차액 카드의 버튼은 카드 만료보다 이른 변경 마감까지만 누르라고 안내한다 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 차액 카드의 버튼은 카드 만료보다 이른 변경 마감까지만 누르라고 안내한다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '21:10까지 눌러 주세요'
+
+Expected: "21:10까지 눌러 주세요"
+Received: "{"version":"2.0","template":{"outputs":[{"textCard":{"title":"새 금액 확인","description":"문구 변경\n지금 35,000원 → 새 금액 55,000원\n차액 20,000원\n변경 마감 11월 25일 21:10까지\n21:30까지 눌러 주세요","buttons":[{"label":"바꿀게요","action":"block","blockId":"amount-card-block","extra":{"cardKey":"synthetic_amount_card_key_01","choice":"confirm"}},{"label":"그대로 둘래요","action":"block","blockId":"amount-card-block","extra":{"cardKey":"synthetic_amount_card_key_01","choice":"decline"}}]}}]}}"
+
+ ❯ test/kakao-payment-message.test.ts:263:32
+    261|   });
+    262|   expectSchema("SkillTemplateResponse", body);
+    263|   expect(JSON.stringify(body)).toContain("21:10까지 눌러 주세요");
+       |                                ^
+    264|   expect(JSON.stringify(body)).not.toContain("21:30까지 눌러 주세요");
+    265| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(event/cap)
+AssertionError: expected '바뀌는 내용\n문구 합성 바꾼 문구\n색 합성 분홍\n지금 35,0…' to contain '09:10까지 눌러 주세요'
+
+- Expected
++ Received
+
+- 09:10까지 눌러 주세요
++ 바뀌는 내용
++ 문구 합성 바꾼 문구
++ 색 합성 분홍
++ 지금 35,000원 → 새 금액 55,000원
++ 차액 20,000원
++ 변경 마감 11월 26일 09:10까지
++ 09:30까지 눌러 주세요
+
+ ❯ test/payment-difference-presentation.test.ts:272:30
+    270|         expect(shown).toContain(text);
+    271|       if (length === "cap") {
+    272|         expect(renderedText).toContain("09:10까지 눌러 주세요");
+       |                              ^
+    273|         expect(renderedText).not.toContain("09:30까지 눌러 주세요");
+    274|         expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(message/cap)
+AssertionError: expected '바뀌는 내용\n문구 합성 바꾼 문구\n색 합성 분홍\n지금 35,0…' to contain '09:10까지 눌러 주세요'
+
+- Expected
++ Received
+
+- 09:10까지 눌러 주세요
++ 바뀌는 내용
++ 문구 합성 바꾼 문구
++ 색 합성 분홍
++ 지금 35,000원 → 새 금액 55,000원
++ 차액 20,000원
++ 변경 마감 11월 26일 09:10까지
++ 09:30까지 눌러 주세요사장님 확인 뒤 답드릴게요.
+
+ ❯ test/payment-difference-presentation.test.ts:272:30
+    270|         expect(shown).toContain(text);
+    271|       if (length === "cap") {
+    272|         expect(renderedText).toContain("09:10까지 눌러 주세요");
+       |                              ^
+    273|         expect(renderedText).not.toContain("09:30까지 눌러 주세요");
+    274|         expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(event/lower-date)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '지금 35,000원'
+
+Expected: "지금 35,000원"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"지금은 새 금액 확인 카드를 사용할 수 없어요"}}]}}"
+
+ ❯ test/payment-difference-presentation.test.ts:270:23
+    268|         changes.colors,
+    269|       ])
+    270|         expect(shown).toContain(text);
+       |                       ^
+    271|       if (length === "cap") {
+    272|         expect(renderedText).toContain("09:10까지 눌러 주세요");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯
+
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(message/lower-date)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '지금 35,000원'
+
+Expected: "지금 35,000원"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"지금은 새 금액 확인 카드를 사용할 수 없어요"}},{"simpleText":{"text":"사장님 확인 뒤 답드릴게요."}}]}}"
+
+ ❯ test/payment-difference-presentation.test.ts:270:23
+    268|         changes.colors,
+    269|       ])
+    270|         expect(shown).toContain(text);
+       |                       ^
+    271|       if (length === "cap") {
+    272|         expect(renderedText).toContain("09:10까지 눌러 주세요");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯
+
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(legacy-event/short)
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(legacy-message/short)
+AssertionError: expected [Function] to throw error including 'customer notice temporarily unavailab…' but got 'permission denied for table change_re…'
+
+Expected: "customer notice temporarily unavailable"
+Received: "permission denied for table change_requests"
+
+ ❯ test/payment-difference-presentation.test.ts:226:14
+    224|                 NOW,
+    225|               ),
+    226|             ).rejects.toThrow("customer notice temporarily unavailable…
+       |              ^
+    227|             expect((await tx.run("SELECT id FROM shops WHERE id=$1")).…
+    228|           });
+ ❯ src/shop-scope.ts:272:41
+ ❯ PgRequestDb.transaction src/db.ts:147:28
+ ❯ test/payment-difference-presentation.test.ts:219:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯
+
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 추가 열 권한 없이도 기존 first 결제 안내를 두 수신 경로에서 읽는다
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 추가 열 권한 없이도 기존 reissue 결제 안내를 두 수신 경로에서 읽는다
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ test/payment-difference-presentation.test.ts:336:35
+    334|             testEnv({ DATABASE_URL: databaseUrl }),
+    335|           );
+    336|           expect(response.status).toBe(200);
+       |                                   ^
+    337|           const body = await response.json();
+    338|           expectSchema("SkillTemplateResponse", body);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/9]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  9 failed | 41 passed (50)
+   Start at  18:59:28
+   Duration  4.79s (tests 47%, import 43%, transform 9%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-payment-display-audit/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-payment-display-audit/app/server
+npm error command failed
+npm error command sh -c vitest run test/payment-difference-presentation.test.ts test/kakao-payment-message.test.ts

@@ -247,3 +247,19 @@ it("정규화한2048자 카드 링크는 버튼으로 전하면서도 계좌를 
   expect(JSON.stringify(body)).toContain("123456789012");
   expect(body.template.outputs.length).toBeLessThanOrEqual(3);
 });
+
+it("차액 카드의 버튼은 카드 만료보다 이른 변경 마감까지만 누르라고 안내한다", () => {
+  const body = kakaoPaymentMessage({
+    state: "amount-confirm",
+    kind: "difference",
+    ...amountCard,
+    changes: "문구 변경",
+    currentAmount: 35000,
+    newAmount: 55000,
+    difference: 20000,
+    changeDeadline: "2026-11-25T12:10:00Z",
+  });
+  expectSchema("SkillTemplateResponse", body);
+  expect(JSON.stringify(body)).toContain("21:10까지 눌러 주세요");
+  expect(JSON.stringify(body)).not.toContain("21:30까지 눌러 주세요");
+});

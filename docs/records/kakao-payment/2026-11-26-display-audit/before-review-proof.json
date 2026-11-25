@@ -1,0 +1,55 @@
+{
+  "sourceCommit": "225188655e4b015d299405e8e19b96eb275b7882",
+  "publicEquivalentHead": "5eb4f10f295fa42144a1bef7f234ec54781caa33",
+  "sourceTree": "193d78b8ac88164d9d79a7a0c8da84d871eb30f5",
+  "baseMain": "e4656a89191a6f7e306ad45bfc2ffe340736df9b",
+  "scopeGitObjects": {
+    "app/server": "cdcc03b94d4fc7e4219b860b07f7237093bb3797",
+    "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "86592d08ebfb6d4a35136ec71981a4db57256f0f",
+    ".github/workflows/app.yml": "56b47e1813912e7793eb8e54f0d8be4eece3c937",
+    "tools/staging-login-callback-grants.sql": "ea7b71046c56e98e83c73640476ea65f8e2842d5",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "productCodeChanged": true,
+  "migrations": 41,
+  "combinedNpmTestExit": 0,
+  "server": {
+    "files": 166,
+    "passed": 3128
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "freshState": "completed",
+  "targetFiles": 8,
+  "targetPassed": 159,
+  "storedInboundModes": [
+    "event",
+    "message",
+    "mock callback"
+  ],
+  "storedMaxChangeSetCases": 6,
+  "nodePassed": 57,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "screenStates": 7,
+  "responseRows": 35,
+  "frames": 14,
+  "responseFrames": 24,
+  "browserExecuted": false,
+  "realKakao": false,
+  "modelCallsAdded": 0,
+  "outboundRequestsAdded": 0,
+  "npmCi": "동일 lock의 로컬 설치 재사용. 새 설치는 현재PR CI에서 확인",
+  "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
+  "classification": "WIP: ready PR/currentCI/reviews/ownmain pending. No TASK106 flags",
+  "mainProof": "main286.json",
+  "nativeGrantApplication": "미확인. 로컬 제한 역할만 검사"
+}

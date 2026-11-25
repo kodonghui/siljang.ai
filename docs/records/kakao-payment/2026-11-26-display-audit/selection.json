@@ -1,0 +1,128 @@
+{
+  "runtimeSource": "225188655e4b015d299405e8e19b96eb275b7882",
+  "progressBlobAfterVerified109Proposal": "7661ce9a8975cba66bec72f84a746378c12820af",
+  "finished": 36,
+  "implemented": 50,
+  "mvpReadyCount": 14,
+  "excludedByMvpInstruction": [
+    "TASK-005",
+    "TASK-006",
+    "TASK-013",
+    "TASK-175"
+  ],
+  "ready": [
+    {
+      "id": "TASK-172",
+      "it": 0,
+      "waiting": 0,
+      "allDescendants": 0,
+      "name": "OVH 서버(뭄바이·싱가포르)에서 지연 측정 스크립트 돌리기(추천안 기준)",
+      "owner": "동희님"
+    },
+    {
+      "id": "TASK-027",
+      "it": 1,
+      "waiting": 76,
+      "allDescendants": 76,
+      "name": "AI 평가 세트(합성 상담 100개 이상)와 채점·두 회사로 돌리는 도구",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-106",
+      "it": 4,
+      "waiting": 0,
+      "allDescendants": 0,
+      "name": "SCR-005 결제 안내 카카오 응답",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-107",
+      "it": 4,
+      "waiting": 0,
+      "allDescendants": 0,
+      "name": "SCR-006 결제 확인 요청 카드 카카오 응답",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-126",
+      "it": 5,
+      "waiting": 0,
+      "allDescendants": 0,
+      "name": "SCR-008 변경 요청 카드 카카오 응답",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-127",
+      "it": 5,
+      "waiting": 0,
+      "allDescendants": 0,
+      "name": "SCR-009 취소 카드 카카오 응답",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-134",
+      "it": 6,
+      "waiting": 0,
+      "allDescendants": 0,
+      "name": "전날 안내",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-147",
+      "it": 6,
+      "waiting": 0,
+      "allDescendants": 0,
+      "name": "SCR-010 문제 신고 카드 카카오 응답",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-148",
+      "it": 6,
+      "waiting": 0,
+      "allDescendants": 0,
+      "name": "SCR-012 후기 남기기 카카오 응답",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-149",
+      "it": 6,
+      "waiting": 0,
+      "allDescendants": 0,
+      "name": "SCR-013 사진 게시 동의 철회 카드 카카오 응답",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-159",
+      "it": 7,
+      "waiting": 9,
+      "allDescendants": 9,
+      "name": "운영자의 가게 기록 보기와 원래 값·보관 기록 열기",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-156",
+      "it": 7,
+      "waiting": 2,
+      "allDescendants": 2,
+      "name": "고를 기능 켜기(장부 연결, 완성 사진 보내기)",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-165",
+      "it": 8,
+      "waiting": 7,
+      "allDescendants": 7,
+      "name": "하루 한 번 백업과 복구 시험",
+      "owner": "Claude"
+    },
+    {
+      "id": "TASK-167",
+      "it": 8,
+      "waiting": 7,
+      "allDescendants": 7,
+      "name": "운영 계정과 키 만들기: 우리 서비스 채널(사장님 알림), 디벨로퍼스 운영 앱, AI 회사·구글 운영 키",
+      "owner": "동희님"
+    }
+  ],
+  "dependencySource": "build_wbs.DEPS inverted; OUT_OF is response mapping, not adjacency"
+}

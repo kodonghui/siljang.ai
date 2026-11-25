@@ -1,0 +1,6 @@
+ Test Files  166 passed (166)
+      Tests  3128 passed (3128)
+   Duration  304.06s (tests 66%, import 32%, transform 2%)
+ Test Files  73 passed (73)
+      Tests  1775 passed (1775)
+   Duration  50.45s (tests 50%, import 36%, environment 8%, transform 5%)

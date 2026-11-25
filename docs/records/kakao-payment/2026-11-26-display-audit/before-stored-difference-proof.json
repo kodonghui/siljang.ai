@@ -1,0 +1,27 @@
+{
+  "sourceCommit": "a56b7cc1bc9580195bd35c4d0f40a9c639b7e821",
+  "codeScopeGitObjects": {
+    "app/server": "b6f284c3609f182595b48edc864068d25d599240",
+    "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "de0aa79b81685e087cd5b232401724d38dd776cd",
+    "research/screen-checks-2026-11": "a32705806162464f559500fefaf4999651b07a9c",
+    ".github/workflows/app.yml": "c68c606d49311c5456f9cad834f478663a9c1774",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "targetPassed": 108,
+  "targetFiles": 7,
+  "screenStates": 7,
+  "responseRows": 35,
+  "frames": 14,
+  "responseFrames": 24,
+  "transportAudit": "1000Unicode글자·세 출력·일반 응답/모의 콜백 동일·실제SDK스키마 통과",
+  "productCodeChanged": false,
+  "reusedWhole": "동일 코드인 main285의 CI 새 설치/단일 전체/빌드 성공을 재사용. 이 문서 작업에서 새 로컬 전체/빌드를 실행했다고 쓰지 않음",
+  "mainProof": "main285.json",
+  "browserExecuted": false,
+  "realKakao": false,
+  "outboundRequestsAdded": 0,
+  "classification": "WIP: 실제 저장된 차액 안내의 표시 입력 연결 추가 대조 전. 구현 완료/finished 미표시"
+}
