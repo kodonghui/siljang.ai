@@ -1,7 +1,12 @@
 /** SCR004 표시 전용. 동의·주문자 정보 저장과 주문/자리 확보는 서버 업무 처리기가 담당한다. */
 import { type ConfirmCardAnswer, type ConfirmCardView, NOT_YOURS, RETRY_NEEDED } from "./confirm-card-store";
 import { kakaoChannelIdentifierError } from "./kakao-channel-input";
-import { type KakaoMessageContent, type KakaoMessageOutput, kakaoMessageOutputs } from "./kakao-message-content";
+import {
+  type KakaoMessageContent,
+  type KakaoMessageOutput,
+  kakaoMessageOutputs,
+  kakaoMessageTemplate,
+} from "./kakao-message-content";
 
 import { type KakaoOrderPolicy, kakaoOrderRequestContents } from "./kakao-order-request-content";
 
@@ -68,7 +73,7 @@ function validText(value: string, max = 1000) {
   return value;
 }
 function template(contents: readonly KakaoMessageContent[]) {
-  return { version: "2.0" as const, template: { outputs: kakaoMessageOutputs(contents) } };
+  return { version: "2.0" as const, template: kakaoMessageTemplate(contents) };
 }
 function inputButton(label: string, blockId: string, cardKey: string, choice: "confirm" | "decline") {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(cardKey) || kakaoChannelIdentifierError(blockId, 100) !== null)

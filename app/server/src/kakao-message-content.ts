@@ -1,27 +1,28 @@
 /** 카카오 발신 내용. 확인 카드는 서버가 저장한 표시 값만 받습니다. */
 import type { ConfirmCardView } from "./confirm-card-store";
 import { kakaoOrderRequestContents } from "./kakao-order-request-content";
+import { type KakaoPaymentOutput, type KakaoPaymentView, kakaoPaymentMessage } from "./kakao-payment-message";
 
-export type KakaoMessageContent = string | ConfirmCardView;
-export type KakaoMessageOutput =
-  | { readonly simpleText: { readonly text: string } }
-  | {
-      readonly textCard: {
-        readonly title: string;
-        readonly description: string;
-        readonly buttons: readonly {
-          readonly label: string;
-          readonly action: "block";
-          readonly blockId: string;
-          readonly extra: { readonly cardKey: string; readonly choice: "confirm" | "decline" };
-        }[];
-      };
-    };
+/** 표시 직전에 만든 결제 자료. 메시지 본문이나 확인 카드 payload에 저장하지 않는다. */
+export interface KakaoPaymentContent {
+  readonly kind: "payment_notice";
+  readonly view: KakaoPaymentView;
+  readonly part?: number;
+}
+export type KakaoMessageContent = string | ConfirmCardView | KakaoPaymentContent;
+export type KakaoMessageOutput = KakaoPaymentOutput;
 const text = (value: unknown, max: number): value is string =>
   typeof value === "string" && [...value].length >= 1 && [...value].length <= max && !value.includes("\0");
 
 export function expandKakaoMessageContents(contents: readonly KakaoMessageContent[]): KakaoMessageContent[] {
   return contents.flatMap<KakaoMessageContent>((content) => {
+    if (typeof content !== "string" && content.kind === "payment_notice") {
+      const body = kakaoPaymentMessage(content.view);
+      if (content.part === undefined) return body.template.outputs.map((_, part) => ({ ...content, part }));
+      if (!Number.isSafeInteger(content.part) || content.part < 0 || content.part >= body.template.outputs.length)
+        throw new RangeError("invalid payment output part");
+      return [content];
+    }
     if (typeof content === "string" || content.kind !== "order_request") return [content];
     if (content.orderRequest === undefined) throw new RangeError("order card policy missing");
     return kakaoOrderRequestContents({ card: content, ...content.orderRequest });
@@ -34,6 +35,11 @@ export function kakaoMessageOutputs(contents: readonly KakaoMessageContent[]): K
     if (typeof content === "string") {
       if (!text(content, 1000)) throw new RangeError("invalid Kakao text");
       return { simpleText: { text: content } };
+    }
+    if (content.kind === "payment_notice") {
+      const output = kakaoPaymentMessage(content.view).template.outputs[content.part ?? 0];
+      if (output === undefined) throw new RangeError("missing payment output part");
+      return output;
     }
     if (
       !content ||
@@ -66,4 +72,16 @@ export function kakaoMessageOutputs(contents: readonly KakaoMessageContent[]): K
       },
     };
   });
+}
+
+export function kakaoMessageTemplate(contents: readonly KakaoMessageContent[]) {
+  const expanded = expandKakaoMessageContents(contents);
+  const outputs = kakaoMessageOutputs(expanded);
+  const replies = expanded.flatMap((content) =>
+    typeof content !== "string" && content.kind === "payment_notice"
+      ? (kakaoPaymentMessage(content.view).template.quickReplies ?? [])
+      : [],
+  );
+  const quickReplies = [...new Map(replies.map((reply) => [reply.messageText, reply])).values()];
+  return { outputs, ...(quickReplies.length ? { quickReplies } : {}) };
 }

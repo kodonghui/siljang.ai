@@ -1,0 +1,15 @@
+> test
+> vitest run test/kakao-payment-content.test.ts test/kakao-payment-message.test.ts test/kakao-payment-contract.test.ts test/kakao-deferred.test.ts test/kakao-callback.test.ts test/kakao-order-request-message.test.ts test/kakao-order-request-contract.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+
+ Test Files  7 passed (7)
+      Tests  152 passed (152)
+   Start at  12:37:20
+   Duration  16.97s (tests 53%, import 37%, transform 10%)
+
+     Import  159 modules were evaluated 227 times · 5.87s total, 37% of tracked time
+             ~1.76s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

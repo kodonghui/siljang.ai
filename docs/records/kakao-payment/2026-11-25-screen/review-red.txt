@@ -1,0 +1,260 @@
+> test
+> vitest run test/kakao-payment-message.test.ts test/customer-notice-payment-delivery.test.ts test/customer-notices-skill.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+ ❯ test/customer-notice-payment-delivery.test.ts (14 tests | 2 failed) 1956ms
+   ❯ 다음 대화의 결제 안내 전달(TASK-104) (14)
+     × 저장할 수 있는 은행명/예금주의 줄바꿈이 기존 안내를 막지 않는다(event) 155ms
+     × 저장할 수 있는 은행명/예금주의 줄바꿈이 기존 안내를 막지 않는다(message) 120ms
+ ❯ test/customer-notices-skill.test.ts (15 tests | 3 failed) 1466ms
+   ❯ 손님 안내 스킬 API-073(TASK-104) (15)
+     × 새 금액 안내는 요청 견적(fixed)과 사유를 보이고 확인 전 계좌를 풀지 않는다 51ms
+     × 새 금액 안내는 요청 견적(from)과 사유를 보이고 확인 전 계좌를 풀지 않는다 42ms
+     × 새 금액 안내는 요청 견적(range)과 사유를 보이고 확인 전 계좌를 풀지 않는다 44ms
+ ❯ test/kakao-payment-message.test.ts (35 tests | 7 failed) 62ms
+   × 기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다("\n") 7ms
+   × 기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다("\r\n") 1ms
+   × 기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다("\r") 1ms
+   × 기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다("
+") 34ms
+   × 기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다("
+") 2ms
+   × 새 금액 카드도 설정에서 허용한 블록 ID를 보존한다(synthetic.amount:card) 1ms
+   × 새 금액 카드도 설정에서 허용한 블록 ID를 보존한다(합성-금액-카드) 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-payment-delivery.test.ts > 다음 대화의 결제 안내 전달(TASK-104) > 저장할 수 있는 은행명/예금주의 줄바꿈이 기존 안내를 막지 않는다(event)
+AssertionError: SkillTemplateResponse: [{"instancePath":"","schemaPath":"#/required","keyword":"required","params":{"missingProperty":"version"},"message":"must have required property 'version'"},{"instancePath":"","schemaPath":"#/required","keyword":"required","params":{"missingProperty":"template"},"message":"must have required property 'template'"},{"instancePath":"","schemaPath":"#/additionalProperties","keyword":"additionalProperties","params":{"additionalProperty":"type"},"message":"must NOT have additional properties"},{"instancePath":"","schemaPath":"#/additionalProperties","keyword":"additionalProperties","params":{"additionalProperty":"title"},"message":"must NOT have additional properties"},{"instancePath":"","schemaPath":"#/additionalProperties","keyword":"additionalProperties","params":{"additionalProperty":"status"},"message":"must NOT have additional properties"},{"instancePath":"","schemaPath":"#/additionalProperties","keyword":"additionalProperties","params":{"additionalProperty":"code"},"message":"must NOT have additional properties"},{"instancePath":"","schemaPath":"#/additionalProperties","keyword":"additionalProperties","params":{"additionalProperty":"traceId"},"message":"must NOT have additional properties"},{"instancePath":"","schemaPath":"#/additionalProperties","keyword":"additionalProperties","params":{"additionalProperty":"instance"},"message":"must NOT have additional properties"}]: expected [ { instancePath: '', …(4) }, …(7) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "",
++     "keyword": "required",
++     "message": "must have required property 'version'",
++     "params": {
++       "missingProperty": "version",
++     },
++     "schemaPath": "#/required",
++   },
++   {
++     "instancePath": "",
++     "keyword": "required",
++     "message": "must have required property 'template'",
++     "params": {
++       "missingProperty": "template",
++     },
++     "schemaPath": "#/required",
++   },
++   {
++     "instancePath": "",
++     "keyword": "additionalProperties",
++     "message": "must NOT have additional properties",
++     "params": {
++       "additionalProperty": "type",
++     },
++     "schemaPath": "#/additionalProperties",
++   },
++   {
++     "instancePath": "",
++     "keyword": "additionalProperties",
++     "message": "must NOT have additional properties",
++     "params": {
++       "additionalProperty": "title",
++     },
++     "schemaPath": "#/additionalProperties",
++   },
++   {
++     "instancePath": "",
++     "keyword": "additionalProperties",
++     "message": "must NOT have additional properties",
++     "params": {
++       "additionalProperty": "status",
++     },
++     "schemaPath": "#/additionalProperties",
++   },
++   {
++     "instancePath": "",
++     "keyword": "additionalProperties",
++     "message": "must NOT have additional properties",
++     "params": {
++       "additionalProperty": "code",
++     },
++     "schemaPath": "#/additionalProperties",
++   },
++   {
++     "instancePath": "",
++     "keyword": "additionalProperties",
++     "message": "must NOT have additional properties",
++     "params": {
++       "additionalProperty": "traceId",
++     },
++     "schemaPath": "#/additionalProperties",
++   },
++   {
++     "instancePath": "",
++     "keyword": "additionalProperties",
++     "message": "must NOT have additional properties",
++     "params": {
++       "additionalProperty": "instance",
++     },
++     "schemaPath": "#/additionalProperties",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ test/customer-notice-payment-delivery.test.ts:139:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  test/customer-notice-payment-delivery.test.ts > 다음 대화의 결제 안내 전달(TASK-104) > 저장할 수 있는 은행명/예금주의 줄바꿈이 기존 안내를 막지 않는다(message)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '은행 합성 은행'
+
+Expected: "은행 합성 은행"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"잠시 뒤 다시 말씀해 주세요"}}]}}"
+
+ ❯ test/customer-notice-payment-delivery.test.ts:141:38
+    139|       expectSchema("SkillTemplateResponse", body);
+    140|       for (const text of ["은행 합성 은행", "예금주 합성 가게", ACCOUNT, "결제했어요"])
+    141|         expect(JSON.stringify(body)).toContain(text);
+       |                                      ^
+    142|       expect(
+    143|         (
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  test/customer-notices-skill.test.ts > 손님 안내 스킬 API-073(TASK-104) > 새 금액 안내는 요청 견적(fixed)과 사유를 보이고 확인 전 계좌를 풀지 않는다
+ FAIL  test/customer-notices-skill.test.ts > 손님 안내 스킬 API-073(TASK-104) > 새 금액 안내는 요청 견적(from)과 사유를 보이고 확인 전 계좌를 풀지 않는다
+ FAIL  test/customer-notices-skill.test.ts > 손님 안내 스킬 API-073(TASK-104) > 새 금액 안내는 요청 견적(range)과 사유를 보이고 확인 전 계좌를 풀지 않는다
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ test/customer-notices-skill.test.ts:282:33
+    280|       try {
+    281|         const response = await call(id);
+    282|         expect(response.status).toBe(200);
+       |                                 ^
+    283|         const body = await response.json();
+    284|         expectSchema("SkillTemplateResponse", body);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다("\n")
+ FAIL  test/kakao-payment-message.test.ts > 기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다("\r\n")
+ FAIL  test/kakao-payment-message.test.ts > 기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다("\r")
+RangeError: invalid payment account display
+ ❯ paymentNormalMessage src/kakao-payment-message.ts:162:13
+    160|   for (const value of [view.account.bankName, view.account.holderName])
+    161|     if (typeof value !== "string" || !value.trim() || [...value].lengt…
+    162|       throw new RangeError("invalid payment account display");
+       |             ^
+    163|   const due = localDate(view.dueAt, view.timeZone);
+    164|   const title =
+ ❯ kakaoPaymentMessage src/kakao-payment-message.ts:117:39
+ ❯ test/kakao-payment-message.test.ts:24:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다("
+")
+AssertionError: expected '결제 안내 · 주문번호 AB1234CD\n결제할 금액 35,000원…' to contain '은행 합성 은행\n계좌번호 123456789012\n예금주 합성 가…'
+
+- Expected
++ Received
+
+- 은행 합성 은행
++ 결제 안내 · 주문번호 AB1234CD
++ 결제할 금액 35,000원
++ 은행 합성
+은행
+  계좌번호 123456789012
+- 예금주 합성 가게
++ 예금주 합성
+가게
+-
++ 2026-11-25 21:00까지 보내 주세요
+
+ ❯ test/kakao-payment-message.test.ts:35:19
+     33|     expectSchema("SkillTemplateResponse", body);
+     34|     const texts = body.template.outputs.flatMap((o) => ("simpleText" i…
+     35|     expect(texts).toContain("은행 합성 은행\n계좌번호 123456789012\n예금주 합성 가게\n"…
+       |                   ^
+     36|   },
+     37| );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 기존 은행명과 예금주의 줄바꿈은 표시에서 공백으로 바꾼다("
+")
+AssertionError: expected '결제 안내 · 주문번호 AB1234CD\n결제할 금액 35,000원…' to contain '은행 합성 은행\n계좌번호 123456789012\n예금주 합성 가…'
+
+- Expected
++ Received
+
+- 은행 합성 은행
++ 결제 안내 · 주문번호 AB1234CD
++ 결제할 금액 35,000원
++ 은행 합성
+은행
+  계좌번호 123456789012
+- 예금주 합성 가게
++ 예금주 합성
+가게
+-
++ 2026-11-25 21:00까지 보내 주세요
+
+ ❯ test/kakao-payment-message.test.ts:35:19
+     33|     expectSchema("SkillTemplateResponse", body);
+     34|     const texts = body.template.outputs.flatMap((o) => ("simpleText" i…
+     35|     expect(texts).toContain("은행 합성 은행\n계좌번호 123456789012\n예금주 합성 가게\n"…
+       |                   ^
+     36|   },
+     37| );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 새 금액 카드도 설정에서 허용한 블록 ID를 보존한다(synthetic.amount:card)
+ FAIL  test/kakao-payment-message.test.ts > 새 금액 카드도 설정에서 허용한 블록 ID를 보존한다(합성-금액-카드)
+RangeError: invalid payment card action
+ ❯ paymentAmountMessage src/kakao-payment-message.ts:218:11
+    216| function paymentAmountMessage(view: KakaoPaymentAmountView): KakaoPaym…
+    217|   if (!/^[A-Za-z0-9_-]{16,64}$/.test(view.cardKey) || !/^[A-Za-z0-9_-]…
+    218|     throw new RangeError("invalid payment card action");
+       |           ^
+    219|   const expires = localDate(view.expiresAt, view.timeZone);
+    220|   const refresh =
+ ❯ kakaoPaymentMessage src/kakao-payment-message.ts:118:47
+ ❯ test/kakao-payment-message.test.ts:43:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  12 failed | 52 passed (64)
+   Start at  13:10:13
+   Duration  7.44s (tests 50%, import 44%, transform 6%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-payment-message/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-payment-message/app/server
+npm error command failed
+npm error command sh -c vitest run test/kakao-payment-message.test.ts test/customer-notice-payment-delivery.test.ts test/customer-notices-skill.test.ts

@@ -1,0 +1,131 @@
+> test
+> vitest run test/kakao-payment-message.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+ ❯ test/kakao-payment-message.test.ts (14 tests | 4 failed) 68ms
+   × 기존 긴/잘못된 카드 링크가 있어도 계좌와 바로가기는 전한다(https://payment.example/가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가) 12ms
+   × 기존 긴/잘못된 카드 링크가 있어도 계좌와 바로가기는 전한다(https://) 2ms
+   × 기존 긴/잘못된 카드 링크가 있어도 계좌와 바로가기는 전한다(http://payment.example/unsafe) 1ms
+   × 기존 긴/잘못된 카드 링크가 있어도 계좌와 바로가기는 전한다(https://synthetic-user:synthetic-pass@payment.example/) 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 기존 긴/잘못된 카드 링크가 있어도 계좌와 바로가기는 전한다(https://payment.example/가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가)
+AssertionError: SkillTemplateResponse: [{"instancePath":"/template/outputs/1","schemaPath":"#/properties/template/properties/outputs/items/oneOf/0/required","keyword":"required","params":{"missingProperty":"simpleText"},"message":"must have required property 'simpleText'"},{"instancePath":"/template/outputs/1","schemaPath":"#/properties/template/properties/outputs/items/oneOf/0/additionalProperties","keyword":"additionalProperties","params":{"additionalProperty":"textCard"},"message":"must NOT have additional properties"},{"instancePath":"/template/outputs/1/textCard/buttons/0/webLinkUrl","schemaPath":"#/properties/template/properties/outputs/items/oneOf/1/properties/textCard/properties/buttons/items/properties/webLinkUrl/maxLength","keyword":"maxLength","params":{"limit":2048},"message":"must NOT have more than 2048 characters"},{"instancePath":"/template/outputs/1","schemaPath":"#/properties/template/properties/outputs/items/oneOf/2/required","keyword":"required","params":{"missingProperty":"simpleImage"},"message":"must have required property 'simpleImage'"},{"instancePath":"/template/outputs/1","schemaPath":"#/properties/template/properties/outputs/items/oneOf/2/additionalProperties","keyword":"additionalProperties","params":{"additionalProperty":"textCard"},"message":"must NOT have additional properties"},{"instancePath":"/template/outputs/1","schemaPath":"#/properties/template/properties/outputs/items/oneOf","keyword":"oneOf","params":{"passingSchemas":null},"message":"must match exactly one schema in oneOf"}]: expected [ { …(5) }, { …(5) }, { …(5) }, …(3) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/template/outputs/1",
++     "keyword": "required",
++     "message": "must have required property 'simpleText'",
++     "params": {
++       "missingProperty": "simpleText",
++     },
++     "schemaPath": "#/properties/template/properties/outputs/items/oneOf/0/required",
++   },
++   {
++     "instancePath": "/template/outputs/1",
++     "keyword": "additionalProperties",
++     "message": "must NOT have additional properties",
++     "params": {
++       "additionalProperty": "textCard",
++     },
++     "schemaPath": "#/properties/template/properties/outputs/items/oneOf/0/additionalProperties",
++   },
++   {
++     "instancePath": "/template/outputs/1/textCard/buttons/0/webLinkUrl",
++     "keyword": "maxLength",
++     "message": "must NOT have more than 2048 characters",
++     "params": {
++       "limit": 2048,
++     },
++     "schemaPath": "#/properties/template/properties/outputs/items/oneOf/1/properties/textCard/properties/buttons/items/properties/webLinkUrl/maxLength",
++   },
++   {
++     "instancePath": "/template/outputs/1",
++     "keyword": "required",
++     "message": "must have required property 'simpleImage'",
++     "params": {
++       "missingProperty": "simpleImage",
++     },
++     "schemaPath": "#/properties/template/properties/outputs/items/oneOf/2/required",
++   },
++   {
++     "instancePath": "/template/outputs/1",
++     "keyword": "additionalProperties",
++     "message": "must NOT have additional properties",
++     "params": {
++       "additionalProperty": "textCard",
++     },
++     "schemaPath": "#/properties/template/properties/outputs/items/oneOf/2/additionalProperties",
++   },
++   {
++     "instancePath": "/template/outputs/1",
++     "keyword": "oneOf",
++     "message": "must match exactly one schema in oneOf",
++     "params": {
++       "passingSchemas": null,
++     },
++     "schemaPath": "#/properties/template/properties/outputs/items/oneOf",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ test/kakao-payment-message.test.ts:58:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 기존 긴/잘못된 카드 링크가 있어도 계좌와 바로가기는 전한다(https://)
+TypeError: Invalid URL
+ ❯ paymentNormalMessage src/kakao-payment-message.ts:68:11
+     66|   let url: URL | null = null;
+     67|   if (view.cardPaymentUrl !== undefined) {
+     68|     url = new URL(view.cardPaymentUrl);
+       |           ^
+     69|     if (url.protocol !== "https:" || url.username || url.password) thr…
+     70|   }
+ ❯ kakaoPaymentMessage src/kakao-payment-message.ts:25:39
+ ❯ test/kakao-payment-message.test.ts:57:14
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 기존 긴/잘못된 카드 링크가 있어도 계좌와 바로가기는 전한다(http://payment.example/unsafe)
+ FAIL  test/kakao-payment-message.test.ts > 기존 긴/잘못된 카드 링크가 있어도 계좌와 바로가기는 전한다(https://synthetic-user:synthetic-pass@payment.example/)
+RangeError: invalid payment link display
+ ❯ paymentNormalMessage src/kakao-payment-message.ts:69:74
+     67|   if (view.cardPaymentUrl !== undefined) {
+     68|     url = new URL(view.cardPaymentUrl);
+     69|     if (url.protocol !== "https:" || url.username || url.password) thr…
+       |                                                                          ^
+     70|   }
+     71|   return {
+ ❯ kakaoPaymentMessage src/kakao-payment-message.ts:25:39
+ ❯ test/kakao-payment-message.test.ts:57:14
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 10 passed (14)
+   Start at  12:22:13
+   Duration  1.19s (import 88%, tests 7%, transform 5%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-payment-message/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-payment-message/app/server
+npm error command failed
+npm error command sh -c vitest run test/kakao-payment-message.test.ts
