@@ -1,0 +1,40 @@
+{
+  "apiCollection": {
+    "source": "bbcf246ecf3b797a48e7cab180a9df0fad2c474b",
+    "filesFailed": 1,
+    "behaviorTests": 0,
+    "reason": "새 읽기 모듈 부재; 동작 실패로 세지 않음"
+  },
+  "route": {
+    "source": "71f15b950eb8584c6a48a382c8a95716c2b2736f",
+    "failed": 1,
+    "reason": "실제 OwnerArea의 상담 주소가 연결되지 않음"
+  },
+  "invalidId": {
+    "source": "07a0c35d8c33cdb4d08043e0dc32ee4f3237653e",
+    "failed": 2,
+    "passed": 35,
+    "reason": "경로 ID를 페이지 입력422와 섞음; API/화면404로 고침"
+  },
+  "targeted": {
+    "source": "2b739e245fa1b81a4bac506a4b0fc04f12ef7d58",
+    "files": 2,
+    "passed": 39,
+    "failed": 0,
+    "kind": "Node Happy DOM/단위 시험; 실제 브라우저가 아님"
+  },
+  "setupCorrections": [
+    "Happy DOM의 URL 객체와 readFileSync 호환 문제는 node:path로 고침",
+    "선택 상담 ID의 exactOptionalPropertyTypes 오류는 명시한 문자열로 고침",
+    "없는 Vitest project 필터 실행은 시작 실패/동작 시험0이며 웹 workspace에서 재실행",
+    "Biome import 정렬1건을 고침"
+  ],
+  "localInstall": "같은 lock의 기존 설치 재사용. 새 로컬 npm ci가 아님",
+  "kindCorrection": {
+    "source": "de62af07161049d0e5c721508c7e32efacb86b92",
+    "failed": 1,
+    "passed": 16,
+    "reason": "허용된 null 본문의 text를 unsupported로 잘못 표시함; 네 종류 표시로 고침",
+    "maxTextCodepoints": 100000
+  }
+}

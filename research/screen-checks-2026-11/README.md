@@ -50,3 +50,5 @@ node /tmp/siljang-qa051-operating-rules/server.mjs
 공통 원본 검사는 웹이 상속하는 app/tsconfig.base.json도 포함합니다. 실제 시험용 Git 사본에도 상속 설정을 함께 넣어 미커밋 클래스 필드 설정으로 번들이 달라지면 기존 SHA를 붙이지 않도록 검사합니다. 채널 자료의 지원하지 않는 기본404는 query를 뺀 실제 요청 경로를 instance에 넣습니다.
 
 예약 링크 자료는 `node research/screen-checks-2026-11/build-booking-link.mjs . /tmp/siljang-qa055-booking-link`로 생성합니다. 실제 OwnerArea/BookingLinkScreen과6상태/5응답·재조회 실패/준비 상태 변경을 묶습니다. 미충족 조건의 각 설정 화면은 해당 상태의 진입 조회를 제공하며 저장은 해당 TASK 자료에서 확인합니다. 발급 주소는 예약된 .example 도메인이고 실제 발급 주소/도착 화면은 자기 가게 실환경 확인으로 구분합니다. 같은 원본/완성 뒤 교체를 사용하며 공통 상속 설정 고침을 PR266 main에서 통합했고 최종 검사를 이어갑니다.
+
+상담 대화 자료는 `node research/screen-checks-2026-11/build-consultation-messages.mjs . /tmp/siljang-qa089-consultation-messages`로 만듭니다. 실제 App/OwnerArea/상담 화면과 API043의7응답·6상태를 준비합니다. 사장님 답·지운 상담·100,000자 글·사진 창/만료·이전 페이지 실패/재시도를 합성 응답으로 확인할 수 있습니다. 두 폭360/1280은 학원컴 Aside에서 직접 걸어야 하며 생성 성공은 page-check나 실제 브라우저 통과가 아닙니다. 원래 계약 예시/가게 기대값·업무 쓰기 차단은 Node VM에서 검사하고 Linux/Windows CI는 CLI 생성까지만 실행합니다. 같은 원본·완성 뒤 교체/기존 출력 보관과 공통 관찰기/CSP를 사용하며, 실제 서비스 자료나 키가 필요하지 않습니다.

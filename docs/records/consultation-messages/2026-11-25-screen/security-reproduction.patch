@@ -1,0 +1,197 @@
+diff --git a/app/server/test/owner-consultation-messages.test.ts b/app/server/test/owner-consultation-messages.test.ts
+index 32f2d02e..d9d9b1bd 100644
+--- a/app/server/test/owner-consultation-messages.test.ts
++++ b/app/server/test/owner-consultation-messages.test.ts
+@@ -76,6 +76,7 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
+     failLog = false,
+     connect: DbConnector = () => isolated.connect(),
+     settings: Record<string, unknown> = {},
++    headers: Record<string, string> = {},
+   ) {
+     const app = createApp({
+       connect: failLog ? failingAccessInsert(connect) : connect,
+@@ -92,7 +93,9 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
+     });
+     return app.request(
+       `${ORIGIN}/api/owner/consultations/${id}/messages${query}`,
+-      { headers: { "x-test-owner": authenticated ? shop.ownerId : "", "CF-Connecting-IP": "203.0.113.77" } },
++      {
++        headers: { "x-test-owner": authenticated ? shop.ownerId : "", "CF-Connecting-IP": "203.0.113.77", ...headers },
++      },
+       testEnv({ FILE_URL_KEY: fileUrlKey, ...settings }),
+     );
+   }
+@@ -102,6 +105,25 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
+     expectSchema("ConsultationMessagePage", body);
+     return body as Page;
+   }
++  it.each([newUuid(), "not-a-uuid"])(
++    "기대 가게%s가 세션과 다르면 본문과 접속기록을 읽기 전에401이다",
++    async (expected) => {
++      const before = (await isolated.db.query("SELECT count(*)::int AS n FROM access_logs")).rows;
++      await expectProblem(
++        await call(
++          "",
++          shop.consultationId,
++          true,
++          false,
++          () => isolated.connect(),
++          {},
++          { "X-Expected-Shop-Id": expected },
++        ),
++        "unauthenticated",
++      );
++      expect((await isolated.db.query("SELECT count(*)::int AS n FROM access_logs")).rows).toEqual(before);
++    },
++  );
+   it("전화·계좌는 복원하고 카드번호는 끝4자리·긴 숫자는 표시자만 보임", async () => {
+     const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+     const values = await scoped.transaction(async (tx) =>
+@@ -220,6 +242,30 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
+     );
+     await expectProblem(await call(`?cursor=${first.nextCursor}`, ownOther), "validation_failed");
+   });
++  it("뒤로 읽기는 최근20개를 시각 순으로 주고 옛 페이지와 사진 재조회 기준을 보존한다", async () => {
++    const ids = [shop.messageId, ...Array.from({ length: 29 }, newUuid)];
++    await isolated.db.query("UPDATE messages SET created_at=$2 WHERE id=$1", [shop.messageId, NOW]);
++    for (let index = 1; index < ids.length; index++)
++      await isolated.db.query(
++        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','text',$4,'skill_response',$5)",
++        [ids[index], shop.shopId, shop.consultationId, `합성 순서 ${index}`, new Date(NOW.getTime() + index * 1000)],
++      );
++    const first = await page(await call("?direction=backward&limit=20"));
++    expect(first.items.map((item) => item.messageId)).toEqual(ids.slice(10));
++    const anchor = (first as Page & { reloadCursor?: string }).reloadCursor;
++    expect(anchor).toHaveLength(200);
++    const older = await page(await call(`?direction=backward&limit=20&cursor=${first.nextCursor}`));
++    expect(older.items.map((item) => item.messageId)).toEqual(ids.slice(0, 10));
++    expect(older.nextCursor).toBeNull();
++    await isolated.db.query(
++      "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,'outbound','system','text','나중에 온 합성 답','skill_response',$3)",
++      [shop.shopId, shop.consultationId, new Date(NOW.getTime() + 60000)],
++    );
++    const same = await page(await call(`?direction=backward&limit=20&cursor=${anchor}`));
++    expect(same.items.map((item) => item.messageId)).toEqual(ids.slice(10));
++    expect((same as Page & { reloadCursor?: string }).reloadCursor).toBe(anchor);
++    await expectProblem(await call(`?direction=forward&cursor=${anchor}`), "validation_failed");
++  });
+   async function pendingNotice(at: Date) {
+     const id = newUuid();
+     await isolated.db.query(
+diff --git a/app/web/src/ConsultationMessagesScreen.interaction.test.tsx b/app/web/src/ConsultationMessagesScreen.interaction.test.tsx
+index 5381612a..c4d76990 100644
+--- a/app/web/src/ConsultationMessagesScreen.interaction.test.tsx
++++ b/app/web/src/ConsultationMessagesScreen.interaction.test.tsx
+@@ -37,6 +37,7 @@ beforeEach(() => {
+ });
+ afterEach(() => {
+   cleanup();
++  vi.restoreAllMocks();
+   vi.unstubAllGlobals();
+   vi.useRealTimers();
+ });
+@@ -144,6 +145,66 @@ it("이전 페이지를 위에 더하고 같은 메시지는 중복시키지 않
+   const contents = document.querySelector(".consultation-timeline")?.textContent ?? "";
+   expect(contents.indexOf("이전 합성 메시지")).toBeLessThan(contents.indexOf("현재 합성 메시지"));
+ });
++it("같은 시각에는 서버가 준 질문과 답 순서를 유지한다", async () => {
++  page.items = page.items.slice(0, 2).map((item: Record<string, unknown>, index: number) => ({
++    ...item,
++    at: "2026-11-25T09:00:00+09:00",
++    text: index ? "두 번째 합성 답" : "첫 번째 합성 질문",
++  }));
++  open();
++  await screen.findByText("첫 번째 합성 질문");
++  const contents = document.querySelector(".consultation-timeline")?.textContent ?? "";
++  expect(contents.indexOf("첫 번째 합성 질문")).toBeLessThan(contents.indexOf("두 번째 합성 답"));
++});
++it.each([false, true])("추가 페이지의 만료 사진을 같은 페이지에서 갱신한다(사진 창:%s)", async (dialogOpen) => {
++  const start = new Date("2026-11-25T07:00:00Z");
++  vi.useFakeTimers({ toFake: ["Date"] });
++  vi.setSystemTime(start);
++  page.items = [{ ...page.items[0], text: "현재 창 합성 대화", photos: [] }];
++  page.nextCursor = "older_photo_page";
++  const older = {
++    ...structuredClone(page),
++    nextCursor: null,
++    reloadCursor: "older_photo_page",
++    items: [
++      {
++        ...page.items[0],
++        messageId: "00000000-0000-4000-8000-000000000002",
++        at: "2025-01-01T00:00:00+09:00",
++        text: "이전 사진 대화",
++        photos: [{ url: `https://images.example/old-photo?exp=${Math.floor(start.getTime() / 1000) + 900}` }],
++      },
++    ],
++  };
++  let reads = 0;
++  handler = async (path) => {
++    if (!path.includes("cursor=older_photo_page")) return Response.json(page);
++    reads++;
++    const result = structuredClone(older);
++    if (reads > 1)
++      result.items[0].photos = [
++        { url: `https://images.example/fresh-photo?exp=${Math.floor(Date.now() / 1000) + 900}` },
++      ];
++    return Response.json(result);
++  };
++  open();
++  await screen.findByText("현재 창 합성 대화");
++  fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
++  await screen.findByRole("button", { name: "참고 사진 1 크게 보기" });
++  if (dialogOpen) fireEvent.click(screen.getByRole("button", { name: "참고 사진 1 크게 보기" }));
++  vi.setSystemTime(new Date(start.getTime() + 901000));
++  fireEvent(document, new Event("visibilitychange"));
++  fireEvent.click(
++    await screen.findByRole("button", {
++      name: dialogOpen ? "다시 불러오기" : "참고 사진 1 다시 불러오기",
++    }),
++  );
++  await waitFor(() => expect(document.querySelector('img[src*="fresh-photo"]')).not.toBeNull());
++  expect(screen.getByText("현재 창 합성 대화")).toBeTruthy();
++  expect(screen.getByText("이전 사진 대화")).toBeTruthy();
++  expect(reads).toBe(2);
++  if (dialogOpen) expect(screen.getByRole("dialog", { name: "참고 사진 크게 보기" })).toBeTruthy();
++});
+ it("긴 글의 철자/태그를 그대로 보존하고 펼치며 HTML로 실행하지 않는다", async () => {
+   const literal = " <script>synthetic()</script>";
+   page.items[0].text = "가".repeat(100000 - literal.length) + literal;
+@@ -245,6 +306,37 @@ it("세션 재확인 중에는 대화/사진을 가리고 늦은 이전 요청
+   });
+   expect(screen.queryByText("이전 손님 비공개 합성 글")).toBeNull();
+ });
++it("실제 상담 탭에 돌아오면 이전 번호를 먼저 가리고 신원을 다시 확인한다", async () => {
++  page.items[0].text = "이전 계정 비공개 합성 번호";
++  let reads = 0,
++    finish: ((value: Response) => void) | null = null;
++  vi.stubGlobal(
++    "fetch",
++    vi.fn(async (input: unknown) => {
++      const path = String(input);
++      if (path === "/api/owner/me") {
++        reads++;
++        return reads === 1
++          ? Response.json(profile)
++          : new Promise<Response>((resolve) => {
++              finish = resolve;
++            });
++      }
++      return Response.json(page);
++    }),
++  );
++  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
++  open();
++  await screen.findByText("이전 계정 비공개 합성 번호");
++  fireEvent(document, new Event("visibilitychange"));
++  await waitFor(() => expect(reads).toBe(2));
++  expect(screen.queryByText("이전 계정 비공개 합성 번호")).toBeNull();
++  await act(async () => {
++    if (finish) (finish as (value: Response) => void)(Response.json({ code: "unauthenticated" }, { status: 401 }));
++  });
++  expect(await screen.findByRole("heading", { name: "합성 로그인 목적지" })).toBeTruthy();
++  expect(screen.queryByText("이전 계정 비공개 합성 번호")).toBeNull();
++});
+ it("사진 주소 수명은 서버 exp와 읽은 뒤15분 중 이른 때로 제한한다", () => {
+   const at = 1000000;
+   expect(consultationPhotoExpiry("https://images.example/p?exp=1001", at)).toBe(1001000);

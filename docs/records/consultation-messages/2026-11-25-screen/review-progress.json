@@ -1,0 +1,58 @@
+{
+  "reviewedPublic": "13fb1350d8630725451746644c31078d95e75c06",
+  "manualRequest": 7157142247,
+  "manualFindings": [
+    4692279719,
+    4692279730,
+    4692279737
+  ],
+  "orcaCodeSecurity": 7157264383,
+  "oldManualSecurity": 7157227406,
+  "uniqueIssues": 5,
+  "pagingRed": {
+    "localSource": "269fa4c70a37e5c4c668146f08e58730081d69c8",
+    "server": {
+      "failed": 1,
+      "skipped": 35
+    },
+    "web": {
+      "failed": 2,
+      "passed": 17
+    }
+  },
+  "securityRed": {
+    "localSource": "98c2d13bdb231d4bc780ab44f1590de030359e60",
+    "server": {
+      "failed": 2,
+      "skipped": 36
+    },
+    "web": {
+      "failed": 1,
+      "skipped": 20
+    }
+  },
+  "reviewFixProgress": {
+    "serverRelatedPassed": 59,
+    "webRelatedPassed": 45,
+    "typecheckExit": 0,
+    "strictLintExit": 0,
+    "provenance": "로컬 고침 상태의 관련 검사. 최종 고정 코드 전체/현재 공개 검사가 아직 남음"
+  },
+  "newLifecycleFailure": {
+    "webFailed": 3,
+    "webPassed": 42,
+    "reason": "신원 확인 연결 뒤 동일 계정 재확인에도 페이지를 비움. 확인 중에는 가리고 같은 신원은 고정한 페이지/선택을 보존, 실패·로그아웃·새 신원은 비움",
+    "clockTestScope": "동일 버튼의 순수 시계 전환 시험을 화면 단위로 분리. 실제 OwnerArea 탭·사진 페이지 복귀는 별도 관련 시험에서 확인"
+  },
+  "designChange": {
+    "api043Direction": "optional forward/backward; default forward and previous cursors retained",
+    "reloadCursor": "backward optional frozen page boundary/snapshot; response order always ascending",
+    "cursorBinding": "same200characters, authenticated direction marker and same shop/consultation",
+    "expectedShop": "optional expected header checked before body read/access-log write; missing legacy calls retained"
+  },
+  "implementedProposal": "reinstated conditionally after final public checks and own main",
+  "native": "unverified; academy Aside CLI only",
+  "fixedFullSource": "c9659301f88330e27974300e4c8da4d047041cc2",
+  "freshFullPassed": true,
+  "newFullEvidence": "review-full-checks.json"
+}

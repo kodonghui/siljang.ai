@@ -76,6 +76,7 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     failLog = false,
     connect: DbConnector = () => isolated.connect(),
     settings: Record<string, unknown> = {},
+    headers: Record<string, string> = {},
   ) {
     const app = createApp({
       connect: failLog ? failingAccessInsert(connect) : connect,
@@ -92,7 +93,9 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     });
     return app.request(
       `${ORIGIN}/api/owner/consultations/${id}/messages${query}`,
-      { headers: { "x-test-owner": authenticated ? shop.ownerId : "", "CF-Connecting-IP": "203.0.113.77" } },
+      {
+        headers: { "x-test-owner": authenticated ? shop.ownerId : "", "CF-Connecting-IP": "203.0.113.77", ...headers },
+      },
       testEnv({ FILE_URL_KEY: fileUrlKey, ...settings }),
     );
   }
@@ -102,6 +105,25 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
     expectSchema("ConsultationMessagePage", body);
     return body as Page;
   }
+  it.each([newUuid(), "not-a-uuid"])(
+    "기대 가게%s가 세션과 다르면 본문 조회와 접속기록 쓰기 전에401이다",
+    async (expected) => {
+      const before = (await isolated.db.query("SELECT count(*)::int AS n FROM access_logs")).rows;
+      await expectProblem(
+        await call(
+          "",
+          shop.consultationId,
+          true,
+          false,
+          () => isolated.connect(),
+          {},
+          { "X-Expected-Shop-Id": expected },
+        ),
+        "unauthenticated",
+      );
+      expect((await isolated.db.query("SELECT count(*)::int AS n FROM access_logs")).rows).toEqual(before);
+    },
+  );
   it("전화·계좌는 복원하고 카드번호는 끝4자리·긴 숫자는 표시자만 보임", async () => {
     const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
     const values = await scoped.transaction(async (tx) =>
@@ -219,6 +241,30 @@ describeDb("사장님의 상담 대화 API-043(TASK-077)", () => {
       [ownOther, shop.shopId, shop.customerId, NOW],
     );
     await expectProblem(await call(`?cursor=${first.nextCursor}`, ownOther), "validation_failed");
+  });
+  it("뒤로 읽기는 최근20개를 시각 순으로 주고 옛 페이지와 사진 재조회 기준을 보존한다", async () => {
+    const ids = [shop.messageId, ...Array.from({ length: 29 }, newUuid)];
+    await isolated.db.query("UPDATE messages SET created_at=$2 WHERE id=$1", [shop.messageId, NOW]);
+    for (let index = 1; index < ids.length; index++)
+      await isolated.db.query(
+        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','text',$4,'skill_response',$5)",
+        [ids[index], shop.shopId, shop.consultationId, `합성 순서 ${index}`, new Date(NOW.getTime() + index * 1000)],
+      );
+    const first = await page(await call("?direction=backward&limit=20"));
+    expect(first.items.map((item) => item.messageId)).toEqual(ids.slice(10));
+    const anchor = (first as Page & { reloadCursor?: string }).reloadCursor;
+    expect(anchor).toHaveLength(200);
+    const older = await page(await call(`?direction=backward&limit=20&cursor=${first.nextCursor}`));
+    expect(older.items.map((item) => item.messageId)).toEqual(ids.slice(0, 10));
+    expect(older.nextCursor).toBeNull();
+    await isolated.db.query(
+      "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,'outbound','system','text','나중에 온 합성 답','skill_response',$3)",
+      [shop.shopId, shop.consultationId, new Date(NOW.getTime() + 60000)],
+    );
+    const same = await page(await call(`?direction=backward&limit=20&cursor=${anchor}`));
+    expect(same.items.map((item) => item.messageId)).toEqual(ids.slice(10));
+    expect((same as Page & { reloadCursor?: string }).reloadCursor).toBe(anchor);
+    await expectProblem(await call(`?direction=forward&cursor=${anchor}`), "validation_failed");
   });
   async function pendingNotice(at: Date) {
     const id = newUuid();

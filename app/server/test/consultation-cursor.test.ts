@@ -20,6 +20,20 @@ describe("상담 암호 커서(TASK-077)", () => {
   it("같은 위치라도 새 nonce로 봉투가 다름", async () => {
     expect(await seal()).not.toBe(await seal());
   });
+  it("뒤로 읽기 커서는 같은 길이/가게/상담에 묶이고 정방향에 재사용할 수 없다", async () => {
+    const backward = await sealConsultationCursor(fc, SHOP, CONSULTATION, position, snapshot, "backward");
+    expect(backward).toHaveLength(200);
+    expect(await openConsultationCursor(fc, SHOP, CONSULTATION, backward, "backward")).toEqual({
+      ...position,
+      snapshot,
+    });
+    await expect(openConsultationCursor(fc, SHOP, CONSULTATION, backward)).rejects.toBeInstanceOf(
+      ConsultationCursorError,
+    );
+    await expect(openConsultationCursor(fc, SHOP, CONSULTATION, await seal(), "backward")).rejects.toBeInstanceOf(
+      ConsultationCursorError,
+    );
+  });
   it("다른 가게와 다른 상담에서는 풀리지 않음", async () => {
     const token = await seal();
     await expect(openConsultationCursor(fc, crypto.randomUUID(), CONSULTATION, token)).rejects.toBeInstanceOf(

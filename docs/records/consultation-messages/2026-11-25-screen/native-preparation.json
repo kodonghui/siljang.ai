@@ -1,0 +1,22 @@
+{
+  "source": "c9659301f88330e27974300e4c8da4d047041cc2",
+  "cliExit": 0,
+  "primaryStates": 6,
+  "responseRows": 7,
+  "widthsPrepared": [
+    360,
+    1280
+  ],
+  "nodeFixtureTestsPassed": 55,
+  "browserRun": false,
+  "nativeTransfer": 0,
+  "pageCheck": "미확인",
+  "academy": "SSH 외부 실패 두 번 뒤 새 복구 근거 없음. 재시도/새 전송0",
+  "browserTool": "학원컴 Aside CLI만",
+  "lock": "기존 D4 독점/KOE 정지와 수신 지시·대기열·마지막 정지ACK를 먼저 확인",
+  "outsideServiceWrites": 0,
+  "providerCalls": 0,
+  "fixtureVersion": 3,
+  "publicReviewHead": "2c38204c4ab84b6f7efa5ea6b8d378f3565c076e",
+  "pageAnchor": "same cursor/window snapshot per page; no rendered browser evidence"
+}
