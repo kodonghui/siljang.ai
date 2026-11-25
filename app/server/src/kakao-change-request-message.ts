@@ -23,6 +23,18 @@ export type KakaoChangeRequestView =
   | { readonly state: "error"; readonly reason: "retry_needed" | "server_error" };
 export const CHANGE_REQUESTED_TEXT = "변경을 요청했어요. 사장님이 보고 알려 드려요";
 const DECLINED = "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요";
+const CHANGE_LABELS = [
+  "크기",
+  "맛",
+  "디자인",
+  "추가 사항",
+  "디자인 요청",
+  "문구",
+  "색",
+  "픽업 날짜",
+  "픽업 시간",
+  "픽업 방법",
+];
 type Output =
   | { readonly simpleText: { readonly text: string } }
   | {
@@ -80,7 +92,9 @@ export function kakaoChangeRequestMessage(view: KakaoChangeRequestView) {
       throw new RangeError("invalid change result");
     return body([simple(view.outcome === "change_requested" ? CHANGE_REQUESTED_TEXT : DECLINED)]);
   }
-  if (view.state === "permission")
+  if (view.state === "permission") {
+    if (view.reason !== "card_not_yours" && view.reason !== "not_accepting")
+      throw new RangeError("invalid change request permission");
     return body([
       simple(
         view.reason === "card_not_yours"
@@ -88,8 +102,12 @@ export function kakaoChangeRequestMessage(view: KakaoChangeRequestView) {
           : `아직 상담을 받지 않아요. 가게로 연락해 주세요: ${text(view.contactPhone, 40)}`,
       ),
     ]);
-  if (view.state === "error")
+  }
+  if (view.state === "error") {
+    if (view.reason !== "retry_needed" && view.reason !== "server_error")
+      throw new RangeError("invalid change request error");
     return body([simple(view.reason === "retry_needed" ? "다시 눌러 주세요" : "잠시 뒤 다시 말씀해 주세요")]);
+  }
   if ("currentStatus" in view)
     return body([
       simple(
@@ -120,6 +138,7 @@ export function kakaoChangeRequestMessage(view: KakaoChangeRequestView) {
         ? "시간이 지나 새 카드를 보내 드려요"
         : "";
   const changes = view.changes.map((change) => {
+    if (!CHANGE_LABELS.includes(change.label)) throw new RangeError("invalid change request field");
     const before = text(change.before, 1000, true);
     const after = text(change.after, 1000, true);
     if (before === after) throw new RangeError("unchanged change request field");
