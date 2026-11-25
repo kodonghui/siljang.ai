@@ -1,0 +1,63 @@
+
+ RUN  v5.1.0 /workspace/siljang-task109-confirmation-length/app/server
+
+ ❯ test/customer-notice-presentation.test.ts (15 tests | 2 failed) 3410ms
+   ❯ 저장된 손님 안내의 두 실제 수신 경로 표시 (15)
+     × event: 긴 확정 내용과 두 규정이 후속 안내를 막지 않는다 145ms
+     × message: 긴 확정 내용과 두 규정이 후속 안내를 막지 않는다 80ms
+ ❯ test/customer-notice-store.test.ts (5 tests | 2 failed) 1424ms
+   ❯ 손님 안내 생성(TASK-104) (5)
+     × 먼저 보내지 못하는 손님(not_friend)의 다음 메시지는 확정 안내를 현재 답보다 먼저 한 번만 전한다 181ms
+     × 먼저 보내지 못하는 손님(event_off)의 다음 메시지는 확정 안내를 현재 답보다 먼저 한 번만 전한다 125ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > event: 긴 확정 내용과 두 규정이 후속 안내를 막지 않는다
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > message: 긴 확정 내용과 두 규정이 후속 안내를 막지 않는다
+AssertionError: expected 121 to be greater than 1250
+ ❯ test/customer-notice-presentation.test.ts:248:41
+    246|         await isolated.db.query<{ body: string }>("SELECT body FROM no…
+    247|       ).rows[0]?.body;
+    248|       expect([...(saved ?? "")].length).toBeGreaterThan(1250);
+       |                                         ^
+    249|       const first = await call(mode, confirmed.id);
+    250|       expect(first.status).toBe(200);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/customer-notice-store.test.ts > 손님 안내 생성(TASK-104) > 먼저 보내지 못하는 손님(not_friend)의 다음 메시지는 확정 안내를 현재 답보다 먼저 한 번만 전한다
+ FAIL  test/customer-notice-store.test.ts > 손님 안내 생성(TASK-104) > 먼저 보내지 못하는 손님(event_off)의 다음 메시지는 확정 안내를 현재 답보다 먼저 한 번만 전한다
+AssertionError: expected { Object (simpleText) } to deeply equal { Object (simpleText) }
+
+- Expected
++ Received
+
+@@ -5,8 +5,11 @@
+  결제가 확인된 금액 35,000원
+  픽업 2027-01-04 15:00
+  상호 합성 확정 안내 가게
+  대표자 시험사장
+  사업장 주소 서울 시험로 1
+- 전화번호 010-1234-5678",
++ 전화번호 010-1234-5678
++ 주문 내용
++ 크기 1호
++ 맛 생크림",
+    },
+  }
+
+ ❯ test/customer-notice-store.test.ts:163:41
+    161|       const first = (await (await call("확정 안내 뒤의 합성 첫 질문")).json()) as…
+    162|       expectSchema("SkillTemplateResponse", first);
+    163|       expect(first.template.outputs[0]).toEqual({ simpleText: { text: …
+       |                                         ^
+    164|       expect(first.template.outputs.length).toBeGreaterThan(1);
+    165|       expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  2 failed | 2 passed (4)
+      Tests  4 failed | 43 passed (47)
+   Start at  22:15:47
+   Duration  10.46s (tests 52%, import 42%, transform 6%)

@@ -151,7 +151,7 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
       ]);
     await isolated.db.query(
       "UPDATE shops SET business_name=$2,representative_name=$3,business_address=$4 WHERE id=$1",
-      [shop.shopId, "합성" + "가".repeat(58), "합성" + "나".repeat(28), "다".repeat(200)],
+      [shop.shopId, `합성${"가".repeat(58)}`, `합성${"나".repeat(28)}`, "다".repeat(200)],
     );
     await isolated.db.query(
       "UPDATE order_details SET design_notes=$2,lettering=$3,colors=$4 WHERE order_id=$1 AND version=1",
@@ -245,7 +245,9 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
       const saved = (
         await isolated.db.query<{ body: string }>("SELECT body FROM notifications WHERE id=$1", [confirmed.id])
       ).rows[0]?.body;
-      expect([...(saved ?? "")].length).toBeGreaterThan(1250);
+      expect([...(saved ?? "")].length).toBeLessThanOrEqual(2000);
+      expect(saved).toContain("주문이 확정됐어요");
+      expect(saved).not.toContain("가".repeat(500));
       const first = await call(mode, confirmed.id);
       expect(first.status).toBe(200);
       const body = await first.json();
