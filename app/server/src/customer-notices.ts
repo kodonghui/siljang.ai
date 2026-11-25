@@ -53,6 +53,10 @@ interface NoticeRow {
   personal_data_purged_at: Date | null;
   payment_status: string | null;
   payment_cap: Date | null;
+  pickup_at: Date | null;
+  pickup_day: string | null;
+  remake_of_order_id: string | null;
+  had_issue: boolean;
 }
 interface Prepared {
   mode: "send" | "check";
@@ -85,8 +89,17 @@ function meaningless(row: NoticeRow, now: Date) {
     (row.kind === "order_confirmed" && !["confirmed", "received", "no_pickup"].includes(row.order_status ?? "")) ||
     (row.kind === "payment_request" &&
       (row.payment_status !== "open" || row.payment_cap === null || row.payment_cap <= now)) ||
-    (row.kind === "day_before" && row.order_status !== "confirmed") ||
-    (row.kind === "review_request" && row.order_status !== "received")
+    (row.kind === "day_before" &&
+      (row.order_status !== "confirmed" ||
+        row.scheduled_for === null ||
+        row.pickup_at === null ||
+        row.pickup_at <= now ||
+        row.pickup_day !== shiftDate(toShopLocal(row.scheduled_for, row.time_zone).date, 1))) ||
+    (row.kind === "review_request" &&
+      (row.order_status !== "received" ||
+        row.scheduled_for === null ||
+        row.remake_of_order_id !== null ||
+        row.had_issue))
   );
 }
 export function createCustomerNoticeHandler(options: CustomerNoticeOptions): LeasedHandler<Prepared, Observed> {
@@ -99,7 +112,8 @@ export function createCustomerNoticeHandler(options: CustomerNoticeOptions): Lea
           `SELECT n.id,n.customer_id,n.kind,n.status,n.attempts,n.next_attempt_at,n.scheduled_for,n.kakao_task_id,n.requested_at,n.delivery_checked_at,
           ch.id AS channel_id,ch.bot_id,u.kakao_user_key AS user_key,u.channel_friend,ch.status AS channel_status,ch.event_status,ch.event_checked_at,
           s.time_zone,c.status AS consultation_status,n.order_id,o.status AS order_status,o.customer_id AS order_customer_id,o.personal_data_purged_at,
-          p.status AS payment_status,p.due_cap_at AS payment_cap
+          p.status AS payment_status,p.due_cap_at AS payment_cap,o.pickup_at,o.pickup_day::text,o.remake_of_order_id,
+          EXISTS(SELECT 1 FROM issue_reports reported WHERE reported.shop_id=$1 AND reported.order_id=o.id) AS had_issue
           FROM notifications n JOIN customers u ON u.shop_id=$1 AND u.id=n.customer_id
           JOIN consultations c ON c.shop_id=$1 AND c.id=n.consultation_id AND c.customer_id=u.id
           JOIN kakao_channels ch ON ch.shop_id=$1 AND ch.id=u.kakao_channel_id JOIN shops s ON s.id=$1

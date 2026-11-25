@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { sealAccountNumber } from "../src/account-number";
 import { createApp } from "../src/app";
+import { createPaymentRequestNotice } from "../src/customer-notice-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
@@ -25,10 +27,10 @@ describeDb("손님 안내 스킬 API-073(TASK-104)", () => {
   afterAll(async () => {
     await isolated?.close();
   });
-  const call = (id: string, userId = shop.userKey) =>
+  const call = (id: string, userId = shop.userKey, fields = true) =>
     createApp({
       connect: () => isolated.connect(),
-      services: { now: () => NOW, fieldCrypto: fc },
+      services: { now: () => NOW, ...(fields ? { fieldCrypto: fc } : {}) },
       logSink: () => {},
     }).request(
       "/api/kakao/skills/event",
@@ -124,6 +126,48 @@ describeDb("손님 안내 스킬 API-073(TASK-104)", () => {
       { status: "deferred", sent_at: null },
     ]);
   });
+  it.each(["expired", "closed", "amount_card_missing"] as const)(
+    "사용하지 못하는 결제 안내(%s)는 암호화 키 없이 계좌를 숨긴다",
+    async (reason) => {
+      const cap = new Date(NOW.getTime() + 24 * 3600000);
+      await isolated.db.query(
+        "UPDATE payment_requests SET delivered_at=NULL,issued_at=$2,due_at=$3,due_cap_at=$3 WHERE id=$1",
+        [shop.paymentRequestId, new Date(NOW.getTime() - 3600000), cap],
+      );
+      const source = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "customer_notice" }), isolated.db);
+      const notice = await source.transaction((db) => createPaymentRequestNotice(db, shop.paymentRequestId, NOW));
+      expect(notice?.created).toBe(true);
+      if (reason === "expired")
+        await isolated.db.query("UPDATE payment_requests SET due_at=$2,due_cap_at=$2 WHERE id=$1", [
+          shop.paymentRequestId,
+          new Date(NOW.getTime() - 1),
+        ]);
+      if (reason === "closed")
+        await isolated.db.query(
+          "UPDATE payment_requests SET status='closed',closed_at=$2,close_reason='superseded' WHERE id=$1",
+          [shop.paymentRequestId, NOW],
+        );
+      if (reason === "amount_card_missing")
+        await isolated.db.query(
+          "UPDATE payment_requests SET needs_amount_confirm=true,requested_amount=30000 WHERE id=$1",
+          [shop.paymentRequestId],
+        );
+      const response = await call(notice?.id ?? "", shop.userKey, false);
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expectSchema("SkillTemplateResponse", body);
+      const text = JSON.stringify(body);
+      expect(text).not.toContain("계좌번호");
+      expect(text).not.toContain("예금주");
+      expect(text).toContain(
+        reason === "expired" ? "결제 기한이 지나 사장님이 확인하고 있어요" : "지금은 이 결제 안내를 사용할 수 없어요",
+      );
+      expect(
+        (await isolated.db.query("SELECT delivered_at FROM payment_requests WHERE id=$1", [shop.paymentRequestId]))
+          .rows,
+      ).toEqual([{ delivered_at: null }]);
+    },
+  );
   it.each([12, 6])(
     "자기 결제 안내의 옛 계좌와 운영규정%s시간을 보이며 스킬 읽기만으로 결제 시계를 시작하지 않는다",
     async (hours) => {

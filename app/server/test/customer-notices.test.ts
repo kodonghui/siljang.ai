@@ -291,6 +291,73 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
     await run(() => events, true);
     expect(events.requestNotice).toHaveBeenCalledTimes(1);
   });
+  it.each(["day_changed", "closed_issue", "remake", "review_ok"] as const)(
+    "예약 안내는 현재 주문의 의미(%s)를 다시 확인한다",
+    async (kind) => {
+      const paid = newUuid();
+      await isolated.db.transaction(async (tx) => {
+        await tx.query(
+          "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2 WHERE id=$1",
+          [shop.paymentRequestId, NOW],
+        );
+        await tx.query(
+          "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+          [paid, shop.shopId, shop.orderId, shop.paymentRequestId, NOW],
+        );
+        await tx.query("UPDATE orders SET status=$2,confirmed_at=$3,confirmed_payment_id=$4 WHERE id=$1", [
+          shop.orderId,
+          kind === "day_changed" ? "confirmed" : "received",
+          NOW,
+          paid,
+        ]);
+        if (kind !== "day_changed")
+          await tx.query(
+            "INSERT INTO productions(shop_id,order_id,handed_over_at,handover_kind) VALUES($1,$2,$3,'pickup')",
+            [shop.shopId, shop.orderId, NOW],
+          );
+        await tx.query("UPDATE notifications SET kind=$2,order_id=$3,scheduled_for=$4 WHERE id=$1", [
+          id,
+          kind === "day_changed" ? "day_before" : "review_request",
+          shop.orderId,
+          NOW,
+        ]);
+      });
+      if (kind === "closed_issue") {
+        const detail = newUuid();
+        await isolated.db.query(
+          "INSERT INTO issue_details(id,shop_id,consultation_id,order_id,description,status) VALUES($1,$2,$3,$4,'합성 문제 신고','reported')",
+          [detail, shop.shopId, shop.consultationId, shop.orderId],
+        );
+        await isolated.db.query(
+          "INSERT INTO issue_reports(shop_id,order_id,issue_details_id,late,reported_by,status,compensation,decided_at,closed_at,problem_kind) VALUES($1,$2,$3,false,'owner_from_handoff','closed','none',$4,$4,'other')",
+          [shop.shopId, shop.orderId, detail, NOW],
+        );
+      }
+      if (kind === "remake") {
+        const remake = newUuid();
+        await isolated.db.transaction(async (tx) => {
+          await tx.query(
+            `INSERT INTO orders(id,shop_id,order_no,customer_id,consultation_id,kind,status,version,price_list_id,operating_rules_id,pickup_at,pickup_day,amount,remake_of_order_id,confirmed_at)
+          SELECT $2,shop_id,$3,customer_id,consultation_id,'standard','received',1,price_list_id,operating_rules_id,pickup_at,pickup_day,0,id,$4 FROM orders WHERE id=$1`,
+            [shop.orderId, remake, remake.replaceAll("-", "").slice(0, 8).toUpperCase(), NOW],
+          );
+          await tx.query(
+            `INSERT INTO order_details(shop_id,order_id,version,source,price_list_id,pickup_at,allergy_consent,allergy_consent_version,allergy_consent_at,amount)
+          SELECT shop_id,$2,1,'remake',price_list_id,pickup_at,allergy_consent,allergy_consent_version,allergy_consent_at,0 FROM order_details WHERE order_id=$1 AND version=1`,
+            [shop.orderId, remake],
+          );
+          await tx.query("UPDATE notifications SET order_id=$2 WHERE id=$1", [id, remake]);
+          await tx.query(
+            "INSERT INTO productions(shop_id,order_id,handed_over_at,handover_kind) VALUES($1,$2,$3,'pickup')",
+            [shop.shopId, remake, NOW],
+          );
+        });
+      }
+      await run(() => events, true);
+      expect((await state())?.status).toBe(kind === "review_ok" ? "confirming" : "dropped");
+      expect(events.requestNotice).toHaveBeenCalledTimes(kind === "review_ok" ? 1 : 0);
+    },
+  );
   it("다른 실행기가 임대를 바꾼 뒤 옛 결과는 새 상태를 덮어쓰지 않는다", async () => {
     const handler = createCustomerNoticeHandler({ enabled: true, events: () => events, now: () => now }),
       scope = createShopScope(shop.shopId, { kind: "job", job: "customer_notice" });
