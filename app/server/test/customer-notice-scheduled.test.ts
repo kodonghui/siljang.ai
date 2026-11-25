@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
+import { rescheduleCalendarNotices } from "../src/calendar-notices";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
@@ -27,7 +29,7 @@ describeDb("예약 안내의 스킬 읽기와 다음 대화 전달", () => {
   const cases = ["day_before", "review_request"] as const;
   for (const kind of cases)
     for (const mode of ["event", "message"] as const)
-      it.each(["valid", "future", "outside", "stale"] as const)(
+      it.each(["valid", "future", "outside", "stale", "rescheduled"] as const)(
         `${kind}/${mode}: %s의 의미와 보낼 시간을 다시 확인한다`,
         async (condition) => {
           const id = newUuid(),
@@ -37,7 +39,9 @@ describeDb("예약 안내의 스킬 읽기와 다음 대화 전달", () => {
               ? new Date("2026-11-25T12:00:00Z")
               : condition === "stale" && kind === "day_before"
                 ? new Date("2026-11-26T00:00:00Z")
-                : NOW;
+                : condition === "rescheduled"
+                  ? new Date(NOW.getTime() + 3600000)
+                  : NOW;
           await isolated.db.transaction(async (tx) => {
             await tx.query(
               "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2 WHERE id=$1",
@@ -64,7 +68,7 @@ describeDb("예약 안내의 스킬 읽기와 다음 대화 전달", () => {
             if (kind === "review_request" && condition !== "stale")
               await tx.query(
                 "INSERT INTO productions(shop_id,order_id,handed_over_at,handover_kind) VALUES($1,$2,$3,'pickup')",
-                [shop.shopId, shop.orderId, NOW],
+                [shop.shopId, shop.orderId, condition === "rescheduled" ? new Date(NOW.getTime() - 86400000) : NOW],
               );
             await tx.query(
               "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status,scheduled_for,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$6,$8,'deferred',$9,$10)",
@@ -82,6 +86,26 @@ describeDb("예약 안내의 스킬 읽기와 다음 대화 전달", () => {
               ],
             );
           });
+          if (condition === "rescheduled") {
+            await shopRequestDb(
+              createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }),
+              isolated.db,
+            ).transaction((tx) =>
+              rescheduleCalendarNotices(
+                tx,
+                "Asia/Seoul",
+                { dayBefore: "09:00", review: "09:00" },
+                { dayBefore: "18:00", review: "18:00" },
+              ),
+            );
+            expect(
+              (await isolated.db.query("SELECT scheduled_for,next_attempt_at FROM notifications WHERE id=$1", [id]))
+                .rows[0],
+            ).toEqual({
+              scheduled_for: new Date("2026-11-25T09:00:00Z"),
+              next_attempt_at: null,
+            });
+          }
           const app = createApp({ connect: () => isolated.connect(), services: { now: () => now }, logSink: () => {} });
           const response = await app.request(
             `/api/kakao/skills/${mode}`,

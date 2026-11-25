@@ -38,6 +38,56 @@ describeDb("업무가 남긴 안내 본문의 공통 전달", () => {
   afterAll(async () => {
     await isolated?.close();
   });
+  it.each(["   ", "\t\n\r", "\u00a0\u3000\ufeff"])(
+    "공백만 든 안내 두 건 %j 뒤의 정상 안내는 막히지 않음",
+    async (blank) => {
+      const ids = [newUuid(), newUuid(), newUuid()];
+      for (let index = 0; index < ids.length; index++)
+        await isolated.db.query(
+          "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$6,$8,'deferred',$9)",
+          [
+            ids[index],
+            shop.shopId,
+            shop.customerId,
+            shop.consultationId,
+            shop.orderId,
+            index === 2 ? "refund" : "cancelled",
+            `notice:blank:${ids[index]}`,
+            index === 2 ? BODY : blank,
+            new Date(NOW.getTime() - 3000 + index * 1000),
+          ],
+        );
+      const app = createApp({ connect: () => isolated.connect(), services: { now: () => NOW }, logSink: () => {} });
+      const response = await app.request(
+        "/api/kakao/skills/message",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+          body: JSON.stringify({
+            bot: { id: shop.botId },
+            userRequest: {
+              utterance: "합성 공백 안내 뒤 질문",
+              block: { id: "conversation" },
+              user: { id: shop.userKey, type: "botUserKey" },
+            },
+            action: { id: "synthetic-blank-notice", params: {} },
+          }),
+        },
+        testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() }),
+      );
+      expect(JSON.stringify(await response.json())).toContain(BODY);
+      const rows = (
+        await isolated.db.query("SELECT id,status,body,sent_at FROM notifications WHERE id=ANY($1::uuid[])", [ids])
+      ).rows;
+      for (let index = 0; index < ids.length; index++)
+        expect(rows.find((row) => row.id === ids[index])).toEqual({
+          id: ids[index],
+          status: index === 2 ? "delivered_on_reply" : "dropped",
+          body: index === 2 ? BODY : blank,
+          sent_at: index === 2 ? NOW : null,
+        });
+    },
+  );
   for (const mode of ["event", "message"] as const)
     it.each(plain)(`${mode}: 업무가 저장한 %s 본문을 자기 손님에게 전한다`, async (kind) => {
       const id = newUuid();

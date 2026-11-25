@@ -1,5 +1,9 @@
 import { type ConfirmCardView, readConfirmCardDelivery } from "./confirm-card-store";
-import { customerNoticeContents, READABLE_CUSTOMER_NOTICE_KINDS } from "./customer-notice-content";
+import {
+  CUSTOMER_NOTICE_WHITESPACE,
+  customerNoticeContents,
+  READABLE_CUSTOMER_NOTICE_KINDS,
+} from "./customer-notice-content";
 import { scheduledNoticeMeaningSql, scheduledNoticeReadySql } from "./customer-notice-lifecycle";
 import { recordPaymentNoticeDelivery } from "./customer-notice-store";
 import type { FieldCrypto } from "./field-crypto";
@@ -106,6 +110,13 @@ export async function deferredKakaoMessages(
         AND NOT EXISTS(SELECT 1 FROM orders o WHERE o.shop_id=$1 AND o.id=n.order_id
           AND o.personal_data_purged_at IS NULL AND ${scheduledNoticeMeaningSql(3)})`,
     [customerId, options.now ?? new Date()],
+  );
+  // 표시할 본문이 없는 일반 안내는 닫는다. 결제 안내는 표시 자료를 따로 읽으므로 본문으로 판단하지 않는다.
+  await db.run(
+    `UPDATE notifications SET status='dropped',next_attempt_at=NULL
+      WHERE shop_id=$1 AND customer_id=$2 AND status='deferred' AND sent_at IS NULL
+        AND kind=ANY($3::text[]) AND kind<>'payment_request' AND btrim(body,$4::text)=''`,
+    [customerId, READABLE_CUSTOMER_NOTICE_KINDS, CUSTOMER_NOTICE_WHITESPACE],
   );
   const notices = await db.run<{ id: string; body: string; kind: string; created_order: string }>(
     `SELECT n.id, n.body,n.kind, (extract(epoch FROM n.created_at) * 1000000)::bigint::text AS created_order FROM notifications n
