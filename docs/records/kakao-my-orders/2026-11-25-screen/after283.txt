@@ -1,0 +1,16 @@
+
+> test
+> vitest run test/kakao-my-order-content.test.ts test/kakao-my-order-message.test.ts test/kakao-my-order-contract.test.ts test/kakao-payment-content.test.ts test/kakao-consultation-message.test.ts test/kakao-payment-claim-message.test.ts test/kakao-payment-claim-contract.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task108-my-orders/app/server
+
+
+ Test Files  7 passed (7)
+      Tests  67 passed (67)
+   Start at  15:36:10
+   Duration  6.26s (import 83%, tests 10%, transform 6%)
+
+     Import  61 modules were evaluated 102 times · 4.55s total, 83% of tracked time
+             ~1.83s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

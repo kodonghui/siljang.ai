@@ -1,0 +1,69 @@
+{
+  "sourceCommit": "c5a6839c39b09559b64d4a78e9b78abb48936402",
+  "sourceTree": "13ac498c3f1363854cc1f652963a0d062476a4ee",
+  "publicEquivalentHead": "2b3da066f6a9022228fa5b414415ad5e014e59ff",
+  "baseMain": "5895ef90978574ae4e7dc3f00a45da5ee401406d",
+  "scopeGitObjects": {
+    "app/server": "b6f284c3609f182595b48edc864068d25d599240",
+    "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "de0aa79b81685e087cd5b232401724d38dd776cd",
+    "tools/staging-login-callback-grants.sql": "f85114567c755a1f49e3015532da1c3336b3911b",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 41,
+  "combinedNpmTestExit": 0,
+  "server": {
+    "files": 161,
+    "passed": 3080
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "buildExit": 0,
+  "freshState": "completed",
+  "freshDatabaseRemaining": 0,
+  "nodePassed": 55,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "ci": {
+    "head": "2b3da066f6a9022228fa5b414415ad5e014e59ff",
+    "appRun": 45651509310,
+    "dbRun": 45651509238,
+    "appJobs": [
+      {
+        "id": 139336950256,
+        "name": "Windows PowerShell 평가 인증(모의)",
+        "conclusion": "success"
+      },
+      {
+        "id": 139336950579,
+        "name": "check",
+        "conclusion": "success"
+      },
+      {
+        "id": 139338581009,
+        "name": "스테이징 배포",
+        "conclusion": "skipped"
+      }
+    ],
+    "dbJobs": [
+      {
+        "id": 139336949304,
+        "name": "PostgreSQL 16.15",
+        "conclusion": "success"
+      },
+      {
+        "id": 139336949605,
+        "name": "PostgreSQL 17.11",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "browserExecuted": false,
+  "realKakao": false,
+  "modelCallsAdded": 0,
+  "npmCi": "동일 lock의 로컬 설치를 재사용. 같은 공개 원본의 CI 새 설치/전체/빌드 성공은 실제 잡 로그로 별도 확인함"
+}
