@@ -1,15 +1,19 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { createPaymentRequestNotice } from "../src/customer-notice-store";
+import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
+import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const NOW = new Date("2026-11-26T00:00:00Z");
+const FIELD_KEY = newFieldKey();
 describeDb("저장된 차액의 새 금액 확인 표시(TASK-106)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture, key: string;
   beforeAll(async () => {
@@ -29,6 +33,8 @@ describeDb("저장된 차액의 새 금액 확인 표시(TASK-106)", () => {
     ["message", "short"],
     ["event", "long"],
     ["message", "long"],
+    ["callback", "short"],
+    ["callback", "long"],
   ] as const)("실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(%s/%s)", async (mode, length) => {
     const changeId = newUuid(),
       changeCard = newUuid(),
@@ -118,29 +124,57 @@ describeDb("저장된 차액의 새 금액 확인 표시(TASK-106)", () => {
     await isolated.db.query("UPDATE notifications SET status='deferred' WHERE id=$1", [notice.id]);
     const network = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("합성 표시 시험에서 실제 발신 금지"));
     try {
+      const jobs: KakaoCallbackJob[] = [];
+      const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: FIELD_KEY });
       const response = await createApp({
         connect: () => isolated.connect(),
-        services: { now: () => NOW },
+        services: {
+          now: () => NOW,
+          kakaoCallbackQueue: {
+            send: async (job) => {
+              jobs.push(job);
+            },
+          },
+        },
         logSink: () => {},
       }).request(
-        `/api/kakao/skills/${mode}`,
+        `/api/kakao/skills/${mode === "callback" ? "message" : mode}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
           body: JSON.stringify({
             bot: { id: shop.botId },
             userRequest: {
-              utterance: mode === "message" ? "합성 차액 안내 확인" : "",
+              utterance: mode !== "event" ? "합성 차액 안내 확인" : "",
+              ...(mode === "callback"
+                ? { callbackUrl: "https://bot-api.kakao.com/v1/callback/synthetic_difference" }
+                : {}),
               params: mode === "event" ? { noticeKey: notice.id } : {},
+              block: { id: "conversation" },
               user: { id: shop.userKey, type: "botUserKey" },
             },
             action: { id: "synthetic-difference-display", params: {} },
           }),
         },
-        testEnv(),
+        env,
       );
       expect(response.status).toBe(200);
-      const body = await response.json();
+      let body = await response.json();
+      if (mode === "callback") {
+        const send = vi.fn<typeof fetch>(async (_url, init) => {
+          body = JSON.parse(String(init?.body));
+          return Response.json({ status: "SUCCESS" });
+        });
+        expect(jobs).toHaveLength(1);
+        expect(
+          await consumeKakaoCallback(jobs[0], env, {
+            connect: () => isolated.connect(),
+            now: () => new Date(NOW.getTime() + 1000),
+            fetch: send,
+          }),
+        ).toBe("done");
+        expect(send).toHaveBeenCalledTimes(1);
+      }
       expectSchema("SkillTemplateResponse", body);
       const shown = JSON.stringify(body);
       const renderedText = (
