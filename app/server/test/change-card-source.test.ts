@@ -232,6 +232,63 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
       ).toBe(0);
     },
   );
+  it.each((["message", "card"] as const).flatMap((mode) => ["\r\n", "\r"].map((newline) => [mode, newline] as const)))(
+    "디자인 설명의 유효한 줄바꿈을 실제 표시/갱신에서 보존한다(%s/%j)",
+    async (mode, newline) => {
+      const before = `합성 기존 첫 줄${newline}기존 둘째 줄`,
+        after = `합성 바꾼 첫 줄${newline}바꾼 둘째 줄`;
+      await isolated.db.query("UPDATE order_details SET design_notes=$2 WHERE order_id=$1 AND version=1", [
+        shop.orderId,
+        before,
+      ]);
+      const source = newUuid(),
+        card = await show(source, { designNotes: after });
+      if (mode === "message")
+        await isolated.db.query(
+          "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'변경 요청','deferred',$5)",
+          [newUuid(), shop.shopId, shop.consultationId, source, NOW],
+        );
+      else clock = new Date(NOW.getTime() + 1800000);
+      const response = await request(mode, card.cardKey),
+        body = await response.json();
+      expect(response.status).toBe(200);
+      expectSchema("SkillTemplateResponse", body);
+      const rendered = JSON.stringify(body);
+      expect(rendered).toContain("합성 기존 첫 줄\\n기존 둘째 줄");
+      expect(rendered).toContain("합성 바꾼 첫 줄\\n바꾼 둘째 줄");
+      expect(rendered).not.toContain("\\r");
+      expect(execute).not.toHaveBeenCalled();
+      expect(
+        (
+          await isolated.db.query(
+            "SELECT payload->'proposedChanges'->>'designNotes' AS value FROM confirm_cards WHERE card_key=$1",
+            [card.cardKey],
+          )
+        ).rows[0]?.value,
+      ).toBe(after);
+    },
+  );
+  it("줄바꿈 형식만 다른 같은 제안으로 빈 변경 카드를 만들지 않는다", async () => {
+    await isolated.db.query(
+      "UPDATE order_details SET design_notes='합성 첫 줄'||chr(13)||chr(10)||'둘째 줄' WHERE order_id=$1 AND version=1",
+      [shop.orderId],
+    );
+    const prepared = await scoped().transaction((tx) =>
+      prepareConfirmCardInTransaction(tx, {
+        customerId: shop.customerId,
+        consultationId: shop.consultationId,
+        kind: "change_request",
+        orderId: shop.orderId,
+        proposedChanges: { designNotes: "합성 첫 줄\n둘째 줄" },
+        now: NOW,
+      }),
+    );
+    expect(prepared).toHaveProperty("unavailable", true);
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows[0]
+        ?.n,
+    ).toBe(0);
+  });
   it("다른 가게 주문은 표시 원본으로 사용할 수 없다", async () => {
     const other = await createShop(isolated.db, "합성 외부 변경 원본 가게");
     await expect(

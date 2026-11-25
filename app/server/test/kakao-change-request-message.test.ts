@@ -10,6 +10,18 @@ const normal = {
   cardKey: changeRequestCard.cardKey,
   blockId: changeRequestCard.blockId,
 } as const;
+it.each(["\r\n", "\r"])("여러 줄 디자인 설명의 줄바꿈을 정규화해 표시한다(%j)", (newline) => {
+  const changes = [
+    { label: "디자인 설명", before: `합성 앞줄${newline}합성 뒷줄`, after: `합성 새 앞줄${newline}합성 새 뒷줄` },
+  ];
+  const original = JSON.stringify(changes),
+    body = kakaoChangeRequestMessage({ ...normal, changes });
+  expectSchema("SkillTemplateResponse", body);
+  expect(JSON.stringify(body)).toContain("합성 앞줄\\n합성 뒷줄");
+  expect(JSON.stringify(body)).toContain("합성 새 앞줄\\n합성 새 뒷줄");
+  expect(JSON.stringify(body)).not.toContain("\\r");
+  expect(JSON.stringify(changes)).toBe(original);
+});
 
 it.each(["normal", "stale", "expired"] as const)(
   "변경 카드의 정해진 제목·두 행동·한도와 갱신 안내를 보인다(%s)",
