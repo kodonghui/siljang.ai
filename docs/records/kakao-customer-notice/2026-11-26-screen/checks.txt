@@ -13,3 +13,24 @@
 작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 36개
 검사 18개 · 오류 0
 Checked 604 files in 830ms. No fixes applied.
+
+최종 전체/빌드 원본 34bb2258f9e01e4359cdd886e04fe811bb0ec266 · 공개 같은 트리 3d3ecbe716fc09ddd7bee5f7653a4faa29182d8b
+ Test Files  164 passed (164)
+      Tests  3101 passed (3101)
+   Duration  279.28s (tests 66%, import 33%)
+ Test Files  73 passed (73)
+      Tests  1775 passed (1775)
+   Duration  44.98s (tests 52%, import 35%, environment 7%, transform 5%)
+✓ built in 646ms
+check-dist: 통과(파일 735개, 견본 없음, 첫 CSS 44KB에 토큰·공통 부품, 글꼴 CSS 301KB는 따로)
+Total Upload: 5523.65 KiB / gzip: 1018.45 KiB
+Total Upload: 21.08 KiB / gzip: 6.55 KiB
+# tests 56
+# pass 56
+# fail 0
+# skipped 0
+# duration_ms 18951.784073
+ Test Files  4 passed (4)
+      Tests  55 passed (55)
+   Duration  8.98s (tests 55%, import 42%, transform 4%)
+Checked 604 files in 900ms. No fixes applied.
