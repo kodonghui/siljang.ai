@@ -1,0 +1,46 @@
+{
+  "scope": "현재 main262 통합의 결제 수단 관련/생성 응답 검사. 실제 금융기관/브라우저가 아님",
+  "source": "af909cff1cdb630f8cfd4b3124dbe20933b847fe",
+  "parentMain": "b801aa9af1d29681c6cf1d65beccb04dfa218506",
+  "newLocalNpmCi": false,
+  "dependencies": "같은 lock의 기존 설치를 읽기 전용 재사용",
+  "results": {
+    "node": {
+      "path": "/tmp/siljang-task053-after262-node-20261124.log",
+      "exitCode": 0,
+      "lines": [
+        "# tests 23",
+        "# pass 23",
+        "# fail 0"
+      ]
+    },
+    "related": {
+      "path": "/tmp/siljang-task053-after262-related-20261124.log",
+      "exitCode": 0,
+      "lines": [
+        " Test Files  3 passed (3)",
+        "      Tests  73 passed (73)"
+      ]
+    },
+    "type": {
+      "path": "/tmp/siljang-task053-after262-type-20261124.log",
+      "exitCode": 0,
+      "lines": []
+    },
+    "build": {
+      "path": "/tmp/siljang-task053-after262-build-recovery-20261124.log",
+      "exitCode": 0,
+      "lines": [
+        "✓ built in 763ms",
+        "> wrangler deploy --dry-run --outdir dist && wrangler deploy --dry-run --config wrangler.storage-batches.jsonc --outdir dist/storage-batches",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "browserRun": false,
+  "outsideServices": 0,
+  "buildRecovery": "환경 전환 뒤 세션 ID가 사라져 마지막 빌드만 다시 실행하고 종료0을 별도 상태 파일로 확인. 앞선 Node23개/웹73개의 통과 줄을 보존함"
+}
