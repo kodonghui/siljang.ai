@@ -1,0 +1,23 @@
+{
+  "sourceCommit": "138c0868ff3ec61a8bc9c2e5954889b8a1dc94ef",
+  "state": {
+    "source_commit": "138c0868ff3ec61a8bc9c2e5954889b8a1dc94ef",
+    "stage": "completed"
+  },
+  "migrations": 40,
+  "server": {
+    "files": 142,
+    "passed": 2807
+  },
+  "web": {
+    "files": 71,
+    "passed": 1727
+  },
+  "testsExit": 0,
+  "buildExit": 0,
+  "vite": "755ms",
+  "appWorker": "5433.61 KiB / gzip: 998.13 KiB",
+  "storageWorker": "21.08 KiB / gzip: 6.55 KiB",
+  "localInstall": "same-lock reused; no new local npm ci",
+  "native": "unverified"
+}
