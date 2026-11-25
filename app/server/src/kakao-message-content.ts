@@ -98,6 +98,24 @@ export function expandKakaoMessageContents(contents: readonly KakaoMessageConten
     return kakaoOrderRequestContents({ card: content, ...content.orderRequest });
   });
 }
+/** 같은 금액 카드의 같은 출력만 합친다. 다른 카드·글·여러 부분의 원문은 그대로 남긴다. */
+export function mergeKakaoAmountConfirmations(
+  previous: readonly KakaoMessageContent[],
+  current: readonly KakaoMessageContent[],
+): KakaoMessageContent[] {
+  const seen = new Set<string>();
+  return expandKakaoMessageContents([...previous, ...current]).filter((content) => {
+    if (typeof content === "string" || content.kind !== "payment_notice" || content.view.state !== "amount-confirm")
+      return true;
+    const part = content.part ?? 0;
+    const output = kakaoPaymentMessage(content.view).template.outputs[part];
+    if (output === undefined) throw new RangeError("missing amount confirmation output");
+    const identity = JSON.stringify([content.view.cardKey, part, output]);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+}
 export function kakaoMessageOutputs(contents: readonly KakaoMessageContent[]): KakaoMessageOutput[] {
   const expanded = expandKakaoMessageContents(contents);
   if (expanded.length > 3) throw new RangeError("too many Kakao outputs");
