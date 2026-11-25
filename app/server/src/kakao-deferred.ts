@@ -3,6 +3,7 @@ import {
   CUSTOMER_NOTICE_WHITESPACE,
   CustomerNoticeTemporarilyUnavailable,
   customerNoticeContents,
+  DIFFERENCE_NOTICE_SELECT_SQL,
   READABLE_CUSTOMER_NOTICE_KINDS,
 } from "./customer-notice-content";
 import { scheduledNoticeMeaningSql, scheduledNoticeReadySql } from "./customer-notice-lifecycle";
@@ -124,6 +125,7 @@ export async function deferredKakaoBatch(
         AND kind=ANY($3::text[]) AND kind<>'payment_request' AND btrim(body,$4::text)=''`,
     [customerId, READABLE_CUSTOMER_NOTICE_KINDS, CUSTOMER_NOTICE_WHITESPACE],
   );
+  // 새 열이 필요한 유효한 차액만 뒤로 두어 정상 안내의 셋째 행까지 읽는다.
   const notices = await db.run<{ id: string; body: string; kind: string; created_order: string }>(
     `SELECT n.id, n.body,n.kind, (extract(epoch FROM n.created_at) * 1000000)::bigint::text AS created_order FROM notifications n
       JOIN consultations c ON c.shop_id=$1 AND c.id=n.consultation_id AND c.customer_id=n.customer_id
@@ -135,7 +137,18 @@ export async function deferredKakaoBatch(
         AND (n.order_id IS NULL OR o.customer_id=n.customer_id)
         AND (n.kind<>'order_confirmed' OR o.status IN ('confirmed','received','no_pickup'))
         AND ${scheduledNoticeMeaningSql(5)} AND ${scheduledNoticeReadySql(5)}
-      ORDER BY n.created_at, n.id LIMIT $3 FOR UPDATE OF n`,
+      ORDER BY CASE WHEN ${DIFFERENCE_NOTICE_SELECT_SQL} THEN false ELSE (n.kind='payment_request' AND EXISTS(
+        SELECT 1 FROM payment_requests pp
+        JOIN change_requests cr ON cr.shop_id=$1 AND cr.id=pp.change_request_id AND cr.order_id=pp.order_id
+        JOIN confirm_cards k ON k.shop_id=$1 AND k.id=pp.amount_card_id AND k.order_id=pp.order_id
+          AND k.customer_id=n.customer_id AND k.order_version=o.version AND k.kind='amount_confirm'
+        JOIN customers u ON u.shop_id=$1 AND u.id=k.customer_id
+        JOIN kakao_channels ch ON ch.shop_id=$1 AND ch.id=u.kakao_channel_id AND ch.status='linked'
+        WHERE pp.shop_id=$1 AND pp.order_id=n.order_id AND n.event_key='notice:'||pp.id::text||':payment_request'
+          AND pp.kind='difference' AND pp.status='open' AND pp.needs_amount_confirm AND pp.amount_confirmed_at IS NULL
+          AND pp.issued_at<=$5 AND pp.due_cap_at>$5 AND o.status='confirmed' AND cr.status='awaiting_difference'
+          AND k.created_at<=$5 AND k.expires_at>$5 AND k.used_at IS NULL AND nullif(ch.card_block_id,'') IS NOT NULL
+      )) END, n.created_at, n.id LIMIT $3 FOR UPDATE OF n`,
     [customerId, DEFERRED_REPLY_BATCH + 1, READABLE_CUSTOMER_NOTICE_KINDS, options.now ?? new Date()],
   );
   for (const row of notices.rows) {
@@ -149,8 +162,8 @@ export async function deferredKakaoBatch(
       );
     } catch (error) {
       if (!(error instanceof CustomerNoticeTemporarilyUnavailable)) throw error;
-      // 권한이 없는 안내는 전달 처리하지 않고 현재 답과 이후 재조회를 보존한다.
-      contents = null;
+      // 이 안내는 전달 표시하지 않는다. 다른 주문의 정상 안내는 계속 고른다.
+      continue;
     }
     messages.push({
       id: row.id,

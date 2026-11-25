@@ -1,0 +1,121 @@
+
+> test
+> vitest run test/deferred-difference-privilege.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-deferred-privilege/app/server
+
+ ❯ test/deferred-difference-privilege.test.ts (6 tests | 6 failed) 1161ms
+   ❯ 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) (6)
+     × 권한 부족 1건을 보존하고 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다 80ms
+     × 권한 부족 1건을 보존하고 뒤의 first 세 건과 현재 답의 순서를 지킨다 54ms
+     × 권한 부족 1건을 보존하고 뒤의 reissue 세 건과 현재 답의 순서를 지킨다 36ms
+     × 권한 부족 3건을 보존하고 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다 35ms
+     × 권한 부족 3건을 보존하고 뒤의 first 세 건과 현재 답의 순서를 지킨다 40ms
+     × 권한 부족 3건을 보존하고 뒤의 reissue 세 건과 현재 답의 순서를 지킨다 49ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 1건을 보존하고 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다
+error: payment_requests_remake: 재제작 주문(58052491-2c05-4e08-b7bf-30aa4943d98d)에는 결제 안내·환불·장부 행을 두지 않고 원래 주문에 남김
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ addPayment test/deferred-difference-privilege.test.ts:153:5
+ ❯ test/deferred-difference-privilege.test.ts:200:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 1건을 보존하고 뒤의 first 세 건과 현재 답의 순서를 지킨다
+error: payment_requests_remake: 재제작 주문(868e17a1-c588-4134-91c3-70e3f4aee52b)에는 결제 안내·환불·장부 행을 두지 않고 원래 주문에 남김
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ addPayment test/deferred-difference-privilege.test.ts:153:5
+ ❯ test/deferred-difference-privilege.test.ts:200:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 1건을 보존하고 뒤의 reissue 세 건과 현재 답의 순서를 지킨다
+error: payment_requests_remake: 재제작 주문(ae12e429-d5f8-4e91-a4d0-8edea93f76ef)에는 결제 안내·환불·장부 행을 두지 않고 원래 주문에 남김
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ addPayment test/deferred-difference-privilege.test.ts:153:5
+ ❯ test/deferred-difference-privilege.test.ts:200:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 3건을 보존하고 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다
+error: payment_requests_remake: 재제작 주문(af5bb0cf-120b-4cc5-b1a7-07bc508ca0ef)에는 결제 안내·환불·장부 행을 두지 않고 원래 주문에 남김
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ addPayment test/deferred-difference-privilege.test.ts:153:5
+ ❯ test/deferred-difference-privilege.test.ts:200:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 3건을 보존하고 뒤의 first 세 건과 현재 답의 순서를 지킨다
+error: payment_requests_remake: 재제작 주문(49855f23-9799-478a-a71c-073d27432dc0)에는 결제 안내·환불·장부 행을 두지 않고 원래 주문에 남김
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ addPayment test/deferred-difference-privilege.test.ts:153:5
+ ❯ test/deferred-difference-privilege.test.ts:200:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 3건을 보존하고 뒤의 reissue 세 건과 현재 답의 순서를 지킨다
+error: payment_requests_remake: 재제작 주문(150b4c90-2937-4249-bb96-b82e10b727d4)에는 결제 안내·환불·장부 행을 두지 않고 원래 주문에 남김
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ addPayment test/deferred-difference-privilege.test.ts:153:5
+ ❯ test/deferred-difference-privilege.test.ts:200:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed (6)
+   Start at  19:38:44
+   Duration  2.60s (tests 48%, import 34%, transform 18%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-deferred-privilege/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-deferred-privilege/app/server
+npm error command failed
+npm error command sh -c vitest run test/deferred-difference-privilege.test.ts

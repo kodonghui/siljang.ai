@@ -54,14 +54,12 @@ export class CustomerNoticeTemporarilyUnavailable extends Error {
     super("customer notice temporarily unavailable");
   }
 }
+export const DIFFERENCE_NOTICE_SELECT_SQL = `(has_column_privilege(current_user,'public.change_requests','changes','SELECT')
+      AND has_column_privilege(current_user,'public.change_requests','base_version','SELECT')
+      AND has_column_privilege(current_user,'public.change_requests','amount_delta','SELECT'))`;
 async function differenceDetails(db: ShopDb, notice: CustomerNoticeView) {
   const permission = (
-    await db.run<{ can_read: boolean }>(
-      `SELECT has_column_privilege(current_user,'public.change_requests','changes','SELECT')
-      AND has_column_privilege(current_user,'public.change_requests','base_version','SELECT')
-      AND has_column_privilege(current_user,'public.change_requests','amount_delta','SELECT') AS can_read
-      FROM shops s WHERE s.id=$1`,
-    )
+    await db.run<{ can_read: boolean }>(`SELECT ${DIFFERENCE_NOTICE_SELECT_SQL} AS can_read FROM shops s WHERE s.id=$1`)
   ).rows[0];
   if (!permission?.can_read) throw new CustomerNoticeTemporarilyUnavailable();
   return (
