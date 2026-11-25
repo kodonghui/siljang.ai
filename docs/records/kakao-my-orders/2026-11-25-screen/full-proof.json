@@ -1,10 +1,10 @@
 {
-  "sourceCommit": "fbce853c9d2555a736c78d63fa6bd850a1ced159",
-  "sourceTree": "b0844fd4befd12dfbce4155aa1c0fd02fa7d853b",
-  "publicEquivalentHead": "67052210353fd681cb72a46e414d854ef69967f4",
-  "baseMain": "a047da4e4568f4e2d2bae181271773c7fb8b8667",
+  "sourceCommit": "c5a6839c39b09559b64d4a78e9b78abb48936402",
+  "sourceTree": "13ac498c3f1363854cc1f652963a0d062476a4ee",
+  "publicEquivalentHead": "2b3da066f6a9022228fa5b414415ad5e014e59ff",
+  "baseMain": "5895ef90978574ae4e7dc3f00a45da5ee401406d",
   "scopeGitObjects": {
-    "app/server": "bed1a2a05d3cef6099e13ad04293513bd1355594",
+    "app/server": "b6f284c3609f182595b48edc864068d25d599240",
     "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
     "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
     "api": "de0aa79b81685e087cd5b232401724d38dd776cd",
@@ -16,7 +16,7 @@
   "combinedNpmTestExit": 0,
   "server": {
     "files": 161,
-    "passed": 3077
+    "passed": 3080
   },
   "web": {
     "files": 73,
@@ -28,14 +28,42 @@
   "nodePassed": 55,
   "wbsChecks": 18,
   "wbsErrors": 0,
-  "npmCi": "동일 lock의 설치를 재사용. 현재 PR CI의 새 npm ci와 전체를 별도로 확인함",
+  "ci": {
+    "head": "2b3da066f6a9022228fa5b414415ad5e014e59ff",
+    "appRun": 45651509310,
+    "dbRun": 45651509238,
+    "appJobs": [
+      {
+        "id": 139336950256,
+        "name": "Windows PowerShell 평가 인증(모의)",
+        "conclusion": "success"
+      },
+      {
+        "id": 139336950579,
+        "name": "check",
+        "conclusion": "success"
+      },
+      {
+        "id": 139338581009,
+        "name": "스테이징 배포",
+        "conclusion": "skipped"
+      }
+    ],
+    "dbJobs": [
+      {
+        "id": 139336949304,
+        "name": "PostgreSQL 16.15",
+        "conclusion": "success"
+      },
+      {
+        "id": 139336949605,
+        "name": "PostgreSQL 17.11",
+        "conclusion": "success"
+      }
+    ]
+  },
   "browserExecuted": false,
   "realKakao": false,
   "modelCallsAdded": 0,
-  "afterMain284Merge": {
-    "main": "5895ef90978574ae4e7dc3f00a45da5ee401406d",
-    "scopeGitObjectsUnchanged": true,
-    "mainCiAndDeploy": "진행 중. 성공으로 표시하지 않음"
-  },
-  "currentReviewFixWholeRun": "앞선 전체 원본의 근거. 리뷰 고침의 새 빈 전체/빌드는 다음에 별도로 실행하며 이 숫자를 현재 전체로 세지 않음"
+  "npmCi": "동일 lock의 로컬 설치를 재사용. 같은 공개 원본의 CI 새 설치/전체/빌드 성공은 실제 잡 로그로 별도 확인함"
 }
