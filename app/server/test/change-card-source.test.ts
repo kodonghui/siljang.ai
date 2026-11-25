@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
-import { showConfirmCard } from "../src/confirm-card-store";
+import { prepareConfirmCardInTransaction, showConfirmCard } from "../src/confirm-card-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
@@ -60,14 +60,14 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
     await isolated?.close();
   });
   const scoped = () => shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), isolated.db);
-  const show = (sourceMessageId = newUuid()) => {
+  const show = (sourceMessageId = newUuid(), proposedChanges: Readonly<Record<string, unknown>> = PROPOSED) => {
     const input = {
       customerId: shop.customerId,
       consultationId: shop.consultationId,
       kind: "change_request" as const,
       orderId: shop.orderId,
       sourceMessageId,
-      proposedChanges: PROPOSED,
+      proposedChanges,
       now: clock,
     };
     return showConfirmCard(scoped(), input);
@@ -207,5 +207,155 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
         ?.n,
     ).toBe(count);
     expect(execute).not.toHaveBeenCalled();
+  });
+  it.each([{}, { amount: 1 }, { currentVersion: 999 }, { lettering: "" }])(
+    "유효한 실제 변경이 없는 서버 제안은 카드와 변경 요청을 쓰지 않는다(%j)",
+    async (proposedChanges) => {
+      const result = await scoped().transaction((tx) =>
+        prepareConfirmCardInTransaction(tx, {
+          customerId: shop.customerId,
+          consultationId: shop.consultationId,
+          kind: "change_request",
+          orderId: shop.orderId,
+          proposedChanges,
+          now: NOW,
+        }),
+      );
+      expect(result).toHaveProperty("unavailable", true);
+      expect(
+        (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId]))
+          .rows[0]?.n,
+      ).toBe(0);
+      expect(
+        (await isolated.db.query("SELECT count(*)::int AS n FROM change_requests WHERE shop_id=$1", [shop.shopId]))
+          .rows[0]?.n,
+      ).toBe(0);
+    },
+  );
+  it("다른 가게 주문은 표시 원본으로 사용할 수 없다", async () => {
+    const other = await createShop(isolated.db, "합성 외부 변경 원본 가게");
+    await expect(
+      showConfirmCard(scoped(), {
+        customerId: shop.customerId,
+        consultationId: shop.consultationId,
+        kind: "change_request",
+        orderId: other.orderId,
+        proposedChanges: PROPOSED,
+        now: NOW,
+      }),
+    ).rejects.toThrow("card source unavailable");
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows[0]
+        ?.n,
+    ).toBe(0);
+  });
+  it("결제 전 주문에는 R16 안내만 준비하고 카드를 만들지 않는다", async () => {
+    const other = await createShop(isolated.db, "합성 결제 전 변경 가게");
+    await linkTestChannel(isolated.db, other.channelId);
+    const db = shopRequestDb(createShopScope(other.shopId, { kind: "job", job: "kakao_callback" }), isolated.db);
+    const result = await db.transaction((tx) =>
+      prepareConfirmCardInTransaction(tx, {
+        customerId: other.customerId,
+        consultationId: other.consultationId,
+        kind: "change_request",
+        orderId: other.orderId,
+        proposedChanges: PROPOSED,
+        now: NOW,
+      }),
+    );
+    expect(result).toEqual({
+      unavailable: true,
+      text: "지금은 할 수 없어요: 결제 전 주문이에요. 주문 요청을 취소하고 다시 요청할 수 있어요",
+    });
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [other.shopId])).rows[0]
+        ?.n,
+    ).toBe(0);
+  });
+  it("먼저 보낸 변경 요청이 있으면 실행·갱신 없이 현재 상태만 보인다", async () => {
+    const card = await show();
+    await isolated.db.query(
+      "INSERT INTO change_requests(shop_id,order_id,card_id,base_version,changes,status,created_at) SELECT $1,$2,id,1,$4::jsonb,'requested',$5 FROM confirm_cards WHERE card_key=$3",
+      [shop.shopId, shop.orderId, card.cardKey, JSON.stringify(PROPOSED), NOW],
+    );
+    const response = await request("card", card.cardKey),
+      body = await response.json();
+    expect(response.headers.get("Siljang-Outcome")).toBe("not_allowed_now");
+    expectSchema("SkillTemplateResponse", body);
+    expect(body).toHaveProperty("template.outputs", [
+      { simpleText: { text: "지금은 할 수 없어요: 앞의 변경 요청을 사장님이 보고 있어요" } },
+    ]);
+    expect(execute).not.toHaveBeenCalled();
+    expect(
+      (await isolated.db.query("SELECT used_at FROM confirm_cards WHERE card_key=$1", [card.cardKey])).rows[0]?.used_at,
+    ).toBeNull();
+  });
+  it.each([false, true])(
+    "픽업 날짜의 받기 상태를 서버에서 읽고 자리/변경 요청을 쓰지 않는다(마감 %s)",
+    async (closed) => {
+      const pickup = (
+        await isolated.db.query<{ pickup_at: Date }>("SELECT pickup_at FROM orders WHERE id=$1", [shop.orderId])
+      ).rows[0]?.pickup_at;
+      if (!pickup) throw new Error("missing synthetic pickup");
+      if (closed)
+        await isolated.db.query("UPDATE business_calendars SET daily_capacity=0 WHERE shop_id=$1", [shop.shopId]);
+      const before = await isolated.db.query("SELECT * FROM calendar_days WHERE shop_id=$1 ORDER BY day", [
+        shop.shopId,
+      ]);
+      const card = await show(newUuid(), { pickupAt: new Date(pickup.getTime() + 86400000).toISOString() });
+      expect(card.changeRequest?.requiresOwnerApproval).toBe(closed);
+      expect(card.changeRequest?.changes.map((change) => change.label)).toContain("픽업 날짜");
+      expect(
+        (await isolated.db.query("SELECT * FROM calendar_days WHERE shop_id=$1 ORDER BY day", [shop.shopId])).rows,
+      ).toEqual(before.rows);
+      expect(
+        (await isolated.db.query("SELECT count(*)::int AS n FROM change_requests WHERE shop_id=$1", [shop.shopId]))
+          .rows[0]?.n,
+      ).toBe(0);
+    },
+  );
+  it("변경 마감 정각에는 원래 조문2062자를 모두 보이고 실행·새 카드가 없다", async () => {
+    const card = await show(),
+      title = "제".repeat(60),
+      condition = "조".repeat(1000),
+      effect = "문".repeat(1000);
+    await isolated.db.query(
+      "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'change_deadline',99,$3,$4,$5)",
+      [shop.shopId, shop.operatingRulesId, title, condition, effect],
+    );
+    clock =
+      (
+        await isolated.db.query<{ deadline: Date }>(
+          "SELECT pickup_at-interval '48 hours' AS deadline FROM orders WHERE id=$1",
+          [shop.orderId],
+        )
+      ).rows[0]?.deadline ?? NOW;
+    const response = await request("card", card.cardKey),
+      body = await response.json();
+    expect(response.headers.get("Siljang-Outcome")).toBe("not_allowed_now");
+    expectSchema("SkillTemplateResponse", body);
+    const text = (
+      body as {
+        template: {
+          outputs: { simpleText?: { text: string }; carousel?: { items: { title: string; description?: string }[] } }[];
+        };
+      }
+    ).template.outputs
+      .map(
+        (output: { simpleText?: { text: string }; carousel?: { items: { title: string; description?: string }[] } }) =>
+          output.simpleText?.text ??
+          output.carousel?.items
+            .map((item) => item.title.replace(/^변경 내용 \d+\n/, "") + (item.description ?? ""))
+            .join("") ??
+          "",
+      )
+      .join("");
+    expect(text).toContain([title, condition, effect].join("\n"));
+    expect(text).toContain("변경 마감이 지나 바꿀 수 없어요");
+    expect(execute).not.toHaveBeenCalled();
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows[0]
+        ?.n,
+    ).toBe(1);
   });
 });
