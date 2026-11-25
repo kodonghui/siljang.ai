@@ -1,8 +1,10 @@
 /** 콜백 소비자의 모델 한 차례. 원문/연락처 대신 보관된 마스킹 글만 읽고, 결과를 발신 전에 확정한다. */
 import { FIRST_ATTEMPT, markAiCallUnused, nextAttempt } from "./ai-calls";
+import { prepareAiConfirmCard, supportedCardProposal } from "./ai-confirm-card";
 import { hasAiPlaceholders, readAiConversation, stripAiPlaceholders } from "./ai-conversation";
 import { AI_TOTAL_TIMEOUT_MS, type AiFailure, type AiMessage } from "./ai-model";
 import type { AiTurnOutput } from "./ai-turn-output";
+import { type ConfirmCardView, readConfirmCardDelivery } from "./confirm-card-store";
 import { FieldCryptoError } from "./field-crypto";
 import { handoffSourceMatch } from "./handoff-source";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
@@ -17,6 +19,7 @@ export interface KakaoAiReply {
   readonly id: string;
   readonly text: string;
   readonly delivered: boolean;
+  readonly card?: ConfirmCardView;
 }
 
 export type KakaoAiTurnResult =
@@ -36,15 +39,28 @@ const FREE_FIELDS = {
   courier_pickup: "courier_pickup",
 } as const;
 
-async function currentReply(db: ShopDb, messageId: string, consultationId: string): Promise<KakaoAiReply | null> {
-  const rows = await db.run<{ id: string; body_masked: string; delivery: string }>(
-    `SELECT id, body_masked, delivery FROM messages WHERE shop_id = $1 AND consultation_id = $2
-      AND trace_id = $3 AND direction = 'outbound' AND author = 'ai' AND body_masked IS NOT NULL
+async function currentReply(
+  db: ShopDb,
+  messageId: string,
+  consultationId: string,
+  customerId: string,
+  now: Date,
+): Promise<KakaoAiReply | null> {
+  const rows = await db.run<{ id: string; body_masked: string; delivery: string; kind: string }>(
+    `SELECT id, body_masked, delivery, kind FROM messages WHERE shop_id = $1 AND consultation_id = $2
+      AND trace_id = $3 AND direction = 'outbound' AND (author = 'ai' OR (author='system' AND kind='card')) AND body_masked IS NOT NULL
       AND delivery IN ('deferred', 'callback', 'delivered_later') ORDER BY created_at, id LIMIT 1`,
     [consultationId, messageId],
   );
   const row = rows.rows[0];
-  return row === undefined ? null : { id: row.id, text: row.body_masked, delivered: row.delivery !== "deferred" };
+  if (row === undefined) return null;
+  const reply = { id: row.id, text: row.body_masked, delivered: row.delivery !== "deferred" };
+  return row.kind === "card" && !reply.delivered
+    ? {
+        ...reply,
+        ...(await readConfirmCardDelivery(db, { customerId, consultationId, sourceMessageId: messageId, now })),
+      }
+    : reply;
 }
 
 /** 수신·선점과 같은 가게/상담을 다시 확인한다. 외부 호출 동안 행 잠금은 유지하지 않는다. */
@@ -79,7 +95,7 @@ export async function runKakaoAiTurn(
       (consultation.ai_disclosed_at === null && disclosure?.consultationId !== claim.consultation_id)
     )
       return { kind: "failure", failure: "unavailable" } as const;
-    const reply = await currentReply(tx, messageId, claim.consultation_id);
+    const reply = await currentReply(tx, messageId, claim.consultation_id, claim.customer_id, now());
     if (reply !== null) return { kind: "reply", reply } as const;
     const handedOff = await tx.run(
       `SELECT h.id FROM handoffs h WHERE h.shop_id = $1 AND h.consultation_id = $2
@@ -130,12 +146,12 @@ export async function runKakaoAiTurn(
     consultationId: claim.consultation_id,
     traceId: messageId,
     attempt,
-    promptVersion: "kakao-callback-2026-11-22",
+    promptVersion: "kakao-callback-2026-11-25",
     messages: [
       {
         role: "system",
         content:
-          "가게 상담의 마스킹된 글입니다. 플레이스홀더나 번호를 답과 초안에 쓰지 마세요. 가격·자리·법률 판단을 만들지 마세요. 일반 답과 명시된 문구·색·디자인 설명만 채우고, 그 밖의 요청은 사장님 확인으로 넘기세요.",
+          "가게 상담의 마스킹된 글입니다. 플레이스홀더나 번호를 답과 초안에 쓰지 마세요. 가격·자리·법률 판단을 만들지 마세요. 일반 답과 명시된 문구·색·디자인 설명만 채우세요. 손님이 명시한 주문 요청·입금 알리기·취소·문제 신고·동의 철회는 card.kind로 확인을 제안할 수 있습니다. 손님이 주문번호를 말한 경우에만 card.order_no에 그대로 쓰세요. 카드의 금액·버전·표시 문구·버튼·상태를 정하거나 완료했다고 답하지 마세요. 변경 내용·견적과 그 밖의 요청은 사장님 확인으로 넘기세요.",
       },
       ...prepared.messages,
     ],
@@ -148,12 +164,12 @@ export async function runKakaoAiTurn(
       consultationId: claim.consultation_id,
       traceId: messageId,
       attempt,
-      promptVersion: "kakao-callback-2026-11-22",
+      promptVersion: "kakao-callback-2026-11-25",
       messages: [
         {
           role: "system",
           content:
-            "가게 상담의 마스킹된 글입니다. 플레이스홀더나 번호를 답과 초안에 쓰지 마세요. 가격·자리·법률 판단을 만들지 마세요. 일반 답과 명시된 문구·색·디자인 설명만 채우고, 그 밖의 요청은 사장님 확인으로 넘기세요.",
+            "가게 상담의 마스킹된 글입니다. 플레이스홀더나 번호를 답과 초안에 쓰지 마세요. 가격·자리·법률 판단을 만들지 마세요. 일반 답과 명시된 문구·색·디자인 설명만 채우세요. 손님이 명시한 주문 요청·입금 알리기·취소·문제 신고·동의 철회는 card.kind로 확인을 제안할 수 있습니다. 손님이 주문번호를 말한 경우에만 card.order_no에 그대로 쓰세요. 카드의 금액·버전·표시 문구·버튼·상태를 정하거나 완료했다고 답하지 마세요. 변경 내용·견적과 그 밖의 요청은 사장님 확인으로 넘기세요.",
         },
         ...prepared.messages,
       ],
@@ -190,33 +206,57 @@ export async function runKakaoAiTurn(
       return { kind: "failure", failure: "unavailable" } as const;
     if (left() <= 0) return { kind: "failure", failure: "timeout" } as const;
     await saveDraft(tx, claim.consultation_id, output.draft_patch, now());
-    const saved = await tx.run<{ id: string }>(
-      `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, trace_id, delivery, created_at)
+    const card =
+      output.card === undefined
+        ? undefined
+        : await prepareAiConfirmCard(tx, output.card, {
+            customerId: claim.customer_id,
+            consultationId: claim.consultation_id,
+            sourceMessageId: messageId,
+            now: now(),
+          });
+    if (card === null) {
+      await markAiCallUnused(tx, result.aiCallId, claim.consultation_id, "schema_invalid");
+      return { kind: "failure", failure: "schema_invalid" } as const;
+    }
+    const text = card?.title ?? output.reply;
+    const saved =
+      card === undefined
+        ? await tx.run<{ id: string }>(
+            `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, trace_id, delivery, created_at)
         VALUES ($1, $2, 'outbound', 'ai', 'text', $3, $4, 'deferred', $5) RETURNING id`,
-      [claim.consultation_id, output.reply, messageId, now()],
-    );
+            [claim.consultation_id, text, messageId, now()],
+          )
+        : await tx.run<{ id: string }>(
+            `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, trace_id, delivery, created_at)
+        VALUES ($1, $2, 'outbound', 'system', 'card', $3, $4, 'deferred', $5) RETURNING id`,
+            [claim.consultation_id, text, messageId, now()],
+          );
     await tx.run(
       "UPDATE consultations SET turn_trace_id = NULL, turn_started_at = NULL WHERE shop_id = $1 AND id = $2 AND turn_trace_id = $3",
       [claim.consultation_id, messageId],
     );
     const id = saved.rows[0]?.id;
     if (id === undefined) throw new Error("AI reply was not stored");
-    return { kind: "reply", reply: { id, text: output.reply, delivered: false } } as const;
+    return { kind: "reply", reply: { id, text, delivered: false, ...(card === undefined ? {} : { card }) } } as const;
   });
 }
 
-/** 견적/확인 카드/주문 업무는 뒤 업무 처리기가 검증한다. 아직 연결하지 않은 결과를 그대로 발신하지 않는다. */
+/** 확인 카드의 종류/대상은 서버가 다시 검증한다. 견적·변경 값 등 미연결 업무는 발신하지 않는다. */
 function safeReply(output: AiTurnOutput): boolean {
   if (
     !output.reply.trim() ||
     output.quote_request ||
-    output.card ||
+    (output.card !== undefined &&
+      (!supportedCardProposal(output.card) ||
+        (output.card.kind !== "order_request" && output.draft_patch !== undefined))) ||
     output.handoff ||
     output.issue_patch ||
     output.refund_account_patch
   )
     return false;
-  if (/\d[\d,]*\s*원|\d\s*%|\d{7,}/.test(output.reply)) return false;
+  // 카드 제안의 reply는 쓰지 않는다. 제목·금액·버튼·안내는 저장된 서버 값으로만 만든다.
+  if (output.card === undefined && /\d[\d,]*\s*원|\d\s*%|\d{7,}/.test(output.reply)) return false;
   return Object.entries(output.draft_patch ?? {}).every(
     ([key, value]) =>
       Object.hasOwn(FREE_FIELDS, key) &&

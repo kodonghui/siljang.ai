@@ -185,7 +185,7 @@ export async function prepareKakaoCallbackHandoff(
     if (discardReplyId !== undefined)
       await tx.run(
         `UPDATE messages SET delivery='failed' WHERE shop_id=$1 AND id=$2 AND consultation_id=$3
-         AND trace_id=$4 AND direction='outbound' AND author='ai' AND delivery='deferred' AND sent_at IS NULL`,
+         AND trace_id=$4 AND direction='outbound' AND (author='ai' OR (author='system' AND kind='card')) AND delivery='deferred' AND sent_at IS NULL`,
         [discardReplyId, claim.consultation_id, messageId],
       );
     await tx.run(
@@ -232,7 +232,7 @@ export async function finishKakaoCallback(
         await tx.run(
           `UPDATE messages SET delivery = 'callback', sent_at = $4
             WHERE shop_id = $1 AND id = $2 AND consultation_id = $3
-              AND direction = 'outbound' AND author = 'ai' AND delivery = 'deferred' AND sent_at IS NULL`,
+              AND direction = 'outbound' AND (author = 'ai' OR (author='system' AND kind='card')) AND delivery = 'deferred' AND sent_at IS NULL`,
           [preparedReplyId, claim.consultation_id, sentAt],
         );
       return;
@@ -282,7 +282,7 @@ export async function deferExpiredKakaoCallback(
     if (["ended", "deleted", "dropped"].includes(consultation.status)) return "discarded";
     const prepared = await tx.run(
       `SELECT id FROM messages WHERE shop_id = $1 AND consultation_id = $2 AND trace_id = $3
-        AND direction = 'outbound' AND author = 'ai' AND body_masked IS NOT NULL
+        AND direction = 'outbound' AND (author = 'ai' OR (author='system' AND kind='card')) AND body_masked IS NOT NULL
         AND delivery IN ('deferred', 'callback', 'delivered_later') LIMIT 1`,
       [row.consultation_id, messageId],
     );

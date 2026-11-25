@@ -180,9 +180,12 @@ export async function consumeKakaoCallback(
       callback === null
         ? []
         : (
-            await deferredKakaoMessages(db, claim.customer_id, {
-              disclosureConsultationId: disclosure?.consultationId,
-            })
+            await db.transaction((tx) =>
+              deferredKakaoMessages(tx, claim.customer_id, {
+                disclosureConsultationId: disclosure?.consultationId,
+                now: now(),
+              }),
+            )
           ).filter((row) => preparedReply === undefined || row.source !== "message" || row.id !== preparedReply.id);
     const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
     const prefix = disclosure === null || disclosure === undefined ? [] : [disclosure.text];
@@ -193,7 +196,7 @@ export async function consumeKakaoCallback(
       callback !== null &&
       (await deliverKakaoCallback(
         { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
-        [...prefix, ...previousTexts, ...(replyIncluded ? [text] : [])],
+        [...prefix, ...previousTexts, ...(replyIncluded ? [preparedReply?.card ?? text] : [])],
         { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
       )) === "delivered"
         ? now()

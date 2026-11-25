@@ -491,14 +491,25 @@ describeDb("카카오 콜백에서 전하지 못한 답의 다음 대화 전달(
     let fail = true;
     const connect: DbConnector = (url) => {
       const conn = pgConnector(url);
-      const query: RequestDb["query"] = async <R>(sql: string, params?: readonly unknown[]) => {
+      const inspect = (sql: string) => {
         if (fail && sql.includes("SELECT m.id, m.body_masked")) {
           fail = false;
           throw new Error("synthetic deferred read failure");
         }
+      };
+      const query: RequestDb["query"] = async <R>(sql: string, params?: readonly unknown[]) => {
+        inspect(sql);
         return conn.query<R>(sql, params);
       };
-      const transaction: RequestDb["transaction"] = (fn) => conn.transaction(fn);
+      const transaction: RequestDb["transaction"] = (fn) =>
+        conn.transaction((tx) =>
+          fn({
+            query: async <R>(sql: string, params?: readonly unknown[]) => {
+              inspect(sql);
+              return tx.query<R>(sql, params);
+            },
+          }),
+        );
       return { query, transaction, abort: () => conn.abort(), close: () => conn.close() };
     };
     const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
