@@ -134,6 +134,88 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
       ).rows,
     ).toEqual([{ n: 0 }]);
   });
+  it.each(
+    (["event", "message"] as const).flatMap((mode) =>
+      ([false, true] as const).map((legacy) => [mode, legacy] as const),
+    ),
+  )("확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(%s/이전 %s)", async (mode, legacy) => {
+    await confirm();
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+    const previous = legacy
+      ? await scoped.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW))
+      : undefined;
+    if (previous)
+      await isolated.db.query("UPDATE notifications SET template_key='order_confirmed:v1',body=$2 WHERE id=$1", [
+        previous.id,
+        `주문이 확정됐어요\n주문번호 AB1234CD\n결제가 확인된 금액 35,000원\n상호 합성 보존된 신원${"가".repeat(48)}\n대표자 ${"나".repeat(30)}\n사업장 주소 ${"다".repeat(200)}\n전화번호 02-0000-0000`,
+      ]);
+    await isolated.db.query(
+      "UPDATE shops SET business_name=$2,representative_name=$3,business_address=$4 WHERE id=$1",
+      [shop.shopId, "합성" + "가".repeat(58), "합성" + "나".repeat(28), "다".repeat(200)],
+    );
+    await isolated.db.query(
+      "UPDATE order_details SET design_notes=$2,lettering=$3,colors=$4 WHERE order_id=$1 AND version=1",
+      [shop.orderId, "라".repeat(500), "마".repeat(50), "바".repeat(100)],
+    );
+    for (let i = 0; i < 35; i++) {
+      const id = newUuid();
+      await isolated.db.query(
+        "INSERT INTO price_options(id,shop_id,price_list_id,option_group,name,price_kind,amount,in_standard,position) VALUES($1,$2,$3,'extra',$4,'fixed',1000,true,$5)",
+        [id, shop.shopId, shop.priceListId, `합성${String(i).padStart(2, "0")} ${"사".repeat(25)}`, 100 + i],
+      );
+      await isolated.db.query(
+        "INSERT INTO order_detail_extras(shop_id,order_detail_id,price_list_id,option_id) SELECT shop_id,id,price_list_id,$2 FROM order_details WHERE order_id=$1 AND version=1",
+        [shop.orderId, id],
+      );
+    }
+    for (let position = 1; position <= 2; position++)
+      await isolated.db.query(
+        "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',$3,$4,'합성 조건',$5)",
+        [shop.shopId, shop.operatingRulesId, position, `합성 보존 규정${position}`, "아".repeat(850)],
+      );
+    const created = previous ?? (await scoped.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW)));
+    if (!created) throw new Error("missing synthetic long confirmation");
+    const saved = (
+      await isolated.db.query<{ body: string; template_key: string }>(
+        "SELECT body,template_key FROM notifications WHERE id=$1",
+        [created.id],
+      )
+    ).rows[0];
+    if (!saved) throw new Error("missing stored synthetic notice");
+    expect([...saved.body].length).toBeLessThanOrEqual(2000);
+    if (!legacy) expect(saved.body).not.toContain("라".repeat(500));
+    const response = await call(mode, created.id);
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expectSchema("SkillTemplateResponse", result);
+    type Output = { simpleText?: { text: string }; carousel?: { items: { title: string; description?: string }[] } };
+    const outputs = (result as { template: { outputs: Output[] } }).template.outputs;
+    expect(outputs.length).toBeLessThanOrEqual(3);
+    const text = outputs
+      .map(
+        (o) =>
+          o.simpleText?.text ??
+          o.carousel?.items
+            .map((item) => item.title.replace(/^확정 안내 \d+\n/, "") + (item.description ?? ""))
+            .join("") ??
+          "",
+      )
+      .join("");
+    for (const expected of [
+      "라".repeat(500),
+      "마".repeat(50),
+      "바".repeat(100),
+      "합성 보존 규정1",
+      "합성 보존 규정2",
+      "35,000원",
+    ])
+      expect(text).toContain(expected);
+    for (let i = 0; i < 35; i++) expect(text).toContain(`합성${String(i).padStart(2, "0")} ${"사".repeat(25)}`);
+    if (legacy) expect(text).toContain("합성 보존된 신원");
+    const next = await notice("owner_reply", "합성 긴 확정 뒤 정상 안내", new Date(NOW.getTime() + 500));
+    clock = new Date(NOW.getTime() + 1000);
+    expect(JSON.stringify(await (await call(mode, next)).json())).toContain("합성 긴 확정 뒤 정상 안내");
+  });
   for (const mode of ["event", "message"] as const) {
     it(`${mode}: 긴 확정 내용과 두 규정이 후속 안내를 막지 않는다`, async () => {
       await confirm();
