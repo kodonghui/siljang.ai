@@ -1,0 +1,16 @@
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/web
+
+
+ Test Files  73 passed (73)
+      Tests  1775 passed (1775)
+   Start at  15:21:44
+   Duration  44.57s (tests 54%, import 37%, environment 8%, transform 1%)
+
+     Import  196 modules were evaluated 797 times · 44.57s total, 37% of tracked time
+             ~7.01s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

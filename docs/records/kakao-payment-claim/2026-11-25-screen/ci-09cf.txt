@@ -1,0 +1,12 @@
+2026-11-25T15:10:56.0992135Z ##[group]Run npm run lint 2>&1 | tee ci-logs/lint.log
+2026-11-25T15:10:57.4349331Z Checked 594 files in 1191ms. No fixes applied.
+2026-11-25T15:11:18.4262874Z ##[group]Run npm run typecheck 2>&1 | tee ci-logs/typecheck.log
+2026-11-25T15:11:27.9037462Z ##[group]Run npm test 2>&1 | tee ci-logs/test.log
+2026-11-25T15:15:21.4025009Z  Test Files  158 passed (158)
+2026-11-25T15:15:21.4066159Z       Tests  3054 passed (3054)
+2026-11-25T15:16:11.8826333Z  Test Files  73 passed (73)
+2026-11-25T15:16:11.8834421Z       Tests  1775 passed (1775)
+2026-11-25T15:16:12.7031315Z ##[group]Run npm run build 2>&1 | tee ci-logs/build.log
+2026-11-25T15:16:13.6919505Z ✓ built in 545ms
+2026-11-25T15:16:15.9843739Z Total Upload: 5464.64 KiB / gzip: 1012.97 KiB
+2026-11-25T15:16:17.1659249Z Total Upload: 21.04 KiB / gzip: 6.53 KiB
