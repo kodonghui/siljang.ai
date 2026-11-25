@@ -1,0 +1,377 @@
+[
+  {
+    "response": "API-070#200:answered",
+    "state": "normal",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "textCard": {
+              "title": "내 주문 · AB1234CD",
+              "description": "주문 확정 · 11월 28일 15:00 픽업\n1호 · 생크림 · 하트 레터링 · 초 추가 · 문구 '합성 생일 축하'\n36,000원 · 결제 확인 11월 25일 14:02\n변경 마감: 11월 26일 14:00까지\n지금 취소하면 환불 31,000원(제작 전 취소)",
+              "buttons": [
+                {
+                  "label": "바꾸고 싶어요",
+                  "action": "message",
+                  "messageText": "AB1234CD 바꾸고 싶어요"
+                },
+                {
+                  "label": "취소할래요",
+                  "action": "message",
+                  "messageText": "AB1234CD 취소할래요"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:callback_pending",
+    "state": "loading",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "useCallback": true,
+      "data": {
+        "text": "답을 준비하고 있어요"
+      }
+    }
+  },
+  {
+    "response": "API-070#200:handed_over",
+    "state": "handed-over",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사장님 확인 뒤 답드릴게요."
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:ai_unavailable",
+    "state": "handed-over",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사장님 확인 뒤 답드릴게요."
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:ai_timeout",
+    "state": "handed-over",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사장님 확인 뒤 답드릴게요."
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:ai_key_missing",
+    "state": "handed-over",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사장님 확인 뒤 답드릴게요."
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:ai_limit_reached",
+    "state": "handed-over",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사장님 확인 뒤 답드릴게요."
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:ai_cost_limit_reached",
+    "state": "handed-over",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사장님 확인 뒤 답드릴게요."
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:masking_failed",
+    "state": "handed-over",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사장님 확인 뒤 답드릴게요."
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:ai_output_rejected",
+    "state": "normal",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "textCard": {
+              "title": "내 주문 · AB1234CD",
+              "description": "주문 확정 · 11월 28일 15:00 픽업\n1호 · 생크림 · 하트 레터링 · 초 추가 · 문구 '합성 생일 축하'\n36,000원 · 결제 확인 11월 25일 14:02\n변경 마감: 11월 26일 14:00까지\n지금 취소하면 환불 31,000원(제작 전 취소)",
+              "buttons": [
+                {
+                  "label": "바꾸고 싶어요",
+                  "action": "message",
+                  "messageText": "AB1234CD 바꾸고 싶어요"
+                },
+                {
+                  "label": "취소할래요",
+                  "action": "message",
+                  "messageText": "AB1234CD 취소할래요"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:card_shown",
+    "state": "normal",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "textCard": {
+              "title": "내 주문 · AB1234CD",
+              "description": "주문 확정 · 11월 28일 15:00 픽업\n1호 · 생크림 · 하트 레터링 · 초 추가 · 문구 '합성 생일 축하'\n36,000원 · 결제 확인 11월 25일 14:02\n변경 마감: 11월 26일 14:00까지\n지금 취소하면 환불 31,000원(제작 전 취소)",
+              "buttons": [
+                {
+                  "label": "바꾸고 싶어요",
+                  "action": "message",
+                  "messageText": "AB1234CD 바꾸고 싶어요"
+                },
+                {
+                  "label": "취소할래요",
+                  "action": "message",
+                  "messageText": "AB1234CD 취소할래요"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:photo_received",
+    "state": "normal",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사진을 받았어요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:photo_rejected",
+    "state": "error",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:photo_download_failed",
+    "state": "error",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사진을 받지 못했어요. 다시 보내 주세요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:unsupported_message",
+    "state": "error",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "글이나 사진으로 말씀해 주세요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:rate_limited",
+    "state": "rate-limited",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "잠시 뒤 다시 말씀해 주세요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:duplicate",
+    "state": "normal",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": []
+      }
+    }
+  },
+  {
+    "response": "API-070#200:not_accepting",
+    "state": "permission",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "아직 상담을 받지 않아요. 가게로 연락해 주세요: 02-000-0000"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#200:channel_test_card",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-070#200:server_error",
+    "state": "error",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "잠시 뒤 다시 말씀해 주세요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-070#401:skill_key_invalid",
+    "state": "error",
+    "display": "kakao-client",
+    "body": null
+  },
+  {
+    "response": "API-070#422:validation_failed",
+    "state": "error",
+    "display": "kakao-client",
+    "body": null
+  },
+  {
+    "response": "API-070#default:internal",
+    "state": "error",
+    "display": "kakao-client",
+    "body": null
+  }
+]

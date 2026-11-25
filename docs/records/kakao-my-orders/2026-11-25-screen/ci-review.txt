@@ -1,0 +1,8 @@
+2026-11-25T16:10:36.6037778Z Checked 599 files in 573ms. No fixes applied.
+2026-11-25T16:13:24.1592910Z  Test Files  161 passed (161)
+2026-11-25T16:13:24.1621947Z       Tests  3080 passed (3080)
+2026-11-25T16:13:55.7170029Z  Test Files  73 passed (73)
+2026-11-25T16:13:55.7174187Z       Tests  1775 passed (1775)
+2026-11-25T16:13:56.8373397Z ✓ built in 316ms
+2026-11-25T16:13:58.2328654Z Total Upload: 5471.75 KiB / gzip: 1014.84 KiB
+2026-11-25T16:13:58.9453982Z Total Upload: 21.04 KiB / gzip: 6.53 KiB

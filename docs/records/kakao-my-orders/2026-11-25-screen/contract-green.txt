@@ -1,0 +1,15 @@
+
+> test
+> vitest run test/kakao-my-order-content.test.ts test/kakao-my-order-message.test.ts test/kakao-my-order-contract.test.ts test/kakao-payment-content.test.ts test/kakao-consultation-message.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task108-my-orders/app/server
+
+
+ Test Files  5 passed (5)
+      Tests  51 passed (51)
+   Start at  15:32:49
+   Duration  4.77s (import 86%, tests 9%, transform 5%)
+
+    Isolate  5 workers spawned · ~107ms startup each (spawn + environment, per file)
+             at least ~427ms faster with isolate: false — reuses workers across files instead of one per file

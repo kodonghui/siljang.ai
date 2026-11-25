@@ -1,0 +1,320 @@
+{
+  "source": "c5a6839c39b09559b64d4a78e9b78abb48936402",
+  "screen": "SCR-007",
+  "responseRows": 23,
+  "frames": [
+    {
+      "state": "normal",
+      "width": 360,
+      "file": "normal-360.html"
+    },
+    {
+      "state": "normal",
+      "width": 1280,
+      "file": "normal-1280.html"
+    },
+    {
+      "state": "loading",
+      "width": 360,
+      "file": "loading-360.html"
+    },
+    {
+      "state": "loading",
+      "width": 1280,
+      "file": "loading-1280.html"
+    },
+    {
+      "state": "empty",
+      "width": 360,
+      "file": "empty-360.html"
+    },
+    {
+      "state": "empty",
+      "width": 1280,
+      "file": "empty-1280.html"
+    },
+    {
+      "state": "error",
+      "width": 360,
+      "file": "error-360.html"
+    },
+    {
+      "state": "error",
+      "width": 1280,
+      "file": "error-1280.html"
+    },
+    {
+      "state": "permission",
+      "width": 360,
+      "file": "permission-360.html"
+    },
+    {
+      "state": "permission",
+      "width": 1280,
+      "file": "permission-1280.html"
+    },
+    {
+      "state": "stale",
+      "width": 360,
+      "file": "stale-360.html"
+    },
+    {
+      "state": "stale",
+      "width": 1280,
+      "file": "stale-1280.html"
+    },
+    {
+      "state": "handed-over",
+      "width": 360,
+      "file": "handed-over-360.html"
+    },
+    {
+      "state": "handed-over",
+      "width": 1280,
+      "file": "handed-over-1280.html"
+    },
+    {
+      "state": "rate-limited",
+      "width": 360,
+      "file": "rate-limited-360.html"
+    },
+    {
+      "state": "rate-limited",
+      "width": 1280,
+      "file": "rate-limited-1280.html"
+    }
+  ],
+  "responseFrames": [
+    {
+      "response": "API-070#200:answered",
+      "state": "normal",
+      "width": 360,
+      "file": "response-0-360.html"
+    },
+    {
+      "response": "API-070#200:answered",
+      "state": "normal",
+      "width": 1280,
+      "file": "response-0-1280.html"
+    },
+    {
+      "response": "API-070#200:callback_pending",
+      "state": "loading",
+      "width": 360,
+      "file": "response-1-360.html"
+    },
+    {
+      "response": "API-070#200:callback_pending",
+      "state": "loading",
+      "width": 1280,
+      "file": "response-1-1280.html"
+    },
+    {
+      "response": "API-070#200:handed_over",
+      "state": "handed-over",
+      "width": 360,
+      "file": "response-2-360.html"
+    },
+    {
+      "response": "API-070#200:handed_over",
+      "state": "handed-over",
+      "width": 1280,
+      "file": "response-2-1280.html"
+    },
+    {
+      "response": "API-070#200:ai_unavailable",
+      "state": "handed-over",
+      "width": 360,
+      "file": "response-3-360.html"
+    },
+    {
+      "response": "API-070#200:ai_unavailable",
+      "state": "handed-over",
+      "width": 1280,
+      "file": "response-3-1280.html"
+    },
+    {
+      "response": "API-070#200:ai_timeout",
+      "state": "handed-over",
+      "width": 360,
+      "file": "response-4-360.html"
+    },
+    {
+      "response": "API-070#200:ai_timeout",
+      "state": "handed-over",
+      "width": 1280,
+      "file": "response-4-1280.html"
+    },
+    {
+      "response": "API-070#200:ai_key_missing",
+      "state": "handed-over",
+      "width": 360,
+      "file": "response-5-360.html"
+    },
+    {
+      "response": "API-070#200:ai_key_missing",
+      "state": "handed-over",
+      "width": 1280,
+      "file": "response-5-1280.html"
+    },
+    {
+      "response": "API-070#200:ai_limit_reached",
+      "state": "handed-over",
+      "width": 360,
+      "file": "response-6-360.html"
+    },
+    {
+      "response": "API-070#200:ai_limit_reached",
+      "state": "handed-over",
+      "width": 1280,
+      "file": "response-6-1280.html"
+    },
+    {
+      "response": "API-070#200:ai_cost_limit_reached",
+      "state": "handed-over",
+      "width": 360,
+      "file": "response-7-360.html"
+    },
+    {
+      "response": "API-070#200:ai_cost_limit_reached",
+      "state": "handed-over",
+      "width": 1280,
+      "file": "response-7-1280.html"
+    },
+    {
+      "response": "API-070#200:masking_failed",
+      "state": "handed-over",
+      "width": 360,
+      "file": "response-8-360.html"
+    },
+    {
+      "response": "API-070#200:masking_failed",
+      "state": "handed-over",
+      "width": 1280,
+      "file": "response-8-1280.html"
+    },
+    {
+      "response": "API-070#200:ai_output_rejected",
+      "state": "normal",
+      "width": 360,
+      "file": "response-9-360.html"
+    },
+    {
+      "response": "API-070#200:ai_output_rejected",
+      "state": "normal",
+      "width": 1280,
+      "file": "response-9-1280.html"
+    },
+    {
+      "response": "API-070#200:card_shown",
+      "state": "normal",
+      "width": 360,
+      "file": "response-10-360.html"
+    },
+    {
+      "response": "API-070#200:card_shown",
+      "state": "normal",
+      "width": 1280,
+      "file": "response-10-1280.html"
+    },
+    {
+      "response": "API-070#200:photo_received",
+      "state": "normal",
+      "width": 360,
+      "file": "response-11-360.html"
+    },
+    {
+      "response": "API-070#200:photo_received",
+      "state": "normal",
+      "width": 1280,
+      "file": "response-11-1280.html"
+    },
+    {
+      "response": "API-070#200:photo_rejected",
+      "state": "error",
+      "width": 360,
+      "file": "response-12-360.html"
+    },
+    {
+      "response": "API-070#200:photo_rejected",
+      "state": "error",
+      "width": 1280,
+      "file": "response-12-1280.html"
+    },
+    {
+      "response": "API-070#200:photo_download_failed",
+      "state": "error",
+      "width": 360,
+      "file": "response-13-360.html"
+    },
+    {
+      "response": "API-070#200:photo_download_failed",
+      "state": "error",
+      "width": 1280,
+      "file": "response-13-1280.html"
+    },
+    {
+      "response": "API-070#200:unsupported_message",
+      "state": "error",
+      "width": 360,
+      "file": "response-14-360.html"
+    },
+    {
+      "response": "API-070#200:unsupported_message",
+      "state": "error",
+      "width": 1280,
+      "file": "response-14-1280.html"
+    },
+    {
+      "response": "API-070#200:rate_limited",
+      "state": "rate-limited",
+      "width": 360,
+      "file": "response-15-360.html"
+    },
+    {
+      "response": "API-070#200:rate_limited",
+      "state": "rate-limited",
+      "width": 1280,
+      "file": "response-15-1280.html"
+    },
+    {
+      "response": "API-070#200:duplicate",
+      "state": "normal",
+      "width": 360,
+      "file": "response-16-360.html"
+    },
+    {
+      "response": "API-070#200:duplicate",
+      "state": "normal",
+      "width": 1280,
+      "file": "response-16-1280.html"
+    },
+    {
+      "response": "API-070#200:not_accepting",
+      "state": "permission",
+      "width": 360,
+      "file": "response-17-360.html"
+    },
+    {
+      "response": "API-070#200:not_accepting",
+      "state": "permission",
+      "width": 1280,
+      "file": "response-17-1280.html"
+    },
+    {
+      "response": "API-070#200:server_error",
+      "state": "error",
+      "width": 360,
+      "file": "response-19-360.html"
+    },
+    {
+      "response": "API-070#200:server_error",
+      "state": "error",
+      "width": 1280,
+      "file": "response-19-1280.html"
+    }
+  ],
+  "realBrowser": false,
+  "realKakao": false,
+  "sdkOnly": true
+}
