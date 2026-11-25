@@ -1,0 +1,47 @@
+{
+  "sourceCommit": "54e0af6c4ae4cfb88951083be7cd8abefef60470",
+  "migrations": 40,
+  "server": {
+    "files": 145,
+    "passed": 2850
+  },
+  "web": {
+    "files": 71,
+    "passed": 1727
+  },
+  "testsExit": 0,
+  "buildExit": 0,
+  "vite": "916ms",
+  "appWorker": "5451.90 KiB / gzip: 1003.36 KiB",
+  "storageWorker": "21.08 KiB / gzip: 6.55 KiB",
+  "state": "completed; database dropped",
+  "nodeChecks": {
+    "passed": 51,
+    "failed": 0
+  },
+  "fixture": {
+    "stateFrames": 18,
+    "responseFrames": 32,
+    "responseRows": 29,
+    "files": 53,
+    "bytes": 265789,
+    "actualLinuxCliExit": 0,
+    "realBrowser": false,
+    "realKakao": false
+  },
+  "related": {
+    "files": 13,
+    "passed": 324
+  },
+  "probeAndRuntime": {
+    "files": 3,
+    "passed": 39,
+    "overlapsRelated": true
+  },
+  "typecheckExit": 0,
+  "strictLintExit": 0,
+  "localInstall": "same-lock reused; no new local npm ci",
+  "runtimeGrantsAppliedOnStaging": false,
+  "native": "unverified",
+  "finishedIncrement": 0
+}
