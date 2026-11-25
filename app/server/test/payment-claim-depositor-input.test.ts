@@ -254,7 +254,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
     ["difference", "prepare-legacy-empty"] as const,
     ["difference", "late-legacy"] as const,
     ...([23, 24, 25] as const).map((count) => ["custom", `boundary-${count}`] as const),
-    ["difference", "source-query-plan"] as const,
+    ...([50, 200, 2000] as const).map((count) => ["difference", `source-query-plan-${count}`] as const),
   ])("새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(%s/%s)", async (kind, mode) => {
     const sourceMessageId = newUuid();
     const original = await show("payment_claim", sourceMessageId);
@@ -371,10 +371,11 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         NOW,
       ]);
     const beforePayment = (await state()).payments;
-    if (mode === "source-query-plan") {
+    if (mode.startsWith("source-query-plan-")) {
+      const backlog = Number(mode.slice("source-query-plan-".length));
       await isolated.db.query("UPDATE consultations SET ai_disclosed_at=$2 WHERE id=$1", [shop.consultationId, NOW]);
       await isolated.db.query(
-        `WITH ids AS MATERIALIZED (SELECT gen_random_uuid() AS id,gen_random_uuid() AS source FROM generate_series(1,2000)),
+        `WITH ids AS MATERIALIZED (SELECT gen_random_uuid() AS id,gen_random_uuid() AS source FROM generate_series(1,$5::integer)),
         cards AS (
           INSERT INTO confirm_cards
           SELECT (jsonb_populate_record(NULL::confirm_cards,to_jsonb(c)||jsonb_build_object(
@@ -385,7 +386,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         )
         INSERT INTO messages(shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at)
         SELECT $2,$3,'outbound','system','card',payload->>'sourceMessageId','결제 확인 요청','deferred',$4 FROM cards`,
-        [original.cardKey, shop.shopId, shop.consultationId, NOW],
+        [original.cardKey, shop.shopId, shop.consultationId, NOW, backlog],
       );
       await isolated.db.query("ANALYZE confirm_cards; ANALYZE messages");
       const runtime = pgConnector(new Secret(roleUrl));
@@ -424,7 +425,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         console.info(
           "TASK107 source lookup plan",
           JSON.stringify({
-            rows: 2000,
+            rows: backlog,
             executionMs: top["Execution Time"],
             buffers: top.Plan["Shared Hit Blocks"],
             cardNodes: nodes
@@ -438,6 +439,10 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
               })),
           }),
         );
+        const amountNodes = nodes.filter((n) => n.Alias === "a");
+        expect(amountNodes.length).toBeGreaterThan(0);
+        const amountLookups = amountNodes.reduce((sum, n) => sum + Number(n["Actual Loops"] ?? 0), 0);
+        expect(amountLookups).toBeLessThanOrEqual(1);
         await expect(
           limited.transaction((tx) =>
             readConfirmCardDelivery(observe(tx), {
@@ -482,7 +487,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
               [shop.shopId],
             )
           ).rows[0]?.n,
-        ).toBe(2000);
+        ).toBe(backlog);
       } finally {
         await runtime.close();
       }
