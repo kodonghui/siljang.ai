@@ -1,0 +1,85 @@
+
+> test
+> vitest run test/payment-claim-depositor-input.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-depositor-display/app/server
+
+ ❯ test/payment-claim-depositor-input.test.ts (26 tests | 6 failed) 2427ms
+   ❯ 입금자 전용 블록의 표시와 명령 경계(TASK-107) (26)
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/press) 75ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/prepare) 52ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/replay) 50ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/deferred) 63ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/callback) 48ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/legacy) 76ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/press)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/replay)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/deferred)
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/callback)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '새 금액 확인'
+
+Expected: "새 금액 확인"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"지금은 할 수 없어요: 새 금액을 먼저 확인해 주세요"}}]}}"
+
+ ❯ test/payment-claim-depositor-input.test.ts:426:21
+    424|         : ["지금 35,000원", "차액 20,000원", "변경 마감", "합성 변경 문구", "바꿀게요", "그…
+    425|     ])
+    426|       expect(shown).toContain(text);
+       |                     ^
+    427|     for (const text of ["결제 확인 요청", "입금자 이름이 달라요", "시험손님", "계좌번호", ori…
+    428|       expect(shown).not.toContain(text);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/prepare)
+AssertionError: expected { unavailable: true, …(1) } to not have property "unavailable"
+
+- Expected:
+undefined
+
++ Received:
+true
+
+ ❯ test/payment-claim-depositor-input.test.ts:376:28
+    374|         }),
+    375|       );
+    376|       expect(prepared).not.toHaveProperty("unavailable");
+       |                            ^
+    377|       if ("unavailable" in prepared) throw new Error("새 금액 카드가 필요한데 고정…
+    378|       body = kakaoConsultationMessage({ state: "normal", contents: [pr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/legacy)
+AssertionError: expected 'not_allowed_now' to be 'retry_needed' // Object.is equality
+
+Expected: "retry_needed"
+Received: "not_allowed_now"
+
+ ❯ test/payment-claim-depositor-input.test.ts:354:67
+    352|           const before = await state();
+    353|           const pending = await call(original.cardKey, "", execute, "b…
+    354|           expect(pending.response.headers.get("Siljang-Outcome")).toBe…
+       |                                                                   ^
+    355|           expect(JSON.stringify(await pending.response.json())).not.to…
+    356|           expect(await state()).toEqual(before);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 20 passed (26)
+   Start at  19:23:07
+   Duration  4.30s (tests 58%, import 32%, transform 9%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task107-depositor-display/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task107-depositor-display/app/server
+npm error command failed
+npm error command sh -c vitest run test/payment-claim-depositor-input.test.ts

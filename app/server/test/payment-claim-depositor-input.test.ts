@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import {
@@ -7,6 +8,7 @@ import {
   showConfirmCard,
 } from "../src/confirm-card-store";
 import { createPaymentRequestNotice } from "../src/customer-notice-store";
+import { pgConnector } from "../src/db";
 import { deliverKakaoCallback } from "../src/kakao-callback";
 import { kakaoConsultationMessage } from "../src/kakao-consultation-message";
 import { deferredKakaoBatch, deferredKakaoTexts } from "../src/kakao-deferred";
@@ -14,17 +16,32 @@ import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
-import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
+import { describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const NOW = new Date("2026-11-26T01:00:00Z");
 describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture, key: string, clock: Date;
+  const role = `task107_${newUuid().replaceAll("-", "")}`;
+  let roleUrl: string,
+    restricted = false;
   beforeAll(async () => {
     isolated = await isolatedTestDb();
+    await isolated.db.query(`CREATE ROLE "${role}" LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+    const grants = readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8");
+    await isolated.db.query(grants.replaceAll(':"runtime_role"', `"${role}"`));
+    const database = (await isolated.db.query<{ name: string }>("SELECT current_database() AS name")).rows[0];
+    if (!database) throw new Error("합성 데이터베이스 없음");
+    const url = new URL(TEST_DATABASE_URL);
+    url.pathname = `/${database.name}`;
+    url.username = role;
+    url.password = "";
+    roleUrl = url.toString();
   }, 30000);
   beforeEach(async () => {
+    restricted = false;
+    await isolated.db.query(`REVOKE SELECT (changes,base_version,amount_delta) ON change_requests FROM "${role}"`);
     clock = NOW;
     shop = await createShop(isolated.db, "합성 입금자 입력 가게");
     await issueTestBookingLink(isolated.db, shop);
@@ -37,6 +54,12 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
   });
   afterAll(async () => {
     await isolated?.close();
+    const admin = testDb();
+    try {
+      await admin.query(`DROP ROLE IF EXISTS "${role}"`);
+    } finally {
+      await admin.close();
+    }
   });
   const show = (kind: "payment_claim" | "cancel" = "payment_claim", sourceMessageId?: string) =>
     showConfirmCard(shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), isolated.db), {
@@ -68,7 +91,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
     const network = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("합성 카드 시험에서 실제 발신 금지"));
     try {
       const response = await createApp({
-        connect: () => isolated.connect(),
+        connect: () => (restricted ? pgConnector(new Secret(roleUrl)) : isolated.connect()),
         services: { now: () => clock, confirmCardCommand: execute },
         logSink: (line) => {
           logs.push(line);
@@ -208,7 +231,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
 
   it.each(
     (["custom", "difference"] as const).flatMap((kind) =>
-      (["press", "prepare", "replay", "deferred", "callback"] as const).map((mode) => [kind, mode] as const),
+      (["press", "prepare", "replay", "deferred", "callback", "legacy"] as const).map((mode) => [kind, mode] as const),
     ),
   )("새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(%s/%s)", async (kind, mode) => {
     const sourceMessageId = newUuid();
@@ -322,7 +345,20 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
     const beforePayment = (await state()).payments;
     const execute = vi.fn<ConfirmCardCommand>();
     let body: unknown;
-    if (mode === "press") {
+    if (mode === "press" || mode === "legacy") {
+      if (mode === "legacy") {
+        restricted = true;
+        if (kind === "difference") {
+          const before = await state();
+          const pending = await call(original.cardKey, "", execute, "blk-card");
+          expect(pending.response.headers.get("Siljang-Outcome")).toBe("retry_needed");
+          expect(JSON.stringify(await pending.response.json())).not.toContain(amountKey);
+          expect(await state()).toEqual(before);
+          expect(JSON.stringify(pending.logs)).toContain("CustomerNoticeTemporarilyUnavailable");
+          expect(JSON.stringify(pending.logs)).not.toContain("42501");
+          await isolated.db.query(`GRANT SELECT (changes,base_version,amount_delta) ON change_requests TO "${role}"`);
+        }
+      }
       const result = await call(original.cardKey, "", execute, "blk-card");
       expect(result.response.headers.get("Siljang-Outcome")).toBe("not_allowed_now");
       body = await result.response.json();
