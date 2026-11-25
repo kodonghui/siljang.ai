@@ -1,0 +1,68 @@
+{
+  "source": "4a2d4ee60ccd4a6a68bb380cb6d4d5dde012f6ad",
+  "newLocalNpmCi": false,
+  "relatedTestFiles": [
+    "app/web/src/OperatorAlertsScreen.interaction.test.tsx",
+    "app/web/src/operator-alerts-api.test.ts",
+    "app/web/src/operator-alerts-query.test.ts"
+  ],
+  "results": {
+    "related": {
+      "source": "4a2d4ee60ccd4a6a68bb380cb6d4d5dde012f6ad",
+      "exitCode": 0,
+      "path": "/tmp/siljang-task060-current-related-20261125.log",
+      "workingDirectory": "app",
+      "command": "npm run test -w web -- src/OperatorAlertsScreen.interaction.test.tsx src/operator-alerts-api.test.ts src/operator-alerts-query.test.ts",
+      "lines": [
+        " Test Files  3 passed (3)",
+        "      Tests  49 passed (49)"
+      ]
+    },
+    "type": {
+      "source": "4a2d4ee60ccd4a6a68bb380cb6d4d5dde012f6ad",
+      "exitCode": 0,
+      "path": "/tmp/siljang-task060-current-type-20261125.log",
+      "workingDirectory": "app",
+      "command": "npm run typecheck",
+      "lines": []
+    },
+    "build": {
+      "source": "4a2d4ee60ccd4a6a68bb380cb6d4d5dde012f6ad",
+      "exitCode": 0,
+      "path": "/tmp/siljang-task060-current-build-20261125.log",
+      "workingDirectory": "app",
+      "command": "npm run build",
+      "lines": [
+        "✓ built in 876ms",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "productCodeChanges": 0,
+  "browserRun": false,
+  "outsideServices": 0,
+  "review7150353382": {
+    "runtimeProductCodeChanges": 0,
+    "scopeCorrections": [
+      "422 입력 안내/처음부터 보기와500 추적ID/재시도 분리",
+      "다른 화면 복귀 재조회는 코드 대조,새로 고침/옛 안내 제거는 시험",
+      "요청limit1~100/응답0~limit 및 alertId/shopId/nextCursor 보존"
+    ],
+    "testsRerunForDocsOnly": false
+  },
+  "historicalScope": "검사 원본4a2d의49개/타입/빌드. 부모 통합 뒤 전체 앱은 최종 현재 공개 CI로 확인",
+  "mainIntegration": {
+    "main": "a718f9de36009d54c6fc5deca7c619baddbff107",
+    "ciDeployment": "진행 중. 다음 PR 병합 전 별도 확인하고 PR 본문/댓글로 연결",
+    "changedProductInputs": 0,
+    "comparedInputs": [
+      "app/web/src/OperatorAlertsScreen.tsx",
+      "app/web/src/operator-alerts-api.ts",
+      "app/web/src/operator-alerts-query.ts",
+      "app/web/src/OperatorArea.tsx"
+    ]
+  }
+}

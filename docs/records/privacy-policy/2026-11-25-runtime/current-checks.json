@@ -42,5 +42,6 @@
   },
   "productCodeChanges": 0,
   "browserRun": false,
-  "outsideServices": 0
+  "outsideServices": 0,
+  "historicalScope": "초기2파일49개/타입/빌드의 원본. 검토 보완 뒤50개는 review-checks.json"
 }

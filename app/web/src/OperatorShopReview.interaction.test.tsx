@@ -245,6 +245,59 @@ it("변경 요청이 있으면 먼저 반영하고 최신 가게를 다시 읽�
   await waitFor(() => expect(reads).toBe(2));
   expect(main().queryByRole("region", { name: "사업자 정보 변경 요청" })).toBeNull();
 });
+it.each(["holder-different", "no-account"] as const)(
+  "사업자 변경의 %s는 안내만 보이고 확인 뒤 반영을 허용한다",
+  async (selected) => {
+    current = example(detailPath, "identity_change_pending");
+    if (selected === "no-account") {
+      current.paymentAccount = null;
+      current.pendingIdentityChange.paymentAccount = null;
+    } else {
+      current.paymentAccount = { ...current.paymentAccount, holderName: "다른 합성 예금주", holderMatches: false };
+      current.pendingIdentityChange.paymentAccount = {
+        ...current.pendingIdentityChange.paymentAccount,
+        holderName: "다른 합성 예금주",
+        holderMatchesNew: false,
+      };
+    }
+    const change = structuredClone(current.pendingIdentityChange);
+    const previousFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const response = await previousFetch(input, init);
+        if (String(input).includes("/identity-changes/") && init?.method === "POST") {
+          const value = await response.json();
+          current.representativeName = value.change.representativeName;
+          current.businessRegNo = value.change.businessRegNo;
+          return json({ ...value, change: { ...value.change, paymentAccount: change.paymentAccount } });
+        }
+        return response;
+      }),
+    );
+    mount();
+    await loaded();
+    const panel = main().getByRole("region", { name: "사업자 정보 변경 요청" });
+    expect(
+      within(panel).getByText(
+        selected === "no-account" ? "등록된 결제 계좌가 없어요" : "예금주가 새 대표자·상호와 달라요",
+      ),
+    ).toBeTruthy();
+    const apply = within(panel).getByRole("button", { name: "반영" }) as HTMLButtonElement;
+    expect(apply.disabled).toBe(false);
+    fireEvent.click(apply);
+    await screen.findByRole("dialog");
+    expect(sends).toHaveLength(0);
+    await confirm("반영하기");
+    await main().findByText("반영했어요. 사장님께 알렸어요");
+    await waitFor(() => expect(reads).toBe(2));
+    expect(sends).toHaveLength(1);
+    expect(sends[0]?.path).toBe(`/api/operator/identity-changes/${change.changeId}/review`);
+    expect(sends[0]?.body).toEqual({ baseRevision: change.revision, decision: "applied" });
+    expect(sends[0]?.key).toBeTruthy();
+    expect(main().queryByRole("region", { name: "사업자 정보 변경 요청" })).toBeNull();
+  },
+);
 it("이미 확인된 가게는 판정자·시각을 보이고 확인/보류 버튼을 없앤다", async () => {
   current = example(licensePath, "verified", 200, "post").shop;
   mount();
