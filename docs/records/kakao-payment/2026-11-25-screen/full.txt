@@ -1,0 +1,38 @@
+> test
+> npm run test -w server && npm run test -w web
+
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+(node:2757959) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Test Files  153 passed (153)
+      Tests  2957 passed (2957)
+   Start at  12:45:34
+   Duration  275.15s (tests 68%, import 31%, transform 2%)
+
+     Import  371 modules were evaluated 644 times · 78.76s total, 31% of tracked time
+             ~33.39s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/web
+
+
+ Test Files  73 passed (73)
+      Tests  1775 passed (1775)
+   Start at  12:50:09
+   Duration  46.57s (tests 50%, import 37%, environment 7%, transform 6%)
+
+     Import  196 modules were evaluated 867 times · 46.72s total, 37% of tracked time
+             ~8.03s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

@@ -1,0 +1,43 @@
+{
+  "source": "d5c80fb32ae4b2a2d8875c734f04f77fb01ff88b",
+  "sourceTree": "962b51bc549b53513ba74332dc12057369e70257",
+  "scopeGitObjects": {
+    "app/server": "b712ebedd932bf4d97d5c2204be7dcdd8ca8cc1a",
+    "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1",
+    "app/biome.json": "a494daee273d2973a99ae26a6ab7778cdc69d5e9",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "de0aa79b81685e087cd5b232401724d38dd776cd",
+    "tools/staging-login-callback-grants.sql": "f85114567c755a1f49e3015532da1c3336b3911b",
+    "research/screen-checks-2026-11": "f81b6037b0bb8116ab16cb3de17ed1a1530e466d"
+  },
+  "runtimeTestApiDbGrantsDiffAfterSource": 0,
+  "migrations": 41,
+  "freshState": "completed",
+  "freshDatabaseRemaining": 0,
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "testLines": [
+    "Test Files  153 passed (153)",
+    "Tests  2957 passed (2957)",
+    "Duration  275.15s (tests 68%, import 31%, transform 2%)",
+    "Test Files  73 passed (73)",
+    "Tests  1775 passed (1775)",
+    "Duration  46.57s (tests 50%, import 37%, environment 7%, transform 6%)"
+  ],
+  "buildLines": [
+    "✓ built in 664ms",
+    "Total Upload: 5488.67 KiB / gzip: 1011.29 KiB",
+    "Total Upload: 21.08 KiB / gzip: 6.55 KiB"
+  ],
+  "nodePassed": 55,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "browserExecuted": false,
+  "fixtureSource": "d5c80fb32ae4b2a2d8875c734f04f77fb01ff88b",
+  "frames": 14,
+  "responseRows": 35,
+  "responseFrames": 24,
+  "npmCi": "shared same-lock installation reused locally; CI clean installation still required"
+}
