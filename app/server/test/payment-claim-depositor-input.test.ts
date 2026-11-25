@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import {
   type ConfirmCardCommand,
@@ -10,8 +11,10 @@ import {
 import { createPaymentRequestNotice } from "../src/customer-notice-store";
 import { pgConnector } from "../src/db";
 import { deliverKakaoCallback } from "../src/kakao-callback";
+import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { kakaoConsultationMessage } from "../src/kakao-consultation-message";
-import { deferredKakaoBatch, deferredKakaoTexts } from "../src/kakao-deferred";
+import { deferredKakaoBatch, deferredKakaoTexts, markDeferredKakaoMessages } from "../src/kakao-deferred";
 import { expandKakaoMessageContents } from "../src/kakao-message-content";
 import { kakaoConfirmAnswerMessage } from "../src/kakao-order-request-message";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
@@ -19,6 +22,7 @@ import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
@@ -231,11 +235,14 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
     expect(execute).not.toHaveBeenCalled();
   });
 
-  it.each(
-    (["custom", "difference"] as const).flatMap((kind) =>
+  it.each([
+    ...(["custom", "difference"] as const).flatMap((kind) =>
       (["press", "prepare", "replay", "deferred", "callback", "legacy"] as const).map((mode) => [kind, mode] as const),
     ),
-  )("새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(%s/%s)", async (kind, mode) => {
+    ["difference", "blocked-deferred"] as const,
+    ["custom", "pending-callback"] as const,
+    ["difference", "pending-callback"] as const,
+  ])("새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(%s/%s)", async (kind, mode) => {
     const sourceMessageId = newUuid();
     const original = await show("payment_claim", sourceMessageId);
     const amountId = newUuid(),
@@ -340,11 +347,165 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
     const notice = await scoped.transaction((tx) => createPaymentRequestNotice(tx, paymentId, NOW));
     if (!notice) throw new Error("합성 금액 확인 안내 없음");
     // 새 안내의 전달과 별개로, 이미 보인 결제 확인 카드 자체를 다시 읽는 경로를 가른다.
-    await isolated.db.query("UPDATE notifications SET status='delivered_on_reply',sent_at=$2 WHERE id=$1", [
-      notice.id,
-      NOW,
-    ]);
+    if (mode === "pending-callback")
+      await isolated.db.query("UPDATE notifications SET status='deferred',created_at=$2,sent_at=NULL WHERE id=$1", [
+        notice.id,
+        NOW,
+      ]);
+    else
+      await isolated.db.query("UPDATE notifications SET status='delivered_on_reply',sent_at=$2 WHERE id=$1", [
+        notice.id,
+        NOW,
+      ]);
     const beforePayment = (await state()).payments;
+    if (mode === "blocked-deferred") {
+      await isolated.db.query("UPDATE consultations SET ai_disclosed_at=$2 WHERE id=$1", [shop.consultationId, NOW]);
+      const blocked: string[] = [],
+        normal: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const source = i === 0 ? sourceMessageId : newUuid();
+        if (i > 0) {
+          const clonedId = newUuid(),
+            clonedKey = `ck_${newUuid()}`;
+          await isolated.db.query(
+            "INSERT INTO confirm_cards SELECT(jsonb_populate_record(NULL::confirm_cards,to_jsonb(c)||$2::jsonb)).* FROM confirm_cards c WHERE c.card_key=$1",
+            [original.cardKey, JSON.stringify({ id: clonedId, card_key: clonedKey })],
+          );
+          await isolated.db.query(
+            "UPDATE confirm_cards SET payload=jsonb_set(jsonb_set(payload,'{sourceMessageId}',$2::jsonb),'{presentation,cardKey}',$3::jsonb) WHERE id=$1",
+            [clonedId, JSON.stringify(source), JSON.stringify(clonedKey)],
+          );
+        }
+        const id = newUuid();
+        blocked.push(id);
+        await isolated.db.query(
+          "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'결제 확인 요청','deferred',$5)",
+          [id, shop.shopId, shop.consultationId, source, new Date(NOW.getTime() + i)],
+        );
+      }
+      for (let i = 0; i < 3; i++) {
+        const id = newUuid();
+        normal.push(id);
+        await isolated.db.query(
+          "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','text',$4,'deferred',$5)",
+          [id, shop.shopId, shop.consultationId, `합성 뒤의 정상 안내 ${i}`, new Date(NOW.getTime() + 100 + i)],
+        );
+      }
+      const runtime = pgConnector(new Secret(roleUrl));
+      try {
+        const limited = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), runtime);
+        const batch = await limited.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: NOW }));
+        expect(batch.messages.map((m) => m.id)).toEqual(normal.slice(0, 2));
+        expect(batch.currentBlocked).toBe(true);
+        await limited.transaction((tx) => markDeferredKakaoMessages(tx, shop.customerId, batch.messages, NOW));
+        const tail = await limited.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: NOW }));
+        expect(tail.messages.map((m) => m.id)).toEqual(normal.slice(2));
+        expect(tail.currentBlocked).toBe(false);
+        await limited.transaction((tx) => markDeferredKakaoMessages(tx, shop.customerId, tail.messages, NOW));
+        expect(
+          (await isolated.db.query("SELECT delivery,sent_at FROM messages WHERE id=ANY($1::uuid[])", [blocked])).rows,
+        ).toEqual(blocked.map(() => ({ delivery: "deferred", sent_at: null })));
+        await isolated.db.query(`GRANT SELECT (changes,base_version,amount_delta) ON change_requests TO "${role}"`);
+        const recovered = await limited.transaction((tx) =>
+          deferredKakaoBatch(tx, shop.customerId, { now: NOW, allowFullOrderCard: true }),
+        );
+        expect(recovered.messages.map((m) => m.id).sort()).toEqual([...blocked].sort());
+        const shown = JSON.stringify(
+          kakaoConsultationMessage({ state: "normal", contents: deferredKakaoTexts(recovered.messages) }),
+        );
+        expect(shown).toContain(amountKey);
+        expect(shown).toContain("합성 변경 문구");
+        expect((await state()).payments).toEqual(beforePayment);
+      } finally {
+        await runtime.close();
+      }
+      return;
+    }
+    if (mode === "pending-callback") {
+      const { fc, keys } = singleKeyCrypto(),
+        fieldKey = keys.get(1);
+      if (fieldKey === undefined) throw new Error("합성 암호화 키 없음");
+      const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: fieldKey });
+      const jobs: KakaoCallbackJob[] = [];
+      await isolated.db.query("UPDATE consultations SET ai_disclosed_at=$2 WHERE id=$1", [shop.consultationId, NOW]);
+      const network = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("합성 중복 카드에서 실제 발신 금지"));
+      try {
+        const response = await createApp({
+          connect: () => isolated.connect(),
+          services: {
+            now: () => NOW,
+            fieldCrypto: fc,
+            kakaoCallbackQueue: {
+              send: async (job) => {
+                jobs.push(job);
+              },
+            },
+          },
+          logSink: () => {},
+        }).request(
+          "/api/kakao/skills/message",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+            body: JSON.stringify({
+              bot: { id: shop.botId },
+              userRequest: {
+                utterance: "합성 기존 금액 카드 보기",
+                callbackUrl: "https://bot-api.kakao.com/v1/callback/synthetic_amount_dedup",
+                block: { id: "conversation" },
+                user: { id: shop.userKey, type: "botUserKey" },
+              },
+              action: { id: "synthetic-amount-dedup", params: {} },
+            }),
+          },
+          env,
+        );
+        expect(response.headers.get("Siljang-Outcome")).toBe("callback_pending");
+        const job = jobs[0];
+        if (!job) throw new Error("합성 콜백 작업 없음");
+        const replyId = newUuid();
+        await isolated.db.query(
+          "UPDATE confirm_cards SET payload=jsonb_set(payload,'{sourceMessageId}',$2::jsonb) WHERE card_key=$1",
+          [original.cardKey, JSON.stringify(job.messageId)],
+        );
+        await isolated.db.query(
+          "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'결제 확인 요청','deferred',$5)",
+          [replyId, shop.shopId, shop.consultationId, job.messageId, new Date(NOW.getTime() + 1)],
+        );
+        const call = vi.fn<AiModel["call"]>().mockRejectedValue(new Error("저장된 답이 있어 모델 호출 금지"));
+        const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+        const at = new Date(NOW.getTime() + 1000);
+        const options = {
+          connect: () => isolated.connect(),
+          now: () => at,
+          fetch: send,
+          logSink: () => {},
+          services: { fieldCrypto: fc, aiModel: { provider: "anthropic" as const, model: "claude-haiku-5-5", call } },
+        };
+        expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(call).not.toHaveBeenCalled();
+        expect(network).not.toHaveBeenCalled();
+        const sent = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
+        expectSchema("SkillTemplateResponse", sent);
+        const outputs = sent.template.outputs as { textCard?: { buttons: unknown[] } }[];
+        expect(
+          outputs.filter((o) => o.textCard?.buttons.some((b) => JSON.stringify(b).includes(amountKey))),
+        ).toHaveLength(1);
+        expect(
+          (await isolated.db.query("SELECT status,sent_at FROM notifications WHERE id=$1", [notice.id])).rows,
+        ).toEqual([{ status: "delivered_on_reply", sent_at: at }]);
+        expect((await isolated.db.query("SELECT delivery,sent_at FROM messages WHERE id=$1", [replyId])).rows).toEqual([
+          { delivery: "callback", sent_at: at },
+        ]);
+        expect((await state()).payments).toEqual(beforePayment);
+        expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+        expect(send).toHaveBeenCalledTimes(1);
+      } finally {
+        network.mockRestore();
+      }
+      return;
+    }
     const execute = vi.fn<ConfirmCardCommand>();
     let body: unknown;
     if (mode === "press" || mode === "legacy") {
