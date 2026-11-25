@@ -21,6 +21,14 @@ it("SCR007의8상태와23응답을 공통 전송과 현재 표시 함수에 대�
   ).toEqual(rows.sort((a, b) => (a.response ?? "").localeCompare(b.response ?? "")));
   for (const row of [...samples, ...cases]) if (row.body !== null) expectSchema("SkillResponse", row.body);
   for (const row of cases) if (row.display !== "skill") expect(row.body).toBeNull();
+  const fixed = cases.find((row) => row.response === "API-070#200:ai_output_rejected");
+  for (const fact of [
+    "주문 내용을 다시 확인해 주세요",
+    "주문 확정",
+    "31,000원(제작 전 취소)",
+    "변경 마감: 11월 26일 14:00까지",
+  ])
+    expect(JSON.stringify(fixed?.body)).toContain(fact);
   const duplicate = cases.find((row) => row.response === "API-070#200:duplicate");
   expect(duplicate?.body).toEqual({ version: "2.0", template: { outputs: [] } });
   for (const state of ["error", "permission", "handed-over", "rate-limited"]) {

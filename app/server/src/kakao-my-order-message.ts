@@ -2,6 +2,8 @@
 
 import { kakaoConsultationMessage } from "./kakao-consultation-message";
 import { toShopLocal } from "./time";
+export const KAKAO_MY_ORDER_FIXED_TEXT = "주문 내용을 다시 확인해 주세요";
+
 export interface KakaoMyOrderSummary {
   readonly orderNo: string;
   readonly status:
@@ -29,7 +31,7 @@ export interface KakaoMyOrderSummary {
   readonly timeZone: string;
 }
 export type KakaoMyOrderDisplayView =
-  | { readonly state: "normal" | "stale"; readonly order: KakaoMyOrderSummary }
+  | { readonly state: "normal" | "stale"; readonly order: KakaoMyOrderSummary; readonly fixed?: boolean }
   | {
       readonly state: "normal";
       readonly orders: readonly { readonly orderNo: string; readonly pickupAt: string; readonly requestedAt: string }[];
@@ -171,7 +173,8 @@ export function kakaoMyOrderMessage(
   ]
     .map(text)
     .join(" · ");
-  const base = [facts[0], summary, ...facts.slice(1)].join("\n");
+  const leading = view.fixed ? [KAKAO_MY_ORDER_FIXED_TEXT] : [];
+  const base = [...leading, facts[0], summary, ...facts.slice(1)].join("\n");
   const message = o.contents.message === undefined || o.contents.message === "" ? "" : text(o.contents.message);
   const budget = 400 - [...title, ...base, ..." · 문구 ''"].length;
   const shownMessage =
@@ -181,6 +184,7 @@ export function kakaoMyOrderMessage(
         : `${[...message].slice(0, Math.max(0, budget - 1)).join("")}…`
       : message;
   const description = [
+    ...leading,
     facts[0],
     `${summary}${shownMessage ? ` · 문구 '${shownMessage}'` : ""}`,
     ...facts.slice(1),

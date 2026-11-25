@@ -9,6 +9,7 @@ import {
 import { kakaoMyOrderMessage } from "../src/kakao-my-order-message";
 import { expectSchema } from "./support/contract";
 import { myOrderSummary as order } from "./support/kakao-my-order-cases";
+import { paymentNormal } from "./support/kakao-payment-cases";
 
 const content = (view: unknown) => ({ kind: "my_order", view }) as unknown as KakaoMessageContent;
 
@@ -66,4 +67,72 @@ it("긴 내 주문의 여러 출력도 한 번만 펼쳐지고 세 출력 한도
 it("표시 조각의 틀린 번호와 공통 경로의 로딩 내용은 전송 전에 거절한다", () => {
   expect(() => kakaoMessageTemplate([{ kind: "my_order", view: { state: "normal", order }, part: 999 }])).toThrow();
   expect(() => kakaoMessageTemplate([content({ state: "loading" })])).toThrow();
+});
+
+const choices = {
+  state: "normal",
+  orders: Array.from({ length: 10 }, (_, index) => ({
+    orderNo: String(index).padStart(8, "A"),
+    pickupAt: order.pickupAt,
+    requestedAt: new Date(Date.parse("2026-11-25T00:00:00Z") + index * 1000).toISOString(),
+  })),
+  timeZone: "Asia/Seoul",
+} as const;
+const mixed: readonly KakaoMessageContent[] = [content(choices), { kind: "payment_notice", view: paymentNormal }];
+it("주문 열 개와 결제 안내의 일반 응답은 결제 행동을 먼저 남겨 바로가기가 열 개다", () => {
+  const body = kakaoConsultationMessage({ state: "normal", contents: mixed });
+  expectSchema("SkillTemplateResponse", body);
+  expect(body).toMatchObject({
+    template: {
+      quickReplies: [
+        { messageText: "결제했어요" },
+        ...[9, 8, 7, 6, 5, 4, 3, 2, 1].map((index) => ({
+          messageText: [String(index).padStart(8, "A"), "내 주문"].join(" "),
+        })),
+      ],
+    },
+  });
+  expect(JSON.stringify(body)).not.toContain("AAAAAAA0 내 주문");
+});
+it("주문 선택을 보일 때 날짜 추천을 합쳐도 최종 바로가기는 열 개다", () => {
+  const body = kakaoConsultationMessage({
+    state: "normal",
+    contents: [content(choices)],
+    suggestedDays: ["2026-11-27", "2026-11-28", "2026-11-29"],
+  });
+  expectSchema("SkillTemplateResponse", body);
+  expect(body).toMatchObject({
+    template: {
+      quickReplies: [9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((index) => ({
+        messageText: [String(index).padStart(8, "A"), "내 주문"].join(" "),
+      })),
+    },
+  });
+});
+it("혼합 콜백도 결제와 최근 주문 아홉 개만 실제 직렬화한다", async () => {
+  let sent: unknown;
+  expect(
+    await deliverKakaoCallback(
+      { url: new URL("https://bot-api.kakao.com/v1/callback/synthetic"), deadline: 10000 },
+      mixed,
+      {
+        now: () => 100,
+        fetch: async (_url, init) => {
+          sent = JSON.parse(String(init.body));
+          return Response.json({ status: "SUCCESS" });
+        },
+      },
+    ),
+  ).toBe("delivered");
+  expectSchema("SkillTemplateResponse", sent);
+  expect(sent).toMatchObject({
+    template: {
+      quickReplies: [
+        { messageText: "결제했어요" },
+        ...[9, 8, 7, 6, 5, 4, 3, 2, 1].map((index) => ({
+          messageText: [String(index).padStart(8, "A"), "내 주문"].join(" "),
+        })),
+      ],
+    },
+  });
 });

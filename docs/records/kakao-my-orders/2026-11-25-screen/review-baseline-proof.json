@@ -1,0 +1,20 @@
+{
+  "reviewedHead": "66b3c468fc7fcf8dac376a2b7e96ac8d449eae90",
+  "codeBaseline": "2a3f01708f4c5b51f2dfd993d0dc5e605a6eab62",
+  "redTestsCommit": "1d244f06b120fe6c085e020e9578946c4cde3aac",
+  "productionObjectsEqualToPreviousFullSource": {
+    "app/server/src/kakao-message-content.ts": "019d02819b570cad5c33749f51c5aead44602d71",
+    "app/server/src/kakao-consultation-message.ts": "19d2d411052bd4d15aad36c13708313668d694b4",
+    "app/server/src/kakao-my-order-message.ts": "b12347f7758e66ec5aabe93f17561adb92b35c88"
+  },
+  "red": {
+    "failed": 4,
+    "passed": 22
+  },
+  "green": {
+    "files": 8,
+    "passed": 71
+  },
+  "redLogSha256": "fbbaf8e6ceef6d77b2b38147cdf89880f1575df314aebdda548863b1e21a80bf",
+  "native": false
+}

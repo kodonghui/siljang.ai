@@ -31,5 +31,11 @@
   "npmCi": "동일 lock의 설치를 재사용. 현재 PR CI의 새 npm ci와 전체를 별도로 확인함",
   "browserExecuted": false,
   "realKakao": false,
-  "modelCallsAdded": 0
+  "modelCallsAdded": 0,
+  "afterMain284Merge": {
+    "main": "5895ef90978574ae4e7dc3f00a45da5ee401406d",
+    "scopeGitObjectsUnchanged": true,
+    "mainCiAndDeploy": "진행 중. 성공으로 표시하지 않음"
+  },
+  "currentReviewFixWholeRun": "앞선 전체 원본의 근거. 리뷰 고침의 새 빈 전체/빌드는 다음에 별도로 실행하며 이 숫자를 현재 전체로 세지 않음"
 }

@@ -65,7 +65,7 @@ export async function myOrderResponseCases(): Promise<readonly MyOrderResponseCa
     "masking_failed",
   ] as const)
     await common(outcome, "handed-over");
-  add("API-070#200:ai_output_rejected", "normal", myOrderBody({ state: "normal", order: myOrderSummary }));
+  add("API-070#200:ai_output_rejected", "normal", myOrderBody({ state: "normal", order: myOrderSummary, fixed: true }));
   add("API-070#200:card_shown", "normal", myOrderBody({ state: "normal", order: myOrderSummary }));
   await common("photo_received", "normal");
   for (const outcome of ["photo_rejected", "photo_download_failed", "unsupported_message"] as const)
