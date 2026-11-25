@@ -127,8 +127,11 @@ describeDb("예약 안내의 스킬 읽기와 다음 대화 전달", () => {
           );
           const body = await response.json();
           expectSchema("SkillTemplateResponse", body);
-          if (condition === "valid") expect(JSON.stringify(body)).toContain(BODY);
-          else expect(JSON.stringify(body)).not.toContain(BODY);
+          const shown = kind === "review_request" ? "후기 남기기" : BODY;
+          if (condition === "valid") {
+            expect(JSON.stringify(body)).toContain(shown);
+            if (kind === "review_request") expect(JSON.stringify(body)).toContain('"blockId":"review"');
+          } else expect(JSON.stringify(body)).not.toContain(shown);
           if (mode === "event")
             expect(response.headers.get("Siljang-Outcome")).toBe(
               condition === "valid" ? "notice_shown" : "notice_gone",

@@ -1,0 +1,41 @@
+{
+  "sourceCommit": "34bb2258f9e01e4359cdd886e04fe811bb0ec266",
+  "publicEquivalentHead": "3d3ecbe716fc09ddd7bee5f7653a4faa29182d8b",
+  "sourceTree": "4446130853ae6ac34055fe5abe7b441d2b4cc786",
+  "baseMain": "a56b7cc1bc9580195bd35c4d0f40a9c639b7e821",
+  "scopeGitObjects": {
+    "app/server": "335278f9f9f273ae6f42e281b70f5b9e8d40472d",
+    "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "597089438985abb37679f5791ff4a64459cf3317",
+    "research/screen-checks-2026-11": "24befc116a48438031a3212c4ea7965c28087c1e",
+    ".github/workflows/app.yml": "56b47e1813912e7793eb8e54f0d8be4eece3c937",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 41,
+  "combinedNpmTestExit": 0,
+  "server": {
+    "files": 164,
+    "passed": 3101
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "buildExit": 0,
+  "freshState": "completed",
+  "freshDatabaseRemaining": 0,
+  "nodePassed": 56,
+  "nodeSource": "34bb2258f9e01e4359cdd886e04fe811bb0ec266",
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "browserExecuted": false,
+  "realKakao": false,
+  "photoPlaceholders": true,
+  "modelCallsAdded": 0,
+  "npmCi": "동일 lock의 로컬 설치를 재사용. PR CI의 새 설치는 다음 확인이며 새 로컬 npm ci라고 쓰지 않음",
+  "previousFailedFull": "full-proof-before-mismatch-test.json (원본028e90de, 서버3099통과/2실패, 웹/빌드 미실행)",
+  "ci": "ready PR 생성 뒤 현재 head app/db 확인 예정",
+  "termScope": "새 기록 문단과 새 수락 대조. 이전 README 본문의125개 검출은 범위 밖이며 고치거나 통과로 기록하지 않음"
+}

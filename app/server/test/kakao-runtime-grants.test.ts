@@ -5,12 +5,14 @@ import { createAiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import { assessPickupDay, closedDayNoticeTrace, requestClosedPickupDay } from "../src/booking-capacity";
 import { pressConfirmCard, showConfirmCard } from "../src/confirm-card-store";
+import { customerNoticeContents } from "../src/customer-notice-content";
 import { createOrderConfirmedNotice } from "../src/customer-notice-store";
 import { createCustomerNoticeHandler } from "../src/customer-notices";
 import { pgConnector, type RequestDb } from "../src/db";
 import { runDueJobs } from "../src/job-runner";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
+import { kakaoConsultationMessage } from "../src/kakao-consultation-message";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { createCustomOrderTask, ownerProductionOrder, writeOrderLedgerData } from "../src/order-output";
 import { quoteOrderCancellation } from "../src/order-refund-quote";
@@ -575,6 +577,10 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
         paymentId,
       ]);
     });
+    await db.query(
+      "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',1,'합성 제한 규정','합성 조건','합성 제한 역할 규정') ON CONFLICT(operating_rules_id,position) DO UPDATE SET effect_text=EXCLUDED.effect_text",
+      [target.shopId, target.operatingRulesId],
+    );
     const runtime = pgConnector(new Secret(databaseUrl));
     try {
       const scoped = shopRequestDb(createShopScope(target.shopId, { kind: "job", job: "customer_notice" }), runtime);
@@ -587,6 +593,31 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       expect((await db.query("SELECT status FROM notifications WHERE id=$1", [first?.id])).rows).toEqual([
         { status: "deferred" },
       ]);
+      const contents = await scoped.transaction((tx) =>
+        customerNoticeContents(
+          tx,
+          {
+            id: first?.id ?? "",
+            customerId: target.customerId,
+            kind: "order_confirmed",
+            body: "사용하지 않는 호출자 본문",
+          },
+          at,
+        ),
+      );
+      if (contents === null) throw new Error("합성 제한 역할 안내 없음");
+      const message = kakaoConsultationMessage({ state: "normal", contents });
+      expectSchema("SkillTemplateResponse", message);
+      expect(JSON.stringify(message)).toContain("합성 제한 역할 규정");
+      expect(JSON.stringify(message)).not.toContain("사용하지 않는 호출자 본문");
+      expect(
+        (
+          await db.query(
+            "SELECT has_column_privilege($1,'order_details','design_notes','SELECT') AS can_read,has_column_privilege($1,'order_details','design_notes','UPDATE') AS can_update,has_table_privilege($1,'order_detail_extras','INSERT') AS can_insert,has_table_privilege($1,'order_detail_extras','DELETE') AS can_delete",
+            [role],
+          )
+        ).rows,
+      ).toEqual([{ can_read: true, can_update: false, can_insert: false, can_delete: false }]);
       await expect(runtime.query("UPDATE notifications SET body=body WHERE id=$1", [first?.id])).rejects.toMatchObject({
         code: "42501",
       });
