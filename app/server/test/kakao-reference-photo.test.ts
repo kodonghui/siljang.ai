@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
+import { showConfirmCard } from "../src/confirm-card-store";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import { deferExpiredKakaoCallback, type KakaoCallbackJob, type KakaoCallbackQueue } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
@@ -170,6 +171,61 @@ describeDb("참고 사진의 실제 메시지 수신(TASK-065)", () => {
     expect(posted).toHaveLength(1);
     expect(posted[0]).toContain("사진을 받았어요");
     expect(call).not.toHaveBeenCalled();
+  });
+  it("사진 콜백이 앞선 확인 카드를 함께 전하면 card_shown도 기록한다", async () => {
+    userKey = shop.userKey;
+    await db.query("UPDATE consultations SET ai_disclosed_at=$2,ai_disclosed_policy_version=1 WHERE id=$1", [
+      shop.consultationId,
+      NOW,
+    ]);
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), db);
+    const card = await showConfirmCard(scoped, {
+      customerId: shop.customerId,
+      consultationId: shop.consultationId,
+      orderId: shop.orderId,
+      sourceMessageId: shop.messageId,
+      kind: "cancel",
+      now: NOW,
+    });
+    await db.query(
+      "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,trace_id,delivery,created_at) VALUES($1,$2,'outbound','system','card',$3,$4,'deferred',$5)",
+      [shop.shopId, shop.consultationId, card.title, shop.messageId, NOW],
+    );
+    const jobs: KakaoCallbackJob[] = [];
+    await request(
+      PHOTO,
+      {
+        send: async (job) => {
+          jobs.push(job);
+        },
+      },
+      true,
+    );
+    const job = jobs[0];
+    if (!job) throw new Error("합성 사진 큐 없음");
+    const logs: string[] = [],
+      posted: string[] = [];
+    const network = vi.fn<typeof fetch>(async (_input, init) => {
+      if (init?.method === "POST") {
+        posted.push(String(init.body));
+        return Response.json({ status: "SUCCESS" });
+      }
+      return new Response(IMAGE);
+    });
+    await consumeKakaoCallback(job, env, {
+      now: () => new Date(NOW.getTime() + 1000),
+      fetch: network,
+      logSink: (line) => {
+        logs.push(line);
+      },
+      services: { storage: store },
+    });
+    expect(posted[0]).toContain("textCard");
+    expect(logs.map((line) => JSON.parse(line))).toContainEqual({
+      level: "info",
+      event: "kakao_callback_result",
+      code: "card_shown",
+    });
   });
   it("원격 저장 뒤 오류가 나면 연결 행 없이 회수 대기를 남기고 기한 뒤 파일을 지운다", async () => {
     const put = store.put.bind(store);

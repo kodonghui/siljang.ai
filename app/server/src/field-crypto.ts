@@ -45,7 +45,7 @@ const TAG_BYTES = 16;
 /** 평문 UTF-8 상한. 계좌번호·전화번호는40자까지이며 상담 커서는120바이트를 쓴다. */
 export const MAX_FIELD_BYTES = 256;
 /** 주소 최대5개·후기1000자와 내부 식별자. 이 수신 용도만 별도 한도를 쓴다. */
-export const MAX_KAKAO_PHOTO_CONTEXT_BYTES = 16_384;
+export const MAX_KAKAO_PHOTO_CONTEXT_BYTES = 20_480;
 function fieldLimit(context: FieldContext): number {
   return context.purpose === "messages.kakao_photo" ? MAX_KAKAO_PHOTO_CONTEXT_BYTES : MAX_FIELD_BYTES;
 }

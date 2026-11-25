@@ -20467,6 +20467,7 @@ paths:
                 - card_shown
                 - photo_received
                 - photo_rejected
+                - photo_download_failed
                 - unsupported_message
                 - rate_limited
                 - duplicate
@@ -20597,6 +20598,14 @@ paths:
                       outputs:
                       - simpleText:
                           text: 사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요
+                photo_download_failed:
+                  summary: 카카오 사진 주소에서 한 번 다시 받아도 실패함
+                  value:
+                    version: "2.0"
+                    template:
+                      outputs:
+                      - simpleText:
+                          text: 사진을 받지 못했어요. 다시 보내 주세요
                 unsupported_message:
                   summary: 음성·파일·이모티콘만 온 메시지
                   value:
@@ -20843,6 +20852,7 @@ paths:
           - outcome:ai_timeout
           - outcome:ai_key_missing
           - outcome:ai_limit_reached
+          - outcome:photo_download_failed
           - callback
           노출:
           - closed
@@ -20871,6 +20881,7 @@ paths:
         - card_shown
         - photo_received
         - photo_rejected
+        - photo_download_failed
         - unsupported_message
         - rate_limited
         - duplicate
@@ -34485,6 +34496,7 @@ components:
         meaning: 카카오 사진 주소에서 한 번 다시 받아도 실패함
         message: 사진을 받지 못했어요. 다시 보내 주세요
         operations:
+        - API-070
         - API-072
       notice_shown:
         spec: SPEC-066

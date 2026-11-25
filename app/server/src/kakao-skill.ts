@@ -9,6 +9,7 @@ import { replyWithDeferredKakaoMessages } from "./kakao-deferred";
 import { replyKakaoHandoffInTransaction } from "./kakao-handoff";
 import { kakaoOrderReference } from "./kakao-order-reference";
 import { isKakaoPhotoUtterance, receiveKakaoReferencePhoto } from "./kakao-photo-inbound";
+import { receiveKakaoPhotoReview } from "./kakao-photo-review-inbound";
 import { kakaoAiFailureOutcome, kakaoReply } from "./kakao-reply";
 import { receiveKakaoTextReview } from "./kakao-review";
 import {
@@ -47,6 +48,11 @@ async function handleSkill(r: ShopRequest, kind: SkillKind): Promise<Response> {
     if (trial !== null) return trial;
     if (cardPress !== null) return receiveKakaoConfirmCard(r, cardPress);
     if (kind === "review" && request.status === "linked") {
+      if (
+        request.payload.action.params.review_photos !== undefined &&
+        request.payload.action.params.review_photos !== ""
+      )
+        return await receiveKakaoPhotoReview(r);
       const outcome = await receiveKakaoTextReview(r.db, request);
       return kakaoReply(r, outcome, {
         repeatReview: true,

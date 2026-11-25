@@ -145,7 +145,11 @@ export async function consumeKakaoCallback(
           ? now()
           : null;
       await finishKakaoCallback(db, job.messageId, claim, photo.reply.text, sentAt, previous, photo.reply.id);
-      if (sentAt !== null) log("info", { event: "kakao_callback_result", code: photo.reply.outcome }, options.logSink);
+      if (sentAt !== null) {
+        log("info", { event: "kakao_callback_result", code: photo.reply.outcome }, options.logSink);
+        if (previous.some((row) => row.card !== undefined))
+          log("info", { event: "kakao_callback_result", code: "card_shown" }, options.logSink);
+      }
       return "done";
     }
     let disclosure = services.aiConfigured ? await prepareKakaoAiDisclosure(db, claim, services) : undefined;

@@ -67,6 +67,8 @@ export function kakaoReply(
     readonly previous?: readonly KakaoMessageContent[];
     /** API-072는 반복 요청에도 처음의 감사 답을 보낸다. API-070의 빈 출력과 구분한다. */
     readonly repeatReview?: boolean;
+    /** 사진 후기의 반복은 저장한 첫 실패도 그대로 전하며, 진행 중에는 저장됐다고 말하지 않는다. */
+    readonly repeatReviewText?: string;
   } = {},
 ): Response {
   const headers = { "Siljang-Outcome": outcome, "Cache-Control": "no-store" };
@@ -74,7 +76,8 @@ export function kakaoReply(
     return r.json({ version: "2.0", useCallback: true, data: { text: "답을 준비하고 있어요" } }, 200, headers);
   }
   const outputs: KakaoMessageOutput[] = [];
-  if (outcome === "duplicate" && options.repeatReview) outputs.push({ simpleText: { text: TEXT.review_saved } });
+  if (outcome === "duplicate" && options.repeatReview)
+    outputs.push({ simpleText: { text: options.repeatReviewText ?? TEXT.review_saved } });
   if (outcome !== "duplicate" && !(outcome === "rate_limited" && options.silent)) {
     const previous = options.previous ?? [];
     if (previous.length > 2) throw new RangeError("invalid deferred Kakao replies");

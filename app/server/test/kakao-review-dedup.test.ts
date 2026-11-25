@@ -1,11 +1,17 @@
-import { afterAll, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { afterAll, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { type DbConnector, pgConnector } from "../src/db";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { recentKakaoInboundCount } from "../src/kakao-skill-store";
 import { Secret } from "../src/settings";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
+import type { ObjectStore } from "../src/storage";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
+import { singleKeyCrypto } from "./support/field-keys";
 import { createShop, issueTestBookingLink, linkTestChannel } from "./support/shops";
+import { MemoryStore } from "./support/storage";
 
 const NOW = new Date("2026-11-22T03:00:00Z");
 const ACK = { version: "2.0", template: { outputs: [{ simpleText: { text: "후기를 남겨 주셔서 고마워요" } }] } };
@@ -49,12 +55,17 @@ describeDb("API-072 업무 중복과 트랜잭션(TASK-028)", () => {
         orderNo?: string;
         connect?: DbConnector;
         photos?: string;
+        storage?: ObjectStore;
         omitOrderNo?: boolean;
       } = {},
     ) =>
       createApp({
         ...(options.connect ? { connect: options.connect } : {}),
-        services: { now: () => at },
+        services: {
+          now: () => at,
+          fieldCrypto: singleKeyCrypto().fc,
+          ...(options.storage === undefined ? {} : { storage: options.storage }),
+        },
         logSink: () => {},
       }).request(
         "/api/kakao/skills/review",
@@ -88,6 +99,84 @@ describeDb("API-072 업무 중복과 트랜잭션(TASK-028)", () => {
       },
     };
   }
+
+  function photoPlugin(count = 1) {
+    return JSON.stringify({
+      privacyAgreement: "Y",
+      imageQuantity: String(count),
+      secureUrls: `List(${Array.from({ length: count }, (_, i) => `https://t1.daumcdn.net/synthetic/review${i}.png`).join(",")})`,
+      expire: new Date(NOW.getTime() + 300_000).toISOString(),
+    });
+  }
+  it("사진을 두 번 내려받아도 실패하면 글 후기 없이 실패 안내를 반복한다", async () => {
+    const h = await fixture();
+    const fetcher = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      const first = await h.send({ photos: photoPlugin() });
+      expect(first.headers.get("Siljang-Outcome")).toBe("photo_download_failed");
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      const repeated = await h.send({ photos: photoPlugin() });
+      expect(repeated.headers.get("Siljang-Outcome")).toBe("duplicate");
+      expect(JSON.stringify(await repeated.json())).toContain("다시 보내 주세요");
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect((await db.query("SELECT id FROM reviews WHERE shop_id=$1", [h.shop.shopId])).rowCount).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("받은 자기 주문의 사진 두 장을 G10 뒤 후기에 붙이고 게시 동의를 기본 거절로 남긴다", async () => {
+    const h = await fixture();
+    const store = new MemoryStore();
+    const image = new Uint8Array(readFileSync(new URL("./fixtures/photos/metadata.png", import.meta.url)));
+    const fetcher = vi.fn<typeof fetch>(async () => new Response(image));
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      const first = await h.send({ photos: photoPlugin(2), storage: store });
+      expect(first.headers.get("Siljang-Outcome")).toBe("review_saved");
+      expect(await first.json()).toEqual(ACK);
+      const photos = await db.query<{ storage_key: string; byte_size: number }>(
+        "SELECT storage_key,byte_size FROM review_photos WHERE shop_id=$1",
+        [h.shop.shopId],
+      );
+      expect(photos.rowCount).toBe(2);
+      for (const photo of photos.rows) {
+        const saved = store.objects.get(photo.storage_key);
+        expect(saved?.body).not.toEqual(image);
+        expect(saved?.body.byteLength).toBe(photo.byte_size);
+      }
+      expect(
+        (await db.query("SELECT consented,publishable FROM photo_consents WHERE shop_id=$1", [h.shop.shopId])).rows,
+      ).toEqual([
+        { consented: false, publishable: false },
+        { consented: false, publishable: false },
+      ]);
+      expect((await h.send({ photos: photoPlugin(2), storage: store })).headers.get("Siljang-Outcome")).toBe(
+        "duplicate",
+      );
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect(
+        await recentKakaoInboundCount(
+          shopRequestDb(createShopScope(h.shop.shopId, { kind: "job", job: "kakao_callback" }), db),
+          h.shop.customerId,
+          NOW,
+        ),
+      ).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("아직 받지 않은 주문의 사진 주소는 내려받지 않는다", async () => {
+    const h = await fixture(false);
+    const fetcher = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      expect((await h.send({ photos: photoPlugin() })).headers.get("Siljang-Outcome")).toBe("review_not_allowed");
+      expect(fetcher).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 
   it("같은 후기 HTTP 세 번은 실제 후기 버전·수신을 한 번만 쓰고 API-072의 같은 답을 돌려줌", async () => {
     const h = await fixture();
@@ -197,10 +286,10 @@ describeDb("API-072 업무 중복과 트랜잭션(TASK-028)", () => {
     expect((await db.query("SELECT id FROM reviews WHERE order_id=$1", [h.shop.orderId])).rowCount).toBe(1);
   });
 
-  it("사진의 전체 처리가 연결되기 전에는 글만 저장한 성공으로 답하지 않음", async () => {
+  it("잘못된 사진 플러그인 값에 글만 저장한 성공으로 답하지 않음", async () => {
     const h = await fixture();
     expect((await h.send({ photos: JSON.stringify({ imageQuantity: "1" }) })).headers.get("Siljang-Outcome")).toBe(
-      "not_accepting",
+      "review_invalid",
     );
     expect((await db.query("SELECT id FROM reviews WHERE order_id=$1", [h.shop.orderId])).rowCount).toBe(0);
   });

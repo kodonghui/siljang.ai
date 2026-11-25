@@ -5,6 +5,7 @@ import type { KakaoCallbackClaim } from "./kakao-callback-store";
 import {
   decodeKakaoPhotoContext,
   encodeKakaoPhotoContext,
+  isKakaoPhotoTrace,
   KAKAO_PHOTO_PURPOSE,
   KAKAO_PHOTO_TEXT,
   type KakaoPhotoContext,
@@ -12,6 +13,7 @@ import {
   kakaoPhotoTrace,
 } from "./kakao-photo-context";
 import { downloadKakaoPhoto } from "./kakao-photo-download";
+import { saveKakaoReview } from "./kakao-review";
 import { referencePhotoRoom } from "./photo-count";
 import type { NormalizedPhoto } from "./photo-normalizer";
 import type { Services } from "./services";
@@ -43,7 +45,7 @@ export async function storeKakaoPhotoContext(
   const saved = await db.run(
     `UPDATE messages SET kakao_callback_enc=$3,kakao_callback_deadline_at=$4,trace_id=$5,body_masked='[사진 확인 중]'
       WHERE shop_id=$1 AND id=$2 AND direction='inbound' AND kind='text' AND kakao_callback_enc IS NULL`,
-    [messageId, envelope, new Date(receivedAt.getTime() + SKILL_CALLBACK_MS), kakaoPhotoTrace(messageId)],
+    [messageId, envelope, new Date(receivedAt.getTime() + SKILL_CALLBACK_MS), kakaoPhotoTrace(messageId, context.kind)],
   );
   if (saved.rowCount !== 1) throw new Error("photo source unavailable");
   return envelope;
@@ -56,17 +58,18 @@ async function ownedPhoto(tx: ShopDb, messageId: string, claim: KakaoCallbackCla
     [claim.consultation_id, claim.customer_id],
   );
   const m = await tx.run(
-    `SELECT id FROM messages WHERE shop_id=$1 AND id=$2 AND consultation_id=$3 AND trace_id=$4
-      AND kakao_callback_enc=$5 AND kakao_callback_claim_until=$6 FOR UPDATE`,
+    `SELECT id FROM messages WHERE shop_id=$1 AND id=$2 AND consultation_id=$3 AND trace_id IN ($4,$5)
+      AND kakao_callback_enc=$6 AND kakao_callback_claim_until=$7 FOR UPDATE`,
     [
       messageId,
       claim.consultation_id,
       kakaoPhotoTrace(messageId),
+      kakaoPhotoTrace(messageId, "review"),
       claim.kakao_callback_enc,
       claim.kakao_callback_claim_until,
     ],
   );
-  return m.rowCount === 1 && c.rows[0] !== undefined && !["ended", "deleted", "dropped"].includes(c.rows[0].status);
+  return m.rowCount === 1 && c.rows[0] !== undefined && c.rows[0].status !== "deleted";
 }
 
 async function previousReply(
@@ -118,7 +121,7 @@ export async function runKakaoPhotoTurn(
   const source = await db.run<{ trace_id: string | null }>("SELECT trace_id FROM messages WHERE shop_id=$1 AND id=$2", [
     messageId,
   ]);
-  if (source.rows[0]?.trace_id !== kakaoPhotoTrace(messageId)) return { kind: "not_photo" };
+  if (!isKakaoPhotoTrace(source.rows[0]?.trace_id, messageId)) return { kind: "not_photo" };
   const started = performance.now();
   const remaining = () =>
     Math.min(
@@ -144,9 +147,17 @@ export async function runKakaoPhotoTurn(
     if (prior !== undefined) return { kind: "reply", reply: prior } as const;
     if (context === undefined || remaining() < 100)
       return { kind: "failure", outcome: "photo_download_failed" } as const;
-    if (context.kind !== "reference") return { kind: "failure", outcome: "photo_download_failed" } as const;
+    if (context.kind === "review") {
+      const order = await tx.run(
+        "SELECT id FROM orders WHERE shop_id=$1 AND id=$2 AND customer_id=$3 AND consultation_id=$4 AND status='received' AND personal_data_purged_at IS NULL FOR UPDATE",
+        [context.review.orderId, claim.customer_id, claim.consultation_id],
+      );
+      return order.rowCount === 1
+        ? ({ kind: "ready" } as const)
+        : ({ kind: "failure", outcome: "review_not_allowed" } as const);
+    }
     const draft = await tx.run(
-      "SELECT id FROM order_drafts WHERE shop_id=$1 AND id=$2 AND consultation_id=$3 AND status='active' FOR UPDATE",
+      "SELECT id FROM order_drafts WHERE shop_id=$1 AND id=$2 AND consultation_id=$3 AND status='active' AND EXISTS(SELECT 1 FROM consultations c WHERE c.shop_id=$1 AND c.id=$3 AND c.status IN ('open','awaiting_owner','ordered')) FOR UPDATE",
       [context.draftId, claim.consultation_id],
     );
     return draft.rowCount === 1 && (await referencePhotoRoom(tx, claim.consultation_id)) >= context.urls.length
@@ -156,8 +167,14 @@ export async function runKakaoPhotoTurn(
   const callback = context?.callbackUrl === undefined ? {} : { callbackUrl: context.callbackUrl };
   if (ready.kind === "gone") return ready;
   if (ready.kind === "reply") return { ...ready, ...callback };
-  let outcome: KakaoPhotoOutcome = ready.kind === "failure" ? ready.outcome : "photo_received";
-  const photos: { readonly key: string; readonly photo: NormalizedPhoto; readonly position: number }[] = [];
+  let outcome: KakaoPhotoOutcome =
+    ready.kind === "failure" ? ready.outcome : context?.kind === "review" ? "review_saved" : "photo_received";
+  const photos: {
+    readonly key: string;
+    readonly contentType: NormalizedPhoto["contentType"];
+    readonly byteSize: number;
+    readonly position: number;
+  }[] = [];
   if (ready.kind === "ready" && context !== undefined) {
     for (let i = 0; i < context.urls.length; i++) {
       const url = context.urls[i];
@@ -171,17 +188,26 @@ export async function runKakaoPhotoTurn(
         signal: AbortSignal.timeout(Math.max(1, Math.floor(remaining()))),
       });
       if (!downloaded.ok) {
-        outcome = downloaded.reason === "rejected" ? "photo_rejected" : "photo_download_failed";
+        outcome =
+          downloaded.reason === "rejected"
+            ? context.kind === "review"
+              ? "review_invalid"
+              : "photo_rejected"
+            : "photo_download_failed";
         break;
       }
-      const key = `shops/${db.scope.shopId}/reference/${messageId}/${i + 1}`;
+      const key = `shops/${db.scope.shopId}/${context.kind}/${messageId}/${i + 1}`;
       const permitted = await db.transaction(async (tx) => {
         if (!(await ownedPhoto(tx, messageId, claim)) || remaining() < 100) return false;
         // 이 기한 전에는 지우기 실행기가 고르지 않는다. 중단된 올리기도 다음 지우기에서 회수한다.
         await tx.run(
-          `INSERT INTO file_deletions(shop_id,storage_key,source,queued_at) VALUES($1,$2,'reference_photo',$3)
+          `INSERT INTO file_deletions(shop_id,storage_key,source,queued_at) VALUES($1,$2,$3,$4)
           ON CONFLICT(storage_key) DO NOTHING`,
-          [key, new Date(claim.kakao_callback_deadline_at.getTime() + 30_000)],
+          [
+            key,
+            context.kind === "review" ? "review_photo" : "reference_photo",
+            new Date(claim.kakao_callback_deadline_at.getTime() + 30_000),
+          ],
         );
         return true;
       });
@@ -221,7 +247,12 @@ export async function runKakaoPhotoTurn(
         if (timer !== undefined) clearTimeout(timer);
         controller.abort();
       }
-      photos.push({ key, photo: downloaded.photo, position: i + 1 });
+      photos.push({
+        key,
+        contentType: downloaded.photo.contentType,
+        byteSize: downloaded.photo.bytes.byteLength,
+        position: i + 1,
+      });
     }
   }
   const result = await db.transaction(async (tx) => {
@@ -230,7 +261,7 @@ export async function runKakaoPhotoTurn(
     if (prior !== undefined) return prior;
     if (outcome === "photo_received" && context?.kind === "reference") {
       const draft = await tx.run(
-        "SELECT id FROM order_drafts WHERE shop_id=$1 AND id=$2 AND consultation_id=$3 AND status='active' FOR UPDATE",
+        "SELECT id FROM order_drafts WHERE shop_id=$1 AND id=$2 AND consultation_id=$3 AND status='active' AND EXISTS(SELECT 1 FROM consultations c WHERE c.shop_id=$1 AND c.id=$3 AND c.status IN ('open','awaiting_owner','ordered')) FOR UPDATE",
         [context.draftId, claim.consultation_id],
       );
       if (
@@ -244,15 +275,7 @@ export async function runKakaoPhotoTurn(
           await tx.run(
             `INSERT INTO reference_photos(shop_id,draft_id,message_id,position,storage_key,content_type,byte_size,created_at)
             VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(message_id,position) DO NOTHING`,
-            [
-              context.draftId,
-              messageId,
-              item.position,
-              item.key,
-              item.photo.contentType,
-              item.photo.bytes.byteLength,
-              claim.created_at,
-            ],
+            [context.draftId, messageId, item.position, item.key, item.contentType, item.byteSize, claim.created_at],
           );
           await tx.run("DELETE FROM file_deletions WHERE shop_id=$1 AND storage_key=$2 AND attempts=0", [item.key]);
         }
@@ -260,6 +283,34 @@ export async function runKakaoPhotoTurn(
           context.draftId,
           now(),
         ]);
+      }
+    }
+    if (outcome === "review_saved" && context?.kind === "review") {
+      const order = await tx.run(
+        "SELECT id FROM orders WHERE shop_id=$1 AND id=$2 AND customer_id=$3 AND consultation_id=$4 AND status='received' AND personal_data_purged_at IS NULL FOR UPDATE",
+        [context.review.orderId, claim.customer_id, claim.consultation_id],
+      );
+      if (remaining() < 1) outcome = "photo_download_failed";
+      else if (order.rowCount !== 1) outcome = "review_not_allowed";
+      else {
+        const reviewId = await saveKakaoReview(
+          tx,
+          context.review.orderId,
+          context.review.text,
+          claim.created_at,
+          "photo",
+        );
+        for (const item of photos) {
+          const photo = await tx.found<{ id: string }>(
+            "INSERT INTO review_photos(shop_id,review_id,position,storage_key,content_type,byte_size,created_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id",
+            [reviewId, item.position, item.key, item.contentType, item.byteSize, claim.created_at],
+          );
+          await tx.run(
+            "INSERT INTO photo_consents(shop_id,order_id,scope,review_photo_id,consented,decided_at,publishable) VALUES($1,$2,'review_photo',$3,$4,$5,$4)",
+            [context.review.orderId, photo.id, context.review.consent, claim.created_at],
+          );
+          await tx.run("DELETE FROM file_deletions WHERE shop_id=$1 AND storage_key=$2 AND attempts=0", [item.key]);
+        }
       }
     }
     return saveOutcome(tx, messageId, claim, outcome, now());

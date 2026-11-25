@@ -1716,7 +1716,7 @@ CREATE TABLE file_deletions (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 지울 파일 ID
   shop_id        uuid NOT NULL REFERENCES shops (id) ON DELETE RESTRICT, -- 어느 가게의 사진 파일인지
   storage_key    text NOT NULL,                            -- 저장소에서 지울 사진 파일의 저장 위치. 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진. 사진의 내용·손님 정보는 두지 않음
-  source         text NOT NULL CHECK (source IN ('reference_photo', 'issue_photo', 'license_photo')), -- 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진(SPEC-065)
+  source         text NOT NULL CHECK (source IN ('reference_photo', 'issue_photo', 'license_photo', 'review_photo')), -- 지운 참고·신고 사진과 옛 신고증 또는 중단된 후기 사진 올리기(SPEC-065)
   queued_at      timestamptz NOT NULL DEFAULT now(),       -- 사진 행을 지우거나 신고증 사진을 바꾼 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)
   attempts       integer NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 10000), -- 저장소에서 지우려다 실패한 횟수. 지우면 이 행을 지움
   last_tried_at  timestamptz,                              -- 마지막으로 지우려다 실패한 시각. 다음 날 지우기가 다시 지움
@@ -2763,7 +2763,7 @@ COMMENT ON COLUMN access_logs.accessed_at IS '접속 일시. 2년이 지나면 �
 COMMENT ON COLUMN file_deletions.id IS '지울 파일 ID';
 COMMENT ON COLUMN file_deletions.shop_id IS '어느 가게의 사진 파일인지';
 COMMENT ON COLUMN file_deletions.storage_key IS '저장소에서 지울 사진 파일의 저장 위치. 지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진. 사진의 내용·손님 정보는 두지 않음';
-COMMENT ON COLUMN file_deletions.source IS '지운 참고 사진·신고 사진 또는 바꾼 옛 영업 신고증 사진(SPEC-065)';
+COMMENT ON COLUMN file_deletions.source IS '지운 참고·신고 사진과 옛 신고증 또는 중단된 후기 사진 올리기(SPEC-065)';
 COMMENT ON COLUMN file_deletions.queued_at IS '사진 행을 지우거나 신고증 사진을 바꾼 트랜잭션의 시각. 그 트랜잭션에서 이 행을 넣음(5절 E24)';
 COMMENT ON COLUMN file_deletions.attempts IS '저장소에서 지우려다 실패한 횟수. 지우면 이 행을 지움';
 COMMENT ON COLUMN file_deletions.last_tried_at IS '마지막으로 지우려다 실패한 시각. 다음 날 지우기가 다시 지움';

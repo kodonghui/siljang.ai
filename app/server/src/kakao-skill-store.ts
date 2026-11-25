@@ -23,6 +23,7 @@ export async function recentKakaoInboundCount(db: ShopDb, customerId: string, re
   const recent = await db.run<Id>(
     `SELECT m.id FROM messages m JOIN consultations c ON c.shop_id=$1 AND c.id=m.consultation_id
      WHERE m.shop_id=$1 AND c.customer_id=$2 AND m.direction='inbound' AND m.kind<>'card'
+     AND (m.trace_id IS NULL OR m.trace_id NOT LIKE 'kakao-review-photo:%')
      AND m.created_at >= $3 AND m.created_at < $4 LIMIT $5`,
     [customerId, start, new Date(start.getTime() + MINUTE_MS), KAKAO_MESSAGE_LIMIT + 2],
   );

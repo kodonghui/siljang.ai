@@ -13,16 +13,20 @@
     "reason": "시험이 이미 제출된 옛 초안 ID를 기대함. 새 손님/현재 초안으로 보완"
   },
   "current": {
-    "source": "17da2e1922574a126d8ac8d13b5ccccdef413780",
-    "files": 9,
-    "passed": 201,
-    "log": "/tmp/siljang-task065-boundaries2-related-20261125.log",
+    "source": "47f2349c7536fe86d9518ce0dd05f008b4666d3d",
+    "files": 12,
+    "passed": 243,
+    "log": "/tmp/siljang-task065-current-related-20261125.log",
     "freshDatabase": false,
-    "migrations": 39,
+    "migrations": 40,
     "sameLockDependenciesReused": true,
     "newLocalNpmCi": false,
     "typeExitCode": 0,
-    "strictLintExitCode": 0
+    "strictLintExitCode": 0,
+    "migrationStrategy": "기존39이행 시험DB 위에0040만 직접 적용",
+    "fullFresh": "진행 중: siljang-task065-receive-20261125-1",
+    "implementationProposal": false,
+    "nativeMigrationOrGrantApplied": false
   },
   "remaining": [
     "저장소 PUT 취소 전달/중단 회수",
@@ -38,5 +42,28 @@
     "failed": 2,
     "passed": 9,
     "log": "/tmp/siljang-task065-put-abort-red-related-20261125.log"
+  },
+  "reviewRed": {
+    "source": "4caa3cbaaa8fd2efe45edb10854f093083e529b5",
+    "failed": 3,
+    "passed": 11,
+    "log": "/tmp/siljang-task065-review-red-related-20261125.log"
+  },
+  "roleRed": {
+    "source": "5e1e5ed856b853ee2286b53491ccb1c70b9c6ff7",
+    "failed": 2,
+    "log": "/tmp/siljang-task065-permissions-red-related-20261125.log"
+  },
+  "reviewRateRed": {
+    "source": "0072ff97d55954847b5635baa334c44213df3b71",
+    "failed": 1,
+    "skipped": 13,
+    "log": "/tmp/siljang-task065-review-rate-red-related-20261125.log"
+  },
+  "photoPreviousCardLogRed": {
+    "source": "c48e31b1b7495de81eb49dcd996785b0b929e959",
+    "failed": 1,
+    "skipped": 10,
+    "log": "/tmp/siljang-task065-card-log-red-related-20261125.log"
   }
 }

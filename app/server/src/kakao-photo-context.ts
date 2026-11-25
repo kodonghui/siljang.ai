@@ -18,9 +18,12 @@ export type KakaoPhotoContext =
       readonly review: { readonly orderId: string; readonly text: string; readonly consent: boolean };
     };
 
-export function kakaoPhotoTrace(messageId: string): string {
+export function kakaoPhotoTrace(messageId: string, kind: "reference" | "review" = "reference"): string {
   if (!isUuid(messageId)) throw new FieldCryptoError("photo context is not valid");
-  return `kakao-photo:${messageId}`;
+  return `${kind === "review" ? "kakao-review-photo" : "kakao-photo"}:${messageId}`;
+}
+export function isKakaoPhotoTrace(value: unknown, messageId: string): boolean {
+  return value === kakaoPhotoTrace(messageId) || value === kakaoPhotoTrace(messageId, "review");
 }
 
 function invalid(): never {
@@ -83,6 +86,9 @@ export function decodeKakaoPhotoContext(plain: string, receivedAt: Date): KakaoP
 }
 
 export const KAKAO_PHOTO_TEXT = {
+  review_saved: "후기를 남겨 주셔서 고마워요",
+  review_invalid: "후기는 1,000자, 사진은 5장까지 남길 수 있어요",
+  review_not_allowed: "받으신 주문에만 후기를 남길 수 있어요",
   photo_received: "사진을 받았어요",
   photo_rejected: "사진은 한 장 20MB, 한 상담에 10장까지 받을 수 있어요",
   photo_download_failed: "사진을 받지 못했어요. 다시 보내 주세요",

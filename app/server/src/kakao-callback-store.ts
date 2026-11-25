@@ -6,7 +6,7 @@ import { decodeKakaoCallbackContext, encodeKakaoCallbackContext } from "./kakao-
 import { type DeferredKakaoMessage, markDeferredKakaoMessages } from "./kakao-deferred";
 import { recordKakaoHandoff } from "./kakao-handoff";
 import type { KakaoOrderReference } from "./kakao-order-reference";
-import { KAKAO_PHOTO_TEXT, kakaoPhotoTrace } from "./kakao-photo-context";
+import { isKakaoPhotoTrace, KAKAO_PHOTO_TEXT, kakaoPhotoTrace } from "./kakao-photo-context";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
 export interface KakaoCallbackJob {
@@ -239,9 +239,15 @@ export async function finishKakaoCallback(
   await db.transaction(async (tx) => {
     const owned = await tx.run(
       `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL,
-        kind=CASE WHEN trace_id=$5 THEN 'photo' ELSE kind END
+        kind=CASE WHEN trace_id=$5 THEN 'photo' WHEN trace_id=$6 THEN 'card' ELSE kind END
         WHERE shop_id = $1 AND id = $2 AND kakao_callback_enc = $3 AND kakao_callback_claim_until = $4`,
-      [messageId, claim.kakao_callback_enc, claim.kakao_callback_claim_until, kakaoPhotoTrace(messageId)],
+      [
+        messageId,
+        claim.kakao_callback_enc,
+        claim.kakao_callback_claim_until,
+        kakaoPhotoTrace(messageId),
+        kakaoPhotoTrace(messageId, "review"),
+      ],
     );
     if (owned.rowCount === 0) return;
     if (sentAt !== null) {
@@ -290,10 +296,10 @@ export async function deferExpiredKakaoCallback(
     );
     const expired = await tx.run<{ consultation_id: string }>(
       `UPDATE messages SET kakao_callback_enc = NULL, kakao_callback_deadline_at = NULL, kakao_callback_claim_until = NULL,
-        kind=CASE WHEN trace_id=$4 THEN 'photo' ELSE kind END
+        kind=CASE WHEN trace_id=$4 THEN 'photo' WHEN trace_id=$5 THEN 'card' ELSE kind END
         WHERE shop_id = $1 AND id = $2 AND kakao_callback_enc IS NOT NULL
           AND kakao_callback_deadline_at <= $3 RETURNING consultation_id`,
-      [messageId, now, kakaoPhotoTrace(messageId)],
+      [messageId, now, kakaoPhotoTrace(messageId), kakaoPhotoTrace(messageId, "review")],
     );
     const row = expired.rows[0];
     if (row === undefined) return "skipped";
@@ -301,7 +307,11 @@ export async function deferExpiredKakaoCallback(
       "UPDATE consultations SET turn_trace_id = NULL, turn_started_at = NULL WHERE shop_id = $1 AND id = $2 AND turn_trace_id = $3",
       [row.consultation_id, messageId],
     );
-    if (["ended", "deleted", "dropped"].includes(consultation.status)) return "discarded";
+    if (
+      consultation.status === "deleted" ||
+      (["ended", "dropped"].includes(consultation.status) && !isKakaoPhotoTrace(source.source_trace, messageId))
+    )
+      return "discarded";
     const prepared = await tx.run(
       `SELECT id FROM messages WHERE shop_id = $1 AND consultation_id = $2 AND trace_id = $3
         AND direction = 'outbound' AND (author = 'ai' OR (author='system' AND kind IN ('card','photo'))) AND body_masked IS NOT NULL
@@ -309,7 +319,7 @@ export async function deferExpiredKakaoCallback(
       [row.consultation_id, messageId],
     );
     if (prepared.rowCount > 0) return "deferred";
-    if (source.source_trace === kakaoPhotoTrace(messageId)) {
+    if (isKakaoPhotoTrace(source.source_trace, messageId)) {
       await tx.run(
         `INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,trace_id,delivery)
         VALUES($1,$2,'outbound','system','photo',$3,$4,'deferred')`,
