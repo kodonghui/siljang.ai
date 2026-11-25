@@ -11,6 +11,28 @@ export const TEXT_CUSTOMER_NOTICE_KINDS = [
   "order_confirmed",
 ] as const;
 
+/** 실제 전달 표시와 같은 트랜잭션에서만 결제 시계를 시작한다. */
+export async function recordPaymentNoticeDelivery(
+  db: ShopDb,
+  noticeId: string,
+  customerId: string,
+  at: Date,
+): Promise<boolean> {
+  if (!Number.isFinite(at.getTime())) throw new RangeError("invalid customer notice delivery time");
+  const result = await db.run(
+    `UPDATE payment_requests p SET delivered_at=$4,due_at=LEAST($4::timestamptz+interval '12 hours',p.due_cap_at)
+      FROM notifications n JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id AND o.customer_id=n.customer_id
+      WHERE p.shop_id=$1 AND p.order_id=o.id AND p.status='open' AND p.delivered_at IS NULL
+        AND NOT p.needs_amount_confirm AND p.issued_at<=$4 AND p.due_cap_at>$4
+        AND o.status='awaiting_payment' AND o.personal_data_purged_at IS NULL
+        AND n.shop_id=$1 AND n.id=$2 AND n.customer_id=$3 AND n.kind='payment_request'
+        AND n.event_key='notice:'||p.id::text||':payment_request'
+        AND n.status IN ('sent','delivered_on_reply') AND n.sent_at=$4`,
+    [noticeId, customerId, at],
+  );
+  return result.rowCount === 1;
+}
+
 interface ConfirmedOrder {
   customer_id: string;
   consultation_id: string;
