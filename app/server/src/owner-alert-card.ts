@@ -19,7 +19,14 @@ export const TASK_LABELS = {
 export type OwnerAlert =
   | { kind: "new_task"; task: keyof typeof TASK_LABELS; count: number }
   | { kind: "task_realert"; task: keyof typeof TASK_LABELS }
-  | { kind: "handoff_appended" | "ledger_failing" | "payment_account_changed" | "identity_change_applied" }
+  | {
+      kind:
+        | "handoff_appended"
+        | "ledger_failing"
+        | "payment_account_changed"
+        | "identity_change_applied"
+        | "channel_event_unavailable";
+    }
   | { kind: "license_on_hold" | "identity_change_on_hold"; reason: string }
   | {
       kind: "order_cancelled" | "new_amount_declined" | "change_not_applied" | "health_concern";
@@ -69,6 +76,11 @@ function describeAlert(alert: OwnerAlert): AlertCard {
       return taskCard(`영업 신고가 보류됐어요: ${alert.reason}`);
     case "payment_account_changed":
       return noticeCard("결제 받을 계좌가 바뀌었어요", PAYMENT);
+    case "channel_event_unavailable":
+      return noticeCard("손님 안내를 먼저 보낼 수 없어요. 카카오 연결을 확인해 주세요", {
+        label: "카카오 연결 보기",
+        path: "/owner/kakao-channel",
+      });
     case "identity_change_applied":
       return noticeCard("사업자 정보 변경이 반영됐어요", LICENSE);
     case "identity_change_on_hold":

@@ -86,13 +86,16 @@ export async function runScheduled(
               enabled: false,
               events: () => services.kakaoEvents(),
               ...(options.now === undefined ? {} : { now: options.now }),
-              attention: (event) =>
-                appLog("error", {
-                  event: "job_run_failed",
-                  job: "customer_notice",
-                  itemId: event.noticeId,
-                  code: event.code,
-                }),
+              attention: (event) => {
+                // 사장님 알림은 같은 기록 트랜잭션에 남겼다. 운영자 대상만 기존 실패 감시로 잇는다.
+                if (event.target === "operator")
+                  appLog("error", {
+                    event: "job_run_failed",
+                    job: "customer_notice",
+                    itemId: event.noticeId,
+                    code: event.code,
+                  });
+              },
             }),
           },
           ...(settings.ownerAlerts.enabled

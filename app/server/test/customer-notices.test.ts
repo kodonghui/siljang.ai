@@ -3,6 +3,7 @@ import { type CustomerNoticeOptions, createCustomerNoticeHandler } from "../src/
 import type { RequestDb } from "../src/db";
 import { runDueJobs } from "../src/job-runner";
 import type { KakaoEvents } from "../src/kakao-event";
+import { ownerAlertContent } from "../src/owner-alert-content";
 import { runScheduled } from "../src/scheduled";
 import { createShopScope, shopDb } from "../src/shop-scope";
 import { describeDb, newUuid, testEnv } from "./support/db";
@@ -223,6 +224,29 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
         ).rows,
       ).toEqual([{ event_status: disableChannel ? "unavailable" : "ready", event_fail_reason: reason }]);
       expect(attention).toHaveBeenCalledWith({ target, code, shopId: shop.shopId, noticeId: id });
+      const alerts = (
+        await isolated.db.query<{ id: string; kind: string; event_key: string }>(
+          "SELECT id,kind,event_key FROM owner_alerts WHERE shop_id=$1",
+          [shop.shopId],
+        )
+      ).rows;
+      expect(alerts).toHaveLength(disableChannel ? 1 : 0);
+      if (disableChannel) {
+        const alert = alerts[0];
+        if (!alert) throw new Error("missing synthetic owner alert");
+        expect(alert).toMatchObject({
+          kind: "channel_event_unavailable",
+          event_key: `alert:channel_event_unavailable:${id}`,
+        });
+        const scope = createShopScope(shop.shopId, { kind: "job", job: "customer_notice" });
+        const content = await ownerAlertContent(
+          shopDb(scope, isolated.db),
+          { ...alert, task_kind: null },
+          new URL("https://siljang.example"),
+        );
+        expect(content?.text).toContain("먼저 보낼 수 없어요");
+        expect(content?.url).toBe("https://siljang.example/owner/kakao-channel");
+      }
     },
   );
   it.each(["friend", "channel"])(
@@ -322,6 +346,50 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
       ).rows,
     ).toEqual([{ event_status: "ready", event_checked_at: checked }]);
     expect(attention).not.toHaveBeenCalled();
+  });
+  it("같은 채널의 두 실패가 겹쳐도 같은 장애의 사장님 알림은 한 건만 남긴다", async () => {
+    const secondId = newUuid();
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,next_attempt_at,created_at) VALUES($1,$2,$3,$4,'owner_reply',$5,'owner_reply:v1','합성 둘째 안내','pending',$6,$6)",
+      [secondId, shop.shopId, shop.customerId, shop.consultationId, `notice:${secondId}:owner_reply`, NOW],
+    );
+    let firstStarted: () => void = () => {},
+      bothStarted: () => void = () => {},
+      release: () => void = () => {},
+      count = 0;
+    const firstReady = new Promise<void>((resolve) => {
+        firstStarted = resolve;
+      }),
+      bothReady = new Promise<void>((resolve) => {
+        bothStarted = resolve;
+      }),
+      gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    vi.mocked(events.requestNotice).mockImplementation(async () => {
+      count++;
+      if (count === 1) firstStarted();
+      if (count === 2) bothStarted();
+      await gate;
+      return { kind: "failed", code: "event_setup", retryable: false, disableChannel: true, attention: "owner" };
+    });
+    const attention = vi.fn(),
+      first = run(() => events, true, attention);
+    await firstReady;
+    const other = isolated.connect(),
+      second = run(() => events, true, attention, other);
+    try {
+      await bothReady;
+      release();
+      await Promise.all([first, second]);
+    } finally {
+      release();
+      await other.close();
+    }
+    expect((await isolated.db.query("SELECT kind FROM owner_alerts WHERE shop_id=$1", [shop.shopId])).rows).toEqual([
+      { kind: "channel_event_unavailable" },
+    ]);
+    expect(attention).toHaveBeenCalledTimes(1);
   });
   it("결제 안내는 접수 때가 아니라 전달 성공을 관측한 때부터12시간을 센다", async () => {
     await isolated.db.query("UPDATE notifications SET status='dropped',next_attempt_at=NULL WHERE id=$1", [id]);

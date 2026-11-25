@@ -32,6 +32,7 @@ export async function ownerAlertContent(
     case "ledger_failing":
     case "payment_account_changed":
     case "identity_change_applied":
+    case "channel_event_unavailable":
       alert = { kind: row.kind };
       break;
     case "license_on_hold":

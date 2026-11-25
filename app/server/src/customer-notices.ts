@@ -1,6 +1,7 @@
 /** SPEC-066: 짧은 선점/기록과 트랜잭션 밖의 발신·조회를 분리한다. */
 import { shiftDate } from "./calendar-input";
 import { recordPaymentNoticeDelivery } from "./customer-notice-store";
+import { eventKeys, insertOnce } from "./event-keys";
 import type { ActOutcome, DueItem, LeaseContext, LeasedHandler } from "./job-runner";
 import {
   type KakaoEventFailure,
@@ -276,10 +277,18 @@ export function createCustomerNoticeHandler(options: CustomerNoticeOptions): Lea
         channelDisabled =
           (
             await db.run(
-              "UPDATE kakao_channels SET event_status='unavailable',event_fail_reason=$3,event_checked_at=$4 WHERE shop_id=$1 AND id=$2 AND status='linked' AND (event_checked_at IS NULL OR event_checked_at<=$5)",
+              "UPDATE kakao_channels SET event_status='unavailable',event_fail_reason=$3,event_checked_at=$4 WHERE shop_id=$1 AND id=$2 AND status='linked' AND event_status='ready' AND (event_checked_at IS NULL OR event_checked_at<=$5)",
               [prepared.row.channel_id, stopped.code === "wallet" ? "wallet_missing" : "kakao_error", observed, cutoff],
             )
           ).rowCount === 1;
+      if (channelDisabled)
+        await insertOnce(
+          db,
+          "owner_alerts",
+          `INSERT INTO owner_alerts (shop_id, event_key, kind, next_attempt_at, created_at)
+          VALUES ($1, $2, 'channel_event_unavailable', $3, $3) ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id`,
+          [eventKeys.alert("channel_event_unavailable", item.id), observed],
+        );
       if (stopped.attention !== null && (stopped.attention !== "owner" || !stopped.disableChannel || channelDisabled))
         options.attention?.({
           target: stopped.attention,
