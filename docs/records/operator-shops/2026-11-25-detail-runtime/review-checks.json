@@ -1,0 +1,49 @@
+{
+  "review": 7150000569,
+  "source": "5be0bf88a26a751ddc649a19bec414cf5aac30c6",
+  "newTestCases": [
+    "사업자 변경 예금주 불일치 안내와 확인 뒤 반영 허용",
+    "사업자 변경 계좌 없음 안내와 확인 뒤 반영 허용"
+  ],
+  "newTestsInitiallyPassed": true,
+  "runtimeProductCodeChanges": 0,
+  "relatedCommand": "npm run test -w web -- src/OperatorShopReview.interaction.test.tsx src/OperatorShopReview.responses.test.tsx src/operator-shop-review-api.test.ts src/operator-shop-review-form.test.ts",
+  "workingDirectory": "app",
+  "results": {
+    "related": {
+      "source": "5be0bf88a26a751ddc649a19bec414cf5aac30c6",
+      "exitCode": 0,
+      "path": "/tmp/siljang-task059-review-related-20261125.log",
+      "lines": [
+        " Test Files  4 passed (4)",
+        "      Tests  146 passed (146)"
+      ]
+    },
+    "type": {
+      "source": "5be0bf88a26a751ddc649a19bec414cf5aac30c6",
+      "exitCode": 0,
+      "path": "/tmp/siljang-task059-review-type-20261125.log",
+      "lines": []
+    },
+    "build": {
+      "source": "5be0bf88a26a751ddc649a19bec414cf5aac30c6",
+      "exitCode": 0,
+      "path": "/tmp/siljang-task059-review-build-20261125.log",
+      "lines": [
+        "✓ built in 840ms",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "previousStyles": {
+    "source": "3b4ac96886645e91b1fa5d8d1226202271930c43",
+    "pass": 55,
+    "path": "/tmp/siljang-task059-current-styles-20261125.log",
+    "scope": "현재 관련146개와 별도 원본의 스타일55개를 구분. 최종 CI가 스타일 전체 재검사"
+  },
+  "browserRun": false,
+  "outsideServices": 0
+}

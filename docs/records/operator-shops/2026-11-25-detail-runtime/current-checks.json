@@ -1,0 +1,96 @@
+{
+  "source": "f5ec7400dc45fab772572de9f2e8ef7774b9b6a6",
+  "parentIntegrated": "3b4ac96886645e91b1fa5d8d1226202271930c43",
+  "newLocalNpmCi": false,
+  "relatedTestFiles": [
+    "app/web/src/OperatorShopReview.interaction.test.tsx",
+    "app/web/src/OperatorShopReview.responses.test.tsx",
+    "app/web/src/operator-shop-review-api.test.ts",
+    "app/web/src/operator-shop-review-form.test.ts"
+  ],
+  "styleTestFiles": [
+    "app/web/src/styles/styles.test.ts"
+  ],
+  "preparationCorrection": "최초 다섯 필터의 src/styles.test.ts는 맞는 파일이 아니어서 실제4파일144개만 실행. 올바른 styles/styles.test.ts를 별도 실행해55개 통과. 두 결과를 구분함",
+  "results": {
+    "related": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task059-current-related-20261125.log",
+      "command": "npm run test -w web -- src/OperatorShopReview.interaction.test.tsx src/OperatorShopReview.responses.test.tsx src/operator-shop-review-api.test.ts src/operator-shop-review-form.test.ts",
+      "workingDirectory": "app",
+      "source": "f5ec7400dc45fab772572de9f2e8ef7774b9b6a6",
+      "lines": [
+        " Test Files  4 passed (4)",
+        "      Tests  144 passed (144)"
+      ]
+    },
+    "styles": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task059-current-styles-20261125.log",
+      "command": "npm run test -w web -- src/styles/styles.test.ts",
+      "workingDirectory": "app",
+      "source": "3b4ac96886645e91b1fa5d8d1226202271930c43",
+      "lines": [
+        " Test Files  1 passed (1)",
+        "      Tests  55 passed (55)"
+      ]
+    },
+    "type": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task059-current-type-20261125.log",
+      "command": "npm run typecheck",
+      "workingDirectory": "app",
+      "source": "f5ec7400dc45fab772572de9f2e8ef7774b9b6a6",
+      "lines": []
+    },
+    "build": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task059-current-build-20261125.log",
+      "command": "npm run build",
+      "workingDirectory": "app",
+      "source": "f5ec7400dc45fab772572de9f2e8ef7774b9b6a6",
+      "lines": [
+        "✓ built in 670ms",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "browserRun": false,
+  "outsideServices": 0,
+  "productCodeChanges": 0,
+  "relatedInputComparison": {
+    "from": "f5ec7400dc45fab772572de9f2e8ef7774b9b6a6",
+    "to": "3b4ac96886645e91b1fa5d8d1226202271930c43",
+    "paths": [
+      "api/openapi.yaml",
+      "app/package.json",
+      "app/package-lock.json",
+      "app/tsconfig.base.json",
+      "app/web/tsconfig.json",
+      "app/web/src/OperatorArea.tsx",
+      "app/web/src/OperatorShopReview.tsx",
+      "app/web/src/OperatorShopReview.interaction.test.tsx",
+      "app/web/src/OperatorShopReview.responses.test.tsx",
+      "app/web/src/operator-shop-review-api.ts",
+      "app/web/src/operator-shop-review-api.test.ts",
+      "app/web/src/operator-shop-review-form.ts",
+      "app/web/src/operator-shop-review-form.test.ts",
+      "app/web/src/operator-shops-api.ts",
+      "app/web/src/operator.ts",
+      "app/web/src/ui",
+      "app/web/src/styles",
+      "app/web/src/api.ts",
+      "app/web/src/api-response.ts",
+      "app/web/src/api-url.ts",
+      "app/web/src/useCommand.ts",
+      "app/web/src/useVersionedRead.ts",
+      "app/web/src/format-date.ts"
+    ],
+    "changed": [],
+    "scope": "대상 화면/API와 공통 입력 비교. 전체 앱 빌드가 같다고 하지 않으며 다른 화면의 부모 고침은 parent CI로 적용"
+  },
+  "historicalBeforeReview": true
+}
