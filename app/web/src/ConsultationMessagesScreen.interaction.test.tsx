@@ -145,13 +145,47 @@ it("이전 페이지를 위에 더하고 같은 메시지는 중복시키지 않
   expect(contents.indexOf("이전 합성 메시지")).toBeLessThan(contents.indexOf("현재 합성 메시지"));
 });
 it("긴 글의 철자/태그를 그대로 보존하고 펼치며 HTML로 실행하지 않는다", async () => {
-  page.items[0].text = `긴 합성 글 ${"가".repeat(1000)} <script>synthetic()</script>`;
+  const literal = " <script>synthetic()</script>";
+  page.items[0].text = "가".repeat(100000 - literal.length) + literal;
   open();
   await screen.findByText(page.items[0].text);
   const buttons = screen.getAllByRole("button", { name: "더 보기" });
   fireEvent.click(buttons[0] as HTMLElement);
   expect(screen.getByRole("button", { name: "접기" }).getAttribute("aria-expanded")).toBe("true");
   expect(document.querySelector("script")).toBeNull();
+});
+it("글 본문이 비어 있어도 계약의 네 메시지 종류를 바르게 구분한다", async () => {
+  page.items = page.items.slice(0, 4).map((item: Record<string, unknown>, index: number) => ({
+    ...item,
+    kind: ["text", "photo", "card", "unsupported"][index],
+    text: null,
+    photos: [],
+  }));
+  open();
+  expect(await screen.findByText("글", { exact: true })).toBeTruthy();
+  for (const kind of ["참고 사진", "확인 카드", "지원하지 않는 메시지"])
+    expect(screen.getByText(kind, { exact: true })).toBeTruthy();
+});
+it("이전 대화 조회 실패는 현재 대화를 보존하고 다시 시도하며 삭제 결과는 모두 비운다", async () => {
+  page.items[0].text = "남아 있는 합성 현재 대화";
+  page.nextCursor = "older_page";
+  let attempts = 0;
+  handler = async (path) => {
+    if (!path.includes("cursor=older_page")) return Response.json(page);
+    attempts++;
+    return attempts === 1
+      ? Response.json({ code: "internal", traceId: "0123456789abcdef0123456789abcdef" }, { status: 500 })
+      : Response.json(examples.deleted.value);
+  };
+  open();
+  await screen.findByText("남아 있는 합성 현재 대화");
+  fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
+  await screen.findByText("문제가 생겼어요. 다시 시도해 주세요");
+  expect(screen.getByText("남아 있는 합성 현재 대화")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+  await screen.findByText("보관 기간 30일이 지나 대화를 지웠어요");
+  expect(screen.queryByText("남아 있는 합성 현재 대화")).toBeNull();
+  expect(document.querySelectorAll(".consultation-photo, .consultation-timeline")).toHaveLength(0);
 });
 it("사진 주소 만료 후 같은 버튼으로 다시 불러오며 옛 주소를 다시 요청하지 않는다", async () => {
   const start = new Date("2026-11-25T07:00:00Z");

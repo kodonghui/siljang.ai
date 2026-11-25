@@ -92,8 +92,12 @@ export function ConsultationMessagesScreen(
         if (result.ok) {
           const at = Date.now();
           setClock(at);
+          if (result.data.status === "deleted") {
+            setSelection(null);
+            setFailedPhotos(new Set());
+          }
           setLoaded((old) => {
-            const prior = more && old?.key === key ? old : null;
+            const prior = more && result.data.status !== "deleted" && old?.key === key ? old : null;
             const ids = new Set(prior?.items.map((row) => row.messageId));
             return {
               ...result.data,
@@ -266,11 +270,14 @@ export function ConsultationMessagesScreen(
                           <MessageText text={item.text} />
                         ) : (
                           <p>
-                            {item.kind === "photo"
-                              ? "참고 사진"
-                              : item.kind === "card"
-                                ? "확인 카드"
-                                : "지원하지 않는 메시지"}
+                            {
+                              {
+                                text: "글",
+                                photo: "참고 사진",
+                                card: "확인 카드",
+                                unsupported: "지원하지 않는 메시지",
+                              }[item.kind]
+                            }
                           </p>
                         )}
                         {item.author === "customer" && item.text ? (

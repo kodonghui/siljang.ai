@@ -1,0 +1,47 @@
+{
+  "baselineFull": {
+    "source": "cd01eb60cf0a3eacb28f2ee0be3a66a28eec1ce2",
+    "migrations": 40,
+    "serverFiles": 145,
+    "serverPassed": 2850,
+    "webFiles": 73,
+    "webPassed": 1765,
+    "testsExit": 0,
+    "buildExit": 0,
+    "viteMs": 555,
+    "databaseCleanup": "completed; fresh database dropped"
+  },
+  "finalUi": {
+    "source": "2b739e245fa1b81a4bac506a4b0fc04f12ef7d58",
+    "webFiles": 73,
+    "webPassed": 1766,
+    "webExit": 0,
+    "typecheckExit": 0,
+    "strictLintExit": 0,
+    "viteMs": 646,
+    "buildExit": 0,
+    "workers": [
+      {
+        "uploadKiB": 5451.9,
+        "gzipKiB": 1003.36
+      },
+      {
+        "uploadKiB": 21.08,
+        "gzipKiB": 6.55
+      }
+    ],
+    "nodeTests": 54,
+    "nodePassed": 54,
+    "nodeFailed": 0,
+    "cliExit": 0,
+    "fixtureVersion": 2,
+    "backendApiDatabaseRuntimeGrantDiffSinceFull": 0,
+    "diffScope": [
+      "app/web/src/ConsultationMessagesScreen.interaction.test.tsx",
+      "app/web/src/ConsultationMessagesScreen.tsx"
+    ]
+  },
+  "localInstall": "same lock existing install reused; no new local npm ci",
+  "native": "unverified; no browser run",
+  "finalPublicCi": "current head CI still to be observed before merging"
+}
