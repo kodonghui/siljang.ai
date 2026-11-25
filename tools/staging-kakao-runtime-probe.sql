@@ -97,12 +97,15 @@ BEGIN
   GET DIAGNOSTICS changed = ROW_COUNT;
   IF changed <> 1 THEN RAISE EXCEPTION 'runtime_probe_callback_missing'; END IF;
 
+  -- TASK-086: 자기 카드 표시용 읽기는 허용하고 개인정보의 직접 수정은 계속 막는다.
+  step := 'read_order_card';
+  EXECUTE format('SELECT customer_name,customer_phone,allergy_answer FROM order_drafts WHERE id = %L', draft_id);
   step := 'blocked_operations';
   FOREACH operation IN ARRAY ARRAY[
     format('UPDATE ai_calls SET cost_krw = 1 WHERE id = %L', call_id),
     format('DELETE FROM ai_calls WHERE id = %L', call_id),
     format('UPDATE order_drafts SET customer_phone = ''02-000-0000'' WHERE id = %L', draft_id),
-    format('SELECT allergy_answer FROM order_drafts WHERE id = %L', draft_id),
+    format('UPDATE order_drafts SET allergy_answer = allergy_answer WHERE id = %L', draft_id),
     format('DELETE FROM order_drafts WHERE id = %L', draft_id)
   ] LOOP
     BEGIN
