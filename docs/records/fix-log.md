@@ -2518,7 +2518,26 @@ Total Upload: 5476.98 KiB / gzip: 1008.88 KiB
 Total Upload: 21.08 KiB / gzip: 6.55 KiB
 ```
 
-같은 원본의 설계 단계는prd/flows/spec·ERD15·API17·사이트맵17·화면15·WBS18 모두 오류0입니다. mockup은 --no-browser로13통과/미확인1이며 실제 브라우저 검사로 세지 않습니다. [검증 자료](customer-notices/2026-11-25-foundation/full-proof.json)에 원본과 적용 범위별 Git 객체를 남겼고 이 뒤 제품/시험·API/DB/권한 SQL 차이0을 확인했습니다. README 빈 줄 형식1건은 공개 전 엄격lint가 막았고 기록만 포맷했습니다. 새 로컬 npm ci가 아닌 같은 lock 설치 재사용이며 실제 새 설치는 현재 PR CI에서 확인합니다. TASK104는 종류별 표시/업무 연결이 남은 부분 구현이고36/47을 유지합니다. 다음은 현재 공개 원본/리뷰·app/db CI와 squash 뒤 자기main/배포/원격SHA입니다.
+같은 원본의 설계 단계는prd/flows/spec·ERD15·API17·사이트맵17·화면15·WBS18 모두 오류0입니다. mockup은 --no-browser로13통과/미확인1이며 실제 브라우저 검사로 세지 않습니다. [검증 자료](customer-notices/2026-11-25-foundation/full-proof-039.json)에 원본과 적용 범위별 Git 객체를 남겼고 이 뒤 제품/시험·API/DB/권한 SQL 차이0을 확인했습니다. README 빈 줄 형식1건은 공개 전 엄격lint가 막았고 기록만 포맷했습니다. 새 로컬 npm ci가 아닌 같은 lock 설치 재사용이며 실제 새 설치는 현재 PR CI에서 확인합니다. TASK104는 종류별 표시/업무 연결이 남은 부분 구현이고36/47을 유지합니다. 다음은 현재 공개 원본/리뷰·app/db CI와 squash 뒤 자기main/배포/원격SHA입니다.
 
 
 추가 날짜 경계: SPEC-052의 전날 안내가 밤을 넘겨 픽업 당일08:00에 발신되던 오류를 be7ac07f의1실패/5통과/19건너뜀으로 재현했습니다. 픽업 당일에는 전날 안내를 버리고, 아직 예약 날짜 전이면 오래된 재시도 시각으로 찾아도 보존합니다. 같은 날 정상 발신과 미래 보존까지 관련3파일58개가 통과했습니다. 기존039의2911/1775·별도 빌드/단계·Node55 결과는 고침 전 근거로 보존하고 새 제품 코드의 고정 전체/빌드를 다시 확인합니다. 처음 추가한 미래 시험의 편집은 작업 디렉터리를 잘못 지정해 적용되지 않았고, 그때57개 통과를 미래 시험의 성공으로 세지 않습니다. 경로를 고친 뒤58개를 실행했습니다. TASK104는 여전히 부분 구현이며36/47을 유지합니다.
+
+
+전날 안내 날짜 경계까지 고친 최종 고정4f70285d6ffa656806b161cb8961a5ad57a2d720의 새 빈41개 이행에서 하나의 npm test와 별도 빌드가 모두 종료0입니다. 시험DB 정리와 state completed도 확인했습니다. 실제 결과 줄은 다음과 같습니다.
+
+```text
+Test Files  150 passed (150)
+Tests  2914 passed (2914)
+Duration  284.10s (tests 70%, import 29%, transform 1%)
+Test Files  73 passed (73)
+Tests  1775 passed (1775)
+Duration  43.27s (tests 54%, import 37%, environment 8%, transform 2%)
+✓ built in 881ms
+Total Upload: 5477.07 KiB / gzip: 1008.88 KiB
+Total Upload: 21.08 KiB / gzip: 6.55 KiB
+```
+
+같은 원본의 Node55개/실패0과 설계 단계prd/flows/spec·ERD15·API17·사이트맵17·화면15·WBS18이 오류0입니다. mockup의 --no-browser 미확인1을 유지하며 실제 브라우저 검사로 세지 않습니다. 이 뒤 제품/시험·API/DB/권한 SQL 차이0이며 최종 기록의 엄격lint/타입/키/용어를 확인합니다. 같은 lock의 설치 재사용으로 새 로컬 npm ci는 아니며 현재 PR CI에서 실제 새 설치를 확인합니다.
+
+이전d01 전체 서버2907/4실패와039의 서버2911통과·첫 웹1774/1실패·단독25/웹 전체 재실행1775·별도 빌드를 보존합니다. 사진 재조회 실패의 원인은 확정하지 않았고 이번 성공으로 옛 실패를 덮지 않습니다. 039 자료는full-proof-039.json, 현재 자료는full-proof.json입니다. 전달 기반은 부분 구현이며 종류별 표시/업무 연결과 실환경 확인이 남아36/47을 유지합니다. 다음은 준비 PR의 현재 CI·코드/보안 검토·수동 요청1회/처리와 squash 뒤 자기main/배포/원격SHA입니다.

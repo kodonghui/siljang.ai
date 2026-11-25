@@ -1,8 +1,8 @@
 {
-  "source": "039b79aaa93fa8aed46198b87735bf972b7bce44",
-  "sourceTree": "74e1f57e595cddea11af1678ca077c29fb7b012c",
+  "source": "4f70285d6ffa656806b161cb8961a5ad57a2d720",
+  "sourceTree": "90a2f7c77e78ad52c2eddee8d5822cbca9f09ab2",
   "scopeGitObjects": {
-    "app/server": "1093c3d901d32dea51fc1412a901a304a7f848d7",
+    "app/server": "ed90deef07e790d60b3a88116bfa2142b4e9e7e0",
     "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
     "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
     "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1",
@@ -15,33 +15,25 @@
   },
   "runtimeTestApiDbGrantsDiffAfterSource": 0,
   "migrations": 41,
-  "freshState": "cleanup; database absence checked separately",
-  "combinedNpmTestExit": 1,
-  "serverFullPassed": 2911,
-  "webFirstResult": {
-    "passed": 1774,
-    "failed": 1
-  },
-  "isolatedWebPassed": 25,
-  "webFullRetryExit": 0,
-  "webFullRetryPassed": 1775,
+  "freshState": "completed",
+  "combinedNpmTestExit": 0,
   "buildExit": 0,
   "testLines": [
     "Test Files  150 passed (150)",
-    "Tests  2911 passed (2911)",
-    "Duration  283.98s (tests 70%, import 29%)",
+    "Tests  2914 passed (2914)",
+    "Duration  284.10s (tests 70%, import 29%, transform 1%)",
     "Test Files  73 passed (73)",
     "Tests  1775 passed (1775)",
-    "Duration  44.50s (tests 55%, import 35%, environment 8%, transform 2%)"
+    "Duration  43.27s (tests 54%, import 37%, environment 8%, transform 2%)"
   ],
   "buildLines": [
-    "✓ built in 728ms",
-    "Total Upload: 5476.98 KiB / gzip: 1008.88 KiB",
+    "✓ built in 881ms",
+    "Total Upload: 5477.07 KiB / gzip: 1008.88 KiB",
     "Total Upload: 21.08 KiB / gzip: 6.55 KiB"
   ],
   "stageExit": 0,
-  "browser": "not executed; mockup unknown1 remains",
-  "npmCi": "not run locally through shared dependency symlink; require CI clean installation",
-  "historicalAtLocalCommit": "b99770d61d458ffb03e58d008d1a21a29e0ff753",
-  "subsequentDateBoundaryFixRequiresNewFull": true
+  "nodePassed": 55,
+  "browserExecuted": false,
+  "mockupUnknown": 1,
+  "npmCi": "shared same-lock installation reused locally; CI clean installation still required"
 }

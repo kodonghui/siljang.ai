@@ -1,0 +1,47 @@
+{
+  "source": "039b79aaa93fa8aed46198b87735bf972b7bce44",
+  "sourceTree": "74e1f57e595cddea11af1678ca077c29fb7b012c",
+  "scopeGitObjects": {
+    "app/server": "1093c3d901d32dea51fc1412a901a304a7f848d7",
+    "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1",
+    "app/biome.json": "a494daee273d2973a99ae26a6ab7778cdc69d5e9",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "de0aa79b81685e087cd5b232401724d38dd776cd",
+    "tools/staging-login-callback-grants.sql": "f85114567c755a1f49e3015532da1c3336b3911b",
+    "research/cake-erd-2026-11": "0f0490236cfde1e400551fb542601c95f2235f9a",
+    "docs/10-wbs/wbs.md": "2d06082ba8c6fef6a1ec5a2a2f7ba1c29e4c37b7"
+  },
+  "runtimeTestApiDbGrantsDiffAfterSource": 0,
+  "migrations": 41,
+  "freshState": "cleanup; database absence checked separately",
+  "combinedNpmTestExit": 1,
+  "serverFullPassed": 2911,
+  "webFirstResult": {
+    "passed": 1774,
+    "failed": 1
+  },
+  "isolatedWebPassed": 25,
+  "webFullRetryExit": 0,
+  "webFullRetryPassed": 1775,
+  "buildExit": 0,
+  "testLines": [
+    "Test Files  150 passed (150)",
+    "Tests  2911 passed (2911)",
+    "Duration  283.98s (tests 70%, import 29%)",
+    "Test Files  73 passed (73)",
+    "Tests  1775 passed (1775)",
+    "Duration  44.50s (tests 55%, import 35%, environment 8%, transform 2%)"
+  ],
+  "buildLines": [
+    "✓ built in 728ms",
+    "Total Upload: 5476.98 KiB / gzip: 1008.88 KiB",
+    "Total Upload: 21.08 KiB / gzip: 6.55 KiB"
+  ],
+  "stageExit": 0,
+  "browser": "not executed; mockup unknown1 remains",
+  "npmCi": "not run locally through shared dependency symlink; require CI clean installation",
+  "historicalAtLocalCommit": "b99770d61d458ffb03e58d008d1a21a29e0ff753",
+  "subsequentDateBoundaryFixRequiresNewFull": true
+}
