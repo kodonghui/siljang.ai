@@ -1,5 +1,6 @@
 /** TASK-081: 카드 생성·검증·한 번 실행을 같은 가게 트랜잭션에 묶습니다. 업무 명령은 각 담당 모듈이 연결합니다. */
 import { cardExpiresAt, judgeCardPress } from "./confirm-card";
+import type { KakaoChangeRequestCard } from "./kakao-change-request-message";
 import type { KakaoOrderCardContext } from "./kakao-order-request-content";
 import type { KakaoPaymentClaimCard } from "./kakao-payment-claim-message";
 import type { ClauseInput } from "./operating-rules-input";
@@ -35,6 +36,8 @@ export interface ShowConfirmCard extends Identity {
 }
 export interface ConfirmCardView {
   readonly kind?: CustomerCommandKind;
+  /** 서버에서 준비한 변경 표시. 업무 명령의 입력으로 사용하지 않는다. */
+  readonly changeRequest?: KakaoChangeRequestCard;
   readonly orderRequest?: KakaoOrderCardContext;
   /** 전송 직전 자료. 카드 payload/메시지/AI 입력에는 저장하지 않는다. */
   readonly paymentClaim?: KakaoPaymentClaimCard;
@@ -113,14 +116,16 @@ function usedAnswer(card: CardRow): ConfirmCardAnswer {
   return {
     outcome: "card_used",
     text: "이미 처리했어요",
-    ...(card.kind === "payment_claim" ? { kind: card.kind } : {}),
+    ...(["payment_claim", "change_request"].includes(card.kind) ? { kind: card.kind } : {}),
     ...(result === undefined ? {} : { firstResult: { outcome: result.outcome, text: result.text } }),
   };
 }
 function usedDelivery(card: CardRow) {
   return {
     text:
-      card.kind === "payment_claim" && card.payload.result?.outcome === "payment_claimed"
+      ((card.kind === "payment_claim" && card.payload.result?.outcome === "payment_claimed") ||
+        (card.kind === "change_request" && card.payload.result?.outcome === "change_requested")) &&
+      card.payload.result !== undefined
         ? card.payload.result.text
         : "이미 처리했어요",
   };
@@ -495,7 +500,11 @@ async function processVerifiedCard(
     "UPDATE confirm_cards SET used_at=$3,outcome='done',payload=jsonb_set(payload,'{result}',$4::jsonb) WHERE shop_id=$1 AND id=$2",
     [card.id, input.now, JSON.stringify({ outcome: result.outcome, text: result.text })],
   );
-  return { outcome: result.outcome, text: result.text, ...(card.kind === "payment_claim" ? { kind: card.kind } : {}) };
+  return {
+    outcome: result.outcome,
+    text: result.text,
+    ...(["payment_claim", "change_request"].includes(card.kind) ? { kind: card.kind } : {}),
+  };
 }
 
 async function replaceCard(
