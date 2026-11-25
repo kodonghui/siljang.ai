@@ -15,7 +15,12 @@ import {
   markKakaoAiDisclosure,
   prependKakaoDisclosure,
 } from "./kakao-ai-disclosure";
-import { expandKakaoMessageContents, type KakaoMessageContent, kakaoMessageTemplate } from "./kakao-message-content";
+import {
+  expandKakaoMessageContents,
+  type KakaoMessageContent,
+  kakaoMessageTemplate,
+  mergeKakaoAmountConfirmations,
+} from "./kakao-message-content";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
 /** 새 답 하나의 자리를 남기고 카카오 outputs 세 개 한도 안에서 이전 답을 먼저 전한다. */
@@ -31,12 +36,15 @@ export interface DeferredKakaoMessage {
 
 /** 안내 하나는 모두 보낸 뒤에만 전함으로 표시한다. Unicode 글자를 중간에서 자르지 않는다. */
 export function deferredKakaoTexts(previous: readonly DeferredKakaoMessage[]): KakaoMessageContent[] {
-  return previous.flatMap<KakaoMessageContent>(({ text, card, contents }) => {
-    if (contents !== undefined) return expandKakaoMessageContents(contents);
-    if (card !== undefined) return expandKakaoMessageContents([card]);
-    const chars = [...text];
-    return chars.length <= 1000 ? [text] : [chars.slice(0, 1000).join(""), chars.slice(1000).join("")];
-  });
+  return mergeKakaoAmountConfirmations(
+    [],
+    previous.flatMap<KakaoMessageContent>(({ text, card, contents }) => {
+      if (contents !== undefined) return expandKakaoMessageContents(contents);
+      if (card !== undefined) return expandKakaoMessageContents([card]);
+      const chars = [...text];
+      return chars.length <= 1000 ? [text] : [chars.slice(0, 1000).join(""), chars.slice(1000).join("")];
+    }),
+  );
 }
 
 /** 손님 행 잠금 또는 그 손님의 콜백 선점을 가진 호출자만 사용한다. */
@@ -59,47 +67,78 @@ export async function deferredKakaoBatch(
 ): Promise<DeferredKakaoBatch> {
   if ((await db.run("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [customerId])).rowCount === 0)
     return { messages: [], currentBlocked: false };
-  const result = await db.run<{
+  interface MessageRow {
     id: string;
     body_masked: string;
     created_order: string;
+    cursor_created_at: string;
     blocked: boolean;
     kind: string;
     trace_id: string | null;
     consultation_id: string;
-  }>(
-    `SELECT m.id, m.body_masked, m.kind, m.trace_id, m.consultation_id, (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order,
-      ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.id IS DISTINCT FROM $4::uuid) AS blocked FROM messages m
-      JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
-      WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'outbound'
-        AND m.delivery = 'deferred' AND m.sent_at IS NULL AND char_length(m.body_masked) BETWEEN 1 AND 1000
-        AND (m.trace_id IS NULL OR m.trace_id NOT LIKE 'ai-disclosure:%')
-        AND ($5::uuid IS NULL OR m.id <> $5)
-        AND NOT ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.status IN ('ended','deleted','dropped'))
-      ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
-    [customerId, DEFERRED_REPLY_BATCH + 1, options.disclosureConsultationId ?? null, options.excludeMessageId ?? null],
-  );
+  }
   const messages: (DeferredKakaoMessage & { readonly at: bigint; readonly blocked: boolean })[] = [];
-  for (const row of result.rows) {
-    const content =
-      row.kind !== "card"
-        ? undefined
-        : row.trace_id === null
-          ? { text: "내용을 다시 확인해 주세요" }
-          : await readConfirmCardDelivery(db, {
-              customerId,
-              consultationId: row.consultation_id,
-              sourceMessageId: row.trace_id,
-              now: options.now ?? new Date(),
-            });
-    messages.push({
-      id: row.id,
-      text: content?.text ?? row.body_masked,
-      ...(content?.card === undefined ? {} : { card: content.card }),
-      source: "message",
-      at: BigInt(row.created_order),
-      blocked: row.blocked,
-    });
+  let cursor: { createdAt: string; id: string } | undefined;
+  let disclosureBlocked = false;
+  // 권한 부족인 참조만 남기고, 출력 예산 뒤의 셋째 정상 메시지까지 읽는다.
+  while (!disclosureBlocked && deferredKakaoTexts(messages).length < DEFERRED_REPLY_BATCH + 1) {
+    const result = await db.run<MessageRow>(
+      `SELECT m.id, m.body_masked, m.kind, m.trace_id, m.consultation_id, m.created_at::text AS cursor_created_at,
+        (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order,
+        ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.id IS DISTINCT FROM $4::uuid) AS blocked FROM messages m
+        JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
+        WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'outbound'
+          AND m.delivery = 'deferred' AND m.sent_at IS NULL AND char_length(m.body_masked) BETWEEN 1 AND 1000
+          AND (m.trace_id IS NULL OR m.trace_id NOT LIKE 'ai-disclosure:%')
+          AND ($5::uuid IS NULL OR m.id <> $5)
+          AND ($6::timestamptz IS NULL OR (m.created_at,m.id) > ($6::timestamptz,$7::uuid))
+          AND NOT ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.status IN ('ended','deleted','dropped'))
+        ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
+      [
+        customerId,
+        DEFERRED_REPLY_BATCH + 1,
+        options.disclosureConsultationId ?? null,
+        options.excludeMessageId ?? null,
+        cursor?.createdAt ?? null,
+        cursor?.id ?? null,
+      ],
+    );
+    const last = result.rows.at(-1);
+    if (last === undefined) break;
+    cursor = { createdAt: last.cursor_created_at, id: last.id };
+    for (const row of result.rows) {
+      let content: Awaited<ReturnType<typeof readConfirmCardDelivery>> | undefined;
+      try {
+        content =
+          row.kind !== "card"
+            ? undefined
+            : row.trace_id === null
+              ? { text: "내용을 다시 확인해 주세요" }
+              : await readConfirmCardDelivery(db, {
+                  customerId,
+                  consultationId: row.consultation_id,
+                  sourceMessageId: row.trace_id,
+                  now: options.now ?? new Date(),
+                });
+      } catch (error) {
+        if (error instanceof CustomerNoticeTemporarilyUnavailable) continue;
+        throw error;
+      }
+      messages.push({
+        id: row.id,
+        text: content?.text ?? row.body_masked,
+        ...(content?.card === undefined ? {} : { card: content.card }),
+        source: "message",
+        at: BigInt(row.created_order),
+        blocked: row.blocked,
+      });
+      if (row.blocked) {
+        disclosureBlocked = true;
+        break;
+      }
+      if (deferredKakaoTexts(messages).length >= DEFERRED_REPLY_BATCH + 1) break;
+    }
+    if (result.rows.length < DEFERRED_REPLY_BATCH + 1) break;
   }
   // 결제 안내는 표시 자료를 늦게 만들고 실제 전달 표시와 같은 트랜잭션에서 시계를 시작한다.
   await db.run(
@@ -181,12 +220,7 @@ export async function deferredKakaoBatch(
   let remaining = DEFERRED_REPLY_BATCH;
   for (const row of candidates) {
     if (row.blocked) break;
-    const slots =
-      row.contents !== undefined
-        ? expandKakaoMessageContents(row.contents).length
-        : row.card !== undefined
-          ? expandKakaoMessageContents([row.card]).length
-          : Math.ceil([...row.text].length / 1000);
+    const slots = deferredKakaoTexts([...selected, row]).length - deferredKakaoTexts(selected).length;
     if (slots === 3 && selected.length === 0 && options.allowFullOrderCard && !options.disclosureConsultationId)
       remaining = 3;
     if (slots > remaining) break;
@@ -198,7 +232,6 @@ export async function deferredKakaoBatch(
       ...(row.contents === undefined ? {} : { contents: row.contents }),
     });
     remaining -= slots;
-    if (remaining === 0) break;
   }
   // 출력 영역을 모두 쓴 뒤에도 앞선 안내가 남았는지 확인해 새 답의 순서 역전을 막는다.
   const next = candidates[selected.length];

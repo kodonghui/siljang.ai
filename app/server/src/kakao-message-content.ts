@@ -114,9 +114,29 @@ export function expandKakaoMessageContents(contents: readonly KakaoMessageConten
         throw new RangeError("invalid presentation output part");
       return [content];
     }
+    if (typeof content !== "string" && content.amountConfirmation !== undefined)
+      return expandKakaoMessageContents([{ kind: "payment_notice", view: content.amountConfirmation }]);
     if (typeof content === "string" || content.kind !== "order_request") return [content];
     if (content.orderRequest === undefined) throw new RangeError("order card policy missing");
     return kakaoOrderRequestContents({ card: content, ...content.orderRequest });
+  });
+}
+/** 같은 금액 카드의 같은 출력만 합친다. 다른 카드·글·여러 부분의 원문은 그대로 남긴다. */
+export function mergeKakaoAmountConfirmations(
+  previous: readonly KakaoMessageContent[],
+  current: readonly KakaoMessageContent[],
+): KakaoMessageContent[] {
+  const seen = new Set<string>();
+  return expandKakaoMessageContents([...previous, ...current]).filter((content) => {
+    if (typeof content === "string" || content.kind !== "payment_notice" || content.view.state !== "amount-confirm")
+      return true;
+    const part = content.part ?? 0;
+    const output = kakaoPaymentMessage(content.view).template.outputs[part];
+    if (output === undefined) throw new RangeError("missing amount confirmation output");
+    const identity = JSON.stringify([content.view.cardKey, part, output]);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
   });
 }
 export function kakaoMessageOutputs(contents: readonly KakaoMessageContent[]): KakaoMessageOutput[] {

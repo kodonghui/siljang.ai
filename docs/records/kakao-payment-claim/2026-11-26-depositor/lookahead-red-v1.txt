@@ -1,0 +1,59 @@
+
+> test
+> vitest run --run test/payment-claim-depositor-input.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-depositor-display/app/server
+
+ ❯ test/payment-claim-depositor-input.test.ts (30 tests | 2 failed) 3441ms
+   ❯ 입금자 전용 블록의 표시와 명령 경계(TASK-107) (30)
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(custom/pending-callback) 221ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/pending-callback) 210ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(custom/pending-callback)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 중복 뒤의 정상 안내'
+
+Expected: "합성 중복 뒤의 정상 안내"
+Received: "{"version":"2.0","template":{"outputs":[{"textCard":{"title":"새 금액 확인","description":"요청하신 견적 35,000원\n사장님이 정한 금액 55,000원\n사유: 합성 장식을 추가해요\n10:30까지 눌러 주세요","buttons":[{"label":"이 금액으로 할게요","action":"block","blockId":"blk-card","extra":{"cardKey":"ck_0a0b556f-1f60-4ad0-b106-99d834c30591","choice":"confirm"}},{"label":"안 할래요","action":"block","blockId":"blk-card","extra":{"cardKey":"ck_0a0b556f-1f60-4ad0-b106-99d834c30591","choice":"decline"}}]}}]}}"
+
+ ❯ test/payment-claim-depositor-input.test.ts:516:38
+    514|         const sent = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
+    515|         expectSchema("SkillTemplateResponse", sent);
+    516|         expect(JSON.stringify(sent)).toContain("합성 중복 뒤의 정상 안내");
+       |                                      ^
+    517|         expect(
+    518|           (
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/pending-callback)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 중복 뒤의 정상 안내'
+
+Expected: "합성 중복 뒤의 정상 안내"
+Received: "{"version":"2.0","template":{"outputs":[{"textCard":{"title":"새 금액 확인","description":"바뀌는 내용\n문구 합성 변경 문구\n지금 35,000원 → 새 금액 55,000원\n차액 20,000원\n변경 마감 11월 27일 10:00까지\n10:30까지 눌러 주세요","buttons":[{"label":"바꿀게요","action":"block","blockId":"blk-card","extra":{"cardKey":"ck_3fe8bb0a-f7a9-4125-81df-65447793b037","choice":"confirm"}},{"label":"그대로 둘래요","action":"block","blockId":"blk-card","extra":{"cardKey":"ck_3fe8bb0a-f7a9-4125-81df-65447793b037","choice":"decline"}}]}}]}}"
+
+ ❯ test/payment-claim-depositor-input.test.ts:516:38
+    514|         const sent = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
+    515|         expectSchema("SkillTemplateResponse", sent);
+    516|         expect(JSON.stringify(sent)).toContain("합성 중복 뒤의 정상 안내");
+       |                                      ^
+    517|         expect(
+    518|           (
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 28 passed (30)
+   Start at  20:56:46
+   Duration  5.41s (tests 66%, import 26%, transform 8%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task107-depositor-display/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task107-depositor-display/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/payment-claim-depositor-input.test.ts

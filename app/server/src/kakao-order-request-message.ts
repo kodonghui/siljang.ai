@@ -105,7 +105,10 @@ export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
       cardKey: answer.card.cardKey,
       blockId: answer.card.blockId,
     });
+  if (answer.card?.amountConfirmation !== undefined) return template([answer.card]);
   if (answer.kind === "payment_claim") {
+    if (answer.outcome === "input_invalid" && answer.depositorInput !== undefined)
+      return kakaoPaymentClaimMessage({ state: "depositor", invalid: true, ...answer.depositorInput });
     if (answer.outcome === "payment_claimed") return kakaoPaymentClaimMessage({ state: "done", kind: "claimed" });
     if (answer.outcome === "declined") return kakaoPaymentClaimMessage({ state: "done", kind: "declined" });
     if (answer.outcome === "card_used" && answer.firstResult?.outcome === "payment_claimed")

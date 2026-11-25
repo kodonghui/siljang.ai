@@ -1,0 +1,12 @@
+
+> test
+> vitest run test/payment-claim-depositor-input.test.ts test/confirm-card-store.test.ts test/kakao-confirm-card.test.ts test/kakao-payment-claim-delivery.test.ts test/kakao-payment-claim-message.test.ts test/kakao-order-request-message.test.ts test/customer-notice-payment-delivery.test.ts test/kakao-deferred.test.ts test/payment-difference-presentation.test.ts test/kakao-runtime-grants.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-depositor-display/app/server
+
+
+ Test Files  10 passed (10)
+      Tests  180 passed (180)
+   Start at  19:26:19
+   Duration  25.65s (tests 65%, import 32%, transform 2%)

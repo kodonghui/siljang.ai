@@ -17,7 +17,7 @@ import {
 } from "./kakao-callback-store";
 import { readClaimedKakaoCard } from "./kakao-card-delivery";
 import { deferredKakaoBatch, deferredKakaoTexts } from "./kakao-deferred";
-import { expandKakaoMessageContents } from "./kakao-message-content";
+import { mergeKakaoAmountConfirmations } from "./kakao-message-content";
 import { runKakaoPhotoTurn } from "./kakao-photo-turn";
 import { KAKAO_HANDOFF_TEXT, kakaoAiFailureOutcome } from "./kakao-reply";
 import { type LogSink, log } from "./log";
@@ -244,7 +244,10 @@ export async function consumeKakaoCallback(
     const prefix = disclosure === null || disclosure === undefined ? [] : [disclosure.text];
     const previousTexts = deferredKakaoTexts(previous);
     // 고지·이전 안내가 세 칸을 채우면 새 AI 답은 다음 대화에 남긴다. 이전 안내를 앞질러 보내지 않는다.
-    let replyIncluded = !previousBatch.currentBlocked && prefix.length + previousTexts.length < 3;
+    const alreadyIncluded =
+      preparedReply?.card?.amountConfirmation !== undefined &&
+      mergeKakaoAmountConfirmations(previousTexts, [preparedReply.card]).length === previousTexts.length;
+    let replyIncluded = alreadyIncluded || (!previousBatch.currentBlocked && prefix.length + previousTexts.length < 3);
     if (callback !== null && replyIncluded && preparedReply?.card !== undefined) {
       const fresh = await readClaimedKakaoCard(db, job.messageId, claim, now);
       if (fresh === null) {
@@ -253,15 +256,19 @@ export async function consumeKakaoCallback(
       }
       preparedReply = { id: preparedReply.id, delivered: preparedReply.delivered, ...fresh };
     }
-    if (replyIncluded && preparedReply?.card !== undefined)
-      replyIncluded =
-        prefix.length + previousTexts.length + expandKakaoMessageContents([preparedReply.card]).length <= 3;
     const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
+    let transmittedContents = previousTexts;
+    if (replyIncluded) {
+      const combined = mergeKakaoAmountConfirmations(previousTexts, [preparedReply?.card ?? text]);
+      const added = combined.length - previousTexts.length;
+      replyIncluded = (!previousBatch.currentBlocked || added === 0) && prefix.length + combined.length <= 3;
+      if (replyIncluded) transmittedContents = combined;
+    }
     const deliveredAt =
       callback !== null &&
       (await deliverKakaoCallback(
         { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
-        [...prefix, ...previousTexts, ...(replyIncluded ? [preparedReply?.card ?? text] : [])],
+        [...prefix, ...transmittedContents],
         { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
       )) === "delivered"
         ? now()

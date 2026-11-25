@@ -42,6 +42,7 @@ export async function receiveKakaoConfirmCard(r: ShopRequest, input: KakaoCardPr
           channelId: request.channelId,
           userId: request.payload.userId,
           blockId: request.payload.blockId,
+          depositorName: request.payload.action.params.depositor_name,
           now: r.services.now(),
         },
         r.services.confirmCardCommand,
