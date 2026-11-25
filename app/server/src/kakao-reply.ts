@@ -1,5 +1,6 @@
 import type { AiFailure } from "./ai-model";
 import { KAKAO_CONSULTATION_UNAVAILABLE_TEXT } from "./kakao-callback";
+import { type KakaoMessageContent, type KakaoMessageOutput, kakaoMessageOutputs } from "./kakao-message-content";
 import type { ShopRequest } from "./routes";
 
 /** TASK-028의 API-070 고정 결과. AI 처리와 에스컬레이션은 각 처리기가 끝낸 뒤 이 응답을 사용한다. */
@@ -60,7 +61,7 @@ export function kakaoReply(
   options: {
     readonly silent?: boolean;
     readonly contactPhone?: string | undefined;
-    readonly previous?: readonly string[];
+    readonly previous?: readonly KakaoMessageContent[];
     /** API-072는 반복 요청에도 처음의 감사 답을 보낸다. API-070의 빈 출력과 구분한다. */
     readonly repeatReview?: boolean;
   } = {},
@@ -69,13 +70,12 @@ export function kakaoReply(
   if (outcome === "callback_pending") {
     return r.json({ version: "2.0", useCallback: true, data: { text: "답을 준비하고 있어요" } }, 200, headers);
   }
-  const outputs: { simpleText: { text: string } }[] = [];
+  const outputs: KakaoMessageOutput[] = [];
   if (outcome === "duplicate" && options.repeatReview) outputs.push({ simpleText: { text: TEXT.review_saved } });
   if (outcome !== "duplicate" && !(outcome === "rate_limited" && options.silent)) {
     const previous = options.previous ?? [];
-    if (previous.length > 2 || previous.some((text) => [...text].length < 1 || [...text].length > 1000))
-      throw new RangeError("invalid deferred Kakao replies");
-    for (const text of previous) outputs.push({ simpleText: { text } });
+    if (previous.length > 2) throw new RangeError("invalid deferred Kakao replies");
+    outputs.push(...kakaoMessageOutputs(previous));
     const text =
       outcome === "not_accepting" && options.contactPhone !== undefined
         ? `${TEXT.not_accepting}. 가게로 연락해 주세요: ${options.contactPhone}`

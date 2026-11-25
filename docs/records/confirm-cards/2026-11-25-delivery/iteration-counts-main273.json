@@ -1,0 +1,75 @@
+{
+  "source": "bb1804a0de6da96dc22ae579384bbf289cb49803",
+  "rows": [
+    {
+      "iteration": 0,
+      "total": 17,
+      "finished": 13,
+      "implemented": 0,
+      "remaining": 4
+    },
+    {
+      "iteration": 1,
+      "total": 22,
+      "finished": 17,
+      "implemented": 4,
+      "remaining": 1
+    },
+    {
+      "iteration": 2,
+      "total": 32,
+      "finished": 5,
+      "implemented": 27,
+      "remaining": 0
+    },
+    {
+      "iteration": 3,
+      "total": 28,
+      "finished": 1,
+      "implemented": 10,
+      "remaining": 17
+    },
+    {
+      "iteration": 4,
+      "total": 25,
+      "finished": 0,
+      "implemented": 0,
+      "remaining": 25
+    },
+    {
+      "iteration": 5,
+      "total": 16,
+      "finished": 0,
+      "implemented": 0,
+      "remaining": 16
+    },
+    {
+      "iteration": 6,
+      "total": 24,
+      "finished": 0,
+      "implemented": 0,
+      "remaining": 24
+    },
+    {
+      "iteration": 7,
+      "total": 6,
+      "finished": 0,
+      "implemented": 1,
+      "remaining": 5
+    },
+    {
+      "iteration": 8,
+      "total": 9,
+      "finished": 0,
+      "implemented": 0,
+      "remaining": 9
+    },
+    {
+      "iteration": 9,
+      "total": 5,
+      "finished": 0,
+      "implemented": 0,
+      "remaining": 5
+    }
+  ]
+}

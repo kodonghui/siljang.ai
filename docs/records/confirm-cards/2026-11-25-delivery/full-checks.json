@@ -1,0 +1,119 @@
+{
+  "source": "20ab5c56075ca17dd4cb3df222d079abe640d06d",
+  "publicSameTree": "9b8eaf1db365ab53a8b560c38a4c005698a8bbe4",
+  "tree": "3159a7ec7dd93343dd6d49930c03250fe3a494ca",
+  "command": "python3 -I /tmp/siljang-full-fresh-v2.py <worktree> siljang-task081-delivery-20261125-2",
+  "freshMigrations": 39,
+  "freshDatabaseCleanup": "completed",
+  "newLocalNpmCi": false,
+  "sameLockDependenciesReused": true,
+  "relatedFiles": 5,
+  "relatedTests": 128,
+  "typeExitCode": 0,
+  "results": {
+    "full": {
+      "source": "20ab5c56075ca17dd4cb3df222d079abe640d06d",
+      "exitCode": 0,
+      "log": "/tmp/siljang-task081-delivery-20261125-2-fresh-full.log",
+      "lines": [
+        " Test Files  134 passed (134)",
+        "      Tests  2690 passed (2690)",
+        " Test Files  71 passed (71)",
+        "      Tests  1727 passed (1727)"
+      ]
+    },
+    "build": {
+      "source": "20ab5c56075ca17dd4cb3df222d079abe640d06d",
+      "exitCode": 0,
+      "log": "/tmp/siljang-task081-delivery-20261125-2-fresh-build.log",
+      "lines": [
+        "✓ built in 957ms",
+        "Total Upload: 5387.16 KiB / gzip: 987.78 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "previousFull": {
+    "source": "b404d12c63459952d0cd92bd613bd6ce0681e51e",
+    "server": 2688,
+    "web": 1727,
+    "buildMilliseconds": 854,
+    "scope": "카드 합계400자 추가 고침 전 역사 범위"
+  },
+  "cardCombinedLimit": {
+    "redSource": "969562578162ca760c0f8abf7108983335a3777d",
+    "red": {
+      "failed": 1,
+      "passed": 1,
+      "skipped": 62,
+      "filter": "제목과 설명 합계400자"
+    },
+    "greenSource": "20ab5c56075ca17dd4cb3df222d079abe640d06d",
+    "combinedLimit": 400,
+    "relatedPass": 128
+  },
+  "browserRun": false,
+  "externalModelCalls": 0,
+  "realKakaoCalls": 0,
+  "postReviewAttempts": [
+    {
+      "source": "d5df658eeee5c3e1ca3867f415010fa6dcc2a8d9",
+      "freshMigrations": 39,
+      "serverFailed": 1,
+      "serverPassed": 2716,
+      "webRun": false,
+      "buildRun": false,
+      "log": "/tmp/siljang-task081-review-20261125-3-fresh-full.log",
+      "cleanup": "completed",
+      "failure": "가게 SQL은 날 연결을 쥔 큐 파일에 둘 수 없음. 예외 추가 없이 범위 전용 모듈로 이동"
+    },
+    {
+      "source": "c9bc2614587c307e6da21b917eacea6fa8f974f9",
+      "relatedFiles": 8,
+      "relatedPassed": 216,
+      "typeExitCode": 0,
+      "lintExitCode": 0,
+      "freshFull": "완료·전체/빌드0·시험DB정리",
+      "logPrefix": "/tmp/siljang-task081-review-20261125-4-fresh"
+    }
+  ],
+  "currentAfterReview": {
+    "source": "c9bc2614587c307e6da21b917eacea6fa8f974f9",
+    "freshMigrations": 39,
+    "databaseCleanup": "completed",
+    "sameLockDependenciesReused": true,
+    "newLocalNpmCi": false,
+    "serverFiles": 135,
+    "serverTests": 2717,
+    "webFiles": 71,
+    "webTests": 1727,
+    "fullExitCode": 0,
+    "buildExitCode": 0,
+    "viteMs": 679,
+    "lines": [
+      " Test Files  135 passed (135)",
+      "      Tests  2717 passed (2717)",
+      " Test Files  71 passed (71)",
+      "      Tests  1727 passed (1727)",
+      "✓ built in 679ms",
+      "Total Upload: 5393.12 KiB / gzip: 989.17 KiB",
+      "--dry-run: exiting now.",
+      "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+      "--dry-run: exiting now."
+    ],
+    "logs": {
+      "full": "/tmp/siljang-task081-review-20261125-4-fresh-full.log",
+      "build": "/tmp/siljang-task081-review-20261125-4-fresh-build.log"
+    },
+    "hashes": {
+      "full": "46a291ff40d78c4182471ff45fae7170845b2a213c584ec0e475a14baf47732f",
+      "build": "4c1d2e3e3f7c9fdaa40abc38c52d6a61b189d7ed73670729037ff3ae35dc3597"
+    },
+    "relatedFiles": 8,
+    "relatedTests": 216,
+    "typeExitCode": 0,
+    "lintExitCode": 0
+  }
+}

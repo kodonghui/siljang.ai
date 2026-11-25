@@ -225,32 +225,34 @@ describeDb("문의 끊김과 상담 끝남(TASK-076, SPEC-025)", () => {
       ]);
     },
   );
-  it.each(["dropped", "ended"] as const)(
-    "최소 서버 역할도 상담을 %s으로 닫고 고지 없는 옛 AI 답만 실패로 남김",
-    async (status) => {
-      if (status === "ended") await receivedOrder();
-      await db.query("UPDATE consultations SET ai_disclosed_at=NULL,ai_disclosed_policy_version=NULL WHERE id=$1", [
+  it.each([
+    ["dropped", "ai", "text"],
+    ["ended", "ai", "text"],
+    ["dropped", "system", "card"],
+    ["ended", "system", "card"],
+  ] as const)("최소 서버 역할도 상담을 %s으로 닫고 고지 없는 %s·%s 답을 실패로 남김", async (status, author, kind) => {
+    if (status === "ended") await receivedOrder();
+    await db.query("UPDATE consultations SET ai_disclosed_at=NULL,ai_disclosed_policy_version=NULL WHERE id=$1", [
+      consultationId,
+    ]);
+    const message = newUuid();
+    await db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery) VALUES($1,$2,$3,'outbound',$4,$5,'합성 미전달 AI 답','deferred')",
+      [message, shop.shopId, consultationId, author, kind],
+    );
+    await db.transaction(async (tx) => {
+      await tx.query(`SET LOCAL ROLE "${runtimeRole}"`);
+      await closeIdleConsultation(
+        shopDb(createShopScope(shop.shopId, { kind: "job", job: "consultation_idle" }), tx),
         consultationId,
-      ]);
-      const message = newUuid();
-      await db.query(
-        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery) VALUES($1,$2,$3,'outbound','ai','text','합성 미전달 AI 답','deferred')",
-        [message, shop.shopId, consultationId],
+        NOW,
       );
-      await db.transaction(async (tx) => {
-        await tx.query(`SET LOCAL ROLE "${runtimeRole}"`);
-        await closeIdleConsultation(
-          shopDb(createShopScope(shop.shopId, { kind: "job", job: "consultation_idle" }), tx),
-          consultationId,
-          NOW,
-        );
-      });
-      expect((await state())?.status).toBe(status);
-      expect((await db.query("SELECT delivery,body_masked FROM messages WHERE id=$1", [message])).rows).toEqual([
-        { delivery: "failed", body_masked: "합성 미전달 AI 답" },
-      ]);
-    },
-  );
+    });
+    expect((await state())?.status).toBe(status);
+    expect((await db.query("SELECT delivery,body_masked FROM messages WHERE id=$1", [message])).rows).toEqual([
+      { delivery: "failed", body_masked: "합성 미전달 AI 답" },
+    ]);
+  });
   it("기존의 넓은 환불 읽기를 닫고 필요한 열 권한은 보존", async () => {
     const result = await db.transaction(async (tx) => {
       await tx.query(`GRANT SELECT ON refunds TO "${runtimeRole}"`);

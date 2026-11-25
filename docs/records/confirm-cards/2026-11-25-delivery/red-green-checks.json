@@ -1,0 +1,40 @@
+{
+  "red": {
+    "source": "22b06a8b736e418189568522625d9500aeabb6fb",
+    "exitCode": 1,
+    "tests": {
+      "failed": 4,
+      "passed": 54
+    },
+    "log": "/tmp/siljang-task081-delivery-red-20261125.log"
+  },
+  "firstImplementation": {
+    "source": "fbdc7bc5227c1e67f91d1aca9aefa9bd7ed43806",
+    "exitCode": 1,
+    "tests": {
+      "failed": 5,
+      "passed": 117
+    },
+    "issues": [
+      "orders에 없는created_at 정렬",
+      "트랜잭션으로 옮긴 조회를 기존 바깥 실패 주입이 놓침"
+    ],
+    "log": "/tmp/siljang-task081-delivery-green-related-20261125.log"
+  },
+  "green": {
+    "source": "126450e7e7d227f1e3acd876f5ff48faa134d5d4",
+    "exitCode": 0,
+    "command": "npm run test -w server -- test/kakao-callback.test.ts test/confirm-card-store.test.ts test/kakao-confirm-card.test.ts test/confirm-card.test.ts test/kakao-deferred.test.ts",
+    "workingDirectory": "app",
+    "files": 5,
+    "passed": 122,
+    "typeExitCode": 0,
+    "log": "/tmp/siljang-task081-delivery-fix1-related-20261125.log",
+    "typeLog": "/tmp/siljang-task081-delivery-fix1-type-20261125.log"
+  },
+  "database": "새 빈39개 이행의로컬시험DB를 최초실패뒤같은준비DB로재사용,실행마다고유가게/계정",
+  "npmCi": false,
+  "externalModelCalls": 0,
+  "kakaoRequests": "주입한 HTTP 모의 응답만, 실제 발신0",
+  "browserRun": false
+}

@@ -1,0 +1,24 @@
+{
+  "red": {
+    "local": "22b06a8b736e418189568522625d9500aeabb6fb",
+    "public": "e80c0f489351f96f2eda64bd26b7d21d586dd5bd",
+    "tree": "9fb1a25a4d63b0f7a646bc9580158818c0ec1724"
+  },
+  "firstWip": {
+    "local": "f3c6b2bfbb59f649152bc66d044c6315553e9deb",
+    "public": "657b1da058e381376e76c4505b2b92bd0d259dd7",
+    "tree": "7f01c83a06a6eccfff2b75502ebbfa42edca5a01"
+  },
+  "full128": {
+    "local": "20ab5c56075ca17dd4cb3df222d079abe640d06d",
+    "public": "9b8eaf1db365ab53a8b560c38a4c005698a8bbe4",
+    "tree": "3159a7ec7dd93343dd6d49930c03250fe3a494ca"
+  },
+  "meaning": "각 local과 public의 전체 Git 트리가 같음. 로컬 SHA를 GitHub 공개 커밋으로 적지 않음. 최종 기록 뒤 공개 head의 직접 단계와 CI는 PR 본문/댓글로 연결",
+  "reviewFixPublication": {
+    "public": "7753a144b0d7a635faf27d98b48277e815755967",
+    "local": "cf0c3ca73d5cccbbe260dfc1f0b7f7937299f388",
+    "tree": "bea14d2d666a28461bacc9d623efea82fb5e2240",
+    "runtimeAndTestsEqualTo": "c9bc2614587c307e6da21b917eacea6fa8f974f9"
+  }
+}

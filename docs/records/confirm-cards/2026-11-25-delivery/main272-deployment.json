@@ -1,0 +1,21 @@
+{
+  "tag": "15c8d8bc79666fc446f52d62808eefb75a374864",
+  "versionId": "7551dcc3-de7b-4fdd-8848-2ba26f6d1672",
+  "createdOn": "2026-11-25T02:27:41.474226Z",
+  "healthStatus": 200,
+  "main": "15c8d8bc79666fc446f52d62808eefb75a374864",
+  "appRun": 45532582673,
+  "dbRun": 45532582558,
+  "checks": {
+    "app": 138931279771,
+    "windows": 138931279246,
+    "postgres16": 138931278923,
+    "postgres17": 138931279157
+  },
+  "ci": "success",
+  "deployment": 138932801504,
+  "source": "GitHub Actions 실제 Wrangler deployments list/versions view 검증",
+  "activePercentage": 100,
+  "nativeAcademy": "학원컴의 활성 태그 별도 CLI 재조회는 미확인. 이 검사는 학원컴 접속 상태를 확인하지 않음",
+  "storageActiveTagReadback": "미확인"
+}

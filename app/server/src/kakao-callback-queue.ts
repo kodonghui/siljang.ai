@@ -15,6 +15,7 @@ import {
   prepareKakaoCallbackHandoff,
   releaseKakaoCallback,
 } from "./kakao-callback-store";
+import { readClaimedKakaoCard } from "./kakao-card-delivery";
 import { deferredKakaoMessages, deferredKakaoTexts } from "./kakao-deferred";
 import { KAKAO_HANDOFF_TEXT, kakaoAiFailureOutcome } from "./kakao-reply";
 import { type LogSink, log } from "./log";
@@ -153,12 +154,16 @@ export async function consumeKakaoCallback(
     }
     let raw: string | undefined;
     try {
-      raw = await openKakaoCallback(db, services.fieldCrypto(), claim);
+      raw = await openKakaoCallback(db, services.fieldCrypto(), claim, job.messageId);
     } catch (error) {
       if (!(error instanceof FieldCryptoError)) throw error;
     }
 
-    const callback = kakaoCallback(raw, claim.created_at);
+    const candidate = kakaoCallback(raw, claim.created_at);
+    const callback =
+      candidate !== null && Math.min(candidate.deadline, claim.kakao_callback_deadline_at.getTime()) > now().getTime()
+        ? candidate
+        : null;
     // 모델을 기다리는 동안 설정이 바뀌었으면 실제 발신 직전에 새 게시 버전을 고른다.
     if (disclosure !== null && callback !== null) {
       disclosure = services.aiConfigured ? await prepareKakaoAiDisclosure(db, claim, services) : undefined;
@@ -179,25 +184,41 @@ export async function consumeKakaoCallback(
     const previous =
       callback === null
         ? []
-        : (
-            await deferredKakaoMessages(db, claim.customer_id, {
+        : await db.transaction((tx) =>
+            deferredKakaoMessages(tx, claim.customer_id, {
               disclosureConsultationId: disclosure?.consultationId,
-            })
-          ).filter((row) => preparedReply === undefined || row.source !== "message" || row.id !== preparedReply.id);
-    const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
+              excludeMessageId: preparedReply?.id,
+              now: now(),
+            }),
+          );
     const prefix = disclosure === null || disclosure === undefined ? [] : [disclosure.text];
     const previousTexts = deferredKakaoTexts(previous);
     // 고지·이전 안내가 세 칸을 채우면 새 AI 답은 다음 대화에 남긴다. 이전 안내를 앞질러 보내지 않는다.
     const replyIncluded = prefix.length + previousTexts.length < 3;
+    if (callback !== null && replyIncluded && preparedReply?.card !== undefined) {
+      const fresh = await readClaimedKakaoCard(db, job.messageId, claim, now);
+      if (fresh === null) {
+        await releaseKakaoCallback(db, job.messageId, claim);
+        return "done";
+      }
+      preparedReply = { id: preparedReply.id, delivered: preparedReply.delivered, ...fresh };
+    }
+    const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
     const deliveredAt =
       callback !== null &&
       (await deliverKakaoCallback(
         { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
-        [...prefix, ...previousTexts, ...(replyIncluded ? [text] : [])],
+        [...prefix, ...previousTexts, ...(replyIncluded ? [preparedReply?.card ?? text] : [])],
         { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
       )) === "delivered"
         ? now()
         : null;
+    if (
+      deliveredAt !== null &&
+      (previous.some((row) => row.card !== undefined) || (replyIncluded && preparedReply?.card !== undefined))
+    ) {
+      log("info", { event: "kakao_callback_result", code: "card_shown" }, options.logSink);
+    }
     await finishKakaoCallback(db, job.messageId, claim, text, deliveredAt, previous, preparedReply?.id, {
       ...(disclosure === null || disclosure === undefined ? {} : { disclosure }),
       replyIncluded,

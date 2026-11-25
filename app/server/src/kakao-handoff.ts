@@ -8,6 +8,7 @@ import {
   prependKakaoDisclosure,
 } from "./kakao-ai-disclosure";
 import { deferredKakaoMessages, deferredKakaoTexts, markDeferredKakaoMessages } from "./kakao-deferred";
+import type { KakaoMessageContent } from "./kakao-message-content";
 import { KAKAO_HANDOFF_TEXT } from "./kakao-reply";
 import type { InboundReceipt } from "./kakao-skill-store";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
@@ -20,7 +21,7 @@ export async function replyWithKakaoHandoff(
   db: ShopRequestDb,
   receipt: Extract<InboundReceipt, { kind: "received" }>,
   now: Date,
-  render: (previous: readonly string[]) => Response,
+  render: (previous: readonly KakaoMessageContent[]) => Response,
 ): Promise<Response> {
   return db.transaction((tx) => replyKakaoHandoffInTransaction(tx, receipt, now, render));
 }
@@ -30,7 +31,7 @@ export async function replyKakaoHandoffInTransaction(
   tx: ShopDb,
   receipt: Extract<InboundReceipt, { kind: "received" }>,
   now: Date,
-  render: (previous: readonly string[]) => Response,
+  render: (previous: readonly KakaoMessageContent[]) => Response,
   reason: FailureReason = "ai_failure",
   policy?: KakaoDisclosurePolicy,
 ): Promise<Response> {
@@ -56,7 +57,10 @@ export async function replyKakaoHandoffInTransaction(
       : undefined;
   const previous =
     active.rowCount === 0
-      ? await deferredKakaoMessages(tx, receipt.customerId, { disclosureConsultationId: disclosure?.consultationId })
+      ? await deferredKakaoMessages(tx, receipt.customerId, {
+          disclosureConsultationId: disclosure?.consultationId,
+          now,
+        })
       : [];
   const { response, currentIncluded } = await prependKakaoDisclosure(render(deferredKakaoTexts(previous)), disclosure);
   if (disclosure !== undefined)

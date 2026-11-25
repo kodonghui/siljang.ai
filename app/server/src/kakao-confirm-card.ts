@@ -1,6 +1,7 @@
 /** API-071. 카드 값과 업무 대상은 저장된 서버 자료에서만 읽습니다. */
 import { type ConfirmCardAnswer, pressKakaoConfirmCardInTransaction } from "./confirm-card-store";
 import { errorFields } from "./error-name";
+import { type KakaoMessageContent, kakaoMessageOutputs } from "./kakao-message-content";
 import { kakaoReply } from "./kakao-reply";
 import type { KakaoSkillPayload } from "./kakao-skill-auth";
 import { kakaoContactPhone } from "./kakao-skill-store";
@@ -20,26 +21,10 @@ export function parseKakaoCardPress(payload: KakaoSkillPayload): KakaoCardPress 
   return { cardKey, choice };
 }
 export function kakaoConfirmCardReply(r: Pick<ShopRequest, "json">, answer: ConfirmCardAnswer): Response {
-  const outputs: unknown[] = [{ simpleText: { text: answer.text } }];
-  if (answer.firstResult !== undefined) outputs.push({ simpleText: { text: answer.firstResult.text } });
-  if (answer.card !== undefined) {
-    const c = answer.card;
-    outputs.push({
-      textCard: {
-        title: c.title,
-        description: c.description,
-        buttons: [
-          {
-            label: c.confirmLabel,
-            action: "block",
-            blockId: c.blockId,
-            extra: { cardKey: c.cardKey, choice: "confirm" },
-          },
-          { label: "안 할래요", action: "block", blockId: c.blockId, extra: { cardKey: c.cardKey, choice: "decline" } },
-        ],
-      },
-    });
-  }
+  const contents: KakaoMessageContent[] = [answer.text];
+  if (answer.firstResult !== undefined) contents.push(answer.firstResult.text);
+  if (answer.card !== undefined) contents.push(answer.card);
+  const outputs = kakaoMessageOutputs(contents);
   return r.json({ version: "2.0", template: { outputs } }, 200, {
     "Siljang-Outcome": answer.outcome,
     "Cache-Control": "no-store",
