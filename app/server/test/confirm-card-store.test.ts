@@ -5,6 +5,7 @@ import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
+import { prepareOrderCardSource } from "./support/order-card";
 import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const NOW = new Date("2026-11-24T01:00:00Z");
@@ -16,6 +17,7 @@ describeDb("손님 확인 카드 저장과 한 번 실행(TASK-081)", () => {
   beforeEach(async () => {
     shop = await createShop(isolated.db, "합성 확인 카드 가게");
     await linkTestChannel(isolated.db, shop.channelId);
+    await prepareOrderCardSource(isolated.db, shop, NOW);
   });
   afterAll(async () => {
     await isolated?.close();
@@ -120,6 +122,7 @@ describeDb("손님 확인 카드 저장과 한 번 실행(TASK-081)", () => {
       now: NOW,
     });
     await isolated.db.query("UPDATE order_drafts SET revision=revision+1 WHERE id=$1", [shop.draftId]);
+    await prepareOrderCardSource(isolated.db, shop, NOW);
     const execute = vi.fn(),
       result = await press(card.cardKey, "confirm", execute);
     expect(result.outcome).toBe("card_stale");
@@ -374,6 +377,7 @@ describeDb("손님 확인 카드 저장과 한 번 실행(TASK-081)", () => {
       now: NOW,
     });
     await isolated.db.query("UPDATE order_drafts SET revision=revision+1 WHERE id=$1", [shop.draftId]);
+    await prepareOrderCardSource(isolated.db, shop, NOW);
     expect((await press(card.cardKey, "decline")).outcome).toBe("declined");
     expect((await isolated.db.query("SELECT used_at FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows).toEqual(
       [{ used_at: null }],

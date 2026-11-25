@@ -5,7 +5,7 @@ import {
   markKakaoAiDisclosure,
   prependKakaoDisclosure,
 } from "./kakao-ai-disclosure";
-import type { KakaoMessageContent } from "./kakao-message-content";
+import { expandKakaoMessageContents, type KakaoMessageContent, kakaoMessageOutputs } from "./kakao-message-content";
 import type { ShopDb, ShopRequestDb } from "./shop-scope";
 
 /** 새 답 하나의 자리를 남기고 카카오 outputs 세 개 한도 안에서 이전 답을 먼저 전한다. */
@@ -21,7 +21,7 @@ export interface DeferredKakaoMessage {
 /** 안내 하나는 모두 보낸 뒤에만 전함으로 표시한다. Unicode 글자를 중간에서 자르지 않는다. */
 export function deferredKakaoTexts(previous: readonly DeferredKakaoMessage[]): KakaoMessageContent[] {
   return previous.flatMap<KakaoMessageContent>(({ text, card }) => {
-    if (card !== undefined) return [card];
+    if (card !== undefined) return expandKakaoMessageContents([card]);
     const chars = [...text];
     return chars.length <= 1000 ? [text] : [chars.slice(0, 1000).join(""), chars.slice(1000).join("")];
   });
@@ -105,7 +105,11 @@ export async function deferredKakaoMessages(
   let remaining = DEFERRED_REPLY_BATCH;
   for (const row of candidates) {
     if (row.blocked) break;
-    const slots = "card" in row && row.card !== undefined ? 1 : Math.ceil([...row.text].length / 1000);
+    const slots =
+      "card" in row && row.card !== undefined
+        ? expandKakaoMessageContents([row.card]).length
+        : Math.ceil([...row.text].length / 1000);
+    if (slots === 3 && selected.length === 0 && !options.disclosureConsultationId) remaining = 3;
     if (slots > remaining) break;
     selected.push({
       id: row.id,
@@ -172,7 +176,17 @@ export async function replyWithDeferredKakaoMessages(
       disclosureConsultationId: disclosure?.consultationId,
       now,
     });
-    const { response } = await prependKakaoDisclosure(render(deferredKakaoTexts(pending)), disclosure);
+    const texts = deferredKakaoTexts(pending);
+    // 규정 두 글과 카드는 한 묶음이다. 세 칸을 모두 쓰면 현재 고정 안내를 덧붙이지 않는다.
+    let rendered: Response;
+    if (texts.length === 3) {
+      const base = render([]);
+      rendered = new Response(JSON.stringify({ version: "2.0", template: { outputs: kakaoMessageOutputs(texts) } }), {
+        status: base.status,
+        headers: base.headers,
+      });
+    } else rendered = render(texts);
+    const { response } = await prependKakaoDisclosure(rendered, disclosure);
     if (disclosure !== undefined)
       await markKakaoAiDisclosure(
         tx,

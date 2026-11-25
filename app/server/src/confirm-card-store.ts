@@ -1,5 +1,7 @@
 /** TASK-081: 카드 생성·검증·한 번 실행을 같은 가게 트랜잭션에 묶습니다. 업무 명령은 각 담당 모듈이 연결합니다. */
 import { cardExpiresAt, judgeCardPress } from "./confirm-card";
+import type { KakaoOrderCardContext } from "./kakao-order-request-content";
+import type { ClauseInput } from "./operating-rules-input";
 import { fieldError } from "./problem";
 import { pathId, type ShopDb, type ShopRequestDb } from "./shop-scope";
 
@@ -25,6 +27,8 @@ export interface ShowConfirmCard extends Identity {
   readonly sourceMessageId?: string;
 }
 export interface ConfirmCardView {
+  readonly kind?: CustomerCommandKind;
+  readonly orderRequest?: KakaoOrderCardContext;
   readonly cardKey: string;
   readonly title: string;
   readonly description: string;
@@ -48,6 +52,7 @@ export interface ConfirmCardCommandInput extends Identity {
 /** 실행기는 지금 주문 상태와 잠금 번호를 다시 확인하고 조건에 맞는 쓰기만 합니다. 실패하면 사용 표시까지 함께 취소합니다. 외부 발신은 하지 않습니다. 주문 요청의 order_id 연결 권한·시험은 실제 실행기를 등록하는 TASK-083에서 추가합니다. */
 export type ConfirmCardCommand = (db: ShopDb, input: ConfirmCardCommandInput) => Promise<ConfirmCardCommandResult>;
 interface Source {
+  orderRequest?: KakaoOrderCardContext;
   orderId: string | null;
   orderVersion: number | null;
   draftId: string | null;
@@ -135,7 +140,8 @@ async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: str
       [pathId(input.draftId), input.consultationId],
     );
     const row = draft.rows[0];
-    return row
+    const orderRequest = row === undefined ? null : await readOrderCardContext(db, input, row.revision);
+    return row && orderRequest
       ? {
           orderId: null,
           orderVersion: null,
@@ -143,6 +149,7 @@ async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: str
           draftRevision: row.revision,
           description: "주문 요청 내용을 확인해 주세요",
           blockId,
+          orderRequest,
         }
       : null;
   }
@@ -168,8 +175,62 @@ async function readSource(db: ShopDb, input: ShowConfirmCard, knownBlockId?: str
       }
     : null;
 }
+async function readOrderCardContext(
+  db: ShopDb,
+  input: ShowConfirmCard,
+  revision: number,
+): Promise<KakaoOrderCardContext | null> {
+  const selected = (
+    await db.run<{ quote_id: string; operating_rules_id: string; version: number; channel_friend: boolean }>(
+      `SELECT q.id AS quote_id,r.id AS operating_rules_id,r.version,c.channel_friend FROM quotes q
+      JOIN operating_rules r ON r.shop_id=$1 AND r.id=q.operating_rules_id AND r.superseded_at IS NULL
+      JOIN price_lists p ON p.shop_id=$1 AND p.id=q.price_list_id AND p.superseded_at IS NULL
+      JOIN customers c ON c.shop_id=$1 AND c.id=$2
+      WHERE q.shop_id=$1 AND q.draft_id=$3 AND q.draft_revision=$4 AND q.quoted_at<=$5 AND q.valid_until>$5
+      ORDER BY q.quoted_at DESC,q.id DESC LIMIT 1 FOR SHARE OF q,r,p`,
+      [input.customerId, input.draftId ?? null, revision, input.now],
+    )
+  ).rows[0];
+  if (!selected) return null;
+  const clauses = (
+    await db.run<{
+      clause_key: ClauseInput["key"];
+      position: number;
+      title: string;
+      condition_text: string;
+      effect_text: string;
+    }>(
+      "SELECT clause_key,position,title,condition_text,effect_text FROM rule_clauses WHERE shop_id=$1 AND operating_rules_id=$2 ORDER BY position",
+      [selected.operating_rules_id],
+    )
+  ).rows;
+  if (clauses.length === 0) return null;
+  return {
+    quoteId: selected.quote_id,
+    isFriend: selected.channel_friend,
+    policy: {
+      version: selected.version,
+      clauses: clauses.map((c) => ({
+        key: c.clause_key,
+        position: c.position,
+        title: c.title,
+        condition: c.condition_text,
+        effect: c.effect_text,
+      })),
+    },
+  };
+}
+function orderCardChanged(card: CardRow, source: Source): boolean {
+  return (
+    card.kind === "order_request" &&
+    (card.payload.presentation?.orderRequest?.quoteId !== source.orderRequest?.quoteId ||
+      card.payload.presentation?.orderRequest?.policy.version !== source.orderRequest?.policy.version)
+  );
+}
 async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): Promise<ConfirmCardView> {
   const card: ConfirmCardView = {
+    kind: input.kind,
+    ...(source.orderRequest === undefined ? {} : { orderRequest: source.orderRequest }),
     cardKey: `ck_${crypto.randomUUID().replaceAll("-", "")}`,
     title: `${LABELS[input.kind]} 확인`,
     description: source.description,
@@ -277,8 +338,8 @@ async function processVerifiedCard(
   );
   if (verdict === "not_recipient") return NOT_YOURS;
   if (verdict === "used") return usedAnswer(card);
-  if (verdict === "stale" || verdict === "expired") {
-    return replaceCard(tx, card, target, source, verdict);
+  if (verdict === "stale" || verdict === "expired" || orderCardChanged(card, source)) {
+    return replaceCard(tx, card, target, source, verdict === "expired" ? "expired" : "stale");
   }
 
   if (execute === undefined) return RETRY_NEEDED;
@@ -353,12 +414,24 @@ export async function readConfirmCardDelivery(
   ]);
   if (card.used_at !== null) return { text: "이미 처리했어요" };
   const expired = input.now.getTime() >= card.expires_at.getTime();
-  const stale = card.order_version !== source.orderVersion || card.draft_revision !== source.draftRevision;
+  const stale =
+    card.order_version !== source.orderVersion ||
+    card.draft_revision !== source.draftRevision ||
+    orderCardChanged(card, source);
   const presentation =
     expired || stale
       ? (await replaceCard(db, card, target, source, expired ? "expired" : "stale")).card
       : card.payload.presentation;
-  return presentation === undefined ? unavailable : { text: presentation.title, card: presentation };
+  return presentation === undefined
+    ? unavailable
+    : {
+        text: presentation.title,
+        card: {
+          ...presentation,
+          kind: initial.kind,
+          ...(source.orderRequest === undefined ? {} : { orderRequest: source.orderRequest }),
+        },
+      };
 }
 
 export interface KakaoCardIdentityInput extends Pick<PressConfirmCard, "cardKey" | "choice" | "now"> {

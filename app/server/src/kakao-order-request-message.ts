@@ -3,10 +3,11 @@ import { type ConfirmCardAnswer, type ConfirmCardView, NOT_YOURS, RETRY_NEEDED }
 import { kakaoChannelIdentifierError } from "./kakao-channel-input";
 import { type KakaoMessageContent, type KakaoMessageOutput, kakaoMessageOutputs } from "./kakao-message-content";
 
-export interface KakaoOrderPolicy {
-  readonly version: number;
-  readonly clauses: readonly { readonly title: string; readonly condition: string; readonly effect: string }[];
-}
+import { type KakaoOrderPolicy, kakaoOrderRequestContents } from "./kakao-order-request-content";
+
+export type { KakaoOrderPolicy } from "./kakao-order-request-content";
+export { kakaoOrderTerms } from "./kakao-order-request-content";
+
 interface Summary {
   readonly policy: KakaoOrderPolicy;
   readonly card: ConfirmCardView;
@@ -45,9 +46,6 @@ export type KakaoOrderRequestView =
     }
   | { readonly state: "done"; readonly kind: "used"; readonly firstResult: ConfirmCardAnswer };
 
-const LEGAL =
-  "주문제작이라 청약철회가 제한될 수 있어요\n미성년자가 법정대리인의 동의 없이 한 주문은 본인이나 법정대리인이 취소할 수 있어요";
-const RECOMMEND = "채널을 추가하면 결제 안내와 사장님 답을 바로 받아요";
 const ALLERGY_ANSWER = "알레르기가 있는 재료를 200자까지 알려 주세요(없으면 없음)";
 const ALLERGY_DECLINED = "알겠어요. 알레르기는 묻지 않고 빼야 할 재료만으로 주문을 이어갈게요";
 const ALLERGY_CONSENT =
@@ -72,24 +70,6 @@ function validText(value: string, max = 1000) {
 function template(contents: readonly KakaoMessageContent[]) {
   return { version: "2.0" as const, template: { outputs: kakaoMessageOutputs(contents) } };
 }
-/** 그 주문에서 확정한 규정 조문을 생략하지 않고 출력 상한에 맞춘다. */
-export function kakaoOrderTerms(policy: KakaoOrderPolicy, afterAllergyDeclined = false): readonly string[] {
-  if (!Number.isSafeInteger(policy.version) || policy.version < 1 || policy.clauses.length < 1)
-    throw new RangeError("invalid order policy version");
-  const lines = policy.clauses.map(
-    (clause) => `· ${validText(clause.title)}: ${validText(clause.condition)} → ${validText(clause.effect)}`,
-  );
-  const header = `취소·환불 규정(운영규정 버전 ${policy.version})`;
-  const prefix = afterAllergyDeclined ? [ALLERGY_DECLINED] : [];
-  const single = [...prefix, header, ...lines, LEGAL].join("\n");
-  if (length(single) <= 1000) return [single];
-  for (let cut = lines.length; cut >= 1; cut--) {
-    const first = [...prefix, `${header} (1/2)`, ...lines.slice(0, cut)].join("\n");
-    const second = [`${header} (2/2)`, ...lines.slice(cut), LEGAL].join("\n");
-    if (length(first) <= 1000 && length(second) <= 1000) return [first, second];
-  }
-  throw new RangeError("order policy does not fit two Kakao texts");
-}
 function inputButton(label: string, blockId: string, cardKey: string, choice: "confirm" | "decline") {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(cardKey) || kakaoChannelIdentifierError(blockId, 100) !== null)
     throw new RangeError("invalid order input action");
@@ -106,6 +86,14 @@ function inputCard(
   return { version: "2.0" as const, template: { outputs: [{ textCard: { title, description, buttons } }] } };
 }
 export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
+  if (answer.card?.kind === "order_request") {
+    if (!answer.card.orderRequest || answer.firstResult) throw new RangeError("order card policy missing");
+    return kakaoOrderRequestMessage({
+      state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
+      card: answer.card,
+      ...answer.card.orderRequest,
+    });
+  }
   return template([
     answer.text,
     ...(answer.firstResult === undefined ? [] : [answer.firstResult.text]),
@@ -118,19 +106,7 @@ export function kakaoOrderRequestMessage(view: KakaoOrderRequestView): OrderMess
     case "stale":
     case "expired": {
       if ("currentStatus" in view) return template([`지금은 할 수 없어요: ${validText(view.currentStatus, 100)}`]);
-      const notice =
-        view.state === "stale"
-          ? "내용이 바뀌었어요. 새 카드를 확인해 주세요"
-          : view.state === "expired"
-            ? "시간이 지나 새 카드를 보내 드려요"
-            : "";
-      let description = notice ? `${notice}\n${view.card.description}` : view.card.description;
-      if (!view.isFriend && length("주문 요청 확인") + length(description) + 1 + length(RECOMMEND) <= 400)
-        description += `\n${RECOMMEND}`;
-      return template([
-        ...kakaoOrderTerms(view.policy, view.afterAllergyDeclined),
-        { ...view.card, title: "주문 요청 확인", confirmLabel: "규정에 동의하고 주문 요청", description },
-      ]);
+      return template(kakaoOrderRequestContents(view));
     }
     case "allergy":
       return inputCard(
