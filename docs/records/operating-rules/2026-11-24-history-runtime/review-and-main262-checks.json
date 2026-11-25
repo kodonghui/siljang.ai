@@ -1,0 +1,64 @@
+{
+  "review": {
+    "id": 7147803285,
+    "head": "c2959a80f7b5ea107989bb63c1d20e141df6d063",
+    "findings": [
+      "API020 조회 누락",
+      "빈 목록과 옛 상세 불일치"
+    ]
+  },
+  "red": {
+    "source": "63f05f6dda5461011a1db3120727e8c19e2ecb56",
+    "pass": 3,
+    "fail": 2,
+    "log": "/tmp/siljang-task052-review-red-20261124.log"
+  },
+  "green": {
+    "source": "522225c74fcf064a03e36af1df283fb32f47b8f6",
+    "totalNodeTests": 17,
+    "pass": 17,
+    "fail": 0,
+    "log": "/tmp/siljang-task052-review-green-20261124.log"
+  },
+  "mergedSource": "4f9c81b0f8c71d3c2a63e089c0cbeeef99e91f92",
+  "parentMain": "b801aa9af1d29681c6cf1d65beccb04dfa218506",
+  "parentDeployment": "아직 CI/배포 진행 중",
+  "results": {
+    "node": {
+      "path": "/tmp/siljang-task052-after262-node-20261124.log",
+      "exitCode": 0,
+      "lines": [
+        "# tests 22",
+        "# pass 22",
+        "# fail 0"
+      ]
+    },
+    "related": {
+      "path": "/tmp/siljang-task052-after262-related-20261124.log",
+      "exitCode": 0,
+      "lines": [
+        " Test Files  4 passed (4)",
+        "      Tests  126 passed (126)"
+      ]
+    },
+    "type": {
+      "path": "/tmp/siljang-task052-after262-type-20261124.log",
+      "exitCode": 0,
+      "lines": []
+    },
+    "build": {
+      "path": "/tmp/siljang-task052-after262-build-20261124.log",
+      "exitCode": 0,
+      "lines": [
+        "✓ built in 576ms",
+        "> wrangler deploy --dry-run --outdir dist && wrangler deploy --dry-run --config wrangler.storage-batches.jsonc --outdir dist/storage-batches",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "browserRun": false,
+  "outsideServices": 0
+}

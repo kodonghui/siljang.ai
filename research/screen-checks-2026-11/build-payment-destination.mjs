@@ -64,28 +64,28 @@ export async function buildPaymentDestination(repositoryRoot, destination) {
 		const entry = `import ${JSON.stringify(root + "/app/web/src/styles")};import ${JSON.stringify(root + "/app/web/src/styles/fonts")};import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {BrowserRouter,Routes,Route} from 'react-router';import {OwnerArea} from ${JSON.stringify(root + "/app/web/src/OwnerArea")};
 const original=${JSON.stringify(original)},profile=${JSON.stringify(profile)},problemSamples=${JSON.stringify(problemSamples)},problemExamples=${JSON.stringify(problemExamples)},inputFields=${JSON.stringify(inputFields)};
 profile.shop.name='합성 결제 가게';profile.shop.licenseStatus='pending';
-let scenario='normal',reads=0,sends=[],meReads=0,refresh=()=>{},shopGone=false,current=structuredClone(original),completed=new Map();
-function selectScenario(value){scenario=value;reads=meReads=0;sends=[];shopGone=false;current=value==='empty'?null:structuredClone(original);completed=new Map();}
-const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+let scenario='normal',reads=0,sends=[],meReads=0,refresh=()=>{},shopGone=false,current=structuredClone(original),completed=new Map(),licenseReleased=false;
+function selectScenario(value){scenario=value;reads=meReads=0;sends=[];shopGone=false;current=value==='empty'?null:structuredClone(original);completed=new Map();licenseReleased=false;}
+const shopLicenseStatus=()=>scenario==='save-holder'?'verified':scenario==='on-hold'&&!licenseReleased?'on_hold':'pending';
+const json=(value,status=200,extraHeaders={})=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store',...extraHeaders}});
 const problem=(operation,code,status,exampleName)=>{const sample=exampleName?problemExamples[operation][exampleName]:problemSamples[operation][code];if(!sample||sample.status!==status)throw new Error('Unknown synthetic problem');return new Response(JSON.stringify(structuredClone(sample)),{status,headers:{'Content-Type':'application/problem+json','Cache-Control':'no-store',...(code==='request_in_progress'?{'Retry-After':'1'}:{})}});};
 const values=body=>Object.fromEntries(inputFields.map(field=>[field,body[field]]));
 const canonical=value=>Array.isArray(value)?value.map(canonical):value!==null&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
 globalThis.fetch=async(input,init)=>{const path=String(input);
- if(path==='/api/owner/me'){meReads++;refresh();if(scenario==='session-pending')return new Promise(()=>{});if(scenario==='session-failed')return problem('me','internal',500);return json({...profile,shop:shopGone?null:{...profile.shop,licenseStatus:scenario==='on-hold'&&sends.length===0?'on_hold':'pending'}});}
+ if(path==='/api/owner/me'){meReads++;refresh();if(scenario==='session-pending')return new Promise(()=>{});if(scenario==='session-failed')return problem('me','internal',500);return json({...profile,shop:shopGone?null:{...profile.shop,licenseStatus:shopLicenseStatus()}});}
  if(path==='/api/owner/session'&&init?.method==='DELETE')return new Response(null,{status:204});
  if(path!=='/api/owner/payment-destination')return problem('fallback','not_found',404);
  if(init?.method==='PUT'){
   const key=new Headers(init.headers).get('Idempotency-Key');
   if(!key)return problem('save','validation_failed',422,'missing_idempotency_key');
   const body=JSON.parse(String(init.body)),signature=JSON.stringify(canonical(body));sends.push({body,key});refresh();
-  const prior=completed.get(key);if(prior)return prior.body===signature?json(prior.response):problem('save','idempotency_key_reused',422);
+  const prior=completed.get(key);if(prior)return prior.body===signature?json(prior.response,200,{'Idempotency-Replayed':'true'}):problem('save','idempotency_key_reused',422);
   const first=sends.length===1;
   if(scenario==='submitting')return new Promise(()=>{});
   if(first){
    if(scenario==='save-401')return problem('save','unauthenticated',401);
    if(scenario==='save-no-shop'){shopGone=true;return problem('save','shop_not_registered',404);}
    if(scenario==='stale'){current={...(current??original),bankName:'다른 합성 은행',cardPaymentUrl:'https://pay.example.test/remote',revision:'synthetic-payment-latest'};return problem('save','version_conflict',409);}
-   if(scenario==='save-holder')return problem('save','holder_not_verified',409);
    if(scenario==='save-progress')return problem('save','request_in_progress',409);
    if(scenario==='save-key')return problem('save','idempotency_key_reused',422);
    if(scenario==='save-500')return problem('save','internal',500);
@@ -94,7 +94,9 @@ globalThis.fetch=async(input,init)=>{const path=String(input);
   if(body.baseRevision!==(current?.revision??null))return problem('save','version_conflict',409);
   if(current&&inputFields.every(field=>current[field]===body[field])){const response={outcome:'unchanged',paymentDestination:structuredClone(current)};completed.set(key,{body:signature,response});return json(response);}
   const matchesIdentity=body.holderName===original.holderName||body.holderName===profile.shop.name;
+  if(shopLicenseStatus()==='verified'&&!matchesIdentity)return problem('save','holder_not_verified',409);
   if(!matchesIdentity&&!body.confirm?.includes('holder_mismatch'))return problem('save','confirmation_required',409);
+  licenseReleased=true;
   current={...(current??original),...values(body),holderMismatchConfirmed:matchesIdentity?null:body.confirm?.includes('holder_mismatch')||current?.holderName===body.holderName&&current?.holderMismatchConfirmed===true?true:null,createdAt:'2026-11-24T19:00:00Z',revision:'synthetic-payment-saved-'+sends.length};
   const response={outcome:'created',paymentDestination:structuredClone(current)};completed.set(key,{body:signature,response});return json(response);
  }
@@ -144,7 +146,7 @@ function Fixture(){const[g,next]=useState(0),[,tick]=useState(0);refresh=()=>tic
 			out + "/server.mjs",
 			(await fs.readFile(support + "/server.mjs", "utf8")).replace(
 				"QA054_READY_",
-				"QA053_V2_READY_",
+				"QA053_V3_READY_",
 			),
 		);
 		await fs.appendFile(

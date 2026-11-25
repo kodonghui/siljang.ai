@@ -1,0 +1,16 @@
+{
+  "key": "052v6",
+  "zip": "/tmp/siljang-qa052-history-v6-20261124.zip",
+  "nativeName": "qa052-history-v6-20261124.zip",
+  "files": 763,
+  "bytes": 9059361,
+  "sha256": "9b91bc15e4d50bc7a0b83f70cc40b64d5529547fe34653a099ad87e31e043e84",
+  "localSourceCommit": "bf3ac32ea29f2798d6c30576e9b82e2271370346",
+  "fixCommit": "8484b0b",
+  "syntheticOnly": true,
+  "scope": "이미 전달한 기존 V6 준비/파일 해시. 지시 수신/현재 브라우저 성공이 아님",
+  "instructionReceipt": "미확인",
+  "nativeRun": "SSH 인증 전 시간 초과로 최종 원문/사진 미수집",
+  "newPortableV7Transfer": false,
+  "requiredNext": "복구 뒤 기존 D4 진행/받은 지시·대기열·최종 정지ACK부터 읽고 중복 없이 이어감"
+}

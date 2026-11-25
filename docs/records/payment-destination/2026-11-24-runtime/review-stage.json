@@ -1,0 +1,21 @@
+{
+  "source": "c01d137fa5b3e737e848fdd240eaa7fc37973064",
+  "command": "bash tools/stage-checks.sh task053-review-20261125 --no-api --no-browser",
+  "exitCode": 0,
+  "lines": [
+    "2026-11-25 09:15:28 KST start, head c01d137, out /tmp/stage-checks/task053-review-20261125",
+    "prd exit=0 :: PROBLEMS 0 · AVOIDED WORDS 0",
+    "flows exit=0 :: PROBLEMS 0 · AVOIDED WORDS 0",
+    "spec exit=0 :: 오류 0",
+    "erd exit=0 :: 검사 15개: 통과 15, 실패 0, 미확인 0",
+    "api skipped (--no-api)",
+    "sitemap exit=0 :: 검사 17개: 통과 17, 실패 0, 미확인 0",
+    "screens exit=0 :: 검사 15개: 통과 15, 실패 0, 미확인 0",
+    "mockup browser skipped (--no-browser); page-check remains unverified",
+    "mockup exit=0 :: 검사 14개: 통과 13, 실패 0, 미확인 1",
+    "wbs exit=0 :: 검사 18개 · 오류 0",
+    "09:15:56 KST end"
+  ],
+  "api": "건너뜀, 통과 아님",
+  "browser": "건너뜀, 실제 page-check 미확인"
+}

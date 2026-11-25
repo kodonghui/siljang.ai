@@ -41,4 +41,6 @@ node /tmp/siljang-qa051-operating-rules/server.mjs
 
 운영규정 생성기도 fixture-source의 동일 작업 트리/깨끗한 입력/임시 완성 후 교체를 사용합니다. 기존 출력은 previousOutput으로 보관하며 새 V7의 로컬 컴파일/계약 검사는 실제 학원컴 화면 성공과 구분합니다.
 
-결제 수단 자료는 `node research/screen-checks-2026-11/build-payment-destination.mjs . /tmp/siljang-qa053-payment-destination`로 만듭니다. 실제 OwnerArea/결제 수단 편집기와 API024/025의16응답·요청 키 누락 추가1행/10상태를 묶습니다. 같은 원본/깨끗한 입력·임시 완성 후 교체와 옛 출력 보관을 사용하며 실제 금융기관에 연결하지 않습니다. 같은 값은 unchanged이고 다른 합성 예금주로 실제 입력/저장하면 확인 창이 나옵니다. 초기 실제 임시 자료의 원문/받은 지시·정지ACK를 먼저 수집하고 고친 V2를 중복 전송하지 않습니다.
+운영규정 이력은 `node research/screen-checks-2026-11/build-operating-rules-history.mjs . /tmp/siljang-qa052-rules-history`로 생성합니다. 실제 OwnerArea/VersionHistory와 현재 API022/023의9응답·5상태를 묶습니다. 같은 원본/깨끗한 입력/임시 완성 후 교체와 이전 출력 보관을 사용합니다. 실제 브라우저·초점·사진 성공은 별도이며 새 V8은 기존 학원컴 V6의 원문/지시 수신/정지ACK를 수집하기 전 중복 전달하지 않습니다.
+
+결제 수단 자료는 `node research/screen-checks-2026-11/build-payment-destination.mjs . /tmp/siljang-qa053-payment-destination`로 만듭니다. 실제 OwnerArea/결제 수단 편집기와 API024/025의16응답·요청 키 누락 추가1행/10상태를 묶습니다. 같은 원본/깨끗한 입력·임시 완성 후 교체와 옛 출력 보관을 사용하며 실제 금융기관에 연결하지 않습니다. 같은 값은 unchanged이고 다른 합성 예금주로 실제 입력/저장하면 확인 창이 나옵니다. 초기 실제 임시 자료의 원문/받은 지시·정지ACK를 먼저 수집하고 고친 V3를 중복 전송하지 않습니다.

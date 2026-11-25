@@ -112,7 +112,11 @@ test("저장 오류8개는 API025의 전체 예시를 사용하고 진행 중에
 		["save-key", "idempotency_key_reused"],
 		["save-500", "internal"],
 	]) {
-		const response = await save(fixture(selected), bodyFor(original));
+		const body =
+			selected === "save-holder"
+				? { ...bodyFor(original), holderName: "확인받지 않은 합성 예금주" }
+				: bodyFor(original);
+		const response = await save(fixture(selected), body);
 		if (selected === "save-progress")
 			assert.equal(response.headers.get("Retry-After"), "1");
 		await problem(response, "put", label);
@@ -189,5 +193,75 @@ test("아직 등록하지 않은 계좌는 실제 빈 양식의 baseRevision nul
 	assert.deepEqual(
 		await (await f.request(route)).json(),
 		result.paymentDestination,
+	);
+});
+
+test("확인된 가게의 다른 예금주는 확인 재요청에도 거절하고 원래 계좌를 유지한다", async () => {
+	const f = fixture("save-holder");
+	const body = {
+		...bodyFor(original),
+		holderName: "확인받지 않은 합성 예금주",
+		confirm: ["holder_mismatch"],
+	};
+	for (const key of [
+		"synthetic-holder-rejected-01",
+		"synthetic-holder-rejected-02",
+	])
+		await problem(await save(f, body, key), "put", "holder_not_verified");
+	assert.deepEqual(await (await f.request(route)).json(), original);
+	const me = await (await f.request("/api/owner/me")).json();
+	assert.equal(me.shop.licenseStatus, "verified");
+	const allowed = await save(
+		f,
+		{ ...bodyFor(original), accountNumber: "0000000000000000" },
+		"synthetic-holder-allowed-03",
+	);
+	assert.equal(allowed.status, 200);
+	assert.equal(
+		(await allowed.json()).paymentDestination.holderName,
+		original.holderName,
+	);
+});
+test("신규/변경 없음 완료는 재사용 헤더가 없고 같은 키의 완료 재사용에만 true를 붙인다", async () => {
+	for (const changed of [false, true]) {
+		const f = fixture("normal"),
+			body = {
+				...bodyFor(original),
+				...(changed ? { accountNumber: "0000000000000000" } : {}),
+			};
+		const first = await save(f, body);
+		assert.equal(first.headers.get("Idempotency-Replayed"), null);
+		const saved = await first.json();
+		const again = await save(f, body);
+		assert.equal(again.headers.get("Idempotency-Replayed"), "true");
+		assert.deepEqual(await again.json(), saved);
+		const rejected = await save(f, { ...body, bankName: "다른 합성 은행" });
+		assert.equal(rejected.headers.get("Idempotency-Replayed"), null);
+		await problem(rejected, "put", "idempotency_key_reused");
+	}
+});
+test("보류 해제는 같은 값의 저장이 아니라 실제 새 계좌를 만든 뒤에만 모의한다", async () => {
+	const f = fixture("on-hold");
+	assert.equal(
+		(await (await f.request("/api/owner/me")).json()).shop.licenseStatus,
+		"on_hold",
+	);
+	assert.equal(
+		(await (await save(f, bodyFor(original))).json()).outcome,
+		"unchanged",
+	);
+	assert.equal(
+		(await (await f.request("/api/owner/me")).json()).shop.licenseStatus,
+		"on_hold",
+	);
+	const created = await save(
+		f,
+		{ ...bodyFor(original), accountNumber: "0000000000000000" },
+		"synthetic-on-hold-created-02",
+	);
+	assert.equal((await created.json()).outcome, "created");
+	assert.equal(
+		(await (await f.request("/api/owner/me")).json()).shop.licenseStatus,
+		"pending",
 	);
 });

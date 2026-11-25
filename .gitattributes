@@ -44,3 +44,4 @@ docs/records/owner-tasks/2026-11-24/fixture-v3-http-checks.json -text whitespace
 docs/records/operating-rules/2026-11-24-runtime/main257-deployment.json -text whitespace=cr-at-eol
 docs/records/owner-tasks/2026-11-24-shop-binding/main257-deployment.json -text whitespace=cr-at-eol
 docs/records/payment-destination/2026-11-24-runtime/*.json -text
+docs/records/operating-rules/2026-11-24-history-runtime/*.json -text
