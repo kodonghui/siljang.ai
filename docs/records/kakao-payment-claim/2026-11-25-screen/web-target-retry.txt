@@ -1,0 +1,12 @@
+
+> test
+> vitest run src/PublicPrivacyScreen.interaction.test.tsx
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/web
+
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  15:21:11
+   Duration  2.20s (import 46%, tests 22%, transform 16%, environment 16%)

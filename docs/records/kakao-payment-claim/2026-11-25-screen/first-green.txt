@@ -1,0 +1,11 @@
+> test
+> vitest run test/kakao-payment-claim-message.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  13:07:57
+   Duration  956ms (import 87%, transform 9%, tests 4%)

@@ -1,0 +1,19 @@
+{
+  "baseline": "67246a7ec7247a1ea80e27c6f26a96a514c901c5",
+  "publicEquivalent": "01079844eb827ae6392a11f50c9ae81d4e7d2eae",
+  "exit": 1,
+  "productionFilesRestored": true,
+  "restoredSha256": {
+    "app/server/src/confirm-card-store.ts": "f29ed3135bf69bcd61e5f10f54432a37c645399a39701b989408e3b04018188d",
+    "app/server/src/ai-confirm-card.ts": "67f2036d34c6a2001d06bcce8e60e85713def6dccb48875d068bc3678b071e94",
+    "app/server/src/kakao-ai-turn.ts": "0201a2e7ae4123a04f231014b5c7cb74e77bf31fe0f550e757121bebc1403bc2",
+    "app/server/src/payment-claim-presentation.ts": "f63b12678baefa284f9810fc4ecb5735e38655e9d9c3545934ee140179292bb2",
+    "app/server/src/kakao-payment-claim-message.ts": "e8a5b2a85bcdf8470861d87f0624503331017db7ae5b5dd0d2500018dc1645ce"
+  },
+  "workingTreeTestsSha256": {
+    "app/server/test/kakao-ai-conversation.test.ts": "db3b142ec0ba552727a8db08ed3c88fd22c4b68c0a00f4460b337265c434be4c",
+    "app/server/test/kakao-payment-claim-delivery.test.ts": "de313fd6682c37948951de8af15676413d083c4b4ee877092b96a4b0852e66d4"
+  },
+  "failed": 6,
+  "passed": 31
+}

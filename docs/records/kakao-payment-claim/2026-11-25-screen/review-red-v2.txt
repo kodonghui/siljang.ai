@@ -1,0 +1,108 @@
+
+> test
+> vitest run --run test/kakao-ai-conversation.test.ts test/kakao-payment-claim-delivery.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/server
+
+ ❯ test/kakao-ai-conversation.test.ts (26 tests | 3 failed) 3469ms
+   ❯ AI에 보내는 최근 대화와 출력 마스킹(TASK-066) (26)
+     × API070: 이미 claimed인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음 113ms
+     × API070: 이미 paid인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음 119ms
+     × 결제 안내와 같은 콜백의 확인 카드는 전달 전 상대 시간만 보이고 실제 전달 뒤 같은 키로 확정 기한을 읽음 154ms
+ ❯ test/kakao-payment-claim-delivery.test.ts (9 tests | 1 failed) 1030ms
+   ❯ SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) (9)
+     × 만료로 닫힌 차액 변경은 현재 상태이며 확인 카드의 원본이 아님 45ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-ai-conversation.test.ts > AI에 보내는 최근 대화와 출력 마스킹(TASK-066) > API070: 이미 claimed인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음
+ FAIL  test/kakao-ai-conversation.test.ts > AI에 보내는 최근 대화와 출력 마스킹(TASK-066) > API070: 이미 paid인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음
+Error: card source unavailable
+ ❯ showConfirmCardInTransaction src/confirm-card-store.ts:345:74
+    343|   if (!(await identityAvailable(db, input))) throw new Error("card rec…
+    344|   const source = await readSource(db, input);
+    345|   if (source === null || source.paymentClaim?.available === false) thr…
+       |                                                                          ^
+    346|   return insertCard(db, input, source);
+    347| }
+ ❯ src/kakao-ai-turn.ts:219:11
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ consumeKakaoCallback src/kakao-callback-queue.ts:165:20
+ ❯ consume test/kakao-ai-conversation.test.ts:114:21
+ ❯ test/kakao-ai-conversation.test.ts:190:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/kakao-ai-conversation.test.ts > AI에 보내는 최근 대화와 출력 마스킹(TASK-066) > 결제 안내와 같은 콜백의 확인 카드는 전달 전 상대 시간만 보이고 실제 전달 뒤 같은 키로 확정 기한을 읽음
+AssertionError: expected '주문번호 UVQRV1SU\n금액 35,000원\n결제 기한 2026…' to contain '이 안내가 전달된 때부터 12시간 안'
+
+- Expected
++ Received
+
+- 이 안내가 전달된 때부터 12시간 안
++ 주문번호 UVQRV1SU
++ 금액 35,000원
++ 결제 기한 2026-11-24 10:00
++ 입금자 시험손님(주문자 이름)
++ 10:30까지 눌러 주세요
+
+ ❯ test/kakao-ai-conversation.test.ts:231:30
+    229|       body.template.outputs.find((output) => output.textCard?.title ==…
+    230|     );
+    231|     expect(card.description).toContain("이 안내가 전달된 때부터 12시간 안");
+       |                              ^
+    232|     expect(card.description).not.toContain("결제 기한 2026-11-24 10:00");
+    233|     const state = required(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 만료로 닫힌 차액 변경은 현재 상태이며 확인 카드의 원본이 아님
+AssertionError: expected { available: true, …(2) } to deeply equal { available: false, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "available": false,
+-   "text": "지금은 할 수 없어요: 변경 요청이 닫혀 차액 결제를 요청할 수 없어요",
++   "available": true,
++   "binding": {
++     "amount": 1000,
++     "dueAt": "2026-11-25T00:59:59.000Z",
++     "paymentRequestId": "494728fa-8397-438b-afaf-6fe55a5883d0",
++     "version": 1,
++   },
++   "presentation": {
++     "amount": 1000,
++     "depositorBlockId": "depositor",
++     "depositorName": "합성입금표시손님",
++     "dueAt": "2026-11-25T00:59:59.000Z",
++     "orderNo": "PXSZC1PA",
++     "timeZone": "Asia/Seoul",
++   },
+  }
+
+ ❯ test/kakao-payment-claim-delivery.test.ts:226:20
+    224|       readPaymentClaimSource(tx, { ...identity(), orderId: shop.orderI…
+    225|     );
+    226|     expect(source).toEqual({
+       |                    ^
+    227|       available: false,
+    228|       text: "지금은 할 수 없어요: 변경 요청이 닫혀 차액 결제를 요청할 수 없어요",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  4 failed | 31 passed (35)
+   Start at  14:49:49
+   Duration  5.96s (tests 79%, import 14%, transform 7%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task107-payment-claim/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task107-payment-claim/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/kakao-ai-conversation.test.ts test/kakao-payment-claim-delivery.test.ts
