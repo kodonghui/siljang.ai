@@ -32,6 +32,20 @@ function delivery() {
 }
 
 describe("카카오 콜백 주소와 서비스 기한(TASK-028, DEC-29)", () => {
+  it.each([350, 351])("카드 제목과 설명 합계400자를 넘으면 보내지 않는다(설명%i자)", async (length) => {
+    const card = {
+      title: "가".repeat(50),
+      description: "나".repeat(length),
+      cardKey: `ck_${"a".repeat(32)}`,
+      blockId: "blk-card",
+      confirmLabel: "확인",
+    };
+    const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
+    expect(await deliverKakaoCallback(delivery(), [card], { fetch: send, now: () => NOW.getTime() })).toBe(
+      length === 350 ? "delivered" : "unavailable",
+    );
+    expect(send).toHaveBeenCalledTimes(length === 350 ? 1 : 0);
+  });
   it("콜백 주소의 만료와 서비스 기한 가운데 앞선 시각을 사용함", () => {
     expect(delivery().deadline).toBe(NOW.getTime() + SKILL_CALLBACK_MS);
     const early = NOW.getTime() + 15_000;

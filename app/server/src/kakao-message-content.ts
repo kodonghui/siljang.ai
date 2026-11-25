@@ -30,6 +30,7 @@ export function kakaoMessageOutputs(contents: readonly KakaoMessageContent[]): K
       !content ||
       !text(content.title, 50) ||
       !text(content.description, 400) ||
+      [...content.title].length + [...content.description].length > 400 ||
       !text(content.confirmLabel, 14) ||
       !text(content.blockId, 200) ||
       !/^[A-Za-z0-9_-]{16,64}$/.test(content.cardKey)
