@@ -101,7 +101,7 @@ it("틀린 페이지 주소는 상담 API를 부르지 않고 처음부터 보�
     false,
   );
 });
-it.each(["", "?limit=1"])("이전 페이지가422로 실패한 뒤 처음부터 보기는 커서 없이 새로 읽는다(%s)", async (search) => {
+it.each(["", "?limit=20"])("이전 페이지가422로 실패한 뒤 처음부터 보기는 커서 없이 새로 읽는다(%s)", async (search) => {
   page.items[0].text = "복구 전 합성 메시지";
   page.nextCursor = "synthetic_expired_cursor";
   let initialReads = 0;

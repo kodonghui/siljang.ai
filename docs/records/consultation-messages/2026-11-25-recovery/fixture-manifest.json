@@ -1,0 +1,51 @@
+{
+  "localProductSourceCommit": "4ed1dd404a3c282b3a643fc82d5dca72a1a795cc",
+  "scope": "실제 App/OwnerArea/상담 화면과 합성 응답. 브라우저/실제 서비스 실행 아님",
+  "primaryStates": 6,
+  "states": [
+    "normal",
+    "loading",
+    "empty",
+    "error",
+    "permission",
+    "stale"
+  ],
+  "widthsPrepared": [
+    360,
+    1280
+  ],
+  "responseRows": 7,
+  "responseCases": [
+    {
+      "response": "API-043#200:messages",
+      "state": "SCR-018#normal"
+    },
+    {
+      "response": "API-043#200:with_owner_reply",
+      "state": "SCR-018#normal"
+    },
+    {
+      "response": "API-043#200:deleted",
+      "state": "SCR-018#empty"
+    },
+    {
+      "response": "API-043#401:unauthenticated",
+      "state": "SCR-018#permission"
+    },
+    {
+      "response": "API-043#404:not_found",
+      "state": "SCR-018#error"
+    },
+    {
+      "response": "API-043#422:validation_failed",
+      "state": "SCR-018#error"
+    },
+    {
+      "response": "API-043#default:internal",
+      "state": "SCR-018#error"
+    }
+  ],
+  "sourceInputs": "동일 작업 트리/커밋 원본을 생성 전후 검사",
+  "browserRun": false,
+  "outsideServices": 0
+}
