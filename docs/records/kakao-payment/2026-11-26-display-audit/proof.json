@@ -1,10 +1,10 @@
 {
-  "sourceCommit": "225188655e4b015d299405e8e19b96eb275b7882",
-  "publicEquivalentHead": "5eb4f10f295fa42144a1bef7f234ec54781caa33",
-  "sourceTree": "193d78b8ac88164d9d79a7a0c8da84d871eb30f5",
+  "sourceCommit": "898c66273532cbc7256763508bd5b1345d3d8343",
+  "publicEquivalentHead": "1b2d11d7f645d21d8046c00f68d2a28c37e054d8",
+  "sourceTree": "957874ea5af72240734fb21458d5d2107f2b7ec8",
   "baseMain": "e4656a89191a6f7e306ad45bfc2ffe340736df9b",
   "scopeGitObjects": {
-    "app/server": "cdcc03b94d4fc7e4219b860b07f7237093bb3797",
+    "app/server": "e6cc0a4696f2de37a40534f311af95c1a9ae3631",
     "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
     "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
     "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
@@ -19,7 +19,7 @@
   "combinedNpmTestExit": 0,
   "server": {
     "files": 166,
-    "passed": 3128
+    "passed": 3137
   },
   "web": {
     "files": 73,
@@ -28,8 +28,8 @@
   "buildExit": 0,
   "freshDatabaseRemaining": 0,
   "freshState": "completed",
-  "targetFiles": 8,
-  "targetPassed": 159,
+  "targetFiles": 6,
+  "targetPassed": 157,
   "storedInboundModes": [
     "event",
     "message",
@@ -49,7 +49,32 @@
   "outboundRequestsAdded": 0,
   "npmCi": "동일 lock의 로컬 설치 재사용. 새 설치는 현재PR CI에서 확인",
   "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
-  "classification": "WIP: ready PR/currentCI/reviews/ownmain pending. No TASK106 flags",
+  "classification": "현재 PR CI·최종 검토/수동 요청 한 번·병합/자기main 확인 대기. TASK106 flags 없음",
   "mainProof": "main286.json",
-  "nativeGrantApplication": "미확인. 로컬 제한 역할만 검사"
+  "nativeGrantApplication": "미확인. 유효 권한 사전 확인에서 부족하면 새 차액만 보류하며 자체 GRANT하지 않음",
+  "storedInboundCases": 14,
+  "reviewRed": {
+    "source": "b2157ad80db940fc7872fc9935b2a0000e81ade7",
+    "public": "7cf8181d81beb529b48cc2e5f09a69f95b505a31",
+    "failed": 9,
+    "passed": 41
+  },
+  "review": {
+    "id": 7171455960,
+    "ack": [
+      7171596547,
+      7171683629
+    ],
+    "disposition": 7171796331,
+    "security": "검토 범위에서 정보 노출/쓰기 권한 확대 발견 없음",
+    "manualRequest": null
+  },
+  "legacyPrivilegeCoverage": [
+    "first/event+message",
+    "reissue/event+message",
+    "difference/event500 preserved deferred",
+    "difference/message preserved deferred",
+    "transaction healthy without SELECT error",
+    "grant then recover both inbound paths"
+  ]
 }
