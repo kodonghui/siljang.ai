@@ -107,6 +107,42 @@ function area(extra: { sessionChecking?: boolean; sessionFailed?: boolean } = {}
 const main = () => within(screen.getByRole("main"));
 const loaded = () => screen.findByLabelText("하루 최대 개수");
 const form = () => screen.getByRole("form", { name: "영업 캘린더 설정" });
+it.each([false, true])("설정 GET 진행 중에는 최초/새로 고침 %s 모두 로그아웃과 저장을 잠근다", async (background) => {
+  let view = background ? area() : null;
+  if (view) {
+    await loaded();
+    fireEvent.change(screen.getByLabelText("하루 최대 개수"), { target: { value: "6" } });
+  }
+  const previousFetch = globalThis.fetch;
+  let finish!: (response: Response) => void;
+  const pending = new Promise<Response>((resolve) => {
+    finish = resolve;
+  });
+  const read = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
+    init?.method === "PUT" ? previousFetch(input, init) : pending,
+  );
+  vi.stubGlobal("fetch", read);
+  if (view) fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
+  else view = area();
+  await waitFor(() => expect(read).toHaveBeenCalledOnce());
+  const logout = screen.getByRole("button", { name: "로그아웃" }) as HTMLButtonElement;
+  fireEvent.click(logout);
+  expect(view.props.onLogout).not.toHaveBeenCalled();
+  expect(logout.disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "처리하고 있어요" }) as HTMLButtonElement).disabled).toBe(true);
+  if (background) {
+    expect((screen.getByLabelText("하루 최대 개수") as HTMLInputElement).disabled).toBe(true);
+    fireEvent.submit(form());
+  }
+  expect(writes).toHaveLength(0);
+  await act(async () => finish(json(current)));
+  await waitFor(() => expect(logout.disabled).toBe(false));
+  expect((screen.getByLabelText("하루 최대 개수") as HTMLInputElement).value).toBe(
+    background ? "6" : String(current.dailyCapacity),
+  );
+  fireEvent.click(logout);
+  expect(view.props.onLogout).toHaveBeenCalledOnce();
+});
 it("처음 정하는 기본값은 저장하기 전까지 보내지 않고 baseRevision null로 저장한다", async () => {
   empty = true;
   area();

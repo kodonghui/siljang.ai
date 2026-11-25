@@ -16,5 +16,7 @@
     "10:07:51 KST end"
   ],
   "api": "skipped --no-api, not pass",
-  "browser": "skipped --no-browser, not pass"
+  "browser": "skipped --no-browser, not pass",
+  "sourceLocalOnly": true,
+  "scope": "main267 통합 전 원본의 이전 검사. 최종 공개 head 직접 재검사 결과는 PR269 본문/댓글에서 전체 SHA로 연결"
 }

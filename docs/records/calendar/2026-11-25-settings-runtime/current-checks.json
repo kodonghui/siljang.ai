@@ -30,5 +30,14 @@
   },
   "productCodeChanges": 0,
   "browserRun": false,
-  "outsideServices": 0
+  "outsideServices": 0,
+  "relatedTestFiles": [
+    "app/web/src/CalendarSettingsScreen.interaction.test.tsx",
+    "app/web/src/CalendarSettingsScreen.responses.test.tsx",
+    "app/web/src/calendar-settings-api.test.ts",
+    "app/web/src/calendar-settings-form.test.ts",
+    "app/web/src/calendar-conflicts.test.ts"
+  ],
+  "relatedCommand": "npm run test -w web -- src/CalendarSettingsScreen.interaction.test.tsx src/CalendarSettingsScreen.responses.test.tsx src/calendar-settings-api.test.ts src/calendar-settings-form.test.ts src/calendar-conflicts.test.ts",
+  "relatedWorkingDirectory": "app"
 }
