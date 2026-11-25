@@ -13,14 +13,16 @@
     "reason": "시험이 이미 제출된 옛 초안 ID를 기대함. 새 손님/현재 초안으로 보완"
   },
   "current": {
-    "source": "17e9b6857c956ed6cf0e066a5b142dc29db8594b",
-    "files": 7,
-    "passed": 174,
-    "log": "/tmp/siljang-task065-receive-green3-related-20261125.log",
+    "source": "17da2e1922574a126d8ac8d13b5ccccdef413780",
+    "files": 9,
+    "passed": 201,
+    "log": "/tmp/siljang-task065-boundaries2-related-20261125.log",
     "freshDatabase": false,
     "migrations": 39,
     "sameLockDependenciesReused": true,
-    "newLocalNpmCi": false
+    "newLocalNpmCi": false,
+    "typeExitCode": 0,
+    "strictLintExitCode": 0
   },
   "remaining": [
     "저장소 PUT 취소 전달/중단 회수",
@@ -30,5 +32,11 @@
   ],
   "implemented": false,
   "browserRun": false,
-  "newProviderCalls": 0
+  "newProviderCalls": 0,
+  "uploadAbortRed": {
+    "source": "b8a89bef396d18cce68d7013b1443861e9a8a206",
+    "failed": 2,
+    "passed": 9,
+    "log": "/tmp/siljang-task065-put-abort-red-related-20261125.log"
+  }
 }

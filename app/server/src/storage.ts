@@ -43,7 +43,7 @@ export interface ObjectStore {
   /** 배포 환경의 무료 호출 한도 분리. 개발/메모리 구현은 단일 동작으로 대체할 수 있다. */
   readonly batch?: ObjectBatch;
   /** 객체 하나를 넣는다(같은 키면 바꿈). */
-  put(key: string, body: Uint8Array, contentType: string): Promise<void>;
+  put(key: string, body: Uint8Array, contentType: string, options?: { readonly signal?: AbortSignal }): Promise<void>;
   /** 크기와 종류. 없으면 null. */
   head(key: string): Promise<StoredObjectInfo | null>;
   /** 내용. 없으면 null. */
@@ -180,12 +180,19 @@ export class S3Store implements ObjectStore {
     throw new StorageUnavailableError(`${op}: status ${res.status}`);
   }
 
-  async put(key: string, body: Uint8Array, contentType: string): Promise<void> {
+  async put(
+    key: string,
+    body: Uint8Array,
+    contentType: string,
+    options: { readonly signal?: AbortSignal } = {},
+  ): Promise<void> {
+    if (options.signal?.aborted) throw new StorageUnavailableError("put: cancelled");
     const res = await this.#send("put", this.#url(key), {
       method: "PUT",
       // Content-Length는 fetch가 몸체(바이트 배열)로 채운다.
       headers: { "content-type": contentType },
       body,
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
     if (res.status !== 200) this.#fail("put", res);
     await discardBody(res);

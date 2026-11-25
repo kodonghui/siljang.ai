@@ -190,16 +190,27 @@ export async function runKakaoPhotoTurn(
         break;
       }
       let timer: ReturnType<typeof setTimeout> | undefined;
+      const controller = new AbortController();
       try {
         const uploaded = await Promise.race([
           Promise.resolve()
-            .then(() => services.storage().put(key, downloaded.photo.bytes, downloaded.photo.contentType))
+            .then(() =>
+              services
+                .storage()
+                .put(key, downloaded.photo.bytes, downloaded.photo.contentType, { signal: controller.signal }),
+            )
             .then(
               () => true,
               () => false,
             ),
           new Promise<false>((resolve) => {
-            timer = setTimeout(() => resolve(false), Math.max(1, remaining() - 100));
+            timer = setTimeout(
+              () => {
+                controller.abort();
+                resolve(false);
+              },
+              Math.max(1, Math.min(6000, remaining() - 100)),
+            );
           }),
         ]);
         if (!uploaded || remaining() < 50) {
@@ -208,6 +219,7 @@ export async function runKakaoPhotoTurn(
         }
       } finally {
         if (timer !== undefined) clearTimeout(timer);
+        controller.abort();
       }
       photos.push({ key, photo: downloaded.photo, position: i + 1 });
     }

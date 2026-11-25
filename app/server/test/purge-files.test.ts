@@ -20,13 +20,22 @@ describeDb("사진 삭제 대기와 저장소 재시도(TASK-158, SPEC-065 #10)"
   async function seed(fixture = f, key = `shops/${fixture.shopId}/reference/${newUuid()}.webp`) {
     const id = newUuid();
     await db.query(
-      "INSERT INTO file_deletions (id, shop_id, storage_key, source) VALUES ($1, $2, $3, 'reference_photo')",
-      [id, fixture.shopId, key],
+      "INSERT INTO file_deletions (id, shop_id, storage_key, source,queued_at) VALUES ($1, $2, $3, 'reference_photo',$4)",
+      [id, fixture.shopId, key, NOW],
     );
     await store.put(key, new Uint8Array([1, 2, 3]), "image/webp");
     return { id, key };
   }
   const row = (id: string) => db.query("SELECT attempts, last_tried_at FROM file_deletions WHERE id = $1", [id]);
+  it("올리기 중단 회수 시각 전에는 직접 호출해도 파일을 지우지 않는다", async () => {
+    const item = await seed();
+    const due = new Date(NOW.getTime() + 30_000);
+    await db.query("UPDATE file_deletions SET queued_at=$2 WHERE id=$1", [item.id, due]);
+    expect(await deleteQueuedFile(scoped(), store, item.id, NOW)).toBe("busy");
+    expect(store.calls.filter((op) => op === "delete")).toHaveLength(0);
+    expect((await row(item.id)).rows).toEqual([{ attempts: 0, last_tried_at: null }]);
+    expect(await deleteQueuedFile(scoped(), store, item.id, due)).toBe("deleted");
+  });
   it("저장소가 삭제를 확인한 파일의 대기 행만 지움", async () => {
     const item = await seed();
     expect(await deleteQueuedFile(scoped(), store, item.id, NOW)).toBe("deleted");

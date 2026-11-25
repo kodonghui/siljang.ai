@@ -3,9 +3,12 @@ import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
-import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
+import { deferExpiredKakaoCallback, type KakaoCallbackJob, type KakaoCallbackQueue } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { deleteQueuedFile } from "../src/purge-files";
 import { Secret } from "../src/settings";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
+import { StorageUnavailableError } from "../src/storage";
 import { expectSchema } from "./support/contract";
 import { describeDb, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey } from "./support/field-keys";
@@ -20,7 +23,7 @@ const IMAGE = new Uint8Array(readFileSync(new URL("./fixtures/photos/metadata.pn
 describeDb("참고 사진의 실제 메시지 수신(TASK-065)", () => {
   const db = testDb();
   const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
-  let shop: ShopFixture, skillKey: string, userKey: string, store: MemoryStore;
+  let shop: ShopFixture, skillKey: string, userKey: string, store: MemoryStore, at: Date;
   const call = vi.fn<AiModel["call"]>(async () => {
     throw new Error("사진의 AI 호출 금지");
   });
@@ -35,6 +38,7 @@ describeDb("참고 사진의 실제 메시지 수신(TASK-065)", () => {
     await linkTestChannel(db, shop.channelId);
     skillKey = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
     userKey = crypto.randomUUID();
+    at = NOW;
     store = new MemoryStore();
     call.mockClear();
     download.mockReset();
@@ -47,7 +51,7 @@ describeDb("참고 사진의 실제 메시지 수신(TASK-065)", () => {
   function request(url: string, queue?: KakaoCallbackQueue, callback = false) {
     const app = createApp({
       services: {
-        now: () => NOW,
+        now: () => at,
         storage: store,
         ...(queue === undefined ? {} : { kakaoCallbackQueue: queue }),
         aiModel: { provider: "anthropic", model: "claude-haiku-5-5", call },
@@ -165,6 +169,119 @@ describeDb("참고 사진의 실제 메시지 수신(TASK-065)", () => {
     expect(await rows()).toHaveLength(1);
     expect(posted).toHaveLength(1);
     expect(posted[0]).toContain("사진을 받았어요");
+    expect(call).not.toHaveBeenCalled();
+  });
+  it("원격 저장 뒤 오류가 나면 연결 행 없이 회수 대기를 남기고 기한 뒤 파일을 지운다", async () => {
+    const put = store.put.bind(store);
+    store.put = async (...args) => {
+      await put(...args);
+      throw new StorageUnavailableError("put: synthetic interruption");
+    };
+    const response = await request(PHOTO);
+    expect(response.headers.get("Siljang-Outcome")).toBe("photo_download_failed");
+    expect(await rows()).toHaveLength(0);
+    expect(store.objects.size).toBe(1);
+    const intent = (
+      await db.query<{ id: string; queued_at: Date }>("SELECT id,queued_at FROM file_deletions WHERE shop_id=$1", [
+        shop.shopId,
+      ])
+    ).rows[0];
+    if (intent === undefined) throw new Error("합성 파일 회수 대기 없음");
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), db);
+    expect(await deleteQueuedFile(scoped, store, intent.id, NOW)).toBe("busy");
+    expect(store.objects.size).toBe(1);
+    expect(await deleteQueuedFile(scoped, store, intent.id, intent.queued_at)).toBe("deleted");
+    expect(store.objects.size).toBe(0);
+    expect(call).not.toHaveBeenCalled();
+  });
+  it("사진 콜백 실패와 같은 큐의 재실행 뒤 다음 대화에서 한 번만 안내한다", async () => {
+    const jobs: KakaoCallbackJob[] = [];
+    const queue: KakaoCallbackQueue = {
+      send: async (job) => {
+        jobs.push(job);
+      },
+    };
+    await request(PHOTO, queue, true);
+    const job = jobs[0];
+    if (!job) throw new Error("합성 사진 큐 없음");
+    const network = vi.fn<typeof fetch>(async (_input, init) =>
+      init?.method === "POST" ? new Response(null, { status: 503 }) : new Response(IMAGE),
+    );
+    const options = {
+      now: () => new Date(NOW.getTime() + 1000),
+      fetch: network,
+      logSink: () => {},
+      services: { storage: store },
+    };
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    const requests = network.mock.calls.length;
+    expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    expect(network).toHaveBeenCalledTimes(requests);
+    at = new Date(NOW.getTime() + 2000);
+    expect(JSON.stringify(await (await request("계속 이야기할게요")).json())).toContain("사진을 받았어요");
+    at = new Date(NOW.getTime() + 4000);
+    expect(JSON.stringify(await (await request("다음 질문이 있어요")).json())).not.toContain("사진을 받았어요");
+    expect(await rows()).toHaveLength(1);
+    expect(call).not.toHaveBeenCalled();
+  });
+  it("처리 전에 기한이 지난 사진은 AI나 사장님 건 없이 다시 보내기 안내로 남긴다", async () => {
+    const jobs: KakaoCallbackJob[] = [];
+    const queue: KakaoCallbackQueue = {
+      send: async (job) => {
+        jobs.push(job);
+      },
+    };
+    await request(PHOTO, queue, true);
+    const job = jobs[0];
+    if (!job) throw new Error("합성 사진 큐 없음");
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), db);
+    at = new Date(NOW.getTime() + 56_000);
+    expect(await deferExpiredKakaoCallback(scoped, job.messageId, at, "사장님 확인 뒤 답드릴게요")).toBe("deferred");
+    expect(download).not.toHaveBeenCalled();
+    expect(await rows()).toHaveLength(0);
+    expect((await db.query("SELECT id FROM handoffs WHERE shop_id=$1", [shop.shopId])).rowCount).toBe(0);
+    expect(JSON.stringify(await (await request("사진 처리됐나요")).json())).toContain("다시 보내 주세요");
+    expect((await db.query("SELECT kakao_callback_enc,kind FROM messages WHERE id=$1", [job.messageId])).rows).toEqual([
+      { kakao_callback_enc: null, kind: "photo" },
+    ]);
+    expect(call).not.toHaveBeenCalled();
+  });
+  it("아홉 장 뒤 두 큐가 겹쳐도 열 장만 붙이고 넘는 사진은 내려받지 않는다", async () => {
+    for (let i = 0; i < 9; i++)
+      expect((await request(`${PHOTO}?before=${i}`)).headers.get("Siljang-Outcome")).toBe("photo_received");
+    const jobs: KakaoCallbackJob[] = [];
+    const queue: KakaoCallbackQueue = {
+      send: async (job) => {
+        jobs.push(job);
+      },
+    };
+    await request(`${PHOTO}?race=1`, queue, true);
+    await request(`${PHOTO}?race=2`, queue, true);
+    let gets = 0;
+    const results: string[] = [];
+    const network = vi.fn<typeof fetch>(async (_input, init) => {
+      if (init?.method === "POST") {
+        results.push(String(init.body));
+        return Response.json({ status: "SUCCESS" });
+      }
+      gets++;
+      return new Response(IMAGE);
+    });
+    const options = {
+      now: () => new Date(NOW.getTime() + 1000),
+      fetch: network,
+      logSink: () => {},
+      services: { storage: store },
+    };
+    const statuses = await Promise.all(jobs.map((job) => consumeKakaoCallback(job, env, options)));
+    for (const [i, status] of statuses.entries()) {
+      const job = jobs[i];
+      if (status === "retry" && job) expect(await consumeKakaoCallback(job, env, options)).toBe("done");
+    }
+    expect(await rows()).toHaveLength(10);
+    expect(store.objects.size).toBe(10);
+    expect(gets).toBe(1);
+    expect(results.join(" ")).toContain("10장까지");
     expect(call).not.toHaveBeenCalled();
   });
   it("상담의 열한 번째 사진은 내려받기 전에 거절한다", async () => {
