@@ -1,6 +1,7 @@
 /** API-043: 사장님에게만 전화·계좌를 복원하고 대화·손님 안내를 같은 페이지로 읽는다. */
 import {
   type ConsultationCursor,
+  ConsultationCursorCapacityError,
   ConsultationCursorError,
   type ConsultationReadDirection,
   openConsultationCursor,
@@ -184,20 +185,25 @@ export async function listConsultationMessages(r: AccessRequest): Promise<Respon
     }));
     const last = window.at(-1),
       newest = window[0];
-    const reloadCursor =
-      filter.direction === "backward"
-        ? newest
-          ? (filter.token ??
-            (await sealConsultationCursor(
-              r.services.fieldCrypto(),
-              r.scope.shopId,
-              consultationId,
-              { at: (BigInt(newest.cursor_at) + 1n).toString(), sequence: "1" },
-              snapshot,
-              "backward",
-            )))
-          : null
-        : undefined;
+    let reloadCursor: string | null | undefined;
+    if (filter.direction === "backward") {
+      reloadCursor = newest ? filter.token : null;
+      if (newest && reloadCursor === null) {
+        try {
+          reloadCursor = await sealConsultationCursor(
+            r.services.fieldCrypto(),
+            r.scope.shopId,
+            consultationId,
+            { at: (BigInt(newest.cursor_at) + 1n).toString(), sequence: "1" },
+            snapshot,
+            "backward",
+          );
+        } catch (error) {
+          // 다음 페이지가 없으면 보조 사진 커서의 용량 때문에 본문까지 막지 않는다.
+          if (!(error instanceof ConsultationCursorCapacityError) || found.length > filter.limit) throw error;
+        }
+      }
+    }
     return {
       body: {
         ...base,

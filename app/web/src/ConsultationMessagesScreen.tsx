@@ -89,6 +89,7 @@ export function ConsultationMessagesScreen(
     async (cursor: string | null, mode: ReadMode) => {
       const parameters = query.current;
       if (!parameters || !UUID_PATTERN.test(consultationId) || request.current || identity.current.blocked) return;
+      const fullPhotoRefresh = mode === "photo" && cursor === null;
       const controller = new AbortController();
       request.current = controller;
       setLoading(true);
@@ -110,7 +111,10 @@ export function ConsultationMessagesScreen(
         if (result.ok) {
           const at = Date.now();
           setClock(at);
-          if (mode === "photo") {
+          if (fullPhotoRefresh) {
+            setFailedPhotos(new Set());
+            setSelection((old) => (old && result.data.items.some((item) => item.messageId === old.id) ? old : null));
+          } else if (mode === "photo") {
             const oldUrls = new Set(
               loadedRef.current?.pages
                 .find((page) => page.cursor === cursor)
@@ -123,7 +127,10 @@ export function ConsultationMessagesScreen(
             setFailedPhotos(new Set());
           }
           setLoaded((old) => {
-            const prior = mode !== "initial" && result.data.status !== "deleted" && old?.key === key ? old : null;
+            const prior =
+              mode !== "initial" && !fullPhotoRefresh && result.data.status !== "deleted" && old?.key === key
+                ? old
+                : null;
             const pageCursor = result.data.reloadCursor ?? cursor;
             const page = {
               cursor: pageCursor,
@@ -148,7 +155,7 @@ export function ConsultationMessagesScreen(
           });
           if (mode === "more")
             setNotice(result.data.items.length ? `이전 대화를 불러왔어요` : `더 불러올 대화가 없어요`);
-          if (mode === "photo") setNotice("사진을 다시 불러왔어요");
+          if (mode === "photo") setNotice(fullPhotoRefresh ? "대화를 새로 불러왔어요" : "사진을 다시 불러왔어요");
         } else {
           if (result.status === 401 || result.status === 404) {
             setLoaded(null);
@@ -213,6 +220,16 @@ export function ConsultationMessagesScreen(
       void read(query.current?.cursor ?? null, "initial");
     }
   };
+  const startOver = () => {
+    if (busy) return;
+    setSelection(null);
+    if (location.search) {
+      setLoaded(null);
+      setFailure(null);
+      setFailedPhotos(new Set());
+      props.onNavigate(`/owner/consultations/${consultationId}`);
+    } else void read(null, "initial");
+  };
   const row = selection ? current?.items.find((item) => item.messageId === selection.id) : undefined;
   const photo = row && selection ? row.photos[selection.index] : undefined;
   const photoStale = photo && row ? consultationPhotoExpiry(photo.url, row.receivedAt) <= clock : false;
@@ -238,7 +255,9 @@ export function ConsultationMessagesScreen(
           <StateBox
             title="입력한 내용을 확인해 주세요"
             actions={
-              <Button onClick={() => props.onNavigate(`/owner/consultations/${consultationId}`)}>처음부터 보기</Button>
+              <Button disabled={busy} onClick={startOver}>
+                처음부터 보기
+              </Button>
             }
           />
         ) : blocked || (valid && !current && loading) ? (
@@ -263,7 +282,9 @@ export function ConsultationMessagesScreen(
           <StateBox
             title="입력한 내용을 확인해 주세요"
             actions={
-              <Button onClick={() => props.onNavigate(`/owner/consultations/${consultationId}`)}>처음부터 보기</Button>
+              <Button disabled={busy} onClick={startOver}>
+                처음부터 보기
+              </Button>
             }
           />
         ) : (
