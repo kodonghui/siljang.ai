@@ -1,0 +1,50 @@
+
+> test
+> vitest run test/deferred-difference-privilege.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-deferred-privilege/app/server
+
+stdout | test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > callback: 권한 부족 1건 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다
+{"level":"info","event":"kakao_callback_result","code":"photo_received"}
+
+ ❯ test/deferred-difference-privilege.test.ts (8 tests | 2 failed) 2586ms
+   ❯ 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) (8)
+     × inline: 권한 부족 1건 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다 220ms
+     × callback: 권한 부족 1건 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다 181ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > inline: 권한 부족 1건 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > callback: 권한 부족 1건 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다
+AssertionError: expected [ …(3) ] to have a length of 2 but got 3
+
+- Expected
++ Received
+
+- 2
++ 3
+
+ ❯ test/deferred-difference-privilege.test.ts:321:90
+    319|         }
+    320|         expectSchema("SkillTemplateResponse", photoResponse);
+    321|         expect((photoResponse as { template: { outputs: unknown[] } })…
+       |                                                                                          ^
+    322|         const shown = JSON.stringify(photoResponse);
+    323|         expect(shown).toContain("합성 다른 주문 취소 0");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 6 passed (8)
+   Start at  20:03:03
+   Duration  4.41s (tests 61%, import 30%, transform 9%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-deferred-privilege/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-deferred-privilege/app/server
+npm error command failed
+npm error command sh -c vitest run test/deferred-difference-privilege.test.ts

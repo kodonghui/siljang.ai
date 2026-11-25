@@ -1,0 +1,50 @@
+
+> test
+> vitest run --run test/kakao-change-request-message.test.ts test/kakao-change-request-contract.test.ts test/kakao-change-request-integration.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+ ❯ test/kakao-change-request-message.test.ts (19 tests | 2 failed) 50ms
+   × 변경 항목의 내부 필드 이름을 손님 카드로 내보내지 않는다 3ms
+   × 정의되지 않은 오류 상태를 정상 문구로 바꾸지 않는다 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-change-request-message.test.ts > 변경 항목의 내부 필드 이름을 손님 카드로 내보내지 않는다
+AssertionError: expected function to throw an error, but it didn't
+ ❯ test/kakao-change-request-message.test.ts:108:5
+    106|       changes: [{ label: "customer_id", before: "private-before", afte…
+    107|     }),
+    108|   ).toThrow(RangeError);
+       |     ^
+    109| });
+    110|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/kakao-change-request-message.test.ts > 정의되지 않은 오류 상태를 정상 문구로 바꾸지 않는다
+AssertionError: expected function to throw an error, but it didn't
+ ❯ test/kakao-change-request-message.test.ts:114:5
+    112|   expect(() =>
+    113|     kakaoChangeRequestMessage({ state: "error", reason: "undefined_err…
+    114|   ).toThrow(RangeError);
+       |     ^
+    115| });
+    116|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  2 failed | 22 passed (24)
+   Start at  20:31:13
+   Duration  3.15s (import 87%, tests 7%, transform 6%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task126-change-card/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task126-change-card/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/kakao-change-request-message.test.ts test/kakao-change-request-contract.test.ts test/kakao-change-request-integration.test.ts

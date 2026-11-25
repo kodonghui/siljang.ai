@@ -1,0 +1,12 @@
+
+> test
+> vitest run test/deferred-difference-privilege.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-deferred-privilege/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  19:43:35
+   Duration  3.62s (tests 71%, import 24%, transform 5%)

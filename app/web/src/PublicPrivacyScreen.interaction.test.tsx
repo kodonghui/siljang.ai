@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parse } from "yaml";
@@ -127,8 +127,10 @@ it("404는 주소 재확인만 안내하고 없는 목록으로 보내지 않는
   mount();
   await main().findByText("찾을 수 없어요");
   expect(main().getByText("가게 주소를 다시 확인해 주세요")).toBeTruthy();
-  expect(document.querySelector('[data-announcer="assertive"]')?.textContent).toContain(
-    "가게 주소를 다시 확인해 주세요",
+  await waitFor(() =>
+    expect(document.querySelector('[data-announcer="assertive"]')?.textContent).toContain(
+      "가게 주소를 다시 확인해 주세요",
+    ),
   );
   expect(main().queryByRole("link")).toBeNull();
 });
