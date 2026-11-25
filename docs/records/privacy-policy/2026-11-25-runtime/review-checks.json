@@ -1,0 +1,33 @@
+{
+  "review": 7150570364,
+  "source": "7a702a67418decdcf76702266e33734682640037",
+  "newTestCases": [
+    "대기 시간 없는429의59999ms/60000ms 경계와 pageshow/visibility 진행 중 중복 방지"
+  ],
+  "newTestsInitiallyPassed": true,
+  "runtimeProductCodeChanges": 0,
+  "results": {
+    "related": {
+      "source": "7a702a67418decdcf76702266e33734682640037",
+      "exitCode": 0,
+      "workingDirectory": "app",
+      "command": "npm run test -w web -- src/PublicPrivacyScreen.interaction.test.tsx src/public-privacy-api.test.ts",
+      "path": "/tmp/siljang-task062-review-related-20261125.log",
+      "lines": [
+        " Test Files  2 passed (2)",
+        "      Tests  50 passed (50)"
+      ]
+    },
+    "type": {
+      "source": "7a702a67418decdcf76702266e33734682640037",
+      "exitCode": 0,
+      "workingDirectory": "app",
+      "command": "npm run typecheck",
+      "path": "/tmp/siljang-task062-review-type-20261125.log",
+      "lines": []
+    }
+  },
+  "previousBuildSource": "0c56755a6500d3665cb3876e3e674527bccb2c11",
+  "previousBuild": "Vite551ms/두 Worker, 제품 입력 변경 전 원본. 최종 현재 CI가 전체 빌드 재검사",
+  "browserRun": false
+}

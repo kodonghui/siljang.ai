@@ -210,6 +210,32 @@ it.each(["pageshow-first", "visibility-first"])(
     expect(calls).toHaveLength(2);
   },
 );
+it("429에 대기 시간이 없으면 60초를 채우고 복귀 이벤트가 겹쳐도 한 번만 읽는다", async () => {
+  vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout", "performance"] });
+  result = async () => new Response(JSON.stringify(problem("rate_limited")), { status: 429 });
+  mount();
+  await act(async () => {});
+  expect(main().getByText("60초 뒤 자동으로 다시 불러와요")).toBeTruthy();
+  let release!: (response: Response) => void;
+  result = () => new Promise<Response>((resolve) => (release = resolve));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(59999);
+  });
+  expect(calls).toHaveLength(1);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  expect(calls).toHaveLength(2);
+  const restore = new Event("pageshow");
+  Object.defineProperty(restore, "persisted", { value: true });
+  await act(async () => {
+    window.dispatchEvent(restore);
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(calls).toHaveLength(2);
+  await act(async () => release(json(value)));
+  expect(main().getByRole("region", { name: "처리방침 본문" })).toBeTruthy();
+});
 it("429는 시작 안내를 한 번 알리고 매초 남은 시간을 읽어 주지 않는다", async () => {
   vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout", "performance"] });
   result = async () => json(problem("rate_limited"), 429);
