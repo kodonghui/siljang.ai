@@ -22,7 +22,7 @@ function fixture() {
 		entry.indexOf("const rows="),
 		entry.indexOf("function Fixture()"),
 	);
-	const context = vm.createContext({ Response, Headers, structuredClone });
+	const context = vm.createContext({ Response, Headers, structuredClone, URL });
 	vm.runInContext(
 		core +
 			`
@@ -161,5 +161,23 @@ test("네 채널 API의 모든 오류 예시는 본문/상태·미디어 유형/
 						};
 			await assertProblem(await f.request("/api" + path, init), example.value);
 		}
+	}
+});
+
+test("지원하지 않는 경로의 기본404도 실제 요청 경로를 가리킨다", async () => {
+	const sample = examples(
+		"get",
+		"/owner/operating-rules/versions/{version}",
+	).find(([, example]) => example.value.code === "not_found")[1].value;
+	for (const path of [
+		"/api/owner/payment-destination",
+		"/api/unsupported?probe=1",
+	]) {
+		const f = fixture();
+		f.select("normal");
+		await assertProblem(await f.request(path), {
+			...sample,
+			instance: new URL(path, "http://example.org").pathname,
+		});
 	}
 });

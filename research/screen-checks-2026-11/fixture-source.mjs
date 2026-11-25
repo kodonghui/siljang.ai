@@ -25,6 +25,7 @@ const INPUTS = [
 	"app/web",
 	"app/package.json",
 	"app/package-lock.json",
+	"app/tsconfig.base.json",
 	"api/openapi.yaml",
 	"tools/corthex/page-check.js",
 	"research/screen-checks-2026-11",
