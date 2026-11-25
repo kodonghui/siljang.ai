@@ -49,17 +49,21 @@
     "note": "관련 파일의 시험 추가 당시 작업 트리. 원본의 종료 구현은 변경 전이며 다른 미커밋 고침도 있던 범위를 명시"
   },
   "current": {
-    "codeSource": "d5df658eeee5c3e1ca3867f415010fa6dcc2a8d9",
-    "relatedPassed": 194,
-    "filesPassed": 7,
+    "codeSource": "c9bc2614587c307e6da21b917eacea6fa8f974f9",
+    "relatedPassed": 216,
+    "filesPassed": 8,
     "contextFinalPassed": 17,
     "typeExitCode": 0,
     "lintExitCode": 0,
-    "freshFull": "진행 중",
-    "implementationProposal": false,
+    "freshFull": "서버2717/웹1727·빌드0",
+    "implementationProposal": true,
     "logs": [
       "/tmp/siljang-task081-review-green4-related-20261125.log",
       "/tmp/siljang-task081-context-final-20261125.log"
-    ]
+    ],
+    "handlingComment": 7152239957,
+    "manualReview": 6051338372,
+    "manualSecurity": 7151758096,
+    "manualThreadsResolved": true
   }
 }

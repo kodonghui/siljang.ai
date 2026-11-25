@@ -75,8 +75,45 @@
       "relatedPassed": 216,
       "typeExitCode": 0,
       "lintExitCode": 0,
-      "freshFull": "진행 중",
+      "freshFull": "완료·전체/빌드0·시험DB정리",
       "logPrefix": "/tmp/siljang-task081-review-20261125-4-fresh"
     }
-  ]
+  ],
+  "currentAfterReview": {
+    "source": "c9bc2614587c307e6da21b917eacea6fa8f974f9",
+    "freshMigrations": 39,
+    "databaseCleanup": "completed",
+    "sameLockDependenciesReused": true,
+    "newLocalNpmCi": false,
+    "serverFiles": 135,
+    "serverTests": 2717,
+    "webFiles": 71,
+    "webTests": 1727,
+    "fullExitCode": 0,
+    "buildExitCode": 0,
+    "viteMs": 679,
+    "lines": [
+      " Test Files  135 passed (135)",
+      "      Tests  2717 passed (2717)",
+      " Test Files  71 passed (71)",
+      "      Tests  1727 passed (1727)",
+      "✓ built in 679ms",
+      "Total Upload: 5393.12 KiB / gzip: 989.17 KiB",
+      "--dry-run: exiting now.",
+      "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+      "--dry-run: exiting now."
+    ],
+    "logs": {
+      "full": "/tmp/siljang-task081-review-20261125-4-fresh-full.log",
+      "build": "/tmp/siljang-task081-review-20261125-4-fresh-build.log"
+    },
+    "hashes": {
+      "full": "46a291ff40d78c4182471ff45fae7170845b2a213c584ec0e475a14baf47732f",
+      "build": "4c1d2e3e3f7c9fdaa40abc38c52d6a61b189d7ed73670729037ff3ae35dc3597"
+    },
+    "relatedFiles": 8,
+    "relatedTests": 216,
+    "typeExitCode": 0,
+    "lintExitCode": 0
+  }
 }
