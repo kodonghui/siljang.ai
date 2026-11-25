@@ -1,0 +1,47 @@
+{
+  "sourceCommit": "a617dca5687f0745d3103f5cf9a0ec50a158ce21",
+  "currentRuntimeSource": "028e90de2ab4e088213f28a4a526961b137ba9bf",
+  "command": "bash tools/stage-checks.sh task109-carousel-20261126 --no-browser",
+  "exit": 0,
+  "sameDesignGitObjects": {
+    "api": "597089438985abb37679f5791ff4a64459cf3317",
+    "db/schema.erd.json": "8f2b41c2db91f1bd2d85d843f1b8eea5bd35d48b",
+    "db/schema.sql": "4abb5e2a659841f2a855cec308efbba053f65930",
+    "docs/01-domain": "21022a8fd31115b1ef44da6351ba56b925b2ba5d",
+    "docs/02-prd": "03e5337b126f3caf1e550649f19fd4d745a4805b",
+    "docs/03-user-flow": "c2e9f571fd25831b1cdfc302cb258bcf2b51c7f9",
+    "docs/04-functional-spec": "4233b6befb916b73e360fff67c64050ea418cc7a",
+    "docs/05-erd": "801992369fceeea734f74bc4ca75966b008c5f7b",
+    "docs/06-api": "72543c8d2b3f28bad99277777114cf27306c5c3c",
+    "docs/07-sitemap": "ccd54169d24bebcca433dae053e07f4b90ca518d",
+    "docs/08-screens": "f4e78ad36a497a4b4e9b3d2d99072e7ee9305833",
+    "docs/09-mockup": "d84d90e434a2de0460af80428e7cb44c234736b5",
+    "docs/10-wbs": "2338db4de6f36e3d05f000c3cff4187649dd62ed",
+    "research/cake-api-2026-11": "45ec9307a43251633715be8eb900d87066c15d80",
+    "research/cake-domain-2026-11": "b27794b1c90fdb15cb97d4dc24d1e4ab7d53ea06",
+    "research/cake-erd-2026-11": "0f0490236cfde1e400551fb542601c95f2235f9a",
+    "research/cake-flow-2026-11": "25014c2484b7eb333f44d77208223fcddb92c944",
+    "research/cake-mockup-2026-11": "5bbb0599c14f25bfeaa56860e82600c1de4d2c73",
+    "research/cake-prd-2026-11": "e1970dda3d905c9c86caf397591b20c1b13f4593",
+    "research/cake-screens-2026-11": "4e51d30c1369087274cd1c2eea57751a559de9bc",
+    "research/cake-sitemap-2026-11": "d8199380a585cb4b3112a3f2aebfca813705d5d6",
+    "research/cake-spec-2026-11": "5beb341da657756681f748030d6e3d2032964ecc",
+    "research/cake-terms-2026-11": "637f7850a82614054d50dbec45ea9c81b155addc",
+    "research/cake-wbs-2026-11": "0755d612159b48589753ee5b4a315e57580aea58",
+    "tools/corthex": "e90963da39c051e3054ec7d4bd95a3d31c980c25",
+    "tools/stage-checks.sh": "50ba687fe6359d142997c5a4ee1aa0d892bc2161"
+  },
+  "pageCheck": "unverified (--no-browser)",
+  "mockup": {
+    "checks": 14,
+    "passed": 13,
+    "failed": 0,
+    "unverified": 1
+  },
+  "api": {
+    "checks": 17,
+    "passed": 17,
+    "failed": 0,
+    "unverified": 0
+  }
+}

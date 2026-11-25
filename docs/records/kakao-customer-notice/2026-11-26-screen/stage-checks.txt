@@ -1,0 +1,12 @@
+2026-11-26 01:21:52 KST start, head a617dca, out /tmp/stage-checks/task109-carousel-20261126
+prd exit=0 :: PROBLEMS 0 · AVOIDED WORDS 0
+flows exit=0 :: PROBLEMS 0 · AVOIDED WORDS 0
+spec exit=0 :: 오류 0
+erd exit=0 :: 검사 15개: 통과 15, 실패 0, 미확인 0
+api exit=0 :: 검사 17개: 통과 17, 실패 0, 미확인 0
+sitemap exit=0 :: 검사 17개: 통과 17, 실패 0, 미확인 0
+screens exit=0 :: 검사 15개: 통과 15, 실패 0, 미확인 0
+mockup browser skipped (--no-browser); page-check remains unverified
+mockup exit=0 :: 검사 14개: 통과 13, 실패 0, 미확인 1
+wbs exit=0 :: 검사 18개 · 오류 0
+01:23:04 KST end
