@@ -230,6 +230,7 @@ describeDb("손님 안내 스킬 API-073(TASK-104)", () => {
         cardKey = newUuid().replaceAll("-", ""),
         cap = new Date(NOW.getTime() + 24 * 3600000);
       await isolated.db.transaction(async (db) => {
+        await db.query("UPDATE kakao_channels SET card_block_id='synthetic.amount:card' WHERE id=$1", [shop.channelId]);
         await db.query("UPDATE quotes SET amount=25000,amount_max=$2,display_kind=$3,order_kind='custom' WHERE id=$1", [
           shop.quoteId,
           max,
@@ -286,6 +287,7 @@ describeDb("손님 안내 스킬 API-073(TASK-104)", () => {
         expect(text).toContain("35,000원");
         expect(text).toContain("합성 추가 장식");
         expect(text).toContain(cardKey);
+        expect(text).toContain("synthetic.amount:card");
         expect(text).not.toContain("계좌번호");
         expect(decrypt).not.toHaveBeenCalled();
         expect(

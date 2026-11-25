@@ -1,0 +1,143 @@
+> test
+> vitest run test/kakao-payment-message.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+ ❯ test/kakao-payment-message.test.ts (23 tests | 9 failed) 69ms
+   × 새 금액 카드가 요청 견적의 표시와 사유를 보존하고 계좌를 숨긴다({"amount":70000,"amountMax":null,"displayKind":"fixed"}) 5ms
+   × 새 금액 카드가 요청 견적의 표시와 사유를 보존하고 계좌를 숨긴다({"amount":70000,"amountMax":null,"displayKind":"from"}) 1ms
+   × 새 금액 카드가 요청 견적의 표시와 사유를 보존하고 계좌를 숨긴다({"amount":70000,"amountMax":90000,"displayKind":"range"}) 0ms
+   × 긴 변경 내용은 카드 앞 말풍선으로 나누고 차액 버튼과 마감을 보존한다 1ms
+   × 기한이 지난 새 금액 카드는 정해진 문구와 새 카드 키를 함께 보인다 0ms
+   × 바뀐 새 금액 카드에는 현재 값의 새 카드와 바뀜 문구를 보인다 23ms
+   × 닫힌 업무는 현재 상태만 표시하고 카드와 계좌를 보이지 않는다 4ms
+   × 다음 대화 때 전하는 새 금액 카드도 계좌 없이 같은 확인 카드다 1ms
+   × 확인한 새 금액의 결제 안내에는 요청 견적과 사유 및 확인 결과를 보인다 22ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 새 금액 카드가 요청 견적의 표시와 사유를 보존하고 계좌를 숨긴다({"amount":70000,"amountMax":null,"displayKind":"fixed"})
+ FAIL  test/kakao-payment-message.test.ts > 새 금액 카드가 요청 견적의 표시와 사유를 보존하고 계좌를 숨긴다({"amount":70000,"amountMax":null,"displayKind":"from"})
+ FAIL  test/kakao-payment-message.test.ts > 새 금액 카드가 요청 견적의 표시와 사유를 보존하고 계좌를 숨긴다({"amount":70000,"amountMax":90000,"displayKind":"range"})
+RangeError: invalid payment state
+ ❯ kakaoPaymentMessage src/kakao-payment-message.ts:45:13
+     43|       break;
+     44|     default:
+     45|       throw new RangeError("invalid payment state");
+       |             ^
+     46|   }
+     47|   return { version: "2.0" as const, template: { outputs: [{ simpleText…
+ ❯ test/kakao-payment-message.test.ts:25:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 긴 변경 내용은 카드 앞 말풍선으로 나누고 차액 버튼과 마감을 보존한다
+RangeError: invalid payment state
+ ❯ kakaoPaymentMessage src/kakao-payment-message.ts:45:13
+     43|       break;
+     44|     default:
+     45|       throw new RangeError("invalid payment state");
+       |             ^
+     46|   }
+     47|   return { version: "2.0" as const, template: { outputs: [{ simpleText…
+ ❯ test/kakao-payment-message.test.ts:43:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 기한이 지난 새 금액 카드는 정해진 문구와 새 카드 키를 함께 보인다
+RangeError: invalid payment state
+ ❯ kakaoPaymentMessage src/kakao-payment-message.ts:45:13
+     43|       break;
+     44|     default:
+     45|       throw new RangeError("invalid payment state");
+       |             ^
+     46|   }
+     47|   return { version: "2.0" as const, template: { outputs: [{ simpleText…
+ ❯ test/kakao-payment-message.test.ts:69:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 바뀐 새 금액 카드에는 현재 값의 새 카드와 바뀜 문구를 보인다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '내용이 바뀌었어요. 새 카드를 확인해 주세요'
+
+Expected: "내용이 바뀌었어요. 새 카드를 확인해 주세요"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"결제 기한이 지나 사장님이 확인하고 있어요"}}]}}"
+
+ ❯ test/kakao-payment-message.test.ts:79:32
+     77|   const body = kakaoPaymentMessage({ state: "stale", reason: "card_sta…
+     78|   expectSchema("SkillTemplateResponse", body);
+     79|   expect(JSON.stringify(body)).toContain("내용이 바뀌었어요. 새 카드를 확인해 주세요");
+       |                                ^
+     80|   expect(JSON.stringify(body)).toContain("75,000원");
+     81| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 닫힌 업무는 현재 상태만 표시하고 카드와 계좌를 보이지 않는다
+AssertionError: expected [ Array(1) ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    {
+      "simpleText": {
+-       "text": "지금은 할 수 없어요: 주문이 취소됐어요",
++       "text": "결제 기한이 지나 사장님이 확인하고 있어요",
+      },
+    },
+  ]
+
+ ❯ test/kakao-payment-message.test.ts:86:33
+     84|   const body = kakaoPaymentMessage({ state: "stale", reason: "not_allo…
+     85|   expectSchema("SkillTemplateResponse", body);
+     86|   expect(body.template.outputs).toEqual([{ simpleText: { text: "지금은 할 …
+       |                                 ^
+     87| });
+     88|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 다음 대화 때 전하는 새 금액 카드도 계좌 없이 같은 확인 카드다
+RangeError: invalid payment state
+ ❯ kakaoPaymentMessage src/kakao-payment-message.ts:45:13
+     43|       break;
+     44|     default:
+     45|       throw new RangeError("invalid payment state");
+       |             ^
+     46|   }
+     47|   return { version: "2.0" as const, template: { outputs: [{ simpleText…
+ ❯ test/kakao-payment-message.test.ts:90:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 확인한 새 금액의 결제 안내에는 요청 견적과 사유 및 확인 결과를 보인다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '새 금액을 확인했어요'
+
+Expected: "새 금액을 확인했어요"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"결제 안내 · 주문번호 AB1234CD\n결제할 금액 75,000원\n은행 합성은행\n계좌번호 123456789012\n예금주 합성가게\n2026-11-25 21:00까지 보내 주세요"}}],"quickReplies":[{"label":"결제했어요","action":"message","messageText":"결제했어요"}]}}"
+
+ ❯ test/kakao-payment-message.test.ts:114:34
+    112|     "123456789012",
+    113|   ])
+    114|     expect(JSON.stringify(body)).toContain(value);
+       |                                  ^
+    115| });
+    116|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/9]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  9 failed | 14 passed (23)
+   Start at  12:31:20
+   Duration  1.14s (import 84%, transform 8%, tests 8%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-payment-message/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-payment-message/app/server
+npm error command failed
+npm error command sh -c vitest run test/kakao-payment-message.test.ts

@@ -1,4 +1,4 @@
-import { type KakaoMessageContent, kakaoMessageOutputs } from "./kakao-message-content";
+import { type KakaoMessageContent, kakaoMessageTemplate } from "./kakao-message-content";
 
 export const SKILL_ACK_MS = 4_000;
 /** 응답 전송에 250ms를 남긴 내부 처리 기한. 전체 요청과 큐 발행이 같은 기준을 쓴다. */
@@ -83,15 +83,15 @@ export async function deliverKakaoCallback(
   const now = options.now ?? Date.now;
   const texts = typeof message === "string" ? [message] : message;
   if (texts.length < 1 || texts.length > 3) return "unavailable";
-  let outputs: ReturnType<typeof kakaoMessageOutputs>;
+  let template: ReturnType<typeof kakaoMessageTemplate>;
   try {
-    outputs = kakaoMessageOutputs(texts);
+    template = kakaoMessageTemplate(texts);
   } catch {
     return "unavailable";
   }
   const body = JSON.stringify({
     version: "2.0",
-    template: { outputs },
+    template,
   });
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const left = callback.deadline - now();

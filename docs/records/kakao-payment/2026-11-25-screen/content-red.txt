@@ -1,0 +1,96 @@
+> test
+> vitest run test/kakao-payment-content.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+ ❯ test/kakao-payment-content.test.ts (4 tests | 4 failed) 33ms
+   × 결제 안내는 공통 내용에서 두 출력으로 펼쳐지고 다시 펼쳐도 같으며 은행을 보존한다 9ms
+   × 상담과 주문 요청 결과에도 결제했어요 바로가기를 한 번 보존한다 3ms
+   × 세 출력만 먼저 전하는 응답도 결제 바로가기를 잃지 않는다 18ms
+   × 성공 콜백의 실제 직렬화에도 계좌·결제 버튼과 바로가기를 전한다 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-content.test.ts > 결제 안내는 공통 내용에서 두 출력으로 펼쳐지고 다시 펼쳐도 같으며 은행을 보존한다
+AssertionError: expected [ { kind: 'payment_notice', …(1) } ] to have a length of 2 but got 1
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ test/kakao-payment-content.test.ts:28:20
+     26| it("결제 안내는 공통 내용에서 두 출력으로 펼쳐지고 다시 펼쳐도 같으며 은행을 보존한다", () => {
+     27|   const expanded = expandKakaoMessageContents([notice]);
+     28|   expect(expanded).toHaveLength(2);
+       |                    ^
+     29|   expect(expandKakaoMessageContents(expanded)).toEqual(expanded);
+     30|   const outputs = kakaoMessageOutputs([...expanded, "현재 합성 답"]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/kakao-payment-content.test.ts > 상담과 주문 요청 결과에도 결제했어요 바로가기를 한 번 보존한다
+RangeError: invalid server Kakao card
+ ❯ src/kakao-message-content.ts:47:13
+     45|       !/^[A-Za-z0-9_-]{16,64}$/.test(content.cardKey)
+     46|     )
+     47|       throw new RangeError("invalid server Kakao card");
+       |             ^
+     48|     return {
+     49|       textCard: {
+ ❯ kakaoMessageOutputs src/kakao-message-content.ts:33:19
+ ❯ template src/kakao-consultation-message.ts:58:58
+ ❯ kakaoConsultationMessage src/kakao-consultation-message.ts:87:20
+ ❯ test/kakao-payment-content.test.ts:40:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/kakao-payment-content.test.ts > 세 출력만 먼저 전하는 응답도 결제 바로가기를 잃지 않는다
+RangeError: invalid server Kakao card
+ ❯ src/kakao-message-content.ts:47:13
+     45|       !/^[A-Za-z0-9_-]{16,64}$/.test(content.cardKey)
+     46|     )
+     47|       throw new RangeError("invalid server Kakao card");
+       |             ^
+     48|     return {
+     49|       textCard: {
+ ❯ kakaoMessageOutputs src/kakao-message-content.ts:33:19
+ ❯ template src/kakao-consultation-message.ts:58:58
+ ❯ kakaoConsultationMessage src/kakao-consultation-message.ts:87:20
+ ❯ reply test/kakao-payment-content.test.ts:24:20
+ ❯ renderDeferredKakaoReply src/kakao-deferred.ts:162:46
+ ❯ test/kakao-payment-content.test.ts:59:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/kakao-payment-content.test.ts > 성공 콜백의 실제 직렬화에도 계좌·결제 버튼과 바로가기를 전한다
+AssertionError: expected 'unavailable' to be 'delivered' // Object.is equality
+
+Expected: "delivered"
+Received: "unavailable"
+
+ ❯ test/kakao-payment-content.test.ts:80:18
+     78|     },
+     79|   );
+     80|   expect(result).toBe("delivered");
+       |                  ^
+     81|   expect(sent).toHaveLength(1);
+     82|   const body = JSON.parse(sent[0] ?? "null");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+   Start at  12:34:24
+   Duration  1.30s (import 71%, transform 26%, tests 3%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-payment-message/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-payment-message/app/server
+npm error command failed
+npm error command sh -c vitest run test/kakao-payment-content.test.ts

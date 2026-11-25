@@ -1,0 +1,55 @@
+
+> test
+> vitest run test/kakao-payment-message.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+ ❯ test/kakao-payment-message.test.ts (1 test | 1 failed) 22ms
+   × 첫 결제 안내는 자기 계좌·기한과 카드 결제 버튼·결제했어요 바로가기를 표시한다 21ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-message.test.ts > 첫 결제 안내는 자기 계좌·기한과 카드 결제 버튼·결제했어요 바로가기를 표시한다
+AssertionError: SkillTemplateResponse: [{"instancePath":"","schemaPath":"#/type","keyword":"type","params":{"type":"object"},"message":"must be object"}]: expected [ { instancePath: '', …(4) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "",
++     "keyword": "type",
++     "message": "must be object",
++     "params": {
++       "type": "object",
++     },
++     "schemaPath": "#/type",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ test/kakao-payment-message.test.ts:16:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  11:54:59
+   Duration  1.09s (import 85%, transform 12%, tests 2%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-payment-message/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-payment-message/app/server
+npm error command failed
+npm error command sh -c vitest run test/kakao-payment-message.test.ts

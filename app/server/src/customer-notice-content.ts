@@ -3,9 +3,8 @@ import { openAccountNumber } from "./account-number";
 import { TEXT_CUSTOMER_NOTICE_KINDS } from "./customer-notice-store";
 import type { FieldCrypto } from "./field-crypto";
 import type { KakaoMessageContent } from "./kakao-message-content";
-import { CARD_PAYMENT_URL_MAX_LENGTH } from "./payment-destination-input";
+import type { KakaoPaymentNormalView } from "./kakao-payment-message";
 import type { ShopDb } from "./shop-scope";
-import { toShopLocal } from "./time";
 
 export const READABLE_CUSTOMER_NOTICE_KINDS = [...TEXT_CUSTOMER_NOTICE_KINDS, "payment_request"] as const;
 export interface CustomerNoticeView {
@@ -84,6 +83,7 @@ export async function customerNoticeContents(
   )
     return ["지금은 이 결제 안내를 사용할 수 없어요"];
   let requested = "";
+  let adjustment: KakaoPaymentNormalView["adjustment"];
   if (payment.requested_amount !== null) {
     if (payment.quote_amount !== payment.requested_amount || !payment.quote_display || !payment.amount_change_reason)
       return ["지금은 이 결제 안내를 사용할 수 없어요"];
@@ -97,6 +97,13 @@ export async function customerNoticeContents(
             ? `${amount}원`
             : null;
     if (display === null) return ["지금은 이 결제 안내를 사용할 수 없어요"];
+    const displayKind = payment.quote_display;
+    if (displayKind !== "fixed" && displayKind !== "from" && displayKind !== "range")
+      return ["지금은 이 결제 안내를 사용할 수 없어요"];
+    adjustment = {
+      requestedQuote: { amount: payment.requested_amount, amountMax: payment.quote_amount_max, displayKind },
+      reason: payment.amount_change_reason,
+    };
     requested = `\n요청한 금액 ${display}\n금액 변경 사유 ${payment.amount_change_reason}`;
   }
   if (payment.needs_amount_confirm && payment.amount_confirmed_at === null) {
@@ -104,8 +111,8 @@ export async function customerNoticeContents(
       payment.amount_card_id === null
         ? undefined
         : (
-            await db.run<{ card_key: string; card_block_id: string | null }>(
-              `SELECT k.card_key,ch.card_block_id FROM confirm_cards k
+            await db.run<{ card_key: string; card_block_id: string | null; expires_at: Date }>(
+              `SELECT k.card_key,ch.card_block_id,k.expires_at FROM confirm_cards k
         JOIN customers u ON u.shop_id=$1 AND u.id=k.customer_id
         JOIN kakao_channels ch ON ch.shop_id=$1 AND ch.id=u.kakao_channel_id AND ch.status='linked'
         WHERE k.shop_id=$1 AND k.id=$2 AND k.customer_id=$3 AND k.kind='amount_confirm'
@@ -114,6 +121,25 @@ export async function customerNoticeContents(
             )
           ).rows[0];
     if (!card?.card_block_id) return ["지금은 새 금액 확인 카드를 사용할 수 없어요"];
+    if (payment.kind !== "difference") {
+      if (!adjustment) return ["지금은 새 금액 확인 카드를 사용할 수 없어요"];
+      return [
+        {
+          kind: "payment_notice",
+          view: {
+            state: "amount-confirm",
+            kind: "custom",
+            requestedQuote: adjustment.requestedQuote,
+            amount: payment.amount,
+            reason: adjustment.reason,
+            cardKey: card.card_key,
+            blockId: card.card_block_id,
+            expiresAt: card.expires_at.toISOString(),
+            timeZone: payment.time_zone,
+          },
+        },
+      ];
+    }
     return [
       {
         cardKey: card.card_key,
@@ -132,28 +158,25 @@ export async function customerNoticeContents(
     "payment_accounts.account_number",
     db.scope.shopId,
   );
-  const deadline = toShopLocal(payment.delivered_at === null ? payment.due_cap_at : payment.due_at, payment.time_zone);
-  const when =
-    payment.delivered_at === null
-      ? `이 안내가 전달된 때부터 ${payment.payment_due_hours}시간 안(상한 ${deadline.date} ${deadline.time})`
-      : `${deadline.date} ${deadline.time}`;
-  let body = `주문번호 ${payment.order_no}${requested}\n결제할 금액 ${payment.amount.toLocaleString("ko-KR")}원\n은행 ${payment.bank_name}\n계좌번호 ${account}\n예금주 ${payment.holder_name}\n결제 기한 ${when}`;
-  if (payment.card_payment_url) {
-    try {
-      const url = new URL(payment.card_payment_url);
-      const withLink = `${body}\n카드 결제 ${url.href}`;
-      // 계좌와 현재 답의 자리를 남긴다. 기존에 저장한 긴 링크 때문에 안내 전체를 막지 않는다.
-      if (
-        url.protocol === "https:" &&
-        !url.username &&
-        !url.password &&
-        url.href.length <= CARD_PAYMENT_URL_MAX_LENGTH &&
-        [...withLink].length <= 2000
-      )
-        body = withLink;
-    } catch {
-      /* 잘못된 옛 링크는 안내에 넣지 않는다. */
-    }
-  }
-  return customerNoticeTexts(body);
+  const kind = payment.kind;
+  if (kind !== "first" && kind !== "reissue" && kind !== "difference")
+    return ["지금은 이 결제 안내를 사용할 수 없어요"];
+  return [
+    {
+      kind: "payment_notice",
+      view: {
+        state: "normal",
+        kind,
+        orderNo: payment.order_no,
+        amount: payment.amount,
+        account: { bankName: payment.bank_name, number: account, holderName: payment.holder_name },
+        dueAt: (payment.delivered_at === null ? payment.due_cap_at : payment.due_at).toISOString(),
+        timeZone: payment.time_zone,
+        ...(payment.card_payment_url === null ? {} : { cardPaymentUrl: payment.card_payment_url }),
+        ...(payment.delivered_at === null ? { deliveryWindow: { hours: payment.payment_due_hours } } : {}),
+        ...(adjustment === undefined ? {} : { adjustment }),
+        ...(payment.needs_amount_confirm && payment.amount_confirmed_at !== null ? { amountConfirmed: true } : {}),
+      },
+    },
+  ];
 }
