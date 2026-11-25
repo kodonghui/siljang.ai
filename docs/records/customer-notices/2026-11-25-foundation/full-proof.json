@@ -35,5 +35,7 @@
   "nodePassed": 55,
   "browserExecuted": false,
   "mockupUnknown": 1,
-  "npmCi": "shared same-lock installation reused locally; CI clean installation still required"
+  "npmCi": "shared same-lock installation reused locally; CI clean installation still required",
+  "historicalAtLocalCommit": "5d3cb6d41fe9b76797836780e4d3541922af0a38",
+  "subsequentReviewFixRequiresNewFull": true
 }

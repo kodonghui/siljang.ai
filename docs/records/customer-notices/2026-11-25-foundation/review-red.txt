@@ -1,0 +1,143 @@
+
+> test
+> vitest run test/payment-destination.test.ts test/customer-notice-payment-delivery.test.ts test/customer-notice-payment-clock.test.ts -t 正規化|정규화|긴 링크|상태 문구|견적 자료
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+ ❯ test/customer-notice-payment-delivery.test.ts (12 tests | 6 failed | 2 skipped) 1664ms
+   ❯ 다음 대화의 결제 안내 전달(TASK-104) (12)
+     × 긴 링크가 있어도 계좌 안내와 현재 답을 전한다(event/unicode) 154ms
+     × 긴 링크가 있어도 계좌 안내와 현재 답을 전한다(message/unicode) 138ms
+     × 긴 링크가 있어도 계좌 안내와 현재 답을 전한다(message/ascii) 85ms
+     × 상태 문구만 전달하면 결제 기한을 시작하지 않는다(quote_missing) 82ms
+     × 상태 문구만 전달하면 결제 기한을 시작하지 않는다(quote_mismatch) 75ms
+     × 상태 문구만 전달하면 결제 기한을 시작하지 않는다(reason_missing) 102ms
+ ❯ test/customer-notice-payment-clock.test.ts (9 tests | 3 failed | 6 skipped) 867ms
+   ❯ 결제 안내 전달 시각(TASK-104) (9)
+     × 견적 자료가 준비되지 않으면 발송 성공 표시 뒤에도 결제 시계를 시작하지 않는다(quote_missing) 56ms
+     × 견적 자료가 준비되지 않으면 발송 성공 표시 뒤에도 결제 시계를 시작하지 않는다(quote_mismatch) 27ms
+     × 견적 자료가 준비되지 않으면 발송 성공 표시 뒤에도 결제 시계를 시작하지 않는다(reason_missing) 21ms
+ ❯ test/payment-destination.test.ts (51 tests | 1 failed | 50 skipped) 8ms
+   ❯ 결제 계좌 입력 경계 (31)
+     × 정규화 뒤2048자를 넘는 한글 카드 결제 링크는 거절한다 6ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-payment-clock.test.ts > 결제 안내 전달 시각(TASK-104) > 견적 자료가 준비되지 않으면 발송 성공 표시 뒤에도 결제 시계를 시작하지 않는다(quote_missing)
+ FAIL  test/customer-notice-payment-clock.test.ts > 결제 안내 전달 시각(TASK-104) > 견적 자료가 준비되지 않으면 발송 성공 표시 뒤에도 결제 시계를 시작하지 않는다(quote_mismatch)
+ FAIL  test/customer-notice-payment-clock.test.ts > 결제 안내 전달 시각(TASK-104) > 견적 자료가 준비되지 않으면 발송 성공 표시 뒤에도 결제 시계를 시작하지 않는다(reason_missing)
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/customer-notice-payment-clock.test.ts:80:100
+     78|     await isolated.db.query("UPDATE payment_requests SET requested_amo…
+     79|     if(kind==='quote_missing')await isolated.db.query("UPDATE order_de…
+     80|     expect(await scoped().transaction(db=>recordPaymentNoticeDelivery(…
+       |                                                                                                    ^
+     81|     expect(await state()).toEqual({delivered_at:null,due_at:cap,due_ca…
+     82|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  test/customer-notice-payment-delivery.test.ts > 다음 대화의 결제 안내 전달(TASK-104) > 긴 링크가 있어도 계좌 안내와 현재 답을 전한다(event/unicode)
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ test/customer-notice-payment-delivery.test.ts:100:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  test/customer-notice-payment-delivery.test.ts > 다음 대화의 결제 안내 전달(TASK-104) > 긴 링크가 있어도 계좌 안내와 현재 답을 전한다(message/unicode)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '123456789012'
+
+Expected: "123456789012"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"사장님 확인 뒤 답드릴게요."}}]}}"
+
+ ❯ test/customer-notice-payment-delivery.test.ts:102:34
+    100|     expect(response.status).toBe(200);
+    101|     const body=await response.json();expectSchema('SkillTemplateRespon…
+    102|     expect(JSON.stringify(body)).toContain(ACCOUNT);
+       |                                  ^
+    103|     if(mode==='message')expect(JSON.stringify(body)).toContain('사장님 확인…
+    104|     if(kind==='short')expect(JSON.stringify(body)).toContain(url);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ FAIL  test/customer-notice-payment-delivery.test.ts > 다음 대화의 결제 안내 전달(TASK-104) > 긴 링크가 있어도 계좌 안내와 현재 답을 전한다(message/ascii)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '사장님 확인 뒤 답드릴게요.'
+
+Expected: "사장님 확인 뒤 답드릴게요."
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"주문번호 Q8WZHFD7\n결제할 금액 35,000원\n은행 시험은행\n계좌번호 123456789012\n예금주 시험사장\n결제 기한 이 안내가 전달된 때부터 12시간 안(상한 2026-11-26 09:00)\n카드 결제 https://pay.example/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}},{"simpleText":{"text":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}},{"simpleText":{"text":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}}]}}"
+
+ ❯ test/customer-notice-payment-delivery.test.ts:103:54
+    101|     const body=await response.json();expectSchema('SkillTemplateRespon…
+    102|     expect(JSON.stringify(body)).toContain(ACCOUNT);
+    103|     if(mode==='message')expect(JSON.stringify(body)).toContain('사장님 확인…
+       |                                                      ^
+    104|     if(kind==='short')expect(JSON.stringify(body)).toContain(url);
+    105|     expect((await state())?.delivered_at).toEqual(mode==='message'?NOW…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+
+ FAIL  test/customer-notice-payment-delivery.test.ts > 다음 대화의 결제 안내 전달(TASK-104) > 상태 문구만 전달하면 결제 기한을 시작하지 않는다(quote_missing)
+ FAIL  test/customer-notice-payment-delivery.test.ts > 다음 대화의 결제 안내 전달(TASK-104) > 상태 문구만 전달하면 결제 기한을 시작하지 않는다(quote_mismatch)
+ FAIL  test/customer-notice-payment-delivery.test.ts > 다음 대화의 결제 안내 전달(TASK-104) > 상태 문구만 전달하면 결제 기한을 시작하지 않는다(reason_missing)
+AssertionError: expected { …(2) } to deeply equal { delivered_at: null, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "delivered_at": null,
+-   "due_at": 2026-11-26T00:00:00.000Z,
++   "delivered_at": 2026-11-25T00:00:00.000Z,
++   "due_at": 2026-11-25T12:00:00.000Z,
+  }
+
+ ❯ test/customer-notice-payment-delivery.test.ts:123:27
+    121|     if(kind==='ready'){expect(JSON.stringify(body)).toContain(ACCOUNT)…
+    122|     else {expect(JSON.stringify(body)).not.toContain(ACCOUNT);expect(J…
+    123|     expect(await state()).toEqual({delivered_at:kind==='ready'?NOW:nul…
+       |                           ^
+    124|   });
+    125|   it("친구 아닌 손님에게 계좌 안내를 먼저 전한 때부터 기한을 세고 평문을 대화에 저장하지 않는다", async () =…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯
+
+ FAIL  test/payment-destination.test.ts > 결제 계좌 입력 경계 > 정규화 뒤2048자를 넘는 한글 카드 결제 링크는 거절한다
+AssertionError: expected function to throw an error, but it didn't
+ ❯ test/payment-destination.test.ts:519:70
+    517|     expect([...cardPaymentUrl].length).toBeLessThan(2048);
+    518|     expect(new URL(cardPaymentUrl).href.length).toBeGreaterThan(2048);
+    519|     expect(()=>parsePaymentDestination({...input(),cardPaymentUrl})).t…
+       |                                                                      ^
+    520|   });
+    521| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/10]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  10 failed | 4 passed | 58 skipped (72)
+   Start at  12:13:03
+   Duration  6.06s (import 47%, tests 45%, transform 7%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task104-customer-notices/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task104-customer-notices/app/server
+npm error command failed
+npm error command sh -c vitest run test/payment-destination.test.ts test/customer-notice-payment-delivery.test.ts test/customer-notice-payment-clock.test.ts -t '正規化|정규화|긴 링크|상태 문구|견적 자료'

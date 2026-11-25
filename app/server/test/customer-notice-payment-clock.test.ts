@@ -73,6 +73,22 @@ describeDb("결제 안내 전달 시각(TASK-104)", () => {
     expect(await scoped().transaction((db) => recordPaymentNoticeDelivery(db, id, newUuid(), NOW))).toBe(false);
     expect(await state()).toEqual({ delivered_at: null, due_at: cap, due_cap_at: cap });
   });
+  it.each(["quote_missing", "quote_mismatch", "reason_missing"] as const)(
+    "견적 자료가 준비되지 않으면 발송 성공 표시 뒤에도 결제 시계를 시작하지 않는다(%s)",
+    async (kind) => {
+      const { id, cap } = await notice(24);
+      await isolated.db.query("UPDATE payment_requests SET requested_amount=$2 WHERE id=$1", [
+        shop.paymentRequestId,
+        kind === "quote_mismatch" ? 30000 : 35000,
+      ]);
+      if (kind === "quote_missing")
+        await isolated.db.query("UPDATE order_details SET quote_id=NULL WHERE order_id=$1 AND version=1", [
+          shop.orderId,
+        ]);
+      expect(await scoped().transaction((db) => recordPaymentNoticeDelivery(db, id, shop.customerId, NOW))).toBe(false);
+      expect(await state()).toEqual({ delivered_at: null, due_at: cap, due_cap_at: cap });
+    },
+  );
   it("결제 기한은 주문 당시 운영규정의6시간을 사용한다", async () => {
     const { id, cap } = await notice(24);
     await isolated.db.query("UPDATE operating_rules SET payment_due_hours=6 WHERE id=$1", [shop.operatingRulesId]);

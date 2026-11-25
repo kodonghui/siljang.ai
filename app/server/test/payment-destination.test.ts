@@ -512,4 +512,10 @@ describe("결제 계좌 입력 경계", () => {
       expect(parsePaymentDestination(value)).toMatchObject(value);
     }
   });
+  it("정규화 뒤2048자를 넘는 한글 카드 결제 링크는 거절한다", () => {
+    const cardPaymentUrl = `https://pay.example/${"가".repeat(400)}`;
+    expect([...cardPaymentUrl].length).toBeLessThan(2048);
+    expect(new URL(cardPaymentUrl).href.length).toBeGreaterThan(2048);
+    expect(() => parsePaymentDestination({ ...input(), cardPaymentUrl })).toThrowError(ApiError);
+  });
 });

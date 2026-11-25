@@ -79,8 +79,12 @@ export async function recordPaymentNoticeDelivery(
     `UPDATE payment_requests p SET delivered_at=$4,due_at=LEAST($4::timestamptz+make_interval(hours=>r.payment_due_hours),p.due_cap_at)
       FROM notifications n JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id AND o.customer_id=n.customer_id
       JOIN operating_rules r ON r.shop_id=$1 AND r.id=o.operating_rules_id
+      LEFT JOIN order_details original ON original.shop_id=$1 AND original.order_id=o.id AND original.version=1
+      LEFT JOIN quotes q ON q.shop_id=$1 AND q.id=original.quote_id
+      LEFT JOIN order_details accepted ON accepted.shop_id=$1 AND accepted.order_id=o.id AND accepted.version=o.accepted_version
       WHERE p.shop_id=$1 AND p.order_id=o.id AND p.status='open' AND p.delivered_at IS NULL
         AND NOT p.needs_amount_confirm AND p.issued_at<=$4 AND p.due_cap_at>$4
+        AND (p.requested_amount IS NULL OR (q.amount=p.requested_amount AND q.display_kind IN ('fixed','from','range') AND accepted.amount_change_reason IS NOT NULL))
         AND o.status='awaiting_payment' AND o.personal_data_purged_at IS NULL
         AND n.shop_id=$1 AND n.id=$2 AND n.customer_id=$3 AND n.kind='payment_request'
         AND n.event_key='notice:'||p.id::text||':payment_request'

@@ -3,6 +3,7 @@ import { openAccountNumber } from "./account-number";
 import { TEXT_CUSTOMER_NOTICE_KINDS } from "./customer-notice-store";
 import type { FieldCrypto } from "./field-crypto";
 import type { KakaoMessageContent } from "./kakao-message-content";
+import { CARD_PAYMENT_URL_MAX_LENGTH } from "./payment-destination-input";
 import type { ShopDb } from "./shop-scope";
 import { toShopLocal } from "./time";
 
@@ -140,7 +141,16 @@ export async function customerNoticeContents(
   if (payment.card_payment_url) {
     try {
       const url = new URL(payment.card_payment_url);
-      if (url.protocol === "https:" && !url.username && !url.password) body += `\n카드 결제 ${url.href}`;
+      const withLink = `${body}\n카드 결제 ${url.href}`;
+      // 계좌와 현재 답의 자리를 남긴다. 기존에 저장한 긴 링크 때문에 안내 전체를 막지 않는다.
+      if (
+        url.protocol === "https:" &&
+        !url.username &&
+        !url.password &&
+        url.href.length <= CARD_PAYMENT_URL_MAX_LENGTH &&
+        [...withLink].length <= 2000
+      )
+        body = withLink;
     } catch {
       /* 잘못된 옛 링크는 안내에 넣지 않는다. */
     }

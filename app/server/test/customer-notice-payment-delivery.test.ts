@@ -91,6 +91,99 @@ describeDb("다음 대화의 결제 안내 전달(TASK-104)", () => {
   const state = async () =>
     (await isolated.db.query("SELECT delivered_at,due_at FROM payment_requests WHERE id=$1", [shop.paymentRequestId]))
       .rows[0];
+  it.each([
+    ["event", "unicode"],
+    ["message", "unicode"],
+    ["event", "ascii"],
+    ["message", "ascii"],
+    ["event", "short"],
+    ["message", "short"],
+  ] as const)("긴 링크가 있어도 계좌 안내와 현재 답을 전한다(%s/%s)", async (mode, kind) => {
+    const url =
+      kind === "unicode"
+        ? `https://pay.example/${"가".repeat(400)}`
+        : kind === "ascii"
+          ? `https://pay.example/${"x".repeat(2028)}`
+          : "https://pay.example/short";
+    await isolated.db.query("UPDATE payment_requests SET card_payment_url=$2 WHERE id=$1", [
+      shop.paymentRequestId,
+      url,
+    ]);
+    const response =
+      mode === "message"
+        ? await call("합성 긴 링크 뒤 질문")
+        : await createApp({
+            connect: () => isolated.connect(),
+            services: { now: () => clock, fieldCrypto: fc },
+            logSink: () => {},
+          }).request(
+            "/api/kakao/skills/event",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+              body: JSON.stringify({
+                bot: { id: shop.botId },
+                userRequest: {
+                  utterance: "",
+                  params: { noticeKey: id },
+                  user: { id: shop.userKey, type: "botUserKey" },
+                },
+                action: { id: "synthetic-link-notice", params: {} },
+              }),
+            },
+            env,
+          );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expectSchema("SkillTemplateResponse", body);
+    expect(JSON.stringify(body)).toContain(ACCOUNT);
+    if (mode === "message") expect(JSON.stringify(body)).toContain("사장님 확인 뒤 답드릴게요.");
+    if (kind === "short") expect(JSON.stringify(body)).toContain(url);
+    expect((await state())?.delivered_at).toEqual(mode === "message" ? NOW : null);
+  });
+  it.each(["quote_missing", "quote_mismatch", "reason_missing", "ready"] as const)(
+    "상태 문구만 전달하면 결제 기한을 시작하지 않는다(%s)",
+    async (kind) => {
+      await isolated.db.transaction(async (tx) => {
+        await tx.query(
+          "UPDATE quotes SET amount=25000,amount_max=40000,display_kind='range',order_kind='custom' WHERE id=$1",
+          [shop.quoteId],
+        );
+        await tx.query("UPDATE order_details SET amount=25000 WHERE order_id=$1 AND version=1", [shop.orderId]);
+        await tx.query(
+          `INSERT INTO order_details(shop_id,order_id,version,source,quote_id,price_list_id,pickup_at,allergy_consent,allergy_consent_version,allergy_consent_at,amount,amount_change_reason)
+        SELECT shop_id,order_id,2,'owner_amount_change',quote_id,price_list_id,pickup_at,allergy_consent,allergy_consent_version,allergy_consent_at,35000,'합성 장식 추가' FROM order_details WHERE order_id=$1 AND version=1`,
+          [shop.orderId],
+        );
+        await tx.query("UPDATE orders SET version=2,kind='custom',accepted_at=$2,accepted_version=2 WHERE id=$1", [
+          shop.orderId,
+          new Date(NOW.getTime() - HOUR),
+        ]);
+        await tx.query("UPDATE payment_requests SET requested_amount=25000 WHERE id=$1", [shop.paymentRequestId]);
+        if (kind === "quote_missing")
+          await tx.query("UPDATE order_details SET quote_id=NULL WHERE order_id=$1 AND version=1", [shop.orderId]);
+        if (kind === "quote_mismatch")
+          await tx.query("UPDATE payment_requests SET requested_amount=30000 WHERE id=$1", [shop.paymentRequestId]);
+        if (kind === "reason_missing")
+          await tx.query("UPDATE orders SET accepted_version=1 WHERE id=$1", [shop.orderId]);
+      });
+      const response = await call("합성 상태 안내 뒤 질문");
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expectSchema("SkillTemplateResponse", body);
+      if (kind === "ready") {
+        expect(JSON.stringify(body)).toContain(ACCOUNT);
+        expect(JSON.stringify(body)).toContain("25,000~40,000원");
+      } else {
+        expect(JSON.stringify(body)).not.toContain(ACCOUNT);
+        expect(JSON.stringify(body)).toContain("지금은 이 결제 안내를 사용할 수 없어요");
+      }
+      expect(await state()).toEqual({
+        delivered_at: kind === "ready" ? NOW : null,
+        due_at: new Date(NOW.getTime() + (kind === "ready" ? 12 : 24) * HOUR),
+      });
+    },
+  );
   it("친구 아닌 손님에게 계좌 안내를 먼저 전한 때부터 기한을 세고 평문을 대화에 저장하지 않는다", async () => {
     const network = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("합성 시험 실제 발신 금지"));
     try {
