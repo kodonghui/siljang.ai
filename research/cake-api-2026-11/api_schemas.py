@@ -1422,6 +1422,18 @@ OUTPUT = {"oneOf": [
         "buttons": arr(BUTTON, 0, 3),
     }, ["title"])}, ["textCard"]),
     obj({"simpleImage": obj({"imageUrl": URL, "altText": string(1, 50, desc="스크린 리더가 읽는 대체 글. 카카오 응답 형식의 최대 50자(설계 재검토 RD-14). 접근성 때문에 꼭 넣는 값으로 둠")}, ["imageUrl", "altText"])}, ["simpleImage"]),
+    obj({"carousel": obj({
+        "type": enum(["basicCard"]),
+        "items": arr(obj({
+            "title": string(1, 50),
+            "thumbnail": obj({
+                "imageUrl": URL,
+                "altText": string(1, 50, desc="완성 사진의 대체 글. 카카오 Thumbnail 한도 50자"),
+                "fixedRatio": {"type": "boolean"},
+            }, ["imageUrl", "altText"]),
+        }, ["thumbnail"]), 1, 10),
+    }, ["type", "items"])}, ["carousel"], desc="사진 기본 카드의 캐러셀. 출력 하나이며 앱은 완성 사진을 5장까지 표시함. 공식 응답 규격 2026-11-26 확인"),
+
 ]}
 S["SkillTemplateResponse"] = obj({
     "version": enum(["2.0"]),

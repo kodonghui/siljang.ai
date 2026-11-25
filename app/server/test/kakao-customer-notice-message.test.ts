@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { type KakaoCustomerNoticeView, kakaoCustomerNoticeMessage } from "../src/kakao-customer-notice-message";
 import { expectSchema } from "./support/contract";
+import { customerNoticePhotoAsk as ask, customerNoticePhotos as photos } from "./support/kakao-customer-notice-cases";
 
 it("사장님 답은 원문의 공백과 줄바꿈을 그대로 전하고 AI가 고치지 않는다", () => {
   const text = "  합성 사장님 답이에요.\n\n확인한 뒤 안내드릴게요.  ";
@@ -83,20 +84,6 @@ it("확정 안내는 확인한 금액과 가게 신원/내용 뒤 그 주문의 
     expect(JSON.stringify(body)).toContain(fact);
 });
 
-const photos = Array.from({ length: 5 }, (_, index) => ({
-  url: new URL(String(index), "https://photos.example/synthetic/").href,
-  altText: "합성 완성 사진",
-}));
-const ask = {
-  state: "photo-consent",
-  mode: "ask",
-  orderNo: "AB1234CD",
-  photos,
-  cardKey: "synthetic_notice_consent_key",
-  blockId: "synthetic-photo-consent",
-  expiresAt: "2026-11-26T06:30:00Z",
-  timeZone: "Asia/Seoul",
-};
 it("완성 사진5장과 원본 비율/대체 글·동의 카드가 출력3개 안에 함께 온다", () => {
   const body = render(ask);
   expectSchema("SkillTemplateResponse", body);

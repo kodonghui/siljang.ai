@@ -32012,6 +32012,55 @@ components:
                           description: 스크린 리더가 읽는 대체 글. 카카오 응답 형식의 최대 50자(설계 재검토 RD-14). 접근성 때문에 꼭 넣는 값으로 둠
                       additionalProperties: false
                   additionalProperties: false
+                - type: object
+                  description: 사진 기본 카드의 캐러셀. 출력 하나이며 앱은 완성 사진을 5장까지 표시함. 공식 응답 규격 2026-11-26 확인
+                  required:
+                  - carousel
+                  properties:
+                    carousel:
+                      type: object
+                      required:
+                      - type
+                      - items
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                          - basicCard
+                        items:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                            - thumbnail
+                            properties:
+                              title:
+                                type: string
+                                minLength: 1
+                                maxLength: 50
+                              thumbnail:
+                                type: object
+                                required:
+                                - imageUrl
+                                - altText
+                                properties:
+                                  imageUrl:
+                                    type: string
+                                    format: uri
+                                    maxLength: 2048
+                                  altText:
+                                    type: string
+                                    minLength: 1
+                                    maxLength: 50
+                                    description: 완성 사진의 대체 글. 카카오 Thumbnail 한도 50자
+                                  fixedRatio:
+                                    type: boolean
+                                additionalProperties: false
+                            additionalProperties: false
+                          minItems: 1
+                          maxItems: 10
+                      additionalProperties: false
+                  additionalProperties: false
               minItems: 1
               maxItems: 3
             quickReplies:
@@ -32241,6 +32290,55 @@ components:
                           minLength: 1
                           maxLength: 50
                           description: 스크린 리더가 읽는 대체 글. 카카오 응답 형식의 최대 50자(설계 재검토 RD-14). 접근성 때문에 꼭 넣는 값으로 둠
+                      additionalProperties: false
+                  additionalProperties: false
+                - type: object
+                  description: 사진 기본 카드의 캐러셀. 출력 하나이며 앱은 완성 사진을 5장까지 표시함. 공식 응답 규격 2026-11-26 확인
+                  required:
+                  - carousel
+                  properties:
+                    carousel:
+                      type: object
+                      required:
+                      - type
+                      - items
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                          - basicCard
+                        items:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                            - thumbnail
+                            properties:
+                              title:
+                                type: string
+                                minLength: 1
+                                maxLength: 50
+                              thumbnail:
+                                type: object
+                                required:
+                                - imageUrl
+                                - altText
+                                properties:
+                                  imageUrl:
+                                    type: string
+                                    format: uri
+                                    maxLength: 2048
+                                  altText:
+                                    type: string
+                                    minLength: 1
+                                    maxLength: 50
+                                    description: 완성 사진의 대체 글. 카카오 Thumbnail 한도 50자
+                                  fixedRatio:
+                                    type: boolean
+                                additionalProperties: false
+                            additionalProperties: false
+                          minItems: 1
+                          maxItems: 10
                       additionalProperties: false
                   additionalProperties: false
               minItems: 0
