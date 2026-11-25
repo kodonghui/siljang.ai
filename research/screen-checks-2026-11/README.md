@@ -42,3 +42,5 @@ node /tmp/siljang-qa051-operating-rules/server.mjs
 운영규정 생성기도 fixture-source의 동일 작업 트리/깨끗한 입력/임시 완성 후 교체를 사용합니다. 기존 출력은 previousOutput으로 보관하며 새 V7의 로컬 컴파일/계약 검사는 실제 학원컴 화면 성공과 구분합니다.
 
 운영규정 이력은 `node research/screen-checks-2026-11/build-operating-rules-history.mjs . /tmp/siljang-qa052-rules-history`로 생성합니다. 실제 OwnerArea/VersionHistory와 현재 API022/023의9응답·5상태를 묶습니다. 같은 원본/깨끗한 입력/임시 완성 후 교체와 이전 출력 보관을 사용합니다. 실제 브라우저·초점·사진 성공은 별도이며 새 V8은 기존 학원컴 V6의 원문/지시 수신/정지ACK를 수집하기 전 중복 전달하지 않습니다.
+
+채널 생성기도 실행/입력 저장소·깨끗한 HEAD를 확인하고 같은 원본의 보조 파일을 읽으며 임시 폴더에 완성한 뒤 교체합니다. 이전 출력은 previousOutput으로 보존합니다.43응답(화면41행/요청 키 헤더 추가2행)의 오류는 전체 OpenAPI Problem 예시와 올바른 미디어 유형/no-store를 보존합니다. 과거 V3는 이 고침 전 준비 자료이며 새 V4는 실제 전송/브라우저 성공과 구분합니다.

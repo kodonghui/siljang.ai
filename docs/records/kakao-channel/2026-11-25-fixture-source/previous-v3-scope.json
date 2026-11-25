@@ -1,0 +1,16 @@
+{
+  "archive": "/tmp/siljang-qa054-channel-v3-20261124.zip",
+  "fileCount": 765,
+  "bytes": 9112668,
+  "sha256": "1ca03e68338c701b1978d3bc6884fa3cdcab46a63f78413a1000ae864e4001d6",
+  "localSourceCommit": "411062e488b23a1b69912f7e4f5a29c4954c4ae0",
+  "equivalentMergedMain": "fb2edaea6a1d82ef7a631dad36ad428f0c3e133d",
+  "tree": "12c97b8ddae35038deb204408e640437596c4be7",
+  "scope": "이전 V3 준비 해시. 이번 원본/Problem 고침 전이며 현재 성공/전송이 아님",
+  "nativeTransfer": false,
+  "browserRun": false,
+  "rejected": "이전 V1/V2 전송/실행 금지",
+  "nativeRun": false,
+  "newV4Transfer": false,
+  "requiredNext": "접속 복구 뒤 기존 D4 진행/받은 지시·대기열·최종 정지ACK부터 읽고 새로 묶은 원본만 중복 없이 전달"
+}
