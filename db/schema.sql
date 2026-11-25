@@ -659,6 +659,9 @@ CREATE TABLE confirm_cards (
 );
 COMMENT ON TABLE confirm_cards IS 'TBL-024 손님 확인 카드: 상담·사용자·버전·30분 기한에 묶인 명령 버튼(G9)';
 
+-- 수신 참조의 재전달/권한 확인. 같은 수신의 중복 카드는 허용하고 읽는 쪽에서 거절한다.
+CREATE INDEX confirm_cards_source_message_idx ON confirm_cards (shop_id, consultation_id, customer_id, (payload->>'sourceMessageId'));
+
 -- TBL-025 change_requests (CTX-003) ← SPEC-024, SPEC-035, SPEC-041, SPEC-042, SPEC-043, SPEC-044, SPEC-045, SPEC-046, SPEC-048, SPEC-065, SPEC-070, SPEC-076 | terms: TERM-001
 CREATE TABLE change_requests (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 변경 요청 ID

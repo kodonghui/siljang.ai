@@ -84,17 +84,8 @@ export async function deferredKakaoBatch(
     scanLimited = false;
   const readAt = options.now ?? new Date();
   const merger = createKakaoAmountConfirmationMerger();
-  // 권한 부족인 참조만 남기고, 출력 예산 뒤의 셋째 정상 메시지까지 읽는다.
-  while (
-    !disclosureBlocked &&
-    merger.contents.length < DEFERRED_REPLY_BATCH + 1 &&
-    scanned < MAX_DEFERRED_MESSAGES_SCANNED
-  ) {
-    const limit = Math.min(DEFERRED_REPLY_BATCH + 1, MAX_DEFERRED_MESSAGES_SCANNED - scanned);
-    const result = await db.run<MessageRow>(
-      `SELECT m.id, m.body_masked, m.kind, m.trace_id, m.consultation_id, m.created_at::text AS cursor_created_at,
-        (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order,
-        ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.id IS DISTINCT FROM $4::uuid) AS blocked FROM messages m
+  // 조회와 한도 뒤 존재 확인이 같은 수신·권한·고지 조건을 쓴다.
+  const messageFrom = `FROM messages m
         JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
         WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'outbound'
           AND m.delivery = 'deferred' AND m.sent_at IS NULL AND char_length(m.body_masked) BETWEEN 1 AND 1000
@@ -124,17 +115,29 @@ export async function deferredKakaoBatch(
                 AND pp.requested_amount IS NULL AND pp.issued_at<=$8 AND pp.due_cap_at>$8
                 AND pp.id=(SELECT latest.id FROM payment_requests latest WHERE latest.shop_id=$1 AND latest.order_id=oo.id
                   ORDER BY latest.issued_at DESC,latest.id DESC LIMIT 1)
-            ))
+            ))`;
+  const messageParams = (limit: number) => [
+    customerId,
+    limit,
+    options.disclosureConsultationId ?? null,
+    options.excludeMessageId ?? null,
+    cursor?.createdAt ?? null,
+    cursor?.id ?? null,
+    readAt,
+  ];
+  // 권한 부족인 참조만 남기고, 출력 예산 뒤의 셋째 정상 메시지까지 읽는다.
+  while (
+    !disclosureBlocked &&
+    merger.contents.length < DEFERRED_REPLY_BATCH + 1 &&
+    scanned < MAX_DEFERRED_MESSAGES_SCANNED
+  ) {
+    const limit = Math.min(DEFERRED_REPLY_BATCH + 1, MAX_DEFERRED_MESSAGES_SCANNED - scanned);
+    const result = await db.run<MessageRow>(
+      `SELECT m.id, m.body_masked, m.kind, m.trace_id, m.consultation_id, m.created_at::text AS cursor_created_at,
+        (extract(epoch FROM m.created_at) * 1000000)::bigint::text AS created_order,
+        ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.id IS DISTINCT FROM $4::uuid) AS blocked ${messageFrom}
         ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
-      [
-        customerId,
-        limit,
-        options.disclosureConsultationId ?? null,
-        options.excludeMessageId ?? null,
-        cursor?.createdAt ?? null,
-        cursor?.id ?? null,
-        readAt,
-      ],
+      messageParams(limit),
     );
     const last = result.rows.at(-1);
     if (last === undefined) break;
@@ -183,6 +186,14 @@ export async function deferredKakaoBatch(
     }
     scanLimited = scanned >= MAX_DEFERRED_MESSAGES_SCANNED && result.rows.length === limit;
     if (result.rows.length < limit) break;
+  }
+  if (scanLimited && !disclosureBlocked && merger.contents.length < DEFERRED_REPLY_BATCH + 1) {
+    // 다음 카드의 본문/표시는 읽지 않고 다음 대상 행의 존재만 확인한다.
+    const next = await db.run<{ pending: boolean }>(
+      `SELECT EXISTS(SELECT 1 ${messageFrom} LIMIT $3) AS pending`,
+      messageParams(1),
+    );
+    scanLimited = next.rows[0]?.pending === true;
   }
   // 결제 안내는 표시 자료를 늦게 만들고 실제 전달 표시와 같은 트랜잭션에서 시계를 시작한다.
   await db.run(
