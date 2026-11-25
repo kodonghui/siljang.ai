@@ -1,0 +1,29 @@
+{
+  "sourceCommit": "138c0868ff3ec61a8bc9c2e5954889b8a1dc94ef",
+  "firstCollectionFailure": {
+    "commit": "36aebc6",
+    "filesFailed": 1,
+    "executedTests": 0
+  },
+  "presentation": {
+    "files": 1,
+    "passed": 17
+  },
+  "runtimeRelated": {
+    "files": 6,
+    "passed": 125
+  },
+  "matrixAndPresentation": {
+    "files": 2,
+    "passed": 18,
+    "overlapTests": 17,
+    "responseRows": 29
+  },
+  "typecheck": 0,
+  "strictLint": 0,
+  "newFullChecks": "running",
+  "native": "unverified",
+  "newBrowserSession": false,
+  "actualModelCalls": 0,
+  "payments": 0
+}

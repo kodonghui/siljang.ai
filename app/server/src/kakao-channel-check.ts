@@ -5,6 +5,7 @@ import {
   kakaoChannelResult,
   recordKakaoChannelConflict,
 } from "./kakao-channel";
+import { type KakaoTrialBlock, kakaoConsultationMessage } from "./kakao-consultation-message";
 import { kakaoReply } from "./kakao-reply";
 import { kakaoContactPhone } from "./kakao-skill-store";
 import { ApiError } from "./problem";
@@ -31,43 +32,24 @@ function trialReply(
   r: ShopRequest,
   channel: Channel,
   outcome: "channel_test_card" | "block_verified" | "channel_linked",
+  completed?: KakaoTrialBlock,
 ): Response {
   const headers = { "Siljang-Outcome": outcome, "Cache-Control": "no-store" };
   if (outcome === "channel_linked")
-    return r.json(
-      {
-        version: "2.0",
-        template: {
-          outputs: [
-            { simpleText: { text: "시험 버튼 다섯이 모두 닿아 연결됐어요. 손님 안내는 다음 대화 때 전해요." } },
-          ],
-        },
-      },
-      200,
-      headers,
-    );
+    return r.json(kakaoConsultationMessage({ state: "link-test", mode: "linked" }), 200, headers);
   const next = TRIAL_BLOCKS.find((block) => !channel.verified_blocks.includes(block.name)) ?? TRIAL_BLOCKS[0];
   const blockId = channel[next.column];
   if (blockId === null) throw new Error("configured trial block missing");
   const count = channel.verified_blocks.length;
   return r.json(
-    {
-      version: "2.0",
-      template: {
-        outputs: [
-          {
-            textCard: {
-              title: "연결 확인",
-              description:
-                outcome === "channel_test_card"
-                  ? `연결 문구를 받았어요. 시험 버튼을 하나씩 눌러 주세요(${count}/5 확인).`
-                  : `시험 블록이 닿았어요(${count}/5). 다음 시험 버튼을 눌러 주세요.`,
-              buttons: [{ label: `시험: ${next.label}`, action: "block", blockId, extra: { check: next.name } }],
-            },
-          },
-        ],
-      },
-    },
+    kakaoConsultationMessage({
+      state: "link-test",
+      mode: outcome === "channel_test_card" ? "initial" : "verified",
+      next: next.name,
+      blockId,
+      verifiedCount: count,
+      ...(completed === undefined ? {} : { completed }),
+    }),
     200,
     headers,
   );
@@ -149,7 +131,7 @@ export async function receiveKakaoChannelCheck(
         "UPDATE kakao_channels SET verified_blocks=$3 WHERE shop_id=$1 AND id=$2 RETURNING *,xmin::text AS revision",
         [channel.id, verified],
       );
-    return trialReply(r, channel, "block_verified");
+    return trialReply(r, channel, "block_verified", block.name);
   });
 }
 
