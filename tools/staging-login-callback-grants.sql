@@ -68,6 +68,18 @@ GRANT SELECT (price_list_id, pickup_day, pickup_time, customer_name, customer_ph
 GRANT SELECT, INSERT ON masked_values TO :"runtime_role";
 -- TASK-028: 미전달 일반 글은 다음 응답/콜백에 전한 뒤 상태와 시각만 고친다.
 GRANT SELECT, UPDATE (status, sent_at) ON notifications TO :"runtime_role";
+-- TASK-104: 자기 안내를 만들고 발신 시도/관측 결과만 남긴다. 본문·받는 사람 수정과 삭제는 열지 않는다.
+GRANT INSERT (shop_id, event_key, customer_id, consultation_id, order_id, kind,
+  template_key, body, status, next_attempt_at, scheduled_for, created_at) ON notifications TO :"runtime_role";
+GRANT UPDATE (attempts, kakao_task_id, requested_at, delivery_checked_at, fail_code)
+  ON notifications TO :"runtime_role";
+-- 결제 안내는 당시 계좌와 금액을 읽고 실제 전달 때 전달 시각/기한만 고친다.
+GRANT SELECT (amount, requested_amount, needs_amount_confirm, amount_confirmed_at,
+  amount_card_id, delivered_at, issued_at, payment_account_id, card_payment_url),
+  UPDATE (delivered_at, due_at) ON payment_requests TO :"runtime_role";
+GRANT SELECT (shop_id, order_id, amount) ON payments TO :"runtime_role";
+GRANT SELECT (accepted_version) ON orders TO :"runtime_role";
+GRANT SELECT (quote_id, amount_change_reason) ON order_details TO :"runtime_role";
 -- TASK-077: 안내는 위 TASK-028의 기존 전체 SELECT로 status·sent_at·표시 필드·전달 트랜잭션을 읽는다.
 -- 중복 SELECT는 추가하지 않는다. 참고 사진의 연결·위치·저장 키만 추가하며 수정·삭제 권한은 늘리지 않는다.
 GRANT SELECT (message_id, position, storage_key) ON reference_photos TO :"runtime_role";

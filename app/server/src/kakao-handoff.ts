@@ -1,4 +1,5 @@
 import { eventKeys, insertOnce } from "./event-keys";
+import type { FieldCrypto } from "./field-crypto";
 import { handoffSourceMatch } from "./handoff-source";
 import { createHandoffTask } from "./handoff-task";
 import {
@@ -27,8 +28,11 @@ export async function replyWithKakaoHandoff(
   receipt: Extract<InboundReceipt, { kind: "received" }>,
   now: Date,
   render: (previous: readonly KakaoMessageContent[]) => Response,
+  fields?: () => FieldCrypto,
 ): Promise<Response> {
-  return db.transaction((tx) => replyKakaoHandoffInTransaction(tx, receipt, now, render));
+  return db.transaction((tx) =>
+    replyKakaoHandoffInTransaction(tx, receipt, now, render, "ai_failure", undefined, fields),
+  );
 }
 
 /** 호출자의 수신 트랜잭션을 그대로 사용해 후속 실패 때 수신도 되돌린다. */
@@ -39,6 +43,7 @@ export async function replyKakaoHandoffInTransaction(
   render: (previous: readonly KakaoMessageContent[]) => Response,
   reason: FailureReason = "ai_failure",
   policy?: KakaoDisclosurePolicy,
+  fields?: () => FieldCrypto,
 ): Promise<Response> {
   await tx.found("SELECT id FROM customers WHERE shop_id = $1 AND id = $2 FOR UPDATE", [receipt.customerId]);
   const consultation = await tx.found<{ status: string }>(
@@ -66,6 +71,7 @@ export async function replyKakaoHandoffInTransaction(
           disclosureConsultationId: disclosure?.consultationId,
           now,
           allowFullOrderCard: true,
+          fields,
         })
       : [];
   const rendered = renderDeferredKakaoReply(deferredKakaoTexts(previous), render);

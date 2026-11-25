@@ -1,0 +1,68 @@
+
+> test
+> vitest run test/customer-notices-skill.test.ts test/customer-notice-payment-clock.test.ts -t 운영규정
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+ ❯ test/customer-notices-skill.test.ts (12 tests | 1 failed | 10 skipped) 1103ms
+   ❯ 손님 안내 스킬 API-073(TASK-104) (12)
+     × 자기 결제 안내의 옛 계좌와 운영규정6시간을 보이며 스킬 읽기만으로 결제 시계를 시작하지 않는다 54ms
+ ❯ test/customer-notice-payment-clock.test.ts (6 tests | 1 failed | 5 skipped) 912ms
+   ❯ 결제 안내 전달 시각(TASK-104) (6)
+     × 결제 기한은 주문 당시 운영규정의6시간을 사용한다 60ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-payment-clock.test.ts > 결제 안내 전달 시각(TASK-104) > 결제 기한은 주문 당시 운영규정의6시간을 사용한다
+AssertionError: expected { …(3) } to deeply equal { …(3) }
+
+- Expected
++ Received
+
+  {
+    "delivered_at": 2026-11-25T00:00:00.000Z,
+-   "due_at": 2026-11-25T06:00:00.000Z,
++   "due_at": 2026-11-25T12:00:00.000Z,
+    "due_cap_at": 2026-11-26T00:00:00.000Z,
+  }
+
+ ❯ test/customer-notice-payment-clock.test.ts:80:27
+     78|     await isolated.db.query("UPDATE operating_rules SET payment_due_ho…
+     79|     expect(await scoped().transaction(db=>recordPaymentNoticeDelivery(…
+     80|     expect(await state()).toEqual({delivered_at:NOW,due_at:new Date(NO…
+       |                           ^
+     81|   });
+     82|   it("새 금액 확인 전에는 안내가 전달돼도 시계를 시작하지 않는다", async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/customer-notices-skill.test.ts > 손님 안내 스킬 API-073(TASK-104) > 자기 결제 안내의 옛 계좌와 운영규정6시간을 보이며 스킬 읽기만으로 결제 시계를 시작하지 않는다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '전달된 때부터 6시간'
+
+Expected: "전달된 때부터 6시간"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"주문번호 ZDA1S7TX\n결제할 금액 35,000원\n은행 시험은행\n계좌번호 123456789012\n예금주 시험사장\n결제 기한 이 안내가 전달된 때부터 12시간 안(상한 2026-11-26 09:00)"}}]}}"
+
+ ❯ test/customer-notices-skill.test.ts:159:35
+    157|     expect(JSON.stringify(value)).toContain(account);
+    158|     expect(JSON.stringify(value)).toContain("35,000원");
+    159|     expect(JSON.stringify(value)).toContain(`전달된 때부터 ${hours}시간`);
+       |                                   ^
+    160|     expect(
+    161|       (await isolated.db.query("SELECT delivered_at,due_at FROM paymen…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 1 passed | 15 skipped (18)
+   Start at  11:24:14
+   Duration  4.13s (tests 52%, import 38%, transform 10%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task104-customer-notices/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task104-customer-notices/app/server
+npm error command failed
+npm error command sh -c vitest run test/customer-notices-skill.test.ts test/customer-notice-payment-clock.test.ts -t 운영규정

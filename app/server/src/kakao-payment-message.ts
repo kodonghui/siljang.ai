@@ -1,5 +1,6 @@
 /** SCR-005 표시 함수. 결제 처리와 전달 시각의 저장은 업무 처리기가 맡습니다. */
 import { isAccountNumber } from "./account-number";
+import { CARD_PAYMENT_URL_MAX_LENGTH } from "./payment-destination-input";
 import { toShopLocal } from "./time";
 
 interface PaymentQuote {
@@ -43,6 +44,8 @@ export interface KakaoPaymentNormalView {
   readonly dueAt: string;
   readonly timeZone: string;
   readonly cardPaymentUrl?: string;
+  /** 실제 전달을 아직 관측하지 않은 안내 읽기는 상대 시간과 상한을 보인다. */
+  readonly deliveryWindow?: { readonly hours: number };
   readonly amountConfirmed?: boolean;
   readonly adjustment?: { readonly requestedQuote: PaymentQuote; readonly reason: string };
 }
@@ -92,15 +95,16 @@ const checkedText = (value: string, max: number) => {
     throw new RangeError("invalid payment presentation text");
   return value;
 };
-function money(amount: number) {
-  if (!Number.isSafeInteger(amount) || amount < 1 || amount > 10000000) throw new RangeError("invalid payment amount");
+function money(amount: number, minimum = 1) {
+  if (!Number.isSafeInteger(amount) || amount < minimum || amount > 10000000)
+    throw new RangeError("invalid payment amount");
   return amount.toLocaleString("ko-KR");
 }
 function quoteDisplay(quote: PaymentQuote) {
-  const amount = money(quote.amount);
+  const amount = money(quote.amount, 0);
   if (quote.displayKind === "range") {
     if (quote.amountMax === null || quote.amountMax < quote.amount) throw new RangeError("invalid payment quote");
-    return `${amount}~${money(quote.amountMax)}원`;
+    return `${amount}~${money(quote.amountMax, 0)}원`;
   }
   if (quote.displayKind !== "from" && quote.displayKind !== "fixed") throw new RangeError("invalid payment quote");
   return `${amount}원${quote.displayKind === "from" ? "부터" : ""}`;
@@ -163,20 +167,24 @@ function paymentNormalMessage(view: KakaoPaymentNormalView): KakaoPaymentMessage
     view.adjustment === undefined
       ? ""
       : `\n요청하신 견적 ${quoteDisplay(view.adjustment.requestedQuote)} → ${money(view.amount)}원\n사유: ${checkedText(view.adjustment.reason, 200)}`;
+  if (view.deliveryWindow && (!Number.isSafeInteger(view.deliveryWindow.hours) || view.deliveryWindow.hours < 1))
+    throw new RangeError("invalid payment delivery window");
+  const deadline = view.deliveryWindow
+    ? `이 안내가 전달된 때부터 ${view.deliveryWindow.hours}시간 안(상한 ${due.date} ${due.time})`
+    : `${due.date} ${due.time}까지 보내 주세요`;
   const text = checkedText(
-    `${view.amountConfirmed ? "새 금액을 확인했어요\n" : ""}${title} · 주문번호 ${view.orderNo}${adjustment}\n결제할 금액 ${money(view.amount)}원\n은행 ${view.account.bankName}\n계좌번호 ${view.account.number}\n예금주 ${view.account.holderName}\n${due.date} ${due.time}까지 보내 주세요`,
+    `${view.amountConfirmed ? "새 금액을 확인했어요\n" : ""}${title} · 주문번호 ${view.orderNo}${adjustment}\n결제할 금액 ${money(view.amount)}원\n은행 ${view.account.bankName}\n계좌번호 ${view.account.number}\n예금주 ${view.account.holderName}\n${deadline}`,
     1000,
   );
   let url: URL | null = null;
   if (view.cardPaymentUrl !== undefined) {
     try {
       const candidate = new URL(view.cardPaymentUrl);
-      // API025의 정규화 한도. PR280을 main에 반영한 뒤 공통 상수를 사용한다.
       if (
         candidate.protocol === "https:" &&
         !candidate.username &&
         !candidate.password &&
-        candidate.href.length <= 2048
+        candidate.href.length <= CARD_PAYMENT_URL_MAX_LENGTH
       )
         url = candidate;
     } catch {

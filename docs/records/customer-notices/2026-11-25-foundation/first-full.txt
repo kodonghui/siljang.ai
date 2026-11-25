@@ -1,0 +1,200 @@
+
+> test
+> npm run test -w server && npm run test -w web
+
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+ ❯ test/slot-holds.test.ts (42 tests | 1 failed) 4516ms
+   ❯ 가예약의 날짜 잠금·중복·추가 수락(TASK-082) (42)
+     × 자리·주문·결제·변경·추가 수락의 식별자·기한·삭제 권한을 열지 않음 40ms
+(node:2688671) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ test/scheduled-poll.test.ts (4 tests | 3 failed) 911ms
+   ❯ 기본 Cron의 매분 연결 확인 (2)
+     × 실행 시각 밖에도 DB 연결 실패를 숨기지 않고 다음 분에 다시 확인할 수 있게 남김 26ms
+     × 권한 실패는 SQLSTATE만 남기고 성공 표시는 하지 않으며 연결을 닫음 4ms
+   ❯ 시작 표시 조회와 실제 실행의 분리 (2)
+     × 03시 직전·실행 창 끝·정오에도 시작 표를 읽고 성공을 남기며 잠금·쓰기는 하지 않음 31ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/scheduled-poll.test.ts > 기본 Cron의 매분 연결 확인 > 실행 시각 밖에도 DB 연결 실패를 숨기지 않고 다음 분에 다시 확인할 수 있게 남김
+AssertionError: expected [ { level: 'error', …(3) }, …(7) ] to deeply equal [ { level: 'error', …(3) }, …(4) ]
+
+- Expected
++ Received
+
+@@ -27,6 +27,24 @@
+      "count": 0,
+      "event": "job_run",
+      "job": "consultation_idle",
+      "level": "warn",
+    },
++   {
++     "errorName": "DbUnavailableError",
++     "event": "job_find_failed",
++     "job": "customer_notice",
++     "level": "error",
++   },
++   {
++     "errorName": "DbUnavailableError",
++     "event": "job_find_failed",
++     "job": "customer_notice",
++     "level": "error",
++   },
++   {
++     "count": 0,
++     "event": "job_run",
++     "job": "customer_notice",
++     "level": "warn",
++   },
+  ]
+
+ ❯ test/scheduled-poll.test.ts:28:56
+     26|     expect(result?.jobs.purge?.failed).toBe(1);
+     27|     expect(result?.jobs.consultation_idle?.failed).toBe(3);
+     28|     expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
+       |                                                        ^
+     29|       { level: "error", event: "job_start_failed", job: "purge", error…
+     30|       ...idleFailures({ errorName: "DbUnavailableError" }),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/scheduled-poll.test.ts > 기본 Cron의 매분 연결 확인 > 권한 실패는 SQLSTATE만 남기고 성공 표시는 하지 않으며 연결을 닫음
+AssertionError: expected [ { level: 'error', …(4) }, …(8) ] to deeply equal [ { level: 'error', …(4) }, …(5) ]
+
+- Expected
++ Received
+
+@@ -35,9 +35,29 @@
+    },
+    {
+      "dbCode": "42501",
+      "errorName": "DatabaseError",
+      "event": "job_find_failed",
++     "job": "customer_notice",
++     "level": "error",
++   },
++   {
++     "dbCode": "42501",
++     "errorName": "DatabaseError",
++     "event": "job_find_failed",
++     "job": "customer_notice",
++     "level": "error",
++   },
++   {
++     "count": 0,
++     "event": "job_run",
++     "job": "customer_notice",
++     "level": "warn",
++   },
++   {
++     "dbCode": "42501",
++     "errorName": "DatabaseError",
++     "event": "job_find_failed",
+      "job": "kakao_callback_recovery",
+      "level": "error",
+    },
+  ]
+
+ ❯ test/scheduled-poll.test.ts:53:56
+     51|     expect(result?.jobs.consultation_idle?.failed).toBe(3);
+     52|     expect(closed).toBe(1);
+     53|     expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
+       |                                                        ^
+     54|       { level: "error", event: "job_start_failed", job: "purge", error…
+     55|       ...idleFailures({ errorName: "DatabaseError", dbCode: "42501" }),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/scheduled-poll.test.ts > 시작 표시 조회와 실제 실행의 분리 > 03시 직전·실행 창 끝·정오에도 시작 표를 읽고 성공을 남기며 잠금·쓰기는 하지 않음
+AssertionError: expected [ { level: 'info', …(2) }, …(4) ] to deeply equal [ { level: 'info', …(2) }, …(1) ]
+
+- Expected
++ Received
+
+@@ -3,10 +3,28 @@
+      "event": "job_polled",
+      "job": "purge",
+      "level": "info",
+    },
+    {
++     "errorName": "AssertionError",
++     "event": "job_find_failed",
++     "job": "customer_notice",
++     "level": "error",
++   },
++   {
++     "errorName": "AssertionError",
++     "event": "job_find_failed",
++     "job": "customer_notice",
++     "level": "error",
++   },
++   {
++     "count": 0,
++     "event": "job_run",
++     "job": "customer_notice",
++     "level": "warn",
++   },
++   {
+      "count": 0,
+      "event": "kakao_callback_recovery_polled",
+      "level": "info",
+    },
+  ]
+
+ ❯ test/scheduled-poll.test.ts:109:60
+    107|         expect(result?.jobs.purge).toEqual({ found: 0, done: 0, skippe…
+    108|         expect(result?.jobs.consultation_idle).toEqual({ found: 0, don…
+    109|         expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
+       |                                                            ^
+    110|           { level: "info", event: "job_polled", job: "purge" },
+    111|           { level: "info", event: "kakao_callback_recovery_polled", co…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/slot-holds.test.ts > 가예약의 날짜 잠금·중복·추가 수락(TASK-082) > 자리·주문·결제·변경·추가 수락의 식별자·기한·삭제 권한을 열지 않음
+AssertionError: expected [ { allowed: true } ] to deeply equal [ { allowed: false } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "allowed": false,
++     "allowed": true,
+    },
+  ]
+
+ ❯ test/slot-holds.test.ts:312:9
+    310|           ])
+    311|         ).rows,
+    312|       ).toEqual([{ allowed: false }]);
+       |         ^
+    313|     for (const table of ["slot_holds", "payment_requests", "orders", "…
+    314|       expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed | 148 passed (150)
+      Tests  4 failed | 2907 passed (2911)
+   Start at  11:30:17
+   Duration  292.51s (tests 69%, import 29%, transform 1%)
+
+     Import  366 modules were evaluated 597 times · 79.99s total, 29% of tracked time
+             ~30.95s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task104-customer-notices/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task104-customer-notices/app/server
+npm error command failed
+npm error command sh -c vitest run

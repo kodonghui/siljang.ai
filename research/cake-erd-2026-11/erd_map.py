@@ -1046,6 +1046,7 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("30일 지난 AI 도구 호출 기록(상담이 열려 있어도)", "ai_tool_calls.called_at"),
     ],
     "SPEC-066": [
+        ("먼저 보내기 설정 오류의 사장님 알림", "owner_alerts.kind"),
         ("안내 종류", "notifications.kind"),
         ("같은 주문 같은 이벤트 한 번", "notifications.event_key"),
         ("정해진 템플릿", "notifications.template_key"),

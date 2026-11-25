@@ -1,0 +1,16 @@
+
+> test
+> vitest run test/customer-notices.test.ts test/customer-notices-skill.test.ts test/kakao-runtime-grants.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+
+ Test Files  3 passed (3)
+      Tests  58 passed (58)
+   Start at  11:51:02
+   Duration  9.18s (tests 67%, import 28%, transform 4%)
+
+     Import  180 modules were evaluated 245 times · 2.49s total, 28% of tracked time
+             ~662ms faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

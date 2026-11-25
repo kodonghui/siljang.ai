@@ -1235,12 +1235,12 @@ CREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_st
 CREATE INDEX owner_tasks_handoff_idx ON owner_tasks (shop_id, handoff_id) WHERE handoff_id IS NOT NULL; -- 수신 글과 사장님 확인 건 연결
 COMMENT ON TABLE owner_tasks IS 'TBL-042 사장님 할 일: 사장님이 정할 일과 사장님 답 기다림(1-7)';
 
--- TBL-043 owner_alerts (CTX-008) ← SPEC-003, SPEC-006, SPEC-022, SPEC-024, SPEC-044, SPEC-046, SPEC-048, SPEC-050, SPEC-057, SPEC-058, SPEC-064, SPEC-065, SPEC-067, SPEC-076, SPEC-078 | terms: TERM-035
+-- TBL-043 owner_alerts (CTX-008) ← SPEC-003, SPEC-006, SPEC-022, SPEC-024, SPEC-044, SPEC-046, SPEC-048, SPEC-050, SPEC-057, SPEC-058, SPEC-064, SPEC-065, SPEC-066, SPEC-067, SPEC-076, SPEC-078 | terms: TERM-035
 CREATE TABLE owner_alerts (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- 사장님 알림 ID
   shop_id          uuid NOT NULL,                        -- 가게
   owner_task_id    uuid,                                 -- 알린 할 일. 상담을 지울 때 그 상담의 에스컬레이션 할 일은 지우고 이 연결만 비움(SPEC-065, 설계 재검토 H3)
-  kind             text NOT NULL CHECK (kind IN ('new_task', 'task_realert', 'handoff_appended', 'health_concern', 'ledger_failing', 'license_on_hold', 'order_cancelled', 'change_not_applied', 'payment_account_changed', 'identity_change_applied', 'identity_change_on_hold')), -- 새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)·결제 받을 계좌 바뀜(할 일 없이 알림만, 계좌번호 없음, SPEC-067, REQ-198)·사업자 정보 변경 반영됨·보류됨(할 일 없이 알림만, SPEC-078, REQ-245)
+  kind             text NOT NULL CHECK (kind IN ('new_task', 'task_realert', 'handoff_appended', 'health_concern', 'ledger_failing', 'license_on_hold', 'order_cancelled', 'change_not_applied', 'payment_account_changed', 'identity_change_applied', 'identity_change_on_hold', 'channel_event_unavailable')), -- 새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)·결제 받을 계좌 바뀜(할 일 없이 알림만, 계좌번호 없음, SPEC-067, REQ-198)·사업자 정보 변경 반영됨·보류됨(할 일 없이 알림만, SPEC-078, REQ-245)·손님 안내 먼저 보내기 설정 오류(SPEC-066, REQ-181)
   event_key        text NOT NULL,                        -- 알림마다 한 번(SPEC-067). 형식 alert:{알린 일}:{할 일 ID나 대상 ID}, 하루 한 번까지인 다시 알림은 뒤에 :{가게 날짜}(4절 A33)
   status           text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirming', 'sent', 'not_friend', 'failed', 'batched')), -- 보낼 것·발송 결과 확인 중·보냄(닿음 확인)·우리 채널 친구가 아님·실패(할 일 목록에만)·다른 알림에 묶임
   batched_into_id  uuid,                                 -- 1분 안 같은 종류는 하나로 묶어 보냄(SPEC-067)
@@ -2623,7 +2623,7 @@ COMMENT ON COLUMN owner_tasks.closed_at IS '사장님이 처리해 닫히거나 
 COMMENT ON COLUMN owner_alerts.id IS '사장님 알림 ID';
 COMMENT ON COLUMN owner_alerts.shop_id IS '가게';
 COMMENT ON COLUMN owner_alerts.owner_task_id IS '알린 할 일. 상담을 지울 때 그 상담의 에스컬레이션 할 일은 지우고 이 연결만 비움(SPEC-065, 설계 재검토 H3)';
-COMMENT ON COLUMN owner_alerts.kind IS '새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)·결제 받을 계좌 바뀜(할 일 없이 알림만, 계좌번호 없음, SPEC-067, REQ-198)·사업자 정보 변경 반영됨·보류됨(할 일 없이 알림만, SPEC-078, REQ-245)';
+COMMENT ON COLUMN owner_alerts.kind IS '새 할 일·지연 뒤 다시 알림·새 질문 덧붙음·먹고 아프다는 신고·장부 적기 실패·영업 신고 보류·주문 취소됨(SPEC-050)·변경 반영 안 됨(SPEC-044)·결제 받을 계좌 바뀜(할 일 없이 알림만, 계좌번호 없음, SPEC-067, REQ-198)·사업자 정보 변경 반영됨·보류됨(할 일 없이 알림만, SPEC-078, REQ-245)·손님 안내 먼저 보내기 설정 오류(SPEC-066, REQ-181)';
 COMMENT ON COLUMN owner_alerts.event_key IS '알림마다 한 번(SPEC-067). 형식 alert:{알린 일}:{할 일 ID나 대상 ID}, 하루 한 번까지인 다시 알림은 뒤에 :{가게 날짜}(4절 A33)';
 COMMENT ON COLUMN owner_alerts.status IS '보낼 것·발송 결과 확인 중·보냄(닿음 확인)·우리 채널 친구가 아님·실패(할 일 목록에만)·다른 알림에 묶임';
 COMMENT ON COLUMN owner_alerts.batched_into_id IS '1분 안 같은 종류는 하나로 묶어 보냄(SPEC-067)';

@@ -1,0 +1,80 @@
+
+> test
+> vitest run test/kakao-runtime-grants.test.ts -t 손님 안내 최소 권한
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+ ❯ test/kakao-runtime-grants.test.ts (17 tests | 3 failed | 14 skipped) 1005ms
+   ❯ 스테이징 권한 파일로 제한한 카카오 실패 처리(TASK-028) (17)
+     × 손님 안내 최소 권한으로 확정 안내를 한 번만 만들고 본문 수정과 삭제는 열지 않는다 59ms
+     × 손님 안내 최소 권한의 실제 스킬은 자기 계좌를 읽고 다음 답 전달 때 결제 기한만 고친다 75ms
+     × 손님 안내 최소 권한의 실행기는 시도/채널 오류와 사장님 알림을 기록한다 49ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-runtime-grants.test.ts > 스테이징 권한 파일로 제한한 카카오 실패 처리(TASK-028) > 손님 안내 최소 권한으로 확정 안내를 한 번만 만들고 본문 수정과 삭제는 열지 않는다
+error: permission denied for table payments
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ createOrderConfirmedNotice src/customer-notice-store.ts:64:5
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ test/kakao-runtime-grants.test.ts:543:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/kakao-runtime-grants.test.ts > 스테이징 권한 파일로 제한한 카카오 실패 처리(TASK-028) > 손님 안내 최소 권한의 실제 스킬은 자기 계좌를 읽고 다음 답 전달 때 결제 기한만 고친다
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ test/kakao-runtime-grants.test.ts:562:56
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/kakao-runtime-grants.test.ts > 스테이징 권한 파일로 제한한 카카오 실패 처리(TASK-028) > 손님 안내 최소 권한의 실행기는 시도/채널 오류와 사장님 알림을 기록한다
+AssertionError: expected [ { status: 'pending', …(2) } ] to deeply equal [ { status: 'deferred', …(2) } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "attempts": 1,
+-     "fail_code": "wallet",
+-     "status": "deferred",
++     "attempts": 0,
++     "fail_code": null,
++     "status": "pending",
+    },
+  ]
+
+ ❯ test/kakao-runtime-grants.test.ts:579:109
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 14 skipped (17)
+   Start at  11:13:10
+   Duration  2.51s (tests 43%, import 33%, transform 24%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task104-customer-notices/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task104-customer-notices/app/server
+npm error command failed
+npm error command sh -c vitest run test/kakao-runtime-grants.test.ts -t '손님 안내 최소 권한'

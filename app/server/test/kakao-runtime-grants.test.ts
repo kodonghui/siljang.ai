@@ -1,10 +1,14 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
+import { sealAccountNumber } from "../src/account-number";
 import { createAiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import { assessPickupDay, closedDayNoticeTrace, requestClosedPickupDay } from "../src/booking-capacity";
 import { pressConfirmCard, showConfirmCard } from "../src/confirm-card-store";
+import { createOrderConfirmedNotice } from "../src/customer-notice-store";
+import { createCustomerNoticeHandler } from "../src/customer-notices";
 import { pgConnector, type RequestDb } from "../src/db";
+import { runDueJobs } from "../src/job-runner";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
@@ -15,7 +19,7 @@ import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { anthropicStream, sseResponse } from "./support/ai-mock";
 import { collectLogs, describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
-import { newFieldKey } from "./support/field-keys";
+import { newFieldKey, singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { prepareOrderCardSource } from "./support/order-card";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
@@ -524,6 +528,188 @@ describeDb("스테이징 권한 파일로 제한한 카카오 실패 처리(TASK
       { can_read: true, can_status: true, can_sent: true, can_body: false, can_insert: false, can_delete: false },
     ]);
     expect(logs.lines.join("\n")).not.toContain("42501");
+  });
+
+  it("손님 안내 최소 권한으로 확정 안내를 한 번만 만들고 본문 수정과 삭제는 열지 않는다", async () => {
+    const target = await createShop(db, "제한 역할 확정 안내"),
+      at = new Date("2026-11-25T00:00:00Z"),
+      paymentId = newUuid();
+    await db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2 WHERE id=$1",
+        [target.paymentRequestId, at],
+      );
+      await tx.query(
+        "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+        [paymentId, target.shopId, target.orderId, target.paymentRequestId, at],
+      );
+      await tx.query("UPDATE orders SET status='confirmed',confirmed_at=$2,confirmed_payment_id=$3 WHERE id=$1", [
+        target.orderId,
+        at,
+        paymentId,
+      ]);
+    });
+    const runtime = pgConnector(new Secret(databaseUrl));
+    try {
+      const scoped = shopRequestDb(createShopScope(target.shopId, { kind: "job", job: "customer_notice" }), runtime);
+      const first = await scoped.transaction((tx) => createOrderConfirmedNotice(tx, target.orderId, at));
+      expect(first?.created).toBe(true);
+      expect(await scoped.transaction((tx) => createOrderConfirmedNotice(tx, target.orderId, at))).toEqual({
+        id: first?.id,
+        created: false,
+      });
+      expect((await db.query("SELECT status FROM notifications WHERE id=$1", [first?.id])).rows).toEqual([
+        { status: "deferred" },
+      ]);
+      await expect(runtime.query("UPDATE notifications SET body=body WHERE id=$1", [first?.id])).rejects.toMatchObject({
+        code: "42501",
+      });
+      await expect(runtime.query("UPDATE quotes SET id=id WHERE id=$1", [target.quoteId])).rejects.toMatchObject({
+        code: "42501",
+      });
+      expect(
+        (
+          await db.query(
+            "SELECT has_column_privilege($1,'notifications','id','INSERT') AS id_insert,has_table_privilege($1,'notifications','DELETE') AS can_delete",
+            [role],
+          )
+        ).rows,
+      ).toEqual([{ id_insert: false, can_delete: false }]);
+    } finally {
+      await runtime.close();
+    }
+  });
+  it("손님 안내 최소 권한의 실제 스킬은 자기 계좌를 읽고 다음 답 전달 때 결제 기한만 고친다", async () => {
+    const target = await createShop(db, "제한 역할 결제 안내"),
+      at = new Date("2026-11-25T00:00:00Z"),
+      id = newUuid(),
+      account = "123456789012",
+      { fc } = singleKeyCrypto();
+    await issueTestBookingLink(db, target);
+    await linkTestChannel(db, target.channelId);
+    const sealed = await sealAccountNumber(fc, account, "payment_accounts.account_number", target.shopId),
+      cap = new Date(at.getTime() + 24 * 3600000);
+    await db.query("UPDATE payment_accounts SET account_number_enc=$2,account_last4=$3 WHERE id=$1", [
+      target.paymentAccountId,
+      sealed.enc,
+      sealed.last4,
+    ]);
+    await db.query("UPDATE payment_requests SET delivered_at=NULL,issued_at=$2,due_at=$3,due_cap_at=$3 WHERE id=$1", [
+      target.paymentRequestId,
+      new Date(at.getTime() - 3600000),
+      cap,
+    ]);
+    await db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status) VALUES($1,$2,$3,$4,$5,'payment_request',$6,'payment_request:v1','합성 결제 안내','deferred')",
+      [
+        id,
+        target.shopId,
+        target.customerId,
+        target.consultationId,
+        target.orderId,
+        `notice:${target.paymentRequestId}:payment_request`,
+      ],
+    );
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), target.channelId, 1),
+      logs = collectLogs();
+    const app = createApp({ services: { now: () => at, fieldCrypto: fc }, logSink: logs.sink });
+    const call = (kind: "event" | "message") =>
+      app.request(
+        `/api/kakao/skills/${kind}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+          body: JSON.stringify({
+            bot: { id: target.botId },
+            userRequest: {
+              utterance: kind === "event" ? "" : "합성 제한 역할 결제 질문",
+              params: kind === "event" ? { noticeKey: id } : {},
+              block: { id: "permissions" },
+              user: { id: target.userKey, type: "botUserKey" },
+            },
+            action: { id: "permissions", params: {} },
+          }),
+        },
+        testEnv({ DATABASE_URL: databaseUrl }),
+      );
+    const read = await call("event");
+    expect(read.status).toBe(200);
+    expect(JSON.stringify(await read.json())).toContain(account);
+    expect(
+      (await db.query("SELECT delivered_at FROM payment_requests WHERE id=$1", [target.paymentRequestId])).rows,
+    ).toEqual([{ delivered_at: null }]);
+    const reply = await call("message");
+    expect(reply.status).toBe(200);
+    expect(JSON.stringify(await reply.json())).toContain(account);
+    expect(
+      (await db.query("SELECT delivered_at,due_at FROM payment_requests WHERE id=$1", [target.paymentRequestId])).rows,
+    ).toEqual([{ delivered_at: at, due_at: new Date(at.getTime() + 12 * 3600000) }]);
+    expect(logs.lines.join("\n")).not.toContain("42501");
+    const runtime = pgConnector(new Secret(databaseUrl));
+    try {
+      await expect(
+        runtime.query("UPDATE payment_requests SET amount=amount WHERE id=$1", [target.paymentRequestId]),
+      ).rejects.toMatchObject({ code: "42501" });
+    } finally {
+      await runtime.close();
+    }
+  });
+  it("손님 안내 최소 권한의 실행기는 시도/채널 오류와 사장님 알림을 기록한다", async () => {
+    const target = await createShop(db, "제한 역할 안내 실행"),
+      at = new Date("2026-11-25T00:00:00Z"),
+      id = newUuid();
+    await linkTestChannel(db, target.channelId);
+    await db.query("UPDATE customers SET channel_friend=true,friend_checked_at=$2 WHERE id=$1", [
+      target.customerId,
+      at,
+    ]);
+    await db.query("UPDATE kakao_channels SET event_status='ready',event_checked_at=$2 WHERE id=$1", [
+      target.channelId,
+      at,
+    ]);
+    await db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,next_attempt_at,created_at) VALUES($1,$2,$3,$4,'owner_reply',$5,'owner_reply:v1','합성 사장님 안내','pending',$6,$6)",
+      [id, target.shopId, target.customerId, target.consultationId, `notice:${id}:owner_reply`, at],
+    );
+    const runtime = pgConnector(new Secret(databaseUrl));
+    try {
+      const result = await runDueJobs({
+        db: runtime,
+        now: at,
+        jobs: [
+          {
+            name: "customer_notice",
+            every: "minute",
+            sources: ["notification_send", "notification_check"],
+            handler: createCustomerNoticeHandler({
+              enabled: true,
+              now: () => at,
+              events: () => ({
+                requestNotice: async () => ({
+                  kind: "failed",
+                  code: "wallet",
+                  retryable: false,
+                  disableChannel: true,
+                  attention: "owner",
+                }),
+                checkDelivery: async () => ({ kind: "pending" }),
+              }),
+            }),
+          },
+        ],
+        log: () => {},
+        clock: () => 0,
+      });
+      expect(result).toBeTruthy();
+      expect((await db.query("SELECT status,attempts,fail_code FROM notifications WHERE id=$1", [id])).rows).toEqual([
+        { status: "deferred", attempts: 1, fail_code: "wallet" },
+      ]);
+      expect((await db.query("SELECT kind FROM owner_alerts WHERE shop_id=$1", [target.shopId])).rows).toEqual([
+        { kind: "channel_event_unavailable" },
+      ]);
+    } finally {
+      await runtime.close();
+    }
   });
 
   it("같은 제한 역할로 새 질문을 덧붙이고 중복 요청의 추가 쓰기를 막음", async () => {

@@ -1,0 +1,49 @@
+> test
+> vitest run test/kakao-payment-content.test.ts test/kakao-payment-message.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+ ❯ test/kakao-payment-content.test.ts (4 tests | 1 failed) 77ms
+   × 세 출력만 먼저 전하는 응답도 결제 바로가기를 잃지 않는다 31ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-content.test.ts > 세 출력만 먼저 전하는 응답도 결제 바로가기를 잃지 않는다
+AssertionError: expected undefined to deeply equal [ { label: '결제했어요', …(2) } ]
+
+- Expected:
+[
+  {
+    "action": "message",
+    "label": "결제했어요",
+    "messageText": "결제했어요",
+  },
+]
+
++ Received:
+undefined
+
+ ❯ test/kakao-payment-content.test.ts:66:38
+     64|   const body = await result.response.json();
+     65|   expectSchema("SkillTemplateResponse", body);
+     66|   expect(body.template.quickReplies).toEqual([{ label: "결제했어요", action…
+       |                                      ^
+     67|   expect(JSON.stringify(body)).not.toContain("현재 합성 답");
+     68| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 26 passed (27)
+   Start at  12:35:20
+   Duration  2.04s (import 81%, transform 11%, tests 8%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-payment-message/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-payment-message/app/server
+npm error command failed
+npm error command sh -c vitest run test/kakao-payment-content.test.ts test/kakao-payment-message.test.ts

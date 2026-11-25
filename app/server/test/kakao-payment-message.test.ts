@@ -17,6 +17,16 @@ const customAmount = {
   reason: "합성 디자인 장식을 추가해요",
 } as const;
 
+it("요청 견적의0원부터 표시는 실제 결제 금액과 구별해 보존한다", () => {
+  const body = kakaoPaymentMessage({
+    ...customAmount,
+    requestedQuote: { amount: 0, amountMax: null, displayKind: "from" },
+  });
+  expectSchema("SkillTemplateResponse", body);
+  expect(JSON.stringify(body)).toContain("요청하신 견적 0원부터");
+  expect(JSON.stringify(body)).toContain("75,000원");
+});
+
 it.each([
   [{ amount: 70000, amountMax: null, displayKind: "fixed" }, "70,000원"],
   [{ amount: 70000, amountMax: null, displayKind: "from" }, "70,000원부터"],

@@ -1,0 +1,14 @@
+> test
+> vitest run test/customer-notice-payment-delivery.test.ts test/customer-notices-skill.test.ts test/customer-notice-payment-clock.test.ts test/kakao-payment-message.test.ts test/kakao-payment-content.test.ts test/kakao-runtime-grants.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-message/app/server
+
+
+ Test Files  6 passed (6)
+      Tests  81 passed (81)
+   Start at  12:42:32
+   Duration  12.69s (tests 58%, import 37%, transform 5%)
+
+    Isolate  6 workers spawned · ~149ms startup each (spawn + environment, per file)
+             at least ~745ms faster with isolate: false — reuses workers across files instead of one per file

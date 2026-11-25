@@ -1,0 +1,12 @@
+
+> test
+> vitest run test/customer-notices-skill.test.ts test/kakao-deferred.test.ts test/customer-notice-payment-delivery.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+
+ Test Files  3 passed (3)
+      Tests  43 passed (43)
+   Start at  11:20:33
+   Duration  10.14s (tests 60%, import 37%, transform 4%)

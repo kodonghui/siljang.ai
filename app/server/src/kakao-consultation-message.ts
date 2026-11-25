@@ -1,7 +1,7 @@
 /** SCR003의 응답 표시. 업무 상태·견적·가까운 날은 서버가 확인한 값을 받으며 이 모듈은 DB/AI/HTTP를 호출하지 않는다. */
 
 import { kakaoChannelIdentifierError } from "./kakao-channel-input";
-import { type KakaoMessageContent, kakaoMessageOutputs } from "./kakao-message-content";
+import { type KakaoMessageContent, kakaoMessageTemplate } from "./kakao-message-content";
 import type { customerQuote } from "./quotes";
 import { toShopLocal } from "./time";
 
@@ -55,7 +55,7 @@ export type KakaoConsultationView =
   | TrialView;
 
 function template(contents: readonly KakaoMessageContent[]) {
-  return { version: "2.0" as const, template: { outputs: kakaoMessageOutputs(contents) } };
+  return { version: "2.0" as const, template: kakaoMessageTemplate(contents) };
 }
 function dateReplies(days: readonly string[]) {
   if (days.length > 3 || new Set(days).size !== days.length) throw new RangeError("invalid suggested days");
@@ -85,7 +85,7 @@ export function kakaoConsultationMessage(view: KakaoConsultationView) {
       }
       if (view.contents.length === 0) throw new RangeError("answer content missing");
       const body = template(view.contents);
-      const quickReplies = dateReplies(view.suggestedDays ?? []);
+      const quickReplies = [...(body.template.quickReplies ?? []), ...dateReplies(view.suggestedDays ?? [])];
       return quickReplies.length === 0 ? body : { ...body, template: { ...body.template, quickReplies } };
     }
     case "stale":
