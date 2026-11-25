@@ -1,0 +1,43 @@
+{
+  "review": 7149091421,
+  "source": "ebcdb877725d338082dc5b464716787bc8d04fdc",
+  "red": {
+    "source": "ff812d8",
+    "pass": 6,
+    "fail": 2,
+    "log": "/tmp/siljang-task055-review-red-20261125.log"
+  },
+  "results": {
+    "node": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task055-review-green-20261125.log",
+      "lines": [
+        "# tests 45",
+        "# pass 45",
+        "# fail 0"
+      ]
+    },
+    "cli": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task055-review-cli-20261125.log",
+      "lines": [
+        "{\"source\":\"ebcdb877725d338082dc5b464716787bc8d04fdc\",\"out\":\"/tmp/siljang-qa055-v3-review-20261125\",\"primaryStates\":6,\"responseRows\":5,\"browserRun\":false,\"previousOutput\":null}"
+      ]
+    }
+  },
+  "relatedWeb": {
+    "pass": 45,
+    "files": 3,
+    "source": "f98771f6ac8f88f42acc126aa2c863d4345c5224",
+    "unchangedProductCode": true
+  },
+  "typeBuild": {
+    "exitCode": 0,
+    "source": "6578180b7dae7c0da21eeb06b6053dec1d811418",
+    "unchangedProductCode": true
+  },
+  "version": "V3",
+  "zip": 0,
+  "transfer": 0,
+  "browserRun": false
+}

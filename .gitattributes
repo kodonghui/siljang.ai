@@ -46,3 +46,7 @@ docs/records/operating-rules/2026-11-24-history-runtime/*.json -text
 docs/records/operating-rules/2026-11-24-runtime/main257-deployment.json -text whitespace=cr-at-eol
 docs/records/kakao-channel/2026-11-25-fixture-source/*.json -text
 docs/records/payment-destination/2026-11-24-runtime/*.json -text
+docs/records/booking-link/2026-11-25-runtime/*.json -text
+docs/records/booking-link/2026-11-25-runtime/main266-deployment.json -diff
+docs/records/booking-link/2026-11-25-runtime/parent266-checks.json -diff
+docs/records/booking-link/2026-11-25-runtime/stage-checks.json -diff

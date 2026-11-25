@@ -48,3 +48,5 @@ node /tmp/siljang-qa051-operating-rules/server.mjs
 채널 생성기도 실행/입력 저장소·깨끗한 HEAD를 확인하고 같은 원본의 보조 파일을 읽으며 임시 폴더에 완성한 뒤 교체합니다. 이전 출력은 previousOutput으로 보존합니다.43응답(화면41행/요청 키 헤더 추가2행)의 오류는 전체 OpenAPI Problem 예시와 올바른 미디어 유형/no-store를 보존합니다. 과거 V3는 이 고침 전 준비 자료이며 새 V5는 실제 전송/브라우저 성공과 구분합니다.
 
 공통 원본 검사는 웹이 상속하는 app/tsconfig.base.json도 포함합니다. 실제 시험용 Git 사본에도 상속 설정을 함께 넣어 미커밋 클래스 필드 설정으로 번들이 달라지면 기존 SHA를 붙이지 않도록 검사합니다. 채널 자료의 지원하지 않는 기본404는 query를 뺀 실제 요청 경로를 instance에 넣습니다.
+
+예약 링크 자료는 `node research/screen-checks-2026-11/build-booking-link.mjs . /tmp/siljang-qa055-booking-link`로 생성합니다. 실제 OwnerArea/BookingLinkScreen과6상태/5응답·재조회 실패/준비 상태 변경을 묶습니다. 미충족 조건의 각 설정 화면은 해당 상태의 진입 조회를 제공하며 저장은 해당 TASK 자료에서 확인합니다. 발급 주소는 예약된 .example 도메인이고 실제 발급 주소/도착 화면은 자기 가게 실환경 확인으로 구분합니다. 같은 원본/완성 뒤 교체를 사용하며 공통 상속 설정 고침을 PR266 main에서 통합했고 최종 검사를 이어갑니다.

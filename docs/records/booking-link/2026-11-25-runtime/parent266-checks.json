@@ -1,0 +1,41 @@
+{
+  "source": "6578180b7dae7c0da21eeb06b6053dec1d811418",
+  "parentMain": "77d70bea90b828327df5691b2cabb0f10576605b",
+  "newLocalNpmCi": false,
+  "results": {
+    "node": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task055-parent266-node-20261125.log",
+      "lines": [
+        "# tests 43",
+        "# pass 43",
+        "# fail 0"
+      ]
+    },
+    "type": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task055-parent266-type-20261125.log",
+      "lines": []
+    },
+    "build": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task055-parent266-build-20261125.log",
+      "lines": [
+        "✓ built in 614ms",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    },
+    "cli": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task055-parent266-cli-20261125.log",
+      "lines": [
+        "{\"source\":\"6578180b7dae7c0da21eeb06b6053dec1d811418\",\"out\":\"/tmp/siljang-qa055-v2-parent266-20261125\",\"primaryStates\":6,\"responseRows\":5,\"browserRun\":false,\"previousOutput\":null}"
+      ]
+    }
+  },
+  "browserRun": false,
+  "outsideServices": 0
+}
