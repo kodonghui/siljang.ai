@@ -1,0 +1,522 @@
+> test
+> vitest run test/kakao-payment-claim-message.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/server
+
+ ❯ test/kakao-payment-claim-message.test.ts (15 tests | 13 failed) 85ms
+   × 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"done","kind":"claimed"}) 12ms
+   × 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"done","kind":"declined"}) 4ms
+   × 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"done","kind":"used","firstOutcome":"payment_claimed"}) 2ms
+   × 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"done","kind":"used","firstOutcome":"declined"}) 1ms
+   × 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"stale","currentStatus":"이미 결제가 확인됐어요"}) 2ms
+   × 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"permission","reason":"card_not_yours"}) 2ms
+   × 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"permission","reason":"not_accepting","contactPhone":"02-000-0000"}) 1ms
+   × 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"error","reason":"retry_needed"}) 2ms
+   × 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"error","reason":"server_error"}) 2ms
+   × 입금자 이름은 전용 블록으로만 묻고 원래 이름을 다시 보내지 않는다(false) 5ms
+   × 입금자 이름은 전용 블록으로만 묻고 원래 이름을 다시 보내지 않는다(true) 2ms
+   × 바뀌거나 기한이 지난 카드는 새 키와 정해진 문구를 보인다(stale) 1ms
+   × 바뀌거나 기한이 지난 카드는 새 키와 정해진 문구를 보인다(expired) 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"done","kind":"claimed"})
+ FAIL  test/kakao-payment-claim-message.test.ts > 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"done","kind":"used","firstOutcome":"payment_claimed"})
+AssertionError: expected [ { textCard: { …(3) } } ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "simpleText": {
+-       "text": "사장님께 알렸어요. 확인되면 알려 드릴게요",
++     "textCard": {
++       "buttons": [
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "결제 확인 요청",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-depositor",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "입금자 이름이 달라요",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "decline",
++           },
++           "label": "안 할래요",
++         },
++       ],
++       "description": "주문번호 AB1234CD
++ 금액 35,000원
++ 결제 기한 2026-11-28 21:00
++ 입금자 합성 주문자(주문자 이름)
++ 15:30까지 눌러 주세요",
++       "title": "결제 확인 요청",
+      },
+    },
+  ]
+
+ ❯ test/kakao-payment-claim-message.test.ts:63:33
+     61|   const body = kakaoPaymentClaimMessage({ ...normal, ...view });
+     62|   expectSchema("SkillTemplateResponse", body);
+     63|   expect(body.template.outputs).toEqual([{ simpleText: { text } }]);
+       |                                 ^
+     64|   for (const value of [normal.orderNo, normal.depositorName, "35,000원"…
+     65|     expect(JSON.stringify(body)).not.toContain(value);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"done","kind":"declined"})
+ FAIL  test/kakao-payment-claim-message.test.ts > 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"done","kind":"used","firstOutcome":"declined"})
+AssertionError: expected [ { textCard: { …(3) } } ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "simpleText": {
+-       "text": "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요",
++     "textCard": {
++       "buttons": [
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "결제 확인 요청",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-depositor",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "입금자 이름이 달라요",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "decline",
++           },
++           "label": "안 할래요",
++         },
++       ],
++       "description": "주문번호 AB1234CD
++ 금액 35,000원
++ 결제 기한 2026-11-28 21:00
++ 입금자 합성 주문자(주문자 이름)
++ 15:30까지 눌러 주세요",
++       "title": "결제 확인 요청",
+      },
+    },
+  ]
+
+ ❯ test/kakao-payment-claim-message.test.ts:63:33
+     61|   const body = kakaoPaymentClaimMessage({ ...normal, ...view });
+     62|   expectSchema("SkillTemplateResponse", body);
+     63|   expect(body.template.outputs).toEqual([{ simpleText: { text } }]);
+       |                                 ^
+     64|   for (const value of [normal.orderNo, normal.depositorName, "35,000원"…
+     65|     expect(JSON.stringify(body)).not.toContain(value);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"stale","currentStatus":"이미 결제가 확인됐어요"})
+AssertionError: expected [ { textCard: { …(3) } } ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "simpleText": {
+-       "text": "지금은 할 수 없어요: 이미 결제가 확인됐어요",
++     "textCard": {
++       "buttons": [
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "결제 확인 요청",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-depositor",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "입금자 이름이 달라요",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "decline",
++           },
++           "label": "안 할래요",
++         },
++       ],
++       "description": "주문번호 AB1234CD
++ 금액 35,000원
++ 결제 기한 2026-11-28 21:00
++ 입금자 합성 주문자(주문자 이름)
++ 15:30까지 눌러 주세요",
++       "title": "결제 확인 요청",
+      },
+    },
+  ]
+
+ ❯ test/kakao-payment-claim-message.test.ts:63:33
+     61|   const body = kakaoPaymentClaimMessage({ ...normal, ...view });
+     62|   expectSchema("SkillTemplateResponse", body);
+     63|   expect(body.template.outputs).toEqual([{ simpleText: { text } }]);
+       |                                 ^
+     64|   for (const value of [normal.orderNo, normal.depositorName, "35,000원"…
+     65|     expect(JSON.stringify(body)).not.toContain(value);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"permission","reason":"card_not_yours"})
+AssertionError: expected [ { textCard: { …(3) } } ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "simpleText": {
+-       "text": "이 버튼은 카드를 받은 분만 누를 수 있어요",
++     "textCard": {
++       "buttons": [
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "결제 확인 요청",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-depositor",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "입금자 이름이 달라요",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "decline",
++           },
++           "label": "안 할래요",
++         },
++       ],
++       "description": "주문번호 AB1234CD
++ 금액 35,000원
++ 결제 기한 2026-11-28 21:00
++ 입금자 합성 주문자(주문자 이름)
++ 15:30까지 눌러 주세요",
++       "title": "결제 확인 요청",
+      },
+    },
+  ]
+
+ ❯ test/kakao-payment-claim-message.test.ts:63:33
+     61|   const body = kakaoPaymentClaimMessage({ ...normal, ...view });
+     62|   expectSchema("SkillTemplateResponse", body);
+     63|   expect(body.template.outputs).toEqual([{ simpleText: { text } }]);
+       |                                 ^
+     64|   for (const value of [normal.orderNo, normal.depositorName, "35,000원"…
+     65|     expect(JSON.stringify(body)).not.toContain(value);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"permission","reason":"not_accepting","contactPhone":"02-000-0000"})
+AssertionError: expected [ { textCard: { …(3) } } ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "simpleText": {
+-       "text": "아직 상담을 받지 않아요. 가게로 연락해 주세요: 02-000-0000",
++     "textCard": {
++       "buttons": [
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "결제 확인 요청",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-depositor",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "입금자 이름이 달라요",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "decline",
++           },
++           "label": "안 할래요",
++         },
++       ],
++       "description": "주문번호 AB1234CD
++ 금액 35,000원
++ 결제 기한 2026-11-28 21:00
++ 입금자 합성 주문자(주문자 이름)
++ 15:30까지 눌러 주세요",
++       "title": "결제 확인 요청",
+      },
+    },
+  ]
+
+ ❯ test/kakao-payment-claim-message.test.ts:63:33
+     61|   const body = kakaoPaymentClaimMessage({ ...normal, ...view });
+     62|   expectSchema("SkillTemplateResponse", body);
+     63|   expect(body.template.outputs).toEqual([{ simpleText: { text } }]);
+       |                                 ^
+     64|   for (const value of [normal.orderNo, normal.depositorName, "35,000원"…
+     65|     expect(JSON.stringify(body)).not.toContain(value);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"error","reason":"retry_needed"})
+AssertionError: expected [ { textCard: { …(3) } } ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "simpleText": {
+-       "text": "다시 눌러 주세요",
++     "textCard": {
++       "buttons": [
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "결제 확인 요청",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-depositor",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "입금자 이름이 달라요",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "decline",
++           },
++           "label": "안 할래요",
++         },
++       ],
++       "description": "주문번호 AB1234CD
++ 금액 35,000원
++ 결제 기한 2026-11-28 21:00
++ 입금자 합성 주문자(주문자 이름)
++ 15:30까지 눌러 주세요",
++       "title": "결제 확인 요청",
+      },
+    },
+  ]
+
+ ❯ test/kakao-payment-claim-message.test.ts:63:33
+     61|   const body = kakaoPaymentClaimMessage({ ...normal, ...view });
+     62|   expectSchema("SkillTemplateResponse", body);
+     63|   expect(body.template.outputs).toEqual([{ simpleText: { text } }]);
+       |                                 ^
+     64|   for (const value of [normal.orderNo, normal.depositorName, "35,000원"…
+     65|     expect(JSON.stringify(body)).not.toContain(value);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 닫힘/권한/오류에는 첫 결과나 지금 상태만 보이고 입금자를 숨긴다({"state":"error","reason":"server_error"})
+AssertionError: expected [ { textCard: { …(3) } } ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "simpleText": {
+-       "text": "잠시 뒤 다시 말씀해 주세요",
++     "textCard": {
++       "buttons": [
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "결제 확인 요청",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-depositor",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "confirm",
++           },
++           "label": "입금자 이름이 달라요",
++         },
++         {
++           "action": "block",
++           "blockId": "synthetic-card",
++           "extra": {
++             "cardKey": "synthetic_payment_claim_key_01",
++             "choice": "decline",
++           },
++           "label": "안 할래요",
++         },
++       ],
++       "description": "주문번호 AB1234CD
++ 금액 35,000원
++ 결제 기한 2026-11-28 21:00
++ 입금자 합성 주문자(주문자 이름)
++ 15:30까지 눌러 주세요",
++       "title": "결제 확인 요청",
+      },
+    },
+  ]
+
+ ❯ test/kakao-payment-claim-message.test.ts:63:33
+     61|   const body = kakaoPaymentClaimMessage({ ...normal, ...view });
+     62|   expectSchema("SkillTemplateResponse", body);
+     63|   expect(body.template.outputs).toEqual([{ simpleText: { text } }]);
+       |                                 ^
+     64|   for (const value of [normal.orderNo, normal.depositorName, "35,000원"…
+     65|     expect(JSON.stringify(body)).not.toContain(value);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/13]⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 입금자 이름은 전용 블록으로만 묻고 원래 이름을 다시 보내지 않는다(false)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '입금자 이름을 1~30자로 알려 주세요'
+
+Expected: "입금자 이름을 1~30자로 알려 주세요"
+Received: "{"version":"2.0","template":{"outputs":[{"textCard":{"title":"결제 확인 요청","description":"주문번호 AB1234CD\n금액 35,000원\n결제 기한 2026-11-28 21:00\n입금자 합성 주문자(주문자 이름)\n15:30까지 눌러 주세요","buttons":[{"label":"결제 확인 요청","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_payment_claim_key_01","choice":"confirm"}},{"label":"입금자 이름이 달라요","action":"block","blockId":"synthetic-depositor","extra":{"cardKey":"synthetic_payment_claim_key_01","choice":"confirm"}},{"label":"안 할래요","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_payment_claim_key_01","choice":"decline"}}]}}]}}"
+
+ ❯ test/kakao-payment-claim-message.test.ts:72:16
+     70|   expectSchema("SkillTemplateResponse", body);
+     71|   const text = JSON.stringify(body);
+     72|   expect(text).toContain(invalid ? "입금자 이름은 1~30자로 넣어 주세요" : "입금자 이름을 …
+       |                ^
+     73|   expect(text).toContain("입금자 이름 넣기");
+     74|   expect(text).toContain(normal.depositorBlockId);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/13]⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 입금자 이름은 전용 블록으로만 묻고 원래 이름을 다시 보내지 않는다(true)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '입금자 이름은 1~30자로 넣어 주세요'
+
+Expected: "입금자 이름은 1~30자로 넣어 주세요"
+Received: "{"version":"2.0","template":{"outputs":[{"textCard":{"title":"결제 확인 요청","description":"주문번호 AB1234CD\n금액 35,000원\n결제 기한 2026-11-28 21:00\n입금자 합성 주문자(주문자 이름)\n15:30까지 눌러 주세요","buttons":[{"label":"결제 확인 요청","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_payment_claim_key_01","choice":"confirm"}},{"label":"입금자 이름이 달라요","action":"block","blockId":"synthetic-depositor","extra":{"cardKey":"synthetic_payment_claim_key_01","choice":"confirm"}},{"label":"안 할래요","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_payment_claim_key_01","choice":"decline"}}]}}]}}"
+
+ ❯ test/kakao-payment-claim-message.test.ts:72:16
+     70|   expectSchema("SkillTemplateResponse", body);
+     71|   const text = JSON.stringify(body);
+     72|   expect(text).toContain(invalid ? "입금자 이름은 1~30자로 넣어 주세요" : "입금자 이름을 …
+       |                ^
+     73|   expect(text).toContain("입금자 이름 넣기");
+     74|   expect(text).toContain(normal.depositorBlockId);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/13]⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 바뀌거나 기한이 지난 카드는 새 키와 정해진 문구를 보인다(stale)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '내용이 바뀌었어요. 새 카드를 확인해 주세요'
+
+Expected: "내용이 바뀌었어요. 새 카드를 확인해 주세요"
+Received: "{"version":"2.0","template":{"outputs":[{"textCard":{"title":"결제 확인 요청","description":"주문번호 AB1234CD\n금액 35,000원\n결제 기한 2026-11-28 21:00\n입금자 합성 주문자(주문자 이름)\n15:30까지 눌러 주세요","buttons":[{"label":"결제 확인 요청","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_fresh_payment_claim_01","choice":"confirm"}},{"label":"입금자 이름이 달라요","action":"block","blockId":"synthetic-depositor","extra":{"cardKey":"synthetic_fresh_payment_claim_01","choice":"confirm"}},{"label":"안 할래요","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_fresh_payment_claim_01","choice":"decline"}}]}}]}}"
+
+ ❯ test/kakao-payment-claim-message.test.ts:82:32
+     80|   const body = kakaoPaymentClaimMessage({ ...normal, state, cardKey: "…
+     81|   expectSchema("SkillTemplateResponse", body);
+     82|   expect(JSON.stringify(body)).toContain(
+       |                                ^
+     83|     state === "stale" ? "내용이 바뀌었어요. 새 카드를 확인해 주세요" : "시간이 지나 새 카드를 보내 …
+     84|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/13]⎯
+
+ FAIL  test/kakao-payment-claim-message.test.ts > 바뀌거나 기한이 지난 카드는 새 키와 정해진 문구를 보인다(expired)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '시간이 지나 새 카드를 보내 드려요'
+
+Expected: "시간이 지나 새 카드를 보내 드려요"
+Received: "{"version":"2.0","template":{"outputs":[{"textCard":{"title":"결제 확인 요청","description":"주문번호 AB1234CD\n금액 35,000원\n결제 기한 2026-11-28 21:00\n입금자 합성 주문자(주문자 이름)\n15:30까지 눌러 주세요","buttons":[{"label":"결제 확인 요청","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_fresh_payment_claim_01","choice":"confirm"}},{"label":"입금자 이름이 달라요","action":"block","blockId":"synthetic-depositor","extra":{"cardKey":"synthetic_fresh_payment_claim_01","choice":"confirm"}},{"label":"안 할래요","action":"block","blockId":"synthetic-card","extra":{"cardKey":"synthetic_fresh_payment_claim_01","choice":"decline"}}]}}]}}"
+
+ ❯ test/kakao-payment-claim-message.test.ts:82:32
+     80|   const body = kakaoPaymentClaimMessage({ ...normal, state, cardKey: "…
+     81|   expectSchema("SkillTemplateResponse", body);
+     82|   expect(JSON.stringify(body)).toContain(
+       |                                ^
+     83|     state === "stale" ? "내용이 바뀌었어요. 새 카드를 확인해 주세요" : "시간이 지나 새 카드를 보내 …
+     84|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/13]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  13 failed | 2 passed (15)
+   Start at  13:17:32
+   Duration  1.25s (import 85%, tests 8%, transform 6%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task107-payment-claim/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task107-payment-claim/app/server
+npm error command failed
+npm error command sh -c vitest run test/kakao-payment-claim-message.test.ts
