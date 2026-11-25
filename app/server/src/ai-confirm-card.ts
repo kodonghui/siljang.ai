@@ -1,6 +1,10 @@
 /** AI는 종류와 주문번호만 제안합니다. 카드의 대상·표시·버전은 현재 서버 기록으로 정합니다. */
 import type { AiTurnOutput } from "./ai-turn-output";
-import { CUSTOMER_COMMAND_KINDS, type CustomerCommandKind, showConfirmCardInTransaction } from "./confirm-card-store";
+import {
+  CUSTOMER_COMMAND_KINDS,
+  type CustomerCommandKind,
+  prepareConfirmCardInTransaction,
+} from "./confirm-card-store";
 import type { KakaoOrderReference } from "./kakao-order-reference";
 import type { ShopDb } from "./shop-scope";
 
@@ -34,7 +38,7 @@ export async function prepareAiConfirmCard(
     );
     const draft = drafts.rows[0];
     return drafts.rows.length === 1 && draft !== undefined
-      ? showConfirmCardInTransaction(db, { ...input, kind, draftId: draft.id })
+      ? prepareConfirmCardInTransaction(db, { ...input, kind, draftId: draft.id })
       : null;
   }
   if (reference === undefined || reference.kind === "ambiguous") return null;
@@ -50,6 +54,6 @@ export async function prepareAiConfirmCard(
   return orders.rows.length === 1 &&
     order !== undefined &&
     (card.order_no === undefined || card.order_no === order.order_no)
-    ? showConfirmCardInTransaction(db, { ...input, kind, orderId: order.id })
+    ? prepareConfirmCardInTransaction(db, { ...input, kind, orderId: order.id })
     : null;
 }

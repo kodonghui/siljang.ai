@@ -44,6 +44,10 @@ export interface ConfirmCardView {
   readonly confirmLabel: string;
   readonly blockId: string;
 }
+export interface UnavailableConfirmCard {
+  readonly unavailable: true;
+  readonly text: string;
+}
 export interface ConfirmCardCommandResult {
   readonly outcome: string;
   readonly text: string;
@@ -290,6 +294,33 @@ function paymentClaimChanged(card: CardRow, source: Source): boolean {
     previous.dueAt !== current.dueAt
   );
 }
+/** 첫 실제 전달로 시작된 시계만 같은 카드에 반영한다. 사장님의 버전 변경은 계속 새 카드로 판정한다. */
+async function refreshPaymentClaimClock(db: ShopDb, card: CardRow, source: Source) {
+  if (
+    card.kind !== "payment_claim" ||
+    card.used_at !== null ||
+    card.order_version !== source.orderVersion ||
+    source.paymentClaim?.available !== true
+  )
+    return;
+  const previous = card.payload.paymentClaimBinding;
+  const current = source.paymentClaim.binding;
+  if (
+    previous?.awaitingDelivery !== true ||
+    current.awaitingDelivery ||
+    previous.paymentRequestId !== current.paymentRequestId ||
+    previous.version !== current.version ||
+    previous.amount !== current.amount ||
+    Date.parse(current.dueAt) > Date.parse(previous.dueAt)
+  )
+    return;
+  const saved = await db.run(
+    "UPDATE confirm_cards SET payload=jsonb_set(payload,'{paymentClaimBinding}',$4::jsonb) WHERE shop_id=$1 AND id=$2 AND customer_id=$3 AND used_at IS NULL",
+    [card.id, card.customer_id, JSON.stringify(current)],
+  );
+  if (saved.rowCount !== 1) throw new Error("card changed after clock lock");
+  card.payload.paymentClaimBinding = current;
+}
 function withPaymentClaim(card: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
   return source.paymentClaim?.available === true
     ? {
@@ -338,12 +369,22 @@ async function insertCard(db: ShopDb, input: ShowConfirmCard, source: Source): P
   );
   return withPaymentClaim(card, source, cardExpiresAt(input.now));
 }
-export async function showConfirmCardInTransaction(db: ShopDb, input: ShowConfirmCard): Promise<ConfirmCardView> {
+export async function prepareConfirmCardInTransaction(
+  db: ShopDb,
+  input: ShowConfirmCard,
+): Promise<ConfirmCardView | UnavailableConfirmCard> {
   validNow(input.now);
   if (!(await identityAvailable(db, input))) throw new Error("card recipient unavailable");
   const source = await readSource(db, input);
-  if (source === null || source.paymentClaim?.available === false) throw new Error("card source unavailable");
+  if (source === null) throw new Error("card source unavailable");
+  if (source.paymentClaim?.available === false) return { unavailable: true, text: source.paymentClaim.text };
   return insertCard(db, input, source);
+}
+/** 원본이 준비된 내부 호출자용. AI 제안은 prepare의 예상 가능한 상태 결과를 받는다. */
+export async function showConfirmCardInTransaction(db: ShopDb, input: ShowConfirmCard): Promise<ConfirmCardView> {
+  const prepared = await prepareConfirmCardInTransaction(db, input);
+  if ("unavailable" in prepared) throw new Error("card source unavailable");
+  return prepared;
 }
 export function showConfirmCard(db: ShopRequestDb, input: ShowConfirmCard): Promise<ConfirmCardView> {
   return db.transaction((tx) => showConfirmCardInTransaction(tx, input));
@@ -408,6 +449,7 @@ async function processVerifiedCard(
   const card = await tx.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
   ]);
+  await refreshPaymentClaimClock(tx, card, source);
   const verdict = judgeCardPress(
     {
       customerId: card.customer_id,
@@ -504,6 +546,7 @@ export async function readConfirmCardDelivery(
     initial.id,
   ]);
   if (card.used_at !== null) return usedDelivery(card);
+  await refreshPaymentClaimClock(db, card, source);
   const expired = input.now.getTime() >= card.expires_at.getTime();
   const stale =
     card.order_version !== source.orderVersion ||

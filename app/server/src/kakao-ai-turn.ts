@@ -49,7 +49,7 @@ async function currentReply(
 ): Promise<KakaoAiReply | null> {
   const rows = await db.run<{ id: string; body_masked: string; delivery: string; kind: string }>(
     `SELECT id, body_masked, delivery, kind FROM messages WHERE shop_id = $1 AND consultation_id = $2
-      AND trace_id = $3 AND direction = 'outbound' AND (author = 'ai' OR (author='system' AND kind='card')) AND body_masked IS NOT NULL
+      AND trace_id = $3 AND direction = 'outbound' AND (author = 'ai' OR (author='system' AND kind IN ('card','text'))) AND body_masked IS NOT NULL
       AND delivery IN ('deferred', 'callback', 'delivered_later') ORDER BY created_at, id LIMIT 1`,
     [consultationId, messageId],
   );
@@ -213,7 +213,7 @@ export async function runKakaoAiTurn(
       return { kind: "failure", failure: "unavailable" } as const;
     if (left() <= 0) return { kind: "failure", failure: "timeout" } as const;
     await saveDraft(tx, claim.consultation_id, output.draft_patch, now());
-    const card =
+    const prepared =
       output.card === undefined
         ? undefined
         : await prepareAiConfirmCard(
@@ -227,17 +227,19 @@ export async function runKakaoAiTurn(
             },
             reference,
           );
-    if (card === null) {
+    if (prepared === null) {
       await markAiCallUnused(tx, result.aiCallId, claim.consultation_id, "schema_invalid");
       return { kind: "failure", failure: "schema_invalid" } as const;
     }
-    const text = card?.title ?? output.reply;
+    const card = prepared !== undefined && "cardKey" in prepared ? prepared : undefined;
+    const unavailable = prepared !== undefined && "unavailable" in prepared ? prepared : undefined;
+    const text = unavailable?.text ?? card?.title ?? output.reply;
     const saved =
       card === undefined
         ? await tx.run<{ id: string }>(
             `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, trace_id, delivery, created_at)
-        VALUES ($1, $2, 'outbound', 'ai', 'text', $3, $4, 'deferred', $5) RETURNING id`,
-            [claim.consultation_id, text, messageId, now()],
+        VALUES ($1, $2, 'outbound', $3, 'text', $4, $5, 'deferred', $6) RETURNING id`,
+            [claim.consultation_id, unavailable === undefined ? "ai" : "system", text, messageId, now()],
           )
         : await tx.run<{ id: string }>(
             `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, trace_id, delivery, created_at)

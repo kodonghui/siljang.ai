@@ -1,0 +1,76 @@
+
+> test
+> vitest run --run test/kakao-ai-conversation.test.ts test/kakao-payment-claim-delivery.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/server
+
+ ❯ test/kakao-ai-conversation.test.ts (26 tests | 3 failed) 3951ms
+   ❯ AI에 보내는 최근 대화와 출력 마스킹(TASK-066) (26)
+     × API070: 이미 claimed인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음 125ms
+     × API070: 이미 paid인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음 105ms
+     × 결제 안내와 같은 콜백의 확인 카드는 전달 전 상대 시간만 보이고 실제 전달 뒤 같은 키로 확정 기한을 읽음 26ms
+ ❯ test/kakao-payment-claim-delivery.test.ts (9 tests | 1 failed) 1014ms
+   ❯ SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) (9)
+     × 만료로 닫힌 차액 변경은 현재 상태이며 확인 카드의 원본이 아님 35ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-ai-conversation.test.ts > AI에 보내는 최근 대화와 출력 마스킹(TASK-066) > API070: 이미 claimed인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음
+ FAIL  test/kakao-ai-conversation.test.ts > AI에 보내는 최근 대화와 출력 마스킹(TASK-066) > API070: 이미 paid인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음
+Error: card source unavailable
+ ❯ showConfirmCardInTransaction src/confirm-card-store.ts:345:74
+    343|   if (!(await identityAvailable(db, input))) throw new Error("card rec…
+    344|   const source = await readSource(db, input);
+    345|   if (source === null || source.paymentClaim?.available === false) thr…
+       |                                                                          ^
+    346|   return insertCard(db, input, source);
+    347| }
+ ❯ src/kakao-ai-turn.ts:219:11
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ consumeKakaoCallback src/kakao-callback-queue.ts:165:20
+ ❯ consume test/kakao-ai-conversation.test.ts:114:21
+ ❯ test/kakao-ai-conversation.test.ts:190:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/kakao-ai-conversation.test.ts > AI에 보내는 최근 대화와 출력 마스킹(TASK-066) > 결제 안내와 같은 콜백의 확인 카드는 전달 전 상대 시간만 보이고 실제 전달 뒤 같은 키로 확정 기한을 읽음
+TypeError: Cannot read properties of undefined (reading 'has')
+ ❯ fieldCrypto src/field-crypto.ts:131:22
+    129| /** 설정의 키로 암호화 도구를 만든다. 키는 버전마다 처음 쓸 때 한 번 뽑는다. */
+    130| export function fieldCrypto(settings: FieldKeySettings): FieldCrypto {
+    131|   if (!settings.keys.has(settings.current)) throw new FieldCryptoError…
+       |                      ^
+    132|   const derived = new Map<number, Promise<VersionKeys>>();
+    133|   const versions = [settings.current, ...[...settings.keys.keys()].fil…
+ ❯ test/kakao-ai-conversation.test.ts:206:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 만료로 닫힌 차액 변경은 현재 상태이며 확인 카드의 원본이 아님
+error: column "requested_at" of relation "change_requests" does not exist
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ test/kakao-payment-claim-delivery.test.ts:193:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  4 failed | 31 passed (35)
+   Start at  14:48:44
+   Duration  6.50s (tests 80%, import 14%, transform 7%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task107-payment-claim/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task107-payment-claim/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/kakao-ai-conversation.test.ts test/kakao-payment-claim-delivery.test.ts

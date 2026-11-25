@@ -2,8 +2,9 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { pressConfirmCard, readConfirmCardDelivery, showConfirmCard } from "../src/confirm-card-store";
 import { type KakaoMessageOutput, kakaoMessageOutputs } from "../src/kakao-message-content";
 import { kakaoConfirmAnswerMessage } from "../src/kakao-order-request-message";
+import { readPaymentClaimSource } from "../src/payment-claim-presentation";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
-import { describeDb } from "./support/db";
+import { describeDb, newUuid } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
 
@@ -150,5 +151,102 @@ describeDb("SCR006 저장 카드의 표시 직전 결제 자료(TASK-107)", () =
     expect(await read()).toEqual({ text: "사장님께 알렸어요. 확인되면 알려 드릴게요" });
     expect(execute).toHaveBeenCalledOnce();
     await expectPrivateStorage();
+  });
+  it.each(["first", "reissue"] as const)("%s의 결제 기한 뒤 요청은 계속 표시할 수 있음", async (kind) => {
+    await isolated.db.query(
+      "UPDATE payment_requests SET kind=$2,event_key=$3,status='expired',issued_at=$4,delivered_at=$5,due_at=$6,expired_at=$6 WHERE id=$1",
+      [
+        shop.paymentRequestId,
+        kind,
+        `pay:${shop.orderId}:${kind}`,
+        new Date(NOW.getTime() - 14 * 3600000),
+        new Date(NOW.getTime() - 13 * 3600000),
+        new Date(NOW.getTime() - 3600000),
+      ],
+    );
+    expect((await show()).kind).toBe("payment_claim");
+  });
+  it("첫 전달 뒤 읽기 없이 눌러도 시계만 같은 카드에 반영하고 명령은 한 번", async () => {
+    await isolated.db.query("UPDATE payment_requests SET delivered_at=NULL,due_at=due_cap_at WHERE id=$1", [
+      shop.paymentRequestId,
+    ]);
+    const card = await show();
+    await isolated.db.query(
+      "UPDATE payment_requests SET delivered_at=$2,due_at=$2::timestamptz+interval '12 hours' WHERE id=$1",
+      [shop.paymentRequestId, NOW],
+    );
+    const pending = press(card.cardKey);
+    expect((await pending.answer).outcome).toBe("payment_claimed");
+    expect(pending.execute).toHaveBeenCalledOnce();
+    const payload = (
+      await isolated.db.query<{ payload: { paymentClaimBinding?: { awaitingDelivery?: boolean } } }>(
+        "SELECT payload FROM confirm_cards WHERE card_key=$1",
+        [card.cardKey],
+      )
+    ).rows[0]?.payload;
+    expect(payload?.paymentClaimBinding?.awaitingDelivery).toBe(false);
+    expect(JSON.stringify(payload)).not.toContain(NAME);
+  });
+  it("만료로 닫힌 차액 변경은 현재 상태이며 확인 카드의 원본이 아님", async () => {
+    await isolated.db.query(
+      "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2 WHERE id=$1",
+      [shop.paymentRequestId, NOW],
+    );
+    const payment = newUuid();
+    await isolated.db.query(
+      "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+      [payment, shop.shopId, shop.orderId, shop.paymentRequestId, NOW],
+    );
+    await isolated.db.query(
+      "UPDATE orders SET status='confirmed',confirmed_at=$2,confirmed_payment_id=$3 WHERE id=$1",
+      [shop.orderId, NOW, payment],
+    );
+    const card = await showConfirmCard(scoped(), {
+      ...identity(),
+      kind: "change_request",
+      orderId: shop.orderId,
+      now: NOW,
+    });
+    const cardId = (
+      await isolated.db.query<{ id: string }>("SELECT id FROM confirm_cards WHERE card_key=$1", [card.cardKey])
+    ).rows[0]?.id;
+    const change = newUuid();
+    await isolated.db.query(
+      "INSERT INTO change_requests(id,shop_id,order_id,card_id,base_version,status,changes,amount_delta,created_at,decided_at,closed_at) VALUES($1,$2,$3,$4,1,'closed_no_difference','{}',1000,$5,$6,$6)",
+      [change, shop.shopId, shop.orderId, cardId, new Date(NOW.getTime() - 20000), NOW],
+    );
+    await isolated.db.query(
+      "INSERT INTO payment_requests SELECT(jsonb_populate_record(NULL::payment_requests,to_jsonb(p)||$2::jsonb)).* FROM payment_requests p WHERE p.id=$1",
+      [
+        shop.paymentRequestId,
+        JSON.stringify({
+          id: newUuid(),
+          kind: "difference",
+          change_request_id: change,
+          event_key: `pay:${change}:difference`,
+          status: "expired",
+          version: 1,
+          amount: 1000,
+          requested_amount: null,
+          needs_amount_confirm: true,
+          amount_confirmed_at: new Date(NOW.getTime() - 9000).toISOString(),
+          delivered_at: new Date(NOW.getTime() - 9000).toISOString(),
+          issued_at: new Date(NOW.getTime() - 10000).toISOString(),
+          due_at: new Date(NOW.getTime() - 1000).toISOString(),
+          due_cap_at: new Date(NOW.getTime() - 1000).toISOString(),
+          expired_at: NOW.toISOString(),
+          paid_at: null,
+          arrived_at: null,
+          arrived_amount: null,
+        }),
+      ],
+    );
+    const source = await scoped().transaction((tx) =>
+      readPaymentClaimSource(tx, { ...identity(), orderId: shop.orderId }),
+    );
+    expect(source).toEqual({
+      available: false,
+      text: "지금은 할 수 없어요: 변경 요청이 닫혀 차액 결제를 요청할 수 없어요",
+    });
   });
 });

@@ -12,6 +12,7 @@ export interface KakaoPaymentClaimCard {
   readonly cardKey: string;
   readonly cardBlockId: string;
   readonly depositorBlockId: string;
+  readonly deliveryWindow?: { readonly hours: number };
 }
 
 export type KakaoPaymentClaimView =
@@ -117,7 +118,12 @@ function claimCardMessage(view: KakaoPaymentClaimCard, notice?: string): ClaimMe
   const due = toShopLocal(new Date(view.dueAt), view.timeZone),
     expires = toShopLocal(new Date(view.expiresAt), view.timeZone);
   const title = "결제 확인 요청";
-  const description = `${notice ? `${notice}\n` : ""}주문번호 ${view.orderNo}\n금액 ${view.amount.toLocaleString("ko-KR")}원\n결제 기한 ${due.date} ${due.time}\n입금자 ${view.depositorName}(주문자 이름)\n${expires.time}까지 눌러 주세요`;
+  if (view.deliveryWindow && (!Number.isSafeInteger(view.deliveryWindow.hours) || view.deliveryWindow.hours < 1))
+    throw new RangeError("invalid claim delivery window");
+  const deadline = view.deliveryWindow
+    ? `이 안내가 전달된 때부터 ${view.deliveryWindow.hours}시간 안(상한 ${due.date} ${due.time})`
+    : `${due.date} ${due.time}`;
+  const description = `${notice ? `${notice}\n` : ""}주문번호 ${view.orderNo}\n금액 ${view.amount.toLocaleString("ko-KR")}원\n결제 기한 ${deadline}\n입금자 ${view.depositorName}(주문자 이름)\n${expires.time}까지 눌러 주세요`;
   if ([...title, ...description].length > 400) throw new RangeError("claim card too long");
   const button = (label: string, blockId: string, choice: "confirm" | "decline") =>
     claimButton(view.cardKey, label, blockId, choice);

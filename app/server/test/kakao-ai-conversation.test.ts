@@ -1,12 +1,16 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import { sealAccountNumber } from "../src/account-number";
 import { recordAiCall } from "../src/ai-calls";
 import * as conversation from "../src/ai-conversation";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
+import { pressConfirmCard, readConfirmCardDelivery } from "../src/confirm-card-store";
+import { createPaymentRequestNotice } from "../src/customer-notice-store";
 import { FieldCryptoError, fieldCrypto } from "../src/field-crypto";
 import { createHandoffTask } from "../src/handoff-task";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
+import { kakaoMessageOutputs } from "../src/kakao-message-content";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { openMaskedValue } from "../src/masked-values";
 import type { ServiceOverrides } from "../src/services";
@@ -145,6 +149,143 @@ describeDb("AI에 보내는 최근 대화와 출력 마스킹(TASK-066)", () => 
     );
     expect(JSON.stringify(saved.rows)).not.toContain(name);
     expect(ai.call).toHaveBeenCalledOnce();
+  });
+  function paymentCardModel() {
+    const ai = model();
+    const original = required(ai.call.getMockImplementation());
+    ai.call.mockImplementation(async (input) => {
+      const result = await original(input);
+      return result.ok
+        ? { ...result, output: { reply: "합성 결제 카드 제안", card: { kind: "payment_claim" } } }
+        : result;
+    });
+    return ai;
+  }
+  it.each(["claimed", "paid"] as const)(
+    "API070: 이미 %s인 결제의 새 제안은 상태 문구이고 새 카드/에스컬레이션이 없음",
+    async (status) => {
+      if (status === "claimed")
+        await isolated.db.query("UPDATE payment_requests SET status='claimed',claimed_at=$2 WHERE id=$1", [
+          shop.paymentRequestId,
+          NOW,
+        ]);
+      else {
+        await isolated.db.query(
+          "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2 WHERE id=$1",
+          [shop.paymentRequestId, NOW],
+        );
+        const payment = newUuid();
+        await isolated.db.query(
+          "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+          [payment, shop.shopId, shop.orderId, shop.paymentRequestId, NOW],
+        );
+        await isolated.db.query(
+          "UPDATE orders SET status='confirmed',confirmed_at=$2,confirmed_payment_id=$3 WHERE id=$1",
+          [shop.orderId, NOW, payment],
+        );
+      }
+      const ai = paymentCardModel();
+      const response = await send(shop.userKey, "입금했어요");
+      expect(response.status).toBe(200);
+      const callback = await consume(required(jobs[0]), ai);
+      const body = String(required(callback.mock.calls[0])[1]?.body);
+      expect(body).toContain(status === "paid" ? "이미 결제가 확인됐어요" : "이미 결제 확인을 요청했어요");
+      expect(body).not.toContain("textCard");
+      expect(
+        (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId]))
+          .rows[0]?.n,
+      ).toBe(0);
+      expect(
+        (await isolated.db.query("SELECT count(*)::int AS n FROM handoffs WHERE shop_id=$1", [shop.shopId])).rows[0]?.n,
+      ).toBe(0);
+      expect(ai.call).toHaveBeenCalledOnce();
+    },
+  );
+  it("저장된 결제 상태 답은 프로세스 재개 때 모델 재호출 없이 전달됨", async () => {
+    await isolated.db.query("UPDATE payment_requests SET status='claimed',claimed_at=$2 WHERE id=$1", [
+      shop.paymentRequestId,
+      NOW,
+    ]);
+    const ai = paymentCardModel();
+    await send(shop.userKey, "입금했어요");
+    const job = required(jobs[0]);
+    await isolated.db.query(
+      "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,trace_id,delivery,created_at) VALUES($1,$2,'outbound','system','text','지금은 할 수 없어요: 이미 결제 확인을 요청했어요',$3,'deferred',$4)",
+      [shop.shopId, shop.consultationId, job.messageId, new Date(NOW.getTime() + 500)],
+    );
+    const callback = await consume(job, ai);
+    expect(ai.call).not.toHaveBeenCalled();
+    expect(String(required(callback.mock.calls[0])[1]?.body)).toContain("이미 결제 확인을 요청했어요");
+  });
+  it("결제 안내와 같은 콜백의 확인 카드는 전달 전 상대 시간만 보이고 실제 전달 뒤 같은 키로 확정 기한을 읽음", async () => {
+    const fields = fieldCrypto(required(readSettings(env).fieldKeys));
+    const sealed = await sealAccountNumber(fields, "123456789012", "payment_accounts.account_number", shop.shopId);
+    await isolated.db.query("UPDATE payment_accounts SET account_number_enc=$2,account_last4=$3 WHERE id=$1", [
+      shop.paymentAccountId,
+      sealed.enc,
+      sealed.last4,
+    ]);
+    await isolated.db.query(
+      "UPDATE payment_requests SET issued_at=$2,delivered_at=NULL,due_at=$3,due_cap_at=$3 WHERE id=$1",
+      [shop.paymentRequestId, new Date(NOW.getTime() - 60000), new Date(NOW.getTime() + 24 * 3600000)],
+    );
+    const scope = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), isolated.db);
+    await scope.transaction((tx) => createPaymentRequestNotice(tx, shop.paymentRequestId, NOW));
+    const ai = paymentCardModel();
+    await send(shop.userKey, "입금했어요");
+    const job = required(jobs[0]);
+    const callback = await consume(job, ai);
+    const body = JSON.parse(String(required(callback.mock.calls[0])[1]?.body)) as {
+      template: {
+        outputs: { textCard?: { title: string; description: string; buttons: { extra: { cardKey: string } }[] } }[];
+      };
+    };
+    const card = required(
+      body.template.outputs.find((output) => output.textCard?.title === "결제 확인 요청")?.textCard,
+    );
+    expect(card.description).toContain("이 안내가 전달된 때부터 12시간 안");
+    expect(card.description).not.toContain("결제 기한 2026-11-24 10:00");
+    const state = required(
+      (
+        await isolated.db.query<{ delivered_at: Date; due_at: Date }>(
+          "SELECT delivered_at,due_at FROM payment_requests WHERE id=$1",
+          [shop.paymentRequestId],
+        )
+      ).rows[0],
+    );
+    expect(state.delivered_at).not.toBeNull();
+    expect(state.due_at.getTime() - state.delivered_at.getTime()).toBe(12 * 3600000);
+    const replay = await scope.transaction((tx) =>
+      readConfirmCardDelivery(tx, {
+        customerId: shop.customerId,
+        consultationId: shop.consultationId,
+        sourceMessageId: job.messageId,
+        now: new Date(NOW.getTime() + 2000),
+      }),
+    );
+    const same = required(replay.card);
+    expect(same.cardKey).toBe(card.buttons[0]?.extra.cardKey);
+    expect(JSON.stringify(kakaoMessageOutputs([same]))).toContain("결제 기한 2026-11-23 22:00");
+    const execute = vi.fn(async () => ({
+      outcome: "payment_claimed",
+      text: "사장님께 알렸어요. 확인되면 알려 드릴게요",
+    }));
+    expect(
+      (
+        await pressConfirmCard(
+          scope,
+          {
+            customerId: shop.customerId,
+            consultationId: shop.consultationId,
+            cardKey: same.cardKey,
+            choice: "confirm",
+            now: new Date(NOW.getTime() + 2000),
+          },
+          execute,
+        )
+      ).outcome,
+    ).toBe("payment_claimed");
+    expect(execute).toHaveBeenCalledOnce();
   });
   async function withQuote(mode = "valid") {
     const ai = model();
