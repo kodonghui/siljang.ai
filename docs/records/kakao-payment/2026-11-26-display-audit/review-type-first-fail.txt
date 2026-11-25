@@ -1,0 +1,42 @@
+
+> typecheck
+> npm run typecheck -w web && npm run typecheck -w server
+
+
+> typecheck
+> tsc -p tsconfig.json
+
+
+> typecheck
+> npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json
+
+
+> types
+> wrangler types --include-env=false src/worker-runtime.d.ts
+
+▲ [WARNING] Proxy environment variables detected. We'll use your proxy for fetch requests.
+
+
+
+ ⛅️ wrangler 4.158.0
+────────────────────
+Generating runtime types...
+
+Runtime types generated.
+
+
+✨ Types written to src/worker-runtime.d.ts
+
+📖 Read about runtime types
+https://developers.cloudflare.com/workers/languages/typescript/#generate-types
+📣 Remember to rerun 'wrangler types' after you change your wrangler.jsonc file.
+
+test/payment-difference-presentation.test.ts(33,24): error TS2532: Object is possibly 'undefined'.
+test/payment-difference-presentation.test.ts(276,11): error TS2532: Object is possibly 'undefined'.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-payment-display-audit/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-payment-display-audit/app/server
+npm error command failed
+npm error command sh -c npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json

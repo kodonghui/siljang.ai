@@ -1,6 +1,7 @@
 import { type ConfirmCardView, readConfirmCardDelivery } from "./confirm-card-store";
 import {
   CUSTOMER_NOTICE_WHITESPACE,
+  CustomerNoticeTemporarilyUnavailable,
   customerNoticeContents,
   READABLE_CUSTOMER_NOTICE_KINDS,
 } from "./customer-notice-content";
@@ -138,12 +139,19 @@ export async function deferredKakaoBatch(
     [customerId, DEFERRED_REPLY_BATCH + 1, READABLE_CUSTOMER_NOTICE_KINDS, options.now ?? new Date()],
   );
   for (const row of notices.rows) {
-    const contents = await customerNoticeContents(
-      db,
-      { id: row.id, customerId, kind: row.kind, body: row.body },
-      options.now ?? new Date(),
-      options.fields,
-    );
+    let contents: readonly KakaoMessageContent[] | null;
+    try {
+      contents = await customerNoticeContents(
+        db,
+        { id: row.id, customerId, kind: row.kind, body: row.body },
+        options.now ?? new Date(),
+        options.fields,
+      );
+    } catch (error) {
+      if (!(error instanceof CustomerNoticeTemporarilyUnavailable)) throw error;
+      // 권한이 없는 안내는 전달 처리하지 않고 현재 답과 이후 재조회를 보존한다.
+      contents = null;
+    }
     messages.push({
       id: row.id,
       text: row.body,

@@ -1,0 +1,12 @@
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(event/short)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '지금 35,000원'
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(message/short)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '지금 35,000원'
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(event/long)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '지금 35,000원'
+ FAIL  test/payment-difference-presentation.test.ts > 저장된 차액의 새 금액 확인 표시(TASK-106) > 실제 저장 행의 변경 내용/금액/마감과 두 버튼을 보인다(message/long)
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '지금 35,000원'
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+   Duration  3.77s (tests 50%, import 39%, transform 11%)

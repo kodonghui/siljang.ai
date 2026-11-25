@@ -1,0 +1,12 @@
+
+> test
+> vitest run test/payment-difference-presentation.test.ts test/kakao-payment-message.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-payment-display-audit/app/server
+
+
+ Test Files  2 passed (2)
+      Tests  50 passed (50)
+   Start at  19:01:30
+   Duration  4.81s (tests 51%, import 40%, transform 9%)
