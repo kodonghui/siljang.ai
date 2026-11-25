@@ -1,0 +1,46 @@
+{
+  "source": "0c56755a6500d3665cb3876e3e674527bccb2c11",
+  "newLocalNpmCi": false,
+  "relatedTestFiles": [
+    "app/web/src/PublicPrivacyScreen.interaction.test.tsx",
+    "app/web/src/public-privacy-api.test.ts"
+  ],
+  "results": {
+    "related": {
+      "source": "0c56755a6500d3665cb3876e3e674527bccb2c11",
+      "exitCode": 0,
+      "workingDirectory": "app",
+      "command": "npm run test -w web -- src/PublicPrivacyScreen.interaction.test.tsx src/public-privacy-api.test.ts",
+      "path": "/tmp/siljang-task062-current-related-20261125.log",
+      "lines": [
+        " Test Files  2 passed (2)",
+        "      Tests  49 passed (49)"
+      ]
+    },
+    "type": {
+      "source": "0c56755a6500d3665cb3876e3e674527bccb2c11",
+      "exitCode": 0,
+      "workingDirectory": "app",
+      "command": "npm run typecheck",
+      "path": "/tmp/siljang-task062-current-type-20261125.log",
+      "lines": []
+    },
+    "build": {
+      "source": "0c56755a6500d3665cb3876e3e674527bccb2c11",
+      "exitCode": 0,
+      "workingDirectory": "app",
+      "command": "npm run build",
+      "path": "/tmp/siljang-task062-current-build-20261125.log",
+      "lines": [
+        "✓ built in 551ms",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "productCodeChanges": 0,
+  "browserRun": false,
+  "outsideServices": 0
+}
