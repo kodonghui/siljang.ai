@@ -463,6 +463,31 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         expect(response.headers.get("Siljang-Outcome")).toBe("callback_pending");
         const job = jobs[0];
         if (!job) throw new Error("합성 콜백 작업 없음");
+        const replayIds: string[] = [];
+        for (let i = 0; i < 3; i++) {
+          const ccId = newUuid(),
+            ccKey = `ck_${newUuid()}`,
+            source = newUuid(),
+            messageId = newUuid();
+          replayIds.push(messageId);
+          await isolated.db.query(
+            "INSERT INTO confirm_cards SELECT(jsonb_populate_record(NULL::confirm_cards,to_jsonb(c)||$2::jsonb)).* FROM confirm_cards c WHERE c.card_key=$1",
+            [original.cardKey, JSON.stringify({ id: ccId, card_key: ccKey })],
+          );
+          await isolated.db.query(
+            "UPDATE confirm_cards SET payload=jsonb_set(jsonb_set(payload,'{sourceMessageId}',$2::jsonb),'{presentation,cardKey}',$3::jsonb) WHERE id=$1",
+            [ccId, JSON.stringify(source), JSON.stringify(ccKey)],
+          );
+          await isolated.db.query(
+            "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'결제 확인 요청','deferred',$5)",
+            [messageId, shop.shopId, shop.consultationId, source, new Date(NOW.getTime() + 10 + i)],
+          );
+        }
+        const normalId = newUuid();
+        await isolated.db.query(
+          "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','text','합성 중복 뒤의 정상 안내','deferred',$4)",
+          [normalId, shop.shopId, shop.consultationId, new Date(NOW.getTime() + 100)],
+        );
         const replyId = newUuid();
         await isolated.db.query(
           "UPDATE confirm_cards SET payload=jsonb_set(payload,'{sourceMessageId}',$2::jsonb) WHERE card_key=$1",
@@ -470,7 +495,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         );
         await isolated.db.query(
           "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'결제 확인 요청','deferred',$5)",
-          [replyId, shop.shopId, shop.consultationId, job.messageId, new Date(NOW.getTime() + 1)],
+          [replyId, shop.shopId, shop.consultationId, job.messageId, new Date(NOW.getTime() + 200)],
         );
         const call = vi.fn<AiModel["call"]>().mockRejectedValue(new Error("저장된 답이 있어 모델 호출 금지"));
         const send = vi.fn<typeof fetch>(async () => Response.json({ status: "SUCCESS" }));
@@ -488,6 +513,15 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         expect(network).not.toHaveBeenCalled();
         const sent = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
         expectSchema("SkillTemplateResponse", sent);
+        expect(JSON.stringify(sent)).toContain("합성 중복 뒤의 정상 안내");
+        expect(
+          (
+            await isolated.db.query("SELECT delivery,sent_at FROM messages WHERE id=ANY($1::uuid[])", [
+              [...replayIds, normalId],
+            ])
+          ).rows,
+        ).toEqual([...replayIds, normalId].map(() => ({ delivery: "delivered_later", sent_at: at })));
+
         const outputs = sent.template.outputs as { textCard?: { buttons: unknown[] } }[];
         expect(
           outputs.filter((o) => o.textCard?.buttons.some((b) => JSON.stringify(b).includes(amountKey))),
