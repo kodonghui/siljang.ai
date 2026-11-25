@@ -1,10 +1,10 @@
 /** API-073의 일반 안내 읽기. 스킬 응답 생성은 발송 결과 확인과 구분한다. */
+import { TEXT_CUSTOMER_NOTICE_KINDS } from "./customer-notice-store";
 import { kakaoConsultationMessage } from "./kakao-consultation-message";
 import { kakaoReply } from "./kakao-reply";
 import type { ShopRequest } from "./routes";
 import { ForgedScopeError, isUuid } from "./shop-scope";
 
-const GENERAL_KINDS = ["owner_reply", "delay_notice", "custom_rejected", "no_answer_closed"];
 export async function receiveKakaoNotice(r: ShopRequest): Promise<Response> {
   const request = r.kakaoSkill;
   if (request === undefined || request.scope !== r.scope)
@@ -18,8 +18,10 @@ export async function receiveKakaoNotice(r: ShopRequest): Promise<Response> {
       JOIN consultations c ON c.shop_id=$1 AND c.id=n.consultation_id AND c.customer_id=u.id
       LEFT JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id
       WHERE n.shop_id=$1 AND n.id=$2 AND n.kind=ANY($5::text[]) AND n.status<>'dropped'
-        AND c.status<>'deleted' AND o.personal_data_purged_at IS NULL`,
-      [key, request.channelId, request.payload.userId, GENERAL_KINDS],
+        AND c.status<>'deleted' AND o.personal_data_purged_at IS NULL
+        AND (n.order_id IS NULL OR o.customer_id=n.customer_id)
+        AND (n.kind<>'order_confirmed' OR o.status IN ('confirmed','received','no_pickup'))`,
+      [key, request.channelId, request.payload.userId, TEXT_CUSTOMER_NOTICE_KINDS],
     )
   ).rows[0];
   if (!row?.body.trim()) return kakaoReply(r, "notice_gone");

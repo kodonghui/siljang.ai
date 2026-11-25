@@ -1,9 +1,14 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import { createApp } from "../src/app";
 import { createOrderConfirmedNotice } from "../src/customer-notice-store";
+import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
-import { describeDb, newUuid } from "./support/db";
+import { expectSchema } from "./support/contract";
+import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
+import { newFieldKey } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
-import { createShop, type ShopFixture } from "./support/shops";
+import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const NOW = new Date("2026-11-25T00:00:00Z");
 describeDb("손님 안내 생성(TASK-104)", () => {
@@ -70,5 +75,39 @@ describeDb("손님 안내 생성(TASK-104)", () => {
     } finally {
       network.mockRestore();
     }
+  });
+  it("친구가 아닌 손님의 다음 메시지는 확정 안내를 현재 답보다 먼저 한 번만 전한다", async () => {
+    await issueTestBookingLink(isolated.db, shop);
+    await linkTestChannel(isolated.db, shop.channelId);
+    const created = await scoped().transaction((db) => createOrderConfirmedNotice(db, shop.orderId, NOW));
+    const stored = (
+      await isolated.db.query<{ body: string }>("SELECT body FROM notifications WHERE id=$1", [created?.id])
+    ).rows[0];
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
+    const app = createApp({ connect: () => isolated.connect(), services: { now: () => NOW }, logSink: () => {} });
+    const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
+    const call = (utterance: string) =>
+      app.request(
+        "/api/kakao/skills/message",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+          body: JSON.stringify({
+            bot: { id: shop.botId },
+            userRequest: { utterance, block: { id: "conversation" }, user: { id: shop.userKey, type: "botUserKey" } },
+            action: { id: "synthetic-notice-followup", params: {} },
+          }),
+        },
+        env,
+      );
+    const first = await (await call("확정 안내 뒤의 합성 첫 질문")).json();
+    expectSchema("SkillTemplateResponse", first);
+    expect(first.template.outputs[0]).toEqual({ simpleText: { text: stored?.body } });
+    expect(first.template.outputs.length).toBeGreaterThan(1);
+    expect(
+      (await isolated.db.query("SELECT status,sent_at FROM notifications WHERE id=$1", [created?.id])).rows,
+    ).toEqual([{ status: "delivered_on_reply", sent_at: NOW }]);
+    const second = await (await call("확정 안내 뒤의 합성 둘째 질문")).json();
+    expect(JSON.stringify(second)).not.toContain("주문이 확정됐어요");
   });
 });

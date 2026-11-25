@@ -3,6 +3,14 @@ import { eventKeys, insertOnce, type Once } from "./event-keys";
 import type { ShopDb } from "./shop-scope";
 import { toShopLocal } from "./time";
 
+export const TEXT_CUSTOMER_NOTICE_KINDS = [
+  "owner_reply",
+  "delay_notice",
+  "custom_rejected",
+  "no_answer_closed",
+  "order_confirmed",
+] as const;
+
 interface ConfirmedOrder {
   customer_id: string;
   consultation_id: string;

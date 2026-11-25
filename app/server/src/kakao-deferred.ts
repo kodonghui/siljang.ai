@@ -1,4 +1,5 @@
 import { type ConfirmCardView, readConfirmCardDelivery } from "./confirm-card-store";
+import { TEXT_CUSTOMER_NOTICE_KINDS } from "./customer-notice-store";
 import {
   inlineKakaoDisclosure,
   type KakaoDisclosurePolicy,
@@ -84,12 +85,23 @@ export async function deferredKakaoMessages(
     });
   }
   // 결제/버튼/사진 안내는 업무 렌더러가 전해진 시각 등도 함께 기록해야 하므로 이 공통 글 경로에서 소비하지 않는다.
+  await db.run(
+    `UPDATE notifications n SET status='dropped',next_attempt_at=NULL FROM orders o
+      WHERE n.shop_id=$1 AND n.customer_id=$2 AND n.status='deferred' AND n.kind='order_confirmed'
+        AND o.shop_id=$1 AND o.id=n.order_id
+        AND (o.status NOT IN ('confirmed','received','no_pickup') OR o.customer_id<>n.customer_id OR o.personal_data_purged_at IS NOT NULL)`,
+    [customerId],
+  );
   const notices = await db.run<{ id: string; body: string; created_order: string }>(
     `SELECT n.id, n.body, (extract(epoch FROM n.created_at) * 1000000)::bigint::text AS created_order FROM notifications n
+      JOIN consultations c ON c.shop_id=$1 AND c.id=n.consultation_id AND c.customer_id=n.customer_id
+      LEFT JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id
       WHERE n.shop_id = $1 AND n.customer_id = $2 AND n.status = 'deferred' AND n.sent_at IS NULL
-        AND n.kind IN ('owner_reply', 'delay_notice', 'custom_rejected', 'no_answer_closed')
+        AND n.kind=ANY($4::text[]) AND c.status<>'deleted' AND o.personal_data_purged_at IS NULL
+        AND (n.order_id IS NULL OR o.customer_id=n.customer_id)
+        AND (n.kind<>'order_confirmed' OR o.status IN ('confirmed','received','no_pickup'))
       ORDER BY n.created_at, n.id LIMIT $3 FOR UPDATE OF n`,
-    [customerId, DEFERRED_REPLY_BATCH],
+    [customerId, DEFERRED_REPLY_BATCH, TEXT_CUSTOMER_NOTICE_KINDS],
   );
   const candidates = [
     ...messages,
@@ -138,8 +150,8 @@ export async function markDeferredKakaoMessages(
       const marked = await db.run(
         `UPDATE notifications SET status = 'delivered_on_reply', sent_at = $4
           WHERE shop_id = $1 AND id = $2 AND customer_id = $3 AND status = 'deferred' AND sent_at IS NULL
-            AND body = $5 AND kind IN ('owner_reply', 'delay_notice', 'custom_rejected', 'no_answer_closed')`,
-        [row.id, customerId, at, row.text],
+            AND body = $5 AND kind=ANY($6::text[])`,
+        [row.id, customerId, at, row.text, TEXT_CUSTOMER_NOTICE_KINDS],
       );
       if (marked.rowCount !== 1) throw new Error("deferred notification changed before delivery");
       continue;
