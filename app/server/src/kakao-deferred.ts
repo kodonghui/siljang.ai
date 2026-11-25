@@ -82,6 +82,7 @@ export async function deferredKakaoBatch(
   let disclosureBlocked = false;
   let scanned = 0,
     scanLimited = false;
+  const readAt = options.now ?? new Date();
   const merger = createKakaoAmountConfirmationMerger();
   // 권한 부족인 참조만 남기고, 출력 예산 뒤의 셋째 정상 메시지까지 읽는다.
   while (
@@ -101,6 +102,29 @@ export async function deferredKakaoBatch(
           AND ($5::uuid IS NULL OR m.id <> $5)
           AND ($6::timestamptz IS NULL OR (m.created_at,m.id) > ($6::timestamptz,$7::uuid))
           AND NOT ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.status IN ('ended','deleted','dropped'))
+          AND (m.kind<>'card' OR c.ai_disclosed_at IS NULL AND c.id IS DISTINCT FROM $4::uuid
+            OR ${DIFFERENCE_NOTICE_SELECT_SQL} OR NOT EXISTS (
+              SELECT 1 FROM confirm_cards cc
+              JOIN orders oo ON oo.shop_id=$1 AND oo.id=cc.order_id AND oo.customer_id=cc.customer_id
+                AND oo.consultation_id=cc.consultation_id AND oo.personal_data_purged_at IS NULL AND oo.status='confirmed'
+              JOIN payment_requests pp ON pp.shop_id=$1 AND pp.order_id=oo.id
+              JOIN change_requests cr ON cr.shop_id=$1 AND cr.id=pp.change_request_id AND cr.order_id=oo.id AND cr.status='awaiting_difference'
+              JOIN confirm_cards a ON a.shop_id=$1 AND a.id=pp.amount_card_id AND a.order_id=oo.id
+                AND a.customer_id=cc.customer_id AND a.order_version=oo.version AND a.kind='amount_confirm'
+                AND a.created_at<=$8 AND a.expires_at>$8 AND a.used_at IS NULL
+              JOIN customers u ON u.shop_id=$1 AND u.id=cc.customer_id
+              JOIN kakao_channels ch ON ch.shop_id=$1 AND ch.id=u.kakao_channel_id AND ch.status='linked' AND nullif(ch.card_block_id,'') IS NOT NULL
+              JOIN notifications n ON n.shop_id=$1 AND n.order_id=oo.id AND n.customer_id=cc.customer_id
+                AND n.consultation_id=cc.consultation_id AND n.kind='payment_request' AND n.status<>'dropped'
+                AND n.event_key='notice:'||pp.id::text||':payment_request'
+              WHERE cc.shop_id=$1 AND cc.kind='payment_claim' AND cc.consultation_id=m.consultation_id
+                AND cc.customer_id=c.customer_id AND cc.payload->>'sourceMessageId'=m.trace_id
+                AND cc.used_at IS NULL AND cc.created_at<=$8
+                AND pp.kind='difference' AND pp.status='open' AND pp.needs_amount_confirm AND pp.amount_confirmed_at IS NULL
+                AND pp.requested_amount IS NULL AND pp.issued_at<=$8 AND pp.due_cap_at>$8
+                AND pp.id=(SELECT latest.id FROM payment_requests latest WHERE latest.shop_id=$1 AND latest.order_id=oo.id
+                  ORDER BY latest.issued_at DESC,latest.id DESC LIMIT 1)
+            ))
         ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
       [
         customerId,
@@ -109,6 +133,7 @@ export async function deferredKakaoBatch(
         options.excludeMessageId ?? null,
         cursor?.createdAt ?? null,
         cursor?.id ?? null,
+        readAt,
       ],
     );
     const last = result.rows.at(-1);
@@ -116,6 +141,17 @@ export async function deferredKakaoBatch(
     cursor = { createdAt: last.cursor_created_at, id: last.id };
     for (const row of result.rows) {
       scanned++;
+      if (row.blocked) {
+        messages.push({
+          id: row.id,
+          text: row.body_masked,
+          source: "message",
+          at: BigInt(row.created_order),
+          blocked: true,
+        });
+        disclosureBlocked = true;
+        break;
+      }
       let content: Awaited<ReturnType<typeof readConfirmCardDelivery>> | undefined;
       try {
         content =
@@ -127,7 +163,7 @@ export async function deferredKakaoBatch(
                   customerId,
                   consultationId: row.consultation_id,
                   sourceMessageId: row.trace_id,
-                  now: options.now ?? new Date(),
+                  now: readAt,
                 });
       } catch (error) {
         if (error instanceof CustomerNoticeTemporarilyUnavailable) continue;
@@ -141,10 +177,6 @@ export async function deferredKakaoBatch(
         at: BigInt(row.created_order),
         blocked: row.blocked,
       });
-      if (row.blocked) {
-        disclosureBlocked = true;
-        break;
-      }
       const message = messages.at(-1);
       if (message !== undefined) merger.append(deferredContents(message));
       if (merger.contents.length >= DEFERRED_REPLY_BATCH + 1) break;
@@ -299,10 +331,13 @@ export function renderDeferredKakaoReply(
   if (texts.length !== 3 && !currentBlocked) return { response: render(texts), currentIncluded: true };
   const base = render([]);
   return {
-    response: new Response(JSON.stringify({ version: "2.0", template: kakaoMessageTemplate(texts) }), {
-      status: base.status,
-      headers: base.headers,
-    }),
+    response: new Response(
+      JSON.stringify({ version: "2.0", template: kakaoMessageTemplate(texts.length ? texts : ["다시 눌러 주세요"]) }),
+      {
+        status: base.status,
+        headers: base.headers,
+      },
+    ),
     currentIncluded: false,
   };
 }
