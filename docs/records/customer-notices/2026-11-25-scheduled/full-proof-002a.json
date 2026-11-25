@@ -1,0 +1,39 @@
+{
+  "source": "002a88f251ba8cb11eb4f45494fdf2992939549f",
+  "sourceTree": "2ff6fc182de85f24b4fee1807b13472015e1b6f8",
+  "publicEquivalentHead": "4049d5e13120dfeff95fcbc2143a6089d30d9e1e",
+  "scopeGitObjects": {
+    "app/server": "4ce7bef6ab8a88d8f1e6cd832ff4d95d0e6a762d",
+    "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "de0aa79b81685e087cd5b232401724d38dd776cd",
+    "tools/staging-login-callback-grants.sql": "f85114567c755a1f49e3015532da1c3336b3911b",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "baseMain": "0781a6a6055bbb2c1ad2fc22112e22d66f65c192",
+  "runtimeTestApiDbGrantsDiffAfterSource": 0,
+  "migrations": 41,
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshState": "completed",
+  "freshDatabaseRemaining": 0,
+  "testLines": [
+    "Test Files  155 passed (155)",
+    "Tests  3015 passed (3015)",
+    "Duration  288.08s (tests 68%, import 32%, transform 1%)",
+    "Test Files  73 passed (73)",
+    "Tests  1775 passed (1775)",
+    "Duration  45.53s (tests 54%, import 36%, environment 8%, transform 2%)"
+  ],
+  "buildLines": [
+    "✓ built in 1.06s",
+    "Total Upload: 5490.89 KiB / gzip: 1011.79 KiB",
+    "Total Upload: 21.08 KiB / gzip: 6.55 KiB"
+  ],
+  "nodePassed": 55,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "browserExecuted": false,
+  "npmCi": "shared same-lock installation reused locally; CI clean installation still required"
+}

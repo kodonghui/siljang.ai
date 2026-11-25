@@ -1,0 +1,132 @@
+> test
+> vitest run test/customer-notice-kinds.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+ ❯ test/customer-notice-kinds.test.ts (29 tests | 21 failed) 2565ms
+   × TBL044의18종류는 공통 전달 목록에서 빠지지 않는다 10ms
+   ❯ 업무가 남긴 안내 본문의 공통 전달 (28)
+     × event: 업무가 저장한 channel_add 본문을 자기 손님에게 전한다 48ms
+     × event: 업무가 저장한 payment_mismatch 본문을 자기 손님에게 전한다 42ms
+     × event: 업무가 저장한 cancelled 본문을 자기 손님에게 전한다 50ms
+     × event: 업무가 저장한 change_result 본문을 자기 손님에게 전한다 38ms
+     × event: 업무가 저장한 change_not_applied 본문을 자기 손님에게 전한다 47ms
+     × event: 업무가 저장한 refund 본문을 자기 손님에게 전한다 30ms
+     × event: 업무가 저장한 compensation 본문을 자기 손님에게 전한다 32ms
+     × event: 업무가 저장한 completion_photo 본문을 자기 손님에게 전한다 25ms
+     × event: 업무가 저장한 refund_sent 본문을 자기 손님에게 전한다 27ms
+     × event: 업무가 저장한 payment_corrected 본문을 자기 손님에게 전한다 32ms
+     × message: 업무가 저장한 channel_add 본문을 자기 손님에게 전한다 65ms
+     × message: 업무가 저장한 payment_mismatch 본문을 자기 손님에게 전한다 59ms
+     × message: 업무가 저장한 cancelled 본문을 자기 손님에게 전한다 59ms
+     × message: 업무가 저장한 change_result 본문을 자기 손님에게 전한다 61ms
+     × message: 업무가 저장한 change_not_applied 본문을 자기 손님에게 전한다 64ms
+     × message: 업무가 저장한 refund 본문을 자기 손님에게 전한다 66ms
+     × message: 업무가 저장한 compensation 본문을 자기 손님에게 전한다 74ms
+     × message: 업무가 저장한 completion_photo 본문을 자기 손님에게 전한다 56ms
+     × message: 업무가 저장한 refund_sent 본문을 자기 손님에게 전한다 62ms
+     × message: 업무가 저장한 payment_corrected 본문을 자기 손님에게 전한다 63ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 21 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-kinds.test.ts > TBL044의18종류는 공통 전달 목록에서 빠지지 않는다
+AssertionError: expected [ 'custom_rejected', …(7) ] to deeply equal [ 'cancelled', …(17) ]
+
+- Expected
++ Received
+
+  [
+-   "cancelled",
+-   "change_not_applied",
+-   "change_result",
+-   "channel_add",
+-   "compensation",
+-   "completion_photo",
+    "custom_rejected",
+    "day_before",
+    "delay_notice",
+    "no_answer_closed",
+    "order_confirmed",
+    "owner_reply",
+-   "payment_corrected",
+-   "payment_mismatch",
+    "payment_request",
+-   "refund",
+-   "refund_sent",
+    "review_request",
+  ]
+
+ ❯ test/customer-notice-kinds.test.ts:24:54
+     22| it("TBL044의18종류는 공통 전달 목록에서 빠지지 않는다", () => {
+     23|   expect(kinds).toHaveLength(18);
+     24|   expect([...READABLE_CUSTOMER_NOTICE_KINDS].sort()).toEqual([...kinds…
+       |                                                      ^
+     25| });
+     26|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/21]⎯
+
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 channel_add 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 payment_mismatch 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 cancelled 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 change_result 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 change_not_applied 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 refund 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 compensation 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 completion_photo 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 refund_sent 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > event: 업무가 저장한 payment_corrected 본문을 자기 손님에게 전한다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 사건 안내의 저장된 본문'
+
+Expected: "합성 사건 안내의 저장된 본문"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"지금은 전할 안내가 없어요"}}]}}"
+
+ ❯ test/customer-notice-kinds.test.ts:82:36
+     80|         body = await response.json();
+     81|       expectSchema("SkillTemplateResponse", body);
+     82|       expect(JSON.stringify(body)).toContain(BODY);
+       |                                    ^
+     83|       if (mode === "event") expect(response.headers.get("Siljang-Outco…
+     84|       else {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/21]⎯
+
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 channel_add 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 payment_mismatch 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 cancelled 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 change_result 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 change_not_applied 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 refund 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 compensation 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 completion_photo 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 refund_sent 본문을 자기 손님에게 전한다
+ FAIL  test/customer-notice-kinds.test.ts > 업무가 남긴 안내 본문의 공통 전달 > message: 업무가 저장한 payment_corrected 본문을 자기 손님에게 전한다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 사건 안내의 저장된 본문'
+
+Expected: "합성 사건 안내의 저장된 본문"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"사장님 확인 뒤 답드릴게요."}}]}}"
+
+ ❯ test/customer-notice-kinds.test.ts:82:36
+     80|         body = await response.json();
+     81|       expectSchema("SkillTemplateResponse", body);
+     82|       expect(JSON.stringify(body)).toContain(BODY);
+       |                                    ^
+     83|       if (mode === "event") expect(response.headers.get("Siljang-Outco…
+     84|       else {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/21]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  21 failed | 8 passed (29)
+   Start at  13:31:58
+   Duration  4.48s (tests 59%, import 33%, transform 8%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task104-customer-notices/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task104-customer-notices/app/server
+npm error command failed
+npm error command sh -c vitest run test/customer-notice-kinds.test.ts

@@ -1,4 +1,6 @@
 /** SCR007 표시 전용. 본인 확인과 주문/환불 계산은 업무 모듈이 끝낸 서버 값을 받는다. */
+
+import { kakaoConsultationMessage } from "./kakao-consultation-message";
 import { toShopLocal } from "./time";
 export interface KakaoMyOrderSummary {
   readonly orderNo: string;
@@ -26,7 +28,27 @@ export interface KakaoMyOrderSummary {
   readonly refundNow: { readonly amount: number; readonly clause: string };
   readonly timeZone: string;
 }
-export type KakaoMyOrderView = { readonly state: "normal" | "stale"; readonly order: KakaoMyOrderSummary };
+export type KakaoMyOrderView =
+  | { readonly state: "normal" | "stale"; readonly order: KakaoMyOrderSummary }
+  | {
+      readonly state: "normal";
+      readonly orders: readonly { readonly orderNo: string; readonly pickupAt: string; readonly requestedAt: string }[];
+      readonly timeZone: string;
+    }
+  | { readonly state: "empty" | "loading" }
+  | {
+      readonly state: "error";
+      readonly reason:
+        | "not_found"
+        | "server_error"
+        | "unsupported_message"
+        | "photo_rejected"
+        | "photo_download_failed";
+    }
+  | { readonly state: "permission"; readonly reason: "not_yours" | "circumstances" }
+  | { readonly state: "permission"; readonly reason: "not_accepting"; readonly contactPhone: string }
+  | { readonly state: "handed-over"; readonly recommendChannel?: boolean }
+  | { readonly state: "rate-limited"; readonly silent?: boolean };
 type MyOrderOutput =
   | { readonly simpleText: { readonly text: string } }
   | {
@@ -64,6 +86,48 @@ function date(value: string, zone: string, includeTime = true) {
   return `${Number(local.date.slice(5, 7))}월 ${Number(local.date.slice(8))}일${includeTime ? ` ${local.time}` : ""}`;
 }
 export function kakaoMyOrderMessage(view: KakaoMyOrderView) {
+  if (view.state === "loading" || view.state === "handed-over" || view.state === "rate-limited")
+    return kakaoConsultationMessage(view);
+  if (view.state === "empty") return textMessage("이 대화로 요청한 주문이 없어요");
+  if (view.state === "error")
+    return view.reason === "not_found"
+      ? textMessage("찾을 수 없는 주문이에요")
+      : kakaoConsultationMessage({ state: "error", reason: view.reason });
+  if (view.state === "permission") {
+    if (view.reason === "not_yours") return textMessage("찾을 수 없는 주문이에요");
+    if (view.reason === "circumstances") return kakaoConsultationMessage({ state: "handed-over" });
+    if (view.reason === "not_accepting")
+      return kakaoConsultationMessage({ state: "permission", contactPhone: view.contactPhone });
+    throw new RangeError("invalid my order permission");
+  }
+  if ("orders" in view) {
+    if (view.orders.length === 0) return textMessage("이 대화로 요청한 주문이 없어요");
+    const seen = new Set<string>();
+    for (const choice of view.orders) {
+      if (
+        !/^[0-9A-Z]{6,8}$/.test(choice.orderNo) ||
+        seen.has(choice.orderNo) ||
+        !Number.isFinite(Date.parse(choice.requestedAt))
+      )
+        throw new RangeError("invalid my order choices");
+      seen.add(choice.orderNo);
+    }
+    const choices = [...view.orders].sort(
+      (a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt) || a.orderNo.localeCompare(b.orderNo),
+    );
+    return {
+      ...textMessage("어느 주문을 볼까요?"),
+      template: {
+        outputs: [{ simpleText: { text: "어느 주문을 볼까요?" } }],
+        quickReplies: choices.slice(0, 10).map((choice) => ({
+          label: `${choice.orderNo} ${toShopLocal(new Date(choice.pickupAt), view.timeZone).date.slice(5).replace("-", "/")}`,
+          action: "message" as const,
+          messageText: `${choice.orderNo} 내 주문`,
+        })),
+      },
+    };
+  }
+  if (!("order" in view)) throw new RangeError("invalid my order state");
   const o = view.order;
   if (!/^[0-9A-Z]{6,8}$/.test(o.orderNo) || STATUS[o.status] === undefined)
     throw new RangeError("invalid my order presentation");
@@ -115,4 +179,7 @@ export function kakaoMyOrderMessage(view: KakaoMyOrderView) {
     outputs.push({ textCard: { title, description: facts.slice(0, 2).join("\n"), buttons } });
   } else outputs.push({ textCard: { title, description, buttons } });
   return { version: "2.0" as const, template: { outputs } };
+}
+function textMessage(value: string) {
+  return { version: "2.0" as const, template: { outputs: [{ simpleText: { text: value } }] } };
 }

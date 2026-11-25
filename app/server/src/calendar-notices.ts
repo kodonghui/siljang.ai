@@ -28,7 +28,7 @@ export async function rescheduleCalendarNotices(
     LEFT JOIN orders o ON o.shop_id = $1 AND o.id = n.order_id
     LEFT JOIN productions p ON p.shop_id = $1 AND p.order_id = n.order_id
     WHERE n.shop_id = $1 AND n.kind = ANY($2::text[])
-      AND n.status IN ('pending', 'retrying') AND n.sent_at IS NULL AND n.scheduled_for IS NOT NULL
+      AND n.status IN ('pending', 'retrying', 'deferred') AND n.sent_at IS NULL AND n.scheduled_for IS NOT NULL
     ORDER BY n.id FOR UPDATE OF n`,
     [kinds],
   );
@@ -51,9 +51,9 @@ export async function rescheduleCalendarNotices(
   if (ids.length)
     await db.run(
       `UPDATE notifications n SET scheduled_for = planned.scheduled_for,
-    next_attempt_at = CASE WHEN n.attempts = 0 THEN planned.scheduled_for ELSE n.next_attempt_at END
+    next_attempt_at = CASE WHEN n.status <> 'deferred' AND n.attempts = 0 THEN planned.scheduled_for ELSE n.next_attempt_at END
     FROM unnest($2::uuid[], $3::timestamptz[]) AS planned(id,scheduled_for)
-    WHERE n.shop_id = $1 AND n.id = planned.id AND n.status IN ('pending', 'retrying') AND n.sent_at IS NULL`,
+    WHERE n.shop_id = $1 AND n.id = planned.id AND n.status IN ('pending', 'retrying', 'deferred') AND n.sent_at IS NULL`,
       [ids, times],
     );
 }

@@ -1,0 +1,70 @@
+> test
+> vitest run test/customer-notice-scheduled.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task104-customer-notices/app/server
+
+ ❯ test/customer-notice-scheduled.test.ts (16 tests | 16 failed) 2554ms
+   ❯ 예약 안내의 스킬 읽기와 다음 대화 전달 (16)
+     × day_before/event: valid의 의미와 보낼 시간을 다시 확인한다 118ms
+     × day_before/event: future의 의미와 보낼 시간을 다시 확인한다 96ms
+     × day_before/event: outside의 의미와 보낼 시간을 다시 확인한다 65ms
+     × day_before/event: stale의 의미와 보낼 시간을 다시 확인한다 75ms
+     × day_before/message: valid의 의미와 보낼 시간을 다시 확인한다 100ms
+     × day_before/message: future의 의미와 보낼 시간을 다시 확인한다 48ms
+     × day_before/message: outside의 의미와 보낼 시간을 다시 확인한다 54ms
+     × day_before/message: stale의 의미와 보낼 시간을 다시 확인한다 58ms
+     × review_request/event: valid의 의미와 보낼 시간을 다시 확인한다 71ms
+     × review_request/event: future의 의미와 보낼 시간을 다시 확인한다 54ms
+     × review_request/event: outside의 의미와 보낼 시간을 다시 확인한다 49ms
+     × review_request/event: stale의 의미와 보낼 시간을 다시 확인한다 29ms
+     × review_request/message: valid의 의미와 보낼 시간을 다시 확인한다 41ms
+     × review_request/message: future의 의미와 보낼 시간을 다시 확인한다 32ms
+     × review_request/message: outside의 의미와 보낼 시간을 다시 확인한다 26ms
+     × review_request/message: stale의 의미와 보낼 시간을 다시 확인한다 18ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/event: valid의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/event: future의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/event: outside의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/event: stale의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/message: valid의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/message: future의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/message: outside의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > day_before/message: stale의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/event: valid의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/event: future의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/event: outside의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/event: stale의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/message: valid의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/message: future의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/message: outside의 의미와 보낼 시간을 다시 확인한다
+ FAIL  test/customer-notice-scheduled.test.ts > 예약 안내의 스킬 읽기와 다음 대화 전달 > review_request/message: stale의 의미와 보낼 시간을 다시 확인한다
+error: insert or update on table "orders" violates foreign key constraint "orders_current_details_fk"
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ PgRequestDb.transaction src/db.ts:149:7
+ ❯ test/customer-notice-scheduled.test.ts:41:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  16 failed (16)
+   Start at  12:50:45
+   Duration  5.23s (tests 50%, import 38%, transform 11%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task104-customer-notices/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task104-customer-notices/app/server
+npm error command failed
+npm error command sh -c vitest run test/customer-notice-scheduled.test.ts

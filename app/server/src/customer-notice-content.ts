@@ -7,6 +7,9 @@ import type { KakaoPaymentNormalView } from "./kakao-payment-message";
 import type { ShopDb } from "./shop-scope";
 
 export const READABLE_CUSTOMER_NOTICE_KINDS = [...TEXT_CUSTOMER_NOTICE_KINDS, "payment_request"] as const;
+/** JavaScript trim과 같은 공백 문자. SQL 정리와 표시 가능 여부가 서로 어긋나지 않게 한다. */
+export const CUSTOMER_NOTICE_WHITESPACE =
+  "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff";
 export interface CustomerNoticeView {
   readonly id: string;
   readonly customerId: string;
