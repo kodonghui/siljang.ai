@@ -1,0 +1,12 @@
+{
+  "source": "286f6db5711e76b7414cfbe7ace45e268a91e8ff",
+  "publicEquivalent": "0d508ea8f70687842bac3c24bbc7e6f746fc476d",
+  "combinedNpmTestExit": 1,
+  "serverFiles": 158,
+  "serverPassed": 3053,
+  "serverFailed": 1,
+  "webExecuted": false,
+  "buildExecuted": false,
+  "freshDatabaseRemaining": 0,
+  "cause": "normal reply storage failure mock matched literal ai author instead of the expected reply binding"
+}

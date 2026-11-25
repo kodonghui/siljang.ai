@@ -9,6 +9,7 @@ import {
 } from "./kakao-message-content";
 
 import { type KakaoOrderPolicy, kakaoOrderRequestContents } from "./kakao-order-request-content";
+import { kakaoPaymentClaimMessage } from "./kakao-payment-claim-message";
 
 export type { KakaoOrderPolicy } from "./kakao-order-request-content";
 export { kakaoOrderTerms } from "./kakao-order-request-content";
@@ -91,6 +92,18 @@ function inputCard(
   return { version: "2.0" as const, template: { outputs: [{ textCard: { title, description, buttons } }] } };
 }
 export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
+  if (answer.kind === "payment_claim") {
+    if (answer.outcome === "payment_claimed") return kakaoPaymentClaimMessage({ state: "done", kind: "claimed" });
+    if (answer.outcome === "declined") return kakaoPaymentClaimMessage({ state: "done", kind: "declined" });
+    if (answer.outcome === "card_used" && answer.firstResult?.outcome === "payment_claimed")
+      return kakaoPaymentClaimMessage({ state: "done", kind: "used", firstOutcome: "payment_claimed" });
+  }
+  if (answer.card?.kind === "payment_claim" && answer.card.paymentClaim !== undefined) {
+    return kakaoPaymentClaimMessage({
+      state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
+      ...answer.card.paymentClaim,
+    });
+  }
   if (answer.card?.kind === "order_request") {
     if (!answer.card.orderRequest || answer.firstResult) throw new RangeError("order card policy missing");
     return kakaoOrderRequestMessage({

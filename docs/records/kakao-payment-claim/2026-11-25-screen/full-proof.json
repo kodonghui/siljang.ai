@@ -1,0 +1,58 @@
+{
+  "sourceCommit": "491440b479358e42bee5e34891e54eb9656bf1d6",
+  "sourceTree": "f1b8723b7e2a2d50e38f66f7d33f5432c3e9bd78",
+  "publicEquivalentHead": "09cfa60543b8202a151b50c286589e90de969867",
+  "baseMain": "3ac2b90bbb315a43eb359139a4e9983ec5e970f2",
+  "scopeGitObjects": {
+    "app/server": "4ae5acf2a431e21073c637c0c0a44f5b9bc4f667",
+    "app/web": "5030d25a8a04a5ac3e0fb73e83ab10cbf348b95b",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "de0aa79b81685e087cd5b232401724d38dd776cd",
+    "tools/staging-login-callback-grants.sql": "f85114567c755a1f49e3015532da1c3336b3911b",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 41,
+  "localCombinedNpmTestExit": 1,
+  "localServer": {
+    "files": 158,
+    "passed": 3054,
+    "failed": 0
+  },
+  "localWebFirst": {
+    "filesPassed": 72,
+    "filesFailed": 1,
+    "passed": 1774,
+    "failed": 1,
+    "test": "PublicPrivacyScreen.interaction.test.tsx 404 접근성 알림의 data-announcer 조회"
+  },
+  "localWebRetry": {
+    "targetedPassed": 19,
+    "files": 73,
+    "passed": 1775,
+    "failed": 0,
+    "exit": 0
+  },
+  "localBuildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "ci": {
+    "head": "09cfa60543b8202a151b50c286589e90de969867",
+    "appRun": 45642117667,
+    "dbRun": 45642117696,
+    "checkJob": 139303263172,
+    "windowsJob": 139303263828,
+    "postgres16Job": 139303263497,
+    "postgres17Job": 139303264034,
+    "allConclusions": "success",
+    "cleanNpmCi": true,
+    "combinedNpmTest": "success",
+    "serverPassed": 3054,
+    "webPassed": 1775,
+    "build": "success"
+  },
+  "nodePassed": 55,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "browserExecuted": false,
+  "notes": "로컬 전체 실패와 개별 재검사/웹 전체 재검사/빌드 종료0을 구분함. 같은 제품 소스의 CI 새 설치 단일 전체 성공을 확인함. 제품/시험/계약/DB/권한 변경은 없이 기록만 보충함."
+}

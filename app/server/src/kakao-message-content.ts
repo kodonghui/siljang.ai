@@ -1,6 +1,7 @@
 /** 카카오 발신 내용. 확인 카드는 서버가 저장한 표시 값만 받습니다. */
 import type { ConfirmCardView } from "./confirm-card-store";
 import { kakaoOrderRequestContents } from "./kakao-order-request-content";
+import { kakaoPaymentClaimMessage } from "./kakao-payment-claim-message";
 import { type KakaoPaymentOutput, type KakaoPaymentView, kakaoPaymentMessage } from "./kakao-payment-message";
 
 /** 표시 직전에 만든 결제 자료. 메시지 본문이나 확인 카드 payload에 저장하지 않는다. */
@@ -39,6 +40,11 @@ export function kakaoMessageOutputs(contents: readonly KakaoMessageContent[]): K
     if (content.kind === "payment_notice") {
       const output = kakaoPaymentMessage(content.view).template.outputs[content.part ?? 0];
       if (output === undefined) throw new RangeError("missing payment output part");
+      return output;
+    }
+    if (content.kind === "payment_claim" && content.paymentClaim !== undefined) {
+      const output = kakaoPaymentClaimMessage({ state: "normal", ...content.paymentClaim }).template.outputs[0];
+      if (output === undefined) throw new RangeError("missing payment claim output");
       return output;
     }
     if (

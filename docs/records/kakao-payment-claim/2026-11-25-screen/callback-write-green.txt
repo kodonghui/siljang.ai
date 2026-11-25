@@ -1,0 +1,12 @@
+
+> test
+> vitest run --run test/kakao-callback.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  71 passed (71)
+   Start at  15:06:18
+   Duration  7.79s (tests 74%, import 19%, transform 6%)

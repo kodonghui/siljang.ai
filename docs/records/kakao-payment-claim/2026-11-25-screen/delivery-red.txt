@@ -1,0 +1,118 @@
+
+> test
+> vitest run --run test/kakao-payment-claim-delivery.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-payment-claim/app/server
+
+ ❯ test/kakao-payment-claim-delivery.test.ts (5 tests | 5 failed) 1066ms
+   ❯ SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) (5)
+     × 현재 결제의 금액·기한과 이름은 세 버튼으로 보이며 카드/메시지에는 이름을 저장하지 않음 93ms
+     × 저장 수신의 재전달도 같은 카드 키로 표시 직전에 이름을 읽고 업무를 쓰지 않음 33ms
+     × 30분 정각의 새 카드는 SCR006 만료 문구/현재 값이고 명령0건 45ms
+     × 주문 버전이 같아도 결제 버전/기한이 바뀌면 새 카드이며 명령0건 29ms
+     × 이미 요청한 결제는 요약/이름을 다시 보이지 않고 지금 상태이며 명령0건 28ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 현재 결제의 금액·기한과 이름은 세 버튼으로 보이며 카드/메시지에는 이름을 저장하지 않음
+AssertionError: expected '주문번호 M0XKRBUL\n픽업 날짜 2027-01-04\n주문 금…' to contain '입금자 합성입금표시손님(주문자 이름)'
+
+- Expected
++ Received
+
+- 입금자 합성입금표시손님(주문자 이름)
++ 주문번호 M0XKRBUL
++ 픽업 날짜 2027-01-04
++ 주문 금액 35,000원
+
+ ❯ test/kakao-payment-claim-delivery.test.ts:64:47
+     62|     const outputs = kakaoMessageOutputs([card]);
+     63|     expect(outputs).toHaveLength(1);
+     64|     expect(outputs[0]?.textCard?.description).toContain(`입금자 ${NAME}(주…
+       |                                               ^
+     65|     expect(outputs[0]?.textCard?.description).toContain("결제 기한 2026-11…
+     66|     expect(outputs[0]?.textCard?.description).toContain("10:30까지 눌러 주세…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 저장 수신의 재전달도 같은 카드 키로 표시 직전에 이름을 읽고 업무를 쓰지 않음
+AssertionError: expected '[{"textCard":{"title":"결제 확인 요청 확인","…' to contain '합성입금표시손님'
+
+Expected: "합성입금표시손님"
+Received: "[{"textCard":{"title":"결제 확인 요청 확인","description":"주문번호 G63Y2KLB\n픽업 날짜 2027-01-04\n주문 금액 35,000원","buttons":[{"label":"결제 확인 요청","action":"block","blockId":"blk-card","extra":{"cardKey":"ck_50fcedd8f588491fbf15ec082db972b2","choice":"confirm"}},{"label":"안 할래요","action":"block","blockId":"blk-card","extra":{"cardKey":"ck_50fcedd8f588491fbf15ec082db972b2","choice":"decline"}}]}}]"
+
+ ❯ test/kakao-payment-claim-delivery.test.ts:81:65
+     79|     const replay = await read();
+     80|     expect(replay.card?.cardKey).toBe(card.cardKey);
+     81|     expect(JSON.stringify(kakaoMessageOutputs([replay.card!]))).toCont…
+       |                                                                 ^
+     82|     expect(
+     83|       (await isolated.db.query("SELECT * FROM payment_requests WHERE i…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 30분 정각의 새 카드는 SCR006 만료 문구/현재 값이고 명령0건
+AssertionError: expected [ …(2) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ test/kakao-payment-claim-delivery.test.ts:94:21
+     92|     expect(answer.card?.cardKey).not.toBe(card.cardKey);
+     93|     const outputs = kakaoConfirmAnswerMessage(answer).template.outputs;
+     94|     expect(outputs).toHaveLength(1);
+       |                     ^
+     95|     expect(outputs[0]?.textCard?.description).toContain("시간이 지나 새 카드를 …
+     96|     expect(outputs[0]?.textCard?.description).toContain(NAME);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 주문 버전이 같아도 결제 버전/기한이 바뀌면 새 카드이며 명령0건
+AssertionError: expected 'payment_claimed' to be 'card_stale' // Object.is equality
+
+Expected: "card_stale"
+Received: "payment_claimed"
+
+ ❯ test/kakao-payment-claim-delivery.test.ts:108:28
+    106|     const pending = press(card.cardKey);
+    107|     const answer = await pending.answer;
+    108|     expect(answer.outcome).toBe("card_stale");
+       |                            ^
+    109|     expect(answer.card?.cardKey).not.toBe(card.cardKey);
+    110|     expect(JSON.stringify(kakaoConfirmAnswerMessage(answer))).toContai…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/kakao-payment-claim-delivery.test.ts > SCR006 저장 카드의 표시 직전 결제 자료(TASK-107) > 이미 요청한 결제는 요약/이름을 다시 보이지 않고 지금 상태이며 명령0건
+AssertionError: expected 'payment_claimed' to be 'not_allowed_now' // Object.is equality
+
+Expected: "not_allowed_now"
+Received: "payment_claimed"
+
+ ❯ test/kakao-payment-claim-delivery.test.ts:123:28
+    121|     const pending = press(card.cardKey);
+    122|     const answer = await pending.answer;
+    123|     expect(answer.outcome).toBe("not_allowed_now");
+       |                            ^
+    124|     expect(answer.card).toBeUndefined();
+    125|     expect(answer.text).toContain("이미 결제 확인을 요청했어요");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed (5)
+   Start at  14:00:51
+   Duration  1.38s (tests 87%, transform 7%, import 6%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task107-payment-claim/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task107-payment-claim/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/kakao-payment-claim-delivery.test.ts
