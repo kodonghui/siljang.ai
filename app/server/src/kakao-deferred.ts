@@ -75,7 +75,7 @@ export async function deferredKakaoBatch(
         AND ($5::uuid IS NULL OR m.id <> $5)
         AND NOT ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.status IN ('ended','deleted','dropped'))
       ORDER BY m.created_at, m.id LIMIT $3 FOR UPDATE OF m`,
-    [customerId, DEFERRED_REPLY_BATCH, options.disclosureConsultationId ?? null, options.excludeMessageId ?? null],
+    [customerId, DEFERRED_REPLY_BATCH + 1, options.disclosureConsultationId ?? null, options.excludeMessageId ?? null],
   );
   const messages: (DeferredKakaoMessage & { readonly at: bigint; readonly blocked: boolean })[] = [];
   for (const row of result.rows) {
@@ -135,7 +135,7 @@ export async function deferredKakaoBatch(
         AND (n.kind<>'order_confirmed' OR o.status IN ('confirmed','received','no_pickup'))
         AND ${scheduledNoticeMeaningSql(5)} AND ${scheduledNoticeReadySql(5)}
       ORDER BY n.created_at, n.id LIMIT $3 FOR UPDATE OF n`,
-    [customerId, DEFERRED_REPLY_BATCH, READABLE_CUSTOMER_NOTICE_KINDS, options.now ?? new Date()],
+    [customerId, DEFERRED_REPLY_BATCH + 1, READABLE_CUSTOMER_NOTICE_KINDS, options.now ?? new Date()],
   );
   for (const row of notices.rows) {
     const contents = await customerNoticeContents(
@@ -158,7 +158,6 @@ export async function deferredKakaoBatch(
   );
   const selected: DeferredKakaoMessage[] = [];
   let remaining = DEFERRED_REPLY_BATCH;
-  let currentBlocked = false;
   for (const row of candidates) {
     if (row.blocked) break;
     const slots =
@@ -169,10 +168,7 @@ export async function deferredKakaoBatch(
           : Math.ceil([...row.text].length / 1000);
     if (slots === 3 && selected.length === 0 && options.allowFullOrderCard && !options.disclosureConsultationId)
       remaining = 3;
-    if (slots > remaining) {
-      currentBlocked = true;
-      break;
-    }
+    if (slots > remaining) break;
     selected.push({
       id: row.id,
       text: row.text,
@@ -183,7 +179,9 @@ export async function deferredKakaoBatch(
     remaining -= slots;
     if (remaining === 0) break;
   }
-  return { messages: selected, currentBlocked };
+  // 출력 영역을 모두 쓴 뒤에도 앞선 안내가 남았는지 확인해 새 답의 순서 역전을 막는다.
+  const next = candidates[selected.length];
+  return { messages: selected, currentBlocked: next !== undefined && !next.blocked };
 }
 
 /** 기존 조회 호출자는 선택한 메시지 배열만 받는다. 발신 호출자는 batch의 대기 표시도 사용한다. */
