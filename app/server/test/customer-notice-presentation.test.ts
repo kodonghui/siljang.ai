@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { createOrderConfirmedNotice } from "../src/customer-notice-store";
+import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
@@ -14,12 +15,14 @@ const NOW = new Date("2026-11-26T00:00:00Z");
 describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture, key: string;
   let requestCount = 0;
+  let clock = NOW;
   const env = testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: newFieldKey() });
   beforeAll(async () => {
     isolated = await isolatedTestDb();
   }, 30000);
   beforeEach(async () => {
     requestCount = 0;
+    clock = NOW;
     shop = await createShop(isolated.db, "합성 저장 안내 가게");
     await issueTestBookingLink(isolated.db, shop);
     await linkTestChannel(isolated.db, shop.channelId);
@@ -33,7 +36,7 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
     try {
       const response = await createApp({
         connect: () => isolated.connect(),
-        services: { now: () => NOW },
+        services: { now: () => clock },
         logSink: () => {},
       }).request(
         `/api/kakao/skills/${mode}`,
@@ -96,6 +99,41 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
     );
     return id;
   }
+  it("여러 앞선 안내가 자리를 쓰면 대기한 현재 답도 새 답보다 먼저 전한다", async () => {
+    await confirm();
+    await isolated.db.query(
+      "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',1,'합성 대기 규정','합성 조건','합성 대기 규정') ON CONFLICT(operating_rules_id,position) DO UPDATE SET effect_text=EXCLUDED.effect_text",
+      [shop.shopId, shop.operatingRulesId],
+    );
+    const older = await notice("owner_reply", "합성 가장 오래된 안내", new Date(NOW.getTime() - 1000));
+    const db = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+    const confirmed = await db.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW));
+    if (!confirmed) throw new Error("합성 확정 안내 없음");
+    clock = new Date(NOW.getTime() + 1000);
+    const first = (await (await call("message", older)).json()) as { template: { outputs: unknown[] } };
+    expectSchema("SkillTemplateResponse", first);
+    expect(first.template.outputs).toEqual([{ simpleText: { text: "합성 가장 오래된 안내" } }]);
+    clock = new Date(NOW.getTime() + 2000);
+    const second = (await (await call("message", confirmed.id)).json()) as { template: { outputs: unknown[] } };
+    expectSchema("SkillTemplateResponse", second);
+    expect(second.template.outputs).toHaveLength(2);
+    expect(JSON.stringify(second)).toContain("합성 대기 규정");
+    expect(JSON.stringify(second)).not.toContain(KAKAO_HANDOFF_TEXT);
+    clock = new Date(NOW.getTime() + 3000);
+    const third = (await (await call("message", confirmed.id)).json()) as { template: { outputs: unknown[] } };
+    expectSchema("SkillTemplateResponse", third);
+    expect(third.template.outputs).toEqual(
+      Array.from({ length: 3 }, () => ({ simpleText: { text: KAKAO_HANDOFF_TEXT } })),
+    );
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT count(*)::int AS n FROM messages m JOIN consultations c ON c.shop_id=m.shop_id AND c.id=m.consultation_id WHERE m.shop_id=$1 AND c.customer_id=$2 AND m.direction='outbound' AND m.delivery='deferred'",
+          [shop.shopId, shop.customerId],
+        )
+      ).rows,
+    ).toEqual([{ n: 0 }]);
+  });
   for (const mode of ["event", "message"] as const) {
     it(`${mode}: 공백인 분할 조각 뒤의 안내도 막히지 않는다`, async () => {
       const original = `${"가".repeat(1000)}\n`;

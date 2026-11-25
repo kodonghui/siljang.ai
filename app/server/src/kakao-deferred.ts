@@ -38,7 +38,12 @@ export function deferredKakaoTexts(previous: readonly DeferredKakaoMessage[]): K
 }
 
 /** 손님 행 잠금 또는 그 손님의 콜백 선점을 가진 호출자만 사용한다. */
-export async function deferredKakaoMessages(
+export interface DeferredKakaoBatch {
+  readonly messages: readonly DeferredKakaoMessage[];
+  /** 앞선 안내가 남은 출력 수에 들어가지 않아 현재 답도 다음 대화로 남겨야 한다. */
+  readonly currentBlocked: boolean;
+}
+export async function deferredKakaoBatch(
   db: ShopDb,
   customerId: string,
   options: {
@@ -49,9 +54,9 @@ export async function deferredKakaoMessages(
     readonly allowFullOrderCard?: boolean;
     readonly fields?: (() => FieldCrypto) | undefined;
   } = {},
-): Promise<readonly DeferredKakaoMessage[]> {
+): Promise<DeferredKakaoBatch> {
   if ((await db.run("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [customerId])).rowCount === 0)
-    return [];
+    return { messages: [], currentBlocked: false };
   const result = await db.run<{
     id: string;
     body_masked: string;
@@ -153,6 +158,7 @@ export async function deferredKakaoMessages(
   );
   const selected: DeferredKakaoMessage[] = [];
   let remaining = DEFERRED_REPLY_BATCH;
+  let currentBlocked = false;
   for (const row of candidates) {
     if (row.blocked) break;
     const slots =
@@ -163,7 +169,10 @@ export async function deferredKakaoMessages(
           : Math.ceil([...row.text].length / 1000);
     if (slots === 3 && selected.length === 0 && options.allowFullOrderCard && !options.disclosureConsultationId)
       remaining = 3;
-    if (slots > remaining) break;
+    if (slots > remaining) {
+      currentBlocked = true;
+      break;
+    }
     selected.push({
       id: row.id,
       text: row.text,
@@ -174,7 +183,16 @@ export async function deferredKakaoMessages(
     remaining -= slots;
     if (remaining === 0) break;
   }
-  return selected;
+  return { messages: selected, currentBlocked };
+}
+
+/** 기존 조회 호출자는 선택한 메시지 배열만 받는다. 발신 호출자는 batch의 대기 표시도 사용한다. */
+export async function deferredKakaoMessages(
+  db: ShopDb,
+  customerId: string,
+  options: Parameters<typeof deferredKakaoBatch>[2] = {},
+): Promise<readonly DeferredKakaoMessage[]> {
+  return (await deferredKakaoBatch(db, customerId, options)).messages;
 }
 
 /** 발신 성공/응답 생성의 트랜잭션 안에서만 이전 답의 전달 표시를 바꾼다. */
@@ -210,8 +228,9 @@ export async function markDeferredKakaoMessages(
 export function renderDeferredKakaoReply(
   texts: readonly KakaoMessageContent[],
   render: (previous: readonly KakaoMessageContent[]) => Response,
+  currentBlocked = false,
 ): { response: Response; currentIncluded: boolean } {
-  if (texts.length !== 3) return { response: render(texts), currentIncluded: true };
+  if (texts.length !== 3 && !currentBlocked) return { response: render(texts), currentIncluded: true };
   const base = render([]);
   return {
     response: new Response(JSON.stringify({ version: "2.0", template: kakaoMessageTemplate(texts) }), {
@@ -243,14 +262,14 @@ export async function replyWithDeferredKakaoMessages(
     if (active.rowCount > 0) return render([]);
     const disclosure =
       consultationId === undefined ? undefined : await inlineKakaoDisclosure(tx, consultationId, customerId, policy);
-    const pending = await deferredKakaoMessages(tx, customerId, {
+    const pending = await deferredKakaoBatch(tx, customerId, {
       disclosureConsultationId: disclosure?.consultationId,
       now,
       allowFullOrderCard: true,
       fields,
     });
-    const texts = deferredKakaoTexts(pending);
-    const rendered = renderDeferredKakaoReply(texts, render);
+    const texts = deferredKakaoTexts(pending.messages);
+    const rendered = renderDeferredKakaoReply(texts, render, pending.currentBlocked);
     const { response } = await prependKakaoDisclosure(rendered.response, disclosure);
     if (disclosure !== undefined)
       await markKakaoAiDisclosure(
@@ -260,7 +279,7 @@ export async function replyWithDeferredKakaoMessages(
         now,
         "skill_response",
       );
-    await markDeferredKakaoMessages(tx, customerId, pending, now);
+    await markDeferredKakaoMessages(tx, customerId, pending.messages, now);
     return response;
   });
 }

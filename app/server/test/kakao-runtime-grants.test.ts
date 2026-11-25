@@ -20,6 +20,7 @@ import { quoteDraft } from "../src/quotes";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { anthropicStream, sseResponse } from "./support/ai-mock";
+import { expectSchema } from "./support/contract";
 import { collectLogs, describeDb, newUuid, TEST_DATABASE_URL, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { newFieldKey, singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
