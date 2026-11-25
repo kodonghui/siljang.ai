@@ -84,21 +84,38 @@ test("오래된 정보 조건은 정상 주소를 받은 뒤 두 번째 조회�
 	await check(await f.request("/api" + route), expected, expected.status);
 });
 
-test("준비 상태가 바뀌면 다음 조회와 신원/가게의 상태가 함께 바뀐다", async () => {
-	for (const [selected, before, after] of [
-		["becomes-not-ready", "issued", "not_ready"],
-		["becomes-issued", "not_ready", "issued"],
-	]) {
-		const f = fixture(selected);
-		await check(await f.request("/api" + route), samples[before].value);
-		await check(await f.request("/api" + route), samples[after].value);
-		const me = await (await f.request("/api/owner/me")).json();
-		const shop = await (await f.request("/api/owner/shop")).json();
-		const expected = after === "issued" ? "verified" : "pending";
-		assert.equal(me.shop.licenseStatus, expected);
-		assert.equal(shop.licenseStatus, expected);
-		assert.equal(shop.bookingUrl, samples[after].value.url);
-	}
+test("발급 뒤 준비 조건이 사라져도 같은 예약 주소와 발급 시각을 유지한다", async () => {
+  for (const selected of ["becomes-not-ready", "conditions-removed"]) {
+    const f = fixture(selected);
+    await check(await f.request("/api" + route), samples.issued.value);
+    await check(await f.request("/api" + route), samples.issued.value);
+    const shop = await (await f.request("/api/owner/shop")).json();
+    assert.equal(shop.bookingUrl, samples.issued.value.url);
+    assert.equal(shop.settingsSummary.paymentConfigured, false);
+    assert.equal(shop.licenseStatus, "verified");
+    const expected = problem("/owner/payment-destination", "not_set");
+    await check(await f.request("/api/owner/payment-destination"), expected, 404);
+  }
+});
+
+test("발급 전 조건을 채우면 신원/가게와 함께 처음 발급된 주소를 제공한다", async () => {
+  const f = fixture("becomes-issued");
+  await check(await f.request("/api" + route), samples.not_ready.value);
+  await check(await f.request("/api" + route), samples.issued.value);
+  const me = await (await f.request("/api/owner/me")).json();
+  const shop = await (await f.request("/api/owner/shop")).json();
+  assert.equal(me.shop.licenseStatus, "verified");
+  assert.equal(shop.licenseStatus, "verified");
+  assert.equal(shop.bookingUrl, samples.issued.value.url);
+});
+
+test("발급 뒤 픽업 장소가 비어도 주소와 시각을 유지하고 권고와 가게 설정을 일치시킨다", async () => {
+  const f = fixture("issued-no-pickup");
+  await check(await f.request("/api" + route), { ...samples.issued.value, recommended: ["pickup_address"] });
+  const shop = await (await f.request("/api/owner/shop")).json();
+  assert.equal(shop.pickupAddress, null);
+  assert.equal(shop.bookingUrl, samples.issued.value.url);
+  assert.equal(shop.licenseStatus, "verified");
 });
 
 test("7조건이 모두 남으면 각 설정 진입의 조회도 미충족 상태를 제공한다", async () => {
