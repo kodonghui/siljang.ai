@@ -43,7 +43,9 @@
     "database": "정리 완료",
     "failure": "추가 시험의 limit=1에 여러 행인 계약 예제를 반환해 최초 읽기가 거절됨. 제품 고침의 실패 재현과 구분함. 시험의 검색 조건을 limit=20으로 고침. 새 전체를 실행함."
   },
-  "fullFreshRun": {
+  "finalTypecheck": 0,
+  "finalStrictLint": 0,
+  "beforePhotoReviewFullFreshRun": {
     "source": "4ed1dd404a3c282b3a643fc82d5dca72a1a795cc",
     "migrations": 40,
     "server": {
@@ -65,6 +67,16 @@
     "state": "completed",
     "installation": "동일 package-lock 설치 재사용. 새 로컬 npm ci 아님"
   },
-  "finalTypecheck": 0,
-  "finalStrictLint": 0
+  "photoReview": {
+    "comment": 4693412935,
+    "reviewedPublic": "6f61a0fa099be193cbb5c81ab9c40d1b08944f78",
+    "redSource": "24b6c8db7603421742e1f23534573097208b39da",
+    "redWeb": {
+      "failed": 1,
+      "skipped": 24
+    },
+    "relatedGreenWeb": 25,
+    "finding": "보조 커서가 없는 사진 갱신이 새 페이지의 nextCursor를 버림"
+  },
+  "fullFreshRun": "사진 갱신 고침 뒤 새 고정 전체 대기"
 }

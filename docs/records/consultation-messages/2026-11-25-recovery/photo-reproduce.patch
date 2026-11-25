@@ -1,0 +1,43 @@
+diff --git a/app/web/src/ConsultationMessagesScreen.interaction.test.tsx b/app/web/src/ConsultationMessagesScreen.interaction.test.tsx
+index cf3b5c66..db34fac5 100644
+--- a/app/web/src/ConsultationMessagesScreen.interaction.test.tsx
++++ b/app/web/src/ConsultationMessagesScreen.interaction.test.tsx
+@@ -183,6 +183,38 @@ it("같은 시각에는 서버가 준 질문과 답 순서를 유지한다", asy
+   const contents = document.querySelector(".consultation-timeline")?.textContent ?? "";
+   expect(contents.indexOf("첫 번째 합성 질문")).toBeLessThan(contents.indexOf("두 번째 합성 답"));
+ });
++it("보조 커서 없는 사진 갱신은 새 페이지의 이전 대화 커서도 받아 빠진 기록을 다시 읽는다", async () => {
++  page.reloadCursor = null;
++  page.nextCursor = null;
++  page.items = Array.from({ length: 20 }, (_, index) => ({
++    ...structuredClone(page.items[0]),
++    messageId: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
++    text: `기존 합성 기록 ${index}`,
++    photos: index === 0 ? [{ url: "https://images.example/synthetic-oldest?exp=1" }] : [],
++  }));
++  const older = { ...structuredClone(page), reloadCursor: "fallback_oldest", items: [page.items[0]] };
++  const newer = {
++    ...structuredClone(page),
++    reloadCursor: "fallback_latest",
++    nextCursor: "fallback_oldest",
++    items: [...page.items.slice(1), { ...page.items[19], messageId: "00000000-0000-4000-8000-000000000021", text: "새 합성 기록" }],
++  };
++  let reads = 0;
++  handler = async (path) => {
++    if (path.includes("cursor=fallback_oldest")) return Response.json(older);
++    reads++;
++    return Response.json(reads === 1 ? page : newer);
++  };
++  open();
++  await screen.findByText("기존 합성 기록 0");
++  fireEvent.click(screen.getByRole("button", { name: "참고 사진 1 다시 불러오기" }));
++  await screen.findByText("새 합성 기록");
++  fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
++  expect(await screen.findByText("기존 합성 기록 0")).toBeTruthy();
++  expect(screen.getByText("새 합성 기록")).toBeTruthy();
++  expect(document.querySelectorAll(".consultation-timeline li")).toHaveLength(21);
++  expect(reads).toBe(2);
++});
+ it.each([false, true])("추가 페이지의 만료 사진을 같은 페이지에서 갱신한다(사진 창:%s)", async (dialogOpen) => {
+   const start = new Date("2026-11-25T07:00:00Z");
+   vi.useFakeTimers({ toFake: ["Date"] });
