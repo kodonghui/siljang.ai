@@ -1,0 +1,33 @@
+{
+  "source": "f5ec7400dc45fab772572de9f2e8ef7774b9b6a6",
+  "newLocalNpmCi": false,
+  "results": {
+    "related": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task058-current-related-20261125.log",
+      "lines": [
+        " Test Files  4 passed (4)",
+        "      Tests  97 passed (97)"
+      ]
+    },
+    "type": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task058-current-type-20261125.log",
+      "lines": []
+    },
+    "build": {
+      "exitCode": 0,
+      "path": "/tmp/siljang-task058-current-build-20261125.log",
+      "lines": [
+        "✓ built in 716ms",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    }
+  },
+  "productCodeChanges": 0,
+  "browserRun": false,
+  "outsideServices": 0
+}
