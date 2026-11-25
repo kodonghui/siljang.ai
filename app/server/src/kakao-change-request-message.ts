@@ -1,5 +1,6 @@
 /** SCR008 표시 전용. 변경 값 검증·주문 쓰기·카드 갱신은 업무 처리기가 담당한다. */
 import { kakaoChannelIdentifierError } from "./kakao-channel-input";
+import { normalizeLineBreaks } from "./line-breaks";
 import { toShopLocal } from "./time";
 
 export interface KakaoChangeRequestCard {
@@ -72,9 +73,11 @@ type Output =
       };
     };
 function text(value: string, max: number, empty = false) {
-  if (typeof value !== "string" || (!empty && !value.trim()) || [...value].length > max || /[\0\r]/.test(value))
+  if (typeof value !== "string") throw new RangeError("invalid change request text");
+  const normalized = normalizeLineBreaks(value);
+  if ((!empty && !normalized.trim()) || [...normalized].length > max || normalized.includes("\0"))
     throw new RangeError("invalid change request text");
-  return value;
+  return normalized;
 }
 function body(outputs: readonly Output[]) {
   if (outputs.length < 1 || outputs.length > 3) throw new RangeError("invalid change request outputs");

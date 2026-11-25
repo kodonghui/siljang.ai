@@ -1,6 +1,7 @@
 /** 서버에서 준비한 변경 제안을 현재 자기 주문의 표시 값에 연결한다. 변경 요청/자리/금액은 쓰지 않는다. */
 import { calendarBookingDays } from "./calendar";
 import type { KakaoChangeRequestCard } from "./kakao-change-request-message";
+import { normalizeLineBreaks } from "./line-breaks";
 import { paymentChangeSummary } from "./payment-change-presentation";
 import type { ShopDb } from "./shop-scope";
 import { toShopLocal } from "./time";
@@ -112,11 +113,15 @@ export async function readPreparedChangeCard(
     ["colors", "색", row.colors],
   ] as const) {
     const after = proposal[key];
-    if (typeof after === "string" && (before ?? "") !== after) changes.push({ label, before: before ?? "", after });
+    if (typeof after === "string") {
+      const original = normalizeLineBreaks(before ?? ""),
+        proposed = normalizeLineBreaks(after);
+      if (original !== proposed) changes.push({ label, before: original, after: proposed });
+    }
   }
   if (Array.isArray(proposal.extras)) {
-    const before = row.extras.join(" · "),
-      after = proposal.extras.join(" · ");
+    const before = normalizeLineBreaks(row.extras.join(" · ")),
+      after = normalizeLineBreaks(proposal.extras.join(" · "));
     if (before !== after) changes.push({ label: "더하는 옵션", before, after });
   }
   if (typeof proposal.courierPickup === "boolean" && proposal.courierPickup !== row.courier_pickup)
