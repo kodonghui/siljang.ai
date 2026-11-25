@@ -1,5 +1,7 @@
 /** SCR006의 개인 표시는 전송 직전에만 읽는다. 반환값 전체를 저장하거나 AI로 보내지 않는다. */
+import { customerNoticeContents } from "./customer-notice-content";
 import type { KakaoPaymentClaimCard } from "./kakao-payment-claim-message";
+import type { KakaoPaymentAmountView } from "./kakao-payment-message";
 import type { ShopDb } from "./shop-scope";
 
 export interface PaymentClaimBinding {
@@ -15,11 +17,16 @@ export type PaymentClaimSource =
       readonly binding: PaymentClaimBinding;
       readonly presentation: Omit<KakaoPaymentClaimCard, "cardKey" | "cardBlockId" | "expiresAt">;
     }
-  | { readonly available: false; readonly text: string };
+  | { readonly available: false; readonly text: string; readonly amountConfirmation?: KakaoPaymentAmountView };
 
 export async function readPaymentClaimSource(
   db: ShopDb,
-  input: { readonly orderId: string; readonly customerId: string; readonly consultationId: string },
+  input: {
+    readonly orderId: string;
+    readonly customerId: string;
+    readonly consultationId: string;
+    readonly now?: Date;
+  },
 ): Promise<PaymentClaimSource> {
   const row = (
     await db.run<{
@@ -66,8 +73,28 @@ export async function readPaymentClaimSource(
     return { available: false, text: "지금은 할 수 없어요: 차액 결제를 기다리는 변경 요청이 없어요" };
   if (!["open", "expired"].includes(row.status))
     return { available: false, text: "지금은 할 수 없어요: 열린 결제 안내가 없어요" };
-  if (row.needs_amount_confirm && row.amount_confirmed_at === null)
-    return { available: false, text: "지금은 할 수 없어요: 새 금액을 먼저 확인해 주세요" };
+  if (row.needs_amount_confirm && row.amount_confirmed_at === null) {
+    const unavailable = { available: false, text: "지금은 할 수 없어요: 새 금액을 먼저 확인해 주세요" } as const;
+    if (input.now === undefined) return unavailable;
+    const notice = (
+      await db.run<{ id: string; body: string }>(
+        `SELECT n.id,n.body FROM notifications n WHERE n.shop_id=$1 AND n.order_id=$2 AND n.customer_id=$3
+        AND n.consultation_id=$4 AND n.kind='payment_request' AND n.status<>'dropped'
+        AND n.event_key='notice:'||$5::text||':payment_request'`,
+        [input.orderId, input.customerId, input.consultationId, row.id],
+      )
+    ).rows[0];
+    if (notice === undefined) return unavailable;
+    const contents = await customerNoticeContents(
+      db,
+      { id: notice.id, customerId: input.customerId, kind: "payment_request", body: notice.body },
+      input.now,
+    );
+    for (const content of contents ?? [])
+      if (typeof content !== "string" && content.kind === "payment_notice" && content.view.state === "amount-confirm")
+        return { ...unavailable, amountConfirmation: content.view };
+    return unavailable;
+  }
   if (row.customer_name === null)
     return { available: false, text: "지금은 할 수 없어요: 주문자 정보를 다시 확인해 주세요" };
   return {

@@ -1,0 +1,369 @@
+[
+  {
+    "response": "API-071#200:payment_claimed",
+    "state": "done",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사장님께 알렸어요. 확인되면 알려 드릴게요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:declined",
+    "state": "done",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "알겠어요. 더 궁금한 것이 있으면 말씀해 주세요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:input_invalid",
+    "state": "depositor",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "textCard": {
+              "title": "입금자 이름",
+              "description": "입금자 이름은 1~30자로 넣어 주세요",
+              "buttons": [
+                {
+                  "label": "입금자 이름 넣기",
+                  "action": "block",
+                  "blockId": "synthetic-depositor",
+                  "extra": {
+                    "cardKey": "synthetic_payment_claim_key_01",
+                    "choice": "confirm"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:card_stale",
+    "state": "stale",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "textCard": {
+              "title": "결제 확인 요청",
+              "description": "내용이 바뀌었어요. 새 카드를 확인해 주세요\n주문번호 AB1234CD\n금액 35,000원\n결제 기한 2026-11-28 21:00\n입금자 합성 주문자(주문자 이름)\n15:30까지 눌러 주세요",
+              "buttons": [
+                {
+                  "label": "결제 확인 요청",
+                  "action": "block",
+                  "blockId": "synthetic-card",
+                  "extra": {
+                    "cardKey": "synthetic_payment_claim_key_01",
+                    "choice": "confirm"
+                  }
+                },
+                {
+                  "label": "입금자 이름이 달라요",
+                  "action": "block",
+                  "blockId": "synthetic-depositor",
+                  "extra": {
+                    "cardKey": "synthetic_payment_claim_key_01",
+                    "choice": "confirm"
+                  }
+                },
+                {
+                  "label": "안 할래요",
+                  "action": "block",
+                  "blockId": "synthetic-card",
+                  "extra": {
+                    "cardKey": "synthetic_payment_claim_key_01",
+                    "choice": "decline"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:card_expired",
+    "state": "expired",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "textCard": {
+              "title": "결제 확인 요청",
+              "description": "시간이 지나 새 카드를 보내 드려요\n주문번호 AB1234CD\n금액 35,000원\n결제 기한 2026-11-28 21:00\n입금자 합성 주문자(주문자 이름)\n15:30까지 눌러 주세요",
+              "buttons": [
+                {
+                  "label": "결제 확인 요청",
+                  "action": "block",
+                  "blockId": "synthetic-card",
+                  "extra": {
+                    "cardKey": "synthetic_payment_claim_key_01",
+                    "choice": "confirm"
+                  }
+                },
+                {
+                  "label": "입금자 이름이 달라요",
+                  "action": "block",
+                  "blockId": "synthetic-depositor",
+                  "extra": {
+                    "cardKey": "synthetic_payment_claim_key_01",
+                    "choice": "confirm"
+                  }
+                },
+                {
+                  "label": "안 할래요",
+                  "action": "block",
+                  "blockId": "synthetic-card",
+                  "extra": {
+                    "cardKey": "synthetic_payment_claim_key_01",
+                    "choice": "decline"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:card_not_yours",
+    "state": "permission",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "이 버튼은 카드를 받은 분만 누를 수 있어요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:card_used",
+    "state": "done",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "사장님께 알렸어요. 확인되면 알려 드릴게요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:retry_needed",
+    "state": "error",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "다시 눌러 주세요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:not_allowed_now",
+    "state": "stale",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "지금은 할 수 없어요: 이미 결제가 확인됐어요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:not_accepting",
+    "state": "permission",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "아직 상담을 받지 않아요. 가게로 연락해 주세요: 02-000-0000"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:server_error",
+    "state": "error",
+    "display": "skill",
+    "body": {
+      "version": "2.0",
+      "template": {
+        "outputs": [
+          {
+            "simpleText": {
+              "text": "잠시 뒤 다시 말씀해 주세요"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "response": "API-071#200:allergy_saved",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:allergy_declined",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:orderer_saved",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:order_requested",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:amount_confirmed",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:amount_declined",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:change_requested",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:order_cancelled",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:issue_reported",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:photo_consent_saved",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:consent_withdrawn",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:day_full",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:order_limit_reached",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:block_verified",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#200:channel_linked",
+    "state": null,
+    "display": "not-shown",
+    "body": null
+  },
+  {
+    "response": "API-071#401:skill_key_invalid",
+    "state": "error",
+    "display": "kakao-client",
+    "body": null
+  },
+  {
+    "response": "API-071#422:validation_failed",
+    "state": "error",
+    "display": "kakao-client",
+    "body": null
+  },
+  {
+    "response": "API-071#default:internal",
+    "state": "error",
+    "display": "kakao-client",
+    "body": null
+  }
+]

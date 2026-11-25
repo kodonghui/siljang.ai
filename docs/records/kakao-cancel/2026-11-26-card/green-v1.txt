@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task127-cancel-card/app/server
+
+
+ Test Files  2 passed (2)
+      Tests  23 passed (23)
+   Start at  21:54:03
+   Duration  1.97s (import 77%, transform 16%, tests 6%, worker 1%)

@@ -1,5 +1,6 @@
 /** 카카오 발신 내용. 확인 카드는 서버가 저장한 표시 값만 받습니다. */
 import type { ConfirmCardView } from "./confirm-card-store";
+import { type KakaoCancellationView, kakaoCancellationMessage } from "./kakao-cancellation-message";
 import {
   type KakaoCustomerNoticeButton,
   type KakaoCustomerNoticeDisplayView,
@@ -31,6 +32,11 @@ export interface KakaoCustomerNoticeContent {
   readonly part?: number;
 }
 export type KakaoMessageContent =
+  | {
+      readonly kind: "cancel_card";
+      readonly view: Extract<KakaoCancellationView, { readonly state: "normal" | "stale" | "expired" }>;
+      readonly part?: number;
+    }
   | string
   | ConfirmCardView
   | KakaoPaymentContent
@@ -63,14 +69,22 @@ interface PresentationBody {
 export function limitKakaoQuickReplies(replies: readonly KakaoQuickReply[]): readonly KakaoQuickReply[] {
   return [...new Map(replies.map((reply) => [reply.messageText, reply])).values()].slice(0, 10);
 }
-type Presentation = KakaoPaymentContent | KakaoMyOrderContent | KakaoCustomerNoticeContent;
+type Presentation =
+  | KakaoPaymentContent
+  | KakaoMyOrderContent
+  | KakaoCustomerNoticeContent
+  | Extract<KakaoMessageContent, { readonly kind: "cancel_card" }>;
 function isPresentation(content: KakaoMessageContent): content is Presentation {
   return (
     typeof content !== "string" &&
-    (content.kind === "payment_notice" || content.kind === "my_order" || content.kind === "customer_notice")
+    (content.kind === "payment_notice" ||
+      content.kind === "my_order" ||
+      content.kind === "customer_notice" ||
+      content.kind === "cancel_card")
   );
 }
 function presentationBody(content: Presentation): PresentationBody {
+  if (content.kind === "cancel_card") return kakaoCancellationMessage(content.view);
   if (content.kind === "payment_notice") return kakaoPaymentMessage(content.view);
   if (content.kind === "customer_notice") return kakaoCustomerNoticeMessage(content.view);
   if (!["normal", "stale", "empty"].includes(content.view.state))
@@ -84,6 +98,13 @@ const text = (value: unknown, max: number): value is string =>
 
 export function expandKakaoMessageContents(contents: readonly KakaoMessageContent[]): KakaoMessageContent[] {
   return contents.flatMap<KakaoMessageContent>((content) => {
+    if (typeof content !== "string" && content.kind === "cancel" && content.cancellation !== undefined)
+      return expandKakaoMessageContents([
+        {
+          kind: "cancel_card",
+          view: { ...content.cancellation, state: "normal", cardKey: content.cardKey, blockId: content.blockId },
+        },
+      ]);
     if (isPresentation(content)) {
       const body = presentationBody(content);
       if (content.part === undefined) return body.template.outputs.map((_, part) => ({ ...content, part }));
@@ -91,9 +112,29 @@ export function expandKakaoMessageContents(contents: readonly KakaoMessageConten
         throw new RangeError("invalid presentation output part");
       return [content];
     }
+    if (typeof content !== "string" && content.amountConfirmation !== undefined)
+      return expandKakaoMessageContents([{ kind: "payment_notice", view: content.amountConfirmation }]);
     if (typeof content === "string" || content.kind !== "order_request") return [content];
     if (content.orderRequest === undefined) throw new RangeError("order card policy missing");
     return kakaoOrderRequestContents({ card: content, ...content.orderRequest });
+  });
+}
+/** 같은 금액 카드의 같은 출력만 합친다. 다른 카드·글·여러 부분의 원문은 그대로 남긴다. */
+export function mergeKakaoAmountConfirmations(
+  previous: readonly KakaoMessageContent[],
+  current: readonly KakaoMessageContent[],
+): KakaoMessageContent[] {
+  const seen = new Set<string>();
+  return expandKakaoMessageContents([...previous, ...current]).filter((content) => {
+    if (typeof content === "string" || content.kind !== "payment_notice" || content.view.state !== "amount-confirm")
+      return true;
+    const part = content.part ?? 0;
+    const output = kakaoPaymentMessage(content.view).template.outputs[part];
+    if (output === undefined) throw new RangeError("missing amount confirmation output");
+    const identity = JSON.stringify([content.view.cardKey, part, output]);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
   });
 }
 export function kakaoMessageOutputs(contents: readonly KakaoMessageContent[]): KakaoMessageOutput[] {

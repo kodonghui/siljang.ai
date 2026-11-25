@@ -1,0 +1,12 @@
+
+> test
+> vitest run --run test/payment-claim-depositor-input.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task107-depositor-display/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  30 passed (30)
+   Start at  20:59:59
+   Duration  5.18s (tests 67%, import 25%, transform 7%)
