@@ -44,3 +44,7 @@ node /tmp/siljang-qa051-operating-rules/server.mjs
 운영규정 이력은 `node research/screen-checks-2026-11/build-operating-rules-history.mjs . /tmp/siljang-qa052-rules-history`로 생성합니다. 실제 OwnerArea/VersionHistory와 현재 API022/023의9응답·5상태를 묶습니다. 같은 원본/깨끗한 입력/임시 완성 후 교체와 이전 출력 보관을 사용합니다. 실제 브라우저·초점·사진 성공은 별도이며 새 V8은 기존 학원컴 V6의 원문/지시 수신/정지ACK를 수집하기 전 중복 전달하지 않습니다.
 
 결제 수단 자료는 `node research/screen-checks-2026-11/build-payment-destination.mjs . /tmp/siljang-qa053-payment-destination`로 만듭니다. 실제 OwnerArea/결제 수단 편집기와 API024/025의16응답·요청 키 누락 추가1행/10상태를 묶습니다. 같은 원본/깨끗한 입력·임시 완성 후 교체와 옛 출력 보관을 사용하며 실제 금융기관에 연결하지 않습니다. 같은 값은 unchanged이고 다른 합성 예금주로 실제 입력/저장하면 확인 창이 나옵니다. 초기 실제 임시 자료의 원문/받은 지시·정지ACK를 먼저 수집하고 고친 V3를 중복 전송하지 않습니다.
+
+채널 생성기도 실행/입력 저장소·깨끗한 HEAD를 확인하고 같은 원본의 보조 파일을 읽으며 임시 폴더에 완성한 뒤 교체합니다. 이전 출력은 previousOutput으로 보존합니다.43응답(화면41행/요청 키 헤더 추가2행)의 오류는 전체 OpenAPI Problem 예시와 올바른 미디어 유형/no-store를 보존합니다. 과거 V3는 이 고침 전 준비 자료이며 새 V5는 실제 전송/브라우저 성공과 구분합니다.
+
+공통 원본 검사는 웹이 상속하는 app/tsconfig.base.json도 포함합니다. 실제 시험용 Git 사본에도 상속 설정을 함께 넣어 미커밋 클래스 필드 설정으로 번들이 달라지면 기존 SHA를 붙이지 않도록 검사합니다. 채널 자료의 지원하지 않는 기본404는 query를 뺀 실제 요청 경로를 instance에 넣습니다.

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import childProcess, { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync, readdirSync, existsSync } from "node:fs";
@@ -23,6 +24,8 @@ const inputs = [
 	"app/web/src",
 	"app/package.json",
 	"app/package-lock.json",
+	"app/tsconfig.base.json",
+	"app/web/tsconfig.json",
 	"app/web/package.json",
 	"api/openapi.yaml",
 	"tools/corthex/page-check.js",
@@ -259,5 +262,33 @@ test("완성된 새 결과로 교체할 때 이전 결과를 복구 가능한 �
 			false,
 			"새 번들로 교체",
 		);
+	});
+});
+
+test("상속한 TypeScript 설정의 미커밋 변경으로 기존 SHA의 번들을 만들지 않는다", async () => {
+	await fixture(async ({ root, out, build }) => {
+		const first = build();
+		assert.equal(first.status, 0, first.stderr);
+		const digest = () =>
+			createHash("sha256")
+				.update(readFileSync(join(out, "main.js")))
+				.digest("hex");
+		const before = digest();
+		const path = join(root, "app/tsconfig.base.json"),
+			value = JSON.parse(readFileSync(path, "utf8"));
+		value.compilerOptions.useDefineForClassFields = false;
+		await writeFile(path, JSON.stringify(value, null, 2) + "\n");
+		const result = build();
+		assert.notEqual(
+			result.status,
+			0,
+			JSON.stringify({
+				beforeBundle: before,
+				afterBundle: digest(),
+				stdout: result.stdout,
+			}),
+		);
+		assert.match(result.stderr, /FIXTURE_SOURCE_CHANGED/);
+		assert.equal(digest(), before);
 	});
 });

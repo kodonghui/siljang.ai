@@ -1,0 +1,67 @@
+{
+  "scope": "채널 합성 자료의 원본/전체 Problem 예시와 실제 컴포넌트 회귀. 실제 학원컴/채널 검사가 아님",
+  "red": {
+    "source": "23459e6df46b076b52c99dd62445b0518247fe42",
+    "pass": 3,
+    "fail": 4,
+    "log": "/tmp/siljang-task054-source-red-20261125.log"
+  },
+  "firstGreen": {
+    "source": "de55a4eb529122470291a1f11ef4b5a38d2ce496",
+    "pass": 25,
+    "fail": 1,
+    "reason": "신원 실패가 API002 대신 채널 예시의 instance/traceId를 사용",
+    "log": "/tmp/siljang-task054-source-green-20261125.log"
+  },
+  "greenSource": "75a39cb0fa1c8b93404640aa503ceabfb1edaded",
+  "initialRelatedScope": {
+    "files": 1,
+    "pass": 63,
+    "reason": "첫 필터에서 컴포넌트 파일명을 잘못 적어 API만 실행. 이후 실제 네 파일162개로 보완"
+  },
+  "results": {
+    "node": {
+      "path": "/tmp/siljang-task054-source-final-green-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        "# tests 26",
+        "# pass 26",
+        "# fail 0"
+      ]
+    },
+    "related": {
+      "path": "/tmp/siljang-task054-source-related-full-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        " Test Files  4 passed (4)",
+        "      Tests  162 passed (162)"
+      ]
+    },
+    "type": {
+      "path": "/tmp/siljang-task054-source-type-20261125.log",
+      "exitCode": 0,
+      "lines": []
+    },
+    "build": {
+      "path": "/tmp/siljang-task054-source-build-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        "✓ built in 522ms",
+        "> wrangler deploy --dry-run --outdir dist && wrangler deploy --dry-run --config wrangler.storage-batches.jsonc --outdir dist/storage-batches",
+        "Total Upload: 5378.32 KiB / gzip: 986.03 KiB",
+        "--dry-run: exiting now.",
+        "Total Upload: 20.91 KiB / gzip: 6.50 KiB",
+        "--dry-run: exiting now."
+      ]
+    },
+    "cli": {
+      "path": "/tmp/siljang-task054-source-cli-20261125.log",
+      "exitCode": 0,
+      "lines": [
+        "{\"source\":\"75a39cb0fa1c8b93404640aa503ceabfb1edaded\",\"out\":\"/tmp/siljang-qa054-v4-local-20261125\",\"primary\":10,\"responses\":43,\"screenRows\":41,\"browserRun\":false,\"previousOutput\":null}"
+      ]
+    }
+  },
+  "browserRun": false,
+  "outsideServices": 0
+}
