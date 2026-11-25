@@ -1,0 +1,19 @@
+{
+  "source": "170a742b691bcbdad2c69fd20f868020dfb21e14",
+  "public": "885e5b8d568712ccfbe935123ada6a7657222c44",
+  "serverPassed": 3143,
+  "serverFiles": 167,
+  "webPassed": 1774,
+  "webFailed": 1,
+  "webFiles": 73,
+  "testExit": 1,
+  "build": "notrun",
+  "freshDatabaseRemaining": 0,
+  "failure": "PublicPrivacy404 asserts live region before useEffect completion; same message assertion now waits",
+  "focusedWebAfterSync": 19,
+  "photoFinding": 7172926655,
+  "photoACK": 7172965096,
+  "photoRedFailed": 2,
+  "photoRedPassed": 6,
+  "photoFixtureGitBlob": "fb6ed4214ab225ca5e6d258df00d6a92cc9d2bee"
+}

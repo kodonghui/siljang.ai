@@ -1,0 +1,29 @@
+{
+  "head": "dbc64b85371d1b0bf2bd314f5f89d1763d4d3043",
+  "localEquivalent": "154fdec606caaad77c6a4745c2ac0e7b8231ba8b",
+  "app": 45692155346,
+  "db": 45692158485,
+  "jobs": [
+    {
+      "id": 139480267813,
+      "name": "Windows PowerShell 평가 인증(모의)",
+      "conclusion": "success"
+    },
+    {
+      "id": 139480269346,
+      "name": "check",
+      "conclusion": "success"
+    },
+    {
+      "id": 139480131334,
+      "name": "PostgreSQL 16.15",
+      "conclusion": "success"
+    },
+    {
+      "id": 139480131977,
+      "name": "PostgreSQL 17.11",
+      "conclusion": "success"
+    }
+  ],
+  "scope": "sourceCI beforefinalrecordcommit; finalhead CI still required"
+}

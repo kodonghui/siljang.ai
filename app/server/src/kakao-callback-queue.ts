@@ -16,7 +16,7 @@ import {
   releaseKakaoCallback,
 } from "./kakao-callback-store";
 import { readClaimedKakaoCard } from "./kakao-card-delivery";
-import { deferredKakaoBatch, deferredKakaoMessages, deferredKakaoTexts } from "./kakao-deferred";
+import { deferredKakaoBatch, deferredKakaoTexts } from "./kakao-deferred";
 import { expandKakaoMessageContents } from "./kakao-message-content";
 import { runKakaoPhotoTurn } from "./kakao-photo-turn";
 import { KAKAO_HANDOFF_TEXT, kakaoAiFailureOutcome } from "./kakao-reply";
@@ -130,28 +130,34 @@ export async function consumeKakaoCallback(
       const callback = kakaoCallback(photo.callbackUrl, claim.created_at);
       const usable =
         callback !== null && Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) > now().getTime();
-      const previous = !usable
-        ? []
+      const batch = !usable
+        ? { messages: [], currentBlocked: false }
         : await db.transaction((tx) =>
-            deferredKakaoMessages(tx, claim.customer_id, {
+            deferredKakaoBatch(tx, claim.customer_id, {
               now: now(),
               excludeMessageId: photo.reply.id,
+              allowFullOrderCard: true,
               fields: () => services.fieldCrypto(),
             }),
           );
+      const previous = batch.messages;
+      const previousTexts = deferredKakaoTexts(previous);
+      const replyIncluded = !batch.currentBlocked && previousTexts.length < 3;
       const sentAt =
         usable &&
         callback !== null &&
         (await deliverKakaoCallback(
           { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
-          [...deferredKakaoTexts(previous), photo.reply.text],
+          [...previousTexts, ...(replyIncluded ? [photo.reply.text] : [])],
           { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
         )) === "delivered"
           ? now()
           : null;
-      await finishKakaoCallback(db, job.messageId, claim, photo.reply.text, sentAt, previous, photo.reply.id);
+      await finishKakaoCallback(db, job.messageId, claim, photo.reply.text, sentAt, previous, photo.reply.id, {
+        replyIncluded,
+      });
       if (sentAt !== null) {
-        log("info", { event: "kakao_callback_result", code: photo.reply.outcome }, options.logSink);
+        if (replyIncluded) log("info", { event: "kakao_callback_result", code: photo.reply.outcome }, options.logSink);
         if (previous.some((row) => row.card !== undefined))
           log("info", { event: "kakao_callback_result", code: "card_shown" }, options.logSink);
       }

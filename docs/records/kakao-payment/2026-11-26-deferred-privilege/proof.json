@@ -1,0 +1,57 @@
+{
+  "source": "154fdec606caaad77c6a4745c2ac0e7b8231ba8b",
+  "publicEquivalentHead": "dbc64b85371d1b0bf2bd314f5f89d1763d4d3043",
+  "tree": "2f920a43eb5f983da53269f77fd47842b68d4274",
+  "baseMain": "12c14607693cf6dfe7f7bf90e6cc14cf8daff324",
+  "scopeGitObjects": {
+    "app/server": "013bea387646fa1fbfb2b4ed8b434672a798fb45",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "42c96d89f4614721a92eca3f27e052e8850f8a5e",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "86592d08ebfb6d4a35136ec71981a4db57256f0f",
+    ".github/workflows/app.yml": "56b47e1813912e7793eb8e54f0d8be4eece3c937",
+    "tools/staging-login-callback-grants.sql": "ea7b71046c56e98e83c73640476ea65f8e2842d5",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "server": {
+    "files": 167,
+    "passed": 3145
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "migrations": 41,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "nodePassed": 57,
+  "wbsChecks": 18,
+  "errors": 0,
+  "targetFiles": 16,
+  "targetPassed": 280,
+  "newCases": 8,
+  "red": "b671a6d5d504455c8d615da38e9e50c1aa4e279d/public4f23e59c3a3de0220928663e27c7bbafacaf9ed7 6functional failures",
+  "finding": 7172359688,
+  "ACK": 7172477830,
+  "photoFinding": 7172926655,
+  "photoACK": 7172965096,
+  "photoRed": {
+    "source": "0f1222d96b41b00beaffce1327184aecfb96412b",
+    "public": "9137cd49e5c2796b23a38d9b4ac290cc952e1f0e",
+    "failed": 2,
+    "passed": 6
+  },
+  "beforePhotoFull": "before-photo-proof.json",
+  "followupLinkComment": 7172785984,
+  "pr": 288,
+  "manualRequest": null,
+  "nativeGrantApplication": "미확인. 로컬 제한 역할만 검사",
+  "browser": false,
+  "realKakao": false,
+  "newModelCalls": 0,
+  "newOutbound": 0,
+  "npmCi": "동일 lock의 로컬 설치 재사용. 현재 CI 새 설치 별도 확인",
+  "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
+  "classification": "WIP: finalCI/reviews/manualonce/ownmain pending; no106flags; TASK107395687 remains separate"
+}

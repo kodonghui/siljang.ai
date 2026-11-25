@@ -1,0 +1,163 @@
+
+> test
+> vitest run test/deferred-difference-privilege.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task106-deferred-privilege/app/server
+
+ ❯ test/deferred-difference-privilege.test.ts (6 tests | 6 failed) 1673ms
+   ❯ 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) (6)
+     × 권한 부족 1건을 보존하고 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다 206ms
+     × 권한 부족 1건을 보존하고 뒤의 first 세 건과 현재 답의 순서를 지킨다 159ms
+     × 권한 부족 1건을 보존하고 뒤의 reissue 세 건과 현재 답의 순서를 지킨다 143ms
+     × 권한 부족 3건을 보존하고 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다 158ms
+     × 권한 부족 3건을 보존하고 뒤의 first 세 건과 현재 답의 순서를 지킨다 173ms
+     × 권한 부족 3건을 보존하고 뒤의 reissue 세 건과 현재 답의 순서를 지킨다 163ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 1건을 보존하고 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다
+AssertionError: expected [] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "cf7361b0-fe9f-4812-95f5-631ca2c78dde",
+-   "fcff9018-5bd9-480b-89f0-79bc11dcd293",
+- ]
++ []
+
+ ❯ test/deferred-difference-privilege.test.ts:242:47
+    240|         deferredKakaoBatch(tx, shop.customerId, { now: AT, fields: () …
+    241|       );
+    242|       expect(batch.messages.map((m) => m.id)).toEqual(normal.slice(0, …
+       |                                               ^
+    243|       expect(batch.currentBlocked).toBe(true);
+    244|       const body = kakaoConsultationMessage({ state: "normal", content…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 1건을 보존하고 뒤의 first 세 건과 현재 답의 순서를 지킨다
+AssertionError: expected [] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "3032f2e2-c225-485d-9c24-b3fe88dc16a6",
+-   "3b20daee-013c-4363-b8e1-62cf8889e148",
+- ]
++ []
+
+ ❯ test/deferred-difference-privilege.test.ts:242:47
+    240|         deferredKakaoBatch(tx, shop.customerId, { now: AT, fields: () …
+    241|       );
+    242|       expect(batch.messages.map((m) => m.id)).toEqual(normal.slice(0, …
+       |                                               ^
+    243|       expect(batch.currentBlocked).toBe(true);
+    244|       const body = kakaoConsultationMessage({ state: "normal", content…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 1건을 보존하고 뒤의 reissue 세 건과 현재 답의 순서를 지킨다
+AssertionError: expected [] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "e7833c9a-0788-4e15-90c6-a655f1116761",
+-   "66b14868-35ad-4392-a8a7-171d83e798b4",
+- ]
++ []
+
+ ❯ test/deferred-difference-privilege.test.ts:242:47
+    240|         deferredKakaoBatch(tx, shop.customerId, { now: AT, fields: () …
+    241|       );
+    242|       expect(batch.messages.map((m) => m.id)).toEqual(normal.slice(0, …
+       |                                               ^
+    243|       expect(batch.currentBlocked).toBe(true);
+    244|       const body = kakaoConsultationMessage({ state: "normal", content…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 3건을 보존하고 뒤의 cancelled 세 건과 현재 답의 순서를 지킨다
+AssertionError: expected [] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "0a731ba4-ee48-4330-a6d3-9354475c71e9",
+-   "f25ab976-77e3-41c9-973a-b415061cf9e4",
+- ]
++ []
+
+ ❯ test/deferred-difference-privilege.test.ts:242:47
+    240|         deferredKakaoBatch(tx, shop.customerId, { now: AT, fields: () …
+    241|       );
+    242|       expect(batch.messages.map((m) => m.id)).toEqual(normal.slice(0, …
+       |                                               ^
+    243|       expect(batch.currentBlocked).toBe(true);
+    244|       const body = kakaoConsultationMessage({ state: "normal", content…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 3건을 보존하고 뒤의 first 세 건과 현재 답의 순서를 지킨다
+AssertionError: expected [] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "7d6b2a8c-7df3-4234-9dd3-ab02d78c35c9",
+-   "b0e034a8-76e7-47de-b60a-0e11d44b7828",
+- ]
++ []
+
+ ❯ test/deferred-difference-privilege.test.ts:242:47
+    240|         deferredKakaoBatch(tx, shop.customerId, { now: AT, fields: () …
+    241|       );
+    242|       expect(batch.messages.map((m) => m.id)).toEqual(normal.slice(0, …
+       |                                               ^
+    243|       expect(batch.currentBlocked).toBe(true);
+    244|       const body = kakaoConsultationMessage({ state: "normal", content…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  test/deferred-difference-privilege.test.ts > 권한이 없는 차액 뒤의 다른 주문 안내(TASK-106) > 권한 부족 3건을 보존하고 뒤의 reissue 세 건과 현재 답의 순서를 지킨다
+AssertionError: expected [] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "7af032b4-e3f7-402c-8cfd-d359aebfaf40",
+-   "303e7e34-083b-4aa4-b4a3-8fa1f07479a9",
+- ]
++ []
+
+ ❯ test/deferred-difference-privilege.test.ts:242:47
+    240|         deferredKakaoBatch(tx, shop.customerId, { now: AT, fields: () …
+    241|       );
+    242|       expect(batch.messages.map((m) => m.id)).toEqual(normal.slice(0, …
+       |                                               ^
+    243|       expect(batch.currentBlocked).toBe(true);
+    244|       const body = kakaoConsultationMessage({ state: "normal", content…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed (6)
+   Start at  19:40:08
+   Duration  2.76s (tests 64%, import 31%, transform 6%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task106-deferred-privilege/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task106-deferred-privilege/app/server
+npm error command failed
+npm error command sh -c vitest run test/deferred-difference-privilege.test.ts

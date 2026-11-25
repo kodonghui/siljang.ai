@@ -5,7 +5,7 @@ import {
   publishStoredKakaoCallback,
   releaseKakaoCallback,
 } from "./kakao-callback-store";
-import { deferredKakaoMessages, deferredKakaoTexts } from "./kakao-deferred";
+import { deferredKakaoBatch, deferredKakaoTexts, renderDeferredKakaoReply } from "./kakao-deferred";
 import { kakaoPhotoUrl } from "./kakao-photo-download";
 import { runKakaoPhotoTurn, storeKakaoPhotoContext } from "./kakao-photo-turn";
 import { kakaoReply } from "./kakao-reply";
@@ -99,14 +99,20 @@ export async function receiveKakaoReferencePhoto(r: ShopRequest): Promise<Respon
       budgetMs: Math.max(1, left() - 150),
     });
     if (turn.kind !== "reply") return kakaoReply(r, "photo_download_failed");
-    const previous = await r.db.transaction((tx) =>
-      deferredKakaoMessages(tx, claim.customer_id, {
+    const batch = await r.db.transaction((tx) =>
+      deferredKakaoBatch(tx, claim.customer_id, {
         now: r.services.now(),
         excludeMessageId: turn.reply.id,
+        allowFullOrderCard: true,
         fields: () => r.services.fieldCrypto(),
       }),
     );
-    const response = kakaoReply(r, turn.reply.outcome, { previous: deferredKakaoTexts(previous) });
+    const previous = batch.messages;
+    const rendered = renderDeferredKakaoReply(
+      deferredKakaoTexts(previous),
+      (texts) => kakaoReply(r, turn.reply.outcome, { previous: texts }),
+      batch.currentBlocked,
+    );
     await finishKakaoCallback(
       r.db,
       prepared.receipt.messageId,
@@ -115,8 +121,9 @@ export async function receiveKakaoReferencePhoto(r: ShopRequest): Promise<Respon
       r.services.now(),
       previous,
       turn.reply.id,
+      { replyIncluded: rendered.currentIncluded },
     );
-    return response;
+    return rendered.response;
   } finally {
     await releaseKakaoCallback(r.db, prepared.receipt.messageId, claim).catch(() => {});
   }
