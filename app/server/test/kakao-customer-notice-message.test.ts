@@ -3,6 +3,15 @@ import { type KakaoCustomerNoticeView, kakaoCustomerNoticeMessage } from "../src
 import { expectSchema } from "./support/contract";
 import { customerNoticePhotoAsk as ask, customerNoticePhotos as photos } from "./support/kakao-customer-notice-cases";
 
+it.each(["가".repeat(1000) + "\n", " ".repeat(1000) + "가", "🍰".repeat(1000) + "\u3000"])(
+  "분할한 공백 조각도 전체 원문의 일부로 보존한다",
+  (text) => {
+    const body = kakaoCustomerNoticeMessage({ state: "normal", notice: { kind: "server_text", text } });
+    expectSchema("SkillTemplateResponse", body);
+    expect(body.template.outputs.map((o) => ("simpleText" in o ? o.simpleText.text : "")).join("")).toBe(text);
+  },
+);
+
 it("사장님 답은 원문의 공백과 줄바꿈을 그대로 전하고 AI가 고치지 않는다", () => {
   const text = "  합성 사장님 답이에요.\n\n확인한 뒤 안내드릴게요.  ";
   const body = kakaoCustomerNoticeMessage({ state: "normal", notice: { kind: "owner_reply", text } });
