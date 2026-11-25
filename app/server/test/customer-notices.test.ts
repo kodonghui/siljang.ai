@@ -279,6 +279,18 @@ describeDb("손님 안내 일 실행기(TASK-104)", () => {
     expect((await state())?.status).toBe("confirming");
     expect(events.requestNotice).toHaveBeenCalledTimes(1);
   });
+  it("예약 안내는08:00 전에는 요청하지 않고 같은 날08:00으로 잡는다", async () => {
+    now = new Date("2026-11-25T22:59:00Z");
+    await isolated.db.query("UPDATE notifications SET scheduled_for=$2,next_attempt_at=$2 WHERE id=$1", [id, now]);
+    await run(() => events, true);
+    expect(events.requestNotice).not.toHaveBeenCalled();
+    expect(
+      (await isolated.db.query("SELECT status,attempts,next_attempt_at FROM notifications WHERE id=$1", [id])).rows,
+    ).toEqual([{ status: "pending", attempts: 0, next_attempt_at: new Date("2026-11-25T23:00:00Z") }]);
+    now = new Date("2026-11-25T23:00:00Z");
+    await run(() => events, true);
+    expect(events.requestNotice).toHaveBeenCalledTimes(1);
+  });
   it("다른 실행기가 임대를 바꾼 뒤 옛 결과는 새 상태를 덮어쓰지 않는다", async () => {
     const handler = createCustomerNoticeHandler({ enabled: true, events: () => events, now: () => now }),
       scope = createShopScope(shop.shopId, { kind: "job", job: "customer_notice" });

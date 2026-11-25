@@ -78,6 +78,8 @@ GRANT SELECT (amount, requested_amount, needs_amount_confirm, amount_confirmed_a
   amount_card_id, delivered_at, issued_at, payment_account_id, card_payment_url),
   UPDATE (delivered_at, due_at) ON payment_requests TO :"runtime_role";
 GRANT SELECT (shop_id, order_id, amount) ON payments TO :"runtime_role";
+GRANT SELECT (accepted_version) ON orders TO :"runtime_role";
+GRANT SELECT (quote_id, amount_change_reason) ON order_details TO :"runtime_role";
 -- TASK-077: 안내는 위 TASK-028의 기존 전체 SELECT로 status·sent_at·표시 필드·전달 트랜잭션을 읽는다.
 -- 중복 SELECT는 추가하지 않는다. 참고 사진의 연결·위치·저장 키만 추가하며 수정·삭제 권한은 늘리지 않는다.
 GRANT SELECT (message_id, position, storage_key) ON reference_photos TO :"runtime_role";

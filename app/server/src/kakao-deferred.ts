@@ -103,10 +103,11 @@ export async function deferredKakaoMessages(
       LEFT JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id
       WHERE n.shop_id = $1 AND n.customer_id = $2 AND n.status = 'deferred' AND n.sent_at IS NULL
         AND n.kind=ANY($4::text[]) AND c.status<>'deleted' AND o.personal_data_purged_at IS NULL
+        AND (n.scheduled_for IS NULL OR n.scheduled_for<=$5)
         AND (n.order_id IS NULL OR o.customer_id=n.customer_id)
         AND (n.kind<>'order_confirmed' OR o.status IN ('confirmed','received','no_pickup'))
       ORDER BY n.created_at, n.id LIMIT $3 FOR UPDATE OF n`,
-    [customerId, DEFERRED_REPLY_BATCH, READABLE_CUSTOMER_NOTICE_KINDS],
+    [customerId, DEFERRED_REPLY_BATCH, READABLE_CUSTOMER_NOTICE_KINDS, options.now ?? new Date()],
   );
   for (const row of notices.rows) {
     const contents = await customerNoticeContents(

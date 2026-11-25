@@ -94,9 +94,14 @@ describeDb("손님 안내 스킬 API-073(TASK-104)", () => {
     expect(bodies[1]).toEqual(bodies[2]);
     expect((await isolated.db.query("SELECT count(*)::int AS n FROM customers")).rows).toEqual(before);
   });
-  it.each(["dropped", "deleted", "blank"])("읽을 수 없는 안내(%s)는 표시하지 않는다", async (kind) => {
+  it.each(["dropped", "deleted", "blank", "future"])("읽을 수 없는 안내(%s)는 표시하지 않는다", async (kind) => {
     const id = await notice(kind === "blank" ? "   " : "더는 보여주지 않을 합성 답");
     if (kind === "dropped") await isolated.db.query("UPDATE notifications SET status='dropped' WHERE id=$1", [id]);
+    if (kind === "future")
+      await isolated.db.query("UPDATE notifications SET scheduled_for=$2 WHERE id=$1", [
+        id,
+        new Date(NOW.getTime() + 3600000),
+      ]);
     if (kind === "deleted")
       await isolated.db.query("UPDATE consultations SET status='deleted',deleted_at=$2 WHERE id=$1", [
         shop.consultationId,
@@ -119,43 +124,136 @@ describeDb("손님 안내 스킬 API-073(TASK-104)", () => {
       { status: "deferred", sent_at: null },
     ]);
   });
-  it("자기 결제 안내에서만 옛 계좌를 풀어 보여 주며 스킬 읽기만으로 결제 시계를 시작하지 않는다", async () => {
-    const id = newUuid(),
-      account = "123456789012",
-      sealed = await sealAccountNumber(fc, account, "payment_accounts.account_number", shop.shopId),
-      cap = new Date(NOW.getTime() + 24 * 3600000);
-    await isolated.db.query("UPDATE payment_accounts SET account_number_enc=$2,account_last4=$3 WHERE id=$1", [
-      shop.paymentAccountId,
-      sealed.enc,
-      sealed.last4,
-    ]);
-    await isolated.db.query(
-      "UPDATE payment_requests SET delivered_at=NULL,issued_at=$2,due_at=$3,due_cap_at=$3 WHERE id=$1",
-      [shop.paymentRequestId, new Date(NOW.getTime() - 3600000), cap],
-    );
-    await isolated.db.query(
-      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status) VALUES($1,$2,$3,$4,$5,'payment_request',$6,'payment_request:v1','결제 안내를 확인해 주세요','deferred')",
-      [
-        id,
-        shop.shopId,
-        shop.customerId,
-        shop.consultationId,
-        shop.orderId,
-        `notice:${shop.paymentRequestId}:payment_request`,
-      ],
-    );
-    const response = await call(id);
-    expect(response.headers.get("Siljang-Outcome")).toBe("notice_shown");
-    const value = await response.json();
-    expectSchema("SkillTemplateResponse", value);
-    expect(JSON.stringify(value)).toContain(account);
-    expect(JSON.stringify(value)).toContain("35,000원");
-    expect(
-      (await isolated.db.query("SELECT delivered_at,due_at FROM payment_requests WHERE id=$1", [shop.paymentRequestId]))
-        .rows,
-    ).toEqual([{ delivered_at: null, due_at: cap }]);
-    expect((await isolated.db.query("SELECT body,status,sent_at FROM notifications WHERE id=$1", [id])).rows).toEqual([
-      { body: "결제 안내를 확인해 주세요", status: "deferred", sent_at: null },
-    ]);
-  });
+  it.each([12, 6])(
+    "자기 결제 안내의 옛 계좌와 운영규정%s시간을 보이며 스킬 읽기만으로 결제 시계를 시작하지 않는다",
+    async (hours) => {
+      await isolated.db.query("UPDATE operating_rules SET payment_due_hours=$2 WHERE id=$1", [
+        shop.operatingRulesId,
+        hours,
+      ]);
+      const id = newUuid(),
+        account = "123456789012",
+        sealed = await sealAccountNumber(fc, account, "payment_accounts.account_number", shop.shopId),
+        cap = new Date(NOW.getTime() + 24 * 3600000);
+      await isolated.db.query("UPDATE payment_accounts SET account_number_enc=$2,account_last4=$3 WHERE id=$1", [
+        shop.paymentAccountId,
+        sealed.enc,
+        sealed.last4,
+      ]);
+      await isolated.db.query(
+        "UPDATE payment_requests SET delivered_at=NULL,issued_at=$2,due_at=$3,due_cap_at=$3 WHERE id=$1",
+        [shop.paymentRequestId, new Date(NOW.getTime() - 3600000), cap],
+      );
+      await isolated.db.query(
+        "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status) VALUES($1,$2,$3,$4,$5,'payment_request',$6,'payment_request:v1','결제 안내를 확인해 주세요','deferred')",
+        [
+          id,
+          shop.shopId,
+          shop.customerId,
+          shop.consultationId,
+          shop.orderId,
+          `notice:${shop.paymentRequestId}:payment_request`,
+        ],
+      );
+      const response = await call(id);
+      expect(response.headers.get("Siljang-Outcome")).toBe("notice_shown");
+      const value = await response.json();
+      expectSchema("SkillTemplateResponse", value);
+      expect(JSON.stringify(value)).toContain(account);
+      expect(JSON.stringify(value)).toContain("35,000원");
+      expect(JSON.stringify(value)).toContain(`전달된 때부터 ${hours}시간`);
+      expect(
+        (
+          await isolated.db.query("SELECT delivered_at,due_at FROM payment_requests WHERE id=$1", [
+            shop.paymentRequestId,
+          ])
+        ).rows,
+      ).toEqual([{ delivered_at: null, due_at: cap }]);
+      expect((await isolated.db.query("SELECT body,status,sent_at FROM notifications WHERE id=$1", [id])).rows).toEqual(
+        [{ body: "결제 안내를 확인해 주세요", status: "deferred", sent_at: null }],
+      );
+    },
+  );
+  it.each([
+    ["fixed", null, "25,000원"],
+    ["from", null, "25,000원부터"],
+    ["range", 30000, "25,000~30,000원"],
+  ] as const)(
+    "새 금액 안내는 요청 견적(%s)과 사유를 보이고 확인 전 계좌를 풀지 않는다",
+    async (display, max, requested) => {
+      const id = newUuid(),
+        cardId = newUuid(),
+        cardKey = newUuid().replaceAll("-", ""),
+        cap = new Date(NOW.getTime() + 24 * 3600000);
+      await isolated.db.transaction(async (db) => {
+        await db.query("UPDATE quotes SET amount=25000,amount_max=$2,display_kind=$3,order_kind='custom' WHERE id=$1", [
+          shop.quoteId,
+          max,
+          display,
+        ]);
+        await db.query("UPDATE order_details SET amount=25000 WHERE order_id=$1 AND version=1", [shop.orderId]);
+        await db.query(
+          `INSERT INTO order_details(shop_id,order_id,version,source,quote_id,price_list_id,pickup_at,allergy_consent,allergy_consent_version,allergy_consent_at,amount,amount_change_reason)
+        SELECT shop_id,order_id,2,'owner_amount_change',quote_id,price_list_id,pickup_at,allergy_consent,allergy_consent_version,allergy_consent_at,35000,'합성 추가 장식' FROM order_details WHERE order_id=$1 AND version=1`,
+          [shop.orderId],
+        );
+        await db.query("UPDATE orders SET version=2,kind='custom',accepted_at=$2,accepted_version=2 WHERE id=$1", [
+          shop.orderId,
+          new Date(NOW.getTime() - 3600000),
+        ]);
+        await db.query(
+          "INSERT INTO confirm_cards(id,shop_id,consultation_id,customer_id,card_key,kind,order_id,order_version,payload,created_at,expires_at) VALUES($1,$2,$3,$4,$5,'amount_confirm',$6,2,$7::jsonb,$8,$9)",
+          [
+            cardId,
+            shop.shopId,
+            shop.consultationId,
+            shop.customerId,
+            cardKey,
+            shop.orderId,
+            JSON.stringify({ paymentRequestId: shop.paymentRequestId }),
+            new Date(NOW.getTime() - 60000),
+            new Date(NOW.getTime() + 29 * 60000),
+          ],
+        );
+        await db.query(
+          "UPDATE payment_requests SET requested_amount=25000,needs_amount_confirm=true,amount_card_id=$2,delivered_at=NULL,issued_at=$3,due_at=$4,due_cap_at=$4 WHERE id=$1",
+          [shop.paymentRequestId, cardId, new Date(NOW.getTime() - 3600000), cap],
+        );
+        await db.query(
+          "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,order_id,kind,event_key,template_key,body,status) VALUES($1,$2,$3,$4,$5,'payment_request',$6,'payment_request:v1','결제 안내를 확인해 주세요','deferred')",
+          [
+            id,
+            shop.shopId,
+            shop.customerId,
+            shop.consultationId,
+            shop.orderId,
+            `notice:${shop.paymentRequestId}:payment_request`,
+          ],
+        );
+      });
+      const decrypt = vi.spyOn(fc, "open");
+      try {
+        const response = await call(id);
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expectSchema("SkillTemplateResponse", body);
+        const text = JSON.stringify(body);
+        expect(text).toContain(requested);
+        expect(text).toContain("35,000원");
+        expect(text).toContain("합성 추가 장식");
+        expect(text).toContain(cardKey);
+        expect(text).not.toContain("계좌번호");
+        expect(decrypt).not.toHaveBeenCalled();
+        expect(
+          (
+            await isolated.db.query("SELECT delivered_at,amount_confirmed_at FROM payment_requests WHERE id=$1", [
+              shop.paymentRequestId,
+            ])
+          ).rows,
+        ).toEqual([{ delivered_at: null, amount_confirmed_at: null }]);
+      } finally {
+        decrypt.mockRestore();
+      }
+    },
+  );
 });

@@ -11,6 +11,62 @@ export const TEXT_CUSTOMER_NOTICE_KINDS = [
   "order_confirmed",
 ] as const;
 
+export async function createPaymentRequestNotice(
+  db: ShopDb,
+  paymentRequestId: string,
+  now: Date,
+  options: { readonly sendEnabled?: boolean } = {},
+): Promise<Once | null> {
+  const key = eventKeys.notice(paymentRequestId, "payment_request");
+  const existing = (
+    await db.run<{ id: string }>("SELECT id FROM notifications WHERE shop_id=$1 AND event_key=$2", [key])
+  ).rows[0];
+  if (existing) return { id: existing.id, created: false };
+  const source = (
+    await db.run<{
+      customer_id: string;
+      consultation_id: string;
+      order_id: string;
+      channel_friend: boolean;
+      channel_status: string;
+      event_status: string;
+    }>(
+      `SELECT o.customer_id,o.consultation_id,o.id AS order_id,u.channel_friend,ch.status AS channel_status,ch.event_status
+    FROM payment_requests p JOIN orders o ON o.shop_id=$1 AND o.id=p.order_id
+    JOIN consultations c ON c.shop_id=$1 AND c.id=o.consultation_id AND c.customer_id=o.customer_id
+    JOIN customers u ON u.shop_id=$1 AND u.id=o.customer_id
+    JOIN kakao_channels ch ON ch.shop_id=$1 AND ch.id=u.kakao_channel_id
+    LEFT JOIN change_requests cr ON cr.shop_id=$1 AND cr.id=p.change_request_id AND cr.order_id=o.id
+    WHERE p.shop_id=$1 AND p.id=$2 AND p.status='open' AND p.issued_at<=$3 AND p.due_cap_at>$3
+      AND o.personal_data_purged_at IS NULL AND c.status<>'deleted'
+      AND (CASE WHEN p.kind='difference' THEN o.status='confirmed' AND cr.status='awaiting_difference' ELSE o.status='awaiting_payment' END)`,
+      [paymentRequestId, now],
+    )
+  ).rows[0];
+  if (!source) return null;
+  const send =
+    options.sendEnabled === true &&
+    source.channel_friend &&
+    source.channel_status === "linked" &&
+    source.event_status === "ready";
+  return insertOnce(
+    db,
+    "notifications",
+    `INSERT INTO notifications (shop_id, event_key, customer_id, consultation_id, order_id, kind, template_key, body, status, next_attempt_at, created_at)
+    VALUES ($1, $2, $3, $4, $5, 'payment_request', 'payment_request:v1', '결제 안내를 확인해 주세요', $6, $7, $8)
+    ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id`,
+    [
+      key,
+      source.customer_id,
+      source.consultation_id,
+      source.order_id,
+      send ? "pending" : "deferred",
+      send ? now : null,
+      now,
+    ],
+  );
+}
+
 /** 실제 전달 표시와 같은 트랜잭션에서만 결제 시계를 시작한다. */
 export async function recordPaymentNoticeDelivery(
   db: ShopDb,
@@ -20,8 +76,9 @@ export async function recordPaymentNoticeDelivery(
 ): Promise<boolean> {
   if (!Number.isFinite(at.getTime())) throw new RangeError("invalid customer notice delivery time");
   const result = await db.run(
-    `UPDATE payment_requests p SET delivered_at=$4,due_at=LEAST($4::timestamptz+interval '12 hours',p.due_cap_at)
+    `UPDATE payment_requests p SET delivered_at=$4,due_at=LEAST($4::timestamptz+make_interval(hours=>r.payment_due_hours),p.due_cap_at)
       FROM notifications n JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id AND o.customer_id=n.customer_id
+      JOIN operating_rules r ON r.shop_id=$1 AND r.id=o.operating_rules_id
       WHERE p.shop_id=$1 AND p.order_id=o.id AND p.status='open' AND p.delivered_at IS NULL
         AND NOT p.needs_amount_confirm AND p.issued_at<=$4 AND p.due_cap_at>$4
         AND o.status='awaiting_payment' AND o.personal_data_purged_at IS NULL

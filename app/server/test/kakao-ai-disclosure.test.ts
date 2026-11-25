@@ -4,6 +4,7 @@ import { recordAiCall } from "../src/ai-calls";
 import type { AiModel } from "../src/ai-model";
 import { createApp } from "../src/app";
 import { closeIdleConsultation } from "../src/consultation-idle";
+import { createOrderConfirmedNotice } from "../src/customer-notice-store";
 import { FieldCryptoError, fieldCrypto } from "../src/field-crypto";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob, KakaoCallbackQueue } from "../src/kakao-callback-store";
@@ -501,6 +502,54 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
     ).toBe(2);
   });
 
+  it("끝난 상담의 확정 안내는 새 고지 뒤 합성 AI 답보다 먼저 한 번 전한다(TASK-104)", async () => {
+    const paid = newUuid();
+    await isolated.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_amount=amount,arrived_at=$2 WHERE id=$1",
+        [shop.paymentRequestId, now],
+      );
+      await tx.query(
+        "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+        [paid, shop.shopId, shop.orderId, shop.paymentRequestId, now],
+      );
+      await tx.query("UPDATE orders SET status='confirmed',confirmed_at=$2,confirmed_payment_id=$3 WHERE id=$1", [
+        shop.orderId,
+        now,
+        paid,
+      ]);
+      await tx.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [shop.consultationId, now]);
+    });
+    const notice = required(
+      await isolated.db.transaction((tx) =>
+        createOrderConfirmedNotice(
+          shopDb(createShopScope(shop.shopId, { kind: "job", job: "customer_notice" }), tx),
+          shop.orderId,
+          now,
+        ),
+      ),
+    );
+    const body = required(
+      (await isolated.db.query<{ body: string }>("SELECT body FROM notifications WHERE id=$1", [notice.id])).rows[0],
+    ).body;
+    now = new Date(now.getTime() + 4000);
+    const ai = model();
+    await send(shop.userKey, "끝난 상담 뒤의 합성 첫 질문");
+    const first = texts(await consume(required(jobs[0]), ai));
+    expect(first).toHaveLength(3);
+    expect(first[0]).toContain("AI가 상담합니다");
+    expect(first.slice(1)).toEqual([body, "합성 질문을 확인했어요."]);
+    expect(
+      (await isolated.db.query("SELECT status FROM consultations WHERE id=$1", [shop.consultationId])).rows,
+    ).toEqual([{ status: "ended" }]);
+    expect((await isolated.db.query("SELECT status FROM notifications WHERE id=$1", [notice.id])).rows).toEqual([
+      { status: "delivered_on_reply" },
+    ]);
+    now = new Date(now.getTime() + 4000);
+    await send(shop.userKey, "합성 둘째 질문");
+    expect(texts(await consume(required(jobs[1]), ai))).toEqual(["합성 질문을 확인했어요."]);
+    expect(ai.call).toHaveBeenCalledTimes(2);
+  });
   it("실제 문의 끊김 뒤 재개는 고지 기록을 유지하고 이전 안내를 AI 답 전에 한 번 전한다", async () => {
     const user = newUuid(),
       ai = model();
