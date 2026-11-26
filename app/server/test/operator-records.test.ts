@@ -299,6 +299,18 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
     expect(body.maskedValue).toBeNull();
     expect(JSON.stringify(await accessLogRows(isolated.db, shop.shopId))).not.toContain(account);
     expect(logs.join("\n")).not.toContain(account);
+    await isolated.db.query("UPDATE refunds SET refund_holder_name='*별' WHERE id=$1", [refundId]);
+    const masked = await call(`/orders/${shop.orderId}`),
+      maskedText = await masked.text();
+    expect(masked.status, maskedText).toBe(200);
+    const maskedBody = JSON.parse(maskedText);
+    expectSchema("OperatorOrder", maskedBody);
+    expect(maskedBody.refunds[0].refundAccount).toMatchObject({
+      accountMasked: "***-****-6789",
+      holderNameMasked: null,
+    });
+    expect(maskedText).not.toContain(account);
+    expect(maskedText).not.toContain("*별");
   });
   it("실제 지우기 뒤 목록은 보관 기간만 보이고 사유로 연 계약 기록만 이름을 보인다", async () => {
     await finish(31);

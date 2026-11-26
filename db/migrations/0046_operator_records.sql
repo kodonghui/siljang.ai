@@ -7,8 +7,8 @@ LANGUAGE sql STABLE STRICT SECURITY DEFINER SET search_path=pg_catalog AS $$
   SELECT jsonb_build_object(
     'orderId',o.id,'orderNo',o.order_no,'kind',o.kind,'status',o.status,
     'pickupAt',o.pickup_at,'amount',o.amount,
-    'customerNameMasked',CASE WHEN nullif(btrim(d.customer_name),'') IS NULL THEN NULL ELSE left(btrim(d.customer_name),1)||repeat('*',greatest(char_length(btrim(d.customer_name))-1,0)) END,
-    'customerPhoneMasked',CASE WHEN d.customer_phone IS NULL THEN NULL ELSE '***-****-'||right(regexp_replace(d.customer_phone,'[^0-9]','','g'),4) END,
+    'customerNameMasked',CASE WHEN left(btrim(d.customer_name),1) ~ '^[^*[:space:]]$' THEN left(btrim(d.customer_name),1)||repeat('*',greatest(char_length(btrim(d.customer_name))-1,0)) END,
+    'customerPhoneMasked',CASE WHEN char_length(regexp_replace(d.customer_phone,'[^0-9]','','g'))>=4 THEN '***-****-'||right(regexp_replace(d.customer_phone,'[^0-9]','','g'),4) END,
     'allergyAnswered',nullif(d.allergy_answer,'') IS NOT NULL,
     'excludedIngredientsAnswered',nullif(d.excluded_ingredients,'') IS NOT NULL,
     'referencePhotoCount',(SELECT count(*)::int FROM public.reference_photos rp WHERE rp.shop_id=p_shop AND rp.draft_id=o.draft_id),
@@ -20,7 +20,7 @@ LANGUAGE sql STABLE STRICT SECURITY DEFINER SET search_path=pg_catalog AS $$
     'refunds',coalesce((SELECT jsonb_agg(f.value ORDER BY f.decided_at,f.id) FROM (
       SELECT rf.id,rf.decided_at,jsonb_build_object('refundId',rf.id,'cause',rf.cause,'decision',rf.decision,'amount',rf.amount,'decidedAt',rf.decided_at,'sentAt',rf.sent_at,
         'refundAccount',CASE WHEN rf.refund_account_last4 IS NULL THEN NULL ELSE jsonb_build_object('bankName',rf.refund_bank_name,'accountMasked','***-****-'||rf.refund_account_last4,
-          'holderNameMasked',CASE WHEN nullif(btrim(rf.refund_holder_name),'') IS NULL THEN NULL ELSE left(btrim(rf.refund_holder_name),1)||repeat('*',greatest(char_length(btrim(rf.refund_holder_name))-1,0)) END) END) AS value
+          'holderNameMasked',CASE WHEN left(btrim(rf.refund_holder_name),1) ~ '^[^*[:space:]]$' THEN left(btrim(rf.refund_holder_name),1)||repeat('*',greatest(char_length(btrim(rf.refund_holder_name))-1,0)) END) END) AS value
       FROM public.refunds rf WHERE rf.shop_id=p_shop AND rf.order_id=o.id ORDER BY rf.decided_at DESC,rf.id DESC LIMIT 20
     ) f),'[]'::jsonb),
     'createdAt',o.requested_at
@@ -43,8 +43,8 @@ LANGUAGE sql STABLE STRICT SECURITY DEFINER SET search_path=pg_catalog AS $$
       'status',CASE WHEN k.id IS NULL THEN o.status END,
       'pickupAt',CASE WHEN k.id IS NULL THEN o.pickup_at END,
       'amount',CASE WHEN k.id IS NULL THEN o.amount END,
-      'customerNameMasked',CASE WHEN k.id IS NULL AND nullif(btrim(d.customer_name),'') IS NOT NULL THEN left(btrim(d.customer_name),1)||repeat('*',greatest(char_length(btrim(d.customer_name))-1,0)) END,
-      'customerPhoneMasked',CASE WHEN k.id IS NULL AND d.customer_phone IS NOT NULL THEN '***-****-'||right(regexp_replace(d.customer_phone,'[^0-9]','','g'),4) END,
+      'customerNameMasked',CASE WHEN k.id IS NULL AND left(btrim(d.customer_name),1) ~ '^[^*[:space:]]$' THEN left(btrim(d.customer_name),1)||repeat('*',greatest(char_length(btrim(d.customer_name))-1,0)) END,
+      'customerPhoneMasked',CASE WHEN k.id IS NULL AND char_length(regexp_replace(d.customer_phone,'[^0-9]','','g'))>=4 THEN '***-****-'||right(regexp_replace(d.customer_phone,'[^0-9]','','g'),4) END,
       'finishedAt',coalesce(k.finished_at,o.finished_at),'contractKeepUntil',k.contract_keep_until,'createdAt',o.requested_at
     ) AS item,o.customer_id,o.requested_at AS at,o.id
     FROM public.orders o

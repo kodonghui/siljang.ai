@@ -1,0 +1,61 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+stdout | test/operator-record-mask-boundaries.test.ts > 운영자 가린 값의 입력 경계(TASK-159) > 이름 *별와 연락처 --------는 가린 목록/상세 계약을 지킨다
+{"level":"info","event":"settings_loaded","names":["ANTHROPIC_API_KEY","OPENAI_API_KEY","STORAGE_ACCESS_KEY_ID","STORAGE_SECRET_ACCESS_KEY","FILE_URL_KEY"]}
+
+stdout | test/operator-record-mask-boundaries.test.ts > 운영자 가린 값의 입력 경계(TASK-159) > 이름 	별와 연락처 12------는 가린 목록/상세 계약을 지킨다
+{"level":"info","event":"settings_loaded","names":["ANTHROPIC_API_KEY","OPENAI_API_KEY","STORAGE_ACCESS_KEY_ID","STORAGE_SECRET_ACCESS_KEY","FILE_URL_KEY"]}
+
+ ❯ test/operator-record-mask-boundaries.test.ts (4 tests | 2 failed) 2072ms
+   ❯ 운영자 가린 값의 입력 경계(TASK-159) (4)
+     × 이름 *별와 연락처 --------는 가린 목록/상세 계약을 지킨다 346ms
+     × 이름 	별와 연락처 12------는 가린 목록/상세 계약을 지킨다 70ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-record-mask-boundaries.test.ts > 운영자 가린 값의 입력 경계(TASK-159) > 이름 *별와 연락처 --------는 가린 목록/상세 계약을 지킨다
+ FAIL  test/operator-record-mask-boundaries.test.ts > 운영자 가린 값의 입력 경계(TASK-159) > 이름 	별와 연락처 12------는 가린 목록/상세 계약을 지킨다
+AssertionError: OperatorRecordList: [{"instancePath":"/orders/0/customerNameMasked","schemaPath":"#/components/schemas/OperatorOrderRow/properties/customerNameMasked/pattern","keyword":"pattern","params":{"pattern":"^[^*\\s]\\**$"},"message":"must match pattern \"^[^*\\s]\\**$\""},{"instancePath":"/orders/0/customerPhoneMasked","schemaPath":"#/components/schemas/OperatorOrderRow/properties/customerPhoneMasked/pattern","keyword":"pattern","params":{"pattern":"^[*-]*[0-9]{4}$"},"message":"must match pattern \"^[*-]*[0-9]{4}$\""}]: expected [ { …(5) }, { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/orders/0/customerNameMasked",
++     "keyword": "pattern",
++     "message": "must match pattern \"^[^*\\s]\\**$\"",
++     "params": {
++       "pattern": "^[^*\\s]\\**$",
++     },
++     "schemaPath": "#/components/schemas/OperatorOrderRow/properties/customerNameMasked/pattern",
++   },
++   {
++     "instancePath": "/orders/0/customerPhoneMasked",
++     "keyword": "pattern",
++     "message": "must match pattern \"^[*-]*[0-9]{4}$\"",
++     "params": {
++       "pattern": "^[*-]*[0-9]{4}$",
++     },
++     "schemaPath": "#/components/schemas/OperatorOrderRow/properties/customerPhoneMasked/pattern",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ test/operator-record-mask-boundaries.test.ts:42:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  09:00:31
+   Duration  4.65s (tests 47%, import 44%, transform 9%)
