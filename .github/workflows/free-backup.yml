@@ -1,0 +1,51 @@
+# TASK-165 무료 MVP: 암호화한 public 스키마 덤프만 7일 보관한다.
+# 실제 키/전용 연결 등록과 복구 키 보관을 확인한 뒤 FREE_BACKUP_ENABLED=true로 켠다.
+name: free-backup
+
+on:
+  schedule:
+    - cron: '23 13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: free-backup
+  cancel-in-progress: false
+
+jobs:
+  encrypted-backup:
+    if: ${{ github.ref == 'refs/heads/main' && vars.FREE_BACKUP_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: 고정 age 설치
+        run: bash tools/free-backup/install-age.sh "$RUNNER_TEMP/age-bin"
+
+      - name: 읽기 전용 DB 덤프를 즉시 공개 키로 암호화
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/encrypted-backup"
+          AGE_BIN="$RUNNER_TEMP/age-bin/age" PG_DUMP_BIN="$GITHUB_WORKSPACE/tools/free-backup/production-client.sh" python3 -I tools/free-backup/backup.py "$RUNNER_TEMP/encrypted-backup/public.dump.age"
+
+      - name: 암호화 파일 하나만 7일 보관
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: encrypted-db-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/encrypted-backup/public.dump.age
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: 암호화 임시 파일 정리
+        if: ${{ always() }}
+        run: rm -rf "$RUNNER_TEMP/encrypted-backup"
