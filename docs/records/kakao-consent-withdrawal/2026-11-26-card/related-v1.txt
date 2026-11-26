@@ -1,0 +1,12 @@
+
+ RUN  v5.1.0 /workspace/siljang-task149-consent-withdrawal-card/app/server
+
+
+ Test Files  29 passed (29)
+      Tests  481 passed (481)
+   Start at  06:43:40
+   Duration  77.30s (tests 66%, import 32%, transform 2%)
+
+     Import  232 modules were evaluated 377 times · 23.32s total, 32% of tracked time
+             ~8.97s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
