@@ -91,6 +91,8 @@ export interface ConfirmCardAnswer extends ConfirmCardCommandResult {
   readonly kind?: CustomerCommandKind;
   readonly card?: ConfirmCardView;
   readonly firstResult?: ConfirmCardCommandResult;
+  /** 교체 응답 재시도 때 현재 유효한 카드 앞에 보일 안내. 원래 저장한 결과는 바꾸지 않는다. */
+  readonly replacementState?: "stale" | "expired";
   readonly changeRequestStatus?: ChangeRequestStatus;
   /** 전용 입력 블록에만 돌려주는 재입력 버튼. 이름 원문을 포함하지 않는다. */
   readonly depositorInput?: Pick<KakaoPaymentClaimCard, "cardKey" | "depositorBlockId">;
@@ -617,7 +619,10 @@ async function processVerifiedCard(
       ? depositor.value
       : undefined;
   const invalidDepositor = depositor !== undefined && depositorName === undefined;
-  if (initial.used_at !== null) return usedAnswer(initial);
+  if (initial.used_at !== null)
+    return initial.kind === "consent_withdrawal" && initial.payload.replacedBy !== undefined
+      ? replayConsentWithdrawalReplacement(tx, initial, input, knownBlockId)
+      : usedAnswer(initial);
   if (input.choice === "decline")
     return ["payment_claim", "change_request", "issue_report", "consent_withdrawal"].includes(initial.kind)
       ? { ...DECLINED, kind: initial.kind }
@@ -721,6 +726,79 @@ async function processVerifiedCard(
       ? { kind: card.kind }
       : {}),
   };
+}
+
+/** 예전 버튼은 새 카드의 확인으로 쓰지 않는다. 같은 대상의 현재 카드만 다시 보인다. */
+async function replayConsentWithdrawalReplacement(
+  tx: ShopDb,
+  original: CardRow,
+  input: PressConfirmCard,
+  knownBlockId?: string,
+): Promise<ConfirmCardAnswer> {
+  if (original.order_id === null) return RETRY_NEEDED;
+  const visited = new Set([original.card_key]);
+  let parent = original;
+  let current: CardRow;
+  while (true) {
+    const key = parent.payload.replacedBy?.cardKey;
+    if (
+      typeof key !== "string" ||
+      !/^[A-Za-z0-9_-]{16,64}$/.test(key) ||
+      visited.has(key) ||
+      (parent.outcome !== "stale" && parent.outcome !== "expired")
+    )
+      return RETRY_NEEDED;
+    visited.add(key);
+    const row = (
+      await tx.run<CardRow>(
+        "SELECT * FROM confirm_cards WHERE shop_id=$1 AND card_key=$2 AND customer_id=$3 AND consultation_id=$4 AND order_id=$5 AND kind='consent_withdrawal' AND draft_id IS NULL FOR UPDATE",
+        [key, input.customerId, input.consultationId, original.order_id],
+      )
+    ).rows[0];
+    if (row === undefined || row.created_at < parent.created_at) return RETRY_NEEDED;
+    if (row.created_at > input.now) return NOT_YOURS;
+    if (row.used_at === null) {
+      if (row.payload.replacedBy !== undefined) return RETRY_NEEDED;
+      current = row;
+      break;
+    }
+    if (row.payload.replacedBy === undefined)
+      return row.outcome === "done" &&
+        row.payload.result !== undefined &&
+        ["consent_withdrawn", "declined"].includes(row.payload.result.outcome)
+        ? usedAnswer(row)
+        : RETRY_NEEDED;
+    parent = row;
+  }
+  const target: ShowConfirmCard = {
+    ...input,
+    kind: "consent_withdrawal",
+    orderId: original.order_id,
+    ...(current.payload.sourceMessageId === undefined ? {} : { sourceMessageId: current.payload.sourceMessageId }),
+  };
+  const source = await readSource(tx, target, knownBlockId);
+  if (source === null || source.consentWithdrawal === undefined) return RETRY_NEEDED;
+  if (!source.consentWithdrawal.available)
+    return source.consentWithdrawal.reason === "no_consented_photos"
+      ? { kind: "consent_withdrawal", outcome: "not_allowed_now", text: source.consentWithdrawal.text }
+      : RETRY_NEEDED;
+  const expired = input.now.getTime() >= current.expires_at.getTime();
+  const stale = current.order_version !== source.orderVersion || consentWithdrawalCardChanged(current, source);
+  const replacementState = expired ? "expired" : stale ? "stale" : parent.outcome === "expired" ? "expired" : "stale";
+  const card =
+    expired || stale
+      ? (await replaceCard(tx, current, target, source, replacementState)).card
+      : current.payload.presentation === undefined
+        ? undefined
+        : withCardPresentation(current.payload.presentation, source, current.expires_at);
+  if (card?.consentWithdrawal === undefined) return RETRY_NEEDED;
+  kakaoConsentWithdrawalMessage({
+    ...card.consentWithdrawal,
+    state: replacementState,
+    cardKey: card.cardKey,
+    blockId: card.blockId,
+  });
+  return { ...usedAnswer(original), card, replacementState };
 }
 
 async function replaceCard(

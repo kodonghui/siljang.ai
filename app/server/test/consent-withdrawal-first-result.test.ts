@@ -283,4 +283,127 @@ describeDb("사진 게시 동의 철회 카드의 현재 값과 처음 결과(TA
       "후기 사진 0장",
     );
   });
+  function cardKeyOf(body: unknown): string {
+    const value = body as {
+      template?: { outputs?: { textCard?: { buttons?: { extra?: { cardKey?: string } }[] } }[] };
+    };
+    const key = value.template?.outputs?.find((output) => output.textCard)?.textCard?.buttons?.[0]?.extra?.cardKey;
+    expect(key).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
+    if (key === undefined) throw new Error("교체 카드 키가 없어요");
+    return key;
+  }
+  async function loseStaleResponse() {
+    const original = await prepare();
+    await isolated.db.query(
+      "UPDATE portfolio_items SET unpublished_at=$2,unpublish_reason='owner_removed',consent_live=NULL WHERE shop_id=$1",
+      [shop.shopId, NOW],
+    );
+    const lost = await http(original.cardKey);
+    expect(lost.headers.get("Siljang-Outcome")).toBe("card_stale");
+    return { original, replacement: cardKeyOf(await lost.json()) };
+  }
+  it.each(["stale", "expired"] as const)(
+    "%s 교체 응답을 놓쳐도 원래 버튼이 같은 유효한 새 카드를 다시 보인다",
+    async (state) => {
+      const original = await prepare();
+      if (state === "stale")
+        await isolated.db.query(
+          "UPDATE portfolio_items SET unpublished_at=$2,unpublish_reason='owner_removed',consent_live=NULL WHERE shop_id=$1",
+          [shop.shopId, NOW],
+        );
+      const at = state === "expired" ? new Date(NOW.getTime() + 30 * 60000) : NOW;
+      const first = await http(original.cardKey, at),
+        firstBody = await first.json();
+      expect(first.headers.get("Siljang-Outcome")).toBe(state === "stale" ? "card_stale" : "card_expired");
+      const repeated = await http(original.cardKey, at),
+        repeatedBody = await repeated.json();
+      expect(repeated.headers.get("Siljang-Outcome")).toBe("card_used");
+      expect(cardKeyOf(repeatedBody)).toBe(cardKeyOf(firstBody));
+      expect(repeatedBody).toEqual(firstBody);
+      expect((await isolated.db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rowCount).toBe(
+        2,
+      );
+    },
+  );
+  it.each(["changed_again", "expired_again"] as const)(
+    "원래 버튼 재시도도 교체 카드의 %s를 확인하고 명령 없이 현재 새 카드를 보인다",
+    async (mode) => {
+      const { original, replacement } = await loseStaleResponse();
+      if (mode === "changed_again")
+        await isolated.db.query(
+          "UPDATE portfolio_items SET unpublished_at=NULL,unpublish_reason=NULL,consent_live=true WHERE shop_id=$1",
+          [shop.shopId],
+        );
+      const at = mode === "expired_again" ? new Date(NOW.getTime() + 30 * 60000) : NOW;
+      const execute = vi.fn(async () => ({ outcome: "consent_withdrawn", text: "합성 실행 결과" }));
+      const retry = await http(original.cardKey, at, shop.userKey, execute),
+        body = await retry.json();
+      const current = cardKeyOf(body);
+      expect(current).not.toBe(replacement);
+      expect(execute).not.toHaveBeenCalled();
+      if (mode === "expired_again") expect(JSON.stringify(body)).toContain("시간이 지나 새 카드를 보내 드려요");
+      else expect(JSON.stringify(body)).toContain("포트폴리오에 올라 있음");
+      const row = (
+        await isolated.db.query<{ expires_at: Date }>("SELECT expires_at FROM confirm_cards WHERE card_key=$1", [
+          current,
+        ])
+      ).rows[0];
+      expect(row?.expires_at.toISOString()).toBe(new Date(at.getTime() + 30 * 60000).toISOString());
+      expect(cardKeyOf(await (await http(original.cardKey, at)).json())).toBe(current);
+      expect((await isolated.db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rowCount).toBe(
+        3,
+      );
+    },
+  );
+  it("교체 카드가 이미 완료됐으면 예전 버튼도 그 처음 업무 결과만 보인다", async () => {
+    const { original, replacement } = await loseStaleResponse();
+    const execute = vi.fn(async () => ({ outcome: "consent_withdrawn", text: "교체 카드의 합성 첫 결과" }));
+    const completed = await http(replacement, NOW, shop.userKey, execute),
+      body = await completed.json();
+    expect(completed.headers.get("Siljang-Outcome")).toBe("consent_withdrawn");
+    const repeated = await http(original.cardKey, NOW, shop.userKey, execute);
+    expect(repeated.headers.get("Siljang-Outcome")).toBe("card_used");
+    expect(await repeated.json()).toEqual(body);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+  it("교체 참조가 있어도 다른 사용자는 새 카드나 사진 수를 알 수 없다", async () => {
+    const { original } = await loseStaleResponse();
+    const result = await http(original.cardKey, NOW, "unknown-user");
+    expect(result.headers.get("Siljang-Outcome")).toBe("card_not_yours");
+    expect(JSON.stringify(await result.json())).not.toContain("철회할 사진");
+  });
+  it("다른 가게 카드로 바뀐 교체 참조는 내용을 보이거나 실행하지 않는다", async () => {
+    const { original } = await loseStaleResponse();
+    const other = await createConsentWithdrawalFixture(isolated.db, NOW);
+    const otherDb = shopRequestDb(
+      createShopScope(other.shop.shopId, { kind: "job", job: "kakao_callback" }),
+      isolated.db,
+    );
+    const foreign = await showConfirmCard(otherDb, {
+      customerId: other.shop.customerId,
+      consultationId: other.shop.consultationId,
+      kind: "consent_withdrawal",
+      orderId: other.shop.orderId,
+      now: NOW,
+    });
+    await isolated.db.query(
+      "UPDATE confirm_cards SET payload=jsonb_set(payload,'{replacedBy}',$2::jsonb) WHERE card_key=$1",
+      [original.cardKey, JSON.stringify({ cardKey: foreign.cardKey })],
+    );
+    const execute = vi.fn(async () => ({ outcome: "consent_withdrawn", text: "합성 실행 결과" }));
+    const result = await http(original.cardKey, NOW, shop.userKey, execute);
+    expect(result.headers.get("Siljang-Outcome")).toBe("retry_needed");
+    expect(JSON.stringify(await result.json())).not.toContain("철회할 사진");
+    expect(execute).not.toHaveBeenCalled();
+  });
+  it("순환한 교체 참조는 새 카드를 만들거나 끝없이 조회하지 않는다", async () => {
+    const { original, replacement } = await loseStaleResponse();
+    await isolated.db.query(
+      "UPDATE confirm_cards SET used_at=$2,outcome='stale',payload=jsonb_set(payload,'{replacedBy}',$3::jsonb) WHERE card_key=$1",
+      [replacement, NOW, JSON.stringify({ cardKey: original.cardKey })],
+    );
+    const result = await http(original.cardKey);
+    expect(result.headers.get("Siljang-Outcome")).toBe("retry_needed");
+    expect((await isolated.db.query("SELECT id FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rowCount).toBe(2);
+  });
 });

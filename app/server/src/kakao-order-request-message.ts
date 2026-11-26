@@ -103,7 +103,9 @@ export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
   if (answer.card?.kind === "consent_withdrawal" && answer.card.consentWithdrawal !== undefined)
     return kakaoConsentWithdrawalMessage({
       ...answer.card.consentWithdrawal,
-      state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
+      state:
+        answer.replacementState ??
+        (answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal"),
       cardKey: answer.card.cardKey,
       blockId: answer.card.blockId,
     });
