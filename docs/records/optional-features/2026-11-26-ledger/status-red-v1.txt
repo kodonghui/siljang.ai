@@ -1,0 +1,217 @@
+
+> test
+> vitest run --run test/ledger-status.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/ledger-status.test.ts (11 tests | 11 failed) 956ms
+   ❯ API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 (11)
+     × linked의 모든 응답 필드·가게 시간·버전을 계약대로 반환한다 71ms
+     × auth_lost의 모든 응답 필드·가게 시간·버전을 계약대로 반환한다 15ms
+     × unlinked의 모든 응답 필드·가게 시간·버전을 계약대로 반환한다 13ms
+     × 옛 배열 형식도 읽으며 숨은 필드나 자격 증명 참조는 내보내지 않는다 16ms
+     × 나중에 끊은 옛 기록보다 현재 연결을 고른다 13ms
+     × 적지 못한 모든 상태의 수와 가장 이른 실패만 센다 25ms
+     × 연결하지 않은 가게는404 not_set이며 다른 가게의 연결은 보이지 않는다 41ms
+     × 사장님 쿠키 없음/운영자 쿠키는401이다 13ms
+     × 가게가 없는 실제 사장님 세션은404 shop_not_registered다 17ms
+     × 조회는 장부·업무 기록을 바꾸지 않는다 47ms
+     × 배포용 최소 역할로도 조회하고 DB 오류는 기본500으로 닫는다 11ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > linked의 모든 응답 필드·가게 시간·버전을 계약대로 반환한다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"f4340ce9b9049e2f97f506bfc28bcd95","instance":"/api/owner/ledger"}: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/ledger-status.test.ts:47:105
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > auth_lost의 모든 응답 필드·가게 시간·버전을 계약대로 반환한다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"85bf65a2ae8fe58913b239a5cacbb6fe","instance":"/api/owner/ledger"}: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/ledger-status.test.ts:47:105
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > unlinked의 모든 응답 필드·가게 시간·버전을 계약대로 반환한다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"3c7ec2e35dfa136971339fcbbc20f231","instance":"/api/owner/ledger"}: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/ledger-status.test.ts:47:105
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > 옛 배열 형식도 읽으며 숨은 필드나 자격 증명 참조는 내보내지 않는다
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/ledger-status.test.ts:52:93
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > 나중에 끊은 옛 기록보다 현재 연결을 고른다
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/ledger-status.test.ts:58:56
+     56|   it("나중에 끊은 옛 기록보다 현재 연결을 고른다",async()=>{
+     57|     await link("linked",{at:new Date(NOW.getTime()-86400000)});await l…
+     58|     const response=await get();expect(response.status).toBe(200);expec…
+       |                                                        ^
+     59|   });
+     60|   it("적지 못한 모든 상태의 수와 가장 이른 실패만 센다",async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > 적지 못한 모든 상태의 수와 가장 이른 실패만 센다
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/ledger-status.test.ts:64:56
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > 연결하지 않은 가게는404 not_set이며 다른 가게의 연결은 보이지 않는다
+AssertionError: expected 'not_found' to be 'not_set' // Object.is equality
+
+Expected: "not_set"
+Received: "not_found"
+
+ ❯ expectProblem test/support/contract.ts:39:21
+     37|   const body = JSON.parse(text) as Record<string, unknown>;
+     38|   expectSchema("Problem", body);
+     39|   expect(body.code).toBe(code);
+       |                     ^
+     40|   return body;
+     41| }
+ ❯ test/ledger-status.test.ts:68:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > 사장님 쿠키 없음/운영자 쿠키는401이다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"b712b9d111603e0cf2ded6b2a5c261bf","instance":"/api/owner/ledger"}: expected 404 to be 401 // Object.is equality
+
+- Expected
++ Received
+
+- 401
++ 404
+
+ ❯ expectProblem test/support/contract.ts:34:28
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+       |                            ^
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+     36|   expect(res.headers.get("cache-control")).toBe("no-store");
+ ❯ test/ledger-status.test.ts:71:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > 가게가 없는 실제 사장님 세션은404 shop_not_registered다
+error: invalid input syntax for type bigint: "6a25ea81-9f89-4a01-8135-f5ff6c3b2f24"
+ ❯ ../../../siljang-task159-operator-records/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ src/owner-session.ts:17:20
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ createOwnerSession src/owner-session.ts:16:19
+ ❯ test/ledger-status.test.ts:75:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > 조회는 장부·업무 기록을 바꾸지 않는다
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/ledger-status.test.ts:79:97
+     77|   });
+     78|   it("조회는 장부·업무 기록을 바꾸지 않는다",async()=>{
+     79|     await link();const before=await snapshotShop(isolated.db,shop);exp…
+       |                                                                                                 ^
+     80|   });
+     81|   it("배포용 최소 역할로도 조회하고 DB 오류는 기본500으로 닫는다",async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > 배포용 최소 역할로도 조회하고 DB 오류는 기본500으로 닫는다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"d66a50cb19893a7ae9c366278c32b8a9","instance":"/api/owner/ledger"}: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/ledger-status.test.ts:82:113
+     80|   });
+     81|   it("배포용 최소 역할로도 조회하고 DB 오류는 기본500으로 닫는다",async()=>{
+     82|     await link();const response=await get({limited:true});expect(respo…
+       |                                                                                                                 ^
+     83|     await expectProblem(await get({fault:true}),"internal");expect(log…
+     84|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  11 failed (11)
+   Start at  10:50:59
+   Duration  3.90s (import 46%, transform 29%, tests 26%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task156-optional-features/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task156-optional-features/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/ledger-status.test.ts

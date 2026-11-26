@@ -235,3 +235,6 @@ GRANT EXECUTE ON FUNCTION read_operator_record_list(uuid,uuid,text,jsonb,integer
 GRANT EXECUTE ON FUNCTION read_operator_consultation(uuid,uuid,uuid),read_operator_messages(uuid,uuid,uuid,jsonb,integer) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION read_operator_original(uuid,uuid,text,uuid,jsonb,timestamptz) TO :"runtime_role";
 GRANT INSERT (shop_id,id,consultation_id,erased_at) ON masked_value_erasures TO :"runtime_role";
+-- TASK-156: 연결 상태/열 배치와 미완료 쓰기의 수/시각만 읽는다. OAuth 토큰은 이 표에 없다.
+GRANT SELECT ON ledger_links TO :"runtime_role";
+GRANT SELECT (shop_id,status,first_failed_at) ON ledger_writes TO :"runtime_role";

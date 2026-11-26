@@ -1,0 +1,43 @@
+
+> test
+> vitest run --run test/ledger-status.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/ledger-status.test.ts (11 tests | 1 failed) 1137ms
+   ❯ API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 (11)
+     × 가게가 없는 실제 사장님 세션은404 shop_not_registered다 14ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > 가게가 없는 실제 사장님 세션은404 shop_not_registered다
+error: invalid input syntax for type bigint: "4d5d41e3-b92a-4651-8ccc-1fc7d039e96e"
+ ❯ ../../../siljang-task159-operator-records/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ src/owner-session.ts:17:20
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ createOwnerSession src/owner-session.ts:16:19
+ ❯ test/ledger-status.test.ts:75:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  10:57:37
+   Duration  3.06s (import 48%, tests 39%, transform 13%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task156-optional-features/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task156-optional-features/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/ledger-status.test.ts

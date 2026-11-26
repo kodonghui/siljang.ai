@@ -11,6 +11,7 @@ import { startKakaoChannelCheck } from "./kakao-channel-check";
 import { kakaoReply } from "./kakao-reply";
 import { kakaoSkillRoutes } from "./kakao-skill";
 import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill-auth";
+import { getLedger } from "./ledger";
 import { resubmitLicense } from "./license-resubmission";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import {
@@ -161,6 +162,7 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   accessRoute("GET", "/owner/consultations/:consultationId/messages", "owner", "API-043", listConsultationMessages),
   accessRoute("GET", "/owner/tasks", "owner", "API-040", listOwnerTasks),
   shopRoute("GET", "/owner/booking-link", "owner", getBookingLink),
+  shopRoute("GET", "/owner/ledger", "owner", getLedger),
   shopRoute("GET", "/public/shops/:slug", "public", getPublicBookingPage),
   shopRoute("GET", "/public/shops/:slug/privacy-policy", "public", getPublicPrivacyPolicy),
   shopRoute("POST", "/owner/kakao-channel/check", "owner", startKakaoChannelCheck),

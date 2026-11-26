@@ -1,0 +1,12 @@
+
+> test
+> vitest run --run test/ledger-status.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  11:00:13
+   Duration  3.10s (import 48%, tests 37%, transform 14%)
