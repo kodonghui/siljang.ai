@@ -1,0 +1,2 @@
+암호화 백업 완료
+{"backup_role_update_rejected": true, "lost_records": 0, "public_security_definer_execute": 0, "records": {"allergy": 1, "orders": 1, "payments": 1, "photos": 1, "terms": 1}, "remaining_test_databases": 0, "restore_seconds": 1.158, "sequences_compared": 4, "server_major": 17, "tables_compared": 62, "total_seconds": 3.729, "unsafe_role_rejections": 5}

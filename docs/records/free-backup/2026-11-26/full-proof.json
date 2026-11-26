@@ -62,5 +62,16 @@
     }
   },
   "enable_setting_changed": false,
-  "enable_setting_readback": "GitHub 변수 API403. 실제 활성 상태 미확인"
+  "enable_setting_readback": "GitHub 변수 API403. 실제 활성 상태 미확인",
+  "role_hardening_source_commit": "51b4af5ed461ad8573235c15622f6e9620e5c625",
+  "unsafe_role_rejections": 5,
+  "role_hardening_runtime_objects": {
+    "tools/free-backup/grants.sql": "173761fbe70ff3433a4f063a2c902c8f4e895c8e",
+    "tools/free-backup/restore-smoke.py": "97e1570874cba34d46cbb83ebb1ef6da5600486f"
+  },
+  "unchanged_boundary_runtime_objects": {
+    "tools/free-backup/backup.py": "e2242db2186838d8ff33fb6fe0ed5eb150738a69",
+    "tools/free-backup/production-client.sh": "a110e210b6f6c6cadfdb82a774bab77c258c690f",
+    "tools/free-backup/test_backup.py": "e8ea3d67382235f11be34eb61bca2f8937fb0ba9"
+  }
 }
