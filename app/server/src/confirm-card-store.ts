@@ -135,11 +135,17 @@ function usedAnswer(card: CardRow): ConfirmCardAnswer {
   return {
     outcome: "card_used",
     text: "이미 처리했어요",
-    ...(["payment_claim", "change_request"].includes(card.kind) ? { kind: card.kind } : {}),
+    ...(["payment_claim", "change_request", "issue_report"].includes(card.kind) ? { kind: card.kind } : {}),
     ...(result === undefined ? {} : { firstResult: { outcome: result.outcome, text: result.text } }),
   };
 }
 function usedDelivery(card: CardRow) {
+  if (
+    card.kind === "issue_report" &&
+    card.payload.result !== undefined &&
+    ["issue_reported", "declined"].includes(card.payload.result.outcome)
+  )
+    return { text: card.payload.result.text };
   if (card.kind === "change_request") {
     const text = changeRequestResultText(card.payload.result?.outcome);
     if (text !== undefined) return { text };
@@ -511,7 +517,9 @@ async function processVerifiedCard(
   const invalidDepositor = depositor !== undefined && depositorName === undefined;
   if (initial.used_at !== null) return usedAnswer(initial);
   if (input.choice === "decline")
-    return ["payment_claim", "change_request"].includes(initial.kind) ? { ...DECLINED, kind: initial.kind } : DECLINED;
+    return ["payment_claim", "change_request", "issue_report"].includes(initial.kind)
+      ? { ...DECLINED, kind: initial.kind }
+      : DECLINED;
   const target: ShowConfirmCard = {
     ...input,
     kind: initial.kind,
@@ -597,7 +605,7 @@ async function processVerifiedCard(
   return {
     outcome: result.outcome,
     text: result.text,
-    ...(["payment_claim", "change_request"].includes(card.kind) ? { kind: card.kind } : {}),
+    ...(["payment_claim", "change_request", "issue_report"].includes(card.kind) ? { kind: card.kind } : {}),
   };
 }
 

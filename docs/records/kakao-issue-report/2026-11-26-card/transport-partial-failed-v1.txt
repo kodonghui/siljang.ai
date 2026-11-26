@@ -1,0 +1,88 @@
+
+ RUN  v5.1.0 /workspace/siljang-task147-issue-card/app/server
+
+ ❯ test/issue-report-first-result.test.ts (2 tests | 2 failed) 732ms
+   ❯ 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) (2)
+     × API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(신고를 받았어요. 사장님이 보시고 정하실 거예요) 47ms
+     × API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(이전 합성 신고 접수 안내) 17ms
+ ❯ test/kakao-issue-report-integration.test.ts (3 tests | 3 failed) 50ms
+   × 공통 발신이 신고 표시의 모든 출력을 순서대로 보존한다({"state":"normal","orderNo":"ABCD1234","receivedAt":"2026-11-26T06:00:00Z","description":"합성 신고 설명","photoCount":1,"showMedicalNotice":false,"expiresAt":"2026-11-27T09:30:00Z","timeZone":"Asia/Seoul","cardKey":"IssueCardFixture147key","blockId":"issue-block"}) 44ms
+   × 공통 발신이 신고 표시의 모든 출력을 순서대로 보존한다({"state":"expired","orderNo":"ABCD1234","receivedAt":"2026-11-26T06:00:00Z","description":"가́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́","photoCount":1,"showMedicalNotice":true,"expiresAt":"2026-11-27T09:30:00Z","timeZone":"Asia/Seoul","cardKey":"IssueCardFixture147key","blockId":"issue-block"}) 3ms
+   × 공통 발신이 신고 표시의 모든 출력을 순서대로 보존한다({"state":"permission","reason":"card_not_yours"}) 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(신고를 받았어요. 사장님이 보시고 정하실 거예요)
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(이전 합성 신고 접수 안내)
+error: orders_production_sync: 주문 상태(received)와 제작 행의 인도·미수령 시각이 맞지 않음
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ PgRequestDb.transaction src/db.ts:149:7
+ ❯ test/issue-report-first-result.test.ts:25:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/kakao-issue-report-integration.test.ts > 공통 발신이 신고 표시의 모든 출력을 순서대로 보존한다({"state":"normal","orderNo":"ABCD1234","receivedAt":"2026-11-26T06:00:00Z","description":"합성 신고 설명","photoCount":1,"showMedicalNotice":false,"expiresAt":"2026-11-27T09:30:00Z","timeZone":"Asia/Seoul","cardKey":"IssueCardFixture147key","blockId":"issue-block"})
+ FAIL  test/kakao-issue-report-integration.test.ts > 공통 발신이 신고 표시의 모든 출력을 순서대로 보존한다({"state":"expired","orderNo":"ABCD1234","receivedAt":"2026-11-26T06:00:00Z","description":"가́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́","photoCount":1,"showMedicalNotice":true,"expiresAt":"2026-11-27T09:30:00Z","timeZone":"Asia/Seoul","cardKey":"IssueCardFixture147key","blockId":"issue-block"})
+ FAIL  test/kakao-issue-report-integration.test.ts > 공통 발신이 신고 표시의 모든 출력을 순서대로 보존한다({"state":"permission","reason":"card_not_yours"})
+AssertionError: SkillTemplateResponse: [{"instancePath":"","schemaPath":"#/required","keyword":"required","params":{"missingProperty":"version"},"message":"must have required property 'version'"},{"instancePath":"","schemaPath":"#/required","keyword":"required","params":{"missingProperty":"template"},"message":"must have required property 'template'"},{"instancePath":"","schemaPath":"#/additionalProperties","keyword":"additionalProperties","params":{"additionalProperty":"outputs"},"message":"must NOT have additional properties"}]: expected [ { instancePath: '', …(4) }, …(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "",
++     "keyword": "required",
++     "message": "must have required property 'version'",
++     "params": {
++       "missingProperty": "version",
++     },
++     "schemaPath": "#/required",
++   },
++   {
++     "instancePath": "",
++     "keyword": "required",
++     "message": "must have required property 'template'",
++     "params": {
++       "missingProperty": "template",
++     },
++     "schemaPath": "#/required",
++   },
++   {
++     "instancePath": "",
++     "keyword": "additionalProperties",
++     "message": "must NOT have additional properties",
++     "params": {
++       "additionalProperty": "outputs",
++     },
++     "schemaPath": "#/additionalProperties",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ test/kakao-issue-report-integration.test.ts:32:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+
+ Test Files  2 failed | 4 passed (6)
+      Tests  5 failed | 81 passed (86)
+   Start at  01:03:30
+   Duration  9.00s (tests 48%, import 45%, transform 7%)
+
+    Isolate  6 workers spawned · ~102ms startup each (spawn + environment, per file)
+             at least ~512ms faster with isolate: false — reuses workers across files instead of one per file

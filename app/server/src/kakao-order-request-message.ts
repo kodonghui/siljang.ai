@@ -93,6 +93,13 @@ function inputCard(
   return { version: "2.0" as const, template: { outputs: [{ textCard: { title, description, buttons } }] } };
 }
 export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
+  if (
+    answer.kind === "issue_report" &&
+    answer.outcome === "card_used" &&
+    answer.firstResult !== undefined &&
+    ["issue_reported", "declined"].includes(answer.firstResult.outcome)
+  )
+    return template([answer.firstResult.text]);
   if (answer.changeRequestStatus !== undefined)
     return kakaoChangeRequestMessage({ state: "stale", ...answer.changeRequestStatus });
   if (answer.kind === "change_request") {

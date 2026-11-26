@@ -8,6 +8,7 @@ import {
   type KakaoCustomerNoticeTextCarouselOutput,
   kakaoCustomerNoticeMessage,
 } from "./kakao-customer-notice-message";
+import { type KakaoIssueReportView, kakaoIssueReportMessage } from "./kakao-issue-report-message";
 import { type KakaoMyOrderDisplayView, type KakaoMyOrderOutput, kakaoMyOrderMessage } from "./kakao-my-order-message";
 import { kakaoOrderRequestContents } from "./kakao-order-request-content";
 import { kakaoPaymentClaimMessage } from "./kakao-payment-claim-message";
@@ -36,13 +37,19 @@ export interface KakaoChangeRequestContent {
   readonly view: Extract<KakaoChangeRequestView, { readonly cardKey: string }>;
   readonly part?: number;
 }
+export interface KakaoIssueReportContent {
+  readonly kind: "issue_card";
+  readonly view: KakaoIssueReportView;
+  readonly part?: number;
+}
 export type KakaoMessageContent =
   | string
   | ConfirmCardView
   | KakaoPaymentContent
   | KakaoMyOrderContent
   | KakaoCustomerNoticeContent
-  | KakaoChangeRequestContent;
+  | KakaoChangeRequestContent
+  | KakaoIssueReportContent;
 type MyOrderButton = Extract<KakaoMyOrderOutput, { readonly textCard: unknown }>["textCard"]["buttons"][number];
 export type KakaoMessageOutput =
   | { readonly simpleText: { readonly text: string } }
@@ -70,17 +77,24 @@ interface PresentationBody {
 export function limitKakaoQuickReplies(replies: readonly KakaoQuickReply[]): readonly KakaoQuickReply[] {
   return [...new Map(replies.map((reply) => [reply.messageText, reply])).values()].slice(0, 10);
 }
-type Presentation = KakaoPaymentContent | KakaoMyOrderContent | KakaoCustomerNoticeContent | KakaoChangeRequestContent;
+type Presentation =
+  | KakaoPaymentContent
+  | KakaoMyOrderContent
+  | KakaoCustomerNoticeContent
+  | KakaoChangeRequestContent
+  | KakaoIssueReportContent;
 function isPresentation(content: KakaoMessageContent): content is Presentation {
   return (
     typeof content !== "string" &&
     (content.kind === "payment_notice" ||
       content.kind === "my_order" ||
       content.kind === "customer_notice" ||
-      content.kind === "change_card")
+      content.kind === "change_card" ||
+      content.kind === "issue_card")
   );
 }
 function presentationBody(content: Presentation): PresentationBody {
+  if (content.kind === "issue_card") return kakaoIssueReportMessage(content.view);
   if (content.kind === "change_card") return kakaoChangeRequestMessage(content.view);
   if (content.kind === "payment_notice") return kakaoPaymentMessage(content.view);
   if (content.kind === "customer_notice") return kakaoCustomerNoticeMessage(content.view);
