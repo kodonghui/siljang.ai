@@ -1,0 +1,30 @@
+{
+  "progress": {
+    "exit": 0,
+    "output": "No coined words found."
+  },
+  "readme": {
+    "exit": 0,
+    "output": "No coined words found."
+  },
+  "fix": {
+    "exit": 0,
+    "output": "No coined words found."
+  },
+  "hands-on": {
+    "exit": 0,
+    "output": "No coined words found."
+  },
+  "next": {
+    "exit": 0,
+    "output": "No coined words found."
+  },
+  "native-gap": {
+    "exit": 0,
+    "output": "No coined words found."
+  },
+  "trusted-ref-remediation": {
+    "exit": 0,
+    "output": "No coined words found."
+  }
+}
