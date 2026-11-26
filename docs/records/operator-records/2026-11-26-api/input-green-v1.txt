@@ -1,0 +1,11 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+
+ Test Files  3 passed (3)
+      Tests  63 passed (63)
+   Start at  08:03:17
+   Duration  2.58s (import 77%, transform 12%, tests 10%, worker 1%)
+
+    Isolate  3 workers spawned · ~186ms startup each (spawn + environment, per file)
+             at least ~372ms faster with isolate: false — reuses workers across files instead of one per file

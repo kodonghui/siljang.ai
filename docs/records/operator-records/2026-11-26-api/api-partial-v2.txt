@@ -1,0 +1,41 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-records.test.ts (4 tests | 2 failed) 854ms
+   ❯ 운영자 가게 기록과 사유 있는 열기(TASK-159) (4)
+     × API075는 메시지 글/사진 없이 메타데이터와 플레이스홀더 끝 네 자리만 보인다 31ms
+     × API077는 사유 있는 전화 원본 하나만 열고 같은 요청 키 재열기도 매번 기록한다 34ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API075는 메시지 글/사진 없이 메타데이터와 플레이스홀더 끝 네 자리만 보인다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"78a911eed307d600dc9394c4e5f164fe","instance":"/api/operator/shops/addc8e39-cb18-42a1-a022-bf670a97c248/consultations/80e54b1e-9349-4b90-80d5-b7a554017dbf"}: expected 404 to be less than 300
+ ❯ expectOneAccessRow test/support/access-log.ts:88:28
+     86|   const text = await res.text();
+     87|   expect(res.status, text).toBeGreaterThanOrEqual(200);
+     88|   expect(res.status, text).toBeLessThan(300);
+       |                            ^
+     89|   const after = await accessLogRows(db, shopId);
+     90|   expect(after.length, "접속기록이 한 행 늘어야 함").toBe(before.length + 1);
+ ❯ test/operator-records.test.ts:85:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API077는 사유 있는 전화 원본 하나만 열고 같은 요청 키 재열기도 매번 기록한다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"0278af5137fb75a67837e5f6dc9fec98","instance":"/api/operator/shops/01b2bc9c-4e9c-414c-a68a-9cc836034b91/originals"}: expected 404 to be less than 300
+ ❯ expectOneAccessRow test/support/access-log.ts:88:28
+     86|   const text = await res.text();
+     87|   expect(res.status, text).toBeGreaterThanOrEqual(200);
+     88|   expect(res.status, text).toBeLessThan(300);
+       |                            ^
+     89|   const after = await accessLogRows(db, shopId);
+     90|   expect(after.length, "접속기록이 한 행 늘어야 함").toBe(before.length + 1);
+ ❯ test/operator-records.test.ts:122:29
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  08:15:23
+   Duration  3.59s (import 58%, tests 25%, transform 18%)

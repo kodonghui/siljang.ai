@@ -1,0 +1,65 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-record-input.test.ts (29 tests | 7 failed) 23ms
+   × 기록 목록의 기본값과 상한은 orders·20개·최대100개 8ms
+   × masked_value 열기는 대상 하나와 사유만 받는다 1ms
+   × order_contact 열기는 대상 하나와 사유만 받는다 1ms
+   × refund_account 열기는 대상 하나와 사유만 받는다 1ms
+   × kept_record 열기는 대상 하나와 사유만 받는다 1ms
+   × consultation_text 열기는 대상 하나와 사유만 받는다 1ms
+   × 대화 글에만 페이지 커서를 받으며 번호 원문·첨부 경로는 입력에 없다 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-record-input.test.ts > 기록 목록의 기본값과 상한은 orders·20개·최대100개
+ApiError: validation_failed
+ ❯ fieldError src/problem.ts:185:10
+    183| /** 필드 오류 하나로 된 validation_failed. */
+    184| export function fieldError(field: string, code: FieldReason): ApiError…
+    185|   return new ApiError("validation_failed", { errors: [{ field, code }]…
+       |          ^
+    186| }
+    187|
+ ❯ parseOperatorRecordList src/operator-record-input.ts:21:9
+ ❯ test/operator-record-input.test.ts:7:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  test/operator-record-input.test.ts > masked_value 열기는 대상 하나와 사유만 받는다
+ FAIL  test/operator-record-input.test.ts > order_contact 열기는 대상 하나와 사유만 받는다
+ FAIL  test/operator-record-input.test.ts > refund_account 열기는 대상 하나와 사유만 받는다
+ FAIL  test/operator-record-input.test.ts > kept_record 열기는 대상 하나와 사유만 받는다
+ FAIL  test/operator-record-input.test.ts > consultation_text 열기는 대상 하나와 사유만 받는다
+ApiError: validation_failed
+ ❯ fieldError src/problem.ts:185:10
+    183| /** 필드 오류 하나로 된 validation_failed. */
+    184| export function fieldError(field: string, code: FieldReason): ApiError…
+    185|   return new ApiError("validation_failed", { errors: [{ field, code }]…
+       |          ^
+    186| }
+    187|
+ ❯ parseOriginalOpen src/operator-record-input.ts:24:9
+ ❯ test/operator-record-input.test.ts:19:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  test/operator-record-input.test.ts > 대화 글에만 페이지 커서를 받으며 번호 원문·첨부 경로는 입력에 없다
+ApiError: validation_failed
+ ❯ fieldError src/problem.ts:185:10
+    183| /** 필드 오류 하나로 된 validation_failed. */
+    184| export function fieldError(field: string, code: FieldReason): ApiError…
+    185|   return new ApiError("validation_failed", { errors: [{ field, code }]…
+       |          ^
+    186| }
+    187|
+ ❯ parseOriginalOpen src/operator-record-input.ts:24:9
+ ❯ test/operator-record-input.test.ts:24:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 22 passed (29)
+   Start at  08:02:47
+   Duration  264ms (transform 46%, tests 29%, import 20%, worker 5%)
