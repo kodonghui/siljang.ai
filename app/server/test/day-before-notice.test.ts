@@ -1,16 +1,21 @@
 import { readFileSync } from "node:fs";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import { createApp } from "../src/app";
 import { createDayBeforeNotice } from "../src/day-before-notice";
+import { DUE_SOURCES } from "../src/due-sources";
 import { deferredKakaoBatch } from "../src/kakao-deferred";
+import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { runScheduled } from "../src/scheduled";
+import { Secret } from "../src/settings";
 import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
-import { describeDb, newUuid, testDb, testEnv } from "./support/db";
+import { expectSchema } from "./support/contract";
+import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
-import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
+import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const NOW = new Date("2026-11-27T09:00:00Z");
-const CONFIRMED = new Date(NOW.getTime() - 3600000);
+const CONFIRMED = new Date(NOW.getTime() - 86400000);
 const PICKUP = new Date("2026-11-28T06:00:00Z");
 describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture;
@@ -71,8 +76,17 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
     await isolated.db.transaction(async (raw) => {
       await raw.query(`SET LOCAL ROLE "${role}"`);
       const scoped = shopDb(createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }), raw);
+      expect(
+        (await raw.query<{ id: string }>(DUE_SOURCES.order_day_before.find, [NOW, 100])).rows.map((r) => r.id),
+      ).toContain(shop.orderId);
+      expect((await scoped.run(DUE_SOURCES.order_day_before.claim, [other.orderId, NOW])).rowCount).toBe(0);
+      expect((await scoped.run(DUE_SOURCES.order_day_before.claim, [shop.orderId, NOW])).rowCount).toBe(1);
       expect(await createDayBeforeNotice(scoped, other.orderId, NOW)).toBe(false);
       expect(await createDayBeforeNotice(scoped, shop.orderId, NOW)).toBe(true);
+      expect(
+        (await raw.query<{ id: string }>(DUE_SOURCES.order_day_before.find, [NOW, 100])).rows.map((r) => r.id),
+      ).not.toContain(shop.orderId);
+      expect((await scoped.run(DUE_SOURCES.order_day_before.claim, [shop.orderId, NOW])).rowCount).toBe(0);
     });
     expect(
       (
@@ -166,8 +180,138 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
       expect(notice.body).not.toMatch(/할인|이벤트|다른 상품/u);
       if (empty) expect(notice.body).not.toMatch(/픽업 장소|위치/u);
       else expect(notice.body).toContain("합성 픽업 장소");
+      await issueTestBookingLink(isolated.db, shop);
+      const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
+      const app = createApp({
+        connect: () => isolated.connect(),
+        services: { now: () => new Date(NOW.getTime() + 120000) },
+        logSink: () => {},
+      });
+      for (const [index, utterance] of ["전날 안내 첫 확인", "전날 안내 둘째 확인"].entries()) {
+        const response = await app.request(
+          "/api/kakao/skills/message",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+            body: JSON.stringify({
+              bot: { id: shop.botId },
+              userRequest: { utterance, block: { id: "conversation" }, user: { id: shop.userKey, type: "botUserKey" } },
+              action: { id: "synthetic-action", params: {} },
+            }),
+          },
+          env,
+        );
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as { template: { outputs: { simpleText?: { text: string } }[] } };
+        expectSchema("SkillTemplateResponse", body);
+        const text = body.template.outputs.map((output) => output.simpleText?.text ?? "").join("\n");
+        expect(text.includes(notice.body)).toBe(index === 0);
+        if (index === 0) {
+          expect(text).not.toMatch(/할인|이벤트|다른 상품/u);
+          if (empty) expect(text).not.toContain("픽업 장소");
+        }
+      }
+      expect(
+        (
+          await isolated.db.query("SELECT status FROM notifications WHERE shop_id=$1 AND kind='day_before'", [
+            shop.shopId,
+          ])
+        ).rows[0]?.status,
+      ).toBe("delivered_on_reply");
     },
   );
+  it.each([
+    ["07:59", "08:00", false],
+    ["08:00", "08:00", true],
+    ["17:59", "18:00", false],
+    ["18:00", null, true],
+    ["20:50", "20:50", true],
+    ["20:51", "20:50", false],
+    ["23:59", "18:00", false],
+  ] as const)("실제 기본 실행기가 가게 시각과 기본값/전달 시간을 따른다(%s/%s)", async (time, configured, expected) => {
+    if (configured === null) await isolated.db.query("DELETE FROM business_calendars WHERE shop_id=$1", [shop.shopId]);
+    else
+      await isolated.db.query("UPDATE business_calendars SET day_before_notice_time=$2 WHERE shop_id=$1", [
+        shop.shopId,
+        configured,
+      ]);
+    const now = new Date(`2026-11-27T${time}:00+09:00`);
+    const { keys } = singleKeyCrypto();
+    const fieldKey = keys.get(1);
+    if (fieldKey === undefined) throw new Error("합성 암호화 키 없음");
+    const result = await runScheduled(
+      { scheduledTime: now.getTime(), cron: "* * * * *" },
+      testEnv({ FIELD_KEY_CURRENT: "1", FIELD_KEY_V1: fieldKey }),
+      { connect: () => isolated.connect(), logSink: () => {}, now: () => now },
+    );
+    expect(result?.jobs.day_before_notice?.failed).toBe(0);
+    expect(
+      (
+        await isolated.db.query("SELECT count(*)::int AS n FROM notifications WHERE shop_id=$1 AND kind='day_before'", [
+          shop.shopId,
+        ])
+      ).rows[0]?.n,
+    ).toBe(expected ? 1 : 0);
+  });
+  it.each(["cancelled", "next-day"] as const)(
+    "취소하거나 픽업 날짜를 바꾼 주문의 옛 안내를 전하지 않는다(%s)",
+    async (change) => {
+      const scoped = shopRequestDb(
+        createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }),
+        isolated.db,
+      );
+      expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, NOW))).toBe(true);
+      if (change === "cancelled")
+        await isolated.db.query(
+          "UPDATE orders SET status='cancelled',cancelled_at=$2,cancel_kind='customer',finished_at=$2 WHERE id=$1",
+          [shop.orderId, NOW],
+        );
+      else
+        await isolated.db.transaction(async (tx) => {
+          const at = new Date(PICKUP.getTime() + 86400000);
+          await tx.query("UPDATE order_details SET pickup_at=$2 WHERE order_id=$1 AND version=1", [shop.orderId, at]);
+          await tx.query("UPDATE orders SET pickup_at=$2,pickup_day='2026-11-29' WHERE id=$1", [shop.orderId, at]);
+        });
+      expect(
+        (await isolated.db.query<{ id: string }>(DUE_SOURCES.order_day_before.find, [NOW, 100])).rows.map((r) => r.id),
+      ).not.toContain(shop.orderId);
+      expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, NOW))).toBe(false);
+      expect(
+        (await scoped.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: NOW }))).messages,
+      ).toHaveLength(0);
+    },
+  );
+  it("시작한 시도는 픽업 내용이 바뀌어도 다시 만들거나 고치지 않는다", async () => {
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }), isolated.db);
+    expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, NOW))).toBe(true);
+    await isolated.db.query(
+      "UPDATE notifications SET attempts=1,status='retrying',next_attempt_at=$2 WHERE shop_id=$1 AND kind='day_before'",
+      [shop.shopId, NOW],
+    );
+    const before = (
+      await isolated.db.query(
+        "SELECT body,scheduled_for,attempts,status FROM notifications WHERE shop_id=$1 AND kind='day_before'",
+        [shop.shopId],
+      )
+    ).rows;
+    await isolated.db.transaction(async (tx) => {
+      const at = new Date(PICKUP.getTime() + 3600000);
+      await tx.query("UPDATE order_details SET pickup_at=$2 WHERE order_id=$1 AND version=1", [shop.orderId, at]);
+      await tx.query("UPDATE orders SET pickup_at=$2 WHERE id=$1", [shop.orderId, at]);
+    });
+    expect(
+      (await isolated.db.query<{ id: string }>(DUE_SOURCES.order_day_before.find, [NOW, 100])).rows.map((r) => r.id),
+    ).not.toContain(shop.orderId);
+    expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, NOW))).toBe(false);
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT body,scheduled_for,attempts,status FROM notifications WHERE shop_id=$1 AND kind='day_before'",
+          [shop.shopId],
+        )
+      ).rows,
+    ).toEqual(before);
+  });
   it.each(["pickup", "address", "phone", "time-zone", "notice-time"] as const)(
     "미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(%s)",
     async (change) => {
