@@ -21,7 +21,7 @@ import { isolatedTestDb } from "./support/isolated-db";
 import { seedOperatorSession } from "./support/operator";
 import { createShop, type ShopFixture } from "./support/shops";
 
-const NOW = new Date("2026-11-28T06:00:00Z"),
+const NOW = new Date("2026-11-21T06:00:00Z"),
   ORIGIN = "https://siljang.example";
 const PRIVATE_TEXT = "이지우인데 땅콩 알레르기가 있어요. 연락은 [전화번호1]";
 const NAME = "이지우",

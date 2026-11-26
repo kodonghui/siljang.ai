@@ -2438,6 +2438,7 @@ BEGIN
   IF NOT pg_catalog.isfinite(p_now) THEN
     RAISE EXCEPTION 'invalid purge cutoff' USING ERRCODE='22008';
   END IF;
+  p_now := least(p_now, pg_catalog.statement_timestamp());
   IF NOT EXISTS (
     SELECT c.id FROM public.consultations c WHERE c.shop_id = p_shop AND c.id = p_consultation
            AND ((c.status = 'dropped' AND c.dropped_at <= p_now::timestamptz - interval '30 days')

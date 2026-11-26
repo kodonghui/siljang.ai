@@ -65,6 +65,10 @@ export async function runPurge(db: RequestDb, options: PurgeOptions): Promise<Jo
     limits.rounds > 100
   )
     throw new RangeError("invalid purge limits");
+  const dbNow = (await db.query<{ now: Date }>("SELECT statement_timestamp() AS now")).rows[0]?.now;
+  if (!(dbNow instanceof Date) || Number.isNaN(dbNow.getTime()))
+    throw new RangeError("database purge clock is unavailable");
+  const now = new Date(Math.min(options.now.getTime(), dbNow.getTime()));
   const shouldStop = options.shouldStop ?? (() => false);
   const total: JobTally = { found: 0, done: 0, skipped: 0, failed: 0 };
   const seen = new Map<PurgeSourceName, Set<string>>();
@@ -91,7 +95,7 @@ export async function runPurge(db: RequestDb, options: PurgeOptions): Promise<Jo
         seen.set(name, prior);
         let candidates: readonly Candidate[];
         try {
-          candidates = (await db.query<Candidate>(source.sql, [options.now, limits.batch, [...prior]])).rows;
+          candidates = (await db.query<Candidate>(source.sql, [now, limits.batch, [...prior]])).rows;
         } catch (err) {
           tally.failed += 1;
           failure(err, name);
@@ -105,7 +109,7 @@ export async function runPurge(db: RequestDb, options: PurgeOptions): Promise<Jo
           const scoped = shopRequestDb(createShopScope(item.shop_id, { kind: "job", job: "purge" }), db);
           try {
             if (name === "files") {
-              const result = await deleteQueuedFile(scoped, options.storage(), item.id, options.now);
+              const result = await deleteQueuedFile(scoped, options.storage(), item.id, now);
               if (result === "deleted") tally.done += 1;
               else if (result === "failed") {
                 tally.failed += 1;
@@ -114,7 +118,7 @@ export async function runPurge(db: RequestDb, options: PurgeOptions): Promise<Jo
             } else {
               const handler = work[name];
               if (handler === undefined) throw new TypeError("unknown purge work");
-              const count = await scoped.transaction((tx) => handler(tx, item.id, options.now));
+              const count = await scoped.transaction((tx) => handler(tx, item.id, now));
               tally.done += count;
               if (count === 0) tally.skipped += 1;
             }
@@ -126,7 +130,7 @@ export async function runPurge(db: RequestDb, options: PurgeOptions): Promise<Jo
       }
       if (phase === 6 && !shouldStop()) {
         try {
-          const count = await purgeExpiredRequestKeys(db, options.now, limits.batch);
+          const count = await purgeExpiredRequestKeys(db, now, limits.batch);
           tally.found += count;
           tally.done += count;
           if (count === limits.batch) more = true;
@@ -137,7 +141,7 @@ export async function runPurge(db: RequestDb, options: PurgeOptions): Promise<Jo
       }
       if (phase === 8 && !uploadsDone && !shouldStop()) {
         try {
-          const result = await purgeUnusedUploads(options.storage(), options.now, {
+          const result = await purgeUnusedUploads(options.storage(), now, {
             batch: limits.batch,
             pages: 1,
             shouldStop,
@@ -164,7 +168,7 @@ export async function runPurge(db: RequestDb, options: PurgeOptions): Promise<Jo
           if (pending === undefined) throw new Error("pending file count missing");
           await recordOpsEvent(db, {
             kind: "purge_run",
-            at: options.now,
+            at: now,
             count: tally.done,
             detail: { phase, round, ...tally, pending_files: pending, budget_reached: shouldStop() ? 1 : 0 },
           });
