@@ -1,0 +1,40 @@
+
+ RUN  v5.1.0 /workspace/siljang-task081-replacement-replay/app/server
+
+ ❯ test/confirm-card-replacement-replay.test.ts (18 tests | 6 failed) 1577ms
+   ❯ 공통 확인 카드의 교체 응답 재시도(TASK-081) (18)
+     × cancel의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 31ms
+     × order_request의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 40ms
+     × payment_claim의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 42ms
+     × change_request의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 39ms
+     × issue_report의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 41ms
+     × consent_withdrawal의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 41ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > cancel의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > order_request의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > payment_claim의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > change_request의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > issue_report의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > consent_withdrawal의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+AssertionError: expected 'card_used' to be 'declined' // Object.is equality
+
+Expected: "declined"
+Received: "card_used"
+
+ ❯ test/confirm-card-replacement-replay.test.ts:148:28
+    146|       execute,
+    147|     );
+    148|     expect(result.outcome).toBe("declined");
+       |                            ^
+    149|     expect(result.card).toBeUndefined();
+    150|     expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 12 passed (18)
+   Start at  07:35:10
+   Duration  2.80s (tests 59%, import 33%, transform 7%)

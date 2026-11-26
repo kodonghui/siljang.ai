@@ -1,0 +1,78 @@
+
+ RUN  v5.1.0 /workspace/siljang-task081-replacement-replay/app/server
+
+ ❯ test/confirm-card-replacement-replay.test.ts (18 tests | 11 failed) 1445ms
+   ❯ 공통 확인 카드의 교체 응답 재시도(TASK-081) (18)
+     × cancel에서도 버전 변경 응답을 놓치면 같은 현재 카드만 다시 보인다 20ms
+     × payment_claim에서도 버전 변경 응답을 놓치면 같은 현재 카드만 다시 보인다 31ms
+     × change_request에서도 버전 변경 응답을 놓치면 같은 현재 카드만 다시 보인다 19ms
+     × issue_report에서도 버전 변경 응답을 놓치면 같은 현재 카드만 다시 보인다 29ms
+     × consent_withdrawal에서도 버전 변경 응답을 놓치면 같은 현재 카드만 다시 보인다 30ms
+     × cancel의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 21ms
+     × order_request의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 39ms
+     × payment_claim의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 24ms
+     × change_request의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 20ms
+     × issue_report의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 32ms
+     × consent_withdrawal의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다 24ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > cancel에서도 버전 변경 응답을 놓치면 같은 현재 카드만 다시 보인다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > payment_claim에서도 버전 변경 응답을 놓치면 같은 현재 카드만 다시 보인다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > change_request에서도 버전 변경 응답을 놓치면 같은 현재 카드만 다시 보인다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > issue_report에서도 버전 변경 응답을 놓치면 같은 현재 카드만 다시 보인다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > consent_withdrawal에서도 버전 변경 응답을 놓치면 같은 현재 카드만 다시 보인다
+error: insert or update on table "orders" violates foreign key constraint "orders_current_details_fk"
+ ❯ ../../../siljang.ai/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ changed test/confirm-card-replacement-replay.test.ts:92:12
+ ❯ test/confirm-card-replacement-replay.test.ts:118:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > cancel의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > payment_claim의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > change_request의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > issue_report의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > consent_withdrawal의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+error: insert or update on table "orders" violates foreign key constraint "orders_current_details_fk"
+ ❯ ../../../siljang.ai/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ changed test/confirm-card-replacement-replay.test.ts:92:12
+ ❯ test/confirm-card-replacement-replay.test.ts:128:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > order_request의 이미 교체된 버튼 거절은 다시 만료돼도 쓰기 없이 끝난다
+AssertionError: expected 'card_used' to be 'declined' // Object.is equality
+
+Expected: "declined"
+Received: "card_used"
+
+ ❯ test/confirm-card-replacement-replay.test.ts:141:28
+    139|       execute,
+    140|     );
+    141|     expect(result.outcome).toBe("declined");
+       |                            ^
+    142|     expect(result.card).toBeUndefined();
+    143|     expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  11 failed | 7 passed (18)
+   Start at  07:34:36
+   Duration  2.72s (tests 56%, import 34%, transform 9%)

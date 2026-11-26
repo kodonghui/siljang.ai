@@ -652,14 +652,14 @@ async function processVerifiedCard(
       ? depositor.value
       : undefined;
   const invalidDepositor = depositor !== undefined && depositorName === undefined;
+  if (input.choice === "decline" && (initial.used_at === null || initial.payload.replacedBy !== undefined))
+    return ["payment_claim", "change_request", "issue_report", "consent_withdrawal"].includes(initial.kind)
+      ? { ...DECLINED, kind: initial.kind }
+      : DECLINED;
   if (initial.used_at !== null)
     return initial.payload.replacedBy !== undefined
       ? replayCardReplacement(tx, initial, input, knownBlockId, !invalidDepositor)
       : usedAnswer(initial);
-  if (input.choice === "decline")
-    return ["payment_claim", "change_request", "issue_report", "consent_withdrawal"].includes(initial.kind)
-      ? { ...DECLINED, kind: initial.kind }
-      : DECLINED;
   const target: ShowConfirmCard = {
     ...input,
     kind: initial.kind,
