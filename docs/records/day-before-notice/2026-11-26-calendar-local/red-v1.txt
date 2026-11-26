@@ -1,0 +1,40 @@
+
+ RUN  v5.1.0 /workspace/siljang-task134-day-before-notice/app/server
+
+ ❯ test/calendar-notice-local-date.test.ts (3 tests | 2 failed) 979ms
+   ❯ TASK134 후속: 캘린더 재예약의 현재 현지 픽업 날짜 (3)
+     × 마지막 Cron 뒤 API027에서20:50으로 바꿔도 현지 전날의 안내를 다음 대화에 전한다(Pacific/Honolulu) 157ms
+     × 전송 선점 중인 안내는 재예약하지 않고 만료 뒤에는 현지 날짜로 고치며 옛 표지를 푼다 45ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/calendar-notice-local-date.test.ts > TASK134 후속: 캘린더 재예약의 현재 현지 픽업 날짜 > 마지막 Cron 뒤 API027에서20:50으로 바꿔도 현지 전날의 안내를 다음 대화에 전한다(Pacific/Honolulu)
+AssertionError: expected '2026-11-28T06:50:00.000Z' to be '2026-11-27T06:50:00.000Z' // Object.is equality
+
+Expected: "2026-11-27T06:50:00.000Z"
+Received: "2026-11-28T06:50:00.000Z"
+
+ ❯ test/calendar-notice-local-date.test.ts:48:49
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/calendar-notice-local-date.test.ts > TASK134 후속: 캘린더 재예약의 현재 현지 픽업 날짜 > 전송 선점 중인 안내는 재예약하지 않고 만료 뒤에는 현지 날짜로 고치며 옛 표지를 푼다
+AssertionError: expected 2026-11-28T06:50:00.000Z to deeply equal 2026-11-27T04:00:00.000Z
+
+- Expected
++ Received
+
+- 2026-11-27T04:00:00.000Z
++ 2026-11-28T06:50:00.000Z
+
+ ❯ test/calendar-notice-local-date.test.ts:60:35
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  04:29:59
+   Duration  2.19s (tests 48%, import 32%, transform 20%)

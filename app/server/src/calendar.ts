@@ -423,6 +423,7 @@ export async function setCalendarSettings(r: ShopRequest): Promise<Response> {
           ? { dayBefore: previous.day_before_notice_time.slice(0, 5), review: previous.review_request_time.slice(0, 5) }
           : undefined,
         { dayBefore: input.dayBeforeNoticeTime, review: input.reviewRequestTime },
+        r.services.now(),
       );
       const outcome = previous ? "updated" : "created";
       return {

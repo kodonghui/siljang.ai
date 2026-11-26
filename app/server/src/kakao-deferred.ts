@@ -8,6 +8,7 @@ import {
 } from "./customer-notice-content";
 import { scheduledNoticeMeaningSql, scheduledNoticeReadySql } from "./customer-notice-lifecycle";
 import { recordPaymentNoticeDelivery } from "./customer-notice-store";
+import { refreshDeferredDayBeforeNotices } from "./day-before-notice";
 import type { FieldCrypto } from "./field-crypto";
 import {
   inlineKakaoDisclosure,
@@ -256,6 +257,8 @@ export async function deferredKakaoBatch(
         AND (o.status NOT IN ('confirmed','received','no_pickup') OR o.customer_id<>n.customer_id OR o.personal_data_purged_at IS NOT NULL)`,
     [customerId, readAt],
   );
+  // 선점 때문에 캘린더 저장 때 건너뛴 미발송 안내를 현재 설정으로 복구한 뒤 폐기 여부를 본다.
+  await refreshDeferredDayBeforeNotices(db, customerId, readAt);
   // 현재 의미가 없어진 예약만 닫는다. 미래 예약이나 보낼 시간 밖의 유효한 예약은 보존한다.
   await db.run(
     `UPDATE notifications n SET status='dropped',next_attempt_at=NULL,reply_claim_id=NULL,reply_claim_until=NULL FROM shops s

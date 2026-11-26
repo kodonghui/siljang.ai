@@ -7,7 +7,7 @@ interface ScheduledNotice {
   id: string;
   kind: "day_before" | "review_request";
   scheduled_for: Date;
-  pickup_day: string | null;
+  pickup_at: Date | null;
   handed_over_at: Date | null;
 }
 
@@ -17,28 +17,31 @@ export async function rescheduleCalendarNotices(
   zone: string,
   before: { dayBefore: string; review: string } | undefined,
   after: { dayBefore: string; review: string },
+  now: Date = new Date(),
 ): Promise<void> {
+  if (!Number.isFinite(now.getTime())) throw new RangeError("invalid calendar notice time");
   const kinds: ScheduledNotice["kind"][] = [];
   if (before?.dayBefore !== after.dayBefore) kinds.push("day_before");
   if (before?.review !== after.review) kinds.push("review_request");
   if (!kinds.length) return;
   const rows = await db.run<ScheduledNotice>(
     `SELECT n.id, n.kind, n.scheduled_for,
-    o.pickup_day::text, p.handed_over_at FROM notifications n
+    o.pickup_at, p.handed_over_at FROM notifications n
     LEFT JOIN orders o ON o.shop_id = $1 AND o.id = n.order_id
     LEFT JOIN productions p ON p.shop_id = $1 AND p.order_id = n.order_id
     WHERE n.shop_id = $1 AND n.kind = ANY($2::text[])
       AND n.status IN ('pending', 'retrying', 'deferred') AND n.sent_at IS NULL AND n.scheduled_for IS NOT NULL
+      AND (n.reply_claim_until IS NULL OR n.reply_claim_until<=$3)
     ORDER BY n.id FOR UPDATE OF n`,
-    [kinds],
+    [kinds, now],
   );
   const ids: string[] = [],
     times: Date[] = [];
   for (const row of rows.rows) {
     const key = row.kind === "day_before" ? "dayBefore" : "review";
     const date =
-      row.kind === "day_before" && row.pickup_day
-        ? shiftDate(row.pickup_day, -1)
+      row.kind === "day_before" && row.pickup_at
+        ? shiftDate(toShopLocal(row.pickup_at, zone).date, -1)
         : row.kind === "review_request" && row.handed_over_at
           ? shiftDate(toShopLocal(row.handed_over_at, zone).date, 1)
           : toShopLocal(row.scheduled_for, zone).date;
@@ -51,9 +54,11 @@ export async function rescheduleCalendarNotices(
   if (ids.length)
     await db.run(
       `UPDATE notifications n SET scheduled_for = planned.scheduled_for,
+    reply_claim_id=NULL,reply_claim_until=NULL,
     next_attempt_at = CASE WHEN n.status <> 'deferred' AND n.attempts = 0 THEN planned.scheduled_for ELSE n.next_attempt_at END
     FROM unnest($2::uuid[], $3::timestamptz[]) AS planned(id,scheduled_for)
-    WHERE n.shop_id = $1 AND n.id = planned.id AND n.status IN ('pending', 'retrying', 'deferred') AND n.sent_at IS NULL`,
-      [ids, times],
+    WHERE n.shop_id = $1 AND n.id = planned.id AND n.status IN ('pending', 'retrying', 'deferred') AND n.sent_at IS NULL
+      AND (n.reply_claim_until IS NULL OR n.reply_claim_until<=$4)`,
+      [ids, times, now],
     );
 }

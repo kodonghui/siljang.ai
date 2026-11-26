@@ -1,0 +1,87 @@
+{
+  "source": "df1830eb1c710581f784fd3e788803e0179a6242",
+  "screen": "SCR-011",
+  "responseRows": 6,
+  "frames": [
+    {
+      "state": "normal",
+      "width": 360,
+      "file": "normal-360.html"
+    },
+    {
+      "state": "normal",
+      "width": 1280,
+      "file": "normal-1280.html"
+    },
+    {
+      "state": "photo-consent",
+      "width": 360,
+      "file": "photo-consent-360.html"
+    },
+    {
+      "state": "photo-consent",
+      "width": 1280,
+      "file": "photo-consent-1280.html"
+    },
+    {
+      "state": "deferred",
+      "width": 360,
+      "file": "deferred-360.html"
+    },
+    {
+      "state": "deferred",
+      "width": 1280,
+      "file": "deferred-1280.html"
+    },
+    {
+      "state": "stale",
+      "width": 360,
+      "file": "stale-360.html"
+    },
+    {
+      "state": "stale",
+      "width": 1280,
+      "file": "stale-1280.html"
+    },
+    {
+      "state": "error",
+      "width": 360,
+      "file": "error-360.html"
+    },
+    {
+      "state": "error",
+      "width": 1280,
+      "file": "error-1280.html"
+    }
+  ],
+  "responseFrames": [
+    {
+      "response": "API-073#200:notice_shown",
+      "state": "normal",
+      "width": 360,
+      "file": "response-0-360.html"
+    },
+    {
+      "response": "API-073#200:notice_shown",
+      "state": "normal",
+      "width": 1280,
+      "file": "response-0-1280.html"
+    },
+    {
+      "response": "API-073#200:notice_gone",
+      "state": "stale",
+      "width": 360,
+      "file": "response-2-360.html"
+    },
+    {
+      "response": "API-073#200:notice_gone",
+      "state": "stale",
+      "width": 1280,
+      "file": "response-2-1280.html"
+    }
+  ],
+  "realBrowser": false,
+  "realKakao": false,
+  "sdkOnly": true,
+  "photoPlaceholders": true
+}

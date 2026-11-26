@@ -1,0 +1,57 @@
+
+ RUN  v5.1.0 /workspace/siljang-task134-day-before-notice/app/server
+
+ ❯ test/calendar-notice-local-date.test.ts (5 tests | 2 failed) 1316ms
+   ❯ TASK134 후속: 캘린더 재예약의 현재 현지 픽업 날짜 (5)
+     × 마지막 Cron 뒤 저장 한 번과 선점 released 뒤 다음 대화가 현재 시각의 같은 안내를 전한다 102ms
+     × 마지막 Cron 뒤 저장 한 번과 선점 expired 뒤 다음 대화가 현재 시각의 같은 안내를 전한다 93ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/calendar-notice-local-date.test.ts > TASK134 후속: 캘린더 재예약의 현재 현지 픽업 날짜 > 마지막 Cron 뒤 저장 한 번과 선점 released 뒤 다음 대화가 현재 시각의 같은 안내를 전한다
+AssertionError: expected [] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+- [
+-   "6c8511ad-9eb0-4163-a354-64ff9cec0feb",
+- ]
++ []
+
+ ❯ test/calendar-notice-local-date.test.ts:185:46
+    183|       const nextAt = new Date(mode === "released" ? now.getTime() + 20…
+    184|       const next = await scoped().transaction((tx) => deferredKakaoBat…
+    185|       expect(next.messages.map((n) => n.id)).toEqual(previous.map((n) …
+       |                                              ^
+    186|       const notice = (
+    187|         await isolated.db.query<{ scheduled_for: Date; status: string …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/calendar-notice-local-date.test.ts > TASK134 후속: 캘린더 재예약의 현재 현지 픽업 날짜 > 마지막 Cron 뒤 저장 한 번과 선점 expired 뒤 다음 대화가 현재 시각의 같은 안내를 전한다
+AssertionError: expected [] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+- [
+-   "0f25f751-ad13-4b77-9c4d-1806b397efa2",
+- ]
++ []
+
+ ❯ test/calendar-notice-local-date.test.ts:185:46
+    183|       const nextAt = new Date(mode === "released" ? now.getTime() + 20…
+    184|       const next = await scoped().transaction((tx) => deferredKakaoBat…
+    185|       expect(next.messages.map((n) => n.id)).toEqual(previous.map((n) …
+       |                                              ^
+    186|       const notice = (
+    187|         await isolated.db.query<{ scheduled_for: Date; status: string …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 3 passed (5)
+   Start at  04:52:22
+   Duration  2.59s (tests 54%, import 31%, transform 15%)

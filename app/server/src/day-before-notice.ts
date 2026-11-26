@@ -75,6 +75,27 @@ export async function createDayBeforeNotice(db: ShopDb, orderId: string, now: Da
   return refreshed.rows[0]?.refreshed === true;
 }
 
+/** 마지막 Cron 뒤 바뀐 예약도 다음 대화에서 복구한다. 활성 선점과 보낸 안내는 건드리지 않는다. */
+export async function refreshDeferredDayBeforeNotices(db: ShopDb, customerId: string, now: Date): Promise<void> {
+  await db.run(
+    `SELECT public.refresh_pending_day_before_notice($1,t.id,$3) AS refreshed
+      FROM orders t JOIN shops s ON s.id=$1 LEFT JOIN business_calendars b ON b.shop_id=$1
+      JOIN notifications n ON n.shop_id=$1 AND n.order_id=t.id AND n.customer_id=t.customer_id
+        AND n.kind='day_before' AND n.event_key='notice:'||t.id::text||':day_before'
+      WHERE t.shop_id=$1 AND t.customer_id=$2 AND t.status='confirmed' AND t.confirmed_at<=$3
+        AND t.personal_data_purged_at IS NULL AND n.sent_at IS NULL AND n.attempts=0
+        AND n.status IN ('pending','retrying','deferred','dropped')
+        AND (n.reply_claim_until IS NULL OR n.reply_claim_until<=$3)
+        AND n.template_key='day_before:v1:'||md5(jsonb_build_array(t.version,extract(epoch FROM t.pickup_at),s.time_zone,s.pickup_address,s.contact_phone)::text)
+        AND n.scheduled_for IS DISTINCT FROM ((((t.pickup_at AT TIME ZONE s.time_zone)::date-1)
+          +coalesce(b.day_before_notice_time,'18:00'::time)) AT TIME ZONE s.time_zone)
+        AND (t.pickup_at AT TIME ZONE s.time_zone)::date=($3::timestamptz AT TIME ZONE s.time_zone)::date+1
+        AND ($3::timestamptz AT TIME ZONE s.time_zone)::time>=coalesce(b.day_before_notice_time,'18:00'::time)
+        AND to_char($3::timestamptz AT TIME ZONE s.time_zone,'HH24:MI') BETWEEN '08:00' AND '20:50'`,
+    [customerId, now],
+  );
+}
+
 export const dayBeforeNoticeHandler: TransactionHandler = {
   mode: "transaction",
   run: async (db, item, ctx) => {
