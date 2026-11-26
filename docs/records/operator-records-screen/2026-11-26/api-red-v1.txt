@@ -1,0 +1,98 @@
+
+> test
+> vitest run --run src/operator-records-api.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task161-operator-records-screen/app/web
+
+ ❯ src/operator-records-api.test.ts (43 tests | 9 failed) 78ms
+   × 잘못된 목록 null를 성공으로 반환하지 않는다 6ms
+   × 잘못된 목록 undefined를 성공으로 반환하지 않는다 1ms
+   × 잘못된 목록 {}를 성공으로 반환하지 않는다 1ms
+   × 잘못된 목록 {"kind":"orders","orders":[],"consultations":[],"nextCursor":7}를 성공으로 반환하지 않는다 1ms
+   × 잘못된 목록 {"kind":"orders","orders":[{"orderId":"wrong","orderNo":"K7Q3M9","kept":false,"keptRecordId":null,"status":"confirmed","pickupAt":"2026-11-20T14:00:00+09:00","amount":36000,"customerNameMasked":"이**","customerPhoneMasked":"***-****-5432","finishedAt":null,"contractKeepUntil":null,"createdAt":"2026-11-12T13:05:00+09:00"}],"consultations":[],"nextCursor":null}를 성공으로 반환하지 않는다 1ms
+   × 잘못된 목록 {"kind":"orders","orders":[{"orderId":"78b67a5a-0c30-56e7-acf2-45201d79171c","orderNo":"H2W6Y1","kept":true,"keptRecordId":"3adfdf03-a6d2-550f-8cc8-fffbee1b321a","status":null,"pickupAt":null,"amount":null,"customerNameMasked":"보관 주문 원문","customerPhoneMasked":null,"finishedAt":"2026-09-05T15:10:00+09:00","contractKeepUntil":"2031-09-05T15:10:00+09:00","createdAt":"2026-08-30T10:00:00+09:00"}],"consultations":[],"nextCursor":null}를 성공으로 반환하지 않는다 1ms
+   × 메타데이터의 글/알레르기/원문 필드를 복사하지 않는다 5ms
+   × 가린 주문 응답의 숨은 이름/계좌/참고 사진 주소를 복사하지 않는다 2ms
+   × 다른 대상/종류의 열기 응답은 성공으로 반환하지 않는다 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/operator-records-api.test.ts > 잘못된 목록 null를 성공으로 반환하지 않는다
+ FAIL  src/operator-records-api.test.ts > 잘못된 목록 undefined를 성공으로 반환하지 않는다
+ FAIL  src/operator-records-api.test.ts > 잘못된 목록 {}를 성공으로 반환하지 않는다
+ FAIL  src/operator-records-api.test.ts > 잘못된 목록 {"kind":"orders","orders":[],"consultations":[],"nextCursor":7}를 성공으로 반환하지 않는다
+ FAIL  src/operator-records-api.test.ts > 잘못된 목록 {"kind":"orders","orders":[{"orderId":"wrong","orderNo":"K7Q3M9","kept":false,"keptRecordId":null,"status":"confirmed","pickupAt":"2026-11-20T14:00:00+09:00","amount":36000,"customerNameMasked":"이**","customerPhoneMasked":"***-****-5432","finishedAt":null,"contractKeepUntil":null,"createdAt":"2026-11-12T13:05:00+09:00"}],"consultations":[],"nextCursor":null}를 성공으로 반환하지 않는다
+ FAIL  src/operator-records-api.test.ts > 잘못된 목록 {"kind":"orders","orders":[{"orderId":"78b67a5a-0c30-56e7-acf2-45201d79171c","orderNo":"H2W6Y1","kept":true,"keptRecordId":"3adfdf03-a6d2-550f-8cc8-fffbee1b321a","status":null,"pickupAt":null,"amount":null,"customerNameMasked":"보관 주문 원문","customerPhoneMasked":null,"finishedAt":"2026-09-05T15:10:00+09:00","contractKeepUntil":"2031-09-05T15:10:00+09:00","createdAt":"2026-08-30T10:00:00+09:00"}],"consultations":[],"nextCursor":null}를 성공으로 반환하지 않는다
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/operator-records-api.test.ts:25:109
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  src/operator-records-api.test.ts > 메타데이터의 글/알레르기/원문 필드를 복사하지 않는다
+AssertionError: expected '{"ok":true,"status":200,"data":{"cons…' not to contain '합성 원문: 개인정보 비노출 확인'
+
+Expected: "합성 원문: 개인정보 비노출 확인"
+Received: "{"ok":true,"status":200,"data":{"consultationId":"bcd84dae-e6a0-5123-9b55-01b028834b28","status":"awaiting_owner","maskedValues":[{"maskedValueId":"e5bf5fc4-dcbe-5646-9011-8f66534587fb","kind":"phone","placeholder":"[전화번호1]","last4":"5432","originalKept":true},{"maskedValueId":"67ce5bb8-174b-5e3c-bc58-dd277320a9dc","kind":"card","placeholder":"[카드번호1]","last4":"1111","originalKept":false}],"items":[{"messageId":"1618ebaf-a9f8-5d8c-b135-6614ada27d5f","at":"2026-11-12T12:39:00+09:00","direction":"outbound","author":"system","kind":"text","textLength":69,"photoCount":0,"text":"합성 원문: 개인정보 비노출 확인","allergy":"합성 원문: 개인정보 비노출 확인"},{"messageId":"23224ec0-8ddc-543d-b985-ad0756170be5","at":"2026-11-12T12:39:00+09:00","direction":"inbound","author":"customer","kind":"text","textLength":32,"photoCount":0},{"messageId":"8a738f36-3636-51be-90a8-36ae1bc8d2e7","at":"2026-11-12T12:40:00+09:00","direction":"inbound","author":"customer","kind":"text","textLength":21,"photoCount":0},{"messageId":"a1984ed5-0e77-5bc0-804c-62bf245141aa","at":"2026-11-12T12:41:00+09:00","direction":"inbound","author":"customer","kind":"photo","textLength":0,"photoCount":2},{"messageId":"8f5f7c1d-e91f-53d8-927a-63f0c29a9c6e","at":"2026-11-12T12:41:30+09:00","direction":"inbound","author":"customer","kind":"text","textLength":19,"photoCount":0}],"nextCursor":null,"textCursor":"example_text_page_cursor","body":"합성 원문: 개인정보 비노출 확인"},"replayed":false}"
+
+ ❯ src/operator-records-api.test.ts:29:168
+     27| it("메타데이터의 글/알레르기/원문 필드를 복사하지 않는다",async()=>{
+     28|   const hidden="합성 원문: 개인정보 비노출 확인",data=sample(1,"consultation");data…
+     29|   vi.stubGlobal("fetch",vi.fn(async()=>reply(data)));const result=awai…
+       |                                                                                                                                                                        ^
+     30| });
+     31| it("가린 주문 응답의 숨은 이름/계좌/참고 사진 주소를 복사하지 않는다",async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  src/operator-records-api.test.ts > 가린 주문 응답의 숨은 이름/계좌/참고 사진 주소를 복사하지 않는다
+AssertionError: expected '{"ok":true,"status":200,"data":{"orde…' not to contain '합성 숨은 원문'
+
+Expected: "합성 숨은 원문"
+Received: "{"ok":true,"status":200,"data":{"orderId":"f8471919-f9c2-5b67-9a89-b047fb281ba4","orderNo":"K7Q3M9","kind":"standard","status":"confirmed","pickupAt":"2026-11-20T14:00:00+09:00","amount":36000,"customerNameMasked":"이**","customerPhoneMasked":"***-****-5432","allergyAnswered":true,"excludedIngredientsAnswered":false,"referencePhotoCount":0,"consultationId":"bcd84dae-e6a0-5123-9b55-01b028834b28","paymentRequests":[{"paymentRequestId":"319cfb99-4f34-5128-b1ed-e1197c6449b3","kind":"first","status":"paid","amount":36000,"issuedAt":"2026-11-12T13:05:00+09:00","paidAt":"2026-11-12T14:02:00+09:00"}],"refunds":[],"createdAt":"2026-11-12T13:05:00+09:00","customerName":"합성 숨은 원문","refundAccount":"합성 숨은 원문","photoUrl":"합성 숨은 원문"},"replayed":false}"
+
+ ❯ src/operator-records-api.test.ts:33:127
+     31| it("가린 주문 응답의 숨은 이름/계좌/참고 사진 주소를 복사하지 않는다",async()=>{
+     32|   const hidden="합성 숨은 원문",data=sample(2,"order");data.customerName=hid…
+     33|   vi.stubGlobal("fetch",vi.fn(async()=>reply(data)));expect(JSON.strin…
+       |                                                                                                                               ^
+     34| });
+     35| it("다른 대상/종류의 열기 응답은 성공으로 반환하지 않는다",async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+ FAIL  src/operator-records-api.test.ts > 다른 대상/종류의 열기 응답은 성공으로 반환하지 않는다
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/operator-records-api.test.ts:36:212
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  9 failed | 34 passed (43)
+   Start at  12:05:48
+   Duration  1.13s (import 77%, transform 15%, tests 8%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task161-operator-records-screen/app/web
+npm error workspace @siljang/web
+npm error location /workspace/siljang-task161-operator-records-screen/app/web
+npm error command failed
+npm error command sh -c vitest run --run src/operator-records-api.test.ts
