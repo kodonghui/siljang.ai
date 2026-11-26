@@ -167,7 +167,16 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
       }),
     ).rejects.toMatchObject({ code: "42501" });
   });
-  it("제한 역할로 공개 정보만 새로 읽어 같은 미전달 안내를 갱신한다", async () => {
+  it.each([
+    {
+      label: "줄바꿈과 공백",
+      address: "\u00a0\t새 합성 장소\r\n두 번째 줄\r세 번째 줄\u3000",
+      normalized: "새 합성 장소\n두 번째 줄\n세 번째 줄",
+    },
+    { label: "영문 v 보존", address: "v합성 장소v", normalized: "v합성 장소v" },
+    { label: "세로 탭 제거", address: "\u000b새 합성 장소\u000b", normalized: "새 합성 장소" },
+    { label: "공백뿐인 장소", address: "\u000b \t\u3000", normalized: "" },
+  ])("제한 역할로 공개 정보만 새로 읽어 같은 미전달 안내를 갱신한다($label)", async ({ address, normalized }) => {
     const create = () =>
       isolated.db.transaction(async (tx) => {
         await tx.query(`SET LOCAL ROLE "${role}"`);
@@ -178,19 +187,23 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
         );
       });
     expect(await create()).toBe(true);
-    const before = (await isolated.db.query("SELECT id FROM notifications WHERE shop_id=$1", [shop.shopId])).rows;
-    await isolated.db.query("UPDATE shops SET pickup_address=$2 WHERE id=$1", [
-      shop.shopId,
-      "\u00a0\t새 합성 장소\r\n두 번째 줄\r세 번째 줄\u3000",
-    ]);
+    const before = (
+      await isolated.db.query<{ id: string; body: string }>("SELECT id,body FROM notifications WHERE shop_id=$1", [
+        shop.shopId,
+      ])
+    ).rows[0];
+    if (before === undefined) throw new Error("합성 전날 안내 없음");
+    await isolated.db.query("UPDATE shops SET pickup_address=$2 WHERE id=$1", [shop.shopId, address]);
     expect(await create()).toBe(true);
     expect(await create()).toBe(false);
     const after = (
       await isolated.db.query("SELECT id,body,status,attempts FROM notifications WHERE shop_id=$1", [shop.shopId])
     ).rows;
     expect(after).toHaveLength(1);
-    expect(after[0]).toMatchObject({ ...before[0], status: "deferred", attempts: 0 });
-    expect(after[0]?.body).toContain("픽업 장소: 새 합성 장소\n두 번째 줄\n세 번째 줄\n가게 연락처:");
+    expect(after[0]).toMatchObject({ id: before.id, status: "deferred", attempts: 0 });
+    expect(after[0]?.body).toBe(
+      before.body.replace("\n픽업 장소: 합성 픽업 장소", normalized ? `\n픽업 장소: ${normalized}` : ""),
+    );
   });
   it.each([
     "other-kind",

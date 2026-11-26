@@ -2074,7 +2074,7 @@ BEGIN
   WITH source AS MATERIALIZED (
     SELECT t.customer_id,t.consultation_id,t.id AS order_id,t.order_no,t.pickup_at,s.time_zone,s.contact_phone,
       btrim(replace(replace(coalesce(s.pickup_address,''),E'\r\n',E'\n'),E'\r',E'\n'),
-        E' \t\n\v\f\r\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') AS address,
+        E' \t\n\u000b\f\r\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') AS address,
       'day_before:v1:'||md5(jsonb_build_array(t.version,extract(epoch FROM t.pickup_at),s.time_zone,s.pickup_address,s.contact_phone)::text) AS template_key,
       ((t.pickup_day-1)+coalesce(b.day_before_notice_time,'18:00'::time)) AT TIME ZONE s.time_zone AS scheduled_for
     FROM public.orders t JOIN public.shops s ON s.id=requesting_shop
