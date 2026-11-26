@@ -1,0 +1,11 @@
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+
+ Test Files  9 passed (9)
+      Tests  243 passed (243)
+   Start at  11:58:11
+   Duration  10.80s (tests 59%, import 36%, transform 4%, worker 1%)
+
+    Isolate  9 workers spawned · ~110ms startup each (spawn + environment, per file)
+             at least ~878ms faster with isolate: false — reuses workers across files instead of one per file

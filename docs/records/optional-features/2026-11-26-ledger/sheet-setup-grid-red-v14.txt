@@ -1,0 +1,49 @@
+
+> test
+> vitest run --run test/ledger-sheet-setup.test.ts -t 열 한도
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/ledger-sheet-setup.test.ts (17 tests | 1 failed | 16 skipped) 48ms
+   ❯ 장부 헤더 쓰기: 새 열 삽입/서명/재시도 (17)
+     × 열 한도에 닿아도 헤더가 바뀐 후보를 건너뛰고 실제 자기 열을 재사용한다 46ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 열 한도에 닿아도 헤더가 바뀐 후보를 건너뛰고 실제 자기 열을 재사용한다
+AssertionError: expected null to match object { start: 26, end: 38, …(1) }
+
+- Expected:
+{
+  "end": 38,
+  "ownershipToken": "[synthetic signed token masked]",
+  "start": 26,
+}
+
++ Received:
+null
+
+ ❯ test/ledger-sheet-setup.test.ts:168:90
+    166|     const f=fixture(),valid=await signLedgerColumns(f.key,{shopId:shop…
+    167|     f.count=18278;f.headers=Array(18278).fill("");for(let i=0;i<12;i++…
+    168|     expect(await ledgerSheetSetup(f.key,{fetch:f.send}).connect(f.acce…
+       |                                                                                          ^
+    169|   });
+    170|   it.each(["forged", "other_shop", "changed_headers"] as const)(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 skipped (17)
+   Start at  11:56:49
+   Duration  378ms (transform 42%, import 34%, tests 23%, worker 2%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task156-optional-features/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task156-optional-features/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/ledger-sheet-setup.test.ts -t '열 한도'

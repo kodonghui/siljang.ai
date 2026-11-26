@@ -50,7 +50,7 @@ function fixture() {
         inheritFromBefore: true,
       });
       const start = insert.range.startIndex;
-      while (headers.length < count) headers.push("");
+      headers = Array.from({ length: count }, (_, index) => headers[index] ?? "");
       headers.splice(start, 0, ...Array(12).fill(""));
       count += 12;
       expect(write.fields).toBe("userEnteredValue");
@@ -159,6 +159,21 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
       end: 38,
       ownershipToken: token,
       movedRight: true,
+    });
+    expect(f.writes).toHaveLength(0);
+  });
+  it("열 한도에 닿아도 헤더가 바뀐 후보를 건너뛰고 실제 자기 열을 재사용한다", async () => {
+    const f = fixture(),
+      valid = await signLedgerColumns(f.key, { shopId: shop, spreadsheetId: file, sheetId }, 26, true),
+      changed = await signLedgerColumns(f.key, { shopId: shop, spreadsheetId: file, sheetId }, 10000, false);
+    f.count = 18278;
+    f.headers = Array(18278).fill("");
+    for (let i = 0; i < 12; i++) f.headers[26 + i] = LEDGER_HEADERS[i];
+    f.markers = [f.marker(valid, 26), f.marker(changed, 10000)];
+    expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).toMatchObject({
+      start: 26,
+      end: 38,
+      ownershipToken: valid,
     });
     expect(f.writes).toHaveLength(0);
   });

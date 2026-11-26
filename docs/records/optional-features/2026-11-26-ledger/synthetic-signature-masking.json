@@ -1,0 +1,14 @@
+{
+  "sheet-setup-grid-red-v14.txt": {
+    "rawSha256": "a3db157acfdb5c7d854718bff87fe489099c2363a3b74b304692b4816aac37ee",
+    "trackedSha256": "ac0b2e2e76569a1cc74bb09455ce915a53da84eac0d5df23acd8cb6fc2979fc5",
+    "syntheticSignatureReplacements": 1,
+    "reason": "key scanner assigned_secret; runtime-generated synthetic HMAC only; failure/status not changed"
+  },
+  "sheet-setup-red-v12.txt": {
+    "rawSha256": "31299563686810f17456c8a3925e9185291017dab55a5c9b72e78b804fc81957",
+    "trackedSha256": "b6c25028a0b177ea4654561c5e075990d0e46194395647a05845417a1c32283d",
+    "syntheticSignatureReplacements": 1,
+    "reason": "key scanner assigned_secret; runtime-generated synthetic HMAC only; failure/status not changed"
+  }
+}

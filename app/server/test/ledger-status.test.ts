@@ -220,14 +220,14 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     expect(logs.join("\n")).not.toContain(SHEET);
   });
   const redirect = "https://siljang.example/owner/ledger/callback";
-  const googleClient = crypto.randomUUID() + ".apps.googleusercontent.com",
+  const googleClient = `${crypto.randomUUID()}.apps.googleusercontent.com`,
     googleSecret = crypto.randomUUID() + crypto.randomUUID();
   const authorize = (
     body: unknown = { redirectUri: redirect },
     options: { cookie?: string; origin?: string; configured?: boolean; limited?: boolean } = {},
   ) =>
     app(options.limited).request(
-      PATH + "/authorization",
+      `${PATH}/authorization`,
       {
         method: "POST",
         headers: {
@@ -299,7 +299,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
       ((await second.json()) as { state: string }).state,
     );
   });
-  it.each([redirect + "?altered=1", "https://other.example/owner/ledger/callback"])(
+  it.each([`${redirect}?altered=1`, "https://other.example/owner/ledger/callback"])(
     "API034의 설정 밖 주소 %s는422다",
     async (value) => {
       const body = await expectProblem(await authorize({ redirectUri: value }), "validation_failed");

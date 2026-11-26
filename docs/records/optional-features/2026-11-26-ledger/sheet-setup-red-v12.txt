@@ -1,0 +1,253 @@
+
+> test
+> vitest run --run test/ledger-sheet-setup.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/ledger-sheet-setup.test.ts (16 tests | 16 failed) 36ms
+   ❯ 장부 헤더 쓰기: 새 열 삽입/서명/재시도 (16)
+     × 기존 표 너비 뒤에 새 열을 삽입하고 헤더/서명 메타데이터를 함께 쓴 뒤 다시 읽는다 12ms
+     × 읽은 뒤 협업자가 추가한 자료도 새 열 삽입으로 밀어 보존한다 1ms
+     × 유효한 자기 서명과 실제 헤더가 있으면 기존 열을 재사용하고 쓰지 않는다 5ms
+     × forged의 메타데이터/헤더는 덮지 않고 새 열을 쓴다 2ms
+     × other_shop의 메타데이터/헤더는 덮지 않고 새 열을 쓴다 1ms
+     × changed_headers의 메타데이터/헤더는 덮지 않고 새 열을 쓴다 1ms
+     × 적용 뒤 응답이 유실되면 다음 연결은 서명 열을 재사용해 중복 열을 만들지 않는다 1ms
+     × 헤더 쓰기 HTTP400는 연결하지 않는다 3ms
+     × 헤더 쓰기 HTTP401는 연결하지 않는다 2ms
+     × 헤더 쓰기 HTTP403는 연결하지 않는다 1ms
+     × 헤더 쓰기 HTTP404는 연결하지 않는다 1ms
+     × 헤더 쓰기 HTTP302는 리디렉션/원문 노출 없이 닫는다 1ms
+     × 헤더 쓰기 HTTP429는 리디렉션/원문 노출 없이 닫는다 1ms
+     × 헤더 쓰기 HTTP503는 리디렉션/원문 노출 없이 닫는다 1ms
+     × 응답의 파일ID가 다르거나 다시 읽은 헤더가 바뀌면 연결하지 않는다 1ms
+     × 없는 가게 형식은 외부 호출 전에 거절한다 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 기존 표 너비 뒤에 새 열을 삽입하고 헤더/서명 메타데이터를 함께 쓴 뒤 다시 읽는다
+AssertionError: expected null to match object { Object (sheetId, start, ...) }
+
+- Expected:
+{
+  "columns": [
+    {
+      "column": "AA",
+      "header": "주문번호",
+    },
+    {
+      "column": "AB",
+      "header": "손님 이름",
+    },
+    {
+      "column": "AC",
+      "header": "연락처",
+    },
+    {
+      "column": "AD",
+      "header": "픽업 일시",
+    },
+    {
+      "column": "AE",
+      "header": "케이크",
+    },
+    {
+      "column": "AF",
+      "header": "문구",
+    },
+    {
+      "column": "AG",
+      "header": "금액",
+    },
+    {
+      "column": "AH",
+      "header": "결제 상태",
+    },
+    {
+      "column": "AI",
+      "header": "상태",
+    },
+    {
+      "column": "AJ",
+      "header": "환불 금액",
+    },
+    {
+      "column": "AK",
+      "header": "인도 일시",
+    },
+    {
+      "column": "AL",
+      "header": "재제작",
+    },
+  ],
+  "end": 38,
+  "movedRight": true,
+  "sheetId": 7,
+  "start": 26,
+}
+
++ Received:
+null
+
+ ❯ test/ledger-sheet-setup.test.ts:38:20
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 읽은 뒤 협업자가 추가한 자료도 새 열 삽입으로 밀어 보존한다
+AssertionError: expected null not to be null
+ ❯ test/ledger-sheet-setup.test.ts:41:131
+     39|   });
+     40|   it("읽은 뒤 협업자가 추가한 자료도 새 열 삽입으로 밀어 보존한다",async()=>{
+     41|     const f=fixture();f.collaborate=true;expect(await ledgerSheetSetup…
+       |                                                                                                                                   ^
+     42|   });
+     43|   it("유효한 자기 서명과 실제 헤더가 있으면 기존 열을 재사용하고 쓰지 않는다",async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 유효한 자기 서명과 실제 헤더가 있으면 기존 열을 재사용하고 쓰지 않는다
+AssertionError: expected null to match object { start: 26, end: 38, …(2) }
+
+- Expected:
+{
+  "end": 38,
+  "movedRight": true,
+  "ownershipToken": "[synthetic signed token masked]",
+  "start": 26,
+}
+
++ Received:
+null
+
+ ❯ test/ledger-sheet-setup.test.ts:45:90
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > forged의 메타데이터/헤더는 덮지 않고 새 열을 쓴다
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > other_shop의 메타데이터/헤더는 덮지 않고 새 열을 쓴다
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > changed_headers의 메타데이터/헤더는 덮지 않고 새 열을 쓴다
+AssertionError: expected null to match object { start: 38, end: 50 }
+
+- Expected:
+{
+  "end": 50,
+  "start": 38,
+}
+
++ Received:
+null
+
+ ❯ test/ledger-sheet-setup.test.ts:49:90
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 적용 뒤 응답이 유실되면 다음 연결은 서명 열을 재사용해 중복 열을 만들지 않는다
+AssertionError: promise resolved "null" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+null
+
+ ❯ test/ledger-sheet-setup.test.ts:52:141
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 헤더 쓰기 HTTP400는 연결하지 않는다
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 헤더 쓰기 HTTP401는 연결하지 않는다
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 헤더 쓰기 HTTP403는 연결하지 않는다
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 헤더 쓰기 HTTP404는 연결하지 않는다
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/ledger-sheet-setup.test.ts:55:157
+     53|   });
+     54|   it.each([400,401,403,404])("헤더 쓰기 HTTP%s는 연결하지 않는다",async(status)=>{
+     55|     const f=fixture();f.writeStatus=status;expect(await ledgerSheetSet…
+       |                                                                                                                                                             ^
+     56|   });
+     57|   it.each([302,429,503])("헤더 쓰기 HTTP%s는 리디렉션/원문 노출 없이 닫는다",async(statu…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 헤더 쓰기 HTTP302는 리디렉션/원문 노출 없이 닫는다
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 헤더 쓰기 HTTP429는 리디렉션/원문 노출 없이 닫는다
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 헤더 쓰기 HTTP503는 리디렉션/원문 노출 없이 닫는다
+AssertionError: promise resolved "null" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+null
+
+ ❯ test/ledger-sheet-setup.test.ts:58:148
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 응답의 파일ID가 다르거나 다시 읽은 헤더가 바뀌면 연결하지 않는다
+AssertionError: promise resolved "null" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+null
+
+ ❯ test/ledger-sheet-setup.test.ts:61:208
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+ FAIL  test/ledger-sheet-setup.test.ts > 장부 헤더 쓰기: 새 열 삽입/서명/재시도 > 없는 가게 형식은 외부 호출 전에 거절한다
+AssertionError: promise resolved "null" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+null
+
+ ❯ test/ledger-sheet-setup.test.ts:64:115
+     62|   });
+     63|   it("없는 가게 형식은 외부 호출 전에 거절한다",async()=>{
+     64|     const f=fixture();await expect(ledgerSheetSetup(f.key,{fetch:f.sen…
+       |                                                                                                                   ^
+     65|   });
+     66| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/16]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  16 failed (16)
+   Start at  11:53:01
+   Duration  501ms (transform 46%, import 32%, tests 20%, worker 2%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task156-optional-features/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task156-optional-features/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/ledger-sheet-setup.test.ts
