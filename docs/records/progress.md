@@ -6,6 +6,12 @@
 - 그 전의 기록은 Notion의 기록 데이터베이스 [최근 업데이트](https://app.notion.com/p/a6fbf16cc3ec83c2950701d62899f63e)의 행, 단계마다 README의 기록 절, [설계 재검토 README](../../research/design-review-2026-11/README.md)의 '고친 기록'에 있습니다.
 - 숫자는 이름을 적은 명령의 출력이나 파일에서 옮깁니다. 시각은 한국 시각(KST)입니다.
 
+### 2026-11-27 00:05 KST · TASK016 보안 P2의 인증 진단 경로 제거
+
+보안 발견4710116447의 기능 브랜치 인증 전달을 접수했습니다. 환경 정책 없음/main 보호false를 실제 조회했고 보호 설정 PUT은403으로 거절됐습니다. 새 인증을 받는 진단 job과 입력을 제거해 경보 workflow를 main 원본 개체로 복원했습니다. 직접 Wrangler CLI 도구와 앞 실제42703 근거만 남기며 현재 토큰9109/학원컴 중단 때문에 직접 재실행하지 않았습니다. 기존 환경 보호/비밀 값 배치는 관리자 확인 대기로 남기고 보호됨으로 세지 않습니다. trusted-ref-remediation에 원문 발견/403/복원 개체를 구분합니다.
+
+새 main 인증 경로의 성공으로 앞 관찰을 세지 않습니다. 다음은 변경 뒤 Node49개/엄격lint·현재 CI와 발견 처리/실장님 대기·main 실제 배포 확인입니다. 환경 관리 API403 뒤 같은 변경을 다른 자격 증명으로 시도하지 않았습니다. 동희님께 키를 요청하지 않으며 학원컴 Aside 회복 뒤 관리자 화면에서 설정합니다.
+
 ### 2026-11-26 23:58 KST · TASK016 Windows 셸 고침과 다음 후보 재계산
 
 Windows job139990312137의 Node10개는 통과했지만 새 단계가 기본 bash를 상속해 PowerShell if에서 종료2였습니다. shell: pwsh를 명시했고 현재 head의 Windows 재검증을 기다립니다. Linux139990312570과 PostgreSQL16/17은 통과했으며 전체 app 성공으로 세지 않습니다. 로컬 PowerShell은 실행하지 않았습니다.
@@ -5247,7 +5253,7 @@ TASK-068을 시작했습니다. 캘린더의 기존 60일 판정과 정원 계�
 | --- | --- | --- |
 | TASK-027 | 원본 eval-20261118T203404Z-d00cea/review.md의44건 | 원본이 남아 있는 컴퓨터·폴더 경로를 알고 계시면 알려 주세요. 현재116개 작업 폴더와 학원컴의 확인한 프로젝트/관련 임시 경로에서는 찾지 못했으며, 이것으로 다른 경로의 부재를 단정하지 않습니다. 44건 판정 전에는 TASK-027 구현 완료와 MVP 완료를 표시할 수 없습니다. 판정은 Codex가 하고 답을 기다리는 동안 다른 작업을 계속합니다. |
 | TASK-156 | [장부 토큰 저장 제안](https://github.com/kodonghui/siljang.ai/blob/e1c738938d632c3a2fdc342a071958155bfbe715/docs/records/optional-features/2026-11-26-ledger/credential-store-decision.md) | 기존 비밀 값 저장 규칙에 무료 Supabase Vault를 예외로 허용할지 정합니다. 무료 여부/권한/루트 키 보관 확인 뒤 사용을 추천하며, 답 전 실제 저장소 사용·API035/036 완료를 선언하지 않습니다. 공개 WIP91b32f9·17파일438개는 보존했습니다. |
-| TASK-165·167·172 | [백업 실제 설정 절차](../../tools/free-backup/README.md#실제-운영에서-켜기) | 학원컴 Aside CLI 연결을 회복하면 알려 주세요. 키 값을 채팅으로 보내지 않습니다. 기존 SSH 두 번 실패를 반복하지 않았고 현재 환경의 CF 토큰9109·Actions 비밀 값 목록403도 남아 있습니다. 복구되면 Codex가 Vault/전용 연결/허용된 설정을 직접 처리합니다. |
+| TASK-016·165·167·172 | [백업 실제 설정 절차](../../tools/free-backup/README.md#실제-운영에서-켜기) | 학원컴 Aside CLI 연결을 회복하면 알려 주세요. 키 값을 채팅으로 보내지 않습니다. 기존 SSH 두 번 실패를 반복하지 않았고 현재 환경의 CF 토큰9109·Actions 비밀 값 목록403도 남아 있습니다. 복구되면 Codex가 Vault/전용 연결/허용된 설정과 [staging 환경 제한](https://github.com/kodonghui/siljang.ai/settings/environments)·[main 보호](https://github.com/kodonghui/siljang.ai/settings/branches)를 처리합니다. 환경 관리 API403으로 실제 설정은 바꾸지 못했고 새 인증 진단 job은 제거했습니다. |
 
 ### MVP를 막지 않는 것(출시 전까지)
 

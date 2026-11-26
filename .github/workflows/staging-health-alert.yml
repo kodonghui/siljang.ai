@@ -2,7 +2,7 @@
 # 이 경보 작업의 실패는 의도한 알림이며 app/db CI와 분리된다.
 # 메일 전달은 실행 계정의 GitHub Actions 알림 설정과 실제 수신으로 확인한다.
 name: Siljang 스테이징 상태 경보
-run-name: ${{ inputs.purpose == 'job_diagnostics' && '스테이징 실행기 로그 관찰' || '외부 상태 점검 실패' }}
+run-name: 외부 상태 점검 실패
 
 on:
   workflow_dispatch:
@@ -12,22 +12,15 @@ on:
         required: true
         type: choice
         options: [external]
-      purpose:
-        description: 알림 또는 실행기 로그 관찰
-        required: false
-        default: alert
-        type: choice
-        options: [alert, job_diagnostics]
 
 permissions: {}
 
 concurrency:
-  group: siljang-staging-health-${{ inputs.purpose || 'alert' }}
+  group: siljang-staging-health-alert
   cancel-in-progress: false
 
 jobs:
   alert:
-    if: ${{ inputs.purpose != 'job_diagnostics' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
@@ -42,28 +35,3 @@ jobs:
           fi
           echo '::error title=Siljang 스테이징 상태 점검 실패::외부 1분 상태 점검이 실패했습니다. 외부 서버의 siljang-staging-health.service와 최근 배포를 확인해 주세요.'
           exit 1
-
-  job-diagnostics:
-    name: 스테이징 실행기 로그 관찰
-    if: ${{ inputs.purpose == 'job_diagnostics' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 4
-    environment: staging
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version-file: app/.nvmrc
-      - name: 고정 의존성 설치
-        working-directory: app
-        run: npm ci --no-audit --no-fund
-      - name: 기존 인증으로 제한한 오류 분류 관찰
-        working-directory: app/server
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: node ../../tools/staging-monitor/read-job-logs.mjs

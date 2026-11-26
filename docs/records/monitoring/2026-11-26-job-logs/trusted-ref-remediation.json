@@ -1,0 +1,21 @@
+{
+  "finding": 4710116447,
+  "review_source": "3818c279e955edcbfa4f0601081114683b9c731c",
+  "before": {
+    "staging_environment_branch_policy": null,
+    "protection_rules": 0,
+    "main_protected": false
+  },
+  "environment_update": {
+    "method": "PUT",
+    "status": 403,
+    "reason": "Resource not accessible by integration",
+    "applied": false
+  },
+  "remediation": "Cloudflare 인증을 받는 새 진단 job·입력·실행 그룹을 제거하고 기존 외부 경보 workflow를 main 원본으로 복원",
+  "restored_workflow_object": "c69cbd9add80edf544aa47fbc9da2993df4b29d7",
+  "main_workflow_object": "c69cbd9add80edf544aa47fbc9da2993df4b29d7",
+  "secret_scope": "환경/저장소 비밀 값의 배치 위치는 미확인. 목록403을 반복하거나 값을 옮기지 않음",
+  "native_recheck": "현재 CF 토큰9109/학원컴 중단 때문에 CLI 직접 재실행은 하지 않음. 앞 실제 관찰 근거와 구분",
+  "remaining": "기존 staging 환경 제한/보호된main 설정은 관리자 권한/학원컴 연결 뒤 처리. 현재 새 인증을 받는 진단 경로는 제공하지 않음"
+}
