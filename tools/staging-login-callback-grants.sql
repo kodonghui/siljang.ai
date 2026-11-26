@@ -235,3 +235,5 @@ GRANT EXECUTE ON FUNCTION read_operator_record_list(uuid,uuid,text,jsonb,integer
 GRANT EXECUTE ON FUNCTION read_operator_consultation(uuid,uuid,uuid),read_operator_messages(uuid,uuid,uuid,jsonb,integer) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION read_operator_original(uuid,uuid,text,uuid,jsonb,timestamptz) TO :"runtime_role";
 GRANT INSERT (shop_id,id,consultation_id,erased_at) ON masked_value_erasures TO :"runtime_role";
+-- TASK-159 병합 뒤 P2: 일반 수정/삭제·원문 SELECT를 늘리지 않고 닫힌 상담 한 건만 지운다.
+GRANT EXECUTE ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) TO :"runtime_role";

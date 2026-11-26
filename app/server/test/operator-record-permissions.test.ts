@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { Queryable, RequestDb } from "../src/db";
 import { maskValue } from "../src/masked-values";
+import { purgeConsultation } from "../src/purge-consultation";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { CLIENT_IP_HEADER, TEST_IPV4 } from "./support/access-log";
 import { describeDb, newRequestKey, newUuid, testDb, testEnv } from "./support/db";
@@ -20,6 +21,7 @@ const FUNCTIONS = [
   "read_operator_consultation(uuid,uuid,uuid)",
   "read_operator_messages(uuid,uuid,uuid,jsonb,integer)",
   "read_operator_original(uuid,uuid,text,uuid,jsonb,timestamptz)",
+  "purge_closed_consultation(uuid,uuid,timestamptz)",
 ];
 describeDb("운영자 기록의 최소 실행 권한(TASK-159)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>,
@@ -115,7 +117,7 @@ describeDb("운영자 기록의 최소 실행 권한(TASK-159)", () => {
     }
     expect((await isolated.db.query("SELECT 1 FROM access_logs WHERE shop_id=$1", [shop.shopId])).rowCount).toBe(6);
   });
-  it("새 함수5개는 PUBLIC 실행0·고정 search_path이고 원문 SELECT 권한을 더하지 않는다", async () => {
+  it("새 함수6개는 PUBLIC 실행0·고정 search_path이고 원문 SELECT 권한을 더하지 않는다", async () => {
     for (const signature of FUNCTIONS) {
       const result = (
         await isolated.db.query(
@@ -144,6 +146,28 @@ describeDb("운영자 기록의 최소 실행 권한(TASK-159)", () => {
           .rows[0],
       ).toEqual({ allowed: table !== "refunds" && table !== "kept_records" });
     }
+  });
+  it("지우기 함수 실행만 더하고 일반 수정/삭제·신고 본문 읽기는 여전히 막는다", async () => {
+    const raw = connect();
+    try {
+      for (const sql of [
+        "UPDATE owner_alerts SET owner_task_id=NULL",
+        "DELETE FROM owner_tasks",
+        "DELETE FROM messages",
+        "SELECT description FROM issue_details",
+        "SELECT status FROM issue_details",
+      ])
+        await expect(raw.query(sql)).rejects.toMatchObject({ code: "42501" });
+    } finally {
+      await raw.close();
+    }
+    await expect(
+      isolated.db.transaction(async (tx) => {
+        await tx.query(`REVOKE EXECUTE ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) FROM "${role}"`);
+        await tx.query(`SET LOCAL ROLE "${role}"`);
+        await tx.query("SELECT purge_closed_consultation($1,$2,$3)", [shop.shopId, shop.consultationId, NOW]);
+      }),
+    ).rejects.toMatchObject({ code: "42501" });
   });
   it("원문 함수는 다른 가게와 없는 운영자·비활성 운영자·MFA 없는 운영자에0행이다", async () => {
     const other = await createShop(isolated.db, "다른 최소 권한 가게"),
@@ -207,4 +231,95 @@ describeDb("운영자 기록의 최소 실행 권한(TASK-159)", () => {
       await raw.close();
     }
   });
+  it.each([false, true])(
+    "최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=%s)",
+    async (conflict) => {
+      const consultationId = newUuid(),
+        messageId = newUuid(),
+        old = new Date(NOW.getTime() - 31 * 86400000);
+      await isolated.db.query(
+        "INSERT INTO consultations(id,shop_id,customer_id,status,opened_at,ended_at) VALUES($1,$2,$3,'ended',$4,$4)",
+        [consultationId, shop.shopId, shop.customerId, old],
+      );
+      await isolated.db.query(
+        "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,trace_id) VALUES($1,$2,$3,'inbound','customer','text',$4,'합성 대화','purge-runtime-test')",
+        [messageId, shop.shopId, consultationId, `purge-${newUuid()}`],
+      );
+      const adminScope = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), isolated.db);
+      await adminScope.transaction((tx) => maskValue(tx, fc, consultationId, "phone", "01012345678"));
+      const masked = (
+        await isolated.db.query<{ id: string }>(
+          "SELECT id FROM masked_values WHERE shop_id=$1 AND consultation_id=$2",
+          [shop.shopId, consultationId],
+        )
+      ).rows[0];
+      if (!masked) throw new Error("합성 번호 없음");
+      if (conflict)
+        await isolated.db.query(
+          "INSERT INTO masked_value_erasures(shop_id,id,consultation_id,erased_at) VALUES($1,$2,$3,$4)",
+          [shop.shopId, masked.id, consultationId, NOW],
+        );
+      const app = createApp({ connect, services: { now: () => NOW, fieldCrypto: fc } });
+      const open = () =>
+        app.request(
+          `${ORIGIN}/api/operator/shops/${shop.shopId}/originals`,
+          {
+            method: "POST",
+            headers: {
+              origin: ORIGIN,
+              cookie: session.cookie,
+              [CLIENT_IP_HEADER]: TEST_IPV4,
+              "content-type": "application/json",
+              "Idempotency-Key": newRequestKey(),
+            },
+            body: JSON.stringify({
+              targetKind: "masked_value",
+              targetId: masked.id,
+              reason: "손님 문의: 삭제 뒤 상태 확인",
+            }),
+          },
+          testEnv(),
+        );
+      const before = await open();
+      expect(before.status, await before.clone().text()).toBe(200);
+      expect(((await before.json()) as { maskedValue: { value: string } }).maskedValue.value).toBe("01012345678");
+      const raw = connect();
+      try {
+        const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), raw);
+        expect(await scoped.transaction((tx) => purgeConsultation(tx, consultationId, NOW))).toBe(1);
+        expect(await scoped.transaction((tx) => purgeConsultation(tx, consultationId, NOW))).toBe(0);
+        await expect(raw.query("SELECT id FROM masked_value_erasures")).rejects.toMatchObject({ code: "42501" });
+      } finally {
+        await raw.close();
+      }
+      expect(
+        (
+          await isolated.db.query("SELECT status,deleted_at FROM consultations WHERE shop_id=$1 AND id=$2", [
+            shop.shopId,
+            consultationId,
+          ])
+        ).rows,
+      ).toEqual([{ status: "deleted", deleted_at: NOW }]);
+      for (const table of ["messages", "masked_values"])
+        expect(
+          (
+            await isolated.db.query(`SELECT id FROM ${table} WHERE shop_id=$1 AND consultation_id=$2`, [
+              shop.shopId,
+              consultationId,
+            ])
+          ).rows,
+        ).toEqual([]);
+      expect(
+        (
+          await isolated.db.query("SELECT * FROM masked_value_erasures WHERE shop_id=$1 AND consultation_id=$2", [
+            shop.shopId,
+            consultationId,
+          ])
+        ).rows,
+      ).toEqual([{ id: masked.id, shop_id: shop.shopId, consultation_id: consultationId, erased_at: NOW }]);
+      const after = await open();
+      expect(after.status, await after.clone().text()).toBe(409);
+      expect(((await after.json()) as { code: string }).code).toBe("original_erased");
+    },
+  );
 });
