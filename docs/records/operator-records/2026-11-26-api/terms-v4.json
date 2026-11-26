@@ -1,0 +1,32 @@
+[
+  {
+    "path": "app/README.md",
+    "scope": "added lines vs origin/main",
+    "exit": 0,
+    "candidates": 0
+  },
+  {
+    "path": "docs/records/progress.md",
+    "scope": "added lines vs origin/main",
+    "exit": 0,
+    "candidates": 0
+  },
+  {
+    "path": "docs/records/fix-log.md",
+    "scope": "added lines vs origin/main",
+    "exit": 0,
+    "candidates": 0
+  },
+  {
+    "path": "docs/records/hands-on.md",
+    "scope": "added lines vs origin/main",
+    "exit": 0,
+    "candidates": 0
+  },
+  {
+    "path": "docs/records/operator-records/2026-11-26-api/acceptance-checks.md",
+    "scope": "whole new document",
+    "exit": 0,
+    "candidates": 0
+  }
+]

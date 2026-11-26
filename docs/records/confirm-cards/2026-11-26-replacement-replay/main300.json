@@ -1,0 +1,21 @@
+{
+  "tag": "e2d8448d7ce41155937d4e7d67546a1413444bf6",
+  "versionId": "844b70f0-30ab-41e4-810b-0887338988a1",
+  "createdOn": "2026-11-26T08:17:14.805708Z",
+  "healthStatus": 200,
+  "main": "e2d8448d7ce41155937d4e7d67546a1413444bf6",
+  "appRun": 45781059750,
+  "dbRun": 45781059783,
+  "checks": {
+    "app": 139776345553,
+    "windows": 139776345877,
+    "postgres16": 139776345600,
+    "postgres17": 139776345939
+  },
+  "ci": "success",
+  "deployment": 139778768781,
+  "activePercentage": 100,
+  "source": "GitHub Actions의 실제 Wrangler 태그/활성100/상태200 검증",
+  "nativeAcademy": "학원컴 별도 재조회 미확인",
+  "storageActiveTagReadback": "미확인"
+}

@@ -990,6 +990,10 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("재제작 주문은 원래 주문 행에", "orders.remake_of_order_id"),
     ],
     "SPEC-065": [
+        ("삭제한 마스킹 값의 ID(원문 없음)", "masked_value_erasures.id"),
+        ("삭제한 값의 가게 범위", "masked_value_erasures.shop_id"),
+        ("삭제 상태를 확인할 상담", "masked_value_erasures.consultation_id"),
+        ("원문 행을 삭제한 시각", "masked_value_erasures.erased_at"),
         ("보상 없음 사유·그 밖의 보상의 한 일을 비운 시각", "issue_reports.notes_purged_at"),
         ("지우는 에스컬레이션 건과 신고의 연결", "issue_reports.handoff_id"),
         ("끊긴 상담", "consultations.dropped_at"),
@@ -1149,6 +1153,10 @@ MAP: dict[str, list[tuple[str, str]]] = {
         ("주문자 연락처(숫자와 -, 8~14자)", "order_drafts.customer_phone"),
     ],
     "SPEC-073": [
+        ("삭제한 마스킹 값의 ID(원문 없음)", "masked_value_erasures.id"),
+        ("삭제한 값의 가게 범위", "masked_value_erasures.shop_id"),
+        ("삭제 상태를 확인할 상담", "masked_value_erasures.consultation_id"),
+        ("원문 행을 삭제한 시각", "masked_value_erasures.erased_at"),
         ("가게 고르기", "shops.id"),
         ("주문 목록", "orders.order_no"),
         ("주문 상태", "orders.status"),

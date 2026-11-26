@@ -1,0 +1,69 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-records.test.ts (4 tests | 4 failed) 1656ms
+   ❯ 운영자 가게 기록과 사유 있는 열기(TASK-159) (4)
+     × API074 주문 목록은 가린 연락처만 보이고 읽음 접속기록 한 행을 남긴다 89ms
+     × API075는 메시지 글/사진 없이 메타데이터와 플레이스홀더 끝 네 자리만 보인다 28ms
+     × API076는 건강 답의 있음과 가린 이름·전화만 보인다 21ms
+     × API077는 사유 있는 전화 원본 하나만 열고 같은 요청 키 재열기도 매번 기록한다 25ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API074 주문 목록은 가린 연락처만 보이고 읽음 접속기록 한 행을 남긴다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"3fb01152bcf445a3d0eba5a9f5b1ee79","instance":"/api/operator/shops/9357fcfc-352b-46a9-9887-e8ac3ff171a0/records"}: expected 404 to be less than 300
+ ❯ expectOneAccessRow test/support/access-log.ts:88:28
+     86|   const text = await res.text();
+     87|   expect(res.status, text).toBeGreaterThanOrEqual(200);
+     88|   expect(res.status, text).toBeLessThan(300);
+       |                            ^
+     89|   const after = await accessLogRows(db, shopId);
+     90|   expect(after.length, "접속기록이 한 행 늘어야 함").toBe(before.length + 1);
+ ❯ test/operator-records.test.ts:71:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API075는 메시지 글/사진 없이 메타데이터와 플레이스홀더 끝 네 자리만 보인다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"e923b6e91acaf233b0cffb8064193644","instance":"/api/operator/shops/ec04ebc5-f3c5-42f2-b931-5fb431e4fcef/consultations/9ecb48ef-2f09-4263-a348-bbab2f94009c"}: expected 404 to be less than 300
+ ❯ expectOneAccessRow test/support/access-log.ts:88:28
+     86|   const text = await res.text();
+     87|   expect(res.status, text).toBeGreaterThanOrEqual(200);
+     88|   expect(res.status, text).toBeLessThan(300);
+       |                            ^
+     89|   const after = await accessLogRows(db, shopId);
+     90|   expect(after.length, "접속기록이 한 행 늘어야 함").toBe(before.length + 1);
+ ❯ test/operator-records.test.ts:85:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API076는 건강 답의 있음과 가린 이름·전화만 보인다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"08e0b96f35769e54c5b522ddb0c8ecfd","instance":"/api/operator/shops/46c44757-c531-4110-966d-f19747477921/orders/c30a5020-5f0e-4587-8865-e9764c3ff1b8"}: expected 404 to be less than 300
+ ❯ expectOneAccessRow test/support/access-log.ts:88:28
+     86|   const text = await res.text();
+     87|   expect(res.status, text).toBeGreaterThanOrEqual(200);
+     88|   expect(res.status, text).toBeLessThan(300);
+       |                            ^
+     89|   const after = await accessLogRows(db, shopId);
+     90|   expect(after.length, "접속기록이 한 행 늘어야 함").toBe(before.length + 1);
+ ❯ test/operator-records.test.ts:105:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API077는 사유 있는 전화 원본 하나만 열고 같은 요청 키 재열기도 매번 기록한다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"da88ebfdf1401be11fe2d2a933a7f876","instance":"/api/operator/shops/62a1ff78-c879-4847-96eb-fe0dd81b927b/originals"}: expected 404 to be less than 300
+ ❯ expectOneAccessRow test/support/access-log.ts:88:28
+     86|   const text = await res.text();
+     87|   expect(res.status, text).toBeGreaterThanOrEqual(200);
+     88|   expect(res.status, text).toBeLessThan(300);
+       |                            ^
+     89|   const after = await accessLogRows(db, shopId);
+     90|   expect(after.length, "접속기록이 한 행 늘어야 함").toBe(before.length + 1);
+ ❯ test/operator-records.test.ts:122:29
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+   Start at  07:43:24
+   Duration  4.18s (tests 43%, import 42%, transform 14%)

@@ -92,7 +92,8 @@
       "03h8gnpy03k9kj1sl79obce14",
       "03h9ct9k4zvucdjgd86ko8jy8",
       "03h9ct9kdnh1w0kz49j9gb81f",
-      "03h9xkhw9qp2gkzagnsemsnyd"
+      "03h9xkhw9qp2gkzagnsemsnyd",
+      "03hb1q2dmb9zsmkpba7opt572"
     ],
     "relationshipIds": [
       "03h7y0179y91t3fbncx4e1mp5",
@@ -327,7 +328,8 @@
       "03hal703hbt67v05poxm6vysg",
       "03hal703hh71hkvh6r8i3wchb",
       "03hal703hmof5d9jjxbfxbbfa",
-      "03ham39c5i4rw4twf7m7094lv"
+      "03ham39c5i4rw4twf7m7094lv",
+      "03hb1q2qn8ban06qnln62zaf6"
     ],
     "memoIds": [
       "03h7y0184s9oftzxoejnroyg3"
@@ -1832,6 +1834,22 @@
         "ui": {
           "x": 3883,
           "y": 7848
+        }
+      },
+      "03hb1q2dmb9zsmkpba7opt572": {
+        "id": "03hb1q2dmb9zsmkpba7opt572",
+        "name": "masked_value_erasures",
+        "comment": "TBL-062 삭제한 마스킹 값의 식별 정보: 같은 가게의 삭제 안내만 판단하고 원문/끝4자리/번호 해시는 남기지 않음",
+        "columnIds": [
+          "03hb1q2dmgqav6tb943h3d30d",
+          "03hb1q2dmrp519h1z2sunmjh4",
+          "03hb1q2dn2kqb2ycclnwnjwnr",
+          "03hb1q2dnu0he81ws1y8xqdnk"
+        ],
+        "groupId": "03h7y017wa1qi7u3p6412i1g8",
+        "ui": {
+          "x": 5563,
+          "y": 820
         }
       }
     },
@@ -8064,6 +8082,38 @@
         "comment": "로그아웃한 시각. 끝난 세션은 다시 늘리지 않음",
         "dataType": "timestamptz",
         "options": 0
+      },
+      "03hb1q2dmgqav6tb943h3d30d": {
+        "id": "03hb1q2dmgqav6tb943h3d30d",
+        "tableId": "03hb1q2dmb9zsmkpba7opt572",
+        "name": "id",
+        "comment": "삭제한 마스킹 값의 ID. 원문·끝4자리·HMAC은 두지 않음",
+        "dataType": "uuid",
+        "options": 10
+      },
+      "03hb1q2dmrp519h1z2sunmjh4": {
+        "id": "03hb1q2dmrp519h1z2sunmjh4",
+        "tableId": "03hb1q2dmb9zsmkpba7opt572",
+        "name": "shop_id",
+        "comment": "삭제한 값이 속했던 가게",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03hb1q2dn2kqb2ycclnwnjwnr": {
+        "id": "03hb1q2dn2kqb2ycclnwnjwnr",
+        "tableId": "03hb1q2dmb9zsmkpba7opt572",
+        "name": "consultation_id",
+        "comment": "지운 상담. 삭제 상태와 가게 범위만 확인함",
+        "dataType": "uuid",
+        "options": 8
+      },
+      "03hb1q2dnu0he81ws1y8xqdnk": {
+        "id": "03hb1q2dnu0he81ws1y8xqdnk",
+        "tableId": "03hb1q2dmb9zsmkpba7opt572",
+        "name": "erased_at",
+        "comment": "원문 행을 삭제한 시각",
+        "dataType": "timestamptz",
+        "options": 8
       }
     },
     "relationshipEntities": {
@@ -11726,6 +11776,16 @@
           "03ham39c5nhmtaj3bq9vbovsg"
         ],
         "unique": false
+      },
+      "03hb1q2qn8ban06qnln62zaf6": {
+        "id": "03hb1q2qn8ban06qnln62zaf6",
+        "name": "masked_value_erasures_shop_scope",
+        "tableId": "03hb1q2dmb9zsmkpba7opt572",
+        "indexColumnIds": [
+          "03hb1q2qndq2rqvxxcs01vg6w",
+          "03hb1q2qndq2rqvxxcujd8d2i"
+        ],
+        "unique": true
       }
     },
     "indexColumnEntities": {
@@ -12916,12 +12976,24 @@
         "indexId": "03ham39c5i4rw4twf7m7094lv",
         "columnId": "03hal6zvjao2t7595nodsxkud",
         "orderType": 1
+      },
+      "03hb1q2qndq2rqvxxcs01vg6w": {
+        "id": "03hb1q2qndq2rqvxxcs01vg6w",
+        "indexId": "03hb1q2qn8ban06qnln62zaf6",
+        "columnId": "03hb1q2dmrp519h1z2sunmjh4",
+        "orderType": 1
+      },
+      "03hb1q2qndq2rqvxxcujd8d2i": {
+        "id": "03hb1q2qndq2rqvxxcujd8d2i",
+        "indexId": "03hb1q2qn8ban06qnln62zaf6",
+        "columnId": "03hb1q2dmgqav6tb943h3d30d",
+        "orderType": 1
       }
     },
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 432개와 트리거(claim_kakao_bot, payment_account_license_pending, notification_delivery_revision, 접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check, 운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 operators_end_sessions, close_license_on_hold_tasks, review_shop_license, review_shop_identity, resubmit_shop_license, refresh_pending_day_before_notice, read_prepared_issue_card, read_prepared_consent_withdrawal_card)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 432개와 트리거(claim_kakao_bot, payment_account_license_pending, notification_delivery_revision, 접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check, 운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 operators_end_sessions, close_license_on_hold_tasks, review_shop_license, review_shop_identity, resubmit_shop_license, refresh_pending_day_before_notice, read_prepared_issue_card, read_prepared_consent_withdrawal_card, read_operator_order, read_operator_record_list, read_operator_consultation, read_operator_messages, read_operator_original)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,

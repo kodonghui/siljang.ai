@@ -1,0 +1,91 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 4 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: res.text is not a function
+ ❯ expectProblem test/support/contract.ts:33:26
+     31| /** 계약의 오류 응답(Problem)인지 보고 본문을 돌려준다. */
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+       |                          ^
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+ ❯ runCrossShopCase test/support/cross-shop.ts:622:9
+ ❯ process.processTicksAndRejections node:internal/process/task_queues:103:5
+ ❯ test/cross-shop.test.ts:284:7
+ ❯ ../../../siljang.ai/app/node_modules/vitest/dist/chunks/run.CjdgFZiW.js:2801:20
+
+This error originated in "test/cross-shop.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The last test to run before this error was "GET /operator/shops/:shopId/orders/:orderId (본문·쿼리의 ID)". This means either:
+- the error was thrown while Vitest was running this test, or
+- the error was thrown after the test completed, and this was the most recent test at that point.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: res.text is not a function
+ ❯ expectProblem test/support/contract.ts:33:26
+     31| /** 계약의 오류 응답(Problem)인지 보고 본문을 돌려준다. */
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+       |                          ^
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+ ❯ runCrossShopCase test/support/cross-shop.ts:622:9
+ ❯ process.processTicksAndRejections node:internal/process/task_queues:103:5
+ ❯ test/cross-shop.test.ts:284:7
+ ❯ ../../../siljang.ai/app/node_modules/vitest/dist/chunks/run.CjdgFZiW.js:2801:20
+
+This error originated in "test/cross-shop.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The last test to run before this error was "GET /operator/shops/:shopId/orders/:orderId (본문·쿼리의 ID)". This means either:
+- the error was thrown while Vitest was running this test, or
+- the error was thrown after the test completed, and this was the most recent test at that point.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: res.text is not a function
+ ❯ expectProblem test/support/contract.ts:33:26
+     31| /** 계약의 오류 응답(Problem)인지 보고 본문을 돌려준다. */
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+       |                          ^
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+ ❯ runCrossShopCase test/support/cross-shop.ts:622:9
+ ❯ process.processTicksAndRejections node:internal/process/task_queues:103:5
+ ❯ test/cross-shop.test.ts:284:7
+ ❯ ../../../siljang.ai/app/node_modules/vitest/dist/chunks/run.CjdgFZiW.js:2801:20
+
+This error originated in "test/cross-shop.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The last test to run before this error was "GET /operator/shops/:shopId/orders/:orderId (본문·쿼리의 ID)". This means either:
+- the error was thrown while Vitest was running this test, or
+- the error was thrown after the test completed, and this was the most recent test at that point.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TypeError: res.text is not a function
+ ❯ expectProblem test/support/contract.ts:33:26
+     31| /** 계약의 오류 응답(Problem)인지 보고 본문을 돌려준다. */
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+       |                          ^
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+ ❯ runCrossShopCase test/support/cross-shop.ts:622:9
+ ❯ process.processTicksAndRejections node:internal/process/task_queues:103:5
+ ❯ test/cross-shop.test.ts:284:7
+ ❯ ../../../siljang.ai/app/node_modules/vitest/dist/chunks/run.CjdgFZiW.js:2801:20
+
+This error originated in "test/cross-shop.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The last test to run before this error was "GET /operator/shops/:shopId/orders/:orderId (본문·쿼리의 ID)". This means either:
+- the error was thrown while Vitest was running this test, or
+- the error was thrown after the test completed, and this was the most recent test at that point.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 passed (1)
+      Tests  63 passed (63)
+     Errors  4 errors
+   Start at  08:10:50
+   Duration  8.29s (tests 61%, import 29%, transform 9%)

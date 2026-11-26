@@ -1,0 +1,113 @@
+{
+  "sourceCommit": "d78b4f15d92a8bb9f71f802d839c21be606f5dce",
+  "baseMain": "e2d8448d7ce41155937d4e7d67546a1413444bf6",
+  "status": "completed",
+  "scopeGitObjects": {
+    "app/server": "a944a5b4b8686d1682d0d9295b0c3c76dbf95b85",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "afd9937030ab10d6121170f0ae1af464f4b82799",
+    "api": "d772edd3a7a5c10fe053317db7c93abbd4c2a385",
+    "research/screen-checks-2026-11": "054b495f5fb0665c24475252cf20edd8d83f91a2",
+    ".github/workflows/app.yml": "9ae8e7718d47ff7b2d81d8085a8beb03c2d54e47",
+    "tools/staging-login-callback-grants.sql": "8df6ac09adc604dfb8d7dfd49863d40234945822",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "unchangedOriginalSecurityAndReviewTestObjects": {
+    "app/server/test/consultation-idle.test.ts": "ffa4330f9e6c9210739681463416d42ae5720987",
+    "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+    "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299",
+    "app/server/test/kakao-review-dedup.test.ts": "a7448fb18e57a157de386a45be1e3fa8c2895250",
+    "app/server/test/kakao-review-photos.test.ts": "54a249bd42dc6e59170a8e6fb36b2dce5b2833e5"
+  },
+  "expandedSecurityTest": {
+    "path": "app/server/test/shop-scope-static.test.ts",
+    "beforeObject": "8bb336c3cc68342fad3b4e0aa58b292bba97872c",
+    "afterObject": "fb468294d835ee555b36a7e497b5a81384af6446",
+    "changes": "exact table count 61 to 62 and added four metadata columns/no original test; original SQL guards and full SHOP_TABLES comparison retained"
+  },
+  "migrations": 46,
+  "tables": 62,
+  "columns": 759,
+  "foreignKeys": 136,
+  "fullRun": "siljang-task159-full-v8",
+  "serverFiles": 197,
+  "serverPassed": 3646,
+  "webFiles": 73,
+  "webPassed": 1775,
+  "serverFailed": 0,
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "related": {
+    "files": 14,
+    "passed": 336,
+    "subsequentSameKeyReplayRegression": 1
+  },
+  "nodeFixturePassed": 63,
+  "nodeStagingPassed": 37,
+  "stages": {
+    "checks": 9,
+    "exit": 0,
+    "dbPassed": 15,
+    "apiPassed": 17,
+    "localPrismRequests": 966,
+    "mockupPassed": 13,
+    "mockupUnverified": 1,
+    "browser": "not run"
+  },
+  "npmCi": {
+    "fresh": true,
+    "packages": 161,
+    "seconds": 12,
+    "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22"
+  },
+  "nativeAside": "unverified, academy SSH previously failed twice; no recovery evidence",
+  "manualReviewRequestsAtProof": 0,
+  "review": {
+    "originalHead": "6560f5856a8ce0a926986c8f1a279eef76a14814",
+    "findingsComment": 7187746867,
+    "acknowledgement": 7187874045,
+    "dispositionAndRereview": 7188616423,
+    "findings": [
+      "P2 page scope",
+      "P3 erased masked ID",
+      "P3 text length"
+    ],
+    "allFixed": true
+  },
+  "runHistory": {
+    "v1": "3612 pass/3 fail; web and build not run",
+    "v2": "3615 server/1775 web/build0 at immutable434e2d0",
+    "v3": "cancelled due uncommitted source after EOF prevented commit; driver and one owned orphan DB removed",
+    "v4": "3619 server/1775 web/build0 before review fixes; not current proof",
+    "reviewRed": "five failing regressions plus page proof 11 fail/4 pass; preserved",
+    "v8": "this immutable reviewed-fix source"
+  },
+  "fullLog": {
+    "rawSha256": "182a609d3fa9c97debccdc89bc2e8957a8c681fc42e63a8145a18430c5d8db22",
+    "trackedSha256": "275603857db830ecb934ec8d387fff51ee461ae68cea9d9026cbf0b26f069bce",
+    "normalization": "trailing whitespace and final blank lines only"
+  },
+  "buildLog": {
+    "rawSha256": "ebb4fee1a087e77ccc863a2d02f0eb7671b6cbd27b530ed181b765a2db54b2e7",
+    "trackedSha256": "5f40f42ad5c26bc8fce6a4c641073261bb1361fc7d57c2f29be894cd961f5761",
+    "normalization": "trailing whitespace and final blank lines only"
+  },
+  "migrateLog": {
+    "rawSha256": "af7d95063104a7001a4704524da70e03ac382294f06d329b97af715051032d61",
+    "trackedSha256": "af7d95063104a7001a4704524da70e03ac382294f06d329b97af715051032d61",
+    "normalization": "trailing whitespace and final blank lines only"
+  },
+  "wbs": {
+    "checks": 18,
+    "errors": 0,
+    "finished": 36,
+    "implemented": 57
+  },
+  "strictLint": {
+    "files": 658,
+    "exit": 0,
+    "formatFixes": 0
+  }
+}

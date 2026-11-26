@@ -1,0 +1,37 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/shop-scope-static.test.ts (23 tests | 1 failed) 372ms
+   ❯ 05와 같은 가게 테이블 목록 (3)
+     × shop_id 열을 가진 테이블이 SHOP_TABLES와 같음(05 E1) 12ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/shop-scope-static.test.ts > 05와 같은 가게 테이블 목록 > shop_id 열을 가진 테이블이 SHOP_TABLES와 같음(05 E1)
+AssertionError: expected 62 to be 61 // Object.is equality
+
+- Expected
++ Received
+
+- 61
++ 62
+
+ ❯ test/shop-scope-static.test.ts:209:27
+    207| describe("05와 같은 가게 테이블 목록", () => {
+    208|   it("shop_id 열을 가진 테이블이 SHOP_TABLES와 같음(05 E1)", () => {
+    209|     expect(tables.length).toBe(61);
+       |                           ^
+    210|     const withShopId = tables.filter((t) => /^\s+shop_id\s/m.test(t.bo…
+    211|     expect([...SHOP_TABLES].sort()).toEqual(withShopId.sort());
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 13 passed (14)
+      Tests  1 failed | 334 passed (335)
+   Start at  09:43:20
+   Duration  29.23s (tests 63%, import 35%, transform 2%)
+
+     Import  221 modules were evaluated 301 times · 9.50s total, 35% of tracked time
+             ~2.53s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

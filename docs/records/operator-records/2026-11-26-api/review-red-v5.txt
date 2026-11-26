@@ -1,0 +1,133 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-records.test.ts (45 tests | 5 failed | 40 skipped) 1345ms
+   ❯ 운영자 가게 기록과 사유 있는 열기(TASK-159) (45)
+     × 리뷰P2: 사유를 받은 실제10개 페이지 밖의 글은 첫/다음 페이지에서 열지 않는다(false) 139ms
+     × 리뷰P2: 사유를 받은 실제10개 페이지 밖의 글은 첫/다음 페이지에서 열지 않는다(true) 70ms
+     × 리뷰P3: 저장된 긴 글 4001자도 메타데이터·열기 응답 상한을 지킨다 53ms
+     × 리뷰P3: 저장된 긴 글 100000자도 메타데이터·열기 응답 상한을 지킨다 47ms
+     × 리뷰P3: 실제 상담 지우기 전후 같은 번호ID는 원본 열림에서 지워짐409로 바뀐다 147ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 리뷰P2: 사유를 받은 실제10개 페이지 밖의 글은 첫/다음 페이지에서 열지 않는다(false)
+AssertionError: expected [ …(20) ] to deeply equal [ …(10) ]
+
+- Expected
++ Received
+
+@@ -7,6 +7,16 @@
+    "8dcd34fa-9398-42d6-bfdd-d89f2bdf3668",
+    "3f89d7f0-4f12-4b1b-8bdd-f3fdc0f24284",
+    "d294bff5-d2a9-445d-bd9c-c22055775fec",
+    "73ff1b78-f162-41ef-9dfc-b2087c891932",
+    "43d6a196-1912-4546-a1d2-ea7a82555140",
++   "78666a0c-68c8-4bbc-9190-57ab5b951f8b",
++   "3499e62e-fabf-4868-bc6d-0b52d33235d5",
++   "15b490cc-3186-426b-8ae5-6454e2ccb9c5",
++   "67c5be75-d8de-4ead-b938-c13dbedc252d",
++   "c036b050-4fce-4a88-a7a7-4997c37fb8e4",
++   "efbd92cb-8dba-45cb-b1bb-13cd44318c66",
++   "cc136036-8581-406c-bb2f-8b6991f4fb30",
++   "8b38a3dc-523a-4884-88a7-c514104abb5e",
++   "5dd2b146-0cdf-4198-b20e-8c73ab672e04",
++   "a95172ab-8dd2-4d18-9e88-c7b59e78b5d6",
+  ]
+
+ ❯ test/operator-records.test.ts:722:69
+    720|       expect(response.status, await response.clone().text()).toBe(200);
+    721|       const opened = (await response.json()) as { consultationText: { …
+    722|       expect(opened.consultationText.items.map((x) => x.messageId)).to…
+       |                                                                     ^
+    723|     },
+    724|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 리뷰P2: 사유를 받은 실제10개 페이지 밖의 글은 첫/다음 페이지에서 열지 않는다(true)
+AssertionError: expected [ …(15) ] to deeply equal [ …(10) ]
+
+- Expected
++ Received
+
+@@ -7,6 +7,11 @@
+    "fc34fbe1-b71a-43df-87d2-197be698ac24",
+    "bcaaf3b9-d6ef-4d35-b1bc-5c943c3c24c3",
+    "d93d90b0-1fca-4262-8315-6eca7d2c8213",
+    "21f28aac-dd9d-47ec-844b-c3d61124b437",
+    "a23176f8-7c1f-42aa-9884-bc88d49db32b",
++   "5570aec8-720c-45a3-aaa5-dfe3c1b34815",
++   "cc4964be-3225-41be-ae69-5dd24cf71b53",
++   "cb8e0660-a0f5-415c-8699-24540fb4443d",
++   "d7d393b8-6726-4c51-a606-2a115ac98e50",
++   "09f43c72-d441-4e6e-b9e5-57f2d720a358",
+  ]
+
+ ❯ test/operator-records.test.ts:722:69
+    720|       expect(response.status, await response.clone().text()).toBe(200);
+    721|       const opened = (await response.json()) as { consultationText: { …
+    722|       expect(opened.consultationText.items.map((x) => x.messageId)).to…
+       |                                                                     ^
+    723|     },
+    724|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 리뷰P3: 저장된 긴 글 4001자도 메타데이터·열기 응답 상한을 지킨다
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 리뷰P3: 저장된 긴 글 100000자도 메타데이터·열기 응답 상한을 지킨다
+AssertionError: OperatorConsultation: [{"instancePath":"/items/0/textLength","schemaPath":"#/components/schemas/OperatorMessage/properties/textLength/maximum","keyword":"maximum","params":{"comparison":"<=","limit":4000},"message":"must be <= 4000"}]: expected [ { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/items/0/textLength",
++     "keyword": "maximum",
++     "message": "must be <= 4000",
++     "params": {
++       "comparison": "<=",
++       "limit": 4000,
++     },
++     "schemaPath": "#/components/schemas/OperatorMessage/properties/textLength/maximum",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ test/operator-records.test.ts:729:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 리뷰P3: 실제 상담 지우기 전후 같은 번호ID는 원본 열림에서 지워짐409로 바뀐다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"cd606e78fd145412d607b1a4b3fb4f03","instance":"/api/operator/shops/b2a11a53-362c-4bfa-827d-c0fba96cdfb3/originals"}: expected 404 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 404
+
+ ❯ expectProblem test/support/contract.ts:34:28
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+       |                            ^
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+     36|   expect(res.headers.get("cache-control")).toBe("no-store");
+ ❯ test/operator-records.test.ts:757:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 40 skipped (45)
+   Start at  09:25:12
+   Duration  3.64s (import 48%, tests 38%, transform 13%)

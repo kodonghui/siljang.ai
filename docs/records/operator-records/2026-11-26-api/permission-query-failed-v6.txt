@@ -1,0 +1,38 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-record-permissions.test.ts (5 tests | 1 failed) 935ms
+   ❯ 운영자 기록의 최소 실행 권한(TASK-159) (5)
+     × 삭제ID 표는 INSERT만 열고 원문과 추가 읽기/수정/삭제 권한은 주지 않는다 18ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-record-permissions.test.ts > 운영자 기록의 최소 실행 권한(TASK-159) > 삭제ID 표는 INSERT만 열고 원문과 추가 읽기/수정/삭제 권한은 주지 않는다
+AssertionError: expected { read: false, insert: false, …(2) } to deeply equal { read: false, insert: true, …(2) }
+
+- Expected
++ Received
+
+  {
+    "delete": false,
+-   "insert": true,
++   "insert": false,
+    "read": false,
+    "update": false,
+  }
+
+ ❯ test/operator-record-permissions.test.ts:189:7
+    187|         )
+    188|       ).rows[0],
+    189|     ).toEqual({ read: false, insert: true, update: false, delete: fals…
+       |       ^
+    190|   });
+    191| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 54 passed (55)
+   Start at  09:41:43
+   Duration  6.82s (tests 55%, import 39%, transform 6%)

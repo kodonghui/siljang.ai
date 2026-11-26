@@ -1,0 +1,76 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-record-cursor.test.ts (14 tests | 8 failed) 13ms
+   × orders 커서는 마이크로초와 큰 순번·ID를 보존하고 개인정보 없는 고정 길이 봉투다 5ms
+   × consultations 커서는 마이크로초와 큰 순번·ID를 보존하고 개인정보 없는 고정 길이 봉투다 1ms
+   × messages 커서는 마이크로초와 큰 순번·ID를 보존하고 개인정보 없는 고정 길이 봉투다 0ms
+   × 다른 가게·대상·종류의 커서는 열리지 않는다({"shopId":"acadb28b-02c9-4ca7-b7be-ad2d22d2e13d"}) 1ms
+   × 다른 가게·대상·종류의 커서는 열리지 않는다({"resourceId":"d515998e-7344-4f16-8496-90295896e8da"}) 0ms
+   × 다른 가게·대상·종류의 커서는 열리지 않는다({"kind":"orders"}) 0ms
+   × 변조·채움·초과 길이·빈 커서는 원문 없는 같은 오류다 1ms
+   × 키를 바꾼 뒤 앞 버전은 읽고 새 봉투는 새 버전으로 쓰며 사장님 커서와 용도가 나뉜다 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-record-cursor.test.ts > orders 커서는 마이크로초와 큰 순번·ID를 보존하고 개인정보 없는 고정 길이 봉투다
+ FAIL  test/operator-record-cursor.test.ts > consultations 커서는 마이크로초와 큰 순번·ID를 보존하고 개인정보 없는 고정 길이 봉투다
+ FAIL  test/operator-record-cursor.test.ts > messages 커서는 마이크로초와 큰 순번·ID를 보존하고 개인정보 없는 고정 길이 봉투다
+OperatorRecordCursorError: invalid operator record cursor
+ ❯ sealOperatorRecordCursor src/operator-record-cursor.ts:21:9
+     19|   _position: OperatorRecordPosition,
+     20| ): Promise<string> {
+     21|   throw new OperatorRecordCursorError("invalid operator record cursor"…
+       |         ^
+     22| }
+     23| export async function openOperatorRecordCursor(
+ ❯ test/operator-record-cursor.test.ts:23:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  test/operator-record-cursor.test.ts > 다른 가게·대상·종류의 커서는 열리지 않는다({"shopId":"acadb28b-02c9-4ca7-b7be-ad2d22d2e13d"})
+ FAIL  test/operator-record-cursor.test.ts > 다른 가게·대상·종류의 커서는 열리지 않는다({"resourceId":"d515998e-7344-4f16-8496-90295896e8da"})
+ FAIL  test/operator-record-cursor.test.ts > 다른 가게·대상·종류의 커서는 열리지 않는다({"kind":"orders"})
+OperatorRecordCursorError: invalid operator record cursor
+ ❯ sealOperatorRecordCursor src/operator-record-cursor.ts:21:9
+     19|   _position: OperatorRecordPosition,
+     20| ): Promise<string> {
+     21|   throw new OperatorRecordCursorError("invalid operator record cursor"…
+       |         ^
+     22| }
+     23| export async function openOperatorRecordCursor(
+ ❯ test/operator-record-cursor.test.ts:36:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  test/operator-record-cursor.test.ts > 변조·채움·초과 길이·빈 커서는 원문 없는 같은 오류다
+OperatorRecordCursorError: invalid operator record cursor
+ ❯ sealOperatorRecordCursor src/operator-record-cursor.ts:21:9
+     19|   _position: OperatorRecordPosition,
+     20| ): Promise<string> {
+     21|   throw new OperatorRecordCursorError("invalid operator record cursor"…
+       |         ^
+     22| }
+     23| export async function openOperatorRecordCursor(
+ ❯ test/operator-record-cursor.test.ts:44:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  test/operator-record-cursor.test.ts > 키를 바꾼 뒤 앞 버전은 읽고 새 봉투는 새 버전으로 쓰며 사장님 커서와 용도가 나뉜다
+OperatorRecordCursorError: invalid operator record cursor
+ ❯ sealOperatorRecordCursor src/operator-record-cursor.ts:21:9
+     19|   _position: OperatorRecordPosition,
+     20| ): Promise<string> {
+     21|   throw new OperatorRecordCursorError("invalid operator record cursor"…
+       |         ^
+     22| }
+     23| export async function openOperatorRecordCursor(
+ ❯ test/operator-record-cursor.test.ts:69:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 6 passed (14)
+   Start at  07:55:29
+   Duration  290ms (transform 52%, import 33%, tests 11%, worker 3%)

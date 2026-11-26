@@ -1,0 +1,1 @@
+check-no-keys self-test: 11 patterns, 16 samples, 10 clean lines, 0 failed

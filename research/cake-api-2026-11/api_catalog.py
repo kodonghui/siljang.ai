@@ -640,5 +640,21 @@ BREAKING_CHANGES = [
     ]
 ]
 
+# PR301 리뷰7187746867: 기존 SPEC073/A24의 현재 페이지 범위를 구현한다.
+BREAKING_CHANGES += [
+    dict(what="꼭 넣을 필드 더함: OperatorConsultation.textCursor",
+         why="API075에서 실제 본 메시지 범위만 API077로 열도록 현재 페이지 토큰을 발급함(SPEC073, A24)",
+         decided="2026-11-26 PR301 보안P2 리뷰7187746867 처리",
+         client="SCR050은 첫 페이지부터 API075의 textCursor를 API077 cursor로 보내며 nextCursor는 목록 이동에만 씀. 지운 상담의 textCursor는 null"),
+    dict(what="요청 조건이 좁아짐: OriginalOpenInput consultation_text는 cursor 필수",
+         why="첫 페이지/작은 페이지에도 실제 반환한 범위를 검증하고 다른 운영자/만료/페이지 구성 변경을 닫음",
+         decided="2026-11-26 PR301 보안P2 리뷰7187746867 처리",
+         client="첫 페이지도 먼저 API075로 읽고 발급된 토큰을 보냄. cursor의422는 페이지를 다시 조회한 뒤 사유를 적어 다시 엶. 조건부 필수라 A13은 찾지 않아 여기 적음"),
+    dict(what="응답 표시 범위를 정함: OperatorMessage.textLength와 OperatorMessageText.textMasked는4000자까지",
+         why="이미 저장된 긴 입력도 기존4000자 응답 상한을 지킴(PR301 코드P3)",
+         decided="2026-11-26 PR301 리뷰7187746867 처리",
+         client="textLength가4000이면4000자 이상으로 보이고 열린 글은 앞4000자임을 보임. 스키마 상한은 그대로이고 표시 규칙이라 A13은 찾지 않아 여기 적음"),
+]
+
 # ── 케이스 유형 (04단계와 같은 이름) ─────────────────────────────────────────────
 KINDS = ["접근", "입력", "대상", "상태", "반복", "동시", "한도", "외부", "노출", "빈·끊김", "화면", "AI"]

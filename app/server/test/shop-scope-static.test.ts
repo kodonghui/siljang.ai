@@ -206,9 +206,17 @@ function shopSql(text: string): string[] {
 
 describe("05와 같은 가게 테이블 목록", () => {
   it("shop_id 열을 가진 테이블이 SHOP_TABLES와 같음(05 E1)", () => {
-    expect(tables.length).toBe(61);
+    expect(tables.length).toBe(62);
     const withShopId = tables.filter((t) => /^\s+shop_id\s/m.test(t.body)).map((t) => t.name);
     expect([...SHOP_TABLES].sort()).toEqual(withShopId.sort());
+  });
+
+  it("삭제ID 표는 가게에 속한 식별/시각4열만 있고 원문/끝4자리/해시는 없다", () => {
+    const table = tables.find((t) => t.name === "masked_value_erasures");
+    if (!table) throw new Error("삭제ID 표가 없어요");
+    const columns = [...table.body.matchAll(/^ {2}([a-z_][a-z0-9_]*)\s/gm)].map((m) => m[1]);
+    expect(columns.sort()).toEqual(["consultation_id", "erased_at", "id", "shop_id"]);
+    expect(SHOP_TABLES).toContain("masked_value_erasures");
   });
 
   it("id(uuid) 기본 키가 없는 가게 테이블이 SHOP_TABLES_WITHOUT_ID와 같음", () => {
