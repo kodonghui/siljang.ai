@@ -1,0 +1,11 @@
+
+ RUN  v5.1.0 /workspace/siljang-task147-issue-card/app/server
+
+
+ Test Files  3 passed (3)
+      Tests  34 passed (34)
+   Start at  01:34:42
+   Duration  7.78s (import 55%, tests 33%, transform 12%)
+
+    Isolate  3 workers spawned · ~194ms startup each (spawn + environment, per file)
+             at least ~389ms faster with isolate: false — reuses workers across files instead of one per file

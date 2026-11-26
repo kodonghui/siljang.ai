@@ -35,6 +35,10 @@ describeDb("신고 카드의 실제 저장 첫 결과와 재전달(TASK-147)", (
         "UPDATE orders SET status='received',confirmed_at=$2,confirmed_payment_id=$3,finished_at=$4 WHERE id=$1",
         [shop.orderId, confirmed, paid, new Date(NOW.getTime() - 3 * 3600000)],
       );
+      await tx.query(
+        "INSERT INTO productions(shop_id,order_id,completed_at,handed_over_at,handover_kind,created_at) VALUES($1,$2,$3,$3,'pickup',$4)",
+        [shop.shopId, shop.orderId, new Date(NOW.getTime() - 3 * 3600000), confirmed],
+      );
     });
     key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
   });

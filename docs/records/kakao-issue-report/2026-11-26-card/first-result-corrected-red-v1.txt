@@ -1,0 +1,181 @@
+
+ RUN  v5.1.0 /workspace/siljang-task147-issue-card/app/server
+
+ ❯ test/issue-report-first-result.test.ts (2 tests | 2 failed) 1300ms
+   ❯ 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) (2)
+     × API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(신고를 받았어요. 사장님이 보시고 정하실 거예요) 209ms
+     × API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(이전 합성 신고 접수 안내) 88ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(신고를 받았어요. 사장님이 보시고 정하실 거예요)
+AssertionError: expected { version: '2.0', template: { …(1) } } to deeply equal { version: '2.0', template: { …(1) } }
+
+- Expected
++ Received
+
+@@ -1,10 +1,15 @@
+  {
+    "template": {
+      "outputs": [
+        {
+          "simpleText": {
++           "text": "이미 처리했어요",
++         },
++       },
++       {
++         "simpleText": {
+            "text": "신고를 받았어요. 사장님이 보시고 정하실 거예요",
+          },
+        },
+      ],
+    },
+
+ ❯ test/issue-report-first-result.test.ts:106:28
+    104|         expectSchema("SkillTemplateResponse", initial);
+    105|         expectSchema("SkillTemplateResponse", again);
+    106|         expect.soft(again).toEqual(initial);
+       |                            ^
+    107|         expect.soft(again).toHaveProperty("template.outputs", [{ simpl…
+    108|         expect.soft(delivery).toEqual({ text });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(신고를 받았어요. 사장님이 보시고 정하실 거예요)
+AssertionError: expected { version: '2.0', template: { …(1) } } to have property "template.outputs" with value [ { simpleText: [Object] } ]
+
+- Expected
++ Received
+
+  [
+    {
+      "simpleText": {
++       "text": "이미 처리했어요",
++     },
++   },
++   {
++     "simpleText": {
+        "text": "신고를 받았어요. 사장님이 보시고 정하실 거예요",
+      },
+    },
+  ]
+
+ ❯ test/issue-report-first-result.test.ts:107:28
+    105|         expectSchema("SkillTemplateResponse", again);
+    106|         expect.soft(again).toEqual(initial);
+    107|         expect.soft(again).toHaveProperty("template.outputs", [{ simpl…
+       |                            ^
+    108|         expect.soft(delivery).toEqual({ text });
+    109|         expect(execute).toHaveBeenCalledTimes(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(신고를 받았어요. 사장님이 보시고 정하실 거예요)
+AssertionError: expected { text: '이미 처리했어요' } to deeply equal { text: '신고를 받았어요. 사장님이 보시고 정하실 거예요' }
+
+- Expected
++ Received
+
+  {
+-   "text": "신고를 받았어요. 사장님이 보시고 정하실 거예요",
++   "text": "이미 처리했어요",
+  }
+
+ ❯ test/issue-report-first-result.test.ts:108:31
+    106|         expect.soft(again).toEqual(initial);
+    107|         expect.soft(again).toHaveProperty("template.outputs", [{ simpl…
+    108|         expect.soft(delivery).toEqual({ text });
+       |                               ^
+    109|         expect(execute).toHaveBeenCalledTimes(1);
+    110|         expect(network).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(이전 합성 신고 접수 안내)
+AssertionError: expected { version: '2.0', template: { …(1) } } to deeply equal { version: '2.0', template: { …(1) } }
+
+- Expected
++ Received
+
+@@ -1,10 +1,15 @@
+  {
+    "template": {
+      "outputs": [
+        {
+          "simpleText": {
++           "text": "이미 처리했어요",
++         },
++       },
++       {
++         "simpleText": {
+            "text": "이전 합성 신고 접수 안내",
+          },
+        },
+      ],
+    },
+
+ ❯ test/issue-report-first-result.test.ts:106:28
+    104|         expectSchema("SkillTemplateResponse", initial);
+    105|         expectSchema("SkillTemplateResponse", again);
+    106|         expect.soft(again).toEqual(initial);
+       |                            ^
+    107|         expect.soft(again).toHaveProperty("template.outputs", [{ simpl…
+    108|         expect.soft(delivery).toEqual({ text });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(이전 합성 신고 접수 안내)
+AssertionError: expected { version: '2.0', template: { …(1) } } to have property "template.outputs" with value [ { simpleText: [Object] } ]
+
+- Expected
++ Received
+
+  [
+    {
+      "simpleText": {
++       "text": "이미 처리했어요",
++     },
++   },
++   {
++     "simpleText": {
+        "text": "이전 합성 신고 접수 안내",
+      },
+    },
+  ]
+
+ ❯ test/issue-report-first-result.test.ts:107:28
+    105|         expectSchema("SkillTemplateResponse", again);
+    106|         expect.soft(again).toEqual(initial);
+    107|         expect.soft(again).toHaveProperty("template.outputs", [{ simpl…
+       |                            ^
+    108|         expect.soft(delivery).toEqual({ text });
+    109|         expect(execute).toHaveBeenCalledTimes(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(이전 합성 신고 접수 안내)
+AssertionError: expected { text: '이미 처리했어요' } to deeply equal { text: '이전 합성 신고 접수 안내' }
+
+- Expected
++ Received
+
+  {
+-   "text": "이전 합성 신고 접수 안내",
++   "text": "이미 처리했어요",
+  }
+
+ ❯ test/issue-report-first-result.test.ts:108:31
+    106|         expect.soft(again).toEqual(initial);
+    107|         expect.soft(again).toHaveProperty("template.outputs", [{ simpl…
+    108|         expect.soft(delivery).toEqual({ text });
+       |                               ^
+    109|         expect(execute).toHaveBeenCalledTimes(1);
+    110|         expect(network).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  01:34:13
+   Duration  3.39s (import 42%, tests 40%, transform 18%)
