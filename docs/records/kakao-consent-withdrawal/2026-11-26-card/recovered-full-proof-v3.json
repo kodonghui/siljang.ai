@@ -1,0 +1,134 @@
+{
+  "sourceCommit": "8e5964597ad508bbbbca6a1e31c2affe82a79b17",
+  "publicEquivalentHead": "8e5964597ad508bbbbca6a1e31c2affe82a79b17",
+  "sourceTree": "2922ada9051ce7a74e3d89d0918b5542155c1c65",
+  "baseMain": "1fa6fb4246ccb1c9c69de2aeac661d237802f405",
+  "scopeGitObjects": {
+    "app/server": "d9542c9753df9e6542a6514f69decbe67958f60d",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "3af3df2f2d3d6d1689b3b25b27252f2d74b2c35c",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "054b495f5fb0665c24475252cf20edd8d83f91a2",
+    ".github/workflows/app.yml": "9ae8e7718d47ff7b2d81d8085a8beb03c2d54e47",
+    "tools/staging-login-callback-grants.sql": "8adebbcfcbccd6891440b16d579fe03a69980ebb",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 45,
+  "server": {
+    "files": 190,
+    "passed": 3484
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "related": {
+    "files": 29,
+    "passed": 489,
+    "workingTree": false
+  },
+  "presentationPassed": 31,
+  "contractPassed": 1,
+  "storeAndHttpPassed": 24,
+  "minimumRolePassed": 4,
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "nodePassed": 102,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "localPostgres16SchemaChecks": 15,
+  "stageChecks": 8,
+  "mockup": {
+    "passed": 13,
+    "unverified": 1
+  },
+  "states": 6,
+  "frames": 12,
+  "responseRows": 29,
+  "responseFrames": 20,
+  "browserExecuted": false,
+  "realKakao": false,
+  "stagingMigration45": false,
+  "stagingRuntimeFunctionGrants": false,
+  "unchangedOriginalSecurityAndReviewTestObjects": {
+    "app/server/test/consultation-idle.test.ts": "ffa4330f9e6c9210739681463416d42ae5720987",
+    "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+    "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299",
+    "app/server/test/shop-scope-static.test.ts": "8bb336c3cc68342fad3b4e0aa58b292bba97872c",
+    "app/server/test/kakao-review-dedup.test.ts": "a7448fb18e57a157de386a45be1e3fa8c2895250",
+    "app/server/test/kakao-review-photos.test.ts": "54a249bd42dc6e59170a8e6fb36b2dce5b2833e5"
+  },
+  "changedExistingFixture": "confirm-card-store에 실제 철회 대상 후기/사진/동의를 준비. 다른 가게 주문 거절은 보존",
+  "modelCallsAdded": 0,
+  "outboundRequestsAdded": 0,
+  "npmCi": "복구한 환경의 Node22.23.4에서 새 npm ci 종료0; 같은 공개 소스 CI의 새 설치/전체/빌드도 성공",
+  "beforeCleanup": {
+    "node": {
+      "passed": 92,
+      "failed": 3,
+      "total": 95
+    },
+    "stageErd": {
+      "passed": 10,
+      "failed": 1,
+      "unverified": 4
+    },
+    "cause": "No space left on device",
+    "removedIgnoredDirectories": 40,
+    "freedBytes": 648966144,
+    "retryCountEach": 1
+  },
+  "businessCommandValidation": "합성 실행기만 검사. TASK146의 실제 내리기/철회 쓰기 구현이 아님",
+  "classification": "P2 복구 소스의 새 전체/빌드/CI 성공. 기록 head CI/발견 처리/수동 요청/자기 main 전. TASK149 구현 완료/finished 아님",
+  "reviewCorePassed": 60,
+  "redFailed": 7,
+  "redPassed": 17,
+  "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
+  "review": {
+    "id": 7184867629,
+    "reviewedHead": "2d6651eed16f699189dc27f41dcf334de3867a86",
+    "finding": "P2 교체 응답 유실 뒤 새 카드 누락",
+    "ack": 7184922270,
+    "securityFindings": 0
+  },
+  "recovery": {
+    "oldLocalCommit": "a20383aa",
+    "oldExactGitObjectRecovered": false,
+    "checkpointComments": [
+      7185003315,
+      7185019642,
+      7185035892,
+      7185152852
+    ],
+    "reconstructedAndRetested": true,
+    "freshNode": "22.23.4",
+    "freshPostgres": "16.15",
+    "freshInstall": true
+  },
+  "unchangedDesignGitObjects": {
+    "db": "3af3df2f2d3d6d1689b3b25b27252f2d74b2c35c",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "docs/08-screens": "f4e78ad36a497a4b4e9b3d2d99072e7ee9305833",
+    "docs/09-mockup": "d84d90e434a2de0460af80428e7cb44c234736b5",
+    "research/cake-erd-2026-11": "0f0490236cfde1e400551fb542601c95f2235f9a"
+  },
+  "reusedStageAndDatabaseChecks": {
+    "publicEquivalentSource": "2d6651eed16f699189dc27f41dcf334de3867a86",
+    "databaseChecks": 15,
+    "stageChecks": 8,
+    "scopeGitObjectsMatch": true,
+    "scope": [
+      "db",
+      "api",
+      "docs/08-screens",
+      "docs/09-mockup",
+      "research/cake-erd-2026-11"
+    ]
+  },
+  "sourceCi": {
+    "app": 45773097082,
+    "db": 45773097144
+  }
+}

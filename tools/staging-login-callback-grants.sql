@@ -225,3 +225,6 @@ GRANT SELECT (shop_id, order_detail_id, price_list_id, option_id) ON order_detai
 REVOKE SELECT (description, health_concern, status, content_purged_at), UPDATE (updated_at) ON issue_details FROM :"runtime_role";
 REVOKE SELECT (id, shop_id, issue_details_id, position) ON issue_photos FROM :"runtime_role";
 GRANT EXECUTE ON FUNCTION read_prepared_issue_card(uuid,uuid,uuid,uuid) TO :"runtime_role";
+
+-- TASK-149: 현재 손님의 철회 카드 자료만 읽는다. 동의·사진·게시의 쓰기 권한은 열지 않는다.
+GRANT EXECUTE ON FUNCTION read_prepared_consent_withdrawal_card(uuid,uuid,uuid,uuid) TO :"runtime_role";

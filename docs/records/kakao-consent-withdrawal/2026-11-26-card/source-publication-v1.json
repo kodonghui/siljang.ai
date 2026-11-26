@@ -1,0 +1,13 @@
+{
+  "branch": "codex/task-149-consent-withdrawal-card",
+  "parent": "1fa6fb4246ccb1c9c69de2aeac661d237802f405",
+  "sourceCommit": "7550db6be1aba55711fefa45407e800deeff545c",
+  "tree": "da5754d32ee58ffcd38e75b427d80981e924d3c9",
+  "main": "1fa6fb4246ccb1c9c69de2aeac661d237802f405",
+  "files": 19,
+  "method": "connected GitHub API",
+  "phase": "complete",
+  "head": "2d6651eed16f699189dc27f41dcf334de3867a86",
+  "verified": true,
+  "verificationRecovery": "첫 전송 후 재조회 불일치. 캐시 우회 새 GET에서 ref/tree/parents 모두 일치 확인; 추가 생성·push 없음"
+}

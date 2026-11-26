@@ -1,0 +1,247 @@
+{
+  "removedIgnoredArtifacts": [
+    {
+      "root": "/workspace/siljang-task049-focus-recovery",
+      "path": "app/server/dist",
+      "closedMergedPr": 218,
+      "sourcePreserved": "9e3418fa91fe2fa45856dd6cf653e02a5e6e98cf"
+    },
+    {
+      "root": "/workspace/siljang-task049-focus-recovery",
+      "path": "app/web/dist",
+      "closedMergedPr": 218,
+      "sourcePreserved": "9e3418fa91fe2fa45856dd6cf653e02a5e6e98cf"
+    },
+    {
+      "root": "/workspace/siljang-task049-price-list-screen",
+      "path": "app/server/dist",
+      "closedMergedPr": 200,
+      "sourcePreserved": "c48ba79ca8d6e07bb15c0a8c75ae85dcf3bcc937"
+    },
+    {
+      "root": "/workspace/siljang-task049-price-list-screen",
+      "path": "app/web/dist",
+      "closedMergedPr": 200,
+      "sourcePreserved": "c48ba79ca8d6e07bb15c0a8c75ae85dcf3bcc937"
+    },
+    {
+      "root": "/workspace/siljang-task050-finished",
+      "path": "app/server/dist",
+      "closedMergedPr": 255,
+      "sourcePreserved": "18dee0249aa0f81e2fb1d743460759ae56cd1b71"
+    },
+    {
+      "root": "/workspace/siljang-task050-finished",
+      "path": "app/web/dist",
+      "closedMergedPr": 255,
+      "sourcePreserved": "18dee0249aa0f81e2fb1d743460759ae56cd1b71"
+    },
+    {
+      "root": "/workspace/siljang-task050-price-list-history",
+      "path": "app/server/dist",
+      "closedMergedPr": 201,
+      "sourcePreserved": "ecc16689a50836baf2f618cfbae161d6525532f6"
+    },
+    {
+      "root": "/workspace/siljang-task050-price-list-history",
+      "path": "app/web/dist",
+      "closedMergedPr": 201,
+      "sourcePreserved": "ecc16689a50836baf2f618cfbae161d6525532f6"
+    },
+    {
+      "root": "/workspace/siljang-task051-focus-recovery",
+      "path": "app/server/dist",
+      "closedMergedPr": 213,
+      "sourcePreserved": "71917a09afebd20b42d1f0a16d1d4ea9f33cddda"
+    },
+    {
+      "root": "/workspace/siljang-task051-focus-recovery",
+      "path": "app/web/dist",
+      "closedMergedPr": 213,
+      "sourcePreserved": "71917a09afebd20b42d1f0a16d1d4ea9f33cddda"
+    },
+    {
+      "root": "/workspace/siljang-task051-operating-rules-screen",
+      "path": "app/server/dist",
+      "closedMergedPr": 202,
+      "sourcePreserved": "7f23d922e2c20058ef698781205d13a2487234bb"
+    },
+    {
+      "root": "/workspace/siljang-task051-operating-rules-screen",
+      "path": "app/web/dist",
+      "closedMergedPr": 202,
+      "sourcePreserved": "7f23d922e2c20058ef698781205d13a2487234bb"
+    },
+    {
+      "root": "/workspace/siljang-task051-rules-focus",
+      "path": "app/server/dist",
+      "closedMergedPr": 204,
+      "sourcePreserved": "e6a58719894cffb94b865e77b160a4b53f130a34"
+    },
+    {
+      "root": "/workspace/siljang-task051-rules-focus",
+      "path": "app/web/dist",
+      "closedMergedPr": 204,
+      "sourcePreserved": "e6a58719894cffb94b865e77b160a4b53f130a34"
+    },
+    {
+      "root": "/workspace/siljang-task051-runtime-checks",
+      "path": "app/server/dist",
+      "closedMergedPr": 262,
+      "sourcePreserved": "d014c41b7166526d755873e1f5a20ade1bb85d00"
+    },
+    {
+      "root": "/workspace/siljang-task051-runtime-checks",
+      "path": "app/web/dist",
+      "closedMergedPr": 262,
+      "sourcePreserved": "d014c41b7166526d755873e1f5a20ade1bb85d00"
+    },
+    {
+      "root": "/workspace/siljang-task052-operating-rules-history",
+      "path": "app/server/dist",
+      "closedMergedPr": 203,
+      "sourcePreserved": "48b24e2204473dcc905bc999df7be200921267b7"
+    },
+    {
+      "root": "/workspace/siljang-task052-operating-rules-history",
+      "path": "app/web/dist",
+      "closedMergedPr": 203,
+      "sourcePreserved": "48b24e2204473dcc905bc999df7be200921267b7"
+    },
+    {
+      "root": "/workspace/siljang-task052-runtime-checks",
+      "path": "app/server/dist",
+      "closedMergedPr": 264,
+      "sourcePreserved": "ce392a36dab3324d2236da4e7d48d96601ef2b75"
+    },
+    {
+      "root": "/workspace/siljang-task052-runtime-checks",
+      "path": "app/web/dist",
+      "closedMergedPr": 264,
+      "sourcePreserved": "ce392a36dab3324d2236da4e7d48d96601ef2b75"
+    },
+    {
+      "root": "/workspace/siljang-task053-cooldown-followup",
+      "path": "app/server/dist",
+      "closedMergedPr": 207,
+      "sourcePreserved": "20a39614de6ae15f41ac092914451e07fe812b0b"
+    },
+    {
+      "root": "/workspace/siljang-task053-cooldown-followup",
+      "path": "app/web/dist",
+      "closedMergedPr": 207,
+      "sourcePreserved": "20a39614de6ae15f41ac092914451e07fe812b0b"
+    },
+    {
+      "root": "/workspace/siljang-task053-focus-recovery",
+      "path": "app/server/dist",
+      "closedMergedPr": 219,
+      "sourcePreserved": "2bc1cba11f8517b03cbc721be0e93e21ffd59d79"
+    },
+    {
+      "root": "/workspace/siljang-task053-focus-recovery",
+      "path": "app/web/dist",
+      "closedMergedPr": 219,
+      "sourcePreserved": "2bc1cba11f8517b03cbc721be0e93e21ffd59d79"
+    },
+    {
+      "root": "/workspace/siljang-task053-payment-destination",
+      "path": "app/server/dist",
+      "closedMergedPr": 206,
+      "sourcePreserved": "a16993e97b96f203df37c67cddce10ab0836b42c"
+    },
+    {
+      "root": "/workspace/siljang-task053-payment-destination",
+      "path": "app/web/dist",
+      "closedMergedPr": 206,
+      "sourcePreserved": "a16993e97b96f203df37c67cddce10ab0836b42c"
+    },
+    {
+      "root": "/workspace/siljang-task053-runtime-checks",
+      "path": "app/server/dist",
+      "closedMergedPr": 265,
+      "sourcePreserved": "3cd3a6937f22a8f29ba3e04d9753833158133d0f"
+    },
+    {
+      "root": "/workspace/siljang-task053-runtime-checks",
+      "path": "app/web/dist",
+      "closedMergedPr": 265,
+      "sourcePreserved": "3cd3a6937f22a8f29ba3e04d9753833158133d0f"
+    },
+    {
+      "root": "/workspace/siljang-task054-fixture-source",
+      "path": "app/server/dist",
+      "closedMergedPr": 266,
+      "sourcePreserved": "40d41a764ee4586a2b84f97b89ea46bd051755fd"
+    },
+    {
+      "root": "/workspace/siljang-task054-fixture-source",
+      "path": "app/web/dist",
+      "closedMergedPr": 266,
+      "sourcePreserved": "40d41a764ee4586a2b84f97b89ea46bd051755fd"
+    },
+    {
+      "root": "/workspace/siljang-task054-focus-recovery",
+      "path": "app/server/dist",
+      "closedMergedPr": 220,
+      "sourcePreserved": "87ae23d39fc98f90cdbb8c721ce23746b0082c34"
+    },
+    {
+      "root": "/workspace/siljang-task054-focus-recovery",
+      "path": "app/web/dist",
+      "closedMergedPr": 220,
+      "sourcePreserved": "87ae23d39fc98f90cdbb8c721ce23746b0082c34"
+    },
+    {
+      "root": "/workspace/siljang-task054-kakao-channel-screen",
+      "path": "app/server/dist",
+      "closedMergedPr": 208,
+      "sourcePreserved": "c2621d2ff85fb762e2db3ef0a37de616d4849e20"
+    },
+    {
+      "root": "/workspace/siljang-task054-kakao-channel-screen",
+      "path": "app/web/dist",
+      "closedMergedPr": 208,
+      "sourcePreserved": "c2621d2ff85fb762e2db3ef0a37de616d4849e20"
+    },
+    {
+      "root": "/workspace/siljang-task054-runtime-checks",
+      "path": "app/server/dist",
+      "closedMergedPr": 261,
+      "sourcePreserved": "b4d2dca514009a3fd0b2462618d93b5f93798f58"
+    },
+    {
+      "root": "/workspace/siljang-task054-runtime-checks",
+      "path": "app/web/dist",
+      "closedMergedPr": 261,
+      "sourcePreserved": "b4d2dca514009a3fd0b2462618d93b5f93798f58"
+    },
+    {
+      "root": "/workspace/siljang-task054-status-followup",
+      "path": "app/server/dist",
+      "closedMergedPr": 210,
+      "sourcePreserved": "90a42d185023aed8ebe21e8f2ca4a77567df82aa"
+    },
+    {
+      "root": "/workspace/siljang-task054-status-followup",
+      "path": "app/web/dist",
+      "closedMergedPr": 210,
+      "sourcePreserved": "90a42d185023aed8ebe21e8f2ca4a77567df82aa"
+    },
+    {
+      "root": "/workspace/siljang-task055-booking-link-screen",
+      "path": "app/server/dist",
+      "closedMergedPr": 209,
+      "sourcePreserved": "260826e0d01ddf3743491d498801db78d8a78f61"
+    },
+    {
+      "root": "/workspace/siljang-task055-booking-link-screen",
+      "path": "app/web/dist",
+      "closedMergedPr": 209,
+      "sourcePreserved": "260826e0d01ddf3743491d498801db78d8a78f61"
+    }
+  ],
+  "noActiveProcessInRemovedWorktrees": true,
+  "freedBytes": 648966144,
+  "availableBytes": 713768960
+}

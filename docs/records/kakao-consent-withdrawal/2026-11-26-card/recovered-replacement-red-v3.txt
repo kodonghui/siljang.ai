@@ -1,0 +1,115 @@
+
+ RUN  v5.1.0 /tmp/siljang-pr299-recovery-red/app/server
+
+ ❯ test/consent-withdrawal-first-result.test.ts (24 tests | 7 failed) 2367ms
+   ❯ 사진 게시 동의 철회 카드의 현재 값과 처음 결과(TASK-149) (24)
+     × stale 교체 응답을 놓쳐도 원래 버튼이 같은 유효한 새 카드를 다시 보인다 71ms
+     × expired 교체 응답을 놓쳐도 원래 버튼이 같은 유효한 새 카드를 다시 보인다 61ms
+     × 원래 버튼 재시도도 교체 카드의 changed_again를 확인하고 명령 없이 현재 새 카드를 보인다 56ms
+     × 원래 버튼 재시도도 교체 카드의 expired_again를 확인하고 명령 없이 현재 새 카드를 보인다 51ms
+     × 교체 카드가 이미 완료됐으면 예전 버튼도 그 처음 업무 결과만 보인다 84ms
+     × 다른 가게 카드로 바뀐 교체 참조는 내용을 보이거나 실행하지 않는다 89ms
+     × 순환한 교체 참조는 새 카드를 만들거나 끝없이 조회하지 않는다 55ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/consent-withdrawal-first-result.test.ts > 사진 게시 동의 철회 카드의 현재 값과 처음 결과(TASK-149) > stale 교체 응답을 놓쳐도 원래 버튼이 같은 유효한 새 카드를 다시 보인다
+ FAIL  test/consent-withdrawal-first-result.test.ts > 사진 게시 동의 철회 카드의 현재 값과 처음 결과(TASK-149) > expired 교체 응답을 놓쳐도 원래 버튼이 같은 유효한 새 카드를 다시 보인다
+TypeError: .toMatch() expects to receive a string, but got undefined
+ ❯ cardKeyOf test/consent-withdrawal-first-result.test.ts:291:17
+    289|     };
+    290|     const key = value.template?.outputs?.find((output) => output.textC…
+    291|     expect(key).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
+       |                 ^
+    292|     if (key === undefined) throw new Error("교체 카드 키가 없어요");
+    293|     return key;
+ ❯ test/consent-withdrawal-first-result.test.ts:321:14
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  test/consent-withdrawal-first-result.test.ts > 사진 게시 동의 철회 카드의 현재 값과 처음 결과(TASK-149) > 원래 버튼 재시도도 교체 카드의 changed_again를 확인하고 명령 없이 현재 새 카드를 보인다
+ FAIL  test/consent-withdrawal-first-result.test.ts > 사진 게시 동의 철회 카드의 현재 값과 처음 결과(TASK-149) > 원래 버튼 재시도도 교체 카드의 expired_again를 확인하고 명령 없이 현재 새 카드를 보인다
+TypeError: .toMatch() expects to receive a string, but got undefined
+ ❯ cardKeyOf test/consent-withdrawal-first-result.test.ts:291:17
+    289|     };
+    290|     const key = value.template?.outputs?.find((output) => output.textC…
+    291|     expect(key).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
+       |                 ^
+    292|     if (key === undefined) throw new Error("교체 카드 키가 없어요");
+    293|     return key;
+ ❯ test/consent-withdrawal-first-result.test.ts:341:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  test/consent-withdrawal-first-result.test.ts > 사진 게시 동의 철회 카드의 현재 값과 처음 결과(TASK-149) > 교체 카드가 이미 완료됐으면 예전 버튼도 그 처음 업무 결과만 보인다
+AssertionError: expected { version: '2.0', template: { …(1) } } to deeply equal { version: '2.0', template: { …(1) } }
+
+- Expected
++ Received
+
+@@ -1,11 +1,16 @@
+  {
+    "template": {
+      "outputs": [
+        {
+          "simpleText": {
+-           "text": "교체 카드의 합성 첫 결과",
++           "text": "이미 처리했어요",
++         },
++       },
++       {
++         "simpleText": {
++           "text": "내용이 바뀌었어요. 새 카드에서 눌러 주세요",
+          },
+        },
+      ],
+    },
+    "version": "2.0",
+
+ ❯ test/consent-withdrawal-first-result.test.ts:366:35
+    364|     const repeated = await http(original.cardKey, NOW, shop.userKey, e…
+    365|     expect(repeated.headers.get("Siljang-Outcome")).toBe("card_used");
+    366|     expect(await repeated.json()).toEqual(body);
+       |                                   ^
+    367|     expect(execute).toHaveBeenCalledTimes(1);
+    368|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  test/consent-withdrawal-first-result.test.ts > 사진 게시 동의 철회 카드의 현재 값과 처음 결과(TASK-149) > 다른 가게 카드로 바뀐 교체 참조는 내용을 보이거나 실행하지 않는다
+AssertionError: expected 'card_used' to be 'retry_needed' // Object.is equality
+
+Expected: "retry_needed"
+Received: "card_used"
+
+ ❯ test/consent-withdrawal-first-result.test.ts:395:51
+    393|     const execute = vi.fn(async () => ({ outcome: "consent_withdrawn",…
+    394|     const result = await http(original.cardKey, NOW, shop.userKey, exe…
+    395|     expect(result.headers.get("Siljang-Outcome")).toBe("retry_needed");
+       |                                                   ^
+    396|     expect(JSON.stringify(await result.json())).not.toContain("철회할 사진"…
+    397|     expect(execute).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  test/consent-withdrawal-first-result.test.ts > 사진 게시 동의 철회 카드의 현재 값과 처음 결과(TASK-149) > 순환한 교체 참조는 새 카드를 만들거나 끝없이 조회하지 않는다
+AssertionError: expected 'card_used' to be 'retry_needed' // Object.is equality
+
+Expected: "retry_needed"
+Received: "card_used"
+
+ ❯ test/consent-withdrawal-first-result.test.ts:406:51
+    404|     );
+    405|     const result = await http(original.cardKey);
+    406|     expect(result.headers.get("Siljang-Outcome")).toBe("retry_needed");
+       |                                                   ^
+    407|     expect((await isolated.db.query("SELECT id FROM confirm_cards WHER…
+    408|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 17 passed (24)
+   Start at  07:07:36
+   Duration  6.15s (tests 40%, transform 31%, import 29%)

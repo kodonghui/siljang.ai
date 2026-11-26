@@ -1,6 +1,7 @@
 /** 카카오 발신 내용. 확인 카드는 서버가 저장한 표시 값만 받습니다. */
 import type { ConfirmCardView } from "./confirm-card-store";
 import { type KakaoChangeRequestView, kakaoChangeRequestMessage } from "./kakao-change-request-message";
+import { type KakaoConsentWithdrawalView, kakaoConsentWithdrawalMessage } from "./kakao-consent-withdrawal-message";
 import {
   type KakaoCustomerNoticeButton,
   type KakaoCustomerNoticeDisplayView,
@@ -42,6 +43,11 @@ export interface KakaoIssueReportContent {
   readonly view: KakaoIssueReportView;
   readonly part?: number;
 }
+export interface KakaoConsentWithdrawalContent {
+  readonly kind: "consent_withdrawal_card";
+  readonly view: KakaoConsentWithdrawalView;
+  readonly part?: number;
+}
 export type KakaoMessageContent =
   | string
   | ConfirmCardView
@@ -49,6 +55,7 @@ export type KakaoMessageContent =
   | KakaoMyOrderContent
   | KakaoCustomerNoticeContent
   | KakaoChangeRequestContent
+  | KakaoConsentWithdrawalContent
   | KakaoIssueReportContent;
 type MyOrderButton = Extract<KakaoMyOrderOutput, { readonly textCard: unknown }>["textCard"]["buttons"][number];
 export type KakaoMessageOutput =
@@ -82,6 +89,7 @@ type Presentation =
   | KakaoMyOrderContent
   | KakaoCustomerNoticeContent
   | KakaoChangeRequestContent
+  | KakaoConsentWithdrawalContent
   | KakaoIssueReportContent;
 function isPresentation(content: KakaoMessageContent): content is Presentation {
   return (
@@ -90,10 +98,12 @@ function isPresentation(content: KakaoMessageContent): content is Presentation {
       content.kind === "my_order" ||
       content.kind === "customer_notice" ||
       content.kind === "change_card" ||
+      content.kind === "consent_withdrawal_card" ||
       content.kind === "issue_card")
   );
 }
 function presentationBody(content: Presentation): PresentationBody {
+  if (content.kind === "consent_withdrawal_card") return kakaoConsentWithdrawalMessage(content.view);
   if (content.kind === "issue_card") return kakaoIssueReportMessage(content.view);
   if (content.kind === "change_card") return kakaoChangeRequestMessage(content.view);
   if (content.kind === "payment_notice") return kakaoPaymentMessage(content.view);
@@ -109,6 +119,21 @@ const text = (value: unknown, max: number): value is string =>
 
 function expandContents(contents: readonly KakaoMessageContent[], render = presentationBody): KakaoMessageContent[] {
   return contents.flatMap<KakaoMessageContent>((content) => {
+    if (typeof content !== "string" && content.kind === "consent_withdrawal" && content.consentWithdrawal !== undefined)
+      return expandContents(
+        [
+          {
+            kind: "consent_withdrawal_card",
+            view: {
+              ...content.consentWithdrawal,
+              state: "normal",
+              cardKey: content.cardKey,
+              blockId: content.blockId,
+            },
+          },
+        ],
+        render,
+      );
     if (typeof content !== "string" && content.kind === "change_request" && content.changeRequest !== undefined)
       return expandContents(
         [
