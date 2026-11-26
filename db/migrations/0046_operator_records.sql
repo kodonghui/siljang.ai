@@ -1,5 +1,5 @@
 -- TASK-159: 운영자의 가린 기록 조회. 원문 열기와 접속기록은 API-077/074~076의 같은 트랜잭션에서 처리한다.
-BEGIN;
+-- 트랜잭션은 db-migrate.sh와 스테이징 갱신기가 연다.
 
 CREATE FUNCTION read_operator_order(p_shop uuid,p_operator uuid,p_order uuid)
 RETURNS TABLE(body jsonb,customer_id uuid)
@@ -207,5 +207,3 @@ END;
 $$;
 COMMENT ON FUNCTION read_operator_original(uuid,uuid,text,uuid,jsonb,timestamptz) IS 'TASK-159 사유 있는 원문 열기 자료: 가게·운영자·대상 한 개만, 지우기와 같은 부모 잠금 순서. 호출자는 응답과 접속기록을 같은 트랜잭션에 둠';
 REVOKE ALL ON FUNCTION read_operator_original(uuid,uuid,text,uuid,jsonb,timestamptz) FROM PUBLIC;
-
-COMMIT;

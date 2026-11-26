@@ -1,0 +1,62 @@
+{
+  "sourceCommit": "d10c1a186e806000c855e87539715fde601f9d3d",
+  "baseMain": "e2d8448d7ce41155937d4e7d67546a1413444bf6",
+  "scopeGitObjects": {
+    "app/server": "10f33451406ae2eeca1f64375f322396ab4b01cf",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "d1d1800f7ae15ab54de1d4d2636031e8c52e4ecf",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "054b495f5fb0665c24475252cf20edd8d83f91a2",
+    ".github/workflows/app.yml": "9ae8e7718d47ff7b2d81d8085a8beb03c2d54e47",
+    "tools/staging-login-callback-grants.sql": "5c75bceb32900e4fde72cd8f77d811f8cdc1a1e2",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "unchangedOriginalSecurityAndReviewTestObjects": {
+    "app/server/test/consultation-idle.test.ts": "ffa4330f9e6c9210739681463416d42ae5720987",
+    "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+    "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299",
+    "app/server/test/shop-scope-static.test.ts": "8bb336c3cc68342fad3b4e0aa58b292bba97872c",
+    "app/server/test/kakao-review-dedup.test.ts": "a7448fb18e57a157de386a45be1e3fa8c2895250",
+    "app/server/test/kakao-review-photos.test.ts": "54a249bd42dc6e59170a8e6fb36b2dce5b2833e5"
+  },
+  "legacyRuntimeGrantsUnchanged": true,
+  "migrations": 46,
+  "coreFiles": 6,
+  "corePassed": 173,
+  "minimumRoleTests": 4,
+  "concurrencyTests": 3,
+  "locksRemovedFailed": 3,
+  "nodeFixturePassed": 63,
+  "nodeStagingPassed": 37,
+  "dbChecksPassed": 15,
+  "stageChecks": 8,
+  "mockup": {
+    "passed": 13,
+    "unverified": 1
+  },
+  "apiContractGeneratorReusedUnchanged": true,
+  "wbs": {
+    "checks": 18,
+    "errors": 0,
+    "finished": 36,
+    "implemented": 57
+  },
+  "npmCi": {
+    "fresh": true,
+    "packages": 161,
+    "seconds": 12,
+    "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22"
+  },
+  "combinedNpmTestExit": 1,
+  "buildExit": null,
+  "nativeAside": "unverified, academy SSH previously failed twice; no recovery evidence",
+  "manualReviewRequests": 0,
+  "serverFiles": 195,
+  "serverPassed": 3612,
+  "serverFailed": 3,
+  "web": "not run after server failure",
+  "build": "not run after server failure",
+  "freshDatabaseRemaining": 0,
+  "failure": "0046 BEGIN/COMMIT duplicated the transaction owned by the staging update tool; 42601 in 3 pre-existing tests"
+}
