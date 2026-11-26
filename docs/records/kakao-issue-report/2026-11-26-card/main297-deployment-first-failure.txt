@@ -1,0 +1,5 @@
+2026-11-26T06:04:14.3507203Z Uploaded siljang-staging (6.64 sec)
+2026-11-26T06:04:15.8399765Z Deployed siljang-staging triggers (1.49 sec)
+2026-11-26T06:04:15.8402403Z Current Version ID: 98666fd0-b102-45c9-92f5-d64778d1e184
+2026-11-26T06:04:17.9128813Z {"event":"staging_runtime_failed","code":"staging_tag_mismatch"}
+2026-11-26T06:04:17.9164793Z ##[error]Process completed with exit code 1.
