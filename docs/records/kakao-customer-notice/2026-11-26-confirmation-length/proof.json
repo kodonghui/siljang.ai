@@ -1,10 +1,10 @@
 {
-  "sourceCommit": "1fb39631ad02e34237540510c7075a0e55ea99ec",
-  "publicEquivalentHead": "36fdde7a18b82160386cf2adf74ca2293adccb50",
-  "sourceTree": "41ad773ae1491fe691fc931422152771dfec602c",
+  "sourceCommit": "054b6e5500016d067780dfc91514804da78e3e23",
+  "publicEquivalentHead": "63cd4c34b9b7a6975386c2e4ff82bd339de137ea",
+  "sourceTree": "55e9d2ef175c4a14d8f21a97cf20675e15b00f1e",
   "baseMain": "d2d7e49310fdb358306a63a9b04054c0ded5dae8",
   "scopeGitObjects": {
-    "app/server": "88e0454981eaa478ff7478904ce2c1a73723b01b",
+    "app/server": "d0df115c37352486521a3728e00bb9efb7dd8cd2",
     "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
     "db": "e30e8dae343f4b0799f9aaa3b4ec01c94c7704c8",
     "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
@@ -17,11 +17,15 @@
   "migrations": 42,
   "server": {
     "files": 175,
-    "passed": 3268
+    "passed": 3279
   },
   "web": {
     "files": 73,
     "passed": 1775
+  },
+  "related": {
+    "files": 14,
+    "passed": 330
   },
   "combinedNpmTestExit": 0,
   "buildExit": 0,
@@ -38,7 +42,15 @@
   "photoPlaceholders": true,
   "modelCallsAdded": 0,
   "outboundRequestsAdded": 0,
-  "npmCi": "로컬 동일 lock 설치 재사용. 새 설치는 현재 리뷰 준비 PR CI에서 확인 예정",
+  "npmCi": "로컬 동일 lock 설치 재사용. 공개 같은 소스의 app CI45745088879에서 npm ci 성공 확인",
   "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
-  "classification": "새 빈 전체와 현재 CLI 확인. 현재 PR CI/리뷰/병합/자기 main 전. TASK109 구현 완료 아님"
+  "review": {
+    "id": 7180701134,
+    "correctedRedFailed": 7,
+    "correctedRedPassed": 45,
+    "fixtureFailures": 0,
+    "greenPassed": 52,
+    "onlyFindingFixAfterReview": true
+  },
+  "classification": "P2 고친 소스의 새 빈 전체와 현재 CLI·app/db CI 확인. 최종 기록 head CI/수동 리뷰 요청/병합/자기 main 전. TASK109 구현 완료 아님"
 }
