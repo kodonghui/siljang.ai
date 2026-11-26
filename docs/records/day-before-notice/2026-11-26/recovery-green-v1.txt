@@ -1,0 +1,12 @@
+
+ RUN  v5.1.0 /workspace/siljang-task134-day-before-notice/app/server
+
+
+ Test Files  7 passed (7)
+      Tests  143 passed (143)
+   Start at  00:11:20
+   Duration  23.38s (tests 72%, import 26%, transform 2%)
+
+     Import  191 modules were evaluated 289 times · 5.87s total, 26% of tracked time
+             ~1.99s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

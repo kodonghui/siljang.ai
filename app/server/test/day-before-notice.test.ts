@@ -320,6 +320,12 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
         isolated.db,
       );
       expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, NOW))).toBe(true);
+      const original = (
+        await isolated.db.query<{ id: string }>("SELECT id FROM notifications WHERE shop_id=$1 AND kind='day_before'", [
+          shop.shopId,
+        ])
+      ).rows[0];
+      if (original === undefined) throw new Error("합성 전날 안내 없음");
       if (change === "pickup")
         await isolated.db.transaction(async (tx) => {
           const at = new Date(PICKUP.getTime() + 3600000);
@@ -345,6 +351,26 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
           ])
         ).rows[0]?.status,
       ).toBe("dropped");
+      const readyAt = change === "time-zone" ? new Date("2026-11-27T18:00:00Z") : NOW;
+      if (change === "notice-time") {
+        expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, NOW))).toBe(false);
+        // 원래 시각으로 되돌리면 내용/예약이 같아도 닫힌 상태를 복구한다.
+        await isolated.db.query("UPDATE business_calendars SET day_before_notice_time='18:00' WHERE shop_id=$1", [
+          shop.shopId,
+        ]);
+      }
+      expect(
+        (await isolated.db.query<{ id: string }>(DUE_SOURCES.order_day_before.find, [readyAt, 100])).rows.map(
+          (r) => r.id,
+        ),
+      ).toContain(shop.orderId);
+      expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, readyAt))).toBe(true);
+      const restored = await scoped.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: readyAt }));
+      expect(restored.messages.map((message) => message.id)).toEqual([original.id]);
+      if (change === "pickup") expect(restored.messages[0]?.text).toContain("16:00");
+      if (change === "address") expect(restored.messages[0]?.text).toContain("바뀐 합성 픽업 장소");
+      if (change === "phone") expect(restored.messages[0]?.text).toContain("02-000-0001");
+      if (change === "time-zone") expect(restored.messages[0]?.text).toContain("06:00");
     },
   );
 });
