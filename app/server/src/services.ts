@@ -16,6 +16,7 @@ import { type FileUrls, fileUrlSigner } from "./file-url";
 import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { type KakaoEvents, type KakaoOwnerEvents, kakaoEvents, kakaoOwnerEvents } from "./kakao-event";
 import { deriveKakaoProofPhrase, deriveKakaoSkillKey } from "./kakao-skill-auth";
+import { type LedgerAuthorizationService, ledgerAuthorizationService } from "./ledger-authorization";
 import { type OperatorAuth, supabaseAuth } from "./operator-auth";
 import { kakaoOwnerAuth, type OwnerAuth } from "./owner-auth";
 import { type ImageBinding, type PhotoNormalizer, photoNormalizer } from "./photo-normalizer";
@@ -54,6 +55,7 @@ export interface Services {
   /** 운영자 인증 서비스(Supabase Auth). SUPABASE_URL·SUPABASE_PUBLISHABLE_KEY가 없으면 MissingSettingError. */
   operatorAuth(): OperatorAuth;
   ownerAuth(): OwnerAuth;
+  ledgerAuthorization(): LedgerAuthorizationService;
   /** ms 밀리초 기다린다(운영자 로그인 실패 응답의 최소 시간, operator-login.ts). */
   wait(ms: number): Promise<void>;
   readonly kakaoCallbackQueue: KakaoCallbackQueue | undefined;
@@ -74,6 +76,7 @@ export interface ServiceOverrides {
   readonly kakaoOwnerEvents?: KakaoOwnerEvents;
   readonly operatorAuth?: OperatorAuth;
   readonly ownerAuth?: OwnerAuth;
+  readonly ledgerAuthorization?: LedgerAuthorizationService;
   readonly wait?: (ms: number) => Promise<void>;
   readonly kakaoCallbackQueue?: KakaoCallbackQueue;
 }
@@ -98,6 +101,7 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
   let ownerEvents: KakaoOwnerEvents | undefined = overrides.kakaoOwnerEvents;
   let auth: OperatorAuth | undefined = overrides.operatorAuth;
   let ownerAuth: OwnerAuth | undefined = overrides.ownerAuth;
+  let ledgerAuth: LedgerAuthorizationService | undefined = overrides.ledgerAuthorization;
   return {
     now: overrides.now ?? (() => new Date()),
     publicAppOrigin: overrides.publicAppOrigin === undefined ? settings.publicAppOrigin : overrides.publicAppOrigin,
@@ -182,6 +186,12 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
       if (settings.ownerAuth === null) throw new MissingSettingError("KAKAO owner login settings are not set");
       ownerAuth = kakaoOwnerAuth(settings.ownerAuth);
       return ownerAuth;
+    },
+    ledgerAuthorization() {
+      if (ledgerAuth !== undefined) return ledgerAuth;
+      if (settings.ledgerOAuth === null) throw new MissingSettingError("Google ledger settings are not set");
+      ledgerAuth = ledgerAuthorizationService(channelSecret(), settings.ledgerOAuth);
+      return ledgerAuth;
     },
     wait: overrides.wait ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
   };

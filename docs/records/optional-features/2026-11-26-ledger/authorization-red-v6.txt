@@ -1,0 +1,178 @@
+
+> test
+> vitest run --run test/ledger-status.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/ledger-status.test.ts (19 tests | 8 failed) 1533ms
+   ❯ API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 (19)
+     × API034는 요청 키 없이 실제 세션의 가게/사장님/브라우저에 묶은600초 state를 만든다 26ms
+     × API034를 다시 시작하면 브라우저 nonce/state를 새로 만든다 15ms
+     × API034의 설정 밖 주소 https://siljang.example/owner/ledger/callback?altered=1는422다 15ms
+     × API034의 설정 밖 주소 https://other.example/owner/ledger/callback는422다 11ms
+     × API034는 잘못된/추가 입력과 다른 Origin을 거절한다 15ms
+     × API034 사장님 세션 없음/운영자 세션은401이다 14ms
+     × API034 가게 없는 사장님 세션은404다 17ms
+     × API034 구글 설정이 없으면 값 없는500이고 기존 조회/상태 확인은 유지한다 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > API034는 요청 키 없이 실제 세션의 가게/사장님/브라우저에 묶은600초 state를 만든다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"30d8fad382f7bed9cc690fde3108d6a1","instance":"/api/owner/ledger/authorization"}: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/ledger-status.test.ts:229:59
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > API034를 다시 시작하면 브라우저 nonce/state를 새로 만든다
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ test/ledger-status.test.ts:239:81
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > API034의 설정 밖 주소 https://siljang.example/owner/ledger/callback?altered=1는422다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"85c02046b9b8d54e89b49670b270c66b","instance":"/api/owner/ledger/authorization"}: expected 404 to be 422 // Object.is equality
+
+- Expected
++ Received
+
+- 422
++ 404
+
+ ❯ expectProblem test/support/contract.ts:34:28
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+       |                            ^
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+     36|   expect(res.headers.get("cache-control")).toBe("no-store");
+ ❯ test/ledger-status.test.ts:242:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > API034의 설정 밖 주소 https://other.example/owner/ledger/callback는422다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"4b4d9062e44576f2d395122fb57b73b6","instance":"/api/owner/ledger/authorization"}: expected 404 to be 422 // Object.is equality
+
+- Expected
++ Received
+
+- 422
++ 404
+
+ ❯ expectProblem test/support/contract.ts:34:28
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+       |                            ^
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+     36|   expect(res.headers.get("cache-control")).toBe("no-store");
+ ❯ test/ledger-status.test.ts:242:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > API034는 잘못된/추가 입력과 다른 Origin을 거절한다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"451833d4a146eee16a99b01850f45c69","instance":"/api/owner/ledger/authorization"}: expected 404 to be 422 // Object.is equality
+
+- Expected
++ Received
+
+- 422
++ 404
+
+ ❯ expectProblem test/support/contract.ts:34:28
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+       |                            ^
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+     36|   expect(res.headers.get("cache-control")).toBe("no-store");
+ ❯ test/ledger-status.test.ts:245:164
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > API034 사장님 세션 없음/운영자 세션은401이다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"2b89e13681cfb3e55b5993892c614183","instance":"/api/owner/ledger/authorization"}: expected 404 to be 401 // Object.is equality
+
+- Expected
++ Received
+
+- 401
++ 404
+
+ ❯ expectProblem test/support/contract.ts:34:28
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+       |                            ^
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+     36|   expect(res.headers.get("cache-control")).toBe("no-store");
+ ❯ test/ledger-status.test.ts:249:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > API034 가게 없는 사장님 세션은404다
+AssertionError: expected 'not_found' to be 'shop_not_registered' // Object.is equality
+
+Expected: "shop_not_registered"
+Received: "not_found"
+
+ ❯ expectProblem test/support/contract.ts:39:21
+     37|   const body = JSON.parse(text) as Record<string, unknown>;
+     38|   expectSchema("Problem", body);
+     39|   expect(body.code).toBe(code);
+       |                     ^
+     40|   return body;
+     41| }
+ ❯ test/ledger-status.test.ts:252:169
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > API034 구글 설정이 없으면 값 없는500이고 기존 조회/상태 확인은 유지한다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"8897e8b163997b9829a71ff212e59ad1","instance":"/api/owner/ledger/authorization"}: expected 404 to be 500 // Object.is equality
+
+- Expected
++ Received
+
+- 500
++ 404
+
+ ❯ expectProblem test/support/contract.ts:34:28
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+       |                            ^
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+     36|   expect(res.headers.get("cache-control")).toBe("no-store");
+ ❯ test/ledger-status.test.ts:255:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 11 passed (19)
+   Start at  11:42:57
+   Duration  4.10s (import 50%, tests 39%, transform 11%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task156-optional-features/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task156-optional-features/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/ledger-status.test.ts

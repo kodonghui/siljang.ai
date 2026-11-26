@@ -6,6 +6,50 @@ import { newFieldKey } from "./support/field-keys";
 const fakeKey = (prefix: string) => `${prefix}${"Zq7".repeat(16)}`;
 
 describe("readSettings", () => {
+  it("장부 구글 설정은 모두 없으면 null이고 갖추면 두 값을 비밀 래퍼로 읽는다", () => {
+    expect(readSettings({}).ledgerOAuth).toBeNull();
+    const id = crypto.randomUUID(),
+      secret = crypto.randomUUID() + crypto.randomUUID(),
+      redirect = "https://siljang.example/owner/ledger/callback";
+    const settings = readSettings({
+      GOOGLE_CLIENT_ID: id,
+      GOOGLE_CLIENT_SECRET: secret,
+      GOOGLE_LEDGER_REDIRECT_URIS: redirect,
+    });
+    expect(settings.ledgerOAuth?.clientId.reveal()).toBe(id);
+    expect(settings.ledgerOAuth?.clientSecret.reveal()).toBe(secret);
+    expect(settings.ledgerOAuth?.redirectUris).toEqual([redirect]);
+    expect(JSON.stringify(settings)).not.toContain(id);
+    expect(JSON.stringify(settings)).not.toContain(secret);
+  });
+  it("장부의 일부 설정과 정확하지 않은 https 복귀 주소는 값을 노출하지 않고 멈춘다", () => {
+    const secret = crypto.randomUUID() + crypto.randomUUID(),
+      base = {
+        GOOGLE_CLIENT_ID: crypto.randomUUID(),
+        GOOGLE_CLIENT_SECRET: secret,
+        GOOGLE_LEDGER_REDIRECT_URIS: "https://siljang.example/callback",
+      };
+    for (const env of [
+      { GOOGLE_CLIENT_ID: base.GOOGLE_CLIENT_ID },
+      { ...base, GOOGLE_CLIENT_SECRET: "" },
+      ...[
+        "http://siljang.example/callback",
+        "https://name:password@siljang.example/callback",
+        "https://siljang.example/callback#x",
+        "https://siljang.example/callback,",
+      ].map((GOOGLE_LEDGER_REDIRECT_URIS) => ({ ...base, GOOGLE_LEDGER_REDIRECT_URIS })),
+    ]) {
+      let error: unknown;
+      try {
+        readSettings(env);
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).toBeInstanceOf(SettingsError);
+      expect(String(error)).not.toContain(secret);
+      expect(String(error)).not.toContain("password");
+    }
+  });
   it("APP_ENV가 없으면 production으로 친다", () => {
     expect(readSettings({}).appEnv).toBe("production");
     expect(readSettings({ APP_ENV: "" }).appEnv).toBe("production");

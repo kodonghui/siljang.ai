@@ -4,7 +4,8 @@ import { createApp, type HonoEnv } from "../../src/app";
 import type { Queryable } from "../../src/db";
 import type { FieldCrypto } from "../../src/field-crypto";
 import { deriveKakaoSkillKey } from "../../src/kakao-skill-auth";
-import { OWNER_COOKIE } from "../../src/owner-oauth";
+import { LEDGER_COOKIE, verifyLedgerOAuth } from "../../src/ledger-oauth";
+import { OWNER_COOKIE, readCookie } from "../../src/owner-oauth";
 import { createOwnerSession } from "../../src/owner-session";
 import { readPrivacyPolicySettings } from "../../src/privacy-policy-settings";
 import { REQUEST_KEY_HEADER } from "../../src/request-key";
@@ -152,8 +153,8 @@ interface BookingCase {
 }
 
 interface LedgerShopCase {
-  readonly method: "GET";
-  readonly path: "/owner/ledger";
+  readonly method: "GET" | "POST";
+  readonly path: "/owner/ledger" | "/owner/ledger/authorization";
   readonly kind: "ledger";
 }
 
@@ -184,6 +185,7 @@ export type CrossShopCase =
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "GET", path: "/owner/ledger", kind: "ledger" },
+  { method: "POST", path: "/owner/ledger/authorization", kind: "ledger" },
   {
     method: "GET",
     path: "/owner/consultations/:consultationId/messages",
@@ -347,6 +349,55 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
   const db = testDb();
   try {
     if (c.kind === "ledger") {
+      if (c.method === "POST") {
+        const redirect = "https://siljang.example/owner/ledger/callback",
+          before = await snapshots(db, env);
+        const config = testEnv({
+          GOOGLE_CLIENT_ID: `${newUuid()}.apps.googleusercontent.com`,
+          GOOGLE_CLIENT_SECRET: newUuid() + newUuid(),
+          GOOGLE_LEDGER_REDIRECT_URIS: redirect,
+        });
+        for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+          const response = await env.app.request(
+            `/api${c.path}?shopId=${target}&ownerId=${env.b.ownerId}`,
+            {
+              method: "POST",
+              headers: { ...env.as(env.a), origin: "http://localhost", "content-type": "application/json" },
+              body: JSON.stringify({ redirectUri: redirect }),
+            },
+            config,
+          );
+          expect(response.status, await response.clone().text()).toBe(200);
+          const body = (await response.json()) as { state: string },
+            nonce = readCookie(
+              response.headers.getSetCookie().find((value) => value.startsWith(`${LEDGER_COOKIE}=`)),
+              LEDGER_COOKIE,
+            ),
+            now = new Date();
+          expect(
+            await verifyLedgerOAuth(
+              new Secret(TEST_HASH_KEY),
+              { shopId: env.a.shopId, ownerId: env.a.ownerId },
+              body.state,
+              nonce,
+              redirect,
+              now,
+            ),
+          ).not.toBeNull();
+          expect(
+            await verifyLedgerOAuth(
+              new Secret(TEST_HASH_KEY),
+              { shopId: env.b.shopId, ownerId: env.b.ownerId },
+              body.state,
+              nonce,
+              redirect,
+              now,
+            ),
+          ).toBeNull();
+        }
+        expect(await snapshots(db, env)).toEqual(before);
+        return;
+      }
       const targets = [
         { shop: env.a, name: "가게A 장부" },
         { shop: env.b, name: "가게B 장부" },

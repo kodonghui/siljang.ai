@@ -256,7 +256,11 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     const setCookie = response.headers.get("set-cookie");
     expect(setCookie).toContain(`${LEDGER_COOKIE}=`);
     for (const flag of ["HttpOnly", "Secure", "SameSite=Lax", "Max-Age=600"]) expect(setCookie).toContain(flag);
-    const nonce = readCookie(setCookie, LEDGER_COOKIE),
+    expect(response.headers.getSetCookie().some((value) => value.startsWith(`${OWNER_COOKIE}=`))).toBe(true);
+    const nonce = readCookie(
+        response.headers.getSetCookie().find((value) => value.startsWith(`${LEDGER_COOKIE}=`)),
+        LEDGER_COOKIE,
+      ),
       url = new URL(body.authorizationUrl);
     expect(url.origin + url.pathname).toBe("https://accounts.google.com/o/oauth2/v2/auth");
     expect(url.searchParams.get("state")).toBe(body.state);
@@ -291,7 +295,9 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
     expect(first.headers.get("set-cookie")).not.toBe(second.headers.get("set-cookie"));
-    expect((await first.json()).state).not.toBe((await second.json()).state);
+    expect(((await first.json()) as { state: string }).state).not.toBe(
+      ((await second.json()) as { state: string }).state,
+    );
   });
   it.each([redirect + "?altered=1", "https://other.example/owner/ledger/callback"])(
     "API034의 설정 밖 주소 %s는422다",
@@ -307,7 +313,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
       { redirectUri: redirect, code: "never-echo-this-code" },
     ])
       await expectProblem(await authorize(body), "validation_failed");
-    await expectProblem(await authorize(undefined, { origin: "https://other.example" }), "validation_failed");
+    await expectProblem(await authorize(undefined, { origin: "https://other.example" }), "unauthenticated");
   });
   it("API034 사장님 세션 없음/운영자 세션은401이다", async () => {
     await expectProblem(await authorize(undefined, { cookie: "" }), "unauthenticated");
