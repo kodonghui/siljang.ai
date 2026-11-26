@@ -429,7 +429,14 @@ async function refreshPaymentClaimClock(db: ShopDb, card: CardRow, source: Sourc
   }
   card.payload.paymentClaimBinding = current;
 }
-function withCardPresentation(card: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
+function withCardPresentation(stored: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
+  const card = { ...stored, blockId: source.blockId };
+  if (source.orderRequest !== undefined && source.orderRequestTimeZone !== undefined)
+    return {
+      ...card,
+      orderRequest: source.orderRequest,
+      description: orderCardDeadline(source.description, source.orderRequestTimeZone, expiresAt),
+    };
   if (source.consentWithdrawal?.available === true)
     return {
       ...card,
@@ -594,6 +601,33 @@ const ORDER_NOT_READY = {
   outcome: "not_allowed_now",
   text: "지금은 할 수 없어요: 주문 내용과 견적을 다시 확인해야 해요. 채널 대화에서 주문 내용을 다시 말씀해 주세요",
 } as const;
+function unavailablePressAnswer(card: CardRow, source: Source | null): ConfirmCardAnswer | undefined {
+  if (source === null) return card.kind === "order_request" ? ORDER_NOT_READY : RETRY_NEEDED;
+  if (source.consentWithdrawal?.available === false)
+    return source.consentWithdrawal.reason === "no_consented_photos"
+      ? { kind: "consent_withdrawal", outcome: "not_allowed_now", text: source.consentWithdrawal.text }
+      : RETRY_NEEDED;
+  if (source.issueReport?.available === false)
+    return source.issueReport.reason === "not_received"
+      ? { kind: "issue_report", outcome: "not_allowed_now", text: source.issueReport.text }
+      : RETRY_NEEDED;
+  if (source.changeRequest?.available === false)
+    return {
+      outcome: "not_allowed_now",
+      text: source.changeRequest.text,
+      kind: "change_request",
+      changeRequestStatus: source.changeRequest.status,
+    };
+  if (source.paymentClaim?.available === false)
+    return {
+      outcome: "not_allowed_now",
+      text: source.paymentClaim.text,
+      ...(card.payload.presentation === undefined || source.paymentClaim.amountConfirmation === undefined
+        ? {}
+        : { card: withCardPresentation(card.payload.presentation, source, card.expires_at) }),
+    };
+  return undefined;
+}
 async function processVerifiedCard(
   tx: ShopDb,
   input: PressConfirmCard,
@@ -619,14 +653,14 @@ async function processVerifiedCard(
       ? depositor.value
       : undefined;
   const invalidDepositor = depositor !== undefined && depositorName === undefined;
-  if (initial.used_at !== null)
-    return initial.kind === "consent_withdrawal" && initial.payload.replacedBy !== undefined
-      ? replayConsentWithdrawalReplacement(tx, initial, input, knownBlockId)
-      : usedAnswer(initial);
-  if (input.choice === "decline")
+  if (input.choice === "decline" && (initial.used_at === null || initial.payload.replacedBy !== undefined))
     return ["payment_claim", "change_request", "issue_report", "consent_withdrawal"].includes(initial.kind)
       ? { ...DECLINED, kind: initial.kind }
       : DECLINED;
+  if (initial.used_at !== null)
+    return initial.payload.replacedBy !== undefined
+      ? replayCardReplacement(tx, initial, input, knownBlockId, !invalidDepositor)
+      : usedAnswer(initial);
   const target: ShowConfirmCard = {
     ...input,
     kind: initial.kind,
@@ -636,30 +670,9 @@ async function processVerifiedCard(
     ...(initial.payload.proposedChanges === undefined ? {} : { proposedChanges: initial.payload.proposedChanges }),
   };
   const source = await readSource(tx, target, knownBlockId);
-  if (source === null) return initial.kind === "order_request" ? ORDER_NOT_READY : RETRY_NEEDED;
-  if (source.consentWithdrawal?.available === false)
-    return source.consentWithdrawal.reason === "no_consented_photos"
-      ? { kind: "consent_withdrawal", outcome: "not_allowed_now", text: source.consentWithdrawal.text }
-      : RETRY_NEEDED;
-  if (source.issueReport?.available === false)
-    return source.issueReport.reason === "not_received"
-      ? { kind: "issue_report", outcome: "not_allowed_now", text: source.issueReport.text }
-      : RETRY_NEEDED;
-  if (source.changeRequest?.available === false)
-    return {
-      outcome: "not_allowed_now",
-      text: source.changeRequest.text,
-      kind: "change_request",
-      changeRequestStatus: source.changeRequest.status,
-    };
-  if (source.paymentClaim?.available === false)
-    return {
-      outcome: "not_allowed_now",
-      text: source.paymentClaim.text,
-      ...(initial.payload.presentation === undefined || source.paymentClaim.amountConfirmation === undefined
-        ? {}
-        : { card: withCardPresentation(initial.payload.presentation, source, initial.expires_at) }),
-    };
+  const unavailable = unavailablePressAnswer(initial, source);
+  if (unavailable !== undefined) return unavailable;
+  if (source === null) return RETRY_NEEDED;
   const card = await tx.found<CardRow>("SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 FOR UPDATE", [
     initial.id,
   ]);
@@ -678,7 +691,10 @@ async function processVerifiedCard(
     { ...input, currentOrderVersion: source.orderVersion, currentDraftRevision: source.draftRevision },
   );
   if (verdict === "not_recipient") return NOT_YOURS;
-  if (verdict === "used") return usedAnswer(card);
+  if (verdict === "used")
+    return card.payload.replacedBy !== undefined
+      ? replayCardReplacement(tx, card, input, knownBlockId, !invalidDepositor)
+      : usedAnswer(card);
   if (
     verdict === "stale" ||
     verdict === "expired" ||
@@ -729,13 +745,46 @@ async function processVerifiedCard(
 }
 
 /** 예전 버튼은 새 카드의 확인으로 쓰지 않는다. 같은 대상의 현재 카드만 다시 보인다. */
-async function replayConsentWithdrawalReplacement(
+async function replayCardReplacement(
   tx: ShopDb,
-  original: CardRow,
+  initial: CardRow,
   input: PressConfirmCard,
   knownBlockId?: string,
+  persistPaymentClock = true,
 ): Promise<ConfirmCardAnswer> {
-  if (original.order_id === null) return RETRY_NEEDED;
+  // 개인정보 정리도 주문·초안을 먼저 잠근다. 카드 잠금 뒤 원본을 기다리지 않는다.
+  if (initial.order_id !== null) {
+    const order = await tx.run(
+      "SELECT id FROM orders WHERE shop_id=$1 AND id=$2 AND customer_id=$3 AND personal_data_purged_at IS NULL FOR UPDATE",
+      [initial.order_id, input.customerId],
+    );
+    if (order.rowCount !== 1) return RETRY_NEEDED;
+  }
+  if (initial.draft_id !== null) {
+    const draft = await tx.run(
+      "SELECT id FROM order_drafts WHERE shop_id=$1 AND id=$2 AND consultation_id=$3 FOR UPDATE",
+      [initial.draft_id, input.consultationId],
+    );
+    if (draft.rowCount !== 1) return RETRY_NEEDED;
+  }
+  if (initial.order_id === null && initial.draft_id === null) return RETRY_NEEDED;
+  // 원본을 기다리는 동안 정리가 payload를 비울 수 있으므로 처음 참조부터 다시 읽는다.
+  const original = (
+    await tx.run<CardRow>(
+      "SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 AND card_key=$3 AND customer_id=$4 AND consultation_id=$5 AND kind=$6 AND order_id IS NOT DISTINCT FROM $7::uuid AND draft_id IS NOT DISTINCT FROM $8::uuid FOR UPDATE",
+      [
+        initial.id,
+        initial.card_key,
+        input.customerId,
+        input.consultationId,
+        initial.kind,
+        initial.order_id,
+        initial.draft_id,
+      ],
+    )
+  ).rows[0];
+  if (original === undefined || original.used_at === null || original.payload.replacedBy === undefined)
+    return RETRY_NEEDED;
   const visited = new Set([original.card_key]);
   let parent = original;
   let current: CardRow;
@@ -751,8 +800,8 @@ async function replayConsentWithdrawalReplacement(
     visited.add(key);
     const row = (
       await tx.run<CardRow>(
-        "SELECT * FROM confirm_cards WHERE shop_id=$1 AND card_key=$2 AND customer_id=$3 AND consultation_id=$4 AND order_id=$5 AND kind='consent_withdrawal' AND draft_id IS NULL FOR UPDATE",
-        [key, input.customerId, input.consultationId, original.order_id],
+        "SELECT * FROM confirm_cards WHERE shop_id=$1 AND card_key=$2 AND customer_id=$3 AND consultation_id=$4 AND order_id IS NOT DISTINCT FROM $5::uuid AND draft_id IS NOT DISTINCT FROM $6::uuid AND kind=$7 FOR UPDATE",
+        [key, input.customerId, input.consultationId, original.order_id, original.draft_id, original.kind],
       )
     ).rows[0];
     if (row === undefined || row.created_at < parent.created_at) return RETRY_NEEDED;
@@ -765,25 +814,36 @@ async function replayConsentWithdrawalReplacement(
     if (row.payload.replacedBy === undefined)
       return row.outcome === "done" &&
         row.payload.result !== undefined &&
-        ["consent_withdrawn", "declined"].includes(row.payload.result.outcome)
+        [
+          SUCCESS_OUTCOMES[row.kind],
+          "declined",
+          ...(row.kind === "order_request" ? ["day_full", "order_limit_reached"] : []),
+        ].includes(row.payload.result.outcome)
         ? usedAnswer(row)
         : RETRY_NEEDED;
     parent = row;
   }
   const target: ShowConfirmCard = {
     ...input,
-    kind: "consent_withdrawal",
-    orderId: original.order_id,
+    kind: original.kind,
+    ...(original.order_id === null ? {} : { orderId: original.order_id }),
+    ...(original.draft_id === null ? {} : { draftId: original.draft_id }),
     ...(current.payload.sourceMessageId === undefined ? {} : { sourceMessageId: current.payload.sourceMessageId }),
+    ...(current.payload.proposedChanges === undefined ? {} : { proposedChanges: current.payload.proposedChanges }),
   };
   const source = await readSource(tx, target, knownBlockId);
-  if (source === null || source.consentWithdrawal === undefined) return RETRY_NEEDED;
-  if (!source.consentWithdrawal.available)
-    return source.consentWithdrawal.reason === "no_consented_photos"
-      ? { kind: "consent_withdrawal", outcome: "not_allowed_now", text: source.consentWithdrawal.text }
-      : RETRY_NEEDED;
+  const unavailable = unavailablePressAnswer(current, source);
+  if (unavailable !== undefined) return unavailable;
+  if (source === null) return RETRY_NEEDED;
+  await refreshPaymentClaimClock(tx, current, source, persistPaymentClock);
   const expired = input.now.getTime() >= current.expires_at.getTime();
-  const stale = current.order_version !== source.orderVersion || consentWithdrawalCardChanged(current, source);
+  const stale =
+    current.order_version !== source.orderVersion ||
+    current.draft_revision !== source.draftRevision ||
+    orderCardChanged(current, source) ||
+    paymentClaimChanged(current, source) ||
+    issueCardChanged(current, source) ||
+    consentWithdrawalCardChanged(current, source);
   const replacementState = expired ? "expired" : stale ? "stale" : parent.outcome === "expired" ? "expired" : "stale";
   const card =
     expired || stale
@@ -791,13 +851,28 @@ async function replayConsentWithdrawalReplacement(
       : current.payload.presentation === undefined
         ? undefined
         : withCardPresentation(current.payload.presentation, source, current.expires_at);
-  if (card?.consentWithdrawal === undefined) return RETRY_NEEDED;
-  kakaoConsentWithdrawalMessage({
-    ...card.consentWithdrawal,
-    state: replacementState,
-    cardKey: card.cardKey,
-    blockId: card.blockId,
-  });
+  if (card === undefined) return RETRY_NEEDED;
+  if (card.consentWithdrawal !== undefined)
+    kakaoConsentWithdrawalMessage({
+      ...card.consentWithdrawal,
+      state: replacementState,
+      cardKey: card.cardKey,
+      blockId: card.blockId,
+    });
+  if (card.issueReport !== undefined)
+    kakaoIssueReportMessage({
+      ...card.issueReport,
+      state: replacementState,
+      cardKey: card.cardKey,
+      blockId: card.blockId,
+    });
+  if (card.changeRequest !== undefined)
+    kakaoChangeRequestMessage({
+      ...card.changeRequest,
+      state: replacementState,
+      cardKey: card.cardKey,
+      blockId: card.blockId,
+    });
   return { ...usedAnswer(original), card, replacementState };
 }
 

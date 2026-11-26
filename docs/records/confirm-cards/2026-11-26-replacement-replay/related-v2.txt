@@ -1,0 +1,12 @@
+
+ RUN  v5.1.0 /workspace/siljang-task081-replacement-replay/app/server
+
+
+ Test Files  38 passed (38)
+      Tests  655 passed (655)
+   Start at  07:53:05
+   Duration  106.09s (tests 66%, import 33%, transform 2%)
+
+     Import  242 modules were evaluated 442 times · 32.83s total, 33% of tracked time
+             ~14.86s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

@@ -122,7 +122,7 @@ export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
     const outcome = answer.outcome === "card_used" ? answer.firstResult?.outcome : answer.outcome;
     if (outcome === "change_requested" || outcome === "declined")
       return kakaoChangeRequestMessage({ state: "done", outcome });
-    if (answer.outcome === "card_used") {
+    if (answer.outcome === "card_used" && answer.card === undefined) {
       const firstText = changeRequestResultText(outcome);
       if (firstText !== undefined) return template([firstText]);
     }
@@ -130,14 +130,18 @@ export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
   if (answer.card?.kind === "change_request" && answer.card.changeRequest !== undefined)
     return kakaoChangeRequestMessage({
       ...answer.card.changeRequest,
-      state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
+      state:
+        answer.replacementState ??
+        (answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal"),
       cardKey: answer.card.cardKey,
       blockId: answer.card.blockId,
     });
   if (answer.card?.kind === "issue_report" && answer.card.issueReport !== undefined)
     return kakaoIssueReportMessage({
       ...answer.card.issueReport,
-      state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
+      state:
+        answer.replacementState ??
+        (answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal"),
       cardKey: answer.card.cardKey,
       blockId: answer.card.blockId,
     });
@@ -152,18 +156,36 @@ export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
   }
   if (answer.card?.kind === "payment_claim" && answer.card.paymentClaim !== undefined) {
     return kakaoPaymentClaimMessage({
-      state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
+      state:
+        answer.replacementState ??
+        (answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal"),
       ...answer.card.paymentClaim,
     });
   }
   if (answer.card?.kind === "order_request") {
-    if (!answer.card.orderRequest || answer.firstResult) throw new RangeError("order card policy missing");
+    if (
+      !answer.card.orderRequest ||
+      (answer.firstResult !== undefined &&
+        (answer.outcome !== "card_used" ||
+          answer.replacementState === undefined ||
+          !["card_expired", "card_stale"].includes(answer.firstResult.outcome)))
+    )
+      throw new RangeError("order card policy missing");
     return kakaoOrderRequestMessage({
-      state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
+      state:
+        answer.replacementState ??
+        (answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal"),
       card: answer.card,
       ...answer.card.orderRequest,
     });
   }
+  if (answer.replacementState !== undefined && answer.card !== undefined && answer.firstResult !== undefined)
+    return template([
+      answer.replacementState === "expired"
+        ? "시간이 지났어요. 새 카드에서 눌러 주세요"
+        : "내용이 바뀌었어요. 새 카드에서 눌러 주세요",
+      answer.card,
+    ]);
   return template([
     answer.text,
     ...(answer.firstResult === undefined ? [] : [answer.firstResult.text]),

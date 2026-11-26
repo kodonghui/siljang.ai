@@ -1,0 +1,30 @@
+
+ RUN  v5.1.0 /workspace/siljang-task081-replacement-replay/app/server
+
+ ❯ test/confirm-card-replacement-replay.test.ts (36 tests | 1 failed) 2716ms
+   ❯ 공통 확인 카드의 교체 응답 재시도(TASK-081) (36)
+     × cancel의 예전 버튼은 교체 카드가 다시 만료돼도 현재 카드만 갱신한다 50ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > cancel의 예전 버튼은 교체 카드가 다시 만료돼도 현재 카드만 갱신한다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '시간이 지났어요. 새 카드에서 눌러 주세요'
+
+Expected: "시간이 지났어요. 새 카드에서 눌러 주세요"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"내용이 바뀌었어요. 새 카드에서 눌러 주세요"}},{"textCard":{"title":"주문 취소 확인","description":"주문번호 K40L3H2E\n픽업 날짜 2027-01-05\n주문 금액 35,000원","buttons":[{"label":"주문 취소","action":"block","blockId":"blk-card","extra":{"cardKey":"ck_147c0f44287a43cda520ebbfe3605d13","choice":"confirm"}},{"label":"안 할래요","action":"block","blockId":"blk-card","extra":{"cardKey":"ck_147c0f44287a43cda520ebbfe3605d13","choice":"decline"}}]}}]}}"
+
+ ❯ test/confirm-card-replacement-replay.test.ts:178:53
+    176|     expect(await render(repeated)).toEqual(await render(expired));
+    177|     if (kind === "cancel") {
+    178|       expect(JSON.stringify(await render(expired))).toContain("시간이 지났어…
+       |                                                     ^
+    179|       expect(JSON.stringify(await render(expired))).not.toContain("내용이…
+    180|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 35 passed (36)
+   Start at  07:38:36
+   Duration  4.36s (tests 65%, import 21%, transform 15%)
