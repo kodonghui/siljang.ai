@@ -91,6 +91,13 @@ export async function purgeConsultation(db: ShopDb, consultationId: string, now:
        AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.shop_id = $1 AND o.draft_id = d.id)`,
     [consultationId],
   );
+  // 원문을 지우기 전에 ID와 삭제 상태의 연결만 남긴다. 번호/끝4자리/HMAC은 옮기지 않는다.
+  await db.run(
+    `INSERT INTO masked_value_erasures (shop_id,id,consultation_id,erased_at)
+       SELECT $1,mv.id,$2,$3 FROM masked_values mv WHERE mv.shop_id=$1 AND mv.consultation_id=$2
+       ON CONFLICT (id) DO NOTHING`,
+    [consultationId, now],
+  );
   await db.run("DELETE FROM masked_values WHERE shop_id = $1 AND consultation_id = $2", [consultationId]);
   await db.run("DELETE FROM notifications WHERE shop_id = $1 AND consultation_id = $2", [consultationId]);
   await db.run("DELETE FROM ai_tool_calls WHERE shop_id = $1 AND consultation_id = $2", [consultationId]);

@@ -2,7 +2,7 @@
 
 <!-- build_wbs.py가 research/cake-wbs-2026-11/wbs_rows.py에서 생성. 손으로 고치지 않음 -->
 
-작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 61개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 36개.
+작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 62개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 36개.
 
 읽는 법과 나눈 방식은 [README](README.md)에 있습니다. '닿는 것'은 만드는 API, 쓰고 읽는 테이블, 만드는 화면입니다. '끝난 조건'의 첫 줄은 손으로 쓴 조건이고, 수락 기준·응답 코드·스킬 결과·화면 상태·응답 행·규칙 줄은 원본에서 생성합니다. 화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다. 끝난 작업은 끝난 조건 맨 앞에 '끝남'과 끝난 날·증거가 붙습니다.
 
@@ -133,7 +133,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TASK-074 | 에스컬레이션 건에 사장님 답 전하기(한도 넘겨 받기 포함) | SPEC-023 | API-041, API-042, TBL-017, TBL-027, TBL-042, TBL-044, TBL-055 | TASK-073 | Claude | 2일 | SPEC-023 수락 기준 #1~#5: 자동 시험 통과<br/>API-041 응답(200·401·404·default)마다 통과하는 시험<br/>API-042 응답(200·401·404·409·422·default)마다 통과하는 시험 |
 | TASK-075 | 사장님 답 기다림: 지연 안내·다시 알림·답 없어 닫힘 | SPEC-024, A28 | TBL-003, TBL-013, TBL-023, TBL-025, TBL-027, TBL-031, TBL-042, TBL-043, TBL-044 | TASK-073, TASK-023, TASK-037 | Claude | 2일 | SPEC-024 수락 기준 #1~#6: 자동 시험 통과<br/>05 앱 규칙(A28)을 지키는지 보는 서버 시험 |
 | TASK-076 | 문의 끊김으로 닫기와 이어가기 | SPEC-025, A22 | TBL-003, TBL-017, TBL-020, TBL-022, TBL-023, TBL-027 | TASK-063, TASK-023, TASK-037 | Claude | 1일 | SPEC-025 수락 기준 #1~#6: 자동 시험 통과<br/>05 앱 규칙(A22)을 지키는지 보는 서버 시험 |
-| TASK-077 | 상담 대화 조회(가린 값) | SPEC-021, SPEC-019, SPEC-065 | API-043, TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-023, TBL-024, TBL-025, TBL-026, TBL-027, TBL-028, TBL-029, TBL-030, TBL-031, TBL-033, TBL-042, TBL-043, TBL-044, TBL-048, TBL-049, TBL-050, TBL-051, TBL-052, TBL-053, TBL-054, TBL-055, TBL-056 | TASK-066, TASK-024 | Claude | 1일 | API-043 응답(200·401·404·422·default)마다 통과하는 시험 |
+| TASK-077 | 상담 대화 조회(가린 값) | SPEC-021, SPEC-019, SPEC-065 | API-043, TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-023, TBL-024, TBL-025, TBL-026, TBL-027, TBL-028, TBL-029, TBL-030, TBL-031, TBL-033, TBL-042, TBL-043, TBL-044, TBL-048, TBL-049, TBL-050, TBL-051, TBL-052, TBL-053, TBL-054, TBL-055, TBL-056, TBL-062 | TASK-066, TASK-024 | Claude | 1일 | API-043 응답(200·401·404·422·default)마다 통과하는 시험 |
 | TASK-078 | 주문 내용 요약과 취소·환불 규정 따로 알리기 | SPEC-028, REQ-240, A21 | API-070, TBL-011, TBL-020, TBL-022, TBL-024 | TASK-071, TASK-039 | Claude | 2일 | SPEC-028 수락 기준 #1~#6: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험<br/>05 앱 규칙(A21)을 지키는지 보는 서버 시험 |
 | TASK-079 | 알레르기 정보 동의와 알레르기 답 받기 | SPEC-075, A26 | API-070, API-071, TBL-004, TBL-020, TBL-024 | TASK-078 | Claude | 1일 | SPEC-075 수락 기준 #1~#5: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험<br/>API-071 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 allergy_saved·allergy_declined<br/>05 앱 규칙(A26)을 지키는지 보는 서버 시험 |
 | TASK-080 | 주문자 이름·연락처 받기 | SPEC-072 | API-070, API-071, TBL-020, TBL-024 | TASK-078 | Claude | 1일 | SPEC-072 수락 기준 #1~#3: 자동 시험 통과<br/>API-070 응답(200·401·422·default)마다 통과하는 시험<br/>API-071 응답(200·401·422·default)마다 통과하는 시험, 스킬 결과 orderer_saved·input_invalid |
@@ -242,8 +242,8 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TASK-156 | 고를 기능 켜기(장부 연결, 완성 사진 보내기) | SPEC-009 | API-033, API-034, API-035, API-036, TBL-003, TBL-045, TBL-047 | TASK-014, TASK-037 | Claude | 2일 | SPEC-009 수락 기준 #1~#2: 자동 시험 통과<br/>API-033 응답(200·401·404·default)마다 통과하는 시험<br/>API-034 응답(200·401·404·422·default)마다 통과하는 시험<br/>API-035 응답(200·401·404·409·422·503·default)마다 통과하는 시험<br/>API-036 응답(200·401·404·409·422·default)마다 통과하는 시험 |
 | TASK-157 | 장부 쓰기와 다시 적기 | SPEC-064, A14 | TBL-023, TBL-026, TBL-042, TBL-043, TBL-045, TBL-046, TBL-047 | TASK-156, TASK-023 | Claude | 3일 | SPEC-064 수락 기준 #1~#3: 자동 시험 통과<br/>05 앱 규칙(A14)을 지키는지 보는 서버 시험 |
-| TASK-158 | 지난 기록 지우기(하루 한 번 03:00) | SPEC-065, A16, A22 | TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-023, TBL-024, TBL-025, TBL-026, TBL-027, TBL-028, TBL-029, TBL-030, TBL-031, TBL-033, TBL-042, TBL-043, TBL-044, TBL-049, TBL-050, TBL-051, TBL-052, TBL-053, TBL-054, TBL-055, TBL-056 | TASK-023 | Claude | 3일 | 올리고 1시간 안에 쓰지 않은 사진 파일(TASK-022가 둔 저장소의 임시 위치 tmp/ 아래)을 저장소에서 지움<br/>SPEC-065 수락 기준 #1~#12: 자동 시험 통과<br/>05 앱 규칙(A16·A22)을 지키는지 보는 서버 시험 |
-| TASK-159 | 운영자의 가게 기록 보기와 원래 값·보관 기록 열기 | SPEC-073, A24 | API-074, API-075, API-076, API-077, TBL-003, TBL-017, TBL-018, TBL-019, TBL-023, TBL-026, TBL-033, TBL-052, TBL-053 | TASK-021, TASK-024, TASK-025 | Claude | 2일 | SPEC-073 수락 기준 #1~#6: 자동 시험 통과<br/>API-074 응답(200·401·404·422·default)마다 통과하는 시험<br/>API-075 응답(200·401·404·422·default)마다 통과하는 시험<br/>API-076 응답(200·401·404·default)마다 통과하는 시험<br/>API-077 응답(200·401·404·409·422·default)마다 통과하는 시험<br/>05 앱 규칙(A24)을 지키는지 보는 서버 시험 |
+| TASK-158 | 지난 기록 지우기(하루 한 번 03:00) | SPEC-065, A16, A22 | TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-023, TBL-024, TBL-025, TBL-026, TBL-027, TBL-028, TBL-029, TBL-030, TBL-031, TBL-033, TBL-042, TBL-043, TBL-044, TBL-049, TBL-050, TBL-051, TBL-052, TBL-053, TBL-054, TBL-055, TBL-056, TBL-062 | TASK-023 | Claude | 3일 | 올리고 1시간 안에 쓰지 않은 사진 파일(TASK-022가 둔 저장소의 임시 위치 tmp/ 아래)을 저장소에서 지움<br/>SPEC-065 수락 기준 #1~#12: 자동 시험 통과<br/>05 앱 규칙(A16·A22)을 지키는지 보는 서버 시험 |
+| TASK-159 | 운영자의 가게 기록 보기와 원래 값·보관 기록 열기 | SPEC-073, A24 | API-074, API-075, API-076, API-077, TBL-003, TBL-017, TBL-018, TBL-019, TBL-023, TBL-026, TBL-033, TBL-052, TBL-053, TBL-062 | TASK-021, TASK-024, TASK-025 | Claude | 2일 | SPEC-073 수락 기준 #1~#6: 자동 시험 통과<br/>API-074 응답(200·401·404·422·default)마다 통과하는 시험<br/>API-075 응답(200·401·404·422·default)마다 통과하는 시험<br/>API-076 응답(200·401·404·default)마다 통과하는 시험<br/>API-077 응답(200·401·404·409·422·default)마다 통과하는 시험<br/>05 앱 규칙(A24)을 지키는지 보는 서버 시험 |
 | TASK-160 | SCR-042 장부 연결 화면 | SPEC-009, SPEC-064 | SCR-042 | TASK-182, TASK-156 | Claude | 1일 | SCR-042 상태 9개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 3개(normal·empty·error)와 그리지 않은 6개(loading·permission·stale·submitting·reconnect·done)는 08 와이어프레임과 09 토큰으로, 08 응답 행 34개마다 정한 상태로 보임 |
 | TASK-161 | SCR-050 가게 기록 보기 화면 | SPEC-073, SPEC-074 | SCR-050 | TASK-182, TASK-159 | Claude | 2일 | SCR-050 상태 9개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 4개(normal·empty·error·confirm)와 그리지 않은 5개(loading·permission·stale·submitting·done)는 08 와이어프레임과 09 토큰으로, 08 응답 행 31개마다 정한 상태로 보임 |
 
@@ -567,6 +567,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TBL-059 | `operator_sessions` | TASK-020, TASK-021 |
 | TBL-060 | `operator_login_failures` | TASK-020, TASK-021 |
 | TBL-061 | `owner_sessions` | TASK-020, TASK-021 |
+| TBL-062 | `masked_value_erasures` | TASK-077, TASK-158, TASK-159 |
 
 ## 부록 E. 규칙·열린 질문·SPEC 밖 요구사항 → 작업
 

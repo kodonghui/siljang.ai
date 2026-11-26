@@ -25,6 +25,8 @@ export const FIELD_PURPOSES = [
   "messages.kakao_callback",
   "messages.kakao_photo",
   "consultations.message_cursor",
+  "operator.records_cursor",
+  "operator.records_page",
 ] as const;
 export type FieldPurpose = (typeof FIELD_PURPOSES)[number];
 
@@ -34,6 +36,8 @@ export interface FieldContext {
   readonly shopId: string;
   /** 상담 커서는 상담 ID, 사진 수신은 메시지 ID를 추가로 묶는다. 기존 저장 봉투의 AAD는 그대로다. */
   readonly recordId?: string;
+  /** 운영자 글 페이지 증표만: 실제 로그인 운영자를 추가로 묶는다. */
+  readonly actorId?: string;
 }
 
 /** 05의 봉투 CHECK와 같은 글(payment_accounts_account_number_enc_check 등 셋). */
@@ -95,10 +99,19 @@ function aad(version: number, context: FieldContext): Uint8Array {
     throw new FieldCryptoError("field context is not valid");
   }
   const parts = [`v${version}`, context.purpose, context.shopId.toLowerCase()];
-  if (context.purpose === "consultations.message_cursor" || context.purpose === "messages.kakao_photo") {
+  if (
+    context.purpose === "consultations.message_cursor" ||
+    context.purpose === "messages.kakao_photo" ||
+    context.purpose === "operator.records_cursor" ||
+    context.purpose === "operator.records_page"
+  ) {
     if (!isUuid(context.recordId)) throw new FieldCryptoError("cursor binding is not valid");
     parts.push(context.recordId.toLowerCase());
   } else if (context.recordId !== undefined) throw new FieldCryptoError("field binding is not valid");
+  if (context.purpose === "operator.records_page") {
+    if (!isUuid(context.actorId)) throw new FieldCryptoError("page actor binding is not valid");
+    parts.push(context.actorId.toLowerCase());
+  } else if (context.actorId !== undefined) throw new FieldCryptoError("field actor binding is not valid");
   return framed("siljang-field-aad", parts);
 }
 

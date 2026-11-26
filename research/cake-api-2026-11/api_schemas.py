@@ -1553,14 +1553,14 @@ S["OperatorMessage"] = all_required({
     "direction": enum(["inbound", "outbound"]),
     "author": enum(["customer", "ai", "system"]),
     "kind": enum(["text", "photo", "card", "unsupported"]),
-    "textLength": integer(0, 4000, desc="대화 글의 글자 수만. 번호 마스킹은 대화 속 이름·알레르기 같은 말을 가리지 않아 글은 보이지 않고, 사유를 적어 API-077(targetKind consultation_text)로 엶(REQ-227)"),
+    "textLength": integer(0, 4000, desc="대화 글의 글자 수(최대4000,4000이면4000자 이상). 번호 마스킹은 대화 속 이름·알레르기 같은 말을 가리지 않아 글은 보이지 않고, 사유를 적어 API-077(targetKind consultation_text)로 엶(REQ-227)"),
     "photoCount": integer(0, 10, desc="사진 수만. 사진은 보이지 않음(REQ-194)"),
 }, desc="운영자가 보는 메시지 하나: 발신자·시각·종류·글자 수·사진 수만(REQ-227)")
 S["OperatorMessageText"] = all_required({
     "messageId": UUID,
     "at": DT,
     "author": enum(["customer", "ai", "system"]),
-    "textMasked": nullable(string(0, 4000, desc="마스킹한 글(번호는 플레이스홀더 그대로, SPEC-021). 끝 4자리는 API-075의 maskedValues에서. 글이 없는 메시지(사진 등)는 null")),
+    "textMasked": nullable(string(0, 4000, desc="마스킹한 글의 앞4000자(번호는 플레이스홀더 그대로, SPEC-021). 끝 4자리는 API-075의 maskedValues에서. 글이 없는 메시지(사진 등)는 null")),
 }, desc="사유를 적어 연 대화 글의 메시지 하나(REQ-227, SPEC-073)")
 S["OperatorConsultation"] = all_required({
     "consultationId": UUID,
@@ -1568,6 +1568,7 @@ S["OperatorConsultation"] = all_required({
     "maskedValues": arr(ref("OperatorMaskedValue"), 0, 200, desc="대화 속 플레이스홀더마다 끝 4자리와 열 수 있는지"),
     "items": arr(ref("OperatorMessage"), 0, 100),
     "nextCursor": nullable(CURSOR),
+    "textCursor": nullable(dict(CURSOR, description="API-077 consultation_text에 쓰는 현재 페이지 증표. 첫 페이지도 필요하며 반환한 메시지 중 앞20개까지/운영자/가게/상담에 묶임.10분 만료 또는 페이지 구성이 바뀌면422로 다시 불러옴. 지운 상담은 null")),
 }, desc="운영자가 보는 상담 하나(가린 값, SPEC-073). 메시지마다 발신자·시각·종류·글자 수·사진 수만 있고 대화 글은 없음(REQ-227). 지운 상담은 status deleted와 빈 목록")
 S["OperatorOrder"] = all_required({
     "orderId": UUID,
@@ -1599,9 +1600,14 @@ S["OriginalOpenInput"] = obj({
     "targetKind": enum(OPEN_TARGETS, col="access_logs.target_kind",
                        desc="대화 속 전화번호·계좌번호(maskedValueId)·주문자 이름과 연락처(orderId)·환불 계좌(refundId)·보관 기록(keptRecordId)·상담의 대화 글(consultationId, REQ-227)"),
     "targetId": dict(UUID, description="연 대상의 ID(targetKind마다 위의 ID)"),
-    "cursor": dict(CURSOR, description="consultation_text만: 열 페이지. API-075에서 보고 있는 페이지의 커서이고 첫 페이지면 넣지 않음. 그 페이지의 메시지 20개까지의 대화 글을 엶"),
+    "cursor": dict(CURSOR, description="consultation_text만 필수: API-075가 현재 페이지에 발급한 textCursor. 첫 페이지도 필요하며 nextCursor를 넣지 않음. 그 페이지의 메시지 중20개까지 엶. 만료/구성 변경은422이고 다시 조회함"),
     "reason": string(5, 200, col="access_logs.reason", desc="사유 5~200자(REQ-195). 접속기록에 남음"),
 }, ["targetKind", "targetId", "reason"], desc="원래 값이나 보관 기록 하나, 상담의 대화 글 한 페이지를 사유와 함께 엶(SPEC-073, REQ-227)")
+S["OriginalOpenInput"]["allOf"] = [{
+    "if": {"properties": {"targetKind": {"const": "consultation_text"}}, "required": ["targetKind"]},
+    "then": {"required": ["cursor"]},
+    "else": {"not": {"required": ["cursor"]}},
+}]
 S["KeptRecord"] = all_required({
     "keptRecordId": UUID,
     "orderNo": ORDER_NO,

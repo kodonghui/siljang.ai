@@ -1,0 +1,118 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-record-page.test.ts (15 tests | 11 failed) 28ms
+   × 현재 페이지 증표는 세 범위·정밀 위치·ID해시를 보존하고189~191자로 가린다 8ms
+   × 빈 페이지도 빈 범위와 빈ID해시로만 연다 1ms
+   × ID해시는 순서·개수·중간 삽입이 바뀌면 같지 않다 1ms
+   × 다른 shopId는 같은 키로도 증표를 열지 못한다 1ms
+   × 다른 consultationId는 같은 키로도 증표를 열지 못한다 1ms
+   × 다른 operatorId는 같은 키로도 증표를 열지 못한다 1ms
+   × 10분 만료·미래 시계·암호문 변조는 같은 값 없는 오류다 1ms
+   × 키를 바꾼 뒤에도 앞 키 증표는 같은 범위에서만 연다 1ms
+   × 시각 경계 0001-01-01T00:00:00.000001Z의 마이크로초를 잃지 않는다 1ms
+   × 시각 경계 1969-12-31T23:59:59.999999Z의 마이크로초를 잃지 않는다 1ms
+   × 시각 경계 9999-12-31T23:59:59.999999Z의 마이크로초를 잃지 않는다 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-record-page.test.ts > 현재 페이지 증표는 세 범위·정밀 위치·ID해시를 보존하고189~191자로 가린다
+OperatorRecordPageError: invalid operator record page
+ ❯ sealOperatorRecordPage src/operator-record-page.ts:31:9
+     29|   _now: Date,
+     30| ): Promise<string> {
+     31|   throw new OperatorRecordPageError("invalid operator record page");
+       |         ^
+     32| }
+     33| export async function openOperatorRecordPage(
+ ❯ test/operator-record-page.test.ts:21:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  test/operator-record-page.test.ts > 빈 페이지도 빈 범위와 빈ID해시로만 연다
+OperatorRecordPageError: invalid operator record page
+ ❯ sealOperatorRecordPage src/operator-record-page.ts:31:9
+     29|   _now: Date,
+     30| ): Promise<string> {
+     31|   throw new OperatorRecordPageError("invalid operator record page");
+       |         ^
+     32| }
+     33| export async function openOperatorRecordPage(
+ ❯ test/operator-record-page.test.ts:32:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  test/operator-record-page.test.ts > ID해시는 순서·개수·중간 삽입이 바뀌면 같지 않다
+OperatorRecordPageError: invalid operator record page
+ ❯ operatorRecordPageHash src/operator-record-page.ts:23:9
+     21| }
+     22| export async function operatorRecordPageHash(_ids: readonly string[]):…
+     23|   throw new OperatorRecordPageError("invalid operator record page");
+       |         ^
+     24| }
+     25| export async function sealOperatorRecordPage(
+ ❯ test/operator-record-page.test.ts:41:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  test/operator-record-page.test.ts > 다른 shopId는 같은 키로도 증표를 열지 못한다
+ FAIL  test/operator-record-page.test.ts > 다른 consultationId는 같은 키로도 증표를 열지 못한다
+ FAIL  test/operator-record-page.test.ts > 다른 operatorId는 같은 키로도 증표를 열지 못한다
+OperatorRecordPageError: invalid operator record page
+ ❯ sealOperatorRecordPage src/operator-record-page.ts:31:9
+     29|   _now: Date,
+     30| ): Promise<string> {
+     31|   throw new OperatorRecordPageError("invalid operator record page");
+       |         ^
+     32| }
+     33| export async function openOperatorRecordPage(
+ ❯ test/operator-record-page.test.ts:48:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  test/operator-record-page.test.ts > 10분 만료·미래 시계·암호문 변조는 같은 값 없는 오류다
+OperatorRecordPageError: invalid operator record page
+ ❯ sealOperatorRecordPage src/operator-record-page.ts:31:9
+     29|   _now: Date,
+     30| ): Promise<string> {
+     31|   throw new OperatorRecordPageError("invalid operator record page");
+       |         ^
+     32| }
+     33| export async function openOperatorRecordPage(
+ ❯ test/operator-record-page.test.ts:56:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  test/operator-record-page.test.ts > 키를 바꾼 뒤에도 앞 키 증표는 같은 범위에서만 연다
+OperatorRecordPageError: invalid operator record page
+ ❯ sealOperatorRecordPage src/operator-record-page.ts:31:9
+     29|   _now: Date,
+     30| ): Promise<string> {
+     31|   throw new OperatorRecordPageError("invalid operator record page");
+       |         ^
+     32| }
+     33| export async function openOperatorRecordPage(
+ ❯ test/operator-record-page.test.ts:74:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  test/operator-record-page.test.ts > 시각 경계 0001-01-01T00:00:00.000001Z의 마이크로초를 잃지 않는다
+ FAIL  test/operator-record-page.test.ts > 시각 경계 1969-12-31T23:59:59.999999Z의 마이크로초를 잃지 않는다
+ FAIL  test/operator-record-page.test.ts > 시각 경계 9999-12-31T23:59:59.999999Z의 마이크로초를 잃지 않는다
+OperatorRecordPageError: invalid operator record page
+ ❯ sealOperatorRecordPage src/operator-record-page.ts:31:9
+     29|   _now: Date,
+     30| ): Promise<string> {
+     31|   throw new OperatorRecordPageError("invalid operator record page");
+       |         ^
+     32| }
+     33| export async function openOperatorRecordPage(
+ ❯ test/operator-record-page.test.ts:83:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  11 failed | 4 passed (15)
+   Start at  09:28:44
+   Duration  617ms (transform 51%, import 32%, tests 13%, worker 4%)

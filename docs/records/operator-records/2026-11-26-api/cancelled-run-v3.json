@@ -1,0 +1,9 @@
+{
+  "reason": "Commit was blocked by one trailing blank line in hands-on.md; run started with uncommitted source and is not counted.",
+  "driver": 69024,
+  "descendantCount": 6,
+  "result": "cancelled, not a test pass",
+  "cancelledDriverDatabaseRemaining": 0,
+  "orphanTestDatabaseRemoved": true,
+  "proof": "database directory creation fell between this run launch and cancellation, and had zero active connections"
+}

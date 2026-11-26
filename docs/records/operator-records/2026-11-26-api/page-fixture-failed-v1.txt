@@ -1,0 +1,43 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-records.test.ts (37 tests | 2 failed) 2073ms
+   ❯ 운영자 가게 기록과 사유 있는 열기(TASK-159) (37)
+     × 메시지 페이지는 마이크로초·2^53 밖 순번을 잃지 않고 같은 커서로 글20개까지만 연다 24ms
+     × 상담 목록은 마이크로초 동률을 ID로 이어 읽고 주문 목록 커서와 섞지 않는다 14ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 메시지 페이지는 마이크로초·2^53 밖 순번을 잃지 않고 같은 커서로 글20개까지만 연다
+error: new row for relation "messages" violates check constraint "messages_kakao_id_chk"
+ ❯ ../../../siljang.ai/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ test/operator-records.test.ts:478:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 상담 목록은 마이크로초 동률을 ID로 이어 읽고 주문 목록 커서와 섞지 않는다
+error: column "last_activity_at" of relation "consultations" does not exist
+ ❯ ../../../siljang.ai/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ test/operator-records.test.ts:557:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 101 passed (103)
+   Start at  08:43:17
+   Duration  9.66s (tests 64%, import 32%, transform 4%)

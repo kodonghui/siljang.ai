@@ -273,7 +273,9 @@ describeDb("교차 가게 시험 묶음(SPEC-068, G1, 06 DEC-02)", () => {
       expect(viaOf(c)).toBe(
         c.kind === "channel"
           ? "customer"
-          : c.kind === "operator_review" || (c.kind === "identity_change" && c.path.startsWith("/operator/"))
+          : c.kind === "operator_review" ||
+              c.kind === "operator_records" ||
+              (c.kind === "identity_change" && c.path.startsWith("/operator/"))
             ? "operator"
             : c.kind === "booking" && c.path.startsWith("/public/")
               ? "public"

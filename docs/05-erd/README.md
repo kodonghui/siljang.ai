@@ -129,6 +129,7 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 | TBL-059 | `operator_sessions` | 운영자 세션 | CTX-007 | 001 | 없음 |
 | TBL-060 | `operator_login_failures` | 운영자 로그인 실패 | CTX-007 | 001 | 없음 |
 | TBL-061 | `owner_sessions` | 사장님 세션 | CTX-007 | 001 | 없음 |
+| TBL-062 | `masked_value_erasures` | 삭제한 마스킹 값의 식별 정보 | CTX-001 | 065, 073 | 없음 |
 <!-- build_erd:tables:end -->
 
 ### 3-3. 컨텍스트별 다이어그램
@@ -140,7 +141,7 @@ python3 -B research/cake-erd-2026-11/erd_editor_build.py . --compare --db "host=
 
 ```mermaid
 flowchart LR
-  C0["CTX-001 상담<br/>테이블 15개"]
+  C0["CTX-001 상담<br/>테이블 16개"]
   C1["CTX-002 가게 규칙<br/>테이블 10개"]
   C2["CTX-003 주문<br/>테이블 6개"]
   C3["CTX-004 결제·환불<br/>테이블 4개"]
@@ -175,7 +176,7 @@ flowchart LR
 
 ### CTX-001 상담
 
-테이블: TBL-016 `customers`, TBL-017 `consultations`, TBL-018 `messages`, TBL-019 `masked_values`, TBL-020 `order_drafts`, TBL-021 `reference_photos`, TBL-022 `quotes`, TBL-024 `confirm_cards`, TBL-027 `handoffs`, TBL-028 `issue_details`, TBL-029 `issue_photos`, TBL-048 `ai_calls`, TBL-049 `ai_tool_calls`, TBL-055 `handoff_questions`, TBL-056 `order_draft_extras`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
+테이블: TBL-016 `customers`, TBL-017 `consultations`, TBL-018 `messages`, TBL-019 `masked_values`, TBL-020 `order_drafts`, TBL-021 `reference_photos`, TBL-022 `quotes`, TBL-024 `confirm_cards`, TBL-027 `handoffs`, TBL-028 `issue_details`, TBL-029 `issue_photos`, TBL-048 `ai_calls`, TBL-049 `ai_tool_calls`, TBL-055 `handoff_questions`, TBL-056 `order_draft_extras`, TBL-062 `masked_value_erasures`. 컬럼은 기본 키(PK)·외래 키(FK)와 상태·종류·버전·금액만 보입니다. 다른 컨텍스트의 테이블은 이름만 나옵니다.
 
 ```mermaid
 erDiagram
@@ -269,6 +270,9 @@ erDiagram
     uuid price_list_id FK "초안의 가격표 버전"
     uuid option_id PK, FK "더한 옵션"
     text option_group FK "늘 '더하는 옵션'"
+  }
+  masked_value_erasures {
+    uuid id PK "삭제한 마스킹 값의 ID"
   }
   kakao_channels ||--o{ customers : "kakao_channel_id"
   customers ||--o{ consultations : "customer_id"

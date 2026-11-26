@@ -1,0 +1,75 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-record-permissions.test.ts (4 tests | 2 failed) 1056ms
+   ❯ 운영자 기록의 최소 실행 권한(TASK-159) (4)
+     × 새 함수5개는 PUBLIC 실행0·고정 search_path이고 원문 SELECT는 열지 않는다 30ms
+     × 최소 역할로 원문 열 직접 읽기를 실행하면42501로 막힌다 23ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-record-permissions.test.ts > 운영자 기록의 최소 실행 권한(TASK-159) > 새 함수5개는 PUBLIC 실행0·고정 search_path이고 원문 SELECT는 열지 않는다
+AssertionError: expected { allowed: true } to deeply equal { allowed: false }
+
+- Expected
++ Received
+
+  {
+-   "allowed": false,
++   "allowed": true,
+  }
+
+ ❯ test/operator-record-permissions.test.ts:134:9
+    132|         (await isolated.db.query("SELECT has_column_privilege($1,$2,$3…
+    133|           .rows[0],
+    134|       ).toEqual({ allowed: false });
+       |         ^
+    135|     }
+    136|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/operator-record-permissions.test.ts > 운영자 기록의 최소 실행 권한(TASK-159) > 최소 역할로 원문 열 직접 읽기를 실행하면42501로 막힌다
+AssertionError: promise resolved "{ rows: [ …(5) ], rowCount: 5 }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "rowCount": 5,
++   "rows": [
++     {
++       "body_masked": "케이크 주문할게요",
++     },
++     {
++       "body_masked": "케이크 주문할게요",
++     },
++     {
++       "body_masked": "케이크 주문할게요",
++     },
++     {
++       "body_masked": "케이크 주문할게요",
++     },
++     {
++       "body_masked": "케이크 주문할게요",
++     },
++   ],
+  }
+
+ ❯ test/operator-record-permissions.test.ts:171:37
+    169|         "SELECT customer_name FROM kept_records",
+    170|       ])
+    171|         await expect(raw.query(sql)).rejects.toMatchObject({ code: "42…
+       |                                     ^
+    172|     } finally {
+    173|       await raw.close();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  08:43:45
+   Duration  2.94s (import 51%, tests 38%, transform 11%)

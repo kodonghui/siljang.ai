@@ -1,0 +1,25 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-records.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-records.test.ts [ test/operator-records.test.ts ]
+Error: Cannot find module './operator-originals' imported from /workspace/siljang-task159-operator-records/app/server/src/app.ts
+ ❯ src/app.ts:27:1
+     25| import { getReviewShop, listReviewShops, reviewLicense } from "./opera…
+     26| import { createOperatorSession, deleteOperatorSession, getOperatorMe, …
+     27| import { openOperatorOriginal } from "./operator-originals";
+       | ^
+     28| import { getOperatorConsultation, getOperatorRecordOrder, listOperator…
+     29| import { resolveOperatorShop } from "./operator-shop";
+ ❯ test/operator-records.test.ts:3:1
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  08:39:45
+   Duration  510ms (worker 97%, environment 3%)

@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  35 passed (35)
+   Start at  08:42:18
+   Duration  3.44s (tests 54%, import 37%, transform 9%)

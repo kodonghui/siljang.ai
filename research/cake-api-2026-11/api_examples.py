@@ -1060,9 +1060,9 @@ OP_CONSULTATION = {
     ],
     "items": [{"messageId": uid(m), "at": at, "direction": d, "author": a, "kind": k, "textLength": len(text or ""), "photoCount": n}
               for m, at, d, a, k, text, n in OP_MESSAGE_ROWS],
-    "nextCursor": None,
+    "nextCursor": None, "textCursor": "example_text_page_cursor",
 }
-OP_CONSULTATION_DELETED = dict(OP_CONSULTATION, status="deleted", maskedValues=[], items=[], nextCursor=None)
+OP_CONSULTATION_DELETED = dict(OP_CONSULTATION, status="deleted", maskedValues=[], items=[], nextCursor=None, textCursor=None)
 OP_ORDER = {
     "orderId": ORDER_ID, "orderNo": ORDER_NO, "kind": "standard", "status": "confirmed", "pickupAt": t("11-20", "14:00"), "amount": 36000,
     "customerNameMasked": "이**", "customerPhoneMasked": "***-****-5432", "allergyAnswered": True, "excludedIngredientsAnswered": False,

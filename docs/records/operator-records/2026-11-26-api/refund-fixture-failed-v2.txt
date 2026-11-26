@@ -1,0 +1,28 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-records.test.ts (12 tests | 1 failed) 1235ms
+   ❯ 운영자 가게 기록과 사유 있는 열기(TASK-159) (12)
+     × API077의 환불 계좌는 실제 암호화 도구로 둔 값 하나만 연다 22ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API077의 환불 계좌는 실제 암호화 도구로 둔 값 하나만 연다
+error: inconsistent types deduced for parameter $3
+ ❯ ../../../siljang.ai/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ test/operator-records.test.ts:269:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed (12)
+   Start at  08:40:22
+   Duration  2.90s (tests 45%, import 43%, transform 12%)

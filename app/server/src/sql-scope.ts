@@ -37,7 +37,7 @@
  *    ShopDb의 실행 중 검사가 본다.
  */
 
-/** 05의 가게에 딸린 테이블: shop_id 열을 가진 54개(db/schema.sql, 05 E1). 시험이 05와 데이터베이스와 같은지 본다. */
+/** 05의 가게에 딸린 테이블: shop_id 열을 가진 55개(db/schema.sql, 05 E1). 시험이 05와 데이터베이스와 같은지 본다. */
 export const SHOP_TABLES = [
   "access_logs",
   "ai_calls",
@@ -61,6 +61,7 @@ export const SHOP_TABLES = [
   "ledger_links",
   "ledger_rows",
   "ledger_writes",
+  "masked_value_erasures",
   "masked_values",
   "messages",
   "notifications",

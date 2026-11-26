@@ -1,0 +1,104 @@
+
+> test
+> npm run test -w server && npm run test -w web
+
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+(node:56591) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ test/staging-db-update.test.ts (3 tests | 3 failed) 2616ms
+   ❯ 기존 DB 원장을 지키는 스테이징 갱신(TASK-173) (3)
+     × 원장 22건에서 현재 파일 수까지 진행하고 반복해도 지정한 합성 행만 지움 936ms
+     × 이미 적용한 파일 해시가 다르면 DDL·권한 변경 전에 중단 852ms
+     × 원장에 없는 중간 DDL이 있으면 같은 실행의 앞선 변경도 되돌림 826ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/staging-db-update.test.ts > 기존 DB 원장을 지키는 스테이징 갱신(TASK-173) > 원장 22건에서 현재 파일 수까지 진행하고 반복해도 지정한 합성 행만 지움
+error: syntax error at or near ";"
+ ❯ ../node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ test/staging-db-update.test.ts:80:7
+ ❯ scenario test/staging-db-update.test.ts:62:5
+ ❯ test/staging-db-update.test.ts:78:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/staging-db-update.test.ts > 기존 DB 원장을 지키는 스테이징 갱신(TASK-173) > 이미 적용한 파일 해시가 다르면 DDL·권한 변경 전에 중단
+AssertionError: expected error: syntax error at or near ";" { …(15) } to match object { code: 'P0001' }
+(17 matching properties omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "P0001",
++ DatabaseError {
++   "code": "42601",
+  }
+
+ ❯ test/staging-db-update.test.ts:137:52
+    135|     await scenario(async ({ db, role, cleanup }) => {
+    136|       await db.query("UPDATE siljang_deploy.migrations SET sha256 = re…
+    137|       await expect(db.query(render(role, cleanup))).rejects.toMatchObj…
+       |                                                    ^
+    138|       await db.query("ROLLBACK");
+    139|       expect((await db.query("SELECT to_regclass('public.owner_session…
+ ❯ scenario test/staging-db-update.test.ts:62:5
+ ❯ test/staging-db-update.test.ts:135:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/staging-db-update.test.ts > 기존 DB 원장을 지키는 스테이징 갱신(TASK-173) > 원장에 없는 중간 DDL이 있으면 같은 실행의 앞선 변경도 되돌림
+AssertionError: expected error: syntax error at or near ";" { …(15) } to match object { code: '42P07' }
+(17 matching properties omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "42P07",
++ DatabaseError {
++   "code": "42601",
+  }
+
+ ❯ test/staging-db-update.test.ts:148:52
+    146|     await scenario(async ({ db, role, cleanup }) => {
+    147|       await db.query("CREATE TABLE owner_sessions (id uuid)");
+    148|       await expect(db.query(render(role, cleanup))).rejects.toMatchObj…
+       |                                                    ^
+    149|       await db.query("ROLLBACK");
+    150|       expect((await db.query("SELECT count(*)::int AS n FROM siljang_d…
+ ❯ scenario test/staging-db-update.test.ts:62:5
+ ❯ test/staging-db-update.test.ts:146:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed | 194 passed (195)
+      Tests  3 failed | 3612 passed (3615)
+   Start at  08:47:19
+   Duration  351.82s (tests 60%, import 38%, transform 2%)
+
+     Import  441 modules were evaluated 1035 times · 123.20s total, 38% of tracked time
+             ~70.71s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task159-operator-records/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task159-operator-records/app/server
+npm error command failed
+npm error command sh -c vitest run

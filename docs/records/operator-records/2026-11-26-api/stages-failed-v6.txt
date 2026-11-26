@@ -1,0 +1,12 @@
+2026-11-26 18:44:05 KST start, head 0a5db8d, out /tmp/stage-checks/task159-review-v6
+prd exit=0 :: PROBLEMS 0 · AVOIDED WORDS 0
+flows exit=0 :: PROBLEMS 0 · AVOIDED WORDS 0
+spec exit=0 :: 오류 0
+erd exit=1 :: 검사 15개: 통과 14, 실패 1, 미확인 0
+api exit=1 :: 검사 17개: 통과 16, 실패 1, 미확인 0
+sitemap exit=0 :: 검사 17개: 통과 17, 실패 0, 미확인 0
+screens exit=0 :: 검사 15개: 통과 15, 실패 0, 미확인 0
+mockup browser skipped (--no-browser); page-check remains unverified
+mockup exit=0 :: 검사 14개: 통과 13, 실패 0, 미확인 1
+wbs exit=0 :: 검사 18개 · 오류 0
+18:45:23 KST end

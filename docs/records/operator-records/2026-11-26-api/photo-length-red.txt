@@ -1,0 +1,37 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-records.test.ts (12 tests | 1 failed | 11 skipped) 836ms
+   ❯ 운영자 가게 기록과 사유 있는 열기(TASK-159) (12)
+     × API075는 참고·후기 사진 장수만 읽고 저장 경로는 보이지 않는다 147ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API075는 참고·후기 사진 장수만 읽고 저장 경로는 보이지 않는다
+AssertionError: expected { …(7) } to match object { photoCount: 1, textLength: +0 }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "photoCount": 1,
+-   "textLength": 0,
++   "textLength": 4,
+  }
+
+ ❯ test/operator-records.test.ts:149:97
+    147|     const body = JSON.parse(text);
+    148|     expectSchema("OperatorConsultation", body);
+    149|     expect(body.items.find((item: { messageId: string }) => item.messa…
+       |                                                                                                 ^
+    150|       photoCount: 1,
+    151|       textLength: 0,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 skipped (12)
+   Start at  08:38:05
+   Duration  2.87s (import 54%, tests 31%, transform 15%)

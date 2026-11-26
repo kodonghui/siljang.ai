@@ -389,7 +389,7 @@ op(id="API-074", method="get", path="/operator/shops/{shopId}/records", op="list
 op(id="API-075", method="get", path="/operator/shops/{shopId}/consultations/{consultationId}", op="getShopConsultation", tag="운영자",
    summary="상담 하나(가린 값)", spec=["SPEC-073", "SPEC-074"], auth="operator",
    desc="그 가게 상담의 메시지마다 발신자·시각·종류·글자 수·사진 수만 보이고 대화 글은 보이지 않는다: 번호 마스킹(SPEC-021)은 대화 속 이름·알레르기 같은 말을 가리지 않기 때문이다(REQ-227). "
-        "대화 글은 사유를 적어 API-077(targetKind consultation_text, 보고 있는 페이지의 cursor)로 한 페이지씩 연다. 대화 속 번호는 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. "
+        "대화 글은 사유를 적어 API-077(targetKind consultation_text, cursor에 현재 페이지의 textCursor를 넣음)로 한 페이지씩 연다. 대화 속 번호는 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. "
         "카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 있고 열 수 없다(REQ-192). 사진은 수만 보이고 열지 않는다(REQ-194). "
         "지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074). 순서: 시각(at) 순이고 새 메시지가 뒤, 같은 시각이면 남긴 차례(DEC-14). 사장님 답과 손님 안내는 이 보기에 넣지 않는다(대화 글을 보이지 않는 보기).",
    params=[pid("shopId", "가게", E.SHOP_ID), pid("consultationId", "상담", E.CONSULT_ID), CURSOR, LIMIT],
@@ -418,7 +418,7 @@ op(id="API-076", method="get", path="/operator/shops/{shopId}/orders/{orderId}",
 op(id="API-077", method="post", path="/operator/shops/{shopId}/originals", op="openOriginal", tag="운영자",
    summary="원래 값·보관 기록·대화 글 열기(사유)", spec=["SPEC-073", "SPEC-074"], auth="operator", idem=True,
    desc="운영자가 대상 하나와 사유(5~200자)를 보내면 그 값 하나만 연다(REQ-195): 대화 속 전화번호·계좌번호(masked_value), 주문자 이름·연락처(order_contact), "
-        "환불 계좌(refund_account), 보관 기록(kept_record), 상담의 대화 글 한 페이지(consultation_text: targetId는 상담 ID, cursor는 API-075에서 보고 있는 페이지, 번호는 플레이스홀더 그대로, REQ-227). 응답과 같은 트랜잭션에서 운영자·시각·접속지·대상·사유를 접속기록에 남기고(action open_original·open_kept), "
+        "환불 계좌(refund_account), 보관 기록(kept_record), 상담의 대화 글 한 페이지(consultation_text: targetId는 상담 ID, cursor는 첫 페이지부터 API-075의 textCursor(현재 페이지 중20개까지·10분 만료·ID 구성 검증), 번호는 플레이스홀더 그대로, REQ-227). 응답과 같은 트랜잭션에서 운영자·시각·접속지·대상·사유를 접속기록에 남기고(action open_original·open_kept), "
         "남기지 못하면 500으로 값을 돌려주지 않는다(SPEC-074). 같은 요청 키로 다시 오면 다시 열어 같은 응답을 돌려주고 접속기록도 한 행 더 남긴다(요청 키 기록에는 원래 값을 두지 않음). "
         "원래 값을 두지 않는 값(카드번호·긴 숫자, REQ-192)은 409 original_not_kept, 지우기 작업이 비운 값과 지운 상담의 대화 글(SPEC-065)은 409 original_erased이고 둘 다 접속기록에 열기 행을 남기지 않는다. "
         "연 값은 이 응답에만 있고 로그·오류 보고에는 없다(G6). 화면은 연 값을 저장하거나 내려받게 하지 않는다.",
@@ -428,7 +428,7 @@ op(id="API-077", method="post", path="/operator/shops/{shopId}/originals", op="o
                   "order_contact": {"targetKind": "order_contact", "targetId": E.ORDER_ID, "reason": "사장님 문의: 픽업 날 연락처 확인"},
                   "refund_account": {"targetKind": "refund_account", "targetId": E.REFUND["refundId"], "reason": "손님 문의: 환불이 들어오지 않음"},
                   "kept_record": {"targetKind": "kept_record", "targetId": E.KEPT_RECORD_ID, "reason": "사장님 요청: 9월 주문 분쟁 자료"},
-                  "consultation_text": {"targetKind": "consultation_text", "targetId": E.CONSULT_ID, "reason": "손님 문의: 알레르기 안내 확인"}},
+                  "consultation_text": {"targetKind": "consultation_text", "targetId": E.CONSULT_ID, "cursor": E.OP_CONSULTATION["textCursor"], "reason": "손님 문의: 알레르기 안내 확인"}},
    ok=[(200, "OriginalValue", {"masked_value": E.ORIGINAL_MASKED, "order_contact": E.ORIGINAL_CONTACT,
                                "refund_account": E.ORIGINAL_REFUND, "kept_record": E.ORIGINAL_KEPT,
                                "consultation_text": E.ORIGINAL_CONSULTATION_TEXT})],

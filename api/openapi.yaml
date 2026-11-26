@@ -22375,7 +22375,7 @@ paths:
       operationId: getShopConsultation
       summary: 상담 하나(가린 값)
       description: |-
-        그 가게 상담의 메시지마다 발신자·시각·종류·글자 수·사진 수만 보이고 대화 글은 보이지 않는다: 번호 마스킹(SPEC-021)은 대화 속 이름·알레르기 같은 말을 가리지 않기 때문이다(REQ-227). 대화 글은 사유를 적어 API-077(targetKind consultation_text, 보고 있는 페이지의 cursor)로 한 페이지씩 연다. 대화 속 번호는 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. 카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 있고 열 수 없다(REQ-192). 사진은 수만 보이고 열지 않는다(REQ-194). 지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074). 순서: 시각(at) 순이고 새 메시지가 뒤, 같은 시각이면 남긴 차례(DEC-14). 사장님 답과 손님 안내는 이 보기에 넣지 않는다(대화 글을 보이지 않는 보기).
+        그 가게 상담의 메시지마다 발신자·시각·종류·글자 수·사진 수만 보이고 대화 글은 보이지 않는다: 번호 마스킹(SPEC-021)은 대화 속 이름·알레르기 같은 말을 가리지 않기 때문이다(REQ-227). 대화 글은 사유를 적어 API-077(targetKind consultation_text, cursor에 현재 페이지의 textCursor를 넣음)로 한 페이지씩 연다. 대화 속 번호는 플레이스홀더마다 끝 4자리와 원래 값을 열 수 있는지(originalKept)를 maskedValues로 보인다. 카드번호는 끝 4자리만, 주민등록번호처럼 보이는 숫자와 긴 숫자는 플레이스홀더만 있고 열 수 없다(REQ-192). 사진은 수만 보이고 열지 않는다(REQ-194). 지운 상담(SPEC-065)은 status deleted와 빈 목록. 부를 때마다 접속기록에 읽음 한 행(SPEC-074). 순서: 시각(at) 순이고 새 메시지가 뒤, 같은 시각이면 남긴 차례(DEC-14). 사장님 답과 손님 안내는 이 보기에 넣지 않는다(대화 글을 보이지 않는 보기).
 
         SPEC: SPEC-073, SPEC-074
       tags:
@@ -22463,6 +22463,7 @@ paths:
                       textLength: 19
                       photoCount: 0
                     nextCursor: null
+                    textCursor: example_text_page_cursor
                 deleted:
                   value:
                     consultationId: bcd84dae-e6a0-5123-9b55-01b028834b28
@@ -22470,6 +22471,7 @@ paths:
                     maskedValues: []
                     items: []
                     nextCursor: null
+                    textCursor: null
         "401":
           description: |-
             로그인이나 스킬 키가 없거나 맞지 않음
@@ -22750,7 +22752,7 @@ paths:
       operationId: openOriginal
       summary: 원래 값·보관 기록·대화 글 열기(사유)
       description: |-
-        운영자가 대상 하나와 사유(5~200자)를 보내면 그 값 하나만 연다(REQ-195): 대화 속 전화번호·계좌번호(masked_value), 주문자 이름·연락처(order_contact), 환불 계좌(refund_account), 보관 기록(kept_record), 상담의 대화 글 한 페이지(consultation_text: targetId는 상담 ID, cursor는 API-075에서 보고 있는 페이지, 번호는 플레이스홀더 그대로, REQ-227). 응답과 같은 트랜잭션에서 운영자·시각·접속지·대상·사유를 접속기록에 남기고(action open_original·open_kept), 남기지 못하면 500으로 값을 돌려주지 않는다(SPEC-074). 같은 요청 키로 다시 오면 다시 열어 같은 응답을 돌려주고 접속기록도 한 행 더 남긴다(요청 키 기록에는 원래 값을 두지 않음). 원래 값을 두지 않는 값(카드번호·긴 숫자, REQ-192)은 409 original_not_kept, 지우기 작업이 비운 값과 지운 상담의 대화 글(SPEC-065)은 409 original_erased이고 둘 다 접속기록에 열기 행을 남기지 않는다. 연 값은 이 응답에만 있고 로그·오류 보고에는 없다(G6). 화면은 연 값을 저장하거나 내려받게 하지 않는다.
+        운영자가 대상 하나와 사유(5~200자)를 보내면 그 값 하나만 연다(REQ-195): 대화 속 전화번호·계좌번호(masked_value), 주문자 이름·연락처(order_contact), 환불 계좌(refund_account), 보관 기록(kept_record), 상담의 대화 글 한 페이지(consultation_text: targetId는 상담 ID, cursor는 첫 페이지부터 API-075의 textCursor(현재 페이지 중20개까지·10분 만료·ID 구성 검증), 번호는 플레이스홀더 그대로, REQ-227). 응답과 같은 트랜잭션에서 운영자·시각·접속지·대상·사유를 접속기록에 남기고(action open_original·open_kept), 남기지 못하면 500으로 값을 돌려주지 않는다(SPEC-074). 같은 요청 키로 다시 오면 다시 열어 같은 응답을 돌려주고 접속기록도 한 행 더 남긴다(요청 키 기록에는 원래 값을 두지 않음). 원래 값을 두지 않는 값(카드번호·긴 숫자, REQ-192)은 409 original_not_kept, 지우기 작업이 비운 값과 지운 상담의 대화 글(SPEC-065)은 409 original_erased이고 둘 다 접속기록에 열기 행을 남기지 않는다. 연 값은 이 응답에만 있고 로그·오류 보고에는 없다(G6). 화면은 연 값을 저장하거나 내려받게 하지 않는다.
 
         SPEC: SPEC-073, SPEC-074
       tags:
@@ -22799,6 +22801,7 @@ paths:
                 value:
                   targetKind: consultation_text
                   targetId: bcd84dae-e6a0-5123-9b55-01b028834b28
+                  cursor: example_text_page_cursor
                   reason: '손님 문의: 알레르기 안내 확인'
       responses:
         "200":
@@ -32903,7 +32906,7 @@ components:
           type: integer
           minimum: 0
           maximum: 4000
-          description: 대화 글의 글자 수만. 번호 마스킹은 대화 속 이름·알레르기 같은 말을 가리지 않아 글은 보이지 않고, 사유를 적어 API-077(targetKind consultation_text)로 엶(REQ-227)
+          description: 대화 글의 글자 수(최대4000,4000이면4000자 이상). 번호 마스킹은 대화 속 이름·알레르기 같은 말을 가리지 않아 글은 보이지 않고, 사유를 적어 API-077(targetKind consultation_text)로 엶(REQ-227)
         photoCount:
           type: integer
           minimum: 0
@@ -32937,7 +32940,7 @@ components:
           - "null"
           minLength: 0
           maxLength: 4000
-          description: 마스킹한 글(번호는 플레이스홀더 그대로, SPEC-021). 끝 4자리는 API-075의 maskedValues에서. 글이 없는 메시지(사진 등)는 null
+          description: 마스킹한 글의 앞4000자(번호는 플레이스홀더 그대로, SPEC-021). 끝 4자리는 API-075의 maskedValues에서. 글이 없는 메시지(사진 등)는 null
       additionalProperties: false
     OperatorConsultation:
       type: object
@@ -32948,6 +32951,7 @@ components:
       - maskedValues
       - items
       - nextCursor
+      - textCursor
       properties:
         consultationId:
           type: string
@@ -32981,6 +32985,14 @@ components:
           minLength: 1
           maxLength: 200
           pattern: ^[A-Za-z0-9_-]+$
+        textCursor:
+          type:
+          - string
+          - "null"
+          minLength: 1
+          maxLength: 200
+          pattern: ^[A-Za-z0-9_-]+$
+          description: API-077 consultation_text에 쓰는 현재 페이지 증표. 첫 페이지도 필요하며 반환한 메시지 중 앞20개까지/운영자/가게/상담에 묶임.10분 만료 또는 페이지 구성이 바뀌면422로 다시 불러옴. 지운 상담은 null
       additionalProperties: false
     OperatorOrder:
       type: object
@@ -33221,7 +33233,7 @@ components:
           minLength: 1
           maxLength: 200
           pattern: ^[A-Za-z0-9_-]+$
-          description: 'consultation_text만: 열 페이지. API-075에서 보고 있는 페이지의 커서이고 첫 페이지면 넣지 않음. 그 페이지의 메시지 20개까지의 대화 글을 엶'
+          description: 'consultation_text만 필수: API-075가 현재 페이지에 발급한 textCursor. 첫 페이지도 필요하며 nextCursor를 넣지 않음. 그 페이지의 메시지 중20개까지 엶. 만료/구성 변경은422이고 다시 조회함'
         reason:
           type: string
           minLength: 5
@@ -33229,6 +33241,20 @@ components:
           description: 사유 5~200자(REQ-195). 접속기록에 남음
           x-corthex-column: access_logs.reason
       additionalProperties: false
+      allOf:
+      - if:
+          properties:
+            targetKind:
+              const: consultation_text
+          required:
+          - targetKind
+        then:
+          required:
+          - cursor
+        else:
+          not:
+            required:
+            - cursor
     KeptRecord:
       type: object
       description: '보관 기록(REQ-187, 05단계 A22): 주문자 이름·끝난 날·보관 기간과 계약·결제 기록. 운영자가 사유를 적어 열 때만(SPEC-073)'
@@ -35490,3 +35516,15 @@ components:
       why: 한도 건에서 사장님이 한도를 넘겨 받기·받지 않음을 보냄(REQ-264). 넣지 않아도 되는 필드이고 anyOf에 하나를 더함
       decided: 2026-11-15 14:19 동희님 결정 카드 '가게가 한도를 정함'(설계 재검토 RB-25)
       client: 에스컬레이션 건 화면(SCR-017)이 한도 건에서 두 버튼을 보임. 넣지 않아도 되는 필드를 더한 것이라 A13은 찾지 않아 여기 적음
+    - what: '꼭 넣을 필드 더함: OperatorConsultation.textCursor'
+      why: API075에서 실제 본 메시지 범위만 API077로 열도록 현재 페이지 토큰을 발급함(SPEC073, A24)
+      decided: 2026-11-26 PR301 보안P2 리뷰7187746867 처리
+      client: SCR050은 첫 페이지부터 API075의 textCursor를 API077 cursor로 보내며 nextCursor는 목록 이동에만 씀. 지운 상담의 textCursor는 null
+    - what: '요청 조건이 좁아짐: OriginalOpenInput consultation_text는 cursor 필수'
+      why: 첫 페이지/작은 페이지에도 실제 반환한 범위를 검증하고 다른 운영자/만료/페이지 구성 변경을 닫음
+      decided: 2026-11-26 PR301 보안P2 리뷰7187746867 처리
+      client: 첫 페이지도 먼저 API075로 읽고 발급된 토큰을 보냄. cursor의422는 페이지를 다시 조회한 뒤 사유를 적어 다시 엶. 조건부 필수라 A13은 찾지 않아 여기 적음
+    - what: '응답 표시 범위를 정함: OperatorMessage.textLength와 OperatorMessageText.textMasked는4000자까지'
+      why: 이미 저장된 긴 입력도 기존4000자 응답 상한을 지킴(PR301 코드P3)
+      decided: 2026-11-26 PR301 리뷰7187746867 처리
+      client: textLength가4000이면4000자 이상으로 보이고 열린 글은 앞4000자임을 보임. 스키마 상한은 그대로이고 표시 규칙이라 A13은 찾지 않아 여기 적음
