@@ -1,7 +1,7 @@
 /** 실제 신고 쓰기는 TASK140의 합성 명령으로 대체하고 카드 저장/전달 경계만 검사한다. */
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
-import { readConfirmCardDelivery, showConfirmCard } from "../src/confirm-card-store";
+import { pressConfirmCard, readConfirmCardDelivery, showConfirmCard } from "../src/confirm-card-store";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
@@ -12,7 +12,7 @@ import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } f
 
 const NOW = new Date("2026-11-28T06:00:00Z");
 describeDb("신고 카드의 실제 저장 첫 결과와 재전달(TASK-147)", () => {
-  let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture, key: string;
+  let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture, key: string, detailsId: string;
   beforeAll(async () => {
     isolated = await isolatedTestDb();
   }, 30000);
@@ -41,11 +41,92 @@ describeDb("신고 카드의 실제 저장 첫 결과와 재전달(TASK-147)", (
       );
     });
     key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1);
+    detailsId = newUuid();
+    await isolated.db.query(
+      "INSERT INTO issue_details(id,shop_id,consultation_id,order_id,description,health_concern) VALUES($1,$2,$3,$4,'합성 신고 설명',true)",
+      [detailsId, shop.shopId, shop.consultationId, shop.orderId],
+    );
+    for (const position of [1, 2])
+      await isolated.db.query(
+        "INSERT INTO issue_photos(shop_id,issue_details_id,position,storage_key,content_type,byte_size) VALUES($1,$2,$3,$4,'image/jpeg',1)",
+        [shop.shopId, detailsId, position, `synthetic-issue-${newUuid()}`],
+      );
   });
   afterAll(async () => {
     await isolated?.close();
   });
   const scoped = () => shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), isolated.db);
+  const prepare = () =>
+    showConfirmCard(scoped(), {
+      customerId: shop.customerId,
+      consultationId: shop.consultationId,
+      kind: "issue_report",
+      orderId: shop.orderId,
+      sourceMessageId: shop.messageId,
+      now: NOW,
+    });
+  it("실제 모은 신고 자료와 받은 날을 준비 값으로 연결하고 원문을 카드 payload에 복사하지 않는다", async () => {
+    const card = await prepare();
+    expect(card.issueReport).toMatchObject({
+      description: "합성 신고 설명",
+      photoCount: 2,
+      showMedicalNotice: true,
+      receivedAt: new Date(NOW.getTime() - 3 * 3600000).toISOString(),
+      timeZone: "Asia/Seoul",
+      expiresAt: new Date(NOW.getTime() + 30 * 60000).toISOString(),
+    });
+    const payload = (
+      await isolated.db.query("SELECT payload FROM confirm_cards WHERE shop_id=$1 AND card_key=$2", [
+        shop.shopId,
+        card.cardKey,
+      ])
+    ).rows[0]?.payload;
+    expect(JSON.stringify(payload)).not.toContain("합성 신고 설명");
+    const delivery = await scoped().transaction((tx) =>
+      readConfirmCardDelivery(tx, {
+        customerId: shop.customerId,
+        consultationId: shop.consultationId,
+        sourceMessageId: shop.messageId,
+        now: NOW,
+      }),
+    );
+    expect(delivery.card?.issueReport).toEqual(card.issueReport);
+  });
+  it.each(["description", "health", "photo"] as const)(
+    "같은 주문 버전이어도 모은 신고 자료가 바뀌면 새 카드만 보내고 명령을 실행하지 않는다(%s)",
+    async (field) => {
+      const card = await prepare();
+      if (field === "description")
+        await isolated.db.query("UPDATE issue_details SET description='바뀐 합성 신고 설명' WHERE id=$1", [detailsId]);
+      if (field === "health")
+        await isolated.db.query("UPDATE issue_details SET health_concern=false WHERE id=$1", [detailsId]);
+      if (field === "photo")
+        await isolated.db.query(
+          "INSERT INTO issue_photos(shop_id,issue_details_id,position,storage_key,content_type,byte_size) VALUES($1,$2,3,$3,'image/jpeg',1)",
+          [shop.shopId, detailsId, `synthetic-issue-${newUuid()}`],
+        );
+      const execute = vi.fn(async () => ({ outcome: "issue_reported", text: "합성 신고 접수" }));
+      const answer = await pressConfirmCard(
+        scoped(),
+        {
+          customerId: shop.customerId,
+          consultationId: shop.consultationId,
+          cardKey: card.cardKey,
+          choice: "confirm",
+          now: NOW,
+        },
+        execute,
+      );
+      expect(answer.outcome).toBe("card_stale");
+      expect(execute).not.toHaveBeenCalled();
+      expect(answer.card?.cardKey).not.toBe(card.cardKey);
+      expect(answer.card?.issueReport).toMatchObject({
+        photoCount: field === "photo" ? 3 : 2,
+        showMedicalNotice: field !== "health",
+        description: field === "description" ? "바뀐 합성 신고 설명" : "합성 신고 설명",
+      });
+    },
+  );
   it.each(["신고를 받았어요. 사장님이 보시고 정하실 거예요", "이전 합성 신고 접수 안내"])(
     "API071 재클릭과 카드 재전달이 현재/이전 첫 결과만 보이고 명령은 한 번이다(%s)",
     async (text) => {
