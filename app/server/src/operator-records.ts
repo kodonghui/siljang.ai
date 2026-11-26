@@ -5,6 +5,7 @@ import {
   sealOperatorRecordCursor,
 } from "./operator-record-cursor";
 import { parseOperatorRecordList, parseOperatorRecordPage } from "./operator-record-input";
+import { sealOperatorRecordPage } from "./operator-record-page";
 import { ApiError, fieldError } from "./problem";
 import type { AccessRequest } from "./routes";
 
@@ -32,8 +33,11 @@ export async function getOperatorConsultation(r: AccessRequest): Promise<Respons
     const header = headers.rows[0];
     if (header === undefined) throw new ApiError("not_found");
     if (header.body.status === "deleted")
-      return { body: { ...header.body, items: [], nextCursor: null }, subjects: [header.customer_id] };
-    const found = await db.run<{ item: unknown; cursor_at: string; cursor_key: string }>(
+      return {
+        body: { ...header.body, items: [], nextCursor: null, textCursor: null },
+        subjects: [header.customer_id],
+      };
+    const found = await db.run<{ item: { messageId: string }; cursor_at: string; cursor_key: string }>(
       "SELECT item,cursor_at,cursor_key FROM read_operator_messages($1,$2,$3,$4::jsonb,$5)",
       [operatorId, consultationId, JSON.stringify(after ?? {}), page.limit + 1],
     );
@@ -43,8 +47,21 @@ export async function getOperatorConsultation(r: AccessRequest): Promise<Respons
       found.rows.length > page.limit && last !== undefined
         ? await sealOperatorRecordCursor(r.services.fieldCrypto(), scope, { at: last.cursor_at, key: last.cursor_key })
         : null;
+    const textPage = shown.slice(0, 20),
+      firstText = textPage[0],
+      lastText = textPage.at(-1);
+    const textCursor = await sealOperatorRecordPage(
+      r.services.fieldCrypto(),
+      { shopId: r.scope.shopId, consultationId, operatorId },
+      {
+        first: firstText ? { at: firstText.cursor_at, key: firstText.cursor_key } : null,
+        last: lastText ? { at: lastText.cursor_at, key: lastText.cursor_key } : null,
+        messageIds: textPage.map((row) => row.item.messageId),
+      },
+      r.services.now(),
+    );
     return {
-      body: { ...header.body, items: shown.map((row) => row.item), nextCursor },
+      body: { ...header.body, items: shown.map((row) => row.item), nextCursor, textCursor },
       subjects: [header.customer_id],
     };
   });

@@ -1,6 +1,24 @@
 -- TASK-159: 운영자의 가린 기록 조회. 원문 열기와 접속기록은 API-077/074~076의 같은 트랜잭션에서 처리한다.
 -- 트랜잭션은 db-migrate.sh와 스테이징 갱신기가 연다.
 
+-- TBL-062 masked_value_erasures (CTX-001) ← SPEC-065, SPEC-073 | terms: none
+CREATE TABLE masked_value_erasures (
+  id              uuid PRIMARY KEY, -- 삭제한 마스킹 값의 ID. 원문·끝4자리·HMAC은 두지 않음
+  shop_id         uuid NOT NULL, -- 삭제한 값이 속했던 가게
+  consultation_id uuid NOT NULL, -- 지운 상담. 삭제 상태와 가게 범위만 확인함
+  erased_at       timestamptz NOT NULL, -- 원문 행을 삭제한 시각
+  CONSTRAINT masked_value_erasures_shop_scope UNIQUE (shop_id,id),
+  CONSTRAINT masked_value_erasures_consultation_fk FOREIGN KEY (shop_id,consultation_id) REFERENCES consultations(shop_id,id) ON DELETE CASCADE
+);
+CREATE INDEX masked_value_erasures_consultation_idx ON masked_value_erasures(consultation_id);
+COMMENT ON TABLE masked_value_erasures IS 'TBL-062 삭제한 마스킹 값의 식별 정보: 같은 가게의 삭제 안내만 판단하고 원문/끝4자리/번호 해시는 남기지 않음';
+REVOKE ALL ON TABLE masked_value_erasures FROM PUBLIC;
+COMMENT ON COLUMN masked_value_erasures.id IS '삭제한 마스킹 값의 ID. 원문·끝4자리·HMAC은 두지 않음';
+COMMENT ON COLUMN masked_value_erasures.shop_id IS '삭제한 값이 속했던 가게';
+COMMENT ON COLUMN masked_value_erasures.consultation_id IS '지운 상담. 삭제 상태와 가게 범위만 확인함';
+COMMENT ON COLUMN masked_value_erasures.erased_at IS '원문 행을 삭제한 시각';
+
+
 CREATE FUNCTION read_operator_order(p_shop uuid,p_operator uuid,p_order uuid)
 RETURNS TABLE(body jsonb,customer_id uuid)
 LANGUAGE sql STABLE STRICT SECURITY DEFINER SET search_path=pg_catalog AS $$
@@ -96,7 +114,7 @@ CREATE FUNCTION read_operator_messages(p_shop uuid,p_operator uuid,p_consultatio
 RETURNS TABLE(item jsonb,cursor_at text,cursor_key text)
 LANGUAGE sql STABLE STRICT SECURITY DEFINER SET search_path=pg_catalog AS $$
   SELECT jsonb_build_object('messageId',m.id,'at',m.created_at,'direction',m.direction,'author',m.author,'kind',m.kind,
-    'textLength',CASE WHEN m.direction='inbound' AND m.kind IN ('photo','unsupported') THEN 0 ELSE coalesce(char_length(m.body_masked),0) END,
+    'textLength',CASE WHEN m.direction='inbound' AND m.kind IN ('photo','unsupported') THEN 0 ELSE least(coalesce(char_length(m.body_masked),0),4000) END,
     'photoCount',(
       (SELECT count(*) FROM public.reference_photos rp WHERE rp.shop_id=p_shop AND rp.message_id=m.id)+
       (SELECT count(*) FROM public.issue_photos ip WHERE ip.shop_id=p_shop AND ip.message_id=m.id)+
@@ -126,7 +144,13 @@ BEGIN
     SELECT c.id,c.customer_id,c.status INTO v_parent FROM public.consultations c
       JOIN public.masked_values mv ON mv.shop_id=p_shop AND mv.consultation_id=c.id AND mv.id=p_target
       WHERE c.shop_id=p_shop FOR SHARE OF c;
-    IF NOT FOUND THEN RETURN; END IF;
+    IF NOT FOUND THEN
+      SELECT c.customer_id INTO v_row FROM public.masked_value_erasures e
+        JOIN public.consultations c ON c.shop_id=p_shop AND c.id=e.consultation_id
+        WHERE e.shop_id=p_shop AND e.id=p_target AND c.status='deleted';
+      IF FOUND THEN RETURN QUERY SELECT jsonb_build_object('state','erased'),v_row.customer_id; END IF;
+      RETURN;
+    END IF;
     IF v_parent.status='deleted' THEN
       RETURN QUERY SELECT jsonb_build_object('state','erased'),v_parent.customer_id; RETURN;
     END IF;
@@ -170,9 +194,11 @@ BEGIN
     END IF;
     SELECT jsonb_build_object('consultationId',v_parent.id,'items',coalesce(jsonb_agg(q.item ORDER BY q.created_at,q.timeline_seq),'[]'::jsonb)) INTO v_value FROM (
       SELECT m.created_at,m.timeline_seq,jsonb_build_object('messageId',m.id,'at',m.created_at,'author',m.author,
-        'textMasked',CASE WHEN m.direction='inbound' AND m.kind IN ('photo','unsupported') THEN NULL ELSE m.body_masked END) AS item
+        'textMasked',CASE WHEN m.direction='inbound' AND m.kind IN ('photo','unsupported') THEN NULL ELSE left(m.body_masked,4000) END) AS item
       FROM public.messages m WHERE m.shop_id=p_shop AND m.consultation_id=v_parent.id
-        AND (p_after->>'at' IS NULL OR (m.created_at,m.timeline_seq)>((p_after->>'at')::timestamptz,(p_after->>'key')::bigint))
+        AND jsonb_typeof(p_after->'first')='object' AND jsonb_typeof(p_after->'last')='object'
+        AND (m.created_at,m.timeline_seq)>=((p_after->'first'->>'at')::timestamptz,(p_after->'first'->>'key')::bigint)
+        AND (m.created_at,m.timeline_seq)<=((p_after->'last'->>'at')::timestamptz,(p_after->'last'->>'key')::bigint)
       ORDER BY m.created_at,m.timeline_seq LIMIT 20
     ) q;
   ELSIF p_kind='kept_record' THEN

@@ -1864,6 +1864,19 @@ CREATE INDEX owner_sessions_owner_idx ON owner_sessions (owner_id);
 CREATE INDEX owner_sessions_expires_idx ON owner_sessions (expires_at);
 COMMENT ON TABLE owner_sessions IS 'TBL-061 사장님 세션: 마지막 사용부터 30일로 연장하고 로그아웃 때 끝냄(DEC-26)';
 
+-- TBL-062 masked_value_erasures (CTX-001) ← SPEC-065, SPEC-073 | terms: none
+CREATE TABLE masked_value_erasures (
+  id              uuid PRIMARY KEY, -- 삭제한 마스킹 값의 ID. 원문·끝4자리·HMAC은 두지 않음
+  shop_id         uuid NOT NULL, -- 삭제한 값이 속했던 가게
+  consultation_id uuid NOT NULL, -- 지운 상담. 삭제 상태와 가게 범위만 확인함
+  erased_at       timestamptz NOT NULL, -- 원문 행을 삭제한 시각
+  CONSTRAINT masked_value_erasures_shop_scope UNIQUE (shop_id,id),
+  CONSTRAINT masked_value_erasures_consultation_fk FOREIGN KEY (shop_id,consultation_id) REFERENCES consultations(shop_id,id) ON DELETE CASCADE
+);
+CREATE INDEX masked_value_erasures_consultation_idx ON masked_value_erasures(consultation_id);
+COMMENT ON TABLE masked_value_erasures IS 'TBL-062 삭제한 마스킹 값의 식별 정보: 같은 가게의 삭제 안내만 판단하고 원문/끝4자리/번호 해시는 남기지 않음';
+REVOKE ALL ON TABLE masked_value_erasures FROM PUBLIC;
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- 컨텍스트별 테이블
 -- CTX-001 상담: TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-024, TBL-027, TBL-028, TBL-029, TBL-048, TBL-049, TBL-055, TBL-056
@@ -2297,7 +2310,7 @@ CREATE FUNCTION read_operator_messages(p_shop uuid,p_operator uuid,p_consultatio
 RETURNS TABLE(item jsonb,cursor_at text,cursor_key text)
 LANGUAGE sql STABLE STRICT SECURITY DEFINER SET search_path=pg_catalog AS $$
   SELECT jsonb_build_object('messageId',m.id,'at',m.created_at,'direction',m.direction,'author',m.author,'kind',m.kind,
-    'textLength',CASE WHEN m.direction='inbound' AND m.kind IN ('photo','unsupported') THEN 0 ELSE coalesce(char_length(m.body_masked),0) END,
+    'textLength',CASE WHEN m.direction='inbound' AND m.kind IN ('photo','unsupported') THEN 0 ELSE least(coalesce(char_length(m.body_masked),0),4000) END,
     'photoCount',(
       (SELECT count(*) FROM public.reference_photos rp WHERE rp.shop_id=p_shop AND rp.message_id=m.id)+
       (SELECT count(*) FROM public.issue_photos ip WHERE ip.shop_id=p_shop AND ip.message_id=m.id)+
@@ -2327,7 +2340,13 @@ BEGIN
     SELECT c.id,c.customer_id,c.status INTO v_parent FROM public.consultations c
       JOIN public.masked_values mv ON mv.shop_id=p_shop AND mv.consultation_id=c.id AND mv.id=p_target
       WHERE c.shop_id=p_shop FOR SHARE OF c;
-    IF NOT FOUND THEN RETURN; END IF;
+    IF NOT FOUND THEN
+      SELECT c.customer_id INTO v_row FROM public.masked_value_erasures e
+        JOIN public.consultations c ON c.shop_id=p_shop AND c.id=e.consultation_id
+        WHERE e.shop_id=p_shop AND e.id=p_target AND c.status='deleted';
+      IF FOUND THEN RETURN QUERY SELECT jsonb_build_object('state','erased'),v_row.customer_id; END IF;
+      RETURN;
+    END IF;
     IF v_parent.status='deleted' THEN
       RETURN QUERY SELECT jsonb_build_object('state','erased'),v_parent.customer_id; RETURN;
     END IF;
@@ -2371,9 +2390,11 @@ BEGIN
     END IF;
     SELECT jsonb_build_object('consultationId',v_parent.id,'items',coalesce(jsonb_agg(q.item ORDER BY q.created_at,q.timeline_seq),'[]'::jsonb)) INTO v_value FROM (
       SELECT m.created_at,m.timeline_seq,jsonb_build_object('messageId',m.id,'at',m.created_at,'author',m.author,
-        'textMasked',CASE WHEN m.direction='inbound' AND m.kind IN ('photo','unsupported') THEN NULL ELSE m.body_masked END) AS item
+        'textMasked',CASE WHEN m.direction='inbound' AND m.kind IN ('photo','unsupported') THEN NULL ELSE left(m.body_masked,4000) END) AS item
       FROM public.messages m WHERE m.shop_id=p_shop AND m.consultation_id=v_parent.id
-        AND (p_after->>'at' IS NULL OR (m.created_at,m.timeline_seq)>((p_after->>'at')::timestamptz,(p_after->>'key')::bigint))
+        AND jsonb_typeof(p_after->'first')='object' AND jsonb_typeof(p_after->'last')='object'
+        AND (m.created_at,m.timeline_seq)>=((p_after->'first'->>'at')::timestamptz,(p_after->'first'->>'key')::bigint)
+        AND (m.created_at,m.timeline_seq)<=((p_after->'last'->>'at')::timestamptz,(p_after->'last'->>'key')::bigint)
       ORDER BY m.created_at,m.timeline_seq LIMIT 20
     ) q;
   ELSIF p_kind='kept_record' THEN
@@ -3165,4 +3186,8 @@ COMMENT ON COLUMN owner_sessions.created_at IS '로그인한 시각';
 COMMENT ON COLUMN owner_sessions.last_seen_at IS '마지막으로 쓴 시각. 동시에 온 요청에서 뒤로 가지 않음';
 COMMENT ON COLUMN owner_sessions.expires_at IS '마지막으로 쓴 때부터 30일(2592000초, DEC-26)';
 COMMENT ON COLUMN owner_sessions.ended_at IS '로그아웃한 시각. 끝난 세션은 다시 늘리지 않음';
+COMMENT ON COLUMN masked_value_erasures.id IS '삭제한 마스킹 값의 ID. 원문·끝4자리·HMAC은 두지 않음';
+COMMENT ON COLUMN masked_value_erasures.shop_id IS '삭제한 값이 속했던 가게';
+COMMENT ON COLUMN masked_value_erasures.consultation_id IS '지운 상담. 삭제 상태와 가게 범위만 확인함';
+COMMENT ON COLUMN masked_value_erasures.erased_at IS '원문 행을 삭제한 시각';
 -- ▲ 컬럼 설명 끝

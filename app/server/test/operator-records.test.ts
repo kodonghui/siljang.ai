@@ -74,12 +74,24 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
       { ...init, headers: { cookie: session.cookie, [CLIENT_IP_HEADER]: TEST_IPV4, ...init.headers } },
       testEnv(),
     );
-  const open = (targetKind: string, targetId: string, reason = "손님 문의: 픽업 연락 확인", key = newRequestKey()) =>
+  const open = (
+    targetKind: string,
+    targetId: string,
+    reason = "손님 문의: 픽업 연락 확인",
+    key = newRequestKey(),
+    cursor?: string,
+  ) =>
     call("/originals", {
       method: "POST",
       headers: { origin: ORIGIN, "content-type": "application/json", "Idempotency-Key": key },
-      body: JSON.stringify({ targetKind, targetId, reason }),
+      body: JSON.stringify({ targetKind, targetId, reason, ...(cursor === undefined ? {} : { cursor }) }),
     });
+  const textPageCursor = async (id = shop.consultationId) => {
+    const response = await call(`/consultations/${id}`);
+    expect(response.status, await response.clone().text()).toBe(200);
+    const body = (await response.json()) as { textCursor: string };
+    return body.textCursor;
+  };
   it("API074 주문 목록은 가린 연락처만 보이고 읽음 접속기록 한 행을 남긴다", async () => {
     const { text } = await expectOneAccessRow(isolated.db, shop.shopId, () => call("/records"), {
       action: "read",
@@ -219,13 +231,19 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
     "API077의 %s는 사유를 적어 대상 하나만 열고 기록한다",
     async (targetKind) => {
       const targetId = targetKind === "order_contact" ? shop.orderId : shop.consultationId;
-      const { text } = await expectOneAccessRow(isolated.db, shop.shopId, () => open(targetKind, targetId), {
-        action: "open_original",
-        api_id: "API-077",
-        target_kind: targetKind,
-        target_id: targetId,
-        subject_ids: [shop.customerId],
-      });
+      const cursor = targetKind === "consultation_text" ? await textPageCursor() : undefined;
+      const { text } = await expectOneAccessRow(
+        isolated.db,
+        shop.shopId,
+        () => open(targetKind, targetId, "손님 문의: 픽업 연락 확인", newRequestKey(), cursor),
+        {
+          action: "open_original",
+          api_id: "API-077",
+          target_kind: targetKind,
+          target_id: targetId,
+          subject_ids: [shop.customerId],
+        },
+      );
       const body = JSON.parse(text);
       expectSchema("OriginalValue", body);
       expect(body.maskedValue).toBeNull();
@@ -373,13 +391,19 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
   it.each(["masked_value", "order_contact", "consultation_text"])(
     "%s 열기 기록 저장 실패는 본문과 요청 키 완료를 되돌린다",
     async (kind) => {
+      const cursor = kind === "consultation_text" ? await textPageCursor() : undefined;
       app = createApp({
         connect: failingAccessInsert(() => isolated.connect()),
         services: { now: () => NOW, fieldCrypto: fc },
         logSink: (line) => logs.push(line),
       });
       const id = kind === "masked_value" ? maskedId : kind === "order_contact" ? shop.orderId : shop.consultationId;
-      await expectFailClosed(isolated.db, shop.shopId, () => open(kind, id), [NAME, PHONE, DIGITS, PRIVATE_TEXT]);
+      await expectFailClosed(
+        isolated.db,
+        shop.shopId,
+        () => open(kind, id, "손님 문의: 픽업 연락 확인", newRequestKey(), cursor),
+        [NAME, PHONE, DIGITS, PRIVATE_TEXT],
+      );
       expect(
         (await isolated.db.query("SELECT 1 FROM request_keys WHERE actor_id=$1", [session.operatorId])).rowCount,
       ).toBe(0);
@@ -447,7 +471,16 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
       ["consultation_text", shop.consultationId],
       ["masked_value", maskedId],
     ] as const)
-      await expectProblem(await open(kind, id), "original_erased");
+      await expectProblem(
+        await open(
+          kind,
+          id,
+          "손님 문의: 픽업 연락 확인",
+          newRequestKey(),
+          kind === "consultation_text" ? "example_text_page_cursor" : undefined,
+        ),
+        "original_erased",
+      );
     expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(0);
   });
   it("봉투가 같은 가게의 다른 값으로 바뀌면 HMAC과 끝4자리 불일치로500·열기0이다", async () => {
@@ -465,7 +498,13 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
       "idempotency_key_reused",
     );
     await expectProblem(
-      await open("consultation_text", shop.consultationId, "손님 문의: 픽업 연락 확인", key),
+      await open(
+        "consultation_text",
+        shop.consultationId,
+        "손님 문의: 픽업 연락 확인",
+        key,
+        "example_text_page_cursor",
+      ),
       "idempotency_key_reused",
     );
     expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(1);
@@ -505,15 +544,22 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
       expect(res.status, text).toBe(200);
       const body = JSON.parse(text);
       expectSchema("OperatorConsultation", body);
-      return body as { items: { messageId: string }[]; nextCursor: string | null };
+      return body as { items: { messageId: string }[]; nextCursor: string | null; textCursor: string };
     };
     const first = await page();
     expect(first.items.map((x) => x.messageId)).toEqual(expected.slice(0, 10));
     expect(first.nextCursor).toMatch(/^[A-Za-z0-9_-]{179,181}$/);
-    const firstOpen = await open("consultation_text", shop.consultationId);
+    const firstOpen = await open(
+      "consultation_text",
+      shop.consultationId,
+      "손님 문의: 픽업 연락 확인",
+      newRequestKey(),
+      first.textCursor,
+    );
     const firstBody = (await firstOpen.json()) as { consultationText: { items: unknown[] } };
-    expect(firstBody.consultationText.items).toHaveLength(20);
+    expect(firstBody.consultationText.items).toHaveLength(10);
     if (!first.nextCursor) throw new Error("페이지 커서 없음");
+    const secondForOpen = await page(first.nextCursor);
     const opened = await call("/originals", {
       method: "POST",
       headers: { origin: ORIGIN, "content-type": "application/json", "Idempotency-Key": newRequestKey() },
@@ -521,7 +567,7 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
         targetKind: "consultation_text",
         targetId: shop.consultationId,
         reason: "손님 문의: 대화 글 확인",
-        cursor: first.nextCursor,
+        cursor: secondForOpen.textCursor,
       }),
     });
     const openedBody = (await opened.json()) as {
@@ -529,7 +575,7 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
     };
     expect(opened.status).toBe(200);
     expectSchema("OriginalValue", openedBody);
-    expect(openedBody.consultationText.items.map((x) => x.messageId)).toEqual(expected.slice(10));
+    expect(openedBody.consultationText.items.map((x) => x.messageId)).toEqual(expected.slice(10, 20));
     expect(JSON.stringify(openedBody)).toContain("[전화번호1]");
     expect(JSON.stringify(openedBody)).not.toContain(DIGITS);
     // 이미 지나간 위치에 새 행을 넣어도 뒤 페이지는 중복/누락 없이 이어진다.
@@ -560,7 +606,7 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
           cursor: first.nextCursor,
         }),
       }),
-      "validation_failed",
+      "not_found",
     );
     expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(before);
   });
@@ -638,7 +684,16 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
         expect(await scoped.transaction((tx) => purgeConsultation(tx, shop.consultationId, NOW))).toBe(0);
       });
       expect(await scoped.transaction((tx) => purgeConsultation(tx, shop.consultationId, NOW))).toBe(1);
-      await expectProblem(await open("consultation_text", shop.consultationId), "original_erased");
+      await expectProblem(
+        await open(
+          "consultation_text",
+          shop.consultationId,
+          "손님 문의: 픽업 연락 확인",
+          newRequestKey(),
+          "example_text_page_cursor",
+        ),
+        "original_erased",
+      );
       expect(
         (await isolated.db.query("SELECT 1 FROM masked_values WHERE consultation_id=$1", [shop.consultationId]))
           .rowCount,
@@ -706,7 +761,8 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
             await call(`/consultations/${shop.consultationId}?limit=10&cursor=${first.nextCursor}`)
           ).json()) as typeof first)
         : first;
-      const cursor = page.textCursor ?? (next ? first.nextCursor : undefined);
+      const cursor = page.textCursor;
+      expect(typeof cursor).toBe("string");
       const response = await call("/originals", {
         method: "POST",
         headers: { origin: ORIGIN, "content-type": "application/json", "Idempotency-Key": newRequestKey() },
@@ -722,8 +778,13 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
       expect(opened.consultationText.items.map((x) => x.messageId)).toEqual(page.items.map((x) => x.messageId));
     },
   );
-  it.each([4001, 100000])("리뷰P3: 저장된 긴 글 %s자도 메타데이터·열기 응답 상한을 지킨다", async (n) => {
-    await isolated.db.query("UPDATE messages SET body_masked=$2 WHERE id=$1", [shop.messageId, "한".repeat(n)]);
+  it.each([
+    ["한", 4000],
+    ["한", 4001],
+    ["🍰", 4001],
+    ["한", 100000],
+  ] as const)("리뷰P3: 저장된 긴 글 %s·%s자도 메타데이터·열기 응답 상한을 지킨다", async (letter, n) => {
+    await isolated.db.query("UPDATE messages SET body_masked=$2 WHERE id=$1", [shop.messageId, letter.repeat(n)]);
     const response = await call(`/consultations/${shop.consultationId}`),
       meta = (await response.json()) as { items: { textLength: number }[]; textCursor?: string };
     expectSchema("OperatorConsultation", meta);
@@ -757,5 +818,101 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
     expect(await job.transaction((tx) => purgeConsultation(tx, shop.consultationId, NOW))).toBe(1);
     expect((await isolated.db.query("SELECT 1 FROM masked_values WHERE id=$1", [maskedId])).rowCount).toBe(0);
     await expectProblem(await open("masked_value", maskedId), "original_erased");
+    const marker = (
+      await isolated.db.query<{ body: Record<string, unknown> }>(
+        "SELECT to_jsonb(e) AS body FROM masked_value_erasures e WHERE e.shop_id=$1 AND e.id=$2",
+        [shop.shopId, maskedId],
+      )
+    ).rows[0]?.body;
+    expect(Object.keys(marker ?? {}).sort()).toEqual(["consultation_id", "erased_at", "id", "shop_id"]);
+    for (const value of [NAME, PHONE, DIGITS, PRIVATE_TEXT]) expect(JSON.stringify(marker)).not.toContain(value);
+  });
+  it("리뷰P2: 현재 범위 중간에 메시지가 끼면 원문0·접속기록0으로 닫고 다시 본 증표만 연다", async () => {
+    await isolated.db.query(
+      "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,created_at,kakao_message_id) VALUES($1,$2,'inbound','customer','text','합성 끝 글',$3::timestamptz+interval '2 seconds',repeat(md5(gen_random_uuid()::text),2))",
+      [shop.shopId, shop.consultationId, NOW],
+    );
+    const cursor = await textPageCursor();
+    const count = (await accessLogRows(isolated.db, shop.shopId)).length;
+    await isolated.db.query(
+      "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,created_at,kakao_message_id) VALUES($1,$2,'inbound','customer','text','아직 보지 않은 합성 글',$3::timestamptz+interval '1 second',repeat(md5(gen_random_uuid()::text),2))",
+      [shop.shopId, shop.consultationId, NOW],
+    );
+    await expectProblem(
+      await open("consultation_text", shop.consultationId, "손님 문의: 페이지 확인", newRequestKey(), cursor),
+      "validation_failed",
+    );
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(count);
+    const fresh = await textPageCursor(),
+      response = await open("consultation_text", shop.consultationId, "손님 문의: 페이지 확인", newRequestKey(), fresh),
+      body = (await response.json()) as { consultationText: { items: { textMasked: string }[] } };
+    expect(response.status).toBe(200);
+    expect(body.consultationText.items).toHaveLength(3);
+    expect(body.consultationText.items[1]?.textMasked).toBe("아직 보지 않은 합성 글");
+  });
+  it("리뷰P2: 증표 없이/다음 페이지 커서로/다른 운영자로는 현재 글도 열지 않는다", async () => {
+    const proof = await textPageCursor(),
+      count = (await accessLogRows(isolated.db, shop.shopId)).length;
+    await expectProblem(await open("consultation_text", shop.consultationId), "validation_failed");
+    await expectProblem(
+      await open(
+        "consultation_text",
+        shop.consultationId,
+        "손님 문의: 페이지 확인",
+        newRequestKey(),
+        "example_pagination_cursor",
+      ),
+      "validation_failed",
+    );
+    const other = await seedOperatorSession(isolated.db, NOW);
+    await expectProblem(
+      await call("/originals", {
+        method: "POST",
+        headers: {
+          cookie: other.cookie,
+          origin: ORIGIN,
+          "content-type": "application/json",
+          "Idempotency-Key": newRequestKey(),
+        },
+        body: JSON.stringify({
+          targetKind: "consultation_text",
+          targetId: shop.consultationId,
+          reason: "손님 문의: 페이지 확인",
+          cursor: proof,
+        }),
+      }),
+      "validation_failed",
+    );
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(count);
+  });
+  it("리뷰P2: 만료된 증표는 원문0이고 다시 본 페이지로 회복한다", async () => {
+    let clock = NOW;
+    app = createApp({
+      connect: () => isolated.connect(),
+      services: { now: () => clock, fieldCrypto: fc },
+      logSink: (line) => logs.push(line),
+    });
+    const proof = await textPageCursor(),
+      key = newRequestKey();
+    for (let i = 0; i < 2; i++) {
+      const opened = await expectOneAccessRow(
+        isolated.db,
+        shop.shopId,
+        () => open("consultation_text", shop.consultationId, "손님 문의: 페이지 확인", key, proof),
+        { action: "open_original", api_id: "API-077", target_kind: "consultation_text" },
+      );
+      if (i === 1) expect(opened.res.headers.get("Idempotency-Replayed")).toBe("true");
+    }
+    const count = (await accessLogRows(isolated.db, shop.shopId)).length;
+    clock = new Date(NOW.getTime() + 600000);
+    await expectProblem(
+      await open("consultation_text", shop.consultationId, "손님 문의: 페이지 확인", key, proof),
+      "validation_failed",
+    );
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(count);
+    const fresh = await textPageCursor();
+    expect(
+      (await open("consultation_text", shop.consultationId, "손님 문의: 페이지 확인", newRequestKey(), fresh)).status,
+    ).toBe(200);
   });
 });

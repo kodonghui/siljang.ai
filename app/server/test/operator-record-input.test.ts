@@ -15,7 +15,12 @@ it("기록 목록의 기본값과 상한은 orders·20개·최대100개", () => 
 it.each(["masked_value", "order_contact", "refund_account", "kept_record", "consultation_text"] as const)(
   "%s 열기는 대상 하나와 사유만 받는다",
   (targetKind) => {
-    const input = { targetKind, targetId: id, reason: "  손님 문의: 픽업 연락 확인  " };
+    const input = {
+      targetKind,
+      targetId: id,
+      reason: "  손님 문의: 픽업 연락 확인  ",
+      ...(targetKind === "consultation_text" ? { cursor: "example_text_page_cursor" } : {}),
+    };
     expect(parseOriginalOpen(input)).toEqual({ ...input, reason: input.reason.trim() });
   },
 );

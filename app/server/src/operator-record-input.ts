@@ -48,6 +48,7 @@ export function parseOriginalOpen(body: unknown): OriginalOpenInput {
     length = [...reason].length;
   if (length < 5) throw fieldError("/reason", "too_short");
   if (length > 200) throw fieldError("/reason", "too_long");
+  if (targetKind === "consultation_text" && record.cursor === undefined) throw fieldError("/cursor", "required");
   if (record.cursor !== undefined && targetKind !== "consultation_text") throw fieldError("/cursor", "not_allowed");
   return {
     targetKind,

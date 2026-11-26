@@ -4,8 +4,13 @@ import { accountLast4, isAccountNumber, openAccountNumber } from "./account-numb
 import { requireJson } from "./body";
 import { FieldCryptoError } from "./field-crypto";
 import { openStoredMaskedValue, type StoredMaskedValue } from "./masked-values";
-import { OperatorRecordCursorError, openOperatorRecordCursor } from "./operator-record-cursor";
 import { type OriginalOpenInput, parseOriginalOpen } from "./operator-record-input";
+import {
+  type OperatorRecordPage,
+  OperatorRecordPageError,
+  openOperatorRecordPage,
+  operatorRecordPageHash,
+} from "./operator-record-page";
 import { ApiError, fieldError } from "./problem";
 import type { AccessRequest } from "./routes";
 import type { ShopDb } from "./shop-scope";
@@ -38,29 +43,49 @@ export async function openOperatorOriginal(r: AccessRequest): Promise<Response> 
   requireJson(r.req.raw);
   const raw = await r.body(),
     input = parseOriginalOpen(raw);
-  let after: { at: string; key: string } | null = null;
-  if (input.cursor !== undefined) {
-    try {
-      after = await openOperatorRecordCursor(
-        r.services.fieldCrypto(),
-        { shopId: r.scope.shopId, resourceId: input.targetId, kind: "messages" },
-        input.cursor,
-      );
-    } catch (error) {
-      if (error instanceof OperatorRecordCursorError) throw fieldError("/cursor", "bad_format");
-      throw error;
-    }
-  }
   const read = async (db: ShopDb) => {
+    let page: OperatorRecordPage | null = null;
+    if (input.targetKind === "consultation_text") {
+      const header = (
+        await db.run<{ body: { status: string } }>("SELECT body FROM read_operator_consultation($1,$2,$3)", [
+          operatorId,
+          input.targetId,
+        ])
+      ).rows[0];
+      if (!header) throw new ApiError("not_found");
+      if (header.body.status === "deleted") throw new ApiError("original_erased");
+      try {
+        page = await openOperatorRecordPage(
+          r.services.fieldCrypto(),
+          { shopId: r.scope.shopId, consultationId: input.targetId, operatorId },
+          input.cursor as string,
+          r.services.now(),
+        );
+      } catch (error) {
+        if (error instanceof OperatorRecordPageError) throw fieldError("/cursor", "bad_format");
+        throw error;
+      }
+    }
     const found = await db.run<{ source: OriginalSource; customer_id: string }>(
       "SELECT source,customer_id FROM read_operator_original($1,$2,$3,$4,$5::jsonb,$6)",
-      [operatorId, input.targetKind, input.targetId, JSON.stringify(after ?? {}), r.services.now()],
+      [
+        operatorId,
+        input.targetKind,
+        input.targetId,
+        JSON.stringify(page ? { first: page.first, last: page.last } : {}),
+        r.services.now(),
+      ],
     );
     const row = found.rows[0];
     if (row === undefined) throw new ApiError("not_found");
     if (row.source.state === "erased") throw new ApiError("original_erased");
     if (row.source.state === "not_kept") throw new ApiError("original_not_kept");
     if (row.source.state !== "ready" || row.source.value === undefined) throw new Error("invalid original source");
+    if (page !== null) {
+      const items = (row.source.value as { items: { messageId: string }[] }).items;
+      if ((await operatorRecordPageHash(items.map((item) => item.messageId))) !== page.idsHash)
+        throw fieldError("/cursor", "bad_format");
+    }
     const value = await decryptOriginal(r, input, row.source.value);
     const body: Record<string, unknown> = {
       targetKind: input.targetKind,

@@ -75,6 +75,7 @@ describeDb("운영자 기록의 최소 실행 권한(TASK-159)", () => {
     ).rows[0];
     if (!masked) throw new Error("합성 번호 없음");
     const app = createApp({ connect, services: { now: () => NOW, fieldCrypto: fc } });
+    let textCursor: string | undefined;
     for (const [path, kind, id] of [
       ["/records", null, null],
       [`/orders/${shop.orderId}`, null, null],
@@ -94,12 +95,22 @@ describeDb("운영자 기록의 최소 실행 권한(TASK-159)", () => {
             "content-type": "application/json",
             "Idempotency-Key": newRequestKey(),
           },
-          ...(kind ? { body: JSON.stringify({ targetKind: kind, targetId: id, reason: "손님 문의: 원문 확인" }) } : {}),
+          ...(kind
+            ? {
+                body: JSON.stringify({
+                  targetKind: kind,
+                  targetId: id,
+                  reason: "손님 문의: 원문 확인",
+                  ...(kind === "consultation_text" ? { cursor: textCursor } : {}),
+                }),
+              }
+            : {}),
         },
         testEnv(),
       );
       const text = await response.text();
       expect(response.status, text).toBe(200);
+      if (path.startsWith("/consultations/")) textCursor = JSON.parse(text).textCursor;
       if (kind === "masked_value") expect(JSON.parse(text).maskedValue.value).toBe("01012345678");
     }
     expect((await isolated.db.query("SELECT 1 FROM access_logs WHERE shop_id=$1", [shop.shopId])).rowCount).toBe(6);
@@ -163,6 +174,35 @@ describeDb("운영자 기록의 최소 실행 권한(TASK-159)", () => {
     try {
       for (const sql of ["SELECT refund_account_enc FROM refunds", "SELECT customer_name FROM kept_records"])
         await expect(raw.query(sql)).rejects.toMatchObject({ code: "42501" });
+    } finally {
+      await raw.close();
+    }
+  });
+  it("삭제ID 표는 INSERT만 열고 원문과 추가 읽기/수정/삭제 권한은 주지 않는다", async () => {
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT has_table_privilege($1,'masked_value_erasures','SELECT') AS read,has_any_column_privilege($1,'masked_value_erasures','INSERT') AS insert,has_table_privilege($1,'masked_value_erasures','UPDATE') AS update,has_table_privilege($1,'masked_value_erasures','DELETE') AS delete",
+          [role],
+        )
+      ).rows[0],
+    ).toEqual({ read: false, insert: true, update: false, delete: false });
+    const raw = connect(),
+      id = newUuid();
+    try {
+      expect(
+        (
+          await raw.query(
+            "INSERT INTO masked_value_erasures(shop_id,id,consultation_id,erased_at) VALUES($1,$2,$3,$4)",
+            [shop.shopId, id, shop.consultationId, NOW],
+          )
+        ).rowCount,
+      ).toBe(1);
+      await expect(raw.query("SELECT id FROM masked_value_erasures")).rejects.toMatchObject({ code: "42501" });
+      await expect(raw.query("UPDATE masked_value_erasures SET erased_at=$1", [NOW])).rejects.toMatchObject({
+        code: "42501",
+      });
+      await expect(raw.query("DELETE FROM masked_value_erasures")).rejects.toMatchObject({ code: "42501" });
     } finally {
       await raw.close();
     }

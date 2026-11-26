@@ -642,8 +642,20 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
       ).toBe(401);
       expect(await snapshots(db, env)).toEqual(beforeOwner);
       const session = await seedOperatorSession(db, new Date());
-      const call = (shopId: string, targetKind: string, targetId: string) =>
-        env.app.request(
+      const call = async (shopId: string, targetKind: string, targetId: string) => {
+        let cursor: string | undefined;
+        if (targetKind === "consultation_text") {
+          const meta = await env.app.request(
+            `https://siljang.example/api/operator/shops/${shopId}/consultations/${targetId}`,
+            { headers: { cookie: session.cookie, [CLIENT_IP_HEADER]: TEST_IPV4 } },
+            testEnv(),
+          );
+          cursor =
+            meta.status === 200
+              ? ((await meta.json()) as { textCursor: string }).textCursor
+              : "example_text_page_cursor";
+        }
+        return env.app.request(
           `https://siljang.example/api/operator/shops/${shopId}/originals`,
           {
             method: "POST",
@@ -654,10 +666,16 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
               "content-type": "application/json",
               "Idempotency-Key": newRequestKey(),
             },
-            body: JSON.stringify({ targetKind, targetId, reason: "합성 손님 문의 확인" }),
+            body: JSON.stringify({
+              targetKind,
+              targetId,
+              reason: "합성 손님 문의 확인",
+              ...(cursor ? { cursor } : {}),
+            }),
           },
           testEnv(),
         );
+      };
       for (const target of [env.a, env.b])
         for (const kind of ["order_contact", "consultation_text"]) {
           const id = kind === "order_contact" ? target.orderId : target.consultationId;
