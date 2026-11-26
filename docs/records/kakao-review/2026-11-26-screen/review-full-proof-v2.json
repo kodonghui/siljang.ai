@@ -1,0 +1,66 @@
+{
+  "sourceCommit": "93ea3f010d8931e1943367c59ea7f958d6bf1d10",
+  "publicEquivalentHead": "dbfe58790724f606be7ae40addecb5f45a30bfdf",
+  "sourceTree": "f4e3cb57074b5efaf164ed56253e9f584eecb080",
+  "baseMain": "867b5135a7aef81bba8dcc1f0662b8ec6adbcafa",
+  "scopeGitObjects": {
+    "app/server": "813527488b67a4bee501e1c4a460bfd324f35c5a",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "a14301cda8a934d9eca2f0c7e6e827c3123ba1c1",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "d10b1db043b3ed2f0be8ba41e1294954ad615882",
+    ".github/workflows/app.yml": "92ef700285f79703aaf91a3c80f74ff8dd0379fa",
+    "tools/staging-login-callback-grants.sql": "6cd667a6ec1c8e237efa1f60acd318b58e6a9854",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 44,
+  "server": {
+    "files": 186,
+    "passed": 3424
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "related": {
+    "files": 22,
+    "passed": 393,
+    "workingTree": true
+  },
+  "reviewCorePassed": 42,
+  "redFailed": 2,
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "nodePassed": 100,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "states": 4,
+  "frames": 8,
+  "questionFrames": 6,
+  "responseRows": 12,
+  "responseFrames": 14,
+  "browserExecuted": false,
+  "realKakao": false,
+  "nativePhotoSelection": false,
+  "unchangedOriginalSecurityAndReviewTestObjects": {
+    "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+    "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299",
+    "app/server/test/shop-scope-static.test.ts": "8bb336c3cc68342fad3b4e0aa58b292bba97872c",
+    "app/server/test/kakao-review-dedup.test.ts": "a7448fb18e57a157de386a45be1e3fa8c2895250",
+    "app/server/test/kakao-review-photos.test.ts": "54a249bd42dc6e59170a8e6fb36b2dce5b2833e5"
+  },
+  "modelCallsAdded": 0,
+  "outboundRequestsAdded": 0,
+  "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
+  "npmCi": "로컬 같은 lock 설치 재사용. 기록만 더한 최종 공개 CI의 새 npm ci 확인 예정",
+  "review": {
+    "id": 7184363221,
+    "reviewedHead": "7728301109c44f677df3fa25d2dc2788888964fe",
+    "finding": "P3 사진 후기 접수 불가의 연락처 누락",
+    "ack": 7184374459,
+    "securityFindings": 0
+  },
+  "classification": "P3 고친 고정 소스 전체 성공. 최종 head CI/수동 요청/자기 main 전. TASK148 구현 완료/finished 아님"
+}

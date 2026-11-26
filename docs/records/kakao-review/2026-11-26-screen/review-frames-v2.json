@@ -1,0 +1,175 @@
+{
+  "source": "93ea3f010d8931e1943367c59ea7f958d6bf1d10",
+  "screen": "SCR-012",
+  "responseRows": 12,
+  "frames": [
+    {
+      "state": "normal",
+      "width": 360,
+      "file": "normal-360.html"
+    },
+    {
+      "state": "normal",
+      "width": 1280,
+      "file": "normal-1280.html"
+    },
+    {
+      "state": "done",
+      "width": 360,
+      "file": "done-360.html"
+    },
+    {
+      "state": "done",
+      "width": 1280,
+      "file": "done-1280.html"
+    },
+    {
+      "state": "permission",
+      "width": 360,
+      "file": "permission-360.html"
+    },
+    {
+      "state": "permission",
+      "width": 1280,
+      "file": "permission-1280.html"
+    },
+    {
+      "state": "error",
+      "width": 360,
+      "file": "error-360.html"
+    },
+    {
+      "state": "error",
+      "width": 1280,
+      "file": "error-1280.html"
+    }
+  ],
+  "questionFrames": [
+    {
+      "question": "review_text",
+      "state": "normal",
+      "width": 360,
+      "file": "question-review_text-360.html"
+    },
+    {
+      "question": "review_text",
+      "state": "normal",
+      "width": 1280,
+      "file": "question-review_text-1280.html"
+    },
+    {
+      "question": "review_photos",
+      "state": "normal",
+      "width": 360,
+      "file": "question-review_photos-360.html"
+    },
+    {
+      "question": "review_photos",
+      "state": "normal",
+      "width": 1280,
+      "file": "question-review_photos-1280.html"
+    },
+    {
+      "question": "photo_consent",
+      "state": "normal",
+      "width": 360,
+      "file": "question-photo_consent-360.html"
+    },
+    {
+      "question": "photo_consent",
+      "state": "normal",
+      "width": 1280,
+      "file": "question-photo_consent-1280.html"
+    }
+  ],
+  "responseFrames": [
+    {
+      "response": "API-072#200:review_saved",
+      "state": "done",
+      "width": 360,
+      "file": "response-0-360.html"
+    },
+    {
+      "response": "API-072#200:review_saved",
+      "state": "done",
+      "width": 1280,
+      "file": "response-0-1280.html"
+    },
+    {
+      "response": "API-072#200:review_not_allowed",
+      "state": "permission",
+      "width": 360,
+      "file": "response-1-360.html"
+    },
+    {
+      "response": "API-072#200:review_not_allowed",
+      "state": "permission",
+      "width": 1280,
+      "file": "response-1-1280.html"
+    },
+    {
+      "response": "API-072#200:review_invalid",
+      "state": "error",
+      "width": 360,
+      "file": "response-2-360.html"
+    },
+    {
+      "response": "API-072#200:review_invalid",
+      "state": "error",
+      "width": 1280,
+      "file": "response-2-1280.html"
+    },
+    {
+      "response": "API-072#200:photo_download_failed",
+      "state": "error",
+      "width": 360,
+      "file": "response-3-360.html"
+    },
+    {
+      "response": "API-072#200:photo_download_failed",
+      "state": "error",
+      "width": 1280,
+      "file": "response-3-1280.html"
+    },
+    {
+      "response": "API-072#200:duplicate",
+      "state": "done",
+      "width": 360,
+      "file": "response-4-360.html"
+    },
+    {
+      "response": "API-072#200:duplicate",
+      "state": "done",
+      "width": 1280,
+      "file": "response-4-1280.html"
+    },
+    {
+      "response": "API-072#200:not_accepting",
+      "state": "permission",
+      "width": 360,
+      "file": "response-7-360.html"
+    },
+    {
+      "response": "API-072#200:not_accepting",
+      "state": "permission",
+      "width": 1280,
+      "file": "response-7-1280.html"
+    },
+    {
+      "response": "API-072#200:server_error",
+      "state": "error",
+      "width": 360,
+      "file": "response-8-360.html"
+    },
+    {
+      "response": "API-072#200:server_error",
+      "state": "error",
+      "width": 1280,
+      "file": "response-8-1280.html"
+    }
+  ],
+  "realBrowser": false,
+  "realKakao": false,
+  "sdkOnly": true,
+  "nativePhotoSelection": false
+}
