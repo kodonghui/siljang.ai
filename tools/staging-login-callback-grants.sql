@@ -228,3 +228,6 @@ GRANT EXECUTE ON FUNCTION read_prepared_issue_card(uuid,uuid,uuid,uuid) TO :"run
 
 -- TASK-149: 현재 손님의 철회 카드 자료만 읽는다. 동의·사진·게시의 쓰기 권한은 열지 않는다.
 GRANT EXECUTE ON FUNCTION read_prepared_consent_withdrawal_card(uuid,uuid,uuid,uuid) TO :"runtime_role";
+
+-- TASK-159: 운영자의 주문 조회는 가린 값만 함수로 읽는다. 원문 SELECT 권한은 더하지 않는다.
+GRANT EXECUTE ON FUNCTION read_operator_order(uuid,uuid,uuid) TO :"runtime_role";
