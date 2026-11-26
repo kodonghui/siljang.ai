@@ -1,0 +1,54 @@
+
+ RUN  v5.1.0 /workspace/siljang-task147-issue-card/app/server
+
+ ❯ test/kakao-issue-report-message.test.ts (29 tests | 15 failed | 14 skipped) 10ms
+   ❯ SCR010 문제 신고 표시(TASK-147) (29)
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(빈 설명) 4ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(NUL 설명) 1ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(설명1001자) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(음수 사진 수) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(사진6장) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(소수 사진 수) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(안내 값 형식) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(주문번호) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(받은 시각) 1ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(버튼 기한) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(시간대) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(카드 키) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(블록) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(없는 상태) 0ms
+     × 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(없는 표시) 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 15 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(빈 설명)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(NUL 설명)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(설명1001자)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(음수 사진 수)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(사진6장)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(소수 사진 수)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(안내 값 형식)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(주문번호)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(받은 시각)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(버튼 기한)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(시간대)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(카드 키)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(블록)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(없는 상태)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(없는 표시)
+AssertionError: expected function to throw an error, but it didn't
+ ❯ test/kakao-issue-report-message.test.ts:101:85
+     99|     ["없는 표시", null],
+    100|   ])("잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(%s)", (_name, value) => {
+    101|     expect(() => kakaoIssueReportMessage(value as unknown as KakaoIssu…
+       |                                                                                     ^
+    102|   });
+    103|   it("설명은 앞40개 그래핌과 생략 표시만 보이고 이모지 중간을 자르지 않는다", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/15]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  15 failed | 14 skipped (29)
+   Start at  00:37:04
+   Duration  994ms (import 78%, transform 16%, worker 4%, tests 1%)

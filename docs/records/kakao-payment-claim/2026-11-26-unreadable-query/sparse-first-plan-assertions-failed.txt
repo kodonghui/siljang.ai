@@ -1,0 +1,57 @@
+
+ RUN  v5.1.0 /workspace/siljang-task107-callback-availability/app/server
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-50)
+TASK107 source lookup plan {"rows":50,"sparse":false,"executionMs":0.564,"buffers":227,"cardNodes":[{"type":"Seq Scan","alias":"a","loops":1,"actualRows":1,"removed":1},{"type":"Seq Scan","alias":"cc","loops":1,"actualRows":51,"removed":2}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-50)
+TASK107 stored card point lookup {"executionMs":0.036,"buffers":6,"nodes":[{"type":"Limit","rows":1},{"type":"Seq Scan","rows":1,"removed":52}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-200)
+TASK107 source lookup plan {"rows":200,"sparse":false,"executionMs":2.411,"buffers":1430,"cardNodes":[{"type":"Index Scan","alias":"a","index":"confirm_cards_pkey","loops":1,"actualRows":1,"removed":0},{"type":"Index Scan","alias":"cc","index":"confirm_cards_source_message_idx","loops":200,"actualRows":1,"removed":0}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-2000)
+TASK107 source lookup plan {"rows":2000,"sparse":false,"executionMs":13.226,"buffers":6125,"cardNodes":[{"type":"Index Scan","alias":"a","index":"confirm_cards_shop_scope","loops":1,"actualRows":1,"removed":0},{"type":"Index Scan","alias":"cc","index":"confirm_cards_source_message_idx","loops":2000,"actualRows":1,"removed":0}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-sparse)
+TASK107 source lookup plan {"rows":2000,"sparse":true,"executionMs":0.707,"buffers":126,"cardNodes":[{"type":"Index Scan","alias":"a","index":"confirm_cards_shop_scope","loops":1,"actualRows":1,"removed":0},{"type":"Index Scan","alias":"cc","index":"confirm_cards_source_message_idx","loops":1,"actualRows":0,"removed":0}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-sparse)
+TASK107 stored card point lookup {"executionMs":0.023,"buffers":2,"nodes":[{"type":"Limit","rows":0},{"type":"Index Scan","index":"confirm_cards_source_message_idx","rows":0,"removed":0}]}
+
+ ❯ test/payment-claim-depositor-input.test.ts (44 tests | 2 failed | 40 skipped) 2624ms
+   ❯ 입금자 전용 블록의 표시와 명령 경계(TASK-107) (44)
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-200) 162ms
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-2000) 698ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-200)
+AssertionError: expected 200 to be less than or equal to 1
+ ❯ test/payment-claim-depositor-input.test.ts:462:92
+    460|         const referenceNodes = nodes.filter((n) => n.Alias === "cc");
+    461|         expect(referenceNodes.length).toBeGreaterThan(0);
+    462|         expect(referenceNodes.reduce((sum, n) => sum + Number(n["Actua…
+       |                                                                                            ^
+    463|         if (sparse) {
+    464|           expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-2000)
+AssertionError: expected 2000 to be less than or equal to 1
+ ❯ test/payment-claim-depositor-input.test.ts:462:92
+    460|         const referenceNodes = nodes.filter((n) => n.Alias === "cc");
+    461|         expect(referenceNodes.length).toBeGreaterThan(0);
+    462|         expect(referenceNodes.reduce((sum, n) => sum + Number(n["Actua…
+       |                                                                                            ^
+    463|         if (sparse) {
+    464|           expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed | 40 skipped (44)
+   Start at  00:17:02
+   Duration  4.42s (tests 62%, import 28%, transform 11%)

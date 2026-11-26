@@ -81,4 +81,45 @@ describe("SCR010 문제 신고 표시(TASK-147)", () => {
     expect(result).toContain("몸이 불편하시면 병원 진료를 먼저 받으세요");
     expect(result).not.toMatch(/가게 과실|책임이 있|환불해 드|재제작해 드/u);
   });
+  it.each([
+    ["빈 설명", { ...card, description: " " }],
+    ["NUL 설명", { ...card, description: "설명\0" }],
+    ["설명1001자", { ...card, description: "가".repeat(1001) }],
+    ["음수 사진 수", { ...card, photoCount: -1 }],
+    ["사진6장", { ...card, photoCount: 6 }],
+    ["소수 사진 수", { ...card, photoCount: 0.5 }],
+    ["안내 값 형식", { ...card, showMedicalNotice: "yes" }],
+    ["주문번호", { ...card, orderNo: "?" }],
+    ["받은 시각", { ...card, receivedAt: "not-a-date" }],
+    ["버튼 기한", { ...card, expiresAt: "not-a-date" }],
+    ["시간대", { ...card, timeZone: "not/a-zone" }],
+    ["카드 키", { ...card, cardKey: "short" }],
+    ["블록", { ...card, blockId: "bad block" }],
+    ["없는 상태", { ...card, state: "loading" }],
+    ["없는 표시", null],
+  ])("잘못된 표시 값은 SDK 응답을 만들기 전에 거절한다(%s)", (_name, value) => {
+    expect(() => kakaoIssueReportMessage(value as unknown as KakaoIssueReportView)).toThrow(RangeError);
+  });
+  it("설명은 앞40개 그래핌과 생략 표시만 보이고 이모지 중간을 자르지 않는다", () => {
+    const family = "👨‍👩‍👧‍👦";
+    const output = texts({ ...card, description: family.repeat(50) });
+    expect(output).toContain(`${family.repeat(40)}…`);
+    expect(output).not.toContain(family.repeat(41));
+  });
+  it("1000자인 한 그래핌도 상태/진료 안내와 세 출력 안에 온전히 보존한다", () => {
+    const description = `가${"\u0301".repeat(999)}`;
+    const view = { ...card, state: "expired", showMedicalNotice: true, description } as const;
+    const body = kakaoIssueReportMessage(view);
+    expectSchema("SkillTemplateResponse", body);
+    expect(body.template.outputs).toHaveLength(3);
+    expect(
+      body.template.outputs.some((output) => "simpleText" in output && output.simpleText.text === description),
+    ).toBe(true);
+    expect(texts(view)).toContain("몸이 불편하시면 병원 진료를 먼저 받으세요");
+    expect(texts(view)).toContain("시간이 지나 새 카드를 보내 드려요");
+    for (const output of body.template.outputs) {
+      if ("simpleText" in output) expect([...output.simpleText.text].length).toBeLessThanOrEqual(1000);
+      else expect([...output.textCard.title, ...output.textCard.description].length).toBeLessThanOrEqual(400);
+    }
+  });
 });
