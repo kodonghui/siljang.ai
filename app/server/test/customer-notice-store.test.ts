@@ -160,7 +160,9 @@ describeDb("손님 안내 생성(TASK-104)", () => {
         );
       const first = (await (await call("확정 안내 뒤의 합성 첫 질문")).json()) as { template: { outputs: unknown[] } };
       expectSchema("SkillTemplateResponse", first);
-      expect(first.template.outputs[0]).toEqual({ simpleText: { text: stored?.body } });
+      expect(first.template.outputs[0]).toHaveProperty("simpleText.text", expect.stringContaining(stored?.body ?? ""));
+      for (const word of ["주문 내용", "크기 1호", "맛 생크림"])
+        expect(JSON.stringify(first.template.outputs[0])).toContain(word);
       expect(first.template.outputs.length).toBeGreaterThan(1);
       expect(
         (await isolated.db.query("SELECT status,sent_at FROM notifications WHERE id=$1", [created?.id])).rows,

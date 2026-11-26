@@ -1,0 +1,105 @@
+
+ RUN  v5.1.0 /workspace/siljang-task109-confirmation-length/app/server
+
+ ❯ test/customer-notice-presentation.test.ts (26 tests | 5 failed) 4490ms
+   ❯ 저장된 손님 안내의 두 실제 수신 경로 표시 (26)
+     × API event / 디자인 설명의 129 코드 포인트 그래핌과 전체 주문·규정을 보존한다 85ms
+     × API event / 디자인 설명의 500 코드 포인트 그래핌과 전체 주문·규정을 보존한다 88ms
+     × API message / 디자인 설명의 129 코드 포인트 그래핌과 전체 주문·규정을 보존한다 142ms
+     × API message / 디자인 설명의 500 코드 포인트 그래핌과 전체 주문·규정을 보존한다 153ms
+     × API message / 표시할 수 없는 보관 확정 안내가 정상 안내를 막지 않는다 117ms
+ ❯ test/kakao-customer-notice-message.test.ts (26 tests | 2 failed) 93ms
+   × 확정 안내의 129코드 포인트 그래핌도 한 필드에서 보존한다 9ms
+   × 확정 안내의 500코드 포인트 그래핌도 한 필드에서 보존한다 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > API event / 디자인 설명의 129 코드 포인트 그래핌과 전체 주문·규정을 보존한다
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > API event / 디자인 설명의 500 코드 포인트 그래핌과 전체 주문·규정을 보존한다
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ test/customer-notice-presentation.test.ts:209:31
+    207|       const response = await call(mode, created.id),
+    208|         body: unknown = await response.json();
+    209|       expect(response.status).toBe(200);
+       |                               ^
+    210|       expectSchema("SkillTemplateResponse", body);
+    211|       const fields = confirmedFields(body),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > API message / 디자인 설명의 129 코드 포인트 그래핌과 전체 주문·규정을 보존한다
+AssertionError: expected '잠시 뒤 다시 말씀해 주세요' to contain '가́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́…'
+
+Expected: "가́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라"
+Received: "잠시 뒤 다시 말씀해 주세요"
+
+ ❯ test/customer-notice-presentation.test.ts:221:23
+    219|         "35,000원",
+    220|       ])
+    221|         expect(whole).toContain(expected);
+       |                       ^
+    222|       for (let i = 0; i < 20; i++) expect(whole).toContain(`합성${String…
+    223|       expect(fields.some((field) => field.includes(grapheme))).toBe(tr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > API message / 디자인 설명의 500 코드 포인트 그래핌과 전체 주문·규정을 보존한다
+AssertionError: expected '잠시 뒤 다시 말씀해 주세요' to contain '가́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́…'
+
+Expected: "가́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́"
+Received: "잠시 뒤 다시 말씀해 주세요"
+
+ ❯ test/customer-notice-presentation.test.ts:221:23
+    219|         "35,000원",
+    220|       ])
+    221|         expect(whole).toContain(expected);
+       |                       ^
+    222|       for (let i = 0; i < 20; i++) expect(whole).toContain(`합성${String…
+    223|       expect(fields.some((field) => field.includes(grapheme))).toBe(tr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > API message / 표시할 수 없는 보관 확정 안내가 정상 안내를 막지 않는다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '합성 보관 안내 뒤 정상 답'
+
+Expected: "합성 보관 안내 뒤 정상 답"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"잠시 뒤 다시 말씀해 주세요"}}]}}"
+
+ ❯ test/customer-notice-presentation.test.ts:266:36
+    264|       expect(response.status).toBe(200);
+    265|       expectSchema("SkillTemplateResponse", body);
+    266|       expect(JSON.stringify(body)).toContain("합성 보관 안내 뒤 정상 답");
+       |                                    ^
+    267|       expect(JSON.stringify(body)).not.toContain("합성 표시 불가 원문");
+    268|       expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  test/kakao-customer-notice-message.test.ts > 확정 안내의 129코드 포인트 그래핌도 한 필드에서 보존한다
+ FAIL  test/kakao-customer-notice-message.test.ts > 확정 안내의 500코드 포인트 그래핌도 한 필드에서 보존한다
+RangeError: notice graphemes exceed carousel limit
+ ❯ longConfirmedNotice src/kakao-customer-notice-message.ts:162:54
+    160|       title = `확정 안내 ${items.length + 1}\n${take(40)}`,
+    161|       description = take(128);
+    162|     if (index === start || items.length >= 30) throw new RangeError("n…
+       |                                                      ^
+    163|     items.push({ title, ...(description.length ? { description } : {})…
+    164|   }
+ ❯ noticeBody src/kakao-customer-notice-message.ts:183:50
+ ❯ kakaoCustomerNoticeMessage src/kakao-customer-notice-message.ts:257:68
+ ❯ test/kakao-customer-notice-message.test.ts:13:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  7 failed | 45 passed (52)
+   Start at  02:42:15
+   Duration  7.18s (tests 66%, import 27%, transform 6%)

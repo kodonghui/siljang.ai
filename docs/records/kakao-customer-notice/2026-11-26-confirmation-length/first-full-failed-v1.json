@@ -1,0 +1,13 @@
+{
+  "sourceCommit": "dde490f7552e3c879dba869e9c05fb2eba068727",
+  "publicEquivalentHead": "3727cd3d0d54f0df8ffdc331ab951bf7ad936ab7",
+  "serverFiles": 175,
+  "passed": 3266,
+  "failed": 2,
+  "total": 3268,
+  "testExit": 1,
+  "webRun": false,
+  "buildRun": false,
+  "freshDatabaseRemaining": 0,
+  "cause": "고지 시험이 저장 본문과 전체 표시 문구를 같다고 기대함. 새 저장 본문은 확정 신원/결제 사실이고 표시에는 불변 주문 내용이 더해짐"
+}

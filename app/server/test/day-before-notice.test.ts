@@ -23,6 +23,8 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
   beforeAll(async () => {
     isolated = await isolatedTestDb();
     await isolated.db.query(`CREATE ROLE "${role}" NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+    // 고침 전 역할에 남아 있던 넓은 열 권한도 같은 적용 SQL로 거둬야 한다.
+    await isolated.db.query(`GRANT UPDATE(body,template_key) ON notifications TO "${role}"`);
     await isolated.db.query(
       readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8").replaceAll(
         ':"runtime_role"',
@@ -118,6 +120,168 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
     } finally {
       await Promise.all([first.close(), second.close()]);
     }
+  });
+  it("일반 본문 수정 대신 소유자가 아닌 제한 역할에 전날 안내 함수 실행만 연다", async () => {
+    const rights = (
+      await isolated.db.query(
+        `SELECT has_column_privilege($1,'public.notifications','body','UPDATE') AS body,
+          has_column_privilege($1,'public.notifications','template_key','UPDATE') AS template`,
+        [role],
+      )
+    ).rows[0];
+    expect(rights).toEqual({ body: false, template: false });
+    for (const column of ["body", "template_key"]) {
+      await expect(
+        isolated.db.transaction(async (tx) => {
+          await tx.query(`SET LOCAL ROLE "${role}"`);
+          await tx.query(`UPDATE notifications SET ${column}='허용하지 않는 합성 수정' WHERE false`);
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+    }
+    const routine = (
+      await isolated.db.query(
+        `SELECT p.prosecdef AS definer,p.proconfig AS settings,p.proowner=r.oid AS owned,
+          has_function_privilege($1,p.oid,'EXECUTE') AS callable,
+          EXISTS(SELECT 1 FROM aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
+            WHERE a.grantee=0 AND a.privilege_type='EXECUTE') AS public_execute
+        FROM pg_proc p JOIN pg_roles r ON r.rolname=$1
+        WHERE p.oid='public.refresh_pending_day_before_notice(uuid,uuid,timestamptz)'::regprocedure`,
+        [role],
+      )
+    ).rows[0];
+    expect(routine).toEqual({
+      definer: true,
+      settings: ["search_path=pg_catalog"],
+      owned: false,
+      callable: true,
+      public_execute: false,
+    });
+    // 실행 권한을 거둔 일반 역할은 함수 소유자의 권한을 빌릴 수 없다.
+    await expect(
+      isolated.db.transaction(async (tx) => {
+        await tx.query(
+          `REVOKE EXECUTE ON FUNCTION public.refresh_pending_day_before_notice(uuid,uuid,timestamptz) FROM "${role}"`,
+        );
+        await tx.query(`SET LOCAL ROLE "${role}"`);
+        await tx.query("SELECT public.refresh_pending_day_before_notice($1,$2,$3)", [shop.shopId, shop.orderId, NOW]);
+      }),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+  it("제한 역할로 공개 정보만 새로 읽어 같은 미전달 안내를 갱신한다", async () => {
+    const create = () =>
+      isolated.db.transaction(async (tx) => {
+        await tx.query(`SET LOCAL ROLE "${role}"`);
+        return createDayBeforeNotice(
+          shopDb(createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }), tx),
+          shop.orderId,
+          NOW,
+        );
+      });
+    expect(await create()).toBe(true);
+    const before = (await isolated.db.query("SELECT id FROM notifications WHERE shop_id=$1", [shop.shopId])).rows;
+    await isolated.db.query("UPDATE shops SET pickup_address=$2 WHERE id=$1", [
+      shop.shopId,
+      "\u00a0\t새 합성 장소\r\n두 번째 줄\r세 번째 줄\u3000",
+    ]);
+    expect(await create()).toBe(true);
+    expect(await create()).toBe(false);
+    const after = (
+      await isolated.db.query("SELECT id,body,status,attempts FROM notifications WHERE shop_id=$1", [shop.shopId])
+    ).rows;
+    expect(after).toHaveLength(1);
+    expect(after[0]).toMatchObject({ ...before[0], status: "deferred", attempts: 0 });
+    expect(after[0]?.body).toContain("픽업 장소: 새 합성 장소\n두 번째 줄\n세 번째 줄\n가게 연락처:");
+  });
+  it.each([
+    "other-kind",
+    "attempted",
+    "delivered",
+    "other-shop",
+    "other-order",
+    "other-recipient",
+    "other-consultation",
+    "cancelled",
+    "deleted-consultation",
+    "purged-customer",
+    "too-early",
+    "infinite",
+  ] as const)("전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(%s)", async (reason) => {
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }), isolated.db);
+    expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, NOW))).toBe(true);
+    let shopId = shop.shopId,
+      orderId = shop.orderId;
+    let at: Date | string = NOW;
+    if (reason === "other-kind")
+      await isolated.db.query("UPDATE notifications SET kind='owner_reply' WHERE shop_id=$1", [shop.shopId]);
+    if (reason === "attempted")
+      await isolated.db.query("UPDATE notifications SET attempts=1 WHERE shop_id=$1", [shop.shopId]);
+    if (reason === "delivered")
+      await isolated.db.query("UPDATE notifications SET status='delivered_on_reply',sent_at=$2 WHERE shop_id=$1", [
+        shop.shopId,
+        NOW,
+      ]);
+    if (reason === "other-shop") shopId = newUuid();
+    if (reason === "other-order") orderId = newUuid();
+    if (reason === "other-recipient") {
+      const customerId = newUuid(),
+        consultationId = newUuid();
+      await isolated.db.query("INSERT INTO customers(id,shop_id,kakao_channel_id,kakao_user_key) VALUES($1,$2,$3,$4)", [
+        customerId,
+        shop.shopId,
+        shop.channelId,
+        `synthetic-${newUuid()}`,
+      ]);
+      await isolated.db.query("INSERT INTO consultations(id,shop_id,customer_id) VALUES($1,$2,$3)", [
+        consultationId,
+        shop.shopId,
+        customerId,
+      ]);
+      await isolated.db.query("UPDATE notifications SET customer_id=$2,consultation_id=$3 WHERE shop_id=$1", [
+        shop.shopId,
+        customerId,
+        consultationId,
+      ]);
+    }
+    if (reason === "other-consultation") {
+      const consultationId = newUuid();
+      await isolated.db.query(
+        "INSERT INTO consultations(id,shop_id,customer_id,status,ended_at) VALUES($1,$2,$3,'ended',$4)",
+        [consultationId, shop.shopId, shop.customerId, NOW],
+      );
+      await isolated.db.query("UPDATE notifications SET consultation_id=$2 WHERE shop_id=$1", [
+        shop.shopId,
+        consultationId,
+      ]);
+    }
+    if (reason === "cancelled")
+      await isolated.db.query(
+        "UPDATE orders SET status='cancelled',cancelled_at=$2,cancel_kind='customer' WHERE id=$1",
+        [shop.orderId, NOW],
+      );
+    if (reason === "deleted-consultation")
+      await isolated.db.query("UPDATE consultations SET status='deleted',deleted_at=$2 WHERE id=$1", [
+        shop.consultationId,
+        NOW,
+      ]);
+    if (reason === "purged-customer")
+      await isolated.db.query("UPDATE customers SET kakao_user_key=NULL,purged_at=$2 WHERE id=$1", [
+        shop.customerId,
+        NOW,
+      ]);
+    if (reason === "too-early") at = new Date(NOW.getTime() - 60000);
+    if (reason === "infinite") at = "infinity";
+    await isolated.db.query("UPDATE shops SET pickup_address='갱신 거절용 합성 장소' WHERE id=$1", [shop.shopId]);
+    const before = (await isolated.db.query("SELECT * FROM notifications WHERE shop_id=$1", [shop.shopId])).rows;
+    const refreshed = await isolated.db.transaction(async (tx) => {
+      await tx.query(`SET LOCAL ROLE "${role}"`);
+      return (
+        await tx.query("SELECT public.refresh_pending_day_before_notice($1,$2,$3) AS refreshed", [shopId, orderId, at])
+      ).rows[0]?.refreshed;
+    });
+    expect(refreshed).toBe(false);
+    expect((await isolated.db.query("SELECT * FROM notifications WHERE shop_id=$1", [shop.shopId])).rows).toEqual(
+      before,
+    );
   });
   it("생성 함수는 정각 전/반복/미전달 값 변경/이미 전한 안내를 구분한다", async () => {
     const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }), isolated.db);

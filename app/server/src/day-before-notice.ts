@@ -52,15 +52,7 @@ export async function createDayBeforeNotice(db: ShopDb, orderId: string, now: Da
   const result = await db.run(
     `INSERT INTO notifications(shop_id,event_key,customer_id,consultation_id,order_id,kind,template_key,body,status,scheduled_for,created_at)
       VALUES($1,$2,$3,$4,$5,'day_before',$6,$7,'deferred',$8,$9)
-      ON CONFLICT(shop_id,event_key) DO UPDATE SET template_key=EXCLUDED.template_key,body=EXCLUDED.body,
-        scheduled_for=EXCLUDED.scheduled_for,status='deferred',next_attempt_at=NULL
-      WHERE notifications.shop_id=$1 AND notifications.kind='day_before'
-        AND notifications.order_id=EXCLUDED.order_id AND notifications.customer_id=EXCLUDED.customer_id
-        AND notifications.consultation_id=EXCLUDED.consultation_id
-        AND notifications.sent_at IS NULL AND notifications.attempts=0
-        AND notifications.status IN ('pending','retrying','deferred','dropped')
-        AND ((notifications.template_key,notifications.body,notifications.scheduled_for)
-          IS DISTINCT FROM (EXCLUDED.template_key,EXCLUDED.body,EXCLUDED.scheduled_for) OR notifications.status='dropped')
+      ON CONFLICT(shop_id,event_key) DO NOTHING
       RETURNING id`,
     [
       eventKeys.notice(id, "day_before"),
@@ -73,7 +65,13 @@ export async function createDayBeforeNotice(db: ShopDb, orderId: string, now: Da
       now,
     ],
   );
-  return result.rowCount === 1;
+  if (result.rowCount === 1) return true;
+  // 본문 UPDATE 권한은 없다. DB가 현재 공개 정보를 읽고 대상과 상태를 다시 제한한다.
+  const refreshed = await db.run<{ refreshed: boolean }>(
+    `SELECT public.refresh_pending_day_before_notice($1,$2,$3) AS refreshed FROM shops s WHERE s.id=$1`,
+    [id, now],
+  );
+  return refreshed.rows[0]?.refreshed === true;
 }
 
 export const dayBeforeNoticeHandler: TransactionHandler = {
