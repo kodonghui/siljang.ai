@@ -11,6 +11,7 @@ import { handoffSourceMatch } from "./handoff-source";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import type { KakaoAiDisclosure } from "./kakao-ai-disclosure";
 import { type KakaoCallbackClaim, openKakaoCallbackContext } from "./kakao-callback-store";
+import type { KakaoMessageContent } from "./kakao-message-content";
 import type { KakaoOrderReference } from "./kakao-order-reference";
 import { MaskingFailedError } from "./masked-values";
 import { messageNumbers } from "./message-masking";
@@ -22,6 +23,7 @@ export interface KakaoAiReply {
   readonly text: string;
   readonly delivered: boolean;
   readonly card?: ConfirmCardView;
+  readonly contents?: readonly KakaoMessageContent[];
   readonly deferredCard?: true;
 }
 
@@ -239,20 +241,20 @@ export async function runKakaoAiTurn(
     }
     const card = prepared !== undefined && "cardKey" in prepared ? prepared : undefined;
     const unavailable = prepared !== undefined && "unavailable" in prepared ? prepared : undefined;
-    const deferredCard = unavailable?.deferredCard === true;
+    const storedCard = card !== undefined || unavailable?.deferredCard === true;
+    const deferredCard = unavailable?.deferredCard === true && unavailable.contents === undefined;
     const text = unavailable?.text ?? card?.title ?? output.reply;
-    const saved =
-      card === undefined && !deferredCard
-        ? await tx.run<{ id: string }>(
-            `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, trace_id, delivery, created_at)
+    const saved = !storedCard
+      ? await tx.run<{ id: string }>(
+          `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, trace_id, delivery, created_at)
         VALUES ($1, $2, 'outbound', $3, 'text', $4, $5, 'deferred', $6) RETURNING id`,
-            [claim.consultation_id, unavailable === undefined ? "ai" : "system", text, messageId, now()],
-          )
-        : await tx.run<{ id: string }>(
-            `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, trace_id, delivery, created_at)
+          [claim.consultation_id, unavailable === undefined ? "ai" : "system", text, messageId, now()],
+        )
+      : await tx.run<{ id: string }>(
+          `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, trace_id, delivery, created_at)
         VALUES ($1, $2, 'outbound', 'system', 'card', $3, $4, 'deferred', $5) RETURNING id`,
-            [claim.consultation_id, text, messageId, now()],
-          );
+          [claim.consultation_id, text, messageId, now()],
+        );
     await tx.run(
       "UPDATE consultations SET turn_trace_id = NULL, turn_started_at = NULL WHERE shop_id = $1 AND id = $2 AND turn_trace_id = $3",
       [claim.consultation_id, messageId],
@@ -266,6 +268,7 @@ export async function runKakaoAiTurn(
         text,
         delivered: false,
         ...(card === undefined ? {} : { card }),
+        ...(unavailable?.contents === undefined ? {} : { contents: unavailable.contents }),
         ...(deferredCard ? { deferredCard: true } : {}),
       },
     } as const;

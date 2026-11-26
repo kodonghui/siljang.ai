@@ -15,9 +15,19 @@ interface Card extends KakaoChangeRequestCard {
   readonly cardKey: string;
   readonly blockId: string;
 }
+export interface KakaoChangeDeadlineClause {
+  readonly title: string;
+  readonly conditionText: string;
+  readonly effectText: string;
+}
 export type KakaoChangeRequestView =
   | ({ readonly state: "normal" | "stale" | "expired" } & Card)
-  | { readonly state: "stale"; readonly currentStatus: string; readonly clause?: string }
+  | {
+      readonly state: "stale";
+      readonly currentStatus: string;
+      readonly clause?: string;
+      readonly clauseDetails?: KakaoChangeDeadlineClause;
+    }
   | { readonly state: "done"; readonly outcome: "change_requested" | "declined" }
   | { readonly state: "permission"; readonly reason: "card_not_yours" }
   | { readonly state: "permission"; readonly reason: "not_accepting"; readonly contactPhone: string }
@@ -87,7 +97,7 @@ function simple(value: string): Output {
   return { simpleText: { text: text(value, 1000) } };
 }
 /** 긴 변경 내용도 자르지 않고 행동 카드용 출력 하나를 남긴다. */
-function details(value: string): readonly Output[] {
+function details(value: string, maximumOutputs = 2): readonly Output[] {
   const segments = [...new Intl.Segmenter("ko", { granularity: "grapheme" }).segment(text(value, 3360))].map(
     ({ segment }) => ({ text: segment, length: [...segment].length }),
   );
@@ -110,7 +120,7 @@ function details(value: string): readonly Output[] {
     if (!part) throw new RangeError("change grapheme exceeds text limit");
     parts.push(part);
   }
-  if (parts.length <= 2) return parts.map(simple);
+  if (parts.length <= maximumOutputs) return parts.map(simple);
   index = 0;
   const items: { title: string; description?: string }[] = [];
   while (index < segments.length) {
@@ -147,12 +157,28 @@ export function kakaoChangeRequestMessage(view: KakaoChangeRequestView) {
       throw new RangeError("invalid change request error");
     return body([simple(view.reason === "retry_needed" ? "다시 눌러 주세요" : "잠시 뒤 다시 말씀해 주세요")]);
   }
-  if ("currentStatus" in view)
-    return body(
-      details(
-        `지금은 할 수 없어요: ${text(view.currentStatus, 100)}${view.clause ? `\n${text(view.clause, 2100)}` : ""}`,
-      ),
-    );
+  if ("currentStatus" in view) {
+    const status = `지금은 할 수 없어요: ${text(view.currentStatus, 100)}`;
+    if (view.clauseDetails === undefined)
+      return body(details(`${status}${view.clause ? `\n${text(view.clause, 2100)}` : ""}`, 3));
+    const title = text(view.clauseDetails.title, 60),
+      condition = text(view.clauseDetails.conditionText, 1000),
+      effect = text(view.clauseDetails.effectText, 1000),
+      clause = [title, condition, effect].join("\n");
+    if (view.clause !== undefined && text(view.clause, 2100) !== clause)
+      throw new RangeError("inconsistent change deadline clause");
+    try {
+      return body(details(`${status}\n${clause}`, 3));
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      // 입력 한도 안의 한 그래핌도 자르지 않는다. 조건/효과는 각각 원래의 1000자 한도로 전한다.
+      return body([
+        simple(`${status}\n${title}\n다음 안내는 조건이고, 그다음 안내는 결과예요`),
+        simple(condition),
+        simple(effect),
+      ]);
+    }
+  }
   if (
     !["normal", "stale", "expired"].includes(view.state) ||
     !/^[0-9A-Z]{6,12}$/.test(view.orderNo) ||

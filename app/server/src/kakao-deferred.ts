@@ -200,6 +200,7 @@ export async function deferredKakaoBatch(
         id: row.id,
         text: content?.text ?? row.body_masked,
         ...(content?.card === undefined ? {} : { card: content.card }),
+        ...(content?.contents === undefined ? {} : { contents: content.contents }),
         source: "message",
         at: BigInt(row.created_order),
         blocked: row.blocked,
