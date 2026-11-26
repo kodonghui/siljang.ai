@@ -11,6 +11,7 @@ import { REQUEST_KEY_HEADER } from "../../src/request-key";
 import { type Method, type RouteDecl, routeKey } from "../../src/routes";
 import { Secret } from "../../src/settings";
 import { newUploadId } from "../../src/uploads";
+import { CLIENT_IP_HEADER, TEST_IPV4 } from "./access-log";
 import { comparableProblem, expectProblem } from "./contract";
 import { newRequestKey, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./db";
 import { seedOperatorSession } from "./operator";
@@ -123,6 +124,11 @@ interface OperatorReviewShopCase {
   readonly path: "/operator/shops/:shopId" | "/operator/shops/:shopId/license-review";
   readonly kind: "operator_review";
 }
+interface OperatorRecordShopCase {
+  readonly method: "GET";
+  readonly path: "/operator/shops/:shopId/orders/:orderId";
+  readonly kind: "operator_records";
+}
 
 interface ChannelCheckShopCase {
   readonly method: "POST";
@@ -162,6 +168,7 @@ export type CrossShopCase =
   | ChannelSetupShopCase
   | ChannelCheckShopCase
   | IdentityChangeShopCase
+  | OperatorRecordShopCase
   | OperatorReviewShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
@@ -208,6 +215,7 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "GET", path: "/owner/operating-rules/versions", kind: "rules" },
   { method: "GET", path: "/owner/operating-rules/versions/:version", kind: "rules" },
   { method: "GET", path: "/operator/shops/:shopId", kind: "operator_review" },
+  { method: "GET", path: "/operator/shops/:shopId/orders/:orderId", kind: "operator_records" },
   { method: "POST", path: "/operator/shops/:shopId/license-review", kind: "operator_review" },
 ];
 
@@ -578,6 +586,43 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
         expect(response.text).not.toContain(env.b.channelId);
         expect(response.text).not.toContain(env.b.botId);
         expect(await snapshotShop(db, env.b)).toEqual(before);
+      }
+      return;
+    }
+    if (c.kind === "operator_records") {
+      const url = (shopId: string, orderId: string) => `/operator/shops/${shopId}/orders/${orderId}`;
+      const beforeOwner = await snapshots(db, env);
+      expect((await send(env, "GET", { url: url(env.a.shopId, env.b.orderId) })).status).toBe(401);
+      expect(await snapshots(db, env)).toEqual(beforeOwner);
+      const session = await seedOperatorSession(db, new Date());
+      const call = async (shopId: string, orderId: string) =>
+        env.app.request(
+          `https://siljang.example/api${url(shopId, orderId)}`,
+          { headers: { cookie: session.cookie, [CLIENT_IP_HEADER]: TEST_IPV4 } },
+          testEnv(),
+        );
+      for (const target of [env.a, env.b]) {
+        const response = await call(target.shopId, target.orderId);
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as {
+          orderId: string;
+          customerNameMasked: string;
+          customerPhoneMasked: string;
+        };
+        expect(body.orderId).toBe(target.orderId);
+        expect(body.customerNameMasked).toMatch(/^[^*]\*+$/);
+        expect(body.customerPhoneMasked).toMatch(/^[*-]+[0-9]{4}$/);
+      }
+      const before = await snapshots(db, env);
+      let missing: unknown;
+      for (const id of [newUuid(), env.b.orderId, env.b.orderId.toUpperCase(), "not-a-uuid"]) {
+        const response = await call(env.a.shopId, id);
+        expect(response.status).toBe(404);
+        const body = await expectProblem(response, "not_found");
+        const comparable = comparableProblem(body);
+        if (missing === undefined) missing = comparable;
+        else expect(comparable).toEqual(missing);
+        expect(await snapshots(db, env)).toEqual(before);
       }
       return;
     }
