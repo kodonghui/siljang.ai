@@ -1,0 +1,51 @@
+
+ RUN  v5.1.0 /workspace/siljang-task107-callback-availability/app/server
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-50)
+TASK107 source lookup plan {"rows":50,"executionMs":0.423,"buffers":27,"cardNodes":[{"type":"Seq Scan","alias":"a","loops":1,"removed":1},{"type":"Seq Scan","alias":"cc","loops":1,"removed":2}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-50)
+TASK107 stored card point lookup {"executionMs":0.028,"buffers":6,"nodes":[{"type":"Limit","rows":1},{"type":"Seq Scan","rows":1,"removed":52}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-200)
+TASK107 source lookup plan {"rows":200,"executionMs":1.484,"buffers":626,"cardNodes":[{"type":"Index Scan","alias":"a","index":"confirm_cards_pkey","loops":1,"removed":0},{"type":"Index Scan","alias":"cc","index":"confirm_cards_source_message_idx","loops":200,"removed":0}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-200)
+TASK107 stored card point lookup {"executionMs":0.04,"buffers":3,"nodes":[{"type":"Limit","rows":1},{"type":"Index Scan","index":"confirm_cards_source_message_idx","rows":1,"removed":0}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-2000)
+TASK107 source lookup plan {"rows":2000,"executionMs":22.439,"buffers":6074,"cardNodes":[{"type":"Index Scan","alias":"a","index":"confirm_cards_shop_scope","loops":1,"removed":0},{"type":"Index Scan","alias":"cc","index":"confirm_cards_source_message_idx","loops":2000,"removed":0}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-2000)
+TASK107 stored card point lookup {"executionMs":0.026,"buffers":3,"nodes":[{"type":"Limit","rows":1},{"type":"Index Scan","index":"confirm_cards_source_message_idx","rows":1,"removed":0}]}
+
+ ❯ test/payment-claim-depositor-input.test.ts (43 tests | 1 failed | 40 skipped) 1916ms
+   ❯ 입금자 전용 블록의 표시와 명령 경계(TASK-107) (43)
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-50) 229ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-50)
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/payment-claim-depositor-input.test.ts:482:11
+    480|         expect(
+    481|           nodes.some((n) => typeof n["Index Cond"] === "string" && n["…
+    482|         ).toBe(true);
+       |           ^
+    483|         expect(
+    484|           (
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed | 40 skipped (43)
+   Start at  23:53:52
+   Duration  3.51s (tests 56%, import 35%, transform 9%)

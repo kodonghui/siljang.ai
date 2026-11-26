@@ -1,0 +1,35 @@
+
+ RUN  v5.1.0 /workspace/siljang-task107-callback-availability/app/server
+
+ ❯ test/shop-scope-static.test.ts (22 tests | 1 failed) 275ms
+   ❯ 서버 코드의 SQL(정적 검사) (17)
+     × 가게 테이블을 드는 SQL은 모두 가게 조건을 지킴(가게 테이블마다 shop_id = $1) 94ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/shop-scope-static.test.ts > 서버 코드의 SQL(정적 검사) > 가게 테이블을 드는 SQL은 모두 가게 조건을 지킴(가게 테이블마다 shop_id = $1)
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "kakao-deferred.ts: unscoped messages candidate_message",
++ ]
+
+ ❯ test/shop-scope-static.test.ts:268:19
+    266|       }
+    267|     }
+    268|     expect(found).toEqual([]);
+       |                   ^
+    269|   });
+    270|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 199 passed (200)
+   Start at  00:19:55
+   Duration  32.44s (tests 87%, import 12%, transform 1%)
