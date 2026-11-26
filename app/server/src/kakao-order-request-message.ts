@@ -180,7 +180,12 @@ export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
     });
   }
   if (answer.replacementState !== undefined && answer.card !== undefined && answer.firstResult !== undefined)
-    return template([answer.firstResult.text, answer.card]);
+    return template([
+      answer.replacementState === "expired"
+        ? "시간이 지났어요. 새 카드에서 눌러 주세요"
+        : "내용이 바뀌었어요. 새 카드에서 눌러 주세요",
+      answer.card,
+    ]);
   return template([
     answer.text,
     ...(answer.firstResult === undefined ? [] : [answer.firstResult.text]),

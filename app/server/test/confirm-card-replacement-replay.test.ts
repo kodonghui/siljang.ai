@@ -174,6 +174,10 @@ describeDb("공통 확인 카드의 교체 응답 재시도(TASK-081)", () => {
     expect(expired.card?.cardKey).not.toBe(stale.card?.cardKey);
     expect(repeated.card?.cardKey).toBe(expired.card?.cardKey);
     expect(await render(repeated)).toEqual(await render(expired));
+    if (kind === "cancel") {
+      expect(JSON.stringify(await render(expired))).toContain("시간이 지났어요. 새 카드에서 눌러 주세요");
+      expect(JSON.stringify(await render(expired))).not.toContain("내용이 바뀌었어요. 새 카드에서 눌러 주세요");
+    }
     expect(
       (
         await isolated.db.query("SELECT payload->'result' AS result FROM confirm_cards WHERE card_key=$1", [
