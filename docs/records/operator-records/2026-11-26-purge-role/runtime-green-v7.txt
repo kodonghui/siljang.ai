@@ -1,0 +1,12 @@
+
+> test
+> vitest run --run test/purge-runtime-role.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task159-purge-runtime/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  11:16:58
+   Duration  3.19s (import 49%, tests 31%, transform 19%)

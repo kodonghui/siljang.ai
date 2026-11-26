@@ -156,6 +156,8 @@ export const DEFAULT_LIMITS: RunLimits = {
 export interface RunOptions {
   /** 이 실행의 연결 하나(찾기와 행마다의 짧은 트랜잭션이 차례로 씀). */
   readonly db: RequestDb;
+  /** 예약 처리기가 정한 일별 연결. 정기 삭제는 공용 앱과 다른 제한 역할을 쓴다. */
+  readonly jobDb?: (job: RunnableJob) => RequestDb | Promise<RequestDb>;
   readonly now: Date;
   readonly jobs: readonly RunnableJob[];
   readonly log: JobLog;
@@ -421,10 +423,18 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
       stoppedByBudget = true;
       continue;
     }
+    let db: RequestDb;
+    try {
+      db = options.jobDb === undefined ? options.db : await options.jobDb(job);
+    } catch (err) {
+      tally.failed += 1;
+      logFailure(log, "job_connection_failed", job.name, err);
+      continue;
+    }
     if (job.every === "day") {
       let begun: boolean;
       try {
-        begun = await startDaily(options.db, job, now, limits.dailyWindowMs, log);
+        begun = await startDaily(db, job, now, limits.dailyWindowMs, log);
       } catch (err) {
         logFailure(log, "job_start_failed", job.name, err);
         tally.failed += 1;
@@ -436,7 +446,7 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
     }
     if (job.handler.mode === "sweep") {
       try {
-        const result = await job.handler.run(options.db, {
+        const result = await job.handler.run(db, {
           job: job.name,
           now,
           limits,
@@ -476,7 +486,7 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
         const limit = carry + want;
         let items: DueItem[];
         try {
-          items = await findDue(options.db, name, source, cutoff, limit);
+          items = await findDue(db, name, source, cutoff, limit);
         } catch (err) {
           if (err instanceof JobConfigError) throw err;
           logFailure(log, "job_find_failed", job.name, err);
@@ -493,7 +503,7 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
             break;
           }
           seen.add(item.id);
-          const result = await processItem(options.db, job, source, item, cutoff, now, limits, log, clock);
+          const result = await processItem(db, job, source, item, cutoff, now, limits, log, clock);
           if (result === "rolled_back") {
             rolledBack += 1;
             tally.failed += 1;

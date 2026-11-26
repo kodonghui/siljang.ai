@@ -1,0 +1,42 @@
+
+> test
+> vitest run --run test/operator-record-permissions.test.ts -t 최소 역할로 상담 전체
+
+
+ RUN  v5.1.0 /workspace/siljang-task159-purge-runtime/app/server
+
+ ❯ test/operator-record-permissions.test.ts (7 tests | 2 failed | 5 skipped) 798ms
+   ❯ 운영자 기록의 최소 실행 권한(TASK-159) (7)
+     × 최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=false) 53ms
+     × 최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=true) 14ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-record-permissions.test.ts > 운영자 기록의 최소 실행 권한(TASK-159) > 최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=false)
+ FAIL  test/operator-record-permissions.test.ts > 운영자 기록의 최소 실행 권한(TASK-159) > 최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=true)
+error: new row for relation "messages" violates check constraint "messages_kakao_id_chk"
+ ❯ ../node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ test/operator-record-permissions.test.ts:217:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 5 skipped (7)
+   Start at  10:19:06
+   Duration  3.55s (import 44%, transform 32%, tests 24%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task159-purge-runtime/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task159-purge-runtime/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/operator-record-permissions.test.ts -t '최소 역할로 상담 전체'

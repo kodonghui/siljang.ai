@@ -26,6 +26,9 @@ AI_USD_KRW_DATE=
 # PostgreSQL 연결 문자열(비밀 값). postgres:// 나 postgresql:// 로 시작. Workers에서는 Hyperdrive 바인딩(TASK-173).
 # 없으면 데이터베이스가 필요한 요청만 500 internal.
 DATABASE_URL=
+# 정기 삭제 전용 제한 역할. 공용 앱 역할의 연결 문자열을 복사하지 않는다.
+# Workers에서는 별도 PURGE_HYPERDRIVE 바인딩도 사용할 수 있다.
+PURGE_DATABASE_URL=
 
 # 요청 지문(request_keys.request_hash)을 만드는 HMAC-SHA256 키(비밀 값, 32자 이상). 없으면 쓰기 명령이 500 internal.
 REQUEST_HASH_KEY=

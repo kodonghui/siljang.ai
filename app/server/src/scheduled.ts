@@ -9,7 +9,8 @@ import type { Bindings } from "./app";
 import { createCustomerNoticeHandler } from "./customer-notices";
 import { type DbConnector, pgConnector } from "./db";
 import { errorFields } from "./error-name";
-import { type RunLimits, type RunnableJob, type RunSummary, runDueJobs } from "./job-runner";
+import { jobDatabases } from "./job-databases";
+import { DEFAULT_LIMITS, type RunLimits, type RunnableJob, type RunSummary, runDueJobs } from "./job-runner";
 import { JOB_HANDLERS, runnableJobs } from "./jobs";
 import { recoverExpiredKakaoCallbacks } from "./kakao-callback-queue";
 import type { KakaoEvents, KakaoOwnerEvents } from "./kakao-event";
@@ -33,6 +34,8 @@ export interface WaitUntil {
 export interface ScheduledOptions {
   /** 데이터베이스 연결기. 기본은 settings의 DATABASE_URL로 pg Client 하나(실행마다). */
   readonly connect?: DbConnector;
+  /** 정기 삭제만 쓰는 별도 제한 역할의 연결기. 기본은 PURGE_DATABASE_URL/PURGE_HYPERDRIVE. */
+  readonly purgeConnect?: DbConnector;
   /** 돌릴 일. 기본은 등록부의 처리가 붙은 일(jobs.ts의 runnableJobs). */
   readonly jobs?: readonly RunnableJob[];
   readonly logSink?: LogSink;
@@ -67,6 +70,13 @@ export async function runScheduled(
     return null;
   }
   const db = (options.connect ?? pgConnector)(settings.secrets.DATABASE_URL);
+  const databases = jobDatabases(
+    settings,
+    db,
+    now,
+    options.limits?.dailyWindowMs ?? DEFAULT_LIMITS.dailyWindowMs,
+    options.purgeConnect,
+  );
   const services = createServices(env as Bindings, settings, {
     ...(options.storage === undefined ? {} : { storage: options.storage }),
     ...(options.kakaoOwnerEvents === undefined ? {} : { kakaoOwnerEvents: options.kakaoOwnerEvents }),
@@ -75,6 +85,7 @@ export async function runScheduled(
   try {
     return await runDueJobs({
       db,
+      jobDb: databases.forJob,
       now,
       jobs:
         options.jobs ??
@@ -129,7 +140,11 @@ export async function runScheduled(
     } catch (err) {
       appLog("error", { event: "job_run_failed", job: "kakao_callback_recovery", ...errorFields(err) });
     } finally {
-      await db.close();
+      try {
+        await databases.close();
+      } finally {
+        await db.close();
+      }
     }
   }
 }

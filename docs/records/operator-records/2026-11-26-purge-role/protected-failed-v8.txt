@@ -1,0 +1,50 @@
+
+> test
+> vitest run --run test/staging-runtime-role.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task159-purge-runtime/app/server
+
+ ❯ test/staging-runtime-role.test.ts (19 tests | 1 failed) 2127ms
+   ❯ 실제 서버 역할의 로그인·콜백 권한(TASK-173) (19)
+     × 제한 역할의 기본 Cron이 실행 시각 밖에도 시작 기록을 읽고 쓰기 없이 완료 47ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/staging-runtime-role.test.ts > 실제 서버 역할의 로그인·콜백 권한(TASK-173) > 제한 역할의 기본 Cron이 실행 시각 밖에도 시작 기록을 읽고 쓰기 없이 완료
+AssertionError: expected { found: +0, done: +0, …(2) } to deeply equal { found: +0, done: +0, …(2) }
+
+- Expected
++ Received
+
+  {
+    "done": 0,
+-   "failed": 0,
++   "failed": 1,
+    "found": 0,
+    "skipped": 0,
+  }
+
+ ❯ test/staging-runtime-role.test.ts:892:32
+    890|     });
+    891|     expect(result?.dailyStarted).toEqual([]);
+    892|     expect(result?.jobs.purge).toEqual({ found: 0, done: 0, skipped: 0…
+       |                                ^
+    893|     expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
+    894|       { level: "info", event: "job_polled", job: "purge" },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  11:24:22
+   Duration  3.55s (tests 63%, import 24%, transform 13%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task159-purge-runtime/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task159-purge-runtime/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/staging-runtime-role.test.ts

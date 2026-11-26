@@ -2,7 +2,7 @@ import { afterAll, beforeEach, expect, it } from "vitest";
 import { maskValue } from "../src/masked-values";
 import { purgeConsultation } from "../src/purge-consultation";
 import { purgeOrder } from "../src/purge-order";
-import { createShopScope, type ShopDb, shopRequestDb } from "../src/shop-scope";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { describeDb, newUuid, testDb } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
 import { createShop, type ShopFixture, snapshotShop } from "./support/shops";
@@ -168,23 +168,19 @@ describeDb("닫힌 상담의 내용 지우기(TASK-158, SPEC-065 #2·#6)", () =>
   it("중간 오류는 알림 연결·원래 값·사진 삭제 대기까지 되돌림", async () => {
     await archiveOrder();
     const before = await snapshotShop(db, f);
-    await expect(
-      scoped().transaction((tx) => {
-        const failingRun: ShopDb["run"] = <R>(sql: string, params?: readonly unknown[]) =>
-          tx.run<R>(sql.replace(/DELETE FROM messages/, "DELETE FROM purge_missing_messages"), params);
-        return purgeConsultation(
-          {
-            scope: tx.scope,
-            run: failingRun,
-            found: tx.found.bind(tx),
-            owned: tx.owned.bind(tx),
-            references: tx.references.bind(tx),
-          },
-          f.consultationId,
-          NOW,
-        );
-      }),
-    ).rejects.toThrow();
+    const name = `fail_purge_${newUuid().replaceAll("-", "")}`;
+    await db.query(
+      `CREATE FUNCTION pg_temp.${name}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic purge rollback'; END $$`,
+    );
+    await db.query(
+      `CREATE TRIGGER ${name} BEFORE DELETE ON messages FOR EACH ROW WHEN (OLD.consultation_id='${f.consultationId}'::uuid) EXECUTE FUNCTION pg_temp.${name}()`,
+    );
+    try {
+      await expect(run()).rejects.toThrow("synthetic purge rollback");
+    } finally {
+      await db.query(`DROP TRIGGER ${name} ON messages`);
+      await db.query(`DROP FUNCTION pg_temp.${name}()`);
+    }
     expect(await snapshotShop(db, f)).toEqual(before);
   });
   it("동시 실행 둘은 한 번만 처리", async () => {

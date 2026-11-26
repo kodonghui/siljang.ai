@@ -219,6 +219,29 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     await expectProblem(await get({ fault: true }), "internal");
     expect(logs.join("\n")).not.toContain(SHEET);
   });
+  it("장부 조회 역할에는 자격 증명 참조와 내부 발신 표시의 직접 조회를 열지 않는다", async () => {
+    for (const column of ["credential_ref", "failure_alerted_at", "provider"]) {
+      expect(
+        (
+          await isolated.db.query("SELECT has_column_privilege($1,'ledger_links',$2,'SELECT') AS allowed", [
+            role,
+            column,
+          ])
+        ).rows,
+      ).toEqual([{ allowed: false }]);
+    }
+    const conn = isolated.connect();
+    try {
+      await expect(
+        conn.transaction(async (tx) => {
+          await tx.query(`SET LOCAL ROLE "${role}"`);
+          await tx.query("SELECT credential_ref FROM ledger_links");
+        }),
+      ).rejects.toMatchObject({ code: "42501" });
+    } finally {
+      await conn.close();
+    }
+  });
   const redirect = "https://siljang.example/owner/ledger/callback";
   const googleClient = `${crypto.randomUUID()}.apps.googleusercontent.com`,
     googleSecret = crypto.randomUUID() + crypto.randomUUID();

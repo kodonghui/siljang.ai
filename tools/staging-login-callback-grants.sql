@@ -1,6 +1,8 @@
 -- TASK-173·032: 사장님 세션·카카오 수신/콜백·가게 등록/조회에 필요한 서버 역할 권한.
 -- psql -v runtime_role=<기존 서버 역할> -f tools/staging-login-callback-grants.sql
--- 실제 역할은 새로 만들지 않는다. 각 작업에 필요한 열 권한만 더하며 운영 기록의 권한은 바꾸지 않는다.
+-- 실제 역할은 새로 만들지 않는다. 각 작업에 필요한 열 권한만 더한다.
+-- 예약 실행의 시간 밖 확인은 운영 기록의 종류/가게/시각만 읽는다. 본문/건수·수정/삭제 권한은 더하지 않는다.
+GRANT SELECT (kind,shop_id,created_at) ON ops_events TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON owners, customers, consultations, messages TO :"runtime_role";
 -- TASK-077: 공통 표시 순번의 기본값에 필요한 USAGE만 허용한다. setval 권한은 열지 않는다.
 GRANT USAGE ON SEQUENCE consultation_timeline_seq TO :"runtime_role";
@@ -234,7 +236,13 @@ GRANT EXECUTE ON FUNCTION read_operator_order(uuid,uuid,uuid) TO :"runtime_role"
 GRANT EXECUTE ON FUNCTION read_operator_record_list(uuid,uuid,text,jsonb,integer,timestamptz) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION read_operator_consultation(uuid,uuid,uuid),read_operator_messages(uuid,uuid,uuid,jsonb,integer) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION read_operator_original(uuid,uuid,text,uuid,jsonb,timestamptz) TO :"runtime_role";
-GRANT INSERT (shop_id,id,consultation_id,erased_at) ON masked_value_erasures TO :"runtime_role";
+-- TASK-159 보안 리뷰: 기존 배포의 표/열 직접 쓰기와 삭제 함수 실행도 명시적으로 회수한다.
+REVOKE INSERT ON masked_value_erasures FROM :"runtime_role";
+REVOKE INSERT (shop_id,id,consultation_id,erased_at) ON masked_value_erasures FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) FROM :"runtime_role";
+
 -- TASK-156: 연결 상태/열 배치와 미완료 쓰기의 수/시각만 읽는다. OAuth 토큰은 이 표에 없다.
-GRANT SELECT ON ledger_links TO :"runtime_role";
+REVOKE SELECT ON ledger_links FROM :"runtime_role";
+REVOKE SELECT (credential_ref,provider,failure_alerted_at) ON ledger_links FROM :"runtime_role";
+GRANT SELECT (id,shop_id,status,spreadsheet_id,sheet_name,our_columns,linked_at,unlinked_at,xmin) ON ledger_links TO :"runtime_role";
 GRANT SELECT (shop_id,status,first_failed_at) ON ledger_writes TO :"runtime_role";

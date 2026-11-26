@@ -146,6 +146,40 @@ describe("readSettings", () => {
     }
   });
 
+  it("정기 삭제 자격 증명은 공용 연결과 분리하고 별도 Hyperdrive를 우선한다", () => {
+    const direct = "postgres://localhost/purge-direct",
+      hyperdrive = "postgresql://localhost/purge-hyperdrive",
+      regular = "postgres://localhost/regular";
+    const settings = readSettings({
+      DATABASE_URL: regular,
+      PURGE_DATABASE_URL: direct,
+      PURGE_HYPERDRIVE: { connectionString: hyperdrive },
+    });
+    expect(settings.secrets.DATABASE_URL?.reveal()).toBe(regular);
+    expect(settings.secrets.PURGE_DATABASE_URL?.reveal()).toBe(hyperdrive);
+    expect(settings.missingSecrets).not.toContain("PURGE_DATABASE_URL");
+    expect(JSON.stringify(settings)).not.toContain(hyperdrive);
+    expect(readSettings({ PURGE_DATABASE_URL: direct }).secrets.PURGE_DATABASE_URL?.reveal()).toBe(direct);
+    expect(readSettings({ DATABASE_URL: regular }).secrets.PURGE_DATABASE_URL).toBeNull();
+  });
+  it("잘못된 삭제 전용 연결은 공용 연결로 대체하지 않고 값 없는 설정 오류다", () => {
+    const hidden = "mysql://fixture:private-value@localhost/purge";
+    for (const env of [
+      { PURGE_DATABASE_URL: hidden },
+      { PURGE_DATABASE_URL: "postgres://localhost/purge", PURGE_HYPERDRIVE: { connectionString: hidden } },
+    ]) {
+      let error: unknown;
+      try {
+        readSettings(env);
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).toBeInstanceOf(SettingsError);
+      expect(String(error)).not.toContain(hidden);
+      expect(String(error)).not.toContain("private-value");
+    }
+  });
+
   // 사진 저장소와 서명 주소(TASK-022)
   it("FILE_URL_KEY는 32자 이상만 받고 값은 메시지에 싣지 않는다", () => {
     const short = "Fk-Zq7-short";

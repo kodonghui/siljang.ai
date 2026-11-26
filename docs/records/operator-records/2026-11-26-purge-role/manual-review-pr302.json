@@ -1,0 +1,17 @@
+{
+  "pr": 302,
+  "head": "1644029f6ef183d0da2a2bf1f928d03ffd5bb696",
+  "manualRequestId": 7191313855,
+  "requestedAt": "2026-11-26T11:54:15Z",
+  "deadlineIfNoResult": "2026-11-26T12:24:15Z",
+  "exactRequestCount": 1,
+  "status": "completed",
+  "summaryCommentId": 7191319821,
+  "codeStatus": "completed; no findings",
+  "codeReceiptId": 7191357989,
+  "securityStatus": "completed; no findings",
+  "securityReceiptId": 7191402251,
+  "mergeGateComment": 7191447555,
+  "mainVerifiedComment": 7191719449,
+  "mergedMain": "b2957fc7f3ac1dc71c7ea3173ae00536401e4aea"
+}

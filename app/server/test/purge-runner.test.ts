@@ -3,8 +3,9 @@ import type { RequestDb } from "../src/db";
 import { runPurge } from "../src/purge-runner";
 import { runScheduled } from "../src/scheduled";
 import { newUploadId } from "../src/uploads";
-import { describeDb, newUuid } from "./support/db";
+import { describeDb, newUuid, testDb } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
+import { createTestRole, roleConnection } from "./support/purge-role";
 import { createShop, type ShopFixture, snapshotShop } from "./support/shops";
 import { MemoryStore } from "./support/storage";
 
@@ -18,12 +19,22 @@ describeDb("지난 기록 지우기 실행(TASK-158, SPEC-065 #1~#12)", () => {
   let db: RequestDb;
   let store: MemoryStore;
   const logs: unknown[] = [];
+  const appRole = `app_purge_${newUuid().replaceAll("-", "")}`,
+    purgeRole = `job_purge_${newUuid().replaceAll("-", "")}`;
   beforeAll(async () => {
     isolated = await isolatedTestDb();
     db = isolated.db;
+    await createTestRole(db, appRole, "app");
+    await createTestRole(db, purgeRole, "purge");
   }, 30_000);
   afterAll(async () => {
     await isolated?.close();
+    const admin = testDb();
+    try {
+      for (const role of [appRole, purgeRole]) await admin.query(`DROP ROLE IF EXISTS "${role}"`);
+    } finally {
+      await admin.close();
+    }
   });
   beforeEach(async () => {
     store = new MemoryStore();
@@ -41,9 +52,10 @@ describeDb("지난 기록 지우기 실행(TASK-158, SPEC-065 #1~#12)", () => {
   const scheduled = (now = NOW) =>
     runScheduled(
       event(now),
-      { APP_ENV: "development" },
+      { APP_ENV: "development", PURGE_DATABASE_URL: "postgresql://purge.fixture/db" },
       {
-        connect: isolated.connect,
+        connect: () => roleConnection(isolated.connect(), appRole),
+        purgeConnect: () => roleConnection(isolated.connect(), purgeRole),
         storage: store,
         logSink: (line) => {
           logs.push(JSON.parse(line));

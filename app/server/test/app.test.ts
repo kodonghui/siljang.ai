@@ -94,6 +94,7 @@ describe("오류 응답(06 Problem)", () => {
       names: [
         "ANTHROPIC_API_KEY",
         "DATABASE_URL",
+        "PURGE_DATABASE_URL",
         "REQUEST_HASH_KEY",
         "STORAGE_ACCESS_KEY_ID",
         "STORAGE_SECRET_ACCESS_KEY",

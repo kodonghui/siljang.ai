@@ -1,0 +1,23 @@
+{
+  "app/README.md": {
+    "basePreserved": true,
+    "order": "ours reserved410/702 then main411/703"
+  },
+  "docs/records/fix-log.md": {
+    "basePreserved": true,
+    "order": "ours reserved410/702 then main411/703"
+  },
+  "docs/records/hands-on.md": {
+    "basePreserved": true,
+    "addedSections": 12
+  },
+  "docs/records/progress.md": {
+    "hunks": 1,
+    "bothAddedHistoriesPreserved": true
+  },
+  "tools/staging-login-callback-grants.sql": {
+    "mainRevokesPreserved": true,
+    "ledgerMetadataGrantsPreserved": true,
+    "needsNarrowGrantCheck": true
+  }
+}

@@ -1,0 +1,44 @@
+
+> test
+> vitest run --run test/ledger-status.test.ts -t 자격 증명 참조
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/ledger-status.test.ts (20 tests | 1 failed | 18 skipped) 923ms
+   ❯ API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 (20)
+     × 장부 조회 역할에는 자격 증명 참조와 내부 발신 표시의 직접 조회를 열지 않는다 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ledger-status.test.ts > API033 실제 세션/장부 상태·쓰기 수·토큰 비노출 > 장부 조회 역할에는 자격 증명 참조와 내부 발신 표시의 직접 조회를 열지 않는다
+AssertionError: expected [ { allowed: true } ] to deeply equal [ { allowed: false } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "allowed": false,
++     "allowed": true,
+    },
+  ]
+
+ ❯ test/ledger-status.test.ts:224:133
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 18 skipped (20)
+   Start at  12:13:07
+   Duration  3.43s (import 56%, tests 29%, transform 16%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task156-optional-features/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task156-optional-features/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/ledger-status.test.ts -t '자격 증명 참조'

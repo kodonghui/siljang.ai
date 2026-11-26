@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-purge-runtime/app/server
+
+
+ Test Files  16 passed (16)
+      Tests  355 passed (355)
+   Start at  10:28:32
+   Duration  35.98s (tests 63%, import 33%, transform 4%)

@@ -1,0 +1,78 @@
+{
+  "sourceCommit": "b194888554787765e8e64ce6ea307ed647af9d93",
+  "baseMain": "52040715ecb5de64983ff1f87af79e2e64db52b2",
+  "scopeGitObjects": {
+    "app/server": "71df2105eecde7d0e4142e203a66ddf06037b8d4",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "003ae12af65157d7f28662088d00e4ace1e60deb",
+    "api": "d772edd3a7a5c10fe053317db7c93abbd4c2a385",
+    "research/screen-checks-2026-11": "054b495f5fb0665c24475252cf20edd8d83f91a2",
+    ".github/workflows/app.yml": "9ae8e7718d47ff7b2d81d8085a8beb03c2d54e47",
+    "tools/staging-login-callback-grants.sql": "a03536fe2fa7e42d33b4b8b428555d2034851ba4",
+    "tools/staging-purge-grants.sql": "83a52b74e4bc2465d58fbcd7475b4d2eb32f66bc",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1",
+    "tools/staging-monitor/job-policy.mjs": "229beb946a7148015a57eb6117a49bcfd888588e",
+    "tools/test/staging-job-policy.test.mjs": "8f16e3b76362a993ac062e29a25da51fda17b90c"
+  },
+  "unchangedSixSecurityAndReviewTests": {
+    "app/server/test/consultation-idle.test.ts": "ffa4330f9e6c9210739681463416d42ae5720987",
+    "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+    "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299",
+    "app/server/test/shop-scope-static.test.ts": "fb468294d835ee555b36a7e497b5a81384af6446",
+    "app/server/test/kakao-review-dedup.test.ts": "a7448fb18e57a157de386a45be1e3fa8c2895250",
+    "app/server/test/kakao-review-photos.test.ts": "54a249bd42dc6e59170a8e6fb36b2dce5b2833e5"
+  },
+  "migrations": 47,
+  "relatedFiles": 22,
+  "relatedPassed": 419,
+  "stages": 8,
+  "dbPassed": 15,
+  "nodeFixturePassed": 63,
+  "nodeStagingPassed": 37,
+  "nativeAside": "unverified",
+  "nativePostgresPurgeRole": "unverified",
+  "nativePurgeBindings": "unverified",
+  "nativeJobMonitorReapply": "unverified",
+  "retentionPeriod": "pending product decision; not changed",
+  "finished": 36,
+  "implemented": 57,
+  "nodeAndStageInputSource": "b8a42ed9dea21f6e846a86c9bc47ebaeaba47f22",
+  "onlyScopeChangeSinceNodeAndStages": "app/server/test/app.test.ts: added expected setting name; runtime, DB, monitor and stage inputs unchanged",
+  "full": "completed",
+  "serverFiles": 198,
+  "serverPassed": 3658,
+  "serverFailed": 0,
+  "webFiles": 73,
+  "webPassed": 1775,
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "strictLint": {
+    "files": 661,
+    "exit": 0,
+    "warnings": 0,
+    "infos": 0
+  },
+  "mockup": {
+    "passed": 13,
+    "unverified": 1
+  },
+  "api": "unchanged; no re-run",
+  "manualReviewRequestsForPr302AtProof": 0,
+  "fullLog": {
+    "rawSha256": "7c33e70bdc7cfc52ecef963be4a7c2e6a840056df96925b1b86d6b80ba5a0a0e",
+    "trackedSha256": "87b744b4549c7f687a986c18f65817f1661a62be79deec1661d387369014b6ea",
+    "normalization": "trailing whitespace and final blank lines only"
+  },
+  "buildLog": {
+    "rawSha256": "99f52f2627b67e469fc5faba4e99c2d4766cb93cc21c45e340aa9a3be541fc04",
+    "trackedSha256": "a511c632b9e9aba845a07951030c9f4770916b8545127f1380b51582e2adb984",
+    "normalization": "trailing whitespace and final blank lines only"
+  },
+  "migrateLog": {
+    "rawSha256": "8cb8fb56adc0eaeba1f9dad72b13079a26c920c1b7bfc50fcf8effada6395456",
+    "trackedSha256": "8cb8fb56adc0eaeba1f9dad72b13079a26c920c1b7bfc50fcf8effada6395456",
+    "normalization": "trailing whitespace and final blank lines only"
+  }
+}

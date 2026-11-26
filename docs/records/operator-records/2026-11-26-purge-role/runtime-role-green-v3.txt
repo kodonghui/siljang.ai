@@ -1,0 +1,12 @@
+
+> test
+> vitest run --run test/operator-record-permissions.test.ts -t 최소 역할로 상담 전체
+
+
+ RUN  v5.1.0 /workspace/siljang-task159-purge-runtime/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 5 skipped (7)
+   Start at  10:25:17
+   Duration  2.92s (import 52%, tests 35%, transform 14%)

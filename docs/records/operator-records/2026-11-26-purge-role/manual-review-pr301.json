@@ -1,0 +1,10 @@
+{
+  "request": 7188929520,
+  "quota": 7188934818,
+  "failedSummary": 7188933711,
+  "requests": 1,
+  "mergeGate": 7188968388,
+  "merge": "52040715ecb5de64983ff1f87af79e2e64db52b2",
+  "postmergeReview": 7189062591,
+  "acknowledgement": 7189172198
+}
