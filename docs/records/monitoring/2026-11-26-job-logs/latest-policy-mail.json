@@ -1,0 +1,12 @@
+{
+  "received_at": "2026-11-26T14:48:59.000Z",
+  "policy_known": true,
+  "trigger": {
+    "count": 15,
+    "threshold": 1
+  },
+  "alert_started_at": "2026-11-26T14:45:34.264569233Z",
+  "raw_stored": false,
+  "policy": "Siljang staging job failures",
+  "correlation": "실제 실패 사건과 동일 정책/집계 시간 창의 일대일 대조는 미확인"
+}

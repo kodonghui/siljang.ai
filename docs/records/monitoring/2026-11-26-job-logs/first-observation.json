@@ -1,0 +1,12 @@
+{
+  "run": 45838108370,
+  "head": "ff8c10f7c4125491e3a5eb38139904a1abf6885b",
+  "job": 139972258059,
+  "diagnostic": "worker_job_logs",
+  "observed": 0,
+  "failures": 0,
+  "verified": false,
+  "alert_job": "skipped",
+  "token_and_account_bindings": "GHA 마스킹된 값 존재만 확인. 값은 출력/기록하지 않음",
+  "cause": "미확인. 설치된 Wrangler의 sampling-rate 1이 유효하지 않음을 코드에서 확인해 제거. 원시 stderr는 남기지 않았음"
+}

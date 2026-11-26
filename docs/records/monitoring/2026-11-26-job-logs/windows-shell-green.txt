@@ -1,0 +1,7 @@
+source0ea014577f941c6a1fd44709e9b6e68f3ba7766b / app45845428395 / Windows139997722397
+2026-11-26T15:07:02.5897294Z ##[group]Run node --test ../tools/test/job-log-facts.test.mjs
+2026-11-26T15:07:02.5964298Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-26T15:07:03.0884224Z # tests 10
+2026-11-26T15:07:03.0884903Z # pass 10
+2026-11-26T15:07:03.0885295Z # fail 0
+2026-11-26T15:07:03.0887635Z # duration_ms 139.8451

@@ -1,0 +1,21 @@
+{
+  "run": 45839084906,
+  "job": 139975655281,
+  "source": "4cbfd0af87b8f5f5c416afaa7db9b6bcd8bdb68b",
+  "facts": [
+    {
+      "event": "job_find_failed",
+      "at": "2026-11-26T14:27:30.977Z",
+      "job": "day_before_notice",
+      "errorName": "DatabaseError",
+      "dbCode": "42703"
+    },
+    {
+      "diagnostic": "worker_job_logs",
+      "observed": 2,
+      "failures": 1,
+      "verified": true,
+      "exitCode": null
+    }
+  ]
+}
