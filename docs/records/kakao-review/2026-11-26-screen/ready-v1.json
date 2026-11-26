@@ -1,0 +1,182 @@
+{
+  "sourceHead": "07f8e4e10c4537941721e89f2b2b3675e1753a9e",
+  "baseMain": "867b5135a7aef81bba8dcc1f0662b8ec6adbcafa",
+  "dependencySource": "docs/10-wbs/wbs.md generated dependency column, including API-derived dependencies",
+  "active": 184,
+  "finished": 36,
+  "implemented": 54,
+  "implementedIds": [
+    "TASK-016",
+    "TASK-021",
+    "TASK-028",
+    "TASK-031",
+    "TASK-033",
+    "TASK-036",
+    "TASK-037",
+    "TASK-038",
+    "TASK-040",
+    "TASK-041",
+    "TASK-042",
+    "TASK-043",
+    "TASK-044",
+    "TASK-045",
+    "TASK-046",
+    "TASK-047",
+    "TASK-048",
+    "TASK-050",
+    "TASK-051",
+    "TASK-052",
+    "TASK-053",
+    "TASK-054",
+    "TASK-055",
+    "TASK-056",
+    "TASK-057",
+    "TASK-058",
+    "TASK-059",
+    "TASK-060",
+    "TASK-061",
+    "TASK-062",
+    "TASK-063",
+    "TASK-064",
+    "TASK-065",
+    "TASK-066",
+    "TASK-067",
+    "TASK-068",
+    "TASK-072",
+    "TASK-076",
+    "TASK-077",
+    "TASK-081",
+    "TASK-082",
+    "TASK-085",
+    "TASK-086",
+    "TASK-087",
+    "TASK-089",
+    "TASK-104",
+    "TASK-106",
+    "TASK-107",
+    "TASK-108",
+    "TASK-109",
+    "TASK-126",
+    "TASK-134",
+    "TASK-158",
+    "TASK-184"
+  ],
+  "freeMvpExcluded": [
+    "TASK-005",
+    "TASK-006",
+    "TASK-013",
+    "TASK-175",
+    "iteration9"
+  ],
+  "dependencyReadyCount": 10,
+  "dependencyReady": [
+    {
+      "id": "TASK-172",
+      "iteration": 0,
+      "successors": 0,
+      "name": "OVH 서버(뭄바이·싱가포르)에서 지연 측정 스크립트 돌리기(추천안 기준)",
+      "dependencies": [
+        "TASK-171"
+      ],
+      "virtualFreeMvpDependency": []
+    },
+    {
+      "id": "TASK-027",
+      "iteration": 1,
+      "successors": 76,
+      "name": "AI 평가 세트(합성 상담 100개 이상)와 채점·두 회사로 돌리는 도구",
+      "dependencies": [
+        "TASK-026"
+      ],
+      "virtualFreeMvpDependency": []
+    },
+    {
+      "id": "TASK-127",
+      "iteration": 5,
+      "successors": 0,
+      "name": "SCR-009 취소 카드 카카오 응답",
+      "dependencies": [
+        "TASK-028"
+      ],
+      "virtualFreeMvpDependency": []
+    },
+    {
+      "id": "TASK-147",
+      "iteration": 6,
+      "successors": 0,
+      "name": "SCR-010 문제 신고 카드 카카오 응답",
+      "dependencies": [
+        "TASK-028"
+      ],
+      "virtualFreeMvpDependency": []
+    },
+    {
+      "id": "TASK-148",
+      "iteration": 6,
+      "successors": 0,
+      "name": "SCR-012 후기 남기기 카카오 응답",
+      "dependencies": [
+        "TASK-028"
+      ],
+      "virtualFreeMvpDependency": []
+    },
+    {
+      "id": "TASK-149",
+      "iteration": 6,
+      "successors": 0,
+      "name": "SCR-013 사진 게시 동의 철회 카드 카카오 응답",
+      "dependencies": [
+        "TASK-028"
+      ],
+      "virtualFreeMvpDependency": []
+    },
+    {
+      "id": "TASK-159",
+      "iteration": 7,
+      "successors": 9,
+      "name": "운영자의 가게 기록 보기와 원래 값·보관 기록 열기",
+      "dependencies": [
+        "TASK-021",
+        "TASK-024",
+        "TASK-025"
+      ],
+      "virtualFreeMvpDependency": []
+    },
+    {
+      "id": "TASK-156",
+      "iteration": 7,
+      "successors": 2,
+      "name": "고를 기능 켜기(장부 연결, 완성 사진 보내기)",
+      "dependencies": [
+        "TASK-014",
+        "TASK-037"
+      ],
+      "virtualFreeMvpDependency": []
+    },
+    {
+      "id": "TASK-165",
+      "iteration": 8,
+      "successors": 7,
+      "name": "하루 한 번 백업과 복구 시험",
+      "dependencies": [
+        "TASK-016",
+        "TASK-175"
+      ],
+      "virtualFreeMvpDependency": [
+        "TASK-175"
+      ]
+    },
+    {
+      "id": "TASK-167",
+      "iteration": 8,
+      "successors": 7,
+      "name": "운영 계정과 키 만들기: 우리 서비스 채널(사장님 알림), 디벨로퍼스 운영 앱, AI 회사·구글 운영 키",
+      "dependencies": [
+        "TASK-002",
+        "TASK-184"
+      ],
+      "virtualFreeMvpDependency": []
+    }
+  ],
+  "classification": "Dependency eligibility only. External holds and unfinished steps must also be read from progress and WIP records."
+}

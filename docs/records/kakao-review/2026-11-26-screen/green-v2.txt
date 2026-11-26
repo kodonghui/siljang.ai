@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task148-review-screen/app/server
+
+
+ Test Files  2 passed (2)
+      Tests  38 passed (38)
+   Start at  05:37:22
+   Duration  2.65s (import 84%, transform 9%, tests 6%)

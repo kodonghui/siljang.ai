@@ -3,6 +3,7 @@ import { KAKAO_CONSULTATION_UNAVAILABLE_TEXT } from "./kakao-callback";
 import { KAKAO_CONSULTATION_TEXT, kakaoConsultationMessage } from "./kakao-consultation-message";
 import type { KakaoMessageContent } from "./kakao-message-content";
 import { KAKAO_PHOTO_TEXT, type KakaoPhotoOutcome } from "./kakao-photo-context";
+import { KAKAO_REVIEW_TEXT, kakaoReviewMessage } from "./kakao-review-message";
 import type { ShopRequest } from "./routes";
 
 /** TASK-028의 API-070 고정 결과. AI 처리와 에스컬레이션은 각 처리기가 끝낸 뒤 이 응답을 사용한다. */
@@ -31,9 +32,7 @@ type TextOutcome = Exclude<Outcome, "callback_pending" | "duplicate">;
 export const KAKAO_HANDOFF_TEXT = KAKAO_CONSULTATION_TEXT.handoff;
 const TEXT: Readonly<Record<TextOutcome, string>> = {
   ...KAKAO_PHOTO_TEXT,
-  review_saved: "후기를 남겨 주셔서 고마워요",
-  review_not_allowed: "받으신 주문에만 후기를 남길 수 있어요",
-  review_invalid: "후기는 1,000자, 사진은 5장까지 남길 수 있어요",
+  ...KAKAO_REVIEW_TEXT,
   masking_failed: KAKAO_HANDOFF_TEXT,
   ai_unavailable: KAKAO_HANDOFF_TEXT,
   ai_timeout: KAKAO_HANDOFF_TEXT,
@@ -75,6 +74,22 @@ export function kakaoReply(
   const headers = { "Siljang-Outcome": outcome, "Cache-Control": "no-store" };
   if (outcome === "callback_pending") {
     return r.json(kakaoConsultationMessage({ state: "loading" }), 200, headers);
+  }
+  if ((options.previous?.length ?? 0) === 0) {
+    if (outcome === "review_saved") return r.json(kakaoReviewMessage({ state: "done" }), 200, headers);
+    if (outcome === "review_not_allowed")
+      return r.json(kakaoReviewMessage({ state: "permission", reason: outcome }), 200, headers);
+    if (outcome === "review_invalid")
+      return r.json(kakaoReviewMessage({ state: "error", reason: outcome }), 200, headers);
+    if (outcome === "duplicate" && options.repeatReview)
+      return r.json(
+        kakaoReviewMessage({
+          state: "done",
+          ...(options.repeatReviewText === undefined ? {} : { firstResultText: options.repeatReviewText }),
+        }),
+        200,
+        headers,
+      );
   }
   const contents: KakaoMessageContent[] = [];
   if (outcome === "duplicate" && options.repeatReview) contents.push(options.repeatReviewText ?? TEXT.review_saved);

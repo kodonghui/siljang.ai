@@ -1,0 +1,23 @@
+{
+  "reviewComment": 7184363221,
+  "reviewedHead": "7728301109c44f677df3fa25d2dc2788888964fe",
+  "acknowledgmentComment": 7184374459,
+  "finding": "P3 사진 후기 not_accepting에서 같은 가게 연락처 누락",
+  "redFailed": 2,
+  "greenFiles": 4,
+  "greenPassed": 42,
+  "workingTree": true,
+  "regressionCases": [
+    "booking_not_issued",
+    "channel_changed_after_authorization"
+  ],
+  "realPostgres": true,
+  "isolatedMigrations": 44,
+  "minimumRuntimeRole": true,
+  "otherShopPhoneNotExposed": true,
+  "photoDownloadCalls": 0,
+  "reviewAndPhotoAndConsentWrites": 0,
+  "priorSecurityTestsUnchanged": true,
+  "manualReviewRequests": 0,
+  "fullTestsAfterFix": "아직 실행 전"
+}

@@ -1,0 +1,33 @@
+{
+  "database": "siljang_related_95db3e11e08f425b910341a653f6badc",
+  "pid": 3548303,
+  "sourceCommit": "e6159663f5f96c34c52816b15baa2bd95c8fb21a",
+  "workingTree": true,
+  "files": [
+    "test/kakao-review-contract.test.ts",
+    "test/kakao-issue-report-message.test.ts",
+    "test/kakao-issue-report-integration.test.ts",
+    "test/kakao-issue-report-contract.test.ts",
+    "test/issue-report-first-result.test.ts",
+    "test/kakao-review-message.test.ts",
+    "test/kakao-review-message-integration.test.ts",
+    "test/kakao-review-dedup.test.ts",
+    "test/kakao-review-photos.test.ts",
+    "test/kakao-http-contract.test.ts",
+    "test/kakao-skill.test.ts",
+    "test/kakao-callback.test.ts",
+    "test/kakao-deferred.test.ts",
+    "test/kakao-ai-disclosure.test.ts",
+    "test/kakao-amount-confirmation-merge.test.ts",
+    "test/kakao-runtime-grants.test.ts",
+    "test/staging-runtime-role.test.ts",
+    "test/shop-scope-static.test.ts",
+    "test/kakao-photo-context.test.ts",
+    "test/kakao-photo-permissions.test.ts",
+    "test/kakao-photo-download.test.ts"
+  ],
+  "stage": "completed",
+  "testExit": 0,
+  "migrations": 44,
+  "freshDatabaseRemaining": 0
+}

@@ -1,0 +1,36 @@
+{
+  "head": "2331914b5835ff0ea1112d948223ae1382e2ba24",
+  "localEquivalentHead": "5a986faebf8de7b2260ab290a3abcbd9a8795f25",
+  "webObject": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+  "unchangedFromMain296AndSuccessfulSourceCi": true,
+  "failedRun": 45762946944,
+  "failedAttempt": 1,
+  "failedJob": 139716981556,
+  "failure": "ConsultationMessagesScreen.interaction.test.tsx:264 expired photo refresh assertion",
+  "serverPassed": 3382,
+  "webPassed": 1774,
+  "webFailed": 1,
+  "buildExecuted": false,
+  "diagnosticRuns": [
+    {
+      "run": 1,
+      "exit": 0
+    },
+    {
+      "run": 2,
+      "exit": 0
+    },
+    {
+      "run": 3,
+      "exit": 0
+    },
+    {
+      "run": 4,
+      "exit": 0
+    },
+    {
+      "run": 5,
+      "exit": 0
+    }
+  ]
+}
