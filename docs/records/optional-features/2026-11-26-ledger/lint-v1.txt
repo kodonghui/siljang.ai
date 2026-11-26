@@ -1,0 +1,25 @@
+
+> lint
+> biome ci .
+
+[0mserver/src/ledger-input.ts[0m[0m:[0m[0m45[0m[0m:[0m[0m7[0m[0m [0m[0m]8;;https://biomejs.dev/linter/rules/no-control-characters-in-regex\lint/suspicious/noControlCharactersInRegex]8;;\[0m[0m [0m[0m━━━━━━━━━━━━━━━━━━━━━━━━━[0m[0m
+
+[0m[0m  [0m[0m[1m[31m✖[0m[0m [0m[0m[31mUnexpected control character in a regular expression.[0m[0m
+[0m[0m  [0m[0m
+[0m[0m  [0m[0m  [0m[0m[1m43 │ [0m[0m [0m[0m [0m[0m [0m[0m [0m[0mu[0m[0mr[0m[0ml[0m[0m.[0m[0mp[0m[0ma[0m[0ms[0m[0ms[0m[0mw[0m[0mo[0m[0mr[0m[0md[0m[0m [0m[0m|[0m[0m|[0m[0m
+[0m[0m  [0m[0m  [0m[0m[1m44 │ [0m[0m [0m[0m [0m[0m [0m[0m [0m[0mr[0m[0me[0m[0md[0m[0mi[0m[0mr[0m[0me[0m[0mc[0m[0mt[0m[0mU[0m[0mr[0m[0mi[0m[0m.[0m[0mi[0m[0mn[0m[0mc[0m[0ml[0m[0mu[0m[0md[0m[0me[0m[0ms[0m[0m([0m[0m"[0m[0m#[0m[0m"[0m[0m)[0m[0m [0m[0m|[0m[0m|[0m[0m
+[0m[0m  [0m[0m[1m[31m>[0m[0m [0m[0m[1m45 │ [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m/[0m[0m[[0m[0m\[0m[0mu[0m[0m0[0m[0m0[0m[0m0[0m[0m0[0m[0m-[0m[0m\[0m[0mu[0m[0m0[0m[0m0[0m[0m2[0m[0m0[0m[0m\[0m[0mu[0m[0m0[0m[0m0[0m[0m7[0m[0mf[0m[0m][0m[0m/[0m[0m.[0m[0mt[0m[0me[0m[0ms[0m[0mt[0m[0m([0m[0mr[0m[0me[0m[0md[0m[0mi[0m[0mr[0m[0me[0m[0mc[0m[0mt[0m[0mU[0m[0mr[0m[0mi[0m[0m)[0m[0m
+[0m[0m  [0m[0m [0m[0m [0m[0m[1m   │ [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m [0m[0m[1m[31m^[0m[0m[1m[31m^[0m[0m[1m[31m^[0m[0m[1m[31m^[0m[0m[1m[31m^[0m[0m[1m[31m^[0m[0m
+[0m[0m  [0m[0m  [0m[0m[1m46 │ [0m[0m [0m[0m [0m[0m)[0m[0m
+[0m[0m  [0m[0m  [0m[0m[1m47 │ [0m[0m [0m[0m [0m[0m [0m[0m [0m[0mt[0m[0mh[0m[0mr[0m[0mo[0m[0mw[0m[0m [0m[0mf[0m[0mi[0m[0me[0m[0ml[0m[0md[0m[0mE[0m[0mr[0m[0mr[0m[0mo[0m[0mr[0m[0m([0m[0m"[0m[0m/[0m[0mr[0m[0me[0m[0md[0m[0mi[0m[0mr[0m[0me[0m[0mc[0m[0mt[0m[0mU[0m[0mr[0m[0mi[0m[0m"[0m[0m,[0m[0m [0m[0m"[0m[0mb[0m[0ma[0m[0md[0m[0m_[0m[0mf[0m[0mo[0m[0mr[0m[0mm[0m[0ma[0m[0mt[0m[0m"[0m[0m)[0m[0m;[0m[0m
+[0m[0m  [0m[0m
+[0m[0m  [0m[0m[1m[34mℹ[0m[0m [0m[0m[34mControl characters are unusual and potentially incorrect inputs, so they are disallowed.[0m[0m
+[0m[0m  [0m[0m
+[0m
+[0m[34mChecked 649 files in 1142[0m[0m[2m[34mms[0m[0m[34m.[0m[0m[34m No fixes applied.[0m[0m
+[0m[0m[31mFound [0m[0m[31m1[0m[0m[31m error.[0m
+[0mci[0m[0m [0m[0m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m[0m
+
+[0m[0m  [0m[0m[1m[31m✖[0m[0m [0m[0m[31mSome [0m[0m[1m[31merrors[0m[0m[31m were emitted while [0m[0m[1m[31mrunning checks[0m[0m[31m.[0m[0m
+[0m[0m  [0m[0m
+[0m

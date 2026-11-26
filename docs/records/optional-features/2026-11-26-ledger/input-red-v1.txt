@@ -1,0 +1,231 @@
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/ledger-input.test.ts (28 tests | 25 failed) 35ms
+   × 구글 인가 시작은 HTTPS 주소 한 개를 받는다 8ms
+   × 장부 연결은 서명·인가 코드·파일·탭과 nullable 버전을 보존한다 1ms
+   × 상한은 코드2048·서명512·파일100·탭100글자·버전64다 1ms
+   × 안전하지 않은 인가 복귀 주소는422다(http://siljang.example/callback) 4ms
+   × 안전하지 않은 인가 복귀 주소는422다(https://user:password@siljang.example/callback) 1ms
+   × 안전하지 않은 인가 복귀 주소는422다(https://siljang.example/callback#token) 1ms
+   × 안전하지 않은 인가 복귀 주소는422다(https://siljang.example/
+callback) 1ms
+   × 안전하지 않은 인가 복귀 주소는422다(not-an-address) 1ms
+   × 잘못된 장부 연결 missing revision는 값 없는422다 3ms
+   × 잘못된 장부 연결 bad revision는 값 없는422다 0ms
+   × 잘못된 장부 연결 blank code는 값 없는422다 1ms
+   × 잘못된 장부 연결 whitespace code는 값 없는422다 1ms
+   × 잘못된 장부 연결 NUL code는 값 없는422다 1ms
+   × 잘못된 장부 연결 long code는 값 없는422다 0ms
+   × 잘못된 장부 연결 short state는 값 없는422다 0ms
+   × 잘못된 장부 연결 long state는 값 없는422다 0ms
+   × 잘못된 장부 연결 bad state는 값 없는422다 1ms
+   × 잘못된 장부 연결 short file는 값 없는422다 1ms
+   × 잘못된 장부 연결 long file는 값 없는422다 1ms
+   × 잘못된 장부 연결 file URL는 값 없는422다 1ms
+   × 잘못된 장부 연결 blank tab는 값 없는422다 1ms
+   × 잘못된 장부 연결 NUL tab는 값 없는422다 1ms
+   × 잘못된 장부 연결 long tab는 값 없는422다 1ms
+   × 잘못된 장부 연결 token field는 값 없는422다 1ms
+   × 인가 시작도 필요한 필드를 검사하고 토큰 같은 별도 필드를 받지 않는다 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 25 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ledger-input.test.ts > 구글 인가 시작은 HTTPS 주소 한 개를 받는다
+ApiError: validation_failed
+ ❯ fieldError src/problem.ts:185:10
+    183| /** 필드 오류 하나로 된 validation_failed. */
+    184| export function fieldError(field: string, code: FieldReason): ApiError…
+    185|   return new ApiError("validation_failed", { errors: [{ field, code }]…
+       |          ^
+    186| }
+    187|
+ ❯ parseLedgerAuthorization src/ledger-input.ts:14:9
+ ❯ test/ledger-input.test.ts:25:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/25]⎯
+
+ FAIL  test/ledger-input.test.ts > 장부 연결은 서명·인가 코드·파일·탭과 nullable 버전을 보존한다
+ApiError: validation_failed
+ ❯ fieldError src/problem.ts:185:10
+    183| /** 필드 오류 하나로 된 validation_failed. */
+    184| export function fieldError(field: string, code: FieldReason): ApiError…
+    185|   return new ApiError("validation_failed", { errors: [{ field, code }]…
+       |          ^
+    186| }
+    187|
+ ❯ parseLedgerLink src/ledger-input.ts:17:9
+ ❯ test/ledger-input.test.ts:30:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/25]⎯
+
+ FAIL  test/ledger-input.test.ts > 상한은 코드2048·서명512·파일100·탭100글자·버전64다
+ApiError: validation_failed
+ ❯ fieldError src/problem.ts:185:10
+    183| /** 필드 오류 하나로 된 validation_failed. */
+    184| export function fieldError(field: string, code: FieldReason): ApiError…
+    185|   return new ApiError("validation_failed", { errors: [{ field, code }]…
+       |          ^
+    186| }
+    187|
+ ❯ parseLedgerLink src/ledger-input.ts:17:9
+ ❯ test/ledger-input.test.ts:45:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/25]⎯
+
+ FAIL  test/ledger-input.test.ts > 안전하지 않은 인가 복귀 주소는422다(http://siljang.example/callback)
+ FAIL  test/ledger-input.test.ts > 안전하지 않은 인가 복귀 주소는422다(https://user:password@siljang.example/callback)
+ FAIL  test/ledger-input.test.ts > 안전하지 않은 인가 복귀 주소는422다(https://siljang.example/callback#token)
+ FAIL  test/ledger-input.test.ts > 안전하지 않은 인가 복귀 주소는422다(https://siljang.example/
+callback)
+ FAIL  test/ledger-input.test.ts > 안전하지 않은 인가 복귀 주소는422다(not-an-address)
+AssertionError: expected '/' to be '/redirectUri' // Object.is equality
+
+Expected: "/redirectUri"
+Received: "/"
+
+ ❯ rejects test/ledger-input.test.ts:19:59
+     17|     expect(error).toBeInstanceOf(ApiError);
+     18|     expect((error as ApiError).code).toBe("validation_failed");
+     19|     expect((error as ApiError).extras.errors?.[0]?.field).toBe(field);
+       |                                                           ^
+     20|     expect(JSON.stringify(error)).not.toContain(valid.code);
+     21|     expect(JSON.stringify(error)).not.toContain(valid.state);
+ ❯ test/ledger-input.test.ts:58:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/25]⎯
+
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 missing revision는 값 없는422다
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 bad revision는 값 없는422다
+AssertionError: expected '/' to be '/baseRevision' // Object.is equality
+
+Expected: "/baseRevision"
+Received: "/"
+
+ ❯ rejects test/ledger-input.test.ts:19:59
+     17|     expect(error).toBeInstanceOf(ApiError);
+     18|     expect((error as ApiError).code).toBe("validation_failed");
+     19|     expect((error as ApiError).extras.errors?.[0]?.field).toBe(field);
+       |                                                           ^
+     20|     expect(JSON.stringify(error)).not.toContain(valid.code);
+     21|     expect(JSON.stringify(error)).not.toContain(valid.state);
+ ❯ test/ledger-input.test.ts:85:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/25]⎯
+
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 blank code는 값 없는422다
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 whitespace code는 값 없는422다
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 NUL code는 값 없는422다
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 long code는 값 없는422다
+AssertionError: expected '/' to be '/code' // Object.is equality
+
+Expected: "/code"
+Received: "/"
+
+ ❯ rejects test/ledger-input.test.ts:19:59
+     17|     expect(error).toBeInstanceOf(ApiError);
+     18|     expect((error as ApiError).code).toBe("validation_failed");
+     19|     expect((error as ApiError).extras.errors?.[0]?.field).toBe(field);
+       |                                                           ^
+     20|     expect(JSON.stringify(error)).not.toContain(valid.code);
+     21|     expect(JSON.stringify(error)).not.toContain(valid.state);
+ ❯ test/ledger-input.test.ts:85:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/25]⎯
+
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 short state는 값 없는422다
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 long state는 값 없는422다
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 bad state는 값 없는422다
+AssertionError: expected '/' to be '/state' // Object.is equality
+
+Expected: "/state"
+Received: "/"
+
+ ❯ rejects test/ledger-input.test.ts:19:59
+     17|     expect(error).toBeInstanceOf(ApiError);
+     18|     expect((error as ApiError).code).toBe("validation_failed");
+     19|     expect((error as ApiError).extras.errors?.[0]?.field).toBe(field);
+       |                                                           ^
+     20|     expect(JSON.stringify(error)).not.toContain(valid.code);
+     21|     expect(JSON.stringify(error)).not.toContain(valid.state);
+ ❯ test/ledger-input.test.ts:85:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/25]⎯
+
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 short file는 값 없는422다
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 long file는 값 없는422다
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 file URL는 값 없는422다
+AssertionError: expected '/' to be '/spreadsheetId' // Object.is equality
+
+Expected: "/spreadsheetId"
+Received: "/"
+
+ ❯ rejects test/ledger-input.test.ts:19:59
+     17|     expect(error).toBeInstanceOf(ApiError);
+     18|     expect((error as ApiError).code).toBe("validation_failed");
+     19|     expect((error as ApiError).extras.errors?.[0]?.field).toBe(field);
+       |                                                           ^
+     20|     expect(JSON.stringify(error)).not.toContain(valid.code);
+     21|     expect(JSON.stringify(error)).not.toContain(valid.state);
+ ❯ test/ledger-input.test.ts:85:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/25]⎯
+
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 blank tab는 값 없는422다
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 NUL tab는 값 없는422다
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 long tab는 값 없는422다
+AssertionError: expected '/' to be '/sheetName' // Object.is equality
+
+Expected: "/sheetName"
+Received: "/"
+
+ ❯ rejects test/ledger-input.test.ts:19:59
+     17|     expect(error).toBeInstanceOf(ApiError);
+     18|     expect((error as ApiError).code).toBe("validation_failed");
+     19|     expect((error as ApiError).extras.errors?.[0]?.field).toBe(field);
+       |                                                           ^
+     20|     expect(JSON.stringify(error)).not.toContain(valid.code);
+     21|     expect(JSON.stringify(error)).not.toContain(valid.state);
+ ❯ test/ledger-input.test.ts:85:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/25]⎯
+
+ FAIL  test/ledger-input.test.ts > 잘못된 장부 연결 token field는 값 없는422다
+AssertionError: expected '/' to be '/accessToken' // Object.is equality
+
+Expected: "/accessToken"
+Received: "/"
+
+ ❯ rejects test/ledger-input.test.ts:19:59
+     17|     expect(error).toBeInstanceOf(ApiError);
+     18|     expect((error as ApiError).code).toBe("validation_failed");
+     19|     expect((error as ApiError).extras.errors?.[0]?.field).toBe(field);
+       |                                                           ^
+     20|     expect(JSON.stringify(error)).not.toContain(valid.code);
+     21|     expect(JSON.stringify(error)).not.toContain(valid.state);
+ ❯ test/ledger-input.test.ts:85:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/25]⎯
+
+ FAIL  test/ledger-input.test.ts > 인가 시작도 필요한 필드를 검사하고 토큰 같은 별도 필드를 받지 않는다
+AssertionError: expected '/' to be '/redirectUri' // Object.is equality
+
+Expected: "/redirectUri"
+Received: "/"
+
+ ❯ rejects test/ledger-input.test.ts:19:59
+     17|     expect(error).toBeInstanceOf(ApiError);
+     18|     expect((error as ApiError).code).toBe("validation_failed");
+     19|     expect((error as ApiError).extras.errors?.[0]?.field).toBe(field);
+       |                                                           ^
+     20|     expect(JSON.stringify(error)).not.toContain(valid.code);
+     21|     expect(JSON.stringify(error)).not.toContain(valid.state);
+ ❯ test/ledger-input.test.ts:88:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/25]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  25 failed | 3 passed (28)
+   Start at  09:14:31
+   Duration  467ms (transform 59%, tests 24%, import 14%, worker 3%)
