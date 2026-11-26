@@ -1,0 +1,232 @@
+TAP version 13
+# Subtest: 새 rollback 배포가 오래된 버전을 가리켜도 배포 생성 시각으로 고른다
+ok 1 - 새 rollback 배포가 오래된 버전을 가리켜도 배포 생성 시각으로 고른다
+  ---
+  duration_ms: 2.217512
+  type: 'test'
+  ...
+# Subtest: 마지막 업로드의 측정 바인딩을 활성 원본에 남은 것으로 오판하지 않는다
+ok 2 - 마지막 업로드의 측정 바인딩을 활성 원본에 남은 것으로 오판하지 않는다
+  ---
+  duration_ms: 1.038694
+  type: 'test'
+  ...
+# Subtest: 바인딩 메타데이터의 비밀 값 속성을 읽어 설정을 복구하지 않는다
+ok 3 - 바인딩 메타데이터의 비밀 값 속성을 읽어 설정을 복구하지 않는다
+  ---
+  duration_ms: 0.231997
+  type: 'test'
+  ...
+# Subtest: 현재 실행기/지우기의 모든 실패 로그를 포함하고 성공 로그는 실패로 세지 않는다
+ok 4 - 현재 실행기/지우기의 모든 실패 로그를 포함하고 성공 로그는 실패로 세지 않는다
+  ---
+  duration_ms: 31.008536
+  type: 'test'
+  ...
+# Subtest: 실행15분과 조회15분을 맞추고 대상·계정·Worker·반복 간격을 보존한다
+ok 5 - 실행15분과 조회15분을 맞추고 대상·계정·Worker·반복 간격을 보존한다
+  ---
+  duration_ms: 2.039608
+  type: 'test'
+  ...
+# Subtest: 모양·범위가 다른 정책을 덮어쓰지 않는다
+ok 6 - 모양·범위가 다른 정책을 덮어쓰지 않는다
+  ---
+  duration_ms: 1.378762
+  type: 'test'
+  ...
+# Subtest: 정책이 유일할 때만 쓰고 다시 읽은 대상·조건이 같아야 통과한다
+ok 7 - 정책이 유일할 때만 쓰고 다시 읽은 대상·조건이 같아야 통과한다
+  ---
+  duration_ms: 1.43087
+  type: 'test'
+  ...
+# Subtest: 상태 점검 실패는 알림 단위를 시작하고 정상 점검은 사건 상태를 지운다
+ok 8 - 상태 점검 실패는 알림 단위를 시작하고 정상 점검은 사건 상태를 지운다
+  ---
+  duration_ms: 18.39571
+  type: 'test'
+  ...
+# Subtest: 첫 실패는 기존 gh 인증으로 정해진 저장소/워크플로를 한 번 실행한다
+ok 9 - 첫 실패는 기존 gh 인증으로 정해진 저장소/워크플로를 한 번 실행한다
+  ---
+  duration_ms: 173.654264
+  type: 'test'
+  ...
+# Subtest: 계속 실패해도 1시간 안에는 중복을 억제하고 1시간 뒤에는 다시 알린다
+ok 10 - 계속 실패해도 1시간 안에는 중복을 억제하고 1시간 뒤에는 다시 알린다
+  ---
+  duration_ms: 203.590283
+  type: 'test'
+  ...
+# Subtest: 정상 복구 뒤 새 실패는 이전 알림으로부터 1시간 안이어도 알린다
+ok 11 - 정상 복구 뒤 새 실패는 이전 알림으로부터 1시간 안이어도 알린다
+  ---
+  duration_ms: 224.214816
+  type: 'test'
+  ...
+# Subtest: gh 실행 실패를 보낸 것으로 기록하지 않아 다음 점검 때 다시 시도한다
+ok 12 - gh 실행 실패를 보낸 것으로 기록하지 않아 다음 점검 때 다시 시도한다
+  ---
+  duration_ms: 295.875799
+  type: 'test'
+  ...
+# Subtest: 동시 실패 둘도 파일 잠금 아래 한 번만 보낸다
+ok 13 - 동시 실패 둘도 파일 잠금 아래 한 번만 보낸다
+  ---
+  duration_ms: 115.329663
+  type: 'test'
+  ...
+# Subtest: 잘못된 상태 파일을 셸 식으로 해석하지 않고 새 실패를 알린다
+ok 14 - 잘못된 상태 파일을 셸 식으로 해석하지 않고 새 실패를 알린다
+  ---
+  duration_ms: 136.587307
+  type: 'test'
+  ...
+# Subtest: MVP 기본 로그인 시작은 scope를 생략해야 통과함
+ok 15 - MVP 기본 로그인 시작은 scope를 생략해야 통과함
+  ---
+  duration_ms: 63.435922
+  type: 'test'
+  ...
+# Subtest: MVP 기본 설정에 plusfriends가 남으면 배포 확인을 통과하지 않음
+ok 16 - MVP 기본 설정에 plusfriends가 남으면 배포 확인을 통과하지 않음
+  ---
+  duration_ms: 1.485307
+  type: 'test'
+  ...
+# Subtest: 명시한 동의 항목만 배포 확인에서 수락함
+ok 17 - 명시한 동의 항목만 배포 확인에서 수락함
+  ---
+  duration_ms: 1.25448
+  type: 'test'
+  ...
+# Subtest: 실제 로그인 시작만 요청하고 결과에는 인가 주소·state·쿠키를 넣지 않음
+ok 18 - 실제 로그인 시작만 요청하고 결과에는 인가 주소·state·쿠키를 넣지 않음
+  ---
+  duration_ms: 1.78942
+  type: 'test'
+  ...
+# Subtest: staging 주소가 아니면 요청하지 않음
+ok 19 - staging 주소가 아니면 요청하지 않음
+  ---
+  duration_ms: 0.410494
+  type: 'test'
+  ...
+# Subtest: 통신 오류의 원문은 다시 출력하지 않음
+ok 20 - 통신 오류의 원문은 다시 출력하지 않음
+  ---
+  duration_ms: 0.982517
+  type: 'test'
+  ...
+# Subtest: 상태 확인이 정상이더라도 로그인 시작 500은 통과하지 않음
+ok 21 - 상태 확인이 정상이더라도 로그인 시작 500은 통과하지 않음
+  ---
+  duration_ms: 0.915652
+  type: 'test'
+  ...
+# Subtest: 잘못된 JSON 본문의 값도 오류에 넣지 않음
+ok 22 - 잘못된 JSON 본문의 값도 오류에 넣지 않음
+  ---
+  duration_ms: 0.794203
+  type: 'test'
+  ...
+# Subtest: 다른 호스트·콜백·state·PKCE·권한을 담은 인가 주소를 막음
+ok 23 - 다른 호스트·콜백·state·PKCE·권한을 담은 인가 주소를 막음
+  ---
+  duration_ms: 7.025092
+  type: 'test'
+  ...
+# Subtest: 로그인 시작 nonce 쿠키가 없거나 비어 있으면 막음
+ok 24 - 로그인 시작 nonce 쿠키가 없거나 비어 있으면 막음
+  ---
+  duration_ms: 1.824495
+  type: 'test'
+  ...
+# Subtest: 로그인 쿠키의 HttpOnly 누락을 막음
+ok 25 - 로그인 쿠키의 HttpOnly 누락을 막음
+  ---
+  duration_ms: 0.781487
+  type: 'test'
+  ...
+# Subtest: 로그인 쿠키의 Secure 누락을 막음
+ok 26 - 로그인 쿠키의 Secure 누락을 막음
+  ---
+  duration_ms: 0.474419
+  type: 'test'
+  ...
+# Subtest: 로그인 쿠키의 SameSite=Lax 누락을 막음
+ok 27 - 로그인 쿠키의 SameSite=Lax 누락을 막음
+  ---
+  duration_ms: 0.511534
+  type: 'test'
+  ...
+# Subtest: 로그인 쿠키의 Max-Age=600 누락을 막음
+ok 28 - 로그인 쿠키의 Max-Age=600 누락을 막음
+  ---
+  duration_ms: 0.596518
+  type: 'test'
+  ...
+# Subtest: 공유 캐시에 인가 주소를 남길 수 있는 응답을 막음
+ok 29 - 공유 캐시에 인가 주소를 남길 수 있는 응답을 막음
+  ---
+  duration_ms: 0.570684
+  type: 'test'
+  ...
+# Subtest: 현재 자원은 건드리지 않고 필요한 큐·비밀 값만 한 번 생성
+ok 30 - 현재 자원은 건드리지 않고 필요한 큐·비밀 값만 한 번 생성
+  ---
+  duration_ms: 23.24242
+  type: 'test'
+  ...
+# Subtest: 모든 자원이 있으면 새 값 생성·수정·큐 비우기를 하지 않음
+ok 31 - 모든 자원이 있으면 새 값 생성·수정·큐 비우기를 하지 않음
+  ---
+  duration_ms: 1.767772
+  type: 'test'
+  ...
+# Subtest: 메타데이터 조회 실패 뒤에는 변경하지 않고 오류 메시지의 값을 내보내지 않음
+ok 32 - 메타데이터 조회 실패 뒤에는 변경하지 않고 오류 메시지의 값을 내보내지 않음
+  ---
+  duration_ms: 3.915167
+  type: 'test'
+  ...
+# Subtest: CLI 실패의 비밀 값·본문을 출력하지 않고 다음 변경을 하지 않음
+ok 33 - CLI 실패의 비밀 값·본문을 출력하지 않고 다음 변경을 하지 않음
+  ---
+  duration_ms: 0.531277
+  type: 'test'
+  ...
+# Subtest: 배포 목록의 첫 항목 대신 최신 시각·활성 버전을 확인한 뒤 공개 상태를 검사
+ok 34 - 배포 목록의 첫 항목 대신 최신 시각·활성 버전을 확인한 뒤 공개 상태를 검사
+  ---
+  duration_ms: 1.72113
+  type: 'test'
+  ...
+# Subtest: 이전 버전의 정상 상태로 새 배포를 통과시키지 않음
+ok 35 - 이전 버전의 정상 상태로 새 배포를 통과시키지 않음
+  ---
+  duration_ms: 0.740267
+  type: 'test'
+  ...
+# Subtest: 예전 버전으로 나뉜 트래픽은 완전한 새 배포로 기록하지 않음
+ok 36 - 예전 버전으로 나뉜 트래픽은 완전한 새 배포로 기록하지 않음
+  ---
+  duration_ms: 0.431626
+  type: 'test'
+  ...
+# Subtest: 태그가 맞아도 공개 주소의 실패를 통과시키지 않음
+ok 37 - 태그가 맞아도 공개 주소의 실패를 통과시키지 않음
+  ---
+  duration_ms: 2.983656
+  type: 'test'
+  ...
+1..37
+# tests 37
+# suites 0
+# pass 37
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1332.319216

@@ -76,6 +76,26 @@ jobs:
       - name: 05 검사 전부(check_erd.py)
         run: python3 -B research/cake-erd-2026-11/check_erd.py . --db "$PG" 2>&1 | tee ci-logs/check-erd.log
 
+      - name: 고정 age 설치와 암호화 경계 시험
+        run: |
+          bash tools/free-backup/install-age.sh "$RUNNER_TEMP/age-bin"
+          AGE_BIN="$RUNNER_TEMP/age-bin/age" python3 -I tools/free-backup/test_backup.py 2>&1 | tee ci-logs/backup-boundaries.log
+
+      - name: 같은 PostgreSQL 버전으로 암호화 백업 복구(합성 기록 손실 0)
+        env:
+          TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
+          CI_BACKUP_TEST: "1"
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: postgres
+        run: |
+          mkdir -p "$RUNNER_TEMP/pg-clients"
+          for tool in pg_dump pg_restore; do
+            cp tools/free-backup/container-client.sh "$RUNNER_TEMP/pg-clients/$tool"
+            chmod 700 "$RUNNER_TEMP/pg-clients/$tool"
+          done
+          AGE_BIN="$RUNNER_TEMP/age-bin/age" PG_DUMP_BIN="$RUNNER_TEMP/pg-clients/pg_dump" PG_RESTORE_BIN="$RUNNER_TEMP/pg-clients/pg_restore" python3 -I tools/free-backup/restore-smoke.py 2>&1 | tee ci-logs/backup-restore.log
+
       - name: 로그 키 검사
         if: ${{ !cancelled() }}
         run: node tools/check-no-keys.mjs ci-logs/*.log

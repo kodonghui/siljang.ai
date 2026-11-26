@@ -1,0 +1,77 @@
+{
+  "full_source_commit": "19453bfbd1bdeb4221359815eb25d9aeb8b1d180",
+  "backup_test_source_commit": "2c30be74fc551f269a4e55cd07565223741300c7",
+  "server_files": 198,
+  "server_passed": 3658,
+  "web_files": 73,
+  "web_passed": 1775,
+  "tests_exit": 0,
+  "build_exit": 0,
+  "database_cleaned": true,
+  "full_test_scope_objects_unchanged": {
+    "app/server": "71df2105eecde7d0e4142e203a66ddf06037b8d4",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "003ae12af65157d7f28662088d00e4ace1e60deb",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1",
+    "research/screen-checks-2026-11": "054b495f5fb0665c24475252cf20edd8d83f91a2",
+    ".github/workflows/app.yml": "9ae8e7718d47ff7b2d81d8085a8beb03c2d54e47",
+    ".github/workflows/db.yml": "5d581761f8b0b021325e64e7d196bcaa352fbb43",
+    ".github/workflows/free-backup.yml": "f5cf56d7403cfd985f25df247c4f93412cc8ba4a",
+    "tools/staging-login-callback-grants.sql": "a03536fe2fa7e42d33b4b8b428555d2034851ba4",
+    "tools/staging-purge-grants.sql": "83a52b74e4bc2465d58fbcd7475b4d2eb32f66bc",
+    "tools/staging-monitor/job-policy.mjs": "229beb946a7148015a57eb6117a49bcfd888588e",
+    "tools/test/staging-job-policy.test.mjs": "8f16e3b76362a993ac062e29a25da51fda17b90c"
+  },
+  "protected_test_objects_equal_main302": {
+    "app/server/test/consultation-idle.test.ts": "ffa4330f9e6c9210739681463416d42ae5720987",
+    "app/server/test/kakao-review-dedup.test.ts": "a7448fb18e57a157de386a45be1e3fa8c2895250",
+    "app/server/test/kakao-review-photos.test.ts": "54a249bd42dc6e59170a8e6fb36b2dce5b2833e5",
+    "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+    "app/server/test/shop-scope-static.test.ts": "fb468294d835ee555b36a7e497b5a81384af6446",
+    "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299"
+  },
+  "backup_tree": "0700687b38f0ed38aaf4fe98aec7c66d7847925a",
+  "boundary_tests": 10,
+  "restore_majors": [
+    16,
+    17
+  ],
+  "tables_compared": 62,
+  "sequences_compared": 4,
+  "lost_records": 0,
+  "native_verified": false,
+  "scheduled_enabled": null,
+  "log_sha256": {
+    "full-output.txt": "44fbff27749054fc678d0905f3a72dcc218f6cb5da97b8611f66e63595ee7f27",
+    "build-output.txt": "f3b6d2150baac847269aa3ec61c97dc3f62cc07dcabae4590384f2faeb390ef1",
+    "final-boundaries.txt": "311aaf4b771867da857353701a15560d1a4d59edf7836d4c4cc9660484cb99f4",
+    "final-restore16.txt": "20ad29ff8cf9eafd61ea3ca5ab30937d254640117e140c485218730b79b13b64",
+    "final-restore17.txt": "736d617a97c9511ed2325d61a285efcddd05eb82f123ef5851a8d61c97de6c91"
+  },
+  "log_whitespace_normalization": {
+    "full-output.txt": {
+      "raw_sha256": "8455ee2fb456b796c7f7faec1ac5cc5950eb5ec54a1b37bab728407ba943daae",
+      "published_sha256": "44fbff27749054fc678d0905f3a72dcc218f6cb5da97b8611f66e63595ee7f27",
+      "change": "줄 끝 공백과 마지막 빈 줄만 제거. 원본은 세션 /tmp에 보존."
+    },
+    "build-output.txt": {
+      "raw_sha256": "700c1bbd92871e810185da5c8ef41891b7390f92c3719d09a3afb5874bfe6878",
+      "published_sha256": "f3b6d2150baac847269aa3ec61c97dc3f62cc07dcabae4590384f2faeb390ef1",
+      "change": "줄 끝 공백과 마지막 빈 줄만 제거. 원본은 세션 /tmp에 보존."
+    }
+  },
+  "enable_setting_changed": false,
+  "enable_setting_readback": "GitHub 변수 API403. 실제 활성 상태 미확인",
+  "role_hardening_source_commit": "51b4af5ed461ad8573235c15622f6e9620e5c625",
+  "unsafe_role_rejections": 5,
+  "role_hardening_runtime_objects": {
+    "tools/free-backup/grants.sql": "173761fbe70ff3433a4f063a2c902c8f4e895c8e",
+    "tools/free-backup/restore-smoke.py": "97e1570874cba34d46cbb83ebb1ef6da5600486f"
+  },
+  "unchanged_boundary_runtime_objects": {
+    "tools/free-backup/backup.py": "e2242db2186838d8ff33fb6fe0ed5eb150738a69",
+    "tools/free-backup/production-client.sh": "a110e210b6f6c6cadfdb82a774bab77c258c690f",
+    "tools/free-backup/test_backup.py": "e8ea3d67382235f11be34eb61bca2f8937fb0ba9"
+  }
+}

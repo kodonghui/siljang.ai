@@ -1,0 +1,43 @@
+{
+  "sha": "336e48c2d58d1d1ca9144ccf78cdf28730445f01",
+  "method": "gh authenticated API",
+  "app": {
+    "id": 45828277316,
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "db": {
+    "id": 45828277363,
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "pending": false,
+  "verified": true,
+  "jobs": [
+    {
+      "id": 139938019756,
+      "name": "check",
+      "conclusion": "success"
+    },
+    {
+      "id": 139938020291,
+      "name": "Windows PowerShell 평가 인증(모의)",
+      "conclusion": "success"
+    },
+    {
+      "id": 139940761720,
+      "name": "스테이징 배포",
+      "conclusion": "skipped"
+    },
+    {
+      "id": 139938019397,
+      "name": "PostgreSQL 16.15",
+      "conclusion": "success"
+    },
+    {
+      "id": 139938019807,
+      "name": "PostgreSQL 17.11",
+      "conclusion": "success"
+    }
+  ]
+}
