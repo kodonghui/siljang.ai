@@ -2,6 +2,7 @@
 import { type ConfirmCardAnswer, type ConfirmCardView, NOT_YOURS, RETRY_NEEDED } from "./confirm-card-store";
 import { changeRequestResultText, kakaoChangeRequestMessage } from "./kakao-change-request-message";
 import { kakaoChannelIdentifierError } from "./kakao-channel-input";
+import { kakaoIssueReportMessage } from "./kakao-issue-report-message";
 import {
   type KakaoMessageContent,
   type KakaoMessageOutput,
@@ -114,6 +115,13 @@ export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
   if (answer.card?.kind === "change_request" && answer.card.changeRequest !== undefined)
     return kakaoChangeRequestMessage({
       ...answer.card.changeRequest,
+      state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
+      cardKey: answer.card.cardKey,
+      blockId: answer.card.blockId,
+    });
+  if (answer.card?.kind === "issue_report" && answer.card.issueReport !== undefined)
+    return kakaoIssueReportMessage({
+      ...answer.card.issueReport,
       state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
       cardKey: answer.card.cardKey,
       blockId: answer.card.blockId,

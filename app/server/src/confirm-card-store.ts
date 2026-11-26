@@ -5,6 +5,7 @@ import { cardExpiresAt, judgeCardPress } from "./confirm-card";
 import { CustomerNoticeTemporarilyUnavailable } from "./customer-notice-content";
 import type { KakaoChangeRequestCard, KakaoChangeRequestView } from "./kakao-change-request-message";
 import { changeRequestResultText, kakaoChangeRequestMessage } from "./kakao-change-request-message";
+import type { KakaoIssueReportCard } from "./kakao-issue-report-message";
 import type { KakaoChangeRequestContent } from "./kakao-message-content";
 import type { KakaoOrderCardContext } from "./kakao-order-request-content";
 import type { KakaoPaymentClaimCard } from "./kakao-payment-claim-message";
@@ -46,6 +47,8 @@ export interface ConfirmCardView {
   readonly kind?: CustomerCommandKind;
   /** 서버에서 준비한 변경 표시. 업무 명령의 입력으로 사용하지 않는다. */
   readonly changeRequest?: KakaoChangeRequestCard;
+  /** 서버가 준비한 신고 표시. 신고 내용 저장·명령의 입력으로 쓰지 않는다. */
+  readonly issueReport?: Omit<KakaoIssueReportCard, "cardKey" | "blockId">;
   readonly orderRequest?: KakaoOrderCardContext;
   /** 전송 직전 자료. 카드 payload/메시지/AI 입력에는 저장하지 않는다. */
   readonly paymentClaim?: KakaoPaymentClaimCard;

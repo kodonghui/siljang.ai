@@ -124,6 +124,16 @@ function expandContents(contents: readonly KakaoMessageContent[], render = prese
         ],
         render,
       );
+    if (typeof content !== "string" && content.kind === "issue_report" && content.issueReport !== undefined)
+      return expandContents(
+        [
+          {
+            kind: "issue_card",
+            view: { ...content.issueReport, state: "normal", cardKey: content.cardKey, blockId: content.blockId },
+          },
+        ],
+        render,
+      );
     if (isPresentation(content)) {
       const body = render(content);
       if (content.part === undefined) return body.template.outputs.map((_, part) => ({ ...content, part }));

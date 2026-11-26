@@ -1,0 +1,5 @@
+
+> lint
+> biome ci .
+
+Checked 625 files in 854ms. No fixes applied.
