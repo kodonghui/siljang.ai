@@ -1,9 +1,11 @@
 /** 합성 운영자 세션과 실제 로컬 DB로 개인정보 표시·접속기록 계약을 검사한다. */
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
+import { purgeOrder } from "../src/purge-order";
+import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { accessLogRows, CLIENT_IP_HEADER, expectOneAccessRow, TEST_IPV4 } from "./support/access-log";
 import { createConsentWithdrawalFixture } from "./support/consent-withdrawal-fixture";
-import { expectSchema } from "./support/contract";
+import { expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newRequestKey, newUuid, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -15,6 +17,7 @@ const NOW = new Date("2026-11-28T06:00:00Z"),
 const PRIVATE_TEXT = "이지우인데 땅콩 알레르기가 있어요. 연락은 [전화번호1]";
 const NAME = "이지우",
   PHONE = "010-2468-5678";
+const DIGITS = PHONE.replaceAll("-", "");
 describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
   let isolated: Awaited<ReturnType<typeof isolatedTestDb>>, shop: ShopFixture;
   let app: ReturnType<typeof createApp>, session: Awaited<ReturnType<typeof seedOperatorSession>>, maskedId: string;
@@ -46,8 +49,8 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
         maskedId,
         shop.shopId,
         shop.consultationId,
-        await fc.seal(PHONE, { purpose: "masked_values.original", shopId: shop.shopId }),
-        await fc.valueHash(["operator-fixture", shop.shopId, PHONE]),
+        await fc.seal(DIGITS, { purpose: "masked_values.original", shopId: shop.shopId }),
+        await fc.valueHash(["masked_values", shop.shopId, shop.consultationId, "phone", DIGITS]),
       ],
     );
     app = createApp({
@@ -145,9 +148,11 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
     expectSchema("OperatorConsultation", body);
     expect(body.items.find((item: { messageId: string }) => item.messageId === shop.messageId)).toMatchObject({
       photoCount: 1,
+      textLength: 0,
     });
     expect(body.items.find((item: { messageId: string }) => item.messageId === messageId)).toMatchObject({
       photoCount: 2,
+      textLength: 0,
     });
     expect(text).not.toContain("storage_key");
     expect(text).not.toContain(`shops/${shop.shopId}`);
@@ -183,7 +188,7 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
       );
       const body = JSON.parse(text);
       expectSchema("OriginalValue", body);
-      expect(body.maskedValue).toEqual({ placeholder: "[전화번호1]", kind: "phone", value: PHONE });
+      expect(body.maskedValue).toEqual({ placeholder: "[전화번호1]", kind: "phone", value: DIGITS });
       expect(body.orderContact).toBeNull();
       expect(body.consultationText).toBeNull();
       if (i === 1) expect(res.headers.get("Idempotency-Replayed")).toBe("true");
@@ -195,10 +200,137 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
       )
     ).rows;
     const access = await accessLogRows(isolated.db, shop.shopId);
-    for (const value of [NAME, PHONE, PRIVATE_TEXT]) {
+    for (const value of [NAME, PHONE, DIGITS, PRIVATE_TEXT]) {
       expect(JSON.stringify(stored)).not.toContain(value);
       expect(JSON.stringify(access)).not.toContain(value);
       expect(logs.join("\n")).not.toContain(value);
     }
+  });
+  it.each(["order_contact", "consultation_text"] as const)(
+    "API077의 %s는 사유를 적어 대상 하나만 열고 기록한다",
+    async (targetKind) => {
+      const targetId = targetKind === "order_contact" ? shop.orderId : shop.consultationId;
+      const { text } = await expectOneAccessRow(isolated.db, shop.shopId, () => open(targetKind, targetId), {
+        action: "open_original",
+        api_id: "API-077",
+        target_kind: targetKind,
+        target_id: targetId,
+        subject_ids: [shop.customerId],
+      });
+      const body = JSON.parse(text);
+      expectSchema("OriginalValue", body);
+      expect(body.maskedValue).toBeNull();
+      expect(body.refundAccount).toBeNull();
+      expect(body.keptRecord).toBeNull();
+      if (targetKind === "order_contact") {
+        expect(body.orderContact).toEqual({ customerName: NAME, customerPhone: PHONE });
+        expect(body.consultationText).toBeNull();
+      } else {
+        expect(body.consultationText.items[0]).toMatchObject({ messageId: shop.messageId, textMasked: PRIVATE_TEXT });
+        expect(body.orderContact).toBeNull();
+        expect(text).not.toContain(PHONE);
+        expect(text).not.toContain(DIGITS);
+      }
+    },
+  );
+  it.each(["card", "long_number"] as const)("API077의 %s 원본은 두지 않고 열기 기록도 남기지 않는다", async (kind) => {
+    const id = newUuid();
+    await isolated.db.query(
+      "INSERT INTO masked_values(id,shop_id,consultation_id,kind,placeholder,last4) VALUES($1,$2,$3,$4,$5,$6)",
+      [
+        id,
+        shop.shopId,
+        shop.consultationId,
+        kind,
+        kind === "card" ? "[카드번호1]" : "[긴숫자1]",
+        kind === "card" ? "1111" : null,
+      ],
+    );
+    await expectProblem(await open("masked_value", id), "original_not_kept");
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(0);
+  });
+  async function finish(ageDays = 0) {
+    const at = new Date(NOW.getTime() - ageDays * 86400000);
+    await isolated.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='closed',closed_at=$2,close_reason='order_cancelled' WHERE order_id=$1",
+        [shop.orderId, at],
+      );
+      await tx.query(
+        "UPDATE orders SET status='cancelled',cancelled_at=$2,cancel_kind='no_payment',finished_at=$2,lock_version=lock_version+1 WHERE id=$1",
+        [shop.orderId, at],
+      );
+    });
+  }
+  it("API077의 환불 계좌는 실제 암호화 도구로 둔 값 하나만 연다", async () => {
+    await finish();
+    const refundId = newUuid(),
+      account = "110-123-456789";
+    await isolated.db.query(
+      "INSERT INTO refunds(id,shop_id,order_id,cause,cancelled_order_id,decision,amount,calculated_amount,calc_basis,refund_bank_name,refund_account_enc,refund_account_last4,refund_holder_name,decided_at,event_key) VALUES($1,$2,$3,'customer_cancel',$3,'none',0,0,'{}','합성은행',$4,'6789',$5,$6,'refund:'||$3::uuid::text||':customer_cancel')",
+      [
+        refundId,
+        shop.shopId,
+        shop.orderId,
+        await fc.seal(account, { purpose: "refunds.refund_account", shopId: shop.shopId }),
+        NAME,
+        NOW,
+      ],
+    );
+    const { text } = await expectOneAccessRow(isolated.db, shop.shopId, () => open("refund_account", refundId), {
+      action: "open_original",
+      api_id: "API-077",
+      target_kind: "refund_account",
+      target_id: refundId,
+    });
+    const body = JSON.parse(text);
+    expectSchema("OriginalValue", body);
+    expect(body.refundAccount).toEqual({ bankName: "합성은행", accountNumber: account, holderName: NAME });
+    expect(body.orderContact).toBeNull();
+    expect(body.maskedValue).toBeNull();
+    expect(JSON.stringify(await accessLogRows(isolated.db, shop.shopId))).not.toContain(account);
+    expect(logs.join("\n")).not.toContain(account);
+  });
+  it("실제 지우기 뒤 목록은 보관 기간만 보이고 사유로 연 계약 기록만 이름을 보인다", async () => {
+    await finish(31);
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), isolated.db);
+    expect(await scoped.transaction((tx) => purgeOrder(tx, shop.orderId, NOW))).toBe(1);
+    const kept = (
+      await isolated.db.query<{ id: string }>("SELECT id FROM kept_records WHERE shop_id=$1 AND order_id=$2", [
+        shop.shopId,
+        shop.orderId,
+      ])
+    ).rows[0];
+    if (!kept) throw new Error("보관 기록이 없어요");
+    const list = await call("/records"),
+      listText = await list.text();
+    expect(list.status, listText).toBe(200);
+    const listBody = JSON.parse(listText);
+    expectSchema("OperatorRecordList", listBody);
+    expect(listBody.orders[0]).toMatchObject({
+      kept: true,
+      keptRecordId: kept.id,
+      customerNameMasked: null,
+      customerPhoneMasked: null,
+      status: null,
+      pickupAt: null,
+      amount: null,
+    });
+    expect(listText).not.toContain(NAME);
+    const { text } = await expectOneAccessRow(
+      isolated.db,
+      shop.shopId,
+      () => open("kept_record", kept.id, "사장님 요청: 보관 계약 확인"),
+      { action: "open_kept", api_id: "API-077", target_kind: "kept_record", target_id: kept.id },
+    );
+    const body = JSON.parse(text);
+    expectSchema("OriginalValue", body);
+    expect(body.keptRecord).toMatchObject({ keptRecordId: kept.id, customerName: NAME });
+    expect(body.keptRecord.details).toHaveLength(1);
+    for (const value of [PHONE, DIGITS, "땅콩", "호두", PRIVATE_TEXT]) expect(text).not.toContain(value);
+    const before = (await accessLogRows(isolated.db, shop.shopId)).length;
+    await expectProblem(await call(`/orders/${shop.orderId}`), "not_found");
+    await expectProblem(await open("order_contact", shop.orderId), "original_erased");
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(before);
   });
 });

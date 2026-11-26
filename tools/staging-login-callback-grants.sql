@@ -233,3 +233,4 @@ GRANT EXECUTE ON FUNCTION read_prepared_consent_withdrawal_card(uuid,uuid,uuid,u
 GRANT EXECUTE ON FUNCTION read_operator_order(uuid,uuid,uuid) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION read_operator_record_list(uuid,uuid,text,jsonb,integer,timestamptz) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION read_operator_consultation(uuid,uuid,uuid),read_operator_messages(uuid,uuid,uuid,jsonb,integer) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION read_operator_original(uuid,uuid,text,uuid,jsonb,timestamptz) TO :"runtime_role";

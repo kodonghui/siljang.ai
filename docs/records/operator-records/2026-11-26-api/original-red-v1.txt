@@ -1,0 +1,126 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-records.test.ts (12 tests | 7 failed) 1142ms
+   ❯ 운영자 가게 기록과 사유 있는 열기(TASK-159) (12)
+     × API077는 사유 있는 전화 원본 하나만 열고 같은 요청 키 재열기도 매번 기록한다 20ms
+     × API077의 order_contact는 사유를 적어 대상 하나만 열고 기록한다 22ms
+     × API077의 consultation_text는 사유를 적어 대상 하나만 열고 기록한다 19ms
+     × API077의 card 원본은 두지 않고 열기 기록도 남기지 않는다 28ms
+     × API077의 long_number 원본은 두지 않고 열기 기록도 남기지 않는다 18ms
+     × API077의 환불 계좌는 실제 암호화 도구로 둔 값 하나만 연다 22ms
+     × 실제 지우기 뒤 목록은 보관 기간만 보이고 사유로 연 계약 기록만 이름을 보인다 58ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API077는 사유 있는 전화 원본 하나만 열고 같은 요청 키 재열기도 매번 기록한다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"0563185c093fabf456cffaeac3ce7aeb","instance":"/api/operator/shops/664f6279-0e00-4f2c-8a05-b2297d4bf2f6/originals"}: expected 404 to be less than 300
+ ❯ expectOneAccessRow test/support/access-log.ts:88:28
+     86|   const text = await res.text();
+     87|   expect(res.status, text).toBeGreaterThanOrEqual(200);
+     88|   expect(res.status, text).toBeLessThan(300);
+       |                            ^
+     89|   const after = await accessLogRows(db, shopId);
+     90|   expect(after.length, "접속기록이 한 행 늘어야 함").toBe(before.length + 1);
+ ❯ test/operator-records.test.ts:174:29
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API077의 order_contact는 사유를 적어 대상 하나만 열고 기록한다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"106d5b75e6d03e40429ca8118dd77fdb","instance":"/api/operator/shops/aeeeebf5-feae-4f89-b2ba-5341f505d163/originals"}: expected 404 to be less than 300
+ ❯ expectOneAccessRow test/support/access-log.ts:88:28
+     86|   const text = await res.text();
+     87|   expect(res.status, text).toBeGreaterThanOrEqual(200);
+     88|   expect(res.status, text).toBeLessThan(300);
+       |                            ^
+     89|   const after = await accessLogRows(db, shopId);
+     90|   expect(after.length, "접속기록이 한 행 늘어야 함").toBe(before.length + 1);
+ ❯ test/operator-records.test.ts:211:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API077의 consultation_text는 사유를 적어 대상 하나만 열고 기록한다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"209d62b1de89e85d1f25fb7610716d22","instance":"/api/operator/shops/ffd5173f-ead7-4539-8be1-b281c6898306/originals"}: expected 404 to be less than 300
+ ❯ expectOneAccessRow test/support/access-log.ts:88:28
+     86|   const text = await res.text();
+     87|   expect(res.status, text).toBeGreaterThanOrEqual(200);
+     88|   expect(res.status, text).toBeLessThan(300);
+       |                            ^
+     89|   const after = await accessLogRows(db, shopId);
+     90|   expect(after.length, "접속기록이 한 행 늘어야 함").toBe(before.length + 1);
+ ❯ test/operator-records.test.ts:211:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API077의 card 원본은 두지 않고 열기 기록도 남기지 않는다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"bddf8023b020f11a96d0625cd6aadd02","instance":"/api/operator/shops/db3ba20d-e04d-460c-ba04-b8896fb6b11a/originals"}: expected 404 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 404
+
+ ❯ expectProblem test/support/contract.ts:34:28
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+       |                            ^
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+     36|   expect(res.headers.get("cache-control")).toBe("no-store");
+ ❯ test/operator-records.test.ts:247:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API077의 long_number 원본은 두지 않고 열기 기록도 남기지 않는다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"417aeff30c6792e23ebfe2962d036b80","instance":"/api/operator/shops/cda6a43c-c525-4b79-86ac-7b575ae31dd0/originals"}: expected 404 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 404
+
+ ❯ expectProblem test/support/contract.ts:34:28
+     32| export async function expectProblem(res: Response, code: ErrorCode): P…
+     33|   const text = await res.text();
+     34|   expect(res.status, text).toBe(ERRORS[code].status);
+       |                            ^
+     35|   expect(res.headers.get("content-type")).toBe("application/problem+js…
+     36|   expect(res.headers.get("cache-control")).toBe("no-store");
+ ❯ test/operator-records.test.ts:247:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > API077의 환불 계좌는 실제 암호화 도구로 둔 값 하나만 연다
+error: null value in column "event_key" of relation "refunds" violates not-null constraint
+ ❯ ../../../siljang.ai/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ test/operator-records.test.ts:267:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 실제 지우기 뒤 목록은 보관 기간만 보이고 사유로 연 계약 기록만 이름을 보인다
+AssertionError: {"type":"/problems/not_found","title":"찾을 수 없어요","status":404,"code":"not_found","traceId":"289660c303b59c6bc01bb15447634013","instance":"/api/operator/shops/f8249dd9-86e6-44d8-9367-4ea17871ff04/originals"}: expected 404 to be less than 300
+ ❯ expectOneAccessRow test/support/access-log.ts:88:28
+     86|   const text = await res.text();
+     87|   expect(res.status, text).toBeGreaterThanOrEqual(200);
+     88|   expect(res.status, text).toBeLessThan(300);
+       |                            ^
+     89|   const after = await accessLogRows(db, shopId);
+     90|   expect(after.length, "접속기록이 한 행 늘어야 함").toBe(before.length + 1);
+ ❯ test/operator-records.test.ts:318:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 5 passed (12)
+   Start at  08:33:50
+   Duration  3.40s (import 50%, tests 35%, transform 14%)

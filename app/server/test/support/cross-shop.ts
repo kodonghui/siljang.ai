@@ -125,10 +125,11 @@ interface OperatorReviewShopCase {
   readonly kind: "operator_review";
 }
 interface OperatorRecordShopCase {
-  readonly method: "GET";
+  readonly method: "GET" | "POST";
   readonly path:
     | "/operator/shops/:shopId/orders/:orderId"
     | "/operator/shops/:shopId/records"
+    | "/operator/shops/:shopId/originals"
     | "/operator/shops/:shopId/consultations/:consultationId";
   readonly kind: "operator_records";
 }
@@ -220,6 +221,7 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "GET", path: "/operator/shops/:shopId", kind: "operator_review" },
   { method: "GET", path: "/operator/shops/:shopId/orders/:orderId", kind: "operator_records" },
   { method: "GET", path: "/operator/shops/:shopId/records", kind: "operator_records" },
+  { method: "POST", path: "/operator/shops/:shopId/originals", kind: "operator_records" },
   { method: "GET", path: "/operator/shops/:shopId/consultations/:consultationId", kind: "operator_records" },
   { method: "POST", path: "/operator/shops/:shopId/license-review", kind: "operator_review" },
 ];
@@ -626,6 +628,62 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
         else expect(comparable).toEqual(missing);
         expect(await snapshots(db, env)).toEqual(before);
       }
+      return;
+    }
+    if (c.kind === "operator_records" && c.method === "POST") {
+      const beforeOwner = await snapshots(db, env);
+      expect(
+        (
+          await send(env, "POST", {
+            url: `/operator/shops/${env.a.shopId}/originals`,
+            body: { targetKind: "order_contact", targetId: env.b.orderId, reason: "합성 손님 문의 확인" },
+          })
+        ).status,
+      ).toBe(401);
+      expect(await snapshots(db, env)).toEqual(beforeOwner);
+      const session = await seedOperatorSession(db, new Date());
+      const call = (shopId: string, targetKind: string, targetId: string) =>
+        env.app.request(
+          `https://siljang.example/api/operator/shops/${shopId}/originals`,
+          {
+            method: "POST",
+            headers: {
+              origin: "https://siljang.example",
+              cookie: session.cookie,
+              [CLIENT_IP_HEADER]: TEST_IPV4,
+              "content-type": "application/json",
+              "Idempotency-Key": newRequestKey(),
+            },
+            body: JSON.stringify({ targetKind, targetId, reason: "합성 손님 문의 확인" }),
+          },
+          testEnv(),
+        );
+      for (const target of [env.a, env.b])
+        for (const kind of ["order_contact", "consultation_text"]) {
+          const id = kind === "order_contact" ? target.orderId : target.consultationId;
+          const response = await call(target.shopId, kind, id);
+          expect(response.status, await response.clone().text()).toBe(200);
+          expect(await response.json()).toMatchObject({ targetKind: kind, targetId: id });
+        }
+      const before = await snapshots(db, env);
+      const audits = await db.query("SELECT count(*)::int AS n FROM access_logs WHERE shop_id=$1", [env.a.shopId]);
+      let missing: unknown;
+      for (const [kind, id] of [
+        ["order_contact", env.b.orderId],
+        ["consultation_text", env.b.consultationId],
+        ["order_contact", newUuid()],
+        ["consultation_text", newUuid()],
+      ]) {
+        const body = comparableProblem(await expectProblem(await call(env.a.shopId, kind, id), "not_found"));
+        if (missing === undefined) missing = body;
+        else expect(body).toEqual(missing);
+        expect(await snapshots(db, env)).toEqual(before);
+      }
+      for (const shopId of [newUuid(), "not-a-uuid"])
+        await expectProblem(await call(shopId, "order_contact", env.a.orderId), "not_found");
+      expect(
+        (await db.query("SELECT count(*)::int AS n FROM access_logs WHERE shop_id=$1", [env.a.shopId])).rows,
+      ).toEqual(audits.rows);
       return;
     }
     if (c.kind === "operator_records") {
