@@ -100,7 +100,7 @@ jobs:
         run: npm test 2>&1 | tee ci-logs/test.log
 
       - name: 스테이징 설정 도구 시험(비밀 값 없이)
-        run: node --test ../tools/test/staging-runtime.test.mjs ../tools/test/staging-owner-login.test.mjs ../tools/test/staging-monitor.test.mjs ../tools/test/staging-job-policy.test.mjs ../tools/test/job-log-facts.test.mjs ../research/webp-orientation-2026-11/active-version.test.mjs 2>&1 | tee ci-logs/staging-runtime.log
+        run: node --test ../tools/test/staging-runtime.test.mjs ../tools/test/staging-owner-login.test.mjs ../tools/test/staging-monitor.test.mjs ../tools/test/staging-job-policy.test.mjs ../tools/test/job-log-facts.test.mjs ../tools/test/job-log-cli.test.mjs ../research/webp-orientation-2026-11/active-version.test.mjs 2>&1 | tee ci-logs/staging-runtime.log
 
       - name: 학원컴 평가의 키 비전달·실패 정리 시험(모의)
         run: python3 -I ../research/ai-eval-native-2026-11/test_native_auth.py 2>&1 | tee ci-logs/native-auth.log

@@ -14,7 +14,6 @@ function classify(chunk) {
 child.stderr.setEncoding("utf8");child.stderr.on("data",classify);
 child.stdout.setEncoding("utf8");
 child.stdout.on("data",chunk=>{
-  classify(chunk);
   try {
     for (const envelope of parser.push(chunk)) {
       if (envelope.scriptName!=="siljang-staging" || !Array.isArray(envelope.logs)) continue;
