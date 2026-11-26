@@ -2,11 +2,13 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { Queryable, RequestDb } from "../src/db";
-import { OWNER_COOKIE } from "../src/owner-oauth";
+import { LEDGER_COOKIE, verifyLedgerOAuth } from "../src/ledger-oauth";
+import { OWNER_COOKIE, readCookie } from "../src/owner-oauth";
 import { createOwnerSession } from "../src/owner-session";
+import { Secret } from "../src/settings";
 import { toShopIso } from "../src/time";
 import { expectProblem, expectSchema } from "./support/contract";
-import { describeDb, newUuid, testDb, testEnv } from "./support/db";
+import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { seedOperatorSession } from "./support/operator";
 import { createShop, type ShopFixture, snapshotShop } from "./support/shops";
@@ -216,5 +218,113 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     expectSchema("LedgerLink", await response.json());
     await expectProblem(await get({ fault: true }), "internal");
     expect(logs.join("\n")).not.toContain(SHEET);
+  });
+  const redirect = "https://siljang.example/owner/ledger/callback";
+  const googleClient = crypto.randomUUID() + ".apps.googleusercontent.com",
+    googleSecret = crypto.randomUUID() + crypto.randomUUID();
+  const authorize = (
+    body: unknown = { redirectUri: redirect },
+    options: { cookie?: string; origin?: string; configured?: boolean; limited?: boolean } = {},
+  ) =>
+    app(options.limited).request(
+      PATH + "/authorization",
+      {
+        method: "POST",
+        headers: {
+          cookie: options.cookie ?? cookie,
+          origin: options.origin ?? "https://siljang.example",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
+      },
+      testEnv(
+        options.configured === false
+          ? {}
+          : {
+              GOOGLE_CLIENT_ID: googleClient,
+              GOOGLE_CLIENT_SECRET: googleSecret,
+              GOOGLE_LEDGER_REDIRECT_URIS: redirect,
+            },
+      ),
+    );
+  it("API034는 요청 키 없이 실제 세션의 가게/사장님/브라우저에 묶은600초 state를 만든다", async () => {
+    const before = await snapshotShop(isolated.db, shop),
+      response = await authorize(undefined, { limited: true });
+    expect(response.status, await response.clone().text()).toBe(200);
+    const body = (await response.json()) as { authorizationUrl: string; state: string; expiresAt: string };
+    expectSchema("LedgerAuthorization", body);
+    const setCookie = response.headers.get("set-cookie");
+    expect(setCookie).toContain(`${LEDGER_COOKIE}=`);
+    for (const flag of ["HttpOnly", "Secure", "SameSite=Lax", "Max-Age=600"]) expect(setCookie).toContain(flag);
+    const nonce = readCookie(setCookie, LEDGER_COOKIE),
+      url = new URL(body.authorizationUrl);
+    expect(url.origin + url.pathname).toBe("https://accounts.google.com/o/oauth2/v2/auth");
+    expect(url.searchParams.get("state")).toBe(body.state);
+    expect(url.searchParams.get("redirect_uri")).toBe(redirect);
+    expect(url.searchParams.get("client_id")).toBe(googleClient);
+    expect(url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/spreadsheets");
+    expect(new Date(body.expiresAt).getTime()).toBe(NOW.getTime() + 600000);
+    expect(
+      await verifyLedgerOAuth(
+        new Secret(TEST_HASH_KEY),
+        { shopId: shop.shopId, ownerId: shop.ownerId },
+        body.state,
+        nonce,
+        redirect,
+        NOW,
+      ),
+    ).not.toBeNull();
+    for (const scope of [
+      { shopId: newUuid(), ownerId: shop.ownerId },
+      { shopId: shop.shopId, ownerId: newUuid() },
+    ])
+      expect(await verifyLedgerOAuth(new Secret(TEST_HASH_KEY), scope, body.state, nonce, redirect, NOW)).toBeNull();
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(JSON.stringify(body)).not.toContain(nonce);
+    expect(JSON.stringify(body)).not.toContain(googleSecret);
+    expect(logs.join("\n")).not.toContain(googleSecret);
+    expect(await snapshotShop(isolated.db, shop)).toEqual(before);
+  });
+  it("API034를 다시 시작하면 브라우저 nonce/state를 새로 만든다", async () => {
+    const first = await authorize(),
+      second = await authorize();
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(first.headers.get("set-cookie")).not.toBe(second.headers.get("set-cookie"));
+    expect((await first.json()).state).not.toBe((await second.json()).state);
+  });
+  it.each([redirect + "?altered=1", "https://other.example/owner/ledger/callback"])(
+    "API034의 설정 밖 주소 %s는422다",
+    async (value) => {
+      const body = await expectProblem(await authorize({ redirectUri: value }), "validation_failed");
+      expect(body.errors).toEqual([{ field: "/redirectUri", code: "not_allowed" }]);
+    },
+  );
+  it("API034는 잘못된/추가 입력과 다른 Origin을 거절한다", async () => {
+    for (const body of [
+      { redirectUri: "http://siljang.example/callback" },
+      { redirectUri: redirect, shopId: newUuid() },
+      { redirectUri: redirect, code: "never-echo-this-code" },
+    ])
+      await expectProblem(await authorize(body), "validation_failed");
+    await expectProblem(await authorize(undefined, { origin: "https://other.example" }), "validation_failed");
+  });
+  it("API034 사장님 세션 없음/운영자 세션은401이다", async () => {
+    await expectProblem(await authorize(undefined, { cookie: "" }), "unauthenticated");
+    const operator = await seedOperatorSession(isolated.db, NOW);
+    await expectProblem(await authorize(undefined, { cookie: operator.cookie }), "unauthenticated");
+  });
+  it("API034 가게 없는 사장님 세션은404다", async () => {
+    const accountId = BigInt(`0x${newUuid().replaceAll("-", "").slice(0, 14)}`).toString(),
+      session = await createOwnerSession(isolated.db, { accountId, friend: false }, NOW, false);
+    await expectProblem(
+      await authorize(undefined, { cookie: `${OWNER_COOKIE}=${session.token}` }),
+      "shop_not_registered",
+    );
+  });
+  it("API034 구글 설정이 없으면 값 없는500이고 기존 조회/상태 확인은 유지한다", async () => {
+    await expectProblem(await authorize(undefined, { configured: false }), "internal");
+    expect((await app().request("https://siljang.example/api/healthz", {}, testEnv())).status).toBe(200);
+    expect(logs.join("\n")).not.toContain(googleSecret);
   });
 });
