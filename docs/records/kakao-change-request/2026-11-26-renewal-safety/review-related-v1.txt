@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+
+ Test Files  15 passed (15)
+      Tests  374 passed (374)
+   Start at  01:29:52
+   Duration  57.99s (tests 78%, import 21%, transform 1%)
