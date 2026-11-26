@@ -317,6 +317,20 @@ describeDb("손님 확인 카드 저장과 한 번 실행(TASK-081)", () => {
       "INSERT INTO issue_details(shop_id,consultation_id,order_id,description,health_concern) VALUES($1,$2,$3,'새 상담에서 모은 합성 신고 설명',false)",
       [shop.shopId, current, shop.orderId],
     );
+    const withdrawalReview = newUuid(),
+      withdrawalPhoto = newUuid();
+    await isolated.db.query(
+      "INSERT INTO reviews(id,shop_id,order_id,version,body) VALUES($1,$2,$3,1,'새 상담에서 철회할 합성 후기')",
+      [withdrawalReview, shop.shopId, shop.orderId],
+    );
+    await isolated.db.query(
+      "INSERT INTO review_photos(id,shop_id,review_id,position,storage_key,content_type,byte_size) VALUES($1,$2,$3,1,'synthetic/withdrawal.jpg','image/jpeg',1)",
+      [withdrawalPhoto, shop.shopId, withdrawalReview],
+    );
+    await isolated.db.query(
+      "INSERT INTO photo_consents(shop_id,order_id,scope,review_photo_id,consented,publishable) VALUES($1,$2,'review_photo',$3,true,true)",
+      [shop.shopId, shop.orderId, withdrawalPhoto],
+    );
     for (const kind of ["issue_report", "consent_withdrawal"] as const) {
       const card = await showConfirmCard(scoped(), {
         ...identity(),

@@ -2,10 +2,20 @@
 
 import { type ChangeCardSource, type ChangeRequestStatus, readPreparedChangeCard } from "./change-card-presentation";
 import { cardExpiresAt, judgeCardPress } from "./confirm-card";
+import {
+  type ConsentWithdrawalBinding,
+  type ConsentWithdrawalSource,
+  readPreparedConsentWithdrawalCard,
+} from "./consent-withdrawal-card-presentation";
 import { CustomerNoticeTemporarilyUnavailable } from "./customer-notice-content";
 import { type IssueCardBinding, type IssueCardSource, readPreparedIssueCard } from "./issue-card-presentation";
 import type { KakaoChangeRequestCard, KakaoChangeRequestView } from "./kakao-change-request-message";
 import { changeRequestResultText, kakaoChangeRequestMessage } from "./kakao-change-request-message";
+import {
+  type KakaoConsentWithdrawalCard,
+  type KakaoConsentWithdrawalView,
+  kakaoConsentWithdrawalMessage,
+} from "./kakao-consent-withdrawal-message";
 import {
   type KakaoIssueReportCard,
   type KakaoIssueReportView,
@@ -54,6 +64,7 @@ export interface ConfirmCardView {
   readonly changeRequest?: KakaoChangeRequestCard;
   /** 서버가 준비한 신고 표시. 신고 내용 저장·명령의 입력으로 쓰지 않는다. */
   readonly issueReport?: Omit<KakaoIssueReportCard, "cardKey" | "blockId">;
+  readonly consentWithdrawal?: Omit<KakaoConsentWithdrawalCard, "cardKey" | "blockId">;
   readonly orderRequest?: KakaoOrderCardContext;
   /** 전송 직전 자료. 카드 payload/메시지/AI 입력에는 저장하지 않는다. */
   readonly paymentClaim?: KakaoPaymentClaimCard;
@@ -95,6 +106,7 @@ export interface ConfirmCardCommandInput extends Identity {
 /** 실행기는 지금 주문 상태와 잠금 번호를 다시 확인하고 조건에 맞는 쓰기만 합니다. 실패하면 사용 표시까지 함께 취소합니다. 외부 발신은 하지 않습니다. 주문 요청의 order_id 연결 권한·시험은 실제 실행기를 등록하는 TASK-083에서 추가합니다. */
 export type ConfirmCardCommand = (db: ShopDb, input: ConfirmCardCommandInput) => Promise<ConfirmCardCommandResult>;
 interface Source {
+  consentWithdrawal?: ConsentWithdrawalSource;
   issueReport?: IssueCardSource;
   paymentClaimBlocked?: boolean;
   changeRequest?: ChangeCardSource;
@@ -128,6 +140,7 @@ interface CardRow {
     replacedBy?: { cardKey: string };
     paymentClaimBinding?: PaymentClaimBinding;
     issueReportBinding?: IssueCardBinding;
+    consentWithdrawalBinding?: ConsentWithdrawalBinding;
     proposedChanges?: Readonly<Record<string, unknown>>;
   };
   outcome: "done" | "stale" | "expired" | null;
@@ -148,11 +161,19 @@ function usedAnswer(card: CardRow): ConfirmCardAnswer {
   return {
     outcome: "card_used",
     text: "이미 처리했어요",
-    ...(["payment_claim", "change_request", "issue_report"].includes(card.kind) ? { kind: card.kind } : {}),
+    ...(["payment_claim", "change_request", "issue_report", "consent_withdrawal"].includes(card.kind)
+      ? { kind: card.kind }
+      : {}),
     ...(result === undefined ? {} : { firstResult: { outcome: result.outcome, text: result.text } }),
   };
 }
 function usedDelivery(card: CardRow) {
+  if (
+    card.kind === "consent_withdrawal" &&
+    card.payload.result !== undefined &&
+    ["consent_withdrawn", "declined"].includes(card.payload.result.outcome)
+  )
+    return { text: card.payload.result.text };
   if (
     card.kind === "issue_report" &&
     card.payload.result !== undefined &&
@@ -266,6 +287,9 @@ async function readSource(
         ...(input.kind === "issue_report"
           ? { issueReport: await readPreparedIssueCard(db, { ...input, orderId: row.id }) }
           : {}),
+        ...(input.kind === "consent_withdrawal"
+          ? { consentWithdrawal: await readPreparedConsentWithdrawalCard(db, { ...input, orderId: row.id }) }
+          : {}),
         ...(input.kind === "change_request"
           ? { changeRequest: await readPreparedChangeCard(db, { ...input, orderId: row.id }) }
           : {}),
@@ -367,6 +391,13 @@ function issueCardChanged(card: CardRow, source: Source): boolean {
     current = source.issueReport.binding;
   return previous?.detailsId !== current.detailsId || previous.sourceHash !== current.sourceHash;
 }
+function consentWithdrawalCardChanged(card: CardRow, source: Source): boolean {
+  return (
+    card.kind === "consent_withdrawal" &&
+    source.consentWithdrawal?.available === true &&
+    card.payload.consentWithdrawalBinding?.sourceHash !== source.consentWithdrawal.binding.sourceHash
+  );
+}
 /** 첫 실제 전달로 시작된 시계만 같은 카드에 반영한다. 사장님의 버전 변경은 계속 새 카드로 판정한다. */
 async function refreshPaymentClaimClock(db: ShopDb, card: CardRow, source: Source, persist = true) {
   if (
@@ -397,6 +428,11 @@ async function refreshPaymentClaimClock(db: ShopDb, card: CardRow, source: Sourc
   card.payload.paymentClaimBinding = current;
 }
 function withCardPresentation(card: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
+  if (source.consentWithdrawal?.available === true)
+    return {
+      ...card,
+      consentWithdrawal: { ...source.consentWithdrawal.presentation, expiresAt: expiresAt.toISOString() },
+    };
   if (source.issueReport?.available === true)
     return { ...card, issueReport: { ...source.issueReport.presentation, expiresAt: expiresAt.toISOString() } };
   if (source.changeRequest?.available === true)
@@ -440,6 +476,13 @@ async function insertCard(
     blockId: source.blockId,
   };
   const presentation = withCardPresentation(card, source, cardExpiresAt(input.now));
+  if (presentation.consentWithdrawal !== undefined)
+    kakaoConsentWithdrawalMessage({
+      ...presentation.consentWithdrawal,
+      state,
+      cardKey: presentation.cardKey,
+      blockId: presentation.blockId,
+    });
   if (presentation.issueReport !== undefined)
     kakaoIssueReportMessage({
       ...presentation.issueReport,
@@ -471,6 +514,9 @@ async function insertCard(
         ...(input.sourceMessageId === undefined ? {} : { sourceMessageId: pathId(input.sourceMessageId) }),
         ...(source.paymentClaim?.available === true ? { paymentClaimBinding: source.paymentClaim.binding } : {}),
         ...(source.issueReport?.available === true ? { issueReportBinding: source.issueReport.binding } : {}),
+        ...(source.consentWithdrawal?.available === true
+          ? { consentWithdrawalBinding: source.consentWithdrawal.binding }
+          : {}),
         ...(source.changeRequest?.available === true ? { proposedChanges: source.changeRequest.proposal } : {}),
       }),
       input.now,
@@ -488,6 +534,7 @@ export async function prepareConfirmCardInTransaction(
   if (!(await identityAvailable(db, input))) throw new Error("card recipient unavailable");
   const source = await readSource(db, input, undefined, options.deferUnreadablePaymentClaim);
   if (source === null) throw new Error("card source unavailable");
+  if (source.consentWithdrawal?.available === false) return { unavailable: true, text: source.consentWithdrawal.text };
   if (source.issueReport?.available === false) return { unavailable: true, text: source.issueReport.text };
   if (source.paymentClaimBlocked) {
     await insertCard(db, input, source);
@@ -572,7 +619,7 @@ async function processVerifiedCard(
   const invalidDepositor = depositor !== undefined && depositorName === undefined;
   if (initial.used_at !== null) return usedAnswer(initial);
   if (input.choice === "decline")
-    return ["payment_claim", "change_request", "issue_report"].includes(initial.kind)
+    return ["payment_claim", "change_request", "issue_report", "consent_withdrawal"].includes(initial.kind)
       ? { ...DECLINED, kind: initial.kind }
       : DECLINED;
   const target: ShowConfirmCard = {
@@ -585,6 +632,10 @@ async function processVerifiedCard(
   };
   const source = await readSource(tx, target, knownBlockId);
   if (source === null) return initial.kind === "order_request" ? ORDER_NOT_READY : RETRY_NEEDED;
+  if (source.consentWithdrawal?.available === false)
+    return source.consentWithdrawal.reason === "no_consented_photos"
+      ? { kind: "consent_withdrawal", outcome: "not_allowed_now", text: source.consentWithdrawal.text }
+      : RETRY_NEEDED;
   if (source.issueReport?.available === false)
     return source.issueReport.reason === "not_received"
       ? { kind: "issue_report", outcome: "not_allowed_now", text: source.issueReport.text }
@@ -628,6 +679,7 @@ async function processVerifiedCard(
     verdict === "expired" ||
     orderCardChanged(card, source) ||
     paymentClaimChanged(card, source) ||
+    consentWithdrawalCardChanged(card, source) ||
     issueCardChanged(card, source)
   ) {
     return replaceCard(tx, card, target, source, verdict === "expired" ? "expired" : "stale");
@@ -665,7 +717,9 @@ async function processVerifiedCard(
   return {
     outcome: result.outcome,
     text: result.text,
-    ...(["payment_claim", "change_request", "issue_report"].includes(card.kind) ? { kind: card.kind } : {}),
+    ...(["payment_claim", "change_request", "issue_report", "consent_withdrawal"].includes(card.kind)
+      ? { kind: card.kind }
+      : {}),
   };
 }
 
@@ -713,6 +767,14 @@ function checkChangeDelivery(view: KakaoChangeRequestView): void {
   }
 }
 /** 저장한 수신의 카드를 재전달합니다. 읽기·갱신뿐이며 업무 명령을 실행하지 않습니다. */
+function checkConsentWithdrawalDelivery(view: KakaoConsentWithdrawalView): void {
+  try {
+    kakaoConsentWithdrawalMessage(view);
+  } catch (error) {
+    if (error instanceof RangeError) throw new CustomerNoticeTemporarilyUnavailable();
+    throw error;
+  }
+}
 function checkIssueDelivery(view: KakaoIssueReportView): void {
   try {
     kakaoIssueReportMessage(view);
@@ -749,6 +811,10 @@ export async function readConfirmCardDelivery(
   };
   const source = await readSource(db, target);
   if (source === null) return initial.kind === "order_request" ? { text: ORDER_NOT_READY.text } : unavailable;
+  if (source.consentWithdrawal?.available === false) {
+    if (source.consentWithdrawal.reason === "not_ready") throw new CustomerNoticeTemporarilyUnavailable();
+    return { text: source.consentWithdrawal.text };
+  }
   if (source.issueReport?.available === false) {
     if (source.issueReport.reason === "not_ready") throw new CustomerNoticeTemporarilyUnavailable();
     return { text: source.issueReport.text };
@@ -776,7 +842,16 @@ export async function readConfirmCardDelivery(
     card.draft_revision !== source.draftRevision ||
     orderCardChanged(card, source) ||
     paymentClaimChanged(card, source) ||
+    consentWithdrawalCardChanged(card, source) ||
     issueCardChanged(card, source);
+  if (source.consentWithdrawal?.available === true)
+    checkConsentWithdrawalDelivery({
+      ...source.consentWithdrawal.presentation,
+      state: expired ? "expired" : stale ? "stale" : "normal",
+      cardKey: card.card_key,
+      blockId: source.blockId,
+      expiresAt: (expired || stale ? cardExpiresAt(input.now) : card.expires_at).toISOString(),
+    });
   if (source.issueReport?.available === true)
     checkIssueDelivery({
       ...source.issueReport.presentation,
