@@ -689,4 +689,73 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
       await Promise.allSettled([reader.close(), purger.close()]);
     }
   });
+  it.each([false, true])(
+    "리뷰P2: 사유를 받은 실제10개 페이지 밖의 글은 첫/다음 페이지에서 열지 않는다(%s)",
+    async (next) => {
+      await isolated.db.query(
+        "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,created_at,kakao_message_id) SELECT $1,$2,'inbound','customer','text','합성 페이지 글',$3::timestamptz+make_interval(secs=>i),repeat(md5(gen_random_uuid()::text),2) FROM generate_series(1,24) i",
+        [shop.shopId, shop.consultationId, NOW],
+      );
+      const first = (await (await call(`/consultations/${shop.consultationId}?limit=10`)).json()) as {
+        items: { messageId: string }[];
+        nextCursor: string;
+        textCursor?: string;
+      };
+      const page = next
+        ? ((await (
+            await call(`/consultations/${shop.consultationId}?limit=10&cursor=${first.nextCursor}`)
+          ).json()) as typeof first)
+        : first;
+      const cursor = page.textCursor ?? (next ? first.nextCursor : undefined);
+      const response = await call("/originals", {
+        method: "POST",
+        headers: { origin: ORIGIN, "content-type": "application/json", "Idempotency-Key": newRequestKey() },
+        body: JSON.stringify({
+          targetKind: "consultation_text",
+          targetId: shop.consultationId,
+          reason: "손님 문의: 현재 페이지 확인",
+          ...(cursor ? { cursor } : {}),
+        }),
+      });
+      expect(response.status, await response.clone().text()).toBe(200);
+      const opened = (await response.json()) as { consultationText: { items: { messageId: string }[] } };
+      expect(opened.consultationText.items.map((x) => x.messageId)).toEqual(page.items.map((x) => x.messageId));
+    },
+  );
+  it.each([4001, 100000])("리뷰P3: 저장된 긴 글 %s자도 메타데이터·열기 응답 상한을 지킨다", async (n) => {
+    await isolated.db.query("UPDATE messages SET body_masked=$2 WHERE id=$1", [shop.messageId, "한".repeat(n)]);
+    const response = await call(`/consultations/${shop.consultationId}`),
+      meta = (await response.json()) as { items: { textLength: number }[]; textCursor?: string };
+    expectSchema("OperatorConsultation", meta);
+    expect(meta.items[0]?.textLength).toBe(4000);
+    const opened = await call("/originals", {
+      method: "POST",
+      headers: { origin: ORIGIN, "content-type": "application/json", "Idempotency-Key": newRequestKey() },
+      body: JSON.stringify({
+        targetKind: "consultation_text",
+        targetId: shop.consultationId,
+        reason: "손님 문의: 긴 글 확인",
+        ...(meta.textCursor ? { cursor: meta.textCursor } : {}),
+      }),
+    });
+    const body = (await opened.json()) as { consultationText: { items: { textMasked: string }[] } };
+    expect(opened.status).toBe(200);
+    expectSchema("OriginalValue", body);
+    const firstText = body.consultationText.items[0];
+    if (!firstText) throw new Error("글이 없어요");
+    expect([...firstText.textMasked]).toHaveLength(4000);
+  });
+  it("리뷰P3: 실제 상담 지우기 전후 같은 번호ID는 원본 열림에서 지워짐409로 바뀐다", async () => {
+    expect((await open("masked_value", maskedId)).status).toBe(200);
+    await finish(31);
+    const job = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), isolated.db);
+    expect(await job.transaction((tx) => purgeOrder(tx, shop.orderId, NOW))).toBe(1);
+    await isolated.db.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [
+      shop.consultationId,
+      new Date(NOW.getTime() - 31 * 86400000),
+    ]);
+    expect(await job.transaction((tx) => purgeConsultation(tx, shop.consultationId, NOW))).toBe(1);
+    expect((await isolated.db.query("SELECT 1 FROM masked_values WHERE id=$1", [maskedId])).rowCount).toBe(0);
+    await expectProblem(await open("masked_value", maskedId), "original_erased");
+  });
 });

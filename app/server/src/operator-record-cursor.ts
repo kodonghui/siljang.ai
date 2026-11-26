@@ -17,7 +17,7 @@ export class OperatorRecordCursorError extends Error {
 function invalid(): never {
   throw new OperatorRecordCursorError("invalid operator record cursor");
 }
-function valid(scope: OperatorRecordCursorScope, position: OperatorRecordPosition) {
+export function validateOperatorRecordPosition(scope: OperatorRecordCursorScope, position: OperatorRecordPosition) {
   if (
     !isUuid(scope.shopId) ||
     !isUuid(scope.resourceId) ||
@@ -43,7 +43,7 @@ export async function sealOperatorRecordCursor(
   scope: OperatorRecordCursorScope,
   position: OperatorRecordPosition,
 ): Promise<string> {
-  valid(scope, position);
+  validateOperatorRecordPosition(scope, position);
   const text = JSON.stringify([scope.kind, position.at, position.key.toLowerCase()]);
   if (text.length > 104) invalid();
   return (await fc.seal(text.padEnd(104, " "), context(scope))).replace(":", "_");
@@ -68,7 +68,7 @@ export async function openOperatorRecordCursor(
     )
       invalid();
     const position = { at: value[1], key: value[2] };
-    valid(scope, position);
+    validateOperatorRecordPosition(scope, position);
     return position;
   } catch {
     return invalid();
