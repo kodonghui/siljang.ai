@@ -1,0 +1,19 @@
+{
+  "sourceCommit": "5e7d1f6ecfb8b6d00c9b93af923a127613396bb2",
+  "migrations": 45,
+  "serverFiles": 191,
+  "serverPassed": 3517,
+  "serverFailed": 3,
+  "webExecuted": false,
+  "buildExecuted": false,
+  "remainingDatabases": 0,
+  "relatedFiles": 38,
+  "relatedPassed": 648,
+  "relatedFailed": 3,
+  "ciApp": 45777137113,
+  "ciCheck": 139763412338,
+  "ciDb": 45777137030,
+  "review": 7185800200,
+  "acknowledgement": 7185850207,
+  "classification": "기존 세 기대값을 현재 교체 카드 검증으로 보완하고 원본 순서/블록 P3를 추가 재현함"
+}

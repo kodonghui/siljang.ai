@@ -371,26 +371,39 @@ describeDb("손님 확인 카드 저장과 한 번 실행(TASK-081)", () => {
     ).rows[0]?.payload;
     expect(saved).toMatchObject({ presentation: card, replacedBy: { cardKey: result.card?.cardKey } });
   });
-  it("거절된 옛 카드를 다시 눌러도 기한 지난 대체 버튼을 다시 보내지 않음", async () => {
+  it("만료된 옛 카드를 다시 누르면 기한 지난 키 대신 현재 기한의 새 카드만 보인다", async () => {
     const card = await show();
-    await pressConfirmCard(scoped(), {
+    const first = await pressConfirmCard(scoped(), {
       ...identity(),
       cardKey: card.cardKey,
       choice: "confirm",
       now: new Date(NOW.getTime() + 30 * 60000),
     });
-    const answer = await pressConfirmCard(scoped(), {
-      ...identity(),
-      cardKey: card.cardKey,
-      choice: "confirm",
-      now: new Date(NOW.getTime() + 90 * 60000),
-    });
+    const execute = vi.fn<ConfirmCardCommand>();
+    const answer = await pressConfirmCard(
+      scoped(),
+      {
+        ...identity(),
+        cardKey: card.cardKey,
+        choice: "confirm",
+        now: new Date(NOW.getTime() + 90 * 60000),
+      },
+      execute,
+    );
     expect(answer.outcome).toBe("card_used");
     expect(answer.firstResult?.outcome).toBe("card_expired");
-    expect(answer.card).toBeUndefined();
+    expect(answer.card?.cardKey).toBeDefined();
+    expect(answer.card?.cardKey).not.toBe(card.cardKey);
+    expect(answer.card?.cardKey).not.toBe(first.card?.cardKey);
+    expect(answer.replacementState).toBe("expired");
+    expect(execute).not.toHaveBeenCalled();
+    expect(
+      (await isolated.db.query("SELECT expires_at FROM confirm_cards WHERE card_key=$1", [answer.card?.cardKey]))
+        .rows[0]?.expires_at,
+    ).toEqual(new Date(NOW.getTime() + 120 * 60000));
     expect(
       (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows,
-    ).toEqual([{ n: 2 }]);
+    ).toEqual([{ n: 3 }]);
   });
   it("31분 뒤 안 할래요는 사용 처리와 새 카드를 남기지 않음", async () => {
     const card = await show();

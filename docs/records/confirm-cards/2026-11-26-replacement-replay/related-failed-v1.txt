@@ -1,0 +1,150 @@
+
+ RUN  v5.1.0 /workspace/siljang-task081-replacement-replay/app/server
+
+ ❯ test/change-card-source.test.ts (33 tests | 2 failed) 4131ms
+   ❯ 변경 카드의 서버 준비 값과 실제 발급/갱신 API (33)
+     × 갱신된 expired 옛 카드 재클릭은 첫 안내만 한 번 보인다 84ms
+     × 갱신된 stale 옛 카드 재클릭은 첫 안내만 한 번 보인다 88ms
+ ❯ test/confirm-card-store.test.ts (20 tests | 1 failed) 2181ms
+   ❯ 손님 확인 카드 저장과 한 번 실행(TASK-081) (20)
+     × 거절된 옛 카드를 다시 눌러도 기한 지난 대체 버튼을 다시 보내지 않음 37ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 갱신된 expired 옛 카드 재클릭은 첫 안내만 한 번 보인다
+AssertionError: expected { version: '2.0', template: { …(1) } } to have property "template.outputs" with value [ { simpleText: [Object] } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "simpleText": {
+-       "text": "시간이 지나 새 카드를 보내 드려요",
++     "textCard": {
++       "buttons": [
++         {
++           "action": "block",
++           "blockId": "blk-card",
++           "extra": {
++             "cardKey": "ck_8dad982782024d7f8fa5d2f4b1061ebb",
++             "choice": "confirm",
++           },
++           "label": "변경 요청",
++         },
++         {
++           "action": "block",
++           "blockId": "blk-card",
++           "extra": {
++             "cardKey": "ck_8dad982782024d7f8fa5d2f4b1061ebb",
++             "choice": "decline",
++           },
++           "label": "안 할래요",
++         },
++       ],
++       "description": "시간이 지나 새 카드를 보내 드려요
++ 주문번호 8QWUWDRD · 지금 버전 1
++ 문구: 없음 → 합성 바뀐 문구
++ 16:00까지 눌러 주세요",
++       "title": "변경 요청",
+      },
+    },
+  ]
+
+ ❯ test/change-card-source.test.ts:338:18
+    336|     expect(repeated.headers.get("Siljang-Outcome")).toBe("card_used");
+    337|     expectSchema("SkillTemplateResponse", body);
+    338|     expect(body).toHaveProperty("template.outputs", [
+       |                  ^
+    339|       {
+    340|         simpleText: {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 갱신된 stale 옛 카드 재클릭은 첫 안내만 한 번 보인다
+AssertionError: expected { version: '2.0', template: { …(1) } } to have property "template.outputs" with value [ { simpleText: [Object] } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "simpleText": {
+-       "text": "내용이 바뀌었어요. 새 카드를 확인해 주세요",
++     "textCard": {
++       "buttons": [
++         {
++           "action": "block",
++           "blockId": "blk-card",
++           "extra": {
++             "cardKey": "ck_e0b2b08cc5d648a2a8a22f3cc13db259",
++             "choice": "confirm",
++           },
++           "label": "변경 요청",
++         },
++         {
++           "action": "block",
++           "blockId": "blk-card",
++           "extra": {
++             "cardKey": "ck_e0b2b08cc5d648a2a8a22f3cc13db259",
++             "choice": "decline",
++           },
++           "label": "안 할래요",
++         },
++       ],
++       "description": "내용이 바뀌었어요. 새 카드를 확인해 주세요
++ 주문번호 E3SECMBA · 지금 버전 2
++ 문구: 없음 → 합성 바뀐 문구
++ 15:30까지 눌러 주세요",
++       "title": "변경 요청",
+      },
+    },
+  ]
+
+ ❯ test/change-card-source.test.ts:338:18
+    336|     expect(repeated.headers.get("Siljang-Outcome")).toBe("card_used");
+    337|     expectSchema("SkillTemplateResponse", body);
+    338|     expect(body).toHaveProperty("template.outputs", [
+       |                  ^
+    339|       {
+    340|         simpleText: {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/confirm-card-store.test.ts > 손님 확인 카드 저장과 한 번 실행(TASK-081) > 거절된 옛 카드를 다시 눌러도 기한 지난 대체 버튼을 다시 보내지 않음
+AssertionError: expected { kind: 'cancel', …(5) } to be undefined
+
+- Expected:
+undefined
+
++ Received:
+{
+  "blockId": "blk-card",
+  "cardKey": "ck_f1747a0740c443bcb8624a0ac0798356",
+  "confirmLabel": "주문 취소",
+  "description": "주문번호 PW97SCYX
+픽업 날짜 2027-01-05
+주문 금액 35,000원",
+  "kind": "cancel",
+  "title": "주문 취소 확인",
+}
+
+ ❯ test/confirm-card-store.test.ts:390:25
+    388|     expect(answer.outcome).toBe("card_used");
+    389|     expect(answer.firstResult?.outcome).toBe("card_expired");
+    390|     expect(answer.card).toBeUndefined();
+       |                         ^
+    391|     expect(
+    392|       (await isolated.db.query("SELECT count(*)::int AS n FROM confirm…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed | 36 passed (38)
+      Tests  3 failed | 648 passed (651)
+   Start at  07:39:41
+   Duration  108.56s (tests 64%, import 32%, transform 4%)
+
+     Import  242 modules were evaluated 441 times · 33.22s total, 32% of tracked time
+             ~14.99s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

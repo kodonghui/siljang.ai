@@ -429,7 +429,8 @@ async function refreshPaymentClaimClock(db: ShopDb, card: CardRow, source: Sourc
   }
   card.payload.paymentClaimBinding = current;
 }
-function withCardPresentation(card: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
+function withCardPresentation(stored: ConfirmCardView, source: Source, expiresAt: Date): ConfirmCardView {
+  const card = { ...stored, blockId: source.blockId };
   if (source.orderRequest !== undefined && source.orderRequestTimeZone !== undefined)
     return {
       ...card,
@@ -746,11 +747,44 @@ async function processVerifiedCard(
 /** 예전 버튼은 새 카드의 확인으로 쓰지 않는다. 같은 대상의 현재 카드만 다시 보인다. */
 async function replayCardReplacement(
   tx: ShopDb,
-  original: CardRow,
+  initial: CardRow,
   input: PressConfirmCard,
   knownBlockId?: string,
   persistPaymentClock = true,
 ): Promise<ConfirmCardAnswer> {
+  // 개인정보 정리도 주문·초안을 먼저 잠근다. 카드 잠금 뒤 원본을 기다리지 않는다.
+  if (initial.order_id !== null) {
+    const order = await tx.run(
+      "SELECT id FROM orders WHERE shop_id=$1 AND id=$2 AND customer_id=$3 AND personal_data_purged_at IS NULL FOR UPDATE",
+      [initial.order_id, input.customerId],
+    );
+    if (order.rowCount !== 1) return RETRY_NEEDED;
+  }
+  if (initial.draft_id !== null) {
+    const draft = await tx.run(
+      "SELECT id FROM order_drafts WHERE shop_id=$1 AND id=$2 AND consultation_id=$3 FOR UPDATE",
+      [initial.draft_id, input.consultationId],
+    );
+    if (draft.rowCount !== 1) return RETRY_NEEDED;
+  }
+  if (initial.order_id === null && initial.draft_id === null) return RETRY_NEEDED;
+  // 원본을 기다리는 동안 정리가 payload를 비울 수 있으므로 처음 참조부터 다시 읽는다.
+  const original = (
+    await tx.run<CardRow>(
+      "SELECT * FROM confirm_cards WHERE shop_id=$1 AND id=$2 AND card_key=$3 AND customer_id=$4 AND consultation_id=$5 AND kind=$6 AND order_id IS NOT DISTINCT FROM $7::uuid AND draft_id IS NOT DISTINCT FROM $8::uuid FOR UPDATE",
+      [
+        initial.id,
+        initial.card_key,
+        input.customerId,
+        input.consultationId,
+        initial.kind,
+        initial.order_id,
+        initial.draft_id,
+      ],
+    )
+  ).rows[0];
+  if (original === undefined || original.used_at === null || original.payload.replacedBy === undefined)
+    return RETRY_NEEDED;
   const visited = new Set([original.card_key]);
   let parent = original;
   let current: CardRow;

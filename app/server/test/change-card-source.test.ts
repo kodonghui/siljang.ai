@@ -322,32 +322,32 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
       expect(execute).not.toHaveBeenCalled();
     },
   );
-  it.each(["expired", "stale"] as const)("갱신된 %s 옛 카드 재클릭은 첫 안내만 한 번 보인다", async (mode) => {
-    const card = await show();
-    if (mode === "expired") clock = new Date(NOW.getTime() + 1800000);
-    else await applyOtherChange();
-    const first = await request("card", card.cardKey);
-    expect(first.headers.get("Siljang-Outcome")).toBe(`card_${mode}`);
-    const count = (
-      await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId])
-    ).rows[0]?.n;
-    const repeated = await request("card", card.cardKey),
-      body = await repeated.json();
-    expect(repeated.headers.get("Siljang-Outcome")).toBe("card_used");
-    expectSchema("SkillTemplateResponse", body);
-    expect(body).toHaveProperty("template.outputs", [
-      {
-        simpleText: {
-          text: mode === "expired" ? "시간이 지나 새 카드를 보내 드려요" : "내용이 바뀌었어요. 새 카드를 확인해 주세요",
-        },
-      },
-    ]);
-    expect(
-      (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows[0]
-        ?.n,
-    ).toBe(count);
-    expect(execute).not.toHaveBeenCalled();
-  });
+  it.each(["expired", "stale"] as const)(
+    "갱신된 %s 옛 카드 재클릭은 같은 현재 카드와 안내를 다시 보인다",
+    async (mode) => {
+      const card = await show();
+      if (mode === "expired") clock = new Date(NOW.getTime() + 1800000);
+      else await applyOtherChange();
+      const first = await request("card", card.cardKey);
+      expect(first.headers.get("Siljang-Outcome")).toBe(`card_${mode}`);
+      const firstBody = await first.json();
+      const count = (
+        await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId])
+      ).rows[0]?.n;
+      const repeated = await request("card", card.cardKey),
+        body = await repeated.json();
+      expect(repeated.headers.get("Siljang-Outcome")).toBe("card_used");
+      expectSchema("SkillTemplateResponse", body);
+      expect(body).toEqual(firstBody);
+      expect(JSON.stringify(body)).toContain(PROPOSED.lettering);
+      expect(JSON.stringify(body)).not.toContain(card.cardKey);
+      expect(
+        (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId]))
+          .rows[0]?.n,
+      ).toBe(count);
+      expect(execute).not.toHaveBeenCalled();
+    },
+  );
   it.each([{}, { amount: 1 }, { currentVersion: 999 }, { lettering: "" }])(
     "유효한 실제 변경이 없는 서버 제안은 카드와 변경 요청을 쓰지 않는다(%j)",
     async (proposedChanges) => {

@@ -1,13 +1,23 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
-import { type CustomerCommandKind, pressConfirmCard, showConfirmCard } from "../src/confirm-card-store";
+import { createApp } from "../src/app";
+import {
+  type CustomerCommandKind,
+  pressConfirmCard,
+  readConfirmCardDelivery,
+  showConfirmCard,
+} from "../src/confirm-card-store";
+import type { Queryable, RequestDb } from "../src/db";
 import { kakaoConfirmCardReply } from "../src/kakao-confirm-card";
+import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { purgeOrder } from "../src/purge-order";
+import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { createConsentWithdrawalFixture } from "./support/consent-withdrawal-fixture";
 import { expectSchema } from "./support/contract";
-import { describeDb, newUuid } from "./support/db";
+import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { prepareOrderCardSource } from "./support/order-card";
-import { createShop, linkTestChannel, type ShopFixture } from "./support/shops";
+import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
 
 const NOW = new Date("2026-11-28T06:00:00Z");
 describeDb("공통 확인 카드의 교체 응답 재시도(TASK-081)", () => {
@@ -337,4 +347,190 @@ describeDb("공통 확인 카드의 교체 응답 재시도(TASK-081)", () => {
     ).toEqual(before);
     expect(execute).not.toHaveBeenCalled();
   });
+  it("현재 카드 블록이 바뀐 뒤 입금자 블록에서 재시도하면 같은 키와 현재 확인·거절 블록만 보인다", async () => {
+    const original = await prepare("payment_claim");
+    await changed("payment_claim");
+    const replacement = await press(original.cardKey, NOW);
+    await issueTestBookingLink(isolated.db, shop);
+    await isolated.db.query("UPDATE kakao_channels SET card_block_id='current-card-block' WHERE id=$1", [
+      shop.channelId,
+    ]);
+    const key = await deriveKakaoSkillKey(new Secret(TEST_HASH_KEY), shop.channelId, 1),
+      execute = vi.fn();
+    const response = await createApp({
+      connect: () => isolated.connect(),
+      services: { now: () => NOW, confirmCardCommand: execute },
+      logSink: () => {},
+    }).request(
+      "/api/kakao/skills/card",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+        body: JSON.stringify({
+          bot: { id: shop.botId },
+          userRequest: {
+            utterance: "합성입금자",
+            block: { id: "depositor" },
+            user: { id: shop.userKey, type: "botUserKey" },
+          },
+          action: {
+            id: "synthetic-depositor-input",
+            params: { depositor_name: "합성입금자" },
+            clientExtra: { cardKey: original.cardKey, choice: "confirm" },
+          },
+        }),
+      },
+      testEnv(),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Siljang-Outcome")).toBe("card_used");
+    const body = await response.json();
+    expectSchema("SkillTemplateResponse", body);
+    const buttons = (
+      body as { template: { outputs: { textCard: { buttons: { blockId: string; extra: unknown }[] } }[] } }
+    ).template.outputs[0]?.textCard.buttons;
+    if (buttons === undefined) throw new Error("합성 결제 버튼이 없어요");
+    expect(buttons[0]).toMatchObject({
+      blockId: "current-card-block",
+      extra: { cardKey: replacement.card?.cardKey, choice: "confirm" },
+    });
+    expect(buttons[2]).toMatchObject({
+      blockId: "current-card-block",
+      extra: { cardKey: replacement.card?.cardKey, choice: "decline" },
+    });
+    expect(buttons[1]?.blockId).toBe("depositor");
+    expect(execute).not.toHaveBeenCalled();
+  });
+  it("저장 수신의 다음 대화 전달도 같은 카드 키와 현재 카드 블록을 보인다", async () => {
+    const original = await prepare("payment_claim");
+    await isolated.db.query("UPDATE kakao_channels SET card_block_id='current-card-block' WHERE id=$1", [
+      shop.channelId,
+    ]);
+    const delivery = await scoped().transaction((tx) =>
+      readConfirmCardDelivery(tx, { ...identity(), sourceMessageId: shop.messageId, now: NOW }),
+    );
+    expect(delivery.card?.cardKey).toBe(original.cardKey);
+    expect(delivery.card?.blockId).toBe("current-card-block");
+    expect(delivery.card?.paymentClaim?.cardBlockId).toBe("current-card-block");
+  });
+  it.each(["cancel", "order_request"] as const)(
+    "%s 재전달은 실제 개인정보 정리가 원본을 잠근 동안 카드 행을 먼저 잠그지 않는다",
+    async (kind) => {
+      const original = await prepare(kind);
+      await changed(kind);
+      const replacement = await press(original.cardKey, NOW);
+      await isolated.db.transaction(async (tx) => {
+        await tx.query(
+          "UPDATE payment_requests SET status='closed',closed_at=$2,close_reason='order_cancelled' WHERE order_id=$1",
+          [shop.orderId, NOW],
+        );
+        await tx.query(
+          "UPDATE orders SET status='cancelled',cancelled_at=$2,cancel_kind='no_payment',finished_at=$2,lock_version=lock_version+1 WHERE id=$1",
+          [shop.orderId, NOW],
+        );
+      });
+      function signal() {
+        let done!: () => void;
+        return {
+          promise: new Promise<void>((resolve) => {
+            done = resolve;
+          }),
+          resolve: () => done(),
+        };
+      }
+      const held = signal(),
+        resume = signal(),
+        waiting = signal();
+      let purgeTx: Queryable | undefined;
+      const connections = [isolated.connect(), isolated.connect()] as const;
+      const observe = (
+        connection: RequestDb,
+        hook: (sql: string, phase: "before" | "after", tx: Queryable) => Promise<void>,
+      ): RequestDb => ({
+        query: (sql, params) => connection.query(sql, params),
+        transaction: (fn) =>
+          connection.transaction((tx) =>
+            fn({
+              query: async <R>(sql: string, params?: readonly unknown[]) => {
+                await hook(sql, "before", tx);
+                const result = await tx.query<R>(sql, params);
+                await hook(sql, "after", tx);
+                return result;
+              },
+            }),
+          ),
+        abort: () => connection.abort(),
+        close: () => connection.close(),
+      });
+      const purgeDb = observe(connections[0], async (sql, phase, tx) => {
+        if (phase === "after" && sql.includes("UPDATE order_drafts SET customer_name")) {
+          purgeTx = tx;
+          held.resolve();
+          await resume.promise;
+        }
+      });
+      const replayDb = observe(connections[1], async (sql, phase) => {
+        if (phase === "before" && /FROM (orders|order_drafts)\b/.test(sql) && sql.includes("FOR UPDATE"))
+          waiting.resolve();
+      });
+      const settle = <T>(promise: Promise<T>) =>
+        promise.then(
+          (value) => ({ status: "fulfilled" as const, value }),
+          (reason: unknown) => ({ status: "rejected" as const, reason }),
+        );
+      const later = new Date(NOW.getTime() + 31 * 86400000);
+      const purge = settle(
+        shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), purgeDb).transaction((tx) =>
+          purgeOrder(tx, shop.orderId, later),
+        ),
+      );
+      let replay: ReturnType<typeof settle<Awaited<ReturnType<typeof pressConfirmCard>>>> | undefined,
+        lockFailure: string | undefined,
+        controlFailure: unknown;
+      const timeout = (promise: Promise<void>) =>
+        new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error("합성 잠금 관찰 시간 초과")), 3000);
+          promise.then(() => {
+            clearTimeout(timer);
+            resolve();
+          }, reject);
+        });
+      try {
+        await timeout(held.promise);
+        replay = settle(
+          pressConfirmCard(
+            shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), replayDb),
+            { ...identity(), cardKey: original.cardKey, choice: "confirm", now: later },
+            vi.fn(),
+          ),
+        );
+        await timeout(waiting.promise);
+        if (purgeTx === undefined) throw new Error("정리 트랜잭션이 없어요");
+        try {
+          await purgeTx.query(
+            "SELECT id FROM confirm_cards WHERE shop_id=$1 AND card_key=ANY($2::text[]) FOR UPDATE NOWAIT",
+            [shop.shopId, [original.cardKey, replacement.card?.cardKey]],
+          );
+        } catch (error) {
+          lockFailure = (error as { code?: string }).code ?? "unknown";
+        }
+      } catch (error) {
+        controlFailure = error;
+      } finally {
+        resume.resolve();
+      }
+      const results = await Promise.all([purge, ...(replay === undefined ? [] : [replay])]);
+      await Promise.all(connections.map((connection) => connection.close()));
+      expect(controlFailure).toBeUndefined();
+      expect(lockFailure).toBeUndefined();
+      expect(results[0]).toEqual({ status: "fulfilled", value: 1 });
+      expect(results[1]).toMatchObject({ status: "fulfilled", value: { outcome: "retry_needed" } });
+      expect(
+        (await isolated.db.query("SELECT payload FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows.every(
+          (row) => JSON.stringify(row.payload) === "{}",
+        ),
+      ).toBe(true);
+    },
+    15000,
+  );
 });
