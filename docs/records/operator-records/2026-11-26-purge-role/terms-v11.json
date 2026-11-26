@@ -1,0 +1,32 @@
+{
+  "docs/records/progress.md": {
+    "exit": 0,
+    "output": "No coined words found.\n",
+    "scope": "added lines since b1ea6ce"
+  },
+  "app/README.md": {
+    "exit": 0,
+    "output": "No coined words found.\n",
+    "scope": "added lines since b1ea6ce"
+  },
+  "docs/records/fix-log.md": {
+    "exit": 0,
+    "output": "No coined words found.\n",
+    "scope": "added lines since b1ea6ce"
+  },
+  "docs/records/hands-on.md": {
+    "exit": 0,
+    "output": "No coined words found.\n",
+    "scope": "added lines since b1ea6ce"
+  },
+  "docs/records/operator-records/2026-11-26-purge-role/acceptance-checks.md": {
+    "exit": 0,
+    "output": "No coined words found.\n",
+    "scope": "added lines since b1ea6ce"
+  },
+  "docs/records/operator-records/2026-11-26-purge-role/runtime-role-setup.md": {
+    "exit": 0,
+    "output": "No coined words found.\n",
+    "scope": "added lines since b1ea6ce"
+  }
+}

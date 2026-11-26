@@ -2,7 +2,7 @@
 import { isDeepStrictEqual } from "node:util";
 
 export const JOB_FAILURE_EVENTS = [
-  "job_run_failed", "job_find_failed", "job_start_failed", "job_sweep_failed",
+  "job_run_failed", "job_connection_failed", "job_find_failed", "job_start_failed", "job_sweep_failed",
   "job_item_failed", "job_act_failed", "purge_failed", "purge_file_failed",
 ];
 

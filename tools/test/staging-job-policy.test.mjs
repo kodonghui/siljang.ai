@@ -62,7 +62,7 @@ test("정책이 유일할 때만 쓰고 다시 읽은 대상·조건이 같아�
     put: async (id, body) => { assert.equal(id, initial.id); saved = structuredClone(body); },
     get: async id => { assert.equal(id, initial.id); return { id, ...saved }; },
   });
-  assert.equal(result.events, 8);
+  assert.equal(result.events, 9);
   assert.equal(result.enabled, true);
   await assert.rejects(configureJobMonitor({ policies: async () => [initial, initial] }), /job_monitor_not_unique/);
   await assert.rejects(configureJobMonitor({ policies: async () => [initial], put: async () => {}, get: async () => initial }), /job_monitor_verification_failed/);
