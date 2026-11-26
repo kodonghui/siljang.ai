@@ -213,3 +213,7 @@ REVOKE SELECT (unlinked_at) ON ledger_links FROM :"runtime_role";
 GRANT SELECT (id, shop_id, order_id, version, price_list_id, size_option_id, flavor_option_id,
   design_option_id, design_id, design_notes, lettering, colors) ON order_details TO :"runtime_role";
 GRANT SELECT (shop_id, order_detail_id, price_list_id, option_id) ON order_detail_extras TO :"runtime_role";
+
+-- TASK-147: 자기 손님이 모은 설명/진료 안내 표지와 사진 개수만 카드 표시로 읽는다. 쓰기/사진 위치는 열지 않는다.
+GRANT SELECT (description, health_concern, status, content_purged_at) ON issue_details TO :"runtime_role";
+GRANT SELECT (id, shop_id, issue_details_id, position) ON issue_photos TO :"runtime_role";
