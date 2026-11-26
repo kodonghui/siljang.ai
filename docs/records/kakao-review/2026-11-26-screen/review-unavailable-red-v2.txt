@@ -1,0 +1,46 @@
+
+ RUN  v5.1.0 /workspace/siljang-task148-review-screen/app/server
+
+ ❯ test/kakao-photo-review-unavailable.test.ts (2 tests | 2 failed) 900ms
+   ❯ 사진 후기 접수 불가의 가게 연락처(TASK-148) (2)
+     × booking_not_issued에서도 인증한 가게 연락처만 보이고 후기·사진을 저장하지 않는다 131ms
+     × channel_changed에서도 인증한 가게 연락처만 보이고 후기·사진을 저장하지 않는다 52ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-photo-review-unavailable.test.ts > 사진 후기 접수 불가의 가게 연락처(TASK-148) > booking_not_issued에서도 인증한 가게 연락처만 보이고 후기·사진을 저장하지 않는다
+ FAIL  test/kakao-photo-review-unavailable.test.ts > 사진 후기 접수 불가의 가게 연락처(TASK-148) > channel_changed에서도 인증한 가게 연락처만 보이고 후기·사진을 저장하지 않는다
+AssertionError: expected { version: '2.0', template: { …(1) } } to deeply equal { version: '2.0', template: { …(1) } }
+
+- Expected
++ Received
+
+@@ -1,11 +1,11 @@
+  {
+    "template": {
+      "outputs": [
+        {
+          "simpleText": {
+-           "text": "아직 상담을 받지 않아요. 가게로 연락해 주세요: 02-000-0148",
++           "text": "아직 상담을 받지 않아요",
+          },
+        },
+      ],
+    },
+    "version": "2.0",
+
+ ❯ test/kakao-photo-review-unavailable.test.ts:108:22
+    106|         const body = await response.json();
+    107|         expectSchema("SkillTemplateResponse", body);
+    108|         expect(body).toEqual({
+       |                      ^
+    109|           version: "2.0",
+    110|           template: {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  06:23:45
+   Duration  2.77s (import 51%, tests 34%, transform 14%)

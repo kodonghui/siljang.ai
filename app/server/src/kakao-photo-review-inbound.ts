@@ -6,6 +6,7 @@ import { kakaoReply } from "./kakao-reply";
 import { prepareKakaoReview } from "./kakao-review";
 import { kakaoReviewPhotoUrls } from "./kakao-review-photos";
 import { kakaoReceiptKey } from "./kakao-skill-auth";
+import { kakaoContactPhone } from "./kakao-skill-store";
 import type { ShopRequest } from "./routes";
 
 /** API072의 사진은 받은 자기 주문을 확인한 뒤 내려받으며, 부분 글 후기 성공을 남기지 않습니다. */
@@ -21,7 +22,11 @@ export async function receiveKakaoPhotoReview(r: ShopRequest): Promise<Response>
   const prepared = await r.db.transaction(async (tx) => {
     const receipt = await prepareKakaoReview(tx, request, key, true);
     if (typeof receipt === "string") {
-      if (receipt !== "duplicate") return kakaoReply(r, receipt, { repeatReview: true });
+      if (receipt !== "duplicate")
+        return kakaoReply(r, receipt, {
+          repeatReview: true,
+          ...(receipt === "not_accepting" ? { contactPhone: await kakaoContactPhone(tx) } : {}),
+        });
       const result = (
         await tx.run<{ body_masked: string }>(
           `SELECT o.body_masked FROM messages i JOIN messages o ON o.shop_id=$1 AND o.consultation_id=i.consultation_id AND o.trace_id=i.id::text
