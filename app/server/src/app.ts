@@ -76,6 +76,8 @@ export type Bindings = {
   readonly OPENAI_API_KEY?: string;
   readonly DATABASE_URL?: string;
   readonly HYPERDRIVE?: { readonly connectionString: string };
+  readonly PURGE_DATABASE_URL?: string;
+  readonly PURGE_HYPERDRIVE?: { readonly connectionString: string };
   readonly IMAGES?: ImageBinding;
   readonly REQUEST_HASH_KEY?: string;
   readonly STORAGE_ACCESS_KEY_ID?: string;

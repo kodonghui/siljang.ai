@@ -1,0 +1,620 @@
+TAP version 13
+# Subtest: 예약 링크5응답은 전체 API037 본문과 미디어 유형/캐시 금지를 지킨다
+ok 1 - 예약 링크5응답은 전체 API037 본문과 미디어 유형/캐시 금지를 지킨다
+  ---
+  duration_ms: 64.106437
+  type: 'test'
+  ...
+# Subtest: 오래된 정보 조건은 정상 주소를 받은 뒤 두 번째 조회부터 명세 오류를 보낸다
+ok 2 - 오래된 정보 조건은 정상 주소를 받은 뒤 두 번째 조회부터 명세 오류를 보낸다
+  ---
+  duration_ms: 4.558072
+  type: 'test'
+  ...
+# Subtest: 발급 뒤 준비 조건이 사라져도 같은 예약 주소와 발급 시각을 유지한다
+ok 3 - 발급 뒤 준비 조건이 사라져도 같은 예약 주소와 발급 시각을 유지한다
+  ---
+  duration_ms: 11.745133
+  type: 'test'
+  ...
+# Subtest: 발급 전 조건을 채우면 신원/가게와 함께 처음 발급된 주소를 제공한다
+ok 4 - 발급 전 조건을 채우면 신원/가게와 함께 처음 발급된 주소를 제공한다
+  ---
+  duration_ms: 5.371985
+  type: 'test'
+  ...
+# Subtest: 발급 뒤 픽업 장소가 비어도 주소와 시각을 유지하고 권고와 가게 설정을 일치시킨다
+ok 5 - 발급 뒤 픽업 장소가 비어도 주소와 시각을 유지하고 권고와 가게 설정을 일치시킨다
+  ---
+  duration_ms: 4.329094
+  type: 'test'
+  ...
+# Subtest: 7조건이 모두 남으면 각 설정 진입의 조회도 미충족 상태를 제공한다
+ok 6 - 7조건이 모두 남으면 각 설정 진입의 조회도 미충족 상태를 제공한다
+  ---
+  duration_ms: 5.276326
+  type: 'test'
+  ...
+# Subtest: 정상 준비 상태의 설정 진입은 현재 자료와 완료 상태를 보존한다
+ok 7 - 정상 준비 상태의 설정 진입은 현재 자료와 완료 상태를 보존한다
+  ---
+  duration_ms: 4.364997
+  type: 'test'
+  ...
+# Subtest: 추가 긴 링크도 예약된 합성 HTTPS 도메인과 정상 준비 조건을 유지한다
+ok 8 - 추가 긴 링크도 예약된 합성 HTTPS 도메인과 정상 준비 조건을 유지한다
+  ---
+  duration_ms: 3.366456
+  type: 'test'
+  ...
+# Subtest: 상담 합성 자료가 SCR018의 일곱 응답과 여섯 상태를 준비하되 화면 성공으로 세지 않는다
+ok 9 - 상담 합성 자료가 SCR018의 일곱 응답과 여섯 상태를 준비하되 화면 성공으로 세지 않는다
+  ---
+  duration_ms: 39.878412
+  type: 'test'
+  ...
+# Subtest: 상담 합성 정상/사장님 답/삭제와 네 오류는 원래 OpenAPI 예시·캐시 금지를 지킨다
+ok 10 - 상담 합성 정상/사장님 답/삭제와 네 오류는 원래 OpenAPI 예시·캐시 금지를 지킨다
+  ---
+  duration_ms: 40.768915
+  type: 'test'
+  ...
+# Subtest: 합성 자료는 가게 기대값을 확인하고 외부 요청과 업무 쓰기를 막는다
+ok 11 - 합성 자료는 가게 기대값을 확인하고 외부 요청과 업무 쓰기를 막는다
+  ---
+  duration_ms: 4.785088
+  type: 'test'
+  ...
+# Subtest: 뒤로 읽기의 추가 사진 페이지를 같은 기준으로 갱신한다
+ok 12 - 뒤로 읽기의 추가 사진 페이지를 같은 기준으로 갱신한다
+  ---
+  duration_ms: 3.921555
+  type: 'test'
+  ...
+# Subtest: SCR008/서버 입력 또는 HEAD가 바뀐 자료는 원본 확인을 거절한다
+ok 13 - SCR008/서버 입력 또는 HEAD가 바뀐 자료는 원본 확인을 거절한다
+  ---
+  duration_ms: 182.634817
+  type: 'test'
+  ...
+# Subtest: 변경 요청 자료도 실행 원본과 다른 저장소 폴더를 받지 않는다
+ok 14 - 변경 요청 자료도 실행 원본과 다른 저장소 폴더를 받지 않는다
+  ---
+  duration_ms: 7.45568
+  type: 'test'
+  ...
+# Subtest: SCR-041 done starts unregistered and shows the first-save key
+ok 15 - SCR-041 done starts unregistered and shows the first-save key
+  ---
+  duration_ms: 25.809174
+  type: 'test'
+  ...
+# Subtest: API-032 started preserves a fresh ten-minute window in the next read
+ok 16 - API-032 started preserves a fresh ten-minute window in the next read
+  ---
+  duration_ms: 5.795308
+  type: 'test'
+  ...
+# Subtest: API-032 incomplete blocks leaves an empty field for the product error
+ok 17 - API-032 incomplete blocks leaves an empty field for the product error
+  ---
+  duration_ms: 2.901781
+  type: 'test'
+  ...
+# Subtest: 채널 문맥의 미등록/권한/신원 실패도 전체 Problem 예시를 사용한다
+ok 18 - 채널 문맥의 미등록/권한/신원 실패도 전체 Problem 예시를 사용한다
+  ---
+  duration_ms: 5.640831
+  type: 'test'
+  ...
+# Subtest: 네 채널 API의 모든 오류 예시는 본문/상태·미디어 유형/캐시 금지를 보존한다
+ok 19 - 네 채널 API의 모든 오류 예시는 본문/상태·미디어 유형/캐시 금지를 보존한다
+  ---
+  duration_ms: 31.672382
+  type: 'test'
+  ...
+# Subtest: 지원하지 않는 경로의 기본404도 실제 요청 경로를 가리킨다
+ok 20 - 지원하지 않는 경로의 기본404도 실제 요청 경로를 가리킨다
+  ---
+  duration_ms: 2.680334
+  type: 'test'
+  ...
+# Subtest: 채널 생성기도 실행/입력 작업 트리가 다르면 보조 파일을 섞지 않는다
+ok 21 - 채널 생성기도 실행/입력 작업 트리가 다르면 보조 파일을 섞지 않는다
+  ---
+  duration_ms: 1009.794935
+  type: 'test'
+  ...
+# Subtest: 같은 채널 생성기도 커밋하지 않은 보조 입력에 원본 SHA를 붙이지 않는다
+ok 22 - 같은 채널 생성기도 커밋하지 않은 보조 입력에 원본 SHA를 붙이지 않는다
+  ---
+  duration_ms: 1011.641269
+  type: 'test'
+  ...
+# Subtest: SCR013/서버 입력 또는 HEAD가 바뀐 자료는 원본 확인을 거절한다
+ok 23 - SCR013/서버 입력 또는 HEAD가 바뀐 자료는 원본 확인을 거절한다
+  ---
+  duration_ms: 122.645215
+  type: 'test'
+  ...
+# Subtest: 사진 게시 동의 철회 자료도 실행 원본과 다른 저장소 폴더를 받지 않는다
+ok 24 - 사진 게시 동의 철회 자료도 실행 원본과 다른 저장소 폴더를 받지 않는다
+  ---
+  duration_ms: 2.347201
+  type: 'test'
+  ...
+# Subtest: 같은 DOM 창 폭에서도 두 프레임에 서로 다른 실제 CSS 폭을 적용한다
+ok 25 - 같은 DOM 창 폭에서도 두 프레임에 서로 다른 실제 CSS 폭을 적용한다
+  ---
+  duration_ms: 401.57804
+  type: 'test'
+  ...
+# Subtest: 대화 자료는 서버 글을 HTML로 실행하지 않고 09 토큰과 두 폭을 보존한다
+ok 26 - 대화 자료는 서버 글을 HTML로 실행하지 않고 09 토큰과 두 폭을 보존한다
+  ---
+  duration_ms: 0.727972
+  type: 'test'
+  ...
+# Subtest: 다른 입력 작업 폴더는 번들 생성 전에 거절한다
+ok 27 - 다른 입력 작업 폴더는 번들 생성 전에 거절한다
+  ---
+  duration_ms: 1.025936
+  type: 'test'
+  ...
+# Subtest: 서버/화면의 미커밋·미추적 입력과 다른 HEAD는 자료 원본으로 받지 않는다
+ok 28 - 서버/화면의 미커밋·미추적 입력과 다른 HEAD는 자료 원본으로 받지 않는다
+  ---
+  duration_ms: 130.545342
+  type: 'test'
+  ...
+# Subtest: SCR010/서버 입력 또는 HEAD가 바뀐 자료는 원본 확인을 거절한다
+ok 29 - SCR010/서버 입력 또는 HEAD가 바뀐 자료는 원본 확인을 거절한다
+  ---
+  duration_ms: 115.585572
+  type: 'test'
+  ...
+# Subtest: 문제 신고 자료도 실행 원본과 다른 저장소 폴더를 받지 않는다
+ok 30 - 문제 신고 자료도 실행 원본과 다른 저장소 폴더를 받지 않는다
+  ---
+  duration_ms: 2.410403
+  type: 'test'
+  ...
+# Subtest: 긴 확정 안내의 텍스트 캐러셀은 원문을 안전하게 표시한다
+ok 31 - 긴 확정 안내의 텍스트 캐러셀은 원문을 안전하게 표시한다
+  ---
+  duration_ms: 1.347162
+  type: 'test'
+  ...
+# Subtest: 합성 알림의 사진5장은 외부 요청 없이 같은 비율로 표시하고 손님 발화를 만들지 않는다
+ok 32 - 합성 알림의 사진5장은 외부 요청 없이 같은 비율로 표시하고 손님 발화를 만들지 않는다
+  ---
+  duration_ms: 0.421738
+  type: 'test'
+  ...
+# Subtest: SCR012/서버 입력 또는 HEAD가 바뀐 자료는 원본 확인을 거절한다
+ok 33 - SCR012/서버 입력 또는 HEAD가 바뀐 자료는 원본 확인을 거절한다
+  ---
+  duration_ms: 99.102258
+  type: 'test'
+  ...
+# Subtest: 후기 자료도 실행 원본과 다른 저장소 폴더를 받지 않는다
+ok 34 - 후기 자료도 실행 원본과 다른 저장소 폴더를 받지 않는다
+  ---
+  duration_ms: 1.619665
+  type: 'test'
+  ...
+# Subtest: done에서도 현재 값 그대로면200/변경 없음으로 버전을 보존한다
+ok 35 - done에서도 현재 값 그대로면200/변경 없음으로 버전을 보존한다
+  ---
+  duration_ms: 24.789602
+  type: 'test'
+  ...
+# Subtest: unchanged에서도 유효한 실제 변경은201/새 버전으로 저장한다
+ok 36 - unchanged에서도 유효한 실제 변경은201/새 버전으로 저장한다
+  ---
+  duration_ms: 1.939999
+  type: 'test'
+  ...
+# Subtest: 조회 오류는 OpenAPI의 Problem 본문/미디어 유형을 그대로 사용한다
+ok 37 - 조회 오류는 OpenAPI의 Problem 본문/미디어 유형을 그대로 사용한다
+  ---
+  duration_ms: 2.208866
+  type: 'test'
+  ...
+# Subtest: 저장 응답의 규정에는 요청 전용 baseRevision/confirm을 섞지 않는다
+ok 38 - 저장 응답의 규정에는 요청 전용 baseRevision/confirm을 섞지 않는다
+  ---
+  duration_ms: 2.032292
+  type: 'test'
+  ...
+# Subtest: 목록의5응답은 API022의 본문/미디어 유형을 보존한다
+ok 39 - 목록의5응답은 API022의 본문/미디어 유형을 보존한다
+  ---
+  duration_ms: 26.164877
+  type: 'test'
+  ...
+# Subtest: 상세4응답은 API023의 옛 규정/오류를 현재 값으로 바꾸지 않는다
+ok 40 - 상세4응답은 API023의 옛 규정/오류를 현재 값으로 바꾸지 않는다
+  ---
+  duration_ms: 11.125961
+  type: 'test'
+  ...
+# Subtest: 추가 최대 목록에서도 현재 버전은 첫 행 하나이고 목록 밖 옛 상세는 보존한다
+ok 41 - 추가 최대 목록에서도 현재 버전은 첫 행 하나이고 목록 밖 옛 상세는 보존한다
+  ---
+  duration_ms: 7.460269
+  type: 'test'
+  ...
+# Subtest: 현재 규정으로 돌아가기와 빈 이력의 규정 정하기는 각각 현재/초안을 읽는다
+ok 42 - 현재 규정으로 돌아가기와 빈 이력의 규정 정하기는 각각 현재/초안을 읽는다
+  ---
+  duration_ms: 2.046574
+  type: 'test'
+  ...
+# Subtest: 빈 이력의 직접 옛 상세도 같은 빈 데이터에서404로 거절한다
+ok 43 - 빈 이력의 직접 옛 상세도 같은 빈 데이터에서404로 거절한다
+  ---
+  duration_ms: 1.043421
+  type: 'test'
+  ...
+# Subtest: 운영규정 생성기도 실행한 저장소와 입력 작업 트리가 다르면 거절한다
+ok 44 - 운영규정 생성기도 실행한 저장소와 입력 작업 트리가 다르면 거절한다
+  ---
+  duration_ms: 815.146799
+  type: 'test'
+  ...
+# Subtest: 내 정보 합성 오류는 API002의 전체 Problem 계약과 캐시 금지를 지킨다
+ok 45 - 내 정보 합성 오류는 API002의 전체 Problem 계약과 캐시 금지를 지킨다
+  ---
+  duration_ms: 31.494547
+  type: 'test'
+  ...
+# Subtest: 할 일 합성 오류는 API040의 전체 Problem 계약과 캐시 금지를 지킨다
+ok 46 - 할 일 합성 오류는 API040의 전체 Problem 계약과 캐시 금지를 지킨다
+  ---
+  duration_ms: 15.314982
+  type: 'test'
+  ...
+# Subtest: 실제 화면 입력이 HEAD와 다르면 원본 SHA를 붙여 생성하지 않는다
+ok 47 - 실제 화면 입력이 HEAD와 다르면 원본 SHA를 붙여 생성하지 않는다
+  ---
+  duration_ms: 807.631018
+  type: 'test'
+  ...
+# Subtest: 아직 커밋하지 않은 화면 입력 파일도 원본 범위에 섞지 않는다
+ok 48 - 아직 커밋하지 않은 화면 입력 파일도 원본 범위에 섞지 않는다
+  ---
+  duration_ms: 721.642206
+  type: 'test'
+  ...
+# Subtest: 입력이 깨끗하면 실제 커밋을 기록하고 임시 TSX는 남기지 않는다
+ok 49 - 입력이 깨끗하면 실제 커밋을 기록하고 임시 TSX는 남기지 않는다
+  ---
+  duration_ms: 1292.272849
+  type: 'test'
+  ...
+# Subtest: 빌드 입력 밖의 기록만 바꾸면 같은 입력의 재현은 허용한다
+ok 50 - 빌드 입력 밖의 기록만 바꾸면 같은 입력의 재현은 허용한다
+  ---
+  duration_ms: 1440.445373
+  type: 'test'
+  ...
+# Subtest: 실행한 생성기와 인수의 저장소가 다르면 보조 파일을 섞지 않는다
+ok 51 - 실행한 생성기와 인수의 저장소가 다르면 보조 파일을 섞지 않는다
+  ---
+  duration_ms: 372.019347
+  type: 'test'
+  ...
+# Subtest: 새 번들 생성 뒤 입력이 바뀌어 실패해도 이전 번들과 manifest를 함께 보존한다
+ok 52 - 새 번들 생성 뒤 입력이 바뀌어 실패해도 이전 번들과 manifest를 함께 보존한다
+  ---
+  duration_ms: 2247.446857
+  type: 'test'
+  ...
+# Subtest: 완성된 새 결과로 교체할 때 이전 결과를 복구 가능한 폴더에 보존한다
+ok 53 - 완성된 새 결과로 교체할 때 이전 결과를 복구 가능한 폴더에 보존한다
+  ---
+  duration_ms: 2385.267006
+  type: 'test'
+  ...
+# Subtest: 상속한 TypeScript 설정의 미커밋 변경으로 기존 SHA의 번들을 만들지 않는다
+ok 54 - 상속한 TypeScript 설정의 미커밋 변경으로 기존 SHA의 번들을 만들지 않는다
+  ---
+  duration_ms: 1370.907598
+  type: 'test'
+  ...
+# Subtest: 계좌 조회5응답은 API024의 전체 본문/Problem 계약을 보존한다
+ok 55 - 계좌 조회5응답은 API024의 전체 본문/Problem 계약을 보존한다
+  ---
+  duration_ms: 31.405384
+  type: 'test'
+  ...
+# Subtest: 저장 오류8개는 API025의 전체 예시를 사용하고 진행 중에는1초 대기를 알린다
+ok 56 - 저장 오류8개는 API025의 전체 예시를 사용하고 진행 중에는1초 대기를 알린다
+  ---
+  duration_ms: 21.017144
+  type: 'test'
+  ...
+# Subtest: 요청 키 없는 추가 헤더 조건도 별도 OpenAPI 예시로 거절한다
+ok 57 - 요청 키 없는 추가 헤더 조건도 별도 OpenAPI 예시로 거절한다
+  ---
+  duration_ms: 1.196143
+  type: 'test'
+  ...
+# Subtest: done의 같은 값은 unchanged이고 unchanged의 실제 변경은 created이다
+ok 58 - done의 같은 값은 unchanged이고 unchanged의 실제 변경은 created이다
+  ---
+  duration_ms: 3.812838
+  type: 'test'
+  ...
+# Subtest: 다른 예금주의 실제 확인과 같은 키 재시도는 저장 결과를 보존한다
+ok 59 - 다른 예금주의 실제 확인과 같은 키 재시도는 저장 결과를 보존한다
+  ---
+  duration_ms: 4.668138
+  type: 'test'
+  ...
+# Subtest: 아직 등록하지 않은 계좌는 실제 빈 양식의 baseRevision null로 첫 저장한다
+ok 60 - 아직 등록하지 않은 계좌는 실제 빈 양식의 baseRevision null로 첫 저장한다
+  ---
+  duration_ms: 2.037312
+  type: 'test'
+  ...
+# Subtest: 확인된 가게의 다른 예금주는 확인 재요청에도 거절하고 원래 계좌를 유지한다
+ok 61 - 확인된 가게의 다른 예금주는 확인 재요청에도 거절하고 원래 계좌를 유지한다
+  ---
+  duration_ms: 1.979448
+  type: 'test'
+  ...
+# Subtest: 신규/변경 없음 완료는 재사용 헤더가 없고 같은 키의 완료 재사용에만 true를 붙인다
+ok 62 - 신규/변경 없음 완료는 재사용 헤더가 없고 같은 키의 완료 재사용에만 true를 붙인다
+  ---
+  duration_ms: 2.865059
+  type: 'test'
+  ...
+# Subtest: 보류 해제는 같은 값의 저장이 아니라 실제 새 계좌를 만든 뒤에만 모의한다
+ok 63 - 보류 해제는 같은 값의 저장이 아니라 실제 새 계좌를 만든 뒤에만 모의한다
+  ---
+  duration_ms: 2.516049
+  type: 'test'
+  ...
+1..63
+# tests 63
+# suites 0
+# pass 63
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 16791.502091
+TAP version 13
+# Subtest: 새 rollback 배포가 오래된 버전을 가리켜도 배포 생성 시각으로 고른다
+ok 1 - 새 rollback 배포가 오래된 버전을 가리켜도 배포 생성 시각으로 고른다
+  ---
+  duration_ms: 1.932676
+  type: 'test'
+  ...
+# Subtest: 마지막 업로드의 측정 바인딩을 활성 원본에 남은 것으로 오판하지 않는다
+ok 2 - 마지막 업로드의 측정 바인딩을 활성 원본에 남은 것으로 오판하지 않는다
+  ---
+  duration_ms: 1.048063
+  type: 'test'
+  ...
+# Subtest: 바인딩 메타데이터의 비밀 값 속성을 읽어 설정을 복구하지 않는다
+ok 3 - 바인딩 메타데이터의 비밀 값 속성을 읽어 설정을 복구하지 않는다
+  ---
+  duration_ms: 0.232992
+  type: 'test'
+  ...
+# Subtest: 현재 실행기/지우기의 모든 실패 로그를 포함하고 성공 로그는 실패로 세지 않는다
+ok 4 - 현재 실행기/지우기의 모든 실패 로그를 포함하고 성공 로그는 실패로 세지 않는다
+  ---
+  duration_ms: 7.582061
+  type: 'test'
+  ...
+# Subtest: 실행15분과 조회15분을 맞추고 대상·계정·Worker·반복 간격을 보존한다
+ok 5 - 실행15분과 조회15분을 맞추고 대상·계정·Worker·반복 간격을 보존한다
+  ---
+  duration_ms: 1.190525
+  type: 'test'
+  ...
+# Subtest: 모양·범위가 다른 정책을 덮어쓰지 않는다
+ok 6 - 모양·범위가 다른 정책을 덮어쓰지 않는다
+  ---
+  duration_ms: 0.61836
+  type: 'test'
+  ...
+# Subtest: 정책이 유일할 때만 쓰고 다시 읽은 대상·조건이 같아야 통과한다
+ok 7 - 정책이 유일할 때만 쓰고 다시 읽은 대상·조건이 같아야 통과한다
+  ---
+  duration_ms: 0.798716
+  type: 'test'
+  ...
+# Subtest: 상태 점검 실패는 알림 단위를 시작하고 정상 점검은 사건 상태를 지운다
+ok 8 - 상태 점검 실패는 알림 단위를 시작하고 정상 점검은 사건 상태를 지운다
+  ---
+  duration_ms: 9.635041
+  type: 'test'
+  ...
+# Subtest: 첫 실패는 기존 gh 인증으로 정해진 저장소/워크플로를 한 번 실행한다
+ok 9 - 첫 실패는 기존 gh 인증으로 정해진 저장소/워크플로를 한 번 실행한다
+  ---
+  duration_ms: 65.440682
+  type: 'test'
+  ...
+# Subtest: 계속 실패해도 1시간 안에는 중복을 억제하고 1시간 뒤에는 다시 알린다
+ok 10 - 계속 실패해도 1시간 안에는 중복을 억제하고 1시간 뒤에는 다시 알린다
+  ---
+  duration_ms: 91.64509
+  type: 'test'
+  ...
+# Subtest: 정상 복구 뒤 새 실패는 이전 알림으로부터 1시간 안이어도 알린다
+ok 11 - 정상 복구 뒤 새 실패는 이전 알림으로부터 1시간 안이어도 알린다
+  ---
+  duration_ms: 86.199457
+  type: 'test'
+  ...
+# Subtest: gh 실행 실패를 보낸 것으로 기록하지 않아 다음 점검 때 다시 시도한다
+ok 12 - gh 실행 실패를 보낸 것으로 기록하지 않아 다음 점검 때 다시 시도한다
+  ---
+  duration_ms: 79.276909
+  type: 'test'
+  ...
+# Subtest: 동시 실패 둘도 파일 잠금 아래 한 번만 보낸다
+ok 13 - 동시 실패 둘도 파일 잠금 아래 한 번만 보낸다
+  ---
+  duration_ms: 42.676145
+  type: 'test'
+  ...
+# Subtest: 잘못된 상태 파일을 셸 식으로 해석하지 않고 새 실패를 알린다
+ok 14 - 잘못된 상태 파일을 셸 식으로 해석하지 않고 새 실패를 알린다
+  ---
+  duration_ms: 49.007167
+  type: 'test'
+  ...
+# Subtest: MVP 기본 로그인 시작은 scope를 생략해야 통과함
+ok 15 - MVP 기본 로그인 시작은 scope를 생략해야 통과함
+  ---
+  duration_ms: 30.979497
+  type: 'test'
+  ...
+# Subtest: MVP 기본 설정에 plusfriends가 남으면 배포 확인을 통과하지 않음
+ok 16 - MVP 기본 설정에 plusfriends가 남으면 배포 확인을 통과하지 않음
+  ---
+  duration_ms: 1.272767
+  type: 'test'
+  ...
+# Subtest: 명시한 동의 항목만 배포 확인에서 수락함
+ok 17 - 명시한 동의 항목만 배포 확인에서 수락함
+  ---
+  duration_ms: 1.200697
+  type: 'test'
+  ...
+# Subtest: 실제 로그인 시작만 요청하고 결과에는 인가 주소·state·쿠키를 넣지 않음
+ok 18 - 실제 로그인 시작만 요청하고 결과에는 인가 주소·state·쿠키를 넣지 않음
+  ---
+  duration_ms: 1.358852
+  type: 'test'
+  ...
+# Subtest: staging 주소가 아니면 요청하지 않음
+ok 19 - staging 주소가 아니면 요청하지 않음
+  ---
+  duration_ms: 0.528457
+  type: 'test'
+  ...
+# Subtest: 통신 오류의 원문은 다시 출력하지 않음
+ok 20 - 통신 오류의 원문은 다시 출력하지 않음
+  ---
+  duration_ms: 0.746981
+  type: 'test'
+  ...
+# Subtest: 상태 확인이 정상이더라도 로그인 시작 500은 통과하지 않음
+ok 21 - 상태 확인이 정상이더라도 로그인 시작 500은 통과하지 않음
+  ---
+  duration_ms: 0.719681
+  type: 'test'
+  ...
+# Subtest: 잘못된 JSON 본문의 값도 오류에 넣지 않음
+ok 22 - 잘못된 JSON 본문의 값도 오류에 넣지 않음
+  ---
+  duration_ms: 0.925434
+  type: 'test'
+  ...
+# Subtest: 다른 호스트·콜백·state·PKCE·권한을 담은 인가 주소를 막음
+ok 23 - 다른 호스트·콜백·state·PKCE·권한을 담은 인가 주소를 막음
+  ---
+  duration_ms: 4.838137
+  type: 'test'
+  ...
+# Subtest: 로그인 시작 nonce 쿠키가 없거나 비어 있으면 막음
+ok 24 - 로그인 시작 nonce 쿠키가 없거나 비어 있으면 막음
+  ---
+  duration_ms: 1.217254
+  type: 'test'
+  ...
+# Subtest: 로그인 쿠키의 HttpOnly 누락을 막음
+ok 25 - 로그인 쿠키의 HttpOnly 누락을 막음
+  ---
+  duration_ms: 0.545204
+  type: 'test'
+  ...
+# Subtest: 로그인 쿠키의 Secure 누락을 막음
+ok 26 - 로그인 쿠키의 Secure 누락을 막음
+  ---
+  duration_ms: 0.357493
+  type: 'test'
+  ...
+# Subtest: 로그인 쿠키의 SameSite=Lax 누락을 막음
+ok 27 - 로그인 쿠키의 SameSite=Lax 누락을 막음
+  ---
+  duration_ms: 0.277788
+  type: 'test'
+  ...
+# Subtest: 로그인 쿠키의 Max-Age=600 누락을 막음
+ok 28 - 로그인 쿠키의 Max-Age=600 누락을 막음
+  ---
+  duration_ms: 0.302336
+  type: 'test'
+  ...
+# Subtest: 공유 캐시에 인가 주소를 남길 수 있는 응답을 막음
+ok 29 - 공유 캐시에 인가 주소를 남길 수 있는 응답을 막음
+  ---
+  duration_ms: 0.463067
+  type: 'test'
+  ...
+# Subtest: 현재 자원은 건드리지 않고 필요한 큐·비밀 값만 한 번 생성
+ok 30 - 현재 자원은 건드리지 않고 필요한 큐·비밀 값만 한 번 생성
+  ---
+  duration_ms: 2.682778
+  type: 'test'
+  ...
+# Subtest: 모든 자원이 있으면 새 값 생성·수정·큐 비우기를 하지 않음
+ok 31 - 모든 자원이 있으면 새 값 생성·수정·큐 비우기를 하지 않음
+  ---
+  duration_ms: 0.477991
+  type: 'test'
+  ...
+# Subtest: 메타데이터 조회 실패 뒤에는 변경하지 않고 오류 메시지의 값을 내보내지 않음
+ok 32 - 메타데이터 조회 실패 뒤에는 변경하지 않고 오류 메시지의 값을 내보내지 않음
+  ---
+  duration_ms: 1.156447
+  type: 'test'
+  ...
+# Subtest: CLI 실패의 비밀 값·본문을 출력하지 않고 다음 변경을 하지 않음
+ok 33 - CLI 실패의 비밀 값·본문을 출력하지 않고 다음 변경을 하지 않음
+  ---
+  duration_ms: 0.592886
+  type: 'test'
+  ...
+# Subtest: 배포 목록의 첫 항목 대신 최신 시각·활성 버전을 확인한 뒤 공개 상태를 검사
+ok 34 - 배포 목록의 첫 항목 대신 최신 시각·활성 버전을 확인한 뒤 공개 상태를 검사
+  ---
+  duration_ms: 1.448284
+  type: 'test'
+  ...
+# Subtest: 이전 버전의 정상 상태로 새 배포를 통과시키지 않음
+ok 35 - 이전 버전의 정상 상태로 새 배포를 통과시키지 않음
+  ---
+  duration_ms: 0.871749
+  type: 'test'
+  ...
+# Subtest: 예전 버전으로 나뉜 트래픽은 완전한 새 배포로 기록하지 않음
+ok 36 - 예전 버전으로 나뉜 트래픽은 완전한 새 배포로 기록하지 않음
+  ---
+  duration_ms: 0.712407
+  type: 'test'
+  ...
+# Subtest: 태그가 맞아도 공개 주소의 실패를 통과시키지 않음
+ok 37 - 태그가 맞아도 공개 주소의 실패를 통과시키지 않음
+  ---
+  duration_ms: 0.417442
+  type: 'test'
+  ...
+1..37
+# tests 37
+# suites 0
+# pass 37
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 504.769747

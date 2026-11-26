@@ -1,0 +1,50 @@
+
+> test
+> vitest run --run test/operator-record-permissions.test.ts -t 최소 역할로 상담 전체
+
+
+ RUN  v5.1.0 /workspace/siljang-task159-purge-runtime/app/server
+
+stdout | test/operator-record-permissions.test.ts > 운영자 기록의 최소 실행 권한(TASK-159) > 최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=false)
+{"level":"info","event":"settings_loaded","names":["ANTHROPIC_API_KEY","OPENAI_API_KEY","STORAGE_ACCESS_KEY_ID","STORAGE_SECRET_ACCESS_KEY","FILE_URL_KEY"]}
+
+stdout | test/operator-record-permissions.test.ts > 운영자 기록의 최소 실행 권한(TASK-159) > 최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=true)
+{"level":"info","event":"settings_loaded","names":["ANTHROPIC_API_KEY","OPENAI_API_KEY","STORAGE_ACCESS_KEY_ID","STORAGE_SECRET_ACCESS_KEY","FILE_URL_KEY"]}
+
+ ❯ test/operator-record-permissions.test.ts (7 tests | 2 failed | 5 skipped) 893ms
+   ❯ 운영자 기록의 최소 실행 권한(TASK-159) (7)
+     × 최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=false) 121ms
+     × 최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=true) 64ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-record-permissions.test.ts > 운영자 기록의 최소 실행 권한(TASK-159) > 최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=false)
+ FAIL  test/operator-record-permissions.test.ts > 운영자 기록의 최소 실행 권한(TASK-159) > 최소 역할로 상담 전체를 지우고 같은 번호ID를200→409로 안내한다(삭제ID 충돌=true)
+error: permission denied for table owner_alerts
+ ❯ ../node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ purgeConsultation src/purge-consultation.ts:26:3
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ test/operator-record-permissions.test.ts:236:14
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 5 skipped (7)
+   Start at  10:19:36
+   Duration  2.91s (import 53%, tests 33%, transform 14%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task159-purge-runtime/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task159-purge-runtime/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/operator-record-permissions.test.ts -t '최소 역할로 상담 전체'

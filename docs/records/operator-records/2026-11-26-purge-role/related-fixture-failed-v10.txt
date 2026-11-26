@@ -1,0 +1,44 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-purge-runtime/app/server
+
+ ❯ test/purge-runtime-role.test.ts (6 tests | 1 failed) 991ms
+   ❯ 예약 실행부터 상담 삭제까지 실제 두 역할(TASK159 PR302) (6)
+     × superuser 설정은 시작 기록 전에 닫고 다른 분 단위 일은 계속한다 24ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/purge-runtime-role.test.ts > 예약 실행부터 상담 삭제까지 실제 두 역할(TASK159 PR302) > superuser 설정은 시작 기록 전에 닫고 다른 분 단위 일은 계속한다
+AssertionError: expected [ { level: 'error', …(3) } ] to deeply equal [ { level: 'error', …(3) } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "errorName": "JobConfigError",
++     "errorName": "TypeError",
+      "event": "job_connection_failed",
+      "job": "purge",
+      "level": "error",
+    },
+  ]
+
+ ❯ test/purge-runtime-role.test.ts:219:24
+    217|       expect(result?.jobs.healthy).toEqual({ found: 0, done: 0, skippe…
+    218|       const failures = logs.lines.map((line) => JSON.parse(line)).filt…
+    219|       expect(failures).toEqual([
+       |                        ^
+    220|         {
+    221|           level: "error",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 21 passed (22)
+      Tests  1 failed | 418 passed (419)
+   Start at  11:28:11
+   Duration  35.47s (tests 63%, import 34%, transform 2%)
+
+     Import  232 modules were evaluated 336 times · 11.31s total, 34% of tracked time
+             ~3.50s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
