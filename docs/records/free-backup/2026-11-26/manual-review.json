@@ -1,0 +1,15 @@
+{
+  "pr": 303,
+  "request": 7193071304,
+  "request_count": 1,
+  "requested_at": "2026-11-26T13:14:41Z",
+  "reviewed_sha": "e0739ac471b47710c4daf01a53536b924b24e5d2",
+  "code_receipt": 7193117878,
+  "security_receipt": 7193280534,
+  "code_findings": 0,
+  "security_findings": 0,
+  "later_role_fix_source": "51b4af5ed461ad8573235c15622f6e9620e5c625",
+  "orca_rereview_request": 7193237757,
+  "orca_result": "미확인",
+  "orca_ready_at": "2026-11-26T13:08:33Z"
+}
