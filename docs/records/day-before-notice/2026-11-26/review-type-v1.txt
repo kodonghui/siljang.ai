@@ -1,0 +1,48 @@
+
+> typecheck
+> npm run typecheck -w web && npm run typecheck -w server
+
+
+> typecheck
+> tsc -p tsconfig.json
+
+
+> typecheck
+> npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json
+
+
+> types
+> wrangler types --include-env=false src/worker-runtime.d.ts
+
+▲ [WARNING] Proxy environment variables detected. We'll use your proxy for fetch requests.
+
+
+
+ ⛅️ wrangler 4.158.0
+────────────────────
+Generating runtime types...
+
+Runtime types generated.
+
+
+✨ Types written to src/worker-runtime.d.ts
+
+📖 Read about runtime types
+https://developers.cloudflare.com/workers/languages/typescript/#generate-types
+📣 Remember to rerun 'wrangler types' after you change your wrangler.jsonc file.
+
+src/kakao-callback-queue.ts(145,55): error TS2379: Argument of type '{ now: Date; excludeMessageId: string; allowFullOrderCard: true; fields: () => FieldCrypto; callbackClaim: DeferredKakaoCallbackClaim | undefined; }' is not assignable to parameter of type '{ readonly disclosureConsultationId?: string | undefined; readonly now?: Date; readonly excludeMessageId?: string | undefined; readonly allowFullOrderCard?: boolean; readonly fields?: (() => FieldCrypto) | undefined; readonly callbackClaim?: DeferredKakaoCallbackClaim; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'callbackClaim' are incompatible.
+    Type 'DeferredKakaoCallbackClaim | undefined' is not assignable to type 'DeferredKakaoCallbackClaim'.
+      Type 'undefined' is not assignable to type 'DeferredKakaoCallbackClaim'.
+src/kakao-callback-queue.ts(250,55): error TS2379: Argument of type '{ disclosureConsultationId: string | undefined; excludeMessageId: string | undefined; now: Date; allowFullOrderCard: true; fields: () => FieldCrypto; callbackClaim: DeferredKakaoCallbackClaim | undefined; }' is not assignable to parameter of type '{ readonly disclosureConsultationId?: string | undefined; readonly now?: Date; readonly excludeMessageId?: string | undefined; readonly allowFullOrderCard?: boolean; readonly fields?: (() => FieldCrypto) | undefined; readonly callbackClaim?: DeferredKakaoCallbackClaim; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'callbackClaim' are incompatible.
+    Type 'DeferredKakaoCallbackClaim | undefined' is not assignable to type 'DeferredKakaoCallbackClaim'.
+      Type 'undefined' is not assignable to type 'DeferredKakaoCallbackClaim'.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task134-day-before-notice/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task134-day-before-notice/app/server
+npm error command failed
+npm error command sh -c npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json

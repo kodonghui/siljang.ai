@@ -1,0 +1,1 @@
+{"sha":"9a51b9cdb2fcb098f77fa378d5c521fa68554b90","runs":[{"id":45751488218,"status":"in_progress","conclusion":null},{"id":45751488339,"status":"completed","conclusion":"failure"}],"failure":{"check":"D1 schema.sql create","postgres":[16,17],"error":"notifications CHECK에서 reply_claim_id를 찾지 못함","cause":"두 열을 owner_alerts에 잘못 배치","fixedLocally":true}}

@@ -1,0 +1,76 @@
+
+ RUN  v5.1.0 /workspace/siljang-task134-day-before-notice/app/server
+
+ ❯ test/day-before-notice.test.ts (34 tests | 13 failed) 4419ms
+   ❯ 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) (34)
+     × 일반 본문 수정 대신 소유자가 아닌 제한 역할에 전날 안내 함수 실행만 연다 34ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(other-kind) 33ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(attempted) 38ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(delivered) 50ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(other-shop) 57ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(other-order) 32ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(other-recipient) 59ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(other-consultation) 57ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(cancelled) 63ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(deleted-consultation) 61ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(purged-customer) 64ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(too-early) 65ms
+     × 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(infinite) 73ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 일반 본문 수정 대신 소유자가 아닌 제한 역할에 전날 안내 함수 실행만 연다
+AssertionError: expected { body: true, template: true } to deeply equal { body: false, template: false }
+
+- Expected
++ Received
+
+  {
+-   "body": false,
+-   "template": false,
++   "body": true,
++   "template": true,
+  }
+
+ ❯ test/day-before-notice.test.ts:130:20
+    128|       )
+    129|     ).rows[0];
+    130|     expect(rights).toEqual({ body: false, template: false });
+       |                    ^
+    131|     for (const column of ["body", "template_key"]) {
+    132|       await expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(other-kind)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(attempted)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(delivered)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(other-shop)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(other-order)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(other-recipient)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(other-consultation)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(cancelled)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(deleted-consultation)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(purged-customer)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(too-early)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 전날 안내 함수가 현재 갱신 대상 밖의 행을 바꾸지 않는다(infinite)
+error: function public.refresh_pending_day_before_notice(unknown, unknown, unknown) does not exist
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ test/day-before-notice.test.ts:224:15
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ test/day-before-notice.test.ts:222:23
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  13 failed | 21 passed (34)
+   Start at  03:04:02
+   Duration  7.50s (tests 60%, import 32%, transform 8%)

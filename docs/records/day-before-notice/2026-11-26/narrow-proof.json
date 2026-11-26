@@ -1,0 +1,47 @@
+{
+  "baseSource": "6e3433a8ae76cd2095dfabb83af5745b1e094b62",
+  "workingTreeDuringTests": true,
+  "changedGitBlobs": {
+    "app/server/src/day-before-notice.ts": "52562d1c4ff2312a1ba6bce59b44525bc5aeeb35",
+    "app/server/test/day-before-notice.test.ts": "7a932d7718f44d69b35d49591d49123915c121b9",
+    "db/migrations/0043_day_before_notice.sql": "d47f18ced98f29a8950d67eff56f1405ce46a83d",
+    "db/schema.sql": "803bfb3ca69f769497426aa608ed619ebef244a7",
+    "tools/staging-login-callback-grants.sql": "13a3847dbc534607bc0a6c1aedb7d118681f7371"
+  },
+  "red": [
+    {
+      "run": 1,
+      "failed": 12,
+      "passed": 21,
+      "fixtureFailures": 2
+    },
+    {
+      "run": 2,
+      "failed": 12,
+      "passed": 21,
+      "fixtureFailures": 1
+    },
+    {
+      "run": 3,
+      "failed": 13,
+      "passed": 21,
+      "fixtureFailures": 0,
+      "extraCase": "other-consultation"
+    }
+  ],
+  "green": {
+    "files": 1,
+    "passed": 34
+  },
+  "related": {
+    "files": 11,
+    "passed": 225,
+    "freshMigrations": 43,
+    "databaseRemaining": 0
+  },
+  "oldNegativeSecurityTestsChanged": false,
+  "full": "고친 소스의 새 빈 전체/웹/빌드는 아직 미실행",
+  "nativeBrowser": false,
+  "realKakao": false,
+  "stagingMigration43": false
+}

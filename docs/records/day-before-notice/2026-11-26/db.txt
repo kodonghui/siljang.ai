@@ -1,0 +1,19 @@
+통과 S1 TBL 번호 61개(TBL-001~TBL-061), 테이블 이름 중복 없음
+통과 S2 헤더 주석 컨텍스트가 CTX-001~009나 공통
+통과 S3 헤더 주석 SPEC 목록이 erd_map.py 대응과 같음
+통과 S4 SPEC 79개 모두 대응 있음: 데이터 1120건 → 컬럼 528개(전체 컬럼 755개)
+통과 S5 쓰이지 않는 테이블 없음(61개 모두 SPEC 대응에 나옴)
+통과 S6 컬럼 755개 모두 설명 있음
+통과 S7 애그리거트 13개·읽기 모델 18개 용어가 테이블 헤더 주석 16개·'테이블 없음' 행 15개에 한 번씩, 나머지 용어 35개는 컬럼·테이블 설명에. 용어집 86개 모두 자리 있음. 컨텍스트 예외 TERM-059→owner_tasks
+통과 S8 테이블 설명이 테이블마다 하나이고 헤더 주석과 같은 TBL 번호로 시작
+통과 S9 build_erd.py로 만든 부분(헤더 주석 SPEC·컬럼 설명·README 표와 다이어그램)이 최신
+통과 D1 db/schema.sql을 빈 DB에 한 트랜잭션으로 적용(PostgreSQL 16.15)
+통과 D2 마이그레이션 43개(0001_init.sql, 0002_refund_path.sql, 0003_order_input_lock.sql, 0004_kakao_event_path.sql, 0005_retention_split.sql, 0006_account_encryption_access_log.sql, 0007_consent_allergy_photo.sql, 0008_wait_ends_due_cap.sql, 0009_refund_excess_file_queue.sql, 0010_refund_calc_remake.sql, 0011_amount_confirm_standard_quote.sql, 0012_request_keys_questions_extras.sql, 0013_ai_calls_skill_keys.sql, 0014_shop_identity_settings.sql, 0015_issue_kind_reporter.sql, 0016_refund_counted_arrived.sql, 0017_ai_tool_calls_called_idx.sql, 0018_glossary_terms.sql, 0019_disclosure_policy_order_amount.sql, 0020_awaiting_payment_limit.sql, 0021_operator_sessions.sql, 0022_operator_auth_binding.sql, 0023_kakao_trial_contract_comments.sql, 0024_kakao_callback_delivery.sql, 0025_owner_sessions.sql, 0026_payment_account_license_pending.sql, 0027_kakao_channel_configuration.sql, 0028_kakao_channel_configuration_backfill.sql, 0029_operator_license_review.sql, 0030_license_review_tasks.sql, 0031_identity_review.sql, 0032_identity_review_order.sql, 0033_license_resubmission.sql, 0034_license_photo_deletion.sql, 0035_owner_task_internal_detail.sql, 0036_owner_task_handoff_index.sql, 0037_consultation_timeline.sql, 0038_notification_page_visibility.sql, 0039_consultation_waiting_idle.sql, 0040_review_photo_cleanup.sql, 0041_customer_notice_channel_alert.sql, 0042_confirm_card_source_lookup.sql, 0043_day_before_notice.sql)로 빈 DB에서 다시 만든 카탈로그가 schema.sql과 같음(column 755, constraint 727, extension 1, function 18, index 238, sequence 3, table 61, trigger 17)
+통과 D3 DB 테이블 61개 모두 기본 키와 TBL 설명, 대응 컬럼 모두 있음(기본 키 61, 외래 키 135, CHECK 432, UNIQUE 93, EXCLUDE 1)
+통과 D4 규칙 테스트 406개 가운데 기대한 제약에 막힘(늦은 쓰기 3개는 0행, 받아야 할 쓰기 24개는 들어감, 지우기 결과 93개는 기대한 값) 406개, 안 막힘 0개
+통과 D5 두 세션이 같은 주문에 결제 확인과 손님 취소를 같은 값을 읽고 동시에 씀: 옛 방식은 늦은 취소가 확인을 덮어쓰고(문제 재현), 잠금 번호는 늦은 취소가 먼저 쓴 쪽의 커밋을 기다린 뒤 0행이라 결제 확인이 남음
+      옛 방식(내용 버전 version 비교): 결제 확인 1행, 손님 취소 1행(기다림 1.4초) → cancelled, 잠금 번호 1
+      잠금 번호(lock_version 비교): 결제 확인 1행, 손님 취소 0행(기다림 1.5초) → confirmed, 잠금 번호 2
+통과 E1 ERD Editor 파일(2026-11-26T03:55:01+00:00, 커밋 전 파일 시각)의 테이블 61개·컬럼 755개·관계 135개·인덱스 96개와 컨텍스트 그룹이 스키마와 같음. 다이어그램이 담지 못하는 부분·식 인덱스 56개와 EXCLUDE는 after 스크립트에, CHECK는 schema.sql에만
+
+검사 15개: 통과 15, 실패 0, 미확인 0

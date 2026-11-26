@@ -10,6 +10,7 @@
  * - 처리(handler)는 맡는 작업이 JOB_HANDLERS에 더한다. 이번에는 바탕만 두어 처리가 붙은 일이 없다.
  */
 import { consultationIdleHandler } from "./consultation-idle";
+import { dayBeforeNoticeHandler } from "./day-before-notice";
 import type { DueSourceName } from "./due-sources";
 import type { JobHandler, RunnableJob } from "./job-runner";
 import { runPurge } from "./purge-runner";
@@ -74,8 +75,8 @@ export const JOBS: readonly JobEntry[] = [
     name: "day_before_notice",
     task: "TASK-134",
     runs: SHOP_TIME,
-    sources: [],
-    note: "전날 안내 행을 가게가 정한 시각(scheduled_for)으로 만들고 그 시각을 next_attempt_at에도 두면 SPEC-066의 notification_send가 보냄. 만드는 때는 TASK-134가 정함",
+    sources: ["order_day_before"],
+    note: "픽업 전날 현재 가게의 안내 시각이 지난 확정 주문을 선점해 한 번 생성. 무료 MVP는 실제 발신 없이 deferred로 저장하고 다음 대화에서 현재 주문/가게 정보와 다시 대조해 전달",
   },
   {
     spec: "SPEC-061",
@@ -154,6 +155,7 @@ export interface JobHandlerEntry {
 /** TASK-158: 하루 한 번 지우기는 전역 키와 임시 파일을 포함한 여덟 차례로 처리한다. */
 export const JOB_HANDLERS: Readonly<Record<JobName, JobHandlerEntry>> = {
   consultation_idle: { handler: consultationIdleHandler },
+  day_before_notice: { handler: dayBeforeNoticeHandler },
   purge: { handler: { mode: "sweep", run: (db, ctx) => runPurge(db, ctx) } },
 };
 

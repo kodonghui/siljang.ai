@@ -1,0 +1,30 @@
+RUN  v5.1.0 /workspace/siljang-task134-day-before-notice/app/server
+
+ ❯ test/day-before-notice.test.ts (5 tests | 1 failed | 2 skipped) 1014ms
+   ❯ 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) (5)
+     × 실제 제한 역할로 자기 주문 안내를 만들고 다른 가게 주문에는 쓰지 않는다 69ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 실제 제한 역할로 자기 주문 안내를 만들고 다른 가게 주문에는 쓰지 않는다
+error: permission denied for table orders
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ createDayBeforeNotice src/day-before-notice.ts:26:5
+ ❯ test/day-before-notice.test.ts:73:14
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ test/day-before-notice.test.ts:70:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed | 2 skipped (5)
+   Start at  23:31:45
+   Duration  2.11s (tests 51%, import 32%, transform 16%)

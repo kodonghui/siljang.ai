@@ -1,0 +1,13 @@
+{
+  "sourceCommit": "0ac144a5834c2bfbf07045709b6e0faa2030c46c",
+  "publicEquivalent": "c538288280af76eb323a7770e18b26ca1a5c14d2",
+  "serverFiles": 176,
+  "serverPassed": 3316,
+  "webFiles": 73,
+  "webPassed": 1775,
+  "testExit": 0,
+  "buildExit": 0,
+  "migrations": 43,
+  "databaseRemaining": 0,
+  "knownIssue": "SQL E\\v가 문자v로 해석됨. 이 통과는 주소 문자 보존 고침 전의 근거이며 최종 검증이 아님"
+}

@@ -17,7 +17,13 @@ import {
   releaseKakaoCallback,
 } from "./kakao-callback-store";
 import { readClaimedKakaoCard } from "./kakao-card-delivery";
-import { deferredKakaoBatch, deferredKakaoTexts } from "./kakao-deferred";
+import {
+  type DeferredKakaoCallbackClaim,
+  deferredKakaoBatch,
+  deferredKakaoTexts,
+  releaseDeferredKakaoClaim,
+  validateDeferredKakaoCallback,
+} from "./kakao-deferred";
 import { mergeKakaoAmountConfirmations } from "./kakao-message-content";
 import { runKakaoPhotoTurn } from "./kakao-photo-turn";
 import { KAKAO_HANDOFF_TEXT, kakaoAiFailureOutcome } from "./kakao-reply";
@@ -110,6 +116,7 @@ export async function consumeKakaoCallback(
   const scope = createShopScope(job.shopId, { kind: "job", job: "kakao_callback" });
   const db = shopRequestDb(scope, conn);
   let owned: Exclude<Awaited<ReturnType<typeof claimKakaoCallback>>, "busy"> = null;
+  let noticeClaim: DeferredKakaoCallbackClaim | undefined;
   try {
     const claim = await claimKakaoCallback(db, job.messageId, now());
     if (claim === "busy") return "retry";
@@ -119,6 +126,11 @@ export async function consumeKakaoCallback(
     }
 
     owned = claim;
+    const callbackClaim: DeferredKakaoCallbackClaim = {
+      id: crypto.randomUUID(),
+      until: claim.kakao_callback_claim_until,
+    };
+    noticeClaim = callbackClaim;
     const photo = await runKakaoPhotoTurn(db, job.messageId, claim, services, now, {
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });
@@ -139,6 +151,7 @@ export async function consumeKakaoCallback(
               excludeMessageId: photo.reply.id,
               allowFullOrderCard: true,
               fields: () => services.fieldCrypto(),
+              callbackClaim,
             }),
           );
       const previous = batch.messages;
@@ -150,12 +163,17 @@ export async function consumeKakaoCallback(
         (await deliverKakaoCallback(
           { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
           [...previousTexts, ...(replyIncluded ? [photo.reply.text] : [])],
-          { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
+          {
+            now: () => now().getTime(),
+            ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+            beforeSend: () => validateDeferredKakaoCallback(db, claim.customer_id, previous, callbackClaim, now()),
+          },
         )) === "delivered"
           ? now()
           : null;
       await finishKakaoCallback(db, job.messageId, claim, photo.reply.text, sentAt, previous, photo.reply.id, {
         replyIncluded,
+        callbackClaim,
       });
       if (sentAt !== null) {
         if (replyIncluded) log("info", { event: "kakao_callback_result", code: photo.reply.outcome }, options.logSink);
@@ -239,6 +257,7 @@ export async function consumeKakaoCallback(
               now: now(),
               allowFullOrderCard: true,
               fields: () => services.fieldCrypto(),
+              callbackClaim,
             }),
           );
     const previous = previousBatch.messages;
@@ -287,7 +306,11 @@ export async function consumeKakaoCallback(
       (await deliverKakaoCallback(
         { ...callback, deadline: Math.min(callback.deadline, claim.kakao_callback_deadline_at.getTime()) },
         [...prefix, ...transmittedContents],
-        { now: () => now().getTime(), ...(options.fetch === undefined ? {} : { fetch: options.fetch }) },
+        {
+          now: () => now().getTime(),
+          ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+          beforeSend: () => validateDeferredKakaoCallback(db, claim.customer_id, previous, callbackClaim, now()),
+        },
       )) === "delivered"
         ? now()
         : null;
@@ -300,12 +323,18 @@ export async function consumeKakaoCallback(
     await finishKakaoCallback(db, job.messageId, claim, text, deliveredAt, previous, preparedReply?.id, {
       ...(disclosure === null || disclosure === undefined ? {} : { disclosure }),
       replyIncluded,
+      callbackClaim,
     });
     return "done";
   } catch (error) {
     if (owned !== null) await releaseKakaoCallback(db, job.messageId, owned).catch(() => {});
     throw error;
   } finally {
+    if (owned !== null && noticeClaim !== undefined) {
+      const customerId = owned.customer_id,
+        callbackClaim = noticeClaim;
+      await db.transaction((tx) => releaseDeferredKakaoClaim(tx, customerId, callbackClaim)).catch(() => {});
+    }
     await conn.close();
   }
 }
