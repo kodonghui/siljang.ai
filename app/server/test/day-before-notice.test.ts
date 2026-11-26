@@ -327,6 +327,37 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
       (await isolated.db.query("SELECT body FROM notifications WHERE id=$1", [rows.rows[0]?.id])).rows[0]?.body,
     ).toBe(rows.rows[0]?.body);
   });
+  it("날짜가 옮겨지는 시간대에서도 현재 픽업 날짜의 전날에 찾고 생성하고 전달한다", async () => {
+    await isolated.db.query("UPDATE shops SET time_zone='Pacific/Honolulu' WHERE id=$1", [shop.shopId]);
+    const at = new Date("2026-11-27T04:00:00Z"); // 현지11/26 18시, 픽업은 현지11/27 20시.
+    expect(
+      (await isolated.db.query<{ id: string }>(DUE_SOURCES.order_day_before.find, [at, 100])).rows.map((r) => r.id),
+    ).toContain(shop.orderId);
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }), isolated.db);
+    expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, at))).toBe(true);
+    const notice = (
+      await isolated.db.query<{ id: string; body: string; scheduled_for: Date }>(
+        "SELECT id,body,scheduled_for FROM notifications WHERE shop_id=$1",
+        [shop.shopId],
+      )
+    ).rows[0];
+    expect(notice?.scheduled_for).toEqual(at);
+    expect(notice?.body).toContain("픽업: 2026-11-27 20:00");
+    expect(
+      (await scoped.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: at }))).messages.map(
+        (r) => r.id,
+      ),
+    ).toEqual([notice?.id]);
+  });
+  it("시간대 변경 뒤 현지 픽업 당일을 전날 안내 대상으로 고르지 않는다", async () => {
+    await isolated.db.query("UPDATE shops SET time_zone='Pacific/Honolulu' WHERE id=$1", [shop.shopId]);
+    const at = new Date("2026-11-28T04:00:00Z"); // 현지11/27 18시, 당일20시 픽업.
+    expect(
+      (await isolated.db.query<{ id: string }>(DUE_SOURCES.order_day_before.find, [at, 100])).rows.map((r) => r.id),
+    ).not.toContain(shop.orderId);
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }), isolated.db);
+    expect(await scoped.transaction((tx) => createDayBeforeNotice(tx, shop.orderId, at))).toBe(false);
+  });
   it.each([false, true])(
     "가게 시간의 전날18시에 광고 없이 한 번 만들고 픽업 장소가 비어도 보존한다(빈 장소%s)",
     async (empty) => {

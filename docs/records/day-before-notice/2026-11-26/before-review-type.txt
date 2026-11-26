@@ -1,0 +1,32 @@
+
+> typecheck
+> npm run typecheck -w web && npm run typecheck -w server
+
+
+> typecheck
+> tsc -p tsconfig.json
+
+
+> typecheck
+> npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json
+
+
+> types
+> wrangler types --include-env=false src/worker-runtime.d.ts
+
+▲ [WARNING] Proxy environment variables detected. We'll use your proxy for fetch requests.
+
+
+
+ ⛅️ wrangler 4.158.0 (update available 4.168.0)
+───────────────────────────────────────────────
+Generating runtime types...
+
+Runtime types generated.
+
+
+✨ Types written to src/worker-runtime.d.ts
+
+📖 Read about runtime types
+https://developers.cloudflare.com/workers/languages/typescript/#generate-types
+📣 Remember to rerun 'wrangler types' after you change your wrangler.jsonc file.

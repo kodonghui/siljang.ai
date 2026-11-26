@@ -8,10 +8,10 @@ export function scheduledNoticeMeaningSql(parameter: TimeParameter): string {
       n.scheduled_for IS NOT NULL AND o.id IS NOT NULL AND o.customer_id=n.customer_id AND (
         (n.kind='day_before' AND o.status='confirmed' AND o.pickup_at>${at}
           AND (${at} AT TIME ZONE s.time_zone)::date<=(n.scheduled_for AT TIME ZONE s.time_zone)::date
-          AND o.pickup_day=(n.scheduled_for AT TIME ZONE s.time_zone)::date+1
+          AND (o.pickup_at AT TIME ZONE s.time_zone)::date=(n.scheduled_for AT TIME ZONE s.time_zone)::date+1
           AND (left(n.template_key,14)<>'day_before:v1:' OR (
             n.template_key='day_before:v1:'||md5(jsonb_build_array(o.version,extract(epoch FROM o.pickup_at),s.time_zone,s.pickup_address,s.contact_phone)::text)
-            AND n.scheduled_for=(((o.pickup_day-1)+coalesce(
+            AND n.scheduled_for=((((o.pickup_at AT TIME ZONE s.time_zone)::date-1)+coalesce(
               (SELECT current_calendar.day_before_notice_time FROM business_calendars current_calendar WHERE current_calendar.shop_id=$1),
               '18:00'::time)) AT TIME ZONE s.time_zone)
           )))

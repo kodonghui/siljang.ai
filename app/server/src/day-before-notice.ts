@@ -26,15 +26,16 @@ export async function createDayBeforeNotice(db: ShopDb, orderId: string, now: Da
     await db.run<Source>(
       `SELECT t.customer_id,t.consultation_id,t.order_no,t.pickup_at,s.time_zone,s.pickup_address,s.contact_phone,
         'day_before:v1:'||md5(jsonb_build_array(t.version,extract(epoch FROM t.pickup_at),s.time_zone,s.pickup_address,s.contact_phone)::text) AS template_key,
-        ((t.pickup_day-1)+coalesce(b.day_before_notice_time,'18:00'::time)) AT TIME ZONE s.time_zone AS scheduled_for
+        (((t.pickup_at AT TIME ZONE s.time_zone)::date-1)+coalesce(b.day_before_notice_time,'18:00'::time)) AT TIME ZONE s.time_zone AS scheduled_for
       FROM orders t JOIN shops s ON s.id=$1
       LEFT JOIN business_calendars b ON b.shop_id=$1
       WHERE t.shop_id=$1 AND t.id=$2 AND t.status='confirmed' AND t.confirmed_at<=$3
         AND t.personal_data_purged_at IS NULL AND nullif(btrim(s.contact_phone),'') IS NOT NULL
-        AND t.pickup_day=($3::timestamptz AT TIME ZONE s.time_zone)::date+1
+        AND (t.pickup_at AT TIME ZONE s.time_zone)::date=($3::timestamptz AT TIME ZONE s.time_zone)::date+1
         AND ($3::timestamptz AT TIME ZONE s.time_zone)::time>=coalesce(b.day_before_notice_time,'18:00'::time)
         AND to_char($3::timestamptz AT TIME ZONE s.time_zone,'HH24:MI') BETWEEN '08:00' AND '20:50'
-        AND NOT EXISTS(SELECT 1 FROM notifications n WHERE n.shop_id=$1 AND n.order_id=t.id AND n.kind='day_before' AND n.sent_at IS NOT NULL)
+        AND NOT EXISTS(SELECT 1 FROM notifications n WHERE n.shop_id=$1 AND n.order_id=t.id AND n.kind='day_before'
+          AND (n.sent_at IS NOT NULL OR n.reply_claim_until>$3))
       FOR UPDATE OF t`,
       [id, now],
     )
