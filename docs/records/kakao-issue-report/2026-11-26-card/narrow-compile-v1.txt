@@ -1,0 +1,10 @@
+BEGIN
+SET
+CREATE FUNCTION
+REVOKE
+ nonexistent_rows
+------------------
+                0
+(1 row)
+
+ROLLBACK

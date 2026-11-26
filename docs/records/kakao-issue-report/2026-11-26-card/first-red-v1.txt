@@ -1,0 +1,216 @@
+
+ RUN  v5.1.0 /workspace/siljang-task147-issue-card/app/server
+
+ ❯ test/kakao-issue-report-message.test.ts (12 tests | 12 failed) 38ms
+   ❯ SCR010 문제 신고 표시(TASK-147) (12)
+     × 사진0장인 신고 카드가 현재 저장 값을 표시하고 두 명령만 보낸다 26ms
+     × 사진5장인 신고 카드가 현재 저장 값을 표시하고 두 명령만 보낸다 1ms
+     × stale 상태는 알림과 지금 값의 새 카드를 함께 표시한다 1ms
+     × expired 상태는 알림과 지금 값의 새 카드를 함께 표시한다 1ms
+     × 완료의 처음 결과를 그대로 표시한다(issue_reported) 1ms
+     × 완료의 처음 결과를 그대로 표시한다(declined) 1ms
+     × 받기 전인 주문에는 신고 카드를 보이지 않는다 1ms
+     × 권한과 서버 결과에는 정한 말만 표시한다({"state":"permission","reason":"card_not_yours"}) 1ms
+     × 권한과 서버 결과에는 정한 말만 표시한다({"state":"permission","reason":"not_accepting","contactPhone":"02-000-0000"}) 1ms
+     × 권한과 서버 결과에는 정한 말만 표시한다({"state":"error","reason":"retry_needed"}) 1ms
+     × 권한과 서버 결과에는 정한 말만 표시한다({"state":"error","reason":"server_error"}) 1ms
+     × 몸이 불편한 신고의 정한 안내를 더하고 원인·책임·보상을 말하지 않는다 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 사진0장인 신고 카드가 현재 저장 값을 표시하고 두 명령만 보낸다
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 사진5장인 신고 카드가 현재 저장 값을 표시하고 두 명령만 보낸다
+AssertionError: SkillTemplateResponse: [{"instancePath":"/template/outputs","schemaPath":"#/properties/template/properties/outputs/minItems","keyword":"minItems","params":{"limit":1},"message":"must NOT have fewer than 1 items"}]: expected [ { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/template/outputs",
++     "keyword": "minItems",
++     "message": "must NOT have fewer than 1 items",
++     "params": {
++       "limit": 1,
++     },
++     "schemaPath": "#/properties/template/properties/outputs/minItems",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ test/kakao-issue-report-message.test.ts:30:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > stale 상태는 알림과 지금 값의 새 카드를 함께 표시한다
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > expired 상태는 알림과 지금 값의 새 카드를 함께 표시한다
+AssertionError: SkillTemplateResponse: [{"instancePath":"/template/outputs","schemaPath":"#/properties/template/properties/outputs/minItems","keyword":"minItems","params":{"limit":1},"message":"must NOT have fewer than 1 items"}]: expected [ { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/template/outputs",
++     "keyword": "minItems",
++     "message": "must NOT have fewer than 1 items",
++     "params": {
++       "limit": 1,
++     },
++     "schemaPath": "#/properties/template/properties/outputs/minItems",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ texts test/kakao-issue-report-message.test.ts:19:3
+ ❯ test/kakao-issue-report-message.test.ts:56:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 완료의 처음 결과를 그대로 표시한다(issue_reported)
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 완료의 처음 결과를 그대로 표시한다(declined)
+AssertionError: SkillTemplateResponse: [{"instancePath":"/template/outputs","schemaPath":"#/properties/template/properties/outputs/minItems","keyword":"minItems","params":{"limit":1},"message":"must NOT have fewer than 1 items"}]: expected [ { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/template/outputs",
++     "keyword": "minItems",
++     "message": "must NOT have fewer than 1 items",
++     "params": {
++       "limit": 1,
++     },
++     "schemaPath": "#/properties/template/properties/outputs/minItems",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ texts test/kakao-issue-report-message.test.ts:19:3
+ ❯ test/kakao-issue-report-message.test.ts:63:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 받기 전인 주문에는 신고 카드를 보이지 않는다
+AssertionError: SkillTemplateResponse: [{"instancePath":"/template/outputs","schemaPath":"#/properties/template/properties/outputs/minItems","keyword":"minItems","params":{"limit":1},"message":"must NOT have fewer than 1 items"}]: expected [ { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/template/outputs",
++     "keyword": "minItems",
++     "message": "must NOT have fewer than 1 items",
++     "params": {
++       "limit": 1,
++     },
++     "schemaPath": "#/properties/template/properties/outputs/minItems",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ texts test/kakao-issue-report-message.test.ts:19:3
+ ❯ test/kakao-issue-report-message.test.ts:66:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 권한과 서버 결과에는 정한 말만 표시한다({"state":"permission","reason":"card_not_yours"})
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 권한과 서버 결과에는 정한 말만 표시한다({"state":"permission","reason":"not_accepting","contactPhone":"02-000-0000"})
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 권한과 서버 결과에는 정한 말만 표시한다({"state":"error","reason":"retry_needed"})
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 권한과 서버 결과에는 정한 말만 표시한다({"state":"error","reason":"server_error"})
+AssertionError: SkillTemplateResponse: [{"instancePath":"/template/outputs","schemaPath":"#/properties/template/properties/outputs/minItems","keyword":"minItems","params":{"limit":1},"message":"must NOT have fewer than 1 items"}]: expected [ { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/template/outputs",
++     "keyword": "minItems",
++     "message": "must NOT have fewer than 1 items",
++     "params": {
++       "limit": 1,
++     },
++     "schemaPath": "#/properties/template/properties/outputs/minItems",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ texts test/kakao-issue-report-message.test.ts:19:3
+ ❯ test/kakao-issue-report-message.test.ts:77:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  test/kakao-issue-report-message.test.ts > SCR010 문제 신고 표시(TASK-147) > 몸이 불편한 신고의 정한 안내를 더하고 원인·책임·보상을 말하지 않는다
+AssertionError: SkillTemplateResponse: [{"instancePath":"/template/outputs","schemaPath":"#/properties/template/properties/outputs/minItems","keyword":"minItems","params":{"limit":1},"message":"must NOT have fewer than 1 items"}]: expected [ { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/template/outputs",
++     "keyword": "minItems",
++     "message": "must NOT have fewer than 1 items",
++     "params": {
++       "limit": 1,
++     },
++     "schemaPath": "#/properties/template/properties/outputs/minItems",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ texts test/kakao-issue-report-message.test.ts:19:3
+ ❯ test/kakao-issue-report-message.test.ts:80:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  12 failed (12)
+   Start at  00:29:16
+   Duration  1.01s (import 85%, transform 10%, tests 5%)

@@ -1,0 +1,37 @@
+
+ RUN  v5.1.0 /workspace/siljang-task147-issue-card/app/server
+
+ ❯ test/issue-report-first-result.test.ts (12 tests | 1 failed) 2210ms
+   ❯ 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) (12)
+     × 실제 최소 역할로 표시하고 설명 권한이 없으면 원문 없이 일시 보류한다 101ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > 실제 최소 역할로 표시하고 설명 권한이 없으면 원문 없이 일시 보류한다
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/issue-report-first-result.test.ts:185:22
+    183|       }),
+    184|     ).rejects.toBeInstanceOf(CustomerNoticeTemporarilyUnavailable);
+    185|     expect(positive).toBe(true);
+       |                      ^
+    186|     expect(revoked).toBe(true);
+    187|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 48 passed (49)
+   Start at  04:20:40
+   Duration  7.64s (import 54%, tests 35%, transform 10%)
+
+     Import  163 modules were evaluated 215 times · 3.77s total, 54% of tracked time
+             ~912ms faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

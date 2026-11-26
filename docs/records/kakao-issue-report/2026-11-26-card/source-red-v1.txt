@@ -1,0 +1,56 @@
+
+ RUN  v5.1.0 /workspace/siljang-task147-issue-card/app/server
+
+ ❯ test/issue-report-first-result.test.ts (6 tests | 4 failed) 1481ms
+   ❯ 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) (6)
+     × 실제 모은 신고 자료와 받은 날을 준비 값으로 연결하고 원문을 카드 payload에 복사하지 않는다 116ms
+     × 같은 주문 버전이어도 모은 신고 자료가 바뀌면 새 카드만 보내고 명령을 실행하지 않는다(description) 61ms
+     × 같은 주문 버전이어도 모은 신고 자료가 바뀌면 새 카드만 보내고 명령을 실행하지 않는다(health) 70ms
+     × 같은 주문 버전이어도 모은 신고 자료가 바뀌면 새 카드만 보내고 명령을 실행하지 않는다(photo) 53ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > 실제 모은 신고 자료와 받은 날을 준비 값으로 연결하고 원문을 카드 payload에 복사하지 않는다
+AssertionError: expected undefined to match object { description: '합성 신고 설명', …(5) }
+
+- Expected:
+{
+  "description": "합성 신고 설명",
+  "expiresAt": "2026-11-28T06:30:00.000Z",
+  "photoCount": 2,
+  "receivedAt": "2026-11-28T03:00:00.000Z",
+  "showMedicalNotice": true,
+  "timeZone": "Asia/Seoul",
+}
+
++ Received:
+undefined
+
+ ❯ test/issue-report-first-result.test.ts:55:30
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > 같은 주문 버전이어도 모은 신고 자료가 바뀌면 새 카드만 보내고 명령을 실행하지 않는다(description)
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > 같은 주문 버전이어도 모은 신고 자료가 바뀌면 새 카드만 보내고 명령을 실행하지 않는다(health)
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > 같은 주문 버전이어도 모은 신고 자료가 바뀌면 새 카드만 보내고 명령을 실행하지 않는다(photo)
+AssertionError: expected 'issue_reported' to be 'card_stale' // Object.is equality
+
+Expected: "card_stale"
+Received: "issue_reported"
+
+ ❯ test/issue-report-first-result.test.ts:68:28
+     66|     const execute=vi.fn(async()=>({outcome:"issue_reported",text:"합성 신…
+     67|     const answer=await pressConfirmCard(scoped(),{customerId:shop.cust…
+     68|     expect(answer.outcome).toBe("card_stale");
+       |                            ^
+     69|     expect(execute).not.toHaveBeenCalled();
+     70|     expect(answer.card?.cardKey).not.toBe(card.cardKey);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 2 passed (6)
+   Start at  04:05:25
+   Duration  3.34s (tests 46%, import 40%, transform 14%)
