@@ -63,15 +63,19 @@ def run():
         grant_command = ["psql", "-Xq", "-v", "ON_ERROR_STOP=1", "-v", f"backup_role={role}",
                          "-v", f"schema_owner={os.environ.get('PGUSER', 'postgres')}"]
         # 이미 쓰기/민감 함수 실행 권한이 있는 역할에 읽기 권한을 더해 백업 역할로 쓰지 않는다.
-        for grant, revoke in [
+        unsafe_cases = [
             (f'GRANT UPDATE ON orders TO "{role}"', f'REVOKE UPDATE ON orders FROM "{role}"'),
             (f'GRANT EXECUTE ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) TO "{role}"',
              f'REVOKE EXECUTE ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) FROM "{role}"'),
-        ]:
+            (f'GRANT CREATE ON SCHEMA public TO "{role}"', f'REVOKE CREATE ON SCHEMA public FROM "{role}"'),
+            (f'GRANT CREATE ON DATABASE "{source}" TO "{role}"', f'REVOKE CREATE ON DATABASE "{source}" FROM "{role}"'),
+            (f'ALTER ROLE "{role}" REPLICATION', f'ALTER ROLE "{role}" NOREPLICATION'),
+        ]
+        for index, (grant, revoke) in enumerate(unsafe_cases, 1):
             sql(source, grant)
             rejected = subprocess.run(grant_command, input=grants.encode(), env={**os.environ, "PGDATABASE": source},
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            assert rejected.returncode != 0
+            assert rejected.returncode != 0, f"위험 권한 역할{index} 허용"
             assert sql(source, f"SELECT has_table_privilege('{role}','orders','SELECT')").strip() == b"f"
             sql(source, revoke)
         subprocess.run(grant_command, input=grants.encode(), env={**os.environ, "PGDATABASE": source},
@@ -115,7 +119,7 @@ def run():
                      "tables_compared": len(before), "records": counts, "lost_records": 0,
                      "sequences_compared": len(json.loads(sequences_before)),
                      "public_security_definer_execute": 0,
-                     "unsafe_role_rejections": 2, "backup_role_update_rejected": True,
+                     "unsafe_role_rejections": len(unsafe_cases), "backup_role_update_rejected": True,
                      "restore_seconds": round(time.monotonic() - restore_started, 3),
                      "total_seconds": round(time.monotonic() - started, 3)}
     finally:
@@ -131,6 +135,9 @@ if __name__ == "__main__":
     os.umask(0o077)
     try:
         run()
+    except AssertionError as error:
+        print("합성 백업 복구 시험 실패: " + str(error), file=sys.stderr)
+        sys.exit(1)
     except Exception:
         print("합성 백업 복구 시험 실패", file=sys.stderr)
         sys.exit(1)

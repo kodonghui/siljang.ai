@@ -6,8 +6,10 @@ DO $check$
 DECLARE r pg_roles;
 BEGIN
   SELECT * INTO STRICT r FROM pg_roles WHERE rolname=current_setting('siljang.backup_role');
-  IF r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolbypassrls OR r.rolinherit
+  IF r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolbypassrls OR r.rolinherit OR r.rolreplication
      OR EXISTS (SELECT 1 FROM pg_auth_members WHERE member=r.oid)
+     OR has_database_privilege(r.oid,current_database(),'CREATE')
+     OR has_schema_privilege(r.oid,'public','CREATE')
      OR EXISTS (SELECT 1 FROM pg_class WHERE relnamespace='public'::regnamespace AND relowner=r.oid)
      OR EXISTS (SELECT 1 FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind IN ('r','p')
                 AND (has_table_privilege(r.oid,oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')

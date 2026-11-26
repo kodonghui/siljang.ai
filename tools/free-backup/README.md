@@ -15,7 +15,7 @@
 아래 단계는 아직 실행하지 않았습니다. 학원컴 Aside CLI 연결이 회복되면 진행합니다. 비밀번호 재설정·요금제 변경·실제 데이터 지우기는 하지 않습니다.
 
 1. 학원컴 Aside Vault에 age 개인 키를 만들고 보관합니다. 개인 키를 저장소·artifact·Actions 비밀 값에 넣지 않습니다. Vault에서 읽어 복호화할 수 있는지 확인한 뒤 공개 수신 키만 사용합니다. 이 PR의 CI 키는 매번 버리는 임시 합성 시험 키입니다.
-2. 운영 DB에 앱·지우기 역할과 다른 새 `NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS` 로그인 역할을 만듭니다. 비밀번호는 Vault에만 보관합니다. 소유자/역할 멤버십/쓰기/민감 함수 실행 권한이 있는 기존 역할은 `grants.sql`이 거절합니다. 실제 이행 소유자를 `schema_owner`, 새 역할을 `backup_role`로 주어 적용합니다. 새 역할은 `public`의 읽기와 시퀀스 SELECT만 필요합니다. 새 DDL을 다른 소유자로 적용하면 그 소유자의 기본 읽기 권한도 검토해야 합니다. RLS를 켜거나 스키마를 늘리면 백업 범위를 다시 검토합니다.
+2. 운영 DB에 앱·지우기 역할과 다른 새 `NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION` 로그인 역할을 만듭니다. 비밀번호는 Vault에만 보관합니다. 소유자/역할 멤버십/스키마·DB 생성/복제/쓰기/민감 함수 실행 권한이 있는 기존 역할은 `grants.sql`이 거절합니다. 실제 이행 소유자를 `schema_owner`, 새 역할을 `backup_role`로 주어 적용합니다. 새 역할은 `public`의 읽기와 시퀀스 SELECT만 필요합니다. 새 DDL을 다른 소유자로 적용하면 그 소유자의 기본 읽기 권한도 검토해야 합니다. RLS를 켜거나 스키마를 늘리면 백업 범위를 다시 검토합니다.
 3. GitHub Actions secrets에 `BACKUP_DATABASE_URL`, `BACKUP_AGE_RECIPIENT`만 등록합니다. 연결은 TLS 호스트 검증을 통과해야 합니다. 현재 클라이언트는 PostgreSQL 17.11이며 서버가 17보다 높아지면 먼저 클라이언트/복구 CI를 갱신합니다. 직접 연결은 IPv6를 쓰며, Actions에서 닿지 않으면 무료 session pooler의 호환성을 읽기 전용 덤프로 확인합니다. transaction pooler는 쓰지 않고 IPv4 유료 추가 기능을 사지 않습니다. 계정·주소·키 값은 기록하지 않습니다.
 4. 저장소 변수 `FREE_BACKUP_ENABLED=true`로 켜고 main에서 `free-backup`을 수동 실행합니다. 암호화 artifact 하나·7일 설정·성공 시각을 기록합니다. 실패 알림 메일 수신은 TASK-016의 남은 실제 확인과 연결합니다.
 5. 그 파일을 Vault 개인 키로 복호화하여 격리된 새 시험 DB에 복구합니다. 원본 주문·동의·결제의 수와 내용을 비교하고 시간/손실 수만 기록합니다. 이후 첫 예약 실행도 확인합니다. 이 확인 전에는 TASK-165 끝남을 표시하지 않습니다.
