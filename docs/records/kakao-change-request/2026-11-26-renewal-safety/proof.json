@@ -1,0 +1,44 @@
+{
+  "sourceCommit": "3f87e2a0757bd4e860a73143fc7110ac4e243f2a",
+  "publicEquivalentHead": "081f1e08386f2fe0339aabdb2a09cc5bc2dc1bc5",
+  "sourceTree": "b8831c81ff53ee696430ab6dc62b6e1744a8d805",
+  "baseMain": "251a25a94d2cc61d617f77012b12a7183d172f7c",
+  "scopeGitObjects": {
+    "app/server": "7031dec67382255d57f0eb0adad238bd6d1e258a",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "e30e8dae343f4b0799f9aaa3b4ec01c94c7704c8",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "4e79c77840b3f9622a7e916e2c1be5ddcab5670a",
+    ".github/workflows/app.yml": "48272846a558266023ebbbc43a180453ab9646fd",
+    "tools/staging-login-callback-grants.sql": "ea7b71046c56e98e83c73640476ea65f8e2842d5",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 42,
+  "server": {
+    "files": 175,
+    "passed": 3249
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "nodePassed": 96,
+  "nodeSource": "3f87e2a0757bd4e860a73143fc7110ac4e243f2a",
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "states": 6,
+  "frames": 12,
+  "responseRows": 29,
+  "responseFrames": 20,
+  "browserExecuted": false,
+  "realKakao": false,
+  "modelCallsAdded": 0,
+  "outboundRequestsAdded": 0,
+  "npmCi": "동일 lock 설치 재사용. 새 설치는 현재 PR CI에서 확인 예정",
+  "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
+  "classification": "현재 작업의 최종 head CI/코드·보안 검토/병합/자기 main 전. 완료 표시는 추가하지 않음"
+}
