@@ -126,7 +126,7 @@ interface OperatorReviewShopCase {
 }
 interface OperatorRecordShopCase {
   readonly method: "GET";
-  readonly path: "/operator/shops/:shopId/orders/:orderId";
+  readonly path: "/operator/shops/:shopId/orders/:orderId" | "/operator/shops/:shopId/records";
   readonly kind: "operator_records";
 }
 
@@ -216,6 +216,7 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "GET", path: "/owner/operating-rules/versions/:version", kind: "rules" },
   { method: "GET", path: "/operator/shops/:shopId", kind: "operator_review" },
   { method: "GET", path: "/operator/shops/:shopId/orders/:orderId", kind: "operator_records" },
+  { method: "GET", path: "/operator/shops/:shopId/records", kind: "operator_records" },
   { method: "POST", path: "/operator/shops/:shopId/license-review", kind: "operator_review" },
 ];
 
@@ -586,6 +587,40 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
         expect(response.text).not.toContain(env.b.channelId);
         expect(response.text).not.toContain(env.b.botId);
         expect(await snapshotShop(db, env.b)).toEqual(before);
+      }
+      return;
+    }
+    if (c.kind === "operator_records" && c.path.endsWith("/records")) {
+      const beforeOwner = await snapshots(db, env);
+      expect((await send(env, "GET", { url: `/operator/shops/${env.b.shopId}/records` })).status).toBe(401);
+      expect(await snapshots(db, env)).toEqual(beforeOwner);
+      const session = await seedOperatorSession(db, new Date());
+      const call = async (shopId: string, kind = "orders", extra = "") =>
+        env.app.request(
+          `https://siljang.example/api/operator/shops/${shopId}/records?kind=${kind}${extra}`,
+          { headers: { cookie: session.cookie, [CLIENT_IP_HEADER]: TEST_IPV4 } },
+          testEnv(),
+        );
+      for (const kind of ["orders", "consultations"])
+        for (const target of [env.a, env.b]) {
+          const response = await call(target.shopId, kind, `&shopId=${target === env.a ? env.b.shopId : env.a.shopId}`);
+          expect(response.status).toBe(200);
+          const body = (await response.json()) as {
+            orders: { orderId: string }[];
+            consultations: { consultationId: string }[];
+          };
+          if (kind === "orders") expect(body.orders.map((row) => row.orderId)).toEqual([target.orderId]);
+          else expect(body.consultations.map((row) => row.consultationId)).toEqual([target.consultationId]);
+        }
+      const before = await snapshots(db, env);
+      let missing: unknown;
+      for (const shopId of [newUuid(), "not-a-uuid", "x".repeat(101)]) {
+        const response = await call(shopId),
+          body = await expectProblem(response, "not_found"),
+          comparable = comparableProblem(body);
+        if (missing === undefined) missing = comparable;
+        else expect(comparable).toEqual(missing);
+        expect(await snapshots(db, env)).toEqual(before);
       }
       return;
     }

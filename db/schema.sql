@@ -2233,6 +2233,46 @@ $$;
 COMMENT ON FUNCTION read_operator_order(uuid,uuid,uuid) IS 'TASK-159 운영자 주문 조회: 현재 이름·연락처·환불 계좌는 가린 값, 건강 답은 유무만. 원문·사진 경로는 반환하지 않음';
 REVOKE ALL ON FUNCTION read_operator_order(uuid,uuid,uuid) FROM PUBLIC;
 
+CREATE FUNCTION read_operator_record_list(p_shop uuid,p_operator uuid,p_kind text,p_after jsonb,p_limit integer,p_now timestamptz)
+RETURNS TABLE(item jsonb,customer_id uuid,cursor_at text,cursor_key text)
+LANGUAGE sql STABLE STRICT SECURITY DEFINER SET search_path=pg_catalog AS $$
+  WITH authorized AS (
+    SELECT 1 FROM public.operators op WHERE op.id=p_operator AND op.disabled_at IS NULL AND op.mfa_enrolled_at IS NOT NULL AND op.mfa_factor_id IS NOT NULL
+  ), records AS (
+    SELECT jsonb_build_object(
+      'orderId',o.id,'orderNo',o.order_no,'kept',k.id IS NOT NULL,'keptRecordId',k.id,
+      'status',CASE WHEN k.id IS NULL THEN o.status END,
+      'pickupAt',CASE WHEN k.id IS NULL THEN o.pickup_at END,
+      'amount',CASE WHEN k.id IS NULL THEN o.amount END,
+      'customerNameMasked',CASE WHEN k.id IS NULL AND nullif(btrim(d.customer_name),'') IS NOT NULL THEN left(btrim(d.customer_name),1)||repeat('*',greatest(char_length(btrim(d.customer_name))-1,0)) END,
+      'customerPhoneMasked',CASE WHEN k.id IS NULL AND d.customer_phone IS NOT NULL THEN '***-****-'||right(regexp_replace(d.customer_phone,'[^0-9]','','g'),4) END,
+      'finishedAt',coalesce(k.finished_at,o.finished_at),'contractKeepUntil',k.contract_keep_until,'createdAt',o.requested_at
+    ) AS item,o.customer_id,o.requested_at AS at,o.id
+    FROM public.orders o
+    LEFT JOIN public.order_details d ON d.shop_id=p_shop AND d.order_id=o.id AND d.version=o.version AND o.personal_data_purged_at IS NULL
+    LEFT JOIN public.kept_records k ON k.shop_id=p_shop AND k.order_id=o.id AND k.contract_keep_until>p_now
+    WHERE o.shop_id=p_shop AND p_kind='orders' AND EXISTS(SELECT 1 FROM authorized)
+      AND (o.personal_data_purged_at IS NULL OR k.id IS NOT NULL)
+    UNION ALL
+    SELECT jsonb_build_object(
+      'consultationId',c.id,'status',c.status,'startedAt',c.opened_at,
+      'lastMessageAt',(SELECT max(m.created_at) FROM public.messages m WHERE m.shop_id=p_shop AND m.consultation_id=c.id),
+      'orderNos',coalesce((SELECT jsonb_agg(q.order_no ORDER BY q.requested_at DESC,q.id DESC) FROM (
+        SELECT ro.id,ro.order_no,ro.requested_at FROM public.orders ro WHERE ro.shop_id=p_shop AND ro.consultation_id=c.id
+        ORDER BY ro.requested_at DESC,ro.id DESC LIMIT 20
+      ) q),'[]'::jsonb),
+      'maskedValueCount',(SELECT least(count(*),1000)::int FROM public.masked_values mv WHERE mv.shop_id=p_shop AND mv.consultation_id=c.id)
+    ),c.customer_id,c.opened_at,c.id
+    FROM public.consultations c WHERE c.shop_id=p_shop AND p_kind='consultations' AND EXISTS(SELECT 1 FROM authorized)
+  )
+  SELECT r.item,r.customer_id,to_char(r.at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),r.id::text
+  FROM records r
+  WHERE p_limit BETWEEN 1 AND 101 AND (p_after->>'at' IS NULL OR (r.at,r.id)<((p_after->>'at')::timestamptz,(p_after->>'key')::uuid))
+  ORDER BY r.at DESC,r.id DESC LIMIT greatest(0,least(p_limit,101));
+$$;
+COMMENT ON FUNCTION read_operator_record_list(uuid,uuid,text,jsonb,integer,timestamptz) IS 'TASK-159 운영자 주문/상담 목록: 원문·사진 경로 없이 가린 값과 페이지 위치만. 보관 기록은 식별/기간만';
+REVOKE ALL ON FUNCTION read_operator_record_list(uuid,uuid,text,jsonb,integer,timestamptz) FROM PUBLIC;
+
 -- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음.
 COMMENT ON COLUMN owners.id IS '사장님 ID';
 COMMENT ON COLUMN owners.kakao_account_id IS '카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-260). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)';
