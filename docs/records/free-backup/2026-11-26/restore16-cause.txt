@@ -1,0 +1,3 @@
+실행 도구 출력에서 확인한 원인(디버그 임시 파일은 성공 재실행 때 비어짐):
+pg_restore: error: could not execute query: ERROR:  schema "public" already exists
+Command was: CREATE SCHEMA public;

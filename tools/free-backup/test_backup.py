@@ -110,6 +110,28 @@ class BackupTests(unittest.TestCase):
         self.assertNotEqual(subprocess.run([AGE, "-d", "-i", str(self.key), str(self.output)],
                                           capture_output=True).returncode, 0)
 
+    def production_client(self, mode):
+        docker = self.root / "docker"
+        docker.write_text("#!/bin/sh\nprintf '%s\\n' \"$@\"\n")
+        docker.chmod(0o700)
+        return subprocess.run(["bash", str(SCRIPT.with_name("production-client.sh")), "--format=custom"],
+                              env={**self.env, "PATH": str(self.root) + os.pathsep + os.environ["PATH"],
+                                   "PGDATABASE": self.env["BACKUP_DATABASE_URL"] + mode}, capture_output=True)
+
+    def test_production_requires_full_tls_verification(self):
+        for query in ["", "?sslmode=disable", "?sslmode=require", "?sslmode=verify-full&sslmode=disable"]:
+            with self.subTest(query=query):
+                result = self.production_client(query)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn(b"docker", result.stdout)
+                self.assertNotIn(b"private-value", result.stdout + result.stderr)
+
+    def test_production_docker_arguments_never_contain_connection_value(self):
+        result = self.production_client("?sslmode=verify-full")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn(b"PGDATABASE", result.stdout)
+        self.assertNotIn(b"private-value", result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

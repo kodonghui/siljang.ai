@@ -1,0 +1,37 @@
+.......FFFF..
+======================================================================
+FAIL: test_production_requires_full_tls_verification (__main__.BackupTests.test_production_requires_full_tls_verification) (query='')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/siljang-task165-tls-red-ue700omj/test_backup.py", line 125, in test_production_requires_full_tls_verification
+    self.assertNotEqual(result.returncode, 0)
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_production_requires_full_tls_verification (__main__.BackupTests.test_production_requires_full_tls_verification) (query='?sslmode=disable')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/siljang-task165-tls-red-ue700omj/test_backup.py", line 125, in test_production_requires_full_tls_verification
+    self.assertNotEqual(result.returncode, 0)
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_production_requires_full_tls_verification (__main__.BackupTests.test_production_requires_full_tls_verification) (query='?sslmode=require')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/siljang-task165-tls-red-ue700omj/test_backup.py", line 125, in test_production_requires_full_tls_verification
+    self.assertNotEqual(result.returncode, 0)
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_production_requires_full_tls_verification (__main__.BackupTests.test_production_requires_full_tls_verification) (query='?sslmode=verify-full&sslmode=disable')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/siljang-task165-tls-red-ue700omj/test_backup.py", line 125, in test_production_requires_full_tls_verification
+    self.assertNotEqual(result.returncode, 0)
+AssertionError: 0 == 0
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.672s
+
+FAILED (failures=4)
