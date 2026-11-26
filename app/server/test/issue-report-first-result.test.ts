@@ -151,8 +151,9 @@ describeDb("신고 카드의 실제 저장 첫 결과와 재전달(TASK-147)", (
         ?.n,
     ).toBe(0);
   });
-  it("실제 최소 역할로 표시하고 설명 권한이 없으면 원문 없이 일시 보류한다", async () => {
+  it("최소 역할은 한 카드만 읽고 원문 전체·다른 범위를 막으며 함수 권한이 없으면 보류한다", async () => {
     await prepare();
+    const other = await createShop(isolated.db, "다른 합성 신고 자료 가게");
     const role = `issue147_${newUuid().replaceAll("-", "")}`;
     let positive = false,
       revoked = false;
@@ -178,13 +179,37 @@ describeDb("신고 카드의 실제 저장 첫 결과와 재전달(TASK-147)", (
             await raw.query(`SELECT has_column_privilege(current_user,'issue_details','description','UPDATE') AS description,
           has_column_privilege(current_user,'issue_details','health_concern','UPDATE') AS health,
           has_column_privilege(current_user,'issue_details','order_id','UPDATE') AS target,
-          has_column_privilege(current_user,'issue_details','updated_at','UPDATE') AS clock`)
+          has_column_privilege(current_user,'issue_details','updated_at','UPDATE') AS clock,
+          has_column_privilege(current_user,'issue_details','description','SELECT') AS raw_description,
+          has_function_privilege(current_user,'read_prepared_issue_card(uuid,uuid,uuid,uuid)','EXECUTE') AS source`)
           ).rows[0],
-        ).toEqual({ description: false, health: false, target: false, clock: true });
+        ).toEqual({
+          description: false,
+          health: false,
+          target: false,
+          clock: false,
+          raw_description: false,
+          source: true,
+        });
+        expect(
+          (
+            await raw.query(`SELECT p.prosecdef AS definer,p.proconfig AS config,
+              EXISTS(SELECT 1 FROM aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
+                WHERE a.grantee=0 AND a.privilege_type='EXECUTE') AS public_execute
+              FROM pg_proc p WHERE p.oid='read_prepared_issue_card(uuid,uuid,uuid,uuid)'::regprocedure`)
+          ).rows[0],
+        ).toEqual({ definer: true, config: ["search_path=pg_catalog"], public_execute: false });
+        for (const args of [
+          [other.shopId, shop.customerId, shop.consultationId, shop.orderId],
+          [shop.shopId, other.customerId, shop.consultationId, shop.orderId],
+          [shop.shopId, shop.customerId, other.consultationId, shop.orderId],
+          [shop.shopId, shop.customerId, shop.consultationId, other.orderId],
+        ])
+          expect((await raw.query("SELECT * FROM read_prepared_issue_card($1,$2,$3,$4)", args)).rows).toEqual([]);
         expect((await readConfirmCardDelivery(db, input)).card?.issueReport?.description).toBe("합성 신고 설명");
         positive = true;
         await raw.query("SET LOCAL ROLE NONE");
-        await raw.query(`REVOKE SELECT(description) ON issue_details FROM "${role}"`);
+        await raw.query(`REVOKE EXECUTE ON FUNCTION read_prepared_issue_card(uuid,uuid,uuid,uuid) FROM "${role}"`);
         await raw.query(`SET LOCAL ROLE "${role}"`);
         revoked = true;
         await readConfirmCardDelivery(db, input);

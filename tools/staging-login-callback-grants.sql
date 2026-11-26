@@ -221,8 +221,7 @@ GRANT SELECT (id, shop_id, order_id, version, price_list_id, size_option_id, fla
   design_option_id, design_id, design_notes, lettering, colors) ON order_details TO :"runtime_role";
 GRANT SELECT (shop_id, order_detail_id, price_list_id, option_id) ON order_detail_extras TO :"runtime_role";
 
--- TASK-147: 자기 손님이 모은 설명/진료 안내 표지와 사진 개수만 카드 표시로 읽는다. 쓰기/사진 위치는 열지 않는다.
-GRANT SELECT (description, health_concern, status, content_purged_at) ON issue_details TO :"runtime_role";
-GRANT SELECT (id, shop_id, issue_details_id, position) ON issue_photos TO :"runtime_role";
--- PostgreSQL의 FOR UPDATE 행 잠금에는 UPDATE 열 권한이 하나 필요하다. 잠금용 시각 열만 허용한다.
-GRANT UPDATE (updated_at) ON issue_details TO :"runtime_role";
+-- TASK-147: 원문 전체 읽기를 닫고 현재 손님·상담·주문이 일치하는 카드 자료만 함수로 읽는다.
+REVOKE SELECT (description, health_concern, status, content_purged_at), UPDATE (updated_at) ON issue_details FROM :"runtime_role";
+REVOKE SELECT (id, shop_id, issue_details_id, position) ON issue_photos FROM :"runtime_role";
+GRANT EXECUTE ON FUNCTION read_prepared_issue_card(uuid,uuid,uuid,uuid) TO :"runtime_role";

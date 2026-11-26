@@ -1,0 +1,14 @@
+{
+  "failedFullSource": "557e4d2550a5c66a6b45e7d375b8dfcd9a8be214",
+  "serverFiles": 181,
+  "serverPassed": 3375,
+  "serverFailed": 1,
+  "combinedTestExit": 1,
+  "webExecuted": false,
+  "buildExecuted": false,
+  "freshDatabaseRemaining": 0,
+  "originalSecurityTest": "app/server/test/consultation-idle.test.ts",
+  "unchangedOriginalSecurityTestBlob": "ffa4330f9e6c9210739681463416d42ae5720987",
+  "nextMigration": 44,
+  "newCodeValidationPending": true
+}
