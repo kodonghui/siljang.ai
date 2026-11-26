@@ -1,0 +1,44 @@
+
+> typecheck
+> npm run typecheck -w web && npm run typecheck -w server
+
+
+> typecheck
+> tsc -p tsconfig.json
+
+
+> typecheck
+> npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json
+
+
+> types
+> wrangler types --include-env=false src/worker-runtime.d.ts
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProxy environment variables detected. We'll use your proxy for fetch requests.[0m
+
+
+
+ ⛅️ wrangler 4.158.0 (update available 4.168.0)
+───────────────────────────────────────────────
+Generating runtime types...
+
+Runtime types generated.
+
+
+✨ Types written to src/worker-runtime.d.ts
+
+📖 Read about runtime types
+https://developers.cloudflare.com/workers/languages/typescript/#generate-types
+📣 Remember to rerun 'wrangler types' after you change your wrangler.jsonc file.
+
+test/operator-records.test.ts(436,38): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+test/support/cross-shop.ts(677,85): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+npm error Lifecycle script `typecheck` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task159-operator-records/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task159-operator-records/app/server
+npm error command failed
+npm error command sh -c npm run types && tsc -p tsconfig.json && tsc -p tsconfig.test.json

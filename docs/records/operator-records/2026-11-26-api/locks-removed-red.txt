@@ -1,0 +1,79 @@
+
+ RUN  v5.1.0 /workspace/siljang-task159-operator-records/app/server
+
+ ❯ test/operator-records.test.ts (40 tests | 3 failed | 37 skipped) 1194ms
+   ❯ 운영자 가게 기록과 사유 있는 열기(TASK-159) (40)
+     × 연락처 원문을 읽는 동안 실제 주문 지우기는 건너뛰고 잠금 해제 뒤 지운다 115ms
+     × 상담 글을 읽는 동안 실제 상담 지우기는 건너뛰고 해제 뒤 글·번호를 지운다 69ms
+     × 보관 이름 열기는 실제 기간 만료 지우기와 같은 행 잠금을 쓰고 만료 뒤0행이다 38ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 연락처 원문을 읽는 동안 실제 주문 지우기는 건너뛰고 잠금 해제 뒤 지운다
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ test/operator-records.test.ts:595:85
+    593|         );
+    594|         expect(opened.rows[0]?.source.state).toBe("ready");
+    595|         expect(await scoped.transaction((tx) => purgeOrder(tx, shop.or…
+       |                                                                                     ^
+    596|       });
+    597|       expect(await scoped.transaction((tx) => purgeOrder(tx, shop.orde…
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ test/operator-records.test.ts:589:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 상담 글을 읽는 동안 실제 상담 지우기는 건너뛰고 해제 뒤 글·번호를 지운다
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ test/operator-records.test.ts:626:99
+    624|           ).rowCount,
+    625|         ).toBe(1);
+    626|         expect(await scoped.transaction((tx) => purgeConsultation(tx, …
+       |                                                                                                   ^
+    627|       });
+    628|       expect(await scoped.transaction((tx) => purgeConsultation(tx, sh…
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ test/operator-records.test.ts:615:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/operator-records.test.ts > 운영자 가게 기록과 사유 있는 열기(TASK-159) > 보관 이름 열기는 실제 기간 만료 지우기와 같은 행 잠금을 쓰고 만료 뒤0행이다
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ test/operator-records.test.ts:662:90
+    660|           ).rowCount,
+    661|         ).toBe(1);
+    662|         expect(await scoped.transaction((tx) => purgeKeptContract(tx, …
+       |                                                                                          ^
+    663|       });
+    664|       expect(
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ test/operator-records.test.ts:651:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 37 skipped (40)
+   Start at  08:45:47
+   Duration  3.33s (import 50%, tests 38%, transform 12%)

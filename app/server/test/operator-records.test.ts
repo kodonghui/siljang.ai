@@ -1,9 +1,18 @@
 /** 합성 운영자 세션과 실제 로컬 DB로 개인정보 표시·접속기록 계약을 검사한다. */
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
+import { purgeConsultation } from "../src/purge-consultation";
+import { purgeKeptContract } from "../src/purge-kept";
 import { purgeOrder } from "../src/purge-order";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
-import { accessLogRows, CLIENT_IP_HEADER, expectOneAccessRow, TEST_IPV4 } from "./support/access-log";
+import {
+  accessLogRows,
+  CLIENT_IP_HEADER,
+  expectFailClosed,
+  expectOneAccessRow,
+  failingAccessInsert,
+  TEST_IPV4,
+} from "./support/access-log";
 import { createConsentWithdrawalFixture } from "./support/consent-withdrawal-fixture";
 import { expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newRequestKey, newUuid, testEnv } from "./support/db";
@@ -332,5 +341,340 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
     await expectProblem(await call(`/orders/${shop.orderId}`), "not_found");
     await expectProblem(await open("order_contact", shop.orderId), "original_erased");
     expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(before);
+  });
+  it.each(["/records", "/consultations/current", "/orders/current"])(
+    "읽음 기록 저장 실패 %s는 응답에 개인정보를 내보내지 않는다",
+    async (path) => {
+      app = createApp({
+        connect: failingAccessInsert(() => isolated.connect()),
+        services: { now: () => NOW, fieldCrypto: fc },
+        logSink: (line) => logs.push(line),
+      });
+      const suffix = path
+        .replace("consultations/current", `consultations/${shop.consultationId}`)
+        .replace("orders/current", `orders/${shop.orderId}`);
+      await expectFailClosed(isolated.db, shop.shopId, () => call(suffix), [NAME, PHONE, DIGITS, PRIVATE_TEXT]);
+      expect(logs.join("\n")).not.toContain(NAME);
+      expect(logs.join("\n")).not.toContain(PRIVATE_TEXT);
+    },
+  );
+  it.each(["masked_value", "order_contact", "consultation_text"])(
+    "%s 열기 기록 저장 실패는 본문과 요청 키 완료를 되돌린다",
+    async (kind) => {
+      app = createApp({
+        connect: failingAccessInsert(() => isolated.connect()),
+        services: { now: () => NOW, fieldCrypto: fc },
+        logSink: (line) => logs.push(line),
+      });
+      const id = kind === "masked_value" ? maskedId : kind === "order_contact" ? shop.orderId : shop.consultationId;
+      await expectFailClosed(isolated.db, shop.shopId, () => open(kind, id), [NAME, PHONE, DIGITS, PRIVATE_TEXT]);
+      expect(
+        (await isolated.db.query("SELECT 1 FROM request_keys WHERE actor_id=$1", [session.operatorId])).rowCount,
+      ).toBe(0);
+      for (const value of [NAME, PHONE, DIGITS, PRIVATE_TEXT]) expect(logs.join("\n")).not.toContain(value);
+    },
+  );
+  it("같은 키 재열기도 기록 저장이 실패하면 앞 원문을 반환하지 않는다", async () => {
+    const key = newRequestKey();
+    expect((await open("masked_value", maskedId, "손님 문의: 픽업 연락 확인", key)).status).toBe(200);
+    app = createApp({
+      connect: failingAccessInsert(() => isolated.connect()),
+      services: { now: () => NOW, fieldCrypto: fc },
+      logSink: (line) => logs.push(line),
+    });
+    await expectFailClosed(
+      isolated.db,
+      shop.shopId,
+      () => open("masked_value", maskedId, "손님 문의: 픽업 연락 확인", key),
+      [DIGITS],
+    );
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(1);
+  });
+  it.each(["/records", "/consultations/current", "/orders/current", "/originals"])(
+    "%s는 쿠키가 없으면401이고 값을 보이지 않는다",
+    async (path) => {
+      const suffix = path
+        .replace("consultations/current", `consultations/${shop.consultationId}`)
+        .replace("orders/current", `orders/${shop.orderId}`);
+      const response =
+        path === "/originals"
+          ? await call(suffix, {
+              method: "POST",
+              headers: {
+                cookie: "",
+                origin: ORIGIN,
+                "content-type": "application/json",
+                "Idempotency-Key": newRequestKey(),
+              },
+              body: JSON.stringify({ targetKind: "order_contact", targetId: shop.orderId, reason: "손님 문의 확인" }),
+            })
+          : await call(suffix, { headers: { cookie: "" } });
+      await expectProblem(response, "unauthenticated");
+      expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(0);
+    },
+  );
+  it.each(["", "짧음", "x".repeat(201)])("유효하지 않은 사유는422이고 열기·접속기록이 없다(%s)", async (reason) => {
+    await expectProblem(await open("order_contact", shop.orderId, reason), "validation_failed");
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(0);
+  });
+  it("처음 연 뒤 개인정보를 지우면 같은 키도 현재 지워짐409로 닫힌다", async () => {
+    const key = newRequestKey();
+    expect((await open("order_contact", shop.orderId, "손님 문의: 픽업 연락 확인", key)).status).toBe(200);
+    await finish(31);
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), isolated.db);
+    expect(await scoped.transaction((tx) => purgeOrder(tx, shop.orderId, NOW))).toBe(1);
+    await expectProblem(await open("order_contact", shop.orderId, "손님 문의: 픽업 연락 확인", key), "original_erased");
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(1);
+  });
+  it("지운 상담의 글과 번호는 남은 행이 있어도409이고 복호화하지 않는다", async () => {
+    await isolated.db.query("UPDATE consultations SET status='deleted',deleted_at=$2 WHERE id=$1", [
+      shop.consultationId,
+      NOW,
+    ]);
+    for (const [kind, id] of [
+      ["consultation_text", shop.consultationId],
+      ["masked_value", maskedId],
+    ] as const)
+      await expectProblem(await open(kind, id), "original_erased");
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(0);
+  });
+  it("봉투가 같은 가게의 다른 값으로 바뀌면 HMAC과 끝4자리 불일치로500·열기0이다", async () => {
+    await isolated.db.query("UPDATE masked_values SET original_enc=$2 WHERE id=$1", [
+      maskedId,
+      await fc.seal("01011115678", { purpose: "masked_values.original", shopId: shop.shopId }),
+    ]);
+    await expectFailClosed(isolated.db, shop.shopId, () => open("masked_value", maskedId), ["01011115678", DIGITS]);
+  });
+  it("같은 키에 다른 사유·대상은422이고 원문을 다시 열지 않는다", async () => {
+    const key = newRequestKey();
+    expect((await open("order_contact", shop.orderId, "손님 문의: 픽업 연락 확인", key)).status).toBe(200);
+    await expectProblem(
+      await open("order_contact", shop.orderId, "분쟁 문의: 계약 사실 확인", key),
+      "idempotency_key_reused",
+    );
+    await expectProblem(
+      await open("consultation_text", shop.consultationId, "손님 문의: 픽업 연락 확인", key),
+      "idempotency_key_reused",
+    );
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(1);
+  });
+  it.each([
+    "/records?limit=0",
+    "/records?kind=private",
+    "/records?cursor=wrong",
+    "/consultations/current?limit=101",
+    "/consultations/current?cursor=wrong",
+  ])("목록/상담의 잘못된 페이지는422이고 읽음0이다(%s)", async (path) => {
+    await expectProblem(
+      await call(path.replace("consultations/current", `consultations/${shop.consultationId}`)),
+      "validation_failed",
+    );
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(0);
+  });
+  it("메시지 페이지는 마이크로초·2^53 밖 순번을 잃지 않고 같은 커서로 글20개까지만 연다", async () => {
+    const base = "9007199254740993";
+    await isolated.db.query(
+      "UPDATE messages SET timeline_seq=$2,created_at='2026-11-28T06:00:00.000001Z' WHERE id=$1",
+      [shop.messageId, base],
+    );
+    await isolated.db.query(
+      "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,created_at,timeline_seq,kakao_message_id) SELECT $1,$2,'inbound','customer','text','페이지 합성 글 [전화번호1]','2026-11-28T06:00:00.000001Z'::timestamptz+CASE WHEN i>20 THEN interval '1 microsecond' ELSE interval '0' END,$3::bigint+i,repeat(md5(gen_random_uuid()::text),2) FROM generate_series(1,22) i",
+      [shop.shopId, shop.consultationId, base],
+    );
+    const expected = (
+      await isolated.db.query<{ id: string }>(
+        "SELECT id FROM messages WHERE shop_id=$1 AND consultation_id=$2 ORDER BY created_at,timeline_seq",
+        [shop.shopId, shop.consultationId],
+      )
+    ).rows.map((x) => x.id);
+    const page = async (cursor?: string) => {
+      const res = await call(`/consultations/${shop.consultationId}?limit=10${cursor ? `&cursor=${cursor}` : ""}`),
+        text = await res.text();
+      expect(res.status, text).toBe(200);
+      const body = JSON.parse(text);
+      expectSchema("OperatorConsultation", body);
+      return body as { items: { messageId: string }[]; nextCursor: string | null };
+    };
+    const first = await page();
+    expect(first.items.map((x) => x.messageId)).toEqual(expected.slice(0, 10));
+    expect(first.nextCursor).toMatch(/^[A-Za-z0-9_-]{179,181}$/);
+    const firstOpen = await open("consultation_text", shop.consultationId);
+    const firstBody = (await firstOpen.json()) as { consultationText: { items: unknown[] } };
+    expect(firstBody.consultationText.items).toHaveLength(20);
+    if (!first.nextCursor) throw new Error("페이지 커서 없음");
+    const opened = await call("/originals", {
+      method: "POST",
+      headers: { origin: ORIGIN, "content-type": "application/json", "Idempotency-Key": newRequestKey() },
+      body: JSON.stringify({
+        targetKind: "consultation_text",
+        targetId: shop.consultationId,
+        reason: "손님 문의: 대화 글 확인",
+        cursor: first.nextCursor,
+      }),
+    });
+    const openedBody = (await opened.json()) as {
+      consultationText: { items: { messageId: string; textMasked: string }[] };
+    };
+    expect(opened.status).toBe(200);
+    expectSchema("OriginalValue", openedBody);
+    expect(openedBody.consultationText.items.map((x) => x.messageId)).toEqual(expected.slice(10));
+    expect(JSON.stringify(openedBody)).toContain("[전화번호1]");
+    expect(JSON.stringify(openedBody)).not.toContain(DIGITS);
+    // 이미 지나간 위치에 새 행을 넣어도 뒤 페이지는 중복/누락 없이 이어진다.
+    await isolated.db.query(
+      "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,body_masked,created_at,kakao_message_id) VALUES($1,$2,'inbound','customer','text','뒤늦게 저장한 합성 글','2026-11-28T06:00:00.000000Z',repeat(md5(gen_random_uuid()::text),2))",
+      [shop.shopId, shop.consultationId],
+    );
+    const second = await page(first.nextCursor);
+    if (!second.nextCursor) throw new Error("셋째 페이지 커서 없음");
+    const third = await page(second.nextCursor);
+    expect(third.nextCursor).toBeNull();
+    expect([...first.items, ...second.items, ...third.items].map((x) => x.messageId)).toEqual(expected);
+    const before = (await accessLogRows(isolated.db, shop.shopId)).length;
+    const other = await createShop(isolated.db, "다른 페이지 상담");
+    await expectProblem(
+      await call(`/consultations/${other.consultationId}?cursor=${first.nextCursor}`),
+      "validation_failed",
+    );
+    await expectProblem(await call(`/records?cursor=${first.nextCursor}`), "validation_failed");
+    await expectProblem(
+      await call("/originals", {
+        method: "POST",
+        headers: { origin: ORIGIN, "content-type": "application/json", "Idempotency-Key": newRequestKey() },
+        body: JSON.stringify({
+          targetKind: "consultation_text",
+          targetId: other.consultationId,
+          reason: "손님 문의: 대화 글 확인",
+          cursor: first.nextCursor,
+        }),
+      }),
+      "validation_failed",
+    );
+    expect(await accessLogRows(isolated.db, shop.shopId)).toHaveLength(before);
+  });
+  it("상담 목록은 마이크로초 동률을 ID로 이어 읽고 주문 목록 커서와 섞지 않는다", async () => {
+    await isolated.db.query("UPDATE consultations SET opened_at='2026-11-28T05:00:00.000001Z' WHERE id=$1", [
+      shop.consultationId,
+    ]);
+    await isolated.db.query(
+      "INSERT INTO consultations(shop_id,customer_id,status,opened_at,ended_at) SELECT $1,$2,'ended','2026-11-28T05:00:00.000001Z'::timestamptz+CASE WHEN i>2 THEN interval '1 microsecond' ELSE interval '0' END,'2026-11-28T05:00:00Z' FROM generate_series(1,4) i",
+      [shop.shopId, shop.customerId],
+    );
+    const expected = (
+      await isolated.db.query<{ id: string }>(
+        "SELECT id FROM consultations WHERE shop_id=$1 ORDER BY opened_at DESC,id DESC",
+        [shop.shopId],
+      )
+    ).rows.map((x) => x.id);
+    const ids: string[] = [];
+    let cursor: string | null = null;
+    do {
+      const response = await call(`/records?kind=consultations&limit=2${cursor ? `&cursor=${cursor}` : ""}`),
+        body = (await response.json()) as { consultations: { consultationId: string }[]; nextCursor: string | null };
+      expect(response.status).toBe(200);
+      expectSchema("OperatorRecordList", body);
+      ids.push(...body.consultations.map((x) => x.consultationId));
+      cursor = body.nextCursor;
+      if (cursor) await expectProblem(await call(`/records?kind=orders&cursor=${cursor}`), "validation_failed");
+    } while (cursor);
+    expect(ids).toEqual(expected);
+    expect(new Set(ids).size).toBe(5);
+  });
+  it("연락처 원문을 읽는 동안 실제 주문 지우기는 건너뛰고 잠금 해제 뒤 지운다", async () => {
+    await finish(31);
+    const reader = isolated.connect(),
+      purger = isolated.connect();
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), purger);
+    try {
+      await reader.transaction(async (tx) => {
+        const opened = await tx.query<{ source: { state: string } }>(
+          "SELECT source FROM read_operator_original($1,$2,'order_contact',$3,'{}',$4)",
+          [shop.shopId, session.operatorId, shop.orderId, NOW],
+        );
+        expect(opened.rows[0]?.source.state).toBe("ready");
+        expect(await scoped.transaction((tx) => purgeOrder(tx, shop.orderId, NOW))).toBe(0);
+      });
+      expect(await scoped.transaction((tx) => purgeOrder(tx, shop.orderId, NOW))).toBe(1);
+      await expectProblem(await open("order_contact", shop.orderId), "original_erased");
+    } finally {
+      await Promise.allSettled([reader.close(), purger.close()]);
+    }
+  });
+  it("상담 글을 읽는 동안 실제 상담 지우기는 건너뛰고 해제 뒤 글·번호를 지운다", async () => {
+    await finish(31);
+    const job = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), isolated.db);
+    expect(await job.transaction((tx) => purgeOrder(tx, shop.orderId, NOW))).toBe(1);
+    await isolated.db.query("UPDATE consultations SET status='ended',ended_at=$2 WHERE id=$1", [
+      shop.consultationId,
+      new Date(NOW.getTime() - 31 * 86400000),
+    ]);
+    const reader = isolated.connect(),
+      purger = isolated.connect(),
+      scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), purger);
+    try {
+      await reader.transaction(async (tx) => {
+        expect(
+          (
+            await tx.query("SELECT * FROM read_operator_original($1,$2,'consultation_text',$3,'{}',$4)", [
+              shop.shopId,
+              session.operatorId,
+              shop.consultationId,
+              NOW,
+            ])
+          ).rowCount,
+        ).toBe(1);
+        expect(await scoped.transaction((tx) => purgeConsultation(tx, shop.consultationId, NOW))).toBe(0);
+      });
+      expect(await scoped.transaction((tx) => purgeConsultation(tx, shop.consultationId, NOW))).toBe(1);
+      await expectProblem(await open("consultation_text", shop.consultationId), "original_erased");
+      expect(
+        (await isolated.db.query("SELECT 1 FROM masked_values WHERE consultation_id=$1", [shop.consultationId]))
+          .rowCount,
+      ).toBe(0);
+    } finally {
+      await Promise.allSettled([reader.close(), purger.close()]);
+    }
+  });
+  it("보관 이름 열기는 실제 기간 만료 지우기와 같은 행 잠금을 쓰고 만료 뒤0행이다", async () => {
+    await finish(31);
+    const job = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), isolated.db);
+    expect(await job.transaction((tx) => purgeOrder(tx, shop.orderId, NOW))).toBe(1);
+    const kept = (
+      await isolated.db.query<{ id: string }>("SELECT id FROM kept_records WHERE order_id=$1", [shop.orderId])
+    ).rows[0];
+    if (!kept) throw new Error("보관 자료 없음");
+    const future = new Date("2033-11-28T06:00:00Z"),
+      reader = isolated.connect(),
+      purger = isolated.connect(),
+      scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "purge" }), purger);
+    try {
+      await reader.transaction(async (tx) => {
+        expect(
+          (
+            await tx.query("SELECT * FROM read_operator_original($1,$2,'kept_record',$3,'{}',$4)", [
+              shop.shopId,
+              session.operatorId,
+              kept.id,
+              NOW,
+            ])
+          ).rowCount,
+        ).toBe(1);
+        expect(await scoped.transaction((tx) => purgeKeptContract(tx, kept.id, future))).toBe(0);
+      });
+      expect(
+        (
+          await reader.query("SELECT * FROM read_operator_original($1,$2,'kept_record',$3,'{}',$4)", [
+            shop.shopId,
+            session.operatorId,
+            kept.id,
+            future,
+          ])
+        ).rowCount,
+      ).toBe(0);
+      expect(await scoped.transaction((tx) => purgeKeptContract(tx, kept.id, future))).toBe(1);
+      await expectProblem(await open("kept_record", kept.id), "not_found");
+    } finally {
+      await Promise.allSettled([reader.close(), purger.close()]);
+    }
   });
 });

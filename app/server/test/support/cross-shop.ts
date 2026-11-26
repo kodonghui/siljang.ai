@@ -673,7 +673,7 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
         ["consultation_text", env.b.consultationId],
         ["order_contact", newUuid()],
         ["consultation_text", newUuid()],
-      ]) {
+      ] as const) {
         const body = comparableProblem(await expectProblem(await call(env.a.shopId, kind, id), "not_found"));
         if (missing === undefined) missing = body;
         else expect(body).toEqual(missing);
