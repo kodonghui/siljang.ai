@@ -139,7 +139,12 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
       expect(body.consultationText).toBeNull();
       if (i === 1) expect(res.headers.get("Idempotency-Replayed")).toBe("true");
     }
-    const stored = (await isolated.db.query("SELECT ref::text FROM request_keys WHERE shop_id=$1", [shop.shopId])).rows;
+    const stored = (
+      await isolated.db.query(
+        "SELECT response_ref::text FROM request_keys WHERE actor_kind='operator' AND actor_id=$1",
+        [session.operatorId],
+      )
+    ).rows;
     const access = await accessLogRows(isolated.db, shop.shopId);
     for (const value of [NAME, PHONE, PRIVATE_TEXT]) {
       expect(JSON.stringify(stored)).not.toContain(value);

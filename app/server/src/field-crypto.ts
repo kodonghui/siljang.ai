@@ -25,6 +25,7 @@ export const FIELD_PURPOSES = [
   "messages.kakao_callback",
   "messages.kakao_photo",
   "consultations.message_cursor",
+  "operator.records_cursor",
 ] as const;
 export type FieldPurpose = (typeof FIELD_PURPOSES)[number];
 
@@ -95,7 +96,11 @@ function aad(version: number, context: FieldContext): Uint8Array {
     throw new FieldCryptoError("field context is not valid");
   }
   const parts = [`v${version}`, context.purpose, context.shopId.toLowerCase()];
-  if (context.purpose === "consultations.message_cursor" || context.purpose === "messages.kakao_photo") {
+  if (
+    context.purpose === "consultations.message_cursor" ||
+    context.purpose === "messages.kakao_photo" ||
+    context.purpose === "operator.records_cursor"
+  ) {
     if (!isUuid(context.recordId)) throw new FieldCryptoError("cursor binding is not valid");
     parts.push(context.recordId.toLowerCase());
   } else if (context.recordId !== undefined) throw new FieldCryptoError("field binding is not valid");
