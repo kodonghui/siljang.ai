@@ -1,0 +1,32 @@
+{
+  "database": "siljang_related_88d51d1709df4018a943d2f8117ece0d",
+  "pid": 3491732,
+  "sourceCommit": "b179a03864d12e3967a96b64da36946488ffc37a",
+  "workingTree": true,
+  "files": [
+    "test/calendar.test.ts",
+    "test/calendar-availability.test.ts",
+    "test/calendar-notice-local-date.test.ts",
+    "test/day-before-notice.test.ts",
+    "test/day-before-callback-race.test.ts",
+    "test/due-sources.test.ts",
+    "test/job-runner.test.ts",
+    "test/jobs.test.ts",
+    "test/scheduled-poll.test.ts",
+    "test/customer-notice-scheduled.test.ts",
+    "test/customer-notices-skill.test.ts",
+    "test/kakao-deferred.test.ts",
+    "test/shop-scope-static.test.ts",
+    "test/kakao-runtime-grants.test.ts",
+    "test/staging-runtime-role.test.ts",
+    "test/kakao-callback.test.ts",
+    "test/kakao-callback-expiry-recovery.test.ts",
+    "test/kakao-ai-disclosure.test.ts",
+    "test/kakao-amount-confirmation-merge.test.ts",
+    "test/customer-notice-presentation.test.ts",
+    "test/customer-notice-store.test.ts"
+  ],
+  "stage": "completed",
+  "testExit": 0,
+  "freshDatabaseRemaining": 0
+}

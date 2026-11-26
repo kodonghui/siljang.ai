@@ -3,7 +3,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vite
 import { createApp } from "../src/app";
 import { rescheduleCalendarNotices } from "../src/calendar-notices";
 import { createDayBeforeNotice } from "../src/day-before-notice";
-import { deferredKakaoBatch } from "../src/kakao-deferred";
+import {
+  deferredKakaoBatch,
+  markDeferredKakaoMessages,
+  releaseDeferredKakaoClaim,
+  validateDeferredKakaoCallback,
+} from "../src/kakao-deferred";
 import { ApiError } from "../src/problem";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { describeDb, newRequestKey, newUuid, testEnv } from "./support/db";
@@ -51,6 +56,44 @@ describeDb("TASK134 후속: 캘린더 재예약의 현재 현지 픽업 날짜",
   });
   const scoped = () =>
     shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+
+  const saveCalendar = async (now: Date) => {
+    const app = createApp({
+      connect: () => isolated.connect(),
+      scopes: {
+        owner: async (c) => {
+          if (c.req.header("x-test-owner") !== shop.ownerId) throw new ApiError("unauthenticated");
+          return createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId });
+        },
+      },
+      services: { now: () => now },
+      logSink: () => {},
+    });
+    return app.request(
+      "https://siljang.example/api/owner/calendar",
+      {
+        method: "PUT",
+        headers: {
+          origin: "https://siljang.example",
+          "content-type": "application/json",
+          "Idempotency-Key": newRequestKey(),
+          "x-test-owner": shop.ownerId,
+        },
+        body: JSON.stringify({
+          baseRevision: null,
+          closedWeekdays: [],
+          dailyCapacity: 10,
+          orderCutoffDays: 2,
+          orderCutoffTime: "18:00",
+          replyStart: "09:00",
+          replyEnd: "21:00",
+          dayBeforeNoticeTime: "20:50",
+          reviewRequestTime: "11:00",
+        }),
+      },
+      testEnv(),
+    );
+  };
   it.each([
     {
       zone: "Pacific/Honolulu",
@@ -69,41 +112,7 @@ describeDb("TASK134 후속: 캘린더 재예약의 현재 현지 픽업 날짜",
     async ({ zone, initial, now, expected }) => {
       await isolated.db.query("UPDATE shops SET time_zone=$2 WHERE id=$1", [shop.shopId, zone]);
       expect(await scoped().transaction((tx) => createDayBeforeNotice(tx, shop.orderId, initial))).toBe(true);
-      const app = createApp({
-        connect: () => isolated.connect(),
-        scopes: {
-          owner: async (c) => {
-            if (c.req.header("x-test-owner") !== shop.ownerId) throw new ApiError("unauthenticated");
-            return createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId });
-          },
-        },
-        services: { now: () => now },
-        logSink: () => {},
-      });
-      const response = await app.request(
-        "https://siljang.example/api/owner/calendar",
-        {
-          method: "PUT",
-          headers: {
-            origin: "https://siljang.example",
-            "content-type": "application/json",
-            "Idempotency-Key": newRequestKey(),
-            "x-test-owner": shop.ownerId,
-          },
-          body: JSON.stringify({
-            baseRevision: null,
-            closedWeekdays: [],
-            dailyCapacity: 10,
-            orderCutoffDays: 2,
-            orderCutoffTime: "18:00",
-            replyStart: "09:00",
-            replyEnd: "21:00",
-            dayBeforeNoticeTime: "20:50",
-            reviewRequestTime: "11:00",
-          }),
-        },
-        testEnv(),
-      );
+      const response = await saveCalendar(now);
       expect(response.status, await response.clone().text()).toBe(200);
       const notice = (
         await isolated.db.query<{ id: string; scheduled_for: Date; status: string }>(
@@ -152,4 +161,45 @@ describeDb("TASK134 후속: 캘린더 재예약의 현재 현지 픽업 날짜",
     expect(expired?.scheduled_for.toISOString()).toBe("2026-11-27T06:50:00.000Z");
     expect(expired).toMatchObject({ reply_claim_id: null, reply_claim_until: null });
   });
+  it.each(["released", "expired"] as const)(
+    "마지막 Cron 뒤 저장 한 번과 선점 %s 뒤 다음 대화가 현재 시각의 같은 안내를 전한다",
+    async (mode) => {
+      expect(await scoped().transaction((tx) => createDayBeforeNotice(tx, shop.orderId, INITIAL))).toBe(true);
+      const now = new Date("2026-11-27T06:50:30Z"),
+        claim = { id: newUuid(), until: new Date(now.getTime() + 10000) };
+      const previous = (
+        await scoped().transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now, callbackClaim: claim }))
+      ).messages;
+      expect(previous).toHaveLength(1);
+      const response = await saveCalendar(now);
+      expect(response.status, await response.clone().text()).toBe(200);
+      expect(
+        await scoped().transaction((tx) =>
+          validateDeferredKakaoCallback(tx, shop.customerId, previous, claim, new Date(now.getTime() + 1)),
+        ),
+      ).toBe(false);
+      if (mode === "released")
+        await scoped().transaction((tx) => releaseDeferredKakaoClaim(tx, shop.customerId, claim));
+      const nextAt = new Date(mode === "released" ? now.getTime() + 20 : claim.until.getTime() + 1);
+      const next = await scoped().transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: nextAt }));
+      expect(next.messages.map((n) => n.id)).toEqual(previous.map((n) => n.id));
+      const notice = (
+        await isolated.db.query<{ scheduled_for: Date; status: string }>(
+          "SELECT scheduled_for,status,reply_claim_id,reply_claim_until,sent_at FROM notifications WHERE shop_id=$1",
+          [shop.shopId],
+        )
+      ).rows[0];
+      expect(notice?.scheduled_for.toISOString()).toBe("2026-11-27T06:50:00.000Z");
+      expect(notice).toMatchObject({
+        status: "deferred",
+        reply_claim_id: null,
+        reply_claim_until: null,
+        sent_at: null,
+      });
+      await scoped().transaction((tx) => markDeferredKakaoMessages(tx, shop.customerId, next.messages, nextAt));
+      expect(
+        (await isolated.db.query("SELECT status,sent_at FROM notifications WHERE shop_id=$1", [shop.shopId])).rows,
+      ).toEqual([{ status: "delivered_on_reply", sent_at: nextAt }]);
+    },
+  );
 });
