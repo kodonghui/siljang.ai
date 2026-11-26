@@ -3,7 +3,7 @@ import { CustomerNoticeTemporarilyUnavailable } from "./customer-notice-content"
 import { sqlStateOf } from "./db";
 import type { KakaoIssueReportCard } from "./kakao-issue-report-message";
 import { normalizeLineBreaks } from "./line-breaks";
-import type { ShopDb } from "./shop-scope";
+import { type ShopDb, withShopSavepoint } from "./shop-scope";
 
 export interface IssueCardBinding {
   readonly detailsId: string;
@@ -88,7 +88,7 @@ export async function readPreparedIssueCard(
   input: { readonly orderId: string; readonly customerId: string; readonly consultationId: string },
 ): Promise<IssueCardSource> {
   try {
-    return await readIssueCardSource(db, input);
+    return await withShopSavepoint(db, (part) => readIssueCardSource(part, input));
   } catch (error) {
     if (sqlStateOf(error) === "42501") throw new CustomerNoticeTemporarilyUnavailable();
     throw error;

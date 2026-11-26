@@ -1,0 +1,59 @@
+{
+  "sourceCommit": "93ebaea5957a5e919ac9e4ce84435ace626b1050",
+  "publicEquivalentHead": "8ad3c3948a91b63210b72828ffc1eb2250db2449",
+  "sourceTree": "470092f5f9abea46fa48626be780bcb9361eaa9d",
+  "baseMain": "11d959c0ac6f1950bade9beef6cbb9eee353bed6",
+  "scopeGitObjects": {
+    "app/server": "b9dfedafa2ded49c440ad204361d7d1111698f5c",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "8f62e26a8970ad01054065a36c165f5f6a8fbfff",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "4e79c77840b3f9622a7e916e2c1be5ddcab5670a",
+    ".github/workflows/app.yml": "48272846a558266023ebbbc43a180453ab9646fd",
+    "tools/staging-login-callback-grants.sql": "8674a9e1dc5ced2dc90632c23494cbbadd2643f6",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 43,
+  "server": {
+    "files": 178,
+    "passed": 3330
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "related": {
+    "files": 21,
+    "passed": 464,
+    "workingTree": true
+  },
+  "calendarRegressionPassed": 3,
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "nodePassed": 96,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "states": 5,
+  "frames": 10,
+  "responseRows": 6,
+  "responseFrames": 4,
+  "browserExecuted": false,
+  "realKakao": false,
+  "stagingMigration43": false,
+  "stagingRuntimeFunctionGrants": false,
+  "modelCallsAdded": 0,
+  "outboundRequestsAdded": 0,
+  "npmCi": "로컬 동일 lock 설치 재사용. 최종 공개 CI의 새 npm ci는 아직 확인 전",
+  "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
+  "review": {
+    "id": 7182503596,
+    "baseline": "11d959c0ac6f1950bade9beef6cbb9eee353bed6",
+    "priority": "P3",
+    "redFailed": 2,
+    "redPassed": 1,
+    "fixtureFailures": 0
+  },
+  "classification": "캘린더 후속의 고정 소스 전체 성공. 최종 head CI/코드·보안 리뷰/수동 요청/자기 main은 다음. TASK134 구현 완료/finished 아님"
+}

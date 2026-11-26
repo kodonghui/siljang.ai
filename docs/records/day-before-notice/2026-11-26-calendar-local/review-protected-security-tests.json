@@ -1,0 +1,5 @@
+{
+  "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+  "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299",
+  "app/server/test/day-before-notice.test.ts": "b0f2c4ffdd656dc34e29625e077a955b255c7ddc"
+}

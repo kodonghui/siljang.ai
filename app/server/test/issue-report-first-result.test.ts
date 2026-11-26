@@ -9,11 +9,13 @@ import {
   showConfirmCard,
 } from "../src/confirm-card-store";
 import { CustomerNoticeTemporarilyUnavailable } from "../src/customer-notice-content";
+import type { Queryable, RequestDb } from "../src/db";
 import { kakaoConfirmCardReply } from "../src/kakao-confirm-card";
 import { kakaoConsultationMessage } from "../src/kakao-consultation-message";
+import { deferredKakaoBatch, markDeferredKakaoMessages } from "../src/kakao-deferred";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
-import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
+import { createShopScope, type ShopDb, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -65,6 +67,26 @@ describeDb("신고 카드의 실제 저장 첫 결과와 재전달(TASK-147)", (
     await isolated?.close();
   });
   const scoped = () => shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), isolated.db);
+  // 실제 BEGIN 안의 관리용 연결도 보되 ShopRequestDb의 트랜잭션 표지를 그대로 사용한다.
+  const withRawScope = <T>(work: (db: ShopDb, raw: Queryable) => Promise<T>): Promise<T> => {
+    let active: Queryable | undefined;
+    const observed: RequestDb = {
+      query: <R>(sql: string, params?: readonly unknown[]) => isolated.db.query<R>(sql, params),
+      transaction: (fn) =>
+        isolated.db.transaction((raw) => {
+          active = raw;
+          return fn(raw);
+        }),
+      abort: () => isolated.db.abort(),
+      close: async () => {},
+    };
+    return shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), observed).transaction(
+      (db) => {
+        if (active === undefined) throw new Error("합성 시험의 실제 트랜잭션 연결이 없어요");
+        return work(db, active);
+      },
+    );
+  };
   const prepare = () =>
     showConfirmCard(scoped(), {
       customerId: shop.customerId,
@@ -158,7 +180,7 @@ describeDb("신고 카드의 실제 저장 첫 결과와 재전달(TASK-147)", (
     let positive = false,
       revoked = false;
     await expect(
-      isolated.db.transaction(async (raw) => {
+      withRawScope(async (db, raw) => {
         await raw.query(`CREATE ROLE "${role}" NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
         await raw.query(
           readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8").replaceAll(
@@ -166,7 +188,6 @@ describeDb("신고 카드의 실제 저장 첫 결과와 재전달(TASK-147)", (
             `"${role}"`,
           ),
         );
-        const db = shopDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), raw);
         const input = {
           customerId: shop.customerId,
           consultationId: shop.consultationId,
@@ -217,6 +238,70 @@ describeDb("신고 카드의 실제 저장 첫 결과와 재전달(TASK-147)", (
     ).rejects.toBeInstanceOf(CustomerNoticeTemporarilyUnavailable);
     expect(positive).toBe(true);
     expect(revoked).toBe(true);
+  });
+  it("조회 실행 권한이 빠진 카드만 보류하고 일반 안내를 전한 뒤 복구된 카드를 다시 읽는다", async () => {
+    const card = await prepare(),
+      cardMessage = newUuid(),
+      notice = newUuid(),
+      role = `issue147_batch_${newUuid().replaceAll("-", "")}`;
+    await isolated.db.query("UPDATE consultations SET ai_disclosed_at=$2 WHERE id=$1", [
+      shop.consultationId,
+      new Date(NOW.getTime() - 3000),
+    ]);
+    await isolated.db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,$3,'outbound','system','card',$4,'합성 신고 카드 참조','deferred',$5)",
+      [cardMessage, shop.shopId, shop.consultationId, shop.messageId, new Date(NOW.getTime() - 2000)],
+    );
+    await isolated.db.query(
+      "INSERT INTO notifications(id,shop_id,customer_id,consultation_id,kind,event_key,template_key,body,status,created_at) VALUES($1,$2,$3,$4,'owner_reply',$5,'owner_reply','함께 전할 합성 일반 안내','deferred',$6)",
+      [
+        notice,
+        shop.shopId,
+        shop.customerId,
+        shop.consultationId,
+        `notice:${notice}:owner_reply`,
+        new Date(NOW.getTime() - 1000),
+      ],
+    );
+    await withRawScope(async (db, raw) => {
+      await raw.query(`CREATE ROLE "${role}" NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+      await raw.query(
+        readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8").replaceAll(
+          ':"runtime_role"',
+          `"${role}"`,
+        ),
+      );
+      await raw.query(`SET LOCAL ROLE "${role}"`);
+      expect((await deferredKakaoBatch(db, shop.customerId, { now: NOW })).messages.map((n) => n.id)).toEqual([
+        cardMessage,
+        notice,
+      ]);
+      await raw.query("SET LOCAL ROLE NONE");
+      await raw.query(`REVOKE EXECUTE ON FUNCTION read_prepared_issue_card(uuid,uuid,uuid,uuid) FROM "${role}"`);
+      await raw.query(`SET LOCAL ROLE "${role}"`);
+      const batch = await deferredKakaoBatch(db, shop.customerId, { now: NOW });
+      expect(batch.messages.map((n) => n.id)).toEqual([notice]);
+      expect(JSON.stringify(batch)).not.toContain("합성 신고 설명");
+      expect((await raw.query("SELECT delivery FROM messages WHERE id=$1", [cardMessage])).rows).toEqual([
+        { delivery: "deferred" },
+      ]);
+      await markDeferredKakaoMessages(db, shop.customerId, batch.messages, NOW);
+      expect((await raw.query("SELECT status,sent_at FROM notifications WHERE id=$1", [notice])).rows).toEqual([
+        { status: "delivered_on_reply", sent_at: NOW },
+      ]);
+      await raw.query("SET LOCAL ROLE NONE");
+      await raw.query(`GRANT EXECUTE ON FUNCTION read_prepared_issue_card(uuid,uuid,uuid,uuid) TO "${role}"`);
+      await raw.query(`SET LOCAL ROLE "${role}"`);
+      const recovered = await deferredKakaoBatch(db, shop.customerId, { now: NOW });
+      expect(recovered.messages.map((n) => n.id)).toEqual([cardMessage]);
+      expect(recovered.messages[0]?.card?.cardKey).toBe(card.cardKey);
+      expect((await raw.query("SELECT used_at FROM confirm_cards WHERE card_key=$1", [card.cardKey])).rows).toEqual([
+        { used_at: null },
+      ]);
+      await raw.query("SET LOCAL ROLE NONE");
+      await raw.query(`DROP OWNED BY "${role}"`);
+      await raw.query(`DROP ROLE "${role}"`);
+    });
   });
   it("모은 자료의1000자 그래핌도 진료 안내와 세 출력으로 표시한다", async () => {
     const description = `가${"\u0301".repeat(999)}`;
