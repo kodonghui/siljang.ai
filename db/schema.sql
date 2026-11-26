@@ -2273,6 +2273,46 @@ $$;
 COMMENT ON FUNCTION read_operator_record_list(uuid,uuid,text,jsonb,integer,timestamptz) IS 'TASK-159 운영자 주문/상담 목록: 원문·사진 경로 없이 가린 값과 페이지 위치만. 보관 기록은 식별/기간만';
 REVOKE ALL ON FUNCTION read_operator_record_list(uuid,uuid,text,jsonb,integer,timestamptz) FROM PUBLIC;
 
+CREATE FUNCTION read_operator_consultation(p_shop uuid,p_operator uuid,p_consultation uuid)
+RETURNS TABLE(body jsonb,customer_id uuid)
+LANGUAGE sql STABLE STRICT SECURITY DEFINER SET search_path=pg_catalog AS $$
+  SELECT jsonb_build_object('consultationId',c.id,'status',c.status,
+    'maskedValues',CASE WHEN c.status='deleted' THEN '[]'::jsonb ELSE coalesce((
+      SELECT jsonb_agg(v.item ORDER BY v.kind,v.number,v.id) FROM (
+        SELECT mv.id,mv.kind,regexp_replace(mv.placeholder,'[^0-9]','','g')::integer AS number,
+          jsonb_build_object('maskedValueId',mv.id,'kind',mv.kind,'placeholder',mv.placeholder,'last4',mv.last4,
+            'originalKept',mv.kind IN ('phone','account') AND mv.original_enc IS NOT NULL) AS item
+        FROM public.masked_values mv WHERE mv.shop_id=p_shop AND mv.consultation_id=c.id
+        ORDER BY mv.kind,regexp_replace(mv.placeholder,'[^0-9]','','g')::integer,mv.id LIMIT 200
+      ) v
+    ),'[]'::jsonb) END
+  ),c.customer_id
+  FROM public.consultations c WHERE c.shop_id=p_shop AND c.id=p_consultation
+    AND EXISTS(SELECT 1 FROM public.operators op WHERE op.id=p_operator AND op.disabled_at IS NULL AND op.mfa_enrolled_at IS NOT NULL AND op.mfa_factor_id IS NOT NULL);
+$$;
+COMMENT ON FUNCTION read_operator_consultation(uuid,uuid,uuid) IS 'TASK-159 운영자 상담: 상태와 플레이스홀더/끝4자리만, 지운 상담은 빈 목록';
+REVOKE ALL ON FUNCTION read_operator_consultation(uuid,uuid,uuid) FROM PUBLIC;
+
+CREATE FUNCTION read_operator_messages(p_shop uuid,p_operator uuid,p_consultation uuid,p_after jsonb,p_limit integer)
+RETURNS TABLE(item jsonb,cursor_at text,cursor_key text)
+LANGUAGE sql STABLE STRICT SECURITY DEFINER SET search_path=pg_catalog AS $$
+  SELECT jsonb_build_object('messageId',m.id,'at',m.created_at,'direction',m.direction,'author',m.author,'kind',m.kind,
+    'textLength',coalesce(char_length(m.body_masked),0),
+    'photoCount',(
+      (SELECT count(*) FROM public.reference_photos rp WHERE rp.shop_id=p_shop AND rp.message_id=m.id)+
+      (SELECT count(*) FROM public.issue_photos ip WHERE ip.shop_id=p_shop AND ip.message_id=m.id)+
+      (SELECT count(*) FROM public.review_photos rv WHERE rv.shop_id=p_shop AND rv.storage_key LIKE ('shops/'||p_shop::text||'/review/'||m.id::text||'/%'))
+    )::integer
+  ),to_char(m.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),m.timeline_seq::text
+  FROM public.messages m JOIN public.consultations c ON c.shop_id=p_shop AND c.id=m.consultation_id
+  WHERE m.shop_id=p_shop AND m.consultation_id=p_consultation AND c.status<>'deleted' AND p_limit BETWEEN 1 AND 101
+    AND (p_after->>'at' IS NULL OR (m.created_at,m.timeline_seq)>((p_after->>'at')::timestamptz,(p_after->>'key')::bigint))
+    AND EXISTS(SELECT 1 FROM public.operators op WHERE op.id=p_operator AND op.disabled_at IS NULL AND op.mfa_enrolled_at IS NOT NULL AND op.mfa_factor_id IS NOT NULL)
+  ORDER BY m.created_at,m.timeline_seq LIMIT greatest(0,least(p_limit,101));
+$$;
+COMMENT ON FUNCTION read_operator_messages(uuid,uuid,uuid,jsonb,integer) IS 'TASK-159 운영자 메시지 메타데이터: 글자 수·저장된 사진 수만, 글과 사진 경로는 반환하지 않음';
+REVOKE ALL ON FUNCTION read_operator_messages(uuid,uuid,uuid,jsonb,integer) FROM PUBLIC;
+
 -- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음.
 COMMENT ON COLUMN owners.id IS '사장님 ID';
 COMMENT ON COLUMN owners.kakao_account_id IS '카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-260). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)';

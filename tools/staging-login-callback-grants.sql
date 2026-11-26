@@ -232,3 +232,4 @@ GRANT EXECUTE ON FUNCTION read_prepared_consent_withdrawal_card(uuid,uuid,uuid,u
 -- TASK-159: 운영자의 주문 조회는 가린 값만 함수로 읽는다. 원문 SELECT 권한은 더하지 않는다.
 GRANT EXECUTE ON FUNCTION read_operator_order(uuid,uuid,uuid) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION read_operator_record_list(uuid,uuid,text,jsonb,integer,timestamptz) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION read_operator_consultation(uuid,uuid,uuid),read_operator_messages(uuid,uuid,uuid,jsonb,integer) TO :"runtime_role";

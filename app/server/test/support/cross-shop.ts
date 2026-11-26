@@ -126,7 +126,10 @@ interface OperatorReviewShopCase {
 }
 interface OperatorRecordShopCase {
   readonly method: "GET";
-  readonly path: "/operator/shops/:shopId/orders/:orderId" | "/operator/shops/:shopId/records";
+  readonly path:
+    | "/operator/shops/:shopId/orders/:orderId"
+    | "/operator/shops/:shopId/records"
+    | "/operator/shops/:shopId/consultations/:consultationId";
   readonly kind: "operator_records";
 }
 
@@ -217,6 +220,7 @@ export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
   { method: "GET", path: "/operator/shops/:shopId", kind: "operator_review" },
   { method: "GET", path: "/operator/shops/:shopId/orders/:orderId", kind: "operator_records" },
   { method: "GET", path: "/operator/shops/:shopId/records", kind: "operator_records" },
+  { method: "GET", path: "/operator/shops/:shopId/consultations/:consultationId", kind: "operator_records" },
   { method: "POST", path: "/operator/shops/:shopId/license-review", kind: "operator_review" },
 ];
 
@@ -625,9 +629,12 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
       return;
     }
     if (c.kind === "operator_records") {
-      const url = (shopId: string, orderId: string) => `/operator/shops/${shopId}/orders/${orderId}`;
+      const consultation = c.path.includes("/consultations/");
+      const idOf = (target: ShopFixture) => (consultation ? target.consultationId : target.orderId);
+      const url = (shopId: string, resourceId: string) =>
+        `/operator/shops/${shopId}/${consultation ? "consultations" : "orders"}/${resourceId}`;
       const beforeOwner = await snapshots(db, env);
-      expect((await send(env, "GET", { url: url(env.a.shopId, env.b.orderId) })).status).toBe(401);
+      expect((await send(env, "GET", { url: url(env.a.shopId, idOf(env.b)) })).status).toBe(401);
       expect(await snapshots(db, env)).toEqual(beforeOwner);
       const session = await seedOperatorSession(db, new Date());
       const call = async (shopId: string, orderId: string) =>
@@ -637,20 +644,18 @@ export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Pro
           testEnv(),
         );
       for (const target of [env.a, env.b]) {
-        const response = await call(target.shopId, target.orderId);
+        const response = await call(target.shopId, idOf(target));
         expect(response.status).toBe(200);
-        const body = (await response.json()) as {
-          orderId: string;
-          customerNameMasked: string;
-          customerPhoneMasked: string;
-        };
-        expect(body.orderId).toBe(target.orderId);
-        expect(body.customerNameMasked).toMatch(/^[^*]\*+$/);
-        expect(body.customerPhoneMasked).toMatch(/^[*-]+[0-9]{4}$/);
+        const body = (await response.json()) as Record<string, unknown>;
+        expect(body[consultation ? "consultationId" : "orderId"]).toBe(idOf(target));
+        if (!consultation) {
+          expect(body.customerNameMasked).toMatch(/^[^*]\*+$/);
+          expect(body.customerPhoneMasked).toMatch(/^[*-]+[0-9]{4}$/);
+        }
       }
       const before = await snapshots(db, env);
       let missing: unknown;
-      for (const id of [newUuid(), env.b.orderId, env.b.orderId.toUpperCase(), "not-a-uuid"]) {
+      for (const id of [newUuid(), idOf(env.b), idOf(env.b).toUpperCase(), "not-a-uuid"]) {
         const response = await call(env.a.shopId, id);
         expect(response.status).toBe(404);
         const body = await expectProblem(response, "not_found");

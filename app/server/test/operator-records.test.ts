@@ -2,6 +2,7 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import { accessLogRows, CLIENT_IP_HEADER, expectOneAccessRow, TEST_IPV4 } from "./support/access-log";
+import { createConsentWithdrawalFixture } from "./support/consent-withdrawal-fixture";
 import { expectSchema } from "./support/contract";
 import { describeDb, newRequestKey, newUuid, testEnv } from "./support/db";
 import { singleKeyCrypto } from "./support/field-keys";
@@ -115,6 +116,54 @@ describeDb("운영자 가게 기록과 사유 있는 열기(TASK-159)", () => {
       excludedIngredientsAnswered: true,
     });
     for (const value of [NAME, PHONE, "땅콩", "호두", "storage_key"]) expect(text).not.toContain(value);
+  });
+  it("API075는 참고·후기 사진 장수만 읽고 저장 경로는 보이지 않는다", async () => {
+    const fixture = await createConsentWithdrawalFixture(isolated.db, NOW);
+    shop = fixture.shop;
+    const messageId = newUuid();
+    await isolated.db.query("UPDATE messages SET kind='photo',body_masked='[사진]' WHERE id=$1", [shop.messageId]);
+    await isolated.db.query(
+      "INSERT INTO reference_photos(shop_id,draft_id,message_id,position,storage_key,content_type,byte_size) VALUES($1,$2,$3,1,$4,'image/jpeg',1)",
+      [shop.shopId, shop.draftId, shop.messageId, `shops/${shop.shopId}/reference/${shop.messageId}/1`],
+    );
+    await isolated.db.query(
+      "INSERT INTO messages(id,shop_id,consultation_id,direction,author,kind,kakao_message_id,body_masked,created_at) VALUES($1,$2,$3,'inbound','customer','photo',$4,'[사진]',$5)",
+      [messageId, shop.shopId, shop.consultationId, await fc.valueHash(["fixture", messageId]), NOW],
+    );
+    await isolated.db.query("UPDATE review_photos SET storage_key=$2 WHERE review_id=$1", [
+      fixture.review,
+      `shops/${shop.shopId}/review/${messageId}/1`,
+    ]);
+    await isolated.db.query(
+      "INSERT INTO review_photos(shop_id,review_id,position,storage_key,content_type,byte_size) VALUES($1,$2,2,$3,'image/jpeg',1)",
+      [shop.shopId, fixture.review, `shops/${shop.shopId}/review/${messageId}/2`],
+    );
+    const response = await call(`/consultations/${shop.consultationId}`),
+      text = await response.text();
+    expect(response.status, text).toBe(200);
+    const body = JSON.parse(text);
+    expectSchema("OperatorConsultation", body);
+    expect(body.items.find((item: { messageId: string }) => item.messageId === shop.messageId)).toMatchObject({
+      photoCount: 1,
+    });
+    expect(body.items.find((item: { messageId: string }) => item.messageId === messageId)).toMatchObject({
+      photoCount: 2,
+    });
+    expect(text).not.toContain("storage_key");
+    expect(text).not.toContain(`shops/${shop.shopId}`);
+  });
+  it("API075의 지운 상담은 남은 원문/마스킹 행이 있어도 빈 목록만 보인다", async () => {
+    await isolated.db.query("UPDATE consultations SET status='deleted',deleted_at=$2 WHERE id=$1", [
+      shop.consultationId,
+      NOW,
+    ]);
+    const response = await call(`/consultations/${shop.consultationId}`),
+      text = await response.text();
+    expect(response.status, text).toBe(200);
+    const body = JSON.parse(text);
+    expectSchema("OperatorConsultation", body);
+    expect(body).toMatchObject({ status: "deleted", maskedValues: [], items: [], nextCursor: null });
+    for (const value of [NAME, PHONE, PRIVATE_TEXT, maskedId]) expect(text).not.toContain(value);
   });
   it("API077는 사유 있는 전화 원본 하나만 열고 같은 요청 키 재열기도 매번 기록한다", async () => {
     const key = newRequestKey();
