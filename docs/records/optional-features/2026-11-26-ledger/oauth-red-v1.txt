@@ -1,0 +1,179 @@
+
+> test
+> vitest run --run test/ledger-oauth.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/ledger-oauth.test.ts (15 tests | 15 failed) 35ms
+   ❯ 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 (15)
+     × 서명 state와 PKCE challenge를 만들고 정상 쿠키로 verifier를 돌려준다 12ms
+     × 시작할 때마다 브라우저 nonce와 state가 달라진다 2ms
+     × 다른 가게에서는 열지 않는다 1ms
+     × 다른 사장님에서는 열지 않는다 1ms
+     × 다른/없는/잘못된 브라우저 쿠키 null는 닫는다 1ms
+     × 다른/없는/잘못된 브라우저 쿠키 는 닫는다 1ms
+     × 다른/없는/잘못된 브라우저 쿠키 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa는 닫는다 1ms
+     × 다른/없는/잘못된 브라우저 쿠키 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa는 닫는다 1ms
+     × 다른/없는/잘못된 브라우저 쿠키 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa는 닫는다 1ms
+     × 서명과 기한 한 글자의 변조를 닫는다 3ms
+     × 기한 직전은 열고 정확히 만료/그 뒤/미래 시계는 닫는다 1ms
+     × 돌아올 주소의 경로/쿼리/호스트를 바꾸면 닫는다 0ms
+     × 로그인 state와 장부 state/verifier는 서로 쓰지 못한다 5ms
+     × 다른 서버 키와 비표준 base64 서명을 닫는다 1ms
+     × 専用 HttpOnly/Secure/Lax 쿠키는10분이고 같은 이름 중복은 받지 않는다 2ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 15 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 서명 state와 PKCE challenge를 만들고 정상 쿠키로 verifier를 돌려준다
+AssertionError: expected '' to match /^[A-Za-z0-9_-]{43}$/
+
+- Expected:
+/^[A-Za-z0-9_-]{43}$/
+
++ Received:
+""
+
+ ❯ test/ledger-oauth.test.ts:15:26
+     13|   it("서명 state와 PKCE challenge를 만들고 정상 쿠키로 verifier를 돌려준다", async () =…
+     14|     const secret = key(), issued = await startLedgerOAuth(secret, scop…
+     15|     expect(issued.nonce).toMatch(/^[A-Za-z0-9_-]{43}$/);
+       |                          ^
+     16|     expect(issued.state).toMatch(/^\d{13}\.[A-Za-z0-9_-]{43}$/);
+     17|     expect(issued.expiresAt.toISOString()).toBe("2026-11-26T10:10:00.0…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/15]⎯
+
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 시작할 때마다 브라우저 nonce와 state가 달라진다
+AssertionError: expected '' not to be '' // Object.is equality
+ ❯ test/ledger-oauth.test.ts:26:25
+     24|   it("시작할 때마다 브라우저 nonce와 state가 달라진다", async () => {
+     25|     const secret = key(), a = await startLedgerOAuth(secret, scope, re…
+     26|     expect(a.nonce).not.toBe(b.nonce);
+       |                         ^
+     27|     expect(a.state).not.toBe(b.state);
+     28|     expect(a.challenge).not.toBe(b.challenge);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/15]⎯
+
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 다른 가게에서는 열지 않는다
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 다른 사장님에서는 열지 않는다
+AssertionError: expected null not to be null
+ ❯ test/ledger-oauth.test.ts:35:99
+     33|   ] as const) it(`${label}에서는 열지 않는다`, async () => {
+     34|     const secret = key(), issued = await startLedgerOAuth(secret, scop…
+     35|     expect(await verifyLedgerOAuth(secret, scope, issued.state, issued…
+       |                                                                                                   ^
+     36|     expect(await verifyLedgerOAuth(secret, altered, issued.state, issu…
+     37|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/15]⎯
+
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 다른/없는/잘못된 브라우저 쿠키 null는 닫는다
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 다른/없는/잘못된 브라우저 쿠키 는 닫는다
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 다른/없는/잘못된 브라우저 쿠키 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa는 닫는다
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 다른/없는/잘못된 브라우저 쿠키 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa는 닫는다
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 다른/없는/잘못된 브라우저 쿠키 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa는 닫는다
+AssertionError: expected null not to be null
+ ❯ test/ledger-oauth.test.ts:40:99
+     38|   it.each([null, "", "a".repeat(43), "a".repeat(42), "a".repeat(44)])(…
+     39|     const secret = key(), issued = await startLedgerOAuth(secret, scop…
+     40|     expect(await verifyLedgerOAuth(secret, scope, issued.state, issued…
+       |                                                                                                   ^
+     41|     expect(await verifyLedgerOAuth(secret, scope, issued.state, nonce,…
+     42|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/15]⎯
+
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 서명과 기한 한 글자의 변조를 닫는다
+AssertionError: expected null not to be null
+ ❯ test/ledger-oauth.test.ts:46:99
+     44|     const secret = key(), issued = await startLedgerOAuth(secret, scop…
+     45|     const [expiry, signature] = issued.state.split(".");
+     46|     expect(await verifyLedgerOAuth(secret, scope, issued.state, issued…
+       |                                                                                                   ^
+     47|     for (const state of [`${Number(expiry) + 1}.${signature}`, `${expi…
+     48|       expect(await verifyLedgerOAuth(secret, scope, state, issued.nonc…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/15]⎯
+
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 기한 직전은 열고 정확히 만료/그 뒤/미래 시계는 닫는다
+AssertionError: expected null not to be null
+ ❯ test/ledger-oauth.test.ts:52:113
+     50|   it("기한 직전은 열고 정확히 만료/그 뒤/미래 시계는 닫는다", async () => {
+     51|     const secret = key(), issued = await startLedgerOAuth(secret, scop…
+     52|     expect(await verifyLedgerOAuth(secret, scope, issued.state, issued…
+       |                                                                                                                 ^
+     53|     for (const time of [end, end + 1, now.getTime() - 1])
+     54|       expect(await verifyLedgerOAuth(secret, scope, issued.state, issu…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/15]⎯
+
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 돌아올 주소의 경로/쿼리/호스트를 바꾸면 닫는다
+AssertionError: expected null not to be null
+ ❯ test/ledger-oauth.test.ts:58:99
+     56|   it("돌아올 주소의 경로/쿼리/호스트를 바꾸면 닫는다", async () => {
+     57|     const secret = key(), issued = await startLedgerOAuth(secret, scop…
+     58|     expect(await verifyLedgerOAuth(secret, scope, issued.state, issued…
+       |                                                                                                   ^
+     59|     for (const url of [redirect + "2", redirect + "?x=1", redirect.rep…
+     60|       expect(await verifyLedgerOAuth(secret, scope, issued.state, issu…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/15]⎯
+
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 로그인 state와 장부 state/verifier는 서로 쓰지 못한다
+AssertionError: expected null not to be null
+ ❯ test/ledger-oauth.test.ts:65:26
+     63|     const secret = key(), issued = await startLedgerOAuth(secret, scop…
+     64|     const verifier = await verifyLedgerOAuth(secret, scope, issued.sta…
+     65|     expect(verifier).not.toBeNull();
+       |                          ^
+     66|     expect(verifier).not.toBe(await verifyLoginState(secret, owner.sta…
+     67|     expect(await verifyLedgerOAuth(secret, scope, owner.state, owner.n…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/15]⎯
+
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 다른 서버 키와 비표준 base64 서명을 닫는다
+AssertionError: expected null not to be null
+ ❯ test/ledger-oauth.test.ts:72:99
+     70|   it("다른 서버 키와 비표준 base64 서명을 닫는다", async () => {
+     71|     const secret = key(), issued = await startLedgerOAuth(secret, scop…
+     72|     expect(await verifyLedgerOAuth(secret, scope, issued.state, issued…
+       |                                                                                                   ^
+     73|     expect(await verifyLedgerOAuth(key(), scope, issued.state, issued.…
+     74|     const [expiry, signature] = issued.state.split(".");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/15]⎯
+
+ FAIL  test/ledger-oauth.test.ts > 장부 OAuth의 사장님/가게/브라우저/돌아올 주소/10분 기한 > 専用 HttpOnly/Secure/Lax 쿠키는10분이고 같은 이름 중복은 받지 않는다
+AssertionError: expected null to be '' // Object.is equality
+
+- Expected:
+""
+
++ Received:
+null
+
+ ❯ test/ledger-oauth.test.ts:81:46
+     79|     const issued = await startLedgerOAuth(key(), scope, redirect, now)…
+     80|     expect(value).toContain("HttpOnly; Secure; SameSite=Lax; Max-Age=6…
+     81|     expect(readCookie(value, LEDGER_COOKIE)).toBe(issued.nonce);
+       |                                              ^
+     82|     expect(readCookie(`${value}; ${LEDGER_COOKIE}=${issued.nonce}`, LE…
+     83|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/15]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  15 failed (15)
+   Start at  10:04:13
+   Duration  416ms (transform 66%, tests 17%, import 14%, worker 2%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task156-optional-features/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task156-optional-features/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/ledger-oauth.test.ts

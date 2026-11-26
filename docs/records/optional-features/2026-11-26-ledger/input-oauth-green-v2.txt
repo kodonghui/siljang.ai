@@ -1,0 +1,12 @@
+
+> test
+> vitest run --run test/ledger-input.test.ts test/ledger-oauth.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+
+ Test Files  2 passed (2)
+      Tests  43 passed (43)
+   Start at  10:05:53
+   Duration  424ms (transform 39%, import 30%, tests 26%, worker 5%)
