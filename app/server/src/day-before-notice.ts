@@ -59,8 +59,8 @@ export async function createDayBeforeNotice(db: ShopDb, orderId: string, now: Da
         AND notifications.consultation_id=EXCLUDED.consultation_id
         AND notifications.sent_at IS NULL AND notifications.attempts=0
         AND notifications.status IN ('pending','retrying','deferred','dropped')
-        AND (notifications.template_key,notifications.body,notifications.scheduled_for)
-          IS DISTINCT FROM (EXCLUDED.template_key,EXCLUDED.body,EXCLUDED.scheduled_for)
+        AND ((notifications.template_key,notifications.body,notifications.scheduled_for)
+          IS DISTINCT FROM (EXCLUDED.template_key,EXCLUDED.body,EXCLUDED.scheduled_for) OR notifications.status='dropped')
       RETURNING id`,
     [
       eventKeys.notice(id, "day_before"),

@@ -627,6 +627,7 @@ CREATE INDEX orders_customer_idx ON orders (customer_id, requested_at); -- 내 �
 CREATE INDEX orders_day_idx ON orders (shop_id, pickup_day, status); -- 날짜별 제작 목록·오늘·내일 픽업(SPEC-050, SPEC-052, SPEC-054)
 CREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue'); -- 사장님이 정할 주문(SPEC-031, SPEC-037)
 CREATE INDEX orders_purge_due_idx ON orders (finished_at) WHERE finished_at IS NOT NULL AND personal_data_purged_at IS NULL; -- 끝나고 30일 지난 주문 찾기(SPEC-065)
+CREATE INDEX orders_day_before_idx ON orders (confirmed_at) WHERE status = 'confirmed' AND personal_data_purged_at IS NULL; -- 픽업 전날 가게 시각의 안내 대상(SPEC-052)
 COMMENT ON TABLE orders IS 'TBL-023 주문(TERM-001): 주문 요청부터 확정·변경·취소·받음까지의 상태와 버전';
 
 -- TBL-024 confirm_cards (CTX-001) ← SPEC-028, SPEC-029, SPEC-033, SPEC-040, SPEC-041, SPEC-046, SPEC-053, SPEC-057, SPEC-058, SPEC-063, SPEC-065, SPEC-069, SPEC-072, SPEC-075, SPEC-076 | terms: none

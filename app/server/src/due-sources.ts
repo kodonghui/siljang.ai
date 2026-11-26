@@ -49,6 +49,15 @@ export interface DueSource {
  * 손으로 쓴 SQL 글이다(정적 검사가 테이블 이름을 볼 수 있게 끼워 넣지 않음). claim이 find와 같은 조건인지는 시험이 본다.
  */
 export const DUE_SOURCES = {
+  /** TASK-134: 현재 가게 시각이 지난 픽업 전날의 확정 주문. 이미 보냈거나 시작한 안내는 다시 만들지 않는다. */
+  order_day_before: {
+    table: "orders",
+    dueColumn: "confirmed_at",
+    index: "orders_day_before_idx",
+    find: "SELECT t.shop_id, t.id, t.confirmed_at AS due_at FROM orders t WHERE t.status = 'confirmed' AND t.personal_data_purged_at IS NULL AND EXISTS (SELECT 1 FROM shops s LEFT JOIN business_calendars b ON b.shop_id = s.id WHERE s.id = t.shop_id AND nullif(btrim(s.contact_phone),'') IS NOT NULL AND t.pickup_day = ($1::timestamptz AT TIME ZONE s.time_zone)::date + 1 AND ($1::timestamptz AT TIME ZONE s.time_zone)::time >= coalesce(b.day_before_notice_time,'18:00'::time) AND to_char($1::timestamptz AT TIME ZONE s.time_zone,'HH24:MI') BETWEEN '08:00' AND '20:50' AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.shop_id = t.shop_id AND n.order_id = t.id AND n.kind = 'day_before' AND (n.sent_at IS NOT NULL OR n.attempts > 0 OR n.status NOT IN ('pending','retrying','deferred','dropped') OR (n.event_key = 'notice:'||t.id::text||':day_before' AND n.customer_id = t.customer_id AND n.consultation_id = t.consultation_id AND n.status IN ('pending','retrying','deferred') AND n.template_key = 'day_before:v1:'||md5(jsonb_build_array(t.version,extract(epoch FROM t.pickup_at),s.time_zone,s.pickup_address,s.contact_phone)::text) AND n.scheduled_for = (((t.pickup_day-1)+coalesce(b.day_before_notice_time,'18:00'::time)) AT TIME ZONE s.time_zone))))) AND t.confirmed_at <= $1 ORDER BY t.confirmed_at, t.id LIMIT $2",
+    claim:
+      "SELECT t.id FROM orders t WHERE t.shop_id = $1 AND t.id = $2 AND t.status = 'confirmed' AND t.personal_data_purged_at IS NULL AND EXISTS (SELECT 1 FROM shops s LEFT JOIN business_calendars b ON b.shop_id = s.id WHERE s.id = t.shop_id AND nullif(btrim(s.contact_phone),'') IS NOT NULL AND t.pickup_day = ($3::timestamptz AT TIME ZONE s.time_zone)::date + 1 AND ($3::timestamptz AT TIME ZONE s.time_zone)::time >= coalesce(b.day_before_notice_time,'18:00'::time) AND to_char($3::timestamptz AT TIME ZONE s.time_zone,'HH24:MI') BETWEEN '08:00' AND '20:50' AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.shop_id = t.shop_id AND n.order_id = t.id AND n.kind = 'day_before' AND (n.sent_at IS NOT NULL OR n.attempts > 0 OR n.status NOT IN ('pending','retrying','deferred','dropped') OR (n.event_key = 'notice:'||t.id::text||':day_before' AND n.customer_id = t.customer_id AND n.consultation_id = t.consultation_id AND n.status IN ('pending','retrying','deferred') AND n.template_key = 'day_before:v1:'||md5(jsonb_build_array(t.version,extract(epoch FROM t.pickup_at),s.time_zone,s.pickup_address,s.contact_phone)::text) AND n.scheduled_for = (((t.pickup_day-1)+coalesce(b.day_before_notice_time,'18:00'::time)) AT TIME ZONE s.time_zone))))) AND t.confirmed_at <= $3 FOR UPDATE SKIP LOCKED",
+  },
   /** TASK-076: 현재 가게 설정의 끊김 시간이 지난 open 상담. */
   consultation_open: {
     table: "consultations",
