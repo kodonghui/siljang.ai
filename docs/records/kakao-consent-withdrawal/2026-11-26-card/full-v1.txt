@@ -1,0 +1,39 @@
+
+> test
+> npm run test -w server && npm run test -w web
+
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task149-consent-withdrawal-card/app/server
+
+(node:3604080) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ Test Files  190 passed (190)
+      Tests  3476 passed (3476)
+   Start at  06:42:11
+   Duration  388.51s (tests 69%, import 30%, transform 1%)
+
+     Import  432 modules were evaluated 1105 times · 110.19s total, 30% of tracked time
+             ~67.11s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task149-consent-withdrawal-card/app/web
+
+
+ Test Files  73 passed (73)
+      Tests  1775 passed (1775)
+   Start at  06:48:40
+   Duration  41.55s (tests 52%, import 35%, environment 7%, transform 6%)
+
+     Import  196 modules were evaluated 805 times · 39.53s total, 35% of tracked time
+             ~6.29s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

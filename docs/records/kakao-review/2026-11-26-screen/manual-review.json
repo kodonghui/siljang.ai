@@ -1,0 +1,14 @@
+{
+  "pr": 298,
+  "head": "07ac725eb0a1e5011a1a24e8038ec4c2939209cc",
+  "count": 1,
+  "status": "usage_limit",
+  "at": "2026-11-26T06:39:55.062282+00:00",
+  "review": 7184363221,
+  "disposition": 7184568259,
+  "id": 7184655276,
+  "quotaComment": 7184658537,
+  "failedSummaryComment": 7184657978,
+  "actualReviews": 0,
+  "reviewThreads": 0
+}

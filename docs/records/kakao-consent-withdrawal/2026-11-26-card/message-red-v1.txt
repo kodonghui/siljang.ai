@@ -1,0 +1,116 @@
+
+ RUN  v5.1.0 /workspace/siljang-task149-consent-withdrawal-card/app/server
+
+ ❯ test/kakao-consent-withdrawal-message.test.ts (31 tests | 13 failed) 14ms
+   × 철회할 두 종류의 사진 수·현재 게시 여부와 두 확인 버튼을 보인다 5ms
+   × 아직 올리지 않은 사진도 게시 여부를 정확히 보인다 1ms
+   × stale에서는 현재 값의 새 카드 앞에 정한 안내를 보인다 1ms
+   × expired에서는 현재 값의 새 카드 앞에 정한 안내를 보인다 1ms
+   × undefined 문구가 명세와 같다 0ms
+   × undefined 문구가 명세와 같다 0ms
+   × undefined 문구가 명세와 같다 0ms
+   × undefined 문구가 명세와 같다 0ms
+   × undefined 문구가 명세와 같다 1ms
+   × undefined 문구가 명세와 같다 0ms
+   × undefined 문구가 명세와 같다 0ms
+   × 반복은 서버에 남은 처음 결과의 문구를 그대로 보인다 0ms
+   × 이전 후기 사진의 동의까지 여러 장이어도 표시할 수 있다 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > 철회할 두 종류의 사진 수·현재 게시 여부와 두 확인 버튼을 보인다
+RangeError: consent withdrawal presentation not implemented
+ ❯ kakaoConsentWithdrawalMessage src/kakao-consent-withdrawal-message.ts:39:9
+     37| }
+     38| export function kakaoConsentWithdrawalMessage(_view: KakaoConsentWithd…
+     39|   throw new RangeError("consent withdrawal presentation not implemente…
+       |         ^
+     40| }
+     41|
+ ❯ render test/kakao-consent-withdrawal-message.test.ts:20:16
+ ❯ test/kakao-consent-withdrawal-message.test.ts:33:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > 아직 올리지 않은 사진도 게시 여부를 정확히 보인다
+RangeError: consent withdrawal presentation not implemented
+ ❯ kakaoConsentWithdrawalMessage src/kakao-consent-withdrawal-message.ts:39:9
+     37| }
+     38| export function kakaoConsentWithdrawalMessage(_view: KakaoConsentWithd…
+     39|   throw new RangeError("consent withdrawal presentation not implemente…
+       |         ^
+     40| }
+     41|
+ ❯ render test/kakao-consent-withdrawal-message.test.ts:20:16
+ ❯ test/kakao-consent-withdrawal-message.test.ts:52:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > stale에서는 현재 값의 새 카드 앞에 정한 안내를 보인다
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > expired에서는 현재 값의 새 카드 앞에 정한 안내를 보인다
+RangeError: consent withdrawal presentation not implemented
+ ❯ kakaoConsentWithdrawalMessage src/kakao-consent-withdrawal-message.ts:39:9
+     37| }
+     38| export function kakaoConsentWithdrawalMessage(_view: KakaoConsentWithd…
+     39|   throw new RangeError("consent withdrawal presentation not implemente…
+       |         ^
+     40| }
+     41|
+ ❯ render test/kakao-consent-withdrawal-message.test.ts:20:16
+ ❯ test/kakao-consent-withdrawal-message.test.ts:58:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > undefined 문구가 명세와 같다
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > undefined 문구가 명세와 같다
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > undefined 문구가 명세와 같다
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > undefined 문구가 명세와 같다
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > undefined 문구가 명세와 같다
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > undefined 문구가 명세와 같다
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > undefined 문구가 명세와 같다
+RangeError: consent withdrawal presentation not implemented
+ ❯ kakaoConsentWithdrawalMessage src/kakao-consent-withdrawal-message.ts:39:9
+     37| }
+     38| export function kakaoConsentWithdrawalMessage(_view: KakaoConsentWithd…
+     39|   throw new RangeError("consent withdrawal presentation not implemente…
+       |         ^
+     40| }
+     41|
+ ❯ render test/kakao-consent-withdrawal-message.test.ts:20:16
+ ❯ test/kakao-consent-withdrawal-message.test.ts:71:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > 반복은 서버에 남은 처음 결과의 문구를 그대로 보인다
+RangeError: consent withdrawal presentation not implemented
+ ❯ kakaoConsentWithdrawalMessage src/kakao-consent-withdrawal-message.ts:39:9
+     37| }
+     38| export function kakaoConsentWithdrawalMessage(_view: KakaoConsentWithd…
+     39|   throw new RangeError("consent withdrawal presentation not implemente…
+       |         ^
+     40| }
+     41|
+ ❯ render test/kakao-consent-withdrawal-message.test.ts:20:16
+ ❯ test/kakao-consent-withdrawal-message.test.ts:74:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯
+
+ FAIL  test/kakao-consent-withdrawal-message.test.ts > 이전 후기 사진의 동의까지 여러 장이어도 표시할 수 있다
+RangeError: consent withdrawal presentation not implemented
+ ❯ kakaoConsentWithdrawalMessage src/kakao-consent-withdrawal-message.ts:39:9
+     37| }
+     38| export function kakaoConsentWithdrawalMessage(_view: KakaoConsentWithd…
+     39|   throw new RangeError("consent withdrawal presentation not implemente…
+       |         ^
+     40| }
+     41|
+ ❯ render test/kakao-consent-withdrawal-message.test.ts:20:16
+ ❯ test/kakao-consent-withdrawal-message.test.ts:78:25
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  13 failed | 18 passed (31)
+   Start at  06:27:52
+   Duration  1.36s (import 86%, transform 12%, tests 1%, worker 1%)

@@ -1,0 +1,12 @@
+
+ RUN  v5.1.0 /workspace/siljang.ai/app/server
+
+
+ Test Files  4 passed (4)
+      Tests  60 passed (60)
+   Start at  07:07:36
+   Duration  8.81s (import 39%, tests 38%, transform 22%)
+
+     Import  168 modules were evaluated 223 times · 3.23s total, 39% of tracked time
+             ~797ms faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

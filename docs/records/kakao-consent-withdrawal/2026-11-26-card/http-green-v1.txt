@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task149-consent-withdrawal-card/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  06:38:20
+   Duration  3.76s (tests 44%, import 35%, transform 21%)

@@ -2,6 +2,7 @@
 import { type ConfirmCardAnswer, type ConfirmCardView, NOT_YOURS, RETRY_NEEDED } from "./confirm-card-store";
 import { changeRequestResultText, kakaoChangeRequestMessage } from "./kakao-change-request-message";
 import { kakaoChannelIdentifierError } from "./kakao-channel-input";
+import { kakaoConsentWithdrawalMessage } from "./kakao-consent-withdrawal-message";
 import { kakaoIssueReportMessage } from "./kakao-issue-report-message";
 import {
   type KakaoMessageContent,
@@ -94,6 +95,20 @@ function inputCard(
   return { version: "2.0" as const, template: { outputs: [{ textCard: { title, description, buttons } }] } };
 }
 export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
+  if (answer.kind === "consent_withdrawal") {
+    const result = answer.outcome === "card_used" ? answer.firstResult : answer;
+    if (result?.outcome === "consent_withdrawn" || result?.outcome === "declined")
+      return kakaoConsentWithdrawalMessage({ state: "done", outcome: result.outcome, firstResultText: result.text });
+  }
+  if (answer.card?.kind === "consent_withdrawal" && answer.card.consentWithdrawal !== undefined)
+    return kakaoConsentWithdrawalMessage({
+      ...answer.card.consentWithdrawal,
+      state:
+        answer.replacementState ??
+        (answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal"),
+      cardKey: answer.card.cardKey,
+      blockId: answer.card.blockId,
+    });
   if (
     answer.kind === "issue_report" &&
     answer.outcome === "card_used" &&
