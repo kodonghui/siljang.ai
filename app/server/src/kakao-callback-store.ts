@@ -3,7 +3,12 @@ import { kakaoAiCostLimit } from "./kakao-ai-cost";
 import { type KakaoAiDisclosure, markKakaoAiDisclosure } from "./kakao-ai-disclosure";
 import { type KakaoCallback, SKILL_CALLBACK_MS } from "./kakao-callback";
 import { decodeKakaoCallbackContext, encodeKakaoCallbackContext } from "./kakao-callback-context";
-import { type DeferredKakaoMessage, markDeferredKakaoMessages } from "./kakao-deferred";
+import {
+  type DeferredKakaoCallbackClaim,
+  type DeferredKakaoMessage,
+  markDeferredKakaoMessages,
+  releaseDeferredKakaoClaim,
+} from "./kakao-deferred";
 import { recordKakaoHandoff } from "./kakao-handoff";
 import type { KakaoOrderReference } from "./kakao-order-reference";
 import { isKakaoPhotoTrace, KAKAO_PHOTO_TEXT, kakaoPhotoTrace } from "./kakao-photo-context";
@@ -238,7 +243,11 @@ export async function finishKakaoCallback(
   sentAt: Date | null,
   previous: readonly DeferredKakaoMessage[] = [],
   preparedReplyId?: string,
-  delivery: { readonly disclosure?: KakaoAiDisclosure; readonly replyIncluded?: boolean } = {},
+  delivery: {
+    readonly disclosure?: KakaoAiDisclosure;
+    readonly replyIncluded?: boolean;
+    readonly callbackClaim?: DeferredKakaoCallbackClaim;
+  } = {},
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const owned = await tx.run(
@@ -253,11 +262,17 @@ export async function finishKakaoCallback(
         kakaoPhotoTrace(messageId, "review"),
       ],
     );
-    if (owned.rowCount === 0) return;
+    if (owned.rowCount === 0) {
+      if (delivery.callbackClaim !== undefined)
+        await releaseDeferredKakaoClaim(tx, claim.customer_id, delivery.callbackClaim);
+      return;
+    }
     if (sentAt !== null) {
       if (delivery.disclosure !== undefined) await markKakaoAiDisclosure(tx, claim, delivery.disclosure, sentAt);
       await markDeferredKakaoMessages(tx, claim.customer_id, previous, sentAt);
     }
+    if (delivery.callbackClaim !== undefined)
+      await releaseDeferredKakaoClaim(tx, claim.customer_id, delivery.callbackClaim);
     if (preparedReplyId !== undefined) {
       if (sentAt !== null && delivery.replyIncluded !== false)
         await tx.run(

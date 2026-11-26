@@ -1,0 +1,105 @@
+
+ RUN  v5.1.0 /workspace/siljang-task134-day-before-notice/app/server
+
+ ❯ test/day-before-notice.test.ts (39 tests | 2 failed) 2802ms
+   ❯ 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) (39)
+     × 날짜가 옮겨지는 시간대에서도 현재 픽업 날짜의 전날에 찾고 생성하고 전달한다 25ms
+     × 시간대 변경 뒤 현지 픽업 당일을 전날 안내 대상으로 고르지 않는다 15ms
+ ❯ test/day-before-callback-race.test.ts (2 tests | 2 failed) 812ms
+   ❯ 전날 안내의 실제 콜백 소비자와 Cron 갱신 경쟁 (2)
+     × 발신 중 Cron이 같은 안내를 고치지 못하고 성공 뒤 다시 만들지 않는다 185ms
+     × 선택 트랜잭션 뒤 장소가 바뀌면 발신 직전 검사에서 옛 안내를 보내지 않는다 100ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/day-before-callback-race.test.ts > 전날 안내의 실제 콜백 소비자와 Cron 갱신 경쟁 > 발신 중 Cron이 같은 안내를 고치지 못하고 성공 뒤 다시 만들지 않는다
+AssertionError: promise rejected "Error: deferred notification changed befo…" instead of resolving
+ ❯ test/day-before-callback-race.test.ts:52:161
+     50|       return Response.json({status:"SUCCESS"});
+     51|     });
+     52|     await expect(consumeKakaoCallback({shopId:shop.shopId,messageId:sh…
+       |                                                                                                                                                                 ^
+     53|     expect(refreshed).toBe(false);
+     54|     expect(send).toHaveBeenCalledTimes(1);
+
+Caused by: Error: deferred notification changed before delivery
+ ❯ markDeferredKakaoMessages src/kakao-deferred.ts:347:40
+ ❯ src/kakao-callback-store.ts:259:7
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ finishKakaoCallback src/kakao-callback-store.ts:243:3
+ ❯ consumeKakaoCallback src/kakao-callback-queue.ts:300:5
+ ❯ test/day-before-callback-race.test.ts:52:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/day-before-callback-race.test.ts > 전날 안내의 실제 콜백 소비자와 Cron 갱신 경쟁 > 선택 트랜잭션 뒤 장소가 바뀌면 발신 직전 검사에서 옛 안내를 보내지 않는다
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      "https://bot-api.kakao.com/v1/callback/synthetic_day_before",
+      Object {
+        "body": "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"주문번호 CCUSF01X\n픽업: 2026-11-28 15:00\n픽업 장소: 합성 첫 장소\n가게 연락처: 02-000-0000"}},{"simpleText":{"text":"사장님 확인 뒤 답드릴게요."}}]}}",
+        "headers": Object {
+          "Content-Type": "application/json",
+        },
+        "method": "POST",
+        "redirect": "manual",
+        "signal": AbortSignal {
+          Symbol(kEvents): Map {},
+          Symbol(events.maxEventTargetListeners): 0,
+          Symbol(events.maxEventTargetListenersWarned): false,
+          Symbol(kHandlers): Map {},
+          Symbol(kAborted): false,
+          Symbol(kReason): undefined,
+          Symbol(kComposite): false,
+          Symbol(kTimeout): true,
+        },
+      },
+    ]
+
+
+Number of calls: 1
+
+ ❯ test/day-before-callback-race.test.ts:80:22
+     78|     expect(await consumeKakaoCallback({shopId:shop.shopId,messageId:sh…
+     79|     expect(changed).toBe(true);
+     80|     expect(send).not.toHaveBeenCalled();
+       |                      ^
+     81|     expect(await cron()).toBe(true);
+     82|     const notice=(await isolated.db.query("SELECT status,body,sent_at …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 날짜가 옮겨지는 시간대에서도 현재 픽업 날짜의 전날에 찾고 생성하고 전달한다
+AssertionError: expected [] to include '57df5dc0-b13c-4382-bf68-652aec7cbbfb'
+ ❯ test/day-before-notice.test.ts:333:119
+    331|     await isolated.db.query("UPDATE shops SET time_zone='Pacific/Honol…
+    332|     const at = new Date("2026-11-27T04:00:00Z"); // 현지11/26 18시, 픽업은 현…
+    333|     expect((await isolated.db.query<{ id: string }>(DUE_SOURCES.order_…
+       |                                                                                                                       ^
+    334|     const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: …
+    335|     expect(await scoped.transaction(tx=>createDayBeforeNotice(tx,shop.…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 시간대 변경 뒤 현지 픽업 당일을 전날 안내 대상으로 고르지 않는다
+AssertionError: expected [ …(2) ] to not include '88d351e4-346d-4e3b-afd2-14a3a5dfda9c'
+ ❯ test/day-before-notice.test.ts:344:123
+    342|     await isolated.db.query("UPDATE shops SET time_zone='Pacific/Honol…
+    343|     const at = new Date("2026-11-28T04:00:00Z"); // 현지11/27 18시, 당일20시…
+    344|     expect((await isolated.db.query<{ id: string }>(DUE_SOURCES.order_…
+       |                                                                                                                           ^
+    345|     const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: …
+    346|     expect(await scoped.transaction(tx=>createDayBeforeNotice(tx,shop.…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  4 failed | 37 passed (41)
+   Start at  03:42:06
+   Duration  6.15s (tests 61%, import 31%, transform 7%)

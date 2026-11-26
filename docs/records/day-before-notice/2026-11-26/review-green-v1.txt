@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task134-day-before-notice/app/server
+
+
+ Test Files  2 passed (2)
+      Tests  41 passed (41)
+   Start at  03:46:13
+   Duration  7.76s (tests 57%, import 31%, transform 11%)

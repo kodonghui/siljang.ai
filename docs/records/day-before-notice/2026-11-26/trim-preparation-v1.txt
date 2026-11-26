@@ -1,0 +1,25 @@
+
+ RUN  v5.1.0 /workspace/siljang-task134-trim-check/app/server
+
+ ❯ test/day-before-notice.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/day-before-notice.test.ts [ test/day-before-notice.test.ts ]
+Error: ENOENT: no such file or directory, open '/workspace/siljang-task134-trim-check/api/openapi.yaml'
+ ❯ test/support/contract.ts:9:31
+      7|
+      8| /** 06 계약(api/openapi.yaml). 응답 본문을 계약의 스키마로 검사한다(OpenAPI 3.1 = JSON S…
+      9| export const contract = parse(readFileSync(new URL("../../../../api/op…
+       |                               ^
+     10|   readonly paths: Record<string, Record<string, unknown>>;
+     11| };
+ ❯ test/day-before-notice.test.ts:11:1
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  03:13:49
+   Duration  2.81s (worker 99%, environment 1%)

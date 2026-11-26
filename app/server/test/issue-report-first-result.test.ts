@@ -1,10 +1,19 @@
 /** 실제 신고 쓰기는 TASK140의 합성 명령으로 대체하고 카드 저장/전달 경계만 검사한다. */
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
-import { pressConfirmCard, readConfirmCardDelivery, showConfirmCard } from "../src/confirm-card-store";
+import {
+  prepareConfirmCardInTransaction,
+  pressConfirmCard,
+  readConfirmCardDelivery,
+  showConfirmCard,
+} from "../src/confirm-card-store";
+import { CustomerNoticeTemporarilyUnavailable } from "../src/customer-notice-content";
+import { kakaoConfirmCardReply } from "../src/kakao-confirm-card";
+import { kakaoConsultationMessage } from "../src/kakao-consultation-message";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { Secret } from "../src/settings";
-import { createShopScope, shopRequestDb } from "../src/shop-scope";
+import { createShopScope, shopDb, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
@@ -65,6 +74,135 @@ describeDb("신고 카드의 실제 저장 첫 결과와 재전달(TASK-147)", (
       sourceMessageId: shop.messageId,
       now: NOW,
     });
+  it("30분 경계에서는 지금 값의 새 카드만 보내고 명령을 실행하지 않는다", async () => {
+    const card = await prepare(),
+      at = new Date(NOW.getTime() + 30 * 60000);
+    const execute = vi.fn(async () => ({ outcome: "issue_reported", text: "합성 신고 접수" }));
+    const answer = await pressConfirmCard(
+      scoped(),
+      {
+        customerId: shop.customerId,
+        consultationId: shop.consultationId,
+        cardKey: card.cardKey,
+        choice: "confirm",
+        now: at,
+      },
+      execute,
+    );
+    expect(answer.outcome).toBe("card_expired");
+    expect(execute).not.toHaveBeenCalled();
+    expect(answer.card?.cardKey).not.toBe(card.cardKey);
+    expect(answer.card?.issueReport?.expiresAt).toBe(new Date(at.getTime() + 30 * 60000).toISOString());
+    const response = kakaoConfirmCardReply(
+      { json: (body, status = 200, headers = {}) => Response.json(body, { status, headers }) },
+      answer,
+    );
+    expect(JSON.stringify(await response.json())).toContain("시간이 지나 새 카드를 보내 드려요");
+  });
+  it("늦은 신고도 표시하며 신고 기한/원인/보상을 카드에서 판정하지 않는다", async () => {
+    const at = new Date(NOW.getTime() + 30 * 86400000);
+    const card = await showConfirmCard(scoped(), {
+      customerId: shop.customerId,
+      consultationId: shop.consultationId,
+      kind: "issue_report",
+      orderId: shop.orderId,
+      now: at,
+    });
+    expect(card.issueReport?.receivedAt).toBe(new Date(NOW.getTime() - 3 * 3600000).toISOString());
+    for (const name of ["late", "compensation", "problemKind"]) expect(card.issueReport).not.toHaveProperty(name);
+    expect(card.issueReport?.expiresAt).toBe(new Date(at.getTime() + 30 * 60000).toISOString());
+  });
+  it("자료가 잠시 없어지면 전송 참조를 보류하고 복구 뒤 같은 카드를 읽는다", async () => {
+    const card = await prepare();
+    await isolated.db.query("UPDATE issue_details SET status='abandoned' WHERE id=$1", [detailsId]);
+    const read = () =>
+      scoped().transaction((tx) =>
+        readConfirmCardDelivery(tx, {
+          customerId: shop.customerId,
+          consultationId: shop.consultationId,
+          sourceMessageId: shop.messageId,
+          now: NOW,
+        }),
+      );
+    await expect(read()).rejects.toBeInstanceOf(CustomerNoticeTemporarilyUnavailable);
+    await isolated.db.query("UPDATE issue_details SET status='collecting' WHERE id=$1", [detailsId]);
+    expect((await read()).card?.cardKey).toBe(card.cardKey);
+  });
+  it("다른 상담의 모은 자료로 정상 카드를 만들거나 원문을 보이지 않는다", async () => {
+    const other = newUuid();
+    await isolated.db.query(
+      "INSERT INTO consultations(id,shop_id,customer_id,status,ended_at) VALUES($1,$2,$3,'ended',$4)",
+      [other, shop.shopId, shop.customerId, NOW],
+    );
+    await isolated.db.query("UPDATE issue_details SET consultation_id=$2 WHERE id=$1", [detailsId, other]);
+    const result = await scoped().transaction((tx) =>
+      prepareConfirmCardInTransaction(tx, {
+        customerId: shop.customerId,
+        consultationId: shop.consultationId,
+        kind: "issue_report",
+        orderId: shop.orderId,
+        now: NOW,
+      }),
+    );
+    expect(result).toMatchObject({ unavailable: true });
+    expect(JSON.stringify(result)).not.toContain("합성 신고 설명");
+    expect(
+      (await isolated.db.query("SELECT count(*)::int AS n FROM confirm_cards WHERE shop_id=$1", [shop.shopId])).rows[0]
+        ?.n,
+    ).toBe(0);
+  });
+  it("실제 최소 역할로 표시하고 설명 권한이 없으면 원문 없이 일시 보류한다", async () => {
+    await prepare();
+    const role = `issue147_${newUuid().replaceAll("-", "")}`;
+    let positive = false,
+      revoked = false;
+    await expect(
+      isolated.db.transaction(async (raw) => {
+        await raw.query(`CREATE ROLE "${role}" NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
+        await raw.query(
+          readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8").replaceAll(
+            ':"runtime_role"',
+            `"${role}"`,
+          ),
+        );
+        const db = shopDb(createShopScope(shop.shopId, { kind: "job", job: "kakao_callback" }), raw);
+        const input = {
+          customerId: shop.customerId,
+          consultationId: shop.consultationId,
+          sourceMessageId: shop.messageId,
+          now: NOW,
+        };
+        await raw.query(`SET LOCAL ROLE "${role}"`);
+        expect(
+          (
+            await raw.query(`SELECT has_column_privilege(current_user,'issue_details','description','UPDATE') AS description,
+          has_column_privilege(current_user,'issue_details','health_concern','UPDATE') AS health,
+          has_column_privilege(current_user,'issue_details','order_id','UPDATE') AS target,
+          has_column_privilege(current_user,'issue_details','updated_at','UPDATE') AS clock`)
+          ).rows[0],
+        ).toEqual({ description: false, health: false, target: false, clock: true });
+        expect((await readConfirmCardDelivery(db, input)).card?.issueReport?.description).toBe("합성 신고 설명");
+        positive = true;
+        await raw.query("SET LOCAL ROLE NONE");
+        await raw.query(`REVOKE SELECT(description) ON issue_details FROM "${role}"`);
+        await raw.query(`SET LOCAL ROLE "${role}"`);
+        revoked = true;
+        await readConfirmCardDelivery(db, input);
+      }),
+    ).rejects.toBeInstanceOf(CustomerNoticeTemporarilyUnavailable);
+    expect(positive).toBe(true);
+    expect(revoked).toBe(true);
+  });
+  it("모은 자료의1000자 그래핌도 진료 안내와 세 출력으로 표시한다", async () => {
+    const description = `가${"\u0301".repeat(999)}`;
+    await isolated.db.query("UPDATE issue_details SET description=$2 WHERE id=$1", [detailsId, description]);
+    const card = await prepare();
+    expect(card.issueReport?.description).toBe(description);
+    const body = kakaoConsultationMessage({ state: "normal", contents: [card] });
+    expectSchema("SkillTemplateResponse", body);
+    expect(body.template?.outputs).toHaveLength(3);
+    expect(JSON.stringify(body)).toContain(description);
+  });
   it("실제 모은 신고 자료와 받은 날을 준비 값으로 연결하고 원문을 카드 payload에 복사하지 않는다", async () => {
     const card = await prepare();
     expect(card.issueReport).toMatchObject({

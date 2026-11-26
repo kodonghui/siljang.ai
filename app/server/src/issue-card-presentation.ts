@@ -1,4 +1,6 @@
 /** 현재 손님의 모아 둔 신고 자료를 표시한다. 신고 접수·기한 판정·보상은 하지 않는다. */
+import { CustomerNoticeTemporarilyUnavailable } from "./customer-notice-content";
+import { sqlStateOf } from "./db";
 import type { KakaoIssueReportCard } from "./kakao-issue-report-message";
 import { normalizeLineBreaks } from "./line-breaks";
 import type { ShopDb } from "./shop-scope";
@@ -22,7 +24,7 @@ function unavailable(reason: "not_received" | "not_ready"): IssueCardSource {
   };
 }
 
-export async function readPreparedIssueCard(
+async function readIssueCardSource(
   db: ShopDb,
   input: { readonly orderId: string; readonly customerId: string; readonly consultationId: string },
 ): Promise<IssueCardSource> {
@@ -80,4 +82,16 @@ export async function readPreparedIssueCard(
       timeZone: order.time_zone,
     },
   };
+}
+
+export async function readPreparedIssueCard(
+  db: ShopDb,
+  input: { readonly orderId: string; readonly customerId: string; readonly consultationId: string },
+): Promise<IssueCardSource> {
+  try {
+    return await readIssueCardSource(db, input);
+  } catch (error) {
+    if (sqlStateOf(error) === "42501") throw new CustomerNoticeTemporarilyUnavailable();
+    throw error;
+  }
 }

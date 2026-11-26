@@ -1,0 +1,41 @@
+
+ RUN  v5.1.0 /workspace/siljang-task134-day-before-notice/app/server
+
+ ❯ test/day-before-notice.test.ts (10 tests | 5 failed | 5 skipped) 2456ms
+   ❯ 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) (10)
+     × 미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(pickup) 390ms
+     × 미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(address) 176ms
+     × 미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(phone) 152ms
+     × 미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(time-zone) 138ms
+     × 미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(notice-time) 160ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(pickup)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(address)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(phone)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(time-zone)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 미전달 안내를 만든 뒤 현재 정보가 바뀌면 옛 내용을 대화로 전하지 않는다(notice-time)
+AssertionError: expected [ { …(4) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ test/day-before-notice.test.ts:196:30
+    194|         ]);
+    195|       const batch = await scoped.transaction((tx) => deferredKakaoBatc…
+    196|       expect(batch.messages).toHaveLength(0);
+       |                              ^
+    197|       expect(
+    198|         (
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 5 skipped (10)
+   Start at  23:58:14
+   Duration  3.92s (tests 65%, import 27%, transform 8%)

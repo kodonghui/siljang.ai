@@ -132,13 +132,17 @@ function allowedCrossShop(file: string, sql: string): boolean {
       "SELECT id, shop_id, status, skill_key_version, previous_key_until FROM kakao_channels WHERE bot_id = $1 AND status IN ('pending', 'linked')"
     );
   }
-  // TASK-076: 여러 가게에서 고르는 값은 상담의 ID·시각뿐이다. 하위 질의는 같은 후보 가게로 한정한다.
+  // TASK-076/134: 여러 가게에서 고르는 값은 상담/확정 주문의 ID·시각뿐이다. 하위 질의도 같은 후보 가게다.
   if (file === CROSS_SHOP_FILE) {
     const found = FIND_SHAPE.exec(sql);
-    if (found?.[2] === "consultations") {
+    const consultation = found?.[2] === "consultations";
+    const dayBefore = found?.[2] === "orders" && found[1] === "confirmed_at";
+    if (consultation || dayBefore) {
       const where = found[3] ?? "";
       if (
-        !/^t\.status = '(open|ordered|awaiting_owner)' AND /.test(where) ||
+        !(consultation ? /^t\.status = '(open|ordered|awaiting_owner)' AND / : /^t\.status = 'confirmed' AND /).test(
+          where,
+        ) ||
         /\b(insert|update|delete|union|intersect|except|returning)\b/i.test(sql) ||
         sql.includes(EXPR.trim())
       )
@@ -149,7 +153,9 @@ function allowedCrossShop(file: string, sql: string): boolean {
         )
       )
         return false;
-      const guarded = `SELECT t.id FROM consultations t WHERE t.shop_id = $1 AND t.id = $2 AND ${where.replaceAll("$1", "$3")} AND t.last_customer_message_at <= $3 FOR UPDATE SKIP LOCKED`;
+      const table = consultation ? "consultations" : "orders";
+      const dueColumn = consultation ? "last_customer_message_at" : "confirmed_at";
+      const guarded = `SELECT t.id FROM ${table} t WHERE t.shop_id = $1 AND t.id = $2 AND ${where.replaceAll("$1", "$3")} AND t.${dueColumn} <= $3 FOR UPDATE SKIP LOCKED`;
       return scopeViolations(guarded).length === 0;
     }
   }
@@ -323,6 +329,23 @@ describe("서버 코드의 SQL(정적 검사)", () => {
     ])
       expect(allowedCrossShop(CROSS_SHOP_FILE, bad)).toBe(false);
     expect(allowedCrossShop("consultation-idle.ts", find)).toBe(false);
+  });
+
+  it("전날 안내 찾기는 후보 가게의 설정/안내 조건만 읽고 다른 가게·원문·추가 출력은 막음", () => {
+    const find = DUE_SOURCES.order_day_before.find;
+    expect(allowedCrossShop(CROSS_SHOP_FILE, find)).toBe(true);
+    for (const bad of [
+      find.replace("t.shop_id, t.id,", "t.shop_id, t.id, t.customer_id,"),
+      find.replace("s.id = t.shop_id", "s.id <> t.shop_id"),
+      find.replace("b.shop_id = s.id", "b.shop_id <> s.id"),
+      find.replace("n.shop_id = t.shop_id", "true"),
+      find.replace("SELECT 1 FROM shops", "SELECT s.contact_phone FROM shops"),
+      find.replace("WHERE t.status = 'confirmed'", "WHERE true OR t.status = 'confirmed'"),
+    ]) {
+      expect(bad).not.toBe(find);
+      expect(allowedCrossShop(CROSS_SHOP_FILE, bad)).toBe(false);
+    }
+    expect(allowedCrossShop("day-before-notice.ts", find)).toBe(false);
   });
 
   it("운영자 알림은 정확한 한 읽기만 허용하고 상세/다른 종류/가게 조건 우회를 막음", () => {

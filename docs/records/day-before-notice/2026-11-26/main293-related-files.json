@@ -1,0 +1,16 @@
+{
+  "files": [
+    "app/server/test/day-before-notice.test.ts",
+    "app/server/test/due-sources.test.ts",
+    "app/server/test/job-runner.test.ts",
+    "app/server/test/jobs.test.ts",
+    "app/server/test/scheduled-poll.test.ts",
+    "app/server/test/customer-notice-scheduled.test.ts",
+    "app/server/test/customer-notices-skill.test.ts",
+    "app/server/test/kakao-deferred.test.ts",
+    "app/server/test/shop-scope-static.test.ts"
+  ],
+  "allFilesExistGuard": true,
+  "passedFiles": 9,
+  "passedTests": 174
+}

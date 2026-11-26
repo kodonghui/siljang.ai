@@ -1,0 +1,13 @@
+{
+  "branch": "codex/task-134-day-before-notice",
+  "parent": "ca1204e25e9ae686e21ff411cd238d4348ac1580",
+  "sourceCommit": "2d47cf9da1e781894b1610048834088acf09cb02",
+  "tree": "0018a83659cd391e25e3415df6707c61520bf3cc",
+  "main": "dadd2c0f2bd3b3d648583b8f70d54373bc3327a5",
+  "files": 34,
+  "method": "connected GitHub API",
+  "phase": "failed at blob 11/34",
+  "error": "Error: {\"content\":[{\"type\":\"text\",\"text\":\"RemoteProtocolError: Server disconnected without sending a response.\"}],\"structuredContent\":{\"error\":\"RemoteProtocolError: Server disconnected without sending a response.\",\"error_code\":\"UNKNOWN\"},\"isError\":true}",
+  "remoteRefAfterFailure": "ca1204e25e9ae686e21ff411cd238d4348ac1580",
+  "refUpdated": false
+}

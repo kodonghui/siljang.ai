@@ -1,0 +1,10 @@
+{
+  "worktree": "/workspace/siljang-task134-trim-check",
+  "source": "0ac144a5834c2bfbf07045709b6e0faa2030c46c",
+  "reason": "고정 소스 전체 시험 중 주소 회귀 시험을 별도로 준비",
+  "testPreparationAttempts": 2,
+  "functionalTestsExecuted": 0,
+  "error": "희소 작업 트리에 api/openapi.yaml이 없어 두 실행 모두 suite 준비 실패",
+  "stopped": true,
+  "next": "보조 경로를 재실행하지 않음. 현재 전체가 끝나면 본 작업 트리에 준비한4주소 사례를 반영하고 SQL 이스케이프를 고침"
+}

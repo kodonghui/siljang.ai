@@ -15,13 +15,14 @@ import {
   markKakaoAiDisclosure,
   prependKakaoDisclosure,
 } from "./kakao-ai-disclosure";
+import { SKILL_CALLBACK_MS } from "./kakao-callback";
 import {
   createKakaoAmountConfirmationMerger,
   type KakaoMessageContent,
   kakaoMessageTemplate,
   mergeKakaoAmountConfirmations,
 } from "./kakao-message-content";
-import type { ShopDb, ShopRequestDb } from "./shop-scope";
+import { isUuid, type ShopDb, type ShopRequestDb } from "./shop-scope";
 
 /** 새 답 하나의 자리를 남기고 카카오 outputs 세 개 한도 안에서 이전 답을 먼저 전한다. */
 export const DEFERRED_REPLY_BATCH = 2;
@@ -34,6 +35,13 @@ export interface DeferredKakaoMessage {
   readonly source: "message" | "notification";
   readonly card?: ConfirmCardView;
   readonly contents?: readonly KakaoMessageContent[];
+  readonly callbackClaim?: DeferredKakaoCallbackClaim;
+}
+
+/** 실제 콜백 소비자만 만드는 전송 기한 안의 임시 소유 표지. 손님/AI 입력으로 받지 않는다. */
+export interface DeferredKakaoCallbackClaim {
+  readonly id: string;
+  readonly until: Date;
 }
 
 /** 안내 하나는 모두 보낸 뒤에만 전함으로 표시한다. Unicode 글자를 중간에서 자르지 않는다. */
@@ -63,10 +71,30 @@ export async function deferredKakaoBatch(
     /** 현재 결과를 따로 보존할 수 있는 호출자만 세 칸의 주문 카드를 통째로 소비한다. */
     readonly allowFullOrderCard?: boolean;
     readonly fields?: (() => FieldCrypto) | undefined;
+    readonly callbackClaim?: DeferredKakaoCallbackClaim;
   } = {},
 ): Promise<DeferredKakaoBatch> {
   if ((await db.run("SELECT id FROM customers WHERE shop_id=$1 AND id=$2 FOR UPDATE", [customerId])).rowCount === 0)
     return { messages: [], currentBlocked: false };
+  const readAt = options.now ?? new Date();
+  if (
+    options.callbackClaim !== undefined &&
+    (!isUuid(options.callbackClaim.id) ||
+      !Number.isFinite(options.callbackClaim.until.getTime()) ||
+      options.callbackClaim.until <= readAt ||
+      options.callbackClaim.until.getTime() > readAt.getTime() + SKILL_CALLBACK_MS)
+  )
+    throw new RangeError("invalid deferred callback claim");
+  if (
+    (
+      await db.run(
+        `SELECT id FROM notifications WHERE shop_id=$1 AND customer_id=$2 AND status='deferred'
+    AND sent_at IS NULL AND reply_claim_until>$3 LIMIT 1`,
+        [customerId, readAt],
+      )
+    ).rowCount > 0
+  )
+    return { messages: [], currentBlocked: true };
   interface MessageRow {
     id: string;
     body_masked: string;
@@ -82,7 +110,6 @@ export async function deferredKakaoBatch(
   let disclosureBlocked = false;
   let scanned = 0,
     scanLimited = false;
-  const readAt = options.now ?? new Date();
   const merger = createKakaoAmountConfirmationMerger();
   // 목록과 참조가 같은 후보 조건을 쓴다. 별칭은 정해진 이름만 받는다.
   const candidateConditions = (
@@ -222,27 +249,30 @@ export async function deferredKakaoBatch(
   }
   // 결제 안내는 표시 자료를 늦게 만들고 실제 전달 표시와 같은 트랜잭션에서 시계를 시작한다.
   await db.run(
-    `UPDATE notifications n SET status='dropped',next_attempt_at=NULL FROM orders o
+    `UPDATE notifications n SET status='dropped',next_attempt_at=NULL,reply_claim_id=NULL,reply_claim_until=NULL FROM orders o
       WHERE n.shop_id=$1 AND n.customer_id=$2 AND n.status='deferred' AND n.kind='order_confirmed'
         AND o.shop_id=$1 AND o.id=n.order_id
+        AND (n.reply_claim_until IS NULL OR n.reply_claim_until<=$3)
         AND (o.status NOT IN ('confirmed','received','no_pickup') OR o.customer_id<>n.customer_id OR o.personal_data_purged_at IS NOT NULL)`,
-    [customerId],
+    [customerId, readAt],
   );
   // 현재 의미가 없어진 예약만 닫는다. 미래 예약이나 보낼 시간 밖의 유효한 예약은 보존한다.
   await db.run(
-    `UPDATE notifications n SET status='dropped',next_attempt_at=NULL FROM shops s
+    `UPDATE notifications n SET status='dropped',next_attempt_at=NULL,reply_claim_id=NULL,reply_claim_until=NULL FROM shops s
       WHERE n.shop_id=$1 AND n.customer_id=$2 AND n.status='deferred' AND n.sent_at IS NULL
         AND n.kind IN ('day_before','review_request') AND s.id=$1
+        AND (n.reply_claim_until IS NULL OR n.reply_claim_until<=$3)
         AND NOT EXISTS(SELECT 1 FROM orders o WHERE o.shop_id=$1 AND o.id=n.order_id
           AND o.personal_data_purged_at IS NULL AND ${scheduledNoticeMeaningSql(3)})`,
     [customerId, options.now ?? new Date()],
   );
   // 표시할 본문이 없는 일반 안내는 닫는다. 결제 안내는 표시 자료를 따로 읽으므로 본문으로 판단하지 않는다.
   await db.run(
-    `UPDATE notifications SET status='dropped',next_attempt_at=NULL
+    `UPDATE notifications SET status='dropped',next_attempt_at=NULL,reply_claim_id=NULL,reply_claim_until=NULL
       WHERE shop_id=$1 AND customer_id=$2 AND status='deferred' AND sent_at IS NULL
-        AND kind=ANY($3::text[]) AND kind<>'payment_request' AND btrim(body,$4::text)=''`,
-    [customerId, READABLE_CUSTOMER_NOTICE_KINDS, CUSTOMER_NOTICE_WHITESPACE],
+        AND kind=ANY($3::text[]) AND kind<>'payment_request' AND btrim(body,$4::text)=''
+        AND (reply_claim_until IS NULL OR reply_claim_until<=$5)`,
+    [customerId, READABLE_CUSTOMER_NOTICE_KINDS, CUSTOMER_NOTICE_WHITESPACE, readAt],
   );
   // 새 열이 필요한 유효한 차액만 뒤로 두어 정상 안내의 셋째 행까지 읽는다.
   const notices = await db.run<{ id: string; body: string; kind: string; created_order: string }>(
@@ -251,6 +281,7 @@ export async function deferredKakaoBatch(
       JOIN shops s ON s.id=$1
       LEFT JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id
       WHERE n.shop_id = $1 AND n.customer_id = $2 AND n.status = 'deferred' AND n.sent_at IS NULL
+        AND (n.reply_claim_until IS NULL OR n.reply_claim_until<=$5)
         AND n.kind=ANY($4::text[]) AND c.status<>'deleted' AND o.personal_data_purged_at IS NULL
         AND (n.scheduled_for IS NULL OR n.scheduled_for<=$5)
         AND (n.order_id IS NULL OR o.customer_id=n.customer_id)
@@ -306,10 +337,22 @@ export async function deferredKakaoBatch(
     if (slots === 3 && selected.length === 0 && options.allowFullOrderCard && !options.disclosureConsultationId)
       remaining = 3;
     if (slots > remaining) break;
+    if (row.source === "notification" && options.callbackClaim !== undefined) {
+      const claimed = await db.run(
+        `UPDATE notifications SET reply_claim_id=$4,reply_claim_until=$5
+        WHERE shop_id=$1 AND id=$2 AND customer_id=$3 AND status='deferred' AND sent_at IS NULL
+          AND (reply_claim_until IS NULL OR reply_claim_until<=$6)`,
+        [row.id, customerId, options.callbackClaim.id, options.callbackClaim.until, readAt],
+      );
+      if (claimed.rowCount !== 1) throw new Error("deferred notification claim changed");
+    }
     selected.push({
       id: row.id,
       text: row.text,
       source: row.source,
+      ...(row.source === "notification" && options.callbackClaim !== undefined
+        ? { callbackClaim: options.callbackClaim }
+        : {}),
       ...("card" in row && row.card !== undefined ? { card: row.card } : {}),
       ...(row.contents === undefined ? {} : { contents: row.contents }),
     });
@@ -329,6 +372,49 @@ export async function deferredKakaoMessages(
   return (await deferredKakaoBatch(db, customerId, options)).messages;
 }
 
+/** 자기 임시 선점만 해제한다. 본문이나 전달 결과는 고치지 않는다. */
+export async function releaseDeferredKakaoClaim(
+  db: ShopDb,
+  customerId: string,
+  claim: DeferredKakaoCallbackClaim,
+): Promise<void> {
+  await db.run(
+    `UPDATE notifications SET reply_claim_id=NULL,reply_claim_until=NULL
+    WHERE shop_id=$1 AND customer_id=$2 AND reply_claim_id=$3 AND reply_claim_until=$4`,
+    [customerId, claim.id, claim.until],
+  );
+}
+
+/** 매 HTTP 시도 직전에 동일 선점·본문과 현재 예약 의미를 다시 확인한다. 실패하면 발신하지 않는다. */
+export async function validateDeferredKakaoCallback(
+  db: ShopDb,
+  customerId: string,
+  previous: readonly DeferredKakaoMessage[],
+  claim: DeferredKakaoCallbackClaim,
+  at: Date,
+): Promise<boolean> {
+  if (claim.until <= at) return false;
+  for (const row of previous) {
+    if (row.source !== "notification") continue;
+    if (row.callbackClaim?.id !== claim.id || row.callbackClaim.until.getTime() !== claim.until.getTime()) return false;
+    const valid = await db.run(
+      `SELECT n.id FROM notifications n
+      JOIN consultations c ON c.shop_id=$1 AND c.id=n.consultation_id AND c.customer_id=n.customer_id
+      JOIN shops s ON s.id=$1 LEFT JOIN orders o ON o.shop_id=$1 AND o.id=n.order_id
+      WHERE n.shop_id=$1 AND n.customer_id=$2 AND n.id=$3 AND n.body=$4 AND n.status='deferred' AND n.sent_at IS NULL
+        AND n.reply_claim_id=$6 AND n.reply_claim_until=$7 AND n.reply_claim_until>$5
+        AND n.kind=ANY($8::text[]) AND c.status<>'deleted' AND o.personal_data_purged_at IS NULL
+        AND (n.order_id IS NULL OR o.customer_id=n.customer_id)
+        AND (n.kind<>'order_confirmed' OR o.status IN ('confirmed','received','no_pickup'))
+        AND (n.scheduled_for IS NULL OR n.scheduled_for<=$5)
+        AND ${scheduledNoticeMeaningSql(5)} AND ${scheduledNoticeReadySql(5)}`,
+      [customerId, row.id, row.text, at, claim.id, claim.until, READABLE_CUSTOMER_NOTICE_KINDS],
+    );
+    if (valid.rowCount !== 1) return false;
+  }
+  return true;
+}
+
 /** 발신 성공/응답 생성의 트랜잭션 안에서만 이전 답의 전달 표시를 바꾼다. */
 export async function markDeferredKakaoMessages(
   db: ShopDb,
@@ -339,10 +425,20 @@ export async function markDeferredKakaoMessages(
   for (const row of previous) {
     if (row.source === "notification") {
       const marked = await db.run(
-        `UPDATE notifications SET status = 'delivered_on_reply', sent_at = $4
+        `UPDATE notifications SET status = 'delivered_on_reply', sent_at = $4,reply_claim_id=NULL,reply_claim_until=NULL
           WHERE shop_id = $1 AND id = $2 AND customer_id = $3 AND status = 'deferred' AND sent_at IS NULL
-            AND body = $5 AND kind=ANY($6::text[])`,
-        [row.id, customerId, at, row.text, READABLE_CUSTOMER_NOTICE_KINDS],
+            AND body = $5 AND kind=ANY($6::text[])
+            AND (($7::uuid IS NULL AND (reply_claim_until IS NULL OR reply_claim_until<=$4))
+              OR (reply_claim_id=$7 AND reply_claim_until=$8 AND reply_claim_until>$4))`,
+        [
+          row.id,
+          customerId,
+          at,
+          row.text,
+          READABLE_CUSTOMER_NOTICE_KINDS,
+          row.callbackClaim?.id ?? null,
+          row.callbackClaim?.until ?? null,
+        ],
       );
       if (marked.rowCount !== 1) throw new Error("deferred notification changed before delivery");
       await recordPaymentNoticeDelivery(db, row.id, customerId, at);

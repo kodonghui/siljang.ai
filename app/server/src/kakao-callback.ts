@@ -77,7 +77,7 @@ async function readSuccess(response: Response): Promise<boolean> {
 export async function deliverKakaoCallback(
   callback: KakaoCallback,
   message: string | readonly KakaoMessageContent[],
-  options: { readonly fetch?: Fetch; readonly now?: () => number } = {},
+  options: { readonly fetch?: Fetch; readonly now?: () => number; readonly beforeSend?: () => Promise<boolean> } = {},
 ): Promise<CallbackResult> {
   const send = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
@@ -94,6 +94,8 @@ export async function deliverKakaoCallback(
     template,
   });
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (callback.deadline - now() <= 0) return "expired";
+    if (options.beforeSend !== undefined && !(await options.beforeSend())) return "unavailable";
     const left = callback.deadline - now();
     if (left <= 0) return "expired";
     let response: Response;

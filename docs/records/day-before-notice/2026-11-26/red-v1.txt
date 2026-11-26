@@ -1,0 +1,34 @@
+RUN  v5.1.0 /workspace/siljang-task134-day-before-notice/app/server
+
+ ❯ test/day-before-notice.test.ts (2 tests | 2 failed) 977ms
+   ❯ 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) (2)
+     × 가게 시간의 전날18시에 광고 없이 한 번 만들고 픽업 장소가 비어도 보존한다(빈 장소false) 228ms
+     × 가게 시간의 전날18시에 광고 없이 한 번 만들고 픽업 장소가 비어도 보존한다(빈 장소true) 69ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 가게 시간의 전날18시에 광고 없이 한 번 만들고 픽업 장소가 비어도 보존한다(빈 장소false)
+ FAIL  test/day-before-notice.test.ts > 전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052) > 가게 시간의 전날18시에 광고 없이 한 번 만들고 픽업 장소가 비어도 보존한다(빈 장소true)
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/day-before-notice.test.ts:70:25
+     68|         [shop.shopId, shop.orderId],
+     69|       );
+     70|       expect(rows.rows).toHaveLength(1);
+       |                         ^
+     71|       const notice = rows.rows[0];
+     72|       if (notice === undefined) throw new Error("전날 안내가 생성되지 않음");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  23:22:04
+   Duration  2.61s (tests 39%, transform 39%, import 22%)

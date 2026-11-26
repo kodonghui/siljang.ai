@@ -1,0 +1,10 @@
+{
+  "source": "0ac144a5834c2bfbf07045709b6e0faa2030c46c",
+  "postgres": "16",
+  "escapeVCodePoint": 118,
+  "verticalTabCodePoint": 11,
+  "input": "v합성 장소v",
+  "oldTrim": "합성 장소",
+  "expected": "v합성 장소v",
+  "browserExecuted": false
+}

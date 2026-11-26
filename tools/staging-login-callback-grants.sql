@@ -138,6 +138,13 @@ GRANT SELECT (confirmed_payment_id) ON orders TO :"runtime_role";
 -- TASK-106: 저장된 차액의 변경 내용과 버전·금액 차이만 표시용으로 읽는다.
 GRANT SELECT (changes, base_version, amount_delta) ON change_requests TO :"runtime_role";
 GRANT SELECT (no_pickup_at) ON productions TO :"runtime_role";
+-- TASK-134: 확정된 시각만 전날 안내의 생성 기준으로 읽는다. 주문 쓰기 권한은 늘리지 않는다.
+GRANT SELECT (confirmed_at) ON orders TO :"runtime_role";
+-- TASK-134: 일반 본문 수정 권한을 없애고 미전달·미시도 전날 안내의 좁은 갱신만 실행한다.
+REVOKE UPDATE (template_key, body) ON notifications FROM :"runtime_role";
+GRANT EXECUTE ON FUNCTION refresh_pending_day_before_notice(uuid,uuid,timestamptz) TO :"runtime_role";
+-- 콜백 기한 안의 임시 선점만 기록한다. 본문·수신자·종류의 직접 수정은 열지 않는다.
+GRANT UPDATE (reply_claim_id, reply_claim_until) ON notifications TO :"runtime_role";
 GRANT SELECT (id, voided_at) ON payments TO :"runtime_role";
 GRANT SELECT (shop_id, order_id, handed_over_at) ON productions TO :"runtime_role";
 -- 이미 보낸 안내·시도 횟수·본문은 바꾸지 않는다.
@@ -217,3 +224,5 @@ GRANT SELECT (shop_id, order_detail_id, price_list_id, option_id) ON order_detai
 -- TASK-147: 자기 손님이 모은 설명/진료 안내 표지와 사진 개수만 카드 표시로 읽는다. 쓰기/사진 위치는 열지 않는다.
 GRANT SELECT (description, health_concern, status, content_purged_at) ON issue_details TO :"runtime_role";
 GRANT SELECT (id, shop_id, issue_details_id, position) ON issue_photos TO :"runtime_role";
+-- PostgreSQL의 FOR UPDATE 행 잠금에는 UPDATE 열 권한이 하나 필요하다. 잠금용 시각 열만 허용한다.
+GRANT UPDATE (updated_at) ON issue_details TO :"runtime_role";
