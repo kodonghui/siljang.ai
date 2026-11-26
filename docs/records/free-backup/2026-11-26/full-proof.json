@@ -41,7 +41,7 @@
   "sequences_compared": 4,
   "lost_records": 0,
   "native_verified": false,
-  "scheduled_enabled": false,
+  "scheduled_enabled": null,
   "log_sha256": {
     "full-output.txt": "44fbff27749054fc678d0905f3a72dcc218f6cb5da97b8611f66e63595ee7f27",
     "build-output.txt": "f3b6d2150baac847269aa3ec61c97dc3f62cc07dcabae4590384f2faeb390ef1",
@@ -60,5 +60,7 @@
       "published_sha256": "f3b6d2150baac847269aa3ec61c97dc3f62cc07dcabae4590384f2faeb390ef1",
       "change": "줄 끝 공백과 마지막 빈 줄만 제거. 원본은 세션 /tmp에 보존."
     }
-  }
+  },
+  "enable_setting_changed": false,
+  "enable_setting_readback": "GitHub 변수 API403. 실제 활성 상태 미확인"
 }
