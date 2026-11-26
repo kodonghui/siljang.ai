@@ -1,0 +1,22 @@
+{
+  "files": [
+    "app/server/test/change-card-source.test.ts",
+    "app/server/test/kakao-change-request-message.test.ts",
+    "app/server/test/kakao-change-request-integration.test.ts",
+    "app/server/test/kakao-change-request-contract.test.ts",
+    "app/server/test/kakao-callback.test.ts",
+    "app/server/test/kakao-callback-recovery.test.ts",
+    "app/server/test/kakao-callback-expiry-recovery.test.ts",
+    "app/server/test/kakao-deferred.test.ts",
+    "app/server/test/payment-claim-depositor-input.test.ts",
+    "app/server/test/kakao-ai-disclosure.test.ts",
+    "app/server/test/shop-scope-static.test.ts",
+    "app/server/test/kakao-ai-conversation.test.ts",
+    "app/server/test/kakao-ai-failure.test.ts",
+    "app/server/test/kakao-ai-cost-limit.test.ts",
+    "app/server/test/operating-rules.test.ts"
+  ],
+  "allFilesExistGuard": true,
+  "passedFiles": 15,
+  "passedTests": 374
+}

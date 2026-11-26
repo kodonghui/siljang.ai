@@ -206,7 +206,7 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
           .rows[0]?.n,
       ).toBe(1);
       for (const response of responses) {
-        expectSchema("SkillTemplateResponse", response.body);
+        expectSchema(response.outcome === "duplicate" ? "SkillResponse" : "SkillTemplateResponse", response.body);
         expect(JSON.stringify(response.body)).not.toContain("새 카드를 보내 드려요");
         expect(JSON.stringify(response.body)).not.toContain("이미 처리했어요");
       }
@@ -264,7 +264,7 @@ describeDb("변경 카드의 서버 준비 값과 실제 발급/갱신 API", () 
       "deferred",
     );
     expect((await isolated.db.query("SELECT delivery FROM messages WHERE id=$1", [healthyId])).rows[0]?.delivery).toBe(
-      "callback",
+      "delivered_later",
     );
     expect(
       (

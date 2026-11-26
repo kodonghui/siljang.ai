@@ -3,7 +3,7 @@
 import { type ChangeCardSource, type ChangeRequestStatus, readPreparedChangeCard } from "./change-card-presentation";
 import { cardExpiresAt, judgeCardPress } from "./confirm-card";
 import { CustomerNoticeTemporarilyUnavailable } from "./customer-notice-content";
-import type { KakaoChangeRequestCard } from "./kakao-change-request-message";
+import type { KakaoChangeRequestCard, KakaoChangeRequestView } from "./kakao-change-request-message";
 import { changeRequestResultText, kakaoChangeRequestMessage } from "./kakao-change-request-message";
 import type { KakaoChangeRequestContent } from "./kakao-message-content";
 import type { KakaoOrderCardContext } from "./kakao-order-request-content";
@@ -60,7 +60,8 @@ export interface ConfirmCardView {
 export interface UnavailableConfirmCard {
   readonly unavailable: true;
   readonly text: string;
-  /** 인증된 서버 대상의 참조만 저장했으며 표시 자료는 권한 복구 뒤 읽는다. */
+  readonly contents?: readonly KakaoChangeRequestContent[];
+  /** 인증된 서버 대상의 참조를 저장했다. 매번 전송할 때 현재 표시 자료를 다시 읽는다. */
   readonly deferredCard?: true;
 }
 export interface ConfirmCardCommandResult {
@@ -99,6 +100,7 @@ interface Source {
   blockId: string;
 }
 interface CardRow {
+  card_key: string;
   id: string;
   kind: CustomerCommandKind;
   customer_id: string;
@@ -455,7 +457,15 @@ export async function prepareConfirmCardInTransaction(
     await insertCard(db, input, source);
     return { unavailable: true, text: "결제 확인 요청", deferredCard: true };
   }
-  if (source.changeRequest?.available === false) return { unavailable: true, text: source.changeRequest.text };
+  if (source.changeRequest?.available === false) {
+    const delivery = unavailableChangeDelivery(source.changeRequest);
+    for (const content of delivery.contents ?? []) kakaoChangeRequestMessage(content.view);
+    if (delivery.contents !== undefined && input.sourceMessageId !== undefined) {
+      await insertCard(db, input, source);
+      return { unavailable: true, ...delivery, deferredCard: true };
+    }
+    return { unavailable: true, ...delivery };
+  }
   if (source.paymentClaim?.available === false && source.paymentClaim.amountConfirmation === undefined)
     return { unavailable: true, text: source.paymentClaim.text };
   return insertCard(db, input, source);
@@ -640,6 +650,25 @@ async function replaceCard(
   return { ...result, card: replacement };
 }
 
+function unavailableChangeDelivery(source: Extract<ChangeCardSource, { readonly available: false }>): {
+  readonly text: string;
+  readonly contents?: readonly KakaoChangeRequestContent[];
+} {
+  return {
+    text: source.text,
+    ...(source.status.clause === undefined
+      ? {}
+      : { contents: [{ kind: "change_card", view: { state: "stale", ...source.status } }] as const }),
+  };
+}
+function checkChangeDelivery(view: KakaoChangeRequestView): void {
+  try {
+    kakaoChangeRequestMessage(view);
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    throw new CustomerNoticeTemporarilyUnavailable();
+  }
+}
 /** 저장한 수신의 카드를 재전달합니다. 읽기·갱신뿐이며 업무 명령을 실행하지 않습니다. */
 export async function readConfirmCardDelivery(
   db: ShopDb,
@@ -668,13 +697,11 @@ export async function readConfirmCardDelivery(
   };
   const source = await readSource(db, target);
   if (source === null) return initial.kind === "order_request" ? { text: ORDER_NOT_READY.text } : unavailable;
-  if (source.changeRequest?.available === false)
-    return {
-      text: source.changeRequest.text,
-      ...(source.changeRequest.status.clause === undefined
-        ? {}
-        : { contents: [{ kind: "change_card", view: { state: "stale", ...source.changeRequest.status } }] as const }),
-    };
+  if (source.changeRequest?.available === false) {
+    const delivery = unavailableChangeDelivery(source.changeRequest);
+    for (const content of delivery.contents ?? []) checkChangeDelivery(content.view);
+    return delivery;
+  }
   if (source.paymentClaim?.available === false)
     return {
       text: source.paymentClaim.text,
@@ -693,6 +720,20 @@ export async function readConfirmCardDelivery(
     card.draft_revision !== source.draftRevision ||
     orderCardChanged(card, source) ||
     paymentClaimChanged(card, source);
+  if (source.changeRequest?.available === true)
+    // 변경 카드의 쓰기 전에 검사한다. 표시 불가 한 건만 보류하고 다른 대기 안내는 계속 보낸다.
+    checkChangeDelivery({
+      ...source.changeRequest.presentation,
+      state: expired ? "expired" : stale ? "stale" : "normal",
+      cardKey: card.card_key,
+      blockId: source.blockId,
+      expiresAt: new Date(
+        Math.min(
+          (expired || stale ? cardExpiresAt(input.now) : card.expires_at).getTime(),
+          source.changeRequest.changeDeadline.getTime(),
+        ),
+      ).toISOString(),
+    });
   const presentation =
     expired || stale
       ? (await replaceCard(db, card, target, source, expired ? "expired" : "stale")).card

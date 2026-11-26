@@ -251,7 +251,11 @@ export async function consumeKakaoCallback(
     let replyIncluded =
       preparedReply?.deferredCard !== true &&
       (alreadyIncluded || (!previousBatch.currentBlocked && prefix.length + previousTexts.length < 3));
-    if (callback !== null && replyIncluded && preparedReply?.card !== undefined) {
+    if (
+      callback !== null &&
+      replyIncluded &&
+      (preparedReply?.card !== undefined || preparedReply?.contents !== undefined)
+    ) {
       let fresh: Awaited<ReturnType<typeof readClaimedKakaoCard>> | undefined;
       try {
         fresh = await readClaimedKakaoCard(db, job.messageId, claim, now);
