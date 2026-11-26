@@ -71,8 +71,12 @@ export async function confirmedNoticeContents(
     )
   ).rows[0];
   if (!row) return null;
-  // v1은 신원/결제 사실만 저장했다. 초기 확정의 내용은 변경 뒤 버전 대신 첫 주문 내용에서 읽는다.
-  const summary = row.template_key === "order_confirmed:v2" ? null : await readOrderNoticeSummary(db, row.order_id, 1);
+  // v3는 신원/결제 사실과 확정 당시의 불변 주문 버전을 분리해 보존한다. v1은 첫 버전, v2는 본문에 이미 담긴 내용을 쓴다.
+  const bound = /^order_confirmed:v3:([1-9]\d{0,9})$/.exec(row.template_key);
+  const version = bound ? Number(bound[1]) : 1;
+  if (row.template_key.startsWith("order_confirmed:v3:") && (!bound || version > 2147483647)) return null;
+  const summary =
+    row.template_key === "order_confirmed:v2" ? null : await readOrderNoticeSummary(db, row.order_id, version);
   if (row.template_key !== "order_confirmed:v2" && summary === null) return null;
   const clauses = (
     await db.run<{

@@ -1,0 +1,27 @@
+{
+  "baselinePublicHead": "b4508c767a21ea39082e44fc4833263c79f3d7a4",
+  "baselineLocalHead": "fe304d45fdd2806fd1aec0e91ecbd3c4baef019e",
+  "baselineCodeObjects": {
+    "app/server/src/kakao-customer-notice-message.ts": "7c3166c87dc5f3f74b09debec07d7559810f10f4",
+    "app/server/src/customer-notice-content.ts": "9287b5fb2cff190ddbc1c151e88181e04d5f2d28"
+  },
+  "testObjects": {
+    "app/server/test/customer-notice-presentation.test.ts": "2e157289d3c5ce660d38f9dedb9d17c98c40354e",
+    "app/server/test/kakao-customer-notice-message.test.ts": "f55b723759c0c12b9b3f96c57eabccb0c997f46a"
+  },
+  "firstRun": {
+    "failed": 8,
+    "functionalFailures": 6,
+    "fixtureFailures": 2,
+    "passed": 44
+  },
+  "correctedRun": {
+    "failed": 7,
+    "passed": 45,
+    "fixtureFailures": 0
+  },
+  "firstGreen": {
+    "files": 2,
+    "passed": 52
+  }
+}

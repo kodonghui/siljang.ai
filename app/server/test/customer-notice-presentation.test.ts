@@ -1,15 +1,20 @@
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { createOrderConfirmedNotice } from "../src/customer-notice-store";
+import { consumeKakaoCallback } from "../src/kakao-callback-queue";
+import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { operatingRulesCardTexts } from "../src/operating-rules-card";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testEnv } from "./support/db";
-import { newFieldKey } from "./support/field-keys";
+import { newFieldKey, singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop, issueTestBookingLink, linkTestChannel, type ShopFixture } from "./support/shops";
+import { MemoryStore } from "./support/storage";
 
 const NOW = new Date("2026-11-26T00:00:00Z");
 describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
@@ -134,6 +139,319 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
       ).rows,
     ).toEqual([{ n: 0 }]);
   });
+  async function prepareLongConfirmedNotice(legacy: boolean, designNotes = "라".repeat(500), extraCount = 35) {
+    await confirm();
+    const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+    const previous = legacy
+      ? await scoped.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW))
+      : undefined;
+    if (previous)
+      await isolated.db.query("UPDATE notifications SET template_key='order_confirmed:v1',body=$2 WHERE id=$1", [
+        previous.id,
+        `주문이 확정됐어요\n주문번호 AB1234CD\n결제가 확인된 금액 35,000원\n상호 합성 보존된 신원${"가".repeat(48)}\n대표자 ${"나".repeat(30)}\n사업장 주소 ${"다".repeat(200)}\n전화번호 02-0000-0000`,
+      ]);
+    await isolated.db.query(
+      "UPDATE shops SET business_name=$2,representative_name=$3,business_address=$4 WHERE id=$1",
+      [shop.shopId, `합성${"가".repeat(58)}`, `합성${"나".repeat(28)}`, "다".repeat(200)],
+    );
+    await isolated.db.query(
+      "UPDATE order_details SET design_notes=$2,lettering=$3,colors=$4 WHERE order_id=$1 AND version=1",
+      [shop.orderId, designNotes, "마".repeat(50), "바".repeat(100)],
+    );
+    for (let i = 0; i < extraCount; i++) {
+      const id = newUuid();
+      await isolated.db.query(
+        "INSERT INTO price_options(id,shop_id,price_list_id,option_group,name,price_kind,amount,in_standard,position) VALUES($1,$2,$3,'extra',$4,'fixed',1000,true,$5)",
+        [id, shop.shopId, shop.priceListId, `합성${String(i).padStart(2, "0")} ${"사".repeat(25)}`, 100 + i],
+      );
+      await isolated.db.query(
+        "INSERT INTO order_detail_extras(shop_id,order_detail_id,price_list_id,option_id) SELECT shop_id,id,price_list_id,$2 FROM order_details WHERE order_id=$1 AND version=1",
+        [shop.orderId, id],
+      );
+    }
+    for (let position = 1; position <= 2; position++)
+      await isolated.db.query(
+        "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',$3,$4,'합성 조건',$5)",
+        [shop.shopId, shop.operatingRulesId, position, `합성 보존 규정${position}`, "아".repeat(850)],
+      );
+    const created = previous ?? (await scoped.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW)));
+    if (!created) throw new Error("missing synthetic long confirmation");
+    const saved = (
+      await isolated.db.query<{ body: string; template_key: string }>(
+        "SELECT body,template_key FROM notifications WHERE id=$1",
+        [created.id],
+      )
+    ).rows[0];
+    if (!saved) throw new Error("missing stored synthetic notice");
+    expect([...saved.body].length).toBeLessThanOrEqual(2000);
+    if (!legacy) expect(saved.body).not.toContain(designNotes);
+    return created;
+  }
+  function confirmedFields(body: unknown): string[] {
+    type Output = { simpleText?: { text: string }; carousel?: { items: { title: string; description?: string }[] } };
+    return (body as { template: { outputs: Output[] } }).template.outputs.flatMap((output) => {
+      if (output.simpleText) return [output.simpleText.text];
+      if (!output.carousel) throw new Error("확정 안내 텍스트 출력 없음");
+      return output.carousel.items.flatMap((item) => [
+        item.title.replace(/^확정 안내 \d+\n/, ""),
+        item.description ?? "",
+      ]);
+    });
+  }
+  it.each((["event", "message"] as const).flatMap((mode) => [128, 129, 500].map((size) => ({ mode, size }))))(
+    "API $mode / 디자인 설명의 $size 코드 포인트 그래핌과 전체 주문·규정을 보존한다",
+    async ({ mode, size }) => {
+      const grapheme = `가${"\u0301".repeat(size - 1)}`,
+        designNotes = grapheme + "라".repeat(500 - size);
+      const created = await prepareLongConfirmedNotice(false, designNotes, 20);
+      const response = await call(mode, created.id),
+        body: unknown = await response.json();
+      expect(response.status).toBe(200);
+      expectSchema("SkillTemplateResponse", body);
+      const fields = confirmedFields(body),
+        whole = fields.join("");
+      for (const expected of [
+        designNotes,
+        "마".repeat(50),
+        "바".repeat(100),
+        "합성 보존 규정1",
+        "합성 보존 규정2",
+        "35,000원",
+      ])
+        expect(whole).toContain(expected);
+      for (let i = 0; i < 20; i++) expect(whole).toContain(`합성${String(i).padStart(2, "0")} ${"사".repeat(25)}`);
+      expect(fields.some((field) => field.includes(grapheme))).toBe(true);
+      const following = await notice("owner_reply", "합성 그래핌 확정 뒤 정상 안내", new Date(NOW.getTime() + 500));
+      clock = new Date(NOW.getTime() + 1000);
+      expect(JSON.stringify(await (await call(mode, following)).json())).toContain("합성 그래핌 확정 뒤 정상 안내");
+    },
+  );
+  it.each(["event", "message"] as const)(
+    "API %s / 표시할 수 없는 보관 확정 안내가 정상 안내를 막지 않는다",
+    async (mode) => {
+      await confirm();
+      const clauses = [1, 2].map((position) => ({
+        key: "custom" as const,
+        position,
+        title: `규정${position}`,
+        conditionText: `가${"\u0301".repeat(749)}`,
+        effectText: "효과",
+      }));
+      const cards = operatingRulesCardTexts(clauses, 1);
+      expect(cards).toHaveLength(2);
+      for (const card of cards) expect([...card].length).toBeLessThanOrEqual(1000);
+      for (const clause of clauses)
+        await isolated.db.query(
+          "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',$3,$4,$5,$6)",
+          [shop.shopId, shop.operatingRulesId, clause.position, clause.title, clause.conditionText, clause.effectText],
+        );
+      const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+      const created = await scoped.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW));
+      if (!created) throw new Error("격리할 합성 확정 안내 없음");
+      const orderNo = (
+        await isolated.db.query<{ order_no: string }>("SELECT order_no FROM orders WHERE id=$1", [shop.orderId])
+      ).rows[0]?.order_no;
+      if (!orderNo) throw new Error("합성 주문번호 없음");
+      const legacy = `주문이 확정됐어요\n주문번호 ${orderNo}\n합성 표시 불가 원문\n`.padEnd(2000, "나");
+      await isolated.db.query("UPDATE notifications SET template_key='order_confirmed:v2',body=$2 WHERE id=$1", [
+        created.id,
+        legacy,
+      ]);
+      const healthy = await notice("owner_reply", "합성 보관 안내 뒤 정상 답", new Date(NOW.getTime() + 500));
+      clock = new Date(NOW.getTime() + 1000);
+      const response = await call(mode, healthy),
+        body: unknown = await response.json();
+      expect(response.status).toBe(200);
+      expectSchema("SkillTemplateResponse", body);
+      expect(JSON.stringify(body)).toContain("합성 보관 안내 뒤 정상 답");
+      expect(JSON.stringify(body)).not.toContain("합성 표시 불가 원문");
+      expect(
+        (await isolated.db.query("SELECT status,sent_at FROM notifications WHERE id=$1", [created.id])).rows[0],
+      ).toEqual({ status: "deferred", sent_at: null });
+    },
+  );
+  it.each(
+    (["event", "message"] as const).flatMap((mode) =>
+      ([false, true] as const).map((legacy) => [mode, legacy] as const),
+    ),
+  )("확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(%s/이전 %s)", async (mode, legacy) => {
+    const created = await prepareLongConfirmedNotice(legacy);
+    const response = await call(mode, created.id);
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expectSchema("SkillTemplateResponse", result);
+    type Output = { simpleText?: { text: string }; carousel?: { items: { title: string; description?: string }[] } };
+    const outputs = (result as { template: { outputs: Output[] } }).template.outputs;
+    expect(outputs.length).toBeLessThanOrEqual(3);
+    const text = outputs
+      .map(
+        (o) =>
+          o.simpleText?.text ??
+          o.carousel?.items
+            .map((item) => item.title.replace(/^확정 안내 \d+\n/, "") + (item.description ?? ""))
+            .join("") ??
+          "",
+      )
+      .join("");
+    for (const expected of [
+      "라".repeat(500),
+      "마".repeat(50),
+      "바".repeat(100),
+      "합성 보존 규정1",
+      "합성 보존 규정2",
+      "35,000원",
+    ])
+      expect(text).toContain(expected);
+    for (let i = 0; i < 35; i++) expect(text).toContain(`합성${String(i).padStart(2, "0")} ${"사".repeat(25)}`);
+    if (legacy) expect(text).toContain("합성 보존된 신원");
+    const next = await notice("owner_reply", "합성 긴 확정 뒤 정상 안내", new Date(NOW.getTime() + 500));
+    clock = new Date(NOW.getTime() + 1000);
+    expect(JSON.stringify(await (await call(mode, next)).json())).toContain("합성 긴 확정 뒤 정상 안내");
+  });
+  it("확정 당시 버전2와 신원은 뒤 버전3/현재 신원으로 바뀌지 않는다", async () => {
+    await confirm();
+    await isolated.db.query(
+      "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',1,'합성 확정 규정','합성 조건','합성 확정 당시 규정')",
+      [shop.shopId, shop.operatingRulesId],
+    );
+    const version = async (value: number, note: string) =>
+      isolated.db.transaction(async (tx) => {
+        await tx.query(
+          "INSERT INTO order_details SELECT(jsonb_populate_record(NULL::order_details,to_jsonb(d)||$2::jsonb)).* FROM order_details d WHERE d.order_id=$1 AND d.version=1",
+          [
+            shop.orderId,
+            JSON.stringify({
+              id: newUuid(),
+              version: value,
+              source: "owner_amount_change",
+              amount_change_reason: "합성 확정 내용 고침",
+              design_notes: note,
+            }),
+          ],
+        );
+        await tx.query("UPDATE orders SET version=$2 WHERE id=$1", [shop.orderId, value]);
+      });
+    await version(2, "합성 확정 당시 버전 둘");
+    const db = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+    const created = await db.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW));
+    if (!created) throw new Error("missing synthetic versioned notice");
+    expect(
+      (await isolated.db.query("SELECT template_key FROM notifications WHERE id=$1", [created.id])).rows[0]
+        ?.template_key,
+    ).toBe("order_confirmed:v3:2");
+    await version(3, "합성 나중 버전 셋");
+    await isolated.db.query("UPDATE shops SET business_name='합성 나중 상호' WHERE id=$1", [shop.shopId]);
+    const body = await (await call("event", created.id)).json();
+    expectSchema("SkillTemplateResponse", body);
+    expect(JSON.stringify(body)).toContain("합성 확정 당시 버전 둘");
+    expect(JSON.stringify(body)).not.toContain("합성 나중 버전 셋");
+    expect(JSON.stringify(body)).not.toContain("합성 나중 상호");
+  });
+  it.each(["inline", "callback"] as const)(
+    "사진 %s는 세 출력 확정 안내를 먼저 전하고 사진 답을 한 번 대기로 보존한다",
+    async (mode) => {
+      const created = await prepareLongConfirmedNotice(false),
+        storage = new MemoryStore(),
+        { fc } = singleKeyCrypto(),
+        jobs: KakaoCallbackJob[] = [];
+      const photo = "https://t1.daumcdn.net/synthetic/confirmed-photo.png",
+        callback = "https://bot-api.kakao.com/v1/callback/synthetic_confirmed_photo";
+      const image = new Uint8Array(readFileSync(new URL("./fixtures/photos/metadata.png", import.meta.url)));
+      let sent: unknown;
+      const network = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+        if (String(url) === photo) return new Response(image, { headers: { "Content-Type": "image/png" } });
+        if (String(url) === callback) {
+          sent = JSON.parse(String(init?.body));
+          return Response.json({ status: "SUCCESS" });
+        }
+        throw new Error("합성 확정 사진에서 예상 밖 외부 요청");
+      });
+      try {
+        const response = await createApp({
+          connect: () => isolated.connect(),
+          services: {
+            now: () => clock,
+            storage,
+            fieldCrypto: fc,
+            ...(mode === "callback"
+              ? {
+                  kakaoCallbackQueue: {
+                    send: async (job: KakaoCallbackJob) => {
+                      jobs.push(job);
+                    },
+                  },
+                }
+              : {}),
+          },
+          logSink: () => {},
+        }).request(
+          "/api/kakao/skills/message",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Siljang-Skill-Key": key },
+            body: JSON.stringify({
+              bot: { id: shop.botId },
+              userRequest: {
+                utterance: photo,
+                ...(mode === "callback" ? { callbackUrl: callback } : {}),
+                block: { id: "conversation" },
+                user: { id: shop.userKey, type: "botUserKey" },
+              },
+              action: { id: "synthetic-confirmed-photo", params: {} },
+            }),
+          },
+          env,
+        );
+        expect(response.status).toBe(200);
+        if (mode === "callback") {
+          expect(response.headers.get("Siljang-Outcome")).toBe("callback_pending");
+          expect(jobs).toHaveLength(1);
+          const job = jobs[0];
+          if (!job) throw new Error("missing synthetic photo callback");
+          clock = new Date(NOW.getTime() + 1000);
+          expect(
+            await consumeKakaoCallback(job, env, {
+              connect: () => isolated.connect(),
+              now: () => clock,
+              fetch: network,
+              services: { storage, fieldCrypto: fc },
+            }),
+          ).toBe("done");
+        } else sent = await response.json();
+        expectSchema("SkillTemplateResponse", sent);
+        expect(sent).toHaveProperty("template.outputs.length", 3);
+        expect(JSON.stringify(sent)).toContain("합성 보존 규정1");
+        expect(JSON.stringify(sent)).not.toContain("사진");
+        const reply = (
+          await isolated.db.query(
+            "SELECT id,delivery,sent_at FROM messages WHERE shop_id=$1 AND direction='outbound' AND kind='photo'",
+            [shop.shopId],
+          )
+        ).rows[0];
+        expect(reply).toMatchObject({ delivery: "deferred", sent_at: null });
+        expect(
+          (await isolated.db.query("SELECT status FROM notifications WHERE id=$1", [created.id])).rows[0]?.status,
+        ).toBe("delivered_on_reply");
+        expect(network.mock.calls.filter(([url]) => String(url) === photo)).toHaveLength(1);
+        expect(network.mock.calls.filter(([url]) => String(url) === callback)).toHaveLength(
+          mode === "callback" ? 1 : 0,
+        );
+        network.mockRestore();
+        clock = new Date(NOW.getTime() + 2000);
+        const later = await (await call("message", created.id)).json();
+        expectSchema("SkillTemplateResponse", later);
+        expect(JSON.stringify(later)).toContain("사진");
+        expect(
+          (await isolated.db.query("SELECT delivery FROM messages WHERE id=$1", [reply?.id])).rows[0]?.delivery,
+        ).toBe("delivered_later");
+        expect(
+          (await isolated.db.query("SELECT id FROM reference_photos WHERE shop_id=$1", [shop.shopId])).rows,
+        ).toHaveLength(1);
+      } finally {
+        network.mockRestore();
+      }
+    },
+  );
   for (const mode of ["event", "message"] as const) {
     it(`${mode}: 긴 확정 내용과 두 규정이 후속 안내를 막지 않는다`, async () => {
       await confirm();
@@ -163,7 +481,9 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
       const saved = (
         await isolated.db.query<{ body: string }>("SELECT body FROM notifications WHERE id=$1", [confirmed.id])
       ).rows[0]?.body;
-      expect([...(saved ?? "")].length).toBeGreaterThan(1250);
+      expect([...(saved ?? "")].length).toBeLessThanOrEqual(2000);
+      expect(saved).toContain("주문이 확정됐어요");
+      expect(saved).not.toContain("가".repeat(500));
       const first = await call(mode, confirmed.id);
       expect(first.status).toBe(200);
       const body = await first.json();
