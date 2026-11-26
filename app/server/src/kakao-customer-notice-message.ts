@@ -136,13 +136,13 @@ function body(outputs: readonly KakaoCustomerNoticeOutput[]): KakaoCustomerNotic
   if (!outputs.length || outputs.length > 3) throw new RangeError("invalid customer notice outputs");
   return { version: "2.0", template: { outputs } };
 }
-/** 사실·주문 내용·규정을 제목40자·설명128자로 나누어 세 캐러셀 안에 보존한다. */
+/** 긴 그래핌은 단순 글에 담고 나머지는 캐러셀과 섞어 세 출력 안에 보존한다. */
 function longConfirmedNotice(value: string): KakaoCustomerNoticeMessage {
   const segments = [...new Intl.Segmenter("ko", { granularity: "grapheme" }).segment(text(value, 5040))].map(
     ({ segment }) => ({ text: segment, length: [...segment].length }),
   );
-  let index = 0;
-  const take = (max: number) => {
+  const take = (start: number, max: number) => {
+    let index = start;
     let result = "",
       length = 0;
     while (index < segments.length) {
@@ -152,19 +152,49 @@ function longConfirmedNotice(value: string): KakaoCustomerNoticeMessage {
       length += part.length;
       index++;
     }
-    return result;
+    return { text: result, end: index };
   };
-  const items: { title: string; description?: string }[] = [];
-  while (index < segments.length) {
-    const start = index,
-      title = `확정 안내 ${items.length + 1}\n${take(40)}`,
-      description = take(128);
-    if (index === start || items.length >= 30) throw new RangeError("notice graphemes exceed carousel limit");
-    items.push({ title, ...(description.length ? { description } : {}) });
+  interface Piece {
+    readonly end: number;
+    readonly output: KakaoCustomerNoticeOutput;
+    readonly items: number;
   }
-  const outputs: KakaoCustomerNoticeTextCarouselOutput[] = [];
-  for (let at = 0; at < items.length; at += 10)
-    outputs.push({ carousel: { type: "textCard", items: items.slice(at, at + 10) } });
+  const choices = (start: number, previousItems: number): Piece[] => {
+    const options: Piece[] = [],
+      part = take(start, 1000);
+    if (part.end > start) options.push({ end: part.end, output: { simpleText: { text: part.text } }, items: 0 });
+    const items: { title: string; description?: string }[] = [];
+    let index = start;
+    while (index < segments.length && items.length < 10) {
+      const title = take(index, 40),
+        description = take(title.end, 128);
+      if (description.end === index) break;
+      items.push({
+        title: `확정 안내 ${previousItems + items.length + 1}\n${title.text}`,
+        ...(description.text.length ? { description: description.text } : {}),
+      });
+      index = description.end;
+    }
+    if (items.length)
+      options.unshift({ end: index, output: { carousel: { type: "textCard", items } }, items: items.length });
+    return options.sort((a, b) => b.end - a.end);
+  };
+  const pack = (
+    start: number,
+    remaining: number,
+    previousItems: number,
+  ): readonly KakaoCustomerNoticeOutput[] | null => {
+    if (start === segments.length) return [];
+    if (remaining === 0) return null;
+    // 세 출력의 단순 글/캐러셀 조합만 찾는다. 그래핌과 원문 순서는 그대로다.
+    for (const part of choices(start, previousItems)) {
+      const rest = pack(part.end, remaining - 1, previousItems + part.items);
+      if (rest !== null) return [part.output, ...rest];
+    }
+    return null;
+  };
+  const outputs = pack(0, 3, 0);
+  if (outputs === null) throw new RangeError("notice graphemes exceed output limit");
   return body(outputs);
 }
 function noticeBody(notice: Notice): KakaoCustomerNoticeMessage {

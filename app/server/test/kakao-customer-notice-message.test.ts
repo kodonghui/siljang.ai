@@ -3,6 +3,28 @@ import { type KakaoCustomerNoticeView, kakaoCustomerNoticeMessage } from "../src
 import { expectSchema } from "./support/contract";
 import { customerNoticePhotoAsk as ask, customerNoticePhotos as photos } from "./support/kakao-customer-notice-cases";
 
+it.each([128, 129, 500])("확정 안내의 %i코드 포인트 그래핌도 한 필드에서 보존한다", (size) => {
+  const grapheme = `가${"\u0301".repeat(size - 1)}`;
+  const notice = {
+    kind: "order_confirmed_saved" as const,
+    text: `주문이 확정됐어요\n${grapheme}${"나".repeat(1700 - size)}`,
+    regulation: ["다".repeat(1000), "라".repeat(1000)],
+  };
+  const body = kakaoCustomerNoticeMessage({ state: "normal", notice });
+  expectSchema("SkillTemplateResponse", body);
+  expect(body.template.outputs.length).toBeLessThanOrEqual(3);
+  const fields = body.template.outputs.flatMap((output) => {
+    if ("simpleText" in output) return [output.simpleText.text];
+    if (!("carousel" in output) || output.carousel.type !== "textCard") throw new Error("missing confirmed text");
+    return output.carousel.items.flatMap((item) => [
+      item.title.replace(/^확정 안내 \d+\n/, ""),
+      item.description ?? "",
+    ]);
+  });
+  expect(fields.join("")).toBe([notice.text, ...notice.regulation].join("\n"));
+  expect(fields.some((field) => field.includes(grapheme))).toBe(true);
+});
+
 it.each([
   { text: "가".repeat(1250), regulation: ["나".repeat(900), "다".repeat(900)] },
   { text: "🎂".repeat(2000), regulation: ["나".repeat(1000), "다".repeat(1000)] },

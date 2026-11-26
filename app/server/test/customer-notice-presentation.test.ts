@@ -6,6 +6,7 @@ import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import type { KakaoCallbackJob } from "../src/kakao-callback-store";
 import { KAKAO_HANDOFF_TEXT } from "../src/kakao-reply";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
+import { operatingRulesCardTexts } from "../src/operating-rules-card";
 import { Secret } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
 import { expectSchema } from "./support/contract";
@@ -138,7 +139,7 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
       ).rows,
     ).toEqual([{ n: 0 }]);
   });
-  async function prepareLongConfirmedNotice(legacy: boolean) {
+  async function prepareLongConfirmedNotice(legacy: boolean, designNotes = "라".repeat(500), extraCount = 35) {
     await confirm();
     const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
     const previous = legacy
@@ -155,9 +156,9 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
     );
     await isolated.db.query(
       "UPDATE order_details SET design_notes=$2,lettering=$3,colors=$4 WHERE order_id=$1 AND version=1",
-      [shop.orderId, "라".repeat(500), "마".repeat(50), "바".repeat(100)],
+      [shop.orderId, designNotes, "마".repeat(50), "바".repeat(100)],
     );
-    for (let i = 0; i < 35; i++) {
+    for (let i = 0; i < extraCount; i++) {
       const id = newUuid();
       await isolated.db.query(
         "INSERT INTO price_options(id,shop_id,price_list_id,option_group,name,price_kind,amount,in_standard,position) VALUES($1,$2,$3,'extra',$4,'fixed',1000,true,$5)",
@@ -183,9 +184,92 @@ describeDb("저장된 손님 안내의 두 실제 수신 경로 표시", () => {
     ).rows[0];
     if (!saved) throw new Error("missing stored synthetic notice");
     expect([...saved.body].length).toBeLessThanOrEqual(2000);
-    if (!legacy) expect(saved.body).not.toContain("라".repeat(500));
+    if (!legacy) expect(saved.body).not.toContain(designNotes);
     return created;
   }
+  function confirmedFields(body: unknown): string[] {
+    type Output = { simpleText?: { text: string }; carousel?: { items: { title: string; description?: string }[] } };
+    return (body as { template: { outputs: Output[] } }).template.outputs.flatMap((output) => {
+      if (output.simpleText) return [output.simpleText.text];
+      if (!output.carousel) throw new Error("확정 안내 텍스트 출력 없음");
+      return output.carousel.items.flatMap((item) => [
+        item.title.replace(/^확정 안내 \d+\n/, ""),
+        item.description ?? "",
+      ]);
+    });
+  }
+  it.each((["event", "message"] as const).flatMap((mode) => [128, 129, 500].map((size) => ({ mode, size }))))(
+    "API $mode / 디자인 설명의 $size 코드 포인트 그래핌과 전체 주문·규정을 보존한다",
+    async ({ mode, size }) => {
+      const grapheme = `가${"\u0301".repeat(size - 1)}`,
+        designNotes = grapheme + "라".repeat(500 - size);
+      const created = await prepareLongConfirmedNotice(false, designNotes, 20);
+      const response = await call(mode, created.id),
+        body: unknown = await response.json();
+      expect(response.status).toBe(200);
+      expectSchema("SkillTemplateResponse", body);
+      const fields = confirmedFields(body),
+        whole = fields.join("");
+      for (const expected of [
+        designNotes,
+        "마".repeat(50),
+        "바".repeat(100),
+        "합성 보존 규정1",
+        "합성 보존 규정2",
+        "35,000원",
+      ])
+        expect(whole).toContain(expected);
+      for (let i = 0; i < 20; i++) expect(whole).toContain(`합성${String(i).padStart(2, "0")} ${"사".repeat(25)}`);
+      expect(fields.some((field) => field.includes(grapheme))).toBe(true);
+      const following = await notice("owner_reply", "합성 그래핌 확정 뒤 정상 안내", new Date(NOW.getTime() + 500));
+      clock = new Date(NOW.getTime() + 1000);
+      expect(JSON.stringify(await (await call(mode, following)).json())).toContain("합성 그래핌 확정 뒤 정상 안내");
+    },
+  );
+  it.each(["event", "message"] as const)(
+    "API %s / 표시할 수 없는 보관 확정 안내가 정상 안내를 막지 않는다",
+    async (mode) => {
+      await confirm();
+      const clauses = [1, 2].map((position) => ({
+        key: "custom" as const,
+        position,
+        title: `규정${position}`,
+        conditionText: `가${"\u0301".repeat(749)}`,
+        effectText: "효과",
+      }));
+      const cards = operatingRulesCardTexts(clauses, 1);
+      expect(cards).toHaveLength(2);
+      for (const card of cards) expect([...card].length).toBeLessThanOrEqual(1000);
+      for (const clause of clauses)
+        await isolated.db.query(
+          "INSERT INTO rule_clauses(shop_id,operating_rules_id,clause_key,position,title,condition_text,effect_text) VALUES($1,$2,'custom',$3,$4,$5,$6)",
+          [shop.shopId, shop.operatingRulesId, clause.position, clause.title, clause.conditionText, clause.effectText],
+        );
+      const scoped = shopRequestDb(createShopScope(shop.shopId, { kind: "owner", ownerId: shop.ownerId }), isolated.db);
+      const created = await scoped.transaction((tx) => createOrderConfirmedNotice(tx, shop.orderId, NOW));
+      if (!created) throw new Error("격리할 합성 확정 안내 없음");
+      const orderNo = (
+        await isolated.db.query<{ order_no: string }>("SELECT order_no FROM orders WHERE id=$1", [shop.orderId])
+      ).rows[0]?.order_no;
+      if (!orderNo) throw new Error("합성 주문번호 없음");
+      const legacy = `주문이 확정됐어요\n주문번호 ${orderNo}\n합성 표시 불가 원문\n`.padEnd(2000, "나");
+      await isolated.db.query("UPDATE notifications SET template_key='order_confirmed:v2',body=$2 WHERE id=$1", [
+        created.id,
+        legacy,
+      ]);
+      const healthy = await notice("owner_reply", "합성 보관 안내 뒤 정상 답", new Date(NOW.getTime() + 500));
+      clock = new Date(NOW.getTime() + 1000);
+      const response = await call(mode, healthy),
+        body: unknown = await response.json();
+      expect(response.status).toBe(200);
+      expectSchema("SkillTemplateResponse", body);
+      expect(JSON.stringify(body)).toContain("합성 보관 안내 뒤 정상 답");
+      expect(JSON.stringify(body)).not.toContain("합성 표시 불가 원문");
+      expect(
+        (await isolated.db.query("SELECT status,sent_at FROM notifications WHERE id=$1", [created.id])).rows[0],
+      ).toEqual({ status: "deferred", sent_at: null });
+    },
+  );
   it.each(
     (["event", "message"] as const).flatMap((mode) =>
       ([false, true] as const).map((legacy) => [mode, legacy] as const),
