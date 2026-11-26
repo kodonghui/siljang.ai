@@ -1,0 +1,5 @@
+{
+  "raw_sha256": "103f8a5d4eae8bdb04f7780c93f7e7e6556277604af3019e4045537e83613619",
+  "published_sha256": "44776bfd473536ee46f814b91ebfd9f0edb7de9cf6fe61b8d2b527c3af85b2b1",
+  "change": "줄 끝 공백만 제거. 실패4/통과3 보존. 원본 /tmp에 보존"
+}
