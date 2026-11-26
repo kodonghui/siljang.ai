@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task081-replacement-replay/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  36 passed (36)
+   Start at  07:37:31
+   Duration  3.34s (tests 70%, import 24%, transform 6%)

@@ -1,0 +1,53 @@
+
+ RUN  v5.1.0 /workspace/siljang-task081-replacement-replay/app/server
+
+ ❯ test/confirm-card-replacement-replay.test.ts (2 tests | 2 failed) 741ms
+   ❯ 공통 확인 카드의 교체 응답 재시도(TASK-081) (2)
+     × cancel에서도 만료 교체 응답을 놓친 원래 버튼은 유효한 새 카드를 다시 보인다 83ms
+     × order_request에서도 만료 교체 응답을 놓친 원래 버튼은 유효한 새 카드를 다시 보인다 53ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > cancel에서도 만료 교체 응답을 놓친 원래 버튼은 유효한 새 카드를 다시 보인다
+AssertionError: expected undefined to be 'ck_d0b2f300234740aebbae71ca81c8c1ec' // Object.is equality
+
+- Expected:
+"ck_d0b2f300234740aebbae71ca81c8c1ec"
+
++ Received:
+undefined
+
+ ❯ test/confirm-card-replacement-replay.test.ts:51:35
+     49|       expect(first.card).toBeDefined();
+     50|       expect(retry.outcome).toBe("card_used");
+     51|       expect(retry.card?.cardKey).toBe(first.card?.cardKey);
+       |                                   ^
+     52|       expect(execute).not.toHaveBeenCalled();
+     53|       const responder = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > order_request에서도 만료 교체 응답을 놓친 원래 버튼은 유효한 새 카드를 다시 보인다
+AssertionError: expected undefined to be 'ck_31c0ad46d5e24473b6483dc4c1a369e5' // Object.is equality
+
+- Expected:
+"ck_31c0ad46d5e24473b6483dc4c1a369e5"
+
++ Received:
+undefined
+
+ ❯ test/confirm-card-replacement-replay.test.ts:51:35
+     49|       expect(first.card).toBeDefined();
+     50|       expect(retry.outcome).toBe("card_used");
+     51|       expect(retry.card?.cardKey).toBe(first.card?.cardKey);
+       |                                   ^
+     52|       expect(execute).not.toHaveBeenCalled();
+     53|       const responder = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  07:24:17
+   Duration  1.08s (tests 77%, transform 13%, import 9%)

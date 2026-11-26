@@ -1,0 +1,79 @@
+
+ RUN  v5.1.0 /workspace/siljang-task081-replacement-replay/app/server
+
+ ❯ test/confirm-card-replacement-replay.test.ts (40 tests | 4 failed) 2324ms
+   ❯ 공통 확인 카드의 교체 응답 재시도(TASK-081) (40)
+     × 현재 카드 블록이 바뀐 뒤 입금자 블록에서 재시도하면 같은 키와 현재 확인·거절 블록만 보인다 121ms
+     × 저장 수신의 다음 대화 전달도 같은 카드 키와 현재 카드 블록을 보인다 39ms
+     × cancel 재전달은 실제 개인정보 정리가 원본을 잠근 동안 카드 행을 먼저 잠그지 않는다 54ms
+     × order_request 재전달은 실제 개인정보 정리가 원본을 잠근 동안 카드 행을 먼저 잠그지 않는다 61ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > 현재 카드 블록이 바뀐 뒤 입금자 블록에서 재시도하면 같은 키와 현재 확인·거절 블록만 보인다
+AssertionError: expected { label: '결제 확인 요청', …(3) } to match object { blockId: 'current-card-block', …(1) }
+(2 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "blockId": "current-card-block",
++   "blockId": "blk-card",
+    "extra": {
+      "cardKey": "ck_fa95156f9d94455498062fde4774079a",
+      "choice": "confirm",
+    },
+  }
+
+ ❯ test/confirm-card-replacement-replay.test.ts:388:24
+    386|     ).template.outputs[0]?.textCard.buttons;
+    387|     if (buttons === undefined) throw new Error("합성 결제 버튼이 없어요");
+    388|     expect(buttons[0]).toMatchObject({
+       |                        ^
+    389|       blockId: "current-card-block",
+    390|       extra: { cardKey: replacement.card?.cardKey, choice: "confirm" },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > 저장 수신의 다음 대화 전달도 같은 카드 키와 현재 카드 블록을 보인다
+AssertionError: expected 'blk-card' to be 'current-card-block' // Object.is equality
+
+Expected: "current-card-block"
+Received: "blk-card"
+
+ ❯ test/confirm-card-replacement-replay.test.ts:404:36
+    402|     const delivery = await scoped().transaction((tx) => readConfirmCar…
+    403|     expect(delivery.card?.cardKey).toBe(original.cardKey);
+    404|     expect(delivery.card?.blockId).toBe("current-card-block");
+       |                                    ^
+    405|     expect(delivery.card?.paymentClaim?.cardBlockId).toBe("current-car…
+    406|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > cancel 재전달은 실제 개인정보 정리가 원본을 잠근 동안 카드 행을 먼저 잠그지 않는다
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > order_request 재전달은 실제 개인정보 정리가 원본을 잠근 동안 카드 행을 먼저 잠그지 않는다
+AssertionError: expected '55P03' to be undefined
+
+- Expected:
+undefined
+
++ Received:
+"55P03"
+
+ ❯ test/confirm-card-replacement-replay.test.ts:516:27
+    514|       await Promise.all(connections.map((connection) => connection.clo…
+    515|       expect(controlFailure).toBeUndefined();
+    516|       expect(lockFailure).toBeUndefined();
+       |                           ^
+    517|       expect(results[0]).toEqual({ status: "fulfilled", value: 1 });
+    518|       expect(results[1]).toMatchObject({ status: "fulfilled", value: {…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 36 passed (40)
+   Start at  07:51:10
+   Duration  4.89s (tests 49%, import 35%, transform 15%)

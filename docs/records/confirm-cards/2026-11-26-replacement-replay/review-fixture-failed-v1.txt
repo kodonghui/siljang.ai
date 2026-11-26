@@ -1,0 +1,113 @@
+
+ RUN  v5.1.0 /workspace/siljang-task081-replacement-replay/app/server
+
+ ❯ test/confirm-card-replacement-replay.test.ts (39 tests | 3 failed) 6442ms
+   ❯ 공통 확인 카드의 교체 응답 재시도(TASK-081) (39)
+     × 현재 카드 블록이 바뀐 뒤 입금자 블록에서 재시도하면 같은 키와 현재 확인·거절 블록만 보인다 177ms
+     × cancel 재전달은 실제 개인정보 정리가 원본을 잠근 동안 카드 행을 먼저 잠그지 않는다 3057ms
+     × order_request 재전달은 실제 개인정보 정리가 원본을 잠근 동안 카드 행을 먼저 잠그지 않는다 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > 현재 카드 블록이 바뀐 뒤 입금자 블록에서 재시도하면 같은 키와 현재 확인·거절 블록만 보인다
+AssertionError: expected { label: '결제 확인 요청', …(3) } to match object { blockId: 'current-card-block', …(1) }
+(2 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "blockId": "current-card-block",
++   "blockId": "blk-card",
+    "extra": {
+      "cardKey": "ck_338f9db4ff6f4f8690710ce3ac9ef656",
+      "choice": "confirm",
+    },
+  }
+
+ ❯ test/confirm-card-replacement-replay.test.ts:385:24
+    383|     expectSchema("SkillTemplateResponse", body);
+    384|     const buttons = body.template.outputs[0].textCard.buttons;
+    385|     expect(buttons[0]).toMatchObject({
+       |                        ^
+    386|       blockId: "current-card-block",
+    387|       extra: { cardKey: replacement.card?.cardKey, choice: "confirm" },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > cancel 재전달은 실제 개인정보 정리가 원본을 잠근 동안 카드 행을 먼저 잠그지 않는다
+Error: 합성 잠금 관찰 시간 초과
+ ❯ Timeout._onTimeout test/confirm-card-replacement-replay.test.ts:462:49
+    460|       const timeout = (promise: Promise<void>) =>
+    461|         new Promise<void>((resolve, reject) => {
+    462|           const timer = setTimeout(() => reject(new Error("합성 잠금 관찰 시간…
+       |                                                 ^
+    463|           promise.then(() => {
+    464|             clearTimeout(timer);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/confirm-card-replacement-replay.test.ts > 공통 확인 카드의 교체 응답 재시도(TASK-081) > order_request 재전달은 실제 개인정보 정리가 원본을 잠근 동안 카드 행을 먼저 잠그지 않는다
+TransactionMisuseError: nested transaction
+ ❯ PgRequestDb.transaction src/db.ts:125:36
+    123|   async transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T> {
+    124|     this.#checkActive();
+    125|     if (this.#inTransaction) throw new TransactionMisuseError("nested …
+       |                                    ^
+    126|     // 연결을 기다리기 전에 표시한다. 기다리는 사이에 다른 transaction()·query()가 같은 연결의 같은 …
+    127|     // 끼어들지 않게 하고, 연결에 실패하면 표시를 거둔다.
+ ❯ createShop test/support/shops.ts:149:12
+ ❯ test/confirm-card-replacement-replay.test.ts:27:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 2 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+TransactionMisuseError: nested transaction
+ ❯ PgRequestDb.transaction src/db.ts:125:36
+    123|   async transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T> {
+    124|     this.#checkActive();
+    125|     if (this.#inTransaction) throw new TransactionMisuseError("nested …
+       |                                    ^
+    126|     // 연결을 기다리기 전에 표시한다. 기다리는 사이에 다른 transaction()·query()가 같은 연결의 같은 …
+    127|     // 끼어들지 않게 하고, 연결에 실패하면 표시를 거둔다.
+ ❯ Object.transaction test/confirm-card-replacement-replay.test.ts:430:23
+ ❯ ScopedRequestDb.transaction src/shop-scope.ts:272:21
+ ❯ pressConfirmCard src/confirm-card-store.ts:583:13
+ ❯ test/confirm-card-replacement-replay.test.ts:470:18
+ ❯ process.processTicksAndRejections node:internal/process/task_queues:103:5
+ ❯ ../node_modules/vitest/dist/chunks/run.CjdgFZiW.js:2801:20
+
+This error originated in "test/confirm-card-replacement-replay.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The last test to run before this error was "cancel 재전달은 실제 개인정보 정리가 원본을 잠근 동안 카드 행을 먼저 잠그지 않는다". This means either:
+- the error was thrown while Vitest was running this test, or
+- the error was thrown after the test completed, and this was the most recent test at that point.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: Connection terminated
+ ❯ ../node_modules/pg/lib/client.js:694:17
+ ❯ process.processTicksAndRejections node:internal/process/task_queues:103:5
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ test/confirm-card-replacement-replay.test.ts:443:24
+ ❯ purgeOrder src/purge-order.ts:37:3
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+
+This error originated in "test/confirm-card-replacement-replay.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 36 passed (39)
+     Errors  2 errors
+   Start at  07:49:31
+   Duration  9.33s (tests 70%, import 21%, transform 9%)
