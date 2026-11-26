@@ -4,6 +4,15 @@ const EVENTS = new Set(JOB_FAILURE_EVENTS);
 const JOBS = new Set(["owner_wait", "consultation_idle", "payment_due", "difference_due", "day_before_notice", "review_request", "ledger_write", "purge", "customer_notice", "owner_alert", "channel_check", "access_log", "refund_send_realert", "kakao_callback_recovery"]);
 const ERRORS = new Set(["Error", "TypeError", "RangeError", "DatabaseError", "SettingsError", "MissingSecretError", "AbortError", "JobActTimeoutError"]);
 
+export function diagnosticFault(text) {
+  const clean=text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g,"");
+  const code=clean.match(/\[code:\s*(\d{4,6})\]/);
+  if (code) return {kind:"provider_error",providerCode:Number(code[1])};
+  if (/unknown arguments?/i.test(clean)) return {kind:"invalid_cli_option"};
+  if (/sampling rate must be between/i.test(clean)) return {kind:"invalid_sampling_rate"};
+  return {};
+}
+
 export function jobLogFacts(envelope) {
   if (envelope?.scriptName !== "siljang-staging" || !Array.isArray(envelope.logs)) return [];
   const result=[];

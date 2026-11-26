@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { jobLogFacts, TailObjects } from "../staging-monitor/job-log-facts.mjs";
+import { diagnosticFault, jobLogFacts, TailObjects } from "../staging-monitor/job-log-facts.mjs";
 
 const stamp = 1795700000000;
 const tail = (message, extra = {}) => ({scriptName:"siljang-staging",outcome:"ok",logs:[{timestamp:stamp,message:[JSON.stringify(message)]}],...extra});
@@ -30,3 +30,6 @@ test("조각난 JSON과 따옴표 안 괄호를 처리한다", () => {
 test("큰 이벤트는 실패 닫힘이며 원문을 오류로 내보내지 않는다", () => {
   assert.throws(()=>new TailObjects().push('{"private":"'+"x".repeat(300000)),/tail event too large/);
 });
+test("제공자 오류는 코드만 남긴다", () => assert.deepEqual(diagnosticFault("\u001b[31m[ERROR] private-value [code: 10000]\u001b[0m"),{kind:"provider_error",providerCode:10000}));
+test("CLI 인자 오류를 분류한다", () => assert.deepEqual(diagnosticFault("Unknown arguments: private-value"),{kind:"invalid_cli_option"}));
+test("그 밖의 오류 내용은 내보내지 않는다", () => assert.deepEqual(diagnosticFault("private-value https://example.com/private-value"),{}));
