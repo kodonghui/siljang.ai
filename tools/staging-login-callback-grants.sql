@@ -241,8 +241,11 @@ REVOKE INSERT ON masked_value_erasures FROM :"runtime_role";
 REVOKE INSERT (shop_id,id,consultation_id,erased_at) ON masked_value_erasures FROM :"runtime_role";
 REVOKE EXECUTE ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) FROM :"runtime_role";
 
--- TASK-156: 연결 상태/열 배치와 미완료 쓰기의 수/시각만 읽는다. OAuth 토큰은 이 표에 없다.
-REVOKE SELECT ON ledger_links FROM :"runtime_role";
-REVOKE SELECT (credential_ref,provider,failure_alerted_at) ON ledger_links FROM :"runtime_role";
-GRANT SELECT (id,shop_id,status,spreadsheet_id,sheet_name,our_columns,linked_at,unlinked_at,xmin) ON ledger_links TO :"runtime_role";
-GRANT SELECT (shop_id,status,first_failed_at) ON ledger_writes TO :"runtime_role";
+-- TASK-156: 기존 직접 조회/수정 제한을 유지하고 가게 소유를 확인한 함수만 실행한다.
+REVOKE SELECT, UPDATE ON ledger_links FROM :"runtime_role";
+REVOKE SELECT (id,spreadsheet_id,sheet_name,our_columns,linked_at,unlinked_at,xmin,credential_ref,provider,failure_alerted_at) ON ledger_links FROM :"runtime_role";
+REVOKE UPDATE (status,unlinked_at) ON ledger_links FROM :"runtime_role";
+GRANT SELECT (shop_id,status) ON ledger_links TO :"runtime_role";
+REVOKE SELECT, UPDATE ON ledger_writes FROM :"runtime_role";
+REVOKE SELECT (shop_id,status,first_failed_at,next_attempt_at), UPDATE (status,next_attempt_at) ON ledger_writes FROM :"runtime_role";
+GRANT EXECUTE ON FUNCTION read_owner_ledger(uuid,uuid,uuid),unlink_owner_ledger(uuid,uuid,timestamptz) TO :"runtime_role";

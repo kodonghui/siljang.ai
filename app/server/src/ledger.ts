@@ -42,15 +42,9 @@ function columns(raw: unknown) {
   };
 }
 export async function currentLedger(db: ShopDb): Promise<LedgerRow | undefined> {
-  return (
-    await db.run<LedgerRow>(
-      `SELECT l.id,l.status,l.spreadsheet_id,l.sheet_name,l.our_columns,l.linked_at,l.unlinked_at,l.xmin::text AS revision,
-      (SELECT min(w.first_failed_at) FROM ledger_writes w WHERE w.shop_id=$1 AND w.status<>'written') AS failing_since,
-      (SELECT least(count(*),100000)::int FROM ledger_writes wc WHERE wc.shop_id=$1 AND wc.status<>'written') AS unwritten_count
-     FROM ledger_links l WHERE l.shop_id=$1
-     ORDER BY (l.status<>'unlinked') DESC,l.linked_at DESC,l.id DESC LIMIT 1`,
-    )
-  ).rows[0];
+  if (db.scope.via.kind !== "owner") throw new ApiError("unauthenticated");
+  return (await db.run<LedgerRow>("SELECT * FROM public.read_owner_ledger($1,$2,NULL)", [db.scope.via.ownerId]))
+    .rows[0];
 }
 export async function renderLedger(db: ShopDb, row: LedgerRow) {
   const zone = (await db.found<{ time_zone: string }>("SELECT s.time_zone FROM shops s WHERE s.id=$1")).time_zone;

@@ -11,6 +11,7 @@ import { expectProblem, expectSchema } from "./support/contract";
 import { describeDb, newUuid, TEST_HASH_KEY, testDb, testEnv } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 import { seedOperatorSession } from "./support/operator";
+import { roleConnection } from "./support/purge-role";
 import { createShop, type ShopFixture, snapshotShop } from "./support/shops";
 
 const NOW = new Date("2026-11-26T00:00:00Z"),
@@ -69,7 +70,8 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
         const raw = isolated.connect();
         const wrap = (q: Queryable): Queryable => ({
           query(sql, params) {
-            if (fault && sql.includes("ledger_links")) throw new Error("synthetic ledger query failure");
+            if (fault && (sql.includes("ledger_links") || sql.includes("read_owner_ledger")))
+              throw new Error("synthetic ledger query failure");
             return q.query(sql, params);
           },
         });
@@ -241,6 +243,48 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     } finally {
       await conn.close();
     }
+  });
+  it("두 장부 함수는 PUBLIC 실행0/고정 search_path이고 실행 역할만 호출한다", async () => {
+    for (const signature of ["read_owner_ledger(uuid,uuid,uuid)", "unlink_owner_ledger(uuid,uuid,timestamptz)"]) {
+      const row = (
+        await isolated.db.query(
+          "SELECT p.prosecdef,p.proconfig,has_function_privilege($1,p.oid,'EXECUTE') AS callable,(SELECT count(*)::int FROM aclexplode(p.proacl) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE') AS public_execute FROM pg_proc p WHERE p.oid=$2::regprocedure",
+          [role, signature],
+        )
+      ).rows[0];
+      expect(row).toEqual({
+        prosecdef: true,
+        proconfig: ["search_path=pg_catalog"],
+        callable: true,
+        public_execute: 0,
+      });
+    }
+  });
+  it("함수도 다른 사장님의 가게를 읽거나 끊지 않고 열 정보의 숨은 필드를 제거한다", async () => {
+    const hidden = "synthetic-hidden-credential",
+      other = await createShop(isolated.db, "다른 장부 가게");
+    await link("linked", { shopId: other.shopId });
+    await link("linked", {
+      columns: { columns: [{ ...COLUMNS[0], privateNote: hidden }], movedRight: true, privateCredential: hidden },
+    });
+    const before = await snapshotShop(isolated.db, other),
+      conn = roleConnection(isolated.connect(), role);
+    try {
+      const own = await conn.query("SELECT * FROM public.read_owner_ledger($1,$2,NULL)", [shop.shopId, shop.ownerId]);
+      expect(own.rowCount).toBe(1);
+      expect(JSON.stringify(own.rows)).not.toContain(hidden);
+      expect(own.rows[0]?.our_columns).toEqual({ columns: [COLUMNS[0]], movedRight: true });
+      expect(
+        (await conn.query("SELECT * FROM public.read_owner_ledger($1,$2,NULL)", [other.shopId, shop.ownerId])).rowCount,
+      ).toBe(0);
+      expect(
+        (await conn.query("SELECT * FROM public.unlink_owner_ledger($1,$2,$3)", [other.shopId, shop.ownerId, NOW]))
+          .rowCount,
+      ).toBe(0);
+    } finally {
+      await conn.close();
+    }
+    expect(await snapshotShop(isolated.db, other)).toEqual(before);
   });
   const redirect = "https://siljang.example/owner/ledger/callback";
   const googleClient = `${crypto.randomUUID()}.apps.googleusercontent.com`,

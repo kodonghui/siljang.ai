@@ -1,0 +1,40 @@
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/staging-runtime-role.test.ts (19 tests | 1 failed) 2332ms
+   ❯ 실제 서버 역할의 로그인·콜백 권한(TASK-173) (19)
+     × 제한 역할의 가게 설정 변경과 실제 세션은 되고 신원/승인/삭제는 막음 84ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/staging-runtime-role.test.ts > 실제 서버 역할의 로그인·콜백 권한(TASK-173) > 제한 역할의 가게 설정 변경과 실제 세션은 되고 신원/승인/삭제는 막음
+AssertionError: promise resolved "{ rows: [], rowCount: +0 }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "rowCount": 0,
++   "rows": [],
+  }
+
+ ❯ test/staging-runtime-role.test.ts:772:61
+    770|         "UPDATE ledger_links SET status='auth_lost' WHERE shop_id=$1",
+    771|       ])
+    772|         await expect(conn.query(statement, [target.shopId])).rejects.t…
+       |                                                             ^
+    773|     } finally {
+    774|       await conn.close();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 16 passed (17)
+      Tests  1 failed | 435 passed (436)
+   Start at  12:23:16
+   Duration  29.33s (tests 66%, import 28%, transform 6%)
+
+    Isolate  17 workers spawned · ~107ms startup each (spawn + environment, per file)
+             at least ~1.70s faster with isolate: false — reuses workers across files instead of one per file
