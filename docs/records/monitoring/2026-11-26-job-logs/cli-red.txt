@@ -1,0 +1,61 @@
+TAP version 13
+# Subtest: 요청 주소의 숫자를 제공자 오류로 내보내지 않는다
+not ok 1 - 요청 주소의 숫자를 제공자 오류로 내보내지 않는다
+  ---
+  duration_ms: 74.687223
+  type: 'test'
+  location: '/workspace/siljang-task016-job-log-diagnostic/tools/test/job-log-cli.test.mjs:26:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+      {
+        diagnostic: 'worker_job_logs',
+        exitCode: 1,
+        failures: 0,
+    +   kind: 'provider_error',
+        observed: 1,
+    +   providerCode: 4321,
+        verified: false
+      }
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    diagnostic: 'worker_job_logs'
+    observed: 1
+    failures: 0
+    verified: false
+    exitCode: 1
+  actual:
+    diagnostic: 'worker_job_logs'
+    observed: 1
+    failures: 0
+    verified: false
+    exitCode: 1
+    kind: 'provider_error'
+    providerCode: 4321
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/siljang-task016-job-log-diagnostic/tools/test/job-log-cli.test.mjs:28:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: 표준 오류에서는 제공자 코드만 남긴다
+ok 2 - 표준 오류에서는 제공자 코드만 남긴다
+  ---
+  duration_ms: 70.907477
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 1
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 211.792752

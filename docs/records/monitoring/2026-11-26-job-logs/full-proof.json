@@ -1,0 +1,97 @@
+{
+  "full_source": "cfc4bc23553dc8d41e71a41387f8da0a8e291bce",
+  "cli_source": "28d949e2d5e1db4083083c69b518952e109bef3f",
+  "test_files": {
+    "server": 198,
+    "web": 73
+  },
+  "tests": {
+    "server": 3658,
+    "web": 1775,
+    "test_exit": 0,
+    "build_exit": 0,
+    "database_cleanup": 0,
+    "node49_exit": 0
+  },
+  "full_scope": {
+    "app/server": "71df2105eecde7d0e4142e203a66ddf06037b8d4",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "003ae12af65157d7f28662088d00e4ace1e60deb",
+    "api": "d772edd3a7a5c10fe053317db7c93abbd4c2a385",
+    "research/screen-checks-2026-11": "054b495f5fb0665c24475252cf20edd8d83f91a2",
+    "tools/free-backup": "ba202d6f69f0ba2c02a81cb1cfe679c6fe0aaf94",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "cli_scope": {
+    ".github/workflows/app.yml": "77ece27fcc0cf3d38051d28413784a4ac662ae95",
+    ".github/workflows/staging-health-alert.yml": "169a36d7c550fd6b058f9991a635962a30f74454",
+    "tools/staging-monitor/job-log-facts.mjs": "e19dd0d05a65abea348d0644c812e22a8c2254ec",
+    "tools/staging-monitor/read-job-logs.mjs": "8b021471442ed443fe2e45f4dfb6f65ed3fbb498",
+    "tools/test/job-log-facts.test.mjs": "f83d2b38d196a0417087c25276d1b4f59589d923",
+    "tools/test/job-log-cli.test.mjs": "be7c59a3bff4b2508114a64a84c9644896bee592"
+  },
+  "protected_tests": {
+    "app/server/test/consultation-idle.test.ts": "ffa4330f9e6c9210739681463416d42ae5720987",
+    "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+    "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299",
+    "app/server/test/shop-scope-static.test.ts": "fb468294d835ee555b36a7e497b5a81384af6446",
+    "app/server/test/kakao-review-dedup.test.ts": "a7448fb18e57a157de386a45be1e3fa8c2895250",
+    "app/server/test/kakao-review-photos.test.ts": "54a249bd42dc6e59170a8e6fb36b2dce5b2833e5"
+  },
+  "logs": {
+    "full-tests.txt": {
+      "raw_sha256": "855b65197e977f345400a88b73a2e777b9b08ca84a2175e2204676939a126e7f",
+      "published_sha256": "b6f91c267c9bffc2ab97f59009a718856be8bd007641c034302a9c6e12177737"
+    },
+    "build.txt": {
+      "raw_sha256": "a98dc2aa6492d95e8de59d15b8c7d711b2f796af5bccd82ba6a4691ad5187e7b",
+      "published_sha256": "5db32b8c65554d2d97ab421ec23d3f851924311625df7d138705ed934d026fc3"
+    },
+    "install.txt": {
+      "raw_sha256": "c0800ba0f7f54c1b7a3ced57e41c0c454dd3978e2fae46160a371602c85d7eb5",
+      "published_sha256": "c0800ba0f7f54c1b7a3ced57e41c0c454dd3978e2fae46160a371602c85d7eb5"
+    },
+    "cli-red.txt": {
+      "raw_sha256": "b5c071c5415b52d37dc0a6d7dd26c56f1cca395d4424f0edfdbf012204a4ca11",
+      "published_sha256": "7f7502d9cdc5db1740784aa38ccf1fa3af75fe5fdf9f5ff1198db8bce78ca6e1"
+    },
+    "node49.txt": {
+      "raw_sha256": "7b02d2b72a676b634386c86882adda78e6f9b47d05e329531dcd2a1a9435b4a0",
+      "published_sha256": "7b02d2b72a676b634386c86882adda78e6f9b47d05e329531dcd2a1a9435b4a0"
+    },
+    "format.txt": {
+      "raw_sha256": "4ad984dad20b5851236d5db9dad8fde56b054ef8867203e87e204a64516bc9b1",
+      "published_sha256": "4ad984dad20b5851236d5db9dad8fde56b054ef8867203e87e204a64516bc9b1"
+    },
+    "lint.txt": {
+      "raw_sha256": "8ec29e1a4862c42d59d05f9e998caa795549e472d892fe16a110a860a4b38b2a",
+      "published_sha256": "c698e74423b3bd083e3261e38d71417babcb2d876f6b4137939dbc21450f9e29"
+    },
+    "types.txt": {
+      "raw_sha256": "5b36a5795ea1843bc10d758ff772be36af2dfe4b1818504dfbd8ffd267325347",
+      "published_sha256": "0505b67e185a0c946959b4fc884f5f27b7c58ffbfa9fb0ffe00bbfa00529b77b"
+    },
+    "stages.txt": {
+      "raw_sha256": "1076e633e54b7e8e05779718289205a011f41df9ab13c51dad7b80a65249dc64",
+      "published_sha256": "1076e633e54b7e8e05779718289205a011f41df9ab13c51dad7b80a65249dc64"
+    },
+    "wbs.txt": {
+      "raw_sha256": "19de8826bae8e62cff982e0520cc3f5428678b333362d133c32b9d5b2efbb673",
+      "published_sha256": "19de8826bae8e62cff982e0520cc3f5428678b333362d133c32b9d5b2efbb673"
+    },
+    "keys.txt": {
+      "raw_sha256": "60b268bdc7cc9aa52c5e389d3a0b9a0a06998e5eed9d46daf35c8aa7426b788e",
+      "published_sha256": "60b268bdc7cc9aa52c5e389d3a0b9a0a06998e5eed9d46daf35c8aa7426b788e"
+    },
+    "working-directory-error.txt": {
+      "raw_sha256": "5de35e6d94d3990c671ef0bd79834c12dbd481609fc686015e51f260fc884d93",
+      "published_sha256": "5de35e6d94d3990c671ef0bd79834c12dbd481609fc686015e51f260fc884d93"
+    }
+  },
+  "limitations": [
+    "전체 검사는 cfc4bc2의 앱/DB이다. 뒤 CLI/CI 고침은 28d949e의 Node49개와 현재 CI로 별도 검증한다.",
+    "루트에서 npm 실행한 한 차례는 ENOENT이며 app/에서 재실행해 format/lint0을 확인했다. 실패를 통과로 세지 않는다.",
+    "실제 누락 열/정책9종 적용과 집계 시간 창 메일 대조·학원컴은 미확인이다."
+  ]
+}
