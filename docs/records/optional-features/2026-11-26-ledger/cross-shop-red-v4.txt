@@ -1,0 +1,107 @@
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/cross-shop.test.ts (66 tests | 4 failed) 4624ms
+   ❯ 교차 가게 시험 묶음의 등록(새 가게 범위 API가 빠지면 실패) (8)
+     × 앱의 가게 범위 경로가 모두 등록됨 10ms
+     × 시험용 경로도 모두 등록됨 2ms
+     × 앱의 등록 목록도 묶음이 부름(등록만 하고 부르지 않는 사례 없음), 묶음의 앱은 앱의 선언을 모두 붙임 5ms
+     × 등록하지 않은 가게 범위 경로를 잡음 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/cross-shop.test.ts > 교차 가게 시험 묶음의 등록(새 가게 범위 API가 빠지면 실패) > 앱의 가게 범위 경로가 모두 등록됨
+AssertionError: expected [ 'GET /owner/ledger' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "GET /owner/ledger",
++ ]
+
+ ❯ test/cross-shop.test.ts:451:26
+    449|   it("앱의 가게 범위 경로가 모두 등록됨", () => {
+    450|     const gaps = registryGaps(APP_ROUTES, CROSS_SHOP_CASES);
+    451|     expect(gaps.missing).toEqual([]);
+       |                          ^
+    452|     expect(gaps.stale).toEqual([]);
+    453|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/cross-shop.test.ts > 교차 가게 시험 묶음의 등록(새 가게 범위 API가 빠지면 실패) > 시험용 경로도 모두 등록됨
+AssertionError: expected { …(2) } to deeply equal { missing: [], stale: [] }
+
+- Expected
++ Received
+
+  {
+-   "missing": [],
++   "missing": [
++     "GET /owner/ledger",
++   ],
+    "stale": [],
+  }
+
+ ❯ test/cross-shop.test.ts:461:18
+    459|   it("시험용 경로도 모두 등록됨", () => {
+    460|     const gaps = registryGaps([...APP_ROUTES, ...TEST_ROUTES], [...CRO…
+    461|     expect(gaps).toEqual({ missing: [], stale: [] });
+       |                  ^
+    462|   });
+    463|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/cross-shop.test.ts > 교차 가게 시험 묶음의 등록(새 가게 범위 API가 빠지면 실패) > 앱의 등록 목록도 묶음이 부름(등록만 하고 부르지 않는 사례 없음), 묶음의 앱은 앱의 선언을 모두 붙임
+AssertionError: expected { …(2) } to deeply equal { missing: [], stale: [] }
+
+- Expected
++ Received
+
+  {
+-   "missing": [],
++   "missing": [
++     "GET /owner/ledger",
++   ],
+    "stale": [],
+  }
+
+ ❯ test/cross-shop.test.ts:468:53
+    466|     for (const c of [...CROSS_SHOP_CASES, ...TEST_CASES]) expect(SUITE…
+    467|     for (const r of APP_ROUTES) expect(SUITE_ROUTES).toContain(r);
+    468|     expect(registryGaps(SUITE_ROUTES, SUITE_CASES)).toEqual({ missing:…
+       |                                                     ^
+    469|   });
+    470|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/cross-shop.test.ts > 교차 가게 시험 묶음의 등록(새 가게 범위 API가 빠지면 실패) > 등록하지 않은 가게 범위 경로를 잡음
+AssertionError: expected [ 'GET /owner/ledger', …(1) ] to deeply equal [ 'GET /owner/new-things/:thingId' ]
+
+- Expected
++ Received
+
+  [
++   "GET /owner/ledger",
+    "GET /owner/new-things/:thingId",
+  ]
+
+ ❯ test/cross-shop.test.ts:473:76
+    471|   it("등록하지 않은 가게 범위 경로를 잡음", () => {
+    472|     const added = shopRoute("GET", "/owner/new-things/:thingId", "owne…
+    473|     expect(registryGaps([...APP_ROUTES, added], CROSS_SHOP_CASES).miss…
+       |                                                                            ^
+    474|   });
+    475|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 62 passed (66)
+   Start at  11:40:42
+   Duration  7.96s (tests 59%, import 32%, transform 9%)

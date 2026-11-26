@@ -151,6 +151,12 @@ interface BookingCase {
   readonly kind: "booking";
 }
 
+interface LedgerShopCase {
+  readonly method: "GET";
+  readonly path: "/owner/ledger";
+  readonly kind: "ledger";
+}
+
 interface LicenseResubmissionCase {
   readonly method: "PUT";
   readonly path: "/owner/shop/license";
@@ -158,6 +164,7 @@ interface LicenseResubmissionCase {
 }
 
 export type CrossShopCase =
+  | LedgerShopCase
   | BookingCase
   | OwnerCrossShopCase
   | SkillCrossShopCase
@@ -176,6 +183,7 @@ export type CrossShopCase =
   | OperatorReviewShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
+  { method: "GET", path: "/owner/ledger", kind: "ledger" },
   {
     method: "GET",
     path: "/owner/consultations/:consultationId/messages",
@@ -338,6 +346,43 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "ledger") {
+      const targets = [
+        { shop: env.a, name: "가게A 장부" },
+        { shop: env.b, name: "가게B 장부" },
+      ];
+      for (const { shop, name } of targets)
+        await db.query(
+          "INSERT INTO ledger_links(shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref) VALUES($1,$2,$3,$4::jsonb,$5) ON CONFLICT DO NOTHING",
+          [
+            shop.shopId,
+            `sheet_${shop.shopId.replaceAll("-", "")}`,
+            name,
+            JSON.stringify([{ header: "주문번호", column: "A" }]),
+            `fixture-${shop.shopId}`,
+          ],
+        );
+      const before = await snapshots(db, env);
+      for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+        const response = await send(env, "GET", { url: `${c.path}?shopId=${target}&ownerId=${env.b.ownerId}` });
+        expect(response.status, response.text).toBe(200);
+        expect(response.body).toMatchObject({
+          status: "linked",
+          sheetName: "가게A 장부",
+          spreadsheetId: `sheet_${env.a.shopId.replaceAll("-", "")}`,
+        });
+        for (const hidden of [
+          env.b.shopId,
+          env.b.ownerId,
+          `sheet_${env.b.shopId.replaceAll("-", "")}`,
+          "가게B 장부",
+          `fixture-${env.a.shopId}`,
+        ])
+          expect(response.text).not.toContain(hidden);
+      }
+      expect(await snapshots(db, env)).toEqual(before);
+      return;
+    }
     if (c.kind === "booking") {
       if (c.path === "/owner/booking-link") {
         await send(env, "GET", { url: c.path });

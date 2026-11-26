@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+
+ Test Files  1 passed (1)
+      Tests  67 passed (67)
+   Start at  11:41:24
+   Duration  7.69s (tests 68%, import 27%, transform 6%)
