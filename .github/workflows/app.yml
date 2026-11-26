@@ -171,6 +171,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: 실행기 로그의 출력 경계 검사
+        shell: pwsh
         run: |
           node --test ../tools/test/job-log-facts.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

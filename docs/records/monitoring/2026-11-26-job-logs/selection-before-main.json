@@ -1,0 +1,186 @@
+{
+  "source": "3818c279e955edcbfa4f0601081114683b9c731c",
+  "generated_dependencies": 184,
+  "finished": 36,
+  "implemented": 58,
+  "candidates": [
+    {
+      "id": "TASK-005",
+      "it": 0,
+      "deps": [],
+      "current_state": "출시 검토로 미룸",
+      "reason": "Anthropic ZDR 신청은 동희님 몫이며 무료 합성 MVP를 막지 않음",
+      "remaining_downstream": 8
+    },
+    {
+      "id": "TASK-006",
+      "it": 0,
+      "deps": [],
+      "current_state": "출시 검토로 미룸",
+      "reason": "OpenAI ZDR 신청은 동희님 몫이며 무료 합성 MVP를 막지 않음",
+      "remaining_downstream": 8
+    },
+    {
+      "id": "TASK-013",
+      "it": 0,
+      "deps": [
+        "TASK-012"
+      ],
+      "current_state": "출시 검토로 미룸",
+      "reason": "법률 전문가 답은 동희님 몫이며 무료 합성 MVP를 막지 않음",
+      "remaining_downstream": 0
+    },
+    {
+      "id": "TASK-172",
+      "it": 0,
+      "deps": [
+        "TASK-171"
+      ],
+      "current_state": "외부 연결 대기",
+      "reason": "등록 경로와 서울 DB 읽기 전용 연결은 학원컴 Aside/Vault 경로 회복 필요",
+      "remaining_downstream": 0
+    },
+    {
+      "id": "TASK-027",
+      "it": 1,
+      "deps": [
+        "TASK-026"
+      ],
+      "current_state": "원본 대기",
+      "reason": "원본44건 경로 미확인.116개 작업 폴더/기존 학원컴 확인과 정확한 이름의 GH artifact0을 반복/대체하지 않음",
+      "remaining_downstream": 76
+    },
+    {
+      "id": "TASK-127",
+      "it": 5,
+      "deps": [
+        "TASK-028"
+      ],
+      "current_state": "검증된 업무 입력 대기",
+      "reason": "공개823100a의6상태29응답/31개 준비 시험은 보존. 최초 환불 원본과 갱신은 TASK121/122의 검증된 계산이 필요하며 이를 UI 제안값으로 대신하지 않음",
+      "code_evidence": {
+        "file": "app/server/src/order-refund-quote.ts",
+        "condition": "funds는 호출자가 원장 배분으로 검증한 금액이어야 하며, API049/배분 연결은TASK121이라는 모듈 주석·입력 계약",
+        "verified_main": "b2957fc7f3ac1dc71c7ea3173ae00536401e4aea",
+        "preserved_wip": "origin/codex/task-127-cancel-card@823100a"
+      },
+      "remaining_downstream": 0
+    },
+    {
+      "id": "TASK-159",
+      "it": 7,
+      "deps": [
+        "TASK-021",
+        "TASK-024",
+        "TASK-025"
+      ],
+      "current_state": "제품 결정 대기",
+      "reason": "삭제ID4열의 보관 기한 답 대기. 원문 열기/API와 두 역할 지우기 고침은 main302에 있으나 TTL은 미적용",
+      "remaining_downstream": 9
+    },
+    {
+      "id": "TASK-156",
+      "it": 7,
+      "deps": [
+        "TASK-014",
+        "TASK-037"
+      ],
+      "current_state": "제품 결정/업무 연결 대기",
+      "reason": "공개e1c7389의17파일438개/48개 이행 준비. 영속 OAuth 비밀 값 저장 위치 답과 주문/완성 사진의 실제 선택 기능 연결 필요. public 백업은 Vault 토큰 행을 포함하지 않으며 루트 키만으로 잃은 행을 복구할 수 없음",
+      "remaining_downstream": 2
+    },
+    {
+      "id": "TASK-167",
+      "it": 8,
+      "deps": [
+        "TASK-002",
+        "TASK-184"
+      ],
+      "current_state": "외부 계정 경로 대기",
+      "reason": "운영 키의 안전한 Aside Vault/Worker 전달과 카카오 실제 계정은 학원컴 Aside 경로 회복 필요. 현재 환경 CF 토큰9109",
+      "remaining_downstream": 7
+    },
+    {
+      "id": "TASK-175",
+      "it": 8,
+      "deps": [
+        "TASK-170"
+      ],
+      "current_state": "출시 검토로 미룸",
+      "reason": "유료 Pro 전환은 무료 MVP 범위 밖. 결제를 묻거나 실행하지 않음",
+      "remaining_downstream": 0
+    }
+  ],
+  "additional_runnable_unblocked": 0,
+  "currently_active_code": [
+    {
+      "id": "TASK-016",
+      "pr": 305,
+      "state": "실제42703 관찰·정본74/전체5433개 확인. 현재 CI/코드·보안 리뷰/main 검증 진행 중"
+    }
+  ],
+  "selection_inputs": {
+    "wbs": "ecf17c4b5bc2ff5e3be19c7568f1f3c4b4f571ee",
+    "implemented_ids": [
+      "TASK-016",
+      "TASK-021",
+      "TASK-028",
+      "TASK-031",
+      "TASK-033",
+      "TASK-036",
+      "TASK-037",
+      "TASK-038",
+      "TASK-040",
+      "TASK-041",
+      "TASK-042",
+      "TASK-043",
+      "TASK-044",
+      "TASK-045",
+      "TASK-046",
+      "TASK-047",
+      "TASK-048",
+      "TASK-050",
+      "TASK-051",
+      "TASK-052",
+      "TASK-053",
+      "TASK-054",
+      "TASK-055",
+      "TASK-056",
+      "TASK-057",
+      "TASK-058",
+      "TASK-059",
+      "TASK-060",
+      "TASK-061",
+      "TASK-062",
+      "TASK-063",
+      "TASK-064",
+      "TASK-065",
+      "TASK-066",
+      "TASK-067",
+      "TASK-068",
+      "TASK-072",
+      "TASK-076",
+      "TASK-077",
+      "TASK-081",
+      "TASK-082",
+      "TASK-085",
+      "TASK-086",
+      "TASK-087",
+      "TASK-089",
+      "TASK-104",
+      "TASK-106",
+      "TASK-107",
+      "TASK-108",
+      "TASK-109",
+      "TASK-126",
+      "TASK-134",
+      "TASK-147",
+      "TASK-148",
+      "TASK-149",
+      "TASK-158",
+      "TASK-165",
+      "TASK-184"
+    ]
+  },
+  "method": "생성기의 API 추가 의존 관계184개·현재 구현 완료 표58개·후보별 실제 미완료 조건을 함께 확인. PR305 완료 뒤 같은 입력을 원격 main에서 다시 대조"
+}

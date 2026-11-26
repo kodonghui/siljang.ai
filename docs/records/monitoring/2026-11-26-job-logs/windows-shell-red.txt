@@ -1,0 +1,4 @@
+app run45843292051 / Windows job139990312137 / source3818c279e955edcbfa4f0601081114683b9c731c
+2026-11-26T14:54:08.5698182Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-11-26T14:54:08.9188557Z D:\a\_temp\60fc217f-f7db-4753-9517-8d9a12853ec3.sh: line 2: syntax error near unexpected token `{'
+2026-11-26T14:54:08.9238252Z ##[error]Process completed with exit code 2.

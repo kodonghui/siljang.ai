@@ -1,0 +1,15 @@
+{
+  "red_source": "3818c279e955edcbfa4f0601081114683b9c731c",
+  "app_run": 45843292051,
+  "failed_job": 139990312137,
+  "linux_job": 139990312570,
+  "postgres_jobs": [
+    139990312265,
+    139990312593
+  ],
+  "cause": "새 Windows 단계가 기본 bash를 상속해 PowerShell if를 구문 오류로 처리했다. Node10개 자체는 통과했으나 job 종료2다.",
+  "fix": "해당 Windows 단계에 shell: pwsh를 명시했다.",
+  "fixed_workflow_object": "253f37c662576b927668956340c7786bfdfebb83",
+  "local_powershell_run": false,
+  "fixed_windows_ci": "현재 head의 재실행 대기. 앞 job은 실패로 보존"
+}
