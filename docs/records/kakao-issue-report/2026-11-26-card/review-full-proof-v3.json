@@ -1,0 +1,104 @@
+{
+  "sourceCommit": "4d9f8367465fb7268a0c6ae87248f6939d0e8e70",
+  "publicEquivalentHead": "09223eb97d0fb17dfa065226d8e06c41f9fbd89b",
+  "sourceTree": "286f8cb3436ca57f9db3aeab25310a9745385acf",
+  "baseMain": "b2c8e45b5cd5b3903293388b0d3dd25a6824d2c0",
+  "scopeGitObjects": {
+    "app/server": "45c881c68a0a252107bb1292241cdf1da0e50519",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "a14301cda8a934d9eca2f0c7e6e827c3123ba1c1",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "d2d8c9e58d8a192702bfa6191b669cc87ae177d8",
+    ".github/workflows/app.yml": "c6e630336af3fd90952fa89f273f6d0cc5da1463",
+    "tools/staging-login-callback-grants.sql": "6cd667a6ec1c8e237efa1f60acd318b58e6a9854",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 44,
+  "server": {
+    "files": 182,
+    "passed": 3382
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "related": {
+    "files": 27,
+    "passed": 528,
+    "workingTree": true
+  },
+  "issueCardCorePassed": 50,
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "unchangedOriginalSecurityTestObjects": {
+    "app/server/test/consultation-idle.test.ts": "ffa4330f9e6c9210739681463416d42ae5720987",
+    "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+    "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299"
+  },
+  "nodePassed": 98,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "localPostgres16SchemaChecks": 15,
+  "stageChecks": 8,
+  "mockup": {
+    "passed": 13,
+    "unverified": 1
+  },
+  "states": 6,
+  "frames": 12,
+  "responseRows": 29,
+  "responseFrames": 20,
+  "browserExecuted": false,
+  "realKakao": false,
+  "stagingMigration44": false,
+  "stagingRuntimeFunctionGrants": false,
+  "modelCallsAdded": 0,
+  "outboundRequestsAdded": 0,
+  "npmCi": "로컬 동일 lock 설치 재사용. 공개 같은 소스의 새 npm ci 성공; 기록 head CI는 다음",
+  "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
+  "businessCommandValidation": "합성 주입 실행기만 검사. TASK139/140의 실제 신고 접수 구현 아님",
+  "classification": "좁은 조회 함수44의 고정 소스 전체 성공. 현재 head CI/코드·보안 리뷰/수동 요청/자기 main 전. TASK147 구현 완료/finished 아님",
+  "sourceCi": {
+    "app": 45761849371,
+    "db": 45761849414
+  },
+  "review": {
+    "id": 7183289710,
+    "baseline": "4f265c1995919c592a6c9bb1798562494247f84a",
+    "priority": "P2",
+    "redFailed": 1,
+    "redPassed": 12,
+    "regressionPassed": 13,
+    "onlyFindingFixAndMainAfterReview": true
+  },
+  "localSchemaValidationSource": "26e47fe535bda31781cc29e5c1c95c6008614e27",
+  "stageValidationSource": "26e47fe535bda31781cc29e5c1c95c6008614e27",
+  "unchangedReusedDesignGitObjects": {
+    "docs/01-domain": "21022a8fd31115b1ef44da6351ba56b925b2ba5d",
+    "docs/02-prd": "03e5337b126f3caf1e550649f19fd4d745a4805b",
+    "docs/03-user-flow": "c2e9f571fd25831b1cdfc302cb258bcf2b51c7f9",
+    "docs/04-functional-spec": "4233b6befb916b73e360fff67c64050ea418cc7a",
+    "docs/05-erd": "801992369fceeea734f74bc4ca75966b008c5f7b",
+    "docs/06-api": "af63d5dd038585bb97bd9efe4551a1a6ae7526b3",
+    "docs/07-sitemap": "ccd54169d24bebcca433dae053e07f4b90ca518d",
+    "docs/08-screens": "f4e78ad36a497a4b4e9b3d2d99072e7ee9305833",
+    "docs/09-mockup": "d84d90e434a2de0460af80428e7cb44c234736b5",
+    "docs/10-wbs": "2338db4de6f36e3d05f000c3cff4187649dd62ed",
+    "research/cake-api-2026-11": "28a6ce6eab4b4f8b1148b53dd7fd72ec6b0b692c",
+    "research/cake-domain-2026-11": "b27794b1c90fdb15cb97d4dc24d1e4ab7d53ea06",
+    "research/cake-erd-2026-11": "0f0490236cfde1e400551fb542601c95f2235f9a",
+    "research/cake-flow-2026-11": "25014c2484b7eb333f44d77208223fcddb92c944",
+    "research/cake-mockup-2026-11": "5bbb0599c14f25bfeaa56860e82600c1de4d2c73",
+    "research/cake-prd-2026-11": "e1970dda3d905c9c86caf397591b20c1b13f4593",
+    "research/cake-screens-2026-11": "4e51d30c1369087274cd1c2eea57751a559de9bc",
+    "research/cake-sitemap-2026-11": "d8199380a585cb4b3112a3f2aebfca813705d5d6",
+    "research/cake-spec-2026-11": "5beb341da657756681f748030d6e3d2032964ecc",
+    "research/cake-terms-2026-11": "637f7850a82614054d50dbec45ea9c81b155addc",
+    "research/cake-wbs-2026-11": "0755d612159b48589753ee5b4a315e57580aea58",
+    "db": "a14301cda8a934d9eca2f0c7e6e827c3123ba1c1",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "tools/stage-checks.sh": "50ba687fe6359d142997c5a4ee1aa0d892bc2161"
+  }
+}

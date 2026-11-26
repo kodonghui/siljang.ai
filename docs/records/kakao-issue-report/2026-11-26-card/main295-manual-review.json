@@ -1,0 +1,14 @@
+{
+  "pr": 295,
+  "head": "f6df247088b900467a1353adebcfcee30895447a",
+  "id": 7182420303,
+  "requestCount": 1,
+  "repeat": false,
+  "ciApp": 45753329298,
+  "ciDb": 45753329219,
+  "createdAt": "2026-11-26T04:14:28Z",
+  "quotaCommentId": 7182423275,
+  "failedSummaryId": 7182422585,
+  "status": "usage_limit",
+  "quotaAt": "2026-11-26T04:14:40Z"
+}

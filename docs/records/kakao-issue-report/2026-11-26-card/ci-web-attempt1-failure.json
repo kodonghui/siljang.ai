@@ -1,0 +1,15 @@
+{
+  "head": "2331914b5835ff0ea1112d948223ae1382e2ba24",
+  "appRun": 45762946944,
+  "attempt": 1,
+  "conclusion": "failure",
+  "failedJob": 139716981556,
+  "dbRun": 45762946775,
+  "dbConclusion": "success",
+  "serverPassed": 3382,
+  "webPassed": 1774,
+  "webFailed": 1,
+  "buildExecuted": false,
+  "localAndSourceCiWebPassed": 1775,
+  "manualRequestCount": 0
+}

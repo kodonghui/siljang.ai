@@ -1,0 +1,8 @@
+
+ RUN  v5.1.0 /workspace/siljang-task147-issue-card/app/server
+
+
+ Test Files  4 passed (4)
+      Tests  67 passed (67)
+   Start at  02:16:50
+   Duration  9.28s (tests 53%, import 40%, transform 7%)

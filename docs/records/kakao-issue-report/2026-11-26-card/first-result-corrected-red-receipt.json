@@ -1,0 +1,14 @@
+{
+  "sourceCommit": "e998703ec8ff8dd272e921a1887e08aae6f06bcb",
+  "selectedOriginalFiles": [
+    "app/server/src/confirm-card-store.ts",
+    "app/server/src/kakao-order-request-message.ts"
+  ],
+  "testFixture": "productions handed_over_at/handover_kind matches received order in one transaction",
+  "workingCopiesRestored": true,
+  "exitCode": 1,
+  "backupSha256": {
+    "app/server/src/confirm-card-store.ts": "37ce07124000321b5a964d3eed0005d8fcd5122af5d70958f188082f59260b8b",
+    "app/server/src/kakao-order-request-message.ts": "a66d7d5a077558bdfe5b8a24ae31dd66616b3d8c580ae58f6ddf5d454314cbce"
+  }
+}

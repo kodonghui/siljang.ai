@@ -2,6 +2,7 @@
 import { type ConfirmCardAnswer, type ConfirmCardView, NOT_YOURS, RETRY_NEEDED } from "./confirm-card-store";
 import { changeRequestResultText, kakaoChangeRequestMessage } from "./kakao-change-request-message";
 import { kakaoChannelIdentifierError } from "./kakao-channel-input";
+import { kakaoIssueReportMessage } from "./kakao-issue-report-message";
 import {
   type KakaoMessageContent,
   type KakaoMessageOutput,
@@ -93,6 +94,13 @@ function inputCard(
   return { version: "2.0" as const, template: { outputs: [{ textCard: { title, description, buttons } }] } };
 }
 export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
+  if (
+    answer.kind === "issue_report" &&
+    answer.outcome === "card_used" &&
+    answer.firstResult !== undefined &&
+    ["issue_reported", "declined"].includes(answer.firstResult.outcome)
+  )
+    return template([answer.firstResult.text]);
   if (answer.changeRequestStatus !== undefined)
     return kakaoChangeRequestMessage({ state: "stale", ...answer.changeRequestStatus });
   if (answer.kind === "change_request") {
@@ -107,6 +115,13 @@ export function kakaoConfirmAnswerMessage(answer: ConfirmCardAnswer) {
   if (answer.card?.kind === "change_request" && answer.card.changeRequest !== undefined)
     return kakaoChangeRequestMessage({
       ...answer.card.changeRequest,
+      state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
+      cardKey: answer.card.cardKey,
+      blockId: answer.card.blockId,
+    });
+  if (answer.card?.kind === "issue_report" && answer.card.issueReport !== undefined)
+    return kakaoIssueReportMessage({
+      ...answer.card.issueReport,
       state: answer.outcome === "card_expired" ? "expired" : answer.outcome === "card_stale" ? "stale" : "normal",
       cardKey: answer.card.cardKey,
       blockId: answer.card.blockId,

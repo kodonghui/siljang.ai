@@ -1,0 +1,12 @@
+
+ RUN  v5.1.0 /workspace/siljang-task148-review-screen/app/server
+
+
+ Test Files  21 passed (21)
+      Tests  391 passed (391)
+   Start at  05:58:28
+   Duration  44.47s (tests 66%, import 32%, transform 2%)
+
+     Import  220 modules were evaluated 307 times · 13.65s total, 32% of tracked time
+             ~3.87s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

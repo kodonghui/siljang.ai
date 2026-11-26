@@ -1,0 +1,10 @@
+{
+  "database": "siljang_full_27f8e811f2e446a19e2d622db8780bda",
+  "pid": 3469072,
+  "source_commit": "557e4d2550a5c66a6b45e7d375b8dfcd9a8be214",
+  "stage": "cleanup",
+  "testExit": 1,
+  "webExecuted": false,
+  "buildExecuted": false,
+  "freshDatabaseRemaining": 0
+}

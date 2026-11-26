@@ -1,0 +1,63 @@
+{
+  "sourceCommit": "26e47fe535bda31781cc29e5c1c95c6008614e27",
+  "publicEquivalentHead": "fe7c9b3659dd2ce2ad94239015f8922f04f7b817",
+  "sourceTree": "765374d885af2f5603e58aa7d7e78aba58eb7c7f",
+  "baseMain": "11d959c0ac6f1950bade9beef6cbb9eee353bed6",
+  "scopeGitObjects": {
+    "app/server": "746c7e0efc9527e08d27ddffb409ce4aca720dc2",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "a14301cda8a934d9eca2f0c7e6e827c3123ba1c1",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "d2d8c9e58d8a192702bfa6191b669cc87ae177d8",
+    ".github/workflows/app.yml": "c6e630336af3fd90952fa89f273f6d0cc5da1463",
+    "tools/staging-login-callback-grants.sql": "6cd667a6ec1c8e237efa1f60acd318b58e6a9854",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 44,
+  "server": {
+    "files": 181,
+    "passed": 3376
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "related": {
+    "files": 24,
+    "passed": 478,
+    "workingTree": true
+  },
+  "issueCardCorePassed": 49,
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "unchangedOriginalSecurityTestObjects": {
+    "app/server/test/consultation-idle.test.ts": "ffa4330f9e6c9210739681463416d42ae5720987",
+    "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+    "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299"
+  },
+  "nodePassed": 98,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "localPostgres16SchemaChecks": 15,
+  "stageChecks": 8,
+  "mockup": {
+    "passed": 13,
+    "unverified": 1
+  },
+  "states": 6,
+  "frames": 12,
+  "responseRows": 29,
+  "responseFrames": 20,
+  "browserExecuted": false,
+  "realKakao": false,
+  "stagingMigration44": false,
+  "stagingRuntimeFunctionGrants": false,
+  "modelCallsAdded": 0,
+  "outboundRequestsAdded": 0,
+  "npmCi": "로컬 동일 lock 설치 재사용. 최종 공개 CI의 새 npm ci는 확인 전",
+  "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
+  "businessCommandValidation": "합성 주입 실행기만 검사. TASK139/140의 실제 신고 접수 구현 아님",
+  "classification": "좁은 조회 함수44의 고정 소스 전체 성공. 현재 head CI/코드·보안 리뷰/수동 요청/자기 main 전. TASK147 구현 완료/finished 아님"
+}

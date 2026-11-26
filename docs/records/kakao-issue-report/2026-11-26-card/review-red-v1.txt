@@ -1,0 +1,31 @@
+
+ RUN  v5.1.0 /workspace/siljang-task147-issue-card/app/server
+
+ ❯ test/issue-report-first-result.test.ts (13 tests | 1 failed) 1591ms
+   ❯ 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) (13)
+     × 조회 실행 권한이 빠진 카드만 보류하고 일반 안내를 전한 뒤 복구된 카드를 다시 읽는다 145ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/issue-report-first-result.test.ts > 신고 카드의 실제 저장 첫 결과와 재전달(TASK-147) > 조회 실행 권한이 빠진 카드만 보류하고 일반 안내를 전한 뒤 복구된 카드를 다시 읽는다
+error: current transaction is aborted, commands ignored until end of transaction block
+ ❯ ../../../siljang-task021-runtime-setup/app/node_modules/pg/lib/client.js:694:17
+ ❯ run src/db.ts:72:13
+     70|
+     71| async function run<R>(client: Client, sql: string, params?: readonly u…
+     72|   const r = await client.query<R>(sql, params);
+       |             ^
+     73|   return { rows: r.rows, rowCount: r.rowCount ?? 0 };
+     74| }
+ ❯ deferredKakaoBatch src/kakao-deferred.ts:252:3
+ ❯ test/issue-report-first-result.test.ts:276:21
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ test/issue-report-first-result.test.ts:260:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+   Start at  05:21:50
+   Duration  3.64s (tests 46%, import 42%, transform 13%)
