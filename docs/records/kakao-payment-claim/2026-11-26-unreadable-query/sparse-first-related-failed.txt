@@ -1,0 +1,36 @@
+
+ RUN  v5.1.0 /workspace/siljang-task107-callback-availability/app/server
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-sparse)
+TASK107 source lookup plan {"rows":2000,"sparse":true,"executionMs":4.45,"buffers":10062,"cardNodes":[{"type":"Index Scan","alias":"a","index":"confirm_cards_shop_scope","loops":1,"actualRows":1,"removed":0},{"type":"Index Scan","alias":"cc","index":"confirm_cards_source_message_idx","loops":1,"actualRows":2001,"removed":2}]}
+
+ ❯ test/payment-claim-depositor-input.test.ts (44 tests | 1 failed) 9925ms
+   ❯ 입금자 전용 블록의 표시와 명령 경계(TASK-107) (44)
+     × 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-sparse) 753ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-sparse)
+AssertionError: expected 2001 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 2001
+
+ ❯ test/payment-claim-depositor-input.test.ts:473:13
+    471|           expect(
+    472|             referenceNodes.reduce((sum, n) => sum + Number(n["Actual R…
+    473|           ).toBe(0);
+       |             ^
+    474|           expect(
+    475|             referenceNodes.some(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 199 passed (200)
+   Start at  00:18:31
+   Duration  32.39s (tests 87%, import 13%, transform 1%)

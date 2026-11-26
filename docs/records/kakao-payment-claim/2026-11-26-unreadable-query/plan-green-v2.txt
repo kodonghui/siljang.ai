@@ -1,0 +1,26 @@
+
+ RUN  v5.1.0 /workspace/siljang-task107-callback-availability/app/server
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-50)
+TASK107 source lookup plan {"rows":50,"executionMs":0.578,"buffers":27,"cardNodes":[{"type":"Seq Scan","alias":"a","loops":1,"removed":1},{"type":"Seq Scan","alias":"cc","loops":1,"removed":2}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-50)
+TASK107 stored card point lookup {"executionMs":0.027,"buffers":6,"nodes":[{"type":"Limit","rows":1},{"type":"Seq Scan","rows":1,"removed":52}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-200)
+TASK107 source lookup plan {"rows":200,"executionMs":0.816,"buffers":52,"cardNodes":[{"type":"Index Scan","alias":"a","index":"confirm_cards_pkey","loops":1,"removed":0},{"type":"Seq Scan","alias":"cc","loops":1,"removed":55}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-200)
+TASK107 stored card point lookup {"executionMs":0.025,"buffers":3,"nodes":[{"type":"Limit","rows":1},{"type":"Index Scan","index":"confirm_cards_source_message_idx","rows":1,"removed":0}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-2000)
+TASK107 source lookup plan {"rows":2000,"executionMs":5.301,"buffers":300,"cardNodes":[{"type":"Index Scan","alias":"a","index":"confirm_cards_shop_scope","loops":1,"removed":0},{"type":"Seq Scan","alias":"cc","loops":1,"removed":258}]}
+
+stdout | test/payment-claim-depositor-input.test.ts > 입금자 전용 블록의 표시와 명령 경계(TASK-107) > 새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(difference/source-query-plan-2000)
+TASK107 stored card point lookup {"executionMs":0.024,"buffers":3,"nodes":[{"type":"Limit","rows":1},{"type":"Index Scan","index":"confirm_cards_source_message_idx","rows":1,"removed":0}]}
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 40 skipped (43)
+   Start at  23:54:53
+   Duration  5.04s (tests 67%, import 25%, transform 8%)

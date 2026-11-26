@@ -5,6 +5,7 @@ import { hasAiPlaceholders, readAiConversation, stripAiPlaceholders } from "./ai
 import { AI_TOTAL_TIMEOUT_MS, type AiFailure, type AiMessage } from "./ai-model";
 import type { AiTurnOutput } from "./ai-turn-output";
 import { type ConfirmCardView, readConfirmCardDelivery } from "./confirm-card-store";
+import { CustomerNoticeTemporarilyUnavailable } from "./customer-notice-content";
 import { FieldCryptoError } from "./field-crypto";
 import { handoffSourceMatch } from "./handoff-source";
 import { kakaoAiCostLimit } from "./kakao-ai-cost";
@@ -21,6 +22,7 @@ export interface KakaoAiReply {
   readonly text: string;
   readonly delivered: boolean;
   readonly card?: ConfirmCardView;
+  readonly deferredCard?: true;
 }
 
 export type KakaoAiTurnResult =
@@ -56,12 +58,16 @@ async function currentReply(
   const row = rows.rows[0];
   if (row === undefined) return null;
   const reply = { id: row.id, text: row.body_masked, delivered: row.delivery !== "deferred" };
-  return row.kind === "card" && !reply.delivered
-    ? {
-        ...reply,
-        ...(await readConfirmCardDelivery(db, { customerId, consultationId, sourceMessageId: messageId, now })),
-      }
-    : reply;
+  if (row.kind !== "card" || reply.delivered) return reply;
+  try {
+    return {
+      ...reply,
+      ...(await readConfirmCardDelivery(db, { customerId, consultationId, sourceMessageId: messageId, now })),
+    };
+  } catch (error) {
+    if (!(error instanceof CustomerNoticeTemporarilyUnavailable)) throw error;
+    return { ...reply, deferredCard: true };
+  }
 }
 
 /** 수신·선점과 같은 가게/상담을 다시 확인한다. 외부 호출 동안 행 잠금은 유지하지 않는다. */
@@ -233,9 +239,10 @@ export async function runKakaoAiTurn(
     }
     const card = prepared !== undefined && "cardKey" in prepared ? prepared : undefined;
     const unavailable = prepared !== undefined && "unavailable" in prepared ? prepared : undefined;
+    const deferredCard = unavailable?.deferredCard === true;
     const text = unavailable?.text ?? card?.title ?? output.reply;
     const saved =
-      card === undefined
+      card === undefined && !deferredCard
         ? await tx.run<{ id: string }>(
             `INSERT INTO messages (shop_id, consultation_id, direction, author, kind, body_masked, trace_id, delivery, created_at)
         VALUES ($1, $2, 'outbound', $3, 'text', $4, $5, 'deferred', $6) RETURNING id`,
@@ -252,7 +259,16 @@ export async function runKakaoAiTurn(
     );
     const id = saved.rows[0]?.id;
     if (id === undefined) throw new Error("AI reply was not stored");
-    return { kind: "reply", reply: { id, text, delivered: false, ...(card === undefined ? {} : { card }) } } as const;
+    return {
+      kind: "reply",
+      reply: {
+        id,
+        text,
+        delivered: false,
+        ...(card === undefined ? {} : { card }),
+        ...(deferredCard ? { deferredCard: true } : {}),
+      },
+    } as const;
   });
 }
 

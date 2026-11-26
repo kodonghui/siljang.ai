@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { renderDeferredKakaoReply } from "../src/kakao-deferred";
 import { kakaoMessageOutputs, mergeKakaoAmountConfirmations } from "../src/kakao-message-content";
 import { expectSchema } from "./support/contract";
 
@@ -45,4 +46,16 @@ it("같은 긴 금액 카드의 여러 부분을 보존하고 원문과 버튼�
 });
 it("같은 일반 글도 각각의 안내로 보존한다", () => {
   expect(mergeKakaoAmountConfirmations(["합성 안내"], ["합성 안내"])).toEqual(["합성 안내", "합성 안내"]);
+});
+
+it("빈 대기 출력에서 조회 한도에 닿아도 현재 답을 앞세우거나 빈 SDK 응답을 만들지 않는다", async () => {
+  const result = renderDeferredKakaoReply(
+    [],
+    () => Response.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "합성 현재 답" } }] } }),
+    true,
+  );
+  expect(result.currentIncluded).toBe(false);
+  const body = await result.response.json();
+  expectSchema("SkillTemplateResponse", body);
+  expect(JSON.stringify(body)).not.toContain("합성 현재 답");
 });
