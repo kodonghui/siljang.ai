@@ -543,6 +543,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
       const body = required(
         (await isolated.db.query<{ body: string }>("SELECT body FROM notifications WHERE id=$1", [notice.id])).rows[0],
       ).body;
+      const confirmedText = `${body}\n주문 내용\n크기 1호\n맛 생크림`;
       const replies = ["합성 첫 답이에요.", "합성 둘째 답이에요.", "합성 셋째 답이에요.", "합성 넷째 답이에요."];
       let answered = 0;
       const ai = model(() => required(replies[answered++]));
@@ -562,7 +563,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
       if (twoParts) expect(first).toHaveLength(1);
       else {
         expect(first).toHaveLength(3);
-        expect(first[1]).toBe(body);
+        expect(first[1]).toBe(confirmedText);
         expect(first[2]).toContain("합성 원래 규정");
       }
       expect(await pending()).toBe(1);
@@ -577,7 +578,7 @@ describeDb("첫 AI 고지의 전달과 처리방침 버전(TASK-064)", () => {
       const second = texts(await consume(required(jobs[1]), ai));
       if (twoParts) {
         expect(second).toHaveLength(3);
-        expect(second[0]).toBe(body);
+        expect(second[0]).toBe(confirmedText);
         expect(second[1]).toContain("합성 원래 규정");
         expect(second[2]).toContain("합성 두번째 규정");
         expect(await pending()).toBe(2);

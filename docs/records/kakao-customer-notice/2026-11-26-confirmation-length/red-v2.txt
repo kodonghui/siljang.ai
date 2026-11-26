@@ -1,0 +1,62 @@
+
+ RUN  v5.1.0 /workspace/siljang-task109-confirmation-length/app/server
+
+ ❯ test/customer-notice-presentation.test.ts (15 tests | 4 failed | 11 skipped) 1353ms
+   ❯ 저장된 손님 안내의 두 실제 수신 경로 표시 (15)
+     × 확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(event/이전 false) 183ms
+     × 확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(event/이전 true) 145ms
+     × 확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(message/이전 false) 105ms
+     × 확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(message/이전 true) 206ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > 확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(event/이전 false)
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > 확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(message/이전 false)
+RangeError: confirmed notice body too long
+ ❯ createOrderConfirmedNotice src/customer-notice-store.ts:159:38
+
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ test/customer-notice-presentation.test.ts:176:34
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > 확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(event/이전 true)
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ test/customer-notice-presentation.test.ts:188:29
+    186|     if (!legacy) expect(saved.body).not.toContain("라".repeat(500));
+    187|     const response = await call(mode, created.id);
+    188|     expect(response.status).toBe(200);
+       |                             ^
+    189|     const result = await response.json();
+    190|     expectSchema("SkillTemplateResponse", result);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/customer-notice-presentation.test.ts > 저장된 손님 안내의 두 실제 수신 경로 표시 > 확정 본문2000자 밖의 주문 내용도 원문/규정을 보존한다(message/이전 true)
+AssertionError: expected '잠시 뒤 다시 말씀해 주세요' to contain '라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라…'
+
+Expected: "라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라라"
+Received: "잠시 뒤 다시 말씀해 주세요"
+
+ ❯ test/customer-notice-presentation.test.ts:212:20
+    210|       "35,000원",
+    211|     ])
+    212|       expect(text).toContain(expected);
+       |                    ^
+    213|     for (let i = 0; i < 35; i++) expect(text).toContain(`합성${String(i)…
+    214|     if (legacy) expect(text).toContain("합성 보존된 신원");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 11 skipped (15)
+   Start at  22:05:52
+   Duration  3.23s (import 44%, tests 44%, transform 12%)

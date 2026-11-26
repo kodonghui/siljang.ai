@@ -1,0 +1,5 @@
+
+> lint
+> biome ci . --error-on-warnings
+
+Checked 621 files in 1164ms. No fixes applied.

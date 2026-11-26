@@ -3,6 +3,7 @@ import { openAccountNumber } from "./account-number";
 import { confirmedNoticeContents, reviewNoticeContents } from "./customer-notice-presentation";
 import { TEXT_CUSTOMER_NOTICE_KINDS } from "./customer-notice-store";
 import type { FieldCrypto } from "./field-crypto";
+import { kakaoCustomerNoticeMessage } from "./kakao-customer-notice-message";
 import type { KakaoMessageContent } from "./kakao-message-content";
 import type { KakaoPaymentNormalView } from "./kakao-payment-message";
 import { paymentChangeSummary } from "./payment-change-presentation";
@@ -47,7 +48,7 @@ interface Payment {
   time_zone: string;
   payment_due_hours: number;
 }
-/** 새 조회 권한이 없으면 원문을 보류하고 권한 추가 뒤 다시 읽는다. */
+/** 자료·권한·표시를 준비할 수 없으면 이 안내만 보류하고 뒤의 정상 안내는 계속 전한다. */
 export class CustomerNoticeTemporarilyUnavailable extends Error {
   override readonly name = "CustomerNoticeTemporarilyUnavailable";
   constructor() {
@@ -80,7 +81,19 @@ export async function customerNoticeContents(
   now: Date,
   fields?: () => FieldCrypto,
 ): Promise<readonly KakaoMessageContent[] | null> {
-  if (notice.kind === "order_confirmed") return confirmedNoticeContents(db, notice);
+  if (notice.kind === "order_confirmed") {
+    try {
+      const contents = await confirmedNoticeContents(db, notice);
+      for (const content of contents ?? [])
+        if (typeof content !== "string" && "kind" in content && content.kind === "customer_notice")
+          kakaoCustomerNoticeMessage(content.view);
+      return contents;
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      // 표시 불가 안내 한 건만 보류한다. SQL/가게 범위 오류는 이 오류로 바꾸지 않는다.
+      throw new CustomerNoticeTemporarilyUnavailable();
+    }
+  }
   if (notice.kind === "review_request") return reviewNoticeContents(db, notice);
   if (notice.kind !== "payment_request") {
     if (!notice.body.trim()) return null;

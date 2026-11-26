@@ -1,0 +1,12 @@
+{
+  "removedWhileCodeRechecking": {
+    "task": "TASK-109",
+    "previousRow": "| TASK-109 | SCR011의5상태/6응답·긴 확정 원문4002자/텍스트 캐러셀과 실제 학원컴 Aside/PC 카카오 확인·0041/최소 권한 적용 | PR286 maine4656a89191a6f7e306ad45bfc2ffe340736df9b의 app45675780151/db45675780385·배포139425477175·전체 태그/활성100%·health200·원격main 일치. 계약/저장 행/공통 전송/순서·개인정보 경계의 코드 조건 확인. 학원컴 접속 복구 근거 없음 | 복구 뒤 D4 지시/대기열·정지ACK를 먼저 읽고360/1280·실제안내/모의사진·후속/콜백·긴 텍스트 캐러셀 표시와 권한을 확인해 finished 판단. 사진 조회/발급/동의 저장 업무 TASK135는 별도 범위 |"
+  },
+  "addedNativeOnly": [
+    "TASK-107",
+    "TASK-126"
+  ],
+  "verifiedMain": "d2d7e49310fdb358306a63a9b04054c0ded5dae8",
+  "finishedAdded": []
+}

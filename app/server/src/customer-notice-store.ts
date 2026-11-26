@@ -155,7 +155,7 @@ export async function createOrderConfirmedNotice(
   const summary = await readOrderNoticeSummary(db, orderId, order.version);
   if (summary === null) return null;
   const pickup = toShopLocal(order.pickup_at, order.time_zone);
-  const body = `주문이 확정됐어요\n주문번호 ${order.order_no}\n결제가 확인된 금액 ${order.paid_amount.toLocaleString("ko-KR")}원\n픽업 ${pickup.date} ${pickup.time}\n상호 ${order.business_name}\n대표자 ${order.representative_name}\n사업장 주소 ${order.business_address}\n전화번호 ${order.contact_phone}\n${summary}`;
+  const body = `주문이 확정됐어요\n주문번호 ${order.order_no}\n결제가 확인된 금액 ${order.paid_amount.toLocaleString("ko-KR")}원\n픽업 ${pickup.date} ${pickup.time}\n상호 ${order.business_name}\n대표자 ${order.representative_name}\n사업장 주소 ${order.business_address}\n전화번호 ${order.contact_phone}`;
   if ([...body].length > 2000) throw new RangeError("confirmed notice body too long");
   const send =
     options.sendEnabled === true &&
@@ -166,7 +166,7 @@ export async function createOrderConfirmedNotice(
     db,
     "notifications",
     `INSERT INTO notifications (shop_id, event_key, customer_id, consultation_id, order_id, kind, template_key, body, status, next_attempt_at, created_at)
-     VALUES ($1, $2, $3, $4, $5, 'order_confirmed', 'order_confirmed:v2', $6, $7, $8, $9)
+     VALUES ($1, $2, $3, $4, $5, 'order_confirmed', $10, $6, $7, $8, $9)
      ON CONFLICT (shop_id, event_key) DO NOTHING RETURNING id`,
     [
       key,
@@ -177,6 +177,7 @@ export async function createOrderConfirmedNotice(
       send ? "pending" : "deferred",
       send ? now : null,
       now,
+      `order_confirmed:v3:${order.version}`,
     ],
   );
 }
