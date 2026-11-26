@@ -292,6 +292,31 @@ describeDb("손님 확인 카드 저장과 한 번 실행(TASK-081)", () => {
       "INSERT INTO consultations(id,shop_id,customer_id,opened_at,last_customer_message_at) VALUES($1,$2,$3,$4,$4)",
       [current, shop.shopId, shop.customerId, NOW],
     );
+    const paid = newUuid(),
+      confirmed = new Date(NOW.getTime() - 4 * 3600000),
+      received = new Date(NOW.getTime() - 3 * 3600000);
+    await isolated.db.transaction(async (tx) => {
+      await tx.query(
+        "UPDATE payment_requests SET status='paid',paid_at=$2,arrived_at=$2,arrived_amount=amount WHERE id=$1",
+        [shop.paymentRequestId, confirmed],
+      );
+      await tx.query(
+        "INSERT INTO payments(id,shop_id,order_id,payment_request_id,amount,confirmed_at) VALUES($1,$2,$3,$4,35000,$5)",
+        [paid, shop.shopId, shop.orderId, shop.paymentRequestId, confirmed],
+      );
+      await tx.query(
+        "UPDATE orders SET status='received',confirmed_at=$2,confirmed_payment_id=$3,finished_at=$4 WHERE id=$1",
+        [shop.orderId, confirmed, paid, received],
+      );
+      await tx.query(
+        "INSERT INTO productions(shop_id,order_id,completed_at,handed_over_at,handover_kind,created_at) VALUES($1,$2,$3,$3,'pickup',$4)",
+        [shop.shopId, shop.orderId, received, confirmed],
+      );
+    });
+    await isolated.db.query(
+      "INSERT INTO issue_details(shop_id,consultation_id,order_id,description,health_concern) VALUES($1,$2,$3,'새 상담에서 모은 합성 신고 설명',false)",
+      [shop.shopId, current, shop.orderId],
+    );
     for (const kind of ["issue_report", "consent_withdrawal"] as const) {
       const card = await showConfirmCard(scoped(), {
         ...identity(),
