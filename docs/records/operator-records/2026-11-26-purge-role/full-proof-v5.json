@@ -1,0 +1,72 @@
+{
+  "sourceCommit": "a2fcab43d31a0e7dcbfde118a5b35b1426e5376c",
+  "baseMain": "52040715ecb5de64983ff1f87af79e2e64db52b2",
+  "scopeGitObjects": {
+    "app/server": "a6015844c5d2d5673ef4343b78fb30ec9f0127ad",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "b4ad5212a96da8c92eb9e76b3303f01b4a26c7d7",
+    "api": "d772edd3a7a5c10fe053317db7c93abbd4c2a385",
+    "research/screen-checks-2026-11": "054b495f5fb0665c24475252cf20edd8d83f91a2",
+    ".github/workflows/app.yml": "9ae8e7718d47ff7b2d81d8085a8beb03c2d54e47",
+    "tools/staging-login-callback-grants.sql": "7413a9fd12ed979633a06d8a055235f43925db28",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "unchangedSixSecurityAndReviewTests": {
+    "app/server/test/consultation-idle.test.ts": "ffa4330f9e6c9210739681463416d42ae5720987",
+    "app/server/test/kakao-runtime-grants.test.ts": "b75e5158f919f6597a088c194d961bcea4130f99",
+    "app/server/test/staging-runtime-role.test.ts": "8ef6bf225186689113969da17dcbb12489244299",
+    "app/server/test/kakao-review-dedup.test.ts": "a7448fb18e57a157de386a45be1e3fa8c2895250",
+    "app/server/test/kakao-review-photos.test.ts": "54a249bd42dc6e59170a8e6fb36b2dce5b2833e5",
+    "app/server/test/shop-scope-static.test.ts": "fb468294d835ee555b36a7e497b5a81384af6446"
+  },
+  "migrations": 47,
+  "tables": 62,
+  "columns": 759,
+  "foreignKeys": 136,
+  "dbFunctions": 26,
+  "relatedFiles": 16,
+  "relatedPassed": 355,
+  "stages": 8,
+  "dbPassed": 15,
+  "api": "unchanged; no re-run this change",
+  "nativeAside": "unverified; academy SSH two previous failures, no recovery evidence",
+  "retentionP3": "product decision pending, not applied",
+  "full": "completed",
+  "serverFiles": 197,
+  "serverPassed": 3649,
+  "serverFailed": 0,
+  "webFiles": 73,
+  "webPassed": 1775,
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "nodeFixturePassed": 63,
+  "nodeStagingPassed": 37,
+  "strictLint": {
+    "files": 658,
+    "exit": 0
+  },
+  "mockup": {
+    "passed": 13,
+    "unverified": 1
+  },
+  "manualReviewRequestsForFollowupAtProof": 0,
+  "finished": 36,
+  "implemented": 57,
+  "fullLog": {
+    "rawSha256": "d2026e85655daba815a52d5e9dffdf69cb16c829ae33f2bfa93d5b1a51af4453",
+    "trackedSha256": "271f65e8fa1b205de933d93365bca26816aaed421287f72c5f737002118f5fcc",
+    "normalization": "trailing whitespace and final blank lines only"
+  },
+  "buildLog": {
+    "rawSha256": "fb76aee0d849c50b5204c0aeeca9a586c17e2e91ef5b092f2a5dadaa72996be0",
+    "trackedSha256": "aad7b07b28021654615e7af8f9e62668214c6f1331f5a54bfd3897aad2f1ddf4",
+    "normalization": "trailing whitespace and final blank lines only"
+  },
+  "migrateLog": {
+    "rawSha256": "16269f06cadc2bf88afc6ad6ea7e36115f85368ac7bd1e44b79e53a5e34f8847",
+    "trackedSha256": "16269f06cadc2bf88afc6ad6ea7e36115f85368ac7bd1e44b79e53a5e34f8847",
+    "normalization": "trailing whitespace and final blank lines only"
+  }
+}

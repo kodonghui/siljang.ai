@@ -1,0 +1,26 @@
+{
+  "app/README.md": {
+    "exit": 0,
+    "output": "No coined words found.\n"
+  },
+  "docs/records/fix-log.md": {
+    "exit": 0,
+    "output": "No coined words found.\n"
+  },
+  "docs/records/progress.md": {
+    "exit": 0,
+    "output": "No coined words found.\n"
+  },
+  "docs/records/hands-on.md": {
+    "exit": 0,
+    "output": "No coined words found.\n"
+  },
+  "docs/records/operator-records/2026-11-26-purge-role/acceptance-checks.md": {
+    "exit": 0,
+    "output": "No coined words found.\n"
+  },
+  "docs/records/operator-records/2026-11-26-purge-role/retention-decision.md": {
+    "exit": 0,
+    "output": "No coined words found.\n"
+  }
+}
