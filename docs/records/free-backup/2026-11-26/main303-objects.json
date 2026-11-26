@@ -1,0 +1,23 @@
+{
+  "main": "b6ae55129445b039c243e33760f47586760e45e0",
+  "source": "d6b76cc8fa68891b09a11bd7057d80916809e52f",
+  "method": "GitHub Git trees API와 로컬 Git 개체의 직접 비교",
+  "objects": {
+    "app/server": "71df2105eecde7d0e4142e203a66ddf06037b8d4",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "003ae12af65157d7f28662088d00e4ace1e60deb",
+    "api": "d772edd3a7a5c10fe053317db7c93abbd4c2a385",
+    "research/screen-checks-2026-11": "054b495f5fb0665c24475252cf20edd8d83f91a2",
+    ".github/workflows/app.yml": "9ae8e7718d47ff7b2d81d8085a8beb03c2d54e47",
+    ".github/workflows/db.yml": "5d581761f8b0b021325e64e7d196bcaa352fbb43",
+    ".github/workflows/free-backup.yml": "f5cf56d7403cfd985f25df247c4f93412cc8ba4a",
+    "tools/free-backup": "ba202d6f69f0ba2c02a81cb1cfe679c6fe0aaf94",
+    "tools/staging-login-callback-grants.sql": "a03536fe2fa7e42d33b4b8b428555d2034851ba4",
+    "tools/staging-purge-grants.sql": "83a52b74e4bc2465d58fbcd7475b4d2eb32f66bc",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1",
+    "tools/staging-monitor/job-policy.mjs": "229beb946a7148015a57eb6117a49bcfd888588e",
+    "tools/test/staging-job-policy.test.mjs": "8f16e3b76362a993ac062e29a25da51fda17b90c"
+  },
+  "verified_count": 15
+}
