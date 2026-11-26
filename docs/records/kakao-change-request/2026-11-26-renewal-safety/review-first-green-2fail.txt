@@ -1,0 +1,61 @@
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+ ❯ test/change-card-source.test.ts (33 tests | 2 failed) 3295ms
+   ❯ 변경 카드의 서버 준비 값과 실제 발급/갱신 API (33)
+     × API message에서 갱신 표시를 만들지 못하면 재클릭해도 옛 카드와 새 카드 수가 그대로다 259ms
+     × 현재 콜백 카드의 표시 실패도 다른 정상 대기 안내를 보내고 카드만 보류한다 136ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > API message에서 갱신 표시를 만들지 못하면 재클릭해도 옛 카드와 새 카드 수가 그대로다
+AssertionError: SkillTemplateResponse: [{"instancePath":"/template/outputs","schemaPath":"#/properties/template/properties/outputs/minItems","keyword":"minItems","params":{"limit":1},"message":"must NOT have fewer than 1 items"}]: expected [ { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "instancePath": "/template/outputs",
++     "keyword": "minItems",
++     "message": "must NOT have fewer than 1 items",
++     "params": {
++       "limit": 1,
++     },
++     "schemaPath": "#/properties/template/properties/outputs/minItems",
++   },
++ ]
+
+ ❯ expectSchema test/support/contract.ts:27:66
+     25|   const v = contractSchema(name);
+     26|   const ok = v(body);
+     27|   expect(v.errors ?? [], `${name}: ${JSON.stringify(v.errors)}`).toEqu…
+       |                                                                  ^
+     28|   expect(ok).toBe(true);
+     29| }
+ ❯ test/change-card-source.test.ts:209:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 현재 콜백 카드의 표시 실패도 다른 정상 대기 안내를 보내고 카드만 보류한다
+AssertionError: expected 'delivered_later' to be 'callback' // Object.is equality
+
+Expected: "callback"
+Received: "delivered_later"
+
+ ❯ test/change-card-source.test.ts:266:115
+    264|       "deferred",
+    265|     );
+    266|     expect((await isolated.db.query("SELECT delivery FROM messages WHE…
+       |                                                                                                                   ^
+    267|       "callback",
+    268|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 31 passed (33)
+   Start at  01:28:09
+   Duration  4.96s (tests 68%, import 23%, transform 9%)

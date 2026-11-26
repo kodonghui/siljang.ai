@@ -1,0 +1,149 @@
+
+ RUN  v5.1.0 /workspace/siljang-task126-change-card/app/server
+
+ ❯ test/change-card-source.test.ts (33 tests | 10 failed) 4448ms
+   ❯ 변경 카드의 서버 준비 값과 실제 발급/갱신 API (33)
+     × API message에서 갱신 표시를 만들지 못하면 재클릭해도 옛 카드와 새 카드 수가 그대로다 320ms
+     × 현재 콜백 카드의 표시 실패도 다른 정상 대기 안내를 보내고 카드만 보류한다 130ms
+     × API card / 변경 마감 정각에는 허용된 single-grapheme 조문 전체를 보이고 실행·새 카드가 없다 99ms
+     × API card / 변경 마감 정각에는 허용된 line-break-grapheme 조문 전체를 보이고 실행·새 카드가 없다 81ms
+     × API message / 변경 마감 정각에는 허용된 single-grapheme 조문 전체를 보이고 실행·새 카드가 없다 117ms
+     × API message / 변경 마감 정각에는 허용된 line-break-grapheme 조문 전체를 보이고 실행·새 카드가 없다 116ms
+     × API callback / 변경 마감 정각에는 허용된 single-grapheme 조문 전체를 보이고 실행·새 카드가 없다 130ms
+     × API callback / 변경 마감 정각에는 허용된 line-break-grapheme 조문 전체를 보이고 실행·새 카드가 없다 179ms
+     × 저장 카드 없이 마감 뒤 처음 준비한 안내도 전체 조항을 보이고 재조회할 참조만 저장한다 50ms
+     × 저장 카드 없는 첫 AI 콜백은 조항을 바로 보내고 참조로 저장해 중복 소비가 모델·발급을 반복하지 않는다 155ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > API message에서 갱신 표시를 만들지 못하면 재클릭해도 옛 카드와 새 카드 수가 그대로다
+AssertionError: expected '{"version":"2.0","template":{"outputs…' to contain '다른 정상 합성 안내'
+
+Expected: "다른 정상 합성 안내"
+Received: "{"version":"2.0","template":{"outputs":[{"simpleText":{"text":"잠시 뒤 다시 말씀해 주세요"}}]}}"
+
+ ❯ test/change-card-source.test.ts:215:52
+    213|       if (kind === "card") expect(responses.map((r) => r.outcome)).toE…
+    214|       else {
+    215|         expect(JSON.stringify(responses[0]?.body)).toContain("다른 정상 합성…
+       |                                                    ^
+    216|         expect(
+    217|           (await isolated.db.query("SELECT delivery FROM messages WHER…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 현재 콜백 카드의 표시 실패도 다른 정상 대기 안내를 보내고 카드만 보류한다
+RangeError: change graphemes exceed carousel limit
+ ❯ details src/kakao-change-request-message.ts:120:54
+    118|       title = `변경 내용 ${items.length + 1}\n${take(40)}`,
+    119|       description = take(128);
+    120|     if (index === start || items.length >= 20) throw new RangeError("c…
+       |                                                      ^
+    121|     items.push({ title, ...(description.length ? { description } : {})…
+    122|   }
+ ❯ kakaoChangeRequestMessage src/kakao-change-request-message.ts:207:35
+ ❯ insertCard src/confirm-card-store.ts:416:5
+ ❯ replaceCard src/confirm-card-store.ts:626:29
+ ❯ readConfirmCardDelivery src/confirm-card-store.ts:698:16
+ ❯ currentReply src/kakao-ai-turn.ts:67:11
+ ❯ src/kakao-ai-turn.ts:107:19
+ ❯ PgRequestDb.transaction src/db.ts:147:22
+ ❯ runKakaoAiTurn src/kakao-ai-turn.ts:85:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > API card / 변경 마감 정각에는 허용된 single-grapheme 조문 전체를 보이고 실행·새 카드가 없다
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > API card / 변경 마감 정각에는 허용된 line-break-grapheme 조문 전체를 보이고 실행·새 카드가 없다
+AssertionError: expected 'retry_needed' to be 'not_allowed_now' // Object.is equality
+
+Expected: "not_allowed_now"
+Received: "retry_needed"
+
+ ❯ test/change-card-source.test.ts:603:76
+    601|       const response = await request(kind, card.cardKey);
+    602|       body = await response.json();
+    603|       if (kind === "card") expect(response.headers.get("Siljang-Outcom…
+       |                                                                            ^
+    604|     }
+    605|     expectSchema("SkillTemplateResponse", body);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > API message / 변경 마감 정각에는 허용된 single-grapheme 조문 전체를 보이고 실행·새 카드가 없다
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > API message / 변경 마감 정각에는 허용된 line-break-grapheme 조문 전체를 보이고 실행·새 카드가 없다
+AssertionError: expected '잠시 뒤 다시 말씀해 주세요' to contain '제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제…'
+
+Expected: "제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제제"
+Received: "잠시 뒤 다시 말씀해 주세요"
+
+ ❯ test/change-card-source.test.ts:626:71
+    624|       .join("");
+    625|     if (shape === "plain") expect(text).toContain([title, condition, e…
+    626|     else for (const field of [title, condition, effect]) expect(text).…
+       |                                                                       ^
+    627|     expect(text).toContain("변경 마감이 지나 바꿀 수 없어요");
+    628|     expect(execute).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > API callback / 변경 마감 정각에는 허용된 single-grapheme 조문 전체를 보이고 실행·새 카드가 없다
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > API callback / 변경 마감 정각에는 허용된 line-break-grapheme 조문 전체를 보이고 실행·새 카드가 없다
+RangeError: change graphemes exceed carousel limit
+ ❯ details src/kakao-change-request-message.ts:120:54
+    118|       title = `변경 내용 ${items.length + 1}\n${take(40)}`,
+    119|       description = take(128);
+    120|     if (index === start || items.length >= 20) throw new RangeError("c…
+       |                                                      ^
+    121|     items.push({ title, ...(description.length ? { description } : {})…
+    122|   }
+ ❯ kakaoChangeRequestMessage src/kakao-change-request-message.ts:152:7
+ ❯ presentationBody src/kakao-message-content.ts:84:46
+ ❯ render src/kakao-message-content.ts:138:14
+ ❯ src/kakao-message-content.ts:114:20
+ ❯ expandContents src/kakao-message-content.ts:97:19
+ ❯ Object.append src/kakao-message-content.ts:152:29
+ ❯ mergeKakaoAmountConfirmations src/kakao-message-content.ts:178:10
+ ❯ consumeKakaoCallback src/kakao-callback-queue.ts:272:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 저장 카드 없이 마감 뒤 처음 준비한 안내도 전체 조항을 보이고 재조회할 참조만 저장한다
+AssertionError: expected { unavailable: true, …(1) } to have property "deferredCard" with value true
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ test/change-card-source.test.ts:686:22
+    684|     );
+    685|     expect(prepared).toHaveProperty("unavailable", true);
+    686|     expect(prepared).toHaveProperty("deferredCard", true);
+       |                      ^
+    687|     expect(prepared).toHaveProperty("contents");
+    688|     expect(prepared).not.toHaveProperty("cardKey");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/10]⎯
+
+ FAIL  test/change-card-source.test.ts > 변경 카드의 서버 준비 값과 실제 발급/갱신 API > 저장 카드 없는 첫 AI 콜백은 조항을 바로 보내고 참조로 저장해 중복 소비가 모델·발급을 반복하지 않는다
+AssertionError: expected '지금은 할 수 없어요: 변경 마감이 지나 바꿀 수 없어요' to contain '첫 변경 요청의 마감 조항'
+
+Expected: "첫 변경 요청의 마감 조항"
+Received: "지금은 할 수 없어요: 변경 마감이 지나 바꿀 수 없어요"
+
+ ❯ test/change-card-source.test.ts:755:61
+    753|       .map((o: { simpleText?: { text: string } }) => o.simpleText?.tex…
+    754|       .join("\n");
+    755|     for (const field of Object.values(quote)) expect(texts).toContain(…
+       |                                                             ^
+    756|     expect(texts).toContain("변경 마감이 지나 바꿀 수 없어요");
+    757|     const rows = await isolated.db.query(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/10]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  10 failed | 23 passed (33)
+   Start at  01:24:32
+   Duration  7.11s (tests 65%, import 28%, transform 7%)

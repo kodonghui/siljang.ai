@@ -251,7 +251,11 @@ export async function consumeKakaoCallback(
     let replyIncluded =
       preparedReply?.deferredCard !== true &&
       (alreadyIncluded || (!previousBatch.currentBlocked && prefix.length + previousTexts.length < 3));
-    if (callback !== null && replyIncluded && preparedReply?.card !== undefined) {
+    if (
+      callback !== null &&
+      replyIncluded &&
+      (preparedReply?.card !== undefined || preparedReply?.contents !== undefined)
+    ) {
       let fresh: Awaited<ReturnType<typeof readClaimedKakaoCard>> | undefined;
       try {
         fresh = await readClaimedKakaoCard(db, job.messageId, claim, now);
@@ -269,7 +273,10 @@ export async function consumeKakaoCallback(
     const text = preparedReply?.text ?? KAKAO_HANDOFF_TEXT;
     let transmittedContents = previousTexts;
     if (replyIncluded) {
-      const combined = mergeKakaoAmountConfirmations(previousTexts, [preparedReply?.card ?? text]);
+      const combined = mergeKakaoAmountConfirmations(
+        previousTexts,
+        preparedReply?.contents ?? [preparedReply?.card ?? text],
+      );
       const added = combined.length - previousTexts.length;
       replyIncluded = (!previousBatch.currentBlocked || added === 0) && prefix.length + combined.length <= 3;
       if (replyIncluded) transmittedContents = combined;

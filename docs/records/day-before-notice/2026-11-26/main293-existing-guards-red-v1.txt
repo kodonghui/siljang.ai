@@ -1,0 +1,182 @@
+
+ RUN  v5.1.0 /workspace/siljang-task134-day-before-notice/app/server
+
+ ❯ test/shop-scope-static.test.ts (22 tests | 2 failed) 377ms
+   ❯ 서버 코드의 SQL(정적 검사) (17)
+     × 가게 테이블을 드는 SQL은 모두 가게 조건을 지킴(가게 테이블마다 shop_id = $1) 117ms
+     × 가게 범위 밖 찾기는 due-sources.ts의 정한 꼴뿐이고, 그 파일은 날 연결을 쥐지 않음(TASK-023) 10ms
+ ❯ test/scheduled-poll.test.ts (4 tests | 3 failed) 964ms
+   ❯ 기본 Cron의 매분 연결 확인 (2)
+     × 실행 시각 밖에도 DB 연결 실패를 숨기지 않고 다음 분에 다시 확인할 수 있게 남김 32ms
+     × 권한 실패는 SQLSTATE만 남기고 성공 표시는 하지 않으며 연결을 닫음 3ms
+   ❯ 시작 표시 조회와 실제 실행의 분리 (2)
+     × 03시 직전·실행 창 끝·정오에도 시작 표를 읽고 성공을 남기며 잠금·쓰기는 하지 않음 35ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/scheduled-poll.test.ts > 기본 Cron의 매분 연결 확인 > 실행 시각 밖에도 DB 연결 실패를 숨기지 않고 다음 분에 다시 확인할 수 있게 남김
+AssertionError: expected [ { level: 'error', …(3) }, …(9) ] to deeply equal [ { level: 'error', …(3) }, …(7) ]
+
+- Expected
++ Received
+
+@@ -30,10 +30,22 @@
+      "level": "warn",
+    },
+    {
+      "errorName": "DbUnavailableError",
+      "event": "job_find_failed",
++     "job": "day_before_notice",
++     "level": "error",
++   },
++   {
++     "count": 0,
++     "event": "job_run",
++     "job": "day_before_notice",
++     "level": "warn",
++   },
++   {
++     "errorName": "DbUnavailableError",
++     "event": "job_find_failed",
+      "job": "customer_notice",
+      "level": "error",
+    },
+    {
+      "errorName": "DbUnavailableError",
+
+ ❯ test/scheduled-poll.test.ts:33:56
+     31|     expect(result?.jobs.consultation_idle?.failed).toBe(3);
+     32|     expect(result?.jobs.customer_notice?.failed).toBe(2);
+     33|     expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
+       |                                                        ^
+     34|       { level: "error", event: "job_start_failed", job: "purge", error…
+     35|       ...idleFailures({ errorName: "DbUnavailableError" }),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/scheduled-poll.test.ts > 기본 Cron의 매분 연결 확인 > 권한 실패는 SQLSTATE만 남기고 성공 표시는 하지 않으며 연결을 닫음
+AssertionError: expected [ { level: 'error', …(4) }, …(10) ] to deeply equal [ { level: 'error', …(4) }, …(8) ]
+
+- Expected
++ Received
+
+@@ -35,10 +35,23 @@
+    },
+    {
+      "dbCode": "42501",
+      "errorName": "DatabaseError",
+      "event": "job_find_failed",
++     "job": "day_before_notice",
++     "level": "error",
++   },
++   {
++     "count": 0,
++     "event": "job_run",
++     "job": "day_before_notice",
++     "level": "warn",
++   },
++   {
++     "dbCode": "42501",
++     "errorName": "DatabaseError",
++     "event": "job_find_failed",
+      "job": "customer_notice",
+      "level": "error",
+    },
+    {
+      "dbCode": "42501",
+
+ ❯ test/scheduled-poll.test.ts:60:56
+     58|     expect(result?.jobs.customer_notice?.failed).toBe(2);
+     59|     expect(closed).toBe(1);
+     60|     expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
+       |                                                        ^
+     61|       { level: "error", event: "job_start_failed", job: "purge", error…
+     62|       ...idleFailures({ errorName: "DatabaseError", dbCode: "42501" }),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/scheduled-poll.test.ts > 시작 표시 조회와 실제 실행의 분리 > 03시 직전·실행 창 끝·정오에도 시작 표를 읽고 성공을 남기며 잠금·쓰기는 하지 않음
+AssertionError: expected [ { level: 'info', …(2) }, …(3) ] to deeply equal [ { level: 'info', …(2) }, …(1) ]
+
+- Expected
++ Received
+
+@@ -3,10 +3,22 @@
+      "event": "job_polled",
+      "job": "purge",
+      "level": "info",
+    },
+    {
++     "errorName": "AssertionError",
++     "event": "job_find_failed",
++     "job": "day_before_notice",
++     "level": "error",
++   },
++   {
++     "count": 0,
++     "event": "job_run",
++     "job": "day_before_notice",
++     "level": "warn",
++   },
++   {
+      "count": 0,
+      "event": "kakao_callback_recovery_polled",
+      "level": "info",
+    },
+  ]
+
+ ❯ test/scheduled-poll.test.ts:122:60
+    120|         expect(result?.jobs.consultation_idle).toEqual({ found: 0, don…
+    121|         expect(result?.jobs.customer_notice).toEqual({ found: 0, done:…
+    122|         expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
+       |                                                            ^
+    123|           { level: "info", event: "job_polled", job: "purge" },
+    124|           { level: "info", event: "kakao_callback_recovery_polled", co…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/shop-scope-static.test.ts > 서버 코드의 SQL(정적 검사) > 가게 테이블을 드는 SQL은 모두 가게 조건을 지킴(가게 테이블마다 shop_id = $1)
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "due-sources.ts: unscoped orders t, unscoped shops s, unscoped business_calendars b, unscoped notifications n",
++ ]
+
+ ❯ test/shop-scope-static.test.ts:268:19
+    266|       }
+    267|     }
+    268|     expect(found).toEqual([]);
+       |                   ^
+    269|   });
+    270|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/shop-scope-static.test.ts > 서버 코드의 SQL(정적 검사) > 가게 범위 밖 찾기는 due-sources.ts의 정한 꼴뿐이고, 그 파일은 날 연결을 쥐지 않음(TASK-023)
+AssertionError: SELECT t.shop_id, t.id, t.confirmed_at AS due_at FROM orders t WHERE t.status = 'confirmed' AND t.personal_data_purged_at IS NULL AND EXISTS (SELECT 1 FROM shops s LEFT JOIN business_calendars b ON b.shop_id = s.id WHERE s.id = t.shop_id AND nullif(btrim(s.contact_phone),'') IS NOT NULL AND t.pickup_day = ($1::timestamptz AT TIME ZONE s.time_zone)::date + 1 AND ($1::timestamptz AT TIME ZONE s.time_zone)::time >= coalesce(b.day_before_notice_time,'18:00'::time) AND to_char($1::timestamptz AT TIME ZONE s.time_zone,'HH24:MI') BETWEEN '08:00' AND '20:50' AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.shop_id = t.shop_id AND n.order_id = t.id AND n.kind = 'day_before' AND (n.sent_at IS NOT NULL OR n.attempts > 0 OR n.status NOT IN ('pending','retrying','deferred','dropped') OR (n.event_key = 'notice:'||t.id::text||':day_before' AND n.customer_id = t.customer_id AND n.consultation_id = t.consultation_id AND n.status IN ('pending','retrying','deferred') AND n.template_key = 'day_before:v1:'||md5(jsonb_build_array(t.version,extract(epoch FROM t.pickup_at),s.time_zone,s.pickup_address,s.contact_phone)::text) AND n.scheduled_for = (((t.pickup_day-1)+coalesce(b.day_before_notice_time,'18:00'::time)) AT TIME ZONE s.time_zone))))) AND t.confirmed_at <= $1 ORDER BY t.confirmed_at, t.id LIMIT $2: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/shop-scope-static.test.ts:297:85
+    295|     const unscoped = shopSql(text).filter((sql) => scopeViolations(sql…
+    296|     expect(unscoped.length).toBeGreaterThan(0);
+    297|     for (const sql of unscoped) expect(allowedCrossShop(CROSS_SHOP_FIL…
+       |                                                                                     ^
+    298|     // 꼴을 벗어난 것은 받지 않음: 다른 열을 돌려주기, 테이블 잇기, 다른 파일.
+    299|     const find =
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  2 failed | 6 passed (8)
+      Tests  5 failed | 134 passed (139)
+   Start at  01:55:26
+   Duration  22.53s (tests 65%, import 31%, transform 4%)

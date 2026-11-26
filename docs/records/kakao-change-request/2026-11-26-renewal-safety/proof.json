@@ -1,0 +1,90 @@
+{
+  "sourceCommit": "ff35c281aeae7295f1a06d7113c6d24df430d79d",
+  "publicEquivalentHead": "f01bece5cf84587d09b941d41d642fc227907294",
+  "sourceTree": "c92e4c1651e021c02a45b3138c4e13d36f99a6d8",
+  "baseMain": "251a25a94d2cc61d617f77012b12a7183d172f7c",
+  "scopeGitObjects": {
+    "app/server": "db717e0ff26450de6d1282ed8e2f586412677004",
+    "app/web": "2a02b3e16113f434c030fafb4a4873c60abef48f",
+    "db": "e30e8dae343f4b0799f9aaa3b4ec01c94c7704c8",
+    "api": "ac05827d54ce5d49cf05e38e1d20bcac3896963f",
+    "research/screen-checks-2026-11": "4e79c77840b3f9622a7e916e2c1be5ddcab5670a",
+    ".github/workflows/app.yml": "48272846a558266023ebbbc43a180453ab9646fd",
+    "tools/staging-login-callback-grants.sql": "ea7b71046c56e98e83c73640476ea65f8e2842d5",
+    "app/package.json": "bed64f161e3dea74296c3c066a2c7ab3a6bc06ed",
+    "app/package-lock.json": "e43c5e7dbd99967f80e35378cd6a3fd9e13515e1"
+  },
+  "migrations": 42,
+  "server": {
+    "files": 175,
+    "passed": 3258
+  },
+  "web": {
+    "files": 73,
+    "passed": 1775
+  },
+  "combinedNpmTestExit": 0,
+  "buildExit": 0,
+  "freshDatabaseRemaining": 0,
+  "nodePassed": 96,
+  "wbsChecks": 18,
+  "wbsErrors": 0,
+  "states": 6,
+  "frames": 12,
+  "responseRows": 29,
+  "responseFrames": 20,
+  "browserExecuted": false,
+  "realKakao": false,
+  "modelCallsAdded": 0,
+  "outboundRequestsAdded": 0,
+  "firstCallbackMockModelCalls": 1,
+  "firstCallbackMockSendCalls": 1,
+  "sourceCi": {
+    "sha": "f01bece5cf84587d09b941d41d642fc227907294",
+    "app": {
+      "id": 45736476196,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    "db": {
+      "id": 45736476198,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    "pending": false,
+    "method": "connected GitHub API",
+    "verified": true,
+    "jobs": [
+      {
+        "id": 139630836687,
+        "name": "check",
+        "conclusion": "success"
+      },
+      {
+        "id": 139630836412,
+        "name": "Windows PowerShell 평가 인증(모의)",
+        "conclusion": "success"
+      },
+      {
+        "id": 139630836640,
+        "name": "PostgreSQL 16.15",
+        "conclusion": "success"
+      },
+      {
+        "id": 139630836333,
+        "name": "PostgreSQL 17.11",
+        "conclusion": "success"
+      }
+    ],
+    "deployment": [
+      {
+        "id": 139632693928,
+        "name": "스테이징 배포",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "npmCi": "로컬 동일 lock 설치 재사용. 고친 소스 app CI의 새 npm ci 성공",
+  "lockSha256": "2fb8157aaeabd53b54f3ab47d95761adeaba1a326a14c3d07878062a6651ad22",
+  "classification": "리뷰P2/P3 고침의 전체와 소스CI 확인. 최종 기록 head CI/리뷰 처리/수동 요청/병합/자기 main은 아직. 완료 표시 없음"
+}

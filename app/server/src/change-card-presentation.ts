@@ -1,6 +1,6 @@
 /** 서버에서 준비한 변경 제안을 현재 자기 주문의 표시 값에 연결한다. 변경 요청/자리/금액은 쓰지 않는다. */
 import { calendarBookingDays } from "./calendar";
-import type { KakaoChangeRequestCard } from "./kakao-change-request-message";
+import type { KakaoChangeDeadlineClause, KakaoChangeRequestCard } from "./kakao-change-request-message";
 import { normalizeLineBreaks } from "./line-breaks";
 import { paymentChangeSummary } from "./payment-change-presentation";
 import type { ShopDb } from "./shop-scope";
@@ -9,6 +9,7 @@ import { toShopLocal } from "./time";
 export interface ChangeRequestStatus {
   readonly currentStatus: string;
   readonly clause?: string;
+  readonly clauseDetails?: KakaoChangeDeadlineClause;
 }
 export type ChangeCardSource =
   | {
@@ -18,11 +19,19 @@ export type ChangeCardSource =
       readonly changeDeadline: Date;
     }
   | { readonly available: false; readonly text: string; readonly status: ChangeRequestStatus };
-function unavailable(currentStatus: string, clause?: string): ChangeCardSource {
+function unavailable(currentStatus: string, clauseDetails?: KakaoChangeDeadlineClause): ChangeCardSource {
   return {
     available: false,
     text: `지금은 할 수 없어요: ${currentStatus}`,
-    status: { currentStatus, ...(clause === undefined ? {} : { clause }) },
+    status: {
+      currentStatus,
+      ...(clauseDetails === undefined
+        ? {}
+        : {
+            clause: [clauseDetails.title, clauseDetails.conditionText, clauseDetails.effectText].join("\n"),
+            clauseDetails,
+          }),
+    },
   };
 }
 export async function readPreparedChangeCard(
@@ -94,7 +103,9 @@ export async function readPreparedChangeCard(
     ).rows[0];
     return unavailable(
       "변경 마감이 지나 바꿀 수 없어요",
-      clause ? [clause.title, clause.condition_text, clause.effect_text].join("\n") : undefined,
+      clause
+        ? { title: clause.title, conditionText: clause.condition_text, effectText: clause.effect_text }
+        : undefined,
     );
   }
   const proposed = input.proposedChanges;
