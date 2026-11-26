@@ -1,0 +1,14 @@
+{
+  "sourceCommit": "7aefcac500e41ff6baa8f127d6e1634736bca96f",
+  "publicEquivalentHead": "398cd3e125571dbfb3e24c92e5a7b49a2a6056e8",
+  "files": 176,
+  "passed": 3278,
+  "failed": 3,
+  "total": 3281,
+  "migrations": 43,
+  "testExit": 1,
+  "webRun": false,
+  "buildRun": false,
+  "freshDatabaseRemaining": 0,
+  "cause": "공통 Runtime 역할에 notifications.body UPDATE를 열어 기존 최소 권한 검사3개가 실패함"
+}
