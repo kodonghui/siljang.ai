@@ -1,0 +1,21 @@
+{
+  "database": "siljang_related_28dd4577c8ec4d01a55610dc0540f376",
+  "pid": 3392986,
+  "sourceCommit": "0ac144a5834c2bfbf07045709b6e0faa2030c46c",
+  "workingTree": true,
+  "files": [
+    "test/day-before-notice.test.ts",
+    "test/due-sources.test.ts",
+    "test/job-runner.test.ts",
+    "test/jobs.test.ts",
+    "test/scheduled-poll.test.ts",
+    "test/customer-notice-scheduled.test.ts",
+    "test/customer-notices-skill.test.ts",
+    "test/kakao-deferred.test.ts",
+    "test/shop-scope-static.test.ts",
+    "test/kakao-runtime-grants.test.ts",
+    "test/staging-runtime-role.test.ts"
+  ],
+  "stage": "completed",
+  "testExit": 0
+}
