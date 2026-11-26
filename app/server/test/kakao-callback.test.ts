@@ -109,6 +109,22 @@ describe("카카오 콜백 주소와 서비스 기한(TASK-028, DEC-29)", () => 
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it("발신 직전 검사 중 콜백 기한이 지나면 외부로 보내지 않는다", async () => {
+    const target = delivery();
+    let clock = NOW.getTime();
+    const send = vi.fn();
+    expect(
+      await deliverKakaoCallback(target, "합성 안내", {
+        fetch: send,
+        now: () => clock,
+        beforeSend: async () => {
+          clock = target.deadline;
+          return true;
+        },
+      }),
+    ).toBe("expired");
+    expect(send).not.toHaveBeenCalled();
+  });
   it("서비스 기한에 닿으면 외부로 보내지 않음", async () => {
     const send = vi.fn();
     const target = delivery();

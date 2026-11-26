@@ -51,3 +51,6 @@ BEGIN
 END
 $day_before_refresh$;
 REVOKE ALL ON FUNCTION refresh_pending_day_before_notice(uuid,uuid,timestamptz) FROM PUBLIC;
+
+COMMENT ON COLUMN notifications.reply_claim_id IS '콜백으로 전송 중인 안내의 임시 선점 표지. 업무 ID가 아니며 전달/해제 때 비움';
+COMMENT ON COLUMN notifications.reply_claim_until IS '콜백 선점 기한. 이 동안 전날 안내 본문 갱신과 다른 전달은 기다림';

@@ -4,6 +4,12 @@ import type { Queryable, RequestDb } from "../src/db";
 import { kakaoCallback } from "../src/kakao-callback";
 import { consumeKakaoCallback } from "../src/kakao-callback-queue";
 import { storeKakaoCallback } from "../src/kakao-callback-store";
+import {
+  deferredKakaoBatch,
+  markDeferredKakaoMessages,
+  releaseDeferredKakaoClaim,
+  validateDeferredKakaoCallback,
+} from "../src/kakao-deferred";
 import { createServices } from "../src/services";
 import { readSettings } from "../src/settings";
 import { createShopScope, shopRequestDb } from "../src/shop-scope";
@@ -67,10 +73,76 @@ describeDb("전날 안내의 실제 콜백 소비자와 Cron 갱신 경쟁", () 
   afterAll(async () => {
     await isolated?.close();
   });
-  const cron = () =>
+  const cron = (at = NOW) =>
     shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }), isolated.db).transaction(
-      (tx) => createDayBeforeNotice(tx, shop.orderId, NOW),
+      (tx) => createDayBeforeNotice(tx, shop.orderId, at),
     );
+  it("첫503 뒤 공개 정보가 바뀌면 두 번째 HTTP 시도를 하지 않고 선점을 푼다", async () => {
+    let refreshed: boolean | undefined;
+    const send = vi.fn<typeof fetch>(async () => {
+      await isolated.db.query("UPDATE shops SET pickup_address='다시 보내기 전 바뀐 합성 장소' WHERE id=$1", [
+        shop.shopId,
+      ]);
+      refreshed = await cron();
+      return new Response(null, { status: 503 });
+    });
+    expect(
+      await consumeKakaoCallback({ shopId: shop.shopId, messageId: shop.messageId }, env, {
+        connect: () => isolated.connect(),
+        now: () => NOW,
+        fetch: send,
+        logSink: () => {},
+      }),
+    ).toBe("done");
+    expect(refreshed).toBe(false);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(await cron()).toBe(true);
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT status,sent_at,reply_claim_id,reply_claim_until FROM notifications WHERE shop_id=$1 AND kind='day_before'",
+          [shop.shopId],
+        )
+      ).rows[0],
+    ).toEqual({ status: "deferred", sent_at: null, reply_claim_id: null, reply_claim_until: null });
+  });
+  it("선점 만료 뒤 같은 본문이 새로 만들어져도 옛 소유자가 전달 표시/해제를 못 한다", async () => {
+    const db = shopRequestDb(createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }), isolated.db);
+    const old = { id: newUuid(), until: new Date(NOW.getTime() + 1000) },
+      at = new Date(NOW.getTime() + 1001);
+    const previous = (
+      await db.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: NOW, callbackClaim: old }))
+    ).messages;
+    expect(previous).toHaveLength(1);
+    expect(await db.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: NOW }))).toEqual({
+      messages: [],
+      currentBlocked: true,
+    });
+    await isolated.db.query("UPDATE shops SET pickup_address=' 합성 첫 장소 ' WHERE id=$1", [shop.shopId]);
+    expect(await cron(at)).toBe(true);
+    await expect(db.transaction((tx) => markDeferredKakaoMessages(tx, shop.customerId, previous, at))).rejects.toThrow(
+      "deferred notification changed before delivery",
+    );
+    const current = { id: newUuid(), until: new Date(at.getTime() + 30000) };
+    const next = (
+      await db.transaction((tx) => deferredKakaoBatch(tx, shop.customerId, { now: at, callbackClaim: current }))
+    ).messages;
+    expect(next[0]?.id).toBe(previous[0]?.id);
+    expect(next[0]?.text).toBe(previous[0]?.text);
+    await db.transaction((tx) => releaseDeferredKakaoClaim(tx, shop.customerId, old));
+    expect(await db.transaction((tx) => validateDeferredKakaoCallback(tx, shop.customerId, next, current, at))).toBe(
+      true,
+    );
+    expect(
+      (
+        await isolated.db.query(
+          "SELECT status,sent_at,reply_claim_id FROM notifications WHERE shop_id=$1 AND kind='day_before'",
+          [shop.shopId],
+        )
+      ).rows[0],
+    ).toEqual({ status: "deferred", sent_at: null, reply_claim_id: current.id });
+    await db.transaction((tx) => releaseDeferredKakaoClaim(tx, shop.customerId, current));
+  });
   it("발신 중 Cron이 같은 안내를 고치지 못하고 성공 뒤 다시 만들지 않는다", async () => {
     let refreshed: boolean | undefined,
       sent = "";

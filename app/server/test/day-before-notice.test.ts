@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vite
 import { createApp } from "../src/app";
 import { createDayBeforeNotice } from "../src/day-before-notice";
 import { DUE_SOURCES } from "../src/due-sources";
-import { deferredKakaoBatch } from "../src/kakao-deferred";
+import { deferredKakaoBatch, releaseDeferredKakaoClaim, validateDeferredKakaoCallback } from "../src/kakao-deferred";
 import { deriveKakaoSkillKey } from "../src/kakao-skill-auth";
 import { runScheduled } from "../src/scheduled";
 import { Secret } from "../src/settings";
@@ -97,6 +97,45 @@ describeDb("전날 안내의 기본 일 실행기 연결(TASK-134, SPEC-052)", (
         ])
       ).rows[0]?.n,
     ).toBe(0);
+  });
+  it("제한 역할이 콜백 선점/현재 의미를 검사하고 자기 선점만 풀어 갱신한다", async () => {
+    const claim = { id: newUuid(), until: new Date(NOW.getTime() + 30000) };
+    const run = <T>(fn: (db: ReturnType<typeof shopDb>) => Promise<T>) =>
+      isolated.db.transaction(async (raw) => {
+        await raw.query(`SET LOCAL ROLE "${role}"`);
+        return fn(shopDb(createShopScope(shop.shopId, { kind: "job", job: "day_before_notice" }), raw));
+      });
+    expect(await run((db) => createDayBeforeNotice(db, shop.orderId, NOW))).toBe(true);
+    const batch = await run((db) => deferredKakaoBatch(db, shop.customerId, { now: NOW, callbackClaim: claim }));
+    expect(batch.messages).toHaveLength(1);
+    expect(await run((db) => validateDeferredKakaoCallback(db, shop.customerId, batch.messages, claim, NOW))).toBe(
+      true,
+    );
+    await isolated.db.query("UPDATE shops SET pickup_address='제한 역할의 바뀐 합성 장소' WHERE id=$1", [shop.shopId]);
+    expect(await run((db) => createDayBeforeNotice(db, shop.orderId, NOW))).toBe(false);
+    expect(
+      await run(
+        async (db) =>
+          (
+            await db.run(
+              "SELECT public.refresh_pending_day_before_notice($1,$2,$3) AS refreshed FROM shops s WHERE s.id=$1",
+              [shop.orderId, NOW],
+            )
+          ).rows[0]?.refreshed,
+      ),
+    ).toBe(false);
+    expect(await run((db) => validateDeferredKakaoCallback(db, shop.customerId, batch.messages, claim, NOW))).toBe(
+      false,
+    );
+    await run((db) => releaseDeferredKakaoClaim(db, shop.customerId, claim));
+    expect(await run((db) => createDayBeforeNotice(db, shop.orderId, NOW))).toBe(true);
+    const row = (
+      await isolated.db.query("SELECT body,reply_claim_id,reply_claim_until FROM notifications WHERE shop_id=$1", [
+        shop.shopId,
+      ])
+    ).rows[0];
+    expect(row).toMatchObject({ reply_claim_id: null, reply_claim_until: null });
+    expect(row?.body).toContain("제한 역할의 바뀐 합성 장소");
   });
   it("독립 연결의 동시 생성도 안내 한 건만 남긴다", async () => {
     const first = isolated.connect(),

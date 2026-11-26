@@ -1253,8 +1253,6 @@ CREATE TABLE owner_alerts (
   sent_at          timestamptz,                          -- 보낸 시각
   kakao_task_id    text CHECK (char_length(kakao_task_id) BETWEEN 1 AND 100), -- 카카오가 받은 Event API 요청의 taskId. 발송 결과 조회에 씀(SPEC-067, REQ-182)
   requested_at     timestamptz,                          -- 카카오가 Event API 요청을 받은 시각
-  reply_claim_id   uuid,                                 -- 콜백으로 전송 중인 안내의 임시 선점 표지. 업무 ID가 아니며 전달/해제 때 비움
-  reply_claim_until timestamptz,                         -- 콜백 선점 기한. 이 동안 전날 안내 본문 갱신과 다른 전달은 기다림
   delivery_checked_at timestamptz,                       -- 발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)
   fail_code        text CHECK (fail_code IN ('not_friend', 'cannot_send', 'skill_error', 'event_setup', 'wallet', 'limit', 'kakao_error', 'unknown')), -- 카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-067)
   created_at       timestamptz NOT NULL DEFAULT now(),   -- 만든 시각
@@ -1293,6 +1291,8 @@ CREATE TABLE notifications (
   delivery_checked_at timestamptz,                       -- 발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)
   fail_code        text CHECK (fail_code IN ('not_friend', 'cannot_send', 'skill_error', 'event_setup', 'wallet', 'limit', 'kakao_error', 'unknown')), -- 카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-066)
   created_at       timestamptz NOT NULL DEFAULT now(),   -- 만든 시각
+  reply_claim_id   uuid,                                 -- 콜백으로 전송 중인 안내의 임시 선점 표지. 업무 ID가 아니며 전달/해제 때 비움
+  reply_claim_until timestamptz,                         -- 콜백 선점 기한. 이 동안 전날 안내 본문 갱신과 다른 전달은 기다림
   CONSTRAINT notifications_reply_claim_chk CHECK ((reply_claim_id IS NULL) = (reply_claim_until IS NULL) AND (reply_claim_until IS NULL OR isfinite(reply_claim_until))),
   CONSTRAINT notifications_customer_fk FOREIGN KEY (shop_id, customer_id) REFERENCES customers (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT notifications_consultation_fk FOREIGN KEY (shop_id, consultation_id, customer_id) REFERENCES consultations (shop_id, id, customer_id) ON DELETE RESTRICT, -- 안내할 상담과 그 상담의 손님(설계 재검토 M17)
@@ -2686,8 +2686,6 @@ COMMENT ON COLUMN owner_alerts.next_attempt_at IS '다음에 보낼 시각';
 COMMENT ON COLUMN owner_alerts.sent_at IS '보낸 시각';
 COMMENT ON COLUMN owner_alerts.kakao_task_id IS '카카오가 받은 Event API 요청의 taskId. 발송 결과 조회에 씀(SPEC-067, REQ-182)';
 COMMENT ON COLUMN owner_alerts.requested_at IS '카카오가 Event API 요청을 받은 시각';
-COMMENT ON COLUMN owner_alerts.reply_claim_id IS '콜백으로 전송 중인 안내의 임시 선점 표지. 업무 ID가 아니며 전달/해제 때 비움';
-COMMENT ON COLUMN owner_alerts.reply_claim_until IS '콜백 선점 기한. 이 동안 전날 안내 본문 갱신과 다른 전달은 기다림';
 COMMENT ON COLUMN owner_alerts.delivery_checked_at IS '발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)';
 COMMENT ON COLUMN owner_alerts.fail_code IS '카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-067)';
 COMMENT ON COLUMN owner_alerts.created_at IS '만든 시각';
@@ -2712,6 +2710,8 @@ COMMENT ON COLUMN notifications.requested_at IS '카카오가 Event API 요청�
 COMMENT ON COLUMN notifications.delivery_checked_at IS '발송 결과를 마지막으로 조회한 시각(1분·5분·30분 뒤)';
 COMMENT ON COLUMN notifications.fail_code IS '카카오가 받지 않거나 전하지 못한 사유. unknown은 30분 뒤에도 결과를 모름(SPEC-066)';
 COMMENT ON COLUMN notifications.created_at IS '만든 시각';
+COMMENT ON COLUMN notifications.reply_claim_id IS '콜백으로 전송 중인 안내의 임시 선점 표지. 업무 ID가 아니며 전달/해제 때 비움';
+COMMENT ON COLUMN notifications.reply_claim_until IS '콜백 선점 기한. 이 동안 전날 안내 본문 갱신과 다른 전달은 기다림';
 COMMENT ON COLUMN ledger_links.id IS '장부 연결 ID';
 COMMENT ON COLUMN ledger_links.shop_id IS '가게';
 COMMENT ON COLUMN ledger_links.provider IS '장부 종류(첫 버전은 구글 시트)';

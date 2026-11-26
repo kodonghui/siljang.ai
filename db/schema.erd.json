@@ -1426,8 +1426,6 @@
           "03h7y0179n9e4e4gq4mszdb5d",
           "03h8ae91zd4jmmh157usuj5b3",
           "03h8ae91zd4jmmh157yjm384i",
-          "03hazugqedbz1qmkq258fyk0l",
-          "03hazugqetqf3lxsyuohyy315",
           "03h8ae91zip9ngkaddk6yhhkh",
           "03h8ae926nobvp3b2vg6qrvfw",
           "03h7y0179n9e4e4gq4o2gcd0u"
@@ -1463,7 +1461,9 @@
           "03h8ae926yjgm65hqh75ccrhu",
           "03h8ae9273zx2ldycd04qx5gv",
           "03h8ae9273zx2ldycd4nqi3ay",
-          "03h7y0179n9e4e4gq5klpml34"
+          "03h7y0179n9e4e4gq5klpml34",
+          "03hazvytsxaimx53ua8jp1142",
+          "03hazvytt8cfn3fnkwo0plqdp"
         ],
         "groupId": "03h7y017wkyrgfkkkf2vp59sk",
         "ui": {
@@ -6564,22 +6564,6 @@
         "dataType": "text",
         "options": 0
       },
-      "03hazugqedbz1qmkq258fyk0l": {
-        "id": "03hazugqedbz1qmkq258fyk0l",
-        "tableId": "03h7y0179n9e4e4gq430lqp8h",
-        "name": "reply_claim_id",
-        "comment": "콜백으로 전송 중인 안내의 임시 선점 표지. 업무 ID가 아니며 전달/해제 때 비움",
-        "dataType": "uuid",
-        "options": 0
-      },
-      "03hazugqetqf3lxsyuohyy315": {
-        "id": "03hazugqetqf3lxsyuohyy315",
-        "tableId": "03h7y0179n9e4e4gq430lqp8h",
-        "name": "reply_claim_until",
-        "comment": "콜백 선점 기한. 이 동안 전날 안내 본문 갱신과 다른 전달은 기다림",
-        "dataType": "timestamptz",
-        "options": 0
-      },
       "03h7y0179n9e4e4gq4se27kpn": {
         "id": "03h7y0179n9e4e4gq4se27kpn",
         "tableId": "03h7y0179n9e4e4gq4qs0he2r",
@@ -6753,6 +6737,22 @@
         "dataType": "bigint",
         "default": "txid_current()",
         "options": 8
+      },
+      "03hazvytsxaimx53ua8jp1142": {
+        "id": "03hazvytsxaimx53ua8jp1142",
+        "tableId": "03h7y0179n9e4e4gq4qs0he2r",
+        "name": "reply_claim_id",
+        "comment": "콜백으로 전송 중인 안내의 임시 선점 표지. 업무 ID가 아니며 전달/해제 때 비움",
+        "dataType": "uuid",
+        "options": 0
+      },
+      "03hazvytt8cfn3fnkwo0plqdp": {
+        "id": "03hazvytt8cfn3fnkwo0plqdp",
+        "tableId": "03h7y0179n9e4e4gq4qs0he2r",
+        "name": "reply_claim_until",
+        "comment": "콜백 선점 기한. 이 동안 전날 안내 본문 갱신과 다른 전달은 기다림",
+        "dataType": "timestamptz",
+        "options": 0
       },
       "03h7y0179n9e4e4gq5mx34w1z": {
         "id": "03h7y0179n9e4e4gq5mx34w1z",
