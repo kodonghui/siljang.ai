@@ -1,0 +1,194 @@
+
+ RUN  v5.1.0 /workspace/siljang-task148-review-screen/app/server
+
+ ❯ test/kakao-review-message.test.ts (27 tests | 27 failed) 25ms
+   × 후기 블록은 글·사진·동의 순서이며 답이 없을 때 게시에 동의하지 않는다 6ms
+   × 정상 블록의 review_text 질문을 따로 표시한다 1ms
+   × 정상 블록의 review_photos 질문을 따로 표시한다 1ms
+   × 정상 블록의 photo_consent 질문을 따로 표시한다 1ms
+   × 동의 질문은 게시 장소·철회·기본 동의 안 함과 두 바로가기만 보인다 1ms
+   × 성공은 후기 원문·사진 위치 없이 정해진 감사 답만 보인다 0ms
+   × 반복 요청은 처음의 사진을 확인하고 있어요를 저장 성공으로 바꾸지 않는다 0ms
+   × 반복 요청은 처음의 사진을 받지 못했어요. 다시 보내 주세요를 저장 성공으로 바꾸지 않는다 0ms
+   × 처음 답의 결합 문자999개가 붙은 글자도 자르지 않는다 1ms
+   × 다른 사용자·받지 않은 주문은 같은 권한 안내를 보인다 1ms
+   × 연결되지 않은 가게는 연락처가 있을 때만 함께 보인다 0ms
+   × 오류 review_invalid는 정해진 말만 보인다 0ms
+   × 오류 photo_download_failed는 정해진 말만 보인다 0ms
+   × 오류 server_error는 정해진 말만 보인다 0ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다(null) 4ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"unknown"}) 1ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"normal","question":"unknown"}) 0ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"normal","orderNo":""}) 0ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"normal","orderNo":"11111111-1111-4111-8111-111111111111"}) 1ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"normal","orderNo":"ABCDEFGHI"}) 0ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"done","firstResultText":""}) 0ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"done","firstResultText":"\u0000"}) 1ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"done","firstResultText":"가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가"}) 1ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"permission","reason":"unknown"}) 0ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"permission","reason":"not_accepting","contactPhone":"\u0000"}) 0ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"permission","reason":"not_accepting","contactPhone":"00000000000000000000000000000000000000000"}) 0ms
+   × 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"error","reason":"raw_database_error"}) 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 27 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/kakao-review-message.test.ts > 후기 블록은 글·사진·동의 순서이며 답이 없을 때 게시에 동의하지 않는다
+Error: review presentation not implemented
+ ❯ kakaoReviewMessage src/kakao-review-message.ts:27:9
+     25| }
+     26| export function kakaoReviewMessage(_view: KakaoReviewView): KakaoRevie…
+     27|   throw new Error("review presentation not implemented");
+       |         ^
+     28| }
+     29|
+ ❯ test/kakao-review-message.test.ts:28:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/27]⎯
+
+ FAIL  test/kakao-review-message.test.ts > 정상 블록의 review_text 질문을 따로 표시한다
+ FAIL  test/kakao-review-message.test.ts > 정상 블록의 review_photos 질문을 따로 표시한다
+ FAIL  test/kakao-review-message.test.ts > 정상 블록의 photo_consent 질문을 따로 표시한다
+Error: review presentation not implemented
+ ❯ kakaoReviewMessage src/kakao-review-message.ts:27:9
+     25| }
+     26| export function kakaoReviewMessage(_view: KakaoReviewView): KakaoRevie…
+     27|   throw new Error("review presentation not implemented");
+       |         ^
+     28| }
+     29|
+ ❯ test/kakao-review-message.test.ts:35:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/27]⎯
+
+ FAIL  test/kakao-review-message.test.ts > 동의 질문은 게시 장소·철회·기본 동의 안 함과 두 바로가기만 보인다
+Error: review presentation not implemented
+ ❯ kakaoReviewMessage src/kakao-review-message.ts:27:9
+     25| }
+     26| export function kakaoReviewMessage(_view: KakaoReviewView): KakaoRevie…
+     27|   throw new Error("review presentation not implemented");
+       |         ^
+     28| }
+     29|
+ ❯ test/kakao-review-message.test.ts:41:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/27]⎯
+
+ FAIL  test/kakao-review-message.test.ts > 성공은 후기 원문·사진 위치 없이 정해진 감사 답만 보인다
+Error: review presentation not implemented
+ ❯ kakaoReviewMessage src/kakao-review-message.ts:27:9
+     25| }
+     26| export function kakaoReviewMessage(_view: KakaoReviewView): KakaoRevie…
+     27|   throw new Error("review presentation not implemented");
+       |         ^
+     28| }
+     29|
+ ❯ test/kakao-review-message.test.ts:51:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/27]⎯
+
+ FAIL  test/kakao-review-message.test.ts > 반복 요청은 처음의 사진을 확인하고 있어요를 저장 성공으로 바꾸지 않는다
+ FAIL  test/kakao-review-message.test.ts > 반복 요청은 처음의 사진을 받지 못했어요. 다시 보내 주세요를 저장 성공으로 바꾸지 않는다
+Error: review presentation not implemented
+ ❯ kakaoReviewMessage src/kakao-review-message.ts:27:9
+     25| }
+     26| export function kakaoReviewMessage(_view: KakaoReviewView): KakaoRevie…
+     27|   throw new Error("review presentation not implemented");
+       |         ^
+     28| }
+     29|
+ ❯ test/kakao-review-message.test.ts:58:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/27]⎯
+
+ FAIL  test/kakao-review-message.test.ts > 처음 답의 결합 문자999개가 붙은 글자도 자르지 않는다
+Error: review presentation not implemented
+ ❯ kakaoReviewMessage src/kakao-review-message.ts:27:9
+     25| }
+     26| export function kakaoReviewMessage(_view: KakaoReviewView): KakaoRevie…
+     27|   throw new Error("review presentation not implemented");
+       |         ^
+     28| }
+     29|
+ ❯ test/kakao-review-message.test.ts:65:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/27]⎯
+
+ FAIL  test/kakao-review-message.test.ts > 다른 사용자·받지 않은 주문은 같은 권한 안내를 보인다
+Error: review presentation not implemented
+ ❯ kakaoReviewMessage src/kakao-review-message.ts:27:9
+     25| }
+     26| export function kakaoReviewMessage(_view: KakaoReviewView): KakaoRevie…
+     27|   throw new Error("review presentation not implemented");
+       |         ^
+     28| }
+     29|
+ ❯ test/kakao-review-message.test.ts:68:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/27]⎯
+
+ FAIL  test/kakao-review-message.test.ts > 연결되지 않은 가게는 연락처가 있을 때만 함께 보인다
+Error: review presentation not implemented
+ ❯ kakaoReviewMessage src/kakao-review-message.ts:27:9
+     25| }
+     26| export function kakaoReviewMessage(_view: KakaoReviewView): KakaoRevie…
+     27|   throw new Error("review presentation not implemented");
+       |         ^
+     28| }
+     29|
+ ❯ test/kakao-review-message.test.ts:73:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/27]⎯
+
+ FAIL  test/kakao-review-message.test.ts > 오류 review_invalid는 정해진 말만 보인다
+ FAIL  test/kakao-review-message.test.ts > 오류 photo_download_failed는 정해진 말만 보인다
+ FAIL  test/kakao-review-message.test.ts > 오류 server_error는 정해진 말만 보인다
+Error: review presentation not implemented
+ ❯ kakaoReviewMessage src/kakao-review-message.ts:27:9
+     25| }
+     26| export function kakaoReviewMessage(_view: KakaoReviewView): KakaoRevie…
+     27|   throw new Error("review presentation not implemented");
+       |         ^
+     28| }
+     29|
+ ❯ test/kakao-review-message.test.ts:83:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/27]⎯
+
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다(null)
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"unknown"})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"normal","question":"unknown"})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"normal","orderNo":""})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"normal","orderNo":"11111111-1111-4111-8111-111111111111"})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"normal","orderNo":"ABCDEFGHI"})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"done","firstResultText":""})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"done","firstResultText":"\u0000"})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"done","firstResultText":"가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가"})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"permission","reason":"unknown"})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"permission","reason":"not_accepting","contactPhone":"\u0000"})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"permission","reason":"not_accepting","contactPhone":"00000000000000000000000000000000000000000"})
+ FAIL  test/kakao-review-message.test.ts > 잘못된 표시 자료는 응답 본문을 만들지 않는다({"state":"error","reason":"raw_database_error"})
+AssertionError: expected error to be instance of RangeError
+
+- Expected:
+[Function RangeError]
+
++ Received:
+Error {
+  "message": "review presentation not implemented",
+}
+
+ ❯ test/kakao-review-message.test.ts:100:72
+     98|   { state: "error", reason: "raw_database_error" },
+     99| ])("잘못된 표시 자료는 응답 본문을 만들지 않는다(%j)", (view) => {
+    100|   expect(() => kakaoReviewMessage(view as unknown as KakaoReviewView))…
+       |                                                                        ^
+    101| });
+    102|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/27]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  27 failed (27)
+   Start at  05:32:27
+   Duration  1.25s (import 87%, transform 10%, tests 3%)
