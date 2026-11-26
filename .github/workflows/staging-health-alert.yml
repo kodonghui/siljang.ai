@@ -2,7 +2,7 @@
 # 이 경보 작업의 실패는 의도한 알림이며 app/db CI와 분리된다.
 # 메일 전달은 실행 계정의 GitHub Actions 알림 설정과 실제 수신으로 확인한다.
 name: Siljang 스테이징 상태 경보
-run-name: 외부 상태 점검 실패
+run-name: ${{ inputs.purpose == 'job_diagnostics' && '스테이징 실행기 로그 관찰' || '외부 상태 점검 실패' }}
 
 on:
   workflow_dispatch:

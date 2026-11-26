@@ -1,0 +1,15 @@
+{
+  "source": "2b80b02bb5cd7d19d73c62ff94927b34c138fe94",
+  "test_files": [
+    "test/due-sources.test.ts",
+    "test/day-before-notice.test.ts"
+  ],
+  "files_passed": 2,
+  "tests_passed": 74,
+  "test_exit": 0,
+  "migration_count": 47,
+  "database_cleanup": "helper completed 뒤 해당 DB 부재 확인 필요",
+  "raw_sha256": "c755863d5042cf79dd6f234343c60816d554cfe5caf9786a60f61e764ee37aba",
+  "published_sha256": "40dcec2cd3764d796bc6424b18d489ca0312db936d8db3774abe159814e6d44b",
+  "wrapper_status": "바깥 셸 종료1과 별도로 내부 시험 종료0·completed를 확인. 원인 미확인 셸 상태를 통과로 세지 않음"
+}
