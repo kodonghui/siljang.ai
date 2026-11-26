@@ -1,0 +1,252 @@
+
+> test
+> vitest run --run test/ledger-google-sheet.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+ ❯ test/ledger-google-sheet.test.ts (27 tests | 26 failed) 98ms
+   ❯ 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 (27)
+     × 고른 탭의 메타데이터와 첫 행만 읽고 토큰은 Authorization 헤더에만 넣는다 64ms
+     × 빈 첫 행도 자료 아래를 덮지 않도록 실제 표 너비를 유지한다 4ms
+     × 서명 검증에 넘길 후보만 고른 탭의 PROJECT 열 메타데이터에서 추린다 2ms
+     × メタ데이터 HTTP400는 연결하지 않고 오류 본문을 반환하지 않는다 1ms
+     × メタ데이터 HTTP401는 연결하지 않고 오류 본문을 반환하지 않는다 1ms
+     × メタ데이터 HTTP403는 연결하지 않고 오류 본문을 반환하지 않는다 1ms
+     × メタ데이터 HTTP404는 연결하지 않고 오류 본문을 반환하지 않는다 1ms
+     × HTTP302의 리디렉션/오류 본문은 따르거나 노출하지 않는다 3ms
+     × HTTP307의 리디렉션/오류 본문은 따르거나 노출하지 않는다 1ms
+     × HTTP429의 리디렉션/오류 본문은 따르거나 노출하지 않는다 1ms
+     × HTTP500의 리디렉션/오류 본문은 따르거나 노출하지 않는다 5ms
+     × HTTP503의 리디렉션/오류 본문은 따르거나 노출하지 않는다 1ms
+     × 탭이 없거나 GRID가 아니면 첫 행을 읽지 않는다 1ms
+     × 잘못된 메타데이터 null는 서비스 오류로 닫는다 1ms
+     × 잘못된 메타데이터 undefined는 서비스 오류로 닫는다 1ms
+     × 잘못된 메타데이터 {}는 서비스 오류로 닫는다 1ms
+     × 잘못된 메타데이터 {"sheets":"wrong"}는 서비스 오류로 닫는다 1ms
+     × 잘못된 메타데이터 {"sheets":[{"properties":{"sheetId":7,"title":"사장님 '장부' ! A1","sheetType":"GRID","gridProperties":{"columnCount":18279}}}]}는 서비스 오류로 닫는다 1ms
+     × 잘못된 첫 행 {"values":"wrong"}는 연결하지 않는다 1ms
+     × 잘못된 첫 행 {"values":[["a"],["b"]]}는 연결하지 않는다 0ms
+     × 잘못된 첫 행 {"values":[[{}]]}는 연결하지 않는다 0ms
+     × 잘못된 첫 행 {"values":[["x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x"]]}는 연결하지 않는다 0ms
+     × 너무 큰 응답과 통신/시간 초과는 원래 오류나 토큰 없이 서비스 오류다 0ms
+     × 설정 밖 파일ID https://other.example/collect는 호출 전에 거절한다 1ms
+     × 설정 밖 파일ID ../bad-file는 호출 전에 거절한다 0ms
+     × 설정 밖 파일ID 는 호출 전에 거절한다 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 26 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 고른 탭의 메타데이터와 첫 행만 읽고 토큰은 Authorization 헤더에만 넣는다
+AssertionError: expected null to deeply equal { sheetId: 7, …(4) }
+
+- Expected:
+{
+  "columnCount": 26,
+  "headers": [
+    "주문번호",
+    7,
+    true,
+  ],
+  "markers": [],
+  "sheetId": 7,
+  "sheetName": "사장님 '장부' ! A1",
+}
+
++ Received:
+null
+
+ ❯ test/ledger-google-sheet.test.ts:15:20
+     13|     const access=token(),send=sequence([reply(metadata()),reply({range…
+     14|     const result=await googleLedgerSheets({fetch:send}).inspect(access…
+     15|     expect(result).toEqual({sheetId:7,sheetName:tab,columnCount:26,hea…
+       |                    ^
+     16|     expect(send).toHaveBeenCalledTimes(2);
+     17|     const calls=send.mock.calls as unknown as [string,RequestInit][];
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/26]⎯
+
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 빈 첫 행도 자료 아래를 덮지 않도록 실제 표 너비를 유지한다
+AssertionError: expected null to match object { columnCount: 26, headers: [] }
+
+- Expected:
+{
+  "columnCount": 26,
+  "headers": [],
+}
+
++ Received:
+null
+
+ ❯ test/ledger-google-sheet.test.ts:24:129
+     22|   });
+     23|   it("빈 첫 행도 자료 아래를 덮지 않도록 실제 표 너비를 유지한다",async()=>{
+     24|     const send=sequence([reply(metadata()),reply({})]);expect(await go…
+       |                                                                                                                                 ^
+     25|   });
+     26|   it("서명 검증에 넘길 후보만 고른 탭의 PROJECT 열 메타데이터에서 추린다",async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/26]⎯
+
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 서명 검증에 넘길 후보만 고른 탭의 PROJECT 열 메타데이터에서 추린다
+AssertionError: expected undefined to deeply equal [ Array(1) ]
+
+- Expected:
+[
+  {
+    "end": 14,
+    "start": 2,
+    "token": "c1.fixture.signed",
+  },
+]
+
++ Received:
+undefined
+
+ ❯ test/ledger-google-sheet.test.ts:31:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/26]⎯
+
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > メタ데이터 HTTP400는 연결하지 않고 오류 본문을 반환하지 않는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > メタ데이터 HTTP401는 연결하지 않고 오류 본문을 반환하지 않는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > メタ데이터 HTTP403는 연결하지 않고 오류 본문을 반환하지 않는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > メタ데이터 HTTP404는 연결하지 않고 오류 본문을 반환하지 않는다
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ test/ledger-google-sheet.test.ts:34:167
+     32|   });
+     33|   it.each([400,401,403,404])("メタ데이터 HTTP%s는 연결하지 않고 오류 본문을 반환하지 않는다",a…
+     34|     const send=sequence([reply({error:crypto.randomUUID()},status)]);e…
+       |                                                                                                                                                                       ^
+     35|   });
+     36|   it("첫 행의 권한 거절도 연결하지 않는다",async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/26]⎯
+
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > HTTP302의 리디렉션/오류 본문은 따르거나 노출하지 않는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > HTTP307의 리디렉션/오류 본문은 따르거나 노출하지 않는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > HTTP429의 리디렉션/오류 본문은 따르거나 노출하지 않는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > HTTP500의 리디렉션/오류 본문은 따르거나 노출하지 않는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > HTTP503의 리디렉션/오류 본문은 따르거나 노출하지 않는다
+AssertionError: promise resolved "null" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+null
+
+ ❯ test/ledger-google-sheet.test.ts:41:25
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/26]⎯
+
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 탭이 없거나 GRID가 아니면 첫 행을 읽지 않는다
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ test/ledger-google-sheet.test.ts:44:235
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/26]⎯
+
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 잘못된 메타데이터 null는 서비스 오류로 닫는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 잘못된 메타데이터 undefined는 서비스 오류로 닫는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 잘못된 메타데이터 {}는 서비스 오류로 닫는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 잘못된 메타데이터 {"sheets":"wrong"}는 서비스 오류로 닫는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 잘못된 메타데이터 {"sheets":[{"properties":{"sheetId":7,"title":"사장님 '장부' ! A1","sheetType":"GRID","gridProperties":{"columnCount":18279}}}]}는 서비스 오류로 닫는다
+AssertionError: promise resolved "null" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+null
+
+ ❯ test/ledger-google-sheet.test.ts:47:96
+     45|   });
+     46|   it.each([null,[],{}, {sheets:"wrong"},{sheets:[{properties:{sheetId:…
+     47|     await expect(googleLedgerSheets({fetch:sequence([reply(data)])}).i…
+       |                                                                                                ^
+     48|   });
+     49|   it.each([{values:"wrong"},{values:[["a"],["b"]]},{values:[[{}]]},{va…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/26]⎯
+
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 잘못된 첫 행 {"values":"wrong"}는 연결하지 않는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 잘못된 첫 행 {"values":[["a"],["b"]]}는 연결하지 않는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 잘못된 첫 행 {"values":[[{}]]}는 연결하지 않는다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 잘못된 첫 행 {"values":[["x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x","x"]]}는 연결하지 않는다
+AssertionError: promise resolved "null" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+null
+
+ ❯ test/ledger-google-sheet.test.ts:50:114
+     48|   });
+     49|   it.each([{values:"wrong"},{values:[["a"],["b"]]},{values:[[{}]]},{va…
+     50|     await expect(googleLedgerSheets({fetch:sequence([reply(metadata())…
+       |                                                                                                                  ^
+     51|   });
+     52|   it("너무 큰 응답과 통신/시간 초과는 원래 오류나 토큰 없이 서비스 오류다",async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/26]⎯
+
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 너무 큰 응답과 통신/시간 초과는 원래 오류나 토큰 없이 서비스 오류다
+AssertionError: promise resolved "null" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+null
+
+ ❯ test/ledger-google-sheet.test.ts:55:99
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/26]⎯
+
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 설정 밖 파일ID https://other.example/collect는 호출 전에 거절한다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 설정 밖 파일ID ../bad-file는 호출 전에 거절한다
+ FAIL  test/ledger-google-sheet.test.ts > 구글 장부 조회: 고정 주소/첫 행/토큰 비노출 > 설정 밖 파일ID 는 호출 전에 거절한다
+AssertionError: promise resolved "null" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+null
+
+ ❯ test/ledger-google-sheet.test.ts:59:94
+     57|   });
+     58|   it.each(["https://other.example/collect","../bad-file",""])("설정 밖 파일…
+     59|     const send=vi.fn();await expect(googleLedgerSheets({fetch:send}).i…
+       |                                                                                              ^
+     60|   });
+     61| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/26]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  26 failed | 1 passed (27)
+   Start at  11:35:01
+   Duration  605ms (tests 46%, transform 34%, import 17%, worker 3%)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task156-optional-features/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task156-optional-features/app/server
+npm error command failed
+npm error command sh -c vitest run --run test/ledger-google-sheet.test.ts
