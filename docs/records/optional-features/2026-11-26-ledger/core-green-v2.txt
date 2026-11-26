@@ -1,0 +1,15 @@
+
+> test
+> vitest run --run test/ledger-input.test.ts test/ledger-oauth.test.ts test/ledger-google-auth.test.ts
+
+
+ RUN  v5.1.0 /workspace/siljang-task156-optional-features/app/server
+
+
+ Test Files  3 passed (3)
+      Tests  71 passed (71)
+   Start at  10:12:59
+   Duration  724ms (tests 36%, import 31%, transform 28%, worker 4%)
+
+    Isolate  3 workers spawned · ~135ms startup each (spawn + environment, per file)
+             at least ~271ms faster with isolate: false — reuses workers across files instead of one per file
