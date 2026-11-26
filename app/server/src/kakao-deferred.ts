@@ -84,7 +84,18 @@ export async function deferredKakaoBatch(
     scanLimited = false;
   const readAt = options.now ?? new Date();
   const merger = createKakaoAmountConfirmationMerger();
+  // 목록과 참조가 같은 후보 조건을 쓴다. 별칭은 정해진 이름만 받는다.
+  const candidateConditions = (
+    message: "m" | "candidate_message",
+    consultation: "c" | "candidate_consultation",
+  ) => `${message}.shop_id = $1 AND ${consultation}.customer_id = $2 AND ${message}.direction = 'outbound'
+          AND ${message}.delivery = 'deferred' AND ${message}.sent_at IS NULL AND char_length(${message}.body_masked) BETWEEN 1 AND 1000
+          AND (${message}.trace_id IS NULL OR ${message}.trace_id NOT LIKE 'ai-disclosure:%')
+          AND ($5::uuid IS NULL OR ${message}.id <> $5)
+          AND ($6::timestamptz IS NULL OR (${message}.created_at,${message}.id) > ($6::timestamptz,$7::uuid))
+          AND NOT ((${message}.author='ai' OR ${message}.kind='card') AND ${consultation}.ai_disclosed_at IS NULL AND ${consultation}.status IN ('ended','deleted','dropped'))`;
   // 같은 주문의 차액 문맥은 참조 메시지마다 다시 읽지 않는다. 권한·상태·기한은 같은 조회 시점에 대조한다.
+  // LATERAL의 OFFSET 0은 후보별 참조 조건을 먼저 적용해, 과거 카드 전체를 앞서 읽는 재배치를 막는다.
   const unreadableDifferenceOrders = `WITH blocked_difference_orders AS MATERIALIZED (
         SELECT oo.shop_id,oo.id,oo.customer_id,oo.consultation_id
         FROM orders oo
@@ -106,22 +117,24 @@ export async function deferredKakaoBatch(
               AND n.consultation_id=oo.consultation_id AND n.kind='payment_request' AND n.status<>'dropped'
               AND n.event_key='notice:'||pp.id::text||':payment_request')
       ), blocked_payment_claims AS MATERIALIZED (
-        SELECT cc.customer_id,cc.consultation_id,cc.payload->>'sourceMessageId' AS source_message_id
-        FROM confirm_cards cc
-        JOIN blocked_difference_orders bo ON bo.shop_id=$1 AND bo.id=cc.order_id
-          AND bo.customer_id=cc.customer_id AND bo.consultation_id=cc.consultation_id
-        WHERE cc.shop_id=$1 AND cc.customer_id=$2 AND cc.kind='payment_claim'
-          AND cc.used_at IS NULL AND cc.created_at<=$8
+        SELECT matched.customer_id,matched.consultation_id,matched.source_message_id
+        FROM messages candidate_message
+        JOIN consultations candidate_consultation ON candidate_consultation.shop_id=$1 AND candidate_consultation.id=candidate_message.consultation_id
+        CROSS JOIN LATERAL (
+          SELECT cc.customer_id,cc.consultation_id,cc.order_id,cc.payload->>'sourceMessageId' AS source_message_id
+          FROM confirm_cards cc WHERE cc.shop_id=$1 AND cc.customer_id=$2 AND cc.kind='payment_claim'
+            AND cc.consultation_id=candidate_message.consultation_id AND cc.payload->>'sourceMessageId'=candidate_message.trace_id
+            AND cc.used_at IS NULL AND cc.created_at<=$8 OFFSET 0
+        ) matched
+        JOIN blocked_difference_orders bo ON bo.shop_id=$1 AND bo.id=matched.order_id
+          AND bo.customer_id=matched.customer_id AND bo.consultation_id=matched.consultation_id
+        WHERE candidate_message.shop_id=$1 AND candidate_message.kind='card'
+          AND ${candidateConditions("candidate_message", "candidate_consultation")}
       )`;
   // 조회와 한도 뒤 존재 확인이 같은 수신·권한·고지 조건을 쓴다.
   const messageFrom = `FROM messages m
         JOIN consultations c ON c.shop_id = $1 AND c.id = m.consultation_id
-        WHERE m.shop_id = $1 AND c.customer_id = $2 AND m.direction = 'outbound'
-          AND m.delivery = 'deferred' AND m.sent_at IS NULL AND char_length(m.body_masked) BETWEEN 1 AND 1000
-          AND (m.trace_id IS NULL OR m.trace_id NOT LIKE 'ai-disclosure:%')
-          AND ($5::uuid IS NULL OR m.id <> $5)
-          AND ($6::timestamptz IS NULL OR (m.created_at,m.id) > ($6::timestamptz,$7::uuid))
-          AND NOT ((m.author='ai' OR m.kind='card') AND c.ai_disclosed_at IS NULL AND c.status IN ('ended','deleted','dropped'))
+        WHERE ${candidateConditions("m", "c")}
           AND (m.kind<>'card' OR c.ai_disclosed_at IS NULL AND c.id IS DISTINCT FROM $4::uuid
             OR ${DIFFERENCE_NOTICE_SELECT_SQL} OR NOT EXISTS (
               SELECT 1 FROM blocked_payment_claims br

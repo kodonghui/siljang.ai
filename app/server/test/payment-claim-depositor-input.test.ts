@@ -255,6 +255,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
     ["difference", "late-legacy"] as const,
     ...([23, 24, 25] as const).map((count) => ["custom", `boundary-${count}`] as const),
     ...([50, 200, 2000] as const).map((count) => ["difference", `source-query-plan-${count}`] as const),
+    ["difference", "source-query-plan-sparse"] as const,
   ])("새 금액 미확인의 결제 확인 표시는 기존 새 금액 카드로 바뀐다(%s/%s)", async (kind, mode) => {
     const sourceMessageId = newUuid();
     const original = await show("payment_claim", sourceMessageId);
@@ -372,7 +373,8 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
       ]);
     const beforePayment = (await state()).payments;
     if (mode.startsWith("source-query-plan-")) {
-      const backlog = Number(mode.slice("source-query-plan-".length));
+      const sparse = mode === "source-query-plan-sparse";
+      const backlog = sparse ? 2000 : Number(mode.slice("source-query-plan-".length));
       await isolated.db.query("UPDATE consultations SET ai_disclosed_at=$2 WHERE id=$1", [shop.consultationId, NOW]);
       await isolated.db.query(
         `WITH ids AS MATERIALIZED (SELECT gen_random_uuid() AS id,gen_random_uuid() AS source FROM generate_series(1,$5::integer)),
@@ -388,6 +390,16 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         SELECT $2,$3,'outbound','system','card',payload->>'sourceMessageId','결제 확인 요청','deferred',$4 FROM cards`,
         [original.cardKey, shop.shopId, shop.consultationId, NOW, backlog],
       );
+      if (sparse) {
+        await isolated.db.query(
+          "UPDATE messages SET delivery='delivered_later',sent_at=$2 WHERE shop_id=$1 AND kind='card'",
+          [shop.shopId, NOW],
+        );
+        await isolated.db.query(
+          "INSERT INTO messages(shop_id,consultation_id,direction,author,kind,trace_id,body_masked,delivery,created_at) VALUES($1,$2,'outbound','system','card',$3,'현재 안내','deferred',$4)",
+          [shop.shopId, shop.consultationId, newUuid(), NOW],
+        );
+      }
       await isolated.db.query("ANALYZE confirm_cards; ANALYZE messages");
       const runtime = pgConnector(new Secret(roleUrl));
       try {
@@ -405,7 +417,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         });
         await limited.transaction(async (tx) => {
           const batch = await deferredKakaoBatch(observe(tx), shop.customerId, { now: NOW });
-          expect(batch.messages).toHaveLength(0);
+          expect(batch.messages).toHaveLength(sparse ? 1 : 0);
         });
         const query = queries[0];
         if (query === undefined) throw new Error("합성 제한 역할의 카드 조회 없음");
@@ -426,6 +438,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
           "TASK107 source lookup plan",
           JSON.stringify({
             rows: backlog,
+            sparse,
             executionMs: top["Execution Time"],
             buffers: top.Plan["Shared Hit Blocks"],
             cardNodes: nodes
@@ -435,6 +448,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
                 alias: n.Alias,
                 index: n["Index Name"],
                 loops: n["Actual Loops"],
+                actualRows: n["Actual Rows"],
                 removed: n["Rows Removed by Filter"],
               })),
           }),
@@ -445,7 +459,24 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         expect(amountLookups).toBeLessThanOrEqual(1);
         const referenceNodes = nodes.filter((n) => n.Alias === "cc");
         expect(referenceNodes.length).toBeGreaterThan(0);
-        expect(referenceNodes.reduce((sum, n) => sum + Number(n["Actual Loops"] ?? 0), 0)).toBeLessThanOrEqual(1);
+        // 참조 집합과 그 읽기는 한 번이다. 인덱스가 후보별로 다른 참조를 찾는 물리 접근은 허용한다.
+        const referenceSet = nodes.filter((n) => n["Subplan Name"] === "CTE blocked_payment_claims");
+        expect(referenceSet).toHaveLength(1);
+        expect(Number(referenceSet[0]?.["Actual Loops"])).toBeLessThanOrEqual(1);
+        const referenceReads = nodes.filter((n) => n["CTE Name"] === "blocked_payment_claims");
+        expect(referenceReads.length).toBeGreaterThan(0);
+        expect(referenceReads.reduce((sum, n) => sum + Number(n["Actual Loops"] ?? 0), 0)).toBeLessThanOrEqual(1);
+        if (sparse) {
+          expect(referenceNodes.reduce((sum, n) => sum + Number(n["Actual Loops"] ?? 0), 0)).toBeLessThanOrEqual(1);
+          expect(
+            referenceNodes.reduce((sum, n) => sum + Number(n["Actual Rows"] ?? 0) * Number(n["Actual Loops"] ?? 0), 0),
+          ).toBe(0);
+          expect(
+            referenceNodes.some(
+              (n) => typeof n["Index Cond"] === "string" && n["Index Cond"].includes("sourceMessageId"),
+            ),
+          ).toBe(true);
+        }
         await expect(
           limited.transaction((tx) =>
             readConfirmCardDelivery(observe(tx), {
@@ -456,7 +487,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
             }),
           ),
         ).rejects.toBeInstanceOf(CustomerNoticeTemporarilyUnavailable);
-        const lookup = lookups[0];
+        const lookup = lookups.find((query) => query.params[2] === sourceMessageId);
         if (lookup === undefined) throw new Error("합성 저장 카드의 수신 참조 조회 없음");
         const pointPlan = await runtime.query(`EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) ${lookup.sql}`, [
           shop.shopId,
@@ -465,6 +496,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
         const pointData = (pointPlan.rows[0]?.["QUERY PLAN"] ?? []) as typeof data;
         const point = pointData[0];
         if (point === undefined) throw new Error("합성 저장 카드의 실행 계획 없음");
+        expect(Number(point.Plan["Actual Rows"])).toBe(1);
         nodes.length = 0;
         walk(point.Plan);
         console.info(
@@ -492,7 +524,7 @@ describeDb("입금자 전용 블록의 표시와 명령 경계(TASK-107)", () =>
               [shop.shopId],
             )
           ).rows[0]?.n,
-        ).toBe(backlog);
+        ).toBe(sparse ? 1 : backlog);
       } finally {
         await runtime.close();
       }
