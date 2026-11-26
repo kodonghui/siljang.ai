@@ -1,0 +1,65 @@
+
+> test
+> npm run test -w server && npm run test -w web
+
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 /workspace/siljang-task159-purge-runtime/app/server
+
+(node:117495) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ test/app.test.ts (15 tests | 1 failed) 69ms
+   ❯ 오류 응답(06 Problem) (4)
+     × 첫 요청에서 빠진 비밀 값의 이름만 한 번 남긴다 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/app.test.ts > 오류 응답(06 Problem) > 첫 요청에서 빠진 비밀 값의 이름만 한 번 남긴다
+AssertionError: expected { level: 'info', …(2) } to deeply equal { level: 'info', …(2) }
+
+- Expected
++ Received
+
+@@ -2,10 +2,11 @@
+    "event": "settings_loaded",
+    "level": "info",
+    "names": [
+      "ANTHROPIC_API_KEY",
+      "DATABASE_URL",
++     "PURGE_DATABASE_URL",
+      "REQUEST_HASH_KEY",
+      "STORAGE_ACCESS_KEY_ID",
+      "STORAGE_SECRET_ACCESS_KEY",
+      "FILE_URL_KEY",
+    ],
+
+ ❯ test/app.test.ts:91:43
+     89|     const starts = lines.filter((l) => l.includes('"settings_loaded"')…
+     90|     expect(starts).toHaveLength(1);
+     91|     expect(JSON.parse(starts[0] ?? "{}")).toEqual({
+       |                                           ^
+     92|       level: "info",
+     93|       event: "settings_loaded",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 197 passed (198)
+      Tests  1 failed | 3657 passed (3658)
+   Start at  11:32:33
+   Duration  333.67s (tests 61%, import 38%)
+
+     Import  447 modules were evaluated 1106 times · 118.15s total, 38% of tracked time
+             ~70.40s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/siljang-task159-purge-runtime/app/server
+npm error workspace @siljang/server
+npm error location /workspace/siljang-task159-purge-runtime/app/server
+npm error command failed
+npm error command sh -c vitest run
