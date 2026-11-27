@@ -57,6 +57,7 @@ def build(root, source, role, cleanup):
         "SET LOCAL search_path = public, pg_temp;",
         "SELECT pg_advisory_xact_lock(hashtextextended('siljang:staging:migrations', 0));",
         f"DO {delimiter}\nBEGIN",
+        "IF current_user <> 'postgres' THEN RAISE EXCEPTION 'migration_executor_must_be_postgres'; END IF;",
         "IF to_regclass('siljang_deploy.migrations') IS NULL THEN RAISE EXCEPTION 'migration_ledger_missing'; END IF;",
         f"IF EXISTS (SELECT 1 FROM siljang_deploy.migrations WHERE NOT (filename = ANY({names}))) THEN RAISE EXCEPTION 'migration_ledger_unknown_file'; END IF;",
         "IF (SELECT count(*) <> count(DISTINCT filename) OR coalesce(max(left(filename, 4)::int), 0) <> count(*) FROM siljang_deploy.migrations) THEN RAISE EXCEPTION 'migration_ledger_not_prefix'; END IF;",
