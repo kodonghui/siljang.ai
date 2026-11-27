@@ -2431,7 +2431,7 @@ COMMENT ON FUNCTION read_operator_original(uuid,uuid,text,uuid,jsonb,timestamptz
 REVOKE ALL ON FUNCTION read_operator_original(uuid,uuid,text,uuid,jsonb,timestamptz) FROM PUBLIC;
 
 -- TASK-159: 배포용 역할은 닫힌 상담 한 건의 내용 지우기 함수만 실행한다.
-CREATE FUNCTION purge_closed_consultation(p_shop uuid,p_consultation uuid,p_now timestamptz)
+CREATE OR REPLACE FUNCTION purge_closed_consultation(p_shop uuid,p_consultation uuid,p_now timestamptz)
 RETURNS integer LANGUAGE plpgsql STRICT SECURITY DEFINER SET search_path=pg_catalog AS $fn$
 DECLARE purged integer;
 BEGIN
@@ -2504,7 +2504,7 @@ BEGIN
          AND NOT EXISTS (SELECT 1 FROM public.orders o WHERE o.shop_id = p_shop AND o.draft_id = d.id);
 
   INSERT INTO public.masked_value_erasures (shop_id,id,consultation_id,erased_at)
-         SELECT p_shop,mv.id,p_consultation,p_now FROM public.masked_values mv WHERE mv.shop_id=p_shop AND mv.consultation_id=p_consultation
+         SELECT p_shop,mv.id,p_consultation,pg_catalog.statement_timestamp() FROM public.masked_values mv WHERE mv.shop_id=p_shop AND mv.consultation_id=p_consultation
          ON CONFLICT DO NOTHING;
 
   DELETE FROM public.masked_values WHERE shop_id = p_shop AND consultation_id = p_consultation;
@@ -2522,6 +2522,28 @@ BEGIN
 END $fn$;
 COMMENT ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) IS '닫힌 지30일·열린 건 없음·주문 보관을 같은 가게와 상담에서 확인하고 내용/삭제ID/파일 삭제 대기를 한 트랜잭션으로 처리';
 REVOKE ALL ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) FROM PUBLIC;
+
+-- TASK-159: DB 시계의 가장 최근 서울 03:00을 기준으로 24시간이 지난 식별 정보만 지운다.
+CREATE FUNCTION purge_expired_masked_value_erasures(p_limit integer)
+RETURNS integer LANGUAGE plpgsql STRICT SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE slot timestamptz; removed integer;
+BEGIN
+  IF p_limit < 1 OR p_limit > 1000 THEN
+    RAISE EXCEPTION 'invalid batch size' USING ERRCODE='22023';
+  END IF;
+  slot := (date_trunc('day', statement_timestamp() AT TIME ZONE 'Asia/Seoul') + interval '3 hours') AT TIME ZONE 'Asia/Seoul';
+  IF slot > statement_timestamp() THEN slot := slot - interval '1 day'; END IF;
+  WITH expired AS (
+    SELECT e.shop_id, e.id FROM public.masked_value_erasures e
+     WHERE e.erased_at < slot - interval '24 hours'
+     ORDER BY e.erased_at, e.shop_id, e.id LIMIT p_limit FOR UPDATE SKIP LOCKED
+  )
+  DELETE FROM public.masked_value_erasures e USING expired x
+   WHERE e.shop_id=x.shop_id AND e.id=x.id;
+  GET DIAGNOSTICS removed = ROW_COUNT;
+  RETURN removed;
+END $fn$;
+REVOKE ALL ON FUNCTION purge_expired_masked_value_erasures(integer) FROM PUBLIC;
 
 -- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음.
 COMMENT ON COLUMN owners.id IS '사장님 ID';

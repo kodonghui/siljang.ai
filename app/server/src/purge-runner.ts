@@ -130,6 +130,18 @@ export async function runPurge(db: RequestDb, options: PurgeOptions): Promise<Jo
       }
       if (phase === 6 && !shouldStop()) {
         try {
+          const count = (
+            await db.query<{ n: number }>("SELECT public.purge_expired_masked_value_erasures($1) AS n", [limits.batch])
+          ).rows[0]?.n;
+          if (count === undefined) throw new Error("erasure count missing");
+          tally.found += count;
+          tally.done += count;
+          if (count === limits.batch) more = true;
+        } catch (err) {
+          tally.failed += 1;
+          failure(err, "masked_value_erasures");
+        }
+        try {
           const count = await purgeExpiredRequestKeys(db, now, limits.batch);
           tally.found += count;
           tally.done += count;

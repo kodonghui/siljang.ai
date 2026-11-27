@@ -240,3 +240,4 @@ GRANT EXECUTE ON FUNCTION read_operator_original(uuid,uuid,text,uuid,jsonb,times
 REVOKE INSERT ON masked_value_erasures FROM :"runtime_role";
 REVOKE INSERT (shop_id,id,consultation_id,erased_at) ON masked_value_erasures FROM :"runtime_role";
 REVOKE EXECUTE ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION purge_expired_masked_value_erasures(integer) FROM :"runtime_role";
