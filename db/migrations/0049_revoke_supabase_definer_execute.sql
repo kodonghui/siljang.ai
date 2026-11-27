@@ -23,7 +23,7 @@ BEGIN
       EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM %I', role_name);
     END IF;
   END LOOP;
-  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'postgres' AND pg_catalog.pg_has_role(current_user, oid, 'MEMBER')) THEN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'postgres' AND pg_catalog.pg_has_role(current_user, oid, 'USAGE')) THEN
     ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
     ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
     FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated', 'service_role'] LOOP
