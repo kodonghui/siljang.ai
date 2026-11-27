@@ -104,6 +104,9 @@ def run():
                 plain.chmod(0o600)
                 subprocess.run([age, "--decrypt", "--identity", str(key), str(encrypted)],
                                stdout=output, stderr=subprocess.DEVNULL, check=True)
+            if os.environ.get("CHECK_PRODUCTION_ARCHIVE") == "1":
+                # PGDMP + 아카이브 주/부 버전: 운영 PG17.11의 custom 형식 1.16.
+                assert plain.read_bytes()[:7] == b"PGDMP\x01\x10", "운영 아카이브 형식 불일치"
             # 필터한 dump는 public CREATE를 포함하지만 확장 자체는 포함하지 않는다.
             # 새 빈 시험 DB의 기본 public만 없애고, 확장은 별도 스키마에 준비한다.
             sql(target, "DROP SCHEMA public; CREATE SCHEMA extensions; CREATE EXTENSION btree_gist SCHEMA extensions")

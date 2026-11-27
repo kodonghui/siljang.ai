@@ -1,10 +1,11 @@
 // 기존 staging 배포 인증으로 최대70초 관찰한다. 원시 tail/오류/요청/헤더는 출력하지 않는다.
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { TailObjects, diagnosticFault, jobLogFacts } from "./job-log-facts.mjs";
 
 const parser=new TailObjects(); let observed=0, failures=0, failed=false, timedOut=false, fault={}, errorBuffer="";
-const child=spawn("npx",["--no-install","wrangler","tail","siljang-staging","--format","json"],
-  {detached:true,stdio:["ignore","pipe","pipe"],env:{...process.env,WRANGLER_SEND_METRICS:"false"}});
+const child=spawn(process.execPath,["--no-warnings",fileURLToPath(new URL("../../app/node_modules/wrangler/wrangler-dist/cli.js", import.meta.url)),"tail","siljang-staging","--format","json"],
+  {detached:true,stdio:["ignore","pipe","pipe"],env:{...process.env,WRANGLER_SEND_METRICS:"false",WRANGLER_WRITE_LOGS:"false",WRANGLER_LOG_SANITIZE:"true"}});
 function stop(signal) { try { process.kill(-child.pid,signal); } catch { child.kill(signal); } }
 function classify(chunk) {
   errorBuffer=(errorBuffer+chunk).slice(-4096);
@@ -25,9 +26,9 @@ child.stdout.on("data",chunk=>{
 const timer=setTimeout(()=>{timedOut=true;stop("SIGINT");},70000);
 const force=setTimeout(()=>stop("SIGKILL"),73000);
 child.on("error",error=>{failed=true;fault={kind:["ENOENT","EACCES"].includes(error.code)?error.code:"spawn_error"};});
-child.on("close",code=>{
+child.on("close",(code,signal)=>{
   clearTimeout(timer);clearTimeout(force);
-  const ok=!failed && observed>0 && (timedOut || code===0);
+  const ok=!failed && observed>0 && (code===0 || (timedOut && signal==="SIGINT"));
   process.stdout.write(JSON.stringify({diagnostic:"worker_job_logs",observed,failures,verified:ok,exitCode:code,...(ok?{}:fault)})+"\n");
   process.exitCode=ok?0:1;
 });
