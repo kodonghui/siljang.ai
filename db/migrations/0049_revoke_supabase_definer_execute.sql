@@ -13,7 +13,7 @@ BEGIN
       END IF;
     END LOOP;
   END LOOP;
-  -- 기본 권한은 이 이행 실행자(향후 함수 소유자)에만 적용된다.
+  -- 실행자와 스테이징 함수 생성자 postgres의 기본 권한을 각각 변경한다.
   -- PUBLIC의 전역 기본 EXECUTE는 스키마별 REVOKE만으로 제거할 수 없다.
   ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
   ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
@@ -23,4 +23,14 @@ BEGIN
       EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM %I', role_name);
     END IF;
   END LOOP;
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'postgres') THEN
+    ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+    ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+    FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated', 'service_role'] LOOP
+      IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
+        EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM %I', role_name);
+        EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM %I', role_name);
+      END IF;
+    END LOOP;
+  END IF;
 END $revoke$;
