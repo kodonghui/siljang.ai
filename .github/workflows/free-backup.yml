@@ -16,7 +16,9 @@ concurrency:
 
 jobs:
   encrypted-backup:
-    if: ${{ github.ref == 'refs/heads/main' && vars.FREE_BACKUP_ENABLED == 'true' }}
+    # 관리자 환경 보호 규칙 검증 전에는 활성화하지 않는다.
+    if: ${{ false }}
+    environment: free-backup
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

@@ -96,6 +96,21 @@ jobs:
           done
           AGE_BIN="$RUNNER_TEMP/age-bin/age" PG_DUMP_BIN="$RUNNER_TEMP/pg-clients/pg_dump" PG_RESTORE_BIN="$RUNNER_TEMP/pg-clients/pg_restore" python3 -I tools/free-backup/restore-smoke.py 2>&1 | tee ci-logs/backup-restore.log
 
+      - name: 운영 덤프 클라이언트 이미지와 아카이브 복구 확인
+        if: ${{ matrix.postgres == '17.11' }}
+        env:
+          TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
+          CI_BACKUP_TEST: "1"
+          CHECK_PRODUCTION_ARCHIVE: "1"
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: postgres
+          SERVICE_IMAGE: ${{ matrix.image }}
+        run: |
+          grep -F -- "$SERVICE_IMAGE" tools/free-backup/production-client.sh
+          test "$(docker exec "$TEST_PG_CONTAINER" pg_dump --version)" = 'pg_dump (PostgreSQL) 17.11 (Debian 17.11-1.pgdg13+1)' || docker exec "$TEST_PG_CONTAINER" pg_dump --version | grep -E '^pg_dump \(PostgreSQL\) 17\.11([[:space:]]|$)'
+          AGE_BIN="$RUNNER_TEMP/age-bin/age" PG_DUMP_BIN="$RUNNER_TEMP/pg-clients/pg_dump" PG_RESTORE_BIN="$RUNNER_TEMP/pg-clients/pg_restore" python3 -I tools/free-backup/restore-smoke.py 2>&1 | tee ci-logs/production-backup-restore.log
+
       - name: 로그 키 검사
         if: ${{ !cancelled() }}
         run: node tools/check-no-keys.mjs ci-logs/*.log
