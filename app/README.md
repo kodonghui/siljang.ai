@@ -3759,3 +3759,7 @@ Windows job139990312137의 Node10개는 통과했지만 새 단계가 기본 bas
 ### 419. 스테이징 배포 충돌 복구
 
 Worker 설정과 비밀 값은 대시보드에서 변경하지 않습니다. 변경했다면 원격 차이와 저장소 설정을 대조하고 main의 app workflow를 수동 실행할 때 `recover_dashboard_conflict`를 한 번 선택합니다. 이때 주 Worker만 strict를 해제하고 `--keep-vars`를 유지합니다. 배포와 활성 버전의 큐·정적 자산 확인은 실행 후 남습니다.
+
+### 420. 스테이징 정기 삭제 전용 연결
+
+스테이징의 `PURGE_HYPERDRIVE`는 정기 삭제에만 쓰고 공용 HTTP는 `HYPERDRIVE`를 사용합니다. 바인딩이 없는 로컬과 CI는 기존 `PURGE_DATABASE_URL`을 사용합니다. 배포 뒤 실제 예약 삭제와 실패 감시는 별도로 확인합니다. Worker 설정은 대시보드에서 변경하지 않습니다.

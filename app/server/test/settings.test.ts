@@ -107,7 +107,8 @@ describe("readSettings", () => {
       hyperdrive = "postgresql://localhost/purge-hyperdrive",
       regular = "postgres://localhost/regular";
     const settings = readSettings({
-      DATABASE_URL: regular,
+      DATABASE_URL: "postgres://localhost/regular-direct",
+      HYPERDRIVE: { connectionString: regular },
       PURGE_DATABASE_URL: direct,
       PURGE_HYPERDRIVE: { connectionString: hyperdrive },
     });
