@@ -340,14 +340,20 @@ describeDb("운영자 기록의 최소 실행 권한(TASK-159)", () => {
             ])
           ).rows,
         ).toEqual([]);
-      expect(
-        (
-          await isolated.db.query("SELECT * FROM masked_value_erasures WHERE shop_id=$1 AND consultation_id=$2", [
-            shop.shopId,
-            consultationId,
-          ])
-        ).rows,
-      ).toEqual([{ id: masked.id, shop_id: shop.shopId, consultation_id: consultationId, erased_at: NOW }]);
+      const erasures = await isolated.db.query<{
+        id: string;
+        shop_id: string;
+        consultation_id: string;
+        erased_at: Date;
+      }>("SELECT * FROM masked_value_erasures WHERE shop_id=$1 AND consultation_id=$2", [shop.shopId, consultationId]);
+      expect(erasures.rows).toHaveLength(1);
+      expect(erasures.rows[0]).toMatchObject({ id: masked.id, shop_id: shop.shopId, consultation_id: consultationId });
+      if (conflict) expect(erasures.rows[0]?.erased_at).toEqual(NOW);
+      else {
+        const dbNow = (await isolated.db.query<{ now: Date }>("SELECT statement_timestamp() AS now")).rows[0]?.now;
+        expect(dbNow).toBeDefined();
+        expect((dbNow?.getTime() ?? 0) - (erasures.rows[0]?.erased_at.getTime() ?? 0)).toBeLessThan(60000);
+      }
       const after = await open();
       expect(after.status, await after.clone().text()).toBe(409);
       expect(((await after.json()) as { code: string }).code).toBe("original_erased");

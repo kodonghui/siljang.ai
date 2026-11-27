@@ -2,6 +2,7 @@
 -- 실제 역할/비밀번호를 이 파일에서 만들거나 기록하지 않는다.
 GRANT USAGE ON SCHEMA public TO :"purge_role";
 GRANT EXECUTE ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) TO :"purge_role";
+GRANT EXECUTE ON FUNCTION purge_expired_masked_value_erasures(integer) TO :"purge_role";
 -- 당일 시작/차례 결과는 숫자 기록만 읽고 넣는다. 수정/삭제는 허용하지 않는다.
 GRANT SELECT (id,shop_id,kind,created_at), INSERT (shop_id,kind,count,detail,created_at) ON ops_events TO :"purge_role";
 -- 후보는 ID/관계/시각만 읽는다. 새 역할을 공용 앱 역할의 멤버로 만들지 않는다.

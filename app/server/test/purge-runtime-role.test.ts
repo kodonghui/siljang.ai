@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { RequestDb } from "../src/db";
@@ -57,6 +58,155 @@ describeDb("예약 실행부터 상담 삭제까지 실제 두 역할(TASK159 PR
   });
   const normal = () => roleConnection(isolated.connect(), appRole),
     purge = () => roleConnection(isolated.connect(), purgeRole);
+  it("DST 세션에서도 서울 03:00 직전에는 전날 서울 03:00이 기준이다", async () => {
+    const id = newUuid();
+    const rollback = new Error("rollback synthetic data");
+    await expect(
+      isolated.db.transaction(async (tx) => {
+        await tx.query(
+          "INSERT INTO masked_value_erasures(shop_id,id,consultation_id,erased_at) VALUES($1,$2,$3,'2026-03-06T18:30:00Z')",
+          [shop.shopId, id, shop.consultationId],
+        );
+        await tx.query("SET LOCAL TIME ZONE 'America/Denver'");
+        const definition = (
+          await tx.query<{ source: string }>(
+            "SELECT pg_get_functiondef('public.purge_expired_masked_value_erasures(integer)'::regprocedure) AS source",
+          )
+        ).rows[0]?.source;
+        if (!definition) throw new Error("함수 정의 없음");
+        const controlled = definition
+          .replace("public.purge_expired_masked_value_erasures", "pg_temp.test_expired_erasures")
+          .replaceAll("statement_timestamp()", "'2026-03-08T17:30:00Z'::timestamptz");
+        await tx.query(controlled);
+        expect((await tx.query<{ n: number }>("SELECT pg_temp.test_expired_erasures(100) AS n")).rows[0]?.n).toBe(0);
+        expect((await tx.query("SELECT id FROM masked_value_erasures WHERE id=$1", [id])).rowCount).toBe(1);
+        throw rollback;
+      }),
+    ).rejects.toBe(rollback);
+  });
+  it("기본 EXECUTE 권한을 받는 세 공개 역할에서도 삭제 함수를 회수한다", async () => {
+    const old = await isolatedTestDb({ lastMigration: 47 });
+    const rollback = new Error("rollback synthetic roles");
+    try {
+      await expect(
+        old.db.transaction(async (tx) => {
+          for (const role of ["anon", "authenticated", "service_role"]) {
+            await tx.query(
+              `DO $role$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${role}') THEN CREATE ROLE ${role} NOLOGIN; END IF; END $role$`,
+            );
+            await tx.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO ${role}`);
+          }
+          await tx.query(
+            readFileSync(
+              new URL("../../../db/migrations/0048_masked_value_erasure_retention.sql", import.meta.url),
+              "utf8",
+            ),
+          );
+          for (const role of ["anon", "authenticated", "service_role"]) {
+            const result = await tx.query<{ allowed: boolean }>(
+              "SELECT has_function_privilege($1,'public.purge_expired_masked_value_erasures(integer)','EXECUTE') AS allowed",
+              [role],
+            );
+            expect(result.rows[0]?.allowed).toBe(false);
+          }
+          throw rollback;
+        }),
+      ).rejects.toBe(rollback);
+    } finally {
+      await old.close();
+    }
+  }, 30000);
+  it("삭제 식별 정보는 24시간 전에는 남고 이후 정기 삭제에서 사라지며 앱 역할은 함수를 실행하지 못한다", async () => {
+    const db = purge(),
+      appDb = normal(),
+      id = newUuid();
+    try {
+      await isolated.db.query(
+        "INSERT INTO masked_value_erasures(shop_id,id,consultation_id,erased_at) VALUES($1,$2,$3,statement_timestamp() - interval '23 hours')",
+        [shop.shopId, id, shop.consultationId],
+      );
+      await expect(appDb.query("SELECT purge_expired_masked_value_erasures($1)", [100])).rejects.toMatchObject({
+        code: "42501",
+      });
+      expect(
+        (await db.query<{ n: number }>("SELECT purge_expired_masked_value_erasures($1) AS n", [100])).rows[0]?.n,
+      ).toBe(0);
+      await isolated.db.query(
+        "UPDATE masked_value_erasures SET erased_at=((date_trunc('day', statement_timestamp() AT TIME ZONE 'Asia/Seoul') + interval '3 hours') AT TIME ZONE 'Asia/Seoul') - CASE WHEN (statement_timestamp() AT TIME ZONE 'Asia/Seoul')::time < time '03:00' THEN interval '48 hours' ELSE interval '24 hours' END WHERE id=$1",
+        [id],
+      );
+      expect(
+        (await db.query<{ n: number }>("SELECT purge_expired_masked_value_erasures($1) AS n", [100])).rows[0]?.n,
+      ).toBe(0);
+      await isolated.db.query(
+        "UPDATE masked_value_erasures SET erased_at=erased_at - interval '1 second' WHERE id=$1",
+        [id],
+      );
+      expect(
+        (await db.query<{ n: number }>("SELECT purge_expired_masked_value_erasures($1) AS n", [100])).rows[0]?.n,
+      ).toBe(1);
+      expect((await isolated.db.query("SELECT id FROM masked_value_erasures WHERE id=$1", [id])).rowCount).toBe(0);
+    } finally {
+      await db.close();
+      await appDb.close();
+    }
+  });
+  it.each(["42883", "42501"] as const)(
+    "예약 삭제의 DB 오류 %s는 식별 정보를 남기고 감시 이벤트를 남긴다",
+    async (code) => {
+      const id = newUuid(),
+        slot = latestSlot(),
+        logs = collectLogs(),
+        restricted = normal();
+      await isolated.db.query(
+        "INSERT INTO masked_value_erasures(shop_id,id,consultation_id,erased_at) VALUES($1,$2,$3,statement_timestamp() - interval '72 hours')",
+        [shop.shopId, id, shop.consultationId],
+      );
+      const before = await isolated.db.query("SELECT * FROM masked_value_erasures WHERE id=$1", [id]);
+      try {
+        const result = await runScheduled(
+          { scheduledTime: slot.getTime() - (code === "42883" ? 5 : 4) * DAY, cron: "* * * * *" },
+          testEnv({ PURGE_DATABASE_URL: "postgresql://purge.fixture/db" }),
+          {
+            connect: normal,
+            purgeConnect: () => {
+              const base = purge();
+              const failing: RequestDb = {
+                ...base,
+                query: (sql, params) =>
+                  sql.includes("public.purge_expired_masked_value_erasures(")
+                    ? code === "42501"
+                      ? restricted.query(sql, params)
+                      : base.query(
+                          sql.replace("purge_expired_masked_value_erasures", "missing_retention_function"),
+                          params,
+                        )
+                    : base.query(sql, params),
+              };
+              return failing;
+            },
+            jobs: runnableJobs().filter((job) => job.name === "purge"),
+            storage: new MemoryStore(),
+            logSink: logs.sink,
+          },
+        );
+        expect(result?.jobs.purge?.failed).toBe(1);
+        expect((await isolated.db.query("SELECT * FROM masked_value_erasures WHERE id=$1", [id])).rows).toEqual(
+          before.rows,
+        );
+        expect(logs.lines.map((line) => JSON.parse(line))).toContainEqual({
+          level: "error",
+          event: "purge_failed",
+          job: "purge",
+          code: "masked_value_erasures",
+          errorName: "DatabaseError",
+          dbCode: code,
+        });
+      } finally {
+        await restricted.close();
+      }
+    },
+  );
   async function closed(ended: Date) {
     const id = newUuid();
     await isolated.db.query(
@@ -152,7 +302,7 @@ describeDb("예약 실행부터 상담 삭제까지 실제 두 역할(TASK159 PR
     let purgeConnections = 0,
       purgeClosed = 0;
     const result = await runScheduled(
-      { scheduledTime: slot.getTime(), cron: "* * * * *" },
+      { scheduledTime: slot.getTime() - DAY, cron: "* * * * *" },
       testEnv({ PURGE_DATABASE_URL: "postgresql://purge.fixture/db" }),
       {
         connect: normal,
@@ -177,6 +327,32 @@ describeDb("예약 실행부터 상담 삭제까지 실제 두 역할(TASK159 PR
         .rows,
     ).toEqual([{ status: "deleted" }]);
     await expectProblem(await open(), "original_erased");
+    const age = await isolated.db.query<{ seconds: number }>(
+      "SELECT extract(epoch FROM (statement_timestamp()-erased_at))::int AS seconds FROM masked_value_erasures WHERE id=$1",
+      [target.maskedId],
+    );
+    expect(age.rows[0]?.seconds).toBeLessThan(60);
+    await isolated.db.query(
+      "UPDATE masked_value_erasures SET erased_at=statement_timestamp() - interval '72 hours' WHERE id=$1",
+      [target.maskedId],
+    );
+    const next = await runScheduled(
+      { scheduledTime: slot.getTime(), cron: "* * * * *" },
+      testEnv({ PURGE_DATABASE_URL: "postgresql://purge.fixture/db" }),
+      {
+        connect: normal,
+        purgeConnect: purge,
+        jobs: runnableJobs().filter((job) => job.name === "purge"),
+        storage,
+        logSink: logs.sink,
+      },
+    );
+    expect(next?.dailyStarted).toEqual(["purge"]);
+    expect(next?.jobs.purge?.failed, logs.lines.join("\n")).toBe(0);
+    expect(
+      (await isolated.db.query("SELECT id FROM masked_value_erasures WHERE id=$1", [target.maskedId])).rowCount,
+    ).toBe(0);
+    expect((await open()).status).toBe(404);
   });
   it.each(["missing", "same_role", "superuser"] as const)(
     "%s 설정은 시작 기록 전에 닫고 다른 분 단위 일은 계속한다",

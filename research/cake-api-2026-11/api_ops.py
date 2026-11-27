@@ -421,7 +421,7 @@ op(id="API-077", method="post", path="/operator/shops/{shopId}/originals", op="o
         "환불 계좌(refund_account), 보관 기록(kept_record), 상담의 대화 글 한 페이지(consultation_text: targetId는 상담 ID, cursor는 첫 페이지부터 API-075의 textCursor(현재 페이지 중20개까지·10분 만료·ID 구성 검증), 번호는 플레이스홀더 그대로, REQ-227). 응답과 같은 트랜잭션에서 운영자·시각·접속지·대상·사유를 접속기록에 남기고(action open_original·open_kept), "
         "남기지 못하면 500으로 값을 돌려주지 않는다(SPEC-074). 같은 요청 키로 다시 오면 다시 열어 같은 응답을 돌려주고 접속기록도 한 행 더 남긴다(요청 키 기록에는 원래 값을 두지 않음). "
         "원래 값을 두지 않는 값(카드번호·긴 숫자, REQ-192)은 409 original_not_kept, 지우기 작업이 비운 값과 지운 상담의 대화 글(SPEC-065)은 409 original_erased이고 둘 다 접속기록에 열기 행을 남기지 않는다. "
-        "연 값은 이 응답에만 있고 로그·오류 보고에는 없다(G6). 화면은 연 값을 저장하거나 내려받게 하지 않는다.",
+        "삭제된 번호 ID의 삭제 식별 정보는 생성 24시간 경과 뒤 처음 오는 서울 03:00 정기 작업에서 지우며 그 뒤 옛 ID는 404다. 작업 지연 시 보관도 길어진다. 연 값은 이 응답에만 있고 로그·오류 보고에는 없다(G6). 화면은 연 값을 저장하거나 내려받게 하지 않는다.",
    params=[pid("shopId", "가게", E.SHOP_ID)],
    body="OriginalOpenInput",
    body_examples={"masked_value": E.OPEN_ORIGINAL_INPUT,
