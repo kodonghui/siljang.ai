@@ -74,6 +74,17 @@ async function scenario(
 }
 
 describeDb("기존 DB 원장을 지키는 스테이징 갱신(TASK-173)", () => {
+  it("postgres가 아닌 실행자는 이행 전에 거부한다", async () => {
+    await scenario(async ({ db, role, cleanup }) => {
+      const sql = render(role, cleanup);
+      await expect(
+        db.transaction(async (tx) => {
+          await tx.query(`SET LOCAL ROLE "${role}"`);
+          await tx.query(sql);
+        }),
+      ).rejects.toThrow("migration_executor_must_be_postgres");
+    });
+  });
   it("원장 22건에서 현재 파일 수까지 진행하고 반복해도 지정한 합성 행만 지움", async () => {
     await scenario(async ({ db, role, cleanup, other }) => {
       const sql = render(role, cleanup);

@@ -4,6 +4,35 @@ import { describeDb } from "./support/db";
 import { isolatedTestDb } from "./support/isolated-db";
 
 describeDb("Supabase 기본 역할의 함수 실행 권한", () => {
+  it("일반 소유자는 postgres 역할이 있어도 자신의 기본 권한을 회수한다", async () => {
+    const isolated = await isolatedTestDb({ lastMigration: 0 });
+    try {
+      await isolated.db
+        .transaction(async (tx) => {
+          await tx.query(
+            `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='postgres') THEN CREATE ROLE postgres; END IF; CREATE ROLE test_owner_0049; CREATE ROLE test_observer_0049; END $$; GRANT CREATE ON SCHEMA public TO test_owner_0049; SET LOCAL ROLE test_owner_0049;`,
+          );
+          await tx.query(
+            readFileSync(
+              new URL("../../../db/migrations/0049_revoke_supabase_definer_execute.sql", import.meta.url),
+              "utf8",
+            ),
+          );
+          await tx.query(`CREATE FUNCTION public.owner_future_0049() RETURNS integer LANGUAGE sql AS 'SELECT 1'`);
+          const result = await tx.query<{ allowed: boolean }>(
+            "SELECT has_function_privilege('test_observer_0049', 'public.owner_future_0049()', 'EXECUTE') AS allowed",
+          );
+          expect(result.rows[0]?.allowed).toBe(false);
+          throw new Error("rollback owner");
+        })
+        .catch((error: Error) => {
+          if (error.message !== "rollback owner") throw error;
+        });
+    } finally {
+      await isolated.close();
+    }
+  }, 30000);
+
   it("기존 보안 함수의 직접 권한과 새 함수의 기본 권한을 회수한다", async () => {
     const isolated = await isolatedTestDb({ lastMigration: 48 });
     try {
