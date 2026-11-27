@@ -2532,7 +2532,7 @@ BEGIN
     RAISE EXCEPTION 'invalid batch size' USING ERRCODE='22023';
   END IF;
   slot := (date_trunc('day', statement_timestamp() AT TIME ZONE 'Asia/Seoul') + interval '3 hours') AT TIME ZONE 'Asia/Seoul';
-  IF slot > statement_timestamp() THEN slot := slot - interval '1 day'; END IF;
+  IF slot > statement_timestamp() THEN slot := slot - interval '24 hours'; END IF;
   WITH expired AS (
     SELECT e.shop_id, e.id FROM public.masked_value_erasures e
      WHERE e.erased_at < slot - interval '24 hours'
@@ -2544,6 +2544,17 @@ BEGIN
   RETURN removed;
 END $fn$;
 REVOKE ALL ON FUNCTION purge_expired_masked_value_erasures(integer) FROM PUBLIC;
+
+-- Supabase 기본 권한이 새 함수에 직접 부여한 실행 권한도 회수한다.
+DO $roles$
+DECLARE role_name text;
+BEGIN
+  FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated', 'service_role'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
+      EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION public.purge_expired_masked_value_erasures(integer) FROM %I', role_name);
+    END IF;
+  END LOOP;
+END $roles$;
 
 -- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음.
 COMMENT ON COLUMN owners.id IS '사장님 ID';
