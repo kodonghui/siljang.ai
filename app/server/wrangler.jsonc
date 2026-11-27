@@ -52,7 +52,10 @@
       "images": { "binding": "IMAGES" },
       "placement": { "region": "aws:ap-northeast-2" },
       "triggers": { "crons": ["* * * * *"] },
-      "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "822c6fce48714d8498b4e6098f0654db" }],
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "822c6fce48714d8498b4e6098f0654db" },
+        { "binding": "PURGE_HYPERDRIVE", "id": "67bf1b376737472c875b52fe4b9e34b6" }
+      ],
       "queues": {
         "producers": [{ "binding": "KAKAO_CALLBACK_QUEUE", "queue": "siljang-staging-kakao-callbacks" }],
         "consumers": [

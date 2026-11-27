@@ -30,7 +30,10 @@ describe("스테이징 Worker 바인딩(TASK-173)", () => {
   it("서울 배치 힌트·1분 Cron·Hyperdrive·같은 Worker의 정적 자산을 유지", () => {
     expect(staging.placement).toEqual({ region: "aws:ap-northeast-2" });
     expect(staging.triggers.crons).toEqual(["* * * * *"]);
-    expect(staging.hyperdrive).toEqual([expect.objectContaining({ binding: "HYPERDRIVE", id: expect.any(String) })]);
+    expect(staging.hyperdrive).toEqual([
+      expect.objectContaining({ binding: "HYPERDRIVE", id: expect.any(String) }),
+      { binding: "PURGE_HYPERDRIVE", id: "67bf1b376737472c875b52fe4b9e34b6" },
+    ]);
     expect(config.assets.directory).toBe("../web/dist");
   });
   it("설정 도구 시험은 비밀 값 없는 검사 작업에서 하고 실제 자원 준비는 main 배포에서만 함", () => {
