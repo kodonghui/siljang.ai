@@ -2,6 +2,13 @@
 
 공용 앱 연결은 HTTP와 시간 밖의 시작 기록 확인에만 씁니다. 정기 삭제는 기존 역할과 다른 NOINHERIT·NOSUPERUSER·NOCREATEDB·NOCREATEROLE·NOBYPASSRLS 역할을 준비합니다. 공용/관리 역할의 멤버십을 주지 않습니다. 실제 역할과 비밀번호는 이 문서나 명령 기록에 넣지 않고 Aside Vault에 둡니다.
 
+## 병합 전 필수 조건 · 미완료
+
+main 병합은 Worker 자동 배포를 시작하므로 다음 둘을 먼저 실제 스테이징에서 확인해야 합니다. 이 서버에서는 관리자 연결과 실제 변경 권한이 없어 수행하지 않았습니다.
+
+- [ ] 0048까지 스테이징 DB 이행을 적용한다.
+- [ ] 정기 삭제 전용 역할 권한을 재적용하고 새 함수 EXECUTE가 전용 역할에는 허용, 공용 역할과 존재하는 anon·authenticated·service_role에는 거부되는지 확인한다.
+
 1. 학원컴 Aside CLI로 Supabase에 로그인한 상태에서 0048번까지 이행을 적용합니다. 기존0046은 바꾸지 않습니다.
 2. 기존 공용 역할에 tools/staging-login-callback-grants.sql을 재적용하여 삭제ID 표/열 INSERT와 삭제 함수 실행을 회수합니다. 기존 넓은 권한이나 역할 멤버십이 있으면 별도로 확인합니다. 이 파일이 모든 과거 권한을 자동 회수한다고 가정하지 않습니다.
 3. Worker를 배포하기 전에 정기 삭제 전용 역할에 tools/staging-purge-grants.sql을 재적용합니다. 이행 생성기는 공용 역할 권한만 적용하므로 이 단계를 생략하지 않습니다. `has_function_privilege`로 전용 역할의 `purge_expired_masked_value_erasures(integer)` EXECUTE가 true이고 공용 역할 및 존재하는 anon·authenticated·service_role은 false인지 확인합니다. 확인이 실패하면 Worker 배포를 멈춥니다. 함수 실행과 각 삭제 단계의 열 권한, 당일 시작 숫자 기록 권한을 줍니다. 보관 원문 customer_name의 직접 SELECT와 운영자 원문 함수 실행은 열지 않습니다.

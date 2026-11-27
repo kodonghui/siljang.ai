@@ -151,6 +151,62 @@ describeDb("예약 실행부터 상담 삭제까지 실제 두 역할(TASK159 PR
       await appDb.close();
     }
   });
+  it.each(["42883", "42501"] as const)(
+    "예약 삭제의 DB 오류 %s는 식별 정보를 남기고 감시 이벤트를 남긴다",
+    async (code) => {
+      const id = newUuid(),
+        slot = latestSlot(),
+        logs = collectLogs(),
+        restricted = normal();
+      await isolated.db.query(
+        "INSERT INTO masked_value_erasures(shop_id,id,consultation_id,erased_at) VALUES($1,$2,$3,statement_timestamp() - interval '72 hours')",
+        [shop.shopId, id, shop.consultationId],
+      );
+      const before = await isolated.db.query("SELECT * FROM masked_value_erasures WHERE id=$1", [id]);
+      try {
+        const result = await runScheduled(
+          { scheduledTime: slot.getTime() - (code === "42883" ? 5 : 4) * DAY, cron: "* * * * *" },
+          testEnv({ PURGE_DATABASE_URL: "postgresql://purge.fixture/db" }),
+          {
+            connect: normal,
+            purgeConnect: () => {
+              const base = purge();
+              const failing: RequestDb = {
+                ...base,
+                query: (sql, params) =>
+                  sql.includes("public.purge_expired_masked_value_erasures(")
+                    ? code === "42501"
+                      ? restricted.query(sql, params)
+                      : base.query(
+                          sql.replace("purge_expired_masked_value_erasures", "missing_retention_function"),
+                          params,
+                        )
+                    : base.query(sql, params),
+              };
+              return failing;
+            },
+            jobs: runnableJobs().filter((job) => job.name === "purge"),
+            storage: new MemoryStore(),
+            logSink: logs.sink,
+          },
+        );
+        expect(result?.jobs.purge?.failed).toBe(1);
+        expect((await isolated.db.query("SELECT * FROM masked_value_erasures WHERE id=$1", [id])).rows).toEqual(
+          before.rows,
+        );
+        expect(logs.lines.map((line) => JSON.parse(line))).toContainEqual({
+          level: "error",
+          event: "purge_failed",
+          job: "purge",
+          code: "masked_value_erasures",
+          errorName: "DatabaseError",
+          dbCode: code,
+        });
+      } finally {
+        await restricted.close();
+      }
+    },
+  );
   async function closed(ended: Date) {
     const id = newUuid();
     await isolated.db.query(
