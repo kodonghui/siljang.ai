@@ -113,7 +113,7 @@ export async function googleLedgerPickerSdk(): Promise<LedgerPickerSdk> {
       });
     },
     choose({ appId, apiKey, accessToken }) {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         const view = new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS)
           .setIncludeFolders(true)
           .setSelectFolderEnabled(false)
@@ -124,6 +124,7 @@ export async function googleLedgerPickerSdk(): Promise<LedgerPickerSdk> {
           .setOAuthToken(accessToken)
           .addView(view)
           .setCallback((data) => {
+            if (data.action === "error") reject(new Error("picker unavailable"));
             if (data.action === "cancel") resolve(null);
             if (data.action === "picked") {
               const file = data.docs?.[0];

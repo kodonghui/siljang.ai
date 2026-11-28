@@ -58,7 +58,10 @@ export function ledgerSheetSetup(
         const snapshot = await sheets.inspect(access, file, tab);
         if (snapshot === null) return null;
         const reused = await existing(snapshot, shopId, file);
-        if (reused !== null) return reused;
+        if (reused !== null) {
+          if (!(await sheets.canEdit(access, file))) return null;
+          return reused;
+        }
         const plan = planLedgerColumns(snapshot.columnCount, snapshot.headers),
           range = { sheetId: snapshot.sheetId, dimension: "COLUMNS", startIndex: plan.start, endIndex: plan.end };
         const token = await signLedgerColumns(

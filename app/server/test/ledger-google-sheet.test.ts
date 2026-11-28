@@ -65,6 +65,38 @@ describe("구글 장부 조회: 고정 주소/첫 행/토큰 비노출", () => {
     expect(second.searchParams.get("valueRenderOption")).toBe("UNFORMATTED_VALUE");
     expect(JSON.stringify(result)).not.toContain(access.reveal());
   });
+  it("기존 장부는 같은 토큰으로 Drive의 파일 편집 권한을 확인한다", async () => {
+    const access = token();
+    const send = sequence([
+      reply({ id: file, mimeType: "application/vnd.google-apps.spreadsheet", capabilities: { canEdit: true } }),
+    ]);
+    expect(await googleLedgerSheets({ fetch: send }).canEdit(access, file)).toBe(true);
+    const [address, init] = send.mock.calls[0] as unknown as [string, RequestInit];
+    const url = new URL(address);
+    expect(url.origin).toBe("https://www.googleapis.com");
+    expect(url.pathname).toBe(`/drive/v3/files/${file}`);
+    expect(url.searchParams.get("fields")).toBe("id,mimeType,capabilities(canEdit)");
+    expect(url.searchParams.get("supportsAllDrives")).toBe("true");
+    expect(init.redirect).toBe("manual");
+    expect(new Headers(init.headers).get("authorization")).toBe(`Bearer ${access.reveal()}`);
+    expect(address).not.toContain(access.reveal());
+  });
+  it("Drive의 읽기 전용·권한 거절은 재연결을 거부하고 잘못된 응답은 오류로 닫는다", async () => {
+    for (const response of [
+      reply({ id: file, mimeType: "application/vnd.google-apps.spreadsheet", capabilities: { canEdit: false } }),
+      reply({}, 403),
+      reply({}, 404),
+    ])
+      expect(await googleLedgerSheets({ fetch: sequence([response]) }).canEdit(token(), file)).toBe(false);
+    for (const response of [
+      reply({ id: "other", mimeType: "application/vnd.google-apps.spreadsheet", capabilities: { canEdit: true } }),
+      reply({ id: file, mimeType: "application/vnd.google-apps.spreadsheet" }),
+      reply({}, 503),
+    ])
+      await expect(googleLedgerSheets({ fetch: sequence([response]) }).canEdit(token(), file)).rejects.toBeInstanceOf(
+        GoogleLedgerUnavailableError,
+      );
+  });
   it("빈 첫 행도 자료 아래를 덮지 않도록 실제 표 너비를 유지한다", async () => {
     const send = sequence([reply(metadata()), reply({})]);
     expect(await googleLedgerSheets({ fetch: send }).inspect(token(), file, tab)).toMatchObject({

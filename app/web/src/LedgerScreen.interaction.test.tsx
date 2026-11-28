@@ -5,6 +5,7 @@ import { StrictMode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { LedgerScreen } from "./LedgerScreen";
 import { acceptLedgerReturn, beginLedgerReturn } from "./ledger-callback";
+import { pickLedgerFile } from "./ledger-picker";
 
 vi.mock("./ledger-picker", () => ({
   googleLedgerPickerSdk: vi.fn(async () => ({})),
@@ -66,4 +67,34 @@ it("구글 복귀 뒤 선택한 파일만 연결하며 장애가 나면 코드�
     "sheet-selected-1234567890",
   );
   expect(screen.queryByRole("button", { name: "연결" })).toBeNull();
+});
+
+it("파일 선택 오류가 나면 처리 중 상태를 풀고 권한을 다시 연결할 수 있다", async () => {
+  vi.stubEnv("VITE_LEDGER_PICKER_CLIENT_ID", "client");
+  vi.stubEnv("VITE_LEDGER_PICKER_APP_ID", "123");
+  vi.stubEnv("VITE_LEDGER_PICKER_API_KEY", "public-key");
+  beginLedgerReturn({ shopId: "shop-1", state: "signed-state-123456", revision: null });
+  acceptLedgerReturn("?code=example-auth-code&state=signed-state-123456");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json(problem("not_set", 404), 404)),
+  );
+  vi.mocked(pickLedgerFile).mockRejectedValueOnce(new Error("synthetic"));
+  render(
+    <StrictMode>
+      <LedgerScreen
+        shopId="shop-1"
+        shopName="가게"
+        onNavigate={vi.fn()}
+        onSessionExpired={vi.fn()}
+        onRegisterShop={vi.fn()}
+        onLogout={vi.fn()}
+      />
+    </StrictMode>,
+  );
+  const choose = await screen.findByRole("button", { name: "구글 시트 선택" });
+  await waitFor(() => expect((choose as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(choose);
+  await screen.findByText("파일 선택을 열 수 없어요. 구글 연결을 다시 해 주세요");
+  expect((screen.getByRole("button", { name: "구글 권한 다시 연결" }) as HTMLButtonElement).disabled).toBe(false);
 });

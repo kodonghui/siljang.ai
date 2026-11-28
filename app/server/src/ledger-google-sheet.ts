@@ -35,6 +35,27 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
     return JSON.parse(new TextDecoder().decode(bytes));
   }
   return {
+    async canEdit(accessToken: Secret, spreadsheetId: string): Promise<boolean> {
+      if (!/^[A-Za-z0-9_-]{20,100}$/.test(spreadsheetId)) throw new TypeError("invalid Google ledger target");
+      try {
+        const url = new URL(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}`);
+        url.searchParams.set("fields", "id,mimeType,capabilities(canEdit)");
+        url.searchParams.set("supportsAllDrives", "true");
+        const raw = await read(url, accessToken);
+        if (raw === DENIED) return false;
+        const file = object(raw),
+          capabilities = object(file?.capabilities);
+        if (
+          file?.id !== spreadsheetId ||
+          file.mimeType !== "application/vnd.google-apps.spreadsheet" ||
+          typeof capabilities?.canEdit !== "boolean"
+        )
+          throw new GoogleLedgerUnavailableError();
+        return capabilities.canEdit;
+      } catch {
+        throw new GoogleLedgerUnavailableError();
+      }
+    },
     async inspect(accessToken: Secret, spreadsheetId: string, sheetName: string): Promise<LedgerSheetSnapshot | null> {
       if (
         !/^[A-Za-z0-9_-]{20,100}$/.test(spreadsheetId) ||

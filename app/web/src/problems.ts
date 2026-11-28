@@ -492,7 +492,13 @@ export function classify(status: number, problem: Problem | null, retryAfterSeco
 /** 장부 연결 응답 유실은 인가 코드 소비 여부가 불명확하므로 권한 요청부터 다시 시작한다. */
 export function classifyLedgerLink(status: number, problem: Problem | null, retryAfterSeconds: number | null): Failure {
   const result = classify(status, problem, retryAfterSeconds);
-  if (status === 0 || status >= 500 || problem?.code === "version_conflict")
+  if (status === 0 || status >= 500)
+    return {
+      ...result,
+      retry: "none",
+      message: `${ERROR_CODES.google_unavailable.message}. 구글 시트에 열이 이미 생겼을 수 있어요`,
+    };
+  if (problem?.code === "version_conflict")
     return { ...result, retry: "none", message: ERROR_CODES.google_unavailable.message };
   return result;
 }

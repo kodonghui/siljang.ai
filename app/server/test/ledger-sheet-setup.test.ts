@@ -23,7 +23,14 @@ function fixture() {
   const writes: Record<string, unknown>[] = [];
   const send = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
-    if (url.origin === "https://www.googleapis.com") return new Response(JSON.stringify({ id: file, mimeType: "application/vnd.google-apps.spreadsheet", capabilities: { canEdit: editable } }));
+    if (url.origin === "https://www.googleapis.com")
+      return new Response(
+        JSON.stringify({
+          id: file,
+          mimeType: "application/vnd.google-apps.spreadsheet",
+          capabilities: { canEdit: editable },
+        }),
+      );
     expect(url.origin).toBe("https://sheets.googleapis.com");
     expect(init?.redirect).toBe("manual");
     expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${access.reveal()}`);
@@ -124,7 +131,9 @@ function fixture() {
     set collaborate(value: boolean) {
       collaborate = value;
     },
-    set editable(value: boolean) { editable = value; },
+    set editable(value: boolean) {
+      editable = value;
+    },
     set corruptReadback(value: boolean) {
       corruptReadback = value;
     },

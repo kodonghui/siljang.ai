@@ -3788,4 +3788,6 @@ DB 필수 전체 서버 시험 3,863개와 웹 시험 1,878개가 통과했습�
 
 실장님 리뷰에서 첫 연결의 메타데이터 범위를 단일 열로 고치고, 구글 권한을 `drive.file`로 줄였습니다. 교환을 시도한 인가 코드의 HMAC 지문을 24시간 보관해 같은 코드를 다시 교환하지 않고, 시트 열이 이미 생긴 경우 현재 상태를 확인한 뒤 새 권한으로 다시 연결하도록 계약을 바꿨습니다. Google Picker를 통한 파일 선택과 구글 복귀의 기본 경로를 연결했으며 TASK-160의 전체 화면 상태와 실제 구글 확인은 남았습니다.
 
-구글 파일 선택 빌드에는 공개 설정 이름 `VITE_LEDGER_PICKER_CLIENT_ID`, `VITE_LEDGER_PICKER_APP_ID`(Cloud 프로젝트 번호), `VITE_LEDGER_PICKER_API_KEY`가 필요합니다. 세 값은 같은 구글 Cloud 프로젝트에 속해야 하며 웹 OAuth의 허용 출처, Picker API 사용 설정과 공개 키의 허용 출처·API 제한을 실장님이 확인합니다. 스테이징 웹 빌드는 같은 이름의 GitHub Actions 변수에서 읽고, 값이 없으면 연결 버튼을 비활성화합니다. 브라우저의 임시 토큰은 Picker 호출에만 쓰고 저장하지 않습니다. [구글 공식 설정 안내](https://developers.google.com/workspace/drive/picker/guides/web-picker)
+구글 파일 선택 빌드에는 공개 설정 이름 `VITE_LEDGER_PICKER_CLIENT_ID`, `VITE_LEDGER_PICKER_APP_ID`(Cloud 프로젝트 번호), `VITE_LEDGER_PICKER_API_KEY`가 필요합니다. 세 값은 같은 구글 Cloud 프로젝트에 속해야 하며 웹 OAuth의 허용 출처, Google Picker API·Drive API 사용 설정과 공개 키의 앱 출처·`https://docs.google.com/*` 허용 및 API 제한을 실장님이 확인합니다. 스테이징 웹 빌드는 같은 이름의 GitHub Actions 변수에서 읽고, 값이 없으면 연결 버튼을 비활성화합니다. 브라우저의 임시 토큰은 Picker 호출에만 쓰고 저장하지 않습니다. [구글 공식 설정 안내](https://developers.google.com/workspace/drive/picker/guides/web-picker)
+
+재리뷰에서 파일 선택 오류로 화면이 잠기지 않게 하고, 서명된 기존 열을 다시 쓰기 전 같은 구글 토큰으로 파일의 편집 권한을 확인합니다. 응답 유실과 구글 장애에는 구글 시트에 열이 이미 생겼을 수 있다고 알립니다. 이행 0001~0056 번호의 연속성과 0050~0056 파일의 내용이 비어 있지 않음을 확인했습니다.
