@@ -136,6 +136,12 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
       });
     },
   );
+  it("복구 뒤 토큰이 없으면 다시 연결할 수 있도록 auth_lost를 반환한다", async () => {
+    await link("linked");
+    const response = await get();
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { status: string }).status).toBe("auth_lost");
+  });
   it("옛 배열 형식도 읽으며 숨은 필드나 자격 증명 참조는 내보내지 않는다", async () => {
     await link("linked", { columns: COLUMNS });
     let response = await get();
