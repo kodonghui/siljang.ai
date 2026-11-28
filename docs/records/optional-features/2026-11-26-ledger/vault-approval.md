@@ -6,3 +6,5 @@
 - 초기 상태: 승인 당시 구현은 없었습니다. 이후 앱 암호화와 로컬 모의 Vault 권한 시험을 추가했으며, 실제 Vault 적용과 복구 후 재연결 확인은 아직 완료하지 않았습니다.
 
 2026-11-28 실장님은 Orca 작업 답변(msg_f97415889703)에서 동희님의 Vault 허용 범위 안에서 플랫폼 제약을 받아들이고 Worker 비밀 키를 쓰는 기존 앱 암호화로 OAuth 토큰을 먼저 암호화해 Vault에 암호문만 저장하도록 결정했습니다. `service_role` 직접 권한 금지는 평문을 읽지 못하게 하는 조건으로 해석하며, `siljang_runtime`·`anon`·`authenticated`에는 Vault 직접 권한을 주지 않고 전용 SECURITY DEFINER 함수만 사용합니다. [Supabase 공식 문서](https://supabase.com/kb/troubleshooting/revoking-privileges-on-storage-pg_cron-vault-and-extension-objects-has-no-effect-916576)는 Vault의 `service_role` 기본 권한을 개별 프로젝트에서 회수할 수 없다고 설명합니다. 앱 서버 소스, Worker 설정, CI 워크플로와 도구에서 `service[_-]?role|serviceRole`을 검색한 결과 일치 항목은 없었습니다(검색은 코드·설정에 한정하며 실제 환경의 모든 권한을 확인한 것은 아닙니다).
+
+실장님 원문(2026-11-28 Orca 답변 `msg_f97415889703`): “OAuth 토큰은 저장 전에 기존 앱 암호화 모듈(원문 *_enc 열에 쓰는 것과 같은 방식, Worker 비밀 키)로 암호화한 뒤 그 암호문만 Vault에 넣어요. 그러면 service_role이 Vault를 읽어도 평문 토큰은 못 봐요.” 이 판단은 앞선 제안의 service_role 직접 권한 회수 전제를 대체합니다.
