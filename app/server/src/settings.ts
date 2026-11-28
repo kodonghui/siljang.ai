@@ -6,6 +6,7 @@
  */
 
 import { AI_PROVIDERS, type AiProvider, type FxRate, priceOf } from "./ai-prices";
+import type { GoogleLedgerOAuthSettings } from "./ledger-google-auth";
 import { type PrivacyPolicySettings, readPrivacyPolicySettings, readPublicAppOrigin } from "./privacy-policy-settings";
 
 const MASK = "**********";
@@ -174,6 +175,7 @@ export interface Settings {
   /** 운영자 인증 서비스(Supabase Auth). 두 변수가 모두 없으면 null. */
   readonly operatorAuth: OperatorAuthSettings | null;
   readonly ownerAuth: OwnerAuthSettings | null;
+  readonly ledgerOAuth: GoogleLedgerOAuthSettings | null;
   readonly ownerAlerts: OwnerAlertSettings;
   readonly privacyPolicy: PrivacyPolicySettings | null;
   readonly publicAppOrigin: string | null;
@@ -257,10 +259,37 @@ export function readSettings(env: Readonly<Record<string, unknown>>): Settings {
     ai,
     operatorAuth: readOperatorAuth(env, appEnv),
     ownerAuth,
+    ledgerOAuth: readLedgerOAuth(env),
     ownerAlerts: readOwnerAlerts(env, ownerAuth, appEnv),
     privacyPolicy: readPrivacyPolicySettings(env, ai?.provider),
     publicAppOrigin: readPublicAppOrigin(env.PUBLIC_APP_ORIGIN),
   };
+}
+
+function readLedgerOAuth(env: Readonly<Record<string, unknown>>): GoogleLedgerOAuthSettings | null {
+  const names = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_LEDGER_REDIRECT_URIS"] as const;
+  const values = names.map((name) => (typeof env[name] === "string" ? (env[name] as string).trim() : ""));
+  if (values.every((value) => value === "")) return null;
+  if (values.some((value) => value === "")) throw new SettingsError("Google ledger settings must be set together");
+  const [id, secret, uris] = values as [string, string, string],
+    redirectUris = uris.split(",").map((value) => value.trim());
+  for (const value of redirectUris) {
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new SettingsError("GOOGLE_LEDGER_REDIRECT_URIS must contain exact https URLs");
+    }
+    if (
+      url.protocol !== "https:" ||
+      url.username !== "" ||
+      url.password !== "" ||
+      url.hash !== "" ||
+      url.href !== value
+    )
+      throw new SettingsError("GOOGLE_LEDGER_REDIRECT_URIS must contain exact https URLs");
+  }
+  return { clientId: new Secret(id), clientSecret: new Secret(secret), redirectUris };
 }
 
 function readOwnerAlerts(

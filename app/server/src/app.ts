@@ -11,6 +11,8 @@ import { startKakaoChannelCheck } from "./kakao-channel-check";
 import { kakaoReply } from "./kakao-reply";
 import { kakaoSkillRoutes } from "./kakao-skill";
 import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill-auth";
+import { getLedger } from "./ledger";
+import { authorizeLedger } from "./ledger-authorization";
 import { resubmitLicense } from "./license-resubmission";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import {
@@ -80,6 +82,9 @@ export type Bindings = {
   readonly PURGE_HYPERDRIVE?: { readonly connectionString: string };
   readonly IMAGES?: ImageBinding;
   readonly REQUEST_HASH_KEY?: string;
+  readonly GOOGLE_CLIENT_ID?: string;
+  readonly GOOGLE_CLIENT_SECRET?: string;
+  readonly GOOGLE_LEDGER_REDIRECT_URIS?: string;
   readonly STORAGE_ACCESS_KEY_ID?: string;
   readonly STORAGE_SECRET_ACCESS_KEY?: string;
   readonly FILE_URL_KEY?: string;
@@ -163,6 +168,8 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   accessRoute("GET", "/owner/consultations/:consultationId/messages", "owner", "API-043", listConsultationMessages),
   accessRoute("GET", "/owner/tasks", "owner", "API-040", listOwnerTasks),
   shopRoute("GET", "/owner/booking-link", "owner", getBookingLink),
+  shopRoute("GET", "/owner/ledger", "owner", getLedger),
+  shopRoute("POST", "/owner/ledger/authorization", "owner", authorizeLedger),
   shopRoute("GET", "/public/shops/:slug", "public", getPublicBookingPage),
   shopRoute("GET", "/public/shops/:slug/privacy-policy", "public", getPublicPrivacyPolicy),
   shopRoute("POST", "/owner/kakao-channel/check", "owner", startKakaoChannelCheck),
