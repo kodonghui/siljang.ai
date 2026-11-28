@@ -30,7 +30,7 @@ function reply(data: unknown, status = 200) {
 }
 
 describe("구글 장부 인가 코드 교환: 고정 주소/최소 범위/토큰 비노출", () => {
-  it("Sheets 권한 하나·offline/consent·PKCE를 요청하고 클라이언트 비밀은 주소에 넣지 않는다", () => {
+  it("파일 단위 drive.file 권한만 요청하고 클라이언트 비밀은 주소에 넣지 않는다", () => {
     const config = settings(),
       auth = googleLedgerOAuth(config),
       state = "1".repeat(57),
@@ -49,7 +49,7 @@ describe("구글 장부 인가 코드 교환: 고정 주소/최소 범위/토큰
       code_challenge: challenge,
       code_challenge_method: "S256",
     });
-    expect(url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/spreadsheets");
+    expect(url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/drive.file");
     expect(url.href).not.toContain(config.clientSecret.reveal());
   });
   it.each([`${redirect}?x=1`, `${redirect}2`, "https://other.example/owner/ledger/callback"])(
@@ -62,6 +62,10 @@ describe("구글 장부 인가 코드 교환: 고정 주소/최소 범위/토큰
       expect(send).not.toHaveBeenCalled();
     },
   );
+  it.each(["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets"])("필요한 파일 범위 외 권한이 있으면 허용하지 않는다: %s", async (scope) => {
+    const tokens = { ...credential(), scope };
+    expect(await googleLedgerOAuth(settings(), { fetch: async () => reply(tokens) }).exchange("fixture/code", redirect, "v".repeat(43))).toBeNull();
+  });
   it("인가 코드/PKCE는 고정 토큰 주소의 본문에만 보내고 비밀 래퍼로 돌려준다", async () => {
     const config = settings(),
       tokens = credential();

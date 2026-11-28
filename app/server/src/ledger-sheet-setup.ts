@@ -89,7 +89,7 @@ export function ledgerSheetSetup(
                     metadataKey: "siljang_columns_v1",
                     metadataValue: token,
                     visibility: "PROJECT",
-                    location: { dimensionRange: range },
+                    location: { dimensionRange: { ...range, endIndex: plan.start + 1 } },
                   },
                 },
               },

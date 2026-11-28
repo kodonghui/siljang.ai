@@ -78,7 +78,7 @@ describe("구글 장부 조회: 고정 주소/첫 행/토큰 비노출", () => {
       metadataKey: key,
       metadataValue: "c1.fixture.signed",
       visibility: "PROJECT",
-      location: { dimensionRange: { sheetId: 7, dimension: "COLUMNS", startIndex: 2, endIndex: 14 } },
+      location: { dimensionRange: { sheetId: 7, dimension: "COLUMNS", startIndex: 2, endIndex: 3 } },
     };
     const selected = data.sheets[0];
     if (!selected) throw new Error("합성 탭 없음");
