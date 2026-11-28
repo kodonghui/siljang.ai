@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { Queryable, RequestDb } from "../src/db";
+import { GoogleLedgerUnavailableError } from "../src/ledger-google-auth";
 import { LEDGER_COOKIE, verifyLedgerOAuth } from "../src/ledger-oauth";
 import { OWNER_COOKIE, readCookie } from "../src/owner-oauth";
 import { createOwnerSession } from "../src/owner-session";
@@ -143,6 +144,72 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
       });
     },
   );
+  it.each([
+    ["state", "google_authorization_failed"],
+    ["denied", "google_authorization_failed"],
+    ["sheet", "sheet_not_accessible"],
+    ["offline", "google_unavailable"],
+  ] as const)("구글 연결 실패 %s는 장부를 남기지 않는다", async (failure, code) => {
+    const fields = testFieldCrypto(new Map([[1, newFieldKey()]]), 1);
+    const overrides = {
+      fieldCrypto: fields,
+      ledgerAuthorization: {
+        start: async () => {
+          throw new Error("unused");
+        },
+        verify: async () =>
+          failure === "state" ? null : { redirect: "https://siljang.example/callback", verifier: "test-verifier" },
+      },
+      ledgerGoogle: {
+        authorizeUrl: () => "",
+        exchange: async () => {
+          if (failure === "offline") throw new GoogleLedgerUnavailableError();
+          return failure === "denied"
+            ? null
+            : { accessToken: new Secret("test-access"), refreshToken: new Secret("test-refresh"), expiresAt: NOW };
+        },
+      },
+      ledgerSetup: { connect: async () => null },
+    } as unknown as ServiceOverrides;
+    const response = await app(true, false, overrides).request(
+      PATH,
+      {
+        method: "PUT",
+        headers: {
+          cookie,
+          Origin: "https://siljang.example",
+          "content-type": "application/json",
+          "Idempotency-Key": `ledger-${newUuid()}`,
+        },
+        body: JSON.stringify({
+          baseRevision: null,
+          code: "fixture-code",
+          state: "fixture-state-123456789",
+          spreadsheetId: SHEET,
+          sheetName: "주문 장부",
+        }),
+      },
+      testEnv(),
+    );
+    await expectProblem(response, code);
+    expect((await isolated.db.query("SELECT id FROM ledger_links WHERE shop_id=$1", [shop.shopId])).rowCount).toBe(0);
+  });
+  it("Vault가 없으면 구글 인가 코드를 쓰지 않는다", async () => {
+    let exchanges = 0;
+    const fields = testFieldCrypto(new Map([[1, newFieldKey()]]), 1);
+    const overrides = {
+      fieldCrypto: fields,
+      ledgerAuthorization: { start: async () => { throw new Error("unused"); }, verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }) },
+      ledgerGoogle: { authorizeUrl: () => "", exchange: async () => { exchanges += 1; return null; } },
+      ledgerSetup: { connect: async () => null },
+    } as unknown as ServiceOverrides;
+    await isolated.db.query("ALTER SCHEMA vault RENAME TO vault_unavailable");
+    try {
+      const response = await app(true, false, overrides).request(PATH, { method: "PUT", headers: { cookie, Origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": `ledger-${newUuid()}` }, body: JSON.stringify({ baseRevision: null, code: "fixture-code", state: "fixture-state-123456789", spreadsheetId: SHEET, sheetName: "주문 장부" }) }, testEnv());
+      expect(response.status).toBe(500);
+      expect(exchanges).toBe(0);
+    } finally { await isolated.db.query("ALTER SCHEMA vault_unavailable RENAME TO vault"); }
+  });
   it("암호화 키가 없으면 구글 인가 코드를 쓰지 않는다", async () => {
     let exchanges = 0;
     const overrides = {
