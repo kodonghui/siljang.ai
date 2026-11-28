@@ -141,6 +141,17 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
       });
     },
   );
+  it("장부 생성은 가게 소유를 검증하고 중복 연결을 막는다", async () => {
+    const id = newUuid();
+    const values = [shop.shopId, shop.ownerId, id, SHEET, "주문 장부", JSON.stringify({ columns: COLUMNS }), null, NOW];
+    const first = await isolated.db.query<{ outcome: string }>("SELECT * FROM private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)", values);
+    expect(first.rows[0]?.outcome).toBe("created");
+    const duplicate = await isolated.db.query<{ outcome: string }>("SELECT * FROM private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)", [shop.shopId, shop.ownerId, newUuid(), ...values.slice(3)]);
+    expect(duplicate.rows[0]?.outcome).toBe("conflict");
+    const other = await createShop(isolated.db, "다른 가게");
+    const denied = await isolated.db.query("SELECT * FROM private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)", [shop.shopId, other.ownerId, newUuid(), ...values.slice(3)]);
+    expect(denied.rows).toHaveLength(0);
+  });
   it("Vault 저장 함수는 해당 가게의 암호문만 저장한다", async () => {
     const id = await link("linked");
     const encrypted = `v1:${"A".repeat(64)}`;
