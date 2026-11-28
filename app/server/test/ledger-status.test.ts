@@ -139,6 +139,15 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
       });
     },
   );
+  it("연결 해제는 토큰을 지우고 상태를 반환한다", async () => {
+    await link("linked");
+    const response = await app(true).request(PATH, { method: "DELETE", headers: { cookie, "Idempotency-Key": `ledger-${newUuid()}` } }, testEnv());
+    expect(response.status, await response.clone().text()).toBe(200);
+    const body = await response.json() as { outcome: string; ledger: {status: string} };
+    expect(body.outcome).toBe("done");
+    expect(body.ledger.status).toBe("unlinked");
+    expect((await isolated.db.query("SELECT id FROM vault.secrets")).rowCount).toBe(0);
+  });
   it("복구 뒤 토큰이 없으면 다시 연결할 수 있도록 auth_lost를 반환한다", async () => {
     await link("linked", { missing: true });
     const response = await get();
