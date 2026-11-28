@@ -75,9 +75,20 @@ export function ledgerSheetSetup(
             !LEDGER_HEADERS.every((header, i) => snapshot.headers[marker.start + i] === header)
           )
             continue;
-          if (snapshot.columnCount >= LEDGER_MAX_COLUMNS) throw new LedgerColumnsOverflowError();
+          const firstInternal = marker.start + LEDGER_HEADERS.length;
+          const record = LEDGER_STORAGE_HEADERS[LEDGER_HEADERS.length],
+            order = LEDGER_STORAGE_HEADERS[LEDGER_HEADERS.length + 1];
+          const suffix = snapshot.headers[firstInternal];
+          const repair = legacy
+            ? [record, order]
+            : suffix === record
+              ? [order]
+              : suffix === order
+                ? [record]
+                : [record, order];
+          const idColumn = !legacy && suffix === record ? firstInternal + 1 : firstInternal;
+          if (snapshot.columnCount + repair.length > LEDGER_MAX_COLUMNS) throw new LedgerColumnsOverflowError();
           if (!(await sheets.canEdit(access, file))) return null;
-          const idColumn = marker.start + LEDGER_HEADERS.length;
           const token = legacy ? await signLedgerColumns(key, scope, marker.start, legacy.movedRight) : marker.token;
           const response = await send(`https://sheets.googleapis.com/v4/spreadsheets/${file}:batchUpdate`, {
             method: "POST",
@@ -92,7 +103,7 @@ export function ledgerSheetSetup(
                       sheetId: snapshot.sheetId,
                       dimension: "COLUMNS",
                       startIndex: idColumn,
-                      endIndex: idColumn + 1,
+                      endIndex: idColumn + repair.length,
                     },
                     inheritFromBefore: true,
                   },
@@ -102,12 +113,10 @@ export function ledgerSheetSetup(
                     start: { sheetId: snapshot.sheetId, rowIndex: 0, columnIndex: idColumn },
                     rows: [
                       {
-                        values: [
-                          {
-                            userEnteredValue: { stringValue: LEDGER_STORAGE_HEADERS[LEDGER_HEADERS.length] },
-                            note: "실장님이 중복 기록을 막는 데 쓰는 열, 지우거나 바꾸지 마세요",
-                          },
-                        ],
+                        values: repair.map((header) => ({
+                          userEnteredValue: { stringValue: header },
+                          note: "실장님이 중복 기록을 막는 데 쓰는 열, 지우거나 바꾸지 마세요",
+                        })),
                       },
                     ],
                     fields: "userEnteredValue,note",
@@ -119,7 +128,7 @@ export function ledgerSheetSetup(
                       sheetId: snapshot.sheetId,
                       dimension: "COLUMNS",
                       startIndex: idColumn,
-                      endIndex: idColumn + 1,
+                      endIndex: idColumn + repair.length,
                     },
                     properties: { hiddenByUser: true },
                     fields: "hiddenByUser",
@@ -190,7 +199,7 @@ export function ledgerSheetSetup(
                     {
                       values: LEDGER_STORAGE_HEADERS.map((value, index) => ({
                         userEnteredValue: { stringValue: value },
-                        ...(index === LEDGER_HEADERS.length
+                        ...(index >= LEDGER_HEADERS.length
                           ? { note: "실장님이 중복 기록을 막는 데 쓰는 열, 지우거나 바꾸지 마세요" }
                           : {}),
                       })),
@@ -204,7 +213,7 @@ export function ledgerSheetSetup(
                   range: {
                     sheetId: snapshot.sheetId,
                     dimension: "COLUMNS",
-                    startIndex: plan.end - 1,
+                    startIndex: plan.end - 2,
                     endIndex: plan.end,
                   },
                   properties: { hiddenByUser: true },

@@ -11,6 +11,9 @@ export class LedgerDuplicateError extends Error {
 export class LedgerUncertainError extends Error {
   override readonly name = "LedgerUncertainError";
 }
+export class LedgerConflictError extends Error {
+  override readonly name = "LedgerConflictError";
+}
 class LedgerDefiniteError extends Error {}
 
 /** 중복을 탐지할 뿐 시트의 행을 삭제하거나 수정하지 않는다. */
@@ -56,7 +59,7 @@ export async function auditLedgerSheet(
   try {
     const orders = await read(input.setup.start),
       lastRow = Math.max(2, orders.length),
-      ids = await read(input.setup.end - 1, Math.max(2, lastRow - 9999), lastRow),
+      ids = await read(input.setup.end - 2, Math.max(2, lastRow - 9999), lastRow),
       event = input.eventId.replaceAll("-", "").toLowerCase();
     const idCount = ids.filter((row) => row[0] === event).length;
     const orderCount = orders.filter((row, index) => index > 0 && row[0] === input.values[0]).length;
@@ -67,7 +70,7 @@ export async function auditLedgerSheet(
   }
 }
 
-/** 주문번호 열만 조회하고 숨김 ID는 불확실할 때만 조회한다. */
+/** 쓰기 전후 우리 열을 비교해 협업 중 사라지거나 바뀐 행을 감지한다. */
 export async function writeLedgerSheet(
   input: {
     readonly file: string;
@@ -78,6 +81,7 @@ export async function writeLedgerSheet(
     readonly shopId: string;
     readonly linkId: string;
     readonly eventId: string;
+    readonly orderId: string;
     readonly uncertain?: boolean;
   },
   options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {},
@@ -90,6 +94,7 @@ export async function writeLedgerSheet(
     !isUuid(input.shopId) ||
     !isUuid(input.linkId) ||
     !isUuid(input.eventId) ||
+    !isUuid(input.orderId) ||
     input.tab.length < 1 ||
     input.tab.length > 100
   )
@@ -128,54 +133,56 @@ export async function writeLedgerSheet(
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new GoogleLedgerUnavailableError();
     return raw as Record<string, unknown>;
   }
-  try {
-    const eventId = input.eventId.replaceAll("-", "").toLowerCase();
-    async function readColumn(column: string, start?: number, end?: number): Promise<unknown[][]> {
-      const range = start === undefined ? `${column}:${column}` : `${column}${start}:${column}${end}`;
-      const url = new URL(`${base}/values/${encodeURIComponent(`${tab}!${range}`)}`);
-      url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
-      const data = await request(url.href, "GET"),
-        rows = data?.values ?? [];
-      if (!Array.isArray(rows) || rows.length > 100000 || rows.some((row) => !Array.isArray(row) || row.length > 1))
-        throw new GoogleLedgerUnavailableError();
-      return rows as unknown[][];
+  const eventId = input.eventId.replaceAll("-", "").toLowerCase();
+  const orderId = input.orderId.replaceAll("-", "").toLowerCase();
+  const last = ledgerColumnName(input.setup.end - 1);
+  type Cell = string | number | boolean;
+  async function read(range: string): Promise<Cell[][]> {
+    const url = new URL(`${base}/values/${encodeURIComponent(`${tab}!${range}`)}`);
+    url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
+    const data = await request(url.href, "GET");
+    const rows = data?.values ?? [];
+    if (
+      !Array.isArray(rows) ||
+      rows.some(
+        (row) =>
+          !Array.isArray(row) ||
+          row.length > LEDGER_STORAGE_HEADERS.length ||
+          row.some((cell: unknown) => !["string", "number", "boolean"].includes(typeof cell)),
+      )
+    )
+      throw new GoogleLedgerUnavailableError();
+    return rows as Cell[][];
+  }
+  async function snapshot(): Promise<Cell[][]> {
+    const rows = await read(`${first}:${last}`);
+    if (rows.length > 5001) throw new LedgerConflictError("ledger row limit");
+    return rows.slice(1).map((row) => Array.from({ length: LEDGER_STORAGE_HEADERS.length }, (_, i) => row[i] ?? ""));
+  }
+  function key(row: Cell[]): string {
+    return typeof row[13] === "string" && row[13] ? `id:${row[13]}` : `number:${String(row[0])}`;
+  }
+  function indexed(rows: Cell[][]): Map<string, Cell[]> {
+    const map = new Map<string, Cell[]>();
+    for (const row of rows) {
+      if (row.every((cell) => cell === "")) continue;
+      const k = key(row);
+      if (map.has(k)) throw new LedgerDuplicateError();
+      map.set(k, row);
     }
-    const rows = await readColumn(first);
-    let writtenRow: number | undefined;
-    if (input.uncertain) {
-      const lastRow = Math.max(2, rows.length),
-        startRow = Math.max(2, lastRow - 9999);
-      const ids = await readColumn(ledgerColumnName(input.setup.end - 1), startRow, lastRow);
-      const matches = ids.flatMap((row, index) => (row[0] === eventId ? [startRow - 1 + index] : []));
-      if (matches.length > 1) throw new LedgerDuplicateError();
-      writtenRow = matches[0];
-    }
-    const matches = rows.flatMap((row, index) => (index > 0 && row[0] === input.values[0] ? [index] : []));
-    if (matches.length > 1) throw new LedgerDuplicateError();
-    if (writtenRow !== undefined) {
-      if (matches.length === 1 && matches[0] === writtenRow) return;
-      throw new LedgerDuplicateError();
-    }
-    const row = matches[0];
-    const cells = [...input.values, eventId].map((value) => ({
-      userEnteredValue: typeof value === "number" ? { numberValue: value } : { stringValue: value },
+    return map;
+  }
+  function cells(values: readonly Cell[]) {
+    return values.map((value) => ({
+      userEnteredValue:
+        typeof value === "number"
+          ? { numberValue: value }
+          : typeof value === "boolean"
+            ? { boolValue: value }
+            : { stringValue: value },
     }));
-    const write =
-      row === undefined
-        ? {
-            appendCells: {
-              sheetId: input.setup.sheetId,
-              rows: [{ values: [...Array.from({ length: input.setup.start }, () => ({})), ...cells] }],
-              fields: "userEnteredValue",
-            },
-          }
-        : {
-            updateCells: {
-              start: { sheetId: input.setup.sheetId, rowIndex: row, columnIndex: input.setup.start },
-              rows: [{ values: cells }],
-              fields: "userEnteredValue",
-            },
-          };
+  }
+  async function sendWrite(write: unknown): Promise<void> {
     let result: Record<string, unknown> | null;
     try {
       result = await request(`${base}:batchUpdate`, "POST", JSON.stringify({ requests: [write] }));
@@ -185,8 +192,100 @@ export async function writeLedgerSheet(
     }
     if (result?.spreadsheetId !== input.file || !Array.isArray(result.replies) || result.replies.length !== 1)
       throw new LedgerUncertainError();
+  }
+  try {
+    const before = await snapshot(),
+      prior = indexed(before);
+    const matches = before.flatMap((row, index) => (row[0] === input.values[0] ? [index] : []));
+    if (matches.length > 1) throw new LedgerDuplicateError();
+    const target = matches[0];
+    if (input.uncertain && before.some((row) => row[12] === eventId && row[13] === orderId)) return;
+    if (target !== undefined) {
+      if (before[target]?.[13] !== orderId) throw new LedgerConflictError("order ID changed");
+      const idColumn = ledgerColumnName(input.setup.end - 1);
+      const check = await read(`${idColumn}${target + 2}:${idColumn}${target + 2}`);
+      if (check[0]?.[0] !== orderId) throw new LedgerConflictError("order moved");
+    } else if (prior.has(`id:${orderId}`)) throw new LedgerConflictError("order number changed");
+    const values = [...input.values, eventId, orderId];
+    const write =
+      target === undefined
+        ? {
+            appendCells: {
+              sheetId: input.setup.sheetId,
+              rows: [{ values: [...Array.from({ length: input.setup.start }, () => ({})), ...cells(values)] }],
+              fields: "userEnteredValue",
+            },
+          }
+        : {
+            updateCells: {
+              start: { sheetId: input.setup.sheetId, rowIndex: target + 1, columnIndex: input.setup.start },
+              rows: [{ values: cells(values) }],
+              fields: "userEnteredValue",
+            },
+          };
+    await sendWrite(write);
+    let after: Cell[][];
+    try {
+      after = await snapshot();
+    } catch (error) {
+      if (error instanceof LedgerConflictError) throw error;
+      throw new LedgerUncertainError();
+    }
+    let observed: Map<string, Cell[]>;
+    try {
+      observed = indexed(after.filter((row) => row[13] !== orderId));
+    } catch {
+      throw new LedgerConflictError("rows changed");
+    }
+    const missing: Cell[][] = [];
+    let changed = false;
+    for (const [id, old] of prior) {
+      if (id === `id:${orderId}`) continue;
+      const current = observed.get(id);
+      if (!current) missing.push(old);
+      else if (JSON.stringify(current) !== JSON.stringify(old)) changed = true;
+    }
+    const targetRows = after.filter((row) => row[13] === orderId);
+    if (
+      missing.length ||
+      changed ||
+      targetRows.length !== 1 ||
+      after.filter((row) => row[0] === input.values[0]).length !== 1 ||
+      JSON.stringify(targetRows[0]) !== JSON.stringify(values) ||
+      (target !== undefined && after[target]?.[13] !== orderId)
+    ) {
+      if (
+        missing.length &&
+        missing.every((row) => row.every((cell) => typeof cell !== "string" || !cell.startsWith("=")))
+      ) {
+        try {
+          await sendWrite({
+            appendCells: {
+              sheetId: input.setup.sheetId,
+              rows: missing.map((row) => ({
+                values: [...Array.from({ length: input.setup.start }, () => ({})), ...cells(row)],
+              })),
+              fields: "userEnteredValue",
+            },
+          });
+          const restored = indexed((await snapshot()).filter((row) => row[13] !== orderId));
+          if (missing.some((row) => JSON.stringify(restored.get(key(row))) !== JSON.stringify(row)))
+            throw new Error("restore mismatch");
+          for (const [id, previous] of observed)
+            if (JSON.stringify(restored.get(id)) !== JSON.stringify(previous)) throw new Error("restore changed");
+        } catch {
+          /* 복원 실패도 할 일로 알린다. */
+        }
+      }
+      throw new LedgerConflictError("ledger changed");
+    }
   } catch (error) {
-    if (error instanceof LedgerDuplicateError || error instanceof LedgerUncertainError) throw error;
+    if (
+      error instanceof LedgerDuplicateError ||
+      error instanceof LedgerUncertainError ||
+      error instanceof LedgerConflictError
+    )
+      throw error;
     throw new GoogleLedgerUnavailableError();
   }
 }

@@ -35,9 +35,12 @@ export async function ownerAlertContent(
       alert = { kind: row.kind };
       break;
     case "ledger_failing": {
+      const conflict = row.event_key.startsWith("alert:ledger_conflict:");
       const orderId = row.event_key.startsWith("alert:ledger_duplicate:")
         ? row.event_key.slice("alert:ledger_duplicate:".length)
-        : "";
+        : conflict
+          ? row.event_key.slice("alert:ledger_conflict:".length)
+          : "";
       if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) {
         const order = (
           await db.run<{ order_no: string }>("SELECT o.order_no FROM orders o WHERE o.shop_id=$1 AND o.id=$2", [
@@ -45,7 +48,9 @@ export async function ownerAlertContent(
           ])
         ).rows[0];
         if (order && /^[0-9A-Z]{6,8}$/.test(order.order_no)) {
-          alert = { kind: row.kind, count: 1, duplicateOrderNo: order.order_no };
+          alert = conflict
+            ? { kind: row.kind, count: 1, conflictOrderNo: order.order_no }
+            : { kind: row.kind, count: 1, duplicateOrderNo: order.order_no };
           break;
         }
       }

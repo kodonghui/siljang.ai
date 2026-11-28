@@ -19,6 +19,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         row_values: unknown;
         uncertain: boolean;
         auditing: boolean;
+        order_id: string;
       }>("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [item.id, ctx.leaseUntil]);
       const row = result.rows[0];
       if (!row) return null;
@@ -31,6 +32,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
       return {
         shopId: db.scope.shopId,
         eventId: item.id,
+        orderId: row.order_id,
         uncertain: row.uncertain,
         auditing: row.auditing,
         linkId: row.link_id,
@@ -41,6 +43,13 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
     },
     credential(db, linkId, writeId, lease) {
       return openLedgerJobCredential(db, services.fieldCrypto(), linkId, writeId, lease);
+    },
+    async guard(db, row, item, ctx) {
+      const result = await db.run<{ allowed: boolean }>(
+        "SELECT siljang_ledger_private.guard_ledger_write($1,$2,$3,$4,$5,$6) AS allowed",
+        [row.linkId, item.id, ctx.leaseUntil, row.file, row.tab],
+      );
+      return result.rows[0]?.allowed === true;
     },
     async write(row, credential) {
       if (settings.ledgerOAuth === null) throw new Error("ledger OAuth is not configured");
@@ -64,6 +73,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         shopId: row.shopId,
         linkId: row.linkId,
         eventId: row.eventId,
+        orderId: row.orderId,
         uncertain: row.uncertain,
       };
       if (row.auditing) {

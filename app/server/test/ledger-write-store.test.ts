@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { DUE_SOURCES } from "../src/due-sources";
 import { runDueJobs } from "../src/job-runner";
 import { LEDGER_STORAGE_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
@@ -21,6 +21,9 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
     );
     await createTestRole(isolated.db, role, "app");
   }, 30000);
+  beforeEach(async () => {
+    await isolated.db.query("DELETE FROM siljang_ledger_private.ledger_call_slots");
+  });
   afterAll(async () => {
     await isolated?.close();
     const admin = testDb();
@@ -303,9 +306,10 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
     expect(result?.write_uncertain).toBe(true);
     expect(result?.next_attempt_at.getTime()).toBeGreaterThanOrEqual(observed.getTime() + 299000);
     const revision = (
-      await isolated.db.query<{ revision: string }>("SELECT xmin::text AS revision FROM ledger_links WHERE id=$1", [
-        link,
-      ])
+      await isolated.db.query<{ revision: string }>(
+        "SELECT id::text||CASE WHEN status='unlinked' THEN '.u' ELSE '.l' END AS revision FROM ledger_links WHERE id=$1",
+        [link],
+      )
     ).rows[0]?.revision;
     expect(
       (
@@ -570,6 +574,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
       false,
     );
     let written: unknown = null,
+      sheetRow: (string | number)[] | null = null,
       audit = false,
       resolved = false,
       writes = 0,
@@ -594,6 +599,22 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         if (init?.method === "POST") {
           writes++;
           written = JSON.parse(String(init.body));
+          const request = (
+            written as {
+              requests: Array<{
+                appendCells?: {
+                  rows: Array<{ values: Array<{ userEnteredValue: { stringValue?: string; numberValue?: number } }> }>;
+                };
+                updateCells?: {
+                  rows: Array<{ values: Array<{ userEnteredValue: { stringValue?: string; numberValue?: number } }> }>;
+                };
+              }>;
+            }
+          ).requests[0];
+          const cellValues = request?.appendCells?.rows[0]?.values ?? request?.updateCells?.rows[0]?.values ?? [];
+          sheetRow = cellValues.map(
+            (cell) => cell.userEnteredValue.stringValue ?? cell.userEnteredValue.numberValue ?? "",
+          );
           return Response.json({ spreadsheetId: file, replies: [{}] });
         }
         if (url.pathname.includes("/values/")) {
@@ -602,12 +623,16 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
             return Response.json({
               values: resolved ? [["주문번호"], [orderNo]] : [["주문번호"], [orderNo], [orderNo]],
             });
+          if (decodeURIComponent(url.pathname).includes("!N2:N2"))
+            return Response.json({ values: [[sheetRow?.[13] ?? ""]] });
+          if (decodeURIComponent(url.pathname).includes("!A:N"))
+            return Response.json({ values: [["주문번호"], ...(sheetRow ? [sheetRow] : [])] });
           return Response.json({ values: [["주문번호"]] });
         }
         return Response.json({
           sheets: [
             {
-              properties: { sheetId: 7, title: tab, sheetType: "GRID", gridProperties: { columnCount: 13 } },
+              properties: { sheetId: 7, title: tab, sheetType: "GRID", gridProperties: { columnCount: 14 } },
               developerMetadata: [
                 {
                   metadataKey: "siljang_columns_v1",
@@ -638,7 +663,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         log: () => {},
       });
       expect(result.jobs.ledger_write?.done).toBe(1);
-      expect(calls).toBe(6);
+      expect(calls).toBe(7);
       expect(written).not.toBeNull();
       expect(
         (await isolated.db.query<{ status: string }>("SELECT status FROM ledger_writes WHERE id=$1", [write])).rows[0]
@@ -664,7 +689,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         log: () => {},
       });
       expect(resultAudit.jobs.ledger_write?.done).toBe(1);
-      expect(calls).toBe(12);
+      expect(calls).toBe(13);
       expect(writes).toBe(1);
       expect(
         (

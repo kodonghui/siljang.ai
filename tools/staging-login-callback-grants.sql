@@ -263,3 +263,4 @@ GRANT SELECT (shop_id,id,status,next_attempt_at,audit_due_at), UPDATE (next_atte
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.read_leased_ledger_credential(uuid,uuid,uuid,timestamptz) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz),siljang_ledger_private.finish_ledger_write(uuid,uuid,timestamptz,text,timestamptz,jsonb) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.count_unwritten_orders(uuid) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.guard_ledger_write(uuid,uuid,uuid,timestamptz,text,text) TO :"runtime_role";

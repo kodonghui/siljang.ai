@@ -27,6 +27,26 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
       headers: { Authorization: `Bearer ${accessToken.reveal()}` },
     });
     if (!response.ok) {
+      if (response.status === 403) {
+        let body: unknown;
+        try {
+          body = JSON.parse(
+            new TextDecoder().decode(await readBytesLimited(response, 16384, () => new GoogleLedgerUnavailableError())),
+          );
+        } catch {
+          throw new GoogleLedgerUnavailableError();
+        }
+        const details = object(body)?.error;
+        const errors = object(details)?.errors;
+        if (
+          Array.isArray(errors) &&
+          errors.some((entry) =>
+            ["userRateLimitExceeded", "rateLimitExceeded", "quotaExceeded"].includes(String(object(entry)?.reason)),
+          )
+        )
+          throw new GoogleLedgerUnavailableError();
+        return DENIED;
+      }
       await response.body?.cancel().catch(() => {});
       if ([400, 401, 403, 404].includes(response.status)) return DENIED;
       throw new GoogleLedgerUnavailableError();

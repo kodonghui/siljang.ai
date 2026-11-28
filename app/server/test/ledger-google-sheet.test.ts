@@ -97,6 +97,15 @@ describe("구글 장부 조회: 고정 주소/첫 행/토큰 비노출", () => {
         GoogleLedgerUnavailableError,
       );
   });
+  it.each(["userRateLimitExceeded", "rateLimitExceeded", "quotaExceeded"])(
+    "Drive 403 %s는 권한 상실이 아닌 임시 실패다",
+    async (reason) => {
+      const response = reply({ error: { errors: [{ reason }], message: "private" } }, 403);
+      await expect(googleLedgerSheets({ fetch: sequence([response]) }).canEdit(token(), file)).rejects.toBeInstanceOf(
+        GoogleLedgerUnavailableError,
+      );
+    },
+  );
   it("빈 첫 행도 자료 아래를 덮지 않도록 실제 표 너비를 유지한다", async () => {
     const send = sequence([reply(metadata()), reply({})]);
     expect(await googleLedgerSheets({ fetch: send }).inspect(token(), file, tab)).toMatchObject({
@@ -122,7 +131,7 @@ describe("구글 장부 조회: 고정 주소/첫 행/토큰 비노출", () => {
       { ...valid, location: { dimensionRange: { ...valid.location.dimensionRange, endIndex: 27 } } },
     ];
     const result = await googleLedgerSheets({ fetch: sequence([reply(data), reply({})]) }).inspect(token(), file, tab);
-    expect(result?.markers).toEqual([{ token: "c1.fixture.signed", start: 2, end: 15 }]);
+    expect(result?.markers).toEqual([{ token: "c1.fixture.signed", start: 2, end: 16 }]);
   });
   it.each([400, 401, 403, 404])("메타데이터 HTTP%s는 연결하지 않고 오류 본문을 반환하지 않는다", async (status) => {
     const send = sequence([reply({ error: crypto.randomUUID() }, status)]);

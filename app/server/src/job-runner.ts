@@ -69,6 +69,8 @@ export type ActOutcome<O> =
 /** 바깥 호출이 있는 처리(잡으며 임대 → 트랜잭션 밖에서 부름 → 결과를 새 트랜잭션으로 씀). */
 export interface LeasedHandler<P = unknown, O = unknown> {
   readonly mode: "leased";
+  /** 선택적 보호 잠금은 외부 요청이 끝날 때까지 트랜잭션에서 유지한다. */
+  guard?(db: ShopDb, item: DueItem, prepared: P, ctx: LeaseContext): Promise<boolean>;
   /**
    * 잡은 트랜잭션 안. 행의 때를 ctx.leaseUntil로 미루고(시도 수를 셈) 바깥 호출에 넘길 것(ID·정해진 글)을 돌려준다.
    * 할 일이 없으면 null(그대로 끝). 이때도 행이 찾기 조건에서 빠지게(상태를 바꿈) 해 둔다(그대로 두면 매분 다시 찾힘).
@@ -371,7 +373,13 @@ async function processItem(
   if (prepared === null) return "done";
   let outcome: ActOutcome<unknown>;
   try {
-    outcome = { ok: true, value: await withTimeout(handler.act(prepared, ctx), limits.actTimeoutMs) };
+    const value = handler.guard
+      ? await db.transaction(async (tx) => {
+          if (!(await handler.guard?.(shopDb(scope, tx), item, prepared, ctx))) throw new Error("job guard rejected");
+          return await withTimeout(handler.act(prepared, ctx), limits.actTimeoutMs);
+        })
+      : await withTimeout(handler.act(prepared, ctx), limits.actTimeoutMs);
+    outcome = { ok: true, value };
   } catch (err) {
     outcome = { ok: false, errorName: errorNameOf(err) };
     log("warn", { event: "job_act_failed", job: job.name, itemId: item.id, errorName: outcome.errorName });

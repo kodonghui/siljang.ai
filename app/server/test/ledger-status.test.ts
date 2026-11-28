@@ -530,7 +530,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     const oldId = await link("linked");
     const old = (
       await isolated.db.query<{ credential_ref: string; revision: string }>(
-        "SELECT credential_ref,xmin::text AS revision FROM ledger_links WHERE id=$1",
+        "SELECT credential_ref,id::text||CASE WHEN status='unlinked' THEN '.u' ELSE '.l' END AS revision FROM ledger_links WHERE id=$1",
         [oldId],
       )
     ).rows[0];

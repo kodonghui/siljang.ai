@@ -5,7 +5,7 @@ import { ledgerSheetSetup } from "../src/ledger-sheet-setup";
 import { Secret } from "../src/settings";
 
 it.each(["끝", "사장님 열 뒤에 있음", "응답 유실", "ID 열 삭제"])(
-  "기존 서명된 열을 유지하고 숨김 ID 열 하나만 더한다: %s",
+  "기존 서명된 열을 유지하고 숨김 ID 열을 더한다: %s",
   async (scenario) => {
     const shop = crypto.randomUUID(),
       file = "synthetic_sheet_1234567890",
@@ -42,13 +42,13 @@ it.each(["끝", "사장님 열 뒤에 있음", "응답 유실", "ID 열 삭제"]
       if (init?.method === "POST") {
         writes++;
         const req = JSON.parse(String(init.body)).requests;
-        expect(req[0].insertDimension.range).toEqual({ sheetId, dimension: "COLUMNS", startIndex: 14, endIndex: 15 });
+        expect(req[0].insertDimension.range).toEqual({ sheetId, dimension: "COLUMNS", startIndex: 14, endIndex: 16 });
         expect(req[1].updateCells.start.columnIndex).toBe(14);
         expect(req[2].updateDimensionProperties.properties.hiddenByUser).toBe(true);
         expect(req[3].updateDeveloperMetadata.dataFilters[0].developerMetadataLookup.metadataValue).toBe(token);
         token = req[3].updateDeveloperMetadata.developerMetadata.metadataValue;
-        headers.splice(14, 0, LEDGER_STORAGE_HEADERS[12]);
-        count++;
+        headers.splice(14, 0, ...LEDGER_STORAGE_HEADERS.slice(12));
+        count += 2;
         if (scenario === "응답 유실") throw new Error("response lost");
         return Response.json({ spreadsheetId: file, replies: [{}, {}, {}, {}] });
       }
@@ -72,9 +72,9 @@ it.each(["끝", "사장님 열 뒤에 있음", "응답 유실", "ID 열 삭제"]
     const service = ledgerSheetSetup(key, { fetch });
     if (scenario === "응답 유실") await expect(service.connect(access, shop, file, "장부")).rejects.toThrow();
     const setup = await service.connect(access, shop, file, "장부");
-    expect(setup).toMatchObject({ start, end: 15, movedRight: true });
-    expect(headers.slice(start, 15)).toEqual(LEDGER_STORAGE_HEADERS);
-    if (scenario === "사장님 열 뒤에 있음") expect(headers[15]).toBe("별도 자료");
+    expect(setup).toMatchObject({ start, end: 16, movedRight: true });
+    expect(headers.slice(start, 16)).toEqual(LEDGER_STORAGE_HEADERS);
+    if (scenario === "사장님 열 뒤에 있음") expect(headers[16]).toBe("별도 자료");
     expect(writes).toBe(1);
   },
 );

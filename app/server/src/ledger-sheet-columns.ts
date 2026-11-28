@@ -17,7 +17,8 @@ export const LEDGER_HEADERS = [
   "재제작",
 ] as const;
 export const LEDGER_INTERNAL_HEADER = "실장님 기록 ID";
-export const LEDGER_STORAGE_HEADERS = [...LEDGER_HEADERS, LEDGER_INTERNAL_HEADER] as const;
+export const LEDGER_ORDER_HEADER = "실장님 주문 ID";
+export const LEDGER_STORAGE_HEADERS = [...LEDGER_HEADERS, LEDGER_INTERNAL_HEADER, LEDGER_ORDER_HEADER] as const;
 export const LEDGER_MAX_COLUMNS = 18278;
 export interface LedgerSheetScope {
   readonly shopId: string;

@@ -5,6 +5,7 @@ import type { ShopDb } from "./shop-scope";
 export interface LedgerWriteSnapshot {
   readonly shopId: string;
   readonly eventId: string;
+  readonly orderId: string;
   readonly uncertain: boolean;
   readonly auditing: boolean;
   readonly linkId: string;
@@ -27,6 +28,7 @@ type Result =
         | "retry"
         | "uncertain"
         | "duplicate"
+        | "conflict"
         | "audit_ok"
         | "audit_missing"
         | "audit_duplicate"
@@ -40,14 +42,22 @@ interface Prepared {
 interface Dependencies {
   claim(db: ShopDb, item: DueItem, ctx: LeaseContext): Promise<LedgerWriteSnapshot | null>;
   credential(db: ShopDb, linkId: string, writeId: string, lease: Date): Promise<Secret | null>;
+  guard?(db: ShopDb, row: LedgerWriteSnapshot, item: DueItem, ctx: LeaseContext): Promise<boolean>;
   write(row: LedgerWriteSnapshot, credential: Secret): Promise<Exclude<Result, { readonly status: "retry" }>>;
   finish(db: ShopDb, item: DueItem, ctx: LeaseContext, result: Result): Promise<void>;
 }
 
 /** 외부 호출은 트랜잭션 밖에서 하며 결과는 같은 임대일 때만 반영한다. */
 export function createLedgerWriteHandler(deps: Dependencies): LeasedHandler<Prepared, Result> {
+  const guard = deps.guard;
   return {
     mode: "leased",
+    ...(guard
+      ? {
+          guard: (db: ShopDb, item: DueItem, prepared: Prepared, ctx: LeaseContext) =>
+            guard(db, prepared.row, item, ctx),
+        }
+      : {}),
     async lease(db, item, ctx) {
       const row = await deps.claim(db, item, ctx);
       if (row === null) return null;
@@ -77,7 +87,9 @@ export function createLedgerWriteHandler(deps: Dependencies): LeasedHandler<Prep
                   ? "uncertain"
                   : outcome.errorName === "LedgerDuplicateError"
                     ? "duplicate"
-                    : "retry",
+                    : outcome.errorName === "LedgerConflictError"
+                      ? "conflict"
+                      : "retry",
             },
       );
     },

@@ -16,6 +16,7 @@ it.skipIf(!TEST_DATABASE_URL)("기본 권한이 새 함수 실행을 허용해�
     for (const fn of [
       "read_leased_ledger_credential(uuid,uuid,uuid,timestamptz)",
       "claim_ledger_write(uuid,uuid,timestamptz)",
+      "guard_ledger_write(uuid,uuid,uuid,timestamptz,text,text)",
       "finish_ledger_write(uuid,uuid,timestamptz,text,timestamptz,jsonb)",
       "count_unwritten_orders(uuid)",
     ]) {

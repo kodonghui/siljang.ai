@@ -2827,10 +2827,28 @@ BEGIN
 END
 $block$;
 
+-- 구글 계정 식별자를 저장하지 않고도 사용자별 한도를 넘지 않게 모든 가게에 보수적인 공통 상한을 둔다.
+CREATE TABLE siljang_ledger_private.ledger_call_slots (started_at timestamptz NOT NULL);
+REVOKE ALL ON TABLE siljang_ledger_private.ledger_call_slots FROM PUBLIC;
+
+-- 전송 중 연결 해제·교체가 완료되지 않도록 호출이 끝날 때까지 연결 행을 잠근다.
+CREATE FUNCTION siljang_ledger_private.guard_ledger_write(p_shop uuid,p_link uuid,p_write uuid,p_lease timestamptz,p_file text,p_tab text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+BEGIN
+  IF p_lease IS NULL OR p_lease<=pg_catalog.statement_timestamp() THEN RETURN false; END IF;
+  PERFORM 1 FROM public.ledger_links l WHERE l.shop_id=p_shop AND l.id=p_link AND l.spreadsheet_id=p_file AND l.sheet_name=p_tab
+    AND l.status IN ('linked','auth_lost') AND l.write_lease_id=p_write AND l.write_lease_until=p_lease FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
+  RETURN EXISTS (SELECT 1 FROM public.ledger_writes w WHERE w.shop_id=p_shop AND w.id=p_write
+    AND ((w.status IN ('pending','retrying','alerted') AND w.next_attempt_at=p_lease) OR (w.status='written' AND w.audit_due_at=p_lease)));
+END
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.guard_ledger_write(uuid,uuid,uuid,timestamptz,text,text) FROM PUBLIC;
+
 CREATE FUNCTION siljang_ledger_private.claim_ledger_write(p_shop uuid,p_write uuid,p_lease timestamptz)
-RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,row_values jsonb,uncertain boolean,auditing boolean)
+RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,row_values jsonb,uncertain boolean,auditing boolean,order_id uuid)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
-DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb; v_uncertain boolean; v_audit boolean; v_in_flight boolean;
+DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb; v_uncertain boolean; v_audit boolean; v_in_flight boolean; v_next timestamptz;
 BEGIN
   IF p_lease IS NULL OR p_lease<=pg_catalog.statement_timestamp() OR p_lease>pg_catalog.statement_timestamp()+interval '5 minutes' THEN RETURN; END IF;
   SELECT w.ledger_row_id,w.write_uncertain,(w.status='written'),w.write_in_flight INTO v_order,v_uncertain,v_audit,v_in_flight FROM public.ledger_writes w
@@ -2873,11 +2891,20 @@ BEGIN
     LEFT JOIN public.productions pr ON pr.order_id=o.id AND pr.shop_id=o.shop_id
     WHERE o.shop_id=p_shop AND o.id=v_order AND o.remake_of_order_id IS NULL AND o.personal_data_purged_at IS NULL;
   IF v_values IS NULL THEN RETURN; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(157,1);
+  DELETE FROM siljang_ledger_private.ledger_call_slots WHERE started_at<=pg_catalog.statement_timestamp()-interval '60 seconds';
+  IF (SELECT count(*) FROM siljang_ledger_private.ledger_call_slots)>=5 THEN
+    SELECT min(started_at)+interval '61 seconds' INTO v_next FROM siljang_ledger_private.ledger_call_slots;
+    IF v_audit THEN UPDATE public.ledger_writes SET audit_due_at=v_next WHERE shop_id=p_shop AND id=p_write;
+    ELSE UPDATE public.ledger_writes SET next_attempt_at=v_next WHERE shop_id=p_shop AND id=p_write; END IF;
+    RETURN;
+  END IF;
+  INSERT INTO siljang_ledger_private.ledger_call_slots(started_at) VALUES(pg_catalog.statement_timestamp());
   UPDATE public.ledger_links SET write_lease_id=p_write,write_lease_until=p_lease WHERE shop_id=p_shop AND id=v_link.id;
   IF v_audit THEN UPDATE public.ledger_writes SET audit_due_at=p_lease WHERE shop_id=p_shop AND id=p_write;
   ELSE UPDATE public.ledger_writes SET first_failed_at=CASE WHEN attempts>0 THEN coalesce(first_failed_at,next_attempt_at) ELSE first_failed_at END,
     attempts=least(attempts+1,32767),next_attempt_at=p_lease,write_in_flight=true WHERE shop_id=p_shop AND id=p_write; END IF;
-  RETURN QUERY SELECT v_link.id,v_link.spreadsheet_id,v_link.sheet_name,v_values,v_uncertain,v_audit;
+  RETURN QUERY SELECT v_link.id,v_link.spreadsheet_id,v_link.sheet_name,v_values,v_uncertain,v_audit,v_order;
 END
 $fn$;
 REVOKE ALL ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz) FROM PUBLIC;
@@ -2886,7 +2913,7 @@ CREATE FUNCTION siljang_ledger_private.finish_ledger_write(p_shop uuid,p_write u
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
 DECLARE v_link uuid; v_row uuid; v_order uuid; v_attempts int; v_failed timestamptz; v_alerted timestamptz; v_task uuid; v_delay interval; v_audit boolean; v_deadline timestamptz; v_checks integer;
 BEGIN
-  IF p_result NOT IN ('written','retry','auth_lost','uncertain','duplicate','audit_ok','audit_duplicate','audit_missing','audit_retry') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
+  IF p_result NOT IN ('written','retry','auth_lost','uncertain','duplicate','conflict','audit_ok','audit_duplicate','audit_missing','audit_retry') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
   p_now:=least(p_now,pg_catalog.statement_timestamp());
   SELECT l.id,l.failure_alerted_at INTO v_link,v_alerted FROM public.ledger_links l
     WHERE l.shop_id=p_shop AND l.write_lease_id=p_write AND l.write_lease_until=p_lease AND l.status IN ('linked','auth_lost') FOR UPDATE;
@@ -2922,11 +2949,18 @@ BEGIN
       audit_deadline=CASE WHEN write_uncertain THEN p_now+interval '24 hours' END,audit_checks=0 WHERE shop_id=p_shop AND id=p_write;
     UPDATE public.ledger_rows SET first_written_at=coalesce(first_written_at,p_now),last_written_at=p_now WHERE shop_id=p_shop AND id=v_row;
     UPDATE public.owner_tasks SET closed_at=p_now WHERE shop_id=p_shop AND event_key='task:ledger_duplicate:'||v_order::text AND closed_at IS NULL;
+    UPDATE public.owner_tasks SET closed_at=p_now WHERE shop_id=p_shop AND event_key='task:ledger_conflict:'||v_order::text AND closed_at IS NULL;
     UPDATE public.ledger_links SET status='linked',our_columns=coalesce(p_columns,our_columns) WHERE shop_id=p_shop AND id=v_link;
     IF NOT EXISTS (SELECT 1 FROM public.ledger_writes WHERE shop_id=p_shop AND status<>'written') THEN
       UPDATE public.owner_tasks SET closed_at=p_now WHERE shop_id=p_shop AND event_key='task:ledger_relink:'||v_link::text AND closed_at IS NULL;
       UPDATE public.ledger_links SET failure_alerted_at=NULL WHERE shop_id=p_shop AND id=v_link;
     END IF;
+  ELSIF p_result='conflict' THEN
+    UPDATE public.ledger_writes SET status='unlinked',next_attempt_at=NULL,last_error_kind='conflict' WHERE shop_id=p_shop AND id=p_write;
+    INSERT INTO public.owner_tasks(shop_id,kind,event_key,order_id,opened_at) VALUES(p_shop,'ledger_relink','task:ledger_conflict:'||v_order::text,v_order,p_now)
+      ON CONFLICT(shop_id,event_key) DO UPDATE SET closed_at=NULL RETURNING id INTO v_task;
+    INSERT INTO public.owner_alerts(shop_id,kind,event_key,owner_task_id,next_attempt_at,created_at)
+      VALUES(p_shop,'ledger_failing','alert:ledger_conflict:'||v_order::text,v_task,p_now,p_now) ON CONFLICT(shop_id,event_key) DO NOTHING;
   ELSIF p_result='duplicate' THEN
     UPDATE public.ledger_writes SET status='retrying',next_attempt_at=p_now+interval '5 minutes',last_error_kind='duplicate' WHERE shop_id=p_shop AND id=p_write;
     INSERT INTO public.owner_tasks(shop_id,kind,event_key,order_id,opened_at) VALUES(p_shop,'ledger_relink','task:ledger_duplicate:'||v_order::text,v_order,p_now)
@@ -2966,7 +3000,9 @@ DECLARE role_name text;
 BEGIN
   FOREACH role_name IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
     IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=role_name) THEN
+      EXECUTE pg_catalog.format('REVOKE ALL ON TABLE siljang_ledger_private.ledger_call_slots FROM %I',role_name);
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz) FROM %I',role_name);
+      EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.guard_ledger_write(uuid,uuid,uuid,timestamptz,text,text) FROM %I',role_name);
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.finish_ledger_write(uuid,uuid,timestamptz,text,timestamptz,jsonb) FROM %I',role_name);
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.count_unwritten_orders(uuid) FROM %I',role_name);
     END IF;
@@ -2977,14 +3013,14 @@ $block$;
 -- 생성과 교체는 가게 행으로 직렬화하며, 토큰 저장은 같은 트랜잭션에서 이어진다.
 CREATE OR REPLACE FUNCTION siljang_ledger_private.create_owner_ledger(p_shop uuid,p_owner uuid,p_link uuid,p_spreadsheet text,p_sheet text,p_columns jsonb,p_revision text,p_now timestamptz)
 RETURNS TABLE(outcome text) LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
-DECLARE old_id uuid; old_status text; old_ref text; old_revision text; old_lease timestamptz;
+DECLARE old_id uuid; old_status text; old_ref text; old_revision text; old_lease timestamptz; old_file text; old_sheet text;
 BEGIN
   IF p_link IS NULL OR p_spreadsheet IS NULL OR p_sheet IS NULL OR p_columns IS NULL OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN
     RAISE EXCEPTION 'invalid ledger input' USING ERRCODE='22023';
   END IF;
   PERFORM s.id FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner FOR UPDATE;
   IF NOT FOUND THEN RETURN; END IF;
-  SELECT l.id,l.status,l.credential_ref,l.xmin::text,l.write_lease_until INTO old_id,old_status,old_ref,old_revision,old_lease
+  SELECT l.id,l.status,l.credential_ref,l.id::text||CASE WHEN l.status='unlinked' THEN '.u' ELSE '.l' END,l.write_lease_until,l.spreadsheet_id,l.sheet_name INTO old_id,old_status,old_ref,old_revision,old_lease,old_file,old_sheet
     FROM public.ledger_links l WHERE l.shop_id=p_shop
     ORDER BY (l.status<>'unlinked') DESC,l.linked_at DESC,l.id DESC LIMIT 1 FOR UPDATE;
   IF (old_id IS NULL AND p_revision IS NOT NULL) OR (old_id IS NOT NULL AND p_revision IS DISTINCT FROM old_revision) THEN
@@ -2998,12 +3034,54 @@ BEGIN
   END IF;
   INSERT INTO public.ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref,linked_at)
     VALUES(p_link,p_shop,p_spreadsheet,p_sheet,p_columns,pg_catalog.gen_random_uuid()::text,least(p_now,pg_catalog.statement_timestamp()));
+  IF old_id IS NOT NULL AND (old_file IS DISTINCT FROM p_spreadsheet OR old_sheet IS DISTINCT FROM p_sheet) THEN
+    UPDATE public.ledger_writes SET audit_due_at=NULL,audit_deadline=NULL,write_uncertain=false WHERE shop_id=p_shop AND status='written' AND audit_due_at IS NOT NULL;
+  END IF;
   UPDATE public.ledger_writes SET status='pending',next_attempt_at=greatest(pg_catalog.statement_timestamp(),coalesce(old_lease,pg_catalog.statement_timestamp()), CASE WHEN write_uncertain THEN coalesce(next_attempt_at,pg_catalog.statement_timestamp()) ELSE pg_catalog.statement_timestamp() END)
     WHERE shop_id=p_shop AND status IN ('unlinked','alerted','retrying','pending');
   RETURN QUERY SELECT CASE WHEN old_id IS NULL THEN 'created' ELSE 'relinked' END;
 END
 $fn$;
 REVOKE ALL ON FUNCTION siljang_ledger_private.create_owner_ledger(uuid,uuid,uuid,text,text,jsonb,text,timestamptz) FROM PUBLIC;
+
+-- 예약 임대와 무관하게 연결 ID·해제 여부로 설정 버전을 판정한다.
+CREATE OR REPLACE FUNCTION read_owner_ledger(p_shop uuid,p_owner uuid,p_link uuid)
+RETURNS TABLE(id uuid,status text,spreadsheet_id text,sheet_name text,our_columns jsonb,
+  linked_at timestamptz,unlinked_at timestamptz,revision text,failing_since timestamptz,unwritten_count integer)
+LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+  SELECT l.id,CASE WHEN l.status='linked' AND NOT siljang_ledger_private.ledger_vault_present(l.credential_ref,l.shop_id,l.id) THEN 'auth_lost' ELSE l.status END,l.spreadsheet_id,l.sheet_name,
+    jsonb_build_object('columns',COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('header',c.value->'header','column',c.value->'column') ORDER BY c.position)
+      FROM jsonb_array_elements(CASE
+        WHEN jsonb_typeof(l.our_columns)='array' THEN l.our_columns
+        WHEN jsonb_typeof(l.our_columns->'columns')='array' THEN l.our_columns->'columns'
+        ELSE '[]'::jsonb END) WITH ORDINALITY AS c(value,position)
+    ),'[]'::jsonb),'movedRight',COALESCE(l.our_columns->'movedRight','false'::jsonb)),
+    l.linked_at,l.unlinked_at,l.id::text||CASE WHEN l.status='unlinked' THEN '.u' ELSE '.l' END,
+    (SELECT min(w.first_failed_at) FROM public.ledger_writes w WHERE w.shop_id=p_shop AND w.status<>'written'),
+    (SELECT least(count(*),100000)::int FROM public.ledger_writes wc WHERE wc.shop_id=p_shop AND wc.status<>'written')
+  FROM public.ledger_links l WHERE l.shop_id=p_shop AND (p_link IS NULL OR l.id=p_link)
+    AND EXISTS(SELECT 1 FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner)
+  ORDER BY (l.status<>'unlinked') DESC,l.linked_at DESC,l.id DESC LIMIT 1
+$fn$;
+REVOKE ALL ON FUNCTION read_owner_ledger(uuid,uuid,uuid) FROM PUBLIC;
+
+
+CREATE OR REPLACE FUNCTION siljang_ledger_private.lock_owner_ledger(p_shop uuid,p_owner uuid,p_revision text)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE old_id uuid; old_revision text;
+BEGIN
+  PERFORM s.id FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner FOR UPDATE;
+  IF NOT FOUND THEN RETURN 'missing'; END IF;
+  SELECT l.id,l.id::text||CASE WHEN l.status='unlinked' THEN '.u' ELSE '.l' END INTO old_id,old_revision FROM public.ledger_links l WHERE l.shop_id=p_shop
+    ORDER BY (l.status<>'unlinked') DESC,l.linked_at DESC,l.id DESC LIMIT 1 FOR UPDATE;
+  IF (old_id IS NULL AND p_revision IS NOT NULL) OR (old_id IS NOT NULL AND p_revision IS DISTINCT FROM old_revision) THEN
+    RETURN 'conflict';
+  END IF;
+  RETURN 'ok';
+END
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.lock_owner_ledger(uuid,uuid,text) FROM PUBLIC;
 
 -- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음.
 COMMENT ON COLUMN owners.id IS '사장님 ID';
