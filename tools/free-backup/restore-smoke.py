@@ -51,6 +51,7 @@ def run():
         assert fixture.count(begin) == fixture.count(end) == 1
         sql(source, "BEGIN; SET CONSTRAINTS ALL DEFERRED;\n" + fixture.split(begin)[1].split(end)[0] + "\nCOMMIT;")
         # public 덤프에는 Vault 행이 없다. 복구된 연결은 재연결 상태여야 한다.
+        sql(source, "UPDATE ledger_links SET our_columns='{\"columns\":[{\"header\":\"주문번호\",\"column\":\"A\"}]}'::jsonb")
         ledger_shop, ledger_owner = sql(source, "SELECT l.shop_id,s.owner_id FROM ledger_links l JOIN shops s ON s.id=l.shop_id LIMIT 1").decode().strip().split("|")
         sql(source, "CREATE SEQUENCE backup_smoke_seq START 7; SELECT nextval('backup_smoke_seq')")
         sequence_query = "SELECT json_agg(json_build_object('name',sequencename,'last_value',last_value,'increment_by',increment_by) ORDER BY sequencename) FROM pg_sequences WHERE schemaname='public'"
@@ -117,8 +118,20 @@ def run():
                                 "--single-transaction", "--exit-on-error", "--no-owner", "--no-privileges"],
                                stdin=incoming, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
             # Vault 비밀을 복원하지 않고 앱 전용 함수만 원본 이행에서 복구한다.
-            subprocess.run(["bash", str(TOOLS / "restore-ledger-functions.sh")],
-                           env={**os.environ, "PGDATABASE": target}, check=True)
+            restore_cmd = ["bash", str(TOOLS / "restore-ledger-functions.sh")]
+            restore_env = {**os.environ, "PGDATABASE": target, "SILJANG_LEDGER_RESTORE": "1"}
+            denied = subprocess.run(restore_cmd, env={**restore_env, "SILJANG_LEDGER_RESTORE": "0"}, capture_output=True)
+            assert denied.returncode != 0, "명시적 복구 선택 없이 함수 복구 허용"
+            for variable in ["PGSERVICE", "PGSERVICEFILE", "PGHOSTADDR", "PGOPTIONS"]:
+                assert subprocess.run(restore_cmd, env={**restore_env, variable: "synthetic"}, capture_output=True).returncode != 0, f"{variable} 허용"
+            assert subprocess.run(restore_cmd, env={**restore_env, "PGDATABASE": "postgresql://example.invalid/test"}, capture_output=True).returncode != 0, "연결 문자열을 DB 이름으로 허용"
+            sql("postgres", f'GRANT CONNECT ON DATABASE "{target}" TO PUBLIC')
+            denied = subprocess.run(restore_cmd, env=restore_env, capture_output=True)
+            assert denied.returncode != 0, "공개 연결이 열린 대상에 함수 복구 허용"
+            assert sql(target, "SELECT to_regnamespace('siljang_ledger_private') IS NULL").strip() == b"t"
+            sql("postgres", f'REVOKE CONNECT ON DATABASE "{target}" FROM PUBLIC')
+            subprocess.run(restore_cmd, env=restore_env, check=True)
+            assert subprocess.run(restore_cmd, env=restore_env, capture_output=True).returncode != 0, "이미 적용한 대상 재실행 허용"
             ledger_state = sql(target, f"SELECT status FROM public.read_owner_ledger('{ledger_shop}'::uuid,'{ledger_owner}'::uuid,NULL)").strip()
             assert ledger_state == b"auth_lost", "Vault 없는 복구의 재연결 상태 불일치"
             sql(target, (TOOLS / "restore-fence.sql").read_text())
@@ -128,7 +141,7 @@ def run():
             proof = {"server_major": int(sql(source, "SHOW server_version_num")) // 10000,
                      "tables_compared": len(before), "records": counts, "lost_records": 0,
                      "sequences_compared": len(json.loads(sequences_before)),
-                     "public_security_definer_execute": 0,
+                     "public_security_definer_execute": 0, "ledger_auth_lost_after_public_restore": True,
                      "unsafe_role_rejections": len(unsafe_cases), "backup_role_update_rejected": True,
                      "restore_seconds": round(time.monotonic() - restore_started, 3),
                      "total_seconds": round(time.monotonic() - started, 3)}
