@@ -5,6 +5,7 @@ import { formatKoreanDateTime, formatSeoulTime } from "./format-date";
 import { appendReviewRows } from "./operator-shops-query";
 import type { OwnerBanner } from "./owner";
 import {
+  confirmLedgerTask,
   fetchOwnerTasks,
   type OwnerTask,
   type OwnerTasksPage,
@@ -17,6 +18,7 @@ import { classify } from "./problems";
 import type { ShopLicenseProps } from "./ShopLicense";
 import { Banner, Button, type ListColumn, ListView, LoadFailure, type Navigate, OwnerLayout, Skeleton } from "./ui";
 import { useFocusRequest } from "./ui/useFocusRequest";
+import { useCommand } from "./useCommand";
 import "./owner-tasks.css";
 
 interface Loaded extends OwnerTasksPage {
@@ -71,6 +73,17 @@ export function OwnerTasksScreen(props: OwnerTasksProps) {
   const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const confirmation = useCommand<string, { outcome: "confirmed" }>((taskId, key) =>
+    confirmLedgerTask(taskId, props.shopId, key),
+  );
+  const confirming = useRef<string | null>(null);
+  useEffect(() => {
+    if (confirmation.state.kind !== "done") return;
+    const taskId = confirming.current;
+    setLoaded((old) => (old ? { ...old, items: old.items.filter((item) => item.taskId !== taskId) } : old));
+    setMessage("장부 확인을 마쳤어요");
+    confirmation.reset();
+  }, [confirmation.state, confirmation.reset]);
   const request = useRef<AbortController | null>(null);
   const status = useRef<HTMLParagraphElement>(null);
   const focusOrigin = useRef<Element | null>(null);
@@ -146,7 +159,7 @@ export function OwnerTasksScreen(props: OwnerTasksProps) {
     if (blockedNow.current || (active && active !== document.body && active !== focusOrigin.current)) return;
     status.current?.focus();
   }, [message]);
-  const busy = blocked || (query !== null && loading);
+  const busy = blocked || (query !== null && loading) || confirmation.busy;
   const handledTabFocus = useRef<OwnerTaskTabFocusRequest | null>(null);
   const { queue: queueTabFocus } = useFocusRequest<"open" | "closed">(
     (target) => document.getElementById(`${id}-${target}`),
@@ -197,6 +210,27 @@ export function OwnerTasksScreen(props: OwnerTasksProps) {
     },
     { label: "주문번호", card: "meta", cell: (row) => row.order?.orderNo ?? "주문 없음" },
     { label: "연 시각", card: "meta", cell: (row) => formatKoreanDateTime(row.openedAt) },
+    {
+      label: "장부 확인",
+      card: "foot",
+      cell: (row) =>
+        row.kind === "ledger_relink" && row.order !== null && row.closedAt === null ? (
+          <span>
+            구글 시트에서 주문을 확인한 뒤{" "}
+            <Button
+              kind="secondary"
+              disabled={busy || confirmation.blocked}
+              aria-label={`주문번호 ${row.order.orderNo} 확인했어요`}
+              onClick={() => {
+                confirming.current = row.taskId;
+                confirmation.submit(row.taskId);
+              }}
+            >
+              확인했어요
+            </Button>
+          </span>
+        ) : null,
+    },
     {
       label: "기다림",
       card: "tag",
@@ -319,6 +353,13 @@ export function OwnerTasksScreen(props: OwnerTasksProps) {
                   failure={classify(failure.result.status, failure.result.problem, failure.result.retryAfterSeconds)}
                   disabled={busy}
                   onRetry={() => (failure.more ? void read(current?.nextCursor ?? null, true) : refresh())}
+                />
+              ) : null}
+              {confirmation.state.kind === "failed" ? (
+                <LoadFailure
+                  failure={confirmation.state.failure}
+                  disabled={busy || confirmation.blocked}
+                  onRetry={confirmation.retry}
                 />
               ) : null}
               {current?.nextCursor && !failure ? (

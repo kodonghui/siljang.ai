@@ -10,6 +10,7 @@ type TaskKind = keyof typeof TASK_LABELS;
 interface TaskRow {
   id: string;
   kind: TaskKind;
+  event_key: string;
   wait_status: string | null;
   wait_due_at: Date | null;
   opened_at: Date;
@@ -26,6 +27,18 @@ interface TaskRow {
   cursor_rank: number;
   cursor_phase: number;
   cursor_at: string;
+}
+export function ledgerDuplicateSummary(eventKey: string, orderNo: string | null): string | null {
+  if (eventKey.startsWith("task:ledger_columns:") && isUuid(eventKey.slice("task:ledger_columns:".length)))
+    return "구글 시트의 열이 가득 차 장부 쓰기를 껐어요. 필요 없는 열을 지워 주세요";
+  if (eventKey.startsWith("task:ledger_conflict:")) {
+    const id = eventKey.slice("task:ledger_conflict:".length);
+    if (isUuid(id) && orderNo !== null && /^[0-9A-Z]{6,8}$/.test(orderNo))
+      return `장부가 변경되었거나 5,000행을 넘어 주문 ${orderNo}의 기록을 멈췄어요. 시트에서 확인한 뒤 확인했어요를 눌러 주세요`;
+  }
+  const id = eventKey.startsWith("task:ledger_duplicate:") ? eventKey.slice("task:ledger_duplicate:".length) : "";
+  if (!isUuid(id) || orderNo === null || !/^[0-9A-Z]{6,8}$/.test(orderNo)) return null;
+  return `장부에 같은 주문(주문번호 ${orderNo})이 두 줄 있어요. 하나를 지워 주세요`;
 }
 interface Cursor {
   rank: number;
@@ -136,7 +149,7 @@ export async function listOwnerTasks(r: AccessRequest): Promise<Response> {
         : [filter.status, filter.after?.at ?? null, filter.after?.id ?? null, filter.limit + 1];
     const rows = (
       await db.run<TaskRow>(
-        `SELECT t.id,t.kind,t.wait_status,t.wait_due_at,t.opened_at,t.closed_at,t.order_id,t.handoff_id,
+        `SELECT t.id,t.kind,t.event_key,t.wait_status,t.wait_due_at,t.opened_at,t.closed_at,t.order_id,t.handoff_id,
        t.change_request_id,t.issue_report_id,t.payment_request_id,t.refund_id,o.id AS linked_order_id,o.order_no,
        coalesce(o.customer_id,c.customer_id) AS customer_id,${rank} AS cursor_rank,${phase} AS cursor_phase,
        (${at})::bigint::text AS cursor_at
@@ -164,7 +177,10 @@ export async function listOwnerTasks(r: AccessRequest): Promise<Response> {
           waitDueAt: row.wait_due_at === null ? null : toShopIso(row.wait_due_at, owner.time_zone),
           order: row.linked_order_id === null ? null : { orderId: row.linked_order_id, orderNo: row.order_no },
           subject: subject(row, r.scope.shopId),
-          summary: TASK_LABELS[row.kind],
+          summary:
+            row.kind === "ledger_relink"
+              ? (ledgerDuplicateSummary(row.event_key, row.order_no) ?? TASK_LABELS[row.kind])
+              : TASK_LABELS[row.kind],
           openedAt: toShopIso(row.opened_at, owner.time_zone),
           closedAt: row.closed_at === null ? null : toShopIso(row.closed_at, owner.time_zone),
         })),

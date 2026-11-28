@@ -134,6 +134,12 @@ function allowedCrossShop(file: string, sql: string): boolean {
   }
   // TASK-076/134: 여러 가게에서 고르는 값은 상담/확정 주문의 ID·시각뿐이다. 하위 질의도 같은 후보 가게다.
   if (file === CROSS_SHOP_FILE) {
+    // 오직 후보 행의 가게에서 쓰기 허용 여부만 확인하는 두 SQL을 허용한다.
+    const ledgerFinds = [
+      "SELECT t.shop_id, t.id, t.next_attempt_at AS due_at FROM ledger_writes t WHERE t.status IN ('pending', 'retrying', 'alerted') AND EXISTS (SELECT 1 FROM shops s WHERE s.id=t.shop_id AND s.ledger_write_enabled) AND t.next_attempt_at <= $1 ORDER BY t.next_attempt_at, t.id LIMIT $2",
+      "SELECT t.shop_id, t.id, t.audit_due_at AS due_at FROM ledger_writes t WHERE t.status = 'written' AND t.audit_due_at IS NOT NULL AND EXISTS (SELECT 1 FROM shops s WHERE s.id=t.shop_id AND s.ledger_write_enabled) AND t.audit_due_at <= $1 ORDER BY t.audit_due_at, t.id LIMIT $2",
+    ];
+    if (ledgerFinds.includes(sql)) return true;
     const found = FIND_SHAPE.exec(sql);
     const consultation = found?.[2] === "consultations";
     const dayBefore = found?.[2] === "orders" && found[1] === "confirmed_at";
@@ -323,6 +329,20 @@ describe("서버 코드의 SQL(정적 검사)", () => {
         find.replace("WHERE t.status", "WHERE t.id IN (SELECT o.id FROM orders o) AND t.status"),
       ),
     ).toBe(false);
+  });
+
+  it("장부 찾기는 후보 가게의 허용 여부만 읽고 다른 가게·원문·추가 출력은 막음", () => {
+    for (const find of [DUE_SOURCES.ledger_write.find, DUE_SOURCES.ledger_audit.find]) {
+      expect(allowedCrossShop(CROSS_SHOP_FILE, find)).toBe(true);
+      for (const bad of [
+        find.replace("t.shop_id, t.id,", "t.shop_id, t.id, t.event_key,"),
+        find.replace("s.id=t.shop_id", "s.id<>t.shop_id"),
+        find.replace("SELECT 1 FROM shops", "SELECT s.contact_phone FROM shops"),
+        find.replace("AND s.ledger_write_enabled", "OR s.ledger_write_enabled"),
+      ])
+        expect(allowedCrossShop(CROSS_SHOP_FILE, bad)).toBe(false);
+      expect(allowedCrossShop("job-runner.ts", find)).toBe(false);
+    }
   });
 
   it("문의 끊김 찾기는 후보 가게의 메타데이터만 읽고 다른 가게·원문·추가 출력은 막음", () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LEDGER_HEADERS,
   LEDGER_MAX_COLUMNS,
+  LEDGER_STORAGE_HEADERS,
   LedgerColumnsOverflowError,
   type LedgerSheetScope,
   ledgerColumnName,
@@ -17,7 +18,7 @@ const scope: LedgerSheetScope = {
   sheetId: 3,
 };
 const key = () => new Secret(crypto.randomUUID() + crypto.randomUUID());
-const N = LEDGER_HEADERS.length;
+const N = LEDGER_STORAGE_HEADERS.length;
 describe("장부 열은 가게/시트/위치/헤더 버전의 서명으로만 재사용한다", () => {
   it.each([
     [0, "A"],
@@ -52,7 +53,7 @@ describe("장부 열은 가게/시트/위치/헤더 버전의 서명으로만 �
     expect(token).not.toContain(scope.spreadsheetId);
     const verified = await verifyLedgerColumns(secret, scope, token, 26, 26 + N);
     expect(verified).not.toBeNull();
-    const headers = [...Array(26).fill(""), ...LEDGER_HEADERS];
+    const headers = [...Array(26).fill(""), ...LEDGER_STORAGE_HEADERS];
     expect(planLedgerColumns(26 + N, headers, verified)).toMatchObject({
       start: 26,
       end: 26 + N,
@@ -92,7 +93,7 @@ describe("장부 열은 가게/시트/위치/헤더 버전의 서명으로만 �
       token = await signLedgerColumns(secret, scope, 0, false),
       verified = await verifyLedgerColumns(secret, scope, token, 0, N);
     expect(verified).not.toBeNull();
-    const headers: string[] = [...LEDGER_HEADERS];
+    const headers: string[] = [...LEDGER_STORAGE_HEADERS];
     headers[0] = "사장님 메모";
     expect(planLedgerColumns(26, headers, verified)).toMatchObject({
       start: 26,
@@ -110,7 +111,7 @@ describe("장부 열은 가게/시트/위치/헤더 버전의 서명으로만 �
       verified = await verifyLedgerColumns(secret, scope, token, start, LEDGER_MAX_COLUMNS);
     expect(verified).not.toBeNull();
     expect(
-      planLedgerColumns(LEDGER_MAX_COLUMNS, [...Array(start).fill(""), ...LEDGER_HEADERS], verified),
+      planLedgerColumns(LEDGER_MAX_COLUMNS, [...Array(start).fill(""), ...LEDGER_STORAGE_HEADERS], verified),
     ).toMatchObject({ start, end: LEDGER_MAX_COLUMNS, movedRight: true, needsWrite: false });
   });
   it.each([0, -1, 1.5, 18279])("잘못된 표 너비 %s에서는 쓰기 계획을 만들지 않는다", (n) => {

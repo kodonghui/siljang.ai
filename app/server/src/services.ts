@@ -17,6 +17,7 @@ import type { KakaoCallbackQueue } from "./kakao-callback-store";
 import { type KakaoEvents, type KakaoOwnerEvents, kakaoEvents, kakaoOwnerEvents } from "./kakao-event";
 import { deriveKakaoProofPhrase, deriveKakaoSkillKey } from "./kakao-skill-auth";
 import { type LedgerAuthorizationService, ledgerAuthorizationService } from "./ledger-authorization";
+import { ledgerConfirmation } from "./ledger-confirmation";
 import { type GoogleLedgerOAuth, googleLedgerOAuth } from "./ledger-google-auth";
 import { ledgerSheetSetup } from "./ledger-sheet-setup";
 import { type OperatorAuth, supabaseAuth } from "./operator-auth";
@@ -61,6 +62,7 @@ export interface Services {
   ledgerAuthorization(): LedgerAuthorizationService;
   ledgerGoogle(): GoogleLedgerOAuth;
   ledgerSetup(): ReturnType<typeof ledgerSheetSetup>;
+  ledgerConfirmation(): ReturnType<typeof ledgerConfirmation>;
   /** ms 밀리초 기다린다(운영자 로그인 실패 응답의 최소 시간, operator-login.ts). */
   wait(ms: number): Promise<void>;
   readonly kakaoCallbackQueue: KakaoCallbackQueue | undefined;
@@ -84,6 +86,7 @@ export interface ServiceOverrides {
   readonly ledgerAuthorization?: LedgerAuthorizationService;
   readonly ledgerGoogle?: GoogleLedgerOAuth;
   readonly ledgerSetup?: ReturnType<typeof ledgerSheetSetup>;
+  readonly ledgerConfirmation?: ReturnType<typeof ledgerConfirmation>;
   readonly wait?: (ms: number) => Promise<void>;
   readonly kakaoCallbackQueue?: KakaoCallbackQueue;
 }
@@ -111,6 +114,7 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
   let ledgerAuth: LedgerAuthorizationService | undefined = overrides.ledgerAuthorization;
   let ledgerGoogle = overrides.ledgerGoogle;
   let ledgerSetup = overrides.ledgerSetup;
+  let ledgerConfirmationService = overrides.ledgerConfirmation;
   return {
     now: overrides.now ?? (() => new Date()),
     publicAppOrigin: overrides.publicAppOrigin === undefined ? settings.publicAppOrigin : overrides.publicAppOrigin,
@@ -215,6 +219,12 @@ export function createServices(env: Bindings, settings: Settings, overrides: Ser
       if (ledgerSetup !== undefined) return ledgerSetup;
       ledgerSetup = ledgerSheetSetup(channelSecret());
       return ledgerSetup;
+    },
+    ledgerConfirmation() {
+      if (ledgerConfirmationService !== undefined) return ledgerConfirmationService;
+      if (settings.ledgerOAuth === null) throw new MissingSettingError("Google ledger settings are not set");
+      ledgerConfirmationService = ledgerConfirmation(channelSecret(), settings.ledgerOAuth);
+      return ledgerConfirmationService;
     },
     wait: overrides.wait ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
   };

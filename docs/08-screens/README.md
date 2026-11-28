@@ -49,7 +49,7 @@
 | `error` | 기본 | 불러오기나 액션이 실패함 | 50 |
 | `permission` | 기본 | 이 사용자가 볼 수 없거나 할 수 없음 | 44 |
 | `stale` | 기본 | 보이는 데이터가 지금과 다를 수 있음 | 44 |
-| `submitting` | 화면 고유(W3) | 누른 액션의 결과를 기다리는 중. 버튼이 막힘 | 25 |
+| `submitting` | 화면 고유(W3) | 누른 액션의 결과를 기다리는 중. 버튼이 막힘 | 26 |
 | `confirm` | 화면 고유(W3) | 저장하기 전에 확인을 받는 창(서버가 요구하는 DEC-06 확인, 또는 되돌리기 어려운 액션 앞에서 화면이 여는 확인) | 12 |
 | `rate-limited` | 화면 고유(W3) | 요청 빈도 한도에 닿아 잠시 막힘 | 6 |
 | `done` | 화면 고유(W3) | 명령을 남긴 뒤의 결과, 또는 이미 처리한 건을 읽기 전용으로 봄 | 31 |
@@ -170,7 +170,7 @@
 | [SCR-013](SCR-013.md) | 사진 게시 동의 철회 카드 | 손님 | normal · done · stale · expired · permission · error | loading · empty | 29 |
 | [SCR-014](SCR-014.md) | 사장님 로그인 | 사장님 | normal · loading · error · rate-limited | empty · permission · stale | 12 |
 | [SCR-015](SCR-015.md) | 가게 등록 | 사장님 | normal · error · permission · stale · submitting | loading · empty | 17 |
-| [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · empty · error · permission · stale · not-sent | - | 13 |
+| [SCR-016](SCR-016.md) | 할 일 목록 | 사장님 | normal · loading · submitting · empty · error · permission · stale · not-sent | - | 22 |
 | [SCR-017](SCR-017.md) | 에스컬레이션 건 | 사장님 | normal · loading · error · permission · stale · submitting · done | empty | 30 |
 | [SCR-018](SCR-018.md) | 상담 대화 | 사장님 | normal · loading · empty · error · permission · stale | - | 7 |
 | [SCR-019](SCR-019.md) | 사장님 알림 | 사장님 | normal · not-sent · error · stale | loading · empty · permission | 0 |

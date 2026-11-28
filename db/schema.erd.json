@@ -27,7 +27,7 @@
     "lockSettings": 63,
     "ddlScripts": {
       "before": "CREATE EXTENSION IF NOT EXISTS btree_gist; -- refund_tiers의 EXCLUDE에 씀\nCREATE SEQUENCE consultation_timeline_seq AS bigint;\nCOMMENT ON SEQUENCE consultation_timeline_seq IS '상담 메시지·손님 안내의 공통 표시 순번';",
-      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py·erd_editor_sync.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE INDEX kakao_channels_configuration_idx ON kakao_channels (shop_id, configuration_order DESC) WHERE status <> 'retired';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status NOT IN ('ended', 'deleted');\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_waiting_idle_idx ON consultations (last_customer_message_at) WHERE status = 'awaiting_owner';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX consultations_ordered_idx ON consultations (last_customer_message_at) WHERE status = 'ordered';\nCREATE INDEX consultations_ended_idx ON consultations (ended_at) WHERE status = 'ended';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE INDEX messages_kakao_callback_deadline_idx ON messages (kakao_callback_deadline_at) WHERE kakao_callback_enc IS NOT NULL;\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE INDEX orders_purge_due_idx ON orders (finished_at) WHERE finished_at IS NOT NULL AND personal_data_purged_at IS NULL;\nCREATE INDEX orders_day_before_idx ON orders (confirmed_at) WHERE status = 'confirmed' AND personal_data_purged_at IS NULL;\nCREATE INDEX confirm_cards_source_message_idx ON confirm_cards (shop_id, consultation_id, customer_id, (payload->>'sourceMessageId'));\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason NOT IN ('closed_day', 'order_limit') AND (reason <> 'other_user' OR order_id IS NULL);\nCREATE UNIQUE INDEX handoffs_one_open_day_per_consultation ON handoffs (consultation_id, requested_day) WHERE status = 'open' AND reason = 'closed_day';\nCREATE UNIQUE INDEX handoffs_one_open_limit_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason = 'order_limit';\nCREATE UNIQUE INDEX handoffs_one_open_other_user_per_order ON handoffs (consultation_id, order_id) WHERE status = 'open' AND reason = 'other_user' AND order_id IS NOT NULL;\nCREATE INDEX handoffs_open_age_idx ON handoffs (created_at) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE INDEX payment_requests_claim_cap_idx ON payment_requests (due_cap_at) WHERE status = 'claimed';\nCREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL;\nCREATE UNIQUE INDEX slot_holds_one_held_per_order ON slot_holds (order_id) WHERE status = 'held';\nCREATE UNIQUE INDEX slot_holds_one_fixed_per_order ON slot_holds (order_id) WHERE status = 'fixed';\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed', 'done');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_completion_photo_uq ON photo_consents (completion_photo_id) WHERE scope = 'completion_photo';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_tasks_handoff_idx ON owner_tasks (shop_id, handoff_id) WHERE handoff_id IS NOT NULL;\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX kept_records_issue_due_idx ON kept_records (issue_keep_until) WHERE issue_keep_until IS NOT NULL AND issue_purged_at IS NULL;\nCREATE UNIQUE INDEX shop_identity_changes_one_pending ON shop_identity_changes (shop_id) WHERE status = 'pending';\nCREATE INDEX shop_identity_changes_queue_idx ON shop_identity_changes (requested_at) WHERE status = 'pending';\nCREATE INDEX shop_identity_changes_latest_idx ON shop_identity_changes (shop_id,requested_order DESC);\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
+      "after": "-- 다이어그램이 담지 못해 db/schema.sql에서 그대로 옮긴 것(erd_editor_build.py·erd_editor_sync.py가 씀). CHECK 제약은 db/schema.sql에만 있음.\n-- 부분·식 인덱스\nCREATE UNIQUE INDEX operators_email_uq ON operators (lower(email));\nCREATE INDEX shops_license_queue_idx ON shops (created_at) WHERE license_status = 'pending';\nCREATE UNIQUE INDEX kakao_channels_bot_active_uq ON kakao_channels (bot_id) WHERE status IN ('pending', 'linked');\nCREATE UNIQUE INDEX kakao_channels_one_linked_per_shop ON kakao_channels (shop_id) WHERE status = 'linked';\nCREATE INDEX kakao_channels_configuration_idx ON kakao_channels (shop_id, configuration_order DESC) WHERE status <> 'retired';\nCREATE UNIQUE INDEX price_lists_one_current ON price_lists (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX operating_rules_one_current ON operating_rules (shop_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX rule_clauses_one_per_key ON rule_clauses (operating_rules_id, clause_key) WHERE clause_key <> 'custom';\nCREATE UNIQUE INDEX payment_accounts_one_current ON payment_accounts (shop_id) WHERE retired_at IS NULL;\nCREATE UNIQUE INDEX consultations_one_live_per_customer ON consultations (customer_id) WHERE status NOT IN ('ended', 'deleted');\nCREATE INDEX consultations_idle_idx ON consultations (last_customer_message_at) WHERE status = 'open';\nCREATE INDEX consultations_waiting_idle_idx ON consultations (last_customer_message_at) WHERE status = 'awaiting_owner';\nCREATE INDEX consultations_dropped_idx ON consultations (dropped_at) WHERE status = 'dropped';\nCREATE INDEX consultations_ordered_idx ON consultations (last_customer_message_at) WHERE status = 'ordered';\nCREATE INDEX consultations_ended_idx ON consultations (ended_at) WHERE status = 'ended';\nCREATE INDEX messages_deferred_idx ON messages (consultation_id) WHERE delivery = 'deferred';\nCREATE INDEX messages_kakao_callback_deadline_idx ON messages (kakao_callback_deadline_at) WHERE kakao_callback_enc IS NOT NULL;\nCREATE UNIQUE INDEX order_drafts_one_active ON order_drafts (consultation_id) WHERE status = 'active';\nCREATE INDEX orders_owner_queue_idx ON orders (shop_id, status) WHERE status IN ('requested', 'payment_overdue');\nCREATE INDEX orders_purge_due_idx ON orders (finished_at) WHERE finished_at IS NOT NULL AND personal_data_purged_at IS NULL;\nCREATE INDEX orders_day_before_idx ON orders (confirmed_at) WHERE status = 'confirmed' AND personal_data_purged_at IS NULL;\nCREATE INDEX confirm_cards_source_message_idx ON confirm_cards (shop_id, consultation_id, customer_id, (payload->>'sourceMessageId'));\nCREATE UNIQUE INDEX change_requests_one_open_per_order ON change_requests (order_id) WHERE status IN ('requested', 'awaiting_difference');\nCREATE UNIQUE INDEX handoffs_one_open_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason NOT IN ('closed_day', 'order_limit') AND (reason <> 'other_user' OR order_id IS NULL);\nCREATE UNIQUE INDEX handoffs_one_open_day_per_consultation ON handoffs (consultation_id, requested_day) WHERE status = 'open' AND reason = 'closed_day';\nCREATE UNIQUE INDEX handoffs_one_open_limit_per_consultation ON handoffs (consultation_id) WHERE status = 'open' AND reason = 'order_limit';\nCREATE UNIQUE INDEX handoffs_one_open_other_user_per_order ON handoffs (consultation_id, order_id) WHERE status = 'open' AND reason = 'other_user' AND order_id IS NOT NULL;\nCREATE INDEX handoffs_open_age_idx ON handoffs (created_at) WHERE status = 'open';\nCREATE UNIQUE INDEX issue_details_one_collecting ON issue_details (consultation_id) WHERE status = 'collecting';\nCREATE UNIQUE INDEX payment_requests_one_open_per_order ON payment_requests (order_id) WHERE status IN ('open', 'claimed', 'mismatch');\nCREATE INDEX payment_requests_due_idx ON payment_requests (due_at) WHERE status = 'open';\nCREATE INDEX payment_requests_claim_cap_idx ON payment_requests (due_cap_at) WHERE status = 'claimed';\nCREATE UNIQUE INDEX payments_one_live_per_request ON payments (payment_request_id) WHERE voided_at IS NULL;\nCREATE UNIQUE INDEX slot_holds_one_held_per_order ON slot_holds (order_id) WHERE status = 'held';\nCREATE UNIQUE INDEX slot_holds_one_fixed_per_order ON slot_holds (order_id) WHERE status = 'fixed';\nCREATE INDEX slot_holds_day_live_idx ON slot_holds (shop_id, day) WHERE status IN ('held', 'fixed', 'done');\nCREATE UNIQUE INDEX reviews_one_current_per_order ON reviews (order_id) WHERE superseded_at IS NULL;\nCREATE UNIQUE INDEX photo_consents_completion_photo_uq ON photo_consents (completion_photo_id) WHERE scope = 'completion_photo';\nCREATE UNIQUE INDEX photo_consents_review_photo_uq ON photo_consents (review_photo_id) WHERE scope = 'review_photo';\nCREATE UNIQUE INDEX portfolio_items_review_photo_live ON portfolio_items (review_photo_id) WHERE unpublished_at IS NULL;\nCREATE UNIQUE INDEX portfolio_items_completion_photo_live ON portfolio_items (completion_photo_id) WHERE unpublished_at IS NULL;\nCREATE INDEX portfolio_items_consent_idx ON portfolio_items (photo_consent_id) WHERE unpublished_at IS NULL;\nCREATE INDEX owner_tasks_open_idx ON owner_tasks (shop_id, opened_at) WHERE closed_at IS NULL;\nCREATE INDEX owner_tasks_wait_due_idx ON owner_tasks (wait_due_at) WHERE wait_status = 'waiting';\nCREATE INDEX owner_tasks_handoff_idx ON owner_tasks (shop_id, handoff_id) WHERE handoff_id IS NOT NULL;\nCREATE INDEX owner_alerts_due_idx ON owner_alerts (next_attempt_at) WHERE status = 'pending';\nCREATE INDEX owner_alerts_confirming_idx ON owner_alerts (requested_at) WHERE status = 'confirming';\nCREATE INDEX notifications_due_idx ON notifications (next_attempt_at) WHERE status IN ('pending', 'retrying');\nCREATE INDEX notifications_deferred_idx ON notifications (customer_id, created_at) WHERE status = 'deferred';\nCREATE INDEX notifications_confirming_idx ON notifications (requested_at) WHERE status = 'confirming';\nCREATE UNIQUE INDEX ledger_links_one_live_per_shop ON ledger_links (shop_id) WHERE status <> 'unlinked';\nCREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending', 'retrying', 'alerted');\nCREATE INDEX ledger_writes_audit_due_idx ON ledger_writes (audit_due_at) WHERE status = 'written' AND audit_due_at IS NOT NULL;\nCREATE INDEX kept_records_issue_due_idx ON kept_records (issue_keep_until) WHERE issue_keep_until IS NOT NULL AND issue_purged_at IS NULL;\nCREATE UNIQUE INDEX shop_identity_changes_one_pending ON shop_identity_changes (shop_id) WHERE status = 'pending';\nCREATE INDEX shop_identity_changes_queue_idx ON shop_identity_changes (requested_at) WHERE status = 'pending';\nCREATE INDEX shop_identity_changes_latest_idx ON shop_identity_changes (shop_id,requested_order DESC);\n-- 중복 막기(EXCLUDE)\nALTER TABLE refund_tiers ADD CONSTRAINT refund_tiers_no_overlap EXCLUDE USING gist (operating_rules_id WITH =, int4range(hours_before_min, hours_before_max) WITH &&);\n-- 주문 행이 현재 버전의 주문 내용을 참조하는 외래 키는 트랜잭션 끝에 확인\nALTER TABLE orders ALTER CONSTRAINT FK_order_details_TO_orders DEFERRABLE INITIALLY DEFERRED;"
     }
   },
   "doc": {
@@ -423,7 +423,8 @@
           "03h7y0178l0hvzg6deack9vd8",
           "03h7y0178l0hvzg6dechcfbik",
           "03h7y0178l0hvzg6dee87xoq8",
-          "03h7y0178l0hvzg6dehkblvil"
+          "03h7y0178l0hvzg6dehkblvil",
+          "03hbju4zp7dbpisn8zdgek4x2"
         ],
         "groupId": "03h7y017wkyrgfkkkeykxgwvj",
         "ui": {
@@ -1488,7 +1489,9 @@
           "03h7y0179n9e4e4gq62fqwr53",
           "03h7y0179n9e4e4gq62t3dmij",
           "03h7y0179n9e4e4gq64pjqu00",
-          "03h7y0179n9e4e4gq68hrhxwd"
+          "03h7y0179n9e4e4gq68hrhxwd",
+          "03hbht6amax9vqgrwmlxf6u9j",
+          "03hbht6amwsutnq0meb1hjlwn"
         ],
         "groupId": "03h7y017wqizg5foqnmcnrqnd",
         "ui": {
@@ -1504,6 +1507,10 @@
           "03h7y0179n9e4e4gq6bltm8u5",
           "03h7y0179n9e4e4gq6d8q0oeo",
           "03h7y0179n9e4e4gq6esyn8q5",
+          "03hbjnyn1ihb91yhz1bps8ft2",
+          "03hbjcaqyl6tpljg3ogd5nkqc",
+          "03hbiu3y515nu7h8wq2r5rlg5",
+          "03hbj1ehq6uriqsoixkizyrre",
           "03h7y0179n9e4e4gq6i0rlxu9",
           "03h7y0179n9e4e4gq6ilco0kq"
         ],
@@ -1529,7 +1536,15 @@
           "03h7y0179n9e4e4gq7296trmn",
           "03h7y0179n9e4e4gq758xp1yx",
           "03h7y0179n9e4e4gq76xddo3y",
-          "03h7y0179n9e4e4gq78tdcqia"
+          "03h7y0179n9e4e4gq78tdcqia",
+          "03hbi287uo9odf05ami3cte2z",
+          "03hbjcaqzcg3zq03s89kznt3e",
+          "03hbi5x8xgjqr7lxniv9bnxoc",
+          "03hbi287v4pz8yr8jwggvyxaq",
+          "03hbi287vfoxmd9fbgbg3ldan",
+          "03hbi287vqkuw3uzjuxrdvel8",
+          "03hbj4dyvqve0hxi4eb386dps",
+          "03hbir568r4h84ns8kjbsfugt"
         ],
         "groupId": "03h7y017wqizg5foqnmcnrqnd",
         "ui": {
@@ -2235,6 +2250,15 @@
         "comment": "한 손님의 결제 기다림 주문 한도(REQ-263, REQ-265, 기본 2건, 0이면 한도 없음). 기본 디자인 주문 요청 때 그 손님의 결제 기다림 주문 수와 견줌(4절 A40). 바꾸면 저장한 때부터 씀",
         "dataType": "smallint",
         "default": "2",
+        "options": 8
+      },
+      "03hbju4zp7dbpisn8zdgek4x2": {
+        "id": "03hbju4zp7dbpisn8zdgek4x2",
+        "tableId": "03h7y0178fic3fnl5vhrhwxmb",
+        "name": "ledger_write_enabled",
+        "comment": "관리자만 켜는 장부 쓰기 허용 여부",
+        "dataType": "boolean",
+        "default": "false",
         "options": 8
       },
       "03h7y0178l0hvzg6delk653bu": {
@@ -6864,6 +6888,22 @@
         "dataType": "timestamptz",
         "options": 0
       },
+      "03hbht6amax9vqgrwmlxf6u9j": {
+        "id": "03hbht6amax9vqgrwmlxf6u9j",
+        "tableId": "03h7y0179n9e4e4gq5mot8xs9",
+        "name": "write_lease_id",
+        "comment": "장부 파일을 선점한 쓰기",
+        "dataType": "uuid",
+        "options": 0
+      },
+      "03hbht6amwsutnq0meb1hjlwn": {
+        "id": "03hbht6amwsutnq0meb1hjlwn",
+        "tableId": "03h7y0179n9e4e4gq5mot8xs9",
+        "name": "write_lease_until",
+        "comment": "파일 선점 만료 시각",
+        "dataType": "timestamptz",
+        "options": 0
+      },
       "03h7y0179n9e4e4gq6bltm8u5": {
         "id": "03h7y0179n9e4e4gq6bltm8u5",
         "tableId": "03h7y0179n9e4e4gq69098pnw",
@@ -6903,6 +6943,39 @@
         "name": "last_written_at",
         "comment": "마지막으로 고친 시각",
         "dataType": "timestamptz",
+        "options": 0
+      },
+      "03hbiu3y515nu7h8wq2r5rlg5": {
+        "id": "03hbiu3y515nu7h8wq2r5rlg5",
+        "tableId": "03h7y0179n9e4e4gq69098pnw",
+        "name": "sheet_hash",
+        "comment": "마지막 장부 행의 앱 서명",
+        "dataType": "text",
+        "options": 0
+      },
+      "03hbj1ehq6uriqsoixkizyrre": {
+        "id": "03hbj1ehq6uriqsoixkizyrre",
+        "tableId": "03h7y0179n9e4e4gq69098pnw",
+        "name": "sheet_hashes",
+        "comment": "대상과 기록 ID별 장부 행의 앱 서명",
+        "dataType": "jsonb",
+        "default": "'{}'::jsonb",
+        "options": 8
+      },
+      "03hbjcaqyl6tpljg3ogd5nkqc": {
+        "id": "03hbjcaqyl6tpljg3ogd5nkqc",
+        "tableId": "03h7y0179n9e4e4gq69098pnw",
+        "name": "sheet_key_version",
+        "comment": "장부 서명의 HMAC 키 버전",
+        "dataType": "text",
+        "options": 0
+      },
+      "03hbjnyn1ihb91yhz1bps8ft2": {
+        "id": "03hbjnyn1ihb91yhz1bps8ft2",
+        "tableId": "03h7y0179n9e4e4gq69098pnw",
+        "name": "confirmed_target_key",
+        "comment": "사장님이 확인한 장부 대상의 서명",
+        "dataType": "text",
         "options": 0
       },
       "03h7y0179n9e4e4gq6n72rqhb": {
@@ -7003,6 +7076,74 @@
         "comment": "남긴 시각",
         "dataType": "timestamptz",
         "default": "now()",
+        "options": 8
+      },
+      "03hbi287uo9odf05ami3cte2z": {
+        "id": "03hbi287uo9odf05ami3cte2z",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "write_uncertain",
+        "comment": "외부 쓰기 결과 불확실 여부",
+        "dataType": "boolean",
+        "default": "false",
+        "options": 8
+      },
+      "03hbi287v4pz8yr8jwggvyxaq": {
+        "id": "03hbi287v4pz8yr8jwggvyxaq",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "audit_due_at",
+        "comment": "중복 정리 다음 확인 시각",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03hbi287vfoxmd9fbgbg3ldan": {
+        "id": "03hbi287vfoxmd9fbgbg3ldan",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "audit_deadline",
+        "comment": "중복 정리 확인 기한",
+        "dataType": "timestamptz",
+        "options": 0
+      },
+      "03hbi287vqkuw3uzjuxrdvel8": {
+        "id": "03hbi287vqkuw3uzjuxrdvel8",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "audit_checks",
+        "comment": "중복 정리 확인 횟수",
+        "dataType": "smallint",
+        "default": "0",
+        "options": 8
+      },
+      "03hbi5x8xgjqr7lxniv9bnxoc": {
+        "id": "03hbi5x8xgjqr7lxniv9bnxoc",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "write_in_flight",
+        "comment": "결과 기록 전 외부 쓰기 시도",
+        "dataType": "boolean",
+        "default": "false",
+        "options": 8
+      },
+      "03hbir568r4h84ns8kjbsfugt": {
+        "id": "03hbir568r4h84ns8kjbsfugt",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "audit_repair_link_id",
+        "comment": "사후 확인에서 재기록할 원래 연결",
+        "dataType": "uuid",
+        "options": 0
+      },
+      "03hbj4dyvqve0hxi4eb386dps": {
+        "id": "03hbj4dyvqve0hxi4eb386dps",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "checkpoint_hashes",
+        "comment": "쓰기 전 장부 행의 HMAC 비교 기준",
+        "dataType": "jsonb",
+        "options": 0
+      },
+      "03hbjcaqzcg3zq03s89kznt3e": {
+        "id": "03hbjcaqzcg3zq03s89kznt3e",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "resume_needs_audit",
+        "comment": "재개 뒤 중복 확인 필요",
+        "dataType": "boolean",
+        "default": "false",
         "options": 8
       },
       "03h7y0179n9e4e4gq7cgnw2ol": {
@@ -12993,7 +13134,7 @@
     "memoEntities": {
       "03h7y0184s9oftzxoejnroyg3": {
         "id": "03h7y0184s9oftzxoejnroyg3",
-        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 432개와 트리거(claim_kakao_bot, payment_account_license_pending, notification_delivery_revision, 접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check, 운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 operators_end_sessions, close_license_on_hold_tasks, review_shop_license, review_shop_identity, resubmit_shop_license, refresh_pending_day_before_notice, read_prepared_issue_card, read_prepared_consent_withdrawal_card, read_operator_order, read_operator_record_list, read_operator_consultation, read_operator_messages, read_operator_original, purge_expired_masked_value_erasures)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
+        "value": "이 다이어그램은 db/schema.sql에서 만든 보기입니다(원본은 db/schema.sql, truth: source).\n다이어그램에 없는 것: CHECK 제약 434개와 트리거(claim_kakao_bot, payment_account_license_pending, notification_delivery_revision, 접속기록을 고치지 못하게 막는 access_logs_guard, 받음·미수령 주문과 제작 행의 인도·미수령 시각이 맞는지 트랜잭션 끝에 보는 orders_production_sync_check, 취소 뒤 들어온 입금·더 들어온 금액의 환불 계산값이 결제로 확인하지 않은 몫을 넘지 않는지 보는 refunds_unconfirmed_check, 재제작 주문이 돈을 낸 원래 주문을 가리키는지 보는 orders_remake_root_check, 재제작 주문에 결제 안내·환불·장부 행을 두지 못하게 막는 remake_money_check, 끝나지 않은 재제작 주문이 있는 원래 주문이 끝나지 않는지 트랜잭션 끝에 보는 orders_remake_finish_check, 한 주문의 잡힌 자리와 확정된 자리가 함께 있는 것이 차액을 기다리는 날짜 변경뿐인지 보는 slot_holds_pair_check, 취소 환불의 취소한 주문이 그 주문이나 그 재제작 주문인지 보는 refunds_cancelled_check, 주문 확정 뒤 상태인 주문을 확정한 결제가 결제 확인을 취소한 것이 아닌지 트랜잭션 끝에 보는 confirmed_payment_live_check, 운영자를 막거나 2단계 인증·Supabase 사용자를 바꾸면 그 운영자의 열린 세션을 끝내는 operators_end_sessions, close_license_on_hold_tasks, review_shop_license, review_shop_identity, resubmit_shop_license, refresh_pending_day_before_notice, read_prepared_issue_card, read_prepared_consent_withdrawal_card, read_operator_order, read_operator_record_list, read_operator_consultation, read_operator_messages, read_operator_original, purge_expired_masked_value_erasures, read_owner_ledger, unlink_owner_ledger)는 db/schema.sql에만 있습니다. 부분·식 인덱스, EXCLUDE, 지연 외래 키 설정은 다이어그램 대신 DDL의 after 스크립트에 그대로 있습니다.\n설명: docs/05-erd/README.md. 바꾸는 법: db/schema.sql과 새 마이그레이션을 먼저 고치고, 같은 변경을 이 다이어그램에 더합니다.",
         "ui": {
           "x": 50,
           "y": 50,

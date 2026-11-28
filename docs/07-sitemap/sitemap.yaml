@@ -184,8 +184,8 @@
       status: active
       flows: [FL-001, FL-002, FL-005, FL-006, FL-007, FL-008, FL-009, FL-011, FL-013]
       terms: [CTX-001, TERM-059, TERM-035, TERM-008]
-      specs: [SPEC-067, SPEC-024, SPEC-037]
-      apis: [API-040, API-002]
+      specs: [SPEC-067, SPEC-024, SPEC-037, SPEC-064]
+      apis: [API-040, API-002, API-084]
       opens: [SCR-015, SCR-022, SCR-023, SCR-024, SCR-025, SCR-026, SCR-027, SCR-029, SCR-032, SCR-035, SCR-042, SCR-043]
       opens_by_task:
         handoff: SCR-017

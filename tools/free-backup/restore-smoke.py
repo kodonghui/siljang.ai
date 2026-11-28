@@ -144,6 +144,7 @@ def run():
             assert ledger_state == b"auth_lost", "Vault 없는 복구의 재연결 상태 불일치"
             sql(target, (TOOLS / "restore-fence.sql").read_text())
             assert sql(target, "SELECT count(*) FROM pg_proc WHERE pronamespace='public'::regnamespace AND prosecdef AND has_function_privilege('public',oid,'EXECUTE')").strip() == b"0"
+            assert sql(target, "SELECT count(*) FROM pg_trigger WHERE tgrelid='public.orders'::regclass AND tgname='orders_purge_ledger_signatures' AND NOT tgisinternal").strip() == b"1", "장부 서명 삭제 트리거 복구 실패"
             assert snapshot(target) == before, "복구 기록 불일치"
             assert sql(target, sequence_query) == sequences_before, "복구 시퀀스 불일치"
             proof = {"server_major": int(sql(source, "SHOW server_version_num")) // 10000,

@@ -14,6 +14,7 @@ import { DEFAULT_LIMITS, type RunLimits, type RunnableJob, type RunSummary, runD
 import { JOB_HANDLERS, runnableJobs } from "./jobs";
 import { recoverExpiredKakaoCallbacks } from "./kakao-callback-queue";
 import type { KakaoEvents, KakaoOwnerEvents } from "./kakao-event";
+import { ledgerWriteJob } from "./ledger-write-job";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import { createOwnerAlertHandler } from "./owner-alerts";
 import { createServices } from "./services";
@@ -91,6 +92,7 @@ export async function runScheduled(
         options.jobs ??
         runnableJobs(undefined, {
           ...JOB_HANDLERS,
+          ledger_write: { handler: ledgerWriteJob(settings, services, options.connect ?? pgConnector) },
           customer_notice: {
             handler: createCustomerNoticeHandler({
               // DEC-20 무료 MVP: 실제 발신을 켜는 변경과 권한/월렛 시험은 TASK-167에서 한다.

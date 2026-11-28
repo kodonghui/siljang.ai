@@ -1,12 +1,13 @@
 import { readBytesLimited } from "./body";
 import { GoogleLedgerUnavailableError } from "./ledger-google-auth";
-import { LEDGER_HEADERS, LEDGER_MAX_COLUMNS } from "./ledger-sheet-columns";
+import { LEDGER_HEADERS, LEDGER_MAX_COLUMNS, LEDGER_STORAGE_HEADERS } from "./ledger-sheet-columns";
 import type { Secret } from "./settings";
 
 export interface LedgerSheetSnapshot {
   readonly sheetId: number;
   readonly sheetName: string;
   readonly columnCount: number;
+  readonly rowCount: number;
   readonly headers: readonly unknown[];
   readonly markers: readonly { readonly token: string; readonly start: number; readonly end: number }[];
 }
@@ -16,6 +17,32 @@ function object(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+/** 할당량 403은 재시도하고, 명백한 권한 거절만 연결 상실로 분류한다. */
+export async function googleLedgerDenied(response: Response): Promise<boolean> {
+  if (response.status === 403) {
+    const text = new TextDecoder().decode(
+      await readBytesLimited(response, 16384, () => new GoogleLedgerUnavailableError()),
+    );
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return true;
+    }
+    const errors = object(object(body)?.error)?.errors;
+    if (
+      Array.isArray(errors) &&
+      errors.some((entry) =>
+        ["userRateLimitExceeded", "rateLimitExceeded", "quotaExceeded"].includes(String(object(entry)?.reason)),
+      )
+    )
+      throw new GoogleLedgerUnavailableError();
+    return true;
+  }
+  await response.body?.cancel().catch(() => {});
+  if ([400, 401, 404].includes(response.status)) return true;
+  throw new GoogleLedgerUnavailableError();
 }
 export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {}) {
   const send = options.fetch ?? fetch;
@@ -27,9 +54,7 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
       headers: { Authorization: `Bearer ${accessToken.reveal()}` },
     });
     if (!response.ok) {
-      await response.body?.cancel().catch(() => {});
-      if ([400, 401, 403, 404].includes(response.status)) return DENIED;
-      throw new GoogleLedgerUnavailableError();
+      if (await googleLedgerDenied(response)) return DENIED;
     }
     const bytes = await readBytesLimited(response, MAX_BYTES, () => new GoogleLedgerUnavailableError());
     return JSON.parse(new TextDecoder().decode(bytes));
@@ -71,7 +96,7 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
           url = new URL(base);
         url.searchParams.set(
           "fields",
-          "sheets(properties(sheetId,title,sheetType,gridProperties(columnCount)),developerMetadata(metadataKey,metadataValue,location,visibility))",
+          "sheets(properties(sheetId,title,sheetType,gridProperties(columnCount,rowCount)),developerMetadata(metadataKey,metadataValue,location,visibility))",
         );
         const raw = await read(url, accessToken);
         if (raw === DENIED) return null;
@@ -85,7 +110,8 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
           grid = object(props?.gridProperties);
         if (props?.sheetType !== "GRID") return null;
         const sheetId = props.sheetId,
-          columnCount = grid?.columnCount;
+          columnCount = grid?.columnCount,
+          rowCount = grid?.rowCount;
         if (
           typeof sheetId !== "number" ||
           !Number.isSafeInteger(sheetId) ||
@@ -94,7 +120,10 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
           typeof columnCount !== "number" ||
           !Number.isSafeInteger(columnCount) ||
           columnCount < 1 ||
-          columnCount > LEDGER_MAX_COLUMNS
+          columnCount > LEDGER_MAX_COLUMNS ||
+          typeof rowCount !== "number" ||
+          !Number.isSafeInteger(rowCount) ||
+          rowCount < 1
         )
           throw new GoogleLedgerUnavailableError();
         const markers: { token: string; start: number; end: number }[] = [];
@@ -121,7 +150,7 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
             start + LEDGER_HEADERS.length > columnCount
           )
             continue;
-          markers.push({ token: entry.metadataValue, start, end: start + LEDGER_HEADERS.length });
+          markers.push({ token: entry.metadataValue, start, end: start + LEDGER_STORAGE_HEADERS.length });
         }
         const headerUrl = new URL(`${base}/values/${encodeURIComponent(`'${sheetName.replaceAll("'", "''")}'!1:1`)}`);
         headerUrl.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
@@ -147,7 +176,7 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
           )
         )
           throw new GoogleLedgerUnavailableError();
-        return { sheetId, sheetName, columnCount, headers: [...headers], markers };
+        return { sheetId, sheetName, columnCount, rowCount, headers: [...headers], markers };
       } catch {
         throw new GoogleLedgerUnavailableError();
       }

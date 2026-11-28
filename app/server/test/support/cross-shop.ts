@@ -184,6 +184,13 @@ export type CrossShopCase =
   | OperatorReviewShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
+  {
+    method: "POST",
+    path: "/owner/tasks/:taskId/ledger-confirmation",
+    kind: "path",
+    ownStatus: 404,
+    request: (_own, target) => ({ url: `/owner/tasks/${target.orderId}/ledger-confirmation` }),
+  },
   { method: "GET", path: "/owner/ledger", kind: "ledger" },
   { method: "PUT", path: "/owner/ledger", kind: "ledger" },
   { method: "DELETE", path: "/owner/ledger", kind: "ledger" },

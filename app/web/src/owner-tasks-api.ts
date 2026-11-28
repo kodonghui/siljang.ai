@@ -182,3 +182,20 @@ export async function fetchOwnerTasks(
     },
   };
 }
+
+/** 확인한 주문 한 건의 현재 시트 행을 서버가 검증하고 다시 연다. */
+export async function confirmLedgerTask(
+  taskId: string,
+  expectedShopId: string,
+  key: string,
+): Promise<ApiResult<{ outcome: "confirmed" }>> {
+  if (!uuid(taskId) || !uuid(expectedShopId)) return INVALID_API_RESPONSE;
+  const result = await request<unknown>(`/owner/tasks/${taskId}/ledger-confirmation`, {
+    method: "POST",
+    expectedShopId,
+    key,
+  });
+  if (!result.ok) return result;
+  if (!isApiObject(result.data) || result.data.outcome !== "confirmed") return INVALID_API_RESPONSE;
+  return { ...result, data: { outcome: "confirmed" } };
+}

@@ -105,6 +105,8 @@ export interface ShopReference {
 /** 가게 범위 연결. 모든 SQL의 $1은 이 가게 ID이고(이 층이 채움) 넘기는 값은 $2부터다. */
 export interface ShopDb {
   readonly scope: ShopScope;
+  /** 트랜잭션 연결이 끝나거나 끊기면 중단된다. */
+  readonly signal?: AbortSignal | undefined;
   /** 가게 조건을 지킨 SQL 하나(sql-scope.ts의 규칙). 어기면 보내지 않고 UnscopedQueryError. */
   run<R = Record<string, unknown>>(sql: string, params?: readonly unknown[]): Promise<Rows<R>>;
   /** run의 첫 행. 없으면 404 not_found(없는 것과 다른 가게 것을 가리지 않음, G1). */
@@ -168,6 +170,10 @@ class ScopedDb implements ShopDb {
     this.scope = scope;
     this.#q = q;
     this.#inTransaction = inTransaction;
+  }
+
+  get signal(): AbortSignal | undefined {
+    return this.#q.signal;
   }
 
   async savepoint<T>(work: (tx: ShopDb) => Promise<T>): Promise<T> {

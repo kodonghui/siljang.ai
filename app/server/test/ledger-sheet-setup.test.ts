@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { toBase64Url } from "../src/encoding";
 import { GoogleLedgerUnavailableError } from "../src/ledger-google-auth";
-import { LEDGER_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
+import { LEDGER_HEADERS, LEDGER_STORAGE_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
 import { ledgerSheetSetup } from "../src/ledger-sheet-setup";
 import { Secret } from "../src/settings";
 
@@ -16,6 +17,7 @@ function fixture() {
     markers: Record<string, unknown>[] = [],
     lost = false,
     writeStatus = 200,
+    writeBody = "synthetic private Google error",
     badId = false,
     collaborate = false,
     corruptReadback = false,
@@ -38,7 +40,7 @@ function fixture() {
       const body = JSON.parse(init.body as string);
       writes.push(body);
       if (writeStatus !== 200)
-        return new Response("synthetic private Google error", {
+        return new Response(writeBody, {
           status: writeStatus,
           headers: { location: "https://other.example/collect" },
         });
@@ -48,26 +50,40 @@ function fixture() {
       }
       const insert = body.requests[0]?.insertDimension,
         write = body.requests[1]?.updateCells,
-        metadata = body.requests[2]?.createDeveloperMetadata?.developerMetadata;
+        metadata = body.requests[3]?.createDeveloperMetadata?.developerMetadata;
       expect(insert).toEqual({
         range: {
           sheetId,
           dimension: "COLUMNS",
           startIndex: count === 27 ? 26 : count,
-          endIndex: (count === 27 ? 26 : count) + 12,
+          endIndex: (count === 27 ? 26 : count) + 14,
         },
         inheritFromBefore: true,
       });
       const start = insert.range.startIndex;
+      expect(body.requests[2]).toEqual({
+        updateDimensionProperties: {
+          range: { sheetId, dimension: "COLUMNS", startIndex: start + 12, endIndex: start + 14 },
+          properties: { hiddenByUser: true },
+          fields: "hiddenByUser",
+        },
+      });
       headers = Array.from({ length: count }, (_, index) => headers[index] ?? "");
-      headers.splice(start, 0, ...Array(12).fill(""));
-      count += 12;
-      expect(write.fields).toBe("userEnteredValue");
+      headers.splice(start, 0, ...Array(14).fill(""));
+      count += 14;
+      expect(write.fields).toBe("userEnteredValue,note");
       expect(write.start).toEqual({ sheetId, rowIndex: 0, columnIndex: start });
       expect(write.rows).toEqual([
-        { values: LEDGER_HEADERS.map((value) => ({ userEnteredValue: { stringValue: value } })) },
+        {
+          values: LEDGER_STORAGE_HEADERS.map((value, index) => ({
+            userEnteredValue: { stringValue: value },
+            ...(index >= LEDGER_HEADERS.length
+              ? { note: "실장님이 중복 기록을 막는 데 쓰는 열, 지우거나 바꾸지 마세요" }
+              : {}),
+          })),
+        },
       ]);
-      for (let i = 0; i < 12; i++) headers[start + i] = write.rows[0].values[i].userEnteredValue.stringValue;
+      for (let i = 0; i < 14; i++) headers[start + i] = write.rows[0].values[i].userEnteredValue.stringValue;
       expect(metadata.metadataKey).toBe("siljang_columns_v1");
       expect(metadata.visibility).toBe("PROJECT");
       expect(metadata.location.dimensionRange.endIndex - metadata.location.dimensionRange.startIndex).toBe(1);
@@ -78,7 +94,7 @@ function fixture() {
       return new Response(
         JSON.stringify({
           spreadsheetId: badId ? "other_file_1234567890" : file,
-          replies: [{}, {}, { createDeveloperMetadata: { developerMetadata: metadata } }],
+          replies: [{}, {}, {}, { createDeveloperMetadata: { developerMetadata: metadata } }],
         }),
       );
     }
@@ -88,7 +104,12 @@ function fixture() {
       JSON.stringify({
         sheets: [
           {
-            properties: { sheetId, title: tab, sheetType: "GRID", gridProperties: { columnCount: count } },
+            properties: {
+              sheetId,
+              title: tab,
+              sheetType: "GRID",
+              gridProperties: { columnCount: count, rowCount: 5000 },
+            },
             developerMetadata: markers,
           },
         ],
@@ -125,6 +146,9 @@ function fixture() {
     set writeStatus(value: number) {
       writeStatus = value;
     },
+    set writeBody(value: string) {
+      writeBody = value;
+    },
     set badId(value: boolean) {
       badId = value;
     },
@@ -140,13 +164,37 @@ function fixture() {
   };
 }
 describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
+  it.each(["new", "legacy"])("%s 열 쓰기의 403 쿼터 오류는 재시도한다", async (kind) => {
+    const f = fixture();
+    if (kind === "legacy") {
+      const hmac = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(f.key.reveal()),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const bytes = new TextEncoder().encode(
+        JSON.stringify(["ledger-columns", 1, shop, file, sheetId, 26, 38, true, LEDGER_HEADERS]),
+      );
+      const signature = toBase64Url(new Uint8Array(await crypto.subtle.sign("HMAC", hmac, bytes)));
+      f.count = 38;
+      f.headers = [...Array(26).fill(""), ...LEDGER_HEADERS];
+      f.markers = [f.marker(`c1.q.1.${signature}`, 26)];
+    }
+    f.writeStatus = 403;
+    f.writeBody = JSON.stringify({ error: { errors: [{ reason: "userRateLimitExceeded" }] } });
+    await expect(ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).rejects.toBeInstanceOf(
+      GoogleLedgerUnavailableError,
+    );
+  });
   it("기존 표 너비 뒤에 새 열을 삽입하고 헤더/서명 메타데이터를 함께 쓴 뒤 다시 읽는다", async () => {
     const f = fixture(),
       result = await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab);
     expect(result).toMatchObject({
       sheetId,
       start: 26,
-      end: 38,
+      end: 40,
       movedRight: true,
       columns: LEDGER_HEADERS.map((header, i) => ({ header, column: `A${String.fromCharCode(65 + i)}` })),
     });
@@ -159,17 +207,17 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
     const f = fixture();
     f.collaborate = true;
     expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).not.toBeNull();
-    expect(f.headers[38]).toBe("협업자가 방금 넣은 자료");
+    expect(f.headers[40]).toBe("협업자가 방금 넣은 자료");
   });
   it("유효한 자기 서명과 실제 헤더가 있으면 기존 열을 재사용하고 쓰지 않는다", async () => {
     const f = fixture(),
       token = await signLedgerColumns(f.key, { shopId: shop, spreadsheetId: file, sheetId }, 26, true);
-    f.count = 38;
-    f.headers = [...Array(26).fill(""), ...LEDGER_HEADERS];
+    f.count = 40;
+    f.headers = [...Array(26).fill(""), ...LEDGER_STORAGE_HEADERS];
     f.markers = [f.marker(token, 26)];
     expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).toMatchObject({
       start: 26,
-      end: 38,
+      end: 40,
       ownershipToken: token,
       movedRight: true,
     });
@@ -178,8 +226,8 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
   it("서명된 기존 열이 있어도 읽기 전용 파일은 다시 연결하지 않는다", async () => {
     const f = fixture();
     const token = await signLedgerColumns(f.key, { shopId: shop, spreadsheetId: file, sheetId }, 26, true);
-    f.count = 38;
-    f.headers = [...Array(26).fill(""), ...LEDGER_HEADERS];
+    f.count = 40;
+    f.headers = [...Array(26).fill(""), ...LEDGER_STORAGE_HEADERS];
     f.markers = [f.marker(token, 26)];
     f.editable = false;
     expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).toBeNull();
@@ -192,11 +240,11 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
       changed = await signLedgerColumns(f.key, { shopId: shop, spreadsheetId: file, sheetId }, 10000, false);
     f.count = 18278;
     f.headers = Array(18278).fill("");
-    for (let i = 0; i < 12; i++) f.headers[26 + i] = LEDGER_HEADERS[i];
+    for (let i = 0; i < 14; i++) f.headers[26 + i] = LEDGER_STORAGE_HEADERS[i];
     f.markers = [f.marker(valid, 26), f.marker(changed, 10000)];
     expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).toMatchObject({
       start: 26,
-      end: 38,
+      end: 40,
       ownershipToken: valid,
     });
     expect(f.writes).toHaveLength(0);
@@ -215,16 +263,16 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
           26,
           true,
         );
-      f.count = 38;
-      f.headers = [...Array(26).fill(""), ...LEDGER_HEADERS];
+      f.count = 40;
+      f.headers = [...Array(26).fill(""), ...LEDGER_STORAGE_HEADERS];
       if (kind === "changed_headers") f.headers[26] = "사장님이 바꾼 헤더";
       const before = [...f.headers];
       f.markers = [f.marker(kind === "forged" ? signed.slice(0, -1) + (signed.endsWith("A") ? "B" : "A") : signed, 26)];
       expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).toMatchObject({
-        start: 38,
-        end: 50,
+        start: 40,
+        end: 54,
       });
-      expect(f.headers.slice(0, 38)).toEqual(before);
+      expect(f.headers.slice(0, 40)).toEqual(before);
       expect(f.writes).toHaveLength(1);
     },
   );
@@ -234,7 +282,7 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
     const service = ledgerSheetSetup(f.key, { fetch: f.send });
     await expect(service.connect(f.access, shop, file, tab)).rejects.toBeInstanceOf(GoogleLedgerUnavailableError);
     f.lost = false;
-    expect(await service.connect(f.access, shop, file, tab)).toMatchObject({ start: 26, end: 38 });
+    expect(await service.connect(f.access, shop, file, tab)).toMatchObject({ start: 26, end: 40 });
     expect(f.writes).toHaveLength(1);
   });
   it("헤더 생성 후 확인 조회가 실패하면 새 인가 뒤 기존 서명 열을 재사용한다", async () => {
@@ -244,7 +292,7 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
     await expect(service.connect(f.access, shop, file, tab)).rejects.toBeInstanceOf(GoogleLedgerUnavailableError);
     expect(f.writes).toHaveLength(1);
     f.corruptReadback = false;
-    expect(await service.connect(f.access, shop, file, tab)).toMatchObject({ start: 26, end: 38 });
+    expect(await service.connect(f.access, shop, file, tab)).toMatchObject({ start: 26, end: 40 });
     expect(f.writes).toHaveLength(1);
   });
   it.each([400, 401, 403, 404])("헤더 쓰기 HTTP%s는 연결하지 않는다", async (status) => {

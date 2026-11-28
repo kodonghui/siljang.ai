@@ -13,6 +13,7 @@ import { kakaoSkillRoutes } from "./kakao-skill";
 import { type AuthorizedKakaoSkill, resolveKakaoSkillScope } from "./kakao-skill-auth";
 import { getLedger, linkLedger, unlinkLedger } from "./ledger";
 import { authorizeLedger } from "./ledger-authorization";
+import { confirmOwnerLedgerOrder } from "./ledger-confirmation-route";
 import { resubmitLicense } from "./license-resubmission";
 import { type LogFields, type LogLevel, type LogSink, log } from "./log";
 import {
@@ -167,6 +168,7 @@ export const APP_ROUTES: readonly RouteDecl[] = [
   accessRoute("GET", "/operator/shops/:shopId/orders/:orderId", "operator", "API-076", getOperatorRecordOrder),
   accessRoute("GET", "/owner/consultations/:consultationId/messages", "owner", "API-043", listConsultationMessages),
   accessRoute("GET", "/owner/tasks", "owner", "API-040", listOwnerTasks),
+  shopRoute("POST", "/owner/tasks/:taskId/ledger-confirmation", "owner", confirmOwnerLedgerOrder),
   shopRoute("GET", "/owner/booking-link", "owner", getBookingLink),
   shopRoute("GET", "/owner/ledger", "owner", getLedger),
   shopRoute("PUT", "/owner/ledger", "owner", linkLedger),

@@ -16,6 +16,9 @@ export const LEDGER_HEADERS = [
   "인도 일시",
   "재제작",
 ] as const;
+export const LEDGER_INTERNAL_HEADER = "실장님 기록 ID";
+export const LEDGER_ORDER_HEADER = "실장님 주문 ID";
+export const LEDGER_STORAGE_HEADERS = [...LEDGER_HEADERS, LEDGER_INTERNAL_HEADER, LEDGER_ORDER_HEADER] as const;
 export const LEDGER_MAX_COLUMNS = 18278;
 export interface LedgerSheetScope {
   readonly shopId: string;
@@ -35,7 +38,7 @@ export class LedgerColumnsOverflowError extends Error {
   override readonly name = "LedgerColumnsOverflowError";
 }
 const genuine = new WeakSet<object>(),
-  HEADER_SET = new Set<string>(LEDGER_HEADERS);
+  HEADER_SET = new Set<string>(LEDGER_STORAGE_HEADERS);
 function validScope(scope: LedgerSheetScope): boolean {
   return (
     isUuid(scope.shopId) &&
@@ -46,7 +49,7 @@ function validScope(scope: LedgerSheetScope): boolean {
   );
 }
 function validStart(start: number): boolean {
-  return Number.isSafeInteger(start) && start >= 0 && start + LEDGER_HEADERS.length <= LEDGER_MAX_COLUMNS;
+  return Number.isSafeInteger(start) && start >= 0 && start + LEDGER_STORAGE_HEADERS.length <= LEDGER_MAX_COLUMNS;
 }
 async function signingKey(key: Secret) {
   return crypto.subtle.importKey(
@@ -57,7 +60,8 @@ async function signingKey(key: Secret) {
     ["sign", "verify"],
   );
 }
-function data(scope: LedgerSheetScope, start: number, movedRight: boolean) {
+function data(scope: LedgerSheetScope, start: number, movedRight: boolean, legacy = false) {
+  const headers = legacy ? LEDGER_HEADERS : LEDGER_STORAGE_HEADERS;
   return new TextEncoder().encode(
     JSON.stringify([
       "ledger-columns",
@@ -66,11 +70,61 @@ function data(scope: LedgerSheetScope, start: number, movedRight: boolean) {
       scope.spreadsheetId,
       scope.sheetId,
       start,
-      start + LEDGER_HEADERS.length,
+      start + headers.length,
       movedRight,
-      LEDGER_HEADERS,
+      headers,
     ]),
   );
+}
+/** 이전에 서명한 12개 열을 확인한다. 새 열을 만들 권한을 이 서명만으로 추측하지 않는다. */
+export async function verifyLegacyLedgerColumns(
+  key: Secret,
+  scope: LedgerSheetScope,
+  token: string,
+  start: number,
+): Promise<{ readonly movedRight: boolean } | null> {
+  if (
+    !validScope(scope) ||
+    !Number.isSafeInteger(start) ||
+    start < 0 ||
+    start + LEDGER_HEADERS.length > LEDGER_MAX_COLUMNS
+  )
+    return null;
+  const match = /^c1\.([a-z0-9]{1,3})\.([01])\.([A-Za-z0-9_-]{43})$/.exec(token);
+  if (!match || start.toString(36) !== match[1]) return null;
+  const signature = fromBase64Url(match[3] as string),
+    movedRight = match[2] === "1";
+  if (!signature || toBase64Url(signature) !== match[3]) return null;
+  if (
+    !(await crypto.subtle.verify(
+      "HMAC",
+      await signingKey(key),
+      signature as Uint8Array<ArrayBuffer>,
+      data(scope, start, movedRight, true),
+    ))
+  )
+    return null;
+  return { movedRight };
+}
+/** 연결만 할 때는 기존 12열 서명을 만들고 쓰기용 숨김 열은 나중에 준비한다. */
+export async function signLegacyLedgerColumns(
+  key: Secret,
+  scope: LedgerSheetScope,
+  start: number,
+  movedRight: boolean,
+): Promise<string> {
+  if (
+    !validScope(scope) ||
+    !Number.isSafeInteger(start) ||
+    start < 0 ||
+    start + LEDGER_HEADERS.length > LEDGER_MAX_COLUMNS ||
+    typeof movedRight !== "boolean"
+  )
+    throw new RangeError("invalid legacy ledger column scope");
+  const signature = toBase64Url(
+    new Uint8Array(await crypto.subtle.sign("HMAC", await signingKey(key), data(scope, start, movedRight, true))),
+  );
+  return `c1.${start.toString(36)}.${movedRight ? 1 : 0}.${signature}`;
 }
 export function ledgerColumnName(index: number): string {
   if (!Number.isSafeInteger(index) || index < 0 || index >= LEDGER_MAX_COLUMNS)
@@ -103,7 +157,7 @@ export async function verifyLedgerColumns(
   start: number,
   end: number,
 ): Promise<VerifiedLedgerColumns | null> {
-  if (!validScope(scope) || !validStart(start) || end !== start + LEDGER_HEADERS.length) return null;
+  if (!validScope(scope) || !validStart(start) || end !== start + LEDGER_STORAGE_HEADERS.length) return null;
   const match = /^c1\.([a-z0-9]{1,3})\.([01])\.([A-Za-z0-9_-]{43})$/.exec(token);
   if (match === null || Number.parseInt(match[1] as string, 36) !== start || start.toString(36) !== match[1])
     return null;
@@ -139,7 +193,7 @@ export function planLedgerColumns(
   const reuse =
     verified !== null &&
     verified.end <= columnCount &&
-    LEDGER_HEADERS.every((header, i) => headers[verified.start + i] === header);
+    LEDGER_STORAGE_HEADERS.every((header, i) => headers[verified.start + i] === header);
   const start = reuse && verified !== null ? verified.start : columnCount;
   if (!validStart(start)) throw new LedgerColumnsOverflowError();
   const movedRight =
@@ -148,7 +202,7 @@ export function planLedgerColumns(
       : headers.some((value) => typeof value === "string" && HEADER_SET.has(value));
   return {
     start,
-    end: start + LEDGER_HEADERS.length,
+    end: start + LEDGER_STORAGE_HEADERS.length,
     movedRight,
     needsWrite: !reuse,
     columns: LEDGER_HEADERS.map((header, i) => ({ header, column: ledgerColumnName(start + i) })),

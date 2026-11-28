@@ -41,13 +41,17 @@ describe("SCR-019 사장님 알림", () => {
     });
   });
 
-  it.each([
-    ["handoff_appended", "에스컬레이션 건에 새 질문이 있어요"],
-    ["ledger_failing", "장부 다시 연결이 생겼어요"],
-  ] as const)("추가 질문과 장부 문제 %s는 할 일 목록을 엶", (kind, description) => {
-    const card = renderOwnerAlert({ kind }, "normal", origin)?.template.outputs[0].textCard;
-    expect(card?.description).toBe(description);
-    expect(card?.buttons[0]?.webLinkUrl).toBe("https://test.example/owner");
+  it.each([["handoff_appended", "에스컬레이션 건에 새 질문이 있어요"]] as const)(
+    "추가 질문 %s는 할 일 목록을 엶",
+    (kind, description) => {
+      const card = renderOwnerAlert({ kind }, "normal", origin)?.template.outputs[0].textCard;
+      expect(card?.description).toBe(description);
+      expect(card?.buttons[0]?.webLinkUrl).toBe("https://test.example/owner");
+    },
+  );
+  it("장부 실패는 중복 이벤트가 아닌 미기록 주문 수와 재연결을 안내한다", () => {
+    const card = renderOwnerAlert({ kind: "ledger_failing", count: 2 }, "normal", origin)?.template.outputs[0].textCard;
+    expect(card?.description).toBe("장부에 못 적은 주문 2건, 장부 연결을 다시 해 주세요");
   });
 
   it("계좌 변경에는 결제 수단 주소만 담음", () => {

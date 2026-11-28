@@ -91,7 +91,7 @@ export const JOBS: readonly JobEntry[] = [
     name: "ledger_write",
     task: "TASK-157",
     runs: MINUTE,
-    sources: ["ledger_write"],
+    sources: ["ledger_write", "ledger_audit"],
     note: "장부 쓰기와 다시 적기(retry.ts의 nextLedgerAttemptAt). 구글 시트 호출은 leased 처리, 24시간 실패 알림은 TASK-157",
   },
   {

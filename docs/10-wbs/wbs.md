@@ -2,7 +2,7 @@
 
 <!-- build_wbs.py가 research/cake-wbs-2026-11/wbs_rows.py에서 생성. 손으로 고치지 않음 -->
 
-작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 83개 · 화면 50개(상태 367개, 09에서 그린 161개, 그리지 않은 206개) · 테이블 62개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 36개.
+작업 184개 · 크기 합 248.5일 · 반복 10개 · 동희님 17개 · Claude 167개 · SPEC 79개 · 수락 기준 333개 · API 84개 · 화면 50개(상태 368개, 09에서 그린 161개, 그리지 않은 207개) · 테이블 62개 · 앱 규칙 40개 · 공통 규칙 10개 · 열린 질문 1개 · 끝난 작업 36개.
 
 읽는 법과 나눈 방식은 [README](README.md)에 있습니다. '닿는 것'은 만드는 API, 쓰고 읽는 테이블, 만드는 화면입니다. '끝난 조건'의 첫 줄은 손으로 쓴 조건이고, 수락 기준·응답 코드·스킬 결과·화면 상태·응답 행·규칙 줄은 원본에서 생성합니다. 화면 작업의 앞선 작업에는 그 화면이 부르는 API를 만드는 작업이 자동으로 들어갑니다. 끝난 작업은 끝난 조건 맨 앞에 '끝남'과 끝난 날·증거가 붙습니다.
 
@@ -143,7 +143,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TASK-084 | 기본 디자인 주문의 가예약과 결제 안내로 진행 | SPEC-030, A3 | API-071, TBL-003, TBL-023, TBL-027, TBL-031, TBL-034 | TASK-083 | Claude | 2일 | SPEC-030 수락 기준 #1: 자동 시험 통과<br/>API-071 응답(200·401·422·default)마다 통과하는 시험<br/>05 앱 규칙(A3)을 지키는지 보는 서버 시험 |
 | TASK-085 | SCR-003 가게 채널 상담 카카오 응답 | SPEC-013, SPEC-014, SPEC-017, SPEC-018, SPEC-019, SPEC-020, SPEC-022, SPEC-025, SPEC-026, SPEC-027, SPEC-049, SPEC-056, SPEC-057, SPEC-008 | SCR-003 | TASK-028 | Claude | 2일 | SCR-003 상태 10개마다 스킬 응답이 08 정의와 같음(카카오 응답 형식: 출력 3개 이하, 카드 설명 400자 이하), 09에서 그린 3개(normal·empty·error)와 그리지 않은 7개(loading·permission·stale·handed-over·fixed-answer·rate-limited·link-test)는 08 와이어프레임과 09 토큰으로, 08 응답 행 29개마다 정한 상태로 보임 |
 | TASK-086 | SCR-004 주문 요청 카드 카카오 응답 | SPEC-028, SPEC-029, SPEC-030, SPEC-069, SPEC-072, SPEC-075 | SCR-004 | TASK-028 | Claude | 1일 | SCR-004 상태 9개마다 스킬 응답이 08 정의와 같음(카카오 응답 형식: 출력 3개 이하, 카드 설명 400자 이하), 09에서 그린 5개(normal·allergy·orderer·expired·error)와 그리지 않은 4개(done·stale·day-full·permission)는 08 와이어프레임과 09 토큰으로, 08 응답 행 29개마다 정한 상태로 보임 |
-| TASK-087 | SCR-016 할 일 목록 화면 | SPEC-067, SPEC-024, SPEC-037 | SCR-016 | TASK-182, TASK-072, TASK-020 | Claude | 1일 | SCR-016 상태 7개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 4개(normal·empty·error·not-sent)와 그리지 않은 3개(loading·permission·stale)는 08 와이어프레임과 09 토큰으로, 08 응답 행 13개마다 정한 상태로 보임 |
+| TASK-087 | SCR-016 할 일 목록 화면 | SPEC-067, SPEC-024, SPEC-037 | SCR-016 | TASK-182, TASK-072, TASK-020 | Claude | 1일 | SCR-016 상태 8개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 4개(normal·empty·error·not-sent)와 그리지 않은 4개(loading·submitting·permission·stale)는 08 와이어프레임과 09 토큰으로, 08 응답 행 13개마다 정한 상태로 보임(API-084의 행은 TASK-157) |
 | TASK-088 | SCR-017 에스컬레이션 건 화면 | SPEC-022, SPEC-023, SPEC-056, SPEC-079 | SCR-017 | TASK-182, TASK-073, TASK-074 | Claude | 2일 | SCR-017 상태 7개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 2개(normal·error)와 그리지 않은 5개(loading·permission·stale·submitting·done)는 08 와이어프레임과 09 토큰으로, 08 응답 행 20개마다 정한 상태로 보임(API-083의 행은 TASK-155) |
 | TASK-089 | SCR-018 상담 대화 화면 | SPEC-021, SPEC-019, SPEC-065, SPEC-068 | SCR-018 | TASK-182, TASK-077 | Claude | 1일 | SCR-018 상태 6개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 3개(normal·empty·error)와 그리지 않은 3개(loading·permission·stale)는 08 와이어프레임과 09 토큰으로, 08 응답 행 7개마다 정한 상태로 보임 |
 | TASK-090 | SCR-019 사장님 알림 화면 | SPEC-067, SPEC-003, SPEC-024, SPEC-006 | SCR-019 | TASK-029 | Claude | 0.5일 | 끝남: 2026-11-19, SCR-019 카카오 응답 4상태의 모의 시험 13개 통과. app/README.md<br/>SCR-019 상태 4개마다 스킬 응답이 08 정의와 같음(카카오 응답 형식: 출력 3개 이하, 카드 설명 400자 이하), 09에서 그린 3개(normal·not-sent·error)와 그리지 않은 1개(stale)는 08 와이어프레임과 09 토큰으로 |
@@ -241,7 +241,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | ID | 작업 | 출처 | 닿는 것 | 앞선 작업 | 맡은 이 | 크기 | 끝난 조건 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TASK-156 | 고를 기능 켜기(장부 연결, 완성 사진 보내기) | SPEC-009 | API-033, API-034, API-035, API-036, TBL-003, TBL-045, TBL-047 | TASK-014, TASK-037 | Claude | 2일 | SPEC-009 수락 기준 #1~#2: 자동 시험 통과<br/>API-033 응답(200·401·404·default)마다 통과하는 시험<br/>API-034 응답(200·401·404·422·default)마다 통과하는 시험<br/>API-035 응답(200·401·404·409·422·503·default)마다 통과하는 시험<br/>API-036 응답(200·401·404·409·422·default)마다 통과하는 시험 |
-| TASK-157 | 장부 쓰기와 다시 적기 | SPEC-064, A14 | TBL-023, TBL-026, TBL-042, TBL-043, TBL-045, TBL-046, TBL-047 | TASK-156, TASK-023 | Claude | 3일 | SPEC-064 수락 기준 #1~#3: 자동 시험 통과<br/>05 앱 규칙(A14)을 지키는지 보는 서버 시험 |
+| TASK-157 | 장부 쓰기와 다시 적기 | SPEC-064, A14 | API-084, TBL-023, TBL-026, TBL-042, TBL-043, TBL-045, TBL-046, TBL-047, SCR-016 | TASK-156, TASK-023 | Claude | 3일 | SPEC-064 수락 기준 #1~#3: 자동 시험 통과<br/>API-084 응답(200·401·404·409·422·503·default)마다 통과하는 시험<br/>SCR-016 응답 행 가운데 API-084의 9개마다 정한 상태로 보임(상태 그리기는 TASK-087)<br/>05 앱 규칙(A14)을 지키는지 보는 서버 시험 |
 | TASK-158 | 지난 기록 지우기(하루 한 번 03:00) | SPEC-065, A16, A22 | TBL-016, TBL-017, TBL-018, TBL-019, TBL-020, TBL-021, TBL-022, TBL-023, TBL-024, TBL-025, TBL-026, TBL-027, TBL-028, TBL-029, TBL-030, TBL-031, TBL-033, TBL-042, TBL-043, TBL-044, TBL-049, TBL-050, TBL-051, TBL-052, TBL-053, TBL-054, TBL-055, TBL-056, TBL-062 | TASK-023 | Claude | 3일 | 올리고 1시간 안에 쓰지 않은 사진 파일(TASK-022가 둔 저장소의 임시 위치 tmp/ 아래)을 저장소에서 지움<br/>SPEC-065 수락 기준 #1~#12: 자동 시험 통과<br/>05 앱 규칙(A16·A22)을 지키는지 보는 서버 시험 |
 | TASK-159 | 운영자의 가게 기록 보기와 원래 값·보관 기록 열기 | SPEC-073, A24 | API-074, API-075, API-076, API-077, TBL-003, TBL-017, TBL-018, TBL-019, TBL-023, TBL-026, TBL-033, TBL-052, TBL-053, TBL-062 | TASK-021, TASK-024, TASK-025 | Claude | 2일 | SPEC-073 수락 기준 #1~#6: 자동 시험 통과<br/>API-074 응답(200·401·404·422·default)마다 통과하는 시험<br/>API-075 응답(200·401·404·422·default)마다 통과하는 시험<br/>API-076 응답(200·401·404·default)마다 통과하는 시험<br/>API-077 응답(200·401·404·409·422·default)마다 통과하는 시험<br/>05 앱 규칙(A24)을 지키는지 보는 서버 시험 |
 | TASK-160 | SCR-042 장부 연결 화면 | SPEC-009, SPEC-064 | SCR-042 | TASK-182, TASK-156 | Claude | 1일 | SCR-042 상태 9개를 360·1280에서 그려 page-check 통과(누르는 곳 44px), 09에서 그린 3개(normal·empty·error)와 그리지 않은 6개(loading·permission·stale·submitting·reconnect·done)는 08 와이어프레임과 09 토큰으로, 08 응답 행 34개마다 정한 상태로 보임 |
@@ -258,7 +258,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | TASK-164 | 스테이징 부하 시험: 동시 상담 20개에서 스킬 응답 P99 4초 | REQ-130, SPEC-017 | TBL-003, TBL-004, TBL-016, TBL-017, TBL-018, TBL-027, TBL-048, TBL-051 | TASK-016, TASK-069, TASK-063 | Claude | 1일 | SPEC-017 수락 기준 #5: 자동 시험 통과 |
 | TASK-165 | 하루 한 번 백업과 복구 시험 | REQ-149 | 없음 | TASK-016 | Claude | 1일 | 무료 MVP는 GitHub Actions에서 하루 한 번 public 스키마의 주문·동의·결제 기록을 pg_dump하고 공개 키로 암호화한 artifact를 7일 보관. 개인 키는 Aside Vault에 보관. CI PostgreSQL 복구 시험의 걸린 시간·잃은 기록 0을 기록. 실제 정기 실행·복호화 키 보관 확인은 별도 기록. Supabase Pro 매일 백업과 새 프로젝트 복구는 출시 검토로 미룸(2026-11-22 최종 지시 4-3) |
 | TASK-166 | 출시 전 보안 점검: 비밀 값·암호화·가게 나누기·접속기록 | REQ-134, REQ-135 | 없음 | TASK-019, TASK-025, TASK-024, TASK-159 | Claude | 1일 | 점검표(키가 저장소·로그·대화 기록에 없음, 교차 가게 시험, 암호화, 접속기록)의 항목마다 결과를 남기고 고칠 것은 작업으로 올림. 앞 키 버전의 봉투를 지금 버전으로 다시 감싸는 도구(값은 그대로, masked_values.value_hmac도 지금 버전으로 다시 셈, 앞 봉투가 그대로일 때만 씀)를 두고 앱 README 33의 키 바꾸기 차례를 스테이징에서 한 번 해 봄(2026-11-16 TASK-025에서 옮김). 접속기록의 점검 주기와 방법(누가 얼마마다 무엇을 보는지)을 내부 관리계획 초안에 적고 동희님 확인을 받음(「개인정보의 안전성 확보조치 기준」 제8조②, 05 A24, 2026-11-16 TASK-024에서 옮김). Supabase Auth 한도와 검증 시도 훅 설정 확인: 운영 프로젝트의 Authentication > Rate Limits에서 토큰 요청(/auth/v1/token) 한도를 낮출지 보고 결과를 남기고, MFA·비밀번호 검증 시도 훅(Teams·Enterprise 요금제)을 쓸지는 동희님 확인 결과대로 함. 스테이징 Worker를 거친 운영자 로그인 한 번(앱 README 85·88, 2026-11-19 TASK-021 독립 보안 검토 후속에서 더함) |
-| TASK-167 | 운영 계정과 키 만들기: 우리 서비스 채널(사장님 알림), 디벨로퍼스 운영 앱, AI 회사·구글 운영 키 | DEC-21, DEC-20, DEC-30, REQ-267 | 없음 | TASK-002, TASK-184 | 동희님 | 1일 | 휴대폰(Android Chrome·iOS Safari)에서 PWA를 홈 화면에 추가하고 설치 아이콘으로 다시 열어 주소창 없이 열리는 화면 사진을 기기·브라우저 버전과 함께 남김(TASK-176에서 이관). 임시 케이크 설치 아이콘을 출시 전에 확인함. 출시 검토에서 K-10의 카카오 Event API 발신 권한과 실제 발신을 확인하고 스킬 요청 형식을 기록함. 사장님 알림을 켜기 전에 MVP 동안 쌓인 pending 알림의 생성 시각과 대상 상태를 확인하고, 발신할 필요가 없는 오래된 합성 시험 알림은 할 일을 닫지 않은 채 cannot_send로 제외하여 과거 알림이 한꺼번에 발신되지 않음을 확인함. 휴대폰 카카오톡에서 K-07·K-08의 보안 이미지 플러그인 사진 단계를 해 보고 보안 이미지 값의 모양과 받기 결과를 기록함. 운영 키는 배포 환경의 비밀 저장소에만 두고, 만든 것 목록과 날짜를 기록에 남김(키 값은 적지 않음). 계좌번호 암호화 키(FIELD_KEY_CURRENT·FIELD_KEY_V1, 앱 README 32)는 운영 Worker의 비밀 값으로 넣고 사본을 저장소 밖 비밀 저장소에 둠(키를 잃으면 계좌번호를 되살릴 수 없음, 05 E20) |
+| TASK-167 | 운영 계정과 키 만들기: 우리 서비스 채널(사장님 알림), 디벨로퍼스 운영 앱, AI 회사·구글 운영 키 | DEC-21, DEC-20, DEC-30, REQ-267 | 없음 | TASK-002, TASK-184 | 동희님 | 1일 | 장부 출시는 사용자님의 2026-11-23 Orca 항목 16에 따라 Workers Paid 전제이며, Free 스테이징에서 큰 장부가 CPU 한도에 걸릴 수 있음을 확인함. 실사용자 가게에 장부 쓰기를 켜기 전 남은 P1을 0건으로 고치고 동시 편집 경합 위험이 남는다고 사용자님께 한 줄로 알림. 휴대폰(Android Chrome·iOS Safari)에서 PWA를 홈 화면에 추가하고 설치 아이콘으로 다시 열어 주소창 없이 열리는 화면 사진을 기기·브라우저 버전과 함께 남김(TASK-176에서 이관). 임시 케이크 설치 아이콘을 출시 전에 확인함. 출시 검토에서 K-10의 카카오 Event API 발신 권한과 실제 발신을 확인하고 스킬 요청 형식을 기록함. 사장님 알림을 켜기 전에 MVP 동안 쌓인 pending 알림의 생성 시각과 대상 상태를 확인하고, 발신할 필요가 없는 오래된 합성 시험 알림은 할 일을 닫지 않은 채 cannot_send로 제외하여 과거 알림이 한꺼번에 발신되지 않음을 확인함. 휴대폰 카카오톡에서 K-07·K-08의 보안 이미지 플러그인 사진 단계를 해 보고 보안 이미지 값의 모양과 받기 결과를 기록함. 운영 키는 배포 환경의 비밀 저장소에만 두고, 만든 것 목록과 날짜를 기록에 남김(키 값은 적지 않음). 계좌번호 암호화 키(FIELD_KEY_CURRENT·FIELD_KEY_V1, 앱 README 32)는 운영 Worker의 비밀 값으로 넣고 사본을 저장소 밖 비밀 저장소에 둠(키를 잃으면 계좌번호를 되살릴 수 없음, 05 E20) |
 | TASK-168 | 운영 배포와 되돌리기 절차 | REQ-148 | 없음 | TASK-167, TASK-165, TASK-164, TASK-163, TASK-166 | Claude | 1일 | 운영 주소에서 스모크 시험이 지나고 되돌리기를 한 번 해 봄 |
 | TASK-169 | 12단계 시험 계획(TC ID)과 브라우저 에이전트가 걸을 플로우 | FL-001, FL-002, FL-003, FL-004, FL-005, FL-006, FL-007, FL-008, FL-009, FL-010, FL-011, FL-012, FL-013, FL-014 | 없음 | TASK-168 | Claude | 2일 | 플로우 14개와 수락 기준 333개에서 TC를 만들고, 브라우저 에이전트가 걸을 플로우와 보는 곳을 12단계 문서 초안에 둠 |
 | TASK-175 | 운영 Supabase 프로젝트를 Pro로 올리기(매일 백업 7일, 추천안 기준) | REQ-149 | 없음 | TASK-170 | 동희님 | 0.5일 | 운영 프로젝트(서울)가 Pro이고 대시보드의 백업 목록에 매일 백업이 보이는 화면 사진을 기록에 남김. 복구 시험(TASK-165)은 이 프로젝트를 새 프로젝트로 복구해 봄(유료 플랜과 물리 백업이 있어야 됨) |
@@ -364,7 +364,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | API | 연산 | 응답 | 만드는 작업 | 함께 고치는 작업 | 부르는 화면 작업 |
 | --- | --- | --- | --- | --- | --- |
 | API-001 | `POST /owner/session` | 200·401·422·429·503·default | TASK-020 | 없음 | TASK-030 |
-| API-002 | `GET /owner/me` | 200·401·default | TASK-020 | 없음 | TASK-087 |
+| API-002 | `GET /owner/me` | 200·401·default | TASK-020 | 없음 | TASK-087, TASK-157 |
 | API-003 | `DELETE /owner/session` | 204·default | TASK-020 | 없음 | TASK-047 |
 | API-004 | `POST /operator/session` | 200·401·422·429·503·default | TASK-021 | 없음 | TASK-031 |
 | API-005 | `GET /operator/me` | 200·401·default | TASK-021 | 없음 | TASK-058 |
@@ -402,7 +402,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | API-037 | `GET /owner/booking-link` | 200·401·404·default | TASK-044 | 없음 | TASK-055 |
 | API-038 | `GET /public/shops/{slug}` | 200·404·429·default | TASK-045 | 없음 | TASK-061 |
 | API-039 | `GET /public/shops/{slug}/privacy-policy` | 200·404·429·default | TASK-044 | 없음 | TASK-062 |
-| API-040 | `GET /owner/tasks` | 200·401·404·422·default | TASK-072 | 없음 | TASK-087 |
+| API-040 | `GET /owner/tasks` | 200·401·404·422·default | TASK-072 | 없음 | TASK-087, TASK-157 |
 | API-041 | `GET /owner/handoffs/{handoffId}` | 200·401·404·default | TASK-073 | TASK-074 | TASK-088, TASK-155 |
 | API-042 | `POST /owner/handoffs/{handoffId}/answer` | 200·401·404·409·422·default | TASK-074 | TASK-083 | TASK-088, TASK-155 |
 | API-043 | `GET /owner/consultations/{consultationId}/messages` | 200·401·404·422·default | TASK-077 | 없음 | TASK-089 |
@@ -446,6 +446,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | API-081 | `GET /operator/identity-changes` | 200·401·422·default | TASK-036 | 없음 | TASK-058 |
 | API-082 | `POST /operator/identity-changes/{changeId}/review` | 200·401·404·409·422·default | TASK-036 | 없음 | TASK-059 |
 | API-083 | `POST /owner/handoffs/{handoffId}/issue-report` | 201·200·401·404·409·422·default | TASK-140 | TASK-143 | TASK-088, TASK-155 |
+| API-084 | `POST /owner/tasks/{taskId}/ledger-confirmation` | 200·401·404·409·422·503·default | TASK-157 | 없음 | TASK-087, TASK-157 |
 
 ## 부록 C. 화면 → 작업과 상태
 
@@ -466,7 +467,7 @@ AI 상담과 주문 요청입니다. 끝나면 손님이 가게 채널에서 AI 
 | SCR-013 | 사진 게시 동의 철회 카드 | 6 | 3 | 3(done·stale·permission) | 29 | TASK-149 |
 | SCR-014 | 사장님 로그인 | 4 | 2 | 2(loading·rate-limited) | 12 | TASK-030 |
 | SCR-015 | 가게 등록 | 5 | 2 | 3(permission·stale·submitting) | 17 | TASK-046 |
-| SCR-016 | 할 일 목록 | 7 | 4 | 3(loading·permission·stale) | 13 | TASK-087 |
+| SCR-016 | 할 일 목록 | 8 | 4 | 4(loading·submitting·permission·stale) | 22 | TASK-087, TASK-157 |
 | SCR-017 | 에스컬레이션 건 | 7 | 2 | 5(loading·permission·stale·submitting·done) | 30 | TASK-088, TASK-155 |
 | SCR-018 | 상담 대화 | 6 | 3 | 3(loading·permission·stale) | 7 | TASK-089 |
 | SCR-019 | 사장님 알림 | 4 | 3 | 1(stale) | 0 | TASK-090 |

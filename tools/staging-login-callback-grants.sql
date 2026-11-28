@@ -257,3 +257,16 @@ GRANT EXECUTE ON FUNCTION siljang_ledger_private.lock_owner_ledger(uuid,uuid,tex
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.ledger_vault_ready() TO :"runtime_role";
 
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.consume_owner_ledger_code(uuid,uuid,text) TO :"runtime_role";
+
+-- TASK-157: 대기 중 작업의 식별과 잠금만 직접 허용하고 Vault는 전용 함수로 접근한다.
+GRANT SELECT (shop_id,id,status,next_attempt_at,audit_due_at), UPDATE (next_attempt_at) ON ledger_writes TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.read_leased_ledger_credential(uuid,uuid,uuid,timestamptz) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz),siljang_ledger_private.finish_ledger_write(uuid,uuid,timestamptz,text,timestamptz,jsonb) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.count_unwritten_orders(uuid) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.guard_ledger_write(uuid,uuid,uuid,timestamptz,text,text) TO :"runtime_role";
+
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.save_ledger_checkpoint(uuid,uuid,timestamptz,uuid,jsonb) TO :"runtime_role";
+
+-- TASK-157: 같은 가게에서 이미 삭제된 주문만 사후 비교에서 제외한다.
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.ledger_purged_orders(uuid,uuid,uuid,timestamptz,uuid[]) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.prepare_ledger_confirmation(uuid,uuid,uuid),siljang_ledger_private.confirm_ledger_order(uuid,uuid,uuid,uuid,text,text,text,text) TO :"runtime_role";

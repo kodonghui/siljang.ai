@@ -1,4 +1,4 @@
-"""06단계 API 계약의 API 83개(API-001~083). build_api.py가 OpenAPI paths로 바꾼다.
+"""06단계 API 계약의 API 84개(API-001~084). build_api.py가 OpenAPI paths로 바꾼다.
 
 API마다 적는 것
 - id·method·path·op(operationId)·tag·summary·desc·spec(SPEC ID)
@@ -728,7 +728,7 @@ op(id="API-034", method="post", path="/owner/ledger/authorization", op="startLed
 op(id="API-035", method="put", path="/owner/ledger", op="linkLedger", tag="장부",
    summary="장부 연결·다시 연결", spec=["SPEC-009", "SPEC-064"], auth="owner", idem=True,
    desc="구글 인가 코드와 고른 시트·탭으로 장부를 연결하고 우리 열 헤더를 만든다. 같은 이름의 사장님 열이 있으면 오른쪽 빈 열에 만들고 movedRight(REQ-127). "
-        "다시 연결하면 '연결 끊김'으로 남은 주문들의 행을 지금 값으로 다시 적는다. 구글 Picker에서 앱에 공유할 파일을 고른다. 구글 권한이 거부되거나 시트를 열 수 없으면 연결하지 않는다. 연결 결과가 불확실하면 같은 인가 코드를 재전송하지 않고 현재 상태를 조회한 뒤 필요하면 구글 권한 요청부터 다시 시작한다.",
+        "다시 연결하면 일반 대기 주문은 다시 적되 충돌·중복 주문은 사장님이 주문별로 확인할 때까지 보류한다. 구글 Picker에서 앱에 공유할 파일을 고른다. 구글 권한이 거부되거나 시트를 열 수 없으면 연결하지 않는다. 연결 결과가 불확실하면 같은 인가 코드를 재전송하지 않고 현재 상태를 조회한 뒤 필요하면 구글 권한 요청부터 다시 시작한다.",
    body="LedgerLinkInput", body_examples={"link": dict(E.LEDGER_INPUT, baseRevision=None)},
    ok=[(200, "LedgerResult", {"created": {"outcome": "created", "ledger": E.LEDGER},
                               "moved_right": {"outcome": "created", "ledger": E.LEDGER_MOVED},
@@ -751,6 +751,16 @@ op(id="API-036", method="delete", path="/owner/ledger", op="unlinkLedger", tag="
    kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed", "note:본문이 없고 요청 키 헤더만 받음"],
           "대상": ["404:not_set"], "상태": ["example:unlinked"],
           "반복": ["idem", "example:unchanged"], "노출": ["closed"], "화면": ["screen"]})
+
+op(id="API-084", method="post", path="/owner/tasks/{taskId}/ledger-confirmation", op="confirmLedgerOrder", tag="장부",
+   summary="장부 주문 확인 뒤 재개", spec=["SPEC-064", "SPEC-067"], auth="owner", idem=True,
+   desc="사장님이 시트의 해당 주문을 확인한 뒤 누른다. 현재 연결과 주문·행을 읽어 서명만 보관하고 그 주문의 할 일을 닫아 쓰기를 재개한다. 중복이나 구조 변경이 남았으면 409로 보류하며, 확인 후 행이나 대상이 바뀌면 쓰지 않고 다시 알린다. 가게별 장부 쓰기가 꺼진 경우 확인을 실행하지 않고 404로 응답한다. 시트 원문과 구글 토큰은 응답하지 않는다.",
+   params=[pid("taskId", "장부 확인 할 일", E.uid("task:ledger-conflict"))],
+   ok=[(200, "LedgerConfirmationResult", {"confirmed": {"outcome": "confirmed"}})],
+   errors={404: ["not_found"], 409: ["version_conflict"], 503: ["google_unavailable"]},
+   omit={"403": O403},
+   kinds={"접근": ["security", "401:unauthenticated"], "입력": ["422:validation_failed"], "대상": ["404:not_found"], "반복": ["idem"],
+          "동시": ["409:version_conflict"], "외부": ["503:google_unavailable"], "노출": ["closed"], "화면": ["screen"]})
 
 # ═══ 예약 링크 ════════════════════════════════════════════════════════════════
 op(id="API-037", method="get", path="/owner/booking-link", op="getBookingLink", tag="예약 링크",

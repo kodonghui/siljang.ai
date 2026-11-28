@@ -177,7 +177,9 @@ export async function linkLedger(r: ShopRequest): Promise<Response> {
       try {
         credential = await r.services.ledgerGoogle().exchange(input.code, state.redirect, state.verifier);
         if (credential === null) throw new ApiError("google_authorization_failed");
-        setup = await sheets.connect(credential.accessToken, db.scope.shopId, input.spreadsheetId, input.sheetName);
+        setup = await sheets.connect(credential.accessToken, db.scope.shopId, input.spreadsheetId, input.sheetName, {
+          purpose: "link",
+        });
         if (setup === null) throw new ApiError("sheet_not_accessible");
         const id = crypto.randomUUID();
         const created = (

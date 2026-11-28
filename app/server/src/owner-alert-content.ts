@@ -29,12 +29,37 @@ export async function ownerAlertContent(
       break;
     }
     case "handoff_appended":
-    case "ledger_failing":
     case "payment_account_changed":
     case "identity_change_applied":
     case "channel_event_unavailable":
       alert = { kind: row.kind };
       break;
+    case "ledger_failing": {
+      const conflict = row.event_key.startsWith("alert:ledger_conflict:");
+      const orderId = row.event_key.startsWith("alert:ledger_duplicate:")
+        ? row.event_key.slice("alert:ledger_duplicate:".length)
+        : conflict
+          ? row.event_key.slice("alert:ledger_conflict:".length)
+          : "";
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) {
+        const order = (
+          await db.run<{ order_no: string }>("SELECT o.order_no FROM orders o WHERE o.shop_id=$1 AND o.id=$2", [
+            orderId,
+          ])
+        ).rows[0];
+        if (order && /^[0-9A-Z]{6,8}$/.test(order.order_no)) {
+          alert = conflict
+            ? { kind: row.kind, count: 1, conflictOrderNo: order.order_no }
+            : { kind: row.kind, count: 1, duplicateOrderNo: order.order_no };
+          break;
+        }
+      }
+      const unwritten = await db.run<{ count: number }>(
+        "SELECT siljang_ledger_private.count_unwritten_orders($1) AS count",
+      );
+      alert = { kind: row.kind, count: unwritten.rows[0]?.count ?? 0 };
+      break;
+    }
     case "license_on_hold":
     case "identity_change_on_hold":
       alert = { kind: row.kind, reason: "자세한 내용은 영업 신고 화면에서 확인해 주세요" };

@@ -191,3 +191,30 @@ it("배너 네 개는 처음 세 개만 보이고 더 펼칠 수 있다", async 
   fireEvent.click(screen.getByRole("button", { name: "배너 1개 더" }));
   expect(screen.getByRole("link", { name: "장부 보기" })).toBeTruthy();
 });
+it("장부 충돌은 주문별로 시트를 확인한 뒤 확인 버튼을 누르고 해당 할 일만 다시 불러온다", async () => {
+  const row = {
+    ...structuredClone(tasks.items[0]),
+    taskId: "11111111-1111-4111-8111-111111111111",
+    kind: "ledger_relink",
+    order: { orderId: "22222222-2222-4222-8222-222222222222", orderNo: "ABC123" },
+    subject: { type: "ledger", id: null },
+    summary: "장부 주문을 확인해 주세요",
+    closedAt: null,
+  };
+  tasks.items = [row];
+  let submitted = false;
+  taskResponse = async (path) => {
+    if (path.includes("ledger-confirmation")) {
+      submitted = true;
+      tasks.items = [];
+      return json({ outcome: "confirmed" });
+    }
+    return json(tasks);
+  };
+  home();
+  await screen.findAllByText(row.summary);
+  const buttons = await screen.findAllByRole("button", { name: /확인했어요/ });
+  fireEvent.click(buttons[0] as HTMLElement);
+  await screen.findByText("장부 확인을 마쳤어요");
+  expect(submitted).toBe(true);
+});

@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
-import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import type { Queryable, RequestDb } from "../src/db";
 import { GoogleLedgerUnavailableError } from "../src/ledger-google-auth";
 import { LEDGER_COOKIE, verifyLedgerOAuth } from "../src/ledger-oauth";
+import { LEDGER_HEADERS, LEDGER_MAX_COLUMNS, signLegacyLedgerColumns } from "../src/ledger-sheet-columns";
+import { ledgerSheetSetup } from "../src/ledger-sheet-setup";
 import { OWNER_COOKIE, readCookie } from "../src/owner-oauth";
 import { createOwnerSession } from "../src/owner-session";
 import { requestHash } from "../src/request-key";
@@ -454,14 +456,17 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
         },
       },
       ledgerSetup: {
-        connect: async () => ({
-          sheetId: 1,
-          start: 0,
-          end: 1,
-          movedRight: false,
-          ownershipToken: "fixture-marker",
-          columns: COLUMNS,
-        }),
+        connect: async (...args: unknown[]) => {
+          expect(args[4]).toEqual({ purpose: "link" });
+          return {
+            sheetId: 1,
+            start: 0,
+            end: 1,
+            movedRight: false,
+            ownershipToken: "fixture-marker",
+            columns: COLUMNS,
+          };
+        },
       },
     } as unknown as ServiceOverrides;
     const requestKey = `ledger-${newUuid()}`;
@@ -506,6 +511,103 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
       }),
     ).toBe(token);
   });
+  it("쓰기 꺼진 가게는 열이 가득 찬 정상 12열 시트도 API에서 다시 연결한다", async () => {
+    const oldId = await link("linked"),
+      key = new Secret("synthetic-link-key"),
+      sheetId = 7,
+      start = 0;
+    const token = await signLegacyLedgerColumns(
+      key,
+      { shopId: shop.shopId, spreadsheetId: SHEET, sheetId },
+      start,
+      false,
+    );
+    let writes = 0;
+    const fetch = vi.fn(async (raw: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(raw));
+      if (init?.method === "POST") {
+        writes++;
+        throw new Error("숨김 열을 추가하면 안 됨");
+      }
+      if (url.origin === "https://www.googleapis.com")
+        return Response.json({
+          id: SHEET,
+          mimeType: "application/vnd.google-apps.spreadsheet",
+          capabilities: { canEdit: true },
+        });
+      if (url.pathname.includes("/values/")) return Response.json({ values: [LEDGER_HEADERS] });
+      return Response.json({
+        sheets: [
+          {
+            properties: {
+              sheetId,
+              title: "주문 장부",
+              sheetType: "GRID",
+              gridProperties: { columnCount: LEDGER_MAX_COLUMNS, rowCount: 5000 },
+            },
+            developerMetadata: [
+              {
+                metadataKey: "siljang_columns_v1",
+                metadataValue: token,
+                visibility: "PROJECT",
+                location: { dimensionRange: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 } },
+              },
+            ],
+          },
+        ],
+      });
+    });
+    const overrides = {
+      fieldCrypto: testFieldCrypto(new Map([[1, newFieldKey()]]), 1),
+      ledgerAuthorization: {
+        start: async () => {
+          throw new Error("unused");
+        },
+        verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }),
+      },
+      ledgerGoogle: {
+        authorizeUrl: () => "",
+        exchange: async () => ({
+          accessToken: new Secret("test-access"),
+          refreshToken: new Secret("test-refresh"),
+          expiresAt: NOW,
+        }),
+      },
+      ledgerSetup: ledgerSheetSetup(key, { fetch }),
+    } as unknown as ServiceOverrides;
+    const response = await app(true, false, overrides).request(
+      PATH,
+      {
+        method: "PUT",
+        headers: {
+          cookie,
+          Origin: "https://siljang.example",
+          "content-type": "application/json",
+          "Idempotency-Key": `ledger-${newUuid()}`,
+        },
+        body: JSON.stringify({
+          baseRevision: `${oldId}.l`,
+          code: "fixture-code",
+          state: "fixture-state-123456789",
+          spreadsheetId: SHEET,
+          sheetName: "주문 장부",
+        }),
+      },
+      testEnv(),
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const result = (await response.json()) as { outcome: string; ledger: { columns: unknown[] } };
+    expect(result.outcome).toBe("relinked");
+    expect(result.ledger.columns).toHaveLength(12);
+    expect(writes).toBe(0);
+    expect(
+      (
+        await isolated.db.query<{ enabled: boolean }>("SELECT ledger_write_enabled AS enabled FROM shops WHERE id=$1", [
+          shop.shopId,
+        ])
+      ).rows[0]?.enabled,
+    ).toBe(false);
+  });
   it("장부 생성은 가게 소유를 검증하고 중복 연결을 막는다", async () => {
     const id = newUuid();
     const values = [shop.shopId, shop.ownerId, id, SHEET, "주문 장부", JSON.stringify({ columns: COLUMNS }), null, NOW];
@@ -530,7 +632,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     const oldId = await link("linked");
     const old = (
       await isolated.db.query<{ credential_ref: string; revision: string }>(
-        "SELECT credential_ref,xmin::text AS revision FROM ledger_links WHERE id=$1",
+        "SELECT credential_ref,id::text||CASE WHEN status='unlinked' THEN '.u' ELSE '.l' END AS revision FROM ledger_links WHERE id=$1",
         [oldId],
       )
     ).rows[0];

@@ -18,6 +18,8 @@ export interface Rows<R> {
 
 /** 쿼리를 보내는 쪽. 트랜잭션 안(tx)과 밖이 같은 꼴이다. 값은 늘 $1·$2 자리표로 넘긴다. */
 export interface Queryable {
+  /** 트랜잭션 연결이 끊기면 중단되는 신호. */
+  readonly signal?: AbortSignal;
   query<R = Record<string, unknown>>(sql: string, params?: readonly unknown[]): Promise<Rows<R>>;
 }
 
@@ -135,7 +137,12 @@ class PgRequestDb implements RequestDb {
       throw e;
     }
     let open = true;
+    const connection = new AbortController();
+    const disconnected = () => connection.abort();
+    client.once("error", disconnected);
+    client.once("end", disconnected);
     const tx: Queryable = {
+      signal: connection.signal,
       query: async <R = Record<string, unknown>>(sql: string, params?: readonly unknown[]) => {
         this.#checkActive();
         if (!open) return Promise.reject(new TransactionMisuseError("transaction already ended"));
@@ -156,6 +163,9 @@ class PgRequestDb implements RequestDb {
       }
       throw e;
     } finally {
+      connection.abort();
+      client.off("error", disconnected);
+      client.off("end", disconnected);
       open = false;
       this.#inTransaction = false;
     }
