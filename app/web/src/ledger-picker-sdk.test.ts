@@ -79,3 +79,18 @@ it("Google Picker에 최소 범위와 프로젝트를 넘기고 선택한 파일
   expect(consent.include_granted_scopes).toBe(false);
   expect(methods).toMatchObject({ appId: "123", mode: "LIST", selectFolder: false });
 });
+
+it("Picker 오류 이벤트에서 대기가 끝나고 안전한 오류를 돌려준다", async () => {
+  let callback: ((data: unknown) => void) | undefined;
+  class View { setIncludeFolders() { return this; } setSelectFolderEnabled() { return this; } setMode() { return this; } }
+  class Builder {
+    setAppId() { return this; } setDeveloperKey() { return this; } setOAuthToken() { return this; } addView() { return this; }
+    setCallback(fn: (data: unknown) => void) { callback = fn; return this; }
+    build() { return { setVisible: () => callback?.({ action: "error", message: "sensitive-example" }) }; }
+  }
+  vi.stubGlobal("google", { accounts: { oauth2: { initTokenClient: (options: Record<string, unknown>) => ({ requestAccessToken: () => (options.callback as (data: unknown) => void)({ access_token: "temporary", scope: options.scope }) }) } }, picker: { DocsView: View, DocsViewMode: { LIST: "LIST" }, ViewId: { SPREADSHEETS: "sheets" }, PickerBuilder: Builder } });
+  vi.stubGlobal("gapi", { load: (_name: string, options: { callback(): void }) => options.callback() });
+  const sdk = await googleLedgerPickerSdk();
+  const result = await Promise.race([pickLedgerFile({ clientId: "client", appId: "123", apiKey: "key" }, sdk).then(() => "done", () => "error"), new Promise<string>((resolve) => setTimeout(() => resolve("hung"), 100))]);
+  expect(result).toBe("error");
+});

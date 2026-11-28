@@ -59,7 +59,7 @@ it("구글 복귀 뒤 선택한 파일만 연결하며 장애가 나면 코드�
   await screen.findByText("시트를 선택했어요");
   fireEvent.change(screen.getByLabelText("탭 이름"), { target: { value: "장부" } });
   fireEvent.click(screen.getByRole("button", { name: "연결" }));
-  await screen.findByText("현재 연결 상태를 확인하고 구글 권한부터 다시 연결해 주세요");
+  await screen.findByText(/구글 시트에 열이 이미 생겼을 수 있어요/);
   await waitFor(() => expect(calls.filter((call) => call.method === "GET").length).toBeGreaterThanOrEqual(2));
   expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
   expect(JSON.parse(calls.find((call) => call.method === "PUT")?.body ?? "{}").spreadsheetId).toBe(

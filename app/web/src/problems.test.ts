@@ -317,6 +317,7 @@ describe("classify(G7)", () => {
       const lostResponse = classifyLedgerLink(status, null, null);
       expect(lostResponse.retry).toBe("none");
       expect(lostResponse.message).toContain("구글 권한부터 다시");
+      expect(lostResponse.message).toContain("구글 시트에 열이 이미 생겼을 수 있어요");
     }
   });
 

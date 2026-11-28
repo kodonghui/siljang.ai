@@ -18,10 +18,12 @@ function fixture() {
     writeStatus = 200,
     badId = false,
     collaborate = false,
-    corruptReadback = false;
+    corruptReadback = false,
+    editable = true;
   const writes: Record<string, unknown>[] = [];
   const send = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
+    if (url.origin === "https://www.googleapis.com") return new Response(JSON.stringify({ id: file, mimeType: "application/vnd.google-apps.spreadsheet", capabilities: { canEdit: editable } }));
     expect(url.origin).toBe("https://sheets.googleapis.com");
     expect(init?.redirect).toBe("manual");
     expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${access.reveal()}`);
@@ -122,6 +124,7 @@ function fixture() {
     set collaborate(value: boolean) {
       collaborate = value;
     },
+    set editable(value: boolean) { editable = value; },
     set corruptReadback(value: boolean) {
       corruptReadback = value;
     },
@@ -162,6 +165,17 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
       movedRight: true,
     });
     expect(f.writes).toHaveLength(0);
+  });
+  it("서명된 기존 열이 있어도 읽기 전용 파일은 다시 연결하지 않는다", async () => {
+    const f = fixture();
+    const token = await signLedgerColumns(f.key, { shopId: shop, spreadsheetId: file, sheetId }, 26, true);
+    f.count = 38;
+    f.headers = [...Array(26).fill(""), ...LEDGER_HEADERS];
+    f.markers = [f.marker(token, 26)];
+    f.editable = false;
+    expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).toBeNull();
+    expect(f.writes).toHaveLength(0);
+    expect(f.send.mock.calls.some(([url]) => new URL(String(url)).origin === "https://www.googleapis.com")).toBe(true);
   });
   it("열 한도에 닿아도 헤더가 바뀐 후보를 건너뛰고 실제 자기 열을 재사용한다", async () => {
     const f = fixture(),
