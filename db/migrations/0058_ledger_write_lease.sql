@@ -171,7 +171,7 @@ $fn$;
 REVOKE ALL ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz) FROM PUBLIC;
 
 CREATE FUNCTION siljang_ledger_private.finish_ledger_write(p_shop uuid,p_write uuid,p_lease timestamptz,p_result text,p_now timestamptz,p_columns jsonb)
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
 DECLARE v_link uuid; v_row uuid; v_order uuid; v_attempts int; v_failed timestamptz; v_alerted timestamptz; v_task uuid; v_delay interval; v_audit boolean; v_deadline timestamptz; v_checks integer; v_affected uuid; v_purged timestamptz;
 BEGIN
   IF p_result NOT IN ('written','retry','auth_lost','uncertain','duplicate','conflict','audit_ok','audit_duplicate','audit_missing','audit_retry') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;

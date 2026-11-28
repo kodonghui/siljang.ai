@@ -414,3 +414,79 @@ it.skipIf(!TEST_DATABASE_URL)(
     }
   },
 );
+
+it.skipIf(!TEST_DATABASE_URL)(
+  "삭제 중인 주문의 잠금은 완료 기록이 3초 안에 포기하고 이후 다시 시도한다",
+  async () => {
+    const isolated = await isolatedTestDb(),
+      blocker = isolated.connect(),
+      caller = isolated.connect();
+    try {
+      const shop = await createShop(isolated.db, "삭제 잠금"),
+        link = crypto.randomUUID(),
+        row = crypto.randomUUID(),
+        write = crypto.randomUUID();
+      await isolated.db.query(
+        "INSERT INTO ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref) VALUES($1,$2,$3,'장부','{}',$4)",
+        [link, shop.shopId, "synthetic_sheet_1234567890", crypto.randomUUID()],
+      );
+      await isolated.db.query("INSERT INTO ledger_rows(id,shop_id,order_id) VALUES($1,$2,$3)", [
+        row,
+        shop.shopId,
+        shop.orderId,
+      ]);
+      await isolated.db.query(
+        "INSERT INTO ledger_writes(id,shop_id,ledger_row_id,event_key,event_kind,next_attempt_at) VALUES($1,$2,$3,$4,'changed',now()-interval '1 second')",
+        [write, shop.shopId, row, `write:${write}`],
+      );
+      const lease = new Date(Date.now() + 120000);
+      await isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
+        shop.shopId,
+        write,
+        lease,
+      ]);
+      let ready = () => {},
+        release = () => {};
+      const held = new Promise<void>((r) => {
+          ready = r;
+        }),
+        go = new Promise<void>((r) => {
+          release = r;
+        });
+      const locking = blocker.transaction(async (tx) => {
+        await tx.query("SELECT id FROM orders WHERE id=$1 FOR UPDATE", [shop.orderId]);
+        ready();
+        await go;
+      });
+      await held;
+      try {
+        await expect(
+          caller.transaction(async (tx) => {
+            await tx.query("SET LOCAL statement_timeout='4s'");
+            return tx.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,'written',now(),NULL)", [
+              shop.shopId,
+              write,
+              lease,
+            ]);
+          }),
+        ).rejects.toMatchObject({ code: "55P03" });
+      } finally {
+        release();
+        await locking;
+      }
+      expect(
+        (
+          await isolated.db.query<{ ok: boolean }>(
+            "SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,'written',now(),NULL) AS ok",
+            [shop.shopId, write, lease],
+          )
+        ).rows[0]?.ok,
+      ).toBe(true);
+    } finally {
+      await blocker.close();
+      await caller.close();
+      await isolated.close();
+    }
+  },
+  15000,
+);
