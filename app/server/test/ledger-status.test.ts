@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { Queryable, RequestDb } from "../src/db";
+import type { ServiceOverrides } from "../src/services";
+import { newFieldKey, testFieldCrypto } from "./support/field-keys";
 import { LEDGER_COOKIE, verifyLedgerOAuth } from "../src/ledger-oauth";
 import { OWNER_COOKIE, readCookie } from "../src/owner-oauth";
 import { createOwnerSession } from "../src/owner-session";
@@ -67,7 +69,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     cookie = await ownerCookie(shop.ownerId);
     logs.length = 0;
   });
-  function app(limited = false, fault = false) {
+  function app(limited = false, fault = false, overrides: ServiceOverrides = {}) {
     return createApp({
       connect: (): RequestDb => {
         const raw = isolated.connect();
@@ -90,7 +92,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
           close: () => raw.close(),
         };
       },
-      services: { now: () => NOW },
+      services: { now: () => NOW, ...overrides },
       logSink: (line) => logs.push(line),
     });
   }
@@ -141,6 +143,25 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
       });
     },
   );
+  it("구글 연결은 토큰을 암호화해 저장하고 응답에서 숨긴다", async () => {
+    const token = `fixture-token-${"x".repeat(300)}`;
+    const fields = testFieldCrypto(new Map([[1, newFieldKey()]]), 1);
+    const overrides = {
+      fieldCrypto: fields,
+      ledgerAuthorization: { start: async () => { throw new Error("unused"); }, verify: async () => ({ redirect: "https://siljang.example/callback", verifier: "test-verifier" }) },
+      ledgerGoogle: { authorizeUrl: () => "", exchange: async () => ({ accessToken: new Secret("test-access"), refreshToken: new Secret(token), expiresAt: NOW }) },
+      ledgerSetup: { connect: async () => ({ sheetId: 1, start: 0, end: 1, movedRight: false, ownershipToken: "fixture-marker", columns: COLUMNS }) },
+    } as unknown as ServiceOverrides;
+    const response = await app(true, false, overrides).request(PATH, { method: "PUT", headers: { cookie, Origin: "https://siljang.example", "content-type": "application/json", "Idempotency-Key": `ledger-${newUuid()}` }, body: JSON.stringify({ baseRevision: null, code: "fixture-code", state: "fixture-state-123456789", spreadsheetId: SHEET, sheetName: "주문 장부" }) }, testEnv());
+    expect(response.status, await response.clone().text()).toBe(200);
+    const text = await response.text();
+    expect(text).not.toContain(token);
+    const rows = await isolated.db.query<{ id: string; secret: string }>("SELECT l.id,v.secret FROM ledger_links l JOIN vault.secrets v ON v.id::text=l.credential_ref WHERE l.shop_id=$1", [shop.shopId]);
+    expect(rows.rows).toHaveLength(1);
+    const row = rows.rows[0];
+    expect(row?.secret).not.toContain(token);
+    expect(await fields.open(row?.secret ?? "", { purpose: "ledger_links.oauth_token", shopId: shop.shopId, recordId: row?.id })).toBe(token);
+  });
   it("장부 생성은 가게 소유를 검증하고 중복 연결을 막는다", async () => {
     const id = newUuid();
     const values = [shop.shopId, shop.ownerId, id, SHEET, "주문 장부", JSON.stringify({ columns: COLUMNS }), null, NOW];
