@@ -68,11 +68,17 @@ export function ledgerSheetSetup(
         for (const marker of [...snapshot.markers].sort((a, b) => b.start - a.start)) {
           const scope = { shopId, spreadsheetId: file, sheetId: snapshot.sheetId };
           const legacy = await verifyLegacyLedgerColumns(key, scope, marker.token, marker.start);
-          if (!legacy || !LEDGER_HEADERS.every((header, i) => snapshot.headers[marker.start + i] === header)) continue;
+          const current =
+            legacy === null ? await verifyLedgerColumns(key, scope, marker.token, marker.start, marker.end) : null;
+          if (
+            (!legacy && !current) ||
+            !LEDGER_HEADERS.every((header, i) => snapshot.headers[marker.start + i] === header)
+          )
+            continue;
           if (snapshot.columnCount >= LEDGER_MAX_COLUMNS) throw new LedgerColumnsOverflowError();
           if (!(await sheets.canEdit(access, file))) return null;
           const idColumn = marker.start + LEDGER_HEADERS.length;
-          const token = await signLedgerColumns(key, scope, marker.start, legacy.movedRight);
+          const token = legacy ? await signLedgerColumns(key, scope, marker.start, legacy.movedRight) : marker.token;
           const response = await send(`https://sheets.googleapis.com/v4/spreadsheets/${file}:batchUpdate`, {
             method: "POST",
             redirect: "manual",

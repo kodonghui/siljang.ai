@@ -1,10 +1,10 @@
 import { expect, it, vi } from "vitest";
 import { toBase64Url } from "../src/encoding";
-import { LEDGER_HEADERS, LEDGER_STORAGE_HEADERS } from "../src/ledger-sheet-columns";
+import { LEDGER_HEADERS, LEDGER_STORAGE_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
 import { ledgerSheetSetup } from "../src/ledger-sheet-setup";
 import { Secret } from "../src/settings";
 
-it.each(["끝", "사장님 열 뒤에 있음", "응답 유실"])(
+it.each(["끝", "사장님 열 뒤에 있음", "응답 유실", "ID 열 삭제"])(
   "기존 서명된 열을 유지하고 숨김 ID 열 하나만 더한다: %s",
   async (scenario) => {
     const shop = crypto.randomUUID(),
@@ -24,7 +24,10 @@ it.each(["끝", "사장님 열 뒤에 있음", "응답 유실"])(
       JSON.stringify(["ledger-columns", 1, shop, file, sheetId, start, start + 12, true, LEDGER_HEADERS]),
     );
     const signature = toBase64Url(new Uint8Array(await crypto.subtle.sign("HMAC", hmac, bytes)));
-    let token = `c1.${start.toString(36)}.1.${signature}`;
+    let token =
+      scenario === "ID 열 삭제"
+        ? await signLedgerColumns(key, { shopId: shop, spreadsheetId: file, sheetId }, start, true)
+        : `c1.${start.toString(36)}.1.${signature}`;
     let headers = ["사장님 자료", "", ...LEDGER_HEADERS, ...(scenario === "사장님 열 뒤에 있음" ? ["별도 자료"] : [])],
       count = headers.length,
       writes = 0;
