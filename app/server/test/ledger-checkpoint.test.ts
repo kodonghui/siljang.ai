@@ -369,3 +369,79 @@ it.skipIf(!TEST_DATABASE_URL)(
   },
   30000,
 );
+it.skipIf(!TEST_DATABASE_URL)(
+  "비교 기준 저장도 행 잠금을 무한히 기다리지 않는다",
+  async () => {
+    const isolated = await isolatedTestDb(),
+      blocker = isolated.connect(),
+      caller = isolated.connect();
+    try {
+      const shop = await createShop(isolated.db, "기준 저장 잠금"),
+        link = crypto.randomUUID(),
+        row = crypto.randomUUID(),
+        write = crypto.randomUUID();
+      await isolated.db.query(
+        "INSERT INTO ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref) VALUES($1,$2,$3,'장부','{}',$4)",
+        [link, shop.shopId, "synthetic_sheet_1234567890", crypto.randomUUID()],
+      );
+      await isolated.db.query("INSERT INTO ledger_rows(id,shop_id,order_id) VALUES($1,$2,$3)", [
+        row,
+        shop.shopId,
+        shop.orderId,
+      ]);
+      await isolated.db.query(
+        "INSERT INTO ledger_writes(id,shop_id,ledger_row_id,event_key,event_kind,next_attempt_at) VALUES($1,$2,$3,$4,'changed',now()-interval '1 minute')",
+        [write, shop.shopId, row, `ledger:${write}:changed`],
+      );
+      const lease = new Date(Date.now() + 120000),
+        checkpoint = {
+          scope: "A".repeat(43),
+          sentDigest: "B".repeat(43),
+          rows: [],
+          conflicted: false,
+          affectedOrderIds: [],
+        };
+      await isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
+        shop.shopId,
+        write,
+        lease,
+      ]);
+      let release = () => {},
+        ready = () => {};
+      const held = new Promise<void>((resolve) => {
+          ready = resolve;
+        }),
+        proceed = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      const locking = blocker.transaction(async (tx) => {
+        await tx.query("SELECT id FROM ledger_writes WHERE id=$1 FOR UPDATE", [write]);
+        ready();
+        await proceed;
+      });
+      await held;
+      try {
+        await expect(
+          caller.transaction(async (tx) => {
+            await tx.query("SET LOCAL statement_timeout='4s'");
+            return tx.query("SELECT siljang_ledger_private.save_ledger_checkpoint($1,$2,$3,$4,$5::jsonb)", [
+              shop.shopId,
+              write,
+              lease,
+              link,
+              JSON.stringify(checkpoint),
+            ]);
+          }),
+        ).rejects.toMatchObject({ code: "55P03" });
+      } finally {
+        release();
+        await locking;
+      }
+    } finally {
+      await blocker.close();
+      await caller.close();
+      await isolated.close();
+    }
+  },
+  30000,
+);

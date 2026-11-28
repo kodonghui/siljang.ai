@@ -46,7 +46,7 @@ REVOKE ALL ON FUNCTION siljang_ledger_private.guard_ledger_write(uuid,uuid,uuid,
 
 -- 쓰기 전 비교 기준은 주문 ID와 HMAC만 별도 트랜잭션에 저장한다.
 CREATE FUNCTION siljang_ledger_private.save_ledger_checkpoint(p_shop uuid,p_write uuid,p_lease timestamptz,p_link uuid,p_checkpoint jsonb)
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
 DECLARE saved uuid; r jsonb;
 BEGIN
   IF p_checkpoint IS NULL OR pg_catalog.jsonb_typeof(p_checkpoint)<>'object' OR pg_catalog.octet_length(p_checkpoint::text)>1500000 THEN RETURN false; END IF;
