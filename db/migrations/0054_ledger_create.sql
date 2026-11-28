@@ -17,7 +17,7 @@ BEGIN
   IF old_id IS NOT NULL AND old_status<>'unlinked' THEN
     UPDATE public.ledger_links SET status='unlinked', unlinked_at=least(p_now,pg_catalog.statement_timestamp()) WHERE shop_id=p_shop AND id=old_id;
     IF pg_catalog.to_regclass('vault.secrets') IS NOT NULL THEN
-      EXECUTE 'DELETE FROM vault.secrets WHERE id::text=$1' USING old_ref;
+      EXECUTE 'DELETE FROM vault.secrets WHERE id::text=$1 AND name=$2' USING old_ref, 'siljang-ledger:'||p_shop::text||':'||old_id::text;
     END IF;
   END IF;
   INSERT INTO public.ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref,linked_at)

@@ -13,7 +13,7 @@ BEGIN
   IF NOT FOUND THEN RETURN; END IF;
   IF v_status<>'unlinked' THEN
     IF pg_catalog.to_regclass('vault.secrets') IS NOT NULL THEN
-      EXECUTE 'DELETE FROM vault.secrets WHERE id::text = $1' USING v_ref;
+      EXECUTE 'DELETE FROM vault.secrets WHERE id::text = $1 AND name = $2' USING v_ref, 'siljang-ledger:'||p_shop::text||':'||v_id::text;
     END IF;
     UPDATE public.ledger_links l SET status='unlinked',unlinked_at=p_now WHERE l.shop_id=p_shop AND l.id=v_id;
   END IF;

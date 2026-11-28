@@ -2604,23 +2604,23 @@ REVOKE ALL ON FUNCTION unlink_owner_ledger(uuid,uuid,timestamptz) FROM PUBLIC;
 -- Vault에 비밀 행이 없으면 복구 뒤 재연결이 필요한 상태로 표시한다.
 CREATE SCHEMA siljang_ledger_private;
 REVOKE ALL ON SCHEMA siljang_ledger_private FROM PUBLIC;
-CREATE FUNCTION siljang_ledger_private.ledger_vault_present(p_ref text) RETURNS boolean
+CREATE FUNCTION siljang_ledger_private.ledger_vault_present(p_ref text,p_shop uuid,p_link uuid) RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $fn$
 DECLARE present boolean;
 BEGIN
   IF pg_catalog.to_regclass('vault.secrets') IS NULL THEN RETURN false; END IF;
-  EXECUTE 'SELECT EXISTS (SELECT 1 FROM vault.secrets WHERE id::text = $1)' INTO present USING p_ref;
+  EXECUTE 'SELECT EXISTS (SELECT 1 FROM vault.secrets WHERE id::text = $1 AND name = $2)' INTO present USING p_ref, 'siljang-ledger:'||p_shop::text||':'||p_link::text;
   RETURN present;
 END
 $fn$;
-REVOKE ALL ON FUNCTION siljang_ledger_private.ledger_vault_present(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION siljang_ledger_private.ledger_vault_present(text,uuid,uuid) FROM PUBLIC;
 
 -- TASK-156: 가게 소유를 확인한 장부 메타데이터 조회/연결 해제만 허용한다.
 CREATE OR REPLACE FUNCTION read_owner_ledger(p_shop uuid,p_owner uuid,p_link uuid)
 RETURNS TABLE(id uuid,status text,spreadsheet_id text,sheet_name text,our_columns jsonb,
   linked_at timestamptz,unlinked_at timestamptz,revision text,failing_since timestamptz,unwritten_count integer)
 LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
-  SELECT l.id,CASE WHEN l.status='linked' AND NOT siljang_ledger_private.ledger_vault_present(l.credential_ref) THEN 'auth_lost' ELSE l.status END,l.spreadsheet_id,l.sheet_name,
+  SELECT l.id,CASE WHEN l.status='linked' AND NOT siljang_ledger_private.ledger_vault_present(l.credential_ref,l.shop_id,l.id) THEN 'auth_lost' ELSE l.status END,l.spreadsheet_id,l.sheet_name,
     jsonb_build_object('columns',COALESCE((
       SELECT jsonb_agg(jsonb_build_object('header',c.value->'header','column',c.value->'column') ORDER BY c.position)
       FROM jsonb_array_elements(CASE
@@ -2653,7 +2653,7 @@ BEGIN
   IF NOT FOUND THEN RETURN; END IF;
   IF v_status<>'unlinked' THEN
     IF pg_catalog.to_regclass('vault.secrets') IS NOT NULL THEN
-      EXECUTE 'DELETE FROM vault.secrets WHERE id::text = $1' USING v_ref;
+      EXECUTE 'DELETE FROM vault.secrets WHERE id::text = $1 AND name = $2' USING v_ref, 'siljang-ledger:'||p_shop::text||':'||v_id::text;
     END IF;
     UPDATE public.ledger_links l SET status='unlinked',unlinked_at=p_now WHERE l.shop_id=p_shop AND l.id=v_id;
   END IF;
@@ -2678,9 +2678,9 @@ BEGIN
   SELECT l.credential_ref INTO old_ref FROM public.ledger_links l
     WHERE l.shop_id=p_shop AND l.id=p_link AND l.status<>'unlinked' FOR UPDATE;
   IF NOT FOUND THEN RETURN false; END IF;
-  EXECUTE 'SELECT vault.create_secret($1)' INTO new_ref USING p_envelope;
+  EXECUTE 'DELETE FROM vault.secrets WHERE id::text=$1 AND name=$2' USING old_ref, 'siljang-ledger:'||p_shop::text||':'||p_link::text;
+  EXECUTE 'SELECT vault.create_secret($1,$2)' INTO new_ref USING p_envelope, 'siljang-ledger:'||p_shop::text||':'||p_link::text;
   UPDATE public.ledger_links SET credential_ref=new_ref::text WHERE shop_id=p_shop AND id=p_link;
-  EXECUTE 'DELETE FROM vault.secrets WHERE id::text=$1' USING old_ref;
   RETURN true;
 END
 $fn$;
@@ -2705,7 +2705,7 @@ BEGIN
   IF old_id IS NOT NULL AND old_status<>'unlinked' THEN
     UPDATE public.ledger_links SET status='unlinked', unlinked_at=least(p_now,pg_catalog.statement_timestamp()) WHERE shop_id=p_shop AND id=old_id;
     IF pg_catalog.to_regclass('vault.secrets') IS NOT NULL THEN
-      EXECUTE 'DELETE FROM vault.secrets WHERE id::text=$1' USING old_ref;
+      EXECUTE 'DELETE FROM vault.secrets WHERE id::text=$1 AND name=$2' USING old_ref, 'siljang-ledger:'||p_shop::text||':'||p_link::text;
     END IF;
   END IF;
   INSERT INTO public.ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref,linked_at)
@@ -2742,7 +2742,7 @@ LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
     AND pg_catalog.has_table_privilege(pg_catalog.to_regclass('vault.secrets'), 'SELECT')
     AND pg_catalog.has_table_privilege(pg_catalog.to_regclass('vault.secrets'), 'DELETE') AND EXISTS (
       SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
-      WHERE n.nspname='vault' AND p.proname='create_secret' AND p.pronargs>=1
+      WHERE n.nspname='vault' AND p.proname='create_secret' AND p.pronargs>=2
         AND p.pronargs-p.pronargdefaults<=1 AND p.proargtypes[0]='text'::pg_catalog.regtype
         AND pg_catalog.has_function_privilege(p.oid,'EXECUTE')
     ) END

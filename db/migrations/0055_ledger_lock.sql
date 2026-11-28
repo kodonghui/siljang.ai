@@ -22,7 +22,7 @@ LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
     AND pg_catalog.has_table_privilege(pg_catalog.to_regclass('vault.secrets'), 'SELECT')
     AND pg_catalog.has_table_privilege(pg_catalog.to_regclass('vault.secrets'), 'DELETE') AND EXISTS (
       SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
-      WHERE n.nspname='vault' AND p.proname='create_secret' AND p.pronargs>=1
+      WHERE n.nspname='vault' AND p.proname='create_secret' AND p.pronargs>=2
         AND p.pronargs-p.pronargdefaults<=1 AND p.proargtypes[0]='text'::pg_catalog.regtype
         AND pg_catalog.has_function_privilege(p.oid,'EXECUTE')
     ) END

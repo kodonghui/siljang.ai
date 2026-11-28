@@ -11,9 +11,9 @@ BEGIN
   SELECT l.credential_ref INTO old_ref FROM public.ledger_links l
     WHERE l.shop_id=p_shop AND l.id=p_link AND l.status<>'unlinked' FOR UPDATE;
   IF NOT FOUND THEN RETURN false; END IF;
-  EXECUTE 'SELECT vault.create_secret($1)' INTO new_ref USING p_envelope;
+  EXECUTE 'DELETE FROM vault.secrets WHERE id::text=$1 AND name=$2' USING old_ref, 'siljang-ledger:'||p_shop::text||':'||p_link::text;
+  EXECUTE 'SELECT vault.create_secret($1,$2)' INTO new_ref USING p_envelope, 'siljang-ledger:'||p_shop::text||':'||p_link::text;
   UPDATE public.ledger_links SET credential_ref=new_ref::text WHERE shop_id=p_shop AND id=p_link;
-  EXECUTE 'DELETE FROM vault.secrets WHERE id::text=$1' USING old_ref;
   RETURN true;
 END
 $fn$;

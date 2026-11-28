@@ -31,7 +31,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
   beforeAll(async () => {
     isolated = await isolatedTestDb();
     await isolated.db.query(
-      "CREATE SCHEMA vault; CREATE TABLE vault.secrets (id uuid PRIMARY KEY, secret text); CREATE FUNCTION vault.create_secret(value text) RETURNS uuid LANGUAGE sql AS $$ INSERT INTO vault.secrets (id, secret) VALUES (gen_random_uuid(), value) RETURNING id $$",
+      "CREATE SCHEMA vault; CREATE TABLE vault.secrets (id uuid PRIMARY KEY, name text UNIQUE, secret text); CREATE FUNCTION vault.create_secret(value text, secret_name text DEFAULT NULL) RETURNS uuid LANGUAGE sql AS $$ INSERT INTO vault.secrets (id, name, secret) VALUES (gen_random_uuid(), secret_name, value) RETURNING id $$",
     );
     await isolated.db.query(`CREATE ROLE "${role}" NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
     await isolated.db.query(
@@ -106,7 +106,11 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     const id = newUuid(),
       at = overrides.at ?? NOW,
       credential = newUuid();
-    if (!overrides.missing) await isolated.db.query("INSERT INTO vault.secrets(id) VALUES($1)", [credential]);
+    if (!overrides.missing)
+      await isolated.db.query("INSERT INTO vault.secrets(id,name) VALUES($1,$2)", [
+        credential,
+        `siljang-ledger:${overrides.shopId ?? shop.shopId}:${id}`,
+      ]);
     await isolated.db.query(
       "INSERT INTO ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref,status,linked_at,unlinked_at) VALUES($1,$2,$3,'주문 장부',$4::jsonb,$5,$6,$7,$8)",
       [
@@ -470,7 +474,14 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     await isolated.db.query("UPDATE ledger_links SET credential_ref=$2 WHERE id=$1", [id, unrelated]);
     const response = await get();
     expect(((await response.json()) as { status: string }).status).toBe("auth_lost");
-    const unlink = await app(true).request(PATH, { method: "DELETE", headers: { cookie, Origin: "https://siljang.example", "Idempotency-Key": `ledger-${newUuid()}` } }, testEnv());
+    const unlink = await app(true).request(
+      PATH,
+      {
+        method: "DELETE",
+        headers: { cookie, Origin: "https://siljang.example", "Idempotency-Key": `ledger-${newUuid()}` },
+      },
+      testEnv(),
+    );
     expect(unlink.status).toBe(200);
     expect((await isolated.db.query("SELECT id FROM vault.secrets WHERE id=$1", [unrelated])).rowCount).toBe(1);
   });
