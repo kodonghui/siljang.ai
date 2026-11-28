@@ -76,7 +76,10 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
         const raw = isolated.connect();
         const wrap = (q: Queryable): Queryable => ({
           query(sql, params) {
-            if (fault && (sql.includes("ledger_links") || sql.includes("read_owner_ledger")))
+            if (
+              fault &&
+              (sql.includes("ledger_links") || sql.includes("read_owner_ledger") || sql.includes("unlink_owner_ledger"))
+            )
               throw new Error("synthetic ledger query failure");
             return q.query(sql, params);
           },
@@ -286,6 +289,36 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     expect(response.status).toBe(500);
     expect(exchanges).toBe(0);
   });
+  it("연결 요청의 세션·가게·버전 오류는 계약대로 닫힌다", async () => {
+    const body = JSON.stringify({
+      baseRevision: null,
+      code: "fixture-code",
+      state: "fixture-state-123456789",
+      spreadsheetId: SHEET,
+      sheetName: "주문 장부",
+    });
+    const send = (ownerCookie: string) =>
+      app(true).request(
+        PATH,
+        {
+          method: "PUT",
+          headers: {
+            cookie: ownerCookie,
+            Origin: "https://siljang.example",
+            "content-type": "application/json",
+            "Idempotency-Key": `ledger-${newUuid()}`,
+          },
+          body,
+        },
+        testEnv(),
+      );
+    await expectProblem(await send(""), "unauthenticated");
+    const accountId = BigInt(`0x${newUuid().replaceAll("-", "").slice(0, 14)}`).toString();
+    const session = await createOwnerSession(isolated.db, { accountId, friend: false }, NOW, false);
+    await expectProblem(await send(`${OWNER_COOKIE}=${session.token}`), "shop_not_registered");
+    await link("linked");
+    await expectProblem(await send(cookie), "version_conflict");
+  });
   it("구글 연결은 토큰을 암호화해 저장하고 응답에서 숨긴다", async () => {
     const token = `fixture-token-${"x".repeat(300)}`;
     let exchanges = 0;
@@ -445,6 +478,26 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
         "plaintext-token",
       ]),
     ).rejects.toThrow();
+  });
+  it("연결 해제의 세션·대상·요청 키·서버 오류는 계약대로 닫힌다", async () => {
+    const send = (ownerCookie: string, key?: string, fault = false) =>
+      app(true, fault).request(
+        PATH,
+        {
+          method: "DELETE",
+          headers: {
+            cookie: ownerCookie,
+            Origin: "https://siljang.example",
+            ...(key ? { "Idempotency-Key": key } : {}),
+          },
+        },
+        testEnv(),
+      );
+    await expectProblem(await send("", `ledger-${newUuid()}`), "unauthenticated");
+    await expectProblem(await send(cookie), "validation_failed");
+    await expectProblem(await send(cookie, `ledger-${newUuid()}`), "not_set");
+    await link("linked");
+    await expectProblem(await send(cookie, `ledger-${newUuid()}`, true), "internal");
   });
   it("연결 해제는 토큰을 지우고 상태를 반환한다", async () => {
     const linkId = await link("linked");
