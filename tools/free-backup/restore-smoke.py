@@ -130,6 +130,14 @@ def run():
             assert denied.returncode != 0, "공개 연결이 열린 대상에 함수 복구 허용"
             assert sql(target, "SELECT to_regnamespace('siljang_ledger_private') IS NULL").strip() == b"t"
             sql("postgres", f'REVOKE CONNECT ON DATABASE "{target}" FROM PUBLIC')
+            original = sql(target, "SELECT pg_get_functiondef('public.read_owner_ledger(uuid,uuid,uuid)'::regprocedure)").decode()
+            marker = "$function$"
+            assert original.count(marker) == 2
+            changed = original.rsplit(marker, 1)[0] + "\n-- synthetic version mismatch\n" + marker + ";"
+            sql(target, "SET check_function_bodies=off; " + changed)
+            assert subprocess.run(restore_cmd, env=restore_env, capture_output=True).returncode != 0, "다른 버전의 복구 함수 덮어쓰기 허용"
+            assert sql(target, "SELECT to_regnamespace('siljang_ledger_private') IS NULL").strip() == b"t"
+            sql(target, "SET check_function_bodies=off; " + original + ";")
             subprocess.run(restore_cmd, env=restore_env, check=True)
             assert subprocess.run(restore_cmd, env=restore_env, capture_output=True).returncode != 0, "이미 적용한 대상 재실행 허용"
             ledger_state = sql(target, f"SELECT status FROM public.read_owner_ledger('{ledger_shop}'::uuid,'{ledger_owner}'::uuid,NULL)").strip()
