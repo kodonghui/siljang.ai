@@ -27,7 +27,9 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     logs: string[] = [];
   beforeAll(async () => {
     isolated = await isolatedTestDb();
-    await isolated.db.query("CREATE SCHEMA vault; CREATE TABLE vault.secrets (id uuid PRIMARY KEY, secret text); CREATE FUNCTION vault.create_secret(value text) RETURNS uuid LANGUAGE sql AS $$ INSERT INTO vault.secrets (id, secret) VALUES (gen_random_uuid(), value) RETURNING id $$");
+    await isolated.db.query(
+      "CREATE SCHEMA vault; CREATE TABLE vault.secrets (id uuid PRIMARY KEY, secret text); CREATE FUNCTION vault.create_secret(value text) RETURNS uuid LANGUAGE sql AS $$ INSERT INTO vault.secrets (id, secret) VALUES (gen_random_uuid(), value) RETURNING id $$",
+    );
     await isolated.db.query(`CREATE ROLE "${role}" NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
     await isolated.db.query(
       readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8").replaceAll(
@@ -143,12 +145,29 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     const id = await link("linked");
     const encrypted = `v1:${"A".repeat(64)}`;
     const result = await isolated.db.query<{ ok: boolean }>(
-      "SELECT private.store_ledger_credential($1,$2,$3,$4) AS ok", [shop.shopId, shop.ownerId, id, encrypted],
+      "SELECT private.store_ledger_credential($1,$2,$3,$4) AS ok",
+      [shop.shopId, shop.ownerId, id, encrypted],
     );
     expect(result.rows[0]?.ok).toBe(true);
-    const found = await isolated.db.query<{ secret: string }>("SELECT secret FROM vault.secrets WHERE secret IS NOT NULL");
+    const foreign = await createShop(isolated.db, "다른 가게");
+    const denied = await isolated.db.query<{ ok: boolean }>(
+      "SELECT private.store_ledger_credential($1,$2,$3,$4) AS ok",
+      [shop.shopId, foreign.ownerId, id, encrypted],
+    );
+    expect(denied.rows[0]?.ok).toBe(false);
+    await expect(roleConnection(isolated.connect(), role).query("SELECT * FROM vault.secrets")).rejects.toThrow();
+    const found = await isolated.db.query<{ secret: string }>(
+      "SELECT secret FROM vault.secrets WHERE secret IS NOT NULL",
+    );
     expect(found.rows).toEqual([{ secret: encrypted }]);
-    await expect(isolated.db.query("SELECT private.store_ledger_credential($1,$2,$3,$4)", [shop.shopId, shop.ownerId, id, "plaintext-token"])).rejects.toThrow();
+    await expect(
+      isolated.db.query("SELECT private.store_ledger_credential($1,$2,$3,$4)", [
+        shop.shopId,
+        shop.ownerId,
+        id,
+        "plaintext-token",
+      ]),
+    ).rejects.toThrow();
   });
   it("연결 해제는 토큰을 지우고 상태를 반환한다", async () => {
     const linkId = await link("linked");
