@@ -227,7 +227,9 @@ export function OperatorRecordsScreen({
   const [detailCursor, setDetailCursor] = useState<string | undefined>();
   const suppressDirect = useRef(false);
   const [retry, setRetry] = useState<
-    { type: "list"; cursor?: string } | { type: "detail"; row: Data; kind: OperatorRecordKind; cursor?: string } | null
+    | { type: "list"; append: boolean; cursor?: string }
+    | { type: "detail"; row: Data; kind: OperatorRecordKind; cursor?: string }
+    | null
   >(null);
   const [opened, setOpened] = useState<Data | null>(null),
     [failure, setFailure] = useState<ApiFailure | null>(null);
@@ -275,7 +277,7 @@ export function OperatorRecordsScreen({
     [clear, onSessionExpired],
   );
   const load = useCallback(
-    async (cursor?: string) => {
+    async (cursor?: string, append = false) => {
       if (lock.current) return;
       const request = new AbortController();
       controller.current = request;
@@ -286,12 +288,12 @@ export function OperatorRecordsScreen({
         const result = await fetchOperatorRecords(shopId, kind, cursor, request.signal);
         if (request.signal.aborted) return;
         if (!result.ok) {
-          failed(result, !!cursor);
-          if (result.status !== 401) setRetry({ type: "list", ...(cursor ? { cursor } : {}) });
+          failed(result, append);
+          if (result.status !== 401) setRetry({ type: "list", append, ...(cursor ? { cursor } : {}) });
           return false;
         } else {
           setList((old) =>
-            cursor && old
+            append && old
               ? {
                   ...result.data,
                   orders: [...rows(old.orders), ...rows(result.data.orders)],
@@ -300,7 +302,7 @@ export function OperatorRecordsScreen({
               : result.data,
           );
           setRetry(null);
-          if (!cursor) setAt(Date.now());
+          if (!append) setAt(Date.now());
           return true;
         }
       } catch (error) {
@@ -355,6 +357,17 @@ export function OperatorRecordsScreen({
     },
     [clear, failed, kind, shopId],
   );
+  const openDirect = useCallback(async () => {
+    const parts = path.split("/"),
+      type = parts[4],
+      id = parts[5];
+    if (!suppressDirect.current && id && type === kind && (type === "orders" || type === "consultations"))
+      await choose(
+        type === "orders" ? { orderId: id } : { consultationId: id },
+        type,
+        type === "consultations" ? (cursor ?? undefined) : undefined,
+      );
+  }, [path, kind, cursor, choose]);
   useEffect(() => {
     active.current = true;
     void revision;
@@ -367,15 +380,7 @@ export function OperatorRecordsScreen({
           !directConsultation && initialKind.current === kind ? (cursor ?? undefined) : undefined,
         );
         if (cancelled || !loaded) return;
-        const parts = path.split("/");
-        const type = parts[4],
-          id = parts[5];
-        if (!suppressDirect.current && id && type === kind && (type === "orders" || type === "consultations"))
-          await choose(
-            type === "orders" ? { orderId: id } : { consultationId: id },
-            type,
-            type === "consultations" ? (cursor ?? undefined) : undefined,
-          );
+        await openDirect();
       } catch (error) {
         if (!cancelled) throw error;
       }
@@ -388,17 +393,26 @@ export function OperatorRecordsScreen({
       controller.current = null;
       lock.current = false;
     };
-  }, [load, revision, path, choose, kind, invalidQuery, cursor]);
+  }, [load, revision, path, openDirect, kind, invalidQuery, cursor]);
+  const sensitiveActive = useRef(false);
+  sensitiveActive.current = target !== null;
   useEffect(() => {
     const hide = () => flushSync(() => clear());
+    const history = () => {
+      if (sensitiveActive.current) flushSync(() => clear());
+    };
     const restore = (event: PageTransitionEvent) => {
       if (event.persisted) flushSync(() => clear());
     };
     window.addEventListener("pagehide", hide);
     window.addEventListener("pageshow", restore);
+    window.addEventListener("popstate", history);
+    window.addEventListener("hashchange", history);
     return () => {
       window.removeEventListener("pagehide", hide);
       window.removeEventListener("pageshow", restore);
+      window.removeEventListener("popstate", history);
+      window.removeEventListener("hashchange", history);
     };
   }, [clear]);
   const modal = useRef<HTMLDialogElement>(null);
@@ -578,10 +592,32 @@ export function OperatorRecordsScreen({
       {error ? (
         <div role="alert">
           {error.message} {failure?.problem?.traceId ? `추적 ID: ${failure.problem.traceId}` : ""}{" "}
+          {failure?.status === 422 && retry?.cursor ? (
+            <a
+              href={
+                retry.type === "detail" && retry.kind === "consultations"
+                  ? `/operator/shops/${encodeURIComponent(shopId)}/consultations/${encodeURIComponent(text(retry.row.consultationId))}`
+                  : `/operator/shops/${encodeURIComponent(shopId)}/records`
+              }
+              onClick={(event) => {
+                const href =
+                  retry.type === "detail" && retry.kind === "consultations"
+                    ? `/operator/shops/${encodeURIComponent(shopId)}/consultations/${encodeURIComponent(text(retry.row.consultationId))}`
+                    : `/operator/shops/${encodeURIComponent(shopId)}/records`;
+                onNavigate(href, event);
+              }}
+            >
+              처음부터 보기
+            </a>
+          ) : null}
           <button
             type="button"
             onClick={() => {
-              if (retry?.type === "list") void load(retry.cursor);
+              if (retry?.type === "list")
+                void (async () => {
+                  const loaded = await load(retry.cursor, retry.append);
+                  if (loaded && !retry.append) await openDirect();
+                })();
               else if (retry?.type === "detail") void choose(retry.row, retry.kind, retry.cursor);
               else setRevision((n) => n + 1);
             }}
@@ -596,6 +632,7 @@ export function OperatorRecordsScreen({
           aria-pressed={kind === "orders"}
           disabled={disabled}
           onClick={() => {
+            if (kind === "orders") return;
             clear();
             setDetail(null);
             setSelected(null);
@@ -610,6 +647,7 @@ export function OperatorRecordsScreen({
           aria-pressed={kind === "consultations"}
           disabled={disabled}
           onClick={() => {
+            if (kind === "consultations") return;
             clear();
             setDetail(null);
             setSelected(null);
@@ -655,7 +693,7 @@ export function OperatorRecordsScreen({
             ))}
           </ul>
           {typeof list?.nextCursor === "string" ? (
-            <button type="button" disabled={disabled} onClick={() => void load(list.nextCursor as string)}>
+            <button type="button" disabled={disabled} onClick={() => void load(list.nextCursor as string, true)}>
               더 보기
             </button>
           ) : null}

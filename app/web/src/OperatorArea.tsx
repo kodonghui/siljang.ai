@@ -161,7 +161,7 @@ export function OperatorArea() {
           />
         ) : screen.screen === "SCR-050" ? (
           <OperatorRecordsScreen
-            key={location.pathname + location.search}
+            key={location.key}
             shopId={location.pathname.split("/")[3] ?? ""}
             path={location.pathname}
             onBusyChange={setContentBusy}

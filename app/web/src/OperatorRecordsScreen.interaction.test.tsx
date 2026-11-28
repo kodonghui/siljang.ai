@@ -747,3 +747,210 @@ it("페이지 이탈 중 원문 요청의 늦은 결과를 버린다", async () 
   expect(screen.queryByText("이지우")).toBeNull();
   expect(screen.queryByRole("dialog")).toBeNull();
 });
+it("주소 커서로 연 목록의 새로 고침은 기존 행을 교체한다", async () => {
+  let count = 0;
+  const updated = structuredClone(list);
+  updated.orders = [updated.orders[1]];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => Promise.resolve(json(++count === 1 ? list : updated))),
+  );
+  render(
+    <MemoryRouter initialEntries={["/?cursor=page_one"]}>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  await screen.findByRole("button", { name: /K7Q3M9/ });
+  fireEvent.click(screen.getByRole("button", { name: "새로 고침" }));
+  await waitFor(() => expect(count).toBe(2));
+  expect(screen.queryByRole("button", { name: /K7Q3M9/ })).toBeNull();
+  expect(screen.getAllByRole("button", { name: /H2W6Y1/ })).toHaveLength(1);
+});
+it.each(["list", "consultation"])("서버가 %s 커서를 거절하면 첫 페이지 경로를 제공한다", async (kind) => {
+  const consultation = sample("/operator/shops/{shopId}/consultations/{consultationId}", "consultation");
+  const consultations = sample("/operator/shops/{shopId}/records", "consultations");
+  const endpoint =
+    kind === "list" ? "/operator/shops/{shopId}/records" : "/operator/shops/{shopId}/consultations/{consultationId}";
+  const problem =
+    api.paths[endpoint].get.responses[422].content["application/problem+json"].examples.validation_failed.value;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(
+        url.includes("cursor=page_one") ? json(problem, 422) : json(kind === "list" ? list : consultations),
+      ),
+    ),
+  );
+  const path =
+    kind === "list"
+      ? `/operator/shops/${shop}/records`
+      : `/operator/shops/${shop}/consultations/${consultation.consultationId}`;
+  render(
+    <MemoryRouter initialEntries={["/?cursor=page_one"]}>
+      <OperatorRecordsScreen shopId={shop} path={path} onNavigate={() => {}} onSessionExpired={() => {}} />
+    </MemoryRouter>,
+  );
+  expect((await screen.findByRole("link", { name: "처음부터 보기" })).getAttribute("href")).toBe(path);
+});
+it("상세 바로가기의 목록 실패 재시도는 상세 조회까지 이어진다", async () => {
+  let attempts = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(url.includes("/records?") ? (++attempts === 1 ? json({}, 500) : json(list)) : json(order)),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/orders/${order.orderId}`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "다시 시도" }));
+  expect(await screen.findByRole("button", { name: "주문자 원래 값 열기" })).toBeTruthy();
+});
+it("선택된 탭을 다시 눌러도 목록을 유지한다", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => Promise.resolve(json(list))),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  await screen.findByRole("button", { name: /K7Q3M9/ });
+  fireEvent.click(screen.getByRole("button", { name: "주문" }));
+  expect(screen.getByRole("button", { name: /K7Q3M9/ })).toBeTruthy();
+});
+it("같은 문서의 기록 탐색에서 원문과 사유를 지운다", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(json(url.includes("/originals") ? original : url.includes("/orders/") ? order : list)),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /K7Q3M9/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "주문자 원래 값 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 기록 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  await screen.findByText("이지우");
+  act(() => window.dispatchEvent(new PopStateEvent("popstate")));
+  expect(screen.queryByText("이지우")).toBeNull();
+  expect(screen.queryByText(/손님 문의 기록 확인/)).toBeNull();
+});
+it("같은 문서의 기록 이동은 진행 중인 원문 요청도 취소한다", async () => {
+  let resolveOpen!: (response: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      url.includes("/originals")
+        ? new Promise<Response>((resolve) => {
+            resolveOpen = resolve;
+          })
+        : Promise.resolve(json(url.includes("/orders/") ? order : list)),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /K7Q3M9/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "주문자 원래 값 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 기록 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  act(() => window.dispatchEvent(new PopStateEvent("popstate")));
+  await act(async () => resolveOpen(json(original)));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.queryByText("이지우")).toBeNull();
+});
+it("주소 커서에서 주문이 보관되면 갱신한 페이지로 기존 행을 교체한다", async () => {
+  const problem =
+    api.paths["/operator/shops/{shopId}/originals"].post.responses[409].content["application/problem+json"].examples
+      .original_erased.value;
+  const after = structuredClone(list);
+  after.orders = [after.orders[1]];
+  let listCalls = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(
+        url.includes("/originals")
+          ? json(problem, 409)
+          : json(url.includes("/orders/") ? order : ++listCalls === 1 ? list : after),
+      ),
+    ),
+  );
+  render(
+    <MemoryRouter initialEntries={["/?cursor=page_one"]}>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /K7Q3M9/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "주문자 원래 값 열기" }));
+  fireEvent.change(screen.getByLabelText("사유"), { target: { value: "손님 문의 기록 확인" } });
+  fireEvent.click(screen.getByRole("button", { name: "사유를 적고 열기" }));
+  await waitFor(() => expect(listCalls).toBe(2));
+  expect(screen.queryByRole("button", { name: /K7Q3M9/ })).toBeNull();
+  expect(screen.getAllByRole("button", { name: /H2W6Y1/ })).toHaveLength(1);
+});
+it("원문이 없는 기록 탐색은 진행 중인 목록 조회를 멈추지 않는다", async () => {
+  let finish!: (response: Response) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    ),
+  );
+  render(
+    <MemoryRouter>
+      <OperatorRecordsScreen
+        shopId={shop}
+        path={`/operator/shops/${shop}/records`}
+        onNavigate={() => {}}
+        onSessionExpired={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  act(() => window.dispatchEvent(new PopStateEvent("popstate")));
+  await act(async () => finish(json(list)));
+  expect(await screen.findByRole("button", { name: /K7Q3M9/ })).toBeTruthy();
+});

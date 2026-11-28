@@ -165,3 +165,9 @@ dialog.operator-records-dialog::backdrop {
   overflow: hidden;
   white-space: pre-wrap;
 }
+
+@media (max-width: 600px) {
+  .operator-records-actions button {
+    min-height: 48px;
+  }
+}

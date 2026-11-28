@@ -87,7 +87,7 @@
         "check": "contrast-image",
         "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
         "where": "main.ui-layout__main > section.ui-section > section.operator-records > p:nth-of-type(2)",
-        "text": "오후 01:54 기준 새로 고침",
+        "text": "오후 02:03 기준 새로 고침",
         "need": 4.5,
         "font": "15px 400"
       },
@@ -358,7 +358,7 @@
         "check": "contrast-image",
         "msg": "Text over an image, a gradient or another box: check by hand at the worst spot",
         "where": "main.ui-layout__main > section.ui-section > section.operator-records > p:nth-of-type(2)",
-        "text": "오후 01:54 기준 새로 고침",
+        "text": "오후 02:03 기준 새로 고침",
         "need": 4.5,
         "font": "15px 400"
       },
