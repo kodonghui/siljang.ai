@@ -16,10 +16,9 @@ export async function storeLedgerCredential(
     shopId: db.scope.shopId,
     recordId: linkId,
   });
-  const result = await db.run<{ ok: boolean }>("SELECT private.store_ledger_credential($1,$2,$3,$4) AS ok", [
-    db.scope.via.ownerId,
-    linkId,
-    envelope,
-  ]);
+  const result = await db.run<{ ok: boolean }>(
+    "SELECT siljang_ledger_private.store_ledger_credential($1,$2,$3,$4) AS ok",
+    [db.scope.via.ownerId, linkId, envelope],
+  );
   if (!result.rows[0]?.ok) throw new ApiError("not_set");
 }

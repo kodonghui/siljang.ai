@@ -47,9 +47,9 @@ const ENVELOPE = /^v([1-9][0-9]{0,2}):([A-Za-z0-9_-]{39,})$/;
 
 const NONCE_BYTES = 12;
 const TAG_BYTES = 16;
-/** 평문 UTF-8 상한. 계좌번호·전화번호는40자까지이며 상담 커서는120바이트를 쓴다. */
+/** 일반 평문 UTF-8 상한. 계좌번호·전화번호는40자까지이며 상담 커서는120바이트를 쓴다. */
 export const MAX_FIELD_BYTES = 256;
-/** 주소 최대5개·후기1000자와 내부 식별자. 이 수신 용도만 별도 한도를 쓴다. */
+/** 주소 최대5개·후기1000자와 내부 식별자의 별도 상한. */
 export const MAX_KAKAO_PHOTO_CONTEXT_BYTES = 20_480;
 function fieldLimit(context: FieldContext): number {
   if (context.purpose === "messages.kakao_photo") return MAX_KAKAO_PHOTO_CONTEXT_BYTES;
@@ -65,7 +65,7 @@ export class FieldCryptoError extends Error {
 export interface FieldCrypto {
   /** 새로 쓰는 봉투의 키 버전. */
   readonly currentVersion: number;
-  /** 일반 평문1~256바이트, 사진 수신 문맥만 별도 상한. 지금 버전의 키를 쓴다. */
+  /** 일반 평문은 최대 256바이트, 사진 수신 문맥과 장부 토큰은 용도별 상한을 쓴다. */
   seal(plaintext: string, context: FieldContext): Promise<string>;
   /** 봉투를 평문으로. 봉투에 적힌 버전의 키를 쓴다. 풀지 못하면 FieldCryptoError. */
   open(envelope: string, context: FieldContext): Promise<string>;

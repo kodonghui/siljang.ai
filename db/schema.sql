@@ -2602,9 +2602,9 @@ $fn$;
 REVOKE ALL ON FUNCTION unlink_owner_ledger(uuid,uuid,timestamptz) FROM PUBLIC;
 
 -- Vault에 비밀 행이 없으면 복구 뒤 재연결이 필요한 상태로 표시한다.
-CREATE SCHEMA IF NOT EXISTS private;
-REVOKE ALL ON SCHEMA private FROM PUBLIC;
-CREATE FUNCTION private.ledger_vault_present(p_ref text) RETURNS boolean
+CREATE SCHEMA siljang_ledger_private;
+REVOKE ALL ON SCHEMA siljang_ledger_private FROM PUBLIC;
+CREATE FUNCTION siljang_ledger_private.ledger_vault_present(p_ref text) RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $fn$
 DECLARE present boolean;
 BEGIN
@@ -2613,14 +2613,14 @@ BEGIN
   RETURN present;
 END
 $fn$;
-REVOKE ALL ON FUNCTION private.ledger_vault_present(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION siljang_ledger_private.ledger_vault_present(text) FROM PUBLIC;
 
 -- TASK-156: 가게 소유를 확인한 장부 메타데이터 조회/연결 해제만 허용한다.
 CREATE OR REPLACE FUNCTION read_owner_ledger(p_shop uuid,p_owner uuid,p_link uuid)
 RETURNS TABLE(id uuid,status text,spreadsheet_id text,sheet_name text,our_columns jsonb,
   linked_at timestamptz,unlinked_at timestamptz,revision text,failing_since timestamptz,unwritten_count integer)
 LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
-  SELECT l.id,CASE WHEN l.status='linked' AND NOT private.ledger_vault_present(l.credential_ref) THEN 'auth_lost' ELSE l.status END,l.spreadsheet_id,l.sheet_name,
+  SELECT l.id,CASE WHEN l.status='linked' AND NOT siljang_ledger_private.ledger_vault_present(l.credential_ref) THEN 'auth_lost' ELSE l.status END,l.spreadsheet_id,l.sheet_name,
     jsonb_build_object('columns',COALESCE((
       SELECT jsonb_agg(jsonb_build_object('header',c.value->'header','column',c.value->'column') ORDER BY c.position)
       FROM jsonb_array_elements(CASE
@@ -2666,7 +2666,7 @@ $fn$;
 REVOKE ALL ON FUNCTION unlink_owner_ledger(uuid,uuid,timestamptz) FROM PUBLIC;
 
 -- 가게 소유와 연결을 잠근 뒤 앱이 만든 암호문만 Vault에 저장한다.
-CREATE FUNCTION private.store_ledger_credential(p_shop uuid,p_owner uuid,p_link uuid,p_envelope text)
+CREATE FUNCTION siljang_ledger_private.store_ledger_credential(p_shop uuid,p_owner uuid,p_link uuid,p_envelope text)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $fn$
 DECLARE old_ref text; new_ref uuid;
 BEGIN
@@ -2684,10 +2684,10 @@ BEGIN
   RETURN true;
 END
 $fn$;
-REVOKE ALL ON FUNCTION private.store_ledger_credential(uuid,uuid,uuid,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION siljang_ledger_private.store_ledger_credential(uuid,uuid,uuid,text) FROM PUBLIC;
 
 -- 생성과 교체는 가게 행으로 직렬화하며, 토큰 저장은 같은 트랜잭션에서 이어진다.
-CREATE FUNCTION private.create_owner_ledger(p_shop uuid,p_owner uuid,p_link uuid,p_spreadsheet text,p_sheet text,p_columns jsonb,p_revision text,p_now timestamptz)
+CREATE FUNCTION siljang_ledger_private.create_owner_ledger(p_shop uuid,p_owner uuid,p_link uuid,p_spreadsheet text,p_sheet text,p_columns jsonb,p_revision text,p_now timestamptz)
 RETURNS TABLE(outcome text) LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
 DECLARE old_id uuid; old_status text; old_ref text; old_revision text;
 BEGIN
@@ -2715,10 +2715,10 @@ BEGIN
   RETURN QUERY SELECT CASE WHEN old_id IS NULL THEN 'created' ELSE 'relinked' END;
 END
 $fn$;
-REVOKE ALL ON FUNCTION private.create_owner_ledger(uuid,uuid,uuid,text,text,jsonb,text,timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION siljang_ledger_private.create_owner_ledger(uuid,uuid,uuid,text,text,jsonb,text,timestamptz) FROM PUBLIC;
 
 -- 외부 시트를 바꾸기 전에 가게를 잠그고 화면 버전을 검사한다.
-CREATE FUNCTION private.lock_owner_ledger(p_shop uuid,p_owner uuid,p_revision text)
+CREATE FUNCTION siljang_ledger_private.lock_owner_ledger(p_shop uuid,p_owner uuid,p_revision text)
 RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
 DECLARE old_id uuid; old_revision text;
 BEGIN
@@ -2732,7 +2732,20 @@ BEGIN
   RETURN 'ok';
 END
 $fn$;
-REVOKE ALL ON FUNCTION private.lock_owner_ledger(uuid,uuid,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION siljang_ledger_private.lock_owner_ledger(uuid,uuid,text) FROM PUBLIC;
+
+-- Supabase 기본 역할에 의도치 않은 기본 권한이 있어도 전용 함수에 접근하지 못하게 한다.
+DO $revoke$
+DECLARE role_name text;
+BEGIN
+  FOREACH role_name IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=role_name) THEN
+      EXECUTE pg_catalog.format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA siljang_ledger_private FROM %I', role_name);
+      EXECUTE pg_catalog.format('REVOKE ALL ON SCHEMA siljang_ledger_private FROM %I', role_name);
+    END IF;
+  END LOOP;
+END
+$revoke$;
 
 -- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음.
 COMMENT ON COLUMN owners.id IS '사장님 ID';

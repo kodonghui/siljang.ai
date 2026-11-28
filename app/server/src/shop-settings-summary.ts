@@ -1,4 +1,5 @@
 /** SCR-034 카드 상태. 이 가게의 현재 값만 읽고 계좌·OAuth 참조·사진 주소는 돌려주지 않는다. */
+import { ApiError } from "./problem";
 import type { ShopDb } from "./shop-scope";
 
 interface SummaryRow {
@@ -11,6 +12,7 @@ interface SummaryRow {
   has_reviews: boolean;
 }
 export async function shopSettingsSummary(db: ShopDb, now: Date) {
+  if (db.scope.via.kind !== "owner") throw new ApiError("unauthenticated");
   const row = await db.found<SummaryRow>(
     `SELECT
       (SELECT pl.version FROM price_lists pl WHERE pl.shop_id=$1 AND pl.superseded_at IS NULL) AS price_list_version,
@@ -18,11 +20,11 @@ export async function shopSettingsSummary(db: ShopDb, now: Date) {
       EXISTS(SELECT 1 FROM payment_accounts pac WHERE pac.shop_id=$1 AND pac.retired_at IS NULL) AS payment_configured,
       (SELECT CASE WHEN kc.status='pending' AND kc.check_started_at IS NULL THEN 'not_started' WHEN kc.status='pending' AND kc.check_started_at<=$2::timestamptz-interval '10 minutes' THEN 'failed' ELSE kc.status END
         FROM kakao_channels kc WHERE kc.shop_id=$1 AND kc.status<>'retired' ORDER BY kc.configuration_order DESC LIMIT 1) AS kakao_channel_status,
-      (SELECT ll.status FROM ledger_links ll WHERE ll.shop_id=$1 AND ll.status<>'unlinked') AS ledger_status,
+      (SELECT CASE WHEN ll.status='unlinked' THEN NULL ELSE ll.status END FROM public.read_owner_ledger($1,$3,NULL) ll) AS ledger_status,
       EXISTS(SELECT 1 FROM portfolio_items pi JOIN photo_consents pcn ON pcn.shop_id=$1 AND pcn.id=pi.photo_consent_id
         WHERE pi.shop_id=$1 AND pi.unpublished_at IS NULL AND pi.published_at<=$2::timestamptz AND pcn.withdrawn_at IS NULL) AS has_portfolio,
       EXISTS(SELECT 1 FROM reviews rv WHERE rv.shop_id=$1 AND rv.superseded_at IS NULL) AS has_reviews`,
-    [now],
+    [now, db.scope.via.ownerId],
   );
   return {
     priceListVersion: row.price_list_version,

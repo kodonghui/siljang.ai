@@ -1,5 +1,5 @@
 -- 가게 소유와 연결을 잠근 뒤 앱이 만든 암호문만 Vault에 저장한다.
-CREATE FUNCTION private.store_ledger_credential(p_shop uuid,p_owner uuid,p_link uuid,p_envelope text)
+CREATE FUNCTION siljang_ledger_private.store_ledger_credential(p_shop uuid,p_owner uuid,p_link uuid,p_envelope text)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $fn$
 DECLARE old_ref text; new_ref uuid;
 BEGIN
@@ -17,4 +17,4 @@ BEGIN
   RETURN true;
 END
 $fn$;
-REVOKE ALL ON FUNCTION private.store_ledger_credential(uuid,uuid,uuid,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION siljang_ledger_private.store_ledger_credential(uuid,uuid,uuid,text) FROM PUBLIC;

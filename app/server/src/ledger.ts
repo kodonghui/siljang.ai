@@ -123,7 +123,7 @@ export async function linkLedger(r: ShopRequest): Promise<Response> {
     body: raw,
     async execute(db) {
       const locked = (
-        await db.run<{ outcome: string }>("SELECT private.lock_owner_ledger($1,$2,$3) AS outcome", [
+        await db.run<{ outcome: string }>("SELECT siljang_ledger_private.lock_owner_ledger($1,$2,$3) AS outcome", [
           actor.ownerId,
           input.baseRevision,
         ])
@@ -139,14 +139,14 @@ export async function linkLedger(r: ShopRequest): Promise<Response> {
           r.services.now(),
         );
       if (state === null) throw new ApiError("google_authorization_failed");
+      const fields = r.services.fieldCrypto();
+      const sheets = r.services.ledgerSetup();
       let credential: GoogleLedgerCredential | null;
       let setup: LedgerSheetSetup | null;
       try {
         credential = await r.services.ledgerGoogle().exchange(input.code, state.redirect, state.verifier);
         if (credential === null) throw new ApiError("google_authorization_failed");
-        setup = await r.services
-          .ledgerSetup()
-          .connect(credential.accessToken, db.scope.shopId, input.spreadsheetId, input.sheetName);
+        setup = await sheets.connect(credential.accessToken, db.scope.shopId, input.spreadsheetId, input.sheetName);
         if (setup === null) throw new ApiError("sheet_not_accessible");
       } catch (error) {
         if (error instanceof GoogleLedgerUnavailableError) throw new ApiError("google_unavailable");
@@ -154,23 +154,26 @@ export async function linkLedger(r: ShopRequest): Promise<Response> {
       }
       const id = crypto.randomUUID();
       const created = (
-        await db.run<{ outcome: string }>("SELECT * FROM private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)", [
-          actor.ownerId,
-          id,
-          input.spreadsheetId,
-          input.sheetName,
-          JSON.stringify({
-            columns: setup.columns,
-            movedRight: setup.movedRight,
-            ownershipToken: setup.ownershipToken,
-          }),
-          input.baseRevision,
-          r.services.now(),
-        ])
+        await db.run<{ outcome: string }>(
+          "SELECT * FROM siljang_ledger_private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)",
+          [
+            actor.ownerId,
+            id,
+            input.spreadsheetId,
+            input.sheetName,
+            JSON.stringify({
+              columns: setup.columns,
+              movedRight: setup.movedRight,
+              ownershipToken: setup.ownershipToken,
+            }),
+            input.baseRevision,
+            r.services.now(),
+          ],
+        )
       ).rows[0];
       if (created?.outcome === "conflict") throw new ApiError("version_conflict");
       if (!created) throw new ApiError("not_set");
-      await storeLedgerCredential(db, r.services.fieldCrypto(), id, credential.refreshToken);
+      await storeLedgerCredential(db, fields, id, credential.refreshToken);
       const row = await currentLedger(db);
       if (!row) throw new ApiError("not_set");
       return {
