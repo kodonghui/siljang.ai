@@ -50,6 +50,8 @@ def run():
         begin, end = "-- ───────────── 1부: 정상 플로우 ─────────────", "-- 신고 → 재제작 주문"
         assert fixture.count(begin) == fixture.count(end) == 1
         sql(source, "BEGIN; SET CONSTRAINTS ALL DEFERRED;\n" + fixture.split(begin)[1].split(end)[0] + "\nCOMMIT;")
+        # public 덤프에는 Vault 행이 없다. 복구된 연결은 재연결 상태여야 한다.
+        ledger_shop, ledger_owner = sql(source, "SELECT l.shop_id,s.owner_id FROM ledger_links l JOIN shops s ON s.id=l.shop_id LIMIT 1").decode().strip().split("|")
         sql(source, "CREATE SEQUENCE backup_smoke_seq START 7; SELECT nextval('backup_smoke_seq')")
         sequence_query = "SELECT json_agg(json_build_object('name',sequencename,'last_value',last_value,'increment_by',increment_by) ORDER BY sequencename) FROM pg_sequences WHERE schemaname='public'"
         sequences_before = sql(source, sequence_query)
@@ -114,6 +116,11 @@ def run():
                 subprocess.run([os.environ.get("PG_RESTORE_BIN", "pg_restore"), "--dbname", target,
                                 "--single-transaction", "--exit-on-error", "--no-owner", "--no-privileges"],
                                stdin=incoming, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+            # Vault 비밀을 복원하지 않고 앱 전용 함수만 원본 이행에서 복구한다.
+            subprocess.run(["bash", str(TOOLS / "restore-ledger-functions.sh")],
+                           env={**os.environ, "PGDATABASE": target}, check=True)
+            ledger_state = sql(target, f"SELECT status FROM public.read_owner_ledger('{ledger_shop}'::uuid,'{ledger_owner}'::uuid,NULL)").strip()
+            assert ledger_state == b"auth_lost", "Vault 없는 복구의 재연결 상태 불일치"
             sql(target, (TOOLS / "restore-fence.sql").read_text())
             assert sql(target, "SELECT count(*) FROM pg_proc WHERE pronamespace='public'::regnamespace AND prosecdef AND has_function_privilege('public',oid,'EXECUTE')").strip() == b"0"
             assert snapshot(target) == before, "복구 기록 불일치"
