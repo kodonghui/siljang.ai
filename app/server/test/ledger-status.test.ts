@@ -463,6 +463,17 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     expect(body.ledger.status).toBe("unlinked");
     expect((await isolated.db.query("SELECT id FROM vault.secrets WHERE id::text=$1", [ref])).rowCount).toBe(0);
   });
+  it("다른 연결의 Vault 행은 재연결 전 유효한 토큰으로 취급하거나 삭제하지 않는다", async () => {
+    const id = await link("linked");
+    const unrelated = newUuid();
+    await isolated.db.query("INSERT INTO vault.secrets(id,secret) VALUES($1,'other-service')", [unrelated]);
+    await isolated.db.query("UPDATE ledger_links SET credential_ref=$2 WHERE id=$1", [id, unrelated]);
+    const response = await get();
+    expect(((await response.json()) as { status: string }).status).toBe("auth_lost");
+    const unlink = await app(true).request(PATH, { method: "DELETE", headers: { cookie, Origin: "https://siljang.example", "Idempotency-Key": `ledger-${newUuid()}` } }, testEnv());
+    expect(unlink.status).toBe(200);
+    expect((await isolated.db.query("SELECT id FROM vault.secrets WHERE id=$1", [unrelated])).rowCount).toBe(1);
+  });
   it("복구 뒤 토큰이 없으면 다시 연결할 수 있도록 auth_lost를 반환한다", async () => {
     await link("linked", { missing: true });
     const response = await get();
