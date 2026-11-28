@@ -359,3 +359,58 @@ it.skipIf(!TEST_DATABASE_URL)("개인정보 삭제 시 주문 서명과 다른 �
     await db.close();
   }
 });
+
+it.skipIf(!TEST_DATABASE_URL)(
+  "개인정보 삭제가 전송 결과보다 먼저 끝나면 결과 기록이 서명을 되살리지 않는다",
+  async () => {
+    const db = await isolatedTestDb();
+    try {
+      const shop = await createShop(db.db, "삭제와 쓰기"),
+        link = crypto.randomUUID(),
+        row = crypto.randomUUID(),
+        write = crypto.randomUUID();
+      await db.db.query(
+        "INSERT INTO ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref) VALUES($1,$2,$3,'장부','{}',$4)",
+        [link, shop.shopId, "synthetic_sheet_1234567890", crypto.randomUUID()],
+      );
+      await db.db.query(
+        "INSERT INTO ledger_rows(id,shop_id,order_id,sheet_hash,sheet_hashes,sheet_key_version) VALUES($1,$2,$3,$4,$5::jsonb,$4)",
+        [row, shop.shopId, shop.orderId, "A".repeat(43), JSON.stringify({ a: { b: "A".repeat(43) } })],
+      );
+      await db.db.query(
+        "INSERT INTO ledger_writes(id,shop_id,ledger_row_id,event_key,event_kind,next_attempt_at) VALUES($1,$2,$3,$4,'changed',now()-interval '1 second')",
+        [write, shop.shopId, row, `write:${write}`],
+      );
+      const lease = new Date(Date.now() + 120000);
+      expect(
+        (
+          await db.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
+            shop.shopId,
+            write,
+            lease,
+          ])
+        ).rowCount,
+      ).toBe(1);
+      await db.db.query(
+        "UPDATE orders SET status='cancelled',cancel_kind='customer',cancelled_at=now()-interval '31 days',finished_at=now()-interval '31 days' WHERE id=$1",
+        [shop.orderId],
+      );
+      await db.db.query("UPDATE orders SET personal_data_purged_at=now() WHERE id=$1", [shop.orderId]);
+      await db.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,'written',now(),$4::jsonb)", [
+        shop.shopId,
+        write,
+        lease,
+        JSON.stringify({ sheetHash: "B".repeat(43), targetKey: "C".repeat(43), keyVersion: "K".repeat(43) }),
+      ]);
+      const r = (
+        await db.db.query<{ sheet_hash: string | null; sheet_hashes: unknown; sheet_key_version: string | null }>(
+          "SELECT sheet_hash,sheet_hashes,sheet_key_version FROM ledger_rows WHERE id=$1",
+          [row],
+        )
+      ).rows[0];
+      expect(r).toEqual({ sheet_hash: null, sheet_hashes: {}, sheet_key_version: null });
+    } finally {
+      await db.close();
+    }
+  },
+);

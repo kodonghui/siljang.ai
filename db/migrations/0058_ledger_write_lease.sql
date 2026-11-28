@@ -147,7 +147,13 @@ BEGIN
     LEFT JOIN public.designs ds ON ds.id=d.design_id AND ds.shop_id=o.shop_id
     LEFT JOIN public.productions pr ON pr.order_id=o.id AND pr.shop_id=o.shop_id
     WHERE o.shop_id=p_shop AND o.id=v_order AND o.remake_of_order_id IS NULL AND o.personal_data_purged_at IS NULL;
-  IF v_values IS NULL THEN RETURN; END IF;
+  IF v_values IS NULL THEN
+    IF EXISTS (SELECT 1 FROM public.orders o WHERE o.shop_id=p_shop AND o.id=v_order AND o.personal_data_purged_at IS NOT NULL) THEN
+      IF v_audit THEN UPDATE public.ledger_writes SET audit_due_at=NULL,audit_deadline=NULL,write_uncertain=false,checkpoint_hashes=NULL WHERE shop_id=p_shop AND id=p_write;
+      ELSE UPDATE public.ledger_writes SET status='unlinked',next_attempt_at=NULL,write_uncertain=false,write_in_flight=false,checkpoint_hashes=NULL,resume_approved=false,resume_needs_audit=false WHERE shop_id=p_shop AND id=p_write; END IF;
+    END IF;
+    RETURN;
+  END IF;
   PERFORM pg_catalog.pg_advisory_xact_lock(157,1);
   DELETE FROM siljang_ledger_private.ledger_call_slots WHERE started_at<=pg_catalog.statement_timestamp()-interval '60 seconds';
   IF (SELECT count(*) FROM siljang_ledger_private.ledger_call_slots)>=5 THEN
@@ -166,7 +172,7 @@ REVOKE ALL ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,times
 
 CREATE FUNCTION siljang_ledger_private.finish_ledger_write(p_shop uuid,p_write uuid,p_lease timestamptz,p_result text,p_now timestamptz,p_columns jsonb)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
-DECLARE v_link uuid; v_row uuid; v_order uuid; v_attempts int; v_failed timestamptz; v_alerted timestamptz; v_task uuid; v_delay interval; v_audit boolean; v_deadline timestamptz; v_checks integer; v_affected uuid;
+DECLARE v_link uuid; v_row uuid; v_order uuid; v_attempts int; v_failed timestamptz; v_alerted timestamptz; v_task uuid; v_delay interval; v_audit boolean; v_deadline timestamptz; v_checks integer; v_affected uuid; v_purged timestamptz;
 BEGIN
   IF p_result NOT IN ('written','retry','auth_lost','uncertain','duplicate','conflict','audit_ok','audit_duplicate','audit_missing','audit_retry') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
   IF p_result='written' AND p_columns IS NOT NULL AND p_columns ? 'sheetHash' AND (p_columns->>'sheetHash') !~ '^[A-Za-z0-9_-]{43}$' THEN RETURN false; END IF;
@@ -180,7 +186,17 @@ BEGIN
   SELECT w.ledger_row_id,w.attempts,w.first_failed_at,(w.status='written'),w.audit_deadline,w.audit_checks INTO v_row,v_attempts,v_failed,v_audit,v_deadline,v_checks FROM public.ledger_writes w
     WHERE w.shop_id=p_shop AND w.id=p_write AND ((w.next_attempt_at=p_lease AND w.status IN ('pending','retrying','alerted')) OR (w.audit_due_at=p_lease AND w.status='written')) FOR UPDATE;
   IF NOT FOUND THEN RETURN false; END IF;
-  SELECT order_id INTO v_order FROM public.ledger_rows WHERE shop_id=p_shop AND id=v_row;
+  SELECT r.order_id,o.personal_data_purged_at INTO v_order,v_purged FROM public.ledger_rows r
+    JOIN public.orders o ON o.shop_id=r.shop_id AND o.id=r.order_id WHERE r.shop_id=p_shop AND r.id=v_row FOR SHARE OF o;
+  IF v_purged IS NOT NULL THEN
+    IF v_audit THEN
+      UPDATE public.ledger_writes SET audit_due_at=NULL,audit_deadline=NULL,write_uncertain=false,checkpoint_hashes=NULL WHERE shop_id=p_shop AND id=p_write;
+    ELSE
+      UPDATE public.ledger_writes SET status='unlinked',next_attempt_at=NULL,write_uncertain=false,write_in_flight=false,checkpoint_hashes=NULL,resume_approved=false,resume_needs_audit=false WHERE shop_id=p_shop AND id=p_write;
+    END IF;
+    UPDATE public.ledger_links SET write_lease_id=NULL,write_lease_until=NULL WHERE shop_id=p_shop AND id=v_link;
+    RETURN true;
+  END IF;
   IF NOT v_audit THEN UPDATE public.ledger_writes SET write_in_flight=false, checkpoint_hashes=CASE WHEN p_result IN ('written','conflict') OR (p_result='retry' AND NOT write_uncertain) THEN NULL ELSE checkpoint_hashes END WHERE shop_id=p_shop AND id=p_write; END IF;
   IF v_audit AND p_result IN ('audit_ok','audit_duplicate','audit_missing','audit_retry') THEN
     IF p_result='audit_missing' THEN
