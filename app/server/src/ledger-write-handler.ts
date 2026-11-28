@@ -1,4 +1,5 @@
 import type { DueItem, LeaseContext, LeasedHandler } from "./job-runner";
+import type { LedgerCheckpoint } from "./ledger-sheet-write";
 import type { Secret } from "./settings";
 import type { ShopDb } from "./shop-scope";
 
@@ -7,6 +8,9 @@ export interface LedgerWriteSnapshot {
   readonly eventId: string;
   readonly orderId: string;
   readonly expectedDigest?: string | null;
+  readonly expectedDigests?: Readonly<Record<string, string>>;
+  readonly checkpoint?: LedgerCheckpoint | null;
+  readonly leaseUntil?: Date;
   readonly uncertain: boolean;
   readonly auditing: boolean;
   readonly linkId: string;
@@ -22,15 +26,16 @@ type Result =
         readonly movedRight: boolean;
         readonly ownershipToken: string;
         readonly sheetHash?: string;
+        readonly targetKey?: string;
       };
     }
+  | { readonly status: "conflict"; readonly affectedOrderIds?: readonly string[] }
   | {
       readonly status:
         | "auth_lost"
         | "retry"
         | "uncertain"
         | "duplicate"
-        | "conflict"
         | "audit_ok"
         | "audit_missing"
         | "audit_duplicate"

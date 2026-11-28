@@ -92,7 +92,7 @@ export async function runScheduled(
         options.jobs ??
         runnableJobs(undefined, {
           ...JOB_HANDLERS,
-          ledger_write: { handler: ledgerWriteJob(settings, services) },
+          ledger_write: { handler: ledgerWriteJob(settings, services, options.connect ?? pgConnector) },
           customer_notice: {
             handler: createCustomerNoticeHandler({
               // DEC-20 무료 MVP: 실제 발신을 켜는 변경과 권한/월렛 시험은 TASK-167에서 한다.

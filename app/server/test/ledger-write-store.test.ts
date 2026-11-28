@@ -668,6 +668,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
             return Response.json({
               values: resolved ? [["주문번호"], [orderNo]] : [["주문번호"], [orderNo], [orderNo]],
             });
+          if (decodeURIComponent(url.pathname).includes("!A5000:N")) return Response.json({ values: [] });
           if (decodeURIComponent(url.pathname).includes("!A2:N2"))
             return Response.json({ values: sheetRow ? [sheetRow] : [] });
           if (decodeURIComponent(url.pathname).includes("!A:N"))
@@ -702,7 +703,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
             name: "ledger_write",
             every: "minute",
             sources: ["ledger_write"],
-            handler: ledgerWriteJob(settings, services),
+            handler: ledgerWriteJob(settings, services, () => roleConnection(isolated.connect(), role)),
           },
         ],
         log: () => {},
@@ -728,7 +729,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
             name: "ledger_write",
             every: "minute",
             sources: ["ledger_audit"],
-            handler: ledgerWriteJob(settings, services),
+            handler: ledgerWriteJob(settings, services, () => roleConnection(isolated.connect(), role)),
           },
         ],
         log: () => {},
@@ -756,7 +757,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
             name: "ledger_write",
             every: "minute",
             sources: ["ledger_audit"],
-            handler: ledgerWriteJob(settings, services),
+            handler: ledgerWriteJob(settings, services, () => roleConnection(isolated.connect(), role)),
           },
         ],
         log: () => {},
@@ -778,7 +779,7 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
             name: "ledger_write",
             every: "minute",
             sources: ["ledger_write"],
-            handler: ledgerWriteJob(settings, services),
+            handler: ledgerWriteJob(settings, services, () => roleConnection(isolated.connect(), role)),
           },
         ],
         log: () => {},

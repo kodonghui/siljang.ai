@@ -67,13 +67,17 @@ it("불확실한 쓰기의 이벤트와 주문 ID가 이미 있으면 다시 쓰
         })
       : Response.json({ values: [["헤더"], row] }),
   );
-  await writeLedgerSheet({ ...input, uncertain: true }, { fetch: send });
+  await writeLedgerSheet(
+    { ...input, uncertain: true, checkpoint: { before: [], values: input.values } },
+    { fetch: send },
+  );
   expect(send).toHaveBeenCalledTimes(2);
 });
 it("전송 후 연결 끊김만 불확실로 분류하고 명백한 요청 거절은 구분한다", async () => {
   const send = (status: "disconnect" | "bad_request") =>
-    vi.fn(async (_raw: string | URL | Request, init?: RequestInit) => {
-      if (init?.method === "GET") return Response.json({ values: [["헤더"]] });
+    vi.fn(async (raw: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === "GET")
+        return Response.json({ values: decodeURIComponent(String(raw)).includes("!A5000:AN") ? [] : [["헤더"]] });
       if (status === "disconnect") throw new Error("connection closed");
       return new Response(null, { status: 400 });
     });

@@ -28,6 +28,7 @@ export const FIELD_PURPOSES = [
   "operator.records_cursor",
   "operator.records_page",
   "ledger_links.oauth_token",
+  "ledger_writes.checkpoint",
 ] as const;
 export type FieldPurpose = (typeof FIELD_PURPOSES)[number];
 
@@ -54,6 +55,7 @@ export const MAX_KAKAO_PHOTO_CONTEXT_BYTES = 20_480;
 function fieldLimit(context: FieldContext): number {
   if (context.purpose === "messages.kakao_photo") return MAX_KAKAO_PHOTO_CONTEXT_BYTES;
   if (context.purpose === "ledger_links.oauth_token") return 8192;
+  if (context.purpose === "ledger_writes.checkpoint") return 4_194_304;
   return MAX_FIELD_BYTES;
 }
 
@@ -106,6 +108,7 @@ function aad(version: number, context: FieldContext): Uint8Array {
     context.purpose === "consultations.message_cursor" ||
     context.purpose === "messages.kakao_photo" ||
     context.purpose === "ledger_links.oauth_token" ||
+    context.purpose === "ledger_writes.checkpoint" ||
     context.purpose === "operator.records_cursor" ||
     context.purpose === "operator.records_page"
   ) {

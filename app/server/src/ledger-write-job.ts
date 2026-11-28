@@ -1,16 +1,18 @@
+import { type DbConnector, pgConnector } from "./db";
 import type { DueItem, LeaseContext } from "./job-runner";
+import { openLedgerCheckpoint, sealLedgerCheckpoint } from "./ledger-checkpoint";
 import { guardedLedgerFetch } from "./ledger-guarded-fetch";
 import { openLedgerJobCredential } from "./ledger-job-credential";
 import { googleLedgerRefresh } from "./ledger-refresh";
 import { ledgerSheetSetup } from "./ledger-sheet-setup";
-import { auditLedgerSheet, ledgerRowDigest, writeLedgerSheet } from "./ledger-sheet-write";
+import { auditLedgerSheet, LedgerConflictError, ledgerRowDigest, writeLedgerSheet } from "./ledger-sheet-write";
 import { createLedgerWriteHandler, type LedgerWriteSnapshot } from "./ledger-write-handler";
 import type { Services } from "./services";
 import type { Settings } from "./settings";
 import type { ShopDb } from "./shop-scope";
 
 /** 실행기는 임대한 주문의 현재 스냅샷만 외부로 보내고 원문을 로그에 남기지 않는다. */
-export function ledgerWriteJob(settings: Settings, services: Services) {
+export function ledgerWriteJob(settings: Settings, services: Services, connect: DbConnector = pgConnector) {
   return createLedgerWriteHandler({
     async claim(db: ShopDb, item: DueItem, ctx: LeaseContext): Promise<LedgerWriteSnapshot | null> {
       const result = await db.run<{
@@ -22,6 +24,8 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         auditing: boolean;
         order_id: string;
         expected_hash: string | null;
+        expected_hashes: Record<string, Record<string, string>>;
+        checkpoint_enc: string | null;
       }>("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [item.id, ctx.leaseUntil]);
       const row = result.rows[0];
       if (!row) return null;
@@ -31,7 +35,20 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         row.row_values.some((v: unknown) => typeof v !== "string" && typeof v !== "number")
       )
         throw new Error("invalid ledger snapshot");
+      const key = settings.secrets.REQUEST_HASH_KEY;
+      if (key === null) throw new Error("ledger key is not configured");
+      const targetKey = await ledgerRowDigest(key, ["ledger-target", row.spreadsheet_id, row.sheet_name]);
+      const checkpoint = row.checkpoint_enc
+        ? await openLedgerCheckpoint(
+            services.fieldCrypto(),
+            { shopId: db.scope.shopId, writeId: item.id, file: row.spreadsheet_id, tab: row.sheet_name },
+            row.checkpoint_enc,
+          )
+        : null;
       return {
+        leaseUntil: ctx.leaseUntil,
+        checkpoint,
+        expectedDigests: row.expected_hashes?.[targetKey] ?? {},
         shopId: db.scope.shopId,
         eventId: item.id,
         orderId: row.order_id,
@@ -78,14 +95,52 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         uncertain: row.uncertain,
         hashKey: key,
         expectedDigest: row.expectedDigest ?? null,
+        expectedDigests: row.expectedDigests ?? {},
+        checkpoint: row.checkpoint ?? null,
+        saveCheckpoint: async (checkpoint: import("./ledger-sheet-write").LedgerCheckpoint) => {
+          if (!row.leaseUntil) throw new Error("ledger lease is not available");
+          guard.signal.throwIfAborted();
+          const envelope = await sealLedgerCheckpoint(
+            services.fieldCrypto(),
+            { shopId: row.shopId, writeId: row.eventId, file: row.file, tab: row.tab },
+            checkpoint,
+          );
+          guard.signal.throwIfAborted();
+          const checkpointDb = connect(settings.secrets.DATABASE_URL);
+          try {
+            const result = await checkpointDb.query<{ saved: boolean }>(
+              "SELECT siljang_ledger_private.save_ledger_checkpoint($1,$2,$3,$4,$5) AS saved",
+              [row.shopId, row.eventId, row.leaseUntil, row.linkId, envelope],
+            );
+            if (result.rows[0]?.saved !== true) throw new Error("ledger checkpoint was not saved");
+          } finally {
+            await checkpointDb.close();
+          }
+          guard.signal.throwIfAborted();
+        },
       };
       if (row.auditing) {
         const result = await auditLedgerSheet(input, { fetch: bounded });
         return { status: result === "ok" ? "audit_ok" : result === "missing" ? "audit_missing" : "audit_duplicate" };
       }
-      await writeLedgerSheet(input, { fetch: bounded });
+      let verifiedValues = row.values;
+      try {
+        await writeLedgerSheet(
+          {
+            ...input,
+            verifiedValues: (values) => {
+              verifiedValues = values;
+            },
+          },
+          { fetch: bounded },
+        );
+      } catch (error) {
+        if (error instanceof LedgerConflictError)
+          return { status: "conflict", affectedOrderIds: error.affectedOrderIds };
+        throw error;
+      }
       const sheetHash = await ledgerRowDigest(key, [
-        ...row.values,
+        ...verifiedValues,
         row.eventId.replaceAll("-", "").toLowerCase(),
         row.orderId.replaceAll("-", "").toLowerCase(),
       ]);
@@ -96,6 +151,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
           movedRight: setup.movedRight,
           ownershipToken: setup.ownershipToken,
           sheetHash,
+          targetKey: await ledgerRowDigest(key, ["ledger-target", row.file, row.tab]),
         },
       };
     },
@@ -105,7 +161,11 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         ctx.leaseUntil,
         result.status,
         ctx.now,
-        result.status === "written" ? JSON.stringify(result.columns) : null,
+        result.status === "written"
+          ? JSON.stringify(result.columns)
+          : result.status === "conflict"
+            ? JSON.stringify({ affectedOrderIds: result.affectedOrderIds ?? [] })
+            : null,
       ]);
     },
   });

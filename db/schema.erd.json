@@ -1507,6 +1507,7 @@
           "03h7y0179n9e4e4gq6d8q0oeo",
           "03h7y0179n9e4e4gq6esyn8q5",
           "03hbiu3y515nu7h8wq2r5rlg5",
+          "03hbj1ehq6uriqsoixkizyrre",
           "03h7y0179n9e4e4gq6i0rlxu9",
           "03h7y0179n9e4e4gq6ilco0kq"
         ],
@@ -1538,6 +1539,7 @@
           "03hbi287v4pz8yr8jwggvyxaq",
           "03hbi287vfoxmd9fbgbg3ldan",
           "03hbi287vqkuw3uzjuxrdvel8",
+          "03hbj26jtopnquexgnkmfc3cq",
           "03hbir568r4h84ns8kjbsfugt"
         ],
         "groupId": "03h7y017wqizg5foqnmcnrqnd",
@@ -6938,6 +6940,15 @@
         "dataType": "text",
         "options": 0
       },
+      "03hbj1ehq6uriqsoixkizyrre": {
+        "id": "03hbj1ehq6uriqsoixkizyrre",
+        "tableId": "03h7y0179n9e4e4gq69098pnw",
+        "name": "sheet_hashes",
+        "comment": "대상과 기록 ID별 장부 행의 앱 서명",
+        "dataType": "jsonb",
+        "default": "'{}'::jsonb",
+        "options": 8
+      },
       "03h7y0179n9e4e4gq6n72rqhb": {
         "id": "03h7y0179n9e4e4gq6n72rqhb",
         "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
@@ -7087,6 +7098,14 @@
         "name": "audit_repair_link_id",
         "comment": "사후 확인에서 재기록할 원래 연결",
         "dataType": "uuid",
+        "options": 0
+      },
+      "03hbj26jtopnquexgnkmfc3cq": {
+        "id": "03hbj26jtopnquexgnkmfc3cq",
+        "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
+        "name": "checkpoint_enc",
+        "comment": "쓰기 전 장부 비교 기준의 앱 암호문",
+        "dataType": "text",
         "options": 0
       },
       "03h7y0179n9e4e4gq7cgnw2ol": {

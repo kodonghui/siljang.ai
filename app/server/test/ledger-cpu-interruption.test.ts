@@ -1,7 +1,9 @@
 import { expect, it } from "vitest";
+import { openLedgerCheckpoint, sealLedgerCheckpoint } from "../src/ledger-checkpoint";
 import { writeLedgerSheet } from "../src/ledger-sheet-write";
 import { Secret } from "../src/settings";
 import { TEST_DATABASE_URL } from "./support/db";
+import { singleKeyCrypto } from "./support/field-keys";
 import { isolatedTestDb } from "./support/isolated-db";
 import { createShop } from "./support/shops";
 
@@ -34,6 +36,17 @@ it.skipIf(!TEST_DATABASE_URL)(
         [shop.shopId, write, lease],
       );
       expect(first.rowCount).toBe(1);
+      const valuesBefore = first.rows[0]?.row_values ?? [];
+      const fields = singleKeyCrypto().fc;
+      const context = { shopId: shop.shopId, writeId: write, file, tab: "장부" };
+      const envelope = await sealLedgerCheckpoint(fields, context, { before: [], values: valuesBefore });
+      await isolated.db.query("SELECT siljang_ledger_private.save_ledger_checkpoint($1,$2,$3,$4,$5)", [
+        shop.shopId,
+        write,
+        lease,
+        link,
+        envelope,
+      ]);
       // 구글 반영 직후 실행이 강제 종료되어 결과 기록 없이 임대가 만료된 상태다.
       await isolated.db.query("UPDATE ledger_writes SET next_attempt_at=now()-interval '1 second' WHERE id=$1", [
         write,
@@ -59,7 +72,7 @@ it.skipIf(!TEST_DATABASE_URL)(
         write,
       ]);
       const retry = (
-        await isolated.db.query<{ uncertain: boolean; row_values: (string | number)[] }>(
+        await isolated.db.query<{ uncertain: boolean; row_values: (string | number)[]; checkpoint_enc: string }>(
           "SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)",
           [shop.shopId, write, new Date(Date.now() + 120000)],
         )
@@ -88,6 +101,7 @@ it.skipIf(!TEST_DATABASE_URL)(
           eventId: write,
           orderId: shop.orderId,
           uncertain: true,
+          checkpoint: await openLedgerCheckpoint(fields, context, retry?.checkpoint_enc ?? ""),
         },
         {
           fetch: async (_raw, init) => {
