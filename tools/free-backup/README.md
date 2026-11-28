@@ -28,8 +28,9 @@ GitHub Actions 비밀 값 목록 조회는 기존 403이며 이 PR에서 재시�
 
 1. 대상 DB의 PUBLIC CONNECT를 회수하고 앱/바깥 접속을 열지 않습니다. 실제 Supabase에서는 Data API가 꺼졌는지 확인합니다. 소유자 이외의 기존 연결이 없는 새 대상을 사용합니다.
 2. `public`만 덤프하므로 `btree_gist` 확장은 별도로 준비합니다. CI는 새 DB의 기본 빈 public을 없애고 extensions 스키마에 확장을 설치한 뒤 덤프가 public을 만듭니다. 관리형 Supabase의 기존 스키마에 무조건 같은 SQL을 실행하지 않습니다. 실제 새 프로젝트에서는 기본 public/확장과 충돌하는 정의를 먼저 대조합니다.
-3. 운영 PostgreSQL 17.11 클라이언트가 만든 아카이브 1.16은 PostgreSQL 17 이상의 대상에 PostgreSQL 17.11 `pg_restore --single-transaction --exit-on-error --no-owner --no-privileges`로 복구합니다. 원본 역할·권한은 복사하지 않습니다. 아직 격리 중일 때 `restore-fence.sql`로 확장 이외 앱 함수의 PUBLIC 실행을 모두 회수합니다. 격리를 풀기 전에 일반 앱/정기 삭제 역할의 기존 최소 권한 파일을 각각 적용합니다. 원본의 함수 권한이 자동으로 보존되었다고 판단하지 않습니다.
-4. 표 전체의 행 내용을 비교하고 주문/동의/결제와 시퀀스를 확인합니다. 민감 함수의 PUBLIC 실행 0도 확인합니다. 실제 Worker 키·역할·Data API·스토리지·백업에 없는 외부 연결을 점검한 뒤 별도 배포/되돌리기 절차를 따릅니다.
+3. 운영 PostgreSQL 17.11 클라이언트가 만든 아카이브 1.16은 PostgreSQL 17 이상의 대상에 PostgreSQL 17.11 `pg_restore --single-transaction --exit-on-error --no-owner --no-privileges`로 복구합니다. 원본 역할·권한은 복사하지 않습니다. 아직 격리 중일 때 `restore-fence.sql`로 확장 이외 앱 함수의 PUBLIC 실행을 모두 회수합니다. 원본의 함수 권한이 자동으로 보존되었다고 판단하지 않습니다.
+4. 장부의 `siljang_ledger_private` 함수 스키마는 public 전용 덤프에 없으므로, 격리된 복구 대상에서 `PGHOST`·`PGPORT`·`PGDATABASE`와 `PGUSER=postgres`를 지정하고 `SILJANG_LEDGER_RESTORE=1 bash tools/free-backup/restore-ledger-functions.sh`를 실행합니다. 이 스크립트는 다른 세션과 PUBLIC 연결을 거부하고 0051~0056의 앱 함수와 0049의 기본 역할 권한 회수를 한 트랜잭션에서 적용합니다. 복구된 public 장부 함수의 정의가 현재 이행과 다르면 전체 트랜잭션을 되돌립니다. 백업 시점에 적용한 이행과 같은 저장소 버전으로 실행해야 합니다. 이어서 기존 최소 권한 파일을 적용합니다. Vault 행이나 토큰은 복구하지 않으며 사장님은 장부를 다시 연결합니다. 나중에 장부 함수 이행이 추가되면 이 스크립트의 목록도 함께 갱신합니다.
+5. 표 전체의 행 내용을 비교하고 주문/동의/결제와 시퀀스를 확인합니다. 민감 함수의 PUBLIC 실행 0도 확인합니다. 실제 Worker 키·역할·Data API·스토리지·백업에 없는 외부 연결을 점검한 뒤 별도 배포/되돌리기 절차를 따릅니다.
 
 `restore-smoke.py`는 `CI_BACKUP_TEST=1`, `PGHOST=127.0.0.1`일 때만 실행합니다. UUID로 새 합성 DB 두 개를 만들고 PUBLIC CONNECT를 회수합니다. 05 규칙 시험의 첫 정상 주문/완성 사진 동의를 재사용하며 원본 시험 파일을 바꾸지 않습니다. 62개 표의 행을 정렬한 SHA-256으로 비교하고 주문·세 종류 동의·결제가 0건이면 실패합니다. 암호화 키·평문·DB·역할은 끝에 지웁니다. CI는 PG17.11 서버에서 운영과 동일한 고정 이미지의 PG17.11 클라이언트로 덤프와 복구를 검사합니다. PG16 시험은 별도 호환성 검사이며 운영 덤프 복구 근거가 아닙니다. PG16 대상 복구는 지원하지 않습니다.
 

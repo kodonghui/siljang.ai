@@ -2556,6 +2556,238 @@ BEGIN
   END LOOP;
 END $roles$;
 
+-- TASK-156: 가게 소유를 확인한 장부 메타데이터 조회/연결 해제만 허용한다.
+CREATE FUNCTION read_owner_ledger(p_shop uuid,p_owner uuid,p_link uuid)
+RETURNS TABLE(id uuid,status text,spreadsheet_id text,sheet_name text,our_columns jsonb,
+  linked_at timestamptz,unlinked_at timestamptz,revision text,failing_since timestamptz,unwritten_count integer)
+LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+  SELECT l.id,l.status,l.spreadsheet_id,l.sheet_name,
+    jsonb_build_object('columns',COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('header',c.value->'header','column',c.value->'column') ORDER BY c.position)
+      FROM jsonb_array_elements(CASE
+        WHEN jsonb_typeof(l.our_columns)='array' THEN l.our_columns
+        WHEN jsonb_typeof(l.our_columns->'columns')='array' THEN l.our_columns->'columns'
+        ELSE '[]'::jsonb END) WITH ORDINALITY AS c(value,position)
+    ),'[]'::jsonb),'movedRight',COALESCE(l.our_columns->'movedRight','false'::jsonb)),
+    l.linked_at,l.unlinked_at,l.xmin::text,
+    (SELECT min(w.first_failed_at) FROM public.ledger_writes w WHERE w.shop_id=p_shop AND w.status<>'written'),
+    (SELECT least(count(*),100000)::int FROM public.ledger_writes wc WHERE wc.shop_id=p_shop AND wc.status<>'written')
+  FROM public.ledger_links l WHERE l.shop_id=p_shop AND (p_link IS NULL OR l.id=p_link)
+    AND EXISTS(SELECT 1 FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner)
+  ORDER BY (l.status<>'unlinked') DESC,l.linked_at DESC,l.id DESC LIMIT 1
+$fn$;
+REVOKE ALL ON FUNCTION read_owner_ledger(uuid,uuid,uuid) FROM PUBLIC;
+
+CREATE FUNCTION unlink_owner_ledger(p_shop uuid,p_owner uuid,p_now timestamptz)
+RETURNS TABLE(outcome text,link_id uuid,kept_writes integer)
+LANGUAGE plpgsql STRICT SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE v_id uuid; v_status text;
+BEGIN
+  IF NOT pg_catalog.isfinite(p_now) THEN RAISE EXCEPTION 'invalid unlink time' USING ERRCODE='22008'; END IF;
+  p_now := least(p_now,pg_catalog.statement_timestamp());
+  PERFORM s.id FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner FOR UPDATE;
+  IF NOT FOUND THEN RETURN; END IF;
+  SELECT l.id,l.status INTO v_id,v_status FROM public.ledger_links l WHERE l.shop_id=p_shop
+    ORDER BY (l.status<>'unlinked') DESC,l.linked_at DESC,l.id DESC LIMIT 1 FOR UPDATE OF l;
+  IF NOT FOUND THEN RETURN; END IF;
+  IF v_status<>'unlinked' THEN
+    UPDATE public.ledger_links l SET status='unlinked',unlinked_at=p_now WHERE l.shop_id=p_shop AND l.id=v_id;
+  END IF;
+  UPDATE public.ledger_writes w SET status='unlinked',next_attempt_at=NULL
+    WHERE w.shop_id=p_shop AND w.status<>'written' AND (w.status<>'unlinked' OR w.next_attempt_at IS NOT NULL);
+  RETURN QUERY SELECT CASE WHEN v_status='unlinked' THEN 'unchanged' ELSE 'done' END,v_id,least(count(*),100000)::int
+    FROM public.ledger_writes w WHERE w.shop_id=p_shop AND w.status<>'written';
+END
+$fn$;
+REVOKE ALL ON FUNCTION unlink_owner_ledger(uuid,uuid,timestamptz) FROM PUBLIC;
+
+-- Vault에 비밀 행이 없으면 복구 뒤 재연결이 필요한 상태로 표시한다.
+CREATE SCHEMA siljang_ledger_private;
+REVOKE ALL ON SCHEMA siljang_ledger_private FROM PUBLIC;
+CREATE FUNCTION siljang_ledger_private.ledger_vault_present(p_ref text,p_shop uuid,p_link uuid) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $fn$
+DECLARE present boolean;
+BEGIN
+  IF pg_catalog.to_regclass('vault.secrets') IS NULL THEN RETURN false; END IF;
+  EXECUTE 'SELECT EXISTS (SELECT 1 FROM vault.secrets WHERE id::text = $1 AND name = $2)' INTO present USING p_ref, 'siljang-ledger:'||p_shop::text||':'||p_link::text;
+  RETURN present;
+END
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.ledger_vault_present(text,uuid,uuid) FROM PUBLIC;
+
+-- TASK-156: 가게 소유를 확인한 장부 메타데이터 조회/연결 해제만 허용한다.
+CREATE OR REPLACE FUNCTION read_owner_ledger(p_shop uuid,p_owner uuid,p_link uuid)
+RETURNS TABLE(id uuid,status text,spreadsheet_id text,sheet_name text,our_columns jsonb,
+  linked_at timestamptz,unlinked_at timestamptz,revision text,failing_since timestamptz,unwritten_count integer)
+LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+  SELECT l.id,CASE WHEN l.status='linked' AND NOT siljang_ledger_private.ledger_vault_present(l.credential_ref,l.shop_id,l.id) THEN 'auth_lost' ELSE l.status END,l.spreadsheet_id,l.sheet_name,
+    jsonb_build_object('columns',COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('header',c.value->'header','column',c.value->'column') ORDER BY c.position)
+      FROM jsonb_array_elements(CASE
+        WHEN jsonb_typeof(l.our_columns)='array' THEN l.our_columns
+        WHEN jsonb_typeof(l.our_columns->'columns')='array' THEN l.our_columns->'columns'
+        ELSE '[]'::jsonb END) WITH ORDINALITY AS c(value,position)
+    ),'[]'::jsonb),'movedRight',COALESCE(l.our_columns->'movedRight','false'::jsonb)),
+    l.linked_at,l.unlinked_at,l.xmin::text,
+    (SELECT min(w.first_failed_at) FROM public.ledger_writes w WHERE w.shop_id=p_shop AND w.status<>'written'),
+    (SELECT least(count(*),100000)::int FROM public.ledger_writes wc WHERE wc.shop_id=p_shop AND wc.status<>'written')
+  FROM public.ledger_links l WHERE l.shop_id=p_shop AND (p_link IS NULL OR l.id=p_link)
+    AND EXISTS(SELECT 1 FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner)
+  ORDER BY (l.status<>'unlinked') DESC,l.linked_at DESC,l.id DESC LIMIT 1
+$fn$;
+REVOKE ALL ON FUNCTION read_owner_ledger(uuid,uuid,uuid) FROM PUBLIC;
+
+
+-- 연결 해제와 이 연결의 Vault 암호문 삭제는 같은 트랜잭션에서 처리한다.
+CREATE OR REPLACE FUNCTION unlink_owner_ledger(p_shop uuid,p_owner uuid,p_now timestamptz)
+RETURNS TABLE(outcome text,link_id uuid,kept_writes integer)
+LANGUAGE plpgsql STRICT SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE v_id uuid; v_status text; v_ref text;
+BEGIN
+  IF NOT pg_catalog.isfinite(p_now) THEN RAISE EXCEPTION 'invalid unlink time' USING ERRCODE='22008'; END IF;
+  p_now := least(p_now,pg_catalog.statement_timestamp());
+  PERFORM s.id FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner FOR UPDATE;
+  IF NOT FOUND THEN RETURN; END IF;
+  SELECT l.id,l.status,l.credential_ref INTO v_id,v_status,v_ref FROM public.ledger_links l WHERE l.shop_id=p_shop
+    ORDER BY (l.status<>'unlinked') DESC,l.linked_at DESC,l.id DESC LIMIT 1 FOR UPDATE OF l;
+  IF NOT FOUND THEN RETURN; END IF;
+  IF v_status<>'unlinked' THEN
+    IF pg_catalog.to_regclass('vault.secrets') IS NOT NULL THEN
+      EXECUTE 'DELETE FROM vault.secrets WHERE id::text = $1 AND name = $2' USING v_ref, 'siljang-ledger:'||p_shop::text||':'||v_id::text;
+    END IF;
+    UPDATE public.ledger_links l SET status='unlinked',unlinked_at=p_now WHERE l.shop_id=p_shop AND l.id=v_id;
+  END IF;
+  UPDATE public.ledger_writes w SET status='unlinked',next_attempt_at=NULL
+    WHERE w.shop_id=p_shop AND w.status<>'written' AND (w.status<>'unlinked' OR w.next_attempt_at IS NOT NULL);
+  RETURN QUERY SELECT CASE WHEN v_status='unlinked' THEN 'unchanged' ELSE 'done' END,v_id,least(count(*),100000)::int
+    FROM public.ledger_writes w WHERE w.shop_id=p_shop AND w.status<>'written';
+END
+$fn$;
+REVOKE ALL ON FUNCTION unlink_owner_ledger(uuid,uuid,timestamptz) FROM PUBLIC;
+
+-- 가게 소유와 연결을 잠근 뒤 앱이 만든 암호문만 Vault에 저장한다.
+CREATE FUNCTION siljang_ledger_private.store_ledger_credential(p_shop uuid,p_owner uuid,p_link uuid,p_envelope text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $fn$
+DECLARE old_ref text; new_ref uuid;
+BEGIN
+  IF p_envelope IS NULL OR length(p_envelope) > 12000 OR p_envelope !~ '^v[1-9][0-9]{0,2}:[A-Za-z0-9_-]{39,}$' THEN
+    RAISE EXCEPTION 'invalid ledger envelope' USING ERRCODE='22023';
+  END IF;
+  PERFORM s.id FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
+  SELECT l.credential_ref INTO old_ref FROM public.ledger_links l
+    WHERE l.shop_id=p_shop AND l.id=p_link AND l.status<>'unlinked' FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
+  EXECUTE 'DELETE FROM vault.secrets WHERE id::text=$1 AND name=$2' USING old_ref, 'siljang-ledger:'||p_shop::text||':'||p_link::text;
+  EXECUTE 'SELECT vault.create_secret($1,$2)' INTO new_ref USING p_envelope, 'siljang-ledger:'||p_shop::text||':'||p_link::text;
+  UPDATE public.ledger_links SET credential_ref=new_ref::text WHERE shop_id=p_shop AND id=p_link;
+  RETURN true;
+END
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.store_ledger_credential(uuid,uuid,uuid,text) FROM PUBLIC;
+
+-- 생성과 교체는 가게 행으로 직렬화하며, 토큰 저장은 같은 트랜잭션에서 이어진다.
+CREATE FUNCTION siljang_ledger_private.create_owner_ledger(p_shop uuid,p_owner uuid,p_link uuid,p_spreadsheet text,p_sheet text,p_columns jsonb,p_revision text,p_now timestamptz)
+RETURNS TABLE(outcome text) LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE old_id uuid; old_status text; old_ref text; old_revision text;
+BEGIN
+  IF p_link IS NULL OR p_spreadsheet IS NULL OR p_sheet IS NULL OR p_columns IS NULL OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN
+    RAISE EXCEPTION 'invalid ledger input' USING ERRCODE='22023';
+  END IF;
+  PERFORM s.id FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner FOR UPDATE;
+  IF NOT FOUND THEN RETURN; END IF;
+  SELECT l.id,l.status,l.credential_ref,l.xmin::text INTO old_id,old_status,old_ref,old_revision
+    FROM public.ledger_links l WHERE l.shop_id=p_shop
+    ORDER BY (l.status<>'unlinked') DESC,l.linked_at DESC,l.id DESC LIMIT 1 FOR UPDATE;
+  IF (old_id IS NULL AND p_revision IS NOT NULL) OR (old_id IS NOT NULL AND p_revision IS DISTINCT FROM old_revision) THEN
+    RETURN QUERY SELECT 'conflict'::text; RETURN;
+  END IF;
+  IF old_id IS NOT NULL AND old_status<>'unlinked' THEN
+    UPDATE public.ledger_links SET status='unlinked', unlinked_at=least(p_now,pg_catalog.statement_timestamp()) WHERE shop_id=p_shop AND id=old_id;
+    IF pg_catalog.to_regclass('vault.secrets') IS NOT NULL THEN
+      EXECUTE 'DELETE FROM vault.secrets WHERE id::text=$1 AND name=$2' USING old_ref, 'siljang-ledger:'||p_shop::text||':'||p_link::text;
+    END IF;
+  END IF;
+  INSERT INTO public.ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref,linked_at)
+    VALUES(p_link,p_shop,p_spreadsheet,p_sheet,p_columns,pg_catalog.gen_random_uuid()::text,least(p_now,pg_catalog.statement_timestamp()));
+  UPDATE public.ledger_writes SET status='pending',next_attempt_at=pg_catalog.statement_timestamp()
+    WHERE shop_id=p_shop AND status='unlinked';
+  RETURN QUERY SELECT CASE WHEN old_id IS NULL THEN 'created' ELSE 'relinked' END;
+END
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.create_owner_ledger(uuid,uuid,uuid,text,text,jsonb,text,timestamptz) FROM PUBLIC;
+
+-- 외부 시트를 바꾸기 전에 가게를 잠그고 화면 버전을 검사한다.
+CREATE FUNCTION siljang_ledger_private.lock_owner_ledger(p_shop uuid,p_owner uuid,p_revision text)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE old_id uuid; old_revision text;
+BEGIN
+  PERFORM s.id FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner FOR UPDATE;
+  IF NOT FOUND THEN RETURN 'missing'; END IF;
+  SELECT l.id,l.xmin::text INTO old_id,old_revision FROM public.ledger_links l WHERE l.shop_id=p_shop
+    ORDER BY (l.status<>'unlinked') DESC,l.linked_at DESC,l.id DESC LIMIT 1 FOR UPDATE;
+  IF (old_id IS NULL AND p_revision IS NOT NULL) OR (old_id IS NOT NULL AND p_revision IS DISTINCT FROM old_revision) THEN
+    RETURN 'conflict';
+  END IF;
+  RETURN 'ok';
+END
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.lock_owner_ledger(uuid,uuid,text) FROM PUBLIC;
+
+-- 토큰 교환이나 외부 시트 쓰기 전에 Vault 설치와 이행 역할의 권한을 검사한다.
+CREATE FUNCTION siljang_ledger_private.ledger_vault_ready() RETURNS boolean
+LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+  SELECT CASE WHEN pg_catalog.to_regclass('vault.secrets') IS NULL THEN false ELSE
+    pg_catalog.has_schema_privilege('vault', 'USAGE')
+    AND pg_catalog.has_table_privilege(pg_catalog.to_regclass('vault.secrets'), 'SELECT')
+    AND pg_catalog.has_table_privilege(pg_catalog.to_regclass('vault.secrets'), 'DELETE') AND EXISTS (
+      SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+      WHERE n.nspname='vault' AND p.proname='create_secret' AND p.pronargs>=2
+        AND p.pronargs-p.pronargdefaults<=1 AND p.proargtypes[0]='text'::pg_catalog.regtype
+        AND p.proargtypes[1]='text'::pg_catalog.regtype
+        AND pg_catalog.has_function_privilege(p.oid,'EXECUTE')
+    ) END
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.ledger_vault_ready() FROM PUBLIC;
+
+-- Supabase 기본 역할에 의도치 않은 기본 권한이 있어도 전용 함수에 접근하지 못하게 한다.
+DO $revoke$
+DECLARE role_name text;
+BEGIN
+  FOREACH role_name IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=role_name) THEN
+      EXECUTE pg_catalog.format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA siljang_ledger_private FROM %I', role_name);
+      EXECUTE pg_catalog.format('REVOKE ALL ON SCHEMA siljang_ledger_private FROM %I', role_name);
+    END IF;
+  END LOOP;
+END
+$revoke$;
+
+-- 구글 인가 코드는 교환 시도 전에 HMAC 지문만 24시간 보관해 재교환을 막는다.
+CREATE FUNCTION siljang_ledger_private.consume_owner_ledger_code(p_shop uuid,p_owner uuid,p_hash text)
+RETURNS boolean LANGUAGE plpgsql STRICT SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE inserted boolean;
+BEGIN
+  IF p_hash !~ '^[0-9a-f]{64}$' THEN RAISE EXCEPTION 'invalid code fingerprint' USING ERRCODE='22023'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.shops s WHERE s.id=p_shop AND s.owner_id=p_owner) THEN RETURN false; END IF;
+  INSERT INTO public.request_keys(actor_kind,actor_id,request_key,command,request_hash,state,done_at,response_status,response_code)
+  VALUES ('owner',p_owner,'lc-' || left(p_hash,61),'LEDGER-OAUTH-CODE',p_hash,'done',clock_timestamp(),422,'google_authorization_failed')
+  ON CONFLICT DO NOTHING RETURNING true INTO inserted;
+  RETURN COALESCE(inserted,false);
+END
+$fn$;
+REVOKE ALL ON FUNCTION siljang_ledger_private.consume_owner_ledger_code(uuid,uuid,text) FROM PUBLIC;
+DO $revoke$
+DECLARE role_name text;
+BEGIN
+  FOREACH role_name IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=role_name) THEN
+      EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.consume_owner_ledger_code(uuid,uuid,text) FROM %I',role_name);
+    END IF;
+  END LOOP;
+END
+$revoke$;
+
 -- ▼ 컬럼 설명: build_erd.py가 각 컬럼 줄 끝의 설명에서 만듦. 이 아래는 손으로 고치지 않음.
 COMMENT ON COLUMN owners.id IS '사장님 ID';
 COMMENT ON COLUMN owners.kakao_account_id IS '카카오 로그인 사용자 번호. 사장님 알림을 보내는 Event API의 appUserId(SPEC-067, REQ-260). 카카오 토큰은 어디에도 두지 않음(SPEC-001, REQ-135)';

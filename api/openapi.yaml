@@ -6900,7 +6900,7 @@ paths:
       operationId: getLedger
       summary: 장부 연결 상태
       description: |-
-        우리가 쓰는 열의 헤더와 자리, 실패가 이어진 때와 아직 못 적은 쓰기 수(SPEC-064). 구글 OAuth 토큰은 시크릿 저장소에만 있고 응답에 없다(REQ-135).
+        우리가 쓰는 열의 헤더와 자리, 실패가 이어진 때와 아직 못 적은 쓰기 수(SPEC-064). 구글 OAuth 토큰은 앱 키로 암호화해 Vault에 보관하며 응답에 없다(REQ-135). public 전용 백업 복구 등으로 토큰이 없으면 auth_lost를 반환해 다시 연결을 안내한다.
 
         SPEC: SPEC-009, SPEC-064
       tags:
@@ -7066,7 +7066,7 @@ paths:
       operationId: linkLedger
       summary: 장부 연결·다시 연결
       description: |-
-        구글 인가 코드와 고른 시트·탭으로 장부를 연결하고 우리 열 헤더를 만든다. 같은 이름의 사장님 열이 있으면 오른쪽 빈 열에 만들고 movedRight(REQ-127). 다시 연결하면 '연결 끊김'으로 남은 주문들의 행을 지금 값으로 다시 적는다. 구글 권한이 거부되거나 시트를 열 수 없으면 연결하지 않는다.
+        구글 인가 코드와 고른 시트·탭으로 장부를 연결하고 우리 열 헤더를 만든다. 같은 이름의 사장님 열이 있으면 오른쪽 빈 열에 만들고 movedRight(REQ-127). 다시 연결하면 '연결 끊김'으로 남은 주문들의 행을 지금 값으로 다시 적는다. 구글 Picker에서 앱에 공유할 파일을 고른다. 구글 권한이 거부되거나 시트를 열 수 없으면 연결하지 않는다. 연결 결과가 불확실하면 같은 인가 코드를 재전송하지 않고 현재 상태를 조회한 뒤 필요하면 구글 권한 요청부터 다시 시작한다.
 
         SPEC: SPEC-009, SPEC-064
       tags:
@@ -7240,7 +7240,7 @@ paths:
 
             - `validation_failed`: 입력 필드가 계약의 한도나 형식에 맞지 않음. 필드마다 errors에 위치와 사유 코드
             - `google_authorization_failed`: 구글 인가 코드가 틀렸거나 지났거나 시트 권한이 빠짐
-            - `sheet_not_accessible`: 고른 구글 시트나 탭을 받은 권한으로 열 수 없음
+            - `sheet_not_accessible`: 고른 구글 시트나 탭을 받은 권한으로 열 수 없음. 권한 요청부터 다시 시작함
             - `idempotency_key_reused`: 같은 요청 키로 다른 명령이나 다른 내용을 보냄(서버가 요청 지문으로 가림, DEC-04)
           content:
             application/problem+json:
@@ -7271,7 +7271,7 @@ paths:
                 sheet_not_accessible:
                   value:
                     type: /problems/sheet_not_accessible
-                    title: 그 시트를 열 수 없어요. 주소와 탭 이름을 확인해 주세요
+                    title: 그 시트를 열 수 없어요. 주소와 탭을 확인하고 구글 연결을 다시 해 주세요
                     status: 422
                     detail: 고른 구글 시트나 탭을 받은 권한으로 열 수 없음
                     instance: /owner/ledger
@@ -7301,9 +7301,9 @@ paths:
                       code: required
         "503":
           description: |-
-            외부 서비스가 답하지 않아 아무것도 바꾸지 않음
+            연결 기록은 저장하지 않았으나 구글 시트 열이 생성됐을 수 있음. 먼저 현재 연결 상태를 조회하고 필요하면 구글 권한 요청부터 다시 시작하며 기존 서명 열을 확인해 재사용함
 
-            - `google_unavailable`: 구글 서버가 답하지 않음
+            - `google_unavailable`: 장부 연결 결과를 확인하지 못함. 연결 기록은 저장되지 않았으나 시트 열은 생성됐을 수 있음
           content:
             application/problem+json:
               schema:
@@ -7312,9 +7312,9 @@ paths:
                 google_unavailable:
                   value:
                     type: /problems/google_unavailable
-                    title: 구글에 연결하지 못했어요. 잠시 뒤 다시 해 주세요
+                    title: 현재 연결 상태를 확인하고 구글 권한부터 다시 연결해 주세요
                     status: 503
-                    detail: 구글 서버가 답하지 않음
+                    detail: 장부 연결 결과를 확인하지 못함
                     instance: /owner/ledger
                     code: google_unavailable
                     traceId: 47f03afcfcc2ac3a67dc2096e05f1c44
@@ -33731,9 +33731,9 @@ components:
         - API-035
       sheet_not_accessible:
         status: 422
-        meaning: 고른 구글 시트나 탭을 받은 권한으로 열 수 없음
-        message: 그 시트를 열 수 없어요. 주소와 탭 이름을 확인해 주세요
-        client: 시트 주소 필드 옆에 사유를 보임
+        meaning: 고른 구글 시트나 탭을 받은 권한으로 열 수 없음. 권한 요청부터 다시 시작함
+        message: 그 시트를 열 수 없어요. 주소와 탭을 확인하고 구글 연결을 다시 해 주세요
+        client: 시트 주소와 탭 사유를 보이고 구글 권한 요청부터 다시 시작함
         spec: SPEC-009
         operations:
         - API-035
@@ -34308,9 +34308,9 @@ components:
         - API-001
       google_unavailable:
         status: 503
-        meaning: 구글 서버가 답하지 않음
-        message: 구글에 연결하지 못했어요. 잠시 뒤 다시 해 주세요
-        client: 다시 시도 버튼
+        meaning: 장부 연결 결과를 확인하지 못함. 연결 기록은 저장되지 않았으나 시트 열은 생성됐을 수 있음
+        message: 현재 연결 상태를 확인하고 구글 권한부터 다시 연결해 주세요
+        client: 같은 인가 코드를 다시 보내지 않고 현재 연결을 조회한 뒤 필요하면 구글 권한 요청부터 다시 시작함
         spec: SPEC-009
         operations:
         - API-035

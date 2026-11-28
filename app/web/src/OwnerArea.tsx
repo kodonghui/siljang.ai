@@ -6,6 +6,7 @@ import { CalendarScreen } from "./CalendarScreen";
 import { CalendarSettingsScreen } from "./CalendarSettingsScreen";
 import { ConsultationMessagesScreen } from "./ConsultationMessagesScreen";
 import { KakaoChannelSettings } from "./KakaoChannelSettings";
+import { LedgerScreen } from "./LedgerScreen";
 import { OperatingRulesEditor } from "./OperatingRulesEditor";
 import { OperatingRulesHistory } from "./OperatingRulesHistory";
 import { OwnerTasksScreen, type OwnerTaskTabFocusRequest } from "./OwnerTasksScreen";
@@ -33,6 +34,7 @@ const shopScreens = [
   // 보류 중에도 사유와 수정 경로를 찾는 읽기 전용 목록은 연다. 로그인 기본 착지는 그대로다.
   { path: OWNER_HOME, Screen: OwnerTasksScreen, checkDestination: false },
   { path: "/owner/shop", Screen: ShopSettings, checkDestination: false },
+  { path: "/owner/ledger", Screen: LedgerScreen, checkDestination: false },
   { path: "/owner/shop/license", Screen: ShopLicense, checkDestination: false },
   { path: "/owner/payment-destination", Screen: PaymentDestinationEditor, checkDestination: false },
   { path: "/owner/price-list", Screen: PriceListEditor, checkDestination: true },

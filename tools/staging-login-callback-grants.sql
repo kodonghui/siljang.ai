@@ -241,3 +241,19 @@ REVOKE INSERT ON masked_value_erasures FROM :"runtime_role";
 REVOKE INSERT (shop_id,id,consultation_id,erased_at) ON masked_value_erasures FROM :"runtime_role";
 REVOKE EXECUTE ON FUNCTION purge_closed_consultation(uuid,uuid,timestamptz) FROM :"runtime_role";
 REVOKE EXECUTE ON FUNCTION purge_expired_masked_value_erasures(integer) FROM :"runtime_role";
+
+-- TASK-156: 가게 소유 확인 함수만 장부 메타데이터에 접근한다.
+REVOKE SELECT, UPDATE ON ledger_links FROM :"runtime_role";
+REVOKE SELECT (id,spreadsheet_id,sheet_name,our_columns,linked_at,unlinked_at,xmin,credential_ref,provider,failure_alerted_at) ON ledger_links FROM :"runtime_role";
+REVOKE UPDATE (status,unlinked_at) ON ledger_links FROM :"runtime_role";
+GRANT SELECT (shop_id,status) ON ledger_links TO :"runtime_role";
+REVOKE SELECT, UPDATE ON ledger_writes FROM :"runtime_role";
+REVOKE SELECT (shop_id,status,first_failed_at,next_attempt_at), UPDATE (status,next_attempt_at) ON ledger_writes FROM :"runtime_role";
+GRANT EXECUTE ON FUNCTION read_owner_ledger(uuid,uuid,uuid),unlink_owner_ledger(uuid,uuid,timestamptz) TO :"runtime_role";
+GRANT USAGE ON SCHEMA siljang_ledger_private TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.store_ledger_credential(uuid,uuid,uuid,text) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.create_owner_ledger(uuid,uuid,uuid,text,text,jsonb,text,timestamptz) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.lock_owner_ledger(uuid,uuid,text) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.ledger_vault_ready() TO :"runtime_role";
+
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.consume_owner_ledger_code(uuid,uuid,text) TO :"runtime_role";

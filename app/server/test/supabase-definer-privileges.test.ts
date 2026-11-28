@@ -54,12 +54,11 @@ describeDb("Supabase 기본 역할의 함수 실행 권한", () => {
             ["staging-login-callback-grants.sql", "runtime_role", "test_runtime_0049"],
             ["staging-purge-grants.sql", "purge_role", "test_purge_0049"],
           ]) {
-            await tx.query(
-              readFileSync(new URL(`../../../tools/${file}`, import.meta.url), "utf8").replaceAll(
-                `:"${variable}"`,
-                `"${role}"`,
-              ),
-            );
+            // 이 시험은 0048까지 적용한 상태다. 이후 추가한 TASK-156 권한은 해당 함수가 생긴 뒤 별도 시험한다.
+            const grants = readFileSync(new URL(`../../../tools/${file}`, import.meta.url), "utf8");
+            const compatible = file === "staging-login-callback-grants.sql" ? grants.split("-- TASK-156:")[0] : grants;
+            if (compatible === undefined) throw new Error("grant fixture is missing");
+            await tx.query(compatible.replaceAll(`:"${variable}"`, `"${role}"`));
           }
           const query = `SELECT p.oid::regprocedure::text AS name, r.rolname,
           has_function_privilege(r.oid,p.oid,'EXECUTE') AS allowed

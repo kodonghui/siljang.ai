@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router";
+import { LedgerCallback } from "./LedgerScreen";
 import { OperatorArea } from "./OperatorArea";
 import { OperatorLogin } from "./OperatorLogin";
 import { OwnerArea } from "./OwnerArea";
@@ -23,6 +24,7 @@ export function App() {
     <Routes>
       <Route path={OWNER_LOGIN} element={<OwnerLogin />} />
       <Route path={OWNER_CALLBACK} element={<OwnerLogin />} />
+      <Route path="/owner/ledger/callback" element={<LedgerCallback />} />
       <Route path="/owner/*" element={<OwnerArea />} />
       <Route path={OPERATOR_LOGIN} element={<OperatorLogin />} />
       <Route path="/operator/*" element={<OperatorArea />} />

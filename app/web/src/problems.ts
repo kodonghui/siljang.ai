@@ -73,7 +73,7 @@ export const ERROR_CODES = {
     outcome: "field",
     state: "error",
     retry: "none",
-    message: "그 시트를 열 수 없어요. 주소와 탭 이름을 확인해 주세요",
+    message: "그 시트를 열 수 없어요. 주소와 탭을 확인하고 구글 연결을 다시 해 주세요",
   },
   unauthenticated: {
     status: 401,
@@ -266,8 +266,8 @@ export const ERROR_CODES = {
     status: 503,
     outcome: "server",
     state: "error",
-    retry: "same",
-    message: "구글에 연결하지 못했어요. 잠시 뒤 다시 해 주세요",
+    retry: "none",
+    message: "현재 연결 상태를 확인하고 구글 권한부터 다시 연결해 주세요",
   },
   storage_unavailable: {
     status: 503,
@@ -487,6 +487,20 @@ export function classify(status: number, problem: Problem | null, retryAfterSeco
     confirm: problem.confirm,
     retryAfterSeconds: retryAfterSeconds ?? problem.retryAfterSeconds,
   };
+}
+
+/** 장부 연결 응답 유실은 인가 코드 소비 여부가 불명확하므로 권한 요청부터 다시 시작한다. */
+export function classifyLedgerLink(status: number, problem: Problem | null, retryAfterSeconds: number | null): Failure {
+  const result = classify(status, problem, retryAfterSeconds);
+  if (status === 0 || status >= 500)
+    return {
+      ...result,
+      retry: "none",
+      message: `${ERROR_CODES.google_unavailable.message}. 구글 시트에 열이 이미 생겼을 수 있어요`,
+    };
+  if (problem?.code === "version_conflict")
+    return { ...result, retry: "none", message: ERROR_CODES.google_unavailable.message };
+  return result;
 }
 
 /** 확인할 것 하나의 글. day가 있으면 앞에 'M월 D일: '을 붙이고 {count}를 채운다. */

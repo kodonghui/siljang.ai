@@ -6,6 +6,7 @@ import { parse } from "yaml";
 import {
   CONFIRMATIONS,
   classify,
+  classifyLedgerLink,
   confirmText,
   DAY_PATTERN,
   ERROR_CODES,
@@ -305,6 +306,19 @@ describe("classify(G7)", () => {
       expect(f.message).toBe(ERROR_CODES.internal.message);
     }
     expect(classify(400, null, null).retry).toBe("none");
+  });
+
+  it("구글 장부 오류는 같은 인가 코드를 재전송하지 않고 권한 요청을 다시 안내한다", () => {
+    const result = classify(503, problem("google_unavailable"), null);
+    expect(result.retry).toBe("none");
+    expect(result.message).toContain("구글 권한부터 다시");
+    expect(ERROR_CODES.sheet_not_accessible.message).toContain("구글 연결을 다시");
+    for (const status of [0, 500, 502, 503]) {
+      const lostResponse = classifyLedgerLink(status, null, null);
+      expect(lostResponse.retry).toBe("none");
+      expect(lostResponse.message).toContain("구글 권한부터 다시");
+      expect(lostResponse.message).toContain("구글 시트에 열이 이미 생겼을 수 있어요");
+    }
   });
 
   it("화면에 오지 않는 코드(스킬 키)는 일반 서버 실패", () => {

@@ -4,7 +4,8 @@ import { createApp, type HonoEnv } from "../../src/app";
 import type { Queryable } from "../../src/db";
 import type { FieldCrypto } from "../../src/field-crypto";
 import { deriveKakaoSkillKey } from "../../src/kakao-skill-auth";
-import { OWNER_COOKIE } from "../../src/owner-oauth";
+import { LEDGER_COOKIE, verifyLedgerOAuth } from "../../src/ledger-oauth";
+import { OWNER_COOKIE, readCookie } from "../../src/owner-oauth";
 import { createOwnerSession } from "../../src/owner-session";
 import { readPrivacyPolicySettings } from "../../src/privacy-policy-settings";
 import { REQUEST_KEY_HEADER } from "../../src/request-key";
@@ -151,6 +152,12 @@ interface BookingCase {
   readonly kind: "booking";
 }
 
+interface LedgerShopCase {
+  readonly method: "GET" | "POST" | "PUT" | "DELETE";
+  readonly path: "/owner/ledger" | "/owner/ledger/authorization";
+  readonly kind: "ledger";
+}
+
 interface LicenseResubmissionCase {
   readonly method: "PUT";
   readonly path: "/owner/shop/license";
@@ -158,6 +165,7 @@ interface LicenseResubmissionCase {
 }
 
 export type CrossShopCase =
+  | LedgerShopCase
   | BookingCase
   | OwnerCrossShopCase
   | SkillCrossShopCase
@@ -176,6 +184,10 @@ export type CrossShopCase =
   | OperatorReviewShopCase;
 
 export const CROSS_SHOP_CASES: readonly CrossShopCase[] = [
+  { method: "GET", path: "/owner/ledger", kind: "ledger" },
+  { method: "PUT", path: "/owner/ledger", kind: "ledger" },
+  { method: "DELETE", path: "/owner/ledger", kind: "ledger" },
+  { method: "POST", path: "/owner/ledger/authorization", kind: "ledger" },
   {
     method: "GET",
     path: "/owner/consultations/:consultationId/messages",
@@ -338,6 +350,133 @@ async function checkSkillChannel(env: CrossShopEnv, c: SkillCrossShopCase, db: Q
 export async function runCrossShopCase(env: CrossShopEnv, c: CrossShopCase): Promise<void> {
   const db = testDb();
   try {
+    if (c.kind === "ledger") {
+      if (c.method === "POST") {
+        const redirect = "https://siljang.example/owner/ledger/callback",
+          before = await snapshots(db, env);
+        const config = testEnv({
+          GOOGLE_CLIENT_ID: `${newUuid()}.apps.googleusercontent.com`,
+          GOOGLE_CLIENT_SECRET: newUuid() + newUuid(),
+          GOOGLE_LEDGER_REDIRECT_URIS: redirect,
+        });
+        for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+          const response = await env.app.request(
+            `/api${c.path}?shopId=${target}&ownerId=${env.b.ownerId}`,
+            {
+              method: "POST",
+              headers: { ...env.as(env.a), origin: "http://localhost", "content-type": "application/json" },
+              body: JSON.stringify({ redirectUri: redirect }),
+            },
+            config,
+          );
+          expect(response.status, await response.clone().text()).toBe(200);
+          const body = (await response.json()) as { state: string },
+            nonce = readCookie(
+              response.headers.getSetCookie().find((value) => value.startsWith(`${LEDGER_COOKIE}=`)),
+              LEDGER_COOKIE,
+            ),
+            now = new Date();
+          expect(
+            await verifyLedgerOAuth(
+              new Secret(TEST_HASH_KEY),
+              { shopId: env.a.shopId, ownerId: env.a.ownerId },
+              body.state,
+              nonce,
+              redirect,
+              now,
+            ),
+          ).not.toBeNull();
+          expect(
+            await verifyLedgerOAuth(
+              new Secret(TEST_HASH_KEY),
+              { shopId: env.b.shopId, ownerId: env.b.ownerId },
+              body.state,
+              nonce,
+              redirect,
+              now,
+            ),
+          ).toBeNull();
+        }
+        expect(await snapshots(db, env)).toEqual(before);
+        return;
+      }
+      if (c.method === "PUT") {
+        const own = await send(env, "GET", { url: c.path });
+        const revision = typeof own.body?.revision === "string" ? own.body.revision : null;
+        const before = await snapshots(db, env);
+        const config = testEnv({
+          GOOGLE_CLIENT_ID: `${newUuid()}.apps.googleusercontent.com`,
+          GOOGLE_CLIENT_SECRET: newUuid() + newUuid(),
+          GOOGLE_LEDGER_REDIRECT_URIS: "https://siljang.example/callback",
+        });
+        const response = await env.app.request(
+          `/api${c.path}?shopId=${env.b.shopId}`,
+          {
+            method: "PUT",
+            headers: {
+              ...env.as(env.a),
+              origin: "http://localhost",
+              "content-type": "application/json",
+              "Idempotency-Key": newRequestKey(),
+            },
+            body: JSON.stringify({
+              baseRevision: revision,
+              code: "fixture-code",
+              state: "fixture-state-123456789",
+              spreadsheetId: "fixture_sheet_123456789012345",
+              sheetName: "합성 탭",
+            }),
+          },
+          config,
+        );
+        expect(response.status).toBe(422);
+        expect(await snapshots(db, env)).toEqual(before);
+        return;
+      }
+      const targets = [
+        { shop: env.a, name: "가게A 장부" },
+        { shop: env.b, name: "가게B 장부" },
+      ];
+      for (const { shop, name } of targets)
+        await db.query(
+          "INSERT INTO ledger_links(shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref) VALUES($1,$2,$3,$4::jsonb,$5) ON CONFLICT DO NOTHING",
+          [
+            shop.shopId,
+            `sheet_${shop.shopId.replaceAll("-", "")}`,
+            name,
+            JSON.stringify([{ header: "주문번호", column: "A" }]),
+            `fixture-${shop.shopId}`,
+          ],
+        );
+      if (c.method === "DELETE") {
+        const beforeB = await snapshotShop(db, env.b);
+        const response = await send(env, "DELETE", { url: `${c.path}?shopId=${env.b.shopId}` });
+        expect(response.status, response.text).toBe(200);
+        expect(response.body).toMatchObject({ ledger: { status: "unlinked", sheetName: "가게A 장부" } });
+        expect(await snapshotShop(db, env.b)).toEqual(beforeB);
+        return;
+      }
+      const before = await snapshots(db, env);
+      for (const target of [env.b.shopId, newUuid(), "not-a-uuid"]) {
+        const response = await send(env, "GET", { url: `${c.path}?shopId=${target}&ownerId=${env.b.ownerId}` });
+        expect(response.status, response.text).toBe(200);
+        expect(response.body).toMatchObject({
+          status: "auth_lost",
+          sheetName: "가게A 장부",
+          spreadsheetId: `sheet_${env.a.shopId.replaceAll("-", "")}`,
+        });
+        for (const hidden of [
+          env.b.shopId,
+          env.b.ownerId,
+          `sheet_${env.b.shopId.replaceAll("-", "")}`,
+          "가게B 장부",
+          `fixture-${env.a.shopId}`,
+        ])
+          expect(response.text).not.toContain(hidden);
+      }
+      expect(await snapshots(db, env)).toEqual(before);
+      return;
+    }
     if (c.kind === "booking") {
       if (c.path === "/owner/booking-link") {
         await send(env, "GET", { url: c.path });
