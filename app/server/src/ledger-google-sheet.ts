@@ -7,6 +7,7 @@ export interface LedgerSheetSnapshot {
   readonly sheetId: number;
   readonly sheetName: string;
   readonly columnCount: number;
+  readonly rowCount: number;
   readonly headers: readonly unknown[];
   readonly markers: readonly { readonly token: string; readonly start: number; readonly end: number }[];
 }
@@ -95,7 +96,7 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
           url = new URL(base);
         url.searchParams.set(
           "fields",
-          "sheets(properties(sheetId,title,sheetType,gridProperties(columnCount)),developerMetadata(metadataKey,metadataValue,location,visibility))",
+          "sheets(properties(sheetId,title,sheetType,gridProperties(columnCount,rowCount)),developerMetadata(metadataKey,metadataValue,location,visibility))",
         );
         const raw = await read(url, accessToken);
         if (raw === DENIED) return null;
@@ -109,7 +110,8 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
           grid = object(props?.gridProperties);
         if (props?.sheetType !== "GRID") return null;
         const sheetId = props.sheetId,
-          columnCount = grid?.columnCount;
+          columnCount = grid?.columnCount,
+          rowCount = grid?.rowCount;
         if (
           typeof sheetId !== "number" ||
           !Number.isSafeInteger(sheetId) ||
@@ -118,7 +120,10 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
           typeof columnCount !== "number" ||
           !Number.isSafeInteger(columnCount) ||
           columnCount < 1 ||
-          columnCount > LEDGER_MAX_COLUMNS
+          columnCount > LEDGER_MAX_COLUMNS ||
+          typeof rowCount !== "number" ||
+          !Number.isSafeInteger(rowCount) ||
+          rowCount < 1
         )
           throw new GoogleLedgerUnavailableError();
         const markers: { token: string; start: number; end: number }[] = [];
@@ -171,7 +176,7 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
           )
         )
           throw new GoogleLedgerUnavailableError();
-        return { sheetId, sheetName, columnCount, headers: [...headers], markers };
+        return { sheetId, sheetName, columnCount, rowCount, headers: [...headers], markers };
       } catch {
         throw new GoogleLedgerUnavailableError();
       }

@@ -19,6 +19,7 @@ export interface LedgerSheetSetup {
   readonly start: number;
   readonly end: number;
   readonly sheetColumnCount: number;
+  readonly sheetRowCount?: number;
   readonly movedRight: boolean;
   readonly ownershipToken: string;
   readonly columns: readonly { readonly header: string; readonly column: string }[];
@@ -34,12 +35,14 @@ export function ledgerSheetSetup(
     plan: LedgerColumnPlan,
     ownershipToken: string,
     sheetColumnCount: number,
+    sheetRowCount: number,
   ): LedgerSheetSetup {
     return {
       sheetId,
       start: plan.start,
       end: plan.end,
       sheetColumnCount,
+      sheetRowCount,
       movedRight: plan.movedRight,
       columns: plan.columns,
       ownershipToken,
@@ -57,7 +60,8 @@ export function ledgerSheetSetup(
       if (verified === null) continue;
       if (!LEDGER_STORAGE_HEADERS.every((header, index) => snapshot.headers[marker.start + index] === header)) continue;
       const plan = planLedgerColumns(snapshot.columnCount, snapshot.headers, verified);
-      if (!plan.needsWrite) return result(snapshot.sheetId, plan, marker.token, snapshot.columnCount);
+      if (!plan.needsWrite)
+        return result(snapshot.sheetId, plan, marker.token, snapshot.columnCount, snapshot.rowCount);
     }
     return null;
   }

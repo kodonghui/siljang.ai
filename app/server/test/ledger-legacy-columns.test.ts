@@ -56,7 +56,12 @@ it.each(["끝", "사장님 열 뒤에 있음", "응답 유실", "ID 열 삭제"]
       return Response.json({
         sheets: [
           {
-            properties: { sheetId, title: "장부", sheetType: "GRID", gridProperties: { columnCount: count } },
+            properties: {
+              sheetId,
+              title: "장부",
+              sheetType: "GRID",
+              gridProperties: { columnCount: count, rowCount: 5000 },
+            },
             developerMetadata: [
               {
                 metadataKey: "siljang_columns_v1",

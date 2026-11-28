@@ -16,7 +16,7 @@ function metadata() {
   return {
     sheets: [
       {
-        properties: { sheetId: 7, title: tab, sheetType: "GRID", gridProperties: { columnCount: 26 } },
+        properties: { sheetId: 7, title: tab, sheetType: "GRID", gridProperties: { columnCount: 26, rowCount: 5000 } },
         developerMetadata: [] as Record<string, unknown>[],
       },
     ],
@@ -42,6 +42,7 @@ describe("구글 장부 조회: 고정 주소/첫 행/토큰 비노출", () => {
       sheetId: 7,
       sheetName: tab,
       columnCount: 26,
+      rowCount: 5000,
       headers: ["주문번호", 7, true],
       markers: [],
     });
@@ -165,7 +166,18 @@ describe("구글 장부 조회: 고정 주소/첫 행/토큰 비노출", () => {
     [],
     {},
     { sheets: "wrong" },
-    { sheets: [{ properties: { sheetId: 7, title: tab, sheetType: "GRID", gridProperties: { columnCount: 18279 } } }] },
+    {
+      sheets: [
+        {
+          properties: {
+            sheetId: 7,
+            title: tab,
+            sheetType: "GRID",
+            gridProperties: { columnCount: 18279, rowCount: 5000 },
+          },
+        },
+      ],
+    },
   ])("잘못된 메타데이터 %j는 서비스 오류로 닫는다", async (data) => {
     await expect(
       googleLedgerSheets({ fetch: sequence([reply(data)]) }).inspect(token(), file, tab),

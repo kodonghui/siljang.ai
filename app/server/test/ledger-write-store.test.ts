@@ -642,6 +642,15 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
           });
         if (url.pathname.includes("/developerMetadata/")) return new Response(null, { status: 404 });
         if (init?.method === "POST") {
+          const baseline = (
+            await isolated.db.query<{ checkpoint_hashes: unknown }>(
+              "SELECT checkpoint_hashes FROM ledger_writes WHERE id=$1",
+              [write],
+            )
+          ).rows[0]?.checkpoint_hashes;
+          expect(baseline).toBeTruthy();
+          expect(JSON.stringify(baseline)).not.toContain("시험손님");
+          expect(JSON.stringify(baseline)).not.toContain("010-0000-0000");
           writes++;
           written = JSON.parse(String(init.body));
           const request = (
@@ -678,7 +687,12 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         return Response.json({
           sheets: [
             {
-              properties: { sheetId: 7, title: tab, sheetType: "GRID", gridProperties: { columnCount: 14 } },
+              properties: {
+                sheetId: 7,
+                title: tab,
+                sheetType: "GRID",
+                gridProperties: { columnCount: 14, rowCount: 5000 },
+              },
               developerMetadata: [
                 {
                   metadataKey: "siljang_columns_v1",

@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { buildLedgerCheckpoint } from "../src/ledger-checkpoint";
 import { type LedgerCheckpoint, ledgerRowDigest, writeLedgerSheet } from "../src/ledger-sheet-write";
 import { Secret } from "../src/settings";
 
@@ -315,7 +316,9 @@ it("쓰는 사이 다른 주문이 새로 생기면 행 집합 변경으로 알�
     rows.push(prior("XYZ789", otherId));
     return Response.json({ spreadsheetId: file, replies: [{}] });
   };
-  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).rejects.toThrow();
+  await expect(writeLedgerSheet(await withDigest(), { fetch: send })).rejects.toMatchObject({
+    affectedOrderIds: [otherId],
+  });
   expect(writes).toBe(1);
 });
 it("사장님 열의 큰 값이 5000행 위에 있어도 경계 아래만 확인해 추가한다", async () => {
@@ -339,7 +342,7 @@ it("사장님 열의 큰 값이 5000행 위에 있어도 경계 아래만 확인
   ).resolves.toBeUndefined();
   expect(writes).toBe(1);
 });
-it("쓰기 직후 중단해도 저장한 사전 비교 기준으로 밀려 사라진 다른 주문을 복구한다", async () => {
+it("쓰기 직후 중단한 뒤 다른 주문 소실을 감지하고 자동 복구 대신 알린다", async () => {
   const oldTarget = prior("ABC123", orderId),
     oldOther = prior("XYZ789", otherId);
   let rows = [oldTarget, oldOther],
@@ -383,18 +386,39 @@ it("쓰기 직후 중단해도 저장한 사전 비교 기준으로 밀려 사�
   };
   await expect(writeLedgerSheet(initial, { fetch: send })).rejects.toThrow();
   expect(checkpoint).toBeDefined();
-  await expect(writeLedgerSheet({ ...initial, uncertain: true, checkpoint }, { fetch: send })).rejects.toThrow();
-  expect(rows).toContainEqual(oldOther);
+  await expect(writeLedgerSheet({ ...initial, uncertain: true, checkpoint }, { fetch: send })).rejects.toMatchObject({
+    affectedOrderIds: [otherId],
+  });
+  expect(writes).toBe(1);
+  expect(rows).not.toContainEqual(oldOther);
 });
 it("불확실한 전송 뒤 주문 값이 바뀌어도 전송 당시 저장한 값으로 사후 확인한다", async () => {
   const previous = [...input.values, eventId.replaceAll("-", ""), orderId.replaceAll("-", "")];
   const changed = [...input.values];
   changed[1] = "새 주문 정보";
-  const checkpoint = { before: [], values: input.values };
+  const checkpoint = await buildLedgerCheckpoint(
+    input.hashKey,
+    { file, tab: input.tab, eventId, orderId },
+    [],
+    previous,
+  );
   const send = async () => Response.json({ values: [["header"], previous] });
+  let verified: string | null = null;
   await expect(
-    writeLedgerSheet({ ...input, values: changed, uncertain: true, checkpoint }, { fetch: send }),
+    writeLedgerSheet(
+      {
+        ...input,
+        values: changed,
+        uncertain: true,
+        checkpoint,
+        verifiedDigest: (value) => {
+          verified = value;
+        },
+      },
+      { fetch: send },
+    ),
   ).resolves.toBeUndefined();
+  expect(verified).toBe(checkpoint.sentDigest);
 });
 it("다른 주문이 덮였으면 충돌 알림에 피해 주문 ID도 담는다", async () => {
   let rows = [prior("ABC123", orderId), prior("XYZ789", otherId)],
@@ -452,4 +476,77 @@ it("남겨 둔 옛 기록 ID와 대상 파일에 맞는 서명으로 정상 행�
       { fetch: send },
     ),
   ).resolves.toBeUndefined();
+});
+it("복구 전 충돌 서명을 남겨 복구 직후 중단해도 영향 주문을 알린다", async () => {
+  const original = prior("ABC123", orderId),
+    other = prior("XYZ789", otherId);
+  let rows = [original, other],
+    checkpoint: LedgerCheckpoint | null = null,
+    writes = 0;
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    const url = decodeURIComponent(String(raw));
+    if (init?.method === "GET") {
+      if (url.includes("!A5000:N")) return Response.json({ values: [] });
+      if (url.includes("!A2:N2")) return Response.json({ values: [rows[0]] });
+      return Response.json({ values: [["header"], ...rows] });
+    }
+    writes++;
+    const req = JSON.parse(String(init?.body)).requests[0];
+    if (req.updateCells)
+      rows = [
+        req.updateCells.rows[0].values.map(
+          (c: { userEnteredValue: { stringValue?: string; numberValue?: number } }) =>
+            c.userEnteredValue.stringValue ?? c.userEnteredValue.numberValue ?? "",
+        ),
+      ];
+    else {
+      expect(checkpoint?.conflicted).toBe(true);
+      rows.push(other);
+      throw new Error("worker stopped after restore");
+    }
+    return Response.json({ spreadsheetId: file, replies: [{}] });
+  };
+  const initial = {
+    ...(await withDigest()),
+    saveCheckpoint: async (value: LedgerCheckpoint) => {
+      checkpoint = value;
+    },
+  };
+  await expect(writeLedgerSheet(initial, { fetch: send })).rejects.toThrow();
+  await expect(writeLedgerSheet({ ...initial, uncertain: true, checkpoint }, { fetch: send })).rejects.toMatchObject({
+    affectedOrderIds: [otherId],
+  });
+  expect(writes).toBe(2);
+});
+it("시트 격자가 5000행보다 작으면 범위를 벗어난 경계 조회 없이 추가한다", async () => {
+  let writes = 0;
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      writes++;
+      return Response.json({ spreadsheetId: file, replies: [{}] });
+    }
+    if (decodeURIComponent(String(raw)).includes("!A5000:")) return new Response(null, { status: 400 });
+    return Response.json({
+      values: writes
+        ? [["header"], [...input.values, eventId.replaceAll("-", ""), orderId.replaceAll("-", "")]]
+        : [["header"]],
+    });
+  };
+  await expect(
+    writeLedgerSheet({ ...input, setup: { ...input.setup, sheetRowCount: 1000 } }, { fetch: send }),
+  ).resolves.toBeUndefined();
+  expect(writes).toBe(1);
+});
+it("다른 파일에 묶인 불확실 비교 기준은 재전송하지 않고 확인 할 일로 넘긴다", async () => {
+  const sent = [...input.values, eventId.replaceAll("-", ""), orderId.replaceAll("-", "")];
+  const checkpoint = await buildLedgerCheckpoint(
+    input.hashKey,
+    { file: "another_sheet_1234567890", tab: input.tab, eventId, orderId },
+    [],
+    sent,
+  );
+  const send = async () => Response.json({ values: [["header"], sent] });
+  await expect(writeLedgerSheet({ ...input, uncertain: true, checkpoint }, { fetch: send })).rejects.toMatchObject({
+    name: "LedgerConflictError",
+  });
 });

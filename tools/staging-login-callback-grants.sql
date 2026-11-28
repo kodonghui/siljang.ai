@@ -265,4 +265,4 @@ GRANT EXECUTE ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,ti
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.count_unwritten_orders(uuid) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.guard_ledger_write(uuid,uuid,uuid,timestamptz,text,text) TO :"runtime_role";
 
-GRANT EXECUTE ON FUNCTION siljang_ledger_private.save_ledger_checkpoint(uuid,uuid,timestamptz,uuid,text) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION siljang_ledger_private.save_ledger_checkpoint(uuid,uuid,timestamptz,uuid,jsonb) TO :"runtime_role";

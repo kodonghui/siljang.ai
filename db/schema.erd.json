@@ -1539,7 +1539,7 @@
           "03hbi287v4pz8yr8jwggvyxaq",
           "03hbi287vfoxmd9fbgbg3ldan",
           "03hbi287vqkuw3uzjuxrdvel8",
-          "03hbj26jtopnquexgnkmfc3cq",
+          "03hbj4dyvqve0hxi4eb386dps",
           "03hbir568r4h84ns8kjbsfugt"
         ],
         "groupId": "03h7y017wqizg5foqnmcnrqnd",
@@ -7100,12 +7100,12 @@
         "dataType": "uuid",
         "options": 0
       },
-      "03hbj26jtopnquexgnkmfc3cq": {
-        "id": "03hbj26jtopnquexgnkmfc3cq",
+      "03hbj4dyvqve0hxi4eb386dps": {
+        "id": "03hbj4dyvqve0hxi4eb386dps",
         "tableId": "03h7y0179n9e4e4gq6kwkcb3f",
-        "name": "checkpoint_enc",
-        "comment": "쓰기 전 장부 비교 기준의 앱 암호문",
-        "dataType": "text",
+        "name": "checkpoint_hashes",
+        "comment": "쓰기 전 장부 행의 HMAC 비교 기준",
+        "dataType": "jsonb",
         "options": 0
       },
       "03h7y0179n9e4e4gq7cgnw2ol": {

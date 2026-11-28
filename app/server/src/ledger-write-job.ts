@@ -1,6 +1,6 @@
 import { type DbConnector, pgConnector } from "./db";
 import type { DueItem, LeaseContext } from "./job-runner";
-import { openLedgerCheckpoint, sealLedgerCheckpoint } from "./ledger-checkpoint";
+import type { LedgerCheckpoint } from "./ledger-checkpoint";
 import { guardedLedgerFetch } from "./ledger-guarded-fetch";
 import { openLedgerJobCredential } from "./ledger-job-credential";
 import { googleLedgerRefresh } from "./ledger-refresh";
@@ -25,7 +25,7 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
         order_id: string;
         expected_hash: string | null;
         expected_hashes: Record<string, Record<string, string>>;
-        checkpoint_enc: string | null;
+        checkpoint_hashes: LedgerCheckpoint | null;
       }>("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [item.id, ctx.leaseUntil]);
       const row = result.rows[0];
       if (!row) return null;
@@ -38,16 +38,9 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
       const key = settings.secrets.REQUEST_HASH_KEY;
       if (key === null) throw new Error("ledger key is not configured");
       const targetKey = await ledgerRowDigest(key, ["ledger-target", row.spreadsheet_id, row.sheet_name]);
-      const checkpoint = row.checkpoint_enc
-        ? await openLedgerCheckpoint(
-            services.fieldCrypto(),
-            { shopId: db.scope.shopId, writeId: item.id, file: row.spreadsheet_id, tab: row.sheet_name },
-            row.checkpoint_enc,
-          )
-        : null;
       return {
         leaseUntil: ctx.leaseUntil,
-        checkpoint,
+        checkpoint: row.checkpoint_hashes,
         expectedDigests: row.expected_hashes?.[targetKey] ?? {},
         shopId: db.scope.shopId,
         eventId: item.id,
@@ -100,17 +93,13 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
         saveCheckpoint: async (checkpoint: import("./ledger-sheet-write").LedgerCheckpoint) => {
           if (!row.leaseUntil) throw new Error("ledger lease is not available");
           guard.signal.throwIfAborted();
-          const envelope = await sealLedgerCheckpoint(
-            services.fieldCrypto(),
-            { shopId: row.shopId, writeId: row.eventId, file: row.file, tab: row.tab },
-            checkpoint,
-          );
+          const checkpointData = JSON.stringify(checkpoint);
           guard.signal.throwIfAborted();
           const checkpointDb = connect(settings.secrets.DATABASE_URL);
           try {
             const result = await checkpointDb.query<{ saved: boolean }>(
-              "SELECT siljang_ledger_private.save_ledger_checkpoint($1,$2,$3,$4,$5) AS saved",
-              [row.shopId, row.eventId, row.leaseUntil, row.linkId, envelope],
+              "SELECT siljang_ledger_private.save_ledger_checkpoint($1,$2,$3,$4,$5::jsonb) AS saved",
+              [row.shopId, row.eventId, row.leaseUntil, row.linkId, checkpointData],
             );
             if (result.rows[0]?.saved !== true) throw new Error("ledger checkpoint was not saved");
           } finally {
@@ -123,13 +112,13 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
         const result = await auditLedgerSheet(input, { fetch: bounded });
         return { status: result === "ok" ? "audit_ok" : result === "missing" ? "audit_missing" : "audit_duplicate" };
       }
-      let verifiedValues = row.values;
+      let verifiedDigest: string | null = null;
       try {
         await writeLedgerSheet(
           {
             ...input,
-            verifiedValues: (values) => {
-              verifiedValues = values;
+            verifiedDigest: (digest) => {
+              verifiedDigest = digest;
             },
           },
           { fetch: bounded },
@@ -139,11 +128,8 @@ export function ledgerWriteJob(settings: Settings, services: Services, connect: 
           return { status: "conflict", affectedOrderIds: error.affectedOrderIds };
         throw error;
       }
-      const sheetHash = await ledgerRowDigest(key, [
-        ...verifiedValues,
-        row.eventId.replaceAll("-", "").toLowerCase(),
-        row.orderId.replaceAll("-", "").toLowerCase(),
-      ]);
+      if (verifiedDigest === null) throw new Error("ledger verification is not complete");
+      const sheetHash: string = verifiedDigest;
       return {
         status: "written",
         columns: {

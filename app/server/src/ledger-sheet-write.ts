@@ -1,5 +1,11 @@
 import { readBytesLimited } from "./body";
 import { toBase64Url } from "./encoding";
+import {
+  buildLedgerCheckpoint,
+  compareLedgerCheckpoint,
+  type LedgerCell,
+  type LedgerCheckpoint,
+} from "./ledger-checkpoint";
 import { GoogleLedgerUnavailableError } from "./ledger-google-auth";
 import { LEDGER_HEADERS, LEDGER_STORAGE_HEADERS, ledgerColumnName } from "./ledger-sheet-columns";
 import type { LedgerSheetSetup } from "./ledger-sheet-setup";
@@ -23,11 +29,7 @@ export class LedgerConflictError extends Error {
 }
 class LedgerDefiniteError extends Error {}
 
-export type LedgerCell = string | number | boolean | { readonly formula: string };
-export interface LedgerCheckpoint {
-  readonly before: LedgerCell[][];
-  readonly values: readonly (string | number)[];
-}
+export type { LedgerCell, LedgerCheckpoint } from "./ledger-checkpoint";
 export async function ledgerRowDigest(key: Secret, row: readonly LedgerCell[]): Promise<string> {
   const k = await crypto.subtle.importKey(
     "raw",
@@ -117,7 +119,7 @@ export async function writeLedgerSheet(
     readonly expectedDigests?: Readonly<Record<string, string>>;
     readonly checkpoint?: LedgerCheckpoint | null;
     readonly saveCheckpoint?: (checkpoint: LedgerCheckpoint) => Promise<void>;
-    readonly verifiedValues?: (values: readonly (string | number)[]) => void;
+    readonly verifiedDigest?: (digest: string) => void;
   },
   options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {},
 ): Promise<void> {
@@ -226,6 +228,7 @@ export async function writeLedgerSheet(
   async function ensureAppendFits(count: number): Promise<void> {
     const lastColumn = ledgerColumnName(input.setup.sheetColumnCount - 1);
     if (count < 1 || count > 4999) throw new LedgerConflictError("ledger row limit");
+    if (input.setup.sheetRowCount !== undefined && input.setup.sheetRowCount < 5001 - count) return;
     const url = new URL(`${base}/values/${encodeURIComponent(`${tab}!A${5001 - count}:${lastColumn}`)}`);
     url.searchParams.set("valueRenderOption", "FORMULA");
     const data = await request(url.href, "GET", undefined, false, true);
@@ -282,55 +285,72 @@ export async function writeLedgerSheet(
     const current = await snapshot();
     const saved = input.uncertain ? input.checkpoint : null;
     if (input.uncertain && !saved) throw new LedgerConflictError("missing comparison baseline");
-    const before = saved?.before ?? current;
-    const sent = saved?.values ?? input.values;
-    const prior = indexed(before);
-    const matches = current.flatMap((row, index) => (row[0] === sent[0] ? [index] : []));
+    const context = { file: input.file, tab: input.tab, eventId: input.eventId, orderId: input.orderId };
+    const matches = current.flatMap((row, index) => (row[0] === input.values[0] ? [index] : []));
     const idMatches = current.flatMap((row, index) => (row[13] === orderId ? [index] : []));
     if (matches.length > 1 || idMatches.length > 1) throw new LedgerDuplicateError();
-    const target = matches[0];
-    const values = [...sent, eventId, orderId];
-    const alreadySent = !!saved && current.some((row) => row[12] === eventId && row[13] === orderId);
-    let after: Cell[][];
-    if (alreadySent) {
-      after = current;
-    } else {
-      if (saved && !sameRows(current, before)) throw new LedgerConflictError("comparison baseline changed");
-      if (target !== undefined) {
-        const old = current[target];
-        if (!old || old[13] !== orderId) throw new LedgerConflictError("order ID changed");
-        const expected = input.expectedDigests ? input.expectedDigests[String(old[12])] : input.expectedDigest;
-        if (!expected || (await ledgerRowDigest(input.hashKey, old)) !== expected)
-          throw new LedgerConflictError("target edited");
-        const check = await read(`${first}${target + 2}:${last}${target + 2}`);
-        const checked = Array.from({ length: LEDGER_STORAGE_HEADERS.length }, (_, i) => check[0]?.[i] ?? "");
-        if (JSON.stringify(checked) !== JSON.stringify(old)) throw new LedgerConflictError("order moved or edited");
-      } else if (prior.has(`id:${orderId}`)) throw new LedgerConflictError("order number changed");
-      if (target === undefined) await ensureAppendFits(1);
-      if (input.saveCheckpoint && !saved) await input.saveCheckpoint({ before, values: sent });
-      const write =
-        target === undefined
-          ? {
-              appendCells: {
-                sheetId: input.setup.sheetId,
-                rows: [{ values: [...Array.from({ length: input.setup.start }, () => ({})), ...cells(values)] }],
-                fields: "userEnteredValue",
-              },
-            }
-          : {
-              updateCells: {
-                start: { sheetId: input.setup.sheetId, rowIndex: target + 1, columnIndex: input.setup.start },
-                rows: [{ values: cells(values) }],
-                fields: "userEnteredValue",
-              },
-            };
-      await sendWrite(write);
+    if (saved) {
+      const alreadySent = current.some((row) => row[12] === eventId && row[13] === orderId);
+      let comparison: Awaited<ReturnType<typeof compareLedgerCheckpoint>>;
       try {
-        after = await snapshot();
-      } catch (error) {
-        if (error instanceof LedgerConflictError) throw error;
-        throw new LedgerUncertainError();
+        comparison = await compareLedgerCheckpoint(input.hashKey, context, saved, current, alreadySent);
+      } catch {
+        throw new LedgerConflictError("invalid comparison baseline");
       }
+      if (saved.conflicted || comparison.changed)
+        throw new LedgerConflictError("comparison baseline changed", [
+          ...new Set([...saved.affectedOrderIds, ...comparison.affectedOrderIds]),
+        ]);
+      if (alreadySent) {
+        const found = current.find((row) => row[12] === eventId && row[13] === orderId);
+        if (!found || (await ledgerRowDigest(input.hashKey, found)) !== saved.sentDigest)
+          throw new LedgerConflictError("uncertain row changed");
+        input.verifiedDigest?.(saved.sentDigest);
+        return;
+      }
+    }
+    const before = current,
+      prior = indexed(before),
+      target = matches[0];
+    const values = [...input.values, eventId, orderId];
+    if (target !== undefined) {
+      const old = current[target];
+      if (!old || old[13] !== orderId) throw new LedgerConflictError("order ID changed");
+      const expected = input.expectedDigests ? input.expectedDigests[String(old[12])] : input.expectedDigest;
+      if (!expected || (await ledgerRowDigest(input.hashKey, old)) !== expected)
+        throw new LedgerConflictError("target edited");
+      const check = await read(`${first}${target + 2}:${last}${target + 2}`);
+      const checked = Array.from({ length: LEDGER_STORAGE_HEADERS.length }, (_, i) => check[0]?.[i] ?? "");
+      if (JSON.stringify(checked) !== JSON.stringify(old)) throw new LedgerConflictError("order moved or edited");
+    } else if (prior.has(`id:${orderId}`)) throw new LedgerConflictError("order number changed");
+    if (target === undefined) await ensureAppendFits(1);
+    const checkpoint = input.saveCheckpoint
+      ? await buildLedgerCheckpoint(input.hashKey, context, before, values)
+      : null;
+    if (checkpoint && input.saveCheckpoint) await input.saveCheckpoint(checkpoint);
+    const write =
+      target === undefined
+        ? {
+            appendCells: {
+              sheetId: input.setup.sheetId,
+              rows: [{ values: [...Array.from({ length: input.setup.start }, () => ({})), ...cells(values)] }],
+              fields: "userEnteredValue",
+            },
+          }
+        : {
+            updateCells: {
+              start: { sheetId: input.setup.sheetId, rowIndex: target + 1, columnIndex: input.setup.start },
+              rows: [{ values: cells(values) }],
+              fields: "userEnteredValue",
+            },
+          };
+    await sendWrite(write);
+    let after: Cell[][];
+    try {
+      after = await snapshot();
+    } catch (error) {
+      if (error instanceof LedgerConflictError) throw error;
+      throw new LedgerUncertainError();
     }
     const observed = indexed(after.filter((row) => row[13] !== orderId));
     const missing: Cell[][] = [];
@@ -357,17 +377,31 @@ export async function writeLedgerSheet(
           markAffected(old);
         }
       }
-      if (remaining.length) changed = true;
+      if (remaining.length) {
+        changed = true;
+        for (const row of remaining) markAffected(row);
+      }
     }
-    for (const id of observed.keys()) if (!prior.has(id)) changed = true;
+    for (const [id, rows] of observed)
+      if (!prior.has(id)) {
+        changed = true;
+        for (const row of rows) markAffected(row);
+      }
     const targetRows = after.filter((row) => row[13] === orderId);
     if (
       missing.length ||
       changed ||
       targetRows.length !== 1 ||
-      after.filter((row) => row[0] === sent[0]).length !== 1 ||
+      after.filter((row) => row[0] === input.values[0]).length !== 1 ||
       JSON.stringify(targetRows[0]) !== JSON.stringify(values)
     ) {
+      if (checkpoint && input.saveCheckpoint) {
+        try {
+          await input.saveCheckpoint({ ...checkpoint, conflicted: true, affectedOrderIds: [...affected] });
+        } catch {
+          throw new LedgerUncertainError();
+        }
+      }
       if (missing.length) {
         try {
           await ensureAppendFits(missing.length);
@@ -395,7 +429,7 @@ export async function writeLedgerSheet(
       }
       throw new LedgerConflictError("ledger changed", [...affected]);
     }
-    input.verifiedValues?.(sent);
+    input.verifiedDigest?.(await ledgerRowDigest(input.hashKey, values));
   } catch (error) {
     if (
       error instanceof LedgerDuplicateError ||

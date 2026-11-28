@@ -104,7 +104,12 @@ function fixture() {
       JSON.stringify({
         sheets: [
           {
-            properties: { sheetId, title: tab, sheetType: "GRID", gridProperties: { columnCount: count } },
+            properties: {
+              sheetId,
+              title: tab,
+              sheetType: "GRID",
+              gridProperties: { columnCount: count, rowCount: 5000 },
+            },
             developerMetadata: markers,
           },
         ],

@@ -1,4 +1,5 @@
 import { expect, it, vi } from "vitest";
+import { buildLedgerCheckpoint } from "../src/ledger-checkpoint";
 import { auditLedgerSheet, LedgerUncertainError, ledgerRowDigest, writeLedgerSheet } from "../src/ledger-sheet-write";
 import { Secret } from "../src/settings";
 
@@ -68,7 +69,7 @@ it("불확실한 쓰기의 이벤트와 주문 ID가 이미 있으면 다시 쓰
       : Response.json({ values: [["헤더"], row] }),
   );
   await writeLedgerSheet(
-    { ...input, uncertain: true, checkpoint: { before: [], values: input.values } },
+    { ...input, uncertain: true, checkpoint: await buildLedgerCheckpoint(input.hashKey, input, [], row) },
     { fetch: send },
   );
   expect(send).toHaveBeenCalledTimes(2);
