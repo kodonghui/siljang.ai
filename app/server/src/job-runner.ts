@@ -77,7 +77,11 @@ export interface LeasedHandler<P = unknown, O = unknown> {
    */
   lease(db: ShopDb, item: DueItem, ctx: LeaseContext): Promise<P | null>;
   /** 트랜잭션 밖의 바깥 호출. 데이터베이스 연결을 받지 않는다. 시간 한도(actTimeoutMs)를 넘기면 실패로 친다. */
-  act(prepared: P, ctx: LeaseContext): Promise<O>;
+  act(
+    prepared: P,
+    ctx: LeaseContext,
+    guard?: { readonly signal: AbortSignal; readonly revalidate: () => Promise<boolean> },
+  ): Promise<O>;
   /**
    * 새 트랜잭션. 결과를 쓴다(다음 때·상태). 임대가 끝나 다른 실행기가 다시 잡았을 수 있으니 임대한 그대로인지
    * (때 = ctx.leaseUntil 따위) 보고 쓴다. 던지면 되돌리고, 행은 임대가 끝난 뒤 다시 찾힌다.
@@ -375,8 +379,10 @@ async function processItem(
   try {
     const value = handler.guard
       ? await db.transaction(async (tx) => {
-          if (!(await handler.guard?.(shopDb(scope, tx), item, prepared, ctx))) throw new Error("job guard rejected");
-          return await withTimeout(handler.act(prepared, ctx), limits.actTimeoutMs);
+          const scoped = shopDb(scope, tx);
+          const revalidate = async () => (await handler.guard?.(scoped, item, prepared, ctx)) === true;
+          if (!tx.signal || !(await revalidate())) throw new Error("job guard rejected");
+          return await withTimeout(handler.act(prepared, ctx, { signal: tx.signal, revalidate }), limits.actTimeoutMs);
         })
       : await withTimeout(handler.act(prepared, ctx), limits.actTimeoutMs);
     outcome = { ok: true, value };

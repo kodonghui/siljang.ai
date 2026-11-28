@@ -122,3 +122,45 @@ it("쓰기 직전 주문 ID가 다르면 쓰지 않고 멈춘다", async () => {
   await expect(writeLedgerSheet(input, { fetch: send })).rejects.toThrow();
   expect(writes).toBe(0);
 });
+it("무관한 중복과 주문 식별자가 없는 부분 행은 대상 주문의 갱신을 막지 않는다", async () => {
+  const target = prior("ABC123", orderId),
+    duplicate = prior("XYZ789", otherId);
+  let rows: (string | number)[][] = [target, duplicate, [...duplicate], ["", "메모"], ["", "다른 메모"]],
+    writes = 0;
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "GET")
+      return Response.json({
+        values: decodeURIComponent(String(raw)).includes("!N2:N2")
+          ? [[orderId.replaceAll("-", "")]]
+          : [["header"], ...rows],
+      });
+    writes++;
+    const cells = JSON.parse(String(init?.body)).requests[0].updateCells.rows[0].values;
+    rows[0] = cells.map(
+      (v: { userEnteredValue: { stringValue?: string; numberValue?: number } }) =>
+        v.userEnteredValue.stringValue ?? v.userEnteredValue.numberValue ?? "",
+    );
+    return Response.json({ spreadsheetId: file, replies: [{}] });
+  };
+  await expect(writeLedgerSheet(input, { fetch: send })).resolves.toBeUndefined();
+  expect(writes).toBe(1);
+});
+it("쓰기 뒤 행을 정렬해도 주문 ID와 내용이 유지되면 성공한다", async () => {
+  const rows: (string | number)[][] = [prior("ABC123", orderId), prior("XYZ789", otherId)];
+  const send = async (raw: string | URL | Request, init?: RequestInit) => {
+    if (init?.method === "GET")
+      return Response.json({
+        values: decodeURIComponent(String(raw)).includes("!N2:N2")
+          ? [[orderId.replaceAll("-", "")]]
+          : [["header"], ...rows],
+      });
+    const cells = JSON.parse(String(init?.body)).requests[0].updateCells.rows[0].values;
+    rows[0] = cells.map(
+      (v: { userEnteredValue: { stringValue?: string; numberValue?: number } }) =>
+        v.userEnteredValue.stringValue ?? v.userEnteredValue.numberValue ?? "",
+    );
+    rows.reverse();
+    return Response.json({ spreadsheetId: file, replies: [{}] });
+  };
+  await expect(writeLedgerSheet(input, { fetch: send })).resolves.toBeUndefined();
+});

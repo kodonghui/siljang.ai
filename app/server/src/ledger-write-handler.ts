@@ -43,7 +43,11 @@ interface Dependencies {
   claim(db: ShopDb, item: DueItem, ctx: LeaseContext): Promise<LedgerWriteSnapshot | null>;
   credential(db: ShopDb, linkId: string, writeId: string, lease: Date): Promise<Secret | null>;
   guard?(db: ShopDb, row: LedgerWriteSnapshot, item: DueItem, ctx: LeaseContext): Promise<boolean>;
-  write(row: LedgerWriteSnapshot, credential: Secret): Promise<Exclude<Result, { readonly status: "retry" }>>;
+  write(
+    row: LedgerWriteSnapshot,
+    credential: Secret,
+    guard?: { readonly signal: AbortSignal; readonly revalidate: () => Promise<boolean> },
+  ): Promise<Exclude<Result, { readonly status: "retry" }>>;
   finish(db: ShopDb, item: DueItem, ctx: LeaseContext, result: Result): Promise<void>;
 }
 
@@ -68,10 +72,10 @@ export function createLedgerWriteHandler(deps: Dependencies): LeasedHandler<Prep
         return { row, credential: null, credentialError: true };
       }
     },
-    async act(prepared) {
+    async act(prepared, _ctx, guard) {
       if (prepared.credentialError) throw new Error("ledger credential unavailable");
       if (prepared.credential === null) return { status: prepared.row.auditing ? "audit_retry" : "auth_lost" };
-      return deps.write(prepared.row, prepared.credential);
+      return deps.write(prepared.row, prepared.credential, guard);
     },
     async record(db, item, prepared, outcome, ctx) {
       await deps.finish(

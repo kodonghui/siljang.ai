@@ -159,16 +159,18 @@ export async function writeLedgerSheet(
     if (rows.length > 5001) throw new LedgerConflictError("ledger row limit");
     return rows.slice(1).map((row) => Array.from({ length: LEDGER_STORAGE_HEADERS.length }, (_, i) => row[i] ?? ""));
   }
-  function key(row: Cell[]): string {
-    return typeof row[13] === "string" && row[13] ? `id:${row[13]}` : `number:${String(row[0])}`;
+  function key(row: Cell[]): string | null {
+    return typeof row[13] === "string" && row[13] ? `id:${row[13]}` : row[0] ? `number:${String(row[0])}` : null;
   }
-  function indexed(rows: Cell[][]): Map<string, Cell[]> {
-    const map = new Map<string, Cell[]>();
+  function indexed(rows: Cell[][]): Map<string, Cell[][]> {
+    const map = new Map<string, Cell[][]>();
     for (const row of rows) {
       if (row.every((cell) => cell === "")) continue;
       const k = key(row);
-      if (map.has(k)) throw new LedgerDuplicateError();
-      map.set(k, row);
+      if (k === null) continue;
+      const group = map.get(k) ?? [];
+      group.push(row);
+      map.set(k, group);
     }
     return map;
   }
@@ -181,6 +183,12 @@ export async function writeLedgerSheet(
             ? { boolValue: value }
             : { stringValue: value },
     }));
+  }
+  function sameRows(left: Cell[][] | undefined, right: Cell[][]): boolean {
+    return (
+      JSON.stringify((left ?? []).map((row) => JSON.stringify(row)).sort()) ===
+      JSON.stringify(right.map((row) => JSON.stringify(row)).sort())
+    );
   }
   async function sendWrite(write: unknown): Promise<void> {
     let result: Record<string, unknown> | null;
@@ -197,7 +205,8 @@ export async function writeLedgerSheet(
     const before = await snapshot(),
       prior = indexed(before);
     const matches = before.flatMap((row, index) => (row[0] === input.values[0] ? [index] : []));
-    if (matches.length > 1) throw new LedgerDuplicateError();
+    const idMatches = before.flatMap((row, index) => (row[13] === orderId ? [index] : []));
+    if (matches.length > 1 || idMatches.length > 1) throw new LedgerDuplicateError();
     const target = matches[0];
     if (input.uncertain && before.some((row) => row[12] === eventId && row[13] === orderId)) return;
     if (target !== undefined) {
@@ -231,19 +240,19 @@ export async function writeLedgerSheet(
       if (error instanceof LedgerConflictError) throw error;
       throw new LedgerUncertainError();
     }
-    let observed: Map<string, Cell[]>;
-    try {
-      observed = indexed(after.filter((row) => row[13] !== orderId));
-    } catch {
-      throw new LedgerConflictError("rows changed");
-    }
+    const observed = indexed(after.filter((row) => row[13] !== orderId));
     const missing: Cell[][] = [];
     let changed = false;
-    for (const [id, old] of prior) {
+    for (const [id, oldRows] of prior) {
       if (id === `id:${orderId}`) continue;
-      const current = observed.get(id);
-      if (!current) missing.push(old);
-      else if (JSON.stringify(current) !== JSON.stringify(old)) changed = true;
+      const remaining = [...(observed.get(id) ?? [])];
+      for (const old of oldRows) {
+        const index = remaining.findIndex((row) => JSON.stringify(row) === JSON.stringify(old));
+        if (index >= 0) remaining.splice(index, 1);
+        else if (remaining.length === 0) missing.push(old);
+        else changed = true;
+      }
+      if (remaining.length) changed = true;
     }
     const targetRows = after.filter((row) => row[13] === orderId);
     if (
@@ -251,8 +260,7 @@ export async function writeLedgerSheet(
       changed ||
       targetRows.length !== 1 ||
       after.filter((row) => row[0] === input.values[0]).length !== 1 ||
-      JSON.stringify(targetRows[0]) !== JSON.stringify(values) ||
-      (target !== undefined && after[target]?.[13] !== orderId)
+      JSON.stringify(targetRows[0]) !== JSON.stringify(values)
     ) {
       if (
         missing.length &&
@@ -269,10 +277,14 @@ export async function writeLedgerSheet(
             },
           });
           const restored = indexed((await snapshot()).filter((row) => row[13] !== orderId));
-          if (missing.some((row) => JSON.stringify(restored.get(key(row))) !== JSON.stringify(row)))
+          if (
+            missing.some(
+              (row) => !restored.get(key(row) ?? "")?.some((value) => JSON.stringify(value) === JSON.stringify(row)),
+            )
+          )
             throw new Error("restore mismatch");
           for (const [id, previous] of observed)
-            if (JSON.stringify(restored.get(id)) !== JSON.stringify(previous)) throw new Error("restore changed");
+            if (!sameRows(restored.get(id), previous)) throw new Error("restore changed");
         } catch {
           /* 복원 실패도 할 일로 알린다. */
         }

@@ -1,4 +1,5 @@
 import type { DueItem, LeaseContext } from "./job-runner";
+import { guardedLedgerFetch } from "./ledger-guarded-fetch";
 import { openLedgerJobCredential } from "./ledger-job-credential";
 import { googleLedgerRefresh } from "./ledger-refresh";
 import { ledgerSheetSetup } from "./ledger-sheet-setup";
@@ -51,15 +52,13 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
       );
       return result.rows[0]?.allowed === true;
     },
-    async write(row, credential) {
+    async write(row, credential, guard) {
+      if (!guard) throw new Error("ledger guard is not available");
       if (settings.ledgerOAuth === null) throw new Error("ledger OAuth is not configured");
       const key = settings.secrets.REQUEST_HASH_KEY;
       if (key === null) throw new Error("ledger key is not configured");
       const deadline = AbortSignal.timeout(15000);
-      const bounded: typeof fetch = (request, init) => {
-        deadline.throwIfAborted();
-        return fetch(request, { ...init, signal: init?.signal ? AbortSignal.any([deadline, init.signal]) : deadline });
-      };
+      const bounded = guardedLedgerFetch(guard, deadline);
       const access = await googleLedgerRefresh(settings.ledgerOAuth, credential, { fetch: bounded });
       if (access === null) return { status: row.auditing ? "audit_retry" : "auth_lost" };
       const setup = await ledgerSheetSetup(key, { fetch: bounded }).connect(access, row.shopId, row.file, row.tab);

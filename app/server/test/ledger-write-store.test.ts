@@ -335,6 +335,44 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
     ).rows[0];
     expect(relinked?.next_attempt_at.getTime()).toBeGreaterThanOrEqual(result?.next_attempt_at.getTime() ?? 0);
   });
+  it("일반 장애의 재시도는 오래된 Cron 예정 시각이 아닌 실패 관측 시각부터 기다린다", async () => {
+    const shop = await createShop(isolated.db, "관측 시각"),
+      link = crypto.randomUUID(),
+      row = crypto.randomUUID(),
+      write = crypto.randomUUID();
+    await isolated.db.query(
+      "INSERT INTO ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref) VALUES($1,$2,$3,'장부','{}',$4)",
+      [link, shop.shopId, "synthetic_sheet_1234567890", crypto.randomUUID()],
+    );
+    await isolated.db.query("INSERT INTO ledger_rows(id,shop_id,order_id) VALUES($1,$2,$3)", [
+      row,
+      shop.shopId,
+      shop.orderId,
+    ]);
+    await isolated.db.query(
+      "INSERT INTO ledger_writes(id,shop_id,ledger_row_id,event_key,event_kind,next_attempt_at) VALUES($1,$2,$3,$4,'changed',now()-interval '1 minute')",
+      [write, shop.shopId, row, `ledger:${write}:changed`],
+    );
+    const observed = new Date(),
+      lease = new Date(observed.getTime() + 120000);
+    await isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
+      shop.shopId,
+      write,
+      lease,
+    ]);
+    await isolated.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,'retry',$4,NULL)", [
+      shop.shopId,
+      write,
+      lease,
+      new Date(observed.getTime() - 120000),
+    ]);
+    const due = (
+      await isolated.db.query<{ next_attempt_at: Date }>("SELECT next_attempt_at FROM ledger_writes WHERE id=$1", [
+        write,
+      ])
+    ).rows[0]?.next_attempt_at;
+    expect(due?.getTime()).toBeGreaterThanOrEqual(observed.getTime() + 59000);
+  });
   it("전송 중 실행기가 종료돼 결과 기록이 없어도 재전송 전 불확실 대기를 한다", async () => {
     const shop = await createShop(isolated.db, "실행기 중단 합성"),
       link = crypto.randomUUID(),

@@ -9,11 +9,13 @@ ALTER TABLE ledger_writes ADD COLUMN write_in_flight boolean NOT NULL DEFAULT fa
 ALTER TABLE ledger_writes ADD COLUMN audit_due_at timestamptz;
 ALTER TABLE ledger_writes ADD COLUMN audit_deadline timestamptz;
 ALTER TABLE ledger_writes ADD COLUMN audit_checks smallint NOT NULL DEFAULT 0 CHECK (audit_checks BETWEEN 0 AND 48);
+ALTER TABLE ledger_writes ADD COLUMN audit_repair_link_id uuid;
 COMMENT ON COLUMN ledger_writes.write_uncertain IS '외부 쓰기 결과 불확실 여부';
 COMMENT ON COLUMN ledger_writes.write_in_flight IS '결과 기록 전 외부 쓰기 시도';
 COMMENT ON COLUMN ledger_writes.audit_due_at IS '중복 정리 다음 확인 시각';
 COMMENT ON COLUMN ledger_writes.audit_deadline IS '중복 정리 확인 기한';
 COMMENT ON COLUMN ledger_writes.audit_checks IS '중복 정리 확인 횟수';
+COMMENT ON COLUMN ledger_writes.audit_repair_link_id IS '사후 확인에서 재기록할 원래 연결';
 DROP INDEX ledger_writes_due_idx;
 CREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending','retrying','alerted');
 CREATE INDEX ledger_writes_audit_due_idx ON ledger_writes (audit_due_at) WHERE status='written' AND audit_due_at IS NOT NULL;
@@ -24,7 +26,7 @@ REVOKE ALL ON TABLE siljang_ledger_private.ledger_call_slots FROM PUBLIC;
 
 -- 전송 중 연결 해제·교체가 완료되지 않도록 호출이 끝날 때까지 연결 행을 잠근다.
 CREATE FUNCTION siljang_ledger_private.guard_ledger_write(p_shop uuid,p_link uuid,p_write uuid,p_lease timestamptz,p_file text,p_tab text)
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog SET lock_timeout='3s' AS $fn$
 BEGIN
   IF p_lease IS NULL OR p_lease<=pg_catalog.statement_timestamp() THEN RETURN false; END IF;
   PERFORM 1 FROM public.ledger_links l WHERE l.shop_id=p_shop AND l.id=p_link AND l.spreadsheet_id=p_file AND l.sheet_name=p_tab
@@ -39,7 +41,7 @@ REVOKE ALL ON FUNCTION siljang_ledger_private.guard_ledger_write(uuid,uuid,uuid,
 CREATE FUNCTION siljang_ledger_private.claim_ledger_write(p_shop uuid,p_write uuid,p_lease timestamptz)
 RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,row_values jsonb,uncertain boolean,auditing boolean,order_id uuid)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
-DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb; v_uncertain boolean; v_audit boolean; v_in_flight boolean; v_next timestamptz;
+DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb; v_uncertain boolean; v_audit boolean; v_in_flight boolean;
 BEGIN
   IF p_lease IS NULL OR p_lease<=pg_catalog.statement_timestamp() OR p_lease>pg_catalog.statement_timestamp()+interval '5 minutes' THEN RETURN; END IF;
   SELECT w.ledger_row_id,w.write_uncertain,(w.status='written'),w.write_in_flight INTO v_order,v_uncertain,v_audit,v_in_flight FROM public.ledger_writes w
@@ -85,9 +87,7 @@ BEGIN
   PERFORM pg_catalog.pg_advisory_xact_lock(157,1);
   DELETE FROM siljang_ledger_private.ledger_call_slots WHERE started_at<=pg_catalog.statement_timestamp()-interval '60 seconds';
   IF (SELECT count(*) FROM siljang_ledger_private.ledger_call_slots)>=5 THEN
-    SELECT min(started_at)+interval '61 seconds' INTO v_next FROM siljang_ledger_private.ledger_call_slots;
-    IF v_audit THEN UPDATE public.ledger_writes SET audit_due_at=v_next WHERE shop_id=p_shop AND id=p_write;
-    ELSE UPDATE public.ledger_writes SET next_attempt_at=v_next WHERE shop_id=p_shop AND id=p_write; END IF;
+    -- 원래 예정 시각을 보존해야 뒤 배치의 더 새 작업에 계속 추월당하지 않는다.
     RETURN;
   END IF;
   INSERT INTO siljang_ledger_private.ledger_call_slots(started_at) VALUES(pg_catalog.statement_timestamp());
@@ -105,7 +105,8 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS 
 DECLARE v_link uuid; v_row uuid; v_order uuid; v_attempts int; v_failed timestamptz; v_alerted timestamptz; v_task uuid; v_delay interval; v_audit boolean; v_deadline timestamptz; v_checks integer;
 BEGIN
   IF p_result NOT IN ('written','retry','auth_lost','uncertain','duplicate','conflict','audit_ok','audit_duplicate','audit_missing','audit_retry') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
-  p_now:=least(p_now,pg_catalog.statement_timestamp());
+  -- 예약 시각이 아니라 결과를 기록한 실제 시각부터 실패 간격을 센다.
+  p_now:=pg_catalog.statement_timestamp();
   SELECT l.id,l.failure_alerted_at INTO v_link,v_alerted FROM public.ledger_links l
     WHERE l.shop_id=p_shop AND l.write_lease_id=p_write AND l.write_lease_until=p_lease AND l.status IN ('linked','auth_lost') FOR UPDATE;
   IF NOT FOUND THEN RETURN false; END IF;
@@ -116,26 +117,26 @@ BEGIN
   IF NOT v_audit THEN UPDATE public.ledger_writes SET write_in_flight=false WHERE shop_id=p_shop AND id=p_write; END IF;
   IF v_audit AND p_result IN ('audit_ok','audit_duplicate','audit_missing','audit_retry') THEN
     IF p_result='audit_missing' THEN
-      UPDATE public.ledger_writes SET status='pending',written_at=NULL,next_attempt_at=p_now,write_uncertain=false,audit_due_at=NULL,audit_deadline=NULL WHERE shop_id=p_shop AND id=p_write;
+      UPDATE public.ledger_writes SET status='pending',written_at=NULL,next_attempt_at=p_now,write_uncertain=false,audit_due_at=NULL,audit_deadline=NULL,audit_repair_link_id=v_link WHERE shop_id=p_shop AND id=p_write;
     ELSE
       UPDATE public.ledger_writes SET audit_checks=least(v_checks+1,48),
         audit_due_at=CASE WHEN v_checks+1>=48 OR p_now>=v_deadline THEN NULL ELSE least(p_now+interval '30 minutes',v_deadline) END,
         audit_deadline=CASE WHEN v_checks+1>=48 OR p_now>=v_deadline THEN NULL ELSE v_deadline END,
         write_uncertain=CASE WHEN v_checks+1>=48 OR p_now>=v_deadline THEN false ELSE true END WHERE shop_id=p_shop AND id=p_write;
       IF p_result='audit_ok' AND EXISTS (SELECT 1 FROM public.owner_tasks WHERE shop_id=p_shop AND event_key='task:ledger_duplicate:'||v_order::text AND closed_at IS NULL) THEN
-        UPDATE public.ledger_writes SET status='pending',written_at=NULL,next_attempt_at=p_now,write_uncertain=false,audit_due_at=NULL,audit_deadline=NULL WHERE shop_id=p_shop AND id=p_write;
+        UPDATE public.ledger_writes SET status='pending',written_at=NULL,next_attempt_at=p_now,write_uncertain=false,audit_due_at=NULL,audit_deadline=NULL,audit_repair_link_id=v_link WHERE shop_id=p_shop AND id=p_write;
       END IF;
       IF p_result='audit_duplicate' THEN
         INSERT INTO public.owner_tasks(shop_id,kind,event_key,order_id,opened_at) VALUES(p_shop,'ledger_relink','task:ledger_duplicate:'||v_order::text,v_order,p_now) ON CONFLICT(shop_id,event_key) DO UPDATE SET closed_at=NULL RETURNING id INTO v_task;
         IF v_task IS NOT NULL THEN INSERT INTO public.owner_alerts(shop_id,kind,event_key,owner_task_id,next_attempt_at,created_at) VALUES(p_shop,'ledger_failing','alert:ledger_duplicate:'||v_order::text,v_task,p_now,p_now) ON CONFLICT(shop_id,event_key) DO NOTHING; END IF;
       END IF;
       IF p_result<>'audit_ok' AND (v_checks+1>=48 OR p_now>=v_deadline) AND EXISTS (SELECT 1 FROM public.owner_tasks WHERE shop_id=p_shop AND event_key='task:ledger_duplicate:'||v_order::text AND closed_at IS NULL) THEN
-        UPDATE public.ledger_writes SET status='retrying',written_at=NULL,next_attempt_at=p_now+interval '5 minutes',last_error_kind='duplicate' WHERE shop_id=p_shop AND id=p_write;
+        UPDATE public.ledger_writes SET status='retrying',written_at=NULL,next_attempt_at=p_now+interval '5 minutes',last_error_kind='duplicate',audit_repair_link_id=v_link WHERE shop_id=p_shop AND id=p_write;
       END IF;
     END IF;
   ELSIF v_audit OR p_result IN ('audit_ok','audit_duplicate','audit_missing','audit_retry') THEN RETURN false;
   ELSIF p_result='written' THEN
-    UPDATE public.ledger_writes SET status='written',written_at=p_now,next_attempt_at=NULL,last_error_kind=NULL,
+    UPDATE public.ledger_writes SET status='written',written_at=p_now,next_attempt_at=NULL,last_error_kind=NULL,audit_repair_link_id=NULL,
       audit_due_at=CASE WHEN write_uncertain THEN p_now+interval '30 minutes' END,
       audit_deadline=CASE WHEN write_uncertain THEN p_now+interval '24 hours' END,audit_checks=0 WHERE shop_id=p_shop AND id=p_write;
     UPDATE public.ledger_rows SET first_written_at=coalesce(first_written_at,p_now),last_written_at=p_now WHERE shop_id=p_shop AND id=v_row;
@@ -227,6 +228,7 @@ BEGIN
     VALUES(p_link,p_shop,p_spreadsheet,p_sheet,p_columns,pg_catalog.gen_random_uuid()::text,least(p_now,pg_catalog.statement_timestamp()));
   IF old_id IS NOT NULL AND (old_file IS DISTINCT FROM p_spreadsheet OR old_sheet IS DISTINCT FROM p_sheet) THEN
     UPDATE public.ledger_writes SET audit_due_at=NULL,audit_deadline=NULL,write_uncertain=false WHERE shop_id=p_shop AND status='written' AND audit_due_at IS NOT NULL;
+    UPDATE public.ledger_writes w SET status='written',written_at=coalesce((SELECT r.last_written_at FROM public.ledger_rows r WHERE r.shop_id=p_shop AND r.id=w.ledger_row_id),pg_catalog.statement_timestamp()),next_attempt_at=NULL,write_uncertain=false,write_in_flight=false,audit_due_at=NULL,audit_deadline=NULL,audit_repair_link_id=NULL WHERE w.shop_id=p_shop AND w.audit_repair_link_id=old_id AND w.status<>'written';
   END IF;
   UPDATE public.ledger_writes SET status='pending',next_attempt_at=greatest(pg_catalog.statement_timestamp(),coalesce(old_lease,pg_catalog.statement_timestamp()), CASE WHEN write_uncertain THEN coalesce(next_attempt_at,pg_catalog.statement_timestamp()) ELSE pg_catalog.statement_timestamp() END)
     WHERE shop_id=p_shop AND status IN ('unlinked','alerted','retrying','pending');

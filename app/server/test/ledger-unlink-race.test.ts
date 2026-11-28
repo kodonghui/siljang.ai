@@ -34,6 +34,38 @@ it.skipIf(!TEST_DATABASE_URL)(
         write,
         lease,
       ]);
+      let releaseBlocker = () => {};
+      let lockedBlocker = () => {};
+      const held = new Promise<void>((resolve) => {
+        lockedBlocker = resolve;
+      });
+      const proceed = new Promise<void>((resolve) => {
+        releaseBlocker = resolve;
+      });
+      const blocker = a.transaction(async (tx) => {
+        await tx.query("SELECT id FROM ledger_links WHERE id=$1 FOR UPDATE", [link]);
+        lockedBlocker();
+        await proceed;
+      });
+      await held;
+      try {
+        await expect(
+          b.transaction(async (tx) => {
+            await tx.query("SET LOCAL statement_timeout='4s'");
+            return tx.query("SELECT siljang_ledger_private.guard_ledger_write($1,$2,$3,$4,$5,$6)", [
+              shop.shopId,
+              link,
+              write,
+              lease,
+              file,
+              "장부",
+            ]);
+          }),
+        ).rejects.toMatchObject({ code: "55P03" });
+      } finally {
+        releaseBlocker();
+        await blocker;
+      }
       let release = () => {};
       const ready = new Promise<void>((resolve) => {
         release = resolve;
@@ -74,4 +106,5 @@ it.skipIf(!TEST_DATABASE_URL)(
       await isolated.close();
     }
   },
+  30000,
 );
