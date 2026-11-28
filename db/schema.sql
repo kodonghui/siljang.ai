@@ -2819,7 +2819,7 @@ REVOKE ALL ON FUNCTION siljang_ledger_private.read_leased_ledger_credential(uuid
 DO $block$
 DECLARE role_name text;
 BEGIN
-  FOREACH role_name IN ARRAY ARRAY['anon','authenticated'] LOOP
+  FOREACH role_name IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
     IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=role_name) THEN
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.read_leased_ledger_credential(uuid,uuid,uuid,timestamptz) FROM %I',role_name);
     END IF;
@@ -2863,7 +2863,7 @@ BEGIN
       CASE o.status WHEN 'requested' THEN '요청됨' WHEN 'awaiting_payment' THEN '결제 기다림' WHEN 'payment_overdue' THEN '결제 기한 지남' WHEN 'confirmed' THEN '확정됨' WHEN 'received' THEN '인도됨' WHEN 'no_pickup' THEN '미수령' WHEN 'rejected' THEN '거절됨' WHEN 'cancelled' THEN '취소됨' END,
       coalesce((SELECT sum(f.amount) FROM public.refunds f WHERE f.shop_id=p_shop AND f.order_id=o.id),0),
       coalesce(pg_catalog.to_char(pr.handed_over_at AT TIME ZONE s.time_zone,'YYYY-MM-DD HH24:MI'),''),
-      coalesce((SELECT CASE m.status WHEN 'confirmed' THEN '확정됨' WHEN 'received' THEN '인도됨' WHEN 'no_pickup' THEN '미수령' WHEN 'cancelled' THEN '취소됨' ELSE m.status END FROM public.orders m WHERE m.shop_id=p_shop AND m.remake_of_order_id=o.id ORDER BY m.requested_at DESC,m.id DESC LIMIT 1),'')) INTO v_values
+      coalesce((SELECT pg_catalog.to_char(m.pickup_at AT TIME ZONE s.time_zone,'YYYY-MM-DD HH24:MI')||' · '||CASE m.status WHEN 'confirmed' THEN '확정됨' WHEN 'received' THEN '인도됨' WHEN 'no_pickup' THEN '미수령' WHEN 'cancelled' THEN '취소됨' ELSE m.status END FROM public.orders m WHERE m.shop_id=p_shop AND m.remake_of_order_id=o.id ORDER BY m.requested_at DESC,m.id DESC LIMIT 1),'')) INTO v_values
     FROM public.orders o JOIN public.shops s ON s.id=o.shop_id
     JOIN public.order_details d ON d.shop_id=o.shop_id AND d.order_id=o.id AND d.version=o.version
     LEFT JOIN public.price_options sz ON sz.id=d.size_option_id AND sz.shop_id=o.shop_id
@@ -2904,12 +2904,14 @@ BEGIN
         audit_due_at=CASE WHEN v_checks+1>=48 OR p_now>=v_deadline THEN NULL ELSE least(p_now+interval '30 minutes',v_deadline) END,
         audit_deadline=CASE WHEN v_checks+1>=48 OR p_now>=v_deadline THEN NULL ELSE v_deadline END,
         write_uncertain=CASE WHEN v_checks+1>=48 OR p_now>=v_deadline THEN false ELSE true END WHERE shop_id=p_shop AND id=p_write;
-      IF p_result='audit_ok' THEN UPDATE public.owner_tasks SET closed_at=p_now WHERE shop_id=p_shop AND event_key='task:ledger_duplicate:'||v_order::text AND closed_at IS NULL; END IF;
+      IF p_result='audit_ok' AND EXISTS (SELECT 1 FROM public.owner_tasks WHERE shop_id=p_shop AND event_key='task:ledger_duplicate:'||v_order::text AND closed_at IS NULL) THEN
+        UPDATE public.ledger_writes SET status='pending',written_at=NULL,next_attempt_at=p_now,write_uncertain=false,audit_due_at=NULL,audit_deadline=NULL WHERE shop_id=p_shop AND id=p_write;
+      END IF;
       IF p_result='audit_duplicate' THEN
         INSERT INTO public.owner_tasks(shop_id,kind,event_key,order_id,opened_at) VALUES(p_shop,'ledger_relink','task:ledger_duplicate:'||v_order::text,v_order,p_now) ON CONFLICT(shop_id,event_key) DO UPDATE SET closed_at=NULL RETURNING id INTO v_task;
         IF v_task IS NOT NULL THEN INSERT INTO public.owner_alerts(shop_id,kind,event_key,owner_task_id,next_attempt_at,created_at) VALUES(p_shop,'ledger_failing','alert:ledger_duplicate:'||v_order::text,v_task,p_now,p_now) ON CONFLICT(shop_id,event_key) DO NOTHING; END IF;
       END IF;
-      IF (v_checks+1>=48 OR p_now>=v_deadline) AND EXISTS (SELECT 1 FROM public.owner_tasks WHERE shop_id=p_shop AND event_key='task:ledger_duplicate:'||v_order::text AND closed_at IS NULL) THEN
+      IF p_result<>'audit_ok' AND (v_checks+1>=48 OR p_now>=v_deadline) AND EXISTS (SELECT 1 FROM public.owner_tasks WHERE shop_id=p_shop AND event_key='task:ledger_duplicate:'||v_order::text AND closed_at IS NULL) THEN
         UPDATE public.ledger_writes SET status='retrying',written_at=NULL,next_attempt_at=p_now+interval '5 minutes',last_error_kind='duplicate' WHERE shop_id=p_shop AND id=p_write;
       END IF;
     END IF;
@@ -2938,7 +2940,7 @@ BEGIN
     v_delay:=CASE v_attempts WHEN 1 THEN interval '1 minute' WHEN 2 THEN interval '5 minutes' WHEN 3 THEN interval '30 minutes' WHEN 4 THEN interval '2 hours' WHEN 5 THEN interval '6 hours' ELSE interval '1 day' END;
     UPDATE public.ledger_writes SET status=CASE WHEN p_result='auth_lost' OR v_alerted IS NOT NULL OR p_now>=v_failed+interval '24 hours' THEN 'alerted' ELSE 'retrying' END,
       first_failed_at=v_failed,write_uncertain=write_uncertain OR p_result='uncertain',last_error_kind=CASE WHEN p_result='auth_lost' THEN 'auth_lost' ELSE 'unavailable' END,
-      next_attempt_at=CASE WHEN p_result='uncertain' THEN p_now+interval '5 minutes' WHEN p_result='auth_lost' OR v_alerted IS NOT NULL OR p_now>=v_failed+interval '24 hours'
+      next_attempt_at=CASE WHEN p_result='uncertain' THEN pg_catalog.statement_timestamp()+interval '5 minutes' WHEN p_result='auth_lost' OR v_alerted IS NOT NULL OR p_now>=v_failed+interval '24 hours'
         THEN p_now+interval '1 day' ELSE least(p_now+v_delay,v_failed+interval '24 hours') END WHERE shop_id=p_shop AND id=p_write;
     IF (p_result='auth_lost' OR p_now>=v_failed+interval '24 hours') AND v_alerted IS NULL THEN
       INSERT INTO public.owner_tasks(shop_id,kind,event_key,opened_at) VALUES(p_shop,'ledger_relink','task:ledger_relink:'||v_link::text,p_now)
@@ -2962,7 +2964,7 @@ REVOKE ALL ON FUNCTION siljang_ledger_private.count_unwritten_orders(uuid) FROM 
 DO $block$
 DECLARE role_name text;
 BEGIN
-  FOREACH role_name IN ARRAY ARRAY['anon','authenticated'] LOOP
+  FOREACH role_name IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
     IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=role_name) THEN
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz) FROM %I',role_name);
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.finish_ledger_write(uuid,uuid,timestamptz,text,timestamptz,jsonb) FROM %I',role_name);
@@ -2996,7 +2998,7 @@ BEGIN
   END IF;
   INSERT INTO public.ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref,linked_at)
     VALUES(p_link,p_shop,p_spreadsheet,p_sheet,p_columns,pg_catalog.gen_random_uuid()::text,least(p_now,pg_catalog.statement_timestamp()));
-  UPDATE public.ledger_writes SET status='pending',next_attempt_at=greatest(pg_catalog.statement_timestamp(),coalesce(old_lease,pg_catalog.statement_timestamp()))
+  UPDATE public.ledger_writes SET status='pending',next_attempt_at=greatest(pg_catalog.statement_timestamp(),coalesce(old_lease,pg_catalog.statement_timestamp()), CASE WHEN write_uncertain THEN coalesce(next_attempt_at,pg_catalog.statement_timestamp()) ELSE pg_catalog.statement_timestamp() END)
     WHERE shop_id=p_shop AND status IN ('unlinked','alerted','retrying','pending');
   RETURN QUERY SELECT CASE WHEN old_id IS NULL THEN 'created' ELSE 'relinked' END;
 END

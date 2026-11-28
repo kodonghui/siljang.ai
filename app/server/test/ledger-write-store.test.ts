@@ -72,6 +72,10 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         [shop.orderId, remake],
       );
     });
+    await isolated.db.transaction(async (tx) => {
+      await tx.query("UPDATE orders SET pickup_at=pickup_at+interval '1 hour' WHERE id=$1", [remake]);
+      await tx.query("UPDATE order_details SET pickup_at=pickup_at+interval '1 hour' WHERE order_id=$1", [remake]);
+    });
     const lease = new Date(Date.now() + 120000);
     const claim = (id: string) =>
       isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [shop.shopId, id, lease]);
@@ -85,7 +89,14 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
     expect(values).toHaveLength(12);
     expect(values[5]).toBe("최신 문구");
     expect(values[8]).toBe("결제 기다림");
-    expect(values[11]).toBe("취소됨");
+    expect(values[11]).toContain("취소됨");
+    const remakePickup = (
+      await isolated.db.query<{ value: string }>(
+        "SELECT to_char(o.pickup_at AT TIME ZONE s.time_zone,'YYYY-MM-DD HH24:MI') AS value FROM orders o JOIN shops s ON s.id=o.shop_id WHERE o.id=$1",
+        [remake],
+      )
+    ).rows[0]?.value;
+    expect(values[11]).toContain(remakePickup);
     expect(JSON.stringify(values)).not.toContain("장부에 없어야 함");
     expect((await isolated.db.query("SELECT id FROM ledger_rows WHERE order_id=$1", [remake])).rowCount).toBe(0);
     const credential = (shopId: string, linkId: string, writeId: string, until: Date) =>
@@ -267,8 +278,9 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
       "INSERT INTO ledger_writes(id,shop_id,ledger_row_id,event_key,event_kind,next_attempt_at) VALUES($1,$2,$3,$4,'changed',now()-interval '1 minute')",
       [write, shop.shopId, row, `ledger:${write}:changed`],
     );
-    const now = new Date(),
-      lease = new Date(now.getTime() + 120000);
+    const observed = new Date(),
+      now = new Date(observed.getTime() - 120000),
+      lease = new Date(observed.getTime() + 120000);
     await isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
       shop.shopId,
       write,
@@ -289,7 +301,35 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
     ).rows[0];
     expect(result?.status).toBe("retrying");
     expect(result?.write_uncertain).toBe(true);
-    expect(result?.next_attempt_at.getTime()).toBeGreaterThanOrEqual(now.getTime() + 299000);
+    expect(result?.next_attempt_at.getTime()).toBeGreaterThanOrEqual(observed.getTime() + 299000);
+    const revision = (
+      await isolated.db.query<{ revision: string }>("SELECT xmin::text AS revision FROM ledger_links WHERE id=$1", [
+        link,
+      ])
+    ).rows[0]?.revision;
+    expect(
+      (
+        await isolated.db.query<{ outcome: string }>(
+          "SELECT * FROM siljang_ledger_private.create_owner_ledger($1,$2,$3,$4,$5,$6::jsonb,$7,$8)",
+          [
+            shop.shopId,
+            shop.ownerId,
+            crypto.randomUUID(),
+            "synthetic_sheet_1234567890",
+            "장부",
+            "{}",
+            revision,
+            new Date(),
+          ],
+        )
+      ).rows[0]?.outcome,
+    ).toBe("relinked");
+    const relinked = (
+      await isolated.db.query<{ next_attempt_at: Date }>("SELECT next_attempt_at FROM ledger_writes WHERE id=$1", [
+        write,
+      ])
+    ).rows[0];
+    expect(relinked?.next_attempt_at.getTime()).toBeGreaterThanOrEqual(result?.next_attempt_at.getTime() ?? 0);
   });
   it("전송 중 실행기가 종료돼 결과 기록이 없어도 재전송 전 불확실 대기를 한다", async () => {
     const shop = await createShop(isolated.db, "실행기 중단 합성"),
@@ -442,6 +482,10 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
     ).rows[0];
     expect(scheduled?.audit_due_at.getTime()).toBeGreaterThan(Date.now() + 29 * 60000);
     await isolated.db.query(
+      "INSERT INTO owner_tasks(shop_id,kind,event_key,order_id,opened_at) VALUES($1,'ledger_relink',$2,$3,now())",
+      [shop.shopId, `task:ledger_duplicate:${shop.orderId}`, shop.orderId],
+    );
+    await isolated.db.query(
       "UPDATE ledger_writes SET audit_due_at=now()-interval '1 minute',audit_deadline=now()-interval '1 second' WHERE id=$1",
       [write],
     );
@@ -458,13 +502,26 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
       new Date(),
     ]);
     const done = (
-      await isolated.db.query<{ audit_due_at: Date | null; write_uncertain: boolean }>(
-        "SELECT audit_due_at,write_uncertain FROM ledger_writes WHERE id=$1",
+      await isolated.db.query<{ audit_due_at: Date | null; write_uncertain: boolean; status: string }>(
+        "SELECT audit_due_at,write_uncertain,status FROM ledger_writes WHERE id=$1",
         [write],
       )
     ).rows[0];
     expect(done?.audit_due_at).toBeNull();
     expect(done?.write_uncertain).toBe(false);
+    expect(done?.status).toBe("pending");
+    expect(
+      (
+        await isolated.db.query("SELECT id FROM owner_tasks WHERE shop_id=$1 AND event_key=$2 AND closed_at IS NULL", [
+          shop.shopId,
+          `task:ledger_duplicate:${shop.orderId}`,
+        ])
+      ).rowCount,
+    ).toBe(1);
+    await isolated.db.query(
+      "UPDATE ledger_writes SET status='written',written_at=now(),next_attempt_at=NULL WHERE id=$1",
+      [write],
+    );
   });
   it("제한 역할 예약 실행에서 Vault 암호문을 열고 구글 모의 시트에 현재 행을 쓴다", async () => {
     const shop = await createShop(isolated.db, "합성 실행기"),

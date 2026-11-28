@@ -20,7 +20,7 @@ REVOKE ALL ON FUNCTION siljang_ledger_private.read_leased_ledger_credential(uuid
 DO $block$
 DECLARE role_name text;
 BEGIN
-  FOREACH role_name IN ARRAY ARRAY['anon','authenticated'] LOOP
+  FOREACH role_name IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
     IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=role_name) THEN
       EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION siljang_ledger_private.read_leased_ledger_credential(uuid,uuid,uuid,timestamptz) FROM %I',role_name);
     END IF;
