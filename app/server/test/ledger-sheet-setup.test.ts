@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { toBase64Url } from "../src/encoding";
 import { GoogleLedgerUnavailableError } from "../src/ledger-google-auth";
 import { LEDGER_HEADERS, LEDGER_STORAGE_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
 import { ledgerSheetSetup } from "../src/ledger-sheet-setup";
@@ -16,6 +17,7 @@ function fixture() {
     markers: Record<string, unknown>[] = [],
     lost = false,
     writeStatus = 200,
+    writeBody = "synthetic private Google error",
     badId = false,
     collaborate = false,
     corruptReadback = false,
@@ -38,7 +40,7 @@ function fixture() {
       const body = JSON.parse(init.body as string);
       writes.push(body);
       if (writeStatus !== 200)
-        return new Response("synthetic private Google error", {
+        return new Response(writeBody, {
           status: writeStatus,
           headers: { location: "https://other.example/collect" },
         });
@@ -139,6 +141,9 @@ function fixture() {
     set writeStatus(value: number) {
       writeStatus = value;
     },
+    set writeBody(value: string) {
+      writeBody = value;
+    },
     set badId(value: boolean) {
       badId = value;
     },
@@ -154,6 +159,30 @@ function fixture() {
   };
 }
 describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
+  it.each(["new", "legacy"])("%s 열 쓰기의 403 쿼터 오류는 재시도한다", async (kind) => {
+    const f = fixture();
+    if (kind === "legacy") {
+      const hmac = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(f.key.reveal()),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const bytes = new TextEncoder().encode(
+        JSON.stringify(["ledger-columns", 1, shop, file, sheetId, 26, 38, true, LEDGER_HEADERS]),
+      );
+      const signature = toBase64Url(new Uint8Array(await crypto.subtle.sign("HMAC", hmac, bytes)));
+      f.count = 38;
+      f.headers = [...Array(26).fill(""), ...LEDGER_HEADERS];
+      f.markers = [f.marker(`c1.q.1.${signature}`, 26)];
+    }
+    f.writeStatus = 403;
+    f.writeBody = JSON.stringify({ error: { errors: [{ reason: "userRateLimitExceeded" }] } });
+    await expect(ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).rejects.toBeInstanceOf(
+      GoogleLedgerUnavailableError,
+    );
+  });
   it("기존 표 너비 뒤에 새 열을 삽입하고 헤더/서명 메타데이터를 함께 쓴 뒤 다시 읽는다", async () => {
     const f = fixture(),
       result = await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab);

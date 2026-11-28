@@ -1,6 +1,6 @@
 import { readBytesLimited } from "./body";
 import { GoogleLedgerUnavailableError } from "./ledger-google-auth";
-import { googleLedgerSheets, type LedgerSheetSnapshot } from "./ledger-google-sheet";
+import { googleLedgerDenied, googleLedgerSheets, type LedgerSheetSnapshot } from "./ledger-google-sheet";
 import {
   LEDGER_HEADERS,
   LEDGER_MAX_COLUMNS,
@@ -153,9 +153,7 @@ export function ledgerSheetSetup(
             }),
           });
           if (!response.ok) {
-            await response.body?.cancel().catch(() => {});
-            if ([400, 401, 403, 404].includes(response.status)) return null;
-            throw new GoogleLedgerUnavailableError();
+            if (await googleLedgerDenied(response)) return null;
           }
           const raw: unknown = JSON.parse(
             new TextDecoder().decode(await readBytesLimited(response, 65536, () => new GoogleLedgerUnavailableError())),
@@ -234,9 +232,7 @@ export function ledgerSheetSetup(
           }),
         });
         if (!response.ok) {
-          await response.body?.cancel().catch(() => {});
-          if ([400, 401, 403, 404].includes(response.status)) return null;
-          throw new GoogleLedgerUnavailableError();
+          if (await googleLedgerDenied(response)) return null;
         }
         const bytes = await readBytesLimited(response, 65536, () => new GoogleLedgerUnavailableError()),
           raw: unknown = JSON.parse(new TextDecoder().decode(bytes));

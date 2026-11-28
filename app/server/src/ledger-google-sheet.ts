@@ -17,6 +17,32 @@ function object(value: unknown): Record<string, unknown> | null {
     ? (value as Record<string, unknown>)
     : null;
 }
+/** 할당량 403은 재시도하고, 명백한 권한 거절만 연결 상실로 분류한다. */
+export async function googleLedgerDenied(response: Response): Promise<boolean> {
+  if (response.status === 403) {
+    const text = new TextDecoder().decode(
+      await readBytesLimited(response, 16384, () => new GoogleLedgerUnavailableError()),
+    );
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return true;
+    }
+    const errors = object(object(body)?.error)?.errors;
+    if (
+      Array.isArray(errors) &&
+      errors.some((entry) =>
+        ["userRateLimitExceeded", "rateLimitExceeded", "quotaExceeded"].includes(String(object(entry)?.reason)),
+      )
+    )
+      throw new GoogleLedgerUnavailableError();
+    return true;
+  }
+  await response.body?.cancel().catch(() => {});
+  if ([400, 401, 404].includes(response.status)) return true;
+  throw new GoogleLedgerUnavailableError();
+}
 export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {}) {
   const send = options.fetch ?? fetch;
   async function read(url: URL, accessToken: Secret): Promise<unknown> {
@@ -27,29 +53,7 @@ export function googleLedgerSheets(options: { readonly fetch?: typeof fetch; rea
       headers: { Authorization: `Bearer ${accessToken.reveal()}` },
     });
     if (!response.ok) {
-      if (response.status === 403) {
-        let body: unknown;
-        try {
-          body = JSON.parse(
-            new TextDecoder().decode(await readBytesLimited(response, 16384, () => new GoogleLedgerUnavailableError())),
-          );
-        } catch {
-          throw new GoogleLedgerUnavailableError();
-        }
-        const details = object(body)?.error;
-        const errors = object(details)?.errors;
-        if (
-          Array.isArray(errors) &&
-          errors.some((entry) =>
-            ["userRateLimitExceeded", "rateLimitExceeded", "quotaExceeded"].includes(String(object(entry)?.reason)),
-          )
-        )
-          throw new GoogleLedgerUnavailableError();
-        return DENIED;
-      }
-      await response.body?.cancel().catch(() => {});
-      if ([400, 401, 403, 404].includes(response.status)) return DENIED;
-      throw new GoogleLedgerUnavailableError();
+      if (await googleLedgerDenied(response)) return DENIED;
     }
     const bytes = await readBytesLimited(response, MAX_BYTES, () => new GoogleLedgerUnavailableError());
     return JSON.parse(new TextDecoder().decode(bytes));
