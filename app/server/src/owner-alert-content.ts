@@ -29,12 +29,18 @@ export async function ownerAlertContent(
       break;
     }
     case "handoff_appended":
-    case "ledger_failing":
     case "payment_account_changed":
     case "identity_change_applied":
     case "channel_event_unavailable":
       alert = { kind: row.kind };
       break;
+    case "ledger_failing": {
+      const unwritten = await db.run<{ count: number }>(
+        "SELECT siljang_ledger_private.count_unwritten_orders($1) AS count",
+      );
+      alert = { kind: row.kind, count: unwritten.rows[0]?.count ?? 0 };
+      break;
+    }
     case "license_on_hold":
     case "identity_change_on_hold":
       alert = { kind: row.kind, reason: "자세한 내용은 영업 신고 화면에서 확인해 주세요" };

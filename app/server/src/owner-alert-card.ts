@@ -18,14 +18,10 @@ export const TASK_LABELS = {
 
 export type OwnerAlert =
   | { kind: "new_task"; task: keyof typeof TASK_LABELS; count: number }
+  | { kind: "ledger_failing"; count: number }
   | { kind: "task_realert"; task: keyof typeof TASK_LABELS }
   | {
-      kind:
-        | "handoff_appended"
-        | "ledger_failing"
-        | "payment_account_changed"
-        | "identity_change_applied"
-        | "channel_event_unavailable";
+      kind: "handoff_appended" | "payment_account_changed" | "identity_change_applied" | "channel_event_unavailable";
     }
   | { kind: "license_on_hold" | "identity_change_on_hold"; reason: string }
   | {
@@ -71,7 +67,7 @@ function describeAlert(alert: OwnerAlert): AlertCard {
     case "handoff_appended":
       return taskCard("에스컬레이션 건에 새 질문이 있어요");
     case "ledger_failing":
-      return taskCard(`${taskSubject("ledger_relink")} 생겼어요`);
+      return taskCard(`장부에 못 적은 주문 ${alert.count}건, 장부 연결을 다시 해 주세요`);
     case "license_on_hold":
       return taskCard(`영업 신고가 보류됐어요: ${alert.reason}`);
     case "payment_account_changed":

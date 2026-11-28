@@ -26,6 +26,10 @@ const dayBeforeFailures = (fields: { errorName: string; dbCode?: string }) => [
   { level: "error", event: "job_find_failed", job: "day_before_notice", ...fields },
   { level: "warn", event: "job_run", job: "day_before_notice", count: 0 },
 ];
+const ledgerFailures = (fields: { errorName: string; dbCode?: string }) => [
+  { level: "error", event: "job_find_failed", job: "ledger_write", ...fields },
+  { level: "warn", event: "job_run", job: "ledger_write", count: 0 },
+];
 
 describe("기본 Cron의 매분 연결 확인", () => {
   it("실행 시각 밖에도 DB 연결 실패를 숨기지 않고 다음 분에 다시 확인할 수 있게 남김", async () => {
@@ -34,11 +38,13 @@ describe("기본 Cron의 매분 연결 확인", () => {
     expect(result?.jobs.purge?.failed).toBe(1);
     expect(result?.jobs.consultation_idle?.failed).toBe(3);
     expect(result?.jobs.day_before_notice?.failed).toBe(1);
+    expect(result?.jobs.ledger_write?.failed).toBe(1);
     expect(result?.jobs.customer_notice?.failed).toBe(2);
     expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
       { level: "error", event: "job_start_failed", job: "purge", errorName: "DbUnavailableError" },
       ...idleFailures({ errorName: "DbUnavailableError" }),
       ...dayBeforeFailures({ errorName: "DbUnavailableError" }),
+      ...ledgerFailures({ errorName: "DbUnavailableError" }),
       ...noticeFailures({ errorName: "DbUnavailableError" }),
     ]);
   });
@@ -62,12 +68,14 @@ describe("기본 Cron의 매분 연결 확인", () => {
     expect(result?.jobs.purge?.failed).toBe(1);
     expect(result?.jobs.consultation_idle?.failed).toBe(3);
     expect(result?.jobs.day_before_notice?.failed).toBe(1);
+    expect(result?.jobs.ledger_write?.failed).toBe(1);
     expect(result?.jobs.customer_notice?.failed).toBe(2);
     expect(closed).toBe(1);
     expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
       { level: "error", event: "job_start_failed", job: "purge", errorName: "DatabaseError", dbCode: "42501" },
       ...idleFailures({ errorName: "DatabaseError", dbCode: "42501" }),
       ...dayBeforeFailures({ errorName: "DatabaseError", dbCode: "42501" }),
+      ...ledgerFailures({ errorName: "DatabaseError", dbCode: "42501" }),
       ...noticeFailures({ errorName: "DatabaseError", dbCode: "42501" }),
       {
         level: "error",
@@ -96,6 +104,7 @@ describeDb("시작 표시 조회와 실제 실행의 분리", () => {
     let consultationReads = 0;
     let noticeReads = 0;
     let dayBeforeReads = 0;
+    let ledgerReads = 0;
     const db: RequestDb = {
       query: async (sql, params) => {
         if (sql.includes("FROM messages t")) {
@@ -110,6 +119,9 @@ describeDb("시작 표시 조회와 실제 실행의 분리", () => {
         } else if (sql.includes("FROM orders t")) {
           expect(sql).toMatch(/^SELECT t\.shop_id, t\.id, t\.confirmed_at AS due_at/);
           dayBeforeReads += 1;
+        } else if (sql.includes("FROM ledger_writes t")) {
+          expect(sql).toMatch(/^SELECT t\.shop_id, t\.id, t\.next_attempt_at AS due_at/);
+          ledgerReads += 1;
         } else {
           expect(sql).toMatch(/SELECT.*FROM ops_events/s);
           reads += 1;
@@ -131,6 +143,7 @@ describeDb("시작 표시 조회와 실제 실행의 분리", () => {
         expect(result?.jobs.purge).toEqual({ found: 0, done: 0, skipped: 0, failed: 0 });
         expect(result?.jobs.consultation_idle).toEqual({ found: 0, done: 0, skipped: 0, failed: 0 });
         expect(result?.jobs.day_before_notice).toEqual({ found: 0, done: 0, skipped: 0, failed: 0 });
+        expect(result?.jobs.ledger_write).toEqual({ found: 0, done: 0, skipped: 0, failed: 0 });
         expect(result?.jobs.customer_notice).toEqual({ found: 0, done: 0, skipped: 0, failed: 0 });
         expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
           { level: "info", event: "job_polled", job: "purge" },
@@ -142,6 +155,7 @@ describeDb("시작 표시 조회와 실제 실행의 분리", () => {
       expect(consultationReads).toBe(9);
       expect(noticeReads).toBe(6);
       expect(dayBeforeReads).toBe(3);
+      expect(ledgerReads).toBe(3);
       expect((await base.query("SELECT count(*)::int AS n FROM ops_events")).rows).toEqual(before.rows);
     } finally {
       await base.close();
