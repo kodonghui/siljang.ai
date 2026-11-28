@@ -2,7 +2,7 @@ import type { DueItem, LeaseContext } from "./job-runner";
 import { openLedgerJobCredential } from "./ledger-job-credential";
 import { googleLedgerRefresh } from "./ledger-refresh";
 import { ledgerSheetSetup } from "./ledger-sheet-setup";
-import { writeLedgerSheet } from "./ledger-sheet-write";
+import { auditLedgerSheet, writeLedgerSheet } from "./ledger-sheet-write";
 import { createLedgerWriteHandler, type LedgerWriteSnapshot } from "./ledger-write-handler";
 import type { Services } from "./services";
 import type { Settings } from "./settings";
@@ -18,6 +18,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         sheet_name: string;
         row_values: unknown;
         uncertain: boolean;
+        auditing: boolean;
       }>("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [item.id, ctx.leaseUntil]);
       const row = result.rows[0];
       if (!row) return null;
@@ -31,6 +32,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         shopId: db.scope.shopId,
         eventId: item.id,
         uncertain: row.uncertain,
+        auditing: row.auditing,
         linkId: row.link_id,
         file: row.spreadsheet_id,
         tab: row.sheet_name,
@@ -50,23 +52,25 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
         return fetch(request, { ...init, signal: init?.signal ? AbortSignal.any([deadline, init.signal]) : deadline });
       };
       const access = await googleLedgerRefresh(settings.ledgerOAuth, credential, { fetch: bounded });
-      if (access === null) return { status: "auth_lost" };
+      if (access === null) return { status: row.auditing ? "audit_retry" : "auth_lost" };
       const setup = await ledgerSheetSetup(key, { fetch: bounded }).connect(access, row.shopId, row.file, row.tab);
-      if (setup === null) return { status: "auth_lost" };
-      await writeLedgerSheet(
-        {
-          file: row.file,
-          tab: row.tab,
-          access,
-          setup,
-          values: row.values,
-          shopId: row.shopId,
-          linkId: row.linkId,
-          eventId: row.eventId,
-          uncertain: row.uncertain,
-        },
-        { fetch: bounded },
-      );
+      if (setup === null) return { status: row.auditing ? "audit_retry" : "auth_lost" };
+      const input = {
+        file: row.file,
+        tab: row.tab,
+        access,
+        setup,
+        values: row.values,
+        shopId: row.shopId,
+        linkId: row.linkId,
+        eventId: row.eventId,
+        uncertain: row.uncertain,
+      };
+      if (row.auditing) {
+        const result = await auditLedgerSheet(input, { fetch: bounded });
+        return { status: result === "ok" ? "audit_ok" : result === "missing" ? "audit_missing" : "audit_duplicate" };
+      }
+      await writeLedgerSheet(input, { fetch: bounded });
       return {
         status: "written",
         columns: { columns: setup.columns, movedRight: setup.movedRight, ownershipToken: setup.ownershipToken },

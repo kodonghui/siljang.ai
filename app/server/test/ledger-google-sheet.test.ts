@@ -122,7 +122,7 @@ describe("구글 장부 조회: 고정 주소/첫 행/토큰 비노출", () => {
       { ...valid, location: { dimensionRange: { ...valid.location.dimensionRange, endIndex: 27 } } },
     ];
     const result = await googleLedgerSheets({ fetch: sequence([reply(data), reply({})]) }).inspect(token(), file, tab);
-    expect(result?.markers).toEqual([{ token: "c1.fixture.signed", start: 2, end: 14 }]);
+    expect(result?.markers).toEqual([{ token: "c1.fixture.signed", start: 2, end: 15 }]);
   });
   it.each([400, 401, 403, 404])("메타데이터 HTTP%s는 연결하지 않고 오류 본문을 반환하지 않는다", async (status) => {
     const send = sequence([reply({ error: crypto.randomUUID() }, status)]);

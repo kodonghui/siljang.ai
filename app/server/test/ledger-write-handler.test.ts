@@ -12,6 +12,7 @@ const row = {
   shopId,
   eventId: writeId,
   uncertain: false,
+  auditing: false,
   linkId,
   file: "synthetic_sheet_1234567890",
   tab: "장부",
@@ -64,5 +65,33 @@ describe("장부 쓰기 임대 처리", () => {
     await expect(handler.act(prepared, ctx)).rejects.toThrow();
     await handler.record(db, item, prepared, { ok: false, errorName: "Error" }, ctx);
     expect(finish).toHaveBeenCalledWith(db, item, ctx, { status: "retry" });
+  });
+  it("중복 주문은 일반 장애로 덮어쓰지 않고 사장님 확인 상태로 남긴다", async () => {
+    const finish = vi.fn(async () => {});
+    const handler = createLedgerWriteHandler({
+      claim: async () => row,
+      finish,
+      credential: async () => new Secret("token"),
+      write: async () => ({ status: "auth_lost" }),
+    });
+    const db = {} as ShopDb,
+      prepared = await handler.lease(db, item, ctx);
+    if (!prepared) throw new Error("missing lease");
+    await handler.record(db, item, prepared, { ok: false, errorName: "LedgerDuplicateError" }, ctx);
+    expect(finish).toHaveBeenCalledWith(db, item, ctx, { status: "duplicate" });
+  });
+  it("실행기 외부 호출 시간 초과도 결과 불확실 상태로 남긴다", async () => {
+    const finish = vi.fn(async () => {});
+    const handler = createLedgerWriteHandler({
+      claim: async () => row,
+      finish,
+      credential: async () => new Secret("token"),
+      write: async () => ({ status: "auth_lost" }),
+    });
+    const db = {} as ShopDb,
+      prepared = await handler.lease(db, item, ctx);
+    if (!prepared) throw new Error("missing lease");
+    await handler.record(db, item, prepared, { ok: false, errorName: "JobActTimeoutError" }, ctx);
+    expect(finish).toHaveBeenCalledWith(db, item, ctx, { status: "uncertain" });
   });
 });

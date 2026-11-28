@@ -259,7 +259,7 @@ GRANT EXECUTE ON FUNCTION siljang_ledger_private.ledger_vault_ready() TO :"runti
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.consume_owner_ledger_code(uuid,uuid,text) TO :"runtime_role";
 
 -- TASK-157: 대기 중 작업의 식별과 잠금만 직접 허용하고 Vault는 전용 함수로 접근한다.
-GRANT SELECT (shop_id,id,status,next_attempt_at), UPDATE (next_attempt_at) ON ledger_writes TO :"runtime_role";
+GRANT SELECT (shop_id,id,status,next_attempt_at,audit_due_at), UPDATE (next_attempt_at) ON ledger_writes TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.read_leased_ledger_credential(uuid,uuid,uuid,timestamptz) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz),siljang_ledger_private.finish_ledger_write(uuid,uuid,timestamptz,text,timestamptz,jsonb) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION siljang_ledger_private.count_unwritten_orders(uuid) TO :"runtime_role";

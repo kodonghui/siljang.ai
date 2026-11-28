@@ -13,6 +13,60 @@ export class LedgerUncertainError extends Error {
 }
 class LedgerDefiniteError extends Error {}
 
+/** 중복을 탐지할 뿐 시트의 행을 삭제하거나 수정하지 않는다. */
+export async function auditLedgerSheet(
+  input: Parameters<typeof writeLedgerSheet>[0],
+  options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {},
+): Promise<"ok" | "duplicate" | "missing"> {
+  if (
+    !/^[A-Za-z0-9_-]{20,100}$/.test(input.file) ||
+    !/^[0-9A-Z]{6,8}$/.test(String(input.values[0])) ||
+    input.setup.end !== input.setup.start + LEDGER_STORAGE_HEADERS.length ||
+    !isUuid(input.eventId)
+  )
+    throw new TypeError("invalid ledger audit");
+  const tab = `'${input.tab.replaceAll("'", "''")}'`,
+    base = `https://sheets.googleapis.com/v4/spreadsheets/${input.file}/values/`;
+  async function read(index: number, start?: number, end?: number): Promise<unknown[][]> {
+    const column = ledgerColumnName(index),
+      range = start === undefined ? `${column}:${column}` : `${column}${start}:${column}${end}`,
+      url = new URL(base + encodeURIComponent(`${tab}!${range}`));
+    url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
+    const response = await (options.fetch ?? fetch)(url.href, {
+      method: "GET",
+      redirect: "manual",
+      signal: AbortSignal.timeout(options.timeoutMs ?? 5000),
+      headers: { Authorization: `Bearer ${input.access.reveal()}` },
+    });
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => {});
+      throw new GoogleLedgerUnavailableError();
+    }
+    const raw: unknown = JSON.parse(
+      new TextDecoder().decode(
+        await readBytesLimited(response, 2 * 1024 * 1024, () => new GoogleLedgerUnavailableError()),
+      ),
+    );
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new GoogleLedgerUnavailableError();
+    const rows = (raw as Record<string, unknown>).values ?? [];
+    if (!Array.isArray(rows) || rows.length > 100000 || rows.some((row) => !Array.isArray(row) || row.length > 1))
+      throw new GoogleLedgerUnavailableError();
+    return rows as unknown[][];
+  }
+  try {
+    const orders = await read(input.setup.start),
+      lastRow = Math.max(2, orders.length),
+      ids = await read(input.setup.end - 1, Math.max(2, lastRow - 9999), lastRow),
+      event = input.eventId.replaceAll("-", "").toLowerCase();
+    const idCount = ids.filter((row) => row[0] === event).length;
+    const orderCount = orders.filter((row, index) => index > 0 && row[0] === input.values[0]).length;
+    if (idCount > 1 || orderCount > 1) return "duplicate";
+    return orderCount === 0 ? "missing" : "ok";
+  } catch {
+    throw new GoogleLedgerUnavailableError();
+  }
+}
+
 /** 주문번호 열만 조회하고 숨김 ID는 불확실할 때만 조회한다. */
 export async function writeLedgerSheet(
   input: {
@@ -76,8 +130,9 @@ export async function writeLedgerSheet(
   }
   try {
     const eventId = input.eventId.replaceAll("-", "").toLowerCase();
-    async function readColumn(column: string): Promise<unknown[][]> {
-      const url = new URL(`${base}/values/${encodeURIComponent(`${tab}!${column}:${column}`)}`);
+    async function readColumn(column: string, start?: number, end?: number): Promise<unknown[][]> {
+      const range = start === undefined ? `${column}:${column}` : `${column}${start}:${column}${end}`;
+      const url = new URL(`${base}/values/${encodeURIComponent(`${tab}!${range}`)}`);
       url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
       const data = await request(url.href, "GET"),
         rows = data?.values ?? [];
@@ -85,15 +140,22 @@ export async function writeLedgerSheet(
         throw new GoogleLedgerUnavailableError();
       return rows as unknown[][];
     }
-    if (input.uncertain) {
-      const ids = await readColumn(ledgerColumnName(input.setup.end - 1));
-      const matches = ids.filter((row, index) => index > 0 && row[0] === eventId);
-      if (matches.length > 1) throw new LedgerDuplicateError();
-      if (matches.length === 1) return;
-    }
     const rows = await readColumn(first);
+    let writtenRow: number | undefined;
+    if (input.uncertain) {
+      const lastRow = Math.max(2, rows.length),
+        startRow = Math.max(2, lastRow - 9999);
+      const ids = await readColumn(ledgerColumnName(input.setup.end - 1), startRow, lastRow);
+      const matches = ids.flatMap((row, index) => (row[0] === eventId ? [startRow - 1 + index] : []));
+      if (matches.length > 1) throw new LedgerDuplicateError();
+      writtenRow = matches[0];
+    }
     const matches = rows.flatMap((row, index) => (index > 0 && row[0] === input.values[0] ? [index] : []));
     if (matches.length > 1) throw new LedgerDuplicateError();
+    if (writtenRow !== undefined) {
+      if (matches.length === 1 && matches[0] === writtenRow) return;
+      throw new LedgerDuplicateError();
+    }
     const row = matches[0];
     const cells = [...input.values, eventId].map((value) => ({
       userEnteredValue: typeof value === "number" ? { numberValue: value } : { stringValue: value },

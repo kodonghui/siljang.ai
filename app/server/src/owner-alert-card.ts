@@ -18,7 +18,7 @@ export const TASK_LABELS = {
 
 export type OwnerAlert =
   | { kind: "new_task"; task: keyof typeof TASK_LABELS; count: number }
-  | { kind: "ledger_failing"; count: number }
+  | { kind: "ledger_failing"; count: number; duplicateOrderNo?: string }
   | { kind: "task_realert"; task: keyof typeof TASK_LABELS }
   | {
       kind: "handoff_appended" | "payment_account_changed" | "identity_change_applied" | "channel_event_unavailable";
@@ -67,6 +67,8 @@ function describeAlert(alert: OwnerAlert): AlertCard {
     case "handoff_appended":
       return taskCard("에스컬레이션 건에 새 질문이 있어요");
     case "ledger_failing":
+      if (alert.duplicateOrderNo !== undefined)
+        return taskCard(`장부에 같은 주문(주문번호 ${alert.duplicateOrderNo})이 두 줄 있어요. 하나를 지워 주세요`);
       return taskCard(`장부에 못 적은 주문 ${alert.count}건, 장부 연결을 다시 해 주세요`);
     case "license_on_hold":
       return taskCard(`영업 신고가 보류됐어요: ${alert.reason}`);

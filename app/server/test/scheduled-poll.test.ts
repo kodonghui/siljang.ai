@@ -27,7 +27,7 @@ const dayBeforeFailures = (fields: { errorName: string; dbCode?: string }) => [
   { level: "warn", event: "job_run", job: "day_before_notice", count: 0 },
 ];
 const ledgerFailures = (fields: { errorName: string; dbCode?: string }) => [
-  { level: "error", event: "job_find_failed", job: "ledger_write", ...fields },
+  ...Array.from({ length: 2 }, () => ({ level: "error", event: "job_find_failed", job: "ledger_write", ...fields })),
   { level: "warn", event: "job_run", job: "ledger_write", count: 0 },
 ];
 
@@ -38,7 +38,7 @@ describe("기본 Cron의 매분 연결 확인", () => {
     expect(result?.jobs.purge?.failed).toBe(1);
     expect(result?.jobs.consultation_idle?.failed).toBe(3);
     expect(result?.jobs.day_before_notice?.failed).toBe(1);
-    expect(result?.jobs.ledger_write?.failed).toBe(1);
+    expect(result?.jobs.ledger_write?.failed).toBe(2);
     expect(result?.jobs.customer_notice?.failed).toBe(2);
     expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
       { level: "error", event: "job_start_failed", job: "purge", errorName: "DbUnavailableError" },
@@ -68,7 +68,7 @@ describe("기본 Cron의 매분 연결 확인", () => {
     expect(result?.jobs.purge?.failed).toBe(1);
     expect(result?.jobs.consultation_idle?.failed).toBe(3);
     expect(result?.jobs.day_before_notice?.failed).toBe(1);
-    expect(result?.jobs.ledger_write?.failed).toBe(1);
+    expect(result?.jobs.ledger_write?.failed).toBe(2);
     expect(result?.jobs.customer_notice?.failed).toBe(2);
     expect(closed).toBe(1);
     expect(logs.lines.map((line) => JSON.parse(line))).toEqual([
@@ -120,7 +120,7 @@ describeDb("시작 표시 조회와 실제 실행의 분리", () => {
           expect(sql).toMatch(/^SELECT t\.shop_id, t\.id, t\.confirmed_at AS due_at/);
           dayBeforeReads += 1;
         } else if (sql.includes("FROM ledger_writes t")) {
-          expect(sql).toMatch(/^SELECT t\.shop_id, t\.id, t\.next_attempt_at AS due_at/);
+          expect(sql).toMatch(/^SELECT t\.shop_id, t\.id, t\.(next_attempt_at|audit_due_at) AS due_at/);
           ledgerReads += 1;
         } else {
           expect(sql).toMatch(/SELECT.*FROM ops_events/s);
@@ -155,7 +155,7 @@ describeDb("시작 표시 조회와 실제 실행의 분리", () => {
       expect(consultationReads).toBe(9);
       expect(noticeReads).toBe(6);
       expect(dayBeforeReads).toBe(3);
-      expect(ledgerReads).toBe(3);
+      expect(ledgerReads).toBe(6);
       expect((await base.query("SELECT count(*)::int AS n FROM ops_events")).rows).toEqual(before.rows);
     } finally {
       await base.close();

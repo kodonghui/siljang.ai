@@ -6,6 +6,7 @@ export interface LedgerWriteSnapshot {
   readonly shopId: string;
   readonly eventId: string;
   readonly uncertain: boolean;
+  readonly auditing: boolean;
   readonly linkId: string;
   readonly file: string;
   readonly tab: string;
@@ -20,7 +21,17 @@ type Result =
         readonly ownershipToken: string;
       };
     }
-  | { readonly status: "auth_lost" | "retry" | "uncertain" };
+  | {
+      readonly status:
+        | "auth_lost"
+        | "retry"
+        | "uncertain"
+        | "duplicate"
+        | "audit_ok"
+        | "audit_missing"
+        | "audit_duplicate"
+        | "audit_retry";
+    };
 interface Prepared {
   readonly row: LedgerWriteSnapshot;
   readonly credential: Secret | null;
@@ -49,15 +60,25 @@ export function createLedgerWriteHandler(deps: Dependencies): LeasedHandler<Prep
     },
     async act(prepared) {
       if (prepared.credentialError) throw new Error("ledger credential unavailable");
-      if (prepared.credential === null) return { status: "auth_lost" };
+      if (prepared.credential === null) return { status: prepared.row.auditing ? "audit_retry" : "auth_lost" };
       return deps.write(prepared.row, prepared.credential);
     },
-    async record(db, item, _prepared, outcome, ctx) {
+    async record(db, item, prepared, outcome, ctx) {
       await deps.finish(
         db,
         item,
         ctx,
-        outcome.ok ? outcome.value : { status: outcome.errorName === "LedgerUncertainError" ? "uncertain" : "retry" },
+        outcome.ok
+          ? outcome.value
+          : {
+              status: prepared.row.auditing
+                ? "audit_retry"
+                : outcome.errorName === "LedgerUncertainError" || outcome.errorName === "JobActTimeoutError"
+                  ? "uncertain"
+                  : outcome.errorName === "LedgerDuplicateError"
+                    ? "duplicate"
+                    : "retry",
+            },
       );
     },
   };

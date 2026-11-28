@@ -184,6 +184,14 @@ export const DUE_SOURCES = {
     claim:
       "SELECT t.id FROM ledger_writes t WHERE t.shop_id = $1 AND t.id = $2 AND t.status IN ('pending', 'retrying', 'alerted') AND t.next_attempt_at <= $3 FOR UPDATE SKIP LOCKED",
   },
+  ledger_audit: {
+    table: "ledger_writes",
+    dueColumn: "audit_due_at",
+    index: "ledger_writes_audit_due_idx",
+    find: "SELECT t.shop_id, t.id, t.audit_due_at AS due_at FROM ledger_writes t WHERE t.status = 'written' AND t.audit_due_at IS NOT NULL AND t.audit_due_at <= $1 ORDER BY t.audit_due_at, t.id LIMIT $2",
+    claim:
+      "SELECT t.id FROM ledger_writes t WHERE t.shop_id = $1 AND t.id = $2 AND t.status = 'written' AND t.audit_due_at IS NOT NULL AND t.audit_due_at <= $3 FOR UPDATE SKIP LOCKED",
+  },
 } as const satisfies Record<string, DueSource>;
 
 export type DueSourceName = keyof typeof DUE_SOURCES;

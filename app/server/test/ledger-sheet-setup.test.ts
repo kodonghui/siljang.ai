@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { GoogleLedgerUnavailableError } from "../src/ledger-google-auth";
-import { LEDGER_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
+import { LEDGER_HEADERS, LEDGER_STORAGE_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
 import { ledgerSheetSetup } from "../src/ledger-sheet-setup";
 import { Secret } from "../src/settings";
 
@@ -48,26 +48,40 @@ function fixture() {
       }
       const insert = body.requests[0]?.insertDimension,
         write = body.requests[1]?.updateCells,
-        metadata = body.requests[2]?.createDeveloperMetadata?.developerMetadata;
+        metadata = body.requests[3]?.createDeveloperMetadata?.developerMetadata;
       expect(insert).toEqual({
         range: {
           sheetId,
           dimension: "COLUMNS",
           startIndex: count === 27 ? 26 : count,
-          endIndex: (count === 27 ? 26 : count) + 12,
+          endIndex: (count === 27 ? 26 : count) + 13,
         },
         inheritFromBefore: true,
       });
       const start = insert.range.startIndex;
+      expect(body.requests[2]).toEqual({
+        updateDimensionProperties: {
+          range: { sheetId, dimension: "COLUMNS", startIndex: start + 12, endIndex: start + 13 },
+          properties: { hiddenByUser: true },
+          fields: "hiddenByUser",
+        },
+      });
       headers = Array.from({ length: count }, (_, index) => headers[index] ?? "");
-      headers.splice(start, 0, ...Array(12).fill(""));
-      count += 12;
-      expect(write.fields).toBe("userEnteredValue");
+      headers.splice(start, 0, ...Array(13).fill(""));
+      count += 13;
+      expect(write.fields).toBe("userEnteredValue,note");
       expect(write.start).toEqual({ sheetId, rowIndex: 0, columnIndex: start });
       expect(write.rows).toEqual([
-        { values: LEDGER_HEADERS.map((value) => ({ userEnteredValue: { stringValue: value } })) },
+        {
+          values: LEDGER_STORAGE_HEADERS.map((value, index) => ({
+            userEnteredValue: { stringValue: value },
+            ...(index === LEDGER_HEADERS.length
+              ? { note: "실장님이 중복 기록을 막는 데 쓰는 열, 지우거나 바꾸지 마세요" }
+              : {}),
+          })),
+        },
       ]);
-      for (let i = 0; i < 12; i++) headers[start + i] = write.rows[0].values[i].userEnteredValue.stringValue;
+      for (let i = 0; i < 13; i++) headers[start + i] = write.rows[0].values[i].userEnteredValue.stringValue;
       expect(metadata.metadataKey).toBe("siljang_columns_v1");
       expect(metadata.visibility).toBe("PROJECT");
       expect(metadata.location.dimensionRange.endIndex - metadata.location.dimensionRange.startIndex).toBe(1);
@@ -78,7 +92,7 @@ function fixture() {
       return new Response(
         JSON.stringify({
           spreadsheetId: badId ? "other_file_1234567890" : file,
-          replies: [{}, {}, { createDeveloperMetadata: { developerMetadata: metadata } }],
+          replies: [{}, {}, {}, { createDeveloperMetadata: { developerMetadata: metadata } }],
         }),
       );
     }
@@ -146,7 +160,7 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
     expect(result).toMatchObject({
       sheetId,
       start: 26,
-      end: 38,
+      end: 39,
       movedRight: true,
       columns: LEDGER_HEADERS.map((header, i) => ({ header, column: `A${String.fromCharCode(65 + i)}` })),
     });
@@ -159,17 +173,17 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
     const f = fixture();
     f.collaborate = true;
     expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).not.toBeNull();
-    expect(f.headers[38]).toBe("협업자가 방금 넣은 자료");
+    expect(f.headers[39]).toBe("협업자가 방금 넣은 자료");
   });
   it("유효한 자기 서명과 실제 헤더가 있으면 기존 열을 재사용하고 쓰지 않는다", async () => {
     const f = fixture(),
       token = await signLedgerColumns(f.key, { shopId: shop, spreadsheetId: file, sheetId }, 26, true);
-    f.count = 38;
-    f.headers = [...Array(26).fill(""), ...LEDGER_HEADERS];
+    f.count = 39;
+    f.headers = [...Array(26).fill(""), ...LEDGER_STORAGE_HEADERS];
     f.markers = [f.marker(token, 26)];
     expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).toMatchObject({
       start: 26,
-      end: 38,
+      end: 39,
       ownershipToken: token,
       movedRight: true,
     });
@@ -178,8 +192,8 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
   it("서명된 기존 열이 있어도 읽기 전용 파일은 다시 연결하지 않는다", async () => {
     const f = fixture();
     const token = await signLedgerColumns(f.key, { shopId: shop, spreadsheetId: file, sheetId }, 26, true);
-    f.count = 38;
-    f.headers = [...Array(26).fill(""), ...LEDGER_HEADERS];
+    f.count = 39;
+    f.headers = [...Array(26).fill(""), ...LEDGER_STORAGE_HEADERS];
     f.markers = [f.marker(token, 26)];
     f.editable = false;
     expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).toBeNull();
@@ -192,11 +206,11 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
       changed = await signLedgerColumns(f.key, { shopId: shop, spreadsheetId: file, sheetId }, 10000, false);
     f.count = 18278;
     f.headers = Array(18278).fill("");
-    for (let i = 0; i < 12; i++) f.headers[26 + i] = LEDGER_HEADERS[i];
+    for (let i = 0; i < 13; i++) f.headers[26 + i] = LEDGER_STORAGE_HEADERS[i];
     f.markers = [f.marker(valid, 26), f.marker(changed, 10000)];
     expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).toMatchObject({
       start: 26,
-      end: 38,
+      end: 39,
       ownershipToken: valid,
     });
     expect(f.writes).toHaveLength(0);
@@ -215,16 +229,16 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
           26,
           true,
         );
-      f.count = 38;
-      f.headers = [...Array(26).fill(""), ...LEDGER_HEADERS];
+      f.count = 39;
+      f.headers = [...Array(26).fill(""), ...LEDGER_STORAGE_HEADERS];
       if (kind === "changed_headers") f.headers[26] = "사장님이 바꾼 헤더";
       const before = [...f.headers];
       f.markers = [f.marker(kind === "forged" ? signed.slice(0, -1) + (signed.endsWith("A") ? "B" : "A") : signed, 26)];
       expect(await ledgerSheetSetup(f.key, { fetch: f.send }).connect(f.access, shop, file, tab)).toMatchObject({
-        start: 38,
-        end: 50,
+        start: 39,
+        end: 52,
       });
-      expect(f.headers.slice(0, 38)).toEqual(before);
+      expect(f.headers.slice(0, 39)).toEqual(before);
       expect(f.writes).toHaveLength(1);
     },
   );
@@ -234,7 +248,7 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
     const service = ledgerSheetSetup(f.key, { fetch: f.send });
     await expect(service.connect(f.access, shop, file, tab)).rejects.toBeInstanceOf(GoogleLedgerUnavailableError);
     f.lost = false;
-    expect(await service.connect(f.access, shop, file, tab)).toMatchObject({ start: 26, end: 38 });
+    expect(await service.connect(f.access, shop, file, tab)).toMatchObject({ start: 26, end: 39 });
     expect(f.writes).toHaveLength(1);
   });
   it("헤더 생성 후 확인 조회가 실패하면 새 인가 뒤 기존 서명 열을 재사용한다", async () => {
@@ -244,7 +258,7 @@ describe("장부 헤더 쓰기: 새 열 삽입/서명/재시도", () => {
     await expect(service.connect(f.access, shop, file, tab)).rejects.toBeInstanceOf(GoogleLedgerUnavailableError);
     expect(f.writes).toHaveLength(1);
     f.corruptReadback = false;
-    expect(await service.connect(f.access, shop, file, tab)).toMatchObject({ start: 26, end: 38 });
+    expect(await service.connect(f.access, shop, file, tab)).toMatchObject({ start: 26, end: 39 });
     expect(f.writes).toHaveLength(1);
   });
   it.each([400, 401, 403, 404])("헤더 쓰기 HTTP%s는 연결하지 않는다", async (status) => {
