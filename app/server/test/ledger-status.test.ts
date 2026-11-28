@@ -27,6 +27,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     logs: string[] = [];
   beforeAll(async () => {
     isolated = await isolatedTestDb();
+    await isolated.db.query("CREATE SCHEMA vault; CREATE TABLE vault.secrets (id uuid PRIMARY KEY)");
     await isolated.db.query(`CREATE ROLE "${role}" NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`);
     await isolated.db.query(
       readFileSync(new URL("../../../tools/staging-login-callback-grants.sql", import.meta.url), "utf8").replaceAll(
@@ -95,10 +96,12 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     app(options.limited, options.fault).request(PATH, { headers: { cookie: options.cookie ?? cookie } }, testEnv());
   async function link(
     status = "linked",
-    overrides: { shopId?: string; sheet?: string; columns?: unknown; at?: Date } = {},
+    overrides: { shopId?: string; sheet?: string; columns?: unknown; at?: Date; missing?: boolean } = {},
   ) {
     const id = newUuid(),
-      at = overrides.at ?? NOW;
+      at = overrides.at ?? NOW,
+      credential = newUuid();
+    if (!overrides.missing) await isolated.db.query("INSERT INTO vault.secrets(id) VALUES($1)", [credential]);
     await isolated.db.query(
       "INSERT INTO ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref,status,linked_at,unlinked_at) VALUES($1,$2,$3,'주문 장부',$4::jsonb,$5,$6,$7,$8)",
       [
@@ -106,7 +109,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
         overrides.shopId ?? shop.shopId,
         overrides.sheet ?? SHEET,
         JSON.stringify(overrides.columns ?? { columns: COLUMNS, movedRight: true }),
-        `fixture:${newUuid()}`,
+        credential,
         status,
         at,
         status === "unlinked" ? NOW : null,
@@ -137,7 +140,7 @@ describeDb("API033 실제 세션/장부 상태·쓰기 수·토큰 비노출", (
     },
   );
   it("복구 뒤 토큰이 없으면 다시 연결할 수 있도록 auth_lost를 반환한다", async () => {
-    await link("linked");
+    await link("linked", { missing: true });
     const response = await get();
     expect(response.status).toBe(200);
     expect(((await response.json()) as { status: string }).status).toBe("auth_lost");

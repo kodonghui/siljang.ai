@@ -27,6 +27,7 @@ export const FIELD_PURPOSES = [
   "consultations.message_cursor",
   "operator.records_cursor",
   "operator.records_page",
+  "ledger_links.oauth_token",
 ] as const;
 export type FieldPurpose = (typeof FIELD_PURPOSES)[number];
 
@@ -51,7 +52,9 @@ export const MAX_FIELD_BYTES = 256;
 /** 주소 최대5개·후기1000자와 내부 식별자. 이 수신 용도만 별도 한도를 쓴다. */
 export const MAX_KAKAO_PHOTO_CONTEXT_BYTES = 20_480;
 function fieldLimit(context: FieldContext): number {
-  return context.purpose === "messages.kakao_photo" ? MAX_KAKAO_PHOTO_CONTEXT_BYTES : MAX_FIELD_BYTES;
+  if (context.purpose === "messages.kakao_photo") return MAX_KAKAO_PHOTO_CONTEXT_BYTES;
+  if (context.purpose === "ledger_links.oauth_token") return 8192;
+  return MAX_FIELD_BYTES;
 }
 
 /** 봉투를 만들거나 풀지 못함. 메시지는 정해 둔 글뿐이다(평문·키·봉투 없음). */
@@ -102,6 +105,7 @@ function aad(version: number, context: FieldContext): Uint8Array {
   if (
     context.purpose === "consultations.message_cursor" ||
     context.purpose === "messages.kakao_photo" ||
+    context.purpose === "ledger_links.oauth_token" ||
     context.purpose === "operator.records_cursor" ||
     context.purpose === "operator.records_page"
   ) {
