@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { DUE_SOURCES } from "../src/due-sources";
 import { runDueJobs } from "../src/job-runner";
-import { LEDGER_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
+import { LEDGER_STORAGE_HEADERS, signLedgerColumns } from "../src/ledger-sheet-columns";
 import { ledgerWriteJob } from "../src/ledger-write-job";
 import { createServices } from "../src/services";
 import { readSettings, Secret } from "../src/settings";
@@ -249,6 +249,48 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
     expect(result?.status).toBe("retrying");
     expect(result.next_attempt_at.getTime()).toBe(result.first_failed_at.getTime() + 24 * 3600000);
   });
+  it("불확실한 외부 쓰기는 즉시 재전송하지 않고 5분 뒤 확인하도록 남긴다", async () => {
+    const shop = await createShop(isolated.db, "불확실 합성 장부"),
+      link = crypto.randomUUID(),
+      row = crypto.randomUUID(),
+      write = crypto.randomUUID();
+    await isolated.db.query(
+      "INSERT INTO ledger_links(id,shop_id,spreadsheet_id,sheet_name,our_columns,credential_ref) VALUES($1,$2,$3,'장부','{}',$4)",
+      [link, shop.shopId, "synthetic_sheet_1234567890", crypto.randomUUID()],
+    );
+    await isolated.db.query("INSERT INTO ledger_rows(id,shop_id,order_id) VALUES($1,$2,$3)", [
+      row,
+      shop.shopId,
+      shop.orderId,
+    ]);
+    await isolated.db.query(
+      "INSERT INTO ledger_writes(id,shop_id,ledger_row_id,event_key,event_kind,next_attempt_at) VALUES($1,$2,$3,$4,'changed',now()-interval '1 minute')",
+      [write, shop.shopId, row, `ledger:${write}:changed`],
+    );
+    const now = new Date(),
+      lease = new Date(now.getTime() + 120000);
+    await isolated.db.query("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [
+      shop.shopId,
+      write,
+      lease,
+    ]);
+    await isolated.db.query("SELECT siljang_ledger_private.finish_ledger_write($1,$2,$3,$4,$5,NULL)", [
+      shop.shopId,
+      write,
+      lease,
+      "uncertain",
+      now,
+    ]);
+    const result = (
+      await isolated.db.query<{ status: string; next_attempt_at: Date; write_uncertain: boolean }>(
+        "SELECT status,next_attempt_at,write_uncertain FROM ledger_writes WHERE id=$1",
+        [write],
+      )
+    ).rows[0];
+    expect(result?.status).toBe("retrying");
+    expect(result?.write_uncertain).toBe(true);
+    expect(result?.next_attempt_at.getTime()).toBeGreaterThanOrEqual(now.getTime() + 299000);
+  });
   it("제한 역할 예약 실행에서 Vault 암호문을 열고 구글 모의 시트에 현재 행을 쓴다", async () => {
     const shop = await createShop(isolated.db, "합성 실행기"),
       link = crypto.randomUUID(),
@@ -311,14 +353,14 @@ describe.skipIf(!TEST_DATABASE_URL)("장부 임대 DB", () => {
         if (url.pathname.includes("/developerMetadata/")) return new Response(null, { status: 404 });
         if (init?.method === "POST") {
           written = JSON.parse(String(init.body));
-          return Response.json({ spreadsheetId: file, replies: [{}, {}] });
+          return Response.json({ spreadsheetId: file, replies: [{}] });
         }
         if (url.pathname.includes("/values/"))
-          return Response.json({ values: url.pathname.includes("1%3A1") ? [LEDGER_HEADERS] : [["주문번호"]] });
+          return Response.json({ values: url.pathname.includes("1%3A1") ? [LEDGER_STORAGE_HEADERS] : [["주문번호"]] });
         return Response.json({
           sheets: [
             {
-              properties: { sheetId: 7, title: tab, sheetType: "GRID", gridProperties: { columnCount: 12 } },
+              properties: { sheetId: 7, title: tab, sheetType: "GRID", gridProperties: { columnCount: 13 } },
               developerMetadata: [
                 {
                   metadataKey: "siljang_columns_v1",

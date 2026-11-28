@@ -1372,6 +1372,10 @@ CREATE TABLE ledger_writes (
   last_error_kind  text,                                 -- 마지막 실패 종류(내용·시크릿 없음)
   written_at       timestamptz,                          -- 적힌 시각. 적을 때는 그 주문의 지금 값으로(옛 값이 새 값을 덮지 않음)
   created_at       timestamptz NOT NULL DEFAULT now(),   -- 남긴 시각
+  write_uncertain  boolean NOT NULL DEFAULT false,       -- 외부 쓰기 결과 불확실 여부
+  audit_due_at     timestamptz,                          -- 중복 정리 다음 확인 시각
+  audit_deadline   timestamptz,                          -- 중복 정리 확인 기한
+  audit_checks     smallint NOT NULL DEFAULT 0 CHECK (audit_checks BETWEEN 0 AND 48), -- 중복 정리 확인 횟수
   CONSTRAINT ledger_writes_row_fk FOREIGN KEY (shop_id, ledger_row_id) REFERENCES ledger_rows (shop_id, id) ON DELETE RESTRICT,
   CONSTRAINT ledger_writes_event_uq UNIQUE (shop_id, event_key),
   CONSTRAINT ledger_writes_written_chk CHECK ((status = 'written') = (written_at IS NOT NULL))
@@ -2822,12 +2826,12 @@ END
 $block$;
 
 CREATE FUNCTION siljang_ledger_private.claim_ledger_write(p_shop uuid,p_write uuid,p_lease timestamptz)
-RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,row_values jsonb)
+RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,row_values jsonb,uncertain boolean)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
-DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb;
+DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb; v_uncertain boolean;
 BEGIN
   IF p_lease IS NULL OR p_lease<=pg_catalog.statement_timestamp() OR p_lease>pg_catalog.statement_timestamp()+interval '5 minutes' THEN RETURN; END IF;
-  SELECT w.ledger_row_id INTO v_order FROM public.ledger_writes w
+  SELECT w.ledger_row_id,w.write_uncertain INTO v_order,v_uncertain FROM public.ledger_writes w
     WHERE w.shop_id=p_shop AND w.id=p_write AND w.status IN ('pending','retrying','alerted')
       AND w.next_attempt_at<=pg_catalog.statement_timestamp() FOR UPDATE;
   IF NOT FOUND THEN RETURN; END IF;
@@ -2866,7 +2870,7 @@ BEGIN
   UPDATE public.ledger_links SET write_lease_id=p_write,write_lease_until=p_lease WHERE shop_id=p_shop AND id=v_link.id;
   UPDATE public.ledger_writes SET first_failed_at=CASE WHEN attempts>0 THEN coalesce(first_failed_at,next_attempt_at) ELSE first_failed_at END,
     attempts=least(attempts+1,32767),next_attempt_at=p_lease WHERE shop_id=p_shop AND id=p_write;
-  RETURN QUERY SELECT v_link.id,v_link.spreadsheet_id,v_link.sheet_name,v_values;
+  RETURN QUERY SELECT v_link.id,v_link.spreadsheet_id,v_link.sheet_name,v_values,v_uncertain;
 END
 $fn$;
 REVOKE ALL ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz) FROM PUBLIC;
@@ -2875,7 +2879,7 @@ CREATE FUNCTION siljang_ledger_private.finish_ledger_write(p_shop uuid,p_write u
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
 DECLARE v_link uuid; v_row uuid; v_attempts int; v_failed timestamptz; v_alerted timestamptz; v_task uuid; v_delay interval;
 BEGIN
-  IF p_result NOT IN ('written','retry','auth_lost') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
+  IF p_result NOT IN ('written','retry','auth_lost','uncertain') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
   p_now:=least(p_now,pg_catalog.statement_timestamp());
   SELECT l.id,l.failure_alerted_at INTO v_link,v_alerted FROM public.ledger_links l
     WHERE l.shop_id=p_shop AND l.write_lease_id=p_write AND l.write_lease_until=p_lease AND l.status IN ('linked','auth_lost') FOR UPDATE;
@@ -2884,7 +2888,9 @@ BEGIN
     WHERE w.shop_id=p_shop AND w.id=p_write AND w.next_attempt_at=p_lease AND w.status IN ('pending','retrying','alerted') FOR UPDATE;
   IF NOT FOUND THEN RETURN false; END IF;
   IF p_result='written' THEN
-    UPDATE public.ledger_writes SET status='written',written_at=p_now,next_attempt_at=NULL,last_error_kind=NULL WHERE shop_id=p_shop AND id=p_write;
+    UPDATE public.ledger_writes SET status='written',written_at=p_now,next_attempt_at=NULL,last_error_kind=NULL,
+      audit_due_at=CASE WHEN write_uncertain THEN p_now+interval '30 minutes' END,
+      audit_deadline=CASE WHEN write_uncertain THEN p_now+interval '24 hours' END,audit_checks=0 WHERE shop_id=p_shop AND id=p_write;
     UPDATE public.ledger_rows SET first_written_at=coalesce(first_written_at,p_now),last_written_at=p_now WHERE shop_id=p_shop AND id=v_row;
     UPDATE public.ledger_links SET status='linked',our_columns=coalesce(p_columns,our_columns) WHERE shop_id=p_shop AND id=v_link;
     IF NOT EXISTS (SELECT 1 FROM public.ledger_writes WHERE shop_id=p_shop AND status<>'written') THEN
@@ -2895,8 +2901,8 @@ BEGIN
     v_failed:=coalesce(v_failed,p_now);
     v_delay:=CASE v_attempts WHEN 1 THEN interval '1 minute' WHEN 2 THEN interval '5 minutes' WHEN 3 THEN interval '30 minutes' WHEN 4 THEN interval '2 hours' WHEN 5 THEN interval '6 hours' ELSE interval '1 day' END;
     UPDATE public.ledger_writes SET status=CASE WHEN p_result='auth_lost' OR v_alerted IS NOT NULL OR p_now>=v_failed+interval '24 hours' THEN 'alerted' ELSE 'retrying' END,
-      first_failed_at=v_failed,last_error_kind=CASE WHEN p_result='auth_lost' THEN 'auth_lost' ELSE 'unavailable' END,
-      next_attempt_at=CASE WHEN p_result='auth_lost' OR v_alerted IS NOT NULL OR p_now>=v_failed+interval '24 hours'
+      first_failed_at=v_failed,write_uncertain=write_uncertain OR p_result='uncertain',last_error_kind=CASE WHEN p_result='auth_lost' THEN 'auth_lost' ELSE 'unavailable' END,
+      next_attempt_at=CASE WHEN p_result='uncertain' THEN p_now+interval '5 minutes' WHEN p_result='auth_lost' OR v_alerted IS NOT NULL OR p_now>=v_failed+interval '24 hours'
         THEN p_now+interval '1 day' ELSE least(p_now+v_delay,v_failed+interval '24 hours') END WHERE shop_id=p_shop AND id=p_write;
     IF (p_result='auth_lost' OR p_now>=v_failed+interval '24 hours') AND v_alerted IS NULL THEN
       INSERT INTO public.owner_tasks(shop_id,kind,event_key,opened_at) VALUES(p_shop,'ledger_relink','task:ledger_relink:'||v_link::text,p_now)
@@ -3588,6 +3594,10 @@ COMMENT ON COLUMN ledger_writes.first_failed_at IS '처음 실패한 시각(24�
 COMMENT ON COLUMN ledger_writes.last_error_kind IS '마지막 실패 종류(내용·시크릿 없음)';
 COMMENT ON COLUMN ledger_writes.written_at IS '적힌 시각. 적을 때는 그 주문의 지금 값으로(옛 값이 새 값을 덮지 않음)';
 COMMENT ON COLUMN ledger_writes.created_at IS '남긴 시각';
+COMMENT ON COLUMN ledger_writes.write_uncertain IS '외부 쓰기 결과 불확실 여부';
+COMMENT ON COLUMN ledger_writes.audit_due_at IS '중복 정리 다음 확인 시각';
+COMMENT ON COLUMN ledger_writes.audit_deadline IS '중복 정리 확인 기한';
+COMMENT ON COLUMN ledger_writes.audit_checks IS '중복 정리 확인 횟수';
 COMMENT ON COLUMN ai_calls.id IS 'AI 호출 ID';
 COMMENT ON COLUMN ai_calls.shop_id IS '가게';
 COMMENT ON COLUMN ai_calls.consultation_id IS '대화 ID. 상담마다 비용 합(REQ-150)';

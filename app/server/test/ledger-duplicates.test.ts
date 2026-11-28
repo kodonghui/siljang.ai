@@ -28,7 +28,7 @@ describe("장부 중복 정리", () => {
       ),
     ).toEqual({ remove: [], attention: true });
   });
-  it("다른 이벤트나 단일 행은 지우지 않는다", () => {
+  it("같은 주문의 다른 이벤트 행은 지우지 않고 확인을 요청한다", () => {
     expect(
       planLedgerDuplicateCleanup(
         [
@@ -38,6 +38,18 @@ describe("장부 중복 정리", () => {
         "test-event",
         expected,
       ),
-    ).toEqual({ remove: [], attention: false });
+    ).toEqual({ remove: [], attention: true });
+  });
+  it("뒤 이벤트가 원래 행의 ID를 바꾼 뒤 늦은 이전 요청이 추가돼도 중복을 발견한다", () => {
+    expect(
+      planLedgerDuplicateCleanup(
+        [
+          { index: 4, owned: ["A1B2C3", "최신 값", "new-event"], other: [] },
+          { index: 9, owned: expected, other: [] },
+        ],
+        "test-event",
+        expected,
+      ),
+    ).toEqual({ remove: [9], attention: false });
   });
 });

@@ -11,6 +11,7 @@ const ctx = { job: "ledger_write", now: item.dueAt, leaseUntil: new Date("2026-1
 const row = {
   shopId,
   eventId: writeId,
+  uncertain: false,
   linkId,
   file: "synthetic_sheet_1234567890",
   tab: "장부",

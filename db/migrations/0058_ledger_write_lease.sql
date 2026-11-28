@@ -4,16 +4,24 @@ ALTER TABLE ledger_links ADD COLUMN write_lease_until timestamptz;
 COMMENT ON COLUMN ledger_links.write_lease_id IS '장부 파일을 선점한 쓰기';
 COMMENT ON COLUMN ledger_links.write_lease_until IS '파일 선점 만료 시각';
 ALTER TABLE ledger_links ADD CONSTRAINT ledger_links_write_lease_chk CHECK ((write_lease_id IS NULL) = (write_lease_until IS NULL));
+ALTER TABLE ledger_writes ADD COLUMN write_uncertain boolean NOT NULL DEFAULT false;
+ALTER TABLE ledger_writes ADD COLUMN audit_due_at timestamptz;
+ALTER TABLE ledger_writes ADD COLUMN audit_deadline timestamptz;
+ALTER TABLE ledger_writes ADD COLUMN audit_checks smallint NOT NULL DEFAULT 0 CHECK (audit_checks BETWEEN 0 AND 48);
+COMMENT ON COLUMN ledger_writes.write_uncertain IS '외부 쓰기 결과 불확실 여부';
+COMMENT ON COLUMN ledger_writes.audit_due_at IS '중복 정리 다음 확인 시각';
+COMMENT ON COLUMN ledger_writes.audit_deadline IS '중복 정리 확인 기한';
+COMMENT ON COLUMN ledger_writes.audit_checks IS '중복 정리 확인 횟수';
 DROP INDEX ledger_writes_due_idx;
 CREATE INDEX ledger_writes_due_idx ON ledger_writes (next_attempt_at) WHERE status IN ('pending','retrying','alerted');
 
 CREATE FUNCTION siljang_ledger_private.claim_ledger_write(p_shop uuid,p_write uuid,p_lease timestamptz)
-RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,row_values jsonb)
+RETURNS TABLE(link_id uuid,spreadsheet_id text,sheet_name text,row_values jsonb,uncertain boolean)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
-DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb;
+DECLARE v_link public.ledger_links%ROWTYPE; v_order uuid; v_values jsonb; v_uncertain boolean;
 BEGIN
   IF p_lease IS NULL OR p_lease<=pg_catalog.statement_timestamp() OR p_lease>pg_catalog.statement_timestamp()+interval '5 minutes' THEN RETURN; END IF;
-  SELECT w.ledger_row_id INTO v_order FROM public.ledger_writes w
+  SELECT w.ledger_row_id,w.write_uncertain INTO v_order,v_uncertain FROM public.ledger_writes w
     WHERE w.shop_id=p_shop AND w.id=p_write AND w.status IN ('pending','retrying','alerted')
       AND w.next_attempt_at<=pg_catalog.statement_timestamp() FOR UPDATE;
   IF NOT FOUND THEN RETURN; END IF;
@@ -52,7 +60,7 @@ BEGIN
   UPDATE public.ledger_links SET write_lease_id=p_write,write_lease_until=p_lease WHERE shop_id=p_shop AND id=v_link.id;
   UPDATE public.ledger_writes SET first_failed_at=CASE WHEN attempts>0 THEN coalesce(first_failed_at,next_attempt_at) ELSE first_failed_at END,
     attempts=least(attempts+1,32767),next_attempt_at=p_lease WHERE shop_id=p_shop AND id=p_write;
-  RETURN QUERY SELECT v_link.id,v_link.spreadsheet_id,v_link.sheet_name,v_values;
+  RETURN QUERY SELECT v_link.id,v_link.spreadsheet_id,v_link.sheet_name,v_values,v_uncertain;
 END
 $fn$;
 REVOKE ALL ON FUNCTION siljang_ledger_private.claim_ledger_write(uuid,uuid,timestamptz) FROM PUBLIC;
@@ -61,7 +69,7 @@ CREATE FUNCTION siljang_ledger_private.finish_ledger_write(p_shop uuid,p_write u
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
 DECLARE v_link uuid; v_row uuid; v_attempts int; v_failed timestamptz; v_alerted timestamptz; v_task uuid; v_delay interval;
 BEGIN
-  IF p_result NOT IN ('written','retry','auth_lost') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
+  IF p_result NOT IN ('written','retry','auth_lost','uncertain') OR p_now IS NULL OR NOT pg_catalog.isfinite(p_now) THEN RETURN false; END IF;
   p_now:=least(p_now,pg_catalog.statement_timestamp());
   SELECT l.id,l.failure_alerted_at INTO v_link,v_alerted FROM public.ledger_links l
     WHERE l.shop_id=p_shop AND l.write_lease_id=p_write AND l.write_lease_until=p_lease AND l.status IN ('linked','auth_lost') FOR UPDATE;
@@ -70,7 +78,9 @@ BEGIN
     WHERE w.shop_id=p_shop AND w.id=p_write AND w.next_attempt_at=p_lease AND w.status IN ('pending','retrying','alerted') FOR UPDATE;
   IF NOT FOUND THEN RETURN false; END IF;
   IF p_result='written' THEN
-    UPDATE public.ledger_writes SET status='written',written_at=p_now,next_attempt_at=NULL,last_error_kind=NULL WHERE shop_id=p_shop AND id=p_write;
+    UPDATE public.ledger_writes SET status='written',written_at=p_now,next_attempt_at=NULL,last_error_kind=NULL,
+      audit_due_at=CASE WHEN write_uncertain THEN p_now+interval '30 minutes' END,
+      audit_deadline=CASE WHEN write_uncertain THEN p_now+interval '24 hours' END,audit_checks=0 WHERE shop_id=p_shop AND id=p_write;
     UPDATE public.ledger_rows SET first_written_at=coalesce(first_written_at,p_now),last_written_at=p_now WHERE shop_id=p_shop AND id=v_row;
     UPDATE public.ledger_links SET status='linked',our_columns=coalesce(p_columns,our_columns) WHERE shop_id=p_shop AND id=v_link;
     IF NOT EXISTS (SELECT 1 FROM public.ledger_writes WHERE shop_id=p_shop AND status<>'written') THEN
@@ -81,8 +91,8 @@ BEGIN
     v_failed:=coalesce(v_failed,p_now);
     v_delay:=CASE v_attempts WHEN 1 THEN interval '1 minute' WHEN 2 THEN interval '5 minutes' WHEN 3 THEN interval '30 minutes' WHEN 4 THEN interval '2 hours' WHEN 5 THEN interval '6 hours' ELSE interval '1 day' END;
     UPDATE public.ledger_writes SET status=CASE WHEN p_result='auth_lost' OR v_alerted IS NOT NULL OR p_now>=v_failed+interval '24 hours' THEN 'alerted' ELSE 'retrying' END,
-      first_failed_at=v_failed,last_error_kind=CASE WHEN p_result='auth_lost' THEN 'auth_lost' ELSE 'unavailable' END,
-      next_attempt_at=CASE WHEN p_result='auth_lost' OR v_alerted IS NOT NULL OR p_now>=v_failed+interval '24 hours'
+      first_failed_at=v_failed,write_uncertain=write_uncertain OR p_result='uncertain',last_error_kind=CASE WHEN p_result='auth_lost' THEN 'auth_lost' ELSE 'unavailable' END,
+      next_attempt_at=CASE WHEN p_result='uncertain' THEN p_now+interval '5 minutes' WHEN p_result='auth_lost' OR v_alerted IS NOT NULL OR p_now>=v_failed+interval '24 hours'
         THEN p_now+interval '1 day' ELSE least(p_now+v_delay,v_failed+interval '24 hours') END WHERE shop_id=p_shop AND id=p_write;
     IF (p_result='auth_lost' OR p_now>=v_failed+interval '24 hours') AND v_alerted IS NULL THEN
       INSERT INTO public.owner_tasks(shop_id,kind,event_key,opened_at) VALUES(p_shop,'ledger_relink','task:ledger_relink:'||v_link::text,p_now)

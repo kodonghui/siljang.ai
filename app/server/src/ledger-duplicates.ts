@@ -12,12 +12,15 @@ export function planLedgerDuplicateCleanup(
 ) {
   if (!id || expected.length === 0 || expected.at(-1) !== id) throw new TypeError("invalid ledger ID");
   if (rows.some((row) => !Number.isSafeInteger(row.index) || row.index < 1)) throw new TypeError("invalid ledger row");
-  const matching = rows.filter((row) => row.owned.at(-1) === id).sort((a, b) => a.index - b.index);
+  const matching = rows.filter((row) => row.owned[0] === expected[0]).sort((a, b) => a.index - b.index);
   if (matching.length < 2) return { remove: [] as number[], attention: false };
   const remove: number[] = [];
   let attention = false;
   for (const row of matching.slice(1)) {
-    const oursMatch = row.owned.length === expected.length && row.owned.every((value, i) => value === expected[i]);
+    const oursMatch =
+      row.owned.at(-1) === id &&
+      row.owned.length === expected.length &&
+      row.owned.every((value, i) => value === expected[i]);
     const otherEmpty = row.other.every((value) => value === "" || value === null || value === undefined);
     if (oursMatch && otherEmpty) remove.push(row.index);
     else attention = true;

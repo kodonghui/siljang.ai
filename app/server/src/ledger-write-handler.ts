@@ -5,6 +5,7 @@ import type { ShopDb } from "./shop-scope";
 export interface LedgerWriteSnapshot {
   readonly shopId: string;
   readonly eventId: string;
+  readonly uncertain: boolean;
   readonly linkId: string;
   readonly file: string;
   readonly tab: string;
@@ -19,7 +20,7 @@ type Result =
         readonly ownershipToken: string;
       };
     }
-  | { readonly status: "auth_lost" | "retry" };
+  | { readonly status: "auth_lost" | "retry" | "uncertain" };
 interface Prepared {
   readonly row: LedgerWriteSnapshot;
   readonly credential: Secret | null;
@@ -52,7 +53,12 @@ export function createLedgerWriteHandler(deps: Dependencies): LeasedHandler<Prep
       return deps.write(prepared.row, prepared.credential);
     },
     async record(db, item, _prepared, outcome, ctx) {
-      await deps.finish(db, item, ctx, outcome.ok ? outcome.value : { status: "retry" });
+      await deps.finish(
+        db,
+        item,
+        ctx,
+        outcome.ok ? outcome.value : { status: outcome.errorName === "LedgerUncertainError" ? "uncertain" : "retry" },
+      );
     },
   };
 }

@@ -12,10 +12,13 @@ import type { ShopDb } from "./shop-scope";
 export function ledgerWriteJob(settings: Settings, services: Services) {
   return createLedgerWriteHandler({
     async claim(db: ShopDb, item: DueItem, ctx: LeaseContext): Promise<LedgerWriteSnapshot | null> {
-      const result = await db.run<{ link_id: string; spreadsheet_id: string; sheet_name: string; row_values: unknown }>(
-        "SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)",
-        [item.id, ctx.leaseUntil],
-      );
+      const result = await db.run<{
+        link_id: string;
+        spreadsheet_id: string;
+        sheet_name: string;
+        row_values: unknown;
+        uncertain: boolean;
+      }>("SELECT * FROM siljang_ledger_private.claim_ledger_write($1,$2,$3)", [item.id, ctx.leaseUntil]);
       const row = result.rows[0];
       if (!row) return null;
       if (
@@ -27,6 +30,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
       return {
         shopId: db.scope.shopId,
         eventId: item.id,
+        uncertain: row.uncertain,
         linkId: row.link_id,
         file: row.spreadsheet_id,
         tab: row.sheet_name,
@@ -59,6 +63,7 @@ export function ledgerWriteJob(settings: Settings, services: Services) {
           shopId: row.shopId,
           linkId: row.linkId,
           eventId: row.eventId,
+          uncertain: row.uncertain,
         },
         { fetch: bounded },
       );

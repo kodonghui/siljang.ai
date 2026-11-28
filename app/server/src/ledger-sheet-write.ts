@@ -1,11 +1,19 @@
 import { readBytesLimited } from "./body";
 import { GoogleLedgerUnavailableError } from "./ledger-google-auth";
-import { LEDGER_HEADERS, ledgerColumnName } from "./ledger-sheet-columns";
+import { LEDGER_HEADERS, LEDGER_STORAGE_HEADERS, ledgerColumnName } from "./ledger-sheet-columns";
 import type { LedgerSheetSetup } from "./ledger-sheet-setup";
 import type { Secret } from "./settings";
 import { isUuid } from "./shop-scope";
 
-/** 같은 이벤트는 원자적 메타데이터 ID와 셀 쓰기를 함께 적용한다. */
+export class LedgerDuplicateError extends Error {
+  override readonly name = "LedgerDuplicateError";
+}
+export class LedgerUncertainError extends Error {
+  override readonly name = "LedgerUncertainError";
+}
+class LedgerDefiniteError extends Error {}
+
+/** 주문번호 열만 조회하고 숨김 ID는 불확실할 때만 조회한다. */
 export async function writeLedgerSheet(
   input: {
     readonly file: string;
@@ -16,6 +24,7 @@ export async function writeLedgerSheet(
     readonly shopId: string;
     readonly linkId: string;
     readonly eventId: string;
+    readonly uncertain?: boolean;
   },
   options: { readonly fetch?: typeof fetch; readonly timeoutMs?: number } = {},
 ): Promise<void> {
@@ -23,7 +32,7 @@ export async function writeLedgerSheet(
     !/^[A-Za-z0-9_-]{20,100}$/.test(input.file) ||
     !/^[0-9A-Z]{6,8}$/.test(String(input.values[0])) ||
     input.values.length !== LEDGER_HEADERS.length ||
-    input.setup.end !== input.setup.start + LEDGER_HEADERS.length ||
+    input.setup.end !== input.setup.start + LEDGER_STORAGE_HEADERS.length ||
     !isUuid(input.shopId) ||
     !isUuid(input.linkId) ||
     !isUuid(input.eventId) ||
@@ -54,6 +63,7 @@ export async function writeLedgerSheet(
     if (!response.ok) {
       await response.body?.cancel().catch(() => {});
       if (allowMissing && response.status === 404) return null;
+      if (response.status >= 400 && response.status < 500 && response.status !== 408) throw new LedgerDefiniteError();
       throw new GoogleLedgerUnavailableError();
     }
     const raw: unknown = JSON.parse(
@@ -65,77 +75,56 @@ export async function writeLedgerSheet(
     return raw as Record<string, unknown>;
   }
   try {
-    const lookup = new URL(`${base}/values/${encodeURIComponent(`${tab}!${first}:${first}`)}`);
-    lookup.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
-    const data = await request(lookup.href, "GET"),
-      rows = data?.values ?? [];
-    if (!Array.isArray(rows) || rows.length > 100000 || rows.some((row) => !Array.isArray(row) || row.length > 1))
-      throw new GoogleLedgerUnavailableError();
-    const matches = rows.flatMap((row, index) => (index > 0 && row[0] === input.values[0] ? [index] : []));
-    if (matches.length > 1) throw new GoogleLedgerUnavailableError();
-    const row = matches[0];
-    // 기존 마커가 있고 행도 있으면 앞 요청이 이미 적용됐다. 삭제된 행은 새 세대로 복구한다.
-    for (let generation = 0; generation < 100; generation++) {
-      const marker = `${input.shopId.toLowerCase()}:${input.linkId.toLowerCase()}:${input.eventId.toLowerCase()}:${input.setup.sheetId}:${input.setup.start}:${generation}`;
-      for (let salt = 0; salt < 32; salt++) {
-        const hash = new Uint8Array(
-          await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`siljang-ledger:${marker}:${salt}`)),
-        );
-        const id = new DataView(hash.buffer).getUint32(0) & 0x7fffffff || 1;
-        const existing = await request(`${base}/developerMetadata/${id}`, "GET", undefined, true);
-        if (existing !== null) {
-          if (
-            existing.metadataKey !== "siljang_ledger_event_v1" ||
-            existing.metadataValue !== marker ||
-            existing.visibility !== "PROJECT"
-          )
-            continue;
-          if (row !== undefined) return;
-          break;
-        }
-        const cells = input.values.map((value) => ({
-          userEnteredValue: typeof value === "number" ? { numberValue: value } : { stringValue: value },
-        }));
-        const write =
-          row === undefined
-            ? {
-                appendCells: {
-                  sheetId: input.setup.sheetId,
-                  rows: [{ values: [...Array.from({ length: input.setup.start }, () => ({})), ...cells] }],
-                  fields: "userEnteredValue",
-                },
-              }
-            : {
-                updateCells: {
-                  start: { sheetId: input.setup.sheetId, rowIndex: row, columnIndex: input.setup.start },
-                  rows: [{ values: cells }],
-                  fields: "userEnteredValue",
-                },
-              };
-        const body = JSON.stringify({
-          requests: [
-            write,
-            {
-              createDeveloperMetadata: {
-                developerMetadata: {
-                  metadataId: id,
-                  metadataKey: "siljang_ledger_event_v1",
-                  metadataValue: marker,
-                  visibility: "PROJECT",
-                  location: { sheetId: input.setup.sheetId },
-                },
-              },
-            },
-          ],
-        });
-        const result = await request(`${base}:batchUpdate`, "POST", body);
-        if (result?.spreadsheetId !== input.file || !Array.isArray(result.replies) || result.replies.length !== 2)
-          throw new GoogleLedgerUnavailableError();
-        return;
-      }
+    const eventId = input.eventId.replaceAll("-", "").toLowerCase();
+    async function readColumn(column: string): Promise<unknown[][]> {
+      const url = new URL(`${base}/values/${encodeURIComponent(`${tab}!${column}:${column}`)}`);
+      url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
+      const data = await request(url.href, "GET"),
+        rows = data?.values ?? [];
+      if (!Array.isArray(rows) || rows.length > 100000 || rows.some((row) => !Array.isArray(row) || row.length > 1))
+        throw new GoogleLedgerUnavailableError();
+      return rows as unknown[][];
     }
-    throw new GoogleLedgerUnavailableError();
-  } catch {
+    if (input.uncertain) {
+      const ids = await readColumn(ledgerColumnName(input.setup.end - 1));
+      const matches = ids.filter((row, index) => index > 0 && row[0] === eventId);
+      if (matches.length > 1) throw new LedgerDuplicateError();
+      if (matches.length === 1) return;
+    }
+    const rows = await readColumn(first);
+    const matches = rows.flatMap((row, index) => (index > 0 && row[0] === input.values[0] ? [index] : []));
+    if (matches.length > 1) throw new LedgerDuplicateError();
+    const row = matches[0];
+    const cells = [...input.values, eventId].map((value) => ({
+      userEnteredValue: typeof value === "number" ? { numberValue: value } : { stringValue: value },
+    }));
+    const write =
+      row === undefined
+        ? {
+            appendCells: {
+              sheetId: input.setup.sheetId,
+              rows: [{ values: [...Array.from({ length: input.setup.start }, () => ({})), ...cells] }],
+              fields: "userEnteredValue",
+            },
+          }
+        : {
+            updateCells: {
+              start: { sheetId: input.setup.sheetId, rowIndex: row, columnIndex: input.setup.start },
+              rows: [{ values: cells }],
+              fields: "userEnteredValue",
+            },
+          };
+    let result: Record<string, unknown> | null;
+    try {
+      result = await request(`${base}:batchUpdate`, "POST", JSON.stringify({ requests: [write] }));
+    } catch (error) {
+      if (error instanceof LedgerDefiniteError) throw error;
+      throw new LedgerUncertainError();
+    }
+    if (result?.spreadsheetId !== input.file || !Array.isArray(result.replies) || result.replies.length !== 1)
+      throw new LedgerUncertainError();
+  } catch (error) {
+    if (error instanceof LedgerDuplicateError || error instanceof LedgerUncertainError) throw error;
     throw new GoogleLedgerUnavailableError();
   }
 }
