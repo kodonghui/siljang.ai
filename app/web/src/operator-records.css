@@ -1,163 +1,127 @@
 .operator-records {
+  display: grid;
+  gap: var(--space-md);
   overflow-wrap: break-word;
   word-break: keep-all;
 }
 .operator-records button {
-  min-height: 44px;
-}
-.operator-records-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px;
-}
-.operator-records-back {
-  display: none;
-}
-.operator-records-columns ul {
-  padding-left: 1.25rem;
-}
-.operator-records :where(dl > div) {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-.operator-records dd {
-  margin: 0;
-}
-.operator-records-dialog {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  background: #0009;
-  display: grid;
-  place-items: center;
-}
-.operator-records-dialog > div {
-  background: white;
-  color: #161616;
-  padding: 24px;
-  max-height: 90vh;
-  overflow: auto;
-  width: min(90vw, 620px);
-}
-.operator-records-dialog textarea {
-  display: block;
-  width: 100%;
-  min-height: 100px;
-}
-@media (max-width: 600px) {
-  .operator-records-columns {
-    grid-template-columns: 1fr;
-  }
-  .operator-records-columns:not(.has-selection) > div:nth-child(2),
-  .operator-records-columns.has-selection > div:first-child {
-    display: none;
-  }
-  .operator-records-back {
-    display: inline-block;
-  }
-  .operator-records-dialog > div {
-    width: 100%;
-    max-height: 100vh;
-    height: 100vh;
-  }
-}
-.operator-records {
-  display: grid;
-  gap: var(--space-md);
-}
-.operator-records button {
-  border: 1px solid var(--color-line-control);
+  min-height: var(--size-target);
+  border: var(--border-width-hairline) solid var(--color-line-control);
   background: var(--color-surface);
   color: var(--color-ink);
-  border-radius: 6px;
-  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
-}
-.operator-records button:focus-visible {
-  outline: 3px solid #185bd8;
-  outline-offset: 2px;
 }
 .operator-records button[aria-pressed="true"] {
   background: var(--color-accent-soft);
   border-color: var(--color-accent);
   color: var(--color-accent-pressed);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
+}
+.operator-records a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-target);
 }
 .operator-records-tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--space-sm);
+}
+.operator-records-columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl);
+}
+.operator-records-columns:not(.has-selection) > div:nth-child(2),
+.operator-records-columns.has-selection > div:first-child {
+  display: none;
+}
+.operator-records-back {
+  display: inline-block;
 }
 .operator-records-columns > div {
   min-width: 0;
   background: var(--color-surface);
-  border: 1px solid var(--color-line);
-  border-radius: 8px;
-  padding: 16px;
+  border: var(--border-width-hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
 }
 .operator-records-columns h2 {
-  margin: 0 0 12px;
-  font-size: 1.1rem;
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-size-title);
 }
 .operator-records-columns li {
-  margin-block: 8px;
+  margin-block: var(--space-sm);
+}
+.operator-records-columns ul {
+  padding-left: var(--space-xl);
 }
 .operator-records-columns > div:first-child > ul {
   list-style: none;
   padding: 0;
 }
-.operator-records-columns > div:first-child > ul button {
+.operator-records-columns :where(div:first-child > ul button) {
   text-align: left;
   width: 100%;
 }
-.operator-records-dialog textarea {
-  border: 1px solid #555;
-  padding: 10px;
+.operator-records :where(dl > div) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+.operator-records dd {
+  margin: 0;
 }
 dialog.operator-records-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
   margin: 0;
-  width: 100vw;
-  height: 100dvh;
+  width: 100%;
+  height: 100%;
   max-width: none;
   max-height: none;
   border: 0;
   padding: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
 }
 dialog.operator-records-dialog::backdrop {
-  background: #0009;
+  background: var(--color-scrim);
 }
-.operator-records a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-}
-
-.operator-records-actions {
+.operator-records-dialog > div {
   display: flex;
-  gap: 8px;
-  margin-top: 16px;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: auto;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  padding: var(--space-xl);
 }
-@media (max-width: 600px) {
-  .operator-records-actions {
-    position: sticky;
-    bottom: 0;
-    background: var(--color-surface);
-    padding-block: 12px;
-  }
-  .operator-records-actions button {
-    flex: 1;
-  }
+.operator-records-dialog textarea {
+  display: block;
+  width: 100%;
+  min-height: calc(2 * var(--size-control-lg));
+  border: var(--border-width-hairline) solid var(--color-line-control);
+  padding: var(--space-sm);
 }
-@media (max-width: 600px) {
-  .operator-records-dialog > div {
-    display: flex;
-    flex-direction: column;
-  }
-  .operator-records-actions {
-    margin-top: auto;
-  }
+.operator-records-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: auto;
+  padding-block: var(--space-md);
+  background: var(--color-surface);
 }
-
+.operator-records-actions button {
+  flex: 1;
+  min-height: var(--size-control-lg);
+}
 .operator-records-clamp {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -165,9 +129,24 @@ dialog.operator-records-dialog::backdrop {
   overflow: hidden;
   white-space: pre-wrap;
 }
-
-@media (max-width: 600px) {
-  .operator-records-actions button {
-    min-height: 48px;
+@media (min-width: 1260px) {
+  .operator-records-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .operator-records-columns:not(.has-selection) > div:nth-child(2),
+  .operator-records-columns.has-selection > div:first-child {
+    display: block;
+  }
+  .operator-records-back {
+    display: none;
+  }
+  .operator-records-dialog > div {
+    width: min(100%, calc(var(--size-aside) + var(--size-photo)));
+    height: auto;
+  }
+  .operator-records-actions {
+    position: static;
+    margin-top: var(--space-lg);
+    padding-block: 0;
   }
 }
